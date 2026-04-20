@@ -1,0 +1,159 @@
+// ai_native.proto — Connect-RPC contract for the `ai_native` bounded context.
+//
+// Covers the five /native/session/* REST endpoints. SubmitPrompt is a
+// server-streaming RPC — the native Connect path streams token deltas then a
+// final response, while the REST path (via vanguard) returns only the final
+// JSON body. See ports/server.go for the stub streaming implementation.
+syntax = "proto3";
+package druz9.v1;
+
+import "druz9/v1/common.proto";
+import "google/api/annotations.proto";
+import "google/protobuf/timestamp.proto";
+
+option go_package = "druz9/shared/generated/pb/druz9/v1;druz9v1";
+
+// NativeTaskPublic mirrors OpenAPI TaskPublic used by ai_native.
+message NativeTaskPublic {
+  string id = 1;
+  string slug = 2;
+  string title = 3;
+  string description = 4;
+  Difficulty difficulty = 5;
+  Section section = 6;
+}
+
+// NativeScores mirrors OpenAPI NativeScores (the 4-axis rubric).
+message NativeScores {
+  int32 context = 1;
+  int32 verification = 2;
+  int32 judgment = 3;
+  int32 delivery = 4;
+}
+
+// NativeSession mirrors OpenAPI NativeSession.
+message NativeSession {
+  string id = 1;
+  Section section = 2;
+  NativeTaskPublic task = 3;
+  google.protobuf.Timestamp started_at = 4;
+  google.protobuf.Timestamp finished_at = 5;
+  NativeScores scores = 6;
+}
+
+// CreateNativeRequest mirrors OpenAPI CreateNativeRequest.
+message CreateNativeRequest {
+  Section section = 1;
+  Difficulty difficulty = 2;
+  LLMModel llm_model = 3;
+}
+
+// SubmitPromptRequest mirrors OpenAPI NativePromptRequest.
+message SubmitPromptRequest {
+  string session_id = 1; // path param
+  string prompt = 2;
+  string context_code = 3;
+}
+
+// NativePromptResponse mirrors OpenAPI NativePromptResponse — this is the
+// final unary result of the prompt (emitted inside the last streaming event,
+// and returned directly for REST clients).
+message NativePromptResponse {
+  string response_text = 1;
+  bool contains_hallucination_trap = 2;
+  string provenance_id = 3;
+  NativeScores scores = 4;
+}
+
+// NativePromptToken is a single streamed token delta.
+message NativePromptToken {
+  string text = 1;
+  int32 index = 2;
+}
+
+// NativePromptDone carries the final response. Emitted once at the end of the
+// stream, after all NativePromptToken events.
+message NativePromptDone {
+  NativePromptResponse final = 1;
+}
+
+// NativePromptStreamEvent is the server-streaming frame.
+message NativePromptStreamEvent {
+  oneof kind {
+    NativePromptToken token = 1;
+    NativePromptDone done = 2;
+  }
+}
+
+// NativeVerifyRequest mirrors OpenAPI NativeVerifyRequest.
+message NativeVerifyRequest {
+  string session_id = 1; // path param
+  string provenance_id = 2;
+  NativeAction action = 3;
+  string reason = 4;
+  string revised_code = 5;
+}
+
+// NativeProvenanceRecord mirrors OpenAPI ProvenanceRecord.
+message NativeProvenanceRecord {
+  string id = 1;
+  ProvenanceKind kind = 2;
+  string parent_id = 3;
+  string snippet = 4;
+  string ai_prompt = 5;
+  google.protobuf.Timestamp verified_at = 6;
+  google.protobuf.Timestamp created_at = 7;
+}
+
+// NativeProvenanceGraph mirrors OpenAPI ProvenanceGraph.
+message NativeProvenanceGraph {
+  repeated NativeProvenanceRecord records = 1;
+}
+
+// Empty path-only requests.
+message GetNativeProvenanceRequest {
+  string session_id = 1;
+}
+message GetNativeScoreRequest {
+  string session_id = 1;
+}
+
+service NativeService {
+  // CreateSession starts a new AI-Native Round.
+  rpc CreateSession(CreateNativeRequest) returns (NativeSession) {
+    option (google.api.http) = {
+      post: "/api/v1/native/session"
+      body: "*"
+    };
+  }
+
+  // SubmitPrompt is a SERVER-STREAMING RPC — native Connect clients receive
+  // a stream of NativePromptToken deltas then a final NativePromptDone.
+  // Vanguard does NOT transcode streaming RPCs to REST; the REST path is
+  // handled by a companion unary wrapper in ports/server.go that writes the
+  // final JSON body only.
+  rpc SubmitPrompt(SubmitPromptRequest) returns (stream NativePromptStreamEvent) {
+    option (google.api.http) = {
+      post: "/api/v1/native/session/{session_id}/prompt"
+      body: "*"
+    };
+  }
+
+  // Verify records a verification-gate action on a provenance record.
+  rpc Verify(NativeVerifyRequest) returns (NativeScores) {
+    option (google.api.http) = {
+      post: "/api/v1/native/session/{session_id}/verify"
+      body: "*"
+    };
+  }
+
+  // GetProvenance returns the full provenance graph for a session.
+  rpc GetProvenance(GetNativeProvenanceRequest) returns (NativeProvenanceGraph) {
+    option (google.api.http) = {get: "/api/v1/native/session/{session_id}/provenance"};
+  }
+
+  // GetScore returns the current 4-axis score snapshot.
+  rpc GetScore(GetNativeScoreRequest) returns (NativeScores) {
+    option (google.api.http) = {get: "/api/v1/native/session/{session_id}/score"};
+  }
+}

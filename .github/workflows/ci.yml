@@ -1,0 +1,188 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  GO_VERSION: "1.25"
+
+jobs:
+  backend:
+    name: Go — lint + test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: true
+          cache-dependency-path: backend/**/go.sum
+
+      - name: Go workspace sync
+        run: go work sync
+
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v6
+        with:
+          version: v1.61
+          working-directory: backend
+          args: --config=.golangci.yml --timeout=5m
+
+      - name: Tests
+        working-directory: backend
+        run: go test -race -count=1 ./...
+
+  frontend:
+    name: Frontend — lint + typecheck + build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install
+        working-directory: frontend
+        run: npm ci --no-audit --no-fund
+
+      - name: Lint
+        working-directory: frontend
+        run: npm run lint
+
+      - name: Typecheck
+        working-directory: frontend
+        run: npm run typecheck
+
+      - name: Build
+        working-directory: frontend
+        run: npm run build
+
+  proto:
+    name: Proto — buf lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with: { go-version: "${{ env.GO_VERSION }}" }
+      - name: Install buf
+        run: go install github.com/bufbuild/buf/cmd/buf@v1.50.0
+      - name: Lint
+        working-directory: proto
+        run: buf lint
+
+  migrations:
+    name: Migrations — up/down smoke test
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: druz9
+          POSTGRES_PASSWORD: druz9
+          POSTGRES_DB: druz9
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd="pg_isready -U druz9"
+          --health-interval=5s
+          --health-timeout=3s
+          --health-retries=10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with: { go-version: "${{ env.GO_VERSION }}" }
+      - name: Install goose
+        run: go install github.com/pressly/goose/v3/cmd/goose@v3.19.2
+      - name: Up
+        run: goose -dir backend/migrations postgres "host=localhost port=5432 user=druz9 password=druz9 dbname=druz9 sslmode=disable" up
+      - name: Down (reset)
+        run: goose -dir backend/migrations postgres "host=localhost port=5432 user=druz9 password=druz9 dbname=druz9 sslmode=disable" reset
+
+  codegen-drift:
+    name: Codegen — gen-check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with: { go-version: "${{ env.GO_VERSION }}" }
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install frontend deps
+        working-directory: frontend
+        run: npm ci --no-audit --no-fund
+      - name: Run full codegen
+        run: make gen
+      - name: Fail on drift
+        run: |
+          git diff --exit-code -- backend/shared/generated backend/services/*/infra/db backend/services/*/domain/mocks frontend/src/api/generated \
+            || (echo "codegen drift — run 'make gen' locally and commit" && exit 1)
+
+  # Build + push the api image on main only. PR builds just verify the Dockerfile.
+  image:
+    name: Build + push api image
+    runs-on: ubuntu-latest
+    needs: [backend, frontend, proto, migrations]
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      image: ${{ steps.meta.outputs.tags }}
+      digest: ${{ steps.build.outputs.digest }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to GHCR
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Docker metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository_owner }}/druz9-api
+          tags: |
+            type=sha,prefix=sha-
+            type=ref,event=branch
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Build + push
+        id: build
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: infra/api.Dockerfile
+          push: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  check-stubs:
+    name: STUB advisory
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - name: List new STUBs in this PR
+        if: github.event_name == 'pull_request'
+        run: |
+          git diff origin/${{ github.base_ref }}...HEAD -- backend frontend/src | \
+            grep -E "^\+.*// STUB:" || echo "no new STUBs"

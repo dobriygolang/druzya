@@ -1,0 +1,40 @@
+# OS
+.DS_Store
+
+# Env
+.env
+.env.*
+!.env.example
+!.env.prod.example
+
+# Go
+/bin/
+*.out
+vendor/
+backend/cmd/monolith/monolith
+backend/**/monolith
+
+# Generated code is COMMITTED (bible §16: treat as reviewable artefacts).
+# If you want to opt OUT for a specific module, add it here explicitly.
+
+# Node
+node_modules/
+dist/
+coverage/
+*.log
+frontend/.vite
+
+# IDE
+.idea/
+.vscode/
+
+# Docker
+*.pid
+
+# MSW
+frontend/public/mockServiceWorker.js
+
+# Local test dumps
+/tmp/
+/test-output/
+/private/

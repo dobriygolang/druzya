@@ -1,0 +1,215 @@
+// profile.proto — Connect-RPC contract for the `profile` bounded context.
+//
+// Covers the five /profile/* endpoints: me, atlas, weekly report, settings
+// (PUT), and the public username lookup. The /profile/{username} endpoint
+// is public (bypasses bearer auth via publicPaths-style exemption — see
+// main.go). For proto3 the public carve-out is applied in the REST gate and
+// the native Connect mount.
+syntax = "proto3";
+package druz9.v1;
+
+import "druz9/v1/common.proto";
+import "druz9/v1/notify.proto";
+import "google/api/annotations.proto";
+import "google/protobuf/timestamp.proto";
+
+option go_package = "druz9/shared/generated/pb/druz9/v1;druz9v1";
+
+// Attributes mirrors OpenAPI Attributes.
+message Attributes {
+  int32 intellect = 1;
+  int32 strength = 2;
+  int32 dexterity = 3;
+  int32 will = 4;
+}
+
+// ProfileSubscription mirrors the inline `subscription` object on ProfileFull.
+message ProfileSubscription {
+  SubscriptionPlan plan = 1;
+  // current_period_end is optional — zero Timestamp when no paid plan.
+  google.protobuf.Timestamp current_period_end = 2;
+}
+
+// ProfileFull mirrors OpenAPI ProfileFull.
+message ProfileFull {
+  string id = 1;
+  string username = 2;
+  string display_name = 3;
+  string avatar_frame = 4;
+  string title = 5;
+  int32 level = 6;
+  int32 xp = 7;
+  int32 xp_to_next = 8;
+  CharClass char_class = 9;
+  Attributes attributes = 10;
+  int32 global_power_score = 11;
+  // career_stage is "junior" | "middle" | ... | "principal" in OpenAPI. Kept
+  // as a string to avoid another tiny enum; server guarantees validity.
+  string career_stage = 12;
+  ProfileSubscription subscription = 13;
+  int32 ai_credits = 14;
+  google.protobuf.Timestamp created_at = 15;
+}
+
+// SectionRating mirrors the top-level OpenAPI SectionRating (rating.proto
+// has its own nested SectionRating which predates this file; the two are
+// structurally identical but the proto package rules keep them separate).
+message ProfileSectionRating {
+  Section section = 1;
+  int32 elo = 2;
+  int32 matches_count = 3;
+  int32 percentile = 4;
+  bool decaying = 5;
+}
+
+// Achievement mirrors OpenAPI Achievement.
+message Achievement {
+  string key = 1;
+  string title = 2;
+  string description = 3;
+  google.protobuf.Timestamp earned_at = 4;
+}
+
+// SkillNode mirrors OpenAPI SkillNode.
+message SkillNode {
+  string key = 1;
+  string title = 2;
+  string description = 3;
+  Section section = 4;
+  // kind is "normal" | "keystone" | "ascendant" in OpenAPI; string preserves
+  // wire compat without declaring another enum.
+  string kind = 5;
+  int32 progress = 6;
+  bool unlocked = 7;
+  google.protobuf.Timestamp unlocked_at = 8;
+  bool decaying = 9;
+}
+
+// SkillEdge mirrors OpenAPI SkillEdge.
+message SkillEdge {
+  string from = 1;
+  string to = 2;
+}
+
+// SkillAtlas mirrors OpenAPI SkillAtlas — carries the nodes/edges graph.
+message SkillAtlas {
+  string center_node = 1;
+  repeated SkillNode nodes = 2;
+  repeated SkillEdge edges = 3;
+}
+
+// ProfilePublic mirrors OpenAPI ProfilePublic.
+message ProfilePublic {
+  string username = 1;
+  string display_name = 2;
+  string title = 3;
+  int32 level = 4;
+  CharClass char_class = 5;
+  string career_stage = 6;
+  int32 global_power_score = 7;
+  repeated ProfileSectionRating ratings = 8;
+  repeated Achievement achievements = 9;
+  SkillAtlas atlas_preview = 10;
+}
+
+// ReportMetrics mirrors the inline `metrics` block of OpenAPI WeeklyReport.
+message ReportMetrics {
+  int32 tasks_solved = 1;
+  int32 matches_won = 2;
+  int32 rating_change = 3;
+  int32 xp_earned = 4;
+  int32 time_minutes = 5;
+}
+
+// ReportWeakness mirrors the inline weakness object in OpenAPI WeeklyReport.
+message ReportWeakness {
+  string atlas_node_key = 1;
+  string reason = 2;
+}
+
+// RecommendationAction mirrors the inline action block in OpenAPI Recommendation.
+message RecommendationAction {
+  // kind is one of: start_mock, solve_task, listen_podcast, open_atlas,
+  // open_arena. Preserved as string to avoid another tiny enum.
+  string kind = 1;
+  // params is a free-form map<string,string> — OpenAPI allows any JSON value
+  // via additionalProperties: true; we collapse to string values because
+  // Connect clients round-trip scalars losslessly.
+  map<string, string> params = 2;
+}
+
+// Recommendation mirrors OpenAPI Recommendation.
+message Recommendation {
+  string title = 1;
+  string description = 2;
+  RecommendationAction action = 3;
+}
+
+// WeeklyReport mirrors OpenAPI WeeklyReport.
+message WeeklyReport {
+  // week_start / week_end are ISO-8601 calendar dates (YYYY-MM-DD). OpenAPI
+  // types them as `format: date`; proto3 has no date, so we use strings.
+  string week_start = 1;
+  string week_end = 2;
+  ReportMetrics metrics = 3;
+  // heatmap is 7 cells with intensity 0..4.
+  repeated int32 heatmap = 4;
+  repeated string strengths = 5;
+  repeated ReportWeakness weaknesses = 6;
+  string stress_analysis = 7;
+  repeated Recommendation recommendations = 8;
+}
+
+// ProfileSettings mirrors OpenAPI ProfileSettings.
+message ProfileSettings {
+  string display_name = 1;
+  Language default_language = 2;
+  // locale is "ru" | "en" — string keeps wire compat with REST.
+  string locale = 3;
+  NotificationPreferences notifications = 4;
+  bool voice_mode_enabled = 5;
+}
+
+// UpdateProfileSettingsRequest wraps the ProfileSettings payload. OpenAPI
+// uses the settings object directly as the request body; Connect prefers a
+// named request type.
+message UpdateProfileSettingsRequest {
+  ProfileSettings settings = 1;
+}
+
+message GetMyProfileRequest {}
+message GetMyAtlasRequest {}
+message GetMyReportRequest {}
+message GetPublicProfileRequest {
+  string username = 1;
+}
+
+service ProfileService {
+  // GetMyProfile returns the rich profile for the authenticated caller.
+  rpc GetMyProfile(GetMyProfileRequest) returns (ProfileFull) {
+    option (google.api.http) = {get: "/api/v1/profile/me"};
+  }
+
+  // GetMyAtlas returns the skill atlas (nodes + edges).
+  rpc GetMyAtlas(GetMyAtlasRequest) returns (SkillAtlas) {
+    option (google.api.http) = {get: "/api/v1/profile/me/atlas"};
+  }
+
+  // GetMyReport returns the weekly AI report.
+  rpc GetMyReport(GetMyReportRequest) returns (WeeklyReport) {
+    option (google.api.http) = {get: "/api/v1/profile/me/report"};
+  }
+
+  // UpdateSettings persists the settings block.
+  rpc UpdateSettings(UpdateProfileSettingsRequest) returns (ProfileSettings) {
+    option (google.api.http) = {
+      put: "/api/v1/profile/me/settings"
+      body: "settings"
+    };
+  }
+
+  // GetPublicProfile returns the public /u/{username} view.
+  rpc GetPublicProfile(GetPublicProfileRequest) returns (ProfilePublic) {
+    option (google.api.http) = {get: "/api/v1/profile/{username}"};
+  }
+}

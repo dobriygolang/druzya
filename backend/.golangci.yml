@@ -1,0 +1,52 @@
+run:
+  timeout: 5m
+  go: "1.22"
+
+linters-settings:
+  exhaustive:
+    default-signifies-exhaustive: false
+  forbidigo:
+    forbid:
+      - p: '^fmt\.Println$'
+        msg: "use slog logger, not fmt.Println"
+      - p: '^fmt\.Printf$'
+        msg: "use slog logger, not fmt.Printf"
+  wrapcheck:
+    ignoreSigs:
+      - .Errorf(
+      - errors.New(
+      - errors.Join(
+      - errors.Unwrap(
+      - .Wrap(
+      - .Wrapf(
+  govet:
+    enable:
+      - shadow
+
+linters:
+  disable-all: true
+  enable:
+    - errcheck
+    - gosimple
+    - govet
+    - staticcheck
+    - ineffassign
+    - unused
+    - gofmt
+    - goimports
+    - misspell
+    - exhaustive
+    - forbidigo
+    - noctx
+    - wrapcheck
+    - nolintlint
+    - bodyclose
+    - prealloc
+    - unconvert
+
+issues:
+  exclude-rules:
+    - path: _test\.go
+      linters: [wrapcheck, forbidigo, noctx]
+    - path: cmd/monolith/main.go
+      linters: [forbidigo]

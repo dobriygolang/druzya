@@ -1,0 +1,135 @@
+// arena.proto — Connect-RPC contract for the `arena` bounded context.
+//
+// Covers the five /arena/match/* REST endpoints. The /ws/arena/{matchId}
+// WebSocket is NOT modelled here — it stays as a raw chi route wired to
+// arenaHub.WSHandler in main.go (streaming match events is out of scope
+// for Connect transcoding).
+syntax = "proto3";
+package druz9.v1;
+
+import "druz9/v1/common.proto";
+import "google/api/annotations.proto";
+import "google/protobuf/timestamp.proto";
+
+option go_package = "druz9/shared/generated/pb/druz9/v1;druz9v1";
+
+// ArenaTaskPublic mirrors OpenAPI TaskPublic. It's also used by AI mock / native
+// so the name is prefixed to avoid collisions across per-domain generators. The
+// fields mirror the OpenAPI schema — starter_code is a map<string,string> (key
+// = language, value = template).
+message ArenaTaskPublic {
+  string id = 1;
+  string slug = 2;
+  string title = 3;
+  string description = 4;
+  Difficulty difficulty = 5;
+  Section section = 6;
+  int32 time_limit_sec = 7;
+  int32 memory_limit_mb = 8;
+  map<string, string> starter_code = 9;
+}
+
+// ArenaParticipant mirrors OpenAPI ArenaParticipant.
+message ArenaParticipant {
+  string user_id = 1;
+  string username = 2;
+  int32 team = 3;
+  int32 elo_before = 4;
+  // elo_after / solve_time_ms / suspicion_score are optional in OpenAPI; the
+  // server emits zero values when missing. Typed Connect clients that need
+  // tri-state can detect presence on the parent message.
+  int32 elo_after = 5;
+  int64 solve_time_ms = 6;
+  float suspicion_score = 7;
+}
+
+// ArenaMatch mirrors OpenAPI ArenaMatch.
+message ArenaMatch {
+  string id = 1;
+  MatchStatus status = 2;
+  // mode is a string in OpenAPI, kept as ArenaMode enum internally.
+  ArenaMode mode = 3;
+  Section section = 4;
+  ArenaTaskPublic task = 5;
+  repeated ArenaParticipant participants = 6;
+  google.protobuf.Timestamp started_at = 7;
+  google.protobuf.Timestamp finished_at = 8;
+  string winner_user_id = 9;
+}
+
+// FindMatchRequest mirrors OpenAPI FindMatchRequest.
+message FindMatchRequest {
+  Section section = 1;
+  ArenaMode mode = 2;
+  Language language = 3;
+}
+
+// MatchQueueResponse mirrors OpenAPI MatchQueueResponse. The original OpenAPI
+// enum is {queued, matched} — kept as a string to match the wire literal.
+message MatchQueueResponse {
+  string status = 1; // "queued" | "matched"
+  int32 queue_position = 2;
+  int32 estimated_wait_sec = 3;
+  string match_id = 4;
+}
+
+// SubmitCodeRequest mirrors OpenAPI SubmitCodeRequest.
+message SubmitCodeRequest {
+  string match_id = 1; // path param
+  string code = 2;
+  Language language = 3;
+}
+
+// SubmitResult mirrors OpenAPI SubmitResult.
+message SubmitResult {
+  bool passed = 1;
+  int32 tests_total = 2;
+  int32 tests_passed = 3;
+  int32 runtime_ms = 4;
+  int32 memory_kb = 5;
+}
+
+// Empty request shapes for the path-only endpoints.
+message CancelMatchRequest {}
+message GetMatchRequest {
+  string match_id = 1;
+}
+message ConfirmMatchRequest {
+  string match_id = 1;
+}
+
+service ArenaService {
+  // FindMatch enqueues the caller in the matchmaking queue.
+  rpc FindMatch(FindMatchRequest) returns (MatchQueueResponse) {
+    option (google.api.http) = {
+      post: "/api/v1/arena/match/find"
+      body: "*"
+    };
+  }
+
+  // CancelSearch removes the caller from the matchmaking queue.
+  rpc CancelSearch(CancelMatchRequest) returns (CancelMatchRequest) {
+    option (google.api.http) = {delete: "/api/v1/arena/match/cancel"};
+  }
+
+  // GetMatch returns the current state of a match.
+  rpc GetMatch(GetMatchRequest) returns (ArenaMatch) {
+    option (google.api.http) = {get: "/api/v1/arena/match/{match_id}"};
+  }
+
+  // ConfirmReady acknowledges the 10s ready-check window.
+  rpc ConfirmReady(ConfirmMatchRequest) returns (ConfirmMatchRequest) {
+    option (google.api.http) = {
+      post: "/api/v1/arena/match/{match_id}/confirm"
+      body: "*"
+    };
+  }
+
+  // SubmitCode runs the submission against Judge0 and returns the result.
+  rpc SubmitCode(SubmitCodeRequest) returns (SubmitResult) {
+    option (google.api.http) = {
+      post: "/api/v1/arena/match/{match_id}/submit"
+      body: "*"
+    };
+  }
+}

@@ -1,0 +1,200 @@
+// common.proto — shared enums used across every druz9.v1 service.
+//
+// Consolidates cross-domain enumerations so individual service protos stop
+// duplicating them. Keep values in lock-step with backend/shared/enums and the
+// OpenAPI components/schemas enums until every domain migrates to Connect-RPC.
+syntax = "proto3";
+package druz9.v1;
+
+option go_package = "druz9/shared/generated/pb/druz9/v1;druz9v1";
+
+// Section mirrors shared/enums.Section and the OpenAPI Section enum.
+enum Section {
+  SECTION_UNSPECIFIED = 0;
+  SECTION_ALGORITHMS = 1;
+  SECTION_SQL = 2;
+  SECTION_GO = 3;
+  SECTION_SYSTEM_DESIGN = 4;
+  SECTION_BEHAVIORAL = 5;
+}
+
+// Difficulty mirrors shared/enums.Difficulty.
+enum Difficulty {
+  DIFFICULTY_UNSPECIFIED = 0;
+  DIFFICULTY_EASY = 1;
+  DIFFICULTY_MEDIUM = 2;
+  DIFFICULTY_HARD = 3;
+}
+
+// Language mirrors shared/enums.Language (editor / task runner language).
+enum Language {
+  LANGUAGE_UNSPECIFIED = 0;
+  LANGUAGE_GO = 1;
+  LANGUAGE_PYTHON = 2;
+  LANGUAGE_JAVASCRIPT = 3;
+  LANGUAGE_TYPESCRIPT = 4;
+  LANGUAGE_SQL = 5;
+}
+
+// NotificationChannel mirrors shared/enums.NotificationChannel.
+enum NotificationChannel {
+  NOTIFICATION_CHANNEL_UNSPECIFIED = 0;
+  NOTIFICATION_CHANNEL_TELEGRAM = 1;
+  NOTIFICATION_CHANNEL_EMAIL = 2;
+  NOTIFICATION_CHANNEL_PUSH = 3;
+}
+
+// UserRole mirrors shared/enums.UserRole.
+enum UserRole {
+  USER_ROLE_UNSPECIFIED = 0;
+  USER_ROLE_USER = 1;
+  USER_ROLE_INTERVIEWER = 2;
+  USER_ROLE_ADMIN = 3;
+}
+
+// AuthProvider mirrors shared/enums.AuthProvider.
+enum AuthProvider {
+  AUTH_PROVIDER_UNSPECIFIED = 0;
+  AUTH_PROVIDER_YANDEX = 1;
+  AUTH_PROVIDER_TELEGRAM = 2;
+}
+
+// CharClass mirrors shared/enums.CharClass (derived class from section %).
+enum CharClass {
+  CHAR_CLASS_UNSPECIFIED = 0;
+  CHAR_CLASS_NOVICE = 1;
+  CHAR_CLASS_ALGORITHMIST = 2;
+  CHAR_CLASS_DBA = 3;
+  CHAR_CLASS_BACKEND_DEV = 4;
+  CHAR_CLASS_ARCHITECT = 5;
+  CHAR_CLASS_COMMUNICATOR = 6;
+  CHAR_CLASS_ASCENDANT = 7;
+}
+
+// SubscriptionPlan mirrors shared/enums.SubscriptionPlan.
+enum SubscriptionPlan {
+  SUBSCRIPTION_PLAN_UNSPECIFIED = 0;
+  SUBSCRIPTION_PLAN_FREE = 1;
+  SUBSCRIPTION_PLAN_SEEKER = 2;
+  SUBSCRIPTION_PLAN_ASCENDANT = 3;
+}
+
+// MatchStatus mirrors shared/enums.MatchStatus (arena match lifecycle).
+enum MatchStatus {
+  MATCH_STATUS_UNSPECIFIED = 0;
+  MATCH_STATUS_SEARCHING = 1;
+  MATCH_STATUS_CONFIRMING = 2;
+  MATCH_STATUS_ACTIVE = 3;
+  MATCH_STATUS_FINISHED = 4;
+  MATCH_STATUS_CANCELLED = 5;
+}
+
+// ArenaMode mirrors shared/enums.ArenaMode.
+enum ArenaMode {
+  ARENA_MODE_UNSPECIFIED = 0;
+  ARENA_MODE_SOLO_1V1 = 1;
+  ARENA_MODE_DUO_2V2 = 2;
+  ARENA_MODE_RANKED = 3;
+  ARENA_MODE_HARDCORE = 4;
+  ARENA_MODE_CURSED = 5;
+}
+
+// MockStatus mirrors shared/enums.MockStatus (ai_mock session lifecycle).
+enum MockStatus {
+  MOCK_STATUS_UNSPECIFIED = 0;
+  MOCK_STATUS_CREATED = 1;
+  MOCK_STATUS_IN_PROGRESS = 2;
+  MOCK_STATUS_FINISHED = 3;
+  MOCK_STATUS_ABANDONED = 4;
+}
+
+// MessageRole mirrors shared/enums.MessageRole (LLM chat roles).
+enum MessageRole {
+  MESSAGE_ROLE_UNSPECIFIED = 0;
+  MESSAGE_ROLE_SYSTEM = 1;
+  MESSAGE_ROLE_USER = 2;
+  MESSAGE_ROLE_ASSISTANT = 3;
+}
+
+// LLMModel mirrors shared/enums.LLMModel. The string form used on the wire
+// matches the OpenRouter/OpenAI identifiers (`openai/gpt-4o`, etc.) for
+// backwards compatibility with existing REST clients.
+enum LLMModel {
+  LLM_MODEL_UNSPECIFIED = 0;
+  LLM_MODEL_GPT_4O_MINI = 1;
+  LLM_MODEL_GPT_4O = 2;
+  LLM_MODEL_CLAUDE_SONNET_4 = 3;
+  LLM_MODEL_GEMINI_PRO = 4;
+  LLM_MODEL_MISTRAL_7B = 5;
+}
+
+// ProvenanceKind mirrors shared/enums.ProvenanceKind (ai_native code origin).
+enum ProvenanceKind {
+  PROVENANCE_KIND_UNSPECIFIED = 0;
+  PROVENANCE_KIND_AI_GENERATED = 1;
+  PROVENANCE_KIND_HUMAN_WRITTEN = 2;
+  PROVENANCE_KIND_AI_REVISED_BY_HUMAN = 3;
+  PROVENANCE_KIND_AI_REJECTED = 4;
+}
+
+// NativeAction mirrors ai_native/domain.ActionKind (verify outcomes).
+enum NativeAction {
+  NATIVE_ACTION_UNSPECIFIED = 0;
+  NATIVE_ACTION_ACCEPTED = 1;
+  NATIVE_ACTION_REJECTED = 2;
+  NATIVE_ACTION_REVISED = 3;
+}
+
+// EditorEventType mirrors ai_mock/domain.EditorEventType (stress batch event).
+enum EditorEventType {
+  EDITOR_EVENT_TYPE_UNSPECIFIED = 0;
+  EDITOR_EVENT_TYPE_PAUSE = 1;
+  EDITOR_EVENT_TYPE_BACKSPACE_BURST = 2;
+  EDITOR_EVENT_TYPE_CHAOTIC_EDIT = 3;
+  EDITOR_EVENT_TYPE_PASTE_ATTEMPT = 4;
+  EDITOR_EVENT_TYPE_IDLE = 5;
+}
+
+// SlotStatus mirrors shared/enums.SlotStatus (human-mock slot lifecycle).
+enum SlotStatus {
+  SLOT_STATUS_UNSPECIFIED = 0;
+  SLOT_STATUS_AVAILABLE = 1;
+  SLOT_STATUS_BOOKED = 2;
+  SLOT_STATUS_COMPLETED = 3;
+  SLOT_STATUS_CANCELLED = 4;
+  SLOT_STATUS_NO_SHOW = 5;
+}
+
+// DungeonTier mirrors shared/enums.DungeonTier (company difficulty rung).
+enum DungeonTier {
+  DUNGEON_TIER_UNSPECIFIED = 0;
+  DUNGEON_TIER_NORMAL = 1;
+  DUNGEON_TIER_HARD = 2;
+  DUNGEON_TIER_BOSS = 3;
+}
+
+// EditorRole mirrors shared/enums.EditorRole (per-participant role).
+enum EditorRole {
+  EDITOR_ROLE_UNSPECIFIED = 0;
+  EDITOR_ROLE_OWNER = 1;
+  EDITOR_ROLE_INTERVIEWER = 2;
+  EDITOR_ROLE_PARTICIPANT = 3;
+  EDITOR_ROLE_VIEWER = 4;
+}
+
+// SeverityLevel mirrors shared/enums.SeverityLevel (anticheat triage).
+enum SeverityLevel {
+  SEVERITY_LEVEL_UNSPECIFIED = 0;
+  SEVERITY_LEVEL_LOW = 1;
+  SEVERITY_LEVEL_MEDIUM = 2;
+  SEVERITY_LEVEL_HIGH = 3;
+}
+
+// AnticheatSignalType mirrors shared/enums.AnticheatSignalType.
+enum AnticheatSignalType {
+  ANTICHEAT_SIGNAL_TYPE_UNSPECIFIED = 0;
+  ANTICHEAT_SIGNAL_TYPE_PASTE_DETECTED = 1;
+  ANTICHEAT_SIGNAL_TYPE_TAB_SWITCH = 2;
+  ANTICHEAT_SIGNAL_TYPE_ANOMALOUS_SPEED = 3;
+  ANTICHEAT_SIGNAL_TYPE_SUSPICIOUS_PATTERN = 4;
+}

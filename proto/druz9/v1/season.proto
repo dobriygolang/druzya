@@ -1,0 +1,67 @@
+// season.proto — Connect-RPC contract for the `season` bounded context.
+//
+// Covers the single /season/current endpoint (GET). Season Pass progress is
+// authenticated-only — the native Connect path is mounted behind requireAuth
+// and REST traffic continues to flow through the gated group in main.go.
+syntax = "proto3";
+package druz9.v1;
+
+import "google/api/annotations.proto";
+import "google/protobuf/timestamp.proto";
+
+option go_package = "druz9/shared/generated/pb/druz9/v1;druz9v1";
+
+// SeasonHeader mirrors the inline `season` object of OpenAPI SeasonProgress.
+message SeasonHeader {
+  string id = 1;
+  string name = 2;
+  string slug = 3;
+  google.protobuf.Timestamp starts_at = 4;
+  google.protobuf.Timestamp ends_at = 5;
+}
+
+// SeasonTier is one rung of a reward ladder.
+message SeasonTier {
+  int32 tier = 1;
+  int32 required_points = 2;
+  string reward_key = 3;
+  bool claimed = 4;
+}
+
+// SeasonTrack is one reward ladder (free or premium).
+message SeasonTrack {
+  // kind mirrors OpenAPI `tracks[].kind` — "free" | "premium". Kept as a
+  // string since proto wants a dedicated enum per use and the domain already
+  // treats it as a plain label (domain.TrackKind).
+  string kind = 1;
+  repeated SeasonTier tiers = 2;
+}
+
+// SeasonWeeklyChallenge mirrors the inline `weekly_challenges[]` item.
+message SeasonWeeklyChallenge {
+  string key = 1;
+  string title = 2;
+  int32 progress = 3;
+  int32 target = 4;
+  int32 points_reward = 5;
+}
+
+// SeasonProgress mirrors OpenAPI SeasonProgress.
+message SeasonProgress {
+  SeasonHeader season = 1;
+  int32 my_points = 2;
+  int32 tier = 3;
+  bool is_premium = 4;
+  repeated SeasonTrack tracks = 5;
+  repeated SeasonWeeklyChallenge weekly_challenges = 6;
+}
+
+message GetCurrentSeasonRequest {}
+
+service SeasonService {
+  // GetCurrent returns the caller's Season Pass progress for the active
+  // season (free + premium ladders, weekly challenges).
+  rpc GetCurrent(GetCurrentSeasonRequest) returns (SeasonProgress) {
+    option (google.api.http) = {get: "/api/v1/season/current"};
+  }
+}

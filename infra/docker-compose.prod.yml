@@ -1,0 +1,291 @@
+# Production stack for druz9 — single VPS (bible §7, "VPS Германия").
+#
+# Run from the repo root:
+#   docker compose -f infra/docker-compose.prod.yml --env-file .env.prod up -d
+#
+# Key differences vs local docker-compose.yml:
+#   • api image pulled from GHCR (built in CI), not built locally
+#   • nginx fronts everything (TLS via certbot); nothing else exposes ports on the host
+#   • postgres bound to 127.0.0.1 only (no public 5432)
+#   • minio console only reachable via SSH tunnel
+#   • prometheus + grafana + loki for observability
+#   • postgres backups to MinIO via cron sidecar
+
+networks:
+  app-net:
+    driver: bridge
+  judge-net:
+    driver: bridge
+  obs-net:
+    driver: bridge
+
+volumes:
+  pg_data:
+  redis_data:
+  minio_data:
+  clickhouse_data:
+  prometheus_data:
+  grafana_data:
+  loki_data:
+  certbot_www:
+  certbot_conf:
+
+services:
+  # ── Edge
+  nginx:
+    image: nginx:1.27-alpine
+    depends_on:
+      - api
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.prod.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/snippets:/etc/nginx/snippets:ro
+      - certbot_www:/var/www/certbot:ro
+      - certbot_conf:/etc/letsencrypt:ro
+    networks: [app-net]
+    restart: always
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1/health"]
+      interval: 30s
+      timeout: 5s
+
+  certbot:
+    image: certbot/certbot:latest
+    volumes:
+      - certbot_www:/var/www/certbot
+      - certbot_conf:/etc/letsencrypt
+    # Renew every 12h; first issuance is done by infra/scripts/bootstrap.sh.
+    entrypoint: /bin/sh -c 'trap exit TERM; while :; do certbot renew --webroot -w /var/www/certbot --quiet; sleep 12h; done'
+    restart: always
+    networks: [app-net]
+
+  # ── Core
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-druz9}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?missing POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-druz9}
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    # Bind to loopback only — access via SSH tunnel.
+    ports:
+      - "127.0.0.1:5432:5432"
+    networks: [app-net, obs-net]
+    restart: always
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U druz9 -d druz9"]
+      interval: 10s
+
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--save", "60", "1", "--requirepass", "${REDIS_PASSWORD:?missing REDIS_PASSWORD}"]
+    volumes:
+      - redis_data:/data
+    ports:
+      - "127.0.0.1:6379:6379"
+    networks: [app-net, obs-net]
+    restart: always
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
+      interval: 10s
+
+  minio:
+    image: minio/minio:latest
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:?missing MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?missing MINIO_ROOT_PASSWORD}
+    volumes:
+      - minio_data:/data
+    # Public S3 API proxied through nginx at /storage/; console only via SSH tunnel.
+    ports:
+      - "127.0.0.1:9001:9001"
+    networks: [app-net]
+    restart: always
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+
+  clickhouse:
+    image: clickhouse/clickhouse-server:24.3-alpine
+    environment:
+      CLICKHOUSE_DB: druz9
+      CLICKHOUSE_USER: ${CLICKHOUSE_USER:-default}
+      CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD:-}
+      CLICKHOUSE_SKIP_USER_SETUP: "1"
+    volumes:
+      - clickhouse_data:/var/lib/clickhouse
+    networks: [app-net, obs-net]
+    restart: always
+    ulimits:
+      nofile: { soft: 262144, hard: 262144 }
+
+  # ── Application
+  api:
+    image: ${API_IMAGE:-ghcr.io/dobriygolang/druz9-api:latest}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    env_file:
+      - ../.env.prod
+    environment:
+      APP_ENV: production
+      HTTP_ADDR: ":8080"
+      POSTGRES_DSN: "host=postgres port=5432 user=${POSTGRES_USER:-druz9} password=${POSTGRES_PASSWORD} dbname=${POSTGRES_DB:-druz9} sslmode=disable"
+      REDIS_ADDR: redis:6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+      MINIO_ENDPOINT: minio:9000
+      CLICKHOUSE_ADDR: clickhouse:9000
+      JUDGE0_URL: http://judge0-server:2358
+    networks: [app-net, judge-net, obs-net]
+    restart: always
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8080/health/ready"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  # One-shot migration runner; applies pending migrations on deploy.
+  migrate:
+    image: ${API_IMAGE:-ghcr.io/dobriygolang/druz9-api:latest}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    entrypoint: ["/app/monolith", "migrate", "up"]
+    env_file:
+      - ../.env.prod
+    environment:
+      POSTGRES_DSN: "host=postgres port=5432 user=${POSTGRES_USER:-druz9} password=${POSTGRES_PASSWORD} dbname=${POSTGRES_DB:-druz9} sslmode=disable"
+    networks: [app-net]
+    restart: "no"
+
+  # ── Judge0 (isolated, privileged — do NOT expose)
+  judge0-db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: judge0
+      POSTGRES_PASSWORD: judge0
+      POSTGRES_DB: judge0
+    networks: [judge-net]
+    restart: always
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U judge0"]
+      interval: 10s
+
+  judge0-redis:
+    image: redis:7-alpine
+    networks: [judge-net]
+    restart: always
+
+  judge0-server:
+    image: judge0/judge0:1.13.1
+    environment:
+      REDIS_HOST: judge0-redis
+      POSTGRES_HOST: judge0-db
+      POSTGRES_USER: judge0
+      POSTGRES_PASSWORD: judge0
+      POSTGRES_DB: judge0
+    depends_on:
+      judge0-db:
+        condition: service_healthy
+    networks: [judge-net]
+    privileged: true
+    restart: always
+    deploy:
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: 1G
+
+  judge0-workers:
+    image: judge0/judge0:1.13.1
+    command: ["./scripts/workers"]
+    environment:
+      REDIS_HOST: judge0-redis
+      POSTGRES_HOST: judge0-db
+      POSTGRES_USER: judge0
+      POSTGRES_PASSWORD: judge0
+      POSTGRES_DB: judge0
+    depends_on:
+      - judge0-server
+    networks: [judge-net]
+    privileged: true
+    restart: always
+    deploy:
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: 1G
+
+  # ── Observability (bible §12)
+  prometheus:
+    image: prom/prometheus:v2.55.0
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--storage.tsdb.retention.time=30d'
+      - '--web.enable-lifecycle'
+    networks: [obs-net]
+    restart: always
+
+  loki:
+    image: grafana/loki:2.9.10
+    volumes:
+      - ./monitoring/loki.yml:/etc/loki/config.yml:ro
+      - loki_data:/loki
+    command: ["-config.file=/etc/loki/config.yml"]
+    networks: [obs-net]
+    restart: always
+
+  promtail:
+    image: grafana/promtail:2.9.10
+    volumes:
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./monitoring/promtail.yml:/etc/promtail/config.yml:ro
+    command: ["-config.file=/etc/promtail/config.yml"]
+    networks: [obs-net]
+    restart: always
+
+  grafana:
+    image: grafana/grafana:11.3.0
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:?missing GRAFANA_ADMIN_PASSWORD}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_SERVER_ROOT_URL: https://${PRIMARY_DOMAIN:?missing PRIMARY_DOMAIN}/grafana/
+      GF_SERVER_SERVE_FROM_SUB_PATH: "true"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    networks: [obs-net, app-net]
+    restart: always
+
+  # ── Backups
+  pgbackup:
+    image: postgres:16-alpine
+    depends_on:
+      postgres:
+        condition: service_healthy
+    env_file:
+      - ../.env.prod
+    environment:
+      PGUSER: ${POSTGRES_USER:-druz9}
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+      PGDATABASE: ${POSTGRES_DB:-druz9}
+      PGHOST: postgres
+    volumes:
+      - ./scripts/backup.sh:/backup.sh:ro
+    entrypoint: ["/bin/sh", "/backup.sh"]
+    networks: [app-net]
+    restart: always

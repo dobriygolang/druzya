@@ -1,0 +1,12 @@
+apiVersion: 1
+
+providers:
+  - name: druz9
+    orgId: 1
+    folder: druz9
+    type: file
+    disableDeletion: false
+    updateIntervalSeconds: 30
+    allowUiUpdates: true
+    options:
+      path: /var/lib/grafana/dashboards

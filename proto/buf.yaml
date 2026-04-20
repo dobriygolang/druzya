@@ -1,0 +1,19 @@
+# buf.yaml — module config for the druz9 contract layer.
+#
+# We vendor a tiny subset of googleapis under proto/google/api (annotations.proto
+# + http.proto) so we do NOT need an authenticated Buf Schema Registry pull.
+# Swap to `deps: [buf.build/googleapis/googleapis]` once BSR auth is provisioned.
+version: v2
+modules:
+  - path: .
+    name: buf.build/druz9/druz9
+lint:
+  use:
+    - STANDARD
+  ignore:
+    - google
+breaking:
+  use:
+    - FILE
+  ignore:
+    - google

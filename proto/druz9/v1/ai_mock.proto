@@ -1,0 +1,194 @@
+// ai_mock.proto — Connect-RPC contract for the `ai_mock` bounded context.
+//
+// Covers the six /mock/session/* REST endpoints. The /ws/mock/{sessionId}
+// WebSocket is NOT modelled here — it stays as a raw chi route wired to
+// mockWS.Handle in main.go (token streaming + stress pushes are out of scope
+// for Connect transcoding).
+syntax = "proto3";
+package druz9.v1;
+
+import "druz9/v1/common.proto";
+import "google/api/annotations.proto";
+import "google/protobuf/timestamp.proto";
+
+option go_package = "druz9/shared/generated/pb/druz9/v1;druz9v1";
+
+// MockTaskPublic mirrors OpenAPI TaskPublic used by ai_mock. Kept separate from
+// ArenaTaskPublic to avoid cross-service coupling, though the wire shape is
+// identical.
+message MockTaskPublic {
+  string id = 1;
+  string slug = 2;
+  string title = 3;
+  string description = 4;
+  Difficulty difficulty = 5;
+  Section section = 6;
+}
+
+// MockStressProfile mirrors OpenAPI StressProfile.
+message MockStressProfile {
+  int32 pauses_score = 1;
+  int32 backspace_score = 2;
+  int32 chaos_score = 3;
+  int32 paste_attempts = 4;
+}
+
+// MockMessage mirrors OpenAPI MockMessage.
+message MockMessage {
+  string id = 1;
+  MessageRole role = 2;
+  string content = 3;
+  int32 tokens_used = 4;
+  google.protobuf.Timestamp created_at = 5;
+}
+
+// MockSession mirrors OpenAPI MockSession.
+message MockSession {
+  string id = 1;
+  MockStatus status = 2;
+  string company_id = 3;
+  Section section = 4;
+  Difficulty difficulty = 5;
+  int32 duration_min = 6;
+  MockTaskPublic task = 7;
+  google.protobuf.Timestamp started_at = 8;
+  google.protobuf.Timestamp finished_at = 9;
+  repeated MockMessage last_messages = 10;
+  MockStressProfile stress_profile = 11;
+}
+
+// CreateMockRequest mirrors OpenAPI CreateMockRequest.
+message CreateMockRequest {
+  string company_id = 1;
+  Section section = 2;
+  Difficulty difficulty = 3;
+  int32 duration_min = 4;
+  bool voice_mode = 5;
+  string paired_user_id = 6;
+  bool devils_advocate = 7;
+  LLMModel llm_model = 8;
+}
+
+// MockMessageRequest mirrors OpenAPI MockMessageRequest.
+message MockMessageRequest {
+  string session_id = 1; // path param
+  string content = 2;
+  string code_snapshot = 3;
+  string voice_transcript = 4;
+}
+
+// StressEvent mirrors OpenAPI StressEvent. Metadata is free-form JSON in
+// OpenAPI; proto collapses it to map<string,string> (scalar values round-trip
+// safely; complex values should be JSON-encoded as strings at the edge).
+message StressEvent {
+  EditorEventType type = 1;
+  int64 at_ms = 2;
+  int64 duration_ms = 3;
+  map<string, string> metadata = 4;
+}
+
+// StressEventsBatch mirrors OpenAPI StressEventsBatch.
+message StressEventsBatch {
+  string session_id = 1; // path param
+  repeated StressEvent events = 2;
+}
+
+// MockScoredSection mirrors OpenAPI ScoredSection.
+message MockScoredSection {
+  int32 score = 1;
+  string comment = 2;
+}
+
+// MockReportSections mirrors the inline `sections` object on OpenAPI MockReport.
+message MockReportSections {
+  MockScoredSection problem_solving = 1;
+  MockScoredSection code_quality = 2;
+  MockScoredSection communication = 3;
+  MockScoredSection stress_handling = 4;
+}
+
+// MockRecommendationAction mirrors the OpenAPI Recommendation.action struct.
+message MockRecommendationAction {
+  string kind = 1;
+  map<string, string> params = 2;
+}
+
+// MockRecommendation mirrors OpenAPI Recommendation (re-declared here to avoid
+// a cross-service import from profile.proto).
+message MockRecommendation {
+  string title = 1;
+  string description = 2;
+  MockRecommendationAction action = 3;
+}
+
+// MockReport mirrors OpenAPI MockReport.
+message MockReport {
+  string session_id = 1;
+  // "processing" is returned when the report job has not yet written its
+  // draft (bible §8). Kept as a plain string — not an enum — because the
+  // OpenAPI schema omits the field entirely when the report is ready.
+  string status = 2;
+  int32 overall_score = 3;
+  MockReportSections sections = 4;
+  repeated string strengths = 5;
+  repeated string weaknesses = 6;
+  repeated MockRecommendation recommendations = 7;
+  string stress_analysis = 8;
+  string replay_url = 9;
+}
+
+// Empty request shapes.
+message GetMockSessionRequest {
+  string session_id = 1;
+}
+message FinishMockSessionRequest {
+  string session_id = 1;
+}
+message GetMockReportRequest {
+  string session_id = 1;
+}
+
+service MockService {
+  // CreateSession starts a new AI mock interview.
+  rpc CreateSession(CreateMockRequest) returns (MockSession) {
+    option (google.api.http) = {
+      post: "/api/v1/mock/session"
+      body: "*"
+    };
+  }
+
+  // GetSession loads a mock session + its last messages.
+  rpc GetSession(GetMockSessionRequest) returns (MockSession) {
+    option (google.api.http) = {get: "/api/v1/mock/session/{session_id}"};
+  }
+
+  // SendMessage appends a user message and returns the assistant reply.
+  rpc SendMessage(MockMessageRequest) returns (MockMessage) {
+    option (google.api.http) = {
+      post: "/api/v1/mock/session/{session_id}/message"
+      body: "*"
+    };
+  }
+
+  // IngestStress folds a batch of editor events into the session's stress
+  // profile.
+  rpc IngestStress(StressEventsBatch) returns (StressEventsBatch) {
+    option (google.api.http) = {
+      post: "/api/v1/mock/session/{session_id}/stress"
+      body: "*"
+    };
+  }
+
+  // FinishSession closes the session and enqueues the report job.
+  rpc FinishSession(FinishMockSessionRequest) returns (MockSession) {
+    option (google.api.http) = {
+      post: "/api/v1/mock/session/{session_id}/finish"
+      body: "*"
+    };
+  }
+
+  // GetReport returns the final AI report for a finished session.
+  rpc GetReport(GetMockReportRequest) returns (MockReport) {
+    option (google.api.http) = {get: "/api/v1/mock/session/{session_id}/report"};
+  }
+}

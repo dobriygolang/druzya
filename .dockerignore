@@ -1,0 +1,32 @@
+# Keep the Docker build context small and deterministic.
+
+.git
+.github
+.claude
+.DS_Store
+
+# Local dev
+.env
+.env.*
+!.env.example
+
+# Frontend (the api image doesn't need it)
+frontend/node_modules
+frontend/dist
+frontend/.vite
+
+# Design source (HTML/JSX mocks)
+design
+
+# Local build artifacts
+bin
+backend/cmd/monolith/monolith
+**/*.out
+
+# Tools module is dev-only (buf, protoc, mockgen) — its weird transitive deps
+# (klauspost/pgzip etc.) break go.sum verification inside the minimal build image.
+backend/tools
+
+# IDE / OS
+.idea
+.vscode

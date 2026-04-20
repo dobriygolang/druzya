@@ -1,0 +1,75 @@
+// podcast.proto — Connect-RPC contract for the `podcast` bounded context.
+//
+// Covers GET /podcast (catalog) and PUT /podcast/{id}/progress (progress).
+// Section filter on the catalog uses the shared Section enum, with
+// SECTION_UNSPECIFIED meaning "any section".
+syntax = "proto3";
+package druz9.v1;
+
+import "druz9/v1/common.proto";
+import "google/api/annotations.proto";
+import "google/protobuf/timestamp.proto";
+
+option go_package = "druz9/shared/generated/pb/druz9/v1;druz9v1";
+
+// Podcast mirrors OpenAPI Podcast (catalog entry with user progress overlay).
+message Podcast {
+  string id = 1;
+  string title = 2;
+  string description = 3;
+  Section section = 4;
+  int32 duration_sec = 5;
+  string audio_url = 6;
+  int32 progress_sec = 7;
+  bool completed = 8;
+}
+
+// PodcastCatalog is the vanguard-friendly response wrapper. OpenAPI returns a
+// raw JSON array; vanguard transcodes repeated fields of a wrapper message
+// into a top-level array on the REST wire when the RPC response has exactly
+// one field. Keeping this wrapper avoids google.api.HttpBody.
+message PodcastCatalog {
+  repeated Podcast items = 1;
+}
+
+// PodcastProgress mirrors OpenAPI PodcastProgress (PUT response).
+message PodcastProgress {
+  string podcast_id = 1;
+  int32 progress_sec = 2;
+  bool completed = 3;
+  google.protobuf.Timestamp completed_at = 4;
+}
+
+// ListCatalogRequest — section is optional via SECTION_UNSPECIFIED.
+message ListCatalogRequest {
+  Section section = 1;
+}
+
+// UpdateProgressRequest mirrors OpenAPI PodcastProgressRequest plus the path
+// param.
+message UpdateProgressRequest {
+  string podcast_id = 1; // path param
+  int32 progress_sec = 2;
+  // completed is optional in OpenAPI — proto3 bool defaults to false. Use
+  // the dedicated `completed_hint` below to distinguish "unset" from "false".
+  // The REST wire preserves the OpenAPI shape: `completed` is a plain bool
+  // field the client may omit.
+  bool completed = 3;
+}
+
+service PodcastService {
+  // ListCatalog returns the full catalog (or a section-filtered slice) with
+  // per-user progress + signed audio URLs.
+  rpc ListCatalog(ListCatalogRequest) returns (PodcastCatalog) {
+    option (google.api.http) = {get: "/api/v1/podcast"};
+  }
+
+  // UpdateProgress applies the caller's listening progress. The server
+  // auto-completes once within a 10s window of the episode duration.
+  rpc UpdateProgress(UpdateProgressRequest) returns (PodcastProgress) {
+    option (google.api.http) = {
+      put: "/api/v1/podcast/{podcast_id}/progress"
+      body: "*"
+    };
+  }
+}

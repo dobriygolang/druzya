@@ -1,0 +1,114 @@
+// slot.proto — Connect-RPC contract for the `slot` (Human Mock Interview)
+// bounded context.
+//
+// Covers the four slot endpoints: list, create, book, cancel. Only
+// interviewers/admins may create slots — the role check lives in the port
+// layer (same pattern as Phase A/B).
+syntax = "proto3";
+package druz9.v1;
+
+import "druz9/v1/common.proto";
+import "google/api/annotations.proto";
+import "google/protobuf/timestamp.proto";
+
+option go_package = "druz9/shared/generated/pb/druz9/v1;druz9v1";
+
+// SlotInterviewer is the inline `interviewer` object of OpenAPI Slot.
+message SlotInterviewer {
+  string user_id = 1;
+  string username = 2;
+  // avg_rating / reviews_count are optional — absent until at least one
+  // review exists for the interviewer.
+  float avg_rating = 3;
+  int32 reviews_count = 4;
+}
+
+// Slot mirrors OpenAPI Slot.
+message Slot {
+  string id = 1;
+  SlotInterviewer interviewer = 2;
+  google.protobuf.Timestamp starts_at = 3;
+  int32 duration_min = 4;
+  Section section = 5;
+  Difficulty difficulty = 6;
+  // language mirrors OpenAPI Slot.language ("ru" | "en"). Kept as string —
+  // not the Language enum (that one is code languages: go/python/…).
+  string language = 7;
+  int32 price_rub = 8;
+  SlotStatus status = 9;
+}
+
+// SlotList is the vanguard-friendly wrapper — OpenAPI returns a JSON array
+// at the top level, and vanguard flattens repeated-only wrappers on the
+// REST wire.
+message SlotList {
+  repeated Slot items = 1;
+}
+
+// Booking mirrors OpenAPI Booking.
+message Booking {
+  string id = 1;
+  Slot slot = 2;
+  string meet_url = 3;
+  google.protobuf.Timestamp created_at = 4;
+}
+
+// ListSlotsRequest mirrors the OpenAPI query filters on GET /slot.
+message ListSlotsRequest {
+  Section section = 1;
+  Difficulty difficulty = 2;
+  google.protobuf.Timestamp from = 3;
+  google.protobuf.Timestamp to = 4;
+}
+
+// CreateSlotRequest mirrors OpenAPI CreateSlotRequest.
+message CreateSlotRequest {
+  google.protobuf.Timestamp starts_at = 1;
+  int32 duration_min = 2;
+  Section section = 3;
+  Difficulty difficulty = 4;
+  // language is "ru" | "en" per OpenAPI enum. Preserved as string.
+  string language = 5;
+  int32 price_rub = 6;
+}
+
+// BookSlotRequest wraps the path param.
+message BookSlotRequest {
+  string slot_id = 1;
+}
+
+// CancelSlotRequest wraps the path param.
+message CancelSlotRequest {
+  string slot_id = 1;
+}
+
+// CancelSlotResponse is empty — REST returns 204 No Content.
+message CancelSlotResponse {}
+
+service SlotService {
+  // ListSlots returns the filtered catalog of available slots.
+  rpc ListSlots(ListSlotsRequest) returns (SlotList) {
+    option (google.api.http) = {get: "/api/v1/slot"};
+  }
+
+  // CreateSlot creates a new slot (interviewer-only — enforced in ports).
+  rpc CreateSlot(CreateSlotRequest) returns (Slot) {
+    option (google.api.http) = {
+      post: "/api/v1/slot"
+      body: "*"
+    };
+  }
+
+  // BookSlot books a slot for the authenticated caller.
+  rpc BookSlot(BookSlotRequest) returns (Booking) {
+    option (google.api.http) = {
+      post: "/api/v1/slot/{slot_id}/book"
+      body: "*"
+    };
+  }
+
+  // CancelSlot cancels the slot (owner-only) and any attached booking.
+  rpc CancelSlot(CancelSlotRequest) returns (CancelSlotResponse) {
+    option (google.api.http) = {delete: "/api/v1/slot/{slot_id}/cancel"};
+  }
+}

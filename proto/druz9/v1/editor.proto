@@ -1,0 +1,125 @@
+// editor.proto — Connect-RPC contract for the `editor` bounded context.
+//
+// Covers the five REST endpoints under /editor/room/*. The collaborative
+// WebSocket at /ws/editor/{roomId} is NOT part of this proto — Connect does
+// not transcode WebSockets, and the existing raw chi handler in ports/ws.go
+// keeps handling YJS op fanout unchanged (same split as arena / ai_mock).
+syntax = "proto3";
+package druz9.v1;
+
+import "druz9/v1/common.proto";
+import "google/api/annotations.proto";
+import "google/protobuf/timestamp.proto";
+
+option go_package = "druz9/shared/generated/pb/druz9/v1;druz9v1";
+
+// EditorTaskPublic mirrors OpenAPI TaskPublic when embedded in an EditorRoom.
+// Named separately to keep each domain's public task projection isolated.
+message EditorTaskPublic {
+  string id = 1;
+  string slug = 2;
+  string title = 3;
+  string description = 4;
+  Difficulty difficulty = 5;
+  Section section = 6;
+}
+
+// EditorParticipant mirrors OpenAPI EditorParticipant.
+message EditorParticipant {
+  string user_id = 1;
+  string username = 2;
+  EditorRole role = 3;
+}
+
+// EditorRoom mirrors OpenAPI EditorRoom.
+message EditorRoom {
+  string id = 1;
+  string owner_id = 2;
+  // type is "practice" | "interview" | "pair_mock" in OpenAPI — kept as a
+  // string (the domain already treats it as a plain label via
+  // domain.RoomType with three values; keeping it string preserves REST
+  // wire compatibility with no extra enum).
+  string type = 3;
+  EditorTaskPublic task = 4;
+  Language language = 5;
+  bool is_frozen = 6;
+  repeated EditorParticipant participants = 7;
+  string ws_url = 8;
+  google.protobuf.Timestamp expires_at = 9;
+}
+
+// InviteLink mirrors OpenAPI InviteLink.
+message InviteLink {
+  string url = 1;
+  google.protobuf.Timestamp expires_at = 2;
+}
+
+// ReplayUrl mirrors OpenAPI ReplayUrl.
+message ReplayUrl {
+  string url = 1;
+  google.protobuf.Timestamp expires_at = 2;
+}
+
+// CreateRoomRequest mirrors OpenAPI CreateRoomRequest.
+message CreateRoomRequest {
+  string type = 1;
+  string task_id = 2;
+  Language language = 3;
+}
+
+// GetRoomRequest wraps the path param.
+message GetRoomRequest {
+  string room_id = 1;
+}
+
+// CreateInviteRequest wraps the path param.
+message CreateInviteRequest {
+  string room_id = 1;
+}
+
+// FreezeRoomRequest mirrors the POST body.
+message FreezeRoomRequest {
+  string room_id = 1;
+  bool frozen = 2;
+}
+
+// GetReplayRequest wraps the path param.
+message GetReplayRequest {
+  string room_id = 1;
+}
+
+service EditorService {
+  // CreateRoom creates a new collaborative editor room.
+  rpc CreateRoom(CreateRoomRequest) returns (EditorRoom) {
+    option (google.api.http) = {
+      post: "/api/v1/editor/room"
+      body: "*"
+    };
+  }
+
+  // GetRoom returns the room state + participants (caller must be one).
+  rpc GetRoom(GetRoomRequest) returns (EditorRoom) {
+    option (google.api.http) = {get: "/api/v1/editor/room/{room_id}"};
+  }
+
+  // CreateInvite mints an HMAC-signed invite URL (owner-only).
+  rpc CreateInvite(CreateInviteRequest) returns (InviteLink) {
+    option (google.api.http) = {
+      post: "/api/v1/editor/room/{room_id}/invite"
+      body: "*"
+    };
+  }
+
+  // FreezeRoom flips the freeze flag (owner / interviewer only).
+  rpc FreezeRoom(FreezeRoomRequest) returns (EditorRoom) {
+    option (google.api.http) = {
+      post: "/api/v1/editor/room/{room_id}/freeze"
+      body: "*"
+    };
+  }
+
+  // GetReplay returns a presigned object-storage URL for the replay JSONL.
+  rpc GetReplay(GetReplayRequest) returns (ReplayUrl) {
+    option (google.api.http) = {get: "/api/v1/editor/room/{room_id}/replay"};
+  }
+}

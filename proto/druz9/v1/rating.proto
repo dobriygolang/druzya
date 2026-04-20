@@ -1,0 +1,68 @@
+// rating.proto — pilot Connect-RPC contract for the `rating` domain.
+//
+// See docs/contract-first-with-buf.md for the migration plan. The
+// `google.api.http` annotations allow REST clients to keep hitting the
+// existing /api/v1/rating/* paths via vanguard-go transcoding; native
+// Connect clients reach the same handlers at /druz9.v1.RatingService/*.
+syntax = "proto3";
+package druz9.v1;
+
+import "druz9/v1/common.proto";
+import "google/api/annotations.proto";
+import "google/protobuf/timestamp.proto";
+
+option go_package = "druz9/shared/generated/pb/druz9/v1;druz9v1";
+
+message SectionRating {
+  Section section = 1;
+  int32 elo = 2;
+  int32 matches_count = 3;
+  int32 percentile = 4;
+  bool decaying = 5;
+}
+
+message HistorySample {
+  // ISO-8601 calendar date for the Monday of the ISO week (UTC).
+  string week_start = 1;
+  int32 global_power_score = 2;
+}
+
+message GetMyRatingsRequest {}
+message GetMyRatingsResponse {
+  repeated SectionRating ratings = 1;
+  int32 global_power_score = 2;
+  repeated HistorySample history = 3;
+}
+
+message LeaderboardEntry {
+  int32 rank = 1;
+  string user_id = 2;
+  string username = 3;
+  int32 elo = 4;
+  string title = 5;
+  string guild_emblem = 6;
+}
+
+message GetLeaderboardRequest {
+  Section section = 1;
+  int32 limit = 2;
+}
+
+message GetLeaderboardResponse {
+  Section section = 1;
+  google.protobuf.Timestamp updated_at = 2;
+  int32 my_rank = 3;
+  repeated LeaderboardEntry entries = 4;
+}
+
+service RatingService {
+  // GetMyRatings returns the caller's per-section ELO and global power score.
+  rpc GetMyRatings(GetMyRatingsRequest) returns (GetMyRatingsResponse) {
+    option (google.api.http) = {get: "/api/v1/rating/me"};
+  }
+
+  // GetLeaderboard returns the top-N leaderboard entries for a section.
+  rpc GetLeaderboard(GetLeaderboardRequest) returns (GetLeaderboardResponse) {
+    option (google.api.http) = {get: "/api/v1/rating/leaderboard"};
+  }
+}

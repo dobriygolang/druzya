@@ -1,0 +1,34 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "backend-stack",
+      "autoPort": false,
+      "runtimeExecutable": "/bin/sh",
+      "runtimeArgs": [
+        "-c",
+        "cd /tmp && docker compose -f /Users/sedorofeevd/Desktop/druzya/docker-compose.yml up -d postgres redis minio clickhouse judge0-db judge0-redis api judge0-server judge0-workers && exec docker compose -f /Users/sedorofeevd/Desktop/druzya/docker-compose.yml logs -f api"
+      ],
+      "port": 8080
+    },
+    {
+      "name": "frontend",
+      "runtimeExecutable": "/bin/sh",
+      "runtimeArgs": [
+        "-c",
+        "cd /Users/sedorofeevd/Desktop/druzya/frontend && VITE_USE_MSW=true exec npm run dev -- --host"
+      ],
+      "port": 5173
+    },
+    {
+      "name": "backend-native",
+      "autoPort": false,
+      "runtimeExecutable": "/bin/sh",
+      "runtimeArgs": [
+        "-c",
+        "cd /Users/sedorofeevd/Desktop/druzya/backend/cmd/monolith && exec go run ."
+      ],
+      "port": 8080
+    }
+  ]
+}

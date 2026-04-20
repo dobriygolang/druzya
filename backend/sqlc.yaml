@@ -1,0 +1,205 @@
+version: "2"
+
+# druz9 — per-domain sqlc generation. Each domain keeps its own queries under
+# services/<domain>/infra/queries/*.sql and emits a typed Go package to
+# services/<domain>/infra/db. All three domains share the same migrations tree
+# so cross-domain FK references resolve during generation.
+#
+# Run with: `sqlc generate` (or `make gen-sqlc`).
+
+sql:
+  - engine: postgresql
+    name: "auth"
+    queries: "services/auth/infra/queries"
+    schema: "migrations"
+    gen:
+      go:
+        package: "authdb"
+        out: "services/auth/infra/db"
+        sql_package: "pgx/v5"
+        emit_interface: true
+        emit_prepared_queries: false
+        emit_exact_table_names: false
+        emit_empty_slices: true
+
+  - engine: postgresql
+    name: "profile"
+    queries: "services/profile/infra/queries"
+    schema: "migrations"
+    gen:
+      go:
+        package: "profiledb"
+        out: "services/profile/infra/db"
+        sql_package: "pgx/v5"
+        emit_interface: true
+        emit_prepared_queries: false
+        emit_exact_table_names: false
+        emit_empty_slices: true
+
+  - engine: postgresql
+    name: "daily"
+    queries: "services/daily/infra/queries"
+    schema: "migrations"
+    gen:
+      go:
+        package: "dailydb"
+        out: "services/daily/infra/db"
+        sql_package: "pgx/v5"
+        emit_interface: true
+        emit_prepared_queries: false
+        emit_exact_table_names: false
+        emit_empty_slices: true
+
+  - engine: postgresql
+    name: "rating"
+    queries: "services/rating/infra/queries"
+    schema: "migrations"
+    gen:
+      go:
+        package: "ratingdb"
+        out: "services/rating/infra/db"
+        sql_package: "pgx/v5"
+        emit_interface: true
+        emit_prepared_queries: false
+        emit_exact_table_names: false
+        emit_empty_slices: true
+
+  - engine: postgresql
+    name: "arena"
+    queries: "services/arena/infra/queries"
+    schema: "migrations"
+    gen:
+      go:
+        package: "arenadb"
+        out: "services/arena/infra/db"
+        sql_package: "pgx/v5"
+        emit_interface: true
+        emit_prepared_queries: false
+        emit_exact_table_names: false
+        emit_empty_slices: true
+
+  - engine: postgresql
+    name: "notify"
+    queries: "services/notify/infra/queries"
+    schema: "migrations"
+    gen:
+      go:
+        package: "notifydb"
+        out: "services/notify/infra/db"
+        sql_package: "pgx/v5"
+        emit_interface: true
+        emit_prepared_queries: false
+        emit_exact_table_names: false
+        emit_empty_slices: true
+
+  - engine: postgresql
+    name: "ai_mock"
+    queries: "services/ai_mock/infra/queries"
+    schema: "migrations"
+    gen:
+      go:
+        package: "ai_mockdb"
+        out: "services/ai_mock/infra/db"
+        sql_package: "pgx/v5"
+        emit_interface: true
+        emit_prepared_queries: false
+        emit_exact_table_names: false
+        emit_empty_slices: true
+
+  - engine: postgresql
+    name: "ai_native"
+    queries: "services/ai_native/infra/queries"
+    schema: "migrations"
+    gen:
+      go:
+        package: "ai_nativedb"
+        out: "services/ai_native/infra/db"
+        sql_package: "pgx/v5"
+        emit_interface: true
+        emit_prepared_queries: false
+        emit_exact_table_names: false
+        emit_empty_slices: true
+
+  - engine: postgresql
+    name: "guild"
+    queries: "services/guild/infra/queries"
+    schema: "migrations"
+    gen:
+      go:
+        package: "guilddb"
+        out: "services/guild/infra/db"
+        sql_package: "pgx/v5"
+        emit_interface: true
+        emit_prepared_queries: false
+        emit_exact_table_names: false
+        emit_empty_slices: true
+
+  - engine: postgresql
+    name: "slot"
+    queries: "services/slot/infra/queries"
+    schema: "migrations"
+    gen:
+      go:
+        package: "slotdb"
+        out: "services/slot/infra/db"
+        sql_package: "pgx/v5"
+        emit_interface: true
+        emit_prepared_queries: false
+        emit_exact_table_names: false
+        emit_empty_slices: true
+
+  - engine: postgresql
+    name: "season"
+    queries: "services/season/infra/queries"
+    schema: "migrations"
+    gen:
+      go:
+        package: "seasondb"
+        out: "services/season/infra/db"
+        sql_package: "pgx/v5"
+        emit_interface: true
+        emit_prepared_queries: false
+        emit_exact_table_names: false
+        emit_empty_slices: true
+
+  - engine: postgresql
+    name: "podcast"
+    queries: "services/podcast/infra/queries"
+    schema: "migrations"
+    gen:
+      go:
+        package: "podcastdb"
+        out: "services/podcast/infra/db"
+        sql_package: "pgx/v5"
+        emit_interface: true
+        emit_prepared_queries: false
+        emit_exact_table_names: false
+        emit_empty_slices: true
+
+  - engine: postgresql
+    name: "editor"
+    queries: "services/editor/infra/queries"
+    schema: "migrations"
+    gen:
+      go:
+        package: "editordb"
+        out: "services/editor/infra/db"
+        sql_package: "pgx/v5"
+        emit_interface: true
+        emit_prepared_queries: false
+        emit_exact_table_names: false
+        emit_empty_slices: true
+
+  - engine: postgresql
+    name: "admin"
+    queries: "services/admin/infra/queries"
+    schema: "migrations"
+    gen:
+      go:
+        package: "admindb"
+        out: "services/admin/infra/db"
+        sql_package: "pgx/v5"
+        emit_interface: true
+        emit_prepared_queries: false
+        emit_exact_table_names: false
+        emit_empty_slices: true

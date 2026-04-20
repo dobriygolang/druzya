@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=1400">
+<title>DRUZ9 — Dark-Fantasy Interview Forge</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@400;700;900&family=Cinzel:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles/tokens.css">
+<style>
+  @keyframes blink { 50% { opacity: 0; } }
+  .app-shell { display: flex; min-height: 100vh; }
+  .app-main  { flex: 1; min-width: 0; }
+  .screen-wrap { border-top: 1px solid var(--gold-faint); }
+  .screen-wrap:first-child { border-top: none; }
+  .screen-tag {
+    display: flex; align-items: center; gap: 14px;
+    padding: 14px 36px 10px; background: var(--bg-base);
+    border-bottom: 1px solid var(--gold-faint);
+    font-family: var(--font-heraldic); color: var(--gold-dim);
+    font-size: 10px; letter-spacing: 0.35em;
+  }
+  .screen-tag .num { color: var(--gold); border: 1px solid var(--gold); padding: 2px 8px; font-family: var(--font-heraldic); }
+  .screen-tag .title { color: var(--gold-bright); letter-spacing: 0.25em; font-size: 11px; }
+
+  /* Passages panel */
+  .passages {
+    position: fixed; right: 20px; bottom: 20px; z-index: 100;
+    width: 280px; background: var(--bg-surface);
+    border: 1px solid var(--gold); padding: 14px;
+    max-height: calc(100vh - 40px); overflow: auto;
+  }
+  .passages-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+  .passages-list { display: flex; flex-direction: column; gap: 2px; }
+  .passages-list a {
+    padding: 8px 10px; font-family: var(--font-display);
+    font-size: 11px; letter-spacing: 0.12em;
+    color: var(--text-mid); border-left: 2px solid transparent;
+    display: flex; gap: 10px; align-items: center;
+  }
+  .passages-list a:hover { color: var(--gold-bright); border-left-color: var(--gold); background: rgba(200,169,110,0.05); }
+  .passages-list a .n { color: var(--gold-dim); width: 22px; font-family: var(--font-heraldic); }
+  .passages-toggle {
+    position: fixed; right: 20px; bottom: 20px; z-index: 99;
+    padding: 10px 16px; background: var(--bg-surface);
+    border: 1px solid var(--gold); color: var(--gold-bright);
+    font-family: var(--font-display); font-size: 11px; letter-spacing: 0.2em;
+  }
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+<script type="text/babel" src="components/character.jsx"></script>
+<script type="text/babel" src="components/chrome.jsx"></script>
+<script type="text/babel" src="screens/sanctum.jsx"></script>
+<script type="text/babel" src="screens/ai-sessions.jsx"></script>
+<script type="text/babel" src="screens/atlas.jsx"></script>
+<script type="text/babel" src="screens/profile.jsx"></script>
+<script type="text/babel" src="screens/trials.jsx"></script>
+<script type="text/babel" src="screens/mobile-onboarding.jsx"></script>
+
+<script type="text/babel" data-presets="react">
+const SCREENS = [
+  { id: 'sanctum',  n: '01', t: 'SANCTUM · Main Lobby',         comp: () => <SanctumScreen />, sub: 'sanctum' },
+  { id: 'ai-mock',  n: '02', t: 'AI-MOCK · Live Session',       comp: () => <AIMockScreen />, sub: 'ai-mock', full: true },
+  { id: 'ai-native',n: '03', t: 'AI-NATIVE ROUND',              comp: () => <AINativeScreen />, sub: 'ai-native', full: true },
+  { id: 'atlas',    n: '04', t: 'SKILL ATLAS',                  comp: () => <AtlasScreen />, sub: 'atlas', full: true },
+  { id: 'profile',  n: '05', t: 'PROFILE · Weekly Report',      comp: () => <ProfileScreen />, sub: 'profile' },
+  { id: 'arena',    n: '06', t: 'ARENA 1V1',                    comp: () => <ArenaScreen />, sub: 'arena', full: true },
+  { id: 'kata',     n: '07', t: 'DAILY KATA',                   comp: () => <KataScreen />, sub: 'kata' },
+  { id: 'calendar', n: '08', t: 'INTERVIEW CALENDAR',           comp: () => <CalendarScreen />, sub: 'calendar' },
+  { id: 'guild',    n: '09', t: 'GUILD WAR',                    comp: () => <GuildWarScreen />, sub: 'guild' },
+  { id: 'autopsy',  n: '10', t: 'INTERVIEW AUTOPSY',            comp: () => <AutopsyScreen />, sub: 'autopsy' },
+  { id: 'mobile',   n: '11', t: 'MOBILE · Kata & Profile',      comp: () => <MobileKataScreen />, sub: 'kata' },
+  { id: 'onboard',  n: '12', t: 'ONBOARDING · Five Rites',      comp: () => <OnboardingScreen />, sub: 'sanctum' },
+];
+
+function App() {
+  const [passagesOpen, setPassagesOpen] = React.useState(true);
+  const [activeSub, setActiveSub] = React.useState('sanctum');
+
+  const jump = (id) => {
+    document.getElementById('screen-' + id)?.scrollIntoView({ block: 'start' });
+  };
+
+  return (
+    <>
+      <Topbar screen={activeSub} onNav={() => {}} />
+      <div className="app-shell">
+        <LeftSidebar activeSub={activeSub} onNav={(k) => {
+          setActiveSub(k);
+          const match = SCREENS.find(s => s.sub === k);
+          if (match) jump(match.id);
+        }} />
+        <div className="app-main">
+          {SCREENS.map(s => (
+            <section key={s.id} id={'screen-' + s.id} data-screen-label={`${s.n} ${s.t}`} className="screen-wrap">
+              <div className="screen-tag">
+                <span className="num">{s.n}</span>
+                <span className="title">✦ {s.t} ✦</span>
+              </div>
+              {s.comp()}
+            </section>
+          ))}
+        </div>
+        <RightSidebar />
+      </div>
+
+      {passagesOpen ? (
+        <div className="passages">
+          <div className="passages-head">
+            <span className="heraldic" style={{ color: 'var(--gold-bright)', fontSize: 11 }}>✦ PASSAGES ✦</span>
+            <button onClick={() => setPassagesOpen(false)} style={{ color: 'var(--gold-dim)', fontFamily: 'var(--font-heraldic)', fontSize: 12 }}>×</button>
+          </div>
+          <div className="passages-list">
+            {SCREENS.map(s => (
+              <a key={s.id} href={'#screen-' + s.id} onClick={(e) => { e.preventDefault(); jump(s.id); }}>
+                <span className="n">{s.n}</span>
+                <span>{s.t}</span>
+              </a>
+            ))}
+          </div>
+        </div>
+      ) : (
+        <button className="passages-toggle" onClick={() => setPassagesOpen(true)}>✦ PASSAGES</button>
+      )}
+    </>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+</body>
+</html>

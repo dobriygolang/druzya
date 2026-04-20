@@ -1,0 +1,24 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    environment: production
+    service: druz9
+
+scrape_configs:
+  - job_name: druz9-api
+    metrics_path: /metrics
+    static_configs:
+      - targets: ["api:8080"]
+
+  - job_name: nginx
+    static_configs:
+      - targets: ["nginx:80"]
+
+  - job_name: postgres
+    static_configs:
+      - targets: ["postgres:9187"]  # requires postgres_exporter sidecar (optional)
+
+  - job_name: redis
+    static_configs:
+      - targets: ["redis:9121"]  # requires redis_exporter sidecar (optional)

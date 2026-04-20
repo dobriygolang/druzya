@@ -1,0 +1,192 @@
+# Local development. Prod uses infra/docker-compose.prod.yml with nginx, certbot,
+# healthchecks and the isolated judge-net.
+
+networks:
+  app-net:
+    driver: bridge
+  judge-net:
+    driver: bridge
+
+volumes:
+  pg_data:
+  redis_data:
+  minio_data:
+  clickhouse_data:
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: druz9
+      POSTGRES_PASSWORD: druz9
+      POSTGRES_DB: druz9
+    ports:
+      - "5432:5432"
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    networks: [app-net]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U druz9 -d druz9"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--save", "60", "1"]
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks: [app-net]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  minio:
+    image: minio/minio:latest
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: druz9minio
+      MINIO_ROOT_PASSWORD: druz9minio-dev
+    ports:
+      - "9000:9000"
+      # Console (9001) is only exposed locally; in prod it's SSH-tunnel only.
+      - "127.0.0.1:9001:9001"
+    volumes:
+      - minio_data:/data
+    networks: [app-net]
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  clickhouse:
+    image: clickhouse/clickhouse-server:24.3-alpine
+    environment:
+      CLICKHOUSE_DB: druz9
+      CLICKHOUSE_USER: default
+      CLICKHOUSE_PASSWORD: ""
+      CLICKHOUSE_SKIP_USER_SETUP: "1"
+    ports:
+      - "8123:8123"
+      - "9009:9000"
+    volumes:
+      - clickhouse_data:/var/lib/clickhouse
+    networks: [app-net]
+    ulimits:
+      nofile: { soft: 262144, hard: 262144 }
+
+  # Migrations are run from the host via `make migrate-up` (goose via go run).
+  # Keeping them out of docker-compose avoids a flaky registry pull and gives
+  # the developer direct visibility into schema changes.
+
+  api:
+    build:
+      # Context is the repo root so go.work is part of the build context.
+      context: .
+      dockerfile: infra/api.Dockerfile
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    environment:
+      APP_ENV: local
+      HTTP_ADDR: ":8080"
+      POSTGRES_DSN: "host=postgres port=5432 user=druz9 password=druz9 dbname=druz9 sslmode=disable"
+      REDIS_ADDR: redis:6379
+      MINIO_ENDPOINT: minio:9000
+      MINIO_ACCESS_KEY: druz9minio
+      MINIO_SECRET_KEY: druz9minio-dev
+      MINIO_USE_SSL: "false"
+      CLICKHOUSE_ADDR: clickhouse:9000
+      JUDGE0_URL: http://judge0-server:2358
+      JWT_SECRET: local-dev-secret-change-me
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+      YANDEX_CLIENT_ID: ${YANDEX_CLIENT_ID:-}
+      YANDEX_CLIENT_SECRET: ${YANDEX_CLIENT_SECRET:-}
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY:-local-dev-encryption-key-32bytes}
+      TELEGRAM_WEBHOOK_SECRET: ${TELEGRAM_WEBHOOK_SECRET:-local-dev-webhook-secret}
+      PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:-http://localhost:8080}
+      WS_ALLOWED_ORIGINS: ${WS_ALLOWED_ORIGINS:-http://localhost:5173,http://localhost:8080}
+    ports:
+      - "8080:8080"
+    networks: [app-net, judge-net]
+    restart: unless-stopped
+
+  frontend:
+    image: node:20-alpine
+    working_dir: /app
+    command: sh -c "npm install && npm run dev -- --host"
+    volumes:
+      - ./frontend:/app
+    environment:
+      VITE_API_BASE: /api/v1
+      VITE_WS_BASE: ws://localhost:8080/ws
+      VITE_USE_MSW: "true"
+    ports:
+      - "5173:5173"
+    networks: [app-net]
+
+  # ── Judge0 (isolated network, no direct access to app-net services) ─────
+  judge0-db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: judge0
+      POSTGRES_PASSWORD: judge0
+      POSTGRES_DB: judge0
+    networks: [judge-net]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U judge0"]
+      interval: 5s
+
+  judge0-redis:
+    image: redis:7-alpine
+    networks: [judge-net]
+
+  judge0-server:
+    image: judge0/judge0:1.13.1
+    environment:
+      REDIS_HOST: judge0-redis
+      POSTGRES_HOST: judge0-db
+      POSTGRES_USER: judge0
+      POSTGRES_PASSWORD: judge0
+      POSTGRES_DB: judge0
+    depends_on:
+      judge0-db:
+        condition: service_healthy
+      judge0-redis:
+        condition: service_started
+    networks: [judge-net]
+    privileged: true
+    deploy:
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: 1G
+
+  judge0-workers:
+    image: judge0/judge0:1.13.1
+    command: ["./scripts/workers"]
+    environment:
+      REDIS_HOST: judge0-redis
+      POSTGRES_HOST: judge0-db
+      POSTGRES_USER: judge0
+      POSTGRES_PASSWORD: judge0
+      POSTGRES_DB: judge0
+    depends_on:
+      - judge0-server
+    networks: [judge-net]
+    privileged: true
+    deploy:
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: 1G

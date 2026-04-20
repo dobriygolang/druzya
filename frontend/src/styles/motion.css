@@ -1,0 +1,232 @@
+/* ==========================================================================
+   DRUZ9 motion layer — subtle gold/ember glows, fade-ups, hover polish.
+   Imported after tokens.css. Matches bible §23 (reduced-motion respected).
+   ========================================================================== */
+
+/* ============ KEYFRAMES ============ */
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 0.6;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+@keyframes blink {
+  50% {
+    opacity: 0.3;
+  }
+}
+
+@keyframes dm-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes dm-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+    filter: blur(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0);
+  }
+}
+@keyframes dm-fade-in-scale {
+  from {
+    opacity: 0;
+    transform: scale(0.98);
+    filter: blur(4px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+    filter: blur(0);
+  }
+}
+
+/* ============ GLOBAL ENTER ============ */
+body {
+  animation: dm-fade-in 420ms ease-out both;
+}
+
+.panel,
+.dm-enter {
+  animation: dm-fade-up 520ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  animation-delay: var(--dm-delay, 0ms);
+}
+
+/* Stagger children of a [data-stagger] container */
+[data-stagger] > * {
+  animation: dm-fade-up 520ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+[data-stagger] > *:nth-child(1) {
+  animation-delay: 30ms;
+}
+[data-stagger] > *:nth-child(2) {
+  animation-delay: 90ms;
+}
+[data-stagger] > *:nth-child(3) {
+  animation-delay: 150ms;
+}
+[data-stagger] > *:nth-child(4) {
+  animation-delay: 210ms;
+}
+[data-stagger] > *:nth-child(5) {
+  animation-delay: 270ms;
+}
+[data-stagger] > *:nth-child(6) {
+  animation-delay: 330ms;
+}
+[data-stagger] > *:nth-child(7) {
+  animation-delay: 390ms;
+}
+[data-stagger] > *:nth-child(8) {
+  animation-delay: 450ms;
+}
+[data-stagger] > *:nth-child(n + 9) {
+  animation-delay: 500ms;
+}
+
+/* ============ HOVER POLISH ============ */
+a.card,
+.card {
+  transition:
+    transform 240ms cubic-bezier(0.2, 0.7, 0.2, 1),
+    border-color 240ms ease,
+    box-shadow 240ms ease,
+    background 240ms ease;
+}
+a.card:hover {
+  transform: translateY(-2px);
+}
+
+.btn {
+  transition:
+    transform 160ms ease,
+    background 200ms ease,
+    border-color 200ms ease,
+    box-shadow 200ms ease,
+    color 200ms ease;
+}
+.btn:active {
+  transform: translateY(1px);
+}
+
+nav a,
+.tab {
+  transition:
+    color 200ms ease,
+    background 200ms ease,
+    border-color 200ms ease;
+}
+
+.panel {
+  transition:
+    border-color 260ms ease,
+    box-shadow 260ms ease;
+}
+.panel:hover {
+  border-color: var(--gold);
+}
+
+/* Tab underline slide */
+.tab-row {
+  position: relative;
+}
+.tab-row .tab {
+  position: relative;
+}
+.tab-row .tab::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  right: 50%;
+  bottom: -1px;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--gold), transparent);
+  transition:
+    left 240ms ease,
+    right 240ms ease,
+    opacity 240ms ease;
+  opacity: 0;
+}
+.tab-row .tab:hover::after {
+  left: 10%;
+  right: 10%;
+  opacity: 0.7;
+}
+.tab-row .tab.active::after {
+  left: 0;
+  right: 0;
+  opacity: 1;
+}
+
+/* ============ REDUCED MOTION ============ */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+html[data-motion='off'] * {
+  animation-duration: 180ms !important;
+}
+
+/* ============ ATLAS / SKILL TREE ============ */
+@keyframes atlas-decay-pulse {
+  0%,
+  100% {
+    opacity: 0.35;
+    filter: drop-shadow(0 0 2px var(--blood-lit));
+  }
+  50% {
+    opacity: 0.9;
+    filter: drop-shadow(0 0 10px var(--blood-bright));
+  }
+}
+
+.atlas-decay {
+  animation: atlas-decay-pulse 2400ms ease-in-out infinite;
+  transform-origin: center;
+}
+
+@keyframes atlas-rune-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.atlas-rune-spin {
+  animation: atlas-rune-spin 3600ms linear infinite;
+  transform-origin: center;
+}
+
+@keyframes atlas-center-halo {
+  0%,
+  100% {
+    opacity: 0.35;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+
+.atlas-center-halo {
+  animation: atlas-center-halo 3400ms ease-in-out infinite;
+  transform-origin: center;
+}

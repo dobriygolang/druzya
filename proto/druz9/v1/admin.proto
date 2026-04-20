@@ -1,0 +1,261 @@
+// admin.proto — Connect-RPC contract for the `admin` bounded context.
+//
+// Admin is a CMS/ops surface (bible §3.14). Every RPC requires role=admin;
+// the role gate lives in ports/server.go — apigen had its requireAdmin
+// inside the port and this proto preserves that split. main.go still wraps
+// the handler in requireAuth (same as every other domain) — the extra
+// admin role check happens inside the port method bodies.
+//
+// ── solution_hint EXCEPTION ──────────────────────────────────────────────
+// AdminTask INTENTIONALLY exposes `solution_hint`. Every OTHER proto in
+// this repo (profile's atlas, daily's kata, arena's task, mock's task,
+// native's task) MUST NOT. The role gate on this service is the sole
+// guardrail. Do not create a public Task alias of AdminTask — they are
+// kept as separate messages by design.
+syntax = "proto3";
+package druz9.v1;
+
+import "druz9/v1/common.proto";
+import "google/api/annotations.proto";
+import "google/protobuf/struct.proto";
+import "google/protobuf/timestamp.proto";
+
+option go_package = "druz9/shared/generated/pb/druz9/v1;druz9v1";
+
+// ─────────────────────────────────────────────────────────────────────────
+// Tasks (admin projection — carries solution_hint)
+// ─────────────────────────────────────────────────────────────────────────
+
+// AdminTaskTestCase mirrors the inline test-case item in OpenAPI AdminTask.
+message AdminTaskTestCase {
+  string id = 1;
+  string input = 2;
+  string expected_output = 3;
+  bool is_hidden = 4;
+  int32 order_num = 5;
+}
+
+// AdminTaskFollowUpQuestion mirrors the inline follow-up item.
+message AdminTaskFollowUpQuestion {
+  string question_ru = 1;
+  string question_en = 2;
+  string answer_hint = 3;
+  int32 order_num = 4;
+}
+
+// AdminTask is the curator-facing task projection — INCLUDES solution_hint.
+message AdminTask {
+  string id = 1;
+  string slug = 2;
+  string title_ru = 3;
+  string title_en = 4;
+  string description_ru = 5;
+  string description_en = 6;
+  Difficulty difficulty = 7;
+  Section section = 8;
+  int32 time_limit_sec = 9;
+  int32 memory_limit_mb = 10;
+  string solution_hint = 11; // admin-only (see package doc)
+  int32 version = 12;
+  bool is_active = 13;
+  repeated AdminTaskTestCase test_cases = 14;
+  repeated AdminTaskFollowUpQuestion follow_up_questions = 15;
+}
+
+// AdminTaskList mirrors OpenAPI AdminTaskList.
+message AdminTaskList {
+  repeated AdminTask items = 1;
+  int32 total = 2;
+  int32 page = 3;
+}
+
+// AdminTaskUpsert mirrors OpenAPI AdminTaskUpsert (POST/PUT body).
+message AdminTaskUpsert {
+  string slug = 1;
+  string title_ru = 2;
+  string title_en = 3;
+  string description_ru = 4;
+  string description_en = 5;
+  Difficulty difficulty = 6;
+  Section section = 7;
+  int32 time_limit_sec = 8;
+  int32 memory_limit_mb = 9;
+  string solution_hint = 10;
+  bool is_active = 11;
+  repeated AdminTaskTestCase test_cases = 12;
+  repeated AdminTaskFollowUpQuestion follow_up_questions = 13;
+}
+
+message ListAdminTasksRequest {
+  Section section = 1;
+  Difficulty difficulty = 2;
+  // is_active_set=true means the is_active filter is applied (value in
+  // is_active). Keeping the tri-state requires a companion flag since
+  // proto3 bool has no "unset" sentinel.
+  bool is_active = 3;
+  bool is_active_set = 4;
+  int32 page = 5;
+  int32 limit = 6;
+}
+
+message CreateAdminTaskRequest {
+  AdminTaskUpsert task = 1;
+}
+
+message UpdateAdminTaskRequest {
+  string task_id = 1;
+  AdminTaskUpsert task = 2;
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Companies
+// ─────────────────────────────────────────────────────────────────────────
+
+// Company mirrors OpenAPI Company.
+message Company {
+  string id = 1;
+  string slug = 2;
+  string name = 3;
+  DungeonTier difficulty = 4;
+  int32 min_level_required = 5;
+  repeated Section sections = 6;
+}
+
+message CompanyList {
+  repeated Company items = 1;
+}
+
+// CompanyUpsert mirrors OpenAPI CompanyUpsert (POST body).
+message CompanyUpsert {
+  string slug = 1;
+  string name = 2;
+  DungeonTier difficulty = 3;
+  int32 min_level_required = 4;
+}
+
+message ListCompaniesRequest {}
+message CreateCompanyRequest {
+  CompanyUpsert company = 1;
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Dynamic config
+// ─────────────────────────────────────────────────────────────────────────
+
+// ConfigEntryType mirrors the `type` discriminator on ConfigEntry.
+enum ConfigEntryType {
+  CONFIG_ENTRY_TYPE_UNSPECIFIED = 0;
+  CONFIG_ENTRY_TYPE_INT = 1;
+  CONFIG_ENTRY_TYPE_FLOAT = 2;
+  CONFIG_ENTRY_TYPE_STRING = 3;
+  CONFIG_ENTRY_TYPE_BOOL = 4;
+  CONFIG_ENTRY_TYPE_JSON = 5;
+}
+
+// ConfigEntry mirrors OpenAPI ConfigEntry. The OpenAPI `value` field is a
+// oneOf<number|string|bool|object>; we use google.protobuf.Value to keep the
+// JSON shape opaque on the wire. The app layer still round-trips the raw
+// bytes through the ConfigType discriminator (see ports/server.go).
+message ConfigEntry {
+  string key = 1;
+  google.protobuf.Value value = 2;
+  ConfigEntryType type = 3;
+  string description = 4;
+  google.protobuf.Timestamp updated_at = 5;
+  // updated_by is optional — empty when no writer recorded.
+  string updated_by = 6;
+}
+
+message ConfigEntryList {
+  repeated ConfigEntry items = 1;
+}
+
+// ConfigUpdate mirrors OpenAPI ConfigUpdate (PUT body). `value` is the same
+// opaque JSON as ConfigEntry.value.
+message UpdateConfigRequest {
+  string key = 1;
+  google.protobuf.Value value = 2;
+}
+
+message ListConfigRequest {}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Anticheat
+// ─────────────────────────────────────────────────────────────────────────
+
+// AnticheatSignal mirrors OpenAPI AnticheatSignal.
+message AnticheatSignal {
+  string id = 1;
+  string user_id = 2;
+  string username = 3;
+  string match_id = 4;
+  // `type` in OpenAPI is a free-form string example — we keep it as a
+  // string here for wire compatibility. The shared enum
+  // AnticheatSignalType in common.proto lists the known values; the REST
+  // wire surface is a plain string.
+  string type = 5;
+  SeverityLevel severity = 6;
+  // metadata is a free-form JSON object — again kept opaque via Value.
+  google.protobuf.Value metadata = 7;
+  google.protobuf.Timestamp created_at = 8;
+}
+
+message AnticheatSignalList {
+  repeated AnticheatSignal items = 1;
+}
+
+message ListAnticheatRequest {
+  SeverityLevel severity = 1;
+  google.protobuf.Timestamp from = 2;
+  int32 limit = 3;
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Service
+// ─────────────────────────────────────────────────────────────────────────
+
+service AdminService {
+  // ── Tasks ───────────────────────────────────────────────────────────
+  rpc ListTasks(ListAdminTasksRequest) returns (AdminTaskList) {
+    option (google.api.http) = {get: "/api/v1/admin/tasks"};
+  }
+  rpc CreateTask(CreateAdminTaskRequest) returns (AdminTask) {
+    option (google.api.http) = {
+      post: "/api/v1/admin/tasks"
+      body: "task"
+    };
+  }
+  rpc UpdateTask(UpdateAdminTaskRequest) returns (AdminTask) {
+    option (google.api.http) = {
+      put: "/api/v1/admin/tasks/{task_id}"
+      body: "task"
+    };
+  }
+
+  // ── Companies ───────────────────────────────────────────────────────
+  rpc ListCompanies(ListCompaniesRequest) returns (CompanyList) {
+    option (google.api.http) = {get: "/api/v1/admin/companies"};
+  }
+  rpc CreateCompany(CreateCompanyRequest) returns (Company) {
+    option (google.api.http) = {
+      post: "/api/v1/admin/companies"
+      body: "company"
+    };
+  }
+
+  // ── Dynamic config ──────────────────────────────────────────────────
+  rpc ListConfig(ListConfigRequest) returns (ConfigEntryList) {
+    option (google.api.http) = {get: "/api/v1/admin/config"};
+  }
+  rpc UpdateConfig(UpdateConfigRequest) returns (ConfigEntry) {
+    option (google.api.http) = {
+      put: "/api/v1/admin/config/{key}"
+      body: "*"
+    };
+  }
+
+  // ── Anticheat ───────────────────────────────────────────────────────
+  rpc ListAnticheat(ListAnticheatRequest) returns (AnticheatSignalList) {
+    option (google.api.http) = {get: "/api/v1/admin/anticheat"};
+  }
+}

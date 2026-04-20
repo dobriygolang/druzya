@@ -1,0 +1,88 @@
+// auth.proto — Connect-RPC contract for the `auth` bounded context.
+//
+// Three of the four RPCs are PUBLIC (yandex/telegram/refresh) — they issue
+// tokens. Logout is authenticated. See main.go for the gate wiring: the REST
+// public paths remain carved out of the requireAuth middleware; the native
+// Connect path is also mounted without requireAuth because the auth service
+// never reads user_id from context (it mints tokens instead).
+syntax = "proto3";
+package druz9.v1;
+
+import "druz9/v1/common.proto";
+import "google/api/annotations.proto";
+
+option go_package = "druz9/shared/generated/pb/druz9/v1;druz9v1";
+
+// YandexLoginRequest mirrors the OpenAPI YandexAuthRequest schema.
+message YandexLoginRequest {
+  string code = 1;
+  // state is optional in OpenAPI (nullable); proto3 treats "" as unset.
+  string state = 2;
+}
+
+// TelegramLoginRequest mirrors the OpenAPI TelegramAuthRequest schema.
+message TelegramLoginRequest {
+  int64 id = 1;
+  string first_name = 2;
+  string last_name = 3;
+  string username = 4;
+  string photo_url = 5;
+  int64 auth_date = 6;
+  string hash = 7;
+}
+
+// RefreshRequest is empty — the refresh token lives in an HttpOnly cookie.
+message RefreshRequest {}
+
+// LogoutRequest is empty — the session id comes from the refresh cookie.
+message LogoutRequest {}
+// LogoutResponse is empty — 204 No Content equivalent.
+message LogoutResponse {}
+
+// AuthUser mirrors the OpenAPI AuthUser schema.
+message AuthUser {
+  string id = 1;
+  string email = 2;
+  string username = 3;
+  UserRole role = 4;
+  AuthProvider provider = 5;
+}
+
+// AuthResponse is the shared shape returned by the three login RPCs. The
+// refresh token is set on an HttpOnly cookie by the server, NOT included here.
+message AuthResponse {
+  string access_token = 1;
+  int32 expires_in = 2;
+  AuthUser user = 3;
+}
+
+service AuthService {
+  // LoginYandex exchanges a Yandex authorization code for a session.
+  rpc LoginYandex(YandexLoginRequest) returns (AuthResponse) {
+    option (google.api.http) = {
+      post: "/api/v1/auth/yandex"
+      body: "*"
+    };
+  }
+
+  // LoginTelegram verifies the Telegram Login Widget HMAC payload.
+  rpc LoginTelegram(TelegramLoginRequest) returns (AuthResponse) {
+    option (google.api.http) = {
+      post: "/api/v1/auth/telegram"
+      body: "*"
+    };
+  }
+
+  // Refresh rotates the access token using the refresh cookie.
+  rpc Refresh(RefreshRequest) returns (AuthResponse) {
+    option (google.api.http) = {
+      post: "/api/v1/auth/refresh"
+      body: "*"
+    };
+  }
+
+  // Logout revokes the refresh session.
+  rpc Logout(LogoutRequest) returns (LogoutResponse) {
+    option (google.api.http) = {delete: "/api/v1/auth/logout"};
+  }
+}

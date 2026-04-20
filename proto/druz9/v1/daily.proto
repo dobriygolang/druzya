@@ -1,0 +1,203 @@
+// daily.proto — Connect-RPC contract for the `daily` bounded context.
+//
+// Covers the 7 endpoints: kata/streak/calendar/autopsy (get + post variants).
+// The calendar history entry uses a bool for each day — OpenAPI allows null
+// to mean "freeze used"; proto3 uses a separate `history_entry` message that
+// carries the `freeze_used` flag to recover the tri-state.
+syntax = "proto3";
+package druz9.v1;
+
+import "druz9/v1/common.proto";
+import "google/api/annotations.proto";
+import "google/protobuf/timestamp.proto";
+
+option go_package = "druz9/shared/generated/pb/druz9/v1;druz9v1";
+
+// TaskPublic mirrors OpenAPI TaskPublic. solution_hint is intentionally absent.
+message TaskPublic {
+  string id = 1;
+  string slug = 2;
+  string title = 3;
+  string description = 4;
+  Difficulty difficulty = 5;
+  Section section = 6;
+  int32 time_limit_sec = 7;
+  int32 memory_limit_mb = 8;
+  map<string, string> starter_code = 9;
+}
+
+// DailyKata mirrors OpenAPI DailyKata.
+message DailyKata {
+  // date is an ISO-8601 calendar date (YYYY-MM-DD).
+  string date = 1;
+  TaskPublic task = 2;
+  bool is_cursed = 3;
+  bool is_weekly_boss = 4;
+  bool already_submitted = 5;
+}
+
+// StreakHistoryEntry tri-states a single day in the 30-day window:
+//   passed = true  → solved that day
+//   passed = false → missed that day
+//   freeze_used    → a freeze token covered the miss (null in the REST JSON)
+// This shape is richer than the OpenAPI `bool|null` array because proto3
+// cannot express "null" directly; the REST transcoder flattens it back into
+// the original tri-state at the wire.
+message StreakHistoryEntry {
+  bool passed = 1;
+  bool freeze_used = 2;
+}
+
+// StreakInfo mirrors OpenAPI StreakInfo.
+message StreakInfo {
+  int32 current = 1;
+  int32 longest = 2;
+  int32 freeze_tokens = 3;
+  repeated StreakHistoryEntry history = 4;
+}
+
+// KataResult mirrors OpenAPI KataResult.
+message KataResult {
+  bool passed = 1;
+  int32 tests_passed = 2;
+  int32 tests_total = 3;
+  int32 xp_earned = 4;
+  StreakInfo streak = 5;
+}
+
+// CalendarTask mirrors OpenAPI CalendarTask.
+message CalendarTask {
+  // kind is one of: solve_task, mock, native_round, podcast, review. String
+  // preserves wire compat without another enum.
+  string kind = 1;
+  string title = 2;
+  int32 estimated_min = 3;
+  bool done = 4;
+  string target_id = 5;
+}
+
+// WeekPlanEntry is the inline { date, tasks } entry inside InterviewCalendar.
+message WeekPlanEntry {
+  string date = 1; // ISO-8601
+  repeated CalendarTask tasks = 2;
+}
+
+// WeakZone is the inline { atlas_node_key, priority } entry.
+message WeakZone {
+  string atlas_node_key = 1;
+  // priority is "high" | "medium" | "low".
+  string priority = 2;
+}
+
+// InterviewCalendar mirrors OpenAPI InterviewCalendar.
+message InterviewCalendar {
+  string id = 1;
+  string company_id = 2;
+  string role = 3;
+  string interview_date = 4; // ISO-8601
+  int32 days_left = 5;
+  int32 readiness_pct = 6;
+  repeated CalendarTask today = 7;
+  repeated WeekPlanEntry week_plan = 8;
+  repeated WeakZone weak_zones = 9;
+}
+
+// InterviewAutopsyRecommendationAction mirrors the inline Recommendation.action
+// in OpenAPI. Duplicated from profile.proto to keep daily proto self-contained
+// for the recovery_plan array (OpenAPI reuses the same schema).
+message AutopsyRecommendation {
+  string title = 1;
+  string description = 2;
+  // action.kind is one of: start_mock, solve_task, listen_podcast, open_atlas,
+  // open_arena.
+  string action_kind = 3;
+  map<string, string> action_params = 4;
+}
+
+// InterviewAutopsy mirrors OpenAPI InterviewAutopsy.
+message InterviewAutopsy {
+  string id = 1;
+  // status is "processing" | "ready" | "failed".
+  string status = 2;
+  // outcome is "offer" | "rejection" | "pending".
+  string outcome = 3;
+  string failure_reason = 4;
+  string what_to_say = 5;
+  repeated string weak_atlas_nodes = 6;
+  repeated AutopsyRecommendation recovery_plan = 7;
+  string share_url = 8;
+  google.protobuf.Timestamp created_at = 9;
+}
+
+message GetDailyKataRequest {}
+message SubmitKataRequest {
+  string code = 1;
+  Language language = 2;
+}
+message GetStreakRequest {}
+message GetCalendarRequest {}
+message UpsertCalendarRequest {
+  string company_id = 1;
+  string role = 2;
+  string interview_date = 3; // ISO-8601
+  string current_level = 4;
+}
+message CreateAutopsyRequest {
+  string company_id = 1;
+  Section section = 2;
+  // outcome is "offer" | "rejection" | "pending".
+  string outcome = 3;
+  string interview_date = 4; // ISO-8601
+  string questions = 5;
+  string answers = 6;
+  string notes = 7;
+}
+message GetAutopsyRequest {
+  string autopsy_id = 1;
+}
+
+service DailyService {
+  // GetKata returns today's kata.
+  rpc GetKata(GetDailyKataRequest) returns (DailyKata) {
+    option (google.api.http) = {get: "/api/v1/daily/kata"};
+  }
+
+  // SubmitKata grades and returns the result + streak update.
+  rpc SubmitKata(SubmitKataRequest) returns (KataResult) {
+    option (google.api.http) = {
+      post: "/api/v1/daily/kata/submit"
+      body: "*"
+    };
+  }
+
+  // GetStreak returns the current streak + 30-day history.
+  rpc GetStreak(GetStreakRequest) returns (StreakInfo) {
+    option (google.api.http) = {get: "/api/v1/daily/streak"};
+  }
+
+  // GetCalendar returns the active interview calendar.
+  rpc GetCalendar(GetCalendarRequest) returns (InterviewCalendar) {
+    option (google.api.http) = {get: "/api/v1/daily/calendar"};
+  }
+
+  // UpsertCalendar creates or updates the interview calendar.
+  rpc UpsertCalendar(UpsertCalendarRequest) returns (InterviewCalendar) {
+    option (google.api.http) = {
+      post: "/api/v1/daily/calendar"
+      body: "*"
+    };
+  }
+
+  // CreateAutopsy queues an AI post-mortem.
+  rpc CreateAutopsy(CreateAutopsyRequest) returns (InterviewAutopsy) {
+    option (google.api.http) = {
+      post: "/api/v1/daily/autopsy"
+      body: "*"
+    };
+  }
+
+  // GetAutopsy fetches a previously-queued autopsy.
+  rpc GetAutopsy(GetAutopsyRequest) returns (InterviewAutopsy) {
+    option (google.api.http) = {get: "/api/v1/daily/autopsy/{autopsy_id}"};
+  }
+}

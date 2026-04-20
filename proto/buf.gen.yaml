@@ -1,0 +1,36 @@
+# buf.gen.yaml — codegen plugins. Run with `make gen-proto`.
+#
+# Go plugins are installed in backend/tools/tools.go and discovered on PATH
+# via `go install` (put $GOPATH/bin on PATH). TS plugins are installed as
+# frontend npm devDeps and invoked from frontend/node_modules/.bin.
+version: v2
+managed:
+  enabled: true
+plugins:
+  # ── Go: message types
+  - local: protoc-gen-go
+    out: ../backend/shared/generated/pb
+    opt:
+      - paths=source_relative
+
+  # ── Go: Connect-RPC server + client
+  - local: protoc-gen-connect-go
+    out: ../backend/shared/generated/pb
+    opt:
+      - paths=source_relative
+
+  # ── TS: protobuf message types (ES modules)
+  - local: ../frontend/node_modules/.bin/protoc-gen-es
+    out: ../frontend/src/api/generated/pb
+    opt:
+      - target=ts
+    strategy: all
+
+  # ── TS: Connect-ES client bindings
+  - local: ../frontend/node_modules/.bin/protoc-gen-connect-es
+    out: ../frontend/src/api/generated/pb
+    opt:
+      - target=ts
+    strategy: all
+inputs:
+  - directory: .

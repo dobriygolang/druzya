@@ -1,0 +1,206 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>DRUZ·IX</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+SC:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&family=UnifrakturCook:wght@700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles/tokens.css">
+<link rel="stylesheet" href="styles/motion.css">
+<style>
+.card { display: block; padding: 18px; background: linear-gradient(180deg, #14100f, #0a0605); border: 1px solid var(--metal); text-decoration: none; transition: all 0.15s; position: relative; overflow: hidden; }
+.card:hover { border-color: var(--ember); box-shadow: 0 0 18px rgba(224,155,58,0.25); transform: translateY(-1px); }
+.card .icon-wrap { width: 56px; height: 56px; display: flex; align-items: center; justify-content: center; font-size: 28px; clip-path: polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%); flex-shrink: 0; }
+</style>
+</head>
+<body>
+<div style="padding: 40px 24px 80px; max-width: 1400px; margin: 0 auto;">
+  <!-- Hero -->
+  <div style="text-align: center; margin-bottom: 50px; position: relative;">
+    <div style="position: absolute; inset: -30px; background: radial-gradient(ellipse at center, rgba(194,34,34,0.15), transparent 60%); pointer-events: none;"></div>
+    <div style="position: relative;">
+      <svg width="80" height="80" viewBox="0 0 40 40" style="margin: 0 auto;">
+        <defs>
+          <radialGradient id="g1" cx="50%" cy="55%" r="60%">
+            <stop offset="0%" stop-color="#e09b3a" stop-opacity="0.5"/>
+            <stop offset="100%" stop-color="#e09b3a" stop-opacity="0"/>
+          </radialGradient>
+        </defs>
+        <circle cx="20" cy="20" r="19" fill="url(#g1)"/>
+        <path d="M20 6 C11 6 6 12 6 19 C6 23 8 25 9 26 L9 30 L12 30 L12 33 L15 33 L15 30 L18 30 L18 33 L22 33 L22 30 L25 30 L25 33 L28 33 L28 30 L31 30 L31 26 C32 25 34 23 34 19 C34 12 29 6 20 6 Z" fill="#1a0606" stroke="#8a1414" stroke-width="1"/>
+        <ellipse cx="14" cy="18" rx="3" ry="4" fill="#000"/>
+        <ellipse cx="26" cy="18" rx="3" ry="4" fill="#000"/>
+        <circle cx="14" cy="18" r="1.2" fill="#c22222"/>
+        <circle cx="26" cy="18" r="1.2" fill="#c22222"/>
+        <path d="M20 20 L18 24 L20 25 L22 24 Z" fill="#000"/>
+        <text x="20" y="14" text-anchor="middle" font-family="Cormorant SC" font-size="6" fill="#e09b3a" font-weight="900">IX</text>
+      </svg>
+      <div style="font-family: 'JetBrains Mono'; font-size: 11px; color: #c22222; letter-spacing: 0.4em; font-weight: 700; margin-top: 20px;">СЕЗОН II · THE RECURSION · 147 ДНЕЙ</div>
+      <div style="font-family: 'UnifrakturCook'; font-size: 88px; color: #e8dccb; line-height: 1; margin-top: 6px; text-shadow: 0 0 30px rgba(194,34,34,0.5);">Druʒ·IX</div>
+      <div style="font-family: 'Cormorant SC'; font-size: 18px; color: #e09b3a; letter-spacing: 0.25em; margin-top: 16px; font-style: italic; font-weight: 500;">« Ковальня ликторов. 218 узлов. 8 644 кодексов. »</div>
+      <div style="display: flex; gap: 12px; justify-content: center; margin-top: 28px;">
+        <a href="onboarding.html" class="btn btn-blood" style="padding: 14px 32px; font-size: 12px; letter-spacing: 0.25em; font-weight: 800;">⚔ НАЧАТЬ ПУТЬ</a>
+        <a href="sanctum.html" class="btn btn-ghost" style="padding: 14px 28px; font-size: 12px; letter-spacing: 0.2em;">→ ВЕРНУТЬСЯ В СВЯТИЛИЩЕ</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Atlas grid -->
+  <div style="font-family: 'JetBrains Mono'; font-size: 10px; color: #6b5f54; letter-spacing: 0.35em; font-weight: 700; margin-bottom: 14px;">◈ АТЛАС МИРОВ</div>
+  <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px;">
+    <!-- Core -->
+    <a href="sanctum.html" class="card">
+      <div style="display: flex; gap: 14px; align-items: start;">
+        <div class="icon-wrap" style="background: linear-gradient(180deg, rgba(224,155,58,0.22), #0a0303); border: 1px solid #e09b3a; color: #f5c56b;">⬢</div>
+        <div style="flex: 1; min-width: 0;">
+          <div style="font-family: 'JetBrains Mono'; font-size: 9px; color: #e09b3a; letter-spacing: 0.2em; font-weight: 700;">ХАБ</div>
+          <div style="font-family: 'Cormorant SC'; font-size: 20px; color: #e8dccb; font-weight: 700; letter-spacing: 0.06em; margin-top: 2px;">Святилище</div>
+          <div style="font-family: 'Manrope'; font-size: 11px; color: #a8998a; line-height: 1.5; margin-top: 6px;">твой персонаж · экипировка · активные трайалы · стрик</div>
+        </div>
+      </div>
+    </a>
+    <a href="forge.html" class="card">
+      <div style="display: flex; gap: 14px; align-items: start;">
+        <div class="icon-wrap" style="background: linear-gradient(180deg, rgba(239,159,39,0.22), #0a0303); border: 1px solid #EF9F27; color: #EF9F27;">⚔</div>
+        <div style="flex: 1; min-width: 0;">
+          <div style="font-family: 'JetBrains Mono'; font-size: 9px; color: #EF9F27; letter-spacing: 0.2em; font-weight: 700;">ТРЕНИРОВКА</div>
+          <div style="font-family: 'Cormorant SC'; font-size: 20px; color: #e8dccb; font-weight: 700; letter-spacing: 0.06em; margin-top: 2px;">Кузня Испытаний</div>
+          <div style="font-family: 'Manrope'; font-size: 11px; color: #a8998a; line-height: 1.5; margin-top: 6px;">15 режимов мок-боя · Daily Kata · календарь интервью</div>
+        </div>
+      </div>
+    </a>
+    <a href="arena.html" class="card">
+      <div style="display: flex; gap: 14px; align-items: start;">
+        <div class="icon-wrap" style="background: linear-gradient(180deg, rgba(194,34,34,0.3), #0a0303); border: 1px solid #c22222; color: #e83838;">⚔</div>
+        <div style="flex: 1; min-width: 0;">
+          <div style="font-family: 'JetBrains Mono'; font-size: 9px; color: #c22222; letter-spacing: 0.2em; font-weight: 700;">PVP</div>
+          <div style="font-family: 'Cormorant SC'; font-size: 20px; color: #e8dccb; font-weight: 700; letter-spacing: 0.06em; margin-top: 2px;">Арена Крови</div>
+          <div style="font-family: 'Manrope'; font-size: 11px; color: #a8998a; line-height: 1.5; margin-top: 6px;">1v1 · 2v2 · Royale · Война Гильдий</div>
+        </div>
+      </div>
+    </a>
+    <a href="skills.html" class="card">
+      <div style="display: flex; gap: 14px; align-items: start;">
+        <div class="icon-wrap" style="background: linear-gradient(180deg, rgba(127,119,221,0.22), #0a0303); border: 1px solid #7F77DD; color: #7F77DD;">◈</div>
+        <div style="flex: 1; min-width: 0;">
+          <div style="font-family: 'JetBrains Mono'; font-size: 9px; color: #7F77DD; letter-spacing: 0.2em; font-weight: 700;">ATLAS</div>
+          <div style="font-family: 'Cormorant SC'; font-size: 20px; color: #e8dccb; font-weight: 700; letter-spacing: 0.06em; margin-top: 2px;">Дерево Скиллов</div>
+          <div style="font-family: 'Manrope'; font-size: 11px; color: #a8998a; line-height: 1.5; margin-top: 6px;">218 пассивных узлов · pan & zoom</div>
+        </div>
+      </div>
+    </a>
+
+    <a href="guild.html" class="card">
+      <div style="display: flex; gap: 14px; align-items: start;">
+        <div class="icon-wrap" style="background: linear-gradient(180deg, rgba(138,20,20,0.3), #0a0303); border: 1px solid #8a1414; color: #c22222;">⚯</div>
+        <div style="flex: 1; min-width: 0;">
+          <div style="font-family: 'JetBrains Mono'; font-size: 9px; color: #c22222; letter-spacing: 0.2em; font-weight: 700;">СОЦИАЛКА</div>
+          <div style="font-family: 'Cormorant SC'; font-size: 20px; color: #e8dccb; font-weight: 700; letter-spacing: 0.06em; margin-top: 2px;">Кровь·IX</div>
+          <div style="font-family: 'Manrope'; font-size: 11px; color: #a8998a; line-height: 1.5; margin-top: 6px;">гильдия · орден · война недели · казна</div>
+        </div>
+      </div>
+    </a>
+    <a href="codex.html" class="card">
+      <div style="display: flex; gap: 14px; align-items: start;">
+        <div class="icon-wrap" style="background: linear-gradient(180deg, rgba(224,155,58,0.22), #0a0303); border: 1px solid #e09b3a; color: #f5c56b;">❏</div>
+        <div style="flex: 1; min-width: 0;">
+          <div style="font-family: 'JetBrains Mono'; font-size: 9px; color: #e09b3a; letter-spacing: 0.2em; font-weight: 700;">БИБЛИОТЕКА</div>
+          <div style="font-family: 'Cormorant SC'; font-size: 20px; color: #e8dccb; font-weight: 700; letter-spacing: 0.06em; margin-top: 2px;">Кодекс</div>
+          <div style="font-family: 'Manrope'; font-size: 11px; color: #a8998a; line-height: 1.5; margin-top: 6px;">подкасты · свитки · курсы · рекомендации Ликтора</div>
+        </div>
+      </div>
+    </a>
+    <a href="profile.html" class="card">
+      <div style="display: flex; gap: 14px; align-items: start;">
+        <div class="icon-wrap" style="background: linear-gradient(180deg, rgba(29,158,117,0.22), #0a0303); border: 1px solid #1D9E75; color: #1D9E75;">☉</div>
+        <div style="flex: 1; min-width: 0;">
+          <div style="font-family: 'JetBrains Mono'; font-size: 9px; color: #1D9E75; letter-spacing: 0.2em; font-weight: 700;">ПУБЛИЧНО</div>
+          <div style="font-family: 'Cormorant SC'; font-size: 20px; color: #e8dccb; font-weight: 700; letter-spacing: 0.06em; margin-top: 2px;">Профиль · Resume</div>
+          <div style="font-family: 'Manrope'; font-size: 11px; color: #a8998a; line-height: 1.5; margin-top: 6px;">skill atlas · weekly report · карьерная линия · трофеи</div>
+        </div>
+      </div>
+    </a>
+    <a href="mock.html" class="card">
+      <div style="display: flex; gap: 14px; align-items: start;">
+        <div class="icon-wrap" style="background: linear-gradient(180deg, rgba(106,159,212,0.22), #0a0303); border: 1px solid #6a9fd4; color: #6a9fd4;">☠</div>
+        <div style="flex: 1; min-width: 0;">
+          <div style="font-family: 'JetBrains Mono'; font-size: 9px; color: #6a9fd4; letter-spacing: 0.2em; font-weight: 700;">ЖИВАЯ СЕССИЯ</div>
+          <div style="font-family: 'Cormorant SC'; font-size: 20px; color: #e8dccb; font-weight: 700; letter-spacing: 0.06em; margin-top: 2px;">Мок-Сессия</div>
+          <div style="font-family: 'Manrope'; font-size: 11px; color: #a8998a; line-height: 1.5; margin-top: 6px;">code + whiteboard · Ликтор слушает · транскрипт</div>
+        </div>
+      </div>
+    </a>
+
+    <a href="atlas.html" class="card">
+      <div style="display: flex; gap: 14px; align-items: start;">
+        <div class="icon-wrap" style="background: linear-gradient(180deg, rgba(194,34,34,0.25), #0a0303); border: 1px solid #8a1414; color: #e83838;">⟐</div>
+        <div style="flex: 1; min-width: 0;">
+          <div style="font-family: 'JetBrains Mono'; font-size: 9px; color: #e83838; letter-spacing: 0.2em; font-weight: 700;">КАРТА БОССОВ</div>
+          <div style="font-family: 'Cormorant SC'; font-size: 20px; color: #e8dccb; font-weight: 700; letter-spacing: 0.06em; margin-top: 2px;">Атлас Компаний</div>
+          <div style="font-family: 'Manrope'; font-size: 11px; color: #a8998a; line-height: 1.5; margin-top: 6px;">47 драконов · tiers · рауны · убитые с реликвией</div>
+        </div>
+      </div>
+    </a>
+    <a href="relics.html" class="card">
+      <div style="display: flex; gap: 14px; align-items: start;">
+        <div class="icon-wrap" style="background: linear-gradient(180deg, rgba(127,119,221,0.22), #0a0303); border: 1px solid #7F77DD; color: #aaa4ff;">⬡</div>
+        <div style="flex: 1; min-width: 0;">
+          <div style="font-family: 'JetBrains Mono'; font-size: 9px; color: #aaa4ff; letter-spacing: 0.2em; font-weight: 700;">ИНВЕНТАРЬ</div>
+          <div style="font-family: 'Cormorant SC'; font-size: 20px; color: #e8dccb; font-weight: 700; letter-spacing: 0.06em; margin-top: 2px;">Реликвии</div>
+          <div style="font-family: 'Manrope'; font-size: 11px; color: #a8998a; line-height: 1.5; margin-top: 6px;">экипировка · сундук · валюта · uniques</div>
+        </div>
+      </div>
+    </a>
+    <a href="season.html" class="card" style="border-color: #8a1414;">
+      <div style="display: flex; gap: 14px; align-items: start;">
+        <div class="icon-wrap" style="background: linear-gradient(180deg, rgba(232,56,56,0.3), #0a0303); border: 1px solid #e83838; color: #e83838;">⚡</div>
+        <div style="flex: 1; min-width: 0;">
+          <div style="font-family: 'JetBrains Mono'; font-size: 9px; color: #e83838; letter-spacing: 0.2em; font-weight: 700;">СЕЗОН IX · 27 ДНЕЙ</div>
+          <div style="font-family: 'UnifrakturCook'; font-size: 28px; color: #e8dccb; line-height: 1; margin-top: 2px; text-shadow: 0 0 12px rgba(232,56,56,0.4);">Tenebræ</div>
+          <div style="font-family: 'Manrope'; font-size: 11px; color: #a8998a; line-height: 1.5; margin-top: 6px;">лига тьмы · модификаторы · pass · лидборд · HC</div>
+        </div>
+      </div>
+    </a>
+    <a href="results.html" class="card">
+      <div style="display: flex; gap: 14px; align-items: start;">
+        <div class="icon-wrap" style="background: linear-gradient(180deg, rgba(245,197,107,0.22), #0a0303); border: 1px solid #f5c56b; color: #f5c56b;">☠</div>
+        <div style="flex: 1; min-width: 0;">
+          <div style="font-family: 'JetBrains Mono'; font-size: 9px; color: #f5c56b; letter-spacing: 0.2em; font-weight: 700;">ИТОГ БОЯ</div>
+          <div style="font-family: 'Cormorant SC'; font-size: 20px; color: #e8dccb; font-weight: 700; letter-spacing: 0.06em; margin-top: 2px;">Аутопсия</div>
+          <div style="font-family: 'Manrope'; font-size: 11px; color: #a8998a; line-height: 1.5; margin-top: 6px;">офер · падение · разбор · вердикт Ликтора</div>
+        </div>
+      </div>
+    </a>
+    <a href="settings.html" class="card">
+      <div style="display: flex; gap: 14px; align-items: start;">
+        <div class="icon-wrap" style="background: linear-gradient(180deg, rgba(168,153,138,0.2), #0a0303); border: 1px solid #6b5f54; color: #a8998a;">❂</div>
+        <div style="flex: 1; min-width: 0;">
+          <div style="font-family: 'JetBrains Mono'; font-size: 9px; color: #a8998a; letter-spacing: 0.2em; font-weight: 700;">НАСТРОЙКИ</div>
+          <div style="font-family: 'Cormorant SC'; font-size: 20px; color: #e8dccb; font-weight: 700; letter-spacing: 0.06em; margin-top: 2px;">Алтарь</div>
+          <div style="font-family: 'Manrope'; font-size: 11px; color: #a8998a; line-height: 1.5; margin-top: 6px;">ликтор · жёсткость · тема · приватность · опасная зона</div>
+        </div>
+      </div>
+    </a>
+
+    <a href="onboarding.html" class="card" style="border-color: #c22222;">
+      <div style="display: flex; gap: 14px; align-items: start;">
+        <div class="icon-wrap" style="background: linear-gradient(180deg, rgba(194,34,34,0.3), #0a0303); border: 1px solid #e83838; color: #e83838;">✦</div>
+        <div style="flex: 1; min-width: 0;">
+          <div style="font-family: 'JetBrains Mono'; font-size: 9px; color: #e83838; letter-spacing: 0.2em; font-weight: 700;">НОВЫЙ · 5 АКТОВ</div>
+          <div style="font-family: 'Cormorant SC'; font-size: 20px; color: #e8dccb; font-weight: 700; letter-spacing: 0.06em; margin-top: 2px;">Инициация</div>
+          <div style="font-family: 'Manrope'; font-size: 11px; color: #a8998a; line-height: 1.5; margin-top: 6px;">путь · оракул · персонаж · крещение · судьба</div>
+        </div>
+      </div>
+    </a>
+  </div>
+
+  <!-- Footer -->
+  <div style="margin-top: 40px; padding: 16px; text-align: center; border-top: 1px solid #2a221b;">
+    <div style="font-family: 'Cormorant SC'; font-size: 12px; color: #6b5f54; letter-spacing: 0.3em; font-style: italic;">DRUZ·IX — что не сломало, закалило.</div>
+  </div>
+</div>
+<script src="styles/motion.js"></script>
+</body>
+</html>

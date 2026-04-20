@@ -1,0 +1,231 @@
+/* ============================================================
+   DRUZ·IX — motion layer
+   Page transitions (shutter + fade), enter animations, hovers,
+   cinder particles. Loaded after tokens.css on every page.
+   ============================================================ */
+
+/* ============ KEYFRAMES ============ */
+@keyframes pulse { 0%,100% { opacity: 0.6; } 50% { opacity: 1; } }
+@keyframes blink { 50% { opacity: 0.3; } }
+
+@keyframes dm-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes dm-fade-up {
+  from { opacity: 0; transform: translateY(14px); filter: blur(6px); }
+  to   { opacity: 1; transform: translateY(0);     filter: blur(0); }
+}
+@keyframes dm-fade-in-scale {
+  from { opacity: 0; transform: scale(0.98); filter: blur(4px); }
+  to   { opacity: 1; transform: scale(1);    filter: blur(0); }
+}
+
+/* Page-level veil — shutter overlay that slides down, then up */
+@keyframes dm-veil-drop {
+  from { transform: translateY(-100%); }
+  to   { transform: translateY(0); }
+}
+@keyframes dm-veil-rise {
+  from { transform: translateY(0); }
+  to   { transform: translateY(-100%); }
+}
+
+/* Cinder drift — used by JS-spawned particles */
+@keyframes dm-cinder-drift {
+  0%   { transform: translate(0, 0) rotate(0); opacity: 0; }
+  10%  { opacity: var(--cinder-opacity, 0.5); }
+  50%  { opacity: var(--cinder-opacity, 0.5); }
+  100% { transform: translate(var(--cinder-dx, 20px), var(--cinder-dy, -120vh)) rotate(360deg); opacity: 0; }
+}
+
+/* ============ GLOBAL ENTER ============ */
+/* Page body fades in on load. Combined with veil overlay. */
+body {
+  animation: dm-fade-in 420ms ease-out both;
+}
+
+/* Panels stagger-enter. Add .dm-enter to any panel; pair with
+   --dm-delay inline style (or rely on :nth-child fallback). */
+.panel,
+.dm-enter {
+  animation: dm-fade-up 520ms cubic-bezier(.2,.7,.2,1) both;
+  animation-delay: var(--dm-delay, 0ms);
+}
+
+/* Stagger children of a [data-stagger] container */
+[data-stagger] > * {
+  animation: dm-fade-up 520ms cubic-bezier(.2,.7,.2,1) both;
+}
+[data-stagger] > *:nth-child(1) { animation-delay:  30ms; }
+[data-stagger] > *:nth-child(2) { animation-delay:  90ms; }
+[data-stagger] > *:nth-child(3) { animation-delay: 150ms; }
+[data-stagger] > *:nth-child(4) { animation-delay: 210ms; }
+[data-stagger] > *:nth-child(5) { animation-delay: 270ms; }
+[data-stagger] > *:nth-child(6) { animation-delay: 330ms; }
+[data-stagger] > *:nth-child(7) { animation-delay: 390ms; }
+[data-stagger] > *:nth-child(8) { animation-delay: 450ms; }
+[data-stagger] > *:nth-child(n+9) { animation-delay: 500ms; }
+
+/* ============ PAGE TRANSITION VEIL ============ */
+#dm-veil {
+  position: fixed; inset: 0;
+  z-index: 9999;
+  pointer-events: none;
+  transform: translateY(-100%);
+  background:
+    radial-gradient(ellipse at 50% 30%, rgba(138,20,20,0.35), transparent 60%),
+    linear-gradient(180deg, #0a0605 0%, #05040a 50%, #0a0605 100%);
+  box-shadow: 0 20px 60px rgba(0,0,0,0.8), inset 0 -1px 0 rgba(232,56,56,0.4);
+}
+#dm-veil.dm-veil-active {
+  pointer-events: auto;
+  animation: dm-veil-drop 360ms cubic-bezier(.5,0,.3,1) forwards;
+}
+#dm-veil::after {
+  content: '';
+  position: absolute; left: 0; right: 0; bottom: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--blood-lit), var(--ember-lit), var(--blood-lit), transparent);
+  box-shadow: 0 0 16px var(--blood-bright), 0 0 8px var(--ember-lit);
+  opacity: 0.9;
+}
+#dm-veil .dm-veil-glyph {
+  position: absolute; inset: 0;
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--font-blackletter, 'UnifrakturCook', serif);
+  font-size: 72px;
+  color: var(--blood-lit);
+  text-shadow: 0 0 20px rgba(232,56,56,0.6), 0 0 40px rgba(138,20,20,0.4);
+  letter-spacing: 0.1em;
+  opacity: 0;
+  animation: dm-fade-in 240ms ease-out 140ms both;
+}
+
+/* ============ CINDERS ============ */
+#dm-cinders {
+  position: fixed; inset: 0;
+  pointer-events: none;
+  z-index: 1;
+  overflow: hidden;
+}
+.dm-cinder {
+  position: absolute;
+  bottom: -20px;
+  width: 2px; height: 2px;
+  background: radial-gradient(circle, rgba(245,197,107,0.9), rgba(194,34,34,0.4) 50%, transparent 80%);
+  border-radius: 50%;
+  filter: blur(0.5px);
+  box-shadow: 0 0 4px rgba(245,197,107,0.5);
+  animation: dm-cinder-drift linear forwards;
+  animation-duration: var(--cinder-dur, 18s);
+  animation-delay: var(--cinder-delay, 0s);
+}
+.dm-cinder.dust {
+  background: radial-gradient(circle, rgba(168,153,138,0.7), rgba(107,95,84,0.3) 50%, transparent 80%);
+  box-shadow: none;
+  filter: blur(1px);
+}
+
+/* ============ HOVER POLISH ============ */
+/* All anchors/cards get a gentle lift unless opted out */
+a.card, .card {
+  transition:
+    transform 240ms cubic-bezier(.2,.7,.2,1),
+    border-color 240ms ease,
+    box-shadow  240ms ease,
+    background  240ms ease;
+}
+a.card:hover {
+  transform: translateY(-2px);
+}
+
+/* Buttons — pulse the glow on hover, press-down on active */
+.btn {
+  transition:
+    transform 160ms ease,
+    background 200ms ease,
+    border-color 200ms ease,
+    box-shadow 200ms ease,
+    color 200ms ease;
+}
+.btn:active { transform: translateY(1px); }
+
+/* Links in topbar/sidebar */
+nav a, .tab {
+  transition: color 200ms ease, background 200ms ease, border-color 200ms ease;
+}
+
+/* Icon links in topbar */
+header a[title] {
+  transition: color 200ms ease, background 200ms ease, border-color 200ms ease, box-shadow 200ms ease;
+}
+header a[title]:hover {
+  color: var(--ember-bright) !important;
+  border-color: var(--metal-hi) !important;
+  box-shadow: inset 0 0 8px rgba(245,197,107,0.15);
+}
+
+/* Panel title-bars glow on hover of parent panel */
+.panel { transition: border-color 260ms ease, box-shadow 260ms ease; }
+.panel:hover {
+  border-color: var(--metal-hi);
+}
+
+/* Tab buttons — small underline slide */
+.tab-row { position: relative; }
+.tab-row .tab {
+  position: relative;
+}
+.tab-row .tab::after {
+  content: '';
+  position: absolute; left: 50%; right: 50%; bottom: -1px;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--blood-lit), transparent);
+  transition: left 240ms ease, right 240ms ease, opacity 240ms ease;
+  opacity: 0;
+}
+.tab-row .tab:hover::after { left: 10%; right: 10%; opacity: 0.7; }
+.tab-row .tab.active::after { left: 0; right: 0; opacity: 1; }
+
+/* Ripple effect on clickable panels/buttons */
+.dm-ripple {
+  position: relative;
+  overflow: hidden;
+}
+.dm-ripple::before {
+  content: '';
+  position: absolute;
+  left: var(--rx, 50%); top: var(--ry, 50%);
+  width: 0; height: 0;
+  background: radial-gradient(circle, rgba(232,56,56,0.25), transparent 70%);
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  transition: width 500ms ease-out, height 500ms ease-out, opacity 600ms ease-out;
+  opacity: 0;
+}
+.dm-ripple.dm-ripple-go::before {
+  width: 300px; height: 300px;
+  opacity: 1;
+  transition: width 0ms, height 0ms, opacity 0ms;
+}
+
+/* ============ REDUCED MOTION ============ */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+  #dm-cinders, #dm-veil { display: none; }
+}
+
+/* Honor Settings toggle: <html data-motion="off"> disables non-essential */
+html[data-motion="off"] #dm-cinders,
+html[data-motion="off"] #dm-veil .dm-veil-glyph {
+  display: none;
+}
+html[data-motion="off"] * {
+  animation-duration: 180ms !important;
+}

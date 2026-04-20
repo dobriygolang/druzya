@@ -1,0 +1,26 @@
+go 1.25.6
+
+use (
+	./backend/cmd/monolith
+	./backend/services/admin
+	./backend/services/ai_mock
+	./backend/services/ai_native
+	./backend/services/arena
+	./backend/services/auth
+	./backend/services/daily
+	./backend/services/editor
+	./backend/services/feed
+	./backend/services/guild
+	./backend/services/notify
+	./backend/services/podcast
+	./backend/services/profile
+	./backend/services/rating
+	./backend/services/season
+	./backend/services/slot
+	./backend/shared
+)
+
+// backend/tools is deliberately OUT of the workspace — its codegen CLIs
+// (buf, protoc-gen-*, mockgen) pull transitive deps that clash with go.sum
+// verification inside the production Docker image. Invoke via
+// `GOWORK=off go run ...` from the Makefile (see gen-proto, gen-sqlc, etc.).
