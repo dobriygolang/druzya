@@ -38,14 +38,19 @@ jobs:
       - name: Go workspace sync
         run: go work sync
 
-      # Lint from repo root so go.work resolves; --path-prefix keeps the
-      # output rooted relative to backend/. Pinned to a v1.61 patch the
-      # action fetches itself.
+      # Lint each backend module directly. golangci-lint 1.61 doesn't
+      # understand workspace mode, and our root GOFLAGS=-mod=mod clashes
+      # with workspace-mode's readonly requirement. Disabling GOWORK and
+      # clearing GOFLAGS for this step makes each module self-contained.
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v6
+        env:
+          GOWORK: "off"
+          GOFLAGS: ""
         with:
           version: v1.61
-          args: --config=backend/.golangci.yml --path-prefix=backend --timeout=5m
+          working-directory: backend
+          args: --config=.golangci.yml --timeout=5m ./...
 
       - name: Tests
         # Workspace mode handles cross-module imports automatically.

@@ -222,53 +222,163 @@ export default function ArenaMatchPage() {
               <span style={{ color: 'var(--blood-lit)' }}>
                 Код противника
               </span>
-            </PanelHead>
-            <div
-              style={{
-                flex: 1,
-                background: '#0a0c10',
-                padding: 16,
-                fontFamily: 'var(--font-code)',
-                fontSize: 12,
-                color: 'var(--text-dim)',
-                position: 'relative',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: 6,
-              }}
-            >
-              {/* STUB: real opponent presence requires WebSocket EditorHub
-                  (bible §19.2). Until wired, show animated placeholder lines
-                  so the panel doesn't look broken. */}
-              {[42, 71, 58, 35, 80, 22, 65, 50, 45].map((w, i) => (
-                <span
-                  key={i}
-                  style={{
-                    width: `${w}%`,
-                    height: 8,
-                    background:
-                      'linear-gradient(90deg, var(--blood-deep), var(--blood))',
-                    opacity: 0.3 + (i % 3) * 0.15,
-                  }}
-                />
-              ))}
               <span
                 style={{
-                  position: 'absolute',
-                  bottom: 14,
-                  left: 16,
+                  marginLeft: 10,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 5,
                   fontSize: 9,
-                  color: 'var(--text-dim)',
+                  color: 'var(--text-mid)',
                   letterSpacing: '0.2em',
                 }}
               >
-                ◈ GHOST · LIVE PRESENCE COMING
+                <span
+                  aria-hidden
+                  style={{
+                    width: 6,
+                    height: 6,
+                    borderRadius: '50%',
+                    background: 'var(--tier-normal)',
+                    boxShadow: '0 0 6px var(--tier-normal)',
+                    animation: 'sigil-aura 1.6s ease-in-out infinite',
+                  }}
+                />
+                LIVE
               </span>
-            </div>
+            </PanelHead>
+            <OpponentGhostPanel />
           </Panel>
         </div>
       </div>
     </AppShell>
+  )
+}
+
+/**
+ * Ghost presence panel — simulates what you'd see over a real WebSocket
+ * EditorHub stream:
+ *  - Static "already typed" code lines (darker)
+ *  - A blinking caret at the opponent's current position
+ *  - A small label with opponent's name above the caret, PoE-trade-chat style
+ *
+ * STUB: swap to `useEditorPresence(sessionId)` once
+ * `editor.proto/EditorService.Watch` streaming RPC ships.
+ */
+function OpponentGhostPanel() {
+  // "Typed" lines — width percentages so it looks like code without reading
+  // as nonsense. Shade derived from line position to mimic syntax highlight.
+  const LINES = [
+    { w: 56, mono: 'func twoSum(nums []int, target int) []int {' },
+    { w: 48, mono: '\u00a0\u00a0seen := map[int]int{}' },
+    { w: 72, mono: '\u00a0\u00a0for i, n := range nums {' },
+    { w: 84, mono: '\u00a0\u00a0\u00a0\u00a0if j, ok := seen[target - n]; ok {' },
+    { w: 56, mono: '\u00a0\u00a0\u00a0\u00a0\u00a0\u00a0return []int{j, i}' },
+  ]
+
+  return (
+    <div
+      style={{
+        flex: 1,
+        background: '#0a0c10',
+        padding: '12px 14px',
+        fontFamily: 'var(--font-code)',
+        fontSize: 12,
+        color: 'var(--text-dim)',
+        position: 'relative',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 4,
+      }}
+    >
+      {LINES.map((l, i) => (
+        <div
+          key={i}
+          style={{
+            display: 'flex',
+            alignItems: 'baseline',
+            gap: 8,
+          }}
+        >
+          <span
+            style={{
+              width: 20,
+              textAlign: 'right',
+              color: 'var(--gold-dim)',
+              opacity: 0.6,
+              flexShrink: 0,
+            }}
+          >
+            {i + 1}
+          </span>
+          <span
+            style={{
+              color: i === 0 ? 'var(--gold-dim)' : 'var(--text-mid)',
+              whiteSpace: 'pre',
+              opacity: 0.65 + (i / LINES.length) * 0.3,
+              flex: `0 0 auto`,
+              maxWidth: `${l.w}%`,
+              overflow: 'hidden',
+              textOverflow: 'clip',
+            }}
+          >
+            {l.mono}
+          </span>
+        </div>
+      ))}
+
+      {/* Opponent caret — positioned absolutely over line 5 column ~32ch */}
+      <div
+        style={{
+          position: 'absolute',
+          left: 'calc(20px + 14px + 14ch)', // gutter + gap + col offset
+          top: 'calc(12px + 4 * (4px + 1em))',
+          pointerEvents: 'none',
+        }}
+      >
+        <span
+          aria-label="opponent cursor"
+          style={{
+            display: 'inline-block',
+            width: 2,
+            height: '1.15em',
+            background: 'var(--blood-bright)',
+            boxShadow: '0 0 5px var(--blood-bright)',
+            animation: 'sigil-aura 1s ease-in-out infinite',
+            verticalAlign: 'text-bottom',
+          }}
+        />
+        <span
+          style={{
+            position: 'absolute',
+            left: 4,
+            top: -18,
+            fontSize: 9,
+            fontFamily: 'var(--font-display)',
+            letterSpacing: '0.15em',
+            padding: '1px 5px',
+            background: 'var(--blood)',
+            color: '#fff',
+            whiteSpace: 'nowrap',
+          }}
+        >
+          SHADOW_4821
+        </span>
+      </div>
+
+      <span
+        style={{
+          position: 'absolute',
+          bottom: 10,
+          right: 14,
+          fontSize: 8,
+          color: 'var(--text-dim)',
+          letterSpacing: '0.25em',
+        }}
+      >
+        ◈ EDITOR PRESENCE · STUB
+      </span>
+    </div>
   )
 }
 

@@ -230,3 +230,16 @@ html[data-motion='off'] * {
   animation: atlas-center-halo 3400ms ease-in-out infinite;
   transform-origin: center;
 }
+
+/* ==================== Kata variants (bible §19.2) ==================== */
+@keyframes kata-cursed-pulse {
+  0%, 100% { opacity: 0.35; transform: scale(1); }
+  50%      { opacity: 0.7;  transform: scale(1.06); }
+}
+@keyframes kata-boss-shimmer {
+  0%   { background-position: 120% 0; }
+  100% { background-position: -20% 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .kata-cursed-pulse, .kata-boss-shimmer { animation: none !important; }
+}

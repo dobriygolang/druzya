@@ -98,6 +98,8 @@ export default function SettingsPage() {
               checked={prefs.telegram_daily}
               onChange={(v) => setPrefs({ ...prefs, telegram_daily: v })}
             />
+            <TelegramLink />
+
             <Toggle
               label={t('settings.push_arena')}
               checked={prefs.push_arena_invite}
@@ -272,6 +274,111 @@ function Toggle({
           style={{ display: 'none' }}
         />
       </label>
+    </InsetGroove>
+  )
+}
+
+/**
+ * TelegramLink — surface the connect-to-bot flow.
+ *
+ * STUB: actual handshake requires backend OAuth deep-link (bible §22).
+ * Until wired, we:
+ *   - track connected state in localStorage so a single-session demo can
+ *     show both states
+ *   - emit a `https://t.me/<bot>?start=<user_id>` deep link that does
+ *     nothing on the server side yet, but visually proves the UX
+ */
+function TelegramLink() {
+  const LS_KEY = 'druz9.telegram.linked'
+  const [linked, setLinked] = useState<{ username: string } | null>(() => {
+    try {
+      const raw = localStorage.getItem(LS_KEY)
+      return raw ? (JSON.parse(raw) as { username: string }) : null
+    } catch {
+      return null
+    }
+  })
+
+  const onConnect = () => {
+    // STUB: open bot in a new tab. Real flow posts a signed token and waits
+    // for the /start webhook to come back.
+    window.open(
+      'https://t.me/druz9_bot?start=demo_user_42',
+      '_blank',
+      'noopener',
+    )
+    // Optimistic: flip to connected after 2s so demos feel alive.
+    window.setTimeout(() => {
+      const val = { username: 'aleksei_kondrakov' }
+      localStorage.setItem(LS_KEY, JSON.stringify(val))
+      setLinked(val)
+    }, 2000)
+  }
+
+  const onDisconnect = () => {
+    localStorage.removeItem(LS_KEY)
+    setLinked(null)
+  }
+
+  return (
+    <InsetGroove>
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 12,
+        }}
+      >
+        {/* Telegram paper-plane sigil */}
+        <svg width={32} height={32} viewBox="0 0 32 32" aria-hidden>
+          <circle
+            cx="16"
+            cy="16"
+            r="15"
+            fill={linked ? 'var(--gold-faint)' : 'var(--bg-void)'}
+            stroke={linked ? 'var(--gold-bright)' : 'var(--gold-dim)'}
+            strokeWidth="1.2"
+          />
+          <path
+            d="M7 15 L25 8 L22 24 L15 19 L19 15 L12 18 Z"
+            fill={linked ? 'var(--gold-bright)' : 'var(--text-mid)'}
+            opacity={linked ? 1 : 0.7}
+          />
+        </svg>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div
+            className="heraldic"
+            style={{
+              color: 'var(--gold-bright)',
+              fontSize: 12,
+              letterSpacing: '0.12em',
+            }}
+          >
+            Telegram
+          </div>
+          <div
+            style={{
+              fontSize: 10,
+              color: linked ? 'var(--tier-normal)' : 'var(--text-mid)',
+              marginTop: 2,
+              letterSpacing: '0.1em',
+            }}
+          >
+            {linked
+              ? `Привязан как @${linked.username}`
+              : 'Не привязан — бот будет слать дейлик и напоминания'}
+          </div>
+        </div>
+        {linked ? (
+          <Button tone="ghost" size="sm" onClick={onDisconnect}>
+            Отвязать
+          </Button>
+        ) : (
+          <Button tone="primary" size="sm" onClick={onConnect}>
+            Привязать
+          </Button>
+        )}
+      </div>
     </InsetGroove>
   )
 }

@@ -1,4 +1,5 @@
 import { useTranslation } from 'react-i18next'
+import { Link } from 'react-router-dom'
 import { AppShell } from '../components/AppShell'
 import {
   Panel,
@@ -34,10 +35,18 @@ export default function DailyPage() {
         }}
       >
         <Panel>
-          <PanelHead subtitle="KATA">{t('daily.kata')}</PanelHead>
+          <PanelHead>{t('daily.kata')}</PanelHead>
           <div style={{ padding: 20 }}>
             {kata ? (
-              <>
+              <KataFrame
+                variant={
+                  kata.is_weekly_boss
+                    ? 'boss'
+                    : kata.is_cursed
+                      ? 'cursed'
+                      : 'normal'
+                }
+              >
                 <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
                   <Badge
                     variant={kata.task.difficulty === 'easy' ? 'normal' : 'hard'}
@@ -47,7 +56,7 @@ export default function DailyPage() {
                   <Badge variant="dim">{kata.task.section}</Badge>
                   {kata.is_cursed && <Badge variant="boss">cursed</Badge>}
                   {kata.is_weekly_boss && (
-                    <Badge variant="boss">weekly boss</Badge>
+                    <Badge variant="boss">weekly boss · +200% XP</Badge>
                   )}
                 </div>
                 <div
@@ -88,7 +97,7 @@ export default function DailyPage() {
                     {kata.already_submitted ? 'Уже сдано' : 'Решать'}
                   </Button>
                 </div>
-              </>
+              </KataFrame>
             ) : (
               <div style={{ color: 'var(--text-dim)' }}>
                 {t('common.loading')}
@@ -253,6 +262,36 @@ export default function DailyPage() {
                     />
                   </div>
                   <Badge variant="blood">{calendar.days_left} дн</Badge>
+                  {calendar.days_left <= 0 && (
+                    <Link
+                      to="/autopsy/new"
+                      style={{ textDecoration: 'none' }}
+                    >
+                      <Button tone="primary" size="sm">
+                        ✦ Разобрать собес
+                      </Button>
+                    </Link>
+                  )}
+                </div>
+                {/* Always-visible secondary entry point — even before the
+                    interview, people may want to log a past one. */}
+                <div
+                  style={{
+                    marginTop: 8,
+                    fontSize: 10,
+                    color: 'var(--text-dim)',
+                  }}
+                >
+                  <Link
+                    to="/autopsy/new"
+                    style={{
+                      color: 'var(--gold-dim)',
+                      textDecoration: 'underline dotted',
+                      letterSpacing: '0.12em',
+                    }}
+                  >
+                    Разобрать любой прошлый собес →
+                  </Link>
                 </div>
 
                 <div style={{ marginTop: 20 }}>
@@ -396,5 +435,96 @@ function WaxSeal({ done }: { done: boolean }) {
         />
       </svg>
     </span>
+  )
+}
+
+/**
+ * KataFrame — wraps daily kata content with a variant-specific backdrop.
+ * Bible §19.2:
+ *   - normal: plain
+ *   - cursed (Tue/Fri): crimson glow + corner sigil, crimson border
+ *   - boss (weekly): ember radial-gradient + animated shimmer + gold frame
+ * Matches `motion.css` keyframes `kata-cursed-pulse`, `kata-boss-shimmer`
+ * (added below if they don't yet exist).
+ */
+function KataFrame({
+  variant,
+  children,
+}: {
+  variant: 'normal' | 'cursed' | 'boss'
+  children: React.ReactNode
+}) {
+  if (variant === 'normal') return <>{children}</>
+
+  if (variant === 'cursed') {
+    return (
+      <div
+        style={{
+          position: 'relative',
+          padding: 14,
+          border: '1px solid var(--blood)',
+          background:
+            'radial-gradient(ellipse at 85% 15%, rgba(194,34,34,0.12), transparent 55%), var(--bg-inset)',
+          boxShadow:
+            'inset 0 0 30px 0 rgba(138,20,20,0.35), 0 0 10px 0 rgba(194,34,34,0.2)',
+        }}
+      >
+        {/* Corner sigil — crimson rune */}
+        <svg
+          width={44}
+          height={44}
+          viewBox="0 0 44 44"
+          aria-hidden
+          style={{
+            position: 'absolute',
+            top: 6,
+            right: 6,
+            opacity: 0.5,
+            animation: 'kata-cursed-pulse 2.4s ease-in-out infinite',
+          }}
+        >
+          <circle cx="22" cy="22" r="18" fill="none" stroke="#c22222" strokeWidth="1" />
+          <path
+            d="M22 6 L22 38 M6 22 L38 22 M12 12 L32 32 M32 12 L12 32"
+            stroke="#c22222"
+            strokeWidth="0.8"
+            opacity="0.7"
+          />
+          <circle cx="22" cy="22" r="4" fill="#c22222" opacity="0.8" />
+        </svg>
+        {children}
+      </div>
+    )
+  }
+
+  // boss
+  return (
+    <div
+      style={{
+        position: 'relative',
+        padding: 14,
+        border: '1px solid var(--ember-lit)',
+        background:
+          'radial-gradient(ellipse at 50% 40%, rgba(224,155,58,0.12), transparent 65%), var(--bg-inset)',
+        boxShadow:
+          '0 0 14px 0 rgba(224,155,58,0.3), inset 0 0 20px 0 rgba(181,114,31,0.2)',
+        overflow: 'hidden',
+      }}
+    >
+      {/* Shimmer bar */}
+      <span
+        aria-hidden
+        style={{
+          position: 'absolute',
+          inset: 0,
+          background:
+            'linear-gradient(110deg, transparent 40%, rgba(245,197,107,0.15) 50%, transparent 60%)',
+          backgroundSize: '300% 100%',
+          animation: 'kata-boss-shimmer 3s linear infinite',
+          pointerEvents: 'none',
+        }}
+      />
+      {children}
+    </div>
   )
 }

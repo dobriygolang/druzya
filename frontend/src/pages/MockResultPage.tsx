@@ -1,4 +1,4 @@
-import { useParams } from 'react-router-dom'
+import { useParams, Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { AppShell } from '../components/AppShell'
 import {
@@ -7,6 +7,7 @@ import {
   PageHeader,
   Badge,
   Bar,
+  Button,
   InsetGroove,
 } from '../components/chrome'
 import { useMockReportQuery } from '../lib/queries/mock'
@@ -20,7 +21,14 @@ export default function MockResultPage() {
     <AppShell>
       <PageHeader
         title={t('mock_result.title')}
-
+        right={
+          <Link
+            to={`/mock/${sessionId}/replay`}
+            style={{ textDecoration: 'none' }}
+          >
+            <Button tone="primary">◉ Смотреть реплей</Button>
+          </Link>
+        }
       />
       {!report ? (
         <div style={{ color: 'var(--text-dim)' }}>{t('common.loading')}</div>

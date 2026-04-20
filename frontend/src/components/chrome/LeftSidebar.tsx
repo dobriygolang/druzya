@@ -31,6 +31,7 @@ const MENU: MenuGroup[] = [
     items: [
       { key: 'arena', label: 'Арена', icon: '⚔', to: '/arena' },
       { key: 'guild', label: 'Гильдия', icon: '◉', to: '/guild' },
+      { key: 'slots', label: 'Слоты', icon: '⏱', to: '/slots' },
     ],
   },
   {

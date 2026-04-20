@@ -51,4 +51,15 @@ const season = {
 
 export const seasonHandlers = [
   http.get(`${base}/season/current`, () => HttpResponse.json(season)),
+  http.post(`${base}/season/claim/:tier`, ({ params }) => {
+    const tier = Number(params.tier)
+    const cp = season.checkpoints.find((c) => c.tier === tier) as
+      | typeof season.checkpoints[0] & { claimed?: boolean }
+      | undefined
+    if (!cp || !cp.done) {
+      return new HttpResponse('not-unlockable', { status: 409 })
+    }
+    cp.claimed = true
+    return HttpResponse.json({ tier, claimed: true })
+  }),
 ]

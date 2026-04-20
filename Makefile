@@ -93,7 +93,7 @@ gen-sqlc: ## Generate sqlc typed queries per-domain
 .PHONY: gen-mocks
 gen-mocks: ## Generate mockgen mocks from //go:generate directives
 	cd backend && for svc in auth profile daily rating arena ai_mock ai_native editor guild season notify slot podcast admin; do \
-		[ -d "services/$$svc/domain" ] && go generate ./services/$$svc/domain/... || true; \
+		[ -d "services/$$svc/domain" ] && GOWORK=off go generate ./services/$$svc/domain/... || true; \
 	done
 
 .PHONY: gen-check

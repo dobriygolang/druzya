@@ -6,13 +6,15 @@ import {
   PageHeader,
   Badge,
   Bar,
+  Button,
   InsetGroove,
 } from '../components/chrome'
-import { useSeasonQuery } from '../lib/queries/season'
+import { useClaimReward, useSeasonQuery } from '../lib/queries/season'
 
 export default function SeasonPage() {
   const { t } = useTranslation()
   const { data: season } = useSeasonQuery()
+  const claim = useClaimReward()
 
   return (
     <AppShell>
@@ -246,6 +248,21 @@ export default function SeasonPage() {
                         </div>
                       </div>
                       {c.current && <Badge variant="ember">текущий</Badge>}
+                      {c.done && !c.claimed && (
+                        <Button
+                          tone="primary"
+                          size="sm"
+                          disabled={claim.isPending}
+                          onClick={() => claim.mutate(c.tier)}
+                        >
+                          {claim.isPending && claim.variables === c.tier
+                            ? '…'
+                            : 'Забрать'}
+                        </Button>
+                      )}
+                      {c.claimed && (
+                        <Badge variant="normal">получено</Badge>
+                      )}
                     </div>
                   )
                 })}

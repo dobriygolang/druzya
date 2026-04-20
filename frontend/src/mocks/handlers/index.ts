@@ -9,6 +9,7 @@ import { podcastHandlers } from './podcast'
 import { seasonHandlers } from './season'
 import { settingsHandlers } from './settings'
 import { nativeHandlers } from './native'
+import { slotHandlers } from './slot'
 
 export const handlers = [
   ...authHandlers,
@@ -22,4 +23,5 @@ export const handlers = [
   ...seasonHandlers,
   ...settingsHandlers,
   ...nativeHandlers,
+  ...slotHandlers,
 ]
