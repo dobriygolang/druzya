@@ -96,23 +96,16 @@ export default function GuildPage() {
                           gap: 10,
                         }}
                       >
-                        <span
-                          style={{
-                            width: 28,
-                            height: 28,
-                            background: 'var(--bg-panel)',
-                            border: '1px solid var(--gold-dim)',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            color: 'var(--gold-bright)',
-                            fontFamily: 'var(--font-display)',
-                          }}
-                        >
-                          {m.username.charAt(0).toUpperCase()}
-                        </span>
-                        <div style={{ flex: 1 }}>
-                          <div style={{ fontSize: 12 }}>{m.username}</div>
+                        <MemberAvatar username={m.username} />
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div
+                            style={{
+                              fontSize: 12,
+                              color: 'var(--text-bright)',
+                            }}
+                          >
+                            {m.username}
+                          </div>
                           <div
                             style={{
                               fontSize: 10,
@@ -122,6 +115,7 @@ export default function GuildPage() {
                             {m.role} · {m.assigned_section}
                           </div>
                         </div>
+                        <ContributionSparkline userId={m.user_id} />
                       </div>
                     </InsetGroove>
                   ))}
@@ -275,5 +269,118 @@ export default function GuildPage() {
         </Panel>
       </div>
     </AppShell>
+  )
+}
+
+/** FNV-1a 32-bit — stable per-username hash. */
+function hash(s: string): number {
+  let h = 2166136261
+  for (let i = 0; i < s.length; i++) {
+    h ^= s.charCodeAt(i)
+    h = Math.imul(h, 16777619) >>> 0
+  }
+  return h >>> 0
+}
+
+/** Hex-shield avatar with a color derived from username hash + initial. */
+function MemberAvatar({ username }: { username: string }) {
+  const PALETTE = [
+    ['#6a9fd4', '#1a3a6a'],
+    ['#e09b3a', '#3a1f08'],
+    ['#c22222', '#3a0909'],
+    ['#7f77dd', '#1a1040'],
+    ['#1d9e75', '#04180f'],
+    ['#c8a96e', '#2a2318'],
+    ['#b9a6ff', '#1a0f2a'],
+  ]
+  const h = hash(username)
+  const [stroke, fill] = PALETTE[h % PALETTE.length]
+  const initial = username.charAt(0).toUpperCase()
+  return (
+    <svg width={30} height={34} viewBox="0 0 30 34" style={{ flexShrink: 0 }}>
+      <polygon
+        points="15,2 27,6 27,24 15,32 3,24 3,6"
+        fill={fill}
+        stroke={stroke}
+        strokeWidth="1.3"
+      />
+      <polygon
+        points="15,5 24,9 24,23 15,29 6,23 6,9"
+        fill="none"
+        stroke={stroke}
+        strokeWidth="0.4"
+        opacity="0.4"
+      />
+      <text
+        x="15"
+        y="21"
+        textAnchor="middle"
+        fill={stroke}
+        fontFamily="var(--font-display)"
+        fontSize="13"
+        letterSpacing="0.04em"
+      >
+        {initial}
+      </text>
+    </svg>
+  )
+}
+
+/**
+ * 7-day contribution sparkline.
+ * Bars derived from hash(userId) — deterministic pseudo-data until the
+ * backend exposes `GetGuildMemberContributions`.
+ */
+function ContributionSparkline({ userId }: { userId: string }) {
+  const bars = 7
+  const seed = hash(userId)
+  // Deterministic PRNG — xorshift32.
+  let s = seed || 0xdeadbeef
+  const rand = () => {
+    s ^= s << 13
+    s >>>= 0
+    s ^= s >>> 17
+    s >>>= 0
+    s ^= s << 5
+    s >>>= 0
+    return s / 0xffffffff
+  }
+  const values = Array.from({ length: bars }, () => 0.25 + rand() * 0.75)
+  const total = values.reduce((a, b) => a + b, 0)
+  return (
+    <div
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'flex-end',
+        gap: 2,
+        flexShrink: 0,
+      }}
+      title={`contributions · last ${bars} days`}
+    >
+      <svg width={48} height={16} viewBox={`0 0 ${bars * 6} 16`}>
+        {values.map((v, i) => (
+          <rect
+            key={i}
+            x={i * 6 + 0.5}
+            y={16 - v * 14}
+            width="4.5"
+            height={v * 14}
+            fill="var(--gold)"
+            opacity={0.35 + v * 0.65}
+          />
+        ))}
+      </svg>
+      <span
+        className="mono"
+        style={{
+          fontSize: 9,
+          color: 'var(--text-mid)',
+          letterSpacing: '0.1em',
+        }}
+      >
+        {Math.round(total * 100)}
+      </span>
+    </div>
   )
 }

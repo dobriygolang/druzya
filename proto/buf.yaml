@@ -12,6 +12,16 @@ lint:
     - STANDARD
   ignore:
     - google
+  # Strict naming would force every RPC to have a Method-prefixed
+  # Request/Response type. We name response types after the resource they
+  # return (Guild, MockSession, ProfileFull) which is intentional — wrapping
+  # them in CreateMockSessionResponse{ session MockSession; } adds a layer
+  # the clients have to unwrap. Same call-site shape on every language;
+  # the rule is style, not correctness.
+  except:
+    - RPC_REQUEST_STANDARD_NAME
+    - RPC_RESPONSE_STANDARD_NAME
+    - RPC_REQUEST_RESPONSE_UNIQUE
 breaking:
   use:
     - FILE

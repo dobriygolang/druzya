@@ -12,6 +12,16 @@ concurrency:
 
 env:
   GO_VERSION: "1.25"
+  # Force the upstream module proxy. We disable GOSUMDB because
+  # github.com/klauspost/pgzip v1.2.6 has two recorded hashes — one in
+  # sum.golang.org, another in proxy.golang.org's cache — and they no
+  # longer agree (upstream was retagged). Verification still happens
+  # locally via the entries in go.sum (which were generated against the
+  # proxy hash). GOFLAGS=-mod=mod lets `go run` populate go.sum on the
+  # fly when fresh transitive deps appear.
+  GOPROXY: "https://proxy.golang.org,direct"
+  GOSUMDB: "off"
+  GOFLAGS: "-mod=mod"
 
 jobs:
   backend:
@@ -28,16 +38,18 @@ jobs:
       - name: Go workspace sync
         run: go work sync
 
+      # Lint from repo root so go.work resolves; --path-prefix keeps the
+      # output rooted relative to backend/. Pinned to a v1.61 patch the
+      # action fetches itself.
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v6
         with:
           version: v1.61
-          working-directory: backend
-          args: --config=.golangci.yml --timeout=5m
+          args: --config=backend/.golangci.yml --path-prefix=backend --timeout=5m
 
       - name: Tests
-        working-directory: backend
-        run: go test -race -count=1 ./...
+        # Workspace mode handles cross-module imports automatically.
+        run: go test -race -count=1 ./backend/...
 
   frontend:
     name: Frontend — lint + typecheck + build

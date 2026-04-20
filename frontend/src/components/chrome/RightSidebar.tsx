@@ -40,10 +40,35 @@ export function RightSidebar() {
             justifyItems: 'center',
           }}
         >
+          {/* Bible §3.1 — flasks mirror the four attribute axes:
+              Reason/Intellect → Insight (blue)
+              Force/Strength   → Resolve (crimson)
+              Skill/Dexterity  → Ichor   (toxic green)
+              Will             → Vigor   (gold)
+              The fill levels here are placeholders — backend will expose
+              `flask_charges` on Profile in a follow-up. */}
           <PowerFlask color="#6a9fd4" fill={0.85} label="INSIGHT" />
-          <PowerFlask color="#c0392b" fill={0.55} label="RESOLVE" />
-          <PowerFlask color="#639922" fill={0.92} label="VIGOR" />
-          <PowerFlask color="#ef9f27" fill={0.3} label="FOCUS" />
+          <PowerFlask color="#c22222" fill={0.55} label="RESOLVE" />
+          <PowerFlask color="#1d9e75" fill={0.92} label="ICHOR" />
+          <PowerFlask color="#c8a96e" fill={0.3} label="VIGOR" />
+        </div>
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: '1fr 1fr',
+            gap: 10,
+            justifyItems: 'center',
+            marginTop: 4,
+            fontFamily: 'var(--font-code)',
+            fontSize: 9,
+            color: 'var(--text-dim)',
+            letterSpacing: '0.1em',
+          }}
+        >
+          <span>+12 INT</span>
+          <span>+8 STR</span>
+          <span>+15 DEX</span>
+          <span>+5 WIL</span>
         </div>
       </div>
 

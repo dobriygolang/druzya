@@ -18,6 +18,7 @@ const MATCH_ID = '11111111-1111-1111-1111-111111111111'
 export default function ArenaPage() {
   const { t } = useTranslation()
   const [section, setSection] = useState<SectionKey>('algorithms')
+  const [searching, setSearching] = useState(false)
   const { data: match } = useArenaMatchQuery(MATCH_ID)
   const { data: lb } = useLeaderboardQuery(section)
 
@@ -28,8 +29,14 @@ export default function ArenaPage() {
           title={t('arena.title')}
           subtitle={t('arena.subtitle')}
           right={
-            <div style={{ display: 'flex', gap: 8 }}>
-              <Button tone="blood">{t('arena.find_match')}</Button>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              {searching && <QueueRing />}
+              <Button
+                tone="blood"
+                onClick={() => setSearching((v) => !v)}
+              >
+                {searching ? t('arena.cancel') : t('arena.find_match')}
+              </Button>
             </div>
           }
         />
@@ -93,25 +100,39 @@ export default function ArenaPage() {
                       <InsetGroove key={p.user_id}>
                         <div
                           style={{
-                            color:
-                              i === 0
-                                ? 'var(--gold-bright)'
-                                : 'var(--blood-lit)',
-                            fontFamily: 'var(--font-display)',
-                            letterSpacing: '0.15em',
-                            fontSize: 12,
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 10,
                           }}
                         >
-                          {i === 0 ? t('arena.you') : t('arena.opponent')}
-                        </div>
-                        <div style={{ fontSize: 13, marginTop: 4 }}>
-                          {p.username}
-                        </div>
-                        <div
-                          className="mono"
-                          style={{ fontSize: 11, color: 'var(--text-mid)' }}
-                        >
-                          ELO {p.elo_before}
+                          <ShieldAvatar
+                            seed={p.username}
+                            tone={i === 0 ? 'ally' : 'enemy'}
+                          />
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div
+                              style={{
+                                color:
+                                  i === 0
+                                    ? 'var(--gold-bright)'
+                                    : 'var(--blood-lit)',
+                                fontFamily: 'var(--font-display)',
+                                letterSpacing: '0.15em',
+                                fontSize: 11,
+                              }}
+                            >
+                              {i === 0 ? t('arena.you') : t('arena.opponent')}
+                            </div>
+                            <div style={{ fontSize: 13, marginTop: 2 }}>
+                              {p.username}
+                            </div>
+                            <div
+                              className="mono"
+                              style={{ fontSize: 10, color: 'var(--text-mid)' }}
+                            >
+                              ELO {p.elo_before}
+                            </div>
+                          </div>
                         </div>
                       </InsetGroove>
                     ))}
@@ -188,55 +209,72 @@ export default function ArenaPage() {
               <div
                 style={{ display: 'flex', flexDirection: 'column', gap: 4 }}
               >
-                {(lb?.entries ?? []).map((e) => (
-                  <div
-                    key={e.rank}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 10,
-                      padding: '7px 10px',
-                      background: 'var(--bg-inset)',
-                      border: '1px solid var(--gold-faint)',
-                    }}
-                  >
-                    <span
+                {(lb?.entries ?? []).map((e) => {
+                  const top = e.rank <= 3
+                  const rankColor =
+                    e.rank === 1
+                      ? 'var(--gold-bright)'
+                      : e.rank === 2
+                        ? '#c0c0c0'
+                        : e.rank === 3
+                          ? '#cd7f32'
+                          : 'var(--gold-dim)'
+                  return (
+                    <div
+                      key={e.rank}
                       style={{
-                        width: 24,
-                        fontFamily: 'var(--font-display)',
-                        color: 'var(--gold)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 10,
+                        padding: '6px 10px',
+                        background: top
+                          ? `linear-gradient(90deg, color-mix(in srgb, ${rankColor} 15%, var(--bg-inset)) 0%, var(--bg-inset) 100%)`
+                          : 'var(--bg-inset)',
+                        border: `1px solid ${
+                          top ? rankColor : 'var(--gold-faint)'
+                        }`,
                       }}
                     >
-                      {String(e.rank).padStart(2, '0')}
-                    </span>
-                    <span
-                      style={{
-                        flex: 1,
-                        color: 'var(--text-bright)',
-                        fontFamily: 'var(--font-display)',
-                      }}
-                    >
-                      {e.username}
-                      {e.title && (
-                        <span
-                          style={{
-                            color: 'var(--ember-lit)',
-                            marginLeft: 8,
-                            fontSize: 10,
-                          }}
-                        >
-                          · {e.title}
-                        </span>
-                      )}
-                    </span>
-                    <span
-                      className="mono"
-                      style={{ color: 'var(--gold-bright)' }}
-                    >
-                      {e.elo}
-                    </span>
-                  </div>
-                ))}
+                      <span
+                        style={{
+                          width: 24,
+                          fontFamily: 'var(--font-display)',
+                          color: rankColor,
+                          fontSize: 13,
+                        }}
+                      >
+                        {String(e.rank).padStart(2, '0')}
+                      </span>
+                      <ShieldAvatar seed={e.username} compact />
+                      <span
+                        style={{
+                          flex: 1,
+                          color: 'var(--text-bright)',
+                          fontFamily: 'var(--font-display)',
+                        }}
+                      >
+                        {e.username}
+                        {e.title && (
+                          <span
+                            style={{
+                              color: 'var(--ember-lit)',
+                              marginLeft: 8,
+                              fontSize: 10,
+                            }}
+                          >
+                            · {e.title}
+                          </span>
+                        )}
+                      </span>
+                      <span
+                        className="mono"
+                        style={{ color: 'var(--gold-bright)' }}
+                      >
+                        {e.elo}
+                      </span>
+                    </div>
+                  )
+                })}
               </div>
               {lb?.my_rank && (
                 <div
@@ -264,5 +302,114 @@ export default function ArenaPage() {
         </div>
       </div>
     </AppShell>
+  )
+}
+
+/** FNV-1a 32-bit. */
+function hashStr(s: string): number {
+  let h = 2166136261
+  for (let i = 0; i < s.length; i++) {
+    h ^= s.charCodeAt(i)
+    h = Math.imul(h, 16777619) >>> 0
+  }
+  return h >>> 0
+}
+
+/** Hex shield avatar with deterministic palette. tone overrides palette. */
+function ShieldAvatar({
+  seed,
+  tone,
+  compact = false,
+}: {
+  seed: string
+  tone?: 'ally' | 'enemy'
+  compact?: boolean
+}) {
+  const PALETTE = [
+    ['#6a9fd4', '#1a3a6a'],
+    ['#e09b3a', '#3a1f08'],
+    ['#7f77dd', '#1a1040'],
+    ['#1d9e75', '#04180f'],
+    ['#c8a96e', '#2a2318'],
+    ['#b9a6ff', '#1a0f2a'],
+  ]
+  const h = hashStr(seed)
+  let stroke: string
+  let fill: string
+  if (tone === 'ally') {
+    stroke = 'var(--gold-bright)'
+    fill = 'var(--gold-faint)'
+  } else if (tone === 'enemy') {
+    stroke = 'var(--blood-lit)'
+    fill = 'var(--blood-deep)'
+  } else {
+    ;[stroke, fill] = PALETTE[h % PALETTE.length]
+  }
+  const size = compact ? 22 : 36
+  const initial = seed.charAt(0).toUpperCase()
+  return (
+    <svg
+      width={size}
+      height={size * 1.13}
+      viewBox="0 0 30 34"
+      style={{ flexShrink: 0 }}
+    >
+      <polygon
+        points="15,2 27,6 27,24 15,32 3,24 3,6"
+        fill={fill}
+        stroke={stroke}
+        strokeWidth="1.3"
+      />
+      <text
+        x="15"
+        y="21"
+        textAnchor="middle"
+        fill={stroke}
+        fontFamily="var(--font-display)"
+        fontSize={compact ? 11 : 14}
+      >
+        {initial}
+      </text>
+    </svg>
+  )
+}
+
+/** Concentric pulse-ring shown when actively searching for an opponent. */
+function QueueRing() {
+  return (
+    <span
+      title="searching for opponent"
+      style={{
+        position: 'relative',
+        display: 'inline-flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        width: 28,
+        height: 28,
+      }}
+    >
+      {[0, 0.6, 1.2].map((delay) => (
+        <span
+          key={delay}
+          aria-hidden
+          style={{
+            position: 'absolute',
+            inset: 0,
+            border: '1px solid var(--blood-lit)',
+            borderRadius: '50%',
+            animation: `queue-ring 1.8s ease-out ${delay}s infinite`,
+          }}
+        />
+      ))}
+      <span
+        style={{
+          width: 8,
+          height: 8,
+          borderRadius: '50%',
+          background: 'var(--blood-lit)',
+          boxShadow: '0 0 6px var(--blood-bright)',
+        }}
+      />
+    </span>
   )
 }

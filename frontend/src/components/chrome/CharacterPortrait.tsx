@@ -36,16 +36,29 @@ export function CharacterPortrait({
       }}
     >
       {glow && (
-        <div
-          aria-hidden
-          style={{
-            position: 'absolute',
-            inset: 0,
-            background:
-              'radial-gradient(ellipse at 50% 60%, rgba(200,169,110,0.15), transparent 60%), radial-gradient(ellipse at 50% 95%, rgba(224,155,58,0.25), transparent 55%)',
-            pointerEvents: 'none',
-          }}
-        />
+        <>
+          <div
+            aria-hidden
+            style={{
+              position: 'absolute',
+              inset: 0,
+              background:
+                'radial-gradient(ellipse at 50% 60%, rgba(200,169,110,0.18), transparent 58%), radial-gradient(ellipse at 50% 95%, rgba(224,155,58,0.28), transparent 55%)',
+              pointerEvents: 'none',
+            }}
+          />
+          <div
+            aria-hidden
+            style={{
+              position: 'absolute',
+              inset: 0,
+              background:
+                'radial-gradient(ellipse at 50% 45%, rgba(194,34,34,0.14), transparent 55%)',
+              animation: 'sigil-aura 3.2s ease-in-out infinite',
+              pointerEvents: 'none',
+            }}
+          />
+        </>
       )}
       <svg
         width={w}
