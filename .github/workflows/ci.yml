@@ -44,10 +44,12 @@ jobs:
       # clearing GOFLAGS for this step makes each module self-contained.
       # The action only handles a single working-directory, so install the
       # binary once and loop over every go.mod we want to lint.
+      # Build from source so the binary is compiled with Go 1.25 — the
+      # prebuilt v1.61 release fails on Go 1.25 export data ("unsupported
+      # version: 2"). v1.64.x is the last v1 release line and keeps the
+      # existing .golangci.yml v1 config format working.
       - name: Install golangci-lint
-        run: |
-          curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh \
-            | sh -s -- -b "$(go env GOPATH)/bin" v1.61.0
+        run: go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.64.8
       - name: golangci-lint
         env:
           GOWORK: "off"

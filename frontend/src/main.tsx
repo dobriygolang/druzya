@@ -8,25 +8,29 @@ import './styles/tokens.css'
 import './styles/motion.css'
 import { initI18n } from './lib/i18n'
 
-await initI18n()
+async function bootstrap() {
+  await initI18n()
 
-if (import.meta.env.VITE_USE_MSW === 'true') {
-  const { worker } = await import('./mocks/browser')
-  await worker.start({ onUnhandledRequest: 'bypass' })
+  if (import.meta.env.VITE_USE_MSW === 'true') {
+    const { worker } = await import('./mocks/browser')
+    await worker.start({ onUnhandledRequest: 'bypass' })
+  }
+
+  const queryClient = new QueryClient({
+    defaultOptions: {
+      queries: { staleTime: 30_000, retry: 1, refetchOnWindowFocus: false },
+    },
+  })
+
+  ReactDOM.createRoot(document.getElementById('root')!).render(
+    <React.StrictMode>
+      <QueryClientProvider client={queryClient}>
+        <BrowserRouter>
+          <App />
+        </BrowserRouter>
+      </QueryClientProvider>
+    </React.StrictMode>,
+  )
 }
 
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: { staleTime: 30_000, retry: 1, refetchOnWindowFocus: false },
-  },
-})
-
-ReactDOM.createRoot(document.getElementById('root')!).render(
-  <React.StrictMode>
-    <QueryClientProvider client={queryClient}>
-      <BrowserRouter>
-        <App />
-      </BrowserRouter>
-    </QueryClientProvider>
-  </React.StrictMode>,
-)
+void bootstrap()
