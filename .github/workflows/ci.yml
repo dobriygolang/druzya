@@ -42,15 +42,25 @@ jobs:
       # understand workspace mode, and our root GOFLAGS=-mod=mod clashes
       # with workspace-mode's readonly requirement. Disabling GOWORK and
       # clearing GOFLAGS for this step makes each module self-contained.
+      # The action only handles a single working-directory, so install the
+      # binary once and loop over every go.mod we want to lint.
+      - name: Install golangci-lint
+        run: |
+          curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh \
+            | sh -s -- -b "$(go env GOPATH)/bin" v1.61.0
       - name: golangci-lint
-        uses: golangci/golangci-lint-action@v6
         env:
           GOWORK: "off"
           GOFLAGS: ""
-        with:
-          version: v1.61
-          working-directory: backend
-          args: --config=.golangci.yml --timeout=5m ./...
+        run: |
+          fail=0
+          for mod in $(find backend -name go.mod -not -path '*/tools/*' | sort); do
+            dir=$(dirname "$mod")
+            echo "::group::lint $dir"
+            (cd "$dir" && golangci-lint run --config="$GITHUB_WORKSPACE/backend/.golangci.yml" --timeout=5m ./...) || fail=1
+            echo "::endgroup::"
+          done
+          exit $fail
 
       - name: Tests
         # Workspace mode handles cross-module imports automatically.
