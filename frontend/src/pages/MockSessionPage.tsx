@@ -1,6 +1,7 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
+import Editor, { type Monaco } from '@monaco-editor/react'
 import { AppShell } from '../components/AppShell'
 import {
   Panel,
@@ -16,6 +17,33 @@ import {
   type MockMessage,
 } from '../lib/queries/mock'
 
+// Monaco druz9-noir theme — matches site tokens.css (dark + gold accents)
+function defineDruz9Theme(monaco: Monaco) {
+  monaco.editor.defineTheme('druz9-noir', {
+    base: 'vs-dark',
+    inherit: true,
+    rules: [
+      { token: 'comment', foreground: '6b5f54', fontStyle: 'italic' },
+      { token: 'keyword', foreground: 'e8c87a' },
+      { token: 'string', foreground: '9a8c76' },
+      { token: 'number', foreground: '6a9fd4' },
+      { token: 'type', foreground: 'e09b3a' },
+      { token: 'identifier.function', foreground: 'e8c87a' },
+    ],
+    colors: {
+      'editor.background': '#0a0c10',
+      'editor.foreground': '#e8dcc8',
+      'editor.lineHighlightBackground': '#14100f',
+      'editor.selectionBackground': '#2a1a1633',
+      'editorCursor.foreground': '#e8c87a',
+      'editorLineNumber.foreground': '#4a3c28',
+      'editorLineNumber.activeForeground': '#c8a96e',
+      'editorIndentGuide.background': '#1c1710',
+      'editorIndentGuide.activeBackground': '#4a3c28',
+    },
+  })
+}
+
 export default function MockSessionPage() {
   const { sessionId } = useParams<{ sessionId: string }>()
   const { t } = useTranslation()
@@ -23,6 +51,27 @@ export default function MockSessionPage() {
   const sendMsg = useSendMockMessage(sessionId)
   const [input, setInput] = useState('')
   const [pending, setPending] = useState<MockMessage[]>([])
+  const [code, setCode] = useState<string>('')
+  const initRef = useRef(false)
+  useEffect(() => {
+    if (!initRef.current && session?.task?.starter_code?.go) {
+      setCode(session.task.starter_code.go)
+      initRef.current = true
+    }
+  }, [session?.task?.starter_code?.go])
+
+  // Session timer — starts counting up from mount (STUB: should derive from
+  // session.started_at when backend wires it).
+  const [elapsedMs, setElapsedMs] = useState(0)
+  const startedRef = useRef<number>(Date.now())
+  useEffect(() => {
+    const id = setInterval(() => {
+      setElapsedMs(Date.now() - startedRef.current)
+    }, 1000)
+    return () => clearInterval(id)
+  }, [])
+  const mm = Math.floor(elapsedMs / 60000).toString().padStart(2, '0')
+  const ss = Math.floor((elapsedMs % 60000) / 1000).toString().padStart(2, '0')
 
   const onSend = async () => {
     if (!input.trim()) return
@@ -51,9 +100,33 @@ export default function MockSessionPage() {
           title={t('mock.title')}
           subtitle={t('mock.subtitle')}
           right={
-            <Link to={`/mock/${sessionId}/result`} style={{ textDecoration: 'none' }}>
-              <Button tone="primary">{t('mock.finish')}</Button>
-            </Link>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <div
+                className="mono"
+                title="Session time"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  padding: '6px 12px',
+                  border: '1px solid var(--gold-faint)',
+                  background: 'var(--bg-inset)',
+                  color: 'var(--gold-bright)',
+                  fontSize: 13,
+                  letterSpacing: '0.08em',
+                }}
+              >
+                <span style={{ color: 'var(--text-dim)', fontSize: 10 }}>
+                  ⏱
+                </span>
+                <span>
+                  {mm}:{ss}
+                </span>
+              </div>
+              <Link to={`/mock/${sessionId}/result`} style={{ textDecoration: 'none' }}>
+                <Button tone="primary">{t('mock.finish')}</Button>
+              </Link>
+            </div>
           }
         />
 
@@ -117,23 +190,53 @@ export default function MockSessionPage() {
                     ))}
                   </InsetGroove>
                   <InsetGroove>
-                    {/* STUB: Monaco editor — replaced with pre until wired to @monaco-editor/react */}
                     <div
                       className="caps"
-                      style={{ color: 'var(--gold-dim)', marginBottom: 6 }}
-                    >
-                      {t('mock.code')} · Go
-                    </div>
-                    <pre
-                      className="mono"
                       style={{
-                        fontSize: 12,
-                        color: 'var(--text-bright)',
-                        whiteSpace: 'pre-wrap',
+                        color: 'var(--gold-dim)',
+                        marginBottom: 6,
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
                       }}
                     >
-                      {session.task.starter_code.go ?? '// STUB'}
-                    </pre>
+                      <span>{t('mock.code')} · Go</span>
+                      <span style={{ color: 'var(--text-dim)', fontSize: 9 }}>
+                        MONACO · ⌘+S TO RUN
+                      </span>
+                    </div>
+                    <div
+                      style={{
+                        height: 320,
+                        border: '1px solid var(--gold-faint)',
+                        background: '#0a0c10',
+                      }}
+                    >
+                      <Editor
+                        height="100%"
+                        defaultLanguage="go"
+                        language="go"
+                        value={code}
+                        onChange={(v) => setCode(v ?? '')}
+                        beforeMount={defineDruz9Theme}
+                        theme="druz9-noir"
+                        options={{
+                          fontFamily:
+                            "JetBrains Mono, Menlo, ui-monospace, monospace",
+                          fontSize: 13,
+                          lineHeight: 20,
+                          minimap: { enabled: false },
+                          scrollBeyondLastLine: false,
+                          padding: { top: 10, bottom: 10 },
+                          renderLineHighlight: 'line',
+                          smoothScrolling: true,
+                          cursorBlinking: 'smooth',
+                          fontLigatures: true,
+                          tabSize: 2,
+                          wordWrap: 'on',
+                        }}
+                      />
+                    </div>
                   </InsetGroove>
                 </>
               )}

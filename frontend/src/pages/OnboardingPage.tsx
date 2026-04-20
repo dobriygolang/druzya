@@ -25,13 +25,190 @@ type OnboardingState = {
 
 const LS_KEY = 'druz9.onboarding'
 
-const CLASSES: { key: CharClass; ru: string; en: string }[] = [
-  { key: 'alg', ru: 'Алгоритмист', en: 'Algorithmist' },
-  { key: 'dba', ru: 'Жрец DBA', en: 'DBA Priest' },
-  { key: 'back', ru: 'Бэкенд-воин', en: 'Backend Warrior' },
-  { key: 'arch', ru: 'Архитектор', en: 'Architect' },
-  { key: 'comm', ru: 'Беhav-маг', en: 'Behavioral Mage' },
-  { key: 'ai', ru: 'AI-апостат', en: 'AI Apostate' },
+/**
+ * Class sigils — geometric SVG marks, one per class, matching bible §3.1.
+ * Rendered as 40×40 glyphs inside the class tiles. Each sigil uses
+ * a distinctive domain-colored stroke: algo=blue, dba=green, back=gold,
+ * arch=purple, comm=teal, ai=crimson.
+ */
+type ClassMeta = {
+  key: CharClass
+  ru: string
+  en: string
+  tagline: string
+  color: string
+  sigil: JSX.Element
+}
+
+const CLASSES: ClassMeta[] = [
+  {
+    key: 'alg',
+    ru: 'Алгоритмист',
+    en: 'Algorithmist',
+    tagline: 'Граф. Мета. O(n).',
+    color: 'var(--sec-algo-accent)',
+    sigil: (
+      <>
+        <polygon
+          points="20,3 37,34 3,34"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.5"
+        />
+        <circle cx="20" cy="22" r="4" fill="currentColor" opacity="0.9" />
+        <circle cx="20" cy="22" r="1.5" fill="var(--bg-void)" />
+      </>
+    ),
+  },
+  {
+    key: 'dba',
+    ru: 'Жрец DBA',
+    en: 'DBA Priest',
+    tagline: 'ACID. Indexes. Joins.',
+    color: 'var(--sec-sql-accent)',
+    sigil: (
+      <>
+        <ellipse
+          cx="20"
+          cy="8"
+          rx="13"
+          ry="4"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.5"
+        />
+        <path
+          d="M7 8 V30 Q20 36 33 30 V8"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.5"
+        />
+        <path
+          d="M7 18 Q20 23 33 18 M7 26 Q20 31 33 26"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1"
+          opacity="0.5"
+        />
+      </>
+    ),
+  },
+  {
+    key: 'back',
+    ru: 'Бэкенд-воин',
+    en: 'Backend Warrior',
+    tagline: 'Queues. Gateways. Retries.',
+    color: 'var(--gold)',
+    sigil: (
+      <>
+        <path
+          d="M20 3 L32 10 L32 24 L20 34 L8 24 L8 10 Z"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.5"
+        />
+        <path
+          d="M20 10 L26 14 L26 22 L20 28 L14 22 L14 14 Z"
+          fill="currentColor"
+          opacity="0.85"
+        />
+      </>
+    ),
+  },
+  {
+    key: 'arch',
+    ru: 'Архитектор',
+    en: 'Architect',
+    tagline: 'Systems. Trade-offs. HLD.',
+    color: 'var(--sec-sd-accent)',
+    sigil: (
+      <>
+        <rect
+          x="4"
+          y="26"
+          width="8"
+          height="10"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.5"
+        />
+        <rect
+          x="16"
+          y="18"
+          width="8"
+          height="18"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.5"
+        />
+        <rect
+          x="28"
+          y="10"
+          width="8"
+          height="26"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.5"
+        />
+        <path
+          d="M8 4 L32 4 L32 8"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1"
+          opacity="0.5"
+        />
+      </>
+    ),
+  },
+  {
+    key: 'comm',
+    ru: 'Беhav-маг',
+    en: 'Behavioral Mage',
+    tagline: 'STAR. Conflict. Lead.',
+    color: 'var(--sec-beh-accent)',
+    sigil: (
+      <>
+        <circle
+          cx="20"
+          cy="20"
+          r="15"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.5"
+        />
+        <path
+          d="M20 5 L24 18 L37 20 L24 22 L20 35 L16 22 L3 20 L16 18 Z"
+          fill="currentColor"
+          opacity="0.7"
+        />
+      </>
+    ),
+  },
+  {
+    key: 'ai',
+    ru: 'AI-апостат',
+    en: 'AI Apostate',
+    tagline: 'Prompt. Provenance. Guard.',
+    color: 'var(--blood-lit)',
+    sigil: (
+      <>
+        <path
+          d="M20 4 L36 20 L20 36 L4 20 Z"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.5"
+        />
+        <circle cx="20" cy="20" r="6" fill="none" stroke="currentColor" strokeWidth="1.2" />
+        <circle cx="20" cy="20" r="2" fill="currentColor" />
+        <path
+          d="M20 4 L20 36 M4 20 L36 20"
+          stroke="currentColor"
+          strokeWidth="0.6"
+          opacity="0.45"
+        />
+      </>
+    ),
+  },
 ]
 
 const STAGES: { key: CareerStage; ru: string }[] = [
@@ -110,36 +287,85 @@ export default function OnboardingPage() {
                   gap: 10,
                 }}
               >
-                {CLASSES.map((c) => (
-                  <button
-                    key={c.key}
-                    className="card"
-                    onClick={() => persist({ ...state, charClass: c.key })}
-                    style={{
-                      textAlign: 'left',
-                      padding: 14,
-                      background:
-                        state.charClass === c.key
+                {CLASSES.map((c) => {
+                  const active = state.charClass === c.key
+                  return (
+                    <button
+                      key={c.key}
+                      className="card"
+                      onClick={() => persist({ ...state, charClass: c.key })}
+                      style={{
+                        textAlign: 'left',
+                        padding: 14,
+                        display: 'flex',
+                        gap: 12,
+                        alignItems: 'flex-start',
+                        background: active
                           ? 'rgba(200,169,110,0.08)'
                           : 'var(--bg-inset)',
-                      border: `1px solid ${
-                        state.charClass === c.key ? 'var(--gold)' : 'var(--gold-dim)'
-                      }`,
-                    }}
-                  >
-                    <div
-                      className="heraldic"
-                      style={{ color: 'var(--gold-bright)', fontSize: 13 }}
+                        border: `1px solid ${
+                          active ? 'var(--gold)' : 'var(--gold-dim)'
+                        }`,
+                        boxShadow: active
+                          ? '0 0 10px rgba(200,169,110,0.15) inset'
+                          : 'none',
+                        transition:
+                          'border-color 160ms, background 160ms, box-shadow 160ms',
+                      }}
                     >
-                      {c.ru}
-                    </div>
-                    <div
-                      style={{ fontSize: 10, color: 'var(--text-mid)', marginTop: 4 }}
-                    >
-                      {c.en}
-                    </div>
-                  </button>
-                ))}
+                      <svg
+                        width={40}
+                        height={40}
+                        viewBox="0 0 40 40"
+                        style={{
+                          color: active ? c.color : 'var(--gold-dim)',
+                          flexShrink: 0,
+                          filter: active
+                            ? `drop-shadow(0 0 6px ${c.color})`
+                            : 'none',
+                          transition: 'color 160ms, filter 160ms',
+                        }}
+                        aria-hidden
+                      >
+                        {c.sigil}
+                      </svg>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div
+                          className="heraldic"
+                          style={{
+                            color: active
+                              ? 'var(--gold-bright)'
+                              : 'var(--text-bright)',
+                            fontSize: 13,
+                          }}
+                        >
+                          {c.ru}
+                        </div>
+                        <div
+                          style={{
+                            fontSize: 10,
+                            color: 'var(--text-mid)',
+                            marginTop: 4,
+                          }}
+                        >
+                          {c.en}
+                        </div>
+                        <div
+                          className="mono"
+                          style={{
+                            fontSize: 10,
+                            color: active
+                              ? c.color
+                              : 'var(--text-dim)',
+                            marginTop: 6,
+                          }}
+                        >
+                          {c.tagline}
+                        </div>
+                      </div>
+                    </button>
+                  )
+                })}
               </div>
             )}
 

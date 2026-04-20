@@ -236,24 +236,32 @@ function Toggle({
         </span>
         <span
           onClick={() => onChange(!checked)}
+          role="switch"
+          aria-checked={checked}
           style={{
-            width: 36,
-            height: 18,
-            background: checked ? 'var(--gold)' : 'var(--bg-inset)',
-            border: '1px solid var(--gold-dim)',
+            width: 40,
+            height: 20,
+            background: checked ? 'var(--gold)' : '#16181c',
+            border: `1px solid ${checked ? 'var(--gold-bright)' : 'var(--ink-mute)'}`,
+            borderRadius: 10,
             position: 'relative',
-            transition: 'background 160ms',
+            transition: 'background 160ms, border-color 160ms, box-shadow 160ms',
+            boxShadow: checked
+              ? '0 0 6px 0 color-mix(in srgb, var(--gold) 55%, transparent) inset'
+              : 'inset 0 1px 2px rgba(0,0,0,0.6)',
           }}
         >
           <span
             style={{
               position: 'absolute',
-              top: 1,
-              left: checked ? 19 : 1,
+              top: 2,
+              left: checked ? 22 : 2,
               width: 14,
               height: 14,
-              background: checked ? 'var(--bg-void)' : 'var(--gold-dim)',
-              transition: 'left 160ms',
+              borderRadius: 7,
+              background: checked ? 'var(--bg-void)' : 'var(--ink-dim)',
+              transition: 'left 160ms, background 160ms',
+              boxShadow: checked ? '0 0 4px var(--gold-bright)' : 'none',
             }}
           />
         </span>

@@ -14,15 +14,8 @@ import {
 import {
   useNativeScoreQuery,
   useProvenanceQuery,
-  type ProvenanceNode,
 } from '../lib/queries/native'
-
-const KIND_COLOR: Record<ProvenanceNode['kind'], string> = {
-  human: 'var(--gold)',
-  ai: 'var(--blood-lit)',
-  test: 'var(--tier-normal)',
-  merge: 'var(--ember-lit)',
-}
+import { ProvenanceGraph, AiDonut } from '../components/native/ProvenanceGraph'
 
 export default function NativeRoundPage() {
   const { sessionId } = useParams<{ sessionId: string }>()
@@ -63,66 +56,24 @@ export default function NativeRoundPage() {
                   {t('common.loading')}
                 </div>
               ) : (
-                <div
-                  style={{
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: 8,
-                  }}
-                >
-                  {prov.nodes.map((n) => (
-                    <InsetGroove key={n.id}>
-                      <div
-                        style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: 12,
-                        }}
-                      >
-                        <span
-                          style={{
-                            width: 10,
-                            height: 10,
-                            background: KIND_COLOR[n.kind],
-                            transform: 'rotate(45deg)',
-                            flexShrink: 0,
-                          }}
-                        />
-                        <div style={{ flex: 1 }}>
-                          <div
-                            style={{
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: 8,
-                            }}
-                          >
-                            <span
-                              className="caps"
-                              style={{ color: KIND_COLOR[n.kind] }}
-                            >
-                              {n.kind}
-                            </span>
-                            <span
-                              style={{
-                                fontSize: 12,
-                                color: 'var(--text-bright)',
-                              }}
-                            >
-                              {n.label}
-                            </span>
-                          </div>
-                          <div
-                            className="mono"
-                            style={{ fontSize: 10, color: 'var(--text-dim)' }}
-                          >
-                            {n.id} ← [{n.parents.join(', ') || '—'}] ·{' '}
-                            {new Date(n.timestamp).toLocaleTimeString('ru-RU')}
-                          </div>
-                        </div>
-                      </div>
-                    </InsetGroove>
-                  ))}
-                </div>
+                <>
+                  <ProvenanceGraph nodes={prov.nodes} />
+                  <div
+                    style={{
+                      display: 'flex',
+                      gap: 18,
+                      marginTop: 14,
+                      fontSize: 10,
+                      letterSpacing: '0.15em',
+                      color: 'var(--text-mid)',
+                    }}
+                  >
+                    <LegendSwatch color="var(--gold)" label="HUMAN" />
+                    <LegendSwatch color="var(--blood-lit)" label="AI" />
+                    <LegendSwatch color="var(--tier-normal)" label="TEST" />
+                    <LegendSwatch color="var(--ember-lit)" label="MERGE" />
+                  </div>
+                </>
               )}
             </div>
           </Panel>
@@ -203,32 +154,56 @@ export default function NativeRoundPage() {
                     />
                     <div
                       style={{
-                        marginTop: 6,
-                        paddingTop: 10,
+                        marginTop: 10,
+                        paddingTop: 14,
                         borderTop: '1px solid var(--gold-faint)',
                         display: 'flex',
-                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        justifyContent: 'space-around',
                       }}
                     >
-                      <span style={{ color: 'var(--text-mid)' }}>
-                        {t('native.ai_fraction')}
-                      </span>
-                      <span className="mono" style={{ color: 'var(--blood-lit)' }}>
-                        {Math.round(score.ai_fraction * 100)}%
-                      </span>
-                    </div>
-                    <div
-                      style={{
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                      }}
-                    >
-                      <span style={{ color: 'var(--text-mid)' }}>
-                        {t('native.human_fraction')}
-                      </span>
-                      <span className="mono" style={{ color: 'var(--gold)' }}>
-                        {Math.round(score.human_fraction * 100)}%
-                      </span>
+                      <AiDonut
+                        value={score.ai_fraction}
+                        size={96}
+                        label={t('native.ai_fraction').toUpperCase()}
+                      />
+                      <div
+                        style={{
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: 6,
+                          fontSize: 11,
+                        }}
+                      >
+                        <div
+                          style={{
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            gap: 12,
+                          }}
+                        >
+                          <span style={{ color: 'var(--text-mid)' }}>
+                            {t('native.human_fraction')}
+                          </span>
+                          <span className="mono" style={{ color: 'var(--gold)' }}>
+                            {Math.round(score.human_fraction * 100)}%
+                          </span>
+                        </div>
+                        <div
+                          style={{
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            gap: 12,
+                          }}
+                        >
+                          <span style={{ color: 'var(--text-mid)' }}>
+                            {t('native.ai_fraction')}
+                          </span>
+                          <span className="mono" style={{ color: 'var(--blood-lit)' }}>
+                            {Math.round(score.ai_fraction * 100)}%
+                          </span>
+                        </div>
+                      </div>
                     </div>
                   </>
                 ) : (
@@ -281,6 +256,23 @@ export default function NativeRoundPage() {
         </div>
       </div>
     </AppShell>
+  )
+}
+
+function LegendSwatch({ color, label }: { color: string; label: string }) {
+  return (
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+      <span
+        style={{
+          width: 8,
+          height: 8,
+          background: color,
+          transform: 'rotate(45deg)',
+          display: 'inline-block',
+        }}
+      />
+      <span>{label}</span>
+    </span>
   )
 }
 

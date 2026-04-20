@@ -47,11 +47,13 @@ const ATTR_ORDER: Array<{
   en: string
   ru: string
   key: 'intellect' | 'strength' | 'dexterity' | 'will'
+  /** CSS var for the bar fill — matches flask colors on the right column */
+  fillVar: string
 }> = [
-  { en: 'Intellect', ru: 'Разум', key: 'intellect' },
-  { en: 'Strength', ru: 'Сила', key: 'strength' },
-  { en: 'Dexterity', ru: 'Ловкость', key: 'dexterity' },
-  { en: 'Will', ru: 'Воля', key: 'will' },
+  { en: 'Intellect', ru: 'Разум', key: 'intellect', fillVar: 'var(--sec-algo-accent)' }, // Insight — blue
+  { en: 'Strength', ru: 'Сила', key: 'strength', fillVar: 'var(--blood-lit)' }, // Resolve — red
+  { en: 'Dexterity', ru: 'Ловкость', key: 'dexterity', fillVar: 'var(--sec-beh-accent)' }, // Ichor — green
+  { en: 'Will', ru: 'Воля', key: 'will', fillVar: 'var(--gold)' }, // Vigor — gold
 ]
 
 export function LeftSidebar() {
@@ -150,7 +152,10 @@ export function LeftSidebar() {
                   </span>
                   <span style={{ color: 'var(--gold-bright)' }}>{val}</span>
                 </div>
-                <div className="seg-bar" style={{ height: 6 }}>
+                <div
+                  className="seg-bar"
+                  style={{ height: 6, ['--seg-on' as string]: a.fillVar }}
+                >
                   {Array.from({ length: segCount }).map((_, i) => (
                     <span key={i} className={i < filled ? 'on' : ''} />
                   ))}
@@ -176,9 +181,10 @@ export function LeftSidebar() {
               style={{
                 padding: '6px 16px',
                 fontFamily: 'var(--font-heraldic)',
-                fontSize: 9,
-                color: 'var(--gold-dim)',
+                fontSize: 10,
+                color: 'var(--text-mid)',
                 letterSpacing: '0.25em',
+                textTransform: 'uppercase',
               }}
             >
               ✦ {t(`menu.${g.groupKey}`)} ✦

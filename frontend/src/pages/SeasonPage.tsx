@@ -115,80 +115,140 @@ export default function SeasonPage() {
                   paddingLeft: 16,
                 }}
               >
+                {/* Dashed chain connector behind the diamonds */}
                 <div
                   style={{
                     position: 'absolute',
                     left: 21,
-                    top: 0,
-                    bottom: 0,
-                    width: 1,
-                    background: 'var(--gold-dim)',
+                    top: 10,
+                    bottom: 10,
+                    width: 2,
+                    backgroundImage:
+                      'repeating-linear-gradient(180deg, var(--gold-dim) 0 6px, transparent 6px 10px)',
                   }}
                 />
-                {season.checkpoints.map((c) => (
-                  <div
-                    key={c.tier}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 14,
-                      padding: '10px 0',
-                    }}
-                  >
+                {season.checkpoints.map((c) => {
+                  const REWARD_GLYPH: Record<string, string> = {
+                    cosmetic: '✦',
+                    credit: '◈',
+                    atlas_point: '✧',
+                    title: '✵',
+                    frame: '✶',
+                    emote: '✹',
+                  }
+                  const glyph = REWARD_GLYPH[c.reward_kind] ?? '◆'
+                  return (
                     <div
+                      key={c.tier}
                       style={{
-                        width: c.big ? 22 : 14,
-                        height: c.big ? 22 : 14,
-                        transform: 'rotate(45deg)',
-                        flexShrink: 0,
-                        background: c.done ? 'var(--gold)' : 'var(--bg-inset)',
-                        border: `1px solid ${
-                          c.current
-                            ? 'var(--gold-bright)'
-                            : c.done
-                              ? 'var(--gold)'
-                              : 'var(--gold-dim)'
-                        }`,
-                        boxShadow: c.current
-                          ? '0 0 0 3px rgba(200,169,110,0.2)'
-                          : 'none',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 14,
+                        padding: '10px 0',
+                        position: 'relative',
                       }}
-                    />
-                    <div style={{ flex: 1 }}>
-                      <div
-                        className="heraldic"
-                        style={{
-                          color: 'var(--gold-dim)',
-                          fontSize: 10,
-                          letterSpacing: '0.2em',
-                        }}
-                      >
-                        TIER {c.tier}
-                      </div>
+                    >
+                      {/* Diamond — nested for current-tier glow ring */}
                       <div
                         style={{
-                          fontSize: 13,
-                          color: c.done
-                            ? 'var(--gold-bright)'
-                            : 'var(--text-bright)',
+                          position: 'relative',
+                          width: 24,
+                          height: 24,
+                          flexShrink: 0,
+                          display: 'grid',
+                          placeItems: 'center',
                         }}
                       >
-                        {c.reward}
+                        {c.current && (
+                          <div
+                            aria-hidden
+                            style={{
+                              position: 'absolute',
+                              inset: -4,
+                              transform: 'rotate(45deg)',
+                              border: '1px solid var(--gold-bright)',
+                              opacity: 0.6,
+                              animation: 'season-pulse 1.6s ease-in-out infinite',
+                            }}
+                          />
+                        )}
+                        <div
+                          style={{
+                            width: c.big ? 22 : 14,
+                            height: c.big ? 22 : 14,
+                            transform: 'rotate(45deg)',
+                            background: c.done
+                              ? 'linear-gradient(135deg, var(--gold-bright), var(--gold))'
+                              : 'var(--bg-inset)',
+                            border: `1px solid ${
+                              c.current
+                                ? 'var(--gold-bright)'
+                                : c.done
+                                  ? 'var(--gold)'
+                                  : 'var(--gold-dim)'
+                            }`,
+                            boxShadow: c.current
+                              ? '0 0 8px 2px rgba(232,200,122,0.45)'
+                              : c.done
+                                ? '0 0 4px 0 rgba(200,169,110,0.3)'
+                                : 'none',
+                          }}
+                        />
                       </div>
-                      <div
-                        className="mono"
-                        style={{
-                          fontSize: 10,
-                          color: 'var(--text-mid)',
-                          marginTop: 2,
-                        }}
-                      >
-                        {c.reward_kind}
+                      <div style={{ flex: 1 }}>
+                        <div
+                          className="heraldic"
+                          style={{
+                            color: c.current
+                              ? 'var(--gold-bright)'
+                              : 'var(--gold-dim)',
+                            fontSize: 10,
+                            letterSpacing: '0.25em',
+                          }}
+                        >
+                          TIER {c.tier}
+                        </div>
+                        <div
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 8,
+                            fontSize: 13,
+                            color: c.done
+                              ? 'var(--gold-bright)'
+                              : 'var(--text-bright)',
+                          }}
+                        >
+                          <span
+                            style={{
+                              color: c.done
+                                ? 'var(--gold-bright)'
+                                : 'var(--gold-dim)',
+                              fontSize: 14,
+                              width: 14,
+                              textAlign: 'center',
+                            }}
+                          >
+                            {glyph}
+                          </span>
+                          <span>{c.reward}</span>
+                        </div>
+                        <div
+                          className="mono"
+                          style={{
+                            fontSize: 10,
+                            color: 'var(--text-mid)',
+                            marginTop: 2,
+                            marginLeft: 22,
+                          }}
+                        >
+                          {c.reward_kind}
+                        </div>
                       </div>
+                      {c.current && <Badge variant="ember">текущий</Badge>}
                     </div>
-                    {c.current && <Badge variant="ember">текущий</Badge>}
-                  </div>
-                ))}
+                  )
+                })}
               </div>
             </div>
           </Panel>

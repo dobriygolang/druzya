@@ -12,9 +12,23 @@ export default defineConfig({
   server: {
     host: true,
     port: 5173,
+    // In docker-compose, the api is reachable as http://api:8080.
+    // Running natively (`make front`), it's localhost:8080.
+    // VITE_API_PROXY overrides either.
     proxy: {
-      '/api': { target: 'http://api:8080', changeOrigin: true },
-      '/ws': { target: 'ws://api:8080', ws: true, changeOrigin: true },
+      '/api': {
+        target: process.env.VITE_API_PROXY || 'http://localhost:8080',
+        changeOrigin: true,
+      },
+      '/ws': {
+        target: (process.env.VITE_API_PROXY || 'http://localhost:8080').replace(/^http/, 'ws'),
+        ws: true,
+        changeOrigin: true,
+      },
+      '/druz9.v1.': {
+        target: process.env.VITE_API_PROXY || 'http://localhost:8080',
+        changeOrigin: true,
+      },
     },
   },
 })
