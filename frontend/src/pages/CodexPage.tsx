@@ -23,7 +23,7 @@ export default function CodexPage() {
 
   return (
     <AppShell>
-      <PageHeader title={t('codex.title')} subtitle={t('codex.subtitle')} />
+      <PageHeader title={t('codex.title')} />
       <div
         data-stagger
         style={{

@@ -195,6 +195,7 @@ export function LeftSidebar() {
                 <NavLink
                   key={it.key}
                   to={it.to}
+                  className="nav-link"
                   style={{
                     width: '100%',
                     textAlign: 'left',
@@ -212,12 +213,15 @@ export function LeftSidebar() {
                     fontFamily: 'var(--font-display)',
                     fontSize: 11,
                     letterSpacing: '0.1em',
+                    textDecoration: 'none',
                   }}
                 >
                   <span
+                    className="nav-icon"
                     style={{
                       color: isActive ? 'var(--gold)' : 'var(--gold-dim)',
                       width: 14,
+                      transition: 'color 140ms ease',
                     }}
                   >
                     {it.icon}

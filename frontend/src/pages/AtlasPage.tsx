@@ -49,7 +49,7 @@ export default function AtlasPage() {
     <AppShell>
       <PageHeader
         title={t('atlas.title')}
-        subtitle={t('atlas.subtitle')}
+
         right={
           <div
             style={{

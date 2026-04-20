@@ -30,7 +30,7 @@ export default function SanctumPage() {
 
   return (
     <AppShell>
-      <PageHeader title={t('sanctum.title')} subtitle={t('sanctum.subtitle')} />
+      <PageHeader title={t('sanctum.title')} />
       <div
         data-stagger
         style={{

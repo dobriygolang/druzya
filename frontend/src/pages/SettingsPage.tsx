@@ -55,7 +55,7 @@ export default function SettingsPage() {
     <AppShell>
       <PageHeader
         title={t('settings.title')}
-        subtitle={t('settings.subtitle')}
+
         right={
           <Button tone="primary" onClick={onSave}>
             {t('settings.save')}

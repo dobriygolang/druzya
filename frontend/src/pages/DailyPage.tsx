@@ -23,7 +23,7 @@ export default function DailyPage() {
 
   return (
     <AppShell>
-      <PageHeader title={t('daily.title')} subtitle={t('daily.subtitle')} />
+      <PageHeader title={t('daily.title')} />
       <div
         data-stagger
         style={{

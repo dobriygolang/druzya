@@ -98,7 +98,7 @@ export default function MockSessionPage() {
       <div style={{ padding: 20 }}>
         <PageHeader
           title={t('mock.title')}
-          subtitle={t('mock.subtitle')}
+
           right={
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
               <div

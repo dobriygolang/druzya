@@ -285,10 +285,15 @@ export function PowerFlask({
   color,
   fill = 0.7,
   label,
+  charges,
 }: {
   color: string
   fill: number
   label: string
+  /** Optional consumable charge count; when set, rendered as a small badge
+      to make flasks visually distinct from the raw attribute bars in the
+      left sidebar. */
+  charges?: number
 }) {
   const liquidH = 70 * fill
   const clipId = `flask-${label.replace(/\s+/g, '')}`
@@ -301,46 +306,73 @@ export function PowerFlask({
         gap: 4,
       }}
     >
-      <svg width="38" height="80" viewBox="0 0 38 80">
-        <rect
-          x="14"
-          y="2"
-          width="10"
-          height="8"
-          fill="#12141a"
-          stroke="var(--gold-dim)"
-        />
-        <rect x="12" y="0" width="14" height="4" fill="var(--gold-dim)" />
-        <polygon
-          points="8,12 30,12 36,20 36,70 25,78 13,78 2,70 2,20"
-          fill="var(--bg-inset)"
-          stroke="var(--gold-dim)"
-          strokeWidth="1"
-        />
-        <defs>
-          <clipPath id={clipId}>
-            <polygon points="8,12 30,12 36,20 36,70 25,78 13,78 2,70 2,20" />
-          </clipPath>
-        </defs>
-        <rect
-          x="2"
-          y={78 - liquidH}
-          width="34"
-          height={liquidH}
-          fill={color}
-          opacity="0.85"
-          clipPath={`url(#${clipId})`}
-        />
-        <rect
-          x="6"
-          y="20"
-          width="2"
-          height="40"
-          fill="#fff"
-          opacity="0.08"
-          clipPath={`url(#${clipId})`}
-        />
-      </svg>
+      <div style={{ position: 'relative' }}>
+        <svg width="38" height="80" viewBox="0 0 38 80">
+          <rect
+            x="14"
+            y="2"
+            width="10"
+            height="8"
+            fill="#12141a"
+            stroke="var(--gold-dim)"
+          />
+          <rect x="12" y="0" width="14" height="4" fill="var(--gold-dim)" />
+          <polygon
+            points="8,12 30,12 36,20 36,70 25,78 13,78 2,70 2,20"
+            fill="var(--bg-inset)"
+            stroke="var(--gold-dim)"
+            strokeWidth="1"
+          />
+          <defs>
+            <clipPath id={clipId}>
+              <polygon points="8,12 30,12 36,20 36,70 25,78 13,78 2,70 2,20" />
+            </clipPath>
+          </defs>
+          <rect
+            x="2"
+            y={78 - liquidH}
+            width="34"
+            height={liquidH}
+            fill={color}
+            opacity="0.85"
+            clipPath={`url(#${clipId})`}
+          />
+          <rect
+            x="6"
+            y="20"
+            width="2"
+            height="40"
+            fill="#fff"
+            opacity="0.08"
+            clipPath={`url(#${clipId})`}
+          />
+        </svg>
+        {typeof charges === 'number' && (
+          <span
+            style={{
+              position: 'absolute',
+              right: -4,
+              top: 6,
+              minWidth: 14,
+              height: 14,
+              padding: '0 3px',
+              background: 'var(--bg-void)',
+              border: `1px solid ${color}`,
+              borderRadius: 7,
+              fontFamily: 'var(--font-code)',
+              fontSize: 9,
+              color,
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              boxShadow: '0 0 4px rgba(0,0,0,0.6)',
+            }}
+            title={`${charges} charge${charges === 1 ? '' : 's'}`}
+          >
+            {charges}
+          </span>
+        )}
+      </div>
       <span
         style={{
           fontFamily: 'var(--font-display)',

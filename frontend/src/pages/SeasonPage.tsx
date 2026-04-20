@@ -18,7 +18,7 @@ export default function SeasonPage() {
     <AppShell>
       <PageHeader
         title={t('season.title')}
-        subtitle={t('season.subtitle')}
+
         right={
           season && <Badge variant="blood">{season.title}</Badge>
         }

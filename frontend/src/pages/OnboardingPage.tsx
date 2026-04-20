@@ -292,7 +292,7 @@ export default function OnboardingPage() {
                   return (
                     <button
                       key={c.key}
-                      className="card"
+                      className="card tile-button"
                       onClick={() => persist({ ...state, charClass: c.key })}
                       style={{
                         textAlign: 'left',

@@ -62,6 +62,16 @@ jobs:
           cache: npm
           cache-dependency-path: frontend/package-lock.json
 
+      # The lockfile is generated on a corp-laptop that proxies npm via
+      # artifactory.s.o3.ru. GitHub runners can't reach that host. Rewrite
+      # to the public registry — integrity SHA-512 hashes are content-addressed
+      # so they remain valid against the same package contents.
+      - name: Rewrite npm registry URLs to public registry
+        working-directory: frontend
+        run: |
+          sed -i 's|https://artifactory\.s\.o3\.ru/artifactory/api/npm/npm-all-virtual|https://registry.npmjs.org|g' package-lock.json
+          echo "registry=https://registry.npmjs.org/" > .npmrc
+
       - name: Install
         working-directory: frontend
         run: npm ci --no-audit --no-fund
@@ -130,6 +140,11 @@ jobs:
           node-version: "20"
           cache: npm
           cache-dependency-path: frontend/package-lock.json
+      - name: Rewrite npm registry URLs to public registry
+        working-directory: frontend
+        run: |
+          sed -i 's|https://artifactory\.s\.o3\.ru/artifactory/api/npm/npm-all-virtual|https://registry.npmjs.org|g' package-lock.json
+          echo "registry=https://registry.npmjs.org/" > .npmrc
       - name: Install frontend deps
         working-directory: frontend
         run: npm ci --no-audit --no-fund

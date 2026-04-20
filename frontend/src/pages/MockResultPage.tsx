@@ -20,7 +20,7 @@ export default function MockResultPage() {
     <AppShell>
       <PageHeader
         title={t('mock_result.title')}
-        subtitle={t('mock_result.subtitle')}
+
       />
       {!report ? (
         <div style={{ color: 'var(--text-dim)' }}>{t('common.loading')}</div>

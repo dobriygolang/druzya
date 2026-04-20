@@ -2,6 +2,7 @@ import { Routes, Route, Navigate } from 'react-router-dom'
 
 import SanctumPage from './pages/SanctumPage'
 import ArenaPage from './pages/ArenaPage'
+import ArenaMatchPage from './pages/ArenaMatchPage'
 import AtlasPage from './pages/AtlasPage'
 import CodexPage from './pages/CodexPage'
 import GuildPage from './pages/GuildPage'
@@ -21,6 +22,7 @@ export default function App() {
       <Route path="/" element={<Navigate to="/sanctum" replace />} />
       <Route path="/sanctum" element={<SanctumPage />} />
       <Route path="/arena" element={<ArenaPage />} />
+      <Route path="/arena/match/:matchId" element={<ArenaMatchPage />} />
       <Route path="/guild" element={<GuildPage />} />
       <Route path="/atlas" element={<AtlasPage />} />
       <Route path="/codex" element={<CodexPage />} />

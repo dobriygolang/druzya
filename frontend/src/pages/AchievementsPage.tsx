@@ -99,7 +99,7 @@ export default function AchievementsPage() {
     <AppShell>
       <PageHeader
         title={t('achievements.title')}
-        subtitle={t('achievements.subtitle')}
+
       />
       <div
         data-stagger

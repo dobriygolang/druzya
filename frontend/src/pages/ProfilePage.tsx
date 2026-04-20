@@ -23,7 +23,7 @@ export default function ProfilePage() {
 
   return (
     <AppShell>
-      <PageHeader title={t('profile.title')} subtitle={t('profile.subtitle')} />
+      <PageHeader title={t('profile.title')} />
       <div
         data-stagger
         style={{

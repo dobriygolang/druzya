@@ -897,3 +897,41 @@ a.card:hover {
   0%   { transform: scale(0.7); opacity: 0.75; }
   100% { transform: scale(1.35); opacity: 0; }
 }
+
+/* ==================== Nav hover affordance ==================== */
+/* Bible §2.4 — every clickable surface should reveal that it's clickable on
+   hover. We were missing this on the left-rail nav and on the class-select
+   tiles. Tokens stay the same; only borders, glows, and translateY budge. */
+.nav-link {
+  transition:
+    background 140ms ease,
+    color 140ms ease,
+    border-color 140ms ease;
+}
+.nav-link:hover {
+  background: rgba(200, 169, 110, 0.10) !important;
+  color: var(--gold-bright) !important;
+  border-left-color: var(--gold-dim) !important;
+}
+.nav-link:hover .nav-icon { color: var(--gold) !important; }
+.nav-link:focus-visible {
+  outline: 1px solid var(--gold-bright);
+  outline-offset: -2px;
+}
+
+.tile-button {
+  transition:
+    border-color 140ms ease,
+    background 140ms ease,
+    box-shadow 160ms ease,
+    transform 140ms ease;
+}
+.tile-button:hover:not(:disabled) {
+  border-color: var(--gold) !important;
+  box-shadow: 0 0 14px 0 color-mix(in srgb, var(--gold) 25%, transparent);
+  transform: translateY(-1px);
+}
+.tile-button:focus-visible {
+  outline: 1px solid var(--gold-bright);
+  outline-offset: 2px;
+}

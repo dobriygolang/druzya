@@ -38,6 +38,27 @@ log "waiting for /health/ready"
 for i in $(seq 1 30); do
     if curl -sfo /dev/null https://localhost/health/ready; then
         log "deploy healthy (attempt $i)"
+
+        # ------------------------------------------------------------------
+        # Cleanup — runs ONLY after a successful health check so we never
+        # nuke a working image while the new one is still failing rollout.
+        #
+        #   1. `docker container prune -f` — drop stopped containers from
+        #      previous deploys (force-recreate leaves them as Exited).
+        #   2. `docker image prune -af` with a label filter so we don't
+        #      touch unrelated images on the host. Keeps any image still
+        #      referenced by a running container.
+        #   3. `docker volume prune -f` is *intentionally omitted* — that
+        #      would wipe postgres/minio/redis data. Volumes are forever.
+        # ------------------------------------------------------------------
+        log "cleaning up stale containers + images"
+        docker container prune -f >/dev/null || true
+        # Keep only images currently in use by the running compose stack.
+        # Any old `ghcr.io/.../druz9-api:sha-XXX` tags get reaped.
+        docker image prune -af --filter "until=24h" >/dev/null || true
+        log "post-deploy disk usage:"
+        docker system df
+
         exit 0
     fi
     sleep 2

@@ -2,11 +2,13 @@ import { ReactNode } from 'react'
 
 type Props = {
   title: string
+  /** Optional secondary line, displayed BELOW the title in a smaller mute
+      font. Use this for genuine context — interview date, slot id, mode —
+      NOT for an English mirror of the Russian title (that's just noise). */
   subtitle?: string
   right?: ReactNode
 }
 
-// Bilingual page header — "Святилище · SANCTUM" style (bible §3).
 export function PageHeader({ title, subtitle, right }: Props) {
   return (
     <div
@@ -17,6 +19,7 @@ export function PageHeader({ title, subtitle, right }: Props) {
         marginBottom: 20,
         paddingBottom: 12,
         borderBottom: '1px solid var(--gold-faint)',
+        gap: 16,
       }}
     >
       <div>
@@ -30,19 +33,20 @@ export function PageHeader({ title, subtitle, right }: Props) {
           }}
         >
           {title}
-          {subtitle && (
-            <span
-              style={{
-                color: 'var(--gold-dim)',
-                fontSize: 14,
-                marginLeft: 12,
-                letterSpacing: '0.25em',
-              }}
-            >
-              · {subtitle}
-            </span>
-          )}
         </h1>
+        {subtitle && (
+          <div
+            style={{
+              marginTop: 6,
+              color: 'var(--text-mid)',
+              fontSize: 11,
+              letterSpacing: '0.18em',
+              fontFamily: 'var(--font-display)',
+            }}
+          >
+            {subtitle}
+          </div>
+        )}
       </div>
       {right && <div>{right}</div>}
     </div>

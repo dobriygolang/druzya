@@ -20,7 +20,7 @@ export default function GuildPage() {
     <AppShell>
       <PageHeader
         title={t('guild.title')}
-        subtitle={t('guild.subtitle')}
+
         right={
           guild && (
             <Badge variant="gold">
