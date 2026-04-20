@@ -19,6 +19,16 @@ import {
 import { useRatingMeQuery } from '../lib/queries/rating'
 import { useFeed } from '../lib/useFeed'
 
+// STUB: Weekly Report metrics. Replace with `useWeeklyReportQuery()`
+// once `ProfileService.GetWeeklyReport` lands. Shape mirrors the
+// planned RPC response.
+const STUB_WEEK = {
+  tasks: 12,
+  wins: 4,
+  eloDelta: 28,
+  xp: 1240,
+} as const
+
 export default function SanctumPage() {
   const { t } = useTranslation()
   const { data: profile } = useProfileQuery()
@@ -217,8 +227,197 @@ export default function SanctumPage() {
           </Panel>
         </div>
 
+        {/* Weekly AI Report — bible §3.10 promised this on the home page.
+            4 metrics + 30-day heatmap + 3 AI recommendations.
+
+            STUB: numbers are hardcoded until backend exposes
+            ProfileService.GetWeeklyReport (planned). The shape mirrors the
+            future RPC so swap-in is a one-line change to fetch + .data. */}
         <Panel style={{ gridColumn: '1 / -1' }}>
-          <PanelHead subtitle="LIVE FEED">
+          <PanelHead>Weekly AI Report</PanelHead>
+          <div style={{ padding: 20 }}>
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))',
+                gap: 12,
+                marginBottom: 18,
+              }}
+            >
+              <MetricCard
+                label="Решено задач"
+                value={STUB_WEEK.tasks}
+                delta={+3}
+                color="var(--sec-algo-accent)"
+              />
+              <MetricCard
+                label="Побед в моках"
+                value={STUB_WEEK.wins}
+                delta={+1}
+                color="var(--gold)"
+              />
+              <MetricCard
+                label="ELO Δ"
+                value={`${STUB_WEEK.eloDelta > 0 ? '+' : ''}${STUB_WEEK.eloDelta}`}
+                delta={STUB_WEEK.eloDelta}
+                color="var(--ember-lit)"
+              />
+              <MetricCard
+                label="XP за неделю"
+                value={STUB_WEEK.xp}
+                delta={+220}
+                color="var(--blood-lit)"
+              />
+            </div>
+
+            {/* Heatmap — last 30 days, 5 rows × 7 cols. Brighter = more activity. */}
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'auto 1fr',
+                gap: 14,
+                alignItems: 'center',
+                marginBottom: 18,
+              }}
+            >
+              <div
+                className="caps"
+                style={{
+                  color: 'var(--text-mid)',
+                  fontSize: 9,
+                  letterSpacing: '0.25em',
+                  writingMode: 'vertical-rl',
+                  transform: 'rotate(180deg)',
+                  alignSelf: 'center',
+                }}
+              >
+                Активность · 30 дней
+              </div>
+              <div
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(30, 1fr)',
+                  gap: 3,
+                }}
+              >
+                {Array.from({ length: 30 }).map((_, i) => {
+                  const real = streak?.history?.[i] ?? null
+                  // Map streak history → intensity. true=high, null=mid, false=none
+                  const intensity =
+                    real === true ? 0.9 : real === false ? 0.05 : 0.45
+                  return (
+                    <span
+                      key={i}
+                      title={`day -${30 - i}`}
+                      style={{
+                        height: 22,
+                        background:
+                          intensity > 0.7
+                            ? 'var(--gold-bright)'
+                            : intensity > 0.3
+                              ? 'var(--gold)'
+                              : intensity > 0.1
+                                ? 'var(--gold-dim)'
+                                : 'var(--bg-inset)',
+                        opacity: 0.4 + intensity * 0.6,
+                        border: '1px solid var(--gold-faint)',
+                      }}
+                    />
+                  )
+                })}
+              </div>
+            </div>
+
+            {/* AI recommendations — bible §3.10 specifies "3 cards with action buttons" */}
+            <div
+              className="caps"
+              style={{
+                color: 'var(--ember-lit)',
+                marginBottom: 8,
+                letterSpacing: '0.25em',
+                fontSize: 10,
+              }}
+            >
+              ◈ Рекомендации недели
+            </div>
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+                gap: 10,
+              }}
+            >
+              {[
+                {
+                  icon: '◈',
+                  title: 'Закрой Graphs',
+                  body: 'Декей по Dijkstra — реши 2 medium-задачи.',
+                  href: '/atlas',
+                  cta: 'В атлас',
+                },
+                {
+                  icon: '⚔',
+                  title: 'Mock на System Design',
+                  body: 'Самое слабое место по последнему отчёту.',
+                  href: '/mock/demo-session-1',
+                  cta: 'Начать мок',
+                },
+                {
+                  icon: '✦',
+                  title: 'Подкаст: Concurrency in Go',
+                  body: '28 мин · готовит к Go-секции',
+                  href: '/codex',
+                  cta: 'Слушать',
+                },
+              ].map((r, i) => (
+                <InsetGroove key={i}>
+                  <div style={{ display: 'flex', gap: 10 }}>
+                    <span
+                      style={{
+                        color: 'var(--ember-lit)',
+                        fontSize: 18,
+                        width: 22,
+                        textAlign: 'center',
+                        flexShrink: 0,
+                      }}
+                    >
+                      {r.icon}
+                    </span>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div
+                        className="heraldic"
+                        style={{
+                          color: 'var(--gold-bright)',
+                          fontSize: 12,
+                        }}
+                      >
+                        {r.title}
+                      </div>
+                      <div
+                        style={{
+                          fontSize: 10,
+                          color: 'var(--text-mid)',
+                          marginTop: 4,
+                          marginBottom: 8,
+                        }}
+                      >
+                        {r.body}
+                      </div>
+                      <Link to={r.href} style={{ textDecoration: 'none' }}>
+                        <Button tone="primary" size="sm">
+                          {r.cta}
+                        </Button>
+                      </Link>
+                    </div>
+                  </div>
+                </InsetGroove>
+              ))}
+            </div>
+          </div>
+        </Panel>
+
+        <Panel style={{ gridColumn: '1 / -1' }}>
+          <PanelHead>
             {t('sanctum.feed')} ·{' '}
             <span
               className="mono"
@@ -349,5 +548,69 @@ export default function SanctumPage() {
         </Panel>
       </div>
     </AppShell>
+  )
+}
+
+/**
+ * MetricCard — small panel for the Weekly Report.
+ * Shows a colored value with a delta-arrow chip below.
+ */
+function MetricCard({
+  label,
+  value,
+  delta,
+  color,
+}: {
+  label: string
+  value: string | number
+  delta: number
+  color: string
+}) {
+  const positive = delta >= 0
+  return (
+    <div
+      style={{
+        padding: 14,
+        background: 'var(--bg-inset)',
+        border: `1px solid ${color}`,
+        boxShadow: `0 0 8px 0 color-mix(in srgb, ${color} 22%, transparent)`,
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 4,
+      }}
+    >
+      <div
+        className="caps"
+        style={{
+          color: 'var(--text-mid)',
+          fontSize: 9,
+          letterSpacing: '0.25em',
+        }}
+      >
+        {label}
+      </div>
+      <div
+        className="heraldic"
+        style={{
+          color,
+          fontSize: 24,
+          letterSpacing: '0.05em',
+          textShadow: `0 0 10px color-mix(in srgb, ${color} 30%, transparent)`,
+        }}
+      >
+        {value}
+      </div>
+      <div
+        className="mono"
+        style={{
+          fontSize: 10,
+          color: positive ? 'var(--tier-normal)' : 'var(--blood-lit)',
+          letterSpacing: '0.1em',
+        }}
+        title={`Δ vs last week`}
+      >
+        {positive ? '▲' : '▼'} {Math.abs(delta)}
+      </div>
+    </div>
   )
 }

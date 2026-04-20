@@ -1,4 +1,5 @@
 import { useTranslation } from 'react-i18next'
+import { Link } from 'react-router-dom'
 import { AppShell } from '../components/AppShell'
 import {
   Panel,
@@ -10,6 +11,16 @@ import {
   GuildEmblem,
 } from '../components/chrome'
 import { useMyGuildQuery, useGuildWarQuery } from '../lib/queries/guild'
+
+/** Per-section accent — keeps each war-line visually distinct. Matches
+ *  the section colors used everywhere else (atlas, podcasts, daily). */
+const SECTION_ACCENT: Record<string, string> = {
+  algorithms: 'var(--sec-algo-accent)',
+  sql: 'var(--sec-sql-accent)',
+  go: 'var(--sec-go-accent)',
+  system_design: 'var(--sec-sd-accent)',
+  behavioral: 'var(--sec-beh-accent)',
+}
 
 export default function GuildPage() {
   const { t } = useTranslation()
@@ -190,59 +201,111 @@ export default function GuildPage() {
               >
                 {war.lines.map((line) => {
                   const total = line.score_a + line.score_b || 1
+                  const winning = line.score_a > line.score_b
+                  const accent =
+                    SECTION_ACCENT[line.section] ?? 'var(--gold)'
+                  // STUB: until backend exposes per-section war-match-id,
+                  // route through a synthetic id derived from war + section.
+                  const matchHref = `/arena/match/war-${war.id}-${line.section}?contributes_to=${war.id}&line=${line.section}`
                   return (
-                    <div key={line.section}>
+                    <InsetGroove key={line.section}>
                       <div
                         style={{
                           display: 'flex',
-                          justifyContent: 'space-between',
-                          fontSize: 11,
-                          marginBottom: 4,
+                          alignItems: 'center',
+                          gap: 12,
                         }}
                       >
                         <span
-                          className="mono"
-                          style={{ color: 'var(--gold-bright)' }}
-                        >
-                          {line.score_a}
-                        </span>
-                        <span
-                          className="caps"
-                          style={{ color: 'var(--gold-dim)' }}
-                        >
-                          {t(`sections.${line.section}`, line.section)}
-                        </span>
-                        <span
-                          className="mono"
-                          style={{ color: 'var(--blood-lit)' }}
-                        >
-                          {line.score_b}
-                        </span>
-                      </div>
-                      <div
-                        style={{
-                          display: 'flex',
-                          height: 10,
-                          border: '1px solid #000',
-                          background: 'var(--bg-inset)',
-                        }}
-                      >
-                        <div
+                          aria-hidden
                           style={{
-                            width: `${(line.score_a / total) * 100}%`,
-                            background:
-                              'linear-gradient(180deg, var(--gold-bright), var(--gold))',
+                            width: 4,
+                            height: 38,
+                            background: accent,
+                            boxShadow: `0 0 6px ${accent}`,
+                            flexShrink: 0,
                           }}
                         />
-                        <div
-                          style={{
-                            flex: 1,
-                            background:
-                              'linear-gradient(180deg, var(--blood-bright), var(--blood))',
-                          }}
-                        />
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div
+                            style={{
+                              display: 'flex',
+                              justifyContent: 'space-between',
+                              fontSize: 11,
+                              marginBottom: 4,
+                              alignItems: 'center',
+                            }}
+                          >
+                            <span
+                              className="mono"
+                              style={{
+                                color: winning
+                                  ? 'var(--gold-bright)'
+                                  : 'var(--text-mid)',
+                                fontSize: 13,
+                                width: 36,
+                              }}
+                            >
+                              {line.score_a}
+                            </span>
+                            <span
+                              className="caps"
+                              style={{
+                                color: accent,
+                                letterSpacing: '0.18em',
+                              }}
+                            >
+                              {t(`sections.${line.section}`, line.section)}
+                            </span>
+                            <span
+                              className="mono"
+                              style={{
+                                color: !winning
+                                  ? 'var(--blood-lit)'
+                                  : 'var(--text-mid)',
+                                fontSize: 13,
+                                width: 36,
+                                textAlign: 'right',
+                              }}
+                            >
+                              {line.score_b}
+                            </span>
+                          </div>
+                          <div
+                            style={{
+                              display: 'flex',
+                              height: 8,
+                              border: '1px solid #000',
+                              background: 'var(--bg-inset)',
+                            }}
+                          >
+                            <div
+                              style={{
+                                width: `${(line.score_a / total) * 100}%`,
+                                background:
+                                  'linear-gradient(180deg, var(--gold-bright), var(--gold))',
+                                transition: 'width 400ms ease',
+                              }}
+                            />
+                            <div
+                              style={{
+                                flex: 1,
+                                background:
+                                  'linear-gradient(180deg, var(--blood-bright), var(--blood))',
+                              }}
+                            />
+                          </div>
+                        </div>
+                        <Link
+                          to={matchHref}
+                          style={{ textDecoration: 'none' }}
+                        >
+                          <Button tone="primary" size="sm">
+                            Внести вклад
+                          </Button>
+                        </Link>
                       </div>
-                    </div>
+                    </InsetGroove>
                   )
                 })}
               </div>
@@ -250,15 +313,21 @@ export default function GuildPage() {
               <div
                 style={{
                   marginTop: 16,
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
                   fontSize: 11,
                   color: 'var(--text-mid)',
                 }}
               >
-                Неделя: {war.week_start} — {war.week_end}
-              </div>
-
-              <div style={{ marginTop: 14 }}>
-                <Button tone="blood">{t('guild.contribute')}</Button>
+                <span>
+                  Неделя: {war.week_start} — {war.week_end}
+                </span>
+                <Link to="/arena" style={{ textDecoration: 'none' }}>
+                  <Button tone="ghost" size="sm">
+                    Все режимы →
+                  </Button>
+                </Link>
               </div>
             </div>
           ) : (

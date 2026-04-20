@@ -11,10 +11,13 @@ type Props = {
 }
 
 // r pairs: [ring outer, inner fill] for each kind.
+// Bible §3.7 calls keystones "visibly larger so the path is readable at a
+// glance". Bumped ascendant 34→40, keystone 22→26, normal 13→16 so the
+// hierarchy reads even at default zoom.
 function radii(kind: string) {
-  if (kind === 'ascendant') return { ring: 34, fill: 26 }
-  if (kind === 'keystone') return { ring: 22, fill: 16 }
-  return { ring: 13, fill: 9 }
+  if (kind === 'ascendant') return { ring: 40, fill: 30 }
+  if (kind === 'keystone') return { ring: 26, fill: 19 }
+  return { ring: 16, fill: 11 }
 }
 
 function hexPoints(r: number): string {

@@ -27,12 +27,14 @@ const ACCENT: Record<string, string> = {
 const VIEW_W = 900
 const VIEW_H = 720
 const Z_MIN = 0.5
-const Z_MAX = 2.2
+const Z_MAX = 2.4
 const RINGS = [110, 195, 275]
 
 export function SkillTree({ atlas, isLoading, selected, onSelect }: Props) {
   const { t } = useTranslation()
-  const [zoom, setZoom] = useState(1)
+  // Default zoom 1.4× — at 1.0 nodes looked lost in the canvas. The PoE-style
+  // tree should fill the panel right away so users feel the scale.
+  const [zoom, setZoom] = useState(1.4)
   const [pan, setPan] = useState({ x: 0, y: 0 })
   const [hovered, setHovered] = useState<string | null>(null)
   const [mouse, setMouse] = useState({ x: 0, y: 0 })
