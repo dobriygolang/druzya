@@ -65,12 +65,20 @@ jobs:
           exit $fail
 
       - name: Tests
-        # Workspace mode handles cross-module imports automatically, but the
-        # root GOFLAGS=-mod=mod is incompatible with workspace mode (which
-        # requires readonly). Clear GOFLAGS for this step.
+        # Workspace mode handles cross-module imports, but `go test ./backend/...`
+        # from repo root doesn't expand into work-listed modules. Loop instead.
+        # Clear GOFLAGS because root -mod=mod conflicts with workspace mode.
         env:
           GOFLAGS: ""
-        run: go test -race -count=1 ./backend/...
+        run: |
+          fail=0
+          for mod in $(find backend -name go.mod -not -path '*/tools/*' | sort); do
+            dir=$(dirname "$mod")
+            echo "::group::test $dir"
+            (cd "$dir" && go test -race -count=1 ./...) || fail=1
+            echo "::endgroup::"
+          done
+          exit $fail
 
   frontend:
     name: Frontend — lint + typecheck + build
