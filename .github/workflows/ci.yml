@@ -65,7 +65,11 @@ jobs:
           exit $fail
 
       - name: Tests
-        # Workspace mode handles cross-module imports automatically.
+        # Workspace mode handles cross-module imports automatically, but the
+        # root GOFLAGS=-mod=mod is incompatible with workspace mode (which
+        # requires readonly). Clear GOFLAGS for this step.
+        env:
+          GOFLAGS: ""
         run: go test -race -count=1 ./backend/...
 
   frontend:
