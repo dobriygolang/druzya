@@ -9,8 +9,8 @@ import (
 
 	"druz9/notify/domain"
 
-	"github.com/google/uuid"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+	"github.com/google/uuid"
 )
 
 // ── fakes ─────────────────────────────────────────────────────────────────

@@ -2,9 +2,10 @@
 // for the ai_mock bounded context. No external framework imports here.
 //
 // Security invariant — read before editing:
-//   solution_hint lives ONLY in TaskWithHint (consumed by the LLM prompt builder).
-//   Every client-facing shape (MockSessionView, MessageView, ReportView, …) MUST
-//   NOT carry that field. Breaking this invariant is an information-leak bug.
+//
+//	solution_hint lives ONLY in TaskWithHint (consumed by the LLM prompt builder).
+//	Every client-facing shape (MockSessionView, MessageView, ReportView, …) MUST
+//	NOT carry that field. Breaking this invariant is an information-leak bug.
 package domain
 
 import (
@@ -17,24 +18,24 @@ import (
 
 // Session is the persistent mock-interview state (one row in mock_sessions).
 type Session struct {
-	ID            uuid.UUID
-	UserID        uuid.UUID
-	CompanyID     uuid.UUID
-	TaskID        uuid.UUID
-	Section       enums.Section
-	Difficulty    enums.Difficulty
-	Status        enums.MockStatus
-	DurationMin   int
-	VoiceMode     bool
-	PairedUserID  *uuid.UUID
-	LLMModel      enums.LLMModel
+	ID             uuid.UUID
+	UserID         uuid.UUID
+	CompanyID      uuid.UUID
+	TaskID         uuid.UUID
+	Section        enums.Section
+	Difficulty     enums.Difficulty
+	Status         enums.MockStatus
+	DurationMin    int
+	VoiceMode      bool
+	PairedUserID   *uuid.UUID
+	LLMModel       enums.LLMModel
 	DevilsAdvocate bool
-	Stress        StressProfile
-	Report        []byte // ai_report JSONB — nil until report job finishes
-	ReplayURL     string
-	StartedAt     *time.Time
-	FinishedAt    *time.Time
-	CreatedAt     time.Time
+	Stress         StressProfile
+	Report         []byte // ai_report JSONB — nil until report job finishes
+	ReplayURL      string
+	StartedAt      *time.Time
+	FinishedAt     *time.Time
+	CreatedAt      time.Time
 }
 
 // Message is a persisted mock_messages row. Always roundtrip through the DB —
@@ -127,10 +128,10 @@ func (t TaskWithHint) ToPublic() TaskPublic {
 // UserContext is the caller's profile slice needed by model selection.
 // Kept minimal; the ai_mock domain MUST NOT import auth/profile.
 type UserContext struct {
-	ID                  uuid.UUID
-	Subscription        enums.SubscriptionPlan
-	PreferredModel      enums.LLMModel // empty => no preference
-	ResponseLanguage    string         // "ru" / "en"; empty => "ru" default
+	ID               uuid.UUID
+	Subscription     enums.SubscriptionPlan
+	PreferredModel   enums.LLMModel // empty => no preference
+	ResponseLanguage string         // "ru" / "en"; empty => "ru" default
 }
 
 // CompanyContext is what little the prompt builder needs about the target
@@ -147,13 +148,13 @@ type CompanyContext struct {
 // ReportDraft is the parsed LLM output stored in mock_sessions.ai_report.
 // Shape mirrors apigen.MockReport — kept local so ports/server.go maps across.
 type ReportDraft struct {
-	OverallScore   int
-	Sections       ReportSections
-	Strengths      []string
-	Weaknesses     []string
+	OverallScore    int
+	Sections        ReportSections
+	Strengths       []string
+	Weaknesses      []string
 	Recommendations []ReportRecommendation
-	StressAnalysis string
-	ReplayURL      string
+	StressAnalysis  string
+	ReplayURL       string
 }
 
 // ReportSections is the four-axis scorecard.

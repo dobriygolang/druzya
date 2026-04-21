@@ -55,8 +55,8 @@ type Notification struct {
 	UserID    uuid.UUID
 	Type      enums.NotificationType
 	Channel   enums.NotificationChannel
-	Locale    string            // "ru" | "en"
-	Payload   map[string]any    // template params
+	Locale    string         // "ru" | "en"
+	Payload   map[string]any // template params
 	CreatedAt time.Time
 	// ForceDelivery bypasses quiet-hours — used only for MatchStarted.
 	ForceDelivery bool

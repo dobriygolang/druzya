@@ -268,6 +268,8 @@ func sectionFromProtoSlot(s pb.Section) enums.Section {
 		return enums.SectionSystemDesign
 	case pb.Section_SECTION_BEHAVIORAL:
 		return enums.SectionBehavioral
+	case pb.Section_SECTION_UNSPECIFIED:
+		return ""
 	default:
 		return ""
 	}
@@ -294,6 +296,8 @@ func difficultyFromProtoSlot(d pb.Difficulty) enums.Difficulty {
 		return enums.DifficultyMedium
 	case pb.Difficulty_DIFFICULTY_HARD:
 		return enums.DifficultyHard
+	case pb.Difficulty_DIFFICULTY_UNSPECIFIED:
+		return ""
 	default:
 		return ""
 	}

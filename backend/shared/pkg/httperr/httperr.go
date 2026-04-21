@@ -38,10 +38,12 @@ func Write(w http.ResponseWriter, err error) {
 }
 
 // Common error constructors.
-func Validation(msg string) *APIError   { return New(http.StatusBadRequest, "validation_error", msg) }
-func Unauthorized() *APIError           { return New(http.StatusUnauthorized, "unauthorized", "not authenticated") }
-func Forbidden() *APIError              { return New(http.StatusForbidden, "forbidden", "access denied") }
-func NotFound(what string) *APIError    { return New(http.StatusNotFound, "not_found", what+" not found") }
+func Validation(msg string) *APIError { return New(http.StatusBadRequest, "validation_error", msg) }
+func Unauthorized() *APIError {
+	return New(http.StatusUnauthorized, "unauthorized", "not authenticated")
+}
+func Forbidden() *APIError           { return New(http.StatusForbidden, "forbidden", "access denied") }
+func NotFound(what string) *APIError { return New(http.StatusNotFound, "not_found", what+" not found") }
 func RateLimited(retryAfter int) *APIError {
 	return New(http.StatusTooManyRequests, "rate_limit", "rate limit exceeded").
 		WithDetails(map[string]any{"retry_after_sec": retryAfter})

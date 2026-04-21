@@ -13,10 +13,10 @@ import (
 
 // pointsHandler is the shared apply-and-publish tail used by every event
 // handler in this file. It:
-//   1. resolves the current season (no-op if there isn't one),
-//   2. atomically bumps SP,
-//   3. recomputes + persists the tier,
-//   4. publishes season.PointsEarned.
+//  1. resolves the current season (no-op if there isn't one),
+//  2. atomically bumps SP,
+//  3. recomputes + persists the tier,
+//  4. publishes season.PointsEarned.
 type pointsHandler struct {
 	Seasons domain.SeasonRepo
 	Tiers   domain.TierRepo

@@ -70,12 +70,12 @@ type SkillNode struct {
 
 // NotificationPrefs mirrors notification_preferences.
 type NotificationPrefs struct {
-	Channels                   []enums.NotificationChannel
-	TelegramChatID             string
-	QuietHoursFrom             *time.Time // only hh:mm is used
-	QuietHoursTo               *time.Time
-	WeeklyReportEnabled        bool
-	SkillDecayWarningsEnabled  bool
+	Channels                  []enums.NotificationChannel
+	TelegramChatID            string
+	QuietHoursFrom            *time.Time // only hh:mm is used
+	QuietHoursTo              *time.Time
+	WeeklyReportEnabled       bool
+	SkillDecayWarningsEnabled bool
 }
 
 // Settings is the full settings bundle exposed by PUT /profile/me/settings.

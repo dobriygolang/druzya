@@ -7,11 +7,11 @@ import (
 )
 
 // ValidateSlot runs pure business rules against a freshly-built slot:
-//   * starts_at must be strictly in the future (relative to `now`)
-//   * duration_min must be within [MinDurationMin, MaxDurationMin]
-//   * price_rub must be non-negative
-//   * section must be valid
-//   * difficulty, when provided, must be valid
+//   - starts_at must be strictly in the future (relative to `now`)
+//   - duration_min must be within [MinDurationMin, MaxDurationMin]
+//   - price_rub must be non-negative
+//   - section must be valid
+//   - difficulty, when provided, must be valid
 //
 // The caller passes `now` so unit tests can run deterministically.
 func ValidateSlot(s Slot, now time.Time) error {
@@ -35,9 +35,9 @@ func ValidateSlot(s Slot, now time.Time) error {
 
 // CanBook checks whether `candidate` may book `slot` given the current time.
 // Rules:
-//   * the candidate may not be the slot's interviewer (no self-booking)
-//   * the slot's status must be `available`
-//   * the slot's starts_at must be in the future
+//   - the candidate may not be the slot's interviewer (no self-booking)
+//   - the slot's status must be `available`
+//   - the slot's starts_at must be in the future
 func CanBook(slot Slot, candidateID uuid.UUID, now time.Time) error {
 	if slot.InterviewerID == candidateID {
 		return ErrSelfBooking

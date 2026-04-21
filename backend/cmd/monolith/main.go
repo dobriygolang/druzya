@@ -7,6 +7,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"os"
@@ -259,8 +260,8 @@ func main() {
 		if c == nil {
 			c = context.Background()
 		}
-		list, err := ratingPG.List(c, userID)
-		if err != nil {
+		list, listErr := ratingPG.List(c, userID)
+		if listErr != nil {
 			return arenaDomain.InitialELO
 		}
 		for _, r := range list {
@@ -345,7 +346,7 @@ func main() {
 	submitNative := &ainativeApp.SubmitPrompt{
 		Sessions: nativeSessions, Provenance: nativeProvenance,
 		Tasks: nativeTasks, Users: nativeUsers,
-		LLM:     nativeLLM, Traps: nativeTraps,
+		LLM: nativeLLM, Traps: nativeTraps,
 		Policy:  ainativeDomain.DefaultTrapPolicy(),
 		Scoring: ainativeDomain.DefaultScoring(),
 		Log:     log,
@@ -984,9 +985,13 @@ type tokenVerifierAdapter struct{ issuer *authApp.TokenIssuer }
 func (a tokenVerifierAdapter) VerifyAccess(raw string) (uuid.UUID, error) {
 	claims, err := a.issuer.Parse(raw)
 	if err != nil {
-		return uuid.Nil, err
+		return uuid.Nil, fmt.Errorf("parse access token: %w", err)
 	}
-	return uuid.Parse(claims.Subject)
+	uid, err := uuid.Parse(claims.Subject)
+	if err != nil {
+		return uuid.Nil, fmt.Errorf("parse subject uuid: %w", err)
+	}
+	return uid, nil
 }
 
 // mockTokenVerifierAdapter bridges to ai_mock's domain.TokenVerifier
@@ -996,9 +1001,13 @@ type mockTokenVerifierAdapter struct{ issuer *authApp.TokenIssuer }
 func (a mockTokenVerifierAdapter) Verify(raw string) (uuid.UUID, error) {
 	claims, err := a.issuer.Parse(raw)
 	if err != nil {
-		return uuid.Nil, err
+		return uuid.Nil, fmt.Errorf("parse access token: %w", err)
 	}
-	return uuid.Parse(claims.Subject)
+	uid, err := uuid.Parse(claims.Subject)
+	if err != nil {
+		return uuid.Nil, fmt.Errorf("parse subject uuid: %w", err)
+	}
+	return uid, nil
 }
 
 // editorTokenVerifierAdapter bridges to editor's domain.TokenVerifier
@@ -1008,9 +1017,13 @@ type editorTokenVerifierAdapter struct{ issuer *authApp.TokenIssuer }
 func (a editorTokenVerifierAdapter) Verify(raw string) (uuid.UUID, error) {
 	claims, err := a.issuer.Parse(raw)
 	if err != nil {
-		return uuid.Nil, err
+		return uuid.Nil, fmt.Errorf("parse access token: %w", err)
 	}
-	return uuid.Parse(claims.Subject)
+	uid, err := uuid.Parse(claims.Subject)
+	if err != nil {
+		return uuid.Nil, fmt.Errorf("parse subject uuid: %w", err)
+	}
+	return uid, nil
 }
 
 func handleHealth(w http.ResponseWriter, _ *http.Request) {

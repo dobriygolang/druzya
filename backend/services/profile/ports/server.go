@@ -362,6 +362,8 @@ func languageFromProto(l pb.Language) enums.Language {
 		return enums.LanguageTypeScript
 	case pb.Language_LANGUAGE_SQL:
 		return enums.LanguageSQL
+	case pb.Language_LANGUAGE_UNSPECIFIED:
+		return ""
 	default:
 		return ""
 	}
@@ -388,6 +390,8 @@ func notificationChannelFromProto(c pb.NotificationChannel) enums.NotificationCh
 		return enums.NotificationChannelEmail
 	case pb.NotificationChannel_NOTIFICATION_CHANNEL_PUSH:
 		return enums.NotificationChannelPush
+	case pb.NotificationChannel_NOTIFICATION_CHANNEL_UNSPECIFIED:
+		return ""
 	default:
 		return ""
 	}

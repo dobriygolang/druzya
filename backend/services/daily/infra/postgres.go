@@ -115,12 +115,12 @@ func (p *TasksKatas) GetOrAssign(ctx context.Context, userID uuid.UUID, date tim
 		return assignmentFromAssignRow(userID, d, insRow), true, nil
 	case errors.Is(err, pgx.ErrNoRows):
 		// Row existed — fetch it.
-		existing, err := p.q.GetDailyKata(ctx, dailydb.GetDailyKataParams{
+		existing, getErr := p.q.GetDailyKata(ctx, dailydb.GetDailyKataParams{
 			UserID:   pgUUID(userID),
 			KataDate: pgDate,
 		})
-		if err != nil {
-			return domain.Assignment{}, false, fmt.Errorf("daily.TasksKatas.GetOrAssign: read existing: %w", err)
+		if getErr != nil {
+			return domain.Assignment{}, false, fmt.Errorf("daily.TasksKatas.GetOrAssign: read existing: %w", getErr)
 		}
 		return assignmentFromGetRow(userID, d, existing), false, nil
 	default:
@@ -276,9 +276,9 @@ func (p *Calendars) Upsert(ctx context.Context, c domain.InterviewCalendar) (dom
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 
-	if _, err := tx.Exec(ctx,
-		`DELETE FROM interview_calendars WHERE user_id=$1 AND interview_date >= CURRENT_DATE`, c.UserID); err != nil {
-		return domain.InterviewCalendar{}, fmt.Errorf("daily.Calendars.Upsert: clear: %w", err)
+	if _, delErr := tx.Exec(ctx,
+		`DELETE FROM interview_calendars WHERE user_id=$1 AND interview_date >= CURRENT_DATE`, c.UserID); delErr != nil {
+		return domain.InterviewCalendar{}, fmt.Errorf("daily.Calendars.Upsert: clear: %w", delErr)
 	}
 	qtx := p.q.WithTx(tx)
 	row, err := qtx.UpsertCalendar(ctx, dailydb.UpsertCalendarParams{

@@ -7,8 +7,8 @@ import (
 	"time"
 
 	"druz9/ai_mock/domain"
-	"druz9/shared/enums"
 	sharedDomain "druz9/shared/domain"
+	"druz9/shared/enums"
 
 	"github.com/google/uuid"
 )

@@ -45,8 +45,8 @@ func (uc *UpdateConfig) Do(ctx context.Context, in UpdateConfigInput) (domain.Co
 	if err != nil {
 		return domain.ConfigEntry{}, fmt.Errorf("admin.UpdateConfig: %w", err)
 	}
-	if err := domain.ValidateConfigValue(in.Key, in.Value, existing.Type); err != nil {
-		return domain.ConfigEntry{}, fmt.Errorf("admin.UpdateConfig: %w", err)
+	if vErr := domain.ValidateConfigValue(in.Key, in.Value, existing.Type); vErr != nil {
+		return domain.ConfigEntry{}, fmt.Errorf("admin.UpdateConfig: %w", vErr)
 	}
 	desc := existing.Description
 	if in.Description != "" {

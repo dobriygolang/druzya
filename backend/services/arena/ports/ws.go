@@ -54,11 +54,11 @@ type Envelope struct {
 
 // client is one WS connection attached to a match.
 type client struct {
-	matchID   uuid.UUID
-	userID    uuid.UUID
-	conn      *websocket.Conn
-	send      chan []byte
-	log       *slog.Logger
+	matchID uuid.UUID
+	userID  uuid.UUID
+	conn    *websocket.Conn
+	send    chan []byte
+	log     *slog.Logger
 	// rate limiting window
 	rlMu    sync.Mutex
 	rlStart time.Time

@@ -148,7 +148,7 @@ func (uc *SendMessage) generateReply(ctx context.Context, s domain.Session, curr
 		MaxTokens:   1024,
 	})
 	if err != nil {
-		return "", 0, err
+		return "", 0, fmt.Errorf("mock.SendMessage: complete: %w", err)
 	}
 	return resp.Content, resp.TokensUsed, nil
 }
@@ -166,12 +166,16 @@ func (uc *SendMessage) StreamReply(ctx context.Context, s domain.Session, curren
 	if model == "" {
 		model = uc.fallbackModel(user)
 	}
-	return uc.LLM.Stream(ctx, domain.CompletionRequest{
+	stream, err := uc.LLM.Stream(ctx, domain.CompletionRequest{
 		Model:       model,
 		Messages:    msgs,
 		Temperature: 0.7,
 		MaxTokens:   1024,
 	})
+	if err != nil {
+		return nil, fmt.Errorf("mock.SendMessage: stream: %w", err)
+	}
+	return stream, nil
 }
 
 func (uc *SendMessage) loadContext(ctx context.Context, s domain.Session) (domain.TaskWithHint, []domain.Message, domain.UserContext, domain.CompanyContext, error) {
@@ -223,7 +227,11 @@ func buildLLMMessages(s domain.Session, t domain.TaskWithHint, user domain.UserC
 // summarise [0..len-MessageContextSize] via a second LLM call and prepend the
 // summary as a system message. Tracking: bible §8 "older messages → summarized".
 func SummarizeOlder(ctx context.Context, msgs domain.MessageRepo, sessionID uuid.UUID, keep int) ([]domain.Message, error) {
-	return msgs.ListLast(ctx, sessionID, keep)
+	out, err := msgs.ListLast(ctx, sessionID, keep)
+	if err != nil {
+		return nil, fmt.Errorf("mock.SummarizeOlder: %w", err)
+	}
+	return out, nil
 }
 
 func firstOr(p *time.Time, fallback time.Time) time.Time {

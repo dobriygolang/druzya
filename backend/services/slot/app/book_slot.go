@@ -23,11 +23,11 @@ import (
 //     Booking.
 //  4. Publish SlotBooked on the shared event bus.
 type BookSlot struct {
-	Slots    domain.SlotRepo
-	Meet     domain.MeetRoomProvider
-	Bus      sharedDomain.Bus
-	Log      *slog.Logger
-	Now      func() time.Time
+	Slots domain.SlotRepo
+	Meet  domain.MeetRoomProvider
+	Bus   sharedDomain.Bus
+	Log   *slog.Logger
+	Now   func() time.Time
 }
 
 // BookSlotInput is the parsed HTTP input.
@@ -45,8 +45,8 @@ func (uc *BookSlot) Do(ctx context.Context, in BookSlotInput) (domain.Booking, e
 	if err != nil {
 		return domain.Booking{}, fmt.Errorf("slot.BookSlot: %w", err)
 	}
-	if err := domain.CanBook(slot, in.CandidateID, uc.now()); err != nil {
-		return domain.Booking{}, fmt.Errorf("slot.BookSlot: %w", err)
+	if checkErr := domain.CanBook(slot, in.CandidateID, uc.now()); checkErr != nil {
+		return domain.Booking{}, fmt.Errorf("slot.BookSlot: %w", checkErr)
 	}
 
 	// The meet URL is deterministic on the slot id — generating it up-front

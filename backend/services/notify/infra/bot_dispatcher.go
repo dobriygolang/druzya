@@ -90,7 +90,9 @@ func (d CommandDispatcher) handleHelp(ctx context.Context, msg *tgbotapi.Message
 }
 
 // handleLink associates the incoming Telegram chat with a druz9 account.
-//   /link <username>
+//
+//	/link <username>
+//
 // Verification: the user's Telegram username (msg.From.UserName) MUST match
 // the stored profile's telegram_username. For MVP we only verify that msg.From
 // provides SOME username (bible §9 already uses the Login Widget to bind

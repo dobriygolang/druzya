@@ -146,7 +146,7 @@ func (s *NativeServer) SubmitPrompt(
 		},
 	}
 	if err := stream.Send(done); err != nil {
-		return err
+		return fmt.Errorf("native.SubmitPrompt: stream send: %w", err)
 	}
 	return nil
 }
@@ -332,6 +332,8 @@ func sectionFromProtoNative(s pb.Section) enums.Section {
 		return enums.SectionSystemDesign
 	case pb.Section_SECTION_BEHAVIORAL:
 		return enums.SectionBehavioral
+	case pb.Section_SECTION_UNSPECIFIED:
+		return ""
 	default:
 		return ""
 	}
@@ -358,6 +360,8 @@ func difficultyFromProtoNative(d pb.Difficulty) enums.Difficulty {
 		return enums.DifficultyMedium
 	case pb.Difficulty_DIFFICULTY_HARD:
 		return enums.DifficultyHard
+	case pb.Difficulty_DIFFICULTY_UNSPECIFIED:
+		return ""
 	default:
 		return ""
 	}
@@ -375,6 +379,8 @@ func llmModelFromProtoNative(m pb.LLMModel) enums.LLMModel {
 		return enums.LLMModelGeminiPro
 	case pb.LLMModel_LLM_MODEL_MISTRAL_7B:
 		return enums.LLMModelMistral7B
+	case pb.LLMModel_LLM_MODEL_UNSPECIFIED:
+		return ""
 	default:
 		return ""
 	}
@@ -388,6 +394,8 @@ func actionFromProto(a pb.NativeAction) domain.ActionKind {
 		return domain.ActionRejected
 	case pb.NativeAction_NATIVE_ACTION_REVISED:
 		return domain.ActionRevised
+	case pb.NativeAction_NATIVE_ACTION_UNSPECIFIED:
+		return ""
 	default:
 		return ""
 	}

@@ -27,9 +27,9 @@ type AccessTokenClaims struct {
 // TokenIssuer mints and validates our JWT access tokens. HS256 is plenty for
 // monolith MVP; swap to RS256 when we split auth into its own service.
 type TokenIssuer struct {
-	secret           []byte
-	accessTTL        time.Duration
-	issuer           string
+	secret    []byte
+	accessTTL time.Duration
+	issuer    string
 }
 
 // NewTokenIssuer builds an issuer. `secret` must be at least 32 bytes in prod.

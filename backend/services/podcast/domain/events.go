@@ -14,10 +14,10 @@ import (
 // Topic name is namespaced to avoid collisions if the shared catalog ever
 // introduces its own podcast event later.
 type PodcastCompleted struct {
-	At         time.Time `json:"at"`
-	UserID     uuid.UUID `json:"user_id"`
-	PodcastID  uuid.UUID `json:"podcast_id"`
-	DurationSec int      `json:"duration_sec"`
+	At          time.Time `json:"at"`
+	UserID      uuid.UUID `json:"user_id"`
+	PodcastID   uuid.UUID `json:"podcast_id"`
+	DurationSec int       `json:"duration_sec"`
 }
 
 // Topic implements the shared Event interface.

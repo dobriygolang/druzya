@@ -50,23 +50,23 @@ func (UserLoggedIn) Topic() string { return "auth.UserLoggedIn" }
 
 type MatchStarted struct {
 	base
-	MatchID  uuid.UUID     `json:"match_id"`
-	Section  enums.Section `json:"section"`
-	Players  []uuid.UUID   `json:"players"`
-	TaskID   uuid.UUID     `json:"task_id"`
-	TaskVer  int           `json:"task_version"`
+	MatchID uuid.UUID     `json:"match_id"`
+	Section enums.Section `json:"section"`
+	Players []uuid.UUID   `json:"players"`
+	TaskID  uuid.UUID     `json:"task_id"`
+	TaskVer int           `json:"task_version"`
 }
 
 func (MatchStarted) Topic() string { return "arena.MatchStarted" }
 
 type MatchCompleted struct {
 	base
-	MatchID   uuid.UUID     `json:"match_id"`
-	Section   enums.Section `json:"section"`
-	WinnerID  uuid.UUID     `json:"winner_id"`
-	LoserIDs  []uuid.UUID   `json:"loser_ids"`
-	EloDeltas map[uuid.UUID]int `json:"elo_deltas"`
-	DurationMs int64 `json:"duration_ms"`
+	MatchID    uuid.UUID         `json:"match_id"`
+	Section    enums.Section     `json:"section"`
+	WinnerID   uuid.UUID         `json:"winner_id"`
+	LoserIDs   []uuid.UUID       `json:"loser_ids"`
+	EloDeltas  map[uuid.UUID]int `json:"elo_deltas"`
+	DurationMs int64             `json:"duration_ms"`
 }
 
 func (MatchCompleted) Topic() string { return "arena.MatchCompleted" }
@@ -174,12 +174,12 @@ func (InterviewAutopsyCreated) Topic() string { return "daily.AutopsyCreated" }
 
 type RatingChanged struct {
 	base
-	UserID   uuid.UUID     `json:"user_id"`
-	Section  enums.Section `json:"section"`
-	EloOld   int           `json:"elo_old"`
-	EloNew   int           `json:"elo_new"`
-	Source   string        `json:"source"` // "arena" | "mock" | "kata"
-	MatchID  *uuid.UUID    `json:"match_id,omitempty"`
+	UserID  uuid.UUID     `json:"user_id"`
+	Section enums.Section `json:"section"`
+	EloOld  int           `json:"elo_old"`
+	EloNew  int           `json:"elo_new"`
+	Source  string        `json:"source"` // "arena" | "mock" | "kata"
+	MatchID *uuid.UUID    `json:"match_id,omitempty"`
 }
 
 func (RatingChanged) Topic() string { return "rating.Changed" }
@@ -226,10 +226,10 @@ func (SkillDecayed) Topic() string { return "progress.SkillDecayed" }
 
 type GuildWarStarted struct {
 	base
-	WarID   uuid.UUID `json:"war_id"`
-	GuildA  uuid.UUID `json:"guild_a"`
-	GuildB  uuid.UUID `json:"guild_b"`
-	EndsAt  time.Time `json:"ends_at"`
+	WarID  uuid.UUID `json:"war_id"`
+	GuildA uuid.UUID `json:"guild_a"`
+	GuildB uuid.UUID `json:"guild_b"`
+	EndsAt time.Time `json:"ends_at"`
 }
 
 func (GuildWarStarted) Topic() string { return "guild.WarStarted" }

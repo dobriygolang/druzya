@@ -135,7 +135,7 @@ type claimKey struct {
 }
 
 // NewMemClaimStore returns an in-memory ClaimRepo.
-func NewMemClaimStore() *memClaimStore { // nolint:revive // exported via constructor below
+func NewMemClaimStore() *memClaimStore { //nolint:revive // exported via constructor below
 	return &memClaimStore{state: map[claimKey]domain.ClaimState{}}
 }
 

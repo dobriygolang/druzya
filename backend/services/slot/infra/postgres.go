@@ -195,11 +195,11 @@ func (p *Postgres) BookAtomically(ctx context.Context, slotID, candidateID uuid.
 		return domain.Booking{}, domain.ErrSelfBooking
 	}
 
-	if affected, err := qtx.UpdateSlotStatus(ctx, slotdb.UpdateSlotStatusParams{
+	if affected, updErr := qtx.UpdateSlotStatus(ctx, slotdb.UpdateSlotStatusParams{
 		ID:     pgUUID(slotID),
 		Status: string(enums.SlotStatusBooked),
-	}); err != nil {
-		return domain.Booking{}, fmt.Errorf("slot.pg.BookAtomically: flip: %w", err)
+	}); updErr != nil {
+		return domain.Booking{}, fmt.Errorf("slot.pg.BookAtomically: flip: %w", updErr)
 	} else if affected == 0 {
 		return domain.Booking{}, domain.ErrNotFound
 	}

@@ -35,12 +35,12 @@ type Config struct {
 	}
 
 	Auth struct {
-		JWTSecret         string
-		AccessTokenTTL    int // seconds
-		RefreshTokenTTL   int
-		YandexClientID    string
-		YandexSecret      string
-		TelegramBotToken  string
+		JWTSecret        string
+		AccessTokenTTL   int // seconds
+		RefreshTokenTTL  int
+		YandexClientID   string
+		YandexSecret     string
+		TelegramBotToken string
 	}
 
 	LLM struct {

@@ -53,10 +53,10 @@ type Bundle struct {
 
 // PublicBundle omits email/settings (exposed by /profile/{username}).
 type PublicBundle struct {
-	User     User
-	Profile  Profile
-	Ratings  []SectionRating
-	Atlas    []SkillNode
+	User    User
+	Profile Profile
+	Ratings []SectionRating
+	Atlas   []SkillNode
 }
 
 // Activity is a 7-day aggregate for the weekly report.

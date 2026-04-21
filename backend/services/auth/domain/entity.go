@@ -23,14 +23,14 @@ type User struct {
 
 // OAuthAccount is the external identity linked to a User.
 type OAuthAccount struct {
-	ID               uuid.UUID
-	UserID           uuid.UUID
-	Provider         enums.AuthProvider
-	ProviderUserID   string
-	AccessTokenEnc   []byte // AES-256-GCM ciphertext
-	RefreshTokenEnc  []byte
-	TokenExpiresAt   *time.Time
-	CreatedAt        time.Time
+	ID              uuid.UUID
+	UserID          uuid.UUID
+	Provider        enums.AuthProvider
+	ProviderUserID  string
+	AccessTokenEnc  []byte // AES-256-GCM ciphertext
+	RefreshTokenEnc []byte
+	TokenExpiresAt  *time.Time
+	CreatedAt       time.Time
 }
 
 // Session represents an active refresh-token session stored in Redis.

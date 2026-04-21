@@ -480,7 +480,11 @@ func valueToJSON(v *structpb.Value) ([]byte, error) {
 	if v == nil {
 		return []byte("null"), nil
 	}
-	return protojson.Marshal(v)
+	b, err := protojson.Marshal(v)
+	if err != nil {
+		return nil, fmt.Errorf("marshal structpb value: %w", err)
+	}
+	return b, nil
 }
 
 // valueFromConfig builds a structpb.Value from the raw JSON stored on a
@@ -494,39 +498,47 @@ func valueFromConfig(e domain.ConfigEntry) (*structpb.Value, error) {
 	case domain.ConfigTypeInt:
 		n, err := strconv.ParseInt(string(e.Value), 10, 64)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("parse int config value: %w", err)
 		}
 		return structpb.NewNumberValue(float64(n)), nil
 	case domain.ConfigTypeFloat:
 		var f float64
 		if err := json.Unmarshal(e.Value, &f); err != nil {
-			return nil, err
+			return nil, fmt.Errorf("unmarshal float config value: %w", err)
 		}
 		return structpb.NewNumberValue(f), nil
 	case domain.ConfigTypeString:
 		var s string
 		if err := json.Unmarshal(e.Value, &s); err != nil {
-			return nil, err
+			return nil, fmt.Errorf("unmarshal string config value: %w", err)
 		}
 		return structpb.NewStringValue(s), nil
 	case domain.ConfigTypeBool:
 		var b bool
 		if err := json.Unmarshal(e.Value, &b); err != nil {
-			return nil, err
+			return nil, fmt.Errorf("unmarshal bool config value: %w", err)
 		}
 		return structpb.NewBoolValue(b), nil
 	case domain.ConfigTypeJSON:
 		var any any
 		if err := json.Unmarshal(e.Value, &any); err != nil {
-			return nil, err
+			return nil, fmt.Errorf("unmarshal json config value: %w", err)
 		}
-		return structpb.NewValue(any)
+		v, err := structpb.NewValue(any)
+		if err != nil {
+			return nil, fmt.Errorf("build structpb value: %w", err)
+		}
+		return v, nil
 	default:
 		// Unknown type — surface the raw bytes via NewValue as a best
 		// effort.
 		var any any
 		if err := json.Unmarshal(e.Value, &any); err == nil {
-			return structpb.NewValue(any)
+			v, vErr := structpb.NewValue(any)
+			if vErr != nil {
+				return nil, fmt.Errorf("build structpb value: %w", vErr)
+			}
+			return v, nil
 		}
 		return structpb.NewNullValue(), nil
 	}
@@ -555,6 +567,8 @@ func sectionToProtoAdmin(s enums.Section) pb.Section {
 
 func sectionFromProtoAdmin(s pb.Section) enums.Section {
 	switch s {
+	case pb.Section_SECTION_UNSPECIFIED:
+		return ""
 	case pb.Section_SECTION_ALGORITHMS:
 		return enums.SectionAlgorithms
 	case pb.Section_SECTION_SQL:
@@ -585,6 +599,8 @@ func difficultyToProtoAdmin(d enums.Difficulty) pb.Difficulty {
 
 func difficultyFromProtoAdmin(d pb.Difficulty) enums.Difficulty {
 	switch d {
+	case pb.Difficulty_DIFFICULTY_UNSPECIFIED:
+		return ""
 	case pb.Difficulty_DIFFICULTY_EASY:
 		return enums.DifficultyEasy
 	case pb.Difficulty_DIFFICULTY_MEDIUM:
@@ -611,6 +627,8 @@ func dungeonTierToProto(t enums.DungeonTier) pb.DungeonTier {
 
 func dungeonTierFromProto(t pb.DungeonTier) enums.DungeonTier {
 	switch t {
+	case pb.DungeonTier_DUNGEON_TIER_UNSPECIFIED:
+		return ""
 	case pb.DungeonTier_DUNGEON_TIER_NORMAL:
 		return enums.DungeonTierNormal
 	case pb.DungeonTier_DUNGEON_TIER_HARD:
@@ -637,6 +655,8 @@ func severityToProto(s enums.SeverityLevel) pb.SeverityLevel {
 
 func severityFromProto(s pb.SeverityLevel) enums.SeverityLevel {
 	switch s {
+	case pb.SeverityLevel_SEVERITY_LEVEL_UNSPECIFIED:
+		return ""
 	case pb.SeverityLevel_SEVERITY_LEVEL_LOW:
 		return enums.SeverityLow
 	case pb.SeverityLevel_SEVERITY_LEVEL_MEDIUM:

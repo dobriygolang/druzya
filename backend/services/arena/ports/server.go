@@ -327,6 +327,8 @@ func sectionFromProto(s pb.Section) enums.Section {
 		return enums.SectionSystemDesign
 	case pb.Section_SECTION_BEHAVIORAL:
 		return enums.SectionBehavioral
+	case pb.Section_SECTION_UNSPECIFIED:
+		return ""
 	default:
 		return ""
 	}
@@ -357,6 +359,8 @@ func languageFromProto(l pb.Language) enums.Language {
 		return enums.LanguageTypeScript
 	case pb.Language_LANGUAGE_SQL:
 		return enums.LanguageSQL
+	case pb.Language_LANGUAGE_UNSPECIFIED:
+		return ""
 	default:
 		return ""
 	}
@@ -408,6 +412,8 @@ func arenaModeFromProto(m pb.ArenaMode) enums.ArenaMode {
 		return enums.ArenaModeHardcore
 	case pb.ArenaMode_ARENA_MODE_CURSED:
 		return enums.ArenaModeCursed
+	case pb.ArenaMode_ARENA_MODE_UNSPECIFIED:
+		return ""
 	default:
 		return ""
 	}

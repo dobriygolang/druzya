@@ -22,15 +22,15 @@ import (
 //  6. Persist a new provenance record (kind=ai_generated).
 //  7. Recompute partial scores (no user actions yet so only Context moves).
 type SubmitPrompt struct {
-	Sessions    domain.SessionRepo
-	Provenance  domain.ProvenanceRepo
-	Tasks       domain.TaskRepo
-	Users       domain.UserRepo
-	LLM         domain.LLMProvider
-	Traps       domain.TrapStore
-	Policy      domain.TrapPolicy
-	Scoring     domain.ScoringParams
-	Log         *slog.Logger
+	Sessions   domain.SessionRepo
+	Provenance domain.ProvenanceRepo
+	Tasks      domain.TaskRepo
+	Users      domain.UserRepo
+	LLM        domain.LLMProvider
+	Traps      domain.TrapStore
+	Policy     domain.TrapPolicy
+	Scoring    domain.ScoringParams
+	Log        *slog.Logger
 }
 
 // SubmitPromptInput is the validated use-case payload.
@@ -181,8 +181,10 @@ func actionsFromRecords(records []domain.ProvenanceRecord) []domain.UserAction {
 			a.Action = domain.ActionRejected
 		case enums.ProvenanceKindAIRevisedByHuman:
 			a.Action = domain.ActionRevised
-		default:
+		case enums.ProvenanceKindAIGenerated, enums.ProvenanceKindHumanWritten:
 			// AI-generated that's been verified without a kind change = accepted.
+			a.Action = domain.ActionAccepted
+		default:
 			a.Action = domain.ActionAccepted
 		}
 		out = append(out, a)

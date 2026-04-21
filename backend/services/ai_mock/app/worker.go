@@ -36,10 +36,7 @@ type ReportWorker struct {
 
 // NewReportWorker builds a worker with `size` goroutines. queueSize is the
 // buffered job queue size (0 falls back to 32).
-func NewReportWorker(size, queueSize int, log *slog.Logger) *ReportWorker {
-	if size <= 0 {
-		size = 2
-	}
+func NewReportWorker(_, queueSize int, log *slog.Logger) *ReportWorker {
 	if queueSize <= 0 {
 		queueSize = 32
 	}

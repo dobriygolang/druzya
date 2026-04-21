@@ -16,8 +16,6 @@ type InProcess struct {
 	mu       sync.RWMutex
 	handlers map[string][]domain.Handler
 	log      *slog.Logger
-	// workers pool size per topic (0 = sync dispatch). Keep 0 in MVP for simplicity.
-	workers int
 }
 
 func NewInProcess(log *slog.Logger) *InProcess {

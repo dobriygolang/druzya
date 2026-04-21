@@ -34,14 +34,14 @@ const replayBufferCap = 10_000
 
 // Outbound message kinds (server → client). See bible §5 / openapi x-websocket.
 const (
-	KindOp                 = "op"
-	KindCursor             = "cursor"
-	KindFreeze             = "freeze"
-	KindRoleChange         = "role_change"
-	KindParticipantJoined  = "participant_joined"
-	KindParticipantLeft    = "participant_left"
-	KindError              = "error"
-	KindPong               = "pong"
+	KindOp                = "op"
+	KindCursor            = "cursor"
+	KindFreeze            = "freeze"
+	KindRoleChange        = "role_change"
+	KindParticipantJoined = "participant_joined"
+	KindParticipantLeft   = "participant_left"
+	KindError             = "error"
+	KindPong              = "pong"
 )
 
 // Inbound message kinds (client → server).
@@ -104,8 +104,8 @@ func NewHub(log *slog.Logger) *Hub {
 
 // roomHub holds the per-room state.
 type roomHub struct {
-	mu       sync.RWMutex
-	clients  map[*wsConn]struct{}
+	mu      sync.RWMutex
+	clients map[*wsConn]struct{}
 	// buffer is a ring of the last `replayBufferCap` ops.
 	buffer  []bufferedEntry
 	bufHead int // next write index
@@ -160,15 +160,12 @@ func (h *Hub) unregister(roomID uuid.UUID, c *wsConn) {
 	}
 	rh.mu.Lock()
 	delete(rh.clients, c)
-	empty := len(rh.clients) == 0
 	rh.mu.Unlock()
 	h.Broadcast(roomID, KindParticipantLeft, map[string]any{"user_id": c.userID})
-	if empty {
-		// Keep the room entry so the replay buffer survives brief drops;
-		// the room is GC'd on FlushRoom + Close or on service shutdown.
-		// STUB: room-close sweeper that flushes buffers to MinIO after N
-		// minutes of emptiness. For MVP we flush only on /replay.
-	}
+	// Keep the room entry so the replay buffer survives brief drops;
+	// the room is GC'd on FlushRoom + Close or on service shutdown.
+	// STUB: room-close sweeper that flushes buffers to MinIO after N
+	// minutes of emptiness. For MVP we flush only on /replay.
 }
 
 // Broadcast sends a frame to every client in the room. Op and cursor
@@ -209,8 +206,8 @@ func (h *Hub) Broadcast(roomID uuid.UUID, kind string, data any) {
 // BroadcastFreeze satisfies app.FreezeNotifier — fan out a freeze toggle.
 func (h *Hub) BroadcastFreeze(roomID uuid.UUID, frozen bool, actor uuid.UUID) {
 	h.Broadcast(roomID, KindFreeze, map[string]any{
-		"frozen":    frozen,
-		"actor_id":  actor,
+		"frozen":   frozen,
+		"actor_id": actor,
 	})
 }
 
@@ -465,7 +462,7 @@ func (h *Hub) readLoop(ctx context.Context, c *wsConn) {
 			// Forward presence heartbeats to other peers (typing indicators etc.).
 			h.Broadcast(c.roomID, InPresence, map[string]any{
 				"user_id": c.userID,
-				"data":    json.RawMessage(env.Data),
+				"data":    env.Data,
 			})
 
 		default:

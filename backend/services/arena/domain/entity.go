@@ -55,10 +55,10 @@ type Participant struct {
 
 // QueueTicket is a pending matchmaking entry, tracked in Redis.
 type QueueTicket struct {
-	UserID    uuid.UUID
-	Section   enums.Section
-	Mode      enums.ArenaMode
-	Elo       int
+	UserID     uuid.UUID
+	Section    enums.Section
+	Mode       enums.ArenaMode
+	Elo        int
 	EnqueuedAt time.Time
 }
 

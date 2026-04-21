@@ -162,6 +162,8 @@ func notificationChannelToProto(c enums.NotificationChannel) pb.NotificationChan
 
 func notificationChannelFromProto(c pb.NotificationChannel) enums.NotificationChannel {
 	switch c {
+	case pb.NotificationChannel_NOTIFICATION_CHANNEL_UNSPECIFIED:
+		return ""
 	case pb.NotificationChannel_NOTIFICATION_CHANNEL_TELEGRAM:
 		return enums.NotificationChannelTelegram
 	case pb.NotificationChannel_NOTIFICATION_CHANNEL_EMAIL:

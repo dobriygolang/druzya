@@ -40,10 +40,11 @@ type Recommendation struct {
 // counts from real tables but leaves the AI-narrated fields as placeholders.
 //
 // STUB: LLM narrative generation — stress_analysis, strengths, weaknesses and
-//       recommendations should come from an async job that consumes
-//       arena_matches + mock_sessions + native_sessions over the last 7 days,
-//       batches them, and asks the LLM to summarise. Wire once ai_mock/ai_native
-//       services are ready.
+//
+//	recommendations should come from an async job that consumes
+//	arena_matches + mock_sessions + native_sessions over the last 7 days,
+//	batches them, and asks the LLM to summarise. Wire once ai_mock/ai_native
+//	services are ready.
 type GetReport struct{ Repo domain.ProfileRepo }
 
 // Do assembles the MVP report shape.

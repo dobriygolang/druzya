@@ -2,9 +2,6 @@ package ports
 
 import (
 	"log/slog"
-	"net/http"
-	"strings"
-	"time"
 
 	"druz9/auth/app"
 	"druz9/auth/domain"
@@ -42,53 +39,3 @@ func NewHandler(h Handler) *Handler {
 
 // refreshCookieName is shared between login/refresh/logout.
 const refreshCookieName = "druz9_refresh"
-
-// setRefreshCookie writes the long-lived refresh cookie with sane defaults.
-func (h *Handler) setRefreshCookie(w http.ResponseWriter, value string, expires time.Time) {
-	cookie := &http.Cookie{
-		Name:     refreshCookieName,
-		Value:    value,
-		Path:     "/api/v1/auth",
-		Domain:   h.CookieDomain,
-		Expires:  expires,
-		MaxAge:   int(time.Until(expires).Seconds()),
-		HttpOnly: true,
-		Secure:   h.SecureCookies,
-		SameSite: http.SameSiteLaxMode,
-	}
-	http.SetCookie(w, cookie)
-}
-
-func (h *Handler) clearRefreshCookie(w http.ResponseWriter) {
-	cookie := &http.Cookie{
-		Name:     refreshCookieName,
-		Value:    "",
-		Path:     "/api/v1/auth",
-		Domain:   h.CookieDomain,
-		MaxAge:   -1,
-		HttpOnly: true,
-		Secure:   h.SecureCookies,
-		SameSite: http.SameSiteLaxMode,
-	}
-	http.SetCookie(w, cookie)
-}
-
-func clientIP(r *http.Request) string {
-	if xff := r.Header.Get("X-Forwarded-For"); xff != "" {
-		if i := strings.IndexByte(xff, ','); i >= 0 {
-			return strings.TrimSpace(xff[:i])
-		}
-		return strings.TrimSpace(xff)
-	}
-	if xr := r.Header.Get("X-Real-IP"); xr != "" {
-		return xr
-	}
-	return r.RemoteAddr
-}
-
-func derefString(p *string) string {
-	if p == nil {
-		return ""
-	}
-	return *p
-}

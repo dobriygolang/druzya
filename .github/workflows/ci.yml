@@ -59,7 +59,7 @@ jobs:
           for mod in $(find backend -name go.mod -not -path '*/tools/*' | sort); do
             dir=$(dirname "$mod")
             echo "::group::lint $dir"
-            (cd "$dir" && golangci-lint run --config="$GITHUB_WORKSPACE/backend/.golangci.yml" --timeout=5m ./...) || fail=1
+            (cd "$dir" && go mod download && golangci-lint run --config="$GITHUB_WORKSPACE/backend/.golangci.yml" --timeout=5m ./...) || fail=1
             echo "::endgroup::"
           done
           exit $fail

@@ -35,11 +35,11 @@ type TaskPublic struct {
 
 // StreakInfo is GET /daily/streak shape.
 type StreakInfo struct {
-	Current       int
-	Longest       int
-	FreezeTokens  int
-	LastKataDate  *time.Time
-	History       []*bool // 30-day window; nil = freeze used
+	Current      int
+	Longest      int
+	FreezeTokens int
+	LastKataDate *time.Time
+	History      []*bool // 30-day window; nil = freeze used
 }
 
 // InterviewCalendar mirrors interview_calendars + derived fields.

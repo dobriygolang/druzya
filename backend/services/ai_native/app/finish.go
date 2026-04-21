@@ -62,8 +62,8 @@ func (uc *Finish) Do(ctx context.Context, in FinishInput) (FinishOutput, error) 
 	if err != nil {
 		return FinishOutput{}, fmt.Errorf("native.Finish: list: %w", err)
 	}
-	if err := domain.ValidateVerificationGate(records); err != nil {
-		return FinishOutput{}, fmt.Errorf("native.Finish: %w", err)
+	if gateErr := domain.ValidateVerificationGate(records); gateErr != nil {
+		return FinishOutput{}, fmt.Errorf("native.Finish: %w", gateErr)
 	}
 
 	scoring := uc.Scoring
@@ -72,8 +72,8 @@ func (uc *Finish) Do(ctx context.Context, in FinishInput) (FinishOutput, error) 
 	}
 	scores := domain.ComputeScores(records, actionsFromRecords(records), scoring)
 
-	if err := uc.Sessions.MarkFinished(ctx, sess.ID, scores); err != nil {
-		return FinishOutput{}, fmt.Errorf("native.Finish: mark finished: %w", err)
+	if mfErr := uc.Sessions.MarkFinished(ctx, sess.ID, scores); mfErr != nil {
+		return FinishOutput{}, fmt.Errorf("native.Finish: mark finished: %w", mfErr)
 	}
 	// Re-fetch to get the stamped finished_at.
 	sess, err = uc.Sessions.Get(ctx, sess.ID)

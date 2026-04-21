@@ -30,14 +30,14 @@ type UserRepo interface {
 // UpsertOAuthInput carries everything needed to create-or-find a user from
 // an external identity. Encrypted token blobs are passed opaque.
 type UpsertOAuthInput struct {
-	Provider         enums.AuthProvider
-	ProviderUserID   string
-	Email            string // may be empty (Telegram)
-	UsernameHint     string // preferred login/username; repo dedupes on conflict
-	DisplayName      string
-	AccessTokenEnc   []byte
-	RefreshTokenEnc  []byte
-	TokenExpiresAt   *time.Time
+	Provider        enums.AuthProvider
+	ProviderUserID  string
+	Email           string // may be empty (Telegram)
+	UsernameHint    string // preferred login/username; repo dedupes on conflict
+	DisplayName     string
+	AccessTokenEnc  []byte
+	RefreshTokenEnc []byte
+	TokenExpiresAt  *time.Time
 }
 
 // SessionRepo stores refresh sessions in Redis. Keys namespaced session:{id}.

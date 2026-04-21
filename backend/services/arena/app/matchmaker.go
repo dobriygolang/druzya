@@ -31,14 +31,14 @@ type MatchNotifier interface {
 
 // Matchmaker runs the dispatcher loop.
 type Matchmaker struct {
-	Queue     domain.QueueRepo
-	Ready     domain.ReadyCheckRepo
-	Matches   domain.MatchRepo
-	Tasks     domain.TaskRepo
-	Bus       sharedDomain.Bus
-	Notifier  MatchNotifier
-	Clock     domain.Clock
-	Log       *slog.Logger
+	Queue    domain.QueueRepo
+	Ready    domain.ReadyCheckRepo
+	Matches  domain.MatchRepo
+	Tasks    domain.TaskRepo
+	Bus      sharedDomain.Bus
+	Notifier MatchNotifier
+	Clock    domain.Clock
+	Log      *slog.Logger
 
 	// Sections and modes to sweep each tick. Defaults to all sections × Solo1v1.
 	SweepPairs []SweepKey

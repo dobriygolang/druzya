@@ -147,10 +147,11 @@ func sectionToString(s pb.Section) string {
 		return "system_design"
 	case pb.Section_SECTION_BEHAVIORAL:
 		return "behavioral"
+	case pb.Section_SECTION_UNSPECIFIED:
+		return ""
 	default:
 		// An unspecified section keeps the app layer's validation responsibility:
 		// the use case will reject it as "invalid section".
 		return ""
 	}
 }
-

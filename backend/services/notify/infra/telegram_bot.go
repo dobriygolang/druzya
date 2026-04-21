@@ -28,8 +28,8 @@ import (
 	"druz9/notify/domain"
 	"druz9/shared/enums"
 
-	"github.com/google/uuid"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+	"github.com/google/uuid"
 )
 
 // telegramAPI is the narrow interface over tgbotapi.BotAPI used by the bot
@@ -54,12 +54,12 @@ type TelegramBotConfig struct {
 // TelegramBot is the adapter used by the worker (outbound Sender) and by the
 // webhook handler (inbound updates).
 type TelegramBot struct {
-	api       telegramAPI
-	cfg       TelegramBotConfig
-	log       *slog.Logger
-	prefs     domain.PreferencesRepo
-	users     domain.UserLookup
-	dispatch  CommandDispatcher
+	api      telegramAPI
+	cfg      TelegramBotConfig
+	log      *slog.Logger
+	prefs    domain.PreferencesRepo
+	users    domain.UserLookup
+	dispatch CommandDispatcher
 }
 
 // NewTelegramBot constructs a real bot from a token. If token is empty (common
@@ -131,7 +131,7 @@ func (b *TelegramBot) sendWithRetry(ctx context.Context, userID uuid.UUID, chatI
 	backoff := 500 * time.Millisecond
 	for attempt := 0; attempt <= b.cfg.MaxSendRetries; attempt++ {
 		if err := ctx.Err(); err != nil {
-			return err
+			return fmt.Errorf("ctx cancelled: %w", err)
 		}
 		_, err := b.api.Send(msg)
 		if err == nil {
@@ -154,7 +154,7 @@ func (b *TelegramBot) sendWithRetry(ctx context.Context, userID uuid.UUID, chatI
 			)
 			select {
 			case <-ctx.Done():
-				return ctx.Err()
+				return fmt.Errorf("ctx cancelled: %w", ctx.Err())
 			case <-time.After(retryAfter):
 			}
 			continue
@@ -163,7 +163,7 @@ func (b *TelegramBot) sendWithRetry(ctx context.Context, userID uuid.UUID, chatI
 		if attempt < b.cfg.MaxSendRetries {
 			select {
 			case <-ctx.Done():
-				return ctx.Err()
+				return fmt.Errorf("ctx cancelled: %w", ctx.Err())
 			case <-time.After(backoff):
 			}
 			backoff *= 2

@@ -213,6 +213,8 @@ func toWarProto(v app.WarView) *pb.GuildWar {
 
 func sectionFromProto(s pb.Section) enums.Section {
 	switch s {
+	case pb.Section_SECTION_UNSPECIFIED:
+		return ""
 	case pb.Section_SECTION_ALGORITHMS:
 		return enums.SectionAlgorithms
 	case pb.Section_SECTION_SQL:
@@ -247,6 +249,8 @@ func sectionToProto(s enums.Section) pb.Section {
 
 func languageFromProto(l pb.Language) enums.Language {
 	switch l {
+	case pb.Language_LANGUAGE_UNSPECIFIED:
+		return ""
 	case pb.Language_LANGUAGE_GO:
 		return enums.LanguageGo
 	case pb.Language_LANGUAGE_PYTHON:

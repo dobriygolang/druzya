@@ -89,8 +89,9 @@ func ApplyXP(p Profile, gain int) (newLevel, oldLevel int, totalXP int64) {
 // CareerStageFromPowerScore derives a career label from Global Power Score.
 // Thresholds are stubs — in prod they come from dynamic_config (bible §6).
 // STUB: replace hardcoded thresholds with values read from dynamic_config
-//       keys `career_stage_middle_cutoff`, `_senior_cutoff`, `_staff_cutoff`,
-//       `_principal_cutoff`.
+//
+//	keys `career_stage_middle_cutoff`, `_senior_cutoff`, `_staff_cutoff`,
+//	`_principal_cutoff`.
 func CareerStageFromPowerScore(score int) CareerStage {
 	switch {
 	case score >= 1800:

@@ -41,7 +41,7 @@ func NewStubReplayUploader(baseURL string, ttl time.Duration) *StubReplayUploade
 // the URL shape the real MinIO client will eventually return.
 func (u *StubReplayUploader) Upload(ctx context.Context, roomID uuid.UUID, payload []byte) (string, time.Time, error) {
 	if ctx.Err() != nil {
-		return "", time.Time{}, ctx.Err()
+		return "", time.Time{}, fmt.Errorf("ctx cancelled: %w", ctx.Err())
 	}
 	_ = payload // STUB — real impl uploads JSONL multipart.
 	expires := time.Now().Add(u.TTL).UTC()

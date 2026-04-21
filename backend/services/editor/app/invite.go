@@ -26,7 +26,7 @@ type CreateInvite struct {
 
 // CreateInviteInput is the payload.
 type CreateInviteInput struct {
-	RoomID  uuid.UUID
+	RoomID   uuid.UUID
 	CallerID uuid.UUID
 }
 

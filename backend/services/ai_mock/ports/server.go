@@ -82,9 +82,9 @@ func (s *MockServer) CreateSession(
 		DevilsAdvocate: m.GetDevilsAdvocate(),
 	}
 	if pu := m.GetPairedUserId(); pu != "" {
-		pid, err := uuid.Parse(pu)
-		if err != nil {
-			return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("invalid paired_user_id: %w", err))
+		pid, parseErr := uuid.Parse(pu)
+		if parseErr != nil {
+			return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("invalid paired_user_id: %w", parseErr))
 		}
 		in.PairedUserID = &pid
 	}
@@ -385,6 +385,8 @@ func sectionToProtoMock(s enums.Section) pb.Section {
 
 func sectionFromProtoMock(s pb.Section) enums.Section {
 	switch s {
+	case pb.Section_SECTION_UNSPECIFIED:
+		return ""
 	case pb.Section_SECTION_ALGORITHMS:
 		return enums.SectionAlgorithms
 	case pb.Section_SECTION_SQL:
@@ -415,6 +417,8 @@ func difficultyToProtoMock(d enums.Difficulty) pb.Difficulty {
 
 func difficultyFromProtoMock(d pb.Difficulty) enums.Difficulty {
 	switch d {
+	case pb.Difficulty_DIFFICULTY_UNSPECIFIED:
+		return ""
 	case pb.Difficulty_DIFFICULTY_EASY:
 		return enums.DifficultyEasy
 	case pb.Difficulty_DIFFICULTY_MEDIUM:
@@ -456,6 +460,8 @@ func messageRoleToProto(r enums.MessageRole) pb.MessageRole {
 
 func llmModelFromProto(m pb.LLMModel) enums.LLMModel {
 	switch m {
+	case pb.LLMModel_LLM_MODEL_UNSPECIFIED:
+		return ""
 	case pb.LLMModel_LLM_MODEL_GPT_4O_MINI:
 		return enums.LLMModelGPT4oMini
 	case pb.LLMModel_LLM_MODEL_GPT_4O:
@@ -473,6 +479,8 @@ func llmModelFromProto(m pb.LLMModel) enums.LLMModel {
 
 func editorEventTypeFromProto(t pb.EditorEventType) domain.EditorEventType {
 	switch t {
+	case pb.EditorEventType_EDITOR_EVENT_TYPE_UNSPECIFIED:
+		return ""
 	case pb.EditorEventType_EDITOR_EVENT_TYPE_PAUSE:
 		return domain.EditorEventPause
 	case pb.EditorEventType_EDITOR_EVENT_TYPE_BACKSPACE_BURST:

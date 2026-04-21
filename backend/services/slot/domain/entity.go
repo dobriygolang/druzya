@@ -13,19 +13,19 @@ import (
 
 // Sentinel errors.
 var (
-	ErrNotFound           = errors.New("slot: not found")
-	ErrForbidden          = errors.New("slot: forbidden")
-	ErrNotAvailable       = errors.New("slot: not available for booking")
-	ErrPastStart          = errors.New("slot: starts_at must be in the future")
-	ErrInvalidDuration    = errors.New("slot: duration_min must be between 15 and 180")
-	ErrInvalidPrice       = errors.New("slot: price_rub must be >= 0")
-	ErrInvalidSection     = errors.New("slot: invalid section")
-	ErrInvalidDifficulty  = errors.New("slot: invalid difficulty")
-	ErrSelfBooking        = errors.New("slot: interviewer cannot book own slot")
-	ErrOverlapping        = errors.New("slot: overlaps an existing slot")
-	ErrNotInterviewer     = errors.New("slot: only users with role=interviewer can create slots")
-	ErrAlreadyBooked      = errors.New("slot: already booked")
-	ErrBookingNotFound    = errors.New("slot: booking not found")
+	ErrNotFound          = errors.New("slot: not found")
+	ErrForbidden         = errors.New("slot: forbidden")
+	ErrNotAvailable      = errors.New("slot: not available for booking")
+	ErrPastStart         = errors.New("slot: starts_at must be in the future")
+	ErrInvalidDuration   = errors.New("slot: duration_min must be between 15 and 180")
+	ErrInvalidPrice      = errors.New("slot: price_rub must be >= 0")
+	ErrInvalidSection    = errors.New("slot: invalid section")
+	ErrInvalidDifficulty = errors.New("slot: invalid difficulty")
+	ErrSelfBooking       = errors.New("slot: interviewer cannot book own slot")
+	ErrOverlapping       = errors.New("slot: overlaps an existing slot")
+	ErrNotInterviewer    = errors.New("slot: only users with role=interviewer can create slots")
+	ErrAlreadyBooked     = errors.New("slot: already booked")
+	ErrBookingNotFound   = errors.New("slot: booking not found")
 )
 
 // Language constants (mirror openapi enum ru|en for Slot.Language).
@@ -54,8 +54,8 @@ type Slot struct {
 	CreatedAt     time.Time
 
 	// Hydrated by the use-case layer for the public DTO.
-	InterviewerUsername string
-	InterviewerAvgRating *float32
+	InterviewerUsername     string
+	InterviewerAvgRating    *float32
 	InterviewerReviewsCount *int
 }
 

@@ -186,9 +186,9 @@ func (s *DailyServer) CreateAutopsy(
 	}
 	var interviewDate *time.Time
 	if raw := m.GetInterviewDate(); raw != "" {
-		d, err := time.Parse("2006-01-02", raw)
-		if err != nil {
-			return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("invalid interview_date: %w", err))
+		d, parseErr := time.Parse("2006-01-02", raw)
+		if parseErr != nil {
+			return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("invalid interview_date: %w", parseErr))
 		}
 		interviewDate = &d
 	}
@@ -329,6 +329,8 @@ func sectionFromProto(s pb.Section) enums.Section {
 		return enums.SectionSystemDesign
 	case pb.Section_SECTION_BEHAVIORAL:
 		return enums.SectionBehavioral
+	case pb.Section_SECTION_UNSPECIFIED:
+		return ""
 	default:
 		return ""
 	}
@@ -376,6 +378,8 @@ func languageFromProto(l pb.Language) enums.Language {
 		return enums.LanguageTypeScript
 	case pb.Language_LANGUAGE_SQL:
 		return enums.LanguageSQL
+	case pb.Language_LANGUAGE_UNSPECIFIED:
+		return ""
 	default:
 		return ""
 	}

@@ -58,12 +58,12 @@ type ProvenanceRecord struct {
 // STUB: the MVP keeps the catalog hardcoded in infra/traps.go. A future
 // migration will promote traps to a CMS table.
 type HallucinationTrap struct {
-	ID             string        // stable slug, e.g. "sql-forget-where"
-	Category       enums.Section // section the trap applies to
-	PromptPattern  string        // lower-case substring to match on user prompt
-	WrongAnswer    string        // what the LLM "says" when the trap fires
-	CorrectAnswer  string        // the benign truthful answer (for grading / post-hoc UI)
-	Rationale      string        // short explanation shown post-session
+	ID            string        // stable slug, e.g. "sql-forget-where"
+	Category      enums.Section // section the trap applies to
+	PromptPattern string        // lower-case substring to match on user prompt
+	WrongAnswer   string        // what the LLM "says" when the trap fires
+	CorrectAnswer string        // the benign truthful answer (for grading / post-hoc UI)
+	Rationale     string        // short explanation shown post-session
 }
 
 // UserAction is an interaction a user may have with a provenance record.

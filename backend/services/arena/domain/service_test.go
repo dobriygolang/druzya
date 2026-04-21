@@ -106,7 +106,7 @@ func TestPickPairs_PairsOldestFirst(t *testing.T) {
 	base := time.Date(2026, 4, 20, 10, 0, 0, 0, time.UTC)
 	// Three tickets, all within window. The older enqueue_at should participate.
 	tickets := []QueueTicket{
-		mkTicket(1000, 0, base),     // oldest
+		mkTicket(1000, 0, base), // oldest
 		mkTicket(1050, time.Second, base),
 		mkTicket(1100, 2*time.Second, base),
 	}

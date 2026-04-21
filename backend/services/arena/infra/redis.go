@@ -215,8 +215,8 @@ func (r *Redis) Confirm(ctx context.Context, matchID, userID uuid.UUID) (bool, e
 	if !ok {
 		return false, fmt.Errorf("arena.redis.Confirm: %w", domain.ErrNotFound)
 	}
-	if _, err := r.rdb.HSet(ctx, key, "confirmed:"+userID.String(), "1").Result(); err != nil {
-		return false, fmt.Errorf("arena.redis.Confirm: %w", err)
+	if _, hsErr := r.rdb.HSet(ctx, key, "confirmed:"+userID.String(), "1").Result(); hsErr != nil {
+		return false, fmt.Errorf("arena.redis.Confirm: %w", hsErr)
 	}
 	// Refresh the snapshot — re-read confirmations.
 	state, _, err = r.Get(ctx, matchID)
@@ -315,8 +315,10 @@ func (r *Redis) IncrTabSwitch(ctx context.Context, matchID, uid uuid.UUID) (int,
 // parseInt64 is a tiny helper to avoid strconv imports in multiple places.
 func parseInt64(s string) (int64, error) {
 	var v int64
-	_, err := fmt.Sscanf(s, "%d", &v)
-	return v, err
+	if _, err := fmt.Sscanf(s, "%d", &v); err != nil {
+		return v, fmt.Errorf("arena.redis.parseInt64: %w", err)
+	}
+	return v, nil
 }
 
 // Interface guards.

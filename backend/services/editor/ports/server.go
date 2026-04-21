@@ -266,6 +266,8 @@ func isParticipant(uid, owner uuid.UUID, ps []domain.Participant) bool {
 
 func languageFromProtoEditor(l pb.Language) enums.Language {
 	switch l {
+	case pb.Language_LANGUAGE_UNSPECIFIED:
+		return ""
 	case pb.Language_LANGUAGE_GO:
 		return enums.LanguageGo
 	case pb.Language_LANGUAGE_PYTHON:

@@ -44,7 +44,7 @@ type CreateSessionOutput struct {
 // Do executes the use case.
 func (uc *CreateSession) Do(ctx context.Context, in CreateSessionInput) (CreateSessionOutput, error) {
 	if err := domain.ValidateCreate(in.Section, in.Difficulty); err != nil {
-		return CreateSessionOutput{}, err
+		return CreateSessionOutput{}, fmt.Errorf("native.CreateSession: validate: %w", err)
 	}
 
 	user, err := uc.Users.Get(ctx, in.UserID)

@@ -9,19 +9,19 @@ import (
 	"time"
 
 	"druz9/ai_mock/domain"
-	"druz9/shared/enums"
 	sharedDomain "druz9/shared/domain"
+	"druz9/shared/enums"
 
 	"github.com/google/uuid"
 )
 
 // CreateSession implements POST /api/v1/mock/session.
 type CreateSession struct {
-	Sessions domain.SessionRepo
-	Tasks    domain.TaskRepo
-	Users    domain.UserRepo
+	Sessions  domain.SessionRepo
+	Tasks     domain.TaskRepo
+	Users     domain.UserRepo
 	Companies domain.CompanyRepo
-	Bus      sharedDomain.Bus
+	Bus       sharedDomain.Bus
 
 	DefaultModelFree enums.LLMModel
 	DefaultModelPaid enums.LLMModel
@@ -45,7 +45,7 @@ type CreateSessionInput struct {
 // Do executes the use case and returns the persisted session.
 func (uc *CreateSession) Do(ctx context.Context, in CreateSessionInput) (domain.Session, error) {
 	if err := domain.ValidateCreate(in.CompanyID, in.Section, in.Difficulty, in.DurationMin); err != nil {
-		return domain.Session{}, err
+		return domain.Session{}, fmt.Errorf("mock.CreateSession: validate: %w", err)
 	}
 
 	// Fetch user + company context for model selection.
@@ -75,18 +75,18 @@ func (uc *CreateSession) Do(ctx context.Context, in CreateSessionInput) (domain.
 
 	now := uc.now()
 	s := domain.Session{
-		UserID:        in.UserID,
-		CompanyID:     in.CompanyID,
-		TaskID:        task.ID,
-		Section:       in.Section,
-		Difficulty:    in.Difficulty,
-		Status:        enums.MockStatusCreated,
-		DurationMin:   duration,
-		VoiceMode:     in.VoiceMode,
-		PairedUserID:  in.PairedUserID,
-		LLMModel:      model,
+		UserID:         in.UserID,
+		CompanyID:      in.CompanyID,
+		TaskID:         task.ID,
+		Section:        in.Section,
+		Difficulty:     in.Difficulty,
+		Status:         enums.MockStatusCreated,
+		DurationMin:    duration,
+		VoiceMode:      in.VoiceMode,
+		PairedUserID:   in.PairedUserID,
+		LLMModel:       model,
 		DevilsAdvocate: in.DevilsAdvocate,
-		StartedAt:     &now,
+		StartedAt:      &now,
 	}
 	created, err := uc.Sessions.Create(ctx, s)
 	if err != nil {

@@ -61,8 +61,8 @@ func (uc *Verify) Do(ctx context.Context, in VerifyInput) (VerifyOutput, error) 
 	}
 
 	newKind := mapActionToKind(in.Action)
-	if err := uc.Provenance.MarkVerified(ctx, rec.ID, newKind.String()); err != nil {
-		return VerifyOutput{}, fmt.Errorf("native.Verify: mark verified: %w", err)
+	if mvErr := uc.Provenance.MarkVerified(ctx, rec.ID, newKind.String()); mvErr != nil {
+		return VerifyOutput{}, fmt.Errorf("native.Verify: mark verified: %w", mvErr)
 	}
 
 	records, err := uc.Provenance.List(ctx, sess.ID)

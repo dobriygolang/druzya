@@ -18,9 +18,9 @@ import (
 // UserID — this use case verifies ownership before hitting the DB.
 //
 // Side effects:
-//   * SlotRepo.CancelSlotWithBooking flips the slot to `cancelled` and (if
+//   - SlotRepo.CancelSlotWithBooking flips the slot to `cancelled` and (if
 //     there was a booking) the booking to `cancelled` in one transaction.
-//   * When there was a booking we publish SlotCancelled on the bus so the
+//   - When there was a booking we publish SlotCancelled on the bus so the
 //     notify domain can alert the candidate (notify already handles it).
 type CancelSlot struct {
 	Slots domain.SlotRepo

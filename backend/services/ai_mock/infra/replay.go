@@ -32,7 +32,7 @@ func NewStubReplayUploader(baseURL string) *StubReplayUploader {
 // synthesises a URL shape that mirrors what the future MinIO client will return.
 func (u *StubReplayUploader) Upload(ctx context.Context, sessionID uuid.UUID, payload []byte) (string, error) {
 	if ctx.Err() != nil {
-		return "", ctx.Err()
+		return "", fmt.Errorf("ctx cancelled: %w", ctx.Err())
 	}
 	// STUB: real implementation uploads payload + returns presigned GET with
 	// X-Amz-Expires=3600. We just drop the payload on the floor and emit a URL.

@@ -11,10 +11,11 @@
 // implementation once the CMS migration lands.
 //
 // Layout:
-//   FreeTiers    — 40 tiers on the Free track, ladder 100 → 4000 SP.
-//   PremiumTiers — 40 tiers on the Premium track, identical point thresholds
-//                  but richer rewards. Gated by Progress.IsPremium.
-//   WeeklyChallenges — 5 challenge slots; 1 "always on", 4 week-specific.
+//
+//	FreeTiers    — 40 tiers on the Free track, ladder 100 → 4000 SP.
+//	PremiumTiers — 40 tiers on the Premium track, identical point thresholds
+//	               but richer rewards. Gated by Progress.IsPremium.
+//	WeeklyChallenges — 5 challenge slots; 1 "always on", 4 week-specific.
 package infra
 
 import (

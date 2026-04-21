@@ -117,7 +117,7 @@ func (c *OpenRouter) doWithRetries(ctx context.Context, body []byte) (*http.Resp
 		if err != nil {
 			lastErr = err
 			if ctx.Err() != nil {
-				return nil, ctx.Err()
+				return nil, fmt.Errorf("native.OpenRouter.do: ctx cancelled: %w", ctx.Err())
 			}
 			if attempt < c.maxRetries429 {
 				if werr := backoffWait(ctx, c.baseBackoff, attempt); werr != nil {
@@ -136,7 +136,7 @@ func (c *OpenRouter) doWithRetries(ctx context.Context, body []byte) (*http.Resp
 			if retryAfter > 0 {
 				select {
 				case <-ctx.Done():
-					return nil, ctx.Err()
+					return nil, fmt.Errorf("native.OpenRouter.do: ctx cancelled: %w", ctx.Err())
 				case <-time.After(retryAfter):
 				}
 			} else {
@@ -163,7 +163,7 @@ func backoffWait(ctx context.Context, base time.Duration, attempt int) error {
 	d := base << attempt
 	select {
 	case <-ctx.Done():
-		return ctx.Err()
+		return fmt.Errorf("native.OpenRouter.backoff: ctx cancelled: %w", ctx.Err())
 	case <-time.After(d):
 		return nil
 	}
@@ -232,7 +232,11 @@ func (t *TrapInjector) Complete(ctx context.Context, req domain.CompletionReques
 			}
 		}
 	}
-	return t.Inner.Complete(ctx, req)
+	resp, err := t.Inner.Complete(ctx, req)
+	if err != nil {
+		return resp, fmt.Errorf("native.TrapInjector.Complete: %w", err)
+	}
+	return resp, nil
 }
 
 // Interface guards.

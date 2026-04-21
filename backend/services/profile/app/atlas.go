@@ -39,8 +39,9 @@ type AtlasView struct {
 // a static edge/node catalogue. The catalogue is hard-coded for MVP.
 //
 // STUB: edge config from admin CMS later — when the admin domain ships the
-//       nodes/edges editor, replace `catalogueNodes` / `catalogueEdges` with
-//       a repo call reading `skill_catalogue` / `skill_edges` tables.
+//
+//	nodes/edges editor, replace `catalogueNodes` / `catalogueEdges` with
+//	a repo call reading `skill_catalogue` / `skill_edges` tables.
 type GetAtlas struct{ Repo domain.ProfileRepo }
 
 // Do merges catalogue + per-user progress.

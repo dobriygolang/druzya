@@ -134,9 +134,9 @@ func (t LocalEventType) IsValid() bool {
 // LocalEvent is the envelope used on the hub's internal fanout. Payload is a
 // free-form map serialised to JSON at broadcast time.
 type LocalEvent struct {
-	Type     LocalEventType
-	RoomID   uuid.UUID
-	UserID   uuid.UUID
-	Payload  map[string]any
-	OccurAt  time.Time
+	Type    LocalEventType
+	RoomID  uuid.UUID
+	UserID  uuid.UUID
+	Payload map[string]any
+	OccurAt time.Time
 }

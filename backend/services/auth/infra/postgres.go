@@ -11,8 +11,8 @@ import (
 	"strings"
 	"time"
 
-	authdb "druz9/auth/infra/db"
 	"druz9/auth/domain"
+	authdb "druz9/auth/infra/db"
 	"druz9/shared/enums"
 
 	"github.com/google/uuid"
@@ -58,25 +58,25 @@ func (p *Postgres) UpsertByOAuth(ctx context.Context, in domain.UpsertOAuthInput
 	switch {
 	case err == nil:
 		// Found. Update tokens opportunistically.
-		if err := qtx.TouchOAuthTokens(ctx, authdb.TouchOAuthTokensParams{
+		if touchErr := qtx.TouchOAuthTokens(ctx, authdb.TouchOAuthTokensParams{
 			Provider:        string(in.Provider),
 			ProviderUserID:  in.ProviderUserID,
 			AccessTokenEnc:  in.AccessTokenEnc,
 			RefreshTokenEnc: in.RefreshTokenEnc,
 			TokenExpiresAt:  toTimestamptz(in.TokenExpiresAt),
-		}); err != nil {
-			return domain.User{}, false, fmt.Errorf("auth.Postgres.UpsertByOAuth: touch tokens: %w", err)
+		}); touchErr != nil {
+			return domain.User{}, false, fmt.Errorf("auth.Postgres.UpsertByOAuth: touch tokens: %w", touchErr)
 		}
-		row, err := qtx.FindUserByID(ctx, linkedID)
-		if err != nil {
-			return domain.User{}, false, fmt.Errorf("auth.Postgres.UpsertByOAuth: load existing user: %w", err)
+		row, findErr := qtx.FindUserByID(ctx, linkedID)
+		if findErr != nil {
+			return domain.User{}, false, fmt.Errorf("auth.Postgres.UpsertByOAuth: load existing user: %w", findErr)
 		}
-		if err := tx.Commit(ctx); err != nil {
-			return domain.User{}, false, fmt.Errorf("auth.Postgres.UpsertByOAuth: commit: %w", err)
+		if commitErr := tx.Commit(ctx); commitErr != nil {
+			return domain.User{}, false, fmt.Errorf("auth.Postgres.UpsertByOAuth: commit: %w", commitErr)
 		}
-		u, err := userFromFindRow(row)
-		if err != nil {
-			return domain.User{}, false, fmt.Errorf("auth.Postgres.UpsertByOAuth: %w", err)
+		u, convErr := userFromFindRow(row)
+		if convErr != nil {
+			return domain.User{}, false, fmt.Errorf("auth.Postgres.UpsertByOAuth: %w", convErr)
 		}
 		return u, false, nil
 	case !errors.Is(err, pgx.ErrNoRows):
@@ -100,18 +100,18 @@ func (p *Postgres) UpsertByOAuth(ctx context.Context, in domain.UpsertOAuthInput
 	if err != nil {
 		return domain.User{}, false, fmt.Errorf("auth.Postgres.UpsertByOAuth: insert user: %w", err)
 	}
-	if err := qtx.CreateOAuthAccount(ctx, authdb.CreateOAuthAccountParams{
+	if oauthErr := qtx.CreateOAuthAccount(ctx, authdb.CreateOAuthAccountParams{
 		UserID:          created.ID,
 		Provider:        string(in.Provider),
 		ProviderUserID:  in.ProviderUserID,
 		AccessTokenEnc:  in.AccessTokenEnc,
 		RefreshTokenEnc: in.RefreshTokenEnc,
 		TokenExpiresAt:  toTimestamptz(in.TokenExpiresAt),
-	}); err != nil {
-		return domain.User{}, false, fmt.Errorf("auth.Postgres.UpsertByOAuth: insert oauth: %w", err)
+	}); oauthErr != nil {
+		return domain.User{}, false, fmt.Errorf("auth.Postgres.UpsertByOAuth: insert oauth: %w", oauthErr)
 	}
-	if err := tx.Commit(ctx); err != nil {
-		return domain.User{}, false, fmt.Errorf("auth.Postgres.UpsertByOAuth: commit: %w", err)
+	if commitErr := tx.Commit(ctx); commitErr != nil {
+		return domain.User{}, false, fmt.Errorf("auth.Postgres.UpsertByOAuth: commit: %w", commitErr)
 	}
 	u, err := userFromCreateRow(created)
 	if err != nil {

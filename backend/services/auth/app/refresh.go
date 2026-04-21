@@ -57,8 +57,8 @@ func (uc *Refresh) Do(ctx context.Context, in RefreshInput) (RefreshResult, erro
 		return RefreshResult{}, fmt.Errorf("auth.Refresh: load user: %w", err)
 	}
 	// Rotate: delete old session, create new.
-	if err := uc.Sessions.Delete(ctx, sid); err != nil {
-		return RefreshResult{}, fmt.Errorf("auth.Refresh: revoke old session: %w", err)
+	if delErr := uc.Sessions.Delete(ctx, sid); delErr != nil {
+		return RefreshResult{}, fmt.Errorf("auth.Refresh: revoke old session: %w", delErr)
 	}
 	// Provider is carried on the access-token claims but we don't know it here —
 	// default to Yandex for the claim. (A production system would persist it on

@@ -39,12 +39,12 @@ type ContributeOutput struct {
 // STUB: emits a LOCAL GuildWarLineScoreUpdated (there is no such shared event
 // yet — we log it here so the subscriber story is obvious).
 type Contribute struct {
-	Guilds  domain.GuildRepo
-	Wars    domain.WarRepo
-	Judge0  domain.Judge0Client
-	GetWar  *GetWar
-	Clock   domain.Clock
-	Log     *slog.Logger
+	Guilds domain.GuildRepo
+	Wars   domain.WarRepo
+	Judge0 domain.Judge0Client
+	GetWar *GetWar
+	Clock  domain.Clock
+	Log    *slog.Logger
 }
 
 // Do runs one contribution end-to-end.
@@ -77,8 +77,8 @@ func (uc *Contribute) Do(ctx context.Context, in ContributeInput) (ContributeOut
 	if err != nil {
 		return ContributeOutput{}, fmt.Errorf("guild.Contribute: war: %w", err)
 	}
-	if err := domain.CanContribute(member, war, in.Section, now); err != nil {
-		return ContributeOutput{}, fmt.Errorf("guild.Contribute: %w", err)
+	if canErr := domain.CanContribute(member, war, in.Section, now); canErr != nil {
+		return ContributeOutput{}, fmt.Errorf("guild.Contribute: %w", canErr)
 	}
 
 	side, ok := domain.SideForGuild(war, in.GuildID)
@@ -110,12 +110,12 @@ func (uc *Contribute) Do(ctx context.Context, in ContributeInput) (ContributeOut
 		Score:    score,
 		AddedAt:  now,
 	}
-	if err := uc.Wars.InsertContribution(ctx, contrib); err != nil {
-		return ContributeOutput{}, fmt.Errorf("guild.Contribute: insert: %w", err)
+	if insErr := uc.Wars.InsertContribution(ctx, contrib); insErr != nil {
+		return ContributeOutput{}, fmt.Errorf("guild.Contribute: insert: %w", insErr)
 	}
 	if score > 0 {
-		if err := uc.Wars.UpsertWarScore(ctx, war.ID, in.Section, side, score); err != nil {
-			return ContributeOutput{}, fmt.Errorf("guild.Contribute: upsert score: %w", err)
+		if upErr := uc.Wars.UpsertWarScore(ctx, war.ID, in.Section, side, score); upErr != nil {
+			return ContributeOutput{}, fmt.Errorf("guild.Contribute: upsert score: %w", upErr)
 		}
 		// STUB: emit a LOCAL guild.WarLineScoreUpdated event — the shared
 		// events.go does not define one yet. Logging here signals where the

@@ -2,6 +2,7 @@ package infra
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"druz9/arena/domain"
@@ -32,7 +33,7 @@ func (f *FakeJudge0) Submit(ctx context.Context, _ string, _ string, _ domain.Ta
 		select {
 		case <-time.After(f.Delay):
 		case <-ctx.Done():
-			return domain.Judge0Result{}, ctx.Err()
+			return domain.Judge0Result{}, fmt.Errorf("arena.judge0.Submit: ctx cancelled: %w", ctx.Err())
 		}
 	}
 	return domain.Judge0Result{

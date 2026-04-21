@@ -14,6 +14,7 @@
 package ports
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -28,7 +29,6 @@ import (
 	"druz9/shared/generated/pb/druz9/v1/druz9v1connect"
 
 	"connectrpc.com/connect"
-	"context"
 )
 
 // Compile-time assertion — AuthServer satisfies the generated handler.

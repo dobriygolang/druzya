@@ -14,9 +14,9 @@ func TestApplyProgress_Threshold(t *testing.T) {
 	const duration = 600 // 10 minutes
 
 	tests := []struct {
-		name           string
-		listened       int
-		wantCompleted  bool
+		name            string
+		listened        int
+		wantCompleted   bool
 		wantListenedSec int
 	}{
 		{"zero", 0, false, 0},

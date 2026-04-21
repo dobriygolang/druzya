@@ -177,6 +177,8 @@ func sectionToProtoPodcast(s enums.Section) pb.Section {
 
 func sectionFromProtoPodcast(s pb.Section) enums.Section {
 	switch s {
+	case pb.Section_SECTION_UNSPECIFIED:
+		return ""
 	case pb.Section_SECTION_ALGORITHMS:
 		return enums.SectionAlgorithms
 	case pb.Section_SECTION_SQL:

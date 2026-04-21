@@ -144,7 +144,7 @@ func (c *OpenRouter) Stream(ctx context.Context, req domain.CompletionRequest) (
 		return nil, fmt.Errorf("mock.OpenRouter.Stream: marshal: %w", err)
 	}
 
-	resp, err := c.doWithRetries(ctx, body, true)
+	resp, err := c.doWithRetries(ctx, body, true) //nolint:bodyclose // closed in goroutine below
 	if err != nil {
 		return nil, err
 	}
@@ -220,7 +220,7 @@ func (c *OpenRouter) doWithRetries(ctx context.Context, body []byte, stream bool
 		if err != nil {
 			lastErr = err
 			if ctx.Err() != nil {
-				return nil, ctx.Err()
+				return nil, fmt.Errorf("ctx cancelled: %w", ctx.Err())
 			}
 			// transport error — retry with backoff
 			if attempt < c.maxRetries429 {
@@ -241,7 +241,7 @@ func (c *OpenRouter) doWithRetries(ctx context.Context, body []byte, stream bool
 			if retryAfter > 0 {
 				select {
 				case <-ctx.Done():
-					return nil, ctx.Err()
+					return nil, fmt.Errorf("ctx cancelled: %w", ctx.Err())
 				case <-time.After(retryAfter):
 				}
 			} else {
@@ -269,7 +269,7 @@ func backoffWait(ctx context.Context, base time.Duration, attempt int) error {
 	d := base << attempt
 	select {
 	case <-ctx.Done():
-		return ctx.Err()
+		return fmt.Errorf("ctx cancelled: %w", ctx.Err())
 	case <-time.After(d):
 		return nil
 	}

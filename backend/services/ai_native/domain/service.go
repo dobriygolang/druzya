@@ -25,6 +25,8 @@ func PickModel(user UserContext, _ enums.Section, defaultFree, defaultPaid enums
 		if defaultPaid.IsValid() {
 			return defaultPaid
 		}
+	case enums.SubscriptionPlanFree:
+		// fall through to default-free
 	}
 	if defaultFree.IsValid() {
 		return defaultFree
@@ -132,6 +134,8 @@ func ComputeScores(records []ProvenanceRecord, actions []UserAction, params Scor
 			s.Delivery += params.DeliveryPerAccepted
 		case ActionRevised:
 			s.Delivery += params.DeliveryPerRevised
+		case ActionRejected:
+			// rejected records contribute nothing to Delivery
 		}
 	}
 
@@ -176,7 +180,7 @@ func ShouldInjectTrap(turnIndex int, sessionSeed uint64, policy TrapPolicy) bool
 	// Fire on the Nth turn offset by a per-session jitter 0..EveryN-1 so
 	// different sessions don't all see the trap at turn = EveryN.
 	jitter := int(sessionSeed % uint64(policy.EveryN))
-	return ((turnIndex - 1 - jitter) % policy.EveryN) == 0 && turnIndex >= policy.MinTurns
+	return ((turnIndex-1-jitter)%policy.EveryN) == 0 && turnIndex >= policy.MinTurns
 }
 
 // SeedFromID hashes a UUID-stable string to a uint64 seed.

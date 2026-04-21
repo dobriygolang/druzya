@@ -13,14 +13,14 @@ import (
 
 // Sentinel errors.
 var (
-	ErrNotFound           = errors.New("guild: not found")
-	ErrNotMember          = errors.New("guild: user is not a member of the guild")
-	ErrWrongSection       = errors.New("guild: member is assigned to a different section")
-	ErrWarNotActive       = errors.New("guild: war is not active for this week")
-	ErrCodeTooLarge       = errors.New("guild: code exceeds 50KB limit")
-	ErrInvalidSection     = errors.New("guild: invalid section")
-	ErrInvalidLanguage    = errors.New("guild: invalid language")
-	ErrGuildMismatch      = errors.New("guild: member does not belong to this guild")
+	ErrNotFound        = errors.New("guild: not found")
+	ErrNotMember       = errors.New("guild: user is not a member of the guild")
+	ErrWrongSection    = errors.New("guild: member is assigned to a different section")
+	ErrWarNotActive    = errors.New("guild: war is not active for this week")
+	ErrCodeTooLarge    = errors.New("guild: code exceeds 50KB limit")
+	ErrInvalidSection  = errors.New("guild: invalid section")
+	ErrInvalidLanguage = errors.New("guild: invalid language")
+	ErrGuildMismatch   = errors.New("guild: member does not belong to this guild")
 )
 
 // MaxCodeSizeBytes is the per-contribution cap (mirrors arena's limit, §11).
@@ -40,12 +40,12 @@ const WarLineCount = 5
 
 // Guild is a domain entity mapped onto the `guilds` table.
 type Guild struct {
-	ID         uuid.UUID
-	OwnerID    uuid.UUID
-	Name       string
-	Emblem     string
-	GuildElo   int
-	CreatedAt  time.Time
+	ID        uuid.UUID
+	OwnerID   uuid.UUID
+	Name      string
+	Emblem    string
+	GuildElo  int
+	CreatedAt time.Time
 	// Populated by the use-case layer when hydrating the public view.
 	Members      []Member
 	CurrentWarID *uuid.UUID
@@ -63,15 +63,15 @@ type Member struct {
 
 // War mirrors a guild_wars row.
 type War struct {
-	ID         uuid.UUID
-	GuildAID   uuid.UUID
-	GuildBID   uuid.UUID
-	WeekStart  time.Time
-	WeekEnd    time.Time
-	ScoresA    map[enums.Section]int // section → aggregated score
-	ScoresB    map[enums.Section]int
-	WinnerID   *uuid.UUID
-	CreatedAt  time.Time
+	ID        uuid.UUID
+	GuildAID  uuid.UUID
+	GuildBID  uuid.UUID
+	WeekStart time.Time
+	WeekEnd   time.Time
+	ScoresA   map[enums.Section]int // section → aggregated score
+	ScoresB   map[enums.Section]int
+	WinnerID  *uuid.UUID
+	CreatedAt time.Time
 }
 
 // WarLine is a derived view — one per section — for the GuildWar response DTO.

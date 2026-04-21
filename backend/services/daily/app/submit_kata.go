@@ -66,8 +66,8 @@ func (uc *SubmitKata) Do(ctx context.Context, in SubmitKataInput) (domain.KataSu
 		return domain.KataSubmissionResult{}, fmt.Errorf("daily.SubmitKata: judge: %w", err)
 	}
 
-	if err := uc.Katas.MarkSubmitted(ctx, in.UserID, today, passed); err != nil {
-		return domain.KataSubmissionResult{}, fmt.Errorf("daily.SubmitKata: mark: %w", err)
+	if markErr := uc.Katas.MarkSubmitted(ctx, in.UserID, today, passed); markErr != nil {
+		return domain.KataSubmissionResult{}, fmt.Errorf("daily.SubmitKata: mark: %w", markErr)
 	}
 
 	streak, err := uc.updateStreak(ctx, in.UserID, today, passed)
