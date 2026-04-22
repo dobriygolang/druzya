@@ -147,7 +147,7 @@ services:
     networks: [app-net, judge-net, obs-net]
     restart: always
     healthcheck:
-      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8080/health/ready"]
+      test: ["CMD", "/app/monolith", "health"]
       interval: 30s
       timeout: 5s
       retries: 3

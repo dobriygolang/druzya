@@ -24,6 +24,12 @@ func main() {
 		runMigrate(os.Args[2:])
 		return
 	}
+	// Лёгкий healthcheck для distroless-образа — wget/curl там нет, поэтому
+	// docker HEALTHCHECK дёргает сам бинарь: `/app/monolith health`.
+	if len(os.Args) > 1 && os.Args[1] == "health" {
+		runHealth()
+		return
+	}
 
 	cfg, err := config.Load()
 	if err != nil {
