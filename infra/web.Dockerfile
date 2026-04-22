@@ -10,13 +10,21 @@
 # что и api.
 
 # ── Stage 1: vite build.
-FROM node:20-alpine AS frontend
+# node:22-alpine — у 20-alpine npm 10.8.2 в контейнере иногда падает с
+# "Exit handler never called!" на optional deps (известный баг). 22 везёт
+# свежий npm, проблема не воспроизводится.
+FROM node:22-alpine AS frontend
 WORKDIR /src/frontend
 COPY frontend/package.json frontend/package-lock.json* ./
+# Без --no-optional: rollup тянет платформенные нативные бинари
+# (@rollup/rollup-linux-x64-musl) как optional deps, и Vite на них падает
+# с MODULE_NOT_FOUND если их пропустить.
 RUN npm ci --no-audit --no-fund
 COPY frontend ./
 ENV VITE_USE_MSW=false
-RUN npx vite build
+# Зовём vite напрямую через локальный bin, чтобы npx не вздумал качать
+# свою свежую версию (как было: npx тянул vite@8 и ломал резолв конфига).
+RUN ./node_modules/.bin/vite build
 
 # ── Stage 2: nginx с фронтом и нашим конфигом.
 FROM nginx:1.27-alpine
