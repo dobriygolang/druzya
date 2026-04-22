@@ -10,14 +10,15 @@
 # что и api.
 
 # ── Stage 1: vite build.
-# node:22-alpine — у 20-alpine npm 10.8.2 в контейнере иногда падает с
-# "Exit handler never called!" на optional deps (известный баг). 22 везёт
-# свежий npm, проблема не воспроизводится.
-FROM node:22-alpine AS frontend
+# node:22 (debian-based slim) — alpine-варианты страдают от двух багов одновременно:
+#   1) npm 10.x в alpine падает с "Exit handler never called!" на больших lockfile
+#   2) npm self-upgrade ломается из-за musl/glibc разницы
+# debian slim тяжелее на ~30MB, но стабильно работает.
+FROM node:22-slim AS frontend
 WORKDIR /src/frontend
 COPY frontend/package.json frontend/package-lock.json* ./
 # Без --no-optional: rollup тянет платформенные нативные бинари
-# (@rollup/rollup-linux-x64-musl) как optional deps, и Vite на них падает
+# (@rollup/rollup-linux-x64-gnu) как optional deps, и Vite на них падает
 # с MODULE_NOT_FOUND если их пропустить.
 RUN npm ci --no-audit --no-fund
 COPY frontend ./
