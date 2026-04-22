@@ -10,24 +10,20 @@
 # что и api.
 
 # ── Stage 1: vite build.
-# node:22-slim (debian) — alpine + npm 10.x ловит "Exit handler never called!"
-# на больших lockfile'ах в CI-раннерах с ограниченной памятью. Обход:
-#   1. через corepack ставим npm 11 (минуя self-update который тоже глючит)
-#   2. бамаем NODE_OPTIONS чтобы дать heap'у больше места
-#   3. отключаем дёргалки (audit/fund/progress/update-notifier) — экономим RAM/CPU
+# Используем yarn 1.x вместо npm: npm 10.x ловит "Exit handler never called!"
+# в GHA-раннерах с ограниченной памятью на нашем lockfile (corepack-обновление
+# до npm 11 тоже не помогает). Yarn существенно легче по RAM и в CI стабильнее.
+# Lockfile синхронизируется через `yarn import` из существующего package-lock.json,
+# поэтому источник истины (npm) не теряется.
 FROM node:22-slim AS frontend
 WORKDIR /src/frontend
-ENV NODE_OPTIONS=--max-old-space-size=4096 \
-    NPM_CONFIG_UPDATE_NOTIFIER=false \
-    NPM_CONFIG_FUND=false \
-    NPM_CONFIG_AUDIT=false \
-    CI=true
-RUN corepack enable && corepack prepare npm@11.0.0 --activate
+ENV NODE_OPTIONS=--max-old-space-size=4096 CI=true
+RUN corepack enable && corepack prepare yarn@1.22.22 --activate
 COPY frontend/package.json frontend/package-lock.json* ./
-# Без --no-optional: rollup тянет платформенные нативные бинари
-# (@rollup/rollup-linux-x64-gnu) как optional deps, и Vite на них падает
-# с MODULE_NOT_FOUND если их пропустить.
-RUN npm ci --no-audit --no-fund --prefer-offline --no-progress
+# yarn import конвертирует package-lock.json → yarn.lock (одноразово в build-стадии);
+# затем install --frozen-lockfile гарантирует бит-в-бит ту же версионную смесь.
+RUN yarn import || true
+RUN yarn install --frozen-lockfile --non-interactive --no-progress
 COPY frontend ./
 ENV VITE_USE_MSW=false
 # Зовём vite напрямую через локальный bin, чтобы npx не вздумал качать
