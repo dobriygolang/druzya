@@ -12,10 +12,12 @@
 *.out
 vendor/
 backend/cmd/monolith/monolith
-# Когда вырежем сервисы из монолита — каждая cmd/X/X тоже будет бинарник
-backend/cmd/*/[a-z]*
-!backend/cmd/*/main.go
-!backend/cmd/*/*.go
+# Когда вырежем сервисы из монолита — добавляй явные строки сюда:
+# backend/cmd/<svc>/<svc>  — конкретный бинарник.
+# Старое правило `backend/cmd/*/[a-z]*` было слишком широким — оно молча
+# игнорировало файлы внутри backend/cmd/monolith/services/ (services
+# начинается с lowercase, а *.go-override не работал, потому что gitignore
+# не пере-инклюдит файлы из уже игнорируемых папок).
 # Coverage / профайлы
 *.cov
 *.prof
