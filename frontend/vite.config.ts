@@ -10,35 +10,12 @@ export default defineConfig({
     },
   },
   build: {
-    rollupOptions: {
-      output: {
-        manualChunks(id) {
-          if (!id.includes('node_modules')) return undefined
-          if (
-            id.includes('/node_modules/react/') ||
-            id.includes('/node_modules/react-dom/') ||
-            id.includes('/node_modules/react-router-dom/') ||
-            id.includes('/node_modules/react-router/') ||
-            id.includes('/node_modules/scheduler/')
-          ) {
-            return 'react'
-          }
-          if (id.includes('/node_modules/@tanstack/')) {
-            return 'query'
-          }
-          if (id.includes('/node_modules/lucide-react/')) {
-            return 'icons'
-          }
-          if (
-            id.includes('/node_modules/i18next') ||
-            id.includes('/node_modules/react-i18next/')
-          ) {
-            return 'i18n'
-          }
-          return 'vendor'
-        },
-      },
-    },
+    // manualChunks убран намеренно: ручное разделение разделяло react в свой
+    // chunk, но React-зависимые либы (sentry/react, monaco-editor/react,
+    // framer-motion, @tanstack/react-query) попадали в "vendor", который
+    // загружался ДО react chunk → "Cannot read properties of undefined
+    // (reading 'createContext')". Vite/Rollup умеет делать корректный
+    // topological-split автоматически — пусть делает.
   },
   server: {
     host: true,
