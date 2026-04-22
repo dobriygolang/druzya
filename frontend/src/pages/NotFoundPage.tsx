@@ -36,10 +36,19 @@ $ git checkout main -- pages/`}
           {'\n'}<span className="text-danger">{t('not_found.fatal')}</span>
         </pre>
         <div className="flex gap-3">
-          <Link to="/sanctum"><Button variant="primary" icon={<Home className="h-4 w-4" />}>{t('not_found.home')}</Button></Link>
-          <button onClick={() => window.history.back()}>
-            <Button variant="ghost" icon={<ArrowLeft className="h-4 w-4" />}>{t('not_found.back')}</Button>
-          </button>
+          {/* Прямая Link без вложенного <button> — иначе HTML невалидный (a > button)
+              и getByRole('link') в Playwright не находит accessible name. */}
+          <Link
+            to="/sanctum"
+            data-testid="back-home"
+            className="inline-flex items-center gap-2 rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-text-primary shadow-glow transition hover:bg-accent-hover"
+          >
+            <Home className="h-4 w-4" />
+            {t('not_found.home')}
+          </Link>
+          <Button variant="ghost" icon={<ArrowLeft className="h-4 w-4" />} onClick={() => window.history.back()}>
+            {t('not_found.back')}
+          </Button>
         </div>
       </main>
     </div>

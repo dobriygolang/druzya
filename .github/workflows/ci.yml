@@ -59,7 +59,10 @@ jobs:
           for mod in $(find backend -name go.mod -not -path '*/tools/*' | sort); do
             dir=$(dirname "$mod")
             echo "::group::lint $dir"
-            (cd "$dir" && go mod download && golangci-lint run --config="$GITHUB_WORKSPACE/backend/.golangci.yml" --timeout=5m ./...) || fail=1
+            # go build ./... обязателен ПЕРЕД линтером — иначе goanalysis_metalinter
+            # не сможет загрузить export data для свежих локальных пакетов
+            # (типа druz9/cmd/monolith/bootstrap после рефакторинга).
+            (cd "$dir" && go mod download && go build ./... && golangci-lint run --config="$GITHUB_WORKSPACE/backend/.golangci.yml" --timeout=5m ./...) || fail=1
             echo "::endgroup::"
           done
           exit $fail
