@@ -1,7 +1,7 @@
 {
   "login": "Sign in",
   "start": "Start",
-  "developers_inside": "12,480 developers already inside",
+  "developers_inside": "{{count}} developers already inside",
   "headline_1": "Compete in code.",
   "headline_2": "Grow faster than your friends.",
   "subhead": "1v1 code duels, daily kata, AI mentor and guilds. Real progress — not just LeetCode in a browser.",

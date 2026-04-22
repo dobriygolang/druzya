@@ -12,6 +12,8 @@ const ProfilePage = lazy(() => import('./pages/ProfilePage'))
 const DailyPage = lazy(() => import('./pages/DailyPage'))
 const SettingsPage = lazy(() => import('./pages/SettingsPage'))
 const WelcomePage = lazy(() => import('./pages/WelcomePage'))
+const WelcomeDemoPage = lazy(() => import('./pages/WelcomeDemoPage'))
+const LoginPage = lazy(() => import('./pages/LoginPage'))
 const OnboardingPage = lazy(() => import('./pages/OnboardingPage'))
 const AllSetPage = lazy(() => import('./pages/AllSetPage'))
 const MockSessionPage = lazy(() => import('./pages/MockSessionPage'))
@@ -63,6 +65,8 @@ export default function App() {
         <Route path="/daily" element={<DailyPage />} />
         <Route path="/settings" element={<SettingsPage />} />
         <Route path="/welcome" element={<WelcomePage />} />
+        <Route path="/welcome/demo" element={<WelcomeDemoPage />} />
+        <Route path="/login" element={<LoginPage />} />
         <Route path="/onboarding" element={<OnboardingPage />} />
         <Route path="/onboarding/done" element={<AllSetPage />} />
         <Route path="/mock/:sessionId" element={<MockSessionPage />} />

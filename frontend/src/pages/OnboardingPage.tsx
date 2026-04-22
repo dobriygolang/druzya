@@ -127,6 +127,7 @@ export function OnboardingTopBar({
 
 function Step1Register({ onNext }: { onNext: () => void }) {
   const { t } = useTranslation('onboarding')
+  const navigate = useNavigate()
   return (
     <div
       className="grid grid-cols-1 gap-10 px-4 py-8 sm:px-8 lg:grid-cols-2 lg:gap-[60px] lg:px-20 lg:py-[60px]"
@@ -171,7 +172,7 @@ function Step1Register({ onNext }: { onNext: () => void }) {
 
         <p className="text-[13px] text-text-muted">
           {t('step1.have_account')}{' '}
-          <button type="button" onClick={onNext} className="font-semibold text-accent-hover hover:underline">
+          <button type="button" onClick={() => navigate('/login')} className="font-semibold text-accent-hover hover:underline">
             {t('step1.login_arrow')}
           </button>
         </p>
@@ -265,24 +266,25 @@ function Testimonial({
 type Lang = {
   name: string
   symbol: string
-  players: string
   color: string
   textColor?: string
 }
 
-const LANGS: Lang[] = [
-  { name: 'Go', symbol: 'Go', players: '12 480 игроков', color: '#22D3EE' },
-  { name: 'Python', symbol: 'Py', players: '18 240 игроков', color: '#582CFF' },
-  { name: 'JavaScript', symbol: 'JS', players: '21 100 игроков', color: '#FBBF24', textColor: '#0A0A0F' },
-  { name: 'TypeScript', symbol: 'TS', players: '14 320 игроков', color: '#22D3EE' },
-  { name: 'Rust', symbol: 'Rs', players: '6 940 игроков', color: '#EF4444' },
-  { name: 'Java', symbol: 'Jv', players: '11 670 игроков', color: '#F472B6' },
-  { name: 'C++', symbol: 'C++', players: '8 230 игроков', color: '#2D1B4D' },
-  { name: 'C#', symbol: 'C#', players: '5 410 игроков', color: '#6D43FF' },
-  { name: 'Kotlin', symbol: 'Kt', players: '4 280 игроков', color: '#FBBF24', textColor: '#0A0A0F' },
-  { name: 'Swift', symbol: 'Sw', players: '3 920 игроков', color: '#F472B6' },
-  { name: 'Ruby', symbol: 'Rb', players: '2 740 игроков', color: '#EF4444' },
-  { name: 'Scala', symbol: 'Sc', players: '1 830 игроков', color: '#582CFF' },
+// TODO: real per-language player counts via mocked api endpoint
+export const LANGS: Lang[] = [
+  { name: 'Go', symbol: 'Go', color: '#22D3EE' },
+  { name: 'Python', symbol: 'Py', color: '#582CFF' },
+  { name: 'Java', symbol: 'Jv', color: '#F472B6' },
+  { name: 'JavaScript', symbol: 'JS', color: '#FBBF24', textColor: '#0A0A0F' },
+  { name: 'TypeScript', symbol: 'TS', color: '#22D3EE' },
+  { name: 'C++', symbol: 'C++', color: '#2D1B4D' },
+  { name: 'Rust', symbol: 'Rs', color: '#EF4444' },
+  { name: 'Kotlin', symbol: 'Kt', color: '#FBBF24', textColor: '#0A0A0F' },
+  { name: 'Swift', symbol: 'Sw', color: '#F472B6' },
+  { name: 'SQL', symbol: 'SQL', color: '#10B981' },
+  { name: 'C#', symbol: 'C#', color: '#6D43FF' },
+  { name: 'Ruby', symbol: 'Rb', color: '#EF4444' },
+  { name: 'PHP', symbol: 'PHP', color: '#6D43FF' },
 ]
 
 function Step2Stack({ onNext, onBack }: { onNext: () => void; onBack: () => void }) {
@@ -341,7 +343,6 @@ function Step2Stack({ onNext, onBack }: { onNext: () => void; onBack: () => void
                 {l.symbol}
               </span>
               <span className="font-sans text-[14px] font-bold text-text-primary">{l.name}</span>
-              <span className="font-mono text-[11px] text-text-muted">{l.players}</span>
             </button>
           )
         })}
@@ -459,7 +460,8 @@ function Step3Kata({ onNext, onBack }: { onNext: () => void; onBack: () => void 
         </div>
 
         <div className="flex items-center justify-between border-t border-border bg-surface-2 px-6 py-3">
-          <span className="font-mono text-[11px] text-text-muted">0/3 tests passed</span>
+          {/* TODO: real tests-passed count from mocked api */}
+          <span className="font-mono text-[11px] text-text-muted">0/0 tests passed</span>
           <div className="flex items-center gap-2">
             <button className="rounded-md border border-border bg-bg px-3 py-1.5 text-[12px] font-semibold text-text-secondary">
               Run
@@ -538,8 +540,10 @@ function CodeLine({ n, text, highlight }: { n: number; text: string; highlight?:
 
 /* ------------------------------- STEP 4 -------------------------------- */
 
-function Step4AISpar({ onNext, onBack }: { onNext: () => void; onBack: () => void }) {
+function Step4AISpar(_props: { onNext: () => void; onBack: () => void }) {
+  void _props
   const { t } = useTranslation('onboarding')
+  const navigate = useNavigate()
   return (
     <div className="flex flex-col">
       {/* Hero */}
@@ -631,13 +635,18 @@ function Step4AISpar({ onNext, onBack }: { onNext: () => void; onBack: () => voi
         </div>
 
         <div className="flex w-full flex-col items-stretch gap-3 pt-2 sm:w-auto sm:flex-row sm:items-center">
-          <Button variant="ghost" icon={<Play className="h-4 w-4" />} onClick={onBack} className="h-12 px-6">
+          <Button
+            variant="ghost"
+            icon={<Play className="h-4 w-4" />}
+            onClick={() => navigate('/welcome/demo')}
+            className="h-12 px-6"
+          >
             {t('step4.watch_video')}
           </Button>
           <Button
             variant="primary"
             iconRight={<ArrowRight className="h-5 w-5" />}
-            onClick={onNext}
+            onClick={() => navigate('/arena')}
             className="h-14 px-8 text-[15px] shadow-glow"
           >
             {t('step4.begin_spar')}

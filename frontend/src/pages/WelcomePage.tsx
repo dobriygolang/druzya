@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { ArrowRight, Play } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '../components/Button'
@@ -18,7 +18,7 @@ function MinimalTopBar() {
       </Link>
       <div className="flex items-center gap-2 sm:gap-3">
         <Link
-          to="/onboarding?step=1"
+          to="/login"
           className="hidden rounded-md px-4 py-2 text-sm font-medium text-text-secondary transition-colors hover:bg-surface-2 hover:text-text-primary sm:inline-block"
         >
           {t('login')}
@@ -43,6 +43,9 @@ function TrustLogo({ name }: { name: string }) {
 
 export default function WelcomePage() {
   const { t } = useTranslation('welcome')
+  const navigate = useNavigate()
+  // TODO: real metric — wire to mock endpoint /api/stats/users-count
+  const developersCount = 0
   useEffect(() => {
     document.body.classList.add('v2')
     return () => document.body.classList.remove('v2')
@@ -59,7 +62,7 @@ export default function WelcomePage() {
             <span className="absolute inset-0 animate-ping rounded-full bg-cyan opacity-75" />
             <span className="relative h-2 w-2 rounded-full bg-cyan" />
           </span>
-          {t('developers_inside')}
+          {t('developers_inside', { count: developersCount })}
           <ArrowRight className="h-3.5 w-3.5" />
         </span>
 
@@ -103,6 +106,7 @@ export default function WelcomePage() {
             variant="ghost"
             icon={<Play className="h-4 w-4" />}
             className="h-14 w-full justify-center px-6 text-[15px] sm:w-auto"
+            onClick={() => navigate('/welcome/demo')}
           >
             {t('watch_demo')}
           </Button>

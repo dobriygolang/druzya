@@ -129,11 +129,11 @@ export default function AllSetPage() {
               Очередь подбирает противника твоего уровня — обычно 30 секунд
             </span>
           </div>
-          <Link to="/sanctum">
+          <Link to="/arena">
             <Button
               variant="primary"
               iconRight={<ArrowRight className="h-4 w-4" />}
-              className="bg-white text-bg shadow-none hover:bg-white/90 hover:shadow-none"
+              className="!bg-white !text-bg shadow-none hover:!bg-white/90 hover:shadow-none"
             >
               В очередь
             </Button>
