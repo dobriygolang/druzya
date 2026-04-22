@@ -32,11 +32,11 @@ type CardVariantProps = VariantProps<typeof card>;
 export interface CardProps
   extends React.HTMLAttributes<HTMLDivElement>,
     CardVariantProps {
-  /** Visual treatment of the card surface. */
+  /** Визуальный стиль поверхности карточки. */
   variant?: CardVariantProps['variant'];
-  /** Adds hover affordance (border + glow). */
+  /** Добавляет hover-аффорданс (border + glow). */
   interactive?: boolean;
-  /** Internal padding. Use `none` to control padding inside subcomponents. */
+  /** Внутренний padding. Используйте `none`, чтобы управлять им внутри подкомпонентов. */
   padding?: CardVariantProps['padding'];
 }
 
@@ -91,7 +91,7 @@ const CardFooter = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDiv
 CardFooter.displayName = 'Card.Footer';
 
 /**
- * druz9 Card — layered surface for grouping content.
+ * druz9 Card — слоистая поверхность для группировки контента.
  *
  * @example
  * <Card variant="elevated">

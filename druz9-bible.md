@@ -341,7 +341,74 @@ JWT: access 15 мин (в памяти клиента), refresh 30 дней (htt
 
 ---
 
-## 10.5. Хранение данных (retention policy)
+## 10.5. Хранение данных (retention policy + storage budget)
+
+### 🎯 Бюджет VPS — 120 GB disk / 14 GB RAM (Hetzner CX21/CPX21)
+
+**Всё (БД + Redis + MinIO + логи + трейсы + сам бинарник + ОС) живёт на одном диске 120 GB.** Каждый байт важен. План:
+
+```
+OS + system:                           ~15 GB
+Docker images (api+nginx+judge0+pg):   ~10 GB
+Judge0 sandbox + ephemeral submissions: ~5 GB
+PostgreSQL (data + WAL):               ~40 GB   ← главный potлок
+Redis (RDB snapshots на диск):          ~3 GB
+MinIO (только аватары + критичное):    ~20 GB
+Loki (14 дней retention):              ~10 GB
+Локальные ClickHouse агрегаты (опц.):  ~10 GB
+Логи приложения (json) до Promtail:     ~3 GB
+Buffer + free space:                    ~5 GB
+________________________________________________________
+ИТОГО:                                ~120 GB ✓
+```
+
+**RAM 14GB бюджет:**
+- PostgreSQL `shared_buffers` 4GB + `work_mem`/connections ~2GB = **6 GB**
+- Redis maxmemory 2 GB (LRU eviction)
+- API monolith (Go) ~500 MB при 1000 concurrent users
+- Judge0 workers (2 шт × 256 MB) = 512 MB
+- nginx + minio + ClickHouse-если-есть = ~1 GB
+- OS + Docker overhead ~2 GB
+- **Свободно:** ~2 GB на пиковые скачки ✓
+
+### 🌥 Что ВЫНОСИМ НАРУЖУ — бесплатно до 10k MAU
+
+| Сервис | Куда | Free tier | Зачем |
+|---|---|---|---|
+| **Replays** (keystrokes timeline) | Cloudflare R2 | 10 GB/мес + 0 egress | Может расти на 50-100 GB/мес — на VPS не влезет |
+| **Podcasts** (MP3, тяжёлые) | Backblaze B2 / R2 | 10 GB бесплатно | Контент тяжёлый |
+| **Voice recordings** (если включит юзер) | Cloudflare R2 | в общем лимите | Ephemeral, 7 дней TTL |
+| **Sentry** (errors + session replay) | sentry.io | 5k events + 50 replays/мес free | Не на нашем диске |
+| **Grafana Cloud** (logs/metrics/traces) | grafana.com | **50GB логов · 10k метрик · 50GB traces — навсегда free** | Убирает Loki/Jaeger/Prometheus с VPS |
+| **Email транзакционный** | Resend | 3k/мес free | Не нужен SMTP-сервер |
+| **Push-уведомления (Web Push)** | self-hosted, бесплатно | — | Уже умеем |
+| **Telegram-бот** | Telegram Bot API | unlimited free | Уже в плане |
+| **CDN для статики** | Cloudflare free | unlimited bandwidth | Снимает egress с VPS |
+| **DNS + DDoS защита** | Cloudflare free | — | Бесплатно |
+| **TLS** | Let's Encrypt + cert-manager | бесплатно | — |
+
+**Что остаётся на VPS:** PostgreSQL + Redis + Judge0 sandbox + API monolith + nginx + MinIO (только аватары/иконки).
+
+### ⚠️ Решение по аналитике
+
+Нет смысла поднимать **Loki + Jaeger + Prometheus + ClickHouse + Grafana** на 120GB VPS — это съест 50GB+ только на работу.
+
+**Вместо:**
+- Логи: stdout JSON → Promtail (тонкий процесс, ~50MB) → **Grafana Cloud Loki** (50GB/мес free)
+- Traces: OTel SDK в Go → OTLP → **Grafana Cloud Tempo** (50GB free)
+- Metrics: `/metrics` → Grafana Agent → **Grafana Cloud Prometheus** (10k серий free)
+- Alerts: Grafana Cloud Alerting → Telegram-бот (тоже бесплатно)
+- ClickHouse аналитика: пока не поднимаем. Когда нужна — внешний managed (Aiven free trial / ClickHouse Cloud free tier 100h/mo).
+
+Эффект: -50GB диска, -2GB RAM, не нужно self-host'ить observability stack.
+
+**Принципы экономии:**
+1. **Push to client where possible** — UI state, drafts, recent searches → `localStorage`/`IndexedDB`. Не дёргаем БД на каждый чих.
+2. **Aggressive TTL на эфемерные данные** — закрытые лобби, отменённые матчи, abandoned mock — сразу.
+3. **Соблюдаем закон 152-ФЗ** — минимум персональных данных, явное согласие, право на забвение.
+4. **Агрегаты вместо сырых событий** — для аналитики ClickHouse + downsampling.
+
+### 📦 Что и где живёт
 
 | Тип данных | Где | Срок | Удаление |
 |---|---|---|---|
@@ -366,6 +433,95 @@ JWT: access 15 мин (в памяти клиента), refresh 30 дней (htt
 | **Sentry events** | sentry.io | 90 дней (free plan) | Sentry policy |
 | **Cookies** (refresh token) | Browser | 30 дней | httpOnly, sameSite=strict |
 | **Session cache** | Redis | 5 мин — 24 часа (зависит от ключа) | TTL |
+
+### 🚪 Закрытые / отменённые сущности — агрессивное удаление
+
+| Сущность | Триггер | Срок |
+|---|---|---|
+| **Custom Lobby** (закрытая комната) | Owner закрыл / последний участник вышел | **1 час** → `DELETE FROM editor_rooms` |
+| **Editor session** | Idle > 30 мин | **30 мин** → удаление + публикация `RoomExpired` |
+| **Abandoned matchmaking** | Юзер не подтвердил матч за 10с | **немедленно** (только Redis) |
+| **Cancelled mock session** | Юзер вышел до 5 мин | **немедленно** (всё убираем, не сохраняем) |
+| **Cancelled mock session** | Юзер вышел после 5 мин | 7 дней (для возможной аналитики) → удаление |
+| **Failed Judge0 submissions** | Без ответа > 30 сек | **немедленно** |
+| **Expired invite links** | TTL истёк | **немедленно** (Redis TTL) |
+| **Stale notifications** (read + 7 дней) | Прочитано | 7 дней → cron |
+| **WS-сессии** | Disconnect | **немедленно** (Redis) |
+
+### 💾 Что хранить НА КЛИЕНТЕ (экономим БД и RAM)
+
+| Данные | Где | Зачем |
+|---|---|---|
+| **Theme / lang preferences** | `localStorage` | Уже сделано |
+| **Recent searches** | `localStorage` (max 20) | Не нужно в БД |
+| **Draft kata code** | `localStorage` (per kata, sync to DB только на submit) | Save every 5 sec локально, на бэк — только при Run/Submit |
+| **Onboarding answers** | `localStorage` пока не закончил | На бэк только финальный snapshot |
+| **Notification badges** (count) | `localStorage` (sync с бэком на focus) | Не дёргаем `/api/notifications/count` каждые 5 сек |
+| **Replay viewer state** (zoom, frame) | `sessionStorage` | Per-tab |
+| **Code Editor playground files** (если juiced) | `IndexedDB` | До 50MB на юзера, бесплатно для нас |
+| **AI mock conversation context** (active session) | `localStorage` (last 20 turns) + бэк хранит только summary | Уменьшает `mock_messages` рост в 5-10× |
+| **Filter/sort UI state** | `sessionStorage` | Per-tab UX |
+| **Onboarding progress checkboxes** | `localStorage` | Не нужна таблица |
+| **Voice recording (active session, не финальный)** | `IndexedDB` blob | Загружается на бэк только если юзер сохранит |
+| **Кеши GET-запросов (read-only)** | TanStack Query + `IndexedDB` persister | Survives reload, не дёргает API |
+
+**Эффект:** DB у активного юзера живёт только когда он реально что-то делает (submit, save, finish). Idle юзеры — 0 нагрузки.
+
+### 📊 Прогноз размера PostgreSQL (10k MAU)
+
+```
+users + profiles + ratings + skill_nodes:    ~50 MB    (1KB × 10k × коэф)
+arena_matches (12 мес × 100/день/user):      ~30 GB    (json metadata + scores)
+mock_sessions + ai_report:                   ~12 GB    (JSONB compress)
+mock_messages (90 дней):                     ~25 GB    ⚠️ КРИТИЧНО
+keystroke_events (7 дней):                    ~8 GB    ⚠️ TTL обязателен
+guilds + members + wars:                      ~2 GB
+slots + bookings:                             ~1 GB
+notifications_log (30 дней):                  ~3 GB
+podcasts + podcast_progress:                 ~500 MB
+anticheat_signals (90 дней):                ~500 MB
+________________________________________________________
+ИТОГО:                                       ~82 GB    из 120 GB бюджета
+буфер на индексы + WAL + рост:               ~38 GB    ✓ ОК
+```
+
+**Risk hot zones:**
+- **`mock_messages`** — больше всех растёт. Меры:
+  - Хранить компрессом (`COMPRESS pglz` на JSONB-колонке)
+  - После 30 дней — суммаризовать в `mock_summary` (1 запись = 100 сообщений)
+  - Клиент держит активные turn'ы в `localStorage`, шлёт на бэк только snapshot после `END_SESSION`
+- **`keystroke_events`** — НЕ хранить individual keystrokes. Хранить агрегаты по 5-минутным окнам (`{paused_count, backspace_burst_count, idle_seconds}`). Это в 50× меньше.
+- **`arena_matches`** — после 12 мес уезжают в ClickHouse `historical_matches`, в PG остаётся только summary.
+
+### 🧠 Redis budget (14 GB)
+
+```
+matchmaking queues (5 секций × 100 в очереди × 1KB):    ~500 KB
+WS sessions (1000 active × 5KB):                          ~5 MB
+rating sortedsets (5 секций × 10k × 100B):                ~5 MB
+session cache (10k × 2KB TTL 5 мин):                    ~20 MB
+dynconfig cache:                                          ~1 MB
+notifications queue (Asynq, в среднем):                ~100 MB
+locks + dedup keys (TTL):                                ~10 MB
+________________________________________________________
+Hot working set:                                       ~150 MB    из 14 GB
+буфер на пиковую нагрузку (до 1M concurrent users):    ~14 GB    ✓ с большим запасом
+```
+
+**Что НЕ кладём в Redis:**
+- Полные профили (только id → cache на 5 мин)
+- Историю сообщений (только pointer)
+- Большие JSON блобы
+
+### 🗄 MinIO (S3) lifecycle rules
+
+```
+druz9-replays:    delete after 30 days
+druz9-voice:      delete after 7 days
+druz9-uploads:    keep (small)
+druz9-podcasts:   keep
+druz9-tmp:        delete after 24 hours (одноразовые презигнед урлы)
+```
 
 ### Право на забвение (GDPR Art. 17 / 152-ФЗ)
 - `DELETE /api/v1/account` — soft-delete аккаунт + начинает 30-дневный grace period (можно восстановить)

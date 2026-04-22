@@ -10,38 +10,39 @@ import (
 	"github.com/google/uuid"
 )
 
-// MatchRepo persists arena_matches and arena_participants.
+// MatchRepo сохраняет arena_matches и arena_participants.
 type MatchRepo interface {
-	// CreateMatch inserts a match plus the initial participant rows (status=confirming).
+	// CreateMatch вставляет матч и стартовые строки участников (status=confirming).
 	CreateMatch(ctx context.Context, m Match, parts []Participant) (Match, error)
 
-	// Get loads the match by ID.
+	// Get загружает матч по ID.
 	Get(ctx context.Context, id uuid.UUID) (Match, error)
 
-	// ListParticipants returns participants for a match ordered by team.
+	// ListParticipants возвращает участников матча, упорядоченных по команде.
 	ListParticipants(ctx context.Context, matchID uuid.UUID) ([]Participant, error)
 
-	// UpdateStatus transitions the match status and optionally stamps started_at/finished_at.
+	// UpdateStatus меняет статус матча и при необходимости проставляет started_at/finished_at.
 	UpdateStatus(ctx context.Context, id uuid.UUID, status enums.MatchStatus, startedAt, finishedAt *time.Time) error
 
-	// SetWinner records the winner user id and finished_at.
+	// SetWinner записывает победителя и finished_at.
 	SetWinner(ctx context.Context, id uuid.UUID, winner uuid.UUID, finishedAt time.Time) error
 
-	// SetTask stamps the selected task onto the match (after matchmaking).
+	// SetTask проставляет выбранную задачу на матч (после матчмейкинга).
 	SetTask(ctx context.Context, id uuid.UUID, taskID uuid.UUID, taskVersion int) error
 
-	// UpsertParticipantResult records solve_time_ms + suspicion_score and submitted_at.
+	// UpsertParticipantResult записывает solve_time_ms, suspicion_score и submitted_at.
 	UpsertParticipantResult(ctx context.Context, p Participant) error
 }
 
-// TaskRepo exposes the minimal task lookup arena needs — a section/difficulty
-// filter and a by-id fetch. STUB: for MVP we return a single random active task.
+// TaskRepo предоставляет минимальный интерфейс выборки задач, нужный арене:
+// фильтр по секции/сложности и поиск по id. STUB: для MVP возвращаем
+// одну случайную активную задачу.
 type TaskRepo interface {
 	PickBySectionDifficulty(ctx context.Context, section enums.Section, diff enums.Difficulty) (TaskPublic, error)
 	GetByID(ctx context.Context, id uuid.UUID) (TaskPublic, error)
 }
 
-// TaskPublic is the client-safe task view — solution_hint is NEVER populated.
+// TaskPublic — клиентское представление задачи: solution_hint НИКОГДА не заполняется.
 type TaskPublic struct {
 	ID            uuid.UUID
 	Version       int
@@ -55,50 +56,50 @@ type TaskPublic struct {
 	StarterCode   map[string]string
 }
 
-// QueueRepo is the Redis-backed matchmaking queue abstraction.
+// QueueRepo — абстракция над очередью матчмейкинга в Redis.
 type QueueRepo interface {
-	// Enqueue adds a ticket to the section+mode queue keyed by ELO.
-	// Returns ErrAlreadyInQueue if the user already has an entry.
+	// Enqueue добавляет тикет в очередь section+mode по ключу ELO.
+	// Возвращает ErrAlreadyInQueue, если у пользователя уже есть запись.
 	Enqueue(ctx context.Context, t QueueTicket) error
 
-	// Remove deletes a user's queue entry across all keys the implementation
-	// tracks (no-op if not present).
+	// Remove удаляет запись пользователя из всех ключей, которые ведёт реализация
+	// (no-op, если записи нет).
 	Remove(ctx context.Context, userID uuid.UUID, section enums.Section, mode enums.ArenaMode) error
 
-	// Snapshot returns all tickets currently waiting for a (section, mode) pair
-	// ordered by ELO ASC so the matchmaker can sweep neighbouring pairs.
+	// Snapshot возвращает все ожидающие тикеты для пары (section, mode),
+	// упорядоченные по ELO ASC, чтобы matchmaker мог пройти соседними парами.
 	Snapshot(ctx context.Context, section enums.Section, mode enums.ArenaMode) ([]QueueTicket, error)
 
-	// AcquireLock attempts to SETNX a short-lived lock on a user id; returns
-	// ok=true when the lock was acquired. Used to avoid double-matching a user
-	// across concurrent dispatcher ticks.
+	// AcquireLock пытается SETNX поставить короткоживущий лок на user id;
+	// возвращает ok=true, если лок взят. Используется, чтобы не сматчить
+	// одного пользователя дважды на параллельных тиках диспетчера.
 	AcquireLock(ctx context.Context, userID uuid.UUID, ttl time.Duration) (bool, error)
 
-	// ReleaseLock removes the lock key.
+	// ReleaseLock снимает ключ лока.
 	ReleaseLock(ctx context.Context, userID uuid.UUID) error
 
-	// Position returns the 1-based position of the user in the queue (by ELO
-	// tie-broken by enqueued_at). Zero means absent.
+	// Position возвращает 1-based позицию пользователя в очереди (по ELO,
+	// тай-брейк по enqueued_at). Ноль означает отсутствие.
 	Position(ctx context.Context, userID uuid.UUID, section enums.Section, mode enums.ArenaMode) (int, error)
 }
 
-// ReadyCheckRepo tracks per-match ready-check state.
+// ReadyCheckRepo отслеживает состояние ready-check по каждому матчу.
 type ReadyCheckRepo interface {
-	// Start records a new 10-second window for a match.
+	// Start запускает новое 10-секундное окно для матча.
 	Start(ctx context.Context, matchID uuid.UUID, userIDs []uuid.UUID, deadline time.Time) error
 
-	// Confirm marks a single user as confirmed. Returns everyoneConfirmed=true
-	// the moment the last outstanding user confirms.
+	// Confirm помечает одного пользователя подтвердившимся. Возвращает
+	// everyoneConfirmed=true в момент, когда подтвердился последний.
 	Confirm(ctx context.Context, matchID, userID uuid.UUID) (everyone bool, err error)
 
-	// Get returns the current state (missing = not started).
+	// Get возвращает текущее состояние (отсутствует = не запущен).
 	Get(ctx context.Context, matchID uuid.UUID) (ReadyCheckState, bool, error)
 
-	// Clear wipes the ready-check entry after transition.
+	// Clear очищает запись ready-check после перехода.
 	Clear(ctx context.Context, matchID uuid.UUID) error
 }
 
-// ReadyCheckState is what ReadyCheckRepo.Get returns.
+// ReadyCheckState — то, что возвращает ReadyCheckRepo.Get.
 type ReadyCheckState struct {
 	MatchID   uuid.UUID
 	UserIDs   []uuid.UUID
@@ -106,26 +107,26 @@ type ReadyCheckState struct {
 	Deadline  time.Time
 }
 
-// AnticheatRepo tracks suspicion scores per participant + per-match counters.
+// AnticheatRepo отслеживает suspicion scores по участникам и счётчики по матчу.
 type AnticheatRepo interface {
-	// AddSuspicion bumps the participant's score by delta and returns the new total.
+	// AddSuspicion увеличивает score участника на delta и возвращает новое значение.
 	AddSuspicion(ctx context.Context, matchID, userID uuid.UUID, delta float64) (float64, error)
 
-	// GetSuspicion returns the current score.
+	// GetSuspicion возвращает текущий score.
 	GetSuspicion(ctx context.Context, matchID, userID uuid.UUID) (float64, error)
 
-	// IncrTabSwitch bumps the tab-switch counter and returns the new value.
+	// IncrTabSwitch инкрементирует счётчик tab-switch и возвращает новое значение.
 	IncrTabSwitch(ctx context.Context, matchID, userID uuid.UUID) (int, error)
 }
 
-// Judge0Client submits code for grading. STUB impl in infra/judge0.go always passes.
+// Judge0Client отправляет код на проверку. STUB-реализация в infra/judge0.go всегда проходит.
 //
-// STUB: real Judge0 client. Lives in its own package once wired.
+// STUB: настоящий Judge0-клиент. Будет жить в отдельном пакете после интеграции.
 type Judge0Client interface {
 	Submit(ctx context.Context, code, language string, task TaskPublic) (Judge0Result, error)
 }
 
-// Judge0Result is the minimal outcome shape arena cares about.
+// Judge0Result — минимальная форма результата, которая интересна арене.
 type Judge0Result struct {
 	Passed      bool
 	TestsTotal  int

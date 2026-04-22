@@ -4,8 +4,8 @@ import (
 	dailyApp "druz9/daily/app"
 	dailyInfra "druz9/daily/infra"
 	dailyPorts "druz9/daily/ports"
-	"druz9/shared/generated/pb/druz9/v1/druz9v1connect"
 	sharedDomain "druz9/shared/domain"
+	"druz9/shared/generated/pb/druz9/v1/druz9v1connect"
 	"druz9/shared/pkg/eventbus"
 
 	"github.com/go-chi/chi/v5"

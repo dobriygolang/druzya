@@ -19,11 +19,11 @@ const useTabs = (): TabsContextValue => {
 };
 
 export interface TabsProps extends Omit<React.HTMLAttributes<HTMLDivElement>, 'onChange'> {
-  /** Visual style of the tab list. */
+  /** Визуальный стиль списка табов. */
   variant?: TabsVariant;
-  /** ID of the currently active tab. */
+  /** ID активного таба. */
   value: string;
-  /** Called when the user selects a different tab. */
+  /** Вызывается, когда пользователь выбирает другой таб. */
   onChange: (value: string) => void;
 }
 
@@ -101,7 +101,7 @@ const TabsList: React.FC<React.HTMLAttributes<HTMLDivElement>> = ({
 TabsList.displayName = 'Tabs.List';
 
 export interface TabProps extends Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, 'value'> {
-  /** Unique identifier for this tab — matches `Tabs.value` when active. */
+  /** Уникальный идентификатор таба — совпадает с `Tabs.value`, когда активен. */
   id: string;
 }
 
@@ -158,7 +158,7 @@ const Tab = React.forwardRef<HTMLButtonElement, TabProps>(
 Tab.displayName = 'Tabs.Tab';
 
 /**
- * druz9 Tabs — controlled tab navigation with full keyboard support.
+ * druz9 Tabs — контролируемая навигация по табам с полной поддержкой клавиатуры.
  *
  * @example
  * const [tab, setTab] = React.useState('overview');

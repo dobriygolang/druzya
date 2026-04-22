@@ -29,7 +29,7 @@ function applyTheme(mode: ThemeMode) {
   root.dataset.theme = effective
 }
 
-// Apply ASAP at module load to avoid initial flash
+// Применяем как можно раньше при загрузке модуля, чтобы избежать стартовой вспышки
 if (typeof document !== 'undefined') {
   applyTheme(readStored())
 }
@@ -58,7 +58,7 @@ export function useTheme() {
     }
   }, [])
 
-  // Listen for system color scheme changes when in auto
+  // Слушаем изменения системной color scheme в режиме auto
   useEffect(() => {
     if (theme !== 'auto') return
     if (typeof window === 'undefined' || !window.matchMedia) return

@@ -1,5 +1,5 @@
-// Package domain contains the arena bounded-context entities, matchmaking logic
-// and repository interfaces. No framework imports here.
+// Package domain содержит сущности bounded-контекста арены, логику матчмейкинга
+// и интерфейсы репозиториев. Импорты фреймворков сюда не допускаются.
 package domain
 
 import (
@@ -11,7 +11,7 @@ import (
 	"github.com/google/uuid"
 )
 
-// Sentinel errors.
+// Sentinel-ошибки.
 var (
 	ErrNotFound        = errors.New("arena: not found")
 	ErrAlreadyInQueue  = errors.New("arena: already in queue")
@@ -20,14 +20,14 @@ var (
 	ErrCodeTooLarge    = errors.New("arena: code exceeds 50KB limit")
 )
 
-// MaxCodeSizeBytes is the hard per-submission cap (bible §11).
+// MaxCodeSizeBytes — жёсткий лимит размера одной отправки кода (bible §11).
 const MaxCodeSizeBytes = 50 * 1024
 
-// InitialELO is the default rating for a never-rated player — kept here so the
-// matchmaker doesn't need to import the rating domain.
+// InitialELO — стартовый рейтинг для игрока без истории. Хранится здесь, чтобы
+// matchmaker не зависел от домена rating.
 const InitialELO = 1000
 
-// Match is the domain entity for a single PvP match.
+// Match — доменная сущность одного PvP-матча.
 type Match struct {
 	ID          uuid.UUID
 	TaskID      uuid.UUID
@@ -41,7 +41,7 @@ type Match struct {
 	CreatedAt   time.Time
 }
 
-// Participant mirrors an arena_participants row.
+// Participant отражает строку таблицы arena_participants.
 type Participant struct {
 	MatchID        uuid.UUID
 	UserID         uuid.UUID
@@ -53,7 +53,7 @@ type Participant struct {
 	SubmittedAt    *time.Time
 }
 
-// QueueTicket is a pending matchmaking entry, tracked in Redis.
+// QueueTicket — ожидающая запись в очереди матчмейкинга, хранится в Redis.
 type QueueTicket struct {
 	UserID     uuid.UUID
 	Section    enums.Section
@@ -62,24 +62,24 @@ type QueueTicket struct {
 	EnqueuedAt time.Time
 }
 
-// Pair is two tickets the matchmaker has decided to match.
+// Pair — два тикета, которые matchmaker решил свести в матч.
 type Pair struct {
 	A QueueTicket
 	B QueueTicket
 }
 
-// ReadyCheckWindow is how long both players have to confirm before the match
-// is cancelled (bible §3.4). Exposed for tests.
+// ReadyCheckWindow — сколько времени даётся обоим игрокам на подтверждение
+// готовности до отмены матча (bible §3.4). Экспортируется для тестов.
 const ReadyCheckWindow = 10 * time.Second
 
-// PasteSuspicionBump is added to a participant's suspicion_score per
-// paste_attempt event.
+// PasteSuspicionBump — прибавка к suspicion_score участника за каждое событие
+// paste_attempt.
 const PasteSuspicionBump = 25.0
 
-// SuspicionHighThreshold is the score above which a High-severity anticheat
-// signal must be raised.
+// SuspicionHighThreshold — порог suspicion_score, выше которого нужно поднять
+// антифрод-сигнал severity=High.
 const SuspicionHighThreshold = 75.0
 
-// AnomalousSpeedSuspicion is the baseline score assigned when a solve is faster
-// than the historical p5.
+// AnomalousSpeedSuspicion — базовый score, начисляемый, когда решение быстрее
+// исторического p5.
 const AnomalousSpeedSuspicion = 40.0

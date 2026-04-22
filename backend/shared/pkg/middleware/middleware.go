@@ -1,4 +1,4 @@
-// Package middleware provides HTTP middleware shared across services.
+// Package middleware предоставляет HTTP middleware, общий для сервисов.
 package middleware
 
 import (
@@ -18,7 +18,7 @@ const (
 	ctxKeyUserRole  ctxKey = "user_role"
 )
 
-// RequestID generates or propagates X-Request-ID.
+// RequestID генерирует или прокидывает X-Request-ID.
 func RequestID(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		rid := r.Header.Get("X-Request-ID")
@@ -31,7 +31,7 @@ func RequestID(next http.Handler) http.Handler {
 	})
 }
 
-// Logger logs every request with status code and latency.
+// Logger логирует каждый запрос со статус-кодом и latency.
 func Logger(log *slog.Logger) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -49,7 +49,7 @@ func Logger(log *slog.Logger) func(http.Handler) http.Handler {
 	}
 }
 
-// Recover catches panics and returns 500 without killing the server.
+// Recover ловит panic и возвращает 500, не убивая сервер.
 func Recover(log *slog.Logger) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -67,7 +67,7 @@ func Recover(log *slog.Logger) func(http.Handler) http.Handler {
 	}
 }
 
-// RequestIDFromContext extracts the request ID injected by RequestID middleware.
+// RequestIDFromContext извлекает request ID, добавленный middleware RequestID.
 func RequestIDFromContext(ctx context.Context) string {
 	if v, ok := ctx.Value(ctxKeyRequestID).(string); ok {
 		return v
@@ -75,7 +75,7 @@ func RequestIDFromContext(ctx context.Context) string {
 	return ""
 }
 
-// UserIDFromContext extracts the authenticated user ID injected by auth middleware.
+// UserIDFromContext извлекает ID аутентифицированного пользователя, добавленного auth middleware.
 func UserIDFromContext(ctx context.Context) (uuid.UUID, bool) {
 	v, ok := ctx.Value(ctxKeyUserID).(uuid.UUID)
 	return v, ok

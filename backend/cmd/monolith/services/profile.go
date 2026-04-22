@@ -4,8 +4,8 @@ import (
 	profileApp "druz9/profile/app"
 	profileInfra "druz9/profile/infra"
 	profilePorts "druz9/profile/ports"
-	"druz9/shared/generated/pb/druz9/v1/druz9v1connect"
 	sharedDomain "druz9/shared/domain"
+	"druz9/shared/generated/pb/druz9/v1/druz9v1connect"
 	"druz9/shared/pkg/eventbus"
 
 	"github.com/go-chi/chi/v5"

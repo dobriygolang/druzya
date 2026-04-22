@@ -12,19 +12,19 @@ import (
 	"time"
 )
 
-// ErrInvalidTelegramHash is returned when Telegram's HMAC signature does not
-// match what we compute with the bot token. Never log the supplied hash.
+// ErrInvalidTelegramHash возвращается, когда HMAC-подпись Telegram не совпадает
+// с тем, что мы вычисляем по bot token. Никогда не логируйте присланный hash.
 var ErrInvalidTelegramHash = errors.New("auth: invalid telegram hash")
 
-// ErrTelegramAuthExpired is returned when auth_date is older than the allowed
-// window (24h per Telegram docs). Protects against replay.
+// ErrTelegramAuthExpired возвращается, когда auth_date старше допустимого окна
+// (24ч по докам Telegram). Защищает от replay.
 var ErrTelegramAuthExpired = errors.New("auth: telegram auth expired")
 
-// TelegramAuthMaxAge is the hard cap on how stale auth_date can be.
+// TelegramAuthMaxAge — жёсткий потолок устаревания auth_date.
 const TelegramAuthMaxAge = 24 * time.Hour
 
-// TelegramPayload is what arrives from the Telegram Login Widget callback.
-// Fields are untyped strings so we can serialise verbatim for HMAC.
+// TelegramPayload — то, что приходит из callback Telegram Login Widget.
+// Поля — нетипизированные строки, чтобы можно было сериализовать их буквально для HMAC.
 type TelegramPayload struct {
 	ID        int64
 	FirstName string
@@ -35,18 +35,18 @@ type TelegramPayload struct {
 	Hash      string
 }
 
-// VerifyTelegramHash checks the HMAC-SHA256 signature that Telegram appends
-// to Login Widget callbacks, per https://core.telegram.org/widgets/login#checking-authorization.
+// VerifyTelegramHash проверяет подпись HMAC-SHA256, которую Telegram добавляет
+// к callback'ам Login Widget, согласно https://core.telegram.org/widgets/login#checking-authorization.
 //
-// Algorithm:
-//  1. build data_check_string = sorted "key=value" lines joined by \n,
-//     excluding the hash field itself and any empty fields;
+// Алгоритм:
+//  1. собрать data_check_string = отсортированные строки "key=value" через \n,
+//     исключив само поле hash и пустые поля;
 //  2. secret_key = SHA256(bot_token);
 //  3. computed = HMAC_SHA256(secret_key, data_check_string);
-//  4. hex(computed) must equal the provided hash (constant-time compare).
+//  4. hex(computed) должен равняться присланному hash (constant-time сравнение).
 //
-// The returned TelegramProfile mirrors the verified payload fields.
-// If botToken is empty this returns an error rather than silently accepting.
+// Возвращаемый TelegramProfile повторяет проверенные поля payload.
+// Если botToken пуст — возвращает ошибку, а не молча принимает.
 func VerifyTelegramHash(p TelegramPayload, botToken string, now time.Time) (TelegramProfile, error) {
 	if strings.TrimSpace(botToken) == "" {
 		return TelegramProfile{}, fmt.Errorf("auth.VerifyTelegramHash: empty bot token")
@@ -54,7 +54,7 @@ func VerifyTelegramHash(p TelegramPayload, botToken string, now time.Time) (Tele
 	if p.Hash == "" {
 		return TelegramProfile{}, fmt.Errorf("auth.VerifyTelegramHash: %w", ErrInvalidTelegramHash)
 	}
-	// Expiry check (bible §9: auth_date must be recent).
+	// Проверка свежести (bible §9: auth_date должен быть недавним).
 	if p.AuthDate <= 0 {
 		return TelegramProfile{}, fmt.Errorf("auth.VerifyTelegramHash: %w", ErrInvalidTelegramHash)
 	}
@@ -62,7 +62,7 @@ func VerifyTelegramHash(p TelegramPayload, botToken string, now time.Time) (Tele
 		return TelegramProfile{}, fmt.Errorf("auth.VerifyTelegramHash: %w", ErrTelegramAuthExpired)
 	}
 
-	// Collect non-empty fields, excluding hash.
+	// Собираем непустые поля, исключая hash.
 	kv := map[string]string{
 		"id":         strconv.FormatInt(p.ID, 10),
 		"auth_date":  strconv.FormatInt(p.AuthDate, 10),
@@ -109,9 +109,9 @@ func VerifyTelegramHash(p TelegramPayload, botToken string, now time.Time) (Tele
 	}, nil
 }
 
-// NormaliseUsername strips the `@`, lowercases, and replaces any unsupported
-// chars with `_` so we always land on a valid username candidate. We do NOT
-// guarantee uniqueness here — that is the repository's job on upsert.
+// NormaliseUsername убирает `@`, приводит к нижнему регистру и заменяет любые
+// неподдерживаемые символы на `_`, чтобы всегда получать валидного кандидата
+// в username. Уникальность здесь НЕ гарантируется — это задача репозитория при upsert.
 func NormaliseUsername(raw string) string {
 	raw = strings.TrimPrefix(strings.TrimSpace(raw), "@")
 	raw = strings.ToLower(raw)

@@ -1,5 +1,5 @@
-// Thin fetch wrapper with bearer auth + 401 handling.
-// Backed by either MSW (dev) or a real backend (prod), controlled by VITE_USE_MSW.
+// Тонкая обёртка над fetch с bearer-авторизацией и обработкой 401.
+// Источник — MSW (dev) или реальный бэкенд (prod), управляется через VITE_USE_MSW.
 
 const TOKEN_KEY = 'druz9_access_token'
 
@@ -21,7 +21,7 @@ function clearTokenAndRedirect() {
   try {
     if (typeof window !== 'undefined') {
       window.localStorage.removeItem(TOKEN_KEY)
-      // Avoid loop if already on /welcome
+      // Избегаем цикла, если уже на /welcome
       if (!window.location.pathname.startsWith('/welcome')) {
         window.location.href = '/welcome'
       }

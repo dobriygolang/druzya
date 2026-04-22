@@ -36,17 +36,17 @@ type ButtonVariantProps = VariantProps<typeof button>;
 export interface ButtonProps
   extends Omit<React.ButtonHTMLAttributes<HTMLButtonElement>, 'disabled' | keyof React.AriaAttributes & never>,
     ButtonVariantProps {
-  /** Visual style. Defaults to `primary`. */
+  /** Визуальный стиль. По умолчанию `primary`. */
   variant?: ButtonVariantProps['variant'];
-  /** Vertical sizing of the button. Defaults to `md`. */
+  /** Вертикальный размер кнопки. По умолчанию `md`. */
   size?: ButtonVariantProps['size'];
-  /** When true, shows a spinner and disables interaction. */
+  /** Если true — показывает спиннер и блокирует взаимодействие. */
   loading?: boolean;
-  /** Disables the button (separate from `loading`). */
+  /** Блокирует кнопку (независимо от `loading`). */
   disabled?: boolean;
-  /** Icon rendered to the left of the label. */
+  /** Иконка, отрисованная слева от текста. */
   icon?: React.ReactNode;
-  /** Icon rendered to the right of the label. */
+  /** Иконка, отрисованная справа от текста. */
   iconRight?: React.ReactNode;
 }
 
@@ -68,7 +68,7 @@ const Spinner: React.FC = () => (
 );
 
 /**
- * druz9 Button — primary interactive element.
+ * druz9 Button — основной интерактивный элемент.
  *
  * @example
  * <Button variant="primary" size="md" icon={<PlayIcon />}>Start match</Button>

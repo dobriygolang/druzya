@@ -1,6 +1,6 @@
-// Package eventbus provides an in-process implementation of domain.Bus.
-// When a domain is extracted to a microservice, swap this for a NATS/Kafka
-// adapter — handler signatures stay identical.
+// Package eventbus предоставляет in-process реализацию domain.Bus.
+// При выделении домена в микросервис заменить на NATS/Kafka адаптер —
+// сигнатуры обработчиков останутся идентичными.
 package eventbus
 
 import (
@@ -38,7 +38,7 @@ func (b *InProcess) Publish(ctx context.Context, e domain.Event) error {
 
 	for _, h := range hs {
 		if err := h(ctx, e); err != nil {
-			// Log and continue — one handler failure must not block the others.
+			// Логируем и продолжаем — фейл одного хендлера не должен блокировать остальные.
 			b.log.ErrorContext(ctx, "event handler failed",
 				slog.String("topic", e.Topic()),
 				slog.Any("err", err),
@@ -48,8 +48,8 @@ func (b *InProcess) Publish(ctx context.Context, e domain.Event) error {
 	return nil
 }
 
-// MustPublish is a convenience helper for call sites where a publish failure
-// should never happen (in-process bus never returns an error).
+// MustPublish — удобный хелпер для мест, где сбой публикации не должен
+// случаться никогда (in-process шина никогда не возвращает ошибку).
 func MustPublish(ctx context.Context, b domain.Bus, e domain.Event) {
 	if err := b.Publish(ctx, e); err != nil {
 		panic(fmt.Errorf("eventbus: publish %s: %w", e.Topic(), err))

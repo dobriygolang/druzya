@@ -1,13 +1,13 @@
 import { useReducedMotion, type MotionProps } from 'framer-motion'
 
 /**
- * Returns motion props that respect the user's reduced-motion preference.
- * When the user prefers reduced motion, animations are disabled (set to no-op).
+ * Возвращает motion-пропсы, уважающие предпочтение пользователя reduced-motion.
+ * Когда пользователь выбрал reduced motion, анимации отключаются (no-op).
  */
 export function useMotionSafe<T extends MotionProps>(props: T): T {
   const reduced = useReducedMotion()
   if (!reduced) return props
-  // Strip animation-related props when reduced motion is on.
+  // Срезаем анимационные пропсы, когда включён reduced motion.
   const safe: MotionProps = { ...props }
   safe.initial = false
   safe.animate = undefined
@@ -18,7 +18,7 @@ export function useMotionSafe<T extends MotionProps>(props: T): T {
   return safe as T
 }
 
-/** Stagger container variants for lists where each child fades + slides up. */
+/** Варианты stagger-контейнера для списков, где каждый ребёнок появляется с fade + slide-up. */
 export const staggerContainer = {
   hidden: { opacity: 1 },
   show: { opacity: 1, transition: { staggerChildren: 0.08 } },

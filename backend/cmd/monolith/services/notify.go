@@ -9,9 +9,9 @@ import (
 	notifyDomain "druz9/notify/domain"
 	notifyInfra "druz9/notify/infra"
 	notifyPorts "druz9/notify/ports"
+	sharedDomain "druz9/shared/domain"
 	"druz9/shared/enums"
 	"druz9/shared/generated/pb/druz9/v1/druz9v1connect"
-	sharedDomain "druz9/shared/domain"
 	"druz9/shared/pkg/eventbus"
 
 	"github.com/go-chi/chi/v5"
@@ -23,8 +23,8 @@ import (
 // webhook explicitly.
 type NotifyModule struct {
 	Module
-	WebhookHandler   *notifyPorts.WebhookHandler
-	RegisterWebhook  func(ctx context.Context) error
+	WebhookHandler  *notifyPorts.WebhookHandler
+	RegisterWebhook func(ctx context.Context) error
 }
 
 // NewNotify wires notifications: prefs CRUD, the multi-channel sender,

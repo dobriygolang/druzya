@@ -1,7 +1,7 @@
 import * as React from 'react';
 import { cn } from '../lib/cn';
 
-/** Built-in two-stop gradient presets (token-aligned). */
+/** Встроенные пресеты градиентов из двух стопов (выровнены по токенам). */
 export type AvatarGradient =
   | 'violet-cyan'
   | 'pink-violet'
@@ -49,24 +49,25 @@ const TIER_RING: Record<AvatarTier, string> = {
 };
 
 export interface AvatarProps extends Omit<React.HTMLAttributes<HTMLDivElement>, 'children'> {
-  /** Pixel size preset: sm=24, md=32, lg=48, xl=96. */
+  /** Пресет размера в пикселях: sm=24, md=32, lg=48, xl=96. */
   size?: AvatarSize;
-  /** Gradient preset for fallback bg, or a `[from, to]` tuple of hex strings. */
+  /** Пресет градиента для fallback-фона или кортеж `[from, to]` из hex-строк. */
   gradient?: AvatarGradient | [string, string];
-  /** Presence indicator dot, bottom-right. */
+  /** Точка-индикатор присутствия, снизу справа. */
   status?: AvatarStatus;
-  /** Adds a colored ring around the avatar. */
+  /** Добавляет цветное кольцо вокруг аватара. */
   tier?: AvatarTier;
-  /** Initials shown when no `src` is provided. */
+  /** Инициалы, показываемые при отсутствии `src`. */
   initials?: string;
-  /** Image URL; falls back to gradient + initials on error or absence. */
+  /** URL изображения; при ошибке или отсутствии — fallback на градиент + инициалы. */
   src?: string;
-  /** Accessible label for the avatar image. */
+  /** Доступный label для изображения аватара. */
   alt?: string;
 }
 
 /**
- * druz9 Avatar — user portrait with optional status, tier ring, and gradient fallback.
+ * druz9 Avatar — портрет пользователя с опциональным статусом, кольцом тира и
+ * fallback-градиентом.
  *
  * @example
  * <Avatar size="lg" gradient="violet-cyan" initials="SD" status="online" tier="gold" />

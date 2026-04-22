@@ -146,9 +146,7 @@ func (a *App) registerInfraClosers() {
 		if m == nil {
 			continue
 		}
-		for _, c := range m.Shutdown {
-			a.closers = append(a.closers, c)
-		}
+		a.closers = append(a.closers, m.Shutdown...)
 	}
 	a.closers = append(a.closers,
 		func(context.Context) error { a.pool.Close(); return nil },

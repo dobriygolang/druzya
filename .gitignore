@@ -12,6 +12,14 @@
 *.out
 vendor/
 backend/cmd/monolith/monolith
+# Когда вырежем сервисы из монолита — каждая cmd/X/X тоже будет бинарник
+backend/cmd/*/[a-z]*
+!backend/cmd/*/main.go
+!backend/cmd/*/*.go
+# Coverage / профайлы
+*.cov
+*.prof
+*.test
 
 # Generated code is COMMITTED (bible §16: treat as reviewable artefacts).
 # If you want to opt OUT for a specific module, add it here explicitly.

@@ -6,8 +6,8 @@ import (
 	ratingApp "druz9/rating/app"
 	ratingInfra "druz9/rating/infra"
 	ratingPorts "druz9/rating/ports"
-	"druz9/shared/generated/pb/druz9/v1/druz9v1connect"
 	sharedDomain "druz9/shared/domain"
+	"druz9/shared/generated/pb/druz9/v1/druz9v1connect"
 	"druz9/shared/pkg/eventbus"
 
 	"github.com/go-chi/chi/v5"

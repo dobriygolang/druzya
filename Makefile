@@ -83,7 +83,14 @@ gen-proto: ## Generate Go + TS stubs from proto/*.proto via buf (all 14 services
 
 .PHONY: gen-ts
 gen-ts: ## Generate TypeScript types for frontend from OpenAPI
-	cd frontend && npm run gen:api
+	# Tolerant: если openapi-spec отсутствует — пропускаем без падения.
+	# Спека пока stub (см. docs/legacy/openapi-v1.yaml). Когда переедем
+	# на полноценную OpenAPI из бэка — таргет начнёт реально что-то генерировать.
+	@if [ -f docs/legacy/openapi-v1.yaml ]; then \
+		cd frontend && npm run gen:api; \
+	else \
+		echo "skip gen-ts: docs/legacy/openapi-v1.yaml not found"; \
+	fi
 
 .PHONY: gen-sqlc
 gen-sqlc: ## Generate sqlc typed queries per-domain
@@ -92,8 +99,12 @@ gen-sqlc: ## Generate sqlc typed queries per-domain
 
 .PHONY: gen-mocks
 gen-mocks: ## Generate mockgen mocks from //go:generate directives
-	cd backend && for svc in auth profile daily rating arena ai_mock ai_native editor guild season notify slot podcast admin; do \
-		[ -d "services/$$svc/domain" ] && GOWORK=off go generate ./services/$$svc/domain/... || true; \
+	# go generate должен запускаться ВНУТРИ Go-модуля. backend/ — не модуль
+	# (модули — services/<svc>/), поэтому cd внутрь каждого сервиса перед запуском.
+	@for svc in auth profile daily rating arena ai_mock ai_native editor guild season notify slot podcast admin feed; do \
+		[ -d "backend/services/$$svc/domain" ] && \
+			(cd backend/services/$$svc && GOWORK=off GOFLAGS= go generate ./domain/...) \
+			|| true; \
 	done
 
 .PHONY: gen-check

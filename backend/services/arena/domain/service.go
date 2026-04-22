@@ -7,7 +7,7 @@ import (
 	"druz9/shared/enums"
 )
 
-// ELO-window bible §3.4: ±200 baseline, +200 every 30s in queue, capped at ±600.
+// ELO-окно (bible §3.4): ±200 базово, +200 каждые 30 секунд в очереди, потолок ±600.
 const (
 	EloWindowBase   = 200
 	EloWindowStep   = 200
@@ -15,28 +15,29 @@ const (
 	EloWindowStepAt = 30 * time.Second
 )
 
-// Clock abstracts time.Now so tests can drive Tick() deterministically.
+// Clock абстрагирует time.Now, чтобы тесты могли детерминированно крутить Tick().
 type Clock interface {
 	Now() time.Time
 }
 
-// RealClock is the production Clock.
+// RealClock — продакшн-реализация Clock.
 type RealClock struct{}
 
-// Now returns time.Now in UTC.
+// Now возвращает time.Now в UTC.
 func (RealClock) Now() time.Time { return time.Now().UTC() }
 
-// FixedClock is a test Clock returning a fixed instant; call Advance to move it.
+// FixedClock — тестовый Clock, возвращающий зафиксированный момент;
+// вызывайте Advance, чтобы сдвинуть его.
 type FixedClock struct{ T time.Time }
 
-// Now returns the fixed instant.
+// Now возвращает зафиксированный момент.
 func (c *FixedClock) Now() time.Time { return c.T }
 
-// Advance moves the clock forward by d.
+// Advance сдвигает часы вперёд на d.
 func (c *FixedClock) Advance(d time.Duration) { c.T = c.T.Add(d) }
 
-// EloWindowAt returns the permissible |elo_a − elo_b| delta for a ticket
-// enqueued at `enqueuedAt`, observed at `now`.
+// EloWindowAt возвращает допустимую разность |elo_a − elo_b| для тикета,
+// поставленного в очередь в `enqueuedAt`, наблюдаемого в момент `now`.
 func EloWindowAt(enqueuedAt, now time.Time) int {
 	waited := now.Sub(enqueuedAt)
 	if waited < 0 {
@@ -53,18 +54,19 @@ func EloWindowAt(enqueuedAt, now time.Time) int {
 	return win
 }
 
-// PickPairs greedily matches adjacent tickets in an ELO-sorted queue slice.
-// It assumes `tickets` is owned by the caller and must not mutate it.
+// PickPairs жадно матчит соседние тикеты в срезе очереди, отсортированной по ELO.
+// Считает, что `tickets` принадлежит вызывающей стороне, и не должен его менять.
 //
-// Strategy:
-//  1. Sort tickets by ELO ascending, tiebreak on enqueue time so the
-//     oldest ticket gets matched first.
-//  2. Walk the slice in order; for each unmatched ticket, try to pair with the
-//     next unmatched ticket whose ELO fits inside the dynamically-expanded
-//     window of *either* side (we take max so a long-waiter broadens the net).
+// Стратегия:
+//  1. Отсортировать тикеты по ELO по возрастанию, тай-брейк по времени постановки,
+//     чтобы самый старый тикет матчился первым.
+//  2. Пройти срез по порядку; для каждого несматченного тикета попробовать
+//     спариться со следующим несматченным, чей ELO помещается в динамически
+//     расширенное окно *любой* из сторон (берём max, чтобы давно ожидающий
+//     расширял сеть).
 //
-// Returns the set of matched pairs; tickets that did not find a partner this
-// tick stay in the queue.
+// Возвращает набор сматченных пар; тикеты, не нашедшие пары на этом тике,
+// остаются в очереди.
 func PickPairs(tickets []QueueTicket, now time.Time) []Pair {
 	if len(tickets) < 2 {
 		return nil
@@ -103,14 +105,14 @@ func PickPairs(tickets []QueueTicket, now time.Time) []Pair {
 				pairs = append(pairs, Pair{A: ts[i], B: ts[j]})
 				break
 			}
-			// ELO-sorted: the next j would be even further; skip rest.
+			// Отсортировано по ELO: следующий j будет ещё дальше; пропускаем остаток.
 			break
 		}
 	}
 	return pairs
 }
 
-// DifficultyForEloBand chooses a task difficulty from an ELO value. Pure.
+// DifficultyForEloBand выбирает сложность задачи по значению ELO. Чистая функция.
 func DifficultyForEloBand(elo int) enums.Difficulty {
 	switch {
 	case elo >= 1800:
@@ -122,14 +124,14 @@ func DifficultyForEloBand(elo int) enums.Difficulty {
 	}
 }
 
-// ReadyCheckDeadline returns `now + ReadyCheckWindow`.
+// ReadyCheckDeadline возвращает `now + ReadyCheckWindow`.
 func ReadyCheckDeadline(now time.Time) time.Time { return now.Add(ReadyCheckWindow) }
 
-// IsReadyCheckExpired reports whether the deadline has passed.
+// IsReadyCheckExpired сообщает, истёк ли дедлайн.
 func IsReadyCheckExpired(deadline, now time.Time) bool { return !now.Before(deadline) }
 
-// AccumulateSuspicion applies a paste event to an existing score, returning the
-// new value and whether the High threshold was crossed.
+// AccumulateSuspicion применяет paste-событие к текущему score, возвращая
+// новое значение и факт пересечения порога High.
 func AccumulateSuspicion(current, delta float64) (newScore float64, crossedHigh bool) {
 	prev := current
 	newScore = current + delta
@@ -139,7 +141,7 @@ func AccumulateSuspicion(current, delta float64) (newScore float64, crossedHigh 
 	return
 }
 
-// TabSwitchSeverity maps the Nth (1-based) tab-switch to an anticheat severity.
+// TabSwitchSeverity сопоставляет N-й (1-based) tab-switch с антифрод-severity.
 // 1 → Medium, ≥2 → High (bible §3.4).
 func TabSwitchSeverity(nth int) enums.SeverityLevel {
 	if nth <= 1 {

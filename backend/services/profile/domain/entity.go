@@ -1,5 +1,5 @@
-// Package domain contains profile entities, progression logic, and repo
-// interfaces. No framework imports.
+// Package domain содержит сущности профиля, логику прогрессии и интерфейсы
+// репозиториев. Без импортов фреймворков.
 package domain
 
 import (
@@ -10,8 +10,8 @@ import (
 	"github.com/google/uuid"
 )
 
-// User mirrors the auth users row — kept here so the profile domain does not
-// import the auth module. Profile re-reads what it needs from its own repo.
+// User отражает строку auth.users — хранится здесь, чтобы домен profile не
+// импортировал модуль auth. Profile перечитывает нужное из собственного репо.
 type User struct {
 	ID          uuid.UUID
 	Email       string
@@ -22,7 +22,7 @@ type User struct {
 	CreatedAt   time.Time
 }
 
-// Profile is the per-user progression row (profiles table).
+// Profile — строка прогрессии пользователя (таблица profiles).
 type Profile struct {
 	UserID      uuid.UUID
 	CharClass   enums.CharClass
@@ -35,7 +35,7 @@ type Profile struct {
 	UpdatedAt   time.Time
 }
 
-// Attributes is the Dark-Fantasy RPG stat block derived from rating history.
+// Attributes — блок RPG-статов в стиле dark fantasy, выводимый из истории рейтинга.
 type Attributes struct {
 	Intellect int
 	Strength  int
@@ -43,7 +43,7 @@ type Attributes struct {
 	Will      int
 }
 
-// Subscription is the current billing plan for a user.
+// Subscription — текущий тарифный план пользователя.
 type Subscription struct {
 	UserID           uuid.UUID
 	Plan             enums.SubscriptionPlan
@@ -51,7 +51,7 @@ type Subscription struct {
 	CurrentPeriodEnd *time.Time
 }
 
-// SectionRating is a per-section ELO row.
+// SectionRating — строка ELO по одной секции.
 type SectionRating struct {
 	Section      enums.Section
 	Elo          int
@@ -59,7 +59,7 @@ type SectionRating struct {
 	LastMatchAt  *time.Time
 }
 
-// SkillNode is a per-user progress row in the skill atlas.
+// SkillNode — строка прогресса пользователя в атласе навыков.
 type SkillNode struct {
 	NodeKey    string
 	Progress   int
@@ -68,17 +68,17 @@ type SkillNode struct {
 	UpdatedAt  time.Time
 }
 
-// NotificationPrefs mirrors notification_preferences.
+// NotificationPrefs отражает notification_preferences.
 type NotificationPrefs struct {
 	Channels                  []enums.NotificationChannel
 	TelegramChatID            string
-	QuietHoursFrom            *time.Time // only hh:mm is used
+	QuietHoursFrom            *time.Time // используется только hh:mm
 	QuietHoursTo              *time.Time
 	WeeklyReportEnabled       bool
 	SkillDecayWarningsEnabled bool
 }
 
-// Settings is the full settings bundle exposed by PUT /profile/me/settings.
+// Settings — полный набор настроек, возвращаемый PUT /profile/me/settings.
 type Settings struct {
 	DisplayName      string
 	DefaultLanguage  enums.Language

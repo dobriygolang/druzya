@@ -8,11 +8,11 @@ import (
 	"github.com/google/uuid"
 )
 
-// User is the aggregate root for authentication. Minimal shape — rich profile
-// data lives in the profile bounded context and is hydrated there.
+// User — корневой агрегат аутентификации. Минимальная форма: насыщенные
+// данные профиля живут в bounded-контексте profile и подтягиваются там.
 type User struct {
 	ID          uuid.UUID
-	Email       string // nullable at source; empty string means no email (Telegram case).
+	Email       string // nullable в источнике; пустая строка означает отсутствие email (случай Telegram).
 	Username    string
 	Role        enums.UserRole
 	Locale      string
@@ -21,22 +21,22 @@ type User struct {
 	UpdatedAt   time.Time
 }
 
-// OAuthAccount is the external identity linked to a User.
+// OAuthAccount — внешняя идентичность, привязанная к User.
 type OAuthAccount struct {
 	ID              uuid.UUID
 	UserID          uuid.UUID
 	Provider        enums.AuthProvider
 	ProviderUserID  string
-	AccessTokenEnc  []byte // AES-256-GCM ciphertext
+	AccessTokenEnc  []byte // шифротекст AES-256-GCM
 	RefreshTokenEnc []byte
 	TokenExpiresAt  *time.Time
 	CreatedAt       time.Time
 }
 
-// Session represents an active refresh-token session stored in Redis.
-// Access tokens are stateless JWT; only refresh lives here so we can revoke.
+// Session — активная сессия refresh-токена в Redis.
+// Access-токены — stateless JWT; только refresh хранится здесь, чтобы можно было отозвать.
 type Session struct {
-	ID        uuid.UUID // session id == refresh jti
+	ID        uuid.UUID // id сессии == jti refresh
 	UserID    uuid.UUID
 	CreatedAt time.Time
 	ExpiresAt time.Time
@@ -44,24 +44,24 @@ type Session struct {
 	IP        string
 }
 
-// TokenPair is what a use case hands back to the HTTP layer.
+// TokenPair — то, что use case возвращает HTTP-слою.
 type TokenPair struct {
 	AccessToken     string
-	AccessExpiresIn int // seconds
+	AccessExpiresIn int // секунды
 	RefreshToken    string
 	SessionID       uuid.UUID
 	RefreshExpires  time.Time
 }
 
-// YandexUserInfo is the relevant slice of Yandex's /info response.
+// YandexUserInfo — релевантная часть ответа Yandex /info.
 type YandexUserInfo struct {
-	ID           string // Yandex numeric id as string
-	Login        string // login == username candidate
+	ID           string // числовой id Яндекса в виде строки
+	Login        string // login = кандидат в username
 	DisplayName  string
 	DefaultEmail string
 }
 
-// TelegramProfile is the verified Telegram Login Widget payload.
+// TelegramProfile — верифицированный payload Telegram Login Widget.
 type TelegramProfile struct {
 	ID        int64
 	FirstName string

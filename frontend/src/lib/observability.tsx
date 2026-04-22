@@ -1,16 +1,16 @@
 /**
- * Frontend observability — Sentry for errors + manual breadcrumbs for actions.
+ * Frontend-observability — Sentry для ошибок + ручные breadcrumbs для действий.
  *
- * Activated ONLY when VITE_SENTRY_DSN is set AND non-empty.
- * Otherwise no-op — and the @sentry/react chunk is never loaded
- * (dynamic import below). Zero network requests, zero bundle bloat in dev.
+ * Активируется ТОЛЬКО когда VITE_SENTRY_DSN задан и непуст.
+ * Иначе — no-op, и chunk @sentry/react никогда не грузится (динамический
+ * импорт ниже). Ноль сетевых запросов, ноль раздувания бандла в dev.
  *
- * To plug into prod:
- *   1. Create Sentry project on sentry.io → grab DSN
- *   2. Set in .env.production: VITE_SENTRY_DSN=https://xxx@oNNN.ingest.sentry.io/NNN
- *   3. Errors auto-captured, breadcrumbs attach via track() helpers below.
+ * Как подключить в prod:
+ *   1. Создать Sentry-проект на sentry.io → взять DSN
+ *   2. В .env.production: VITE_SENTRY_DSN=https://xxx@oNNN.ingest.sentry.io/NNN
+ *   3. Ошибки ловятся автоматически, breadcrumbs цепляются через track() ниже.
  *
- * Backend tracing (Jaeger/OTel) — see /docs/observability.md.
+ * Backend-трассировка (Jaeger/OTel) — см. /docs/observability.md.
  */
 import type { ComponentType, ReactNode } from 'react'
 
@@ -27,11 +27,11 @@ export async function initObservability() {
   initialized = true
 
   if (!ENABLED) {
-    // No DSN → no SDK loaded → no network calls. Done.
+    // Нет DSN → SDK не грузим → сетевых вызовов нет. Готово.
     return
   }
 
-  // Dynamic import — chunk only fetched when DSN is present.
+  // Динамический импорт — chunk скачивается только при наличии DSN.
   const Sentry = await import('@sentry/react')
   sentryRef = Sentry
 
@@ -47,7 +47,7 @@ export async function initObservability() {
     replaysSessionSampleRate: 0.1,
     replaysOnErrorSampleRate: 1.0,
     beforeSend(event) {
-      // Strip MSW-mocked errors out (avoid noise from local dev with mocks)
+      // Срезаем MSW-мокнутые ошибки (избегаем шума от локального dev с моками)
       if (event.request?.url?.includes('/api/v1') && import.meta.env.VITE_USE_MSW === 'true') {
         return null
       }
@@ -56,7 +56,7 @@ export async function initObservability() {
   })
 }
 
-/** Add a breadcrumb manually for important user actions. No-op if Sentry disabled. */
+/** Добавить breadcrumb вручную для важных пользовательских действий. No-op, если Sentry выключен. */
 export function track(category: string, message: string, data?: Record<string, unknown>) {
   if (!sentryRef) return
   sentryRef.addBreadcrumb({
@@ -68,22 +68,22 @@ export function track(category: string, message: string, data?: Record<string, u
   })
 }
 
-/** Identify the user (call after auth). No-op if Sentry disabled. */
+/** Идентифицировать пользователя (вызывать после авторизации). No-op, если Sentry выключен. */
 export function identifyUser(id: string, username?: string) {
   if (!sentryRef) return
   sentryRef.setUser({ id, username })
 }
 
-/** Clear user context on logout. No-op if Sentry disabled. */
+/** Очистить пользовательский контекст при logout. No-op, если Sentry выключен. */
 export function clearUser() {
   if (!sentryRef) return
   sentryRef.setUser(null)
 }
 
 /**
- * Pass-through ErrorBoundary wrapper.
- * In Sentry-enabled mode it uses the real Sentry boundary (auto-reports errors).
- * In disabled mode it's a plain React boundary that just shows the fallback.
+ * Прозрачная обёртка над ErrorBoundary.
+ * В режиме с Sentry использует настоящий Sentry boundary (авто-репорт ошибок).
+ * В выключенном режиме — обычный React boundary, просто показывающий fallback.
  */
 type EBProps = { children: ReactNode; fallback: ReactNode }
 

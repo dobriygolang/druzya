@@ -8,6 +8,7 @@ package bootstrap
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"druz9/shared/pkg/config"
@@ -18,7 +19,11 @@ import (
 )
 
 func newPostgres(ctx context.Context, dsn string) (*pgxpool.Pool, error) {
-	return dotel.NewTracedPool(ctx, dsn)
+	pool, err := dotel.NewTracedPool(ctx, dsn)
+	if err != nil {
+		return nil, fmt.Errorf("bootstrap: postgres pool: %w", err)
+	}
+	return pool, nil
 }
 
 func newRedis(cfg *config.Config) *redis.Client {
