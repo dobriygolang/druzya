@@ -41,8 +41,11 @@ $COMPOSE up -d --no-deps prometheus loki promtail grafana || true
 $COMPOSE up -d --no-deps nginx
 
 log "waiting for /health/ready"
+# Бьём по nginx через https://localhost с -k: серт у нас на druz9.online,
+# поэтому без -k curl упадёт на TLS-name mismatch ещё до того, как увидит
+# 200 от api. Содержимое запроса всё равно идёт на тот же loopback.
 for i in $(seq 1 30); do
-    if curl -sfo /dev/null https://localhost/health/ready; then
+    if curl -sfk -o /dev/null https://localhost/health/ready; then
         log "deploy healthy (attempt $i)"
 
         # ------------------------------------------------------------------
