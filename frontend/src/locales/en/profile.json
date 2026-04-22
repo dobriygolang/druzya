@@ -1,0 +1,41 @@
+{
+  "since": "{{display}} · Moscow · @druz9 since Oct 2025",
+  "load_failed": "Failed to load",
+  "rank": "rank",
+  "gps": "GPS",
+  "matches": "{{count}} matches",
+  "streak": "streak",
+  "days": "days",
+  "class": "class",
+  "share": "Share",
+  "add_friend": "Add friend",
+  "tabs": {
+    "overview": "Overview",
+    "matches": "Matches",
+    "achievements": "Achievements",
+    "guilds": "Guilds",
+    "stats": "Stats"
+  },
+  "skills": "Skills",
+  "achievements_title": "Achievements",
+  "guild_label": "GUILD",
+  "guild_top": "Top-3 in season 4",
+  "rank_in_guild": "rank",
+  "your_contribution": "your contribution",
+  "points": "{{n}} points",
+  "leaderboard": "Leaderboard",
+  "scopes": {
+    "global": "Global",
+    "friends": "Friends",
+    "guild": "Guild",
+    "region": "Region"
+  },
+  "table": {
+    "rank": "Rank",
+    "player": "Player",
+    "lp": "LP",
+    "wl": "W-L",
+    "wr": "WR",
+    "delta": "Δ7d"
+  }
+}

@@ -1,351 +1,205 @@
-import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { AppShell } from '../components/AppShell'
+// TODO i18n
+import { useParams } from 'react-router-dom'
 import {
-  Panel,
-  PanelHead,
-  PageHeader,
-  Button,
-  InsetGroove,
-  Badge,
-} from '../components/chrome'
-import {
-  useCreateAutopsy,
-  type InterviewAutopsyInput,
-} from '../lib/queries/autopsy'
+  AlertTriangle,
+  CalendarPlus,
+  Skull,
+  Sparkles,
+} from 'lucide-react'
+import { AppShellV2 } from '../components/AppShell'
+import { Button } from '../components/Button'
+import { Card } from '../components/Card'
+import { useInterviewAutopsyQuery } from '../lib/queries/interviewAutopsy'
 
-/**
- * Interview Autopsy form (bible §20.1).
- * User logs a real interview after the fact:
- *  - company / role
- *  - sections covered
- *  - outcome + what went wrong
- *  - atlas nodes to retro-decay (AI re-prioritizes practice)
- *
- * Submit → POST /daily/autopsy → back to /daily with autopsy surfaced.
- */
-
-const SECTIONS: InterviewAutopsyInput['sections'] = [
-  'algorithms',
-  'sql',
-  'go',
-  'system_design',
-  'behavioral',
-]
-const SECTION_LABEL: Record<string, string> = {
-  algorithms: 'Алгоритмы',
-  sql: 'SQL',
-  go: 'Go / Rust / Java',
-  system_design: 'System Design',
-  behavioral: 'Behavioral',
-}
-
-const OUTCOMES: Array<{
-  key: InterviewAutopsyInput['outcome']
-  label: string
-  tone: 'normal' | 'hard' | 'boss' | 'dim'
-}> = [
-  { key: 'passed', label: 'Прошёл', tone: 'normal' },
-  { key: 'rejected', label: 'Отказ', tone: 'boss' },
-  { key: 'pending', label: 'Жду ответа', tone: 'hard' },
-  { key: 'no_show', label: 'Слетел', tone: 'dim' },
-]
-
-// STUB: pool of node keys to offer for retro-decay. Real version will fetch
-// from /profile/me/atlas and filter by those the user interacted with recently.
-const CANDIDATE_NODES = [
-  { key: 'algo_graphs', title: 'Graphs' },
-  { key: 'algo_dp', title: 'Dynamic Programming' },
-  { key: 'sd_scaling', title: 'Horizontal scaling' },
-  { key: 'sd_cap', title: 'CAP theorem' },
-  { key: 'sql_windows', title: 'Window functions' },
-  { key: 'go_concurrency', title: 'Concurrency' },
-  { key: 'beh_conflict', title: 'Conflict' },
-]
-
-export default function InterviewAutopsyPage() {
-  const navigate = useNavigate()
-  const create = useCreateAutopsy()
-
-  const [company, setCompany] = useState('')
-  const [role, setRole] = useState('')
-  const [sections, setSections] = useState<InterviewAutopsyInput['sections']>([])
-  const [outcome, setOutcome] =
-    useState<InterviewAutopsyInput['outcome']>('pending')
-  const [whatWentWrong, setWhatWentWrong] = useState('')
-  const [retroDecay, setRetroDecay] = useState<string[]>([])
-
-  const canSubmit =
-    company.trim().length > 0 &&
-    role.trim().length > 0 &&
-    sections.length > 0 &&
-    !create.isPending
-
-  const toggle = <T extends string>(arr: T[], item: T): T[] =>
-    arr.includes(item) ? arr.filter((x) => x !== item) : [...arr, item]
-
-  const onSubmit = async () => {
-    if (!canSubmit) return
-    try {
-      const res = await create.mutateAsync({
-        company: company.trim(),
-        role: role.trim(),
-        sections,
-        outcome,
-        what_went_wrong: whatWentWrong.trim(),
-        retro_decay_nodes: retroDecay,
-      })
-      navigate(`/autopsy/${res.id}`)
-    } catch {
-      // STUB: error toast
-    }
-  }
-
+function ErrorChip() {
   return (
-    <AppShell sidebars={false}>
-      <div style={{ padding: 20, maxWidth: 780, margin: '0 auto' }}>
-        <PageHeader
-          title="Разбор собеса"
-          subtitle="INTERVIEW AUTOPSY · что пошло не так"
-          right={
-            <Button tone="ghost" onClick={() => navigate('/daily')}>
-              ← В дейлик
-            </Button>
-          }
-        />
-
-        <Panel>
-          <PanelHead>Данные встречи</PanelHead>
-          <div
-            style={{
-              padding: 20,
-              display: 'flex',
-              flexDirection: 'column',
-              gap: 16,
-            }}
-          >
-            {/* Company + role */}
-            <div
-              style={{
-                display: 'grid',
-                gridTemplateColumns: '1fr 1fr',
-                gap: 12,
-              }}
-            >
-              <FormField label="Компания">
-                <input
-                  value={company}
-                  onChange={(e) => setCompany(e.target.value)}
-                  placeholder="Yandex / Ozon / Avito..."
-                  style={inputStyle}
-                />
-              </FormField>
-              <FormField label="Роль">
-                <input
-                  value={role}
-                  onChange={(e) => setRole(e.target.value)}
-                  placeholder="Backend Senior"
-                  style={inputStyle}
-                />
-              </FormField>
-            </div>
-
-            {/* Sections */}
-            <FormField label="Разделы">
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                {SECTIONS.map((s) => {
-                  const active = sections.includes(s)
-                  return (
-                    <button
-                      key={s}
-                      onClick={() => setSections(toggle(sections, s))}
-                      className="tile-button"
-                      style={{
-                        padding: '6px 12px',
-                        fontFamily: 'var(--font-display)',
-                        fontSize: 11,
-                        letterSpacing: '0.15em',
-                        background: active
-                          ? 'rgba(200,169,110,0.08)'
-                          : 'var(--bg-inset)',
-                        border: `1px solid ${
-                          active ? 'var(--gold)' : 'var(--gold-faint)'
-                        }`,
-                        color: active ? 'var(--gold-bright)' : 'var(--text-mid)',
-                        cursor: 'pointer',
-                      }}
-                    >
-                      {SECTION_LABEL[s]}
-                    </button>
-                  )
-                })}
-              </div>
-            </FormField>
-
-            {/* Outcome */}
-            <FormField label="Результат">
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                {OUTCOMES.map((o) => {
-                  const active = outcome === o.key
-                  return (
-                    <button
-                      key={o.key}
-                      onClick={() => setOutcome(o.key)}
-                      className="tile-button"
-                      style={{
-                        padding: '6px 12px',
-                        fontSize: 11,
-                        background: active
-                          ? 'rgba(200,169,110,0.08)'
-                          : 'var(--bg-inset)',
-                        border: `1px solid ${
-                          active ? 'var(--gold)' : 'var(--gold-faint)'
-                        }`,
-                        color: active ? 'var(--gold-bright)' : 'var(--text-mid)',
-                        cursor: 'pointer',
-                      }}
-                    >
-                      {o.label}
-                    </button>
-                  )
-                })}
-              </div>
-            </FormField>
-
-            {/* What went wrong */}
-            <FormField label="Что пошло не так">
-              <textarea
-                value={whatWentWrong}
-                onChange={(e) => setWhatWentWrong(e.target.value)}
-                placeholder="Конкретные темы, где зашёл, где потерял нить, какие вопросы утопили..."
-                rows={5}
-                style={{
-                  ...inputStyle,
-                  resize: 'vertical',
-                  minHeight: 110,
-                  fontFamily: 'var(--font-code)',
-                  fontSize: 12,
-                }}
-              />
-            </FormField>
-
-            {/* Retro-decay nodes */}
-            <FormField label="Узлы атласа для retro-decay">
-              <InsetGroove>
-                <div
-                  style={{
-                    fontSize: 11,
-                    color: 'var(--text-mid)',
-                    marginBottom: 8,
-                  }}
-                >
-                  AI оценит, что из тебя вывалилось, и подсветит эти узлы
-                  как «распадающиеся». Выбери 1–3.
-                </div>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                  {CANDIDATE_NODES.map((n) => {
-                    const active = retroDecay.includes(n.key)
-                    return (
-                      <button
-                        key={n.key}
-                        onClick={() => setRetroDecay(toggle(retroDecay, n.key))}
-                        className="tile-button"
-                        style={{
-                          padding: '4px 10px',
-                          fontSize: 10,
-                          fontFamily: 'var(--font-display)',
-                          letterSpacing: '0.15em',
-                          background: active
-                            ? 'rgba(194,34,34,0.15)'
-                            : 'var(--bg-inset)',
-                          border: `1px solid ${
-                            active ? 'var(--blood-lit)' : 'var(--gold-faint)'
-                          }`,
-                          color: active ? 'var(--blood-lit)' : 'var(--text-mid)',
-                          cursor: 'pointer',
-                        }}
-                      >
-                        {active ? '🗲 ' : ''}
-                        {n.title}
-                      </button>
-                    )
-                  })}
-                </div>
-              </InsetGroove>
-            </FormField>
-
-            {/* Submit */}
-            <div
-              style={{
-                marginTop: 4,
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                gap: 12,
-              }}
-            >
-              <div style={{ fontSize: 10, color: 'var(--text-dim)' }}>
-                {canSubmit
-                  ? 'Отправлено → AI обновит атлас и подстроит рекомендации.'
-                  : 'Заполни компанию, роль и хотя бы один раздел.'}
-              </div>
-              <div style={{ display: 'flex', gap: 8 }}>
-                <Button tone="ghost" onClick={() => navigate('/daily')}>
-                  Отменить
-                </Button>
-                <Button
-                  tone="blood"
-                  disabled={!canSubmit}
-                  onClick={onSubmit}
-                >
-                  {create.isPending ? '…' : 'Отправить разбор'}
-                </Button>
-              </div>
-            </div>
-
-            {create.isError && (
-              <Badge variant="boss">
-                Не получилось отправить. Проверь подключение.
-              </Badge>
-            )}
-          </div>
-        </Panel>
-      </div>
-    </AppShell>
+    <span className="rounded-full bg-danger/15 px-2 py-0.5 font-mono text-[10px] font-semibold text-danger">
+      Не удалось загрузить
+    </span>
   )
 }
 
-function FormField({
-  label,
-  children,
-}: {
-  label: string
-  children: React.ReactNode
-}) {
+function Hero({ title, role, date, duration, verdict, verdictSub }: { title: string; role: string; date: string; duration: number; verdict: string; verdictSub: string }) {
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-      <div
-        className="caps"
-        style={{
-          color: 'var(--text-mid)',
-          fontSize: 10,
-          letterSpacing: '0.25em',
-        }}
-      >
-        {label}
+    <div
+      className="relative flex flex-col items-start justify-between gap-4 overflow-hidden border-b border-border px-4 py-6 sm:px-6 lg:h-[200px] lg:flex-row lg:items-center lg:gap-0 lg:px-10 lg:py-0"
+      style={{ background: 'linear-gradient(135deg, #2A0510 0%, #0A0A0F 100%)' }}
+    >
+      <div className="flex flex-col gap-3">
+        <span className="inline-flex w-fit items-center gap-1.5 rounded-full bg-danger/20 px-2.5 py-1 font-mono text-[11px] font-semibold tracking-[0.08em] text-danger">
+          <Skull className="h-3 w-3" /> INTERVIEW AUTOPSY · ПОСЛЕ СОБЕСА
+        </span>
+        <h1 className="font-display text-2xl lg:text-[32px] font-extrabold leading-[1.1] text-text-primary">
+          {title}
+        </h1>
+        <p className="text-[13px] text-text-secondary">
+          {role} · {date} · {duration} мин
+        </p>
       </div>
-      {children}
+      <div className="flex flex-col items-end gap-2">
+        <span
+          className="rounded-lg border-2 border-danger bg-danger/10 px-4 py-2 font-extrabold tracking-wide text-danger"
+          style={{ fontFamily: '"Geist Mono", monospace', fontSize: 18, fontWeight: 800 }}
+        >
+          {verdict}
+        </span>
+        <span className="font-mono text-[11px] text-text-muted">{verdictSub}</span>
+      </div>
     </div>
   )
 }
 
-const inputStyle = {
-  padding: '8px 10px',
-  background: 'var(--bg-inset)',
-  border: '1px solid var(--gold-faint)',
-  color: 'var(--text-bright)',
-  fontFamily: 'var(--font-body)',
-  fontSize: 13,
-  width: '100%',
-  outline: 'none',
-} as const
+function TimelineCard({ events }: { events: { time: string; label: string; status: string; color: string }[] }) {
+  const colorMap: Record<string, string> = {
+    success: 'bg-success/15 text-success',
+    warn: 'bg-warn/15 text-warn',
+    danger: 'bg-danger/15 text-danger',
+  }
+  return (
+    <Card className="flex-col gap-4 p-6" interactive={false}>
+      <h3 className="font-display text-base font-bold text-text-primary">Что произошло</h3>
+      <div className="flex flex-col gap-3">
+        {events.map((e, i) => (
+          <div key={i} className="flex items-center gap-3">
+            <span className="w-12 font-mono text-[12px] text-text-muted">{e.time}</span>
+            <div className="flex flex-1 items-center justify-between rounded-lg bg-surface-1 px-4 py-3">
+              <span className="text-[13px] text-text-secondary">{e.label}</span>
+              <span className={`rounded-full px-2.5 py-1 font-mono text-[10px] font-bold ${colorMap[e.color]}`}>
+                {e.status}
+              </span>
+            </div>
+          </div>
+        ))}
+      </div>
+    </Card>
+  )
+}
+
+function FailRowsCard({ rows }: { rows: { tag: string; title: string; sub: string; level: string }[] }) {
+  return (
+    <Card className="flex-col gap-4 border-danger/40 p-6" interactive={false}>
+      <div className="flex items-center gap-2">
+        <AlertTriangle className="h-5 w-5 text-danger" />
+        <h3 className="font-display text-base font-bold text-danger">Где именно потерял</h3>
+      </div>
+      {rows.map((r, i) => (
+        <div key={i} className="flex items-start gap-3 rounded-lg bg-surface-1 p-4">
+          <span className="rounded bg-danger/20 px-2 py-1 font-mono text-[10px] font-bold text-danger">
+            {r.tag}
+          </span>
+          <div className="flex flex-1 flex-col">
+            <span className="text-[13px] font-semibold text-text-primary">{r.title}</span>
+            <span className="text-[12px] text-text-secondary">{r.sub}</span>
+          </div>
+          <span className="rounded-full bg-danger/20 px-2.5 py-1 font-mono text-[10px] font-bold text-danger">
+            {r.level === 'red flag' ? 'красный флаг' : r.level}
+          </span>
+        </div>
+      ))}
+    </Card>
+  )
+}
+
+function VerdictCard({ text }: { text: string }) {
+  return (
+    <Card className="flex-col gap-3 border-danger/30 bg-gradient-to-br from-danger/40 to-accent/40 p-5" interactive={false}>
+      <div className="flex items-center gap-2">
+        <Sparkles className="h-4 w-4 text-text-primary" />
+        <h3 className="font-display text-base font-bold text-text-primary">
+          Что нужно было сказать
+        </h3>
+      </div>
+      <p className="text-[13px] leading-relaxed text-white/90">
+        {text}
+      </p>
+    </Card>
+  )
+}
+
+function ActionPlanCard({ actions }: { actions: { p: string; text: string }[] }) {
+  return (
+    <Card className="flex-col gap-3 border-accent/40 p-5" interactive={false}>
+      <h3 className="font-display text-base font-bold text-text-primary">План действий</h3>
+      {actions.map((a, i) => (
+        <div key={i} className="flex items-start gap-2">
+          <span
+            className={[
+              'rounded px-1.5 py-0.5 font-mono text-[10px] font-bold',
+              a.p === 'P1' ? 'bg-danger/30 text-danger' : a.p === 'P2' ? 'bg-warn/30 text-warn' : 'bg-cyan/30 text-cyan',
+            ].join(' ')}
+          >
+            {a.p}
+          </span>
+          <span className="text-[13px] text-text-secondary">{a.text}</span>
+        </div>
+      ))}
+    </Card>
+  )
+}
+
+function ApplyCard({ weeks }: { weeks: string }) {
+  return (
+    <Card className="flex-col gap-3 p-5" interactive={false}>
+      <h3 className="font-display text-base font-bold text-text-primary">
+        Запланировать новую дату
+      </h3>
+      <p className="text-[12px] text-text-secondary">
+        Рекомендуем повторно собеседоваться через {weeks} недель.
+      </p>
+      <Button variant="primary" size="sm" icon={<CalendarPlus className="h-4 w-4" />}>
+        Добавить в календарь
+      </Button>
+    </Card>
+  )
+}
+
+const FALLBACK_TIMELINE = [
+  { time: '0:08', label: 'Two Sum — оптимально', status: 'PASSED', color: 'success' },
+  { time: '0:18', label: 'String parsing — частично', status: 'PARTIAL', color: 'warn' },
+  { time: '0:42', label: 'System Design — Twitter feed', status: 'FAILED', color: 'danger' },
+  { time: '0:58', label: 'Behavioral — конфликт в команде', status: 'SKIPPED', color: 'danger' },
+]
+const FALLBACK_FAILURES = [
+  { tag: 'SD', title: 'CACHING', sub: 'не упомянул Redis для hot-feed', level: 'critical' },
+  { tag: 'BEH', title: 'STAR', sub: 'ответ без структуры (Situation-Task-Action-Result)', level: 'critical' },
+  { tag: 'ENG', title: 'ENGAGEMENT', sub: 'не задал ни одного вопроса интервьюеру', level: 'red flag' },
+]
+const FALLBACK_PLAN = [
+  { p: 'P1', text: 'Прорешать 5 system design кейсов (caching focus)' },
+  { p: 'P1', text: 'Записать 3 STAR-истории про конфликты' },
+  { p: 'P2', text: 'Подготовить 5 умных вопросов интервьюеру' },
+  { p: 'P3', text: 'Mock-собес с senior через 7 дней' },
+]
+
+export default function InterviewAutopsyPage() {
+  const { id } = useParams<{ id: string }>()
+  const { data, isError } = useInterviewAutopsyQuery(id)
+  return (
+    <AppShellV2>
+      <Hero
+        title={data?.title ?? 'Не взяли в Yandex — разбираем почему'}
+        role={data?.role ?? 'Senior Backend'}
+        date={data?.date ?? '28 апреля'}
+        duration={data?.duration_min ?? 60}
+        verdict={data?.verdict ?? 'REJECTED'}
+        verdictSub={data?.verdict_sub ?? 'после фидбека HR'}
+      />
+      {isError && (
+        <div className="flex justify-end px-4 py-2">
+          <ErrorChip />
+        </div>
+      )}
+      <div className="flex flex-col gap-4 px-4 py-6 sm:px-8 lg:flex-row lg:gap-6 lg:px-20">
+        <div className="flex flex-1 flex-col gap-6">
+          <TimelineCard events={data?.timeline ?? FALLBACK_TIMELINE} />
+          <FailRowsCard rows={data?.failures ?? FALLBACK_FAILURES} />
+        </div>
+        <div className="flex w-full flex-col gap-4 lg:w-[380px]">
+          <VerdictCard text={data?.ai_verdict ?? '«Для горячего feed — Redis Sorted Set с TTL 5 мин, fallback в БД. Для celebrity-аккаунтов переходим на pull-модель, чтобы не флудить миллион очередей при каждом твите».'} />
+          <ActionPlanCard actions={data?.action_plan ?? FALLBACK_PLAN} />
+          <ApplyCard weeks={data?.next_attempt_weeks ?? '6-8'} />
+        </div>
+      </div>
+    </AppShellV2>
+  )
+}

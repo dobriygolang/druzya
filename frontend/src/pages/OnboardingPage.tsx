@@ -1,556 +1,726 @@
-import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { useTranslation } from 'react-i18next'
-import { AppShell } from '../components/AppShell'
+import { useEffect, useMemo, useState } from 'react'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import {
-  Panel,
-  PanelHead,
-  PageHeader,
-  Button,
-  InsetGroove,
-  Bar,
-} from '../components/chrome'
+  ArrowRight,
+  ArrowLeft,
+  Check,
+  MousePointerClick,
+  Play,
+  CircleCheck,
+  Bot,
+  Sparkles,
+  Lock,
+  Clock,
+  MessageSquare,
+} from 'lucide-react'
+import { useTranslation } from 'react-i18next'
+import { Button } from '../components/Button'
+import { Avatar } from '../components/Avatar'
+import { cn } from '../lib/cn'
 
-type CharClass = 'alg' | 'dba' | 'back' | 'arch' | 'comm' | 'ai'
-type CareerStage = 'junior' | 'middle' | 'senior' | 'staff'
-type Goal = 'faang' | 'ru_top' | 'relocate' | 'promotion'
+type StepNum = 1 | 2 | 3 | 4
 
-type OnboardingState = {
-  charClass: CharClass | null
-  stage: CareerStage | null
-  goals: Goal[]
-  warmupDone: boolean
-  step: number
-}
-
-const LS_KEY = 'druz9.onboarding'
-
-/**
- * Class sigils — geometric SVG marks, one per class, matching bible §3.1.
- * Rendered as 40×40 glyphs inside the class tiles. Each sigil uses
- * a distinctive domain-colored stroke: algo=blue, dba=green, back=gold,
- * arch=purple, comm=teal, ai=crimson.
- */
-type ClassMeta = {
-  key: CharClass
-  ru: string
-  en: string
-  tagline: string
-  color: string
-  sigil: JSX.Element
-}
-
-const CLASSES: ClassMeta[] = [
-  {
-    key: 'alg',
-    ru: 'Алгоритмист',
-    en: 'Algorithmist',
-    tagline: 'Граф. Мета. O(n).',
-    color: 'var(--sec-algo-accent)',
-    sigil: (
-      <>
-        <polygon
-          points="20,3 37,34 3,34"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="1.5"
-        />
-        <circle cx="20" cy="22" r="4" fill="currentColor" opacity="0.9" />
-        <circle cx="20" cy="22" r="1.5" fill="var(--bg-void)" />
-      </>
-    ),
-  },
-  {
-    key: 'dba',
-    ru: 'Жрец DBA',
-    en: 'DBA Priest',
-    tagline: 'ACID. Indexes. Joins.',
-    color: 'var(--sec-sql-accent)',
-    sigil: (
-      <>
-        <ellipse
-          cx="20"
-          cy="8"
-          rx="13"
-          ry="4"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="1.5"
-        />
-        <path
-          d="M7 8 V30 Q20 36 33 30 V8"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="1.5"
-        />
-        <path
-          d="M7 18 Q20 23 33 18 M7 26 Q20 31 33 26"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="1"
-          opacity="0.5"
-        />
-      </>
-    ),
-  },
-  {
-    key: 'back',
-    ru: 'Бэкенд-воин',
-    en: 'Backend Warrior',
-    tagline: 'Queues. Gateways. Retries.',
-    color: 'var(--gold)',
-    sigil: (
-      <>
-        <path
-          d="M20 3 L32 10 L32 24 L20 34 L8 24 L8 10 Z"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="1.5"
-        />
-        <path
-          d="M20 10 L26 14 L26 22 L20 28 L14 22 L14 14 Z"
-          fill="currentColor"
-          opacity="0.85"
-        />
-      </>
-    ),
-  },
-  {
-    key: 'arch',
-    ru: 'Архитектор',
-    en: 'Architect',
-    tagline: 'Systems. Trade-offs. HLD.',
-    color: 'var(--sec-sd-accent)',
-    sigil: (
-      <>
-        <rect
-          x="4"
-          y="26"
-          width="8"
-          height="10"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="1.5"
-        />
-        <rect
-          x="16"
-          y="18"
-          width="8"
-          height="18"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="1.5"
-        />
-        <rect
-          x="28"
-          y="10"
-          width="8"
-          height="26"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="1.5"
-        />
-        <path
-          d="M8 4 L32 4 L32 8"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="1"
-          opacity="0.5"
-        />
-      </>
-    ),
-  },
-  {
-    key: 'comm',
-    ru: 'Беhav-маг',
-    en: 'Behavioral Mage',
-    tagline: 'STAR. Conflict. Lead.',
-    color: 'var(--sec-beh-accent)',
-    sigil: (
-      <>
-        <circle
-          cx="20"
-          cy="20"
-          r="15"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="1.5"
-        />
-        <path
-          d="M20 5 L24 18 L37 20 L24 22 L20 35 L16 22 L3 20 L16 18 Z"
-          fill="currentColor"
-          opacity="0.7"
-        />
-      </>
-    ),
-  },
-  {
-    key: 'ai',
-    ru: 'AI-апостат',
-    en: 'AI Apostate',
-    tagline: 'Prompt. Provenance. Guard.',
-    color: 'var(--blood-lit)',
-    sigil: (
-      <>
-        <path
-          d="M20 4 L36 20 L20 36 L4 20 Z"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="1.5"
-        />
-        <circle cx="20" cy="20" r="6" fill="none" stroke="currentColor" strokeWidth="1.2" />
-        <circle cx="20" cy="20" r="2" fill="currentColor" />
-        <path
-          d="M20 4 L20 36 M4 20 L36 20"
-          stroke="currentColor"
-          strokeWidth="0.6"
-          opacity="0.45"
-        />
-      </>
-    ),
-  },
-]
-
-const STAGES: { key: CareerStage; ru: string }[] = [
-  { key: 'junior', ru: 'Junior' },
-  { key: 'middle', ru: 'Middle' },
-  { key: 'senior', ru: 'Senior' },
-  { key: 'staff', ru: 'Staff+' },
-]
-
-const GOALS: { key: Goal; ru: string }[] = [
-  { key: 'faang', ru: 'FAANG / BigTech' },
-  { key: 'ru_top', ru: 'Yandex · Ozon · Avito · VK' },
-  { key: 'relocate', ru: 'Релокация' },
-  { key: 'promotion', ru: 'Внутренний гроу' },
-]
-
-export default function OnboardingPage() {
-  const { t } = useTranslation()
-  const navigate = useNavigate()
-
-  const [state, setState] = useState<OnboardingState>(() => {
-    try {
-      const raw = localStorage.getItem(LS_KEY)
-      if (raw) return JSON.parse(raw) as OnboardingState
-    } catch {
-      // ignore
-    }
-    return {
-      charClass: null,
-      stage: null,
-      goals: [],
-      warmupDone: false,
-      step: 0,
-    }
-  })
-
-  const persist = (next: OnboardingState) => {
-    setState(next)
-    try {
-      localStorage.setItem(LS_KEY, JSON.stringify(next))
-    } catch {
-      // STUB: localStorage could be disabled — silent for now
-    }
+function useStepLabels(): Record<StepNum, string> {
+  const { t } = useTranslation('onboarding')
+  return {
+    1: t('step_labels.1'),
+    2: t('step_labels.2'),
+    3: t('step_labels.3'),
+    4: t('step_labels.4'),
   }
+}
 
-  const steps = [
-    t('onboarding.step1_title'),
-    t('onboarding.step2_title'),
-    t('onboarding.step3_title'),
-    t('onboarding.step4_title'),
-    t('onboarding.step5_title'),
-  ]
-  const progress = ((state.step + 1) / steps.length) * 100
-
+function Logo() {
   return (
-    <AppShell sidebars={false}>
-      <div style={{ padding: 20, maxWidth: 780, margin: '0 auto' }}>
-        <PageHeader
-          title={t('onboarding.title')}
-          subtitle={`${t('onboarding.step').toUpperCase()} ${state.step + 1} / ${steps.length}`}
-        />
-        <div style={{ marginBottom: 20 }}>
-          <Bar value={progress} max={100} tone="ember" tall />
+    <Link to="/welcome" className="flex items-center gap-2.5">
+      <span className="grid h-8 w-8 place-items-center rounded-md bg-gradient-to-br from-accent to-cyan font-display text-lg font-extrabold text-text-primary">
+        9
+      </span>
+      <span className="font-display text-lg font-bold text-text-primary">druz9</span>
+    </Link>
+  )
+}
+
+function StepIndicator({ current, allDone = false }: { current: StepNum; allDone?: boolean }) {
+  const STEP_LABELS = useStepLabels()
+  const steps: StepNum[] = [1, 2, 3, 4]
+  return (
+    <div className="flex items-center gap-2">
+      {steps.map((s, idx) => {
+        const completed = allDone || s < current
+        const isCurrent = !allDone && s === current
+        return (
+          <div key={s} className="flex items-center gap-2">
+            <div className="flex items-center gap-2">
+              <div
+                className={cn(
+                  'grid place-items-center rounded-full text-[13px]',
+                  completed
+                    ? 'bg-success text-bg'
+                    : isCurrent
+                      ? 'bg-accent text-text-primary shadow-glow'
+                      : 'border border-border-strong text-text-muted',
+                )}
+                style={{ width: 28, height: 28 }}
+              >
+                {completed ? (
+                  <Check className="h-4 w-4" strokeWidth={3} />
+                ) : (
+                  <span className="font-display font-bold leading-none">{s}</span>
+                )}
+              </div>
+              <span
+                className={cn(
+                  'text-[12px]',
+                  isCurrent ? 'font-semibold text-text-primary' : 'font-medium text-text-muted',
+                )}
+              >
+                {STEP_LABELS[s]}
+              </span>
+            </div>
+            {idx < steps.length - 1 && (
+              <span
+                className={cn('block', completed ? 'bg-success' : 'bg-border-strong')}
+                style={{ width: 32, height: 2 }}
+              />
+            )}
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+export function OnboardingTopBar({
+  current,
+  allDone = false,
+  showSkip = true,
+}: {
+  current: StepNum
+  allDone?: boolean
+  showSkip?: boolean
+}) {
+  const { t } = useTranslation('onboarding')
+  return (
+    <header
+      className="flex h-[72px] items-center justify-between border-b border-border bg-bg px-4 sm:px-8 lg:px-20"
+    >
+      <Logo />
+      <div className="hidden md:block">
+        <StepIndicator current={current} allDone={allDone} />
+      </div>
+      {showSkip ? (
+        <Link
+          to="/onboarding/done"
+          className="text-sm font-medium text-text-muted hover:text-text-secondary"
+        >
+          {t('skip')}
+        </Link>
+      ) : (
+        <span style={{ width: 80 }} />
+      )}
+    </header>
+  )
+}
+
+/* ------------------------------- STEP 1 -------------------------------- */
+
+function Step1Register({ onNext }: { onNext: () => void }) {
+  const { t } = useTranslation('onboarding')
+  return (
+    <div
+      className="grid grid-cols-1 gap-10 px-4 py-8 sm:px-8 lg:grid-cols-2 lg:gap-[60px] lg:px-20 lg:py-[60px]"
+    >
+      {/* Left */}
+      <div className="flex flex-col justify-center" style={{ gap: 24 }}>
+        <span className="inline-flex w-fit items-center gap-1.5 rounded-full bg-accent/15 px-2.5 py-1 font-mono text-[11px] font-semibold tracking-[0.08em] text-accent-hover">
+          {t('step1.tag')}
+        </span>
+        <h1 className="font-display text-3xl font-extrabold text-text-primary sm:text-4xl lg:text-[48px]" style={{ lineHeight: 1.1 }}>
+          {t('step1.title')}
+        </h1>
+        <p className="max-w-[460px] text-[15px] text-text-secondary">
+          {t('step1.subtitle')}
+        </p>
+
+        <form className="flex flex-col gap-3" onSubmit={(e) => { e.preventDefault(); onNext() }}>
+          <Field label={t('step1.username')} placeholder={t('step1.username_ph')} />
+          <Field label={t('step1.email')} placeholder={t('step1.email_ph')} type="email" />
+          <Field label={t('step1.password')} placeholder={t('step1.password_ph')} type="password" />
+          <Button
+            type="submit"
+            variant="primary"
+            iconRight={<ArrowRight className="h-5 w-5" />}
+            className="mt-2 h-14 text-[15px] shadow-glow"
+          >
+            {t('step1.create')}
+          </Button>
+        </form>
+
+        <div className="flex items-center gap-3">
+          <span className="h-px flex-1 bg-border" />
+          <span className="font-mono text-[11px] uppercase tracking-[0.12em] text-text-muted">{t('step1.or')}</span>
+          <span className="h-px flex-1 bg-border" />
         </div>
 
-        <Panel>
-          <PanelHead subtitle={`STEP ${state.step + 1}`}>
-            {steps[state.step]}
-          </PanelHead>
-          <div style={{ padding: 24 }}>
-            {state.step === 0 && (
-              <div
+        <div className="flex gap-3">
+          <OAuthButton label="GitHub" />
+          <OAuthButton label="Google" />
+          <OAuthButton label="Yandex" />
+        </div>
+
+        <p className="text-[13px] text-text-muted">
+          {t('step1.have_account')}{' '}
+          <button type="button" onClick={onNext} className="font-semibold text-accent-hover hover:underline">
+            {t('step1.login_arrow')}
+          </button>
+        </p>
+      </div>
+
+      {/* Right */}
+      <div
+        className="relative hidden flex-col items-center justify-center gap-6 overflow-hidden rounded-2xl p-10 lg:flex lg:p-[60px]"
+        style={{
+          background: 'linear-gradient(135deg, #2D1B4D 0%, #582CFF 100%)',
+        }}
+      >
+        <div
+          className="flex w-full max-w-[320px] flex-col items-center gap-3 rounded-xl backdrop-blur"
+          style={{ background: 'rgba(0,0,0,0.6)', padding: 24 }}
+        >
+          <Avatar size="xl" gradient="pink-violet" initials="Д" />
+          <span className="font-display text-xl font-bold text-text-primary">@dima</span>
+          <div className="flex w-full justify-around">
+            <MiniStat value="0" label="LP" />
+            <MiniStat value="Bronze" label="ранг" />
+            <MiniStat value="0 🔥" label="серия" />
+          </div>
+          <div className="mt-2 w-full rounded-md border border-white/10 bg-white/5 p-2 text-center text-[12px] text-text-secondary">
+            {t('step1.ready_first')}
+          </div>
+        </div>
+
+        <div className="flex w-full max-w-[320px] flex-col gap-2">
+          <Testimonial author="@alexey" text="За месяц поднялся до Diamond II 🚀" gradient="violet-cyan" />
+          <Testimonial author="@kirill_dev" text="Спарринги — лучший способ учиться" gradient="cyan-violet" />
+          <Testimonial author="@nastya" text="Гильдии — как мини-команда" gradient="pink-violet" />
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function Field({ label, ...rest }: { label: string } & React.InputHTMLAttributes<HTMLInputElement>) {
+  return (
+    <label className="flex flex-col gap-1.5">
+      <span className="font-mono text-[11px] uppercase tracking-[0.08em] text-text-muted">{label}</span>
+      <input
+        {...rest}
+        className="h-12 w-full rounded-lg border border-border bg-surface-2 px-4 text-[14px] text-text-primary placeholder:text-text-muted focus:border-accent focus:outline-none"
+      />
+    </label>
+  )
+}
+
+function OAuthButton({ label }: { label: string }) {
+  return (
+    <button
+      type="button"
+      className="flex h-12 flex-1 items-center justify-center gap-2 rounded-lg border border-border bg-transparent text-sm font-semibold text-text-secondary transition-colors hover:bg-surface-2 hover:text-text-primary"
+    >
+      {label}
+    </button>
+  )
+}
+
+function MiniStat({ value, label }: { value: string; label: string }) {
+  return (
+    <div className="flex flex-col items-center gap-0.5">
+      <span className="font-display text-sm font-bold text-text-primary">{value}</span>
+      <span className="font-mono text-[10px] uppercase text-text-muted">{label}</span>
+    </div>
+  )
+}
+
+function Testimonial({
+  author,
+  text,
+  gradient,
+}: {
+  author: string
+  text: string
+  gradient: 'violet-cyan' | 'cyan-violet' | 'pink-violet'
+}) {
+  return (
+    <div className="flex items-center gap-2 rounded-full bg-black/40 px-3 py-2 backdrop-blur">
+      <Avatar size="sm" gradient={gradient} initials={author[1]?.toUpperCase()} />
+      <span className="font-mono text-[11px] font-semibold text-text-primary">{author}</span>
+      <span className="text-[12px] text-text-secondary">{text}</span>
+    </div>
+  )
+}
+
+/* ------------------------------- STEP 2 -------------------------------- */
+
+type Lang = {
+  name: string
+  symbol: string
+  players: string
+  color: string
+  textColor?: string
+}
+
+const LANGS: Lang[] = [
+  { name: 'Go', symbol: 'Go', players: '12 480 игроков', color: '#22D3EE' },
+  { name: 'Python', symbol: 'Py', players: '18 240 игроков', color: '#582CFF' },
+  { name: 'JavaScript', symbol: 'JS', players: '21 100 игроков', color: '#FBBF24', textColor: '#0A0A0F' },
+  { name: 'TypeScript', symbol: 'TS', players: '14 320 игроков', color: '#22D3EE' },
+  { name: 'Rust', symbol: 'Rs', players: '6 940 игроков', color: '#EF4444' },
+  { name: 'Java', symbol: 'Jv', players: '11 670 игроков', color: '#F472B6' },
+  { name: 'C++', symbol: 'C++', players: '8 230 игроков', color: '#2D1B4D' },
+  { name: 'C#', symbol: 'C#', players: '5 410 игроков', color: '#6D43FF' },
+  { name: 'Kotlin', symbol: 'Kt', players: '4 280 игроков', color: '#FBBF24', textColor: '#0A0A0F' },
+  { name: 'Swift', symbol: 'Sw', players: '3 920 игроков', color: '#F472B6' },
+  { name: 'Ruby', symbol: 'Rb', players: '2 740 игроков', color: '#EF4444' },
+  { name: 'Scala', symbol: 'Sc', players: '1 830 игроков', color: '#582CFF' },
+]
+
+function Step2Stack({ onNext, onBack }: { onNext: () => void; onBack: () => void }) {
+  const { t } = useTranslation('onboarding')
+  const [selected, setSelected] = useState<string[]>(['Go', 'Python'])
+  const toggle = (n: string) => {
+    setSelected((cur) =>
+      cur.includes(n) ? cur.filter((x) => x !== n) : cur.length >= 3 ? cur : [...cur, n],
+    )
+  }
+  return (
+    <div
+      className="flex flex-col items-center gap-6 px-4 py-8 sm:px-8 lg:px-20 lg:py-10"
+    >
+      <h1 className="text-center font-display text-3xl font-extrabold text-text-primary sm:text-4xl lg:text-[44px]" style={{ lineHeight: 1.1 }}>
+        {t('step2.title')}
+      </h1>
+      <p className="max-w-[560px] text-center text-[15px] text-text-secondary">
+        {t('step2.subtitle')}
+      </p>
+      <span className="inline-flex items-center gap-1.5 rounded-full border border-success/40 bg-success/10 px-3 py-1 font-mono text-[12px] font-semibold text-success">
+        <Check className="h-3.5 w-3.5" /> {t('step2.selected', { count: selected.length })}
+      </span>
+
+      <div className="grid w-full max-w-[1100px] grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4">
+        {LANGS.map((l) => {
+          const active = selected.includes(l.name)
+          return (
+            <button
+              key={l.name}
+              type="button"
+              onClick={() => toggle(l.name)}
+              className={cn(
+                'relative flex flex-col items-center justify-center gap-2 rounded-xl bg-surface-1 p-4 transition-all',
+                active
+                  ? 'border-2 border-accent shadow-glow'
+                  : 'border border-border hover:border-border-strong',
+              )}
+              style={{ height: 160 }}
+            >
+              {active && (
+                <span className="absolute right-2 top-2 grid h-6 w-6 place-items-center rounded-full bg-accent text-text-primary shadow-glow">
+                  <Check className="h-3.5 w-3.5" strokeWidth={3} />
+                </span>
+              )}
+              <span
+                className="grid place-items-center rounded-lg font-display font-bold"
                 style={{
-                  display: 'grid',
-                  gridTemplateColumns: 'repeat(3, 1fr)',
-                  gap: 10,
+                  width: 56,
+                  height: 56,
+                  background: l.color,
+                  color: l.textColor ?? '#FFFFFF',
+                  fontSize: 18,
                 }}
               >
-                {CLASSES.map((c) => {
-                  const active = state.charClass === c.key
-                  return (
-                    <button
-                      key={c.key}
-                      className="card tile-button"
-                      onClick={() => persist({ ...state, charClass: c.key })}
-                      style={{
-                        textAlign: 'left',
-                        padding: 14,
-                        display: 'flex',
-                        gap: 12,
-                        alignItems: 'flex-start',
-                        background: active
-                          ? 'rgba(200,169,110,0.08)'
-                          : 'var(--bg-inset)',
-                        border: `1px solid ${
-                          active ? 'var(--gold)' : 'var(--gold-dim)'
-                        }`,
-                        boxShadow: active
-                          ? '0 0 10px rgba(200,169,110,0.15) inset'
-                          : 'none',
-                        transition:
-                          'border-color 160ms, background 160ms, box-shadow 160ms',
-                      }}
-                    >
-                      <svg
-                        width={40}
-                        height={40}
-                        viewBox="0 0 40 40"
-                        style={{
-                          color: active ? c.color : 'var(--gold-dim)',
-                          flexShrink: 0,
-                          filter: active
-                            ? `drop-shadow(0 0 6px ${c.color})`
-                            : 'none',
-                          transition: 'color 160ms, filter 160ms',
-                        }}
-                        aria-hidden
-                      >
-                        {c.sigil}
-                      </svg>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div
-                          className="heraldic"
-                          style={{
-                            color: active
-                              ? 'var(--gold-bright)'
-                              : 'var(--text-bright)',
-                            fontSize: 13,
-                          }}
-                        >
-                          {c.ru}
-                        </div>
-                        <div
-                          style={{
-                            fontSize: 10,
-                            color: 'var(--text-mid)',
-                            marginTop: 4,
-                          }}
-                        >
-                          {c.en}
-                        </div>
-                        <div
-                          className="mono"
-                          style={{
-                            fontSize: 10,
-                            color: active
-                              ? c.color
-                              : 'var(--text-dim)',
-                            marginTop: 6,
-                          }}
-                        >
-                          {c.tagline}
-                        </div>
-                      </div>
-                    </button>
-                  )
-                })}
-              </div>
-            )}
+                {l.symbol}
+              </span>
+              <span className="font-sans text-[14px] font-bold text-text-primary">{l.name}</span>
+              <span className="font-mono text-[11px] text-text-muted">{l.players}</span>
+            </button>
+          )
+        })}
+      </div>
 
-            {state.step === 1 && (
-              <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-                {STAGES.map((s) => (
-                  <button
-                    key={s.key}
-                    onClick={() => persist({ ...state, stage: s.key })}
-                    className={`btn ${state.stage === s.key ? 'btn-primary' : ''}`}
-                  >
-                    {s.ru}
-                  </button>
-                ))}
-              </div>
-            )}
+      <div className="mt-4 flex w-full max-w-[1100px] items-center justify-between">
+        <Button variant="ghost" icon={<ArrowLeft className="h-4 w-4" />} onClick={onBack} className="h-12 px-6">
+          {t('step2.back')}
+        </Button>
+        <Button
+          variant="primary"
+          iconRight={<ArrowRight className="h-5 w-5" />}
+          onClick={onNext}
+          className="h-12 px-7 shadow-glow"
+        >
+          {t('step2.next')}
+        </Button>
+      </div>
+    </div>
+  )
+}
 
-            {state.step === 2 && (
-              <div
-                style={{
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: 8,
-                }}
-              >
-                {GOALS.map((g) => {
-                  const active = state.goals.includes(g.key)
-                  return (
-                    <button
-                      key={g.key}
-                      className="card"
-                      onClick={() => {
-                        const goals = active
-                          ? state.goals.filter((x) => x !== g.key)
-                          : [...state.goals, g.key]
-                        persist({ ...state, goals })
-                      }}
-                      style={{
-                        textAlign: 'left',
-                        padding: 12,
-                        background: active
-                          ? 'rgba(200,169,110,0.08)'
-                          : 'var(--bg-inset)',
-                        border: `1px solid ${active ? 'var(--gold)' : 'var(--gold-dim)'}`,
-                      }}
-                    >
-                      <span
-                        style={{
-                          fontFamily: 'var(--font-display)',
-                          letterSpacing: '0.12em',
-                          color: active ? 'var(--gold-bright)' : 'var(--text-bright)',
-                        }}
-                      >
-                        {g.ru}
-                      </span>
-                    </button>
-                  )
-                })}
-              </div>
-            )}
+/* ------------------------------- STEP 3 -------------------------------- */
 
-            {state.step === 3 && (
-              <InsetGroove>
-                <div style={{ fontSize: 13, marginBottom: 10 }}>
-                  Мини-разминка: ответь на одно простое задание, чтобы
-                  пройти посвящение.
-                </div>
-                <div
-                  className="mono"
-                  style={{
-                    fontSize: 12,
-                    color: 'var(--ember-lit)',
-                    marginBottom: 10,
-                  }}
-                >
-                  {/* STUB: real kata content will come from /daily/kata on a future iteration */}
-                  Что выведет: {`console.log(typeof NaN)`} ?
-                </div>
-                <div style={{ display: 'flex', gap: 6 }}>
-                  {['"number"', '"NaN"', '"undefined"'].map((opt) => (
-                    <Button
-                      key={opt}
-                      size="sm"
-                      tone={
-                        state.warmupDone && opt === '"number"'
-                          ? 'primary'
-                          : 'default'
-                      }
-                      onClick={() =>
-                        persist({
-                          ...state,
-                          warmupDone: opt === '"number"',
-                        })
-                      }
-                    >
-                      {opt}
-                    </Button>
-                  ))}
-                </div>
-                {state.warmupDone && (
-                  <div
-                    style={{
-                      marginTop: 10,
-                      color: 'var(--tier-normal)',
-                      fontFamily: 'var(--font-display)',
-                    }}
-                  >
-                    Готово. Можешь продолжать.
-                  </div>
-                )}
-              </InsetGroove>
-            )}
+function Step3Kata({ onNext, onBack }: { onNext: () => void; onBack: () => void }) {
+  const { t } = useTranslation('onboarding')
+  return (
+    <div
+      className="grid grid-cols-1 gap-8 px-4 pb-8 pt-8 sm:px-8 lg:grid-cols-[480px_1fr] lg:px-20 lg:pb-7 lg:pt-10"
+    >
+      {/* Left */}
+      <div className="flex flex-col justify-center gap-5">
+        <span className="inline-flex w-fit items-center gap-1.5 rounded-full bg-cyan/15 px-2.5 py-1 font-mono text-[11px] font-semibold tracking-[0.08em] text-cyan">
+          {t('step3.tag')}
+        </span>
+        <h1 className="font-display text-3xl font-extrabold text-text-primary sm:text-4xl lg:text-[40px]" style={{ lineHeight: 1.15 }}>
+          {t('step3.title')}
+        </h1>
+        <p className="text-[15px] text-text-secondary">
+          {t('step3.subtitle')}
+        </p>
 
-            {state.step === 4 && (
-              <InsetGroove>
-                <div
-                  className="heraldic"
-                  style={{ color: 'var(--gold-bright)', fontSize: 16 }}
-                >
-                  Готов войти в Святилище
-                </div>
-                <div
-                  style={{ fontSize: 12, color: 'var(--text-mid)', marginTop: 6 }}
-                >
-                  Класс: {state.charClass ?? '—'} · уровень: {state.stage ?? '—'} ·
-                  {' '}
-                  цели: {state.goals.join(', ') || '—'} · разминка:
-                  {state.warmupDone ? ' пройдена' : ' не пройдена'}
-                </div>
-              </InsetGroove>
-            )}
+        <div className="flex flex-col gap-3 pt-2">
+          <FeatureRow
+            icon={<MousePointerClick className="h-4 w-4 text-cyan" />}
+            iconBg="bg-cyan/15"
+            title={t('step3.f1_title')}
+            sub={t('step3.f1_sub')}
+          />
+          <FeatureRow
+            icon={<Play className="h-4 w-4 text-accent-hover" />}
+            iconBg="bg-accent/15"
+            title={t('step3.f2_title')}
+            sub={t('step3.f2_sub')}
+          />
+          <FeatureRow
+            icon={<CircleCheck className="h-4 w-4 text-success" />}
+            iconBg="bg-success/15"
+            title={t('step3.f3_title')}
+            sub={t('step3.f3_sub')}
+          />
+        </div>
 
+        <div className="mt-4 flex items-center gap-3">
+          <Button variant="ghost" icon={<ArrowLeft className="h-4 w-4" />} onClick={onBack} className="h-12 px-6">
+            {t('step3.back')}
+          </Button>
+          <Button
+            variant="primary"
+            iconRight={<ArrowRight className="h-5 w-5" />}
+            onClick={onNext}
+            className="h-12 px-7 shadow-glow"
+          >
+            {t('step3.go')}
+          </Button>
+        </div>
+      </div>
+
+      {/* Right — mock Daily Kata preview */}
+      <div className="relative overflow-hidden rounded-2xl bg-surface-2">
+        <div
+          className="flex flex-col gap-2 px-6 py-5"
+          style={{
+            height: 120,
+            background: 'linear-gradient(135deg, #2D1B4D 0%, #582CFF 100%)',
+          }}
+        >
+          <span className="inline-flex w-fit items-center gap-1.5 rounded-full bg-black/30 px-2.5 py-1 font-mono text-[11px] font-semibold tracking-[0.08em] text-warn">
+            DAILY · TUTORIAL
+          </span>
+          <h3 className="font-display text-2xl font-bold text-text-primary">Two Sum</h3>
+          <div className="flex gap-2">
+            <Tag>Easy</Tag>
+            <Tag>Hash Map</Tag>
+            <Tag>Array</Tag>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 gap-3.5 bg-surface-1 p-4 sm:grid-cols-2">
+          <div className="flex flex-col gap-2 rounded-lg border border-border bg-surface-2 p-4">
+            <span className="font-mono text-[11px] font-semibold uppercase tracking-[0.08em] text-text-muted">
+              {t('step3.task')}
+            </span>
+            <p className="text-[12px] leading-relaxed text-text-secondary">
+              {t('step3.task_text')}
+            </p>
+          </div>
+          <div className="flex flex-col gap-1 rounded-lg border border-border bg-bg p-3 font-mono text-[11px] leading-relaxed">
+            <CodeLine n={1} text="func twoSum(nums []int, t int) []int {" />
+            <CodeLine n={2} text="  m := map[int]int{}" />
+            <CodeLine n={3} text="  for i, v := range nums {" highlight />
+            <CodeLine n={4} text="    if j, ok := m[t-v]; ok {" />
+            <CodeLine n={5} text="      return []int{j, i}" />
+          </div>
+        </div>
+
+        <div className="flex items-center justify-between border-t border-border bg-surface-2 px-6 py-3">
+          <span className="font-mono text-[11px] text-text-muted">0/3 tests passed</span>
+          <div className="flex items-center gap-2">
+            <button className="rounded-md border border-border bg-bg px-3 py-1.5 text-[12px] font-semibold text-text-secondary">
+              Run
+            </button>
+            <button
+              id="mock-submit-btn"
+              className="rounded-md bg-accent px-3 py-1.5 text-[12px] font-semibold text-text-primary shadow-glow"
+            >
+              Submit
+            </button>
+          </div>
+        </div>
+
+        {/* Floating tooltip */}
+        <div
+          className="absolute flex flex-col gap-1 rounded-lg border border-accent bg-accent/95 px-4 py-3 shadow-glow"
+          style={{ bottom: 70, right: 24, maxWidth: 220 }}
+        >
+          <span className="font-display text-[13px] font-bold text-text-primary">
+            {t('step3.tooltip_title')}
+          </span>
+          <span className="text-[11px] text-white/85">{t('step3.tooltip_sub')}</span>
+          <span
+            className="absolute h-3 w-3 rotate-45 bg-accent"
+            style={{ bottom: -6, right: 32 }}
+          />
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function Tag({ children }: { children: React.ReactNode }) {
+  return (
+    <span className="rounded-full bg-black/30 px-2 py-0.5 font-mono text-[10px] font-semibold uppercase tracking-[0.08em] text-text-secondary">
+      {children}
+    </span>
+  )
+}
+
+function FeatureRow({
+  icon,
+  iconBg,
+  title,
+  sub,
+}: {
+  icon: React.ReactNode
+  iconBg: string
+  title: string
+  sub: string
+}) {
+  return (
+    <div className="flex items-start gap-3">
+      <span className={cn('mt-0.5 grid h-9 w-9 place-items-center rounded-full', iconBg)}>{icon}</span>
+      <div className="flex flex-col">
+        <span className="text-[14px] font-semibold text-text-primary">{title}</span>
+        <span className="text-[12px] text-text-muted">{sub}</span>
+      </div>
+    </div>
+  )
+}
+
+function CodeLine({ n, text, highlight }: { n: number; text: string; highlight?: boolean }) {
+  return (
+    <div
+      className={cn(
+        'flex gap-3 rounded px-1',
+        highlight ? 'bg-accent/20 text-text-primary' : 'text-text-secondary',
+      )}
+    >
+      <span className="text-text-muted">{n}</span>
+      <span>{text}</span>
+    </div>
+  )
+}
+
+/* ------------------------------- STEP 4 -------------------------------- */
+
+function Step4AISpar({ onNext, onBack }: { onNext: () => void; onBack: () => void }) {
+  const { t } = useTranslation('onboarding')
+  return (
+    <div className="flex flex-col">
+      {/* Hero */}
+      <div
+        className="flex flex-col items-start justify-between gap-6 px-4 py-8 sm:px-8 lg:h-[360px] lg:flex-row lg:items-center lg:gap-0 lg:px-20 lg:py-0"
+        style={{
+          background: 'linear-gradient(135deg, #2D1B4D 0%, #F472B6 100%)',
+        }}
+      >
+        <div className="flex flex-col gap-4 lg:w-[540px]">
+          <span className="inline-flex w-fit items-center gap-1.5 rounded-full bg-warn/20 px-2.5 py-1 font-mono text-[11px] font-semibold tracking-[0.08em] text-warn">
+            {t('step4.tag')}
+          </span>
+          <h1 className="font-display text-2xl font-extrabold text-text-primary sm:text-3xl lg:text-[36px]" style={{ lineHeight: 1.1 }}>
+            {t('step4.title')}
+          </h1>
+          <p className="text-[14px] leading-relaxed text-white/85">
+            {t('step4.subtitle')}
+          </p>
+          <div className="flex flex-col gap-2 pt-1">
+            <CheckFeat text={t('step4.f1')} />
+            <CheckFeat text={t('step4.f2')} />
+            <CheckFeat text={t('step4.f3')} />
+          </div>
+        </div>
+
+        <div
+          className="flex w-full flex-col items-center gap-[18px] rounded-2xl p-[22px] backdrop-blur lg:w-[380px]"
+          style={{ background: 'rgba(0,0,0,0.6)' }}
+        >
+          <div className="flex items-center gap-4">
             <div
+              className="grid place-items-center text-text-primary"
               style={{
-                marginTop: 22,
-                display: 'flex',
-                justifyContent: 'space-between',
+                width: 72,
+                height: 72,
+                borderRadius: 36,
+                background: 'linear-gradient(135deg, #F472B6 0%, #582CFF 100%)',
               }}
             >
-              <Button
-                tone="ghost"
-                onClick={() =>
-                  persist({
-                    ...state,
-                    step: Math.max(0, state.step - 1),
-                  })
-                }
-                disabled={state.step === 0}
-              >
-                {t('onboarding.prev')}
-              </Button>
-              {state.step < steps.length - 1 ? (
-                <Button
-                  tone="primary"
-                  onClick={() =>
-                    persist({
-                      ...state,
-                      step: Math.min(steps.length - 1, state.step + 1),
-                    })
-                  }
-                >
-                  {t('onboarding.next')}
-                </Button>
-              ) : (
-                <Button
-                  tone="blood"
-                  onClick={() => {
-                    try {
-                      localStorage.setItem(
-                        LS_KEY,
-                        JSON.stringify({ ...state, completed: true }),
-                      )
-                    } catch {
-                      // ignore
-                    }
-                    navigate('/sanctum')
-                  }}
-                >
-                  {t('onboarding.finish')}
-                </Button>
-              )}
+              <span className="font-display text-2xl font-bold">Д</span>
+            </div>
+            <span className="font-display text-2xl font-extrabold text-text-primary">VS</span>
+            <div
+              className="grid place-items-center text-text-primary"
+              style={{
+                width: 72,
+                height: 72,
+                borderRadius: 36,
+                background: 'linear-gradient(135deg, #22D3EE 0%, #582CFF 100%)',
+              }}
+            >
+              <Bot className="h-8 w-8" />
             </div>
           </div>
-        </Panel>
+          <span className="font-mono text-[12px] text-text-secondary">
+            Two Sum · Hash Map · Easy
+          </span>
+        </div>
       </div>
-    </AppShell>
+
+      {/* Body */}
+      <div
+        className="flex flex-col items-center gap-5 px-4 py-8 sm:px-8 lg:px-20"
+      >
+        <h2 className="text-center font-display text-2xl font-bold text-text-primary">
+          {t('step4.ready')}
+        </h2>
+        <p className="max-w-[560px] text-center text-[14px] text-text-secondary">
+          {t('step4.ready_sub')}
+        </p>
+
+        <div className="grid w-full max-w-[900px] grid-cols-1 gap-4 sm:grid-cols-3">
+          <BenefitCard
+            icon={<Sparkles className="h-5 w-5 text-accent-hover" />}
+            title={t('step4.b1_title')}
+            sub={t('step4.b1_sub')}
+          />
+          <BenefitCard
+            icon={<Sparkles className="h-5 w-5 text-cyan" />}
+            title={t('step4.b2_title')}
+            sub={t('step4.b2_sub')}
+          />
+          <BenefitCard
+            icon={<Lock className="h-5 w-5 text-warn" />}
+            title={t('step4.b3_title')}
+            sub={t('step4.b3_sub')}
+          />
+        </div>
+
+        <div className="flex w-full flex-col items-stretch gap-3 pt-2 sm:w-auto sm:flex-row sm:items-center">
+          <Button variant="ghost" icon={<Play className="h-4 w-4" />} onClick={onBack} className="h-12 px-6">
+            {t('step4.watch_video')}
+          </Button>
+          <Button
+            variant="primary"
+            iconRight={<ArrowRight className="h-5 w-5" />}
+            onClick={onNext}
+            className="h-14 px-8 text-[15px] shadow-glow"
+          >
+            {t('step4.begin_spar')}
+          </Button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function CheckFeat({ text }: { text: string }) {
+  return (
+    <div className="flex items-center gap-2">
+      <span className="grid h-5 w-5 place-items-center rounded-full bg-success/25">
+        <Check className="h-3 w-3 text-success" strokeWidth={3} />
+      </span>
+      <span className="text-[13px] text-text-primary">{text}</span>
+    </div>
+  )
+}
+
+function BenefitCard({
+  icon,
+  title,
+  sub,
+}: {
+  icon: React.ReactNode
+  title: string
+  sub: string
+}) {
+  return (
+    <div className="flex flex-1 flex-col gap-2 rounded-xl border border-border bg-surface-1 p-5">
+      <span className="grid h-9 w-9 place-items-center rounded-full bg-surface-2">{icon}</span>
+      <span className="font-display text-base font-bold text-text-primary">{title}</span>
+      <span className="text-[12px] text-text-muted">{sub}</span>
+    </div>
+  )
+}
+
+/* ------------------------------- PAGE ---------------------------------- */
+
+// re-export icon for unused suppression
+void Clock
+void MessageSquare
+
+export default function OnboardingPage() {
+  useEffect(() => {
+    document.body.classList.add('v2')
+    return () => document.body.classList.remove('v2')
+  }, [])
+
+  const [params, setParams] = useSearchParams()
+  const navigate = useNavigate()
+
+  const stepParam = parseInt(params.get('step') ?? '1', 10)
+  const step = useMemo<StepNum>(
+    () => ((stepParam >= 1 && stepParam <= 4 ? stepParam : 1) as StepNum),
+    [stepParam],
+  )
+
+  const setStep = (s: StepNum) => {
+    const next = new URLSearchParams(params)
+    next.set('step', String(s))
+    setParams(next, { replace: false })
+  }
+
+  const goNext = () => {
+    if (step < 4) setStep(((step + 1) as StepNum))
+    else navigate('/onboarding/done')
+  }
+  const goBack = () => {
+    if (step > 1) setStep(((step - 1) as StepNum))
+  }
+
+  return (
+    <div className="min-h-screen bg-bg text-text-primary">
+      <OnboardingTopBar current={step} />
+      <main>
+        {step === 1 && <Step1Register onNext={goNext} />}
+        {step === 2 && <Step2Stack onNext={goNext} onBack={goBack} />}
+        {step === 3 && <Step3Kata onNext={goNext} onBack={goBack} />}
+        {step === 4 && <Step4AISpar onNext={goNext} onBack={goBack} />}
+      </main>
+    </div>
   )
 }

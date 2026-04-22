@@ -1,0 +1,88 @@
+/* druz9 — modern v2 design (Pencil-derived). Mounted ALONGSIDE legacy tokens.css.
+   New pages live in /src/v2/ and use Tailwind classes from /tailwind.config.ts.
+   Legacy RPG pages still use /styles/tokens.css unchanged. */
+
+@import url('https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700;800&family=Geist+Mono:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700;800&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  /* DARK theme (default). Values are space-separated RGB triplets, consumed via rgb(var(--x) / <alpha>) */
+  :root,
+  .dark {
+    --color-bg: 10 10 15;            /* #0A0A0F */
+    --color-surface-1: 20 20 37;     /* #141425 */
+    --color-surface-2: 26 26 46;     /* #1A1A2E */
+    --color-surface-3: 45 27 77;     /* #2D1B4D */
+    --color-border: 34 34 51;        /* #222233 */
+    --color-border-strong: 42 42 63; /* #2A2A3F */
+    --color-text-primary: 255 255 255;
+    --color-text-secondary: 192 192 192;
+    --color-text-muted: 138 138 158;
+    --color-accent: 88 44 255;       /* #582CFF */
+    --color-accent-hover: 109 67 255;/* #6D43FF */
+    --color-success: 16 185 129;
+    --color-danger: 239 68 68;
+    --color-warn: 251 191 36;
+    --color-cyan: 34 211 238;
+    --color-pink: 244 114 182;
+  }
+
+  .light {
+    --color-bg: 250 250 252;            /* near-white */
+    --color-surface-1: 255 255 255;
+    --color-surface-2: 244 244 248;
+    --color-surface-3: 235 230 248;     /* faint violet tint */
+    --color-border: 226 226 232;
+    --color-border-strong: 200 200 210;
+    --color-text-primary: 16 16 28;
+    --color-text-secondary: 70 70 90;
+    --color-text-muted: 120 120 140;
+    --color-accent: 88 44 255;
+    --color-accent-hover: 109 67 255;
+    --color-success: 16 150 105;
+    --color-danger: 220 50 50;
+    --color-warn: 200 145 20;
+    --color-cyan: 14 170 200;
+    --color-pink: 230 90 160;
+  }
+
+  html {
+    transition: background-color 200ms, color 200ms;
+  }
+
+  /* When body has the v2 class, modern bg + Inter takes over the page. */
+  body.v2 {
+    background: rgb(var(--color-bg));
+    color: rgb(var(--color-text-primary));
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    font-feature-settings: 'cv11', 'ss01';
+  }
+
+  body.v2 ::selection {
+    background: rgb(var(--color-accent));
+    color: #FFFFFF;
+  }
+
+  body.v2 ::-webkit-scrollbar { width: 10px; height: 10px; }
+  body.v2 ::-webkit-scrollbar-track { background: rgb(var(--color-bg)); }
+  body.v2 ::-webkit-scrollbar-thumb { background: rgb(var(--color-border-strong)); border-radius: 5px; }
+  body.v2 ::-webkit-scrollbar-thumb:hover { background: rgb(var(--color-text-muted)); }
+}
+
+@layer components {
+  .v2-card {
+    @apply bg-surface-2 border border-border rounded-xl p-5;
+  }
+  .v2-card-elev {
+    @apply bg-surface-2 border border-border rounded-xl p-5 shadow-card;
+  }
+  .v2-pill-active {
+    @apply bg-surface-2 text-ink-primary font-semibold rounded-md px-3.5 py-2;
+  }
+  .v2-pill-idle {
+    @apply text-ink-secondary font-medium rounded-md px-3.5 py-2 hover:bg-surface-2 transition-colors;
+  }
+}

@@ -1,297 +1,296 @@
-import { useState } from 'react'
+// TODO i18n
 import { useParams } from 'react-router-dom'
-import { useTranslation } from 'react-i18next'
-import { AppShell } from '../components/AppShell'
 import {
-  Panel,
-  PanelHead,
-  PageHeader,
-  Badge,
-  Bar,
-  Button,
-  InsetGroove,
-} from '../components/chrome'
-import {
-  useNativeScoreQuery,
-  useProvenanceQuery,
-} from '../lib/queries/native'
-import { ProvenanceGraph, AiDonut } from '../components/native/ProvenanceGraph'
+  Bot,
+  Check,
+  FileCode,
+  Lightbulb,
+  Play,
+  Send,
+  Sparkles,
+  Upload,
+  X,
+} from 'lucide-react'
+import { AppShellV2 } from '../components/AppShell'
+import { Button } from '../components/Button'
+import { Card } from '../components/Card'
+import { Avatar } from '../components/Avatar'
+import { useNativeScoreQuery } from '../lib/queries/native'
 
-export default function NativeRoundPage() {
-  const { sessionId } = useParams<{ sessionId: string }>()
-  const { t } = useTranslation()
-  const { data: score } = useNativeScoreQuery(sessionId)
-  const { data: prov } = useProvenanceQuery(sessionId)
-
-  // STUB: chat input is client-only — AI chat submit endpoint not yet in MSW
-  const [aiInput, setAiInput] = useState('')
-
+function ErrorChip() {
   return (
-    <AppShell sidebars={false}>
-      <div style={{ padding: 20 }}>
-        <PageHeader
-          title={t('native.title')}
-          subtitle={t('native.subtitle')}
-          right={
-            <Badge variant="ember">
-              {score ? `${Math.round(score.ai_fraction * 100)}% AI` : '—'}
-            </Badge>
-          }
-        />
-        <div
-          data-stagger
-          style={{
-            display: 'grid',
-            gridTemplateColumns: '1.4fr 1fr',
-            gap: 20,
-            alignItems: 'flex-start',
-          }}
-        >
-          {/* Provenance Graph */}
-          <Panel>
-            <PanelHead subtitle="PROVENANCE">{t('native.provenance')}</PanelHead>
-            <div style={{ padding: 20 }}>
-              {!prov ? (
-                <div style={{ color: 'var(--text-dim)' }}>
-                  {t('common.loading')}
-                </div>
-              ) : (
-                <>
-                  <ProvenanceGraph nodes={prov.nodes} />
-                  <div
-                    style={{
-                      display: 'flex',
-                      gap: 18,
-                      marginTop: 14,
-                      fontSize: 10,
-                      letterSpacing: '0.15em',
-                      color: 'var(--text-mid)',
-                    }}
-                  >
-                    <LegendSwatch color="var(--gold)" label="HUMAN" />
-                    <LegendSwatch color="var(--blood-lit)" label="AI" />
-                    <LegendSwatch color="var(--tier-normal)" label="TEST" />
-                    <LegendSwatch color="var(--ember-lit)" label="MERGE" />
-                  </div>
-                </>
-              )}
-            </div>
-          </Panel>
-
-          {/* AI Assistant + gates */}
-          <div
-            style={{ display: 'flex', flexDirection: 'column', gap: 20 }}
-          >
-            <Panel>
-              <PanelHead subtitle="ASSISTANT">{t('native.assistant')}</PanelHead>
-              <div style={{ padding: 16 }}>
-                <InsetGroove style={{ minHeight: 140 }}>
-                  <div
-                    style={{
-                      fontSize: 11,
-                      color: 'var(--text-mid)',
-                      marginBottom: 10,
-                    }}
-                  >
-                    {/* STUB: AI chat history wire-up pending */}
-                    Задай вопрос AI — но помни, что доля AI влияет на итоговый балл.
-                  </div>
-                  <textarea
-                    value={aiInput}
-                    onChange={(e) => setAiInput(e.target.value)}
-                    placeholder="Спроси AI..."
-                    style={{
-                      width: '100%',
-                      minHeight: 60,
-                      padding: 8,
-                      background: 'var(--bg-inset)',
-                      border: '1px solid var(--gold-dim)',
-                      color: 'var(--text-bright)',
-                      fontFamily: 'var(--font-code)',
-                      fontSize: 12,
-                      resize: 'vertical',
-                    }}
-                  />
-                </InsetGroove>
-                <div style={{ marginTop: 10, display: 'flex', gap: 8 }}>
-                  <Button tone="primary" size="sm">
-                    Спросить AI
-                  </Button>
-                  <Button tone="ghost" size="sm">
-                    Отклонить подсказку
-                  </Button>
-                </div>
-              </div>
-            </Panel>
-
-            <Panel>
-              <PanelHead subtitle="SCORES">Балл</PanelHead>
-              <div
-                style={{
-                  padding: 16,
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: 10,
-                }}
-              >
-                {score ? (
-                  <>
-                    <ScoreRow
-                      label={t('native.authorship')}
-                      value={score.scores.authorship}
-                    />
-                    <ScoreRow
-                      label={t('native.comprehension')}
-                      value={score.scores.comprehension}
-                    />
-                    <ScoreRow
-                      label={t('native.refactor_quality')}
-                      value={score.scores.refactor_quality}
-                    />
-                    <ScoreRow
-                      label={t('native.coverage')}
-                      value={score.scores.coverage}
-                    />
-                    <div
-                      style={{
-                        marginTop: 10,
-                        paddingTop: 14,
-                        borderTop: '1px solid var(--gold-faint)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-around',
-                      }}
-                    >
-                      <AiDonut
-                        value={score.ai_fraction}
-                        size={96}
-                        label={t('native.ai_fraction').toUpperCase()}
-                      />
-                      <div
-                        style={{
-                          display: 'flex',
-                          flexDirection: 'column',
-                          gap: 6,
-                          fontSize: 11,
-                        }}
-                      >
-                        <div
-                          style={{
-                            display: 'flex',
-                            justifyContent: 'space-between',
-                            gap: 12,
-                          }}
-                        >
-                          <span style={{ color: 'var(--text-mid)' }}>
-                            {t('native.human_fraction')}
-                          </span>
-                          <span className="mono" style={{ color: 'var(--gold)' }}>
-                            {Math.round(score.human_fraction * 100)}%
-                          </span>
-                        </div>
-                        <div
-                          style={{
-                            display: 'flex',
-                            justifyContent: 'space-between',
-                            gap: 12,
-                          }}
-                        >
-                          <span style={{ color: 'var(--text-mid)' }}>
-                            {t('native.ai_fraction')}
-                          </span>
-                          <span className="mono" style={{ color: 'var(--blood-lit)' }}>
-                            {Math.round(score.ai_fraction * 100)}%
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  </>
-                ) : (
-                  <div style={{ color: 'var(--text-dim)' }}>
-                    {t('common.loading')}
-                  </div>
-                )}
-              </div>
-            </Panel>
-
-            <Panel>
-              <PanelHead subtitle="GATES">{t('native.gates')}</PanelHead>
-              <div
-                style={{
-                  padding: 16,
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: 8,
-                }}
-              >
-                {(score?.gates ?? []).map((g) => (
-                  <div
-                    key={g.key}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 10,
-                    }}
-                  >
-                    <Badge variant={g.passed ? 'normal' : 'boss'}>
-                      {g.passed ? t('native.pass') : t('native.fail')}
-                    </Badge>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontSize: 12, color: 'var(--text-bright)' }}>
-                        {g.key}
-                      </div>
-                      {g.note && (
-                        <div
-                          style={{ fontSize: 10, color: 'var(--text-mid)' }}
-                        >
-                          {g.note}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </Panel>
-          </div>
-        </div>
-      </div>
-    </AppShell>
-  )
-}
-
-function LegendSwatch({ color, label }: { color: string; label: string }) {
-  return (
-    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-      <span
-        style={{
-          width: 8,
-          height: 8,
-          background: color,
-          transform: 'rotate(45deg)',
-          display: 'inline-block',
-        }}
-      />
-      <span>{label}</span>
+    <span className="rounded-full bg-danger/15 px-2 py-0.5 font-mono text-[10px] font-semibold text-danger">
+      Не удалось загрузить
     </span>
   )
 }
 
-function ScoreRow({ label, value }: { label: string; value: number }) {
+function MatchHeader({ aiUsed, aiMax }: { aiUsed: number; aiMax: number }) {
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-      <div
-        style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          fontSize: 11,
-        }}
-      >
-        <span style={{ color: 'var(--text-mid)' }}>{label}</span>
-        <span className="mono" style={{ color: 'var(--gold-bright)' }}>
-          {value}
+    <div className="flex flex-col gap-3 border-b border-border bg-surface-1 px-4 py-3 sm:px-6 lg:h-[80px] lg:flex-row lg:items-center lg:justify-between lg:px-8 lg:py-0">
+      <div className="flex items-center gap-3">
+        <span className="inline-flex items-center gap-1.5 rounded-full bg-warn/15 px-2.5 py-1 font-mono text-[11px] font-semibold tracking-[0.08em] text-warn">
+          <Sparkles className="h-3 w-3" />
+          AI-ALLOWED · РАЗРЕШЁН
         </span>
       </div>
-      <Bar value={value} max={100} />
+      <div className="flex flex-col items-center gap-1">
+        <span className="font-display text-[26px] font-extrabold leading-none text-text-primary">
+          22:14 <span className="text-text-muted">/ 60:00</span>
+        </span>
+        <span className="font-mono text-[11px] tracking-[0.08em] text-text-muted">
+          NATIVE ROUND
+        </span>
+      </div>
+      <div className="flex items-center gap-2">
+        <span className="rounded-full bg-warn/15 px-2.5 py-1 font-mono text-[11px] font-semibold text-warn">
+          AI запросов: {aiUsed} / {aiMax}
+        </span>
+        <Button variant="ghost" icon={<Lightbulb className="h-4 w-4" />} size="sm">
+          Подсказка
+        </Button>
+        <Button variant="danger" size="sm">
+          Завершить
+        </Button>
+      </div>
     </div>
+  )
+}
+
+function QuestionPanel() {
+  return (
+    <Card className="flex-col gap-3 p-5" interactive={false}>
+      <h3 className="font-display text-[18px] font-bold leading-tight text-text-primary">
+        Design Twitter Timeline System
+      </h3>
+      <p className="text-[13px] leading-relaxed text-text-secondary">
+        Спроектируй систему генерации home timeline для 100M активных пользователей.
+        Опиши fan-out, кэширование и стратегию репликации.
+      </p>
+      <div className="flex flex-wrap gap-1.5">
+        <span className="rounded-full bg-danger/15 px-2.5 py-1 font-mono text-[11px] font-semibold text-danger">
+          Senior
+        </span>
+        <span className="rounded-full bg-cyan/15 px-2.5 py-1 font-mono text-[11px] font-semibold text-cyan">
+          System Design
+        </span>
+      </div>
+    </Card>
+  )
+}
+
+function AllowedToolsCard() {
+  const allowed = ['GPT-4o Free', 'Claude Sonnet Free', 'Поиск по docs', 'Stack Overflow']
+  const forbidden = ['ChatGPT с web', 'Copilot in IDE']
+  return (
+    <Card className="flex-col gap-3 p-5" interactive={false}>
+      <h3 className="text-sm font-bold text-text-primary">Разрешённые AI-инструменты</h3>
+      {allowed.map((t) => (
+        <div key={t} className="flex items-center gap-2">
+          <Check className="h-4 w-4 text-success" />
+          <span className="text-[13px] text-text-secondary">{t}</span>
+        </div>
+      ))}
+      <div className="my-1 border-t border-border" />
+      <h4 className="font-mono text-[11px] font-semibold tracking-[0.08em] text-danger">
+        ЗАПРЕЩЕНО:
+      </h4>
+      {forbidden.map((t) => (
+        <div key={t} className="flex items-center gap-2">
+          <X className="h-4 w-4 text-danger" />
+          <span className="text-[13px] text-text-secondary">{t}</span>
+        </div>
+      ))}
+    </Card>
+  )
+}
+
+function UsageStatsCard({ aiUsed, aiMax, aiFraction, humanFraction }: { aiUsed: number; aiMax: number; aiFraction: number; humanFraction: number }) {
+  const rows = [
+    { label: 'Промпты', value: `${aiUsed} / ${aiMax}` },
+    { label: 'AI fraction', value: `${Math.round(aiFraction * 100)}%` },
+    { label: 'Своя доля', value: `${Math.round(humanFraction * 100)}%` },
+  ]
+  return (
+    <Card className="flex-col gap-3 border-warn/30 bg-gradient-to-br from-surface-3 to-warn/30 p-5" interactive={false}>
+      <h3 className="font-display text-base font-bold text-text-primary">AI Usage</h3>
+      {rows.map((r) => (
+        <div key={r.label} className="flex items-center justify-between">
+          <span className="text-[13px] text-text-secondary">{r.label}</span>
+          <span className="font-mono text-[13px] font-semibold text-text-primary">{r.value}</span>
+        </div>
+      ))}
+    </Card>
+  )
+}
+
+function EditorArea() {
+  const code = [
+    '// Twitter timeline — fan-out write',
+    'type Tweet struct { ID, AuthorID int64; Body string }',
+    '',
+    'func PostTweet(t Tweet) error {',
+    '    if err := db.Insert(t); err != nil {',
+    // AI suggested block 5-12
+    '        return err',
+    '    }',
+    '    followers := graph.GetFollowers(t.AuthorID)',
+    '    for _, f := range followers {',
+    '        timelineCache.LPush(',
+    '            keyFor(f), t.ID)',
+    '    }',
+    '    return nil',
+    '}',
+    '',
+    'func GetTimeline(uid int64) []Tweet { ... }',
+  ]
+  return (
+    <Card className="flex-1 flex-col p-0 overflow-hidden" interactive={false}>
+      <div className="flex h-11 items-center justify-between border-b border-border px-4">
+        <div className="flex items-center gap-2.5">
+          <FileCode className="h-4 w-4 text-text-secondary" />
+          <span className="font-mono text-[13px] text-text-primary">timeline.go</span>
+          <span className="rounded-full bg-cyan/15 px-2 py-0.5 font-mono text-[10px] font-semibold text-cyan">
+            Go
+          </span>
+        </div>
+        <span className="inline-flex items-center gap-1 rounded-full bg-accent/20 px-2.5 py-1 font-mono text-[11px] font-semibold text-accent-hover">
+          <Sparkles className="h-3 w-3" /> AI предложил блок 5-12
+        </span>
+      </div>
+      <div className="flex flex-1 overflow-auto bg-surface-1">
+        <div className="flex flex-col items-end px-3 py-3 font-mono text-[12px] text-text-muted select-none">
+          {code.map((_, i) => (
+            <span key={i}>{i + 1}</span>
+          ))}
+        </div>
+        <div className="flex flex-1 flex-col py-3 pr-4 font-mono text-[12px] text-text-secondary">
+          {code.map((line, i) => {
+            const ai = i >= 4 && i <= 11
+            return (
+              <pre
+                key={i}
+                className={[
+                  'whitespace-pre',
+                  ai ? 'bg-accent/10 -mx-2 px-2 border-l-2 border-accent' : '',
+                ].join(' ')}
+              >
+                {line || ' '}
+              </pre>
+            )
+          })}
+        </div>
+      </div>
+      <div className="flex h-14 items-center justify-between border-t border-border px-4">
+        <div className="flex items-center gap-2">
+          <Button variant="ghost" size="sm" icon={<Sparkles className="h-3.5 w-3.5" />}>
+            Ask AI
+          </Button>
+          <Button variant="ghost" size="sm" icon={<Play className="h-3.5 w-3.5" />}>
+            Run
+          </Button>
+          <Button variant="primary" size="sm" icon={<Upload className="h-3.5 w-3.5" />}>
+            Submit
+          </Button>
+        </div>
+        <span className="inline-flex items-center gap-1.5 rounded-full bg-warn/15 px-2.5 py-1 font-mono text-[11px] font-semibold text-warn">
+          <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-warn" />
+          Логирование вкл
+        </span>
+      </div>
+    </Card>
+  )
+}
+
+function ChatPanel() {
+  const messages: Array<{ role: 'user' | 'ai'; text: string; code?: string }> = [
+    { role: 'user', text: 'Как реализовать LRU? O(1)' },
+    {
+      role: 'ai',
+      text: 'Двусвязный список + хеш-таблица. На Get переноси узел в head, на Put вытесняй tail.',
+      code: 'type LRU struct {\n  m map[int]*Node\n  head, tail *Node\n}',
+    },
+    { role: 'user', text: 'А как fan-out для 100M юзеров?' },
+    {
+      role: 'ai',
+      text: 'Гибрид: write-fan-out для обычных, pull-on-read для celebrity (>1M фолловеров).',
+    },
+  ]
+  return (
+    <Card className="flex-col gap-0 p-0 overflow-hidden" interactive={false}>
+      <div className="flex items-center justify-between border-b border-border p-4">
+        <div className="flex items-center gap-2">
+          <Bot className="h-4 w-4 text-cyan" />
+          <span className="text-sm font-bold text-text-primary">Chat с GPT-4o</span>
+        </div>
+        <span className="rounded-full bg-warn/15 px-2 py-0.5 font-mono text-[10px] font-semibold text-warn">
+          3/10
+        </span>
+      </div>
+      <div className="flex flex-1 flex-col gap-3 overflow-auto p-4">
+        {messages.map((m, i) =>
+          m.role === 'user' ? (
+            <div key={i} className="flex justify-end">
+              <div className="max-w-[80%] rounded-lg bg-accent px-3 py-2 text-[13px] text-text-primary">
+                {m.text}
+              </div>
+            </div>
+          ) : (
+            <div key={i} className="flex gap-2">
+              <Avatar size="sm" gradient="cyan-violet" initials="AI" />
+              <div className="flex max-w-[80%] flex-col gap-2 rounded-lg bg-surface-3 px-3 py-2">
+                <span className="text-[13px] text-text-secondary">{m.text}</span>
+                {m.code && (
+                  <pre className="rounded bg-black/40 p-2 font-mono text-[11px] text-cyan whitespace-pre-wrap">
+                    {m.code}
+                  </pre>
+                )}
+              </div>
+            </div>
+          ),
+        )}
+      </div>
+      <div className="flex items-center gap-2 border-t border-border p-3">
+        <input
+          placeholder="Спроси AI…"
+          className="flex-1 rounded-md border border-border bg-surface-2 px-3 py-2 text-[13px] text-text-primary placeholder:text-text-muted focus:outline-none focus:border-accent"
+        />
+        <button className="grid h-9 w-9 place-items-center rounded-md bg-accent text-text-primary shadow-glow hover:bg-accent-hover">
+          <Send className="h-4 w-4" />
+        </button>
+      </div>
+    </Card>
+  )
+}
+
+export default function NativeRoundPage() {
+  const { sessionId } = useParams<{ sessionId: string }>()
+  const { data: score, isError } = useNativeScoreQuery(sessionId)
+  const aiUsed = 3
+  const aiMax = 10
+  const aiFraction = score?.ai_fraction ?? 0.42
+  const humanFraction = score?.human_fraction ?? 0.58
+  return (
+    <AppShellV2>
+      <MatchHeader aiUsed={aiUsed} aiMax={aiMax} />
+      {isError && (
+        <div className="flex justify-end px-4 py-2">
+          <ErrorChip />
+        </div>
+      )}
+      <div className="flex flex-col gap-4 px-4 py-4 sm:px-6 lg:flex-row lg:px-8">
+        <div className="flex w-full flex-col gap-4 lg:w-[320px]">
+          <QuestionPanel />
+          <AllowedToolsCard />
+          <UsageStatsCard aiUsed={aiUsed} aiMax={aiMax} aiFraction={aiFraction} humanFraction={humanFraction} />
+        </div>
+        <div className="flex min-h-[400px] flex-1 flex-col">
+          <EditorArea />
+        </div>
+        <div className="flex w-full lg:w-[360px]">
+          <ChatPanel />
+        </div>
+      </div>
+    </AppShellV2>
   )
 }

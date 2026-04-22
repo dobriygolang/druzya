@@ -1,339 +1,367 @@
-import { useEffect, useRef, useState } from 'react'
-import { useParams, Link } from 'react-router-dom'
-import { useTranslation } from 'react-i18next'
-import Editor, { type Monaco } from '@monaco-editor/react'
-import { AppShell } from '../components/AppShell'
+// TODO i18n
+import { useEffect, useState } from 'react'
+import { useParams } from 'react-router-dom'
 import {
-  Panel,
-  PanelHead,
-  PageHeader,
-  Badge,
-  Button,
-  InsetGroove,
-} from '../components/chrome'
-import {
-  useMockSessionQuery,
-  useSendMockMessage,
-  type MockMessage,
-} from '../lib/queries/mock'
+  Camera,
+  Check,
+  CheckCheck,
+  FileCode,
+  Lightbulb,
+  Mic,
+  PhoneOff,
+  Play,
+  Sparkles,
+  Triangle,
+  Upload,
+  Video,
+} from 'lucide-react'
+import { AppShellV2 } from '../components/AppShell'
+import { Button } from '../components/Button'
+import { Card } from '../components/Card'
+import { Avatar } from '../components/Avatar'
+import { WSStatus } from '../components/ws/WSStatus'
+import { useChannel } from '../lib/ws'
+import { useMockSessionQuery } from '../lib/queries/mock'
 
-// Monaco druz9-noir theme — matches site tokens.css (dark + gold accents)
-function defineDruz9Theme(monaco: Monaco) {
-  monaco.editor.defineTheme('druz9-noir', {
-    base: 'vs-dark',
-    inherit: true,
-    rules: [
-      { token: 'comment', foreground: '6b5f54', fontStyle: 'italic' },
-      { token: 'keyword', foreground: 'e8c87a' },
-      { token: 'string', foreground: '9a8c76' },
-      { token: 'number', foreground: '6a9fd4' },
-      { token: 'type', foreground: 'e09b3a' },
-      { token: 'identifier.function', foreground: 'e8c87a' },
-    ],
-    colors: {
-      'editor.background': '#0a0c10',
-      'editor.foreground': '#e8dcc8',
-      'editor.lineHighlightBackground': '#14100f',
-      'editor.selectionBackground': '#2a1a1633',
-      'editorCursor.foreground': '#e8c87a',
-      'editorLineNumber.foreground': '#4a3c28',
-      'editorLineNumber.activeForeground': '#c8a96e',
-      'editorIndentGuide.background': '#1c1710',
-      'editorIndentGuide.activeBackground': '#4a3c28',
-    },
-  })
+function ErrorChip() {
+  return (
+    <span className="rounded-full bg-danger/15 px-2 py-0.5 font-mono text-[10px] font-semibold text-danger">
+      Не удалось загрузить
+    </span>
+  )
+}
+
+type Metric = { label: string; value: number; color?: string }
+type AIMessage = { from: 'ai' | 'user'; text: string }
+
+function MatchHeader() {
+  return (
+    <div className="flex h-[80px] items-center justify-between gap-2 border-b border-border bg-surface-1 px-4 sm:px-8">
+      <div className="hidden items-center gap-3 sm:flex">
+        <span className="inline-flex items-center gap-1.5 rounded-full bg-success/15 px-2.5 py-1 font-mono text-[11px] font-semibold tracking-[0.08em] text-success">
+          <span className="h-1.5 w-1.5 rounded-full bg-success" />
+          CODING INTERVIEW · LIVE
+        </span>
+      </div>
+      <div className="flex flex-col items-center gap-1">
+        <span className="font-display text-[26px] font-extrabold leading-none text-text-primary">
+          37:42 <span className="text-text-muted">/ 45:00</span>
+        </span>
+        <span className="font-mono text-[11px] tracking-[0.08em] text-text-muted">
+          ВОПРОС 2 ИЗ 4
+        </span>
+      </div>
+      <div className="flex items-center gap-2">
+        <Button variant="ghost" icon={<Lightbulb className="h-4 w-4" />} size="sm" className="hidden sm:inline-flex">
+          Подсказка
+        </Button>
+        <Button variant="danger" size="sm">
+          Завершить
+        </Button>
+      </div>
+    </div>
+  )
+}
+
+function InterviewerPanel() {
+  return (
+    <Card className="h-[320px] flex-col gap-3 p-4" interactive={false}>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2.5">
+          <Avatar size="md" gradient="cyan-violet" initials="AI" status="online" />
+          <div className="flex flex-col">
+            <span className="text-sm font-semibold text-text-primary">AI Interviewer</span>
+            <span className="font-mono text-[11px] text-success">● Слушает</span>
+          </div>
+        </div>
+        <Sparkles className="h-4 w-4 text-cyan" />
+      </div>
+      <div className="flex flex-1 items-center justify-center rounded-lg bg-gradient-to-br from-surface-3 to-surface-2 border border-border-strong">
+        <div className="flex flex-col items-center gap-2">
+          <Video className="h-10 w-10 text-text-muted" />
+          <span className="font-mono text-[11px] text-text-muted">video stream</span>
+        </div>
+      </div>
+    </Card>
+  )
+}
+
+function QuestionPanel({ title, description }: { title: string; description: string }) {
+  return (
+    <Card className="flex-col gap-3 p-5" interactive={false}>
+      <span className="inline-flex w-fit items-center gap-1 rounded-full bg-cyan/15 px-2.5 py-1 font-mono text-[11px] font-semibold text-cyan">
+        ВОПРОС 2 / 4
+      </span>
+      <h3 className="font-display text-lg font-bold text-text-primary">
+        {title}
+      </h3>
+      <p className="text-[13px] leading-relaxed text-text-secondary">
+        {description}
+      </p>
+      <div className="rounded-md bg-surface-2 px-3 py-2 font-mono text-[11px] text-text-muted">
+        1 ≤ capacity ≤ 1000
+      </div>
+      <span className="inline-flex w-fit items-center gap-1.5 rounded-full bg-warn/15 px-2.5 py-1 text-[11px] font-semibold text-warn">
+        <Lightbulb className="h-3 w-3" /> Hint: используй хешмапу + двусвязный список
+      </span>
+    </Card>
+  )
+}
+
+function NotesPanel() {
+  const items = [
+    { icon: <Check className="h-3.5 w-3.5 text-success" />, text: 'Спросил про edge cases' },
+    { icon: <CheckCheck className="h-3.5 w-3.5 text-success" />, text: 'Объяснил выбор структуры' },
+    { icon: <Triangle className="h-3.5 w-3.5 text-warn" />, text: 'Не учёл потокобезопасность' },
+  ]
+  return (
+    <Card className="flex-col gap-3 p-5" interactive={false}>
+      <h3 className="text-sm font-bold text-text-primary">Заметки интервьюера</h3>
+      {items.map((it, i) => (
+        <div key={i} className="flex items-start gap-2">
+          <span className="mt-0.5">{it.icon}</span>
+          <span className="text-[13px] text-text-secondary">{it.text}</span>
+        </div>
+      ))}
+    </Card>
+  )
+}
+
+function EditorArea() {
+  const code = [
+    'package main',
+    '',
+    'type entry struct {',
+    '    key, val int',
+    '}',
+    '',
+    'type LRUCache struct {',
+    '    cap   int',
+    '    data  map[int]*list.Element',
+    '    order *list.List',
+    '}',
+    '',
+    'func (c *LRUCache) Get(key int) int {',
+    '    if el, ok := c.data[key]; ok {',
+    '        c.order.MoveToFront(el)',
+    '        return el.Value.(*entry).val',
+    '    }',
+    '    return -1',
+    '}',
+  ]
+  return (
+    <Card className="flex-1 flex-col p-0 overflow-hidden" interactive={false}>
+      <div className="flex h-11 items-center justify-between border-b border-border px-4">
+        <div className="flex items-center gap-2.5">
+          <FileCode className="h-4 w-4 text-text-secondary" />
+          <span className="font-mono text-[13px] text-text-primary">lru.go</span>
+          <span className="rounded-full bg-cyan/15 px-2 py-0.5 font-mono text-[10px] font-semibold text-cyan">
+            Go
+          </span>
+        </div>
+        <span className="font-mono text-[11px] text-text-muted">UTF-8 · LF</span>
+      </div>
+      <div className="flex flex-1 overflow-auto bg-surface-1">
+        <div className="flex flex-col items-end px-3 py-3 font-mono text-[12px] text-text-muted select-none">
+          {code.map((_, i) => (
+            <span key={i} className={i === 13 ? 'text-accent-hover font-semibold' : ''}>
+              {i + 1}
+            </span>
+          ))}
+        </div>
+        <div className="flex flex-1 flex-col py-3 pr-4 font-mono text-[12px] text-text-secondary">
+          {code.map((line, i) => (
+            <pre
+              key={i}
+              className={[
+                'whitespace-pre',
+                i === 13 ? 'bg-accent/15 text-text-primary -mx-2 px-2 rounded' : '',
+              ].join(' ')}
+            >
+              {line || ' '}
+            </pre>
+          ))}
+        </div>
+      </div>
+      <div className="flex h-14 items-center justify-between border-t border-border px-4">
+        <div className="flex items-center gap-2">
+          <Button variant="ghost" size="sm" icon={<Play className="h-3.5 w-3.5" />}>
+            Run
+          </Button>
+          <Button variant="primary" size="sm" icon={<Upload className="h-3.5 w-3.5" />}>
+            Submit
+          </Button>
+        </div>
+        <div className="flex items-center gap-3">
+          <span className="font-mono text-[12px] text-success">12/15 tests</span>
+          <div className="h-1.5 w-32 overflow-hidden rounded-full bg-black/30">
+            <div className="h-full w-[80%] bg-gradient-to-r from-success to-cyan" />
+          </div>
+        </div>
+      </div>
+    </Card>
+  )
+}
+
+function ControlsCard() {
+  const btn = (Icon: React.ElementType, danger?: boolean) => (
+    <button
+      className={[
+        'grid h-11 w-11 place-items-center rounded-full border',
+        danger ? 'border-danger/40 bg-danger/15 text-danger hover:bg-danger/25' : 'border-border bg-surface-2 text-text-secondary hover:bg-surface-3 hover:text-text-primary',
+      ].join(' ')}
+    >
+      <Icon className="h-4 w-4" />
+    </button>
+  )
+  return (
+    <Card className="flex-row items-center justify-around p-4" interactive={false}>
+      {btn(Mic)}
+      {btn(Camera)}
+      {btn(Upload)}
+      {btn(PhoneOff, true)}
+    </Card>
+  )
+}
+
+const METRIC_COLORS = ['bg-success', 'bg-cyan', 'bg-accent', 'bg-warn']
+
+function EvaluationCard({ metrics }: { metrics: Metric[] }) {
+  return (
+    <Card className="flex-col gap-4 border-accent/30 bg-gradient-to-br from-surface-3 to-accent/40 p-5" interactive={false}>
+      <div className="flex items-center justify-between">
+        <h3 className="font-display text-base font-bold text-text-primary">AI Оценка</h3>
+        <Sparkles className="h-4 w-4 text-cyan" />
+      </div>
+      <div className="flex flex-col gap-3">
+        {metrics.map((m, i) => (
+          <div key={m.label} className="flex flex-col gap-1">
+            <div className="flex items-center justify-between">
+              <span className="text-[12px] text-text-secondary">{m.label}</span>
+              <span className="font-mono text-[12px] font-semibold text-text-primary">{m.value}</span>
+            </div>
+            <div className="h-1.5 overflow-hidden rounded-full bg-black/40">
+              <div
+                className={`h-full transition-all duration-700 ${m.color ?? METRIC_COLORS[i % METRIC_COLORS.length]}`}
+                style={{ width: `${m.value}%` }}
+              />
+            </div>
+          </div>
+        ))}
+      </div>
+    </Card>
+  )
+}
+
+function QATimeline() {
+  const items = [
+    { n: 1, label: 'Two Sum Variations', status: 'done', meta: '9.2 ★', color: 'bg-success' },
+    { n: 2, label: 'LRU Cache', status: 'active', meta: 'сейчас', color: 'bg-accent' },
+    { n: 3, label: 'Word Ladder', status: 'future', meta: '—', color: 'bg-border-strong' },
+    { n: 4, label: 'System Design', status: 'future', meta: '—', color: 'bg-border-strong' },
+  ]
+  return (
+    <Card className="flex-col gap-3 p-5" interactive={false}>
+      <h3 className="text-sm font-bold text-text-primary">Вопросы</h3>
+      {items.map((q) => (
+        <div key={q.n} className="flex items-center gap-3">
+          <span className={`h-2 w-2 rounded-full ${q.color}`} />
+          <div className="flex flex-1 flex-col">
+            <span className={q.status === 'active' ? 'text-[13px] font-semibold text-text-primary' : 'text-[13px] text-text-secondary'}>
+              Q{q.n}. {q.label}
+            </span>
+          </div>
+          <span className="font-mono text-[11px] text-text-muted">{q.meta}</span>
+        </div>
+      ))}
+    </Card>
+  )
+}
+
+const INITIAL_METRICS: Metric[] = [
+  { label: 'Корректность', value: 92, color: 'bg-success' },
+  { label: 'Эффективность', value: 78, color: 'bg-cyan' },
+  { label: 'Чистота кода', value: 85, color: 'bg-accent' },
+  { label: 'Коммуникация', value: 70, color: 'bg-warn' },
+]
+
+function TranscriptCard({ messages }: { messages: AIMessage[] }) {
+  if (messages.length === 0) return null
+  return (
+    <Card className="flex-col gap-2 p-4" interactive={false}>
+      <h3 className="text-sm font-bold text-text-primary">Транскрипт</h3>
+      <div className="flex max-h-[200px] flex-col gap-1.5 overflow-y-auto">
+        {messages.slice(-20).map((m, i) => (
+          <div key={i} className="text-[12px]">
+            <span className={m.from === 'ai' ? 'text-cyan' : 'text-accent-hover'}>
+              {m.from === 'ai' ? 'AI:' : 'Я:'}{' '}
+            </span>
+            <span className="text-text-secondary">{m.text}</span>
+          </div>
+        ))}
+      </div>
+    </Card>
+  )
 }
 
 export default function MockSessionPage() {
   const { sessionId } = useParams<{ sessionId: string }>()
-  const { t } = useTranslation()
-  const { data: session } = useMockSessionQuery(sessionId)
-  const sendMsg = useSendMockMessage(sessionId)
-  const [input, setInput] = useState('')
-  const [pending, setPending] = useState<MockMessage[]>([])
-  const [code, setCode] = useState<string>('')
-  const initRef = useRef(false)
+  const channel = sessionId ? `mock/${sessionId}` : ''
+  const { lastEvent, data, status } = useChannel<Record<string, unknown>>(channel)
+  const { data: session, isError } = useMockSessionQuery(sessionId)
+  const qTitle = session?.task?.title ?? 'Реализуй LRU Cache'
+  const qDesc = session?.task?.description ?? 'Спроектируй структуру данных, которая поддерживает операции get и put за O(1) и вытесняет наименее недавно использованный элемент при превышении ёмкости.'
+
+  const [metrics, setMetrics] = useState<Metric[]>(INITIAL_METRICS)
+  const [transcript, setTranscript] = useState<AIMessage[]>(() =>
+    (session?.last_messages ?? []).map((m): AIMessage => ({
+      from: m.role === 'user' ? 'user' : 'ai',
+      text: m.content,
+    })),
+  )
+
   useEffect(() => {
-    if (!initRef.current && session?.task?.starter_code?.go) {
-      setCode(session.task.starter_code.go)
-      initRef.current = true
+    if (!lastEvent || !data) return
+    if (lastEvent === 'ai_evaluation') {
+      const m = (data as { metrics?: Metric[] }).metrics
+      if (Array.isArray(m)) setMetrics(m)
+    } else if (lastEvent === 'ai_message') {
+      setTranscript((prev) => [...prev, data as AIMessage])
     }
-  }, [session?.task?.starter_code?.go])
-
-  // Session timer — starts counting up from mount (STUB: should derive from
-  // session.started_at when backend wires it).
-  const [elapsedMs, setElapsedMs] = useState(0)
-  const startedRef = useRef<number>(Date.now())
-  useEffect(() => {
-    const id = setInterval(() => {
-      setElapsedMs(Date.now() - startedRef.current)
-    }, 1000)
-    return () => clearInterval(id)
-  }, [])
-  const mm = Math.floor(elapsedMs / 60000).toString().padStart(2, '0')
-  const ss = Math.floor((elapsedMs % 60000) / 1000).toString().padStart(2, '0')
-
-  const onSend = async () => {
-    if (!input.trim()) return
-    const userMsg: MockMessage = {
-      id: `local-${Date.now()}`,
-      role: 'user',
-      content: input,
-      created_at: new Date().toISOString(),
-    }
-    setPending((p) => [...p, userMsg])
-    setInput('')
-    try {
-      const reply = await sendMsg.mutateAsync(userMsg.content)
-      setPending((p) => [...p, reply])
-    } catch {
-      // STUB: surface error UI once error pattern is finalized
-    }
-  }
-
-  const allMessages = [...(session?.last_messages ?? []), ...pending]
+  }, [lastEvent, data])
 
   return (
-    <AppShell sidebars={false}>
-      <div style={{ padding: 20 }}>
-        <PageHeader
-          title={t('mock.title')}
-
-          right={
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-              <div
-                className="mono"
-                title="Session time"
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 8,
-                  padding: '6px 12px',
-                  border: '1px solid var(--gold-faint)',
-                  background: 'var(--bg-inset)',
-                  color: 'var(--gold-bright)',
-                  fontSize: 13,
-                  letterSpacing: '0.08em',
-                }}
-              >
-                <span style={{ color: 'var(--text-dim)', fontSize: 10 }}>
-                  ⏱
-                </span>
-                <span>
-                  {mm}:{ss}
-                </span>
-              </div>
-              <Link to={`/mock/${sessionId}/result`} style={{ textDecoration: 'none' }}>
-                <Button tone="primary">{t('mock.finish')}</Button>
-              </Link>
-            </div>
-          }
-        />
-
-        <div
-          data-stagger
-          style={{
-            display: 'grid',
-            gridTemplateColumns: '1fr 1fr',
-            gap: 20,
-            height: 'calc(100vh - 180px)',
-          }}
-        >
-          <Panel style={{ display: 'flex', flexDirection: 'column' }}>
-            <PanelHead subtitle="TASK">{t('mock.task')}</PanelHead>
-            <div
-              style={{
-                padding: 20,
-                overflow: 'auto',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: 12,
-              }}
-            >
-              {session && (
-                <>
-                  <div style={{ display: 'flex', gap: 8 }}>
-                    <Badge variant="hard">{session.task.difficulty}</Badge>
-                    <Badge variant="dim">{session.section}</Badge>
-                  </div>
-                  <div
-                    className="heraldic"
-                    style={{ color: 'var(--gold-bright)', fontSize: 16 }}
-                  >
-                    {session.task.title}
-                  </div>
-                  <div
-                    style={{
-                      fontSize: 12,
-                      color: 'var(--text-bright)',
-                      lineHeight: 1.6,
-                    }}
-                  >
-                    {session.task.description}
-                  </div>
-                  <InsetGroove>
-                    <div
-                      className="caps"
-                      style={{ color: 'var(--gold-dim)', marginBottom: 6 }}
-                    >
-                      Example
-                    </div>
-                    {session.task.example_cases.map((ex, i) => (
-                      <div key={i} className="mono" style={{ fontSize: 12 }}>
-                        <div style={{ color: 'var(--text-mid)' }}>
-                          in: {ex.input}
-                        </div>
-                        <div style={{ color: 'var(--gold-bright)' }}>
-                          out: {ex.output}
-                        </div>
-                      </div>
-                    ))}
-                  </InsetGroove>
-                  <InsetGroove>
-                    <div
-                      className="caps"
-                      style={{
-                        color: 'var(--gold-dim)',
-                        marginBottom: 6,
-                        display: 'flex',
-                        justifyContent: 'space-between',
-                        alignItems: 'center',
-                      }}
-                    >
-                      <span>{t('mock.code')} · Go</span>
-                      <span style={{ color: 'var(--text-dim)', fontSize: 9 }}>
-                        MONACO · ⌘+S TO RUN
-                      </span>
-                    </div>
-                    <div
-                      style={{
-                        height: 320,
-                        border: '1px solid var(--gold-faint)',
-                        background: '#0a0c10',
-                      }}
-                    >
-                      <Editor
-                        height="100%"
-                        defaultLanguage="go"
-                        language="go"
-                        value={code}
-                        onChange={(v) => setCode(v ?? '')}
-                        beforeMount={defineDruz9Theme}
-                        theme="druz9-noir"
-                        options={{
-                          fontFamily:
-                            "JetBrains Mono, Menlo, ui-monospace, monospace",
-                          fontSize: 13,
-                          lineHeight: 20,
-                          minimap: { enabled: false },
-                          scrollBeyondLastLine: false,
-                          padding: { top: 10, bottom: 10 },
-                          renderLineHighlight: 'line',
-                          smoothScrolling: true,
-                          cursorBlinking: 'smooth',
-                          fontLigatures: true,
-                          tabSize: 2,
-                          wordWrap: 'on',
-                        }}
-                      />
-                    </div>
-                  </InsetGroove>
-                </>
-              )}
-            </div>
-          </Panel>
-
-          <Panel style={{ display: 'flex', flexDirection: 'column' }}>
-            <PanelHead subtitle="CHAT">{t('mock.chat')}</PanelHead>
-            <div
-              style={{
-                padding: 20,
-                overflow: 'auto',
-                flex: 1,
-                display: 'flex',
-                flexDirection: 'column',
-                gap: 10,
-              }}
-            >
-              {allMessages.map((m) => (
-                <div
-                  key={m.id}
-                  style={{
-                    alignSelf: m.role === 'user' ? 'flex-end' : 'flex-start',
-                    maxWidth: '85%',
-                    padding: '10px 14px',
-                    background:
-                      m.role === 'user'
-                        ? 'var(--bg-panel)'
-                        : 'var(--bg-inset)',
-                    border: `1px solid ${
-                      m.role === 'user' ? 'var(--gold)' : 'var(--gold-dim)'
-                    }`,
-                    fontSize: 12,
-                    color: 'var(--text-bright)',
-                  }}
-                >
-                  <div
-                    className="caps"
-                    style={{
-                      color:
-                        m.role === 'user'
-                          ? 'var(--gold)'
-                          : 'var(--ember-lit)',
-                      marginBottom: 4,
-                    }}
-                  >
-                    {m.role}
-                  </div>
-                  {m.content}
-                </div>
-              ))}
-              {allMessages.length === 0 && (
-                <div style={{ color: 'var(--text-dim)' }}>
-                  {t('common.empty')}
-                </div>
-              )}
-            </div>
-            <div
-              style={{
-                padding: 12,
-                borderTop: '1px solid var(--gold-dim)',
-                display: 'flex',
-                gap: 8,
-              }}
-            >
-              <textarea
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault()
-                    void onSend()
-                  }
-                }}
-                style={{
-                  flex: 1,
-                  minHeight: 44,
-                  padding: 10,
-                  background: 'var(--bg-inset)',
-                  border: '1px solid var(--gold-dim)',
-                  color: 'var(--text-bright)',
-                  fontFamily: 'var(--font-code)',
-                  fontSize: 12,
-                  resize: 'vertical',
-                }}
-              />
-              <Button
-                tone="primary"
-                onClick={() => void onSend()}
-                disabled={sendMsg.isPending}
-              >
-                {t('mock.send')}
-              </Button>
-            </div>
-          </Panel>
+    <AppShellV2>
+      <div className="relative">
+        <div className="absolute right-4 top-4 z-10 flex items-center gap-2">
+          {isError && <ErrorChip />}
+          <WSStatus status={status} />
+        </div>
+        <MatchHeader />
+      </div>
+      <div className="flex flex-col gap-4 px-4 py-4 sm:px-8 lg:flex-row">
+        <div className="flex w-full flex-col gap-4 lg:w-[360px]">
+          <QuestionPanel title={qTitle} description={qDesc} />
+          <div className="hidden lg:block">
+            <InterviewerPanel />
+          </div>
+          <div className="hidden lg:block">
+            <NotesPanel />
+          </div>
+        </div>
+        <div className="flex min-h-[400px] flex-1 flex-col gap-4">
+          <EditorArea />
+          <TranscriptCard messages={transcript} />
+        </div>
+        <div className="flex w-full flex-col gap-4 lg:w-[320px]">
+          <ControlsCard />
+          <EvaluationCard metrics={metrics} />
+          <QATimeline />
+          <div className="lg:hidden">
+            <NotesPanel />
+          </div>
         </div>
       </div>
-    </AppShell>
+    </AppShellV2>
   )
 }

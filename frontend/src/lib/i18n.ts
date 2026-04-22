@@ -1,341 +1,118 @@
 import i18n from 'i18next'
 import { initReactI18next } from 'react-i18next'
 
-const ru = {
-  topbar: {
-    season: 'Season II · The Recursion',
-    xp: 'XP',
-    level: 'Lvl',
+import ruCommon from '../locales/ru/common.json'
+import ruSanctum from '../locales/ru/sanctum.json'
+import ruArena from '../locales/ru/arena.json'
+import ruProfile from '../locales/ru/profile.json'
+import ruDaily from '../locales/ru/daily.json'
+import ruWelcome from '../locales/ru/welcome.json'
+import ruOnboarding from '../locales/ru/onboarding.json'
+import ruSettings from '../locales/ru/settings.json'
+import ruCodex from '../locales/ru/codex.json'
+import ruErrors from '../locales/ru/errors.json'
+
+import enCommon from '../locales/en/common.json'
+import enSanctum from '../locales/en/sanctum.json'
+import enArena from '../locales/en/arena.json'
+import enProfile from '../locales/en/profile.json'
+import enDaily from '../locales/en/daily.json'
+import enWelcome from '../locales/en/welcome.json'
+import enOnboarding from '../locales/en/onboarding.json'
+import enSettings from '../locales/en/settings.json'
+import enCodex from '../locales/en/codex.json'
+import enErrors from '../locales/en/errors.json'
+
+const STORAGE_KEY = 'druz9_lang'
+
+export type Lang = 'ru' | 'en'
+
+export const NAMESPACES = [
+  'common',
+  'sanctum',
+  'arena',
+  'profile',
+  'daily',
+  'welcome',
+  'onboarding',
+  'settings',
+  'codex',
+  'errors',
+] as const
+
+export const resources = {
+  ru: {
+    common: ruCommon,
+    sanctum: ruSanctum,
+    arena: ruArena,
+    profile: ruProfile,
+    daily: ruDaily,
+    welcome: ruWelcome,
+    onboarding: ruOnboarding,
+    settings: ruSettings,
+    codex: ruCodex,
+    errors: ruErrors,
   },
-  // Bible §2.6: these five labels are NEVER translated. Used as literals in Topbar.
-  nav: {
-    sanctum: 'Sanctum',
-    arena: 'Arena',
-    guild: 'Guild',
-    atlas: 'Atlas',
-    codex: 'Codex',
-    profile: 'Profile',
-  },
-  menu: {
-    practice: 'Практика',
-    trials: 'Испытания',
-    training: 'Тренировка',
-  },
-  right: {
-    flasks: 'Флаконы',
-    top5: 'Лига · Топ 5',
-    my_rank: 'Моё место',
-    season_track: 'Сезонный путь',
-  },
-  sections: {
-    algorithms: 'Алгоритмы',
-    sql: 'SQL',
-    go: 'Go',
-    system_design: 'System Design',
-    behavioral: 'Behavioral',
-  },
-  sanctum: {
-    title: 'Святилище',
-    subtitle: 'SANCTUM',
-    quests: 'Ежедневные задания',
-    missions: 'Предстоящие интервью',
-    feed: 'Новости святилища',
-  },
-  arena: {
-    title: 'Арена',
-    subtitle: 'ARENA',
-    find_match: 'Найти противника',
-    cancel: 'Отменить поиск',
-    opponent: 'Противник',
-    you: 'Ты',
-    submit: 'Отправить решение',
-    time_left: 'Осталось',
-  },
-  guild: {
-    title: 'Гильдия',
-    subtitle: 'GUILD',
-    members: 'Члены гильдии',
-    war: 'Гильдейская война',
-    elo: 'ELO гильдии',
-    contribute: 'Внести вклад',
-  },
-  atlas: {
-    title: 'Атлас скиллов',
-    subtitle: 'ATLAS',
-    search: 'Поиск узла...',
-    legend: 'Легенда',
-    unlocked: 'Открыт',
-    locked: 'Закрыт',
-    decaying: 'Декей',
-  },
-  codex: {
-    title: 'Кодекс',
-    subtitle: 'CODEX',
-    podcasts: 'Подкасты',
-    episodes: 'эпизодов',
-    listen: 'Слушать',
-  },
-  profile: {
-    title: 'Профиль',
-    subtitle: 'PROFILE',
-    weekly_report: 'Недельный отчёт',
-    strengths: 'Сильные стороны',
-    weaknesses: 'Слабые зоны',
-    recommendations: 'Рекомендации',
-  },
-  season: {
-    title: 'Сезон',
-    subtitle: 'SEASON',
-    current_tier: 'Текущий уровень',
-    modifiers: 'Модификаторы сезона',
-    reward_track: 'Трек наград',
-  },
-  achievements: {
-    title: 'Достижения',
-    subtitle: 'ACHIEVEMENTS',
-    earned: 'Получено',
-    cosmetics: 'Косметика',
-    title_label: 'Титул',
-    avatar_frame: 'Рамка аватара',
-  },
-  settings: {
-    title: 'Настройки',
-    subtitle: 'SETTINGS',
-    notifications: 'Уведомления',
-    appearance: 'Внешний вид',
-    language: 'Язык',
-    motion: 'Анимации',
-    privacy: 'Приватность',
-    save: 'Сохранить',
-    email_weekly: 'Недельный отчёт на email',
-    email_calendar: 'Напоминания календаря',
-    telegram_daily: 'Ежедневник в Telegram',
-    push_arena: 'Приглашения в арену',
-    push_guild: 'Сигнал гильдейской войны',
-    quiet_hours: 'Тихие часы',
-  },
-  onboarding: {
-    title: 'Посвящение',
-    step: 'Шаг',
-    next: 'Далее',
-    prev: 'Назад',
-    finish: 'Войти в Святилище',
-    step1_title: 'Выбор класса',
-    step2_title: 'Уровень карьеры',
-    step3_title: 'Цели',
-    step4_title: 'Разминка',
-    step5_title: 'Готов',
-  },
-  daily: {
-    title: 'Ежедневное',
-    subtitle: 'DAILY',
-    streak: 'Streak',
-    kata: 'Ката дня',
-    calendar: 'Календарь интервью',
-    readiness: 'Готовность',
-  },
-  mock: {
-    title: 'AI-мок',
-    subtitle: 'MOCK SESSION',
-    chat: 'Диалог',
-    task: 'Задача',
-    code: 'Код',
-    send: 'Отправить',
-    finish: 'Завершить',
-  },
-  mock_result: {
-    title: 'Результат мока',
-    subtitle: 'RESULT',
-    overall: 'Общий балл',
-    replay: 'Воспроизведение',
-  },
-  native: {
-    title: 'AI-Native Round',
-    subtitle: 'NATIVE ROUND',
-    provenance: 'Граф происхождения',
-    assistant: 'AI-ассистент',
-    gates: 'Верификация',
-    authorship: 'Авторство',
-    comprehension: 'Понимание',
-    refactor_quality: 'Рефакторинг',
-    coverage: 'Покрытие',
-    ai_fraction: 'Доля AI',
-    human_fraction: 'Доля автора',
-    pass: 'Пройдено',
-    fail: 'Не пройдено',
-  },
-  common: {
-    loading: 'Загрузка...',
-    empty: 'Пусто',
-    error: 'Ошибка',
+  en: {
+    common: enCommon,
+    sanctum: enSanctum,
+    arena: enArena,
+    profile: enProfile,
+    daily: enDaily,
+    welcome: enWelcome,
+    onboarding: enOnboarding,
+    settings: enSettings,
+    codex: enCodex,
+    errors: enErrors,
   },
 }
 
-const en = {
-  topbar: { season: 'Season II · The Recursion', xp: 'XP', level: 'Lvl' },
-  nav: {
-    sanctum: 'Sanctum',
-    arena: 'Arena',
-    guild: 'Guild',
-    atlas: 'Atlas',
-    codex: 'Codex',
-    profile: 'Profile',
-  },
-  menu: { practice: 'Practice', trials: 'Trials', training: 'Training' },
-  right: {
-    flasks: 'Flasks',
-    top5: 'League Top 5',
-    my_rank: 'My rank',
-    season_track: 'Season Track',
-  },
-  sections: {
-    algorithms: 'Algorithms',
-    sql: 'SQL',
-    go: 'Go',
-    system_design: 'System Design',
-    behavioral: 'Behavioral',
-  },
-  sanctum: {
-    title: 'Sanctum',
-    subtitle: 'SANCTUM',
-    quests: 'Daily Quests',
-    missions: 'Upcoming Interviews',
-    feed: 'Sanctum Feed',
-  },
-  arena: {
-    title: 'Arena',
-    subtitle: 'ARENA',
-    find_match: 'Find Match',
-    cancel: 'Cancel search',
-    opponent: 'Opponent',
-    you: 'You',
-    submit: 'Submit',
-    time_left: 'Time left',
-  },
-  guild: {
-    title: 'Guild',
-    subtitle: 'GUILD',
-    members: 'Members',
-    war: 'Guild War',
-    elo: 'Guild ELO',
-    contribute: 'Contribute',
-  },
-  atlas: {
-    title: 'Skill Atlas',
-    subtitle: 'ATLAS',
-    search: 'Search node...',
-    legend: 'Legend',
-    unlocked: 'Unlocked',
-    locked: 'Locked',
-    decaying: 'Decaying',
-  },
-  codex: {
-    title: 'Codex',
-    subtitle: 'CODEX',
-    podcasts: 'Podcasts',
-    episodes: 'episodes',
-    listen: 'Listen',
-  },
-  profile: {
-    title: 'Profile',
-    subtitle: 'PROFILE',
-    weekly_report: 'Weekly Report',
-    strengths: 'Strengths',
-    weaknesses: 'Weaknesses',
-    recommendations: 'Recommendations',
-  },
-  season: {
-    title: 'Season',
-    subtitle: 'SEASON',
-    current_tier: 'Current Tier',
-    modifiers: 'Season Modifiers',
-    reward_track: 'Reward Track',
-  },
-  achievements: {
-    title: 'Achievements',
-    subtitle: 'ACHIEVEMENTS',
-    earned: 'Earned',
-    cosmetics: 'Cosmetics',
-    title_label: 'Title',
-    avatar_frame: 'Avatar Frame',
-  },
-  settings: {
-    title: 'Settings',
-    subtitle: 'SETTINGS',
-    notifications: 'Notifications',
-    appearance: 'Appearance',
-    language: 'Language',
-    motion: 'Animations',
-    privacy: 'Privacy',
-    save: 'Save',
-    email_weekly: 'Weekly email report',
-    email_calendar: 'Calendar reminders',
-    telegram_daily: 'Telegram daily',
-    push_arena: 'Arena invites',
-    push_guild: 'Guild war push',
-    quiet_hours: 'Quiet hours',
-  },
-  onboarding: {
-    title: 'Initiation',
-    step: 'Step',
-    next: 'Next',
-    prev: 'Back',
-    finish: 'Enter Sanctum',
-    step1_title: 'Choose class',
-    step2_title: 'Career stage',
-    step3_title: 'Goals',
-    step4_title: 'Warm-up',
-    step5_title: 'Ready',
-  },
-  daily: {
-    title: 'Daily',
-    subtitle: 'DAILY',
-    streak: 'Streak',
-    kata: 'Kata of the day',
-    calendar: 'Interview Calendar',
-    readiness: 'Readiness',
-  },
-  mock: {
-    title: 'AI Mock',
-    subtitle: 'MOCK SESSION',
-    chat: 'Chat',
-    task: 'Task',
-    code: 'Code',
-    send: 'Send',
-    finish: 'Finish',
-  },
-  mock_result: {
-    title: 'Mock Result',
-    subtitle: 'RESULT',
-    overall: 'Overall',
-    replay: 'Replay',
-  },
-  native: {
-    title: 'AI-Native Round',
-    subtitle: 'NATIVE ROUND',
-    provenance: 'Provenance Graph',
-    assistant: 'AI Assistant',
-    gates: 'Verification Gates',
-    authorship: 'Authorship',
-    comprehension: 'Comprehension',
-    refactor_quality: 'Refactor Quality',
-    coverage: 'Coverage',
-    ai_fraction: 'AI fraction',
-    human_fraction: 'Human fraction',
-    pass: 'Pass',
-    fail: 'Fail',
-  },
-  common: { loading: 'Loading...', empty: 'Empty', error: 'Error' },
+function detectLang(): Lang {
+  if (typeof window === 'undefined') return 'en'
+  const stored = window.localStorage.getItem(STORAGE_KEY)
+  if (stored === 'ru' || stored === 'en') return stored
+  const browser = (navigator.language || 'en').toLowerCase()
+  if (browser.startsWith('ru')) return 'ru'
+  return 'en'
 }
 
 export async function initI18n() {
+  const lng = detectLang()
   await i18n.use(initReactI18next).init({
-    lng: 'ru',
+    lng,
     fallbackLng: 'en',
+    ns: NAMESPACES as unknown as string[],
+    defaultNS: 'common',
     interpolation: { escapeValue: false },
-    resources: {
-      ru: { translation: ru },
-      en: { translation: en },
-    },
+    resources,
+    returnObjects: true,
+  })
+
+  if (typeof document !== 'undefined') {
+    document.documentElement.lang = lng
+  }
+
+  i18n.on('languageChanged', (l) => {
+    if (typeof document !== 'undefined') {
+      document.documentElement.lang = l
+    }
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem(STORAGE_KEY, l)
+    }
   })
 }
+
+export function changeLanguage(lng: Lang) {
+  return i18n.changeLanguage(lng)
+}
+
+export function currentLanguage(): Lang {
+  return (i18n.language as Lang) || 'en'
+}
+
+export function toggleLanguage() {
+  const next: Lang = currentLanguage() === 'ru' ? 'en' : 'ru'
+  return changeLanguage(next)
+}
+
+export default i18n

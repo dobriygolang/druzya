@@ -1,0 +1,41 @@
+{
+  "since": "{{display}} · Москва · @druz9 с октября 2025",
+  "load_failed": "Не удалось загрузить",
+  "rank": "ранг",
+  "gps": "GPS",
+  "matches": "{{count}} матчей",
+  "streak": "серия",
+  "days": "дней",
+  "class": "класс",
+  "share": "Поделиться",
+  "add_friend": "В друзья",
+  "tabs": {
+    "overview": "Обзор",
+    "matches": "Матчи",
+    "achievements": "Достижения",
+    "guilds": "Гильдии",
+    "stats": "Статистика"
+  },
+  "skills": "Навыки",
+  "achievements_title": "Ачивменты",
+  "guild_label": "ГИЛЬДИЯ",
+  "guild_top": "Топ-3 на сезон 4",
+  "rank_in_guild": "ранг",
+  "your_contribution": "твой вклад",
+  "points": "{{n}} очков",
+  "leaderboard": "Лидерборд",
+  "scopes": {
+    "global": "Глобальный",
+    "friends": "Друзья",
+    "guild": "Гильдия",
+    "region": "Регион"
+  },
+  "table": {
+    "rank": "Ранг",
+    "player": "Игрок",
+    "lp": "LP",
+    "wl": "W-L",
+    "wr": "WR",
+    "delta": "Δ7д"
+  }
+}

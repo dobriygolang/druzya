@@ -1,0 +1,51 @@
+{
+  "title": "Settings",
+  "subtitle": "Manage your account, integrations and preferences.",
+  "nav": {
+    "account": "Account",
+    "billing": "Billing",
+    "integrations": "Integrations",
+    "notifications": "Notifications",
+    "ai": "AI settings",
+    "privacy": "Privacy",
+    "appearance": "Appearance",
+    "danger": "Danger zone"
+  },
+  "profile": "Profile",
+  "load_failed": "Failed to load",
+  "change": "Change",
+  "fields": {
+    "username": "Username",
+    "display": "Display name",
+    "email": "Email",
+    "city": "City",
+    "bio": "Bio"
+  },
+  "city": "Moscow",
+  "bio_default": "Backend engineer. Solving kata every day.",
+  "account_card": "Account",
+  "rows": {
+    "id": "Account ID",
+    "registered": "Registered",
+    "plan": "Plan",
+    "devices": "Connected devices"
+  },
+  "devices_value": "3 devices · MacBook Pro, iPhone, Web",
+  "buy_premium": "Buy Premium",
+  "integrations_title": "Integrations",
+  "connected": "Connected",
+  "not_connected": "Not connected",
+  "manage": "Manage",
+  "connect": "Connect",
+  "appearance_title": "Appearance",
+  "theme_label": "Color theme",
+  "theme_desc": "Pick the interface color scheme.",
+  "theme_auto": "Auto",
+  "theme_auto_desc": "Match system",
+  "theme_dark": "Dark",
+  "theme_dark_desc": "Default",
+  "theme_light": "Light",
+  "theme_light_desc": "For daylight",
+  "language_label": "Interface language",
+  "language_desc": "Applies immediately."
+}

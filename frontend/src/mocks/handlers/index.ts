@@ -10,6 +10,20 @@ import { seasonHandlers } from './season'
 import { settingsHandlers } from './settings'
 import { nativeHandlers } from './native'
 import { slotHandlers } from './slot'
+import { achievementsHandlers } from './achievements'
+import { notificationsHandlers } from './notifications'
+import { friendsHandlers } from './friends'
+import { helpHandlers } from './help'
+import { heroCardsHandlers } from './herocards'
+import { streakHandlers } from './streak'
+import { weeklyHandlers } from './weekly'
+import { matchesHandlers } from './matches'
+import { tournamentHandlers } from './tournament'
+import { dungeonsHandlers } from './dungeons'
+import { calendarHandlers } from './calendar'
+import { sysdesignHandlers } from './sysdesign'
+import { autopsyHandlers } from './autopsy'
+import { replayHandlers } from './replay'
 
 export const handlers = [
   ...authHandlers,
@@ -24,4 +38,18 @@ export const handlers = [
   ...settingsHandlers,
   ...nativeHandlers,
   ...slotHandlers,
+  ...achievementsHandlers,
+  ...notificationsHandlers,
+  ...friendsHandlers,
+  ...helpHandlers,
+  ...heroCardsHandlers,
+  ...streakHandlers,
+  ...weeklyHandlers,
+  ...matchesHandlers,
+  ...tournamentHandlers,
+  ...dungeonsHandlers,
+  ...calendarHandlers,
+  ...sysdesignHandlers,
+  ...autopsyHandlers,
+  ...replayHandlers,
 ]

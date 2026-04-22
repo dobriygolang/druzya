@@ -1,0 +1,18 @@
+node_modules
+dist
+.vite
+
+# Env (committed: .env.example only)
+.env.local
+.env.*.local
+
+# Playwright
+playwright-report/
+test-results/
+.playwright-cache/
+
+# OS / editor
+.DS_Store
+*.log
+.idea
+.vscode

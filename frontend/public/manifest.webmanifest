@@ -1,0 +1,21 @@
+{
+  "name": "druz9",
+  "short_name": "druz9",
+  "description": "Гейм-фицированная платформа подготовки к собесам",
+  "start_url": "/sanctum",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#0A0A0F",
+  "theme_color": "#0A0A0F",
+  "orientation": "any",
+  "lang": "ru",
+  "icons": [
+    { "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "/apple-touch-icon.png", "sizes": "180x180", "type": "image/png", "purpose": "any" }
+  ],
+  "shortcuts": [
+    { "name": "Найти соперника", "url": "/arena" },
+    { "name": "Daily kata", "url": "/daily" },
+    { "name": "Atlas", "url": "/atlas" }
+  ]
+}

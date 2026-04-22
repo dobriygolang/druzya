@@ -1,0 +1,50 @@
+{
+  "nav": {
+    "sanctum": "Sanctum",
+    "arena": "Arena",
+    "kata": "Kata",
+    "guild": "Guild",
+    "atlas": "Atlas",
+    "codex": "Codex",
+    "friends": "Friends",
+    "help": "Help"
+  },
+  "buttons": {
+    "find_opponent": "Find opponent",
+    "start": "Start",
+    "next": "Next",
+    "back": "Back",
+    "cancel": "Cancel",
+    "save": "Save",
+    "submit": "Submit",
+    "run": "Run",
+    "open": "Open",
+    "view_all": "View all →",
+    "create_party": "Create party",
+    "share": "Share",
+    "add_friend": "Add friend",
+    "login": "Sign in"
+  },
+  "labels": {
+    "search_placeholder": "Search kata, friends, guilds…",
+    "loading": "Loading...",
+    "empty": "Empty",
+    "error": "Error",
+    "load_failed": "Failed to load",
+    "season": "Season",
+    "level": "Level",
+    "xp": "XP",
+    "lp": "LP"
+  },
+  "theme": {
+    "label": "Theme",
+    "auto": "Auto",
+    "dark": "Dark",
+    "light": "Light"
+  },
+  "language": {
+    "label": "Language",
+    "ru": "Русский",
+    "en": "English"
+  }
+}

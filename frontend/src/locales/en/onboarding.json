@@ -1,0 +1,68 @@
+{
+  "skip": "Skip",
+  "step_labels": {
+    "1": "1. Sign up",
+    "2": "2. Stack",
+    "3": "3. First kata",
+    "4": "4. Demo match"
+  },
+  "step1": {
+    "tag": "STEP 1 OF 4",
+    "title": "Create an account",
+    "subtitle": "We'll set up your profile, stack and walk you through the first kata. Under 3 minutes.",
+    "username": "@username",
+    "username_ph": "@dima",
+    "email": "Email",
+    "email_ph": "dima@example.com",
+    "password": "Password",
+    "password_ph": "At least 8 characters",
+    "create": "Create account",
+    "or": "or",
+    "have_account": "Already have an account?",
+    "login_arrow": "Sign in →",
+    "ready_first": "Ready for the first duel"
+  },
+  "step2": {
+    "title": "What do you write?",
+    "subtitle": "Pick up to 3 languages — we'll tailor kata, duels and leaderboards to your stack.",
+    "selected": "{{count}} / 3 selected",
+    "back": "Back",
+    "next": "Next",
+    "players": "{{count}} players"
+  },
+  "step3": {
+    "tag": "TUTORIAL",
+    "title": "Let's solve the first kata together",
+    "subtitle": "No rush: from problem to submit, with a tour of the interface and shortcuts.",
+    "f1_title": "Hints at every step",
+    "f1_sub": "We'll cover every UI block — nothing skipped",
+    "f2_title": "Run tests, then submit",
+    "f2_sub": "Tests first, submit second — like real engineers",
+    "f3_title": "Submit the solution + 120 XP",
+    "f3_sub": "First kata, first reward, first leaderboard entry",
+    "back": "Back",
+    "go": "Let's go",
+    "task": "Problem",
+    "task_text": "Given an array of numbers and a target. Return indexes of two numbers that sum to target. Each number used once.",
+    "tooltip_title": "Hit Run to execute tests",
+    "tooltip_sub": "Don't worry — nobody sees your fails"
+  },
+  "step4": {
+    "tag": "AI MENTOR · NO LP, NO TIMER",
+    "title": "Master your first pattern with the AI mentor",
+    "subtitle": "AI watches how you solve, hints in the moment, explains mistakes. This is not a fight — it's growth sparring.",
+    "f1": "At your own pace",
+    "f2": "Real-time hints",
+    "f3": "AI explains every mistake",
+    "ready": "Ready to start sparring?",
+    "ready_sub": "After sparring you'll get the pattern in your Codex and access to ranked mode.",
+    "b1_title": "Pattern unlock",
+    "b1_sub": "Hash Map into your Codex",
+    "b2_title": "+500 XP",
+    "b2_sub": "First-steps booster",
+    "b3_title": "AI Mentor access",
+    "b3_sub": "Unlimited for 7 days",
+    "watch_video": "Watch video",
+    "begin_spar": "Begin sparring"
+  }
+}

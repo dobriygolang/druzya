@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url><loc>https://druz9.online/</loc><changefreq>weekly</changefreq><priority>1.0</priority></url>
+  <url><loc>https://druz9.online/welcome</loc><changefreq>weekly</changefreq><priority>0.95</priority></url>
+  <url><loc>https://druz9.online/sanctum</loc><changefreq>daily</changefreq><priority>0.9</priority></url>
+  <url><loc>https://druz9.online/arena</loc><changefreq>daily</changefreq><priority>0.9</priority></url>
+  <url><loc>https://druz9.online/atlas</loc><changefreq>weekly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://druz9.online/codex</loc><changefreq>weekly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://druz9.online/profile</loc><changefreq>weekly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://druz9.online/daily</loc><changefreq>daily</changefreq><priority>0.8</priority></url>
+  <url><loc>https://druz9.online/lobby</loc><changefreq>weekly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://druz9.online/dungeons</loc><changefreq>weekly</changefreq><priority>0.7</priority></url>
+  <url><loc>https://druz9.online/season</loc><changefreq>weekly</changefreq><priority>0.6</priority></url>
+  <url><loc>https://druz9.online/help</loc><changefreq>monthly</changefreq><priority>0.5</priority></url>
+  <url><loc>https://druz9.online/status</loc><changefreq>daily</changefreq><priority>0.4</priority></url>
+</urlset>

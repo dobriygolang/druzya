@@ -1,0 +1,35 @@
+{
+  "tag": "CODEX · PODCASTS",
+  "title": "Listen on the go",
+  "subtitle": "{{count}} episodes on System Design, career, backend and algorithms. No AI recommendations — just good content.",
+  "subtitle_error": "Failed to load catalog.",
+  "filters": {
+    "all": "All",
+    "system_design": "System Design",
+    "backend": "Backend",
+    "career": "Career",
+    "behavioral": "Behavioral",
+    "algorithms": "Algorithms"
+  },
+  "newest_first": "Newest first",
+  "episode_of_week": "EPISODE OF THE WEEK",
+  "featured_title": "How Tinkoff interviews Senior Backend",
+  "featured_author": "Alexey Sidorov, Tech Lead Tinkoff · 47 minutes",
+  "listens": "{{count}} listens",
+  "all_episodes": "All episodes",
+  "load_failed": "Failed to load",
+  "now_playing": "NOW PLAYING",
+  "stats": "Your stats",
+  "stats_rows": {
+    "listened": "Listened",
+    "hours_month": "Hours/month",
+    "completed": "Completion",
+    "favourite": "Top category"
+  },
+  "playlists": "Playlists",
+  "playlist": {
+    "yandex": "Preparing for Yandex",
+    "system_design": "System Design from zero",
+    "favourites": "Favourites"
+  }
+}

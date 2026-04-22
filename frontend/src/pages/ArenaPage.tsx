@@ -1,573 +1,316 @@
-import { useState } from 'react'
-import { Link } from 'react-router-dom'
-import { useTranslation } from 'react-i18next'
-import { AppShell } from '../components/AppShell'
 import {
-  Panel,
-  PanelHead,
-  PageHeader,
-  Button,
-  InsetGroove,
-  Bar,
-} from '../components/chrome'
-import { useArenaMatchQuery } from '../lib/queries/arena'
-import { useLeaderboardQuery, type SectionKey } from '../lib/queries/rating'
+  ArrowRight,
+  Check,
+  Lock,
+  Plus,
+  Sparkles,
+  Swords,
+  Users,
+  Video,
+  Zap,
+  Lock as LockIcon,
+} from 'lucide-react'
+import { useTranslation } from 'react-i18next'
+import { AppShellV2 } from '../components/AppShell'
+import { Button } from '../components/Button'
+import { Card } from '../components/Card'
+import { Avatar } from '../components/Avatar'
+import type { ReactNode } from 'react'
+import { useRatingMeQuery, useLeaderboardQuery } from '../lib/queries/rating'
 
-const ACTIVE_MATCH_ID = '11111111-1111-1111-1111-111111111111'
-
-/**
- * Bible §3.4 + §3.2 — Arena is a hub of game modes, not a single match
- * viewer. We surface 6 modes (1v1, 2v2, AI-Mock, AI-Native, Solo, Tournament)
- * each as a card with status + CTA. Leaderboard sits on the right; the
- * currently-active match (if any) is a "Resume" strip on top.
- */
-
-type ModeKey =
-  | 'duel_1v1'
-  | 'duel_2v2'
-  | 'ai_mock'
-  | 'ai_native'
-  | 'solo'
-  | 'tournament'
-
-type ModeStatus = 'live' | 'beta' | 'soon'
-
-type Mode = {
-  key: ModeKey
-  title: string
-  tagline: string
-  description: string
-  href?: string
-  /** Path to navigate to when CTA pressed; falls back to ACTIVE_MATCH_ID for live duel. */
-  cta: string
-  status: ModeStatus
-  /** Stylistic tone — affects glow/border accent. */
-  accent: string
-  sigil: JSX.Element
-}
-
-const MODES: Mode[] = [
-  {
-    key: 'duel_1v1',
-    title: 'Дуэль 1×1',
-    tagline: 'Ranked duel · ELO',
-    description:
-      'Один задача, один противник, общий таймер. Победитель — тот, у кого первое решение пройдёт все тест-кейсы.',
-    href: `/arena/match/${ACTIVE_MATCH_ID}`, // placeholder, falls back below
-    cta: 'Найти противника',
-    status: 'live',
-    accent: 'var(--blood-lit)',
-    sigil: (
-      <>
-        <path
-          d="M20 4 L26 16 L20 28 L14 16 Z"
-          stroke="currentColor"
-          strokeWidth="1.6"
-          fill="none"
-        />
-        <path d="M14 16 L26 16" stroke="currentColor" strokeWidth="1.2" />
-      </>
-    ),
-  },
-  {
-    key: 'duel_2v2',
-    title: 'Кооп 2×2',
-    tagline: 'Squad ladder · team-ELO',
-    description:
-      'Две пары игроков, разные секции, общий пул баллов. Зови напарника или матчмейкер подберёт.',
-    cta: 'Скоро',
-    status: 'soon',
-    accent: 'var(--sec-sd-accent)',
-    sigil: (
-      <>
-        <circle cx="14" cy="20" r="6" stroke="currentColor" strokeWidth="1.4" fill="none" />
-        <circle cx="26" cy="20" r="6" stroke="currentColor" strokeWidth="1.4" fill="none" />
-      </>
-    ),
-  },
-  {
-    key: 'ai_mock',
-    title: 'AI-Mock интервью',
-    tagline: 'Full mock · 5 sections',
-    description:
-      'AI ведёт полноценный mock-интервью: задаёт follow-ups, оценивает стресс, выставляет баллы по 4 шкалам.',
-    cta: 'Начать сессию',
-    href: '/mock/demo-session-1',
-    status: 'beta',
-    accent: 'var(--sec-algo-accent)',
-    sigil: (
-      <>
-        <circle cx="20" cy="20" r="14" stroke="currentColor" strokeWidth="1.4" fill="none" />
-        <path
-          d="M14 18 Q20 14 26 18 Q26 22 20 22 L18 26"
-          stroke="currentColor"
-          strokeWidth="1.4"
-          fill="none"
-          strokeLinecap="round"
-        />
-        <circle cx="20" cy="29" r="1" fill="currentColor" />
-      </>
-    ),
-  },
-  {
-    key: 'ai_native',
-    title: 'AI-Native раунд',
-    tagline: 'Pair-prog with AI · provenance',
-    description:
-      'Пишешь код вместе с AI, всё фиксируется в provenance graph. Финальный балл учитывает долю авторства.',
-    cta: 'Открыть раунд',
-    href: '/native/demo-round-1',
-    status: 'beta',
-    accent: 'var(--ember-lit)',
-    sigil: (
-      <>
-        <path
-          d="M20 4 L36 20 L20 36 L4 20 Z"
-          stroke="currentColor"
-          strokeWidth="1.4"
-          fill="none"
-        />
-        <circle cx="20" cy="20" r="6" stroke="currentColor" strokeWidth="1.2" fill="none" />
-        <circle cx="20" cy="20" r="2" fill="currentColor" />
-      </>
-    ),
-  },
-  {
-    key: 'solo',
-    title: 'Соло-задачи',
-    tagline: 'By topic · grind mode',
-    description:
-      'Тренируешь конкретную тему: алгоритмы, SQL, Go-rumetal, system design. Без таймера, можно с подсказками.',
-    cta: 'Открыть атлас',
-    href: '/atlas',
-    status: 'live',
-    accent: 'var(--sec-sql-accent)',
-    sigil: (
-      <>
-        <rect x="6" y="14" width="6" height="20" stroke="currentColor" strokeWidth="1.3" fill="none" />
-        <rect x="17" y="8" width="6" height="26" stroke="currentColor" strokeWidth="1.3" fill="none" />
-        <rect x="28" y="20" width="6" height="14" stroke="currentColor" strokeWidth="1.3" fill="none" />
-      </>
-    ),
-  },
-  {
-    key: 'tournament',
-    title: 'Турнир',
-    tagline: 'Bracket · async',
-    description:
-      'Сезонный кубок: bracket из 16 игроков, дни на каждый матч, бонус-награды по итогам.',
-    cta: 'Скоро',
-    status: 'soon',
-    accent: 'var(--rarity-divine)',
-    sigil: (
-      <>
-        <path
-          d="M10 4 L30 4 L30 14 Q30 22 20 24 Q10 22 10 14 Z"
-          stroke="currentColor"
-          strokeWidth="1.4"
-          fill="none"
-        />
-        <rect x="14" y="24" width="12" height="2" fill="currentColor" />
-        <rect x="12" y="30" width="16" height="3" fill="currentColor" opacity="0.7" />
-        <line x1="6" y1="8" x2="10" y2="8" stroke="currentColor" strokeWidth="1.2" />
-        <line x1="30" y1="8" x2="34" y2="8" stroke="currentColor" strokeWidth="1.2" />
-      </>
-    ),
-  },
-]
-
-const STATUS_BADGE: Record<ModeStatus, { label: string; tone: string }> = {
-  live: { label: 'LIVE', tone: 'var(--tier-normal)' },
-  beta: { label: 'BETA', tone: 'var(--ember-lit)' },
-  soon: { label: 'SOON', tone: 'var(--text-mid)' },
-}
-
-export default function ArenaPage() {
-  const { t } = useTranslation()
-  const [section, setSection] = useState<SectionKey>('algorithms')
-  const { data: activeMatch } = useArenaMatchQuery(ACTIVE_MATCH_ID)
-  const { data: lb } = useLeaderboardQuery(section)
-
+function HeaderRow() {
+  const { t } = useTranslation('arena')
+  const { data: rating, isError } = useRatingMeQuery()
+  const totalMatches = rating?.ratings?.reduce((acc, r) => acc + r.matches_count, 0) ?? 0
   return (
-    <AppShell>
-      <PageHeader
-        title={t('arena.title')}
-        subtitle="Все режимы боёв"
-      />
-
-      {/* Active match strip — only shown if there's an in-progress duel. */}
-      {activeMatch && (
-        <Panel style={{ marginBottom: 20 }}>
-          <div
-            style={{
-              padding: 16,
-              display: 'flex',
-              alignItems: 'center',
-              gap: 16,
-            }}
-          >
-            <span
-              style={{
-                width: 10,
-                height: 10,
-                borderRadius: '50%',
-                background: 'var(--blood-lit)',
-                boxShadow: '0 0 8px var(--blood-bright)',
-                animation: 'sigil-aura 2s ease-in-out infinite',
-              }}
-            />
-            <div style={{ flex: 1 }}>
-              <div
-                className="caps"
-                style={{
-                  color: 'var(--blood-lit)',
-                  fontSize: 9,
-                  letterSpacing: '0.3em',
-                }}
-              >
-                Активная дуэль
-              </div>
-              <div
-                className="heraldic"
-                style={{
-                  color: 'var(--gold-bright)',
-                  fontSize: 14,
-                  marginTop: 2,
-                }}
-              >
-                {activeMatch.task.title} ·{' '}
-                <span
-                  className="mono"
-                  style={{ color: 'var(--text-mid)', fontSize: 11 }}
-                >
-                  {Math.round(activeMatch.task.time_limit_sec)}s left
-                </span>
-              </div>
-            </div>
-            <Link
-              to={`/arena/match/${ACTIVE_MATCH_ID}`}
-              style={{ textDecoration: 'none' }}
-            >
-              <Button tone="primary">Продолжить</Button>
-            </Link>
-          </div>
-        </Panel>
-      )}
-
-      <div
-        data-stagger
-        style={{
-          display: 'grid',
-          gridTemplateColumns: '1.6fr 1fr',
-          gap: 20,
-          alignItems: 'flex-start',
-        }}
-      >
-        {/* Mode grid */}
-        <div
-          style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
-            gap: 14,
-          }}
-        >
-          {MODES.map((m) => (
-            <ModeCard key={m.key} mode={m} />
-          ))}
-        </div>
-
-        {/* Leaderboard */}
-        <Panel>
-          <PanelHead>Таблица лидеров</PanelHead>
-          <div style={{ padding: 16 }}>
-            <div
-              style={{
-                display: 'flex',
-                gap: 0,
-                marginBottom: 12,
-                flexWrap: 'wrap',
-              }}
-            >
-              {(
-                ['algorithms', 'sql', 'go', 'system_design', 'behavioral'] as SectionKey[]
-              ).map((s) => (
-                <button
-                  key={s}
-                  onClick={() => setSection(s)}
-                  style={{
-                    padding: '6px 10px',
-                    fontFamily: 'var(--font-display)',
-                    fontSize: 10,
-                    letterSpacing: '0.18em',
-                    color: section === s ? 'var(--gold-bright)' : 'var(--text-mid)',
-                    background: 'transparent',
-                    borderBottom:
-                      section === s
-                        ? '1px solid var(--gold)'
-                        : '1px solid transparent',
-                    cursor: 'pointer',
-                  }}
-                >
-                  {t(`sections.${s}`)}
-                </button>
-              ))}
-            </div>
-            <div
-              style={{ display: 'flex', flexDirection: 'column', gap: 4 }}
-            >
-              {(lb?.entries ?? []).slice(0, 10).map((e) => {
-                const top = e.rank <= 3
-                const rankColor =
-                  e.rank === 1
-                    ? 'var(--gold-bright)'
-                    : e.rank === 2
-                      ? '#c0c0c0'
-                      : e.rank === 3
-                        ? '#cd7f32'
-                        : 'var(--gold-dim)'
-                return (
-                  <div
-                    key={e.rank}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 10,
-                      padding: '6px 10px',
-                      background: top
-                        ? `linear-gradient(90deg, color-mix(in srgb, ${rankColor} 14%, var(--bg-inset)), var(--bg-inset))`
-                        : 'var(--bg-inset)',
-                      border: `1px solid ${
-                        top ? rankColor : 'var(--gold-faint)'
-                      }`,
-                    }}
-                  >
-                    <span
-                      style={{
-                        width: 22,
-                        fontFamily: 'var(--font-display)',
-                        color: rankColor,
-                        fontSize: 12,
-                      }}
-                    >
-                      {String(e.rank).padStart(2, '0')}
-                    </span>
-                    <ShieldAvatar seed={e.username} compact />
-                    <span
-                      style={{
-                        flex: 1,
-                        color: 'var(--text-bright)',
-                        fontFamily: 'var(--font-display)',
-                        fontSize: 12,
-                      }}
-                    >
-                      {e.username}
-                      {e.title && (
-                        <span
-                          style={{
-                            color: 'var(--ember-lit)',
-                            marginLeft: 8,
-                            fontSize: 9,
-                          }}
-                        >
-                          · {e.title}
-                        </span>
-                      )}
-                    </span>
-                    <span
-                      className="mono"
-                      style={{ color: 'var(--gold-bright)', fontSize: 12 }}
-                    >
-                      {e.elo}
-                    </span>
-                  </div>
-                )
-              })}
-            </div>
-            {lb?.my_rank && (
-              <InsetGroove style={{ marginTop: 12 }}>
-                <Bar value={100 - (lb.my_rank / 100) * 100} max={100} tone="ember" />
-                <div
-                  style={{
-                    marginTop: 4,
-                    fontSize: 10,
-                    color: 'var(--text-mid)',
-                  }}
-                >
-                  Твоё место: #{lb.my_rank}
-                </div>
-              </InsetGroove>
-            )}
-          </div>
-        </Panel>
+    <div className="flex flex-col items-start gap-4 lg:flex-row lg:items-end lg:justify-between">
+      <div className="flex flex-col gap-1.5">
+        <h1 className="font-display text-2xl font-bold leading-[1.1] text-text-primary lg:text-[32px]">
+          {t('title')}
+        </h1>
+        <p className="text-sm text-text-secondary">
+          {isError
+            ? t('subtitle_error')
+            : t('subtitle_played', { count: totalMatches })}
+        </p>
       </div>
-    </AppShell>
-  )
-}
-
-function ModeCard({ mode }: { mode: Mode }) {
-  const { label, tone } = STATUS_BADGE[mode.status]
-  const disabled = mode.status === 'soon'
-  const inner = (
-    <div
-      className={disabled ? '' : 'tile-button'}
-      style={{
-        position: 'relative',
-        padding: 16,
-        height: '100%',
-        display: 'flex',
-        flexDirection: 'column',
-        gap: 10,
-        background:
-          'linear-gradient(180deg, rgba(13,14,18,0.95), rgba(10,12,16,0.95))',
-        border: `1px solid ${disabled ? 'var(--gold-faint)' : mode.accent}`,
-        cursor: disabled ? 'default' : 'pointer',
-        opacity: disabled ? 0.55 : 1,
-        boxShadow: disabled
-          ? 'none'
-          : `0 0 16px 0 color-mix(in srgb, ${mode.accent} 18%, transparent)`,
-      }}
-    >
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          gap: 10,
-        }}
-      >
-        <svg
-          width={36}
-          height={36}
-          viewBox="0 0 40 40"
-          style={{
-            color: mode.accent,
-            filter: disabled
-              ? 'none'
-              : `drop-shadow(0 0 6px ${mode.accent})`,
-          }}
-          aria-hidden
-        >
-          {mode.sigil}
-        </svg>
-        <span
-          style={{
-            fontFamily: 'var(--font-code)',
-            fontSize: 9,
-            letterSpacing: '0.2em',
-            color: tone,
-            border: `1px solid ${tone}`,
-            padding: '2px 6px',
-          }}
-        >
-          {label}
+      <div className="flex items-center gap-3 rounded-xl border border-border bg-surface-1 px-4 py-2.5">
+        <span className="font-mono text-[11px] font-semibold tracking-[0.08em] text-text-muted">
+          {t('party')}
         </span>
-      </div>
-      <div>
-        <div
-          className="heraldic"
-          style={{
-            color: 'var(--gold-bright)',
-            fontSize: 15,
-            letterSpacing: '0.1em',
-          }}
-        >
-          {mode.title}
-        </div>
-        <div
-          className="mono"
-          style={{
-            fontSize: 9,
-            color: mode.accent,
-            letterSpacing: '0.15em',
-            marginTop: 2,
-            textTransform: 'uppercase',
-          }}
-        >
-          {mode.tagline}
-        </div>
-      </div>
-      <div
-        style={{
-          fontSize: 11,
-          color: 'var(--text-mid)',
-          lineHeight: 1.5,
-          flex: 1,
-        }}
-      >
-        {mode.description}
-      </div>
-      <div style={{ marginTop: 4 }}>
-        <Button
-          tone={disabled ? 'ghost' : mode.status === 'live' ? 'blood' : 'primary'}
-          disabled={disabled}
-          size="sm"
-        >
-          {mode.cta}
+        <div className="h-4 w-px bg-border" />
+        <Avatar size="sm" gradient="violet-cyan" initials="Д" />
+        <Button variant="ghost" size="sm" className="px-3">
+          {t('solo')}
         </Button>
       </div>
     </div>
   )
-  if (disabled || !mode.href) return inner
+}
+
+function HeroQueue() {
+  const { t } = useTranslation('arena')
   return (
-    <Link to={mode.href} style={{ textDecoration: 'none', color: 'inherit' }}>
-      {inner}
-    </Link>
+    <div className="flex w-full flex-col items-start justify-between gap-4 rounded-xl border border-border-strong bg-gradient-to-br from-surface-2 to-surface-3 p-5 shadow-card sm:p-7 lg:h-[180px] lg:flex-row lg:items-center lg:gap-0">
+      <div className="flex flex-col gap-2">
+        <span className="inline-flex w-fit items-center gap-1.5 rounded-full bg-accent/15 px-2.5 py-1 font-mono text-[11px] font-semibold tracking-[0.08em] text-accent-hover">
+          <Swords className="h-3 w-3" /> {t('ranked_1v1_tag')}
+        </span>
+        <h2 className="font-display text-[28px] font-bold text-text-primary">
+          {t('ready_for_match')}
+        </h2>
+        <p className="font-mono text-xs text-text-muted">
+          {t('estimate')}
+        </p>
+      </div>
+      <Button
+        variant="primary"
+        icon={<Swords className="h-[18px] w-[18px]" />}
+        iconRight={<ArrowRight className="h-4 w-4" />}
+        className="px-6 py-3.5 text-sm shadow-glow"
+      >
+        {t('find_opponent')}
+      </Button>
+    </div>
   )
 }
 
-/* ---- avatar helper, reused from prior ArenaPage version ---- */
-
-function hashStr(s: string): number {
-  let h = 2166136261
-  for (let i = 0; i < s.length; i++) {
-    h ^= s.charCodeAt(i)
-    h = Math.imul(h, 16777619) >>> 0
-  }
-  return h >>> 0
+type ModelCard = {
+  name: string
+  tier: string
+  free: boolean
+  price?: string
 }
 
-function ShieldAvatar({
-  seed,
-  compact = false,
-}: {
-  seed: string
-  compact?: boolean
-}) {
-  const PALETTE = [
-    ['#6a9fd4', '#1a3a6a'],
-    ['#e09b3a', '#3a1f08'],
-    ['#7f77dd', '#1a1040'],
-    ['#1d9e75', '#04180f'],
-    ['#c8a96e', '#2a2318'],
-    ['#b9a6ff', '#1a0f2a'],
-  ]
-  const h = hashStr(seed)
-  const [stroke, fill] = PALETTE[h % PALETTE.length]
-  const size = compact ? 22 : 36
-  const initial = seed.charAt(0).toUpperCase()
+const MODELS: ModelCard[] = [
+  { name: 'GPT-4o', tier: 'OpenAI', free: true },
+  { name: 'Sonnet 4.5', tier: 'Anthropic', free: true },
+  { name: 'GPT-5', tier: 'OpenAI', free: false, price: '₽490/мес' },
+  { name: 'Opus 4.5', tier: 'Anthropic', free: false, price: '₽790/мес' },
+  { name: 'Custom', tier: 'Свой ключ', free: false, price: '₽290/мес' },
+]
+
+function ModelTile({ m }: { m: ModelCard }) {
   return (
-    <svg
-      width={size}
-      height={size * 1.13}
-      viewBox="0 0 30 34"
-      style={{ flexShrink: 0 }}
+    <div
+      className={[
+        'flex h-[140px] flex-1 flex-col justify-between rounded-lg border p-3.5',
+        m.free
+          ? 'border-border bg-surface-1'
+          : 'border-border bg-surface-1 opacity-70',
+      ].join(' ')}
     >
-      <polygon
-        points="15,2 27,6 27,24 15,32 3,24 3,6"
-        fill={fill}
-        stroke={stroke}
-        strokeWidth="1.3"
-      />
-      <text
-        x="15"
-        y="21"
-        textAnchor="middle"
-        fill={stroke}
-        fontFamily="var(--font-display)"
-        fontSize={compact ? 11 : 14}
+      <div className="flex items-start justify-between">
+        <div className="flex flex-col gap-0.5">
+          <span className="font-display text-sm font-bold text-text-primary">
+            {m.name}
+          </span>
+          <span className="font-mono text-[10px] text-text-muted">{m.tier}</span>
+        </div>
+        {m.free ? (
+          <span className="grid h-6 w-6 place-items-center rounded-full bg-success/20">
+            <Check className="h-3.5 w-3.5 text-success" />
+          </span>
+        ) : (
+          <span className="grid h-6 w-6 place-items-center rounded-full bg-surface-3">
+            <Lock className="h-3.5 w-3.5 text-text-muted" />
+          </span>
+        )}
+      </div>
+      <div className="flex items-center justify-between">
+        {m.free ? (
+          <span className="rounded-full bg-success/15 px-2 py-0.5 font-mono text-[10px] font-semibold text-success">
+            FREE
+          </span>
+        ) : (
+          <span className="rounded-full bg-warn/15 px-2 py-0.5 font-mono text-[10px] font-semibold text-warn">
+            PRO
+          </span>
+        )}
+        {!m.free && m.price && (
+          <span className="font-mono text-[10px] text-text-muted">{m.price}</span>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function AiPanel() {
+  const { t } = useTranslation('arena')
+  return (
+    <Card className="flex-col gap-4 p-5 lg:h-[220px]" interactive={false}>
+      <div className="flex items-start justify-between">
+        <div className="flex flex-col gap-1">
+          <h3 className="flex items-center gap-2 font-display text-lg font-bold text-text-primary">
+            <Sparkles className="h-4 w-4 text-pink" />
+            {t('ai_helper_title')}
+          </h3>
+          <p className="text-xs text-text-secondary">
+            {t('ai_helper_desc')}
+          </p>
+        </div>
+        <span className="font-mono text-[11px] text-text-muted">{t('models_count')}</span>
+      </div>
+      <div className="grid flex-1 grid-cols-2 gap-3 sm:grid-cols-3 lg:flex">
+        {MODELS.map((m) => (
+          <ModelTile key={m.name} m={m} />
+        ))}
+      </div>
+    </Card>
+  )
+}
+
+type Mode = {
+  name: string
+  desc: string
+  count: number
+  time: string
+  icon: ReactNode
+  gradient: string
+}
+
+const MODES: Mode[] = [
+  {
+    name: 'Ranked 1v1',
+    desc: 'Классика. Алгоритмы, рейтинг, LP.',
+    count: 412,
+    time: '~12с',
+    icon: <Swords className="h-7 w-7 text-text-primary" />,
+    gradient: 'from-accent to-pink',
+  },
+  {
+    name: 'Casual 1v1',
+    desc: 'Без рейтинга, для практики.',
+    count: 286,
+    time: '~8с',
+    icon: <Zap className="h-7 w-7 text-text-primary" />,
+    gradient: 'from-cyan to-accent',
+  },
+  {
+    name: 'Ranked 2v2',
+    desc: 'Командный режим, парный код.',
+    count: 168,
+    time: '~24с',
+    icon: <Users className="h-7 w-7 text-text-primary" />,
+    gradient: 'from-pink to-warn',
+  },
+  {
+    name: 'Mock Interview',
+    desc: 'Симуляция собеса с таймером.',
+    count: 94,
+    time: '~45с',
+    icon: <Video className="h-7 w-7 text-text-primary" />,
+    gradient: 'from-success to-cyan',
+  },
+  {
+    name: 'AI-allowed Interview',
+    desc: 'Собес с разрешённым AI.',
+    count: 132,
+    time: '~30с',
+    icon: <Sparkles className="h-7 w-7 text-text-primary" />,
+    gradient: 'from-warn to-danger',
+  },
+  {
+    name: 'Custom Lobby',
+    desc: 'Свои правила, лобби с кодом.',
+    count: 48,
+    time: '~60с',
+    icon: <LockIcon className="h-7 w-7 text-text-primary" />,
+    gradient: 'from-surface-3 to-accent',
+  },
+]
+
+function ModeCard({ m }: { m: Mode }) {
+  const { t } = useTranslation('arena')
+  return (
+    <Card className="flex-1 flex-col gap-4 p-5" interactive>
+      <div
+        className={`grid h-16 w-16 place-items-center rounded-xl bg-gradient-to-br ${m.gradient} shadow-card`}
       >
-        {initial}
-      </text>
-    </svg>
+        {m.icon}
+      </div>
+      <div className="flex flex-col gap-1">
+        <h3 className="font-display text-lg font-bold text-text-primary">{m.name}</h3>
+        <p className="text-xs text-text-secondary">{m.desc}</p>
+      </div>
+      <div className="flex items-center gap-2">
+        <span className="relative flex h-2 w-2">
+          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-success opacity-75" />
+          <span className="relative inline-flex h-2 w-2 rounded-full bg-success" />
+        </span>
+        <span className="font-mono text-[11px] text-text-muted">
+          {t('in_queue', { count: m.count, time: m.time })}
+        </span>
+      </div>
+      <Button variant="ghost" size="sm" className="mt-auto w-full">
+        {t('enter')}
+      </Button>
+    </Card>
+  )
+}
+
+function FriendsStrip() {
+  const { t } = useTranslation('arena')
+  const { data: lb } = useLeaderboardQuery('algorithms')
+  const gradients = ['violet-cyan', 'pink-violet', 'cyan-violet', 'success-cyan'] as const
+  const top = lb?.entries?.slice(0, 4) ?? []
+  const friends =
+    top.length > 0
+      ? top.map((e, i) => ({
+          initials: e.username.charAt(0).toUpperCase(),
+          username: `@${e.username}`,
+          gradient: gradients[i % gradients.length],
+        }))
+      : [
+          { initials: 'А', username: '@alexey', gradient: gradients[0] },
+          { initials: 'К', username: '@kirill_dev', gradient: gradients[1] },
+          { initials: 'Н', username: '@nastya', gradient: gradients[2] },
+          { initials: 'М', username: '@misha', gradient: gradients[3] },
+        ]
+  return (
+    <Card className="flex-col items-start justify-between gap-4 p-4 lg:flex-row lg:items-center" interactive={false}>
+      <div className="flex flex-wrap items-center gap-4">
+        <span className="font-display text-sm font-bold text-text-primary">
+          {t('friends_online', { count: friends.length })}
+        </span>
+        <div className="flex -space-x-2">
+          {friends.map((f, i) => (
+            <Avatar key={i} size="md" gradient={f.gradient} initials={f.initials} status="online" />
+          ))}
+        </div>
+        <span className="font-mono text-[11px] text-text-muted">
+          {friends.map((f) => f.username).join(' · ')}
+        </span>
+      </div>
+      <button className="inline-flex items-center gap-2 rounded-full border border-accent/40 bg-accent/10 px-4 py-2 font-sans text-[13px] font-semibold text-accent-hover hover:bg-accent/20">
+        <Plus className="h-3.5 w-3.5" />
+        {t('create_party')}
+      </button>
+    </Card>
+  )
+}
+
+export default function ArenaPage() {
+  const { t } = useTranslation('arena')
+  return (
+    <AppShellV2>
+      <div className="flex flex-col gap-6 px-4 py-6 sm:px-8 lg:px-20 lg:py-8">
+        <HeaderRow />
+        <HeroQueue />
+        <AiPanel />
+        <div className="flex flex-col gap-4">
+          <div className="flex items-end justify-between">
+            <h2 className="font-display text-xl font-bold text-text-primary">{t('all_modes')}</h2>
+            <span className="font-mono text-[11px] text-text-muted">{t('modes_available')}</span>
+          </div>
+          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+            {MODES.map((m) => (
+              <ModeCard key={m.name} m={m} />
+            ))}
+          </div>
+        </div>
+        <FriendsStrip />
+      </div>
+    </AppShellV2>
   )
 }

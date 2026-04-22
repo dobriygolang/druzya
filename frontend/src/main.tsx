@@ -4,11 +4,12 @@ import { BrowserRouter } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 
 import App from './App'
-import './styles/tokens.css'
-import './styles/motion.css'
+import './styles/main.css'
 import { initI18n } from './lib/i18n'
+import { initObservability, ErrorBoundary } from './lib/observability'
 
 async function bootstrap() {
+  initObservability()
   await initI18n()
 
   if (import.meta.env.VITE_USE_MSW === 'true') {
@@ -24,11 +25,13 @@ async function bootstrap() {
 
   ReactDOM.createRoot(document.getElementById('root')!).render(
     <React.StrictMode>
-      <QueryClientProvider client={queryClient}>
-        <BrowserRouter>
-          <App />
-        </BrowserRouter>
-      </QueryClientProvider>
+      <ErrorBoundary fallback={<div style={{padding:40,color:'#fff',background:'#0A0A0F',minHeight:'100vh'}}>Что-то сломалось. Перезагрузи страницу.</div>}>
+        <QueryClientProvider client={queryClient}>
+          <BrowserRouter>
+            <App />
+          </BrowserRouter>
+        </QueryClientProvider>
+      </ErrorBoundary>
     </React.StrictMode>,
   )
 }
