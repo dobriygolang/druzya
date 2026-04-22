@@ -1,5 +1,5 @@
-// Package httperr provides a uniform HTTP error response shape matching
-// `ErrorResponse` in shared/openapi.yaml.
+// Package httperr предоставляет единый формат HTTP-ответа об ошибке,
+// соответствующий `ErrorResponse` из shared/openapi.yaml.
 package httperr
 
 import (
@@ -26,7 +26,7 @@ func (e *APIError) WithDetails(d map[string]any) *APIError {
 	return e
 }
 
-// Write encodes the error as the canonical JSON shape.
+// Write сериализует ошибку в каноническом JSON-формате.
 func Write(w http.ResponseWriter, err error) {
 	var ae *APIError
 	if !errors.As(err, &ae) {
@@ -37,7 +37,7 @@ func Write(w http.ResponseWriter, err error) {
 	_ = json.NewEncoder(w).Encode(map[string]any{"error": ae})
 }
 
-// Common error constructors.
+// Конструкторы стандартных ошибок.
 func Validation(msg string) *APIError { return New(http.StatusBadRequest, "validation_error", msg) }
 func Unauthorized() *APIError {
 	return New(http.StatusUnauthorized, "unauthorized", "not authenticated")

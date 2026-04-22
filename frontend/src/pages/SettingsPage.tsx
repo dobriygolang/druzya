@@ -360,6 +360,62 @@ function AppearanceCard() {
   )
 }
 
+// Dev-only: lets QA flip the simulated subscription tier so the voice gate
+// (premium-only TTS) can be exercised end-to-end against MSW. The handler
+// reads `localStorage['druz9_user_tier']` at request time.
+function DevTierCard() {
+  const initial = (() => {
+    try {
+      return localStorage.getItem('druz9_user_tier') ?? 'free'
+    } catch {
+      return 'free'
+    }
+  })()
+  const [tier, setTier] = useState(initial)
+  const tiers = ['free', 'premium', 'pro'] as const
+  const set = (t: 'free' | 'premium' | 'pro') => {
+    try {
+      localStorage.setItem('druz9_user_tier', t)
+    } catch {
+      /* noop */
+    }
+    setTier(t)
+    // Force a refetch of /profile/me so consumers see the new tier.
+    window.dispatchEvent(new Event('storage'))
+    window.location.reload()
+  }
+  return (
+    <Card className="flex-col gap-3 border-warn/40 p-6">
+      <div className="flex items-center justify-between">
+        <h3 className="font-display text-lg font-bold text-text-primary">Dev: switch tier</h3>
+        <span className="rounded-full bg-warn/20 px-2 py-0.5 font-mono text-[10px] font-bold text-warn">
+          DEV ONLY
+        </span>
+      </div>
+      <p className="text-[12px] text-text-muted">
+        Симулирует подписку. Premium включает proxy к Edge TTS — Free fallback'ит на браузерный голос.
+      </p>
+      <div className="flex gap-2">
+        {tiers.map((t) => (
+          <button
+            key={t}
+            type="button"
+            onClick={() => set(t)}
+            className={cn(
+              'flex-1 rounded-md border px-3 py-2 font-mono text-[11px] font-semibold uppercase transition-colors',
+              tier === t
+                ? 'border-accent bg-accent/15 text-accent-hover'
+                : 'border-border bg-surface-1 text-text-secondary hover:bg-surface-2',
+            )}
+          >
+            {t}
+          </button>
+        ))}
+      </div>
+    </Card>
+  )
+}
+
 export default function SettingsPage() {
   const { t } = useTranslation('settings')
   const [active, setActive] = useState<NavId>('account')
@@ -379,6 +435,7 @@ export default function SettingsPage() {
             <AccountInfoCard />
             <IntegrationsCard />
             <AppearanceCard />
+            <DevTierCard />
           </div>
         </div>
       </div>

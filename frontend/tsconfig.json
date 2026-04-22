@@ -15,7 +15,9 @@
     "esModuleInterop": true,
     "skipLibCheck": true,
     "allowImportingTsExtensions": false,
-    "baseUrl": ".",
+    // baseUrl deprecated в TS 7. Под bundler moduleResolution paths работают без него
+    // (resolve относительно tsconfig). Если когда-то нужен будет fallback —
+    // верни baseUrl + добавь "ignoreDeprecations": "6.0".
     "paths": {
       "@/*": ["./src/*"]
     }

@@ -1,18 +1,19 @@
-// TODO i18n
 import { useState } from 'react'
 import { Check, Settings, Swords, Trophy, Sparkles, Shield, Award, Bell, Users, Server, Mail, Send, MessageCircle, Code as GithubIcon } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 
 const Github = GithubIcon
 import { AppShellV2 } from '../components/AppShell'
 import { Button } from '../components/Button'
 import { Card } from '../components/Card'
 import { Tabs } from '../components/Tabs'
-import { useNotificationsQuery } from '../lib/queries/notifications'
+import { useNotificationsQuery, type NotificationItem } from '../lib/queries/notifications'
 
 function ErrorChip() {
+  const { t } = useTranslation('pages')
   return (
     <span className="rounded-full bg-danger/15 px-2 py-0.5 font-mono text-[10px] font-semibold text-danger">
-      Не удалось загрузить
+      {t('common.load_failed')}
     </span>
   )
 }
@@ -93,60 +94,87 @@ const YESTERDAY: Notif[] = [
   { icon: <Server className="h-4 w-4 text-text-secondary" />, bg: 'bg-surface-3', body: <>Релиз v2.4 · новые AI-модели</>, sub: 'Sonnet 4.5 теперь по умолчанию', time: 'вчера 12:30' },
 ]
 
+const KIND_VISUAL: Record<NotificationItem['kind'], { icon: JSX.Element; bg: string }> = {
+  challenge: { icon: <Swords className="h-4 w-4 text-accent-hover" />, bg: 'bg-accent/15' },
+  win: { icon: <Trophy className="h-4 w-4 text-success" />, bg: 'bg-success/15' },
+  ai: { icon: <Sparkles className="h-4 w-4 text-pink" />, bg: 'bg-pink/15' },
+  guild: { icon: <Shield className="h-4 w-4 text-cyan" />, bg: 'bg-cyan/15' },
+  achievement: { icon: <Award className="h-4 w-4 text-warn" />, bg: 'bg-warn/15' },
+  friend: { icon: <Users className="h-4 w-4 text-accent-hover" />, bg: 'bg-accent/15' },
+  rank: { icon: <Trophy className="h-4 w-4 text-warn" />, bg: 'bg-warn/15' },
+  streak: { icon: <Bell className="h-4 w-4 text-pink" />, bg: 'bg-pink/15' },
+  system: { icon: <Server className="h-4 w-4 text-text-secondary" />, bg: 'bg-surface-3' },
+}
+
+function fromApi(n: NotificationItem): Notif {
+  const v = KIND_VISUAL[n.kind]
+  return {
+    unread: n.unread,
+    icon: v.icon,
+    bg: v.bg,
+    body: <>{n.title}</>,
+    sub: n.subtitle,
+    time: n.time,
+  }
+}
+
 export default function NotificationsPage() {
+  const { t } = useTranslation('pages')
   const [tab, setTab] = useState('all')
   const { data, isError } = useNotificationsQuery()
   const unread = data?.unread ?? 12
   const tabs = data?.tabs ?? { all: 47, unread: 12, social: 8, match: 18, guild: 9, system: 12 }
+  const todayList: Notif[] = data?.items ? data.items.filter((n) => n.bucket === 'today').map(fromApi) : TODAY
+  const yestList: Notif[] = data?.items ? data.items.filter((n) => n.bucket === 'yesterday').map(fromApi) : YESTERDAY
   return (
     <AppShellV2>
       <div className="flex flex-col gap-6 px-4 py-6 sm:px-8 lg:px-20 lg:py-8">
         <div className="flex flex-col items-start gap-3 lg:flex-row lg:items-end lg:justify-between">
           <div className="flex flex-col gap-1.5">
-            <h1 className="font-display text-2xl lg:text-[32px] font-bold text-text-primary">Уведомления</h1>
-            <p className="text-sm text-text-secondary">{unread} непрочитанных</p>
+            <h1 className="font-display text-2xl lg:text-[32px] font-bold text-text-primary">{t('notifications.title')}</h1>
+            <p className="text-sm text-text-secondary">{t('notifications.unread', { n: unread })}</p>
             {isError && <ErrorChip />}
           </div>
           <div className="flex flex-wrap gap-3">
-            <Button variant="ghost" icon={<Check className="h-4 w-4" />}>Прочитать все</Button>
-            <Button variant="ghost" icon={<Settings className="h-4 w-4" />}>Настройки нотификаций</Button>
+            <Button variant="ghost" icon={<Check className="h-4 w-4" />}>{t('notifications.mark_all')}</Button>
+            <Button variant="ghost" icon={<Settings className="h-4 w-4" />}>{t('notifications.settings')}</Button>
           </div>
         </div>
 
         <Tabs variant="pills" value={tab} onChange={setTab}>
           <Tabs.List>
-            <Tabs.Tab id="all">Все {tabs.all}</Tabs.Tab>
-            <Tabs.Tab id="unread">Непрочитанные {tabs.unread}</Tabs.Tab>
-            <Tabs.Tab id="social">Соц {tabs.social}</Tabs.Tab>
-            <Tabs.Tab id="match">Матчи {tabs.match}</Tabs.Tab>
-            <Tabs.Tab id="guild">Гильдия {tabs.guild}</Tabs.Tab>
-            <Tabs.Tab id="sys">Система {tabs.system}</Tabs.Tab>
+            <Tabs.Tab id="all">{t('notifications.all')} {tabs.all}</Tabs.Tab>
+            <Tabs.Tab id="unread">{t('notifications.unread_tab')} {tabs.unread}</Tabs.Tab>
+            <Tabs.Tab id="social">{t('notifications.social')} {tabs.social}</Tabs.Tab>
+            <Tabs.Tab id="match">{t('notifications.match')} {tabs.match}</Tabs.Tab>
+            <Tabs.Tab id="guild">{t('notifications.guild')} {tabs.guild}</Tabs.Tab>
+            <Tabs.Tab id="sys">{t('notifications.system')} {tabs.system}</Tabs.Tab>
           </Tabs.List>
         </Tabs>
 
         <div className="flex flex-col gap-4 lg:flex-row lg:gap-6">
           <Card className="flex-1 flex-col gap-2 p-4">
             <div className="px-2 pt-2">
-              <span className="font-mono text-[11px] font-semibold tracking-[0.08em] text-text-muted">СЕГОДНЯ</span>
+              <span className="font-mono text-[11px] font-semibold tracking-[0.08em] text-text-muted">{t('notifications.today')}</span>
             </div>
             <div className="flex flex-col divide-y divide-border">
-              {TODAY.map((n, i) => <Row key={i} n={n} />)}
+              {todayList.map((n, i) => <Row key={i} n={n} />)}
             </div>
             <div className="px-2 pt-4">
-              <span className="font-mono text-[11px] font-semibold tracking-[0.08em] text-text-muted">ВЧЕРА</span>
+              <span className="font-mono text-[11px] font-semibold tracking-[0.08em] text-text-muted">{t('notifications.yesterday')}</span>
             </div>
             <div className="flex flex-col divide-y divide-border">
-              {YESTERDAY.map((n, i) => <Row key={i} n={n} />)}
+              {yestList.map((n, i) => <Row key={i} n={n} />)}
             </div>
             <div className="flex items-center justify-between px-3 pt-5">
-              <span className="font-mono text-[11px] font-semibold tracking-[0.08em] text-text-muted">НА ЭТОЙ НЕДЕЛЕ · 3 свёрнуто</span>
-              <button className="text-xs font-semibold text-accent-hover hover:text-accent">Развернуть</button>
+              <span className="font-mono text-[11px] font-semibold tracking-[0.08em] text-text-muted">{t('notifications.this_week')}</span>
+              <button className="text-xs font-semibold text-accent-hover hover:text-accent">{t('notifications.expand')}</button>
             </div>
           </Card>
 
           <div className="flex w-full flex-col gap-4 lg:w-[320px]">
             <Card className="flex-col gap-2 p-5">
-              <h3 className="font-display text-sm font-bold text-text-primary">Быстрые фильтры</h3>
+              <h3 className="font-display text-sm font-bold text-text-primary">{t('notifications.filters')}</h3>
               {[
                 { icon: <Swords className="h-3.5 w-3.5 text-accent-hover" />, l: 'Вызовы', c: 4 },
                 { icon: <Trophy className="h-3.5 w-3.5 text-success" />, l: 'Победы', c: 9 },
@@ -163,7 +191,7 @@ export default function NotificationsPage() {
             </Card>
 
             <Card className="flex-col gap-3 p-5">
-              <h3 className="font-display text-sm font-bold text-text-primary">Тишина</h3>
+              <h3 className="font-display text-sm font-bold text-text-primary">{t('notifications.silence')}</h3>
               {[{ l: 'DND до 09:00', on: true }, { l: 'Выкл. на матчах', on: false }].map((t) => (
                 <div key={t.l} className="flex items-center justify-between">
                   <span className="text-[13px] text-text-secondary">{t.l}</span>
@@ -175,7 +203,7 @@ export default function NotificationsPage() {
             </Card>
 
             <Card className="flex-col gap-3 p-5">
-              <h3 className="font-display text-sm font-bold text-text-primary">Каналы</h3>
+              <h3 className="font-display text-sm font-bold text-text-primary">{t('notifications.channels')}</h3>
               {[
                 { icon: <Mail className="h-3.5 w-3.5" />, l: 'Email', on: true },
                 { icon: <Bell className="h-3.5 w-3.5" />, l: 'Push', on: true },

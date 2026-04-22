@@ -1,13 +1,14 @@
-// TODO i18n
 import { Snowflake, Gem, ArrowRight } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { AppShellV2 } from '../components/AppShell'
 import { Button } from '../components/Button'
-import { useKataStreakQuery } from '../lib/queries/streak'
+import { useKataStreakQuery, type StreakMonth } from '../lib/queries/streak'
 
 function ErrorChip() {
+  const { t } = useTranslation('pages')
   return (
     <span className="rounded-full bg-danger/15 px-2 py-0.5 font-mono text-[10px] font-semibold text-danger">
-      Не удалось загрузить
+      {t('common.load_failed')}
     </span>
   )
 }
@@ -15,22 +16,6 @@ function ErrorChip() {
 const MONTHS = ['ЯНВ', 'ФЕВ', 'МАР', 'АПР', 'МАЙ', 'ИЮН', 'ИЮЛ', 'АВГ', 'СЕН', 'ОКТ', 'НОЯ', 'ДЕК']
 
 type CellKind = 'success' | 'warn' | 'danger' | 'cyan' | 'future'
-
-function makeMonth(monthIdx: number): CellKind[] {
-  const cells: CellKind[] = []
-  for (let i = 0; i < 35; i++) {
-    if (monthIdx > 3) {
-      cells.push('future')
-      continue
-    }
-    const seed = (monthIdx * 11 + i * 7) % 19
-    if (seed === 0) cells.push('cyan')
-    else if (seed === 1) cells.push('danger')
-    else if (seed === 2) cells.push('warn')
-    else cells.push('success')
-  }
-  return cells
-}
 
 const CELL_COLOR: Record<CellKind, string> = {
   success: 'bg-success',
@@ -41,24 +26,25 @@ const CELL_COLOR: Record<CellKind, string> = {
 }
 
 function Hero({ current, best, freezeTokens, freezeMax }: { current: number; best: number; freezeTokens: number; freezeMax: number }) {
+  const { t } = useTranslation('pages')
   return (
     <div className="relative h-auto overflow-hidden bg-gradient-to-br from-surface-3 via-surface-3 to-warn/70 px-4 py-6 sm:px-8 lg:h-[220px] lg:px-20 lg:py-8">
       <div className="flex h-full flex-col items-start justify-between gap-6 lg:flex-row lg:items-center lg:gap-0">
         <div className="flex flex-col gap-3">
           <span className="inline-flex w-fit items-center gap-1.5 rounded-full bg-warn/20 px-3 py-1 font-mono text-[11px] font-bold tracking-[0.08em] text-warn">
-            СЕРИЯ ИЗ {current} ДНЕЙ
+            {t('kata_streak.streak_of', { n: current })}
           </span>
           <div className="flex items-end gap-3">
             <span className="font-display text-6xl sm:text-7xl lg:text-[96px] font-extrabold leading-none text-text-primary">{current}</span>
             <span className="text-4xl sm:text-5xl lg:text-[64px] leading-none">🔥</span>
             <div className="flex flex-col gap-0.5 pb-2">
-              <span className="font-mono text-sm text-text-secondary">дней подряд</span>
-              <span className="font-mono text-xs text-text-muted">лучшая {best}</span>
+              <span className="font-mono text-sm text-text-secondary">{t('kata_streak.days_in_row')}</span>
+              <span className="font-mono text-xs text-text-muted">{t('kata_streak.best', { n: best })}</span>
             </div>
           </div>
         </div>
         <div className="flex flex-col items-end gap-3">
-          <span className="font-mono text-[11px] font-bold tracking-[0.08em] text-text-secondary">FREEZE TOKENS</span>
+          <span className="font-mono text-[11px] font-bold tracking-[0.08em] text-text-secondary">{t('kata_streak.freeze_tokens')}</span>
           <div className="flex gap-2">
             {Array.from({ length: freezeMax }).map((_, i) => (
               <div
@@ -70,9 +56,9 @@ function Hero({ current, best, freezeTokens, freezeMax }: { current: number; bes
               </div>
             ))}
           </div>
-          <span className="font-mono text-xs text-text-secondary">{freezeTokens}/{freezeMax} доступно</span>
+          <span className="font-mono text-xs text-text-secondary">{t('kata_streak.available', { a: freezeTokens, b: freezeMax })}</span>
           <Button variant="ghost" size="sm" className="border-white text-text-primary">
-            Купить ещё · 100 <Gem className="ml-1 inline h-3 w-3 text-cyan" />
+            {t('kata_streak.buy_more')} <Gem className="ml-1 inline h-3 w-3 text-cyan" />
           </Button>
         </div>
       </div>
@@ -80,33 +66,47 @@ function Hero({ current, best, freezeTokens, freezeMax }: { current: number; bes
   )
 }
 
-function CalendarCard({ year, done, missed, freeze, remaining }: { year: number; done: number; missed: number; freeze: number; remaining: number }) {
+function CalendarCard({ year, done, missed, freeze, remaining, months }: { year: number; done: number; missed: number; freeze: number; remaining: number; months: StreakMonth[] }) {
+  const { t } = useTranslation('pages')
   return (
     <div className="flex flex-col gap-5 rounded-2xl bg-surface-2 p-6">
       <div className="flex items-end justify-between">
-        <h2 className="font-display text-xl font-bold text-text-primary">Календарь {year}</h2>
+        <h2 className="font-display text-xl font-bold text-text-primary">{t('kata_streak.calendar', { year })}</h2>
         <div className="flex gap-6">
-          <div className="flex flex-col"><span className="font-display text-base font-bold text-success">{done}</span><span className="text-[10px] text-text-muted">пройдено</span></div>
-          <div className="flex flex-col"><span className="font-display text-base font-bold text-danger">{missed}</span><span className="text-[10px] text-text-muted">пропущено</span></div>
-          <div className="flex flex-col"><span className="font-display text-base font-bold text-cyan">{freeze}</span><span className="text-[10px] text-text-muted">freeze</span></div>
-          <div className="flex flex-col"><span className="font-display text-base font-bold text-text-secondary">{remaining}</span><span className="text-[10px] text-text-muted">ост.</span></div>
+          <div className="flex flex-col"><span className="font-display text-base font-bold text-success">{done}</span><span className="text-[10px] text-text-muted">{t('kata_streak.done')}</span></div>
+          <div className="flex flex-col"><span className="font-display text-base font-bold text-danger">{missed}</span><span className="text-[10px] text-text-muted">{t('kata_streak.missed')}</span></div>
+          <div className="flex flex-col"><span className="font-display text-base font-bold text-cyan">{freeze}</span><span className="text-[10px] text-text-muted">{t('kata_streak.freeze')}</span></div>
+          <div className="flex flex-col"><span className="font-display text-base font-bold text-text-secondary">{remaining}</span><span className="text-[10px] text-text-muted">{t('kata_streak.left')}</span></div>
         </div>
       </div>
       <div className="flex justify-between gap-3 overflow-x-auto">
-        {MONTHS.map((m, mi) => {
-          const cells = makeMonth(mi)
-          const total = mi <= 3 ? 31 : 31
-          const done = mi <= 3 ? (mi === 3 ? 22 : 31) : 0
+        {months.map((mo, mi) => {
+          const cells: CellKind[] = []
+          for (let i = 0; i < 35; i++) {
+            if (i >= mo.total) {
+              cells.push('future')
+            } else if (i < mo.done) {
+              const seed = (mi * 11 + i * 7) % 19
+              if (seed === 0) cells.push('cyan')
+              else if (seed === 1) cells.push('warn')
+              else cells.push('success')
+            } else if (mo.done === 0 && mi >= 4) {
+              cells.push('future')
+            } else {
+              cells.push('danger')
+            }
+          }
+          const isPast = mo.done > 0
           return (
-            <div key={m} className="flex flex-1 flex-col items-center gap-2">
-              <span className="font-mono text-[10px] font-semibold text-text-muted">{m}</span>
+            <div key={mo.name} className="flex flex-1 flex-col items-center gap-2">
+              <span className="font-mono text-[10px] font-semibold text-text-muted">{mo.name}</span>
               <div className="grid grid-cols-7 gap-[2px]">
                 {cells.map((c, i) => (
                   <div key={i} className={`h-3 w-3 rounded-[2px] ${CELL_COLOR[c]}`} />
                 ))}
               </div>
-              <span className={`font-mono text-[10px] ${mi <= 3 ? 'text-success' : 'text-text-muted'}`}>
-                {done}/{total}
+              <span className={`font-mono text-[10px] ${isPast ? 'text-success' : 'text-text-muted'}`}>
+                {mo.done}/{mo.total}
               </span>
             </div>
           )
@@ -117,10 +117,11 @@ function CalendarCard({ year, done, missed, freeze, remaining }: { year: number;
 }
 
 function TodayCard({ today }: { today: { title: string; difficulty: string; section: string; complexity: string; time_left: string; day: number } }) {
+  const { t } = useTranslation('pages')
   return (
     <div className="flex w-full flex-col gap-4 rounded-2xl bg-gradient-to-br from-surface-3 to-accent p-6 lg:w-[480px]">
       <span className="inline-flex w-fit items-center gap-1.5 rounded-full bg-warn/20 px-2.5 py-1 font-mono text-[11px] font-bold text-warn">
-        СЕГОДНЯ · ДЕНЬ {today.day}
+        {t('kata_streak.today', { n: today.day })}
       </span>
       <h3 className="font-display text-2xl font-bold text-text-primary">{today.title}</h3>
       <div className="flex gap-2">
@@ -131,10 +132,10 @@ function TodayCard({ today }: { today: { title: string; difficulty: string; sect
       <div className="mt-auto flex items-end justify-between">
         <div className="flex flex-col">
           <span className="font-display text-xl font-bold text-cyan">{today.time_left}</span>
-          <span className="text-[11px] text-text-muted">до конца дня</span>
+          <span className="text-[11px] text-text-muted">{t('kata_streak.time_left')}</span>
         </div>
         <Button variant="primary" iconRight={<ArrowRight className="h-4 w-4" />} className="bg-text-primary text-bg shadow-none hover:bg-white/90">
-          Решить сейчас
+          {t('kata_streak.solve_now')}
         </Button>
       </div>
     </div>
@@ -142,21 +143,22 @@ function TodayCard({ today }: { today: { title: string; difficulty: string; sect
 }
 
 function CursedCard() {
+  const { t } = useTranslation('pages')
   return (
     <div
       className="flex flex-1 flex-col gap-3 rounded-2xl border-2 border-danger p-6"
       style={{ background: 'linear-gradient(135deg, #2A0510 0%, #1A1A2E 100%)' }}
     >
       <span className="inline-flex w-fit items-center gap-1.5 rounded-full bg-danger/20 px-2.5 py-1 font-mono text-[11px] font-bold text-danger">
-        🎃 ПРОКЛЯТАЯ ПЯТНИЦА
+        {t('kata_streak.cursed_friday')}
       </span>
-      <h3 className="font-display text-lg font-bold text-text-primary">Каждую пятницу — сложнее, ×3 XP</h3>
+      <h3 className="font-display text-lg font-bold text-text-primary">{t('kata_streak.cursed_title')}</h3>
       <p className="text-xs text-text-secondary">
-        Пропустишь — серия не сломается, но сгорит freeze. Пройдёшь — тройная награда и редкий титул.
+        {t('kata_streak.cursed_desc')}
       </p>
       <div className="mt-auto">
         <span className="inline-flex items-center gap-1.5 rounded-full bg-danger/15 px-3 py-1 font-mono text-[11px] font-bold text-danger">
-          Следующая через 2 дня
+          {t('kata_streak.cursed_next')}
         </span>
       </div>
     </div>
@@ -164,18 +166,19 @@ function CursedCard() {
 }
 
 function BossCard() {
+  const { t } = useTranslation('pages')
   return (
     <div className="flex flex-1 flex-col gap-3 rounded-2xl border-2 border-pink bg-gradient-to-br from-surface-3 to-pink p-6">
       <span className="inline-flex w-fit items-center gap-1.5 rounded-full bg-white/15 px-2.5 py-1 font-mono text-[11px] font-bold text-text-primary">
-        👑 BOSS KATA
+        {t('kata_streak.boss')}
       </span>
-      <h3 className="font-display text-lg font-bold text-text-primary">Воскресный босс — редкий титул</h3>
+      <h3 className="font-display text-lg font-bold text-text-primary">{t('kata_streak.boss_title')}</h3>
       <p className="text-xs text-white/80">
-        Раз в неделю — кошмарная задача от топовых интервьюеров. Решишь — попадёшь в зал славы.
+        {t('kata_streak.boss_desc')}
       </p>
       <div className="mt-auto">
         <span className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1 font-mono text-[11px] font-bold text-text-primary">
-          В это воскресенье · через 4 дня
+          {t('kata_streak.boss_when')}
         </span>
       </div>
     </div>
@@ -190,7 +193,7 @@ export default function KataStreakPage() {
       <Hero current={data?.current ?? 12} best={data?.best ?? 47} freezeTokens={data?.freeze_tokens ?? 3} freezeMax={data?.freeze_max ?? 5} />
       <div className="flex flex-col gap-6 px-4 py-6 sm:px-8 lg:px-20 lg:py-7">
         {isError && <ErrorChip />}
-        <CalendarCard year={data?.year ?? 2026} done={data?.total_done ?? 127} missed={data?.total_missed ?? 12} freeze={data?.total_freeze ?? 5} remaining={data?.remaining ?? 121} />
+        <CalendarCard year={data?.year ?? 2026} done={data?.total_done ?? 127} missed={data?.total_missed ?? 12} freeze={data?.total_freeze ?? 5} remaining={data?.remaining ?? 121} months={data?.months ?? MONTHS.map((m, mi) => ({ name: m, done: mi <= 3 ? (mi === 3 ? 22 : 31) : 0, total: 31 }))} />
         <div className="flex flex-col gap-4 lg:h-[280px] lg:flex-row lg:gap-5">
           <TodayCard today={today} />
           <CursedCard />

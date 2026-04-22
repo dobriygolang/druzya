@@ -1,6 +1,6 @@
-// TODO i18n
 import { ArrowLeft, ArrowRight, Share2, Play, Trophy, Sparkles } from 'lucide-react'
 import { useParams } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { AppShellV2 } from '../components/AppShell'
 import { Button } from '../components/Button'
 import { Card } from '../components/Card'
@@ -8,9 +8,10 @@ import { Avatar } from '../components/Avatar'
 import { useMatchEndQuery } from '../lib/queries/matches'
 
 function ErrorChip() {
+  const { t } = useTranslation('pages')
   return (
     <span className="rounded-full bg-danger/15 px-2 py-0.5 font-mono text-[10px] font-semibold text-danger">
-      Не удалось загрузить
+      {t('common.load_failed')}
     </span>
   )
 }
@@ -25,6 +26,7 @@ function StatCard({ label, value, color }: { label: string; value: string; color
 }
 
 export default function MatchEndPage() {
+  const { t } = useTranslation('pages')
   const { matchId } = useParams<{ matchId: string }>()
   const { data, isError } = useMatchEndQuery(matchId)
   const stats = data?.stats ?? { time: '4:21', tests: '15/15', complexity: 'O(n)', lines: '10' }
@@ -37,15 +39,15 @@ export default function MatchEndPage() {
     <AppShellV2>
       <div className="flex h-16 items-center justify-between gap-3 border-b border-border bg-surface-1 px-4 sm:px-8">
         <button className="flex items-center gap-2 text-sm text-text-secondary hover:text-text-primary">
-          <ArrowLeft className="h-4 w-4" /> Назад
+          <ArrowLeft className="h-4 w-4" /> {t('match_end.back')}
         </button>
         <span className="font-mono text-[12px] font-semibold tracking-[0.12em] text-text-secondary">
-          RANKED 1V1 · ROUND COMPLETE
+          {t('match_end.header')}
         </span>
         <div className="flex items-center gap-4">
           {isError && <ErrorChip />}
           <button className="text-text-secondary hover:text-text-primary"><Share2 className="h-4 w-4" /></button>
-          <span className="font-mono text-xs text-text-muted">Match #{matchId ?? '4821'}</span>
+          <span className="font-mono text-xs text-text-muted">{t('match_end.match')} #{matchId ?? '4821'}</span>
         </div>
       </div>
 
@@ -54,15 +56,15 @@ export default function MatchEndPage() {
           <div className="flex flex-col items-start gap-4 sm:flex-row sm:items-center sm:gap-6">
             <div className="flex flex-col items-center gap-2 rounded-lg bg-success/40 px-4 py-6 backdrop-blur">
               <Trophy className="h-6 w-6 text-text-primary" />
-              <span className="font-mono text-[11px] font-bold tracking-[0.12em] text-text-primary">ПОБЕДА</span>
+              <span className="font-mono text-[11px] font-bold tracking-[0.12em] text-text-primary">{t('match_end.win')}</span>
               <span className="font-display text-lg font-bold text-text-primary">+{lpDelta} LP</span>
             </div>
             <div className="flex flex-col gap-2">
               <h1 className="font-display text-3xl sm:text-4xl lg:text-[56px] font-extrabold leading-[1] text-text-primary">
-                {data?.verdict ?? 'Чисто, быстро, красиво'}
+                {data?.verdict ?? t('match_end.verdict_default')}
               </h1>
               <p className="text-sm text-white/80">
-                {data?.task ?? 'Median of Two Sorted Arrays'} · {data?.sub ?? 'побил соперника на 1:42'}
+                {data?.task ?? t('match_end.task_default')} · {data?.sub ?? t('match_end.sub_default')}
               </p>
             </div>
           </div>
@@ -78,10 +80,10 @@ export default function MatchEndPage() {
 
       <div className="flex flex-col gap-6 px-4 py-8 sm:px-8 lg:px-8" style={{ paddingTop: 80 }}>
         <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-          <StatCard label="ВРЕМЯ" value={stats.time} color="text-cyan" />
-          <StatCard label="ТЕСТЫ" value={stats.tests} color="text-success" />
-          <StatCard label="СЛОЖНОСТЬ" value={stats.complexity} color="text-accent-hover" />
-          <StatCard label="СТРОК" value={stats.lines} color="text-warn" />
+          <StatCard label={t('match_end.stats_time')} value={stats.time} color="text-cyan" />
+          <StatCard label={t('match_end.stats_tests')} value={stats.tests} color="text-success" />
+          <StatCard label={t('match_end.stats_complexity')} value={stats.complexity} color="text-accent-hover" />
+          <StatCard label={t('match_end.stats_lines')} value={stats.lines} color="text-warn" />
         </div>
 
         <div className="flex flex-col gap-4 lg:flex-row">
@@ -118,7 +120,7 @@ export default function MatchEndPage() {
               <span>{nextTier}</span>
             </div>
             <div className="rounded-lg border border-warn/40 bg-warn/10 px-3 py-2">
-              <span className="font-mono text-[11px] font-bold text-warn">5-WIN STREAK · +100 XP</span>
+              <span className="font-mono text-[11px] font-bold text-warn">{data?.streak_bonus ?? '5-WIN STREAK · +100 XP'}</span>
             </div>
           </Card>
         </div>
@@ -127,11 +129,11 @@ export default function MatchEndPage() {
           <div className="grid grid-cols-1 divide-y divide-border lg:grid-cols-2 lg:divide-x lg:divide-y-0 h-full">
             <div className="flex flex-col gap-2 p-5">
               <div className="flex items-center justify-between">
-                <span className="font-mono text-[11px] font-semibold text-success">@you · O(n)</span>
-                <span className="font-mono text-[10px] text-text-muted">10 lines</span>
+                <span className="font-mono text-[11px] font-semibold text-success">{data?.your_label ?? '@you · O(n)'}</span>
+                <span className="font-mono text-[10px] text-text-muted">{data?.your_meta ?? '10 lines'}</span>
               </div>
               <pre className="flex-1 overflow-hidden rounded-md bg-bg p-3 font-mono text-[11px] leading-relaxed text-text-secondary">
-{`func median(a, b []int) float64 {
+{data?.your_code ?? `func median(a, b []int) float64 {
   i, j := 0, 0
   m := make([]int, 0, len(a)+len(b))
   for i < len(a) && j < len(b) {
@@ -144,11 +146,11 @@ export default function MatchEndPage() {
             </div>
             <div className="flex flex-col gap-2 p-5">
               <div className="flex items-center justify-between">
-                <span className="font-mono text-[11px] font-semibold text-danger">@kirill_dev · O(n²)</span>
-                <span className="font-mono text-[10px] text-text-muted">28 lines · TLE</span>
+                <span className="font-mono text-[11px] font-semibold text-danger">{data?.their_label ?? '@kirill_dev · O(n²)'}</span>
+                <span className="font-mono text-[10px] text-text-muted">{data?.their_meta ?? '28 lines · TLE'}</span>
               </div>
               <pre className="flex-1 overflow-hidden rounded-md bg-bg p-3 font-mono text-[11px] leading-relaxed text-text-secondary">
-{`func median(a, b []int) float64 {
+{data?.their_code ?? `func median(a, b []int) float64 {
   all := append([]int{}, a...)
   for _, x := range b { all = append(all, x) }
   for i := range all {
@@ -164,11 +166,11 @@ export default function MatchEndPage() {
         </Card>
 
         <div className="flex flex-wrap items-center gap-3">
-          <Button variant="primary" icon={<Swords className="h-4 w-4" />}>Реванш</Button>
-          <Button variant="ghost" icon={<Play className="h-4 w-4" />}>Replay</Button>
-          <Button variant="ghost" icon={<Share2 className="h-4 w-4" />}>Поделиться</Button>
+          <Button variant="primary" icon={<Swords className="h-4 w-4" />}>{t('match_end.rematch')}</Button>
+          <Button variant="ghost" icon={<Play className="h-4 w-4" />}>{t('match_end.replay')}</Button>
+          <Button variant="ghost" icon={<Share2 className="h-4 w-4" />}>{t('match_end.share')}</Button>
           <button className="ml-auto text-sm font-semibold text-accent-hover hover:text-accent">
-            Следующий матч <ArrowRight className="inline h-4 w-4" />
+            {t('match_end.next_match')} <ArrowRight className="inline h-4 w-4" />
           </button>
         </div>
       </div>

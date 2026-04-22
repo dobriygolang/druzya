@@ -1,0 +1,36 @@
+# Alertmanager — routes Prometheus alerts to Telegram via a webhook bridge.
+#
+# The webhook URL is injected at deploy time via the env var
+# ALERTMANAGER_TG_WEBHOOK (e.g. https://tg-bridge.druz9.internal/webhook).
+# Do NOT commit a real URL — use the placeholder below and substitute in
+# the systemd unit / docker-compose env_file.
+
+global:
+  resolve_timeout: 5m
+
+route:
+  receiver: telegram
+  group_by: [alertname, severity]
+  group_wait: 30s
+  group_interval: 5m
+  repeat_interval: 4h
+  routes:
+    - matchers: [severity="page"]
+      receiver: telegram-page
+      group_wait: 10s
+      repeat_interval: 1h
+
+receivers:
+  - name: telegram
+    webhook_configs:
+      - url: ${ALERTMANAGER_TG_WEBHOOK}
+        send_resolved: true
+  - name: telegram-page
+    webhook_configs:
+      - url: ${ALERTMANAGER_TG_WEBHOOK}
+        send_resolved: true
+
+inhibit_rules:
+  - source_matchers: [severity="page"]
+    target_matchers: [severity="warn"]
+    equal: [alertname]

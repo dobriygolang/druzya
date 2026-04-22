@@ -5,6 +5,15 @@ global:
     environment: production
     service: druz9
 
+# Alerting rules — see infra/observability/alerts.yml for thresholds.
+rule_files:
+  - /etc/prometheus/rules/alerts.yml
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets: ["alertmanager:9093"]
+
 scrape_configs:
   - job_name: druz9-api
     metrics_path: /metrics

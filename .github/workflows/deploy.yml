@@ -36,6 +36,32 @@ jobs:
             echo "tag=sha-${GITHUB_SHA::7}" >> $GITHUB_OUTPUT
           fi
 
+      # Pre-flight network probe — quickly distinguishes:
+      #   - TCP unreachable (firewall / wrong port / server down) → fix infra
+      #   - TCP open but SSH auth fails (wrong key) → fix secrets
+      # Doesn't block job; ssh-action will still run and fail loudly if needed.
+      - name: SSH preflight (TCP probe)
+        if: always()
+        env:
+          HOST: ${{ secrets.DEPLOY_HOST }}
+          PORT: ${{ secrets.DEPLOY_PORT || 22 }}
+        run: |
+          set +e
+          RUNNER_IP=$(curl -fs --max-time 5 ifconfig.me || echo "?")
+          echo "Runner egress IP: ${RUNNER_IP}"
+          echo "Probing TCP ${HOST}:${PORT} (5s timeout)..."
+          if timeout 5 bash -c "</dev/tcp/${HOST}/${PORT}" 2>/dev/null; then
+            echo "✅ TCP reachable — connectivity OK"
+          else
+            echo "❌ TCP unreachable. Likely cause:"
+            echo "   • Hetzner Cloud Firewall blocks runner IP for that port"
+            echo "   • SSH daemon listening on a different port than secret says"
+            echo "   • Server down, or domain resolves to wrong IP"
+            echo "Try from your laptop: nc -vzw 5 ${HOST} ${PORT}"
+          fi
+          # Best-effort SSH banner read (helps differentiate from generic TCP)
+          timeout 5 nc -vzw 5 "${HOST}" "${PORT}" 2>&1 | head -5 || true
+
       - name: SSH deploy
         uses: appleboy/ssh-action@v1.0.3
         with:
@@ -43,6 +69,9 @@ jobs:
           username: ${{ secrets.DEPLOY_USER }}
           key: ${{ secrets.DEPLOY_SSH_KEY }}
           port: ${{ secrets.DEPLOY_PORT || 22 }}
+          # Connect timeout 60s (default is 30) — Hetzner can be slow on first connect
+          timeout: 60s
+          command_timeout: 10m
           envs: IMAGE_TAG
           script: |
             export IMAGE_TAG=${{ steps.tag.outputs.tag }}

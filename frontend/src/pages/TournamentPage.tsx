@@ -1,20 +1,22 @@
-// TODO i18n
 import { useParams } from 'react-router-dom'
 import { Check, Gem, Trophy } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { AppShellV2 } from '../components/AppShell'
 import { Button } from '../components/Button'
 import { Avatar } from '../components/Avatar'
 import { useTournamentQuery } from '../lib/queries/tournament'
 
 function ErrorChip() {
+  const { t } = useTranslation('pages')
   return (
     <span className="rounded-full bg-danger/15 px-2 py-0.5 font-mono text-[10px] font-semibold text-danger">
-      Не удалось загрузить
+      {t('common.load_failed')}
     </span>
   )
 }
 
 function Hero({ name, tier, format, prizePool, finalsIn }: { name: string; tier: string; format: string; prizePool: number; finalsIn: string }) {
+  const { t } = useTranslation('pages')
   return (
     <div
       className="flex h-auto flex-col items-start justify-between gap-4 px-4 py-6 sm:px-8 lg:h-[200px] lg:flex-row lg:items-center lg:gap-0 lg:px-20 lg:py-8"
@@ -38,20 +40,20 @@ function Hero({ name, tier, format, prizePool, finalsIn }: { name: string; tier:
           {prizePool.toLocaleString('ru-RU')}
         </span>
         <span className="mt-2 flex items-center gap-1 font-mono text-[12px] text-white/85">
-          <Gem className="h-3.5 w-3.5" /> prize pool
+          <Gem className="h-3.5 w-3.5" /> {t('tournament.prize_pool')}
         </span>
       </div>
       <div className="flex flex-col items-end gap-3">
         <div className="rounded-xl border border-white/20 bg-black/30 px-4 py-3 text-right">
           <span className="block font-mono text-[10px] tracking-[0.12em] text-white/70">
-            СТАРТ ФИНАЛА
+            {t('tournament.finals_start')}
           </span>
           <span className="font-display text-[22px] font-extrabold text-text-primary">
             {finalsIn}
           </span>
         </div>
         <Button variant="ghost" icon={<Check className="h-4 w-4 text-success" />} className="border-success text-success">
-          Зарегистрирован
+          {t('tournament.registered')}
         </Button>
       </div>
     </div>
@@ -61,6 +63,7 @@ function Hero({ name, tier, format, prizePool, finalsIn }: { name: string; tier:
 const ROUND_TABS = ['R16', 'QF', 'SF', 'FINAL']
 
 function FilterStrip() {
+  const { t } = useTranslation('pages')
   return (
     <div className="flex h-auto flex-col gap-3 border-b border-border bg-surface-1 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-8 sm:py-0 lg:h-14 lg:px-20">
       <div className="flex items-center gap-2">
@@ -79,9 +82,9 @@ function FilterStrip() {
         ))}
       </div>
       <span className="font-mono text-[12px] text-text-muted">
-        16 участников · 8 матчей ·{' '}
+        {t('tournament.participants', { n: 16, m: 8 })} ·{' '}
         <a className="text-accent-hover hover:underline" href="#">
-          Правила
+          {t('tournament.rules')}
         </a>
       </span>
     </div>
@@ -99,12 +102,13 @@ type MatchProps = {
 }
 
 function Match({ p1, p2, s1, s2, live, yours, tbd }: MatchProps) {
+  const { t } = useTranslation('pages')
   const borderCls = yours ? 'border-accent' : 'border-border'
   return (
     <div className={`flex flex-col gap-1 rounded-[10px] border bg-surface-1 p-2 ${borderCls}`}>
       {yours && (
         <span className="self-start rounded-full bg-accent px-1.5 py-0 font-mono text-[9px] font-semibold text-text-primary">
-          ТВОЙ МАТЧ
+          {t('tournament.your_match')}
         </span>
       )}
       <div className="flex items-center gap-2">
@@ -127,7 +131,7 @@ function Match({ p1, p2, s1, s2, live, yours, tbd }: MatchProps) {
         {live && (
           <span className="flex items-center gap-1">
             <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-danger" />
-            <span className="font-mono text-[9px] font-semibold text-danger">LIVE</span>
+            <span className="font-mono text-[9px] font-semibold text-danger">{t('tournament.live')}</span>
           </span>
         )}
         {!tbd && (
@@ -145,17 +149,7 @@ function Match({ p1, p2, s1, s2, live, yours, tbd }: MatchProps) {
   )
 }
 
-function Bracket() {
-  const r16: MatchProps[] = [
-    { p1: '@alexey', p2: '@dmitry', s1: 2, s2: 0 },
-    { p1: '@kirill_dev', p2: '@you', s1: 1, s2: 1, live: true, yours: true },
-    { p1: '@nastya', p2: '@misha', s1: 2, s2: 1 },
-    { p1: '@vasya', p2: '@artem', s1: 0, s2: 2 },
-    { p1: '@elena', p2: '@petr', s1: 2, s2: 0 },
-    { p1: '@ivan', p2: '@sergey', s1: 1, s2: 2 },
-    { p1: '@olga', p2: '@gleb', s1: 2, s2: 1 },
-    { p1: '@yana', p2: '@boris', s1: 0, s2: 2 },
-  ]
+function Bracket({ r16, qf, sf }: { r16: MatchProps[]; qf: MatchProps[]; sf: MatchProps[] }) {
   return (
     <div className="flex flex-1 gap-4 overflow-x-auto rounded-2xl bg-surface-2 p-4 lg:p-7">
       <div className="flex w-[200px] flex-shrink-0 flex-col gap-3 lg:flex-1">
@@ -173,17 +167,17 @@ function Bracket() {
         <span className="font-mono text-[11px] font-semibold tracking-[0.08em] text-text-muted">
           QF
         </span>
-        <Match p1="@alexey" p2="TBD" tbd />
-        <Match p1="TBD" p2="TBD" tbd />
-        <Match p1="@elena" p2="TBD" tbd />
-        <Match p1="@olga" p2="TBD" tbd />
+        {qf.map((m, i) => (
+          <Match key={i} {...m} />
+        ))}
       </div>
       <div className="flex w-[200px] flex-shrink-0 flex-col justify-around gap-3 lg:flex-1">
         <span className="font-mono text-[11px] font-semibold tracking-[0.08em] text-text-muted">
           SF
         </span>
-        <Match p1="TBD" p2="TBD" tbd />
-        <Match p1="TBD" p2="TBD" tbd />
+        {sf.map((m, i) => (
+          <Match key={i} {...m} />
+        ))}
       </div>
       <div className="flex w-[200px] flex-shrink-0 flex-col justify-center gap-3 lg:flex-1">
         <span className="font-mono text-[11px] font-semibold tracking-[0.08em] text-warn">
@@ -202,16 +196,17 @@ function Bracket() {
   )
 }
 
-function NextMatchCard() {
+function NextMatchCard({ opponent, when }: { opponent: string; when: string }) {
+  const { t } = useTranslation('pages')
   return (
     <div className="flex flex-col gap-3 rounded-xl bg-accent p-5 shadow-glow">
       <span className="w-fit rounded-full bg-white/20 px-2 py-0.5 font-mono text-[10px] font-semibold text-text-primary">
-        ТВОЙ СЛЕДУЮЩИЙ МАТЧ
+        {t('tournament.next_match')}
       </span>
       <div className="flex items-center justify-around">
         <div className="flex flex-col items-center gap-1.5">
-          <Avatar size="lg" gradient="pink-violet" initials="K" />
-          <span className="font-mono text-[11px] text-text-primary">@kirill_dev</span>
+          <Avatar size="lg" gradient="pink-violet" initials={opponent.charAt(1).toUpperCase()} />
+          <span className="font-mono text-[11px] text-text-primary">{opponent}</span>
         </div>
         <span className="font-display text-[20px] font-extrabold text-text-primary">VS</span>
         <div className="flex flex-col items-center gap-1.5">
@@ -220,22 +215,18 @@ function NextMatchCard() {
         </div>
       </div>
       <span className="text-center font-mono text-[12px] text-white/85">
-        Через 2ч 14м · BO3
+        {when}
       </span>
     </div>
   )
 }
 
-function PredictionsCard() {
-  const rows = [
-    { label: '@kirill vs @you', odds: ['@kirill 1.4x', '@you 2.8x'], yours: true },
-    { label: '@alexey vs @dmitry', odds: ['@alexey 1.2x', '@dmitry 3.2x'] },
-    { label: '@nastya vs @misha', odds: ['@nastya 1.6x', '@misha 2.4x'] },
-  ]
+function PredictionsCard({ rows }: { rows: { label: string; odds: string[]; yours?: boolean }[] }) {
+  const { t } = useTranslation('pages')
   return (
     <div className="flex flex-col gap-3 rounded-xl border border-border bg-surface-2 p-5">
       <div className="flex items-center justify-between">
-        <h3 className="font-display text-[14px] font-bold text-text-primary">Прогнозы</h3>
+        <h3 className="font-display text-[14px] font-bold text-text-primary">{t('tournament.predictions')}</h3>
         <span className="inline-flex items-center gap-1 rounded-full bg-warn/20 px-2 py-0.5 font-mono text-[10px] font-semibold text-warn">
           Bet <Gem className="h-3 w-3" />
         </span>
@@ -262,15 +253,11 @@ function PredictionsCard() {
   )
 }
 
-function StandingsCard() {
-  const rows = [
-    { rank: 1, name: '@oracle_max', score: '+820 💎' },
-    { rank: 2, name: '@bet_master', score: '+640 💎' },
-    { rank: 3, name: '@you', score: '+320 💎', you: true },
-  ]
+function StandingsCard({ rows }: { rows: { rank: number; name: string; score: string; you?: boolean }[] }) {
+  const { t } = useTranslation('pages')
   return (
     <div className="flex flex-col gap-2.5 rounded-xl border border-border bg-surface-2 p-5">
-      <h3 className="font-display text-[14px] font-bold text-text-primary">Топ предсказателей</h3>
+      <h3 className="font-display text-[14px] font-bold text-text-primary">{t('tournament.top_predictors')}</h3>
       {rows.map((r) => (
         <div
           key={r.rank}
@@ -290,9 +277,41 @@ function StandingsCard() {
   )
 }
 
+const FALLBACK_R16: MatchProps[] = [
+  { p1: '@alexey', p2: '@dmitry', s1: 2, s2: 0 },
+  { p1: '@kirill_dev', p2: '@you', s1: 1, s2: 1, live: true, yours: true },
+  { p1: '@nastya', p2: '@misha', s1: 2, s2: 1 },
+  { p1: '@vasya', p2: '@artem', s1: 0, s2: 2 },
+  { p1: '@elena', p2: '@petr', s1: 2, s2: 0 },
+  { p1: '@ivan', p2: '@sergey', s1: 1, s2: 2 },
+  { p1: '@olga', p2: '@gleb', s1: 2, s2: 1 },
+  { p1: '@yana', p2: '@boris', s1: 0, s2: 2 },
+]
+const FALLBACK_QF: MatchProps[] = [
+  { p1: '@alexey', p2: 'TBD', tbd: true },
+  { p1: 'TBD', p2: 'TBD', tbd: true },
+  { p1: '@elena', p2: 'TBD', tbd: true },
+  { p1: '@olga', p2: 'TBD', tbd: true },
+]
+const FALLBACK_SF: MatchProps[] = [
+  { p1: 'TBD', p2: 'TBD', tbd: true },
+  { p1: 'TBD', p2: 'TBD', tbd: true },
+]
+
 export default function TournamentPage() {
   const { id } = useParams<{ id: string }>()
   const { data, isError } = useTournamentQuery(id)
+  const r16 = data?.bracket?.r16 ?? FALLBACK_R16
+  const qf = data?.bracket?.qf ?? FALLBACK_QF
+  const sf = data?.bracket?.sf ?? FALLBACK_SF
+  const nextOpponent = data?.next_match?.opponent ?? '@kirill_dev'
+  const nextWhen = data?.next_match?.in ?? 'Через 2ч 14м · BO3'
+  const predictions = data?.predictions ?? [
+    { label: '@kirill vs @you', odds: ['@kirill 1.4x', '@you 2.8x'], yours: true },
+  ]
+  const standings = data?.standings ?? [
+    { rank: 1, name: '@oracle_max', score: '+820 💎' },
+  ]
   return (
     <AppShellV2>
       <div className="flex flex-col">
@@ -310,11 +329,11 @@ export default function TournamentPage() {
         )}
         <FilterStrip />
         <div className="flex flex-col gap-4 px-4 py-6 sm:px-8 lg:flex-row lg:gap-6 lg:px-20">
-          <Bracket />
+          <Bracket r16={r16} qf={qf} sf={sf} />
           <div className="flex w-full flex-col gap-4 lg:w-[360px]">
-            <NextMatchCard />
-            <PredictionsCard />
-            <StandingsCard />
+            <NextMatchCard opponent={nextOpponent} when={nextWhen} />
+            <PredictionsCard rows={predictions} />
+            <StandingsCard rows={standings} />
           </div>
         </div>
         <div className="hidden">{id}</div>

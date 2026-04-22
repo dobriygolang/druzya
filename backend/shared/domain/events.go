@@ -1,5 +1,5 @@
-// Package domain contains typed domain events published through the EventBus.
-// Domains must not import each other — communication goes only through these events.
+// Package domain содержит типизированные доменные события, публикуемые через EventBus.
+// Домены не должны импортировать друг друга — общение идёт только через эти события.
 package domain
 
 import (
@@ -10,7 +10,7 @@ import (
 	"github.com/google/uuid"
 )
 
-// Event is the marker interface. Every event must return a stable topic name.
+// Event — маркерный интерфейс. Каждое событие обязано возвращать стабильное имя топика.
 type Event interface {
 	Topic() string
 	OccurredAt() time.Time
@@ -237,7 +237,7 @@ func (GuildWarStarted) Topic() string { return "guild.WarStarted" }
 type GuildWarFinished struct {
 	base
 	WarID    uuid.UUID  `json:"war_id"`
-	WinnerID *uuid.UUID `json:"winner_id,omitempty"` // nil if draw
+	WinnerID *uuid.UUID `json:"winner_id,omitempty"` // nil при ничьей
 }
 
 func (GuildWarFinished) Topic() string { return "guild.WarFinished" }
@@ -302,5 +302,5 @@ func (SeasonPointsEarned) Topic() string { return "season.PointsEarned" }
 // Helpers
 // ─────────────────────────────────────────────────────────────────────────
 
-// Now returns a base with current timestamp. Embed in every event constructor.
+// Now возвращает base с текущей меткой времени. Встраивается в конструктор каждого события.
 func Now() base { return base{At: time.Now().UTC()} }

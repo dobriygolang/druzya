@@ -1,0 +1,72 @@
+# Observability stack for druz9. Brought up alongside the main compose:
+#
+#   docker-compose -f docker-compose.yml \
+#                  -f infra/observability/docker-compose.obs.yml up
+#
+# The api container resolves `jaeger`, `loki`, `prometheus` via Docker DNS
+# because both compose files share the network names.
+version: "3.9"
+
+services:
+  jaeger:
+    image: jaegertracing/all-in-one:1.62
+    environment:
+      COLLECTOR_OTLP_ENABLED: "true"
+    ports:
+      - "16686:16686"  # Jaeger UI
+      - "4318:4318"    # OTLP HTTP receiver
+    networks: [obs-net, app-net]
+
+  loki:
+    image: grafana/loki:3.3
+    ports:
+      - "3100:3100"
+    command: -config.file=/etc/loki/local-config.yaml
+    volumes:
+      - loki-data:/loki
+    networks: [obs-net]
+
+  promtail:
+    image: grafana/promtail:3.3
+    volumes:
+      - /var/log:/var/log:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./promtail-config.yml:/etc/promtail/config.yml
+    command: -config.file=/etc/promtail/config.yml
+    networks: [obs-net]
+
+  prometheus:
+    image: prom/prometheus:v3.1.0
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+    ports:
+      - "9090:9090"
+    networks: [obs-net, app-net]
+
+  grafana:
+    image: grafana/grafana:11.4.0
+    ports:
+      - "3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD:-admin}
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./grafana-datasources.yml:/etc/grafana/provisioning/datasources/ds.yml
+      - ./grafana-dashboards-provider.yml:/etc/grafana/provisioning/dashboards/provider.yml
+      - ./grafana-dashboards/:/var/lib/grafana/dashboards/
+    networks: [obs-net]
+
+volumes:
+  loki-data:
+  grafana-data:
+
+networks:
+  obs-net:
+    driver: bridge
+  # Joined from docker-compose.yml so api → jaeger DNS works without
+  # publishing a port on the host. `external: true` is set so a fresh
+  # `up` of *just* this file fails loudly instead of silently creating
+  # an isolated network.
+  app-net:
+    external: true
+    name: druzya_app-net

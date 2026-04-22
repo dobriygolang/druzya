@@ -2,12 +2,12 @@ package domain
 
 import "context"
 
-// Handler processes an event. Returning an error triggers the bus's error strategy
-// (log + continue for in-process; DLQ for NATS/Kafka in production).
+// Handler обрабатывает событие. Возврат ошибки активирует error-стратегию шины
+// (log + continue для in-process; DLQ для NATS/Kafka в проде).
 type Handler func(ctx context.Context, e Event) error
 
-// Bus is the event bus abstraction. In MVP this is in-process (channels);
-// at scale it's replaced by NATS/Kafka without changing handler signatures.
+// Bus — абстракция шины событий. В MVP это in-process (channels);
+// при масштабировании заменяется на NATS/Kafka без изменения сигнатур обработчиков.
 type Bus interface {
 	Publish(ctx context.Context, e Event) error
 	Subscribe(topic string, h Handler)

@@ -1,0 +1,90 @@
+{
+  "title": "druz9 — LLM",
+  "uid": "druz9-llm",
+  "schemaVersion": 39,
+  "version": 1,
+  "editable": true,
+  "tags": ["druz9", "llm"],
+  "refresh": "1m",
+  "time": { "from": "now-24h", "to": "now" },
+  "templating": {
+    "list": [
+      { "name": "datasource", "type": "datasource", "query": "prometheus",
+        "current": { "text": "Prometheus", "value": "Prometheus" } }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "type": "timeseries",
+      "title": "Tokens/min by model + direction",
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "gridPos": { "x": 0, "y": 0, "w": 12, "h": 8 },
+      "targets": [
+        { "expr": "sum by (model, type) (rate(druz9_llm_tokens_total[5m])) * 60", "legendFormat": "{{model}} / {{type}}" }
+      ]
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "Cost (RUB) — last hour",
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "gridPos": { "x": 12, "y": 0, "w": 6, "h": 8 },
+      "targets": [
+        { "expr": "sum(increase(druz9_llm_cost_rub_total[1h]))", "legendFormat": "rub/h" }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyRUB",
+          "thresholds": { "mode": "absolute", "steps": [
+            { "color": "green", "value": null },
+            { "color": "red", "value": 500 }
+          ]}
+        }
+      }
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "Cost (RUB) — today",
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "gridPos": { "x": 18, "y": 0, "w": 6, "h": 8 },
+      "targets": [
+        { "expr": "sum(increase(druz9_llm_cost_rub_total[24h]))", "legendFormat": "rub/24h" }
+      ],
+      "fieldConfig": { "defaults": { "unit": "currencyRUB" } }
+    },
+    {
+      "id": 4,
+      "type": "timeseries",
+      "title": "LLM request latency p50/p95/p99 by model",
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "gridPos": { "x": 0, "y": 8, "w": 24, "h": 9 },
+      "targets": [
+        { "expr": "histogram_quantile(0.50, sum by (model, le) (rate(druz9_llm_request_duration_seconds_bucket[5m])))", "legendFormat": "p50 {{model}}" },
+        { "expr": "histogram_quantile(0.95, sum by (model, le) (rate(druz9_llm_request_duration_seconds_bucket[5m])))", "legendFormat": "p95 {{model}}" },
+        { "expr": "histogram_quantile(0.99, sum by (model, le) (rate(druz9_llm_request_duration_seconds_bucket[5m])))", "legendFormat": "p99 {{model}}" }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "thresholds": { "mode": "absolute", "steps": [
+            { "color": "green", "value": null },
+            { "color": "red", "value": 30 }
+          ]}
+        }
+      }
+    },
+    {
+      "id": 5,
+      "type": "timeseries",
+      "title": "Cumulative cost (RUB) by model",
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "gridPos": { "x": 0, "y": 17, "w": 24, "h": 9 },
+      "targets": [
+        { "expr": "sum by (model) (druz9_llm_cost_rub_total)", "legendFormat": "{{model}}" }
+      ],
+      "fieldConfig": { "defaults": { "unit": "currencyRUB" } }
+    }
+  ]
+}

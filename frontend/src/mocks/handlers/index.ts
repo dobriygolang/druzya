@@ -24,6 +24,7 @@ import { calendarHandlers } from './calendar'
 import { sysdesignHandlers } from './sysdesign'
 import { autopsyHandlers } from './autopsy'
 import { replayHandlers } from './replay'
+import { voiceHandlers } from './voice'
 
 export const handlers = [
   ...authHandlers,
@@ -52,4 +53,5 @@ export const handlers = [
   ...sysdesignHandlers,
   ...autopsyHandlers,
   ...replayHandlers,
+  ...voiceHandlers,
 ]

@@ -11,6 +11,7 @@ import ruOnboarding from '../locales/ru/onboarding.json'
 import ruSettings from '../locales/ru/settings.json'
 import ruCodex from '../locales/ru/codex.json'
 import ruErrors from '../locales/ru/errors.json'
+import ruPages from '../locales/ru/pages.json'
 
 import enCommon from '../locales/en/common.json'
 import enSanctum from '../locales/en/sanctum.json'
@@ -22,6 +23,7 @@ import enOnboarding from '../locales/en/onboarding.json'
 import enSettings from '../locales/en/settings.json'
 import enCodex from '../locales/en/codex.json'
 import enErrors from '../locales/en/errors.json'
+import enPages from '../locales/en/pages.json'
 
 const STORAGE_KEY = 'druz9_lang'
 
@@ -38,6 +40,7 @@ export const NAMESPACES = [
   'settings',
   'codex',
   'errors',
+  'pages',
 ] as const
 
 export const resources = {
@@ -52,6 +55,7 @@ export const resources = {
     settings: ruSettings,
     codex: ruCodex,
     errors: ruErrors,
+    pages: ruPages,
   },
   en: {
     common: enCommon,
@@ -64,6 +68,7 @@ export const resources = {
     settings: enSettings,
     codex: enCodex,
     errors: enErrors,
+    pages: enPages,
   },
 }
 

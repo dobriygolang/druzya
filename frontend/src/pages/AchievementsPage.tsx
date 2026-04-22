@@ -1,13 +1,14 @@
-// TODO i18n
 import { Trophy, Flame, Zap, Shield, Sparkles, Award, Swords, Crown, Lock } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { AppShellV2 } from '../components/AppShell'
 import { Card } from '../components/Card'
-import { useAchievementsQuery } from '../lib/queries/achievements'
+import { useAchievementsQuery, type Achievement as ApiAchievement } from '../lib/queries/achievements'
 
 function ErrorChip() {
+  const { t } = useTranslation('pages')
   return (
     <span className="rounded-full bg-danger/15 px-2 py-0.5 font-mono text-[10px] font-semibold text-danger">
-      Не удалось загрузить
+      {t('common.load_failed')}
     </span>
   )
 }
@@ -39,6 +40,33 @@ const RARITY_TEXT: Record<Rarity, string> = {
   common: 'text-text-muted',
   rare: 'text-cyan',
   legendary: 'text-warn',
+}
+
+const ICON_MAP: Record<string, { icon: React.ReactNode; grad: string }> = {
+  'speed-demon': { icon: <Flame className="h-10 w-10 text-text-primary" />, grad: 'from-warn to-danger' },
+  'first-blood': { icon: <Swords className="h-10 w-10 text-text-primary" />, grad: 'from-pink to-accent' },
+  'streak-master': { icon: <Zap className="h-10 w-10 text-text-primary" />, grad: 'from-cyan to-accent' },
+  'iron-defender': { icon: <Shield className="h-10 w-10 text-text-primary" />, grad: 'from-success to-cyan' },
+  'algo-sage': { icon: <Sparkles className="h-10 w-10 text-text-primary" />, grad: 'from-accent to-pink' },
+  'trophy-hunter': { icon: <Trophy className="h-10 w-10 text-text-primary" />, grad: 'from-warn to-pink' },
+  'champion': { icon: <Crown className="h-10 w-10 text-text-primary" />, grad: 'from-warn to-accent' },
+  'daily-hero': { icon: <Award className="h-10 w-10 text-text-primary" />, grad: 'from-cyan to-success' },
+  'code-warrior': { icon: <Swords className="h-10 w-10 text-text-primary" />, grad: 'from-accent to-cyan' },
+  'spark-caster': { icon: <Sparkles className="h-10 w-10 text-text-primary" />, grad: 'from-pink to-warn' },
+  'guardian': { icon: <Shield className="h-10 w-10 text-text-primary" />, grad: 'from-cyan to-accent' },
+  'inferno': { icon: <Flame className="h-10 w-10 text-text-primary" />, grad: 'from-danger to-warn' },
+}
+
+function toUiAch(a: ApiAchievement): Achievement {
+  const map = ICON_MAP[a.id] ?? { icon: <Trophy className="h-10 w-10 text-text-primary" />, grad: 'from-surface-3 to-bg' }
+  return {
+    name: a.name,
+    progress: a.progress,
+    rarity: a.rarity,
+    icon: map.icon,
+    grad: a.locked ? 'from-surface-3 to-bg' : map.grad,
+    locked: a.locked,
+  }
 }
 
 const ACHS: Achievement[] = [
@@ -95,7 +123,8 @@ function Tile({ a }: { a: Achievement }) {
   )
 }
 
-function FeaturedAch() {
+function FeaturedAch({ name, rarity, description, reward }: { name: string; rarity: Rarity; description: string; reward: string }) {
+  const { t } = useTranslation('pages')
   return (
     <Card className="w-full flex-col gap-4 p-0 lg:w-[320px]">
       <div className="grid h-[180px] place-items-center bg-gradient-to-br from-warn to-danger">
@@ -103,14 +132,14 @@ function FeaturedAch() {
       </div>
       <div className="flex flex-col gap-3 p-5">
         <div className="flex items-center justify-between">
-          <h3 className="font-display text-xl font-bold text-text-primary">Speed Demon</h3>
-          <span className="font-mono text-[11px] font-semibold text-warn">LEGENDARY</span>
+          <h3 className="font-display text-xl font-bold text-text-primary">{name}</h3>
+          <span className={`font-mono text-[11px] font-semibold ${RARITY_TEXT[rarity]}`}>{RARITY_LABEL[rarity]}</span>
         </div>
         <p className="text-xs text-text-secondary">
-          Решить 10 Medium-задач подряд за время менее 5 минут каждая. Только для самых быстрых.
+          {description}
         </p>
         <div className="flex flex-col gap-2">
-          <span className="font-mono text-[11px] font-semibold tracking-[0.08em] text-text-muted">ТРЕБОВАНИЯ</span>
+          <span className="font-mono text-[11px] font-semibold tracking-[0.08em] text-text-muted">{t('achievements.requirements')}</span>
           <ul className="flex flex-col gap-1.5 text-[12px] text-text-secondary">
             <li>· 10 решений Medium</li>
             <li>· каждое менее 5:00</li>
@@ -118,8 +147,8 @@ function FeaturedAch() {
           </ul>
         </div>
         <div className="rounded-lg border border-warn/30 bg-warn/10 p-3">
-          <span className="font-mono text-[11px] font-semibold text-warn">НАГРАДА</span>
-          <p className="mt-1 text-sm font-bold text-text-primary">+500 XP · +Title "Speed Demon"</p>
+          <span className="font-mono text-[11px] font-semibold text-warn">{t('achievements.reward')}</span>
+          <p className="mt-1 text-sm font-bold text-text-primary">{reward}</p>
         </div>
       </div>
     </Card>
@@ -127,34 +156,41 @@ function FeaturedAch() {
 }
 
 export default function AchievementsPage() {
+  const { t } = useTranslation('pages')
   const { data, isError } = useAchievementsQuery()
   const total = data?.total ?? 47
   const unlocked = data?.unlocked ?? 23
   const rare = data?.rare_count ?? 6
   const counts = data?.counts ?? { common: 30, rare: 12, legendary: 5, hidden: 12 }
+  const items = data?.items ? data.items.map(toUiAch) : ACHS
+  const featured = data?.items?.find((a) => a.id === data.featured_id)
+  const featuredName = featured?.name ?? 'Speed Demon'
+  const featuredRarity = (featured?.rarity ?? 'legendary') as Rarity
+  const featuredDesc = featured?.description ?? 'Решить 10 Medium-задач подряд за время менее 5 минут каждая. Только для самых быстрых.'
+  const featuredReward = featured?.reward ?? '+500 XP · +Title "Speed Demon"'
   return (
     <AppShellV2>
       <div className="flex flex-col gap-5 px-4 pb-6 pt-6 sm:px-8 lg:px-20 lg:pb-7 lg:pt-7">
         <div className="flex flex-col gap-1.5">
-          <h1 className="font-display text-2xl lg:text-[32px] font-bold leading-[1.1] text-text-primary">Ачивки</h1>
-          <p className="text-sm text-text-secondary">{unlocked} / {total} разблокировано · {rare} редких</p>
+          <h1 className="font-display text-2xl lg:text-[32px] font-bold leading-[1.1] text-text-primary">{t('achievements.title')}</h1>
+          <p className="text-sm text-text-secondary">{t('achievements.summary', { unlocked, total, rare })}</p>
           {isError && <ErrorChip />}
         </div>
         <div className="flex flex-wrap gap-2">
-          <FilterChip label={`All · ${total}`} active />
-          <FilterChip label={`Разблокированы · ${unlocked}`} />
-          <FilterChip label={`Скрытые · ${counts.hidden}`} />
-          <FilterChip label={`Common · ${counts.common}`} />
-          <FilterChip label={`Rare · ${counts.rare}`} />
-          <FilterChip label={`Legendary · ${counts.legendary}`} />
+          <FilterChip label={`${t('achievements.all')} · ${total}`} active />
+          <FilterChip label={`${t('achievements.unlocked')} · ${unlocked}`} />
+          <FilterChip label={`${t('achievements.hidden')} · ${counts.hidden}`} />
+          <FilterChip label={`${t('achievements.common')} · ${counts.common}`} />
+          <FilterChip label={`${t('achievements.rare')} · ${counts.rare}`} />
+          <FilterChip label={`${t('achievements.legendary')} · ${counts.legendary}`} />
         </div>
         <div className="flex flex-col gap-4 lg:flex-row lg:gap-6">
           <div className="grid flex-1 grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
-            {ACHS.map((a, i) => (
+            {items.map((a, i) => (
               <Tile key={i} a={a} />
             ))}
           </div>
-          <FeaturedAch />
+          <FeaturedAch name={featuredName} rarity={featuredRarity} description={featuredDesc} reward={featuredReward} />
         </div>
       </div>
     </AppShellV2>

@@ -2,7 +2,7 @@
 // Falls back to a generic wrapper if the generated schema isn't present.
 
 import { api, API_BASE, isMockMode } from '../apiClient'
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
+ 
 import type { paths } from '../../api/generated/schema'
 
 type HttpMethod = 'get' | 'put' | 'post' | 'delete' | 'options' | 'head' | 'patch' | 'trace'

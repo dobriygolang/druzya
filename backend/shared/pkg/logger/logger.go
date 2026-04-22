@@ -5,8 +5,8 @@ import (
 	"os"
 )
 
-// New returns a structured slog logger configured for the given environment.
-// In production: JSON handler at Info level. In development: text handler at Debug level.
+// New возвращает структурированный slog logger, настроенный под указанное окружение.
+// В production: JSON handler на уровне Info. В dev: текстовый handler на уровне Debug.
 func New(env string) *slog.Logger {
 	var h slog.Handler
 	switch env {
@@ -15,5 +15,5 @@ func New(env string) *slog.Logger {
 	default:
 		h = slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelDebug})
 	}
-	return slog.New(h)
+	return slog.New(&traceHandler{inner: h})
 }

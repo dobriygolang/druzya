@@ -26,6 +26,7 @@ export type Profile = {
   global_power_score: number
   career_stage: string
   subscription: Subscription
+  tier?: 'free' | 'premium' | 'pro'
   ai_credits: number
   created_at: string
   achievements?: Achievement[]

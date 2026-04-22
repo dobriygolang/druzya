@@ -1,0 +1,131 @@
+# Prometheus alerting rules — druz9
+#
+# Loaded by Prometheus via `rule_files: [alerts.yml]` in prometheus.yml.
+# Alertmanager routes everything through the Telegram webhook configured
+# at $ALERTMANAGER_TG_WEBHOOK (placeholder — wire into alertmanager.yml).
+#
+# Thresholds mirror druz9-bible.md §12. When changing a threshold, also
+# update the bible AND the Grafana panel that uses the same expression.
+
+groups:
+  - name: druz9-http
+    interval: 30s
+    rules:
+      - alert: HTTPLatencyP99High
+        expr: |
+          histogram_quantile(0.99,
+            sum by (le) (rate(druz9_http_request_duration_seconds_bucket[5m]))
+          ) > 2
+        for: 5m
+        labels: { severity: page }
+        annotations:
+          summary: "HTTP p99 > 2s for 5m"
+          description: "p99 latency = {{ $value | humanizeDuration }}"
+
+      - alert: HTTPErrorRateHigh
+        expr: |
+          sum(rate(druz9_http_errors_total[5m]))
+          / sum(rate(druz9_http_requests_total[5m])) > 0.01
+        for: 5m
+        labels: { severity: page }
+        annotations:
+          summary: "HTTP error rate > 1% for 5m"
+          description: "Current rate = {{ $value | humanizePercentage }}"
+
+  - name: druz9-ws
+    interval: 30s
+    rules:
+      - alert: WSConnectionsHigh
+        expr: sum(druz9_ws_active_connections) > 500
+        for: 5m
+        labels: { severity: warn }
+        annotations:
+          summary: "WS connections > 500"
+
+  - name: druz9-llm
+    interval: 30s
+    rules:
+      - alert: LLMRequestSlow
+        expr: |
+          histogram_quantile(0.99,
+            sum by (le) (rate(druz9_llm_request_duration_seconds_bucket[5m]))
+          ) > 30
+        for: 10m
+        labels: { severity: warn }
+        annotations:
+          summary: "LLM p99 latency > 30s"
+
+      - alert: LLMSpendHigh
+        expr: sum(increase(druz9_llm_cost_rub_total[1h])) > 500
+        for: 5m
+        labels: { severity: page }
+        annotations:
+          summary: "LLM spend > 500 RUB/h (~5 USD/h)"
+          description: "Spend last hour: {{ $value }} RUB"
+
+  - name: druz9-judge0
+    interval: 30s
+    rules:
+      - alert: Judge0BacklogHigh
+        expr: druz9_judge0_pending_submissions > 50
+        for: 5m
+        labels: { severity: warn }
+        annotations:
+          summary: "Judge0 backlog > 50 submissions"
+
+  - name: druz9-business
+    interval: 5m
+    rules:
+      - alert: MockDropoutHigh
+        expr: |
+          sum(rate(druz9_mock_sessions_total{status="abandoned"}[1h]))
+          / sum(rate(druz9_mock_sessions_total[1h])) > 0.4
+        for: 30m
+        labels: { severity: warn }
+        annotations:
+          summary: "Mock abandonment > 40% / 1h"
+
+      - alert: QueueWaitTooLong
+        expr: |
+          sum(rate(druz9_queue_wait_seconds_sum[10m]))
+          / sum(rate(druz9_queue_wait_seconds_count[10m])) > 180
+        for: 10m
+        labels: { severity: warn }
+        annotations:
+          summary: "Avg matchmaking wait > 3 min"
+
+      # DAU drop alert — relies on the periodic reaper writing
+      # druz9_active_users{tier=...} every minute.
+      - alert: DAUDrop20Pct
+        expr: |
+          (sum(druz9_active_users) offset 1d)
+          - sum(druz9_active_users)
+          > 0.2 * (sum(druz9_active_users) offset 1d)
+        for: 1h
+        labels: { severity: page }
+        annotations:
+          summary: "DAU dropped > 20% vs yesterday"
+
+  - name: druz9-infra
+    interval: 30s
+    rules:
+      - alert: PostgresPoolNearMax
+        expr: pg_stat_activity_count / pg_settings_max_connections > 0.8
+        for: 5m
+        labels: { severity: page }
+        annotations:
+          summary: "Postgres connection pool > 80% used"
+
+      - alert: RedisMemoryNearMax
+        expr: redis_memory_used_bytes / redis_memory_max_bytes > 0.8
+        for: 5m
+        labels: { severity: warn }
+        annotations:
+          summary: "Redis memory > 80% used"
+
+      - alert: DiskAlmostFull
+        expr: node_filesystem_avail_bytes / node_filesystem_size_bytes < 0.2
+        for: 10m
+        labels: { severity: page }
+        annotations:
+          summary: "Filesystem < 20% free on {{ $labels.mountpoint }}"

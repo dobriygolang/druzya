@@ -15,6 +15,9 @@ const profileFull = {
   global_power_score: 1584,
   career_stage: 'senior',
   subscription: { plan: 'seeker', current_period_end: '2026-06-01T00:00:00Z' },
+  // Mock-only: dev can override via localStorage('druz9_user_tier'). The
+  // actual response interpolates the override at request time (see handler).
+  tier: 'free' as 'free' | 'premium' | 'pro',
   ai_credits: 240,
   created_at: '2025-11-14T10:00:00Z',
   avatar_frame: 'crimson_sigil',
@@ -105,7 +108,16 @@ const weeklyReport = {
 }
 
 export const profileHandlers = [
-  http.get(`${base}/profile/me`, () => HttpResponse.json(profileFull)),
+  http.get(`${base}/profile/me`, () => {
+    let tier: 'free' | 'premium' | 'pro' = 'free'
+    try {
+      const v = typeof localStorage !== 'undefined' ? localStorage.getItem('druz9_user_tier') : null
+      if (v === 'premium' || v === 'pro' || v === 'free') tier = v
+    } catch {
+      /* noop */
+    }
+    return HttpResponse.json({ ...profileFull, tier })
+  }),
   http.get(`${base}/profile/me/atlas`, () => HttpResponse.json(atlas)),
   http.get(`${base}/profile/me/report`, () => HttpResponse.json(weeklyReport)),
   http.get(`${base}/profile/:username`, ({ params }) =>
