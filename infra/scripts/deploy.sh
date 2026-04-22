@@ -26,6 +26,12 @@ export API_IMAGE="${IMAGE}:${TAG}"
 echo "API_IMAGE=${API_IMAGE}" > .deploy.env
 $COMPOSE pull api migrate
 
+log "starting infra services (postgres/redis/minio/clickhouse) before app"
+# api зависит от Redis/MinIO/ClickHouse через сетевой DNS; если они не
+# подняты — модули падают с "lookup redis: no such host" и прочим. Поднимаем
+# инфру заранее, потом миграции, потом api.
+$COMPOSE up -d postgres redis minio clickhouse
+
 log "applying migrations"
 $COMPOSE run --rm migrate || { echo "migrations FAILED"; exit 1; }
 

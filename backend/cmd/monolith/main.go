@@ -17,6 +17,14 @@ import (
 )
 
 func main() {
+	// Subcommand-диспатч. Сейчас единственная команда — `migrate`,
+	// которая прогоняет goose по POSTGRES_DSN и выходит. Без аргументов
+	// бинарь, как и раньше, поднимает полный API.
+	if len(os.Args) > 1 && os.Args[1] == "migrate" {
+		runMigrate(os.Args[2:])
+		return
+	}
+
 	cfg, err := config.Load()
 	if err != nil {
 		slog.Error("config load failed", "err", err)

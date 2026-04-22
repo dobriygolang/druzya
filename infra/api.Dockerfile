@@ -16,6 +16,9 @@ RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o /out/monolith ./backen
 FROM gcr.io/distroless/static-debian12:nonroot
 WORKDIR /app
 COPY --from=build /out/monolith /app/monolith
+# Миграции лежат рядом с бинарём — subcommand `monolith migrate up` ищет их
+# в /app/migrations (см. backend/cmd/monolith/migrate.go).
+COPY backend/migrations /app/migrations
 USER nonroot:nonroot
 EXPOSE 8080
 ENTRYPOINT ["/app/monolith"]
