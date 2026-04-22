@@ -11,7 +11,8 @@ set -euo pipefail
 log() { printf '\n\033[1;36m==>\033[0m %s\n' "$*"; }
 
 APP_DIR=${APP_DIR:-/opt/druz9}
-IMAGE=${API_IMAGE:-ghcr.io/dobriygolang/druz9-api}
+API_IMAGE_BASE=${API_IMAGE:-ghcr.io/dobriygolang/druz9-api}
+WEB_IMAGE_BASE=${WEB_IMAGE:-ghcr.io/dobriygolang/druz9-web}
 TAG=${IMAGE_TAG:-latest}
 COMPOSE="docker compose -f $APP_DIR/infra/docker-compose.prod.yml --env-file $APP_DIR/.env.prod"
 
@@ -21,10 +22,23 @@ log "fetching latest repo state"
 git fetch --all --tags --prune
 git reset --hard origin/main
 
-log "pulling image ${IMAGE}:${TAG}"
-export API_IMAGE="${IMAGE}:${TAG}"
-echo "API_IMAGE=${API_IMAGE}" > .deploy.env
-$COMPOSE pull api migrate
+log "pulling images api=${API_IMAGE_BASE}:${TAG} web=${WEB_IMAGE_BASE}:${TAG}"
+export API_IMAGE="${API_IMAGE_BASE}:${TAG}"
+export WEB_IMAGE="${WEB_IMAGE_BASE}:${TAG}"
+{
+    echo "API_IMAGE=${API_IMAGE}"
+    echo "WEB_IMAGE=${WEB_IMAGE}"
+} > .deploy.env
+# `web` тегаем тем же sha, что и `api`. Если конкретный sha web-образа ещё не
+# опубликован (например, в этом коммите фронт не менялся и job-image-web был
+# скипнут), фолбэчимся на :latest, чтобы деплой не падал.
+if ! docker pull "${WEB_IMAGE}" 2>/dev/null; then
+    log "web image ${WEB_IMAGE} not found, falling back to ${WEB_IMAGE_BASE}:latest"
+    export WEB_IMAGE="${WEB_IMAGE_BASE}:latest"
+    sed -i "s|^WEB_IMAGE=.*|WEB_IMAGE=${WEB_IMAGE}|" .deploy.env
+    docker pull "${WEB_IMAGE}"
+fi
+$COMPOSE pull api migrate nginx
 
 log "starting infra services (postgres/redis/minio/clickhouse) before app"
 # api зависит от Redis/MinIO/ClickHouse через сетевой DNS; если они не
@@ -38,7 +52,9 @@ $COMPOSE run --rm migrate || { echo "migrations FAILED"; exit 1; }
 log "rolling restart of api + support services"
 $COMPOSE up -d --no-deps --force-recreate api
 $COMPOSE up -d --no-deps prometheus loki promtail grafana || true
-$COMPOSE up -d --no-deps nginx
+# nginx тоже force-recreate: образ druz9-web мог обновиться на тот же :latest
+# тег, и без --force-recreate compose оставит старый контейнер.
+$COMPOSE up -d --no-deps --force-recreate nginx
 
 log "waiting for /health/ready"
 # Бьём по nginx через https://localhost с -k: серт у нас на druz9.online,

@@ -1,4 +1,5 @@
-# Build from the repo root so go.work + all service modules come along.
+# API-образ: только Go-монолит. Фронт собирается отдельно
+# (см. infra/web.Dockerfile → ghcr.io/.../druz9-web).
 FROM golang:1.25-alpine AS build
 WORKDIR /src
 

@@ -33,15 +33,16 @@ volumes:
 services:
   # ── Edge
   nginx:
-    image: nginx:1.27-alpine
+    # Кастомный web-образ: nginx + встроенный билд фронта + наш конфиг.
+    # Собирается infra/web.Dockerfile в CI (job image-web) → ghcr.io/.../druz9-web.
+    image: ${WEB_IMAGE:-ghcr.io/dobriygolang/druz9-web:latest}
     depends_on:
       - api
     ports:
       - "80:80"
       - "443:443"
     volumes:
-      - ./nginx/nginx.prod.conf:/etc/nginx/nginx.conf:ro
-      - ./nginx/snippets:/etc/nginx/snippets:ro
+      # Конфиг и snippets теперь УЖЕ внутри образа; маунтим только LE-сертификаты.
       - certbot_www:/var/www/certbot:ro
       - certbot_conf:/etc/letsencrypt:ro
     networks: [app-net]
