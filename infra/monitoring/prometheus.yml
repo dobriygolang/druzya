@@ -4,15 +4,36 @@ global:
   external_labels:
     environment: production
     service: druz9
+    cluster: vps-de-1   # отличает наш инстанс в общем Grafana Cloud аккаунте
 
-# Alerting rules — see infra/observability/alerts.yml for thresholds.
-rule_files:
-  - /etc/prometheus/rules/alerts.yml
+# Локальный TSDB больше не используется как long-term store — ретеншн 6h ровно
+# чтобы пережить временный обрыв сети до Grafana Cloud. Всё, что старше, есть
+# в Mimir (Grafana Cloud Metrics).
+rule_files: []
 
+# Alertmanager сейчас отключён — алерты переехали в Grafana Cloud (Alerts &
+# IRM). Оставляем заглушку, чтобы при желании быстро вернуть локальный.
 alerting:
-  alertmanagers:
-    - static_configs:
-        - targets: ["alertmanager:9093"]
+  alertmanagers: []
+
+# ── Remote write в Grafana Cloud Mimir.
+# URL и креды берём из ENV (см. infra/docker-compose.prod.yml: prometheus env_file).
+# Чтобы получить:
+#   1. https://grafana.com → My Account → Stack → Prometheus → Send Metrics
+#   2. Скопировать "Remote Write Endpoint" в GRAFANA_CLOUD_PROM_URL
+#   3. Создать API token (Access Policies → New token, scope: metrics:write)
+#      → положить в GRAFANA_CLOUD_PROM_USER (это instance ID, число)
+#      и GRAFANA_CLOUD_API_KEY (сам токен).
+remote_write:
+  - url: ${GRAFANA_CLOUD_PROM_URL}
+    basic_auth:
+      username: ${GRAFANA_CLOUD_PROM_USER}
+      password: ${GRAFANA_CLOUD_API_KEY}
+    queue_config:
+      capacity: 10000
+      max_shards: 5
+      min_shards: 1
+      max_samples_per_send: 2000
 
 scrape_configs:
   - job_name: druz9-api
@@ -24,10 +45,10 @@ scrape_configs:
     static_configs:
       - targets: ["nginx:80"]
 
-  - job_name: postgres
-    static_configs:
-      - targets: ["postgres:9187"]  # requires postgres_exporter sidecar (optional)
-
-  - job_name: redis
-    static_configs:
-      - targets: ["redis:9121"]  # requires redis_exporter sidecar (optional)
+  # Опциональные exporter'ы — раскомментировать когда добавим sidecar'ы:
+  # - job_name: postgres
+  #   static_configs:
+  #     - targets: ["postgres-exporter:9187"]
+  # - job_name: redis
+  #   static_configs:
+  #     - targets: ["redis-exporter:9121"]

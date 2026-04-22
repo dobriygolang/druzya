@@ -23,5 +23,4 @@ FROM nginx:1.27-alpine
 # Готовый билд кладём туда, куда смотрит `root /var/www/frontend;` в конфиге.
 COPY --from=frontend /src/frontend/dist /var/www/frontend
 COPY infra/nginx/nginx.prod.conf /etc/nginx/nginx.conf
-COPY infra/nginx/snippets /etc/nginx/snippets
 EXPOSE 80 443

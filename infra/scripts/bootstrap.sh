@@ -31,6 +31,25 @@ if ! command -v docker >/dev/null 2>&1; then
     curl -fsSL https://get.docker.com | sh
 fi
 
+# Default log driver: json-file с ротацией. Без этого логи контейнеров (особенно
+# nginx access_log) растут бесконечно и в один прекрасный день съедают /var.
+# 50MB × 5 = ~250MB на контейнер. Применяется ко ВСЕМ контейнерам, у которых
+# не задан свой logging driver.
+log "configuring docker log rotation (json-file 50m × 5)"
+mkdir -p /etc/docker
+if [ ! -f /etc/docker/daemon.json ] || ! grep -q '"max-size"' /etc/docker/daemon.json; then
+    cat > /etc/docker/daemon.json <<'EOF'
+{
+  "log-driver": "json-file",
+  "log-opts": {
+    "max-size": "50m",
+    "max-file": "5"
+  }
+}
+EOF
+    systemctl restart docker
+fi
+
 # ── Firewall
 log "configuring ufw"
 ufw --force reset >/dev/null

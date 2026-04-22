@@ -4,8 +4,24 @@ server:
 positions:
   filename: /tmp/positions.yaml
 
+# ── Push в Grafana Cloud Loki.
+# Креды:
+#   1. https://grafana.com → My Account → Stack → Loki → Send Logs
+#   2. URL → GRAFANA_CLOUD_LOKI_URL (например https://logs-prod-XXX.grafana.net/loki/api/v1/push)
+#   3. User → GRAFANA_CLOUD_LOKI_USER (instance ID)
+#   4. Тот же API token из Access Policies (scope: logs:write) → GRAFANA_CLOUD_API_KEY
 clients:
-  - url: http://loki:3100/loki/api/v1/push
+  - url: ${GRAFANA_CLOUD_LOKI_URL}
+    basic_auth:
+      username: ${GRAFANA_CLOUD_LOKI_USER}
+      password: ${GRAFANA_CLOUD_API_KEY}
+    # Бэтчинг — экономим квоту 50GB/мес.
+    batchwait: 5s
+    batchsize: 1048576   # 1 MiB
+    external_labels:
+      environment: production
+      service: druz9
+      cluster: vps-de-1
 
 scrape_configs:
   - job_name: docker
@@ -18,3 +34,7 @@ scrape_configs:
         target_label: 'container'
       - source_labels: ['__meta_docker_container_label_com_docker_compose_service']
         target_label: 'service'
+      # Не отправляем шум от самого promtail/prometheus — экономим квоту.
+      - source_labels: ['__meta_docker_container_label_com_docker_compose_service']
+        regex: '(promtail|prometheus|grafana|loki)'
+        action: drop

@@ -1,0 +1,36 @@
+# Раз в неделю чистим старые sha-теги в GHCR. Без этого хранилище
+# druz9-api / druz9-web разрастается бесконечно (каждый push на main = новый
+# sha-XXX образ), и в какой-то момент мы упрёмся либо в лимит GitHub, либо
+# просто в гигантский биллинг.
+#
+# Политика:
+#   • держим последние 10 версий каждого образа
+#   • держим всё, на что есть тег `latest` или `main`
+#   • остальное (sha-XXX старше топ-10) удаляем
+#
+# Запускается автоматически каждое воскресенье или вручную через workflow_dispatch.
+name: cleanup ghcr
+
+on:
+  schedule:
+    - cron: '0 3 * * 0'   # вс 03:00 UTC
+  workflow_dispatch:
+
+permissions:
+  packages: write
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        package: [druz9-api, druz9-web]
+    steps:
+      - name: Delete old container versions
+        uses: actions/delete-package-versions@v5
+        with:
+          package-name: ${{ matrix.package }}
+          package-type: container
+          min-versions-to-keep: 10
+          # Защищаем "плавающие" теги — их трогать нельзя, иначе деплой свалится.
+          ignore-versions: '^(latest|main)$'

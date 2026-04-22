@@ -1,17 +1,22 @@
 // Package otel wires OpenTelemetry traces for druz9 services.
 //
-// It is intentionally tiny: a single InitTracer() call per binary,
-// exporting OTLP/HTTP to an OpenTelemetry Collector or Jaeger
-// (Jaeger 1.62+ accepts OTLP/HTTP natively on :4318).
+// Один InitTracer() на бинарь, экспорт OTLP/HTTP. По умолчанию шлёт в
+// локальный jaeger:4318, но в проде целится в Grafana Cloud Tempo через
+// OTEL_EXPORTER_OTLP_ENDPOINT + OTEL_EXPORTER_OTLP_HEADERS (Basic auth).
 //
-// The exporter endpoint is taken from OTEL_EXPORTER_OTLP_ENDPOINT.
-// Default: http://jaeger:4318  (the docker-compose service DNS name).
+// Конфиг через стандартные OTEL env vars:
+//
+//	OTEL_EXPORTER_OTLP_ENDPOINT=https://otlp-gateway-prod-XX.grafana.net/otlp
+//	OTEL_EXPORTER_OTLP_HEADERS=Authorization=Basic <base64(user:token)>
+//
+// Префикс /v1/traces SDK добавит сам (otlptracehttp использует UrlPath="/v1/traces").
 package otel
 
 import (
 	"context"
 	"fmt"
 	"os"
+	"strings"
 	"time"
 
 	"go.opentelemetry.io/otel"
@@ -29,34 +34,45 @@ import (
 const DefaultEndpoint = "jaeger:4318"
 
 // InitTracer initialises the global tracer provider with an OTLP/HTTP
-// exporter pointing at OTEL_EXPORTER_OTLP_ENDPOINT (or jaeger:4318).
-// It returns a shutdown function that flushes pending spans — defer it
-// from main() so SIGTERM doesn't lose the last second of traces.
+// exporter. Endpoint и опциональные headers берутся из OTEL_EXPORTER_OTLP_*.
 //
-// The W3C TraceContext + Baggage propagators are installed globally so
-// that incoming `traceparent` / `tracestate` / `baggage` headers are
-// honoured on every HTTP request.
+// Возвращает shutdown — defer'ить из main(), чтобы SIGTERM не потерял
+// последние spans.
 func InitTracer(serviceName, version string) (func(), error) {
 	endpoint := os.Getenv("OTEL_EXPORTER_OTLP_ENDPOINT")
 	if endpoint == "" {
 		endpoint = "http://" + DefaultEndpoint
 	}
-	// otlptracehttp.WithEndpoint expects host:port without scheme; strip it.
+
 	host := endpoint
+	urlPath := ""
 	insecure := true
-	if len(host) > 7 && host[:7] == "http://" {
-		host = host[7:]
-	} else if len(host) > 8 && host[:8] == "https://" {
-		host = host[8:]
+	if strings.HasPrefix(host, "http://") {
+		host = strings.TrimPrefix(host, "http://")
+	} else if strings.HasPrefix(host, "https://") {
+		host = strings.TrimPrefix(host, "https://")
 		insecure = false
+	}
+	// Поддержка endpoint'а с path-префиксом, как у Grafana Cloud:
+	// https://otlp-gateway-prod-XX.grafana.net/otlp → host=...grafana.net, path=/otlp
+	if i := strings.IndexByte(host, '/'); i >= 0 {
+		urlPath = host[i:]
+		host = host[:i]
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
 	opts := []otlptracehttp.Option{otlptracehttp.WithEndpoint(host)}
+	if urlPath != "" {
+		// otlptracehttp прибавит "/v1/traces" к этому пути сам.
+		opts = append(opts, otlptracehttp.WithURLPath(strings.TrimSuffix(urlPath, "/")+"/v1/traces"))
+	}
 	if insecure {
 		opts = append(opts, otlptracehttp.WithInsecure())
+	}
+	if hdrs := parseOTLPHeaders(os.Getenv("OTEL_EXPORTER_OTLP_HEADERS")); len(hdrs) > 0 {
+		opts = append(opts, otlptracehttp.WithHeaders(hdrs))
 	}
 	exp, err := otlptrace.New(ctx, otlptracehttp.NewClient(opts...))
 	if err != nil {
@@ -69,7 +85,6 @@ func InitTracer(serviceName, version string) (func(), error) {
 			semconv.SchemaURL,
 			semconv.ServiceName(serviceName),
 			semconv.ServiceVersion(version),
-			// DeploymentEnvironmentName lives in semconv/v1.27.0+; on v1.26.0 we use legacy attr.
 			semconv.DeploymentEnvironment(os.Getenv("APP_ENV")),
 		),
 	)
@@ -96,8 +111,28 @@ func InitTracer(serviceName, version string) (func(), error) {
 	return shutdown, nil
 }
 
+// parseOTLPHeaders разбирает строку формата "k1=v1,k2=v2" из стандартной
+// переменной OTEL_EXPORTER_OTLP_HEADERS. Пустая строка → nil.
+func parseOTLPHeaders(s string) map[string]string {
+	if s == "" {
+		return nil
+	}
+	out := make(map[string]string)
+	for _, kv := range strings.Split(s, ",") {
+		eq := strings.IndexByte(kv, '=')
+		if eq <= 0 {
+			continue
+		}
+		k := strings.TrimSpace(kv[:eq])
+		v := strings.TrimSpace(kv[eq+1:])
+		if k != "" {
+			out[k] = v
+		}
+	}
+	return out
+}
+
 // Tracer returns a named tracer from the global provider.
-// Convenience wrapper so call sites don't import otel themselves.
 func Tracer(name string) trace.Tracer {
 	return otel.Tracer(name)
 }

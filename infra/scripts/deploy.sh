@@ -76,11 +76,18 @@ for i in $(seq 1 30); do
         #   3. `docker volume prune -f` is *intentionally omitted* — that
         #      would wipe postgres/minio/redis data. Volumes are forever.
         # ------------------------------------------------------------------
-        log "cleaning up stale containers + images"
+        log "cleaning up stale containers + images + build cache"
+        # 1. Exited контейнеры от прошлых force-recreate.
         docker container prune -f >/dev/null || true
-        # Keep only images currently in use by the running compose stack.
-        # Any old `ghcr.io/.../druz9-api:sha-XXX` tags get reaped.
+        # 2. Образы, не используемые ни одним контейнером, старше 24ч.
+        # Это включает старые sha-теги druz9-api/druz9-web после force-recreate.
         docker image prune -af --filter "until=24h" >/dev/null || true
+        # 3. Build cache (overlay-слои buildx) — на VPS мы не билдим, но кеш
+        # может появиться от ручных docker build. 24ч TTL.
+        docker builder prune -af --filter "until=24h" >/dev/null || true
+        # 4. Висящие network-объекты от прошлых compose-проектов.
+        docker network prune -f >/dev/null || true
+        # NB: docker volume prune НЕ запускаем — это снесло бы pg_data, minio_data и т.д.
         log "post-deploy disk usage:"
         docker system df
 
