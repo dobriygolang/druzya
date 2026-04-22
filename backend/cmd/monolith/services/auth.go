@@ -21,8 +21,13 @@ type AuthModule struct {
 	Issuer      *authApp.TokenIssuer
 	RequireAuth func(http.Handler) http.Handler
 	Users       *authInfra.Postgres
-	Sessions    *authInfra.RedisSessions
-	RefreshTTL  time.Duration
+	// Sessions and RefreshTTL are exported because they used to be reused by
+	// the now-deleted email/password auth module. They are kept on the public
+	// surface so a future integration (e.g. an admin "force logout" tool, or
+	// a reintroduced credential flow behind a feature flag) can wire them
+	// without re-piercing the auth bounded context.
+	Sessions   *authInfra.RedisSessions
+	RefreshTTL time.Duration
 }
 
 // NewAuth wires the auth bounded context. ENCRYPTION_KEY MUST be set —

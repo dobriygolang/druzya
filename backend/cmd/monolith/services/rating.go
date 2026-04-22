@@ -1,6 +1,9 @@
 package services
 
 import (
+	"context"
+	"os"
+	"strconv"
 	"time"
 
 	ratingApp "druz9/rating/app"
@@ -27,13 +30,32 @@ func NewRating(d Deps) *RatingModule {
 	pg := ratingInfra.NewPostgres(d.Pool)
 	cache := ratingInfra.NewRedisLeaderboard(d.Redis)
 
-	getMyRatings := &ratingApp.GetMyRatings{Ratings: pg}
+	// Phase 2: wrap the Postgres repo in the read-through my-ratings cache.
+	// Writes (Upsert via OnMatchCompleted / OnDailyKataCompleted) flow
+	// through the wrapper and Invalidate the user's key.
+	myCache := ratingInfra.NewCachedRepo(pg, ratingInfra.NewRedisKV(d.Redis), 60*time.Second, d.Log)
+
+	// Leaderboard recompute worker — interval is configurable via env so
+	// ops can dial it down in incidents without a restart-loop.
+	interval := ratingInfra.DefaultRecomputeInterval
+	if v := os.Getenv("RATING_LEADERBOARD_INTERVAL"); v != "" {
+		if d, err := time.ParseDuration(v); err == nil && d > 0 {
+			interval = d
+		} else if secs, err := strconv.Atoi(v); err == nil && secs > 0 {
+			interval = time.Duration(secs) * time.Second
+		}
+	}
+	worker := ratingInfra.NewLeaderboardRecomputeWorker(
+		pg, ratingInfra.NewRedisZSetClient(d.Redis), d.Log, interval, ratingInfra.DefaultRecomputeLimit,
+	)
+
+	getMyRatings := &ratingApp.GetMyRatings{Ratings: myCache}
 	getLeaderboard := &ratingApp.GetLeaderboard{
 		Ratings: pg, Cache: cache, Log: d.Log, TTL: 60 * time.Second,
 	}
 	server := ratingPorts.NewRatingServer(getMyRatings, getLeaderboard, d.Log)
-	onMatchCompleted := &ratingApp.OnMatchCompleted{Ratings: pg, Bus: d.Bus, Log: d.Log}
-	onKataCompleted := &ratingApp.OnDailyKataCompleted{Ratings: pg, Bus: d.Bus, Log: d.Log}
+	onMatchCompleted := &ratingApp.OnMatchCompleted{Ratings: myCache, Bus: d.Bus, Log: d.Log}
+	onKataCompleted := &ratingApp.OnDailyKataCompleted{Ratings: myCache, Bus: d.Bus, Log: d.Log}
 
 	connectPath, connectHandler := druz9v1connect.NewRatingServiceHandler(server)
 	transcoder := mustTranscode("rating", connectPath, connectHandler)
@@ -53,6 +75,9 @@ func NewRating(d Deps) *RatingModule {
 					b.Subscribe(sharedDomain.MatchCompleted{}.Topic(), onMatchCompleted.Handle)
 					b.Subscribe(sharedDomain.DailyKataCompleted{}.Topic(), onKataCompleted.Handle)
 				},
+			},
+			Background: []func(ctx context.Context){
+				func(ctx context.Context) { go worker.Run(ctx) },
 			},
 		},
 	}

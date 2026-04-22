@@ -1,24 +1,76 @@
 import { useState } from 'react'
 import { Share2, UserPlus, Trophy, Shield, Flame, Star, Zap, Target, Award, Crown } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
+import { useParams, Link } from 'react-router-dom'
 import { AppShellV2 } from '../components/AppShell'
 import { Button } from '../components/Button'
 import { Card } from '../components/Card'
 import { Avatar } from '../components/Avatar'
 import { cn } from '../lib/cn'
-import { useProfileQuery } from '../lib/queries/profile'
+import {
+  useProfileQuery,
+  usePublicProfileQuery,
+  type Profile,
+  type PublicProfile,
+} from '../lib/queries/profile'
 import { useRatingMeQuery, useLeaderboardQuery } from '../lib/queries/rating'
 import { useStreakQuery } from '../lib/queries/daily'
+import { ApiError } from '../lib/apiClient'
 
-function Hero() {
+// ProfileViewModel is the union of /profile/me and /profile/{username}
+// rendered fields. Public-only routes get a partial — the UI degrades
+// gracefully when private fields (xp, ai_credits, etc.) are absent.
+type ProfileViewModel = {
+  isOwn: boolean
+  username: string
+  display: string
+  initial: string
+  title: string
+  level: number
+  charClass: string
+  careerStage: string
+  globalPowerScore: number
+}
+
+function toViewModel(args: {
+  isOwn: boolean
+  own?: Profile
+  pub?: PublicProfile
+  fallbackScore?: number
+}): ProfileViewModel | null {
+  const { isOwn, own, pub, fallbackScore } = args
+  if (isOwn) {
+    if (!own) return null
+    return {
+      isOwn: true,
+      username: own.username,
+      display: own.display_name || own.username,
+      initial: (own.display_name || own.username || 'D').charAt(0).toUpperCase(),
+      title: own.title || '—',
+      level: own.level ?? 0,
+      charClass: own.char_class || '—',
+      careerStage: own.career_stage || '',
+      globalPowerScore: own.global_power_score ?? fallbackScore ?? 0,
+    }
+  }
+  if (!pub) return null
+  return {
+    isOwn: false,
+    username: pub.username,
+    display: pub.display_name || pub.username,
+    initial: (pub.display_name || pub.username || 'D').charAt(0).toUpperCase(),
+    title: pub.title || '—',
+    level: pub.level ?? 0,
+    charClass: pub.char_class || '—',
+    careerStage: pub.career_stage || '',
+    globalPowerScore: pub.global_power_score ?? 0,
+  }
+}
+
+function Hero({ vm }: { vm: ProfileViewModel }) {
   const { t } = useTranslation('profile')
-  const { data: profile, isError } = useProfileQuery()
   const { data: rating } = useRatingMeQuery()
   const { data: streak } = useStreakQuery()
-  const username = profile?.username ?? 'you'
-  const display = profile?.display_name ?? '—'
-  const initial = (profile?.display_name ?? 'Д').charAt(0).toUpperCase()
-  const gps = rating?.global_power_score ?? 0
   const algo = rating?.ratings?.find((r) => r.section === 'algorithms')
   const matches = algo?.matches_count ?? 0
   const streakCur = streak?.current ?? 0
@@ -38,20 +90,18 @@ function Hero() {
             height: 96,
             background: 'linear-gradient(135deg, #582CFF 0%, #22D3EE 100%)',
           }}
+          aria-label="avatar"
         >
-          {initial}
+          {vm.initial}
         </div>
         <div className="flex flex-col gap-2">
-          <h1 className="font-display text-3xl font-bold leading-none text-white sm:text-4xl lg:text-[38px]">@{username}</h1>
-          <p className="text-sm text-white/85">
-            {t('since', { display })}
-            {isError && ` · ${t('load_failed')}`}
-          </p>
+          <h1 className="font-display text-3xl font-bold leading-none text-white sm:text-4xl lg:text-[38px]">@{vm.username}</h1>
+          <p className="text-sm text-white/85">{t('since', { display: vm.display })}</p>
           <div className="mt-2 flex flex-wrap items-center gap-4 lg:gap-6">
-            <HeroStat label={t('rank')} value={profile?.title ?? '—'} sub={`Lv ${profile?.level ?? '—'}`} />
-            <HeroStat label={t('gps')} value={`${gps}`} sub={t('matches', { count: matches })} />
-            <HeroStat label={t('streak')} value={`${streakCur} 🔥`} sub={t('days')} />
-            <HeroStat label={t('class')} value={profile?.char_class ?? '—'} sub={profile?.career_stage ?? ''} />
+            <HeroStat label={t('rank')} value={vm.title} sub={`Lv ${vm.level}`} />
+            <HeroStat label={t('gps')} value={`${vm.globalPowerScore}`} sub={t('matches', { count: matches })} />
+            {vm.isOwn && <HeroStat label={t('streak')} value={`${streakCur} 🔥`} sub={t('days')} />}
+            <HeroStat label={t('class')} value={vm.charClass} sub={vm.careerStage} />
           </div>
         </div>
       </div>
@@ -63,13 +113,15 @@ function Hero() {
         >
           {t('share')}
         </Button>
-        <Button
-          variant="primary"
-          icon={<UserPlus className="h-4 w-4" />}
-          className="bg-white text-bg shadow-none hover:bg-white/90 hover:shadow-none"
-        >
-          {t('add_friend')}
-        </Button>
+        {!vm.isOwn && (
+          <Button
+            variant="primary"
+            icon={<UserPlus className="h-4 w-4" />}
+            className="bg-white text-bg shadow-none hover:bg-white/90 hover:shadow-none"
+          >
+            {t('add_friend')}
+          </Button>
+        )}
       </div>
     </div>
   )
@@ -120,14 +172,6 @@ function ProfileTabBar({ tab, setTab }: { tab: ProfileTab; setTab: (t: ProfileTa
   )
 }
 
-const FALLBACK_SKILLS = [
-  { name: 'Algorithms', value: 82, delta: '+12', up: true },
-  { name: 'Data Structures', value: 76, delta: '+8', up: true },
-  { name: 'Dynamic Programming', value: 48, delta: '+5', up: true },
-  { name: 'Graph Theory', value: 64, delta: '+2', up: true },
-  { name: 'Concurrency', value: 41, delta: '-3', up: false },
-] as const
-
 const SECTION_LABELS: Record<string, string> = {
   algorithms: 'Algorithms',
   sql: 'SQL',
@@ -136,20 +180,26 @@ const SECTION_LABELS: Record<string, string> = {
   behavioral: 'Behavioral',
 }
 
+// SkillsCard renders the live section ratings only — no synthetic fallback.
+// When there are no ratings yet (new user) the card explicitly says so;
+// previously we filled it with mock skills which gave a misleading impression
+// of accomplishment.
 function SkillsCard() {
   const { t } = useTranslation('profile')
-  const { data: rating } = useRatingMeQuery()
-  const skills = rating?.ratings?.length
-    ? rating.ratings.map((r) => ({
-        name: SECTION_LABELS[r.section] ?? r.section,
-        value: Math.min(100, r.percentile),
-        delta: r.decaying ? '↓' : `${r.elo}`,
-        up: !r.decaying,
-      }))
-    : FALLBACK_SKILLS
+  const { data: rating, isLoading } = useRatingMeQuery()
+  const skills = (rating?.ratings ?? []).map((r) => ({
+    name: SECTION_LABELS[r.section] ?? r.section,
+    value: Math.min(100, r.percentile),
+    delta: r.decaying ? '↓' : `${r.elo}`,
+    up: !r.decaying,
+  }))
   return (
     <Card className="flex-col gap-4 p-5">
       <h3 className="font-display text-base font-bold text-text-primary">{t('skills')}</h3>
+      {isLoading && <div className="font-mono text-[12px] text-text-muted">…</div>}
+      {!isLoading && skills.length === 0 && (
+        <div className="font-mono text-[12px] text-text-muted">{t('skills_empty', { defaultValue: 'No matches yet' })}</div>
+      )}
       <div className="flex flex-col gap-3">
         {skills.map((s) => (
           <div key={s.name} className="flex flex-col gap-1.5">
@@ -181,9 +231,8 @@ const BADGES = [
   { icon: Award, gradient: 'from-warn to-accent', label: 'Veteran' },
 ] as const
 
-function AchievementsCard() {
+function AchievementsCard({ profile }: { profile?: Profile }) {
   const { t } = useTranslation('profile')
-  const { data: profile } = useProfileQuery()
   const earned = profile?.achievements?.length ?? 0
   return (
     <Card className="flex-col gap-3 p-5">
@@ -212,6 +261,9 @@ function AchievementsCard() {
   )
 }
 
+// GuildCard remains a stub for Phase 1 — guild membership has its own domain
+// (services/guild) and dedicated cache concerns. Pending Phase 2: switch to
+// useGuildQuery() once the GET /guilds/me endpoint stabilises.
 function GuildCard() {
   const { t } = useTranslation('profile')
   return (
@@ -221,18 +273,13 @@ function GuildCard() {
           <Shield className="h-4 w-4 text-white" />
           <span className="font-mono text-[11px] font-semibold tracking-[0.08em] text-white">{t('guild_label')}</span>
         </div>
-        <h3 className="font-display text-xl font-extrabold text-white">Ironclad</h3>
-        <p className="text-xs text-white/85">{t('guild_top')}</p>
+        <h3 className="font-display text-xl font-extrabold text-white">—</h3>
+        <p className="text-xs text-white/85">{t('guild_top', { defaultValue: 'Join a guild to climb together' })}</p>
       </div>
       <div className="flex items-center justify-between p-4">
-        <div className="flex flex-col">
-          <span className="font-mono text-[11px] text-text-muted">{t('rank_in_guild')}</span>
-          <span className="font-display text-base font-bold text-text-primary">#3 / 32</span>
-        </div>
-        <div className="flex flex-col items-end">
-          <span className="font-mono text-[11px] text-text-muted">{t('your_contribution')}</span>
-          <span className="font-display text-base font-bold text-cyan">{t('points', { n: '2 140' })}</span>
-        </div>
+        <Link to="/guild" className="font-mono text-[12px] font-semibold text-cyan hover:underline">
+          {t('open_guild', { defaultValue: 'Open guild ›' })}
+        </Link>
       </div>
     </Card>
   )
@@ -240,21 +287,6 @@ function GuildCard() {
 
 type Scope = 'global' | 'friends' | 'guild' | 'region'
 const SCOPES: Scope[] = ['global', 'friends', 'guild', 'region']
-
-const LEADERBOARD_ROWS = [
-  { rank: 1, name: '@alexey', tier: 'Grandmaster', lp: '3 420', wl: '510-180', wr: '74%', delta: '+240' },
-  { rank: 2, name: '@kirill_dev', tier: 'Grandmaster', lp: '3 180', wl: '470-210', wr: '69%', delta: '+180' },
-  { rank: 3, name: '@masha.k', tier: 'Diamond I', lp: '2 980', wl: '410-220', wr: '65%', delta: '+150' },
-  { rank: 4, name: '@nastya', tier: 'Diamond I', lp: '2 910', wl: '380-200', wr: '66%', delta: '+90' },
-  { rank: 5, name: '@vlad_codes', tier: 'Diamond II', lp: '2 870', wl: '360-220', wr: '62%', delta: '+74' },
-  { rank: 6, name: '@oleg.ds', tier: 'Diamond II', lp: '2 860', wl: '340-200', wr: '63%', delta: '+60' },
-  { rank: 7, name: '@anna_qa', tier: 'Diamond III', lp: '2 855', wl: '330-210', wr: '61%', delta: '+45' },
-  { rank: 8, name: '@max_be', tier: 'Diamond III', lp: '2 850', wl: '300-180', wr: '63%', delta: '+30' },
-  { rank: 9, name: '@ira.fe', tier: 'Diamond III', lp: '2 845', wl: '290-180', wr: '62%', delta: '+12' },
-  { rank: 284, name: '@you', tier: 'Diamond III', lp: '2 840', wl: '284-176', wr: '62%', delta: '+124', you: true },
-  { rank: 285, name: '@petya', tier: 'Diamond III', lp: '2 838', wl: '270-180', wr: '60%', delta: '-8' },
-  { rank: 286, name: '@stepan', tier: 'Diamond III', lp: '2 830', wl: '265-185', wr: '59%', delta: '-22' },
-] as const
 
 function MedalBadge({ rank }: { rank: number }) {
   if (rank === 1)
@@ -282,21 +314,22 @@ function MedalBadge({ rank }: { rank: number }) {
   )
 }
 
+// Leaderboard renders only real entries from the rating service. No fallback
+// roster is rendered — when the leaderboard is empty (or the network is
+// down) the user sees an explicit empty/error state instead of synthetic data.
 function Leaderboard() {
   const { t } = useTranslation('profile')
   const [scope, setScope] = useState<Scope>('global')
-  const { data: lb, isError } = useLeaderboardQuery('algorithms')
-  const rows = lb?.entries
-    ? lb.entries.map((e) => ({
-        rank: e.rank,
-        name: `@${e.username}`,
-        tier: e.title ?? '—',
-        lp: `${e.elo}`,
-        wl: '—',
-        wr: '—',
-        delta: '+0',
-      }))
-    : LEADERBOARD_ROWS
+  const { data: lb, isError, isLoading, refetch } = useLeaderboardQuery('algorithms')
+  const rows = (lb?.entries ?? []).map((e) => ({
+    rank: e.rank,
+    name: `@${e.username}`,
+    tier: e.title ?? '—',
+    lp: `${e.elo}`,
+    wl: '—',
+    wr: '—',
+    delta: '+0',
+  }))
   return (
     <div className="flex flex-1 flex-col overflow-hidden rounded-xl bg-surface-2 min-w-0">
       <div className="flex items-center justify-between border-b border-border px-5 py-4">
@@ -316,14 +349,6 @@ function Leaderboard() {
           ))}
         </div>
       </div>
-      <div className="flex items-center gap-2 border-b border-border px-5 py-3">
-        <button className="rounded-md border border-border bg-surface-1 px-3 py-1.5 text-[12px] font-semibold text-text-secondary hover:text-text-primary">
-          Сезон 4 ▾
-        </button>
-        <button className="rounded-md border border-border bg-surface-1 px-3 py-1.5 text-[12px] font-semibold text-text-secondary hover:text-text-primary">
-          Diamond+ ▾
-        </button>
-      </div>
       <div className="grid grid-cols-[50px_1fr_70px_90px_60px_60px] min-w-[640px] items-center gap-3 border-b border-border px-5 py-2 font-mono text-[10px] uppercase tracking-[0.1em] text-text-muted">
         <span>{t('table.rank')}</span>
         <span>{t('table.player')}</span>
@@ -333,29 +358,32 @@ function Leaderboard() {
         <span className="text-right">{t('table.delta')}</span>
       </div>
       <div className="flex-1 overflow-x-auto">
+        {isLoading && <div className="px-5 py-3 text-[12px] text-text-muted">…</div>}
         {isError && (
-          <div className="px-5 py-2 text-[12px] text-danger">{t('load_failed')}</div>
+          <div className="flex items-center justify-between px-5 py-3 text-[12px] text-danger">
+            <span>{t('load_failed')}</span>
+            <button onClick={() => refetch()} className="font-mono text-[12px] text-accent hover:underline">
+              {t('retry', { defaultValue: 'Retry' })}
+            </button>
+          </div>
+        )}
+        {!isLoading && !isError && rows.length === 0 && (
+          <div className="px-5 py-3 text-[12px] text-text-muted">
+            {t('leaderboard_empty', { defaultValue: 'No entries yet' })}
+          </div>
         )}
         {rows.map((r) => {
-          const isYou = 'you' in r && (r as { you?: boolean }).you
           const positive = r.delta.startsWith('+')
           return (
             <div
               key={r.rank}
-              className={cn(
-                'grid grid-cols-[50px_1fr_70px_90px_60px_60px] min-w-[640px] items-center gap-3 px-5 py-2.5 text-[13px] transition-colors',
-                isYou
-                  ? 'sticky bottom-0 z-10 border-y border-accent bg-accent/15'
-                  : 'border-b border-border/50 hover:bg-surface-1/40',
-              )}
+              className="grid grid-cols-[50px_1fr_70px_90px_60px_60px] min-w-[640px] items-center gap-3 px-5 py-2.5 text-[13px] transition-colors border-b border-border/50 hover:bg-surface-1/40"
             >
               <MedalBadge rank={r.rank} />
               <div className="flex items-center gap-2.5">
                 <Avatar size="sm" gradient="violet-cyan" initials={r.name[1]?.toUpperCase()} />
                 <div className="flex flex-col leading-tight">
-                  <span className={cn('text-sm font-semibold', isYou ? 'text-text-primary' : 'text-text-primary')}>
-                    {r.name}
-                  </span>
+                  <span className="text-sm font-semibold text-text-primary">{r.name}</span>
                   <span className="font-mono text-[10px] text-text-muted">{r.tier}</span>
                 </div>
               </div>
@@ -378,16 +406,101 @@ function Leaderboard() {
   )
 }
 
-export default function ProfilePage() {
-  const [tab, setTab] = useState<ProfileTab>('Overview')
+// ── states ─────────────────────────────────────────────────────────────────
+
+function ProfileSkeleton() {
   return (
     <AppShellV2>
-      <Hero />
+      <div
+        className="px-4 py-6 sm:px-8 lg:px-10"
+        style={{ minHeight: 220, background: 'linear-gradient(135deg, #582CFF 0%, #F472B6 50%, #22D3EE 100%)' }}
+        aria-busy="true"
+        aria-label="loading profile"
+      >
+        <div className="h-24 w-24 animate-pulse rounded-full bg-white/20" />
+        <div className="mt-4 h-6 w-40 animate-pulse rounded bg-white/20" />
+        <div className="mt-2 h-4 w-64 animate-pulse rounded bg-white/15" />
+      </div>
+      <div className="flex flex-col gap-6 px-4 py-6 sm:px-8 lg:flex-row lg:px-10 lg:py-8">
+        <div className="h-72 w-full animate-pulse rounded-xl bg-surface-2 lg:w-[380px]" />
+        <div className="h-72 flex-1 animate-pulse rounded-xl bg-surface-2" />
+      </div>
+    </AppShellV2>
+  )
+}
+
+function ProfileError({ onRetry }: { onRetry: () => void }) {
+  const { t } = useTranslation('profile')
+  return (
+    <AppShellV2>
+      <div className="flex min-h-[40vh] flex-col items-center justify-center gap-4 p-8">
+        <h2 className="font-display text-xl font-bold text-text-primary">
+          {t('error_title', { defaultValue: 'Could not load profile' })}
+        </h2>
+        <p className="max-w-md text-center text-sm text-text-secondary">{t('load_failed')}</p>
+        <Button variant="primary" onClick={onRetry}>
+          {t('retry', { defaultValue: 'Retry' })}
+        </Button>
+      </div>
+    </AppShellV2>
+  )
+}
+
+function ProfileNotFound({ username }: { username: string }) {
+  const { t } = useTranslation('profile')
+  return (
+    <AppShellV2>
+      <div className="flex min-h-[40vh] flex-col items-center justify-center gap-4 p-8">
+        <h2 className="font-display text-xl font-bold text-text-primary">
+          {t('not_found_title', { defaultValue: 'Profile not found' })}
+        </h2>
+        <p className="max-w-md text-center text-sm text-text-secondary">@{username}</p>
+        <Link to="/sanctum">
+          <Button variant="primary">{t('back_to_sanctum', { defaultValue: 'Back to Sanctum' })}</Button>
+        </Link>
+      </div>
+    </AppShellV2>
+  )
+}
+
+// ── page ───────────────────────────────────────────────────────────────────
+
+export default function ProfilePage() {
+  const params = useParams<{ username?: string }>()
+  const isOwn = !params.username
+  const [tab, setTab] = useState<ProfileTab>('Overview')
+
+  const ownQuery = useProfileQuery()
+  const publicQuery = usePublicProfileQuery(isOwn ? undefined : params.username)
+  const { data: rating } = useRatingMeQuery()
+
+  const active = isOwn ? ownQuery : publicQuery
+
+  if (active.isLoading) return <ProfileSkeleton />
+  if (active.isError) {
+    const status = (active.error as ApiError | null)?.status
+    if (!isOwn && status === 404) {
+      return <ProfileNotFound username={params.username ?? ''} />
+    }
+    return <ProfileError onRetry={() => active.refetch()} />
+  }
+
+  const vm = toViewModel({
+    isOwn,
+    own: isOwn ? (ownQuery.data as Profile | undefined) : undefined,
+    pub: !isOwn ? (publicQuery.data as PublicProfile | undefined) : undefined,
+    fallbackScore: rating?.global_power_score,
+  })
+  if (!vm) return <ProfileSkeleton />
+
+  return (
+    <AppShellV2>
+      <Hero vm={vm} />
       <ProfileTabBar tab={tab} setTab={setTab} />
       <div className="flex flex-col gap-6 px-4 py-6 sm:px-8 lg:flex-row lg:px-10 lg:py-8">
         <div className="flex w-full flex-col gap-5 lg:w-[380px]">
           <SkillsCard />
-          <AchievementsCard />
+          {isOwn && <AchievementsCard profile={ownQuery.data} />}
           <GuildCard />
         </div>
         <Leaderboard />

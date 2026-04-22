@@ -14,6 +14,7 @@ const SettingsPage = lazy(() => import('./pages/SettingsPage'))
 const WelcomePage = lazy(() => import('./pages/WelcomePage'))
 const WelcomeDemoPage = lazy(() => import('./pages/WelcomeDemoPage'))
 const LoginPage = lazy(() => import('./pages/LoginPage'))
+const AuthCallbackYandexPage = lazy(() => import('./pages/AuthCallbackYandexPage'))
 const OnboardingPage = lazy(() => import('./pages/OnboardingPage'))
 const AllSetPage = lazy(() => import('./pages/AllSetPage'))
 const MockSessionPage = lazy(() => import('./pages/MockSessionPage'))
@@ -50,6 +51,7 @@ const VoiceMockPage = lazy(() => import('./pages/VoiceMockPage'))
 const StressMeterPage = lazy(() => import('./pages/StressMeterPage'))
 const AdminPage = lazy(() => import('./pages/AdminPage'))
 const StatusPage = lazy(() => import('./pages/StatusPage'))
+const RatingPage = lazy(() => import('./pages/RatingPage'))
 
 export default function App() {
   return (
@@ -62,11 +64,13 @@ export default function App() {
         <Route path="/atlas" element={<AtlasPage />} />
         <Route path="/codex" element={<CodexPage />} />
         <Route path="/profile" element={<ProfilePage />} />
+        <Route path="/profile/:username" element={<ProfilePage />} />
         <Route path="/daily" element={<DailyPage />} />
         <Route path="/settings" element={<SettingsPage />} />
         <Route path="/welcome" element={<WelcomePage />} />
         <Route path="/welcome/demo" element={<WelcomeDemoPage />} />
         <Route path="/login" element={<LoginPage />} />
+        <Route path="/auth/callback/yandex" element={<AuthCallbackYandexPage />} />
         <Route path="/onboarding" element={<OnboardingPage />} />
         <Route path="/onboarding/done" element={<AllSetPage />} />
         <Route path="/mock/:sessionId" element={<MockSessionPage />} />
@@ -103,6 +107,7 @@ export default function App() {
         <Route path="/stress" element={<StressMeterPage />} />
         <Route path="/admin" element={<AdminPage />} />
         <Route path="/status" element={<StatusPage />} />
+        <Route path="/rating" element={<RatingPage />} />
         <Route path="*" element={<NotFoundPage />} />
       </Routes>
     </Suspense>

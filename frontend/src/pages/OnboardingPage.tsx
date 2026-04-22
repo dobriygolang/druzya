@@ -19,7 +19,13 @@ import { Avatar } from '../components/Avatar'
 import { cn } from '../lib/cn'
 import { useLanguages, type Language } from '../lib/api/languages'
 import { useOnboardingPreviewKata } from '../lib/api/onboarding'
-import { register, describeAuthError } from '../lib/api/auth'
+
+// Phase 2: email/password registration removed. Step 1 now offers only the
+// two OAuth providers (Yandex + Telegram). The href targets are the
+// backend OAuth-start endpoints; once the user finishes the redirect the
+// existing /api/v1/auth/{yandex,telegram} POST handler mints tokens.
+const YANDEX_LOGIN_URL = '/api/v1/auth/yandex/login'
+const TELEGRAM_LOGIN_URL = '/api/v1/auth/telegram/login'
 
 type StepNum = 1 | 2 | 3 | 4
 
@@ -128,38 +134,10 @@ export function OnboardingTopBar({
 
 /* ------------------------------- STEP 1 -------------------------------- */
 
-function Step1Register({ onNext }: { onNext: () => void }) {
+function Step1Register({ onNext: _onNext }: { onNext: () => void }) {
+  void _onNext // OAuth flow leaves the SPA; success returns via redirect.
   const { t } = useTranslation('onboarding')
   const navigate = useNavigate()
-  const [username, setUsername] = useState('')
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [submitting, setSubmitting] = useState(false)
-  const [errorMsg, setErrorMsg] = useState<string | null>(null)
-
-  const emailRe = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setErrorMsg(null)
-    if (!emailRe.test(email)) {
-      setErrorMsg('Введите корректный email')
-      return
-    }
-    if (password.length < 8) {
-      setErrorMsg('Пароль должен быть минимум 8 символов')
-      return
-    }
-    setSubmitting(true)
-    try {
-      await register({ email, password, username: username || undefined })
-      onNext()
-    } catch (err) {
-      setErrorMsg(describeAuthError(err))
-    } finally {
-      setSubmitting(false)
-    }
-  }
 
   return (
     <div
@@ -177,55 +155,21 @@ function Step1Register({ onNext }: { onNext: () => void }) {
           {t('step1.subtitle')}
         </p>
 
-        <form className="flex flex-col gap-3" onSubmit={handleSubmit}>
-          <Field
-            label={t('step1.username')}
-            placeholder={t('step1.username_ph')}
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
-          />
-          <Field
-            label={t('step1.email')}
-            placeholder={t('step1.email_ph')}
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-          />
-          <Field
-            label={t('step1.password')}
-            placeholder={t('step1.password_ph')}
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-          />
-          {errorMsg && (
-            <p className="text-[12px] font-medium text-danger" role="alert">
-              {errorMsg}
-            </p>
-          )}
-          <Button
-            type="submit"
-            variant="primary"
-            iconRight={<ArrowRight className="h-5 w-5" />}
-            className="mt-2 h-14 text-[15px] shadow-glow"
-            disabled={submitting}
+        <div className="flex flex-col gap-3">
+          <a
+            href={TELEGRAM_LOGIN_URL}
+            className="flex h-14 w-full items-center justify-center gap-2 rounded-lg border border-cyan/40 bg-cyan/15 text-[15px] font-semibold text-text-primary shadow-glow transition-colors hover:bg-cyan/25"
           >
-            {submitting ? '…' : t('step1.create')}
-          </Button>
-        </form>
-
-        <div className="flex items-center gap-3">
-          <span className="h-px flex-1 bg-border" />
-          <span className="font-mono text-[11px] uppercase tracking-[0.12em] text-text-muted">{t('step1.or')}</span>
-          <span className="h-px flex-1 bg-border" />
-        </div>
-
-        <div className="flex gap-3">
-          <OAuthButton label="GitHub" />
-          <OAuthButton label="Google" />
-          <OAuthButton label="Yandex" />
+            Войти через Telegram
+            <ArrowRight className="h-5 w-5" />
+          </a>
+          <a
+            href={YANDEX_LOGIN_URL}
+            className="flex h-14 w-full items-center justify-center gap-2 rounded-lg border border-pink/40 bg-pink/15 text-[15px] font-semibold text-text-primary shadow-glow transition-colors hover:bg-pink/25"
+          >
+            Войти через Yandex
+            <ArrowRight className="h-5 w-5" />
+          </a>
         </div>
 
         <p className="text-[13px] text-text-muted">
@@ -266,29 +210,6 @@ function Step1Register({ onNext }: { onNext: () => void }) {
         </div>
       </div>
     </div>
-  )
-}
-
-function Field({ label, ...rest }: { label: string } & React.InputHTMLAttributes<HTMLInputElement>) {
-  return (
-    <label className="flex flex-col gap-1.5">
-      <span className="font-mono text-[11px] uppercase tracking-[0.08em] text-text-muted">{label}</span>
-      <input
-        {...rest}
-        className="h-12 w-full rounded-lg border border-border bg-surface-2 px-4 text-[14px] text-text-primary placeholder:text-text-muted focus:border-accent focus:outline-none"
-      />
-    </label>
-  )
-}
-
-function OAuthButton({ label }: { label: string }) {
-  return (
-    <button
-      type="button"
-      className="flex h-12 flex-1 items-center justify-center gap-2 rounded-lg border border-border bg-transparent text-sm font-semibold text-text-secondary transition-colors hover:bg-surface-2 hover:text-text-primary"
-    >
-      {label}
-    </button>
   )
 }
 

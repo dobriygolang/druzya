@@ -16,7 +16,15 @@ import (
 // behaviour does not drift.
 func NewDaily(d Deps) *Module {
 	tasksKatas := dailyInfra.NewTasksKatas(d.Pool)
-	streaks := dailyInfra.NewStreaks(d.Pool)
+	// Phase 2: wrap StreakRepo in a 60s read-through cache. SubmitKata
+	// calls Update on success which invalidates the cached entry, so the
+	// streak number on the daily page is sub-second fresh post-submit.
+	streaks := dailyInfra.NewCachedStreakRepo(
+		dailyInfra.NewStreaks(d.Pool),
+		dailyInfra.NewRedisKV(d.Redis),
+		dailyInfra.DefaultStreakTTL,
+		d.Log,
+	)
 	calendars := dailyInfra.NewCalendars(d.Pool)
 	autopsies := dailyInfra.NewAutopsies(d.Pool)
 	judge := dailyInfra.NewFakeJudge0()

@@ -44,8 +44,18 @@ function Hero() {
       </div>
       <div className="flex w-full flex-row items-center justify-between gap-2 lg:w-auto lg:flex-col lg:items-end">
         <span className="font-mono text-[11px] uppercase tracking-[0.1em] text-white/80">{t('passed_today')}</span>
-        <span className="font-display text-[28px] font-extrabold text-white">8 420 / 13 500</span>
-        <span className="font-mono text-[13px] text-cyan">62%</span>
+        {/*
+          Phase 2: live "passed today" count requires a daily-aggregate
+          endpoint that doesn't yet exist on the backend (GetCalendar /
+          GetStreak are per-user). Until that lands we hide the number
+          rather than show fake hardcoded telemetry.
+        */}
+        <span className="font-display text-[28px] font-extrabold text-white">
+          {kata?.already_submitted ? '✓' : '—'}
+        </span>
+        <span className="font-mono text-[13px] text-cyan">
+          {kata?.already_submitted ? 'ты сдал сегодня' : 'не сдано'}
+        </span>
       </div>
     </div>
   )

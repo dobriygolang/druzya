@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '../apiClient'
 
 export type Attributes = {
@@ -31,6 +31,28 @@ export type Profile = {
   created_at: string
   achievements?: Achievement[]
   avatar_frame?: string
+}
+
+// PublicProfile matches backend ProfilePublic — strictly the SEO-visible
+// subset of Profile. Private fields (email, ai_credits, subscription) are
+// intentionally absent.
+export type PublicProfile = {
+  username: string
+  display_name: string
+  title: string
+  level: number
+  char_class: string
+  career_stage: string
+  global_power_score: number
+  ratings?: PublicSectionRating[]
+}
+
+export type PublicSectionRating = {
+  section: string
+  elo: number
+  matches_count: number
+  percentile: number
+  decaying: boolean
 }
 
 export type Achievement = {
@@ -79,23 +101,74 @@ export type WeeklyReport = {
   }[]
 }
 
+// Stable cache keys used across the app. Exported so write-paths (settings,
+// admin tools) can invalidate without re-stringifying the key by hand.
+export const profileQueryKeys = {
+  all: ['profile'] as const,
+  me: () => ['profile', 'me'] as const,
+  meAtlas: () => ['profile', 'me', 'atlas'] as const,
+  meReport: () => ['profile', 'me', 'report'] as const,
+  public: (username: string) => ['profile', 'public', username.toLowerCase()] as const,
+}
+
+// staleTime of 60s mirrors the server-side Redis TTL — the backend cache
+// won't refresh more often than that anyway, so re-fetching faster just
+// burns network without helping freshness.
+const PROFILE_STALE_MS = 60_000
+const PROFILE_GC_MS = 5 * 60_000
+
 export function useProfileQuery() {
   return useQuery({
-    queryKey: ['profile', 'me'],
+    queryKey: profileQueryKeys.me(),
     queryFn: () => api<Profile>('/profile/me'),
+    staleTime: PROFILE_STALE_MS,
+    gcTime: PROFILE_GC_MS,
+  })
+}
+
+// usePublicProfileQuery is the hook for /profile/:username. Pass an empty
+// string to disable the query (useful when the route param hasn't resolved
+// yet); the request will not fire until a non-empty username is supplied.
+export function usePublicProfileQuery(username: string | undefined) {
+  const safe = (username ?? '').trim()
+  return useQuery({
+    queryKey: profileQueryKeys.public(safe),
+    queryFn: () => api<PublicProfile>(`/profile/${encodeURIComponent(safe)}`),
+    staleTime: PROFILE_STALE_MS,
+    gcTime: PROFILE_GC_MS,
+    enabled: safe.length > 0,
+    retry: (failureCount, err) => {
+      // Don't retry on 404 (profile-not-found is a terminal state for that
+      // username). Network errors and 5xx still get the default 3 retries.
+      const status = (err as { status?: number } | null)?.status
+      if (status === 404) return false
+      return failureCount < 3
+    },
   })
 }
 
 export function useAtlasQuery() {
   return useQuery({
-    queryKey: ['profile', 'me', 'atlas'],
+    queryKey: profileQueryKeys.meAtlas(),
     queryFn: () => api<Atlas>('/profile/me/atlas'),
+    staleTime: PROFILE_STALE_MS,
+    gcTime: PROFILE_GC_MS,
   })
 }
 
 export function useWeeklyReportQuery() {
   return useQuery({
-    queryKey: ['profile', 'me', 'report'],
+    queryKey: profileQueryKeys.meReport(),
     queryFn: () => api<WeeklyReport>('/profile/me/report'),
+    staleTime: PROFILE_STALE_MS,
+    gcTime: PROFILE_GC_MS,
   })
+}
+
+// useInvalidateProfile returns a callable that busts every cached profile
+// view (own + public). Mutations that change profile shape (settings save,
+// avatar update, etc.) should call this on success.
+export function useInvalidateProfile() {
+  const qc = useQueryClient()
+  return () => qc.invalidateQueries({ queryKey: profileQueryKeys.all })
 }

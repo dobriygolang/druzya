@@ -124,8 +124,6 @@ func restAuthGate(requireAuth func(http.Handler) http.Handler) func(http.Handler
 		"/api/v1/auth/yandex":             {},
 		"/api/v1/auth/telegram":           {},
 		"/api/v1/auth/refresh":            {},
-		"/api/v1/auth/login":              {},
-		"/api/v1/auth/register":           {},
 		"/api/v1/stats/public":            {},
 		"/api/v1/languages":               {},
 		"/api/v1/onboarding/preview-kata": {},
