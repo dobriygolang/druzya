@@ -1,6 +1,7 @@
 // TODO i18n
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
+import Editor from '@monaco-editor/react'
 import {
   Check,
   FileCode,
@@ -16,7 +17,11 @@ import { Card } from '../components/Card'
 import { Avatar } from '../components/Avatar'
 import { WSStatus } from '../components/ws/WSStatus'
 import { useChannel } from '../lib/ws'
-import { useArenaMatchQuery } from '../lib/queries/arena'
+import {
+  useArenaMatchQuery,
+  useSubmitCodeMutation,
+  type ArenaLanguageKey,
+} from '../lib/queries/arena'
 import type { ReactNode } from 'react'
 
 function ErrorChip() {
@@ -116,62 +121,105 @@ function TaskPanel({ title, description, difficulty, section }: { title: string;
   )
 }
 
-const CODE_LINES = [
-  'package main',
-  '',
-  'import "fmt"',
-  '',
-  'func lengthOfLongestSubstring(s string) int {',
-  '\tseen := make(map[byte]int)',
-  '\tleft, best := 0, 0',
-  '',
-  '\tfor right := 0; right < len(s); right++ {',
-  '\t\tch := s[right]',
-  '\t\tif idx, ok := seen[ch]; ok && idx >= left {',
-  '\t\t\tleft = idx + 1',
-  '\t\t}',
-  '\t\tseen[ch] = right',
-  '\t\tif right-left+1 > best {',
-  '\t\t\tbest = right - left + 1',
-  '\t\t}',
-  '\t}',
-  '\treturn best',
-  '}',
-]
+const STARTER_GO = `package main
 
-function Editor() {
+import "fmt"
+
+func solve() {
+\tfmt.Println("hello")
+}
+
+func main() {
+\tsolve()
+}
+`
+
+// MONACO_LANG maps our ArenaLanguageKey onto the Monaco language id.
+const MONACO_LANG: Record<ArenaLanguageKey, string> = {
+  go: 'go',
+  python: 'python',
+  javascript: 'javascript',
+  typescript: 'typescript',
+  sql: 'sql',
+}
+
+type CodeEditorProps = {
+  language: ArenaLanguageKey
+  code: string
+  onChange: (next: string) => void
+  onRun: () => void
+  onSubmit: () => void
+  isSubmitting: boolean
+  resultLabel: string | null
+}
+
+function CodeEditor({
+  language,
+  code,
+  onChange,
+  onRun,
+  onSubmit,
+  isSubmitting,
+  resultLabel,
+}: CodeEditorProps) {
   return (
     <div className="flex flex-1 flex-col bg-surface-1">
       <div className="flex h-11 items-center gap-3 border-b border-border bg-bg px-4">
         <div className="flex items-center gap-2 rounded-t-md border-b-2 border-accent px-2 py-2">
           <FileCode className="h-3.5 w-3.5 text-accent-hover" />
-          <span className="font-mono text-[12px] text-text-primary">solution.go</span>
+          <span className="font-mono text-[12px] text-text-primary">
+            solution.{language === 'javascript' ? 'js' : language === 'typescript' ? 'ts' : language === 'python' ? 'py' : language}
+          </span>
         </div>
-        <span className="rounded-full bg-cyan/15 px-2 py-0.5 font-mono text-[10px] font-semibold text-cyan">
-          GO
+        <span className="rounded-full bg-cyan/15 px-2 py-0.5 font-mono text-[10px] font-semibold uppercase text-cyan">
+          {language}
         </span>
-        <span className="ml-auto flex items-center gap-1.5 font-mono text-[11px] text-text-muted">
-          <span className="h-1.5 w-1.5 rounded-full bg-success" />
-          saved
-        </span>
+        {resultLabel && (
+          <span className="ml-auto rounded-full bg-success/15 px-2 py-0.5 font-mono text-[10px] font-semibold text-success">
+            {resultLabel}
+          </span>
+        )}
       </div>
       <div className="flex flex-1 overflow-hidden">
-        <div className="flex flex-col items-end border-r border-border bg-bg px-3 py-3 font-mono text-[12px] leading-[20px] text-text-muted">
-          {CODE_LINES.map((_, i) => (
-            <span key={i}>{i + 1}</span>
-          ))}
-        </div>
-        <pre className="flex-1 overflow-auto px-4 py-3 font-mono text-[12px] leading-[20px] text-text-secondary">
-          {CODE_LINES.map((line, i) => (
-            <div key={i}>{line || '\u00A0'}</div>
-          ))}
-        </pre>
+        <Editor
+          language={MONACO_LANG[language]}
+          value={code}
+          onChange={(v) => onChange(v ?? '')}
+          theme="vs-dark"
+          options={{
+            minimap: { enabled: false },
+            fontSize: 12,
+            lineHeight: 20,
+            scrollBeyondLastLine: false,
+            automaticLayout: true,
+            tabSize: 2,
+          }}
+        />
       </div>
       <div className="flex items-center gap-4 border-t border-border bg-bg px-5 py-3">
-        <Button variant="ghost" size="sm" icon={<Play className="h-3.5 w-3.5" />}>
+        <Button
+          variant="ghost"
+          size="sm"
+          icon={<Play className="h-3.5 w-3.5" />}
+          onClick={onRun}
+          disabled={isSubmitting}
+        >
           Run
         </Button>
-        <Button variant="primary" size="sm" icon={<Upload className="h-3.5 w-3.5" />} className="shadow-glow">
+        <Button
+          variant="primary"
+          size="sm"
+          icon={
+            isSubmitting ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <Upload className="h-3.5 w-3.5" />
+            )
+          }
+          className="shadow-glow"
+          onClick={onSubmit}
+          disabled={isSubmitting}
+        >
           Submit
         </Button>
       </div>
@@ -247,20 +295,50 @@ function ChatCard() {
   )
 }
 
+// inferLanguage maps the match section to a default editor language. SQL
+// matches obviously use SQL; everything else defaults to Go for now (the
+// backend accepts a per-submission language switch via SubmitCode).
+function inferLanguage(section: string | undefined): ArenaLanguageKey {
+  if (section === 'sql') return 'sql'
+  return 'go'
+}
+
 export default function ArenaMatchPage() {
   const { matchId } = useParams<{ matchId: string }>()
   const navigate = useNavigate()
   const channel = matchId ? `arena/${matchId}` : ''
-  const { lastEvent, data, status } = useChannel<Record<string, unknown>>(channel)
-  const { data: match, isError } = useArenaMatchQuery(matchId)
-  const taskTitle = match?.task?.title ?? 'Longest Substring Without Repeating Characters'
-  const taskDesc = match?.task?.description ?? 'Дана строка s. Найди длину самой длинной подстроки без повторяющихся символов.'
+  const { lastEvent, data, status, send } = useChannel<Record<string, unknown>>(channel)
+  const { data: match, isError, isLoading } = useArenaMatchQuery(matchId)
+  const submit = useSubmitCodeMutation()
+
+  const taskTitle = match?.task?.title ?? '…'
+  const taskDesc = match?.task?.description ?? ''
   const taskDifficulty = match?.task?.difficulty ?? 'Medium'
-  const taskSection = match?.task?.section ?? 'String'
+  const taskSection = match?.task?.section ?? 'algorithms'
+
+  const language: ArenaLanguageKey = useMemo(
+    () => inferLanguage(match?.section),
+    [match?.section],
+  )
+
+  const [code, setCode] = useState<string>(STARTER_GO)
+  // When the match loads with a starter snippet for the chosen language,
+  // adopt it once. We deliberately don't overwrite user edits afterwards.
+  const adoptedStarter = useRef(false)
+  useEffect(() => {
+    if (adoptedStarter.current) return
+    const starter = match?.task?.starter_code?.[language]
+    if (starter) {
+      setCode(starter)
+      adoptedStarter.current = true
+    }
+  }, [match, language])
 
   const [opponentTyping, setOpponentTyping] = useState(false)
   const [opponentRunStatus, setOpponentRunStatus] = useState<string | null>(null)
   const [opponentTests, setOpponentTests] = useState('—')
+  const [resultLabel, setResultLabel] = useState<string | null>(null)
+  const [submitError, setSubmitError] = useState<string | null>(null)
 
   useEffect(() => {
     if (!lastEvent || !data) return
@@ -273,8 +351,77 @@ export default function ArenaMatchPage() {
       window.setTimeout(() => setOpponentRunStatus(null), 4000)
     } else if (lastEvent === 'match_result' && matchId) {
       navigate(`/match/${matchId}/end`)
+    } else if (lastEvent === 'submission_result') {
+      const r = data as { passed?: boolean; tests_passed?: number; tests_total?: number }
+      setResultLabel(
+        r.passed
+          ? `passed ${r.tests_passed ?? '?'}/${r.tests_total ?? '?'}`
+          : `failed ${r.tests_passed ?? 0}/${r.tests_total ?? '?'}`,
+      )
     }
   }, [lastEvent, data, matchId, navigate])
+
+  // Debounced WS notification of code-edit progress. We only ever send
+  // size + line-count, never the actual code (bible §11 leakage).
+  const debounceRef = useRef<number | null>(null)
+  const handleCodeChange = useCallback(
+    (next: string) => {
+      setCode(next)
+      if (debounceRef.current) window.clearTimeout(debounceRef.current)
+      debounceRef.current = window.setTimeout(() => {
+        send('code_update', {
+          bytes: next.length,
+          lines: next.split('\n').length,
+        })
+      }, 300)
+    },
+    [send],
+  )
+
+  const handleSubmit = useCallback(() => {
+    if (!matchId) return
+    setSubmitError(null)
+    setResultLabel(null)
+    submit.mutate(
+      { matchId, code, language },
+      {
+        onSuccess: (r) => {
+          setResultLabel(
+            r.passed
+              ? `passed ${r.tests_passed}/${r.tests_total}`
+              : `failed ${r.tests_passed}/${r.tests_total}`,
+          )
+          if (r.passed) {
+            // Match is now finished server-side; navigate when we receive
+            // the WS match_result envelope. Fallback: kick to end after 2s.
+            window.setTimeout(() => navigate(`/match/${matchId}/end`), 2_000)
+          }
+        },
+        onError: (e: unknown) => {
+          setSubmitError((e as Error).message ?? 'submit failed')
+        },
+      },
+    )
+  }, [matchId, code, language, submit, navigate])
+
+  const handleRun = useCallback(() => {
+    // For MVP "Run" exercises the same backend submit endpoint — Judge0
+    // already runs every test. UI distinguishes by NOT navigating away.
+    if (!matchId) return
+    setResultLabel('running…')
+    submit.mutate(
+      { matchId, code, language },
+      {
+        onSuccess: (r) =>
+          setResultLabel(
+            r.passed
+              ? `run ok ${r.tests_passed}/${r.tests_total}`
+              : `run ${r.tests_passed}/${r.tests_total}`,
+          ),
+        onError: (e: unknown) => setResultLabel(`error: ${(e as Error).message}`),
+      },
+    )
+  }, [matchId, code, language, submit])
 
   return (
     <AppShellV2>
@@ -285,8 +432,21 @@ export default function ArenaMatchPage() {
         </div>
         <MatchHeader opponentTyping={opponentTyping} opponentRunStatus={opponentRunStatus} />
         <div className="flex flex-1 flex-col overflow-auto lg:flex-row lg:overflow-hidden">
-          <TaskPanel title={taskTitle} description={taskDesc} difficulty={taskDifficulty} section={taskSection} />
-          <Editor />
+          <TaskPanel
+            title={isLoading ? 'Загружаем задачу…' : taskTitle}
+            description={taskDesc}
+            difficulty={taskDifficulty}
+            section={taskSection}
+          />
+          <CodeEditor
+            language={language}
+            code={code}
+            onChange={handleCodeChange}
+            onRun={handleRun}
+            onSubmit={handleSubmit}
+            isSubmitting={submit.isPending}
+            resultLabel={submitError ? `err: ${submitError}` : resultLabel}
+          />
           <div className="flex w-full flex-col gap-4 border-t border-border bg-bg p-4 lg:w-[300px] lg:border-l lg:border-t-0">
             <TestList opponentTests={opponentTests} />
             <ChatCard />

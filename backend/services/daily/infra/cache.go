@@ -12,10 +12,17 @@
 //     SubmitKata calls StreakRepo.Update on success, so cache freshness is
 //     sub-second on writes.
 //
-// Other daily repos (KataRepo, CalendarRepo, AutopsyRepo) are deliberately
-// not wrapped here — KataRepo is keyed on (uid, date) which already buckets
-// well, CalendarRepo is rarely-read, and AutopsyRepo is a write-mostly
-// audit log. Add wrappers only when profiling shows them hot.
+// Phase 2 closing: CachedKataRepo and CachedCalendarRepo extend the same
+// pattern. CachedKataRepo wraps HistoryLast30 (powers GetStreak history
+// rendering and SubmitKata's "already done today?" check) keyed by
+// (uid, today) with TTL until the next UTC midnight — so the cached row
+// auto-expires when the kata-day rolls over without manual cron. CachedCalendarRepo
+// wraps GetActive(uid, today) keyed by (uid, YYYY-MM) with a flat 60s TTL —
+// the active interview calendar is rarely-read but bursty around the
+// /daily/calendar page mount; the per-month bucket means UpsertCalendar
+// always invalidates the bucket the user is currently looking at.
+//
+// AutopsyRepo is still write-mostly so we leave it alone.
 package infra
 
 import (
@@ -170,3 +177,240 @@ func (c *CachedStreakRepo) Invalidate(ctx context.Context, userID uuid.UUID) {
 type discardWriter struct{}
 
 func (discardWriter) Write(p []byte) (int, error) { return len(p), nil }
+
+// ── KataRepo cache ────────────────────────────────────────────────────────
+
+// DefaultKataMinTTL is the minimum TTL applied to kata history cache entries.
+// Even when the request lands seconds before UTC midnight we keep the entry
+// alive briefly so the immediate follow-up read still hits the cache.
+const DefaultKataMinTTL = 60 * time.Second
+
+// dateFmt is the canonical YYYY-MM-DD layout used in cache keys.
+const dateFmt = "2006-01-02"
+
+// monthFmt is YYYY-MM, used by the calendar key.
+const monthFmt = "2006-01"
+
+// keyKataHistory returns the per-user, per-day Redis key for HistoryLast30.
+func keyKataHistory(uid uuid.UUID, today time.Time) string {
+	return fmt.Sprintf("daily:%s:kata:%s:%s", CacheKeyVersion, uid.String(), today.UTC().Format(dateFmt))
+}
+
+// keyCalendar returns the per-user, per-month Redis key for GetActive.
+func keyCalendar(uid uuid.UUID, today time.Time) string {
+	return fmt.Sprintf("daily:%s:calendar:%s:%s", CacheKeyVersion, uid.String(), today.UTC().Format(monthFmt))
+}
+
+// timeUntilNextUTCMidnight returns the duration from now to 00:00 UTC of
+// the following day, clamped to >= DefaultKataMinTTL.
+func timeUntilNextUTCMidnight(now time.Time, minTTL time.Duration) time.Duration {
+	n := now.UTC()
+	next := time.Date(n.Year(), n.Month(), n.Day(), 0, 0, 0, 0, time.UTC).Add(24 * time.Hour)
+	d := next.Sub(n)
+	if d < minTTL {
+		return minTTL
+	}
+	return d
+}
+
+// CachedKataRepo wraps domain.KataRepo. Only HistoryLast30 is cached — it is
+// the read hot-path (GetStreak hits it on every /daily/* page mount).
+// GetOrAssign is a read-modify-write so we delegate without caching, and
+// MarkSubmitted invalidates the cached history.
+type CachedKataRepo struct {
+	delegate domain.KataRepo
+	kv       KV
+	minTTL   time.Duration
+	log      *slog.Logger
+	sf       singleflight.Group
+	now      func() time.Time
+}
+
+// Compile-time: satisfies domain.KataRepo.
+var _ domain.KataRepo = (*CachedKataRepo)(nil)
+
+// NewCachedKataRepo wraps delegate. now defaults to time.Now if nil.
+func NewCachedKataRepo(delegate domain.KataRepo, kv KV, minTTL time.Duration, log *slog.Logger, now func() time.Time) *CachedKataRepo {
+	if minTTL <= 0 {
+		minTTL = DefaultKataMinTTL
+	}
+	if log == nil {
+		log = slog.New(slog.NewTextHandler(discardWriter{}, nil))
+	}
+	if now == nil {
+		now = time.Now
+	}
+	return &CachedKataRepo{delegate: delegate, kv: kv, minTTL: minTTL, log: log, now: now}
+}
+
+// GetOrAssign forwards untouched and invalidates the user's history bucket
+// for today (the new assignment row needs to surface on the next read).
+func (c *CachedKataRepo) GetOrAssign(ctx context.Context, userID uuid.UUID, date time.Time, taskID uuid.UUID, isCursed, isWeeklyBoss bool) (domain.Assignment, bool, error) {
+	a, created, err := c.delegate.GetOrAssign(ctx, userID, date, taskID, isCursed, isWeeklyBoss)
+	if err != nil {
+		return a, created, fmt.Errorf("daily.cache.GetOrAssign: %w", err)
+	}
+	if created {
+		c.InvalidateHistory(ctx, userID, date)
+	}
+	return a, created, nil
+}
+
+// MarkSubmitted forwards then invalidates today's history for the user.
+func (c *CachedKataRepo) MarkSubmitted(ctx context.Context, userID uuid.UUID, date time.Time, passed bool) error {
+	if err := c.delegate.MarkSubmitted(ctx, userID, date, passed); err != nil {
+		return fmt.Errorf("daily.cache.MarkSubmitted: %w", err)
+	}
+	c.InvalidateHistory(ctx, userID, date)
+	return nil
+}
+
+// HistoryLast30 is the cached path. Read-through with singleflight collapsing.
+func (c *CachedKataRepo) HistoryLast30(ctx context.Context, userID uuid.UUID, today time.Time) ([]domain.HistoryEntry, error) {
+	key := keyKataHistory(userID, today)
+	if raw, err := c.kv.Get(ctx, key); err == nil {
+		var out []domain.HistoryEntry
+		if jerr := json.Unmarshal([]byte(raw), &out); jerr == nil {
+			return out, nil
+		}
+		c.log.Warn("daily.cache: corrupt kata history entry, refreshing", slog.String("key", key))
+	} else if !errors.Is(err, ErrCacheMiss) {
+		c.log.Warn("daily.cache: redis Get failed, falling back",
+			slog.String("key", key), slog.Any("err", err))
+	}
+	v, err, _ := c.sf.Do(key, func() (any, error) {
+		return c.delegate.HistoryLast30(ctx, userID, today)
+	})
+	if err != nil {
+		return nil, fmt.Errorf("daily.cache.HistoryLast30: %w", err)
+	}
+	out, ok := v.([]domain.HistoryEntry)
+	if !ok {
+		return nil, fmt.Errorf("daily.cache: singleflight returned %T", v)
+	}
+	if data, jerr := json.Marshal(out); jerr == nil {
+		ttl := timeUntilNextUTCMidnight(c.now(), c.minTTL)
+		if serr := c.kv.Set(ctx, key, data, ttl); serr != nil {
+			c.log.Warn("daily.cache: redis Set failed",
+				slog.String("key", key), slog.Any("err", serr))
+		}
+	}
+	return out, nil
+}
+
+// InvalidateHistory busts the per-user kata history key for the given day.
+func (c *CachedKataRepo) InvalidateHistory(ctx context.Context, userID uuid.UUID, today time.Time) {
+	if err := c.kv.Del(ctx, keyKataHistory(userID, today)); err != nil {
+		c.log.Warn("daily.cache: redis Del kata failed",
+			slog.Any("user_id", userID), slog.Any("err", err))
+	}
+}
+
+// ── CalendarRepo cache ────────────────────────────────────────────────────
+
+// DefaultCalendarTTL is the per-key TTL for calendar cache entries.
+const DefaultCalendarTTL = 60 * time.Second
+
+// CachedCalendarRepo wraps domain.CalendarRepo. GetActive is read-through;
+// Upsert invalidates the bucket containing today (best-effort: the row's
+// interview_date may be in a different month, but the user is reading
+// today's bucket from the UI, so that's the bucket we bust).
+type CachedCalendarRepo struct {
+	delegate domain.CalendarRepo
+	kv       KV
+	ttl      time.Duration
+	log      *slog.Logger
+	sf       singleflight.Group
+	now      func() time.Time
+}
+
+// Compile-time: satisfies domain.CalendarRepo.
+var _ domain.CalendarRepo = (*CachedCalendarRepo)(nil)
+
+// NewCachedCalendarRepo wraps delegate. now defaults to time.Now if nil.
+func NewCachedCalendarRepo(delegate domain.CalendarRepo, kv KV, ttl time.Duration, log *slog.Logger, now func() time.Time) *CachedCalendarRepo {
+	if ttl <= 0 {
+		ttl = DefaultCalendarTTL
+	}
+	if log == nil {
+		log = slog.New(slog.NewTextHandler(discardWriter{}, nil))
+	}
+	if now == nil {
+		now = time.Now
+	}
+	return &CachedCalendarRepo{delegate: delegate, kv: kv, ttl: ttl, log: log, now: now}
+}
+
+// calendarEnvelope is the wire-shape stored in Redis. We carry an explicit
+// "found" flag so that ErrNotFound can be cached as a negative result without
+// confusing it with a JSON unmarshalling failure.
+type calendarEnvelope struct {
+	Found    bool                     `json:"found"`
+	Calendar domain.InterviewCalendar `json:"calendar,omitempty"`
+}
+
+// GetActive is the cached path.
+func (c *CachedCalendarRepo) GetActive(ctx context.Context, userID uuid.UUID, today time.Time) (domain.InterviewCalendar, error) {
+	key := keyCalendar(userID, today)
+	if raw, err := c.kv.Get(ctx, key); err == nil {
+		var env calendarEnvelope
+		if jerr := json.Unmarshal([]byte(raw), &env); jerr == nil {
+			if !env.Found {
+				return domain.InterviewCalendar{}, domain.ErrNotFound
+			}
+			return env.Calendar, nil
+		}
+		c.log.Warn("daily.cache: corrupt calendar entry, refreshing", slog.String("key", key))
+	} else if !errors.Is(err, ErrCacheMiss) {
+		c.log.Warn("daily.cache: redis Get failed, falling back",
+			slog.String("key", key), slog.Any("err", err))
+	}
+	v, err, _ := c.sf.Do(key, func() (any, error) {
+		got, gerr := c.delegate.GetActive(ctx, userID, today)
+		if gerr != nil && !errors.Is(gerr, domain.ErrNotFound) {
+			return nil, fmt.Errorf("daily.cache.delegate.GetActive: %w", gerr)
+		}
+		// Возвращаем envelope; gerr (если ErrNotFound) пробрасываем через
+		// второй return-value sf-callback'а, чтобы внешний код мог отличить
+		// "нет календаря" от настоящих сбоев.
+		if gerr != nil {
+			return calendarEnvelope{Found: false, Calendar: got}, fmt.Errorf("daily.cache.delegate.GetActive: %w", gerr)
+		}
+		return calendarEnvelope{Found: true, Calendar: got}, nil
+	})
+	if err != nil && !errors.Is(err, domain.ErrNotFound) {
+		return domain.InterviewCalendar{}, fmt.Errorf("daily.cache.GetActive: %w", err)
+	}
+	env, ok := v.(calendarEnvelope)
+	if !ok {
+		return domain.InterviewCalendar{}, fmt.Errorf("daily.cache: singleflight returned %T", v)
+	}
+	if data, jerr := json.Marshal(env); jerr == nil {
+		if serr := c.kv.Set(ctx, key, data, c.ttl); serr != nil {
+			c.log.Warn("daily.cache: redis Set failed",
+				slog.String("key", key), slog.Any("err", serr))
+		}
+	}
+	if !env.Found {
+		return domain.InterviewCalendar{}, domain.ErrNotFound
+	}
+	return env.Calendar, nil
+}
+
+// Upsert forwards then invalidates the user's calendar bucket for today.
+func (c *CachedCalendarRepo) Upsert(ctx context.Context, cal domain.InterviewCalendar) (domain.InterviewCalendar, error) {
+	out, err := c.delegate.Upsert(ctx, cal)
+	if err != nil {
+		return out, fmt.Errorf("daily.cache.Upsert: %w", err)
+	}
+	c.Invalidate(ctx, cal.UserID, c.now())
+	return out, nil
+}
+
+// Invalidate busts the calendar bucket containing the supplied "today".
+func (c *CachedCalendarRepo) Invalidate(ctx context.Context, userID uuid.UUID, today time.Time) {
+	if err := c.kv.Del(ctx, keyCalendar(userID, today)); err != nil {
+		c.log.Warn("daily.cache: redis Del calendar failed",
+			slog.Any("user_id", userID), slog.Any("err", err))
+	}
+}

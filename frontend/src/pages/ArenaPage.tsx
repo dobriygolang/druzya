@@ -1,15 +1,19 @@
 import {
   ArrowRight,
   Check,
+  Loader2,
   Lock,
   Plus,
   Sparkles,
   Swords,
   Users,
   Video,
+  X,
   Zap,
   Lock as LockIcon,
 } from 'lucide-react'
+import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { AppShellV2 } from '../components/AppShell'
 import { Button } from '../components/Button'
@@ -17,6 +21,12 @@ import { Card } from '../components/Card'
 import { Avatar } from '../components/Avatar'
 import type { ReactNode } from 'react'
 import { useRatingMeQuery, useLeaderboardQuery } from '../lib/queries/rating'
+import {
+  useCancelSearchMutation,
+  useFindMatchMutation,
+  type ArenaModeKey,
+  type SectionKey,
+} from '../lib/queries/arena'
 
 function HeaderRow() {
   const { t } = useTranslation('arena')
@@ -48,29 +58,95 @@ function HeaderRow() {
   )
 }
 
-function HeroQueue() {
+type HeroQueueProps = {
+  inQueue: boolean
+  waitSeconds: number
+  isSubmitting: boolean
+  errorMessage: string | null
+  selectedSection: SectionKey
+  onSelectSection: (s: SectionKey) => void
+  onFind: () => void
+  onCancel: () => void
+}
+
+const SECTIONS: SectionKey[] = ['algorithms', 'sql', 'go', 'system_design', 'behavioral']
+
+function HeroQueue({
+  inQueue,
+  waitSeconds,
+  isSubmitting,
+  errorMessage,
+  selectedSection,
+  onSelectSection,
+  onFind,
+  onCancel,
+}: HeroQueueProps) {
   const { t } = useTranslation('arena')
   return (
-    <div className="flex w-full flex-col items-start justify-between gap-4 rounded-xl border border-border-strong bg-gradient-to-br from-surface-2 to-surface-3 p-5 shadow-card sm:p-7 lg:h-[180px] lg:flex-row lg:items-center lg:gap-0">
-      <div className="flex flex-col gap-2">
+    <div className="flex w-full flex-col items-start justify-between gap-4 rounded-xl border border-border-strong bg-gradient-to-br from-surface-2 to-surface-3 p-5 shadow-card sm:p-7 lg:flex-row lg:items-center">
+      <div className="flex flex-col gap-3">
         <span className="inline-flex w-fit items-center gap-1.5 rounded-full bg-accent/15 px-2.5 py-1 font-mono text-[11px] font-semibold tracking-[0.08em] text-accent-hover">
           <Swords className="h-3 w-3" /> {t('ranked_1v1_tag')}
         </span>
         <h2 className="font-display text-[28px] font-bold text-text-primary">
-          {t('ready_for_match')}
+          {inQueue
+            ? t('searching_for_opponent', {
+                defaultValue: 'Ищем противника… {{sec}}s',
+                sec: waitSeconds,
+              })
+            : t('ready_for_match')}
         </h2>
-        <p className="font-mono text-xs text-text-muted">
-          {t('estimate')}
-        </p>
+        <div className="flex flex-wrap gap-1.5">
+          {SECTIONS.map((s) => (
+            <button
+              key={s}
+              type="button"
+              disabled={inQueue || isSubmitting}
+              onClick={() => onSelectSection(s)}
+              className={[
+                'rounded-full px-3 py-1 font-mono text-[11px] font-semibold uppercase tracking-wider transition-colors',
+                selectedSection === s
+                  ? 'bg-accent text-bg'
+                  : 'border border-border bg-surface-1 text-text-secondary hover:bg-surface-2',
+                inQueue || isSubmitting ? 'cursor-not-allowed opacity-60' : '',
+              ].join(' ')}
+            >
+              {s}
+            </button>
+          ))}
+        </div>
+        {errorMessage && (
+          <p className="font-mono text-xs text-danger">{errorMessage}</p>
+        )}
       </div>
-      <Button
-        variant="primary"
-        icon={<Swords className="h-[18px] w-[18px]" />}
-        iconRight={<ArrowRight className="h-4 w-4" />}
-        className="px-6 py-3.5 text-sm shadow-glow"
-      >
-        {t('find_opponent')}
-      </Button>
+      {inQueue ? (
+        <Button
+          variant="ghost"
+          icon={<X className="h-[18px] w-[18px]" />}
+          className="px-6 py-3.5 text-sm"
+          onClick={onCancel}
+          disabled={isSubmitting}
+        >
+          {t('cancel_search', { defaultValue: 'Отменить' })}
+        </Button>
+      ) : (
+        <Button
+          variant="primary"
+          icon={
+            isSubmitting ? (
+              <Loader2 className="h-[18px] w-[18px] animate-spin" />
+            ) : (
+              <Swords className="h-[18px] w-[18px]" />
+            )
+          }
+          iconRight={<ArrowRight className="h-4 w-4" />}
+          className="px-6 py-3.5 text-sm shadow-glow"
+          onClick={onFind}
+          disabled={isSubmitting}
+        >
+          {t('find_opponent')}
+        </Button>
+      )}
     </div>
   )
 }
@@ -292,11 +368,63 @@ function FriendsStrip() {
 
 export default function ArenaPage() {
   const { t } = useTranslation('arena')
+  const navigate = useNavigate()
+  const findMatch = useFindMatchMutation()
+  const cancelSearch = useCancelSearchMutation()
+  const [section, setSection] = useState<SectionKey>('algorithms')
+  const [mode] = useState<ArenaModeKey>('solo_1v1')
+  const [inQueue, setInQueue] = useState(false)
+  const [waitSec, setWaitSec] = useState(0)
+  const [errorMsg, setErrorMsg] = useState<string | null>(null)
+
+  // Tick the wait counter while we are queued.
+  useEffect(() => {
+    if (!inQueue) {
+      setWaitSec(0)
+      return
+    }
+    const id = window.setInterval(() => setWaitSec((s) => s + 1), 1000)
+    return () => window.clearInterval(id)
+  }, [inQueue])
+
+  const handleFind = () => {
+    setErrorMsg(null)
+    findMatch.mutate(
+      { section, mode },
+      {
+        onSuccess: (resp) => {
+          if (resp.match_id) {
+            navigate(`/arena/match/${resp.match_id}`)
+            return
+          }
+          setInQueue(true)
+        },
+        onError: (e: unknown) => {
+          setErrorMsg((e as Error).message ?? 'failed to enqueue')
+        },
+      },
+    )
+  }
+  const handleCancel = () => {
+    cancelSearch.mutate(undefined, {
+      onSettled: () => setInQueue(false),
+    })
+  }
+
   return (
     <AppShellV2>
       <div className="flex flex-col gap-6 px-4 py-6 sm:px-8 lg:px-20 lg:py-8">
         <HeaderRow />
-        <HeroQueue />
+        <HeroQueue
+          inQueue={inQueue}
+          waitSeconds={waitSec}
+          isSubmitting={findMatch.isPending || cancelSearch.isPending}
+          errorMessage={errorMsg}
+          selectedSection={section}
+          onSelectSection={setSection}
+          onFind={handleFind}
+          onCancel={handleCancel}
+        />
         <AiPanel />
         <div className="flex flex-col gap-4">
           <div className="flex items-end justify-between">

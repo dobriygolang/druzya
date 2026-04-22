@@ -19,21 +19,33 @@ func NewDaily(d Deps) *Module {
 	// Phase 2: wrap StreakRepo in a 60s read-through cache. SubmitKata
 	// calls Update on success which invalidates the cached entry, so the
 	// streak number on the daily page is sub-second fresh post-submit.
+	kv := dailyInfra.NewRedisKV(d.Redis)
 	streaks := dailyInfra.NewCachedStreakRepo(
 		dailyInfra.NewStreaks(d.Pool),
-		dailyInfra.NewRedisKV(d.Redis),
+		kv,
 		dailyInfra.DefaultStreakTTL,
 		d.Log,
 	)
-	calendars := dailyInfra.NewCalendars(d.Pool)
+	// Phase 2 closing: wrap KataRepo (HistoryLast30) and CalendarRepo
+	// (GetActive) in read-through caches. tasksKatas exposes TaskRepo +
+	// SkillRepo + KataRepo from the same struct; the cache only intercepts
+	// the KataRepo surface — Skills and Tasks still go straight to PG.
+	katas := dailyInfra.NewCachedKataRepo(tasksKatas, kv, dailyInfra.DefaultKataMinTTL, d.Log, d.Now)
+	calendars := dailyInfra.NewCachedCalendarRepo(
+		dailyInfra.NewCalendars(d.Pool),
+		kv,
+		dailyInfra.DefaultCalendarTTL,
+		d.Log,
+		d.Now,
+	)
 	autopsies := dailyInfra.NewAutopsies(d.Pool)
 	judge := dailyInfra.NewFakeJudge0()
 	analyser := &dailyApp.FakeAnalyser{Autopsies: autopsies, Log: d.Log}
 
 	h := dailyPorts.NewHandler(dailyPorts.Handler{
-		GetKata:        &dailyApp.GetKata{Skills: tasksKatas, Tasks: tasksKatas, Katas: tasksKatas, Now: d.Now},
-		SubmitKata:     &dailyApp.SubmitKata{Tasks: tasksKatas, Katas: tasksKatas, Streaks: streaks, Judge: judge, Bus: d.Bus, Log: d.Log, Now: d.Now},
-		GetStreak:      &dailyApp.GetStreak{Streaks: streaks, Katas: tasksKatas, Now: d.Now},
+		GetKata:        &dailyApp.GetKata{Skills: tasksKatas, Tasks: tasksKatas, Katas: katas, Now: d.Now},
+		SubmitKata:     &dailyApp.SubmitKata{Tasks: tasksKatas, Katas: katas, Streaks: streaks, Judge: judge, Bus: d.Bus, Log: d.Log, Now: d.Now},
+		GetStreak:      &dailyApp.GetStreak{Streaks: streaks, Katas: katas, Now: d.Now},
 		GetCalendar:    &dailyApp.GetCalendar{Cal: calendars, Now: d.Now},
 		UpsertCalendar: &dailyApp.UpsertCalendar{Cal: calendars, Now: d.Now},
 		CreateAutopsy:  &dailyApp.CreateAutopsy{Autopsies: autopsies, Bus: d.Bus, Log: d.Log, Analyse: analyser},

@@ -276,3 +276,365 @@ func TestRedisKV_DelEmptyIsNoop(t *testing.T) {
 		t.Fatalf("unexpected: %v", err)
 	}
 }
+
+// ── CachedKataRepo ─────────────────────────────────────────────────────────
+
+func sampleHistory(today time.Time) []domain.HistoryEntry {
+	pass := true
+	return []domain.HistoryEntry{
+		{Date: today, TaskID: uuid.New(), Passed: &pass},
+		{Date: today.AddDate(0, 0, -1), TaskID: uuid.New(), FreezeUsed: true},
+	}
+}
+
+func todayUTC() time.Time {
+	n := time.Now().UTC()
+	return time.Date(n.Year(), n.Month(), n.Day(), 0, 0, 0, 0, time.UTC)
+}
+
+func TestCachedKataRepo_HistoryLast30_MissThenHit(t *testing.T) {
+	t.Parallel()
+	ctrl := gomock.NewController(t)
+	mock := mocks.NewMockKataRepo(ctrl)
+	uid := uuid.New()
+	today := todayUTC()
+	mock.EXPECT().HistoryLast30(gomock.Any(), uid, today).
+		Return(sampleHistory(today), nil).Times(1)
+
+	repo := NewCachedKataRepo(mock, newMemKV(), 0, nil, nil)
+	if _, err := repo.HistoryLast30(context.Background(), uid, today); err != nil {
+		t.Fatal(err)
+	}
+	got, err := repo.HistoryLast30(context.Background(), uid, today)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != 2 {
+		t.Fatalf("hit mismatch: %+v", got)
+	}
+}
+
+func TestCachedKataRepo_HistoryLast30_HitDoesNotCallUpstream(t *testing.T) {
+	t.Parallel()
+	ctrl := gomock.NewController(t)
+	mock := mocks.NewMockKataRepo(ctrl)
+	uid := uuid.New()
+	today := todayUTC()
+	mock.EXPECT().HistoryLast30(gomock.Any(), uid, today).
+		Return(sampleHistory(today), nil).Times(1)
+	repo := NewCachedKataRepo(mock, newMemKV(), 0, nil, nil)
+	for i := 0; i < 5; i++ {
+		if _, err := repo.HistoryLast30(context.Background(), uid, today); err != nil {
+			t.Fatal(err)
+		}
+	}
+}
+
+func TestCachedKataRepo_TTL_ClampedToMin_NearMidnight(t *testing.T) {
+	t.Parallel()
+	// Pin "now" to 2 seconds before midnight UTC; expected TTL = max(2s, minTTL).
+	near := time.Date(2030, 1, 1, 23, 59, 58, 0, time.UTC)
+	got := timeUntilNextUTCMidnight(near, DefaultKataMinTTL)
+	if got != DefaultKataMinTTL {
+		t.Fatalf("expected clamp to min %s, got %s", DefaultKataMinTTL, got)
+	}
+}
+
+func TestCachedKataRepo_TTL_FullDay(t *testing.T) {
+	t.Parallel()
+	// Pin "now" to 00:00:00 UTC — expect ~24h.
+	morning := time.Date(2030, 1, 1, 0, 0, 0, 0, time.UTC)
+	got := timeUntilNextUTCMidnight(morning, DefaultKataMinTTL)
+	if got != 24*time.Hour {
+		t.Fatalf("expected 24h, got %s", got)
+	}
+}
+
+func TestCachedKataRepo_HistoryLast30_CorruptJSONFallback(t *testing.T) {
+	t.Parallel()
+	ctrl := gomock.NewController(t)
+	mock := mocks.NewMockKataRepo(ctrl)
+	uid := uuid.New()
+	today := todayUTC()
+	mock.EXPECT().HistoryLast30(gomock.Any(), uid, today).
+		Return(sampleHistory(today), nil).Times(1)
+	kv := newMemKV()
+	kv.putRaw(keyKataHistory(uid, today), []byte("{not-json"))
+	repo := NewCachedKataRepo(mock, kv, 0, nil, nil)
+	if _, err := repo.HistoryLast30(context.Background(), uid, today); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestCachedKataRepo_HistoryLast30_RedisErrorFallback(t *testing.T) {
+	t.Parallel()
+	ctrl := gomock.NewController(t)
+	mock := mocks.NewMockKataRepo(ctrl)
+	uid := uuid.New()
+	today := todayUTC()
+	mock.EXPECT().HistoryLast30(gomock.Any(), uid, today).
+		Return(sampleHistory(today), nil).Times(1)
+	kv := newMemKV()
+	kv.failGet = true
+	repo := NewCachedKataRepo(mock, kv, 0, nil, nil)
+	out, err := repo.HistoryLast30(context.Background(), uid, today)
+	if err != nil {
+		t.Fatalf("expected fallback, got %v", err)
+	}
+	if len(out) != 2 {
+		t.Fatalf("expected 2 entries, got %d", len(out))
+	}
+}
+
+func TestCachedKataRepo_MarkSubmitted_InvalidatesHistory(t *testing.T) {
+	t.Parallel()
+	ctrl := gomock.NewController(t)
+	mock := mocks.NewMockKataRepo(ctrl)
+	uid := uuid.New()
+	today := todayUTC()
+	mock.EXPECT().HistoryLast30(gomock.Any(), uid, today).
+		Return(sampleHistory(today), nil).Times(2)
+	mock.EXPECT().MarkSubmitted(gomock.Any(), uid, today, true).Return(nil).Times(1)
+	kv := newMemKV()
+	repo := NewCachedKataRepo(mock, kv, 0, nil, nil)
+	if _, err := repo.HistoryLast30(context.Background(), uid, today); err != nil {
+		t.Fatal(err)
+	}
+	if !kv.has(keyKataHistory(uid, today)) {
+		t.Fatal("expected cached after first read")
+	}
+	if err := repo.MarkSubmitted(context.Background(), uid, today, true); err != nil {
+		t.Fatal(err)
+	}
+	if kv.has(keyKataHistory(uid, today)) {
+		t.Fatal("expected invalidated after MarkSubmitted")
+	}
+	// Second read forces a refetch (proves invalidation).
+	if _, err := repo.HistoryLast30(context.Background(), uid, today); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestCachedKataRepo_GetOrAssign_InvalidatesOnCreate(t *testing.T) {
+	t.Parallel()
+	ctrl := gomock.NewController(t)
+	mock := mocks.NewMockKataRepo(ctrl)
+	uid := uuid.New()
+	today := todayUTC()
+	taskID := uuid.New()
+	// Pre-seed cache.
+	kv := newMemKV()
+	kv.putRaw(keyKataHistory(uid, today), []byte("[]"))
+	// First call: created=true → expect invalidate.
+	mock.EXPECT().GetOrAssign(gomock.Any(), uid, today, taskID, false, false).
+		Return(domain.Assignment{UserID: uid, KataDate: today, TaskID: taskID}, true, nil).Times(1)
+	repo := NewCachedKataRepo(mock, kv, 0, nil, nil)
+	if _, _, err := repo.GetOrAssign(context.Background(), uid, today, taskID, false, false); err != nil {
+		t.Fatal(err)
+	}
+	if kv.has(keyKataHistory(uid, today)) {
+		t.Fatal("expected invalidated on create")
+	}
+}
+
+func TestCachedKataRepo_HistoryLast30_SingleflightCollapsesConcurrent(t *testing.T) {
+	t.Parallel()
+	ctrl := gomock.NewController(t)
+	mock := mocks.NewMockKataRepo(ctrl)
+	uid := uuid.New()
+	today := todayUTC()
+	mock.EXPECT().HistoryLast30(gomock.Any(), uid, today).DoAndReturn(
+		func(_ context.Context, _ uuid.UUID, _ time.Time) ([]domain.HistoryEntry, error) {
+			time.Sleep(20 * time.Millisecond)
+			return sampleHistory(today), nil
+		}).Times(1)
+	repo := NewCachedKataRepo(mock, newMemKV(), 0, nil, nil)
+
+	const N = 50
+	var wg sync.WaitGroup
+	wg.Add(N)
+	for i := 0; i < N; i++ {
+		go func() {
+			defer wg.Done()
+			_, _ = repo.HistoryLast30(context.Background(), uid, today)
+		}()
+	}
+	wg.Wait()
+}
+
+func TestCachedKataRepo_DefaultsApplied(t *testing.T) {
+	t.Parallel()
+	repo := NewCachedKataRepo(nil, newMemKV(), 0, nil, nil)
+	if repo.minTTL != DefaultKataMinTTL {
+		t.Fatalf("default minTTL not applied: %s", repo.minTTL)
+	}
+	if repo.now == nil {
+		t.Fatal("default clock not applied")
+	}
+}
+
+// ── CachedCalendarRepo ─────────────────────────────────────────────────────
+
+func sampleCalendar(uid uuid.UUID) domain.InterviewCalendar {
+	return domain.InterviewCalendar{
+		ID:            uuid.New(),
+		UserID:        uid,
+		CompanyID:     uuid.New(),
+		Role:          "be",
+		InterviewDate: time.Date(2030, 6, 1, 0, 0, 0, 0, time.UTC),
+		CurrentLevel:  "mid",
+	}
+}
+
+func TestCachedCalendarRepo_GetActive_MissThenHit(t *testing.T) {
+	t.Parallel()
+	ctrl := gomock.NewController(t)
+	mock := mocks.NewMockCalendarRepo(ctrl)
+	uid := uuid.New()
+	today := todayUTC()
+	mock.EXPECT().GetActive(gomock.Any(), uid, today).
+		Return(sampleCalendar(uid), nil).Times(1)
+	repo := NewCachedCalendarRepo(mock, newMemKV(), 0, nil, func() time.Time { return today })
+	if _, err := repo.GetActive(context.Background(), uid, today); err != nil {
+		t.Fatal(err)
+	}
+	got, err := repo.GetActive(context.Background(), uid, today)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.Role != "be" {
+		t.Fatalf("hit mismatch: %+v", got)
+	}
+}
+
+func TestCachedCalendarRepo_GetActive_NotFoundCachedNegative(t *testing.T) {
+	t.Parallel()
+	ctrl := gomock.NewController(t)
+	mock := mocks.NewMockCalendarRepo(ctrl)
+	uid := uuid.New()
+	today := todayUTC()
+	mock.EXPECT().GetActive(gomock.Any(), uid, today).
+		Return(domain.InterviewCalendar{}, domain.ErrNotFound).Times(1)
+	repo := NewCachedCalendarRepo(mock, newMemKV(), 0, nil, func() time.Time { return today })
+	for i := 0; i < 3; i++ {
+		_, err := repo.GetActive(context.Background(), uid, today)
+		if !errors.Is(err, domain.ErrNotFound) {
+			t.Fatalf("expected ErrNotFound, got %v", err)
+		}
+	}
+}
+
+func TestCachedCalendarRepo_GetActive_CorruptJSONFallback(t *testing.T) {
+	t.Parallel()
+	ctrl := gomock.NewController(t)
+	mock := mocks.NewMockCalendarRepo(ctrl)
+	uid := uuid.New()
+	today := todayUTC()
+	mock.EXPECT().GetActive(gomock.Any(), uid, today).
+		Return(sampleCalendar(uid), nil).Times(1)
+	kv := newMemKV()
+	kv.putRaw(keyCalendar(uid, today), []byte("xxx"))
+	repo := NewCachedCalendarRepo(mock, kv, 0, nil, func() time.Time { return today })
+	if _, err := repo.GetActive(context.Background(), uid, today); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestCachedCalendarRepo_GetActive_RedisErrorFallback(t *testing.T) {
+	t.Parallel()
+	ctrl := gomock.NewController(t)
+	mock := mocks.NewMockCalendarRepo(ctrl)
+	uid := uuid.New()
+	today := todayUTC()
+	mock.EXPECT().GetActive(gomock.Any(), uid, today).
+		Return(sampleCalendar(uid), nil).Times(1)
+	kv := newMemKV()
+	kv.failGet = true
+	repo := NewCachedCalendarRepo(mock, kv, 0, nil, func() time.Time { return today })
+	got, err := repo.GetActive(context.Background(), uid, today)
+	if err != nil {
+		t.Fatalf("expected fallback, got %v", err)
+	}
+	if got.Role != "be" {
+		t.Fatalf("payload mismatch: %+v", got)
+	}
+}
+
+func TestCachedCalendarRepo_GetActive_DelegateError(t *testing.T) {
+	t.Parallel()
+	ctrl := gomock.NewController(t)
+	mock := mocks.NewMockCalendarRepo(ctrl)
+	uid := uuid.New()
+	today := todayUTC()
+	mock.EXPECT().GetActive(gomock.Any(), uid, today).
+		Return(domain.InterviewCalendar{}, errors.New("pg down")).Times(1)
+	repo := NewCachedCalendarRepo(mock, newMemKV(), 0, nil, func() time.Time { return today })
+	if _, err := repo.GetActive(context.Background(), uid, today); err == nil {
+		t.Fatal("expected error")
+	}
+}
+
+func TestCachedCalendarRepo_Upsert_InvalidatesUserKey(t *testing.T) {
+	t.Parallel()
+	ctrl := gomock.NewController(t)
+	mock := mocks.NewMockCalendarRepo(ctrl)
+	uid := uuid.New()
+	today := todayUTC()
+	mock.EXPECT().GetActive(gomock.Any(), uid, today).
+		Return(sampleCalendar(uid), nil).Times(2)
+	mock.EXPECT().Upsert(gomock.Any(), gomock.Any()).
+		Return(sampleCalendar(uid), nil).Times(1)
+	kv := newMemKV()
+	repo := NewCachedCalendarRepo(mock, kv, 0, nil, func() time.Time { return today })
+	if _, err := repo.GetActive(context.Background(), uid, today); err != nil {
+		t.Fatal(err)
+	}
+	if !kv.has(keyCalendar(uid, today)) {
+		t.Fatal("expected cached after Get")
+	}
+	if _, err := repo.Upsert(context.Background(), domain.InterviewCalendar{UserID: uid}); err != nil {
+		t.Fatal(err)
+	}
+	if kv.has(keyCalendar(uid, today)) {
+		t.Fatal("expected invalidated after Upsert")
+	}
+	if _, err := repo.GetActive(context.Background(), uid, today); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestCachedCalendarRepo_GetActive_SingleflightCollapsesConcurrent(t *testing.T) {
+	t.Parallel()
+	ctrl := gomock.NewController(t)
+	mock := mocks.NewMockCalendarRepo(ctrl)
+	uid := uuid.New()
+	today := todayUTC()
+	mock.EXPECT().GetActive(gomock.Any(), uid, today).DoAndReturn(
+		func(_ context.Context, _ uuid.UUID, _ time.Time) (domain.InterviewCalendar, error) {
+			time.Sleep(20 * time.Millisecond)
+			return sampleCalendar(uid), nil
+		}).Times(1)
+	repo := NewCachedCalendarRepo(mock, newMemKV(), 0, nil, func() time.Time { return today })
+
+	const N = 50
+	var wg sync.WaitGroup
+	wg.Add(N)
+	for i := 0; i < N; i++ {
+		go func() {
+			defer wg.Done()
+			_, _ = repo.GetActive(context.Background(), uid, today)
+		}()
+	}
+	wg.Wait()
+}
+
+func TestCachedCalendarRepo_DefaultsApplied(t *testing.T) {
+	t.Parallel()
+	repo := NewCachedCalendarRepo(nil, newMemKV(), 0, nil, nil)
+	if repo.ttl != DefaultCalendarTTL {
+		t.Fatalf("default TTL not applied: %s", repo.ttl)
+	}
+	if repo.now == nil {
+		t.Fatal("default clock not applied")
+	}
+}
