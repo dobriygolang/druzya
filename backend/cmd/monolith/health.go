@@ -8,6 +8,7 @@
 package main
 
 import (
+	"context"
 	"net"
 	"net/http"
 	"os"
@@ -29,8 +30,14 @@ func runHealth() {
 		host = "127.0.0.1"
 	}
 
-	client := &http.Client{Timeout: 3 * time.Second}
-	resp, err := client.Get("http://" + net.JoinHostPort(host, port) + "/health/ready")
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+	url := "http://" + net.JoinHostPort(host, port) + "/health/ready"
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		os.Exit(1)
+	}
+	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		os.Exit(1)
 	}
