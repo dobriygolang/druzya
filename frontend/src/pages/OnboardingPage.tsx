@@ -17,6 +17,9 @@ import { useTranslation } from 'react-i18next'
 import { Button } from '../components/Button'
 import { Avatar } from '../components/Avatar'
 import { cn } from '../lib/cn'
+import { useLanguages, type Language } from '../lib/api/languages'
+import { useOnboardingPreviewKata } from '../lib/api/onboarding'
+import { register, describeAuthError } from '../lib/api/auth'
 
 type StepNum = 1 | 2 | 3 | 4
 
@@ -128,6 +131,36 @@ export function OnboardingTopBar({
 function Step1Register({ onNext }: { onNext: () => void }) {
   const { t } = useTranslation('onboarding')
   const navigate = useNavigate()
+  const [username, setUsername] = useState('')
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [submitting, setSubmitting] = useState(false)
+  const [errorMsg, setErrorMsg] = useState<string | null>(null)
+
+  const emailRe = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setErrorMsg(null)
+    if (!emailRe.test(email)) {
+      setErrorMsg('Введите корректный email')
+      return
+    }
+    if (password.length < 8) {
+      setErrorMsg('Пароль должен быть минимум 8 символов')
+      return
+    }
+    setSubmitting(true)
+    try {
+      await register({ email, password, username: username || undefined })
+      onNext()
+    } catch (err) {
+      setErrorMsg(describeAuthError(err))
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
   return (
     <div
       className="grid grid-cols-1 gap-10 px-4 py-8 sm:px-8 lg:grid-cols-2 lg:gap-[60px] lg:px-20 lg:py-[60px]"
@@ -144,17 +177,42 @@ function Step1Register({ onNext }: { onNext: () => void }) {
           {t('step1.subtitle')}
         </p>
 
-        <form className="flex flex-col gap-3" onSubmit={(e) => { e.preventDefault(); onNext() }}>
-          <Field label={t('step1.username')} placeholder={t('step1.username_ph')} />
-          <Field label={t('step1.email')} placeholder={t('step1.email_ph')} type="email" />
-          <Field label={t('step1.password')} placeholder={t('step1.password_ph')} type="password" />
+        <form className="flex flex-col gap-3" onSubmit={handleSubmit}>
+          <Field
+            label={t('step1.username')}
+            placeholder={t('step1.username_ph')}
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+          />
+          <Field
+            label={t('step1.email')}
+            placeholder={t('step1.email_ph')}
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+          />
+          <Field
+            label={t('step1.password')}
+            placeholder={t('step1.password_ph')}
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+          />
+          {errorMsg && (
+            <p className="text-[12px] font-medium text-danger" role="alert">
+              {errorMsg}
+            </p>
+          )}
           <Button
             type="submit"
             variant="primary"
             iconRight={<ArrowRight className="h-5 w-5" />}
             className="mt-2 h-14 text-[15px] shadow-glow"
+            disabled={submitting}
           >
-            {t('step1.create')}
+            {submitting ? '…' : t('step1.create')}
           </Button>
         </form>
 
@@ -263,32 +321,15 @@ function Testimonial({
 
 /* ------------------------------- STEP 2 -------------------------------- */
 
-type Lang = {
-  name: string
-  symbol: string
-  color: string
-  textColor?: string
-}
-
-// TODO: real per-language player counts via mocked api endpoint
-export const LANGS: Lang[] = [
-  { name: 'Go', symbol: 'Go', color: '#22D3EE' },
-  { name: 'Python', symbol: 'Py', color: '#582CFF' },
-  { name: 'Java', symbol: 'Jv', color: '#F472B6' },
-  { name: 'JavaScript', symbol: 'JS', color: '#FBBF24', textColor: '#0A0A0F' },
-  { name: 'TypeScript', symbol: 'TS', color: '#22D3EE' },
-  { name: 'C++', symbol: 'C++', color: '#2D1B4D' },
-  { name: 'Rust', symbol: 'Rs', color: '#EF4444' },
-  { name: 'Kotlin', symbol: 'Kt', color: '#FBBF24', textColor: '#0A0A0F' },
-  { name: 'Swift', symbol: 'Sw', color: '#F472B6' },
-  { name: 'SQL', symbol: 'SQL', color: '#10B981' },
-  { name: 'C#', symbol: 'C#', color: '#6D43FF' },
-  { name: 'Ruby', symbol: 'Rb', color: '#EF4444' },
-  { name: 'PHP', symbol: 'PHP', color: '#6D43FF' },
-]
+// Re-export Language under the legacy `Lang` type so external callers keep
+// compiling. The shape is a strict superset (the legacy type was just
+// `{name, symbol, color, textColor?}`; Language adds slug + counts).
+export type Lang = Language
 
 function Step2Stack({ onNext, onBack }: { onNext: () => void; onBack: () => void }) {
   const { t } = useTranslation('onboarding')
+  const langsQ = useLanguages()
+  const langs: Language[] = langsQ.data?.items ?? []
   const [selected, setSelected] = useState<string[]>(['Go', 'Python'])
   const toggle = (n: string) => {
     setSelected((cur) =>
@@ -310,42 +351,53 @@ function Step2Stack({ onNext, onBack }: { onNext: () => void; onBack: () => void
       </span>
 
       <div className="grid w-full max-w-[1100px] grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4">
-        {LANGS.map((l) => {
-          const active = selected.includes(l.name)
-          return (
-            <button
-              key={l.name}
-              type="button"
-              onClick={() => toggle(l.name)}
-              className={cn(
-                'relative flex flex-col items-center justify-center gap-2 rounded-xl bg-surface-1 p-4 transition-all',
-                active
-                  ? 'border-2 border-accent shadow-glow'
-                  : 'border border-border hover:border-border-strong',
-              )}
-              style={{ height: 160 }}
-            >
-              {active && (
-                <span className="absolute right-2 top-2 grid h-6 w-6 place-items-center rounded-full bg-accent text-text-primary shadow-glow">
-                  <Check className="h-3.5 w-3.5" strokeWidth={3} />
-                </span>
-              )}
-              <span
-                className="grid place-items-center rounded-lg font-display font-bold"
-                style={{
-                  width: 56,
-                  height: 56,
-                  background: l.color,
-                  color: l.textColor ?? '#FFFFFF',
-                  fontSize: 18,
-                }}
-              >
-                {l.symbol}
-              </span>
-              <span className="font-sans text-[14px] font-bold text-text-primary">{l.name}</span>
-            </button>
-          )
-        })}
+        {langsQ.isLoading && langs.length === 0
+          ? Array.from({ length: 8 }).map((_, i) => (
+              <div
+                key={`sk-${i}`}
+                className="animate-pulse rounded-xl border border-border bg-surface-1"
+                style={{ height: 160 }}
+              />
+            ))
+          : langs.map((l) => {
+              const active = selected.includes(l.name)
+              return (
+                <button
+                  key={l.slug}
+                  type="button"
+                  onClick={() => toggle(l.name)}
+                  className={cn(
+                    'relative flex flex-col items-center justify-center gap-2 rounded-xl bg-surface-1 p-4 transition-all',
+                    active
+                      ? 'border-2 border-accent shadow-glow'
+                      : 'border border-border hover:border-border-strong',
+                  )}
+                  style={{ height: 160 }}
+                >
+                  {active && (
+                    <span className="absolute right-2 top-2 grid h-6 w-6 place-items-center rounded-full bg-accent text-text-primary shadow-glow">
+                      <Check className="h-3.5 w-3.5" strokeWidth={3} />
+                    </span>
+                  )}
+                  <span
+                    className="grid place-items-center rounded-lg font-display font-bold"
+                    style={{
+                      width: 56,
+                      height: 56,
+                      background: l.color,
+                      color: l.text_color ?? '#FFFFFF',
+                      fontSize: 18,
+                    }}
+                  >
+                    {l.symbol}
+                  </span>
+                  <span className="font-sans text-[14px] font-bold text-text-primary">{l.name}</span>
+                  <span className="font-mono text-[10px] uppercase tracking-[0.06em] text-text-muted">
+                    {l.players_active.toLocaleString('ru-RU')} online
+                  </span>
+                </button>
+              )
+            })}
       </div>
 
       <div className="mt-4 flex w-full max-w-[1100px] items-center justify-between">
@@ -369,6 +421,11 @@ function Step2Stack({ onNext, onBack }: { onNext: () => void; onBack: () => void
 
 function Step3Kata({ onNext, onBack }: { onNext: () => void; onBack: () => void }) {
   const { t } = useTranslation('onboarding')
+  const previewQ = useOnboardingPreviewKata()
+  const kata = previewQ.data
+  const testsLabel = kata
+    ? `${kata.tests_passed}/${kata.tests_total} tests passed`
+    : '—/— tests passed'
   return (
     <div
       className="grid grid-cols-1 gap-8 px-4 pb-8 pt-8 sm:px-8 lg:grid-cols-[480px_1fr] lg:px-20 lg:pb-7 lg:pt-10"
@@ -433,7 +490,7 @@ function Step3Kata({ onNext, onBack }: { onNext: () => void; onBack: () => void 
           <span className="inline-flex w-fit items-center gap-1.5 rounded-full bg-black/30 px-2.5 py-1 font-mono text-[11px] font-semibold tracking-[0.08em] text-warn">
             DAILY · TUTORIAL
           </span>
-          <h3 className="font-display text-2xl font-bold text-text-primary">Two Sum</h3>
+          <h3 className="font-display text-2xl font-bold text-text-primary">{kata?.title ?? 'Two Sum'}</h3>
           <div className="flex gap-2">
             <Tag>Easy</Tag>
             <Tag>Hash Map</Tag>
@@ -460,8 +517,7 @@ function Step3Kata({ onNext, onBack }: { onNext: () => void; onBack: () => void 
         </div>
 
         <div className="flex items-center justify-between border-t border-border bg-surface-2 px-6 py-3">
-          {/* TODO: real tests-passed count from mocked api */}
-          <span className="font-mono text-[11px] text-text-muted">0/0 tests passed</span>
+          <span className="font-mono text-[11px] text-text-muted">{testsLabel}</span>
           <div className="flex items-center gap-2">
             <button className="rounded-md border border-border bg-bg px-3 py-1.5 text-[12px] font-semibold text-text-secondary">
               Run

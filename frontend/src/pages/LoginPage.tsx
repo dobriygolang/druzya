@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { ArrowRight } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '../components/Button'
+import { login, describeAuthError } from '../lib/api/auth'
 
 function OAuthButton({ label }: { label: string }) {
   return (
@@ -28,24 +29,44 @@ function Field({ label, ...rest }: { label: string } & React.InputHTMLAttributes
 }
 
 /**
- * Stub login page — same providers as onboarding step 1.
- * TODO: wire to real auth endpoint via mocked api client.
+ * Login page — POSTs to /api/v1/auth/login, persists access token, then
+ * navigates to the authenticated landing page.
  */
 export default function LoginPage() {
   const { t } = useTranslation('welcome')
   const navigate = useNavigate()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [submitting, setSubmitting] = useState(false)
+  const [errorMsg, setErrorMsg] = useState<string | null>(null)
 
   useEffect(() => {
     document.body.classList.add('v2')
     return () => document.body.classList.remove('v2')
   }, [])
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const emailRe = /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    // TODO: call mocked POST /api/auth/login
-    navigate('/sanctum')
+    setErrorMsg(null)
+    if (!emailRe.test(email)) {
+      setErrorMsg('Введите корректный email')
+      return
+    }
+    if (password.length < 8) {
+      setErrorMsg('Пароль должен быть минимум 8 символов')
+      return
+    }
+    setSubmitting(true)
+    try {
+      await login({ email, password })
+      navigate('/')
+    } catch (err) {
+      setErrorMsg(describeAuthError(err))
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   return (
@@ -80,13 +101,19 @@ export default function LoginPage() {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
           />
+          {errorMsg && (
+            <p className="text-[12px] font-medium text-danger" role="alert">
+              {errorMsg}
+            </p>
+          )}
           <Button
             type="submit"
             variant="primary"
             iconRight={<ArrowRight className="h-5 w-5" />}
             className="mt-2 h-14 text-[15px] shadow-glow"
+            disabled={submitting}
           >
-            {t('login')}
+            {submitting ? '…' : t('login')}
           </Button>
         </form>
 

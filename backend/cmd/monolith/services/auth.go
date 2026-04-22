@@ -21,6 +21,8 @@ type AuthModule struct {
 	Issuer      *authApp.TokenIssuer
 	RequireAuth func(http.Handler) http.Handler
 	Users       *authInfra.Postgres
+	Sessions    *authInfra.RedisSessions
+	RefreshTTL  time.Duration
 }
 
 // NewAuth wires the auth bounded context. ENCRYPTION_KEY MUST be set —
@@ -84,5 +86,7 @@ func NewAuth(d Deps, encKey string) (*AuthModule, error) {
 		Issuer:      issuer,
 		RequireAuth: authPorts.RequireAuth(issuer),
 		Users:       pg,
+		Sessions:    sessions,
+		RefreshTTL:  time.Duration(d.Cfg.Auth.RefreshTokenTTL) * time.Second,
 	}, nil
 }

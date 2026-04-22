@@ -91,8 +91,13 @@ func New(ctx context.Context, cfg *config.Config) (app *App, otelShutdown func()
 		return nil, otelShutdown, fmt.Errorf("notify: %w", nerr)
 	}
 
+	pwdAuth := services.NewAuthPassword(deps, auth, cfg.Env != "local", "")
+	statsMod := services.NewStats(deps)
+
 	modules := []*services.Module{
 		&auth.Module,
+		pwdAuth,
+		statsMod,
 		services.NewProfile(deps),
 		services.NewDaily(deps),
 		&rating.Module,

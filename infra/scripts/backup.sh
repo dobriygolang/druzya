@@ -5,7 +5,12 @@
 # Retention: keep daily for 14 days, weekly for 12 weeks (pruned on MinIO side
 # via lifecycle policy — see infra/scripts/bootstrap.sh).
 
-set -eu
+# Без set -e: при любой sub-ошибке (например, apk упадёт из-за TERM,
+# или mc-загрузка из MinIO даст non-zero) compose рестартует контейнер,
+# и весь цикл начинается заново — мы получаем дамп каждые 30 сек вместо
+# раз в сутки. Используем явный error handling.
+set -u
+export TERM=${TERM:-dumb}    # apk/wget иначе печатают "TERM is unset" в stderr
 
 BACKUP_DIR=${BACKUP_DIR:-/var/backups}
 MINIO_BUCKET=${MINIO_BUCKET:-druz9-backups}
@@ -15,10 +20,17 @@ mkdir -p "$BACKUP_DIR"
 
 echo "pgbackup: starting, interval=${INTERVAL_SEC}s, bucket=${MINIO_BUCKET}"
 
-# Install mc (MinIO client) on first run if it's not baked in.
+# Install mc (MinIO client) on first run if it's not baked in. apk на alpine
+# постоянно ругается без TERM; берём mc сразу через wget — быстрее и надёжнее.
 if ! command -v mc >/dev/null 2>&1; then
-    apk add --no-cache mc >/dev/null 2>&1 || wget -qO /usr/local/bin/mc \
-        https://dl.min.io/client/mc/release/linux-amd64/mc && chmod +x /usr/local/bin/mc
+    if wget -qO /usr/local/bin/mc \
+        https://dl.min.io/client/mc/release/linux-amd64/mc 2>/dev/null
+    then
+        chmod +x /usr/local/bin/mc
+        echo "pgbackup: mc installed"
+    else
+        echo "pgbackup: mc install failed — will skip MinIO upload" >&2
+    fi
 fi
 
 while :; do
@@ -30,12 +42,16 @@ while :; do
         size=$(stat -c%s "$file" 2>/dev/null || wc -c <"$file")
         echo "pgbackup: dump ok (${size} bytes)"
 
-        # Upload to MinIO if credentials are present.
-        if [ -n "${MINIO_ROOT_USER:-}" ] && [ -n "${MINIO_ROOT_PASSWORD:-}" ]; then
+        # Upload to MinIO if credentials и mc-бинарник есть.
+        if command -v mc >/dev/null 2>&1 && \
+           [ -n "${MINIO_ROOT_USER:-}" ] && [ -n "${MINIO_ROOT_PASSWORD:-}" ]; then
             mc alias set local http://minio:9000 "$MINIO_ROOT_USER" "$MINIO_ROOT_PASSWORD" >/dev/null 2>&1 || true
             mc mb --ignore-existing local/$MINIO_BUCKET >/dev/null 2>&1 || true
-            mc cp "$file" "local/$MINIO_BUCKET/daily/" >/dev/null
-            echo "pgbackup: uploaded to minio://${MINIO_BUCKET}/daily/"
+            if mc cp "$file" "local/$MINIO_BUCKET/daily/" >/dev/null 2>&1; then
+                echo "pgbackup: uploaded to minio://${MINIO_BUCKET}/daily/"
+            else
+                echo "pgbackup: minio upload failed (kept local copy)" >&2
+            fi
         fi
 
         # Local retention: keep last 14 daily dumps on disk.
