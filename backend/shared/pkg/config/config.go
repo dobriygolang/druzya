@@ -7,8 +7,8 @@ import (
 	"strings"
 )
 
-// Config is the static application configuration loaded at startup.
-// Runtime-mutable parameters live in dynamic_config (PostgreSQL + Redis Pub/Sub).
+// Config — статическая конфигурация приложения, загружаемая на старте.
+// Параметры, изменяемые в runtime, живут в dynamic_config (PostgreSQL + Redis Pub/Sub).
 type Config struct {
 	Env         string
 	HTTPAddr    string
@@ -36,7 +36,7 @@ type Config struct {
 
 	Auth struct {
 		JWTSecret        string
-		AccessTokenTTL   int // seconds
+		AccessTokenTTL   int // секунды
 		RefreshTokenTTL  int
 		YandexClientID   string
 		YandexSecret     string
@@ -60,7 +60,7 @@ type Config struct {
 	}
 }
 
-// Load reads configuration from environment variables. Fails fast if required fields are missing.
+// Load читает конфигурацию из переменных окружения. Падает сразу, если обязательные поля отсутствуют.
 func Load() (Config, error) {
 	c := Config{
 		Env:         env("APP_ENV", "local"),
@@ -70,9 +70,14 @@ func Load() (Config, error) {
 		RedisPass:   env("REDIS_PASSWORD", ""),
 	}
 
-	c.MinIO.Endpoint = mustEnv("MINIO_ENDPOINT")
-	c.MinIO.AccessKey = mustEnv("MINIO_ACCESS_KEY")
-	c.MinIO.SecretKey = mustEnv("MINIO_SECRET_KEY")
+	// MinIO is optional at Load() — migrate-only invocations of the binary
+	// have no business requiring object-storage config. Modules that
+	// actually use MinIO (replay storage, attachments, …) must validate
+	// Endpoint/AccessKey/SecretKey at their own constructor and fail loudly
+	// there if the operator forgot to set them in production.
+	c.MinIO.Endpoint = env("MINIO_ENDPOINT", "")
+	c.MinIO.AccessKey = env("MINIO_ACCESS_KEY", "")
+	c.MinIO.SecretKey = env("MINIO_SECRET_KEY", "")
 	c.MinIO.UseSSL = envBool("MINIO_USE_SSL", false)
 
 	c.ClickHouse.Addr = env("CLICKHOUSE_ADDR", "clickhouse:9000")

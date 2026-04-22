@@ -1,8 +1,9 @@
-// Package domain contains the entities, value objects and repository interfaces
-// for the season bounded context. No external framework imports here.
+// Package domain содержит сущности, value-объекты и интерфейсы репозиториев
+// bounded-контекста season. Импорты внешних фреймворков сюда не допускаются.
 //
-// Bible §3.8: seasons are 6-week cadences. Users accrue Season Points (SP) from
-// a variety of activities (XP conversion, matches, daily katas, AI-mock) and
-// unlock tiered rewards on a Free track; Premium subscribers also unlock the
-// Premium track. Weekly challenges refresh each ISO week and award bonus SP.
+// Bible §3.8: сезоны — 6-недельные циклы. Пользователи копят Season Points (SP)
+// из разных активностей (конвертация XP, матчи, дневные ката, AI-mock) и
+// открывают многоуровневые награды на Free-треке; Premium-подписчики
+// дополнительно открывают Premium-трек. Еженедельные челленджи обновляются
+// каждую ISO-неделю и дают бонусные SP.
 package domain

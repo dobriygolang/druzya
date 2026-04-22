@@ -1,3 +1,3 @@
-// Package domain contains the entities, value objects and repository interfaces
-// for the notify bounded context. No external framework imports here.
+// Package domain содержит сущности, value-объекты и интерфейсы репозиториев
+// bounded-контекста notify. Импорты внешних фреймворков сюда не допускаются.
 package domain

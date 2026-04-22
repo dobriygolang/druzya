@@ -81,18 +81,18 @@ func UserIDFromContext(ctx context.Context) (uuid.UUID, bool) {
 	return v, ok
 }
 
-// WithUserID injects the authenticated user into the context. Used by auth middleware.
+// WithUserID кладёт аутентифицированного пользователя в контекст. Используется auth middleware.
 func WithUserID(ctx context.Context, id uuid.UUID) context.Context {
 	return context.WithValue(ctx, ctxKeyUserID, id)
 }
 
-// UserRoleFromContext returns the authenticated user's role.
+// UserRoleFromContext возвращает роль аутентифицированного пользователя.
 func UserRoleFromContext(ctx context.Context) (string, bool) {
 	v, ok := ctx.Value(ctxKeyUserRole).(string)
 	return v, ok
 }
 
-// WithUserRole injects the user role into the context.
+// WithUserRole кладёт роль пользователя в контекст.
 func WithUserRole(ctx context.Context, role string) context.Context {
 	return context.WithValue(ctx, ctxKeyUserRole, role)
 }
@@ -107,10 +107,10 @@ func (s *statusWriter) WriteHeader(code int) {
 	s.ResponseWriter.WriteHeader(code)
 }
 
-// Flush forwards to the underlying ResponseWriter if it implements http.Flusher.
-// Required by Connect-RPC / vanguard-go: the transcoder rejects any wrapper
-// that doesn't forward Flush, because streaming protocols need incremental
-// response delivery.
+// Flush форвардит вызов в нижележащий ResponseWriter, если тот реализует http.Flusher.
+// Требуется Connect-RPC / vanguard-go: транскодер отвергает любую обёртку,
+// которая не форвардит Flush, поскольку стриминг-протоколам нужна
+// инкрементальная доставка ответа.
 func (s *statusWriter) Flush() {
 	if f, ok := s.ResponseWriter.(http.Flusher); ok {
 		f.Flush()

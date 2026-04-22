@@ -1,5 +1,5 @@
-// Singleton WebSocket manager with reconnect (exponential backoff capped at 10s)
-// and JWT auth via query param. One socket per channel.
+// Singleton-менеджер WebSocket с reconnect (экспоненциальный backoff с потолком 10с)
+// и JWT-авторизацией через query-параметр. Один сокет на канал.
 
 export type WSStatus = 'idle' | 'connecting' | 'open' | 'reconnecting' | 'closed'
 
@@ -22,7 +22,7 @@ const channels = new Map<string, ChannelState>()
 function baseUrl(): string {
   const env = import.meta.env.VITE_WS_BASE
   if (env && /^wss?:\/\//.test(env)) return env.replace(/\/$/, '')
-  // Resolve relative path against current origin.
+  // Резолвим относительный путь относительно текущего origin.
   if (typeof window !== 'undefined') {
     const proto = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
     const path = (env || '/ws').replace(/\/$/, '')
@@ -67,7 +67,7 @@ function setStatus(state: ChannelState, status: WSStatus) {
     try {
       h(status)
     } catch {
-      // ignore
+      // игнор
     }
   })
 }
@@ -120,16 +120,16 @@ function openSocket(channel: string) {
           try {
             h(event, payload)
           } catch {
-            // ignore handler errors
+            // игнор handler errors
           }
         })
       }
     } catch {
-      // non-JSON frame, ignore
+      // не-JSON фрейм, игнор
     }
   }
   ws.onerror = () => {
-    // Let onclose drive reconnect.
+    // Reconnect инициируется в onclose.
   }
   ws.onclose = () => {
     state.ws = null
@@ -162,7 +162,7 @@ export const wsClient = {
       try {
         state.ws.close()
       } catch {
-        // ignore
+        // игнор
       }
       state.ws = null
     }
@@ -175,7 +175,7 @@ export const wsClient = {
     try {
       state.ws.send(JSON.stringify({ event, payload }))
     } catch {
-      // ignore
+      // игнор
     }
   },
   on(channel: string, handler: Handler): () => void {
