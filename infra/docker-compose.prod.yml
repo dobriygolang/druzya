@@ -47,7 +47,10 @@ services:
     networks: [app-net]
     restart: always
     healthcheck:
-      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1/health"]
+      # /nginx-health всегда 200, доступен только из 127.0.0.1 — определён в
+      # nginx.prod.conf. /health не подходит: nginx редиректит его на https,
+      # wget --spider с 301 возвращает exit 8 → ложный unhealthy.
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1/nginx-health"]
       interval: 30s
       timeout: 5s
 
