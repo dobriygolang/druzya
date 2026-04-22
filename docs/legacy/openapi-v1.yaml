@@ -1,0 +1,19 @@
+# druz9 OpenAPI v1 — минимальный stub.
+#
+# В будущем тут будет полноценная REST-спецификация, генерируемая из бэкенда
+# (oapi-codegen) или вручную. Пока используем Connect-RPC (proto/) для типизации
+# межсервисного контракта; этот stub нужен только чтобы `npm run gen:api`
+# не падал при первой инициализации.
+#
+# TODO: либо вытащить реальный OpenAPI из backend/services/*/ports/openapi.go,
+# либо удалить gen-ts из Makefile и перейти полностью на Connect-RPC контракт.
+openapi: 3.1.0
+info:
+  title: druz9 API
+  version: "1.0.0"
+  description: Stub. Real spec is generated server-side or migrated to Connect-RPC.
+servers:
+  - url: /api/v1
+paths: {}
+components:
+  schemas: {}
