@@ -12,7 +12,6 @@
 *.out
 vendor/
 backend/cmd/monolith/monolith
-backend/**/monolith
 
 # Generated code is COMMITTED (bible §16: treat as reviewable artefacts).
 # If you want to opt OUT for a specific module, add it here explicitly.
