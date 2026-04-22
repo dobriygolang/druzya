@@ -18,7 +18,6 @@ package main
 import (
 	"context"
 	"database/sql"
-	"fmt"
 	"log/slog"
 	"os"
 
@@ -76,5 +75,4 @@ func runMigrate(args []string) {
 		_ = goose.Status(db, dir)
 	}
 	slog.Info("migrate: done", "cmd", cmd)
-	fmt.Println("migrations OK")
 }
