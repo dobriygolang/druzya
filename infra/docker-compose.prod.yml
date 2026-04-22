@@ -78,7 +78,10 @@ services:
     networks: [app-net, obs-net]
     restart: always
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U druz9 -d druz9"]
+      # ${POSTGRES_USER:-druz9} — берём из env, дефолт оставляем как было.
+      # Хардкод 'druz9' ломал healthcheck при кастомных POSTGRES_USER (typo
+      # ранее: 'role druz9 does not exist' каждые 10s в логах прода).
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-druz9} -d ${POSTGRES_DB:-druz9}"]
       interval: 10s
 
   redis:

@@ -3,11 +3,11 @@
 // Provides three small public REST endpoints used by the marketing /
 // onboarding pages on the frontend:
 //
-//   GET /api/v1/stats/public          — platform headline counters
-//   GET /api/v1/languages             — supported language picker (with
-//                                       deterministic synthetic player counts)
-//   GET /api/v1/onboarding/preview-kata — fixed "Two Sum" preview used in the
-//                                       onboarding step 3 mock
+//	GET /api/v1/stats/public          — platform headline counters
+//	GET /api/v1/languages             — supported language picker (with
+//	                                    deterministic synthetic player counts)
+//	GET /api/v1/onboarding/preview-kata — fixed "Two Sum" preview used in the
+//	                                    onboarding step 3 mock
 //
 // All three are public (bypass bearer auth — see router.go) and own no
 // proto schema; they're plain chi handlers. The Module attaches via
@@ -47,9 +47,9 @@ type statsHandler struct {
 // ── /api/v1/stats/public ──────────────────────────────────────────────────
 
 type publicStatsResponse struct {
-	UsersCount    int `json:"users_count"`
-	ActiveToday   int `json:"active_today"`
-	MatchesTotal  int `json:"matches_total"`
+	UsersCount   int `json:"users_count"`
+	ActiveToday  int `json:"active_today"`
+	MatchesTotal int `json:"matches_total"`
 }
 
 func (h *statsHandler) publicStats(w http.ResponseWriter, r *http.Request) {
@@ -143,14 +143,14 @@ func (h *statsHandler) languages(w http.ResponseWriter, r *http.Request) {
 // ── /api/v1/onboarding/preview-kata ───────────────────────────────────────
 
 type previewKataResponse struct {
-	Slug         string   `json:"slug"`
-	Title        string   `json:"title"`
-	Tags         []string `json:"tags"`
-	Difficulty   string   `json:"difficulty"`
-	Description  string   `json:"description"`
-	StarterCode  string   `json:"starter_code"`
-	TestsTotal   int      `json:"tests_total"`
-	TestsPassed  int      `json:"tests_passed"`
+	Slug        string   `json:"slug"`
+	Title       string   `json:"title"`
+	Tags        []string `json:"tags"`
+	Difficulty  string   `json:"difficulty"`
+	Description string   `json:"description"`
+	StarterCode string   `json:"starter_code"`
+	TestsTotal  int      `json:"tests_total"`
+	TestsPassed int      `json:"tests_passed"`
 }
 
 func (h *statsHandler) previewKata(w http.ResponseWriter, r *http.Request) {
@@ -186,4 +186,3 @@ func writeJSON(w http.ResponseWriter, status int, body any) {
 	w.WriteHeader(status)
 	_ = json.NewEncoder(w).Encode(body)
 }
-

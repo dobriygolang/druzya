@@ -5,17 +5,17 @@
 // pipeline would require a proto change and codegen — instead, this file
 // exposes two plain chi REST endpoints that share the existing primitives:
 //
-//   POST /api/v1/auth/register
-//   POST /api/v1/auth/login
+//	POST /api/v1/auth/register
+//	POST /api/v1/auth/login
 //
 // Both:
-//   * normalise email to lower-case (case-insensitive lookup),
-//   * validate basic shape (regexp + min length),
-//   * use bcrypt cost=10 for password_hash (matches the column added in
+//   - normalise email to lower-case (case-insensitive lookup),
+//   - validate basic shape (regexp + min length),
+//   - use bcrypt cost=10 for password_hash (matches the column added in
 //     migration 00001_init_core.sql),
-//   * persist a refresh session via the same Redis SessionRepo and mint a
+//   - persist a refresh session via the same Redis SessionRepo and mint a
 //     JWT access token via the shared TokenIssuer,
-//   * write the refresh cookie on the same path/secure flags as the
+//   - write the refresh cookie on the same path/secure flags as the
 //     OAuth flows do (see auth/ports/server.go).
 //
 // Errors return JSON `{error: {code, message}}` with proper HTTP codes.
@@ -252,14 +252,17 @@ func (h *authPwdHandler) persistSession(ctx context.Context, sid, uid uuid.UUID,
 	if h.sessions == nil {
 		return fmt.Errorf("session store not wired")
 	}
-	return h.sessions.Create(ctx, authDomain.Session{
+	if err := h.sessions.Create(ctx, authDomain.Session{
 		ID:        sid,
 		UserID:    uid,
 		CreatedAt: time.Now().UTC(),
 		ExpiresAt: expires,
 		UserAgent: r.UserAgent(),
 		IP:        clientIP(r),
-	})
+	}); err != nil {
+		return fmt.Errorf("auth_pwd: create session: %w", err)
+	}
+	return nil
 }
 
 // ── DB ops ────────────────────────────────────────────────────────────────
@@ -330,7 +333,7 @@ func (h *authPwdHandler) findCreds(ctx context.Context, email string) (uuid.UUID
 		 LIMIT 1
 	`, email).Scan(&id, &username, &role, &hash)
 	if err != nil {
-		return uuid.Nil, "", "", "", err
+		return uuid.Nil, "", "", "", fmt.Errorf("auth_pwd: scan user: %w", err)
 	}
 	h2 := ""
 	if hash != nil {
