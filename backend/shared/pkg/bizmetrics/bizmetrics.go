@@ -63,9 +63,9 @@ type nopSink struct{}
 func (nopSink) Emit(Event) {}
 
 var (
-	sinkPtr      atomic.Pointer[Sink]
-	logger       atomic.Pointer[slog.Logger]
-	defaultSink  Sink = nopSink{}
+	sinkPtr     atomic.Pointer[Sink]
+	logger      atomic.Pointer[slog.Logger]
+	defaultSink Sink = nopSink{}
 )
 
 func init() {

@@ -2,6 +2,7 @@ package logger
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"os"
 	"strings"
@@ -52,7 +53,10 @@ func (h *traceHandler) Handle(ctx context.Context, r slog.Record) error {
 			slog.String("span_id", sc.SpanID().String()),
 		)
 	}
-	return h.inner.Handle(ctx, r)
+	if err := h.inner.Handle(ctx, r); err != nil {
+		return fmt.Errorf("traceHandler: inner handle: %w", err)
+	}
+	return nil
 }
 
 func (h *traceHandler) WithAttrs(a []slog.Attr) slog.Handler {

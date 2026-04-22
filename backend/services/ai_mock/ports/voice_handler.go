@@ -39,10 +39,10 @@ type VoiceTurner func(ctx context.Context, userID, sessionID, userText string) (
 
 // VoiceHandler holds dependencies for /api/v1/voice/*.
 type VoiceHandler struct {
-	TTS      infra.EdgeTTSClient
-	Tier     UserTierResolver
-	Turn     VoiceTurner
-	Log      *slog.Logger
+	TTS  infra.EdgeTTSClient
+	Tier UserTierResolver
+	Turn VoiceTurner
+	Log  *slog.Logger
 }
 
 // NewVoiceHandler wires the handler.

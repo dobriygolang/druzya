@@ -341,6 +341,42 @@ JWT: access 15 мин (в памяти клиента), refresh 30 дней (htt
 
 ---
 
+## 10.5. Хранение данных (retention policy)
+
+| Тип данных | Где | Срок | Удаление |
+|---|---|---|---|
+| **Аккаунт** (email, username, password_hash, OAuth tokens) | PostgreSQL `users`, `oauth_accounts` | Бессрочно (пока юзер активен) | Soft-delete на 30 дней → hard-delete (право на забвение) |
+| **Профиль** (avatar, bio, prefs, skill atlas) | PostgreSQL `profiles`, `skill_nodes` | Бессрочно | С аккаунтом |
+| **Рейтинг** (ELO, history) | PostgreSQL `ratings` | Бессрочно | С аккаунтом (анонимизируется в leaderboard для honor topX) |
+| **Матчи** (arena, mock) — метаданные | PostgreSQL `arena_matches`, `mock_sessions` | 12 месяцев | Cron-удаление, агрегаты живут в ClickHouse |
+| **Mock messages** (диалог с AI) | PostgreSQL `mock_messages` | 90 дней | Cron-удаление, AI-отчёт остаётся |
+| **AI-отчёты** (overall_score, recommendations JSON) | PostgreSQL `mock_sessions.ai_report` | Бессрочно | С аккаунтом |
+| **Replay сессий** (keystroke timeline) | MinIO `druz9-replays` | 30 дней | Lifecycle rule (auto-purge S3) |
+| **Keystroke logs** (raw events для стресс-метрики) | PostgreSQL `keystroke_events` | **7 дней** | Cron каждые 24ч |
+| **Voice recordings** (если включит юзер) | MinIO `druz9-voice` | 7 дней | Lifecycle rule |
+| **Подкасты, kata, контент** | MinIO `druz9-podcasts`, PostgreSQL `tasks` | Бессрочно | Контент-команда |
+| **Аватары** | MinIO `druz9-uploads` | Бессрочно | С аккаунтом |
+| **Уведомления log** | PostgreSQL `notifications_log` | 30 дней | Cron |
+| **Antichea signals** | PostgreSQL `anticheat_signals` | 90 дней (или 1 год для бан-кейсов) | Hard-delete по cron |
+| **Onboarding answers** | PostgreSQL `onboarding_progress` | До завершения онбординга + 30 дней | Cron |
+| **Аналитические события** (DAU/clicks/etc) | ClickHouse `events`, `mock_analytics` | 25 месяцев (для YoY-сравнений) | TTL партиции |
+| **Логи приложения** | Loki | 90 дней | Loki retention config |
+| **Traces** | Jaeger | 7 дней (sampled 10% в проде) | Jaeger TTL |
+| **Метрики Prometheus** | local TSDB | 15 дней (raw), 1 год (downsampled) | Prom retention |
+| **Sentry events** | sentry.io | 90 дней (free plan) | Sentry policy |
+| **Cookies** (refresh token) | Browser | 30 дней | httpOnly, sameSite=strict |
+| **Session cache** | Redis | 5 мин — 24 часа (зависит от ключа) | TTL |
+
+### Право на забвение (GDPR Art. 17 / 152-ФЗ)
+- `DELETE /api/v1/account` — soft-delete аккаунт + начинает 30-дневный grace period (можно восстановить)
+- После 30 дней — hard-delete: все таблицы с FK к user_id чистятся каскадно, объекты в MinIO удаляются по metadata-tag, записи в Replays уходят сразу (не ждут lifecycle), keystroke и voice — сразу.
+- Анонимизация в leaderboard'ах: nick → "deleted_user_NNNN", аватар → дефолт, остальные данные стираются.
+
+### Экспорт данных (GDPR Art. 20)
+- `GET /api/v1/account/export` — асинхронная задача, генерирует ZIP со всеми пользовательскими данными в JSON, ссылка на скачивание (TTL 24ч в MinIO) приходит в Telegram + email.
+
+---
+
 ## 11. Безопасность
 
 - **Rate limit (Redis):** API 100/мин, AI-mock 10/мин, match 5/мин, login 10/мин IP

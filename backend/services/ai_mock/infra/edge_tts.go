@@ -9,48 +9,48 @@
 // Connecting + getting audio back is a multi-message dance:
 //
 //  1. Open WSS with these headers (case matters):
-//       Origin: chrome-extension://jdiccldimpdaibmpdkjnbmckianbfold
-//       User-Agent: Mozilla/5.0 ... Edg/...
-//       Sec-WebSocket-Extensions: permessage-deflate; client_max_window_bits
+//     Origin: chrome-extension://jdiccldimpdaibmpdkjnbmckianbfold
+//     User-Agent: Mozilla/5.0 ... Edg/...
+//     Sec-WebSocket-Extensions: permessage-deflate; client_max_window_bits
 //
 //  2. Send TWO text frames:
 //
 //     a) Speech config (sets audio format):
-//        ```
-//        X-Timestamp:<RFC3339Nano>
-//        Content-Type:application/json; charset=utf-8
-//        Path:speech.config
+//     ```
+//     X-Timestamp:<RFC3339Nano>
+//     Content-Type:application/json; charset=utf-8
+//     Path:speech.config
 //
-//        {"context":{"synthesis":{"audio":{"metadataoptions":{
-//        "sentenceBoundaryEnabled":false,"wordBoundaryEnabled":false},
-//        "outputFormat":"audio-24khz-48kbitrate-mono-mp3"}}}}
-//        ```
+//     {"context":{"synthesis":{"audio":{"metadataoptions":{
+//     "sentenceBoundaryEnabled":false,"wordBoundaryEnabled":false},
+//     "outputFormat":"audio-24khz-48kbitrate-mono-mp3"}}}}
+//     ```
 //
 //     b) SSML (the actual text + voice selection):
-//        ```
-//        X-RequestId:<32-char-hex, no dashes>
-//        Content-Type:application/ssml+xml
-//        X-Timestamp:<RFC3339Nano>
-//        Path:ssml
+//     ```
+//     X-RequestId:<32-char-hex, no dashes>
+//     Content-Type:application/ssml+xml
+//     X-Timestamp:<RFC3339Nano>
+//     Path:ssml
 //
-//        <speak version='1.0' xmlns='http://www.w3.org/2001/10/synthesis'
-//          xml:lang='ru-RU'>
-//          <voice name='ru-RU-DmitryNeural'>
-//            <prosody pitch='+0Hz' rate='+0%' volume='+0%'>TEXT</prosody>
-//          </voice>
-//        </speak>
-//        ```
+//     <speak version='1.0' xmlns='http://www.w3.org/2001/10/synthesis'
+//     xml:lang='ru-RU'>
+//     <voice name='ru-RU-DmitryNeural'>
+//     <prosody pitch='+0Hz' rate='+0%' volume='+0%'>TEXT</prosody>
+//     </voice>
+//     </speak>
+//     ```
 //
 //  3. Read frames in a loop:
-//       - Text frame `Path:turn.start`   → ack, ignore.
-//       - Text frame `Path:audio.metadata` → ignore (timing markers).
-//       - Binary frame                   → first 2 bytes are big-endian
-//                                          header length N; bytes [2:2+N]
-//                                          are an ASCII header block
-//                                          (Path:audio …); bytes [2+N:]
-//                                          are the actual MP3 chunk.
-//                                          Append to output buffer.
-//       - Text frame `Path:turn.end`     → done; close connection.
+//     - Text frame `Path:turn.start`   → ack, ignore.
+//     - Text frame `Path:audio.metadata` → ignore (timing markers).
+//     - Binary frame                   → first 2 bytes are big-endian
+//     header length N; bytes [2:2+N]
+//     are an ASCII header block
+//     (Path:audio …); bytes [2+N:]
+//     are the actual MP3 chunk.
+//     Append to output buffer.
+//     - Text frame `Path:turn.end`     → done; close connection.
 //
 //  4. Concatenate every binary chunk's audio body → final MP3.
 //

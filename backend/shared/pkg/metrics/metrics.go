@@ -184,11 +184,11 @@ func init() {
 // translate raw token counts into cost. Update when contracts change.
 // Values are illustrative — production should pull from cfg or a CMS table.
 var llmPriceRubPer1k = map[string]struct{ prompt, completion float64 }{
-	"openai/gpt-4o-mini":    {0.18, 0.72},
-	"openai/gpt-4o":         {2.5, 10.0},
-	"anthropic/claude-3.5":  {2.7, 13.5},
-	"yandexgpt/lite":        {0.20, 0.20},
-	"yandexgpt/pro":         {1.20, 1.20},
+	"openai/gpt-4o-mini":   {0.18, 0.72},
+	"openai/gpt-4o":        {2.5, 10.0},
+	"anthropic/claude-3.5": {2.7, 13.5},
+	"yandexgpt/lite":       {0.20, 0.20},
+	"yandexgpt/pro":        {1.20, 1.20},
 }
 
 // RecordLLMUsage increments the token counter and the RUB cost counter

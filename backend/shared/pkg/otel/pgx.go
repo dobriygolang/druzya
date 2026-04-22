@@ -2,6 +2,7 @@ package otel
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -53,10 +54,14 @@ func (t *queryTracer) TraceQueryEnd(ctx context.Context, _ *pgx.Conn, data pgx.T
 func NewTracedPool(ctx context.Context, dsn string) (*pgxpool.Pool, error) {
 	cfg, err := pgxpool.ParseConfig(dsn)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("otel.NewTracedPool: parse dsn: %w", err)
 	}
 	cfg.ConnConfig.Tracer = &queryTracer{tracer: otel.Tracer("druz9/pgx")}
-	return pgxpool.NewWithConfig(ctx, cfg)
+	pool, err := pgxpool.NewWithConfig(ctx, cfg)
+	if err != nil {
+		return nil, fmt.Errorf("otel.NewTracedPool: create pool: %w", err)
+	}
+	return pool, nil
 }
 
 // WrapPool is a no-op kept for API symmetry with the spec. pgxpool.Config()
