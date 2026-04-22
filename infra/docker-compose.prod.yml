@@ -146,10 +146,9 @@ services:
       MINIO_ENDPOINT: minio:9000
       CLICKHOUSE_ADDR: clickhouse:9000
       JUDGE0_URL: http://judge0-server:2358
-      # ── Grafana Cloud Tempo (OTLP/HTTP). Если переменных нет — отключаем
-      # экспорт трейсов (см. backend/cmd/monolith/bootstrap/observability.go).
-      OTEL_EXPORTER_OTLP_ENDPOINT: ${GRAFANA_CLOUD_OTLP_ENDPOINT:-}
-      OTEL_EXPORTER_OTLP_HEADERS: ${GRAFANA_CLOUD_OTLP_HEADERS:-}
+      # OTEL_EXPORTER_OTLP_ENDPOINT/HEADERS подсасываются через env_file
+      # (../.env.prod) — здесь не дублируем, чтобы избежать двойной
+      # compose-интерполяции (которая в прошлый раз молча съедала значение).
     networks: [app-net, judge-net, obs-net]
     restart: always
     healthcheck:
@@ -246,20 +245,22 @@ services:
       - prometheus_data:/prometheus
     # Prometheus НЕ умеет ${ENV_VAR} в remote_write.url / basic_auth.password
     # (--enable-feature=expand-external-labels работает только для external_labels).
-    # Поэтому делаем sed-подстановку перед стартом самого binary'я.
+    # Делаем sed-подстановку перед стартом. Placeholder'ы в шаблоне — __GC_*__,
+    # а не ${VAR}, потому что compose сам интерполирует ${VAR} в YAML и съедает
+    # обе части sed-паттерна.
     entrypoint: ["/bin/sh", "-c"]
     command:
-      - |
-        sed \
-          -e "s|\${GRAFANA_CLOUD_PROM_URL}|$$GRAFANA_CLOUD_PROM_URL|g" \
-          -e "s|\${GRAFANA_CLOUD_PROM_USER}|$$GRAFANA_CLOUD_PROM_USER|g" \
-          -e "s|\${GRAFANA_CLOUD_API_KEY}|$$GRAFANA_CLOUD_API_KEY|g" \
-          /etc/prometheus/prometheus.yml.tpl > /etc/prometheus/prometheus.yml
-        exec /bin/prometheus \
-          --config.file=/etc/prometheus/prometheus.yml \
-          --storage.tsdb.path=/prometheus \
-          --storage.tsdb.retention.time=6h \
-          --web.enable-lifecycle
+      - >-
+        sed
+        -e "s|__GC_PROM_URL__|$$GRAFANA_CLOUD_PROM_URL|g"
+        -e "s|__GC_PROM_USER__|$$GRAFANA_CLOUD_PROM_USER|g"
+        -e "s|__GC_API_KEY__|$$GRAFANA_CLOUD_API_KEY|g"
+        /etc/prometheus/prometheus.yml.tpl > /etc/prometheus/prometheus.yml
+        && exec /bin/prometheus
+        --config.file=/etc/prometheus/prometheus.yml
+        --storage.tsdb.path=/prometheus
+        --storage.tsdb.retention.time=6h
+        --web.enable-lifecycle
     networks: [obs-net, app-net]
     restart: always
 

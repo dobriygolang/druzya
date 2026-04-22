@@ -25,10 +25,14 @@ alerting:
 #      → положить в GRAFANA_CLOUD_PROM_USER (это instance ID, число)
 #      и GRAFANA_CLOUD_API_KEY (сам токен).
 remote_write:
-  - url: ${GRAFANA_CLOUD_PROM_URL}
+  # Placeholders __GC_*__ подменяет sed-обёртка в compose-entrypoint
+  # (см. docker-compose.prod.yml: prometheus.command). Использовать ${VAR}
+  # нельзя: docker compose сам интерполирует ${...} в YAML до того, как
+  # контейнер стартанёт — и подставит значения в обе части sed-паттерна.
+  - url: __GC_PROM_URL__
     basic_auth:
-      username: ${GRAFANA_CLOUD_PROM_USER}
-      password: ${GRAFANA_CLOUD_API_KEY}
+      username: __GC_PROM_USER__
+      password: __GC_API_KEY__
     queue_config:
       capacity: 10000
       max_shards: 5
