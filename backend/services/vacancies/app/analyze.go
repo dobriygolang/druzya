@@ -83,10 +83,13 @@ func DetectSource(rawURL string) (domain.Source, error) {
 	}
 	host := strings.TrimPrefix(strings.ToLower(u.Host), "www.")
 	switch {
-	case strings.HasSuffix(host, "hh.ru") || strings.HasSuffix(host, "hh.kz") || strings.HasSuffix(host, "headhunter.ru"):
-		return domain.SourceHH, nil
 	case strings.Contains(host, "yandex"):
 		return domain.SourceYandex, nil
+	// ozon.tech check must come before generic ozon — career.ozon.tech is
+	// Ozon Tech (the IT subsidiary) while job.ozon.ru is retail. They are
+	// distinct careers sites with different parser shapes.
+	case strings.Contains(host, "ozon.tech"):
+		return domain.SourceOzonTech, nil
 	case strings.Contains(host, "ozon"):
 		return domain.SourceOzon, nil
 	case strings.Contains(host, "tinkoff") || strings.Contains(host, "tbank"):

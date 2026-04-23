@@ -2,7 +2,7 @@
 //
 // We model two aggregates:
 //
-//   - Vacancy — a parsed external posting (HH, Yandex, Ozon, T-Bank, VK…).
+//   - Vacancy — a parsed external posting (Yandex, Ozon, T-Bank, VK…).
 //     Owned by the parser pipeline; idempotent on (Source, ExternalID).
 //   - SavedVacancy — per-user kanban entry referring to a Vacancy.id.
 //
@@ -31,10 +31,13 @@ var ErrInvalidStatus = errors.New("vacancies: invalid status")
 type Source string
 
 const (
-	SourceHH          Source = "hh"
-	SourceYandex      Source = "yandex"
-	SourceOzon        Source = "ozon"
-	SourceTinkoff     Source = "tinkoff" // T-Bank careers
+	SourceYandex Source = "yandex"
+	// SourceOzon is the retail-side careers site (job.ozon.ru).
+	SourceOzon Source = "ozon"
+	// SourceOzonTech is the IT-subsidiary careers site (career.ozon.tech).
+	SourceOzonTech Source = "ozontech"
+	// SourceTinkoff is T-Bank careers (rebranded from Tinkoff).
+	SourceTinkoff     Source = "tinkoff"
 	SourceVK          Source = "vk"
 	SourceSber        Source = "sber"
 	SourceAvito       Source = "avito"
@@ -48,7 +51,7 @@ const (
 // AllSources is used by validation in the list endpoint. Order matches the
 // frontend's filter sidebar default.
 var AllSources = []Source{
-	SourceHH, SourceYandex, SourceOzon, SourceTinkoff, SourceVK,
+	SourceYandex, SourceOzon, SourceOzonTech, SourceTinkoff, SourceVK,
 	SourceSber, SourceAvito, SourceWildberries, SourceMTS,
 	SourceKaspersky, SourceJetBrains, SourceLamoda,
 }

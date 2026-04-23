@@ -116,10 +116,10 @@ func TestSyncJob_Upsert_Idempotent(t *testing.T) {
 	repo := newMemRepo()
 	ext := &stubExtractor{out: []string{"go"}}
 	parser := &stubParser{
-		src: domain.SourceHH,
+		src: domain.SourceYandex,
 		out: []domain.Vacancy{
-			{Source: domain.SourceHH, ExternalID: "1", Title: "T1", Description: "d1"},
-			{Source: domain.SourceHH, ExternalID: "2", Title: "T2", Description: "d2"},
+			{Source: domain.SourceYandex, ExternalID: "1", Title: "T1", Description: "d1"},
+			{Source: domain.SourceYandex, ExternalID: "2", Title: "T2", Description: "d2"},
 		},
 	}
 	job := &SyncJob{Parsers: []domain.Parser{parser}, Repo: repo, Extractor: ext, Log: testLog()}
@@ -145,11 +145,11 @@ func TestSyncJob_BrokenExtractor_StillUpserts(t *testing.T) {
 	t.Parallel()
 	repo := newMemRepo()
 	parser := &stubParser{
-		src: domain.SourceHH,
+		src: domain.SourceYandex,
 		out: []domain.Vacancy{
-			{Source: domain.SourceHH, ExternalID: "10", Title: "Go Dev", Description: "go postgres"},
-			{Source: domain.SourceHH, ExternalID: "11", Title: "Backend", Description: "python"},
-			{Source: domain.SourceHH, ExternalID: "12", Title: "DevOps", Description: "k8s"},
+			{Source: domain.SourceYandex, ExternalID: "10", Title: "Go Dev", Description: "go postgres"},
+			{Source: domain.SourceYandex, ExternalID: "11", Title: "Backend", Description: "python"},
+			{Source: domain.SourceYandex, ExternalID: "12", Title: "DevOps", Description: "k8s"},
 		},
 	}
 	ext := &errExtractor{}
@@ -182,10 +182,10 @@ func TestSyncJob_ListByFilter_NoFilters_ReturnsUpserts(t *testing.T) {
 	t.Parallel()
 	repo := newMemRepo()
 	parser := &stubParser{
-		src: domain.SourceHH,
+		src: domain.SourceYandex,
 		out: []domain.Vacancy{
-			{Source: domain.SourceHH, ExternalID: "a", Title: "A", Description: "d"},
-			{Source: domain.SourceHH, ExternalID: "b", Title: "B", Description: "d"},
+			{Source: domain.SourceYandex, ExternalID: "a", Title: "A", Description: "d"},
+			{Source: domain.SourceYandex, ExternalID: "b", Title: "B", Description: "d"},
 		},
 	}
 	job := &SyncJob{Parsers: []domain.Parser{parser}, Repo: repo, Log: testLog()}
@@ -206,7 +206,7 @@ func TestSyncJob_ParserFailureContinues(t *testing.T) {
 	repo := newMemRepo()
 	job := &SyncJob{
 		Parsers: []domain.Parser{
-			&stubParser{src: domain.SourceHH, fail: true},
+			&stubParser{src: domain.SourceYandex, fail: true},
 			&stubParser{src: domain.SourceVK, out: []domain.Vacancy{
 				{Source: domain.SourceVK, ExternalID: "v1", Title: "T", Description: "d"},
 			}},

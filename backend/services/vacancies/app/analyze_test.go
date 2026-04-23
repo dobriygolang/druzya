@@ -26,12 +26,12 @@ func TestDetectSource(t *testing.T) {
 		want domain.Source
 		err  bool
 	}{
-		{"https://hh.ru/vacancy/1", domain.SourceHH, false},
-		{"https://spb.hh.ru/vacancy/1", domain.SourceHH, false},
 		{"https://yandex.ru/jobs/vacancies/x", domain.SourceYandex, false},
 		{"https://job.ozon.ru/vacancy/x/", domain.SourceOzon, false},
+		{"https://career.ozon.tech/vacancies/x", domain.SourceOzonTech, false},
 		{"https://www.tbank.ru/career/it/vacancy/x/", domain.SourceTinkoff, false},
 		{"https://careers.vk.com/jobs/x/", domain.SourceVK, false},
+		{"https://career.wb.ru/vacancy/x", domain.SourceWildberries, false},
 		{"https://example.com", "", true},
 	}
 	for _, tc := range cases {
@@ -58,18 +58,18 @@ func TestAnalyzeURL_HappyPath(t *testing.T) {
 	repo := newMemRepo()
 	ext := &stubExtractor{out: []string{"go", "kubernetes"}}
 	parser := &stubSingleFetcher{
-		src: domain.SourceHH,
+		src: domain.SourceYandex,
 		out: domain.Vacancy{
-			Source:      domain.SourceHH,
+			Source:      domain.SourceYandex,
 			ExternalID:  "999",
 			Title:       "Senior Go",
-			URL:         "https://hh.ru/vacancy/999",
+			URL:         "https://yandex.ru/jobs/vacancies/999",
 			Description: "Looking for Go + k8s",
 			RawSkills:   []string{"Go", "PostgreSQL"},
 		},
 	}
 	a := &AnalyzeURL{Parsers: []domain.Parser{parser}, Repo: repo, Extractor: ext}
-	res, err := a.Do(context.Background(), "https://hh.ru/vacancy/999", []string{"go", "redis"})
+	res, err := a.Do(context.Background(), "https://yandex.ru/jobs/vacancies/999", []string{"go", "redis"})
 	if err != nil {
 		t.Fatalf("Do: %v", err)
 	}

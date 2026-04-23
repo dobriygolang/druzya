@@ -48,8 +48,8 @@ func TestComputeSkillGap_EmptyUserKnownNothing(t *testing.T) {
 
 func TestIsValidSourceAndStatus(t *testing.T) {
 	t.Parallel()
-	if !IsValidSource(SourceHH) {
-		t.Error("hh should be valid")
+	if !IsValidSource(SourceYandex) {
+		t.Error("yandex should be valid")
 	}
 	if IsValidSource("nope") {
 		t.Error("nope should not be valid")
