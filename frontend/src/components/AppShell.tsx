@@ -1,6 +1,6 @@
 import { ReactNode, useEffect, useRef, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { Bell, Menu, Search, X, Sun, Moon, Languages, User, LogOut, Settings, Users, HelpCircle, Shield, CalendarDays } from 'lucide-react'
+import { Bell, Menu, Search, X, Sun, Moon, Languages, User, LogOut, Settings, Users, HelpCircle, Shield, CalendarDays, Sparkles } from 'lucide-react'
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
 import { MobileBottomNav } from './MobileBottomNav'
@@ -189,7 +189,12 @@ function UserMenu({ onClose }: { onClose: () => void }) {
   //   - Weekly удалён (теперь таб внутри /profile).
   //   - Vacancies удалён (теперь top-nav entry).
   // В меню остались персональные разделы и админка.
-  const items: { to: string; label: string; icon: typeof User }[] = [
+  // Wave-13: «Copilot» surfaced here with a NEW badge. Header nav already
+  // has 7 entries (Sanctum/Arena/Atlas/Кодекс/Вакансии/Слоты/Гильдия) so
+  // adding a 8th would overflow on tablet — we use the user-menu instead
+  // and rely on the NEW badge + the /welcome promo banner for discovery.
+  const items: { to: string; label: string; icon: typeof User; badge?: 'new' }[] = [
+    { to: '/copilot', label: 'Copilot', icon: Sparkles, badge: 'new' },
     { to: '/profile', label: t('nav.profile'), icon: User },
     { to: '/cohorts', label: t('nav.cohorts'), icon: CalendarDays },
     { to: '/settings', label: t('nav.settings'), icon: Settings },
@@ -221,7 +226,15 @@ function UserMenu({ onClose }: { onClose: () => void }) {
           role="menuitem"
         >
           <it.icon className="h-4 w-4 shrink-0" />
-          <span className="truncate">{it.label}</span>
+          <span className="flex-1 truncate">{it.label}</span>
+          {it.badge === 'new' && (
+            <span
+              className="rounded-md px-1.5 py-0.5 font-mono text-[9px] font-bold tracking-wider text-white"
+              style={{ background: 'linear-gradient(135deg, rgb(124,92,255), rgb(76,139,255))' }}
+            >
+              NEW
+            </span>
+          )}
         </Link>
       ))}
       <div className="my-1 border-t border-border" />

@@ -18,6 +18,7 @@ import { useTranslation } from 'react-i18next'
 import { motion, useReducedMotion } from 'framer-motion'
 import { Button } from '../components/Button'
 import { Card } from '../components/Card'
+import { CopilotPromoBanner } from '../components/CopilotPromoBanner'
 import { usePublicStats } from '../lib/api/stats'
 
 // druz9 brand gradient — violet → cyan → pink — used as the gradient text fill
@@ -398,6 +399,14 @@ export default function WelcomePage() {
   return (
     <div className="min-h-screen bg-bg text-text-primary">
       <MinimalTopBar />
+
+      {/* Wave-13 — Promo banner for the new Copilot desktop product. Sits
+          above the hero so first-time visitors discover Copilot before they
+          scroll. Keep it ABOVE motion-animation so it appears instantly
+          (no fade-in delay competing with hero animation). */}
+      <div className="mx-auto w-full max-w-[1200px] px-4 pt-5 sm:px-8 lg:px-20">
+        <CopilotPromoBanner variant="hero" />
+      </div>
 
       {/* HERO */}
       <main className="relative overflow-hidden">

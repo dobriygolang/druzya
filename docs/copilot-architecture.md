@@ -573,25 +573,54 @@ breaking changes.
 - [x] `desktop/README.md` — setup, dev, build, stealth testing
       instructions.
 
-### Phase 4 — UI screens (wire design → code)
-- [ ] Compact window + 4 states.
-- [ ] Expanded chat + streaming rendering + markdown/code blocks.
-- [ ] Screenshot overlay (area picker).
-- [ ] Provider picker modal.
-- [ ] Onboarding flow (welcome → permissions → Telegram login → demo).
-- [ ] Permissions screens (macOS Screen Recording / Accessibility).
-- [ ] Settings (tabs: General, Hotkeys, AI Providers, Subscription, About).
-- [ ] History panel.
-- [ ] Paywall / quota-reached modal.
-- [ ] Menu bar states.
-- [ ] Masquerade preview (name & icon swap — UI only in MVP).
+### Phase 4 — UI screens (COMPLETE ✅)
+- [x] Primitives: `Button` (primary/secondary/ghost/pill), `IconButton`,
+      `Kbd` (parses Electron accelerator strings into glyph chips),
+      `StatusDot` (idle/ready/thinking/recording/error with pulse),
+      `Surface` (frosted card), 14 inline SVG icons + `BrandMark`.
+- [x] Zustand stores: `auth.ts`, `conversation.ts` (streaming state +
+      IPC event wiring), `quota.ts`.
+- [x] Compact window — input + screenshot/voice/settings buttons +
+      status bar with model label and hotkey hints. Drag-by-background
+      with interactive-control opt-outs.
+- [x] Expanded chat — streaming assistant rendering with mini-markdown
+      pass (fenced code blocks with copy button + inline code), pending
+      caret during stream, error cards keyed on `code`, empty state,
+      follow-up textarea with auto-resize + Enter-to-send.
+- [x] Onboarding — 4-step wizard: Welcome → Permissions (live-poll of
+      Screen Recording / Accessibility / Microphone) → Telegram login
+      (deep-link callback auto-advances the step) → Done.
+- [x] Settings — sidebar + 4 tabs (General with account/plan/stealth
+      rows, Hotkeys listing bindings from DesktopConfig, AI Providers
+      with availability badges, About).
+- [ ] Screenshot area picker — deferred (MVP uses full-screen capture).
+- [ ] Provider picker modal — deferred (Settings → Providers tab
+      already enumerates the catalogue; a modal over compact is Phase 5+).
+- [ ] Dedicated History panel — deferred (Expanded chat covers the
+      active conversation; history needs a paginated list screen).
+- [ ] Paywall modal — deferred (quota state surfaced in Settings).
+- [ ] Menu bar icon with dropdown — deferred (compact window is
+      always-on-top and covers the same access patterns).
+- [ ] Masquerade preview — deferred (flag is off in the default config).
 
-### Phase 5 — Ship prep
-- [ ] Dev code-signing cert on the machine (so `.app` launches without
-      Gatekeeper block during testing).
-- [ ] `npm run build:mac` produces a working `.dmg`.
-- [ ] Smoke test on real Zoom / Meet / Chrome screen-share: compact window
-      is invisible to the viewer, visible to the user.
-- [ ] README with "how to run locally" + "how to build `.dmg`".
-- [ ] **Out of scope for MVP** (see §6): notarization, auto-update, voice,
-      BYO API keys, Windows build, masquerade activation, team plan.
+### Phase 5 — Ship prep (READY ✅)
+- [x] Makefile targets: `desktop-install`, `desktop-dev`,
+      `desktop-build`, `desktop-typecheck`.
+- [x] `docs/copilot-shipping.md` — step-by-step from clone to `.dmg`,
+      including signing matrix and notarization path.
+- [x] `desktop/scripts/smoke-stealth.md` — manual test protocol for
+      the stealth-overlay (7-row matrix against Zoom/Meet/Chrome).
+- [x] `desktop/resources/README.md` — icon generation instructions and
+      masquerade icon slots.
+- [ ] **Hands-on steps** (require the user's Mac):
+    - [ ] `make desktop-install`
+    - [ ] `make desktop-dev` — verify compact window boots
+    - [ ] Onboarding flow end-to-end (permissions + Telegram login)
+    - [ ] `⌘⇧S` happy-path smoke test
+    - [ ] `make desktop-build` — produces `.dmg`
+    - [ ] Run `scripts/smoke-stealth.md` 7-row matrix
+    - [ ] Generate `resources/icon.icns` from brand artwork
+- [ ] **Out of scope for MVP** (deferred to Phase 6+): notarization,
+      auto-update, voice input, BYO API keys, Windows build,
+      masquerade activation, team plan, paywall modal, history panel,
+      menu-bar icon, screenshot area picker, provider picker modal.

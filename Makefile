@@ -131,3 +131,19 @@ seed: ## Load seed data (tasks, companies)
 .PHONY: check-stubs
 check-stubs: ## Warn about STUB comments (CI advisory)
 	@grep -rn "// STUB:" backend frontend/src || echo "no STUB comments found"
+
+.PHONY: desktop-install
+desktop-install: ## Install desktop app npm dependencies
+	cd desktop && npm install
+
+.PHONY: desktop-dev
+desktop-dev: ## Run desktop in dev mode (requires backend running separately)
+	cd desktop && npm run dev
+
+.PHONY: desktop-build
+desktop-build: ## Build desktop .app and .dmg for macOS
+	cd desktop && npm run build:mac
+
+.PHONY: desktop-typecheck
+desktop-typecheck: ## Type-check desktop (renderer + main)
+	cd desktop && npm run typecheck

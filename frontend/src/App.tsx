@@ -44,6 +44,10 @@ const DailyPage = lazy(() => import('./pages/DailyPage'))
 const SettingsPage = lazy(() => import('./pages/SettingsPage'))
 const WelcomePage = lazy(() => import('./pages/WelcomePage'))
 const WelcomeDemoPage = lazy(() => import('./pages/WelcomeDemoPage'))
+// Wave-13 — Druz9 Copilot landing (public, no auth gate). Promotes the
+// new macOS desktop product. Linked from /welcome via CopilotPromoBanner +
+// header nav "NEW" badge.
+const CopilotLandingPage = lazy(() => import('./pages/CopilotLandingPage'))
 const LoginPage = lazy(() => import('./pages/LoginPage'))
 const AuthCallbackYandexPage = lazy(() => import('./pages/AuthCallbackYandexPage'))
 const OnboardingPage = lazy(() => import('./pages/OnboardingPage'))
@@ -150,6 +154,8 @@ export default function App() {
         <Route path="/settings" element={<SettingsPage />} />
         <Route path="/welcome" element={<WelcomePage />} />
         <Route path="/welcome/demo" element={<WelcomeDemoPage />} />
+        {/* Druz9 Copilot — public landing for the new macOS desktop product. */}
+        <Route path="/copilot" element={<CopilotLandingPage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/auth/callback/yandex" element={<AuthCallbackYandexPage />} />
         <Route path="/onboarding" element={<OnboardingPage />} />
