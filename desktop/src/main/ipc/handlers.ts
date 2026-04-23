@@ -29,6 +29,7 @@ import { AnthropicProvider } from '../api/providers/anthropic';
 import { OpenAIProvider } from '../api/providers/openai';
 import { transcribe } from '../api/providers/whisper';
 import { applyPreset, getCurrent, listPresets, type MasqueradePreset } from '../masquerade';
+import { checkNow, getStatus, installNow } from '../updater';
 import { captureArea, captureFullScreen } from '../capture/screenshot';
 import { applyBindings, listBindings } from '../hotkeys/registry';
 import {
@@ -254,6 +255,11 @@ export function registerHandlers(opts: RegisterOptions): void {
   ipcMain.handle(invokeChannels.masqueradeApply, async (_evt, preset: MasqueradePreset) => {
     applyPreset(preset, resourcesPath);
   });
+
+  // ── Auto-update ──
+  ipcMain.handle(invokeChannels.updaterStatus, async () => getStatus());
+  ipcMain.handle(invokeChannels.updaterCheck, async () => checkNow());
+  ipcMain.handle(invokeChannels.updaterInstall, async () => installNow());
 
   // ── Voice (Whisper via BYOK OpenAI) ──
   ipcMain.handle(

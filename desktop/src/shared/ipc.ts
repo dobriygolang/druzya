@@ -56,6 +56,10 @@ export const invokeChannels = {
   masqueradeApply: 'masquerade:apply',
 
   voiceTranscribe: 'voice:transcribe',
+
+  updaterStatus: 'updater:status',
+  updaterCheck: 'updater:check',
+  updaterInstall: 'updater:install',
 } as const;
 
 /** Events pushed from main → renderer. */
@@ -70,6 +74,7 @@ export const eventChannels = {
   quotaUpdated: 'event:quota-updated',
   authChanged: 'event:auth-changed',
   byokChanged: 'event:byok-changed',
+  updateStatus: 'event:update-status',
 } as const;
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -100,6 +105,19 @@ export interface MasqueradePresetInfo {
   id: MasqueradePreset;
   displayName: string;
 }
+
+// ─────────────────────────────────────────────────────────────────────────
+// Auto-update types
+// ─────────────────────────────────────────────────────────────────────────
+
+export type UpdateStatus =
+  | { kind: 'idle' }
+  | { kind: 'checking' }
+  | { kind: 'available'; version: string; releaseNotes?: string }
+  | { kind: 'downloading'; percent: number }
+  | { kind: 'ready'; version: string; releaseNotes?: string }
+  | { kind: 'not-available' }
+  | { kind: 'error'; message: string };
 
 // ─────────────────────────────────────────────────────────────────────────
 // Invoke payloads
@@ -291,6 +309,16 @@ export interface Druz9API {
       mimeType: string;
       language?: string;
     }) => Promise<{ ok: boolean; transcript?: string; error?: string }>;
+  };
+
+  /**
+   * Auto-update — queries the electron-updater feed declared in
+   * DesktopConfig.UpdateFeedURL. No-op in dev builds.
+   */
+  updater: {
+    status: () => Promise<UpdateStatus>;
+    check: () => Promise<UpdateStatus>;
+    install: () => Promise<void>;
   };
 
   /** Subscribe to a main-process event. Returns an unsubscribe function. */
