@@ -23,10 +23,13 @@ import { useTranslation } from 'react-i18next'
 import { AppShellV2 } from '../components/AppShell'
 import { Button } from '../components/Button'
 import { Card } from '../components/Card'
+import { FormField } from '../components/FormField'
+import { AIModelRow, PremiumUpgradeHint } from '../components/AIModelRow'
 import { cn } from '../lib/cn'
 import { useProfileQuery } from '../lib/queries/profile'
 import { useAIModelsQuery } from '../lib/queries/ai'
 import { useUpdateProfileSettings } from '../lib/queries/settings'
+import { gradientStyleForUser } from '../lib/avatarGradients'
 import { useTheme, type ThemeMode } from '../lib/theme'
 import { changeLanguage, currentLanguage, type Lang } from '../lib/i18n'
 
@@ -89,45 +92,6 @@ function Sidebar({ active, setActive }: { active: NavId; setActive: (id: NavId) 
   )
 }
 
-function Field({
-  label,
-  value,
-  multiline,
-  prefix,
-}: {
-  label: string
-  value: string
-  multiline?: boolean
-  prefix?: string
-}) {
-  return (
-    <div className="flex flex-col gap-1.5">
-      <label className="font-mono text-[10px] font-semibold uppercase tracking-[0.1em] text-text-muted">
-        {label}
-      </label>
-      {multiline ? (
-        <textarea
-          defaultValue={value}
-          rows={3}
-          className="resize-none rounded-md border border-border bg-surface-1 px-3 py-2 text-[13px] text-text-primary outline-none focus:border-accent"
-        />
-      ) : (
-        <div className="flex items-center rounded-md border border-border bg-surface-1 focus-within:border-accent">
-          {prefix && (
-            <span className="border-r border-border px-2.5 py-2 font-mono text-[13px] text-text-muted">
-              {prefix}
-            </span>
-          )}
-          <input
-            defaultValue={value}
-            className="flex-1 bg-transparent px-3 py-2 text-[13px] text-text-primary outline-none"
-          />
-        </div>
-      )}
-    </div>
-  )
-}
-
 function ProfileCard() {
   const { t } = useTranslation('settings')
   const { data: profile, isError, isLoading } = useProfileQuery()
@@ -149,7 +113,7 @@ function ProfileCard() {
         <div className="flex flex-col items-center gap-2">
           <div
             className="grid place-items-center rounded-full font-display text-3xl font-extrabold text-white"
-            style={{ width: 96, height: 96, background: 'linear-gradient(135deg, #582CFF 0%, #22D3EE 100%)' }}
+            style={{ width: 96, height: 96, ...gradientStyleForUser(profile?.username) }}
           >
             {initial}
           </div>
@@ -158,12 +122,12 @@ function ProfileCard() {
           </button>
         </div>
         <div className="grid flex-1 grid-cols-1 gap-4 sm:grid-cols-2">
-          <Field key={`u-${username}`} label={t('fields.username')} value={username} prefix="@" />
-          <Field key={`d-${display}`} label={t('fields.display')} value={display} />
-          <Field key={`e-${email}`} label={t('fields.email')} value={email} />
-          <Field label={t('fields.city')} value={t('city')} />
+          <FormField key={`u-${username}`} label={t('fields.username')} defaultValue={username} prefix="@" />
+          <FormField key={`d-${display}`} label={t('fields.display')} defaultValue={display} />
+          <FormField key={`e-${email}`} label={t('fields.email')} defaultValue={email} />
+          <FormField label={t('fields.city')} defaultValue={t('city')} />
           <div className="col-span-2">
-            <Field label={t('fields.bio')} value={profile?.title ?? t('bio_default')} multiline />
+            <FormField label={t('fields.bio')} defaultValue={profile?.title ?? t('bio_default')} multiline />
           </div>
         </div>
       </div>
@@ -213,7 +177,7 @@ function AccountInfoCard() {
                 до {expiryDate}
               </span>
             )}
-            <Button variant="primary" size="sm" className="bg-warn text-bg shadow-none hover:bg-warn/90 hover:shadow-none">
+            <Button variant="ghost" size="sm">
               {t('buy_premium')}
             </Button>
           </div>
@@ -504,78 +468,35 @@ function AICoachCard() {
       {available && items.length > 0 && (
         <div className="flex flex-col gap-2">
           {/* Default row — empty string maps to server-default free model */}
-          <button
-            type="button"
-            onClick={() => onPick('')}
-            className={cn(
-              'flex items-center justify-between rounded-lg border px-4 py-3 text-left transition-colors',
-              selected === ''
-                ? 'border-accent bg-accent/10'
-                : 'border-border bg-surface-1 hover:border-border-strong',
-            )}
-          >
-            <div className="flex flex-col">
-              <span className="text-[13px] font-semibold text-text-primary">
-                {t('ai_coach_default', { defaultValue: 'По умолчанию (бесплатная)' })}
-              </span>
-              <span className="font-mono text-[10px] text-text-muted">
-                {t('ai_coach_default_desc', { defaultValue: 'сервер выбирает модель под ваш тариф' })}
-              </span>
-            </div>
-            {selected === '' && (
-              <Check className="h-4 w-4 text-accent" strokeWidth={3} />
-            )}
-          </button>
+          <AIModelRow
+            id=""
+            label={t('ai_coach_default', { defaultValue: 'По умолчанию (бесплатная)' })}
+            meta={t('ai_coach_default_desc', { defaultValue: 'сервер выбирает модель под ваш тариф' })}
+            tier="free"
+            selected={selected === ''}
+            onSelect={onPick}
+          />
           {items.map((m) => {
             const locked = m.tier === 'premium' && !isPremium
-            const active = selected === m.id
             return (
-              <button
+              <AIModelRow
                 key={m.id}
-                type="button"
-                onClick={() => onPick(m.id)}
-                disabled={locked}
-                className={cn(
-                  'flex items-center justify-between rounded-lg border px-4 py-3 text-left transition-colors',
-                  active
-                    ? 'border-accent bg-accent/10'
-                    : 'border-border bg-surface-1 hover:border-border-strong',
-                  locked && 'cursor-not-allowed opacity-50 hover:border-border',
-                )}
-                title={
-                  locked
-                    ? t('ai_coach_premium_locked', {
-                        defaultValue: 'Требуется Premium подписка',
-                      })
-                    : ''
-                }
-              >
-                <div className="flex min-w-0 flex-col">
-                  <span className="truncate text-[13px] font-semibold text-text-primary">
-                    {m.label}
-                  </span>
-                  <span className="truncate font-mono text-[10px] text-text-muted">
-                    {m.provider} · {m.id}
-                  </span>
-                </div>
-                <div className="ml-3 flex items-center gap-2">
-                  {m.tier === 'premium' && (
-                    <span
-                      className={cn(
-                        'rounded-full px-2 py-0.5 font-mono text-[9px] font-bold uppercase',
-                        isPremium
-                          ? 'bg-warn/20 text-warn'
-                          : 'bg-surface-2 text-text-muted',
-                      )}
-                    >
-                      💎 premium
-                    </span>
-                  )}
-                  {active && <Check className="h-4 w-4 text-accent" strokeWidth={3} />}
-                </div>
-              </button>
+                id={m.id}
+                label={m.label}
+                meta={`${m.provider} · ${m.id}`}
+                tier={m.tier}
+                selected={selected === m.id}
+                locked={locked}
+                onSelect={onPick}
+              />
             )
           })}
+          {/* Inline upgrade hint — single, unobtrusive, only when something
+              is actually locked (i.e. user is free-tier and at least one
+              premium model exists in the catalogue). */}
+          {!isPremium && items.some((m) => m.tier === 'premium') && (
+            <PremiumUpgradeHint />
+          )}
         </div>
       )}
       {update.isError && (
@@ -594,7 +515,7 @@ export default function SettingsPage() {
     <AppShellV2>
       <div className="flex flex-col gap-8 px-4 py-6 sm:px-8 lg:px-10 lg:py-10">
         <div className="flex flex-col gap-1.5">
-          <h1 className="font-display text-2xl font-bold text-text-primary lg:text-[32px]">{t('title')}</h1>
+          <h1 className="font-display text-3xl font-bold leading-[1.1] text-text-primary lg:text-[40px]">{t('title')}</h1>
           <p className="text-sm text-text-secondary">
             {t('subtitle')}
           </p>
