@@ -17,9 +17,21 @@ FROM podcasts
 WHERE id = $1
 `
 
-func (q *Queries) GetPodcastByID(ctx context.Context, id pgtype.UUID) (Podcast, error) {
+type GetPodcastByIDRow struct {
+	ID          pgtype.UUID
+	TitleRu     string
+	TitleEn     string
+	Description pgtype.Text
+	Section     string
+	DurationSec int32
+	AudioKey    string
+	IsPublished bool
+	CreatedAt   pgtype.Timestamptz
+}
+
+func (q *Queries) GetPodcastByID(ctx context.Context, id pgtype.UUID) (GetPodcastByIDRow, error) {
 	row := q.db.QueryRow(ctx, getPodcastByID, id)
-	var i Podcast
+	var i GetPodcastByIDRow
 	err := row.Scan(
 		&i.ID,
 		&i.TitleRu,

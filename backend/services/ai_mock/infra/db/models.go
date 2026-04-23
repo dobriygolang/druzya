@@ -128,6 +128,14 @@ type EditorRoom struct {
 	CreatedAt pgtype.Timestamptz
 }
 
+type EloSnapshotsDaily struct {
+	UserID        pgtype.UUID
+	Section       string
+	SnapshotDate  pgtype.Date
+	Elo           int32
+	MatchesPlayed int32
+}
+
 type FollowUpQuestion struct {
 	ID         pgtype.UUID
 	TaskID     pgtype.UUID
@@ -353,6 +361,21 @@ type Podcast struct {
 	AudioKey    string
 	IsPublished bool
 	CreatedAt   pgtype.Timestamptz
+	Host        pgtype.Text
+	CategoryID  pgtype.UUID
+	EpisodeNum  pgtype.Int4
+	CoverUrl    pgtype.Text
+	PublishedAt pgtype.Timestamptz
+	UpdatedAt   pgtype.Timestamptz
+}
+
+type PodcastCategory struct {
+	ID        pgtype.UUID
+	Slug      string
+	Name      string
+	Color     string
+	SortOrder int32
+	CreatedAt pgtype.Timestamptz
 }
 
 type PodcastProgress struct {
@@ -588,4 +611,14 @@ type Vacancy struct {
 	PostedAt         pgtype.Timestamptz
 	FetchedAt        pgtype.Timestamptz
 	RawJson          []byte
+}
+
+type WeeklyShareToken struct {
+	ID         pgtype.UUID
+	UserID     pgtype.UUID
+	WeekIso    string
+	Token      string
+	CreatedAt  pgtype.Timestamptz
+	ExpiresAt  pgtype.Timestamptz
+	ViewsCount int32
 }

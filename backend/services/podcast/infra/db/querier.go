@@ -11,7 +11,7 @@ import (
 )
 
 type Querier interface {
-	GetPodcastByID(ctx context.Context, id pgtype.UUID) (Podcast, error)
+	GetPodcastByID(ctx context.Context, id pgtype.UUID) (GetPodcastByIDRow, error)
 	GetPodcastProgress(ctx context.Context, arg GetPodcastProgressParams) (PodcastProgress, error)
 	// podcast queries consumed by sqlc (emitted into services/podcast/infra/db).
 	// Catalog join: every published podcast + the requesting user's progress row
