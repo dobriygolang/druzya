@@ -282,6 +282,12 @@ message ProfileSettings {
   string locale = 3;
   NotificationPreferences notifications = 4;
   bool voice_mode_enabled = 5;
+  // ai_insight_model — OpenRouter model id chosen by the user for their
+  // weekly AI Coach insight ("openai/gpt-4o-mini", "anthropic/claude-sonnet-4", …).
+  // Empty string ⇒ server-default (tier-aware free model). Premium-locked
+  // ids are validated server-side against the llm_models registry at update
+  // time; free-tier users updating to a premium id get InvalidArgument.
+  string ai_insight_model = 6;
 }
 
 // UpdateProfileSettingsRequest wraps the ProfileSettings payload. OpenAPI

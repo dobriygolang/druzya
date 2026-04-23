@@ -9,12 +9,12 @@
 // force a `go mod tidy` we cannot run inside this scaffolding session).
 //
 // To enable wiring once Phase 1 of `docs/strategic/b2b-hrtech.md` lands:
-//   1. Add `druz9/orgs v0.0.0-...` to backend/cmd/monolith/go.mod requires.
-//   2. Add `replace druz9/orgs => ../../services/orgs`.
-//   3. Run `go mod tidy` from backend/cmd/monolith/.
-//   4. Remove the build tag on top of this file.
-//   5. Append `services.NewOrgs(deps)` into the modules slice in
-//      backend/cmd/monolith/bootstrap/bootstrap.go.
+//  1. Add `druz9/orgs v0.0.0-...` to backend/cmd/monolith/go.mod requires.
+//  2. Add `replace druz9/orgs => ../../services/orgs`.
+//  3. Run `go mod tidy` from backend/cmd/monolith/.
+//  4. Remove the build tag on top of this file.
+//  5. Append `services.NewOrgs(deps)` into the modules slice in
+//     backend/cmd/monolith/bootstrap/bootstrap.go.
 package services
 
 import (

@@ -57,6 +57,17 @@ const (
 	ArenaServiceGetMyMatchesProcedure = "/druz9.v1.ArenaService/GetMyMatches"
 )
 
+// These variables are the protoreflect.Descriptor objects for the RPCs defined in this package.
+var (
+	arenaServiceServiceDescriptor            = v1.File_druz9_v1_arena_proto.Services().ByName("ArenaService")
+	arenaServiceFindMatchMethodDescriptor    = arenaServiceServiceDescriptor.Methods().ByName("FindMatch")
+	arenaServiceCancelSearchMethodDescriptor = arenaServiceServiceDescriptor.Methods().ByName("CancelSearch")
+	arenaServiceGetMatchMethodDescriptor     = arenaServiceServiceDescriptor.Methods().ByName("GetMatch")
+	arenaServiceConfirmReadyMethodDescriptor = arenaServiceServiceDescriptor.Methods().ByName("ConfirmReady")
+	arenaServiceSubmitCodeMethodDescriptor   = arenaServiceServiceDescriptor.Methods().ByName("SubmitCode")
+	arenaServiceGetMyMatchesMethodDescriptor = arenaServiceServiceDescriptor.Methods().ByName("GetMyMatches")
+)
+
 // ArenaServiceClient is a client for the druz9.v1.ArenaService service.
 type ArenaServiceClient interface {
 	// FindMatch enqueues the caller in the matchmaking queue.
@@ -83,42 +94,41 @@ type ArenaServiceClient interface {
 // http://api.acme.com or https://acme.com/grpc).
 func NewArenaServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) ArenaServiceClient {
 	baseURL = strings.TrimRight(baseURL, "/")
-	arenaServiceMethods := v1.File_druz9_v1_arena_proto.Services().ByName("ArenaService").Methods()
 	return &arenaServiceClient{
 		findMatch: connect.NewClient[v1.FindMatchRequest, v1.MatchQueueResponse](
 			httpClient,
 			baseURL+ArenaServiceFindMatchProcedure,
-			connect.WithSchema(arenaServiceMethods.ByName("FindMatch")),
+			connect.WithSchema(arenaServiceFindMatchMethodDescriptor),
 			connect.WithClientOptions(opts...),
 		),
 		cancelSearch: connect.NewClient[v1.CancelMatchRequest, v1.CancelMatchRequest](
 			httpClient,
 			baseURL+ArenaServiceCancelSearchProcedure,
-			connect.WithSchema(arenaServiceMethods.ByName("CancelSearch")),
+			connect.WithSchema(arenaServiceCancelSearchMethodDescriptor),
 			connect.WithClientOptions(opts...),
 		),
 		getMatch: connect.NewClient[v1.GetMatchRequest, v1.ArenaMatch](
 			httpClient,
 			baseURL+ArenaServiceGetMatchProcedure,
-			connect.WithSchema(arenaServiceMethods.ByName("GetMatch")),
+			connect.WithSchema(arenaServiceGetMatchMethodDescriptor),
 			connect.WithClientOptions(opts...),
 		),
 		confirmReady: connect.NewClient[v1.ConfirmMatchRequest, v1.ConfirmMatchRequest](
 			httpClient,
 			baseURL+ArenaServiceConfirmReadyProcedure,
-			connect.WithSchema(arenaServiceMethods.ByName("ConfirmReady")),
+			connect.WithSchema(arenaServiceConfirmReadyMethodDescriptor),
 			connect.WithClientOptions(opts...),
 		),
 		submitCode: connect.NewClient[v1.SubmitCodeRequest, v1.SubmitResult](
 			httpClient,
 			baseURL+ArenaServiceSubmitCodeProcedure,
-			connect.WithSchema(arenaServiceMethods.ByName("SubmitCode")),
+			connect.WithSchema(arenaServiceSubmitCodeMethodDescriptor),
 			connect.WithClientOptions(opts...),
 		),
 		getMyMatches: connect.NewClient[v1.GetMyMatchesRequest, v1.GetMyMatchesResponse](
 			httpClient,
 			baseURL+ArenaServiceGetMyMatchesProcedure,
-			connect.WithSchema(arenaServiceMethods.ByName("GetMyMatches")),
+			connect.WithSchema(arenaServiceGetMyMatchesMethodDescriptor),
 			connect.WithClientOptions(opts...),
 		),
 	}
@@ -187,41 +197,40 @@ type ArenaServiceHandler interface {
 // By default, handlers support the Connect, gRPC, and gRPC-Web protocols with the binary Protobuf
 // and JSON codecs. They also support gzip compression.
 func NewArenaServiceHandler(svc ArenaServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
-	arenaServiceMethods := v1.File_druz9_v1_arena_proto.Services().ByName("ArenaService").Methods()
 	arenaServiceFindMatchHandler := connect.NewUnaryHandler(
 		ArenaServiceFindMatchProcedure,
 		svc.FindMatch,
-		connect.WithSchema(arenaServiceMethods.ByName("FindMatch")),
+		connect.WithSchema(arenaServiceFindMatchMethodDescriptor),
 		connect.WithHandlerOptions(opts...),
 	)
 	arenaServiceCancelSearchHandler := connect.NewUnaryHandler(
 		ArenaServiceCancelSearchProcedure,
 		svc.CancelSearch,
-		connect.WithSchema(arenaServiceMethods.ByName("CancelSearch")),
+		connect.WithSchema(arenaServiceCancelSearchMethodDescriptor),
 		connect.WithHandlerOptions(opts...),
 	)
 	arenaServiceGetMatchHandler := connect.NewUnaryHandler(
 		ArenaServiceGetMatchProcedure,
 		svc.GetMatch,
-		connect.WithSchema(arenaServiceMethods.ByName("GetMatch")),
+		connect.WithSchema(arenaServiceGetMatchMethodDescriptor),
 		connect.WithHandlerOptions(opts...),
 	)
 	arenaServiceConfirmReadyHandler := connect.NewUnaryHandler(
 		ArenaServiceConfirmReadyProcedure,
 		svc.ConfirmReady,
-		connect.WithSchema(arenaServiceMethods.ByName("ConfirmReady")),
+		connect.WithSchema(arenaServiceConfirmReadyMethodDescriptor),
 		connect.WithHandlerOptions(opts...),
 	)
 	arenaServiceSubmitCodeHandler := connect.NewUnaryHandler(
 		ArenaServiceSubmitCodeProcedure,
 		svc.SubmitCode,
-		connect.WithSchema(arenaServiceMethods.ByName("SubmitCode")),
+		connect.WithSchema(arenaServiceSubmitCodeMethodDescriptor),
 		connect.WithHandlerOptions(opts...),
 	)
 	arenaServiceGetMyMatchesHandler := connect.NewUnaryHandler(
 		ArenaServiceGetMyMatchesProcedure,
 		svc.GetMyMatches,
-		connect.WithSchema(arenaServiceMethods.ByName("GetMyMatches")),
+		connect.WithSchema(arenaServiceGetMyMatchesMethodDescriptor),
 		connect.WithHandlerOptions(opts...),
 	)
 	return "/druz9.v1.ArenaService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

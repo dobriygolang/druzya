@@ -62,6 +62,19 @@ const (
 	DailyServiceGetAutopsyProcedure = "/druz9.v1.DailyService/GetAutopsy"
 )
 
+// These variables are the protoreflect.Descriptor objects for the RPCs defined in this package.
+var (
+	dailyServiceServiceDescriptor              = v1.File_druz9_v1_daily_proto.Services().ByName("DailyService")
+	dailyServiceGetKataMethodDescriptor        = dailyServiceServiceDescriptor.Methods().ByName("GetKata")
+	dailyServiceGetKataBySlugMethodDescriptor  = dailyServiceServiceDescriptor.Methods().ByName("GetKataBySlug")
+	dailyServiceSubmitKataMethodDescriptor     = dailyServiceServiceDescriptor.Methods().ByName("SubmitKata")
+	dailyServiceGetStreakMethodDescriptor      = dailyServiceServiceDescriptor.Methods().ByName("GetStreak")
+	dailyServiceGetCalendarMethodDescriptor    = dailyServiceServiceDescriptor.Methods().ByName("GetCalendar")
+	dailyServiceUpsertCalendarMethodDescriptor = dailyServiceServiceDescriptor.Methods().ByName("UpsertCalendar")
+	dailyServiceCreateAutopsyMethodDescriptor  = dailyServiceServiceDescriptor.Methods().ByName("CreateAutopsy")
+	dailyServiceGetAutopsyMethodDescriptor     = dailyServiceServiceDescriptor.Methods().ByName("GetAutopsy")
+)
+
 // DailyServiceClient is a client for the druz9.v1.DailyService service.
 type DailyServiceClient interface {
 	// GetKata returns today's kata.
@@ -92,54 +105,53 @@ type DailyServiceClient interface {
 // http://api.acme.com or https://acme.com/grpc).
 func NewDailyServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) DailyServiceClient {
 	baseURL = strings.TrimRight(baseURL, "/")
-	dailyServiceMethods := v1.File_druz9_v1_daily_proto.Services().ByName("DailyService").Methods()
 	return &dailyServiceClient{
 		getKata: connect.NewClient[v1.GetDailyKataRequest, v1.DailyKata](
 			httpClient,
 			baseURL+DailyServiceGetKataProcedure,
-			connect.WithSchema(dailyServiceMethods.ByName("GetKata")),
+			connect.WithSchema(dailyServiceGetKataMethodDescriptor),
 			connect.WithClientOptions(opts...),
 		),
 		getKataBySlug: connect.NewClient[v1.GetKataBySlugRequest, v1.GetKataBySlugResponse](
 			httpClient,
 			baseURL+DailyServiceGetKataBySlugProcedure,
-			connect.WithSchema(dailyServiceMethods.ByName("GetKataBySlug")),
+			connect.WithSchema(dailyServiceGetKataBySlugMethodDescriptor),
 			connect.WithClientOptions(opts...),
 		),
 		submitKata: connect.NewClient[v1.SubmitKataRequest, v1.KataResult](
 			httpClient,
 			baseURL+DailyServiceSubmitKataProcedure,
-			connect.WithSchema(dailyServiceMethods.ByName("SubmitKata")),
+			connect.WithSchema(dailyServiceSubmitKataMethodDescriptor),
 			connect.WithClientOptions(opts...),
 		),
 		getStreak: connect.NewClient[v1.GetStreakRequest, v1.StreakInfo](
 			httpClient,
 			baseURL+DailyServiceGetStreakProcedure,
-			connect.WithSchema(dailyServiceMethods.ByName("GetStreak")),
+			connect.WithSchema(dailyServiceGetStreakMethodDescriptor),
 			connect.WithClientOptions(opts...),
 		),
 		getCalendar: connect.NewClient[v1.GetCalendarRequest, v1.InterviewCalendar](
 			httpClient,
 			baseURL+DailyServiceGetCalendarProcedure,
-			connect.WithSchema(dailyServiceMethods.ByName("GetCalendar")),
+			connect.WithSchema(dailyServiceGetCalendarMethodDescriptor),
 			connect.WithClientOptions(opts...),
 		),
 		upsertCalendar: connect.NewClient[v1.UpsertCalendarRequest, v1.InterviewCalendar](
 			httpClient,
 			baseURL+DailyServiceUpsertCalendarProcedure,
-			connect.WithSchema(dailyServiceMethods.ByName("UpsertCalendar")),
+			connect.WithSchema(dailyServiceUpsertCalendarMethodDescriptor),
 			connect.WithClientOptions(opts...),
 		),
 		createAutopsy: connect.NewClient[v1.CreateAutopsyRequest, v1.InterviewAutopsy](
 			httpClient,
 			baseURL+DailyServiceCreateAutopsyProcedure,
-			connect.WithSchema(dailyServiceMethods.ByName("CreateAutopsy")),
+			connect.WithSchema(dailyServiceCreateAutopsyMethodDescriptor),
 			connect.WithClientOptions(opts...),
 		),
 		getAutopsy: connect.NewClient[v1.GetAutopsyRequest, v1.InterviewAutopsy](
 			httpClient,
 			baseURL+DailyServiceGetAutopsyProcedure,
-			connect.WithSchema(dailyServiceMethods.ByName("GetAutopsy")),
+			connect.WithSchema(dailyServiceGetAutopsyMethodDescriptor),
 			connect.WithClientOptions(opts...),
 		),
 	}
@@ -224,53 +236,52 @@ type DailyServiceHandler interface {
 // By default, handlers support the Connect, gRPC, and gRPC-Web protocols with the binary Protobuf
 // and JSON codecs. They also support gzip compression.
 func NewDailyServiceHandler(svc DailyServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
-	dailyServiceMethods := v1.File_druz9_v1_daily_proto.Services().ByName("DailyService").Methods()
 	dailyServiceGetKataHandler := connect.NewUnaryHandler(
 		DailyServiceGetKataProcedure,
 		svc.GetKata,
-		connect.WithSchema(dailyServiceMethods.ByName("GetKata")),
+		connect.WithSchema(dailyServiceGetKataMethodDescriptor),
 		connect.WithHandlerOptions(opts...),
 	)
 	dailyServiceGetKataBySlugHandler := connect.NewUnaryHandler(
 		DailyServiceGetKataBySlugProcedure,
 		svc.GetKataBySlug,
-		connect.WithSchema(dailyServiceMethods.ByName("GetKataBySlug")),
+		connect.WithSchema(dailyServiceGetKataBySlugMethodDescriptor),
 		connect.WithHandlerOptions(opts...),
 	)
 	dailyServiceSubmitKataHandler := connect.NewUnaryHandler(
 		DailyServiceSubmitKataProcedure,
 		svc.SubmitKata,
-		connect.WithSchema(dailyServiceMethods.ByName("SubmitKata")),
+		connect.WithSchema(dailyServiceSubmitKataMethodDescriptor),
 		connect.WithHandlerOptions(opts...),
 	)
 	dailyServiceGetStreakHandler := connect.NewUnaryHandler(
 		DailyServiceGetStreakProcedure,
 		svc.GetStreak,
-		connect.WithSchema(dailyServiceMethods.ByName("GetStreak")),
+		connect.WithSchema(dailyServiceGetStreakMethodDescriptor),
 		connect.WithHandlerOptions(opts...),
 	)
 	dailyServiceGetCalendarHandler := connect.NewUnaryHandler(
 		DailyServiceGetCalendarProcedure,
 		svc.GetCalendar,
-		connect.WithSchema(dailyServiceMethods.ByName("GetCalendar")),
+		connect.WithSchema(dailyServiceGetCalendarMethodDescriptor),
 		connect.WithHandlerOptions(opts...),
 	)
 	dailyServiceUpsertCalendarHandler := connect.NewUnaryHandler(
 		DailyServiceUpsertCalendarProcedure,
 		svc.UpsertCalendar,
-		connect.WithSchema(dailyServiceMethods.ByName("UpsertCalendar")),
+		connect.WithSchema(dailyServiceUpsertCalendarMethodDescriptor),
 		connect.WithHandlerOptions(opts...),
 	)
 	dailyServiceCreateAutopsyHandler := connect.NewUnaryHandler(
 		DailyServiceCreateAutopsyProcedure,
 		svc.CreateAutopsy,
-		connect.WithSchema(dailyServiceMethods.ByName("CreateAutopsy")),
+		connect.WithSchema(dailyServiceCreateAutopsyMethodDescriptor),
 		connect.WithHandlerOptions(opts...),
 	)
 	dailyServiceGetAutopsyHandler := connect.NewUnaryHandler(
 		DailyServiceGetAutopsyProcedure,
 		svc.GetAutopsy,
-		connect.WithSchema(dailyServiceMethods.ByName("GetAutopsy")),
+		connect.WithSchema(dailyServiceGetAutopsyMethodDescriptor),
 		connect.WithHandlerOptions(opts...),
 	)
 	return "/druz9.v1.DailyService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

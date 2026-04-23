@@ -427,6 +427,7 @@ func toSettingsProto(s domain.Settings) *pb.ProfileSettings {
 		DefaultLanguage:  languageToProto(s.DefaultLanguage),
 		Locale:           s.Locale,
 		VoiceModeEnabled: s.VoiceModeEnabled,
+		AiInsightModel:   s.AIInsightModel,
 	}
 	channels := make([]pb.NotificationChannel, 0, len(s.Notifications.Channels))
 	for _, c := range s.Notifications.Channels {
@@ -446,6 +447,7 @@ func fromSettingsProto(req *pb.ProfileSettings) domain.Settings {
 		DisplayName:      req.GetDisplayName(),
 		VoiceModeEnabled: req.GetVoiceModeEnabled(),
 		Locale:           req.GetLocale(),
+		AIInsightModel:   req.GetAiInsightModel(),
 	}
 	if req.GetDefaultLanguage() != pb.Language_LANGUAGE_UNSPECIFIED {
 		s.DefaultLanguage = languageFromProto(req.GetDefaultLanguage())

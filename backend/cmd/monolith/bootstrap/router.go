@@ -148,6 +148,10 @@ func restAuthGate(requireAuth func(http.Handler) http.Handler) func(http.Handler
 		// picker on /arena. Frontend needs it before sign-in to render the
 		// premium-tier upsell, so it stays outside the bearer gate.
 		"/api/v1/ai/models": {},
+		// /api/v1/cohort/list — public discovery; detail (/cohort/{slug})
+		// и /cohort/{id}/leaderboard — read-only, тоже без bearer'а
+		// (см. isPublic ниже для путей с префиксом /api/v1/cohort/).
+		"/api/v1/cohort/list": {},
 	}
 	isPublic := func(p string) bool {
 		if _, ok := publicPaths[p]; ok {
@@ -171,6 +175,15 @@ func restAuthGate(requireAuth func(http.Handler) http.Handler) func(http.Handler
 		if strings.HasPrefix(p, "/api/v1/vacancies/") &&
 			!strings.HasPrefix(p, "/api/v1/vacancies/saved") &&
 			!strings.HasSuffix(p, "/save") {
+			return true
+		}
+		// /api/v1/cohort/{slug} (GET) и /api/v1/cohort/{id}/leaderboard
+		// (GET) — публичные read-only пути для cohort discovery.
+		// POST /cohort, /join, /leave остаются под bearer-gate, потому что
+		// эти suffix-проверки исключают их.
+		if strings.HasPrefix(p, "/api/v1/cohort/") &&
+			!strings.HasSuffix(p, "/join") &&
+			!strings.HasSuffix(p, "/leave") {
 			return true
 		}
 		return false

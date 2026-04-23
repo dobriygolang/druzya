@@ -54,16 +54,23 @@ type AtlasView struct {
 }
 
 // GetAtlas composes the skill tree by joining user's skill_nodes rows with
-// a static edge/node catalogue. The catalogue is hard-coded for MVP.
+// the (now admin-editable) catalogue.
 //
-// STUB: edge config from admin CMS later — when the admin domain ships the
+// Catalogue source:
+//   - When `Catalogue` is wired (production: cmd/monolith/services/profile.go),
+//     nodes & edges come from atlas_nodes / atlas_edges (migration 00031).
+//     The admin CMS at /admin → Atlas controls those tables.
+//   - When `Catalogue` is nil (legacy unit tests in ports/server_test.go),
+//     the use case falls back to the in-file static catalogue. This keeps
+//     existing test wiring compiling without a behaviour change.
 //
-//	nodes/edges editor, replace `catalogueNodes` / `catalogueEdges` with
-//	a repo call reading `skill_catalogue` / `skill_edges` tables. Same for
-//	`recommendedKataByNode` — должно вычитываться из daily-каталога с
-//	фильтрацией по уже решённым пользователем ката (нужен cross-context
-//	read, делаем после распила monolith).
-type GetAtlas struct{ Repo domain.ProfileRepo }
+// The static catalogue lives at the bottom of this file and is the SAME
+// data the migration's seed inserts into atlas_nodes — they will not
+// drift apart by construction (the seed is generated from this slice).
+type GetAtlas struct {
+	Repo      domain.ProfileRepo
+	Catalogue domain.AtlasCatalogueRepo // optional; nil → static fallback
+}
 
 // Do merges catalogue + per-user progress.
 func (uc *GetAtlas) Do(ctx context.Context, userID uuid.UUID) (AtlasView, error) {
@@ -76,12 +83,17 @@ func (uc *GetAtlas) Do(ctx context.Context, userID uuid.UUID) (AtlasView, error)
 		progressByKey[n.NodeKey] = n
 	}
 
-	out := AtlasView{
-		CenterNode: "class_core",
-		Nodes:      make([]AtlasNode, 0, len(catalogueNodes)),
-		Edges:      append([]AtlasEdge(nil), catalogueEdges...),
+	cat, edges, centerKey, err := uc.loadCatalogue(ctx)
+	if err != nil {
+		return AtlasView{}, fmt.Errorf("profile.GetAtlas: catalogue: %w", err)
 	}
-	for _, cn := range catalogueNodes {
+
+	out := AtlasView{
+		CenterNode: centerKey,
+		Nodes:      make([]AtlasNode, 0, len(cat)),
+		Edges:      edges,
+	}
+	for _, cn := range cat {
 		user := progressByKey[cn.Key]
 		// solved = round(progress% * total / 100). Это согласуется с тем, как
 		// прогресс считается на стороне skill_nodes (каждый ката = +percent).
@@ -121,15 +133,55 @@ func (uc *GetAtlas) Do(ctx context.Context, userID uuid.UUID) (AtlasView, error)
 	return out, nil
 }
 
-// catalogueNodes is the MVP static atlas. See STUB above. TotalCount — сколько
-// разнообразных ката эта тема покрывает в текущем daily-каталоге; используется
-// для «Решено X из Y». Числа подобраны на глаз по факту (sql:basics — 12
-// классических задач JOIN/GROUP BY и т.д.) — когда появится cross-context
-// read из daily, заменим на реальный SELECT count(*).
+// loadCatalogue resolves the catalogue source.
+//   - Catalogue wired → DB-backed (admin-editable atlas_nodes / atlas_edges).
+//     The first node with kind="center" becomes the centerNode; if none, we
+//     fall back to "class_core" so the legacy progress rows still match.
+//   - Catalogue == nil → in-file `catalogueNodes` / `catalogueEdges` slice
+//     (used by ports/server_test.go which mocks ProfileRepo only).
 //
-// TODO(admin-cms): the skill catalogue is hardcoded in this file because we
-// don't yet have admin UI to manage it. Migrate to a `skill_catalogue` table
-// with admin CRUD when content team is ready. Tracked in roadmap as P3.
+// Returns the catalogue slice, the edges, and the centerNode key.
+func (uc *GetAtlas) loadCatalogue(ctx context.Context) ([]catalogueNode, []AtlasEdge, string, error) {
+	if uc.Catalogue == nil {
+		return catalogueNodes, append([]AtlasEdge(nil), catalogueEdges...), "class_core", nil
+	}
+	dbNodes, err := uc.Catalogue.ListNodes(ctx)
+	if err != nil {
+		return nil, nil, "", fmt.Errorf("list nodes: %w", err)
+	}
+	dbEdges, err := uc.Catalogue.ListEdges(ctx)
+	if err != nil {
+		return nil, nil, "", fmt.Errorf("list edges: %w", err)
+	}
+	out := make([]catalogueNode, 0, len(dbNodes))
+	centerKey := ""
+	for _, n := range dbNodes {
+		out = append(out, catalogueNode{
+			Key:         n.ID,
+			Title:       n.Title,
+			Description: n.Description,
+			Section:     enums.Section(n.Section),
+			Kind:        n.Kind,
+			TotalCount:  n.TotalCount,
+		})
+		if centerKey == "" && n.Kind == "center" {
+			centerKey = n.ID
+		}
+	}
+	if centerKey == "" {
+		centerKey = "class_core"
+	}
+	edges := make([]AtlasEdge, 0, len(dbEdges))
+	for _, e := range dbEdges {
+		edges = append(edges, AtlasEdge{From: e.From, To: e.To})
+	}
+	return out, edges, centerKey, nil
+}
+
+// catalogueNode is the in-process shape merged with per-user progress.
+// The static `catalogueNodes` slice below mirrors the seed of migration
+// 00031 — keep them in sync if you edit one (the canonical source after
+// the migration ships is atlas_nodes; this slice exists only for tests).
 type catalogueNode struct {
 	Key         string
 	Title       string

@@ -50,6 +50,16 @@ type InsightPayload struct {
 	Streak            int            // current streak in days
 	WeakestSection    string         // section name (lower-case slug); "" if none
 	AchievementsCount int            // unlocked this week
+
+	// Model — per-call OpenRouter model override (e.g. "openai/gpt-4o-mini").
+	// Empty → use the client's default. Caller (app/report.go) reads the
+	// user's choice from users.ai_insight_model and sets it here. Premium
+	// gating happens at the wirer level — the wirer validates the user's
+	// pick against the llm_models table (use_for_insight=true) and tier
+	// access; an invalid choice is silently downgraded to the free default
+	// before the call even starts (anti-fallback: never silently use a
+	// model the user didn't pay for).
+	Model string
 }
 
 // InsightClient is the OpenRouter-backed insight generator with Redis cache.
@@ -243,7 +253,15 @@ func (c *InsightClient) Generate(ctx context.Context, uid uuid.UUID, payload Ins
 	if payload.WeekISO == "" {
 		return "", fmt.Errorf("profile.insight.Generate: empty WeekISO in payload")
 	}
-	key := insightCacheKey(uid, payload.WeekISO)
+	// Per-call model override; falls back to the client's configured default
+	// when the user hasn't picked one. Cache key includes the model so a
+	// model switch mid-week regenerates instead of returning a stale insight
+	// from the previous model (different style/quality).
+	effectiveModel := payload.Model
+	if effectiveModel == "" {
+		effectiveModel = c.model
+	}
+	key := insightCacheKey(uid, payload.WeekISO) + ":" + effectiveModel
 	if c.kv != nil {
 		if raw, err := c.kv.Get(ctx, key); err == nil {
 			return raw, nil
@@ -254,7 +272,7 @@ func (c *InsightClient) Generate(ctx context.Context, uid uuid.UUID, payload Ins
 	}
 
 	body, err := json.Marshal(insReq{
-		Model:       c.model,
+		Model:       effectiveModel,
 		Temperature: 0.3,
 		MaxTokens:   400,
 		Messages: []insMsg{

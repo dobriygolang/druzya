@@ -51,6 +51,16 @@ const (
 	GuildServiceListTopGuildsProcedure = "/druz9.v1.GuildService/ListTopGuilds"
 )
 
+// These variables are the protoreflect.Descriptor objects for the RPCs defined in this package.
+var (
+	guildServiceServiceDescriptor             = v1.File_druz9_v1_guild_proto.Services().ByName("GuildService")
+	guildServiceGetMyGuildMethodDescriptor    = guildServiceServiceDescriptor.Methods().ByName("GetMyGuild")
+	guildServiceGetGuildMethodDescriptor      = guildServiceServiceDescriptor.Methods().ByName("GetGuild")
+	guildServiceGetWarMethodDescriptor        = guildServiceServiceDescriptor.Methods().ByName("GetWar")
+	guildServiceContributeMethodDescriptor    = guildServiceServiceDescriptor.Methods().ByName("Contribute")
+	guildServiceListTopGuildsMethodDescriptor = guildServiceServiceDescriptor.Methods().ByName("ListTopGuilds")
+)
+
 // GuildServiceClient is a client for the druz9.v1.GuildService service.
 type GuildServiceClient interface {
 	// GetMyGuild returns the guild the caller belongs to.
@@ -75,36 +85,35 @@ type GuildServiceClient interface {
 // http://api.acme.com or https://acme.com/grpc).
 func NewGuildServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) GuildServiceClient {
 	baseURL = strings.TrimRight(baseURL, "/")
-	guildServiceMethods := v1.File_druz9_v1_guild_proto.Services().ByName("GuildService").Methods()
 	return &guildServiceClient{
 		getMyGuild: connect.NewClient[v1.GetMyGuildRequest, v1.Guild](
 			httpClient,
 			baseURL+GuildServiceGetMyGuildProcedure,
-			connect.WithSchema(guildServiceMethods.ByName("GetMyGuild")),
+			connect.WithSchema(guildServiceGetMyGuildMethodDescriptor),
 			connect.WithClientOptions(opts...),
 		),
 		getGuild: connect.NewClient[v1.GetGuildRequest, v1.Guild](
 			httpClient,
 			baseURL+GuildServiceGetGuildProcedure,
-			connect.WithSchema(guildServiceMethods.ByName("GetGuild")),
+			connect.WithSchema(guildServiceGetGuildMethodDescriptor),
 			connect.WithClientOptions(opts...),
 		),
 		getWar: connect.NewClient[v1.GetGuildWarRequest, v1.GuildWar](
 			httpClient,
 			baseURL+GuildServiceGetWarProcedure,
-			connect.WithSchema(guildServiceMethods.ByName("GetWar")),
+			connect.WithSchema(guildServiceGetWarMethodDescriptor),
 			connect.WithClientOptions(opts...),
 		),
 		contribute: connect.NewClient[v1.ContributeRequest, v1.GuildWar](
 			httpClient,
 			baseURL+GuildServiceContributeProcedure,
-			connect.WithSchema(guildServiceMethods.ByName("Contribute")),
+			connect.WithSchema(guildServiceContributeMethodDescriptor),
 			connect.WithClientOptions(opts...),
 		),
 		listTopGuilds: connect.NewClient[v1.ListTopGuildsRequest, v1.ListTopGuildsResponse](
 			httpClient,
 			baseURL+GuildServiceListTopGuildsProcedure,
-			connect.WithSchema(guildServiceMethods.ByName("ListTopGuilds")),
+			connect.WithSchema(guildServiceListTopGuildsMethodDescriptor),
 			connect.WithClientOptions(opts...),
 		),
 	}
@@ -165,35 +174,34 @@ type GuildServiceHandler interface {
 // By default, handlers support the Connect, gRPC, and gRPC-Web protocols with the binary Protobuf
 // and JSON codecs. They also support gzip compression.
 func NewGuildServiceHandler(svc GuildServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
-	guildServiceMethods := v1.File_druz9_v1_guild_proto.Services().ByName("GuildService").Methods()
 	guildServiceGetMyGuildHandler := connect.NewUnaryHandler(
 		GuildServiceGetMyGuildProcedure,
 		svc.GetMyGuild,
-		connect.WithSchema(guildServiceMethods.ByName("GetMyGuild")),
+		connect.WithSchema(guildServiceGetMyGuildMethodDescriptor),
 		connect.WithHandlerOptions(opts...),
 	)
 	guildServiceGetGuildHandler := connect.NewUnaryHandler(
 		GuildServiceGetGuildProcedure,
 		svc.GetGuild,
-		connect.WithSchema(guildServiceMethods.ByName("GetGuild")),
+		connect.WithSchema(guildServiceGetGuildMethodDescriptor),
 		connect.WithHandlerOptions(opts...),
 	)
 	guildServiceGetWarHandler := connect.NewUnaryHandler(
 		GuildServiceGetWarProcedure,
 		svc.GetWar,
-		connect.WithSchema(guildServiceMethods.ByName("GetWar")),
+		connect.WithSchema(guildServiceGetWarMethodDescriptor),
 		connect.WithHandlerOptions(opts...),
 	)
 	guildServiceContributeHandler := connect.NewUnaryHandler(
 		GuildServiceContributeProcedure,
 		svc.Contribute,
-		connect.WithSchema(guildServiceMethods.ByName("Contribute")),
+		connect.WithSchema(guildServiceContributeMethodDescriptor),
 		connect.WithHandlerOptions(opts...),
 	)
 	guildServiceListTopGuildsHandler := connect.NewUnaryHandler(
 		GuildServiceListTopGuildsProcedure,
 		svc.ListTopGuilds,
-		connect.WithSchema(guildServiceMethods.ByName("ListTopGuilds")),
+		connect.WithSchema(guildServiceListTopGuildsMethodDescriptor),
 		connect.WithHandlerOptions(opts...),
 	)
 	return "/druz9.v1.GuildService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

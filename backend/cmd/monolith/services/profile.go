@@ -32,6 +32,7 @@ func (a insightGeneratorAdapter) Generate(
 		Streak:            p.Streak,
 		WeakestSection:    p.WeakestSection,
 		AchievementsCount: p.AchievementsCount,
+		Model:             p.Model,
 	})
 	if err != nil {
 		return "", fmt.Errorf("profile.insightAdapter: %w", err)
@@ -51,6 +52,7 @@ func (a insightGeneratorAdapter) Generate(
 func NewProfile(d Deps) *Module {
 	pg := profileInfra.NewPostgres(d.Pool)
 	kv := profileInfra.NewRedisKV(d.Redis)
+	atlasCat := profileInfra.NewAtlasCataloguePostgres(d.Pool)
 	cached := profileInfra.NewCachedRepo(
 		pg,
 		kv,
@@ -84,7 +86,7 @@ func NewProfile(d Deps) *Module {
 	h := profilePorts.NewHandler(profilePorts.Handler{
 		GetProfile:     &profileApp.GetProfile{Repo: cached},
 		GetPublic:      &profileApp.GetPublic{Repo: cached},
-		GetAtlas:       &profileApp.GetAtlas{Repo: cached},
+		GetAtlas:       &profileApp.GetAtlas{Repo: cached, Catalogue: atlasCat},
 		GetReport:      getReport,
 		GetSettings:    &profileApp.GetSettings{Repo: cached},
 		UpdateSettings: &profileApp.UpdateSettings{Repo: cached},
@@ -93,6 +95,11 @@ func NewProfile(d Deps) *Module {
 		Log:            d.Log,
 	})
 	server := profilePorts.NewProfileServer(h)
+
+	// Atlas admin CMS — chi-direct, mirrors podcast/ports/cms_handler.go.
+	// Bearer auth at the router gate; admin role enforced inside the
+	// handler (see AtlasAdminHandler.requireAdmin).
+	atlasAdmin := profilePorts.NewAtlasAdminHandler(atlasCat, d.Log)
 
 	onUserRegistered := &profileApp.OnUserRegistered{Repo: cached, Log: d.Log}
 	onXPGained := &profileApp.OnXPGained{Repo: cached, Bus: d.Bus, Log: d.Log}
@@ -114,6 +121,16 @@ func NewProfile(d Deps) *Module {
 			// REST gate пропускает по publicPaths-prefix /profile/weekly/share/.
 			r.Get("/profile/weekly/share/{token}", transcoder.ServeHTTP)
 			r.Get("/profile/{username}", transcoder.ServeHTTP)
+
+			// Admin Atlas CMS — chi-direct, JSON only.
+			r.Get("/admin/atlas/nodes", atlasAdmin.HandleListNodes)
+			r.Post("/admin/atlas/nodes", atlasAdmin.HandleCreateNode)
+			r.Put("/admin/atlas/nodes/{id}", atlasAdmin.HandleUpdateNode)
+			r.Patch("/admin/atlas/nodes/{id}/position", atlasAdmin.HandleUpdatePosition)
+			r.Delete("/admin/atlas/nodes/{id}", atlasAdmin.HandleDeleteNode)
+			r.Get("/admin/atlas/edges", atlasAdmin.HandleListEdges)
+			r.Post("/admin/atlas/edges", atlasAdmin.HandleCreateEdge)
+			r.Delete("/admin/atlas/edges/{id}", atlasAdmin.HandleDeleteEdge)
 		},
 		Subscribers: []func(*eventbus.InProcess){
 			func(b *eventbus.InProcess) {

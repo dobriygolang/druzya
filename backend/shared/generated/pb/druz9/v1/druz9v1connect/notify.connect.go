@@ -48,6 +48,13 @@ const (
 	NotifyServiceUpdatePreferencesProcedure = "/druz9.v1.NotifyService/UpdatePreferences"
 )
 
+// These variables are the protoreflect.Descriptor objects for the RPCs defined in this package.
+var (
+	notifyServiceServiceDescriptor                 = v1.File_druz9_v1_notify_proto.Services().ByName("NotifyService")
+	notifyServiceGetPreferencesMethodDescriptor    = notifyServiceServiceDescriptor.Methods().ByName("GetPreferences")
+	notifyServiceUpdatePreferencesMethodDescriptor = notifyServiceServiceDescriptor.Methods().ByName("UpdatePreferences")
+)
+
 // NotifyServiceClient is a client for the druz9.v1.NotifyService service.
 type NotifyServiceClient interface {
 	// GetPreferences returns the caller's notification preferences row.
@@ -65,18 +72,17 @@ type NotifyServiceClient interface {
 // http://api.acme.com or https://acme.com/grpc).
 func NewNotifyServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) NotifyServiceClient {
 	baseURL = strings.TrimRight(baseURL, "/")
-	notifyServiceMethods := v1.File_druz9_v1_notify_proto.Services().ByName("NotifyService").Methods()
 	return &notifyServiceClient{
 		getPreferences: connect.NewClient[v1.GetNotifyPreferencesRequest, v1.NotificationPreferences](
 			httpClient,
 			baseURL+NotifyServiceGetPreferencesProcedure,
-			connect.WithSchema(notifyServiceMethods.ByName("GetPreferences")),
+			connect.WithSchema(notifyServiceGetPreferencesMethodDescriptor),
 			connect.WithClientOptions(opts...),
 		),
 		updatePreferences: connect.NewClient[v1.UpdateNotifyPreferencesRequest, v1.NotificationPreferences](
 			httpClient,
 			baseURL+NotifyServiceUpdatePreferencesProcedure,
-			connect.WithSchema(notifyServiceMethods.ByName("UpdatePreferences")),
+			connect.WithSchema(notifyServiceUpdatePreferencesMethodDescriptor),
 			connect.WithClientOptions(opts...),
 		),
 	}
@@ -112,17 +118,16 @@ type NotifyServiceHandler interface {
 // By default, handlers support the Connect, gRPC, and gRPC-Web protocols with the binary Protobuf
 // and JSON codecs. They also support gzip compression.
 func NewNotifyServiceHandler(svc NotifyServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
-	notifyServiceMethods := v1.File_druz9_v1_notify_proto.Services().ByName("NotifyService").Methods()
 	notifyServiceGetPreferencesHandler := connect.NewUnaryHandler(
 		NotifyServiceGetPreferencesProcedure,
 		svc.GetPreferences,
-		connect.WithSchema(notifyServiceMethods.ByName("GetPreferences")),
+		connect.WithSchema(notifyServiceGetPreferencesMethodDescriptor),
 		connect.WithHandlerOptions(opts...),
 	)
 	notifyServiceUpdatePreferencesHandler := connect.NewUnaryHandler(
 		NotifyServiceUpdatePreferencesProcedure,
 		svc.UpdatePreferences,
-		connect.WithSchema(notifyServiceMethods.ByName("UpdatePreferences")),
+		connect.WithSchema(notifyServiceUpdatePreferencesMethodDescriptor),
 		connect.WithHandlerOptions(opts...),
 	)
 	return "/druz9.v1.NotifyService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

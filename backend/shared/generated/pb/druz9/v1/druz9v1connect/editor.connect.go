@@ -55,6 +55,16 @@ const (
 	EditorServiceGetReplayProcedure = "/druz9.v1.EditorService/GetReplay"
 )
 
+// These variables are the protoreflect.Descriptor objects for the RPCs defined in this package.
+var (
+	editorServiceServiceDescriptor            = v1.File_druz9_v1_editor_proto.Services().ByName("EditorService")
+	editorServiceCreateRoomMethodDescriptor   = editorServiceServiceDescriptor.Methods().ByName("CreateRoom")
+	editorServiceGetRoomMethodDescriptor      = editorServiceServiceDescriptor.Methods().ByName("GetRoom")
+	editorServiceCreateInviteMethodDescriptor = editorServiceServiceDescriptor.Methods().ByName("CreateInvite")
+	editorServiceFreezeRoomMethodDescriptor   = editorServiceServiceDescriptor.Methods().ByName("FreezeRoom")
+	editorServiceGetReplayMethodDescriptor    = editorServiceServiceDescriptor.Methods().ByName("GetReplay")
+)
+
 // EditorServiceClient is a client for the druz9.v1.EditorService service.
 type EditorServiceClient interface {
 	// CreateRoom creates a new collaborative editor room.
@@ -78,36 +88,35 @@ type EditorServiceClient interface {
 // http://api.acme.com or https://acme.com/grpc).
 func NewEditorServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) EditorServiceClient {
 	baseURL = strings.TrimRight(baseURL, "/")
-	editorServiceMethods := v1.File_druz9_v1_editor_proto.Services().ByName("EditorService").Methods()
 	return &editorServiceClient{
 		createRoom: connect.NewClient[v1.CreateRoomRequest, v1.EditorRoom](
 			httpClient,
 			baseURL+EditorServiceCreateRoomProcedure,
-			connect.WithSchema(editorServiceMethods.ByName("CreateRoom")),
+			connect.WithSchema(editorServiceCreateRoomMethodDescriptor),
 			connect.WithClientOptions(opts...),
 		),
 		getRoom: connect.NewClient[v1.GetRoomRequest, v1.EditorRoom](
 			httpClient,
 			baseURL+EditorServiceGetRoomProcedure,
-			connect.WithSchema(editorServiceMethods.ByName("GetRoom")),
+			connect.WithSchema(editorServiceGetRoomMethodDescriptor),
 			connect.WithClientOptions(opts...),
 		),
 		createInvite: connect.NewClient[v1.CreateInviteRequest, v1.InviteLink](
 			httpClient,
 			baseURL+EditorServiceCreateInviteProcedure,
-			connect.WithSchema(editorServiceMethods.ByName("CreateInvite")),
+			connect.WithSchema(editorServiceCreateInviteMethodDescriptor),
 			connect.WithClientOptions(opts...),
 		),
 		freezeRoom: connect.NewClient[v1.FreezeRoomRequest, v1.EditorRoom](
 			httpClient,
 			baseURL+EditorServiceFreezeRoomProcedure,
-			connect.WithSchema(editorServiceMethods.ByName("FreezeRoom")),
+			connect.WithSchema(editorServiceFreezeRoomMethodDescriptor),
 			connect.WithClientOptions(opts...),
 		),
 		getReplay: connect.NewClient[v1.GetReplayRequest, v1.ReplayUrl](
 			httpClient,
 			baseURL+EditorServiceGetReplayProcedure,
-			connect.WithSchema(editorServiceMethods.ByName("GetReplay")),
+			connect.WithSchema(editorServiceGetReplayMethodDescriptor),
 			connect.WithClientOptions(opts...),
 		),
 	}
@@ -167,35 +176,34 @@ type EditorServiceHandler interface {
 // By default, handlers support the Connect, gRPC, and gRPC-Web protocols with the binary Protobuf
 // and JSON codecs. They also support gzip compression.
 func NewEditorServiceHandler(svc EditorServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
-	editorServiceMethods := v1.File_druz9_v1_editor_proto.Services().ByName("EditorService").Methods()
 	editorServiceCreateRoomHandler := connect.NewUnaryHandler(
 		EditorServiceCreateRoomProcedure,
 		svc.CreateRoom,
-		connect.WithSchema(editorServiceMethods.ByName("CreateRoom")),
+		connect.WithSchema(editorServiceCreateRoomMethodDescriptor),
 		connect.WithHandlerOptions(opts...),
 	)
 	editorServiceGetRoomHandler := connect.NewUnaryHandler(
 		EditorServiceGetRoomProcedure,
 		svc.GetRoom,
-		connect.WithSchema(editorServiceMethods.ByName("GetRoom")),
+		connect.WithSchema(editorServiceGetRoomMethodDescriptor),
 		connect.WithHandlerOptions(opts...),
 	)
 	editorServiceCreateInviteHandler := connect.NewUnaryHandler(
 		EditorServiceCreateInviteProcedure,
 		svc.CreateInvite,
-		connect.WithSchema(editorServiceMethods.ByName("CreateInvite")),
+		connect.WithSchema(editorServiceCreateInviteMethodDescriptor),
 		connect.WithHandlerOptions(opts...),
 	)
 	editorServiceFreezeRoomHandler := connect.NewUnaryHandler(
 		EditorServiceFreezeRoomProcedure,
 		svc.FreezeRoom,
-		connect.WithSchema(editorServiceMethods.ByName("FreezeRoom")),
+		connect.WithSchema(editorServiceFreezeRoomMethodDescriptor),
 		connect.WithHandlerOptions(opts...),
 	)
 	editorServiceGetReplayHandler := connect.NewUnaryHandler(
 		EditorServiceGetReplayProcedure,
 		svc.GetReplay,
-		connect.WithSchema(editorServiceMethods.ByName("GetReplay")),
+		connect.WithSchema(editorServiceGetReplayMethodDescriptor),
 		connect.WithHandlerOptions(opts...),
 	)
 	return "/druz9.v1.EditorService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

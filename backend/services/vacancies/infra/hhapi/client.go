@@ -51,7 +51,11 @@ func New() *Client {
 		userAgent:  UserAgent,
 		area:       113,
 		perPage:    100,
-		textQuery:  "developer",
+		// Broader default text — HH treats spaces as OR for unquoted tokens, so
+		// this captures dev / engineer / designer / analyst roles in one
+		// request instead of just "developer". Keeps the catalogue from being
+		// suspiciously thin when a user first lands on /vacancies.
+		textQuery: "developer engineer разработчик инженер аналитик",
 	}
 }
 

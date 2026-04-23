@@ -219,6 +219,8 @@ func TestGetReport_AIInsight_PopulatedWhenClientConfigured(t *testing.T) {
 	repo.EXPECT().ListWeeklyXPSince(gomock.Any(), uid, gomock.Any(), 4).Return([]int{1200, 0, 0, 0}, nil)
 	repo.EXPECT().GetStreaks(gomock.Any(), uid).Return(3, 9, nil)
 	repo.EXPECT().ListAchievementsSince(gomock.Any(), uid, gomock.Any()).Return(nil, nil)
+	// Per-user AI Coach model lookup (00032). Empty model ⇒ infra-default.
+	repo.EXPECT().GetSettings(gomock.Any(), uid).Return(domain.Settings{}, nil)
 
 	stub := &stubInsight{out: "AI-generated coaching narrative."}
 	uc := &GetReport{Repo: repo, Insight: stub}
@@ -262,6 +264,7 @@ func TestGetReport_AIInsight_ErrorIsSwallowed(t *testing.T) {
 	repo.EXPECT().ListWeeklyXPSince(gomock.Any(), uid, gomock.Any(), 4).Return([]int{0, 0, 0, 0}, nil)
 	repo.EXPECT().GetStreaks(gomock.Any(), uid).Return(0, 0, nil)
 	repo.EXPECT().ListAchievementsSince(gomock.Any(), uid, gomock.Any()).Return(nil, nil)
+	repo.EXPECT().GetSettings(gomock.Any(), uid).Return(domain.Settings{}, nil)
 
 	stub := &stubInsight{err: errors.New("openrouter offline")}
 	uc := &GetReport{Repo: repo, Insight: stub}

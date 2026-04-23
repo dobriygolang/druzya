@@ -47,6 +47,13 @@ const (
 	PodcastServiceUpdateProgressProcedure = "/druz9.v1.PodcastService/UpdateProgress"
 )
 
+// These variables are the protoreflect.Descriptor objects for the RPCs defined in this package.
+var (
+	podcastServiceServiceDescriptor              = v1.File_druz9_v1_podcast_proto.Services().ByName("PodcastService")
+	podcastServiceListCatalogMethodDescriptor    = podcastServiceServiceDescriptor.Methods().ByName("ListCatalog")
+	podcastServiceUpdateProgressMethodDescriptor = podcastServiceServiceDescriptor.Methods().ByName("UpdateProgress")
+)
+
 // PodcastServiceClient is a client for the druz9.v1.PodcastService service.
 type PodcastServiceClient interface {
 	// ListCatalog returns the full catalog (or a section-filtered slice) with
@@ -66,18 +73,17 @@ type PodcastServiceClient interface {
 // http://api.acme.com or https://acme.com/grpc).
 func NewPodcastServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) PodcastServiceClient {
 	baseURL = strings.TrimRight(baseURL, "/")
-	podcastServiceMethods := v1.File_druz9_v1_podcast_proto.Services().ByName("PodcastService").Methods()
 	return &podcastServiceClient{
 		listCatalog: connect.NewClient[v1.ListCatalogRequest, v1.PodcastCatalog](
 			httpClient,
 			baseURL+PodcastServiceListCatalogProcedure,
-			connect.WithSchema(podcastServiceMethods.ByName("ListCatalog")),
+			connect.WithSchema(podcastServiceListCatalogMethodDescriptor),
 			connect.WithClientOptions(opts...),
 		),
 		updateProgress: connect.NewClient[v1.UpdateProgressRequest, v1.PodcastProgress](
 			httpClient,
 			baseURL+PodcastServiceUpdateProgressProcedure,
-			connect.WithSchema(podcastServiceMethods.ByName("UpdateProgress")),
+			connect.WithSchema(podcastServiceUpdateProgressMethodDescriptor),
 			connect.WithClientOptions(opts...),
 		),
 	}
@@ -115,17 +121,16 @@ type PodcastServiceHandler interface {
 // By default, handlers support the Connect, gRPC, and gRPC-Web protocols with the binary Protobuf
 // and JSON codecs. They also support gzip compression.
 func NewPodcastServiceHandler(svc PodcastServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
-	podcastServiceMethods := v1.File_druz9_v1_podcast_proto.Services().ByName("PodcastService").Methods()
 	podcastServiceListCatalogHandler := connect.NewUnaryHandler(
 		PodcastServiceListCatalogProcedure,
 		svc.ListCatalog,
-		connect.WithSchema(podcastServiceMethods.ByName("ListCatalog")),
+		connect.WithSchema(podcastServiceListCatalogMethodDescriptor),
 		connect.WithHandlerOptions(opts...),
 	)
 	podcastServiceUpdateProgressHandler := connect.NewUnaryHandler(
 		PodcastServiceUpdateProgressProcedure,
 		svc.UpdateProgress,
-		connect.WithSchema(podcastServiceMethods.ByName("UpdateProgress")),
+		connect.WithSchema(podcastServiceUpdateProgressMethodDescriptor),
 		connect.WithHandlerOptions(opts...),
 	)
 	return "/druz9.v1.PodcastService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

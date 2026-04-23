@@ -56,6 +56,13 @@ type InsightPayload struct {
 	Streak            int
 	WeakestSection    string
 	AchievementsCount int
+
+	// Model — per-call OpenRouter model id override taken from the user's
+	// settings (users.ai_insight_model). Empty string ⇒ infra falls back to
+	// its server-default tier-aware free model. Premium-locked model ids are
+	// gated server-side at settings-update time, so by the time we read this
+	// field it is already authorised for the caller.
+	Model string
 }
 
 // InsightGenerator is the narrow port the GetReport use case depends on.
@@ -163,7 +170,18 @@ func (uc *GetReport) Do(ctx context.Context, userID uuid.UUID, now time.Time) (R
 	// ask the LLM. Errors are logged + swallowed: insight is best-effort,
 	// the rest of the report is fully functional without it.
 	if uc.Insight != nil {
-		payload := buildInsightPayload(view, end)
+		// Per-user model selection — read settings best-effort. Failure to
+		// load settings degrades to server-default model (empty string), the
+		// rest of the report is not blocked.
+		var userModel string
+		if settings, serr := uc.Repo.GetSettings(ctx, userID); serr == nil {
+			userModel = settings.AIInsightModel
+		} else if uc.Log != nil {
+			uc.Log.Warn("profile.GetReport: settings load for ai model failed",
+				slog.Any("user_id", userID),
+				slog.Any("err", serr))
+		}
+		payload := buildInsightPayload(view, end, userModel)
 		insight, ierr := uc.Insight.Generate(ctx, userID, payload)
 		if ierr != nil {
 			if uc.Log != nil {
@@ -182,7 +200,7 @@ func (uc *GetReport) Do(ctx context.Context, userID uuid.UUID, now time.Time) (R
 // buildInsightPayload distils the aggregated ReportView into the compact
 // InsightPayload the LLM consumes. weekEnd is the (UTC, midnight) end of the
 // 7-day window — formatted as ISO week string for the cache key.
-func buildInsightPayload(v ReportView, weekEnd time.Time) InsightPayload {
+func buildInsightPayload(v ReportView, weekEnd time.Time, model string) InsightPayload {
 	winRates := make(map[string]int, len(v.StrongSections)+len(v.WeakSections))
 	for _, s := range v.StrongSections {
 		winRates[s.Section.String()] = s.WinRatePct
@@ -203,5 +221,6 @@ func buildInsightPayload(v ReportView, weekEnd time.Time) InsightPayload {
 		Streak:            v.StreakDays,
 		WeakestSection:    weakest,
 		AchievementsCount: len(v.Achievements),
+		Model:             model,
 	}
 }

@@ -85,6 +85,25 @@ const (
 	AdminServiceGetStatusPageProcedure = "/druz9.v1.AdminService/GetStatusPage"
 )
 
+// These variables are the protoreflect.Descriptor objects for the RPCs defined in this package.
+var (
+	adminServiceServiceDescriptor                 = v1.File_druz9_v1_admin_proto.Services().ByName("AdminService")
+	adminServiceListTasksMethodDescriptor         = adminServiceServiceDescriptor.Methods().ByName("ListTasks")
+	adminServiceCreateTaskMethodDescriptor        = adminServiceServiceDescriptor.Methods().ByName("CreateTask")
+	adminServiceUpdateTaskMethodDescriptor        = adminServiceServiceDescriptor.Methods().ByName("UpdateTask")
+	adminServiceListCompaniesMethodDescriptor     = adminServiceServiceDescriptor.Methods().ByName("ListCompanies")
+	adminServiceCreateCompanyMethodDescriptor     = adminServiceServiceDescriptor.Methods().ByName("CreateCompany")
+	adminServiceListConfigMethodDescriptor        = adminServiceServiceDescriptor.Methods().ByName("ListConfig")
+	adminServiceUpdateConfigMethodDescriptor      = adminServiceServiceDescriptor.Methods().ByName("UpdateConfig")
+	adminServiceListAnticheatMethodDescriptor     = adminServiceServiceDescriptor.Methods().ByName("ListAnticheat")
+	adminServiceGetAdminDashboardMethodDescriptor = adminServiceServiceDescriptor.Methods().ByName("GetAdminDashboard")
+	adminServiceListUsersMethodDescriptor         = adminServiceServiceDescriptor.Methods().ByName("ListUsers")
+	adminServiceBanUserMethodDescriptor           = adminServiceServiceDescriptor.Methods().ByName("BanUser")
+	adminServiceUnbanUserMethodDescriptor         = adminServiceServiceDescriptor.Methods().ByName("UnbanUser")
+	adminServiceListReportsMethodDescriptor       = adminServiceServiceDescriptor.Methods().ByName("ListReports")
+	adminServiceGetStatusPageMethodDescriptor     = adminServiceServiceDescriptor.Methods().ByName("GetStatusPage")
+)
+
 // AdminServiceClient is a client for the druz9.v1.AdminService service.
 type AdminServiceClient interface {
 	// ── Tasks ───────────────────────────────────────────────────────────
@@ -124,90 +143,89 @@ type AdminServiceClient interface {
 // http://api.acme.com or https://acme.com/grpc).
 func NewAdminServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) AdminServiceClient {
 	baseURL = strings.TrimRight(baseURL, "/")
-	adminServiceMethods := v1.File_druz9_v1_admin_proto.Services().ByName("AdminService").Methods()
 	return &adminServiceClient{
 		listTasks: connect.NewClient[v1.ListAdminTasksRequest, v1.AdminTaskList](
 			httpClient,
 			baseURL+AdminServiceListTasksProcedure,
-			connect.WithSchema(adminServiceMethods.ByName("ListTasks")),
+			connect.WithSchema(adminServiceListTasksMethodDescriptor),
 			connect.WithClientOptions(opts...),
 		),
 		createTask: connect.NewClient[v1.CreateAdminTaskRequest, v1.AdminTask](
 			httpClient,
 			baseURL+AdminServiceCreateTaskProcedure,
-			connect.WithSchema(adminServiceMethods.ByName("CreateTask")),
+			connect.WithSchema(adminServiceCreateTaskMethodDescriptor),
 			connect.WithClientOptions(opts...),
 		),
 		updateTask: connect.NewClient[v1.UpdateAdminTaskRequest, v1.AdminTask](
 			httpClient,
 			baseURL+AdminServiceUpdateTaskProcedure,
-			connect.WithSchema(adminServiceMethods.ByName("UpdateTask")),
+			connect.WithSchema(adminServiceUpdateTaskMethodDescriptor),
 			connect.WithClientOptions(opts...),
 		),
 		listCompanies: connect.NewClient[v1.ListCompaniesRequest, v1.CompanyList](
 			httpClient,
 			baseURL+AdminServiceListCompaniesProcedure,
-			connect.WithSchema(adminServiceMethods.ByName("ListCompanies")),
+			connect.WithSchema(adminServiceListCompaniesMethodDescriptor),
 			connect.WithClientOptions(opts...),
 		),
 		createCompany: connect.NewClient[v1.CreateCompanyRequest, v1.Company](
 			httpClient,
 			baseURL+AdminServiceCreateCompanyProcedure,
-			connect.WithSchema(adminServiceMethods.ByName("CreateCompany")),
+			connect.WithSchema(adminServiceCreateCompanyMethodDescriptor),
 			connect.WithClientOptions(opts...),
 		),
 		listConfig: connect.NewClient[v1.ListConfigRequest, v1.ConfigEntryList](
 			httpClient,
 			baseURL+AdminServiceListConfigProcedure,
-			connect.WithSchema(adminServiceMethods.ByName("ListConfig")),
+			connect.WithSchema(adminServiceListConfigMethodDescriptor),
 			connect.WithClientOptions(opts...),
 		),
 		updateConfig: connect.NewClient[v1.UpdateConfigRequest, v1.ConfigEntry](
 			httpClient,
 			baseURL+AdminServiceUpdateConfigProcedure,
-			connect.WithSchema(adminServiceMethods.ByName("UpdateConfig")),
+			connect.WithSchema(adminServiceUpdateConfigMethodDescriptor),
 			connect.WithClientOptions(opts...),
 		),
 		listAnticheat: connect.NewClient[v1.ListAnticheatRequest, v1.AnticheatSignalList](
 			httpClient,
 			baseURL+AdminServiceListAnticheatProcedure,
-			connect.WithSchema(adminServiceMethods.ByName("ListAnticheat")),
+			connect.WithSchema(adminServiceListAnticheatMethodDescriptor),
 			connect.WithClientOptions(opts...),
 		),
 		getAdminDashboard: connect.NewClient[v1.GetAdminDashboardRequest, v1.AdminDashboard](
 			httpClient,
 			baseURL+AdminServiceGetAdminDashboardProcedure,
-			connect.WithSchema(adminServiceMethods.ByName("GetAdminDashboard")),
+			connect.WithSchema(adminServiceGetAdminDashboardMethodDescriptor),
 			connect.WithClientOptions(opts...),
 		),
 		listUsers: connect.NewClient[v1.ListAdminUsersRequest, v1.AdminUserList](
 			httpClient,
 			baseURL+AdminServiceListUsersProcedure,
-			connect.WithSchema(adminServiceMethods.ByName("ListUsers")),
+			connect.WithSchema(adminServiceListUsersMethodDescriptor),
 			connect.WithClientOptions(opts...),
 		),
 		banUser: connect.NewClient[v1.BanUserRequest, v1.BanUserResponse](
 			httpClient,
 			baseURL+AdminServiceBanUserProcedure,
-			connect.WithSchema(adminServiceMethods.ByName("BanUser")),
+			connect.WithSchema(adminServiceBanUserMethodDescriptor),
 			connect.WithClientOptions(opts...),
 		),
 		unbanUser: connect.NewClient[v1.UnbanUserRequest, v1.BanUserResponse](
 			httpClient,
 			baseURL+AdminServiceUnbanUserProcedure,
-			connect.WithSchema(adminServiceMethods.ByName("UnbanUser")),
+			connect.WithSchema(adminServiceUnbanUserMethodDescriptor),
 			connect.WithClientOptions(opts...),
 		),
 		listReports: connect.NewClient[v1.ListAdminReportsRequest, v1.AdminReportList](
 			httpClient,
 			baseURL+AdminServiceListReportsProcedure,
-			connect.WithSchema(adminServiceMethods.ByName("ListReports")),
+			connect.WithSchema(adminServiceListReportsMethodDescriptor),
 			connect.WithClientOptions(opts...),
 		),
 		getStatusPage: connect.NewClient[v1.GetStatusPageRequest, v1.StatusPage](
 			httpClient,
 			baseURL+AdminServiceGetStatusPageProcedure,
-			connect.WithSchema(adminServiceMethods.ByName("GetStatusPage")),
+			connect.WithSchema(adminServiceGetStatusPageMethodDescriptor),
 			connect.WithClientOptions(opts...),
 		),
 	}
@@ -337,89 +355,88 @@ type AdminServiceHandler interface {
 // By default, handlers support the Connect, gRPC, and gRPC-Web protocols with the binary Protobuf
 // and JSON codecs. They also support gzip compression.
 func NewAdminServiceHandler(svc AdminServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
-	adminServiceMethods := v1.File_druz9_v1_admin_proto.Services().ByName("AdminService").Methods()
 	adminServiceListTasksHandler := connect.NewUnaryHandler(
 		AdminServiceListTasksProcedure,
 		svc.ListTasks,
-		connect.WithSchema(adminServiceMethods.ByName("ListTasks")),
+		connect.WithSchema(adminServiceListTasksMethodDescriptor),
 		connect.WithHandlerOptions(opts...),
 	)
 	adminServiceCreateTaskHandler := connect.NewUnaryHandler(
 		AdminServiceCreateTaskProcedure,
 		svc.CreateTask,
-		connect.WithSchema(adminServiceMethods.ByName("CreateTask")),
+		connect.WithSchema(adminServiceCreateTaskMethodDescriptor),
 		connect.WithHandlerOptions(opts...),
 	)
 	adminServiceUpdateTaskHandler := connect.NewUnaryHandler(
 		AdminServiceUpdateTaskProcedure,
 		svc.UpdateTask,
-		connect.WithSchema(adminServiceMethods.ByName("UpdateTask")),
+		connect.WithSchema(adminServiceUpdateTaskMethodDescriptor),
 		connect.WithHandlerOptions(opts...),
 	)
 	adminServiceListCompaniesHandler := connect.NewUnaryHandler(
 		AdminServiceListCompaniesProcedure,
 		svc.ListCompanies,
-		connect.WithSchema(adminServiceMethods.ByName("ListCompanies")),
+		connect.WithSchema(adminServiceListCompaniesMethodDescriptor),
 		connect.WithHandlerOptions(opts...),
 	)
 	adminServiceCreateCompanyHandler := connect.NewUnaryHandler(
 		AdminServiceCreateCompanyProcedure,
 		svc.CreateCompany,
-		connect.WithSchema(adminServiceMethods.ByName("CreateCompany")),
+		connect.WithSchema(adminServiceCreateCompanyMethodDescriptor),
 		connect.WithHandlerOptions(opts...),
 	)
 	adminServiceListConfigHandler := connect.NewUnaryHandler(
 		AdminServiceListConfigProcedure,
 		svc.ListConfig,
-		connect.WithSchema(adminServiceMethods.ByName("ListConfig")),
+		connect.WithSchema(adminServiceListConfigMethodDescriptor),
 		connect.WithHandlerOptions(opts...),
 	)
 	adminServiceUpdateConfigHandler := connect.NewUnaryHandler(
 		AdminServiceUpdateConfigProcedure,
 		svc.UpdateConfig,
-		connect.WithSchema(adminServiceMethods.ByName("UpdateConfig")),
+		connect.WithSchema(adminServiceUpdateConfigMethodDescriptor),
 		connect.WithHandlerOptions(opts...),
 	)
 	adminServiceListAnticheatHandler := connect.NewUnaryHandler(
 		AdminServiceListAnticheatProcedure,
 		svc.ListAnticheat,
-		connect.WithSchema(adminServiceMethods.ByName("ListAnticheat")),
+		connect.WithSchema(adminServiceListAnticheatMethodDescriptor),
 		connect.WithHandlerOptions(opts...),
 	)
 	adminServiceGetAdminDashboardHandler := connect.NewUnaryHandler(
 		AdminServiceGetAdminDashboardProcedure,
 		svc.GetAdminDashboard,
-		connect.WithSchema(adminServiceMethods.ByName("GetAdminDashboard")),
+		connect.WithSchema(adminServiceGetAdminDashboardMethodDescriptor),
 		connect.WithHandlerOptions(opts...),
 	)
 	adminServiceListUsersHandler := connect.NewUnaryHandler(
 		AdminServiceListUsersProcedure,
 		svc.ListUsers,
-		connect.WithSchema(adminServiceMethods.ByName("ListUsers")),
+		connect.WithSchema(adminServiceListUsersMethodDescriptor),
 		connect.WithHandlerOptions(opts...),
 	)
 	adminServiceBanUserHandler := connect.NewUnaryHandler(
 		AdminServiceBanUserProcedure,
 		svc.BanUser,
-		connect.WithSchema(adminServiceMethods.ByName("BanUser")),
+		connect.WithSchema(adminServiceBanUserMethodDescriptor),
 		connect.WithHandlerOptions(opts...),
 	)
 	adminServiceUnbanUserHandler := connect.NewUnaryHandler(
 		AdminServiceUnbanUserProcedure,
 		svc.UnbanUser,
-		connect.WithSchema(adminServiceMethods.ByName("UnbanUser")),
+		connect.WithSchema(adminServiceUnbanUserMethodDescriptor),
 		connect.WithHandlerOptions(opts...),
 	)
 	adminServiceListReportsHandler := connect.NewUnaryHandler(
 		AdminServiceListReportsProcedure,
 		svc.ListReports,
-		connect.WithSchema(adminServiceMethods.ByName("ListReports")),
+		connect.WithSchema(adminServiceListReportsMethodDescriptor),
 		connect.WithHandlerOptions(opts...),
 	)
 	adminServiceGetStatusPageHandler := connect.NewUnaryHandler(
 		AdminServiceGetStatusPageProcedure,
 		svc.GetStatusPage,
-		connect.WithSchema(adminServiceMethods.ByName("GetStatusPage")),
+		connect.WithSchema(adminServiceGetStatusPageMethodDescriptor),
 		connect.WithHandlerOptions(opts...),
 	)
 	return "/druz9.v1.AdminService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

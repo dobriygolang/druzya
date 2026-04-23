@@ -10,8 +10,13 @@ import (
 	"github.com/google/uuid"
 )
 
-// ErrNotImplemented is the canonical sentinel.
+// ErrNotImplemented is kept as a sentinel so existing strategic-scaffold
+// tests still compile while new use-cases land. Prefer ErrNotFound /
+// ErrAlreadyMember / ErrCohortFull (see repo.go) for real flows.
 var ErrNotImplemented = errors.New("cohort: not implemented; see docs/strategic/cohorts.md")
+
+// MaxMembersPhase1 — Phase 1 soft cap. См. docs/strategic/cohorts.md.
+const MaxMembersPhase1 = 50
 
 // Status represents the cohort lifecycle state.
 type Status string

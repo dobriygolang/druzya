@@ -82,9 +82,16 @@ type NotificationPrefs struct {
 type Settings struct {
 	DisplayName      string
 	DefaultLanguage  enums.Language
-	Locale           string // "ru" | "en"
+	Locale           string // "ru" | "en" | "kz" | "ua"
 	Notifications    NotificationPrefs
 	VoiceModeEnabled bool
+	// AIInsightModel — пользовательский выбор LLM-модели для AI Coach insight
+	// (Phase B). Валидные значения берутся из GET /api/v1/ai/models — например
+	// "openai/gpt-4o-mini", "anthropic/claude-sonnet-4". Пустая строка =
+	// "use server default" (free tier-aware fallback в openrouter_insight.go).
+	// Premium-модели для free-юзеров silently fallback на default — UI на
+	// /settings помечает их 💎 + locked, чтобы пользователь видел причину.
+	AIInsightModel string
 }
 
 // EloPoint — дневной snapshot ELO в одной секции.

@@ -61,6 +61,17 @@ const (
 	ProfileServiceGetWeeklyShareProcedure = "/druz9.v1.ProfileService/GetWeeklyShare"
 )
 
+// These variables are the protoreflect.Descriptor objects for the RPCs defined in this package.
+var (
+	profileServiceServiceDescriptor                = v1.File_druz9_v1_profile_proto.Services().ByName("ProfileService")
+	profileServiceGetMyProfileMethodDescriptor     = profileServiceServiceDescriptor.Methods().ByName("GetMyProfile")
+	profileServiceGetMyAtlasMethodDescriptor       = profileServiceServiceDescriptor.Methods().ByName("GetMyAtlas")
+	profileServiceGetMyReportMethodDescriptor      = profileServiceServiceDescriptor.Methods().ByName("GetMyReport")
+	profileServiceUpdateSettingsMethodDescriptor   = profileServiceServiceDescriptor.Methods().ByName("UpdateSettings")
+	profileServiceGetPublicProfileMethodDescriptor = profileServiceServiceDescriptor.Methods().ByName("GetPublicProfile")
+	profileServiceGetWeeklyShareMethodDescriptor   = profileServiceServiceDescriptor.Methods().ByName("GetWeeklyShare")
+)
+
 // ProfileServiceClient is a client for the druz9.v1.ProfileService service.
 type ProfileServiceClient interface {
 	// GetMyProfile returns the rich profile for the authenticated caller.
@@ -87,42 +98,41 @@ type ProfileServiceClient interface {
 // http://api.acme.com or https://acme.com/grpc).
 func NewProfileServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) ProfileServiceClient {
 	baseURL = strings.TrimRight(baseURL, "/")
-	profileServiceMethods := v1.File_druz9_v1_profile_proto.Services().ByName("ProfileService").Methods()
 	return &profileServiceClient{
 		getMyProfile: connect.NewClient[v1.GetMyProfileRequest, v1.ProfileFull](
 			httpClient,
 			baseURL+ProfileServiceGetMyProfileProcedure,
-			connect.WithSchema(profileServiceMethods.ByName("GetMyProfile")),
+			connect.WithSchema(profileServiceGetMyProfileMethodDescriptor),
 			connect.WithClientOptions(opts...),
 		),
 		getMyAtlas: connect.NewClient[v1.GetMyAtlasRequest, v1.SkillAtlas](
 			httpClient,
 			baseURL+ProfileServiceGetMyAtlasProcedure,
-			connect.WithSchema(profileServiceMethods.ByName("GetMyAtlas")),
+			connect.WithSchema(profileServiceGetMyAtlasMethodDescriptor),
 			connect.WithClientOptions(opts...),
 		),
 		getMyReport: connect.NewClient[v1.GetMyReportRequest, v1.WeeklyReport](
 			httpClient,
 			baseURL+ProfileServiceGetMyReportProcedure,
-			connect.WithSchema(profileServiceMethods.ByName("GetMyReport")),
+			connect.WithSchema(profileServiceGetMyReportMethodDescriptor),
 			connect.WithClientOptions(opts...),
 		),
 		updateSettings: connect.NewClient[v1.UpdateProfileSettingsRequest, v1.ProfileSettings](
 			httpClient,
 			baseURL+ProfileServiceUpdateSettingsProcedure,
-			connect.WithSchema(profileServiceMethods.ByName("UpdateSettings")),
+			connect.WithSchema(profileServiceUpdateSettingsMethodDescriptor),
 			connect.WithClientOptions(opts...),
 		),
 		getPublicProfile: connect.NewClient[v1.GetPublicProfileRequest, v1.ProfilePublic](
 			httpClient,
 			baseURL+ProfileServiceGetPublicProfileProcedure,
-			connect.WithSchema(profileServiceMethods.ByName("GetPublicProfile")),
+			connect.WithSchema(profileServiceGetPublicProfileMethodDescriptor),
 			connect.WithClientOptions(opts...),
 		),
 		getWeeklyShare: connect.NewClient[v1.GetWeeklyShareRequest, v1.WeeklyReport](
 			httpClient,
 			baseURL+ProfileServiceGetWeeklyShareProcedure,
-			connect.WithSchema(profileServiceMethods.ByName("GetWeeklyShare")),
+			connect.WithSchema(profileServiceGetWeeklyShareMethodDescriptor),
 			connect.WithClientOptions(opts...),
 		),
 	}
@@ -191,41 +201,40 @@ type ProfileServiceHandler interface {
 // By default, handlers support the Connect, gRPC, and gRPC-Web protocols with the binary Protobuf
 // and JSON codecs. They also support gzip compression.
 func NewProfileServiceHandler(svc ProfileServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
-	profileServiceMethods := v1.File_druz9_v1_profile_proto.Services().ByName("ProfileService").Methods()
 	profileServiceGetMyProfileHandler := connect.NewUnaryHandler(
 		ProfileServiceGetMyProfileProcedure,
 		svc.GetMyProfile,
-		connect.WithSchema(profileServiceMethods.ByName("GetMyProfile")),
+		connect.WithSchema(profileServiceGetMyProfileMethodDescriptor),
 		connect.WithHandlerOptions(opts...),
 	)
 	profileServiceGetMyAtlasHandler := connect.NewUnaryHandler(
 		ProfileServiceGetMyAtlasProcedure,
 		svc.GetMyAtlas,
-		connect.WithSchema(profileServiceMethods.ByName("GetMyAtlas")),
+		connect.WithSchema(profileServiceGetMyAtlasMethodDescriptor),
 		connect.WithHandlerOptions(opts...),
 	)
 	profileServiceGetMyReportHandler := connect.NewUnaryHandler(
 		ProfileServiceGetMyReportProcedure,
 		svc.GetMyReport,
-		connect.WithSchema(profileServiceMethods.ByName("GetMyReport")),
+		connect.WithSchema(profileServiceGetMyReportMethodDescriptor),
 		connect.WithHandlerOptions(opts...),
 	)
 	profileServiceUpdateSettingsHandler := connect.NewUnaryHandler(
 		ProfileServiceUpdateSettingsProcedure,
 		svc.UpdateSettings,
-		connect.WithSchema(profileServiceMethods.ByName("UpdateSettings")),
+		connect.WithSchema(profileServiceUpdateSettingsMethodDescriptor),
 		connect.WithHandlerOptions(opts...),
 	)
 	profileServiceGetPublicProfileHandler := connect.NewUnaryHandler(
 		ProfileServiceGetPublicProfileProcedure,
 		svc.GetPublicProfile,
-		connect.WithSchema(profileServiceMethods.ByName("GetPublicProfile")),
+		connect.WithSchema(profileServiceGetPublicProfileMethodDescriptor),
 		connect.WithHandlerOptions(opts...),
 	)
 	profileServiceGetWeeklyShareHandler := connect.NewUnaryHandler(
 		ProfileServiceGetWeeklyShareProcedure,
 		svc.GetWeeklyShare,
-		connect.WithSchema(profileServiceMethods.ByName("GetWeeklyShare")),
+		connect.WithSchema(profileServiceGetWeeklyShareMethodDescriptor),
 		connect.WithHandlerOptions(opts...),
 	)
 	return "/druz9.v1.ProfileService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

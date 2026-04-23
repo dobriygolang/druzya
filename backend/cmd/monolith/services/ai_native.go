@@ -54,8 +54,17 @@ func NewAINative(d Deps) *Module {
 
 	// Public model-catalogue endpoint — drives the frontend AI-opponent
 	// picker. Empty when OPENROUTER_API_KEY is unset (frontend hides the
-	// panel in that case rather than showing fake choices).
-	models := ainativePorts.NewModelsHandler(d.Cfg.LLM.OpenRouterAPIKey != "")
+	// panel in that case rather than showing fake choices). Catalogue is
+	// served from the llm_models registry (migration 00033) so admins
+	// can add a model without a code deploy.
+	llmModelsRepo := ainativeInfra.NewLLMModels(d.Pool)
+	models := ainativePorts.NewModelsHandler(
+		d.Cfg.LLM.OpenRouterAPIKey != "",
+		llmModelsRepo,
+		users,
+		d.Log,
+	)
+	adminModels := ainativePorts.NewAdminModelsHandler(llmModelsRepo, d.Log)
 
 	connectPath, connectHandler := druz9v1connect.NewNativeServiceHandler(server)
 	transcoder := mustTranscode("native", connectPath, connectHandler)
@@ -71,6 +80,7 @@ func NewAINative(d Deps) *Module {
 			r.Get("/native/session/{sessionId}/provenance", transcoder.ServeHTTP)
 			r.Get("/native/session/{sessionId}/score", transcoder.ServeHTTP)
 			models.Mount(r)
+			adminModels.Mount(r)
 		},
 	}
 }

@@ -48,6 +48,13 @@ const (
 	RatingServiceGetLeaderboardProcedure = "/druz9.v1.RatingService/GetLeaderboard"
 )
 
+// These variables are the protoreflect.Descriptor objects for the RPCs defined in this package.
+var (
+	ratingServiceServiceDescriptor              = v1.File_druz9_v1_rating_proto.Services().ByName("RatingService")
+	ratingServiceGetMyRatingsMethodDescriptor   = ratingServiceServiceDescriptor.Methods().ByName("GetMyRatings")
+	ratingServiceGetLeaderboardMethodDescriptor = ratingServiceServiceDescriptor.Methods().ByName("GetLeaderboard")
+)
+
 // RatingServiceClient is a client for the druz9.v1.RatingService service.
 type RatingServiceClient interface {
 	// GetMyRatings returns the caller's per-section ELO and global power score.
@@ -65,18 +72,17 @@ type RatingServiceClient interface {
 // http://api.acme.com or https://acme.com/grpc).
 func NewRatingServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) RatingServiceClient {
 	baseURL = strings.TrimRight(baseURL, "/")
-	ratingServiceMethods := v1.File_druz9_v1_rating_proto.Services().ByName("RatingService").Methods()
 	return &ratingServiceClient{
 		getMyRatings: connect.NewClient[v1.GetMyRatingsRequest, v1.GetMyRatingsResponse](
 			httpClient,
 			baseURL+RatingServiceGetMyRatingsProcedure,
-			connect.WithSchema(ratingServiceMethods.ByName("GetMyRatings")),
+			connect.WithSchema(ratingServiceGetMyRatingsMethodDescriptor),
 			connect.WithClientOptions(opts...),
 		),
 		getLeaderboard: connect.NewClient[v1.GetLeaderboardRequest, v1.GetLeaderboardResponse](
 			httpClient,
 			baseURL+RatingServiceGetLeaderboardProcedure,
-			connect.WithSchema(ratingServiceMethods.ByName("GetLeaderboard")),
+			connect.WithSchema(ratingServiceGetLeaderboardMethodDescriptor),
 			connect.WithClientOptions(opts...),
 		),
 	}
@@ -112,17 +118,16 @@ type RatingServiceHandler interface {
 // By default, handlers support the Connect, gRPC, and gRPC-Web protocols with the binary Protobuf
 // and JSON codecs. They also support gzip compression.
 func NewRatingServiceHandler(svc RatingServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
-	ratingServiceMethods := v1.File_druz9_v1_rating_proto.Services().ByName("RatingService").Methods()
 	ratingServiceGetMyRatingsHandler := connect.NewUnaryHandler(
 		RatingServiceGetMyRatingsProcedure,
 		svc.GetMyRatings,
-		connect.WithSchema(ratingServiceMethods.ByName("GetMyRatings")),
+		connect.WithSchema(ratingServiceGetMyRatingsMethodDescriptor),
 		connect.WithHandlerOptions(opts...),
 	)
 	ratingServiceGetLeaderboardHandler := connect.NewUnaryHandler(
 		RatingServiceGetLeaderboardProcedure,
 		svc.GetLeaderboard,
-		connect.WithSchema(ratingServiceMethods.ByName("GetLeaderboard")),
+		connect.WithSchema(ratingServiceGetLeaderboardMethodDescriptor),
 		connect.WithHandlerOptions(opts...),
 	)
 	return "/druz9.v1.RatingService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

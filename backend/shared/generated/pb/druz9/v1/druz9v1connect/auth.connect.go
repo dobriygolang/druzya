@@ -52,6 +52,15 @@ const (
 	AuthServiceLogoutProcedure = "/druz9.v1.AuthService/Logout"
 )
 
+// These variables are the protoreflect.Descriptor objects for the RPCs defined in this package.
+var (
+	authServiceServiceDescriptor             = v1.File_druz9_v1_auth_proto.Services().ByName("AuthService")
+	authServiceLoginYandexMethodDescriptor   = authServiceServiceDescriptor.Methods().ByName("LoginYandex")
+	authServiceLoginTelegramMethodDescriptor = authServiceServiceDescriptor.Methods().ByName("LoginTelegram")
+	authServiceRefreshMethodDescriptor       = authServiceServiceDescriptor.Methods().ByName("Refresh")
+	authServiceLogoutMethodDescriptor        = authServiceServiceDescriptor.Methods().ByName("Logout")
+)
+
 // AuthServiceClient is a client for the druz9.v1.AuthService service.
 type AuthServiceClient interface {
 	// LoginYandex exchanges a Yandex authorization code for a session.
@@ -73,30 +82,29 @@ type AuthServiceClient interface {
 // http://api.acme.com or https://acme.com/grpc).
 func NewAuthServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) AuthServiceClient {
 	baseURL = strings.TrimRight(baseURL, "/")
-	authServiceMethods := v1.File_druz9_v1_auth_proto.Services().ByName("AuthService").Methods()
 	return &authServiceClient{
 		loginYandex: connect.NewClient[v1.YandexLoginRequest, v1.AuthResponse](
 			httpClient,
 			baseURL+AuthServiceLoginYandexProcedure,
-			connect.WithSchema(authServiceMethods.ByName("LoginYandex")),
+			connect.WithSchema(authServiceLoginYandexMethodDescriptor),
 			connect.WithClientOptions(opts...),
 		),
 		loginTelegram: connect.NewClient[v1.TelegramLoginRequest, v1.AuthResponse](
 			httpClient,
 			baseURL+AuthServiceLoginTelegramProcedure,
-			connect.WithSchema(authServiceMethods.ByName("LoginTelegram")),
+			connect.WithSchema(authServiceLoginTelegramMethodDescriptor),
 			connect.WithClientOptions(opts...),
 		),
 		refresh: connect.NewClient[v1.RefreshRequest, v1.AuthResponse](
 			httpClient,
 			baseURL+AuthServiceRefreshProcedure,
-			connect.WithSchema(authServiceMethods.ByName("Refresh")),
+			connect.WithSchema(authServiceRefreshMethodDescriptor),
 			connect.WithClientOptions(opts...),
 		),
 		logout: connect.NewClient[v1.LogoutRequest, v1.LogoutResponse](
 			httpClient,
 			baseURL+AuthServiceLogoutProcedure,
-			connect.WithSchema(authServiceMethods.ByName("Logout")),
+			connect.WithSchema(authServiceLogoutMethodDescriptor),
 			connect.WithClientOptions(opts...),
 		),
 	}
@@ -148,29 +156,28 @@ type AuthServiceHandler interface {
 // By default, handlers support the Connect, gRPC, and gRPC-Web protocols with the binary Protobuf
 // and JSON codecs. They also support gzip compression.
 func NewAuthServiceHandler(svc AuthServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
-	authServiceMethods := v1.File_druz9_v1_auth_proto.Services().ByName("AuthService").Methods()
 	authServiceLoginYandexHandler := connect.NewUnaryHandler(
 		AuthServiceLoginYandexProcedure,
 		svc.LoginYandex,
-		connect.WithSchema(authServiceMethods.ByName("LoginYandex")),
+		connect.WithSchema(authServiceLoginYandexMethodDescriptor),
 		connect.WithHandlerOptions(opts...),
 	)
 	authServiceLoginTelegramHandler := connect.NewUnaryHandler(
 		AuthServiceLoginTelegramProcedure,
 		svc.LoginTelegram,
-		connect.WithSchema(authServiceMethods.ByName("LoginTelegram")),
+		connect.WithSchema(authServiceLoginTelegramMethodDescriptor),
 		connect.WithHandlerOptions(opts...),
 	)
 	authServiceRefreshHandler := connect.NewUnaryHandler(
 		AuthServiceRefreshProcedure,
 		svc.Refresh,
-		connect.WithSchema(authServiceMethods.ByName("Refresh")),
+		connect.WithSchema(authServiceRefreshMethodDescriptor),
 		connect.WithHandlerOptions(opts...),
 	)
 	authServiceLogoutHandler := connect.NewUnaryHandler(
 		AuthServiceLogoutProcedure,
 		svc.Logout,
-		connect.WithSchema(authServiceMethods.ByName("Logout")),
+		connect.WithSchema(authServiceLogoutMethodDescriptor),
 		connect.WithHandlerOptions(opts...),
 	)
 	return "/druz9.v1.AuthService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

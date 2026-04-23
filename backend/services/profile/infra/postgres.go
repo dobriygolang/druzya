@@ -202,7 +202,8 @@ func (p *Postgres) GetSettings(ctx context.Context, userID uuid.UUID) (domain.Se
 		       COALESCE(np.channels, ARRAY['telegram']::text[]),
 		       COALESCE(np.telegram_chat_id,''),
 		       COALESCE(np.weekly_report_enabled, true),
-		       COALESCE(np.skill_decay_warnings_enabled, true)
+		       COALESCE(np.skill_decay_warnings_enabled, true),
+		       COALESCE(u.ai_insight_model, '')
 		  FROM users u
 		  LEFT JOIN notification_preferences np ON np.user_id = u.id
 		 WHERE u.id = $1`, userID)
@@ -212,6 +213,7 @@ func (p *Postgres) GetSettings(ctx context.Context, userID uuid.UUID) (domain.Se
 		&s.DisplayName, &s.Locale,
 		&channels, &s.Notifications.TelegramChatID,
 		&s.Notifications.WeeklyReportEnabled, &s.Notifications.SkillDecayWarningsEnabled,
+		&s.AIInsightModel,
 	); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return domain.Settings{}, fmt.Errorf("profile.Postgres.GetSettings: %w", domain.ErrNotFound)
@@ -234,8 +236,13 @@ func (p *Postgres) UpdateSettings(ctx context.Context, userID uuid.UUID, s domai
 	defer func() { _ = tx.Rollback(ctx) }()
 
 	if _, err := tx.Exec(ctx,
-		`UPDATE users SET display_name=NULLIF($2,''), locale=COALESCE(NULLIF($3,''), locale), updated_at=now() WHERE id=$1`,
-		userID, s.DisplayName, s.Locale,
+		`UPDATE users
+		    SET display_name = NULLIF($2,''),
+		        locale = COALESCE(NULLIF($3,''), locale),
+		        ai_insight_model = NULLIF($4,''),
+		        updated_at = now()
+		  WHERE id = $1`,
+		userID, s.DisplayName, s.Locale, s.AIInsightModel,
 	); err != nil {
 		return fmt.Errorf("profile.Postgres.UpdateSettings: users: %w", err)
 	}

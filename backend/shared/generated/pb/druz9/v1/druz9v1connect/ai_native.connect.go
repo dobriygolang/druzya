@@ -55,6 +55,16 @@ const (
 	NativeServiceGetScoreProcedure = "/druz9.v1.NativeService/GetScore"
 )
 
+// These variables are the protoreflect.Descriptor objects for the RPCs defined in this package.
+var (
+	nativeServiceServiceDescriptor             = v1.File_druz9_v1_ai_native_proto.Services().ByName("NativeService")
+	nativeServiceCreateSessionMethodDescriptor = nativeServiceServiceDescriptor.Methods().ByName("CreateSession")
+	nativeServiceSubmitPromptMethodDescriptor  = nativeServiceServiceDescriptor.Methods().ByName("SubmitPrompt")
+	nativeServiceVerifyMethodDescriptor        = nativeServiceServiceDescriptor.Methods().ByName("Verify")
+	nativeServiceGetProvenanceMethodDescriptor = nativeServiceServiceDescriptor.Methods().ByName("GetProvenance")
+	nativeServiceGetScoreMethodDescriptor      = nativeServiceServiceDescriptor.Methods().ByName("GetScore")
+)
+
 // NativeServiceClient is a client for the druz9.v1.NativeService service.
 type NativeServiceClient interface {
 	// CreateSession starts a new AI-Native Round.
@@ -82,36 +92,35 @@ type NativeServiceClient interface {
 // http://api.acme.com or https://acme.com/grpc).
 func NewNativeServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) NativeServiceClient {
 	baseURL = strings.TrimRight(baseURL, "/")
-	nativeServiceMethods := v1.File_druz9_v1_ai_native_proto.Services().ByName("NativeService").Methods()
 	return &nativeServiceClient{
 		createSession: connect.NewClient[v1.CreateNativeRequest, v1.NativeSession](
 			httpClient,
 			baseURL+NativeServiceCreateSessionProcedure,
-			connect.WithSchema(nativeServiceMethods.ByName("CreateSession")),
+			connect.WithSchema(nativeServiceCreateSessionMethodDescriptor),
 			connect.WithClientOptions(opts...),
 		),
 		submitPrompt: connect.NewClient[v1.SubmitPromptRequest, v1.NativePromptStreamEvent](
 			httpClient,
 			baseURL+NativeServiceSubmitPromptProcedure,
-			connect.WithSchema(nativeServiceMethods.ByName("SubmitPrompt")),
+			connect.WithSchema(nativeServiceSubmitPromptMethodDescriptor),
 			connect.WithClientOptions(opts...),
 		),
 		verify: connect.NewClient[v1.NativeVerifyRequest, v1.NativeScores](
 			httpClient,
 			baseURL+NativeServiceVerifyProcedure,
-			connect.WithSchema(nativeServiceMethods.ByName("Verify")),
+			connect.WithSchema(nativeServiceVerifyMethodDescriptor),
 			connect.WithClientOptions(opts...),
 		),
 		getProvenance: connect.NewClient[v1.GetNativeProvenanceRequest, v1.NativeProvenanceGraph](
 			httpClient,
 			baseURL+NativeServiceGetProvenanceProcedure,
-			connect.WithSchema(nativeServiceMethods.ByName("GetProvenance")),
+			connect.WithSchema(nativeServiceGetProvenanceMethodDescriptor),
 			connect.WithClientOptions(opts...),
 		),
 		getScore: connect.NewClient[v1.GetNativeScoreRequest, v1.NativeScores](
 			httpClient,
 			baseURL+NativeServiceGetScoreProcedure,
-			connect.WithSchema(nativeServiceMethods.ByName("GetScore")),
+			connect.WithSchema(nativeServiceGetScoreMethodDescriptor),
 			connect.WithClientOptions(opts...),
 		),
 	}
@@ -175,35 +184,34 @@ type NativeServiceHandler interface {
 // By default, handlers support the Connect, gRPC, and gRPC-Web protocols with the binary Protobuf
 // and JSON codecs. They also support gzip compression.
 func NewNativeServiceHandler(svc NativeServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
-	nativeServiceMethods := v1.File_druz9_v1_ai_native_proto.Services().ByName("NativeService").Methods()
 	nativeServiceCreateSessionHandler := connect.NewUnaryHandler(
 		NativeServiceCreateSessionProcedure,
 		svc.CreateSession,
-		connect.WithSchema(nativeServiceMethods.ByName("CreateSession")),
+		connect.WithSchema(nativeServiceCreateSessionMethodDescriptor),
 		connect.WithHandlerOptions(opts...),
 	)
 	nativeServiceSubmitPromptHandler := connect.NewServerStreamHandler(
 		NativeServiceSubmitPromptProcedure,
 		svc.SubmitPrompt,
-		connect.WithSchema(nativeServiceMethods.ByName("SubmitPrompt")),
+		connect.WithSchema(nativeServiceSubmitPromptMethodDescriptor),
 		connect.WithHandlerOptions(opts...),
 	)
 	nativeServiceVerifyHandler := connect.NewUnaryHandler(
 		NativeServiceVerifyProcedure,
 		svc.Verify,
-		connect.WithSchema(nativeServiceMethods.ByName("Verify")),
+		connect.WithSchema(nativeServiceVerifyMethodDescriptor),
 		connect.WithHandlerOptions(opts...),
 	)
 	nativeServiceGetProvenanceHandler := connect.NewUnaryHandler(
 		NativeServiceGetProvenanceProcedure,
 		svc.GetProvenance,
-		connect.WithSchema(nativeServiceMethods.ByName("GetProvenance")),
+		connect.WithSchema(nativeServiceGetProvenanceMethodDescriptor),
 		connect.WithHandlerOptions(opts...),
 	)
 	nativeServiceGetScoreHandler := connect.NewUnaryHandler(
 		NativeServiceGetScoreProcedure,
 		svc.GetScore,
-		connect.WithSchema(nativeServiceMethods.ByName("GetScore")),
+		connect.WithSchema(nativeServiceGetScoreMethodDescriptor),
 		connect.WithHandlerOptions(opts...),
 	)
 	return "/druz9.v1.NativeService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
