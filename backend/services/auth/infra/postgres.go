@@ -71,7 +71,7 @@ func (p *Postgres) UpsertByOAuth(ctx context.Context, in domain.UpsertOAuthInput
 		// new value is empty or unchanged — see UpdateUserAvatar in auth.sql.
 		if avErr := qtx.UpdateUserAvatar(ctx, authdb.UpdateUserAvatarParams{
 			ID:        linkedID,
-			AvatarURL: in.AvatarURL,
+			AvatarUrl: in.AvatarURL,
 		}); avErr != nil {
 			return domain.User{}, false, fmt.Errorf("auth.Postgres.UpsertByOAuth: update avatar: %w", avErr)
 		}
@@ -104,7 +104,7 @@ func (p *Postgres) UpsertByOAuth(ctx context.Context, in domain.UpsertOAuthInput
 		Role:      role.String(),
 		Locale:    "ru",
 		Column5:   in.DisplayName,
-		AvatarURL: in.AvatarURL,
+		AvatarUrl: in.AvatarURL,
 	})
 	if err != nil {
 		return domain.User{}, false, fmt.Errorf("auth.Postgres.UpsertByOAuth: insert user: %w", err)
@@ -225,7 +225,7 @@ func userFromFindRow(r authdb.FindUserByIDRow) (domain.User, error) {
 		Role:        role,
 		Locale:      r.Locale,
 		DisplayName: pgText(r.DisplayName),
-		AvatarURL:   r.AvatarURL,
+		AvatarURL:   r.AvatarUrl,
 		CreatedAt:   r.CreatedAt.Time,
 		UpdatedAt:   r.UpdatedAt.Time,
 	}, nil

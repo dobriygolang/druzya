@@ -52,6 +52,9 @@ const (
 	ArenaServiceConfirmReadyProcedure = "/druz9.v1.ArenaService/ConfirmReady"
 	// ArenaServiceSubmitCodeProcedure is the fully-qualified name of the ArenaService's SubmitCode RPC.
 	ArenaServiceSubmitCodeProcedure = "/druz9.v1.ArenaService/SubmitCode"
+	// ArenaServiceGetMyMatchesProcedure is the fully-qualified name of the ArenaService's GetMyMatches
+	// RPC.
+	ArenaServiceGetMyMatchesProcedure = "/druz9.v1.ArenaService/GetMyMatches"
 )
 
 // ArenaServiceClient is a client for the druz9.v1.ArenaService service.
@@ -66,6 +69,9 @@ type ArenaServiceClient interface {
 	ConfirmReady(context.Context, *connect.Request[v1.ConfirmMatchRequest]) (*connect.Response[v1.ConfirmMatchRequest], error)
 	// SubmitCode runs the submission against Judge0 and returns the result.
 	SubmitCode(context.Context, *connect.Request[v1.SubmitCodeRequest]) (*connect.Response[v1.SubmitResult], error)
+	// GetMyMatches возвращает историю матчей текущего пользователя
+	// (страница /match-history). Раньше был chi-route, теперь Connect-RPC.
+	GetMyMatches(context.Context, *connect.Request[v1.GetMyMatchesRequest]) (*connect.Response[v1.GetMyMatchesResponse], error)
 }
 
 // NewArenaServiceClient constructs a client for the druz9.v1.ArenaService service. By default, it
@@ -109,6 +115,12 @@ func NewArenaServiceClient(httpClient connect.HTTPClient, baseURL string, opts .
 			connect.WithSchema(arenaServiceMethods.ByName("SubmitCode")),
 			connect.WithClientOptions(opts...),
 		),
+		getMyMatches: connect.NewClient[v1.GetMyMatchesRequest, v1.GetMyMatchesResponse](
+			httpClient,
+			baseURL+ArenaServiceGetMyMatchesProcedure,
+			connect.WithSchema(arenaServiceMethods.ByName("GetMyMatches")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -119,6 +131,7 @@ type arenaServiceClient struct {
 	getMatch     *connect.Client[v1.GetMatchRequest, v1.ArenaMatch]
 	confirmReady *connect.Client[v1.ConfirmMatchRequest, v1.ConfirmMatchRequest]
 	submitCode   *connect.Client[v1.SubmitCodeRequest, v1.SubmitResult]
+	getMyMatches *connect.Client[v1.GetMyMatchesRequest, v1.GetMyMatchesResponse]
 }
 
 // FindMatch calls druz9.v1.ArenaService.FindMatch.
@@ -146,6 +159,11 @@ func (c *arenaServiceClient) SubmitCode(ctx context.Context, req *connect.Reques
 	return c.submitCode.CallUnary(ctx, req)
 }
 
+// GetMyMatches calls druz9.v1.ArenaService.GetMyMatches.
+func (c *arenaServiceClient) GetMyMatches(ctx context.Context, req *connect.Request[v1.GetMyMatchesRequest]) (*connect.Response[v1.GetMyMatchesResponse], error) {
+	return c.getMyMatches.CallUnary(ctx, req)
+}
+
 // ArenaServiceHandler is an implementation of the druz9.v1.ArenaService service.
 type ArenaServiceHandler interface {
 	// FindMatch enqueues the caller in the matchmaking queue.
@@ -158,6 +176,9 @@ type ArenaServiceHandler interface {
 	ConfirmReady(context.Context, *connect.Request[v1.ConfirmMatchRequest]) (*connect.Response[v1.ConfirmMatchRequest], error)
 	// SubmitCode runs the submission against Judge0 and returns the result.
 	SubmitCode(context.Context, *connect.Request[v1.SubmitCodeRequest]) (*connect.Response[v1.SubmitResult], error)
+	// GetMyMatches возвращает историю матчей текущего пользователя
+	// (страница /match-history). Раньше был chi-route, теперь Connect-RPC.
+	GetMyMatches(context.Context, *connect.Request[v1.GetMyMatchesRequest]) (*connect.Response[v1.GetMyMatchesResponse], error)
 }
 
 // NewArenaServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -197,6 +218,12 @@ func NewArenaServiceHandler(svc ArenaServiceHandler, opts ...connect.HandlerOpti
 		connect.WithSchema(arenaServiceMethods.ByName("SubmitCode")),
 		connect.WithHandlerOptions(opts...),
 	)
+	arenaServiceGetMyMatchesHandler := connect.NewUnaryHandler(
+		ArenaServiceGetMyMatchesProcedure,
+		svc.GetMyMatches,
+		connect.WithSchema(arenaServiceMethods.ByName("GetMyMatches")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/druz9.v1.ArenaService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case ArenaServiceFindMatchProcedure:
@@ -209,6 +236,8 @@ func NewArenaServiceHandler(svc ArenaServiceHandler, opts ...connect.HandlerOpti
 			arenaServiceConfirmReadyHandler.ServeHTTP(w, r)
 		case ArenaServiceSubmitCodeProcedure:
 			arenaServiceSubmitCodeHandler.ServeHTTP(w, r)
+		case ArenaServiceGetMyMatchesProcedure:
+			arenaServiceGetMyMatchesHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -236,4 +265,8 @@ func (UnimplementedArenaServiceHandler) ConfirmReady(context.Context, *connect.R
 
 func (UnimplementedArenaServiceHandler) SubmitCode(context.Context, *connect.Request[v1.SubmitCodeRequest]) (*connect.Response[v1.SubmitResult], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.ArenaService.SubmitCode is not implemented"))
+}
+
+func (UnimplementedArenaServiceHandler) GetMyMatches(context.Context, *connect.Request[v1.GetMyMatchesRequest]) (*connect.Response[v1.GetMyMatchesResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.ArenaService.GetMyMatches is not implemented"))
 }

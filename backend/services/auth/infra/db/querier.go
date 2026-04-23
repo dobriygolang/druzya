@@ -19,6 +19,9 @@ type Querier interface {
 	FindUserByID(ctx context.Context, id pgtype.UUID) (FindUserByIDRow, error)
 	FindUserByUsername(ctx context.Context, username string) (FindUserByUsernameRow, error)
 	TouchOAuthTokens(ctx context.Context, arg TouchOAuthTokensParams) error
+	// Опportunistically обновить avatar_url пользователя при повторном логине.
+	// Пустую строку игнорируем — Telegram может не прислать photo_url, и мы не
+	// хотим затереть ранее сохранённый аватар.
 	UpdateUserAvatar(ctx context.Context, arg UpdateUserAvatarParams) error
 	UsernameExists(ctx context.Context, username string) (bool, error)
 }

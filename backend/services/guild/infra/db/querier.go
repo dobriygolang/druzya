@@ -22,6 +22,13 @@ type Querier interface {
 	GetMyGuild(ctx context.Context, userID pgtype.UUID) (Guild, error)
 	GetWar(ctx context.Context, id pgtype.UUID) (GuildWar, error)
 	ListGuildMembers(ctx context.Context, guildID pgtype.UUID) ([]ListGuildMembersRow, error)
+	// Global guild leaderboard. We surface the existing guild_elo column as the
+	// primary ranking metric (the bible's "elo_total" — guilds carry a single
+	// ELO, members aren't summed, so this is the right pivot). members_count is
+	// a simple correlated count. wars_won counts every guild_wars row where
+	// this guild is the recorded winner. The ORDER BY is deterministic on ties
+	// (elo desc, id asc) so the cache is consistent across reads.
+	ListTopGuilds(ctx context.Context, limit int32) ([]ListTopGuildsRow, error)
 	SetWarWinner(ctx context.Context, arg SetWarWinnerParams) (int64, error)
 	// guild queries consumed by sqlc (emitted into services/guild/infra/db).
 	// Contribution row storage is STUBBED in-memory at the infra layer — the

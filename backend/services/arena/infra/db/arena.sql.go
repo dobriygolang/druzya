@@ -11,6 +11,28 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const countMyMatches = `-- name: CountMyMatches :one
+SELECT COUNT(*)::bigint AS total
+  FROM arena_matches m
+  JOIN arena_participants me ON me.match_id = m.id AND me.user_id = $1
+ WHERE m.status IN ('finished','cancelled')
+   AND ($2::text    = '' OR m.mode    = $2::text)
+   AND ($3::text = '' OR m.section = $3::text)
+`
+
+type CountMyMatchesParams struct {
+	UserID  pgtype.UUID
+	Mode    string
+	Section string
+}
+
+func (q *Queries) CountMyMatches(ctx context.Context, arg CountMyMatchesParams) (int64, error) {
+	row := q.db.QueryRow(ctx, countMyMatches, arg.UserID, arg.Mode, arg.Section)
+	var total int64
+	err := row.Scan(&total)
+	return total, err
+}
+
 const createArenaMatch = `-- name: CreateArenaMatch :one
 
 INSERT INTO arena_matches(task_id, task_version, section, mode, status, started_at)
@@ -175,6 +197,99 @@ func (q *Queries) ListArenaParticipants(ctx context.Context, matchID pgtype.UUID
 	return items, nil
 }
 
+const listMyMatches = `-- name: ListMyMatches :many
+
+SELECT m.id                AS match_id,
+       m.mode,
+       m.section,
+       m.status,
+       m.winner_id,
+       m.started_at,
+       m.finished_at,
+       me.elo_before       AS me_elo_before,
+       me.elo_after        AS me_elo_after,
+       opp.user_id         AS opponent_user_id,
+       opp_user.username   AS opponent_username,
+       opp_user.avatar_url AS opponent_avatar_url
+  FROM arena_matches m
+  JOIN arena_participants me  ON me.match_id  = m.id  AND me.user_id  = $1
+  LEFT JOIN arena_participants opp
+         ON opp.match_id = m.id AND opp.user_id <> $1
+  LEFT JOIN users opp_user ON opp_user.id = opp.user_id
+ WHERE m.status IN ('finished','cancelled')
+   AND ($2::text    = '' OR m.mode    = $2::text)
+   AND ($3::text = '' OR m.section = $3::text)
+ ORDER BY COALESCE(m.finished_at, m.created_at) DESC, m.id DESC
+ LIMIT $5 OFFSET $4
+`
+
+type ListMyMatchesParams struct {
+	UserID    pgtype.UUID
+	Mode      string
+	Section   string
+	OffsetVal int32
+	LimitVal  int32
+}
+
+type ListMyMatchesRow struct {
+	MatchID           pgtype.UUID
+	Mode              string
+	Section           string
+	Status            string
+	WinnerID          pgtype.UUID
+	StartedAt         pgtype.Timestamptz
+	FinishedAt        pgtype.Timestamptz
+	MeEloBefore       int32
+	MeEloAfter        pgtype.Int4
+	OpponentUserID    pgtype.UUID
+	OpponentUsername  pgtype.Text
+	OpponentAvatarUrl pgtype.Text
+}
+
+// ListMyMatches and CountMyMatches power /api/v1/arena/matches/my. Both
+// accept optional mode/section filters via NULLIF(...) — sqlc emits string
+// params, so the application passes "" when the user wants no filter.
+// Joined to users for opponent username + avatar_url (added in 00010).
+// sqlc.arg(...) даёт нормальные имена параметров вместо Column2/Column3.
+func (q *Queries) ListMyMatches(ctx context.Context, arg ListMyMatchesParams) ([]ListMyMatchesRow, error) {
+	rows, err := q.db.Query(ctx, listMyMatches,
+		arg.UserID,
+		arg.Mode,
+		arg.Section,
+		arg.OffsetVal,
+		arg.LimitVal,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListMyMatchesRow{}
+	for rows.Next() {
+		var i ListMyMatchesRow
+		if err := rows.Scan(
+			&i.MatchID,
+			&i.Mode,
+			&i.Section,
+			&i.Status,
+			&i.WinnerID,
+			&i.StartedAt,
+			&i.FinishedAt,
+			&i.MeEloBefore,
+			&i.MeEloAfter,
+			&i.OpponentUserID,
+			&i.OpponentUsername,
+			&i.OpponentAvatarUrl,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const pickActiveTaskBySectionDifficulty = `-- name: PickActiveTaskBySectionDifficulty :one
 SELECT id, version, slug, title_ru, description_ru, difficulty, section,
        time_limit_sec, memory_limit_mb
@@ -287,123 +402,6 @@ func (q *Queries) UpdateArenaMatchStatus(ctx context.Context, arg UpdateArenaMat
 		return 0, err
 	}
 	return result.RowsAffected(), nil
-}
-
-const listMyMatches = `-- name: ListMyMatches :many
-SELECT m.id                AS match_id,
-       m.mode,
-       m.section,
-       m.status,
-       m.winner_id,
-       m.started_at,
-       m.finished_at,
-       me.elo_before       AS me_elo_before,
-       me.elo_after        AS me_elo_after,
-       opp.user_id         AS opponent_user_id,
-       opp_user.username   AS opponent_username,
-       opp_user.avatar_url AS opponent_avatar_url
-  FROM arena_matches m
-  JOIN arena_participants me  ON me.match_id  = m.id  AND me.user_id  = $1
-  LEFT JOIN arena_participants opp
-         ON opp.match_id = m.id AND opp.user_id <> $1
-  LEFT JOIN users opp_user ON opp_user.id = opp.user_id
- WHERE m.status IN ('finished','cancelled')
-   AND ($2::text = '' OR m.mode    = $2)
-   AND ($3::text = '' OR m.section = $3)
- ORDER BY COALESCE(m.finished_at, m.created_at) DESC, m.id DESC
- LIMIT $4 OFFSET $5
-`
-
-// ListMyMatchesParams is the params struct for ListMyMatches.
-type ListMyMatchesParams struct {
-	UserID  pgtype.UUID
-	Mode    string
-	Section string
-	Limit   int32
-	Offset  int32
-}
-
-// ListMyMatchesRow is one row of the per-user history listing.
-// OpponentAvatarURL is pgtype.Text because the LEFT JOIN can yield NULL when
-// the opponent row is missing (1v1 match with a vanished participant).
-type ListMyMatchesRow struct {
-	MatchID           pgtype.UUID
-	Mode              string
-	Section           string
-	Status            string
-	WinnerID          pgtype.UUID
-	StartedAt         pgtype.Timestamptz
-	FinishedAt        pgtype.Timestamptz
-	MeEloBefore       int32
-	MeEloAfter        pgtype.Int4
-	OpponentUserID    pgtype.UUID
-	OpponentUsername  pgtype.Text
-	OpponentAvatarURL pgtype.Text
-}
-
-// ListMyMatches executes the listMyMatches query.
-func (q *Queries) ListMyMatches(ctx context.Context, arg ListMyMatchesParams) ([]ListMyMatchesRow, error) {
-	rows, err := q.db.Query(ctx, listMyMatches,
-		arg.UserID,
-		arg.Mode,
-		arg.Section,
-		arg.Limit,
-		arg.Offset,
-	)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	items := []ListMyMatchesRow{}
-	for rows.Next() {
-		var i ListMyMatchesRow
-		if err := rows.Scan(
-			&i.MatchID,
-			&i.Mode,
-			&i.Section,
-			&i.Status,
-			&i.WinnerID,
-			&i.StartedAt,
-			&i.FinishedAt,
-			&i.MeEloBefore,
-			&i.MeEloAfter,
-			&i.OpponentUserID,
-			&i.OpponentUsername,
-			&i.OpponentAvatarURL,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
-const countMyMatches = `-- name: CountMyMatches :one
-SELECT COUNT(*)::bigint AS total
-  FROM arena_matches m
-  JOIN arena_participants me ON me.match_id = m.id AND me.user_id = $1
- WHERE m.status IN ('finished','cancelled')
-   AND ($2::text = '' OR m.mode    = $2)
-   AND ($3::text = '' OR m.section = $3)
-`
-
-// CountMyMatchesParams is the params struct for CountMyMatches.
-type CountMyMatchesParams struct {
-	UserID  pgtype.UUID
-	Mode    string
-	Section string
-}
-
-// CountMyMatches returns the total number of finished/cancelled matches for
-// the user (under the same filter as ListMyMatches).
-func (q *Queries) CountMyMatches(ctx context.Context, arg CountMyMatchesParams) (int64, error) {
-	row := q.db.QueryRow(ctx, countMyMatches, arg.UserID, arg.Mode, arg.Section)
-	var total int64
-	err := row.Scan(&total)
-	return total, err
 }
 
 const upsertParticipantResult = `-- name: UpsertParticipantResult :execrows

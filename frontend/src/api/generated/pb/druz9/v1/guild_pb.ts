@@ -560,3 +560,155 @@ export class ContributeRequest extends Message<ContributeRequest> {
   }
 }
 
+/**
+ * TopGuildSummary — одна строка топ-листа гильдий.
+ * Используется в ListTopGuilds (страница /guild без guild_id, для не-членов).
+ *
+ * @generated from message druz9.v1.TopGuildSummary
+ */
+export class TopGuildSummary extends Message<TopGuildSummary> {
+  /**
+   * @generated from field: string guild_id = 1;
+   */
+  guildId = "";
+
+  /**
+   * @generated from field: string name = 2;
+   */
+  name = "";
+
+  /**
+   * @generated from field: string emblem = 3;
+   */
+  emblem = "";
+
+  /**
+   * @generated from field: int32 members_count = 4;
+   */
+  membersCount = 0;
+
+  /**
+   * @generated from field: int32 elo_total = 5;
+   */
+  eloTotal = 0;
+
+  /**
+   * @generated from field: int32 wars_won = 6;
+   */
+  warsWon = 0;
+
+  /**
+   * @generated from field: int32 rank = 7;
+   */
+  rank = 0;
+
+  constructor(data?: PartialMessage<TopGuildSummary>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.TopGuildSummary";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "guild_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "name", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 3, name: "emblem", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 4, name: "members_count", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 5, name: "elo_total", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 6, name: "wars_won", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 7, name: "rank", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): TopGuildSummary {
+    return new TopGuildSummary().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): TopGuildSummary {
+    return new TopGuildSummary().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): TopGuildSummary {
+    return new TopGuildSummary().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: TopGuildSummary | PlainMessage<TopGuildSummary> | undefined, b: TopGuildSummary | PlainMessage<TopGuildSummary> | undefined): boolean {
+    return proto3.util.equals(TopGuildSummary, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.ListTopGuildsRequest
+ */
+export class ListTopGuildsRequest extends Message<ListTopGuildsRequest> {
+  /**
+   * limit: 1..100, default 20.
+   *
+   * @generated from field: int32 limit = 1;
+   */
+  limit = 0;
+
+  constructor(data?: PartialMessage<ListTopGuildsRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.ListTopGuildsRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "limit", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ListTopGuildsRequest {
+    return new ListTopGuildsRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): ListTopGuildsRequest {
+    return new ListTopGuildsRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): ListTopGuildsRequest {
+    return new ListTopGuildsRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: ListTopGuildsRequest | PlainMessage<ListTopGuildsRequest> | undefined, b: ListTopGuildsRequest | PlainMessage<ListTopGuildsRequest> | undefined): boolean {
+    return proto3.util.equals(ListTopGuildsRequest, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.ListTopGuildsResponse
+ */
+export class ListTopGuildsResponse extends Message<ListTopGuildsResponse> {
+  /**
+   * @generated from field: repeated druz9.v1.TopGuildSummary items = 1;
+   */
+  items: TopGuildSummary[] = [];
+
+  constructor(data?: PartialMessage<ListTopGuildsResponse>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.ListTopGuildsResponse";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "items", kind: "message", T: TopGuildSummary, repeated: true },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ListTopGuildsResponse {
+    return new ListTopGuildsResponse().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): ListTopGuildsResponse {
+    return new ListTopGuildsResponse().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): ListTopGuildsResponse {
+    return new ListTopGuildsResponse().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: ListTopGuildsResponse | PlainMessage<ListTopGuildsResponse> | undefined, b: ListTopGuildsResponse | PlainMessage<ListTopGuildsResponse> | undefined): boolean {
+    return proto3.util.equals(ListTopGuildsResponse, a, b);
+  }
+}
+

@@ -71,6 +71,7 @@ SELECT id, version, slug, title_ru, description_ru, difficulty, section,
 -- Joined to users for opponent username + avatar_url (added in 00010).
 
 -- name: ListMyMatches :many
+-- sqlc.arg(...) даёт нормальные имена параметров вместо Column2/Column3.
 SELECT m.id                AS match_id,
        m.mode,
        m.section,
@@ -84,20 +85,20 @@ SELECT m.id                AS match_id,
        opp_user.username   AS opponent_username,
        opp_user.avatar_url AS opponent_avatar_url
   FROM arena_matches m
-  JOIN arena_participants me  ON me.match_id  = m.id  AND me.user_id  = $1
+  JOIN arena_participants me  ON me.match_id  = m.id  AND me.user_id  = sqlc.arg(user_id)
   LEFT JOIN arena_participants opp
-         ON opp.match_id = m.id AND opp.user_id <> $1
+         ON opp.match_id = m.id AND opp.user_id <> sqlc.arg(user_id)
   LEFT JOIN users opp_user ON opp_user.id = opp.user_id
  WHERE m.status IN ('finished','cancelled')
-   AND ($2::text = '' OR m.mode    = $2)
-   AND ($3::text = '' OR m.section = $3)
+   AND (sqlc.arg(mode)::text    = '' OR m.mode    = sqlc.arg(mode)::text)
+   AND (sqlc.arg(section)::text = '' OR m.section = sqlc.arg(section)::text)
  ORDER BY COALESCE(m.finished_at, m.created_at) DESC, m.id DESC
- LIMIT $4 OFFSET $5;
+ LIMIT sqlc.arg(limit_val) OFFSET sqlc.arg(offset_val);
 
 -- name: CountMyMatches :one
 SELECT COUNT(*)::bigint AS total
   FROM arena_matches m
-  JOIN arena_participants me ON me.match_id = m.id AND me.user_id = $1
+  JOIN arena_participants me ON me.match_id = m.id AND me.user_id = sqlc.arg(user_id)
  WHERE m.status IN ('finished','cancelled')
-   AND ($2::text = '' OR m.mode    = $2)
-   AND ($3::text = '' OR m.section = $3);
+   AND (sqlc.arg(mode)::text    = '' OR m.mode    = sqlc.arg(mode)::text)
+   AND (sqlc.arg(section)::text = '' OR m.section = sqlc.arg(section)::text);

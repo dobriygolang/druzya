@@ -49,6 +49,9 @@ message ProfileFull {
   ProfileSubscription subscription = 13;
   int32 ai_credits = 14;
   google.protobuf.Timestamp created_at = 15;
+  // avatar_url берётся из users.avatar_url (заполняется при OAuth-логине,
+  // см. миграцию 00010_users_avatar.sql и login_yandex/login_telegram).
+  string avatar_url = 16;
 }
 
 // SectionRating mirrors the top-level OpenAPI SectionRating (rating.proto
@@ -110,6 +113,8 @@ message ProfilePublic {
   repeated ProfileSectionRating ratings = 8;
   repeated Achievement achievements = 9;
   SkillAtlas atlas_preview = 10;
+  // avatar_url из users.avatar_url. См. comment в ProfileFull.
+  string avatar_url = 11;
 }
 
 // ReportMetrics mirrors the inline `metrics` block of OpenAPI WeeklyReport.

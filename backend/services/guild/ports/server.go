@@ -34,12 +34,50 @@ type GuildServer struct {
 	GetUC        *app.GetGuild
 	WarUC        *app.GetWar
 	ContributeUC *app.Contribute
+	TopUC        *app.ListTopGuilds
 	Log          *slog.Logger
 }
 
 // NewGuildServer wires a GuildServer.
-func NewGuildServer(my *app.GetMyGuild, g *app.GetGuild, w *app.GetWar, c *app.Contribute, log *slog.Logger) *GuildServer {
-	return &GuildServer{MyGuildUC: my, GetUC: g, WarUC: w, ContributeUC: c, Log: log}
+func NewGuildServer(
+	my *app.GetMyGuild,
+	g *app.GetGuild,
+	w *app.GetWar,
+	c *app.Contribute,
+	top *app.ListTopGuilds,
+	log *slog.Logger,
+) *GuildServer {
+	return &GuildServer{MyGuildUC: my, GetUC: g, WarUC: w, ContributeUC: c, TopUC: top, Log: log}
+}
+
+// ListTopGuilds implements druz9.v1.GuildService/ListTopGuilds.
+//
+// Public — без auth (для не-членов гильдии). Раньше был chi-route в rest.go.
+func (s *GuildServer) ListTopGuilds(
+	ctx context.Context,
+	req *connect.Request[pb.ListTopGuildsRequest],
+) (*connect.Response[pb.ListTopGuildsResponse], error) {
+	limit := int(req.Msg.GetLimit())
+	if limit <= 0 {
+		limit = domain.DefaultTopGuildsLimit
+	}
+	out, err := s.TopUC.Do(ctx, limit)
+	if err != nil {
+		return nil, fmt.Errorf("guild.ListTopGuilds: %w", s.toConnectErr(err))
+	}
+	items := make([]*pb.TopGuildSummary, 0, len(out))
+	for _, g := range out {
+		items = append(items, &pb.TopGuildSummary{
+			GuildId:      g.GuildID.String(),
+			Name:         g.Name,
+			Emblem:       g.Emblem,
+			MembersCount: int32(g.MembersCount),
+			EloTotal:     int32(g.EloTotal),
+			WarsWon:      int32(g.WarsWon),
+			Rank:         int32(g.Rank),
+		})
+	}
+	return connect.NewResponse(&pb.ListTopGuildsResponse{Items: items}), nil
 }
 
 // GetMyGuild implements druz9.v1.GuildService/GetMyGuild.

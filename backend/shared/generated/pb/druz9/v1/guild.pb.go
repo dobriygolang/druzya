@@ -684,6 +684,189 @@ func (x *ContributeRequest) GetLanguage() Language {
 	return Language_LANGUAGE_UNSPECIFIED
 }
 
+// TopGuildSummary — одна строка топ-листа гильдий.
+// Используется в ListTopGuilds (страница /guild без guild_id, для не-членов).
+type TopGuildSummary struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	GuildId       string                 `protobuf:"bytes,1,opt,name=guild_id,json=guildId,proto3" json:"guild_id,omitempty"`
+	Name          string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	Emblem        string                 `protobuf:"bytes,3,opt,name=emblem,proto3" json:"emblem,omitempty"`
+	MembersCount  int32                  `protobuf:"varint,4,opt,name=members_count,json=membersCount,proto3" json:"members_count,omitempty"`
+	EloTotal      int32                  `protobuf:"varint,5,opt,name=elo_total,json=eloTotal,proto3" json:"elo_total,omitempty"`
+	WarsWon       int32                  `protobuf:"varint,6,opt,name=wars_won,json=warsWon,proto3" json:"wars_won,omitempty"`
+	Rank          int32                  `protobuf:"varint,7,opt,name=rank,proto3" json:"rank,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *TopGuildSummary) Reset() {
+	*x = TopGuildSummary{}
+	mi := &file_druz9_v1_guild_proto_msgTypes[10]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *TopGuildSummary) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*TopGuildSummary) ProtoMessage() {}
+
+func (x *TopGuildSummary) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_guild_proto_msgTypes[10]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use TopGuildSummary.ProtoReflect.Descriptor instead.
+func (*TopGuildSummary) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_guild_proto_rawDescGZIP(), []int{10}
+}
+
+func (x *TopGuildSummary) GetGuildId() string {
+	if x != nil {
+		return x.GuildId
+	}
+	return ""
+}
+
+func (x *TopGuildSummary) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *TopGuildSummary) GetEmblem() string {
+	if x != nil {
+		return x.Emblem
+	}
+	return ""
+}
+
+func (x *TopGuildSummary) GetMembersCount() int32 {
+	if x != nil {
+		return x.MembersCount
+	}
+	return 0
+}
+
+func (x *TopGuildSummary) GetEloTotal() int32 {
+	if x != nil {
+		return x.EloTotal
+	}
+	return 0
+}
+
+func (x *TopGuildSummary) GetWarsWon() int32 {
+	if x != nil {
+		return x.WarsWon
+	}
+	return 0
+}
+
+func (x *TopGuildSummary) GetRank() int32 {
+	if x != nil {
+		return x.Rank
+	}
+	return 0
+}
+
+type ListTopGuildsRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// limit: 1..100, default 20.
+	Limit         int32 `protobuf:"varint,1,opt,name=limit,proto3" json:"limit,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListTopGuildsRequest) Reset() {
+	*x = ListTopGuildsRequest{}
+	mi := &file_druz9_v1_guild_proto_msgTypes[11]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListTopGuildsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListTopGuildsRequest) ProtoMessage() {}
+
+func (x *ListTopGuildsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_guild_proto_msgTypes[11]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListTopGuildsRequest.ProtoReflect.Descriptor instead.
+func (*ListTopGuildsRequest) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_guild_proto_rawDescGZIP(), []int{11}
+}
+
+func (x *ListTopGuildsRequest) GetLimit() int32 {
+	if x != nil {
+		return x.Limit
+	}
+	return 0
+}
+
+type ListTopGuildsResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Items         []*TopGuildSummary     `protobuf:"bytes,1,rep,name=items,proto3" json:"items,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListTopGuildsResponse) Reset() {
+	*x = ListTopGuildsResponse{}
+	mi := &file_druz9_v1_guild_proto_msgTypes[12]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListTopGuildsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListTopGuildsResponse) ProtoMessage() {}
+
+func (x *ListTopGuildsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_guild_proto_msgTypes[12]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListTopGuildsResponse.ProtoReflect.Descriptor instead.
+func (*ListTopGuildsResponse) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_guild_proto_rawDescGZIP(), []int{12}
+}
+
+func (x *ListTopGuildsResponse) GetItems() []*TopGuildSummary {
+	if x != nil {
+		return x.Items
+	}
+	return nil
+}
+
 var File_druz9_v1_guild_proto protoreflect.FileDescriptor
 
 const file_druz9_v1_guild_proto_rawDesc = "" +
@@ -734,14 +917,27 @@ const file_druz9_v1_guild_proto_rawDesc = "" +
 	"\bguild_id\x18\x01 \x01(\tR\aguildId\x12+\n" +
 	"\asection\x18\x02 \x01(\x0e2\x11.druz9.v1.SectionR\asection\x12\x12\n" +
 	"\x04code\x18\x03 \x01(\tR\x04code\x12.\n" +
-	"\blanguage\x18\x04 \x01(\x0e2\x12.druz9.v1.LanguageR\blanguage2\x93\x03\n" +
+	"\blanguage\x18\x04 \x01(\x0e2\x12.druz9.v1.LanguageR\blanguage\"\xc9\x01\n" +
+	"\x0fTopGuildSummary\x12\x19\n" +
+	"\bguild_id\x18\x01 \x01(\tR\aguildId\x12\x12\n" +
+	"\x04name\x18\x02 \x01(\tR\x04name\x12\x16\n" +
+	"\x06emblem\x18\x03 \x01(\tR\x06emblem\x12#\n" +
+	"\rmembers_count\x18\x04 \x01(\x05R\fmembersCount\x12\x1b\n" +
+	"\telo_total\x18\x05 \x01(\x05R\beloTotal\x12\x19\n" +
+	"\bwars_won\x18\x06 \x01(\x05R\awarsWon\x12\x12\n" +
+	"\x04rank\x18\a \x01(\x05R\x04rank\",\n" +
+	"\x14ListTopGuildsRequest\x12\x14\n" +
+	"\x05limit\x18\x01 \x01(\x05R\x05limit\"H\n" +
+	"\x15ListTopGuildsResponse\x12/\n" +
+	"\x05items\x18\x01 \x03(\v2\x19.druz9.v1.TopGuildSummaryR\x05items2\x81\x04\n" +
 	"\fGuildService\x12T\n" +
 	"\n" +
 	"GetMyGuild\x12\x1b.druz9.v1.GetMyGuildRequest\x1a\x0f.druz9.v1.Guild\"\x18\x82\xd3\xe4\x93\x02\x12\x12\x10/api/v1/guild/my\x12X\n" +
 	"\bGetGuild\x12\x19.druz9.v1.GetGuildRequest\x1a\x0f.druz9.v1.Guild\" \x82\xd3\xe4\x93\x02\x1a\x12\x18/api/v1/guild/{guild_id}\x12`\n" +
 	"\x06GetWar\x12\x1c.druz9.v1.GetGuildWarRequest\x1a\x12.druz9.v1.GuildWar\"$\x82\xd3\xe4\x93\x02\x1e\x12\x1c/api/v1/guild/{guild_id}/war\x12q\n" +
 	"\n" +
-	"Contribute\x12\x1b.druz9.v1.ContributeRequest\x1a\x12.druz9.v1.GuildWar\"2\x82\xd3\xe4\x93\x02,:\x01*\"'/api/v1/guild/{guild_id}/war/contributeB\x87\x01\n" +
+	"Contribute\x12\x1b.druz9.v1.ContributeRequest\x1a\x12.druz9.v1.GuildWar\"2\x82\xd3\xe4\x93\x02,:\x01*\"'/api/v1/guild/{guild_id}/war/contribute\x12l\n" +
+	"\rListTopGuilds\x12\x1e.druz9.v1.ListTopGuildsRequest\x1a\x1f.druz9.v1.ListTopGuildsResponse\"\x1a\x82\xd3\xe4\x93\x02\x14\x12\x12/api/v1/guilds/topB\x87\x01\n" +
 	"\fcom.druz9.v1B\n" +
 	"GuildProtoP\x01Z*druz9/shared/generated/pb/druz9/v1;druz9v1\xa2\x02\x03DXX\xaa\x02\bDruz9.V1\xca\x02\bDruz9\\V1\xe2\x02\x14Druz9\\V1\\GPBMetadata\xea\x02\tDruz9::V1b\x06proto3"
 
@@ -757,7 +953,7 @@ func file_druz9_v1_guild_proto_rawDescGZIP() []byte {
 	return file_druz9_v1_guild_proto_rawDescData
 }
 
-var file_druz9_v1_guild_proto_msgTypes = make([]protoimpl.MessageInfo, 10)
+var file_druz9_v1_guild_proto_msgTypes = make([]protoimpl.MessageInfo, 13)
 var file_druz9_v1_guild_proto_goTypes = []any{
 	(*GuildMember)(nil),           // 0: druz9.v1.GuildMember
 	(*Guild)(nil),                 // 1: druz9.v1.Guild
@@ -769,34 +965,40 @@ var file_druz9_v1_guild_proto_goTypes = []any{
 	(*GetGuildRequest)(nil),       // 7: druz9.v1.GetGuildRequest
 	(*GetGuildWarRequest)(nil),    // 8: druz9.v1.GetGuildWarRequest
 	(*ContributeRequest)(nil),     // 9: druz9.v1.ContributeRequest
-	(*timestamppb.Timestamp)(nil), // 10: google.protobuf.Timestamp
-	(Section)(0),                  // 11: druz9.v1.Section
-	(Language)(0),                 // 12: druz9.v1.Language
+	(*TopGuildSummary)(nil),       // 10: druz9.v1.TopGuildSummary
+	(*ListTopGuildsRequest)(nil),  // 11: druz9.v1.ListTopGuildsRequest
+	(*ListTopGuildsResponse)(nil), // 12: druz9.v1.ListTopGuildsResponse
+	(*timestamppb.Timestamp)(nil), // 13: google.protobuf.Timestamp
+	(Section)(0),                  // 14: druz9.v1.Section
+	(Language)(0),                 // 15: druz9.v1.Language
 }
 var file_druz9_v1_guild_proto_depIdxs = []int32{
-	10, // 0: druz9.v1.GuildMember.joined_at:type_name -> google.protobuf.Timestamp
-	11, // 1: druz9.v1.GuildMember.assigned_section:type_name -> druz9.v1.Section
+	13, // 0: druz9.v1.GuildMember.joined_at:type_name -> google.protobuf.Timestamp
+	14, // 1: druz9.v1.GuildMember.assigned_section:type_name -> druz9.v1.Section
 	0,  // 2: druz9.v1.Guild.members:type_name -> druz9.v1.GuildMember
-	11, // 3: druz9.v1.WarLine.section:type_name -> druz9.v1.Section
+	14, // 3: druz9.v1.WarLine.section:type_name -> druz9.v1.Section
 	3,  // 4: druz9.v1.WarLine.contributors:type_name -> druz9.v1.WarLineContributor
 	2,  // 5: druz9.v1.GuildWar.guild_a:type_name -> druz9.v1.GuildSummary
 	2,  // 6: druz9.v1.GuildWar.guild_b:type_name -> druz9.v1.GuildSummary
 	4,  // 7: druz9.v1.GuildWar.lines:type_name -> druz9.v1.WarLine
-	11, // 8: druz9.v1.ContributeRequest.section:type_name -> druz9.v1.Section
-	12, // 9: druz9.v1.ContributeRequest.language:type_name -> druz9.v1.Language
-	6,  // 10: druz9.v1.GuildService.GetMyGuild:input_type -> druz9.v1.GetMyGuildRequest
-	7,  // 11: druz9.v1.GuildService.GetGuild:input_type -> druz9.v1.GetGuildRequest
-	8,  // 12: druz9.v1.GuildService.GetWar:input_type -> druz9.v1.GetGuildWarRequest
-	9,  // 13: druz9.v1.GuildService.Contribute:input_type -> druz9.v1.ContributeRequest
-	1,  // 14: druz9.v1.GuildService.GetMyGuild:output_type -> druz9.v1.Guild
-	1,  // 15: druz9.v1.GuildService.GetGuild:output_type -> druz9.v1.Guild
-	5,  // 16: druz9.v1.GuildService.GetWar:output_type -> druz9.v1.GuildWar
-	5,  // 17: druz9.v1.GuildService.Contribute:output_type -> druz9.v1.GuildWar
-	14, // [14:18] is the sub-list for method output_type
-	10, // [10:14] is the sub-list for method input_type
-	10, // [10:10] is the sub-list for extension type_name
-	10, // [10:10] is the sub-list for extension extendee
-	0,  // [0:10] is the sub-list for field type_name
+	14, // 8: druz9.v1.ContributeRequest.section:type_name -> druz9.v1.Section
+	15, // 9: druz9.v1.ContributeRequest.language:type_name -> druz9.v1.Language
+	10, // 10: druz9.v1.ListTopGuildsResponse.items:type_name -> druz9.v1.TopGuildSummary
+	6,  // 11: druz9.v1.GuildService.GetMyGuild:input_type -> druz9.v1.GetMyGuildRequest
+	7,  // 12: druz9.v1.GuildService.GetGuild:input_type -> druz9.v1.GetGuildRequest
+	8,  // 13: druz9.v1.GuildService.GetWar:input_type -> druz9.v1.GetGuildWarRequest
+	9,  // 14: druz9.v1.GuildService.Contribute:input_type -> druz9.v1.ContributeRequest
+	11, // 15: druz9.v1.GuildService.ListTopGuilds:input_type -> druz9.v1.ListTopGuildsRequest
+	1,  // 16: druz9.v1.GuildService.GetMyGuild:output_type -> druz9.v1.Guild
+	1,  // 17: druz9.v1.GuildService.GetGuild:output_type -> druz9.v1.Guild
+	5,  // 18: druz9.v1.GuildService.GetWar:output_type -> druz9.v1.GuildWar
+	5,  // 19: druz9.v1.GuildService.Contribute:output_type -> druz9.v1.GuildWar
+	12, // 20: druz9.v1.GuildService.ListTopGuilds:output_type -> druz9.v1.ListTopGuildsResponse
+	16, // [16:21] is the sub-list for method output_type
+	11, // [11:16] is the sub-list for method input_type
+	11, // [11:11] is the sub-list for extension type_name
+	11, // [11:11] is the sub-list for extension extendee
+	0,  // [0:11] is the sub-list for field type_name
 }
 
 func init() { file_druz9_v1_guild_proto_init() }
@@ -811,7 +1013,7 @@ func file_druz9_v1_guild_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_druz9_v1_guild_proto_rawDesc), len(file_druz9_v1_guild_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   10,
+			NumMessages:   13,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

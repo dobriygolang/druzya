@@ -202,6 +202,60 @@ func (q *Queries) ListGuildMembers(ctx context.Context, guildID pgtype.UUID) ([]
 	return items, nil
 }
 
+const listTopGuilds = `-- name: ListTopGuilds :many
+SELECT g.id,
+       g.name,
+       g.emblem,
+       g.guild_elo,
+       (SELECT COUNT(*)::int FROM guild_members gm WHERE gm.guild_id = g.id)        AS members_count,
+       (SELECT COUNT(*)::int FROM guild_wars gw WHERE gw.winner_id = g.id)          AS wars_won
+  FROM guilds g
+ ORDER BY g.guild_elo DESC, g.id ASC
+ LIMIT $1
+`
+
+type ListTopGuildsRow struct {
+	ID           pgtype.UUID
+	Name         string
+	Emblem       pgtype.Text
+	GuildElo     int32
+	MembersCount int32
+	WarsWon      int32
+}
+
+// Global guild leaderboard. We surface the existing guild_elo column as the
+// primary ranking metric (the bible's "elo_total" — guilds carry a single
+// ELO, members aren't summed, so this is the right pivot). members_count is
+// a simple correlated count. wars_won counts every guild_wars row where
+// this guild is the recorded winner. The ORDER BY is deterministic on ties
+// (elo desc, id asc) so the cache is consistent across reads.
+func (q *Queries) ListTopGuilds(ctx context.Context, limit int32) ([]ListTopGuildsRow, error) {
+	rows, err := q.db.Query(ctx, listTopGuilds, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListTopGuildsRow{}
+	for rows.Next() {
+		var i ListTopGuildsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Name,
+			&i.Emblem,
+			&i.GuildElo,
+			&i.MembersCount,
+			&i.WarsWon,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const setWarWinner = `-- name: SetWarWinner :execrows
 UPDATE guild_wars
    SET winner_id = $2

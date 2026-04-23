@@ -204,6 +204,14 @@ export class ProfileFull extends Message<ProfileFull> {
    */
   createdAt?: Timestamp;
 
+  /**
+   * avatar_url берётся из users.avatar_url (заполняется при OAuth-логине,
+   * см. миграцию 00010_users_avatar.sql и login_yandex/login_telegram).
+   *
+   * @generated from field: string avatar_url = 16;
+   */
+  avatarUrl = "";
+
   constructor(data?: PartialMessage<ProfileFull>) {
     super();
     proto3.util.initPartial(data, this);
@@ -227,6 +235,7 @@ export class ProfileFull extends Message<ProfileFull> {
     { no: 13, name: "subscription", kind: "message", T: ProfileSubscription },
     { no: 14, name: "ai_credits", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
     { no: 15, name: "created_at", kind: "message", T: Timestamp },
+    { no: 16, name: "avatar_url", kind: "scalar", T: 9 /* ScalarType.STRING */ },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ProfileFull {
@@ -610,6 +619,13 @@ export class ProfilePublic extends Message<ProfilePublic> {
    */
   atlasPreview?: SkillAtlas;
 
+  /**
+   * avatar_url из users.avatar_url. См. comment в ProfileFull.
+   *
+   * @generated from field: string avatar_url = 11;
+   */
+  avatarUrl = "";
+
   constructor(data?: PartialMessage<ProfilePublic>) {
     super();
     proto3.util.initPartial(data, this);
@@ -628,6 +644,7 @@ export class ProfilePublic extends Message<ProfilePublic> {
     { no: 8, name: "ratings", kind: "message", T: ProfileSectionRating, repeated: true },
     { no: 9, name: "achievements", kind: "message", T: Achievement, repeated: true },
     { no: 10, name: "atlas_preview", kind: "message", T: SkillAtlas },
+    { no: 11, name: "avatar_url", kind: "scalar", T: 9 /* ScalarType.STRING */ },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ProfilePublic {

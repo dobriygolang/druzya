@@ -6,12 +6,9 @@ package ports
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"io"
 	"log/slog"
-	"net/http"
-	"net/http/httptest"
 	"testing"
 	"time"
 
@@ -43,7 +40,8 @@ func newTestServer(_ *testing.T, guilds domain.GuildRepo, wars domain.WarRepo) *
 	get := &app.GetGuild{Guilds: guilds, Wars: wars, Clock: clock}
 	war := &app.GetWar{Guilds: guilds, Wars: wars, Clock: clock}
 	contribute := &app.Contribute{Guilds: guilds, Wars: wars, GetWar: war, Clock: clock}
-	return NewGuildServer(my, get, war, contribute, silentLogger())
+	top := &app.ListTopGuilds{Guilds: guilds}
+	return NewGuildServer(my, get, war, contribute, top, silentLogger())
 }
 
 // ── GetMyGuild ────────────────────────────────────────────────────────────
@@ -191,16 +189,12 @@ func TestGuildServer_GetWar_NotFound(t *testing.T) {
 	}
 }
 
-// ── TopGuildsHandler (REST shim) ──────────────────────────────────────────
+// ── ListTopGuilds (Connect-RPC) ────────────────────────────────────────────
+//
+// Раньше это был отдельный TopGuildsHandler (chi-route). После перевода в
+// Connect-RPC тесты вызывают метод server напрямую через connect.NewRequest.
 
-func newTestTopHandler(_ *testing.T, repo domain.GuildRepo) *TopGuildsHandler {
-	return &TopGuildsHandler{
-		UC:  &app.ListTopGuilds{Guilds: repo},
-		Log: silentLogger(),
-	}
-}
-
-func TestTopGuildsHandler_Happy(t *testing.T) {
+func TestListTopGuilds_Happy(t *testing.T) {
 	t.Parallel()
 	ctrl := gomock.NewController(t)
 	repo := mocks.NewMockGuildRepo(ctrl)
@@ -210,114 +204,77 @@ func TestTopGuildsHandler_Happy(t *testing.T) {
 		{GuildID: id2, Name: "beta", Emblem: "sword", MembersCount: 7, EloTotal: 1700, WarsWon: 2, Rank: 2},
 	}, nil)
 
-	h := newTestTopHandler(t, repo)
-	req := httptest.NewRequest(http.MethodGet, "/api/v1/guilds/top?limit=5", nil)
-	rr := httptest.NewRecorder()
-	h.ServeHTTP(rr, req)
-
-	if rr.Code != http.StatusOK {
-		t.Fatalf("status=%d body=%s", rr.Code, rr.Body.String())
+	srv := newTestServer(t, repo, nil)
+	resp, err := srv.ListTopGuilds(context.Background(), connect.NewRequest(&pb.ListTopGuildsRequest{Limit: 5}))
+	if err != nil {
+		t.Fatalf("unexpected err: %v", err)
 	}
-	if ct := rr.Header().Get("Content-Type"); ct != "application/json" {
-		t.Fatalf("content-type=%q", ct)
+	if len(resp.Msg.Items) != 2 {
+		t.Fatalf("expected 2 items, got %d", len(resp.Msg.Items))
 	}
-	var resp struct {
-		Items []struct {
-			GuildID      string `json:"guild_id"`
-			Name         string `json:"name"`
-			MembersCount int    `json:"members_count"`
-			EloTotal     int    `json:"elo_total"`
-			Rank         int    `json:"rank"`
-		} `json:"items"`
+	if resp.Msg.Items[0].Name != "alpha" || resp.Msg.Items[0].EloTotal != 1900 || resp.Msg.Items[0].Rank != 1 {
+		t.Fatalf("first item mismatch: %+v", resp.Msg.Items[0])
 	}
-	if err := json.Unmarshal(rr.Body.Bytes(), &resp); err != nil {
-		t.Fatalf("decode: %v / body=%s", err, rr.Body.String())
-	}
-	if len(resp.Items) != 2 {
-		t.Fatalf("expected 2 items, got %d", len(resp.Items))
-	}
-	if resp.Items[0].Name != "alpha" || resp.Items[0].EloTotal != 1900 || resp.Items[0].Rank != 1 {
-		t.Fatalf("first item mismatch: %+v", resp.Items[0])
-	}
-	if resp.Items[0].GuildID != id1.String() {
-		t.Fatalf("uuid mismatch: %q vs %q", resp.Items[0].GuildID, id1.String())
+	if resp.Msg.Items[0].GuildId != id1.String() {
+		t.Fatalf("uuid mismatch: %q vs %q", resp.Msg.Items[0].GuildId, id1.String())
 	}
 }
 
-func TestTopGuildsHandler_Empty(t *testing.T) {
+func TestListTopGuilds_Empty(t *testing.T) {
 	t.Parallel()
 	ctrl := gomock.NewController(t)
 	repo := mocks.NewMockGuildRepo(ctrl)
 	repo.EXPECT().ListTopGuilds(gomock.Any(), domain.DefaultTopGuildsLimit).Return(nil, nil)
 
-	h := newTestTopHandler(t, repo)
-	req := httptest.NewRequest(http.MethodGet, "/api/v1/guilds/top", nil)
-	rr := httptest.NewRecorder()
-	h.ServeHTTP(rr, req)
-
-	if rr.Code != http.StatusOK {
-		t.Fatalf("status=%d body=%s", rr.Code, rr.Body.String())
+	srv := newTestServer(t, repo, nil)
+	resp, err := srv.ListTopGuilds(context.Background(), connect.NewRequest(&pb.ListTopGuildsRequest{}))
+	if err != nil {
+		t.Fatalf("unexpected err: %v", err)
 	}
-	var resp struct {
-		Items []struct{} `json:"items"`
+	if resp.Msg.Items == nil {
+		t.Fatalf("expected non-nil empty slice, got nil")
 	}
-	if err := json.Unmarshal(rr.Body.Bytes(), &resp); err != nil {
-		t.Fatalf("decode: %v / body=%s", err, rr.Body.String())
-	}
-	if resp.Items == nil {
-		t.Fatalf("expected non-nil empty array, got nil")
-	}
-	if len(resp.Items) != 0 {
-		t.Fatalf("expected empty, got %d", len(resp.Items))
+	if len(resp.Msg.Items) != 0 {
+		t.Fatalf("expected empty, got %d", len(resp.Msg.Items))
 	}
 }
 
-func TestTopGuildsHandler_LimitClampHigh(t *testing.T) {
+func TestListTopGuilds_LimitClampHigh(t *testing.T) {
 	t.Parallel()
 	ctrl := gomock.NewController(t)
 	repo := mocks.NewMockGuildRepo(ctrl)
-	// limit=9999 should be clamped to MaxTopGuildsLimit (=100) by the use case.
 	repo.EXPECT().ListTopGuilds(gomock.Any(), domain.MaxTopGuildsLimit).Return(nil, nil)
 
-	h := newTestTopHandler(t, repo)
-	req := httptest.NewRequest(http.MethodGet, "/api/v1/guilds/top?limit=9999", nil)
-	rr := httptest.NewRecorder()
-	h.ServeHTTP(rr, req)
-	if rr.Code != http.StatusOK {
-		t.Fatalf("status=%d", rr.Code)
+	srv := newTestServer(t, repo, nil)
+	if _, err := srv.ListTopGuilds(context.Background(), connect.NewRequest(&pb.ListTopGuildsRequest{Limit: 9999})); err != nil {
+		t.Fatalf("unexpected err: %v", err)
 	}
 }
 
-func TestTopGuildsHandler_LimitClampLow(t *testing.T) {
+func TestListTopGuilds_LimitClampLow(t *testing.T) {
 	t.Parallel()
 	ctrl := gomock.NewController(t)
 	repo := mocks.NewMockGuildRepo(ctrl)
-	// limit=-1 → falls through to DefaultTopGuildsLimit.
 	repo.EXPECT().ListTopGuilds(gomock.Any(), domain.DefaultTopGuildsLimit).Return(nil, nil)
 
-	h := newTestTopHandler(t, repo)
-	req := httptest.NewRequest(http.MethodGet, "/api/v1/guilds/top?limit=-1", nil)
-	rr := httptest.NewRecorder()
-	h.ServeHTTP(rr, req)
-	if rr.Code != http.StatusOK {
-		t.Fatalf("status=%d", rr.Code)
+	srv := newTestServer(t, repo, nil)
+	if _, err := srv.ListTopGuilds(context.Background(), connect.NewRequest(&pb.ListTopGuildsRequest{Limit: -1})); err != nil {
+		t.Fatalf("unexpected err: %v", err)
 	}
 }
 
-func TestTopGuildsHandler_RepoErrorScrubbed(t *testing.T) {
+func TestListTopGuilds_RepoErrorScrubbed(t *testing.T) {
 	t.Parallel()
 	ctrl := gomock.NewController(t)
 	repo := mocks.NewMockGuildRepo(ctrl)
 	repo.EXPECT().ListTopGuilds(gomock.Any(), gomock.Any()).Return(nil, errors.New("pg connection dropped"))
 
-	h := newTestTopHandler(t, repo)
-	req := httptest.NewRequest(http.MethodGet, "/api/v1/guilds/top", nil)
-	rr := httptest.NewRecorder()
-	h.ServeHTTP(rr, req)
-	if rr.Code != http.StatusInternalServerError {
-		t.Fatalf("status=%d", rr.Code)
+	srv := newTestServer(t, repo, nil)
+	_, err := srv.ListTopGuilds(context.Background(), connect.NewRequest(&pb.ListTopGuildsRequest{}))
+	if err == nil {
+		t.Fatalf("expected error, got nil")
 	}
-	if rr.Body.String() == "pg connection dropped\n" {
-		t.Fatalf("body leaked upstream error: %s", rr.Body.String())
+	if errors.Is(err, errors.New("pg connection dropped")) {
+		t.Fatalf("body leaked upstream error: %v", err)
 	}
 }

@@ -43,8 +43,7 @@ func NewGuild(d Deps) *Module {
 	}
 	topUC := &guildApp.ListTopGuilds{Guilds: cached}
 	onMatch := &guildApp.OnMatchCompleted{Guilds: cached, Log: d.Log}
-	server := guildPorts.NewGuildServer(myGuild, get, war, contribute, d.Log)
-	topHandler := &guildPorts.TopGuildsHandler{UC: topUC, Log: d.Log}
+	server := guildPorts.NewGuildServer(myGuild, get, war, contribute, topUC, d.Log)
 
 	connectPath, connectHandler := druz9v1connect.NewGuildServiceHandler(server)
 	transcoder := mustTranscode("guild", connectPath, connectHandler)
@@ -75,10 +74,9 @@ func NewGuild(d Deps) *Module {
 			r.Get("/guild/{guildId}", transcoder.ServeHTTP)
 			r.Get("/guild/{guildId}/war", transcoder.ServeHTTP)
 			r.Post("/guild/{guildId}/war/contribute", transcoder.ServeHTTP)
-			// Top-guilds is a bare REST endpoint (no Connect contract yet).
-			// Mounted on the /api/v1 router; auth is required by the parent
-			// chain (the leaderboard sits behind requireAuth like /guild/*).
-			r.Get("/guilds/top", topHandler.ServeHTTP)
+			// Top-guilds теперь Connect-RPC ListTopGuilds через transcoder.
+			// Раньше был отдельный chi-route → удалён.
+			r.Get("/guilds/top", transcoder.ServeHTTP)
 		},
 		Subscribers: []func(*eventbus.InProcess){
 			func(b *eventbus.InProcess) {

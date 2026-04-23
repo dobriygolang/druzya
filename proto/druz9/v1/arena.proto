@@ -98,6 +98,35 @@ message ConfirmMatchRequest {
   string match_id = 1;
 }
 
+// MatchHistoryEntry — одна строка истории матчей пользователя
+// (используется в GetMyMatches, заменяет хардкод в /match-history).
+message MatchHistoryEntry {
+  string match_id = 1;
+  google.protobuf.Timestamp finished_at = 2;
+  ArenaMode mode = 3;
+  Section section = 4;
+  string opponent_username = 5;
+  string opponent_avatar_url = 6;
+  // result: "win" | "loss" | "draw" | "abandoned"
+  string result = 7;
+  int32 lp_change = 8;
+  int32 duration_seconds = 9;
+}
+
+message GetMyMatchesRequest {
+  // limit: 1..100, default 20.
+  int32 limit = 1;
+  int32 offset = 2;
+  // Optional фильтры (UNSPECIFIED = no-filter).
+  ArenaMode mode = 3;
+  Section section = 4;
+}
+
+message GetMyMatchesResponse {
+  repeated MatchHistoryEntry items = 1;
+  int32 total = 2;
+}
+
 service ArenaService {
   // FindMatch enqueues the caller in the matchmaking queue.
   rpc FindMatch(FindMatchRequest) returns (MatchQueueResponse) {
@@ -131,5 +160,11 @@ service ArenaService {
       post: "/api/v1/arena/match/{match_id}/submit"
       body: "*"
     };
+  }
+
+  // GetMyMatches возвращает историю матчей текущего пользователя
+  // (страница /match-history). Раньше был chi-route, теперь Connect-RPC.
+  rpc GetMyMatches(GetMyMatchesRequest) returns (GetMyMatchesResponse) {
+    option (google.api.http) = {get: "/api/v1/arena/matches/my"};
   }
 }

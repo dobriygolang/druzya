@@ -38,6 +38,7 @@ type ArenaServer struct {
 	Confirm   *app.ConfirmReady
 	Submit    *app.SubmitCode
 	Get       *app.GetMatch
+	History   *app.GetMyMatches
 	Timeouts  *app.HandleReadyCheckTimeout
 	UserEloFn UserEloFunc
 	Log       *slog.Logger
@@ -54,14 +55,60 @@ func NewArenaServer(
 	confirm *app.ConfirmReady,
 	submit *app.SubmitCode,
 	get *app.GetMatch,
+	history *app.GetMyMatches,
 	timeouts *app.HandleReadyCheckTimeout,
 	eloFn UserEloFunc,
 	log *slog.Logger,
 ) *ArenaServer {
 	return &ArenaServer{
 		Find: find, Cancel: cancel, Confirm: confirm, Submit: submit, Get: get,
+		History:  history,
 		Timeouts: timeouts, UserEloFn: eloFn, Log: log,
 	}
+}
+
+// GetMyMatches implements (GET /api/v1/arena/matches/my).
+//
+// Возвращает страницу истории матчей текущего пользователя (filters по
+// mode/section). Раньше был chi-route в history.go (теперь удалён).
+func (s *ArenaServer) GetMyMatches(
+	ctx context.Context,
+	req *connect.Request[pb.GetMyMatchesRequest],
+) (*connect.Response[pb.GetMyMatchesResponse], error) {
+	uid, ok := sharedMw.UserIDFromContext(ctx)
+	if !ok {
+		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("unauthenticated"))
+	}
+	mode := arenaModeFromProto(req.Msg.GetMode())
+	section := sectionFromProto(req.Msg.GetSection())
+	out, err := s.History.Do(ctx, app.GetMyMatchesInput{
+		UserID:  uid,
+		Limit:   int(req.Msg.GetLimit()),
+		Offset:  int(req.Msg.GetOffset()),
+		Mode:    mode,
+		Section: section,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("arena.GetMyMatches: %w", s.toConnectErr(err))
+	}
+	items := make([]*pb.MatchHistoryEntry, 0, len(out.Items))
+	for _, e := range out.Items {
+		items = append(items, &pb.MatchHistoryEntry{
+			MatchId:           e.MatchID.String(),
+			FinishedAt:        timestamppb.New(e.FinishedAt),
+			Mode:              arenaModeToProto(e.Mode),
+			Section:           sectionToProto(e.Section),
+			OpponentUsername:  e.OpponentUsername,
+			OpponentAvatarUrl: e.OpponentAvatarURL,
+			Result:            e.Result,
+			LpChange:          int32(e.LPChange),
+			DurationSeconds:   int32(e.DurationSeconds),
+		})
+	}
+	return connect.NewResponse(&pb.GetMyMatchesResponse{
+		Items: items,
+		Total: int32(out.Total),
+	}), nil
 }
 
 // ── Connect handlers ──────────────────────────────────────────────────────

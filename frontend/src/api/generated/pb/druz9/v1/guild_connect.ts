@@ -8,7 +8,7 @@
 /* eslint-disable */
 // @ts-nocheck
 
-import { ContributeRequest, GetGuildRequest, GetGuildWarRequest, GetMyGuildRequest, Guild, GuildWar } from "./guild_pb.js";
+import { ContributeRequest, GetGuildRequest, GetGuildWarRequest, GetMyGuildRequest, Guild, GuildWar, ListTopGuildsRequest, ListTopGuildsResponse } from "./guild_pb.js";
 import { MethodKind } from "@bufbuild/protobuf";
 
 /**
@@ -59,6 +59,18 @@ export const GuildService = {
       name: "Contribute",
       I: ContributeRequest,
       O: GuildWar,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * ListTopGuilds — топ-N гильдий по elo_total. Public (без auth).
+     * Раньше был chi-route, теперь Connect-RPC.
+     *
+     * @generated from rpc druz9.v1.GuildService.ListTopGuilds
+     */
+    listTopGuilds: {
+      name: "ListTopGuilds",
+      I: ListTopGuildsRequest,
+      O: ListTopGuildsResponse,
       kind: MethodKind.Unary,
     },
   }

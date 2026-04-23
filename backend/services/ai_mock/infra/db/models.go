@@ -457,4 +457,5 @@ type User struct {
 	DisplayName  pgtype.Text
 	CreatedAt    pgtype.Timestamptz
 	UpdatedAt    pgtype.Timestamptz
+	AvatarUrl    string
 }

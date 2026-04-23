@@ -10,7 +10,7 @@
 /* eslint-disable */
 // @ts-nocheck
 
-import { ArenaMatch, CancelMatchRequest, ConfirmMatchRequest, FindMatchRequest, GetMatchRequest, MatchQueueResponse, SubmitCodeRequest, SubmitResult } from "./arena_pb.js";
+import { ArenaMatch, CancelMatchRequest, ConfirmMatchRequest, FindMatchRequest, GetMatchRequest, GetMyMatchesRequest, GetMyMatchesResponse, MatchQueueResponse, SubmitCodeRequest, SubmitResult } from "./arena_pb.js";
 import { MethodKind } from "@bufbuild/protobuf";
 
 /**
@@ -72,6 +72,18 @@ export const ArenaService = {
       name: "SubmitCode",
       I: SubmitCodeRequest,
       O: SubmitResult,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * GetMyMatches возвращает историю матчей текущего пользователя
+     * (страница /match-history). Раньше был chi-route, теперь Connect-RPC.
+     *
+     * @generated from rpc druz9.v1.ArenaService.GetMyMatches
+     */
+    getMyMatches: {
+      name: "GetMyMatches",
+      I: GetMyMatchesRequest,
+      O: GetMyMatchesResponse,
       kind: MethodKind.Unary,
     },
   }

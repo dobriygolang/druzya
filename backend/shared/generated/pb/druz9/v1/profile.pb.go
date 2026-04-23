@@ -170,10 +170,13 @@ type ProfileFull struct {
 	GlobalPowerScore int32                  `protobuf:"varint,11,opt,name=global_power_score,json=globalPowerScore,proto3" json:"global_power_score,omitempty"`
 	// career_stage is "junior" | "middle" | ... | "principal" in OpenAPI. Kept
 	// as a string to avoid another tiny enum; server guarantees validity.
-	CareerStage   string                 `protobuf:"bytes,12,opt,name=career_stage,json=careerStage,proto3" json:"career_stage,omitempty"`
-	Subscription  *ProfileSubscription   `protobuf:"bytes,13,opt,name=subscription,proto3" json:"subscription,omitempty"`
-	AiCredits     int32                  `protobuf:"varint,14,opt,name=ai_credits,json=aiCredits,proto3" json:"ai_credits,omitempty"`
-	CreatedAt     *timestamppb.Timestamp `protobuf:"bytes,15,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	CareerStage  string                 `protobuf:"bytes,12,opt,name=career_stage,json=careerStage,proto3" json:"career_stage,omitempty"`
+	Subscription *ProfileSubscription   `protobuf:"bytes,13,opt,name=subscription,proto3" json:"subscription,omitempty"`
+	AiCredits    int32                  `protobuf:"varint,14,opt,name=ai_credits,json=aiCredits,proto3" json:"ai_credits,omitempty"`
+	CreatedAt    *timestamppb.Timestamp `protobuf:"bytes,15,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	// avatar_url берётся из users.avatar_url (заполняется при OAuth-логине,
+	// см. миграцию 00010_users_avatar.sql и login_yandex/login_telegram).
+	AvatarUrl     string `protobuf:"bytes,16,opt,name=avatar_url,json=avatarUrl,proto3" json:"avatar_url,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -311,6 +314,13 @@ func (x *ProfileFull) GetCreatedAt() *timestamppb.Timestamp {
 		return x.CreatedAt
 	}
 	return nil
+}
+
+func (x *ProfileFull) GetAvatarUrl() string {
+	if x != nil {
+		return x.AvatarUrl
+	}
+	return ""
 }
 
 // SectionRating mirrors the top-level OpenAPI SectionRating (rating.proto
@@ -699,8 +709,10 @@ type ProfilePublic struct {
 	Ratings          []*ProfileSectionRating `protobuf:"bytes,8,rep,name=ratings,proto3" json:"ratings,omitempty"`
 	Achievements     []*Achievement          `protobuf:"bytes,9,rep,name=achievements,proto3" json:"achievements,omitempty"`
 	AtlasPreview     *SkillAtlas             `protobuf:"bytes,10,opt,name=atlas_preview,json=atlasPreview,proto3" json:"atlas_preview,omitempty"`
-	unknownFields    protoimpl.UnknownFields
-	sizeCache        protoimpl.SizeCache
+	// avatar_url из users.avatar_url. См. comment в ProfileFull.
+	AvatarUrl     string `protobuf:"bytes,11,opt,name=avatar_url,json=avatarUrl,proto3" json:"avatar_url,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *ProfilePublic) Reset() {
@@ -801,6 +813,13 @@ func (x *ProfilePublic) GetAtlasPreview() *SkillAtlas {
 		return x.AtlasPreview
 	}
 	return nil
+}
+
+func (x *ProfilePublic) GetAvatarUrl() string {
+	if x != nil {
+		return x.AvatarUrl
+	}
+	return ""
 }
 
 // ReportMetrics mirrors the inline `metrics` block of OpenAPI WeeklyReport.
@@ -1446,7 +1465,7 @@ const file_druz9_v1_profile_proto_rawDesc = "" +
 	"\x04will\x18\x04 \x01(\x05R\x04will\"\x8f\x01\n" +
 	"\x13ProfileSubscription\x12.\n" +
 	"\x04plan\x18\x01 \x01(\x0e2\x1a.druz9.v1.SubscriptionPlanR\x04plan\x12H\n" +
-	"\x12current_period_end\x18\x02 \x01(\v2\x1a.google.protobuf.TimestampR\x10currentPeriodEnd\"\xb1\x04\n" +
+	"\x12current_period_end\x18\x02 \x01(\v2\x1a.google.protobuf.TimestampR\x10currentPeriodEnd\"\xd0\x04\n" +
 	"\vProfileFull\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1a\n" +
 	"\busername\x18\x02 \x01(\tR\busername\x12!\n" +
@@ -1469,7 +1488,9 @@ const file_druz9_v1_profile_proto_rawDesc = "" +
 	"\n" +
 	"ai_credits\x18\x0e \x01(\x05R\taiCredits\x129\n" +
 	"\n" +
-	"created_at\x18\x0f \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\"\xb6\x01\n" +
+	"created_at\x18\x0f \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\x12\x1d\n" +
+	"\n" +
+	"avatar_url\x18\x10 \x01(\tR\tavatarUrl\"\xb6\x01\n" +
 	"\x14ProfileSectionRating\x12+\n" +
 	"\asection\x18\x01 \x01(\x0e2\x11.druz9.v1.SectionR\asection\x12\x10\n" +
 	"\x03elo\x18\x02 \x01(\x05R\x03elo\x12#\n" +
@@ -1502,7 +1523,7 @@ const file_druz9_v1_profile_proto_rawDesc = "" +
 	"\vcenter_node\x18\x01 \x01(\tR\n" +
 	"centerNode\x12)\n" +
 	"\x05nodes\x18\x02 \x03(\v2\x13.druz9.v1.SkillNodeR\x05nodes\x12)\n" +
-	"\x05edges\x18\x03 \x03(\v2\x13.druz9.v1.SkillEdgeR\x05edges\"\xaf\x03\n" +
+	"\x05edges\x18\x03 \x03(\v2\x13.druz9.v1.SkillEdgeR\x05edges\"\xce\x03\n" +
 	"\rProfilePublic\x12\x1a\n" +
 	"\busername\x18\x01 \x01(\tR\busername\x12!\n" +
 	"\fdisplay_name\x18\x02 \x01(\tR\vdisplayName\x12\x14\n" +
@@ -1515,7 +1536,9 @@ const file_druz9_v1_profile_proto_rawDesc = "" +
 	"\aratings\x18\b \x03(\v2\x1e.druz9.v1.ProfileSectionRatingR\aratings\x129\n" +
 	"\fachievements\x18\t \x03(\v2\x15.druz9.v1.AchievementR\fachievements\x129\n" +
 	"\ratlas_preview\x18\n" +
-	" \x01(\v2\x14.druz9.v1.SkillAtlasR\fatlasPreview\"\xb8\x01\n" +
+	" \x01(\v2\x14.druz9.v1.SkillAtlasR\fatlasPreview\x12\x1d\n" +
+	"\n" +
+	"avatar_url\x18\v \x01(\tR\tavatarUrl\"\xb8\x01\n" +
 	"\rReportMetrics\x12!\n" +
 	"\ftasks_solved\x18\x01 \x01(\x05R\vtasksSolved\x12\x1f\n" +
 	"\vmatches_won\x18\x02 \x01(\x05R\n" +

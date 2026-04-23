@@ -46,6 +46,9 @@ const (
 	GuildServiceGetWarProcedure = "/druz9.v1.GuildService/GetWar"
 	// GuildServiceContributeProcedure is the fully-qualified name of the GuildService's Contribute RPC.
 	GuildServiceContributeProcedure = "/druz9.v1.GuildService/Contribute"
+	// GuildServiceListTopGuildsProcedure is the fully-qualified name of the GuildService's
+	// ListTopGuilds RPC.
+	GuildServiceListTopGuildsProcedure = "/druz9.v1.GuildService/ListTopGuilds"
 )
 
 // GuildServiceClient is a client for the druz9.v1.GuildService service.
@@ -58,6 +61,9 @@ type GuildServiceClient interface {
 	GetWar(context.Context, *connect.Request[v1.GetGuildWarRequest]) (*connect.Response[v1.GuildWar], error)
 	// Contribute grades the submission and updates the war line.
 	Contribute(context.Context, *connect.Request[v1.ContributeRequest]) (*connect.Response[v1.GuildWar], error)
+	// ListTopGuilds — топ-N гильдий по elo_total. Public (без auth).
+	// Раньше был chi-route, теперь Connect-RPC.
+	ListTopGuilds(context.Context, *connect.Request[v1.ListTopGuildsRequest]) (*connect.Response[v1.ListTopGuildsResponse], error)
 }
 
 // NewGuildServiceClient constructs a client for the druz9.v1.GuildService service. By default, it
@@ -95,15 +101,22 @@ func NewGuildServiceClient(httpClient connect.HTTPClient, baseURL string, opts .
 			connect.WithSchema(guildServiceMethods.ByName("Contribute")),
 			connect.WithClientOptions(opts...),
 		),
+		listTopGuilds: connect.NewClient[v1.ListTopGuildsRequest, v1.ListTopGuildsResponse](
+			httpClient,
+			baseURL+GuildServiceListTopGuildsProcedure,
+			connect.WithSchema(guildServiceMethods.ByName("ListTopGuilds")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
 // guildServiceClient implements GuildServiceClient.
 type guildServiceClient struct {
-	getMyGuild *connect.Client[v1.GetMyGuildRequest, v1.Guild]
-	getGuild   *connect.Client[v1.GetGuildRequest, v1.Guild]
-	getWar     *connect.Client[v1.GetGuildWarRequest, v1.GuildWar]
-	contribute *connect.Client[v1.ContributeRequest, v1.GuildWar]
+	getMyGuild    *connect.Client[v1.GetMyGuildRequest, v1.Guild]
+	getGuild      *connect.Client[v1.GetGuildRequest, v1.Guild]
+	getWar        *connect.Client[v1.GetGuildWarRequest, v1.GuildWar]
+	contribute    *connect.Client[v1.ContributeRequest, v1.GuildWar]
+	listTopGuilds *connect.Client[v1.ListTopGuildsRequest, v1.ListTopGuildsResponse]
 }
 
 // GetMyGuild calls druz9.v1.GuildService.GetMyGuild.
@@ -126,6 +139,11 @@ func (c *guildServiceClient) Contribute(ctx context.Context, req *connect.Reques
 	return c.contribute.CallUnary(ctx, req)
 }
 
+// ListTopGuilds calls druz9.v1.GuildService.ListTopGuilds.
+func (c *guildServiceClient) ListTopGuilds(ctx context.Context, req *connect.Request[v1.ListTopGuildsRequest]) (*connect.Response[v1.ListTopGuildsResponse], error) {
+	return c.listTopGuilds.CallUnary(ctx, req)
+}
+
 // GuildServiceHandler is an implementation of the druz9.v1.GuildService service.
 type GuildServiceHandler interface {
 	// GetMyGuild returns the guild the caller belongs to.
@@ -136,6 +154,9 @@ type GuildServiceHandler interface {
 	GetWar(context.Context, *connect.Request[v1.GetGuildWarRequest]) (*connect.Response[v1.GuildWar], error)
 	// Contribute grades the submission and updates the war line.
 	Contribute(context.Context, *connect.Request[v1.ContributeRequest]) (*connect.Response[v1.GuildWar], error)
+	// ListTopGuilds — топ-N гильдий по elo_total. Public (без auth).
+	// Раньше был chi-route, теперь Connect-RPC.
+	ListTopGuilds(context.Context, *connect.Request[v1.ListTopGuildsRequest]) (*connect.Response[v1.ListTopGuildsResponse], error)
 }
 
 // NewGuildServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -169,6 +190,12 @@ func NewGuildServiceHandler(svc GuildServiceHandler, opts ...connect.HandlerOpti
 		connect.WithSchema(guildServiceMethods.ByName("Contribute")),
 		connect.WithHandlerOptions(opts...),
 	)
+	guildServiceListTopGuildsHandler := connect.NewUnaryHandler(
+		GuildServiceListTopGuildsProcedure,
+		svc.ListTopGuilds,
+		connect.WithSchema(guildServiceMethods.ByName("ListTopGuilds")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/druz9.v1.GuildService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case GuildServiceGetMyGuildProcedure:
@@ -179,6 +206,8 @@ func NewGuildServiceHandler(svc GuildServiceHandler, opts ...connect.HandlerOpti
 			guildServiceGetWarHandler.ServeHTTP(w, r)
 		case GuildServiceContributeProcedure:
 			guildServiceContributeHandler.ServeHTTP(w, r)
+		case GuildServiceListTopGuildsProcedure:
+			guildServiceListTopGuildsHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -202,4 +231,8 @@ func (UnimplementedGuildServiceHandler) GetWar(context.Context, *connect.Request
 
 func (UnimplementedGuildServiceHandler) Contribute(context.Context, *connect.Request[v1.ContributeRequest]) (*connect.Response[v1.GuildWar], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.GuildService.Contribute is not implemented"))
+}
+
+func (UnimplementedGuildServiceHandler) ListTopGuilds(context.Context, *connect.Request[v1.ListTopGuildsRequest]) (*connect.Response[v1.ListTopGuildsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.GuildService.ListTopGuilds is not implemented"))
 }

@@ -51,7 +51,7 @@ type CreateUserParams struct {
 	Role      string
 	Locale    string
 	Column5   string
-	AvatarURL string
+	AvatarUrl string
 }
 
 type CreateUserRow struct {
@@ -61,7 +61,7 @@ type CreateUserRow struct {
 	Role        string
 	Locale      string
 	DisplayName pgtype.Text
-	AvatarURL   string
+	AvatarUrl   string
 	CreatedAt   pgtype.Timestamptz
 	UpdatedAt   pgtype.Timestamptz
 }
@@ -73,7 +73,7 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (CreateU
 		arg.Role,
 		arg.Locale,
 		arg.Column5,
-		arg.AvatarURL,
+		arg.AvatarUrl,
 	)
 	var i CreateUserRow
 	err := row.Scan(
@@ -83,7 +83,7 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (CreateU
 		&i.Role,
 		&i.Locale,
 		&i.DisplayName,
-		&i.AvatarURL,
+		&i.AvatarUrl,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -122,7 +122,7 @@ type FindUserByIDRow struct {
 	Role        string
 	Locale      string
 	DisplayName pgtype.Text
-	AvatarURL   string
+	AvatarUrl   string
 	CreatedAt   pgtype.Timestamptz
 	UpdatedAt   pgtype.Timestamptz
 }
@@ -139,7 +139,7 @@ func (q *Queries) FindUserByID(ctx context.Context, id pgtype.UUID) (FindUserByI
 		&i.Role,
 		&i.Locale,
 		&i.DisplayName,
-		&i.AvatarURL,
+		&i.AvatarUrl,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -159,7 +159,7 @@ type FindUserByUsernameRow struct {
 	Role        string
 	Locale      string
 	DisplayName pgtype.Text
-	AvatarURL   string
+	AvatarUrl   string
 	CreatedAt   pgtype.Timestamptz
 	UpdatedAt   pgtype.Timestamptz
 }
@@ -174,7 +174,7 @@ func (q *Queries) FindUserByUsername(ctx context.Context, username string) (Find
 		&i.Role,
 		&i.Locale,
 		&i.DisplayName,
-		&i.AvatarURL,
+		&i.AvatarUrl,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -219,11 +219,14 @@ UPDATE users
 
 type UpdateUserAvatarParams struct {
 	ID        pgtype.UUID
-	AvatarURL string
+	AvatarUrl string
 }
 
+// Опportunistically обновить avatar_url пользователя при повторном логине.
+// Пустую строку игнорируем — Telegram может не прислать photo_url, и мы не
+// хотим затереть ранее сохранённый аватар.
 func (q *Queries) UpdateUserAvatar(ctx context.Context, arg UpdateUserAvatarParams) error {
-	_, err := q.db.Exec(ctx, updateUserAvatar, arg.ID, arg.AvatarURL)
+	_, err := q.db.Exec(ctx, updateUserAvatar, arg.ID, arg.AvatarUrl)
 	return err
 }
 

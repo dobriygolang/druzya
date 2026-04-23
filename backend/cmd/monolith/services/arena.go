@@ -96,7 +96,7 @@ func NewArena(d Deps, ratingRepo *ratingInfra.Postgres) *Module {
 		return arenaDomain.InitialELO
 	})
 	server := arenaPorts.NewArenaServer(
-		find, cancelUC, confirm, submit, get, timeouts, eloFn, d.Log,
+		find, cancelUC, confirm, submit, get, getHistory, timeouts, eloFn, d.Log,
 	)
 	matchmaker := arenaApp.NewMatchmaker(
 		rdb, rdb, pg, pg, d.Bus, hub, clock, d.Log,
@@ -120,10 +120,9 @@ func NewArena(d Deps, ratingRepo *ratingInfra.Postgres) *Module {
 			r.Get("/arena/match/{matchId}", transcoder.ServeHTTP)
 			r.Post("/arena/match/{matchId}/confirm", transcoder.ServeHTTP)
 			r.Post("/arena/match/{matchId}/submit", transcoder.ServeHTTP)
-			// /matches/my — plain chi route (proto/transcoder bypass) so the
-			// /match-history page works without a proto roll. Future iteration
-			// will fold this into the Connect contract once we add the RPC.
-			r.Get("/arena/matches/my", arenaPorts.MyMatchesHandler(getHistory))
+			// /matches/my теперь Connect-RPC GetMyMatches — идёт через тот
+			// же transcoder. Раньше был отдельный chi-route → удалён.
+			r.Get("/arena/matches/my", transcoder.ServeHTTP)
 		},
 		MountWS: func(ws chi.Router) {
 			ws.Get("/arena/{matchId}", hub.WSHandler)

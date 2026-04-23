@@ -88,6 +88,27 @@ message ContributeRequest {
   Language language = 4;
 }
 
+// TopGuildSummary — одна строка топ-листа гильдий.
+// Используется в ListTopGuilds (страница /guild без guild_id, для не-членов).
+message TopGuildSummary {
+  string guild_id = 1;
+  string name = 2;
+  string emblem = 3;
+  int32 members_count = 4;
+  int32 elo_total = 5;
+  int32 wars_won = 6;
+  int32 rank = 7;
+}
+
+message ListTopGuildsRequest {
+  // limit: 1..100, default 20.
+  int32 limit = 1;
+}
+
+message ListTopGuildsResponse {
+  repeated TopGuildSummary items = 1;
+}
+
 service GuildService {
   // GetMyGuild returns the guild the caller belongs to.
   rpc GetMyGuild(GetMyGuildRequest) returns (Guild) {
@@ -110,5 +131,11 @@ service GuildService {
       post: "/api/v1/guild/{guild_id}/war/contribute"
       body: "*"
     };
+  }
+
+  // ListTopGuilds — топ-N гильдий по elo_total. Public (без auth).
+  // Раньше был chi-route, теперь Connect-RPC.
+  rpc ListTopGuilds(ListTopGuildsRequest) returns (ListTopGuildsResponse) {
+    option (google.api.http) = {get: "/api/v1/guilds/top"};
   }
 }

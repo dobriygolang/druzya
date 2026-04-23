@@ -199,11 +199,11 @@ func (p *Postgres) ListByUser(
 	sectionFilter enums.Section,
 ) ([]domain.MatchHistoryEntry, int, error) {
 	rows, err := p.q.ListMyMatches(ctx, arenadb.ListMyMatchesParams{
-		UserID:  pgUUID(userID),
-		Mode:    string(modeFilter),
-		Section: string(sectionFilter),
-		Limit:   int32(limit),
-		Offset:  int32(offset),
+		UserID:    pgUUID(userID),
+		Mode:      string(modeFilter),
+		Section:   string(sectionFilter),
+		LimitVal:  int32(limit),
+		OffsetVal: int32(offset),
 	})
 	if err != nil {
 		return nil, 0, fmt.Errorf("arena.pg.ListByUser: %w", err)
@@ -238,8 +238,8 @@ func (p *Postgres) ListByUser(
 		if r.OpponentUsername.Valid {
 			entry.OpponentUsername = r.OpponentUsername.String
 		}
-		if r.OpponentAvatarURL.Valid {
-			entry.OpponentAvatarURL = r.OpponentAvatarURL.String
+		if r.OpponentAvatarUrl.Valid {
+			entry.OpponentAvatarURL = r.OpponentAvatarUrl.String
 		}
 		// LP delta — elo_after - elo_before; falls back to 0 if the rating
 		// domain hasn't yet settled the result on this row.

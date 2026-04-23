@@ -11,15 +11,20 @@ import (
 )
 
 type Querier interface {
+	CountMyMatches(ctx context.Context, arg CountMyMatchesParams) (int64, error)
 	// arena queries consumed by sqlc (emitted into services/arena/infra/db).
 	// CRITICAL: solution_hint is NEVER selected into arena rows — tasks are read
 	// by id into a public projection that excludes the hint.
-	CountMyMatches(ctx context.Context, arg CountMyMatchesParams) (int64, error)
 	CreateArenaMatch(ctx context.Context, arg CreateArenaMatchParams) (ArenaMatch, error)
 	GetArenaMatch(ctx context.Context, id pgtype.UUID) (ArenaMatch, error)
 	GetArenaTaskPublic(ctx context.Context, id pgtype.UUID) (GetArenaTaskPublicRow, error)
 	InsertArenaParticipant(ctx context.Context, arg InsertArenaParticipantParams) error
 	ListArenaParticipants(ctx context.Context, matchID pgtype.UUID) ([]ArenaParticipant, error)
+	// ListMyMatches and CountMyMatches power /api/v1/arena/matches/my. Both
+	// accept optional mode/section filters via NULLIF(...) — sqlc emits string
+	// params, so the application passes "" when the user wants no filter.
+	// Joined to users for opponent username + avatar_url (added in 00010).
+	// sqlc.arg(...) даёт нормальные имена параметров вместо Column2/Column3.
 	ListMyMatches(ctx context.Context, arg ListMyMatchesParams) ([]ListMyMatchesRow, error)
 	PickActiveTaskBySectionDifficulty(ctx context.Context, arg PickActiveTaskBySectionDifficultyParams) (PickActiveTaskBySectionDifficultyRow, error)
 	SetArenaMatchTask(ctx context.Context, arg SetArenaMatchTaskParams) (int64, error)
