@@ -211,9 +211,15 @@ func (h *DiscoveryHandler) HandleList(w http.ResponseWriter, r *http.Request) {
 type createRequest struct {
 	Name        string `json:"name"`
 	Description string `json:"description"`
-	Tier        string `json:"tier"`
-	MaxMembers  int    `json:"max_members"`
-	JoinPolicy  string `json:"join_policy"`
+	// Tier is intentionally ignored on create — every guild starts at the
+	// lowest tier ("bronze"). Promotion happens automatically based on the
+	// guild's aggregate ELO.
+	//
+	// TODO(promotion): wire a nightly job that recomputes tier from
+	// AVG(member.elo) and promotes/demotes when thresholds are crossed.
+	// See domain.InitialGuildELO and tier thresholds in frontend tierFor().
+	MaxMembers int    `json:"max_members"`
+	JoinPolicy string `json:"join_policy"`
 }
 
 type createResponse struct {
@@ -258,14 +264,9 @@ func (h *DiscoveryHandler) HandleCreate(w http.ResponseWriter, r *http.Request) 
 	if req.MaxMembers > 200 {
 		req.MaxMembers = 200
 	}
-	tier := strings.TrimSpace(req.Tier)
-	if tier == "" {
-		tier = "bronze"
-	}
-	if !isValidTier(tier) {
-		writeJSONError(w, http.StatusBadRequest, "invalid tier")
-		return
-	}
+	// Every new guild starts at the lowest tier — tier from the request body
+	// is intentionally ignored (the field is kept for bwd-compat only).
+	tier := "bronze"
 
 	// Quick pre-check: refuse if the user already belongs to a guild.
 	var existing pgtype.UUID
@@ -499,8 +500,20 @@ type leaveResponse struct {
 
 // HandleLeave serves POST /api/v1/guild/{guildId}/leave.
 //
-// The guild's captain cannot leave — they have to disband the guild (out of
-// scope for MVP). For non-captain members it's a single DELETE.
+// Captain rules (UX fix — previously 403'd):
+//
+//   - If the captain is the ONLY member → guild is auto-deleted (cascades via
+//     FK ON DELETE CASCADE on guild_members and guild_wars).
+//   - If there are other members → captaincy is auto-transferred to the
+//     longest-tenured non-captain member, then the original captain leaves.
+//
+// For non-captain members it's a single DELETE.
+//
+// Response shapes:
+//
+//	{ "status": "left",      "guild_id": "..." }                            // normal leave
+//	{ "status": "disbanded", "guild_id": "..." }                            // sole captain → guild deleted
+//	{ "status": "transferred", "guild_id": "...", "new_captain_id": "..." } // captain leave + auto-transfer
 func (h *DiscoveryHandler) HandleLeave(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		writeJSONError(w, http.StatusMethodNotAllowed, "method not allowed")
@@ -530,8 +543,32 @@ func (h *DiscoveryHandler) HandleLeave(w http.ResponseWriter, r *http.Request) {
 		writeJSONError(w, http.StatusInternalServerError, "leave failed")
 		return
 	}
+
+	// Captain branch — either disband (sole member) or auto-transfer.
 	if role == domain.RoleCaptain {
-		writeJSONError(w, http.StatusForbidden, "captain cannot leave; transfer ownership first")
+		status, newCaptain, lerr := h.captainLeave(r.Context(), guildID, uid)
+		if lerr != nil {
+			h.Log.ErrorContext(r.Context(), "guild.Leave: captain leave failed", slog.Any("err", lerr))
+			writeJSONError(w, http.StatusInternalServerError, "leave failed")
+			return
+		}
+		if h.Cache != nil {
+			h.Cache.Invalidate(r.Context(), guildID)
+			h.Cache.InvalidateUser(r.Context(), uid)
+			if newCaptain != uuid.Nil {
+				h.Cache.InvalidateUser(r.Context(), newCaptain)
+			}
+			h.Cache.InvalidateTop(r.Context())
+		}
+		w.Header().Set("Content-Type", "application/json")
+		out := map[string]any{
+			"status":   status,
+			"guild_id": guildID.String(),
+		}
+		if newCaptain != uuid.Nil {
+			out["new_captain_id"] = newCaptain.String()
+		}
+		_ = json.NewEncoder(w).Encode(out)
 		return
 	}
 
@@ -553,6 +590,82 @@ func (h *DiscoveryHandler) HandleLeave(w http.ResponseWriter, r *http.Request) {
 	_ = json.NewEncoder(w).Encode(leaveResponse{Status: "left", GuildID: guildID.String()})
 }
 
+// captainLeave executes the captain-leave flow inside a single transaction.
+//
+// Returns:
+//
+//	("disbanded",   uuid.Nil, nil) — the captain was the sole member; the
+//	                                 guild row is deleted (cascades wipe
+//	                                 guild_members + guild_wars).
+//	("transferred", newCaptainID, nil) — captaincy moved to the
+//	                                     longest-tenured remaining member
+//	                                     and the original captain row is
+//	                                     deleted.
+//	("", uuid.Nil, err) on any DB failure.
+func (h *DiscoveryHandler) captainLeave(
+	ctx context.Context, guildID, uid uuid.UUID,
+) (string, uuid.UUID, error) {
+	tx, err := h.Pool.BeginTx(ctx, pgx.TxOptions{})
+	if err != nil {
+		return "", uuid.Nil, fmt.Errorf("begin tx: %w", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
+	// Pick the longest-tenured non-captain member as the heir.
+	var heir pgtype.UUID
+	scanErr := tx.QueryRow(ctx, `
+		SELECT user_id
+		  FROM guild_members
+		 WHERE guild_id = $1 AND user_id <> $2
+		 ORDER BY joined_at ASC, user_id ASC
+		 LIMIT 1
+	`, pgUUID(guildID), pgUUID(uid)).Scan(&heir)
+
+	switch {
+	case errors.Is(scanErr, pgx.ErrNoRows):
+		// Sole member — disband the guild. ON DELETE CASCADE on
+		// guild_members + guild_wars (FK to guilds.id) handles the rest.
+		if _, err := tx.Exec(ctx,
+			`DELETE FROM guilds WHERE id = $1`, pgUUID(guildID),
+		); err != nil {
+			return "", uuid.Nil, fmt.Errorf("delete guild: %w", err)
+		}
+		if err := tx.Commit(ctx); err != nil {
+			return "", uuid.Nil, fmt.Errorf("commit disband: %w", err)
+		}
+		return "disbanded", uuid.Nil, nil
+
+	case scanErr != nil:
+		return "", uuid.Nil, fmt.Errorf("pick heir: %w", scanErr)
+	}
+
+	heirID := uuidFromPg(heir)
+
+	// Promote heir → captain, then delete the original captain's row.
+	if _, err := tx.Exec(ctx, `
+		UPDATE guild_members SET role = 'captain'
+		 WHERE guild_id = $1 AND user_id = $2
+	`, pgUUID(guildID), pgUUID(heirID)); err != nil {
+		return "", uuid.Nil, fmt.Errorf("promote heir: %w", err)
+	}
+	// Also pin the new captain on guilds.owner_id so downstream logic that
+	// reads owner_id stays consistent.
+	if _, err := tx.Exec(ctx, `
+		UPDATE guilds SET owner_id = $1 WHERE id = $2
+	`, pgUUID(heirID), pgUUID(guildID)); err != nil {
+		return "", uuid.Nil, fmt.Errorf("update owner: %w", err)
+	}
+	if _, err := tx.Exec(ctx, `
+		DELETE FROM guild_members WHERE guild_id = $1 AND user_id = $2
+	`, pgUUID(guildID), pgUUID(uid)); err != nil {
+		return "", uuid.Nil, fmt.Errorf("delete captain row: %w", err)
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return "", uuid.Nil, fmt.Errorf("commit transfer: %w", err)
+	}
+	return "transferred", heirID, nil
+}
+
 // ── helpers ───────────────────────────────────────────────────────────────
 
 func pgUUID(id uuid.UUID) pgtype.UUID { return pgtype.UUID{Bytes: id, Valid: true} }
@@ -562,14 +675,6 @@ func uuidFromPg(p pgtype.UUID) uuid.UUID {
 		return uuid.Nil
 	}
 	return uuid.UUID(p.Bytes)
-}
-
-func isValidTier(t string) bool {
-	switch t {
-	case "bronze", "silver", "gold", "platinum", "diamond", "master":
-		return true
-	}
-	return false
 }
 
 // isUniqueViolation matches Postgres SQLSTATE 23505. We avoid pulling in

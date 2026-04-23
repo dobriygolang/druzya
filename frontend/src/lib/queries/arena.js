@@ -86,6 +86,31 @@ export function useCancelSearchMutation() {
         }),
     });
 }
+// useCurrentMatchQuery — poll while the user is in queue. The `enabled`
+// arg gates network traffic; pass `inQueue` from the page.
+export function useCurrentMatchQuery(enabled) {
+    return useQuery({
+        queryKey: ['arena', 'current-match'],
+        queryFn: async () => {
+            try {
+                return await api('/arena/match/current');
+            }
+            catch (err) {
+                // 404 means "no current match" — return null so the polling loop
+                // keeps quietly going. Any other error propagates to the UI.
+                if (err?.status === 404) {
+                    return null;
+                }
+                throw err;
+            }
+        },
+        enabled,
+        // 2s poll while queued — matches the bible's interactive-feedback target.
+        refetchInterval: 2000,
+        refetchIntervalInBackground: false,
+        staleTime: 0,
+    });
+}
 export function useConfirmReadyMutation() {
     const qc = useQueryClient();
     return useMutation({

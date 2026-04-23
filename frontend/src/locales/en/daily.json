@@ -3,25 +3,15 @@
   "passed_today": "Solved today",
   "load_failed": "Failed to load",
   "tabs": {
-    "description": "Description",
-    "examples": "Examples",
-    "discussion": "Discussion",
-    "hints": "Hints"
+    "description": "Description"
   },
-  "desc_p1": "Given a sorted array of integers that was rotated at an unknown point, write a function that finds the index of a target value in O(log n) time.",
-  "desc_p2": "If the value is absent, return -1. All array elements are unique.",
-  "example": "Example",
+  "no_kata_today": "No kata assigned for today",
   "constraints": "Constraints",
-  "constraints_list": [
-    "1 ≤ nums.length ≤ 5000",
-    "−10⁴ ≤ nums[i] ≤ 10⁴",
-    "All values are unique",
-    "nums is sorted and rotated once"
-  ],
+  "time_limit": "Time limit: {{sec}} s",
+  "memory_limit": "Memory: {{mb}} MB",
   "tests_not_run": "Tests have not run yet",
   "run": "Run",
   "submit": "Submit",
   "streak_progress": "Streak progress",
-  "consecutive_days": "days in a row",
-  "unlocks": "Unlocks"
+  "consecutive_days": "days in a row"
 }

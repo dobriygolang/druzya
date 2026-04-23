@@ -74,6 +74,21 @@ func (mr *MockMatchRepoMockRecorder) Get(ctx, id any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Get", reflect.TypeOf((*MockMatchRepo)(nil).Get), ctx, id)
 }
 
+// FindCurrentMatch mocks base method.
+func (m *MockMatchRepo) FindCurrentMatch(ctx context.Context, userID uuid.UUID) (domain.Match, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "FindCurrentMatch", ctx, userID)
+	ret0, _ := ret[0].(domain.Match)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// FindCurrentMatch indicates an expected call of FindCurrentMatch.
+func (mr *MockMatchRepoMockRecorder) FindCurrentMatch(ctx, userID any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindCurrentMatch", reflect.TypeOf((*MockMatchRepo)(nil).FindCurrentMatch), ctx, userID)
+}
+
 // ListByUser mocks base method.
 func (m *MockMatchRepo) ListByUser(ctx context.Context, userID uuid.UUID, limit, offset int, modeFilter enums.ArenaMode, sectionFilter enums.Section) ([]domain.MatchHistoryEntry, int, error) {
 	m.ctrl.T.Helper()

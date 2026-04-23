@@ -39,7 +39,12 @@ func NewDaily(d Deps) *Module {
 		d.Now,
 	)
 	autopsies := dailyInfra.NewAutopsies(d.Pool)
-	judge := dailyInfra.NewFakeJudge0()
+	// No real Judge0 sandbox or LLM-eval client is currently wired. The
+	// adapter below fails every Submit with ErrSandboxUnavailable so that
+	// /daily/run and /daily/kata/submit return 503 instead of fabricating
+	// a passing result. Replace with a real Judge0/LLM client when the
+	// sandbox container ships.
+	judge := dailyInfra.NewNoSandboxJudge0()
 	analyser := &dailyApp.FakeAnalyser{Autopsies: autopsies, Log: d.Log}
 
 	h := dailyPorts.NewHandler(dailyPorts.Handler{

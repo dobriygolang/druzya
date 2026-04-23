@@ -409,19 +409,22 @@ func (p *Autopsies) MarkReady(ctx context.Context, id uuid.UUID, analysisJSON []
 }
 
 // ─────────────────────────────────────────────────────────────────────────
-// Judge0 stub
+// Judge0 client
 // ─────────────────────────────────────────────────────────────────────────
 
-// FakeJudge0 always passes.
-// STUB: real Judge0 client hitting http://judge0-server:2358/submissions.
-type FakeJudge0 struct{}
+// NoSandboxJudge0 fails every Submit with domain.ErrSandboxUnavailable. This is
+// the explicit replacement for the previous FakeJudge0 stub which silently
+// reported success regardless of code correctness — a critical UX bug
+// (users saw "passed" for nonsense). When a real Judge0 or LLM-eval
+// adapter is wired, swap this in `cmd/monolith/services/daily.go`.
+type NoSandboxJudge0 struct{}
 
-// NewFakeJudge0 returns the stub.
-func NewFakeJudge0() *FakeJudge0 { return &FakeJudge0{} }
+// NewNoSandboxJudge0 returns the no-sandbox adapter.
+func NewNoSandboxJudge0() *NoSandboxJudge0 { return &NoSandboxJudge0{} }
 
-// Submit always reports success.
-func (*FakeJudge0) Submit(_ context.Context, _ string, _ string, _ domain.TaskPublic) (bool, int, int, error) {
-	return true, 1, 1, nil
+// Submit always returns ErrSandboxUnavailable.
+func (*NoSandboxJudge0) Submit(_ context.Context, _ string, _ string, _ domain.TaskPublic) (bool, int, int, error) {
+	return false, 0, 0, fmt.Errorf("daily.NoSandboxJudge0.Submit: %w", domain.ErrSandboxUnavailable)
 }
 
 // ── helpers ────────────────────────────────────────────────────────────────
@@ -558,5 +561,5 @@ var (
 	_ domain.StreakRepo   = (*Streaks)(nil)
 	_ domain.CalendarRepo = (*Calendars)(nil)
 	_ domain.AutopsyRepo  = (*Autopsies)(nil)
-	_ domain.Judge0Client = (*FakeJudge0)(nil)
+	_ domain.Judge0Client = (*NoSandboxJudge0)(nil)
 )

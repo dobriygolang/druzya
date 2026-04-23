@@ -19,6 +19,11 @@ var ErrNotFound = errors.New("daily: not found")
 // with already_submitted=true rather than 4xx.
 var ErrAlreadySubmitted = errors.New("daily: already submitted")
 
+// ErrSandboxUnavailable signals that no Judge0 sandbox or LLM evaluator is
+// wired. Transports map this to HTTP 503 / Connect-RPC Unavailable. Anti-
+// fallback policy: NEVER fabricate a passing test result.
+var ErrSandboxUnavailable = errors.New("daily: sandbox unavailable")
+
 // TaskRepo pulls tasks used for the kata selection.
 type TaskRepo interface {
 	// ListActiveBySectionDifficulty returns the set the selector will choose from.

@@ -310,6 +310,40 @@ func (p *Postgres) PickBySectionDifficulty(ctx context.Context, section enums.Se
 	}, nil
 }
 
+// FindCurrentMatch returns the user's most recent non-finished match (status
+// IN searching/confirming/active). The SPA polls this while in the queue so
+// it can navigate to /arena/match/:id the moment a match becomes available.
+//
+// Hand-rolled pgx (no sqlc) because this is a single-row lookup with a 3-
+// element status filter — overkill to wire through sqlc just for that. If
+// more polling-style endpoints land, promote to a query file.
+func (p *Postgres) FindCurrentMatch(ctx context.Context, userID uuid.UUID) (domain.Match, error) {
+	const sql = `
+		SELECT m.id, m.task_id, m.task_version, m.section, m.mode, m.status,
+		       m.winner_id, m.started_at, m.finished_at, m.created_at
+		  FROM arena_matches m
+		  JOIN arena_participants p ON p.match_id = m.id
+		 WHERE p.user_id = $1
+		   AND m.status IN ('searching', 'confirming', 'active')
+		 ORDER BY m.created_at DESC
+		 LIMIT 1
+	`
+	row := p.pool.QueryRow(ctx, sql, pgUUID(userID))
+	var (
+		am arenadb.ArenaMatch
+	)
+	if err := row.Scan(
+		&am.ID, &am.TaskID, &am.TaskVersion, &am.Section, &am.Mode, &am.Status,
+		&am.WinnerID, &am.StartedAt, &am.FinishedAt, &am.CreatedAt,
+	); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return domain.Match{}, domain.ErrNotFound
+		}
+		return domain.Match{}, fmt.Errorf("arena.pg.FindCurrentMatch: %w", err)
+	}
+	return matchFromRow(am), nil
+}
+
 // GetByID fetches a task by id, solution_hint excluded.
 func (p *Postgres) GetByID(ctx context.Context, id uuid.UUID) (domain.TaskPublic, error) {
 	row, err := p.q.GetArenaTaskPublic(ctx, pgUUID(id))

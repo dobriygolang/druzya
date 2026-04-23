@@ -108,6 +108,11 @@ func NewArena(d Deps, ratingRepo *ratingInfra.Postgres) *Module {
 	practiceUC := &arenaApp.StartPractice{Matches: pg, Tasks: pg, Clock: clock}
 	practice := arenaPorts.NewPracticeHandler(practiceUC, eloFn)
 
+	// Current-match polling endpoint — the SPA polls /arena/match/current
+	// every 2s while the user is in the matchmaking queue and navigates to
+	// /arena/match/:id as soon as it returns 200. Chi-direct (no proto).
+	currentMatch := arenaPorts.NewCurrentMatchHandler(pg, d.Log)
+
 	connectPath, connectHandler := druz9v1connect.NewArenaServiceHandler(server)
 	transcoder := mustTranscode("arena", connectPath, connectHandler)
 
@@ -123,6 +128,10 @@ func NewArena(d Deps, ratingRepo *ratingInfra.Postgres) *Module {
 		MountREST: func(r chi.Router) {
 			r.Post("/arena/match/find", transcoder.ServeHTTP)
 			r.Delete("/arena/match/cancel", transcoder.ServeHTTP)
+			// /arena/match/current MUST be registered BEFORE /arena/match/{matchId}
+			// — chi matches routes in declaration order and "current" would
+			// otherwise be eaten by the {matchId} pattern.
+			r.Get("/arena/match/current", currentMatch.ServeHTTP)
 			r.Get("/arena/match/{matchId}", transcoder.ServeHTTP)
 			r.Post("/arena/match/{matchId}/confirm", transcoder.ServeHTTP)
 			r.Post("/arena/match/{matchId}/submit", transcoder.ServeHTTP)

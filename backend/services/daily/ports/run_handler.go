@@ -98,6 +98,11 @@ func (h *RunHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	passed, total, ok, err := h.runWithTimeout(r.Context(), req.Code, lang.String())
 	elapsed := h.Now().Sub(start)
 	if err != nil {
+		if errors.Is(err, domain.ErrSandboxUnavailable) {
+			h.Log.WarnContext(r.Context(), "daily.Run: sandbox unavailable", slog.Any("err", err))
+			writeJSONError(w, http.StatusServiceUnavailable, "sandbox unavailable")
+			return
+		}
 		h.Log.ErrorContext(r.Context(), "daily.Run: judge failed", slog.Any("err", err))
 		writeJSONError(w, http.StatusInternalServerError, "execution failed")
 		return

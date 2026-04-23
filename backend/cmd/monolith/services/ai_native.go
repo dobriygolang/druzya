@@ -52,6 +52,11 @@ func NewAINative(d Deps) *Module {
 		create, submit, verify, getProv, getScore, finish, d.Log,
 	)
 
+	// Public model-catalogue endpoint — drives the frontend AI-opponent
+	// picker. Empty when OPENROUTER_API_KEY is unset (frontend hides the
+	// panel in that case rather than showing fake choices).
+	models := ainativePorts.NewModelsHandler(d.Cfg.LLM.OpenRouterAPIKey != "")
+
 	connectPath, connectHandler := druz9v1connect.NewNativeServiceHandler(server)
 	transcoder := mustTranscode("native", connectPath, connectHandler)
 
@@ -65,6 +70,7 @@ func NewAINative(d Deps) *Module {
 			r.Post("/native/session/{sessionId}/verify", transcoder.ServeHTTP)
 			r.Get("/native/session/{sessionId}/provenance", transcoder.ServeHTTP)
 			r.Get("/native/session/{sessionId}/score", transcoder.ServeHTTP)
+			models.Mount(r)
 		},
 	}
 }

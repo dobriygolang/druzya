@@ -45,7 +45,6 @@ const NotificationsPage = lazy(() => import('./pages/NotificationsPage'))
 const MatchEndPage = lazy(() => import('./pages/MatchEndPage'))
 const HelpPage = lazy(() => import('./pages/HelpPage'))
 const NotFoundPage = lazy(() => import('./pages/NotFoundPage'))
-const CustomLobbyPage = lazy(() => import('./pages/CustomLobbyPage'))
 const InterviewCalendarPage = lazy(() => import('./pages/InterviewCalendarPage'))
 const MatchHistoryPage = lazy(() => import('./pages/MatchHistoryPage'))
 const KataStreakPage = lazy(() => import('./pages/KataStreakPage'))
@@ -106,7 +105,6 @@ export default function App() {
         <Route path="/notifications" element={<NotificationsPage />} />
         <Route path="/match/:matchId/end" element={<MatchEndPage />} />
         <Route path="/help" element={<HelpPage />} />
-        <Route path="/lobby" element={<CustomLobbyPage />} />
         <Route path="/calendar" element={<InterviewCalendarPage />} />
         <Route path="/history" element={<MatchHistoryPage />} />
         <Route path="/daily/streak" element={<KataStreakPage />} />

@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"sync"
 	"testing"
+	"time"
 
 	"druz9/vacancies/domain"
 )
@@ -133,6 +134,70 @@ func TestSyncJob_Upsert_Idempotent(t *testing.T) {
 	}
 	if ext.calls < 2 {
 		t.Errorf("extractor not called enough: %d", ext.calls)
+	}
+}
+
+// TestSyncJob_BrokenExtractor_StillUpserts reproduces production bug #15:
+// when the LLM extractor errors on every call, the catalogue MUST still be
+// populated. Previously the inline extractor on the upsert hot loop ate the
+// per-source budget and left the DB empty.
+func TestSyncJob_BrokenExtractor_StillUpserts(t *testing.T) {
+	t.Parallel()
+	repo := newMemRepo()
+	parser := &stubParser{
+		src: domain.SourceHH,
+		out: []domain.Vacancy{
+			{Source: domain.SourceHH, ExternalID: "10", Title: "Go Dev", Description: "go postgres"},
+			{Source: domain.SourceHH, ExternalID: "11", Title: "Backend", Description: "python"},
+			{Source: domain.SourceHH, ExternalID: "12", Title: "DevOps", Description: "k8s"},
+		},
+	}
+	ext := &errExtractor{}
+	job := &SyncJob{
+		Parsers:          []domain.Parser{parser},
+		Repo:             repo,
+		Extractor:        ext,
+		Log:              testLog(),
+		PerSourceTimeout: time.Second,
+		ExtractTimeout:   time.Second,
+	}
+	job.RunOnce(context.Background())
+	if len(repo.store) != 3 {
+		t.Fatalf("store size = %d, want 3 (upserts must complete even when extractor fails)", len(repo.store))
+	}
+}
+
+// errExtractor always errors — used to prove the upsert path is independent
+// of extractor health.
+type errExtractor struct{}
+
+func (errExtractor) Extract(_ context.Context, _ string) ([]string, error) {
+	return nil, errors.New("openrouter offline")
+}
+
+// TestSyncJob_ListByFilter_NoFilters_ReturnsUpserts is the end-to-end
+// guarantee for production bug #15: after RunOnce completes, an unfiltered
+// ListByFilter call must surface the synced rows.
+func TestSyncJob_ListByFilter_NoFilters_ReturnsUpserts(t *testing.T) {
+	t.Parallel()
+	repo := newMemRepo()
+	parser := &stubParser{
+		src: domain.SourceHH,
+		out: []domain.Vacancy{
+			{Source: domain.SourceHH, ExternalID: "a", Title: "A", Description: "d"},
+			{Source: domain.SourceHH, ExternalID: "b", Title: "B", Description: "d"},
+		},
+	}
+	job := &SyncJob{Parsers: []domain.Parser{parser}, Repo: repo, Log: testLog()}
+	job.RunOnce(context.Background())
+
+	list := &ListVacancies{Repo: repo}
+	page, err := list.Do(context.Background(), domain.ListFilter{})
+	if err != nil {
+		t.Fatalf("list: %v", err)
+	}
+	if page.Total != 2 || len(page.Items) != 2 {
+		t.Errorf("page = %+v, want total=2 items=2", page)
 	}
 }
 

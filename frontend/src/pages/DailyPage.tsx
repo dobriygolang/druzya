@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import Editor from '@monaco-editor/react'
-import { CheckCircle2, Flame, Lock, Loader2, Play, Send, XCircle } from 'lucide-react'
+import { CheckCircle2, Flame, Loader2, Play, Send, XCircle } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { AppShellV2 } from '../components/AppShell'
 import { Button } from '../components/Button'
@@ -11,13 +11,13 @@ import {
   useDailyRunMutation,
   useDailySubmitMutation,
   useStreakQuery,
+  type DailyKata,
   type DailyRunResponse,
   type DailySubmitResponse,
 } from '../lib/queries/daily'
 
-function Hero() {
+function Hero({ kata, isError }: { kata: DailyKata | undefined; isError: boolean }) {
   const { t } = useTranslation('daily')
-  const { data: kata, isError } = useDailyKataQuery()
   const { data: streak } = useStreakQuery()
   const day = streak?.current ?? 0
   const title = kata?.task?.title ?? '—'
@@ -46,18 +46,10 @@ function Hero() {
         <div className="flex flex-wrap items-center gap-2 sm:gap-3">
           <MetaTag>{difficulty}</MetaTag>
           <MetaTag>{section}</MetaTag>
-          <MetaTag>850 XP</MetaTag>
-          <MetaTag>O(log n)</MetaTag>
         </div>
       </div>
       <div className="flex w-full flex-row items-center justify-between gap-2 lg:w-auto lg:flex-col lg:items-end">
         <span className="font-mono text-[11px] uppercase tracking-[0.1em] text-white/80">{t('passed_today')}</span>
-        {/*
-          Phase 2: live "passed today" count requires a daily-aggregate
-          endpoint that doesn't yet exist on the backend (GetCalendar /
-          GetStreak are per-user). Until that lands we hide the number
-          rather than show fake hardcoded telemetry.
-        */}
         <span className="font-display text-[28px] font-extrabold text-white">
           {kata?.already_submitted ? '✓' : '—'}
         </span>
@@ -77,25 +69,24 @@ function MetaTag({ children }: { children: React.ReactNode }) {
   )
 }
 
-type DescTab = 'description' | 'examples' | 'discussion' | 'hints'
-const DESC_TABS: DescTab[] = ['description', 'examples', 'discussion', 'hints']
+// Only "description" is backed by real backend data today. "Examples",
+// "Discussion" and "Hints" were deleted because the backend TaskPublic has
+// no examples / discussion thread / hints fields — rendering them would be
+// hardcoded fake content (anti-fallback policy).
+type DescTab = 'description'
+const DESC_TABS: DescTab[] = ['description']
 
-function DescriptionCard() {
+function DescriptionCard({ kata }: { kata: DailyKata | undefined }) {
   const { t } = useTranslation('daily')
   const [tab, setTab] = useState<DescTab>('description')
-  const constraints = t('constraints_list', { returnObjects: true }) as string[]
+  const description = kata?.task?.description ?? ''
+  const timeLimit = kata?.task?.time_limit_sec
+  const memoryLimit = kata?.task?.memory_limit_mb
   return (
     <Card className="w-full flex-col gap-0 p-0 lg:w-[380px]" interactive={false}>
-      {/*
-        Tab strip: the parent flex container needs `min-w-0` so it can shrink
-        below its intrinsic width; `flex-wrap` lets the buttons drop onto a
-        second row instead of pushing the card out of bounds. `overflow-x-auto`
-        is the fallback when wrapping is undesirable (mobile portrait).
-      */}
       <div className="flex min-w-0 flex-wrap items-center gap-1 overflow-x-auto border-b border-border px-2">
         {DESC_TABS.map((tk) => {
           const active = tab === tk
-          const locked = tk === 'hints'
           return (
             <button
               key={tk}
@@ -108,55 +99,40 @@ function DescriptionCard() {
                   : 'text-text-muted hover:text-text-primary',
               )}
             >
-              {t(`tabs.${tk}`)} {locked && <Lock className="ml-1 inline h-3 w-3" />}
+              {t(`tabs.${tk}`)}
             </button>
           )
         })}
       </div>
       <div className="flex flex-col gap-4 p-5">
-        <p className="text-[13px] leading-relaxed text-text-secondary">
-          {t('desc_p1')}
-        </p>
-        <p className="text-[13px] leading-relaxed text-text-secondary">
-          {t('desc_p2')}
-        </p>
-
-        <div className="flex flex-col gap-2 rounded-lg bg-surface-1 p-4">
-          <span className="font-mono text-[10px] font-bold uppercase tracking-[0.1em] text-text-muted">{t('example')}</span>
-          <pre className="overflow-x-auto font-mono text-[12px] leading-relaxed text-text-primary">
-{`Input:  nums = [4,5,6,7,0,1,2], target = 0
-Output: 4
-
-Input:  nums = [4,5,6,7,0,1,2], target = 3
-Output: -1`}
-          </pre>
-        </div>
-
-        <div className="flex flex-col gap-2">
-          <span className="font-mono text-[10px] font-bold uppercase tracking-[0.1em] text-text-muted">{t('constraints')}</span>
-          <ul className="flex flex-col gap-1 pl-4 text-[12px] text-text-secondary">
-            {constraints.map((c, i) => (
-              <li key={i} className="list-disc">{c}</li>
-            ))}
-          </ul>
-        </div>
+        {tab === 'description' && (
+          <>
+            {description ? (
+              <p className="whitespace-pre-wrap text-[13px] leading-relaxed text-text-secondary">
+                {description}
+              </p>
+            ) : (
+              <p className="text-[13px] italic leading-relaxed text-text-muted">
+                {t('no_kata_today')}
+              </p>
+            )}
+            {(timeLimit || memoryLimit) && (
+              <div className="flex flex-col gap-2">
+                <span className="font-mono text-[10px] font-bold uppercase tracking-[0.1em] text-text-muted">
+                  {t('constraints')}
+                </span>
+                <ul className="flex flex-col gap-1 pl-4 text-[12px] text-text-secondary">
+                  {timeLimit ? <li className="list-disc">{t('time_limit', { sec: timeLimit })}</li> : null}
+                  {memoryLimit ? <li className="list-disc">{t('memory_limit', { mb: memoryLimit })}</li> : null}
+                </ul>
+              </div>
+            )}
+          </>
+        )}
       </div>
     </Card>
   )
 }
-
-const STARTER_CODE = `package main
-
-func search(nums []int, target int) int {
-\tlo, hi := 0, len(nums)-1
-\tfor lo <= hi {
-\t\tmid := (lo + hi) / 2
-\t\tif nums[mid] == target { return mid }
-\t\t// TODO: handle rotation
-\t}
-\treturn -1
-}
-`
 
 type RunState =
   | { kind: 'idle' }
@@ -166,14 +142,22 @@ type RunState =
   | { kind: 'submit-result'; result: DailySubmitResponse }
   | { kind: 'error'; message: string }
 
-function Editor3({ kataID }: { kataID: string }) {
+function Editor3({ kataID, initialCode }: { kataID: string; initialCode: string }) {
   const { t } = useTranslation('daily')
-  const [code, setCode] = useState<string>(STARTER_CODE)
+  const [code, setCode] = useState<string>(initialCode)
+  // When the kata switches (id transitions from pending → real), reset the
+  // editor buffer to the new starter snippet.
+  useEffect(() => {
+    setCode(initialCode)
+  }, [initialCode])
   const [state, setState] = useState<RunState>({ kind: 'idle' })
   const runMu = useDailyRunMutation()
   const submitMu = useDailySubmitMutation()
 
+  const disabled = kataID === 'pending-kata'
+
   const onRun = () => {
+    if (disabled) return
     setState({ kind: 'running' })
     runMu.mutate(
       { kata_id: kataID, code, language: 'go' },
@@ -189,6 +173,7 @@ function Editor3({ kataID }: { kataID: string }) {
   }
 
   const onSubmit = () => {
+    if (disabled) return
     setState({ kind: 'submitting' })
     submitMu.mutate(
       { kata_id: kataID, code, language: 'go' },
@@ -226,10 +211,6 @@ function Editor3({ kataID }: { kataID: string }) {
             scrollBeyondLastLine: false,
             automaticLayout: true,
             tabSize: 2,
-            // Explicit readOnly:false — the previous static-pre version
-            // rendered code as plain HTML, which the user reported as
-            // "the editor is locked". Monaco defaults to writable but we
-            // pin it for clarity.
             readOnly: false,
           }}
         />
@@ -245,7 +226,7 @@ function Editor3({ kataID }: { kataID: string }) {
             icon={state.kind === 'running' ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Play className="h-3.5 w-3.5" />}
             size="sm"
             onClick={onRun}
-            disabled={isBusy}
+            disabled={isBusy || disabled}
           >
             {t('run')}
           </Button>
@@ -255,7 +236,7 @@ function Editor3({ kataID }: { kataID: string }) {
             size="sm"
             className="shadow-glow"
             onClick={onSubmit}
-            disabled={isBusy}
+            disabled={isBusy || disabled}
           >
             {t('submit')}
           </Button>
@@ -299,8 +280,7 @@ function ResultPanel({ state }: { state: RunState }) {
       </div>
     )
   }
-  const passed =
-    state.kind === 'run-result' ? state.result.passed : state.result.passed
+  const passed = state.kind === 'run-result' ? state.result.passed : state.result.passed
   const lines: string[] = []
   if (state.kind === 'run-result') {
     lines.push(state.result.output)
@@ -334,7 +314,7 @@ function StreakCard() {
   const { t } = useTranslation('daily')
   const { data: streak } = useStreakQuery()
   const current = streak?.current ?? 0
-  const history = streak?.history?.slice(-14) ?? Array.from({ length: 14 }, (_, i) => i < 12)
+  const history = streak?.history?.slice(-14) ?? []
   const days = Array.from({ length: 14 }, (_, i) => Boolean(history[i]))
   return (
     <Card className="flex-col gap-3 p-4">
@@ -358,62 +338,21 @@ function StreakCard() {
   )
 }
 
-const UNLOCKS = [
-  { name: 'Streak Master', cur: 12, tgt: 14 },
-  { name: 'Speed Demon', cur: 6, tgt: 10 },
-  { name: 'DP Apprentice', cur: 3, tgt: 10 },
-] as const
-
-function UnlocksCard() {
-  const { t } = useTranslation('daily')
-  return (
-    <Card className="flex-col gap-3 p-4">
-      <h3 className="font-display text-[13px] font-bold text-text-primary">{t('unlocks')}</h3>
-      <div className="flex flex-col gap-3">
-        {UNLOCKS.map((u) => (
-          <div key={u.name} className="flex flex-col gap-1">
-            <div className="flex items-center justify-between">
-              <span className="text-[12px] font-semibold text-text-secondary">{u.name}</span>
-              <span className="font-mono text-[11px] text-text-muted">
-                {u.cur}/{u.tgt}
-              </span>
-            </div>
-            <div className="h-1 overflow-hidden rounded-full bg-black/30">
-              <div
-                className="h-full rounded-full bg-cyan"
-                style={{ width: `${(u.cur / u.tgt) * 100}%` }}
-              />
-            </div>
-          </div>
-        ))}
-      </div>
-    </Card>
-  )
-}
-
-function useKataID() {
-  const { data: kata } = useDailyKataQuery()
-  // Fall back to a stable placeholder so the editor still renders before
-  // the kata fetch resolves; the run/submit handlers carry the real id once
-  // it lands.
-  return useMemo(() => kata?.task?.id ?? 'pending-kata', [kata])
-}
-
 export default function DailyPage() {
-  const kataID = useKataID()
-  // Re-mount the editor when kata id flips from "pending" to a real one so
-  // the starter code can be re-derived (currently the same template, but
-  // future kata may carry per-task starter_code).
-  useEffect(() => void kataID, [kataID])
+  const { data: kata, isError } = useDailyKataQuery()
+  const kataID = useMemo(() => kata?.task?.id ?? 'pending-kata', [kata])
+  const starter = useMemo(
+    () => kata?.task?.starter_code?.go ?? '',
+    [kata],
+  )
   return (
     <AppShellV2>
-      <Hero />
+      <Hero kata={kata} isError={isError} />
       <div className="flex flex-col gap-6 px-4 py-6 sm:px-8 lg:flex-row lg:px-10 lg:py-8" style={{ minHeight: 'calc(100vh - 72px - 200px)' }}>
-        <DescriptionCard />
-        <Editor3 kataID={kataID} />
+        <DescriptionCard kata={kata} />
+        <Editor3 kataID={kataID} initialCode={starter} />
         <div className="flex w-full flex-col gap-4 lg:w-[240px]">
           <StreakCard />
-          <UnlocksCard />
         </div>
       </div>
     </AppShellV2>

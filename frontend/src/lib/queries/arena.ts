@@ -41,6 +41,11 @@ export type ArenaLanguageKey =
 // localStorage and forwarded as an extra request body field. The transcoder
 // drops unknown fields silently, so this is safe (bible §11 — no leakage,
 // just a hint for future server-side AI dispatch).
+//
+// Wave-4 update: the live catalogue (premium tier, providers) is now
+// served by GET /api/v1/ai/models — see lib/queries/ai.ts useAIModelsQuery.
+// UI code that wants the dynamic list should consume that query; this enum
+// stays only to keep the matchmaking call signature stable.
 export type NeuralModelKey = 'random' | 'llama3' | 'claude' | 'gpt4'
 
 export const NEURAL_MODELS: NeuralModelKey[] = ['random', 'llama3', 'claude', 'gpt4']
@@ -163,12 +168,13 @@ export type FindMatchInput = {
   section: SectionKey
   mode: ArenaModeKey
   /**
-   * Hint for which neural model should drive the AI opponent / helper.
-   * The current backend transcoder ignores unknown fields; once the proto
-   * gains a `neural_model` field this body key will start being honoured
-   * server-side without a frontend change.
+   * Free-form model id from `GET /api/v1/ai/models` (e.g.
+   * "openai/gpt-4o-mini"). Backend rejects ids it doesn't know about, so
+   * passing arbitrary strings is safe — no frontend enum to keep in sync.
+   * The legacy `NeuralModelKey` enum below is kept only for backward-compat
+   * with `Arena2v2Page` / older callers.
    */
-  neuralModel?: NeuralModelKey
+  neuralModel?: string
 }
 
 export function useFindMatchMutation() {
@@ -191,6 +197,41 @@ export function useCancelSearchMutation() {
       api<unknown>('/arena/match/cancel', {
         method: 'DELETE',
       }),
+  })
+}
+
+// CurrentMatchResponse mirrors the backend chi-direct
+// `GET /api/v1/arena/match/current` shape. 404 → no current match (still
+// searching); 200 → there's a match the user can navigate to.
+export type CurrentMatchResponse = {
+  match_id: string
+  status: 'searching' | 'confirming' | 'active'
+  mode: string
+  section: string
+}
+
+// useCurrentMatchQuery — poll while the user is in queue. The `enabled`
+// arg gates network traffic; pass `inQueue` from the page.
+export function useCurrentMatchQuery(enabled: boolean) {
+  return useQuery({
+    queryKey: ['arena', 'current-match'],
+    queryFn: async () => {
+      try {
+        return await api<CurrentMatchResponse>('/arena/match/current')
+      } catch (err) {
+        // 404 means "no current match" — return null so the polling loop
+        // keeps quietly going. Any other error propagates to the UI.
+        if ((err as { status?: number })?.status === 404) {
+          return null
+        }
+        throw err
+      }
+    },
+    enabled,
+    // 2s poll while queued — matches the bible's interactive-feedback target.
+    refetchInterval: 2000,
+    refetchIntervalInBackground: false,
+    staleTime: 0,
   })
 }
 
@@ -242,7 +283,20 @@ export const ARENA_MODES: { key: ArenaModeKey; section: SectionKey }[] = [
   { key: 'cursed', section: 'algorithms' },
 ]
 
-// ── Practice mode ─────────────────────────────────────────────────────────
+// ── Practice mode (DEPRECATED — Wave-4) ───────────────────────────────────
+//
+// Practice vs AI был удалён из UI (ArenaPage больше не вызывает
+// useStartPracticeMutation): нейронка априори решала задачу быстрее
+// человека, плюс созданный матч оказывался в состоянии не ожидаемом
+// WS-хабом ("match not in required state", бесконечный Reconnecting).
+// Пользовательский use-case "хочу попрактиковаться с AI" покрывается
+// Mock Interview — отдельным более продуманным сценарием.
+//
+// Хук + типы оставлены экспортированными временно чтобы не ломать
+// существующие .js-сборки в репо. Backend-эндпоинт /arena/practice +
+// app.StartPractice удалит следующая волна (требует proto-regen).
+//
+// Историческое описание ниже.
 //
 // The practice endpoint is a chi-direct REST route (NOT the Connect
 // transcoder) — see `backend/services/arena/ports/practice.go` for the

@@ -52,8 +52,11 @@ import {
 
 // ── helpers ───────────────────────────────────────────────────────────────
 
+// TIERS is kept for the discovery page filter chips. New guilds always start
+// at the lowest tier ("bronze") and are promoted automatically by the backend
+// based on the guild's aggregate ELO — see HandleCreate in
+// services/guild/ports/discovery_handler.go.
 const TIERS = ['bronze', 'silver', 'gold', 'platinum', 'diamond', 'master'] as const
-type Tier = (typeof TIERS)[number]
 
 function tierFor(elo: number): string {
   if (elo >= 2200) return 'master'
@@ -276,7 +279,15 @@ function ActionsPanel({ guildId, isMine }: { guildId: string; isMine: boolean })
           loading={leave.isPending}
           onClick={() =>
             leave.mutate(guildId, {
-              onSuccess: () => setFeedback('Ты покинул гильдию.'),
+              onSuccess: (res) => {
+                if (res.status === 'disbanded') {
+                  setFeedback('Ты был последним участником — гильдия распущена.')
+                } else if (res.status === 'transferred') {
+                  setFeedback('Ты вышел; права капитана переданы старейшему участнику.')
+                } else {
+                  setFeedback('Ты покинул гильдию.')
+                }
+              },
               onError: (err: unknown) =>
                 setFeedback(err instanceof Error ? err.message : 'Не удалось выйти.'),
             })
@@ -288,7 +299,8 @@ function ActionsPanel({ guildId, isMine }: { guildId: string; isMine: boolean })
           <p className="text-[12px] text-text-muted">{feedback}</p>
         ) : (
           <p className="text-[11px] text-text-muted">
-            Капитан гильдии не может выйти — сначала передай руководство.
+            Если ты капитан — права автоматически перейдут к старейшему участнику.
+            Последний участник распускает гильдию при выходе.
           </p>
         )}
       </Card>
@@ -432,7 +444,6 @@ function CreateGuildModal({
   const create = useCreateGuildMutation()
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
-  const [tier, setTier] = useState<Tier>('bronze')
   const [maxMembers, setMaxMembers] = useState(25)
   const [policy, setPolicy] = useState<'open' | 'invite' | 'closed'>('open')
   const [error, setError] = useState<string | null>(null)
@@ -446,7 +457,9 @@ function CreateGuildModal({
       return
     }
     create.mutate(
-      { name: name.trim(), description: description.trim(), tier, max_members: maxMembers, join_policy: policy },
+      // tier is intentionally NOT sent — backend forces bronze for every new
+      // guild; promotion happens automatically based on aggregate ELO.
+      { name: name.trim(), description: description.trim(), max_members: maxMembers, join_policy: policy },
       {
         onSuccess: () => {
           onClose()
@@ -501,31 +514,19 @@ function CreateGuildModal({
             placeholder="Опционально — короткий девиз гильдии."
           />
         </Field>
-        <div className="grid grid-cols-2 gap-3">
-          <Field label="Tier">
-            <select
-              className="h-10 w-full rounded-md border border-border bg-surface-1 px-3 text-[13px] text-text-primary outline-none focus:border-accent"
-              value={tier}
-              onChange={(e) => setTier(e.target.value as Tier)}
-            >
-              {TIERS.map((t) => (
-                <option key={t} value={t}>
-                  {tierLabel(t)}
-                </option>
-              ))}
-            </select>
-          </Field>
-          <Field label="Лимит участников">
-            <input
-              type="number"
-              min={1}
-              max={200}
-              className="h-10 w-full rounded-md border border-border bg-surface-1 px-3 text-[13px] text-text-primary outline-none focus:border-accent"
-              value={maxMembers}
-              onChange={(e) => setMaxMembers(Math.max(1, Math.min(200, Number(e.target.value) || 1)))}
-            />
-          </Field>
-        </div>
+        <Field label="Лимит участников">
+          <input
+            type="number"
+            min={1}
+            max={200}
+            className="h-10 w-full rounded-md border border-border bg-surface-1 px-3 text-[13px] text-text-primary outline-none focus:border-accent"
+            value={maxMembers}
+            onChange={(e) => setMaxMembers(Math.max(1, Math.min(200, Number(e.target.value) || 1)))}
+          />
+        </Field>
+        <p className="rounded-md border border-border bg-surface-1 px-3 py-2 text-[11px] text-text-muted">
+          Гильдия начинает с Bronze tier. Тир повышается автоматически — растите ELO своей команды.
+        </p>
         <Field label="Политика входа">
           <select
             className="h-10 w-full rounded-md border border-border bg-surface-1 px-3 text-[13px] text-text-primary outline-none focus:border-accent"

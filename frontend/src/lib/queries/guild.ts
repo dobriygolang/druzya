@@ -188,11 +188,18 @@ export function useJoinGuildMutation() {
   })
 }
 
+export type GuildLeaveResponse = {
+  status: 'left' | 'disbanded' | 'transferred' | string
+  guild_id: string
+  // Set when status === 'transferred' — the auto-promoted heir.
+  new_captain_id?: string
+}
+
 export function useLeaveGuildMutation() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (guildID: string) =>
-      api<{ status: string; guild_id: string }>(
+      api<GuildLeaveResponse>(
         `/guild/${encodeURIComponent(guildID)}/leave`,
         { method: 'POST', body: '{}' },
       ),

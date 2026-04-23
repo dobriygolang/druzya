@@ -11,7 +11,6 @@ export type DailyTask = {
   time_limit_sec: number
   memory_limit_mb: number
   starter_code: Record<string, string>
-  example_cases: { input: string; output: string }[]
 }
 
 export type DailyKata = {
@@ -79,7 +78,29 @@ export function useCalendarQuery() {
 export type DailyRunRequest = {
   kata_id: string
   code: string
+  // Wire format for the `/daily/run` chi endpoint which parses via
+  // shared/enums.Language — lowercase string like "go" | "python".
   language: string
+}
+
+// Proto-transcoded /daily/kata/submit expects the proto enum *name*
+// (e.g. "LANGUAGE_GO"), not the lowercase shared/enums string. The two
+// endpoints accept different wire shapes because one is a chi handler
+// and the other goes through vanguard → druz9.v1.Language enum.
+const SUBMIT_LANGUAGE_MAP: Record<string, string> = {
+  go: 'LANGUAGE_GO',
+  python: 'LANGUAGE_PYTHON',
+  javascript: 'LANGUAGE_JAVASCRIPT',
+  typescript: 'LANGUAGE_TYPESCRIPT',
+  sql: 'LANGUAGE_SQL',
+}
+
+function submitLanguageWire(lang: string): string {
+  const mapped = SUBMIT_LANGUAGE_MAP[lang.toLowerCase()]
+  if (!mapped) {
+    throw new Error(`unsupported language for submit: ${lang}`)
+  }
+  return mapped
 }
 
 export type DailyRunResponse = {
@@ -113,7 +134,10 @@ export function useDailySubmitMutation() {
     mutationFn: (input: DailyRunRequest) =>
       api<DailySubmitResponse>('/daily/kata/submit', {
         method: 'POST',
-        body: JSON.stringify({ code: input.code, language: input.language }),
+        body: JSON.stringify({
+          code: input.code,
+          language: submitLanguageWire(input.language),
+        }),
       }),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ['daily', 'kata'] })

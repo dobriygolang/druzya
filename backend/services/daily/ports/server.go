@@ -239,6 +239,9 @@ func (s *DailyServer) toConnectErr(err error) error {
 		return connect.NewError(connect.CodeNotFound, err)
 	case errors.Is(err, domain.ErrAlreadySubmitted):
 		return connect.NewError(connect.CodeAlreadyExists, err)
+	case errors.Is(err, domain.ErrSandboxUnavailable):
+		s.H.Log.Warn("daily: sandbox unavailable", slog.Any("err", err))
+		return connect.NewError(connect.CodeUnavailable, errors.New("sandbox unavailable"))
 	default:
 		s.H.Log.Error("daily: unexpected error", slog.Any("err", err))
 		return connect.NewError(connect.CodeInternal, errors.New("daily failure"))

@@ -2,7 +2,6 @@ import {
   ArrowRight,
   Check,
   Loader2,
-  Lock,
   Sparkles,
   Swords,
   Users,
@@ -22,15 +21,18 @@ import type { ReactNode } from 'react'
 import { useRatingMeQuery, useLeaderboardQuery } from '../lib/queries/rating'
 import {
   useCancelSearchMutation,
+  useCurrentMatchQuery,
   useFindMatchMutation,
-  useStartPracticeMutation,
   type ArenaModeKey,
   type SectionKey,
-  type NeuralModelKey,
-  loadNeuralModel,
-  saveNeuralModel,
-  NEURAL_MODELS,
 } from '../lib/queries/arena'
+import { useAIModelsQuery, type AIModel } from '../lib/queries/ai'
+import { useProfileQuery } from '../lib/queries/profile'
+
+// Queue-wait timeout (seconds) — after this many seconds without a match we
+// show the user a clear "никого нет в очереди" message and auto-cancel, so the
+// UI никогда не висит молча. Bible §11 — no silent fallback.
+const QUEUE_TIMEOUT_SEC = 60
 
 type PartyMode = 'solo' | 'party'
 
@@ -189,48 +191,42 @@ function HeroQueue({
   )
 }
 
-type ModelCard = {
-  key: NeuralModelKey
-  name: string
-  tier: string
-  free: boolean
-  price?: string
-}
-
-const MODELS: ModelCard[] = [
-  { key: 'random', name: 'Random', tier: 'Случайная модель', free: true },
-  { key: 'gpt4', name: 'GPT-4o', tier: 'OpenAI', free: true },
-  { key: 'claude', name: 'Sonnet 4.5', tier: 'Anthropic', free: true },
-  { key: 'llama3', name: 'Llama 3', tier: 'Meta', free: true },
-]
-
-function ModelTile({
+// DynamicModelTile renders an AI model from the live backend catalogue.
+// Premium models are rendered with a 💎 badge. If the current user isn't
+// premium, the tile is locked (visually + click ignored) with a tooltip.
+function DynamicModelTile({
   m,
   selected,
+  locked,
   onSelect,
 }: {
-  m: ModelCard
+  m: AIModel
   selected: boolean
+  locked: boolean
   onSelect: () => void
 }) {
   return (
     <button
       type="button"
       onClick={onSelect}
+      disabled={locked}
       aria-pressed={selected}
+      title={locked ? 'Доступно с подпиской premium/pro' : undefined}
       className={[
         'flex h-full min-w-0 flex-col justify-between gap-2 rounded-lg border p-3.5 text-left transition-colors',
         selected
           ? 'border-accent bg-accent/10 shadow-glow'
-          : 'border-border bg-surface-1 hover:border-border-strong',
+          : locked
+            ? 'cursor-not-allowed border-border bg-surface-1 opacity-60'
+            : 'border-border bg-surface-1 hover:border-border-strong',
       ].join(' ')}
     >
       <div className="flex items-start justify-between gap-2">
         <div className="flex min-w-0 flex-col gap-0.5">
           <span className="truncate font-display text-sm font-bold text-text-primary">
-            {m.name}
+            {m.label}
           </span>
-          <span className="truncate font-mono text-[10px] text-text-muted">{m.tier}</span>
+          <span className="truncate font-mono text-[10px] text-text-muted">{m.provider}</span>
         </div>
         {selected ? (
           <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-accent/30">
@@ -243,17 +239,14 @@ function ModelTile({
         )}
       </div>
       <div className="flex items-center justify-between gap-2">
-        {m.free ? (
+        {m.tier === 'free' ? (
           <span className="rounded-full bg-success/15 px-2 py-0.5 font-mono text-[10px] font-semibold text-success">
             FREE
           </span>
         ) : (
           <span className="rounded-full bg-warn/15 px-2 py-0.5 font-mono text-[10px] font-semibold text-warn">
-            PRO
+            💎 PREMIUM
           </span>
-        )}
-        {!m.free && m.price && (
-          <span className="truncate font-mono text-[10px] text-text-muted">{m.price}</span>
         )}
       </div>
     </button>
@@ -264,10 +257,31 @@ function AiPanel({
   selectedModel,
   onSelectModel,
 }: {
-  selectedModel: NeuralModelKey
-  onSelectModel: (key: NeuralModelKey) => void
+  selectedModel: string
+  onSelectModel: (key: string) => void
 }) {
   const { t } = useTranslation('arena')
+  // Real backend catalogue. When OPENROUTER_API_KEY is missing → items=[],
+  // available=false → entire panel hidden (no fake models, anti-fallback).
+  const ai = useAIModelsQuery()
+  const profile = useProfileQuery()
+  const userTier = profile.data?.tier ?? 'free'
+  const isPremiumUser = userTier === 'premium' || userTier === 'pro'
+
+  if (ai.isLoading) {
+    return (
+      <Card className="flex-col gap-4 p-5" interactive={false}>
+        <div className="h-24 animate-pulse rounded-lg bg-surface-2" />
+      </Card>
+    )
+  }
+  // No models available (key missing or backend unhealthy) — hide silently.
+  if (ai.isError || !ai.data?.available || ai.data.items.length === 0) {
+    return null
+  }
+
+  const items = ai.data.items
+  const selectedItem = items.find((m) => m.id === selectedModel) ?? items[0]
   return (
     <Card className="flex-col gap-4 p-5" interactive={false}>
       <div className="flex flex-col items-start justify-between gap-2 sm:flex-row sm:items-center">
@@ -286,19 +300,26 @@ function AiPanel({
         <span className="shrink-0 rounded-full bg-surface-2 px-2 py-0.5 font-mono text-[11px] text-text-muted">
           {t('current_model', {
             defaultValue: 'текущая: {{name}}',
-            name: MODELS.find((m) => m.key === selectedModel)?.name ?? '—',
+            name: selectedItem?.label ?? '—',
           })}
         </span>
       </div>
       <div className="grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        {MODELS.map((m) => (
-          <ModelTile
-            key={m.key}
-            m={m}
-            selected={selectedModel === m.key}
-            onSelect={() => onSelectModel(m.key)}
-          />
-        ))}
+        {items.map((m) => {
+          const locked = m.tier === 'premium' && !isPremiumUser
+          return (
+            <DynamicModelTile
+              key={m.id}
+              m={m}
+              selected={selectedModel === m.id}
+              locked={locked}
+              onSelect={() => {
+                if (locked) return
+                onSelectModel(m.id)
+              }}
+            />
+          )
+        })}
       </div>
     </Card>
   )
@@ -311,16 +332,14 @@ type Mode = {
     | 'ranked_2v2'
     | 'mock'
     | 'ai_allowed'
-    | 'practice'
-    | 'custom'
   name: string
   desc: string
   count: number
   time: string
   icon: ReactNode
   gradient: string
-  /** Which arena queue to enqueue into. `null` for non-queue actions (custom, practice). */
-  arenaMode: ArenaModeKey | null
+  /** Which arena queue to enqueue into. */
+  arenaMode: ArenaModeKey
   /** True if this card needs the user to be in Party mode (2v2). */
   requiresParty: boolean
   /** True for the AI cards — selected neural model is shown / used. */
@@ -388,32 +407,13 @@ const MODES: Mode[] = [
     requiresParty: false,
     aiPowered: true,
   },
-  {
-    key: 'practice',
-    name: 'Practice vs AI',
-    desc: 'Мгновенный матч против выбранной нейронки. Без рейтинга, без очереди.',
-    count: 1,
-    time: 'мгновенно',
-    icon: <Bot className="h-7 w-7 text-text-primary" />,
-    gradient: 'from-cyan to-success',
-    // Practice has its own dedicated REST endpoint — see useStartPracticeMutation.
-    arenaMode: null,
-    requiresParty: false,
-    aiPowered: true,
-  },
-  {
-    key: 'custom',
-    name: 'Custom Lobby',
-    desc: 'Свои правила, лобби с кодом.',
-    count: 48,
-    time: '~60с',
-    icon: <Lock className="h-7 w-7 text-text-primary" />,
-    gradient: 'from-surface-3 to-accent',
-    arenaMode: null,
-    requiresParty: false,
-    aiPowered: false,
-  },
 ]
+// Practice vs AI + Custom Lobby удалены (Wave-4 bugfix):
+// - Practice: бот априори решал быстрее человека, + матч оказывался
+//   в состоянии не ожидаемом WS-хабом ("match not in required state",
+//   бесконечный Reconnecting). Mock-interview покрывает AI-практику.
+// - Custom Lobby: бэкенда под кастом-комнаты нет, список хардкоженный,
+//   "войти" кидало в несуществующий /hub. Это v2-фича, возврат по спросу.
 
 function ModeCard({
   m,
@@ -424,12 +424,13 @@ function ModeCard({
   m: Mode
   onClick: () => void
   isPending: boolean
-  selectedModel: NeuralModelKey
+  selectedModel: string
 }) {
   const { t } = useTranslation('arena')
+  const ai = useAIModelsQuery()
   const modelName = useMemo(
-    () => MODELS.find((mm) => mm.key === selectedModel)?.name ?? '—',
-    [selectedModel],
+    () => ai.data?.items.find((mm) => mm.id === selectedModel)?.label ?? '—',
+    [selectedModel, ai.data],
   )
   return (
     <Card className="flex-col gap-4 p-5" interactive>
@@ -529,35 +530,84 @@ export default function ArenaPage() {
   const navigate = useNavigate()
   const findMatch = useFindMatchMutation()
   const cancelSearch = useCancelSearchMutation()
-  const startPractice = useStartPracticeMutation()
   const [section, setSection] = useState<SectionKey>('algorithms')
   const [partyMode, setPartyMode] = useState<PartyMode>('solo')
-  const [neuralModel, setNeuralModel] = useState<NeuralModelKey>(loadNeuralModel())
+  // Neural model id is now a free-form string (the backend's model id, e.g.
+  // "openai/gpt-4o-mini"). Persisted to localStorage so the choice survives
+  // reloads — no enum guard needed because the backend rejects unknown ids.
+  const [neuralModel, setNeuralModelState] = useState<string>(() => {
+    try {
+      return window.localStorage.getItem('druz9.arena.neural_model') ?? ''
+    } catch {
+      return ''
+    }
+  })
+  const setNeuralModel = (id: string) => {
+    setNeuralModelState(id)
+    try {
+      window.localStorage.setItem('druz9.arena.neural_model', id)
+    } catch {
+      /* localStorage may be disabled — ignore, choice falls back to default next visit */
+    }
+  }
   const [inQueue, setInQueue] = useState(false)
   const [waitSec, setWaitSec] = useState(0)
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
   const [pendingMode, setPendingMode] = useState<string | null>(null)
 
-  // Persist neural model choice across visits.
+  // Poll backend every 2s while in queue — when matchmaker pairs us up,
+  // /arena/match/current returns 200 with the match id and we navigate
+  // straight to the match page. Without this the UI sat silently with
+  // "queued: 1" forever (production bug #5-8).
+  const currentMatch = useCurrentMatchQuery(inQueue)
   useEffect(() => {
-    saveNeuralModel(neuralModel)
-  }, [neuralModel])
+    if (!inQueue) return
+    const m = currentMatch.data
+    if (!m?.match_id) return
+    const path =
+      m.mode === 'duo_2v2' ? `/arena/2v2/${m.match_id}` : `/arena/match/${m.match_id}`
+    setInQueue(false)
+    setPendingMode(null)
+    navigate(path)
+  }, [inQueue, currentMatch.data, navigate])
 
-  // Tick the wait counter while we are queued.
+  // Tick the wait counter while we are queued. When QUEUE_TIMEOUT_SEC elapses
+  // without the backend matchmaker pairing us up, auto-cancel the search and
+  // surface a clear "никого нет в очереди" message (bible §11 — no silent
+  // waits). The user can click "Найти матч" again to re-enqueue.
   useEffect(() => {
     if (!inQueue) {
       setWaitSec(0)
       return
     }
-    const id = window.setInterval(() => setWaitSec((s) => s + 1), 1000)
+    const id = window.setInterval(() => {
+      setWaitSec((s) => {
+        const next = s + 1
+        if (next >= QUEUE_TIMEOUT_SEC) {
+          // Auto-cancel on the backend so we don't leave a stale ticket.
+          cancelSearch.mutate(undefined, {
+            onSettled: () => {
+              setInQueue(false)
+              setPendingMode(null)
+              setErrorMsg(
+                'В очереди сейчас никого нет. Попробуй другой раздел или повтори позже.',
+              )
+            },
+          })
+        }
+        return next
+      })
+    }, 1000)
     return () => window.clearInterval(id)
+    // cancelSearch is a stable mutation object; intentional single-deps.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [inQueue])
 
   const enqueue = (mode: ArenaModeKey, modeKey: string) => {
     setErrorMsg(null)
     setPendingMode(modeKey)
     findMatch.mutate(
-      { section, mode, neuralModel: NEURAL_MODELS.includes(neuralModel) ? neuralModel : 'random' },
+      { section, mode, neuralModel: neuralModel || 'random' },
       {
         onSuccess: (resp) => {
           setPendingMode(null)
@@ -593,37 +643,13 @@ export default function ArenaPage() {
   }
 
   const handleModeClick = (m: Mode) => {
-    if (m.key === 'custom') {
-      navigate('/lobby')
-      return
-    }
-    if (m.key === 'practice') {
-      setErrorMsg(null)
-      setPendingMode(m.key)
-      startPractice.mutate(
-        { section, neuralModel },
-        {
-          onSuccess: (resp) => {
-            setPendingMode(null)
-            navigate(`/arena/match/${resp.match_id}`)
-          },
-          onError: (e: unknown) => {
-            setPendingMode(null)
-            setErrorMsg((e as Error).message ?? 'failed to start practice')
-          },
-        },
-      )
-      return
-    }
     if (m.requiresParty && partyMode !== 'party') {
       setPartyMode('party')
     }
     if (!m.requiresParty && partyMode === 'party') {
       setPartyMode('solo')
     }
-    if (m.arenaMode) {
-      enqueue(m.arenaMode, m.key)
-    }
+    enqueue(m.arenaMode, m.key)
   }
 
   const handleCreateParty = () => {
@@ -634,7 +660,7 @@ export default function ArenaPage() {
     if (partyMode === 'party') {
       // Party mode emphasises 2v2 modes; solo modes hidden so the user is not
       // tempted to enqueue a single-player ladder while a partner is waiting.
-      return MODES.filter((m) => m.requiresParty || m.key === 'custom')
+      return MODES.filter((m) => m.requiresParty)
     }
     return MODES.filter((m) => !m.requiresParty)
   }, [partyMode])

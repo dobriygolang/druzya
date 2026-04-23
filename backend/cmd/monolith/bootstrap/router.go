@@ -144,6 +144,10 @@ func restAuthGate(requireAuth func(http.Handler) http.Handler) func(http.Handler
 		// /api/v1/vacancies — read-only catalogue, public for SEO + the
 		// "browse without sign-up" flow.
 		"/api/v1/vacancies": {},
+		// /api/v1/ai/models — public model catalogue used by the AI-opponent
+		// picker on /arena. Frontend needs it before sign-in to render the
+		// premium-tier upsell, so it stays outside the bearer gate.
+		"/api/v1/ai/models": {},
 	}
 	isPublic := func(p string) bool {
 		if _, ok := publicPaths[p]; ok {
