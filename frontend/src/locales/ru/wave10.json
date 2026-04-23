@@ -1,0 +1,51 @@
+{
+  "_note": "Wave-10 namespace. RU is canonical. Top-priority strings (emptyState titles/CTAs, mobileNav, onboarding step titles/CTAs) are translated to KZ/UA by hand. Deeper secondary copy (sample-problem text, AI insight templates, share share-CTA text) falls back to RU via the kz→ru→en chain configured in lib/i18n.ts and is marked with _note: 'needs human translation' inside the relevant subtree of the KZ/UA files.",
+  "emptyState": {
+    "noData": {
+      "kicker": "no data",
+      "title": "Пока пусто",
+      "body": "Данные появятся, как только произойдёт первое действие."
+    },
+    "firstTime": {
+      "kicker": "first time",
+      "title": "Добро пожаловать",
+      "body": "Здесь мы покажем краткое введение, а затем — твои данные."
+    },
+    "error": {
+      "kicker": "error",
+      "title": "Что-то сломалось",
+      "body": "Мы уже смотрим. Попробуй повторить через пару секунд."
+    },
+    "loading": {
+      "kicker": "loading",
+      "title": "Загружаем…"
+    },
+    "comingSoon": {
+      "kicker": "coming soon",
+      "title": "Скоро",
+      "body": "Фича в разработке."
+    },
+    "notFound": {
+      "kicker": "not found",
+      "title": "Такого тут нет",
+      "body": "Ссылка устарела или объект удалён."
+    },
+    "throttled": {
+      "kicker": "throttled",
+      "title": "Слишком часто",
+      "body": "Источник ограничил запросы. Повторим автоматически."
+    },
+    "back": "Назад"
+  },
+  "mobileNav": {
+    "match": "match",
+    "matchAria": "запустить рейтинговый матч",
+    "matchmakingAria": "идёт подбор · {{time}} · нажми, чтобы отменить",
+    "unread": "{{count}} непрочитанных"
+  },
+  "atlas": {
+    "fullMap": "↗ полная карта",
+    "fullMapTitle": "Atlas — полная карта",
+    "close": "Закрыть"
+  }
+}

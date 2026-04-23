@@ -355,6 +355,17 @@ func (c *CachedRepo) ListSkillNodes(ctx context.Context, userID uuid.UUID) ([]do
 	return out, nil
 }
 
+// UpsertSkillNode — write pass-through. Skill_nodes are not part of the
+// cached bundle, so no invalidation is needed today; revisit if atlas-by-id
+// becomes a cached read path.
+func (c *CachedRepo) UpsertSkillNode(ctx context.Context, userID uuid.UUID, nodeKey string, progress int) (domain.SkillNode, error) {
+	out, err := c.delegate.UpsertSkillNode(ctx, userID, nodeKey, progress)
+	if err != nil {
+		return domain.SkillNode{}, fmt.Errorf("profile.cache.UpsertSkillNode: %w", err)
+	}
+	return out, nil
+}
+
 // ListRatings — uncached pass-through; ratings are joined into the bundle and
 // cached together, so direct callers (event handlers) always read fresh.
 func (c *CachedRepo) ListRatings(ctx context.Context, userID uuid.UUID) ([]domain.SectionRating, error) {

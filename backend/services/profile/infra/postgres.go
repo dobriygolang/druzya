@@ -203,7 +203,9 @@ func (p *Postgres) GetSettings(ctx context.Context, userID uuid.UUID) (domain.Se
 		       COALESCE(np.telegram_chat_id,''),
 		       COALESCE(np.weekly_report_enabled, true),
 		       COALESCE(np.skill_decay_warnings_enabled, true),
-		       COALESCE(u.ai_insight_model, '')
+		       COALESCE(u.ai_insight_model, ''),
+		       (u.onboarding_completed_at IS NOT NULL) AS onboarding_completed,
+		       COALESCE(u.focus_class, '')
 		  FROM users u
 		  LEFT JOIN notification_preferences np ON np.user_id = u.id
 		 WHERE u.id = $1`, userID)
@@ -214,6 +216,8 @@ func (p *Postgres) GetSettings(ctx context.Context, userID uuid.UUID) (domain.Se
 		&channels, &s.Notifications.TelegramChatID,
 		&s.Notifications.WeeklyReportEnabled, &s.Notifications.SkillDecayWarningsEnabled,
 		&s.AIInsightModel,
+		&s.OnboardingCompleted,
+		&s.FocusClass,
 	); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return domain.Settings{}, fmt.Errorf("profile.Postgres.GetSettings: %w", domain.ErrNotFound)
@@ -235,14 +239,27 @@ func (p *Postgres) UpdateSettings(ctx context.Context, userID uuid.UUID, s domai
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 
+	// users base columns. The two onboarding-state columns (focus_class +
+	// onboarding_completed_at) use a HasX gate from the inbound proto so
+	// PUT-with-only-display_name does not clobber a previously chosen
+	// focus class. CASE WHEN keeps the column at its current value when
+	// the caller did not include it.
 	if _, err := tx.Exec(ctx,
 		`UPDATE users
 		    SET display_name = NULLIF($2,''),
 		        locale = COALESCE(NULLIF($3,''), locale),
 		        ai_insight_model = NULLIF($4,''),
+		        focus_class = CASE WHEN $5::bool THEN $6 ELSE focus_class END,
+		        onboarding_completed_at = CASE
+		            WHEN $7::bool AND $8::bool THEN now()
+		            WHEN $7::bool AND NOT $8::bool THEN NULL
+		            ELSE onboarding_completed_at
+		        END,
 		        updated_at = now()
 		  WHERE id = $1`,
 		userID, s.DisplayName, s.Locale, s.AIInsightModel,
+		s.HasFocusClass, s.FocusClass,
+		s.HasOnboardingCompleted, s.OnboardingCompleted,
 	); err != nil {
 		return fmt.Errorf("profile.Postgres.UpdateSettings: users: %w", err)
 	}
@@ -297,6 +314,63 @@ func (p *Postgres) ListSkillNodes(ctx context.Context, userID uuid.UUID) ([]doma
 		out = append(out, n)
 	}
 	return out, nil
+}
+
+// UpsertSkillNode upserts (user_id, node_key) into skill_nodes with the
+// given progress. Validates the node exists in atlas_nodes (returns
+// ErrNotFound if not). On conflict, progress = GREATEST(stored, incoming)
+// — re-allocating the same skill never regresses an in-progress node.
+func (p *Postgres) UpsertSkillNode(ctx context.Context, userID uuid.UUID, nodeKey string, progress int) (domain.SkillNode, error) {
+	if nodeKey == "" {
+		return domain.SkillNode{}, fmt.Errorf("profile.Postgres.UpsertSkillNode: node_key is required")
+	}
+	if progress < 0 {
+		progress = 0
+	}
+	if progress > 100 {
+		progress = 100
+	}
+	// Existence check against atlas_nodes — anti-fallback: do not silently
+	// create orphan skill_nodes rows that point at a missing catalogue id.
+	var exists bool
+	if err := p.pool.QueryRow(ctx,
+		`SELECT EXISTS(SELECT 1 FROM atlas_nodes WHERE id = $1 AND is_active = TRUE)`,
+		nodeKey,
+	).Scan(&exists); err != nil {
+		return domain.SkillNode{}, fmt.Errorf("profile.Postgres.UpsertSkillNode: check node: %w", err)
+	}
+	if !exists {
+		return domain.SkillNode{}, fmt.Errorf("profile.Postgres.UpsertSkillNode: %w", domain.ErrNotFound)
+	}
+	const q = `
+		INSERT INTO skill_nodes (user_id, node_key, progress, unlocked_at, updated_at)
+		VALUES ($1, $2, $3, now(), now())
+		ON CONFLICT (user_id, node_key) DO UPDATE SET
+		    progress    = GREATEST(skill_nodes.progress, EXCLUDED.progress),
+		    unlocked_at = COALESCE(skill_nodes.unlocked_at, EXCLUDED.unlocked_at),
+		    updated_at  = now()
+		RETURNING progress, unlocked_at, decayed_at, updated_at`
+	var sn domain.SkillNode
+	sn.NodeKey = nodeKey
+	var unlocked, decayed pgtype.Timestamptz
+	var updated pgtype.Timestamptz
+	if err := p.pool.QueryRow(ctx, q, pgUUID(userID), nodeKey, int32(progress)).Scan(
+		&sn.Progress, &unlocked, &decayed, &updated,
+	); err != nil {
+		return domain.SkillNode{}, fmt.Errorf("profile.Postgres.UpsertSkillNode: %w", err)
+	}
+	if unlocked.Valid {
+		t := unlocked.Time
+		sn.UnlockedAt = &t
+	}
+	if decayed.Valid {
+		t := decayed.Time
+		sn.DecayedAt = &t
+	}
+	if updated.Valid {
+		sn.UpdatedAt = updated.Time
+	}
+	return sn, nil
 }
 
 // ListRatings via sqlc.

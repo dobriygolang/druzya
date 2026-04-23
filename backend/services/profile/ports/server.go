@@ -367,6 +367,7 @@ func toReportProto(r app.ReportView) *pb.WeeklyReport {
 		BestStreak:     int32(r.BestStreak),
 		PrevXpEarned:   int32(r.PrevXPEarned),
 		AiInsight:      r.AIInsight,
+		FeaturedMetric: r.FeaturedMetric,
 	}
 	for _, s := range r.StrongSections {
 		out.StrongSections = append(out.StrongSections, &pb.SectionBreakdown{
@@ -429,12 +430,19 @@ func toReportProto(r app.ReportView) *pb.WeeklyReport {
 }
 
 func toSettingsProto(s domain.Settings) *pb.ProfileSettings {
+	// onboarding_completed + focus_class are proto3 `optional` so we always
+	// emit a pointer; the read path returns the derived/stored value, so a
+	// pointer is always safe to set (even when value == zero).
+	onboarding := s.OnboardingCompleted
+	focus := s.FocusClass
 	out := &pb.ProfileSettings{
-		DisplayName:      s.DisplayName,
-		DefaultLanguage:  languageToProto(s.DefaultLanguage),
-		Locale:           s.Locale,
-		VoiceModeEnabled: s.VoiceModeEnabled,
-		AiInsightModel:   s.AIInsightModel,
+		DisplayName:         s.DisplayName,
+		DefaultLanguage:     languageToProto(s.DefaultLanguage),
+		Locale:              s.Locale,
+		VoiceModeEnabled:    s.VoiceModeEnabled,
+		AiInsightModel:      s.AIInsightModel,
+		OnboardingCompleted: &onboarding,
+		FocusClass:          &focus,
 	}
 	channels := make([]pb.NotificationChannel, 0, len(s.Notifications.Channels))
 	for _, c := range s.Notifications.Channels {
@@ -455,6 +463,16 @@ func fromSettingsProto(req *pb.ProfileSettings) domain.Settings {
 		VoiceModeEnabled: req.GetVoiceModeEnabled(),
 		Locale:           req.GetLocale(),
 		AIInsightModel:   req.GetAiInsightModel(),
+	}
+	// Wave-10: optional proto3 fields carry presence so a PUT that omits
+	// focus_class / onboarding_completed leaves the DB column untouched.
+	if req.OnboardingCompleted != nil {
+		s.HasOnboardingCompleted = true
+		s.OnboardingCompleted = req.GetOnboardingCompleted()
+	}
+	if req.FocusClass != nil {
+		s.HasFocusClass = true
+		s.FocusClass = req.GetFocusClass()
 	}
 	if req.GetDefaultLanguage() != pb.Language_LANGUAGE_UNSPECIFIED {
 		s.DefaultLanguage = languageFromProto(req.GetDefaultLanguage())

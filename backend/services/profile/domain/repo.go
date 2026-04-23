@@ -34,6 +34,12 @@ type ProfileRepo interface {
 
 	// Atlas.
 	ListSkillNodes(ctx context.Context, userID uuid.UUID) ([]SkillNode, error)
+	// UpsertSkillNode upserts a (user, node_key) row in skill_nodes with the
+	// given progress (0..100). Sets unlocked_at = NOW() on first insert and
+	// is idempotent on conflict (same node_key → progress is updated to MAX
+	// of stored vs incoming so a reallocation never regresses progress).
+	// Returns ErrNotFound if the node_key does not exist in atlas_nodes.
+	UpsertSkillNode(ctx context.Context, userID uuid.UUID, nodeKey string, progress int) (SkillNode, error)
 
 	// Ratings snapshot for score derivation.
 	ListRatings(ctx context.Context, userID uuid.UUID) ([]SectionRating, error)

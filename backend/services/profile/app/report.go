@@ -44,6 +44,27 @@ type ReportView struct {
 	// AchievementsCount into the LLM insight payload. Empty slice when nothing
 	// new was unlocked OR when the underlying repo call failed (best-effort).
 	Achievements []domain.AchievementBrief
+
+	// FeaturedMetric — server-picked headline metric for the share card.
+	// Values: "achievement" | "streak" | "xp" | "" (empty ⇒ client default).
+	// Selection rules (see PickFeaturedMetric):
+	//   - "achievement" if Achievements not empty
+	//   - else "streak" if StreakDays >= 7
+	//   - else "xp"
+	FeaturedMetric string
+}
+
+// PickFeaturedMetric implements the rules described on ReportView.FeaturedMetric.
+// Pure function — kept exported for direct unit testing without spinning the
+// whole GetReport.Do pipeline.
+func PickFeaturedMetric(achievementsThisWeek int, streakDays int) string {
+	if achievementsThisWeek > 0 {
+		return "achievement"
+	}
+	if streakDays >= 7 {
+		return "streak"
+	}
+	return "xp"
 }
 
 // InsightPayload mirrors infra.InsightPayload but lives in the app layer to
@@ -163,6 +184,13 @@ func (uc *GetReport) Do(ctx context.Context, userID uuid.UUID, now time.Time) (R
 	if achs, aerr := uc.Repo.ListAchievementsSince(ctx, userID, start); aerr == nil {
 		view.Achievements = achs
 	}
+
+	// Featured metric for the weekly share card — pick after streaks +
+	// achievements are loaded so the rule has the data it needs. Always
+	// emits a non-empty value; the proto field allows "" but server-side
+	// we always commit to an explicit default ("xp") so the client never
+	// has to guess.
+	view.FeaturedMetric = PickFeaturedMetric(len(view.Achievements), view.StreakDays)
 
 	// ── Phase B: AI insight ────────────────────────────────────────────────
 	//

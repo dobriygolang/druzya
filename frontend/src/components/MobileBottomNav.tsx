@@ -24,6 +24,7 @@
 import { Home, Swords, Map as MapIcon, User, Play, Loader2 } from 'lucide-react'
 import { NavLink, useLocation, useNavigate } from 'react-router-dom'
 import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { cn } from '../lib/cn'
 
 const TABS = [
@@ -62,6 +63,7 @@ type MmStatus = 'idle' | 'matchmaking'
 export function MobileBottomNav({ showLabels = false, unreadCount = 0 }: MobileBottomNavProps) {
   const { pathname } = useLocation()
   const navigate = useNavigate()
+  const { t } = useTranslation('wave10')
   const [status, setStatus] = useState<MmStatus>('idle')
   const [elapsed, setElapsed] = useState(0)
 
@@ -113,7 +115,13 @@ export function MobileBottomNav({ showLabels = false, unreadCount = 0 }: MobileB
     >
       {/* FAB — overflows up so its bg-shadow ring cuts a clean hole */}
       <div className="absolute left-1/2 -top-8 -translate-x-1/2">
-        <FabButton status={status} elapsed={elapsed} onClick={onFab} />
+        <FabButton
+          status={status}
+          elapsed={elapsed}
+          onClick={onFab}
+          ariaIdle={t('mobileNav.matchAria')}
+          ariaMm={(time) => t('mobileNav.matchmakingAria', { time })}
+        />
       </div>
 
       <div className="grid grid-cols-5 items-center pt-2 pb-1.5">
@@ -124,11 +132,11 @@ export function MobileBottomNav({ showLabels = false, unreadCount = 0 }: MobileB
             slot with the «match» label for grid alignment when labels are on. */}
         <div aria-hidden="true" className={cn('flex justify-center', showLabels && 'pt-4')}>
           {showLabels && (
-            <span className="font-mono text-[9px] uppercase tracking-wider text-text-muted">match</span>
+            <span className="font-mono text-[9px] uppercase tracking-wider text-text-muted">{t('mobileNav.match')}</span>
           )}
         </div>
         <Tab {...TABS[2]} showLabels={showLabels} />
-        <Tab {...TABS[3]} showLabels={showLabels} badge={unreadCount} />
+        <Tab {...TABS[3]} showLabels={showLabels} badge={unreadCount} unreadAria={t('mobileNav.unread', { count: unreadCount })} />
       </div>
     </nav>
   )
@@ -140,12 +148,14 @@ function Tab({
   label,
   showLabels,
   badge,
+  unreadAria,
 }: {
   to: string
   icon: typeof Home
   label: string
   showLabels?: boolean
   badge?: number
+  unreadAria?: string
 }) {
   return (
     <NavLink
@@ -179,7 +189,7 @@ function Tab({
                   'font-mono font-bold text-white ring-2 ring-bg tabular-nums',
                   'h-[15px] min-w-[15px] px-1 text-[8px]',
                 )}
-                aria-label={`${badge} непрочитанных`}
+                aria-label={unreadAria ?? String(badge)}
               >
                 {badge > 99 ? '99+' : badge}
               </span>
@@ -213,10 +223,14 @@ function FabButton({
   status,
   elapsed,
   onClick,
+  ariaIdle,
+  ariaMm,
 }: {
   status: MmStatus
   elapsed: number
   onClick: () => void
+  ariaIdle: string
+  ariaMm: (time: string) => string
 }) {
   const mm = status === 'matchmaking'
   const mmss = `${Math.floor(elapsed / 60)}:${String(elapsed % 60).padStart(2, '0')}`
@@ -224,7 +238,7 @@ function FabButton({
     <button
       type="button"
       onClick={onClick}
-      aria-label={mm ? `matchmaking · ${mmss} · tap to cancel` : 'launch ranked match'}
+      aria-label={mm ? ariaMm(mmss) : ariaIdle}
       className={cn(
         'grid h-16 w-16 place-items-center rounded-full select-none transition-all duration-200',
         'shadow-[0_0_0_4px_rgb(var(--color-bg))]',

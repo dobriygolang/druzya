@@ -27,6 +27,7 @@
 
 import { useEffect, useState, type ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { cn } from '../lib/cn'
 import { EmptyIllustration } from './EmptyIllustration'
 import { EmptySkeleton, type SkeletonLayout } from './EmptySkeleton'
@@ -67,51 +68,45 @@ export type EmptyStateProps = {
   extra?: ReactNode
 }
 
-const DEFAULTS: Record<
-  EmptyVariant,
-  { kicker: string; title: string; body?: string; tone: string }
-> = {
-  'no-data': {
-    kicker: 'no data',
-    tone: 'text-text-muted',
-    title: 'Пока пусто',
-    body: 'Данные появятся, как только произойдёт первое действие.',
-  },
-  'first-time': {
-    kicker: 'first time',
-    tone: 'text-text-muted',
-    title: 'Добро пожаловать',
-    body: 'Здесь мы покажем краткое введение, а затем — твои данные.',
-  },
-  error: {
-    kicker: 'error',
-    tone: 'text-danger',
-    title: 'Что-то сломалось',
-    body: 'Мы уже смотрим. Попробуй повторить через пару секунд.',
-  },
-  loading: {
-    kicker: 'loading',
-    tone: 'text-text-muted',
-    title: 'Загружаем…',
-  },
-  'coming-soon': {
-    kicker: 'coming soon',
-    tone: 'text-pink',
-    title: 'Скоро',
-    body: 'Фича в разработке.',
-  },
-  '404-not-found': {
-    kicker: 'not found',
-    tone: 'text-warn',
-    title: 'Такого тут нет',
-    body: 'Ссылка устарела или объект удалён.',
-  },
-  throttled: {
-    kicker: 'throttled',
-    tone: 'text-warn',
-    title: 'Слишком часто',
-    body: 'Источник ограничил запросы. Повторим автоматически.',
-  },
+// Tones are presentation, not copy — kept here. Kicker/title/body live in
+// `wave10:emptyState.*` so KZ/UA can override without touching this file.
+const TONE: Record<EmptyVariant, string> = {
+  'no-data': 'text-text-muted',
+  'first-time': 'text-text-muted',
+  error: 'text-danger',
+  loading: 'text-text-muted',
+  'coming-soon': 'text-pink',
+  '404-not-found': 'text-warn',
+  throttled: 'text-warn',
+}
+
+const I18N_KEY: Record<EmptyVariant, string> = {
+  'no-data': 'noData',
+  'first-time': 'firstTime',
+  error: 'error',
+  loading: 'loading',
+  'coming-soon': 'comingSoon',
+  '404-not-found': 'notFound',
+  throttled: 'throttled',
+}
+
+function useDefaults(variant: EmptyVariant): {
+  kicker: string
+  title: string
+  body?: string
+  tone: string
+} {
+  const { t } = useTranslation('wave10')
+  const k = I18N_KEY[variant]
+  // i18next returns the key itself on a true miss; treat the absence of
+  // an explicit body translation as "no body" for variants where RU has none.
+  const bodyRaw = t(`emptyState.${k}.body`, { defaultValue: '' })
+  return {
+    kicker: t(`emptyState.${k}.kicker`),
+    title: t(`emptyState.${k}.title`),
+    body: bodyRaw ? bodyRaw : undefined,
+    tone: TONE[variant],
+  }
 }
 
 function CtaButton({ cta, primary, disabled }: { cta: EmptyCta; primary: boolean; disabled?: boolean }) {
@@ -134,7 +129,8 @@ function CtaButton({ cta, primary, disabled }: { cta: EmptyCta; primary: boolean
 
 export function EmptyState(props: EmptyStateProps) {
   const navigate = useNavigate()
-  const def = DEFAULTS[props.variant]
+  const { t } = useTranslation('wave10')
+  const def = useDefaults(props.variant)
   const title = props.title ?? def.title
   const body = props.body === null ? undefined : (props.body ?? def.body)
 
@@ -156,7 +152,7 @@ export function EmptyState(props: EmptyStateProps) {
   // 404 → auto-secondary "назад" via router history
   const secondary =
     props.secondaryCta ??
-    (props.variant === '404-not-found' ? { label: 'Назад', onClick: () => navigate(-1) } : undefined)
+    (props.variant === '404-not-found' ? { label: t('emptyState.back'), onClick: () => navigate(-1) } : undefined)
 
   const ctaDisabled = props.variant === 'throttled' && remaining > 0
   const kicker =

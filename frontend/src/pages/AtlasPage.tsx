@@ -40,6 +40,154 @@ import {
   type Atlas,
   type KataRef,
 } from '../lib/queries/profile'
+import { useTranslation } from 'react-i18next'
+import { AtlasCanvas } from '../components/atlas/AtlasCanvas'
+import { AtlasMobileRoadmap } from '../components/atlas/AtlasMobileRoadmap'
+
+// v2 feature-flag — opt-in via `?v=2` URL param OR localStorage key.
+// Default URL keeps the legacy radial-spoke renderer untouched so existing
+// users see no change. Toggle is exposed via <AtlasV2Toggle /> in the header
+// (only mounted when ?v2-debug=1 or in dev) to let QA flip layouts.
+function useAtlasV2Flag(): [boolean, (v: boolean) => void] {
+  const read = useCallback((): boolean => {
+    if (typeof window === 'undefined') return false
+    try {
+      const url = new URLSearchParams(window.location.search)
+      if (url.get('v') === '2') return true
+      return window.localStorage.getItem('druz9.atlas.v2') === '1'
+    } catch {
+      return false
+    }
+  }, [])
+  const [on, setOn] = useState<boolean>(read)
+  useEffect(() => {
+    const onPop = () => setOn(read())
+    window.addEventListener('popstate', onPop)
+    return () => window.removeEventListener('popstate', onPop)
+  }, [read])
+  const set = useCallback((v: boolean) => {
+    try {
+      window.localStorage.setItem('druz9.atlas.v2', v ? '1' : '0')
+    } catch {
+      /* noop */
+    }
+    setOn(v)
+  }, [])
+  return [on, set]
+}
+
+function useIsMobile(): boolean {
+  const [m, setM] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return false
+    return window.matchMedia('(max-width: 640px)').matches
+  })
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const mq = window.matchMedia('(max-width: 640px)')
+    const handler = (e: MediaQueryListEvent) => setM(e.matches)
+    mq.addEventListener?.('change', handler)
+    return () => mq.removeEventListener?.('change', handler)
+  }, [])
+  return m
+}
+
+function AtlasV2Toggle({ on, onToggle }: { on: boolean; onToggle: (v: boolean) => void }) {
+  return (
+    <button
+      type="button"
+      onClick={() => onToggle(!on)}
+      className="rounded-md border border-border bg-bg-secondary px-2 py-1 font-mono text-[11px] text-text-secondary hover:text-text-primary"
+      aria-label="Toggle atlas v2 layout"
+    >
+      atlas {on ? 'v2 ✓' : 'v1'}
+    </button>
+  )
+}
+
+function shouldShowV2Toggle(): boolean {
+  if (typeof window === 'undefined') return false
+  try {
+    const url = new URLSearchParams(window.location.search)
+    if (url.get('v2-debug') === '1') return true
+  } catch {
+    /* noop */
+  }
+  return import.meta.env?.DEV === true
+}
+
+// AtlasV2Surface — picks desktop canvas vs mobile roadmap based on viewport,
+// and (on mobile) provides a "↗ полная карта" fullscreen-modal escape hatch
+// so users still get the full PoE canvas if they want it.
+function AtlasV2Surface({
+  atlas,
+  selectedKey,
+  onSelect,
+}: {
+  atlas: Atlas
+  selectedKey: string | null
+  onSelect: (k: string) => void
+}) {
+  const isMobile = useIsMobile()
+  const [fullscreen, setFullscreen] = useState(false)
+  const { t } = useTranslation('wave10')
+  if (isMobile) {
+    return (
+      <div className="flex flex-1 flex-col">
+        <AtlasMobileRoadmap
+          nodes={atlas.nodes}
+          centerNodeKey={atlas.center_node}
+          selectedKey={selectedKey}
+          onSelectNode={onSelect}
+          onOpenFullMap={() => setFullscreen(true)}
+        />
+        <div className="px-4 py-3">
+          <button
+            type="button"
+            onClick={() => setFullscreen(true)}
+            className="rounded-md border border-border bg-bg-secondary px-3 py-2 font-mono text-[12px] text-text-secondary hover:text-text-primary"
+          >
+            {t('atlas.fullMap')}
+          </button>
+        </div>
+        {fullscreen && (
+          <div className="fixed inset-0 z-50 flex flex-col bg-bg">
+            <div className="flex items-center justify-between border-b border-border px-4 py-2">
+              <span className="font-mono text-[12px] text-text-secondary">{t('atlas.fullMapTitle')}</span>
+              <button
+                type="button"
+                onClick={() => setFullscreen(false)}
+                className="rounded-md border border-border bg-bg-secondary px-2 py-1 text-[12px] text-text-secondary hover:text-text-primary"
+                aria-label={t('atlas.close')}
+              >
+                ✕
+              </button>
+            </div>
+            <div className="flex-1 overflow-auto">
+              <AtlasCanvas
+                nodes={atlas.nodes}
+                edges={atlas.edges}
+                centerNodeKey={atlas.center_node}
+                selectedKey={selectedKey}
+                onSelectNode={onSelect}
+              />
+            </div>
+          </div>
+        )}
+      </div>
+    )
+  }
+  return (
+    <div className="flex flex-1 items-stretch justify-center bg-bg p-4">
+      <AtlasCanvas
+        nodes={atlas.nodes}
+        edges={atlas.edges}
+        centerNodeKey={atlas.center_node}
+        selectedKey={selectedKey}
+        onSelectNode={onSelect}
+      />
+    </div>
+  )
+}
 
 // SVG-координаты — всё считается в одной системе с центром (0,0).
 // Канва шире и выше, чем у предыдущей реализации, чтобы дерево «дышало».
@@ -1502,6 +1650,8 @@ export default function AtlasPage() {
   const unlocked = atlas?.nodes.filter((n) => n.unlocked).length ?? 0
 
   const [selectedKey, setSelectedKey] = useState<string | null>(null)
+  const [v2On, setV2On] = useAtlasV2Flag()
+  const showV2Toggle = useMemo(() => shouldShowV2Toggle(), [])
   const [query, setQuery] = useState('')
   const [category, setCategory] = useState<string>('all')
   const [status, setStatus] = useState<NodeState | 'all'>('all')
@@ -1536,6 +1686,11 @@ export default function AtlasPage() {
           isError={isError}
           onRetry={() => void refetch()}
         />
+        {showV2Toggle && (
+          <div className="flex justify-end px-4 pt-2">
+            <AtlasV2Toggle on={v2On} onToggle={setV2On} />
+          </div>
+        )}
         {!isLoading && !isError && atlas && atlas.nodes.length > 0 && (
           <FilterBar
             query={query}
@@ -1571,13 +1726,19 @@ export default function AtlasPage() {
           ) : isProgressEmpty ? (
             <div className="flex flex-1 flex-col">
               <EmptyProgressCTA />
-              <GraphCanvas
-                atlas={atlas}
-                selectedKey={selectedKey}
-                onSelect={setSelectedKey}
-                highlightKeys={highlightKeys}
-              />
+              {v2On ? (
+                <AtlasV2Surface atlas={atlas} selectedKey={selectedKey} onSelect={setSelectedKey} />
+              ) : (
+                <GraphCanvas
+                  atlas={atlas}
+                  selectedKey={selectedKey}
+                  onSelect={setSelectedKey}
+                  highlightKeys={highlightKeys}
+                />
+              )}
             </div>
+          ) : v2On ? (
+            <AtlasV2Surface atlas={atlas} selectedKey={selectedKey} onSelect={setSelectedKey} />
           ) : (
             <GraphCanvas
               atlas={atlas}

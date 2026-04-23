@@ -1,0 +1,50 @@
+{
+  "emptyState": {
+    "noData": {
+      "kicker": "no data",
+      "title": "Nothing here yet",
+      "body": "Data will appear as soon as the first action happens."
+    },
+    "firstTime": {
+      "kicker": "first time",
+      "title": "Welcome",
+      "body": "We'll show a quick intro, then your data."
+    },
+    "error": {
+      "kicker": "error",
+      "title": "Something broke",
+      "body": "We're on it. Try again in a couple of seconds."
+    },
+    "loading": {
+      "kicker": "loading",
+      "title": "Loading…"
+    },
+    "comingSoon": {
+      "kicker": "coming soon",
+      "title": "Soon",
+      "body": "Feature in development."
+    },
+    "notFound": {
+      "kicker": "not found",
+      "title": "Nothing here",
+      "body": "The link is outdated or the object was removed."
+    },
+    "throttled": {
+      "kicker": "throttled",
+      "title": "Too frequent",
+      "body": "The source rate-limited us. We'll retry automatically."
+    },
+    "back": "Back"
+  },
+  "mobileNav": {
+    "match": "match",
+    "matchAria": "launch ranked match",
+    "matchmakingAria": "matchmaking · {{time}} · tap to cancel",
+    "unread": "{{count}} unread"
+  },
+  "atlas": {
+    "fullMap": "↗ full map",
+    "fullMapTitle": "Atlas — full map",
+    "close": "Close"
+  }
+}

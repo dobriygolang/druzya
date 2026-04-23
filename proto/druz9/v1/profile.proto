@@ -297,6 +297,11 @@ message WeeklyReport {
   repeated AchievementBrief achievements_this_week = 20;
   // share_token — токен публичной ссылки; пустая строка, если ещё не выпускался.
   string share_token = 21;
+  // featured_metric — server-picked headline metric for the share card.
+  // Values: "xp" | "streak" | "achievement" | "" (empty ⇒ client picks default).
+  // Server selects: "achievement" if any new achievement unlocked this week,
+  // else "streak" if streak_days >= 7, else "xp".
+  string featured_metric = 22;
 }
 
 // ProfileSettings mirrors OpenAPI ProfileSettings.
@@ -313,6 +318,19 @@ message ProfileSettings {
   // ids are validated server-side against the llm_models registry at update
   // time; free-tier users updating to a premium id get InvalidArgument.
   string ai_insight_model = 6;
+
+  // onboarding_completed — read-write. Read: derived from
+  // users.onboarding_completed_at IS NOT NULL. Write: true ⇒ server stamps
+  // onboarding_completed_at = NOW(); false ⇒ server clears the column.
+  // Marked `optional` so proto3 carries field presence — partial updates
+  // that omit this field do NOT clobber the stored timestamp.
+  optional bool onboarding_completed = 7;
+  // focus_class — declared career-focus slug. Allowed:
+  //   "" | "algo" | "backend" | "system" | "concurrency" | "ds".
+  // Validated server-side against the same set as the DB CHECK. Invalid
+  // value ⇒ InvalidArgument (anti-fallback: no silent default). `optional`
+  // so empty string is distinguishable from "field omitted".
+  optional string focus_class = 8;
 }
 
 // UpdateProfileSettingsRequest wraps the ProfileSettings payload. OpenAPI

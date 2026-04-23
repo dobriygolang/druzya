@@ -101,6 +101,12 @@ func NewProfile(d Deps) *Module {
 	// handler (see AtlasAdminHandler.requireAdmin).
 	atlasAdmin := profilePorts.NewAtlasAdminHandler(atlasCat, d.Log)
 
+	// POST /profile/me/atlas/allocate — chi-direct, REST-only (no proto RPC).
+	// Bearer auth gated at the router; per-request UID pulled from context.
+	allocate := profilePorts.NewAtlasAllocateHandler(
+		profileApp.NewAllocateAtlasNode(cached, d.Log), d.Log,
+	)
+
 	onUserRegistered := &profileApp.OnUserRegistered{Repo: cached, Log: d.Log}
 	onXPGained := &profileApp.OnXPGained{Repo: cached, Bus: d.Bus, Log: d.Log}
 	onRatingChanged := &profileApp.OnRatingChanged{Repo: cached, Log: d.Log}
@@ -115,6 +121,7 @@ func NewProfile(d Deps) *Module {
 		MountREST: func(r chi.Router) {
 			r.Get("/profile/me", transcoder.ServeHTTP)
 			r.Get("/profile/me/atlas", transcoder.ServeHTTP)
+			r.Post("/profile/me/atlas/allocate", allocate.Handle)
 			r.Get("/profile/me/report", transcoder.ServeHTTP)
 			r.Put("/profile/me/settings", transcoder.ServeHTTP)
 			// /profile/weekly/share/{token} — публичный, авторизация не нужна;

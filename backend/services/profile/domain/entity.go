@@ -92,6 +92,36 @@ type Settings struct {
 	// Premium-модели для free-юзеров silently fallback на default — UI на
 	// /settings помечает их 💎 + locked, чтобы пользователь видел причину.
 	AIInsightModel string
+
+	// OnboardingCompleted is the read-time boolean derived from
+	// users.onboarding_completed_at IS NOT NULL (migration 00035).
+	// Write semantics: true ⇒ stamp NOW(); false ⇒ clear column.
+	OnboardingCompleted bool
+
+	// FocusClass — declared career focus, one of:
+	//   "" | "algo" | "backend" | "system" | "concurrency" | "ds".
+	// Validated by UpdateSettings against AllowedFocusClasses.
+	FocusClass string
+
+	// FieldMask flags — true when the caller explicitly provided the value
+	// in the inbound proto so the persistence layer can skip clobbering
+	// columns that were not part of the partial update. Set by
+	// fromSettingsProto only for the new sparse-update fields; legacy
+	// fields keep their previous "send empty = no-op" semantics.
+	HasOnboardingCompleted bool
+	HasFocusClass          bool
+}
+
+// AllowedFocusClasses is the canonical set enforced by both the DB CHECK
+// (migration 00035) and the UpdateSettings use case. Empty string is a
+// real value — "user has not yet picked a focus class".
+var AllowedFocusClasses = map[string]struct{}{
+	"":            {},
+	"algo":        {},
+	"backend":     {},
+	"system":      {},
+	"concurrency": {},
+	"ds":          {},
 }
 
 // EloPoint — дневной snapshot ELO в одной секции.

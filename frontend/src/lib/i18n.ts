@@ -12,6 +12,7 @@ import ruSettings from '../locales/ru/settings.json'
 import ruCodex from '../locales/ru/codex.json'
 import ruErrors from '../locales/ru/errors.json'
 import ruPages from '../locales/ru/pages.json'
+import ruWave10 from '../locales/ru/wave10.json'
 
 import enCommon from '../locales/en/common.json'
 import enSanctum from '../locales/en/sanctum.json'
@@ -24,6 +25,7 @@ import enSettings from '../locales/en/settings.json'
 import enCodex from '../locales/en/codex.json'
 import enErrors from '../locales/en/errors.json'
 import enPages from '../locales/en/pages.json'
+import enWave10 from '../locales/en/wave10.json'
 
 // STRATEGIC SCAFFOLD — Phase 1 of docs/strategic/i18n.md.
 // kz/* and ua/* are byte-identical copies of ru/* until the content team
@@ -40,6 +42,7 @@ import kzSettings from '../locales/kz/settings.json'
 import kzCodex from '../locales/kz/codex.json'
 import kzErrors from '../locales/kz/errors.json'
 import kzPages from '../locales/kz/pages.json'
+import kzWave10 from '../locales/kz/wave10.json'
 
 import uaCommon from '../locales/ua/common.json'
 import uaSanctum from '../locales/ua/sanctum.json'
@@ -52,6 +55,7 @@ import uaSettings from '../locales/ua/settings.json'
 import uaCodex from '../locales/ua/codex.json'
 import uaErrors from '../locales/ua/errors.json'
 import uaPages from '../locales/ua/pages.json'
+import uaWave10 from '../locales/ua/wave10.json'
 
 const STORAGE_KEY = 'druz9_lang'
 
@@ -69,6 +73,7 @@ export const NAMESPACES = [
   'codex',
   'errors',
   'pages',
+  'wave10',
 ] as const
 
 export const resources = {
@@ -84,6 +89,7 @@ export const resources = {
     codex: ruCodex,
     errors: ruErrors,
     pages: ruPages,
+    wave10: ruWave10,
   },
   en: {
     common: enCommon,
@@ -97,6 +103,7 @@ export const resources = {
     codex: enCodex,
     errors: enErrors,
     pages: enPages,
+    wave10: enWave10,
   },
   kz: {
     common: kzCommon,
@@ -110,6 +117,7 @@ export const resources = {
     codex: kzCodex,
     errors: kzErrors,
     pages: kzPages,
+    wave10: kzWave10,
   },
   ua: {
     common: uaCommon,
@@ -123,6 +131,7 @@ export const resources = {
     codex: uaCodex,
     errors: uaErrors,
     pages: uaPages,
+    wave10: uaWave10,
   },
 }
 

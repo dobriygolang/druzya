@@ -207,6 +207,21 @@ func (mr *MockProfileRepoMockRecorder) ListSkillNodes(ctx, userID any) *gomock.C
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListSkillNodes", reflect.TypeOf((*MockProfileRepo)(nil).ListSkillNodes), ctx, userID)
 }
 
+// UpsertSkillNode mocks base method.
+func (m *MockProfileRepo) UpsertSkillNode(ctx context.Context, userID uuid.UUID, nodeKey string, progress int) (domain.SkillNode, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UpsertSkillNode", ctx, userID, nodeKey, progress)
+	ret0, _ := ret[0].(domain.SkillNode)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// UpsertSkillNode indicates an expected call of UpsertSkillNode.
+func (mr *MockProfileRepoMockRecorder) UpsertSkillNode(ctx, userID, nodeKey, progress any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpsertSkillNode", reflect.TypeOf((*MockProfileRepo)(nil).UpsertSkillNode), ctx, userID, nodeKey, progress)
+}
+
 // UpdateCareerStage mocks base method.
 func (m *MockProfileRepo) UpdateCareerStage(ctx context.Context, userID uuid.UUID, stage domain.CareerStage) error {
 	m.ctrl.T.Helper()

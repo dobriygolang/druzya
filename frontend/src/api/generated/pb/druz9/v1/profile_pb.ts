@@ -1477,6 +1477,16 @@ export class WeeklyReport extends Message<WeeklyReport> {
    */
   shareToken = "";
 
+  /**
+   * featured_metric — server-picked headline metric for the share card.
+   * Values: "xp" | "streak" | "achievement" | "" (empty ⇒ client picks default).
+   * Server selects: "achievement" if any new achievement unlocked this week,
+   * else "streak" if streak_days >= 7, else "xp".
+   *
+   * @generated from field: string featured_metric = 22;
+   */
+  featuredMetric = "";
+
   constructor(data?: PartialMessage<WeeklyReport>) {
     super();
     proto3.util.initPartial(data, this);
@@ -1506,6 +1516,7 @@ export class WeeklyReport extends Message<WeeklyReport> {
     { no: 19, name: "ai_insight", kind: "scalar", T: 9 /* ScalarType.STRING */ },
     { no: 20, name: "achievements_this_week", kind: "message", T: AchievementBrief, repeated: true },
     { no: 21, name: "share_token", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 22, name: "featured_metric", kind: "scalar", T: 9 /* ScalarType.STRING */ },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): WeeklyReport {
@@ -1569,6 +1580,28 @@ export class ProfileSettings extends Message<ProfileSettings> {
    */
   aiInsightModel = "";
 
+  /**
+   * onboarding_completed — read-write. Read: derived from
+   * users.onboarding_completed_at IS NOT NULL. Write: true ⇒ server stamps
+   * onboarding_completed_at = NOW(); false ⇒ server clears the column.
+   * Marked `optional` so proto3 carries field presence — partial updates
+   * that omit this field do NOT clobber the stored timestamp.
+   *
+   * @generated from field: optional bool onboarding_completed = 7;
+   */
+  onboardingCompleted?: boolean;
+
+  /**
+   * focus_class — declared career-focus slug. Allowed:
+   *   "" | "algo" | "backend" | "system" | "concurrency" | "ds".
+   * Validated server-side against the same set as the DB CHECK. Invalid
+   * value ⇒ InvalidArgument (anti-fallback: no silent default). `optional`
+   * so empty string is distinguishable from "field omitted".
+   *
+   * @generated from field: optional string focus_class = 8;
+   */
+  focusClass?: string;
+
   constructor(data?: PartialMessage<ProfileSettings>) {
     super();
     proto3.util.initPartial(data, this);
@@ -1583,6 +1616,8 @@ export class ProfileSettings extends Message<ProfileSettings> {
     { no: 4, name: "notifications", kind: "message", T: NotificationPreferences },
     { no: 5, name: "voice_mode_enabled", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
     { no: 6, name: "ai_insight_model", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 7, name: "onboarding_completed", kind: "scalar", T: 8 /* ScalarType.BOOL */, opt: true },
+    { no: 8, name: "focus_class", kind: "scalar", T: 9 /* ScalarType.STRING */, opt: true },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ProfileSettings {

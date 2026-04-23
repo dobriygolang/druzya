@@ -1649,9 +1649,14 @@ type WeeklyReport struct {
 	// achievements_this_week — ачивки, разблокированные в окне недели.
 	AchievementsThisWeek []*AchievementBrief `protobuf:"bytes,20,rep,name=achievements_this_week,json=achievementsThisWeek,proto3" json:"achievements_this_week,omitempty"`
 	// share_token — токен публичной ссылки; пустая строка, если ещё не выпускался.
-	ShareToken    string `protobuf:"bytes,21,opt,name=share_token,json=shareToken,proto3" json:"share_token,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	ShareToken string `protobuf:"bytes,21,opt,name=share_token,json=shareToken,proto3" json:"share_token,omitempty"`
+	// featured_metric — server-picked headline metric for the share card.
+	// Values: "xp" | "streak" | "achievement" | "" (empty ⇒ client picks default).
+	// Server selects: "achievement" if any new achievement unlocked this week,
+	// else "streak" if streak_days >= 7, else "xp".
+	FeaturedMetric string `protobuf:"bytes,22,opt,name=featured_metric,json=featuredMetric,proto3" json:"featured_metric,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *WeeklyReport) Reset() {
@@ -1831,6 +1836,13 @@ func (x *WeeklyReport) GetShareToken() string {
 	return ""
 }
 
+func (x *WeeklyReport) GetFeaturedMetric() string {
+	if x != nil {
+		return x.FeaturedMetric
+	}
+	return ""
+}
+
 // ProfileSettings mirrors OpenAPI ProfileSettings.
 type ProfileSettings struct {
 	state           protoimpl.MessageState `protogen:"open.v1"`
@@ -1846,8 +1858,22 @@ type ProfileSettings struct {
 	// ids are validated server-side against the llm_models registry at update
 	// time; free-tier users updating to a premium id get InvalidArgument.
 	AiInsightModel string `protobuf:"bytes,6,opt,name=ai_insight_model,json=aiInsightModel,proto3" json:"ai_insight_model,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	// onboarding_completed — read-write. Read: derived from
+	// users.onboarding_completed_at IS NOT NULL. Write: true ⇒ server stamps
+	// onboarding_completed_at = NOW(); false ⇒ server clears the column.
+	// Marked `optional` so proto3 carries field presence — partial updates
+	// that omit this field do NOT clobber the stored timestamp.
+	OnboardingCompleted *bool `protobuf:"varint,7,opt,name=onboarding_completed,json=onboardingCompleted,proto3,oneof" json:"onboarding_completed,omitempty"`
+	// focus_class — declared career-focus slug. Allowed:
+	//
+	//	"" | "algo" | "backend" | "system" | "concurrency" | "ds".
+	//
+	// Validated server-side against the same set as the DB CHECK. Invalid
+	// value ⇒ InvalidArgument (anti-fallback: no silent default). `optional`
+	// so empty string is distinguishable from "field omitted".
+	FocusClass    *string `protobuf:"bytes,8,opt,name=focus_class,json=focusClass,proto3,oneof" json:"focus_class,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *ProfileSettings) Reset() {
@@ -1918,6 +1944,20 @@ func (x *ProfileSettings) GetVoiceModeEnabled() bool {
 func (x *ProfileSettings) GetAiInsightModel() string {
 	if x != nil {
 		return x.AiInsightModel
+	}
+	return ""
+}
+
+func (x *ProfileSettings) GetOnboardingCompleted() bool {
+	if x != nil && x.OnboardingCompleted != nil {
+		return *x.OnboardingCompleted
+	}
+	return false
+}
+
+func (x *ProfileSettings) GetFocusClass() string {
+	if x != nil && x.FocusClass != nil {
+		return *x.FocusClass
 	}
 	return ""
 }
@@ -2332,7 +2372,7 @@ const file_druz9_v1_profile_proto_rawDesc = "" +
 	"\x05title\x18\x02 \x01(\tR\x05title\x12\x1f\n" +
 	"\vunlocked_at\x18\x03 \x01(\tR\n" +
 	"unlockedAt\x12\x12\n" +
-	"\x04tier\x18\x04 \x01(\tR\x04tier\"\xcc\a\n" +
+	"\x04tier\x18\x04 \x01(\tR\x04tier\"\xf5\a\n" +
 	"\fWeeklyReport\x12\x1d\n" +
 	"\n" +
 	"week_start\x18\x01 \x01(\tR\tweekStart\x12\x19\n" +
@@ -2363,14 +2403,20 @@ const file_druz9_v1_profile_proto_rawDesc = "" +
 	"ai_insight\x18\x13 \x01(\tR\taiInsight\x12P\n" +
 	"\x16achievements_this_week\x18\x14 \x03(\v2\x1a.druz9.v1.AchievementBriefR\x14achievementsThisWeek\x12\x1f\n" +
 	"\vshare_token\x18\x15 \x01(\tR\n" +
-	"shareToken\"\xac\x02\n" +
+	"shareToken\x12'\n" +
+	"\x0ffeatured_metric\x18\x16 \x01(\tR\x0efeaturedMetric\"\xb3\x03\n" +
 	"\x0fProfileSettings\x12!\n" +
 	"\fdisplay_name\x18\x01 \x01(\tR\vdisplayName\x12=\n" +
 	"\x10default_language\x18\x02 \x01(\x0e2\x12.druz9.v1.LanguageR\x0fdefaultLanguage\x12\x16\n" +
 	"\x06locale\x18\x03 \x01(\tR\x06locale\x12G\n" +
 	"\rnotifications\x18\x04 \x01(\v2!.druz9.v1.NotificationPreferencesR\rnotifications\x12,\n" +
 	"\x12voice_mode_enabled\x18\x05 \x01(\bR\x10voiceModeEnabled\x12(\n" +
-	"\x10ai_insight_model\x18\x06 \x01(\tR\x0eaiInsightModel\"U\n" +
+	"\x10ai_insight_model\x18\x06 \x01(\tR\x0eaiInsightModel\x126\n" +
+	"\x14onboarding_completed\x18\a \x01(\bH\x00R\x13onboardingCompleted\x88\x01\x01\x12$\n" +
+	"\vfocus_class\x18\b \x01(\tH\x01R\n" +
+	"focusClass\x88\x01\x01B\x17\n" +
+	"\x15_onboarding_completedB\x0e\n" +
+	"\f_focus_class\"U\n" +
 	"\x1cUpdateProfileSettingsRequest\x125\n" +
 	"\bsettings\x18\x01 \x01(\v2\x19.druz9.v1.ProfileSettingsR\bsettings\"\x15\n" +
 	"\x13GetMyProfileRequest\"\x13\n" +
@@ -2500,6 +2546,7 @@ func file_druz9_v1_profile_proto_init() {
 	}
 	file_druz9_v1_common_proto_init()
 	file_druz9_v1_notify_proto_init()
+	file_druz9_v1_profile_proto_msgTypes[20].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
