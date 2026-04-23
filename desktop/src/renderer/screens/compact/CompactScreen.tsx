@@ -7,9 +7,10 @@
 
 import { useEffect, useRef, useState } from 'react';
 
-import { BrandMark, IconCamera, IconChevronDown, IconMic, IconSettings } from '../../components/icons';
+import { BrandMark, IconCamera, IconChevronDown, IconSettings } from '../../components/icons';
 import { IconButton, Kbd, StatusDot } from '../../components/primitives';
 import { ProviderPicker } from '../../components/ProviderPicker';
+import { VoiceButton } from '../../components/VoiceButton';
 import { useConfig } from '../../hooks/use-config';
 import { useHotkeyEvents } from '../../hooks/use-hotkey-events';
 import { useAuthStore } from '../../stores/auth';
@@ -29,6 +30,7 @@ export function CompactScreen() {
   const [status, setStatus] = useState<'idle' | 'ready' | 'thinking' | 'recording'>('ready');
   const [statusText, setStatusText] = useState('Готов');
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [voiceToggleCount, setVoiceToggleCount] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
 
   // One-time wiring.
@@ -60,6 +62,8 @@ export function CompactScreen() {
       inputRef.current?.focus();
     } else if (action === 'toggle_window') {
       void window.druz9.windows.show('expanded');
+    } else if (action === 'voice_input') {
+      setVoiceToggleCount((c) => c + 1);
     }
   });
 
@@ -165,13 +169,15 @@ export function CompactScreen() {
         <div style={{ display: 'flex', gap: 2, WebkitAppRegion: 'no-drag' } as React.CSSProperties}>
           <IconButton
             title="Скриншот области (⌘⇧S)"
-            onClick={() => void triggerScreenshot('screenshot_area', input, setInput)}
+            onClick={() => void triggerScreenshot('screenshot_area', input, setInput, selectedModel)}
           >
             <IconCamera size={15} />
           </IconButton>
-          <IconButton title="Голос (⌘⇧V)" disabled>
-            <IconMic size={15} />
-          </IconButton>
+          <VoiceButton
+            onTranscript={(text) => setInput((prev) => (prev ? `${prev} ${text}` : text))}
+            onError={(msg) => setStatusText(msg.slice(0, 60))}
+            hotkeyToggle={voiceToggleCount}
+          />
           <IconButton
             title="Настройки"
             onClick={() => void window.druz9.windows.show('settings')}

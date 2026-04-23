@@ -54,6 +54,8 @@ export const invokeChannels = {
   masqueradeList: 'masquerade:list',
   masqueradeGet: 'masquerade:get',
   masqueradeApply: 'masquerade:apply',
+
+  voiceTranscribe: 'voice:transcribe',
 } as const;
 
 /** Events pushed from main → renderer. */
@@ -275,6 +277,20 @@ export interface Druz9API {
     list: () => Promise<MasqueradePresetInfo[]>;
     get: () => Promise<MasqueradePreset>;
     apply: (preset: MasqueradePreset) => Promise<void>;
+  };
+
+  /**
+   * Voice — the renderer captures audio via MediaRecorder and posts the
+   * bytes here for transcription. Requires a BYOK OpenAI key; returns
+   * an error string if one is not configured. Resolves with the
+   * transcript on success.
+   */
+  voice: {
+    transcribe: (input: {
+      audioBase64: string;
+      mimeType: string;
+      language?: string;
+    }) => Promise<{ ok: boolean; transcript?: string; error?: string }>;
   };
 
   /** Subscribe to a main-process event. Returns an unsubscribe function. */

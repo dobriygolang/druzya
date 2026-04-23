@@ -106,6 +106,14 @@ const api: Druz9API = {
     apply: (preset: MasqueradePreset) =>
       ipcRenderer.invoke(invokeChannels.masqueradeApply, preset) as Promise<void>,
   },
+  voice: {
+    transcribe: (input: { audioBase64: string; mimeType: string; language?: string }) =>
+      ipcRenderer.invoke(invokeChannels.voiceTranscribe, input) as Promise<{
+        ok: boolean;
+        transcript?: string;
+        error?: string;
+      }>,
+  },
   on: <T>(channel: string, handler: (payload: T) => void) => {
     // Whitelist so renderer can't subscribe to arbitrary channels.
     const allowed = Object.values(eventChannels) as string[];

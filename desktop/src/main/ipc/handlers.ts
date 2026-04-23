@@ -27,6 +27,7 @@ import {
 } from '../auth/byok-keychain';
 import { AnthropicProvider } from '../api/providers/anthropic';
 import { OpenAIProvider } from '../api/providers/openai';
+import { transcribe } from '../api/providers/whisper';
 import { applyPreset, getCurrent, listPresets, type MasqueradePreset } from '../masquerade';
 import { captureArea, captureFullScreen } from '../capture/screenshot';
 import { applyBindings, listBindings } from '../hotkeys/registry';
@@ -253,6 +254,36 @@ export function registerHandlers(opts: RegisterOptions): void {
   ipcMain.handle(invokeChannels.masqueradeApply, async (_evt, preset: MasqueradePreset) => {
     applyPreset(preset, resourcesPath);
   });
+
+  // ── Voice (Whisper via BYOK OpenAI) ──
+  ipcMain.handle(
+    invokeChannels.voiceTranscribe,
+    async (
+      _evt,
+      input: { audioBase64: string; mimeType: string; language?: string },
+    ): Promise<{ ok: boolean; transcript?: string; error?: string }> => {
+      const key = await byokLoad('openai');
+      if (!key) {
+        return {
+          ok: false,
+          error:
+            'Для голосового ввода нужен OpenAI API-ключ. Добавь его в Настройки → AI провайдеры.',
+        };
+      }
+      try {
+        const audio = Uint8Array.from(Buffer.from(input.audioBase64, 'base64'));
+        const transcript = await transcribe({
+          apiKey: key,
+          audio,
+          mimeType: input.mimeType,
+          language: input.language,
+        });
+        return { ok: true, transcript };
+      } catch (err) {
+        return { ok: false, error: (err as Error).message };
+      }
+    },
+  );
 }
 
 function makeProvider(family: ByokProvider, key: string) {

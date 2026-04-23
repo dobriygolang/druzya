@@ -350,8 +350,6 @@ export default function AtlasPage() {
     return keys
   }, [atlas, query, category, status])
 
-  const isProgressEmpty = !!atlas && atlas.nodes.length > 0 && unlocked === 0
-
   const selectedNode =
     atlas && selectedKey ? atlas.nodes.find((n) => n.key === selectedKey) ?? null : null
 
@@ -403,12 +401,14 @@ export default function AtlasPage() {
             </div>
           ) : atlas.nodes.length === 0 ? (
             <EmptyProgressCTA />
-          ) : isProgressEmpty ? (
-            <div className="flex flex-1 flex-col">
-              <EmptyProgressCTA />
-              {renderSurface(atlas, selectedKey, setSelectedKey, highlightKeys, viewMode, v2On)}
-            </div>
           ) : (
+            // Atlas-bug 2026-04: previously an `isProgressEmpty` branch
+            // rendered EmptyProgressCTA AND the canvas stacked, producing
+            // two visible blocks ("Атлас пока пуст" on top + the canvas
+            // below). The v2 canvas already has its own onboarding-beacon
+            // (3 hub-adjacent pulse) for zero-mastered users; the legacy
+            // canvas shows all nodes as locked/not_started which is
+            // informative enough. Single render path now.
             renderSurface(atlas, selectedKey, setSelectedKey, highlightKeys, viewMode, v2On)
           )}
         </div>
