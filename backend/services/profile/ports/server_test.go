@@ -113,6 +113,83 @@ func TestGetMyProfile_HappyPath(t *testing.T) {
 	}
 }
 
+// stubReportFetcher records the userID and returns a canned view.
+type stubReportFetcher struct {
+	gotUID uuid.UUID
+	view   app.ReportView
+	err    error
+}
+
+func (s *stubReportFetcher) Get(_ context.Context, uid uuid.UUID) (app.ReportView, error) {
+	s.gotUID = uid
+	return s.view, s.err
+}
+
+func TestGetMyReport_PrefersReportFetcher(t *testing.T) {
+	t.Parallel()
+	ctrl := gomock.NewController(t)
+	repo := mocks.NewMockProfileRepo(ctrl)
+	uid := uuid.New()
+	fetcher := &stubReportFetcher{view: app.ReportView{StreakDays: 9, BestStreak: 14}}
+	h := NewHandler(Handler{
+		GetReport:     &app.GetReport{Repo: repo}, // not called
+		ReportFetcher: fetcher,
+		Log:           silentLogger(),
+	})
+	srv := NewProfileServer(h)
+	ctx := sharedMw.WithUserID(context.Background(), uid)
+	resp, err := srv.GetMyReport(ctx, connect.NewRequest(&pb.GetMyReportRequest{}))
+	if err != nil {
+		t.Fatalf("unexpected: %v", err)
+	}
+	if resp.Msg.GetStreakDays() != 9 {
+		t.Fatalf("streak not propagated: %d", resp.Msg.GetStreakDays())
+	}
+	if fetcher.gotUID != uid {
+		t.Fatalf("uid mismatch: got %s want %s", fetcher.gotUID, uid)
+	}
+}
+
+func TestGetMyReport_FetcherErrorMappedToInternal(t *testing.T) {
+	t.Parallel()
+	uid := uuid.New()
+	fetcher := &stubReportFetcher{err: errors.New("boom")}
+	h := NewHandler(Handler{
+		ReportFetcher: fetcher,
+		Log:           silentLogger(),
+	})
+	srv := NewProfileServer(h)
+	ctx := sharedMw.WithUserID(context.Background(), uid)
+	_, err := srv.GetMyReport(ctx, connect.NewRequest(&pb.GetMyReportRequest{}))
+	var ce *connect.Error
+	if !errors.As(err, &ce) || ce.Code() != connect.CodeInternal {
+		t.Fatalf("expected Internal, got %v", err)
+	}
+}
+
+// TestGetMyProfile_EmailExposed asserts that ProfileFull surfaces users.email
+// so the /settings page can stop hard-coding it. Email may be empty for
+// Telegram-login users without a verified address.
+func TestGetMyProfile_EmailExposed(t *testing.T) {
+	t.Parallel()
+	ctrl := gomock.NewController(t)
+	repo := mocks.NewMockProfileRepo(ctrl)
+	uid := uuid.New()
+	repo.EXPECT().GetByUserID(gomock.Any(), uid).Return(domain.Bundle{
+		User:    domain.User{ID: uid, Username: "alice", Email: "alice@example.com"},
+		Profile: domain.Profile{UserID: uid, Level: 1},
+	}, nil)
+	srv := newTestServer(t, repo)
+	ctx := sharedMw.WithUserID(context.Background(), uid)
+	resp, err := srv.GetMyProfile(ctx, connect.NewRequest(&pb.GetMyProfileRequest{}))
+	if err != nil {
+		t.Fatalf("unexpected: %v", err)
+	}
+	if resp.Msg.GetEmail() != "alice@example.com" {
+		t.Fatalf("expected email surfaced, got %q", resp.Msg.GetEmail())
+	}
+}
+
 func TestGetPublicProfile_EmptyUsernameInvalid(t *testing.T) {
 	t.Parallel()
 	ctrl := gomock.NewController(t)

@@ -50,7 +50,8 @@ type SweepKey struct {
 	Mode    enums.ArenaMode
 }
 
-// NewMatchmaker builds a matchmaker with default sweeps (all sections, solo 1v1).
+// NewMatchmaker builds a matchmaker with default sweeps (all sections × all
+// modes, including duo_2v2 since Phase 5).
 func NewMatchmaker(
 	q domain.QueueRepo,
 	ready domain.ReadyCheckRepo,
@@ -71,8 +72,7 @@ func NewMatchmaker(
 			enums.ArenaModeRanked,
 			enums.ArenaModeHardcore,
 			enums.ArenaModeCursed,
-			// duo_2v2 needs 4 players — out of MVP scope; the dispatcher
-			// handles only pair-creation at the moment.
+			enums.ArenaModeDuo2v2,
 		} {
 			sweeps = append(sweeps, SweepKey{Section: s, Mode: mode})
 		}
@@ -114,8 +114,8 @@ func (mm *Matchmaker) Start(ctx context.Context) (stop func()) {
 	}
 }
 
-// Tick sweeps every configured (section, mode) pair, picks pairs, locks the
-// participants, and creates matches.
+// Tick sweeps every configured (section, mode) pair, picks pairs (1v1) or
+// quads (2v2), locks the participants, and creates matches.
 func (mm *Matchmaker) Tick(ctx context.Context, now time.Time) error {
 	for _, sk := range mm.SweepPairs {
 		tickets, err := mm.Queue.Snapshot(ctx, sk.Section, sk.Mode)
@@ -127,6 +127,10 @@ func (mm *Matchmaker) Tick(ctx context.Context, now time.Time) error {
 			)
 			continue
 		}
+		if sk.Mode == enums.ArenaModeDuo2v2 {
+			mm.tickDuo(ctx, sk, tickets, now)
+			continue
+		}
 		if len(tickets) < 2 {
 			continue
 		}
@@ -135,6 +139,117 @@ func (mm *Matchmaker) Tick(ctx context.Context, now time.Time) error {
 			if err := mm.createMatchFromPair(ctx, sk, p, now); err != nil {
 				mm.Log.WarnContext(ctx, "arena.matchmaker.createMatch", slog.Any("err", err))
 			}
+		}
+	}
+	return nil
+}
+
+// tickDuo handles the duo_2v2 queue for one section: prunes expired tickets,
+// then forms balanced quads and creates 2v2 matches.
+func (mm *Matchmaker) tickDuo(ctx context.Context, sk SweepKey, tickets []domain.QueueTicket, now time.Time) {
+	// Drop tickets that have waited longer than DuoQueueTimeout. We do this
+	// best-effort in Redis so position numbers stay correct for the survivors.
+	for _, t := range tickets {
+		if domain.IsDuoTicketExpired(t, now) {
+			if err := mm.Queue.Remove(ctx, t.UserID, sk.Section, sk.Mode); err != nil {
+				mm.Log.WarnContext(ctx, "arena.matchmaker.duo.cancelStale", slog.Any("err", err))
+			}
+		}
+	}
+	if len(tickets) < domain.DuoMatchSize {
+		return
+	}
+	quads := domain.PickQuads(tickets, now)
+	for _, q := range quads {
+		if q.EloSpread() > domain.DuoEloSpreadCap {
+			mm.Log.InfoContext(ctx, "arena.matchmaker.duo.wideMatch",
+				slog.Int("spread", q.EloSpread()),
+				slog.String("section", string(sk.Section)),
+			)
+		}
+		if err := mm.createMatchFromQuad(ctx, sk, q, now); err != nil {
+			mm.Log.WarnContext(ctx, "arena.matchmaker.duo.createMatch", slog.Any("err", err))
+		}
+	}
+}
+
+// createMatchFromQuad locks all four participants, picks a task, persists
+// the match (with team_id assigned per balancing) and starts ready-check.
+func (mm *Matchmaker) createMatchFromQuad(ctx context.Context, sk SweepKey, q domain.Quad, now time.Time) error {
+	// Acquire locks; release any acquired one if a later one fails / is
+	// already taken. Ordered by UserID byte order to reduce deadlock risk
+	// across concurrent dispatchers.
+	uids := [domain.DuoMatchSize]uuid.UUID{
+		q.Players[0].UserID, q.Players[1].UserID,
+		q.Players[2].UserID, q.Players[3].UserID,
+	}
+	acquired := make([]uuid.UUID, 0, domain.DuoMatchSize)
+	releaseAll := func() {
+		for _, id := range acquired {
+			_ = mm.Queue.ReleaseLock(ctx, id)
+		}
+	}
+	for _, id := range uids {
+		ok, err := mm.Queue.AcquireLock(ctx, id, LockTTL)
+		if err != nil {
+			releaseAll()
+			return fmt.Errorf("arena.duo.createMatch: lock %s: %w", id, err)
+		}
+		if !ok {
+			releaseAll()
+			return nil // someone else grabbed this player; try again next tick.
+		}
+		acquired = append(acquired, id)
+	}
+
+	diff := domain.DifficultyForEloBand(q.MeanElo())
+	task, err := mm.Tasks.PickBySectionDifficulty(ctx, sk.Section, diff)
+	if err != nil {
+		releaseAll()
+		return fmt.Errorf("arena.duo.createMatch: pick task: %w", err)
+	}
+
+	m := domain.Match{
+		TaskID:      task.ID,
+		TaskVersion: task.Version,
+		Section:     sk.Section,
+		Mode:        sk.Mode,
+		Status:      enums.MatchStatusConfirming,
+	}
+	parts := []domain.Participant{
+		{UserID: q.Players[0].UserID, Team: domain.Team1, EloBefore: q.Players[0].Elo},
+		{UserID: q.Players[1].UserID, Team: domain.Team1, EloBefore: q.Players[1].Elo},
+		{UserID: q.Players[2].UserID, Team: domain.Team2, EloBefore: q.Players[2].Elo},
+		{UserID: q.Players[3].UserID, Team: domain.Team2, EloBefore: q.Players[3].Elo},
+	}
+	created, err := mm.Matches.CreateMatch(ctx, m, parts)
+	if err != nil {
+		releaseAll()
+		return fmt.Errorf("arena.duo.createMatch: persist: %w", err)
+	}
+
+	for _, id := range uids {
+		_ = mm.Queue.Remove(ctx, id, sk.Section, sk.Mode)
+	}
+
+	deadline := domain.ReadyCheckDeadline(now)
+	if err := mm.Ready.Start(ctx, created.ID, uids[:], deadline); err != nil {
+		mm.Log.WarnContext(ctx, "arena.duo.createMatch: readycheck.Start", slog.Any("err", err))
+	}
+
+	if err := mm.Bus.Publish(ctx, sharedDomain.MatchStarted{
+		MatchID: created.ID,
+		Section: sk.Section,
+		Players: uids[:],
+		TaskID:  task.ID,
+		TaskVer: task.Version,
+	}); err != nil {
+		mm.Log.WarnContext(ctx, "arena.duo.createMatch: publish MatchStarted", slog.Any("err", err))
+	}
+
+	if mm.Notifier != nil {
+		for _, id := range uids {
+			mm.Notifier.NotifyMatched(ctx, id, created.ID)
 		}
 	}
 	return nil

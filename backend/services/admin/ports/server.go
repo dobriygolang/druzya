@@ -48,6 +48,11 @@ var _ druz9v1connect.AdminServiceHandler = (*AdminServer)(nil)
 //
 // Field names use the UC suffix to avoid collision with generated method
 // names (ListTasks / CreateTask / UpdateTask / …).
+//
+// Newer surfaces (dashboard / users / reports / status) are nilable on
+// purpose — older callers that wire the legacy constructor still compile,
+// and the handler returns CodeUnimplemented when a UC isn't bound. The
+// monolith's services/admin.go always sets every field.
 type AdminServer struct {
 	ListTasksUC     *app.ListTasks
 	CreateTaskUC    *app.CreateTask
@@ -57,7 +62,16 @@ type AdminServer struct {
 	ListConfigUC    *app.ListConfig
 	UpdateConfigUC  *app.UpdateConfig
 	ListAnticheatUC *app.ListAnticheat
-	Log             *slog.Logger
+
+	// Dashboard / users / reports / status surfaces (Group B).
+	GetDashboardUC *app.GetDashboard
+	ListUsersUC    *app.ListUsers
+	BanUserUC      *app.BanUser
+	UnbanUserUC    *app.UnbanUser
+	ListReportsUC  *app.ListReports
+	GetStatusUC    *app.GetStatus
+
+	Log *slog.Logger
 }
 
 // NewAdminServer wires an AdminServer.

@@ -72,6 +72,52 @@ func (mr *MockProfileRepoMockRecorder) CountRecentActivity(ctx, userID, since an
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CountRecentActivity", reflect.TypeOf((*MockProfileRepo)(nil).CountRecentActivity), ctx, userID, since)
 }
 
+// ListMatchAggregatesSince mocks base method.
+func (m *MockProfileRepo) ListMatchAggregatesSince(ctx context.Context, userID uuid.UUID, since time.Time) ([]domain.MatchAggregate, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ListMatchAggregatesSince", ctx, userID, since)
+	ret0, _ := ret[0].([]domain.MatchAggregate)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ListMatchAggregatesSince indicates an expected call of ListMatchAggregatesSince.
+func (mr *MockProfileRepoMockRecorder) ListMatchAggregatesSince(ctx, userID, since any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListMatchAggregatesSince", reflect.TypeOf((*MockProfileRepo)(nil).ListMatchAggregatesSince), ctx, userID, since)
+}
+
+// ListWeeklyXPSince mocks base method.
+func (m *MockProfileRepo) ListWeeklyXPSince(ctx context.Context, userID uuid.UUID, now time.Time, weeks int) ([]int, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ListWeeklyXPSince", ctx, userID, now, weeks)
+	ret0, _ := ret[0].([]int)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ListWeeklyXPSince indicates an expected call of ListWeeklyXPSince.
+func (mr *MockProfileRepoMockRecorder) ListWeeklyXPSince(ctx, userID, now, weeks any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListWeeklyXPSince", reflect.TypeOf((*MockProfileRepo)(nil).ListWeeklyXPSince), ctx, userID, now, weeks)
+}
+
+// GetStreaks mocks base method.
+func (m *MockProfileRepo) GetStreaks(ctx context.Context, userID uuid.UUID) (int, int, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetStreaks", ctx, userID)
+	ret0, _ := ret[0].(int)
+	ret1, _ := ret[1].(int)
+	ret2, _ := ret[2].(error)
+	return ret0, ret1, ret2
+}
+
+// GetStreaks indicates an expected call of GetStreaks.
+func (mr *MockProfileRepoMockRecorder) GetStreaks(ctx, userID any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetStreaks", reflect.TypeOf((*MockProfileRepo)(nil).GetStreaks), ctx, userID)
+}
+
 // EnsureDefaults mocks base method.
 func (m *MockProfileRepo) EnsureDefaults(ctx context.Context, userID uuid.UUID) error {
 	m.ctrl.T.Helper()

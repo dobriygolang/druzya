@@ -10,6 +10,7 @@ import { useDailyKataQuery, useStreakQuery } from '../lib/queries/daily'
 import { useSeasonQuery } from '../lib/queries/season'
 import { useRatingMeQuery, useLeaderboardQuery } from '../lib/queries/rating'
 import { useProfileQuery } from '../lib/queries/profile'
+import { cn } from '../lib/cn'
 
 function ErrorChip() {
   const { t } = useTranslation('errors')
@@ -59,7 +60,7 @@ function DailyHero() {
             <Flame className="h-3 w-3" /> {t('daily_kata_day', { day })}
           </span>
           {isError && <ErrorChip />}
-          <h2 className="max-w-[540px] font-display text-2xl font-bold text-text-primary">
+          <h2 className="w-full max-w-[540px] font-display text-2xl font-bold text-text-primary">
             {title}
           </h2>
           <p className="font-mono text-xs text-text-muted">{difficulty} · O(log n) · {section}</p>
@@ -106,18 +107,23 @@ function SeasonRank() {
   const { t } = useTranslation('sanctum')
   const { data: season, isError } = useSeasonQuery()
   const { data: rating } = useRatingMeQuery()
-  const tier = season?.current_tier ?? 0
-  const sp = season?.current_sp ?? 0
-  const tierMax = season?.tier_max ?? 1
-  const pct = Math.min(100, Math.round((sp / Math.max(1, tierMax * 200)) * 100))
+  const tier = season?.tier ?? 0
+  const sp = season?.my_points ?? 0
+  // Free track is the canonical ladder for the "next tier" target. Falls back
+  // to a flat ladder when the API hasn't shipped (or 404).
+  const freeTrack = season?.tracks?.find((tr) => tr.kind === 'free')?.tiers ?? []
+  const nextTier = freeTrack.find((row) => row.tier === tier + 1)
+  const nextTarget = nextTier?.required_points ?? Math.max(1, (tier + 1) * 200)
+  const pct = Math.min(100, Math.round((sp / Math.max(1, nextTarget)) * 100))
   const gps = rating?.global_power_score ?? 0
-  const daysLeft = season?.ends_at
-    ? Math.max(0, Math.ceil((new Date(season.ends_at).getTime() - Date.now()) / 86_400_000))
+  const endsAt = season?.season?.ends_at
+  const daysLeft = endsAt
+    ? Math.max(0, Math.ceil((new Date(endsAt).getTime() - Date.now()) / 86_400_000))
     : 0
   return (
     <Card className="w-full flex-col gap-4 border-accent/25 bg-surface-3 p-6 lg:w-[380px]">
       <div className="flex items-center justify-between">
-        <span className="font-mono text-[11px] font-semibold tracking-[0.08em] text-text-secondary">{season?.title ?? t('season_label')}</span>
+        <span className="font-mono text-[11px] font-semibold tracking-[0.08em] text-text-secondary">{season?.season?.name ?? t('season_label')}</span>
         <span className="rounded-full bg-white/10 px-2 py-0.5 text-[11px] text-text-secondary">
           {t('days_to_end', { count: daysLeft })}
         </span>
@@ -132,7 +138,7 @@ function SeasonRank() {
       </div>
       <div className="flex justify-between text-[11px] text-text-muted">
         <span>{t('tier', { n: tier })}</span>
-        <span>{t('tier', { n: tierMax })}</span>
+        <span>{t('tier', { n: tier + 1 })}</span>
       </div>
     </Card>
   )
@@ -193,10 +199,10 @@ function CoachCard() {
         <Sparkles className="h-4 w-4 text-text-primary" />
         <span className="font-mono text-[11px] font-semibold tracking-[0.08em] text-text-primary">{t('ai_mentor')}</span>
       </div>
-      <h3 className="max-w-[300px] font-display text-base font-bold text-text-primary">
+      <h3 className="w-full max-w-[300px] font-display text-base font-bold text-text-primary">
         {t('weak_spot')}
       </h3>
-      <p className="max-w-[300px] text-xs text-white/80">
+      <p className="w-full max-w-[300px] text-xs text-white/80">
         {t('weak_spot_desc')}
       </p>
       <button className="inline-flex w-fit items-center gap-1.5 rounded-md bg-white/20 px-3.5 py-2 text-xs font-semibold text-text-primary hover:bg-white/30">
@@ -242,19 +248,19 @@ function Leaderboard() {
             r.you ? 'bg-accent/10' : '',
           ].join(' ')}
         >
-          <span className={`grid h-7 w-7 place-items-center rounded-full font-display text-[13px] font-bold ${medalBg(r.medal)}`}>
+          <span className={`grid h-7 w-7 shrink-0 place-items-center rounded-full font-display text-[13px] font-bold ${medalBg(r.medal)}`}>
             {r.rank}
           </span>
           <Avatar size="sm" gradient="violet-cyan" initials={r.name[1]?.toUpperCase()} />
-          <div className="flex flex-1 flex-col gap-0.5">
-            <span className={r.you ? 'text-sm font-bold text-text-primary' : 'text-sm font-semibold text-text-primary'}>
+          <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+            <span className={cn('truncate', r.you ? 'text-sm font-bold text-text-primary' : 'text-sm font-semibold text-text-primary')}>
               {r.name}
             </span>
-            <span className={r.you ? 'font-mono text-[11px] text-accent-hover' : 'font-mono text-[11px] text-text-muted'}>
+            <span className={cn('truncate', r.you ? 'font-mono text-[11px] text-accent-hover' : 'font-mono text-[11px] text-text-muted')}>
               {r.tier}
             </span>
           </div>
-          <span className="font-mono text-sm font-semibold text-success">{r.delta || ''}</span>
+          <span className="shrink-0 font-mono text-sm font-semibold text-success">{r.delta || ''}</span>
         </div>
       ))}
     </Card>
@@ -276,12 +282,12 @@ function Activity() {
       </div>
       {items.reverse().map((i, idx) => (
         <div key={idx} className="flex items-center gap-3 py-2">
-          <span className={`grid h-9 w-9 place-items-center rounded-full ${i.bg}`}>{i.icon}</span>
-          <div className="flex flex-1 flex-col gap-0.5">
-            <span className="text-sm font-semibold text-text-primary">{i.title}</span>
-            <span className="text-[11px] text-text-muted">{i.sub}</span>
+          <span className={`grid h-9 w-9 shrink-0 place-items-center rounded-full ${i.bg}`}>{i.icon}</span>
+          <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+            <span className="truncate text-sm font-semibold text-text-primary">{i.title}</span>
+            <span className="truncate text-[11px] text-text-muted">{i.sub}</span>
           </div>
-          <span className="font-mono text-[11px] text-text-muted">{i.time}</span>
+          <span className="shrink-0 font-mono text-[11px] text-text-muted">{i.time}</span>
         </div>
       ))}
     </Card>

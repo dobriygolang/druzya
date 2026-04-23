@@ -28,17 +28,22 @@ const MaxCodeSizeBytes = 50 * 1024
 const InitialELO = 1000
 
 // Match — доменная сущность одного PvP-матча.
+//
+// 1v1 matches set WinnerID and leave WinningTeamID == 0. 2v2 matches set
+// WinningTeamID (1 or 2) and leave WinnerID == nil. A draw leaves both as
+// zero / nil.
 type Match struct {
-	ID          uuid.UUID
-	TaskID      uuid.UUID
-	TaskVersion int
-	Section     enums.Section
-	Mode        enums.ArenaMode
-	Status      enums.MatchStatus
-	WinnerID    *uuid.UUID
-	StartedAt   *time.Time
-	FinishedAt  *time.Time
-	CreatedAt   time.Time
+	ID            uuid.UUID
+	TaskID        uuid.UUID
+	TaskVersion   int
+	Section       enums.Section
+	Mode          enums.ArenaMode
+	Status        enums.MatchStatus
+	WinnerID      *uuid.UUID
+	WinningTeamID int // 0 = unset / draw / 1v1; 1 or 2 for 2v2.
+	StartedAt     *time.Time
+	FinishedAt    *time.Time
+	CreatedAt     time.Time
 }
 
 // Participant отражает строку таблицы arena_participants.

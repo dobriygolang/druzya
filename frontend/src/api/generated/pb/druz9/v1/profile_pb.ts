@@ -212,6 +212,14 @@ export class ProfileFull extends Message<ProfileFull> {
    */
   avatarUrl = "";
 
+  /**
+   * email из users.email — нужен на /settings (карточка аккаунта). Может быть
+   * пустым у Telegram-логина без подтверждённого email.
+   *
+   * @generated from field: string email = 17;
+   */
+  email = "";
+
   constructor(data?: PartialMessage<ProfileFull>) {
     super();
     proto3.util.initPartial(data, this);
@@ -236,6 +244,7 @@ export class ProfileFull extends Message<ProfileFull> {
     { no: 14, name: "ai_credits", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
     { no: 15, name: "created_at", kind: "message", T: Timestamp },
     { no: 16, name: "avatar_url", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 17, name: "email", kind: "scalar", T: 9 /* ScalarType.STRING */ },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ProfileFull {
@@ -876,6 +885,135 @@ export class Recommendation extends Message<Recommendation> {
 }
 
 /**
+ * SectionBreakdown — агрегат XP / wins / losses по одной секции за период.
+ * Используется в WeeklyReport для блоков «Сильные/Слабые секции» — frontend
+ * раньше держал захардкоженный массив, теперь читает реальные данные.
+ *
+ * @generated from message druz9.v1.SectionBreakdown
+ */
+export class SectionBreakdown extends Message<SectionBreakdown> {
+  /**
+   * @generated from field: druz9.v1.Section section = 1;
+   */
+  section = Section.UNSPECIFIED;
+
+  /**
+   * @generated from field: int32 matches = 2;
+   */
+  matches = 0;
+
+  /**
+   * @generated from field: int32 wins = 3;
+   */
+  wins = 0;
+
+  /**
+   * @generated from field: int32 losses = 4;
+   */
+  losses = 0;
+
+  /**
+   * @generated from field: int32 xp_delta = 5;
+   */
+  xpDelta = 0;
+
+  /**
+   * win_rate — целое число процентов (0..100); считается на бэке, чтобы
+   * фронт не дублировал арифметику.
+   *
+   * @generated from field: int32 win_rate_pct = 6;
+   */
+  winRatePct = 0;
+
+  constructor(data?: PartialMessage<SectionBreakdown>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.SectionBreakdown";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "section", kind: "enum", T: proto3.getEnumType(Section) },
+    { no: 2, name: "matches", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 3, name: "wins", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 4, name: "losses", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 5, name: "xp_delta", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 6, name: "win_rate_pct", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): SectionBreakdown {
+    return new SectionBreakdown().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): SectionBreakdown {
+    return new SectionBreakdown().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): SectionBreakdown {
+    return new SectionBreakdown().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: SectionBreakdown | PlainMessage<SectionBreakdown> | undefined, b: SectionBreakdown | PlainMessage<SectionBreakdown> | undefined): boolean {
+    return proto3.util.equals(SectionBreakdown, a, b);
+  }
+}
+
+/**
+ * WeekComparison — XP за конкретную неделю в прошлом. label = "Эта" |
+ * "-1" | "-2" | "-3" (порядок сохраняется на бэке).
+ *
+ * @generated from message druz9.v1.WeekComparison
+ */
+export class WeekComparison extends Message<WeekComparison> {
+  /**
+   * @generated from field: string label = 1;
+   */
+  label = "";
+
+  /**
+   * @generated from field: int32 xp = 2;
+   */
+  xp = 0;
+
+  /**
+   * pct — относительная высота для гистограммы (0..100). Считается так,
+   * чтобы максимум среди 4 строк → 100%.
+   *
+   * @generated from field: int32 pct = 3;
+   */
+  pct = 0;
+
+  constructor(data?: PartialMessage<WeekComparison>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.WeekComparison";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "label", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "xp", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 3, name: "pct", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): WeekComparison {
+    return new WeekComparison().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): WeekComparison {
+    return new WeekComparison().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): WeekComparison {
+    return new WeekComparison().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: WeekComparison | PlainMessage<WeekComparison> | undefined, b: WeekComparison | PlainMessage<WeekComparison> | undefined): boolean {
+    return proto3.util.equals(WeekComparison, a, b);
+  }
+}
+
+/**
  * WeeklyReport mirrors OpenAPI WeeklyReport.
  *
  * @generated from message druz9.v1.WeeklyReport
@@ -926,6 +1064,49 @@ export class WeeklyReport extends Message<WeeklyReport> {
    */
   recommendations: Recommendation[] = [];
 
+  /**
+   * Агрегаты для фронта /report (WeeklyReportPage). Раньше были захардкожены
+   * в JSX; теперь приходят с бэка готовыми к рендеру.
+   *
+   * @generated from field: int32 actions_count = 9;
+   */
+  actionsCount = 0;
+
+  /**
+   * @generated from field: int32 streak_days = 10;
+   */
+  streakDays = 0;
+
+  /**
+   * @generated from field: int32 best_streak = 11;
+   */
+  bestStreak = 0;
+
+  /**
+   * @generated from field: int32 prev_xp_earned = 12;
+   */
+  prevXpEarned = 0;
+
+  /**
+   * Сильные / слабые секции на фронте, отсортированные по xp_delta DESC/ASC.
+   * Бэк гарантирует, что одна и та же секция не попадёт в оба списка.
+   *
+   * @generated from field: repeated druz9.v1.SectionBreakdown strong_sections = 13;
+   */
+  strongSections: SectionBreakdown[] = [];
+
+  /**
+   * @generated from field: repeated druz9.v1.SectionBreakdown weak_sections = 14;
+   */
+  weakSections: SectionBreakdown[] = [];
+
+  /**
+   * Сравнение XP за последние 4 недели (включая текущую). Длина = 4.
+   *
+   * @generated from field: repeated druz9.v1.WeekComparison weekly_xp = 15;
+   */
+  weeklyXp: WeekComparison[] = [];
+
   constructor(data?: PartialMessage<WeeklyReport>) {
     super();
     proto3.util.initPartial(data, this);
@@ -942,6 +1123,13 @@ export class WeeklyReport extends Message<WeeklyReport> {
     { no: 6, name: "weaknesses", kind: "message", T: ReportWeakness, repeated: true },
     { no: 7, name: "stress_analysis", kind: "scalar", T: 9 /* ScalarType.STRING */ },
     { no: 8, name: "recommendations", kind: "message", T: Recommendation, repeated: true },
+    { no: 9, name: "actions_count", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 10, name: "streak_days", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 11, name: "best_streak", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 12, name: "prev_xp_earned", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 13, name: "strong_sections", kind: "message", T: SectionBreakdown, repeated: true },
+    { no: 14, name: "weak_sections", kind: "message", T: SectionBreakdown, repeated: true },
+    { no: 15, name: "weekly_xp", kind: "message", T: WeekComparison, repeated: true },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): WeeklyReport {

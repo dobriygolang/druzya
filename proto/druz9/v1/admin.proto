@@ -211,6 +211,145 @@ message ListAnticheatRequest {
 }
 
 // ─────────────────────────────────────────────────────────────────────────
+// Dashboard — live counters for /admin landing tab.
+// ─────────────────────────────────────────────────────────────────────────
+
+// AdminDashboard mirrors the JSON shape served by GET /api/v1/admin/dashboard.
+// Counters are live aggregates with a 60s server-side Redis cache. Every
+// "active_*" timeframe is computed off users.updated_at (see stats.go for
+// the same proxy used by /stats/public).
+message AdminDashboard {
+  int64 users_total            = 1;
+  int64 users_active_today     = 2;
+  int64 users_active_week      = 3;
+  int64 users_active_month     = 4;
+  int64 users_banned           = 5;
+  int64 matches_today          = 6;
+  int64 matches_week           = 7;
+  int64 katas_today            = 8;
+  int64 katas_week             = 9;
+  int64 active_mock_sessions   = 10;
+  int64 active_arena_matches   = 11;
+  int64 reports_pending        = 12;
+  int64 anticheat_signals_24h  = 13;
+  // generated_at — when the snapshot was assembled (cache miss timestamp).
+  google.protobuf.Timestamp generated_at = 14;
+}
+
+message GetAdminDashboardRequest {}
+
+// ─────────────────────────────────────────────────────────────────────────
+// User management — list / ban / unban.
+// ─────────────────────────────────────────────────────────────────────────
+
+// AdminUserRow is the row shape returned by GET /api/v1/admin/users.
+// Mirrors users + (optional) currently-active user_bans row.
+message AdminUserRow {
+  string id            = 1;
+  string username      = 2;
+  string email         = 3;
+  string display_name  = 4;
+  string role          = 5;
+  google.protobuf.Timestamp created_at = 6;
+  google.protobuf.Timestamp updated_at = 7;
+  bool is_banned       = 8;
+  // ban_reason / ban_expires_at populated when is_banned=true.
+  string ban_reason    = 9;
+  google.protobuf.Timestamp ban_expires_at = 10;
+}
+
+message AdminUserList {
+  repeated AdminUserRow items = 1;
+  int32 total = 2;
+  int32 page  = 3;
+}
+
+message ListAdminUsersRequest {
+  // Free-form query — case-insensitive prefix match on username + email.
+  string query  = 1;
+  // Filter by status: "" / "all" / "banned" / "active".
+  string status = 2;
+  int32  page   = 3;
+  int32  limit  = 4;
+}
+
+message BanUserRequest {
+  string user_id    = 1;
+  string reason     = 2;
+  // expires_at optional — empty means permanent.
+  google.protobuf.Timestamp expires_at = 3;
+}
+
+message UnbanUserRequest {
+  string user_id = 1;
+}
+
+message BanUserResponse {
+  AdminUserRow user = 1;
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Reports — moderation queue.
+// ─────────────────────────────────────────────────────────────────────────
+
+message AdminReport {
+  string id             = 1;
+  string reporter_id    = 2;
+  string reporter_name  = 3;
+  string reported_id    = 4;
+  string reported_name  = 5;
+  string reason         = 6;
+  string description    = 7;
+  string status         = 8; // pending / resolved / dismissed
+  google.protobuf.Timestamp created_at = 9;
+}
+
+message AdminReportList {
+  repeated AdminReport items = 1;
+  int32 total = 2;
+}
+
+message ListAdminReportsRequest {
+  // status filter — "" means pending only.
+  string status = 1;
+  int32  limit  = 2;
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Status page — PUBLIC (no admin role gate, no bearer auth).
+// ─────────────────────────────────────────────────────────────────────────
+
+// StatusServiceState reports the current health of one infra component.
+message StatusServiceState {
+  string name        = 1; // human label e.g. "PostgreSQL"
+  string slug        = 2; // machine slug e.g. "postgres"
+  string status      = 3; // operational / degraded / down
+  string uptime_30d  = 4; // formatted percentage (e.g. "99.97%")
+  int64  latency_ms  = 5; // last probe latency
+}
+
+// StatusIncident mirrors an incidents row.
+message StatusIncident {
+  string id                          = 1;
+  string title                       = 2;
+  string description                 = 3;
+  string severity                    = 4; // minor / major / critical
+  google.protobuf.Timestamp started_at = 5;
+  google.protobuf.Timestamp ended_at   = 6;
+  repeated string affected_services  = 7;
+}
+
+message StatusPage {
+  string overall_status              = 1; // operational / degraded / down
+  string uptime_90d                  = 2;
+  repeated StatusServiceState services = 3;
+  repeated StatusIncident incidents  = 4;
+  google.protobuf.Timestamp generated_at = 5;
+}
+
+message GetStatusPageRequest {}
+
+// ─────────────────────────────────────────────────────────────────────────
 // Service
 // ─────────────────────────────────────────────────────────────────────────
 
@@ -257,5 +396,41 @@ service AdminService {
   // ── Anticheat ───────────────────────────────────────────────────────
   rpc ListAnticheat(ListAnticheatRequest) returns (AnticheatSignalList) {
     option (google.api.http) = {get: "/api/v1/admin/anticheat"};
+  }
+
+  // ── Dashboard ───────────────────────────────────────────────────────
+  rpc GetAdminDashboard(GetAdminDashboardRequest) returns (AdminDashboard) {
+    option (google.api.http) = {get: "/api/v1/admin/dashboard"};
+  }
+
+  // ── User management ─────────────────────────────────────────────────
+  rpc ListUsers(ListAdminUsersRequest) returns (AdminUserList) {
+    option (google.api.http) = {get: "/api/v1/admin/users"};
+  }
+  rpc BanUser(BanUserRequest) returns (BanUserResponse) {
+    option (google.api.http) = {
+      post: "/api/v1/admin/users/{user_id}/ban"
+      body: "*"
+    };
+  }
+  rpc UnbanUser(UnbanUserRequest) returns (BanUserResponse) {
+    option (google.api.http) = {
+      post: "/api/v1/admin/users/{user_id}/unban"
+      body: "*"
+    };
+  }
+
+  // ── Reports / moderation queue ──────────────────────────────────────
+  rpc ListReports(ListAdminReportsRequest) returns (AdminReportList) {
+    option (google.api.http) = {get: "/api/v1/admin/reports"};
+  }
+
+  // ── Public status page (NO auth, NO admin role) ─────────────────────
+  // WARNING: this endpoint is mounted PUBLIC in router.go — it serves the
+  // /status uptime page which must remain accessible to anonymous visitors
+  // for transparency. The handler implementation MUST NOT leak any private
+  // data.
+  rpc GetStatusPage(GetStatusPageRequest) returns (StatusPage) {
+    option (google.api.http) = {get: "/api/v1/status"};
   }
 }

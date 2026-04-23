@@ -52,6 +52,9 @@ message ProfileFull {
   // avatar_url берётся из users.avatar_url (заполняется при OAuth-логине,
   // см. миграцию 00010_users_avatar.sql и login_yandex/login_telegram).
   string avatar_url = 16;
+  // email из users.email — нужен на /settings (карточка аккаунта). Может быть
+  // пустым у Telegram-логина без подтверждённого email.
+  string email = 17;
 }
 
 // SectionRating mirrors the top-level OpenAPI SectionRating (rating.proto
@@ -150,6 +153,30 @@ message Recommendation {
   RecommendationAction action = 3;
 }
 
+// SectionBreakdown — агрегат XP / wins / losses по одной секции за период.
+// Используется в WeeklyReport для блоков «Сильные/Слабые секции» — frontend
+// раньше держал захардкоженный массив, теперь читает реальные данные.
+message SectionBreakdown {
+  Section section = 1;
+  int32 matches = 2;
+  int32 wins = 3;
+  int32 losses = 4;
+  int32 xp_delta = 5;
+  // win_rate — целое число процентов (0..100); считается на бэке, чтобы
+  // фронт не дублировал арифметику.
+  int32 win_rate_pct = 6;
+}
+
+// WeekComparison — XP за конкретную неделю в прошлом. label = "Эта" |
+// "-1" | "-2" | "-3" (порядок сохраняется на бэке).
+message WeekComparison {
+  string label = 1;
+  int32 xp = 2;
+  // pct — относительная высота для гистограммы (0..100). Считается так,
+  // чтобы максимум среди 4 строк → 100%.
+  int32 pct = 3;
+}
+
 // WeeklyReport mirrors OpenAPI WeeklyReport.
 message WeeklyReport {
   // week_start / week_end are ISO-8601 calendar dates (YYYY-MM-DD). OpenAPI
@@ -163,6 +190,18 @@ message WeeklyReport {
   repeated ReportWeakness weaknesses = 6;
   string stress_analysis = 7;
   repeated Recommendation recommendations = 8;
+  // Агрегаты для фронта /report (WeeklyReportPage). Раньше были захардкожены
+  // в JSX; теперь приходят с бэка готовыми к рендеру.
+  int32 actions_count = 9;
+  int32 streak_days = 10;
+  int32 best_streak = 11;
+  int32 prev_xp_earned = 12;
+  // Сильные / слабые секции на фронте, отсортированные по xp_delta DESC/ASC.
+  // Бэк гарантирует, что одна и та же секция не попадёт в оба списка.
+  repeated SectionBreakdown strong_sections = 13;
+  repeated SectionBreakdown weak_sections = 14;
+  // Сравнение XP за последние 4 недели (включая текущую). Длина = 4.
+  repeated WeekComparison weekly_xp = 15;
 }
 
 // ProfileSettings mirrors OpenAPI ProfileSettings.

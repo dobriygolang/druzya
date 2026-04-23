@@ -356,6 +356,35 @@ func (c *CachedRepo) CountRecentActivity(ctx context.Context, userID uuid.UUID, 
 	return a, nil
 }
 
+// ListMatchAggregatesSince — uncached pass-through. Хитов мало
+// (вызывается только из /report), а агрегат строится в одном SQL — отдельный
+// cache-layer не оправдан.
+func (c *CachedRepo) ListMatchAggregatesSince(ctx context.Context, userID uuid.UUID, since time.Time) ([]domain.MatchAggregate, error) {
+	out, err := c.delegate.ListMatchAggregatesSince(ctx, userID, since)
+	if err != nil {
+		return nil, fmt.Errorf("profile.cache.ListMatchAggregatesSince: %w", err)
+	}
+	return out, nil
+}
+
+// ListWeeklyXPSince — uncached pass-through.
+func (c *CachedRepo) ListWeeklyXPSince(ctx context.Context, userID uuid.UUID, now time.Time, weeks int) ([]int, error) {
+	out, err := c.delegate.ListWeeklyXPSince(ctx, userID, now, weeks)
+	if err != nil {
+		return nil, fmt.Errorf("profile.cache.ListWeeklyXPSince: %w", err)
+	}
+	return out, nil
+}
+
+// GetStreaks — uncached pass-through.
+func (c *CachedRepo) GetStreaks(ctx context.Context, userID uuid.UUID) (int, int, error) {
+	cur, best, err := c.delegate.GetStreaks(ctx, userID)
+	if err != nil {
+		return 0, 0, fmt.Errorf("profile.cache.GetStreaks: %w", err)
+	}
+	return cur, best, nil
+}
+
 // ── helpers ────────────────────────────────────────────────────────────────
 
 // discardWriter is an io.Writer that swallows all bytes. Used as the default

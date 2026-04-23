@@ -135,11 +135,11 @@ function MembersList({ members }: { members: Guild['members'] }) {
           key={m.user_id}
           className="flex flex-col gap-3 border-b border-border px-5 py-3 lg:grid lg:grid-cols-[2fr_1fr_1fr_40px] lg:items-center lg:gap-4"
         >
-          <div className="flex items-center gap-3">
+          <div className="flex min-w-0 items-center gap-3">
             <Avatar size="md" gradient="violet-cyan" initials={m.username[0]?.toUpperCase()} />
-            <div className="flex flex-col">
-              <span className="text-sm font-semibold text-text-primary">@{m.username}</span>
-              <span className="font-mono text-[11px] text-text-muted">
+            <div className="flex min-w-0 flex-col">
+              <span className="truncate text-sm font-semibold text-text-primary">@{m.username}</span>
+              <span className="truncate font-mono text-[11px] text-text-muted">
                 {m.role === 'captain' ? <Crown className="inline h-3 w-3 text-warn" /> : null}
                 {' '}
                 с{' '}
@@ -304,10 +304,10 @@ function TopGuildsView() {
                 className="flex w-full flex-col gap-2 border-b border-border px-5 py-3 text-left transition-colors hover:bg-surface-2 lg:grid lg:grid-cols-[60px_1fr_120px_120px_60px] lg:items-center lg:gap-4"
               >
                 <span className="font-display text-base font-bold text-warn">#{g.rank}</span>
-                <div className="flex items-center gap-3">
-                  <Shield className="h-5 w-5 text-cyan" />
-                  <div className="flex flex-col">
-                    <span className="text-sm font-semibold text-text-primary">{g.name}</span>
+                <div className="flex min-w-0 items-center gap-3">
+                  <Shield className="h-5 w-5 shrink-0 text-cyan" />
+                  <div className="flex min-w-0 flex-col">
+                    <span className="truncate text-sm font-semibold text-text-primary">{g.name}</span>
                     <span className="font-mono text-[11px] text-text-muted">{tierFor(g.elo_total)}</span>
                   </div>
                 </div>

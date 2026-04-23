@@ -241,6 +241,102 @@ func TestGetMatch_HappyPath(t *testing.T) {
 	}
 }
 
+// TestGetMatch_FinishedEnrichesXPAndTier asserts the MatchEnd-page enrichment
+// kicks in only for finished matches: tier_label, next_tier_label, final_xp,
+// xp_breakdown are populated for the winner; final_xp falls back to the loss
+// reward for the loser. Active/searching/cancelled matches keep these fields
+// empty so frontend skeleton fallbacks stay deterministic.
+func TestGetMatch_FinishedEnrichesXPAndTier(t *testing.T) {
+	t.Parallel()
+	srv, matches, tasks, _ := newServer(t)
+	srv.Timeouts = nil // skip sweep
+	winner := uuid.New()
+	loser := uuid.New()
+	mid := uuid.New()
+	tid := uuid.New()
+	started := time.Now().UTC().Add(-4 * time.Minute)
+	finished := time.Now().UTC()
+	winnerEloAfter := 2150
+	loserEloAfter := 1080
+	matches.EXPECT().Get(gomock.Any(), mid).Return(domain.Match{
+		ID:         mid,
+		TaskID:     tid,
+		Section:    enums.SectionAlgorithms,
+		Mode:       enums.ArenaModeSolo1v1,
+		Status:     enums.MatchStatusFinished,
+		WinnerID:   &winner,
+		StartedAt:  &started,
+		FinishedAt: &finished,
+	}, nil)
+	solveMs := int64(240_000) // 4 min
+	matches.EXPECT().ListParticipants(gomock.Any(), mid).Return([]domain.Participant{
+		{UserID: winner, Team: 0, EloBefore: 2100, EloAfter: &winnerEloAfter, SolveTimeMs: &solveMs},
+		{UserID: loser, Team: 1, EloBefore: 1100, EloAfter: &loserEloAfter},
+	}, nil)
+	tasks.EXPECT().GetByID(gomock.Any(), tid).Return(domain.TaskPublic{ID: tid, Title: "x"}, nil).AnyTimes()
+
+	ctx := sharedMw.WithUserID(context.Background(), winner)
+	resp, err := srv.GetMatch(ctx, connect.NewRequest(&pb.GetMatchRequest{MatchId: mid.String()}))
+	if err != nil {
+		t.Fatalf("unexpected: %v", err)
+	}
+	parts := resp.Msg.GetParticipants()
+	if len(parts) != 2 {
+		t.Fatalf("expected 2 participants, got %d", len(parts))
+	}
+	// Winner: 120 win + 80 fast + 40 first-try = 240 XP, tier Diamond III.
+	if parts[0].GetFinalXp() != int32(domain.XPWin+domain.XPWinFast+domain.XPWinFirstTry) {
+		t.Fatalf("winner final_xp mismatch: %d", parts[0].GetFinalXp())
+	}
+	if parts[0].GetTierLabel() != "Diamond III" {
+		t.Fatalf("winner tier mismatch: %s", parts[0].GetTierLabel())
+	}
+	if parts[0].GetNextTierLabel() == "" {
+		t.Fatal("expected next_tier_label populated")
+	}
+	if len(parts[0].GetXpBreakdown()) < 2 {
+		t.Fatalf("expected at least 2 xp items, got %d", len(parts[0].GetXpBreakdown()))
+	}
+	// Loser: gets participation XP, tier Silver IV (1100).
+	if parts[1].GetFinalXp() != int32(domain.XPLoss) {
+		t.Fatalf("loser final_xp mismatch: %d", parts[1].GetFinalXp())
+	}
+}
+
+func TestGetMatch_ActiveDoesNotEnrich(t *testing.T) {
+	t.Parallel()
+	srv, matches, tasks, _ := newServer(t)
+	uid := uuid.New()
+	mid := uuid.New()
+	tid := uuid.New()
+	started := time.Now().UTC()
+	matches.EXPECT().Get(gomock.Any(), mid).Return(domain.Match{
+		ID:        mid,
+		TaskID:    tid,
+		Section:   enums.SectionAlgorithms,
+		Mode:      enums.ArenaModeSolo1v1,
+		Status:    enums.MatchStatusActive,
+		StartedAt: &started,
+	}, nil)
+	matches.EXPECT().ListParticipants(gomock.Any(), mid).Return([]domain.Participant{
+		{UserID: uid, Team: 0, EloBefore: 1500},
+	}, nil)
+	tasks.EXPECT().GetByID(gomock.Any(), tid).Return(domain.TaskPublic{ID: tid}, nil).AnyTimes()
+
+	ctx := sharedMw.WithUserID(context.Background(), uid)
+	resp, err := srv.GetMatch(ctx, connect.NewRequest(&pb.GetMatchRequest{MatchId: mid.String()}))
+	if err != nil {
+		t.Fatalf("unexpected: %v", err)
+	}
+	p := resp.Msg.GetParticipants()[0]
+	if p.GetFinalXp() != 0 {
+		t.Fatalf("expected zero final_xp on active match, got %d", p.GetFinalXp())
+	}
+	if p.GetTierLabel() != "" {
+		t.Fatalf("expected empty tier on active, got %s", p.GetTierLabel())
+	}
+}
+
 // ── enum coverage ────────────────────────────────────────────────────────
 //
 // These exercise the enum adapters that the proto layer relies on. They're

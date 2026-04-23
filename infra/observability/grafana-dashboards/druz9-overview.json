@@ -15,8 +15,8 @@
       "type": "timeseries",
       "targets": [
         {
-          "expr": "histogram_quantile(0.99, sum by (le, route) (rate(http_request_duration_seconds_bucket{service=\"druz9-monolith\"}[5m])))",
-          "legendFormat": "{{route}}",
+          "expr": "histogram_quantile(0.99, sum by (le, path) (rate(druz9_http_request_duration_seconds_bucket[5m])))",
+          "legendFormat": "{{path}}",
           "refId": "A"
         }
       ]
@@ -30,7 +30,7 @@
       "type": "timeseries",
       "targets": [
         {
-          "expr": "sum(rate(http_requests_total{service=\"druz9-monolith\",status=~\"5..\"}[5m])) / clamp_min(sum(rate(http_requests_total{service=\"druz9-monolith\"}[5m])), 1)",
+          "expr": "sum(rate(druz9_http_requests_total{status=~\"5..\"}[5m])) / clamp_min(sum(rate(druz9_http_requests_total[5m])), 1)",
           "legendFormat": "5xx ratio",
           "refId": "A"
         }

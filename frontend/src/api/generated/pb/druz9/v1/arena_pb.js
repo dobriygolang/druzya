@@ -1,0 +1,734 @@
+// arena.proto — Connect-RPC contract for the `arena` bounded context.
+//
+// Covers the five /arena/match/* REST endpoints. The /ws/arena/{matchId}
+// WebSocket is NOT modelled here — it stays as a raw chi route wired to
+// arenaHub.WSHandler in main.go (streaming match events is out of scope
+// for Connect transcoding).
+import { Message, proto3, protoInt64, Timestamp } from "@bufbuild/protobuf";
+import { ArenaMode, Difficulty, Language, MatchStatus, Section } from "./common_pb.js";
+/**
+ * ArenaTaskPublic mirrors OpenAPI TaskPublic. It's also used by AI mock / native
+ * so the name is prefixed to avoid collisions across per-domain generators. The
+ * fields mirror the OpenAPI schema — starter_code is a map<string,string> (key
+ * = language, value = template).
+ *
+ * @generated from message druz9.v1.ArenaTaskPublic
+ */
+export class ArenaTaskPublic extends Message {
+    /**
+     * @generated from field: string id = 1;
+     */
+    id = "";
+    /**
+     * @generated from field: string slug = 2;
+     */
+    slug = "";
+    /**
+     * @generated from field: string title = 3;
+     */
+    title = "";
+    /**
+     * @generated from field: string description = 4;
+     */
+    description = "";
+    /**
+     * @generated from field: druz9.v1.Difficulty difficulty = 5;
+     */
+    difficulty = Difficulty.UNSPECIFIED;
+    /**
+     * @generated from field: druz9.v1.Section section = 6;
+     */
+    section = Section.UNSPECIFIED;
+    /**
+     * @generated from field: int32 time_limit_sec = 7;
+     */
+    timeLimitSec = 0;
+    /**
+     * @generated from field: int32 memory_limit_mb = 8;
+     */
+    memoryLimitMb = 0;
+    /**
+     * @generated from field: map<string, string> starter_code = 9;
+     */
+    starterCode = {};
+    constructor(data) {
+        super();
+        proto3.util.initPartial(data, this);
+    }
+    static runtime = proto3;
+    static typeName = "druz9.v1.ArenaTaskPublic";
+    static fields = proto3.util.newFieldList(() => [
+        { no: 1, name: "id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+        { no: 2, name: "slug", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+        { no: 3, name: "title", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+        { no: 4, name: "description", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+        { no: 5, name: "difficulty", kind: "enum", T: proto3.getEnumType(Difficulty) },
+        { no: 6, name: "section", kind: "enum", T: proto3.getEnumType(Section) },
+        { no: 7, name: "time_limit_sec", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+        { no: 8, name: "memory_limit_mb", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+        { no: 9, name: "starter_code", kind: "map", K: 9 /* ScalarType.STRING */, V: { kind: "scalar", T: 9 /* ScalarType.STRING */ } },
+    ]);
+    static fromBinary(bytes, options) {
+        return new ArenaTaskPublic().fromBinary(bytes, options);
+    }
+    static fromJson(jsonValue, options) {
+        return new ArenaTaskPublic().fromJson(jsonValue, options);
+    }
+    static fromJsonString(jsonString, options) {
+        return new ArenaTaskPublic().fromJsonString(jsonString, options);
+    }
+    static equals(a, b) {
+        return proto3.util.equals(ArenaTaskPublic, a, b);
+    }
+}
+/**
+ * XPBreakdownItem — одна строка разбивки XP за матч (label + delta).
+ * Используется на /match/:id/end в карточке «+ N XP».
+ *
+ * @generated from message druz9.v1.XPBreakdownItem
+ */
+export class XPBreakdownItem extends Message {
+    /**
+     * @generated from field: string label = 1;
+     */
+    label = "";
+    /**
+     * @generated from field: int32 amount = 2;
+     */
+    amount = 0;
+    constructor(data) {
+        super();
+        proto3.util.initPartial(data, this);
+    }
+    static runtime = proto3;
+    static typeName = "druz9.v1.XPBreakdownItem";
+    static fields = proto3.util.newFieldList(() => [
+        { no: 1, name: "label", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+        { no: 2, name: "amount", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    ]);
+    static fromBinary(bytes, options) {
+        return new XPBreakdownItem().fromBinary(bytes, options);
+    }
+    static fromJson(jsonValue, options) {
+        return new XPBreakdownItem().fromJson(jsonValue, options);
+    }
+    static fromJsonString(jsonString, options) {
+        return new XPBreakdownItem().fromJsonString(jsonString, options);
+    }
+    static equals(a, b) {
+        return proto3.util.equals(XPBreakdownItem, a, b);
+    }
+}
+/**
+ * ArenaParticipant mirrors OpenAPI ArenaParticipant.
+ *
+ * @generated from message druz9.v1.ArenaParticipant
+ */
+export class ArenaParticipant extends Message {
+    /**
+     * @generated from field: string user_id = 1;
+     */
+    userId = "";
+    /**
+     * @generated from field: string username = 2;
+     */
+    username = "";
+    /**
+     * @generated from field: int32 team = 3;
+     */
+    team = 0;
+    /**
+     * @generated from field: int32 elo_before = 4;
+     */
+    eloBefore = 0;
+    /**
+     * elo_after / solve_time_ms / suspicion_score are optional in OpenAPI; the
+     * server emits zero values when missing. Typed Connect clients that need
+     * tri-state can detect presence on the parent message.
+     *
+     * @generated from field: int32 elo_after = 5;
+     */
+    eloAfter = 0;
+    /**
+     * @generated from field: int64 solve_time_ms = 6;
+     */
+    solveTimeMs = protoInt64.zero;
+    /**
+     * @generated from field: float suspicion_score = 7;
+     */
+    suspicionScore = 0;
+    /**
+     * final_xp — суммарный XP, начисленный участнику за этот матч (заполняется
+     * после finished_at). 0, пока матч не завершён.
+     *
+     * @generated from field: int32 final_xp = 8;
+     */
+    finalXp = 0;
+    /**
+     * xp_breakdown — детализация final_xp по причинам начисления. Пуст, если
+     * участник проиграл или матч ещё не завершён.
+     *
+     * @generated from field: repeated druz9.v1.XPBreakdownItem xp_breakdown = 9;
+     */
+    xpBreakdown = [];
+    /**
+     * tier_label — текстовый тариф ELO (например, "Diamond III"). Считается на
+     * бэке, чтобы фронт не дублировал маппинг рейтинг→тиры.
+     *
+     * @generated from field: string tier_label = 10;
+     */
+    tierLabel = "";
+    /**
+     * next_tier_label — следующая ступень + сколько LP осталось ("Diamond II ·
+     * 482 LP"). Пусто на максимальном тире.
+     *
+     * @generated from field: string next_tier_label = 11;
+     */
+    nextTierLabel = "";
+    constructor(data) {
+        super();
+        proto3.util.initPartial(data, this);
+    }
+    static runtime = proto3;
+    static typeName = "druz9.v1.ArenaParticipant";
+    static fields = proto3.util.newFieldList(() => [
+        { no: 1, name: "user_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+        { no: 2, name: "username", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+        { no: 3, name: "team", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+        { no: 4, name: "elo_before", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+        { no: 5, name: "elo_after", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+        { no: 6, name: "solve_time_ms", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
+        { no: 7, name: "suspicion_score", kind: "scalar", T: 2 /* ScalarType.FLOAT */ },
+        { no: 8, name: "final_xp", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+        { no: 9, name: "xp_breakdown", kind: "message", T: XPBreakdownItem, repeated: true },
+        { no: 10, name: "tier_label", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+        { no: 11, name: "next_tier_label", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    ]);
+    static fromBinary(bytes, options) {
+        return new ArenaParticipant().fromBinary(bytes, options);
+    }
+    static fromJson(jsonValue, options) {
+        return new ArenaParticipant().fromJson(jsonValue, options);
+    }
+    static fromJsonString(jsonString, options) {
+        return new ArenaParticipant().fromJsonString(jsonString, options);
+    }
+    static equals(a, b) {
+        return proto3.util.equals(ArenaParticipant, a, b);
+    }
+}
+/**
+ * ArenaMatch mirrors OpenAPI ArenaMatch.
+ *
+ * @generated from message druz9.v1.ArenaMatch
+ */
+export class ArenaMatch extends Message {
+    /**
+     * @generated from field: string id = 1;
+     */
+    id = "";
+    /**
+     * @generated from field: druz9.v1.MatchStatus status = 2;
+     */
+    status = MatchStatus.UNSPECIFIED;
+    /**
+     * mode is a string in OpenAPI, kept as ArenaMode enum internally.
+     *
+     * @generated from field: druz9.v1.ArenaMode mode = 3;
+     */
+    mode = ArenaMode.UNSPECIFIED;
+    /**
+     * @generated from field: druz9.v1.Section section = 4;
+     */
+    section = Section.UNSPECIFIED;
+    /**
+     * @generated from field: druz9.v1.ArenaTaskPublic task = 5;
+     */
+    task;
+    /**
+     * @generated from field: repeated druz9.v1.ArenaParticipant participants = 6;
+     */
+    participants = [];
+    /**
+     * @generated from field: google.protobuf.Timestamp started_at = 7;
+     */
+    startedAt;
+    /**
+     * @generated from field: google.protobuf.Timestamp finished_at = 8;
+     */
+    finishedAt;
+    /**
+     * @generated from field: string winner_user_id = 9;
+     */
+    winnerUserId = "";
+    /**
+     * winning_team_id — set for finished 2v2 matches (1 or 2). 0 means either
+     * a 1v1 match (use winner_user_id) or a duo draw / unfinished match.
+     *
+     * @generated from field: int32 winning_team_id = 10;
+     */
+    winningTeamId = 0;
+    constructor(data) {
+        super();
+        proto3.util.initPartial(data, this);
+    }
+    static runtime = proto3;
+    static typeName = "druz9.v1.ArenaMatch";
+    static fields = proto3.util.newFieldList(() => [
+        { no: 1, name: "id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+        { no: 2, name: "status", kind: "enum", T: proto3.getEnumType(MatchStatus) },
+        { no: 3, name: "mode", kind: "enum", T: proto3.getEnumType(ArenaMode) },
+        { no: 4, name: "section", kind: "enum", T: proto3.getEnumType(Section) },
+        { no: 5, name: "task", kind: "message", T: ArenaTaskPublic },
+        { no: 6, name: "participants", kind: "message", T: ArenaParticipant, repeated: true },
+        { no: 7, name: "started_at", kind: "message", T: Timestamp },
+        { no: 8, name: "finished_at", kind: "message", T: Timestamp },
+        { no: 9, name: "winner_user_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+        { no: 10, name: "winning_team_id", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    ]);
+    static fromBinary(bytes, options) {
+        return new ArenaMatch().fromBinary(bytes, options);
+    }
+    static fromJson(jsonValue, options) {
+        return new ArenaMatch().fromJson(jsonValue, options);
+    }
+    static fromJsonString(jsonString, options) {
+        return new ArenaMatch().fromJsonString(jsonString, options);
+    }
+    static equals(a, b) {
+        return proto3.util.equals(ArenaMatch, a, b);
+    }
+}
+/**
+ * FindMatchRequest mirrors OpenAPI FindMatchRequest.
+ *
+ * @generated from message druz9.v1.FindMatchRequest
+ */
+export class FindMatchRequest extends Message {
+    /**
+     * @generated from field: druz9.v1.Section section = 1;
+     */
+    section = Section.UNSPECIFIED;
+    /**
+     * @generated from field: druz9.v1.ArenaMode mode = 2;
+     */
+    mode = ArenaMode.UNSPECIFIED;
+    /**
+     * @generated from field: druz9.v1.Language language = 3;
+     */
+    language = Language.UNSPECIFIED;
+    constructor(data) {
+        super();
+        proto3.util.initPartial(data, this);
+    }
+    static runtime = proto3;
+    static typeName = "druz9.v1.FindMatchRequest";
+    static fields = proto3.util.newFieldList(() => [
+        { no: 1, name: "section", kind: "enum", T: proto3.getEnumType(Section) },
+        { no: 2, name: "mode", kind: "enum", T: proto3.getEnumType(ArenaMode) },
+        { no: 3, name: "language", kind: "enum", T: proto3.getEnumType(Language) },
+    ]);
+    static fromBinary(bytes, options) {
+        return new FindMatchRequest().fromBinary(bytes, options);
+    }
+    static fromJson(jsonValue, options) {
+        return new FindMatchRequest().fromJson(jsonValue, options);
+    }
+    static fromJsonString(jsonString, options) {
+        return new FindMatchRequest().fromJsonString(jsonString, options);
+    }
+    static equals(a, b) {
+        return proto3.util.equals(FindMatchRequest, a, b);
+    }
+}
+/**
+ * MatchQueueResponse mirrors OpenAPI MatchQueueResponse. The original OpenAPI
+ * enum is {queued, matched} — kept as a string to match the wire literal.
+ *
+ * @generated from message druz9.v1.MatchQueueResponse
+ */
+export class MatchQueueResponse extends Message {
+    /**
+     * "queued" | "matched"
+     *
+     * @generated from field: string status = 1;
+     */
+    status = "";
+    /**
+     * @generated from field: int32 queue_position = 2;
+     */
+    queuePosition = 0;
+    /**
+     * @generated from field: int32 estimated_wait_sec = 3;
+     */
+    estimatedWaitSec = 0;
+    /**
+     * @generated from field: string match_id = 4;
+     */
+    matchId = "";
+    constructor(data) {
+        super();
+        proto3.util.initPartial(data, this);
+    }
+    static runtime = proto3;
+    static typeName = "druz9.v1.MatchQueueResponse";
+    static fields = proto3.util.newFieldList(() => [
+        { no: 1, name: "status", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+        { no: 2, name: "queue_position", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+        { no: 3, name: "estimated_wait_sec", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+        { no: 4, name: "match_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    ]);
+    static fromBinary(bytes, options) {
+        return new MatchQueueResponse().fromBinary(bytes, options);
+    }
+    static fromJson(jsonValue, options) {
+        return new MatchQueueResponse().fromJson(jsonValue, options);
+    }
+    static fromJsonString(jsonString, options) {
+        return new MatchQueueResponse().fromJsonString(jsonString, options);
+    }
+    static equals(a, b) {
+        return proto3.util.equals(MatchQueueResponse, a, b);
+    }
+}
+/**
+ * SubmitCodeRequest mirrors OpenAPI SubmitCodeRequest.
+ *
+ * @generated from message druz9.v1.SubmitCodeRequest
+ */
+export class SubmitCodeRequest extends Message {
+    /**
+     * path param
+     *
+     * @generated from field: string match_id = 1;
+     */
+    matchId = "";
+    /**
+     * @generated from field: string code = 2;
+     */
+    code = "";
+    /**
+     * @generated from field: druz9.v1.Language language = 3;
+     */
+    language = Language.UNSPECIFIED;
+    constructor(data) {
+        super();
+        proto3.util.initPartial(data, this);
+    }
+    static runtime = proto3;
+    static typeName = "druz9.v1.SubmitCodeRequest";
+    static fields = proto3.util.newFieldList(() => [
+        { no: 1, name: "match_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+        { no: 2, name: "code", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+        { no: 3, name: "language", kind: "enum", T: proto3.getEnumType(Language) },
+    ]);
+    static fromBinary(bytes, options) {
+        return new SubmitCodeRequest().fromBinary(bytes, options);
+    }
+    static fromJson(jsonValue, options) {
+        return new SubmitCodeRequest().fromJson(jsonValue, options);
+    }
+    static fromJsonString(jsonString, options) {
+        return new SubmitCodeRequest().fromJsonString(jsonString, options);
+    }
+    static equals(a, b) {
+        return proto3.util.equals(SubmitCodeRequest, a, b);
+    }
+}
+/**
+ * SubmitResult mirrors OpenAPI SubmitResult.
+ *
+ * @generated from message druz9.v1.SubmitResult
+ */
+export class SubmitResult extends Message {
+    /**
+     * @generated from field: bool passed = 1;
+     */
+    passed = false;
+    /**
+     * @generated from field: int32 tests_total = 2;
+     */
+    testsTotal = 0;
+    /**
+     * @generated from field: int32 tests_passed = 3;
+     */
+    testsPassed = 0;
+    /**
+     * @generated from field: int32 runtime_ms = 4;
+     */
+    runtimeMs = 0;
+    /**
+     * @generated from field: int32 memory_kb = 5;
+     */
+    memoryKb = 0;
+    constructor(data) {
+        super();
+        proto3.util.initPartial(data, this);
+    }
+    static runtime = proto3;
+    static typeName = "druz9.v1.SubmitResult";
+    static fields = proto3.util.newFieldList(() => [
+        { no: 1, name: "passed", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
+        { no: 2, name: "tests_total", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+        { no: 3, name: "tests_passed", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+        { no: 4, name: "runtime_ms", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+        { no: 5, name: "memory_kb", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    ]);
+    static fromBinary(bytes, options) {
+        return new SubmitResult().fromBinary(bytes, options);
+    }
+    static fromJson(jsonValue, options) {
+        return new SubmitResult().fromJson(jsonValue, options);
+    }
+    static fromJsonString(jsonString, options) {
+        return new SubmitResult().fromJsonString(jsonString, options);
+    }
+    static equals(a, b) {
+        return proto3.util.equals(SubmitResult, a, b);
+    }
+}
+/**
+ * Empty request shapes for the path-only endpoints.
+ *
+ * @generated from message druz9.v1.CancelMatchRequest
+ */
+export class CancelMatchRequest extends Message {
+    constructor(data) {
+        super();
+        proto3.util.initPartial(data, this);
+    }
+    static runtime = proto3;
+    static typeName = "druz9.v1.CancelMatchRequest";
+    static fields = proto3.util.newFieldList(() => []);
+    static fromBinary(bytes, options) {
+        return new CancelMatchRequest().fromBinary(bytes, options);
+    }
+    static fromJson(jsonValue, options) {
+        return new CancelMatchRequest().fromJson(jsonValue, options);
+    }
+    static fromJsonString(jsonString, options) {
+        return new CancelMatchRequest().fromJsonString(jsonString, options);
+    }
+    static equals(a, b) {
+        return proto3.util.equals(CancelMatchRequest, a, b);
+    }
+}
+/**
+ * @generated from message druz9.v1.GetMatchRequest
+ */
+export class GetMatchRequest extends Message {
+    /**
+     * @generated from field: string match_id = 1;
+     */
+    matchId = "";
+    constructor(data) {
+        super();
+        proto3.util.initPartial(data, this);
+    }
+    static runtime = proto3;
+    static typeName = "druz9.v1.GetMatchRequest";
+    static fields = proto3.util.newFieldList(() => [
+        { no: 1, name: "match_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    ]);
+    static fromBinary(bytes, options) {
+        return new GetMatchRequest().fromBinary(bytes, options);
+    }
+    static fromJson(jsonValue, options) {
+        return new GetMatchRequest().fromJson(jsonValue, options);
+    }
+    static fromJsonString(jsonString, options) {
+        return new GetMatchRequest().fromJsonString(jsonString, options);
+    }
+    static equals(a, b) {
+        return proto3.util.equals(GetMatchRequest, a, b);
+    }
+}
+/**
+ * @generated from message druz9.v1.ConfirmMatchRequest
+ */
+export class ConfirmMatchRequest extends Message {
+    /**
+     * @generated from field: string match_id = 1;
+     */
+    matchId = "";
+    constructor(data) {
+        super();
+        proto3.util.initPartial(data, this);
+    }
+    static runtime = proto3;
+    static typeName = "druz9.v1.ConfirmMatchRequest";
+    static fields = proto3.util.newFieldList(() => [
+        { no: 1, name: "match_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    ]);
+    static fromBinary(bytes, options) {
+        return new ConfirmMatchRequest().fromBinary(bytes, options);
+    }
+    static fromJson(jsonValue, options) {
+        return new ConfirmMatchRequest().fromJson(jsonValue, options);
+    }
+    static fromJsonString(jsonString, options) {
+        return new ConfirmMatchRequest().fromJsonString(jsonString, options);
+    }
+    static equals(a, b) {
+        return proto3.util.equals(ConfirmMatchRequest, a, b);
+    }
+}
+/**
+ * MatchHistoryEntry — одна строка истории матчей пользователя
+ * (используется в GetMyMatches, заменяет хардкод в /match-history).
+ *
+ * @generated from message druz9.v1.MatchHistoryEntry
+ */
+export class MatchHistoryEntry extends Message {
+    /**
+     * @generated from field: string match_id = 1;
+     */
+    matchId = "";
+    /**
+     * @generated from field: google.protobuf.Timestamp finished_at = 2;
+     */
+    finishedAt;
+    /**
+     * @generated from field: druz9.v1.ArenaMode mode = 3;
+     */
+    mode = ArenaMode.UNSPECIFIED;
+    /**
+     * @generated from field: druz9.v1.Section section = 4;
+     */
+    section = Section.UNSPECIFIED;
+    /**
+     * @generated from field: string opponent_username = 5;
+     */
+    opponentUsername = "";
+    /**
+     * @generated from field: string opponent_avatar_url = 6;
+     */
+    opponentAvatarUrl = "";
+    /**
+     * result: "win" | "loss" | "draw" | "abandoned"
+     *
+     * @generated from field: string result = 7;
+     */
+    result = "";
+    /**
+     * @generated from field: int32 lp_change = 8;
+     */
+    lpChange = 0;
+    /**
+     * @generated from field: int32 duration_seconds = 9;
+     */
+    durationSeconds = 0;
+    constructor(data) {
+        super();
+        proto3.util.initPartial(data, this);
+    }
+    static runtime = proto3;
+    static typeName = "druz9.v1.MatchHistoryEntry";
+    static fields = proto3.util.newFieldList(() => [
+        { no: 1, name: "match_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+        { no: 2, name: "finished_at", kind: "message", T: Timestamp },
+        { no: 3, name: "mode", kind: "enum", T: proto3.getEnumType(ArenaMode) },
+        { no: 4, name: "section", kind: "enum", T: proto3.getEnumType(Section) },
+        { no: 5, name: "opponent_username", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+        { no: 6, name: "opponent_avatar_url", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+        { no: 7, name: "result", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+        { no: 8, name: "lp_change", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+        { no: 9, name: "duration_seconds", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    ]);
+    static fromBinary(bytes, options) {
+        return new MatchHistoryEntry().fromBinary(bytes, options);
+    }
+    static fromJson(jsonValue, options) {
+        return new MatchHistoryEntry().fromJson(jsonValue, options);
+    }
+    static fromJsonString(jsonString, options) {
+        return new MatchHistoryEntry().fromJsonString(jsonString, options);
+    }
+    static equals(a, b) {
+        return proto3.util.equals(MatchHistoryEntry, a, b);
+    }
+}
+/**
+ * @generated from message druz9.v1.GetMyMatchesRequest
+ */
+export class GetMyMatchesRequest extends Message {
+    /**
+     * limit: 1..100, default 20.
+     *
+     * @generated from field: int32 limit = 1;
+     */
+    limit = 0;
+    /**
+     * @generated from field: int32 offset = 2;
+     */
+    offset = 0;
+    /**
+     * Optional фильтры (UNSPECIFIED = no-filter).
+     *
+     * @generated from field: druz9.v1.ArenaMode mode = 3;
+     */
+    mode = ArenaMode.UNSPECIFIED;
+    /**
+     * @generated from field: druz9.v1.Section section = 4;
+     */
+    section = Section.UNSPECIFIED;
+    constructor(data) {
+        super();
+        proto3.util.initPartial(data, this);
+    }
+    static runtime = proto3;
+    static typeName = "druz9.v1.GetMyMatchesRequest";
+    static fields = proto3.util.newFieldList(() => [
+        { no: 1, name: "limit", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+        { no: 2, name: "offset", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+        { no: 3, name: "mode", kind: "enum", T: proto3.getEnumType(ArenaMode) },
+        { no: 4, name: "section", kind: "enum", T: proto3.getEnumType(Section) },
+    ]);
+    static fromBinary(bytes, options) {
+        return new GetMyMatchesRequest().fromBinary(bytes, options);
+    }
+    static fromJson(jsonValue, options) {
+        return new GetMyMatchesRequest().fromJson(jsonValue, options);
+    }
+    static fromJsonString(jsonString, options) {
+        return new GetMyMatchesRequest().fromJsonString(jsonString, options);
+    }
+    static equals(a, b) {
+        return proto3.util.equals(GetMyMatchesRequest, a, b);
+    }
+}
+/**
+ * @generated from message druz9.v1.GetMyMatchesResponse
+ */
+export class GetMyMatchesResponse extends Message {
+    /**
+     * @generated from field: repeated druz9.v1.MatchHistoryEntry items = 1;
+     */
+    items = [];
+    /**
+     * @generated from field: int32 total = 2;
+     */
+    total = 0;
+    constructor(data) {
+        super();
+        proto3.util.initPartial(data, this);
+    }
+    static runtime = proto3;
+    static typeName = "druz9.v1.GetMyMatchesResponse";
+    static fields = proto3.util.newFieldList(() => [
+        { no: 1, name: "items", kind: "message", T: MatchHistoryEntry, repeated: true },
+        { no: 2, name: "total", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    ]);
+    static fromBinary(bytes, options) {
+        return new GetMyMatchesResponse().fromBinary(bytes, options);
+    }
+    static fromJson(jsonValue, options) {
+        return new GetMyMatchesResponse().fromJson(jsonValue, options);
+    }
+    static fromJsonString(jsonString, options) {
+        return new GetMyMatchesResponse().fromJsonString(jsonString, options);
+    }
+    static equals(a, b) {
+        return proto3.util.equals(GetMyMatchesResponse, a, b);
+    }
+}

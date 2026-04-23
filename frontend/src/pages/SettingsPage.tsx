@@ -128,9 +128,10 @@ function Field({
 
 function ProfileCard() {
   const { t } = useTranslation('settings')
-  const { data: profile, isError } = useProfileQuery()
-  const username = profile?.username ?? '—'
-  const display = profile?.display_name ?? '—'
+  const { data: profile, isError, isLoading } = useProfileQuery()
+  const username = profile?.username ?? (isLoading ? '' : '—')
+  const display = profile?.display_name ?? (isLoading ? '' : '—')
+  const email = profile?.email ?? ''
   const initial = (profile?.display_name ?? 'Д').charAt(0).toUpperCase()
   return (
     <Card className="flex-col gap-5 p-6">
@@ -157,7 +158,7 @@ function ProfileCard() {
         <div className="grid flex-1 grid-cols-1 gap-4 sm:grid-cols-2">
           <Field key={`u-${username}`} label={t('fields.username')} value={username} prefix="@" />
           <Field key={`d-${display}`} label={t('fields.display')} value={display} />
-          <Field label={t('fields.email')} value="wylmayfeolekerd@hotmail.com" />
+          <Field key={`e-${email}`} label={t('fields.email')} value={email} />
           <Field label={t('fields.city')} value={t('city')} />
           <div className="col-span-2">
             <Field label={t('fields.bio')} value={profile?.title ?? t('bio_default')} multiline />
@@ -170,12 +171,19 @@ function ProfileCard() {
 
 function AccountInfoCard() {
   const { t } = useTranslation('settings')
-  const { data: profile } = useProfileQuery()
-  const id = profile?.id ?? 'drz9-7K2M-A9P'
+  const { data: profile, isLoading } = useProfileQuery()
+  const id = profile?.id ?? (isLoading ? '' : '—')
   const created = profile?.created_at
     ? new Date(profile.created_at).toLocaleDateString('ru', { day: 'numeric', month: 'long', year: 'numeric' })
-    : '12 марта 2025'
+    : ''
   const plan = profile?.subscription?.plan ?? 'FREE'
+  // Subscription expiry is shown only for paid plans. The proto field
+  // `current_period_end` is set to 0-Timestamp on FREE; we treat "" or
+  // "1970-01-01T00:00:00Z" as «нет даты».
+  const expiry = profile?.subscription?.current_period_end ?? ''
+  const expiryDate = expiry && !expiry.startsWith('1970-')
+    ? new Date(expiry).toLocaleDateString('ru', { day: 'numeric', month: 'long', year: 'numeric' })
+    : ''
   return (
     <Card className="flex-col gap-0 p-0">
       <div className="flex items-center justify-between border-b border-border px-6 py-4">
@@ -198,6 +206,11 @@ function AccountInfoCard() {
             <span className="rounded-md bg-surface-2 px-2 py-0.5 font-mono text-[11px] font-bold uppercase text-text-secondary">
               {plan}
             </span>
+            {expiryDate && (
+              <span className="font-mono text-[11px] text-text-muted">
+                до {expiryDate}
+              </span>
+            )}
             <Button variant="primary" size="sm" className="bg-warn text-bg shadow-none hover:bg-warn/90 hover:shadow-none">
               {t('buy_premium')}
             </Button>

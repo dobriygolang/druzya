@@ -1,7 +1,15 @@
+// StatusPage — public uptime / transparency surface.
+//
+// Replaces the apigen-era hard-coded service grid + dated "20 апр 2026"
+// incident list with live data from GET /api/v1/status (public endpoint).
+//
+// Refetches every 30s — same TTL as the server-side Redis cache, so the
+// browser sees the freshest snapshot the moment it expires upstream.
 // TODO i18n
 import { Link } from 'react-router-dom'
-import { Check, ArrowLeft } from 'lucide-react'
+import { Check, ArrowLeft, AlertTriangle, AlertCircle } from 'lucide-react'
 import { Button } from '../components/Button'
+import { useStatusPageQuery, type StatusServiceState, type StatusIncident } from '../lib/queries/status'
 
 function TopBar() {
   return (
@@ -24,34 +32,66 @@ function TopBar() {
   )
 }
 
-function Hero() {
+function Hero({
+  status,
+  uptime90d,
+  generatedAt,
+}: {
+  status: 'operational' | 'degraded' | 'down' | string
+  uptime90d: string
+  generatedAt: string
+}) {
+  const cfg = heroConfigForStatus(status)
+  const seconds = secondsAgo(generatedAt)
   return (
     <div className="flex flex-col items-center justify-center gap-3.5 px-4 py-8 sm:px-8 lg:px-20 lg:py-10">
-      <div className="grid h-24 w-24 place-items-center rounded-full bg-success/20" style={{ boxShadow: 'inset 0 0 0 3px #10B981' }}>
-        <Check className="h-14 w-14 text-success" strokeWidth={3} />
+      <div className={`grid h-24 w-24 place-items-center rounded-full ${cfg.bg}`} style={{ boxShadow: `inset 0 0 0 3px ${cfg.ring}` }}>
+        {cfg.icon}
       </div>
-      <h1 className="font-display text-2xl lg:text-[32px] font-extrabold text-success text-center">Все системы работают</h1>
+      <h1 className={`font-display text-2xl lg:text-[32px] font-extrabold ${cfg.text} text-center`}>{cfg.title}</h1>
       <p className="text-sm text-text-secondary">
-        Аптайм 99.97% за последние 90 дней · обновлено 23 секунды назад
+        Аптайм {uptime90d} за последние 90 дней · обновлено {seconds === null ? '—' : `${seconds} ${pluralizeSeconds(seconds)} назад`}
       </p>
     </div>
   )
 }
 
-type Service = { name: string; sub: string; uptime: string; status: 'ok' | 'warn'; bars: Array<'ok' | 'warn'> }
+function heroConfigForStatus(s: string) {
+  switch (s) {
+    case 'operational':
+      return {
+        bg: 'bg-success/20',
+        ring: '#10B981',
+        text: 'text-success',
+        title: 'Все системы работают',
+        icon: <Check className="h-14 w-14 text-success" strokeWidth={3} />,
+      }
+    case 'degraded':
+      return {
+        bg: 'bg-warn/20',
+        ring: '#F59E0B',
+        text: 'text-warn',
+        title: 'Частичная деградация',
+        icon: <AlertTriangle className="h-14 w-14 text-warn" strokeWidth={3} />,
+      }
+    case 'down':
+    default:
+      return {
+        bg: 'bg-danger/20',
+        ring: '#EF4444',
+        text: 'text-danger',
+        title: 'Перебои в работе',
+        icon: <AlertCircle className="h-14 w-14 text-danger" strokeWidth={3} />,
+      }
+  }
+}
 
-const services: Service[] = [
-  { name: 'Web App', sub: 'app.druz9.io', uptime: '100%', status: 'ok', bars: Array.from({ length: 30 }).map(() => 'ok') },
-  { name: 'REST API', sub: 'api.druz9.io', uptime: '99.99%', status: 'ok', bars: Array.from({ length: 30 }).map((_, i) => (i === 22 ? 'warn' : 'ok')) },
-  { name: 'WebSocket', sub: 'ws.druz9.io', uptime: '99.95%', status: 'ok', bars: Array.from({ length: 30 }).map((_, i) => (i === 8 || i === 18 ? 'warn' : 'ok')) },
-  { name: 'PostgreSQL', sub: 'primary db', uptime: '100%', status: 'ok', bars: Array.from({ length: 30 }).map(() => 'ok') },
-  { name: 'Redis', sub: 'cache cluster', uptime: '100%', status: 'ok', bars: Array.from({ length: 30 }).map(() => 'ok') },
-  { name: 'MinIO', sub: 'object storage', uptime: '99.99%', status: 'ok', bars: Array.from({ length: 30 }).map((_, i) => (i === 14 ? 'warn' : 'ok')) },
-  { name: 'Judge0', sub: 'code execution · degraded', uptime: '99.4%', status: 'warn', bars: Array.from({ length: 30 }).map((_, i) => ([5, 6, 7, 19, 25].includes(i) ? 'warn' : 'ok')) },
-  { name: 'OpenRouter', sub: 'LLM gateway', uptime: '99.8%', status: 'ok', bars: Array.from({ length: 30 }).map((_, i) => ([11, 24].includes(i) ? 'warn' : 'ok')) },
-]
-
-function ServicesList() {
+function ServicesList({ services }: { services: StatusServiceState[] }) {
+  // We render a fixed number of "history bars" per service: 30 dummy bars
+  // because we don't yet expose a per-day history series. Bars all show as
+  // ok unless the current state is degraded/down — in which case the most
+  // recent ~5 bars flip color, matching the visual mockup. When the
+  // backend grows a real bucketed history this is the place to plug it in.
   return (
     <div className="overflow-hidden rounded-2xl bg-surface-2">
       <div className="flex items-center justify-between border-b border-border px-6 py-4">
@@ -60,75 +100,155 @@ function ServicesList() {
           Refresh in 30s
         </span>
       </div>
-      {services.map((s) => (
-        <div key={s.name} className="flex flex-col gap-3 border-b border-border/50 px-4 py-3.5 last:border-0 sm:flex-row sm:items-center sm:gap-4 sm:px-6">
-          <span className={`h-2.5 w-2.5 rounded-full ${s.status === 'ok' ? 'bg-success' : 'bg-warn'}`} />
-          <div className="flex w-44 flex-col">
-            <span className="text-sm font-semibold text-text-primary">{s.name}</span>
-            <span className="font-mono text-[10px] text-text-muted">{s.sub}</span>
-          </div>
-          <div className="flex h-6 flex-1 items-center gap-[1px]">
-            {s.bars.map((b, i) => (
-              <span
-                key={i}
-                className={`h-6 w-[3px] rounded-sm ${b === 'ok' ? 'bg-success' : 'bg-warn'}`}
-              />
-            ))}
-          </div>
-          <div className="flex w-28 flex-col items-end">
-            <span className={`font-mono text-sm font-semibold ${s.status === 'ok' ? 'text-success' : 'text-warn'}`}>
-              {s.uptime}
-            </span>
-            <span className="font-mono text-[10px] text-text-muted">uptime 90d</span>
-          </div>
+      {services.length === 0 && (
+        <div className="px-6 py-10 text-center font-mono text-sm text-text-muted">
+          Нет данных о сервисах
         </div>
-      ))}
+      )}
+      {services.map((s) => {
+        const bars = buildSparkBars(s.status)
+        return (
+          <div
+            key={s.slug || s.name}
+            className="flex flex-col gap-3 border-b border-border/50 px-4 py-3.5 last:border-0 sm:flex-row sm:items-center sm:gap-4 sm:px-6"
+          >
+            <span
+              className={`h-2.5 w-2.5 rounded-full ${
+                s.status === 'operational' ? 'bg-success' : s.status === 'degraded' ? 'bg-warn' : 'bg-danger'
+              }`}
+            />
+            <div className="flex w-44 flex-col">
+              <span className="text-sm font-semibold text-text-primary">{s.name}</span>
+              <span className="font-mono text-[10px] text-text-muted">
+                {s.slug}
+                {typeof s.latency_ms === 'number' && s.latency_ms > 0 ? ` · ${s.latency_ms} ms` : ''}
+              </span>
+            </div>
+            <div className="flex h-6 flex-1 items-center gap-[1px]">
+              {bars.map((b, i) => (
+                <span
+                  key={i}
+                  className={`h-6 w-[3px] rounded-sm ${
+                    b === 'ok' ? 'bg-success' : b === 'degraded' ? 'bg-warn' : 'bg-danger'
+                  }`}
+                />
+              ))}
+            </div>
+            <div className="flex w-28 flex-col items-end">
+              <span
+                className={`font-mono text-sm font-semibold ${
+                  s.status === 'operational' ? 'text-success' : s.status === 'degraded' ? 'text-warn' : 'text-danger'
+                }`}
+              >
+                {s.uptime_30d}
+              </span>
+              <span className="font-mono text-[10px] text-text-muted">uptime 30d</span>
+            </div>
+          </div>
+        )
+      })}
     </div>
   )
 }
 
-const incidents = [
-  {
-    title: 'Judge0 — повышенная задержка выполнения кода',
-    body: 'Очередь джобов росла из-за проблем с одним worker-узлом. Узел перезапущен, очередь рассосалась.',
-    date: '20 апр 2026',
-  },
-  {
-    title: 'OpenRouter — частичные отказы вызовов LLM',
-    body: 'Upstream provider давал 5xx около 8 минут. Переключились на резервный route.',
-    date: '12 апр 2026',
-  },
-  {
-    title: 'WebSocket — кратковременные дисконнекты',
-    body: 'Релиз ingress контроллера вызвал re-handshake. Откат за 2 минуты.',
-    date: '5 апр 2026',
-  },
-]
+function buildSparkBars(status: string): Array<'ok' | 'degraded' | 'down'> {
+  const total = 30
+  const out: Array<'ok' | 'degraded' | 'down'> = []
+  for (let i = 0; i < total; i++) out.push('ok')
+  if (status === 'degraded') {
+    for (let i = total - 5; i < total; i++) out[i] = 'degraded'
+  } else if (status === 'down') {
+    for (let i = total - 3; i < total; i++) out[i] = 'down'
+  }
+  return out
+}
 
-function IncidentsCard() {
+function IncidentsCard({ incidents }: { incidents: StatusIncident[] }) {
   return (
     <div className="rounded-2xl bg-surface-2 p-6">
       <h3 className="font-display text-base font-bold text-text-primary">Недавние инциденты</h3>
+      {incidents.length === 0 && (
+        <div className="mt-4 rounded-[10px] bg-surface-1 p-4 text-center font-mono text-sm text-text-muted">
+          Инцидентов не зарегистрировано.
+        </div>
+      )}
       <div className="mt-4 flex flex-col gap-3">
-        {incidents.map((inc) => (
-          <div key={inc.title} className="rounded-[10px] bg-surface-1 p-3.5">
-            <div className="flex items-center justify-between">
-              <span className="rounded-full bg-success/15 px-2 py-0.5 font-mono text-[10px] font-semibold text-success">
-                RESOLVED
-              </span>
-              <span className="font-mono text-[11px] text-text-muted">{inc.date}</span>
-            </div>
-            <h4 className="mt-2 font-display text-sm font-bold text-text-primary">{inc.title}</h4>
-            <p className="mt-1 text-xs text-text-secondary">{inc.body}</p>
-            <div className="mt-3 flex items-center gap-2">
-              {['Зарегистрирован', 'Investigation', 'Fix', 'Resolved'].map((step, i) => (
-                <div key={step} className="flex flex-1 items-center gap-2">
-                  <span className="h-2 w-2 rounded-full bg-success" />
-                  <span className="font-mono text-[10px] text-text-muted">{step}</span>
-                  {i < 3 && <span className="h-px flex-1 bg-border" />}
+        {incidents.map((inc) => {
+          const resolved = inc.ended_at !== null && inc.ended_at !== undefined && inc.ended_at !== ''
+          return (
+            <div key={inc.id} className="rounded-[10px] bg-surface-1 p-3.5">
+              <div className="flex items-center justify-between">
+                <span
+                  className={`rounded-full px-2 py-0.5 font-mono text-[10px] font-semibold ${
+                    resolved ? 'bg-success/15 text-success' : severityChip(inc.severity)
+                  }`}
+                >
+                  {resolved ? 'RESOLVED' : (inc.severity || 'open').toUpperCase()}
+                </span>
+                <span className="font-mono text-[11px] text-text-muted">
+                  {new Date(inc.started_at).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short', year: 'numeric' })}
+                </span>
+              </div>
+              <h4 className="mt-2 font-display text-sm font-bold text-text-primary">{inc.title}</h4>
+              {inc.description && <p className="mt-1 text-xs text-text-secondary">{inc.description}</p>}
+              {inc.affected_services.length > 0 && (
+                <div className="mt-2 flex flex-wrap gap-1">
+                  {inc.affected_services.map((s) => (
+                    <span key={s} className="rounded-full bg-surface-3 px-2 py-0.5 font-mono text-[10px] text-text-muted">
+                      {s}
+                    </span>
+                  ))}
                 </div>
-              ))}
+              )}
             </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+function severityChip(sev: string): string {
+  switch (sev) {
+    case 'critical':
+      return 'bg-danger/15 text-danger'
+    case 'major':
+      return 'bg-warn/15 text-warn'
+    case 'minor':
+    default:
+      return 'bg-cyan/15 text-cyan'
+  }
+}
+
+function secondsAgo(iso: string): number | null {
+  if (!iso) return null
+  const ts = new Date(iso).getTime()
+  if (Number.isNaN(ts)) return null
+  return Math.max(0, Math.round((Date.now() - ts) / 1000))
+}
+
+function pluralizeSeconds(n: number): string {
+  // Лёгкая ru-pluralization: 1 секунду, 2-4 секунды, 5+ секунд.
+  const m10 = n % 10
+  const m100 = n % 100
+  if (m10 === 1 && m100 !== 11) return 'секунду'
+  if (m10 >= 2 && m10 <= 4 && (m100 < 12 || m100 > 14)) return 'секунды'
+  return 'секунд'
+}
+
+function MetricsCard({ uptime90d, incidentCount }: { uptime90d: string; incidentCount: number }) {
+  const rows: Array<[string, string]> = [
+    ['Аптайм 90d', uptime90d],
+    ['Инцидентов', String(incidentCount)],
+  ]
+  return (
+    <div className="flex-1 rounded-2xl bg-surface-2 p-6">
+      <h3 className="font-display text-base font-bold text-text-primary">Метрики 90 дней</h3>
+      <div className="mt-4 flex flex-col gap-3">
+        {rows.map(([k, v]) => (
+          <div key={k} className="flex items-center justify-between border-b border-border pb-2 last:border-0">
+            <span className="text-sm text-text-secondary">{k}</span>
+            <span className="font-mono text-sm font-semibold text-text-primary">{v}</span>
           </div>
         ))}
       </div>
@@ -146,45 +266,54 @@ function SubscribeCard() {
           className="flex-1 rounded-md border border-border bg-surface-1 px-3 py-2 font-mono text-xs text-text-primary placeholder:text-text-muted"
           placeholder="you@example.com"
         />
-        <Button variant="primary" size="sm">Подписаться</Button>
-      </div>
-    </div>
-  )
-}
-
-function MetricsCard() {
-  const rows = [
-    ['Аптайм 90d', '99.97%'],
-    ['Инцидентов', '3'],
-    ['Latency p95', '142ms'],
-    ['MTTR', '11 мин'],
-  ]
-  return (
-    <div className="flex-1 rounded-2xl bg-surface-2 p-6">
-      <h3 className="font-display text-base font-bold text-text-primary">Метрики 90 дней</h3>
-      <div className="mt-4 flex flex-col gap-3">
-        {rows.map(([k, v]) => (
-          <div key={k} className="flex items-center justify-between border-b border-border pb-2 last:border-0">
-            <span className="text-sm text-text-secondary">{k}</span>
-            <span className="font-mono text-sm font-semibold text-text-primary">{v}</span>
-          </div>
-        ))}
+        <Button variant="primary" size="sm">
+          Подписаться
+        </Button>
       </div>
     </div>
   )
 }
 
 export default function StatusPage() {
+  const { data, isPending, error } = useStatusPageQuery()
+
+  if (isPending) {
+    return (
+      <div className="min-h-screen bg-bg text-text-primary">
+        <TopBar />
+        <div className="mx-auto flex max-w-3xl flex-col items-center gap-4 px-4 py-16">
+          <div className="h-24 w-24 animate-pulse rounded-full bg-surface-2" />
+          <div className="h-6 w-64 animate-pulse rounded bg-surface-2" />
+          <div className="h-4 w-48 animate-pulse rounded bg-surface-2" />
+          <div className="mt-6 h-64 w-full animate-pulse rounded-2xl bg-surface-2" />
+        </div>
+      </div>
+    )
+  }
+
+  if (error || !data) {
+    return (
+      <div className="min-h-screen bg-bg text-text-primary">
+        <TopBar />
+        <div className="mx-auto flex max-w-3xl flex-col items-center gap-4 px-4 py-16 text-center">
+          <AlertCircle className="h-14 w-14 text-danger" />
+          <h1 className="font-display text-2xl font-extrabold text-text-primary">Сервис недоступен</h1>
+          <p className="text-sm text-text-secondary">Не удалось загрузить страницу статуса. Попробуйте позже.</p>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="min-h-screen bg-bg text-text-primary">
       <TopBar />
-      <Hero />
+      <Hero status={data.overall_status} uptime90d={data.uptime_90d} generatedAt={data.generated_at} />
       <div className="flex flex-col gap-5 px-4 pb-6 sm:px-8 lg:px-20 lg:pb-7">
-        <ServicesList />
-        <IncidentsCard />
+        <ServicesList services={data.services} />
+        <IncidentsCard incidents={data.incidents} />
         <div className="flex flex-col gap-4 lg:flex-row lg:gap-5">
           <SubscribeCard />
-          <MetricsCard />
+          <MetricsCard uptime90d={data.uptime_90d} incidentCount={data.incidents.length} />
         </div>
       </div>
     </div>

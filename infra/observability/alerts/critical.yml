@@ -1,0 +1,73 @@
+# druz9 — CRITICAL alerts (page on-call immediately).
+#
+# Format: Prometheus alerting rules. Import into Grafana Cloud via
+#   Grafana Cloud → Alerts & IRM → Alert rules → Import (YAML).
+#
+# Notification: route to Telegram webhook (see ../README.md).
+groups:
+  - name: druz9-critical
+    interval: 30s
+    rules:
+      - alert: APIErrorRateHigh
+        expr: |
+          sum(rate(druz9_http_requests_total{status=~"5.."}[5m]))
+            / sum(rate(druz9_http_requests_total[5m])) > 0.01
+        for: 5m
+        labels:
+          severity: critical
+          service: api
+        annotations:
+          summary: "API 5xx rate > 1% for 5m"
+          description: "Current rate = {{ $value | humanizePercentage }} on druz9.online"
+
+      - alert: APILatencyP99High
+        expr: |
+          histogram_quantile(0.99,
+            sum by (le) (rate(druz9_http_request_duration_seconds_bucket[5m]))
+          ) > 1
+        for: 5m
+        labels:
+          severity: critical
+          service: api
+        annotations:
+          summary: "API p99 latency > 1s for 5m"
+          description: "p99 = {{ $value | humanizeDuration }}"
+
+      - alert: APIDown
+        expr: up{job="druz9-api"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          service: api
+        annotations:
+          summary: "druz9 API instance is down"
+          description: "Instance {{ $labels.instance }} hasn't responded to scrape for 1m"
+
+      # NOTE: Postgres exporter not deployed yet (see TODO in
+      # docker-compose.prod.yml). Once postgres_exporter is wired, enable:
+      #
+      #   - alert: PostgresDown
+      #     expr: pg_up == 0
+      #     for: 1m
+      #
+      # Until then, infer Postgres health from API 5xx + DB-related logs.
+
+      - alert: RedisPoolNearMax
+        expr: druz9_redis_pool_active / druz9_redis_pool_max > 0.9
+        for: 5m
+        labels:
+          severity: critical
+          service: redis
+        annotations:
+          summary: "Redis connection pool > 90% used"
+          description: "Active = {{ $value | humanizePercentage }} of max — risk of connection exhaustion"
+
+      - alert: LLMSpendDailyHigh
+        expr: sum(increase(druz9_llm_cost_rub_total[24h])) > 5000
+        for: 5m
+        labels:
+          severity: critical
+          service: llm
+        annotations:
+          summary: "LLM spend > 5000 RUB / 24h (~50 USD)"
+          description: "Daily spend: {{ $value | printf \"%.0f\" }} RUB. Consider switching LLM_DEFAULT_FREE."

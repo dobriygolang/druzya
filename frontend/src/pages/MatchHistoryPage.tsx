@@ -92,16 +92,16 @@ function HistoryRow({ entry, onClick }: { entry: ArenaHistoryEntry; onClick: () 
       onClick={onClick}
       className="flex w-full items-center gap-3 border-b border-border px-4 py-3 text-left transition hover:bg-surface-3/40 last:border-b-0"
     >
-      <span className={`h-10 w-1 rounded-full ${entry.result === 'win' ? 'bg-success' : entry.result === 'loss' ? 'bg-danger' : 'bg-text-muted'}`} />
+      <span className={`h-10 w-1 shrink-0 rounded-full ${entry.result === 'win' ? 'bg-success' : entry.result === 'loss' ? 'bg-danger' : 'bg-text-muted'}`} />
       <Avatar
         size="md"
         gradient={entry.result === 'win' ? 'success-cyan' : 'pink-red'}
         initials={initial}
         className="!w-9 !h-9"
       />
-      <div className="flex flex-1 flex-col gap-1">
-        <div className="flex items-center gap-2">
-          <span className="text-sm font-semibold text-text-primary">@{entry.opponent_username || 'unknown'}</span>
+      <div className="flex min-w-0 flex-1 flex-col gap-1">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="max-w-full truncate text-sm font-semibold text-text-primary">@{entry.opponent_username || 'unknown'}</span>
           <ModeBadge mode={entry.mode} />
           <span className="font-mono text-[10px] uppercase text-text-muted">{entry.section}</span>
         </div>

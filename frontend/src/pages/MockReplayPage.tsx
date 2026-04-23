@@ -80,7 +80,7 @@ function CodePlayback({ frameLabel }: { frameLabel: string }) {
     13: { color: 'bg-accent/20 text-accent-hover', text: 'return' },
   }
   return (
-    <div className="flex flex-1 flex-col">
+    <div className="flex min-w-0 flex-1 flex-col">
       <div className="flex h-11 items-center justify-between border-b border-border px-4">
         <div className="flex items-center gap-2.5">
           <FileCode className="h-4 w-4 text-text-secondary" />

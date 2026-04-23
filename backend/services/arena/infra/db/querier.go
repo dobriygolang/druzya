@@ -29,6 +29,8 @@ type Querier interface {
 	PickActiveTaskBySectionDifficulty(ctx context.Context, arg PickActiveTaskBySectionDifficultyParams) (PickActiveTaskBySectionDifficultyRow, error)
 	SetArenaMatchTask(ctx context.Context, arg SetArenaMatchTaskParams) (int64, error)
 	SetArenaMatchWinner(ctx context.Context, arg SetArenaMatchWinnerParams) (int64, error)
+	// SetArenaMatchWinningTeam финализирует 2v2-матч; winner_id остаётся NULL.
+	SetArenaMatchWinningTeam(ctx context.Context, arg SetArenaMatchWinningTeamParams) (int64, error)
 	UpdateArenaMatchStatus(ctx context.Context, arg UpdateArenaMatchStatusParams) (int64, error)
 	UpsertParticipantResult(ctx context.Context, arg UpsertParticipantResultParams) (int64, error)
 }

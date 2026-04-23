@@ -77,6 +77,13 @@ export type Participant = {
   username: string
   team: number
   elo_before: number
+  // Optional fields populated after a participant submits / the match
+  // resolves. Used by the 2v2 page to detect "who has already turned in
+  // their solution" — the protobuf source-of-truth fills these with zeros
+  // when missing, so the UI checks for `> 0`.
+  elo_after?: number
+  solve_time_ms?: number
+  suspicion_score?: number
 }
 
 export type ArenaMatch = {
@@ -87,6 +94,8 @@ export type ArenaMatch = {
   task: ArenaTask
   participants: Participant[]
   started_at: string
+  finished_at?: string
+  winner_user_id?: string
 }
 
 export type MatchQueueResponse = {

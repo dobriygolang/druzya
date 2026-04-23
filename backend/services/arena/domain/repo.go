@@ -27,6 +27,11 @@ type MatchRepo interface {
 	// SetWinner записывает победителя и finished_at.
 	SetWinner(ctx context.Context, id uuid.UUID, winner uuid.UUID, finishedAt time.Time) error
 
+	// SetWinningTeam записывает team_id победителя 2v2-матча (1 или 2),
+	// переводит статус в 'finished' и проставляет finished_at. winner_id
+	// остаётся NULL для team-матчей.
+	SetWinningTeam(ctx context.Context, id uuid.UUID, team int, finishedAt time.Time) error
+
 	// SetTask проставляет выбранную задачу на матч (после матчмейкинга).
 	SetTask(ctx context.Context, id uuid.UUID, taskID uuid.UUID, taskVersion int) error
 

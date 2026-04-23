@@ -246,10 +246,10 @@ function Step3Kata({ onNext, onBack }: { onNext: () => void; onBack: () => void 
     : '—/— tests passed'
   return (
     <div
-      className="grid grid-cols-1 gap-8 px-4 pb-8 pt-8 sm:px-8 lg:grid-cols-[480px_1fr] lg:px-20 lg:pb-7 lg:pt-10"
+      className="grid grid-cols-1 gap-8 px-4 pb-8 pt-8 sm:px-8 lg:grid-cols-[480px_minmax(0,1fr)] lg:px-20 lg:pb-7 lg:pt-10"
     >
       {/* Left */}
-      <div className="flex flex-col justify-center gap-5">
+      <div className="flex min-w-0 flex-col justify-center gap-5">
         <span className="inline-flex w-fit items-center gap-1.5 rounded-full bg-cyan/15 px-2.5 py-1 font-mono text-[11px] font-semibold tracking-[0.08em] text-cyan">
           {t('step3.tag')}
         </span>
@@ -297,7 +297,7 @@ function Step3Kata({ onNext, onBack }: { onNext: () => void; onBack: () => void 
       </div>
 
       {/* Right — mock Daily Kata preview */}
-      <div className="relative overflow-hidden rounded-2xl bg-surface-2">
+      <div className="relative min-w-0 overflow-hidden rounded-2xl bg-surface-2">
         <div
           className="flex flex-col gap-2 px-6 py-5"
           style={{
@@ -316,7 +316,7 @@ function Step3Kata({ onNext, onBack }: { onNext: () => void; onBack: () => void 
           </div>
         </div>
 
-        <div className="grid grid-cols-1 gap-3.5 bg-surface-1 p-4 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-3.5 bg-surface-1 p-4 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
           <div className="flex flex-col gap-2 rounded-lg border border-border bg-surface-2 p-4">
             <span className="font-mono text-[11px] font-semibold uppercase tracking-[0.08em] text-text-muted">
               {t('step3.task')}
@@ -325,7 +325,7 @@ function Step3Kata({ onNext, onBack }: { onNext: () => void; onBack: () => void 
               {t('step3.task_text')}
             </p>
           </div>
-          <div className="flex flex-col gap-1 rounded-lg border border-border bg-bg p-3 font-mono text-[11px] leading-relaxed">
+          <div className="flex flex-col gap-1 overflow-x-auto rounded-lg border border-border bg-bg p-3 font-mono text-[11px] leading-relaxed">
             <CodeLine n={1} text="func twoSum(nums []int, t int) []int {" />
             <CodeLine n={2} text="  m := map[int]int{}" />
             <CodeLine n={3} text="  for i, v := range nums {" highlight />
@@ -406,8 +406,8 @@ function CodeLine({ n, text, highlight }: { n: number; text: string; highlight?:
         highlight ? 'bg-accent/20 text-text-primary' : 'text-text-secondary',
       )}
     >
-      <span className="text-text-muted">{n}</span>
-      <span>{text}</span>
+      <span className="shrink-0 text-text-muted">{n}</span>
+      <span className="whitespace-pre">{text}</span>
     </div>
   )
 }
@@ -427,7 +427,7 @@ function Step4AISpar(_props: { onNext: () => void; onBack: () => void }) {
           background: 'linear-gradient(135deg, #2D1B4D 0%, #F472B6 100%)',
         }}
       >
-        <div className="flex flex-col gap-4 lg:w-[540px]">
+        <div className="flex min-w-0 flex-col gap-4 lg:w-[540px] lg:max-w-[540px]">
           <span className="inline-flex w-fit items-center gap-1.5 rounded-full bg-warn/20 px-2.5 py-1 font-mono text-[11px] font-semibold tracking-[0.08em] text-warn">
             {t('step4.tag')}
           </span>
@@ -445,7 +445,7 @@ function Step4AISpar(_props: { onNext: () => void; onBack: () => void }) {
         </div>
 
         <div
-          className="flex w-full flex-col items-center gap-[18px] rounded-2xl p-[22px] backdrop-blur lg:w-[380px]"
+          className="flex w-full max-w-full flex-col items-center gap-[18px] rounded-2xl p-[22px] backdrop-blur lg:w-[380px] lg:max-w-[380px]"
           style={{ background: 'rgba(0,0,0,0.6)' }}
         >
           <div className="flex items-center gap-4">

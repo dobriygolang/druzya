@@ -129,6 +129,15 @@ func restAuthGate(requireAuth func(http.Handler) http.Handler) func(http.Handler
 		"/api/v1/stats/public":            {},
 		"/api/v1/languages":               {},
 		"/api/v1/onboarding/preview-kata": {},
+		// /api/v1/status is the PUBLIC uptime / transparency surface — must
+		// remain reachable without a bearer for anonymous visitors. The
+		// handler is a thin wrapper over admin.GetStatusPage which itself
+		// has no role gate (see services/admin/ports/status.go).
+		"/api/v1/status": {},
+		// /api/v1/support/ticket — форма поддержки на /help. Public, чтобы
+		// и не-залогиненный мог написать. Авторизованный user_id берётся
+		// из context'а (если bearer есть, middleware его положит).
+		"/api/v1/support/ticket": {},
 	}
 	isPublic := func(p string) bool {
 		if _, ok := publicPaths[p]; ok {

@@ -73,6 +73,90 @@ export type MatchEndResponse = {
   their_meta: string
 }
 
+// ── /api/v1/arena/match/{id} adapter for /match/:id/end ──────────────────
+//
+// MatchEndPage больше не зовёт legacy /matches/:id/end mock. Вместо этого
+// она тянет канонический GetMatch (ArenaService) и адаптирует поля
+// final_xp / xp_breakdown / tier_label / next_tier_label, добавленные в
+// arena.proto.
+
+export type ArenaParticipantWire = {
+  user_id: string
+  username: string
+  team: number
+  elo_before: number
+  elo_after: number
+  solve_time_ms: number
+  suspicion_score: number
+  final_xp: number
+  xp_breakdown: { label: string; amount: number }[]
+  tier_label: string
+  next_tier_label: string
+}
+
+export type ArenaMatchWire = {
+  id: string
+  status: string
+  mode: string
+  section: string
+  task?: { id: string; title: string }
+  participants: ArenaParticipantWire[]
+  started_at?: string
+  finished_at?: string
+  winner_user_id?: string
+}
+
+function fmtSolveTime(ms: number): string {
+  const total = Math.max(0, Math.floor(ms / 1000))
+  const m = Math.floor(total / 60)
+  const s = total % 60
+  return `${m}:${String(s).padStart(2, '0')}`
+}
+
+function adaptMatchEnd(raw: ArenaMatchWire, currentUserID: string | undefined): MatchEndResponse {
+  const me = raw.participants.find((p) => p.user_id === currentUserID) ?? raw.participants[0]
+  const opp = raw.participants.find((p) => p !== me)
+  const won = !!raw.winner_user_id && raw.winner_user_id === me?.user_id
+  const lpDelta = me ? me.elo_after - me.elo_before : 0
+  const lpTotal = me?.elo_after ?? 0
+  return {
+    id: raw.id,
+    result: won ? 'W' : 'L',
+    verdict: won ? 'Чисто, быстро, красиво' : 'В следующий раз',
+    task: raw.task?.title ?? '',
+    sub: opp ? `vs @${opp.username || opp.user_id.slice(0, 6)}` : '',
+    lp_delta: lpDelta,
+    lp_total: lpTotal,
+    tier: me?.tier_label ?? '',
+    next_tier: me?.next_tier_label ?? '',
+    tier_progress: 0,
+    stats: {
+      time: me ? fmtSolveTime(me.solve_time_ms) : '—',
+      tests: '—',
+      complexity: '—',
+      lines: '—',
+    },
+    xp: {
+      total: me?.final_xp ?? 0,
+      breakdown: (me?.xp_breakdown ?? []).map((b) => ({
+        l: b.label,
+        v: `${b.amount >= 0 ? '+' : ''}${b.amount}`,
+      })),
+      level: 0,
+      progress: 0,
+      next_level_xp: 0,
+      progress_pct: 0,
+    },
+    streak_bonus: '',
+    your_code: '',
+    their_code: '',
+    your_label: me ? `@you · ${me.tier_label}` : '@you',
+    their_label: opp ? `@${opp.username || 'opponent'}` : '',
+    your_meta: '',
+    their_meta: '',
+  }
+}
+
 // Legacy hook — returns the bundled history+detail mock payload. Kept so the
 // existing diff/AI-banner UI keeps rendering until those pieces switch over
 // to the real arena services.
@@ -83,11 +167,19 @@ export function useMatchHistoryQuery() {
   })
 }
 
-export function useMatchEndQuery(id: string | undefined) {
+export function useMatchEndQuery(id: string | undefined, currentUserID?: string) {
   return useQuery({
-    queryKey: ['matches', id, 'end'],
-    queryFn: () => api<MatchEndResponse>(`/matches/${id}/end`),
+    queryKey: ['arena', 'match', id, 'end', currentUserID ?? ''],
+    queryFn: async () => {
+      // Канонический канал — GetMatch (ArenaService). Адаптируем поля для
+      // существующего UI; см. adaptMatchEnd. Если бэк ещё не отдаёт
+      // ArenaMatch (например, в legacy-демо), фронт сейчас просто увидит
+      // network-error и покажет ErrorChip.
+      const raw = await api<ArenaMatchWire>(`/arena/match/${id}`)
+      return adaptMatchEnd(raw, currentUserID)
+    },
     enabled: !!id,
+    staleTime: 30_000,
   })
 }
 

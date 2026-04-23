@@ -186,6 +186,7 @@ function LeaderboardTable({
 
   return (
     <Card className="flex-col gap-0 overflow-hidden p-0" interactive={false}>
+      <div className="overflow-x-auto">
       <table className="w-full text-left text-[13px]">
         <thead className="border-b border-border bg-surface-2 font-mono text-[11px] uppercase tracking-[0.08em] text-text-muted">
           <tr>
@@ -218,6 +219,7 @@ function LeaderboardTable({
               ))}
         </tbody>
       </table>
+      </div>
     </Card>
   )
 }

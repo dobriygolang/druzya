@@ -17,6 +17,7 @@ export type Profile = {
   id: string
   username: string
   display_name: string
+  email?: string
   level: number
   xp: number
   xp_to_next: number
@@ -31,6 +32,7 @@ export type Profile = {
   created_at: string
   achievements?: Achievement[]
   avatar_frame?: string
+  avatar_url?: string
 }
 
 // PublicProfile matches backend ProfilePublic — strictly the SEO-visible
@@ -81,6 +83,21 @@ export type Atlas = {
   edges: AtlasEdge[]
 }
 
+export type SectionBreakdown = {
+  section: string
+  matches: number
+  wins: number
+  losses: number
+  xp_delta: number
+  win_rate_pct: number
+}
+
+export type WeekComparison = {
+  label: string
+  xp: number
+  pct: number
+}
+
 export type WeeklyReport = {
   week_start: string
   week_end: string
@@ -99,6 +116,15 @@ export type WeeklyReport = {
     title: string
     action: { kind: string; params?: Record<string, unknown> }
   }[]
+  // Поля ниже добавлены вместе с расширением WeeklyReport-proto. Старые
+  // ответы (без них) безопасно дают undefined → фронт показывает «нет данных».
+  actions_count?: number
+  streak_days?: number
+  best_streak?: number
+  prev_xp_earned?: number
+  strong_sections?: SectionBreakdown[]
+  weak_sections?: SectionBreakdown[]
+  weekly_xp?: WeekComparison[]
 }
 
 // Stable cache keys used across the app. Exported so write-paths (settings,

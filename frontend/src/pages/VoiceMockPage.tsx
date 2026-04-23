@@ -155,15 +155,15 @@ function LeftTranscript({
           m.who === 'ai' ? (
             <div key={i} className="flex items-start gap-2">
               <Avatar size="sm" gradient="violet-cyan" initials="AI" />
-              <div className="flex-1 rounded-lg bg-surface-2 p-3">
-                <p className="text-[12px] text-text-secondary">{m.text}</p>
+              <div className="min-w-0 flex-1 rounded-lg bg-surface-2 p-3">
+                <p className="break-words text-[12px] text-text-secondary">{m.text}</p>
                 <span className="mt-1 block font-mono text-[10px] text-text-muted">{m.t}</span>
               </div>
             </div>
           ) : (
             <div key={i} className="flex items-start gap-2">
-              <div className="flex-1 rounded-lg bg-accent/20 p-3">
-                <p className="text-[12px] text-text-primary">{m.text}</p>
+              <div className="min-w-0 flex-1 rounded-lg bg-accent/20 p-3">
+                <p className="break-words text-[12px] text-text-primary">{m.text}</p>
                 <span className="mt-1 block font-mono text-[10px] text-text-muted">{m.t}</span>
               </div>
               <Avatar size="sm" gradient="pink-violet" initials="Я" />
@@ -172,8 +172,8 @@ function LeftTranscript({
         )}
         {interim && (
           <div className="flex items-start gap-2 opacity-70">
-            <div className="flex-1 rounded-lg border border-dashed border-accent/40 p-3">
-              <p className="text-[12px] italic text-text-secondary">{interim}</p>
+            <div className="min-w-0 flex-1 rounded-lg border border-dashed border-accent/40 p-3">
+              <p className="break-words text-[12px] italic text-text-secondary">{interim}</p>
             </div>
             <Avatar size="sm" gradient="pink-violet" initials="Я" />
           </div>
@@ -226,7 +226,7 @@ function CenterOrb({
   const speaking = state === 'speaking'
   const listening = state === 'listening'
   return (
-    <div className="flex flex-1 flex-col items-center justify-center gap-6 bg-surface-1 p-6 lg:gap-8 lg:p-10">
+    <div className="flex min-w-0 flex-1 flex-col items-center justify-center gap-6 bg-surface-1 p-6 lg:gap-8 lg:p-10">
       <div
         className="grid h-56 w-56 place-items-center rounded-full sm:h-72 sm:w-72 lg:h-80 lg:w-80"
         style={{

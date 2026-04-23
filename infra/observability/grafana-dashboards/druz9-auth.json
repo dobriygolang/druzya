@@ -1,0 +1,116 @@
+{
+  "title": "druz9 — Auth",
+  "uid": "druz9-auth",
+  "schemaVersion": 39,
+  "version": 1,
+  "editable": true,
+  "tags": ["druz9", "auth"],
+  "refresh": "1m",
+  "time": { "from": "now-24h", "to": "now" },
+  "templating": {
+    "list": [
+      {
+        "name": "datasource",
+        "type": "datasource",
+        "query": "prometheus",
+        "current": { "text": "Prometheus", "value": "Prometheus" }
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "type": "timeseries",
+      "title": "Login attempts by status (per minute)",
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "gridPos": { "x": 0, "y": 0, "w": 12, "h": 8 },
+      "targets": [
+        {
+          "expr": "sum by (status) (rate(druz9_http_requests_total{path=~\"/api/v1/auth/(yandex|telegram)\"}[5m])) * 60",
+          "legendFormat": "{{status}}"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "Failed logins (4xx, last 1h)",
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "gridPos": { "x": 12, "y": 0, "w": 6, "h": 8 },
+      "targets": [
+        {
+          "expr": "sum(increase(druz9_http_requests_total{path=~\"/api/v1/auth/(yandex|telegram)\",status=~\"4..\"}[1h]))",
+          "legendFormat": "fails/h"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 50 },
+              { "color": "red", "value": 200 }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "Successful logins (last 1h)",
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "gridPos": { "x": 18, "y": 0, "w": 6, "h": 8 },
+      "targets": [
+        {
+          "expr": "sum(increase(druz9_http_requests_total{path=~\"/api/v1/auth/(yandex|telegram)\",status=~\"2..\"}[1h]))",
+          "legendFormat": "ok/h"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "type": "piechart",
+      "title": "OAuth provider mix (24h)",
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "gridPos": { "x": 0, "y": 8, "w": 12, "h": 9 },
+      "targets": [
+        {
+          "expr": "sum(increase(druz9_http_requests_total{path=\"/api/v1/auth/yandex\",status=~\"2..\"}[24h]))",
+          "legendFormat": "yandex"
+        },
+        {
+          "expr": "sum(increase(druz9_http_requests_total{path=\"/api/v1/auth/telegram\",status=~\"2..\"}[24h]))",
+          "legendFormat": "telegram"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "type": "timeseries",
+      "title": "New registrations / day (DAU proxy)",
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "gridPos": { "x": 12, "y": 8, "w": 12, "h": 9 },
+      "targets": [
+        {
+          "expr": "sum by (tier) (druz9_active_users)",
+          "legendFormat": "{{tier}}"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "type": "timeseries",
+      "title": "Refresh token rate",
+      "datasource": { "type": "prometheus", "uid": "${datasource}" },
+      "gridPos": { "x": 0, "y": 17, "w": 24, "h": 8 },
+      "targets": [
+        {
+          "expr": "sum by (status) (rate(druz9_http_requests_total{path=\"/api/v1/auth/refresh\"}[5m])) * 60",
+          "legendFormat": "{{status}}"
+        }
+      ]
+    }
+  ]
+}

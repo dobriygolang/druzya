@@ -26,6 +26,7 @@ import (
 	sharedMw "druz9/shared/pkg/middleware"
 
 	"connectrpc.com/connect"
+	"github.com/google/uuid"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
@@ -81,11 +82,30 @@ func (s *ProfileServer) GetMyReport(
 	if !ok {
 		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("unauthenticated"))
 	}
-	v, err := s.H.GetReport.Do(ctx, uid, time.Now())
+	v, err := s.fetchReport(ctx, uid)
 	if err != nil {
 		return nil, fmt.Errorf("profile.GetMyReport: %w", s.toConnectErr(err))
 	}
 	return connect.NewResponse(toReportProto(v)), nil
+}
+
+// fetchReport prefers the cached ReportFetcher when configured; otherwise it
+// falls back to the un-cached use case directly. Keeping the branch here
+// (instead of in cmd wiring) makes the test that exercises the fallback
+// trivial: leave H.ReportFetcher nil.
+func (s *ProfileServer) fetchReport(ctx context.Context, uid uuid.UUID) (app.ReportView, error) {
+	if s.H.ReportFetcher != nil {
+		v, err := s.H.ReportFetcher.Get(ctx, uid)
+		if err != nil {
+			return app.ReportView{}, fmt.Errorf("profile.fetchReport: %w", err)
+		}
+		return v, nil
+	}
+	v, err := s.H.GetReport.Do(ctx, uid, time.Now())
+	if err != nil {
+		return app.ReportView{}, fmt.Errorf("profile.fetchReport: %w", err)
+	}
+	return v, nil
 }
 
 // UpdateSettings implements (PUT /profile/me/settings).
@@ -145,6 +165,7 @@ func toProfileFullProto(v app.ProfileView) *pb.ProfileFull {
 		Id:               b.User.ID.String(),
 		Username:         b.User.Username,
 		DisplayName:      b.User.DisplayName,
+		Email:            b.User.Email,
 		AvatarFrame:      b.Profile.AvatarFrame,
 		Title:            b.Profile.Title,
 		Level:            int32(b.Profile.Level),
@@ -235,6 +256,37 @@ func toReportProto(r app.ReportView) *pb.WeeklyReport {
 		},
 		Strengths:      append([]string{}, r.Strengths...),
 		StressAnalysis: r.StressAnalysis,
+		ActionsCount:   int32(r.ActionsCount),
+		StreakDays:     int32(r.StreakDays),
+		BestStreak:     int32(r.BestStreak),
+		PrevXpEarned:   int32(r.PrevXPEarned),
+	}
+	for _, s := range r.StrongSections {
+		out.StrongSections = append(out.StrongSections, &pb.SectionBreakdown{
+			Section:    sectionToProto(s.Section),
+			Matches:    int32(s.Matches),
+			Wins:       int32(s.Wins),
+			Losses:     int32(s.Losses),
+			XpDelta:    int32(s.XPDelta),
+			WinRatePct: int32(s.WinRatePct),
+		})
+	}
+	for _, s := range r.WeakSections {
+		out.WeakSections = append(out.WeakSections, &pb.SectionBreakdown{
+			Section:    sectionToProto(s.Section),
+			Matches:    int32(s.Matches),
+			Wins:       int32(s.Wins),
+			Losses:     int32(s.Losses),
+			XpDelta:    int32(s.XPDelta),
+			WinRatePct: int32(s.WinRatePct),
+		})
+	}
+	for _, w := range r.WeeklyXP {
+		out.WeeklyXp = append(out.WeeklyXp, &pb.WeekComparison{
+			Label: w.Label,
+			Xp:    int32(w.XP),
+			Pct:   int32(w.Pct),
+		})
 	}
 	if len(r.Heatmap) > 0 {
 		out.Heatmap = make([]int32, 0, len(r.Heatmap))

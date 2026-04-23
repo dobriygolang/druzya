@@ -1,0 +1,80 @@
+# druz9 — WARNING alerts (notify on-call, no page).
+#
+# Format: Prometheus alerting rules.
+groups:
+  - name: druz9-warning
+    interval: 60s
+    rules:
+      - alert: ArenaQueueDepthGrowing
+        expr: druz9_arena_queue_depth > 50
+        for: 5m
+        labels:
+          severity: warning
+          service: arena
+        annotations:
+          summary: "Arena queue depth > 50 for 5m"
+          description: "Players waiting: {{ $value }}. Matchmaker may be stuck."
+
+      - alert: DailyKataSolveRateLow
+        expr: |
+          sum(rate(druz9_daily_kata_solved_total[24h]))
+            / sum(rate(druz9_daily_kata_attempts_total[24h])) < 0.10
+        for: 1h
+        labels:
+          severity: warning
+          service: daily
+        annotations:
+          summary: "Daily kata solve rate < 10% / 24h"
+          description: "Solve rate: {{ $value | humanizePercentage }}. Today's task may be too hard."
+
+      - alert: MockSessionDropoutHigh
+        expr: |
+          sum(rate(druz9_mock_sessions_total{status="abandoned"}[1h]))
+            / sum(rate(druz9_mock_sessions_total[1h])) > 0.4
+        for: 30m
+        labels:
+          severity: warning
+          service: ai_mock
+        annotations:
+          summary: "Mock interview abandonment > 40% / 1h"
+          description: "Dropout = {{ $value | humanizePercentage }}"
+
+      - alert: EdgeTTSStubFiring
+        expr: sum(rate(druz9_http_requests_total{path="/api/v1/voice/tts",status="501"}[5m])) > 0
+        for: 5m
+        labels:
+          severity: warning
+          service: voice
+        annotations:
+          summary: "Edge TTS returning 501 (stub) — premium voice fallback active"
+          description: "Either StubEdgeTTSClient is wired or upstream Bing endpoint is unreachable."
+
+      - alert: WSConnectionsHigh
+        expr: sum(druz9_ws_active_connections) > 500
+        for: 5m
+        labels:
+          severity: warning
+          service: ws
+        annotations:
+          summary: "WS connections > 500"
+
+      - alert: Judge0BacklogHigh
+        expr: druz9_judge0_pending_submissions > 50
+        for: 5m
+        labels:
+          severity: warning
+          service: judge0
+        annotations:
+          summary: "Judge0 backlog > 50 submissions"
+
+      - alert: LLMRequestSlow
+        expr: |
+          histogram_quantile(0.99,
+            sum by (le) (rate(druz9_llm_request_duration_seconds_bucket[5m]))
+          ) > 30
+        for: 10m
+        labels:
+          severity: warning
+          service: llm
+        annotations:
+          summary: "LLM p99 latency > 30s"

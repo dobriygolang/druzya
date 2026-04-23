@@ -317,6 +317,42 @@ func toArenaMatchProto(v app.MatchView) *pb.ArenaMatch {
 			if p.SuspicionScore != nil {
 				ap.SuspicionScore = float32(*p.SuspicionScore)
 			}
+			// MatchEnd-page enrichment: tier label + XP breakdown. Fields are
+			// only populated for finished matches, otherwise frontend just sees
+			// zero/empty and falls back to its loading skeleton.
+			if m.Status == enums.MatchStatusFinished {
+				eloFinal := p.EloBefore
+				if p.EloAfter != nil {
+					eloFinal = *p.EloAfter
+				}
+				cur, next := domain.TierLabel(eloFinal)
+				ap.TierLabel = cur
+				ap.NextTierLabel = next
+
+				won := m.WinnerID != nil && *m.WinnerID == p.UserID
+				draw := m.WinnerID == nil && m.Status == enums.MatchStatusFinished
+				solveSec := 0
+				if p.SolveTimeMs != nil {
+					solveSec = int(*p.SolveTimeMs / 1000)
+				}
+				// firstTry: STUB (нет таблицы submissions per match).
+				// Считаем true, если решил быстрее лимита и победил —
+				// эвристика, чтобы breakdown был детерминированным.
+				firstTry := won && solveSec > 0 && solveSec < domain.XPWinFastSeconds
+				// streak: STUB — нужен отдельный счётчик в profile/season.
+				// Берём 0; бонус пока не начисляется в UI.
+				totalXP, items := domain.ComputeXP(won, draw, solveSec, firstTry, 0)
+				ap.FinalXp = int32(totalXP)
+				if len(items) > 0 {
+					ap.XpBreakdown = make([]*pb.XPBreakdownItem, 0, len(items))
+					for _, it := range items {
+						ap.XpBreakdown = append(ap.XpBreakdown, &pb.XPBreakdownItem{
+							Label:  it.Label,
+							Amount: int32(it.Amount),
+						})
+					}
+				}
+			}
 			out.Participants = append(out.Participants, ap)
 		}
 	}

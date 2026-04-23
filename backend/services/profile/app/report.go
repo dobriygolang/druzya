@@ -20,6 +20,17 @@ type ReportView struct {
 	Weaknesses      []ReportWeakness
 	StressAnalysis  string
 	Recommendations []Recommendation
+
+	// Поля ниже — расширения для /report (WeeklyReportPage). Заполняются
+	// агрегациями из дополнительных запросов; на старых клиентах безопасно
+	// игнорируются (proto3 default values).
+	ActionsCount   int
+	StreakDays     int
+	BestStreak     int
+	PrevXPEarned   int
+	StrongSections []domain.SectionBreakdown
+	WeakSections   []domain.SectionBreakdown
+	WeeklyXP       []domain.WeekComparison
 }
 
 // ReportWeakness is a node-scoped weak spot.
@@ -48,6 +59,16 @@ type Recommendation struct {
 type GetReport struct{ Repo domain.ProfileRepo }
 
 // Do assembles the MVP report shape.
+//
+// Aggregates loaded:
+//   - 7-day activity counters (matches won, XP, time)
+//   - Per-section win/loss/XP breakdown (strong / weak sections)
+//   - Last 4 weeks XP comparison (for the "Последние 4 недели" widget)
+//   - Current/best streak (active days)
+//
+// Repo errors на necheckpath-методах (ListMatchAggregatesSince/ListWeeklyXPSince/
+// GetStreaks) НЕ роняют запрос — без этих агрегатов отчёт деградирует к
+// «нет данных», но базовые метрики продолжают работать.
 func (uc *GetReport) Do(ctx context.Context, userID uuid.UUID, now time.Time) (ReportView, error) {
 	end := now.UTC().Truncate(24 * time.Hour)
 	start := end.Add(-7 * 24 * time.Hour)
@@ -55,11 +76,11 @@ func (uc *GetReport) Do(ctx context.Context, userID uuid.UUID, now time.Time) (R
 	if err != nil {
 		return ReportView{}, fmt.Errorf("profile.GetReport: activity: %w", err)
 	}
-	return ReportView{
-		WeekStart: start,
-		WeekEnd:   end,
-		Metrics:   metrics,
-		// STUB: LLM narrative generation — see comment on GetReport.
+
+	view := ReportView{
+		WeekStart:      start,
+		WeekEnd:        end,
+		Metrics:        metrics,
 		Heatmap:        []int{0, 0, 0, 0, 0, 0, 0},
 		Strengths:      []string{},
 		Weaknesses:     []ReportWeakness{},
@@ -69,5 +90,23 @@ func (uc *GetReport) Do(ctx context.Context, userID uuid.UUID, now time.Time) (R
 			Description: "Take a look at your weakest nodes and schedule a practice slot.",
 			ActionKind:  "open_atlas",
 		}},
-	}, nil
+	}
+
+	if aggs, aerr := uc.Repo.ListMatchAggregatesSince(ctx, userID, start); aerr == nil {
+		strong, weak := domain.AggregateBySection(aggs)
+		view.StrongSections = strong
+		view.WeakSections = weak
+		view.ActionsCount = len(aggs)
+	}
+	if xp, xerr := uc.Repo.ListWeeklyXPSince(ctx, userID, end, 4); xerr == nil {
+		view.WeeklyXP = domain.BuildWeeklyComparison(xp)
+		if len(xp) >= 2 {
+			view.PrevXPEarned = xp[1]
+		}
+	}
+	if cur, best, serr := uc.Repo.GetStreaks(ctx, userID); serr == nil {
+		view.StreakDays = cur
+		view.BestStreak = best
+	}
+	return view, nil
 }

@@ -18,7 +18,7 @@
 /* eslint-disable */
 // @ts-nocheck
 
-import { AdminTask, AdminTaskList, AnticheatSignalList, Company, CompanyList, ConfigEntry, ConfigEntryList, CreateAdminTaskRequest, CreateCompanyRequest, ListAdminTasksRequest, ListAnticheatRequest, ListCompaniesRequest, ListConfigRequest, UpdateAdminTaskRequest, UpdateConfigRequest } from "./admin_pb.js";
+import { AdminDashboard, AdminReportList, AdminTask, AdminTaskList, AdminUserList, AnticheatSignalList, BanUserRequest, BanUserResponse, Company, CompanyList, ConfigEntry, ConfigEntryList, CreateAdminTaskRequest, CreateCompanyRequest, GetAdminDashboardRequest, GetStatusPageRequest, ListAdminReportsRequest, ListAdminTasksRequest, ListAdminUsersRequest, ListAnticheatRequest, ListCompaniesRequest, ListConfigRequest, StatusPage, UnbanUserRequest, UpdateAdminTaskRequest, UpdateConfigRequest } from "./admin_pb.js";
 import { MethodKind } from "@bufbuild/protobuf";
 
 /**
@@ -105,6 +105,72 @@ export const AdminService = {
       name: "ListAnticheat",
       I: ListAnticheatRequest,
       O: AnticheatSignalList,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * ── Dashboard ───────────────────────────────────────────────────────
+     *
+     * @generated from rpc druz9.v1.AdminService.GetAdminDashboard
+     */
+    getAdminDashboard: {
+      name: "GetAdminDashboard",
+      I: GetAdminDashboardRequest,
+      O: AdminDashboard,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * ── User management ─────────────────────────────────────────────────
+     *
+     * @generated from rpc druz9.v1.AdminService.ListUsers
+     */
+    listUsers: {
+      name: "ListUsers",
+      I: ListAdminUsersRequest,
+      O: AdminUserList,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc druz9.v1.AdminService.BanUser
+     */
+    banUser: {
+      name: "BanUser",
+      I: BanUserRequest,
+      O: BanUserResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc druz9.v1.AdminService.UnbanUser
+     */
+    unbanUser: {
+      name: "UnbanUser",
+      I: UnbanUserRequest,
+      O: BanUserResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * ── Reports / moderation queue ──────────────────────────────────────
+     *
+     * @generated from rpc druz9.v1.AdminService.ListReports
+     */
+    listReports: {
+      name: "ListReports",
+      I: ListAdminReportsRequest,
+      O: AdminReportList,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * ── Public status page (NO auth, NO admin role) ─────────────────────
+     * WARNING: this endpoint is mounted PUBLIC in router.go — it serves the
+     * /status uptime page which must remain accessible to anonymous visitors
+     * for transparency. The handler implementation MUST NOT leak any private
+     * data.
+     *
+     * @generated from rpc druz9.v1.AdminService.GetStatusPage
+     */
+    getStatusPage: {
+      name: "GetStatusPage",
+      I: GetStatusPageRequest,
+      O: StatusPage,
       kind: MethodKind.Unary,
     },
   }

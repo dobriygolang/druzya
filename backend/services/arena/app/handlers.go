@@ -247,29 +247,33 @@ func (uc *SubmitCode) Do(ctx context.Context, in SubmitCodeInput) (SubmitCodeOut
 	}
 
 	if res.Passed {
-		// First passing submission wins. Idempotent: SetWinner only succeeds once.
-		if err := uc.Matches.SetWinner(ctx, in.MatchID, in.UserID, now); err != nil {
-			// If the row doesn't exist, bubble; otherwise treat as lost race.
-			uc.Log.WarnContext(ctx, "arena.SubmitCode: SetWinner", slog.Any("err", err))
+		if m.Mode == enums.ArenaModeDuo2v2 {
+			uc.maybeFinishDuo(ctx, in.MatchID, in.UserID, m, parts, now)
 		} else {
-			losers := make([]uuid.UUID, 0, len(parts)-1)
-			for _, p := range parts {
-				if p.UserID != in.UserID {
-					losers = append(losers, p.UserID)
+			// First passing submission wins. Idempotent: SetWinner only succeeds once.
+			if err := uc.Matches.SetWinner(ctx, in.MatchID, in.UserID, now); err != nil {
+				// If the row doesn't exist, bubble; otherwise treat as lost race.
+				uc.Log.WarnContext(ctx, "arena.SubmitCode: SetWinner", slog.Any("err", err))
+			} else {
+				losers := make([]uuid.UUID, 0, len(parts)-1)
+				for _, p := range parts {
+					if p.UserID != in.UserID {
+						losers = append(losers, p.UserID)
+					}
 				}
+				var dur int64
+				if m.StartedAt != nil {
+					dur = now.Sub(*m.StartedAt).Milliseconds()
+				}
+				_ = uc.Bus.Publish(ctx, sharedDomain.MatchCompleted{
+					MatchID:    in.MatchID,
+					Section:    m.Section,
+					WinnerID:   in.UserID,
+					LoserIDs:   losers,
+					EloDeltas:  map[uuid.UUID]int{}, // rating domain computes the real delta
+					DurationMs: dur,
+				})
 			}
-			var dur int64
-			if m.StartedAt != nil {
-				dur = now.Sub(*m.StartedAt).Milliseconds()
-			}
-			_ = uc.Bus.Publish(ctx, sharedDomain.MatchCompleted{
-				MatchID:    in.MatchID,
-				Section:    m.Section,
-				WinnerID:   in.UserID,
-				LoserIDs:   losers,
-				EloDeltas:  map[uuid.UUID]int{}, // rating domain computes the real delta
-				DurationMs: dur,
-			})
 		}
 	}
 
@@ -287,6 +291,64 @@ func (uc *SubmitCode) clockNow() time.Time {
 		return uc.Clock.Now()
 	}
 	return time.Now().UTC()
+}
+
+// maybeFinishDuo decides whether the just-passing submission completes a 2v2
+// match. A 2v2 match is won by the first team where *both* members have
+// submitted_at set on their participant row (the SubmitCode upsert above
+// stamps it). If only one team-member has submitted we wait.
+//
+// The persistence is best-effort idempotent: SetWinningTeam updates rows
+// matching `id = $1`, so a duplicate call only re-stamps finished_at.
+func (uc *SubmitCode) maybeFinishDuo(
+	ctx context.Context,
+	matchID, justFinishedUser uuid.UUID,
+	m domain.Match,
+	parts []domain.Participant,
+	now time.Time,
+) {
+	// Build a passed-set: a participant is considered passed when their
+	// row already has a submitted_at OR when they're the just-finished user
+	// (whose row was upserted by SubmitCode but the local `parts` slice was
+	// loaded *before* that upsert, so submitted_at could still be nil here).
+	passed := make(map[uuid.UUID]bool, len(parts))
+	for _, p := range parts {
+		if p.SubmittedAt != nil {
+			passed[p.UserID] = true
+		}
+	}
+	passed[justFinishedUser] = true
+
+	winningTeam, decided := domain.ResolveDuoWinner(parts, passed)
+	if !decided || winningTeam == 0 {
+		return
+	}
+	if err := uc.Matches.SetWinningTeam(ctx, matchID, winningTeam, now); err != nil {
+		uc.Log.WarnContext(ctx, "arena.SubmitCode: SetWinningTeam", slog.Any("err", err))
+		return
+	}
+	// MatchCompleted requires a single WinnerID — for 2v2 we publish the
+	// just-finished user as the "winning captain" and put both teammates in
+	// LoserIDs of the opposing team. The rating domain will read the
+	// participant team_id from postgres directly to award team-level deltas.
+	losers := make([]uuid.UUID, 0, len(parts))
+	for _, p := range parts {
+		if p.Team != winningTeam {
+			losers = append(losers, p.UserID)
+		}
+	}
+	var dur int64
+	if m.StartedAt != nil {
+		dur = now.Sub(*m.StartedAt).Milliseconds()
+	}
+	_ = uc.Bus.Publish(ctx, sharedDomain.MatchCompleted{
+		MatchID:    matchID,
+		Section:    m.Section,
+		WinnerID:   justFinishedUser,
+		LoserIDs:   losers,
+		EloDeltas:  map[uuid.UUID]int{},
+		DurationMs: dur,
+	})
 }
 
 // GetMatch returns the match+participants view.

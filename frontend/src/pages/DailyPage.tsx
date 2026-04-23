@@ -145,7 +145,7 @@ const CODE_LINES = [
 function Editor() {
   const { t } = useTranslation('daily')
   return (
-    <div className="flex min-h-[400px] flex-1 flex-col overflow-hidden rounded-xl bg-surface-1">
+    <div className="flex min-h-[400px] min-w-0 flex-1 flex-col overflow-hidden rounded-xl bg-surface-1">
       <div className="flex items-center gap-2 border-b border-border px-3">
         <div className="flex h-10 items-center gap-2 border-b-2 border-accent px-3 text-[13px] font-semibold text-text-primary">
           solution.go

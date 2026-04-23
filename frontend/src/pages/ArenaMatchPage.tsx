@@ -111,10 +111,10 @@ function TaskPanel({ title, description, difficulty, section }: { title: string;
           {section}
         </span>
       </div>
-      <h2 className="font-display text-lg font-bold text-text-primary">
+      <h2 className="font-display text-lg font-bold text-text-primary break-words">
         {title}
       </h2>
-      <p className="text-[13px] leading-relaxed text-text-secondary">
+      <p className="text-[13px] leading-relaxed text-text-secondary break-words">
         {description}
       </p>
     </div>
@@ -163,7 +163,7 @@ function CodeEditor({
   resultLabel,
 }: CodeEditorProps) {
   return (
-    <div className="flex flex-1 flex-col bg-surface-1">
+    <div className="flex min-w-0 flex-1 flex-col bg-surface-1">
       <div className="flex h-11 items-center gap-3 border-b border-border bg-bg px-4">
         <div className="flex items-center gap-2 rounded-t-md border-b-2 border-accent px-2 py-2">
           <FileCode className="h-3.5 w-3.5 text-accent-hover" />

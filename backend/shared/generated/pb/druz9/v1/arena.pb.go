@@ -142,6 +142,60 @@ func (x *ArenaTaskPublic) GetStarterCode() map[string]string {
 	return nil
 }
 
+// XPBreakdownItem — одна строка разбивки XP за матч (label + delta).
+// Используется на /match/:id/end в карточке «+ N XP».
+type XPBreakdownItem struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Label         string                 `protobuf:"bytes,1,opt,name=label,proto3" json:"label,omitempty"`
+	Amount        int32                  `protobuf:"varint,2,opt,name=amount,proto3" json:"amount,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *XPBreakdownItem) Reset() {
+	*x = XPBreakdownItem{}
+	mi := &file_druz9_v1_arena_proto_msgTypes[1]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *XPBreakdownItem) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*XPBreakdownItem) ProtoMessage() {}
+
+func (x *XPBreakdownItem) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_arena_proto_msgTypes[1]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use XPBreakdownItem.ProtoReflect.Descriptor instead.
+func (*XPBreakdownItem) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_arena_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *XPBreakdownItem) GetLabel() string {
+	if x != nil {
+		return x.Label
+	}
+	return ""
+}
+
+func (x *XPBreakdownItem) GetAmount() int32 {
+	if x != nil {
+		return x.Amount
+	}
+	return 0
+}
+
 // ArenaParticipant mirrors OpenAPI ArenaParticipant.
 type ArenaParticipant struct {
 	state     protoimpl.MessageState `protogen:"open.v1"`
@@ -155,13 +209,25 @@ type ArenaParticipant struct {
 	EloAfter       int32   `protobuf:"varint,5,opt,name=elo_after,json=eloAfter,proto3" json:"elo_after,omitempty"`
 	SolveTimeMs    int64   `protobuf:"varint,6,opt,name=solve_time_ms,json=solveTimeMs,proto3" json:"solve_time_ms,omitempty"`
 	SuspicionScore float32 `protobuf:"fixed32,7,opt,name=suspicion_score,json=suspicionScore,proto3" json:"suspicion_score,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	// final_xp — суммарный XP, начисленный участнику за этот матч (заполняется
+	// после finished_at). 0, пока матч не завершён.
+	FinalXp int32 `protobuf:"varint,8,opt,name=final_xp,json=finalXp,proto3" json:"final_xp,omitempty"`
+	// xp_breakdown — детализация final_xp по причинам начисления. Пуст, если
+	// участник проиграл или матч ещё не завершён.
+	XpBreakdown []*XPBreakdownItem `protobuf:"bytes,9,rep,name=xp_breakdown,json=xpBreakdown,proto3" json:"xp_breakdown,omitempty"`
+	// tier_label — текстовый тариф ELO (например, "Diamond III"). Считается на
+	// бэке, чтобы фронт не дублировал маппинг рейтинг→тиры.
+	TierLabel string `protobuf:"bytes,10,opt,name=tier_label,json=tierLabel,proto3" json:"tier_label,omitempty"`
+	// next_tier_label — следующая ступень + сколько LP осталось ("Diamond II ·
+	// 482 LP"). Пусто на максимальном тире.
+	NextTierLabel string `protobuf:"bytes,11,opt,name=next_tier_label,json=nextTierLabel,proto3" json:"next_tier_label,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *ArenaParticipant) Reset() {
 	*x = ArenaParticipant{}
-	mi := &file_druz9_v1_arena_proto_msgTypes[1]
+	mi := &file_druz9_v1_arena_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -173,7 +239,7 @@ func (x *ArenaParticipant) String() string {
 func (*ArenaParticipant) ProtoMessage() {}
 
 func (x *ArenaParticipant) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_arena_proto_msgTypes[1]
+	mi := &file_druz9_v1_arena_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -186,7 +252,7 @@ func (x *ArenaParticipant) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ArenaParticipant.ProtoReflect.Descriptor instead.
 func (*ArenaParticipant) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_arena_proto_rawDescGZIP(), []int{1}
+	return file_druz9_v1_arena_proto_rawDescGZIP(), []int{2}
 }
 
 func (x *ArenaParticipant) GetUserId() string {
@@ -238,26 +304,57 @@ func (x *ArenaParticipant) GetSuspicionScore() float32 {
 	return 0
 }
 
+func (x *ArenaParticipant) GetFinalXp() int32 {
+	if x != nil {
+		return x.FinalXp
+	}
+	return 0
+}
+
+func (x *ArenaParticipant) GetXpBreakdown() []*XPBreakdownItem {
+	if x != nil {
+		return x.XpBreakdown
+	}
+	return nil
+}
+
+func (x *ArenaParticipant) GetTierLabel() string {
+	if x != nil {
+		return x.TierLabel
+	}
+	return ""
+}
+
+func (x *ArenaParticipant) GetNextTierLabel() string {
+	if x != nil {
+		return x.NextTierLabel
+	}
+	return ""
+}
+
 // ArenaMatch mirrors OpenAPI ArenaMatch.
 type ArenaMatch struct {
 	state  protoimpl.MessageState `protogen:"open.v1"`
 	Id     string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
 	Status MatchStatus            `protobuf:"varint,2,opt,name=status,proto3,enum=druz9.v1.MatchStatus" json:"status,omitempty"`
 	// mode is a string in OpenAPI, kept as ArenaMode enum internally.
-	Mode          ArenaMode              `protobuf:"varint,3,opt,name=mode,proto3,enum=druz9.v1.ArenaMode" json:"mode,omitempty"`
-	Section       Section                `protobuf:"varint,4,opt,name=section,proto3,enum=druz9.v1.Section" json:"section,omitempty"`
-	Task          *ArenaTaskPublic       `protobuf:"bytes,5,opt,name=task,proto3" json:"task,omitempty"`
-	Participants  []*ArenaParticipant    `protobuf:"bytes,6,rep,name=participants,proto3" json:"participants,omitempty"`
-	StartedAt     *timestamppb.Timestamp `protobuf:"bytes,7,opt,name=started_at,json=startedAt,proto3" json:"started_at,omitempty"`
-	FinishedAt    *timestamppb.Timestamp `protobuf:"bytes,8,opt,name=finished_at,json=finishedAt,proto3" json:"finished_at,omitempty"`
-	WinnerUserId  string                 `protobuf:"bytes,9,opt,name=winner_user_id,json=winnerUserId,proto3" json:"winner_user_id,omitempty"`
+	Mode         ArenaMode              `protobuf:"varint,3,opt,name=mode,proto3,enum=druz9.v1.ArenaMode" json:"mode,omitempty"`
+	Section      Section                `protobuf:"varint,4,opt,name=section,proto3,enum=druz9.v1.Section" json:"section,omitempty"`
+	Task         *ArenaTaskPublic       `protobuf:"bytes,5,opt,name=task,proto3" json:"task,omitempty"`
+	Participants []*ArenaParticipant    `protobuf:"bytes,6,rep,name=participants,proto3" json:"participants,omitempty"`
+	StartedAt    *timestamppb.Timestamp `protobuf:"bytes,7,opt,name=started_at,json=startedAt,proto3" json:"started_at,omitempty"`
+	FinishedAt   *timestamppb.Timestamp `protobuf:"bytes,8,opt,name=finished_at,json=finishedAt,proto3" json:"finished_at,omitempty"`
+	WinnerUserId string                 `protobuf:"bytes,9,opt,name=winner_user_id,json=winnerUserId,proto3" json:"winner_user_id,omitempty"`
+	// winning_team_id — set for finished 2v2 matches (1 or 2). 0 means either
+	// a 1v1 match (use winner_user_id) or a duo draw / unfinished match.
+	WinningTeamId int32 `protobuf:"varint,10,opt,name=winning_team_id,json=winningTeamId,proto3" json:"winning_team_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *ArenaMatch) Reset() {
 	*x = ArenaMatch{}
-	mi := &file_druz9_v1_arena_proto_msgTypes[2]
+	mi := &file_druz9_v1_arena_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -269,7 +366,7 @@ func (x *ArenaMatch) String() string {
 func (*ArenaMatch) ProtoMessage() {}
 
 func (x *ArenaMatch) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_arena_proto_msgTypes[2]
+	mi := &file_druz9_v1_arena_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -282,7 +379,7 @@ func (x *ArenaMatch) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ArenaMatch.ProtoReflect.Descriptor instead.
 func (*ArenaMatch) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_arena_proto_rawDescGZIP(), []int{2}
+	return file_druz9_v1_arena_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *ArenaMatch) GetId() string {
@@ -348,6 +445,13 @@ func (x *ArenaMatch) GetWinnerUserId() string {
 	return ""
 }
 
+func (x *ArenaMatch) GetWinningTeamId() int32 {
+	if x != nil {
+		return x.WinningTeamId
+	}
+	return 0
+}
+
 // FindMatchRequest mirrors OpenAPI FindMatchRequest.
 type FindMatchRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
@@ -360,7 +464,7 @@ type FindMatchRequest struct {
 
 func (x *FindMatchRequest) Reset() {
 	*x = FindMatchRequest{}
-	mi := &file_druz9_v1_arena_proto_msgTypes[3]
+	mi := &file_druz9_v1_arena_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -372,7 +476,7 @@ func (x *FindMatchRequest) String() string {
 func (*FindMatchRequest) ProtoMessage() {}
 
 func (x *FindMatchRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_arena_proto_msgTypes[3]
+	mi := &file_druz9_v1_arena_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -385,7 +489,7 @@ func (x *FindMatchRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use FindMatchRequest.ProtoReflect.Descriptor instead.
 func (*FindMatchRequest) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_arena_proto_rawDescGZIP(), []int{3}
+	return file_druz9_v1_arena_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *FindMatchRequest) GetSection() Section {
@@ -423,7 +527,7 @@ type MatchQueueResponse struct {
 
 func (x *MatchQueueResponse) Reset() {
 	*x = MatchQueueResponse{}
-	mi := &file_druz9_v1_arena_proto_msgTypes[4]
+	mi := &file_druz9_v1_arena_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -435,7 +539,7 @@ func (x *MatchQueueResponse) String() string {
 func (*MatchQueueResponse) ProtoMessage() {}
 
 func (x *MatchQueueResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_arena_proto_msgTypes[4]
+	mi := &file_druz9_v1_arena_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -448,7 +552,7 @@ func (x *MatchQueueResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MatchQueueResponse.ProtoReflect.Descriptor instead.
 func (*MatchQueueResponse) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_arena_proto_rawDescGZIP(), []int{4}
+	return file_druz9_v1_arena_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *MatchQueueResponse) GetStatus() string {
@@ -491,7 +595,7 @@ type SubmitCodeRequest struct {
 
 func (x *SubmitCodeRequest) Reset() {
 	*x = SubmitCodeRequest{}
-	mi := &file_druz9_v1_arena_proto_msgTypes[5]
+	mi := &file_druz9_v1_arena_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -503,7 +607,7 @@ func (x *SubmitCodeRequest) String() string {
 func (*SubmitCodeRequest) ProtoMessage() {}
 
 func (x *SubmitCodeRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_arena_proto_msgTypes[5]
+	mi := &file_druz9_v1_arena_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -516,7 +620,7 @@ func (x *SubmitCodeRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SubmitCodeRequest.ProtoReflect.Descriptor instead.
 func (*SubmitCodeRequest) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_arena_proto_rawDescGZIP(), []int{5}
+	return file_druz9_v1_arena_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *SubmitCodeRequest) GetMatchId() string {
@@ -554,7 +658,7 @@ type SubmitResult struct {
 
 func (x *SubmitResult) Reset() {
 	*x = SubmitResult{}
-	mi := &file_druz9_v1_arena_proto_msgTypes[6]
+	mi := &file_druz9_v1_arena_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -566,7 +670,7 @@ func (x *SubmitResult) String() string {
 func (*SubmitResult) ProtoMessage() {}
 
 func (x *SubmitResult) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_arena_proto_msgTypes[6]
+	mi := &file_druz9_v1_arena_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -579,7 +683,7 @@ func (x *SubmitResult) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SubmitResult.ProtoReflect.Descriptor instead.
 func (*SubmitResult) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_arena_proto_rawDescGZIP(), []int{6}
+	return file_druz9_v1_arena_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *SubmitResult) GetPassed() bool {
@@ -626,7 +730,7 @@ type CancelMatchRequest struct {
 
 func (x *CancelMatchRequest) Reset() {
 	*x = CancelMatchRequest{}
-	mi := &file_druz9_v1_arena_proto_msgTypes[7]
+	mi := &file_druz9_v1_arena_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -638,7 +742,7 @@ func (x *CancelMatchRequest) String() string {
 func (*CancelMatchRequest) ProtoMessage() {}
 
 func (x *CancelMatchRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_arena_proto_msgTypes[7]
+	mi := &file_druz9_v1_arena_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -651,7 +755,7 @@ func (x *CancelMatchRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CancelMatchRequest.ProtoReflect.Descriptor instead.
 func (*CancelMatchRequest) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_arena_proto_rawDescGZIP(), []int{7}
+	return file_druz9_v1_arena_proto_rawDescGZIP(), []int{8}
 }
 
 type GetMatchRequest struct {
@@ -663,7 +767,7 @@ type GetMatchRequest struct {
 
 func (x *GetMatchRequest) Reset() {
 	*x = GetMatchRequest{}
-	mi := &file_druz9_v1_arena_proto_msgTypes[8]
+	mi := &file_druz9_v1_arena_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -675,7 +779,7 @@ func (x *GetMatchRequest) String() string {
 func (*GetMatchRequest) ProtoMessage() {}
 
 func (x *GetMatchRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_arena_proto_msgTypes[8]
+	mi := &file_druz9_v1_arena_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -688,7 +792,7 @@ func (x *GetMatchRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetMatchRequest.ProtoReflect.Descriptor instead.
 func (*GetMatchRequest) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_arena_proto_rawDescGZIP(), []int{8}
+	return file_druz9_v1_arena_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *GetMatchRequest) GetMatchId() string {
@@ -707,7 +811,7 @@ type ConfirmMatchRequest struct {
 
 func (x *ConfirmMatchRequest) Reset() {
 	*x = ConfirmMatchRequest{}
-	mi := &file_druz9_v1_arena_proto_msgTypes[9]
+	mi := &file_druz9_v1_arena_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -719,7 +823,7 @@ func (x *ConfirmMatchRequest) String() string {
 func (*ConfirmMatchRequest) ProtoMessage() {}
 
 func (x *ConfirmMatchRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_arena_proto_msgTypes[9]
+	mi := &file_druz9_v1_arena_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -732,7 +836,7 @@ func (x *ConfirmMatchRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ConfirmMatchRequest.ProtoReflect.Descriptor instead.
 func (*ConfirmMatchRequest) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_arena_proto_rawDescGZIP(), []int{9}
+	return file_druz9_v1_arena_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *ConfirmMatchRequest) GetMatchId() string {
@@ -762,7 +866,7 @@ type MatchHistoryEntry struct {
 
 func (x *MatchHistoryEntry) Reset() {
 	*x = MatchHistoryEntry{}
-	mi := &file_druz9_v1_arena_proto_msgTypes[10]
+	mi := &file_druz9_v1_arena_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -774,7 +878,7 @@ func (x *MatchHistoryEntry) String() string {
 func (*MatchHistoryEntry) ProtoMessage() {}
 
 func (x *MatchHistoryEntry) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_arena_proto_msgTypes[10]
+	mi := &file_druz9_v1_arena_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -787,7 +891,7 @@ func (x *MatchHistoryEntry) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MatchHistoryEntry.ProtoReflect.Descriptor instead.
 func (*MatchHistoryEntry) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_arena_proto_rawDescGZIP(), []int{10}
+	return file_druz9_v1_arena_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *MatchHistoryEntry) GetMatchId() string {
@@ -867,7 +971,7 @@ type GetMyMatchesRequest struct {
 
 func (x *GetMyMatchesRequest) Reset() {
 	*x = GetMyMatchesRequest{}
-	mi := &file_druz9_v1_arena_proto_msgTypes[11]
+	mi := &file_druz9_v1_arena_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -879,7 +983,7 @@ func (x *GetMyMatchesRequest) String() string {
 func (*GetMyMatchesRequest) ProtoMessage() {}
 
 func (x *GetMyMatchesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_arena_proto_msgTypes[11]
+	mi := &file_druz9_v1_arena_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -892,7 +996,7 @@ func (x *GetMyMatchesRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetMyMatchesRequest.ProtoReflect.Descriptor instead.
 func (*GetMyMatchesRequest) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_arena_proto_rawDescGZIP(), []int{11}
+	return file_druz9_v1_arena_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *GetMyMatchesRequest) GetLimit() int32 {
@@ -933,7 +1037,7 @@ type GetMyMatchesResponse struct {
 
 func (x *GetMyMatchesResponse) Reset() {
 	*x = GetMyMatchesResponse{}
-	mi := &file_druz9_v1_arena_proto_msgTypes[12]
+	mi := &file_druz9_v1_arena_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -945,7 +1049,7 @@ func (x *GetMyMatchesResponse) String() string {
 func (*GetMyMatchesResponse) ProtoMessage() {}
 
 func (x *GetMyMatchesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_arena_proto_msgTypes[12]
+	mi := &file_druz9_v1_arena_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -958,7 +1062,7 @@ func (x *GetMyMatchesResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetMyMatchesResponse.ProtoReflect.Descriptor instead.
 func (*GetMyMatchesResponse) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_arena_proto_rawDescGZIP(), []int{12}
+	return file_druz9_v1_arena_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *GetMyMatchesResponse) GetItems() []*MatchHistoryEntry {
@@ -994,7 +1098,10 @@ const file_druz9_v1_arena_proto_rawDesc = "" +
 	"\fstarter_code\x18\t \x03(\v2*.druz9.v1.ArenaTaskPublic.StarterCodeEntryR\vstarterCode\x1a>\n" +
 	"\x10StarterCodeEntry\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
-	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"\xe4\x01\n" +
+	"\x05value\x18\x02 \x01(\tR\x05value:\x028\x01\"?\n" +
+	"\x0fXPBreakdownItem\x12\x14\n" +
+	"\x05label\x18\x01 \x01(\tR\x05label\x12\x16\n" +
+	"\x06amount\x18\x02 \x01(\x05R\x06amount\"\x84\x03\n" +
 	"\x10ArenaParticipant\x12\x17\n" +
 	"\auser_id\x18\x01 \x01(\tR\x06userId\x12\x1a\n" +
 	"\busername\x18\x02 \x01(\tR\busername\x12\x12\n" +
@@ -1003,7 +1110,13 @@ const file_druz9_v1_arena_proto_rawDesc = "" +
 	"elo_before\x18\x04 \x01(\x05R\teloBefore\x12\x1b\n" +
 	"\telo_after\x18\x05 \x01(\x05R\beloAfter\x12\"\n" +
 	"\rsolve_time_ms\x18\x06 \x01(\x03R\vsolveTimeMs\x12'\n" +
-	"\x0fsuspicion_score\x18\a \x01(\x02R\x0esuspicionScore\"\xae\x03\n" +
+	"\x0fsuspicion_score\x18\a \x01(\x02R\x0esuspicionScore\x12\x19\n" +
+	"\bfinal_xp\x18\b \x01(\x05R\afinalXp\x12<\n" +
+	"\fxp_breakdown\x18\t \x03(\v2\x19.druz9.v1.XPBreakdownItemR\vxpBreakdown\x12\x1d\n" +
+	"\n" +
+	"tier_label\x18\n" +
+	" \x01(\tR\ttierLabel\x12&\n" +
+	"\x0fnext_tier_label\x18\v \x01(\tR\rnextTierLabel\"\xd6\x03\n" +
 	"\n" +
 	"ArenaMatch\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12-\n" +
@@ -1016,7 +1129,9 @@ const file_druz9_v1_arena_proto_rawDesc = "" +
 	"started_at\x18\a \x01(\v2\x1a.google.protobuf.TimestampR\tstartedAt\x12;\n" +
 	"\vfinished_at\x18\b \x01(\v2\x1a.google.protobuf.TimestampR\n" +
 	"finishedAt\x12$\n" +
-	"\x0ewinner_user_id\x18\t \x01(\tR\fwinnerUserId\"\x98\x01\n" +
+	"\x0ewinner_user_id\x18\t \x01(\tR\fwinnerUserId\x12&\n" +
+	"\x0fwinning_team_id\x18\n" +
+	" \x01(\x05R\rwinningTeamId\"\x98\x01\n" +
 	"\x10FindMatchRequest\x12+\n" +
 	"\asection\x18\x01 \x01(\x0e2\x11.druz9.v1.SectionR\asection\x12'\n" +
 	"\x04mode\x18\x02 \x01(\x0e2\x13.druz9.v1.ArenaModeR\x04mode\x12.\n" +
@@ -1085,67 +1200,69 @@ func file_druz9_v1_arena_proto_rawDescGZIP() []byte {
 	return file_druz9_v1_arena_proto_rawDescData
 }
 
-var file_druz9_v1_arena_proto_msgTypes = make([]protoimpl.MessageInfo, 14)
+var file_druz9_v1_arena_proto_msgTypes = make([]protoimpl.MessageInfo, 15)
 var file_druz9_v1_arena_proto_goTypes = []any{
 	(*ArenaTaskPublic)(nil),       // 0: druz9.v1.ArenaTaskPublic
-	(*ArenaParticipant)(nil),      // 1: druz9.v1.ArenaParticipant
-	(*ArenaMatch)(nil),            // 2: druz9.v1.ArenaMatch
-	(*FindMatchRequest)(nil),      // 3: druz9.v1.FindMatchRequest
-	(*MatchQueueResponse)(nil),    // 4: druz9.v1.MatchQueueResponse
-	(*SubmitCodeRequest)(nil),     // 5: druz9.v1.SubmitCodeRequest
-	(*SubmitResult)(nil),          // 6: druz9.v1.SubmitResult
-	(*CancelMatchRequest)(nil),    // 7: druz9.v1.CancelMatchRequest
-	(*GetMatchRequest)(nil),       // 8: druz9.v1.GetMatchRequest
-	(*ConfirmMatchRequest)(nil),   // 9: druz9.v1.ConfirmMatchRequest
-	(*MatchHistoryEntry)(nil),     // 10: druz9.v1.MatchHistoryEntry
-	(*GetMyMatchesRequest)(nil),   // 11: druz9.v1.GetMyMatchesRequest
-	(*GetMyMatchesResponse)(nil),  // 12: druz9.v1.GetMyMatchesResponse
-	nil,                           // 13: druz9.v1.ArenaTaskPublic.StarterCodeEntry
-	(Difficulty)(0),               // 14: druz9.v1.Difficulty
-	(Section)(0),                  // 15: druz9.v1.Section
-	(MatchStatus)(0),              // 16: druz9.v1.MatchStatus
-	(ArenaMode)(0),                // 17: druz9.v1.ArenaMode
-	(*timestamppb.Timestamp)(nil), // 18: google.protobuf.Timestamp
-	(Language)(0),                 // 19: druz9.v1.Language
+	(*XPBreakdownItem)(nil),       // 1: druz9.v1.XPBreakdownItem
+	(*ArenaParticipant)(nil),      // 2: druz9.v1.ArenaParticipant
+	(*ArenaMatch)(nil),            // 3: druz9.v1.ArenaMatch
+	(*FindMatchRequest)(nil),      // 4: druz9.v1.FindMatchRequest
+	(*MatchQueueResponse)(nil),    // 5: druz9.v1.MatchQueueResponse
+	(*SubmitCodeRequest)(nil),     // 6: druz9.v1.SubmitCodeRequest
+	(*SubmitResult)(nil),          // 7: druz9.v1.SubmitResult
+	(*CancelMatchRequest)(nil),    // 8: druz9.v1.CancelMatchRequest
+	(*GetMatchRequest)(nil),       // 9: druz9.v1.GetMatchRequest
+	(*ConfirmMatchRequest)(nil),   // 10: druz9.v1.ConfirmMatchRequest
+	(*MatchHistoryEntry)(nil),     // 11: druz9.v1.MatchHistoryEntry
+	(*GetMyMatchesRequest)(nil),   // 12: druz9.v1.GetMyMatchesRequest
+	(*GetMyMatchesResponse)(nil),  // 13: druz9.v1.GetMyMatchesResponse
+	nil,                           // 14: druz9.v1.ArenaTaskPublic.StarterCodeEntry
+	(Difficulty)(0),               // 15: druz9.v1.Difficulty
+	(Section)(0),                  // 16: druz9.v1.Section
+	(MatchStatus)(0),              // 17: druz9.v1.MatchStatus
+	(ArenaMode)(0),                // 18: druz9.v1.ArenaMode
+	(*timestamppb.Timestamp)(nil), // 19: google.protobuf.Timestamp
+	(Language)(0),                 // 20: druz9.v1.Language
 }
 var file_druz9_v1_arena_proto_depIdxs = []int32{
-	14, // 0: druz9.v1.ArenaTaskPublic.difficulty:type_name -> druz9.v1.Difficulty
-	15, // 1: druz9.v1.ArenaTaskPublic.section:type_name -> druz9.v1.Section
-	13, // 2: druz9.v1.ArenaTaskPublic.starter_code:type_name -> druz9.v1.ArenaTaskPublic.StarterCodeEntry
-	16, // 3: druz9.v1.ArenaMatch.status:type_name -> druz9.v1.MatchStatus
-	17, // 4: druz9.v1.ArenaMatch.mode:type_name -> druz9.v1.ArenaMode
-	15, // 5: druz9.v1.ArenaMatch.section:type_name -> druz9.v1.Section
-	0,  // 6: druz9.v1.ArenaMatch.task:type_name -> druz9.v1.ArenaTaskPublic
-	1,  // 7: druz9.v1.ArenaMatch.participants:type_name -> druz9.v1.ArenaParticipant
-	18, // 8: druz9.v1.ArenaMatch.started_at:type_name -> google.protobuf.Timestamp
-	18, // 9: druz9.v1.ArenaMatch.finished_at:type_name -> google.protobuf.Timestamp
-	15, // 10: druz9.v1.FindMatchRequest.section:type_name -> druz9.v1.Section
-	17, // 11: druz9.v1.FindMatchRequest.mode:type_name -> druz9.v1.ArenaMode
-	19, // 12: druz9.v1.FindMatchRequest.language:type_name -> druz9.v1.Language
-	19, // 13: druz9.v1.SubmitCodeRequest.language:type_name -> druz9.v1.Language
-	18, // 14: druz9.v1.MatchHistoryEntry.finished_at:type_name -> google.protobuf.Timestamp
-	17, // 15: druz9.v1.MatchHistoryEntry.mode:type_name -> druz9.v1.ArenaMode
-	15, // 16: druz9.v1.MatchHistoryEntry.section:type_name -> druz9.v1.Section
-	17, // 17: druz9.v1.GetMyMatchesRequest.mode:type_name -> druz9.v1.ArenaMode
-	15, // 18: druz9.v1.GetMyMatchesRequest.section:type_name -> druz9.v1.Section
-	10, // 19: druz9.v1.GetMyMatchesResponse.items:type_name -> druz9.v1.MatchHistoryEntry
-	3,  // 20: druz9.v1.ArenaService.FindMatch:input_type -> druz9.v1.FindMatchRequest
-	7,  // 21: druz9.v1.ArenaService.CancelSearch:input_type -> druz9.v1.CancelMatchRequest
-	8,  // 22: druz9.v1.ArenaService.GetMatch:input_type -> druz9.v1.GetMatchRequest
-	9,  // 23: druz9.v1.ArenaService.ConfirmReady:input_type -> druz9.v1.ConfirmMatchRequest
-	5,  // 24: druz9.v1.ArenaService.SubmitCode:input_type -> druz9.v1.SubmitCodeRequest
-	11, // 25: druz9.v1.ArenaService.GetMyMatches:input_type -> druz9.v1.GetMyMatchesRequest
-	4,  // 26: druz9.v1.ArenaService.FindMatch:output_type -> druz9.v1.MatchQueueResponse
-	7,  // 27: druz9.v1.ArenaService.CancelSearch:output_type -> druz9.v1.CancelMatchRequest
-	2,  // 28: druz9.v1.ArenaService.GetMatch:output_type -> druz9.v1.ArenaMatch
-	9,  // 29: druz9.v1.ArenaService.ConfirmReady:output_type -> druz9.v1.ConfirmMatchRequest
-	6,  // 30: druz9.v1.ArenaService.SubmitCode:output_type -> druz9.v1.SubmitResult
-	12, // 31: druz9.v1.ArenaService.GetMyMatches:output_type -> druz9.v1.GetMyMatchesResponse
-	26, // [26:32] is the sub-list for method output_type
-	20, // [20:26] is the sub-list for method input_type
-	20, // [20:20] is the sub-list for extension type_name
-	20, // [20:20] is the sub-list for extension extendee
-	0,  // [0:20] is the sub-list for field type_name
+	15, // 0: druz9.v1.ArenaTaskPublic.difficulty:type_name -> druz9.v1.Difficulty
+	16, // 1: druz9.v1.ArenaTaskPublic.section:type_name -> druz9.v1.Section
+	14, // 2: druz9.v1.ArenaTaskPublic.starter_code:type_name -> druz9.v1.ArenaTaskPublic.StarterCodeEntry
+	1,  // 3: druz9.v1.ArenaParticipant.xp_breakdown:type_name -> druz9.v1.XPBreakdownItem
+	17, // 4: druz9.v1.ArenaMatch.status:type_name -> druz9.v1.MatchStatus
+	18, // 5: druz9.v1.ArenaMatch.mode:type_name -> druz9.v1.ArenaMode
+	16, // 6: druz9.v1.ArenaMatch.section:type_name -> druz9.v1.Section
+	0,  // 7: druz9.v1.ArenaMatch.task:type_name -> druz9.v1.ArenaTaskPublic
+	2,  // 8: druz9.v1.ArenaMatch.participants:type_name -> druz9.v1.ArenaParticipant
+	19, // 9: druz9.v1.ArenaMatch.started_at:type_name -> google.protobuf.Timestamp
+	19, // 10: druz9.v1.ArenaMatch.finished_at:type_name -> google.protobuf.Timestamp
+	16, // 11: druz9.v1.FindMatchRequest.section:type_name -> druz9.v1.Section
+	18, // 12: druz9.v1.FindMatchRequest.mode:type_name -> druz9.v1.ArenaMode
+	20, // 13: druz9.v1.FindMatchRequest.language:type_name -> druz9.v1.Language
+	20, // 14: druz9.v1.SubmitCodeRequest.language:type_name -> druz9.v1.Language
+	19, // 15: druz9.v1.MatchHistoryEntry.finished_at:type_name -> google.protobuf.Timestamp
+	18, // 16: druz9.v1.MatchHistoryEntry.mode:type_name -> druz9.v1.ArenaMode
+	16, // 17: druz9.v1.MatchHistoryEntry.section:type_name -> druz9.v1.Section
+	18, // 18: druz9.v1.GetMyMatchesRequest.mode:type_name -> druz9.v1.ArenaMode
+	16, // 19: druz9.v1.GetMyMatchesRequest.section:type_name -> druz9.v1.Section
+	11, // 20: druz9.v1.GetMyMatchesResponse.items:type_name -> druz9.v1.MatchHistoryEntry
+	4,  // 21: druz9.v1.ArenaService.FindMatch:input_type -> druz9.v1.FindMatchRequest
+	8,  // 22: druz9.v1.ArenaService.CancelSearch:input_type -> druz9.v1.CancelMatchRequest
+	9,  // 23: druz9.v1.ArenaService.GetMatch:input_type -> druz9.v1.GetMatchRequest
+	10, // 24: druz9.v1.ArenaService.ConfirmReady:input_type -> druz9.v1.ConfirmMatchRequest
+	6,  // 25: druz9.v1.ArenaService.SubmitCode:input_type -> druz9.v1.SubmitCodeRequest
+	12, // 26: druz9.v1.ArenaService.GetMyMatches:input_type -> druz9.v1.GetMyMatchesRequest
+	5,  // 27: druz9.v1.ArenaService.FindMatch:output_type -> druz9.v1.MatchQueueResponse
+	8,  // 28: druz9.v1.ArenaService.CancelSearch:output_type -> druz9.v1.CancelMatchRequest
+	3,  // 29: druz9.v1.ArenaService.GetMatch:output_type -> druz9.v1.ArenaMatch
+	10, // 30: druz9.v1.ArenaService.ConfirmReady:output_type -> druz9.v1.ConfirmMatchRequest
+	7,  // 31: druz9.v1.ArenaService.SubmitCode:output_type -> druz9.v1.SubmitResult
+	13, // 32: druz9.v1.ArenaService.GetMyMatches:output_type -> druz9.v1.GetMyMatchesResponse
+	27, // [27:33] is the sub-list for method output_type
+	21, // [21:27] is the sub-list for method input_type
+	21, // [21:21] is the sub-list for extension type_name
+	21, // [21:21] is the sub-list for extension extendee
+	0,  // [0:21] is the sub-list for field type_name
 }
 
 func init() { file_druz9_v1_arena_proto_init() }
@@ -1160,7 +1277,7 @@ func file_druz9_v1_arena_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_druz9_v1_arena_proto_rawDesc), len(file_druz9_v1_arena_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   14,
+			NumMessages:   15,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

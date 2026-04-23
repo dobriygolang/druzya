@@ -133,6 +133,20 @@ func (mr *MockMatchRepoMockRecorder) SetWinner(ctx, id, winner, finishedAt any) 
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetWinner", reflect.TypeOf((*MockMatchRepo)(nil).SetWinner), ctx, id, winner, finishedAt)
 }
 
+// SetWinningTeam mocks base method.
+func (m *MockMatchRepo) SetWinningTeam(ctx context.Context, id uuid.UUID, team int, finishedAt time.Time) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SetWinningTeam", ctx, id, team, finishedAt)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// SetWinningTeam indicates an expected call of SetWinningTeam.
+func (mr *MockMatchRepoMockRecorder) SetWinningTeam(ctx, id, team, finishedAt any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetWinningTeam", reflect.TypeOf((*MockMatchRepo)(nil).SetWinningTeam), ctx, id, team, finishedAt)
+}
+
 // UpdateStatus mocks base method.
 func (m *MockMatchRepo) UpdateStatus(ctx context.Context, id uuid.UUID, status enums.MatchStatus, startedAt, finishedAt *time.Time) error {
 	m.ctrl.T.Helper()

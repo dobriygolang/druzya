@@ -40,6 +40,22 @@ type ProfileRepo interface {
 
 	// Activity snapshots for the weekly report.
 	CountRecentActivity(ctx context.Context, userID uuid.UUID, since time.Time) (Activity, error)
+
+	// ListMatchAggregatesSince возвращает плоский список матчей пользователя
+	// за последние `since…now` (только finished); используется в /report для
+	// строй сильных/слабых секций. Если в БД нет таблицы с XP-дельтой на
+	// матч, реализация вправе вернуть пустой список — отчёт деградирует
+	// безопасно (фронт покажет «нет данных»).
+	ListMatchAggregatesSince(ctx context.Context, userID uuid.UUID, since time.Time) ([]MatchAggregate, error)
+
+	// ListWeeklyXPSince возвращает массив XP за каждую из последних N
+	// календарных недель (от last → past). Длина массива = N. weeks=4 →
+	// `[этa, минус-1, минус-2, минус-3]`.
+	ListWeeklyXPSince(ctx context.Context, userID uuid.UUID, now time.Time, weeks int) ([]int, error)
+
+	// GetStreaks возвращает текущую серию активности (дни) и личный рекорд.
+	// Реализация может вернуть (0, 0), если не поддерживает streak-таблицу.
+	GetStreaks(ctx context.Context, userID uuid.UUID) (current, best int, err error)
 }
 
 // Bundle is the joined shape of GET /profile/me.

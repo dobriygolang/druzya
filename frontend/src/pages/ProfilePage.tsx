@@ -498,12 +498,14 @@ export default function ProfilePage() {
       <Hero vm={vm} />
       <ProfileTabBar tab={tab} setTab={setTab} />
       <div className="flex flex-col gap-6 px-4 py-6 sm:px-8 lg:flex-row lg:px-10 lg:py-8">
-        <div className="flex w-full flex-col gap-5 lg:w-[380px]">
+        <div className="flex w-full shrink-0 flex-col gap-5 lg:w-[380px]">
           <SkillsCard />
           {isOwn && <AchievementsCard profile={ownQuery.data} />}
           <GuildCard />
         </div>
-        <Leaderboard />
+        <div className="flex min-w-0 flex-1 flex-col">
+          <Leaderboard />
+        </div>
       </div>
     </AppShellV2>
   )

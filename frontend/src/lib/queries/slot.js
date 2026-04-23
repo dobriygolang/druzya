@@ -1,0 +1,92 @@
+// Slot queries — wrapper over the SlotService Connect-RPC contract
+// (proto/druz9/v1/slot.proto). Vanguard transcodes the gRPC handlers to four
+// REST endpoints under /api/v1/slot.
+//
+// Wire shape mirrors druz9v1.Slot 1:1 — keep snake_case so we decode the JSON
+// the transcoder emits without an extra mapper.
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { api } from '../apiClient';
+function buildQS(f) {
+    const params = [];
+    if (f.section)
+        params.push(`section=${encodeURIComponent(f.section.toUpperCase())}`);
+    if (f.difficulty)
+        params.push(`difficulty=${encodeURIComponent(f.difficulty.toUpperCase())}`);
+    if (f.from)
+        params.push(`from=${encodeURIComponent(f.from)}`);
+    if (f.to)
+        params.push(`to=${encodeURIComponent(f.to)}`);
+    return params.length === 0 ? '' : `?${params.join('&')}`;
+}
+function unwrap(wire) {
+    if (Array.isArray(wire))
+        return wire;
+    return wire.items ?? [];
+}
+// useSlotsQuery hits GET /api/v1/slot with the given filter. priceMax is
+// applied client-side because the proto contract does not yet expose a
+// price_max predicate (see slot.proto:ListSlotsRequest).
+export function useSlotsQuery(filter = {}) {
+    const qs = buildQS(filter);
+    return useQuery({
+        queryKey: ['slots', filter],
+        queryFn: async () => {
+            const wire = await api(`/slot${qs}`);
+            const all = unwrap(wire);
+            if (typeof filter.priceMax === 'number') {
+                return all.filter((s) => s.price_rub <= filter.priceMax);
+            }
+            return all;
+        },
+    });
+}
+// useBookSlot wraps POST /api/v1/slot/{slot_id}/book.
+export function useBookSlot() {
+    const qc = useQueryClient();
+    return useMutation({
+        mutationFn: (slotId) => api(`/slot/${slotId}/book`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({}),
+        }),
+        onSuccess: () => {
+            void qc.invalidateQueries({ queryKey: ['slots'] });
+        },
+    });
+}
+// useCancelSlot wraps DELETE /api/v1/slot/{slot_id}/cancel.
+export function useCancelSlot() {
+    const qc = useQueryClient();
+    return useMutation({
+        mutationFn: (slotId) => api(`/slot/${slotId}/cancel`, { method: 'DELETE' }),
+        onSuccess: () => {
+            void qc.invalidateQueries({ queryKey: ['slots'] });
+        },
+    });
+}
+// derivePriceBuckets returns ordered price-cap suggestions from the available
+// slots — this replaces the "до 2000₽" hardcoded filter chip on /slots. We
+// pick a few quantile-ish breakpoints so the chips stay useful even when
+// price distribution shifts across seasons.
+//
+// All cap values are rounded UP to the nearest 500, so the chip always
+// includes the slot it was derived from (e.g. a 1234₽ slot yields a 1500₽
+// cap chip). The output is deduplicated and ≤3 entries.
+export function derivePriceBuckets(slots) {
+    if (slots.length === 0)
+        return [];
+    const prices = slots.map((s) => s.price_rub).filter((p) => p > 0).sort((a, b) => a - b);
+    if (prices.length === 0)
+        return [];
+    const buckets = new Set();
+    // 33%, 66%, 100% — round each up to the nearest 500.
+    for (const q of [0.33, 0.66, 1]) {
+        const idx = Math.min(prices.length - 1, Math.floor(prices.length * q));
+        const v = prices[idx];
+        buckets.add(Math.ceil(v / 500) * 500);
+    }
+    // Keep ≤3 ascending unique cap values. Caps may exceed individual prices
+    // by ≤500₽ (the rounding tail) — that's fine, the user just gets a
+    // friendlier label than "до 1234₽".
+    return Array.from(buckets).sort((a, b) => a - b).slice(0, 3);
+}

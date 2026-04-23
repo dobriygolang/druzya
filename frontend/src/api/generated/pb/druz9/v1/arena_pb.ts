@@ -105,6 +105,52 @@ export class ArenaTaskPublic extends Message<ArenaTaskPublic> {
 }
 
 /**
+ * XPBreakdownItem — одна строка разбивки XP за матч (label + delta).
+ * Используется на /match/:id/end в карточке «+ N XP».
+ *
+ * @generated from message druz9.v1.XPBreakdownItem
+ */
+export class XPBreakdownItem extends Message<XPBreakdownItem> {
+  /**
+   * @generated from field: string label = 1;
+   */
+  label = "";
+
+  /**
+   * @generated from field: int32 amount = 2;
+   */
+  amount = 0;
+
+  constructor(data?: PartialMessage<XPBreakdownItem>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.XPBreakdownItem";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "label", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "amount", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): XPBreakdownItem {
+    return new XPBreakdownItem().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): XPBreakdownItem {
+    return new XPBreakdownItem().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): XPBreakdownItem {
+    return new XPBreakdownItem().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: XPBreakdownItem | PlainMessage<XPBreakdownItem> | undefined, b: XPBreakdownItem | PlainMessage<XPBreakdownItem> | undefined): boolean {
+    return proto3.util.equals(XPBreakdownItem, a, b);
+  }
+}
+
+/**
  * ArenaParticipant mirrors OpenAPI ArenaParticipant.
  *
  * @generated from message druz9.v1.ArenaParticipant
@@ -149,6 +195,38 @@ export class ArenaParticipant extends Message<ArenaParticipant> {
    */
   suspicionScore = 0;
 
+  /**
+   * final_xp — суммарный XP, начисленный участнику за этот матч (заполняется
+   * после finished_at). 0, пока матч не завершён.
+   *
+   * @generated from field: int32 final_xp = 8;
+   */
+  finalXp = 0;
+
+  /**
+   * xp_breakdown — детализация final_xp по причинам начисления. Пуст, если
+   * участник проиграл или матч ещё не завершён.
+   *
+   * @generated from field: repeated druz9.v1.XPBreakdownItem xp_breakdown = 9;
+   */
+  xpBreakdown: XPBreakdownItem[] = [];
+
+  /**
+   * tier_label — текстовый тариф ELO (например, "Diamond III"). Считается на
+   * бэке, чтобы фронт не дублировал маппинг рейтинг→тиры.
+   *
+   * @generated from field: string tier_label = 10;
+   */
+  tierLabel = "";
+
+  /**
+   * next_tier_label — следующая ступень + сколько LP осталось ("Diamond II ·
+   * 482 LP"). Пусто на максимальном тире.
+   *
+   * @generated from field: string next_tier_label = 11;
+   */
+  nextTierLabel = "";
+
   constructor(data?: PartialMessage<ArenaParticipant>) {
     super();
     proto3.util.initPartial(data, this);
@@ -164,6 +242,10 @@ export class ArenaParticipant extends Message<ArenaParticipant> {
     { no: 5, name: "elo_after", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
     { no: 6, name: "solve_time_ms", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
     { no: 7, name: "suspicion_score", kind: "scalar", T: 2 /* ScalarType.FLOAT */ },
+    { no: 8, name: "final_xp", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 9, name: "xp_breakdown", kind: "message", T: XPBreakdownItem, repeated: true },
+    { no: 10, name: "tier_label", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 11, name: "next_tier_label", kind: "scalar", T: 9 /* ScalarType.STRING */ },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ArenaParticipant {
@@ -236,6 +318,14 @@ export class ArenaMatch extends Message<ArenaMatch> {
    */
   winnerUserId = "";
 
+  /**
+   * winning_team_id — set for finished 2v2 matches (1 or 2). 0 means either
+   * a 1v1 match (use winner_user_id) or a duo draw / unfinished match.
+   *
+   * @generated from field: int32 winning_team_id = 10;
+   */
+  winningTeamId = 0;
+
   constructor(data?: PartialMessage<ArenaMatch>) {
     super();
     proto3.util.initPartial(data, this);
@@ -253,6 +343,7 @@ export class ArenaMatch extends Message<ArenaMatch> {
     { no: 7, name: "started_at", kind: "message", T: Timestamp },
     { no: 8, name: "finished_at", kind: "message", T: Timestamp },
     { no: 9, name: "winner_user_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 10, name: "winning_team_id", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ArenaMatch {

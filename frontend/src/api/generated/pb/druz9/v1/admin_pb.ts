@@ -19,7 +19,7 @@
 // @ts-nocheck
 
 import type { BinaryReadOptions, FieldList, JsonReadOptions, JsonValue, PartialMessage, PlainMessage } from "@bufbuild/protobuf";
-import { Message, proto3, Timestamp, Value } from "@bufbuild/protobuf";
+import { Message, proto3, protoInt64, Timestamp, Value } from "@bufbuild/protobuf";
 import { Difficulty, DungeonTier, Section, SeverityLevel } from "./common_pb.js";
 
 /**
@@ -1216,6 +1216,907 @@ export class ListAnticheatRequest extends Message<ListAnticheatRequest> {
 
   static equals(a: ListAnticheatRequest | PlainMessage<ListAnticheatRequest> | undefined, b: ListAnticheatRequest | PlainMessage<ListAnticheatRequest> | undefined): boolean {
     return proto3.util.equals(ListAnticheatRequest, a, b);
+  }
+}
+
+/**
+ * AdminDashboard mirrors the JSON shape served by GET /api/v1/admin/dashboard.
+ * Counters are live aggregates with a 60s server-side Redis cache. Every
+ * "active_*" timeframe is computed off users.updated_at (see stats.go for
+ * the same proxy used by /stats/public).
+ *
+ * @generated from message druz9.v1.AdminDashboard
+ */
+export class AdminDashboard extends Message<AdminDashboard> {
+  /**
+   * @generated from field: int64 users_total = 1;
+   */
+  usersTotal = protoInt64.zero;
+
+  /**
+   * @generated from field: int64 users_active_today = 2;
+   */
+  usersActiveToday = protoInt64.zero;
+
+  /**
+   * @generated from field: int64 users_active_week = 3;
+   */
+  usersActiveWeek = protoInt64.zero;
+
+  /**
+   * @generated from field: int64 users_active_month = 4;
+   */
+  usersActiveMonth = protoInt64.zero;
+
+  /**
+   * @generated from field: int64 users_banned = 5;
+   */
+  usersBanned = protoInt64.zero;
+
+  /**
+   * @generated from field: int64 matches_today = 6;
+   */
+  matchesToday = protoInt64.zero;
+
+  /**
+   * @generated from field: int64 matches_week = 7;
+   */
+  matchesWeek = protoInt64.zero;
+
+  /**
+   * @generated from field: int64 katas_today = 8;
+   */
+  katasToday = protoInt64.zero;
+
+  /**
+   * @generated from field: int64 katas_week = 9;
+   */
+  katasWeek = protoInt64.zero;
+
+  /**
+   * @generated from field: int64 active_mock_sessions = 10;
+   */
+  activeMockSessions = protoInt64.zero;
+
+  /**
+   * @generated from field: int64 active_arena_matches = 11;
+   */
+  activeArenaMatches = protoInt64.zero;
+
+  /**
+   * @generated from field: int64 reports_pending = 12;
+   */
+  reportsPending = protoInt64.zero;
+
+  /**
+   * @generated from field: int64 anticheat_signals_24h = 13;
+   */
+  anticheatSignals24h = protoInt64.zero;
+
+  /**
+   * generated_at — when the snapshot was assembled (cache miss timestamp).
+   *
+   * @generated from field: google.protobuf.Timestamp generated_at = 14;
+   */
+  generatedAt?: Timestamp;
+
+  constructor(data?: PartialMessage<AdminDashboard>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.AdminDashboard";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "users_total", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
+    { no: 2, name: "users_active_today", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
+    { no: 3, name: "users_active_week", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
+    { no: 4, name: "users_active_month", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
+    { no: 5, name: "users_banned", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
+    { no: 6, name: "matches_today", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
+    { no: 7, name: "matches_week", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
+    { no: 8, name: "katas_today", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
+    { no: 9, name: "katas_week", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
+    { no: 10, name: "active_mock_sessions", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
+    { no: 11, name: "active_arena_matches", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
+    { no: 12, name: "reports_pending", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
+    { no: 13, name: "anticheat_signals_24h", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
+    { no: 14, name: "generated_at", kind: "message", T: Timestamp },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): AdminDashboard {
+    return new AdminDashboard().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): AdminDashboard {
+    return new AdminDashboard().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): AdminDashboard {
+    return new AdminDashboard().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: AdminDashboard | PlainMessage<AdminDashboard> | undefined, b: AdminDashboard | PlainMessage<AdminDashboard> | undefined): boolean {
+    return proto3.util.equals(AdminDashboard, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.GetAdminDashboardRequest
+ */
+export class GetAdminDashboardRequest extends Message<GetAdminDashboardRequest> {
+  constructor(data?: PartialMessage<GetAdminDashboardRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.GetAdminDashboardRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): GetAdminDashboardRequest {
+    return new GetAdminDashboardRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): GetAdminDashboardRequest {
+    return new GetAdminDashboardRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): GetAdminDashboardRequest {
+    return new GetAdminDashboardRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: GetAdminDashboardRequest | PlainMessage<GetAdminDashboardRequest> | undefined, b: GetAdminDashboardRequest | PlainMessage<GetAdminDashboardRequest> | undefined): boolean {
+    return proto3.util.equals(GetAdminDashboardRequest, a, b);
+  }
+}
+
+/**
+ * AdminUserRow is the row shape returned by GET /api/v1/admin/users.
+ * Mirrors users + (optional) currently-active user_bans row.
+ *
+ * @generated from message druz9.v1.AdminUserRow
+ */
+export class AdminUserRow extends Message<AdminUserRow> {
+  /**
+   * @generated from field: string id = 1;
+   */
+  id = "";
+
+  /**
+   * @generated from field: string username = 2;
+   */
+  username = "";
+
+  /**
+   * @generated from field: string email = 3;
+   */
+  email = "";
+
+  /**
+   * @generated from field: string display_name = 4;
+   */
+  displayName = "";
+
+  /**
+   * @generated from field: string role = 5;
+   */
+  role = "";
+
+  /**
+   * @generated from field: google.protobuf.Timestamp created_at = 6;
+   */
+  createdAt?: Timestamp;
+
+  /**
+   * @generated from field: google.protobuf.Timestamp updated_at = 7;
+   */
+  updatedAt?: Timestamp;
+
+  /**
+   * @generated from field: bool is_banned = 8;
+   */
+  isBanned = false;
+
+  /**
+   * ban_reason / ban_expires_at populated when is_banned=true.
+   *
+   * @generated from field: string ban_reason = 9;
+   */
+  banReason = "";
+
+  /**
+   * @generated from field: google.protobuf.Timestamp ban_expires_at = 10;
+   */
+  banExpiresAt?: Timestamp;
+
+  constructor(data?: PartialMessage<AdminUserRow>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.AdminUserRow";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "username", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 3, name: "email", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 4, name: "display_name", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 5, name: "role", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 6, name: "created_at", kind: "message", T: Timestamp },
+    { no: 7, name: "updated_at", kind: "message", T: Timestamp },
+    { no: 8, name: "is_banned", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
+    { no: 9, name: "ban_reason", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 10, name: "ban_expires_at", kind: "message", T: Timestamp },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): AdminUserRow {
+    return new AdminUserRow().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): AdminUserRow {
+    return new AdminUserRow().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): AdminUserRow {
+    return new AdminUserRow().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: AdminUserRow | PlainMessage<AdminUserRow> | undefined, b: AdminUserRow | PlainMessage<AdminUserRow> | undefined): boolean {
+    return proto3.util.equals(AdminUserRow, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.AdminUserList
+ */
+export class AdminUserList extends Message<AdminUserList> {
+  /**
+   * @generated from field: repeated druz9.v1.AdminUserRow items = 1;
+   */
+  items: AdminUserRow[] = [];
+
+  /**
+   * @generated from field: int32 total = 2;
+   */
+  total = 0;
+
+  /**
+   * @generated from field: int32 page = 3;
+   */
+  page = 0;
+
+  constructor(data?: PartialMessage<AdminUserList>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.AdminUserList";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "items", kind: "message", T: AdminUserRow, repeated: true },
+    { no: 2, name: "total", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 3, name: "page", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): AdminUserList {
+    return new AdminUserList().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): AdminUserList {
+    return new AdminUserList().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): AdminUserList {
+    return new AdminUserList().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: AdminUserList | PlainMessage<AdminUserList> | undefined, b: AdminUserList | PlainMessage<AdminUserList> | undefined): boolean {
+    return proto3.util.equals(AdminUserList, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.ListAdminUsersRequest
+ */
+export class ListAdminUsersRequest extends Message<ListAdminUsersRequest> {
+  /**
+   * Free-form query — case-insensitive prefix match on username + email.
+   *
+   * @generated from field: string query = 1;
+   */
+  query = "";
+
+  /**
+   * Filter by status: "" / "all" / "banned" / "active".
+   *
+   * @generated from field: string status = 2;
+   */
+  status = "";
+
+  /**
+   * @generated from field: int32 page = 3;
+   */
+  page = 0;
+
+  /**
+   * @generated from field: int32 limit = 4;
+   */
+  limit = 0;
+
+  constructor(data?: PartialMessage<ListAdminUsersRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.ListAdminUsersRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "query", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "status", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 3, name: "page", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 4, name: "limit", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ListAdminUsersRequest {
+    return new ListAdminUsersRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): ListAdminUsersRequest {
+    return new ListAdminUsersRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): ListAdminUsersRequest {
+    return new ListAdminUsersRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: ListAdminUsersRequest | PlainMessage<ListAdminUsersRequest> | undefined, b: ListAdminUsersRequest | PlainMessage<ListAdminUsersRequest> | undefined): boolean {
+    return proto3.util.equals(ListAdminUsersRequest, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.BanUserRequest
+ */
+export class BanUserRequest extends Message<BanUserRequest> {
+  /**
+   * @generated from field: string user_id = 1;
+   */
+  userId = "";
+
+  /**
+   * @generated from field: string reason = 2;
+   */
+  reason = "";
+
+  /**
+   * expires_at optional — empty means permanent.
+   *
+   * @generated from field: google.protobuf.Timestamp expires_at = 3;
+   */
+  expiresAt?: Timestamp;
+
+  constructor(data?: PartialMessage<BanUserRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.BanUserRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "user_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "reason", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 3, name: "expires_at", kind: "message", T: Timestamp },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): BanUserRequest {
+    return new BanUserRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): BanUserRequest {
+    return new BanUserRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): BanUserRequest {
+    return new BanUserRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: BanUserRequest | PlainMessage<BanUserRequest> | undefined, b: BanUserRequest | PlainMessage<BanUserRequest> | undefined): boolean {
+    return proto3.util.equals(BanUserRequest, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.UnbanUserRequest
+ */
+export class UnbanUserRequest extends Message<UnbanUserRequest> {
+  /**
+   * @generated from field: string user_id = 1;
+   */
+  userId = "";
+
+  constructor(data?: PartialMessage<UnbanUserRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.UnbanUserRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "user_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): UnbanUserRequest {
+    return new UnbanUserRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): UnbanUserRequest {
+    return new UnbanUserRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): UnbanUserRequest {
+    return new UnbanUserRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: UnbanUserRequest | PlainMessage<UnbanUserRequest> | undefined, b: UnbanUserRequest | PlainMessage<UnbanUserRequest> | undefined): boolean {
+    return proto3.util.equals(UnbanUserRequest, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.BanUserResponse
+ */
+export class BanUserResponse extends Message<BanUserResponse> {
+  /**
+   * @generated from field: druz9.v1.AdminUserRow user = 1;
+   */
+  user?: AdminUserRow;
+
+  constructor(data?: PartialMessage<BanUserResponse>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.BanUserResponse";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "user", kind: "message", T: AdminUserRow },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): BanUserResponse {
+    return new BanUserResponse().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): BanUserResponse {
+    return new BanUserResponse().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): BanUserResponse {
+    return new BanUserResponse().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: BanUserResponse | PlainMessage<BanUserResponse> | undefined, b: BanUserResponse | PlainMessage<BanUserResponse> | undefined): boolean {
+    return proto3.util.equals(BanUserResponse, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.AdminReport
+ */
+export class AdminReport extends Message<AdminReport> {
+  /**
+   * @generated from field: string id = 1;
+   */
+  id = "";
+
+  /**
+   * @generated from field: string reporter_id = 2;
+   */
+  reporterId = "";
+
+  /**
+   * @generated from field: string reporter_name = 3;
+   */
+  reporterName = "";
+
+  /**
+   * @generated from field: string reported_id = 4;
+   */
+  reportedId = "";
+
+  /**
+   * @generated from field: string reported_name = 5;
+   */
+  reportedName = "";
+
+  /**
+   * @generated from field: string reason = 6;
+   */
+  reason = "";
+
+  /**
+   * @generated from field: string description = 7;
+   */
+  description = "";
+
+  /**
+   * pending / resolved / dismissed
+   *
+   * @generated from field: string status = 8;
+   */
+  status = "";
+
+  /**
+   * @generated from field: google.protobuf.Timestamp created_at = 9;
+   */
+  createdAt?: Timestamp;
+
+  constructor(data?: PartialMessage<AdminReport>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.AdminReport";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "reporter_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 3, name: "reporter_name", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 4, name: "reported_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 5, name: "reported_name", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 6, name: "reason", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 7, name: "description", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 8, name: "status", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 9, name: "created_at", kind: "message", T: Timestamp },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): AdminReport {
+    return new AdminReport().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): AdminReport {
+    return new AdminReport().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): AdminReport {
+    return new AdminReport().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: AdminReport | PlainMessage<AdminReport> | undefined, b: AdminReport | PlainMessage<AdminReport> | undefined): boolean {
+    return proto3.util.equals(AdminReport, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.AdminReportList
+ */
+export class AdminReportList extends Message<AdminReportList> {
+  /**
+   * @generated from field: repeated druz9.v1.AdminReport items = 1;
+   */
+  items: AdminReport[] = [];
+
+  /**
+   * @generated from field: int32 total = 2;
+   */
+  total = 0;
+
+  constructor(data?: PartialMessage<AdminReportList>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.AdminReportList";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "items", kind: "message", T: AdminReport, repeated: true },
+    { no: 2, name: "total", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): AdminReportList {
+    return new AdminReportList().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): AdminReportList {
+    return new AdminReportList().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): AdminReportList {
+    return new AdminReportList().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: AdminReportList | PlainMessage<AdminReportList> | undefined, b: AdminReportList | PlainMessage<AdminReportList> | undefined): boolean {
+    return proto3.util.equals(AdminReportList, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.ListAdminReportsRequest
+ */
+export class ListAdminReportsRequest extends Message<ListAdminReportsRequest> {
+  /**
+   * status filter — "" means pending only.
+   *
+   * @generated from field: string status = 1;
+   */
+  status = "";
+
+  /**
+   * @generated from field: int32 limit = 2;
+   */
+  limit = 0;
+
+  constructor(data?: PartialMessage<ListAdminReportsRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.ListAdminReportsRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "status", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "limit", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ListAdminReportsRequest {
+    return new ListAdminReportsRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): ListAdminReportsRequest {
+    return new ListAdminReportsRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): ListAdminReportsRequest {
+    return new ListAdminReportsRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: ListAdminReportsRequest | PlainMessage<ListAdminReportsRequest> | undefined, b: ListAdminReportsRequest | PlainMessage<ListAdminReportsRequest> | undefined): boolean {
+    return proto3.util.equals(ListAdminReportsRequest, a, b);
+  }
+}
+
+/**
+ * StatusServiceState reports the current health of one infra component.
+ *
+ * @generated from message druz9.v1.StatusServiceState
+ */
+export class StatusServiceState extends Message<StatusServiceState> {
+  /**
+   * human label e.g. "PostgreSQL"
+   *
+   * @generated from field: string name = 1;
+   */
+  name = "";
+
+  /**
+   * machine slug e.g. "postgres"
+   *
+   * @generated from field: string slug = 2;
+   */
+  slug = "";
+
+  /**
+   * operational / degraded / down
+   *
+   * @generated from field: string status = 3;
+   */
+  status = "";
+
+  /**
+   * formatted percentage (e.g. "99.97%")
+   *
+   * @generated from field: string uptime_30d = 4;
+   */
+  uptime30d = "";
+
+  /**
+   * last probe latency
+   *
+   * @generated from field: int64 latency_ms = 5;
+   */
+  latencyMs = protoInt64.zero;
+
+  constructor(data?: PartialMessage<StatusServiceState>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.StatusServiceState";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "name", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "slug", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 3, name: "status", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 4, name: "uptime_30d", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 5, name: "latency_ms", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): StatusServiceState {
+    return new StatusServiceState().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): StatusServiceState {
+    return new StatusServiceState().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): StatusServiceState {
+    return new StatusServiceState().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: StatusServiceState | PlainMessage<StatusServiceState> | undefined, b: StatusServiceState | PlainMessage<StatusServiceState> | undefined): boolean {
+    return proto3.util.equals(StatusServiceState, a, b);
+  }
+}
+
+/**
+ * StatusIncident mirrors an incidents row.
+ *
+ * @generated from message druz9.v1.StatusIncident
+ */
+export class StatusIncident extends Message<StatusIncident> {
+  /**
+   * @generated from field: string id = 1;
+   */
+  id = "";
+
+  /**
+   * @generated from field: string title = 2;
+   */
+  title = "";
+
+  /**
+   * @generated from field: string description = 3;
+   */
+  description = "";
+
+  /**
+   * minor / major / critical
+   *
+   * @generated from field: string severity = 4;
+   */
+  severity = "";
+
+  /**
+   * @generated from field: google.protobuf.Timestamp started_at = 5;
+   */
+  startedAt?: Timestamp;
+
+  /**
+   * @generated from field: google.protobuf.Timestamp ended_at = 6;
+   */
+  endedAt?: Timestamp;
+
+  /**
+   * @generated from field: repeated string affected_services = 7;
+   */
+  affectedServices: string[] = [];
+
+  constructor(data?: PartialMessage<StatusIncident>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.StatusIncident";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "title", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 3, name: "description", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 4, name: "severity", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 5, name: "started_at", kind: "message", T: Timestamp },
+    { no: 6, name: "ended_at", kind: "message", T: Timestamp },
+    { no: 7, name: "affected_services", kind: "scalar", T: 9 /* ScalarType.STRING */, repeated: true },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): StatusIncident {
+    return new StatusIncident().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): StatusIncident {
+    return new StatusIncident().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): StatusIncident {
+    return new StatusIncident().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: StatusIncident | PlainMessage<StatusIncident> | undefined, b: StatusIncident | PlainMessage<StatusIncident> | undefined): boolean {
+    return proto3.util.equals(StatusIncident, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.StatusPage
+ */
+export class StatusPage extends Message<StatusPage> {
+  /**
+   * operational / degraded / down
+   *
+   * @generated from field: string overall_status = 1;
+   */
+  overallStatus = "";
+
+  /**
+   * @generated from field: string uptime_90d = 2;
+   */
+  uptime90d = "";
+
+  /**
+   * @generated from field: repeated druz9.v1.StatusServiceState services = 3;
+   */
+  services: StatusServiceState[] = [];
+
+  /**
+   * @generated from field: repeated druz9.v1.StatusIncident incidents = 4;
+   */
+  incidents: StatusIncident[] = [];
+
+  /**
+   * @generated from field: google.protobuf.Timestamp generated_at = 5;
+   */
+  generatedAt?: Timestamp;
+
+  constructor(data?: PartialMessage<StatusPage>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.StatusPage";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "overall_status", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "uptime_90d", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 3, name: "services", kind: "message", T: StatusServiceState, repeated: true },
+    { no: 4, name: "incidents", kind: "message", T: StatusIncident, repeated: true },
+    { no: 5, name: "generated_at", kind: "message", T: Timestamp },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): StatusPage {
+    return new StatusPage().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): StatusPage {
+    return new StatusPage().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): StatusPage {
+    return new StatusPage().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: StatusPage | PlainMessage<StatusPage> | undefined, b: StatusPage | PlainMessage<StatusPage> | undefined): boolean {
+    return proto3.util.equals(StatusPage, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.GetStatusPageRequest
+ */
+export class GetStatusPageRequest extends Message<GetStatusPageRequest> {
+  constructor(data?: PartialMessage<GetStatusPageRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.GetStatusPageRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): GetStatusPageRequest {
+    return new GetStatusPageRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): GetStatusPageRequest {
+    return new GetStatusPageRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): GetStatusPageRequest {
+    return new GetStatusPageRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: GetStatusPageRequest | PlainMessage<GetStatusPageRequest> | undefined, b: GetStatusPageRequest | PlainMessage<GetStatusPageRequest> | undefined): boolean {
+    return proto3.util.equals(GetStatusPageRequest, a, b);
   }
 }
 

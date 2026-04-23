@@ -29,6 +29,13 @@ message ArenaTaskPublic {
   map<string, string> starter_code = 9;
 }
 
+// XPBreakdownItem — одна строка разбивки XP за матч (label + delta).
+// Используется на /match/:id/end в карточке «+ N XP».
+message XPBreakdownItem {
+  string label = 1;
+  int32 amount = 2;
+}
+
 // ArenaParticipant mirrors OpenAPI ArenaParticipant.
 message ArenaParticipant {
   string user_id = 1;
@@ -41,9 +48,27 @@ message ArenaParticipant {
   int32 elo_after = 5;
   int64 solve_time_ms = 6;
   float suspicion_score = 7;
+  // final_xp — суммарный XP, начисленный участнику за этот матч (заполняется
+  // после finished_at). 0, пока матч не завершён.
+  int32 final_xp = 8;
+  // xp_breakdown — детализация final_xp по причинам начисления. Пуст, если
+  // участник проиграл или матч ещё не завершён.
+  repeated XPBreakdownItem xp_breakdown = 9;
+  // tier_label — текстовый тариф ELO (например, "Diamond III"). Считается на
+  // бэке, чтобы фронт не дублировал маппинг рейтинг→тиры.
+  string tier_label = 10;
+  // next_tier_label — следующая ступень + сколько LP осталось ("Diamond II ·
+  // 482 LP"). Пусто на максимальном тире.
+  string next_tier_label = 11;
 }
 
 // ArenaMatch mirrors OpenAPI ArenaMatch.
+//
+// 2v2 NOTE (Phase 5): for duo matches, winner_user_id is left empty and the
+// frontend infers the winning team by reading the per-participant
+// submitted_at + team. The next proto bump will add a dedicated
+// winning_team_id field; we postpone the proto edit to keep the wire format
+// stable for in-flight clients during the rollout.
 message ArenaMatch {
   string id = 1;
   MatchStatus status = 2;

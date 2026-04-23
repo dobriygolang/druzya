@@ -1497,6 +1497,1088 @@ func (x *ListAnticheatRequest) GetLimit() int32 {
 	return 0
 }
 
+// AdminDashboard mirrors the JSON shape served by GET /api/v1/admin/dashboard.
+// Counters are live aggregates with a 60s server-side Redis cache. Every
+// "active_*" timeframe is computed off users.updated_at (see stats.go for
+// the same proxy used by /stats/public).
+type AdminDashboard struct {
+	state                protoimpl.MessageState `protogen:"open.v1"`
+	UsersTotal           int64                  `protobuf:"varint,1,opt,name=users_total,json=usersTotal,proto3" json:"users_total,omitempty"`
+	UsersActiveToday     int64                  `protobuf:"varint,2,opt,name=users_active_today,json=usersActiveToday,proto3" json:"users_active_today,omitempty"`
+	UsersActiveWeek      int64                  `protobuf:"varint,3,opt,name=users_active_week,json=usersActiveWeek,proto3" json:"users_active_week,omitempty"`
+	UsersActiveMonth     int64                  `protobuf:"varint,4,opt,name=users_active_month,json=usersActiveMonth,proto3" json:"users_active_month,omitempty"`
+	UsersBanned          int64                  `protobuf:"varint,5,opt,name=users_banned,json=usersBanned,proto3" json:"users_banned,omitempty"`
+	MatchesToday         int64                  `protobuf:"varint,6,opt,name=matches_today,json=matchesToday,proto3" json:"matches_today,omitempty"`
+	MatchesWeek          int64                  `protobuf:"varint,7,opt,name=matches_week,json=matchesWeek,proto3" json:"matches_week,omitempty"`
+	KatasToday           int64                  `protobuf:"varint,8,opt,name=katas_today,json=katasToday,proto3" json:"katas_today,omitempty"`
+	KatasWeek            int64                  `protobuf:"varint,9,opt,name=katas_week,json=katasWeek,proto3" json:"katas_week,omitempty"`
+	ActiveMockSessions   int64                  `protobuf:"varint,10,opt,name=active_mock_sessions,json=activeMockSessions,proto3" json:"active_mock_sessions,omitempty"`
+	ActiveArenaMatches   int64                  `protobuf:"varint,11,opt,name=active_arena_matches,json=activeArenaMatches,proto3" json:"active_arena_matches,omitempty"`
+	ReportsPending       int64                  `protobuf:"varint,12,opt,name=reports_pending,json=reportsPending,proto3" json:"reports_pending,omitempty"`
+	AnticheatSignals_24H int64                  `protobuf:"varint,13,opt,name=anticheat_signals_24h,json=anticheatSignals24h,proto3" json:"anticheat_signals_24h,omitempty"`
+	// generated_at — when the snapshot was assembled (cache miss timestamp).
+	GeneratedAt   *timestamppb.Timestamp `protobuf:"bytes,14,opt,name=generated_at,json=generatedAt,proto3" json:"generated_at,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AdminDashboard) Reset() {
+	*x = AdminDashboard{}
+	mi := &file_druz9_v1_admin_proto_msgTypes[20]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AdminDashboard) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AdminDashboard) ProtoMessage() {}
+
+func (x *AdminDashboard) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_admin_proto_msgTypes[20]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AdminDashboard.ProtoReflect.Descriptor instead.
+func (*AdminDashboard) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_admin_proto_rawDescGZIP(), []int{20}
+}
+
+func (x *AdminDashboard) GetUsersTotal() int64 {
+	if x != nil {
+		return x.UsersTotal
+	}
+	return 0
+}
+
+func (x *AdminDashboard) GetUsersActiveToday() int64 {
+	if x != nil {
+		return x.UsersActiveToday
+	}
+	return 0
+}
+
+func (x *AdminDashboard) GetUsersActiveWeek() int64 {
+	if x != nil {
+		return x.UsersActiveWeek
+	}
+	return 0
+}
+
+func (x *AdminDashboard) GetUsersActiveMonth() int64 {
+	if x != nil {
+		return x.UsersActiveMonth
+	}
+	return 0
+}
+
+func (x *AdminDashboard) GetUsersBanned() int64 {
+	if x != nil {
+		return x.UsersBanned
+	}
+	return 0
+}
+
+func (x *AdminDashboard) GetMatchesToday() int64 {
+	if x != nil {
+		return x.MatchesToday
+	}
+	return 0
+}
+
+func (x *AdminDashboard) GetMatchesWeek() int64 {
+	if x != nil {
+		return x.MatchesWeek
+	}
+	return 0
+}
+
+func (x *AdminDashboard) GetKatasToday() int64 {
+	if x != nil {
+		return x.KatasToday
+	}
+	return 0
+}
+
+func (x *AdminDashboard) GetKatasWeek() int64 {
+	if x != nil {
+		return x.KatasWeek
+	}
+	return 0
+}
+
+func (x *AdminDashboard) GetActiveMockSessions() int64 {
+	if x != nil {
+		return x.ActiveMockSessions
+	}
+	return 0
+}
+
+func (x *AdminDashboard) GetActiveArenaMatches() int64 {
+	if x != nil {
+		return x.ActiveArenaMatches
+	}
+	return 0
+}
+
+func (x *AdminDashboard) GetReportsPending() int64 {
+	if x != nil {
+		return x.ReportsPending
+	}
+	return 0
+}
+
+func (x *AdminDashboard) GetAnticheatSignals_24H() int64 {
+	if x != nil {
+		return x.AnticheatSignals_24H
+	}
+	return 0
+}
+
+func (x *AdminDashboard) GetGeneratedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.GeneratedAt
+	}
+	return nil
+}
+
+type GetAdminDashboardRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetAdminDashboardRequest) Reset() {
+	*x = GetAdminDashboardRequest{}
+	mi := &file_druz9_v1_admin_proto_msgTypes[21]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetAdminDashboardRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetAdminDashboardRequest) ProtoMessage() {}
+
+func (x *GetAdminDashboardRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_admin_proto_msgTypes[21]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetAdminDashboardRequest.ProtoReflect.Descriptor instead.
+func (*GetAdminDashboardRequest) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_admin_proto_rawDescGZIP(), []int{21}
+}
+
+// AdminUserRow is the row shape returned by GET /api/v1/admin/users.
+// Mirrors users + (optional) currently-active user_bans row.
+type AdminUserRow struct {
+	state       protoimpl.MessageState `protogen:"open.v1"`
+	Id          string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Username    string                 `protobuf:"bytes,2,opt,name=username,proto3" json:"username,omitempty"`
+	Email       string                 `protobuf:"bytes,3,opt,name=email,proto3" json:"email,omitempty"`
+	DisplayName string                 `protobuf:"bytes,4,opt,name=display_name,json=displayName,proto3" json:"display_name,omitempty"`
+	Role        string                 `protobuf:"bytes,5,opt,name=role,proto3" json:"role,omitempty"`
+	CreatedAt   *timestamppb.Timestamp `protobuf:"bytes,6,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	UpdatedAt   *timestamppb.Timestamp `protobuf:"bytes,7,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
+	IsBanned    bool                   `protobuf:"varint,8,opt,name=is_banned,json=isBanned,proto3" json:"is_banned,omitempty"`
+	// ban_reason / ban_expires_at populated when is_banned=true.
+	BanReason     string                 `protobuf:"bytes,9,opt,name=ban_reason,json=banReason,proto3" json:"ban_reason,omitempty"`
+	BanExpiresAt  *timestamppb.Timestamp `protobuf:"bytes,10,opt,name=ban_expires_at,json=banExpiresAt,proto3" json:"ban_expires_at,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AdminUserRow) Reset() {
+	*x = AdminUserRow{}
+	mi := &file_druz9_v1_admin_proto_msgTypes[22]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AdminUserRow) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AdminUserRow) ProtoMessage() {}
+
+func (x *AdminUserRow) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_admin_proto_msgTypes[22]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AdminUserRow.ProtoReflect.Descriptor instead.
+func (*AdminUserRow) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_admin_proto_rawDescGZIP(), []int{22}
+}
+
+func (x *AdminUserRow) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *AdminUserRow) GetUsername() string {
+	if x != nil {
+		return x.Username
+	}
+	return ""
+}
+
+func (x *AdminUserRow) GetEmail() string {
+	if x != nil {
+		return x.Email
+	}
+	return ""
+}
+
+func (x *AdminUserRow) GetDisplayName() string {
+	if x != nil {
+		return x.DisplayName
+	}
+	return ""
+}
+
+func (x *AdminUserRow) GetRole() string {
+	if x != nil {
+		return x.Role
+	}
+	return ""
+}
+
+func (x *AdminUserRow) GetCreatedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.CreatedAt
+	}
+	return nil
+}
+
+func (x *AdminUserRow) GetUpdatedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.UpdatedAt
+	}
+	return nil
+}
+
+func (x *AdminUserRow) GetIsBanned() bool {
+	if x != nil {
+		return x.IsBanned
+	}
+	return false
+}
+
+func (x *AdminUserRow) GetBanReason() string {
+	if x != nil {
+		return x.BanReason
+	}
+	return ""
+}
+
+func (x *AdminUserRow) GetBanExpiresAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.BanExpiresAt
+	}
+	return nil
+}
+
+type AdminUserList struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Items         []*AdminUserRow        `protobuf:"bytes,1,rep,name=items,proto3" json:"items,omitempty"`
+	Total         int32                  `protobuf:"varint,2,opt,name=total,proto3" json:"total,omitempty"`
+	Page          int32                  `protobuf:"varint,3,opt,name=page,proto3" json:"page,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AdminUserList) Reset() {
+	*x = AdminUserList{}
+	mi := &file_druz9_v1_admin_proto_msgTypes[23]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AdminUserList) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AdminUserList) ProtoMessage() {}
+
+func (x *AdminUserList) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_admin_proto_msgTypes[23]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AdminUserList.ProtoReflect.Descriptor instead.
+func (*AdminUserList) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_admin_proto_rawDescGZIP(), []int{23}
+}
+
+func (x *AdminUserList) GetItems() []*AdminUserRow {
+	if x != nil {
+		return x.Items
+	}
+	return nil
+}
+
+func (x *AdminUserList) GetTotal() int32 {
+	if x != nil {
+		return x.Total
+	}
+	return 0
+}
+
+func (x *AdminUserList) GetPage() int32 {
+	if x != nil {
+		return x.Page
+	}
+	return 0
+}
+
+type ListAdminUsersRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Free-form query — case-insensitive prefix match on username + email.
+	Query string `protobuf:"bytes,1,opt,name=query,proto3" json:"query,omitempty"`
+	// Filter by status: "" / "all" / "banned" / "active".
+	Status        string `protobuf:"bytes,2,opt,name=status,proto3" json:"status,omitempty"`
+	Page          int32  `protobuf:"varint,3,opt,name=page,proto3" json:"page,omitempty"`
+	Limit         int32  `protobuf:"varint,4,opt,name=limit,proto3" json:"limit,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListAdminUsersRequest) Reset() {
+	*x = ListAdminUsersRequest{}
+	mi := &file_druz9_v1_admin_proto_msgTypes[24]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListAdminUsersRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListAdminUsersRequest) ProtoMessage() {}
+
+func (x *ListAdminUsersRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_admin_proto_msgTypes[24]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListAdminUsersRequest.ProtoReflect.Descriptor instead.
+func (*ListAdminUsersRequest) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_admin_proto_rawDescGZIP(), []int{24}
+}
+
+func (x *ListAdminUsersRequest) GetQuery() string {
+	if x != nil {
+		return x.Query
+	}
+	return ""
+}
+
+func (x *ListAdminUsersRequest) GetStatus() string {
+	if x != nil {
+		return x.Status
+	}
+	return ""
+}
+
+func (x *ListAdminUsersRequest) GetPage() int32 {
+	if x != nil {
+		return x.Page
+	}
+	return 0
+}
+
+func (x *ListAdminUsersRequest) GetLimit() int32 {
+	if x != nil {
+		return x.Limit
+	}
+	return 0
+}
+
+type BanUserRequest struct {
+	state  protoimpl.MessageState `protogen:"open.v1"`
+	UserId string                 `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	Reason string                 `protobuf:"bytes,2,opt,name=reason,proto3" json:"reason,omitempty"`
+	// expires_at optional — empty means permanent.
+	ExpiresAt     *timestamppb.Timestamp `protobuf:"bytes,3,opt,name=expires_at,json=expiresAt,proto3" json:"expires_at,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *BanUserRequest) Reset() {
+	*x = BanUserRequest{}
+	mi := &file_druz9_v1_admin_proto_msgTypes[25]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *BanUserRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*BanUserRequest) ProtoMessage() {}
+
+func (x *BanUserRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_admin_proto_msgTypes[25]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use BanUserRequest.ProtoReflect.Descriptor instead.
+func (*BanUserRequest) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_admin_proto_rawDescGZIP(), []int{25}
+}
+
+func (x *BanUserRequest) GetUserId() string {
+	if x != nil {
+		return x.UserId
+	}
+	return ""
+}
+
+func (x *BanUserRequest) GetReason() string {
+	if x != nil {
+		return x.Reason
+	}
+	return ""
+}
+
+func (x *BanUserRequest) GetExpiresAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.ExpiresAt
+	}
+	return nil
+}
+
+type UnbanUserRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	UserId        string                 `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *UnbanUserRequest) Reset() {
+	*x = UnbanUserRequest{}
+	mi := &file_druz9_v1_admin_proto_msgTypes[26]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UnbanUserRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UnbanUserRequest) ProtoMessage() {}
+
+func (x *UnbanUserRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_admin_proto_msgTypes[26]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UnbanUserRequest.ProtoReflect.Descriptor instead.
+func (*UnbanUserRequest) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_admin_proto_rawDescGZIP(), []int{26}
+}
+
+func (x *UnbanUserRequest) GetUserId() string {
+	if x != nil {
+		return x.UserId
+	}
+	return ""
+}
+
+type BanUserResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	User          *AdminUserRow          `protobuf:"bytes,1,opt,name=user,proto3" json:"user,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *BanUserResponse) Reset() {
+	*x = BanUserResponse{}
+	mi := &file_druz9_v1_admin_proto_msgTypes[27]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *BanUserResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*BanUserResponse) ProtoMessage() {}
+
+func (x *BanUserResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_admin_proto_msgTypes[27]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use BanUserResponse.ProtoReflect.Descriptor instead.
+func (*BanUserResponse) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_admin_proto_rawDescGZIP(), []int{27}
+}
+
+func (x *BanUserResponse) GetUser() *AdminUserRow {
+	if x != nil {
+		return x.User
+	}
+	return nil
+}
+
+type AdminReport struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	ReporterId    string                 `protobuf:"bytes,2,opt,name=reporter_id,json=reporterId,proto3" json:"reporter_id,omitempty"`
+	ReporterName  string                 `protobuf:"bytes,3,opt,name=reporter_name,json=reporterName,proto3" json:"reporter_name,omitempty"`
+	ReportedId    string                 `protobuf:"bytes,4,opt,name=reported_id,json=reportedId,proto3" json:"reported_id,omitempty"`
+	ReportedName  string                 `protobuf:"bytes,5,opt,name=reported_name,json=reportedName,proto3" json:"reported_name,omitempty"`
+	Reason        string                 `protobuf:"bytes,6,opt,name=reason,proto3" json:"reason,omitempty"`
+	Description   string                 `protobuf:"bytes,7,opt,name=description,proto3" json:"description,omitempty"`
+	Status        string                 `protobuf:"bytes,8,opt,name=status,proto3" json:"status,omitempty"` // pending / resolved / dismissed
+	CreatedAt     *timestamppb.Timestamp `protobuf:"bytes,9,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AdminReport) Reset() {
+	*x = AdminReport{}
+	mi := &file_druz9_v1_admin_proto_msgTypes[28]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AdminReport) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AdminReport) ProtoMessage() {}
+
+func (x *AdminReport) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_admin_proto_msgTypes[28]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AdminReport.ProtoReflect.Descriptor instead.
+func (*AdminReport) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_admin_proto_rawDescGZIP(), []int{28}
+}
+
+func (x *AdminReport) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *AdminReport) GetReporterId() string {
+	if x != nil {
+		return x.ReporterId
+	}
+	return ""
+}
+
+func (x *AdminReport) GetReporterName() string {
+	if x != nil {
+		return x.ReporterName
+	}
+	return ""
+}
+
+func (x *AdminReport) GetReportedId() string {
+	if x != nil {
+		return x.ReportedId
+	}
+	return ""
+}
+
+func (x *AdminReport) GetReportedName() string {
+	if x != nil {
+		return x.ReportedName
+	}
+	return ""
+}
+
+func (x *AdminReport) GetReason() string {
+	if x != nil {
+		return x.Reason
+	}
+	return ""
+}
+
+func (x *AdminReport) GetDescription() string {
+	if x != nil {
+		return x.Description
+	}
+	return ""
+}
+
+func (x *AdminReport) GetStatus() string {
+	if x != nil {
+		return x.Status
+	}
+	return ""
+}
+
+func (x *AdminReport) GetCreatedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.CreatedAt
+	}
+	return nil
+}
+
+type AdminReportList struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Items         []*AdminReport         `protobuf:"bytes,1,rep,name=items,proto3" json:"items,omitempty"`
+	Total         int32                  `protobuf:"varint,2,opt,name=total,proto3" json:"total,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AdminReportList) Reset() {
+	*x = AdminReportList{}
+	mi := &file_druz9_v1_admin_proto_msgTypes[29]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AdminReportList) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AdminReportList) ProtoMessage() {}
+
+func (x *AdminReportList) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_admin_proto_msgTypes[29]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AdminReportList.ProtoReflect.Descriptor instead.
+func (*AdminReportList) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_admin_proto_rawDescGZIP(), []int{29}
+}
+
+func (x *AdminReportList) GetItems() []*AdminReport {
+	if x != nil {
+		return x.Items
+	}
+	return nil
+}
+
+func (x *AdminReportList) GetTotal() int32 {
+	if x != nil {
+		return x.Total
+	}
+	return 0
+}
+
+type ListAdminReportsRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// status filter — "" means pending only.
+	Status        string `protobuf:"bytes,1,opt,name=status,proto3" json:"status,omitempty"`
+	Limit         int32  `protobuf:"varint,2,opt,name=limit,proto3" json:"limit,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListAdminReportsRequest) Reset() {
+	*x = ListAdminReportsRequest{}
+	mi := &file_druz9_v1_admin_proto_msgTypes[30]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListAdminReportsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListAdminReportsRequest) ProtoMessage() {}
+
+func (x *ListAdminReportsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_admin_proto_msgTypes[30]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListAdminReportsRequest.ProtoReflect.Descriptor instead.
+func (*ListAdminReportsRequest) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_admin_proto_rawDescGZIP(), []int{30}
+}
+
+func (x *ListAdminReportsRequest) GetStatus() string {
+	if x != nil {
+		return x.Status
+	}
+	return ""
+}
+
+func (x *ListAdminReportsRequest) GetLimit() int32 {
+	if x != nil {
+		return x.Limit
+	}
+	return 0
+}
+
+// StatusServiceState reports the current health of one infra component.
+type StatusServiceState struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Name          string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`                             // human label e.g. "PostgreSQL"
+	Slug          string                 `protobuf:"bytes,2,opt,name=slug,proto3" json:"slug,omitempty"`                             // machine slug e.g. "postgres"
+	Status        string                 `protobuf:"bytes,3,opt,name=status,proto3" json:"status,omitempty"`                         // operational / degraded / down
+	Uptime_30D    string                 `protobuf:"bytes,4,opt,name=uptime_30d,json=uptime30d,proto3" json:"uptime_30d,omitempty"`  // formatted percentage (e.g. "99.97%")
+	LatencyMs     int64                  `protobuf:"varint,5,opt,name=latency_ms,json=latencyMs,proto3" json:"latency_ms,omitempty"` // last probe latency
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *StatusServiceState) Reset() {
+	*x = StatusServiceState{}
+	mi := &file_druz9_v1_admin_proto_msgTypes[31]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *StatusServiceState) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*StatusServiceState) ProtoMessage() {}
+
+func (x *StatusServiceState) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_admin_proto_msgTypes[31]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use StatusServiceState.ProtoReflect.Descriptor instead.
+func (*StatusServiceState) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_admin_proto_rawDescGZIP(), []int{31}
+}
+
+func (x *StatusServiceState) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *StatusServiceState) GetSlug() string {
+	if x != nil {
+		return x.Slug
+	}
+	return ""
+}
+
+func (x *StatusServiceState) GetStatus() string {
+	if x != nil {
+		return x.Status
+	}
+	return ""
+}
+
+func (x *StatusServiceState) GetUptime_30D() string {
+	if x != nil {
+		return x.Uptime_30D
+	}
+	return ""
+}
+
+func (x *StatusServiceState) GetLatencyMs() int64 {
+	if x != nil {
+		return x.LatencyMs
+	}
+	return 0
+}
+
+// StatusIncident mirrors an incidents row.
+type StatusIncident struct {
+	state            protoimpl.MessageState `protogen:"open.v1"`
+	Id               string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Title            string                 `protobuf:"bytes,2,opt,name=title,proto3" json:"title,omitempty"`
+	Description      string                 `protobuf:"bytes,3,opt,name=description,proto3" json:"description,omitempty"`
+	Severity         string                 `protobuf:"bytes,4,opt,name=severity,proto3" json:"severity,omitempty"` // minor / major / critical
+	StartedAt        *timestamppb.Timestamp `protobuf:"bytes,5,opt,name=started_at,json=startedAt,proto3" json:"started_at,omitempty"`
+	EndedAt          *timestamppb.Timestamp `protobuf:"bytes,6,opt,name=ended_at,json=endedAt,proto3" json:"ended_at,omitempty"`
+	AffectedServices []string               `protobuf:"bytes,7,rep,name=affected_services,json=affectedServices,proto3" json:"affected_services,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
+}
+
+func (x *StatusIncident) Reset() {
+	*x = StatusIncident{}
+	mi := &file_druz9_v1_admin_proto_msgTypes[32]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *StatusIncident) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*StatusIncident) ProtoMessage() {}
+
+func (x *StatusIncident) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_admin_proto_msgTypes[32]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use StatusIncident.ProtoReflect.Descriptor instead.
+func (*StatusIncident) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_admin_proto_rawDescGZIP(), []int{32}
+}
+
+func (x *StatusIncident) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *StatusIncident) GetTitle() string {
+	if x != nil {
+		return x.Title
+	}
+	return ""
+}
+
+func (x *StatusIncident) GetDescription() string {
+	if x != nil {
+		return x.Description
+	}
+	return ""
+}
+
+func (x *StatusIncident) GetSeverity() string {
+	if x != nil {
+		return x.Severity
+	}
+	return ""
+}
+
+func (x *StatusIncident) GetStartedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.StartedAt
+	}
+	return nil
+}
+
+func (x *StatusIncident) GetEndedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.EndedAt
+	}
+	return nil
+}
+
+func (x *StatusIncident) GetAffectedServices() []string {
+	if x != nil {
+		return x.AffectedServices
+	}
+	return nil
+}
+
+type StatusPage struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	OverallStatus string                 `protobuf:"bytes,1,opt,name=overall_status,json=overallStatus,proto3" json:"overall_status,omitempty"` // operational / degraded / down
+	Uptime_90D    string                 `protobuf:"bytes,2,opt,name=uptime_90d,json=uptime90d,proto3" json:"uptime_90d,omitempty"`
+	Services      []*StatusServiceState  `protobuf:"bytes,3,rep,name=services,proto3" json:"services,omitempty"`
+	Incidents     []*StatusIncident      `protobuf:"bytes,4,rep,name=incidents,proto3" json:"incidents,omitempty"`
+	GeneratedAt   *timestamppb.Timestamp `protobuf:"bytes,5,opt,name=generated_at,json=generatedAt,proto3" json:"generated_at,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *StatusPage) Reset() {
+	*x = StatusPage{}
+	mi := &file_druz9_v1_admin_proto_msgTypes[33]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *StatusPage) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*StatusPage) ProtoMessage() {}
+
+func (x *StatusPage) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_admin_proto_msgTypes[33]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use StatusPage.ProtoReflect.Descriptor instead.
+func (*StatusPage) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_admin_proto_rawDescGZIP(), []int{33}
+}
+
+func (x *StatusPage) GetOverallStatus() string {
+	if x != nil {
+		return x.OverallStatus
+	}
+	return ""
+}
+
+func (x *StatusPage) GetUptime_90D() string {
+	if x != nil {
+		return x.Uptime_90D
+	}
+	return ""
+}
+
+func (x *StatusPage) GetServices() []*StatusServiceState {
+	if x != nil {
+		return x.Services
+	}
+	return nil
+}
+
+func (x *StatusPage) GetIncidents() []*StatusIncident {
+	if x != nil {
+		return x.Incidents
+	}
+	return nil
+}
+
+func (x *StatusPage) GetGeneratedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.GeneratedAt
+	}
+	return nil
+}
+
+type GetStatusPageRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetStatusPageRequest) Reset() {
+	*x = GetStatusPageRequest{}
+	mi := &file_druz9_v1_admin_proto_msgTypes[34]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetStatusPageRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetStatusPageRequest) ProtoMessage() {}
+
+func (x *GetStatusPageRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_admin_proto_msgTypes[34]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetStatusPageRequest.ProtoReflect.Descriptor instead.
+func (*GetStatusPageRequest) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_admin_proto_rawDescGZIP(), []int{34}
+}
+
 var File_druz9_v1_admin_proto protoreflect.FileDescriptor
 
 const file_druz9_v1_admin_proto_rawDesc = "" +
@@ -1623,14 +2705,112 @@ const file_druz9_v1_admin_proto_rawDesc = "" +
 	"\x14ListAnticheatRequest\x123\n" +
 	"\bseverity\x18\x01 \x01(\x0e2\x17.druz9.v1.SeverityLevelR\bseverity\x12.\n" +
 	"\x04from\x18\x02 \x01(\v2\x1a.google.protobuf.TimestampR\x04from\x12\x14\n" +
-	"\x05limit\x18\x03 \x01(\x05R\x05limit*\xc2\x01\n" +
+	"\x05limit\x18\x03 \x01(\x05R\x05limit\"\xe4\x04\n" +
+	"\x0eAdminDashboard\x12\x1f\n" +
+	"\vusers_total\x18\x01 \x01(\x03R\n" +
+	"usersTotal\x12,\n" +
+	"\x12users_active_today\x18\x02 \x01(\x03R\x10usersActiveToday\x12*\n" +
+	"\x11users_active_week\x18\x03 \x01(\x03R\x0fusersActiveWeek\x12,\n" +
+	"\x12users_active_month\x18\x04 \x01(\x03R\x10usersActiveMonth\x12!\n" +
+	"\fusers_banned\x18\x05 \x01(\x03R\vusersBanned\x12#\n" +
+	"\rmatches_today\x18\x06 \x01(\x03R\fmatchesToday\x12!\n" +
+	"\fmatches_week\x18\a \x01(\x03R\vmatchesWeek\x12\x1f\n" +
+	"\vkatas_today\x18\b \x01(\x03R\n" +
+	"katasToday\x12\x1d\n" +
+	"\n" +
+	"katas_week\x18\t \x01(\x03R\tkatasWeek\x120\n" +
+	"\x14active_mock_sessions\x18\n" +
+	" \x01(\x03R\x12activeMockSessions\x120\n" +
+	"\x14active_arena_matches\x18\v \x01(\x03R\x12activeArenaMatches\x12'\n" +
+	"\x0freports_pending\x18\f \x01(\x03R\x0ereportsPending\x122\n" +
+	"\x15anticheat_signals_24h\x18\r \x01(\x03R\x13anticheatSignals24h\x12=\n" +
+	"\fgenerated_at\x18\x0e \x01(\v2\x1a.google.protobuf.TimestampR\vgeneratedAt\"\x1a\n" +
+	"\x18GetAdminDashboardRequest\"\xfb\x02\n" +
+	"\fAdminUserRow\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1a\n" +
+	"\busername\x18\x02 \x01(\tR\busername\x12\x14\n" +
+	"\x05email\x18\x03 \x01(\tR\x05email\x12!\n" +
+	"\fdisplay_name\x18\x04 \x01(\tR\vdisplayName\x12\x12\n" +
+	"\x04role\x18\x05 \x01(\tR\x04role\x129\n" +
+	"\n" +
+	"created_at\x18\x06 \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\x129\n" +
+	"\n" +
+	"updated_at\x18\a \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt\x12\x1b\n" +
+	"\tis_banned\x18\b \x01(\bR\bisBanned\x12\x1d\n" +
+	"\n" +
+	"ban_reason\x18\t \x01(\tR\tbanReason\x12@\n" +
+	"\x0eban_expires_at\x18\n" +
+	" \x01(\v2\x1a.google.protobuf.TimestampR\fbanExpiresAt\"g\n" +
+	"\rAdminUserList\x12,\n" +
+	"\x05items\x18\x01 \x03(\v2\x16.druz9.v1.AdminUserRowR\x05items\x12\x14\n" +
+	"\x05total\x18\x02 \x01(\x05R\x05total\x12\x12\n" +
+	"\x04page\x18\x03 \x01(\x05R\x04page\"o\n" +
+	"\x15ListAdminUsersRequest\x12\x14\n" +
+	"\x05query\x18\x01 \x01(\tR\x05query\x12\x16\n" +
+	"\x06status\x18\x02 \x01(\tR\x06status\x12\x12\n" +
+	"\x04page\x18\x03 \x01(\x05R\x04page\x12\x14\n" +
+	"\x05limit\x18\x04 \x01(\x05R\x05limit\"|\n" +
+	"\x0eBanUserRequest\x12\x17\n" +
+	"\auser_id\x18\x01 \x01(\tR\x06userId\x12\x16\n" +
+	"\x06reason\x18\x02 \x01(\tR\x06reason\x129\n" +
+	"\n" +
+	"expires_at\x18\x03 \x01(\v2\x1a.google.protobuf.TimestampR\texpiresAt\"+\n" +
+	"\x10UnbanUserRequest\x12\x17\n" +
+	"\auser_id\x18\x01 \x01(\tR\x06userId\"=\n" +
+	"\x0fBanUserResponse\x12*\n" +
+	"\x04user\x18\x01 \x01(\v2\x16.druz9.v1.AdminUserRowR\x04user\"\xb6\x02\n" +
+	"\vAdminReport\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1f\n" +
+	"\vreporter_id\x18\x02 \x01(\tR\n" +
+	"reporterId\x12#\n" +
+	"\rreporter_name\x18\x03 \x01(\tR\freporterName\x12\x1f\n" +
+	"\vreported_id\x18\x04 \x01(\tR\n" +
+	"reportedId\x12#\n" +
+	"\rreported_name\x18\x05 \x01(\tR\freportedName\x12\x16\n" +
+	"\x06reason\x18\x06 \x01(\tR\x06reason\x12 \n" +
+	"\vdescription\x18\a \x01(\tR\vdescription\x12\x16\n" +
+	"\x06status\x18\b \x01(\tR\x06status\x129\n" +
+	"\n" +
+	"created_at\x18\t \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\"T\n" +
+	"\x0fAdminReportList\x12+\n" +
+	"\x05items\x18\x01 \x03(\v2\x15.druz9.v1.AdminReportR\x05items\x12\x14\n" +
+	"\x05total\x18\x02 \x01(\x05R\x05total\"G\n" +
+	"\x17ListAdminReportsRequest\x12\x16\n" +
+	"\x06status\x18\x01 \x01(\tR\x06status\x12\x14\n" +
+	"\x05limit\x18\x02 \x01(\x05R\x05limit\"\x92\x01\n" +
+	"\x12StatusServiceState\x12\x12\n" +
+	"\x04name\x18\x01 \x01(\tR\x04name\x12\x12\n" +
+	"\x04slug\x18\x02 \x01(\tR\x04slug\x12\x16\n" +
+	"\x06status\x18\x03 \x01(\tR\x06status\x12\x1d\n" +
+	"\n" +
+	"uptime_30d\x18\x04 \x01(\tR\tuptime30d\x12\x1d\n" +
+	"\n" +
+	"latency_ms\x18\x05 \x01(\x03R\tlatencyMs\"\x93\x02\n" +
+	"\x0eStatusIncident\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x14\n" +
+	"\x05title\x18\x02 \x01(\tR\x05title\x12 \n" +
+	"\vdescription\x18\x03 \x01(\tR\vdescription\x12\x1a\n" +
+	"\bseverity\x18\x04 \x01(\tR\bseverity\x129\n" +
+	"\n" +
+	"started_at\x18\x05 \x01(\v2\x1a.google.protobuf.TimestampR\tstartedAt\x125\n" +
+	"\bended_at\x18\x06 \x01(\v2\x1a.google.protobuf.TimestampR\aendedAt\x12+\n" +
+	"\x11affected_services\x18\a \x03(\tR\x10affectedServices\"\x83\x02\n" +
+	"\n" +
+	"StatusPage\x12%\n" +
+	"\x0eoverall_status\x18\x01 \x01(\tR\roverallStatus\x12\x1d\n" +
+	"\n" +
+	"uptime_90d\x18\x02 \x01(\tR\tuptime90d\x128\n" +
+	"\bservices\x18\x03 \x03(\v2\x1c.druz9.v1.StatusServiceStateR\bservices\x126\n" +
+	"\tincidents\x18\x04 \x03(\v2\x18.druz9.v1.StatusIncidentR\tincidents\x12=\n" +
+	"\fgenerated_at\x18\x05 \x01(\v2\x1a.google.protobuf.TimestampR\vgeneratedAt\"\x16\n" +
+	"\x14GetStatusPageRequest*\xc2\x01\n" +
 	"\x0fConfigEntryType\x12!\n" +
 	"\x1dCONFIG_ENTRY_TYPE_UNSPECIFIED\x10\x00\x12\x19\n" +
 	"\x15CONFIG_ENTRY_TYPE_INT\x10\x01\x12\x1b\n" +
 	"\x17CONFIG_ENTRY_TYPE_FLOAT\x10\x02\x12\x1c\n" +
 	"\x18CONFIG_ENTRY_TYPE_STRING\x10\x03\x12\x1a\n" +
 	"\x16CONFIG_ENTRY_TYPE_BOOL\x10\x04\x12\x1a\n" +
-	"\x16CONFIG_ENTRY_TYPE_JSON\x10\x052\xe5\x06\n" +
+	"\x16CONFIG_ENTRY_TYPE_JSON\x10\x052\xea\v\n" +
 	"\fAdminService\x12b\n" +
 	"\tListTasks\x12\x1f.druz9.v1.ListAdminTasksRequest\x1a\x17.druz9.v1.AdminTaskList\"\x1b\x82\xd3\xe4\x93\x02\x15\x12\x13/api/v1/admin/tasks\x12f\n" +
 	"\n" +
@@ -1642,7 +2822,13 @@ const file_druz9_v1_admin_proto_rawDesc = "" +
 	"\n" +
 	"ListConfig\x12\x1b.druz9.v1.ListConfigRequest\x1a\x19.druz9.v1.ConfigEntryList\"\x1c\x82\xd3\xe4\x93\x02\x16\x12\x14/api/v1/admin/config\x12k\n" +
 	"\fUpdateConfig\x12\x1d.druz9.v1.UpdateConfigRequest\x1a\x15.druz9.v1.ConfigEntry\"%\x82\xd3\xe4\x93\x02\x1f:\x01*\x1a\x1a/api/v1/admin/config/{key}\x12o\n" +
-	"\rListAnticheat\x12\x1e.druz9.v1.ListAnticheatRequest\x1a\x1d.druz9.v1.AnticheatSignalList\"\x1f\x82\xd3\xe4\x93\x02\x19\x12\x17/api/v1/admin/anticheatB\x87\x01\n" +
+	"\rListAnticheat\x12\x1e.druz9.v1.ListAnticheatRequest\x1a\x1d.druz9.v1.AnticheatSignalList\"\x1f\x82\xd3\xe4\x93\x02\x19\x12\x17/api/v1/admin/anticheat\x12r\n" +
+	"\x11GetAdminDashboard\x12\".druz9.v1.GetAdminDashboardRequest\x1a\x18.druz9.v1.AdminDashboard\"\x1f\x82\xd3\xe4\x93\x02\x19\x12\x17/api/v1/admin/dashboard\x12b\n" +
+	"\tListUsers\x12\x1f.druz9.v1.ListAdminUsersRequest\x1a\x17.druz9.v1.AdminUserList\"\x1b\x82\xd3\xe4\x93\x02\x15\x12\x13/api/v1/admin/users\x12l\n" +
+	"\aBanUser\x12\x18.druz9.v1.BanUserRequest\x1a\x19.druz9.v1.BanUserResponse\",\x82\xd3\xe4\x93\x02&:\x01*\"!/api/v1/admin/users/{user_id}/ban\x12r\n" +
+	"\tUnbanUser\x12\x1a.druz9.v1.UnbanUserRequest\x1a\x19.druz9.v1.BanUserResponse\".\x82\xd3\xe4\x93\x02(:\x01*\"#/api/v1/admin/users/{user_id}/unban\x12j\n" +
+	"\vListReports\x12!.druz9.v1.ListAdminReportsRequest\x1a\x19.druz9.v1.AdminReportList\"\x1d\x82\xd3\xe4\x93\x02\x17\x12\x15/api/v1/admin/reports\x12]\n" +
+	"\rGetStatusPage\x12\x1e.druz9.v1.GetStatusPageRequest\x1a\x14.druz9.v1.StatusPage\"\x16\x82\xd3\xe4\x93\x02\x10\x12\x0e/api/v1/statusB\x87\x01\n" +
 	"\fcom.druz9.v1B\n" +
 	"AdminProtoP\x01Z*druz9/shared/generated/pb/druz9/v1;druz9v1\xa2\x02\x03DXX\xaa\x02\bDruz9.V1\xca\x02\bDruz9\\V1\xe2\x02\x14Druz9\\V1\\GPBMetadata\xea\x02\tDruz9::V1b\x06proto3"
 
@@ -1659,7 +2845,7 @@ func file_druz9_v1_admin_proto_rawDescGZIP() []byte {
 }
 
 var file_druz9_v1_admin_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_druz9_v1_admin_proto_msgTypes = make([]protoimpl.MessageInfo, 20)
+var file_druz9_v1_admin_proto_msgTypes = make([]protoimpl.MessageInfo, 35)
 var file_druz9_v1_admin_proto_goTypes = []any{
 	(ConfigEntryType)(0),              // 0: druz9.v1.ConfigEntryType
 	(*AdminTaskTestCase)(nil),         // 1: druz9.v1.AdminTaskTestCase
@@ -1682,64 +2868,105 @@ var file_druz9_v1_admin_proto_goTypes = []any{
 	(*AnticheatSignal)(nil),           // 18: druz9.v1.AnticheatSignal
 	(*AnticheatSignalList)(nil),       // 19: druz9.v1.AnticheatSignalList
 	(*ListAnticheatRequest)(nil),      // 20: druz9.v1.ListAnticheatRequest
-	(Difficulty)(0),                   // 21: druz9.v1.Difficulty
-	(Section)(0),                      // 22: druz9.v1.Section
-	(DungeonTier)(0),                  // 23: druz9.v1.DungeonTier
-	(*structpb.Value)(nil),            // 24: google.protobuf.Value
-	(*timestamppb.Timestamp)(nil),     // 25: google.protobuf.Timestamp
-	(SeverityLevel)(0),                // 26: druz9.v1.SeverityLevel
+	(*AdminDashboard)(nil),            // 21: druz9.v1.AdminDashboard
+	(*GetAdminDashboardRequest)(nil),  // 22: druz9.v1.GetAdminDashboardRequest
+	(*AdminUserRow)(nil),              // 23: druz9.v1.AdminUserRow
+	(*AdminUserList)(nil),             // 24: druz9.v1.AdminUserList
+	(*ListAdminUsersRequest)(nil),     // 25: druz9.v1.ListAdminUsersRequest
+	(*BanUserRequest)(nil),            // 26: druz9.v1.BanUserRequest
+	(*UnbanUserRequest)(nil),          // 27: druz9.v1.UnbanUserRequest
+	(*BanUserResponse)(nil),           // 28: druz9.v1.BanUserResponse
+	(*AdminReport)(nil),               // 29: druz9.v1.AdminReport
+	(*AdminReportList)(nil),           // 30: druz9.v1.AdminReportList
+	(*ListAdminReportsRequest)(nil),   // 31: druz9.v1.ListAdminReportsRequest
+	(*StatusServiceState)(nil),        // 32: druz9.v1.StatusServiceState
+	(*StatusIncident)(nil),            // 33: druz9.v1.StatusIncident
+	(*StatusPage)(nil),                // 34: druz9.v1.StatusPage
+	(*GetStatusPageRequest)(nil),      // 35: druz9.v1.GetStatusPageRequest
+	(Difficulty)(0),                   // 36: druz9.v1.Difficulty
+	(Section)(0),                      // 37: druz9.v1.Section
+	(DungeonTier)(0),                  // 38: druz9.v1.DungeonTier
+	(*structpb.Value)(nil),            // 39: google.protobuf.Value
+	(*timestamppb.Timestamp)(nil),     // 40: google.protobuf.Timestamp
+	(SeverityLevel)(0),                // 41: druz9.v1.SeverityLevel
 }
 var file_druz9_v1_admin_proto_depIdxs = []int32{
-	21, // 0: druz9.v1.AdminTask.difficulty:type_name -> druz9.v1.Difficulty
-	22, // 1: druz9.v1.AdminTask.section:type_name -> druz9.v1.Section
+	36, // 0: druz9.v1.AdminTask.difficulty:type_name -> druz9.v1.Difficulty
+	37, // 1: druz9.v1.AdminTask.section:type_name -> druz9.v1.Section
 	1,  // 2: druz9.v1.AdminTask.test_cases:type_name -> druz9.v1.AdminTaskTestCase
 	2,  // 3: druz9.v1.AdminTask.follow_up_questions:type_name -> druz9.v1.AdminTaskFollowUpQuestion
 	3,  // 4: druz9.v1.AdminTaskList.items:type_name -> druz9.v1.AdminTask
-	21, // 5: druz9.v1.AdminTaskUpsert.difficulty:type_name -> druz9.v1.Difficulty
-	22, // 6: druz9.v1.AdminTaskUpsert.section:type_name -> druz9.v1.Section
+	36, // 5: druz9.v1.AdminTaskUpsert.difficulty:type_name -> druz9.v1.Difficulty
+	37, // 6: druz9.v1.AdminTaskUpsert.section:type_name -> druz9.v1.Section
 	1,  // 7: druz9.v1.AdminTaskUpsert.test_cases:type_name -> druz9.v1.AdminTaskTestCase
 	2,  // 8: druz9.v1.AdminTaskUpsert.follow_up_questions:type_name -> druz9.v1.AdminTaskFollowUpQuestion
-	22, // 9: druz9.v1.ListAdminTasksRequest.section:type_name -> druz9.v1.Section
-	21, // 10: druz9.v1.ListAdminTasksRequest.difficulty:type_name -> druz9.v1.Difficulty
+	37, // 9: druz9.v1.ListAdminTasksRequest.section:type_name -> druz9.v1.Section
+	36, // 10: druz9.v1.ListAdminTasksRequest.difficulty:type_name -> druz9.v1.Difficulty
 	5,  // 11: druz9.v1.CreateAdminTaskRequest.task:type_name -> druz9.v1.AdminTaskUpsert
 	5,  // 12: druz9.v1.UpdateAdminTaskRequest.task:type_name -> druz9.v1.AdminTaskUpsert
-	23, // 13: druz9.v1.Company.difficulty:type_name -> druz9.v1.DungeonTier
-	22, // 14: druz9.v1.Company.sections:type_name -> druz9.v1.Section
+	38, // 13: druz9.v1.Company.difficulty:type_name -> druz9.v1.DungeonTier
+	37, // 14: druz9.v1.Company.sections:type_name -> druz9.v1.Section
 	9,  // 15: druz9.v1.CompanyList.items:type_name -> druz9.v1.Company
-	23, // 16: druz9.v1.CompanyUpsert.difficulty:type_name -> druz9.v1.DungeonTier
+	38, // 16: druz9.v1.CompanyUpsert.difficulty:type_name -> druz9.v1.DungeonTier
 	11, // 17: druz9.v1.CreateCompanyRequest.company:type_name -> druz9.v1.CompanyUpsert
-	24, // 18: druz9.v1.ConfigEntry.value:type_name -> google.protobuf.Value
+	39, // 18: druz9.v1.ConfigEntry.value:type_name -> google.protobuf.Value
 	0,  // 19: druz9.v1.ConfigEntry.type:type_name -> druz9.v1.ConfigEntryType
-	25, // 20: druz9.v1.ConfigEntry.updated_at:type_name -> google.protobuf.Timestamp
+	40, // 20: druz9.v1.ConfigEntry.updated_at:type_name -> google.protobuf.Timestamp
 	14, // 21: druz9.v1.ConfigEntryList.items:type_name -> druz9.v1.ConfigEntry
-	24, // 22: druz9.v1.UpdateConfigRequest.value:type_name -> google.protobuf.Value
-	26, // 23: druz9.v1.AnticheatSignal.severity:type_name -> druz9.v1.SeverityLevel
-	24, // 24: druz9.v1.AnticheatSignal.metadata:type_name -> google.protobuf.Value
-	25, // 25: druz9.v1.AnticheatSignal.created_at:type_name -> google.protobuf.Timestamp
+	39, // 22: druz9.v1.UpdateConfigRequest.value:type_name -> google.protobuf.Value
+	41, // 23: druz9.v1.AnticheatSignal.severity:type_name -> druz9.v1.SeverityLevel
+	39, // 24: druz9.v1.AnticheatSignal.metadata:type_name -> google.protobuf.Value
+	40, // 25: druz9.v1.AnticheatSignal.created_at:type_name -> google.protobuf.Timestamp
 	18, // 26: druz9.v1.AnticheatSignalList.items:type_name -> druz9.v1.AnticheatSignal
-	26, // 27: druz9.v1.ListAnticheatRequest.severity:type_name -> druz9.v1.SeverityLevel
-	25, // 28: druz9.v1.ListAnticheatRequest.from:type_name -> google.protobuf.Timestamp
-	6,  // 29: druz9.v1.AdminService.ListTasks:input_type -> druz9.v1.ListAdminTasksRequest
-	7,  // 30: druz9.v1.AdminService.CreateTask:input_type -> druz9.v1.CreateAdminTaskRequest
-	8,  // 31: druz9.v1.AdminService.UpdateTask:input_type -> druz9.v1.UpdateAdminTaskRequest
-	12, // 32: druz9.v1.AdminService.ListCompanies:input_type -> druz9.v1.ListCompaniesRequest
-	13, // 33: druz9.v1.AdminService.CreateCompany:input_type -> druz9.v1.CreateCompanyRequest
-	17, // 34: druz9.v1.AdminService.ListConfig:input_type -> druz9.v1.ListConfigRequest
-	16, // 35: druz9.v1.AdminService.UpdateConfig:input_type -> druz9.v1.UpdateConfigRequest
-	20, // 36: druz9.v1.AdminService.ListAnticheat:input_type -> druz9.v1.ListAnticheatRequest
-	4,  // 37: druz9.v1.AdminService.ListTasks:output_type -> druz9.v1.AdminTaskList
-	3,  // 38: druz9.v1.AdminService.CreateTask:output_type -> druz9.v1.AdminTask
-	3,  // 39: druz9.v1.AdminService.UpdateTask:output_type -> druz9.v1.AdminTask
-	10, // 40: druz9.v1.AdminService.ListCompanies:output_type -> druz9.v1.CompanyList
-	9,  // 41: druz9.v1.AdminService.CreateCompany:output_type -> druz9.v1.Company
-	15, // 42: druz9.v1.AdminService.ListConfig:output_type -> druz9.v1.ConfigEntryList
-	14, // 43: druz9.v1.AdminService.UpdateConfig:output_type -> druz9.v1.ConfigEntry
-	19, // 44: druz9.v1.AdminService.ListAnticheat:output_type -> druz9.v1.AnticheatSignalList
-	37, // [37:45] is the sub-list for method output_type
-	29, // [29:37] is the sub-list for method input_type
-	29, // [29:29] is the sub-list for extension type_name
-	29, // [29:29] is the sub-list for extension extendee
-	0,  // [0:29] is the sub-list for field type_name
+	41, // 27: druz9.v1.ListAnticheatRequest.severity:type_name -> druz9.v1.SeverityLevel
+	40, // 28: druz9.v1.ListAnticheatRequest.from:type_name -> google.protobuf.Timestamp
+	40, // 29: druz9.v1.AdminDashboard.generated_at:type_name -> google.protobuf.Timestamp
+	40, // 30: druz9.v1.AdminUserRow.created_at:type_name -> google.protobuf.Timestamp
+	40, // 31: druz9.v1.AdminUserRow.updated_at:type_name -> google.protobuf.Timestamp
+	40, // 32: druz9.v1.AdminUserRow.ban_expires_at:type_name -> google.protobuf.Timestamp
+	23, // 33: druz9.v1.AdminUserList.items:type_name -> druz9.v1.AdminUserRow
+	40, // 34: druz9.v1.BanUserRequest.expires_at:type_name -> google.protobuf.Timestamp
+	23, // 35: druz9.v1.BanUserResponse.user:type_name -> druz9.v1.AdminUserRow
+	40, // 36: druz9.v1.AdminReport.created_at:type_name -> google.protobuf.Timestamp
+	29, // 37: druz9.v1.AdminReportList.items:type_name -> druz9.v1.AdminReport
+	40, // 38: druz9.v1.StatusIncident.started_at:type_name -> google.protobuf.Timestamp
+	40, // 39: druz9.v1.StatusIncident.ended_at:type_name -> google.protobuf.Timestamp
+	32, // 40: druz9.v1.StatusPage.services:type_name -> druz9.v1.StatusServiceState
+	33, // 41: druz9.v1.StatusPage.incidents:type_name -> druz9.v1.StatusIncident
+	40, // 42: druz9.v1.StatusPage.generated_at:type_name -> google.protobuf.Timestamp
+	6,  // 43: druz9.v1.AdminService.ListTasks:input_type -> druz9.v1.ListAdminTasksRequest
+	7,  // 44: druz9.v1.AdminService.CreateTask:input_type -> druz9.v1.CreateAdminTaskRequest
+	8,  // 45: druz9.v1.AdminService.UpdateTask:input_type -> druz9.v1.UpdateAdminTaskRequest
+	12, // 46: druz9.v1.AdminService.ListCompanies:input_type -> druz9.v1.ListCompaniesRequest
+	13, // 47: druz9.v1.AdminService.CreateCompany:input_type -> druz9.v1.CreateCompanyRequest
+	17, // 48: druz9.v1.AdminService.ListConfig:input_type -> druz9.v1.ListConfigRequest
+	16, // 49: druz9.v1.AdminService.UpdateConfig:input_type -> druz9.v1.UpdateConfigRequest
+	20, // 50: druz9.v1.AdminService.ListAnticheat:input_type -> druz9.v1.ListAnticheatRequest
+	22, // 51: druz9.v1.AdminService.GetAdminDashboard:input_type -> druz9.v1.GetAdminDashboardRequest
+	25, // 52: druz9.v1.AdminService.ListUsers:input_type -> druz9.v1.ListAdminUsersRequest
+	26, // 53: druz9.v1.AdminService.BanUser:input_type -> druz9.v1.BanUserRequest
+	27, // 54: druz9.v1.AdminService.UnbanUser:input_type -> druz9.v1.UnbanUserRequest
+	31, // 55: druz9.v1.AdminService.ListReports:input_type -> druz9.v1.ListAdminReportsRequest
+	35, // 56: druz9.v1.AdminService.GetStatusPage:input_type -> druz9.v1.GetStatusPageRequest
+	4,  // 57: druz9.v1.AdminService.ListTasks:output_type -> druz9.v1.AdminTaskList
+	3,  // 58: druz9.v1.AdminService.CreateTask:output_type -> druz9.v1.AdminTask
+	3,  // 59: druz9.v1.AdminService.UpdateTask:output_type -> druz9.v1.AdminTask
+	10, // 60: druz9.v1.AdminService.ListCompanies:output_type -> druz9.v1.CompanyList
+	9,  // 61: druz9.v1.AdminService.CreateCompany:output_type -> druz9.v1.Company
+	15, // 62: druz9.v1.AdminService.ListConfig:output_type -> druz9.v1.ConfigEntryList
+	14, // 63: druz9.v1.AdminService.UpdateConfig:output_type -> druz9.v1.ConfigEntry
+	19, // 64: druz9.v1.AdminService.ListAnticheat:output_type -> druz9.v1.AnticheatSignalList
+	21, // 65: druz9.v1.AdminService.GetAdminDashboard:output_type -> druz9.v1.AdminDashboard
+	24, // 66: druz9.v1.AdminService.ListUsers:output_type -> druz9.v1.AdminUserList
+	28, // 67: druz9.v1.AdminService.BanUser:output_type -> druz9.v1.BanUserResponse
+	28, // 68: druz9.v1.AdminService.UnbanUser:output_type -> druz9.v1.BanUserResponse
+	30, // 69: druz9.v1.AdminService.ListReports:output_type -> druz9.v1.AdminReportList
+	34, // 70: druz9.v1.AdminService.GetStatusPage:output_type -> druz9.v1.StatusPage
+	57, // [57:71] is the sub-list for method output_type
+	43, // [43:57] is the sub-list for method input_type
+	43, // [43:43] is the sub-list for extension type_name
+	43, // [43:43] is the sub-list for extension extendee
+	0,  // [0:43] is the sub-list for field type_name
 }
 
 func init() { file_druz9_v1_admin_proto_init() }
@@ -1754,7 +2981,7 @@ func file_druz9_v1_admin_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_druz9_v1_admin_proto_rawDesc), len(file_druz9_v1_admin_proto_rawDesc)),
 			NumEnums:      1,
-			NumMessages:   20,
+			NumMessages:   35,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

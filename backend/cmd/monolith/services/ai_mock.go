@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+	"time"
 
 	aimockApp "druz9/ai_mock/app"
 	aimockDomain "druz9/ai_mock/domain"
@@ -38,7 +39,21 @@ func NewAIMock(d Deps) *Module {
 	companies := aimockInfra.NewCompanies(d.Pool)
 	users := aimockInfra.NewUsers(d.Pool)
 	llm := aimockInfra.NewOpenRouter(d.Cfg.LLM.OpenRouterAPIKey)
-	replay := aimockInfra.NewStubReplayUploader(d.Cfg.MinIO.Endpoint)
+
+	// Use the real MinIO uploader iff the operator wired credentials in.
+	// Empty creds (e.g. local dev without docker-compose minio) fall back
+	// to the stub so the report worker still produces something useful.
+	var replay aimockDomain.ReplayUploader
+	if d.Cfg.MinIO.AccessKey != "" && d.Cfg.MinIO.SecretKey != "" && d.Cfg.MinIO.Endpoint != "" {
+		replay = aimockInfra.NewMinIOReplayUploader(
+			d.Cfg.MinIO.Endpoint,
+			d.Cfg.MinIO.AccessKey,
+			d.Cfg.MinIO.SecretKey,
+			d.Cfg.MinIO.UseSSL,
+		)
+	} else {
+		replay = aimockInfra.NewStubReplayUploader(d.Cfg.MinIO.Endpoint)
+	}
 	limiter := aimockInfra.NewRedisLimiter(d.Redis)
 	hub := aimockPorts.NewHub(d.Log)
 
@@ -79,6 +94,12 @@ func NewAIMock(d Deps) *Module {
 	server := aimockPorts.NewMockServer(createSession, getSession, sendMessage, stress, finish, report, d.Log)
 	ws := aimockPorts.NewWSHandler(hub, mockTokenVerifier{issuer: d.TokenIssuer}, sessions, messages, sendMessage, stress, d.Log)
 
+	// Voice TTS handler. Uses the real Edge TTS WS proxy (10s timeout).
+	// The tier/turn deps are nil for now — the handler treats nil tier as
+	// "free" (premium voices return 402) and nil turn as "echo canned reply".
+	tts := aimockInfra.NewEdgeTTSClient(10 * time.Second)
+	voice := aimockPorts.NewVoiceHandler(tts, nil, nil, d.Log)
+
 	connectPath, connectHandler := druz9v1connect.NewMockServiceHandler(server)
 	transcoder := mustTranscode("mock", connectPath, connectHandler)
 
@@ -93,6 +114,9 @@ func NewAIMock(d Deps) *Module {
 			r.Post("/mock/session/{sessionId}/stress", transcoder.ServeHTTP)
 			r.Post("/mock/session/{sessionId}/finish", transcoder.ServeHTTP)
 			r.Get("/mock/session/{sessionId}/report", transcoder.ServeHTTP)
+			// Voice (Edge TTS proxy + lightweight turn endpoint).
+			r.Post("/voice/tts", voice.HandleTTS)
+			r.Post("/voice/turn", voice.HandleTurn)
 		},
 		MountWS: func(ws_r chi.Router) {
 			ws_r.Get("/mock/{sessionId}", ws.Handle)

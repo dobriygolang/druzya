@@ -227,7 +227,7 @@ function AiPanel() {
         </div>
         <span className="font-mono text-[11px] text-text-muted">{t('models_count')}</span>
       </div>
-      <div className="grid flex-1 grid-cols-2 gap-3 sm:grid-cols-3 lg:flex">
+      <div className="grid flex-1 grid-cols-2 gap-3 sm:grid-cols-3 lg:flex lg:min-w-0">
         {MODELS.map((m) => (
           <ModelTile key={m.name} m={m} />
         ))}
@@ -345,7 +345,7 @@ function FriendsStrip() {
         ]
   return (
     <Card className="flex-col items-start justify-between gap-4 p-4 lg:flex-row lg:items-center" interactive={false}>
-      <div className="flex flex-wrap items-center gap-4">
+      <div className="flex min-w-0 flex-wrap items-center gap-4">
         <span className="font-display text-sm font-bold text-text-primary">
           {t('friends_online', { count: friends.length })}
         </span>
@@ -354,7 +354,7 @@ function FriendsStrip() {
             <Avatar key={i} size="md" gradient={f.gradient} initials={f.initials} status="online" />
           ))}
         </div>
-        <span className="font-mono text-[11px] text-text-muted">
+        <span className="min-w-0 break-words font-mono text-[11px] text-text-muted">
           {friends.map((f) => f.username).join(' · ')}
         </span>
       </div>

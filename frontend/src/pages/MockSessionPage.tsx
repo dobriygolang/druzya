@@ -122,8 +122,8 @@ function QuestionPanel({ title, description }: { title: string; description: str
       <span className="inline-flex w-fit items-center gap-1 rounded-full bg-cyan/15 px-2.5 py-1 font-mono text-[11px] font-semibold text-cyan">
         ВОПРОС
       </span>
-      <h3 className="font-display text-lg font-bold text-text-primary">{title}</h3>
-      <p className="text-[13px] leading-relaxed text-text-secondary">{description}</p>
+      <h3 className="font-display text-lg font-bold text-text-primary break-words">{title}</h3>
+      <p className="text-[13px] leading-relaxed text-text-secondary break-words">{description}</p>
     </Card>
   )
 }
@@ -209,7 +209,7 @@ function TranscriptCard({ messages, pending }: { messages: AIMessage[]; pending:
       <h3 className="text-sm font-bold text-text-primary">Диалог</h3>
       <div className="flex max-h-[240px] flex-col gap-1.5 overflow-y-auto">
         {messages.slice(-30).map((m, i) => (
-          <div key={i} className="text-[12px]">
+          <div key={i} className="text-[12px] break-words">
             <span className={m.from === 'ai' ? 'text-cyan' : 'text-accent-hover'}>
               {m.from === 'ai' ? 'AI:' : 'Я:'}{' '}
             </span>
@@ -426,7 +426,7 @@ export default function MockSessionPage() {
             <InterviewerPanel />
           </div>
         </div>
-        <div className="flex min-h-[400px] flex-1 flex-col gap-4">
+        <div className="flex min-h-[400px] min-w-0 flex-1 flex-col gap-4">
           <EditorPlaceholder />
           <TranscriptCard messages={liveLines} pending={sendMutation.isPending && !streamingDelta} />
           <MessageBox

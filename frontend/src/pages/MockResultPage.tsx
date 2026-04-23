@@ -325,8 +325,10 @@ export default function MockResultPage() {
         return
       }
       if (res.status === 501) {
-        // Stub path — backend hasn't finished Edge TTS yet. Fall back to
-        // browser speech synthesis so the user still hears something.
+        // Defensive fallback — Edge TTS WS is now real, but ops may opt to
+        // wire StubEdgeTTSClient (e.g. on networks that block Bing). In that
+        // case fall back to browser speech synthesis so the user still
+        // hears something. Ops should alarm on this header in prod.
         if ('speechSynthesis' in window) {
           const u = new SpeechSynthesisUtterance(text)
           u.lang = 'ru-RU'

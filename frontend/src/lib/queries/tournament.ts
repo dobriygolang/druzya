@@ -1,5 +1,13 @@
-import { useQuery } from '@tanstack/react-query'
-import { api } from '../apiClient'
+// Tournament queries — INTENTIONALLY NOT WIRED.
+//
+// There is no `tournament` bounded context in backend/services/ today and
+// there is no `/tournament/*` route on the BFF. The TournamentPage UI now
+// renders a ComingSoon banner; this module is preserved as a place to land
+// real types once the backend ships, so we don't have to thread imports
+// through the page again at that point.
+//
+// Until then, every export here is unused on purpose. Do NOT call
+// useTournamentQuery — it will 404.
 
 export type BracketMatch = {
   p1: string
@@ -25,12 +33,4 @@ export type TournamentResponse = {
   next_match: { opponent: string; in: string }
   predictions: { label: string; odds: string[]; yours?: boolean }[]
   standings: { rank: number; name: string; score: string; you?: boolean }[]
-}
-
-export function useTournamentQuery(id: string | undefined) {
-  return useQuery({
-    queryKey: ['tournament', id],
-    queryFn: () => api<TournamentResponse>(`/tournament/${id}`),
-    enabled: !!id,
-  })
 }

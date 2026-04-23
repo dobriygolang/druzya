@@ -47,10 +47,7 @@ function RewardCard({
   sub: string
 }) {
   return (
-    <div
-      className="flex flex-col items-center gap-2 rounded-xl border border-border bg-surface-1 p-5 text-center"
-      style={{ width: 220 }}
-    >
+    <div className="flex w-full max-w-[220px] flex-col items-center gap-2 rounded-xl border border-border bg-surface-1 p-5 text-center sm:w-[220px]">
       <span className={`grid h-12 w-12 place-items-center rounded-full ${iconBg}`}>{icon}</span>
       <span className="font-display text-base font-bold text-text-primary">{title}</span>
       <span className="text-[12px] text-text-muted">{sub}</span>

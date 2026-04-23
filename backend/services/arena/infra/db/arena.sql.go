@@ -354,6 +354,29 @@ func (q *Queries) SetArenaMatchTask(ctx context.Context, arg SetArenaMatchTaskPa
 	return result.RowsAffected(), nil
 }
 
+const setArenaMatchWinningTeam = `-- name: SetArenaMatchWinningTeam :execrows
+UPDATE arena_matches
+   SET status           = 'finished',
+       winning_team_id  = $2,
+       finished_at      = $3
+ WHERE id = $1
+`
+
+type SetArenaMatchWinningTeamParams struct {
+	ID             pgtype.UUID
+	WinningTeamID  int16
+	FinishedAt     pgtype.Timestamptz
+}
+
+// SetArenaMatchWinningTeam финализирует 2v2-матч; winner_id остаётся NULL.
+func (q *Queries) SetArenaMatchWinningTeam(ctx context.Context, arg SetArenaMatchWinningTeamParams) (int64, error) {
+	result, err := q.db.Exec(ctx, setArenaMatchWinningTeam, arg.ID, arg.WinningTeamID, arg.FinishedAt)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const setArenaMatchWinner = `-- name: SetArenaMatchWinner :execrows
 UPDATE arena_matches
    SET status      = 'finished',

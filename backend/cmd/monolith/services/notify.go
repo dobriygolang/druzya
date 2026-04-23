@@ -3,6 +3,7 @@ package services
 import (
 	"context"
 	"fmt"
+	"os"
 	"time"
 
 	notifyApp "druz9/notify/app"
@@ -82,6 +83,17 @@ func NewNotify(d Deps) (*NotifyModule, error) {
 	connectPath, connectHandler := druz9v1connect.NewNotifyServiceHandler(server)
 	transcoder := mustTranscode("notify", connectPath, connectHandler)
 
+	// Support form (POST /api/v1/support/ticket): chi-route, потому что это
+	// один POST-endpoint и не стоит регенерации proto. Forwards в support-чат
+	// через TG-бот (если SUPPORT_TELEGRAM_CHAT_ID задан).
+	supportRepo := notifyInfra.NewSupportPostgres(d.Pool)
+	supportNotifier := notifyInfra.NewSupportBotNotifier(tg, os.Getenv("SUPPORT_TELEGRAM_CHAT_ID"))
+	supportHandler := &notifyPorts.SupportHandler{
+		Repo:      supportRepo,
+		BotNotify: supportNotifier,
+		Log:       d.Log,
+	}
+
 	mod := &NotifyModule{
 		WebhookHandler:  webhook,
 		RegisterWebhook: tg.RegisterWebhook,
@@ -93,6 +105,8 @@ func NewNotify(d Deps) (*NotifyModule, error) {
 			MountREST: func(r chi.Router) {
 				r.Get("/notify/preferences", transcoder.ServeHTTP)
 				r.Put("/notify/preferences", transcoder.ServeHTTP)
+				// Public — без bearer auth (см. router.go public-paths whitelist).
+				r.Post("/support/ticket", supportHandler.ServeHTTP)
 			},
 			Subscribers: []func(*eventbus.InProcess){
 				func(b *eventbus.InProcess) {

@@ -33,6 +33,15 @@ UPDATE arena_matches
        task_version = $3
  WHERE id = $1;
 
+-- SetArenaMatchWinningTeam — финализирует 2v2-матч. winner_id остаётся
+-- NULL (для team-матчей логично смотреть на winning_team_id).
+-- name: SetArenaMatchWinningTeam :execrows
+UPDATE arena_matches
+   SET status           = 'finished',
+       winning_team_id  = $2,
+       finished_at      = $3
+ WHERE id = $1;
+
 -- name: InsertArenaParticipant :exec
 INSERT INTO arena_participants(match_id, user_id, team, elo_before)
 VALUES ($1, $2, $3, $4)

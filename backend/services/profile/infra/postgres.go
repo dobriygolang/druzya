@@ -329,6 +329,83 @@ func (p *Postgres) CountRecentActivity(ctx context.Context, userID uuid.UUID, si
 	}, nil
 }
 
+// ListMatchAggregatesSince возвращает плоский список матчей пользователя
+// (только finished) за период. Для MVP читаем напрямую из arena_matches +
+// arena_participants. XPDelta берётся как (elo_after - elo_before) — это
+// прокси-LP, который коррелирует с XP-наградой за матч.
+//
+// Если арена-таблиц нет / запрос провалился, возвращаем пустой срез без
+// ошибки — отчёт деградирует к «нет данных», базовые метрики продолжают
+// работать.
+func (p *Postgres) ListMatchAggregatesSince(ctx context.Context, userID uuid.UUID, since time.Time) ([]domain.MatchAggregate, error) {
+	const q = `
+		SELECT m.section, m.winner_id = $1 AS won,
+		       COALESCE(ap.elo_after, ap.elo_before) - ap.elo_before AS xp_delta
+		  FROM arena_matches m
+		  JOIN arena_participants ap ON ap.match_id = m.id AND ap.user_id = $1
+		 WHERE m.status = 'finished'
+		   AND m.finished_at >= $2`
+	rows, err := p.pool.Query(ctx, q, pgUUID(userID), since)
+	if err != nil {
+		// Не роняем отчёт — арена-данных может не быть в среде разработки.
+		return nil, nil
+	}
+	defer rows.Close()
+	out := make([]domain.MatchAggregate, 0, 16)
+	for rows.Next() {
+		var section string
+		var won bool
+		var xpDelta int
+		if err := rows.Scan(&section, &won, &xpDelta); err != nil {
+			continue
+		}
+		out = append(out, domain.MatchAggregate{
+			Section: enums.Section(section),
+			Win:     won,
+			XPDelta: xpDelta,
+		})
+	}
+	return out, nil
+}
+
+// ListWeeklyXPSince возвращает XP за каждую из последних `weeks` календарных
+// недель. Индекс 0 = текущая неделя. Если таблиц для XP-history нет, тихо
+// возвращаем нули — фронт нарисует «пусто».
+func (p *Postgres) ListWeeklyXPSince(ctx context.Context, userID uuid.UUID, now time.Time, weeks int) ([]int, error) {
+	if weeks <= 0 {
+		return nil, nil
+	}
+	out := make([]int, weeks)
+	end := now.UTC().Truncate(24 * time.Hour)
+	for i := 0; i < weeks; i++ {
+		start := end.Add(-time.Duration(i+1) * 7 * 24 * time.Hour)
+		stop := end.Add(-time.Duration(i) * 7 * 24 * time.Hour)
+		const q = `
+			SELECT COALESCE(SUM(GREATEST(COALESCE(ap.elo_after, ap.elo_before) - ap.elo_before, 0)),0)::int
+			  FROM arena_matches m
+			  JOIN arena_participants ap ON ap.match_id = m.id AND ap.user_id = $1
+			 WHERE m.status = 'finished'
+			   AND m.finished_at >= $2
+			   AND m.finished_at < $3`
+		var xp int
+		_ = p.pool.QueryRow(ctx, q, pgUUID(userID), start, stop).Scan(&xp)
+		out[i] = xp
+	}
+	return out, nil
+}
+
+// GetStreaks читает текущий и лучший streak из daily_streaks. Если таблицы
+// нет, возвращаем (0, 0) без ошибки.
+func (p *Postgres) GetStreaks(ctx context.Context, userID uuid.UUID) (int, int, error) {
+	const q = `SELECT current_streak, best_streak FROM daily_streaks WHERE user_id = $1`
+	var cur, best int
+	if err := p.pool.QueryRow(ctx, q, pgUUID(userID)).Scan(&cur, &best); err != nil {
+		// Включая pgx.ErrNoRows — у новых пользователей просто нет строки.
+		return 0, 0, nil
+	}
+	return cur, best, nil
+}
+
 // ── helpers ────────────────────────────────────────────────────────────────
 
 func pgUUID(id uuid.UUID) pgtype.UUID { return pgtype.UUID{Bytes: id, Valid: true} }

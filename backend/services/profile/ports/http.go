@@ -1,9 +1,12 @@
 package ports
 
 import (
+	"context"
 	"log/slog"
 
 	"druz9/profile/app"
+
+	"github.com/google/uuid"
 )
 
 // Handler owns the profile use-case pointers. RequireAuth wrapping happens at
@@ -16,7 +19,18 @@ type Handler struct {
 	GetReport      *app.GetReport
 	GetSettings    *app.GetSettings // reserved for a future GET /me/settings
 	UpdateSettings *app.UpdateSettings
-	Log            *slog.Logger
+	// ReportFetcher — необязательный опитимизирующий wrapper (Redis-cache).
+	// Если nil, GetMyReport вызывает GetReport напрямую. В проде wired в
+	// cmd/monolith/services/profile.go.
+	ReportFetcher ReportFetcher
+	Log           *slog.Logger
+}
+
+// ReportFetcher — узкий интерфейс, который ports.GetMyReport использует
+// вместо прямого вызова GetReport. Позволяет вкрутить infra.ReportCache,
+// не таща import цикл infra→ports→app→infra.
+type ReportFetcher interface {
+	Get(ctx context.Context, userID uuid.UUID) (app.ReportView, error)
 }
 
 // NewHandler builds the Handler.

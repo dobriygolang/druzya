@@ -59,6 +59,22 @@
     color: rgb(var(--color-text-primary));
     font-family: 'Inter', system-ui, -apple-system, sans-serif;
     font-feature-settings: 'cv11', 'ss01';
+    /* Page-wide overflow guard: prevents horizontal scrollbars from rogue
+       elements (long URLs, fixed-px panels, gradient hero CTAs, etc.).
+       Individual scroll containers (tables, code blocks) keep working
+       because they declare overflow-x-auto themselves. */
+    overflow-x: hidden;
+  }
+
+  /* Long words/URLs in user-generated content (transcripts, chat, names)
+     should wrap rather than push the layout out. Apply at the prose-level
+     elements where Russian/English copy lives — preserves <pre>/<code>. */
+  body.v2 p,
+  body.v2 h1,
+  body.v2 h2,
+  body.v2 h3,
+  body.v2 h4 {
+    overflow-wrap: anywhere;
   }
 
   body.v2 ::selection {

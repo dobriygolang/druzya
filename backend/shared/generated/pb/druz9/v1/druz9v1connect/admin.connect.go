@@ -68,6 +68,21 @@ const (
 	// AdminServiceListAnticheatProcedure is the fully-qualified name of the AdminService's
 	// ListAnticheat RPC.
 	AdminServiceListAnticheatProcedure = "/druz9.v1.AdminService/ListAnticheat"
+	// AdminServiceGetAdminDashboardProcedure is the fully-qualified name of the AdminService's
+	// GetAdminDashboard RPC.
+	AdminServiceGetAdminDashboardProcedure = "/druz9.v1.AdminService/GetAdminDashboard"
+	// AdminServiceListUsersProcedure is the fully-qualified name of the AdminService's ListUsers RPC.
+	AdminServiceListUsersProcedure = "/druz9.v1.AdminService/ListUsers"
+	// AdminServiceBanUserProcedure is the fully-qualified name of the AdminService's BanUser RPC.
+	AdminServiceBanUserProcedure = "/druz9.v1.AdminService/BanUser"
+	// AdminServiceUnbanUserProcedure is the fully-qualified name of the AdminService's UnbanUser RPC.
+	AdminServiceUnbanUserProcedure = "/druz9.v1.AdminService/UnbanUser"
+	// AdminServiceListReportsProcedure is the fully-qualified name of the AdminService's ListReports
+	// RPC.
+	AdminServiceListReportsProcedure = "/druz9.v1.AdminService/ListReports"
+	// AdminServiceGetStatusPageProcedure is the fully-qualified name of the AdminService's
+	// GetStatusPage RPC.
+	AdminServiceGetStatusPageProcedure = "/druz9.v1.AdminService/GetStatusPage"
 )
 
 // AdminServiceClient is a client for the druz9.v1.AdminService service.
@@ -84,6 +99,20 @@ type AdminServiceClient interface {
 	UpdateConfig(context.Context, *connect.Request[v1.UpdateConfigRequest]) (*connect.Response[v1.ConfigEntry], error)
 	// ── Anticheat ───────────────────────────────────────────────────────
 	ListAnticheat(context.Context, *connect.Request[v1.ListAnticheatRequest]) (*connect.Response[v1.AnticheatSignalList], error)
+	// ── Dashboard ───────────────────────────────────────────────────────
+	GetAdminDashboard(context.Context, *connect.Request[v1.GetAdminDashboardRequest]) (*connect.Response[v1.AdminDashboard], error)
+	// ── User management ─────────────────────────────────────────────────
+	ListUsers(context.Context, *connect.Request[v1.ListAdminUsersRequest]) (*connect.Response[v1.AdminUserList], error)
+	BanUser(context.Context, *connect.Request[v1.BanUserRequest]) (*connect.Response[v1.BanUserResponse], error)
+	UnbanUser(context.Context, *connect.Request[v1.UnbanUserRequest]) (*connect.Response[v1.BanUserResponse], error)
+	// ── Reports / moderation queue ──────────────────────────────────────
+	ListReports(context.Context, *connect.Request[v1.ListAdminReportsRequest]) (*connect.Response[v1.AdminReportList], error)
+	// ── Public status page (NO auth, NO admin role) ─────────────────────
+	// WARNING: this endpoint is mounted PUBLIC in router.go — it serves the
+	// /status uptime page which must remain accessible to anonymous visitors
+	// for transparency. The handler implementation MUST NOT leak any private
+	// data.
+	GetStatusPage(context.Context, *connect.Request[v1.GetStatusPageRequest]) (*connect.Response[v1.StatusPage], error)
 }
 
 // NewAdminServiceClient constructs a client for the druz9.v1.AdminService service. By default, it
@@ -145,19 +174,61 @@ func NewAdminServiceClient(httpClient connect.HTTPClient, baseURL string, opts .
 			connect.WithSchema(adminServiceMethods.ByName("ListAnticheat")),
 			connect.WithClientOptions(opts...),
 		),
+		getAdminDashboard: connect.NewClient[v1.GetAdminDashboardRequest, v1.AdminDashboard](
+			httpClient,
+			baseURL+AdminServiceGetAdminDashboardProcedure,
+			connect.WithSchema(adminServiceMethods.ByName("GetAdminDashboard")),
+			connect.WithClientOptions(opts...),
+		),
+		listUsers: connect.NewClient[v1.ListAdminUsersRequest, v1.AdminUserList](
+			httpClient,
+			baseURL+AdminServiceListUsersProcedure,
+			connect.WithSchema(adminServiceMethods.ByName("ListUsers")),
+			connect.WithClientOptions(opts...),
+		),
+		banUser: connect.NewClient[v1.BanUserRequest, v1.BanUserResponse](
+			httpClient,
+			baseURL+AdminServiceBanUserProcedure,
+			connect.WithSchema(adminServiceMethods.ByName("BanUser")),
+			connect.WithClientOptions(opts...),
+		),
+		unbanUser: connect.NewClient[v1.UnbanUserRequest, v1.BanUserResponse](
+			httpClient,
+			baseURL+AdminServiceUnbanUserProcedure,
+			connect.WithSchema(adminServiceMethods.ByName("UnbanUser")),
+			connect.WithClientOptions(opts...),
+		),
+		listReports: connect.NewClient[v1.ListAdminReportsRequest, v1.AdminReportList](
+			httpClient,
+			baseURL+AdminServiceListReportsProcedure,
+			connect.WithSchema(adminServiceMethods.ByName("ListReports")),
+			connect.WithClientOptions(opts...),
+		),
+		getStatusPage: connect.NewClient[v1.GetStatusPageRequest, v1.StatusPage](
+			httpClient,
+			baseURL+AdminServiceGetStatusPageProcedure,
+			connect.WithSchema(adminServiceMethods.ByName("GetStatusPage")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
 // adminServiceClient implements AdminServiceClient.
 type adminServiceClient struct {
-	listTasks     *connect.Client[v1.ListAdminTasksRequest, v1.AdminTaskList]
-	createTask    *connect.Client[v1.CreateAdminTaskRequest, v1.AdminTask]
-	updateTask    *connect.Client[v1.UpdateAdminTaskRequest, v1.AdminTask]
-	listCompanies *connect.Client[v1.ListCompaniesRequest, v1.CompanyList]
-	createCompany *connect.Client[v1.CreateCompanyRequest, v1.Company]
-	listConfig    *connect.Client[v1.ListConfigRequest, v1.ConfigEntryList]
-	updateConfig  *connect.Client[v1.UpdateConfigRequest, v1.ConfigEntry]
-	listAnticheat *connect.Client[v1.ListAnticheatRequest, v1.AnticheatSignalList]
+	listTasks         *connect.Client[v1.ListAdminTasksRequest, v1.AdminTaskList]
+	createTask        *connect.Client[v1.CreateAdminTaskRequest, v1.AdminTask]
+	updateTask        *connect.Client[v1.UpdateAdminTaskRequest, v1.AdminTask]
+	listCompanies     *connect.Client[v1.ListCompaniesRequest, v1.CompanyList]
+	createCompany     *connect.Client[v1.CreateCompanyRequest, v1.Company]
+	listConfig        *connect.Client[v1.ListConfigRequest, v1.ConfigEntryList]
+	updateConfig      *connect.Client[v1.UpdateConfigRequest, v1.ConfigEntry]
+	listAnticheat     *connect.Client[v1.ListAnticheatRequest, v1.AnticheatSignalList]
+	getAdminDashboard *connect.Client[v1.GetAdminDashboardRequest, v1.AdminDashboard]
+	listUsers         *connect.Client[v1.ListAdminUsersRequest, v1.AdminUserList]
+	banUser           *connect.Client[v1.BanUserRequest, v1.BanUserResponse]
+	unbanUser         *connect.Client[v1.UnbanUserRequest, v1.BanUserResponse]
+	listReports       *connect.Client[v1.ListAdminReportsRequest, v1.AdminReportList]
+	getStatusPage     *connect.Client[v1.GetStatusPageRequest, v1.StatusPage]
 }
 
 // ListTasks calls druz9.v1.AdminService.ListTasks.
@@ -200,6 +271,36 @@ func (c *adminServiceClient) ListAnticheat(ctx context.Context, req *connect.Req
 	return c.listAnticheat.CallUnary(ctx, req)
 }
 
+// GetAdminDashboard calls druz9.v1.AdminService.GetAdminDashboard.
+func (c *adminServiceClient) GetAdminDashboard(ctx context.Context, req *connect.Request[v1.GetAdminDashboardRequest]) (*connect.Response[v1.AdminDashboard], error) {
+	return c.getAdminDashboard.CallUnary(ctx, req)
+}
+
+// ListUsers calls druz9.v1.AdminService.ListUsers.
+func (c *adminServiceClient) ListUsers(ctx context.Context, req *connect.Request[v1.ListAdminUsersRequest]) (*connect.Response[v1.AdminUserList], error) {
+	return c.listUsers.CallUnary(ctx, req)
+}
+
+// BanUser calls druz9.v1.AdminService.BanUser.
+func (c *adminServiceClient) BanUser(ctx context.Context, req *connect.Request[v1.BanUserRequest]) (*connect.Response[v1.BanUserResponse], error) {
+	return c.banUser.CallUnary(ctx, req)
+}
+
+// UnbanUser calls druz9.v1.AdminService.UnbanUser.
+func (c *adminServiceClient) UnbanUser(ctx context.Context, req *connect.Request[v1.UnbanUserRequest]) (*connect.Response[v1.BanUserResponse], error) {
+	return c.unbanUser.CallUnary(ctx, req)
+}
+
+// ListReports calls druz9.v1.AdminService.ListReports.
+func (c *adminServiceClient) ListReports(ctx context.Context, req *connect.Request[v1.ListAdminReportsRequest]) (*connect.Response[v1.AdminReportList], error) {
+	return c.listReports.CallUnary(ctx, req)
+}
+
+// GetStatusPage calls druz9.v1.AdminService.GetStatusPage.
+func (c *adminServiceClient) GetStatusPage(ctx context.Context, req *connect.Request[v1.GetStatusPageRequest]) (*connect.Response[v1.StatusPage], error) {
+	return c.getStatusPage.CallUnary(ctx, req)
+}
+
 // AdminServiceHandler is an implementation of the druz9.v1.AdminService service.
 type AdminServiceHandler interface {
 	// ── Tasks ───────────────────────────────────────────────────────────
@@ -214,6 +315,20 @@ type AdminServiceHandler interface {
 	UpdateConfig(context.Context, *connect.Request[v1.UpdateConfigRequest]) (*connect.Response[v1.ConfigEntry], error)
 	// ── Anticheat ───────────────────────────────────────────────────────
 	ListAnticheat(context.Context, *connect.Request[v1.ListAnticheatRequest]) (*connect.Response[v1.AnticheatSignalList], error)
+	// ── Dashboard ───────────────────────────────────────────────────────
+	GetAdminDashboard(context.Context, *connect.Request[v1.GetAdminDashboardRequest]) (*connect.Response[v1.AdminDashboard], error)
+	// ── User management ─────────────────────────────────────────────────
+	ListUsers(context.Context, *connect.Request[v1.ListAdminUsersRequest]) (*connect.Response[v1.AdminUserList], error)
+	BanUser(context.Context, *connect.Request[v1.BanUserRequest]) (*connect.Response[v1.BanUserResponse], error)
+	UnbanUser(context.Context, *connect.Request[v1.UnbanUserRequest]) (*connect.Response[v1.BanUserResponse], error)
+	// ── Reports / moderation queue ──────────────────────────────────────
+	ListReports(context.Context, *connect.Request[v1.ListAdminReportsRequest]) (*connect.Response[v1.AdminReportList], error)
+	// ── Public status page (NO auth, NO admin role) ─────────────────────
+	// WARNING: this endpoint is mounted PUBLIC in router.go — it serves the
+	// /status uptime page which must remain accessible to anonymous visitors
+	// for transparency. The handler implementation MUST NOT leak any private
+	// data.
+	GetStatusPage(context.Context, *connect.Request[v1.GetStatusPageRequest]) (*connect.Response[v1.StatusPage], error)
 }
 
 // NewAdminServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -271,6 +386,42 @@ func NewAdminServiceHandler(svc AdminServiceHandler, opts ...connect.HandlerOpti
 		connect.WithSchema(adminServiceMethods.ByName("ListAnticheat")),
 		connect.WithHandlerOptions(opts...),
 	)
+	adminServiceGetAdminDashboardHandler := connect.NewUnaryHandler(
+		AdminServiceGetAdminDashboardProcedure,
+		svc.GetAdminDashboard,
+		connect.WithSchema(adminServiceMethods.ByName("GetAdminDashboard")),
+		connect.WithHandlerOptions(opts...),
+	)
+	adminServiceListUsersHandler := connect.NewUnaryHandler(
+		AdminServiceListUsersProcedure,
+		svc.ListUsers,
+		connect.WithSchema(adminServiceMethods.ByName("ListUsers")),
+		connect.WithHandlerOptions(opts...),
+	)
+	adminServiceBanUserHandler := connect.NewUnaryHandler(
+		AdminServiceBanUserProcedure,
+		svc.BanUser,
+		connect.WithSchema(adminServiceMethods.ByName("BanUser")),
+		connect.WithHandlerOptions(opts...),
+	)
+	adminServiceUnbanUserHandler := connect.NewUnaryHandler(
+		AdminServiceUnbanUserProcedure,
+		svc.UnbanUser,
+		connect.WithSchema(adminServiceMethods.ByName("UnbanUser")),
+		connect.WithHandlerOptions(opts...),
+	)
+	adminServiceListReportsHandler := connect.NewUnaryHandler(
+		AdminServiceListReportsProcedure,
+		svc.ListReports,
+		connect.WithSchema(adminServiceMethods.ByName("ListReports")),
+		connect.WithHandlerOptions(opts...),
+	)
+	adminServiceGetStatusPageHandler := connect.NewUnaryHandler(
+		AdminServiceGetStatusPageProcedure,
+		svc.GetStatusPage,
+		connect.WithSchema(adminServiceMethods.ByName("GetStatusPage")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/druz9.v1.AdminService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case AdminServiceListTasksProcedure:
@@ -289,6 +440,18 @@ func NewAdminServiceHandler(svc AdminServiceHandler, opts ...connect.HandlerOpti
 			adminServiceUpdateConfigHandler.ServeHTTP(w, r)
 		case AdminServiceListAnticheatProcedure:
 			adminServiceListAnticheatHandler.ServeHTTP(w, r)
+		case AdminServiceGetAdminDashboardProcedure:
+			adminServiceGetAdminDashboardHandler.ServeHTTP(w, r)
+		case AdminServiceListUsersProcedure:
+			adminServiceListUsersHandler.ServeHTTP(w, r)
+		case AdminServiceBanUserProcedure:
+			adminServiceBanUserHandler.ServeHTTP(w, r)
+		case AdminServiceUnbanUserProcedure:
+			adminServiceUnbanUserHandler.ServeHTTP(w, r)
+		case AdminServiceListReportsProcedure:
+			adminServiceListReportsHandler.ServeHTTP(w, r)
+		case AdminServiceGetStatusPageProcedure:
+			adminServiceGetStatusPageHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -328,4 +491,28 @@ func (UnimplementedAdminServiceHandler) UpdateConfig(context.Context, *connect.R
 
 func (UnimplementedAdminServiceHandler) ListAnticheat(context.Context, *connect.Request[v1.ListAnticheatRequest]) (*connect.Response[v1.AnticheatSignalList], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.AdminService.ListAnticheat is not implemented"))
+}
+
+func (UnimplementedAdminServiceHandler) GetAdminDashboard(context.Context, *connect.Request[v1.GetAdminDashboardRequest]) (*connect.Response[v1.AdminDashboard], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.AdminService.GetAdminDashboard is not implemented"))
+}
+
+func (UnimplementedAdminServiceHandler) ListUsers(context.Context, *connect.Request[v1.ListAdminUsersRequest]) (*connect.Response[v1.AdminUserList], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.AdminService.ListUsers is not implemented"))
+}
+
+func (UnimplementedAdminServiceHandler) BanUser(context.Context, *connect.Request[v1.BanUserRequest]) (*connect.Response[v1.BanUserResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.AdminService.BanUser is not implemented"))
+}
+
+func (UnimplementedAdminServiceHandler) UnbanUser(context.Context, *connect.Request[v1.UnbanUserRequest]) (*connect.Response[v1.BanUserResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.AdminService.UnbanUser is not implemented"))
+}
+
+func (UnimplementedAdminServiceHandler) ListReports(context.Context, *connect.Request[v1.ListAdminReportsRequest]) (*connect.Response[v1.AdminReportList], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.AdminService.ListReports is not implemented"))
+}
+
+func (UnimplementedAdminServiceHandler) GetStatusPage(context.Context, *connect.Request[v1.GetStatusPageRequest]) (*connect.Response[v1.StatusPage], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.AdminService.GetStatusPage is not implemented"))
 }

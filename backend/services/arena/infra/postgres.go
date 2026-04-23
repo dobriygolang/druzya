@@ -138,6 +138,26 @@ func (p *Postgres) SetWinner(ctx context.Context, id uuid.UUID, winner uuid.UUID
 	return nil
 }
 
+// SetWinningTeam finalises a 2v2 match. winner_id stays NULL — clients
+// distinguish 1v1 vs 2v2 by reading winning_team_id.
+func (p *Postgres) SetWinningTeam(ctx context.Context, id uuid.UUID, team int, finishedAt time.Time) error {
+	if team != domain.Team1 && team != domain.Team2 {
+		return fmt.Errorf("arena.pg.SetWinningTeam: invalid team %d", team)
+	}
+	affected, err := p.q.SetArenaMatchWinningTeam(ctx, arenadb.SetArenaMatchWinningTeamParams{
+		ID:            pgUUID(id),
+		WinningTeamID: int16(team),
+		FinishedAt:    pgtype.Timestamptz{Time: finishedAt, Valid: true},
+	})
+	if err != nil {
+		return fmt.Errorf("arena.pg.SetWinningTeam: %w", err)
+	}
+	if affected == 0 {
+		return fmt.Errorf("arena.pg.SetWinningTeam: %w", domain.ErrNotFound)
+	}
+	return nil
+}
+
 // SetTask stamps the selected task onto the match.
 func (p *Postgres) SetTask(ctx context.Context, id uuid.UUID, taskID uuid.UUID, taskVersion int) error {
 	affected, err := p.q.SetArenaMatchTask(ctx, arenadb.SetArenaMatchTaskParams{
