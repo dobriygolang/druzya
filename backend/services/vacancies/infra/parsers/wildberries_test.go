@@ -10,153 +10,143 @@ import (
 	"druz9/vacancies/domain"
 )
 
-const wbAPIArrayResp = `[
-  {"id":"w1","slug":"go-backend","title":"Go Backend","city":"Москва","employment":"full","description":"Build","requirements":"Go","skills":["Go","PostgreSQL"]},
-  {"id":"w2","slug":"data-eng","title":"Data Engineer","city":"Удалённо"}
-]`
+// wbRealResponseFixture is a trimmed copy of the verified production payload
+// from https://career.rwb.ru/crm-api/api/v1/pub/vacancies (snapshot
+// 2026-04-23). Two items kept — same shape as the live 538-item response.
+const wbRealResponseFixture = `{
+  "status": 200,
+  "data": {
+    "items": [
+      {
+        "id": 30154,
+        "name": "Lead System Analyst DWH в команду сервиса Такси",
+        "direction_title": "Аналитика",
+        "direction_role_title": "System Analyst",
+        "experience_type_title": "От 5 лет",
+        "city_title": "Москва",
+        "employment_types": [
+          {"id": 1, "vacancy_id": 30154, "title": "Гибрид", "description": ""}
+        ]
+      },
+      {
+        "id": 34295,
+        "name": "Network Security Engineer",
+        "direction_title": "Информационная безопасность",
+        "direction_role_title": "Information Security Engineer",
+        "experience_type_title": "От 3 лет",
+        "city_title": "Москва",
+        "employment_types": [
+          {"id": 1, "vacancy_id": 34295, "title": "Гибрид", "description": ""},
+          {"id": 2, "vacancy_id": 34295, "title": "Удаленно", "description": ""}
+        ]
+      }
+    ],
+    "range": {"total": 538}
+  }
+}`
 
-const wbAPIObjectResp = `{"items":[
-  {"id":"w3","slug":"sre","title":"SRE","city":"Москва"}
-]}`
-
-const wbHTMLFallback = `<html><body><script id="__NEXT_DATA__" type="application/json">
-{"props":{"pageProps":{"vacancies":[
-  {"id":"h1","slug":"qa","title":"QA Engineer","city":"Минск","description":"Test"}
-]}}}
-</script></body></html>`
-
-func TestWildberriesParser_APIArrayHappyPath(t *testing.T) {
+func TestWildberriesParser_HappyPath(t *testing.T) {
 	t.Parallel()
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if got := r.Header.Get("User-Agent"); !strings.Contains(got, "druz9-vacancies") {
-			t.Errorf("UA missing marker: %q", got)
+		if r.Header.Get("User-Agent") != scraperUA {
+			t.Errorf("missing scraper UA, got %q", r.Header.Get("User-Agent"))
 		}
-		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write([]byte(wbAPIArrayResp))
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		_, _ = w.Write([]byte(wbRealResponseFixture))
 	}))
-	t.Cleanup(srv.Close)
+	defer srv.Close()
 
-	p := NewWildberries(testLog()).WithAPIURL(srv.URL).WithHTMLURL("")
+	p := NewWildberries(testLog()).WithAPIURL(srv.URL)
 	got, err := p.Fetch(context.Background())
 	if err != nil {
 		t.Fatalf("Fetch: %v", err)
 	}
 	if len(got) != 2 {
-		t.Fatalf("want 2, got %d", len(got))
+		t.Fatalf("want 2 vacancies, got %d", len(got))
 	}
-	if got[0].Source != domain.SourceWildberries {
-		t.Errorf("source: %s", got[0].Source)
+	v := got[0]
+	if v.Source != domain.SourceWildberries {
+		t.Errorf("source: %q", v.Source)
 	}
-	if got[0].Title != "Go Backend" || got[0].Company != "Wildberries" {
-		t.Errorf("first item: %+v", got[0])
+	if v.ExternalID != "30154" {
+		t.Errorf("external_id: %q", v.ExternalID)
 	}
-	if !strings.HasPrefix(got[0].URL, "https://career.wb.ru/") {
-		t.Errorf("derived url: %q", got[0].URL)
+	if v.Title != "Lead System Analyst DWH в команду сервиса Такси" {
+		t.Errorf("title: %q", v.Title)
 	}
-	if !contains(got[0].NormalizedSkills, "go") {
-		t.Errorf("skills: %v", got[0].NormalizedSkills)
+	if v.Company != "Wildberries" {
+		t.Errorf("company: %q", v.Company)
+	}
+	if v.Location != "Москва" {
+		t.Errorf("location: %q", v.Location)
+	}
+	if v.EmploymentType != "Гибрид" {
+		t.Errorf("employment: %q", v.EmploymentType)
+	}
+	if v.ExperienceLevel != "От 5 лет" {
+		t.Errorf("experience: %q", v.ExperienceLevel)
+	}
+	if v.URL != "https://career.rwb.ru/vacancies/30154" {
+		t.Errorf("url: %q", v.URL)
+	}
+	if !strings.Contains(v.Description, "Аналитика") {
+		t.Errorf("description: %q", v.Description)
+	}
+	if v.FetchedAt.IsZero() {
+		t.Errorf("fetched_at zero")
+	}
+	if len(v.RawJSON) == 0 {
+		t.Errorf("raw_json empty")
+	}
+	// Second item — multi-employment-type join.
+	if got[1].EmploymentType != "Гибрид, Удаленно" {
+		t.Errorf("multi-emp: %q", got[1].EmploymentType)
 	}
 }
 
-func TestWildberriesParser_APIObjectShape(t *testing.T) {
+func TestWildberriesParser_HTTPError(t *testing.T) {
 	t.Parallel()
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		_, _ = w.Write([]byte(wbAPIObjectResp))
+		w.WriteHeader(http.StatusInternalServerError)
 	}))
-	t.Cleanup(srv.Close)
+	defer srv.Close()
 
-	p := NewWildberries(testLog()).WithAPIURL(srv.URL).WithHTMLURL("")
-	got, err := p.Fetch(context.Background())
-	if err != nil {
-		t.Fatalf("Fetch: %v", err)
-	}
-	if len(got) != 1 || got[0].Title != "SRE" {
-		t.Errorf("want 1xSRE, got %+v", got)
-	}
-}
-
-// TestWildberriesParser_APIFails_HTMLSucceeds proves the fallback path: REST
-// 403s (the failure mode we worry about with a customer-facing site behind a
-// CDN), HTML scrape picks up the slack with real data.
-func TestWildberriesParser_APIFails_HTMLSucceeds(t *testing.T) {
-	t.Parallel()
-	apiSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		http.Error(w, "forbidden", http.StatusForbidden)
-	}))
-	t.Cleanup(apiSrv.Close)
-	htmlSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		_, _ = w.Write([]byte(wbHTMLFallback))
-	}))
-	t.Cleanup(htmlSrv.Close)
-
-	p := NewWildberries(testLog()).WithAPIURL(apiSrv.URL).WithHTMLURL(htmlSrv.URL)
-	got, err := p.Fetch(context.Background())
-	if err != nil {
-		t.Fatalf("Fetch: %v", err)
-	}
-	if len(got) != 1 || got[0].Title != "QA Engineer" {
-		t.Errorf("want 1xQA from HTML fallback, got %+v", got)
-	}
-}
-
-func TestWildberriesParser_BothFail(t *testing.T) {
-	t.Parallel()
-	apiSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		http.Error(w, "nope", http.StatusInternalServerError)
-	}))
-	t.Cleanup(apiSrv.Close)
-	htmlSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		_, _ = w.Write([]byte(`<html><body>nothing here</body></html>`))
-	}))
-	t.Cleanup(htmlSrv.Close)
-
-	p := NewWildberries(testLog()).WithAPIURL(apiSrv.URL).WithHTMLURL(htmlSrv.URL)
+	p := NewWildberries(testLog()).WithAPIURL(srv.URL)
 	_, err := p.Fetch(context.Background())
 	if err == nil {
-		t.Fatal("expected error when both REST and HTML fail")
+		t.Fatalf("expected error on HTTP 500")
 	}
 }
 
-func TestWildberriesParser_MalformedAPI(t *testing.T) {
+func TestWildberriesParser_MalformedBody(t *testing.T) {
 	t.Parallel()
-	apiSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		_, _ = w.Write([]byte(`<<not json>>`))
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte("{not json"))
 	}))
-	t.Cleanup(apiSrv.Close)
-	// HTML succeeds — proves malformed REST -> HTML fallback path.
-	htmlSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		_, _ = w.Write([]byte(wbHTMLFallback))
-	}))
-	t.Cleanup(htmlSrv.Close)
+	defer srv.Close()
 
-	p := NewWildberries(testLog()).WithAPIURL(apiSrv.URL).WithHTMLURL(htmlSrv.URL)
-	got, err := p.Fetch(context.Background())
-	if err != nil {
-		t.Fatalf("Fetch: %v", err)
-	}
-	if len(got) != 1 {
-		t.Errorf("want 1 vacancy from html fallback after malformed api, got %d", len(got))
+	p := NewWildberries(testLog()).WithAPIURL(srv.URL)
+	_, err := p.Fetch(context.Background())
+	if err == nil {
+		t.Fatalf("expected decode error")
 	}
 }
 
-func TestWildberriesParser_EmptyAPI(t *testing.T) {
+func TestWildberriesParser_EmptyItems(t *testing.T) {
 	t.Parallel()
-	apiSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		_, _ = w.Write([]byte(`[]`))
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`{"status":200,"data":{"items":[],"range":{"total":0}}}`))
 	}))
-	t.Cleanup(apiSrv.Close)
-	htmlSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		_, _ = w.Write([]byte(wbHTMLFallback))
-	}))
-	t.Cleanup(htmlSrv.Close)
+	defer srv.Close()
 
-	p := NewWildberries(testLog()).WithAPIURL(apiSrv.URL).WithHTMLURL(htmlSrv.URL)
+	p := NewWildberries(testLog()).WithAPIURL(srv.URL)
 	got, err := p.Fetch(context.Background())
 	if err != nil {
-		t.Fatalf("Fetch: %v", err)
+		t.Fatalf("empty list should not error: %v", err)
 	}
-	// Empty REST -> falls through to HTML which has 1 row.
-	if len(got) != 1 {
-		t.Errorf("want 1 from html after empty api, got %d", len(got))
+	if len(got) != 0 {
+		t.Fatalf("want 0, got %d", len(got))
 	}
 }

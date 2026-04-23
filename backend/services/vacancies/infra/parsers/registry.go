@@ -7,7 +7,12 @@
 // anything about each source.
 //
 // HH.ru's job-seeker API was sunset 2025-12-15; the integration is gone.
-// Replacement is direct career-portal scraping (Phase 1: Ozon Tech + WB).
+// Replacement is direct career-portal scraping. Phase 1 verified shipping:
+// Wildberries (career.rwb.ru/crm-api/api/v1/pub/vacancies — confirmed 538
+// live items 2026-04-23). Ozon Tech was YANKED from registry — the host
+// `career.ozon.tech` is NXDOMAIN; the parser was written against a guessed
+// URL that never existed. Real Ozon careers domain (job.ozon.ru / ozon.tech)
+// hides behind anti-bot edge that needs proper investigation — Phase 2.
 //
 // Anti-fallback policy: NEVER register a stub parser. A "registered" source
 // that always returns 0 vacancies makes the frontend's filter sidebar
@@ -41,7 +46,9 @@ func RegisterAll(cfg Config) []domain.Parser {
 	return []domain.Parser{
 		NewYandex(cfg.Log),
 		NewOzon(cfg.Log),
-		NewOzonTech(cfg.Log),
+		// NewOzonTech yanked: host career.ozon.tech is NXDOMAIN. Re-enable
+		// once Phase 2 verifies the real Ozon Tech endpoint against live.
+		NewSber(cfg.Log),
 		NewTinkoff(cfg.Log),
 		NewVK(cfg.Log),
 		NewWildberries(cfg.Log),
