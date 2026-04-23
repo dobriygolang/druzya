@@ -214,7 +214,7 @@ function PrepDrawer({ onClose, missing }: { onClose: () => void; missing: string
                 {missing.map((s) => (
                   <li key={s}>
                     <Link
-                      to={`/daily?skill=${encodeURIComponent(s)}`}
+                      to={`/arena/kata?skill=${encodeURIComponent(s)}`}
                       className="flex items-center justify-between rounded-md border border-border bg-surface-2 px-3 py-2 text-sm text-text-primary hover:border-border-strong"
                     >
                       <span className="font-mono">{s}</span>

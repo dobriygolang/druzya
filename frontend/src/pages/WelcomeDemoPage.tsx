@@ -60,7 +60,7 @@ const STEPS: TourStep[] = [
     icon: Calendar,
     title: 'Daily Kata — стрик',
     body: 'Одно тёплое задание в день, чтобы держать форму. Без него стрик не нарастёт, а с ним — растёт LP и достижения.',
-    cta: { label: 'Сегодняшняя ката', to: '/daily' },
+    cta: { label: 'Сегодняшняя ката', to: '/arena/kata' },
     accentClass: 'from-success to-cyan',
   },
   {

@@ -158,7 +158,7 @@ export function AtlasDrawer({
                   <KataItem key={k.id} k={k} />
                 ))}
               </ul>
-              <Link to={`/daily/kata/${encodeURIComponent(recommended[0].id)}`} className="block">
+              <Link to={`/arena/kata/${encodeURIComponent(recommended[0].id)}`} className="block">
                 <Button
                   size="md"
                   iconRight={<ArrowRight className="h-4 w-4" />}
@@ -212,7 +212,7 @@ function KataItem({ k }: { k: KataRef }) {
   return (
     <li>
       <Link
-        to={`/daily/kata/${encodeURIComponent(k.id)}`}
+        to={`/arena/kata/${encodeURIComponent(k.id)}`}
         className="flex items-center justify-between rounded-md border border-border bg-surface-2 px-3 py-2 text-sm text-text-primary transition-colors hover:border-accent"
       >
         <div className="flex min-w-0 flex-col">

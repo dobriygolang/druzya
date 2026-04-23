@@ -310,7 +310,7 @@ function EmptyProgressCTA() {
             рекомендованы.
           </p>
         </div>
-        <Link to="/daily/kata/two-sum">
+        <Link to="/arena/kata/two-sum">
           <Button size="md" iconRight={<ArrowRight className="h-4 w-4" />}>
             Начни с Two Sum
           </Button>

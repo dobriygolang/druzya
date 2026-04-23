@@ -2,17 +2,15 @@
   "nav": {
     "sanctum": "Sanctum",
     "arena": "Arena",
-    "kata": "Kata",
     "guild": "Guild",
     "atlas": "Atlas",
     "codex": "Codex",
     "friends": "Friends",
     "help": "Help",
-    "podcasts": "Podcasts",
-    "weekly": "Weekly Report",
     "logout": "Sign out",
     "profile": "Profile",
     "vacancies": "Vacancies",
+    "slots": "Slots",
     "settings": "Settings",
     "notifications": "Notifications",
     "admin": "Admin",
@@ -55,7 +53,6 @@
     "label": "Language",
     "ru": "Русский",
     "en": "English",
-    "kz": "Қазақша",
-    "ua": "Українська"
+    "kz": "Қазақша"
   }
 }

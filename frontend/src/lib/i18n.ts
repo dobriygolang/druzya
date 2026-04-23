@@ -28,9 +28,12 @@ import enPages from '../locales/en/pages.json'
 import enWave10 from '../locales/en/wave10.json'
 
 // STRATEGIC SCAFFOLD — Phase 1 of docs/strategic/i18n.md.
-// kz/* and ua/* are byte-identical copies of ru/* until the content team
-// ships translations. Fallback chain (configured below) is kz → ru → en
-// and ua → ru → en, so untranslated keys never render as placeholders.
+// kz/* are byte-identical copies of ru/* until the content team ships
+// translations. Fallback chain (configured below) is kz → ru → en, so
+// untranslated keys never render as placeholders.
+//
+// WAVE-13 — Ukrainian (ua) locale removed by product decision; LANG_LIST
+// no longer surfaces it and the locales/ua/ directory has been deleted.
 import kzCommon from '../locales/kz/common.json'
 import kzSanctum from '../locales/kz/sanctum.json'
 import kzArena from '../locales/kz/arena.json'
@@ -44,22 +47,9 @@ import kzErrors from '../locales/kz/errors.json'
 import kzPages from '../locales/kz/pages.json'
 import kzWave10 from '../locales/kz/wave10.json'
 
-import uaCommon from '../locales/ua/common.json'
-import uaSanctum from '../locales/ua/sanctum.json'
-import uaArena from '../locales/ua/arena.json'
-import uaProfile from '../locales/ua/profile.json'
-import uaDaily from '../locales/ua/daily.json'
-import uaWelcome from '../locales/ua/welcome.json'
-import uaOnboarding from '../locales/ua/onboarding.json'
-import uaSettings from '../locales/ua/settings.json'
-import uaCodex from '../locales/ua/codex.json'
-import uaErrors from '../locales/ua/errors.json'
-import uaPages from '../locales/ua/pages.json'
-import uaWave10 from '../locales/ua/wave10.json'
-
 const STORAGE_KEY = 'druz9_lang'
 
-export type Lang = 'ru' | 'en' | 'kz' | 'ua'
+export type Lang = 'ru' | 'en' | 'kz'
 
 export const NAMESPACES = [
   'common',
@@ -119,30 +109,17 @@ export const resources = {
     pages: kzPages,
     wave10: kzWave10,
   },
-  ua: {
-    common: uaCommon,
-    sanctum: uaSanctum,
-    arena: uaArena,
-    profile: uaProfile,
-    daily: uaDaily,
-    welcome: uaWelcome,
-    onboarding: uaOnboarding,
-    settings: uaSettings,
-    codex: uaCodex,
-    errors: uaErrors,
-    pages: uaPages,
-    wave10: uaWave10,
-  },
 }
 
 function detectLang(): Lang {
   if (typeof window === 'undefined') return 'en'
   const stored = window.localStorage.getItem(STORAGE_KEY)
-  if (stored === 'ru' || stored === 'en' || stored === 'kz' || stored === 'ua') return stored
+  // Persisted 'ua' falls through to the browser-detection branch and
+  // ultimately settles on EN — the legacy value никого не сломает.
+  if (stored === 'ru' || stored === 'en' || stored === 'kz') return stored
   const browser = (navigator.language || 'en').toLowerCase()
   if (browser.startsWith('ru')) return 'ru'
   if (browser.startsWith('kk')) return 'kz' // Kazakh BCP47 is "kk"
-  if (browser.startsWith('uk')) return 'ua' // Ukrainian BCP47 is "uk"
   return 'en'
 }
 
@@ -150,12 +127,11 @@ export async function initI18n() {
   const lng = detectLang()
   await i18n.use(initReactI18next).init({
     lng,
-    // STRATEGIC SCAFFOLD: fallback per-locale so kz/ua resolve missing
-    // keys via ru first (the source of truth until content lands), then
-    // en as the universal safety net. See docs/strategic/i18n.md §3.
+    // STRATEGIC SCAFFOLD: fallback per-locale so kz resolves missing keys
+    // via ru first (the source of truth until content lands), then en as
+    // the universal safety net. See docs/strategic/i18n.md §3.
     fallbackLng: {
       kz: ['ru', 'en'],
-      ua: ['ru', 'en'],
       default: ['en'],
     },
     ns: NAMESPACES as unknown as string[],
@@ -187,10 +163,10 @@ export function currentLanguage(): Lang {
   return (i18n.language as Lang) || 'en'
 }
 
-// toggleLanguage cycles ru → en → kz → ua → ru. Phase 2 will replace the
+// toggleLanguage cycles ru → en → kz → ru. Phase 2 will replace the
 // header toggle with a proper dropdown — see docs/strategic/i18n.md §8.
 export function toggleLanguage() {
-  const order: Lang[] = ['ru', 'en', 'kz', 'ua']
+  const order: Lang[] = ['ru', 'en', 'kz']
   const cur = currentLanguage()
   const idx = order.indexOf(cur)
   const next = order[(idx + 1) % order.length]
@@ -202,20 +178,17 @@ export const LANG_LIST: { code: Lang; flag: string; label: string }[] = [
   { code: 'ru', flag: '🇷🇺', label: 'Русский' },
   { code: 'en', flag: '🇬🇧', label: 'English' },
   { code: 'kz', flag: '🇰🇿', label: 'Қазақша' },
-  { code: 'ua', flag: '🇺🇦', label: 'Українська' },
 ]
 
-// bcp47 maps internal lang codes (ru/en/kz/ua) to canonical BCP47 tags
-// for Intl.* APIs. KZ → kk-KZ (Kazakh), UA → uk-UA (Ukrainian) — see
-// docs/strategic/i18n.md §6 (number/date formatting).
+// bcp47 maps internal lang codes (ru/en/kz) to canonical BCP47 tags
+// for Intl.* APIs. KZ → kk-KZ (Kazakh) — see docs/strategic/i18n.md §6
+// (number/date formatting).
 export function bcp47(lang: Lang = currentLanguage()): string {
   switch (lang) {
     case 'ru':
       return 'ru-RU'
     case 'kz':
       return 'kk-KZ'
-    case 'ua':
-      return 'uk-UA'
     case 'en':
     default:
       return 'en-US'

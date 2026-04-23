@@ -64,7 +64,7 @@ function EmptyCalendar() {
             и оценим готовность по разделам.
           </p>
           <Link
-            to="/daily"
+            to="/arena/kata"
             className="rounded-md bg-accent px-4 py-2 text-sm font-semibold text-text-primary shadow-glow hover:bg-accent/90"
           >
             Создать план
@@ -325,8 +325,8 @@ export default function InterviewCalendarPage() {
             {today_tasks.length === 0 ? (
               <Card className="flex-col gap-2 p-5 text-sm text-text-muted">
                 На сегодня задач нет — отдыхай или возьми kata из{' '}
-                <Link to="/daily" className="text-accent-hover hover:underline">
-                  /daily
+                <Link to="/arena/kata" className="text-accent-hover hover:underline">
+                  /arena/kata
                 </Link>
                 .
               </Card>

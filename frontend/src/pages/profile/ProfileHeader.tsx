@@ -1,5 +1,6 @@
 import { Share2, UserPlus } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
+import { Link } from 'react-router-dom'
 import { Button } from '../../components/Button'
 import { cn } from '../../lib/cn'
 import { useRatingMeQuery } from '../../lib/queries/rating'
@@ -111,6 +112,18 @@ export function ProfileTabBar({ tab, setTab, isOwn }: { tab: ProfileTab; setTab:
           </button>
         )
       })}
+      {/* WAVE-13 — Weekly is a sibling page (/profile/weekly) rather than an
+          in-state tab, but lives in the same tab strip for IA consistency.
+          Rendering it as a <Link> so React Router handles the navigation
+          while it visually matches the other tabs. */}
+      {isOwn && (
+        <Link
+          to="/profile/weekly"
+          className="relative h-full px-4 text-sm font-semibold text-text-secondary transition-colors hover:text-text-primary inline-flex items-center"
+        >
+          Weekly
+        </Link>
+      )}
     </div>
   )
 }

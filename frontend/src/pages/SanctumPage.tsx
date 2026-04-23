@@ -235,7 +235,7 @@ function DailyHero({ compact = false }: { compact?: boolean }) {
           <Stat value={`${day} ${day > 0 ? '🔥' : ''}`} label={t('streak_days')} highlight="warn" />
           {kata?.already_submitted && <Stat value="✓" label={t('passed_today')} highlight="cyan" />}
         </div>
-        <Link to="/daily">
+        <Link to="/arena/kata">
           <Button
             variant="primary"
             iconRight={<ArrowRight className="h-4 w-4" />}

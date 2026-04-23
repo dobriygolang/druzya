@@ -530,13 +530,21 @@ breaking changes.
 - [ ] **Unit tests** for every use case with a fake LLM provider.
 - [ ] `copilot/WIRING.md` — integration checklist for monolith.
 
-### Phase 2 — Wire into monolith
-- [ ] `backend/cmd/monolith/services/copilot.go` — construct repos, LLM
-      client, use cases, mount module.
-- [ ] Register in `go.work` and `bootstrap/bootstrap.go`.
-- [ ] Add REST routes under `/api/v1/copilot/*`.
-- [ ] Integration test: `curl` all endpoints with a test JWT.
-- [ ] Rate-limit middleware on `Analyze` / `Chat` (quota-driven).
+### Phase 2 — Wire into monolith (COMPLETE ✅)
+- [x] `backend/cmd/monolith/services/copilot.go` — wiring module assembles
+      repos, LLM, config provider, 10 use cases, ports server.
+- [x] `go.work` includes `./backend/services/copilot`.
+- [x] `backend/cmd/monolith/go.mod` has `require druz9/copilot ...` +
+      `replace druz9/copilot => ../../services/copilot`.
+- [x] `bootstrap/bootstrap.go` modules slice includes
+      `services.NewCopilot(deps)`.
+- [x] REST routes mounted under `/api/v1/copilot/*`.
+- [x] `backend/services/copilot/WIRING.md` — integration checklist.
+- [x] Full monolith builds cleanly (`go build ./...`).
+- [ ] Integration test with real JWT — deferred to Phase 3 once the
+      desktop client can drive real requests.
+- [ ] Per-IP rate-limit middleware on Analyze/Chat — deferred; quota
+      inside the use case is already the primary defense.
 
 ### Phase 3 — Desktop scaffold (`desktop/`)
 - [ ] `package.json`, `tsconfig.json`, `electron.vite.config.ts`,

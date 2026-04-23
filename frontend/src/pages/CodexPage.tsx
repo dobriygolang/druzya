@@ -9,6 +9,7 @@
 import { useState } from 'react'
 import { ArrowUpRight, Search } from 'lucide-react'
 import { AppShellV2 } from '../components/AppShell'
+import { KnowledgeHubTabs } from '../components/KnowledgeHubTabs'
 import { Card } from '../components/Card'
 import {
   CODEX_ARTICLES,
@@ -139,6 +140,9 @@ export default function CodexPage() {
 
   return (
     <AppShellV2>
+      {/* WAVE-13 — shared "Статьи · Подкасты" tabs unify Codex + Podcasts
+          under a single header entry. */}
+      <KnowledgeHubTabs active="articles" />
       <Hero />
       <CategoryFilters active={category} onChange={setCategory} />
       <div className="px-4 pb-4 sm:px-8 lg:px-20">

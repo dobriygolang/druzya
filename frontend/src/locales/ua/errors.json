@@ -1,9 +1,0 @@
-{
-  "_note": "needs human translation, currently falls back to RU via i18n.ts fallback chain",
-  "load_failed": "Не удалось загрузить",
-  "empty": "Здесь пока пусто",
-  "not_found_title": "Страница не найдена",
-  "not_found_sub": "Похоже, ты свернул не туда. Возвращайся в Sanctum.",
-  "go_home": "На главную",
-  "generic": "Что-то пошло не так. Попробуй ещё раз."
-}

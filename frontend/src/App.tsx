@@ -137,6 +137,10 @@ export default function App() {
         <Route path="/atlas" element={<AtlasPage />} />
         <Route path="/codex" element={<CodexPage />} />
         <Route path="/profile" element={<ProfilePage />} />
+        {/* WAVE-13 — /profile/weekly absorbs the standalone /weekly route as
+            a profile sub-section. ProfilePage's tab strip also surfaces this
+            tab so users can navigate without changing URL manually. */}
+        <Route path="/profile/weekly" element={<WeeklyReportPage />} />
         <Route path="/profile/:username" element={<ProfilePage />} />
         {/* WAVE-13 — /daily kept as 301-style redirect to /arena/kata for
             backward-compat with bookmarks. React Router uses replace so the
@@ -187,7 +191,9 @@ export default function App() {
           /weekly — primary route as advertised in nav. /report kept as alias
           for backward compatibility (старые шеры в ссылках, e2e-тесты).
         */}
-        <Route path="/weekly" element={<WeeklyReportPage />} />
+        {/* WAVE-13 — /weekly kept as 301-style redirect to /profile/weekly.
+            Public share /weekly/share/:token below stays unchanged. */}
+        <Route path="/weekly" element={<Navigate to="/profile/weekly" replace />} />
         {/* Phase C: публичный share-link на недельный отчёт. Никаких guards —
             страница сама дёргает /api/v1/profile/weekly/share/{token} без
             bearer'а и показывает 404 при истёкшем токене. */}

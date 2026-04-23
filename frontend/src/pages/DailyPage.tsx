@@ -4,6 +4,7 @@ import { CheckCircle2, Flame, Loader2, Play, Send, XCircle } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Link, useParams } from 'react-router-dom'
 import { AppShellV2 } from '../components/AppShell'
+import { ArenaSegmented } from '../components/ArenaSegmented'
 import { Button } from '../components/Button'
 import { Card } from '../components/Card'
 import { cn } from '../lib/cn'
@@ -372,7 +373,7 @@ function SlugNotFoundView({ slug }: { slug: string }) {
         </h1>
         <p className="font-mono text-[13px] text-text-muted">slug: {slug}</p>
         <Link
-          to="/daily"
+          to="/arena/kata"
           className="mt-2 rounded-md bg-accent px-4 py-2 font-mono text-[12px] font-semibold text-bg hover:opacity-90"
         >
           ← Вернуться к сегодняшней ка́те
@@ -415,6 +416,9 @@ export default function DailyPage() {
     const starter = slugKata?.task?.starter_code?.go ?? ''
     return (
       <AppShellV2>
+        {/* WAVE-13 — daily kata теперь живёт под /arena/kata, и сегментный
+            переключатель сверху ведёт обратно на /arena (поединки). */}
+        <ArenaSegmented active="kata" />
         <Hero kata={slugKata} isError={slugQ.isError} />
         <div className="flex flex-col gap-6 px-4 py-6 sm:px-8 lg:flex-row lg:px-10 lg:py-8" style={{ minHeight: 'calc(100vh - 72px - 200px)' }}>
           <DescriptionCard kata={slugKata} />
@@ -434,6 +438,7 @@ export default function DailyPage() {
   const starter = kata?.task?.starter_code?.go ?? ''
   return (
     <AppShellV2>
+      <ArenaSegmented active="kata" />
       <Hero kata={kata} isError={isError} />
       <div className="flex flex-col gap-6 px-4 py-6 sm:px-8 lg:flex-row lg:px-10 lg:py-8" style={{ minHeight: 'calc(100vh - 72px - 200px)' }}>
         <DescriptionCard kata={kata} />

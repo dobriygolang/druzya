@@ -240,7 +240,7 @@ function TodayCard({ kata, dayOfYear }: { kata: DailyKata | undefined; dayOfYear
           variant="primary"
           iconRight={<ArrowRight className="h-4 w-4" />}
           className="bg-text-primary text-bg shadow-none hover:bg-white/90"
-          onClick={() => navigate('/daily')}
+          onClick={() => navigate('/arena/kata')}
         >
           {submitted ? t('kata_streak.review') : t('kata_streak.solve_now')}
         </Button>

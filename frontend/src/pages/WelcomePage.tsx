@@ -289,7 +289,7 @@ function Footer() {
               </Link>
             </li>
             <li>
-              <Link to="/daily" className="text-text-secondary transition-colors hover:text-text-primary">
+              <Link to="/arena/kata" className="text-text-secondary transition-colors hover:text-text-primary">
                 {t('footer.links.daily')}
               </Link>
             </li>

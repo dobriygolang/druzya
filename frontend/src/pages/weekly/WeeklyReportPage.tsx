@@ -10,6 +10,8 @@
 // рендерится honest empty-state ("Нет активности на этой неделе") или
 // секция вовсе скрывается (ai_insight, elo_series). НЕТ STUB / TODO в JSX.
 import { useMemo } from 'react'
+import { Link } from 'react-router-dom'
+import { ChevronLeft } from 'lucide-react'
 import { AppShellV2 } from '../../components/AppShell'
 import { useWeeklyReportQuery } from '../../lib/queries/weekly'
 import { isoWeekKey } from './utils'
@@ -36,6 +38,17 @@ export default function WeeklyReportPage() {
 
   return (
     <AppShellV2>
+      {/* WAVE-13 — Weekly теперь sub-section /profile. Лёгкий breadcrumb
+          вверху помогает понять контекст и даёт быстрый возврат к табам. */}
+      <div className="flex h-[40px] items-center border-b border-border bg-bg px-4 sm:px-8 lg:px-20">
+        <Link
+          to="/profile"
+          className="inline-flex items-center gap-1 text-sm text-text-secondary hover:text-text-primary"
+        >
+          <ChevronLeft className="h-4 w-4" /> Профиль
+        </Link>
+        <span className="ml-2 text-sm text-text-muted">/ Weekly</span>
+      </div>
       <HeaderRow report={data} isLoading={isLoading} />
       <div className="flex flex-col gap-6 px-4 pb-10 pt-6 sm:px-8 lg:gap-7 lg:px-20">
         <TldrCards report={data} />
