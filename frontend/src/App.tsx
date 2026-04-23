@@ -50,6 +50,11 @@ const OnbStep4 = lazy(() => import('./pages/onboarding/Step4Task'))
 const MockSessionPage = lazy(() => import('./pages/MockSessionPage'))
 const MockResultPage = lazy(() => import('./pages/MockResultPage'))
 const MockReplayPage = lazy(() => import('./pages/MockReplayPage'))
+// Wave-11: multi-stage mock interview pipeline (company picker →
+// screening → go+sql → algo → sys_design → behavioral → debrief).
+const MockCompanyPicker = lazy(() => import('./pages/mock/MockCompanyPicker'))
+const MockPipelinePage = lazy(() => import('./pages/mock/MockPipelinePage'))
+const MockPipelineDebrief = lazy(() => import('./pages/mock/MockPipelineDebrief'))
 const NativeRoundPage = lazy(() => import('./pages/NativeRoundPage'))
 const InterviewAutopsyPage = lazy(() => import('./pages/InterviewAutopsyPage'))
 const GuildPage = lazy(() => import('./pages/GuildPage'))
@@ -128,6 +133,13 @@ export default function App() {
         <Route path="/onboarding/class" element={<OnbStep2 />} />
         <Route path="/onboarding/skill" element={<OnbStep3 />} />
         <Route path="/onboarding/task" element={<OnbStep4 />} />
+        {/* Wave-11 mock-pipeline routes — registered BEFORE the legacy
+            /mock/:sessionId so the literal "pipeline" segment wins router
+            ranking. /mock (no params) is the company picker; the
+            single-shot mock session UI keeps its old URL shape. */}
+        <Route path="/mock" element={<MockCompanyPicker />} />
+        <Route path="/mock/pipeline/:pipelineId" element={<MockPipelinePage />} />
+        <Route path="/mock/pipeline/:pipelineId/debrief" element={<MockPipelineDebrief />} />
         <Route path="/mock/:sessionId" element={<MockSessionPage />} />
         <Route path="/mock/:sessionId/result" element={<MockResultPage />} />
         <Route path="/mock/:sessionId/replay" element={<MockReplayPage />} />

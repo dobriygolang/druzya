@@ -641,6 +641,15 @@ export default function ArenaPage() {
   }
 
   const handleModeClick = (m: Mode) => {
+    // Wave-11: `mock` card no longer enqueues a single "hardcore" arena
+    // match — it routes to the multi-stage pipeline picker (/mock), which
+    // then walks the user through screening → go+sql → algo → sys_design
+    // → behavioral. Original single-shot /voice-mock is still reachable
+    // from the coming-soon empty-state on /mock.
+    if (m.key === 'mock') {
+      navigate('/mock')
+      return
+    }
     if (m.requiresParty && partyMode !== 'party') {
       setPartyMode('party')
     }
