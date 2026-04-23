@@ -102,6 +102,10 @@ const PricingPage = lazy(() => import('./pages/pricing/PricingPage'))
 const CheckoutPage = lazy(() => import('./pages/checkout/CheckoutPage'))
 const CheckoutSuccess = lazy(() => import('./pages/checkout/CheckoutSuccess'))
 const CheckoutFailure = lazy(() => import('./pages/checkout/CheckoutFailure'))
+// Wave-11 — pair-coding (collaborative editor, бекенд: services/editor).
+const PairLobbyPage = lazy(() => import('./pages/pair/PairLobbyPage'))
+const PairRoomPage = lazy(() => import('./pages/pair/PairRoomPage'))
+const PairInvitePage = lazy(() => import('./pages/pair/PairInvitePage'))
 
 export default function App() {
   return (
@@ -197,6 +201,11 @@ export default function App() {
         <Route path="/checkout" element={<CheckoutPage />} />
         <Route path="/checkout/success" element={<CheckoutSuccess />} />
         <Route path="/checkout/failure" element={<CheckoutFailure />} />
+        {/* Wave-11 pair-coding (collaborative editor). /pair — лобби,
+            /pair/:roomId — комната, /pair/invite/:token — приём приглашения. */}
+        <Route path="/pair" element={<PairLobbyPage />} />
+        <Route path="/pair/invite/:token" element={<PairInvitePage />} />
+        <Route path="/pair/:roomId" element={<PairRoomPage />} />
         {/* Legacy /v2/* — редирект на новый URL без префикса. */}
         <Route path="/v2/*" element={<LegacyV2Redirect />} />
         <Route path="*" element={<NotFoundPage />} />

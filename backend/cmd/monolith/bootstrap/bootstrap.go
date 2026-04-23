@@ -117,6 +117,7 @@ func New(ctx context.Context, cfg *config.Config) (app *App, otelShutdown func()
 		services.NewAchievements(deps),
 		services.NewFriends(deps),
 		services.NewCohort(deps),
+		services.NewLobby(deps),
 	}
 
 	registerSubscribers(bus, modules)

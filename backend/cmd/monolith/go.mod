@@ -16,6 +16,7 @@ require (
 	druz9/feed v0.0.0-00010101000000-000000000000
 	druz9/friends v0.0.0-00010101000000-000000000000
 	druz9/guild v0.0.0-00010101000000-000000000000
+	druz9/lobby v0.0.0-00010101000000-000000000000
 	druz9/notify v0.0.0-00010101000000-000000000000
 	druz9/podcast v0.0.0-00010101000000-000000000000
 	druz9/profile v0.0.0-00010101000000-000000000000
@@ -118,3 +119,5 @@ replace druz9/achievements => ../../services/achievements
 replace druz9/friends => ../../services/friends
 
 replace druz9/cohort => ../../services/cohort
+
+replace druz9/lobby => ../../services/lobby

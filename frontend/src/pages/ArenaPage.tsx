@@ -9,6 +9,7 @@ import {
   X,
   Zap,
   Bot,
+  FileCode,
 } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
@@ -328,13 +329,15 @@ type Mode = {
     | 'ranked_2v2'
     | 'mock'
     | 'ai_allowed'
+    | 'pair_code'
   name: string
   desc: string
-  count: number
+  count: number | string
   time: string
   icon: ReactNode
   gradient: string
-  /** Which arena queue to enqueue into. */
+  /** Which arena queue to enqueue into. Ignored for non-queue modes
+   *  (mock, pair_code) which navigate instead of enqueue. */
   arenaMode: ArenaModeKey
   /** True if this card needs the user to be in Party mode (2v2). */
   requiresParty: boolean
@@ -403,6 +406,19 @@ const MODES: Mode[] = [
     requiresParty: false,
     aiPowered: true,
   },
+  {
+    key: 'pair_code',
+    name: 'Pair Code',
+    desc: 'Совместный редактор кода — live-кодинг как yandex-code / code-interview.',
+    count: '—',
+    time: '—',
+    icon: <FileCode className="h-7 w-7 text-text-primary" />,
+    gradient: 'from-cyan to-pink',
+    // arenaMode не используется — карточка ведёт на /pair (см. handleModeClick).
+    arenaMode: 'ranked',
+    requiresParty: false,
+    aiPowered: false,
+  },
 ]
 // Practice vs AI + Custom Lobby удалены (Wave-4 bugfix):
 // - Practice: бот априори решал быстрее человека, + матч оказывался
@@ -452,7 +468,9 @@ function ModeCard({
           <span className="relative inline-flex h-2 w-2 rounded-full bg-success" />
         </span>
         <span className="font-mono text-[11px] text-text-muted">
-          {t('in_queue', { count: m.count, time: m.time })}
+          {typeof m.count === 'number'
+            ? t('in_queue', { count: m.count, time: m.time })
+            : `${m.count} · ${m.time}`}
         </span>
         {m.aiPowered && (
           <span className="inline-flex items-center gap-1 rounded-full bg-pink/15 px-2 py-0.5 font-mono text-[10px] font-semibold text-pink">
@@ -648,6 +666,10 @@ export default function ArenaPage() {
     // from the coming-soon empty-state on /mock.
     if (m.key === 'mock') {
       navigate('/mock')
+      return
+    }
+    if (m.key === 'pair_code') {
+      navigate('/pair')
       return
     }
     if (m.requiresParty && partyMode !== 'party') {

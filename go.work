@@ -24,6 +24,7 @@ use (
 	./backend/services/mentor_session
 	./backend/services/tg_coach
 	./backend/services/cohort
+	./backend/services/lobby
 	./backend/shared
 )
 
