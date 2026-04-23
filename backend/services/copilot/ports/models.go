@@ -40,6 +40,8 @@ func roleToProto(r enums.MessageRole) pb.MessageRole {
 
 func speedClassToProto(s domain.ModelSpeedClass) pb.ModelSpeedClass {
 	switch s {
+	case domain.ModelSpeedClassUnspecified:
+		return pb.ModelSpeedClass_MODEL_SPEED_CLASS_UNSPECIFIED
 	case domain.ModelSpeedClassFast:
 		return pb.ModelSpeedClass_MODEL_SPEED_CLASS_FAST
 	case domain.ModelSpeedClassBalanced:
@@ -53,6 +55,8 @@ func speedClassToProto(s domain.ModelSpeedClass) pb.ModelSpeedClass {
 
 func hotkeyActionToProto(a domain.HotkeyAction) pb.HotkeyAction {
 	switch a {
+	case domain.HotkeyActionUnspecified:
+		return pb.HotkeyAction_HOTKEY_ACTION_UNSPECIFIED
 	case domain.HotkeyActionScreenshotArea:
 		return pb.HotkeyAction_HOTKEY_ACTION_SCREENSHOT_AREA
 	case domain.HotkeyActionScreenshotFull:
@@ -72,6 +76,8 @@ func hotkeyActionToProto(a domain.HotkeyAction) pb.HotkeyAction {
 
 func hotkeyActionFromProto(p pb.HotkeyAction) domain.HotkeyAction {
 	switch p {
+	case pb.HotkeyAction_HOTKEY_ACTION_UNSPECIFIED:
+		return domain.HotkeyActionUnspecified
 	case pb.HotkeyAction_HOTKEY_ACTION_SCREENSHOT_AREA:
 		return domain.HotkeyActionScreenshotArea
 	case pb.HotkeyAction_HOTKEY_ACTION_SCREENSHOT_FULL:
@@ -91,6 +97,8 @@ func hotkeyActionFromProto(p pb.HotkeyAction) domain.HotkeyAction {
 
 func clientOSFromProto(p pb.ClientOS) domain.ClientOS {
 	switch p {
+	case pb.ClientOS_CLIENT_OS_UNSPECIFIED:
+		return domain.ClientOSUnspecified
 	case pb.ClientOS_CLIENT_OS_MACOS:
 		return domain.ClientOSMacOS
 	case pb.ClientOS_CLIENT_OS_WINDOWS:
@@ -104,6 +112,8 @@ func clientOSFromProto(p pb.ClientOS) domain.ClientOS {
 
 func attachmentKindFromProto(p pb.CopilotAttachmentKind) domain.AttachmentKind {
 	switch p {
+	case pb.CopilotAttachmentKind_COPILOT_ATTACHMENT_KIND_UNSPECIFIED:
+		return domain.AttachmentKindUnspecified
 	case pb.CopilotAttachmentKind_COPILOT_ATTACHMENT_KIND_SCREENSHOT:
 		return domain.AttachmentKindScreenshot
 	case pb.CopilotAttachmentKind_COPILOT_ATTACHMENT_KIND_VOICE_TRANSCRIPT:

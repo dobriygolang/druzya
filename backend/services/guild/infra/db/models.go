@@ -134,6 +134,38 @@ type Company struct {
 	CreatedAt        pgtype.Timestamptz
 }
 
+type CopilotConversation struct {
+	ID        pgtype.UUID
+	UserID    pgtype.UUID
+	Title     string
+	Model     string
+	CreatedAt pgtype.Timestamptz
+	UpdatedAt pgtype.Timestamptz
+}
+
+type CopilotMessage struct {
+	ID             pgtype.UUID
+	ConversationID pgtype.UUID
+	Role           string
+	Content        string
+	HasScreenshot  bool
+	TokensIn       int32
+	TokensOut      int32
+	LatencyMs      int32
+	Rating         pgtype.Int2
+	CreatedAt      pgtype.Timestamptz
+}
+
+type CopilotQuota struct {
+	UserID        pgtype.UUID
+	Plan          string
+	RequestsUsed  int32
+	RequestsCap   int32
+	ResetsAt      pgtype.Timestamptz
+	ModelsAllowed []string
+	UpdatedAt     pgtype.Timestamptz
+}
+
 type DailyKataHistory struct {
 	UserID       pgtype.UUID
 	KataDate     pgtype.Date

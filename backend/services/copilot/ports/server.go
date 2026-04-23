@@ -295,7 +295,11 @@ func parseOptionalUUID(s string) (uuid.UUID, error) {
 	if s == "" {
 		return uuid.Nil, nil
 	}
-	return uuid.Parse(s)
+	id, err := uuid.Parse(s)
+	if err != nil {
+		return uuid.Nil, fmt.Errorf("copilot.parseOptionalUUID: %w", err)
+	}
+	return id, nil
 }
 
 // pumpAnalyzeFrames translates app.StreamFrame into pb.AnalyzeEvent frames

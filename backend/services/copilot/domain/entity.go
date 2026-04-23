@@ -106,28 +106,28 @@ const (
 // ProviderModel describes one entry in the model catalogue. All fields are
 // server-driven so the client does not hardcode model metadata.
 type ProviderModel struct {
-	ID                      string // "openai/gpt-4o-mini"
-	DisplayName             string // "GPT Fast"
-	ProviderName            string // "OpenAI"
-	SpeedClass              ModelSpeedClass
-	SupportsVision          bool
-	SupportsReasoning       bool
-	TypicalLatencyMs        int
-	ContextWindowTokens     int
-	AvailableOnCurrentPlan  bool
+	ID                     string // "openai/gpt-4o-mini"
+	DisplayName            string // "GPT Fast"
+	ProviderName           string // "OpenAI"
+	SpeedClass             ModelSpeedClass
+	SupportsVision         bool
+	SupportsReasoning      bool
+	TypicalLatencyMs       int
+	ContextWindowTokens    int
+	AvailableOnCurrentPlan bool
 }
 
 // HotkeyAction enumerates every action the desktop may bind.
 type HotkeyAction string
 
 const (
-	HotkeyActionUnspecified         HotkeyAction = ""
-	HotkeyActionScreenshotArea      HotkeyAction = "screenshot_area"
-	HotkeyActionScreenshotFull      HotkeyAction = "screenshot_full"
-	HotkeyActionVoiceInput          HotkeyAction = "voice_input"
-	HotkeyActionToggleWindow        HotkeyAction = "toggle_window"
-	HotkeyActionQuickPrompt         HotkeyAction = "quick_prompt"
-	HotkeyActionClearConversation   HotkeyAction = "clear_conversation"
+	HotkeyActionUnspecified       HotkeyAction = ""
+	HotkeyActionScreenshotArea    HotkeyAction = "screenshot_area"
+	HotkeyActionScreenshotFull    HotkeyAction = "screenshot_full"
+	HotkeyActionVoiceInput        HotkeyAction = "voice_input"
+	HotkeyActionToggleWindow      HotkeyAction = "toggle_window"
+	HotkeyActionQuickPrompt       HotkeyAction = "quick_prompt"
+	HotkeyActionClearConversation HotkeyAction = "clear_conversation"
 )
 
 // HotkeyBinding pairs an action with an Electron accelerator string.

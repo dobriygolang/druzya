@@ -65,13 +65,6 @@ type streamOptions struct {
 	MaxTokens    int
 }
 
-func (o streamOptions) resolvedModel(requested string) string {
-	if requested != "" {
-		return requested
-	}
-	return o.DefaultModel
-}
-
 // deriveTitle takes the first ~60 chars of a prompt as the conversation
 // title. Falls back to a generic label when the prompt is empty (image-only).
 func deriveTitle(prompt string) string {
@@ -167,8 +160,8 @@ func (uc *Analyze) Do(ctx context.Context, in AnalyzeInput) (<-chan StreamFrame,
 		return nil, fmt.Errorf("copilot.Analyze: quota: %w", err)
 	}
 	if rotated, changed := quota.RotateIfDue(uc.now()); changed {
-		if err := uc.Quotas.ResetWindow(ctx, in.UserID); err != nil {
-			return nil, fmt.Errorf("copilot.Analyze: reset quota: %w", err)
+		if rerr := uc.Quotas.ResetWindow(ctx, in.UserID); rerr != nil {
+			return nil, fmt.Errorf("copilot.Analyze: reset quota: %w", rerr)
 		}
 		quota = rotated
 	}
@@ -242,15 +235,15 @@ func (uc *Analyze) Do(ctx context.Context, in AnalyzeInput) (<-chan StreamFrame,
 	started := uc.now()
 
 	go uc.pump(ctx, pumpCtx{
-		conv:         conv,
-		userMsgID:    userMsg.ID,
-		assistantID:  assistantMsg.ID,
-		model:        model,
-		events:       events,
-		out:          out,
-		started:      started,
-		userID:       in.UserID,
-		isFirstTurn:  in.ConversationID == uuid.Nil,
+		conv:        conv,
+		userMsgID:   userMsg.ID,
+		assistantID: assistantMsg.ID,
+		model:       model,
+		events:      events,
+		out:         out,
+		started:     started,
+		userID:      in.UserID,
+		isFirstTurn: in.ConversationID == uuid.Nil,
 	})
 	return out, nil
 }
@@ -369,7 +362,7 @@ func (uc *Analyze) now() time.Time {
 func (uc *Analyze) priorMessages(ctx context.Context, conversationID, currentUserID, currentAssistantID uuid.UUID) ([]domain.Message, error) {
 	all, err := uc.Messages.List(ctx, conversationID)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("copilot.loadConversationHistory: %w", err)
 	}
 	out := make([]domain.Message, 0, len(all))
 	for _, m := range all {

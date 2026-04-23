@@ -107,7 +107,7 @@ type CompletionRequest struct {
 // StreamEvent is one frame from a streaming LLM response. Exactly one of
 // Delta / Done / Err is populated per frame.
 type StreamEvent struct {
-	Delta string         // partial assistant content
+	Delta string // partial assistant content
 	Done  *CompletionDone
 	Err   error
 }

@@ -15,7 +15,8 @@
     "baseUrl": ".",
     "paths": {
       "@shared/*": ["src/shared/*"],
-      "@main/*": ["src/main/*"]
+      "@main/*": ["src/main/*"],
+      "@generated/*": ["../frontend/src/api/generated/*"]
     },
     "types": ["node"]
   },

@@ -10,8 +10,8 @@ import (
 	"strings"
 	"time"
 
-	copilotdb "druz9/copilot/infra/db"
 	"druz9/copilot/domain"
+	copilotdb "druz9/copilot/infra/db"
 	"druz9/shared/enums"
 
 	"github.com/google/uuid"

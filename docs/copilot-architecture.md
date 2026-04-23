@@ -546,16 +546,32 @@ breaking changes.
 - [ ] Per-IP rate-limit middleware on Analyze/Chat — deferred; quota
       inside the use case is already the primary defense.
 
-### Phase 3 — Desktop scaffold (`desktop/`)
-- [ ] `package.json`, `tsconfig.json`, `electron.vite.config.ts`,
-      `electron-builder.yml`.
-- [ ] Main process: window manager, hotkey registry, screenshot capture,
-      macOS permissions wrapper, deep-link handler for
+### Phase 3 — Desktop scaffold (COMPLETE ✅)
+- [x] Config: `package.json`, `tsconfig.json` + `tsconfig.node.json`,
+      `electron.vite.config.ts`, `electron-builder.yml`,
+      `resources/entitlements.mac.plist`, `.gitignore`.
+- [x] Main process: `windows/window-manager.ts` with
+      `setContentProtection(true)` on compact/expanded;
+      `hotkeys/registry.ts`; `capture/screenshot.ts`;
+      `permissions/macos.ts`; `auth/deeplink.ts` for
       `druz9://auth/telegram`.
-- [ ] Preload: typed `contextBridge` per §4.3 IPC contract.
-- [ ] Renderer: React + zustand + `tokens.css` from design.
-- [ ] API client: Connect-RPC transport with streaming handler for Analyze.
-- [ ] Keytar wrapper for token storage.
+- [x] Preload: typed `contextBridge.exposeInMainWorld('druz9', …)` with
+      channel whitelist.
+- [x] Shared IPC contract in `src/shared/ipc.ts` — invoke channels,
+      event channels, and the full `Druz9API` type.
+- [x] Renderer: React 18, hash-routed per window, `tokens.css`,
+      `useConfig` / `useHotkeyEvents` hooks, placeholder screens for
+      compact / expanded / settings / onboarding.
+- [x] API client: `main/api/client.ts` — Connect-RPC transport with
+      keychain-backed auth interceptor. Generated TS stubs consumed via
+      `@generated/*` alias pointing at `frontend/src/api/generated`.
+- [x] Streaming bridge: `main/ipc/streaming.ts` translates Analyze/Chat
+      server-streaming frames into IPC events (`event:analyze-delta`,
+      `-done`, `-error`, `-created`).
+- [x] Keytar wrapper in `main/auth/keychain.ts` with full
+      save/load/clear session surface.
+- [x] `desktop/README.md` — setup, dev, build, stealth testing
+      instructions.
 
 ### Phase 4 — UI screens (wire design → code)
 - [ ] Compact window + 4 states.

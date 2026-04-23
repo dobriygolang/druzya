@@ -232,8 +232,8 @@ func TestJoinLobby_FullReturns409Sentinel(t *testing.T) {
 		t.Fatalf("create: %v", err)
 	}
 	// First join — fills the lobby (owner + 1 = 2 = max).
-	if _, err := join.DoByID(context.Background(), l.ID, uuid.New()); err != nil {
-		t.Fatalf("first join: %v", err)
+	if _, jerr := join.DoByID(context.Background(), l.ID, uuid.New()); jerr != nil {
+		t.Fatalf("first join: %v", jerr)
 	}
 	// Second join — should fail with ErrFull.
 	_, err = join.DoByID(context.Background(), l.ID, uuid.New())
@@ -286,8 +286,8 @@ func TestStartLobby_Happy(t *testing.T) {
 	if err != nil {
 		t.Fatalf("create: %v", err)
 	}
-	if _, err := join.DoByID(context.Background(), l.ID, uuid.New()); err != nil {
-		t.Fatalf("join: %v", err)
+	if _, jerr := join.DoByID(context.Background(), l.ID, uuid.New()); jerr != nil {
+		t.Fatalf("join: %v", jerr)
 	}
 	out, err := start.Do(context.Background(), l.ID, owner)
 	if err != nil {
@@ -318,8 +318,8 @@ func TestStartLobby_NonOwnerForbidden(t *testing.T) {
 	if err != nil {
 		t.Fatalf("create: %v", err)
 	}
-	if _, err := join.DoByID(context.Background(), l.ID, intruder); err != nil {
-		t.Fatalf("join: %v", err)
+	if _, jerr := join.DoByID(context.Background(), l.ID, intruder); jerr != nil {
+		t.Fatalf("join: %v", jerr)
 	}
 	_, err = start.Do(context.Background(), l.ID, intruder)
 	if !errors.Is(err, domain.ErrForbidden) {

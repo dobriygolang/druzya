@@ -1,0 +1,30 @@
+@import './tokens.css';
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  background: transparent;
+  color: var(--d-text);
+  font-family: var(--f-ui);
+  font-size: 13px;
+  line-height: 1.4;
+  -webkit-font-smoothing: antialiased;
+  user-select: none;
+}
+
+code,
+pre {
+  font-family: var(--f-mono);
+}
+
+button {
+  font-family: inherit;
+  color: inherit;
+}

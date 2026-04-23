@@ -1,0 +1,59 @@
+/* Druz9 Copilot — design tokens (mirrors design/tokens.css). Change here,
+   not in component styles. */
+:root {
+  /* Surfaces */
+  --d-bg-0: #0A0A0A;
+  --d-bg-1: #121212;
+  --d-bg-2: #1A1A1A;
+  --d-bg-3: #1F1F1F;
+  --d-bg-code: #0D0D0D;
+
+  /* Hairlines */
+  --d-line: rgba(255, 255, 255, 0.06);
+  --d-line-strong: rgba(255, 255, 255, 0.10);
+  --d-line-focus: rgba(124, 92, 255, 0.45);
+
+  /* Text */
+  --d-text: #EEEEEE;
+  --d-text-2: #9CA3AF;
+  --d-text-3: #6B7280;
+  --d-text-4: #4A5058;
+
+  /* Accent — purple / blue */
+  --d-accent: #7C5CFF;
+  --d-accent-hover: #8E72FF;
+  --d-accent-soft: rgba(124, 92, 255, 0.14);
+  --d-accent-2: #4C8BFF;
+  --d-accent-2-soft: rgba(76, 139, 255, 0.14);
+  --d-gradient-hero: linear-gradient(135deg, #7C5CFF 0%, #4C8BFF 100%);
+  --d-gradient-hero-soft: linear-gradient(135deg, rgba(124, 92, 255, 0.18) 0%, rgba(76, 139, 255, 0.18) 100%);
+
+  /* Semantic */
+  --d-green: #34C759;
+  --d-yellow: #FFCC00;
+  --d-red: #FF453A;
+
+  /* Radii */
+  --r-window: 12px;
+  --r-inner: 8px;
+  --r-btn: 6px;
+  --r-pill: 999px;
+
+  /* Shadows */
+  --s-window: 0 8px 32px rgba(0, 0, 0, 0.5), 0 1px 0 rgba(255, 255, 255, 0.05) inset;
+  --s-float: 0 20px 60px rgba(0, 0, 0, 0.6), 0 1px 0 rgba(255, 255, 255, 0.04) inset;
+
+  /* Type */
+  --f-ui: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", system-ui, sans-serif;
+  --f-display: -apple-system, BlinkMacSystemFont, "SF Pro Display", system-ui, sans-serif;
+  --f-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  /* Spacing */
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+  --sp-5: 20px;
+  --sp-6: 24px;
+  --sp-8: 32px;
+}

@@ -303,6 +303,8 @@ func mapRole(r enums.MessageRole) string {
 		return "system"
 	case enums.MessageRoleAssistant:
 		return "assistant"
+	case enums.MessageRoleUser:
+		return "user"
 	default:
 		return "user"
 	}

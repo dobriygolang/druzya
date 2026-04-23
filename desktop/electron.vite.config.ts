@@ -13,6 +13,10 @@ export default defineConfig({
       alias: {
         '@shared': resolve(__dirname, 'src/shared'),
         '@main': resolve(__dirname, 'src/main'),
+        // Single codegen source of truth: protoc emits TS stubs into the
+        // frontend tree and we alias them from here, so `make gen-proto`
+        // updates both frontend and desktop in one shot.
+        '@generated': resolve(__dirname, '../frontend/src/api/generated'),
       },
     },
   },

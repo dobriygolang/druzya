@@ -310,7 +310,7 @@ func (f *fakeConfig) Load(_ context.Context) (domain.DesktopConfig, error) { ret
 
 // drainFrames collects every frame from a channel until it closes.
 func drainFrames(ch <-chan StreamFrame) []StreamFrame {
-	var out []StreamFrame
+	out := make([]StreamFrame, 0, 16)
 	for f := range ch {
 		out = append(out, f)
 	}

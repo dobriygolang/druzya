@@ -1,0 +1,47 @@
+// Connect-RPC client for the copilot service. Runs in the main process
+// (not the renderer) so:
+//   1. the auth token never crosses the IPC boundary as a string — it
+//      lives in keychain and is fetched on demand for each request.
+//   2. the HTTP/2 connection can be kept warm across IPC calls.
+//   3. streaming RPCs can be converted into IPC events without the
+//      renderer needing to understand Connect internals.
+//
+// We use @connectrpc/connect-web rather than connect-node because it
+// works over plain fetch (available in Electron's main process via the
+// `net` or `undici` transport), keeps the binary small, and mirrors what
+// the desktop client would do if it ever moved into the renderer.
+
+import { createPromiseClient, type PromiseClient, type Interceptor } from '@connectrpc/connect';
+import { createConnectTransport } from '@connectrpc/connect-web';
+
+import { CopilotService } from '@generated/pb/druz9/v1/copilot_connect';
+import type { RuntimeConfig } from '../config/bootstrap';
+import { loadSession } from '../auth/keychain';
+
+export type CopilotClient = PromiseClient<typeof CopilotService>;
+
+/**
+ * Builds a copilot client configured with the Druz9 API base URL and a
+ * per-request Authorization header pulled from keychain.
+ *
+ * The interceptor runs before every RPC (unary and streaming). We fetch
+ * the session each call so log-out is effective immediately — no stale
+ * cached token.
+ */
+export function createCopilotClient(cfg: RuntimeConfig): CopilotClient {
+  const authInterceptor: Interceptor = (next) => async (req) => {
+    const session = await loadSession();
+    if (session) {
+      req.header.set('Authorization', `Bearer ${session.accessToken}`);
+    }
+    return next(req);
+  };
+
+  const transport = createConnectTransport({
+    baseUrl: cfg.apiBaseURL,
+    useBinaryFormat: true, // smaller than JSON on the wire
+    interceptors: [authInterceptor],
+  });
+
+  return createPromiseClient(CopilotService, transport);
+}
