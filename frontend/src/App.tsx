@@ -1,7 +1,21 @@
 import { lazy, Suspense } from 'react'
-import { Routes, Route, Navigate } from 'react-router-dom'
+import { Routes, Route, Navigate, useLocation, useParams } from 'react-router-dom'
 
 import RouteLoader from './components/RouteLoader'
+
+// Legacy /v2/* URL'ы из старого дизайна — редиректим на чистый путь.
+// Также пара переименований: /v2/kata → /daily.
+function LegacyV2Redirect() {
+  const loc = useLocation()
+  const params = useParams<{ '*': string }>()
+  const tail = params['*'] ?? ''
+  // Спец-маппинг для устаревших имён.
+  const renamed: Record<string, string> = { kata: 'daily' }
+  const first = tail.split('/')[0]
+  const rest = tail.slice(first.length)
+  const dest = '/' + (renamed[first] ?? first) + rest + loc.search
+  return <Navigate to={dest} replace />
+}
 
 const SanctumPage = lazy(() => import('./pages/SanctumPage'))
 const ArenaPage = lazy(() => import('./pages/ArenaPage'))
@@ -109,6 +123,8 @@ export default function App() {
         <Route path="/admin" element={<AdminPage />} />
         <Route path="/status" element={<StatusPage />} />
         <Route path="/rating" element={<RatingPage />} />
+        {/* Legacy /v2/* — редирект на новый URL без префикса. */}
+        <Route path="/v2/*" element={<LegacyV2Redirect />} />
         <Route path="*" element={<NotFoundPage />} />
       </Routes>
     </Suspense>

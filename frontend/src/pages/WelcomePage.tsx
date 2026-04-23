@@ -17,22 +17,16 @@ function MinimalTopBar() {
         </span>
         <span className="font-display text-xl font-bold text-text-primary">druz9</span>
       </Link>
-      <div className="flex items-center gap-2 sm:gap-3">
-        <Link
-          to="/login"
-          className="hidden rounded-md px-4 py-2 text-sm font-medium text-text-secondary transition-colors hover:bg-surface-2 hover:text-text-primary sm:inline-block"
-        >
-          {t('login')}
-        </Link>
-        {/* Onboarding-туториал теперь только для авторизованных юзеров после
-            первого входа. На лендинге CTA ведёт на /login, а онбординг
-            запустится автоматически при первом успешном логине (см. is_new_user). */}
-        <Link to="/login">
-          <Button variant="primary" iconRight={<ArrowRight className="h-4 w-4" />} className="px-3 shadow-glow sm:px-5">
-            {t('start')}
-          </Button>
-        </Link>
-      </div>
+      {/* Один CTA в топбаре — "Войти". Кнопка "Начать" дублировала бы
+          основной hero-CTA "Начать бесплатно" (обе на /login), поэтому убрана.
+          Onboarding-туториал запустится автоматически при первом логине
+          (см. is_new_user в AuthResponse). */}
+      <Link
+        to="/login"
+        className="rounded-md px-4 py-2 text-sm font-medium text-text-secondary transition-colors hover:bg-surface-2 hover:text-text-primary"
+      >
+        {t('login')}
+      </Link>
     </header>
   )
 }

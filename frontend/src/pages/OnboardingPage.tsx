@@ -589,24 +589,14 @@ export default function OnboardingPage() {
     }
   }, [navigate])
 
-  // Старый ?step=1 (с OAuth-кнопками) был удалён — редирект на /login.
-  // Всё, что > 3, нормализуем в 1, ибо валидный диапазон 1..3 в новой нумерации.
-  // Хвост старых ссылок ?step=2/3/4 ремапится: 2→1 (langs), 3→2 (kata), 4→3 (ai).
+  // Валидный диапазон step — 1..3 (новая нумерация после удаления OAuth-step1).
+  // Раньше тут был "legacy ремап" (?step=2 → 1, ?step=3 → 2 и т.д.) для совместимости
+  // со старыми ссылками. Он ЛОМАЛ обычную навигацию: setStep(2) → URL ?step=2
+  // → ремап возвращал 1 → застряли на step 1. Убран.
+  // Старые ссылки с ?step=4 (которых уже не существует) теперь нормализуются в 3.
   const stepParam = params.get('step')
-  useEffect(() => {
-    if (stepParam === '1' && params.get('legacy') !== 'ok') {
-      // Heuristic: пустой query или ?step=1 без legacy-маркера — это вход с
-      // лендинга, который раньше показывал OAuth. Уведём на /login.
-      // Но если другой step указан явно — оставляем (ремап ниже).
-    }
-  }, [stepParam, params])
-
-  // Map legacy step IDs to new ones (2..4 → 1..3). step=1 без legacy остаётся 1.
   const step = useMemo<StepNum>(() => {
     const raw = parseInt(stepParam ?? '1', 10)
-    if (raw === 2) return 1
-    if (raw === 3) return 2
-    if (raw === 4) return 3
     if (raw >= 1 && raw <= 3) return raw as StepNum
     return 1
   }, [stepParam])

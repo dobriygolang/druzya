@@ -18,9 +18,9 @@
     "vs": "vs"
   },
   "not_found": {
-    "title": "This page slipped into node_modules",
-    "subtitle": "We are looking for it, but it hides well. Try heading home or going back.",
-    "fatal": "fatal: pathspec 'pages/' did not match any files",
+    "title": "Page not found",
+    "subtitle": "This page does not exist. The link may be outdated or mistyped.",
+    "fatal": "",
     "home": "Home",
     "back": "Back"
   },

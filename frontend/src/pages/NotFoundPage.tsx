@@ -30,11 +30,14 @@ export default function NotFoundPage() {
         <p className="max-w-md text-center font-sans text-sm text-text-secondary">
           {t('not_found.subtitle')}
         </p>
-        <pre className="rounded-lg border border-border bg-surface-1 p-4 font-mono text-[12px] leading-relaxed text-text-secondary">
-{`$ git log --grep="this page"
-$ git checkout main -- pages/`}
-          {'\n'}<span className="text-danger">{t('not_found.fatal')}</span>
-        </pre>
+        {/* Шуточный <pre> с git-командами убран — выглядел странно для
+            обычных пользователей. Если в i18n.fatal остался текст — выведем
+            его одной строкой; иначе ничего. */}
+        {t('not_found.fatal') && (
+          <p className="text-center font-sans text-sm text-text-muted">
+            {t('not_found.fatal')}
+          </p>
+        )}
         <div className="flex gap-3">
           {/* Прямая Link без вложенного <button> — иначе HTML невалидный (a > button)
               и getByRole('link') в Playwright не находит accessible name. */}
