@@ -52,9 +52,18 @@ SELECT id, owner_id, name, emblem, guild_elo, created_at
   FROM guilds WHERE id = $1
 `
 
-func (q *Queries) GetGuild(ctx context.Context, id pgtype.UUID) (Guild, error) {
+type GetGuildRow struct {
+	ID        pgtype.UUID
+	OwnerID   pgtype.UUID
+	Name      string
+	Emblem    pgtype.Text
+	GuildElo  int32
+	CreatedAt pgtype.Timestamptz
+}
+
+func (q *Queries) GetGuild(ctx context.Context, id pgtype.UUID) (GetGuildRow, error) {
 	row := q.db.QueryRow(ctx, getGuild, id)
-	var i Guild
+	var i GetGuildRow
 	err := row.Scan(
 		&i.ID,
 		&i.OwnerID,
@@ -114,11 +123,20 @@ SELECT g.id, g.owner_id, g.name, g.emblem, g.guild_elo, g.created_at
  LIMIT 1
 `
 
+type GetMyGuildRow struct {
+	ID        pgtype.UUID
+	OwnerID   pgtype.UUID
+	Name      string
+	Emblem    pgtype.Text
+	GuildElo  int32
+	CreatedAt pgtype.Timestamptz
+}
+
 // Resolve the single guild a user belongs to (guild_members has a UNIQUE index
 // on user_id, so at most one row matches).
-func (q *Queries) GetMyGuild(ctx context.Context, userID pgtype.UUID) (Guild, error) {
+func (q *Queries) GetMyGuild(ctx context.Context, userID pgtype.UUID) (GetMyGuildRow, error) {
 	row := q.db.QueryRow(ctx, getMyGuild, userID)
-	var i Guild
+	var i GetMyGuildRow
 	err := row.Scan(
 		&i.ID,
 		&i.OwnerID,
@@ -292,18 +310,27 @@ type UpsertGuildParams struct {
 	GuildElo int32
 }
 
+type UpsertGuildRow struct {
+	ID        pgtype.UUID
+	OwnerID   pgtype.UUID
+	Name      string
+	Emblem    pgtype.Text
+	GuildElo  int32
+	CreatedAt pgtype.Timestamptz
+}
+
 // guild queries consumed by sqlc (emitted into services/guild/infra/db).
 // Contribution row storage is STUBBED in-memory at the infra layer — the
 // current migration does not have a war_contributions table. The queries
 // below cover what the domain persists on Postgres today.
-func (q *Queries) UpsertGuild(ctx context.Context, arg UpsertGuildParams) (Guild, error) {
+func (q *Queries) UpsertGuild(ctx context.Context, arg UpsertGuildParams) (UpsertGuildRow, error) {
 	row := q.db.QueryRow(ctx, upsertGuild,
 		arg.OwnerID,
 		arg.Name,
 		arg.Emblem,
 		arg.GuildElo,
 	)
-	var i Guild
+	var i UpsertGuildRow
 	err := row.Scan(
 		&i.ID,
 		&i.OwnerID,

@@ -15,11 +15,11 @@ type Querier interface {
 	// week_start (inclusive) and week_end (exclusive). We cast `now` to a DATE
 	// because the migration stores week bounds as DATE, not TIMESTAMPTZ.
 	GetCurrentWarForGuild(ctx context.Context, arg GetCurrentWarForGuildParams) (GuildWar, error)
-	GetGuild(ctx context.Context, id pgtype.UUID) (Guild, error)
+	GetGuild(ctx context.Context, id pgtype.UUID) (GetGuildRow, error)
 	GetGuildMember(ctx context.Context, arg GetGuildMemberParams) (GetGuildMemberRow, error)
 	// Resolve the single guild a user belongs to (guild_members has a UNIQUE index
 	// on user_id, so at most one row matches).
-	GetMyGuild(ctx context.Context, userID pgtype.UUID) (Guild, error)
+	GetMyGuild(ctx context.Context, userID pgtype.UUID) (GetMyGuildRow, error)
 	GetWar(ctx context.Context, id pgtype.UUID) (GuildWar, error)
 	ListGuildMembers(ctx context.Context, guildID pgtype.UUID) ([]ListGuildMembersRow, error)
 	// Global guild leaderboard. We surface the existing guild_elo column as the
@@ -34,7 +34,7 @@ type Querier interface {
 	// Contribution row storage is STUBBED in-memory at the infra layer — the
 	// current migration does not have a war_contributions table. The queries
 	// below cover what the domain persists on Postgres today.
-	UpsertGuild(ctx context.Context, arg UpsertGuildParams) (Guild, error)
+	UpsertGuild(ctx context.Context, arg UpsertGuildParams) (UpsertGuildRow, error)
 	// Add `delta` to scores_a[section] (JSONB). COALESCE handles first-write.
 	UpsertWarScoreA(ctx context.Context, arg UpsertWarScoreAParams) (int64, error)
 	UpsertWarScoreB(ctx context.Context, arg UpsertWarScoreBParams) (int64, error)

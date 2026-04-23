@@ -153,12 +153,17 @@ type Friendship struct {
 }
 
 type Guild struct {
-	ID        pgtype.UUID
-	OwnerID   pgtype.UUID
-	Name      string
-	Emblem    pgtype.Text
-	GuildElo  int32
-	CreatedAt pgtype.Timestamptz
+	ID          pgtype.UUID
+	OwnerID     pgtype.UUID
+	Name        string
+	Emblem      pgtype.Text
+	GuildElo    int32
+	CreatedAt   pgtype.Timestamptz
+	Description pgtype.Text
+	Tier        pgtype.Text
+	IsPublic    bool
+	JoinPolicy  string
+	MaxMembers  int32
 }
 
 type GuildMember struct {
