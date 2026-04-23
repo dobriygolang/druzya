@@ -276,8 +276,8 @@ func (uc *LeaveCohort) Do(ctx context.Context, cohortID, userID uuid.UUID) (Leav
 	if !has {
 		return LeaveResult{}, domain.ErrNotFound
 	}
-	if err := uc.Repo.RemoveMember(ctx, cohortID, userID); err != nil {
-		return LeaveResult{}, fmt.Errorf("cohort.Leave: remove: %w", err)
+	if rerr := uc.Repo.RemoveMember(ctx, cohortID, userID); rerr != nil {
+		return LeaveResult{}, fmt.Errorf("cohort.Leave: remove: %w", rerr)
 	}
 	count, err := uc.Repo.CountMembers(ctx, cohortID)
 	if err != nil {

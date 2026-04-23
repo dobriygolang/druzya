@@ -39,9 +39,10 @@ type AtlasCatalogueNode struct {
 //
 // Kind ∈ {"prereq","suggested","crosslink"} — frontend renders three
 // distinct visual grammars per design-review v2:
-//   prereq    — solid thick + arrow, gates allocation
-//   suggested — solid thin, "logical next step"
-//   crosslink — dashed faded, "related from another cluster"
+//
+//	prereq    — solid thick + arrow, gates allocation
+//	suggested — solid thin, "logical next step"
+//	crosslink — dashed faded, "related from another cluster"
 type AtlasCatalogueEdge struct {
 	ID   int64
 	From string

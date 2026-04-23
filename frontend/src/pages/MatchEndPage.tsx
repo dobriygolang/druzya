@@ -7,6 +7,13 @@ import { Card } from '../components/Card'
 import { Avatar } from '../components/Avatar'
 import { useMatchEndQuery } from '../lib/queries/matches'
 import { useProfileQuery } from '../lib/queries/profile'
+import { EmptyState } from '../components/EmptyState'
+// Wave-10 (design-review v4) — emotion-peak variants. We dispatch by
+// verdict (loss / win+promote / win+normal) AND only when data has
+// landed. Loading → EmptyState skeleton. Error → EmptyState with retry.
+// The legacy inline render below stays as a guarded fallback for
+// `?legacy=1` (debugging) but the dispatch below is the new default.
+import { WinPromote, WinNormal, LossScreen, detectPromotion } from './match-end/MatchEndScreens'
 
 function ErrorChip() {
   const { t } = useTranslation('pages')
@@ -31,7 +38,41 @@ export default function MatchEndPage() {
   const navigate = useNavigate()
   const { matchId } = useParams<{ matchId: string }>()
   const { data: profile } = useProfileQuery()
-  const { data, isError, isLoading } = useMatchEndQuery(matchId, profile?.id)
+  const { data, isError, isLoading, refetch } = useMatchEndQuery(matchId, profile?.id)
+
+  // Wave-10 dispatch — three emotion-peak variants. Loading + error use
+  // the canonical <EmptyState />. Use `?legacy=1` to fall through to the
+  // legacy inline renderer below for debugging.
+  const useLegacy = typeof window !== 'undefined' && window.location.search.includes('legacy=1')
+  if (!useLegacy) {
+    if (isLoading) {
+      return (
+        <AppShellV2>
+          <EmptyState variant="loading" skeletonLayout="single-card" />
+        </AppShellV2>
+      )
+    }
+    if (isError || !data) {
+      return (
+        <AppShellV2>
+          <EmptyState
+            variant="error"
+            title="Не удалось загрузить итог матча"
+            cta={{ label: 'Повторить', onClick: () => refetch() }}
+            secondaryCta={{ label: 'В арену', onClick: () => navigate('/arena') }}
+          />
+        </AppShellV2>
+      )
+    }
+    if (data.result === 'L') {
+      return <LossScreen data={data} profile={profile} />
+    }
+    if (detectPromotion(data)) {
+      return <WinPromote data={data} profile={profile} />
+    }
+    return <WinNormal data={data} profile={profile} />
+  }
+  // ── legacy renderer (kept for ?legacy=1) ────────────────────────────
 
   // Loading skeleton — без хардкода. Пока ждём бэк, показываем нули и
   // плейсхолдеры. Бэк отдаёт enriched-поля только для finished-матчей; для

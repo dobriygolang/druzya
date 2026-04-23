@@ -263,7 +263,7 @@ func scanAtlasNode(s scanner) (domain.AtlasCatalogueNode, error) {
 		&n.ID, &n.Title, &n.Section, &n.Kind, &n.Cluster, &n.Description, &n.TotalCount,
 		&posX, &posY, &n.SortOrder, &n.IsActive,
 	); err != nil {
-		return domain.AtlasCatalogueNode{}, err
+		return domain.AtlasCatalogueNode{}, fmt.Errorf("profile.scanAtlasNode: %w", err)
 	}
 	n.PosX = posX
 	n.PosY = posY

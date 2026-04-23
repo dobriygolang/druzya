@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { Bell, Menu, Search, X, Sun, Moon, Languages, User, LogOut, Settings, Users, HelpCircle, Shield, Briefcase, Headphones, FileBarChart, CalendarDays } from 'lucide-react'
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
+import { MobileBottomNav } from './MobileBottomNav'
 import { Avatar } from './Avatar'
 import { cn } from '../lib/cn'
 import { useTheme, getEffectiveTheme } from '../lib/theme'
@@ -382,10 +383,20 @@ export function AppShellV2({ children }: { children: ReactNode }) {
       <TopNav />
       <SessionExpiredToast />
       <AnimatePresence mode="wait">
-        <motion.main key={location.pathname} {...motionProps}>
+        <motion.main
+          key={location.pathname}
+          {...motionProps}
+          // Reserve space at the bottom for the mobile bottom-nav so
+          // the FAB doesn't cover content. 72px = 64 nav + 8 FAB-overflow,
+          // plus the iPhone safe-area inset. Class is sm:pb-0 because the
+          // bar itself is hidden on sm+ breakpoints.
+          style={{ paddingBottom: 'calc(72px + env(safe-area-inset-bottom, 0px))' }}
+          className="sm:!pb-0"
+        >
           {children}
         </motion.main>
       </AnimatePresence>
+      <MobileBottomNav />
     </div>
   )
 }

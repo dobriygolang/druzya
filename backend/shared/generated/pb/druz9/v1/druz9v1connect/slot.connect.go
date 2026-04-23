@@ -50,15 +50,6 @@ const (
 	SlotServiceCancelSlotProcedure = "/druz9.v1.SlotService/CancelSlot"
 )
 
-// These variables are the protoreflect.Descriptor objects for the RPCs defined in this package.
-var (
-	slotServiceServiceDescriptor          = v1.File_druz9_v1_slot_proto.Services().ByName("SlotService")
-	slotServiceListSlotsMethodDescriptor  = slotServiceServiceDescriptor.Methods().ByName("ListSlots")
-	slotServiceCreateSlotMethodDescriptor = slotServiceServiceDescriptor.Methods().ByName("CreateSlot")
-	slotServiceBookSlotMethodDescriptor   = slotServiceServiceDescriptor.Methods().ByName("BookSlot")
-	slotServiceCancelSlotMethodDescriptor = slotServiceServiceDescriptor.Methods().ByName("CancelSlot")
-)
-
 // SlotServiceClient is a client for the druz9.v1.SlotService service.
 type SlotServiceClient interface {
 	// ListSlots returns the filtered catalog of available slots.
@@ -80,29 +71,30 @@ type SlotServiceClient interface {
 // http://api.acme.com or https://acme.com/grpc).
 func NewSlotServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) SlotServiceClient {
 	baseURL = strings.TrimRight(baseURL, "/")
+	slotServiceMethods := v1.File_druz9_v1_slot_proto.Services().ByName("SlotService").Methods()
 	return &slotServiceClient{
 		listSlots: connect.NewClient[v1.ListSlotsRequest, v1.SlotList](
 			httpClient,
 			baseURL+SlotServiceListSlotsProcedure,
-			connect.WithSchema(slotServiceListSlotsMethodDescriptor),
+			connect.WithSchema(slotServiceMethods.ByName("ListSlots")),
 			connect.WithClientOptions(opts...),
 		),
 		createSlot: connect.NewClient[v1.CreateSlotRequest, v1.Slot](
 			httpClient,
 			baseURL+SlotServiceCreateSlotProcedure,
-			connect.WithSchema(slotServiceCreateSlotMethodDescriptor),
+			connect.WithSchema(slotServiceMethods.ByName("CreateSlot")),
 			connect.WithClientOptions(opts...),
 		),
 		bookSlot: connect.NewClient[v1.BookSlotRequest, v1.Booking](
 			httpClient,
 			baseURL+SlotServiceBookSlotProcedure,
-			connect.WithSchema(slotServiceBookSlotMethodDescriptor),
+			connect.WithSchema(slotServiceMethods.ByName("BookSlot")),
 			connect.WithClientOptions(opts...),
 		),
 		cancelSlot: connect.NewClient[v1.CancelSlotRequest, v1.CancelSlotResponse](
 			httpClient,
 			baseURL+SlotServiceCancelSlotProcedure,
-			connect.WithSchema(slotServiceCancelSlotMethodDescriptor),
+			connect.WithSchema(slotServiceMethods.ByName("CancelSlot")),
 			connect.WithClientOptions(opts...),
 		),
 	}
@@ -154,28 +146,29 @@ type SlotServiceHandler interface {
 // By default, handlers support the Connect, gRPC, and gRPC-Web protocols with the binary Protobuf
 // and JSON codecs. They also support gzip compression.
 func NewSlotServiceHandler(svc SlotServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
+	slotServiceMethods := v1.File_druz9_v1_slot_proto.Services().ByName("SlotService").Methods()
 	slotServiceListSlotsHandler := connect.NewUnaryHandler(
 		SlotServiceListSlotsProcedure,
 		svc.ListSlots,
-		connect.WithSchema(slotServiceListSlotsMethodDescriptor),
+		connect.WithSchema(slotServiceMethods.ByName("ListSlots")),
 		connect.WithHandlerOptions(opts...),
 	)
 	slotServiceCreateSlotHandler := connect.NewUnaryHandler(
 		SlotServiceCreateSlotProcedure,
 		svc.CreateSlot,
-		connect.WithSchema(slotServiceCreateSlotMethodDescriptor),
+		connect.WithSchema(slotServiceMethods.ByName("CreateSlot")),
 		connect.WithHandlerOptions(opts...),
 	)
 	slotServiceBookSlotHandler := connect.NewUnaryHandler(
 		SlotServiceBookSlotProcedure,
 		svc.BookSlot,
-		connect.WithSchema(slotServiceBookSlotMethodDescriptor),
+		connect.WithSchema(slotServiceMethods.ByName("BookSlot")),
 		connect.WithHandlerOptions(opts...),
 	)
 	slotServiceCancelSlotHandler := connect.NewUnaryHandler(
 		SlotServiceCancelSlotProcedure,
 		svc.CancelSlot,
-		connect.WithSchema(slotServiceCancelSlotMethodDescriptor),
+		connect.WithSchema(slotServiceMethods.ByName("CancelSlot")),
 		connect.WithHandlerOptions(opts...),
 	)
 	return "/druz9.v1.SlotService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

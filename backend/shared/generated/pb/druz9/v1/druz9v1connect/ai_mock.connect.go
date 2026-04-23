@@ -57,17 +57,6 @@ const (
 	MockServiceGetReportProcedure = "/druz9.v1.MockService/GetReport"
 )
 
-// These variables are the protoreflect.Descriptor objects for the RPCs defined in this package.
-var (
-	mockServiceServiceDescriptor             = v1.File_druz9_v1_ai_mock_proto.Services().ByName("MockService")
-	mockServiceCreateSessionMethodDescriptor = mockServiceServiceDescriptor.Methods().ByName("CreateSession")
-	mockServiceGetSessionMethodDescriptor    = mockServiceServiceDescriptor.Methods().ByName("GetSession")
-	mockServiceSendMessageMethodDescriptor   = mockServiceServiceDescriptor.Methods().ByName("SendMessage")
-	mockServiceIngestStressMethodDescriptor  = mockServiceServiceDescriptor.Methods().ByName("IngestStress")
-	mockServiceFinishSessionMethodDescriptor = mockServiceServiceDescriptor.Methods().ByName("FinishSession")
-	mockServiceGetReportMethodDescriptor     = mockServiceServiceDescriptor.Methods().ByName("GetReport")
-)
-
 // MockServiceClient is a client for the druz9.v1.MockService service.
 type MockServiceClient interface {
 	// CreateSession starts a new AI mock interview.
@@ -94,41 +83,42 @@ type MockServiceClient interface {
 // http://api.acme.com or https://acme.com/grpc).
 func NewMockServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) MockServiceClient {
 	baseURL = strings.TrimRight(baseURL, "/")
+	mockServiceMethods := v1.File_druz9_v1_ai_mock_proto.Services().ByName("MockService").Methods()
 	return &mockServiceClient{
 		createSession: connect.NewClient[v1.CreateMockRequest, v1.MockSession](
 			httpClient,
 			baseURL+MockServiceCreateSessionProcedure,
-			connect.WithSchema(mockServiceCreateSessionMethodDescriptor),
+			connect.WithSchema(mockServiceMethods.ByName("CreateSession")),
 			connect.WithClientOptions(opts...),
 		),
 		getSession: connect.NewClient[v1.GetMockSessionRequest, v1.MockSession](
 			httpClient,
 			baseURL+MockServiceGetSessionProcedure,
-			connect.WithSchema(mockServiceGetSessionMethodDescriptor),
+			connect.WithSchema(mockServiceMethods.ByName("GetSession")),
 			connect.WithClientOptions(opts...),
 		),
 		sendMessage: connect.NewClient[v1.MockMessageRequest, v1.MockMessage](
 			httpClient,
 			baseURL+MockServiceSendMessageProcedure,
-			connect.WithSchema(mockServiceSendMessageMethodDescriptor),
+			connect.WithSchema(mockServiceMethods.ByName("SendMessage")),
 			connect.WithClientOptions(opts...),
 		),
 		ingestStress: connect.NewClient[v1.StressEventsBatch, v1.StressEventsBatch](
 			httpClient,
 			baseURL+MockServiceIngestStressProcedure,
-			connect.WithSchema(mockServiceIngestStressMethodDescriptor),
+			connect.WithSchema(mockServiceMethods.ByName("IngestStress")),
 			connect.WithClientOptions(opts...),
 		),
 		finishSession: connect.NewClient[v1.FinishMockSessionRequest, v1.MockSession](
 			httpClient,
 			baseURL+MockServiceFinishSessionProcedure,
-			connect.WithSchema(mockServiceFinishSessionMethodDescriptor),
+			connect.WithSchema(mockServiceMethods.ByName("FinishSession")),
 			connect.WithClientOptions(opts...),
 		),
 		getReport: connect.NewClient[v1.GetMockReportRequest, v1.MockReport](
 			httpClient,
 			baseURL+MockServiceGetReportProcedure,
-			connect.WithSchema(mockServiceGetReportMethodDescriptor),
+			connect.WithSchema(mockServiceMethods.ByName("GetReport")),
 			connect.WithClientOptions(opts...),
 		),
 	}
@@ -197,40 +187,41 @@ type MockServiceHandler interface {
 // By default, handlers support the Connect, gRPC, and gRPC-Web protocols with the binary Protobuf
 // and JSON codecs. They also support gzip compression.
 func NewMockServiceHandler(svc MockServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
+	mockServiceMethods := v1.File_druz9_v1_ai_mock_proto.Services().ByName("MockService").Methods()
 	mockServiceCreateSessionHandler := connect.NewUnaryHandler(
 		MockServiceCreateSessionProcedure,
 		svc.CreateSession,
-		connect.WithSchema(mockServiceCreateSessionMethodDescriptor),
+		connect.WithSchema(mockServiceMethods.ByName("CreateSession")),
 		connect.WithHandlerOptions(opts...),
 	)
 	mockServiceGetSessionHandler := connect.NewUnaryHandler(
 		MockServiceGetSessionProcedure,
 		svc.GetSession,
-		connect.WithSchema(mockServiceGetSessionMethodDescriptor),
+		connect.WithSchema(mockServiceMethods.ByName("GetSession")),
 		connect.WithHandlerOptions(opts...),
 	)
 	mockServiceSendMessageHandler := connect.NewUnaryHandler(
 		MockServiceSendMessageProcedure,
 		svc.SendMessage,
-		connect.WithSchema(mockServiceSendMessageMethodDescriptor),
+		connect.WithSchema(mockServiceMethods.ByName("SendMessage")),
 		connect.WithHandlerOptions(opts...),
 	)
 	mockServiceIngestStressHandler := connect.NewUnaryHandler(
 		MockServiceIngestStressProcedure,
 		svc.IngestStress,
-		connect.WithSchema(mockServiceIngestStressMethodDescriptor),
+		connect.WithSchema(mockServiceMethods.ByName("IngestStress")),
 		connect.WithHandlerOptions(opts...),
 	)
 	mockServiceFinishSessionHandler := connect.NewUnaryHandler(
 		MockServiceFinishSessionProcedure,
 		svc.FinishSession,
-		connect.WithSchema(mockServiceFinishSessionMethodDescriptor),
+		connect.WithSchema(mockServiceMethods.ByName("FinishSession")),
 		connect.WithHandlerOptions(opts...),
 	)
 	mockServiceGetReportHandler := connect.NewUnaryHandler(
 		MockServiceGetReportProcedure,
 		svc.GetReport,
-		connect.WithSchema(mockServiceGetReportMethodDescriptor),
+		connect.WithSchema(mockServiceMethods.ByName("GetReport")),
 		connect.WithHandlerOptions(opts...),
 	)
 	return "/druz9.v1.MockService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

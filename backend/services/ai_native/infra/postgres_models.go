@@ -220,7 +220,7 @@ func scanLLMModel(s scannable) (domain.LLMModel, error) {
 		&m.UseForArena, &m.UseForInsight, &m.UseForMock, &m.SortOrder,
 		&m.CreatedAt, &m.UpdatedAt,
 	); err != nil {
-		return domain.LLMModel{}, err
+		return domain.LLMModel{}, fmt.Errorf("ai_native.scanLLMModel: %w", err)
 	}
 	m.Tier = domain.LLMModelTier(tierRaw)
 	return m, nil

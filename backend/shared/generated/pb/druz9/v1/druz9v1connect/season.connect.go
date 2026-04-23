@@ -44,12 +44,6 @@ const (
 	SeasonServiceGetCurrentProcedure = "/druz9.v1.SeasonService/GetCurrent"
 )
 
-// These variables are the protoreflect.Descriptor objects for the RPCs defined in this package.
-var (
-	seasonServiceServiceDescriptor          = v1.File_druz9_v1_season_proto.Services().ByName("SeasonService")
-	seasonServiceGetCurrentMethodDescriptor = seasonServiceServiceDescriptor.Methods().ByName("GetCurrent")
-)
-
 // SeasonServiceClient is a client for the druz9.v1.SeasonService service.
 type SeasonServiceClient interface {
 	// GetCurrent returns the caller's Season Pass progress for the active
@@ -66,11 +60,12 @@ type SeasonServiceClient interface {
 // http://api.acme.com or https://acme.com/grpc).
 func NewSeasonServiceClient(httpClient connect.HTTPClient, baseURL string, opts ...connect.ClientOption) SeasonServiceClient {
 	baseURL = strings.TrimRight(baseURL, "/")
+	seasonServiceMethods := v1.File_druz9_v1_season_proto.Services().ByName("SeasonService").Methods()
 	return &seasonServiceClient{
 		getCurrent: connect.NewClient[v1.GetCurrentSeasonRequest, v1.SeasonProgress](
 			httpClient,
 			baseURL+SeasonServiceGetCurrentProcedure,
-			connect.WithSchema(seasonServiceGetCurrentMethodDescriptor),
+			connect.WithSchema(seasonServiceMethods.ByName("GetCurrent")),
 			connect.WithClientOptions(opts...),
 		),
 	}
@@ -99,10 +94,11 @@ type SeasonServiceHandler interface {
 // By default, handlers support the Connect, gRPC, and gRPC-Web protocols with the binary Protobuf
 // and JSON codecs. They also support gzip compression.
 func NewSeasonServiceHandler(svc SeasonServiceHandler, opts ...connect.HandlerOption) (string, http.Handler) {
+	seasonServiceMethods := v1.File_druz9_v1_season_proto.Services().ByName("SeasonService").Methods()
 	seasonServiceGetCurrentHandler := connect.NewUnaryHandler(
 		SeasonServiceGetCurrentProcedure,
 		svc.GetCurrent,
-		connect.WithSchema(seasonServiceGetCurrentMethodDescriptor),
+		connect.WithSchema(seasonServiceMethods.ByName("GetCurrent")),
 		connect.WithHandlerOptions(opts...),
 	)
 	return "/druz9.v1.SeasonService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
