@@ -34,6 +34,7 @@ import { AtlasListMode } from './AtlasListMode'
 import {
   CATEGORIES,
   GraphCanvas,
+  LegendStrip,
   type NodeState,
   nodeState,
 } from './AtlasCanvasLegacy'
@@ -315,65 +316,6 @@ function EmptyProgressCTA() {
           </Button>
         </Link>
       </div>
-    </div>
-  )
-}
-
-function LegendStrip() {
-  return (
-    <div className="flex h-14 items-center gap-4 overflow-x-auto border-t border-border bg-surface-1 px-4 sm:gap-6 sm:px-8 lg:px-20">
-      <LegendDot fill="#7C5CFF" stroke="#A78BFA" label="Доступен" />
-      <LegendDot fill="#0A0E1A" stroke="#A78BFA" label="В процессе" arc />
-      <LegendDot fill="#22C55E" stroke="#16A34A" label="Освоен" check />
-      <LegendDot fill="#0A0E1A" stroke="#F59E0B" label="Затухает" pulse />
-      <LegendDot fill="#1F2434" stroke="#2A2F45" label="Закрыт" lock />
-    </div>
-  )
-}
-
-function LegendDot({
-  fill,
-  stroke,
-  label,
-  arc,
-  check,
-  pulse,
-  lock,
-}: {
-  fill: string
-  stroke: string
-  label: string
-  arc?: boolean
-  check?: boolean
-  pulse?: boolean
-  lock?: boolean
-}) {
-  return (
-    <div className="flex items-center gap-2">
-      <svg width={20} height={20} viewBox="0 0 20 20">
-        {pulse && (
-          <circle cx={10} cy={10} r={9} fill="none" stroke={stroke} strokeWidth={1.5} opacity={0.5} />
-        )}
-        <circle cx={10} cy={10} r={7} fill={fill} stroke={stroke} strokeWidth={1.5} />
-        {arc && <path d="M10 4 A 6 6 0 0 1 16 10" fill="none" stroke="#A78BFA" strokeWidth={2} strokeLinecap="round" />}
-        {check && (
-          <path
-            d="M6 10l3 3 5-6"
-            fill="none"
-            stroke="#0A0E1A"
-            strokeWidth={2}
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-        )}
-        {lock && (
-          <g transform="translate(6 6)">
-            <rect x={1} y={3} width={6} height={5} rx={1} fill="#475569" />
-            <path d="M2 3V2a2 2 0 0 1 4 0v1" stroke="#475569" strokeWidth={1} fill="none" />
-          </g>
-        )}
-      </svg>
-      <span className="font-mono text-[12px] text-text-secondary">{label}</span>
     </div>
   )
 }
