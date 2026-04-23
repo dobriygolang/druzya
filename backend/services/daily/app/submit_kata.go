@@ -59,9 +59,15 @@ func (uc *SubmitKata) Do(ctx context.Context, in SubmitKataInput) (domain.KataSu
 	}
 	taskID := loadTodaysTaskID(history, today)
 
-	// STUB: real Judge0 client. For MVP, every submission passes with a
-	// single-case scoreboard.
-	passed, total, ok, err := uc.Judge.Submit(ctx, in.Code, in.Language, domain.TaskPublic{})
+	// Hydrate the task so the Judge0 adapter can load test_cases by id.
+	// Pre-Wave-4 we passed an empty TaskPublic, which silently grounded the
+	// real-sandbox path in ErrSandboxUnavailable; the fake-pass that hid the
+	// bug is gone, so we now have to pass the id for real grading to occur.
+	taskFull, err := uc.Tasks.GetByID(ctx, taskID)
+	if err != nil {
+		return domain.KataSubmissionResult{}, fmt.Errorf("daily.SubmitKata: load task: %w", err)
+	}
+	passed, total, ok, err := uc.Judge.Submit(ctx, in.Code, in.Language, taskFull)
 	if err != nil {
 		return domain.KataSubmissionResult{}, fmt.Errorf("daily.SubmitKata: judge: %w", err)
 	}

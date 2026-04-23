@@ -402,3 +402,59 @@ func (c *CachedRepo) GetStreaks(ctx context.Context, userID uuid.UUID) (int, int
 	}
 	return cur, best, nil
 }
+
+// GetPercentiles — uncached pass-through. Window-function queries are
+// already fast at current user scale; caching adds invalidation complexity
+// for marginal gain. Revisit if we hit 10k+ concurrent /weekly views.
+func (c *CachedRepo) GetPercentiles(ctx context.Context, userID uuid.UUID, weekEnd time.Time) (domain.PercentileView, error) {
+	p, err := c.delegate.GetPercentiles(ctx, userID, weekEnd)
+	if err != nil {
+		return p, fmt.Errorf("profile.cache.GetPercentiles: %w", err)
+	}
+	return p, nil
+}
+
+// ListHourlyActivitySince — uncached pass-through (scan per /weekly load).
+func (c *CachedRepo) ListHourlyActivitySince(ctx context.Context, userID uuid.UUID, since time.Time) ([168]int, error) {
+	h, err := c.delegate.ListHourlyActivitySince(ctx, userID, since)
+	if err != nil {
+		return h, fmt.Errorf("profile.cache.ListHourlyActivitySince: %w", err)
+	}
+	return h, nil
+}
+
+// ListEloSnapshotsSince — uncached pass-through.
+func (c *CachedRepo) ListEloSnapshotsSince(ctx context.Context, userID uuid.UUID, since time.Time) ([]domain.EloPoint, error) {
+	pts, err := c.delegate.ListEloSnapshotsSince(ctx, userID, since)
+	if err != nil {
+		return pts, fmt.Errorf("profile.cache.ListEloSnapshotsSince: %w", err)
+	}
+	return pts, nil
+}
+
+// IssueShareToken — write pass-through, no caching (each issuance is unique).
+func (c *CachedRepo) IssueShareToken(ctx context.Context, userID uuid.UUID, weekISO string) (domain.ShareToken, error) {
+	tok, err := c.delegate.IssueShareToken(ctx, userID, weekISO)
+	if err != nil {
+		return tok, fmt.Errorf("profile.cache.IssueShareToken: %w", err)
+	}
+	return tok, nil
+}
+
+// ResolveShareToken — pass-through (tokens are public-read, no per-user cache).
+func (c *CachedRepo) ResolveShareToken(ctx context.Context, token string) (domain.ShareResolution, error) {
+	r, err := c.delegate.ResolveShareToken(ctx, token)
+	if err != nil {
+		return r, fmt.Errorf("profile.cache.ResolveShareToken: %w", err)
+	}
+	return r, nil
+}
+
+// ListAchievementsSince — uncached pass-through.
+func (c *CachedRepo) ListAchievementsSince(ctx context.Context, userID uuid.UUID, since time.Time) ([]domain.AchievementBrief, error) {
+	xs, err := c.delegate.ListAchievementsSince(ctx, userID, since)
+	if err != nil {
+		return xs, fmt.Errorf("profile.cache.ListAchievementsSince: %w", err)
+	}
+	return xs, nil
+}

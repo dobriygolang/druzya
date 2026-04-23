@@ -235,7 +235,8 @@
       "system_design": "System Design",
       "behavioral": "Behavioral",
       "other": "Other"
-    }
+    },
+    "empty_hint": "An admin can upload the first episode via /admin → Podcasts."
   },
   "auth": {
     "session_expired": "Session expired, please sign in again."

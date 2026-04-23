@@ -39,3 +39,9 @@ WITH ranked AS (
 SELECT rank
   FROM ranked
  WHERE user_id = $1;
+
+-- name: CountSection :one
+-- Total rated users in a section. Used to derive percentile rank.
+SELECT COUNT(*)::int AS total
+  FROM ratings
+ WHERE section = $1;

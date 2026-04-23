@@ -59,6 +59,21 @@ func (mr *MockTaskRepoMockRecorder) GetByID(ctx, id any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetByID", reflect.TypeOf((*MockTaskRepo)(nil).GetByID), ctx, id)
 }
 
+// GetBySlug mocks base method.
+func (m *MockTaskRepo) GetBySlug(ctx context.Context, slug string) (domain.TaskPublic, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetBySlug", ctx, slug)
+	ret0, _ := ret[0].(domain.TaskPublic)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetBySlug indicates an expected call of GetBySlug.
+func (mr *MockTaskRepoMockRecorder) GetBySlug(ctx, slug any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetBySlug", reflect.TypeOf((*MockTaskRepo)(nil).GetBySlug), ctx, slug)
+}
+
 // ListActiveBySectionDifficulty mocks base method.
 func (m *MockTaskRepo) ListActiveBySectionDifficulty(ctx context.Context, section enums.Section, diff enums.Difficulty) ([]domain.TaskPublic, error) {
 	m.ctrl.T.Helper()
@@ -411,4 +426,43 @@ func (m *MockJudge0Client) Submit(ctx context.Context, code, language string, ta
 func (mr *MockJudge0ClientMockRecorder) Submit(ctx, code, language, task any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Submit", reflect.TypeOf((*MockJudge0Client)(nil).Submit), ctx, code, language, task)
+}
+
+// MockTestCaseRepo is a mock of TestCaseRepo interface.
+type MockTestCaseRepo struct {
+	ctrl     *gomock.Controller
+	recorder *MockTestCaseRepoMockRecorder
+	isgomock struct{}
+}
+
+// MockTestCaseRepoMockRecorder is the mock recorder for MockTestCaseRepo.
+type MockTestCaseRepoMockRecorder struct {
+	mock *MockTestCaseRepo
+}
+
+// NewMockTestCaseRepo creates a new mock instance.
+func NewMockTestCaseRepo(ctrl *gomock.Controller) *MockTestCaseRepo {
+	mock := &MockTestCaseRepo{ctrl: ctrl}
+	mock.recorder = &MockTestCaseRepoMockRecorder{mock}
+	return mock
+}
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockTestCaseRepo) EXPECT() *MockTestCaseRepoMockRecorder {
+	return m.recorder
+}
+
+// ListForTask mocks base method.
+func (m *MockTestCaseRepo) ListForTask(ctx context.Context, taskID uuid.UUID) ([]domain.TestCase, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ListForTask", ctx, taskID)
+	ret0, _ := ret[0].([]domain.TestCase)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ListForTask indicates an expected call of ListForTask.
+func (mr *MockTestCaseRepoMockRecorder) ListForTask(ctx, taskID any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListForTask", reflect.TypeOf((*MockTestCaseRepo)(nil).ListForTask), ctx, taskID)
 }

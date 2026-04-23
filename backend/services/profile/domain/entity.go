@@ -86,3 +86,38 @@ type Settings struct {
 	Notifications    NotificationPrefs
 	VoiceModeEnabled bool
 }
+
+// EloPoint — дневной snapshot ELO в одной секции.
+type EloPoint struct {
+	Date    time.Time
+	Elo     int
+	Section enums.Section
+}
+
+// PercentileView — три перцентиля пользователя (0..100).
+type PercentileView struct {
+	InTier    int
+	InFriends int
+	InGlobal  int
+}
+
+// ShareToken — выпущенный токен публичной ссылки на отчёт.
+type ShareToken struct {
+	Token     string
+	WeekISO   string
+	ExpiresAt time.Time
+}
+
+// ShareResolution — результат разрешения токена /report/share/{token}.
+type ShareResolution struct {
+	UserID  uuid.UUID
+	WeekISO string
+}
+
+// AchievementBrief — лёгкое представление ачивки для weekly-блока.
+type AchievementBrief struct {
+	Code       string
+	Title      string
+	UnlockedAt time.Time
+	Tier       string
+}

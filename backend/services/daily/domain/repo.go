@@ -31,6 +31,10 @@ type TaskRepo interface {
 	ListActiveBySectionDifficulty(ctx context.Context, section enums.Section, diff enums.Difficulty) ([]TaskPublic, error)
 	// GetByID is used when submit needs to look up the stored task.
 	GetByID(ctx context.Context, id uuid.UUID) (TaskPublic, error)
+	// GetBySlug powers GET /api/v1/daily/kata/:slug. Returns ErrNotFound for an
+	// unknown slug — callers MUST NOT fall back to today's kata (anti-fake
+	// policy: a stale or misspelled slug is a 404, not a silent redirect).
+	GetBySlug(ctx context.Context, slug string) (TaskPublic, error)
 }
 
 // SkillRepo exposes per-user atlas progress — the kata picker reads this to
@@ -108,10 +112,31 @@ type AutopsyRepo interface {
 	MarkReady(ctx context.Context, id uuid.UUID, analysisJSON []byte) error
 }
 
-// Judge0Client verifies code submissions. In MVP we accept every submission;
-// the interface is kept so the real client slots in later.
+// Judge0Client verifies code submissions. A concrete adapter either:
+//   - drives a real Judge0 container (POST /submissions?wait=true per test
+//     case, stdout equality vs expected_output); or
+//   - returns ErrSandboxUnavailable (NoSandboxJudge0) — anti-fallback policy
+//     forbids any fake-pass in production.
 //
-// STUB: real Judge0 client (POST /submissions?wait=true).
+// The passed TaskPublic carries the Task.ID, which the real adapter uses to
+// load test cases from the repo. Callers MUST populate TaskPublic.ID before
+// calling Submit — an empty id yields ErrSandboxUnavailable.
 type Judge0Client interface {
 	Submit(ctx context.Context, code, language string, task TaskPublic) (passed bool, total int, passedCount int, err error)
+}
+
+// TestCase is one hidden or visible grading row for a task. Order controls
+// deterministic iteration so failure reports are reproducible. Mirrors the
+// `test_cases` table from migration 00003.
+type TestCase struct {
+	Input    string
+	Expected string
+	IsHidden bool
+	Order    int
+}
+
+// TestCaseRepo loads the grading set for a task. The real-sandbox adapter
+// calls this once per Submit; the no-sandbox adapter never does.
+type TestCaseRepo interface {
+	ListForTask(ctx context.Context, taskID uuid.UUID) ([]TestCase, error)
 }

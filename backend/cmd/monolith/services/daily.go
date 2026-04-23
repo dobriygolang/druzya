@@ -1,7 +1,10 @@
 package services
 
 import (
+	"strings"
+
 	dailyApp "druz9/daily/app"
+	dailyDomain "druz9/daily/domain"
 	dailyInfra "druz9/daily/infra"
 	dailyPorts "druz9/daily/ports"
 	sharedDomain "druz9/shared/domain"
@@ -39,16 +42,26 @@ func NewDaily(d Deps) *Module {
 		d.Now,
 	)
 	autopsies := dailyInfra.NewAutopsies(d.Pool)
-	// No real Judge0 sandbox or LLM-eval client is currently wired. The
-	// adapter below fails every Submit with ErrSandboxUnavailable so that
-	// /daily/run and /daily/kata/submit return 503 instead of fabricating
-	// a passing result. Replace with a real Judge0/LLM client when the
-	// sandbox container ships.
-	judge := dailyInfra.NewNoSandboxJudge0()
+	// Real-sandbox wiring: when JUDGE0_URL is configured (default points at
+	// the docker-compose `judge0-server` service) we construct the HTTP
+	// client + sandbox executor that loads test_cases per task and runs the
+	// user's code per case. When the URL is empty we fall back to the
+	// no-sandbox adapter which 503s on every Submit — anti-fallback policy
+	// forbids any silent fake-pass even on misconfiguration.
+	var judge dailyDomain.Judge0Client
+	if u := strings.TrimSpace(d.Cfg.Judge0.URL); u != "" {
+		hc := dailyInfra.NewJudge0HTTPClient(u, d.Log)
+		judge = dailyInfra.NewJudge0SandboxExecutor(hc, tasksKatas, d.Log)
+		d.Log.Info("daily: Judge0 sandbox wired", "url", u)
+	} else {
+		d.Log.Warn("daily: JUDGE0_URL not set — /daily/run and /daily/kata/submit will return 503 (sandbox unavailable)")
+		judge = dailyInfra.NewNoSandboxJudge0()
+	}
 	analyser := &dailyApp.FakeAnalyser{Autopsies: autopsies, Log: d.Log}
 
 	h := dailyPorts.NewHandler(dailyPorts.Handler{
 		GetKata:        &dailyApp.GetKata{Skills: tasksKatas, Tasks: tasksKatas, Katas: katas, Now: d.Now},
+		GetKataBySlug:  &dailyApp.GetKataBySlug{Tasks: tasksKatas},
 		SubmitKata:     &dailyApp.SubmitKata{Tasks: tasksKatas, Katas: katas, Streaks: streaks, Judge: judge, Bus: d.Bus, Log: d.Log, Now: d.Now},
 		GetStreak:      &dailyApp.GetStreak{Streaks: streaks, Katas: katas, Now: d.Now},
 		GetCalendar:    &dailyApp.GetCalendar{Cal: calendars, Now: d.Now},
@@ -82,6 +95,11 @@ func NewDaily(d Deps) *Module {
 		RequireConnectAuth: true,
 		MountREST: func(r chi.Router) {
 			r.Get("/daily/kata", transcoder.ServeHTTP)
+			// /daily/kata/{slug} — deep-link by slug. Routed to the same
+			// transcoder which dispatches to GetKataBySlug. Auth-required like
+			// /daily/kata. POST /daily/kata/submit lives below and is matched
+			// independently because chi disambiguates by HTTP method.
+			r.Get("/daily/kata/{slug}", transcoder.ServeHTTP)
 			r.Post("/daily/kata/submit", transcoder.ServeHTTP)
 			// /daily/run — bespoke chi handler used by the editor's "Run" button
 			// (no persistence, no streak side-effect). The "Submit" button keeps

@@ -115,15 +115,15 @@ function UserMenu({ onClose }: { onClose: () => void }) {
   // Add Podcasts + Weekly Report into the user-menu (requested in
   // production-readiness pass — main nav stays at 6 items, по договорённости).
   const items: { to: string; label: string; icon: typeof User }[] = [
-    { to: '/profile', label: t('nav.profile', { defaultValue: 'Профиль' }), icon: User },
-    { to: '/vacancies', label: t('nav.vacancies', { defaultValue: 'Вакансии' }), icon: Briefcase },
-    { to: '/podcasts', label: t('nav.podcasts', { defaultValue: 'Подкасты' }), icon: Headphones },
-    { to: '/weekly', label: t('nav.weekly', { defaultValue: 'Weekly Report' }), icon: FileBarChart },
-    { to: '/settings', label: t('nav.settings', { defaultValue: 'Настройки' }), icon: Settings },
+    { to: '/profile', label: t('nav.profile'), icon: User },
+    { to: '/vacancies', label: t('nav.vacancies'), icon: Briefcase },
+    { to: '/podcasts', label: t('nav.podcasts'), icon: Headphones },
+    { to: '/weekly', label: t('nav.weekly'), icon: FileBarChart },
+    { to: '/settings', label: t('nav.settings'), icon: Settings },
     { to: '/friends', label: t('nav.friends'), icon: Users },
-    { to: '/notifications', label: t('nav.notifications', { defaultValue: 'Уведомления' }), icon: Bell },
+    { to: '/notifications', label: t('nav.notifications'), icon: Bell },
     { to: '/help', label: t('nav.help'), icon: HelpCircle },
-    ...(isAdmin ? [{ to: '/admin', label: t('nav.admin', { defaultValue: 'Админка' }), icon: Shield }] : []),
+    ...(isAdmin ? [{ to: '/admin', label: t('nav.admin'), icon: Shield }] : []),
   ]
   function handleLogout() {
     // Best-effort server-side revocation. Failures are swallowed inside
@@ -159,7 +159,7 @@ function UserMenu({ onClose }: { onClose: () => void }) {
         role="menuitem"
       >
         <LogOut className="h-4 w-4 shrink-0" />
-        <span>{t('nav.logout', { defaultValue: 'Выйти' })}</span>
+        <span>{t('nav.logout')}</span>
       </button>
     </div>
   )
@@ -253,10 +253,10 @@ function TopNav() {
                 <NavItem key={item.to} {...item} onClick={() => setMenuOpen(false)} />
               ))}
               <div className="my-2 border-t border-border" />
-              <NavItem to="/profile" label={t('nav.profile', { defaultValue: 'Профиль' })} onClick={() => setMenuOpen(false)} />
-              <NavItem to="/settings" label={t('nav.settings', { defaultValue: 'Настройки' })} onClick={() => setMenuOpen(false)} />
+              <NavItem to="/profile" label={t('nav.profile')} onClick={() => setMenuOpen(false)} />
+              <NavItem to="/settings" label={t('nav.settings')} onClick={() => setMenuOpen(false)} />
               <NavItem to="/friends" label={t('nav.friends')} onClick={() => setMenuOpen(false)} />
-              <NavItem to="/notifications" label={t('nav.notifications', { defaultValue: 'Уведомления' })} onClick={() => setMenuOpen(false)} />
+              <NavItem to="/notifications" label={t('nav.notifications')} onClick={() => setMenuOpen(false)} />
               <NavItem to="/help" label={t('nav.help')} onClick={() => setMenuOpen(false)} />
             </nav>
           </div>

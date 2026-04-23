@@ -233,6 +233,44 @@ func (q *Queries) GetStreak(ctx context.Context, userID pgtype.UUID) (GetStreakR
 	return i, err
 }
 
+const getTaskBySlug = `-- name: GetTaskBySlug :one
+SELECT id, slug, title_ru, description_ru, difficulty, section, time_limit_sec, memory_limit_mb
+  FROM tasks WHERE slug = $1
+`
+
+type GetTaskBySlugRow struct {
+	ID            pgtype.UUID
+	Slug          string
+	TitleRu       string
+	DescriptionRu string
+	Difficulty    string
+	Section       string
+	TimeLimitSec  int32
+	MemoryLimitMb int32
+}
+
+// Powers GET /api/v1/daily/kata/:slug — deep-link to a specific kata by its
+// human-readable slug. Returns the same columns as GetTaskPublic so the
+// converters in infra/postgres.go can be reused. `is_active` is NOT filtered
+// here because the caller (the kata-by-slug handler) should 404 on any
+// missing row regardless of activity — surfacing "inactive" as 404 is safer
+// than exposing a separate error code to the client.
+func (q *Queries) GetTaskBySlug(ctx context.Context, slug string) (GetTaskBySlugRow, error) {
+	row := q.db.QueryRow(ctx, getTaskBySlug, slug)
+	var i GetTaskBySlugRow
+	err := row.Scan(
+		&i.ID,
+		&i.Slug,
+		&i.TitleRu,
+		&i.DescriptionRu,
+		&i.Difficulty,
+		&i.Section,
+		&i.TimeLimitSec,
+		&i.MemoryLimitMb,
+	)
+	return i, err
+}
+
 const getTaskPublic = `-- name: GetTaskPublic :one
 SELECT id, slug, title_ru, description_ru, difficulty, section, time_limit_sec, memory_limit_mb
   FROM tasks WHERE id = $1

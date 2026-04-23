@@ -83,6 +83,9 @@ export default function App() {
         <Route path="/profile" element={<ProfilePage />} />
         <Route path="/profile/:username" element={<ProfilePage />} />
         <Route path="/daily" element={<DailyPage />} />
+        {/* /daily/kata/:slug — deep-link to a specific kata. DailyPage reads
+            useParams() and switches between today's kata and the slug query. */}
+        <Route path="/daily/kata/:slug" element={<DailyPage />} />
         <Route path="/settings" element={<SettingsPage />} />
         <Route path="/welcome" element={<WelcomePage />} />
         <Route path="/welcome/demo" element={<WelcomeDemoPage />} />

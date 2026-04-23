@@ -56,6 +56,29 @@ type ProfileRepo interface {
 	// GetStreaks возвращает текущую серию активности (дни) и личный рекорд.
 	// Реализация может вернуть (0, 0), если не поддерживает streak-таблицу.
 	GetStreaks(ctx context.Context, userID uuid.UUID) (current, best int, err error)
+
+	// ── Phase A killer-stats ─────────────────────────────────────────────
+	// ListHourlyActivitySince возвращает 168-элементный массив (dow*24+hour)
+	// активности (count матчей) за окно [since, now]. Пустые ячейки = 0.
+	ListHourlyActivitySince(ctx context.Context, userID uuid.UUID, since time.Time) ([168]int, error)
+
+	// ListEloSnapshotsSince возвращает дневные snapshot-точки из
+	// elo_snapshots_daily, отсортированные по дате ASC.
+	ListEloSnapshotsSince(ctx context.Context, userID uuid.UUID, since time.Time) ([]EloPoint, error)
+
+	// GetPercentiles считает три перцентиля пользователя на дату weekEnd
+	// (in_tier по elo-bucket'у, in_friends среди принятых дружб, in_global).
+	GetPercentiles(ctx context.Context, userID uuid.UUID, weekEnd time.Time) (PercentileView, error)
+
+	// IssueShareToken создаёт строку в weekly_share_tokens с TTL 30 дней.
+	IssueShareToken(ctx context.Context, userID uuid.UUID, weekISO string) (ShareToken, error)
+
+	// ResolveShareToken находит активный токен; ErrNotFound если протух/нет.
+	// Также инкрементирует views_count атомарно.
+	ResolveShareToken(ctx context.Context, token string) (ShareResolution, error)
+
+	// ListAchievementsSince возвращает ачивки, разблокированные с since.
+	ListAchievementsSince(ctx context.Context, userID uuid.UUID, since time.Time) ([]AchievementBrief, error)
 }
 
 // Bundle is the joined shape of GET /profile/me.

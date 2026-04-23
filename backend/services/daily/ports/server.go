@@ -59,6 +59,29 @@ func (s *DailyServer) GetKata(
 	}), nil
 }
 
+// GetKataBySlug implements druz9.v1.DailyService/GetKataBySlug. Unknown slug
+// yields connect.CodeNotFound (HTTP 404 via the transcoder) — there is NO
+// silent fallback to today's kata.
+func (s *DailyServer) GetKataBySlug(
+	ctx context.Context,
+	req *connect.Request[pb.GetKataBySlugRequest],
+) (*connect.Response[pb.GetKataBySlugResponse], error) {
+	if _, ok := sharedMw.UserIDFromContext(ctx); !ok {
+		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("unauthenticated"))
+	}
+	slug := req.Msg.GetSlug()
+	if slug == "" {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("slug is required"))
+	}
+	t, err := s.H.GetKataBySlug.Do(ctx, slug)
+	if err != nil {
+		return nil, fmt.Errorf("daily.GetKataBySlug: %w", s.toConnectErr(err))
+	}
+	return connect.NewResponse(&pb.GetKataBySlugResponse{
+		Task: toTaskPublicProto(t),
+	}), nil
+}
+
 // SubmitKata implements druz9.v1.DailyService/SubmitKata.
 func (s *DailyServer) SubmitKata(
 	ctx context.Context,

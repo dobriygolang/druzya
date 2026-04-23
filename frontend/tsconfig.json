@@ -15,6 +15,11 @@
     "esModuleInterop": true,
     "skipLibCheck": true,
     "allowImportingTsExtensions": false,
+    // Vite handles transpilation via esbuild. tsc только type-check'ает —
+    // НЕ эмитит .js: иначе при каждом `npm run build` (= `tsc -b && vite build`)
+    // появляются .js дубликаты рядом с каждым .ts/.tsx, замусоривают git
+    // и попадают под ESLint (что давало 100+ false-positive no-undef).
+    "noEmit": true,
     // baseUrl deprecated в TS 7. Под bundler moduleResolution paths работают без него
     // (resolve относительно tsconfig). Если когда-то нужен будет fallback —
     // верни baseUrl + добавь "ignoreDeprecations": "6.0".

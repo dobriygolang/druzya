@@ -634,6 +634,74 @@ export class GetDailyKataRequest extends Message {
     }
 }
 /**
+ * GetKataBySlugRequest — deep-link GET /api/v1/daily/kata/:slug. Unknown slug
+ * returns NotFound (HTTP 404); handler must NOT silently fall back to today's
+ * kata (anti-fallback policy: a 404 is honest, a redirect is a lie).
+ *
+ * @generated from message druz9.v1.GetKataBySlugRequest
+ */
+export class GetKataBySlugRequest extends Message {
+    /**
+     * @generated from field: string slug = 1;
+     */
+    slug = "";
+    constructor(data) {
+        super();
+        proto3.util.initPartial(data, this);
+    }
+    static runtime = proto3;
+    static typeName = "druz9.v1.GetKataBySlugRequest";
+    static fields = proto3.util.newFieldList(() => [
+        { no: 1, name: "slug", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    ]);
+    static fromBinary(bytes, options) {
+        return new GetKataBySlugRequest().fromBinary(bytes, options);
+    }
+    static fromJson(jsonValue, options) {
+        return new GetKataBySlugRequest().fromJson(jsonValue, options);
+    }
+    static fromJsonString(jsonString, options) {
+        return new GetKataBySlugRequest().fromJsonString(jsonString, options);
+    }
+    static equals(a, b) {
+        return proto3.util.equals(GetKataBySlugRequest, a, b);
+    }
+}
+/**
+ * GetKataBySlugResponse mirrors DailyKata but without the `already_submitted`
+ * flag — slug deep-links are for browsing and don't carry per-user submission
+ * state.
+ *
+ * @generated from message druz9.v1.GetKataBySlugResponse
+ */
+export class GetKataBySlugResponse extends Message {
+    /**
+     * @generated from field: druz9.v1.TaskPublic task = 1;
+     */
+    task;
+    constructor(data) {
+        super();
+        proto3.util.initPartial(data, this);
+    }
+    static runtime = proto3;
+    static typeName = "druz9.v1.GetKataBySlugResponse";
+    static fields = proto3.util.newFieldList(() => [
+        { no: 1, name: "task", kind: "message", T: TaskPublic },
+    ]);
+    static fromBinary(bytes, options) {
+        return new GetKataBySlugResponse().fromBinary(bytes, options);
+    }
+    static fromJson(jsonValue, options) {
+        return new GetKataBySlugResponse().fromJson(jsonValue, options);
+    }
+    static fromJsonString(jsonString, options) {
+        return new GetKataBySlugResponse().fromJsonString(jsonString, options);
+    }
+    static equals(a, b) {
+        return proto3.util.equals(GetKataBySlugResponse, a, b);
+    }
+}
+/**
  * @generated from message druz9.v1.SubmitKataRequest
  */
 export class SubmitKataRequest extends Message {

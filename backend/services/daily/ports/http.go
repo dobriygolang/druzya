@@ -13,6 +13,7 @@ import (
 // DailyServer (see ports/server.go) which implements apigen.ServerInterface.
 type Handler struct {
 	GetKata        *app.GetKata
+	GetKataBySlug  *app.GetKataBySlug
 	SubmitKata     *app.SubmitKata
 	GetStreak      *app.GetStreak
 	GetCalendar    *app.GetCalendar

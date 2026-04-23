@@ -11,6 +11,20 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const countSection = `-- name: CountSection :one
+SELECT COUNT(*)::int AS total
+  FROM ratings
+ WHERE section = $1
+`
+
+// Total rated users in a section. Used to derive percentile rank.
+func (q *Queries) CountSection(ctx context.Context, section string) (int32, error) {
+	row := q.db.QueryRow(ctx, countSection, section)
+	var total int32
+	err := row.Scan(&total)
+	return total, err
+}
+
 const findRank = `-- name: FindRank :one
 WITH ranked AS (
     SELECT user_id,

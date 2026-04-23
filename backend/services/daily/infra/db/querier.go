@@ -17,6 +17,13 @@ type Querier interface {
 	GetAutopsy(ctx context.Context, id pgtype.UUID) (InterviewAutopsy, error)
 	GetDailyKata(ctx context.Context, arg GetDailyKataParams) (GetDailyKataRow, error)
 	GetStreak(ctx context.Context, userID pgtype.UUID) (GetStreakRow, error)
+	// Powers GET /api/v1/daily/kata/:slug — deep-link to a specific kata by its
+	// human-readable slug. Returns the same columns as GetTaskPublic so the
+	// converters in infra/postgres.go can be reused. `is_active` is NOT filtered
+	// here because the caller (the kata-by-slug handler) should 404 on any
+	// missing row regardless of activity — surfacing "inactive" as 404 is safer
+	// than exposing a separate error code to the client.
+	GetTaskBySlug(ctx context.Context, slug string) (GetTaskBySlugRow, error)
 	GetTaskPublic(ctx context.Context, id pgtype.UUID) (GetTaskPublicRow, error)
 	// Queries consumed by sqlc; mirror hand-rolled pgx in infra/postgres.go.
 	// CRITICAL: solution_hint is NEVER selected in the TaskPublic-shaped queries.

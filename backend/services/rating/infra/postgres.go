@@ -97,6 +97,15 @@ func (p *Postgres) FindRank(ctx context.Context, userID uuid.UUID, section enums
 	return int(rank), nil
 }
 
+// CountSection returns the total number of ranked users for a section.
+func (p *Postgres) CountSection(ctx context.Context, section enums.Section) (int, error) {
+	total, err := p.q.CountSection(ctx, string(section))
+	if err != nil {
+		return 0, fmt.Errorf("rating.pg.CountSection: %w", err)
+	}
+	return int(total), nil
+}
+
 // HistoryLast12Weeks returns an empty slice for now.
 // STUB: real implementation joins arena_participants + mock_sessions,
 // bucketed by ISO week. Wire once arena and mock land.

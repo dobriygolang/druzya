@@ -210,7 +210,7 @@ function FindByCodeCard() {
 // Anti-fallback: 'online' tab removed alongside the FriendDTO.online field
 // (no real presence service exists; the AlwaysOffline stub used to show
 // every user as offline anyway).
-type Tab = 'all' | 'requests' | 'guild' | 'blocked'
+type Tab = 'all' | 'requests' | 'blocked'
 
 export default function FriendsPage() {
   const { t } = useTranslation('pages')
@@ -239,11 +239,12 @@ export default function FriendsPage() {
   const suggestionList = suggestions.data ?? []
   const blockedList = blocked.data ?? []
 
-  // Anti-fallback: `online` count removed — no real presence service exists.
+  // Anti-fallback: `online` count + `guild` count removed (no presence
+  // service; friends API doesn't expose guild-membership cross-join). When
+  // either landing — restore via the corresponding field on FriendListEntry.
   const counts = {
     total: friends.data?.total ?? accepted.length,
     requests: incomingList.length,
-    guild: 0, // TODO: guild-membership ещё не выставлен в friends API
     blocked: blockedList.length,
   }
 
@@ -294,7 +295,7 @@ export default function FriendsPage() {
                 {counts.requests > 0 && <span className="h-1.5 w-1.5 rounded-full bg-danger" />}
               </span>
             </Tabs.Tab>
-            <Tabs.Tab id="guild">{t('friends.guild')} {counts.guild}</Tabs.Tab>
+            {/* "guild" tab dropped: friends API doesn't expose guild-membership cross-join. */}
             <Tabs.Tab id="blocked">{t('friends.blocked')} {counts.blocked}</Tabs.Tab>
           </Tabs.List>
         </Tabs>

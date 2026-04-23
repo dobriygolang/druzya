@@ -211,8 +211,13 @@ func toProfilePublicProto(v app.PublicView) *pb.ProfilePublic {
 			Section:      sectionToProto(r.Section),
 			Elo:          int32(r.Elo),
 			MatchesCount: int32(r.MatchesCount),
-			// STUB: percentile lookup from leaderboard cache (rating domain).
-			Percentile: 50,
+			// Percentile is intentionally 0 here: the public profile lives in
+			// the profile service and does not call into rating to keep the
+			// service boundary clean. Frontends should treat 0 as "not
+			// available on this surface" and prefer GET /rating/me when the
+			// caller is the profile owner. Anti-fallback: do NOT invent a
+			// stand-in median value (the previous 50 was misleading UX).
+			Percentile: 0,
 			Decaying:   isDecaying(r.LastMatchAt, now),
 		})
 	}

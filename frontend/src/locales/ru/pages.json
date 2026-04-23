@@ -235,7 +235,8 @@
       "system_design": "System Design",
       "behavioral": "Behavioral",
       "other": "Другое"
-    }
+    },
+    "empty_hint": "Админ может загрузить первый эпизод через панель /admin → «Подкасты»."
   },
   "auth": {
     "session_expired": "Сессия истекла, переавторизуйтесь."

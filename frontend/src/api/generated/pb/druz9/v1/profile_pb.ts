@@ -1113,6 +1113,174 @@ export class WeekComparison extends Message<WeekComparison> {
 }
 
 /**
+ * EloPoint — одна дневная snapshot-точка ELO для линейного графика
+ * /report. date — ISO YYYY-MM-DD; section — строкой, чтобы не плодить enum
+ * в protowire (значения совпадают с pb.Section, но без префиксов).
+ *
+ * @generated from message druz9.v1.EloPoint
+ */
+export class EloPoint extends Message<EloPoint> {
+  /**
+   * @generated from field: string date = 1;
+   */
+  date = "";
+
+  /**
+   * @generated from field: int32 elo = 2;
+   */
+  elo = 0;
+
+  /**
+   * @generated from field: string section = 3;
+   */
+  section = "";
+
+  constructor(data?: PartialMessage<EloPoint>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.EloPoint";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "date", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "elo", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 3, name: "section", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): EloPoint {
+    return new EloPoint().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): EloPoint {
+    return new EloPoint().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): EloPoint {
+    return new EloPoint().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: EloPoint | PlainMessage<EloPoint> | undefined, b: EloPoint | PlainMessage<EloPoint> | undefined): boolean {
+    return proto3.util.equals(EloPoint, a, b);
+  }
+}
+
+/**
+ * PercentileView — три перцентиля пользователя на дату конца недели:
+ * внутри своего тира, среди друзей и глобально. Целое 0..100.
+ *
+ * @generated from message druz9.v1.PercentileView
+ */
+export class PercentileView extends Message<PercentileView> {
+  /**
+   * @generated from field: int32 in_tier = 1;
+   */
+  inTier = 0;
+
+  /**
+   * @generated from field: int32 in_friends = 2;
+   */
+  inFriends = 0;
+
+  /**
+   * @generated from field: int32 in_global = 3;
+   */
+  inGlobal = 0;
+
+  constructor(data?: PartialMessage<PercentileView>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.PercentileView";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "in_tier", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 2, name: "in_friends", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 3, name: "in_global", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): PercentileView {
+    return new PercentileView().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): PercentileView {
+    return new PercentileView().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): PercentileView {
+    return new PercentileView().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: PercentileView | PlainMessage<PercentileView> | undefined, b: PercentileView | PlainMessage<PercentileView> | undefined): boolean {
+    return proto3.util.equals(PercentileView, a, b);
+  }
+}
+
+/**
+ * AchievementBrief — лёгкое представление ачивки, заработанной за неделю,
+ * для блока «Что разблокировано». Полный объект Achievement не нужен —
+ * фронт дотягивает описание из каталога по code, если потребуется.
+ *
+ * @generated from message druz9.v1.AchievementBrief
+ */
+export class AchievementBrief extends Message<AchievementBrief> {
+  /**
+   * @generated from field: string code = 1;
+   */
+  code = "";
+
+  /**
+   * @generated from field: string title = 2;
+   */
+  title = "";
+
+  /**
+   * ISO-8601
+   *
+   * @generated from field: string unlocked_at = 3;
+   */
+  unlockedAt = "";
+
+  /**
+   * bronze|silver|gold|... — строка, без enum
+   *
+   * @generated from field: string tier = 4;
+   */
+  tier = "";
+
+  constructor(data?: PartialMessage<AchievementBrief>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.AchievementBrief";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "code", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "title", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 3, name: "unlocked_at", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 4, name: "tier", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): AchievementBrief {
+    return new AchievementBrief().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): AchievementBrief {
+    return new AchievementBrief().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): AchievementBrief {
+    return new AchievementBrief().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: AchievementBrief | PlainMessage<AchievementBrief> | undefined, b: AchievementBrief | PlainMessage<AchievementBrief> | undefined): boolean {
+    return proto3.util.equals(AchievementBrief, a, b);
+  }
+}
+
+/**
  * WeeklyReport mirrors OpenAPI WeeklyReport.
  *
  * @generated from message druz9.v1.WeeklyReport
@@ -1206,6 +1374,50 @@ export class WeeklyReport extends Message<WeeklyReport> {
    */
   weeklyXp: WeekComparison[] = [];
 
+  /**
+   * Phase A killer-stats расширения. Старые клиенты безопасно
+   * игнорируют (proto3 default values).
+   * hourly_heatmap — 168 ячеек (7 дней × 24 часа), индекс = dow*24+hour.
+   *
+   * @generated from field: repeated int32 hourly_heatmap = 16;
+   */
+  hourlyHeatmap: number[] = [];
+
+  /**
+   * elo_series — дневные snapshot-точки ELO за окно.
+   *
+   * @generated from field: repeated druz9.v1.EloPoint elo_series = 17;
+   */
+  eloSeries: EloPoint[] = [];
+
+  /**
+   * percentiles — три перцентиля на конец недели.
+   *
+   * @generated from field: druz9.v1.PercentileView percentiles = 18;
+   */
+  percentiles?: PercentileView;
+
+  /**
+   * ai_insight — текст от LLM-инсайта; пустая строка, если OpenRouter недоступен.
+   *
+   * @generated from field: string ai_insight = 19;
+   */
+  aiInsight = "";
+
+  /**
+   * achievements_this_week — ачивки, разблокированные в окне недели.
+   *
+   * @generated from field: repeated druz9.v1.AchievementBrief achievements_this_week = 20;
+   */
+  achievementsThisWeek: AchievementBrief[] = [];
+
+  /**
+   * share_token — токен публичной ссылки; пустая строка, если ещё не выпускался.
+   *
+   * @generated from field: string share_token = 21;
+   */
+  shareToken = "";
+
   constructor(data?: PartialMessage<WeeklyReport>) {
     super();
     proto3.util.initPartial(data, this);
@@ -1229,6 +1441,12 @@ export class WeeklyReport extends Message<WeeklyReport> {
     { no: 13, name: "strong_sections", kind: "message", T: SectionBreakdown, repeated: true },
     { no: 14, name: "weak_sections", kind: "message", T: SectionBreakdown, repeated: true },
     { no: 15, name: "weekly_xp", kind: "message", T: WeekComparison, repeated: true },
+    { no: 16, name: "hourly_heatmap", kind: "scalar", T: 5 /* ScalarType.INT32 */, repeated: true },
+    { no: 17, name: "elo_series", kind: "message", T: EloPoint, repeated: true },
+    { no: 18, name: "percentiles", kind: "message", T: PercentileView },
+    { no: 19, name: "ai_insight", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 20, name: "achievements_this_week", kind: "message", T: AchievementBrief, repeated: true },
+    { no: 21, name: "share_token", kind: "scalar", T: 9 /* ScalarType.STRING */ },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): WeeklyReport {

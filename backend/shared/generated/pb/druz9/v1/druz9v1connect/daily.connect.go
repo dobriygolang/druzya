@@ -42,6 +42,9 @@ const (
 const (
 	// DailyServiceGetKataProcedure is the fully-qualified name of the DailyService's GetKata RPC.
 	DailyServiceGetKataProcedure = "/druz9.v1.DailyService/GetKata"
+	// DailyServiceGetKataBySlugProcedure is the fully-qualified name of the DailyService's
+	// GetKataBySlug RPC.
+	DailyServiceGetKataBySlugProcedure = "/druz9.v1.DailyService/GetKataBySlug"
 	// DailyServiceSubmitKataProcedure is the fully-qualified name of the DailyService's SubmitKata RPC.
 	DailyServiceSubmitKataProcedure = "/druz9.v1.DailyService/SubmitKata"
 	// DailyServiceGetStreakProcedure is the fully-qualified name of the DailyService's GetStreak RPC.
@@ -63,6 +66,9 @@ const (
 type DailyServiceClient interface {
 	// GetKata returns today's kata.
 	GetKata(context.Context, *connect.Request[v1.GetDailyKataRequest]) (*connect.Response[v1.DailyKata], error)
+	// GetKataBySlug returns a kata by its public slug. 404 on unknown slug —
+	// the UI uses this for deep-links like /daily/kata/two-sum.
+	GetKataBySlug(context.Context, *connect.Request[v1.GetKataBySlugRequest]) (*connect.Response[v1.GetKataBySlugResponse], error)
 	// SubmitKata grades and returns the result + streak update.
 	SubmitKata(context.Context, *connect.Request[v1.SubmitKataRequest]) (*connect.Response[v1.KataResult], error)
 	// GetStreak returns the current streak + 30-day history.
@@ -92,6 +98,12 @@ func NewDailyServiceClient(httpClient connect.HTTPClient, baseURL string, opts .
 			httpClient,
 			baseURL+DailyServiceGetKataProcedure,
 			connect.WithSchema(dailyServiceMethods.ByName("GetKata")),
+			connect.WithClientOptions(opts...),
+		),
+		getKataBySlug: connect.NewClient[v1.GetKataBySlugRequest, v1.GetKataBySlugResponse](
+			httpClient,
+			baseURL+DailyServiceGetKataBySlugProcedure,
+			connect.WithSchema(dailyServiceMethods.ByName("GetKataBySlug")),
 			connect.WithClientOptions(opts...),
 		),
 		submitKata: connect.NewClient[v1.SubmitKataRequest, v1.KataResult](
@@ -136,6 +148,7 @@ func NewDailyServiceClient(httpClient connect.HTTPClient, baseURL string, opts .
 // dailyServiceClient implements DailyServiceClient.
 type dailyServiceClient struct {
 	getKata        *connect.Client[v1.GetDailyKataRequest, v1.DailyKata]
+	getKataBySlug  *connect.Client[v1.GetKataBySlugRequest, v1.GetKataBySlugResponse]
 	submitKata     *connect.Client[v1.SubmitKataRequest, v1.KataResult]
 	getStreak      *connect.Client[v1.GetStreakRequest, v1.StreakInfo]
 	getCalendar    *connect.Client[v1.GetCalendarRequest, v1.InterviewCalendar]
@@ -147,6 +160,11 @@ type dailyServiceClient struct {
 // GetKata calls druz9.v1.DailyService.GetKata.
 func (c *dailyServiceClient) GetKata(ctx context.Context, req *connect.Request[v1.GetDailyKataRequest]) (*connect.Response[v1.DailyKata], error) {
 	return c.getKata.CallUnary(ctx, req)
+}
+
+// GetKataBySlug calls druz9.v1.DailyService.GetKataBySlug.
+func (c *dailyServiceClient) GetKataBySlug(ctx context.Context, req *connect.Request[v1.GetKataBySlugRequest]) (*connect.Response[v1.GetKataBySlugResponse], error) {
+	return c.getKataBySlug.CallUnary(ctx, req)
 }
 
 // SubmitKata calls druz9.v1.DailyService.SubmitKata.
@@ -183,6 +201,9 @@ func (c *dailyServiceClient) GetAutopsy(ctx context.Context, req *connect.Reques
 type DailyServiceHandler interface {
 	// GetKata returns today's kata.
 	GetKata(context.Context, *connect.Request[v1.GetDailyKataRequest]) (*connect.Response[v1.DailyKata], error)
+	// GetKataBySlug returns a kata by its public slug. 404 on unknown slug —
+	// the UI uses this for deep-links like /daily/kata/two-sum.
+	GetKataBySlug(context.Context, *connect.Request[v1.GetKataBySlugRequest]) (*connect.Response[v1.GetKataBySlugResponse], error)
 	// SubmitKata grades and returns the result + streak update.
 	SubmitKata(context.Context, *connect.Request[v1.SubmitKataRequest]) (*connect.Response[v1.KataResult], error)
 	// GetStreak returns the current streak + 30-day history.
@@ -208,6 +229,12 @@ func NewDailyServiceHandler(svc DailyServiceHandler, opts ...connect.HandlerOpti
 		DailyServiceGetKataProcedure,
 		svc.GetKata,
 		connect.WithSchema(dailyServiceMethods.ByName("GetKata")),
+		connect.WithHandlerOptions(opts...),
+	)
+	dailyServiceGetKataBySlugHandler := connect.NewUnaryHandler(
+		DailyServiceGetKataBySlugProcedure,
+		svc.GetKataBySlug,
+		connect.WithSchema(dailyServiceMethods.ByName("GetKataBySlug")),
 		connect.WithHandlerOptions(opts...),
 	)
 	dailyServiceSubmitKataHandler := connect.NewUnaryHandler(
@@ -250,6 +277,8 @@ func NewDailyServiceHandler(svc DailyServiceHandler, opts ...connect.HandlerOpti
 		switch r.URL.Path {
 		case DailyServiceGetKataProcedure:
 			dailyServiceGetKataHandler.ServeHTTP(w, r)
+		case DailyServiceGetKataBySlugProcedure:
+			dailyServiceGetKataBySlugHandler.ServeHTTP(w, r)
 		case DailyServiceSubmitKataProcedure:
 			dailyServiceSubmitKataHandler.ServeHTTP(w, r)
 		case DailyServiceGetStreakProcedure:
@@ -273,6 +302,10 @@ type UnimplementedDailyServiceHandler struct{}
 
 func (UnimplementedDailyServiceHandler) GetKata(context.Context, *connect.Request[v1.GetDailyKataRequest]) (*connect.Response[v1.DailyKata], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.DailyService.GetKata is not implemented"))
+}
+
+func (UnimplementedDailyServiceHandler) GetKataBySlug(context.Context, *connect.Request[v1.GetKataBySlugRequest]) (*connect.Response[v1.GetKataBySlugResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.DailyService.GetKataBySlug is not implemented"))
 }
 
 func (UnimplementedDailyServiceHandler) SubmitKata(context.Context, *connect.Request[v1.SubmitKataRequest]) (*connect.Response[v1.KataResult], error) {

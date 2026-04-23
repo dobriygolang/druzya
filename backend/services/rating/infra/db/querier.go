@@ -11,6 +11,8 @@ import (
 )
 
 type Querier interface {
+	// Total rated users in a section. Used to derive percentile rank.
+	CountSection(ctx context.Context, section string) (int32, error)
 	// Use a CTE that ranks every row within a section, then filter to the user.
 	FindRank(ctx context.Context, arg FindRankParams) (int32, error)
 	// rating queries consumed by sqlc (emitted into services/rating/infra/db).

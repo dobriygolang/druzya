@@ -44,6 +44,21 @@ func (m *MockRatingRepo) EXPECT() *MockRatingRepoMockRecorder {
 	return m.recorder
 }
 
+// CountSection mocks base method.
+func (m *MockRatingRepo) CountSection(ctx context.Context, section enums.Section) (int, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CountSection", ctx, section)
+	ret0, _ := ret[0].(int)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// CountSection indicates an expected call of CountSection.
+func (mr *MockRatingRepoMockRecorder) CountSection(ctx, section any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CountSection", reflect.TypeOf((*MockRatingRepo)(nil).CountSection), ctx, section)
+}
+
 // FindRank mocks base method.
 func (m *MockRatingRepo) FindRank(ctx context.Context, userID uuid.UUID, section enums.Section) (int, error) {
 	m.ctrl.T.Helper()

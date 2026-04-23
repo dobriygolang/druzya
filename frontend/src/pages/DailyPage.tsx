@@ -1,13 +1,16 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import Editor from '@monaco-editor/react'
 import { CheckCircle2, Flame, Loader2, Play, Send, XCircle } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
+import { Link, useParams } from 'react-router-dom'
 import { AppShellV2 } from '../components/AppShell'
 import { Button } from '../components/Button'
 import { Card } from '../components/Card'
 import { cn } from '../lib/cn'
+import { ApiError } from '../lib/apiClient'
 import {
   useDailyKataQuery,
+  useDailyKataBySlugQuery,
   useDailyRunMutation,
   useDailySubmitMutation,
   useStreakQuery,
@@ -338,13 +341,78 @@ function StreakCard() {
   )
 }
 
-export default function DailyPage() {
-  const { data: kata, isError } = useDailyKataQuery()
-  const kataID = useMemo(() => kata?.task?.id ?? 'pending-kata', [kata])
-  const starter = useMemo(
-    () => kata?.task?.starter_code?.go ?? '',
-    [kata],
+// SlugNotFoundView renders when /daily/kata/:slug resolves to a 404 from the
+// backend. Anti-fallback policy: we never silently fall back to today's kata —
+// the user gets a clear "не существует" message and a back-link.
+function SlugNotFoundView({ slug }: { slug: string }) {
+  return (
+    <AppShellV2>
+      <div className="flex flex-col items-center justify-center gap-4 px-6 py-24 text-center">
+        <h1 className="font-display text-3xl font-extrabold text-text-primary">
+          Ката с таким slug не существует
+        </h1>
+        <p className="font-mono text-[13px] text-text-muted">slug: {slug}</p>
+        <Link
+          to="/daily"
+          className="mt-2 rounded-md bg-accent px-4 py-2 font-mono text-[12px] font-semibold text-bg hover:opacity-90"
+        >
+          ← Вернуться к сегодняшней ка́те
+        </Link>
+      </div>
+    </AppShellV2>
   )
+}
+
+export default function DailyPage() {
+  const params = useParams<{ slug?: string }>()
+  const slug = params.slug
+  // Run exactly one of the two queries (the slug query is `enabled` only when
+  // slug is set; the today-kata query is always enabled — its result is just
+  // ignored on the slug branch).
+  const todayQ = useDailyKataQuery()
+  const slugQ = useDailyKataBySlugQuery(slug)
+
+  // Slug branch: surface 404 explicitly, never fall back.
+  if (slug) {
+    if (slugQ.isError) {
+      const status = slugQ.error instanceof ApiError ? slugQ.error.status : 0
+      if (status === 404) {
+        return <SlugNotFoundView slug={slug} />
+      }
+    }
+    const slugKata: DailyKata | undefined = slugQ.data
+      ? {
+          // Stitch the wire shape into the same DailyKata view-model the rest
+          // of the page reads. There's no per-user state for slug deep-links,
+          // so submission flags default to false / today's date.
+          date: new Date().toISOString().slice(0, 10),
+          task: slugQ.data.task,
+          is_cursed: false,
+          is_weekly_boss: false,
+          already_submitted: false,
+        }
+      : undefined
+    const kataID = slugKata?.task?.id ?? 'pending-kata'
+    const starter = slugKata?.task?.starter_code?.go ?? ''
+    return (
+      <AppShellV2>
+        <Hero kata={slugKata} isError={slugQ.isError} />
+        <div className="flex flex-col gap-6 px-4 py-6 sm:px-8 lg:flex-row lg:px-10 lg:py-8" style={{ minHeight: 'calc(100vh - 72px - 200px)' }}>
+          <DescriptionCard kata={slugKata} />
+          <Editor3 kataID={kataID} initialCode={starter} />
+          <div className="flex w-full flex-col gap-4 lg:w-[240px]">
+            <StreakCard />
+          </div>
+        </div>
+      </AppShellV2>
+    )
+  }
+
+  // Default branch: today's kata.
+  const kata = todayQ.data
+  const isError = todayQ.isError
+  const kataID = kata?.task?.id ?? 'pending-kata'
+  const starter = kata?.task?.starter_code?.go ?? ''
   return (
     <AppShellV2>
       <Hero kata={kata} isError={isError} />

@@ -10,7 +10,7 @@
 /* eslint-disable */
 // @ts-nocheck
 
-import { CreateAutopsyRequest, DailyKata, GetAutopsyRequest, GetCalendarRequest, GetDailyKataRequest, GetStreakRequest, InterviewAutopsy, InterviewCalendar, KataResult, StreakInfo, SubmitKataRequest, UpsertCalendarRequest } from "./daily_pb.js";
+import { CreateAutopsyRequest, DailyKata, GetAutopsyRequest, GetCalendarRequest, GetDailyKataRequest, GetKataBySlugRequest, GetKataBySlugResponse, GetStreakRequest, InterviewAutopsy, InterviewCalendar, KataResult, StreakInfo, SubmitKataRequest, UpsertCalendarRequest } from "./daily_pb.js";
 import { MethodKind } from "@bufbuild/protobuf";
 
 /**
@@ -28,6 +28,18 @@ export const DailyService = {
       name: "GetKata",
       I: GetDailyKataRequest,
       O: DailyKata,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * GetKataBySlug returns a kata by its public slug. 404 on unknown slug —
+     * the UI uses this for deep-links like /daily/kata/two-sum.
+     *
+     * @generated from rpc druz9.v1.DailyService.GetKataBySlug
+     */
+    getKataBySlug: {
+      name: "GetKataBySlug",
+      I: GetKataBySlugRequest,
+      O: GetKataBySlugResponse,
       kind: MethodKind.Unary,
     },
     /**

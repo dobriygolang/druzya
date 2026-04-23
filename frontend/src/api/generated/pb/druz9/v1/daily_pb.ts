@@ -771,6 +771,88 @@ export class GetDailyKataRequest extends Message<GetDailyKataRequest> {
 }
 
 /**
+ * GetKataBySlugRequest — deep-link GET /api/v1/daily/kata/:slug. Unknown slug
+ * returns NotFound (HTTP 404); handler must NOT silently fall back to today's
+ * kata (anti-fallback policy: a 404 is honest, a redirect is a lie).
+ *
+ * @generated from message druz9.v1.GetKataBySlugRequest
+ */
+export class GetKataBySlugRequest extends Message<GetKataBySlugRequest> {
+  /**
+   * @generated from field: string slug = 1;
+   */
+  slug = "";
+
+  constructor(data?: PartialMessage<GetKataBySlugRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.GetKataBySlugRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "slug", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): GetKataBySlugRequest {
+    return new GetKataBySlugRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): GetKataBySlugRequest {
+    return new GetKataBySlugRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): GetKataBySlugRequest {
+    return new GetKataBySlugRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: GetKataBySlugRequest | PlainMessage<GetKataBySlugRequest> | undefined, b: GetKataBySlugRequest | PlainMessage<GetKataBySlugRequest> | undefined): boolean {
+    return proto3.util.equals(GetKataBySlugRequest, a, b);
+  }
+}
+
+/**
+ * GetKataBySlugResponse mirrors DailyKata but without the `already_submitted`
+ * flag — slug deep-links are for browsing and don't carry per-user submission
+ * state.
+ *
+ * @generated from message druz9.v1.GetKataBySlugResponse
+ */
+export class GetKataBySlugResponse extends Message<GetKataBySlugResponse> {
+  /**
+   * @generated from field: druz9.v1.TaskPublic task = 1;
+   */
+  task?: TaskPublic;
+
+  constructor(data?: PartialMessage<GetKataBySlugResponse>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.GetKataBySlugResponse";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "task", kind: "message", T: TaskPublic },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): GetKataBySlugResponse {
+    return new GetKataBySlugResponse().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): GetKataBySlugResponse {
+    return new GetKataBySlugResponse().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): GetKataBySlugResponse {
+    return new GetKataBySlugResponse().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: GetKataBySlugResponse | PlainMessage<GetKataBySlugResponse> | undefined, b: GetKataBySlugResponse | PlainMessage<GetKataBySlugResponse> | undefined): boolean {
+    return proto3.util.equals(GetKataBySlugResponse, a, b);
+  }
+}
+
+/**
  * @generated from message druz9.v1.SubmitKataRequest
  */
 export class SubmitKataRequest extends Message<SubmitKataRequest> {

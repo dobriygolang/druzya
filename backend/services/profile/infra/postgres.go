@@ -6,6 +6,8 @@ package infra
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"time"
@@ -404,6 +406,250 @@ func (p *Postgres) GetStreaks(ctx context.Context, userID uuid.UUID) (int, int, 
 		return 0, 0, nil
 	}
 	return cur, best, nil
+}
+
+// ── Phase A killer-stats ───────────────────────────────────────────────────
+
+// ListHourlyActivitySince — флэт-массив 168 (dow*24+hour) с числом матчей,
+// в которых пользователь участвовал. Пустые ячейки = 0. Хэнд-роллед pgx,
+// потому что dow/hour-арифметика на стороне SQL не вписывается в sqlc.
+func (p *Postgres) ListHourlyActivitySince(ctx context.Context, userID uuid.UUID, since time.Time) ([168]int, error) {
+	var out [168]int
+	const q = `
+		SELECT EXTRACT(DOW FROM m.started_at)::int  AS dow,
+		       EXTRACT(HOUR FROM m.started_at)::int AS hour,
+		       COUNT(*)::int                          AS cnt
+		  FROM arena_matches m
+		  JOIN arena_participants ap ON ap.match_id = m.id AND ap.user_id = $1
+		 WHERE m.started_at IS NOT NULL
+		   AND m.started_at >= $2
+		 GROUP BY dow, hour`
+	rows, err := p.pool.Query(ctx, q, pgUUID(userID), since)
+	if err != nil {
+		return out, fmt.Errorf("profile.Postgres.ListHourlyActivitySince: %w", err)
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var dow, hour, cnt int
+		if err := rows.Scan(&dow, &hour, &cnt); err != nil {
+			return out, fmt.Errorf("profile.Postgres.ListHourlyActivitySince: scan: %w", err)
+		}
+		if dow < 0 || dow > 6 || hour < 0 || hour > 23 {
+			continue
+		}
+		out[dow*24+hour] = cnt
+	}
+	if err := rows.Err(); err != nil {
+		return out, fmt.Errorf("profile.Postgres.ListHourlyActivitySince: rows: %w", err)
+	}
+	return out, nil
+}
+
+// ListEloSnapshotsSince читает elo_snapshots_daily в окне [since, now]
+// и сортирует по дате ASC.
+func (p *Postgres) ListEloSnapshotsSince(ctx context.Context, userID uuid.UUID, since time.Time) ([]domain.EloPoint, error) {
+	const q = `
+		SELECT snapshot_date, section, elo
+		  FROM elo_snapshots_daily
+		 WHERE user_id = $1 AND snapshot_date >= $2::date
+		 ORDER BY snapshot_date ASC, section ASC`
+	rows, err := p.pool.Query(ctx, q, pgUUID(userID), since)
+	if err != nil {
+		return nil, fmt.Errorf("profile.Postgres.ListEloSnapshotsSince: %w", err)
+	}
+	defer rows.Close()
+	out := make([]domain.EloPoint, 0, 32)
+	for rows.Next() {
+		var date time.Time
+		var section string
+		var elo int
+		if err := rows.Scan(&date, &section, &elo); err != nil {
+			return nil, fmt.Errorf("profile.Postgres.ListEloSnapshotsSince: scan: %w", err)
+		}
+		out = append(out, domain.EloPoint{
+			Date:    date,
+			Section: enums.Section(section),
+			Elo:     elo,
+		})
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("profile.Postgres.ListEloSnapshotsSince: rows: %w", err)
+	}
+	return out, nil
+}
+
+// GetPercentiles считает 3 перцентиля: in_tier (по elo-bucket'у),
+// in_friends (среди принятых дружб), in_global. Возвращает 0..100.
+//
+// Tier-bucket: т.к. колонки tier на ratings нет, используем простые
+// elo-bands шириной 200 (1000-1199, 1200-1399, …) — стабильно и
+// детерминированно. Возвращает только секцию с максимальным elo
+// пользователя (для weekly-блока этого достаточно).
+func (p *Postgres) GetPercentiles(ctx context.Context, userID uuid.UUID, _ time.Time) (domain.PercentileView, error) {
+	var view domain.PercentileView
+	// 1. Глобальный перцентиль по сумме elo всех секций.
+	const qGlobal = `
+		WITH totals AS (
+		    SELECT user_id, SUM(elo)::int AS total_elo
+		      FROM ratings
+		     GROUP BY user_id
+		),
+		ranked AS (
+		    SELECT user_id, total_elo,
+		           PERCENT_RANK() OVER (ORDER BY total_elo)::float8 AS pr
+		      FROM totals
+		)
+		SELECT pr FROM ranked WHERE user_id = $1`
+	var prGlobal float64
+	if err := p.pool.QueryRow(ctx, qGlobal, pgUUID(userID)).Scan(&prGlobal); err != nil && !errors.Is(err, pgx.ErrNoRows) {
+		return view, fmt.Errorf("profile.Postgres.GetPercentiles: global: %w", err)
+	}
+	view.InGlobal = clampPct(prGlobal)
+
+	// 2. In-tier: bucket = floor(total_elo / 200).
+	const qTier = `
+		WITH totals AS (
+		    SELECT user_id, SUM(elo)::int AS total_elo
+		      FROM ratings
+		     GROUP BY user_id
+		),
+		bucketed AS (
+		    SELECT user_id, total_elo, (total_elo / 200) AS bucket
+		      FROM totals
+		),
+		me AS (SELECT bucket FROM bucketed WHERE user_id = $1),
+		ranked AS (
+		    SELECT b.user_id,
+		           PERCENT_RANK() OVER (ORDER BY b.total_elo)::float8 AS pr
+		      FROM bucketed b
+		      JOIN me ON me.bucket = b.bucket
+		)
+		SELECT pr FROM ranked WHERE user_id = $1`
+	var prTier float64
+	if err := p.pool.QueryRow(ctx, qTier, pgUUID(userID)).Scan(&prTier); err != nil && !errors.Is(err, pgx.ErrNoRows) {
+		return view, fmt.Errorf("profile.Postgres.GetPercentiles: tier: %w", err)
+	}
+	view.InTier = clampPct(prTier)
+
+	// 3. In-friends: ранк среди accepted-друзей (двунаправленно).
+	const qFriends = `
+		WITH friend_ids AS (
+		    SELECT addressee_id AS uid FROM friendships
+		     WHERE requester_id = $1 AND status = 'accepted'
+		    UNION
+		    SELECT requester_id AS uid FROM friendships
+		     WHERE addressee_id = $1 AND status = 'accepted'
+		    UNION SELECT $1
+		),
+		totals AS (
+		    SELECT r.user_id, SUM(r.elo)::int AS total_elo
+		      FROM ratings r
+		      JOIN friend_ids f ON f.uid = r.user_id
+		     GROUP BY r.user_id
+		),
+		ranked AS (
+		    SELECT user_id,
+		           PERCENT_RANK() OVER (ORDER BY total_elo)::float8 AS pr
+		      FROM totals
+		)
+		SELECT pr FROM ranked WHERE user_id = $1`
+	var prFriends float64
+	if err := p.pool.QueryRow(ctx, qFriends, pgUUID(userID)).Scan(&prFriends); err != nil && !errors.Is(err, pgx.ErrNoRows) {
+		return view, fmt.Errorf("profile.Postgres.GetPercentiles: friends: %w", err)
+	}
+	view.InFriends = clampPct(prFriends)
+	return view, nil
+}
+
+// IssueShareToken — INSERT в weekly_share_tokens с TTL 30d. Token —
+// 32-байтовый hex (64 chars).
+func (p *Postgres) IssueShareToken(ctx context.Context, userID uuid.UUID, weekISO string) (domain.ShareToken, error) {
+	var buf [32]byte
+	if _, err := rand.Read(buf[:]); err != nil {
+		return domain.ShareToken{}, fmt.Errorf("profile.Postgres.IssueShareToken: rand: %w", err)
+	}
+	tok := hex.EncodeToString(buf[:])
+	expires := time.Now().UTC().Add(30 * 24 * time.Hour)
+	const q = `
+		INSERT INTO weekly_share_tokens(user_id, week_iso, token, expires_at)
+		VALUES ($1, $2, $3, $4)`
+	if _, err := p.pool.Exec(ctx, q, pgUUID(userID), weekISO, tok, expires); err != nil {
+		return domain.ShareToken{}, fmt.Errorf("profile.Postgres.IssueShareToken: insert: %w", err)
+	}
+	return domain.ShareToken{
+		Token:     tok,
+		WeekISO:   weekISO,
+		ExpiresAt: expires,
+	}, nil
+}
+
+// ResolveShareToken — атомарно SELECT + UPDATE views_count. Возвращает
+// ErrNotFound если токен протух или не существует.
+func (p *Postgres) ResolveShareToken(ctx context.Context, token string) (domain.ShareResolution, error) {
+	const q = `
+		UPDATE weekly_share_tokens
+		   SET views_count = views_count + 1
+		 WHERE token = $1 AND expires_at > now()
+		 RETURNING user_id, week_iso`
+	var uid pgtype.UUID
+	var weekISO string
+	if err := p.pool.QueryRow(ctx, q, token).Scan(&uid, &weekISO); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return domain.ShareResolution{}, fmt.Errorf("profile.Postgres.ResolveShareToken: %w", domain.ErrNotFound)
+		}
+		return domain.ShareResolution{}, fmt.Errorf("profile.Postgres.ResolveShareToken: %w", err)
+	}
+	return domain.ShareResolution{
+		UserID:  fromPgUUID(uid),
+		WeekISO: weekISO,
+	}, nil
+}
+
+// ListAchievementsSince — все ачивки с unlocked_at >= since.
+// Title/tier на этом этапе берём из catalogue в коде (см. achievements
+// домен); здесь возвращаем только сырые значения из user_achievements,
+// title=code, tier="" — другие фазы дотянут метаданные.
+func (p *Postgres) ListAchievementsSince(ctx context.Context, userID uuid.UUID, since time.Time) ([]domain.AchievementBrief, error) {
+	const q = `
+		SELECT code, COALESCE(unlocked_at, now())
+		  FROM user_achievements
+		 WHERE user_id = $1
+		   AND unlocked_at IS NOT NULL
+		   AND unlocked_at >= $2
+		 ORDER BY unlocked_at DESC`
+	rows, err := p.pool.Query(ctx, q, pgUUID(userID), since)
+	if err != nil {
+		return nil, fmt.Errorf("profile.Postgres.ListAchievementsSince: %w", err)
+	}
+	defer rows.Close()
+	out := make([]domain.AchievementBrief, 0, 8)
+	for rows.Next() {
+		var code string
+		var unlocked time.Time
+		if err := rows.Scan(&code, &unlocked); err != nil {
+			return nil, fmt.Errorf("profile.Postgres.ListAchievementsSince: scan: %w", err)
+		}
+		out = append(out, domain.AchievementBrief{
+			Code:       code,
+			Title:      code,
+			UnlockedAt: unlocked,
+		})
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("profile.Postgres.ListAchievementsSince: rows: %w", err)
+	}
+	return out, nil
+}
+
+func clampPct(p float64) int {
+	v := int(p*100 + 0.5)
+	if v < 0 {
+		return 0
+	}
+	if v > 100 {
+		return 100
+	}
+	return v
 }
 
 // ── helpers ────────────────────────────────────────────────────────────────

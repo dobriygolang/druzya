@@ -131,7 +131,6 @@ function HeroQueue({
         <h2 className="font-display text-[28px] font-bold text-text-primary">
           {inQueue
             ? t('searching_for_opponent', {
-                defaultValue: 'Ищем противника… {{sec}}s',
                 sec: waitSeconds,
               })
             : t('ready_for_match')}
@@ -167,7 +166,7 @@ function HeroQueue({
           onClick={onCancel}
           disabled={isSubmitting}
         >
-          {t('cancel_search', { defaultValue: 'Отменить' })}
+          {t('cancel_search')}
         </Button>
       ) : (
         <Button
@@ -288,18 +287,15 @@ function AiPanel({
         <div className="flex min-w-0 flex-col gap-1">
           <h3 className="flex items-center gap-2 font-display text-lg font-bold text-text-primary">
             <Sparkles className="h-4 w-4 text-pink" />
-            {t('ai_opponent_title', { defaultValue: 'AI-соперник' })}
+            {t('ai_opponent_title')}
           </h3>
           <p className="text-xs text-text-secondary">
             {t('ai_opponent_desc', {
-              defaultValue:
-                'Выбери модель — она будет играть за противника в Mock и AI-allowed режимах. Сохраняется автоматически.',
             })}
           </p>
         </div>
         <span className="shrink-0 rounded-full bg-surface-2 px-2 py-0.5 font-mono text-[11px] text-text-muted">
           {t('current_model', {
-            defaultValue: 'текущая: {{name}}',
             name: selectedItem?.label ?? '—',
           })}
         </span>
@@ -684,12 +680,11 @@ export default function ArenaPage() {
           <div className="flex items-end justify-between">
             <h2 className="font-display text-xl font-bold text-text-primary">
               {partyMode === 'party'
-                ? t('party_modes', { defaultValue: 'Командные режимы' })
+                ? t('party_modes')
                 : t('all_modes')}
             </h2>
             <span className="font-mono text-[11px] text-text-muted">
               {t('modes_available_count', {
-                defaultValue: '{{count}} доступно',
                 count: visibleModes.length,
               })}
             </span>

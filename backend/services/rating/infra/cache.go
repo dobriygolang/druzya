@@ -186,6 +186,15 @@ func (c *CachedRepo) FindRank(ctx context.Context, userID uuid.UUID, section enu
 	return rank, nil
 }
 
+// CountSection passes through.
+func (c *CachedRepo) CountSection(ctx context.Context, section enums.Section) (int, error) {
+	total, err := c.delegate.CountSection(ctx, section)
+	if err != nil {
+		return 0, fmt.Errorf("rating.cache.CountSection: %w", err)
+	}
+	return total, nil
+}
+
 // HistoryLast12Weeks passes through.
 func (c *CachedRepo) HistoryLast12Weeks(ctx context.Context, userID uuid.UUID) ([]domain.HistorySample, error) {
 	out, err := c.delegate.HistoryLast12Weeks(ctx, userID)

@@ -939,6 +939,100 @@ func (*GetDailyKataRequest) Descriptor() ([]byte, []int) {
 	return file_druz9_v1_daily_proto_rawDescGZIP(), []int{11}
 }
 
+// GetKataBySlugRequest — deep-link GET /api/v1/daily/kata/:slug. Unknown slug
+// returns NotFound (HTTP 404); handler must NOT silently fall back to today's
+// kata (anti-fallback policy: a 404 is honest, a redirect is a lie).
+type GetKataBySlugRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Slug          string                 `protobuf:"bytes,1,opt,name=slug,proto3" json:"slug,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetKataBySlugRequest) Reset() {
+	*x = GetKataBySlugRequest{}
+	mi := &file_druz9_v1_daily_proto_msgTypes[12]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetKataBySlugRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetKataBySlugRequest) ProtoMessage() {}
+
+func (x *GetKataBySlugRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_daily_proto_msgTypes[12]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetKataBySlugRequest.ProtoReflect.Descriptor instead.
+func (*GetKataBySlugRequest) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_daily_proto_rawDescGZIP(), []int{12}
+}
+
+func (x *GetKataBySlugRequest) GetSlug() string {
+	if x != nil {
+		return x.Slug
+	}
+	return ""
+}
+
+// GetKataBySlugResponse mirrors DailyKata but without the `already_submitted`
+// flag — slug deep-links are for browsing and don't carry per-user submission
+// state.
+type GetKataBySlugResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Task          *TaskPublic            `protobuf:"bytes,1,opt,name=task,proto3" json:"task,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetKataBySlugResponse) Reset() {
+	*x = GetKataBySlugResponse{}
+	mi := &file_druz9_v1_daily_proto_msgTypes[13]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetKataBySlugResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetKataBySlugResponse) ProtoMessage() {}
+
+func (x *GetKataBySlugResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_daily_proto_msgTypes[13]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetKataBySlugResponse.ProtoReflect.Descriptor instead.
+func (*GetKataBySlugResponse) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_daily_proto_rawDescGZIP(), []int{13}
+}
+
+func (x *GetKataBySlugResponse) GetTask() *TaskPublic {
+	if x != nil {
+		return x.Task
+	}
+	return nil
+}
+
 type SubmitKataRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Code          string                 `protobuf:"bytes,1,opt,name=code,proto3" json:"code,omitempty"`
@@ -949,7 +1043,7 @@ type SubmitKataRequest struct {
 
 func (x *SubmitKataRequest) Reset() {
 	*x = SubmitKataRequest{}
-	mi := &file_druz9_v1_daily_proto_msgTypes[12]
+	mi := &file_druz9_v1_daily_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -961,7 +1055,7 @@ func (x *SubmitKataRequest) String() string {
 func (*SubmitKataRequest) ProtoMessage() {}
 
 func (x *SubmitKataRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_daily_proto_msgTypes[12]
+	mi := &file_druz9_v1_daily_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -974,7 +1068,7 @@ func (x *SubmitKataRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SubmitKataRequest.ProtoReflect.Descriptor instead.
 func (*SubmitKataRequest) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_daily_proto_rawDescGZIP(), []int{12}
+	return file_druz9_v1_daily_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *SubmitKataRequest) GetCode() string {
@@ -999,7 +1093,7 @@ type GetStreakRequest struct {
 
 func (x *GetStreakRequest) Reset() {
 	*x = GetStreakRequest{}
-	mi := &file_druz9_v1_daily_proto_msgTypes[13]
+	mi := &file_druz9_v1_daily_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1011,7 +1105,7 @@ func (x *GetStreakRequest) String() string {
 func (*GetStreakRequest) ProtoMessage() {}
 
 func (x *GetStreakRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_daily_proto_msgTypes[13]
+	mi := &file_druz9_v1_daily_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1024,7 +1118,7 @@ func (x *GetStreakRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetStreakRequest.ProtoReflect.Descriptor instead.
 func (*GetStreakRequest) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_daily_proto_rawDescGZIP(), []int{13}
+	return file_druz9_v1_daily_proto_rawDescGZIP(), []int{15}
 }
 
 type GetCalendarRequest struct {
@@ -1035,7 +1129,7 @@ type GetCalendarRequest struct {
 
 func (x *GetCalendarRequest) Reset() {
 	*x = GetCalendarRequest{}
-	mi := &file_druz9_v1_daily_proto_msgTypes[14]
+	mi := &file_druz9_v1_daily_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1047,7 +1141,7 @@ func (x *GetCalendarRequest) String() string {
 func (*GetCalendarRequest) ProtoMessage() {}
 
 func (x *GetCalendarRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_daily_proto_msgTypes[14]
+	mi := &file_druz9_v1_daily_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1060,7 +1154,7 @@ func (x *GetCalendarRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetCalendarRequest.ProtoReflect.Descriptor instead.
 func (*GetCalendarRequest) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_daily_proto_rawDescGZIP(), []int{14}
+	return file_druz9_v1_daily_proto_rawDescGZIP(), []int{16}
 }
 
 type UpsertCalendarRequest struct {
@@ -1075,7 +1169,7 @@ type UpsertCalendarRequest struct {
 
 func (x *UpsertCalendarRequest) Reset() {
 	*x = UpsertCalendarRequest{}
-	mi := &file_druz9_v1_daily_proto_msgTypes[15]
+	mi := &file_druz9_v1_daily_proto_msgTypes[17]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1087,7 +1181,7 @@ func (x *UpsertCalendarRequest) String() string {
 func (*UpsertCalendarRequest) ProtoMessage() {}
 
 func (x *UpsertCalendarRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_daily_proto_msgTypes[15]
+	mi := &file_druz9_v1_daily_proto_msgTypes[17]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1100,7 +1194,7 @@ func (x *UpsertCalendarRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpsertCalendarRequest.ProtoReflect.Descriptor instead.
 func (*UpsertCalendarRequest) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_daily_proto_rawDescGZIP(), []int{15}
+	return file_druz9_v1_daily_proto_rawDescGZIP(), []int{17}
 }
 
 func (x *UpsertCalendarRequest) GetCompanyId() string {
@@ -1147,7 +1241,7 @@ type CreateAutopsyRequest struct {
 
 func (x *CreateAutopsyRequest) Reset() {
 	*x = CreateAutopsyRequest{}
-	mi := &file_druz9_v1_daily_proto_msgTypes[16]
+	mi := &file_druz9_v1_daily_proto_msgTypes[18]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1159,7 +1253,7 @@ func (x *CreateAutopsyRequest) String() string {
 func (*CreateAutopsyRequest) ProtoMessage() {}
 
 func (x *CreateAutopsyRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_daily_proto_msgTypes[16]
+	mi := &file_druz9_v1_daily_proto_msgTypes[18]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1172,7 +1266,7 @@ func (x *CreateAutopsyRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateAutopsyRequest.ProtoReflect.Descriptor instead.
 func (*CreateAutopsyRequest) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_daily_proto_rawDescGZIP(), []int{16}
+	return file_druz9_v1_daily_proto_rawDescGZIP(), []int{18}
 }
 
 func (x *CreateAutopsyRequest) GetCompanyId() string {
@@ -1233,7 +1327,7 @@ type GetAutopsyRequest struct {
 
 func (x *GetAutopsyRequest) Reset() {
 	*x = GetAutopsyRequest{}
-	mi := &file_druz9_v1_daily_proto_msgTypes[17]
+	mi := &file_druz9_v1_daily_proto_msgTypes[19]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1245,7 +1339,7 @@ func (x *GetAutopsyRequest) String() string {
 func (*GetAutopsyRequest) ProtoMessage() {}
 
 func (x *GetAutopsyRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_daily_proto_msgTypes[17]
+	mi := &file_druz9_v1_daily_proto_msgTypes[19]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1258,7 +1352,7 @@ func (x *GetAutopsyRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetAutopsyRequest.ProtoReflect.Descriptor instead.
 func (*GetAutopsyRequest) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_daily_proto_rawDescGZIP(), []int{17}
+	return file_druz9_v1_daily_proto_rawDescGZIP(), []int{19}
 }
 
 func (x *GetAutopsyRequest) GetAutopsyId() string {
@@ -1357,7 +1451,11 @@ const file_druz9_v1_daily_proto_rawDesc = "" +
 	"\tshare_url\x18\b \x01(\tR\bshareUrl\x129\n" +
 	"\n" +
 	"created_at\x18\t \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\"\x15\n" +
-	"\x13GetDailyKataRequest\"W\n" +
+	"\x13GetDailyKataRequest\"*\n" +
+	"\x14GetKataBySlugRequest\x12\x12\n" +
+	"\x04slug\x18\x01 \x01(\tR\x04slug\"A\n" +
+	"\x15GetKataBySlugResponse\x12(\n" +
+	"\x04task\x18\x01 \x01(\v2\x14.druz9.v1.TaskPublicR\x04task\"W\n" +
 	"\x11SubmitKataRequest\x12\x12\n" +
 	"\x04code\x18\x01 \x01(\tR\x04code\x12.\n" +
 	"\blanguage\x18\x02 \x01(\x0e2\x12.druz9.v1.LanguageR\blanguage\"\x12\n" +
@@ -1380,9 +1478,10 @@ const file_druz9_v1_daily_proto_rawDesc = "" +
 	"\x05notes\x18\a \x01(\tR\x05notes\"2\n" +
 	"\x11GetAutopsyRequest\x12\x1d\n" +
 	"\n" +
-	"autopsy_id\x18\x01 \x01(\tR\tautopsyId2\xec\x05\n" +
+	"autopsy_id\x18\x01 \x01(\tR\tautopsyId2\xe1\x06\n" +
 	"\fDailyService\x12Y\n" +
-	"\aGetKata\x12\x1d.druz9.v1.GetDailyKataRequest\x1a\x13.druz9.v1.DailyKata\"\x1a\x82\xd3\xe4\x93\x02\x14\x12\x12/api/v1/daily/kata\x12e\n" +
+	"\aGetKata\x12\x1d.druz9.v1.GetDailyKataRequest\x1a\x13.druz9.v1.DailyKata\"\x1a\x82\xd3\xe4\x93\x02\x14\x12\x12/api/v1/daily/kata\x12s\n" +
+	"\rGetKataBySlug\x12\x1e.druz9.v1.GetKataBySlugRequest\x1a\x1f.druz9.v1.GetKataBySlugResponse\"!\x82\xd3\xe4\x93\x02\x1b\x12\x19/api/v1/daily/kata/{slug}\x12e\n" +
 	"\n" +
 	"SubmitKata\x12\x1b.druz9.v1.SubmitKataRequest\x1a\x14.druz9.v1.KataResult\"$\x82\xd3\xe4\x93\x02\x1e:\x01*\"\x19/api/v1/daily/kata/submit\x12[\n" +
 	"\tGetStreak\x12\x1a.druz9.v1.GetStreakRequest\x1a\x14.druz9.v1.StreakInfo\"\x1c\x82\xd3\xe4\x93\x02\x16\x12\x14/api/v1/daily/streak\x12h\n" +
@@ -1406,7 +1505,7 @@ func file_druz9_v1_daily_proto_rawDescGZIP() []byte {
 	return file_druz9_v1_daily_proto_rawDescData
 }
 
-var file_druz9_v1_daily_proto_msgTypes = make([]protoimpl.MessageInfo, 20)
+var file_druz9_v1_daily_proto_msgTypes = make([]protoimpl.MessageInfo, 22)
 var file_druz9_v1_daily_proto_goTypes = []any{
 	(*TaskPublic)(nil),            // 0: druz9.v1.TaskPublic
 	(*DailyKata)(nil),             // 1: druz9.v1.DailyKata
@@ -1420,23 +1519,25 @@ var file_druz9_v1_daily_proto_goTypes = []any{
 	(*AutopsyRecommendation)(nil), // 9: druz9.v1.AutopsyRecommendation
 	(*InterviewAutopsy)(nil),      // 10: druz9.v1.InterviewAutopsy
 	(*GetDailyKataRequest)(nil),   // 11: druz9.v1.GetDailyKataRequest
-	(*SubmitKataRequest)(nil),     // 12: druz9.v1.SubmitKataRequest
-	(*GetStreakRequest)(nil),      // 13: druz9.v1.GetStreakRequest
-	(*GetCalendarRequest)(nil),    // 14: druz9.v1.GetCalendarRequest
-	(*UpsertCalendarRequest)(nil), // 15: druz9.v1.UpsertCalendarRequest
-	(*CreateAutopsyRequest)(nil),  // 16: druz9.v1.CreateAutopsyRequest
-	(*GetAutopsyRequest)(nil),     // 17: druz9.v1.GetAutopsyRequest
-	nil,                           // 18: druz9.v1.TaskPublic.StarterCodeEntry
-	nil,                           // 19: druz9.v1.AutopsyRecommendation.ActionParamsEntry
-	(Difficulty)(0),               // 20: druz9.v1.Difficulty
-	(Section)(0),                  // 21: druz9.v1.Section
-	(*timestamppb.Timestamp)(nil), // 22: google.protobuf.Timestamp
-	(Language)(0),                 // 23: druz9.v1.Language
+	(*GetKataBySlugRequest)(nil),  // 12: druz9.v1.GetKataBySlugRequest
+	(*GetKataBySlugResponse)(nil), // 13: druz9.v1.GetKataBySlugResponse
+	(*SubmitKataRequest)(nil),     // 14: druz9.v1.SubmitKataRequest
+	(*GetStreakRequest)(nil),      // 15: druz9.v1.GetStreakRequest
+	(*GetCalendarRequest)(nil),    // 16: druz9.v1.GetCalendarRequest
+	(*UpsertCalendarRequest)(nil), // 17: druz9.v1.UpsertCalendarRequest
+	(*CreateAutopsyRequest)(nil),  // 18: druz9.v1.CreateAutopsyRequest
+	(*GetAutopsyRequest)(nil),     // 19: druz9.v1.GetAutopsyRequest
+	nil,                           // 20: druz9.v1.TaskPublic.StarterCodeEntry
+	nil,                           // 21: druz9.v1.AutopsyRecommendation.ActionParamsEntry
+	(Difficulty)(0),               // 22: druz9.v1.Difficulty
+	(Section)(0),                  // 23: druz9.v1.Section
+	(*timestamppb.Timestamp)(nil), // 24: google.protobuf.Timestamp
+	(Language)(0),                 // 25: druz9.v1.Language
 }
 var file_druz9_v1_daily_proto_depIdxs = []int32{
-	20, // 0: druz9.v1.TaskPublic.difficulty:type_name -> druz9.v1.Difficulty
-	21, // 1: druz9.v1.TaskPublic.section:type_name -> druz9.v1.Section
-	18, // 2: druz9.v1.TaskPublic.starter_code:type_name -> druz9.v1.TaskPublic.StarterCodeEntry
+	22, // 0: druz9.v1.TaskPublic.difficulty:type_name -> druz9.v1.Difficulty
+	23, // 1: druz9.v1.TaskPublic.section:type_name -> druz9.v1.Section
+	20, // 2: druz9.v1.TaskPublic.starter_code:type_name -> druz9.v1.TaskPublic.StarterCodeEntry
 	0,  // 3: druz9.v1.DailyKata.task:type_name -> druz9.v1.TaskPublic
 	2,  // 4: druz9.v1.StreakInfo.history:type_name -> druz9.v1.StreakHistoryEntry
 	3,  // 5: druz9.v1.KataResult.streak:type_name -> druz9.v1.StreakInfo
@@ -1444,30 +1545,33 @@ var file_druz9_v1_daily_proto_depIdxs = []int32{
 	5,  // 7: druz9.v1.InterviewCalendar.today:type_name -> druz9.v1.CalendarTask
 	6,  // 8: druz9.v1.InterviewCalendar.week_plan:type_name -> druz9.v1.WeekPlanEntry
 	7,  // 9: druz9.v1.InterviewCalendar.weak_zones:type_name -> druz9.v1.WeakZone
-	19, // 10: druz9.v1.AutopsyRecommendation.action_params:type_name -> druz9.v1.AutopsyRecommendation.ActionParamsEntry
+	21, // 10: druz9.v1.AutopsyRecommendation.action_params:type_name -> druz9.v1.AutopsyRecommendation.ActionParamsEntry
 	9,  // 11: druz9.v1.InterviewAutopsy.recovery_plan:type_name -> druz9.v1.AutopsyRecommendation
-	22, // 12: druz9.v1.InterviewAutopsy.created_at:type_name -> google.protobuf.Timestamp
-	23, // 13: druz9.v1.SubmitKataRequest.language:type_name -> druz9.v1.Language
-	21, // 14: druz9.v1.CreateAutopsyRequest.section:type_name -> druz9.v1.Section
-	11, // 15: druz9.v1.DailyService.GetKata:input_type -> druz9.v1.GetDailyKataRequest
-	12, // 16: druz9.v1.DailyService.SubmitKata:input_type -> druz9.v1.SubmitKataRequest
-	13, // 17: druz9.v1.DailyService.GetStreak:input_type -> druz9.v1.GetStreakRequest
-	14, // 18: druz9.v1.DailyService.GetCalendar:input_type -> druz9.v1.GetCalendarRequest
-	15, // 19: druz9.v1.DailyService.UpsertCalendar:input_type -> druz9.v1.UpsertCalendarRequest
-	16, // 20: druz9.v1.DailyService.CreateAutopsy:input_type -> druz9.v1.CreateAutopsyRequest
-	17, // 21: druz9.v1.DailyService.GetAutopsy:input_type -> druz9.v1.GetAutopsyRequest
-	1,  // 22: druz9.v1.DailyService.GetKata:output_type -> druz9.v1.DailyKata
-	4,  // 23: druz9.v1.DailyService.SubmitKata:output_type -> druz9.v1.KataResult
-	3,  // 24: druz9.v1.DailyService.GetStreak:output_type -> druz9.v1.StreakInfo
-	8,  // 25: druz9.v1.DailyService.GetCalendar:output_type -> druz9.v1.InterviewCalendar
-	8,  // 26: druz9.v1.DailyService.UpsertCalendar:output_type -> druz9.v1.InterviewCalendar
-	10, // 27: druz9.v1.DailyService.CreateAutopsy:output_type -> druz9.v1.InterviewAutopsy
-	10, // 28: druz9.v1.DailyService.GetAutopsy:output_type -> druz9.v1.InterviewAutopsy
-	22, // [22:29] is the sub-list for method output_type
-	15, // [15:22] is the sub-list for method input_type
-	15, // [15:15] is the sub-list for extension type_name
-	15, // [15:15] is the sub-list for extension extendee
-	0,  // [0:15] is the sub-list for field type_name
+	24, // 12: druz9.v1.InterviewAutopsy.created_at:type_name -> google.protobuf.Timestamp
+	0,  // 13: druz9.v1.GetKataBySlugResponse.task:type_name -> druz9.v1.TaskPublic
+	25, // 14: druz9.v1.SubmitKataRequest.language:type_name -> druz9.v1.Language
+	23, // 15: druz9.v1.CreateAutopsyRequest.section:type_name -> druz9.v1.Section
+	11, // 16: druz9.v1.DailyService.GetKata:input_type -> druz9.v1.GetDailyKataRequest
+	12, // 17: druz9.v1.DailyService.GetKataBySlug:input_type -> druz9.v1.GetKataBySlugRequest
+	14, // 18: druz9.v1.DailyService.SubmitKata:input_type -> druz9.v1.SubmitKataRequest
+	15, // 19: druz9.v1.DailyService.GetStreak:input_type -> druz9.v1.GetStreakRequest
+	16, // 20: druz9.v1.DailyService.GetCalendar:input_type -> druz9.v1.GetCalendarRequest
+	17, // 21: druz9.v1.DailyService.UpsertCalendar:input_type -> druz9.v1.UpsertCalendarRequest
+	18, // 22: druz9.v1.DailyService.CreateAutopsy:input_type -> druz9.v1.CreateAutopsyRequest
+	19, // 23: druz9.v1.DailyService.GetAutopsy:input_type -> druz9.v1.GetAutopsyRequest
+	1,  // 24: druz9.v1.DailyService.GetKata:output_type -> druz9.v1.DailyKata
+	13, // 25: druz9.v1.DailyService.GetKataBySlug:output_type -> druz9.v1.GetKataBySlugResponse
+	4,  // 26: druz9.v1.DailyService.SubmitKata:output_type -> druz9.v1.KataResult
+	3,  // 27: druz9.v1.DailyService.GetStreak:output_type -> druz9.v1.StreakInfo
+	8,  // 28: druz9.v1.DailyService.GetCalendar:output_type -> druz9.v1.InterviewCalendar
+	8,  // 29: druz9.v1.DailyService.UpsertCalendar:output_type -> druz9.v1.InterviewCalendar
+	10, // 30: druz9.v1.DailyService.CreateAutopsy:output_type -> druz9.v1.InterviewAutopsy
+	10, // 31: druz9.v1.DailyService.GetAutopsy:output_type -> druz9.v1.InterviewAutopsy
+	24, // [24:32] is the sub-list for method output_type
+	16, // [16:24] is the sub-list for method input_type
+	16, // [16:16] is the sub-list for extension type_name
+	16, // [16:16] is the sub-list for extension extendee
+	0,  // [0:16] is the sub-list for field type_name
 }
 
 func init() { file_druz9_v1_daily_proto_init() }
@@ -1482,7 +1586,7 @@ func file_druz9_v1_daily_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_druz9_v1_daily_proto_rawDesc), len(file_druz9_v1_daily_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   20,
+			NumMessages:   22,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

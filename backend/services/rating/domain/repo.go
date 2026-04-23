@@ -26,6 +26,10 @@ type RatingRepo interface {
 	// Returns 0 when the user has no row in the section.
 	FindRank(ctx context.Context, userID uuid.UUID, section enums.Section) (int, error)
 
+	// CountSection returns the total number of ranked users in a section. Used
+	// by GetMyRatings to derive a real percentile from FindRank.
+	CountSection(ctx context.Context, section enums.Section) (int, error)
+
 	// HistoryLast12Weeks returns weekly ELO snapshots for charting.
 	// STUB: implementation may return empty until arena/mock supply samples.
 	HistoryLast12Weeks(ctx context.Context, userID uuid.UUID) ([]HistorySample, error)

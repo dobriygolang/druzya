@@ -234,3 +234,93 @@ func (mr *MockProfileRepoMockRecorder) UpdateSettings(ctx, userID, s any) *gomoc
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateSettings", reflect.TypeOf((*MockProfileRepo)(nil).UpdateSettings), ctx, userID, s)
 }
+
+// ListHourlyActivitySince mocks base method.
+func (m *MockProfileRepo) ListHourlyActivitySince(ctx context.Context, userID uuid.UUID, since time.Time) ([168]int, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ListHourlyActivitySince", ctx, userID, since)
+	ret0, _ := ret[0].([168]int)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ListHourlyActivitySince indicates an expected call of ListHourlyActivitySince.
+func (mr *MockProfileRepoMockRecorder) ListHourlyActivitySince(ctx, userID, since any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListHourlyActivitySince", reflect.TypeOf((*MockProfileRepo)(nil).ListHourlyActivitySince), ctx, userID, since)
+}
+
+// ListEloSnapshotsSince mocks base method.
+func (m *MockProfileRepo) ListEloSnapshotsSince(ctx context.Context, userID uuid.UUID, since time.Time) ([]domain.EloPoint, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ListEloSnapshotsSince", ctx, userID, since)
+	ret0, _ := ret[0].([]domain.EloPoint)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ListEloSnapshotsSince indicates an expected call of ListEloSnapshotsSince.
+func (mr *MockProfileRepoMockRecorder) ListEloSnapshotsSince(ctx, userID, since any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListEloSnapshotsSince", reflect.TypeOf((*MockProfileRepo)(nil).ListEloSnapshotsSince), ctx, userID, since)
+}
+
+// GetPercentiles mocks base method.
+func (m *MockProfileRepo) GetPercentiles(ctx context.Context, userID uuid.UUID, weekEnd time.Time) (domain.PercentileView, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetPercentiles", ctx, userID, weekEnd)
+	ret0, _ := ret[0].(domain.PercentileView)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetPercentiles indicates an expected call of GetPercentiles.
+func (mr *MockProfileRepoMockRecorder) GetPercentiles(ctx, userID, weekEnd any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetPercentiles", reflect.TypeOf((*MockProfileRepo)(nil).GetPercentiles), ctx, userID, weekEnd)
+}
+
+// IssueShareToken mocks base method.
+func (m *MockProfileRepo) IssueShareToken(ctx context.Context, userID uuid.UUID, weekISO string) (domain.ShareToken, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "IssueShareToken", ctx, userID, weekISO)
+	ret0, _ := ret[0].(domain.ShareToken)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// IssueShareToken indicates an expected call of IssueShareToken.
+func (mr *MockProfileRepoMockRecorder) IssueShareToken(ctx, userID, weekISO any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IssueShareToken", reflect.TypeOf((*MockProfileRepo)(nil).IssueShareToken), ctx, userID, weekISO)
+}
+
+// ResolveShareToken mocks base method.
+func (m *MockProfileRepo) ResolveShareToken(ctx context.Context, token string) (domain.ShareResolution, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ResolveShareToken", ctx, token)
+	ret0, _ := ret[0].(domain.ShareResolution)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ResolveShareToken indicates an expected call of ResolveShareToken.
+func (mr *MockProfileRepoMockRecorder) ResolveShareToken(ctx, token any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ResolveShareToken", reflect.TypeOf((*MockProfileRepo)(nil).ResolveShareToken), ctx, token)
+}
+
+// ListAchievementsSince mocks base method.
+func (m *MockProfileRepo) ListAchievementsSince(ctx context.Context, userID uuid.UUID, since time.Time) ([]domain.AchievementBrief, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ListAchievementsSince", ctx, userID, since)
+	ret0, _ := ret[0].([]domain.AchievementBrief)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ListAchievementsSince indicates an expected call of ListAchievementsSince.
+func (mr *MockProfileRepoMockRecorder) ListAchievementsSince(ctx, userID, since any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListAchievementsSince", reflect.TypeOf((*MockProfileRepo)(nil).ListAchievementsSince), ctx, userID, since)
+}

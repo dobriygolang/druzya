@@ -10,6 +10,16 @@ SELECT id, slug, title_ru, description_ru, difficulty, section, time_limit_sec, 
 SELECT id, slug, title_ru, description_ru, difficulty, section, time_limit_sec, memory_limit_mb
   FROM tasks WHERE id = $1;
 
+-- name: GetTaskBySlug :one
+-- Powers GET /api/v1/daily/kata/:slug — deep-link to a specific kata by its
+-- human-readable slug. Returns the same columns as GetTaskPublic so the
+-- converters in infra/postgres.go can be reused. `is_active` is NOT filtered
+-- here because the caller (the kata-by-slug handler) should 404 on any
+-- missing row regardless of activity — surfacing "inactive" as 404 is safer
+-- than exposing a separate error code to the client.
+SELECT id, slug, title_ru, description_ru, difficulty, section, time_limit_sec, memory_limit_mb
+  FROM tasks WHERE slug = $1;
+
 -- name: WeakestSkillNode :one
 SELECT node_key, progress
   FROM skill_nodes WHERE user_id = $1 ORDER BY progress ASC LIMIT 1;

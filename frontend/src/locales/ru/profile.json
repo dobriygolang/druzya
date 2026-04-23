@@ -37,5 +37,11 @@
     "wl": "W-L",
     "wr": "WR",
     "delta": "Δ7д"
-  }
+  },
+  "skills_empty": "Пока нет матчей",
+  "retry": "Повторить",
+  "leaderboard_empty": "Пока нет записей",
+  "error_title": "Не удалось загрузить профиль",
+  "not_found_title": "Профиль не найден",
+  "back_to_sanctum": "Вернуться в Sanctum"
 }

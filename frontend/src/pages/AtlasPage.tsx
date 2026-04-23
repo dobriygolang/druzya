@@ -1,20 +1,13 @@
-// /atlas — интерактивный skill-progress tracker.
+// /atlas — PoE2-inspired skill-progress tracker.
 //
-// Исходная страница была декоративным SVG без смысла. Теперь она:
-//   1. Показывает 5 визуальных состояний нод (locked / available / in-progress
-//      / mastered / decaying), отражающих реальный прогресс пользователя.
-//   2. Отдаёт правый drawer с «Решено N из M», статусом decay, списком
-//      рекомендованных ката и связанными нодами при клике на любой узел.
-//   3. Поддерживает pan/zoom мышью + кнопками сверху для удобства на больших
-//      деревьях.
-//   4. Имеет filter bar: search by name + chip-фильтры по category / status.
-//   5. Empty-state CTA «Начни с Two Sum →» если у пользователя пока ноль
-//      открытых нод.
+// Layout: «всё расходится из центра», на радиальные «спицы» по секциям
+// (Algorithms / Data Structures / System Design / Backend / Concurrency).
+// Внутри спицы — фундаментальные темы ближе к центру, продвинутые дальше.
+// Hover показывает богатую подсказку, click открывает правый drawer.
 //
 // Источник правды — `useAtlasQuery` (REST GET /api/v1/profile/me/atlas).
-// Бэкенд в Wave-2 расширен полями recommended_kata, last_solved_at,
-// solved_count, total_count — см. proto/druz9/v1/profile.proto и
-// backend/services/profile/app/atlas.go.
+// Бэкенд в Wave-3 расширен полями recommended_kata, last_solved_at,
+// solved_count, total_count — мы их используем тут без изменений в proto.
 
 import {
   useState,
@@ -24,18 +17,16 @@ import {
   useEffect,
 } from 'react'
 import { Link } from 'react-router-dom'
+import { motion, AnimatePresence } from 'framer-motion'
 import {
   Sparkles,
   RotateCcw,
-  Hexagon,
   AlertCircle,
   X,
   Search,
   ZoomIn,
   ZoomOut,
   Maximize2,
-  CheckCircle2,
-  Lock,
   Flame,
   Clock,
   ArrowRight,
@@ -49,25 +40,24 @@ import {
   type KataRef,
 } from '../lib/queries/profile'
 
-const HEX_CLIP = 'polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%)'
+// SVG-координаты — всё считается в одной системе с центром (0,0).
+// Канва шире и выше, чем у предыдущей реализации, чтобы дерево «дышало».
+const VIEWBOX_SIZE = 1400
+const CENTER = VIEWBOX_SIZE / 2
+const RADIUS_INNER = 180
+const RADIUS_OUTER = 520
+const RADIUS_LABEL = 620
+const NODE_R_NORMAL = 26
+const NODE_R_KEYSTONE = 34
+const NODE_R_CENTER = 44
 
-const CANVAS_W = 960
-const CANVAS_H = 700
-const CENTER_X = CANVAS_W / 2
-const CENTER_Y = CANVAS_H / 2
-const RADIUS_INNER = 140
-const RADIUS_OUTER = 260
-const NODE_SIZE_NORMAL = 56
-const NODE_SIZE_KEYSTONE = 72
-const NODE_SIZE_CENTER = 96
-
-// 5 визуальных состояний из брифа. Считаются на лету через nodeState(node).
+// 5 визуальных состояний.
 type NodeState =
-  | 'locked' // нет prereq → серый
-  | 'available' // открыт но прогресс 0
-  | 'in_progress' // 0 < progress < 80
-  | 'mastered' // progress >= 80
-  | 'decaying' // backend.decaying === true
+  | 'locked'
+  | 'available'
+  | 'in_progress'
+  | 'mastered'
+  | 'decaying'
 
 function nodeState(n: AtlasNode): NodeState {
   if (n.decaying) return 'decaying'
@@ -86,16 +76,8 @@ const STATE_LABEL: Record<NodeState, string> = {
   decaying: 'Затухает',
 }
 
-const STATE_COLOR: Record<NodeState, string> = {
-  locked: 'border border-border bg-surface-2',
-  available: 'bg-accent text-text-primary',
-  in_progress: 'bg-bg border-2 border-dashed border-accent-hover ring-2 ring-accent/30 animate-pulse',
-  mastered: 'bg-success text-text-primary shadow-glow',
-  decaying: 'bg-bg border-2 border-warn ring-2 ring-warn/40 animate-pulse',
-}
-
 // Edge state: 'solid' если оба unlocked, 'dashed' если только prereq unlocked,
-// 'faded' если оба locked. См. AtlasEdge в proto.
+// 'faded' если оба locked.
 type EdgeState = 'solid' | 'dashed' | 'faded'
 
 function edgeState(from: AtlasNode | undefined, to: AtlasNode | undefined): EdgeState {
@@ -103,51 +85,6 @@ function edgeState(from: AtlasNode | undefined, to: AtlasNode | undefined): Edge
   if (from.unlocked && to.unlocked) return 'solid'
   if (from.unlocked) return 'dashed'
   return 'faded'
-}
-
-type NodePos = { node: AtlasNode; x: number; y: number; size: number }
-
-function computeLayout(atlas: Atlas): Map<string, NodePos> {
-  const positions = new Map<string, NodePos>()
-  const center = atlas.nodes.find((n) => n.key === atlas.center_node)
-  const others = atlas.nodes.filter((n) => n.key !== atlas.center_node)
-  const outer = others.filter((n) => n.kind === 'keystone' || n.kind === 'ascendant')
-  const inner = others.filter((n) => n.kind !== 'keystone' && n.kind !== 'ascendant')
-
-  if (center) {
-    positions.set(center.key, {
-      node: center,
-      x: CENTER_X,
-      y: CENTER_Y,
-      size: NODE_SIZE_CENTER,
-    })
-  }
-  const placeRing = (list: AtlasNode[], radius: number, size: number) => {
-    if (list.length === 0) return
-    const step = (2 * Math.PI) / list.length
-    list.forEach((n, idx) => {
-      const angle = -Math.PI / 2 + step * idx
-      positions.set(n.key, {
-        node: n,
-        x: CENTER_X + radius * Math.cos(angle),
-        y: CENTER_Y + radius * Math.sin(angle),
-        size,
-      })
-    })
-  }
-  placeRing(outer, RADIUS_OUTER, NODE_SIZE_KEYSTONE)
-  placeRing(inner, RADIUS_INNER, NODE_SIZE_NORMAL)
-  return positions
-}
-
-function shortLabel(title: string): string {
-  const main = title.split(':')[0].trim()
-  const words = main.split(/\s+/).filter(Boolean)
-  if (words.length === 1) return words[0].slice(0, 4).toUpperCase()
-  return words
-    .slice(0, 3)
-    .map((w) => w[0]?.toUpperCase() ?? '')
-    .join('')
 }
 
 function sectionLabel(section: string): string {
@@ -168,6 +105,9 @@ function sectionLabel(section: string): string {
   return map[section] ?? section
 }
 
+// Категории = радиальные спицы. Bind-сектора по 72° (5 категорий, всё что
+// не попало — в Algorithms по умолчанию). Order имеет значение: визуально
+// расходится с верхней-правой стороны по часовой.
 const CATEGORIES: { key: string; label: string; sections: string[] }[] = [
   {
     key: 'algorithms',
@@ -187,7 +127,7 @@ const CATEGORIES: { key: string; label: string; sections: string[] }[] = [
   {
     key: 'backend',
     label: 'Backend',
-    sections: ['SECTION_GO', 'SECTION_SQL', 'go', 'sql'],
+    sections: ['SECTION_GO', 'SECTION_SQL', 'SECTION_BEHAVIORAL', 'go', 'sql', 'behavioral'],
   },
   {
     key: 'concurrency',
@@ -205,6 +145,12 @@ const STATUS_FILTERS: { key: NodeState | 'all'; label: string }[] = [
   { key: 'decaying', label: 'Затухающие' },
 ]
 
+function categoryOf(node: AtlasNode): string {
+  for (const c of CATEGORIES) if (c.sections.includes(node.section)) return c.key
+  // Если секция неизвестна — пихаем в Algorithms, чтобы спица не «потерялась».
+  return CATEGORIES[0].key
+}
+
 function daysSince(iso?: string): number | null {
   if (!iso) return null
   const t = Date.parse(iso)
@@ -213,64 +159,280 @@ function daysSince(iso?: string): number | null {
   return days < 0 ? 0 : days
 }
 
-// ── NodeShape — кликабельный «узел» с одним из 5 визуальных состояний.
+// ── Layout: PoE2-style.
+//
+// Каждой категории — своя угловая «спица» (центр сектора). Внутри сектора
+// мы располагаем ноды по двум осям:
+//   - расстояние от центра берётся из BFS-глубины (от center_node по edges);
+//     keystone/ascendant сдвигаются дальше для веса;
+//   - угол распределяется веером ±sectorWidth/2 вокруг центра спицы.
+//
+// Это даёт ощущение «дерева, расходящегося из центра», а не плоского кольца.
+type NodePos = {
+  node: AtlasNode
+  x: number
+  y: number
+  r: number
+  angle: number // angle of the spoke (radians), used for label rotation
+  category: string
+}
+
+function bfsDepths(atlas: Atlas): Map<string, number> {
+  const adj = new Map<string, string[]>()
+  for (const e of atlas.edges) {
+    if (!adj.has(e.from)) adj.set(e.from, [])
+    if (!adj.has(e.to)) adj.set(e.to, [])
+    adj.get(e.from)!.push(e.to)
+    adj.get(e.to)!.push(e.from)
+  }
+  const depth = new Map<string, number>()
+  depth.set(atlas.center_node, 0)
+  const queue: string[] = [atlas.center_node]
+  while (queue.length > 0) {
+    const cur = queue.shift()!
+    const d = depth.get(cur)!
+    for (const nb of adj.get(cur) ?? []) {
+      if (depth.has(nb)) continue
+      depth.set(nb, d + 1)
+      queue.push(nb)
+    }
+  }
+  // Ноды без рёбер с центром: даём глубину 2 (ставим в средне-удалённое кольцо).
+  for (const n of atlas.nodes) if (!depth.has(n.key)) depth.set(n.key, 2)
+  return depth
+}
+
+function computeLayout(atlas: Atlas): Map<string, NodePos> {
+  const positions = new Map<string, NodePos>()
+  const center = atlas.nodes.find((n) => n.key === atlas.center_node)
+  if (center) {
+    positions.set(center.key, {
+      node: center,
+      x: CENTER,
+      y: CENTER,
+      r: NODE_R_CENTER,
+      angle: 0,
+      category: 'center',
+    })
+  }
+
+  const others = atlas.nodes.filter((n) => n.key !== atlas.center_node)
+  const depths = bfsDepths(atlas)
+  // Группируем по категории.
+  const byCat = new Map<string, AtlasNode[]>()
+  for (const c of CATEGORIES) byCat.set(c.key, [])
+  for (const n of others) {
+    const cat = categoryOf(n)
+    byCat.get(cat)!.push(n)
+  }
+
+  const sectorCount = CATEGORIES.length
+  const sectorAngle = (2 * Math.PI) / sectorCount
+  // Внутри сектора используем 70% его ширины — оставляем зазор между спицами.
+  const sectorUseRatio = 0.7
+
+  CATEGORIES.forEach((cat, ci) => {
+    // Сектор центрируется на углу = -π/2 + ci * sectorAngle (start с верха).
+    const center0 = -Math.PI / 2 + ci * sectorAngle
+    const half = (sectorAngle * sectorUseRatio) / 2
+    const items = byCat.get(cat.key) ?? []
+    if (items.length === 0) return
+
+    // Group by depth — каждая «глубина» = одно радиальное кольцо внутри спицы.
+    const byDepth = new Map<number, AtlasNode[]>()
+    for (const n of items) {
+      const d = Math.max(1, depths.get(n.key) ?? 2)
+      if (!byDepth.has(d)) byDepth.set(d, [])
+      byDepth.get(d)!.push(n)
+    }
+    const depthKeys = Array.from(byDepth.keys()).sort((a, b) => a - b)
+    const maxDepth = depthKeys[depthKeys.length - 1] ?? 1
+
+    depthKeys.forEach((d) => {
+      const ring = byDepth.get(d)!
+      // Радиус: depth=1 → RADIUS_INNER; depth=maxDepth → RADIUS_OUTER.
+      const t = maxDepth === 1 ? 0 : (d - 1) / (maxDepth - 1)
+      const baseRadius = RADIUS_INNER + (RADIUS_OUTER - RADIUS_INNER) * t
+      ring.forEach((n, idx) => {
+        const r =
+          n.kind === 'keystone'
+            ? NODE_R_KEYSTONE
+            : n.kind === 'ascendant'
+              ? NODE_R_KEYSTONE + 4
+              : NODE_R_NORMAL
+        // Если в кольце одна нода — ставим ровно на центр спицы.
+        // Иначе равномерно веером в пределах ±half.
+        const a =
+          ring.length === 1
+            ? center0
+            : center0 - half + (2 * half * idx) / (ring.length - 1)
+        // ascendant визуально «дальше» — небольшой сдвиг наружу.
+        const radius =
+          n.kind === 'ascendant'
+            ? Math.min(RADIUS_OUTER + 30, baseRadius + 30)
+            : baseRadius
+        positions.set(n.key, {
+          node: n,
+          x: CENTER + radius * Math.cos(a),
+          y: CENTER + radius * Math.sin(a),
+          r,
+          angle: center0,
+          category: cat.key,
+        })
+      })
+    })
+  })
+
+  return positions
+}
+
+// ── Visual constants per state. Цвета берём из tailwind-темы (accent/success/
+// warn/danger/cyan/border) — рендерим через css var, чтобы не пересобирать
+// кучу классов внутри SVG.
+const STATE_FILL: Record<NodeState, string> = {
+  locked: '#1F2434',
+  available: '#7C5CFF',
+  in_progress: '#0A0E1A',
+  mastered: '#22C55E',
+  decaying: '#0A0E1A',
+}
+const STATE_STROKE: Record<NodeState, string> = {
+  locked: '#2A2F45',
+  available: '#A78BFA',
+  in_progress: '#A78BFA',
+  mastered: '#16A34A',
+  decaying: '#F59E0B',
+}
+
+// ── NodeShape (SVG): рисует ноду со всеми визуальными подсказками
+// её состояния. На клик — открывает drawer; на hover — поднимает tooltip.
 function NodeShape({
   pos,
   selected,
   faded,
-  onClick,
+  hovered,
+  onSelect,
+  onHover,
+  onLeave,
 }: {
   pos: NodePos
   selected: boolean
   faded: boolean
-  onClick: () => void
+  hovered: boolean
+  onSelect: () => void
+  onHover: () => void
+  onLeave: () => void
 }) {
-  const { node, x, y, size } = pos
+  const { node, x, y, r } = pos
   const state = nodeState(node)
-  const stateClass = STATE_COLOR[state]
-  const shapeStyle =
-    node.kind === 'keystone' || node.kind === 'ascendant'
-      ? { clipPath: HEX_CLIP }
-      : {}
-  const selectedRing = selected ? 'ring-4 ring-cyan ring-offset-2 ring-offset-bg z-10' : ''
-  const fadedClass = faded ? 'opacity-25' : ''
-  const masteredCheck = state === 'mastered' && (
-    <span className="absolute -right-1 -top-1 grid h-5 w-5 place-items-center rounded-full bg-success text-bg shadow">
-      <CheckCircle2 className="h-3.5 w-3.5" />
-    </span>
-  )
-  const lockBadge = state === 'locked' && (
-    <span className="absolute -right-1 -top-1 grid h-5 w-5 place-items-center rounded-full bg-surface-3 text-text-muted">
-      <Lock className="h-3 w-3" />
-    </span>
-  )
+  const fill = STATE_FILL[state]
+  const stroke = STATE_STROKE[state]
+  const opacity = faded ? 0.28 : state === 'locked' ? 0.55 : 1
+
+  // In-progress arc fill (показываем % прогресса дугой).
+  const pct = Math.min(100, Math.max(0, node.progress))
+  const arc =
+    state === 'in_progress' && pct > 0 ? describeArc(x, y, r - 4, 0, (pct / 100) * 360) : null
+
+  const isHex = node.kind === 'keystone' || node.kind === 'ascendant'
+  const isCenter = pos.category === 'center'
+
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`absolute grid place-items-center font-display font-bold transition-transform hover:scale-110 ${stateClass} ${selectedRing} ${fadedClass}`}
-      style={{
-        left: x - size / 2,
-        top: y - size / 2,
-        width: size,
-        height: size,
-        borderRadius: node.kind === 'keystone' || node.kind === 'ascendant' ? 0 : size / 2,
-        ...shapeStyle,
+    <g
+      style={{ cursor: 'pointer', opacity }}
+      onClick={(e) => {
+        e.stopPropagation()
+        onSelect()
       }}
+      onMouseEnter={onHover}
+      onMouseLeave={onLeave}
+      onFocus={onHover}
+      onBlur={onLeave}
+      tabIndex={0}
+      role="button"
       aria-label={`${node.title} — ${STATE_LABEL[state]}`}
     >
-      <span className="px-1 text-center font-mono text-[9px] uppercase tracking-[0.06em]">
-        {shortLabel(node.title)}
-      </span>
-      {masteredCheck}
-      {lockBadge}
-    </button>
+      {/* Decay pulsing ring */}
+      {state === 'decaying' && (
+        <circle cx={x} cy={y} r={r + 8} fill="none" stroke="#F59E0B" strokeWidth={2} opacity={0.5}>
+          <animate attributeName="r" from={r + 4} to={r + 14} dur="1.6s" repeatCount="indefinite" />
+          <animate attributeName="opacity" from="0.6" to="0" dur="1.6s" repeatCount="indefinite" />
+        </circle>
+      )}
+      {/* Selection glow */}
+      {(selected || hovered) && (
+        <circle
+          cx={x}
+          cy={y}
+          r={r + 6}
+          fill="none"
+          stroke="#22D3EE"
+          strokeWidth={selected ? 3 : 2}
+          opacity={selected ? 0.9 : 0.55}
+        />
+      )}
+      {/* Body */}
+      {isHex ? (
+        <polygon points={hexPoints(x, y, r)} fill={fill} stroke={stroke} strokeWidth={2} />
+      ) : (
+        <circle cx={x} cy={y} r={r} fill={fill} stroke={stroke} strokeWidth={2} />
+      )}
+      {/* Center node — special accent */}
+      {isCenter && (
+        <circle cx={x} cy={y} r={r - 8} fill="#7C5CFF" opacity={0.4} />
+      )}
+      {/* Progress arc (in_progress) */}
+      {arc && (
+        <path d={arc} fill="none" stroke="#A78BFA" strokeWidth={4} strokeLinecap="round" />
+      )}
+      {/* Mastered check icon */}
+      {state === 'mastered' && (
+        <g transform={`translate(${x - 7}, ${y - 7})`}>
+          <path
+            d="M2 7l4 4L13 3"
+            fill="none"
+            stroke="#0A0E1A"
+            strokeWidth={2.5}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </g>
+      )}
+      {/* Locked padlock */}
+      {state === 'locked' && (
+        <g transform={`translate(${x - 6}, ${y - 6})`} opacity={0.7}>
+          <rect x={1} y={5} width={10} height={7} rx={1.5} fill="#475569" />
+          <path d="M3 5V3.5a3 3 0 0 1 6 0V5" stroke="#475569" strokeWidth={1.5} fill="none" />
+        </g>
+      )}
+    </g>
   )
 }
 
-// ── ConnectionLine — рисует ребро prereq → unlock с тремя состояниями.
-// Также, если оба unlocked, добавляется маленькая стрелочка в середине, чтобы
-// направление было читаемо.
+// SVG arc helper: рисует часть круга (centerX, centerY, radius) от
+// startAngle до endAngle (в градусах, 0 = top, по часовой).
+function describeArc(cx: number, cy: number, r: number, startDeg: number, endDeg: number): string {
+  const start = polar(cx, cy, r, endDeg - 90)
+  const end = polar(cx, cy, r, startDeg - 90)
+  const largeArc = endDeg - startDeg <= 180 ? '0' : '1'
+  return `M ${start.x} ${start.y} A ${r} ${r} 0 ${largeArc} 0 ${end.x} ${end.y}`
+}
+
+function polar(cx: number, cy: number, r: number, deg: number): { x: number; y: number } {
+  const rad = (deg * Math.PI) / 180
+  return { x: cx + r * Math.cos(rad), y: cy + r * Math.sin(rad) }
+}
+
+function hexPoints(cx: number, cy: number, r: number): string {
+  const pts: string[] = []
+  for (let i = 0; i < 6; i += 1) {
+    const a = (-Math.PI / 2) + (i * Math.PI) / 3
+    pts.push(`${cx + r * Math.cos(a)},${cy + r * Math.sin(a)}`)
+  }
+  return pts.join(' ')
+}
+
+// ── ConnectionLine (SVG).
 function ConnectionLine({
   x1,
   y1,
@@ -284,29 +446,141 @@ function ConnectionLine({
   y2: number
   state: EdgeState
 }) {
-  const dx = x2 - x1
-  const dy = y2 - y1
-  const len = Math.sqrt(dx * dx + dy * dy)
-  const angle = (Math.atan2(dy, dx) * 180) / Math.PI
-  let cls = ''
-  if (state === 'solid') cls = 'bg-accent h-[2px]'
-  else if (state === 'dashed')
-    cls = 'h-px bg-[length:8px_1px] bg-no-repeat bg-[linear-gradient(to_right,theme(colors.accent.hover/.7)_50%,transparent_50%)]'
-  else cls = 'bg-border h-px opacity-30'
+  const stroke =
+    state === 'solid' ? '#7C5CFF' : state === 'dashed' ? '#A78BFA' : '#2A2F45'
+  const dash = state === 'dashed' ? '6 6' : undefined
+  const opacity = state === 'faded' ? 0.35 : 0.85
+  const width = state === 'solid' ? 2.5 : 1.5
   return (
-    <div
-      className={`absolute origin-left ${cls}`}
-      style={{
-        left: x1,
-        top: y1,
-        width: len,
-        transform: `rotate(${angle}deg)`,
-      }}
+    <line
+      x1={x1}
+      y1={y1}
+      x2={x2}
+      y2={y2}
+      stroke={stroke}
+      strokeWidth={width}
+      strokeDasharray={dash}
+      opacity={opacity}
     />
   )
 }
 
-// ── FilterBar — search + category chips + status chips. Поддерживает «сброс».
+// ── HoverTooltip — rich card на hover. Auto-position сверху или снизу,
+// чтобы не вылезать за viewport.
+function HoverTooltip({
+  pos,
+  containerRect,
+}: {
+  pos: NodePos
+  containerRect: DOMRect | null
+}) {
+  const { node } = pos
+  const state = nodeState(node)
+  const days = daysSince(node.last_solved_at)
+  const solved = node.solved_count ?? 0
+  const total = node.total_count ?? 0
+  const pct =
+    total > 0 ? Math.min(100, Math.round((solved / total) * 100)) : node.progress
+  const recommended = (node.recommended_kata ?? []).slice(0, 2)
+
+  // Преобразуем SVG-координаты в HTML-координаты внутри контейнера.
+  const TOOLTIP_W = 280
+  if (!containerRect) return null
+  const sx = (pos.x / VIEWBOX_SIZE) * containerRect.width
+  const sy = (pos.y / VIEWBOX_SIZE) * containerRect.height
+  const placeBelow = sy < containerRect.height / 2
+  const top = placeBelow ? sy + 40 : sy - 40
+  const left = Math.max(
+    8,
+    Math.min(containerRect.width - TOOLTIP_W - 8, sx - TOOLTIP_W / 2),
+  )
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: placeBelow ? -4 : 4 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.15, ease: 'easeOut' }}
+      className="pointer-events-none absolute z-30 rounded-lg border border-border bg-surface-1/95 p-3 shadow-card backdrop-blur"
+      style={{
+        width: TOOLTIP_W,
+        top,
+        left,
+        transform: placeBelow ? 'translateY(0)' : 'translateY(-100%)',
+      }}
+    >
+      <div className="mb-1 flex items-center justify-between gap-2">
+        <span className="font-display text-sm font-bold leading-tight text-text-primary">
+          {node.title}
+        </span>
+        <span className={`shrink-0 rounded-full px-2 py-0.5 font-mono text-[9px] uppercase ${stateBadgeClass(state)}`}>
+          {STATE_LABEL[state]}
+        </span>
+      </div>
+      <div className="mb-2 font-mono text-[10px] uppercase text-text-muted">
+        {sectionLabel(node.section)}
+      </div>
+      {node.description && (
+        <p className="mb-2 text-xs leading-relaxed text-text-secondary">
+          {node.description}
+        </p>
+      )}
+      <div className="mb-2 flex items-center gap-2">
+        <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-surface-2">
+          <div
+            className={`h-full rounded-full ${
+              state === 'mastered'
+                ? 'bg-success'
+                : state === 'decaying'
+                  ? 'bg-warn'
+                  : 'bg-accent'
+            }`}
+            style={{ width: `${pct}%` }}
+          />
+        </div>
+        <span className="font-mono text-[10px] text-text-secondary">
+          {total > 0 ? `${solved}/${total}` : `${pct}%`}
+        </span>
+      </div>
+      {(node.decaying || days !== null) && (
+        <div className="mb-2 flex items-center gap-1.5 text-[11px] text-text-muted">
+          {node.decaying ? (
+            <>
+              <Flame className="h-3 w-3 text-warn" />
+              <span>Знание тает {days != null ? `· ${days} дн.` : ''}</span>
+            </>
+          ) : (
+            <>
+              <Clock className="h-3 w-3" />
+              <span>
+                {days === 0 ? 'Решал сегодня' : `Последняя задача: ${days ?? '?'} дн. назад`}
+              </span>
+            </>
+          )}
+        </div>
+      )}
+      {recommended.length > 0 && (
+        <div className="border-t border-border pt-2">
+          <div className="mb-1 font-mono text-[9px] uppercase text-text-muted">
+            Рекомендованное
+          </div>
+          <ul className="flex flex-col gap-0.5">
+            {recommended.map((k) => (
+              <li key={k.id} className="truncate text-[11px] text-text-primary">
+                <span className="text-text-secondary">·</span> {k.title}
+                <span className="ml-1 font-mono text-[9px] uppercase text-text-muted">
+                  {k.difficulty}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </motion.div>
+  )
+}
+
+// ── FilterBar — search + category chips + status chips.
 function FilterBar({
   query,
   setQuery,
@@ -397,7 +671,8 @@ function FilterChip({
       : tone === 'warn'
         ? 'border-warn/60 bg-warn/15 text-warn border'
         : 'border-accent bg-accent/15 text-text-primary border'
-  const inactiveCls = 'border border-border bg-surface-2 text-text-secondary hover:border-border-strong'
+  const inactiveCls =
+    'border border-border bg-surface-2 text-text-secondary hover:border-border-strong'
   return (
     <button
       type="button"
@@ -409,8 +684,8 @@ function FilterChip({
   )
 }
 
-// ── ZoomControls — pan/zoom через transform: scale + drag. Mini-mape не
-// делаем (брифа — «опционально»). Reset возвращает scale=1, offset=(0,0).
+// ── ZoomControls — pan/zoom через transform: scale + drag. Reset
+// возвращает scale=1, offset=(0,0).
 function ZoomControls({
   scale,
   setScale,
@@ -450,8 +725,66 @@ function ZoomControls({
   )
 }
 
-// ── GraphCanvas — собственно интерактивный граф. Pan через mousedown + drag,
-// zoom через ZoomControls (или wheel, если хочется потом).
+// ── MiniMap — превью всего дерева в правом нижнем углу + viewport rect.
+// Click на минимапу — recenter (offset = 0,0, scale = 1).
+function MiniMap({
+  layout,
+  scale,
+  offset,
+  onRecenter,
+  containerSize,
+}: {
+  layout: Map<string, NodePos>
+  scale: number
+  offset: { x: number; y: number }
+  onRecenter: () => void
+  containerSize: { w: number; h: number }
+}) {
+  const SIZE = 150
+  // Окно viewport: при transform translate(offset)+scale(s) центр окна
+  // показывает viewBox-координаты (CENTER - offset/scale).
+  const viewW = (containerSize.w / scale) * (VIEWBOX_SIZE / containerSize.w)
+  const viewH = (containerSize.h / scale) * (VIEWBOX_SIZE / containerSize.h)
+  const cx = CENTER - (offset.x * VIEWBOX_SIZE) / (containerSize.w * scale)
+  const cy = CENTER - (offset.y * VIEWBOX_SIZE) / (containerSize.h * scale)
+
+  return (
+    <button
+      type="button"
+      onClick={onRecenter}
+      className="absolute bottom-4 right-4 z-20 rounded-md border border-border bg-surface-1/90 p-1.5 backdrop-blur transition-colors hover:border-accent"
+      aria-label="Свернуть к центру"
+      title="Свернуть к центру"
+    >
+      <svg width={SIZE} height={SIZE} viewBox={`0 0 ${VIEWBOX_SIZE} ${VIEWBOX_SIZE}`}>
+        <rect x={0} y={0} width={VIEWBOX_SIZE} height={VIEWBOX_SIZE} fill="#0A0E1A" />
+        {Array.from(layout.values()).map((p) => (
+          <circle
+            key={p.node.key}
+            cx={p.x}
+            cy={p.y}
+            r={p.r * 0.9}
+            fill={STATE_FILL[nodeState(p.node)]}
+            opacity={p.node.unlocked ? 0.9 : 0.4}
+          />
+        ))}
+        <rect
+          x={cx - viewW / 2}
+          y={cy - viewH / 2}
+          width={viewW}
+          height={viewH}
+          fill="none"
+          stroke="#22D3EE"
+          strokeWidth={6}
+          opacity={0.8}
+        />
+      </svg>
+    </button>
+  )
+}
+
+// ── GraphCanvas — собственно интерактивный граф. SVG + pan через mousedown
+// + drag, zoom через ZoomControls. Hover показывает tooltip, click — drawer.
 function GraphCanvas({
   atlas,
   selectedKey,
@@ -464,28 +797,45 @@ function GraphCanvas({
   highlightKeys: Set<string> | null
 }) {
   const layout = useMemo(() => computeLayout(atlas), [atlas])
-  const positions = Array.from(layout.values())
 
   const [scale, setScale] = useState(1)
   const [offset, setOffset] = useState({ x: 0, y: 0 })
-  const dragRef = useRef<{ startX: number; startY: number; ox: number; oy: number } | null>(null)
+  const [hoveredKey, setHoveredKey] = useState<string | null>(null)
+  const dragRef = useRef<{ startX: number; startY: number; ox: number; oy: number; moved: boolean } | null>(null)
+  const containerRef = useRef<HTMLDivElement | null>(null)
+  const [containerRect, setContainerRect] = useState<DOMRect | null>(null)
+
+  useEffect(() => {
+    if (!containerRef.current) return
+    const update = () => {
+      if (containerRef.current) setContainerRect(containerRef.current.getBoundingClientRect())
+    }
+    update()
+    const ro = new ResizeObserver(update)
+    ro.observe(containerRef.current)
+    window.addEventListener('resize', update)
+    return () => {
+      ro.disconnect()
+      window.removeEventListener('resize', update)
+    }
+  }, [])
 
   const onMouseDown = (e: React.MouseEvent) => {
-    // Не перехватываем клик по узлу — он обработается своим onClick.
-    if ((e.target as HTMLElement).closest('button')) return
+    if ((e.target as Element).closest('[data-node]')) return
     dragRef.current = {
       startX: e.clientX,
       startY: e.clientY,
       ox: offset.x,
       oy: offset.y,
+      moved: false,
     }
   }
   const onMouseMove = (e: React.MouseEvent) => {
     if (!dragRef.current) return
-    setOffset({
-      x: dragRef.current.ox + (e.clientX - dragRef.current.startX),
-      y: dragRef.current.oy + (e.clientY - dragRef.current.startY),
-    })
+    const dx = e.clientX - dragRef.current.startX
+    const dy = e.clientY - dragRef.current.startY
+    if (Math.abs(dx) + Math.abs(dy) > 3) dragRef.current.moved = true
+    setOffset({ x: dragRef.current.ox + dx, y: dragRef.current.oy + dy })
   }
   const stopDrag = () => {
     dragRef.current = null
@@ -495,10 +845,18 @@ function GraphCanvas({
     setOffset({ x: 0, y: 0 })
   }, [])
 
+  const hoveredPos = hoveredKey ? layout.get(hoveredKey) ?? null : null
+
   return (
     <div
-      className="relative flex-1 overflow-hidden bg-bg"
-      style={{ minHeight: 720, cursor: dragRef.current ? 'grabbing' : 'grab' }}
+      ref={containerRef}
+      className="relative flex-1 overflow-hidden"
+      style={{
+        minHeight: 720,
+        cursor: dragRef.current ? 'grabbing' : 'grab',
+        background:
+          'radial-gradient(ellipse at center, #14182B 0%, #0A0E1A 60%, #05070F 100%)',
+      }}
       onMouseDown={onMouseDown}
       onMouseMove={onMouseMove}
       onMouseUp={stopDrag}
@@ -506,58 +864,190 @@ function GraphCanvas({
     >
       <ZoomControls scale={scale} setScale={setScale} reset={reset} />
       <div
-        className="pointer-events-none absolute"
+        className="h-full w-full"
         style={{
-          width: 800,
-          height: 800,
-          top: '50%',
-          left: '50%',
-          transform: 'translate(-50%, -50%)',
-          background: 'radial-gradient(ellipse at center, #2D1B4D 0%, transparent 70%)',
-          opacity: 0.55,
-        }}
-      />
-      <div
-        className="relative"
-        style={{
-          width: CANVAS_W,
-          height: CANVAS_H,
           transform: `translate(${offset.x}px, ${offset.y}px) scale(${scale})`,
           transformOrigin: 'center center',
-          margin: '0 auto',
+          transition: dragRef.current ? 'none' : 'transform 0.15s ease-out',
         }}
       >
-        {atlas.edges.map((e, idx) => {
-          const a = layout.get(e.from)
-          const b = layout.get(e.to)
-          if (!a || !b) return null
-          return (
-            <ConnectionLine
-              key={`${e.from}-${e.to}-${idx}`}
-              x1={a.x}
-              y1={a.y}
-              x2={b.x}
-              y2={b.y}
-              state={edgeState(a.node, b.node)}
-            />
-          )
-        })}
-        {positions.map((p) => (
-          <NodeShape
-            key={p.node.key}
-            pos={p}
-            selected={p.node.key === selectedKey}
-            faded={highlightKeys !== null && !highlightKeys.has(p.node.key)}
-            onClick={() => onSelect(p.node.key)}
+        <svg
+          viewBox={`0 0 ${VIEWBOX_SIZE} ${VIEWBOX_SIZE}`}
+          width="100%"
+          height="100%"
+          preserveAspectRatio="xMidYMid meet"
+        >
+          {/* subtle radial bg ring */}
+          <defs>
+            <radialGradient id="atlasBg" cx="50%" cy="50%" r="50%">
+              <stop offset="0%" stopColor="#2D1B4D" stopOpacity="0.55" />
+              <stop offset="60%" stopColor="#14182B" stopOpacity="0.2" />
+              <stop offset="100%" stopColor="#0A0E1A" stopOpacity="0" />
+            </radialGradient>
+          </defs>
+          <circle cx={CENTER} cy={CENTER} r={RADIUS_OUTER + 80} fill="url(#atlasBg)" />
+          {/* concentric guide rings */}
+          <circle
+            cx={CENTER}
+            cy={CENTER}
+            r={RADIUS_INNER}
+            fill="none"
+            stroke="#1F2434"
+            strokeWidth={1}
+            opacity={0.45}
           />
-        ))}
+          <circle
+            cx={CENTER}
+            cy={CENTER}
+            r={(RADIUS_INNER + RADIUS_OUTER) / 2}
+            fill="none"
+            stroke="#1F2434"
+            strokeWidth={1}
+            opacity={0.3}
+            strokeDasharray="3 6"
+          />
+          <circle
+            cx={CENTER}
+            cy={CENTER}
+            r={RADIUS_OUTER}
+            fill="none"
+            stroke="#1F2434"
+            strokeWidth={1}
+            opacity={0.45}
+          />
+
+          {/* edges */}
+          {atlas.edges.map((e, idx) => {
+            const a = layout.get(e.from)
+            const b = layout.get(e.to)
+            if (!a || !b) return null
+            return (
+              <ConnectionLine
+                key={`${e.from}-${e.to}-${idx}`}
+                x1={a.x}
+                y1={a.y}
+                x2={b.x}
+                y2={b.y}
+                state={edgeState(a.node, b.node)}
+              />
+            )
+          })}
+
+          {/* category labels around perimeter */}
+          {CATEGORIES.map((cat, ci) => {
+            const angle = -Math.PI / 2 + ci * ((2 * Math.PI) / CATEGORIES.length)
+            const lx = CENTER + RADIUS_LABEL * Math.cos(angle)
+            const ly = CENTER + RADIUS_LABEL * Math.sin(angle)
+            // Поворот на угол спицы, чтобы лейблы «следовали» дуге.
+            const deg = (angle * 180) / Math.PI + 90
+            return (
+              <g key={cat.key} transform={`translate(${lx} ${ly}) rotate(${deg})`}>
+                <text
+                  textAnchor="middle"
+                  fill="#E5E7EB"
+                  opacity={0.5}
+                  fontSize={28}
+                  fontFamily="ui-sans-serif, system-ui"
+                  fontWeight={700}
+                  letterSpacing={4}
+                >
+                  {cat.label.toUpperCase()}
+                </text>
+              </g>
+            )
+          })}
+
+          {/* nodes + labels */}
+          {Array.from(layout.values()).map((p) => {
+            const faded = highlightKeys !== null && !highlightKeys.has(p.node.key)
+            const selected = p.node.key === selectedKey
+            const hovered = p.node.key === hoveredKey
+            return (
+              <g key={p.node.key} data-node={p.node.key}>
+                <NodeShape
+                  pos={p}
+                  selected={selected}
+                  faded={faded}
+                  hovered={hovered}
+                  onSelect={() => {
+                    if (dragRef.current?.moved) return
+                    onSelect(p.node.key)
+                  }}
+                  onHover={() => setHoveredKey(p.node.key)}
+                  onLeave={() =>
+                    setHoveredKey((cur) => (cur === p.node.key ? null : cur))
+                  }
+                />
+                {/* full title under node — больше не аббревиатура */}
+                <text
+                  x={p.x}
+                  y={p.y + p.r + 14}
+                  textAnchor="middle"
+                  fill="#E5E7EB"
+                  fontSize={12}
+                  fontFamily="ui-sans-serif, system-ui"
+                  opacity={faded ? 0.35 : 0.92}
+                  pointerEvents="none"
+                >
+                  {p.node.title}
+                </text>
+              </g>
+            )
+          })}
+        </svg>
       </div>
+
+      {/* Hover tooltip — поверх transformed-слоя, считается в координатах
+          контейнера, чтобы не масштабироваться с zoom. */}
+      <AnimatePresence>
+        {hoveredPos && (
+          <HoverTooltip
+            key={hoveredPos.node.key}
+            pos={transformPos(hoveredPos, scale, offset, containerRect)}
+            containerRect={containerRect}
+          />
+        )}
+      </AnimatePresence>
+
+      {containerRect && (
+        <MiniMap
+          layout={layout}
+          scale={scale}
+          offset={offset}
+          onRecenter={reset}
+          containerSize={{ w: containerRect.width, h: containerRect.height }}
+        />
+      )}
     </div>
   )
 }
 
+// transformPos — учитывает zoom/pan, чтобы tooltip следовал за реальной
+// позицией ноды в контейнере.
+function transformPos(
+  p: NodePos,
+  scale: number,
+  offset: { x: number; y: number },
+  rect: DOMRect | null,
+): NodePos {
+  if (!rect) return p
+  // SVG растянут на весь контейнер (preserveAspectRatio meet) — определяем
+  // эффективную сторону, чтобы перевести viewBox-координаты в пиксели.
+  const side = Math.min(rect.width, rect.height)
+  const sx = (p.x / VIEWBOX_SIZE) * side
+  const sy = (p.y / VIEWBOX_SIZE) * side
+  const dx = sx - rect.width / 2
+  const dy = sy - rect.height / 2
+  const px = rect.width / 2 + dx * scale + offset.x
+  const py = rect.height / 2 + dy * scale + offset.y
+  return {
+    ...p,
+    x: (px / rect.width) * VIEWBOX_SIZE,
+    y: (py / rect.height) * VIEWBOX_SIZE,
+  }
+}
+
 // ── NodeDrawer — правый drawer с прогрессом, decay, рекомендациями, related.
-// На mobile — full-width снизу. Закрывается клавишей Esc и кликом по подложке.
 function NodeDrawer({
   atlas,
   node,
@@ -569,7 +1059,6 @@ function NodeDrawer({
   onClose: () => void
   onSelectNeighbour: (k: string) => void
 }) {
-  // Esc — close.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose()
@@ -585,7 +1074,6 @@ function NodeDrawer({
   const pct = total > 0 ? Math.min(100, Math.round((solved / total) * 100)) : node.progress
   const recommended = node.recommended_kata ?? []
 
-  // Связанные ноды: prereq (edge.to === node.key) и unlocks (edge.from === node.key).
   const prereqs = atlas.edges
     .filter((e) => e.to === node.key)
     .map((e) => atlas.nodes.find((n) => n.key === e.from))
@@ -594,14 +1082,6 @@ function NodeDrawer({
     .filter((e) => e.from === node.key)
     .map((e) => atlas.nodes.find((n) => n.key === e.to))
     .filter((n): n is AtlasNode => Boolean(n))
-
-  // CTA «Решить рекомендованное сейчас» — пушит на первый рекомендованный
-  // ката. Если нет рекомендаций (новая, ещё не настроенная нода) — вместо
-  // этого ведёт на /arena с фильтром по секции.
-  const primaryHref =
-    recommended.length > 0
-      ? `/daily/kata/${encodeURIComponent(recommended[0].id)}`
-      : `/arena?skill=${encodeURIComponent(node.key)}`
 
   return (
     <div className="fixed inset-0 z-50 flex items-stretch justify-end" role="dialog" aria-modal="true">
@@ -643,7 +1123,6 @@ function NodeDrawer({
             </p>
           )}
 
-          {/* Прогресс */}
           <div className="flex flex-col gap-2">
             <div className="flex items-center justify-between">
               <span className="font-mono text-[10px] font-semibold uppercase tracking-wider text-text-muted">
@@ -667,7 +1146,6 @@ function NodeDrawer({
             </div>
           </div>
 
-          {/* Decay / last solved */}
           {(node.decaying || days !== null) && (
             <div
               className={`flex items-start gap-3 rounded-lg p-3 ${
@@ -696,7 +1174,6 @@ function NodeDrawer({
             </div>
           )}
 
-          {/* Recommended kata */}
           {recommended.length > 0 ? (
             <div className="flex flex-col gap-2">
               <span className="font-mono text-[10px] font-semibold uppercase tracking-wider text-text-muted">
@@ -707,6 +1184,15 @@ function NodeDrawer({
                   <KataItem key={k.id} k={k} />
                 ))}
               </ul>
+              <Link to={`/daily/kata/${encodeURIComponent(recommended[0].id)}`} className="block">
+                <Button
+                  size="md"
+                  iconRight={<ArrowRight className="h-4 w-4" />}
+                  className="w-full"
+                >
+                  Решить рекомендованное сейчас
+                </Button>
+              </Link>
             </div>
           ) : (
             <div className="rounded-lg bg-surface-2 p-3 text-xs text-text-muted">
@@ -718,20 +1204,6 @@ function NodeDrawer({
             </div>
           )}
 
-          {/* Primary CTA */}
-          <Link to={primaryHref} className="block">
-            <Button
-              size="md"
-              iconRight={<ArrowRight className="h-4 w-4" />}
-              className="w-full"
-            >
-              {recommended.length > 0
-                ? 'Решить рекомендованное сейчас'
-                : 'Открыть на Арене'}
-            </Button>
-          </Link>
-
-          {/* Related nodes */}
           {(prereqs.length > 0 || unlocks.length > 0) && (
             <div className="flex flex-col gap-3 border-t border-border pt-4">
               {prereqs.length > 0 && (
@@ -866,46 +1338,23 @@ function HeaderStrip({
 }
 
 function GraphSkeleton() {
-  const ring = Array.from({ length: 6 }).map((_, idx) => {
-    const angle = -Math.PI / 2 + (2 * Math.PI * idx) / 6
-    return {
-      x: CENTER_X + RADIUS_OUTER * Math.cos(angle),
-      y: CENTER_Y + RADIUS_OUTER * Math.sin(angle),
-    }
-  })
   return (
-    <div className="relative flex-1 overflow-auto bg-bg" style={{ minHeight: 720, padding: 40 }}>
-      <div className="relative" style={{ width: CANVAS_W, height: CANVAS_H }}>
-        <div
-          className="absolute animate-pulse rounded-full bg-surface-2"
-          style={{
-            left: CENTER_X - NODE_SIZE_CENTER / 2,
-            top: CENTER_Y - NODE_SIZE_CENTER / 2,
-            width: NODE_SIZE_CENTER,
-            height: NODE_SIZE_CENTER,
-          }}
-        />
-        {ring.map((p, i) => (
-          <div
-            key={i}
-            className="absolute animate-pulse rounded-md bg-surface-2"
-            style={{
-              left: p.x - NODE_SIZE_KEYSTONE / 2,
-              top: p.y - NODE_SIZE_KEYSTONE / 2,
-              width: NODE_SIZE_KEYSTONE,
-              height: NODE_SIZE_KEYSTONE,
-            }}
-          />
-        ))}
+    <div className="relative flex-1" style={{ minHeight: 720 }}>
+      <div
+        className="absolute inset-0 animate-pulse"
+        style={{
+          background:
+            'radial-gradient(ellipse at center, #14182B 0%, #0A0E1A 60%, #05070F 100%)',
+        }}
+      />
+      <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 font-mono text-xs text-text-muted">
+        Загружаем атлас…
       </div>
     </div>
   )
 }
 
 function EmptyProgressCTA() {
-  // Брифа: «Если у пользователя ещё ноль unlocked — большой CTA «Начни с Two
-  // Sum →» в центре атласа». ID two-sum совпадает с recommendedKataByNode для
-  // algo_basics + class_core (см. backend atlas.go).
   return (
     <div className="flex flex-1 items-center justify-center bg-bg p-8">
       <div className="flex max-w-lg flex-col items-center gap-5 text-center">
@@ -935,27 +1384,57 @@ function EmptyProgressCTA() {
 function LegendStrip() {
   return (
     <div className="flex h-14 items-center gap-4 overflow-x-auto border-t border-border bg-surface-1 px-4 sm:gap-6 sm:px-8 lg:px-20">
-      <LegendDot cls="bg-accent" label="Доступен" />
-      <LegendDot cls="bg-bg border-2 border-dashed border-accent-hover" label="В процессе" />
-      <LegendDot cls="bg-success" label="Освоен" />
-      <LegendDot cls="bg-bg border-2 border-warn" label="Затухает" />
-      <LegendDot cls="border border-border bg-surface-2" label="Закрыт" />
-      <div className="flex items-center gap-2">
-        <Hexagon className="h-4 w-4 fill-warn text-warn" />
-        <span className="font-mono text-[12px] text-text-secondary">Keystone</span>
-      </div>
-      <div className="flex items-center gap-2">
-        <Hexagon className="h-4 w-4 fill-pink text-pink" />
-        <span className="font-mono text-[12px] text-text-secondary">Ascendant</span>
-      </div>
+      <LegendDot fill="#7C5CFF" stroke="#A78BFA" label="Доступен" />
+      <LegendDot fill="#0A0E1A" stroke="#A78BFA" label="В процессе" arc />
+      <LegendDot fill="#22C55E" stroke="#16A34A" label="Освоен" check />
+      <LegendDot fill="#0A0E1A" stroke="#F59E0B" label="Затухает" pulse />
+      <LegendDot fill="#1F2434" stroke="#2A2F45" label="Закрыт" lock />
     </div>
   )
 }
 
-function LegendDot({ cls, label }: { cls: string; label: string }) {
+function LegendDot({
+  fill,
+  stroke,
+  label,
+  arc,
+  check,
+  pulse,
+  lock,
+}: {
+  fill: string
+  stroke: string
+  label: string
+  arc?: boolean
+  check?: boolean
+  pulse?: boolean
+  lock?: boolean
+}) {
   return (
     <div className="flex items-center gap-2">
-      <span className={`h-3.5 w-3.5 rounded-full ${cls}`} />
+      <svg width={20} height={20} viewBox="0 0 20 20">
+        {pulse && (
+          <circle cx={10} cy={10} r={9} fill="none" stroke={stroke} strokeWidth={1.5} opacity={0.5} />
+        )}
+        <circle cx={10} cy={10} r={7} fill={fill} stroke={stroke} strokeWidth={1.5} />
+        {arc && <path d="M10 4 A 6 6 0 0 1 16 10" fill="none" stroke="#A78BFA" strokeWidth={2} strokeLinecap="round" />}
+        {check && (
+          <path
+            d="M6 10l3 3 5-6"
+            fill="none"
+            stroke="#0A0E1A"
+            strokeWidth={2}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        )}
+        {lock && (
+          <g transform="translate(6 6)">
+            <rect x={1} y={3} width={6} height={5} rx={1} fill="#475569" />
+            <path d="M2 3V2a2 2 0 0 1 4 0v1" stroke="#475569" strokeWidth={1} fill="none" />
+          </g>
+        )}
+      </svg>
       <span className="font-mono text-[12px] text-text-secondary">{label}</span>
     </div>
   )
@@ -972,8 +1451,6 @@ export default function AtlasPage() {
   const [category, setCategory] = useState<string>('all')
   const [status, setStatus] = useState<NodeState | 'all'>('all')
 
-  // highlightKeys = подсвеченные ноды по фильтрам. null = «нет активных
-  // фильтров, не приглушаем». Иначе — set ключей, остальные ноды get faded.
   const highlightKeys = useMemo<Set<string> | null>(() => {
     if (!atlas) return null
     const noFilters = !query.trim() && category === 'all' && status === 'all'
@@ -990,8 +1467,7 @@ export default function AtlasPage() {
     return keys
   }, [atlas, query, category, status])
 
-  const isProgressEmpty =
-    !!atlas && atlas.nodes.length > 0 && unlocked === 0
+  const isProgressEmpty = !!atlas && atlas.nodes.length > 0 && unlocked === 0
 
   const selectedNode =
     atlas && selectedKey ? atlas.nodes.find((n) => n.key === selectedKey) ?? null : null
@@ -1038,8 +1514,6 @@ export default function AtlasPage() {
           ) : atlas.nodes.length === 0 ? (
             <EmptyProgressCTA />
           ) : isProgressEmpty ? (
-            // Граф есть, но прогресса нет — показываем CTA + сам граф ниже,
-            // чтобы пользователь видел будущую карту.
             <div className="flex flex-1 flex-col">
               <EmptyProgressCTA />
               <GraphCanvas
@@ -1071,4 +1545,3 @@ export default function AtlasPage() {
     </AppShellV2>
   )
 }
-

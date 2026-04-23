@@ -58,6 +58,7 @@ func newTestDailyServer(_ *testing.T,
 	log := silentLogger()
 	h := NewHandler(Handler{
 		GetKata:        &app.GetKata{Skills: skills, Tasks: tasks, Katas: katas, Now: fixedNow(now)},
+		GetKataBySlug:  &app.GetKataBySlug{Tasks: tasks},
 		SubmitKata:     &app.SubmitKata{Tasks: tasks, Katas: katas, Streaks: streaks, Judge: fakeJudge{passed: passed}, Bus: noopBus{}, Log: log, Now: fixedNow(now)},
 		GetStreak:      &app.GetStreak{Streaks: streaks, Katas: katas, Now: fixedNow(now)},
 		GetCalendar:    &app.GetCalendar{Cal: cal, Now: fixedNow(now)},
@@ -223,17 +224,22 @@ func TestDailyServer_SubmitKata_EmptyCode_InvalidArgument(t *testing.T) {
 func TestDailyServer_SubmitKata_Happy(t *testing.T) {
 	t.Parallel()
 	ctrl := gomock.NewController(t)
+	tasks := mocks.NewMockTaskRepo(ctrl)
 	katas := mocks.NewMockKataRepo(ctrl)
 	streaks := mocks.NewMockStreakRepo(ctrl)
 	uid := uuid.New()
 	now := time.Date(2030, 6, 4, 12, 0, 0, 0, time.UTC) // Tuesday → not cursed
 	today := now.Truncate(24 * time.Hour)
 	katas.EXPECT().HistoryLast30(gomock.Any(), uid, today).Return([]domain.HistoryEntry{}, nil).Times(1)
+	// SubmitKata now hydrates the task before calling Judge so the real
+	// sandbox adapter can load test_cases by id; uuid.Nil is acceptable here
+	// because the fakeJudge ignores the task field.
+	tasks.EXPECT().GetByID(gomock.Any(), gomock.Any()).Return(sampleTask(), nil)
 	katas.EXPECT().MarkSubmitted(gomock.Any(), uid, today, true).Return(nil)
 	streaks.EXPECT().Get(gomock.Any(), uid).Return(domain.StreakState{}, nil)
 	streaks.EXPECT().Update(gomock.Any(), uid, gomock.Any()).Return(nil)
 
-	srv := newTestDailyServer(t, nil, nil, katas, streaks, nil, now, true)
+	srv := newTestDailyServer(t, tasks, nil, katas, streaks, nil, now, true)
 	ctx := sharedMw.WithUserID(context.Background(), uid)
 	resp, err := srv.SubmitKata(ctx,
 		connect.NewRequest(&pb.SubmitKataRequest{Code: "func main(){}", Language: pb.Language_LANGUAGE_GO}))
@@ -312,5 +318,66 @@ func TestDailyServer_GetCalendar_NewUser_NotFound(t *testing.T) {
 	var ce *connect.Error
 	if !errors.As(err, &ce) || ce.Code() != connect.CodeNotFound {
 		t.Fatalf("expected NotFound, got %v", err)
+	}
+}
+
+// ── GetKataBySlug ─────────────────────────────────────────────────────────
+
+func TestDailyServer_GetKataBySlug_Happy(t *testing.T) {
+	t.Parallel()
+	ctrl := gomock.NewController(t)
+	tasks := mocks.NewMockTaskRepo(ctrl)
+	uid := uuid.New()
+	task := sampleTask()
+	tasks.EXPECT().GetBySlug(gomock.Any(), "two-sum").Return(task, nil)
+
+	srv := newTestDailyServer(t, tasks, nil, nil, nil, nil, time.Now().UTC(), true)
+	ctx := sharedMw.WithUserID(context.Background(), uid)
+	resp, err := srv.GetKataBySlug(ctx, connect.NewRequest(&pb.GetKataBySlugRequest{Slug: "two-sum"}))
+	if err != nil {
+		t.Fatalf("unexpected: %v", err)
+	}
+	if resp.Msg.GetTask().GetSlug() != "two-sum" {
+		t.Fatalf("got %+v", resp.Msg)
+	}
+	if resp.Msg.GetTask().GetTitle() != "Two Sum" {
+		t.Fatalf("title mismatch: %s", resp.Msg.GetTask().GetTitle())
+	}
+}
+
+func TestDailyServer_GetKataBySlug_NotFound(t *testing.T) {
+	t.Parallel()
+	ctrl := gomock.NewController(t)
+	tasks := mocks.NewMockTaskRepo(ctrl)
+	uid := uuid.New()
+	tasks.EXPECT().GetBySlug(gomock.Any(), "no-such").Return(domain.TaskPublic{}, domain.ErrNotFound)
+
+	srv := newTestDailyServer(t, tasks, nil, nil, nil, nil, time.Now().UTC(), true)
+	ctx := sharedMw.WithUserID(context.Background(), uid)
+	_, err := srv.GetKataBySlug(ctx, connect.NewRequest(&pb.GetKataBySlugRequest{Slug: "no-such"}))
+	var ce *connect.Error
+	if !errors.As(err, &ce) || ce.Code() != connect.CodeNotFound {
+		t.Fatalf("expected NotFound, got %v", err)
+	}
+}
+
+func TestDailyServer_GetKataBySlug_EmptySlug_InvalidArgument(t *testing.T) {
+	t.Parallel()
+	srv := newTestDailyServer(t, nil, nil, nil, nil, nil, time.Now().UTC(), true)
+	ctx := sharedMw.WithUserID(context.Background(), uuid.New())
+	_, err := srv.GetKataBySlug(ctx, connect.NewRequest(&pb.GetKataBySlugRequest{Slug: ""}))
+	var ce *connect.Error
+	if !errors.As(err, &ce) || ce.Code() != connect.CodeInvalidArgument {
+		t.Fatalf("expected InvalidArgument, got %v", err)
+	}
+}
+
+func TestDailyServer_GetKataBySlug_Unauthenticated(t *testing.T) {
+	t.Parallel()
+	srv := newTestDailyServer(t, nil, nil, nil, nil, nil, time.Now().UTC(), true)
+	_, err := srv.GetKataBySlug(context.Background(), connect.NewRequest(&pb.GetKataBySlugRequest{Slug: "two-sum"}))
+	var ce *connect.Error
+	if !errors.As(err, &ce) || ce.Code() != connect.CodeUnauthenticated {
+		t.Fatalf("expected Unauthenticated, got %v", err)
 	}
 }

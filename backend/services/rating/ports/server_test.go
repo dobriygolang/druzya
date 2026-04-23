@@ -74,6 +74,12 @@ func TestRatingServer_GetMyRatings_Happy(t *testing.T) {
 		{UserID: uid, Section: enums.SectionAlgorithms, Elo: 1450, MatchesCount: 12},
 		{UserID: uid, Section: enums.SectionSQL, Elo: 1300, MatchesCount: 4},
 	}, nil)
+	// Algorithms: rank 1 of 4 → 100th percentile.
+	repo.EXPECT().FindRank(gomock.Any(), uid, enums.SectionAlgorithms).Return(1, nil)
+	repo.EXPECT().CountSection(gomock.Any(), enums.SectionAlgorithms).Return(4, nil)
+	// SQL: rank 3 of 5 → 50th percentile.
+	repo.EXPECT().FindRank(gomock.Any(), uid, enums.SectionSQL).Return(3, nil)
+	repo.EXPECT().CountSection(gomock.Any(), enums.SectionSQL).Return(5, nil)
 
 	srv := newTestRatingServer(t, repo)
 	ctx := sharedMw.WithUserID(context.Background(), uid)
@@ -86,6 +92,34 @@ func TestRatingServer_GetMyRatings_Happy(t *testing.T) {
 	}
 	if resp.Msg.GetRatings()[0].GetElo() != 1450 {
 		t.Fatalf("elo mismatch: %+v", resp.Msg.GetRatings()[0])
+	}
+	if got := resp.Msg.GetRatings()[0].GetPercentile(); got != 100 {
+		t.Fatalf("expected algorithms percentile 100, got %d", got)
+	}
+	if got := resp.Msg.GetRatings()[1].GetPercentile(); got != 50 {
+		t.Fatalf("expected sql percentile 50, got %d", got)
+	}
+}
+
+func TestRatingServer_GetMyRatings_PercentileError_Propagates(t *testing.T) {
+	t.Parallel()
+	ctrl := gomock.NewController(t)
+	repo := mocks.NewMockRatingRepo(ctrl)
+	uid := uuid.New()
+	repo.EXPECT().List(gomock.Any(), uid).Return([]domain.SectionRating{
+		{UserID: uid, Section: enums.SectionAlgorithms, Elo: 1450},
+	}, nil)
+	// Anti-fallback: a FindRank failure must propagate, NOT silently fall back
+	// to a hard-coded percentile value.
+	repo.EXPECT().FindRank(gomock.Any(), uid, enums.SectionAlgorithms).
+		Return(0, errors.New("pg down"))
+
+	srv := newTestRatingServer(t, repo)
+	ctx := sharedMw.WithUserID(context.Background(), uid)
+	_, err := srv.GetMyRatings(ctx, connect.NewRequest(&pb.GetMyRatingsRequest{}))
+	var ce *connect.Error
+	if !errors.As(err, &ce) || ce.Code() != connect.CodeInternal {
+		t.Fatalf("expected Internal, got %v", err)
 	}
 }
 

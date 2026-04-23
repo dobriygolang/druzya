@@ -130,6 +130,21 @@ message InterviewAutopsy {
 }
 
 message GetDailyKataRequest {}
+
+// GetKataBySlugRequest — deep-link GET /api/v1/daily/kata/:slug. Unknown slug
+// returns NotFound (HTTP 404); handler must NOT silently fall back to today's
+// kata (anti-fallback policy: a 404 is honest, a redirect is a lie).
+message GetKataBySlugRequest {
+  string slug = 1;
+}
+
+// GetKataBySlugResponse mirrors DailyKata but without the `already_submitted`
+// flag — slug deep-links are for browsing and don't carry per-user submission
+// state.
+message GetKataBySlugResponse {
+  TaskPublic task = 1;
+}
+
 message SubmitKataRequest {
   string code = 1;
   Language language = 2;
@@ -160,6 +175,12 @@ service DailyService {
   // GetKata returns today's kata.
   rpc GetKata(GetDailyKataRequest) returns (DailyKata) {
     option (google.api.http) = {get: "/api/v1/daily/kata"};
+  }
+
+  // GetKataBySlug returns a kata by its public slug. 404 on unknown slug —
+  // the UI uses this for deep-links like /daily/kata/two-sum.
+  rpc GetKataBySlug(GetKataBySlugRequest) returns (GetKataBySlugResponse) {
+    option (google.api.http) = {get: "/api/v1/daily/kata/{slug}"};
   }
 
   // SubmitKata grades and returns the result + streak update.

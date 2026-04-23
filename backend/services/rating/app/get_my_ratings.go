@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"druz9/rating/domain"
+	"druz9/shared/enums"
 
 	"github.com/google/uuid"
 )
@@ -31,7 +32,13 @@ type GetMyRatings struct {
 }
 
 // Do loads the user's ratings and derives global score + percentiles.
-// Percentile is left at 50 as a STUB until a cache-backed rank query is wired.
+//
+// Percentile is computed per-section as round((1 - (rank-1)/total) * 100),
+// i.e. the fraction of ranked users the caller is ahead of (the user at
+// rank=1 reports 100, rank=total reports 0). Sections with total <= 1 are
+// reported as 100 (the user is the only ranked competitor). FindRank or
+// CountSection failures propagate — we never fall back to a hard-coded
+// stand-in percentile (anti-fallback policy).
 func (uc *GetMyRatings) Do(ctx context.Context, userID uuid.UUID) (MyRatingsView, error) {
 	list, err := uc.Ratings.List(ctx, userID)
 	if err != nil {
@@ -44,14 +51,46 @@ func (uc *GetMyRatings) Do(ctx context.Context, userID uuid.UUID) (MyRatingsView
 	now := time.Now().UTC()
 	for _, r := range list {
 		decaying := r.LastMatchAt != nil && now.Sub(*r.LastMatchAt) > 7*24*time.Hour
+		pct, perr := uc.percentile(ctx, userID, r.Section)
+		if perr != nil {
+			return MyRatingsView{}, fmt.Errorf("rating.GetMyRatings: percentile: %w", perr)
+		}
 		out.Ratings = append(out.Ratings, MySectionRating{
 			Section:      string(r.Section),
 			Elo:          r.Elo,
 			MatchesCount: r.MatchesCount,
-			// STUB: percentile derivation — needs rank / section_size from cache.
-			Percentile: 50,
-			Decaying:   decaying,
+			Percentile:   pct,
+			Decaying:     decaying,
 		})
 	}
 	return out, nil
+}
+
+// percentile resolves rank + section size and converts to a 0..100 score.
+func (uc *GetMyRatings) percentile(ctx context.Context, userID uuid.UUID, section enums.Section) (int, error) {
+	rank, err := uc.Ratings.FindRank(ctx, userID, section)
+	if err != nil {
+		return 0, err
+	}
+	total, err := uc.Ratings.CountSection(ctx, section)
+	if err != nil {
+		return 0, err
+	}
+	if rank <= 0 || total <= 0 {
+		return 0, nil
+	}
+	if total <= 1 {
+		return 100, nil
+	}
+	// (rank-1) users are above the caller; (total-rank) are below.
+	// Percentile = share of users strictly below, scaled to 0..100.
+	below := total - rank
+	pct := (below * 100) / (total - 1)
+	if pct < 0 {
+		pct = 0
+	}
+	if pct > 100 {
+		pct = 100
+	}
+	return pct, nil
 }

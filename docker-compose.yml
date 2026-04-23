@@ -105,6 +105,7 @@ services:
       MINIO_ACCESS_KEY: druz9minio
       MINIO_SECRET_KEY: druz9minio-dev
       MINIO_USE_SSL: "false"
+      MINIO_BUCKET_PODCASTS: ${MINIO_BUCKET_PODCASTS:-podcasts}
       CLICKHOUSE_ADDR: clickhouse:9000
       JUDGE0_URL: http://judge0-server:2358
       JWT_SECRET: local-dev-secret-change-me

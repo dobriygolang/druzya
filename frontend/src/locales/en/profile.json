@@ -37,5 +37,11 @@
     "wl": "W-L",
     "wr": "WR",
     "delta": "Δ7d"
-  }
+  },
+  "skills_empty": "No matches yet",
+  "retry": "Retry",
+  "leaderboard_empty": "No entries yet",
+  "error_title": "Could not load profile",
+  "not_found_title": "Profile not found",
+  "back_to_sanctum": "Back to Sanctum"
 }

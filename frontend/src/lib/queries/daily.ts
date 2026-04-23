@@ -52,6 +52,31 @@ export function useDailyKataQuery() {
   })
 }
 
+// Slug deep-link response — proto shape is { task: TaskPublic } since slug
+// browsing carries no per-user submission state. We unwrap to DailyKata-ish
+// in the page layer; here we expose the wire shape directly.
+export type DailyKataBySlugResponse = {
+  task: DailyTask
+}
+
+// useDailyKataBySlugQuery powers /daily/kata/:slug. Disabled while `slug` is
+// undefined (e.g. on /daily where no slug is in the URL) so the query never
+// fires for the today-kata path. ApiError(404) bubbles out unchanged so the
+// page can render a "не существует" state instead of falling back.
+export function useDailyKataBySlugQuery(slug: string | undefined) {
+  return useQuery({
+    queryKey: ['daily', 'kata', 'slug', slug],
+    queryFn: () => api<DailyKataBySlugResponse>(`/daily/kata/${encodeURIComponent(slug ?? '')}`),
+    enabled: typeof slug === 'string' && slug.length > 0,
+    retry: (failureCount, err) => {
+      // Don't retry 4xx — a missing slug stays missing.
+      const status = (err as { status?: number } | undefined)?.status
+      if (status && status >= 400 && status < 500) return false
+      return failureCount < 2
+    },
+  })
+}
+
 export function useStreakQuery() {
   return useQuery({
     queryKey: ['daily', 'streak'],

@@ -4,9 +4,8 @@
 // приходят с бэка через useWeeklyReportQuery → /api/v1/profile/me/report.
 // Backend держит 5-min Redis-кеш + инвалидацию по событиям MatchCompleted/
 // XPGained, см. profile/infra/report_cache.go.
-import { Brain, Download, ChevronDown, Headphones } from 'lucide-react'
+import { Brain, Headphones } from 'lucide-react'
 import { AppShellV2 } from '../components/AppShell'
-import { Button } from '../components/Button'
 import { useWeeklyReportQuery, type WeeklyReport } from '../lib/queries/weekly'
 
 function ErrorChip() {
@@ -37,14 +36,14 @@ function HeaderRow({
         </p>
         {isError && <ErrorChip />}
       </div>
-      <div className="flex items-center gap-3">
-        <button className="inline-flex items-center gap-1.5 rounded-md border border-border bg-surface-2 px-3 py-1.5 text-xs text-text-secondary">
-          Прошлая неделя <ChevronDown className="h-3.5 w-3.5" />
-        </button>
-        <Button variant="ghost" size="sm" icon={<Download className="h-3.5 w-3.5" />}>
-          Экспорт
-        </Button>
-      </div>
+      {/*
+        Dead "Прошлая неделя" dropdown + "Экспорт" кнопки удалены (anti-fake:
+        не рендерим интерактив, пока backend не поддерживает).
+        Вернём когда:
+          - GET /profile/report/{week_iso} появится (week-selector backend),
+          - POST /profile/report/export отдаёт CSV/PDF blob.
+        Трекается: killer-stats post-Wave-5 session.
+      */}
     </div>
   )
 }
@@ -115,56 +114,41 @@ function StatsRow({ stats }: { stats: WeeklyReport['stats'] }) {
 
 const DAYS = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс']
 
-function heatLevel(hour: number, day: number, daily: number[]): number {
-  // Бэк отдаёт 7 значений активности по дням (0..4). Распределяем эту
-  // плотность равномерно по часам этого дня; чем больше day-aggregate, тем
-  // выше базовая яркость для всех его клеток. Если бэк вернул [], всё 0.
-  const base = daily[day] ?? 0
-  if (base <= 0) return 0
-  if (hour >= 9 && hour <= 22) return Math.min(4, base)
-  return Math.max(0, base - 1)
-}
-
 const LEVEL_BG = ['bg-surface-1', 'bg-accent/20', 'bg-accent/40', 'bg-accent', 'bg-accent-hover']
 
-function Heatmap({ daily }: { daily: number[] }) {
+// DailyBarChart — честный 7-столбиковый chart активности по дням. Раньше
+// WeeklyReportPage раздувал 7 значений в фейковый 7×24 heatmap через
+// эвристику «если час 9..22 то base иначе base-1», что — чистый анти-
+// фолбек: бэк ЧАСОВ не знает. Возвращаем реальный вид, который точно
+// отражает полученные данные. 7×24 hour-of-day агрегация появится, когда
+// в profile.ReportView добавят HourlyHeatmap[7][24] (post-Wave-5 session).
+function DailyBarChart({ daily }: { daily: number[] }) {
+  const max = Math.max(1, ...daily)
   return (
     <div className="flex flex-col gap-5 rounded-2xl bg-surface-2 p-7">
       <div className="flex items-center justify-between">
-        <h2 className="font-display text-lg font-bold text-text-primary">Активность по дням и часам</h2>
-        <div className="flex gap-1 rounded-md bg-surface-1 p-1">
-          <button className="rounded bg-accent px-3 py-1 text-xs font-semibold text-text-primary">Heatmap</button>
-          <button className="px-3 py-1 text-xs text-text-secondary">Calendar</button>
-          <button className="px-3 py-1 text-xs text-text-secondary">Bar</button>
-        </div>
+        <h2 className="font-display text-lg font-bold text-text-primary">Активность по дням</h2>
+        <span className="font-mono text-[11px] text-text-muted">7 дней</span>
       </div>
-      <div className="flex overflow-x-auto">
-        <div className="flex flex-col justify-around pr-2 text-right">
-          {DAYS.map((d) => (
-            <span key={d} className="font-mono text-[10px] text-text-muted">
-              {d}
-            </span>
-          ))}
-        </div>
-        <div className="flex flex-1 gap-1">
-          {Array.from({ length: 24 }).map((_, h) => (
-            <div key={h} className="flex flex-1 flex-col items-center gap-1">
-              <div className="flex flex-col gap-[3px]">
-                {DAYS.map((_, d) => (
-                  <div key={d} className={`h-[18px] w-[18px] rounded-[3px] ${LEVEL_BG[heatLevel(h, d, daily)]}`} />
-                ))}
+      <div className="flex items-end justify-between gap-2 h-[160px]">
+        {DAYS.map((d, i) => {
+          const v = daily[i] ?? 0
+          const pct = v === 0 ? 4 : Math.max(8, Math.round((v / max) * 100))
+          const level = v === 0 ? 0 : Math.min(4, Math.max(1, Math.round((v / max) * 4)))
+          return (
+            <div key={d} className="flex flex-1 flex-col items-center gap-2">
+              <div className="flex h-full w-full items-end">
+                <div
+                  className={`w-full rounded-t-md ${LEVEL_BG[level]} transition-all`}
+                  style={{ height: `${pct}%` }}
+                  title={`${d}: ${v} действий`}
+                />
               </div>
-              <span className="font-mono text-[9px] text-text-muted">{h}</span>
+              <span className="font-mono text-[11px] text-text-muted">{d}</span>
+              <span className="font-mono text-[10px] text-text-primary">{v}</span>
             </div>
-          ))}
-        </div>
-      </div>
-      <div className="flex items-center justify-end gap-2">
-        <span className="font-mono text-[10px] text-text-muted">Меньше</span>
-        {LEVEL_BG.map((bg, i) => (
-          <div key={i} className={`h-3 w-3 rounded-[3px] ${bg}`} />
-        ))}
-        <span className="font-mono text-[10px] text-text-muted">Больше</span>
+          )
+        })}
       </div>
     </div>
   )
@@ -338,7 +322,7 @@ export default function WeeklyReportPage() {
       <HeaderRow period={period} actions={actions} isError={isError} />
       <div className="flex flex-col gap-6 px-4 pb-6 pt-6 sm:px-8 lg:px-20 lg:pb-7">
         <StatsRow stats={stats} />
-        <Heatmap daily={data?.heatmap ?? []} />
+        <DailyBarChart daily={data?.heatmap ?? []} />
         <div className="flex flex-col gap-4 lg:flex-row lg:gap-6">
           <div className="flex flex-1 flex-col gap-5">
             <StrongSections rows={data?.strong_sections ?? []} />

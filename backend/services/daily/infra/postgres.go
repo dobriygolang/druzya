@@ -73,6 +73,52 @@ func (p *TasksKatas) GetByID(ctx context.Context, id uuid.UUID) (domain.TaskPubl
 	return taskPublicFromTaskRow(r)
 }
 
+// GetBySlug fetches a single task by its public slug, without solution_hint.
+// Unknown slug → ErrNotFound (the handler surfaces that as HTTP 404).
+func (p *TasksKatas) GetBySlug(ctx context.Context, slug string) (domain.TaskPublic, error) {
+	if slug == "" {
+		return domain.TaskPublic{}, fmt.Errorf("daily.TasksKatas.GetBySlug: %w", domain.ErrNotFound)
+	}
+	r, err := p.q.GetTaskBySlug(ctx, slug)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return domain.TaskPublic{}, fmt.Errorf("daily.TasksKatas.GetBySlug: %w", domain.ErrNotFound)
+		}
+		return domain.TaskPublic{}, fmt.Errorf("daily.TasksKatas.GetBySlug: %w", err)
+	}
+	return taskPublicFromBySlugRow(r)
+}
+
+// ListForTask loads grading rows ordered by order_num ASC. The real-sandbox
+// adapter runs them in order and aggregates pass/fail.
+//
+// NOTE: hand-rolled pgx (not sqlc) so we don't need a migration+regen cycle
+// just to surface the existing test_cases table — the schema has lived in
+// migration 00003 since day one.
+func (p *TasksKatas) ListForTask(ctx context.Context, taskID uuid.UUID) ([]domain.TestCase, error) {
+	rows, err := p.pool.Query(ctx,
+		`SELECT input, expected_output, is_hidden, order_num
+		   FROM test_cases
+		  WHERE task_id = $1
+		  ORDER BY order_num ASC`, pgUUID(taskID))
+	if err != nil {
+		return nil, fmt.Errorf("daily.TasksKatas.ListForTask: query: %w", err)
+	}
+	defer rows.Close()
+	var out []domain.TestCase
+	for rows.Next() {
+		var tc domain.TestCase
+		if err := rows.Scan(&tc.Input, &tc.Expected, &tc.IsHidden, &tc.Order); err != nil {
+			return nil, fmt.Errorf("daily.TasksKatas.ListForTask: scan: %w", err)
+		}
+		out = append(out, tc)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("daily.TasksKatas.ListForTask: rows: %w", err)
+	}
+	return out, nil
+}
+
 // WeakestNode picks the lowest-progress skill node for the user.
 func (p *TasksKatas) WeakestNode(ctx context.Context, userID uuid.UUID) (domain.NodeWeakness, error) {
 	r, err := p.q.WeakestSkillNode(ctx, pgUUID(userID))
@@ -472,6 +518,10 @@ func taskPublicFromTaskRow(r dailydb.GetTaskPublicRow) (domain.TaskPublic, error
 	return assembleTask(fromPgUUID(r.ID), r.Slug, r.TitleRu, r.DescriptionRu, r.Difficulty, r.Section, r.TimeLimitSec, r.MemoryLimitMb)
 }
 
+func taskPublicFromBySlugRow(r dailydb.GetTaskBySlugRow) (domain.TaskPublic, error) {
+	return assembleTask(fromPgUUID(r.ID), r.Slug, r.TitleRu, r.DescriptionRu, r.Difficulty, r.Section, r.TimeLimitSec, r.MemoryLimitMb)
+}
+
 func assembleTask(id uuid.UUID, slug, title, desc, difficulty, section string, timeLimit, memoryLimit int32) (domain.TaskPublic, error) {
 	d := enums.Difficulty(difficulty)
 	sec := enums.Section(section)
@@ -558,6 +608,7 @@ var (
 	_ domain.TaskRepo     = (*TasksKatas)(nil)
 	_ domain.SkillRepo    = (*TasksKatas)(nil)
 	_ domain.KataRepo     = (*TasksKatas)(nil)
+	_ domain.TestCaseRepo = (*TasksKatas)(nil)
 	_ domain.StreakRepo   = (*Streaks)(nil)
 	_ domain.CalendarRepo = (*Calendars)(nil)
 	_ domain.AutopsyRepo  = (*Autopsies)(nil)

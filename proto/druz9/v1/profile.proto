@@ -205,6 +205,33 @@ message WeekComparison {
   int32 pct = 3;
 }
 
+// EloPoint — одна дневная snapshot-точка ELO для линейного графика
+// /report. date — ISO YYYY-MM-DD; section — строкой, чтобы не плодить enum
+// в protowire (значения совпадают с pb.Section, но без префиксов).
+message EloPoint {
+  string date = 1;
+  int32 elo = 2;
+  string section = 3;
+}
+
+// PercentileView — три перцентиля пользователя на дату конца недели:
+// внутри своего тира, среди друзей и глобально. Целое 0..100.
+message PercentileView {
+  int32 in_tier = 1;
+  int32 in_friends = 2;
+  int32 in_global = 3;
+}
+
+// AchievementBrief — лёгкое представление ачивки, заработанной за неделю,
+// для блока «Что разблокировано». Полный объект Achievement не нужен —
+// фронт дотягивает описание из каталога по code, если потребуется.
+message AchievementBrief {
+  string code = 1;
+  string title = 2;
+  string unlocked_at = 3; // ISO-8601
+  string tier = 4;        // bronze|silver|gold|... — строка, без enum
+}
+
 // WeeklyReport mirrors OpenAPI WeeklyReport.
 message WeeklyReport {
   // week_start / week_end are ISO-8601 calendar dates (YYYY-MM-DD). OpenAPI
@@ -230,6 +257,21 @@ message WeeklyReport {
   repeated SectionBreakdown weak_sections = 14;
   // Сравнение XP за последние 4 недели (включая текущую). Длина = 4.
   repeated WeekComparison weekly_xp = 15;
+
+  // Phase A killer-stats расширения. Старые клиенты безопасно
+  // игнорируют (proto3 default values).
+  // hourly_heatmap — 168 ячеек (7 дней × 24 часа), индекс = dow*24+hour.
+  repeated int32 hourly_heatmap = 16;
+  // elo_series — дневные snapshot-точки ELO за окно.
+  repeated EloPoint elo_series = 17;
+  // percentiles — три перцентиля на конец недели.
+  PercentileView percentiles = 18;
+  // ai_insight — текст от LLM-инсайта; пустая строка, если OpenRouter недоступен.
+  string ai_insight = 19;
+  // achievements_this_week — ачивки, разблокированные в окне недели.
+  repeated AchievementBrief achievements_this_week = 20;
+  // share_token — токен публичной ссылки; пустая строка, если ещё не выпускался.
+  string share_token = 21;
 }
 
 // ProfileSettings mirrors OpenAPI ProfileSettings.

@@ -201,7 +201,7 @@ function SkillsCard() {
       <h3 className="font-display text-base font-bold text-text-primary">{t('skills')}</h3>
       {isLoading && <div className="font-mono text-[12px] text-text-muted">…</div>}
       {!isLoading && skills.length === 0 && (
-        <div className="font-mono text-[12px] text-text-muted">{t('skills_empty', { defaultValue: 'No matches yet' })}</div>
+        <div className="font-mono text-[12px] text-text-muted">{t('skills_empty')}</div>
       )}
       <div className="flex flex-col gap-3">
         {skills.map((s) => (
@@ -408,13 +408,13 @@ function Leaderboard() {
           <div className="flex items-center justify-between px-5 py-3 text-[12px] text-danger">
             <span>{t('load_failed')}</span>
             <button onClick={() => refetch()} className="font-mono text-[12px] text-accent hover:underline">
-              {t('retry', { defaultValue: 'Retry' })}
+              {t('retry')}
             </button>
           </div>
         )}
         {!isLoading && !isError && rows.length === 0 && (
           <div className="px-5 py-3 text-[12px] text-text-muted">
-            {t('leaderboard_empty', { defaultValue: 'No entries yet' })}
+            {t('leaderboard_empty')}
           </div>
         )}
         {rows.map((r) => {
@@ -480,11 +480,11 @@ function ProfileError({ onRetry }: { onRetry: () => void }) {
     <AppShellV2>
       <div className="flex min-h-[40vh] flex-col items-center justify-center gap-4 p-8">
         <h2 className="font-display text-xl font-bold text-text-primary">
-          {t('error_title', { defaultValue: 'Could not load profile' })}
+          {t('error_title')}
         </h2>
         <p className="max-w-md text-center text-sm text-text-secondary">{t('load_failed')}</p>
         <Button variant="primary" onClick={onRetry}>
-          {t('retry', { defaultValue: 'Retry' })}
+          {t('retry')}
         </Button>
       </div>
     </AppShellV2>
@@ -497,11 +497,11 @@ function ProfileNotFound({ username }: { username: string }) {
     <AppShellV2>
       <div className="flex min-h-[40vh] flex-col items-center justify-center gap-4 p-8">
         <h2 className="font-display text-xl font-bold text-text-primary">
-          {t('not_found_title', { defaultValue: 'Profile not found' })}
+          {t('not_found_title')}
         </h2>
         <p className="max-w-md text-center text-sm text-text-secondary">@{username}</p>
         <Link to="/sanctum">
-          <Button variant="primary">{t('back_to_sanctum', { defaultValue: 'Back to Sanctum' })}</Button>
+          <Button variant="primary">{t('back_to_sanctum')}</Button>
         </Link>
       </div>
     </AppShellV2>
