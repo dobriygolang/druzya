@@ -277,6 +277,77 @@ func TestGetReport_AIInsight_ErrorIsSwallowed(t *testing.T) {
 	}
 }
 
+// FeaturedMetric — server picks the headline metric for the share card.
+// Three cases cover the full decision tree: achievement > streak > xp.
+
+func TestGetReport_FeaturedMetric_AchievementWins(t *testing.T) {
+	t.Parallel()
+	ctrl := gomock.NewController(t)
+	repo := mocks.NewMockProfileRepo(ctrl)
+	uid := uuid.New()
+	expectActivity(repo, uid)
+	repo.EXPECT().ListMatchAggregatesSince(gomock.Any(), uid, gomock.Any()).Return(nil, nil)
+	repo.EXPECT().ListWeeklyXPSince(gomock.Any(), uid, gomock.Any(), 4).Return([]int{0, 0, 0, 0}, nil)
+	// streak=14 — would normally pick "streak" — but the achievement
+	// short-circuits the rule.
+	repo.EXPECT().GetStreaks(gomock.Any(), uid).Return(14, 30, nil)
+	repo.EXPECT().ListAchievementsSince(gomock.Any(), uid, gomock.Any()).Return([]domain.AchievementBrief{
+		{Code: "first-podium", Title: "First podium"},
+	}, nil)
+
+	uc := &GetReport{Repo: repo}
+	v, err := uc.Do(context.Background(), uid, time.Now())
+	if err != nil {
+		t.Fatalf("unexpected: %v", err)
+	}
+	if v.FeaturedMetric != "achievement" {
+		t.Fatalf("expected featured=achievement, got %q", v.FeaturedMetric)
+	}
+}
+
+func TestGetReport_FeaturedMetric_StreakWhenNoAchievementAndStreakHigh(t *testing.T) {
+	t.Parallel()
+	ctrl := gomock.NewController(t)
+	repo := mocks.NewMockProfileRepo(ctrl)
+	uid := uuid.New()
+	expectActivity(repo, uid)
+	repo.EXPECT().ListMatchAggregatesSince(gomock.Any(), uid, gomock.Any()).Return(nil, nil)
+	repo.EXPECT().ListWeeklyXPSince(gomock.Any(), uid, gomock.Any(), 4).Return([]int{0, 0, 0, 0}, nil)
+	repo.EXPECT().GetStreaks(gomock.Any(), uid).Return(7, 12, nil)
+	repo.EXPECT().ListAchievementsSince(gomock.Any(), uid, gomock.Any()).Return(nil, nil)
+
+	uc := &GetReport{Repo: repo}
+	v, err := uc.Do(context.Background(), uid, time.Now())
+	if err != nil {
+		t.Fatalf("unexpected: %v", err)
+	}
+	if v.FeaturedMetric != "streak" {
+		t.Fatalf("expected featured=streak, got %q", v.FeaturedMetric)
+	}
+}
+
+func TestGetReport_FeaturedMetric_DefaultXP(t *testing.T) {
+	t.Parallel()
+	ctrl := gomock.NewController(t)
+	repo := mocks.NewMockProfileRepo(ctrl)
+	uid := uuid.New()
+	expectActivity(repo, uid)
+	repo.EXPECT().ListMatchAggregatesSince(gomock.Any(), uid, gomock.Any()).Return(nil, nil)
+	repo.EXPECT().ListWeeklyXPSince(gomock.Any(), uid, gomock.Any(), 4).Return([]int{0, 0, 0, 0}, nil)
+	// Streak below the 7-day threshold AND no new achievements ⇒ default xp.
+	repo.EXPECT().GetStreaks(gomock.Any(), uid).Return(3, 12, nil)
+	repo.EXPECT().ListAchievementsSince(gomock.Any(), uid, gomock.Any()).Return(nil, nil)
+
+	uc := &GetReport{Repo: repo}
+	v, err := uc.Do(context.Background(), uid, time.Now())
+	if err != nil {
+		t.Fatalf("unexpected: %v", err)
+	}
+	if v.FeaturedMetric != "xp" {
+		t.Fatalf("expected featured=xp, got %q", v.FeaturedMetric)
+	}
+}
+
 func TestGetReport_StreakErrorTolerated(t *testing.T) {
 	t.Parallel()
 	ctrl := gomock.NewController(t)
