@@ -71,6 +71,36 @@ type BoostyAccount struct {
 	CreatedAt      pgtype.Timestamptz
 }
 
+type Cohort struct {
+	ID         pgtype.UUID
+	Slug       string
+	Name       string
+	OwnerID    pgtype.UUID
+	StartsAt   pgtype.Timestamptz
+	EndsAt     pgtype.Timestamptz
+	Status     string
+	Visibility string
+	CreatedAt  pgtype.Timestamptz
+}
+
+type CohortInvite struct {
+	Token     string
+	CohortID  pgtype.UUID
+	CreatedBy pgtype.UUID
+	CreatedAt pgtype.Timestamptz
+	ExpiresAt pgtype.Timestamptz
+	MaxUses   int32
+	UsedCount int32
+}
+
+type CohortMember struct {
+	CohortID pgtype.UUID
+	UserID   pgtype.UUID
+	Role     string
+	JoinedAt pgtype.Timestamptz
+	LeftAt   pgtype.Timestamptz
+}
+
 type Company struct {
 	ID               pgtype.UUID
 	Slug             string
@@ -244,6 +274,19 @@ type LlmConfig struct {
 	CreatedAt   pgtype.Timestamptz
 }
 
+type MentorSession struct {
+	ID          pgtype.UUID
+	MenteeID    pgtype.UUID
+	MentorID    pgtype.UUID
+	SlotAt      pgtype.Timestamptz
+	DurationMin int32
+	Status      string
+	EscrowState string
+	PriceCents  int32
+	CreatedAt   pgtype.Timestamptz
+	UpdatedAt   pgtype.Timestamptz
+}
+
 type MockMessage struct {
 	ID             pgtype.UUID
 	SessionID      pgtype.UUID
@@ -351,6 +394,34 @@ type OnboardingProgress struct {
 	UpdatedAt   pgtype.Timestamptz
 }
 
+type OrgMember struct {
+	OrgID    pgtype.UUID
+	UserID   pgtype.UUID
+	Role     string
+	JoinedAt pgtype.Timestamptz
+}
+
+type OrgSeat struct {
+	ID             pgtype.UUID
+	OrgID          pgtype.UUID
+	InviteEmail    pgtype.Text
+	AssignedUserID pgtype.UUID
+	Status         string
+	AssignedAt     pgtype.Timestamptz
+	RevokedAt      pgtype.Timestamptz
+	CreatedAt      pgtype.Timestamptz
+}
+
+type Organization struct {
+	ID          pgtype.UUID
+	Name        string
+	Slug        string
+	OwnerUserID pgtype.UUID
+	Plan        string
+	SeatQuota   int32
+	CreatedAt   pgtype.Timestamptz
+}
+
 type Podcast struct {
 	ID          pgtype.UUID
 	TitleRu     string
@@ -387,18 +458,23 @@ type PodcastProgress struct {
 }
 
 type Profile struct {
-	UserID      pgtype.UUID
-	CharClass   string
-	Level       int32
-	Xp          int64
-	Title       pgtype.Text
-	AvatarFrame pgtype.Text
-	CareerStage string
-	Intellect   int32
-	Strength    int32
-	Dexterity   int32
-	Will        int32
-	UpdatedAt   pgtype.Timestamptz
+	UserID           pgtype.UUID
+	CharClass        string
+	Level            int32
+	Xp               int64
+	Title            pgtype.Text
+	AvatarFrame      pgtype.Text
+	CareerStage      string
+	Intellect        int32
+	Strength         int32
+	Dexterity        int32
+	Will             int32
+	UpdatedAt        pgtype.Timestamptz
+	IsMentor         bool
+	MentorHourlyRate int32
+	MentorBio        string
+	MentorLanguages  []string
+	MentorVerified   bool
 }
 
 type Rating struct {
@@ -531,6 +607,26 @@ type TestCase struct {
 	ExpectedOutput string
 	IsHidden       bool
 	OrderNum       int32
+}
+
+type TgLinkToken struct {
+	Token     string
+	UserID    pgtype.UUID
+	CreatedAt pgtype.Timestamptz
+	ExpiresAt pgtype.Timestamptz
+	UsedAt    pgtype.Timestamptz
+}
+
+type TgUserLink struct {
+	UserID      pgtype.UUID
+	ChatID      int64
+	TgUsername  pgtype.Text
+	LinkedAt    pgtype.Timestamptz
+	Locale      string
+	PushLocalHh int32
+	PushTz      string
+	PausedUntil pgtype.Timestamptz
+	LastSeenAt  pgtype.Timestamptz
 }
 
 type User struct {
