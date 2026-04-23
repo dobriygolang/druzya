@@ -7,6 +7,28 @@ first, implementation follows.
 
 ---
 
+## Feature matrix
+
+| Feature | Status |
+|---|---|
+| Stealth window (invisible to Zoom / Meet / Chrome screen-share) | ✅ shipped |
+| Global hotkeys (screenshot, toggle window, quick prompt) | ✅ shipped |
+| Multi-provider catalogue (OpenAI / Anthropic / Google / xAI) | ✅ shipped |
+| **Provider picker** in compact + expanded (click model → dropdown) | ✅ shipped |
+| **BYOK** — OpenAI / Anthropic keys in OS Keychain, direct-to-provider | ✅ shipped |
+| **Area screenshot picker** — drag-to-select, crop, stealthed overlay | ✅ shipped |
+| **Masquerade** — runtime Dock icon + window title swap | ✅ shipped (partial) |
+| Masquerade in Activity Monitor | ⚠️ requires alt-build target (bundle-time) |
+| Voice input | ⏳ Phase 6 — proto reserved |
+| Virtual cursor (frozen cursor for viewers) | ⏳ Phase 6 — needs Swift helper |
+| Post-interview analysis | 🔀 lives in Druzya web app by design |
+| Auto-update | ⏳ Phase 6 |
+| History panel as dedicated screen | ⏳ Phase 6 |
+| Paywall modal | ⏳ Phase 6 |
+| Windows / Linux builds | ⏳ Phase 6 |
+
+---
+
 ## 1. System overview
 
 ```

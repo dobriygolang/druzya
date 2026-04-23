@@ -165,7 +165,7 @@ export function ExpandedScreen() {
       >
         <IconButton
           title="Скриншот (⌘⇧S)"
-          onClick={() => void captureAndSend(conversationId, draft, beginTurn, setDraft)}
+          onClick={() => void captureAndSend(conversationId, draft, beginTurn, setDraft, selectedModel)}
         >
           <IconCamera size={15} />
         </IconButton>
@@ -441,14 +441,16 @@ async function captureAndSend(
   promptText: string,
   beginTurn: ReturnType<typeof useConversationStore.getState>['beginTurn'],
   setDraft: (s: string) => void,
+  model: string,
 ) {
   try {
-    const shot = await window.druz9.capture.screenshotFull();
+    const shot = await window.druz9.capture.screenshotArea();
+    if (!shot) return; // user cancelled the overlay
     const ipc = conversationId ? window.druz9.analyze.chat : window.druz9.analyze.start;
     const handle = await ipc({
       conversationId,
       promptText,
-      model: '',
+      model,
       attachments: [
         {
           kind: 'screenshot',

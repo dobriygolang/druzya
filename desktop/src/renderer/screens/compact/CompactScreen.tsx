@@ -55,7 +55,7 @@ export function CompactScreen() {
 
   useHotkeyEvents(async (action) => {
     if (action === 'screenshot_area' || action === 'screenshot_full') {
-      void triggerScreenshot(action, input, setInput);
+      void triggerScreenshot(action, input, setInput, selectedModel);
     } else if (action === 'quick_prompt') {
       inputRef.current?.focus();
     } else if (action === 'toggle_window') {
@@ -253,16 +253,19 @@ async function triggerScreenshot(
   action: 'screenshot_area' | 'screenshot_full',
   promptText: string,
   setInput: (s: string) => void,
+  model: string,
 ): Promise<void> {
   try {
     const shot =
       action === 'screenshot_full'
         ? await window.druz9.capture.screenshotFull()
-        : await window.druz9.capture.screenshotFull(); // area UX is a Phase 4.x addition
+        : await window.druz9.capture.screenshotArea();
+    // Area capture resolves null when the user cancels the overlay.
+    if (!shot) return;
     const handle = await window.druz9.analyze.start({
       conversationId: '',
       promptText,
-      model: '',
+      model,
       attachments: [
         {
           kind: 'screenshot',

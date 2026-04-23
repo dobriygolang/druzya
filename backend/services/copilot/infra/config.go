@@ -31,7 +31,7 @@ func (p *StaticConfigProvider) Load(_ context.Context) (domain.DesktopConfig, er
 // dumb. Bump Rev on every change.
 func DefaultDesktopConfig() domain.DesktopConfig {
 	return domain.DesktopConfig{
-		Rev: 1,
+		Rev: 2,
 		Models: []domain.ProviderModel{
 			{
 				ID:                     "openai/gpt-4o-mini",
@@ -88,6 +88,28 @@ func DefaultDesktopConfig() domain.DesktopConfig {
 				ContextWindowTokens:    1_000_000,
 				AvailableOnCurrentPlan: false,
 			},
+			{
+				ID:                     "google/gemini-flash-2.0",
+				DisplayName:            "Gemini Flash",
+				ProviderName:           "Google",
+				SpeedClass:             domain.ModelSpeedClassFast,
+				SupportsVision:         true,
+				SupportsReasoning:      false,
+				TypicalLatencyMs:       900,
+				ContextWindowTokens:    1_000_000,
+				AvailableOnCurrentPlan: false,
+			},
+			{
+				ID:                     "xai/grok-2",
+				DisplayName:            "Grok 2",
+				ProviderName:           "xAI",
+				SpeedClass:             domain.ModelSpeedClassBalanced,
+				SupportsVision:         true,
+				SupportsReasoning:      false,
+				TypicalLatencyMs:       2100,
+				ContextWindowTokens:    128_000,
+				AvailableOnCurrentPlan: false,
+			},
 		},
 		DefaultModelID: "openai/gpt-4o-mini",
 		DefaultHotkeys: []domain.HotkeyBinding{
@@ -100,8 +122,8 @@ func DefaultDesktopConfig() domain.DesktopConfig {
 		},
 		Flags: []domain.FeatureFlag{
 			{Key: "voice_input", Enabled: false},
-			{Key: "masquerade", Enabled: false},
-			{Key: "byo_api_key", Enabled: false},
+			{Key: "masquerade", Enabled: true},
+			{Key: "byo_api_key", Enabled: true},
 			{Key: "stealth_overlay", Enabled: true},
 		},
 		Paywall: []domain.PaywallCopy{

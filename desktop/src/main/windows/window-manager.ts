@@ -52,11 +52,21 @@ export function showWindow(name: WindowName, opts: WindowOptions): BrowserWindow
     win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
   }
 
+  // The area-overlay is also stealthed: the crosshair itself should not
+  // appear on the viewer's screen. The OS-level cursor still does (that
+  // is the Phase 6 virtual-cursor feature), but the selection UI is ours.
+  if (name === 'area-overlay') {
+    win.setContentProtection(true);
+    win.setAlwaysOnTop(true, 'screen-saver', 2);
+    win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
+  }
+
   const hashFor: Record<WindowName, string> = {
     compact: '#/compact',
     expanded: '#/expanded',
     settings: '#/settings',
     onboarding: '#/onboarding',
+    'area-overlay': '#/area-overlay',
   };
   const url = opts.isDev
     ? `${opts.rendererURL}${hashFor[name]}`
@@ -149,6 +159,29 @@ function buildWindow(name: WindowName, opts: WindowOptions): BrowserWindow {
         resizable: false,
         center: true,
       });
+    case 'area-overlay': {
+      // Full primary-display overlay. We intentionally do NOT use
+      // fullscreen: true — that would trigger macOS fullscreen space
+      // transitions and flicker. A frameless, always-on-top window sized
+      // to the workArea is faster and feels like a native overlay.
+      const pa = screen.getPrimaryDisplay().bounds;
+      return new BrowserWindow({
+        ...base,
+        x: pa.x,
+        y: pa.y,
+        width: pa.width,
+        height: pa.height,
+        frame: false,
+        transparent: true,
+        hasShadow: false,
+        resizable: false,
+        movable: false,
+        skipTaskbar: true,
+        focusable: true,
+        // No rounded corners — full-bleed.
+        roundedCorners: false,
+      });
+    }
     default:
       throw new Error(`unknown window name: ${name satisfies never}`);
   }

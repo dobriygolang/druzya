@@ -11,12 +11,15 @@ import {
   eventChannels,
   invokeChannels,
   type AnalyzeInput,
+  type AreaRect,
   type AuthSession,
   type ByokPresence,
   type ByokProvider,
   type ByokResult,
   type CaptureResult,
   type Druz9API,
+  type MasqueradePreset,
+  type MasqueradePresetInfo,
   type PermissionKind,
   type PermissionState,
   type WindowName,
@@ -35,9 +38,11 @@ const api: Druz9API = {
   },
   capture: {
     screenshotArea: () =>
-      ipcRenderer.invoke(invokeChannels.captureScreenshotArea) as Promise<CaptureResult>,
+      ipcRenderer.invoke(invokeChannels.captureScreenshotArea) as Promise<CaptureResult | null>,
     screenshotFull: () =>
       ipcRenderer.invoke(invokeChannels.captureScreenshotFull) as Promise<CaptureResult>,
+    commitArea: (rect: AreaRect) => ipcRenderer.send(invokeChannels.captureAreaCommit, rect),
+    cancelArea: () => ipcRenderer.send(invokeChannels.captureAreaCancel),
   },
   analyze: {
     start: (input: AnalyzeInput) =>
@@ -93,6 +98,13 @@ const api: Druz9API = {
       ipcRenderer.invoke(invokeChannels.byokDelete, provider) as Promise<void>,
     test: (provider: ByokProvider) =>
       ipcRenderer.invoke(invokeChannels.byokTest, provider) as Promise<ByokResult>,
+  },
+  masquerade: {
+    list: () =>
+      ipcRenderer.invoke(invokeChannels.masqueradeList) as Promise<MasqueradePresetInfo[]>,
+    get: () => ipcRenderer.invoke(invokeChannels.masqueradeGet) as Promise<MasqueradePreset>,
+    apply: (preset: MasqueradePreset) =>
+      ipcRenderer.invoke(invokeChannels.masqueradeApply, preset) as Promise<void>,
   },
   on: <T>(channel: string, handler: (payload: T) => void) => {
     // Whitelist so renderer can't subscribe to arbitrary channels.

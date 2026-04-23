@@ -8,6 +8,8 @@ import { Avatar } from './Avatar'
 import { DegradedBanner } from './global-error/DegradedBanner'
 import { NotificationsBell } from './notifications/NotificationsBell'
 import { NotificationsDrawer } from './notifications/NotificationsDrawer'
+import { MatchmakingDock } from './matchmaking/MatchmakingDock'
+import { MatchmakingPoller } from './matchmaking/MatchmakingPoller'
 import { cn } from '../lib/cn'
 import { useTheme, getEffectiveTheme } from '../lib/theme'
 import { changeLanguage, currentLanguage, LANG_LIST, type Lang } from '../lib/i18n'
@@ -432,6 +434,12 @@ export function AppShellV2({ children }: { children: ReactNode }) {
         </motion.main>
       </AnimatePresence>
       <MobileBottomNav unreadCount={unreadCount} />
+      {/* Wave-13 cross-page matchmaking — both invisible (Poller drives the
+          /arena/match/current poll + auto-navigation when paired) and visual
+          (Dock is the persistent "Searching · MM:SS · ✕" pill bottom-right).
+          Mounted in AppShell so they survive any route change. */}
+      <MatchmakingPoller />
+      <MatchmakingDock />
     </div>
   )
 }

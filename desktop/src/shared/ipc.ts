@@ -17,6 +17,10 @@ export const invokeChannels = {
 
   captureScreenshotArea: 'capture:screenshot-area',
   captureScreenshotFull: 'capture:screenshot-full',
+  /** Area overlay → main: the user's selected rect. */
+  captureAreaCommit: 'capture:area-commit',
+  /** Area overlay → main: user cancelled (Esc / right-click). */
+  captureAreaCancel: 'capture:area-cancel',
 
   analyzeStart: 'analyze:start',
   analyzeCancel: 'analyze:cancel',
@@ -46,6 +50,10 @@ export const invokeChannels = {
   byokSave: 'byok:save',
   byokDelete: 'byok:delete',
   byokTest: 'byok:test',
+
+  masqueradeList: 'masquerade:list',
+  masqueradeGet: 'masquerade:get',
+  masqueradeApply: 'masquerade:apply',
 } as const;
 
 /** Events pushed from main → renderer. */
@@ -78,6 +86,17 @@ export interface ByokResult {
   ok: boolean;
   /** Human-readable detail on success (e.g. model count); failure message otherwise. */
   detail: string;
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Masquerade types
+// ─────────────────────────────────────────────────────────────────────────
+
+export type MasqueradePreset = 'druz9' | 'notes' | 'telegram' | 'xcode' | 'slack';
+
+export interface MasqueradePresetInfo {
+  id: MasqueradePreset;
+  displayName: string;
 }
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -125,7 +144,16 @@ export interface PermissionState {
 
 export type PermissionKind = 'screen-recording' | 'accessibility' | 'microphone';
 
-export type WindowName = 'compact' | 'expanded' | 'settings' | 'onboarding';
+export type WindowName = 'compact' | 'expanded' | 'settings' | 'onboarding' | 'area-overlay';
+
+/** Rect selected by the user in the area-picker overlay. Absolute pixels
+ *  on the primary display. Returned from `capture:start-area`. */
+export interface AreaRect {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
 
 // ─────────────────────────────────────────────────────────────────────────
 // Event payloads
@@ -185,8 +213,17 @@ export interface Druz9API {
     refresh: () => Promise<DesktopConfig>;
   };
   capture: {
-    screenshotArea: () => Promise<CaptureResult>;
+    /**
+     * Opens a fullscreen crosshair overlay, lets the user drag a rect,
+     * then returns the cropped screenshot. Resolves with null if the
+     * user cancels (Esc / right-click).
+     */
+    screenshotArea: () => Promise<CaptureResult | null>;
     screenshotFull: () => Promise<CaptureResult>;
+    /** Overlay window → main: commit the drawn rect. */
+    commitArea: (rect: AreaRect) => void;
+    /** Overlay window → main: cancel. */
+    cancelArea: () => void;
   };
   analyze: {
     start: (input: AnalyzeInput) => Promise<AnalyzeHandle>;
@@ -227,6 +264,17 @@ export interface Druz9API {
     save: (provider: ByokProvider, key: string) => Promise<ByokResult>;
     delete: (provider: ByokProvider) => Promise<void>;
     test: (provider: ByokProvider) => Promise<ByokResult>;
+  };
+
+  /**
+   * Masquerade — swap the Dock icon and window titles at runtime. Process
+   * renaming in Activity Monitor requires alternative build targets and
+   * is not supported at runtime.
+   */
+  masquerade: {
+    list: () => Promise<MasqueradePresetInfo[]>;
+    get: () => Promise<MasqueradePreset>;
+    apply: (preset: MasqueradePreset) => Promise<void>;
   };
 
   /** Subscribe to a main-process event. Returns an unsubscribe function. */

@@ -24,18 +24,24 @@ import type { ReactNode } from 'react'
 import { useRatingMeQuery, useLeaderboardQuery } from '../lib/queries/rating'
 import {
   useCancelSearchMutation,
-  useCurrentMatchQuery,
   useFindMatchMutation,
   type ArenaModeKey,
   type SectionKey,
 } from '../lib/queries/arena'
+// Wave-13 cross-page matchmaking — store is the single source of truth.
+// AppShell mounts <MatchmakingPoller/> + <MatchmakingDock/> globally, so
+// the page only needs to read inQueue and call store.start() on enqueue.
+// Polling, auto-navigate-when-paired, and timeout-cancel all happen in
+// the poller — the page no longer owns that lifecycle.
+import { useMatchmakingStore, type MatchmakingMode } from '../lib/store/matchmaking'
 import { useAIModelsQuery, type AIModel } from '../lib/queries/ai'
 import { useProfileQuery } from '../lib/queries/profile'
 
 // Queue-wait timeout (seconds) — after this many seconds without a match we
 // show the user a clear "никого нет в очереди" message and auto-cancel, so the
 // UI никогда не висит молча. Bible §11 — no silent fallback.
-const QUEUE_TIMEOUT_SEC = 60
+// QUEUE_TIMEOUT_SEC moved to MatchmakingPoller (single source of truth
+// for the cross-page queue lifetime).
 
 type PartyMode = 'solo' | 'party'
 
@@ -569,58 +575,30 @@ export default function ArenaPage() {
       /* localStorage may be disabled — ignore, choice falls back to default next visit */
     }
   }
-  const [inQueue, setInQueue] = useState(false)
-  const [waitSec, setWaitSec] = useState(0)
+  // Wave-13: queue state lives in the global Zustand store so it survives
+  // route changes (FaceIt-style cross-page search). The page only reads
+  // it; <MatchmakingPoller/> in AppShell drives the polling + auto-navigate.
+  const inQueue = useMatchmakingStore((s) => s.inQueue)
+  const storeError = useMatchmakingStore((s) => s.error)
+  const startQueue = useMatchmakingStore((s) => s.start)
+  const resetQueue = useMatchmakingStore((s) => s.reset)
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
   const [pendingMode, setPendingMode] = useState<string | null>(null)
 
-  // Poll backend every 2s while in queue — when matchmaker pairs us up,
-  // /arena/match/current returns 200 with the match id and we navigate
-  // straight to the match page. Without this the UI sat silently with
-  // "queued: 1" forever (production bug #5-8).
-  const currentMatch = useCurrentMatchQuery(inQueue)
+  // The store-level error (timeout, cancel-failed) wins over local
+  // mutation errors — surface either, prefer store.
+  const visibleError = storeError ?? errorMsg
+  // waitSeconds — derived from the store's startedAt so the HeroQueue
+  // countdown matches the dock pill (single source of truth across the
+  // page + global). Tick locally so the UI advances every second.
+  const startedAt = useMatchmakingStore((s) => s.startedAt)
+  const [, setNowTick] = useState(0)
   useEffect(() => {
-    if (!inQueue) return
-    const m = currentMatch.data
-    if (!m?.match_id) return
-    const path =
-      m.mode === 'duo_2v2' ? `/arena/2v2/${m.match_id}` : `/arena/match/${m.match_id}`
-    setInQueue(false)
-    setPendingMode(null)
-    navigate(path)
-  }, [inQueue, currentMatch.data, navigate])
-
-  // Tick the wait counter while we are queued. When QUEUE_TIMEOUT_SEC elapses
-  // without the backend matchmaker pairing us up, auto-cancel the search and
-  // surface a clear "никого нет в очереди" message (bible §11 — no silent
-  // waits). The user can click "Найти матч" again to re-enqueue.
-  useEffect(() => {
-    if (!inQueue) {
-      setWaitSec(0)
-      return
-    }
-    const id = window.setInterval(() => {
-      setWaitSec((s) => {
-        const next = s + 1
-        if (next >= QUEUE_TIMEOUT_SEC) {
-          // Auto-cancel on the backend so we don't leave a stale ticket.
-          cancelSearch.mutate(undefined, {
-            onSettled: () => {
-              setInQueue(false)
-              setPendingMode(null)
-              setErrorMsg(
-                'В очереди сейчас никого нет. Попробуй другой раздел или повтори позже.',
-              )
-            },
-          })
-        }
-        return next
-      })
-    }, 1000)
+    if (!inQueue || !startedAt) return
+    const id = window.setInterval(() => setNowTick((n) => n + 1), 1000)
     return () => window.clearInterval(id)
-    // cancelSearch is a stable mutation object; intentional single-deps.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [inQueue])
+  }, [inQueue, startedAt])
+  const waitSec = startedAt ? Math.max(0, Math.floor((Date.now() - startedAt) / 1000)) : 0
 
   const enqueue = (mode: ArenaModeKey, modeKey: string) => {
     setErrorMsg(null)
@@ -630,6 +608,9 @@ export default function ArenaPage() {
       {
         onSuccess: (resp) => {
           setPendingMode(null)
+          // Backend may pair us up immediately if a partner was already
+          // waiting. In that case skip the queue UI and jump straight in.
+          // Both clients hit the same code path so they navigate together.
           if (resp.match_id) {
             const path =
               mode === 'duo_2v2'
@@ -638,7 +619,10 @@ export default function ArenaPage() {
             navigate(path)
             return
           }
-          setInQueue(true)
+          // No instant match — push the search into the global store.
+          // The dock + poller take over from here. The user is free to
+          // navigate elsewhere; the search ticks on regardless.
+          startQueue({ mode: mode as MatchmakingMode, section, neuralModel: neuralModel || 'random' })
         },
         onError: (e: unknown) => {
           setPendingMode(null)
@@ -655,7 +639,9 @@ export default function ArenaPage() {
   const handleCancel = () => {
     cancelSearch.mutate(undefined, {
       onSettled: () => {
-        setInQueue(false)
+        // Clear the store regardless of network success — backend ticket
+        // expires server-side after QUEUE_TIMEOUT_SEC anyway.
+        resetQueue()
         setPendingMode(null)
       },
     })
@@ -713,7 +699,7 @@ export default function ArenaPage() {
           inQueue={inQueue}
           waitSeconds={waitSec}
           isSubmitting={findMatch.isPending || cancelSearch.isPending}
-          errorMessage={errorMsg}
+          errorMessage={visibleError}
           selectedSection={section}
           onSelectSection={setSection}
           onFind={handleFind}

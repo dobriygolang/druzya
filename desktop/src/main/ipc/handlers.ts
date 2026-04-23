@@ -7,6 +7,7 @@ import {
   eventChannels,
   invokeChannels,
   type AnalyzeInput,
+  type AreaRect,
   type ByokPresence,
   type ByokProvider,
   type ByokResult,
@@ -26,6 +27,7 @@ import {
 } from '../auth/byok-keychain';
 import { AnthropicProvider } from '../api/providers/anthropic';
 import { OpenAIProvider } from '../api/providers/openai';
+import { applyPreset, getCurrent, listPresets, type MasqueradePreset } from '../masquerade';
 import { captureArea, captureFullScreen } from '../capture/screenshot';
 import { applyBindings, listBindings } from '../hotkeys/registry';
 import {
@@ -50,10 +52,12 @@ export interface RegisterOptions {
   startAnalyze: (input: AnalyzeInput, kind: 'analyze' | 'chat') => Promise<string>;
   /** Called to cancel an in-flight stream by id. */
   cancelAnalyze: (streamId: string) => void;
+  /** Path to the `resources/` folder — needed for masquerade icon swap. */
+  resourcesPath: string;
 }
 
 export function registerHandlers(opts: RegisterOptions): void {
-  const { client, windowOptions, startAnalyze, cancelAnalyze } = opts;
+  const { client, windowOptions, startAnalyze, cancelAnalyze, resourcesPath } = opts;
 
   // ── Auth ──
   ipcMain.handle(invokeChannels.authSession, async () => {
@@ -88,13 +92,47 @@ export function registerHandlers(opts: RegisterOptions): void {
   ipcMain.handle(invokeChannels.captureScreenshotFull, async (): Promise<CaptureResult> => {
     return captureFullScreen();
   });
+
+  // screenshotArea opens the area-picker overlay window, awaits the
+  // user's rect, and returns a cropped capture. Resolves with null if
+  // the user cancels. We use a single-shot handler pattern — only one
+  // area capture can be in flight at a time.
+  let pendingArea:
+    | { resolve: (r: CaptureResult | null) => void; reject: (err: Error) => void }
+    | null = null;
   ipcMain.handle(
     invokeChannels.captureScreenshotArea,
-    async (
-      _evt,
-      rect: { x: number; y: number; width: number; height: number },
-    ): Promise<CaptureResult> => captureArea(rect),
+    async (): Promise<CaptureResult | null> => {
+      if (pendingArea) {
+        // Re-trigger while one is open → close + restart.
+        pendingArea.resolve(null);
+        pendingArea = null;
+      }
+      return new Promise<CaptureResult | null>((resolve, reject) => {
+        pendingArea = { resolve, reject };
+        showWindow('area-overlay', windowOptions);
+      });
+    },
   );
+  ipcMain.on(invokeChannels.captureAreaCommit, async (_evt, rect: AreaRect) => {
+    hideWindow('area-overlay');
+    if (!pendingArea) return;
+    const p = pendingArea;
+    pendingArea = null;
+    try {
+      const shot = await captureArea(rect);
+      p.resolve(shot);
+    } catch (err) {
+      p.reject(err as Error);
+    }
+  });
+  ipcMain.on(invokeChannels.captureAreaCancel, () => {
+    hideWindow('area-overlay');
+    if (!pendingArea) return;
+    const p = pendingArea;
+    pendingArea = null;
+    p.resolve(null);
+  });
 
   // ── Analyze / Chat ──
   ipcMain.handle(invokeChannels.analyzeStart, async (_evt, input: AnalyzeInput) => {
@@ -208,6 +246,13 @@ export function registerHandlers(opts: RegisterOptions): void {
       }
     },
   );
+
+  // ── Masquerade ──
+  ipcMain.handle(invokeChannels.masqueradeList, async () => listPresets());
+  ipcMain.handle(invokeChannels.masqueradeGet, async () => getCurrent());
+  ipcMain.handle(invokeChannels.masqueradeApply, async (_evt, preset: MasqueradePreset) => {
+    applyPreset(preset, resourcesPath);
+  });
 }
 
 function makeProvider(family: ByokProvider, key: string) {

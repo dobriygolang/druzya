@@ -11,6 +11,7 @@ import { Button, Kbd, StatusDot } from '../../components/primitives';
 import { useConfig } from '../../hooks/use-config';
 import { useAuthStore } from '../../stores/auth';
 import { useQuotaStore } from '../../stores/quota';
+import type { MasqueradePreset, MasqueradePresetInfo } from '@shared/ipc';
 import type { ProviderModel } from '@shared/types';
 import { ByokSection } from './ByokSection';
 
@@ -186,8 +187,85 @@ function GeneralTab({
           hint="Скрывает окно от Zoom, Meet и Chrome."
           control={<StatusDot state="ready" size={8} />}
         />
+        <MasqueradeRow />
       </div>
     </>
+  );
+}
+
+/**
+ * MasqueradeRow — lets the user swap the Dock icon and window titles.
+ * The process name in Activity Monitor is pinned by the bundle; we
+ * surface that caveat inline so users aren't surprised.
+ */
+function MasqueradeRow() {
+  const [presets, setPresets] = useState<MasqueradePresetInfo[]>([]);
+  const [current, setCurrent] = useState<MasqueradePreset>('druz9');
+
+  useEffect(() => {
+    let disposed = false;
+    void (async () => {
+      try {
+        const [list, got] = await Promise.all([
+          window.druz9.masquerade.list(),
+          window.druz9.masquerade.get(),
+        ]);
+        if (disposed) return;
+        setPresets(list);
+        setCurrent(got);
+      } catch {
+        /* feature flag may be off; row stays hidden via presets.length === 0 */
+      }
+    })();
+    return () => {
+      disposed = true;
+    };
+  }, []);
+
+  if (presets.length === 0) return null;
+
+  return (
+    <div
+      style={{
+        padding: '14px 16px',
+        background: 'var(--d-bg-2)',
+        border: '1px solid var(--d-line)',
+        borderRadius: 10,
+      }}
+    >
+      <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+        <div style={{ flex: 1 }}>
+          <div style={{ fontSize: 13, fontWeight: 500 }}>Маскировка</div>
+          <div style={{ fontSize: 11, color: 'var(--d-text-3)', marginTop: 2 }}>
+            Меняет иконку в Dock и заголовки окон. Имя в Activity Monitor фиксируется при сборке —
+            выбери другой билд (Notes.app, Xcode.app), если нужно полное переименование.
+          </div>
+        </div>
+        <select
+          value={current}
+          onChange={async (e) => {
+            const next = e.target.value as MasqueradePreset;
+            setCurrent(next);
+            await window.druz9.masquerade.apply(next);
+          }}
+          style={{
+            height: 28,
+            padding: '0 10px',
+            fontSize: 12,
+            color: 'var(--d-text)',
+            background: 'var(--d-bg-1)',
+            border: '1px solid var(--d-line-strong)',
+            borderRadius: 6,
+          }}
+        >
+          {presets.map((p) => (
+            <option key={p.id} value={p.id}>
+              {p.displayName}
+            </option>
+          ))}
+        </select>
+      </div>
+    </div>
   );
 }
 

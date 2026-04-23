@@ -53,6 +53,9 @@ app.whenReady().then(async () => {
     windowOptions,
     startAnalyze: (input, kind) => streamer.start(input, kind),
     cancelAnalyze: (id) => streamer.cancel(id),
+    resourcesPath: cfg.isDev
+      ? join(__dirname, '../../resources')
+      : join(process.resourcesPath, 'resources'),
   });
 
   registerDeepLinks((session) => {
