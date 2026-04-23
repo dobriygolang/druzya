@@ -66,7 +66,9 @@ const MatchHistoryPage = lazy(() => import('./pages/MatchHistoryPage'))
 const KataStreakPage = lazy(() => import('./pages/KataStreakPage'))
 const HeroCardsPage = lazy(() => import('./pages/HeroCardsPage'))
 const WeeklyReportPage = lazy(() => import('./pages/WeeklyReportPage'))
-const WeeklyReportSharePage = lazy(() => import('./pages/WeeklyReportSharePage'))
+// WeeklyShareView (Wave-10 P1) — dedicated public view (replaces the legacy
+// WeeklyReportSharePage which mirrored the authorized /weekly layout).
+const WeeklyShareView = lazy(() => import('./pages/WeeklyShareView'))
 const Arena2v2Page = lazy(() => import('./pages/Arena2v2Page'))
 const SystemDesignInterviewPage = lazy(() => import('./pages/SystemDesignInterviewPage'))
 const CodeEditorPage = lazy(() => import('./pages/CodeEditorPage'))
@@ -146,7 +148,7 @@ export default function App() {
         {/* Phase C: публичный share-link на недельный отчёт. Никаких guards —
             страница сама дёргает /api/v1/profile/weekly/share/{token} без
             bearer'а и показывает 404 при истёкшем токене. */}
-        <Route path="/weekly/share/:token" element={<WeeklyReportSharePage />} />
+        <Route path="/weekly/share/:token" element={<WeeklyShareView />} />
         <Route path="/report" element={<Navigate to="/weekly" replace />} />
         <Route path="/podcasts" element={<PodcastsPage />} />
         <Route path="/arena/2v2/:matchId" element={<Arena2v2Page />} />

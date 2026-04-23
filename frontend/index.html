@@ -22,6 +22,42 @@
     <meta property="og:locale" content="ru_RU" />
     <meta property="og:locale:alternate" content="en_US" />
 
+    <!--
+      Wave-10 P1 share-view: per-page OG stubs for /weekly/share/{token}.
+      These are populated by the backend SSR-shim that serves the share URL:
+      it injects <script>window.__SHARE_META__ = { title, description, image,
+      url }</script> before the bundle, then a tiny inline boot script (below)
+      mutates the meta tags before the crawler reads them. If __SHARE_META__
+      is undefined (any non-share route), the default OG block above remains
+      authoritative — these stubs simply stay empty.
+      TODO(backend): /weekly/share/{token} HTML response needs to inject the
+      window.__SHARE_META__ block before <script src="main.tsx">. Otherwise
+      crawlers see empty content="" attributes.
+    -->
+    <meta property="og:title" id="share-og-title" content="" />
+    <meta property="og:description" id="share-og-description" content="" />
+    <meta property="og:image" id="share-og-image" content="" />
+    <meta property="og:url" id="share-og-url" content="" />
+    <meta name="twitter:title" id="share-tw-title" content="" />
+    <meta name="twitter:description" id="share-tw-description" content="" />
+    <meta name="twitter:image" id="share-tw-image" content="" />
+    <script>
+      // Hydrate share-view OG/Twitter meta from window.__SHARE_META__ (set
+      // by backend just before this script). No-op when absent.
+      (function () {
+        var m = (window).__SHARE_META__;
+        if (!m) return;
+        function set(id, v) { var n = document.getElementById(id); if (n && v) n.setAttribute('content', v); }
+        set('share-og-title', m.title);
+        set('share-og-description', m.description);
+        set('share-og-image', m.image);
+        set('share-og-url', m.url);
+        set('share-tw-title', m.title);
+        set('share-tw-description', m.description);
+        set('share-tw-image', m.image);
+      })();
+    </script>
+
     <!-- Twitter -->
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="druz9 — соревнуйся в коде" />
