@@ -702,6 +702,10 @@ export default function ArenaPage() {
 
   return (
     <AppShellV2>
+      {/* WAVE-13 — segmented "Поединки · Daily kata" tabs at the very top
+          of /arena. Switches between this page (modes) and /arena/kata
+          (today's daily problem, was /daily). */}
+      <ArenaSegmented active="modes" />
       <div className="flex flex-col gap-6 px-4 py-6 sm:px-8 lg:px-20 lg:py-8">
         <HeaderRow partyMode={partyMode} onTogglePartyMode={setPartyMode} />
         <HeroQueue

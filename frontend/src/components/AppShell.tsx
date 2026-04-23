@@ -1,6 +1,6 @@
 import { ReactNode, useEffect, useRef, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { Bell, Menu, Search, X, Sun, Moon, Languages, User, LogOut, Settings, Users, HelpCircle, Shield, Briefcase, Headphones, FileBarChart, CalendarDays } from 'lucide-react'
+import { Bell, Menu, Search, X, Sun, Moon, Languages, User, LogOut, Settings, Users, HelpCircle, Shield, CalendarDays } from 'lucide-react'
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
 import { MobileBottomNav } from './MobileBottomNav'
@@ -21,12 +21,18 @@ import { logoutCurrentSession } from '../lib/queries/auth'
 function useNavItems() {
   const { t } = useTranslation('common')
   return [
+    // WAVE-13 IA refactor:
+    //   - /daily убран, kata теперь живёт как таб внутри /arena (см. ArenaPage).
+    //   - /podcasts merged into /codex (вкладка внутри Codex).
+    //   - /vacancies + /slots — promoted в top-nav (раньше прятались в user-menu).
+    // Порядок зафиксирован в WAVE-13 spec: 7 элементов на 1920 desktop.
     { to: '/sanctum', label: t('nav.sanctum') },
     { to: '/arena', label: t('nav.arena') },
-    { to: '/daily', label: t('nav.kata') },
-    { to: '/guild', label: t('nav.guild') },
     { to: '/atlas', label: t('nav.atlas') },
     { to: '/codex', label: t('nav.codex') },
+    { to: '/vacancies', label: t('nav.vacancies') },
+    { to: '/slots', label: t('nav.slots') },
+    { to: '/guild', label: t('nav.guild') },
   ] as const
 }
 
@@ -178,13 +184,13 @@ function UserMenu({ onClose }: { onClose: () => void }) {
   const admin = useAdminDashboardQuery()
   const adminStatus = (admin.error as { status?: number } | null)?.status
   const isAdmin = !admin.isError && admin.isSuccess && adminStatus !== 403
-  // Add Podcasts + Weekly Report into the user-menu (requested in
-  // production-readiness pass — main nav stays at 6 items, по договорённости).
+  // WAVE-13 IA refactor — user-menu облегчён:
+  //   - Podcasts удалён (теперь таб внутри /codex).
+  //   - Weekly удалён (теперь таб внутри /profile).
+  //   - Vacancies удалён (теперь top-nav entry).
+  // В меню остались персональные разделы и админка.
   const items: { to: string; label: string; icon: typeof User }[] = [
     { to: '/profile', label: t('nav.profile'), icon: User },
-    { to: '/vacancies', label: t('nav.vacancies'), icon: Briefcase },
-    { to: '/podcasts', label: t('nav.podcasts'), icon: Headphones },
-    { to: '/weekly', label: t('nav.weekly'), icon: FileBarChart },
     { to: '/cohorts', label: t('nav.cohorts'), icon: CalendarDays },
     { to: '/settings', label: t('nav.settings'), icon: Settings },
     { to: '/friends', label: t('nav.friends'), icon: Users },

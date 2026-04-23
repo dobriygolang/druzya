@@ -19,11 +19,19 @@ function LegacyV2Redirect() {
   const params = useParams<{ '*': string }>()
   const tail = params['*'] ?? ''
   // Спец-маппинг для устаревших имён.
-  const renamed: Record<string, string> = { kata: 'daily' }
+  // WAVE-13: kata теперь живёт под /arena/kata, поэтому /v2/kata → /arena/kata.
+  const renamed: Record<string, string> = { kata: 'arena/kata', daily: 'arena/kata' }
   const first = tail.split('/')[0]
   const rest = tail.slice(first.length)
   const dest = '/' + (renamed[first] ?? first) + rest + loc.search
   return <Navigate to={dest} replace />
+}
+
+// WAVE-13 IA refactor — /daily/kata/:slug deep-links forward to the new
+// /arena/kata/:slug URL with the slug preserved.
+function DailyKataRedirect() {
+  const { slug } = useParams<{ slug: string }>()
+  return <Navigate to={`/arena/kata/${slug ?? ''}`} replace />
 }
 
 const SanctumPage = lazy(() => import('./pages/SanctumPage'))
@@ -121,14 +129,20 @@ export default function App() {
         <Route path="/sanctum" element={<SanctumPage />} />
         <Route path="/arena" element={<ArenaPage />} />
         <Route path="/arena/match/:matchId" element={<ArenaMatchPage />} />
+        {/* WAVE-13 IA refactor — /kata absorbed into /arena namespace.
+            Same DailyPage component, just remounted under the new URL.
+            Old /daily routes are kept as 301-style redirects below. */}
+        <Route path="/arena/kata" element={<DailyPage />} />
+        <Route path="/arena/kata/:slug" element={<DailyPage />} />
         <Route path="/atlas" element={<AtlasPage />} />
         <Route path="/codex" element={<CodexPage />} />
         <Route path="/profile" element={<ProfilePage />} />
         <Route path="/profile/:username" element={<ProfilePage />} />
-        <Route path="/daily" element={<DailyPage />} />
-        {/* /daily/kata/:slug — deep-link to a specific kata. DailyPage reads
-            useParams() and switches between today's kata and the slug query. */}
-        <Route path="/daily/kata/:slug" element={<DailyPage />} />
+        {/* WAVE-13 — /daily kept as 301-style redirect to /arena/kata for
+            backward-compat with bookmarks. React Router uses replace so the
+            history is cleaned. */}
+        <Route path="/daily" element={<Navigate to="/arena/kata" replace />} />
+        <Route path="/daily/kata/:slug" element={<DailyKataRedirect />} />
         <Route path="/settings" element={<SettingsPage />} />
         <Route path="/welcome" element={<WelcomePage />} />
         <Route path="/welcome/demo" element={<WelcomeDemoPage />} />
