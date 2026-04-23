@@ -29,9 +29,8 @@ function Banner({ viewers }: { viewers: number }) {
         <span className="rounded-full bg-danger/30 px-2.5 py-0.5 font-mono text-[11px] font-semibold text-danger">
           LIVE
         </span>
-        <span className="font-mono text-[12px] text-text-primary">
-          Round 2 · BO3 · Diamond Open R16
-        </span>
+        {/* TODO(api): match meta (round/series/tournament) — пока не доезжает с бэка */}
+        <span className="font-mono text-[12px] text-text-primary">LIVE</span>
       </div>
       <div className="flex items-center gap-3">
         <span className="inline-flex items-center gap-1.5 rounded-full bg-cyan/15 px-2.5 py-1 font-mono text-[11px] font-semibold text-cyan">
@@ -73,35 +72,19 @@ function PlayerHeader({
   )
 }
 
+// TODO(api): GET /api/v1/spectator/{matchId} — должен вернуть { p1, p2, round, elapsed_sec, p1_tests, p2_tests, p1_kpm, p2_kpm }.
+// Пока эндпоинта нет — рендерим honest empty-state без выдуманных ников/ELO.
 function MatchHeader() {
   return (
     <div className="flex flex-col gap-3 border-b border-border bg-surface-1 px-4 py-3 sm:px-6 lg:h-24 lg:flex-row lg:items-center lg:justify-between lg:px-10 lg:py-0">
-      <PlayerHeader
-        nick="@alexey"
-        tier="Grandmaster · 3 420 LP"
-        stats="62 keystrokes/min · 12/15 tests"
-        gradient="cyan-violet"
-      />
+      <PlayerHeader nick="—" tier="—" stats="—" gradient="cyan-violet" />
       <div className="flex flex-col items-center gap-1.5">
-        <span className="font-mono text-[10px] tracking-[0.12em] text-accent-hover">
-          ROUND 2 · LIVE
-        </span>
+        <span className="font-mono text-[10px] tracking-[0.12em] text-accent-hover">LIVE</span>
         <span className="font-display text-[28px] font-extrabold leading-none text-text-primary">
-          08:42
+          —
         </span>
-        <div className="flex gap-1.5">
-          <span className="h-2 w-5 rounded-full bg-success" />
-          <span className="h-2 w-5 rounded-full bg-accent animate-pulse" />
-          <span className="h-2 w-5 rounded-full bg-border" />
-        </div>
       </div>
-      <PlayerHeader
-        nick="@vasya"
-        tier="Diamond II · 2 980 LP"
-        stats="48 keystrokes/min · 8/15 tests"
-        gradient="pink-violet"
-        mirror
-      />
+      <PlayerHeader nick="—" tier="—" stats="—" gradient="pink-violet" mirror />
     </div>
   )
 }
@@ -220,9 +203,7 @@ function ChatCard({ msgs, viewers }: { msgs: ChatMsg[]; viewers: number }) {
             </div>
           </div>
         ))}
-        <div className="my-1 text-center font-mono text-[10px] italic text-accent-hover">
-          @you joined as spectator
-        </div>
+        {/* "joined as spectator" event must come over WS — не выдумываем ник */}
       </div>
       <div className="flex flex-wrap gap-1.5">
         {['🔥', '💪', '😱', '🤯', '👏', '😅'].map((e) => (
@@ -247,24 +228,14 @@ function ChatCard({ msgs, viewers }: { msgs: ChatMsg[]; viewers: number }) {
   )
 }
 
+// TODO(api): GET /api/v1/spectator/live — список текущих live-матчей с числом зрителей.
 function OtherMatchesCard() {
-  const m = [
-    { p1: '@kirill_dev', p2: '@nastya', viewers: 89 },
-    { p1: '@elena', p2: '@petr', viewers: 54 },
-    { p1: '@misha', p2: '@artem', viewers: 31 },
-  ]
   return (
     <div className="flex flex-col gap-2 rounded-xl border border-border bg-surface-2 p-3">
       <h3 className="font-display text-[13px] font-bold text-text-primary">Другие матчи</h3>
-      {m.map((x, i) => (
-        <div key={i} className="flex items-center gap-2 rounded-md bg-surface-1 px-2 py-1.5">
-          <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-danger" />
-          <span className="flex-1 font-mono text-[11px] text-text-primary">
-            {x.p1} vs {x.p2}
-          </span>
-          <span className="font-mono text-[10px] text-text-muted">{x.viewers}</span>
-        </div>
-      ))}
+      <span className="px-2 py-3 text-center font-mono text-[11px] text-text-muted">
+        Нет данных
+      </span>
     </div>
   )
 }
@@ -276,15 +247,9 @@ function BetCard() {
         <span className="font-display text-[13px] font-bold text-text-primary">Bet 100 💎</span>
         <Gem className="h-4 w-4 text-warn" />
       </div>
-      <div className="flex gap-2">
-        <button className="flex-1 rounded-md bg-white/15 px-2 py-2 text-center hover:bg-white/25">
-          <div className="font-mono text-[10px] text-white/80">@alexey</div>
-          <div className="font-display text-[14px] font-bold text-text-primary">1.4x</div>
-        </button>
-        <button className="flex-1 rounded-md bg-white/15 px-2 py-2 text-center hover:bg-white/25">
-          <div className="font-mono text-[10px] text-warn">Underdog</div>
-          <div className="font-display text-[14px] font-bold text-text-primary">@vasya 2.8x</div>
-        </button>
+      {/* TODO(api): GET /api/v1/spectator/{matchId}/odds — реальные коэффициенты ставок */}
+      <div className="px-2 py-3 text-center font-mono text-[11px] text-white/70">
+        Нет данных по коэффициентам
       </div>
     </div>
   )
@@ -341,19 +306,15 @@ function ReplayScrubber() {
   )
 }
 
-const INITIAL_MSGS: ChatMsg[] = [
-  { nick: '@dasha', color: 'text-pink', text: 'alexey красавчик, two pointers!' },
-  { nick: '@maks', color: 'text-cyan', text: 'vasya brute force, не успеет' },
-  { nick: '@kira', color: 'text-warn', text: 'GG если успеет до таймаута' },
-  { nick: '@ivan', color: 'text-success', text: 'я бы через hashmap решил' },
-]
+// Чат стартует пустым — реальные сообщения приходят через WS-канал spectator/{matchId}.
+const INITIAL_MSGS: ChatMsg[] = []
 
 export default function SpectatorPage() {
   const { matchId } = useParams<{ matchId: string }>()
   const channel = matchId ? `spectator/${matchId}` : ''
   const { lastEvent, data, status } = useChannel<Record<string, unknown>>(channel)
 
-  const [viewers, setViewers] = useState(142)
+  const [viewers, setViewers] = useState(0)
   const [msgs, setMsgs] = useState<ChatMsg[]>(INITIAL_MSGS)
   const [codeA, setCodeA] = useState<string[]>(CODE_A)
   const [codeB, setCodeB] = useState<string[]>(CODE_B)
@@ -389,8 +350,8 @@ export default function SpectatorPage() {
         <MatchHeader />
         <div className="flex flex-1 flex-col gap-4 overflow-auto px-4 py-4 sm:px-8 lg:flex-row lg:overflow-hidden lg:px-20">
           <div className="flex flex-1 flex-col gap-4 lg:flex-row">
-            <Editor border="border-cyan" tab="alexey.go" lines={codeA} highlight={highlightA} typing />
-            <Editor border="border-pink" tab="vasya.go" lines={codeB} failLine={failB} />
+            <Editor border="border-cyan" tab="player_a.go" lines={codeA} highlight={highlightA} typing />
+            <Editor border="border-pink" tab="player_b.go" lines={codeB} failLine={failB} />
           </div>
           <div className="flex w-full flex-col gap-4 overflow-y-auto lg:w-[320px]">
             <ChatCard msgs={msgs} viewers={viewers} />

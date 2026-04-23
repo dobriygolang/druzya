@@ -25,6 +25,8 @@ import { Button } from '../components/Button'
 import { Card } from '../components/Card'
 import { cn } from '../lib/cn'
 import { useProfileQuery } from '../lib/queries/profile'
+import { useAIModelsQuery } from '../lib/queries/ai'
+import { useUpdateProfileSettings } from '../lib/queries/settings'
 import { useTheme, type ThemeMode } from '../lib/theme'
 import { changeLanguage, currentLanguage, type Lang } from '../lib/i18n'
 
@@ -429,6 +431,162 @@ function DevTierCard() {
   )
 }
 
+// AICoachCard — per-user picker for the OpenRouter model that generates the
+// weekly AI Coach narrative. Previously OPENROUTER_INSIGHT_MODEL was a single
+// env var hardcoded per deployment, which meant free users could silently
+// trigger expensive Claude calls while premium users were locked out of the
+// "good" models. The catalogue is served dynamically from /ai/models (DB-
+// backed registry) so new ids appear here without a frontend release.
+//
+// Free-tier users see premium rows dimmed with a 💎 badge; clicking one is a
+// no-op (backend would reject with InvalidArgument anyway — anti-fallback
+// policy: we surface the gate at source, not fake it). Leaving everything
+// selected means "server default", which is the cheapest free model.
+function AICoachCard() {
+  const { t } = useTranslation('settings')
+  const { data: profile } = useProfileQuery()
+  const { data: catalogue, isLoading, isError } = useAIModelsQuery()
+  const update = useUpdateProfileSettings()
+  const tier = profile?.tier ?? 'free'
+  const isPremium = tier === 'premium' || tier === 'pro'
+  // Local state — we don't have a GET /profile/me/settings yet, so the
+  // picker seeds from "" (server default) and persists via the PUT
+  // response. Once AIADMIN lands a GET endpoint this can hydrate from it.
+  const [selected, setSelected] = useState<string>('')
+  const items = catalogue?.items ?? []
+  const available = catalogue?.available ?? false
+
+  const onPick = (id: string) => {
+    // Cannot pick a premium model as a free user — hard-stop client-side
+    // so the user gets immediate feedback instead of a round-trip 400.
+    const model = items.find((m) => m.id === id)
+    if (model && model.tier === 'premium' && !isPremium) {
+      return
+    }
+    setSelected(id)
+    update.mutate({ ai_insight_model: id })
+  }
+
+  return (
+    <Card className="flex-col gap-4 p-6">
+      <div className="flex items-center justify-between">
+        <div className="flex flex-col gap-1">
+          <h3 className="font-display text-lg font-bold text-text-primary">
+            {t('ai_coach_title', { defaultValue: 'AI Coach — модель' })}
+          </h3>
+          <p className="text-[12px] text-text-muted">
+            {t('ai_coach_desc', {
+              defaultValue:
+                'Выбор LLM для недельного инсайта. Пусто ⇒ дефолтная бесплатная модель. Premium-модели доступны на платной подписке.',
+            })}
+          </p>
+        </div>
+        {update.isPending && (
+          <span className="font-mono text-[10px] text-text-muted">saving…</span>
+        )}
+      </div>
+
+      {isLoading && (
+        <div className="font-mono text-[11px] text-text-muted">loading…</div>
+      )}
+      {isError && (
+        <div className="rounded-md bg-danger/15 px-3 py-2 font-mono text-[11px] text-danger">
+          {t('ai_coach_load_failed', { defaultValue: 'Не удалось загрузить каталог моделей' })}
+        </div>
+      )}
+      {!isLoading && !isError && !available && (
+        <div className="rounded-md bg-surface-2 px-3 py-2 font-mono text-[11px] text-text-muted">
+          {t('ai_coach_unavailable', {
+            defaultValue: 'AI Coach сейчас отключён (OPENROUTER_API_KEY не задан)',
+          })}
+        </div>
+      )}
+      {available && items.length > 0 && (
+        <div className="flex flex-col gap-2">
+          {/* Default row — empty string maps to server-default free model */}
+          <button
+            type="button"
+            onClick={() => onPick('')}
+            className={cn(
+              'flex items-center justify-between rounded-lg border px-4 py-3 text-left transition-colors',
+              selected === ''
+                ? 'border-accent bg-accent/10'
+                : 'border-border bg-surface-1 hover:border-border-strong',
+            )}
+          >
+            <div className="flex flex-col">
+              <span className="text-[13px] font-semibold text-text-primary">
+                {t('ai_coach_default', { defaultValue: 'По умолчанию (бесплатная)' })}
+              </span>
+              <span className="font-mono text-[10px] text-text-muted">
+                {t('ai_coach_default_desc', { defaultValue: 'сервер выбирает модель под ваш тариф' })}
+              </span>
+            </div>
+            {selected === '' && (
+              <Check className="h-4 w-4 text-accent" strokeWidth={3} />
+            )}
+          </button>
+          {items.map((m) => {
+            const locked = m.tier === 'premium' && !isPremium
+            const active = selected === m.id
+            return (
+              <button
+                key={m.id}
+                type="button"
+                onClick={() => onPick(m.id)}
+                disabled={locked}
+                className={cn(
+                  'flex items-center justify-between rounded-lg border px-4 py-3 text-left transition-colors',
+                  active
+                    ? 'border-accent bg-accent/10'
+                    : 'border-border bg-surface-1 hover:border-border-strong',
+                  locked && 'cursor-not-allowed opacity-50 hover:border-border',
+                )}
+                title={
+                  locked
+                    ? t('ai_coach_premium_locked', {
+                        defaultValue: 'Требуется Premium подписка',
+                      })
+                    : ''
+                }
+              >
+                <div className="flex min-w-0 flex-col">
+                  <span className="truncate text-[13px] font-semibold text-text-primary">
+                    {m.label}
+                  </span>
+                  <span className="truncate font-mono text-[10px] text-text-muted">
+                    {m.provider} · {m.id}
+                  </span>
+                </div>
+                <div className="ml-3 flex items-center gap-2">
+                  {m.tier === 'premium' && (
+                    <span
+                      className={cn(
+                        'rounded-full px-2 py-0.5 font-mono text-[9px] font-bold uppercase',
+                        isPremium
+                          ? 'bg-warn/20 text-warn'
+                          : 'bg-surface-2 text-text-muted',
+                      )}
+                    >
+                      💎 premium
+                    </span>
+                  )}
+                  {active && <Check className="h-4 w-4 text-accent" strokeWidth={3} />}
+                </div>
+              </button>
+            )
+          })}
+        </div>
+      )}
+      {update.isError && (
+        <div className="rounded-md bg-danger/15 px-3 py-2 font-mono text-[11px] text-danger">
+          {t('ai_coach_save_failed', { defaultValue: 'Не удалось сохранить выбор' })}
+        </div>
+      )}
+    </Card>
+  )
+}
+
 export default function SettingsPage() {
   const { t } = useTranslation('settings')
   const [active, setActive] = useState<NavId>('account')
@@ -447,6 +605,7 @@ export default function SettingsPage() {
             <ProfileCard />
             <AccountInfoCard />
             <IntegrationsCard />
+            <AICoachCard />
             <AppearanceCard />
             <DevTierCard />
           </div>

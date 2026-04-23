@@ -322,19 +322,74 @@ export default function VacanciesPage() {
   )
 }
 
+// SUPPORTED_HOSTS — клиентская валидация ссылки, чтобы пользователь сразу
+// видел понятную ошибку, а не молчаливое «ничего не происходит». Список
+// синхронизирован с DetectSource в backend/services/vacancies/app/analyze.go.
+const SUPPORTED_HOSTS = [
+  'hh.ru', 'hh.kz', 'headhunter.ru',
+  'yandex', 'ozon', 'tinkoff', 'tbank',
+  'vk.com', 'vk.ru', 'sber', 'avito',
+  'wildberries', 'wb.ru', 'mts.ru',
+  'kaspersky', 'jetbrains', 'lamoda',
+]
+
+function isSupportedVacancyURL(raw: string): boolean {
+  try {
+    const u = new URL(raw.trim())
+    const host = u.host.replace(/^www\./, '').toLowerCase()
+    return SUPPORTED_HOSTS.some((h) => host.includes(h))
+  } catch {
+    return false
+  }
+}
+
+function extractAnalyzeErrorMessage(err: unknown): string {
+  if (!(err instanceof Error)) return 'Не удалось разобрать ссылку.'
+  // ApiError serializes как `api 400: {"error":{"message":"..."}}` — вытащим
+  // человекочитаемое сообщение, иначе вернём raw text без префикса.
+  const msg = err.message || ''
+  const jsonStart = msg.indexOf('{')
+  if (jsonStart >= 0) {
+    try {
+      const body = JSON.parse(msg.slice(jsonStart)) as { error?: { message?: string } }
+      const m = body.error?.message
+      if (m) return m
+    } catch {
+      /* fall through */
+    }
+  }
+  return msg || 'Не удалось разобрать ссылку.'
+}
+
 function Hero() {
   const [url, setUrl] = useState('')
+  const [clientError, setClientError] = useState<string | null>(null)
   const analyze = useAnalyzeVacancy()
   const navigate = useNavigate()
   const submit = (e: React.FormEvent) => {
     e.preventDefault()
-    if (!url.trim()) return
-    analyze.mutate({ url }, {
-      onSuccess: (res) => {
-        navigate(`/vacancies/${res.vacancy.id}`)
+    setClientError(null)
+    const trimmed = url.trim()
+    if (!trimmed) {
+      setClientError('Вставь ссылку на вакансию.')
+      return
+    }
+    if (!isSupportedVacancyURL(trimmed)) {
+      setClientError(
+        'Поддерживаются ссылки только с hh.ru, careers.yandex.ru, job.ozon.ru, tbank.ru, vk.com и других площадок из списка.',
+      )
+      return
+    }
+    analyze.mutate(
+      { url: trimmed },
+      {
+        onSuccess: (res) => {
+          navigate(`/vacancies/${res.vacancy.id}`)
+        },
       },
-    })
+    )
   }
+  const errMsg = clientError ?? (analyze.error ? extractAnalyzeErrorMessage(analyze.error) : null)
   return (
     <div className="relative h-auto overflow-hidden bg-gradient-to-br from-surface-3 to-accent lg:h-[240px]">
       <div className="flex h-full flex-col items-center justify-center gap-4 px-4 py-8 sm:px-8 lg:py-0">
@@ -352,22 +407,27 @@ function Hero() {
           <Search className="h-5 w-5 shrink-0 text-text-muted" />
           <input
             value={url}
-            onChange={(e) => setUrl(e.target.value)}
+            onChange={(e) => {
+              setUrl(e.target.value)
+              if (clientError) setClientError(null)
+            }}
             placeholder="Вставь ссылку на вакансию (hh.ru/yandex/ozon…)"
             className="min-w-0 flex-1 bg-transparent text-sm text-text-primary placeholder:text-text-muted focus:outline-none"
+            aria-invalid={errMsg ? true : undefined}
           />
           <Button
             type="submit"
             size="sm"
             loading={analyze.isPending}
+            disabled={analyze.isPending || !url.trim()}
             icon={<Sparkles className="h-4 w-4" />}
           >
             Разобрать
           </Button>
         </form>
-        {analyze.error && (
-          <div className="text-xs text-danger">
-            Не удалось разобрать ссылку
+        {errMsg && (
+          <div role="alert" className="max-w-[720px] text-center text-xs text-danger">
+            {errMsg}
           </div>
         )}
       </div>

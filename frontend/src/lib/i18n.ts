@@ -188,4 +188,60 @@ export function toggleLanguage() {
   return changeLanguage(next)
 }
 
+// LANG_LIST — порядок отображения в dropdown'е языков (см. AppShell).
+export const LANG_LIST: { code: Lang; flag: string; label: string }[] = [
+  { code: 'ru', flag: '🇷🇺', label: 'Русский' },
+  { code: 'en', flag: '🇬🇧', label: 'English' },
+  { code: 'kz', flag: '🇰🇿', label: 'Қазақша' },
+  { code: 'ua', flag: '🇺🇦', label: 'Українська' },
+]
+
+// bcp47 maps internal lang codes (ru/en/kz/ua) to canonical BCP47 tags
+// for Intl.* APIs. KZ → kk-KZ (Kazakh), UA → uk-UA (Ukrainian) — see
+// docs/strategic/i18n.md §6 (number/date formatting).
+export function bcp47(lang: Lang = currentLanguage()): string {
+  switch (lang) {
+    case 'ru':
+      return 'ru-RU'
+    case 'kz':
+      return 'kk-KZ'
+    case 'ua':
+      return 'uk-UA'
+    case 'en':
+    default:
+      return 'en-US'
+  }
+}
+
+// formatDate uses Intl.DateTimeFormat with the correct locale tag; falls
+// back gracefully for runtimes without the chosen locale data (Intl will
+// substitute the closest match instead of throwing).
+export function formatDate(
+  d: Date | string | number,
+  opts: Intl.DateTimeFormatOptions = { year: 'numeric', month: 'short', day: 'numeric' },
+  lang: Lang = currentLanguage(),
+): string {
+  const date = d instanceof Date ? d : new Date(d)
+  if (Number.isNaN(date.getTime())) return ''
+  try {
+    return new Intl.DateTimeFormat(bcp47(lang), opts).format(date)
+  } catch {
+    return new Intl.DateTimeFormat('en-US', opts).format(date)
+  }
+}
+
+// formatNumber — convenience wrapper around Intl.NumberFormat with the
+// active locale. Used for leaderboard ranks, member counts, etc.
+export function formatNumber(
+  n: number,
+  opts?: Intl.NumberFormatOptions,
+  lang: Lang = currentLanguage(),
+): string {
+  try {
+    return new Intl.NumberFormat(bcp47(lang), opts).format(n)
+  } catch {
+    return new Intl.NumberFormat('en-US', opts).format(n)
+  }
+}
+
 export default i18n

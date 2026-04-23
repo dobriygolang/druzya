@@ -1,12 +1,12 @@
 import { ReactNode, useEffect, useRef, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { Bell, Menu, Search, X, Sun, Moon, Languages, User, LogOut, Settings, Users, HelpCircle, Shield, Briefcase, Headphones, FileBarChart } from 'lucide-react'
+import { Bell, Menu, Search, X, Sun, Moon, Languages, User, LogOut, Settings, Users, HelpCircle, Shield, Briefcase, Headphones, FileBarChart, CalendarDays } from 'lucide-react'
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
 import { Avatar } from './Avatar'
 import { cn } from '../lib/cn'
 import { useTheme, getEffectiveTheme } from '../lib/theme'
-import { toggleLanguage, currentLanguage } from '../lib/i18n'
+import { changeLanguage, currentLanguage, LANG_LIST, type Lang } from '../lib/i18n'
 import { useAdminDashboardQuery } from '../lib/queries/admin'
 import { logoutCurrentSession } from '../lib/queries/auth'
 
@@ -78,23 +78,84 @@ function ThemeToggleButton() {
   )
 }
 
+// LanguageToggleButton — dropdown со всеми 4 языками (RU/EN/KZ/UA).
+// Выбор персистится в localStorage внутри changeLanguage → languageChanged
+// listener в lib/i18n.ts. Закрытие по клику снаружи и по Escape.
 function LanguageToggleButton() {
   const [, setTick] = useState(0)
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
   const lang = currentLanguage()
-  const onClick = () => {
-    void toggleLanguage().then(() => setTick((x) => x + 1))
+  useEffect(() => {
+    if (!open) return
+    const onClick = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+    }
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setOpen(false)
+    }
+    document.addEventListener('mousedown', onClick)
+    document.addEventListener('keydown', onKey)
+    return () => {
+      document.removeEventListener('mousedown', onClick)
+      document.removeEventListener('keydown', onKey)
+    }
+  }, [open])
+  const pick = (next: Lang) => {
+    if (next === lang) {
+      setOpen(false)
+      return
+    }
+    void changeLanguage(next).then(() => {
+      setTick((x) => x + 1)
+      setOpen(false)
+    })
   }
+  const current = LANG_LIST.find((l) => l.code === lang) ?? LANG_LIST[0]
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="hidden h-9 items-center gap-1.5 rounded-md px-2.5 text-text-secondary hover:bg-surface-2 sm:flex"
-      aria-label="Toggle language"
-      title="Toggle language"
-    >
-      <Languages className="h-4 w-4" />
-      <span className="font-mono text-[12px] font-semibold uppercase">{lang}</span>
-    </button>
+    <div ref={ref} className="relative hidden sm:block">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="flex h-9 items-center gap-1.5 rounded-md px-2.5 text-text-secondary hover:bg-surface-2"
+        aria-label="Select language"
+        aria-haspopup="menu"
+        aria-expanded={open}
+        title="Select language"
+      >
+        <Languages className="h-4 w-4" />
+        <span className="text-base leading-none">{current.flag}</span>
+        <span className="font-mono text-[12px] font-semibold uppercase">{current.code}</span>
+      </button>
+      {open && (
+        <div
+          className="absolute right-0 top-full z-50 mt-2 flex w-44 flex-col rounded-lg border border-border bg-surface-1 p-1.5 shadow-card"
+          role="menu"
+        >
+          {LANG_LIST.map((opt) => {
+            const active = opt.code === lang
+            return (
+              <button
+                key={opt.code}
+                type="button"
+                onClick={() => pick(opt.code)}
+                role="menuitem"
+                className={cn(
+                  'flex items-center gap-2.5 rounded-md px-3 py-2 text-left text-sm transition-colors',
+                  active
+                    ? 'bg-surface-2 font-semibold text-text-primary'
+                    : 'text-text-secondary hover:bg-surface-2 hover:text-text-primary',
+                )}
+              >
+                <span className="text-base leading-none">{opt.flag}</span>
+                <span className="flex-1 truncate">{opt.label}</span>
+                <span className="font-mono text-[10px] uppercase opacity-60">{opt.code}</span>
+              </button>
+            )
+          })}
+        </div>
+      )}
+    </div>
   )
 }
 
@@ -119,6 +180,7 @@ function UserMenu({ onClose }: { onClose: () => void }) {
     { to: '/vacancies', label: t('nav.vacancies'), icon: Briefcase },
     { to: '/podcasts', label: t('nav.podcasts'), icon: Headphones },
     { to: '/weekly', label: t('nav.weekly'), icon: FileBarChart },
+    { to: '/cohorts', label: t('nav.cohorts'), icon: CalendarDays },
     { to: '/settings', label: t('nav.settings'), icon: Settings },
     { to: '/friends', label: t('nav.friends'), icon: Users },
     { to: '/notifications', label: t('nav.notifications'), icon: Bell },

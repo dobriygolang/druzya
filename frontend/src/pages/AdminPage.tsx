@@ -33,8 +33,30 @@ import {
   formatDuration,
   type PodcastCategory,
 } from '../lib/queries/podcasts'
+import {
+  useAtlasAdminNodesQuery,
+  useAtlasAdminEdgesQuery,
+  useCreateAtlasNodeMutation,
+  useUpdateAtlasNodeMutation,
+  useDeleteAtlasNodeMutation,
+  useUpdateAtlasPositionMutation,
+  useCreateAtlasEdgeMutation,
+  useDeleteAtlasEdgeMutation,
+  type AtlasAdminNode,
+  type AtlasAdminEdge,
+  type UpsertNodePayload,
+} from '../lib/queries/atlasAdmin'
+import {
+  useAIAdminModelsQuery,
+  useCreateLLMModelMutation,
+  useUpdateLLMModelMutation,
+  useToggleLLMModelMutation,
+  useDeleteLLMModelMutation,
+  type AdminLLMModel,
+  type AdminLLMModelUpsertBody,
+} from '../lib/queries/ai'
 
-type Tab = 'dashboard' | 'users' | 'reports' | 'podcasts'
+type Tab = 'dashboard' | 'users' | 'reports' | 'podcasts' | 'ai_models' | 'atlas'
 
 function Sidebar({ tab, setTab, pendingReports }: { tab: Tab; setTab: (t: Tab) => void; pendingReports: number }) {
   const items: Array<{ id: Tab; label: string; chip?: string; chipColor?: string }> = [
@@ -47,6 +69,8 @@ function Sidebar({ tab, setTab, pendingReports }: { tab: Tab; setTab: (t: Tab) =
       chipColor: 'bg-danger/20 text-danger',
     },
     { id: 'podcasts', label: 'Подкасты' },
+    { id: 'atlas', label: 'Atlas CMS' },
+    { id: 'ai_models', label: 'AI Modельки' },
   ]
   return (
     <aside className="flex w-full flex-col border-b border-border bg-surface-1 lg:w-60 lg:border-b-0 lg:border-r">
@@ -453,7 +477,11 @@ export default function AdminPage() {
                   ? 'Users'
                   : tab === 'reports'
                     ? 'Reports'
-                    : 'Подкасты'}
+                    : tab === 'podcasts'
+                      ? 'Подкасты'
+                      : tab === 'atlas'
+                        ? 'Atlas CMS'
+                        : 'AI Modельки'}
             </h1>
             <span className="font-mono text-[11px] text-text-muted">Операционная панель druz9</span>
           </div>
@@ -462,6 +490,8 @@ export default function AdminPage() {
         {tab === 'users' && <UsersPanel />}
         {tab === 'reports' && <ReportsPanel />}
         {tab === 'podcasts' && <PodcastsPanel />}
+        {tab === 'atlas' && <AtlasPanel />}
+        {tab === 'ai_models' && <AIModelsPanel />}
       </main>
     </div>
   )
@@ -900,6 +930,869 @@ function CategoryModal({
             </Button>
             <Button type="submit" size="sm" disabled={busy}>
               {busy ? 'Создаём…' : 'Создать категорию'}
+            </Button>
+          </div>
+        </form>
+      </div>
+    </div>
+  )
+}
+
+// ─── Atlas CMS panel ────────────────────────────────────────────────────
+//
+// Manages atlas_nodes / atlas_edges (migration 00031). The user-visible
+// Atlas (/atlas) reads from /profile/me/atlas which now returns these
+// rows; this panel is the only mutate path.
+
+const ATLAS_KIND_OPTIONS = ['normal', 'keystone', 'ascendant', 'center'] as const
+const ATLAS_SECTION_OPTIONS = [
+  'algorithms',
+  'data_structures',
+  'sql',
+  'go',
+  'system_design',
+  'behavioral',
+  'concurrency',
+] as const
+
+const emptyNodeForm: UpsertNodePayload = {
+  id: '',
+  title: '',
+  section: 'algorithms',
+  kind: 'normal',
+  description: '',
+  total_count: 0,
+  pos_x: null,
+  pos_y: null,
+  sort_order: 0,
+  is_active: true,
+}
+
+function AtlasPanel() {
+  const nodesQ = useAtlasAdminNodesQuery()
+  const edgesQ = useAtlasAdminEdgesQuery()
+  const createMut = useCreateAtlasNodeMutation()
+  const updateMut = useUpdateAtlasNodeMutation()
+  const deleteMut = useDeleteAtlasNodeMutation()
+  const positionMut = useUpdateAtlasPositionMutation()
+  const createEdgeMut = useCreateAtlasEdgeMutation()
+  const deleteEdgeMut = useDeleteAtlasEdgeMutation()
+
+  const [editing, setEditing] = useState<AtlasAdminNode | null>(null)
+  const [creating, setCreating] = useState(false)
+  const [edgeFrom, setEdgeFrom] = useState('')
+  const [edgeTo, setEdgeTo] = useState('')
+  const [edgeError, setEdgeError] = useState<string | null>(null)
+
+  const nodes = nodesQ.data?.items ?? []
+  const edges = edgesQ.data?.items ?? []
+
+  const edgeCountByNode = useMemo(() => {
+    const m = new Map<string, number>()
+    for (const e of edges) {
+      m.set(e.from, (m.get(e.from) ?? 0) + 1)
+      m.set(e.to, (m.get(e.to) ?? 0) + 1)
+    }
+    return m
+  }, [edges])
+
+  const handleDelete = async (n: AtlasAdminNode) => {
+    const linked = edgeCountByNode.get(n.id) ?? 0
+    const msg =
+      linked > 0
+        ? `Удалить узел «${n.title}»? Это также удалит ${linked} связ${linked === 1 ? 'ь' : linked < 5 ? 'и' : 'ей'} (CASCADE).`
+        : `Удалить узел «${n.title}»?`
+    // eslint-disable-next-line no-alert
+    if (!window.confirm(msg)) return
+    await deleteMut.mutateAsync(n.id)
+  }
+
+  const handleAddEdge = async (e: FormEvent) => {
+    e.preventDefault()
+    setEdgeError(null)
+    if (!edgeFrom || !edgeTo) {
+      setEdgeError('Выбери оба узла.')
+      return
+    }
+    if (edgeFrom === edgeTo) {
+      setEdgeError('Нельзя соединить узел сам с собой.')
+      return
+    }
+    try {
+      await createEdgeMut.mutateAsync({ from: edgeFrom, to: edgeTo })
+      setEdgeFrom('')
+      setEdgeTo('')
+    } catch (err) {
+      setEdgeError(err instanceof Error ? err.message : 'Не удалось добавить связь.')
+    }
+  }
+
+  const handleDeleteEdge = async (e: AtlasAdminEdge) => {
+    // eslint-disable-next-line no-alert
+    if (!window.confirm(`Удалить связь ${e.from} → ${e.to}?`)) return
+    await deleteEdgeMut.mutateAsync(e.id)
+  }
+
+  return (
+    <div className="flex flex-col gap-6 px-4 py-5 sm:px-7">
+      {nodesQ.isPending ? (
+        <PanelSkeleton rows={6} />
+      ) : nodesQ.error ? (
+        <ErrorBox message="Не удалось загрузить узлы атласа" />
+      ) : (
+        <section className="flex flex-col gap-3">
+          <div className="flex items-center justify-between">
+            <h2 className="font-display text-sm font-bold text-text-secondary">
+              Узлы ({nodes.length})
+            </h2>
+            <Button size="sm" onClick={() => setCreating(true)}>
+              + Новый узел
+            </Button>
+          </div>
+          <div className="overflow-x-auto rounded-lg border border-border bg-surface-1">
+            <table className="min-w-full text-sm">
+              <thead>
+                <tr className="border-b border-border bg-surface-2 text-left font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">
+                  <th className="px-3 py-2">id</th>
+                  <th className="px-3 py-2">title</th>
+                  <th className="px-3 py-2">section</th>
+                  <th className="px-3 py-2">kind</th>
+                  <th className="px-3 py-2">total</th>
+                  <th className="px-3 py-2">pos</th>
+                  <th className="px-3 py-2">active</th>
+                  <th className="px-3 py-2 text-right">actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {nodes.map((n) => (
+                  <tr key={n.id} className="border-b border-border last:border-0">
+                    <td className="px-3 py-2 font-mono text-[11px] text-text-muted">{n.id}</td>
+                    <td className="px-3 py-2 text-text-primary">{n.title}</td>
+                    <td className="px-3 py-2 font-mono text-[11px] text-text-secondary">{n.section}</td>
+                    <td className="px-3 py-2 font-mono text-[11px] text-text-secondary">{n.kind}</td>
+                    <td className="px-3 py-2 font-mono text-[11px] text-text-secondary">{n.total_count}</td>
+                    <td className="px-3 py-2 font-mono text-[10px] text-text-muted">
+                      {n.pos_x != null && n.pos_y != null ? `${n.pos_x},${n.pos_y}` : 'auto'}
+                    </td>
+                    <td className="px-3 py-2">
+                      <span
+                        className={`inline-block rounded-full px-2 py-0.5 font-mono text-[9px] ${
+                          n.is_active ? 'bg-success/15 text-success' : 'bg-surface-3 text-text-muted'
+                        }`}
+                      >
+                        {n.is_active ? 'on' : 'off'}
+                      </span>
+                    </td>
+                    <td className="px-3 py-2 text-right">
+                      <div className="flex justify-end gap-1.5">
+                        <Button size="sm" variant="ghost" onClick={() => setEditing(n)}>
+                          Edit
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => void handleDelete(n)}
+                          disabled={deleteMut.isPending}
+                        >
+                          Del
+                        </Button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+                {nodes.length === 0 && (
+                  <tr>
+                    <td colSpan={8} className="px-3 py-6 text-center font-mono text-[11px] text-text-muted">
+                      Узлов пока нет — создай первый.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      )}
+
+      {edgesQ.isPending ? null : edgesQ.error ? (
+        <ErrorBox message="Не удалось загрузить связи" />
+      ) : (
+        <section className="flex flex-col gap-3">
+          <h2 className="font-display text-sm font-bold text-text-secondary">
+            Связи ({edges.length})
+          </h2>
+          <form
+            onSubmit={handleAddEdge}
+            className="flex flex-wrap items-end gap-2 rounded-lg border border-border bg-surface-1 p-3"
+          >
+            <label className="flex flex-col gap-1">
+              <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">from</span>
+              <select
+                value={edgeFrom}
+                onChange={(e) => setEdgeFrom(e.target.value)}
+                className="h-9 rounded-md border border-border bg-surface-2 px-2 text-sm text-text-primary"
+              >
+                <option value="">— выбери —</option>
+                {nodes.map((n) => (
+                  <option key={n.id} value={n.id}>
+                    {n.id}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="flex flex-col gap-1">
+              <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">to</span>
+              <select
+                value={edgeTo}
+                onChange={(e) => setEdgeTo(e.target.value)}
+                className="h-9 rounded-md border border-border bg-surface-2 px-2 text-sm text-text-primary"
+              >
+                <option value="">— выбери —</option>
+                {nodes.map((n) => (
+                  <option key={n.id} value={n.id}>
+                    {n.id}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <Button size="sm" type="submit" disabled={createEdgeMut.isPending}>
+              + Добавить связь
+            </Button>
+            {edgeError && (
+              <span className="ml-2 font-mono text-[11px] text-danger">{edgeError}</span>
+            )}
+          </form>
+          <div className="overflow-x-auto rounded-lg border border-border bg-surface-1">
+            <table className="min-w-full text-sm">
+              <thead>
+                <tr className="border-b border-border bg-surface-2 text-left font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">
+                  <th className="px-3 py-2">id</th>
+                  <th className="px-3 py-2">from</th>
+                  <th className="px-3 py-2">→</th>
+                  <th className="px-3 py-2">to</th>
+                  <th className="px-3 py-2 text-right">actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {edges.map((e) => (
+                  <tr key={e.id} className="border-b border-border last:border-0">
+                    <td className="px-3 py-2 font-mono text-[11px] text-text-muted">{e.id}</td>
+                    <td className="px-3 py-2 font-mono text-[11px] text-text-secondary">{e.from}</td>
+                    <td className="px-3 py-2 text-text-muted">→</td>
+                    <td className="px-3 py-2 font-mono text-[11px] text-text-secondary">{e.to}</td>
+                    <td className="px-3 py-2 text-right">
+                      <Button size="sm" variant="ghost" onClick={() => void handleDeleteEdge(e)}>
+                        Del
+                      </Button>
+                    </td>
+                  </tr>
+                ))}
+                {edges.length === 0 && (
+                  <tr>
+                    <td colSpan={5} className="px-3 py-6 text-center font-mono text-[11px] text-text-muted">
+                      Связей пока нет.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      )}
+
+      {(creating || editing) && (
+        <AtlasNodeModal
+          initial={editing ?? emptyNodeForm}
+          mode={editing ? 'edit' : 'create'}
+          onClose={() => {
+            setCreating(false)
+            setEditing(null)
+          }}
+          onSubmit={async (payload) => {
+            if (editing) {
+              await updateMut.mutateAsync(payload)
+            } else {
+              await createMut.mutateAsync(payload)
+            }
+          }}
+          onSavePosition={async (id, posX, posY) => {
+            await positionMut.mutateAsync({ id, pos_x: posX, pos_y: posY })
+          }}
+          busy={createMut.isPending || updateMut.isPending || positionMut.isPending}
+        />
+      )}
+    </div>
+  )
+}
+
+function AtlasNodeModal({
+  initial,
+  mode,
+  onClose,
+  onSubmit,
+  onSavePosition,
+  busy,
+}: {
+  initial: UpsertNodePayload | AtlasAdminNode
+  mode: 'create' | 'edit'
+  onClose: () => void
+  onSubmit: (payload: UpsertNodePayload) => Promise<void>
+  onSavePosition: (id: string, posX: number | null, posY: number | null) => Promise<void>
+  busy: boolean
+}) {
+  const seed: UpsertNodePayload = {
+    id: initial.id,
+    title: initial.title,
+    section: initial.section,
+    kind: initial.kind,
+    description: initial.description ?? '',
+    total_count: initial.total_count,
+    pos_x: initial.pos_x ?? null,
+    pos_y: initial.pos_y ?? null,
+    sort_order: initial.sort_order ?? 0,
+    is_active: initial.is_active ?? true,
+  }
+  const [form, setForm] = useState<UpsertNodePayload>(seed)
+  const [error, setError] = useState<string | null>(null)
+
+  const setField = <K extends keyof UpsertNodePayload>(k: K, v: UpsertNodePayload[K]) =>
+    setForm((prev) => ({ ...prev, [k]: v }))
+
+  const submit = async (e: FormEvent) => {
+    e.preventDefault()
+    setError(null)
+    if (!form.id.trim() || !form.title.trim()) {
+      setError('id и title обязательны.')
+      return
+    }
+    try {
+      await onSubmit({ ...form, id: form.id.trim(), title: form.title.trim() })
+      onClose()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Сохранить не удалось.')
+    }
+  }
+
+  const savePositionOnly = async () => {
+    setError(null)
+    try {
+      await onSavePosition(form.id.trim(), form.pos_x ?? null, form.pos_y ?? null)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Не удалось сохранить позицию.')
+    }
+  }
+
+  return (
+    <div
+      className="fixed inset-0 z-50 grid place-items-center bg-black/60 p-4"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose()
+      }}
+    >
+      <div className="w-full max-w-lg rounded-lg border border-border bg-surface-1 p-5">
+        <div className="mb-3 flex items-center justify-between">
+          <h3 className="font-display text-sm font-bold text-text-primary">
+            {mode === 'edit' ? `Редактирование «${initial.id}»` : 'Новый узел атласа'}
+          </h3>
+          <button
+            type="button"
+            onClick={onClose}
+            className="font-mono text-xs text-text-muted hover:text-text-primary"
+          >
+            ✕
+          </button>
+        </div>
+        <form onSubmit={submit} className="flex flex-col gap-3">
+          <div className="grid grid-cols-2 gap-2">
+            <label className="flex flex-col gap-1">
+              <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">id (slug) *</span>
+              <input
+                value={form.id}
+                onChange={(e) => setField('id', e.target.value)}
+                disabled={mode === 'edit'}
+                placeholder="algo_basics"
+                className="h-9 rounded-md border border-border bg-surface-2 px-3 text-sm text-text-primary disabled:opacity-60"
+              />
+            </label>
+            <label className="flex flex-col gap-1">
+              <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">title *</span>
+              <input
+                value={form.title}
+                onChange={(e) => setField('title', e.target.value)}
+                placeholder="Алгоритмы: основы"
+                className="h-9 rounded-md border border-border bg-surface-2 px-3 text-sm text-text-primary"
+              />
+            </label>
+          </div>
+
+          <div className="grid grid-cols-2 gap-2">
+            <label className="flex flex-col gap-1">
+              <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">section</span>
+              <select
+                value={form.section}
+                onChange={(e) => setField('section', e.target.value)}
+                className="h-9 rounded-md border border-border bg-surface-2 px-2 text-sm text-text-primary"
+              >
+                {ATLAS_SECTION_OPTIONS.map((s) => (
+                  <option key={s} value={s}>{s}</option>
+                ))}
+              </select>
+            </label>
+            <label className="flex flex-col gap-1">
+              <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">kind</span>
+              <select
+                value={form.kind}
+                onChange={(e) => setField('kind', e.target.value)}
+                className="h-9 rounded-md border border-border bg-surface-2 px-2 text-sm text-text-primary"
+              >
+                {ATLAS_KIND_OPTIONS.map((k) => (
+                  <option key={k} value={k}>{k}</option>
+                ))}
+              </select>
+            </label>
+          </div>
+
+          <label className="flex flex-col gap-1">
+            <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">description</span>
+            <textarea
+              value={form.description ?? ''}
+              onChange={(e) => setField('description', e.target.value)}
+              rows={2}
+              className="rounded-md border border-border bg-surface-2 px-3 py-2 text-sm text-text-primary"
+            />
+          </label>
+
+          <div className="grid grid-cols-3 gap-2">
+            <label className="flex flex-col gap-1">
+              <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">total_count</span>
+              <input
+                type="number"
+                value={form.total_count}
+                onChange={(e) => setField('total_count', Number(e.target.value || 0))}
+                className="h-9 rounded-md border border-border bg-surface-2 px-3 text-sm text-text-primary"
+              />
+            </label>
+            <label className="flex flex-col gap-1">
+              <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">sort_order</span>
+              <input
+                type="number"
+                value={form.sort_order ?? 0}
+                onChange={(e) => setField('sort_order', Number(e.target.value || 0))}
+                className="h-9 rounded-md border border-border bg-surface-2 px-3 text-sm text-text-primary"
+              />
+            </label>
+            <label className="flex items-center gap-2 pt-5">
+              <input
+                type="checkbox"
+                checked={form.is_active ?? true}
+                onChange={(e) => setField('is_active', e.target.checked)}
+              />
+              <span className="text-sm text-text-primary">is_active</span>
+            </label>
+          </div>
+
+          <fieldset className="rounded-md border border-border bg-surface-2 p-3">
+            <legend className="px-1 font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">
+              Позиция (viewBox 0..1400, пусто = auto-layout)
+            </legend>
+            <div className="flex items-center gap-2">
+              <label className="flex flex-col gap-1">
+                <span className="font-mono text-[10px] text-text-muted">pos_x</span>
+                <input
+                  type="number"
+                  value={form.pos_x ?? ''}
+                  onChange={(e) =>
+                    setField('pos_x', e.target.value === '' ? null : Number(e.target.value))
+                  }
+                  className="h-9 w-24 rounded-md border border-border bg-surface-1 px-3 text-sm text-text-primary"
+                />
+              </label>
+              <label className="flex flex-col gap-1">
+                <span className="font-mono text-[10px] text-text-muted">pos_y</span>
+                <input
+                  type="number"
+                  value={form.pos_y ?? ''}
+                  onChange={(e) =>
+                    setField('pos_y', e.target.value === '' ? null : Number(e.target.value))
+                  }
+                  className="h-9 w-24 rounded-md border border-border bg-surface-1 px-3 text-sm text-text-primary"
+                />
+              </label>
+              {mode === 'edit' && (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => void savePositionOnly()}
+                  disabled={busy}
+                >
+                  Сохранить только позицию
+                </Button>
+              )}
+            </div>
+          </fieldset>
+
+          {error && (
+            <p className="rounded-md border border-danger/40 bg-danger/10 px-3 py-2 text-xs text-danger">
+              {error}
+            </p>
+          )}
+          <div className="flex justify-end gap-2 pt-1">
+            <Button type="button" variant="ghost" size="sm" onClick={onClose}>
+              Отмена
+            </Button>
+            <Button type="submit" size="sm" disabled={busy}>
+              {busy ? 'Сохраняем…' : mode === 'edit' ? 'Сохранить' : 'Создать'}
+            </Button>
+          </div>
+        </form>
+      </div>
+    </div>
+  )
+}
+
+// ─── AI models CMS panel ────────────────────────────────────────────────
+//
+// Grid + modal for the llm_models registry (migration 00033). Admins add
+// a new OpenRouter id here and it appears in the Arena AI-opponent picker
+// / Weekly Insight client / Mock LLM without a code deploy.
+
+function AIModelsPanel() {
+  const list = useAIAdminModelsQuery()
+  const createMut = useCreateLLMModelMutation()
+  const updateMut = useUpdateLLMModelMutation()
+  const toggleMut = useToggleLLMModelMutation()
+  const deleteMut = useDeleteLLMModelMutation()
+
+  const [editing, setEditing] = useState<AdminLLMModel | null>(null)
+  const [creating, setCreating] = useState(false)
+
+  if (list.isPending) {
+    return <PanelSkeleton rows={5} />
+  }
+  if (list.error || !list.data) {
+    return <ErrorBox message="Не удалось загрузить AI-модельки." />
+  }
+
+  const rows = list.data.items
+
+  return (
+    <div className="flex flex-col gap-5 px-4 py-5 sm:px-7">
+      <section className="rounded-lg border border-border bg-surface-1 p-4">
+        <div className="mb-3 flex items-center justify-between">
+          <div>
+            <h2 className="font-display text-sm font-bold text-text-primary">Реестр AI-моделей</h2>
+            <p className="mt-1 font-mono text-[11px] text-text-muted">
+              Что здесь включено — то и видит фронт в пикере Arena / Insight / Mock.
+              Выключай строку, чтобы временно убрать модель, удаляй — чтобы стереть насовсем.
+            </p>
+          </div>
+          <Button size="sm" onClick={() => setCreating(true)}>
+            + Добавить нейронку
+          </Button>
+        </div>
+
+        {rows.length === 0 ? (
+          <div className="rounded-md border border-dashed border-border bg-surface-2 px-4 py-6 text-center font-mono text-xs text-text-muted">
+            Реестр пуст. Пока ни одна AI-фича не сможет дозваться до OpenRouter — добавь хотя бы одну модель.
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-border font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">
+                  <th className="py-2 pr-3 text-left">model_id</th>
+                  <th className="py-2 pr-3 text-left">label</th>
+                  <th className="py-2 pr-3 text-left">provider</th>
+                  <th className="py-2 pr-3 text-left">tier</th>
+                  <th className="py-2 pr-3 text-center">enabled</th>
+                  <th className="py-2 pr-3 text-left">use for</th>
+                  <th className="py-2 pr-3 text-right">sort</th>
+                  <th className="py-2 pr-3" />
+                </tr>
+              </thead>
+              <tbody>
+                {rows.map((m) => (
+                  <tr key={m.id} className="border-b border-border/60 align-top">
+                    <td className="py-2 pr-3 font-mono text-[12px] text-text-primary">{m.model_id}</td>
+                    <td className="py-2 pr-3 text-text-primary">{m.label}</td>
+                    <td className="py-2 pr-3 text-text-secondary">{m.provider}</td>
+                    <td className="py-2 pr-3">
+                      <span
+                        className={`rounded-full px-2 py-0.5 font-mono text-[10px] ${
+                          m.tier === 'premium'
+                            ? 'bg-accent/20 text-accent'
+                            : 'bg-surface-3 text-text-secondary'
+                        }`}
+                      >
+                        {m.tier}
+                      </span>
+                    </td>
+                    <td className="py-2 pr-3 text-center">
+                      <button
+                        type="button"
+                        disabled={toggleMut.isPending}
+                        onClick={() => toggleMut.mutate(m.model_id)}
+                        className={`rounded-full px-2 py-0.5 font-mono text-[10px] ${
+                          m.is_enabled
+                            ? 'bg-success/20 text-success'
+                            : 'bg-danger/20 text-danger'
+                        }`}
+                      >
+                        {m.is_enabled ? 'on' : 'off'}
+                      </button>
+                    </td>
+                    <td className="py-2 pr-3">
+                      <div className="flex flex-wrap gap-1">
+                        {m.use_for_arena && (
+                          <span className="rounded bg-surface-3 px-1.5 py-0.5 font-mono text-[10px] text-text-secondary">arena</span>
+                        )}
+                        {m.use_for_insight && (
+                          <span className="rounded bg-surface-3 px-1.5 py-0.5 font-mono text-[10px] text-text-secondary">insight</span>
+                        )}
+                        {m.use_for_mock && (
+                          <span className="rounded bg-surface-3 px-1.5 py-0.5 font-mono text-[10px] text-text-secondary">mock</span>
+                        )}
+                      </div>
+                    </td>
+                    <td className="py-2 pr-3 text-right font-mono text-[12px] text-text-secondary">{m.sort_order}</td>
+                    <td className="py-2 pr-3 text-right">
+                      <div className="flex items-center justify-end gap-1">
+                        <Button type="button" variant="ghost" size="sm" onClick={() => setEditing(m)}>
+                          Edit
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          disabled={deleteMut.isPending}
+                          onClick={() => {
+                            if (window.confirm(`Удалить ${m.model_id}?`)) {
+                              deleteMut.mutate(m.model_id)
+                            }
+                          }}
+                          icon={<Trash2 className="h-3.5 w-3.5" />}
+                        >
+                          Del
+                        </Button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
+
+      {(creating || editing) && (
+        <LLMModelModal
+          initial={editing}
+          busy={createMut.isPending || updateMut.isPending}
+          onClose={() => {
+            setCreating(false)
+            setEditing(null)
+          }}
+          onSave={async (body) => {
+            if (editing) {
+              await updateMut.mutateAsync({ modelId: editing.model_id, body })
+            } else {
+              await createMut.mutateAsync(body)
+            }
+            setCreating(false)
+            setEditing(null)
+          }}
+        />
+      )}
+    </div>
+  )
+}
+
+function LLMModelModal({
+  initial,
+  busy,
+  onClose,
+  onSave,
+}: {
+  initial: AdminLLMModel | null
+  busy: boolean
+  onClose: () => void
+  onSave: (body: AdminLLMModelUpsertBody) => Promise<void>
+}) {
+  const [modelId, setModelId] = useState(initial?.model_id ?? '')
+  const [label, setLabel] = useState(initial?.label ?? '')
+  const [provider, setProvider] = useState(initial?.provider ?? '')
+  const [tier, setTier] = useState<'free' | 'premium'>(initial?.tier ?? 'free')
+  const [isEnabled, setIsEnabled] = useState(initial?.is_enabled ?? true)
+  const [contextWindow, setContextWindow] = useState(
+    initial?.context_window != null ? String(initial.context_window) : '',
+  )
+  const [costIn, setCostIn] = useState(
+    initial?.cost_per_1k_input_usd != null ? String(initial.cost_per_1k_input_usd) : '',
+  )
+  const [costOut, setCostOut] = useState(
+    initial?.cost_per_1k_output_usd != null ? String(initial.cost_per_1k_output_usd) : '',
+  )
+  const [useArena, setUseArena] = useState(initial?.use_for_arena ?? true)
+  const [useInsight, setUseInsight] = useState(initial?.use_for_insight ?? true)
+  const [useMock, setUseMock] = useState(initial?.use_for_mock ?? true)
+  const [sortOrder, setSortOrder] = useState(String(initial?.sort_order ?? 0))
+  const [error, setError] = useState<string | null>(null)
+
+  async function handleSubmit(e: FormEvent) {
+    e.preventDefault()
+    setError(null)
+    if (!modelId.trim() || !label.trim() || !provider.trim()) {
+      setError('model_id, label, provider обязательны.')
+      return
+    }
+    try {
+      const body: AdminLLMModelUpsertBody = {
+        model_id: modelId.trim(),
+        label: label.trim(),
+        provider: provider.trim(),
+        tier,
+        is_enabled: isEnabled,
+        context_window: contextWindow ? Number(contextWindow) : null,
+        cost_per_1k_input_usd: costIn ? Number(costIn) : null,
+        cost_per_1k_output_usd: costOut ? Number(costOut) : null,
+        use_for_arena: useArena,
+        use_for_insight: useInsight,
+        use_for_mock: useMock,
+        sort_order: sortOrder ? Number(sortOrder) : 0,
+      }
+      await onSave(body)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Не удалось сохранить.')
+    }
+  }
+
+  return (
+    <div
+      className="fixed inset-0 z-50 grid place-items-center bg-black/60 p-4"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose()
+      }}
+    >
+      <div className="w-full max-w-xl rounded-lg border border-border bg-surface-1 p-5">
+        <div className="mb-3 flex items-center justify-between">
+          <h3 className="font-display text-sm font-bold text-text-primary">
+            {initial ? 'Редактировать модель' : 'Новая модель'}
+          </h3>
+          <button
+            type="button"
+            onClick={onClose}
+            className="font-mono text-xs text-text-muted hover:text-text-primary"
+          >
+            ✕
+          </button>
+        </div>
+        <form onSubmit={handleSubmit} className="grid grid-cols-1 gap-3 md:grid-cols-2">
+          <label className="flex flex-col gap-1 md:col-span-2">
+            <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">model_id * (OpenRouter id)</span>
+            <input
+              value={modelId}
+              onChange={(e) => setModelId(e.target.value)}
+              placeholder="openai/gpt-4o"
+              disabled={!!initial}
+              className="h-9 rounded-md border border-border bg-surface-2 px-3 font-mono text-sm text-text-primary disabled:opacity-60"
+            />
+          </label>
+          <label className="flex flex-col gap-1">
+            <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">label *</span>
+            <input
+              value={label}
+              onChange={(e) => setLabel(e.target.value)}
+              className="h-9 rounded-md border border-border bg-surface-2 px-3 text-sm text-text-primary"
+            />
+          </label>
+          <label className="flex flex-col gap-1">
+            <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">provider *</span>
+            <input
+              value={provider}
+              onChange={(e) => setProvider(e.target.value)}
+              placeholder="openai / anthropic / …"
+              className="h-9 rounded-md border border-border bg-surface-2 px-3 text-sm text-text-primary"
+            />
+          </label>
+          <label className="flex flex-col gap-1">
+            <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">tier</span>
+            <select
+              value={tier}
+              onChange={(e) => setTier(e.target.value as 'free' | 'premium')}
+              className="h-9 rounded-md border border-border bg-surface-2 px-3 text-sm text-text-primary"
+            >
+              <option value="free">free</option>
+              <option value="premium">premium</option>
+            </select>
+          </label>
+          <label className="flex flex-col gap-1">
+            <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">sort_order</span>
+            <input
+              value={sortOrder}
+              onChange={(e) => setSortOrder(e.target.value)}
+              type="number"
+              className="h-9 rounded-md border border-border bg-surface-2 px-3 text-sm text-text-primary"
+            />
+          </label>
+          <label className="flex flex-col gap-1">
+            <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">context_window</span>
+            <input
+              value={contextWindow}
+              onChange={(e) => setContextWindow(e.target.value)}
+              type="number"
+              placeholder="128000"
+              className="h-9 rounded-md border border-border bg-surface-2 px-3 text-sm text-text-primary"
+            />
+          </label>
+          <label className="flex flex-col gap-1">
+            <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">cost / 1k in (USD)</span>
+            <input
+              value={costIn}
+              onChange={(e) => setCostIn(e.target.value)}
+              type="number"
+              step="0.000001"
+              className="h-9 rounded-md border border-border bg-surface-2 px-3 text-sm text-text-primary"
+            />
+          </label>
+          <label className="flex flex-col gap-1">
+            <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">cost / 1k out (USD)</span>
+            <input
+              value={costOut}
+              onChange={(e) => setCostOut(e.target.value)}
+              type="number"
+              step="0.000001"
+              className="h-9 rounded-md border border-border bg-surface-2 px-3 text-sm text-text-primary"
+            />
+          </label>
+          <div className="md:col-span-2 flex flex-wrap gap-4 pt-1">
+            <label className="flex items-center gap-2">
+              <input type="checkbox" checked={isEnabled} onChange={(e) => setIsEnabled(e.target.checked)} className="h-4 w-4" />
+              <span className="text-sm text-text-secondary">is_enabled</span>
+            </label>
+            <label className="flex items-center gap-2">
+              <input type="checkbox" checked={useArena} onChange={(e) => setUseArena(e.target.checked)} className="h-4 w-4" />
+              <span className="text-sm text-text-secondary">use_for_arena</span>
+            </label>
+            <label className="flex items-center gap-2">
+              <input type="checkbox" checked={useInsight} onChange={(e) => setUseInsight(e.target.checked)} className="h-4 w-4" />
+              <span className="text-sm text-text-secondary">use_for_insight</span>
+            </label>
+            <label className="flex items-center gap-2">
+              <input type="checkbox" checked={useMock} onChange={(e) => setUseMock(e.target.checked)} className="h-4 w-4" />
+              <span className="text-sm text-text-secondary">use_for_mock</span>
+            </label>
+          </div>
+          {error && (
+            <p className="md:col-span-2 rounded-md border border-danger/40 bg-danger/10 px-3 py-2 text-xs text-danger">
+              {error}
+            </p>
+          )}
+          <div className="md:col-span-2 flex justify-end gap-2 pt-2">
+            <Button type="button" variant="ghost" size="sm" onClick={onClose}>
+              Отмена
+            </Button>
+            <Button type="submit" size="sm" disabled={busy}>
+              {busy ? 'Сохраняем…' : initial ? 'Сохранить' : 'Создать'}
             </Button>
           </div>
         </form>

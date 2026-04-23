@@ -478,19 +478,15 @@ function FriendsStrip({ onCreateParty }: { onCreateParty: () => void }) {
   const { data: lb } = useLeaderboardQuery('algorithms')
   const gradients = ['violet-cyan', 'pink-violet', 'cyan-violet', 'success-cyan'] as const
   const top = lb?.entries?.slice(0, 4) ?? []
-  const friends =
-    top.length > 0
-      ? top.map((e, i) => ({
-          initials: e.username.charAt(0).toUpperCase(),
-          username: `@${e.username}`,
-          gradient: gradients[i % gradients.length],
-        }))
-      : [
-          { initials: 'А', username: '@alexey', gradient: gradients[0] },
-          { initials: 'К', username: '@kirill_dev', gradient: gradients[1] },
-          { initials: 'Н', username: '@nastya', gradient: gradients[2] },
-          { initials: 'М', username: '@misha', gradient: gradients[3] },
-        ]
+  // Anti-fallback: ранее тут был hardcode @alexey/@kirill_dev/@nastya/@misha,
+  // который вводил пользователя в заблуждение (фейковые "онлайн друзья").
+  // Если бэк не отдал лидерборд — показываем пустую панель с CTA, а не
+  // придуманные имена.
+  const friends = top.map((e, i) => ({
+    initials: (e.username || '?').charAt(0).toUpperCase(),
+    username: `@${e.username || 'unknown'}`,
+    gradient: gradients[i % gradients.length],
+  }))
   return (
     <Card
       className="flex-col items-start justify-between gap-4 p-4 lg:flex-row lg:items-center"
@@ -500,14 +496,20 @@ function FriendsStrip({ onCreateParty }: { onCreateParty: () => void }) {
         <span className="font-display text-sm font-bold text-text-primary">
           {t('friends_online', { count: friends.length })}
         </span>
-        <div className="flex -space-x-2">
-          {friends.map((f, i) => (
-            <Avatar key={i} size="md" gradient={f.gradient} initials={f.initials} status="online" />
-          ))}
-        </div>
-        <span className="min-w-0 break-words font-mono text-[11px] text-text-muted">
-          {friends.map((f) => f.username).join(' · ')}
-        </span>
+        {friends.length > 0 ? (
+          <>
+            <div className="flex -space-x-2">
+              {friends.map((f, i) => (
+                <Avatar key={i} size="md" gradient={f.gradient} initials={f.initials} status="online" />
+              ))}
+            </div>
+            <span className="min-w-0 break-words font-mono text-[11px] text-text-muted">
+              {friends.map((f) => f.username).join(' · ')}
+            </span>
+          </>
+        ) : (
+          <span className="font-mono text-[11px] text-text-muted">Никого онлайн</span>
+        )}
       </div>
       <button
         type="button"

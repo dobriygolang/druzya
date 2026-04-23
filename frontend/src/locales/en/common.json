@@ -10,7 +10,13 @@
     "help": "Help",
     "podcasts": "Podcasts",
     "weekly": "Weekly Report",
-    "logout": "Sign out"
+    "logout": "Sign out",
+    "profile": "Profile",
+    "vacancies": "Vacancies",
+    "settings": "Settings",
+    "notifications": "Notifications",
+    "admin": "Admin",
+    "cohorts": "Cohorts"
   },
   "buttons": {
     "find_opponent": "Find opponent",
@@ -48,6 +54,8 @@
   "language": {
     "label": "Language",
     "ru": "Русский",
-    "en": "English"
+    "en": "English",
+    "kz": "Қазақша",
+    "ua": "Українська"
   }
 }

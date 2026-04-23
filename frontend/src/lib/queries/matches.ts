@@ -114,24 +114,30 @@ function fmtSolveTime(ms: number): string {
 }
 
 function adaptMatchEnd(raw: ArenaMatchWire, currentUserID: string | undefined): MatchEndResponse {
-  const me = raw.participants.find((p) => p.user_id === currentUserID) ?? raw.participants[0]
-  const opp = raw.participants.find((p) => p !== me)
-  const won = !!raw.winner_user_id && raw.winner_user_id === me?.user_id
-  const lpDelta = me ? me.elo_after - me.elo_before : 0
+  // Defensive: backend may omit participants for matches still in `searching`
+  // status, or return malformed records. Guard everything.
+  const participants = Array.isArray(raw?.participants) ? raw.participants : []
+  const me = participants.find((p) => p?.user_id === currentUserID) ?? participants[0]
+  const opp = participants.find((p) => p !== me)
+  const won = !!raw?.winner_user_id && raw.winner_user_id === me?.user_id
+  const lpDelta = me ? (me.elo_after ?? 0) - (me.elo_before ?? 0) : 0
   const lpTotal = me?.elo_after ?? 0
+  const oppLabel = opp
+    ? `vs @${opp.username || (opp.user_id ? opp.user_id.slice(0, 6) : 'opponent')}`
+    : ''
   return {
-    id: raw.id,
+    id: raw?.id ?? '',
     result: won ? 'W' : 'L',
     verdict: won ? 'Чисто, быстро, красиво' : 'В следующий раз',
-    task: raw.task?.title ?? '',
-    sub: opp ? `vs @${opp.username || opp.user_id.slice(0, 6)}` : '',
+    task: raw?.task?.title ?? '',
+    sub: oppLabel,
     lp_delta: lpDelta,
     lp_total: lpTotal,
     tier: me?.tier_label ?? '',
     next_tier: me?.next_tier_label ?? '',
     tier_progress: 0,
     stats: {
-      time: me ? fmtSolveTime(me.solve_time_ms) : '—',
+      time: me?.solve_time_ms != null ? fmtSolveTime(me.solve_time_ms) : '—',
       tests: '—',
       complexity: '—',
       lines: '—',

@@ -10,7 +10,13 @@ import { useChannel } from '../lib/ws'
 
 type LogEvent = { c: string; t: string; time: string }
 
-function CrisisBanner() {
+function CrisisBanner({ incident }: { incident: { title: string; severity: string; remainingSec: number; sinceSec: number } | null }) {
+  const fmt = (s: number) => {
+    if (s <= 0) return '—'
+    const m = Math.floor(s / 60)
+    const sec = s % 60
+    return `${String(m).padStart(2, '0')}:${String(sec).padStart(2, '0')}`
+  }
   return (
     <div
       className="flex h-auto flex-col gap-3 px-4 py-3 sm:px-6 lg:h-20 lg:flex-row lg:items-center lg:justify-between lg:px-8 lg:py-0"
@@ -20,14 +26,16 @@ function CrisisBanner() {
         <span className="h-3 w-3 animate-pulse rounded-full bg-danger" />
         <div className="flex flex-col">
           <span className="font-display text-base font-bold text-text-primary">
-            🚨 PRODUCTION ИНЦИДЕНТ · IRONCLAD GUILD
+            {incident?.title ?? '🚨 Инцидент'}
           </span>
           <span className="font-mono text-[11px] text-white/80">
-            P0 · 4 minutes since incident
+            {incident ? `${incident.severity} · ${Math.floor(incident.sinceSec / 60)}m since incident` : '—'}
           </span>
         </div>
       </div>
-      <div className="font-display text-3xl font-extrabold text-text-primary">ОСТАЛОСЬ 26:14</div>
+      <div className="font-display text-3xl font-extrabold text-text-primary">
+        {incident ? `ОСТАЛОСЬ ${fmt(incident.remainingSec)}` : '—'}
+      </div>
       <div className="flex items-center gap-2">
         <Button variant="ghost" size="sm" icon={<Mic className="h-3.5 w-3.5" />}>
           Voice room
@@ -40,15 +48,14 @@ function CrisisBanner() {
   )
 }
 
-function IncidentDescription() {
+function IncidentDescription({ incident }: { incident: { headline: string; description: string } | null }) {
   return (
     <div className="flex flex-col gap-1 border-b border-border bg-surface-1 px-4 py-4 sm:px-6 lg:px-8">
       <h2 className="font-display text-base font-bold text-text-primary">
-        Incident: API падает на /api/v1/checkout, 500 errors на 80%
+        {incident?.headline ?? 'Загрузка инцидента…'}
       </h2>
       <p className="text-xs text-text-secondary">
-        Симптомы появились после деплоя 12:47. CPU на api-pods в норме, но DB latency взлетела.
-        Лог сыпет N+1 query на checkout flow. Команда — найти и пофиксить.
+        {incident?.description ?? 'Нет данных'}
       </p>
     </div>
   )
@@ -65,45 +72,9 @@ type Member = {
   gradient: 'violet-cyan' | 'pink-violet' | 'success-cyan' | 'cyan-violet'
 }
 
-const members: Member[] = [
-  {
-    name: '@you',
-    role: 'Go backend',
-    task: 'Фикс N+1 в checkout handler',
-    progress: 60,
-    status: 'coding',
-    active: true,
-    initials: 'Я',
-    gradient: 'violet-cyan',
-  },
-  {
-    name: '@nastya',
-    role: 'SQL',
-    task: 'Добавляет index на orders.user_id',
-    progress: 80,
-    status: 'querying',
-    initials: 'Н',
-    gradient: 'pink-violet',
-  },
-  {
-    name: '@kirill_dev',
-    role: 'System Design',
-    task: 'Рисует архитектуру кеша',
-    progress: 30,
-    status: 'thinking',
-    initials: 'К',
-    gradient: 'cyan-violet',
-  },
-  {
-    name: '@misha',
-    role: 'DevOps',
-    task: 'Готовит rollback и метрики',
-    progress: 50,
-    status: 'monitoring',
-    initials: 'М',
-    gradient: 'success-cyan',
-  },
-]
+// TODO(api): GET /api/v1/warroom/{incidentId}/team — состав команды + live статусы.
+// До появления эндпоинта список пуст; member_status WS-events и так дополняют его.
+const members: Member[] = []
 
 function MemberCard({ m }: { m: Member }) {
   return (
@@ -133,11 +104,13 @@ function LeftTeam({ liveMembers }: { liveMembers: Member[] }) {
   return (
     <div className="flex w-full flex-col gap-4 border-b border-border bg-surface-1 p-4 lg:w-[320px] lg:border-b-0 lg:border-r">
       <h3 className="font-mono text-[11px] font-semibold tracking-[0.08em] text-text-muted">
-        ВАША КОМАНДА (4)
+        ВАША КОМАНДА ({liveMembers.length})
       </h3>
-      {liveMembers.map((m) => (
-        <MemberCard key={m.name} m={m} />
-      ))}
+      {liveMembers.length === 0 ? (
+        <span className="px-1 py-3 text-center font-mono text-[11px] text-text-muted">Нет данных</span>
+      ) : (
+        liveMembers.map((m) => <MemberCard key={m.name} m={m} />)
+      )}
     </div>
   )
 }
@@ -164,11 +137,13 @@ const codeLines = [
 ]
 
 function CenterWorkspace({ score }: { score: { errorRate: number; label: string } }) {
+  // TODO(api): открытые «доски» война (code/sql/whiteboard/metrics) должны
+  // приходить из WS — у каждой свой owner. Пока — статический набор без ников.
   const tabs = [
-    { name: 'Code · @you', active: true },
-    { name: 'SQL · @nastya' },
-    { name: 'Whiteboard · @kirill', dot: true },
-    { name: 'Metrics · @misha' },
+    { name: 'Code', active: true },
+    { name: 'SQL' },
+    { name: 'Whiteboard', dot: true },
+    { name: 'Metrics' },
   ]
   return (
     <div className="flex flex-1 flex-col">
@@ -246,6 +221,9 @@ function RightComms({ logs }: { logs: LogEvent[] }) {
         <h3 className="font-mono text-[11px] font-semibold tracking-[0.08em] text-text-muted">
           ЛОГ ИНЦИДЕНТА
         </h3>
+        {logs.length === 0 && (
+          <span className="px-1 py-2 font-mono text-[11px] text-text-muted">Нет событий</span>
+        )}
         {logs.slice(-12).map((l, i) => (
           <div key={i} className="flex items-start gap-2 border-b border-border pb-1.5 last:border-0">
             <span className={`mt-1 h-1.5 w-1.5 rounded-full ${l.c}`} />
@@ -273,14 +251,8 @@ function RightComms({ logs }: { logs: LogEvent[] }) {
   )
 }
 
-const INITIAL_LOGS: LogEvent[] = [
-  { c: 'bg-danger', t: '[12:47] Alarm triggered: 500 errors > 75%', time: '4m ago' },
-  { c: 'bg-warn', t: '[12:48] @misha: starting rollback prep', time: '3m' },
-  { c: 'bg-cyan', t: '[12:49] @kirill: looks like N+1 in checkout', time: '3m' },
-  { c: 'bg-accent', t: '[12:50] @you: pulling pprof', time: '3m' },
-  { c: 'bg-pink', t: '[12:51] @nastya: index on orders missing', time: '2m' },
-  { c: 'bg-success', t: '[12:52] errors dropped to 50%', time: '2m' },
-]
+// Лог пуст до прихода WS-events log_event. Anti-fallback: никаких выдуманных строк.
+const INITIAL_LOGS: LogEvent[] = []
 
 export default function WarRoomPage() {
   const { incidentId } = useParams<{ incidentId: string }>()
@@ -314,8 +286,9 @@ export default function WarRoomPage() {
       <div className="absolute right-4 top-4 z-20">
         <WSStatus status={status} />
       </div>
-      <CrisisBanner />
-      <IncidentDescription />
+      {/* TODO(api): GET /api/v1/warroom/{incidentId} → headline/description/severity/timer */}
+      <CrisisBanner incident={null} />
+      <IncidentDescription incident={null} />
       <div className="flex flex-col lg:h-[calc(100vh-80px-92px)] lg:flex-row">
         <LeftTeam liveMembers={liveMembers} />
         <CenterWorkspace score={score} />

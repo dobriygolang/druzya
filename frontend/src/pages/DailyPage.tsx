@@ -169,7 +169,7 @@ function Editor3({ kataID, initialCode }: { kataID: string; initialCode: string 
         onError: (err: unknown) =>
           setState({
             kind: 'error',
-            message: err instanceof Error ? err.message : 'Ошибка запуска',
+            message: sandboxFriendlyMessage(err, 'Ошибка запуска'),
           }),
       },
     )
@@ -185,7 +185,7 @@ function Editor3({ kataID, initialCode }: { kataID: string; initialCode: string 
         onError: (err: unknown) =>
           setState({
             kind: 'error',
-            message: err instanceof Error ? err.message : 'Ошибка отправки',
+            message: sandboxFriendlyMessage(err, 'Ошибка отправки'),
           }),
       },
     )
@@ -249,6 +249,20 @@ function Editor3({ kataID, initialCode }: { kataID: string; initialCode: string 
   )
 }
 
+// sandboxFriendlyMessage — выдаёт честный empty-state, когда Judge0 не
+// настроен на dev (HTTP 503). Фолбэк — generic-сообщение.
+function sandboxFriendlyMessage(err: unknown, fallback: string): string {
+  if (err instanceof ApiError) {
+    if (err.status === 503) {
+      return 'Песочница временно недоступна. Это dev-окружение без Judge0; запусти локально или попробуй позже.'
+    }
+    if (err.status === 0) {
+      return 'Нет соединения с сервером. Проверь сеть и попробуй снова.'
+    }
+  }
+  return err instanceof Error ? err.message : fallback
+}
+
 function statusLabel(state: RunState): string {
   switch (state.kind) {
     case 'running':
@@ -288,9 +302,12 @@ function ResultPanel({ state }: { state: RunState }) {
   if (state.kind === 'run-result') {
     lines.push(state.result.output)
   } else {
-    lines.push(
-      `${state.result.tests_passed}/${state.result.tests_total} тестов пройдено`,
-    )
+    // Когда sandbox отдал 503/operational, поля tests_passed/tests_total
+    // приходят undefined. Раньше это вылезало как «undefined/undefined тестов
+    // пройдено» — теперь подменяем на 0/0 и оставляем явное FAIL-сообщение.
+    const tp = state.result.tests_passed ?? 0
+    const tt = state.result.tests_total ?? 0
+    lines.push(`${tp}/${tt} тестов пройдено`)
     if (state.result.passed) {
       lines.push(`+${state.result.xp_earned} XP · streak ${state.result.streak.current}🔥`)
     }

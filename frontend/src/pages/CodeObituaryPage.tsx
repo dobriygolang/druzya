@@ -1,4 +1,9 @@
 // TODO i18n
+// TODO(api): GET /api/v1/obituaries/{submissionId} → {
+//   author, died_at, eulogy, lifetime_min, tests_passed, tests_total,
+//   complexity, code_lines, fix_explanation, fix_code, metrics, views_count
+// }. Сейчас вся страница рендерит заглушки/пусто, чтобы не показывать
+// фейкового @dima с выдуманным "23 минуты".
 import { ArrowLeft, Eye, Send, Link2, Share2, Skull } from 'lucide-react'
 import { Button } from '../components/Button'
 import { Card } from '../components/Card'
@@ -208,24 +213,15 @@ function SharePreviewCard() {
   )
 }
 
+// TODO(api): GET /api/v1/obituaries/recent — последние «надгробия» сообщества.
 function OtherObituaries() {
-  const items = [
-    ['@kirill_dev', 'Пал от stack overflow'],
-    ['@nastya', 'Утонул в N+1 query'],
-    ['@misha', 'Скончался от race condition'],
-  ]
   return (
     <Card className="flex-col gap-3 p-5" interactive={false}>
       <h3 className="font-display text-base font-bold text-text-primary">Другие могилки</h3>
-      {items.map(([n, s]) => (
-        <div key={n} className="flex items-center gap-3">
-          <Skull className="h-4 w-4 text-text-muted" />
-          <div className="flex flex-1 flex-col">
-            <span className="text-xs font-semibold text-text-primary">{n}</span>
-            <span className="text-[11px] text-text-muted">{s}</span>
-          </div>
-        </div>
-      ))}
+      <div className="flex items-center gap-3 py-2">
+        <Skull className="h-4 w-4 text-text-muted" />
+        <span className="text-[11px] text-text-muted">Нет данных</span>
+      </div>
     </Card>
   )
 }

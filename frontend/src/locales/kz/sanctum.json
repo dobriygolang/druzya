@@ -1,4 +1,5 @@
 {
+  "_note": "needs human translation, currently falls back to RU via i18n.ts fallback chain",
   "welcome": "С возвращением, {{name}}",
   "subtitle": "Сегодня 3 задачи ждут тебя. Серия — {{streak}} дней.",
   "daily_kata_day": "DAILY KATA · ДЕНЬ {{day}}",

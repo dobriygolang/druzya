@@ -10,7 +10,13 @@
     "help": "Помощь",
     "podcasts": "Подкасты",
     "weekly": "Weekly Report",
-    "logout": "Выйти"
+    "logout": "Выйти",
+    "profile": "Профиль",
+    "vacancies": "Вакансии",
+    "settings": "Настройки",
+    "notifications": "Уведомления",
+    "admin": "Админка",
+    "cohorts": "Когорты"
   },
   "buttons": {
     "find_opponent": "Найти соперника",

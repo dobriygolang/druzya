@@ -162,8 +162,12 @@ export default function LoginPage() {
       </header>
 
       <main className="mx-auto flex w-full max-w-[420px] flex-col gap-8 px-4 py-12 sm:py-16">
-        <h1 className="font-display text-3xl font-extrabold text-text-primary sm:text-4xl">
-          Войти / Зарегистрироваться
+        {/* Раньше "Войти / Зарегистрироваться" перетекало в 3 строки на узких
+            экранах: длинное слово + слэш ломали wrap. Используем компактный
+            заголовок на mobile и полный — от sm. */}
+        <h1 className="font-display text-2xl font-extrabold leading-tight text-text-primary sm:text-3xl lg:text-4xl">
+          <span className="sm:hidden">Войти</span>
+          <span className="hidden sm:inline">Войти&nbsp;/ Зарегистрироваться</span>
         </h1>
         <p className="text-[14px] text-text-muted">
           Один клик — и мы создадим профиль автоматически. Email и пароли больше не нужны.

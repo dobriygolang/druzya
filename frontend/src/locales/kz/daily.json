@@ -1,4 +1,5 @@
 {
+  "_note": "needs human translation, currently falls back to RU via i18n.ts fallback chain",
   "day_of": "DAILY · ДЕНЬ {{day}} ИЗ 365",
   "passed_today": "Прошли сегодня",
   "load_failed": "Не удалось загрузить",

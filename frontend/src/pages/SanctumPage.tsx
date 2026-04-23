@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react'
 import { ArrowRight, Flame, Play, Sparkles, Shield, Swords } from 'lucide-react'
 import { motion, useReducedMotion } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
@@ -15,6 +16,7 @@ import { useArenaHistoryQuery } from '../lib/queries/matches'
 import { useMyGuildQuery, useGuildWarQuery } from '../lib/queries/guild'
 import { useWeeklyReportQuery } from '../lib/queries/weekly'
 import { cn } from '../lib/cn'
+import { humanizeDifficulty, humanizeSection } from '../lib/labels'
 
 function ErrorChip() {
   const { t } = useTranslation('errors')
@@ -73,8 +75,17 @@ function DailyHero() {
   const title = kata?.task?.title ?? (isLoading ? '...' : 'Сегодняшняя задача недоступна')
   const difficulty = kata?.task?.difficulty
   const section = kata?.task?.section
-  const meta = [difficulty, section].filter(Boolean).join(' · ') || '—'
-  const remaining = fmtTimeUntilUTCMidnight()
+  const meta = [humanizeDifficulty(difficulty), humanizeSection(section)]
+    .filter((v) => v && v !== '—')
+    .join(' · ') || '—'
+  // Live-tick: ранее timer обновлялся только при reload. Теперь
+  // setInterval(1s) гонит локальный clock, а fmt — всегда от свежего now.
+  const [now, setNow] = useState<Date>(() => new Date())
+  useEffect(() => {
+    const id = window.setInterval(() => setNow(new Date()), 1000)
+    return () => window.clearInterval(id)
+  }, [])
+  const remaining = fmtTimeUntilUTCMidnight(now)
   return (
     <Card className="flex-1 flex-col gap-5 p-7" interactive={false}>
       <div className="flex items-start justify-between">
@@ -442,7 +453,7 @@ function Activity() {
                 {m.opponent_username || m.opponent_user_id?.slice(0, 6) || 'неизв.'}
               </span>
               <span className="truncate text-[11px] text-text-muted">
-                {m.section} · {fmtDuration(m.duration_seconds)} · {lpSign}
+                {humanizeSection(m.section)} · {fmtDuration(m.duration_seconds)} · {lpSign}
                 {m.lp_change} LP
               </span>
             </div>

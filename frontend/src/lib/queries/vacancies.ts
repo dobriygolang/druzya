@@ -10,7 +10,7 @@ import {
   useQueryClient,
   keepPreviousData,
 } from '@tanstack/react-query'
-import { api } from '../apiClient'
+import { api, API_BASE, readAccessToken } from '../apiClient'
 
 // ─────────────────────────────────────────────────────────────────────────
 // Types
@@ -221,13 +221,42 @@ export type TriggerSyncResponse = {
   retry_after?: number
 }
 
+// triggerVacancySync — separate fetch (NOT through api()) because the api()
+// wrapper throws on any non-2xx response, which prevented us from surfacing
+// the 429 throttled body as a structured TriggerSyncResponse. Now both 202
+// (started/already_running) and 429 (throttled) parse cleanly into the same
+// shape, and the frontend can render the countdown UI instead of dumping the
+// raw JSON error into the user's face.
+async function triggerVacancySync(): Promise<TriggerSyncResponse> {
+  const token = readAccessToken()
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+  if (token) headers['Authorization'] = `Bearer ${token}`
+  const res = await fetch(`${API_BASE}/vacancies/sync`, {
+    method: 'POST',
+    credentials: 'include',
+    headers,
+  })
+  // 202 (started/already_running) and 429 (throttled) both carry the JSON
+  // shape; only network errors / 5xx propagate as a real Error.
+  if (res.status === 202 || res.status === 429) {
+    const body = (await res.json().catch(() => ({}))) as Partial<TriggerSyncResponse>
+    if (body && typeof body.status === 'string') {
+      return body as TriggerSyncResponse
+    }
+    return res.status === 429
+      ? { status: 'throttled', retry_after: 30 }
+      : { status: 'started' }
+  }
+  const text = await res.text().catch(() => '')
+  throw new Error(`vacancies.sync: http ${res.status}: ${text}`)
+}
+
 export function useTriggerVacancySync() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: () =>
-      api<TriggerSyncResponse>(`/vacancies/sync`, { method: 'POST' }),
+    mutationFn: triggerVacancySync,
     onSuccess: (res) => {
-      if (res.status === 'started') {
+      if (res.status === 'started' || res.status === 'already_running') {
         // Sync в фоне 5–10s. Refetch'ним каталог через 8s — обычно к этому
         // времени уже есть первые HH-вакансии. Если ещё пусто — пользователь
         // увидит «попробуй ещё раз» и нажмёт повторно.

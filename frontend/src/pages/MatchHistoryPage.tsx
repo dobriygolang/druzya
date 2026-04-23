@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom'
 import { AppShellV2 } from '../components/AppShell'
 import { Avatar } from '../components/Avatar'
 import { useArenaHistoryQuery, type ArenaHistoryEntry } from '../lib/queries/matches'
+import { humanizeSection } from '../lib/labels'
 
 // Filter dictionaries for the chip rows. Keep these in lock-step with
 // shared/enums.* on the backend — the wire layer rejects unknown values.
@@ -103,7 +104,7 @@ function HistoryRow({ entry, onClick }: { entry: ArenaHistoryEntry; onClick: () 
         <div className="flex flex-wrap items-center gap-2">
           <span className="max-w-full truncate text-sm font-semibold text-text-primary">@{entry.opponent_username || 'unknown'}</span>
           <ModeBadge mode={entry.mode} />
-          <span className="font-mono text-[10px] uppercase text-text-muted">{entry.section}</span>
+          <span className="font-mono text-[10px] uppercase text-text-muted">{humanizeSection(entry.section)}</span>
         </div>
         <div className="flex items-center gap-3 font-mono text-[11px] text-text-muted">
           <span>{formatTimeAgo(entry.finished_at)}</span>

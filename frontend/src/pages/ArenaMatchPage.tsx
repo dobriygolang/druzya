@@ -7,7 +7,6 @@ import {
   FileCode,
   Loader2,
   Play,
-  Send,
   Upload,
   X,
 } from 'lucide-react'
@@ -21,7 +20,12 @@ import {
   useArenaMatchQuery,
   useSubmitCodeMutation,
   type ArenaLanguageKey,
+  type ArenaTask,
+  type Participant,
 } from '../lib/queries/arena'
+import { useProfileQuery } from '../lib/queries/profile'
+import { humanizeDifficulty, humanizeSection } from '../lib/labels'
+import { ApiError } from '../lib/apiClient'
 import type { ReactNode } from 'react'
 
 function ErrorChip() {
@@ -45,6 +49,9 @@ function PlayerCard({
   gradient: 'violet-cyan' | 'pink-violet'
   typing?: boolean
 }) {
+  // Раньше initials брались с nick.charAt(1) (skip "@") и крашились на
+  // строках длиной < 2. Берём первый небелый символ безопасно.
+  const initial = (nick.replace(/^@/, '') || '?').charAt(0).toUpperCase()
   return (
     <div
       className={[
@@ -52,7 +59,7 @@ function PlayerCard({
         side === 'right' ? 'flex-row-reverse text-right' : '',
       ].join(' ')}
     >
-      <Avatar size="lg" gradient={gradient} initials={nick.charAt(1).toUpperCase()} status="online" />
+      <Avatar size="lg" gradient={gradient} initials={initial} status="online" />
       <div className="flex flex-col gap-0.5">
         <span className="font-display text-lg font-bold text-text-primary">{nick}</span>
         <span className="font-mono text-[11px] text-text-muted">{tier}</span>
@@ -67,22 +74,52 @@ function PlayerCard({
   )
 }
 
-function MatchHeader({ opponentTyping, opponentRunStatus }: { opponentTyping: boolean; opponentRunStatus: string | null }) {
+// fmtElapsed — "MM:SS" elapsed since started_at, ticks every second.
+function fmtElapsed(startISO: string | undefined, now: Date): string {
+  if (!startISO) return '—'
+  const start = new Date(startISO).getTime()
+  if (Number.isNaN(start)) return '—'
+  const total = Math.max(0, Math.floor((now.getTime() - start) / 1000))
+  const m = Math.floor(total / 60)
+  const s = total % 60
+  return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
+}
+
+function MatchHeader({
+  opponentTyping,
+  opponentRunStatus,
+  me,
+  opp,
+  startedAt,
+  mode,
+}: {
+  opponentTyping: boolean
+  opponentRunStatus: string | null
+  me: Participant | null
+  opp: Participant | null
+  startedAt: string | undefined
+  mode: string | undefined
+}) {
+  // Live-tick clock; раньше тут было статическое "12:43".
+  const [now, setNow] = useState<Date>(() => new Date())
+  useEffect(() => {
+    const id = window.setInterval(() => setNow(new Date()), 1000)
+    return () => window.clearInterval(id)
+  }, [])
+  const meNick = me?.username ? `@${me.username}` : '@you'
+  const meTier = me ? `${me.elo_before ?? 0} LP` : '—'
+  const oppNick = opp?.username ? `@${opp.username}` : 'Ожидаем соперника…'
+  const oppTier = opp ? `${opp.elo_before ?? 0} LP` : ''
   return (
     <div className="flex flex-col gap-4 border-b border-border bg-surface-1 px-4 py-4 sm:px-6 lg:h-[120px] lg:flex-row lg:items-center lg:justify-between lg:px-10 lg:py-0">
-      <PlayerCard side="left" nick="@you" tier="Diamond III · 2 840 LP" gradient="violet-cyan" />
+      <PlayerCard side="left" nick={meNick} tier={meTier} gradient="violet-cyan" />
       <div className="flex flex-col items-center gap-2">
         <span className="font-display text-3xl font-extrabold leading-none text-text-primary lg:text-[40px]">
-          12:43
+          {fmtElapsed(startedAt, now)}
         </span>
         <span className="font-mono text-[11px] font-semibold tracking-[0.12em] text-text-muted">
-          RANKED · BO3 · ROUND 1
+          {(mode || 'RANKED').toUpperCase()}
         </span>
-        <div className="flex gap-1.5">
-          <span className="h-2 w-6 rounded-full bg-accent" />
-          <span className="h-2 w-6 rounded-full bg-border" />
-          <span className="h-2 w-6 rounded-full bg-border" />
-        </div>
         {opponentRunStatus && (
           <span className="rounded-full bg-cyan/15 px-2 py-0.5 font-mono text-[10px] font-semibold text-cyan">
             opponent: {opponentRunStatus}
@@ -91,8 +128,8 @@ function MatchHeader({ opponentTyping, opponentRunStatus }: { opponentTyping: bo
       </div>
       <PlayerCard
         side="right"
-        nick="@kirill_dev"
-        tier="Diamond II · 2 980 LP"
+        nick={oppNick}
+        tier={oppTier}
         gradient="pink-violet"
         typing={opponentTyping}
       />
@@ -227,17 +264,7 @@ function CodeEditor({
   )
 }
 
-type TestRow = { status: 'ok' | 'loading' | 'fail'; name: string; time: string }
-
-const TESTS: TestRow[] = [
-  { status: 'ok', name: 'empty string', time: '0.4ms' },
-  { status: 'ok', name: 'single char', time: '0.6ms' },
-  { status: 'ok', name: 'all unique', time: '1.2ms' },
-  { status: 'loading', name: 'long ascii', time: '...' },
-  { status: 'fail', name: 'unicode edge case', time: '8.1ms' },
-]
-
-function TestIcon({ status }: { status: TestRow['status'] }): ReactNode {
+function TestStatusIcon({ status }: { status: 'ok' | 'loading' | 'fail' | 'pending' }): ReactNode {
   if (status === 'ok')
     return (
       <span className="grid h-5 w-5 place-items-center rounded-full bg-success/20">
@@ -250,47 +277,76 @@ function TestIcon({ status }: { status: TestRow['status'] }): ReactNode {
         <Loader2 className="h-3 w-3 animate-spin text-cyan" />
       </span>
     )
-  return (
-    <span className="grid h-5 w-5 place-items-center rounded-full bg-danger/20">
-      <X className="h-3 w-3 text-danger" />
-    </span>
-  )
+  if (status === 'fail')
+    return (
+      <span className="grid h-5 w-5 place-items-center rounded-full bg-danger/20">
+        <X className="h-3 w-3 text-danger" />
+      </span>
+    )
+  return <span className="h-5 w-5 rounded-full border border-border" />
 }
 
-function TestList({ opponentTests }: { opponentTests: string }) {
+// TestList показывает example_cases с задачи (видимые тесты). Скрытые
+// тесты не показываем — это часть anti-cheat-договора. Раньше тут был
+// захардкоженный список ("empty string / single char / unicode edge case"),
+// который вводил пользователя в заблуждение.
+function TestList({
+  task,
+  opponentTests,
+  lastResult,
+}: {
+  task: ArenaTask | undefined
+  opponentTests: string
+  lastResult: { passed: number; total: number } | null
+}) {
+  const cases = task?.example_cases ?? []
   return (
     <Card className="flex-col gap-2 p-4" interactive={false}>
       <div className="flex items-center justify-between pb-1">
-        <h3 className="font-display text-sm font-bold text-text-primary">Тесты</h3>
+        <h3 className="font-display text-sm font-bold text-text-primary">Примеры</h3>
         <span className="font-mono text-[11px] text-cyan">opponent: {opponentTests}</span>
       </div>
-      {TESTS.map((t, i) => (
-        <div key={i} className="flex items-center gap-3 rounded-md px-1 py-1.5">
-          <TestIcon status={t.status} />
-          <span className="flex-1 font-mono text-[12px] text-text-secondary">{t.name}</span>
-          <span className="font-mono text-[11px] text-text-muted">{t.time}</span>
-        </div>
-      ))}
+      {cases.length === 0 && (
+        <span className="font-mono text-[11px] text-text-muted">
+          У задачи нет публичных примеров.
+        </span>
+      )}
+      {cases.map((c, i) => {
+        const status: 'ok' | 'fail' | 'pending' =
+          lastResult == null
+            ? 'pending'
+            : i < lastResult.passed
+              ? 'ok'
+              : 'fail'
+        return (
+          <div key={i} className="flex items-start gap-3 rounded-md px-1 py-1.5">
+            <TestStatusIcon status={status} />
+            <div className="flex flex-1 flex-col gap-0.5 overflow-hidden">
+              <span className="truncate font-mono text-[11px] text-text-secondary">
+                in: {c.input}
+              </span>
+              <span className="truncate font-mono text-[10px] text-text-muted">
+                expected: {c.output}
+              </span>
+            </div>
+          </div>
+        )
+      })}
     </Card>
   )
 }
 
-function ChatCard() {
+// Chat is intentionally absent: WS chat-channel is not wired yet (Phase 5).
+// Раньше здесь был placeholder-input с пустыми сообщениями + статичный
+// "Reconnecting..." который висел постоянно. Anti-fallback: честный
+// empty-state, без поддельной формы.
+function ChatPlaceholder() {
   return (
-    <Card className="flex-1 flex-col gap-3 p-4" interactive={false}>
-      <div className="flex items-center justify-between pb-1">
-        <h3 className="font-display text-sm font-bold text-text-primary">Чат матча</h3>
-      </div>
-      <div className="flex flex-1 flex-col gap-2 overflow-y-auto" />
-      <div className="flex items-center gap-2 rounded-md border border-border bg-bg px-3 py-2">
-        <input
-          className="flex-1 bg-transparent font-sans text-[12px] text-text-primary placeholder:text-text-muted focus:outline-none"
-          placeholder="Сообщение..."
-        />
-        <button className="grid h-6 w-6 place-items-center rounded text-text-muted hover:text-text-primary">
-          <Send className="h-3.5 w-3.5" />
-        </button>
-      </div>
+    <Card className="flex-1 flex-col gap-2 p-4" interactive={false}>
+      <h3 className="font-display text-sm font-bold text-text-primary">Чат матча</h3>
+      <p className="text-[11px] text-text-muted">
+        Чат выкатится в следующем спринте. Пока — только Run/Submit.
+      </p>
     </Card>
   )
 }
@@ -303,18 +359,39 @@ function inferLanguage(section: string | undefined): ArenaLanguageKey {
   return 'go'
 }
 
+// arenaSubmitErrorMessage — backend отдаёт "match not in required state" для
+// любого статуса кроме active/confirming. Распознаём это и подсказываем
+// текущий статус ("searching", "finished" и т.п.), чтобы юзер понимал.
+function arenaSubmitErrorMessage(err: unknown, currentStatus: string | undefined): string {
+  if (err instanceof ApiError) {
+    const msg = `${err.message || ''} ${err.body || ''}`.toLowerCase()
+    if (msg.includes('not in required state') || msg.includes('match not')) {
+      return `Матч не в активном состоянии${currentStatus ? `: ${currentStatus}` : ''}. Дождись соперника или открой новый матч.`
+    }
+    if (err.status === 403) return 'Ты не участник этого матча.'
+    if (err.status === 503) return 'Песочница временно недоступна. Попробуй позже.'
+  }
+  return err instanceof Error ? err.message : 'submit failed'
+}
+
 export default function ArenaMatchPage() {
   const { matchId } = useParams<{ matchId: string }>()
   const navigate = useNavigate()
   const channel = matchId ? `arena/${matchId}` : ''
   const { lastEvent, data, status, send } = useChannel<Record<string, unknown>>(channel)
   const { data: match, isError, isLoading } = useArenaMatchQuery(matchId)
+  const { data: profile } = useProfileQuery()
   const submit = useSubmitCodeMutation()
 
   const taskTitle = match?.task?.title ?? '…'
   const taskDesc = match?.task?.description ?? ''
-  const taskDifficulty = match?.task?.difficulty ?? 'Medium'
-  const taskSection = match?.task?.section ?? 'algorithms'
+  const taskDifficulty = humanizeDifficulty(match?.task?.difficulty ?? 'Medium')
+  const taskSection = humanizeSection(match?.task?.section ?? 'algorithms')
+
+  const participants = match?.participants ?? []
+  const me = participants.find((p) => p.user_id === profile?.id) ?? participants[0] ?? null
+  const opp = participants.find((p) => p !== me) ?? null
+  const [lastResult, setLastResult] = useState<{ passed: number; total: number } | null>(null)
 
   const language: ArenaLanguageKey = useMemo(
     () => inferLanguage(match?.section),
@@ -353,11 +430,12 @@ export default function ArenaMatchPage() {
       navigate(`/match/${matchId}/end`)
     } else if (lastEvent === 'submission_result') {
       const r = data as { passed?: boolean; tests_passed?: number; tests_total?: number }
+      const tp = r.tests_passed ?? 0
+      const tt = r.tests_total ?? 0
       setResultLabel(
-        r.passed
-          ? `passed ${r.tests_passed ?? '?'}/${r.tests_total ?? '?'}`
-          : `failed ${r.tests_passed ?? 0}/${r.tests_total ?? '?'}`,
+        r.passed ? `passed ${tp}/${tt}` : `failed ${tp}/${tt}`,
       )
+      setLastResult({ passed: tp, total: tt })
     }
   }, [lastEvent, data, matchId, navigate])
 
@@ -386,11 +464,10 @@ export default function ArenaMatchPage() {
       { matchId, code, language },
       {
         onSuccess: (r) => {
-          setResultLabel(
-            r.passed
-              ? `passed ${r.tests_passed}/${r.tests_total}`
-              : `failed ${r.tests_passed}/${r.tests_total}`,
-          )
+          const tp = r.tests_passed ?? 0
+          const tt = r.tests_total ?? 0
+          setResultLabel(r.passed ? `passed ${tp}/${tt}` : `failed ${tp}/${tt}`)
+          setLastResult({ passed: tp, total: tt })
           if (r.passed) {
             // Match is now finished server-side; navigate when we receive
             // the WS match_result envelope. Fallback: kick to end after 2s.
@@ -398,11 +475,11 @@ export default function ArenaMatchPage() {
           }
         },
         onError: (e: unknown) => {
-          setSubmitError((e as Error).message ?? 'submit failed')
+          setSubmitError(arenaSubmitErrorMessage(e, match?.status))
         },
       },
     )
-  }, [matchId, code, language, submit, navigate])
+  }, [matchId, code, language, submit, navigate, match?.status])
 
   const handleRun = useCallback(() => {
     // For MVP "Run" exercises the same backend submit endpoint — Judge0
@@ -412,25 +489,36 @@ export default function ArenaMatchPage() {
     submit.mutate(
       { matchId, code, language },
       {
-        onSuccess: (r) =>
-          setResultLabel(
-            r.passed
-              ? `run ok ${r.tests_passed}/${r.tests_total}`
-              : `run ${r.tests_passed}/${r.tests_total}`,
-          ),
-        onError: (e: unknown) => setResultLabel(`error: ${(e as Error).message}`),
+        onSuccess: (r) => {
+          const tp = r.tests_passed ?? 0
+          const tt = r.tests_total ?? 0
+          setResultLabel(r.passed ? `run ok ${tp}/${tt}` : `run ${tp}/${tt}`)
+          setLastResult({ passed: tp, total: tt })
+        },
+        onError: (e: unknown) =>
+          setResultLabel(`err: ${arenaSubmitErrorMessage(e, match?.status)}`),
       },
     )
-  }, [matchId, code, language, submit])
+  }, [matchId, code, language, submit, match?.status])
 
   return (
     <AppShellV2>
       <div className="relative flex min-h-[calc(100vh-64px)] flex-col lg:h-[calc(100vh-72px)]">
         <div className="absolute right-4 top-4 z-10 flex items-center gap-2">
           {isError && <ErrorChip />}
-          <WSStatus status={status} />
+          {/* Раньше мы постоянно показывали "Reconnecting…" т.к. чат-канал
+              ещё не выкачен на бэке и WS висел в reconnect-loop. Показываем
+              индикатор только в реально-полезных состояниях. */}
+          {(status === 'open' || status === 'closed') && <WSStatus status={status} />}
         </div>
-        <MatchHeader opponentTyping={opponentTyping} opponentRunStatus={opponentRunStatus} />
+        <MatchHeader
+          opponentTyping={opponentTyping}
+          opponentRunStatus={opponentRunStatus}
+          me={me}
+          opp={opp}
+          startedAt={match?.started_at}
+          mode={match?.mode}
+        />
         <div className="flex flex-1 flex-col overflow-auto lg:flex-row lg:overflow-hidden">
           <TaskPanel
             title={isLoading ? 'Загружаем задачу…' : taskTitle}
@@ -448,8 +536,8 @@ export default function ArenaMatchPage() {
             resultLabel={submitError ? `err: ${submitError}` : resultLabel}
           />
           <div className="flex w-full flex-col gap-4 border-t border-border bg-bg p-4 lg:w-[300px] lg:border-l lg:border-t-0">
-            <TestList opponentTests={opponentTests} />
-            <ChatCard />
+            <TestList task={match?.task} opponentTests={opponentTests} lastResult={lastResult} />
+            <ChatPlaceholder />
           </div>
         </div>
       </div>

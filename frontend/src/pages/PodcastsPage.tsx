@@ -14,7 +14,19 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Headphones, Play, Pause, Search, CheckCircle2, Clock, Filter } from 'lucide-react'
+import {
+  Headphones,
+  Play,
+  Pause,
+  Search,
+  CheckCircle2,
+  Clock,
+  Filter,
+  Volume2,
+  VolumeX,
+  RotateCcw,
+  RotateCw,
+} from 'lucide-react'
 import { AppShellV2 } from '../components/AppShell'
 import { Card } from '../components/Card'
 import {
@@ -47,10 +59,27 @@ interface PlayerProps {
   onActivate: () => void
 }
 
+function formatClock(sec: number): string {
+  if (!Number.isFinite(sec) || sec < 0) sec = 0
+  const total = Math.floor(sec)
+  const h = Math.floor(total / 3600)
+  const m = Math.floor((total % 3600) / 60)
+  const s = total % 60
+  const pad = (n: number) => n.toString().padStart(2, '0')
+  return h > 0 ? `${h}:${pad(m)}:${pad(s)}` : `${pad(m)}:${pad(s)}`
+}
+
 function AudioPlayer({ podcast, isActive, onActivate }: PlayerProps) {
   const audioRef = useRef<HTMLAudioElement | null>(null)
+  const seekRef = useRef<HTMLDivElement | null>(null)
   const lastSyncRef = useRef<number>(0)
   const [playing, setPlaying] = useState(false)
+  const [currentTime, setCurrentTime] = useState(podcast.progress_sec || 0)
+  const [duration, setDuration] = useState(podcast.duration_sec || 0)
+  const [volume, setVolume] = useState(1)
+  const [muted, setMuted] = useState(false)
+  const [volumeOpen, setVolumeOpen] = useState(false)
+  const [seeking, setSeeking] = useState(false)
 
   useEffect(() => {
     if (!isActive) return
@@ -65,9 +94,16 @@ function AudioPlayer({ podcast, isActive, onActivate }: PlayerProps) {
     }
   }, [isActive, podcast.progress_sec])
 
+  useEffect(() => {
+    const el = audioRef.current
+    if (!el) return
+    el.volume = muted ? 0 : volume
+  }, [volume, muted, isActive])
+
   function handleTimeUpdate() {
     const el = audioRef.current
     if (!el) return
+    if (!seeking) setCurrentTime(el.currentTime)
     const now = Date.now()
     if (now - lastSyncRef.current < 10_000) return
     lastSyncRef.current = now
@@ -77,6 +113,12 @@ function AudioPlayer({ podcast, isActive, onActivate }: PlayerProps) {
     }).catch(() => {
       /* network blip — следующий tick попробует снова */
     })
+  }
+
+  function handleLoadedMetadata() {
+    const el = audioRef.current
+    if (!el) return
+    if (Number.isFinite(el.duration) && el.duration > 0) setDuration(el.duration)
   }
 
   function handleEnded() {
@@ -106,32 +148,167 @@ function AudioPlayer({ podcast, isActive, onActivate }: PlayerProps) {
     }
   }
 
+  function skip(deltaSec: number) {
+    const el = audioRef.current
+    if (!el) return
+    const next = Math.max(0, Math.min(duration || el.duration || 0, el.currentTime + deltaSec))
+    try {
+      el.currentTime = next
+      setCurrentTime(next)
+    } catch {
+      /* ignore */
+    }
+  }
+
+  function seekTo(clientX: number) {
+    const el = audioRef.current
+    const bar = seekRef.current
+    if (!el || !bar || !Number.isFinite(duration) || duration <= 0) return
+    const rect = bar.getBoundingClientRect()
+    const ratio = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width))
+    const t = ratio * duration
+    try {
+      el.currentTime = t
+      setCurrentTime(t)
+    } catch {
+      /* ignore */
+    }
+  }
+
+  function handleSeekMouseDown(e: React.MouseEvent<HTMLDivElement>) {
+    setSeeking(true)
+    seekTo(e.clientX)
+    const onMove = (mv: MouseEvent) => seekTo(mv.clientX)
+    const onUp = () => {
+      setSeeking(false)
+      window.removeEventListener('mousemove', onMove)
+      window.removeEventListener('mouseup', onUp)
+    }
+    window.addEventListener('mousemove', onMove)
+    window.addEventListener('mouseup', onUp)
+  }
+
   const disabled = !podcast.audio_url
-  return (
-    <div className="flex items-center gap-2">
+  const total = duration || podcast.duration_sec || 0
+  const pct = total > 0 ? Math.min(100, (currentTime / total) * 100) : 0
+
+  if (!isActive || !podcast.audio_url) {
+    return (
       <button
         type="button"
         onClick={togglePlay}
         disabled={disabled}
-        title={disabled ? 'Аудио недоступно' : playing ? 'Пауза' : 'Слушать'}
-        aria-label={playing ? 'Пауза' : 'Слушать'}
+        title={disabled ? 'Аудио недоступно' : 'Слушать'}
+        aria-label="Слушать"
         className="grid h-10 w-10 place-items-center rounded-full bg-accent text-text-primary transition hover:bg-accent-hover disabled:cursor-not-allowed disabled:bg-surface-2 disabled:text-text-muted"
       >
-        {playing ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
+        <Play className="h-4 w-4" />
       </button>
-      {isActive && podcast.audio_url && (
-        <audio
-          ref={audioRef}
-          src={podcast.audio_url}
-          preload="metadata"
-          controls
-          className="h-9 w-full max-w-[260px]"
-          onTimeUpdate={handleTimeUpdate}
-          onEnded={handleEnded}
-          onPause={() => setPlaying(false)}
-          onPlay={() => setPlaying(true)}
+    )
+  }
+
+  return (
+    <div className="flex w-full min-w-0 flex-col gap-2 rounded-xl border border-border bg-surface-2/60 p-2 backdrop-blur">
+      <audio
+        ref={audioRef}
+        src={podcast.audio_url}
+        preload="metadata"
+        onTimeUpdate={handleTimeUpdate}
+        onLoadedMetadata={handleLoadedMetadata}
+        onEnded={handleEnded}
+        onPause={() => setPlaying(false)}
+        onPlay={() => setPlaying(true)}
+        onDurationChange={handleLoadedMetadata}
+      />
+      <div className="flex items-center gap-2">
+        <button
+          type="button"
+          onClick={() => skip(-15)}
+          aria-label="Назад 15 секунд"
+          title="Назад 15 секунд"
+          className="grid h-8 w-8 place-items-center rounded-full border border-border bg-surface-1 text-text-secondary transition hover:border-accent/40 hover:text-text-primary"
+        >
+          <RotateCcw className="h-3.5 w-3.5" />
+        </button>
+        <button
+          type="button"
+          onClick={togglePlay}
+          aria-label={playing ? 'Пауза' : 'Слушать'}
+          title={playing ? 'Пауза' : 'Слушать'}
+          className="grid h-10 w-10 place-items-center rounded-full bg-accent text-text-primary transition hover:bg-accent-hover"
+        >
+          {playing ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
+        </button>
+        <button
+          type="button"
+          onClick={() => skip(15)}
+          aria-label="Вперёд 15 секунд"
+          title="Вперёд 15 секунд"
+          className="grid h-8 w-8 place-items-center rounded-full border border-border bg-surface-1 text-text-secondary transition hover:border-accent/40 hover:text-text-primary"
+        >
+          <RotateCw className="h-3.5 w-3.5" />
+        </button>
+        <span className="ml-1 font-mono text-[11px] tabular-nums text-text-muted">
+          {formatClock(currentTime)} / {formatClock(total)}
+        </span>
+        <div
+          className="relative ml-auto"
+          onMouseEnter={() => setVolumeOpen(true)}
+          onMouseLeave={() => setVolumeOpen(false)}
+        >
+          <button
+            type="button"
+            onClick={() => setMuted((m) => !m)}
+            aria-label={muted ? 'Включить звук' : 'Выключить звук'}
+            title={muted ? 'Включить звук' : 'Выключить звук'}
+            className="grid h-8 w-8 place-items-center rounded-full border border-border bg-surface-1 text-text-secondary transition hover:border-accent/40 hover:text-text-primary"
+          >
+            {muted || volume === 0 ? <VolumeX className="h-3.5 w-3.5" /> : <Volume2 className="h-3.5 w-3.5" />}
+          </button>
+          {volumeOpen && (
+            <div className="absolute bottom-full right-0 mb-2 rounded-md border border-border bg-surface-1 px-2 py-2 shadow-lg">
+              <input
+                type="range"
+                min={0}
+                max={1}
+                step={0.05}
+                value={muted ? 0 : volume}
+                onChange={(e) => {
+                  const v = Number(e.target.value)
+                  setVolume(v)
+                  if (v > 0 && muted) setMuted(false)
+                }}
+                aria-label="Громкость"
+                className="h-1 w-24 cursor-pointer accent-accent"
+              />
+            </div>
+          )}
+        </div>
+      </div>
+      <div
+        ref={seekRef}
+        role="slider"
+        aria-label="Перемотка"
+        aria-valuemin={0}
+        aria-valuemax={Math.max(1, Math.floor(total))}
+        aria-valuenow={Math.floor(currentTime)}
+        tabIndex={0}
+        onMouseDown={handleSeekMouseDown}
+        onKeyDown={(e) => {
+          if (e.key === 'ArrowRight') skip(5)
+          else if (e.key === 'ArrowLeft') skip(-5)
+        }}
+        className="group relative h-1.5 w-full cursor-pointer overflow-visible rounded-full bg-surface-1"
+      >
+        <div
+          className={podcast.completed ? 'h-full rounded-full bg-success' : 'h-full rounded-full bg-accent'}
+          style={{ width: `${pct}%` }}
         />
-      )}
+        <div
+          className="pointer-events-none absolute top-1/2 h-3 w-3 -translate-y-1/2 -translate-x-1/2 rounded-full border-2 border-bg bg-accent opacity-0 transition group-hover:opacity-100"
+          style={{ left: `${pct}%` }}
+        />
+      </div>
     </div>
   )
 }
@@ -189,8 +366,8 @@ function PodcastCard({
         </div>
       </div>
       <div className="mt-auto flex flex-col gap-2">
-        <ProgressBar podcast={podcast} />
-        <div className="flex items-center justify-between gap-2">
+        {!isActive && <ProgressBar podcast={podcast} />}
+        <div className={isActive ? 'flex flex-col gap-2' : 'flex items-center justify-between gap-2'}>
           <div className="flex items-center gap-3 text-[12px] text-text-muted">
             <span className="inline-flex items-center gap-1">
               <Clock className="h-3 w-3" /> {formatDuration(podcast.duration_sec)}

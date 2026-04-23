@@ -11,6 +11,7 @@ import { AppShellV2 } from '../components/AppShell'
 import { Button } from '../components/Button'
 import { Card } from '../components/Card'
 import { Avatar, type AvatarGradient } from '../components/Avatar'
+import { humanizeDifficulty, humanizeSection } from '../lib/labels'
 import {
   derivePriceBuckets,
   useBookSlot,
@@ -159,9 +160,9 @@ function SlotCard({ s, onBook, booking }: { s: Slot; onBook: () => void; booking
           )}
         </div>
         <div className="mt-0.5 flex flex-wrap gap-1.5">
-          <span className="rounded-full bg-surface-2 px-2 py-0.5 text-[11px] text-text-secondary">{s.section}</span>
+          <span className="rounded-full bg-surface-2 px-2 py-0.5 text-[11px] text-text-secondary">{humanizeSection(s.section)}</span>
           {s.difficulty && (
-            <span className="rounded-full bg-surface-2 px-2 py-0.5 text-[11px] text-text-secondary">{s.difficulty}</span>
+            <span className="rounded-full bg-surface-2 px-2 py-0.5 text-[11px] text-text-secondary">{humanizeDifficulty(s.difficulty)}</span>
           )}
           <span className="rounded-full bg-surface-2 px-2 py-0.5 text-[11px] text-text-secondary uppercase">{s.language}</span>
         </div>
@@ -290,7 +291,7 @@ export default function SlotsPage() {
                     <span className="text-sm font-semibold text-text-primary">@{s.interviewer.username}</span>
                     <span className="ml-auto font-mono text-[11px] text-cyan">{fmtTime(s.starts_at)}</span>
                   </div>
-                  <span className="font-mono text-[11px] text-text-muted">{s.section} · {s.duration_min} мин</span>
+                  <span className="font-mono text-[11px] text-text-muted">{humanizeSection(s.section)} · {s.duration_min} мин</span>
                   <button className="inline-flex w-fit items-center gap-1.5 rounded-md bg-success/15 px-2.5 py-1 text-[11px] font-semibold text-success hover:bg-success/25">
                     <Video className="h-3 w-3" /> Видеозвонок
                   </button>

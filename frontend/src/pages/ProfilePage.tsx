@@ -20,6 +20,7 @@ import { useArenaHistoryQuery } from '../lib/queries/matches'
 import { useMyGuildQuery } from '../lib/queries/guild'
 import { useMyBookingsQuery, useCancelSlot, type MyBookingItem } from '../lib/queries/slot'
 import { ApiError } from '../lib/apiClient'
+import { humanizeDifficulty, humanizeSection } from '../lib/labels'
 
 // ProfileViewModel is the union of /profile/me and /profile/{username}
 // rendered fields. Public-only routes get a partial — the UI degrades
@@ -610,11 +611,11 @@ function MatchesPanel() {
           return (
             <div key={m.match_id} className="grid grid-cols-[1fr_120px_80px_60px] items-center gap-3 px-5 py-3 text-[13px]">
               <div className="flex min-w-0 items-center gap-3">
-                <Avatar size="sm" gradient="violet-cyan" initials={m.opponent_username[0]?.toUpperCase()} />
+                <Avatar size="sm" gradient="violet-cyan" initials={(m.opponent_username || '?').charAt(0).toUpperCase()} />
                 <div className="flex min-w-0 flex-col">
-                  <span className="truncate font-semibold text-text-primary">@{m.opponent_username}</span>
+                  <span className="truncate font-semibold text-text-primary">@{m.opponent_username || 'unknown'}</span>
                   <span className="font-mono text-[11px] text-text-muted">
-                    {m.section} · {m.mode}
+                    {humanizeSection(m.section)} · {m.mode}
                   </span>
                 </div>
               </div>
@@ -766,7 +767,7 @@ function StatsPanel({ ownProfile }: { ownProfile?: Profile }) {
           <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
             {ratings.map((r) => (
               <div key={r.section} className="flex flex-col gap-1 rounded-lg bg-surface-2 p-3">
-                <span className="font-mono text-[10px] uppercase text-text-muted">{r.section}</span>
+                <span className="font-mono text-[10px] uppercase text-text-muted">{humanizeSection(r.section)}</span>
                 <span className="font-display text-lg font-bold text-text-primary">{r.elo}</span>
                 <span className="font-mono text-[11px] text-text-muted">{r.matches_count} матчей</span>
               </div>
@@ -873,7 +874,7 @@ function BookingCard({ b }: { b: MyBookingItem }) {
       </div>
       <div className="flex flex-wrap items-center gap-3 text-[12px] text-text-secondary">
         <span>Роль: <span className="text-text-primary">кандидат</span></span>
-        {b.difficulty && <span>· Уровень: {b.difficulty}</span>}
+        {b.difficulty && <span>· Уровень: {humanizeDifficulty(b.difficulty)}</span>}
         <span>· {b.language}</span>
         <span>· {b.price_rub}₽</span>
       </div>

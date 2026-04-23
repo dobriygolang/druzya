@@ -1499,6 +1499,17 @@ export class ProfileSettings extends Message<ProfileSettings> {
    */
   voiceModeEnabled = false;
 
+  /**
+   * ai_insight_model — OpenRouter model id chosen by the user for their
+   * weekly AI Coach insight ("openai/gpt-4o-mini", "anthropic/claude-sonnet-4", …).
+   * Empty string ⇒ server-default (tier-aware free model). Premium-locked
+   * ids are validated server-side against the llm_models registry at update
+   * time; free-tier users updating to a premium id get InvalidArgument.
+   *
+   * @generated from field: string ai_insight_model = 6;
+   */
+  aiInsightModel = "";
+
   constructor(data?: PartialMessage<ProfileSettings>) {
     super();
     proto3.util.initPartial(data, this);
@@ -1512,6 +1523,7 @@ export class ProfileSettings extends Message<ProfileSettings> {
     { no: 3, name: "locale", kind: "scalar", T: 9 /* ScalarType.STRING */ },
     { no: 4, name: "notifications", kind: "message", T: NotificationPreferences },
     { no: 5, name: "voice_mode_enabled", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
+    { no: 6, name: "ai_insight_model", kind: "scalar", T: 9 /* ScalarType.STRING */ },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ProfileSettings {

@@ -18,6 +18,35 @@ export type UserSettings = {
   public_profile: boolean
 }
 
+// ProfileSettings is the PUT /profile/me/settings payload. Mirrors the proto
+// ProfileSettings message — not to be confused with UserSettings above which
+// is a distinct (legacy) shape.
+export type ProfileSettings = {
+  display_name?: string
+  locale?: string
+  voice_mode_enabled?: boolean
+  // ai_insight_model — OpenRouter model id the user picked for their weekly
+  // AI Coach insight. Empty string ⇒ server-default free model. Premium ids
+  // are rejected server-side for free-tier users.
+  ai_insight_model?: string
+}
+
+export function useUpdateProfileSettings() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (settings: ProfileSettings) =>
+      api<{ settings: ProfileSettings }>('/profile/me/settings', {
+        method: 'PUT',
+        body: JSON.stringify({ settings }),
+      }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['profile', 'me'] })
+      qc.invalidateQueries({ queryKey: ['profile', 'me', 'settings'] })
+    },
+  })
+}
+
+
 export function useNotifyPreferencesQuery() {
   return useQuery({
     queryKey: ['notify', 'preferences'],

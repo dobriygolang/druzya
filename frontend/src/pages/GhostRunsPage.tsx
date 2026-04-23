@@ -12,13 +12,9 @@ type Ghost = {
   dim?: boolean
 }
 
-const ghosts: Ghost[] = [
-  { name: 'Твой прошлый run', sub: '5 дней назад · 4:21', gradient: 'violet-cyan', on: true },
-  { name: '@alexey', sub: '#1 global · 1:47', gradient: 'cyan-violet', on: true },
-  { name: 'AI Reference', sub: 'optimal · 1:32', gradient: 'gold', on: true },
-  { name: '@kirill_dev', sub: 'друг · 3:08', gradient: 'pink-violet', on: true },
-  { name: 'Median Senior', sub: 'mid-bench · 6:00', gradient: 'pink-red', on: false, dim: true },
-]
+// TODO(api): GET /api/v1/ghosts/active?taskId=… — список доступных ghosts (твои прошлые
+// прогоны, друзья, AI reference, медианный сеньор). Пока бэка нет — показываем пусто.
+const ghosts: Ghost[] = []
 
 const code = [
   'package main',
@@ -51,7 +47,7 @@ function Header() {
         </span>
       </div>
       <span className="rounded-full bg-accent/15 px-3 py-1 font-mono text-xs font-semibold text-accent-hover">
-        👻 4 ghosts active
+        👻 {ghosts.filter((g) => g.on).length} ghosts active
       </span>
       <Button variant="ghost" size="sm" icon={<Settings className="h-3.5 w-3.5" />}>
         Настроить ghosts
@@ -91,9 +87,11 @@ function LeftPanel() {
   return (
     <div className="flex w-full flex-col gap-3 border-b border-border bg-surface-1 p-4 lg:w-[280px] lg:border-b-0 lg:border-r">
       <h3 className="font-display text-sm font-bold text-text-primary">Активные ghosts</h3>
-      {ghosts.map((g) => (
-        <GhostRow key={g.name} g={g} />
-      ))}
+      {ghosts.length === 0 ? (
+        <span className="px-1 py-3 font-mono text-[11px] text-text-muted">Нет данных</span>
+      ) : (
+        ghosts.map((g) => <GhostRow key={g.name} g={g} />)
+      )}
       <div className="flex-1" />
       <button className="flex items-center justify-center gap-2 rounded-lg border border-dashed border-border-strong px-3 py-2 text-xs text-text-muted hover:bg-surface-2">
         <Plus className="h-3.5 w-3.5" /> Добавить ghost
@@ -108,20 +106,17 @@ function LeftPanel() {
 }
 
 function CenterEditor() {
-  const inlineGhosts: Record<number, { label: string; color: string }> = {
-    3: { label: '@alexey is here', color: 'text-cyan bg-cyan/15' },
-    5: { label: '▮ ты', color: 'text-accent-hover bg-accent/15' },
-    7: { label: 'AI ref typed here · 8s ago', color: 'text-warn bg-warn/15' },
-    9: { label: '@kirill ↑ 12s back', color: 'text-pink bg-pink/15' },
-    11: { label: 'you (5 days ago)', color: 'text-text-secondary bg-white/5' },
-  }
+  // TODO(api): WS-канал ghost_positions/{taskId} → массив { line, label, color }.
+  // Пока бэка нет — никаких выдуманных меток.
+  const inlineGhosts: Record<number, { label: string; color: string }> = {}
   return (
     <div className="flex flex-1 flex-col">
       <div className="flex h-10 items-center justify-between border-b border-border bg-surface-1 px-4">
         <span className="rounded-md bg-surface-2 px-3 py-1 font-mono text-[12px] text-text-primary">
           solution.go
         </span>
-        <span className="font-mono text-[11px] text-accent-hover">1:24 elapsed</span>
+        {/* TODO(api): elapsed timer должен тикать от ghost_run_started событие */}
+        <span className="font-mono text-[11px] text-accent-hover">—</span>
       </div>
       <div className="flex flex-1 overflow-auto">
         <div className="flex w-12 flex-col border-r border-border bg-surface-2 py-3 text-right">
@@ -160,10 +155,9 @@ function CenterEditor() {
         <Button variant="primary" size="sm" icon={<Send className="h-3.5 w-3.5" />}>
           Submit
         </Button>
-        <span className="font-mono text-xs text-text-muted">12/15 tests</span>
-        <div className="h-2 flex-1 overflow-hidden rounded-full bg-surface-2">
-          <div className="h-full w-[80%] rounded-full bg-success" />
-        </div>
+        {/* TODO(api): test results from POST /api/v1/run → { passed, total } */}
+        <span className="font-mono text-xs text-text-muted">— tests</span>
+        <div className="h-2 flex-1 overflow-hidden rounded-full bg-surface-2" />
       </div>
     </div>
   )
@@ -180,14 +174,8 @@ type Standing = {
   past?: boolean
 }
 
-const standings: Standing[] = [
-  { rank: 1, name: 'AI Reference', sub: 'optimal solution', time: '1:32 ✓ DONE', gradient: 'gold', done: true },
-  { rank: 2, name: '@alexey', sub: '#1 global', time: '1:47', gradient: 'cyan-violet' },
-  { rank: 3, name: '@kirill_dev', sub: 'друг', time: '3:08', gradient: 'pink-violet' },
-  { rank: 4, name: '@you', sub: 'IN PROGRESS', time: '1:24', gradient: 'violet-cyan', active: true },
-  { rank: 5, name: 'your past', sub: '5d ago', time: '4:21', gradient: 'violet-cyan', past: true },
-  { rank: 6, name: '@nastya', sub: 'друг', time: '5:14', gradient: 'pink-red' },
-]
+// TODO(api): GET /api/v1/ghosts/{taskId}/standings — live-leaderboard забега.
+const standings: Standing[] = []
 
 function RightLeaderboard() {
   return (
@@ -196,6 +184,9 @@ function RightLeaderboard() {
         <h3 className="font-display text-sm font-bold text-text-primary">Race · Live Standings</h3>
         <span className="h-2 w-2 animate-pulse rounded-full bg-danger" />
       </div>
+      {standings.length === 0 && (
+        <span className="px-1 py-3 text-center font-mono text-[11px] text-text-muted">Нет данных</span>
+      )}
       {standings.map((s) => (
         <div
           key={s.rank}

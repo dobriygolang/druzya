@@ -1,4 +1,5 @@
 {
+  "_note": "needs human translation, currently falls back to RU via i18n.ts fallback chain",
   "tag": "CODEX · ПОДКАСТЫ",
   "title": "Слушай пока едешь",
   "subtitle": "{{count}} эпизодов про System Design, карьеру, backend и алгоритмы. Без AI-рекомендаций — просто хороший контент.",

@@ -32,6 +32,7 @@ import {
   ArrowRight,
 } from 'lucide-react'
 import { AppShellV2 } from '../components/AppShell'
+import { humanizeDifficulty } from '../lib/labels'
 import { Button } from '../components/Button'
 import {
   useAtlasQuery,
@@ -60,11 +61,14 @@ type NodeState =
   | 'decaying'
 
 function nodeState(n: AtlasNode): NodeState {
+  // n.progress can be undefined when the node hasn't been touched yet —
+  // treat as 0 so we don't return undefined-typed comparisons.
+  const p = n.progress ?? 0
   if (n.decaying) return 'decaying'
-  if (n.unlocked && n.progress >= 80) return 'mastered'
-  if (n.unlocked && n.progress > 0) return 'in_progress'
+  if (n.unlocked && p >= 80) return 'mastered'
+  if (n.unlocked && p > 0) return 'in_progress'
   if (n.unlocked) return 'available'
-  if (n.progress > 0) return 'in_progress'
+  if (p > 0) return 'in_progress'
   return 'locked'
 }
 
@@ -157,6 +161,23 @@ function daysSince(iso?: string): number | null {
   if (Number.isNaN(t)) return null
   const days = Math.floor((Date.now() - t) / (1000 * 60 * 60 * 24))
   return days < 0 ? 0 : days
+}
+
+// computePct returns the 0..100 integer to render in progress labels,
+// or null when backend gave us no usable data (legacy payload / total=0
+// / missing progress). Callers render "—" for null so we never leak
+// "undefined%" or "NaN%" to the user — that was the symptom of the
+// original bug reported by Sergey on /atlas.
+function computePct(node: AtlasNode): number | null {
+  const total = node.total_count ?? 0
+  const solved = node.solved_count ?? 0
+  if (total > 0) {
+    return Math.min(100, Math.max(0, Math.round((solved / total) * 100)))
+  }
+  const p =
+    typeof node.progress === 'number' && Number.isFinite(node.progress) ? node.progress : null
+  if (p === null) return null
+  return Math.min(100, Math.max(0, Math.round(p)))
 }
 
 // ── Layout: PoE2-style.
@@ -330,7 +351,7 @@ function NodeShape({
   const opacity = faded ? 0.28 : state === 'locked' ? 0.55 : 1
 
   // In-progress arc fill (показываем % прогресса дугой).
-  const pct = Math.min(100, Math.max(0, node.progress))
+  const pct = Math.min(100, Math.max(0, node.progress ?? 0))
   const arc =
     state === 'in_progress' && pct > 0 ? describeArc(x, y, r - 4, 0, (pct / 100) * 360) : null
 
@@ -377,9 +398,30 @@ function NodeShape({
       ) : (
         <circle cx={x} cy={y} r={r} fill={fill} stroke={stroke} strokeWidth={2} />
       )}
-      {/* Center node — special accent */}
+      {/* Center node — brand sigil + pulsing radial glow.
+          Anchors the rest of the tree visually; fixes the "пустой центр"
+          reported by Sergey. We draw: outer pulse, inner filled disk with
+          the druz9 "9" glyph (same mark used on Welcome/Admin sidebar). */}
       {isCenter && (
-        <circle cx={x} cy={y} r={r - 8} fill="#7C5CFF" opacity={0.4} />
+        <g pointerEvents="none">
+          <circle cx={x} cy={y} r={r + 18} fill="none" stroke="#7C5CFF" strokeWidth={1.5} opacity={0.5}>
+            <animate attributeName="r" from={r + 8} to={r + 26} dur="2.4s" repeatCount="indefinite" />
+            <animate attributeName="opacity" from="0.6" to="0" dur="2.4s" repeatCount="indefinite" />
+          </circle>
+          <circle cx={x} cy={y} r={r} fill="url(#centerSigilGrad)" stroke="#A78BFA" strokeWidth={2.5} />
+          <text
+            x={x}
+            y={y}
+            textAnchor="middle"
+            dominantBaseline="central"
+            fill="#F8FAFC"
+            fontSize={r * 1.05}
+            fontFamily="ui-sans-serif, system-ui"
+            fontWeight={900}
+          >
+            9
+          </text>
+        </g>
       )}
       {/* Progress arc (in_progress) */}
       {arc && (
@@ -479,8 +521,12 @@ function HoverTooltip({
   const days = daysSince(node.last_solved_at)
   const solved = node.solved_count ?? 0
   const total = node.total_count ?? 0
-  const pct =
-    total > 0 ? Math.min(100, Math.round((solved / total) * 100)) : node.progress
+  // Backend may omit `progress` entirely (legacy nodes / sections without
+  // ratings yet) — раньше это превращалось в "undefined%". `computePct`
+  // returns null in that case so the UI renders "—" instead.
+  const pct = computePct(node)
+  const pctLabel = pct === null ? '—' : `${pct}%`
+  const barWidth = pct ?? 0
   const recommended = (node.recommended_kata ?? []).slice(0, 2)
 
   // Преобразуем SVG-координаты в HTML-координаты внутри контейнера.
@@ -535,11 +581,11 @@ function HoverTooltip({
                   ? 'bg-warn'
                   : 'bg-accent'
             }`}
-            style={{ width: `${pct}%` }}
+            style={{ width: `${barWidth}%` }}
           />
         </div>
         <span className="font-mono text-[10px] text-text-secondary">
-          {total > 0 ? `${solved}/${total}` : `${pct}%`}
+          {total > 0 ? `${solved}/${total}` : pctLabel}
         </span>
       </div>
       {(node.decaying || days !== null) && (
@@ -569,7 +615,7 @@ function HoverTooltip({
               <li key={k.id} className="truncate text-[11px] text-text-primary">
                 <span className="text-text-secondary">·</span> {k.title}
                 <span className="ml-1 font-mono text-[9px] uppercase text-text-muted">
-                  {k.difficulty}
+                  {humanizeDifficulty(k.difficulty)}
                 </span>
               </li>
             ))}
@@ -884,6 +930,13 @@ function GraphCanvas({
               <stop offset="60%" stopColor="#14182B" stopOpacity="0.2" />
               <stop offset="100%" stopColor="#0A0E1A" stopOpacity="0" />
             </radialGradient>
+            {/* brand gradient for the center sigil — matches the "9" tile
+                on Welcome / Admin sidebar (accent → cyan). */}
+            <radialGradient id="centerSigilGrad" cx="35%" cy="35%" r="75%">
+              <stop offset="0%" stopColor="#A78BFA" />
+              <stop offset="60%" stopColor="#7C5CFF" />
+              <stop offset="100%" stopColor="#22D3EE" />
+            </radialGradient>
           </defs>
           <circle cx={CENTER} cy={CENTER} r={RADIUS_OUTER + 80} fill="url(#atlasBg)" />
           {/* concentric guide rings */}
@@ -1071,7 +1124,9 @@ function NodeDrawer({
   const days = daysSince(node.last_solved_at)
   const solved = node.solved_count ?? 0
   const total = node.total_count ?? 0
-  const pct = total > 0 ? Math.min(100, Math.round((solved / total) * 100)) : node.progress
+  const pct = computePct(node)
+  const pctLabel = pct === null ? '—' : `${pct}%`
+  const barWidth = pct ?? 0
   const recommended = node.recommended_kata ?? []
 
   const prereqs = atlas.edges
@@ -1129,7 +1184,7 @@ function NodeDrawer({
                 Прогресс
               </span>
               <span className="font-mono text-xs text-text-secondary">
-                {total > 0 ? `${solved} из ${total} задач` : `${pct}%`}
+                {total > 0 ? `${solved} из ${total} задач` : pctLabel}
               </span>
             </div>
             <div className="h-2 overflow-hidden rounded-full bg-surface-2">
@@ -1141,7 +1196,7 @@ function NodeDrawer({
                       ? 'bg-gradient-to-r from-warn to-danger'
                       : 'bg-gradient-to-r from-cyan to-accent'
                 }`}
-                style={{ width: `${pct}%` }}
+                style={{ width: `${barWidth}%` }}
               />
             </div>
           </div>
@@ -1259,7 +1314,7 @@ function KataItem({ k }: { k: KataRef }) {
         <div className="flex min-w-0 flex-col">
           <span className="truncate">{k.title}</span>
           <span className={`font-mono text-[10px] uppercase ${diffColor}`}>
-            {k.difficulty}
+            {humanizeDifficulty(k.difficulty)}
             {k.estimated_minutes ? ` · ~${k.estimated_minutes} мин` : ''}
           </span>
         </div>

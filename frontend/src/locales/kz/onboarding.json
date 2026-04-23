@@ -1,4 +1,5 @@
 {
+  "_note": "needs human translation, currently falls back to RU via i18n.ts fallback chain",
   "skip": "Пропустить",
   "step_labels": {
     "1": "1. Регистрация",
