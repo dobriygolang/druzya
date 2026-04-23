@@ -2,8 +2,9 @@ import { useEffect, useState } from 'react'
 import { ArrowRight, Flame, Play, Sparkles, Shield, Swords } from 'lucide-react'
 import { motion, useReducedMotion } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { AppShellV2 } from '../components/AppShell'
+import { SanctumTour } from './onboarding/SanctumTour'
 import { staggerContainer, staggerItem } from '../lib/motion'
 import { Button } from '../components/Button'
 import { Card } from '../components/Card'
@@ -105,7 +106,7 @@ function DailyHero() {
         </div>
       </div>
       <div className="flex flex-col items-stretch gap-3 sm:flex-row sm:items-end sm:justify-between">
-        <div className="flex flex-wrap gap-6">
+        <div className="flex flex-wrap gap-6" data-tour="streak">
           {/* "Сегодня прошли %" не показываем — нет канала статистики
               completion-rate. Срок жизни kata = 24h, день стрика и
               already_submitted покрывают то же намерение. */}
@@ -469,6 +470,11 @@ function Activity() {
 
 export default function SanctumPageV2() {
   const reduced = useReducedMotion()
+  // Wave-10 onboarding Step 5 — when ?tour=1 is present in the URL, the
+  // SanctumTour overlay is mounted on top of the regular page. The
+  // overlay reads `data-tour="..."` attributes already placed below.
+  const [searchParams] = useSearchParams()
+  const showTour = searchParams.get('tour') === '1'
   const containerProps = reduced
     ? {}
     : { variants: staggerContainer, initial: 'hidden', animate: 'show' }
@@ -485,6 +491,9 @@ export default function SanctumPageV2() {
         <motion.div
           className="flex flex-col gap-5 lg:h-[280px] lg:flex-row"
           {...(itemProps as object)}
+          // Wave-10 onboarding tour anchors. Step 5 (SanctumTour) reads
+          // these data-tour attrs to position the radial spotlight.
+          data-tour="daily-kata"
         >
           <DailyHero />
           <SeasonRank />
@@ -492,10 +501,13 @@ export default function SanctumPageV2() {
         <motion.div
           className="flex flex-col gap-5 lg:h-[220px] lg:flex-row"
           {...(itemProps as object)}
+          data-tour="match-cta"
         >
           <ArenaCard />
           <GuildCard />
-          <CoachCard />
+          <div data-tour="coach" className="contents">
+            <CoachCard />
+          </div>
         </motion.div>
         <motion.div
           className="flex flex-col gap-5 lg:h-[260px] lg:flex-row"
@@ -505,6 +517,10 @@ export default function SanctumPageV2() {
           <Leaderboard />
         </motion.div>
       </motion.div>
+      {/* Wave-10 onboarding Step 5: tour overlay mounts only when
+          ?tour=1 is in the URL. Lives outside the motion stagger so its
+          animation timing isn't tied to page reveal. */}
+      {showTour && <SanctumTour />}
     </AppShellV2>
   )
 }
