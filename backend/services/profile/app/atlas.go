@@ -17,15 +17,30 @@ import (
 // вместе с интерактивным drawer'ом на /atlas. Они нужны фронту, чтобы
 // показать «Решено 8 из 23» + «давно не решал» + список ката-рекомендаций
 // без второго round-trip'а на /daily.
+//
+// Wave-10 (migration 00034) — PoE-passive-tree vocabulary:
+//   - Kind ∈ {"hub","keystone","notable","small"} — different visual grammar
+//     per kind (hub = big circle center, keystone = diamond, notable = sigil,
+//     small = simple disk).
+//   - Cluster groups dense designer-laid blobs of related skills.
+//   - PosX/PosY are designer-pinned (admin CMS); nil → frontend defaults to a
+//     simple ring layout for unpinned nodes (graceful degrade).
+//   - Reachable expresses PoE allocation semantics: there exists a path from
+//     hub through mastered nodes to this node. Computed server-side; the
+//     frontend uses it to dim/hide unreachable nodes during planning.
 type AtlasNode struct {
 	Key             string
 	Title           string
 	Description     string
 	Section         enums.Section
-	Kind            string // normal | keystone | ascendant
+	Kind            string // hub | keystone | notable | small
+	Cluster         string // designer-grouped cluster id
+	PosX            *int   // designer-pinned coord; nil → client auto-place
+	PosY            *int
 	Progress        int
 	Unlocked        bool
 	Decaying        bool
+	Reachable       bool // PoE pathing: can be allocated given current mastery
 	SolvedCount     int
 	TotalCount      int
 	LastSolvedAt    *time.Time
@@ -41,9 +56,13 @@ type KataRef struct {
 }
 
 // AtlasEdge joins two node keys.
+//
+// Wave-10: Kind ∈ {"prereq","suggested","crosslink"} drives the rendered
+// visual grammar (thick-arrow / thin-line / dashed-faded).
 type AtlasEdge struct {
 	From string
 	To   string
+	Kind string // prereq | suggested | crosslink
 }
 
 // AtlasView is what ports serialises.
@@ -121,6 +140,9 @@ func (uc *GetAtlas) Do(ctx context.Context, userID uuid.UUID) (AtlasView, error)
 			Description:     cn.Description,
 			Section:         cn.Section,
 			Kind:            cn.Kind,
+			Cluster:         cn.Cluster,
+			PosX:            cn.PosX,
+			PosY:            cn.PosY,
 			Progress:        user.Progress,
 			Unlocked:        user.UnlockedAt != nil,
 			Decaying:        user.DecayedAt != nil,
@@ -130,7 +152,70 @@ func (uc *GetAtlas) Do(ctx context.Context, userID uuid.UUID) (AtlasView, error)
 			RecommendedKata: append([]KataRef(nil), recommendedKataByNode[cn.Key]...),
 		})
 	}
+	// PoE allocation semantics — compute reachability after the slice is
+	// fully populated (we need the set of mastered keys + edge graph to
+	// run a BFS from the hub).
+	annotateReachable(out.Nodes, out.Edges, centerKey)
 	return out, nil
+}
+
+// annotateReachable runs a BFS from the hub through mastered nodes and
+// marks each node's Reachable field. PoE-style semantics: a node is
+// reachable if there exists a path of mastered nodes from the hub TO an
+// adjacent node (i.e. you can "spend a point" on it next).
+//
+// "Mastered" here = Progress == 100. Anything below is in-flight and does
+// not yet propagate reachability to its neighbours; this matches the
+// design-review v3 wording «чтобы дойти, надо allocate всё по пути».
+//
+// The hub itself is always reachable (Progress is irrelevant — it is the
+// starting point of the tree).
+//
+// Complexity: O(|nodes| + |edges|). Edges are treated as undirected since
+// AtlasView edges historically lack a sense of direction in the seed.
+func annotateReachable(nodes []AtlasNode, edges []AtlasEdge, hubKey string) {
+	if len(nodes) == 0 {
+		return
+	}
+	idx := make(map[string]int, len(nodes))
+	for i, n := range nodes {
+		idx[n.Key] = i
+	}
+	adj := make(map[string][]string, len(nodes))
+	for _, e := range edges {
+		adj[e.From] = append(adj[e.From], e.To)
+		adj[e.To] = append(adj[e.To], e.From)
+	}
+	// BFS from hub. Visited = mastered-and-reached. Frontier carries
+	// neighbours of visited nodes (those become Reachable=true even if not
+	// mastered themselves — the player can spend the next point on them).
+	visited := make(map[string]bool, len(nodes))
+	queue := []string{hubKey}
+	for len(queue) > 0 {
+		cur := queue[0]
+		queue = queue[1:]
+		if visited[cur] {
+			continue
+		}
+		visited[cur] = true
+		// Mark current as Reachable. Then, only walk further from `cur` if
+		// it is mastered (or it is the hub — hub is implicitly "allocated").
+		i, ok := idx[cur]
+		if !ok {
+			continue
+		}
+		nodes[i].Reachable = true
+		isHub := cur == hubKey
+		isMastered := nodes[i].Progress >= 100
+		if !isHub && !isMastered {
+			continue
+		}
+		for _, neighbour := range adj[cur] {
+			if !visited[neighbour] {
+				queue = append(queue, neighbour)
+			}
+		}
+	}
 }
 
 // loadCatalogue resolves the catalogue source.
@@ -162,9 +247,15 @@ func (uc *GetAtlas) loadCatalogue(ctx context.Context) ([]catalogueNode, []Atlas
 			Description: n.Description,
 			Section:     enums.Section(n.Section),
 			Kind:        n.Kind,
+			Cluster:     n.Cluster,
+			PosX:        n.PosX,
+			PosY:        n.PosY,
 			TotalCount:  n.TotalCount,
 		})
-		if centerKey == "" && n.Kind == "center" {
+		// Wave-10: hub kind replaces v1 "center". Accept both during the
+		// migration grace period — old "center" rows still resolve until
+		// 00034 backfills them to "hub".
+		if centerKey == "" && (n.Kind == "hub" || n.Kind == "center") {
 			centerKey = n.ID
 		}
 	}
@@ -173,7 +264,11 @@ func (uc *GetAtlas) loadCatalogue(ctx context.Context) ([]catalogueNode, []Atlas
 	}
 	edges := make([]AtlasEdge, 0, len(dbEdges))
 	for _, e := range dbEdges {
-		edges = append(edges, AtlasEdge{From: e.From, To: e.To})
+		kind := e.Kind
+		if kind == "" {
+			kind = "prereq"
+		}
+		edges = append(edges, AtlasEdge{From: e.From, To: e.To, Kind: kind})
 	}
 	return out, edges, centerKey, nil
 }
@@ -188,34 +283,49 @@ type catalogueNode struct {
 	Description string
 	Section     enums.Section
 	Kind        string
+	Cluster     string
+	PosX        *int
+	PosY        *int
 	TotalCount  int
 }
 
+// Wave-10 PoE-vocabulary catalogue (mirrors migration 00034 semantics):
+//   - hub: starting node, always reachable
+//   - keystone: 1 per cluster, signature perk
+//   - notable: cluster milestones
+//   - small: incremental drills
+//
+// Cluster names mirror Section keys for now (designers can divorce later
+// in admin CMS).
 var catalogueNodes = []catalogueNode{
-	{Key: "class_core", Title: "Ядро класса", Description: "Стартовая точка атласа", Section: enums.SectionAlgorithms, Kind: "keystone", TotalCount: 1},
-	{Key: "algo_basics", Title: "Алгоритмы: основы", Description: "Массивы, строки, хеш-таблицы", Section: enums.SectionAlgorithms, Kind: "normal", TotalCount: 23},
-	{Key: "algo_graphs", Title: "Алгоритмы: графы", Description: "DFS/BFS, топосорт, Дейкстра", Section: enums.SectionAlgorithms, Kind: "normal", TotalCount: 18},
-	{Key: "algo_dp", Title: "Алгоритмы: DP", Description: "Динамическое программирование", Section: enums.SectionAlgorithms, Kind: "keystone", TotalCount: 30},
-	{Key: "sql_basics", Title: "SQL: основы", Description: "JOIN, GROUP BY, подзапросы", Section: enums.SectionSQL, Kind: "normal", TotalCount: 14},
-	{Key: "sql_perf", Title: "SQL: производительность", Description: "Индексы, EXPLAIN, денормализация", Section: enums.SectionSQL, Kind: "keystone", TotalCount: 9},
-	{Key: "go_concurrency", Title: "Go: concurrency", Description: "Горутины, каналы, контексты", Section: enums.SectionGo, Kind: "keystone", TotalCount: 16},
-	{Key: "go_idioms", Title: "Go: идиомы", Description: "Интерфейсы, ошибки, дженерики", Section: enums.SectionGo, Kind: "normal", TotalCount: 12},
-	{Key: "sd_basics", Title: "System Design: основы", Description: "CAP, кэши, очереди", Section: enums.SectionSystemDesign, Kind: "normal", TotalCount: 8},
-	{Key: "sd_scale", Title: "System Design: масштаб", Description: "Шардирование, репликация, consistency", Section: enums.SectionSystemDesign, Kind: "ascendant", TotalCount: 6},
-	{Key: "beh_star", Title: "Behavioral: STAR", Description: "Структура ответов на вопросы", Section: enums.SectionBehavioral, Kind: "normal", TotalCount: 10},
+	{Key: "class_core", Title: "Ядро класса", Description: "Стартовая точка атласа", Section: enums.SectionAlgorithms, Kind: "hub", Cluster: "algorithms", TotalCount: 1},
+	{Key: "algo_basics", Title: "Алгоритмы: основы", Description: "Массивы, строки, хеш-таблицы", Section: enums.SectionAlgorithms, Kind: "small", Cluster: "algorithms", TotalCount: 23},
+	{Key: "algo_graphs", Title: "Алгоритмы: графы", Description: "DFS/BFS, топосорт, Дейкстра", Section: enums.SectionAlgorithms, Kind: "notable", Cluster: "algorithms", TotalCount: 18},
+	{Key: "algo_dp", Title: "Алгоритмы: DP", Description: "Динамическое программирование", Section: enums.SectionAlgorithms, Kind: "keystone", Cluster: "algorithms", TotalCount: 30},
+	{Key: "sql_basics", Title: "SQL: основы", Description: "JOIN, GROUP BY, подзапросы", Section: enums.SectionSQL, Kind: "small", Cluster: "sql", TotalCount: 14},
+	{Key: "sql_perf", Title: "SQL: производительность", Description: "Индексы, EXPLAIN, денормализация", Section: enums.SectionSQL, Kind: "keystone", Cluster: "sql", TotalCount: 9},
+	{Key: "go_concurrency", Title: "Go: concurrency", Description: "Горутины, каналы, контексты", Section: enums.SectionGo, Kind: "keystone", Cluster: "go", TotalCount: 16},
+	{Key: "go_idioms", Title: "Go: идиомы", Description: "Интерфейсы, ошибки, дженерики", Section: enums.SectionGo, Kind: "notable", Cluster: "go", TotalCount: 12},
+	{Key: "sd_basics", Title: "System Design: основы", Description: "CAP, кэши, очереди", Section: enums.SectionSystemDesign, Kind: "small", Cluster: "system_design", TotalCount: 8},
+	{Key: "sd_scale", Title: "System Design: масштаб", Description: "Шардирование, репликация, consistency", Section: enums.SectionSystemDesign, Kind: "keystone", Cluster: "system_design", TotalCount: 6},
+	{Key: "beh_star", Title: "Behavioral: STAR", Description: "Структура ответов на вопросы", Section: enums.SectionBehavioral, Kind: "notable", Cluster: "behavioral", TotalCount: 10},
 }
 
+// catalogueEdges — Wave-10: prereq edges from hub & in-cluster paths;
+// crosslink between sd/algo and go/algo to demonstrate the dashed grammar.
 var catalogueEdges = []AtlasEdge{
-	{From: "class_core", To: "algo_basics"},
-	{From: "class_core", To: "sql_basics"},
-	{From: "class_core", To: "go_idioms"},
-	{From: "class_core", To: "beh_star"},
-	{From: "class_core", To: "sd_basics"},
-	{From: "algo_basics", To: "algo_graphs"},
-	{From: "algo_basics", To: "algo_dp"},
-	{From: "sql_basics", To: "sql_perf"},
-	{From: "go_idioms", To: "go_concurrency"},
-	{From: "sd_basics", To: "sd_scale"},
+	{From: "class_core", To: "algo_basics", Kind: "prereq"},
+	{From: "class_core", To: "sql_basics", Kind: "prereq"},
+	{From: "class_core", To: "go_idioms", Kind: "prereq"},
+	{From: "class_core", To: "beh_star", Kind: "suggested"},
+	{From: "class_core", To: "sd_basics", Kind: "prereq"},
+	{From: "algo_basics", To: "algo_graphs", Kind: "prereq"},
+	{From: "algo_basics", To: "algo_dp", Kind: "prereq"},
+	{From: "sql_basics", To: "sql_perf", Kind: "prereq"},
+	{From: "go_idioms", To: "go_concurrency", Kind: "prereq"},
+	{From: "sd_basics", To: "sd_scale", Kind: "prereq"},
+	// Cross-cluster suggestion: graphs ↔ system design (BFS shortest paths in distributed search).
+	{From: "algo_graphs", To: "sd_basics", Kind: "crosslink"},
 }
 
 // recommendedKataByNode — статический «топ-5» ката для каждой темы. ID'ы

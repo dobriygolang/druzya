@@ -75,6 +75,9 @@ export type AtlasNode = {
   key: string
   title: string
   section: string
+  // Wave-10 (migration 00034): kind ∈ {"hub","keystone","notable","small"}.
+  // Older deployments may still emit "center"/"normal"/"ascendant" — frontend
+  // maps them via labels.ts adapter for graceful degrade.
   kind: string
   progress: number
   unlocked: boolean
@@ -86,9 +89,28 @@ export type AtlasNode = {
   total_count?: number
   last_solved_at?: string
   recommended_kata?: KataRef[]
+
+  // ── Wave-10 PoE-passive-tree fields ──
+  cluster?: string
+  // Designer-pinned canvas coordinates (typically 0..1400 viewBox).
+  // pos_set === true means pos_x/pos_y carry meaningful values; otherwise
+  // the frontend ring-fallback layout places the node deterministically.
+  pos_x?: number
+  pos_y?: number
+  pos_set?: boolean
+  // PoE allocation: there exists a path of mastered nodes from the hub
+  // to this node. Frontend dims unreachable branches during planning.
+  reachable?: boolean
 }
 
-export type AtlasEdge = { from: string; to: string }
+export type AtlasEdge = {
+  from: string
+  to: string
+  // Wave-10: kind ∈ {"prereq","suggested","crosslink"}. Drives stroke
+  // grammar (thick-arrow / thin-line / dashed-faded). Empty/undefined
+  // from older deployments → frontend treats as "prereq".
+  kind?: string
+}
 
 export type Atlas = {
   center_node: string

@@ -34,7 +34,7 @@ func NewAtlasCataloguePostgres(pool *pgxpool.Pool) *AtlasCataloguePostgres {
 // ListAllNodes). Used by the public /profile/me/atlas read path.
 func (r *AtlasCataloguePostgres) ListNodes(ctx context.Context) ([]domain.AtlasCatalogueNode, error) {
 	rows, err := r.pool.Query(ctx, `
-		SELECT id, title, section, kind, description, total_count,
+		SELECT id, title, section, kind, cluster, description, total_count,
 		       pos_x, pos_y, sort_order, is_active
 		FROM atlas_nodes
 		WHERE is_active = TRUE
@@ -61,7 +61,7 @@ func (r *AtlasCataloguePostgres) ListNodes(ctx context.Context) ([]domain.AtlasC
 // ListAllNodes returns every node, including inactive ones — admin UI.
 func (r *AtlasCataloguePostgres) ListAllNodes(ctx context.Context) ([]domain.AtlasCatalogueNode, error) {
 	rows, err := r.pool.Query(ctx, `
-		SELECT id, title, section, kind, description, total_count,
+		SELECT id, title, section, kind, cluster, description, total_count,
 		       pos_x, pos_y, sort_order, is_active
 		FROM atlas_nodes
 		ORDER BY sort_order, id
@@ -87,7 +87,7 @@ func (r *AtlasCataloguePostgres) ListAllNodes(ctx context.Context) ([]domain.Atl
 // GetNode loads a single node by id; ErrNotFound when absent.
 func (r *AtlasCataloguePostgres) GetNode(ctx context.Context, id string) (domain.AtlasCatalogueNode, error) {
 	row := r.pool.QueryRow(ctx, `
-		SELECT id, title, section, kind, description, total_count,
+		SELECT id, title, section, kind, cluster, description, total_count,
 		       pos_x, pos_y, sort_order, is_active
 		FROM atlas_nodes
 		WHERE id = $1
@@ -116,13 +116,14 @@ func (r *AtlasCataloguePostgres) UpsertNode(ctx context.Context, n domain.AtlasC
 	}
 	_, err := r.pool.Exec(ctx, `
 		INSERT INTO atlas_nodes
-		    (id, title, section, kind, description, total_count, pos_x, pos_y, sort_order, is_active, updated_at)
+		    (id, title, section, kind, cluster, description, total_count, pos_x, pos_y, sort_order, is_active, updated_at)
 		VALUES
-		    ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, now())
+		    ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, now())
 		ON CONFLICT (id) DO UPDATE SET
 		    title = EXCLUDED.title,
 		    section = EXCLUDED.section,
 		    kind = EXCLUDED.kind,
+		    cluster = EXCLUDED.cluster,
 		    description = EXCLUDED.description,
 		    total_count = EXCLUDED.total_count,
 		    pos_x = EXCLUDED.pos_x,
@@ -130,7 +131,7 @@ func (r *AtlasCataloguePostgres) UpsertNode(ctx context.Context, n domain.AtlasC
 		    sort_order = EXCLUDED.sort_order,
 		    is_active = EXCLUDED.is_active,
 		    updated_at = now()
-	`, n.ID, n.Title, n.Section, n.Kind, n.Description, n.TotalCount, posX, posY, n.SortOrder, n.IsActive)
+	`, n.ID, n.Title, n.Section, n.Kind, n.Cluster, n.Description, n.TotalCount, posX, posY, n.SortOrder, n.IsActive)
 	if err != nil {
 		return fmt.Errorf("profile.AtlasCataloguePostgres.UpsertNode: %w", err)
 	}
@@ -189,7 +190,7 @@ func (r *AtlasCataloguePostgres) CountEdgesFor(ctx context.Context, id string) (
 // the read path treats edges as undirected by symmetry in BFS).
 func (r *AtlasCataloguePostgres) ListEdges(ctx context.Context) ([]domain.AtlasCatalogueEdge, error) {
 	rows, err := r.pool.Query(ctx, `
-		SELECT id, from_id, to_id FROM atlas_edges ORDER BY id
+		SELECT id, from_id, to_id, kind FROM atlas_edges ORDER BY id
 	`)
 	if err != nil {
 		return nil, fmt.Errorf("profile.AtlasCataloguePostgres.ListEdges: %w", err)
@@ -198,7 +199,7 @@ func (r *AtlasCataloguePostgres) ListEdges(ctx context.Context) ([]domain.AtlasC
 	out := make([]domain.AtlasCatalogueEdge, 0, 16)
 	for rows.Next() {
 		var e domain.AtlasCatalogueEdge
-		if err := rows.Scan(&e.ID, &e.From, &e.To); err != nil {
+		if err := rows.Scan(&e.ID, &e.From, &e.To, &e.Kind); err != nil {
 			return nil, fmt.Errorf("profile.AtlasCataloguePostgres.ListEdges: scan: %w", err)
 		}
 		out = append(out, e)
@@ -212,19 +213,26 @@ func (r *AtlasCataloguePostgres) ListEdges(ctx context.Context) ([]domain.AtlasC
 // CreateEdge inserts (from, to). Returns the new id. Duplicates are
 // rejected by the UNIQUE(from_id, to_id) constraint, which we surface
 // as a domain.ErrConflict for the admin handler to map to 409.
-func (r *AtlasCataloguePostgres) CreateEdge(ctx context.Context, from, to string) (int64, error) {
+func (r *AtlasCataloguePostgres) CreateEdge(ctx context.Context, from, to, kind string) (int64, error) {
 	if from == "" || to == "" {
 		return 0, fmt.Errorf("profile.AtlasCataloguePostgres.CreateEdge: from and to required")
 	}
 	if from == to {
 		return 0, fmt.Errorf("profile.AtlasCataloguePostgres.CreateEdge: self-edge not allowed")
 	}
+	switch kind {
+	case "prereq", "suggested", "crosslink":
+	case "":
+		kind = "prereq" // default — preserves Wave-9 semantics for callers that don't pass kind yet
+	default:
+		return 0, fmt.Errorf("profile.AtlasCataloguePostgres.CreateEdge: invalid kind %q", kind)
+	}
 	var id int64
 	err := r.pool.QueryRow(ctx, `
-		INSERT INTO atlas_edges (from_id, to_id)
-		VALUES ($1, $2)
+		INSERT INTO atlas_edges (from_id, to_id, kind)
+		VALUES ($1, $2, $3)
 		RETURNING id
-	`, from, to).Scan(&id)
+	`, from, to, kind).Scan(&id)
 	if err != nil {
 		return 0, fmt.Errorf("profile.AtlasCataloguePostgres.CreateEdge: %w", err)
 	}
@@ -252,7 +260,7 @@ func scanAtlasNode(s scanner) (domain.AtlasCatalogueNode, error) {
 	var n domain.AtlasCatalogueNode
 	var posX, posY *int
 	if err := s.Scan(
-		&n.ID, &n.Title, &n.Section, &n.Kind, &n.Description, &n.TotalCount,
+		&n.ID, &n.Title, &n.Section, &n.Kind, &n.Cluster, &n.Description, &n.TotalCount,
 		&posX, &posY, &n.SortOrder, &n.IsActive,
 	); err != nil {
 		return domain.AtlasCatalogueNode{}, err

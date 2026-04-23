@@ -105,6 +105,28 @@ message SkillNode {
   // по сложности. Фронт показывает их в drawer'е как кликабельные ссылки.
   // Источник — daily-каталог, см. profile/app/atlas.go.
   repeated KataRef recommended_kata = 13;
+
+  // ── Wave-10 (migration 00034) — PoE-passive-tree fields ──
+  //
+  // kind (field 5) is now ∈ {"hub","keystone","notable","small"} — drives
+  // SVG visual grammar (hub = big circle, keystone = diamond, notable =
+  // sigil-framed, small = simple disk).
+  //
+  // cluster groups designer-laid dense blobs of related skills. Used by
+  // <AtlasClusterAura> to draw the soft glow behind the cluster.
+  string cluster = 14;
+  // pos_x / pos_y are designer-pinned coordinates in the canvas viewBox
+  // (typically 0..1400). Optional — when absent the frontend places the
+  // node via a simple ring-fallback so the page never breaks.
+  int32 pos_x = 15;
+  int32 pos_y = 16;
+  // pos_set — true when pos_x/pos_y carry meaningful coordinates. Avoids
+  // the proto3-int32-zero-default ambiguity (0,0 is a valid corner).
+  bool pos_set = 17;
+  // reachable — PoE allocation: there exists a path of mastered nodes from
+  // the hub to this node. Frontend uses this to dim/lock unreachable
+  // branches during planning. Computed server-side per-user.
+  bool reachable = 18;
 }
 
 // KataRef — лёгкий референс на ката для UI рекомендаций. Title/difficulty
@@ -123,6 +145,9 @@ message KataRef {
 message SkillEdge {
   string from = 1;
   string to = 2;
+  // Wave-10: kind ∈ {"prereq","suggested","crosslink"} drives edge
+  // visual grammar — solid-thick-arrow / solid-thin / dashed-faded.
+  string kind = 3;
 }
 
 // SkillAtlas mirrors OpenAPI SkillAtlas — carries the nodes/edges graph.

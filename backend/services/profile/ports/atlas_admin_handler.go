@@ -59,6 +59,7 @@ type atlasNodeDTO struct {
 	Title       string `json:"title"`
 	Section     string `json:"section"`
 	Kind        string `json:"kind"`
+	Cluster     string `json:"cluster"`
 	Description string `json:"description"`
 	TotalCount  int    `json:"total_count"`
 	PosX        *int   `json:"pos_x,omitempty"`
@@ -72,6 +73,7 @@ type atlasEdgeDTO struct {
 	ID   int64  `json:"id"`
 	From string `json:"from"`
 	To   string `json:"to"`
+	Kind string `json:"kind"`
 }
 
 func toNodeDTO(n domain.AtlasCatalogueNode) atlasNodeDTO {
@@ -80,6 +82,7 @@ func toNodeDTO(n domain.AtlasCatalogueNode) atlasNodeDTO {
 		Title:       n.Title,
 		Section:     n.Section,
 		Kind:        n.Kind,
+		Cluster:     n.Cluster,
 		Description: n.Description,
 		TotalCount:  n.TotalCount,
 		PosX:        n.PosX,
@@ -115,6 +118,7 @@ type upsertNodeBody struct {
 	Title       string `json:"title"`
 	Section     string `json:"section"`
 	Kind        string `json:"kind"`
+	Cluster     string `json:"cluster"`
 	Description string `json:"description"`
 	TotalCount  int    `json:"total_count"`
 	PosX        *int   `json:"pos_x"`
@@ -133,10 +137,11 @@ func (b upsertNodeBody) validate() error {
 	if strings.TrimSpace(b.Section) == "" {
 		return errors.New("section is required")
 	}
+	// Wave-10 PoE-vocabulary kinds (migration 00034). Must mirror DB CHECK.
 	switch b.Kind {
-	case "normal", "keystone", "ascendant", "center":
+	case "hub", "keystone", "notable", "small":
 	default:
-		return fmt.Errorf("invalid kind %q (allowed: normal/keystone/ascendant/center)", b.Kind)
+		return fmt.Errorf("invalid kind %q (allowed: hub/keystone/notable/small)", b.Kind)
 	}
 	if b.TotalCount < 0 {
 		return errors.New("total_count must be >= 0")
@@ -162,11 +167,16 @@ func (h *AtlasAdminHandler) HandleCreateNode(w http.ResponseWriter, r *http.Requ
 	if body.IsActive != nil {
 		active = *body.IsActive
 	}
+	cluster := body.Cluster
+	if cluster == "" {
+		cluster = body.Section // sensible default; admin can override later
+	}
 	n := domain.AtlasCatalogueNode{
 		ID:          body.ID,
 		Title:       body.Title,
 		Section:     body.Section,
 		Kind:        body.Kind,
+		Cluster:     cluster,
 		Description: body.Description,
 		TotalCount:  body.TotalCount,
 		PosX:        body.PosX,
@@ -205,11 +215,16 @@ func (h *AtlasAdminHandler) HandleUpdateNode(w http.ResponseWriter, r *http.Requ
 	if body.IsActive != nil {
 		active = *body.IsActive
 	}
+	cluster := body.Cluster
+	if cluster == "" {
+		cluster = body.Section // sensible default; admin can override later
+	}
 	n := domain.AtlasCatalogueNode{
 		ID:          body.ID,
 		Title:       body.Title,
 		Section:     body.Section,
 		Kind:        body.Kind,
+		Cluster:     cluster,
 		Description: body.Description,
 		TotalCount:  body.TotalCount,
 		PosX:        body.PosX,
@@ -282,7 +297,7 @@ func (h *AtlasAdminHandler) HandleListEdges(w http.ResponseWriter, r *http.Reque
 		Items []atlasEdgeDTO `json:"items"`
 	}{Items: make([]atlasEdgeDTO, 0, len(edges))}
 	for _, e := range edges {
-		out.Items = append(out.Items, atlasEdgeDTO{ID: e.ID, From: e.From, To: e.To})
+		out.Items = append(out.Items, atlasEdgeDTO{ID: e.ID, From: e.From, To: e.To, Kind: e.Kind})
 	}
 	writeJSONOK(w, out)
 }
@@ -290,6 +305,7 @@ func (h *AtlasAdminHandler) HandleListEdges(w http.ResponseWriter, r *http.Reque
 type createEdgeBody struct {
 	From string `json:"from"`
 	To   string `json:"to"`
+	Kind string `json:"kind"` // prereq | suggested | crosslink (empty → prereq)
 }
 
 // HandleCreateEdge — POST /admin/atlas/edges
@@ -312,7 +328,14 @@ func (h *AtlasAdminHandler) HandleCreateEdge(w http.ResponseWriter, r *http.Requ
 		writeJSONErrAtlas(w, http.StatusBadRequest, "self-edge not allowed")
 		return
 	}
-	id, err := h.Repo.CreateEdge(r.Context(), body.From, body.To)
+	switch body.Kind {
+	case "", "prereq", "suggested", "crosslink":
+		// ok — empty defaults inside the repo to "prereq"
+	default:
+		writeJSONErrAtlas(w, http.StatusBadRequest, "kind must be one of prereq | suggested | crosslink")
+		return
+	}
+	id, err := h.Repo.CreateEdge(r.Context(), body.From, body.To, body.Kind)
 	if err != nil {
 		// Map duplicate-key violations to 409 — the operator probably tried
 		// to add an edge that already exists.

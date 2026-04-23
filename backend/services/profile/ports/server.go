@@ -314,11 +314,18 @@ func toAtlasProto(v app.AtlasView) *pb.SkillAtlas {
 			Description: n.Description,
 			Section:     sectionToProto(n.Section),
 			Kind:        n.Kind,
+			Cluster:     n.Cluster,
 			Progress:    int32(n.Progress),
 			Unlocked:    n.Unlocked,
 			Decaying:    n.Decaying,
+			Reachable:   n.Reachable,
 			SolvedCount: int32(n.SolvedCount),
 			TotalCount:  int32(n.TotalCount),
+		}
+		if n.PosX != nil && n.PosY != nil {
+			node.PosX = int32(*n.PosX)
+			node.PosY = int32(*n.PosY)
+			node.PosSet = true
 		}
 		if n.LastSolvedAt != nil {
 			node.LastSolvedAt = timestamppb.New(*n.LastSolvedAt)
@@ -337,7 +344,7 @@ func toAtlasProto(v app.AtlasView) *pb.SkillAtlas {
 		out.Nodes = append(out.Nodes, node)
 	}
 	for _, e := range v.Edges {
-		out.Edges = append(out.Edges, &pb.SkillEdge{From: e.From, To: e.To})
+		out.Edges = append(out.Edges, &pb.SkillEdge{From: e.From, To: e.To, Kind: e.Kind})
 	}
 	return out
 }

@@ -152,4 +152,118 @@ Use `<FormField>` from `frontend/src/components/FormField.tsx`. Все поля 
 
 ---
 
-_Last updated: Wave-9 (28 апр 2026) после Claude Design review (17 diffs + cheat-sheet)._
+## 📐 Breakpoints (Wave-10 append from Design Review v2)
+
+Эти правила **дополняют** базовые spacing/type-scale; они не переопределяют десктопные токены, а дают коэффициенты «при смене брейкпоинта».
+
+### Padding ladder
+
+| Контекст           | desktop → tablet → mobile (320) |
+|--------------------|---------------------------------|
+| Hero card          | `p-6` → `p-5` → `p-4`           |
+| Secondary card     | `p-5` → `p-4` → `p-3`           |
+| Row item           | `py-2.5` → `py-2` → `py-1.5`    |
+| Page container     | `px-20` → `px-8` → `px-4`       |
+
+Tailwind читается справа налево: `lg:p-6 sm:p-5 p-4` = «mobile → tablet → desktop».
+
+### Type-scale ladder
+
+| Slot           | desktop → tablet → mobile |
+|----------------|---------------------------|
+| H1 page        | 40 → 28 → 22              |
+| H2 section     | 24 → 20 → 17              |
+| Card title     | 18 → 15 → 13              |
+| BIG metric     | 48 → 32 → 28              |
+| Body           | 14 → 13 → 12              |
+| Eyebrow / mono | 11 → 10 → 9               |
+
+**Mono 9px — минимум.** Никогда 8 и меньше.
+
+### Grid/gap ladder
+
+| Контекст       | Token                                  |
+|----------------|----------------------------------------|
+| Between cards  | `gap-5` → `gap-4` → `gap-3`            |
+| Inside list    | `space-y-2.5` → `space-y-2` → `space-y-1.5` |
+| Chips          | `gap-2` (constant)                     |
+
+### Touch targets (320)
+
+- Минимум tap-target: **44×44**.
+- CTA button: `h-10` (40) — на грани, предпочитай `py-2.5` + полноширина.
+- Sticky bottom bar: `min-h-12` + `safe-area-inset-bottom` (iOS).
+
+### 3 паттерна схлопывания (выбирать ОДИН на секцию)
+
+| Паттерн                | Когда                                  |
+|------------------------|----------------------------------------|
+| **Segment control**    | 3+ родственных секции (Strong/Weak/All) — экономит вертикаль, сохраняет доступ |
+| **Horizontal scroll**  | 5+ элементов одного типа (avatars, chapters, cards) — всегда с `fade-b` справа |
+| **Progressive disclosure** | Accordion / "показать все" — KPI 3+4, длинный список членов когорты |
+
+### Header adaptation per breakpoint
+
+| Breakpoint | Composition                                                          |
+|------------|----------------------------------------------------------------------|
+| 1920 desktop | logo + 6-nav + search + lang + avatar. Full H1 + 72px bar           |
+| 768 tablet | logo + 3-nav + ⋯-more + avatar. Search → icon-only. Lang скрыт      |
+| 320 phone  | logo (small) + section-title + search-icon + avatar. Nav → hamburger + slide-over (или, для главных секций — bottom-nav, см. mobile-nav гайд) |
+
+---
+
+## 🌌 Atlas — PoE-passive-tree grammar (Wave-10, design-review v2 P0)
+
+### Vocabulary
+
+| Token       | Meaning                                                       |
+|-------------|---------------------------------------------------------------|
+| **hub**     | Character class / focus. 1 per atlas. Always reachable. Big violet circle 88px. See `<AtlasHub />` |
+| **keystone**| Cluster signature, "сигнатурная перка". 1 per cluster. Diamond shape 18px. See `<AtlasKeystone />` |
+| **notable** | Cluster milestone (3-5 per cluster). Sigil-framed circle 14px. |
+| **small**   | Incremental drill nodes (the bulk). Simple disk 8px.          |
+| **cluster** | Designer-grouped dense gathering. Renders cluster aura behind. |
+
+### Edge grammar — **3 канона, не больше**
+
+| Kind         | Visual                                | Semantic                       |
+|--------------|---------------------------------------|--------------------------------|
+| `prereq`     | Solid 2px + arrow. Bright when both endpoints mastered (allocated path) | Gates allocation               |
+| `suggested`  | Solid 1px cyan, no arrow              | Logical next step              |
+| `crosslink`  | Dashed 1px faded grey                 | Related from another cluster   |
+
+### Node states (orthogonal to kind)
+
+- `mastered` — solid cluster-color fill + white ✓
+- `active` — solid fill at /85 alpha
+- `decaying` — pulsing warn ring around (kind-glyph inside untouched)
+- `not_started` — hollow with cluster-color stroke
+- `locked` — hollow with dashed bg-2 stroke + lock-glyph **(NEVER opacity-50)**
+
+### Hover vs select — different visual channels
+
+- Hover → `transform: scale(1.15)` (CSS transition)
+- Selected → `outline 3px accent + offset 3px` (ring channel)
+
+They never fight. **Don't use `transform` for selection** — it conflicts with hover.
+
+### Layout
+
+- Designer pins `pos_x/pos_y` in admin CMS (kept hand-tuned because clusters are organic blobs, not 72° sectors).
+- Fallback when unpinned: ring-by-kind around hub (see `frontend/src/components/atlas/layout.ts::layoutAtlas`).
+- ViewBox: 1400×1400.
+
+### Mobile
+
+- 320px ⇒ NO canvas. Use `<AtlasMobileRoadmap />` (vertical stack of cluster-sections).
+- "↗ Полная карта" button opens canvas in fullscreen modal with native pinch-zoom (only for users who really want it).
+
+### Empty state — onboarding beacon
+
+- 0 mastered nodes → 3 hub-adjacent `prereq` neighbours pulse with accent ring (`<animate>` r/opacity).
+- "Начни здесь ↓" caption under hub.
+- **Don't dim the rest of the graph with opacity-50** — they're future state, not unreachable.
+
+---
+
+_Last updated: Wave-10 (29 апр 2026) после Claude Design review v2 (Atlas + Responsive)._

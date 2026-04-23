@@ -472,6 +472,51 @@ export class SkillNode extends Message<SkillNode> {
    */
   recommendedKata: KataRef[] = [];
 
+  /**
+   * ── Wave-10 (migration 00034) — PoE-passive-tree fields ──
+   *
+   * kind (field 5) is now ∈ {"hub","keystone","notable","small"} — drives
+   * SVG visual grammar (hub = big circle, keystone = diamond, notable =
+   * sigil-framed, small = simple disk).
+   *
+   * cluster groups designer-laid dense blobs of related skills. Used by
+   * <AtlasClusterAura> to draw the soft glow behind the cluster.
+   *
+   * @generated from field: string cluster = 14;
+   */
+  cluster = "";
+
+  /**
+   * pos_x / pos_y are designer-pinned coordinates in the canvas viewBox
+   * (typically 0..1400). Optional — when absent the frontend places the
+   * node via a simple ring-fallback so the page never breaks.
+   *
+   * @generated from field: int32 pos_x = 15;
+   */
+  posX = 0;
+
+  /**
+   * @generated from field: int32 pos_y = 16;
+   */
+  posY = 0;
+
+  /**
+   * pos_set — true when pos_x/pos_y carry meaningful coordinates. Avoids
+   * the proto3-int32-zero-default ambiguity (0,0 is a valid corner).
+   *
+   * @generated from field: bool pos_set = 17;
+   */
+  posSet = false;
+
+  /**
+   * reachable — PoE allocation: there exists a path of mastered nodes from
+   * the hub to this node. Frontend uses this to dim/lock unreachable
+   * branches during planning. Computed server-side per-user.
+   *
+   * @generated from field: bool reachable = 18;
+   */
+  reachable = false;
+
   constructor(data?: PartialMessage<SkillNode>) {
     super();
     proto3.util.initPartial(data, this);
@@ -493,6 +538,11 @@ export class SkillNode extends Message<SkillNode> {
     { no: 11, name: "total_count", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
     { no: 12, name: "last_solved_at", kind: "message", T: Timestamp },
     { no: 13, name: "recommended_kata", kind: "message", T: KataRef, repeated: true },
+    { no: 14, name: "cluster", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 15, name: "pos_x", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 16, name: "pos_y", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 17, name: "pos_set", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
+    { no: 18, name: "reachable", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): SkillNode {
@@ -591,6 +641,14 @@ export class SkillEdge extends Message<SkillEdge> {
    */
   to = "";
 
+  /**
+   * Wave-10: kind ∈ {"prereq","suggested","crosslink"} drives edge
+   * visual grammar — solid-thick-arrow / solid-thin / dashed-faded.
+   *
+   * @generated from field: string kind = 3;
+   */
+  kind = "";
+
   constructor(data?: PartialMessage<SkillEdge>) {
     super();
     proto3.util.initPartial(data, this);
@@ -601,6 +659,7 @@ export class SkillEdge extends Message<SkillEdge> {
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
     { no: 1, name: "from", kind: "scalar", T: 9 /* ScalarType.STRING */ },
     { no: 2, name: "to", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 3, name: "kind", kind: "scalar", T: 9 /* ScalarType.STRING */ },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): SkillEdge {
