@@ -58,7 +58,7 @@ func (p *Postgres) UpsertGuild(ctx context.Context, g domain.Guild) (domain.Guil
 	if err != nil {
 		return domain.Guild{}, fmt.Errorf("guild.pg.UpsertGuild: %w", err)
 	}
-	return guildFromRow(row), nil
+	return upsertRowToGuild(row), nil
 }
 
 // GetGuild loads a guild by id.
@@ -70,7 +70,7 @@ func (p *Postgres) GetGuild(ctx context.Context, id uuid.UUID) (domain.Guild, er
 		}
 		return domain.Guild{}, fmt.Errorf("guild.pg.GetGuild: %w", err)
 	}
-	return guildFromRow(row), nil
+	return getRowToGuild(row), nil
 }
 
 // GetMyGuild resolves the guild the user is a member of.
@@ -82,7 +82,7 @@ func (p *Postgres) GetMyGuild(ctx context.Context, userID uuid.UUID) (domain.Gui
 		}
 		return domain.Guild{}, fmt.Errorf("guild.pg.GetMyGuild: %w", err)
 	}
-	return guildFromRow(row), nil
+	return myRowToGuild(row), nil
 }
 
 // ListGuildMembers returns every member of a guild.
@@ -325,6 +325,55 @@ func sectionFromPgText(t pgtype.Text) *enums.Section {
 }
 
 func guildFromRow(r guilddb.Guild) domain.Guild {
+	g := domain.Guild{
+		ID:        fromPgUUID(r.ID),
+		OwnerID:   fromPgUUID(r.OwnerID),
+		Name:      r.Name,
+		GuildElo:  int(r.GuildElo),
+		CreatedAt: r.CreatedAt.Time,
+	}
+	if r.Emblem.Valid {
+		g.Emblem = r.Emblem.String
+	}
+	return g
+}
+
+// upsertRowToGuild / getRowToGuild / myRowToGuild — bridges introduced after
+// sqlc moved UpsertGuild/GetGuild/GetMyGuild to subset row types (they
+// SELECT/RETURN only the 6 base columns, while guilddb.Guild now has the
+// extras from migration 00018: description, tier, is_public, join_policy,
+// max_members). Those fields stay zero on these read paths until the SQL
+// is widened — which is fine for write-then-read flows that immediately
+// hit GetGuild via the cache wrapper.
+func upsertRowToGuild(r guilddb.UpsertGuildRow) domain.Guild {
+	g := domain.Guild{
+		ID:        fromPgUUID(r.ID),
+		OwnerID:   fromPgUUID(r.OwnerID),
+		Name:      r.Name,
+		GuildElo:  int(r.GuildElo),
+		CreatedAt: r.CreatedAt.Time,
+	}
+	if r.Emblem.Valid {
+		g.Emblem = r.Emblem.String
+	}
+	return g
+}
+
+func getRowToGuild(r guilddb.GetGuildRow) domain.Guild {
+	g := domain.Guild{
+		ID:        fromPgUUID(r.ID),
+		OwnerID:   fromPgUUID(r.OwnerID),
+		Name:      r.Name,
+		GuildElo:  int(r.GuildElo),
+		CreatedAt: r.CreatedAt.Time,
+	}
+	if r.Emblem.Valid {
+		g.Emblem = r.Emblem.String
+	}
+	return g
+}
+
+func myRowToGuild(r guilddb.GetMyGuildRow) domain.Guild {
 	g := domain.Guild{
 		ID:        fromPgUUID(r.ID),
 		OwnerID:   fromPgUUID(r.OwnerID),
