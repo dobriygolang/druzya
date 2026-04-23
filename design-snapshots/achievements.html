@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="ru" class="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Achievements · druz9</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700;800&family=Geist+Mono:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script>
+  tailwind.config = { darkMode: 'class', theme: { extend: {
+    colors: {
+      bg: 'rgb(var(--color-bg) / <alpha-value>)',
+      surface: { 1: 'rgb(var(--color-surface-1) / <alpha-value>)', 2: 'rgb(var(--color-surface-2) / <alpha-value>)', 3: 'rgb(var(--color-surface-3) / <alpha-value>)' },
+      border: { DEFAULT: 'rgb(var(--color-border) / <alpha-value>)', strong: 'rgb(var(--color-border-strong) / <alpha-value>)' },
+      text: { primary: 'rgb(var(--color-text-primary) / <alpha-value>)', secondary: 'rgb(var(--color-text-secondary) / <alpha-value>)', muted: 'rgb(var(--color-text-muted) / <alpha-value>)' },
+      accent: 'rgb(var(--color-accent) / <alpha-value>)', cyan: 'rgb(var(--color-cyan) / <alpha-value>)', pink: 'rgb(var(--color-pink) / <alpha-value>)',
+      success: 'rgb(var(--color-success) / <alpha-value>)', warn: 'rgb(var(--color-warn) / <alpha-value>)', danger: 'rgb(var(--color-danger) / <alpha-value>)',
+    },
+    fontFamily: { display: ['Geist', 'Inter', 'sans-serif'], mono: ['Geist Mono', 'monospace'] },
+  }}}
+</script>
+<style>
+  :root, .dark {
+    --color-bg: 10 10 15; --color-surface-1: 20 20 37; --color-surface-2: 26 26 46; --color-surface-3: 45 27 77;
+    --color-border: 34 34 51; --color-border-strong: 42 42 63;
+    --color-text-primary: 255 255 255; --color-text-secondary: 192 192 192; --color-text-muted: 138 138 158;
+    --color-accent: 88 44 255; --color-success: 16 185 129; --color-danger: 239 68 68; --color-warn: 251 191 36;
+    --color-cyan: 34 211 238; --color-pink: 244 114 182;
+  }
+  body { font-family: 'Inter', system-ui, sans-serif; background: rgb(var(--color-bg)); color: rgb(var(--color-text-primary)); }
+  .font-display { font-family: 'Geist', 'Inter', sans-serif; }
+  .font-mono { font-family: 'Geist Mono', monospace; }
+</style>
+</head>
+<body class="min-h-screen">
+
+<header class="border-b border-border bg-bg px-4 sm:px-8 py-4">
+  <div class="mx-auto max-w-7xl flex items-center justify-between">
+    <a href="index.html" class="text-text-muted hover:text-text-primary text-sm">← все snapshots</a>
+    <h1 class="font-display text-lg font-bold">Achievements</h1>
+    <div class="font-mono text-[11px] text-text-muted">snapshot</div>
+  </div>
+</header>
+
+<main class="mx-auto max-w-7xl px-4 sm:px-8 lg:px-12 py-8">
+
+  <!-- Heading -->
+  <div class="mb-7">
+    <h1 class="font-display text-3xl font-bold mb-1">Ачивки</h1>
+    <p class="text-sm text-text-secondary">
+      <strong class="text-text-primary">12 / 38</strong> разблокировано · <strong class="text-warn">3</strong> rare · <strong class="text-pink">0</strong> legendary
+    </p>
+  </div>
+
+  <!-- Filters -->
+  <div class="flex flex-wrap items-center gap-2 mb-7">
+    <div class="flex rounded-md border border-border bg-surface-2 p-0.5 text-sm">
+      <button class="rounded bg-bg px-3 py-1.5 font-semibold">Все</button>
+      <button class="px-3 py-1.5 text-text-secondary hover:text-text-primary">Открытые</button>
+      <button class="px-3 py-1.5 text-text-secondary hover:text-text-primary">Скрытые</button>
+    </div>
+    <div class="flex rounded-md border border-border bg-surface-2 p-0.5 text-sm ml-2">
+      <button class="px-3 py-1.5 text-text-secondary hover:text-text-primary">Common</button>
+      <button class="rounded bg-warn/20 text-warn px-3 py-1.5 font-semibold">Rare</button>
+      <button class="px-3 py-1.5 text-text-secondary hover:text-text-primary">Legendary</button>
+    </div>
+  </div>
+
+  <!-- Grid -->
+  <div class="grid gap-3 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+
+    <!-- Unlocked legendary -->
+    <div class="rounded-xl border border-pink/40 bg-gradient-to-br from-pink/10 to-surface-1 p-4 text-center relative overflow-hidden">
+      <div class="absolute inset-x-0 top-0 h-16 bg-gradient-to-b from-pink/20 to-transparent"></div>
+      <div class="relative">
+        <div class="grid h-16 w-16 mx-auto place-items-center rounded-xl mb-2 bg-gradient-to-br from-pink to-accent shadow-[0_6px_24px_rgba(244,114,182,0.4)] text-3xl">👑</div>
+        <div class="font-display font-bold text-sm">First Blood</div>
+        <div class="text-[11px] text-text-secondary mt-0.5">Первая ranked-победа</div>
+        <div class="mt-2 font-mono text-[10px] uppercase tracking-wider text-pink">legendary</div>
+      </div>
+    </div>
+
+    <!-- Unlocked rare -->
+    <div class="rounded-xl border border-warn/40 bg-gradient-to-br from-warn/5 to-surface-1 p-4 text-center">
+      <div class="grid h-16 w-16 mx-auto place-items-center rounded-xl mb-2 bg-gradient-to-br from-warn to-pink shadow-[0_6px_24px_rgba(251,191,36,0.4)] text-3xl">🏆</div>
+      <div class="font-display font-bold text-sm">Speed Demon</div>
+      <div class="text-[11px] text-text-secondary mt-0.5">&lt;50% allotted</div>
+      <div class="mt-2 font-mono text-[10px] uppercase tracking-wider text-warn">rare</div>
+    </div>
+
+    <!-- Unlocked common -->
+    <div class="rounded-xl border border-border bg-surface-1 p-4 text-center">
+      <div class="grid h-16 w-16 mx-auto place-items-center rounded-xl mb-2 bg-gradient-to-br from-cyan to-accent text-3xl">⚔</div>
+      <div class="font-display font-bold text-sm">5 in a row</div>
+      <div class="text-[11px] text-text-secondary mt-0.5">5 побед подряд</div>
+      <div class="mt-2 font-mono text-[10px] uppercase tracking-wider text-text-muted">common</div>
+    </div>
+
+    <!-- Unlocked common -->
+    <div class="rounded-xl border border-border bg-surface-1 p-4 text-center">
+      <div class="grid h-16 w-16 mx-auto place-items-center rounded-xl mb-2 bg-gradient-to-br from-success to-cyan text-3xl">🔥</div>
+      <div class="font-display font-bold text-sm">7-day streak</div>
+      <div class="text-[11px] text-text-secondary mt-0.5">Daily 7 дней</div>
+      <div class="mt-2 font-mono text-[10px] uppercase tracking-wider text-text-muted">common</div>
+    </div>
+
+    <!-- Unlocked common -->
+    <div class="rounded-xl border border-border bg-surface-1 p-4 text-center">
+      <div class="grid h-16 w-16 mx-auto place-items-center rounded-xl mb-2 bg-gradient-to-br from-accent to-cyan text-3xl">🛡</div>
+      <div class="font-display font-bold text-sm">Joined Guild</div>
+      <div class="text-[11px] text-text-secondary mt-0.5">Northern Wraiths</div>
+      <div class="mt-2 font-mono text-[10px] uppercase tracking-wider text-text-muted">common</div>
+    </div>
+
+    <!-- Locked with progress -->
+    <div class="rounded-xl border border-border bg-surface-1 p-4 text-center opacity-70">
+      <div class="grid h-16 w-16 mx-auto place-items-center rounded-xl mb-2 bg-surface-3 text-3xl grayscale">⚡</div>
+      <div class="font-display font-bold text-sm text-text-secondary">Marathon</div>
+      <div class="text-[11px] text-text-muted mt-0.5">100-day streak</div>
+      <div class="mt-2 h-1 rounded-full bg-surface-3 overflow-hidden mb-1"><div class="h-full bg-cyan" style="width: 47%"></div></div>
+      <div class="font-mono text-[10px] text-text-muted">47 / 100</div>
+    </div>
+
+    <div class="rounded-xl border border-border bg-surface-1 p-4 text-center opacity-70">
+      <div class="grid h-16 w-16 mx-auto place-items-center rounded-xl mb-2 bg-surface-3 text-3xl grayscale">📚</div>
+      <div class="font-display font-bold text-sm text-text-secondary">Atlas Master</div>
+      <div class="text-[11px] text-text-muted mt-0.5">Разблокируй 50% атласа</div>
+      <div class="mt-2 h-1 rounded-full bg-surface-3 overflow-hidden mb-1"><div class="h-full bg-cyan" style="width: 28%"></div></div>
+      <div class="font-mono text-[10px] text-text-muted">14 / 50</div>
+    </div>
+
+    <div class="rounded-xl border border-border bg-surface-1 p-4 text-center opacity-70">
+      <div class="grid h-16 w-16 mx-auto place-items-center rounded-xl mb-2 bg-surface-3 text-3xl grayscale">🎯</div>
+      <div class="font-display font-bold text-sm text-text-secondary">Sharpshooter</div>
+      <div class="text-[11px] text-text-muted mt-0.5">10 матчей подряд без ошибок</div>
+      <div class="mt-2 h-1 rounded-full bg-surface-3 overflow-hidden mb-1"><div class="h-full bg-cyan" style="width: 30%"></div></div>
+      <div class="font-mono text-[10px] text-text-muted">3 / 10</div>
+    </div>
+
+    <!-- Hidden -->
+    <div class="rounded-xl border border-dashed border-border bg-surface-1/50 p-4 text-center">
+      <div class="grid h-16 w-16 mx-auto place-items-center rounded-xl mb-2 bg-surface-2 text-3xl text-text-muted">?</div>
+      <div class="font-display font-bold text-sm text-text-muted">???</div>
+      <div class="text-[11px] text-text-muted mt-0.5">Скрытая</div>
+      <div class="mt-2 font-mono text-[10px] uppercase tracking-wider text-text-muted">hidden</div>
+    </div>
+
+    <div class="rounded-xl border border-dashed border-border bg-surface-1/50 p-4 text-center">
+      <div class="grid h-16 w-16 mx-auto place-items-center rounded-xl mb-2 bg-surface-2 text-3xl text-text-muted">?</div>
+      <div class="font-display font-bold text-sm text-text-muted">???</div>
+      <div class="text-[11px] text-text-muted mt-0.5">Скрытая</div>
+      <div class="mt-2 font-mono text-[10px] uppercase tracking-wider text-text-muted">hidden</div>
+    </div>
+
+  </div>
+
+  <p class="mt-12 text-center text-xs text-text-muted">…ещё 28 ачивок ниже</p>
+  <p class="mt-2 text-center text-xs text-text-muted"><a href="index.html" class="hover:underline">← все snapshots</a></p>
+
+</main>
+
+</body>
+</html>

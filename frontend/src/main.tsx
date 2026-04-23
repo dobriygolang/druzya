@@ -7,10 +7,15 @@ import App from './App'
 import './styles/main.css'
 import { initI18n } from './lib/i18n'
 import { initObservability, ErrorBoundary } from './lib/observability'
+import { bootstrapSilentRefresh } from './lib/apiClient'
 
 async function bootstrap() {
   initObservability()
   await initI18n()
+  // Restart the silent-refresh timer from the persisted access TTL — without
+  // this, a page reload would only see access expiry on the next failing
+  // request, causing a brief flash of 401 → /login during the rotation.
+  bootstrapSilentRefresh()
 
   if (import.meta.env.VITE_USE_MSW === 'true') {
     const { worker } = await import('./mocks/browser')

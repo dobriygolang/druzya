@@ -89,6 +89,34 @@ message SkillNode {
   bool unlocked = 7;
   google.protobuf.Timestamp unlocked_at = 8;
   bool decaying = 9;
+
+  // Total/solved counts for the progress bar in the Atlas drawer. progress
+  // (field 6) — это уже процент 0–100, оставляем для wire-compat; новые поля
+  // нужны для красивого «Решено 8 из 23 задач» без пересчёта на фронте.
+  int32 solved_count = 10;
+  int32 total_count = 11;
+
+  // last_solved_at — последняя решённая задача в этой теме. Используется на
+  // фронте, чтобы посчитать «дней без практики» и подсветить decaying-узел
+  // тоже здесь, не только через bool decaying. Может быть unset (zero ts).
+  google.protobuf.Timestamp last_solved_at = 12;
+
+  // recommended_kata — топ-N (5) непрешённых ката из этой темы, отсортированных
+  // по сложности. Фронт показывает их в drawer'е как кликабельные ссылки.
+  // Источник — daily-каталог, см. profile/app/atlas.go.
+  repeated KataRef recommended_kata = 13;
+}
+
+// KataRef — лёгкий референс на ката для UI рекомендаций. Title/difficulty
+// денормализованы, чтобы не делать второй round-trip на /daily/kata/{id}.
+message KataRef {
+  string id = 1;
+  string title = 2;
+  // difficulty: "easy" | "medium" | "hard". Строка, чтобы не плодить enum.
+  string difficulty = 3;
+  // estimated_minutes — приблизительная оценка времени решения, для UX «у тебя
+  // есть 15 мин — вот ката на 10».
+  int32 estimated_minutes = 4;
 }
 
 // SkillEdge mirrors OpenAPI SkillEdge.

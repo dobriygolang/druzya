@@ -44,7 +44,7 @@ func (s *SyncJob) Run(ctx context.Context) {
 		s.PerSourceTimeout = 2 * time.Minute
 	}
 	if s.Log == nil {
-		s.Log = slog.New(slog.NewTextHandler(noopWriter{}, nil))
+		panic("vacancies.app.SyncJob: Log is required (anti-fallback policy: no silent noop loggers)")
 	}
 	t := time.NewTicker(s.Interval)
 	defer t.Stop()
@@ -69,7 +69,7 @@ func (s *SyncJob) RunOnce(ctx context.Context) {
 
 func (s *SyncJob) runOneParser(ctx context.Context, p domain.Parser) {
 	if s.Log == nil {
-		s.Log = slog.New(slog.NewTextHandler(noopWriter{}, nil))
+		panic("vacancies.app.SyncJob: Log is required (anti-fallback policy: no silent noop loggers)")
 	}
 	if s.PerSourceTimeout <= 0 {
 		s.PerSourceTimeout = 2 * time.Minute
@@ -121,7 +121,3 @@ func (s *SyncJob) runOneParser(ctx context.Context, p domain.Parser) {
 		slog.String("source", string(p.Source())),
 		slog.Int("count", len(items)))
 }
-
-type noopWriter struct{}
-
-func (noopWriter) Write(p []byte) (int, error) { return len(p), nil }

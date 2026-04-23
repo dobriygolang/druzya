@@ -45,6 +45,14 @@ func NewGuild(d Deps) *Module {
 	onMatch := &guildApp.OnMatchCompleted{Guilds: cached, Log: d.Log}
 	server := guildPorts.NewGuildServer(myGuild, get, war, contribute, topUC, d.Log)
 
+	// /guild/list, POST /guild, /join, /leave — chi REST handlers (Wave 3).
+	// The Discovery surface lives outside the proto contract (same rationale
+	// as daily/run): tiny CRUD-y endpoints with UI-tailored shapes; adding a
+	// proto would force a regen for what is essentially plumbing. The cache
+	// invalidation hooks reuse the existing CachedRepo so /guild/my and the
+	// top-list stay sub-second fresh post-mutation.
+	discovery := guildPorts.NewDiscoveryHandler(d.Pool, cached, d.Log)
+
 	connectPath, connectHandler := druz9v1connect.NewGuildServiceHandler(server)
 	transcoder := mustTranscode("guild", connectPath, connectHandler)
 
@@ -70,6 +78,14 @@ func NewGuild(d Deps) *Module {
 		ConnectHandler:     transcoder,
 		RequireConnectAuth: true,
 		MountREST: func(r chi.Router) {
+			// Discovery surface — these MUST be registered before the catch-all
+			// /guild/{guildId} route below, otherwise chi will route /guild/list
+			// into GetGuild and 400 on the bad UUID.
+			r.Get("/guild/list", discovery.HandleList)
+			r.Post("/guild", discovery.HandleCreate)
+			r.Post("/guild/{guildId}/join", discovery.HandleJoin)
+			r.Post("/guild/{guildId}/leave", discovery.HandleLeave)
+
 			r.Get("/guild/my", transcoder.ServeHTTP)
 			r.Get("/guild/{guildId}", transcoder.ServeHTTP)
 			r.Get("/guild/{guildId}/war", transcoder.ServeHTTP)

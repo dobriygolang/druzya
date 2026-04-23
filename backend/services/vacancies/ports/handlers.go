@@ -7,6 +7,7 @@
 package ports
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -14,6 +15,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	sharedMw "druz9/shared/pkg/middleware"
@@ -22,6 +24,13 @@ import (
 
 	"github.com/go-chi/chi/v5"
 )
+
+// SyncRunner — узкий интерфейс для триггера on-demand sync. Поддерживается
+// app.SyncJob (RunOnce). Объявлен в портах, чтобы не тащить app в обратную
+// сторону и упростить мок в тестах.
+type SyncRunner interface {
+	RunOnce(ctx context.Context)
+}
 
 // Handler bundles the use-case pointers + logger.
 type Handler struct {
@@ -32,13 +41,25 @@ type Handler struct {
 	Update    *app.UpdateSavedStatus
 	Remove    *app.RemoveSaved
 	ListSaved *app.ListSaved
+	Sync      SyncRunner
 	Log       *slog.Logger
+
+	// SyncCooldown — минимальный интервал между двумя on-demand триггерами
+	// /vacancies/sync. Защищает HH/Yandex/Ozon от шквала запросов с фронта,
+	// если пользователь будет долбить «Обновить сейчас». Default 30s — этого
+	// достаточно, чтобы первый sync успел закончиться.
+	SyncCooldown time.Duration
+
+	syncMu       sync.Mutex
+	syncRunning  bool
+	lastSyncedAt time.Time
 }
 
 // Mount registers every route on the given chi router. Caller is responsible
 // for the path prefix (we mount under /api/v1).
 func (h *Handler) Mount(r chi.Router) {
 	r.Post("/vacancies/analyze", h.handleAnalyze)
+	r.Post("/vacancies/sync", h.handleSync)
 	r.Get("/vacancies", h.handleList)
 	r.Get("/vacancies/saved", h.handleListSaved)
 	r.Get("/vacancies/{id}", h.handleGet)
@@ -300,6 +321,68 @@ func (h *Handler) handleDelete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
+}
+
+// handleSync — POST /vacancies/sync. Триггерит SyncJob.RunOnce в горутине,
+// если ещё не идёт другой sync и прошло SyncCooldown с прошлого. Ответ всегда
+// 202 Accepted с {status: "started"|"already_running"|"throttled", retry_after}.
+//
+// Защита публичного эндпоинта — простой in-process mutex+timestamp:
+//
+//	для прода этого мало (несколько pod-ов = несколько окон), но для текущей
+//	single-binary monolith архитектуры достаточно. Когда монолит распилим, надо
+//	будет переехать на Redis SETNX с TTL.
+type syncResp struct {
+	Status     string `json:"status"`
+	RetryAfter int    `json:"retry_after,omitempty"` // seconds
+}
+
+func (h *Handler) handleSync(w http.ResponseWriter, r *http.Request) {
+	if h.Sync == nil {
+		writeError(w, http.StatusServiceUnavailable, "sync is not wired")
+		return
+	}
+	cooldown := h.SyncCooldown
+	if cooldown <= 0 {
+		cooldown = 30 * time.Second
+	}
+	h.syncMu.Lock()
+	if h.syncRunning {
+		h.syncMu.Unlock()
+		writeJSON(w, http.StatusAccepted, syncResp{Status: "already_running"})
+		return
+	}
+	if !h.lastSyncedAt.IsZero() && time.Since(h.lastSyncedAt) < cooldown {
+		retryAfter := int((cooldown - time.Since(h.lastSyncedAt)).Seconds())
+		if retryAfter < 1 {
+			retryAfter = 1
+		}
+		h.syncMu.Unlock()
+		w.Header().Set("Retry-After", strconv.Itoa(retryAfter))
+		writeJSON(w, http.StatusTooManyRequests, syncResp{Status: "throttled", RetryAfter: retryAfter})
+		return
+	}
+	h.syncRunning = true
+	h.syncMu.Unlock()
+
+	// Запускаем в фоне; используем background-context, потому что HTTP request
+	// контекст отменится сразу после возврата 202.
+	go func() {
+		defer func() {
+			h.syncMu.Lock()
+			h.syncRunning = false
+			h.lastSyncedAt = time.Now()
+			h.syncMu.Unlock()
+		}()
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+		defer cancel()
+		if h.Log != nil {
+			h.Log.InfoContext(ctx, "vacancies.sync: on-demand triggered")
+		}
+		h.Sync.RunOnce(ctx)
+	}()
+
+	writeJSON(w, http.StatusAccepted, syncResp{Status: "started"})
 }
 
 func (h *Handler) handleListSaved(w http.ResponseWriter, r *http.Request) {

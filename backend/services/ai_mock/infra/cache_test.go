@@ -3,6 +3,8 @@ package infra
 import (
 	"context"
 	"errors"
+	"io"
+	"log/slog"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -15,6 +17,12 @@ import (
 	"github.com/google/uuid"
 	"go.uber.org/mock/gomock"
 )
+
+// testLog returns an io.Discard-backed logger acceptable to constructors
+// that demand non-nil *slog.Logger (anti-fallback policy).
+func testLog() *slog.Logger {
+	return slog.New(slog.NewTextHandler(io.Discard, nil))
+}
 
 // memKV is the in-memory KV used by every cache test. It mirrors the one in
 // profile/infra/cache_test so the test surface stays familiar; not exported
@@ -122,7 +130,7 @@ func TestCachedSessionRepo_GetMissThenHit(t *testing.T) {
 	mock.EXPECT().Get(gomock.Any(), sid).Return(want, nil).Times(1)
 
 	kv := newMemKV()
-	repo := NewCachedSessionRepo(mock, kv, time.Minute, nil)
+	repo := NewCachedSessionRepo(mock, kv, time.Minute, testLog())
 
 	got1, err := repo.Get(context.Background(), sid)
 	if err != nil {
@@ -153,7 +161,7 @@ func TestCachedSessionRepo_TTLExpire(t *testing.T) {
 	now := time.Unix(1_700_000_000, 0)
 	kv := newMemKV()
 	kv.now = func() time.Time { return now }
-	repo := NewCachedSessionRepo(mock, kv, 30*time.Second, nil)
+	repo := NewCachedSessionRepo(mock, kv, 30*time.Second, testLog())
 
 	if _, err := repo.Get(context.Background(), sid); err != nil {
 		t.Fatalf("Get warm: %v", err)
@@ -175,7 +183,7 @@ func TestCachedSessionRepo_InvalidateBustsKey(t *testing.T) {
 	mock.EXPECT().Get(gomock.Any(), sid).Return(want, nil).Times(2)
 
 	kv := newMemKV()
-	repo := NewCachedSessionRepo(mock, kv, time.Minute, nil)
+	repo := NewCachedSessionRepo(mock, kv, time.Minute, testLog())
 
 	if _, err := repo.Get(context.Background(), sid); err != nil {
 		t.Fatalf("warm: %v", err)
@@ -205,7 +213,7 @@ func TestCachedSessionRepo_RedisGetFailFallsBackToUpstream(t *testing.T) {
 
 	kv := newMemKV()
 	kv.failGet = true
-	repo := NewCachedSessionRepo(mock, kv, time.Minute, nil)
+	repo := NewCachedSessionRepo(mock, kv, time.Minute, testLog())
 
 	for i := 0; i < 2; i++ {
 		got, err := repo.Get(context.Background(), sid)
@@ -231,7 +239,7 @@ func TestCachedSessionRepo_CorruptJSONRefreshes(t *testing.T) {
 	kv := newMemKV()
 	// Pre-populate with garbage so the cache must refresh.
 	_ = kv.Set(context.Background(), keySession(sid), []byte("not json"), time.Minute)
-	repo := NewCachedSessionRepo(mock, kv, time.Minute, nil)
+	repo := NewCachedSessionRepo(mock, kv, time.Minute, testLog())
 
 	got, err := repo.Get(context.Background(), sid)
 	if err != nil {
@@ -259,7 +267,7 @@ func TestCachedSessionRepo_SingleflightCollapsesConcurrentMisses(t *testing.T) {
 	}).MinTimes(1).MaxTimes(5)
 
 	kv := newMemKV()
-	repo := NewCachedSessionRepo(mock, kv, time.Minute, nil)
+	repo := NewCachedSessionRepo(mock, kv, time.Minute, testLog())
 
 	const N = 50
 	var wg sync.WaitGroup
@@ -285,7 +293,7 @@ func TestCachedSessionRepo_UpdateStatusInvalidates(t *testing.T) {
 	mock.EXPECT().UpdateStatus(gomock.Any(), sid, "finished", true).Return(nil).Times(1)
 
 	kv := newMemKV()
-	repo := NewCachedSessionRepo(mock, kv, time.Minute, nil)
+	repo := NewCachedSessionRepo(mock, kv, time.Minute, testLog())
 
 	if _, err := repo.Get(context.Background(), sid); err != nil {
 		t.Fatalf("warm: %v", err)
@@ -312,8 +320,8 @@ func TestCachedSessionRepo_UpdateReportInvalidatesBothKeys(t *testing.T) {
 	mock.EXPECT().UpdateReport(gomock.Any(), sid, gomock.Any(), gomock.Any()).Return(nil).Times(1)
 
 	kv := newMemKV()
-	repo := NewCachedSessionRepo(mock, kv, time.Minute, nil)
-	rcache := NewReportCache(kv, time.Minute, nil)
+	repo := NewCachedSessionRepo(mock, kv, time.Minute, testLog())
+	rcache := NewReportCache(kv, time.Minute, testLog())
 
 	if _, err := repo.Get(context.Background(), sid); err != nil {
 		t.Fatalf("warm session: %v", err)
@@ -344,7 +352,7 @@ func TestCachedSessionRepo_NoUpstreamLeakOnHit(t *testing.T) {
 	mock.EXPECT().Get(gomock.Any(), sid).Return(want, nil).Times(1)
 
 	kv := newMemKV()
-	repo := NewCachedSessionRepo(mock, kv, time.Minute, nil)
+	repo := NewCachedSessionRepo(mock, kv, time.Minute, testLog())
 	for i := 0; i < 10; i++ {
 		if _, err := repo.Get(context.Background(), sid); err != nil {
 			t.Fatalf("Get %d: %v", i, err)
@@ -364,7 +372,7 @@ func TestCachedSessionRepo_ConcurrentInvalidateSafe(t *testing.T) {
 	mock.EXPECT().Get(gomock.Any(), sid).Return(want, nil).MinTimes(1).MaxTimes(50)
 
 	kv := newMemKV()
-	repo := NewCachedSessionRepo(mock, kv, time.Minute, nil)
+	repo := NewCachedSessionRepo(mock, kv, time.Minute, testLog())
 
 	var wg sync.WaitGroup
 	for i := 0; i < 25; i++ {
@@ -381,7 +389,7 @@ func TestReportCache_LookupMissThenStoreThenHit(t *testing.T) {
 	t.Parallel()
 	sid := uuid.New()
 	kv := newMemKV()
-	rc := NewReportCache(kv, time.Minute, nil)
+	rc := NewReportCache(kv, time.Minute, slog.New(slog.NewTextHandler(io.Discard, nil)))
 
 	if _, ok := rc.Lookup(context.Background(), sid); ok {
 		t.Fatal("expected miss on cold cache")
@@ -401,7 +409,7 @@ func TestReportCache_RedisGetFailFalseIsMiss(t *testing.T) {
 	sid := uuid.New()
 	kv := newMemKV()
 	kv.failGet = true
-	rc := NewReportCache(kv, time.Minute, nil)
+	rc := NewReportCache(kv, time.Minute, slog.New(slog.NewTextHandler(io.Discard, nil)))
 	if _, ok := rc.Lookup(context.Background(), sid); ok {
 		t.Fatal("redis Get failure must surface as miss")
 	}
@@ -410,7 +418,7 @@ func TestReportCache_RedisGetFailFalseIsMiss(t *testing.T) {
 func TestReportCache_NilKVIsSafe(t *testing.T) {
 	t.Parallel()
 	sid := uuid.New()
-	rc := NewReportCache(nil, time.Minute, nil)
+	rc := NewReportCache(nil, time.Minute, slog.New(slog.NewTextHandler(io.Discard, nil)))
 	if _, ok := rc.Lookup(context.Background(), sid); ok {
 		t.Fatal("nil KV must surface as miss")
 	}
@@ -423,7 +431,7 @@ func TestReportCache_CorruptJSONIsMiss(t *testing.T) {
 	sid := uuid.New()
 	kv := newMemKV()
 	_ = kv.Set(context.Background(), keyReport(sid), []byte("not json"), time.Minute)
-	rc := NewReportCache(kv, time.Minute, nil)
+	rc := NewReportCache(kv, time.Minute, slog.New(slog.NewTextHandler(io.Discard, nil)))
 	if _, ok := rc.Lookup(context.Background(), sid); ok {
 		t.Fatal("corrupt JSON must surface as miss")
 	}

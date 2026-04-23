@@ -5,6 +5,8 @@ package infra
 import (
 	"context"
 	"errors"
+	"io"
+	"log/slog"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -16,6 +18,13 @@ import (
 	"github.com/google/uuid"
 	"go.uber.org/mock/gomock"
 )
+
+// testLog returns an explicit discard logger for unit tests. We pass this
+// rather than nil because constructors now panic on nil log (anti-fallback
+// policy).
+func testLog() *slog.Logger {
+	return slog.New(slog.NewTextHandler(io.Discard, nil))
+}
 
 type memKV struct {
 	mu       sync.Mutex
@@ -106,7 +115,7 @@ func TestCachedStreakRepo_Get_MissThenHit(t *testing.T) {
 	uid := uuid.New()
 	mock.EXPECT().Get(gomock.Any(), uid).Return(sampleState(), nil).Times(1)
 
-	repo := NewCachedStreakRepo(mock, newMemKV(), time.Minute, nil)
+	repo := NewCachedStreakRepo(mock, newMemKV(), time.Minute, testLog())
 	if _, err := repo.Get(context.Background(), uid); err != nil {
 		t.Fatal(err)
 	}
@@ -128,7 +137,7 @@ func TestCachedStreakRepo_Get_TTLExpire(t *testing.T) {
 	now := time.Now()
 	kv := newMemKV()
 	kv.now = func() time.Time { return now }
-	repo := NewCachedStreakRepo(mock, kv, 10*time.Second, nil)
+	repo := NewCachedStreakRepo(mock, kv, 10*time.Second, testLog())
 	if _, err := repo.Get(context.Background(), uid); err != nil {
 		t.Fatal(err)
 	}
@@ -138,22 +147,20 @@ func TestCachedStreakRepo_Get_TTLExpire(t *testing.T) {
 	}
 }
 
-func TestCachedStreakRepo_Get_RedisErrorFallback(t *testing.T) {
+func TestCachedStreakRepo_Get_RedisErrorPropagates(t *testing.T) {
 	t.Parallel()
+	// fallbacks were removed deliberately — Redis is required, errors propagate.
 	ctrl := gomock.NewController(t)
 	mock := mocks.NewMockStreakRepo(ctrl)
 	uid := uuid.New()
-	mock.EXPECT().Get(gomock.Any(), uid).Return(sampleState(), nil).Times(1)
+	// Upstream MUST NOT be invoked when Redis Get fails.
 	kv := newMemKV()
 	kv.failGet = true
-	repo := NewCachedStreakRepo(mock, kv, time.Minute, nil)
-	got, err := repo.Get(context.Background(), uid)
-	if err != nil {
-		t.Fatalf("expected fallback, got %v", err)
+	repo := NewCachedStreakRepo(mock, kv, time.Minute, testLog())
+	if _, err := repo.Get(context.Background(), uid); err == nil {
+		t.Fatalf("expected error when Redis Get fails, got nil")
 	}
-	if got.CurrentStreak != 7 {
-		t.Fatalf("got %+v", got)
-	}
+	_ = ctrl
 }
 
 func TestCachedStreakRepo_Get_CorruptJSONFallback(t *testing.T) {
@@ -164,7 +171,7 @@ func TestCachedStreakRepo_Get_CorruptJSONFallback(t *testing.T) {
 	mock.EXPECT().Get(gomock.Any(), uid).Return(sampleState(), nil).Times(1)
 	kv := newMemKV()
 	kv.putRaw(keyStreak(uid), []byte("xxxx"))
-	repo := NewCachedStreakRepo(mock, kv, time.Minute, nil)
+	repo := NewCachedStreakRepo(mock, kv, time.Minute, testLog())
 	if _, err := repo.Get(context.Background(), uid); err != nil {
 		t.Fatal(err)
 	}
@@ -179,7 +186,7 @@ func TestCachedStreakRepo_Update_InvalidatesUserKey(t *testing.T) {
 	mock.EXPECT().Update(gomock.Any(), uid, gomock.Any()).Return(nil).Times(1)
 
 	kv := newMemKV()
-	repo := NewCachedStreakRepo(mock, kv, time.Minute, nil)
+	repo := NewCachedStreakRepo(mock, kv, time.Minute, testLog())
 	if _, err := repo.Get(context.Background(), uid); err != nil {
 		t.Fatal(err)
 	}
@@ -203,7 +210,7 @@ func TestCachedStreakRepo_Update_DelegateError(t *testing.T) {
 	mock := mocks.NewMockStreakRepo(ctrl)
 	uid := uuid.New()
 	mock.EXPECT().Update(gomock.Any(), uid, gomock.Any()).Return(errors.New("pg down")).Times(1)
-	repo := NewCachedStreakRepo(mock, newMemKV(), time.Minute, nil)
+	repo := NewCachedStreakRepo(mock, newMemKV(), time.Minute, testLog())
 	if err := repo.Update(context.Background(), uid, sampleState()); err == nil {
 		t.Fatal("expected error")
 	}
@@ -218,7 +225,7 @@ func TestCachedStreakRepo_Get_SingleflightCollapsesConcurrent(t *testing.T) {
 		time.Sleep(20 * time.Millisecond)
 		return sampleState(), nil
 	}).Times(1)
-	repo := NewCachedStreakRepo(mock, newMemKV(), time.Minute, nil)
+	repo := NewCachedStreakRepo(mock, newMemKV(), time.Minute, testLog())
 
 	const N = 8
 	var wg sync.WaitGroup
@@ -238,7 +245,7 @@ func TestCachedStreakRepo_Get_DelegateError(t *testing.T) {
 	mock := mocks.NewMockStreakRepo(ctrl)
 	uid := uuid.New()
 	mock.EXPECT().Get(gomock.Any(), uid).Return(domain.StreakState{}, errors.New("pg down"))
-	repo := NewCachedStreakRepo(mock, newMemKV(), time.Minute, nil)
+	repo := NewCachedStreakRepo(mock, newMemKV(), time.Minute, testLog())
 	if _, err := repo.Get(context.Background(), uid); err == nil {
 		t.Fatal("expected error")
 	}
@@ -246,10 +253,20 @@ func TestCachedStreakRepo_Get_DelegateError(t *testing.T) {
 
 func TestCachedStreakRepo_DefaultsApplied(t *testing.T) {
 	t.Parallel()
-	repo := NewCachedStreakRepo(nil, newMemKV(), 0, nil)
+	repo := NewCachedStreakRepo(nil, newMemKV(), 0, testLog())
 	if repo.ttl != DefaultStreakTTL {
 		t.Fatalf("default TTL not applied: %s", repo.ttl)
 	}
+}
+
+func TestCachedStreakRepo_NilLogPanics(t *testing.T) {
+	t.Parallel()
+	defer func() {
+		if recover() == nil {
+			t.Fatalf("expected panic on nil logger")
+		}
+	}()
+	_ = NewCachedStreakRepo(nil, newMemKV(), 0, nil)
 }
 
 func TestCachedStreakRepo_Invalidate(t *testing.T) {
@@ -259,7 +276,7 @@ func TestCachedStreakRepo_Invalidate(t *testing.T) {
 	uid := uuid.New()
 	mock.EXPECT().Get(gomock.Any(), uid).Return(sampleState(), nil)
 	kv := newMemKV()
-	repo := NewCachedStreakRepo(mock, kv, time.Minute, nil)
+	repo := NewCachedStreakRepo(mock, kv, time.Minute, testLog())
 	if _, err := repo.Get(context.Background(), uid); err != nil {
 		t.Fatal(err)
 	}
@@ -301,7 +318,7 @@ func TestCachedKataRepo_HistoryLast30_MissThenHit(t *testing.T) {
 	mock.EXPECT().HistoryLast30(gomock.Any(), uid, today).
 		Return(sampleHistory(today), nil).Times(1)
 
-	repo := NewCachedKataRepo(mock, newMemKV(), 0, nil, nil)
+	repo := NewCachedKataRepo(mock, newMemKV(), 0, testLog(), nil)
 	if _, err := repo.HistoryLast30(context.Background(), uid, today); err != nil {
 		t.Fatal(err)
 	}
@@ -322,7 +339,7 @@ func TestCachedKataRepo_HistoryLast30_HitDoesNotCallUpstream(t *testing.T) {
 	today := todayUTC()
 	mock.EXPECT().HistoryLast30(gomock.Any(), uid, today).
 		Return(sampleHistory(today), nil).Times(1)
-	repo := NewCachedKataRepo(mock, newMemKV(), 0, nil, nil)
+	repo := NewCachedKataRepo(mock, newMemKV(), 0, testLog(), nil)
 	for i := 0; i < 5; i++ {
 		if _, err := repo.HistoryLast30(context.Background(), uid, today); err != nil {
 			t.Fatal(err)
@@ -360,30 +377,27 @@ func TestCachedKataRepo_HistoryLast30_CorruptJSONFallback(t *testing.T) {
 		Return(sampleHistory(today), nil).Times(1)
 	kv := newMemKV()
 	kv.putRaw(keyKataHistory(uid, today), []byte("{not-json"))
-	repo := NewCachedKataRepo(mock, kv, 0, nil, nil)
+	repo := NewCachedKataRepo(mock, kv, 0, testLog(), nil)
 	if _, err := repo.HistoryLast30(context.Background(), uid, today); err != nil {
 		t.Fatal(err)
 	}
 }
 
-func TestCachedKataRepo_HistoryLast30_RedisErrorFallback(t *testing.T) {
+func TestCachedKataRepo_HistoryLast30_RedisErrorPropagates(t *testing.T) {
 	t.Parallel()
+	// fallbacks were removed deliberately — Redis is required, errors propagate.
 	ctrl := gomock.NewController(t)
 	mock := mocks.NewMockKataRepo(ctrl)
 	uid := uuid.New()
 	today := todayUTC()
-	mock.EXPECT().HistoryLast30(gomock.Any(), uid, today).
-		Return(sampleHistory(today), nil).Times(1)
+	// Upstream MUST NOT be invoked when Redis Get itself fails.
 	kv := newMemKV()
 	kv.failGet = true
-	repo := NewCachedKataRepo(mock, kv, 0, nil, nil)
-	out, err := repo.HistoryLast30(context.Background(), uid, today)
-	if err != nil {
-		t.Fatalf("expected fallback, got %v", err)
+	repo := NewCachedKataRepo(mock, kv, 0, testLog(), nil)
+	if _, err := repo.HistoryLast30(context.Background(), uid, today); err == nil {
+		t.Fatalf("expected error when Redis Get fails, got nil")
 	}
-	if len(out) != 2 {
-		t.Fatalf("expected 2 entries, got %d", len(out))
-	}
+	_ = ctrl
 }
 
 func TestCachedKataRepo_MarkSubmitted_InvalidatesHistory(t *testing.T) {
@@ -396,7 +410,7 @@ func TestCachedKataRepo_MarkSubmitted_InvalidatesHistory(t *testing.T) {
 		Return(sampleHistory(today), nil).Times(2)
 	mock.EXPECT().MarkSubmitted(gomock.Any(), uid, today, true).Return(nil).Times(1)
 	kv := newMemKV()
-	repo := NewCachedKataRepo(mock, kv, 0, nil, nil)
+	repo := NewCachedKataRepo(mock, kv, 0, testLog(), nil)
 	if _, err := repo.HistoryLast30(context.Background(), uid, today); err != nil {
 		t.Fatal(err)
 	}
@@ -428,7 +442,7 @@ func TestCachedKataRepo_GetOrAssign_InvalidatesOnCreate(t *testing.T) {
 	// First call: created=true → expect invalidate.
 	mock.EXPECT().GetOrAssign(gomock.Any(), uid, today, taskID, false, false).
 		Return(domain.Assignment{UserID: uid, KataDate: today, TaskID: taskID}, true, nil).Times(1)
-	repo := NewCachedKataRepo(mock, kv, 0, nil, nil)
+	repo := NewCachedKataRepo(mock, kv, 0, testLog(), nil)
 	if _, _, err := repo.GetOrAssign(context.Background(), uid, today, taskID, false, false); err != nil {
 		t.Fatal(err)
 	}
@@ -448,7 +462,7 @@ func TestCachedKataRepo_HistoryLast30_SingleflightCollapsesConcurrent(t *testing
 			time.Sleep(20 * time.Millisecond)
 			return sampleHistory(today), nil
 		}).Times(1)
-	repo := NewCachedKataRepo(mock, newMemKV(), 0, nil, nil)
+	repo := NewCachedKataRepo(mock, newMemKV(), 0, testLog(), nil)
 
 	const N = 50
 	var wg sync.WaitGroup
@@ -464,7 +478,7 @@ func TestCachedKataRepo_HistoryLast30_SingleflightCollapsesConcurrent(t *testing
 
 func TestCachedKataRepo_DefaultsApplied(t *testing.T) {
 	t.Parallel()
-	repo := NewCachedKataRepo(nil, newMemKV(), 0, nil, nil)
+	repo := NewCachedKataRepo(nil, newMemKV(), 0, testLog(), nil)
 	if repo.minTTL != DefaultKataMinTTL {
 		t.Fatalf("default minTTL not applied: %s", repo.minTTL)
 	}
@@ -494,7 +508,7 @@ func TestCachedCalendarRepo_GetActive_MissThenHit(t *testing.T) {
 	today := todayUTC()
 	mock.EXPECT().GetActive(gomock.Any(), uid, today).
 		Return(sampleCalendar(uid), nil).Times(1)
-	repo := NewCachedCalendarRepo(mock, newMemKV(), 0, nil, func() time.Time { return today })
+	repo := NewCachedCalendarRepo(mock, newMemKV(), 0, testLog(), func() time.Time { return today })
 	if _, err := repo.GetActive(context.Background(), uid, today); err != nil {
 		t.Fatal(err)
 	}
@@ -515,7 +529,7 @@ func TestCachedCalendarRepo_GetActive_NotFoundCachedNegative(t *testing.T) {
 	today := todayUTC()
 	mock.EXPECT().GetActive(gomock.Any(), uid, today).
 		Return(domain.InterviewCalendar{}, domain.ErrNotFound).Times(1)
-	repo := NewCachedCalendarRepo(mock, newMemKV(), 0, nil, func() time.Time { return today })
+	repo := NewCachedCalendarRepo(mock, newMemKV(), 0, testLog(), func() time.Time { return today })
 	for i := 0; i < 3; i++ {
 		_, err := repo.GetActive(context.Background(), uid, today)
 		if !errors.Is(err, domain.ErrNotFound) {
@@ -534,30 +548,27 @@ func TestCachedCalendarRepo_GetActive_CorruptJSONFallback(t *testing.T) {
 		Return(sampleCalendar(uid), nil).Times(1)
 	kv := newMemKV()
 	kv.putRaw(keyCalendar(uid, today), []byte("xxx"))
-	repo := NewCachedCalendarRepo(mock, kv, 0, nil, func() time.Time { return today })
+	repo := NewCachedCalendarRepo(mock, kv, 0, testLog(), func() time.Time { return today })
 	if _, err := repo.GetActive(context.Background(), uid, today); err != nil {
 		t.Fatal(err)
 	}
 }
 
-func TestCachedCalendarRepo_GetActive_RedisErrorFallback(t *testing.T) {
+func TestCachedCalendarRepo_GetActive_RedisErrorPropagates(t *testing.T) {
 	t.Parallel()
+	// fallbacks were removed deliberately — Redis is required, errors propagate.
 	ctrl := gomock.NewController(t)
 	mock := mocks.NewMockCalendarRepo(ctrl)
 	uid := uuid.New()
 	today := todayUTC()
-	mock.EXPECT().GetActive(gomock.Any(), uid, today).
-		Return(sampleCalendar(uid), nil).Times(1)
+	// Upstream MUST NOT be invoked when Redis Get itself fails.
 	kv := newMemKV()
 	kv.failGet = true
-	repo := NewCachedCalendarRepo(mock, kv, 0, nil, func() time.Time { return today })
-	got, err := repo.GetActive(context.Background(), uid, today)
-	if err != nil {
-		t.Fatalf("expected fallback, got %v", err)
+	repo := NewCachedCalendarRepo(mock, kv, 0, testLog(), func() time.Time { return today })
+	if _, err := repo.GetActive(context.Background(), uid, today); err == nil {
+		t.Fatalf("expected error when Redis Get fails, got nil")
 	}
-	if got.Role != "be" {
-		t.Fatalf("payload mismatch: %+v", got)
-	}
+	_ = ctrl
 }
 
 func TestCachedCalendarRepo_GetActive_DelegateError(t *testing.T) {
@@ -568,7 +579,7 @@ func TestCachedCalendarRepo_GetActive_DelegateError(t *testing.T) {
 	today := todayUTC()
 	mock.EXPECT().GetActive(gomock.Any(), uid, today).
 		Return(domain.InterviewCalendar{}, errors.New("pg down")).Times(1)
-	repo := NewCachedCalendarRepo(mock, newMemKV(), 0, nil, func() time.Time { return today })
+	repo := NewCachedCalendarRepo(mock, newMemKV(), 0, testLog(), func() time.Time { return today })
 	if _, err := repo.GetActive(context.Background(), uid, today); err == nil {
 		t.Fatal("expected error")
 	}
@@ -585,7 +596,7 @@ func TestCachedCalendarRepo_Upsert_InvalidatesUserKey(t *testing.T) {
 	mock.EXPECT().Upsert(gomock.Any(), gomock.Any()).
 		Return(sampleCalendar(uid), nil).Times(1)
 	kv := newMemKV()
-	repo := NewCachedCalendarRepo(mock, kv, 0, nil, func() time.Time { return today })
+	repo := NewCachedCalendarRepo(mock, kv, 0, testLog(), func() time.Time { return today })
 	if _, err := repo.GetActive(context.Background(), uid, today); err != nil {
 		t.Fatal(err)
 	}
@@ -614,7 +625,7 @@ func TestCachedCalendarRepo_GetActive_SingleflightCollapsesConcurrent(t *testing
 			time.Sleep(20 * time.Millisecond)
 			return sampleCalendar(uid), nil
 		}).Times(1)
-	repo := NewCachedCalendarRepo(mock, newMemKV(), 0, nil, func() time.Time { return today })
+	repo := NewCachedCalendarRepo(mock, newMemKV(), 0, testLog(), func() time.Time { return today })
 
 	const N = 50
 	var wg sync.WaitGroup
@@ -630,7 +641,7 @@ func TestCachedCalendarRepo_GetActive_SingleflightCollapsesConcurrent(t *testing
 
 func TestCachedCalendarRepo_DefaultsApplied(t *testing.T) {
 	t.Parallel()
-	repo := NewCachedCalendarRepo(nil, newMemKV(), 0, nil, nil)
+	repo := NewCachedCalendarRepo(nil, newMemKV(), 0, testLog(), nil)
 	if repo.ttl != DefaultCalendarTTL {
 		t.Fatalf("default TTL not applied: %s", repo.ttl)
 	}

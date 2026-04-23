@@ -28,10 +28,10 @@ type HHParser struct {
 	maxPages int
 }
 
-// NewHH constructs the default HH parser.
+// NewHH constructs the default HH parser. log is required (anti-fallback policy).
 func NewHH(log *slog.Logger) *HHParser {
 	if log == nil {
-		log = slog.New(slog.NewTextHandler(noopWriter{}, nil))
+		panic("vacancies.parsers.NewHH: logger is required (anti-fallback policy: no silent noop loggers)")
 	}
 	return &HHParser{client: hhapi.New(), log: log, maxPages: 3}
 }

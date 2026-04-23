@@ -57,21 +57,21 @@ function FriendCard({
   const { t } = useTranslation('pages')
   const initial = (f.display_name || f.username || '?').charAt(0).toUpperCase()
   const tier = f.tier || t('friends.tier_unranked', 'Unranked')
-  const status = f.online ? t('friends.online') : f.last_match_at ? new Date(f.last_match_at).toLocaleDateString() : t('friends.never_played', 'Не играли')
+  // Anti-fallback: f.online removed (no presence service). Status derives
+  // from last_match_at only.
+  const status = f.last_match_at
+    ? new Date(f.last_match_at).toLocaleDateString()
+    : t('friends.never_played', 'Не играли')
   return (
-    <Card className={`flex-col gap-3 p-5 ${f.online ? '' : 'opacity-70'}`}>
+    <Card className="flex-col gap-3 p-5">
       <div className="flex items-center gap-3">
-        <Avatar size="lg" gradient={hashGradient(f.user_id)} initials={initial} status={f.online ? 'online' : 'offline'} />
+        <Avatar size="lg" gradient={hashGradient(f.user_id)} initials={initial} />
         <div className="flex flex-1 flex-col gap-0.5">
           <span className="font-display text-sm font-bold text-text-primary">@{f.username}</span>
           <span className="font-mono text-[11px] text-text-muted">{tier}</span>
         </div>
       </div>
-      <span
-        className={`inline-flex w-fit items-center rounded-full px-2.5 py-1 font-mono text-[10px] font-semibold ${
-          f.online ? 'bg-accent/15 text-accent-hover' : 'bg-surface-2 text-text-muted'
-        }`}
-      >
+      <span className="inline-flex w-fit items-center rounded-full bg-surface-2 px-2.5 py-1 font-mono text-[10px] font-semibold text-text-muted">
         {status}
       </span>
       <div className="flex gap-2">
@@ -207,7 +207,10 @@ function FindByCodeCard() {
   )
 }
 
-type Tab = 'all' | 'online' | 'requests' | 'guild' | 'blocked'
+// Anti-fallback: 'online' tab removed alongside the FriendDTO.online field
+// (no real presence service exists; the AlwaysOffline stub used to show
+// every user as offline anyway).
+type Tab = 'all' | 'requests' | 'guild' | 'blocked'
 
 export default function FriendsPage() {
   const { t } = useTranslation('pages')
@@ -231,15 +234,13 @@ export default function FriendsPage() {
   // Stabilise the accepted reference: `friends.data?.accepted ?? []` would
   // recreate the empty array on every render and break the useMemo deps.
   const accepted = useMemo(() => friends.data?.accepted ?? [], [friends.data?.accepted])
-  const onlineList = useMemo(() => accepted.filter((f) => f.online), [accepted])
-  const offlineList = useMemo(() => accepted.filter((f) => !f.online), [accepted])
   const recentList = useMemo(() => recentSorted(accepted), [accepted])
   const incomingList = incoming.data ?? []
   const suggestionList = suggestions.data ?? []
   const blockedList = blocked.data ?? []
 
+  // Anti-fallback: `online` count removed — no real presence service exists.
   const counts = {
-    online: friends.data?.online_count ?? 0,
     total: friends.data?.total ?? accepted.length,
     requests: incomingList.length,
     guild: 0, // TODO: guild-membership ещё не выставлен в friends API
@@ -254,7 +255,6 @@ export default function FriendsPage() {
   }
 
   const visibleAll = tab === 'all'
-  const visibleOnline = tab === 'online'
   const visibleRequests = tab === 'requests'
   const visibleBlocked = tab === 'blocked'
 
@@ -265,7 +265,7 @@ export default function FriendsPage() {
           <div className="flex flex-col gap-1.5">
             <h1 className="font-display text-2xl lg:text-[32px] font-bold text-text-primary">{t('friends.title')}</h1>
             <p className="text-sm text-text-secondary">
-              {t('friends.summary', { online: counts.online, total: counts.total, requests: counts.requests })}
+              {t('friends.summary', { online: 0, total: counts.total, requests: counts.requests })}
             </p>
             {isError && <ErrorChip />}
           </div>
@@ -288,7 +288,6 @@ export default function FriendsPage() {
         <Tabs variant="pills" value={tab} onChange={(v) => setTab(v as Tab)}>
           <Tabs.List>
             <Tabs.Tab id="all">{t('friends.all')} {counts.total}</Tabs.Tab>
-            <Tabs.Tab id="online">{t('friends.online')} {counts.online}</Tabs.Tab>
             <Tabs.Tab id="requests">
               <span className="inline-flex items-center gap-1.5">
                 {t('friends.requests')} {counts.requests}
@@ -302,29 +301,6 @@ export default function FriendsPage() {
 
         <div className="flex flex-col gap-4 lg:flex-row lg:gap-6">
           <div className="flex flex-1 flex-col gap-6">
-            {(visibleAll || visibleOnline) && (
-              <div className="flex flex-col gap-3">
-                <h2 className="font-display text-lg font-bold text-text-primary">{t('friends.online_now', { n: onlineList.length })}</h2>
-                {friends.isLoading ? (
-                  <CardSkeleton />
-                ) : onlineList.length === 0 ? (
-                  <Card className="p-6 text-sm text-text-secondary">{t('friends.empty_online', 'Никого нет онлайн.')}</Card>
-                ) : (
-                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                    {onlineList.map((f) => (
-                      <FriendCard
-                        key={f.user_id}
-                        f={f}
-                        onChallenge={() => handleChallenge(f.user_id)}
-                        onChat={handleChat}
-                        onUnfriend={() => unfriend.mutate(f.user_id)}
-                      />
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
-
             {visibleAll && (
               <div className="flex flex-col gap-3">
                 <h2 className="font-display text-lg font-bold text-text-primary">{t('friends.recent')}</h2>
@@ -347,23 +323,6 @@ export default function FriendsPage() {
                     ))}
                   </div>
                 )}
-              </div>
-            )}
-
-            {visibleOnline && offlineList.length > 0 && (
-              <div className="flex flex-col gap-3">
-                <h2 className="font-display text-lg font-bold text-text-primary">{t('friends.offline', 'Оффлайн')}</h2>
-                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                  {offlineList.map((f) => (
-                    <FriendCard
-                      key={f.user_id}
-                      f={f}
-                      onChallenge={() => handleChallenge(f.user_id)}
-                      onChat={handleChat}
-                      onUnfriend={() => unfriend.mutate(f.user_id)}
-                    />
-                  ))}
-                </div>
               </div>
             )}
 

@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	friendsApp "druz9/friends/app"
-	friendsDomain "druz9/friends/domain"
 	friendsInfra "druz9/friends/infra"
 	friendsPorts "druz9/friends/ports"
 	sharedDomain "druz9/shared/domain"
@@ -32,15 +31,15 @@ func (a busAdapter) Publish(ctx context.Context, e sharedDomain.Event) error {
 }
 
 // NewFriends wires the friends bounded context: friendships table,
-// friend_codes, кеш ListAccepted в Redis. PresenceProvider — пока
-// AlwaysOffline (presence-модуль ещё не вынесен в общий port'ах,
-// см. comment в bible). Добавим интеграцию когда presence будет.
+// friend_codes, кеш ListAccepted в Redis. Anti-fallback: the AlwaysOffline
+// presence stub was removed — presence is no longer plumbed through. When
+// a real presence module exists, restore PresenceProvider as a separate
+// port and wire it here. Do NOT reintroduce a hard-coded stub.
 func NewFriends(d Deps) *Module {
 	pg := friendsInfra.NewPostgres(d.Pool)
 	codes := friendsInfra.NewCodePostgres(d.Pool, friendsInfra.DefaultCodeTTL)
 	kv := friendsInfra.NewRedisKV(d.Redis)
 	cached := friendsInfra.NewCachedRepo(pg, kv, friendsInfra.DefaultListTTL, d.Log)
-	presence := friendsDomain.AlwaysOffline{}
 
 	bus := busAdapter{b: d.Bus}
 
@@ -51,9 +50,9 @@ func NewFriends(d Deps) *Module {
 	unblock := &friendsApp.UnblockUser{Repo: cached}
 	unfriend := &friendsApp.Unfriend{Repo: cached}
 	myCode := &friendsApp.GetMyCode{Codes: codes}
-	list := &friendsApp.ListFriends{Repo: cached, Presence: presence}
-	incoming := &friendsApp.ListIncoming{Repo: cached, Presence: presence}
-	outgoing := &friendsApp.ListOutgoing{Repo: cached, Presence: presence}
+	list := &friendsApp.ListFriends{Repo: cached}
+	incoming := &friendsApp.ListIncoming{Repo: cached}
+	outgoing := &friendsApp.ListOutgoing{Repo: cached}
 	blocked := &friendsApp.ListBlocked{Repo: cached}
 	suggestions := &friendsApp.ListSuggestions{Repo: cached}
 

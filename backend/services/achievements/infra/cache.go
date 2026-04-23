@@ -1,8 +1,8 @@
 // cache.go — read-through Redis-кеш для UserAchievementRepo.List.
 //
 // Шаблон копирует profile/infra/cache.go: тонкий KV-интерфейс, singleflight,
-// fail-safe Redis (ошибки → fallback, не валим запрос), explicit Invalidate
-// на write-путях.
+// anti-fallback policy (Redis Get errors propagate, Set errors emit
+// cache_set_errors_total), explicit Invalidate на write-путях.
 package infra
 
 import (
@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"druz9/achievements/domain"
+	"druz9/shared/pkg/metrics"
 
 	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
@@ -81,13 +82,13 @@ type CachedRepo struct {
 	sf       singleflight.Group
 }
 
-// NewCachedRepo конструирует cached-обёртку.
+// NewCachedRepo конструирует cached-обёртку. log обязателен (anti-fallback policy).
 func NewCachedRepo(d domain.UserAchievementRepo, kv KV, ttl time.Duration, log *slog.Logger) *CachedRepo {
 	if ttl <= 0 {
 		ttl = DefaultListTTL
 	}
 	if log == nil {
-		log = slog.New(slog.NewTextHandler(discardWriter{}, nil))
+		panic("achievements.infra.NewCachedRepo: logger is required (anti-fallback policy: no silent noop loggers)")
 	}
 	return &CachedRepo{delegate: d, kv: kv, ttl: ttl, log: log}
 }
@@ -116,8 +117,8 @@ func (c *CachedRepo) List(ctx context.Context, uid uuid.UUID) ([]domain.UserAchi
 		c.log.Warn("achievements.cache: corrupt list entry, refreshing",
 			slog.String("key", key))
 	} else if !errors.Is(err, ErrCacheMiss) {
-		c.log.Warn("achievements.cache: redis Get failed, falling back",
-			slog.String("key", key), slog.Any("err", err))
+		// Anti-fallback: real Redis failure propagates.
+		return nil, fmt.Errorf("achievements.cache.List: redis: %w", err)
 	}
 	v, err, _ := c.sf.Do(key, func() (any, error) {
 		return c.delegate.List(ctx, uid)
@@ -131,6 +132,7 @@ func (c *CachedRepo) List(ctx context.Context, uid uuid.UUID) ([]domain.UserAchi
 	}
 	if data, jerr := json.Marshal(out); jerr == nil {
 		if serr := c.kv.Set(ctx, key, data, c.ttl); serr != nil {
+			metrics.CacheSetErrorsTotal.WithLabelValues("achievements").Inc()
 			c.log.Warn("achievements.cache: redis Set failed",
 				slog.String("key", key), slog.Any("err", serr))
 		}
@@ -164,10 +166,5 @@ func (c *CachedRepo) invalidate(ctx context.Context, uid uuid.UUID) {
 			slog.Any("user_id", uid), slog.Any("err", err))
 	}
 }
-
-// discardWriter swallows bytes — default fallback for nil logger.
-type discardWriter struct{}
-
-func (discardWriter) Write(p []byte) (int, error) { return len(p), nil }
 
 var _ domain.UserAchievementRepo = (*CachedRepo)(nil)

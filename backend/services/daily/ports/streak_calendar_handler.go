@@ -34,10 +34,10 @@ type StreakCalendarHandler struct {
 	Log *slog.Logger
 }
 
-// NewStreakCalendarHandler builds the handler with a sane logger fallback.
+// NewStreakCalendarHandler builds the handler. log is required (anti-fallback policy).
 func NewStreakCalendarHandler(uc *app.GetStreakCalendar, log *slog.Logger) *StreakCalendarHandler {
 	if log == nil {
-		log = slog.Default()
+		panic("daily.ports.NewStreakCalendarHandler: log is required (anti-fallback policy: no silent slog.Default fallback)")
 	}
 	return &StreakCalendarHandler{UC: uc, Log: log}
 }

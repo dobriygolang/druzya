@@ -1,15 +1,17 @@
 // Package parsers contains source-specific parser implementations.
 //
 // Each parser maps a single careers site (HH, Yandex, Ozon, T-Bank, VK) onto
-// the domain.Parser contract. Adding a new source means: implement Parser,
-// add a constructor, append to RegisterAll. The hourly sync iterates the
-// returned slice without knowing anything about each source.
+// the domain.Parser contract. Adding a new source means: implement Parser
+// in its own file, add a constructor, append to RegisterAll. The hourly
+// sync iterates the returned slice without knowing anything about each
+// source.
 //
-// Stubs: not every Russian-market careers page exposes a usable JSON or
-// scrapeable HTML structure. Where the page is dynamic enough to make
-// hand-rolled scraping a liability, we ship a stub parser that returns 0
-// vacancies and logs once at construction. The pipeline still works end-to-
-// end and adding a real parser later is a one-file change.
+// Anti-fallback policy: NEVER register a stub parser. A "registered" source
+// that always returns 0 vacancies makes the frontend's filter sidebar
+// promise data that doesn't exist; users blame the search, ops can't tell
+// whether the source genuinely has nothing or our parser is broken. If a
+// careers site can't be scraped, leave it out of the enum + registry until
+// someone implements the real one.
 package parsers
 
 import (
@@ -26,9 +28,12 @@ type Config struct {
 
 // RegisterAll returns every parser the monolith should run. Order is
 // significant only insofar as logs are interleaved.
+//
+// To add a new source: implement Parser interface in own file, append to
+// RegisterAll. NEVER register a stub.
 func RegisterAll(cfg Config) []domain.Parser {
 	if cfg.Log == nil {
-		cfg.Log = slog.New(slog.NewTextHandler(noopWriter{}, nil))
+		panic("vacancies.parsers.RegisterAll: logger is required (anti-fallback policy: no silent noop loggers)")
 	}
 	return []domain.Parser{
 		NewHH(cfg.Log),
@@ -36,21 +41,5 @@ func RegisterAll(cfg Config) []domain.Parser {
 		NewOzon(cfg.Log),
 		NewTinkoff(cfg.Log),
 		NewVK(cfg.Log),
-		// Sber, Avito, Wildberries, MTS, Kaspersky, JetBrains, Lamoda —
-		// stubs for now. They get parser slots in the registry so the
-		// frontend's source filter shows them as "supported", but Fetch
-		// returns 0 until someone wires a real scraper.
-		NewStub(domain.SourceSber, "https://sbergile.ru/", cfg.Log),
-		NewStub(domain.SourceAvito, "https://avito.tech/", cfg.Log),
-		NewStub(domain.SourceWildberries, "https://career.wb.ru/", cfg.Log),
-		NewStub(domain.SourceMTS, "https://job.mts.ru/", cfg.Log),
-		NewStub(domain.SourceKaspersky, "https://career.kaspersky.com/", cfg.Log),
-		NewStub(domain.SourceJetBrains, "https://www.jetbrains.com/careers/", cfg.Log),
-		NewStub(domain.SourceLamoda, "https://lamoda.tech/", cfg.Log),
 	}
 }
-
-// noopWriter is the default sink for nil logger.
-type noopWriter struct{}
-
-func (noopWriter) Write(p []byte) (int, error) { return len(p), nil }

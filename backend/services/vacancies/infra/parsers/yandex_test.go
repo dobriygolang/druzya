@@ -20,7 +20,7 @@ func TestYandexParser_Fetch_FromFixture(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	p := NewYandex(nil).WithBaseURL(srv.URL)
+	p := NewYandex(testLog()).WithBaseURL(srv.URL)
 	got, err := p.Fetch(context.Background())
 	if err != nil {
 		t.Fatalf("Fetch: %v", err)
@@ -39,19 +39,16 @@ func TestYandexParser_Fetch_FromFixture(t *testing.T) {
 	}
 }
 
-func TestYandexParser_NoBlob_ReturnsEmpty(t *testing.T) {
+func TestYandexParser_NoBlob_ReturnsError(t *testing.T) {
 	t.Parallel()
+	// fallbacks were removed deliberately — schema surprises propagate.
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = w.Write([]byte("<html><body>plain page</body></html>"))
 	}))
 	defer srv.Close()
 
-	p := NewYandex(nil).WithBaseURL(srv.URL)
-	got, err := p.Fetch(context.Background())
-	if err != nil {
-		t.Fatalf("Fetch: %v", err)
-	}
-	if len(got) != 0 {
-		t.Errorf("want empty, got %d items", len(got))
+	p := NewYandex(testLog()).WithBaseURL(srv.URL)
+	if _, err := p.Fetch(context.Background()); err == nil {
+		t.Fatalf("expected error when __NEXT_DATA__ blob is absent, got nil")
 	}
 }

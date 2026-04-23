@@ -26,7 +26,7 @@ import { useTranslation } from 'react-i18next'
 import {
   pollTelegramAuth,
   startTelegramAuth,
-  persistAccessToken,
+  persistAuthTokens,
   type TelegramStartResponse,
 } from '../lib/queries/auth'
 
@@ -51,7 +51,13 @@ export default function LoginPage() {
   const navigate = useNavigate()
   const [params] = useSearchParams()
   const nextHref = params.get('next') ?? '/sanctum'
-  const [error, setError] = useState<string | null>(null)
+  // ?reason=expired — выставляется apiClient'ом после неудачного refresh,
+  // чтобы пользователь увидел осмысленное сообщение, а не «просто кинуло
+  // на логин».
+  const sessionExpired = params.get('reason') === 'expired'
+  const [error, setError] = useState<string | null>(
+    sessionExpired ? 'Сессия истекла, переавторизуйтесь.' : null,
+  )
   const [tgFlow, setTgFlow] = useState<TelegramStartResponse | null>(null)
   const [tgPolling, setTgPolling] = useState(false)
   const [tgStarting, setTgStarting] = useState(false)
@@ -83,7 +89,11 @@ export default function LoginPage() {
       }
       stopPolling()
       if (result.kind === 'ok') {
-        persistAccessToken(result.access_token)
+        persistAuthTokens({
+          access_token: result.access_token,
+          refresh_token: result.refresh_token,
+          expires_in: result.expires_in,
+        })
         const dest = result.is_new_user ? '/onboarding' : nextHref
         navigate(dest, { replace: true })
         return

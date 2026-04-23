@@ -35,6 +35,43 @@ export type ArenaLanguageKey =
   | 'typescript'
   | 'sql'
 
+// Neural-model preference for the AI opponent / AI helper. This is purely a
+// client-side preference for now: the backend ArenaService doesn't have a
+// `neural_model` field on FindMatchRequest yet, so the value is persisted to
+// localStorage and forwarded as an extra request body field. The transcoder
+// drops unknown fields silently, so this is safe (bible §11 — no leakage,
+// just a hint for future server-side AI dispatch).
+export type NeuralModelKey = 'random' | 'llama3' | 'claude' | 'gpt4'
+
+export const NEURAL_MODELS: NeuralModelKey[] = ['random', 'llama3', 'claude', 'gpt4']
+
+const NEURAL_MODEL_STORAGE_KEY = 'druz9.arena.neural_model'
+
+export function loadNeuralModel(): NeuralModelKey {
+  try {
+    const raw =
+      typeof window !== 'undefined'
+        ? window.localStorage.getItem(NEURAL_MODEL_STORAGE_KEY)
+        : null
+    if (raw && (NEURAL_MODELS as string[]).includes(raw)) {
+      return raw as NeuralModelKey
+    }
+  } catch {
+    /* localStorage unavailable (SSR/private mode) — fall through to default. */
+  }
+  return 'random'
+}
+
+export function saveNeuralModel(key: NeuralModelKey): void {
+  try {
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem(NEURAL_MODEL_STORAGE_KEY, key)
+    }
+  } catch {
+    /* swallow — model still works in-memory for the rest of the session. */
+  }
+}
+
 const SECTION_PROTO: Record<SectionKey, string> = {
   algorithms: 'SECTION_ALGORITHMS',
   sql: 'SECTION_SQL',
@@ -125,6 +162,13 @@ export function useArenaMatchQuery(id: string | undefined) {
 export type FindMatchInput = {
   section: SectionKey
   mode: ArenaModeKey
+  /**
+   * Hint for which neural model should drive the AI opponent / helper.
+   * The current backend transcoder ignores unknown fields; once the proto
+   * gains a `neural_model` field this body key will start being honoured
+   * server-side without a frontend change.
+   */
+  neuralModel?: NeuralModelKey
 }
 
 export function useFindMatchMutation() {
@@ -135,6 +179,7 @@ export function useFindMatchMutation() {
         body: JSON.stringify({
           section: SECTION_PROTO[input.section],
           mode: MODE_PROTO[input.mode],
+          ...(input.neuralModel ? { neural_model: input.neuralModel } : {}),
         }),
       }),
   })
@@ -196,3 +241,36 @@ export const ARENA_MODES: { key: ArenaModeKey; section: SectionKey }[] = [
   { key: 'hardcore', section: 'algorithms' },
   { key: 'cursed', section: 'algorithms' },
 ]
+
+// ── Practice mode ─────────────────────────────────────────────────────────
+//
+// The practice endpoint is a chi-direct REST route (NOT the Connect
+// transcoder) — see `backend/services/arena/ports/practice.go` for the
+// rationale. It creates an instant single-player match with the chosen
+// neural-model AI as the simulated opponent and returns the match_id; the
+// caller navigates straight to /arena/match/:id.
+
+export type StartPracticeInput = {
+  section: SectionKey
+  neuralModel?: NeuralModelKey
+}
+
+export type StartPracticeResponse = {
+  match_id: string
+  opponent_label: string
+  status: string
+  started_at: string
+}
+
+export function useStartPracticeMutation() {
+  return useMutation({
+    mutationFn: (input: StartPracticeInput) =>
+      api<StartPracticeResponse>('/arena/practice', {
+        method: 'POST',
+        body: JSON.stringify({
+          section: input.section,
+          neural_model: input.neuralModel ?? 'random',
+        }),
+      }),
+  })
+}

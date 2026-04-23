@@ -36,7 +36,7 @@ func TestExtractor_HappyPath_PromptAndParse(t *testing.T) {
 	defer srv.Close()
 
 	kv := newMemKV()
-	e := NewOpenRouterExtractor("sk-test", kv, nil).WithEndpoint(srv.URL)
+	e := NewOpenRouterExtractor("sk-test", kv, testLog()).WithEndpoint(srv.URL)
 	skills, err := e.Extract(context.Background(), "Looking for senior Go dev")
 	if err != nil {
 		t.Fatalf("Extract: %v", err)
@@ -65,7 +65,7 @@ func TestExtractor_CacheHit_SkipsHTTP(t *testing.T) {
 	defer srv.Close()
 
 	kv := newMemKV()
-	e := NewOpenRouterExtractor("sk-test", kv, nil).WithEndpoint(srv.URL)
+	e := NewOpenRouterExtractor("sk-test", kv, testLog()).WithEndpoint(srv.URL)
 	desc := "same description here"
 	_, _ = e.Extract(context.Background(), desc)
 	_, _ = e.Extract(context.Background(), desc)
@@ -74,15 +74,13 @@ func TestExtractor_CacheHit_SkipsHTTP(t *testing.T) {
 	}
 }
 
-func TestExtractor_NoAPIKey_ReturnsEmptyNoError(t *testing.T) {
+func TestExtractor_NoAPIKey_ReturnsError(t *testing.T) {
 	t.Parallel()
-	e := NewOpenRouterExtractor("", nil, nil)
-	out, err := e.Extract(context.Background(), "anything")
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
-	if len(out) != 0 {
-		t.Errorf("want empty, got %v", out)
+	// fallbacks were removed deliberately — empty API key now returns an
+	// error so misconfigured envs don't silently write empty skills.
+	e := NewOpenRouterExtractor("", nil, testLog())
+	if _, err := e.Extract(context.Background(), "anything"); err == nil {
+		t.Fatalf("expected error when API key is empty, got nil")
 	}
 }
 
@@ -92,7 +90,7 @@ func TestExtractor_MalformedJSONFallback(t *testing.T) {
 		_, _ = w.Write([]byte(`{"choices":[{"message":{"content":"go, postgresql, redis"}}]}`))
 	}))
 	defer srv.Close()
-	e := NewOpenRouterExtractor("sk-test", nil, nil).WithEndpoint(srv.URL)
+	e := NewOpenRouterExtractor("sk-test", nil, testLog()).WithEndpoint(srv.URL)
 	skills, _ := e.Extract(context.Background(), "x")
 	if !contains(skills, "go") || !contains(skills, "redis") {
 		t.Errorf("fallback parser missed tags: %v", skills)
@@ -105,7 +103,7 @@ func TestExtractor_FencedJSON(t *testing.T) {
 		_, _ = w.Write([]byte("{\"choices\":[{\"message\":{\"content\":\"```json\\n[\\\"go\\\",\\\"redis\\\"]\\n```\"}}]}"))
 	}))
 	defer srv.Close()
-	e := NewOpenRouterExtractor("sk-test", nil, nil).WithEndpoint(srv.URL)
+	e := NewOpenRouterExtractor("sk-test", nil, testLog()).WithEndpoint(srv.URL)
 	skills, _ := e.Extract(context.Background(), "x")
 	if !contains(skills, "go") || !contains(skills, "redis") {
 		t.Errorf("fenced parser failed: %v", skills)

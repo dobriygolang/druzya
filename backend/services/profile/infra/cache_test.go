@@ -3,6 +3,8 @@ package infra
 import (
 	"context"
 	"errors"
+	"io"
+	"log/slog"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -14,6 +16,13 @@ import (
 	"github.com/google/uuid"
 	"go.uber.org/mock/gomock"
 )
+
+// testLog returns an explicit discard logger for unit tests. We pass this
+// rather than nil because constructors now panic on nil log (anti-fallback
+// policy) — see NewCachedRepo.
+func testLog() *slog.Logger {
+	return slog.New(slog.NewTextHandler(io.Discard, nil))
+}
 
 // memKV is an in-memory KV that mimics Redis enough for cache_test. It
 // supports TTL expiry on Get and an injectable failure mode for the redis-
@@ -112,7 +121,7 @@ func TestCachedRepo_GetByUserID_MissThenHit(t *testing.T) {
 	mock.EXPECT().GetByUserID(gomock.Any(), uid).Return(want, nil).Times(1)
 
 	kv := newMemKV()
-	repo := NewCachedRepo(mock, kv, time.Minute, nil)
+	repo := NewCachedRepo(mock, kv, time.Minute, testLog())
 
 	got1, err := repo.GetByUserID(context.Background(), uid)
 	if err != nil {
@@ -143,7 +152,7 @@ func TestCachedRepo_GetByUserID_UpstreamErrorPropagates(t *testing.T) {
 	mock.EXPECT().GetByUserID(gomock.Any(), uid).Return(domain.Bundle{}, wantErr)
 
 	kv := newMemKV()
-	repo := NewCachedRepo(mock, kv, time.Minute, nil)
+	repo := NewCachedRepo(mock, kv, time.Minute, testLog())
 
 	_, err := repo.GetByUserID(context.Background(), uid)
 	if !errors.Is(err, wantErr) {
@@ -159,7 +168,7 @@ func TestCachedRepo_GetByUserID_NotFound(t *testing.T) {
 	mock.EXPECT().GetByUserID(gomock.Any(), uid).Return(domain.Bundle{}, domain.ErrNotFound)
 
 	kv := newMemKV()
-	repo := NewCachedRepo(mock, kv, time.Minute, nil)
+	repo := NewCachedRepo(mock, kv, time.Minute, testLog())
 
 	_, err := repo.GetByUserID(context.Background(), uid)
 	if !errors.Is(err, domain.ErrNotFound) {
@@ -180,7 +189,7 @@ func TestCachedRepo_TTLExpiry(t *testing.T) {
 	kv := newMemKV()
 	now := time.Now()
 	kv.now = func() time.Time { return now }
-	repo := NewCachedRepo(mock, kv, time.Second, nil)
+	repo := NewCachedRepo(mock, kv, time.Second, testLog())
 
 	if _, err := repo.GetByUserID(context.Background(), uid); err != nil {
 		t.Fatal(err)
@@ -193,24 +202,26 @@ func TestCachedRepo_TTLExpiry(t *testing.T) {
 	}
 }
 
-func TestCachedRepo_RedisGetFailureFallsBack(t *testing.T) {
+func TestCachedRepo_RedisGetFailurePropagates(t *testing.T) {
 	t.Parallel()
+	// fallbacks were removed deliberately — Redis is required, errors propagate.
+	// Previously this test asserted the cache silently fell back to upstream;
+	// that behaviour was hiding Redis outages from ops.
 	ctrl := gomock.NewController(t)
 	mock := mocks.NewMockProfileRepo(ctrl)
 	uid := uuid.New()
-	mock.EXPECT().GetByUserID(gomock.Any(), uid).Return(newBundle(uid, "carol"), nil)
+	// Upstream MUST NOT be called if Redis Get blew up — caller decides whether
+	// to degrade.
 
 	kv := newMemKV()
 	kv.failGet = true
-	repo := NewCachedRepo(mock, kv, time.Minute, nil)
+	repo := NewCachedRepo(mock, kv, time.Minute, testLog())
 
-	got, err := repo.GetByUserID(context.Background(), uid)
-	if err != nil {
-		t.Fatalf("expected fallback to succeed, got: %v", err)
+	_, err := repo.GetByUserID(context.Background(), uid)
+	if err == nil {
+		t.Fatalf("expected error when Redis Get fails, got nil")
 	}
-	if got.User.Username != "carol" {
-		t.Fatalf("got %+v", got)
-	}
+	_ = ctrl // silence unused-mock checker if any
 }
 
 func TestCachedRepo_Invalidate(t *testing.T) {
@@ -221,7 +232,7 @@ func TestCachedRepo_Invalidate(t *testing.T) {
 	mock.EXPECT().GetByUserID(gomock.Any(), uid).Return(newBundle(uid, "dave"), nil).Times(2)
 
 	kv := newMemKV()
-	repo := NewCachedRepo(mock, kv, time.Minute, nil)
+	repo := NewCachedRepo(mock, kv, time.Minute, testLog())
 
 	if _, err := repo.GetByUserID(context.Background(), uid); err != nil {
 		t.Fatal(err)
@@ -252,7 +263,7 @@ func TestCachedRepo_GetPublic_MissThenHit(t *testing.T) {
 	mock.EXPECT().GetPublic(gomock.Any(), "eve").Return(pub, nil).Times(1)
 
 	kv := newMemKV()
-	repo := NewCachedRepo(mock, kv, time.Minute, nil)
+	repo := NewCachedRepo(mock, kv, time.Minute, testLog())
 
 	if _, err := repo.GetPublic(context.Background(), "eve"); err != nil {
 		t.Fatal(err)
@@ -270,7 +281,7 @@ func TestCachedRepo_GetPublic_NotFound(t *testing.T) {
 	mock.EXPECT().GetPublic(gomock.Any(), "ghost").Return(domain.PublicBundle{}, domain.ErrNotFound)
 
 	kv := newMemKV()
-	repo := NewCachedRepo(mock, kv, time.Minute, nil)
+	repo := NewCachedRepo(mock, kv, time.Minute, testLog())
 
 	if _, err := repo.GetPublic(context.Background(), "ghost"); !errors.Is(err, domain.ErrNotFound) {
 		t.Fatalf("want ErrNotFound, got %v", err)
@@ -287,7 +298,7 @@ func TestCachedRepo_WriteThroughInvalidatesAfterUpdateSettings(t *testing.T) {
 	mock.EXPECT().UpdateSettings(gomock.Any(), uid, gomock.Any()).Return(nil)
 
 	kv := newMemKV()
-	repo := NewCachedRepo(mock, kv, time.Minute, nil)
+	repo := NewCachedRepo(mock, kv, time.Minute, testLog())
 
 	if _, err := repo.GetByUserID(context.Background(), uid); err != nil {
 		t.Fatal(err)
@@ -323,7 +334,7 @@ func TestCachedRepo_ConcurrentColdReadCollapsed(t *testing.T) {
 		}).MaxTimes(50) // upper bound; we assert exact count below.
 
 	kv := newMemKV()
-	repo := NewCachedRepo(mock, kv, time.Minute, nil)
+	repo := NewCachedRepo(mock, kv, time.Minute, testLog())
 
 	const N = 50
 	var wg sync.WaitGroup
@@ -363,7 +374,7 @@ func TestCachedRepo_UncachedPassthroughs(t *testing.T) {
 	mock.EXPECT().UpdateCareerStage(gomock.Any(), uid, domain.CareerStageMiddle).Return(nil)
 
 	kv := newMemKV()
-	repo := NewCachedRepo(mock, kv, time.Minute, nil)
+	repo := NewCachedRepo(mock, kv, time.Minute, testLog())
 	ctx := context.Background()
 
 	if _, err := repo.ListRatings(ctx, uid); err != nil {
@@ -391,7 +402,7 @@ func TestCachedRepo_UncachedPassthroughs(t *testing.T) {
 
 func TestCachedRepo_DefaultTTLApplied(t *testing.T) {
 	t.Parallel()
-	repo := NewCachedRepo(nil, newMemKV(), 0, nil)
+	repo := NewCachedRepo(nil, newMemKV(), 0, testLog())
 	if repo.ttl != DefaultProfileCacheTTL {
 		t.Fatalf("expected default TTL %v, got %v", DefaultProfileCacheTTL, repo.ttl)
 	}

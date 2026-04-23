@@ -220,6 +220,12 @@ export class ArenaParticipant extends Message {
 /**
  * ArenaMatch mirrors OpenAPI ArenaMatch.
  *
+ * 2v2 NOTE (Phase 5): for duo matches, winner_user_id is left empty and the
+ * frontend infers the winning team by reading the per-participant
+ * submitted_at + team. The next proto bump will add a dedicated
+ * winning_team_id field; we postpone the proto edit to keep the wire format
+ * stable for in-flight clients during the rollout.
+ *
  * @generated from message druz9.v1.ArenaMatch
  */
 export class ArenaMatch extends Message {
@@ -261,13 +267,6 @@ export class ArenaMatch extends Message {
      * @generated from field: string winner_user_id = 9;
      */
     winnerUserId = "";
-    /**
-     * winning_team_id — set for finished 2v2 matches (1 or 2). 0 means either
-     * a 1v1 match (use winner_user_id) or a duo draw / unfinished match.
-     *
-     * @generated from field: int32 winning_team_id = 10;
-     */
-    winningTeamId = 0;
     constructor(data) {
         super();
         proto3.util.initPartial(data, this);
@@ -284,7 +283,6 @@ export class ArenaMatch extends Message {
         { no: 7, name: "started_at", kind: "message", T: Timestamp },
         { no: 8, name: "finished_at", kind: "message", T: Timestamp },
         { no: 9, name: "winner_user_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
-        { no: 10, name: "winning_team_id", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
     ]);
     static fromBinary(bytes, options) {
         return new ArenaMatch().fromBinary(bytes, options);

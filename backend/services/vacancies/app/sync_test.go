@@ -3,11 +3,20 @@ package app
 import (
 	"context"
 	"errors"
+	"io"
+	"log/slog"
 	"sync"
 	"testing"
 
 	"druz9/vacancies/domain"
 )
+
+// testLog returns a no-op logger acceptable to constructors that demand a
+// non-nil *slog.Logger (anti-fallback policy: production constructors panic
+// on nil; tests use io.Discard explicitly to make their silence intentional).
+func testLog() *slog.Logger {
+	return slog.New(slog.NewTextHandler(io.Discard, nil))
+}
 
 // stubParser fixed-returns a slice for one source.
 type stubParser struct {
@@ -112,7 +121,7 @@ func TestSyncJob_Upsert_Idempotent(t *testing.T) {
 			{Source: domain.SourceHH, ExternalID: "2", Title: "T2", Description: "d2"},
 		},
 	}
-	job := &SyncJob{Parsers: []domain.Parser{parser}, Repo: repo, Extractor: ext}
+	job := &SyncJob{Parsers: []domain.Parser{parser}, Repo: repo, Extractor: ext, Log: testLog()}
 	job.RunOnce(context.Background())
 	if repo.upserts != 2 {
 		t.Errorf("upserts = %d, want 2", repo.upserts)
@@ -138,6 +147,7 @@ func TestSyncJob_ParserFailureContinues(t *testing.T) {
 			}},
 		},
 		Repo: repo,
+		Log:  testLog(),
 	}
 	job.RunOnce(context.Background())
 	if len(repo.store) != 1 {

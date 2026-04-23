@@ -27,11 +27,11 @@ type Handler struct {
 	Log       *slog.Logger
 }
 
-// NewHandler возвращает копию с подложенным slog.Default(), если nil.
+// NewHandler возвращает копию. Log обязателен (anti-fallback policy).
 func NewHandler(in Handler) *Handler {
 	h := in
 	if h.Log == nil {
-		h.Log = slog.Default()
+		panic("achievements.ports.NewHandler: Log is required (anti-fallback policy: no silent slog.Default fallback)")
 	}
 	return &h
 }

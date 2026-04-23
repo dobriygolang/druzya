@@ -7,7 +7,9 @@
 //   - Tiny KV interface (Get/Set/Del) injected at construction so tests
 //     don't need miniredis;
 //   - singleflight collapses concurrent misses for the same uid;
-//   - Redis errors NEVER fail a request — we log and fall back to upstream;
+//   - Anti-fallback policy: Redis Get failures propagate as real errors;
+//     Set failures emit cache_set_errors_total so ops can alert without
+//     failing the read (we already have the value from upstream).
 //   - Update forwards to the delegate then Invalidate(uid). The use case
 //     SubmitKata calls StreakRepo.Update on success, so cache freshness is
 //     sub-second on writes.
@@ -34,6 +36,7 @@ import (
 	"time"
 
 	"druz9/daily/domain"
+	"druz9/shared/pkg/metrics"
 
 	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
@@ -110,14 +113,14 @@ type CachedStreakRepo struct {
 // Compile-time: satisfies domain.StreakRepo so wiring is a one-line swap.
 var _ domain.StreakRepo = (*CachedStreakRepo)(nil)
 
-// NewCachedStreakRepo wraps delegate. Defaults: TTL = DefaultStreakTTL,
-// log = discard.
+// NewCachedStreakRepo wraps delegate. Defaults: TTL = DefaultStreakTTL.
+// log is required (anti-fallback policy).
 func NewCachedStreakRepo(delegate domain.StreakRepo, kv KV, ttl time.Duration, log *slog.Logger) *CachedStreakRepo {
 	if ttl <= 0 {
 		ttl = DefaultStreakTTL
 	}
 	if log == nil {
-		log = slog.New(slog.NewTextHandler(discardWriter{}, nil))
+		panic("daily.infra.NewCachedStreakRepo: logger is required (anti-fallback policy: no silent noop loggers)")
 	}
 	return &CachedStreakRepo{delegate: delegate, kv: kv, ttl: ttl, log: log}
 }
@@ -133,8 +136,8 @@ func (c *CachedStreakRepo) Get(ctx context.Context, userID uuid.UUID) (domain.St
 		c.log.Warn("daily.cache: corrupt streak entry, refreshing",
 			slog.String("key", key))
 	} else if !errors.Is(err, ErrCacheMiss) {
-		c.log.Warn("daily.cache: redis Get failed, falling back",
-			slog.String("key", key), slog.Any("err", err))
+		// Anti-fallback: real Redis failure propagates.
+		return domain.StreakState{}, fmt.Errorf("daily.cache.Get: redis: %w", err)
 	}
 	v, err, _ := c.sf.Do(key, func() (any, error) {
 		return c.delegate.Get(ctx, userID)
@@ -148,6 +151,7 @@ func (c *CachedStreakRepo) Get(ctx context.Context, userID uuid.UUID) (domain.St
 	}
 	if data, jerr := json.Marshal(s); jerr == nil {
 		if serr := c.kv.Set(ctx, key, data, c.ttl); serr != nil {
+			metrics.CacheSetErrorsTotal.WithLabelValues("daily_streak").Inc()
 			c.log.Warn("daily.cache: redis Set failed",
 				slog.String("key", key), slog.Any("err", serr))
 		}
@@ -172,11 +176,6 @@ func (c *CachedStreakRepo) Invalidate(ctx context.Context, userID uuid.UUID) {
 			slog.Any("user_id", userID), slog.Any("err", err))
 	}
 }
-
-// discardWriter swallows all bytes — slog default sink when nil.
-type discardWriter struct{}
-
-func (discardWriter) Write(p []byte) (int, error) { return len(p), nil }
 
 // ── KataRepo cache ────────────────────────────────────────────────────────
 
@@ -229,13 +228,14 @@ type CachedKataRepo struct {
 // Compile-time: satisfies domain.KataRepo.
 var _ domain.KataRepo = (*CachedKataRepo)(nil)
 
-// NewCachedKataRepo wraps delegate. now defaults to time.Now if nil.
+// NewCachedKataRepo wraps delegate. now defaults to time.Now if nil. log
+// is required (anti-fallback policy).
 func NewCachedKataRepo(delegate domain.KataRepo, kv KV, minTTL time.Duration, log *slog.Logger, now func() time.Time) *CachedKataRepo {
 	if minTTL <= 0 {
 		minTTL = DefaultKataMinTTL
 	}
 	if log == nil {
-		log = slog.New(slog.NewTextHandler(discardWriter{}, nil))
+		panic("daily.infra.NewCachedKataRepo: logger is required (anti-fallback policy: no silent noop loggers)")
 	}
 	if now == nil {
 		now = time.Now
@@ -275,8 +275,8 @@ func (c *CachedKataRepo) HistoryLast30(ctx context.Context, userID uuid.UUID, to
 		}
 		c.log.Warn("daily.cache: corrupt kata history entry, refreshing", slog.String("key", key))
 	} else if !errors.Is(err, ErrCacheMiss) {
-		c.log.Warn("daily.cache: redis Get failed, falling back",
-			slog.String("key", key), slog.Any("err", err))
+		// Anti-fallback: real Redis failure propagates.
+		return nil, fmt.Errorf("daily.cache.HistoryLast30: redis: %w", err)
 	}
 	v, err, _ := c.sf.Do(key, func() (any, error) {
 		return c.delegate.HistoryLast30(ctx, userID, today)
@@ -291,6 +291,7 @@ func (c *CachedKataRepo) HistoryLast30(ctx context.Context, userID uuid.UUID, to
 	if data, jerr := json.Marshal(out); jerr == nil {
 		ttl := timeUntilNextUTCMidnight(c.now(), c.minTTL)
 		if serr := c.kv.Set(ctx, key, data, ttl); serr != nil {
+			metrics.CacheSetErrorsTotal.WithLabelValues("daily_kata").Inc()
 			c.log.Warn("daily.cache: redis Set failed",
 				slog.String("key", key), slog.Any("err", serr))
 		}
@@ -336,8 +337,8 @@ func (c *CachedKataRepo) HistoryByYear(ctx context.Context, userID uuid.UUID, ye
 		}
 		c.log.Warn("daily.cache: corrupt kata-year entry, refreshing", slog.String("key", key))
 	} else if !errors.Is(err, ErrCacheMiss) {
-		c.log.Warn("daily.cache: redis Get kata-year failed, falling back",
-			slog.String("key", key), slog.Any("err", err))
+		// Anti-fallback: real Redis failure propagates.
+		return nil, fmt.Errorf("daily.cache.HistoryByYear: redis: %w", err)
 	}
 	v, err, _ := c.sf.Do(key, func() (any, error) {
 		return c.delegate.HistoryByYear(ctx, userID, year)
@@ -351,6 +352,7 @@ func (c *CachedKataRepo) HistoryByYear(ctx context.Context, userID uuid.UUID, ye
 	}
 	if data, jerr := json.Marshal(out); jerr == nil {
 		if serr := c.kv.Set(ctx, key, data, DefaultKataYearTTL); serr != nil {
+			metrics.CacheSetErrorsTotal.WithLabelValues("daily_kata_year").Inc()
 			c.log.Warn("daily.cache: redis Set kata-year failed",
 				slog.String("key", key), slog.Any("err", serr))
 		}
@@ -380,12 +382,13 @@ type CachedCalendarRepo struct {
 var _ domain.CalendarRepo = (*CachedCalendarRepo)(nil)
 
 // NewCachedCalendarRepo wraps delegate. now defaults to time.Now if nil.
+// log is required (anti-fallback policy).
 func NewCachedCalendarRepo(delegate domain.CalendarRepo, kv KV, ttl time.Duration, log *slog.Logger, now func() time.Time) *CachedCalendarRepo {
 	if ttl <= 0 {
 		ttl = DefaultCalendarTTL
 	}
 	if log == nil {
-		log = slog.New(slog.NewTextHandler(discardWriter{}, nil))
+		panic("daily.infra.NewCachedCalendarRepo: logger is required (anti-fallback policy: no silent noop loggers)")
 	}
 	if now == nil {
 		now = time.Now
@@ -414,8 +417,8 @@ func (c *CachedCalendarRepo) GetActive(ctx context.Context, userID uuid.UUID, to
 		}
 		c.log.Warn("daily.cache: corrupt calendar entry, refreshing", slog.String("key", key))
 	} else if !errors.Is(err, ErrCacheMiss) {
-		c.log.Warn("daily.cache: redis Get failed, falling back",
-			slog.String("key", key), slog.Any("err", err))
+		// Anti-fallback: real Redis failure propagates.
+		return domain.InterviewCalendar{}, fmt.Errorf("daily.cache.GetActive: redis: %w", err)
 	}
 	v, err, _ := c.sf.Do(key, func() (any, error) {
 		got, gerr := c.delegate.GetActive(ctx, userID, today)
@@ -439,6 +442,7 @@ func (c *CachedCalendarRepo) GetActive(ctx context.Context, userID uuid.UUID, to
 	}
 	if data, jerr := json.Marshal(env); jerr == nil {
 		if serr := c.kv.Set(ctx, key, data, c.ttl); serr != nil {
+			metrics.CacheSetErrorsTotal.WithLabelValues("daily_calendar").Inc()
 			c.log.Warn("daily.cache: redis Set failed",
 				slog.String("key", key), slog.Any("err", serr))
 		}

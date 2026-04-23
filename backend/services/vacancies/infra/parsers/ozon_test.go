@@ -20,7 +20,7 @@ func TestOzonParser_Fetch_FromFixture(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	p := NewOzon(nil).WithBaseURL(srv.URL)
+	p := NewOzon(testLog()).WithBaseURL(srv.URL)
 	got, err := p.Fetch(context.Background())
 	if err != nil {
 		t.Fatalf("Fetch: %v", err)

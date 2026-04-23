@@ -5,20 +5,23 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '../apiClient'
 
+// FriendDTO — anti-fallback policy removed `online` (no real presence
+// service exists; the backend AlwaysOffline stub always reported false).
+// FriendsPage now infers status purely from last_match_at. When real
+// presence ships, add the field back here AND wire a real provider on
+// the backend — do NOT reintroduce a hard-coded fallback.
 export type FriendDTO = {
   user_id: string
   username: string
   display_name: string
   avatar_url: string
   tier: string
-  online: boolean
   last_match_at: string | null
   friendship_id?: number
 }
 
 export type FriendsListResponse = {
   accepted: FriendDTO[]
-  online_count: number
   total: number
 }
 

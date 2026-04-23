@@ -35,11 +35,11 @@ type Handler struct {
 	Log         *slog.Logger
 }
 
-// NewHandler копия с дефолтами.
+// NewHandler копия. Log обязателен (anti-fallback policy).
 func NewHandler(in Handler) *Handler {
 	h := in
 	if h.Log == nil {
-		h.Log = slog.Default()
+		panic("friends.ports.NewHandler: Log is required (anti-fallback policy: no silent slog.Default fallback)")
 	}
 	return &h
 }
@@ -61,13 +61,17 @@ func (h *Handler) Mount(r chi.Router) {
 }
 
 // friendResponse — общая JSON-форма для друга/incoming/outgoing/etc.
+//
+// Anti-fallback: the `online` field was removed from the JSON contract.
+// There is no real presence service — the previous AlwaysOffline stub was
+// always shipping `false`. The frontend's online-now section was unused
+// noise; FriendsPage now derives status purely from last_match_at.
 type friendResponse struct {
 	UserID       string     `json:"user_id"`
 	Username     string     `json:"username"`
 	DisplayName  string     `json:"display_name"`
 	AvatarURL    string     `json:"avatar_url"`
 	Tier         string     `json:"tier"`
-	Online       bool       `json:"online"`
 	LastMatchAt  *time.Time `json:"last_match_at"`
 	FriendshipID int64      `json:"friendship_id,omitempty"`
 }
@@ -79,7 +83,6 @@ func toFriendResponse(d friendsApp.FriendDTO) friendResponse {
 		DisplayName:  d.DisplayName,
 		AvatarURL:    d.AvatarURL,
 		Tier:         d.Tier,
-		Online:       d.Online,
 		LastMatchAt:  d.LastMatchAt,
 		FriendshipID: d.FriendshipID,
 	}
@@ -97,14 +100,13 @@ func (h *Handler) handleList(w http.ResponseWriter, r *http.Request) {
 		writeJSONError(w, http.StatusInternalServerError, "internal error")
 		return
 	}
+	// Anti-fallback: online_count removed (no presence service exists).
 	out := struct {
-		Accepted    []friendResponse `json:"accepted"`
-		OnlineCount int              `json:"online_count"`
-		Total       int              `json:"total"`
+		Accepted []friendResponse `json:"accepted"`
+		Total    int              `json:"total"`
 	}{
-		Accepted:    make([]friendResponse, 0, len(res.Accepted)),
-		OnlineCount: res.OnlineCount,
-		Total:       res.Total,
+		Accepted: make([]friendResponse, 0, len(res.Accepted)),
+		Total:    res.Total,
 	}
 	for _, d := range res.Accepted {
 		out.Accepted = append(out.Accepted, toFriendResponse(d))

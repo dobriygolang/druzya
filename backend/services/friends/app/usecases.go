@@ -185,28 +185,31 @@ func (uc *GetMyCode) Do(ctx context.Context, uid uuid.UUID) (domain.FriendCode, 
 }
 
 // FriendList — DTO для GET /friends.
+//
+// Anti-fallback: OnlineCount was removed alongside FriendDTO.Online (no
+// real presence service exists; the AlwaysOffline stub was always
+// reporting 0 online users, which the UI then advertised in the page
+// header — pure noise).
 type FriendList struct {
-	Accepted    []FriendDTO
-	OnlineCount int
-	Total       int
+	Accepted []FriendDTO
+	Total    int
 }
 
-// FriendDTO — обогащённая запись с online-флагом.
+// FriendDTO — обогащённая запись для UI. Online presence убран до момента,
+// пока не появится настоящий presence-сервис.
 type FriendDTO struct {
 	UserID       uuid.UUID
 	Username     string
 	DisplayName  string
 	AvatarURL    string
 	Tier         string
-	Online       bool
 	LastMatchAt  *time.Time
 	FriendshipID int64 // 0 для accepted (id не нужен), >0 для pending (для accept/decline)
 }
 
-// ListFriends — GET /friends. Подмешивает presence.
+// ListFriends — GET /friends.
 type ListFriends struct {
-	Repo     domain.FriendRepo
-	Presence domain.PresenceProvider
+	Repo domain.FriendRepo
 }
 
 // Do возвращает merged DTO.
@@ -217,11 +220,7 @@ func (uc *ListFriends) Do(ctx context.Context, uid uuid.UUID) (FriendList, error
 	}
 	out := FriendList{Accepted: make([]FriendDTO, 0, len(rows))}
 	for _, r := range rows {
-		dto := toFriendDTO(r, uc.Presence, ctx)
-		out.Accepted = append(out.Accepted, dto)
-		if dto.Online {
-			out.OnlineCount++
-		}
+		out.Accepted = append(out.Accepted, toFriendDTO(r))
 	}
 	out.Total = len(out.Accepted)
 	return out, nil
@@ -229,8 +228,7 @@ func (uc *ListFriends) Do(ctx context.Context, uid uuid.UUID) (FriendList, error
 
 // ListIncoming — GET /friends/incoming.
 type ListIncoming struct {
-	Repo     domain.FriendRepo
-	Presence domain.PresenceProvider
+	Repo domain.FriendRepo
 }
 
 // Do возвращает входящие.
@@ -241,15 +239,14 @@ func (uc *ListIncoming) Do(ctx context.Context, uid uuid.UUID) ([]FriendDTO, err
 	}
 	out := make([]FriendDTO, 0, len(rows))
 	for _, r := range rows {
-		out = append(out, toFriendDTO(r, uc.Presence, ctx))
+		out = append(out, toFriendDTO(r))
 	}
 	return out, nil
 }
 
 // ListOutgoing — GET /friends/outgoing.
 type ListOutgoing struct {
-	Repo     domain.FriendRepo
-	Presence domain.PresenceProvider
+	Repo domain.FriendRepo
 }
 
 // Do возвращает исходящие.
@@ -260,7 +257,7 @@ func (uc *ListOutgoing) Do(ctx context.Context, uid uuid.UUID) ([]FriendDTO, err
 	}
 	out := make([]FriendDTO, 0, len(rows))
 	for _, r := range rows {
-		out = append(out, toFriendDTO(r, uc.Presence, ctx))
+		out = append(out, toFriendDTO(r))
 	}
 	return out, nil
 }
@@ -278,7 +275,7 @@ func (uc *ListBlocked) Do(ctx context.Context, uid uuid.UUID) ([]FriendDTO, erro
 	}
 	out := make([]FriendDTO, 0, len(rows))
 	for _, r := range rows {
-		out = append(out, toFriendDTO(r, domain.AlwaysOffline{}, ctx))
+		out = append(out, toFriendDTO(r))
 	}
 	return out, nil
 }
@@ -288,7 +285,7 @@ type ListSuggestions struct {
 	Repo domain.FriendRepo
 }
 
-// Do возвращает suggestions (без presence — они не в friends list).
+// Do возвращает suggestions.
 func (uc *ListSuggestions) Do(ctx context.Context, uid uuid.UUID) ([]FriendDTO, error) {
 	rows, err := uc.Repo.Suggestions(ctx, uid, 5)
 	if err != nil {
@@ -296,24 +293,18 @@ func (uc *ListSuggestions) Do(ctx context.Context, uid uuid.UUID) ([]FriendDTO, 
 	}
 	out := make([]FriendDTO, 0, len(rows))
 	for _, r := range rows {
-		out = append(out, toFriendDTO(r, domain.AlwaysOffline{}, ctx))
+		out = append(out, toFriendDTO(r))
 	}
 	return out, nil
 }
 
-func toFriendDTO(r domain.FriendListEntry, pres domain.PresenceProvider, ctx context.Context) FriendDTO {
-	online := false
-	if pres != nil {
-		online = pres.IsOnline(ctx, r.UserID)
-	}
-	dto := FriendDTO{
+func toFriendDTO(r domain.FriendListEntry) FriendDTO {
+	return FriendDTO{
 		UserID:      r.UserID,
 		Username:    r.Username,
 		DisplayName: r.DisplayName,
 		AvatarURL:   r.AvatarFrame, // Frame — самое близкое к аватарке в profiles
 		Tier:        r.Tier,
-		Online:      online,
 		LastMatchAt: r.LastMatchAt,
 	}
-	return dto
 }

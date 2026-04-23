@@ -360,8 +360,10 @@ function BottomBar({
           <span className="text-[13px] text-text-primary">
             {myDone && !partnerDone ? (
               <PendingChip />
+            ) : partnerDone && !myDone ? (
+              <span className="font-mono text-[11px] text-success">напарник сдал — твой ход</span>
             ) : (
-              <span className="font-mono text-[11px] text-text-muted">team chat coming soon</span>
+              <span className="font-mono text-[11px] text-text-muted">2v2 · код решения скрыт</span>
             )}
           </span>
         </div>

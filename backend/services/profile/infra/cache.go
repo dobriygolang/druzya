@@ -20,9 +20,13 @@
 //     single upstream call, preventing thundering-herd against Postgres when
 //     a hot profile expires.
 //
-//   - Redis errors NEVER fail the request — they are logged and we fall back
-//     to the upstream. This makes the cache an availability-positive
-//     component. Tests cover the fallback path explicitly.
+//   - Anti-fallback policy: Redis Get failures propagate to the caller as a
+//     real error. Silent "log + fall back to DB" was hiding Redis outages
+//     (ops never saw the incident until Postgres melted). Redis is a
+//     required dependency — if it's down, surface that. Set failures emit
+//     the `druz9_cache_set_errors_total{module="profile"}` metric so ops
+//     can alert without blocking the read (we already have the value from
+//     upstream at that point).
 package infra
 
 import (
@@ -35,6 +39,7 @@ import (
 	"time"
 
 	"druz9/profile/domain"
+	"druz9/shared/pkg/metrics"
 
 	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
@@ -124,14 +129,16 @@ var _ domain.ProfileRepo = (*CachedRepo)(nil)
 
 // NewCachedRepo wraps delegate with Redis caching.
 //
-// If log is nil, a discard logger is used so this struct is safe to construct
-// in tests without plumbing a slog.Handler.
+// log is required — pass slog.New(slog.NewTextHandler(io.Discard, nil)) in
+// tests if you really need silence. Anti-fallback policy: no silent noop
+// loggers in production wiring, otherwise misconfigured wiring goes
+// undetected.
 func NewCachedRepo(delegate domain.ProfileRepo, kv KV, ttl time.Duration, log *slog.Logger) *CachedRepo {
 	if ttl <= 0 {
 		ttl = DefaultProfileCacheTTL
 	}
 	if log == nil {
-		log = slog.New(slog.NewTextHandler(discardWriter{}, nil))
+		panic("profile.infra.NewCachedRepo: logger is required (anti-fallback policy: no silent noop loggers)")
 	}
 	return &CachedRepo{delegate: delegate, kv: kv, ttl: ttl, log: log}
 }
@@ -163,13 +170,15 @@ func (c *CachedRepo) GetByUserID(ctx context.Context, userID uuid.UUID) (domain.
 		if jerr := json.Unmarshal([]byte(raw), &b); jerr == nil {
 			return b, nil
 		}
-		// Corrupt cache entry — log and fall through to refresh.
+		// Corrupt cache entry — log and fall through to refresh. Decoding
+		// errors are local data drift, not Redis failure, so refresh is
+		// safe.
 		c.log.Warn("profile.cache: corrupt by_id entry, refreshing",
 			slog.String("key", key))
 	} else if !errors.Is(err, ErrCacheMiss) {
-		// Redis error: log and fall back to upstream WITHOUT failing the request.
-		c.log.Warn("profile.cache: redis Get failed, falling back",
-			slog.String("key", key), slog.Any("err", err))
+		// Real Redis failure — propagate. Caller decides whether to degrade.
+		// Anti-fallback: silent fallback used to mask Redis outages.
+		return domain.Bundle{}, fmt.Errorf("profile.cache.GetByUserID: redis: %w", err)
 	}
 	v, err, _ := c.sf.Do(key, func() (any, error) {
 		return c.delegate.GetByUserID(ctx, userID)
@@ -184,7 +193,9 @@ func (c *CachedRepo) GetByUserID(ctx context.Context, userID uuid.UUID) (domain.
 	c.writeBundle(ctx, key, b)
 	// Maintain the username index so Invalidate(uid) can bust the public key.
 	if b.User.Username != "" {
-		_ = c.kv.Set(ctx, keyUsernameIndex(userID), []byte(strings.ToLower(b.User.Username)), c.ttl)
+		if err := c.kv.Set(ctx, keyUsernameIndex(userID), []byte(strings.ToLower(b.User.Username)), c.ttl); err != nil {
+			metrics.CacheSetErrorsTotal.WithLabelValues("profile").Inc()
+		}
 	}
 	return b, nil
 }
@@ -200,8 +211,8 @@ func (c *CachedRepo) GetPublic(ctx context.Context, username string) (domain.Pub
 		c.log.Warn("profile.cache: corrupt public entry, refreshing",
 			slog.String("key", key))
 	} else if !errors.Is(err, ErrCacheMiss) {
-		c.log.Warn("profile.cache: redis Get failed, falling back",
-			slog.String("key", key), slog.Any("err", err))
+		// Anti-fallback: real Redis failure propagates.
+		return domain.PublicBundle{}, fmt.Errorf("profile.cache.GetPublic: redis: %w", err)
 	}
 	v, err, _ := c.sf.Do(key, func() (any, error) {
 		return c.delegate.GetPublic(ctx, username)
@@ -215,19 +226,25 @@ func (c *CachedRepo) GetPublic(ctx context.Context, username string) (domain.Pub
 	}
 	if data, jerr := json.Marshal(b); jerr == nil {
 		if serr := c.kv.Set(ctx, key, data, c.ttl); serr != nil {
+			// Read still succeeds — we have b from upstream. But surface the
+			// write failure to ops via metric + log.
+			metrics.CacheSetErrorsTotal.WithLabelValues("profile").Inc()
 			c.log.Warn("profile.cache: redis Set failed",
 				slog.String("key", key), slog.Any("err", serr))
 		}
 		// Maintain the reverse index too for symmetric invalidation.
 		if b.User.ID != uuid.Nil {
-			_ = c.kv.Set(ctx, keyUsernameIndex(b.User.ID), []byte(strings.ToLower(b.User.Username)), c.ttl)
+			if serr := c.kv.Set(ctx, keyUsernameIndex(b.User.ID), []byte(strings.ToLower(b.User.Username)), c.ttl); serr != nil {
+				metrics.CacheSetErrorsTotal.WithLabelValues("profile").Inc()
+			}
 		}
 	}
 	return b, nil
 }
 
-// writeBundle is the shared marshal+set used by GetByUserID. Errors are
-// logged and swallowed.
+// writeBundle is the shared marshal+set used by GetByUserID. Set errors are
+// recorded via metric + log so the read keeps serving the value already
+// loaded from upstream while ops alerts on cache_set_errors_total.
 func (c *CachedRepo) writeBundle(ctx context.Context, key string, b domain.Bundle) {
 	data, err := json.Marshal(b)
 	if err != nil {
@@ -236,6 +253,7 @@ func (c *CachedRepo) writeBundle(ctx context.Context, key string, b domain.Bundl
 		return
 	}
 	if err := c.kv.Set(ctx, key, data, c.ttl); err != nil {
+		metrics.CacheSetErrorsTotal.WithLabelValues("profile").Inc()
 		c.log.Warn("profile.cache: redis Set failed",
 			slog.String("key", key), slog.Any("err", err))
 	}
@@ -384,11 +402,3 @@ func (c *CachedRepo) GetStreaks(ctx context.Context, userID uuid.UUID) (int, int
 	}
 	return cur, best, nil
 }
-
-// ── helpers ────────────────────────────────────────────────────────────────
-
-// discardWriter is an io.Writer that swallows all bytes. Used as the default
-// slog handler destination when callers pass nil.
-type discardWriter struct{}
-
-func (discardWriter) Write(p []byte) (int, error) { return len(p), nil }

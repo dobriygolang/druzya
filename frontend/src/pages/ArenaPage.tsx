@@ -3,16 +3,15 @@ import {
   Check,
   Loader2,
   Lock,
-  Plus,
   Sparkles,
   Swords,
   Users,
   Video,
   X,
   Zap,
-  Lock as LockIcon,
+  Bot,
 } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { AppShellV2 } from '../components/AppShell'
@@ -24,11 +23,26 @@ import { useRatingMeQuery, useLeaderboardQuery } from '../lib/queries/rating'
 import {
   useCancelSearchMutation,
   useFindMatchMutation,
+  useStartPracticeMutation,
   type ArenaModeKey,
   type SectionKey,
+  type NeuralModelKey,
+  loadNeuralModel,
+  saveNeuralModel,
+  NEURAL_MODELS,
 } from '../lib/queries/arena'
 
-function HeaderRow() {
+type PartyMode = 'solo' | 'party'
+
+const SECTIONS: SectionKey[] = ['algorithms', 'sql', 'go', 'system_design', 'behavioral']
+
+function HeaderRow({
+  partyMode,
+  onTogglePartyMode,
+}: {
+  partyMode: PartyMode
+  onTogglePartyMode: (next: PartyMode) => void
+}) {
   const { t } = useTranslation('arena')
   const { data: rating, isError } = useRatingMeQuery()
   const totalMatches = rating?.ratings?.reduce((acc, r) => acc + r.matches_count, 0) ?? 0
@@ -44,15 +58,41 @@ function HeaderRow() {
             : t('subtitle_played', { count: totalMatches })}
         </p>
       </div>
-      <div className="flex items-center gap-3 rounded-xl border border-border bg-surface-1 px-4 py-2.5">
-        <span className="font-mono text-[11px] font-semibold tracking-[0.08em] text-text-muted">
-          {t('party')}
-        </span>
-        <div className="h-4 w-px bg-border" />
-        <Avatar size="sm" gradient="violet-cyan" initials="Д" />
-        <Button variant="ghost" size="sm" className="px-3">
+      <div
+        role="tablist"
+        aria-label="Party / Solo"
+        className="flex items-center gap-1 rounded-xl border border-border bg-surface-1 p-1"
+      >
+        <button
+          type="button"
+          role="tab"
+          aria-selected={partyMode === 'solo'}
+          onClick={() => onTogglePartyMode('solo')}
+          className={[
+            'inline-flex items-center gap-2 rounded-lg px-3 py-1.5 font-mono text-[11px] font-semibold tracking-[0.08em] transition-colors',
+            partyMode === 'solo'
+              ? 'bg-accent text-text-primary shadow-glow'
+              : 'text-text-muted hover:text-text-primary',
+          ].join(' ')}
+        >
+          <Avatar size="sm" gradient="violet-cyan" initials="Я" />
           {t('solo')}
-        </Button>
+        </button>
+        <button
+          type="button"
+          role="tab"
+          aria-selected={partyMode === 'party'}
+          onClick={() => onTogglePartyMode('party')}
+          className={[
+            'inline-flex items-center gap-2 rounded-lg px-3 py-1.5 font-mono text-[11px] font-semibold tracking-[0.08em] transition-colors',
+            partyMode === 'party'
+              ? 'bg-accent text-text-primary shadow-glow'
+              : 'text-text-muted hover:text-text-primary',
+          ].join(' ')}
+        >
+          <Users className="h-3.5 w-3.5" />
+          {t('party')}
+        </button>
       </div>
     </div>
   )
@@ -69,8 +109,6 @@ type HeroQueueProps = {
   onCancel: () => void
 }
 
-const SECTIONS: SectionKey[] = ['algorithms', 'sql', 'go', 'system_design', 'behavioral']
-
 function HeroQueue({
   inQueue,
   waitSeconds,
@@ -84,7 +122,7 @@ function HeroQueue({
   const { t } = useTranslation('arena')
   return (
     <div className="flex w-full flex-col items-start justify-between gap-4 rounded-xl border border-border-strong bg-gradient-to-br from-surface-2 to-surface-3 p-5 shadow-card sm:p-7 lg:flex-row lg:items-center">
-      <div className="flex flex-col gap-3">
+      <div className="flex min-w-0 flex-col gap-3">
         <span className="inline-flex w-fit items-center gap-1.5 rounded-full bg-accent/15 px-2.5 py-1 font-mono text-[11px] font-semibold tracking-[0.08em] text-accent-hover">
           <Swords className="h-3 w-3" /> {t('ranked_1v1_tag')}
         </span>
@@ -152,6 +190,7 @@ function HeroQueue({
 }
 
 type ModelCard = {
+  key: NeuralModelKey
   name: string
   tier: string
   free: boolean
@@ -159,41 +198,51 @@ type ModelCard = {
 }
 
 const MODELS: ModelCard[] = [
-  { name: 'GPT-4o', tier: 'OpenAI', free: true },
-  { name: 'Sonnet 4.5', tier: 'Anthropic', free: true },
-  { name: 'GPT-5', tier: 'OpenAI', free: false, price: '₽490/мес' },
-  { name: 'Opus 4.5', tier: 'Anthropic', free: false, price: '₽790/мес' },
-  { name: 'Custom', tier: 'Свой ключ', free: false, price: '₽290/мес' },
+  { key: 'random', name: 'Random', tier: 'Случайная модель', free: true },
+  { key: 'gpt4', name: 'GPT-4o', tier: 'OpenAI', free: true },
+  { key: 'claude', name: 'Sonnet 4.5', tier: 'Anthropic', free: true },
+  { key: 'llama3', name: 'Llama 3', tier: 'Meta', free: true },
 ]
 
-function ModelTile({ m }: { m: ModelCard }) {
+function ModelTile({
+  m,
+  selected,
+  onSelect,
+}: {
+  m: ModelCard
+  selected: boolean
+  onSelect: () => void
+}) {
   return (
-    <div
+    <button
+      type="button"
+      onClick={onSelect}
+      aria-pressed={selected}
       className={[
-        'flex h-[140px] flex-1 flex-col justify-between rounded-lg border p-3.5',
-        m.free
-          ? 'border-border bg-surface-1'
-          : 'border-border bg-surface-1 opacity-70',
+        'flex h-full min-w-0 flex-col justify-between gap-2 rounded-lg border p-3.5 text-left transition-colors',
+        selected
+          ? 'border-accent bg-accent/10 shadow-glow'
+          : 'border-border bg-surface-1 hover:border-border-strong',
       ].join(' ')}
     >
-      <div className="flex items-start justify-between">
-        <div className="flex flex-col gap-0.5">
-          <span className="font-display text-sm font-bold text-text-primary">
+      <div className="flex items-start justify-between gap-2">
+        <div className="flex min-w-0 flex-col gap-0.5">
+          <span className="truncate font-display text-sm font-bold text-text-primary">
             {m.name}
           </span>
-          <span className="font-mono text-[10px] text-text-muted">{m.tier}</span>
+          <span className="truncate font-mono text-[10px] text-text-muted">{m.tier}</span>
         </div>
-        {m.free ? (
-          <span className="grid h-6 w-6 place-items-center rounded-full bg-success/20">
-            <Check className="h-3.5 w-3.5 text-success" />
+        {selected ? (
+          <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-accent/30">
+            <Check className="h-3.5 w-3.5 text-accent-hover" />
           </span>
         ) : (
-          <span className="grid h-6 w-6 place-items-center rounded-full bg-surface-3">
-            <Lock className="h-3.5 w-3.5 text-text-muted" />
+          <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-surface-3">
+            <Bot className="h-3.5 w-3.5 text-text-muted" />
           </span>
         )}
       </div>
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-2">
         {m.free ? (
           <span className="rounded-full bg-success/15 px-2 py-0.5 font-mono text-[10px] font-semibold text-success">
             FREE
@@ -204,32 +253,51 @@ function ModelTile({ m }: { m: ModelCard }) {
           </span>
         )}
         {!m.free && m.price && (
-          <span className="font-mono text-[10px] text-text-muted">{m.price}</span>
+          <span className="truncate font-mono text-[10px] text-text-muted">{m.price}</span>
         )}
       </div>
-    </div>
+    </button>
   )
 }
 
-function AiPanel() {
+function AiPanel({
+  selectedModel,
+  onSelectModel,
+}: {
+  selectedModel: NeuralModelKey
+  onSelectModel: (key: NeuralModelKey) => void
+}) {
   const { t } = useTranslation('arena')
   return (
-    <Card className="flex-col gap-4 p-5 lg:h-[220px]" interactive={false}>
-      <div className="flex items-start justify-between">
-        <div className="flex flex-col gap-1">
+    <Card className="flex-col gap-4 p-5" interactive={false}>
+      <div className="flex flex-col items-start justify-between gap-2 sm:flex-row sm:items-center">
+        <div className="flex min-w-0 flex-col gap-1">
           <h3 className="flex items-center gap-2 font-display text-lg font-bold text-text-primary">
             <Sparkles className="h-4 w-4 text-pink" />
-            {t('ai_helper_title')}
+            {t('ai_opponent_title', { defaultValue: 'AI-соперник' })}
           </h3>
           <p className="text-xs text-text-secondary">
-            {t('ai_helper_desc')}
+            {t('ai_opponent_desc', {
+              defaultValue:
+                'Выбери модель — она будет играть за противника в Mock и AI-allowed режимах. Сохраняется автоматически.',
+            })}
           </p>
         </div>
-        <span className="font-mono text-[11px] text-text-muted">{t('models_count')}</span>
+        <span className="shrink-0 rounded-full bg-surface-2 px-2 py-0.5 font-mono text-[11px] text-text-muted">
+          {t('current_model', {
+            defaultValue: 'текущая: {{name}}',
+            name: MODELS.find((m) => m.key === selectedModel)?.name ?? '—',
+          })}
+        </span>
       </div>
-      <div className="grid flex-1 grid-cols-2 gap-3 sm:grid-cols-3 lg:flex lg:min-w-0">
+      <div className="grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {MODELS.map((m) => (
-          <ModelTile key={m.name} m={m} />
+          <ModelTile
+            key={m.key}
+            m={m}
+            selected={selectedModel === m.key}
+            onSelect={() => onSelectModel(m.key)}
+          />
         ))}
       </div>
     </Card>
@@ -237,79 +305,151 @@ function AiPanel() {
 }
 
 type Mode = {
+  key:
+    | 'ranked_1v1'
+    | 'casual_1v1'
+    | 'ranked_2v2'
+    | 'mock'
+    | 'ai_allowed'
+    | 'practice'
+    | 'custom'
   name: string
   desc: string
   count: number
   time: string
   icon: ReactNode
   gradient: string
+  /** Which arena queue to enqueue into. `null` for non-queue actions (custom, practice). */
+  arenaMode: ArenaModeKey | null
+  /** True if this card needs the user to be in Party mode (2v2). */
+  requiresParty: boolean
+  /** True for the AI cards — selected neural model is shown / used. */
+  aiPowered: boolean
 }
 
 const MODES: Mode[] = [
   {
+    key: 'ranked_1v1',
     name: 'Ranked 1v1',
     desc: 'Классика. Алгоритмы, рейтинг, LP.',
     count: 412,
     time: '~12с',
     icon: <Swords className="h-7 w-7 text-text-primary" />,
     gradient: 'from-accent to-pink',
+    arenaMode: 'ranked',
+    requiresParty: false,
+    aiPowered: false,
   },
   {
+    key: 'casual_1v1',
     name: 'Casual 1v1',
     desc: 'Без рейтинга, для практики.',
     count: 286,
     time: '~8с',
     icon: <Zap className="h-7 w-7 text-text-primary" />,
     gradient: 'from-cyan to-accent',
+    arenaMode: 'solo_1v1',
+    requiresParty: false,
+    aiPowered: false,
   },
   {
+    key: 'ranked_2v2',
     name: 'Ranked 2v2',
     desc: 'Командный режим, парный код.',
     count: 168,
     time: '~24с',
     icon: <Users className="h-7 w-7 text-text-primary" />,
     gradient: 'from-pink to-warn',
+    arenaMode: 'duo_2v2',
+    requiresParty: true,
+    aiPowered: false,
   },
   {
+    key: 'mock',
     name: 'Mock Interview',
-    desc: 'Симуляция собеса с таймером.',
+    desc: 'Симуляция собеса с таймером и AI-интервьюером.',
     count: 94,
     time: '~45с',
     icon: <Video className="h-7 w-7 text-text-primary" />,
     gradient: 'from-success to-cyan',
+    arenaMode: 'hardcore',
+    requiresParty: false,
+    aiPowered: true,
   },
   {
+    key: 'ai_allowed',
     name: 'AI-allowed Interview',
-    desc: 'Собес с разрешённым AI.',
+    desc: 'Собес с разрешённым AI-помощником.',
     count: 132,
     time: '~30с',
     icon: <Sparkles className="h-7 w-7 text-text-primary" />,
     gradient: 'from-warn to-danger',
+    arenaMode: 'cursed',
+    requiresParty: false,
+    aiPowered: true,
   },
   {
+    key: 'practice',
+    name: 'Practice vs AI',
+    desc: 'Мгновенный матч против выбранной нейронки. Без рейтинга, без очереди.',
+    count: 1,
+    time: 'мгновенно',
+    icon: <Bot className="h-7 w-7 text-text-primary" />,
+    gradient: 'from-cyan to-success',
+    // Practice has its own dedicated REST endpoint — see useStartPracticeMutation.
+    arenaMode: null,
+    requiresParty: false,
+    aiPowered: true,
+  },
+  {
+    key: 'custom',
     name: 'Custom Lobby',
     desc: 'Свои правила, лобби с кодом.',
     count: 48,
     time: '~60с',
-    icon: <LockIcon className="h-7 w-7 text-text-primary" />,
+    icon: <Lock className="h-7 w-7 text-text-primary" />,
     gradient: 'from-surface-3 to-accent',
+    arenaMode: null,
+    requiresParty: false,
+    aiPowered: false,
   },
 ]
 
-function ModeCard({ m }: { m: Mode }) {
+function ModeCard({
+  m,
+  onClick,
+  isPending,
+  selectedModel,
+}: {
+  m: Mode
+  onClick: () => void
+  isPending: boolean
+  selectedModel: NeuralModelKey
+}) {
   const { t } = useTranslation('arena')
+  const modelName = useMemo(
+    () => MODELS.find((mm) => mm.key === selectedModel)?.name ?? '—',
+    [selectedModel],
+  )
   return (
-    <Card className="flex-1 flex-col gap-4 p-5" interactive>
+    <Card className="flex-col gap-4 p-5" interactive>
+      <button
+        type="button"
+        onClick={onClick}
+        disabled={isPending}
+        aria-label={`${t('enter')} — ${m.name}`}
+        className="absolute inset-0 z-10 cursor-pointer rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-bg disabled:cursor-wait"
+      />
       <div
         className={`grid h-16 w-16 place-items-center rounded-xl bg-gradient-to-br ${m.gradient} shadow-card`}
       >
         {m.icon}
       </div>
-      <div className="flex flex-col gap-1">
+      <div className="flex min-w-0 flex-col gap-1">
         <h3 className="font-display text-lg font-bold text-text-primary">{m.name}</h3>
         <p className="text-xs text-text-secondary">{m.desc}</p>
       </div>
-      <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         <span className="relative flex h-2 w-2">
           <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-success opacity-75" />
           <span className="relative inline-flex h-2 w-2 rounded-full bg-success" />
@@ -317,15 +457,26 @@ function ModeCard({ m }: { m: Mode }) {
         <span className="font-mono text-[11px] text-text-muted">
           {t('in_queue', { count: m.count, time: m.time })}
         </span>
+        {m.aiPowered && (
+          <span className="inline-flex items-center gap-1 rounded-full bg-pink/15 px-2 py-0.5 font-mono text-[10px] font-semibold text-pink">
+            <Bot className="h-3 w-3" />
+            {modelName}
+          </span>
+        )}
       </div>
-      <Button variant="ghost" size="sm" className="mt-auto w-full">
+      <span className="mt-auto inline-flex w-full items-center justify-center gap-1.5 rounded-lg border border-border bg-surface-1 py-2 font-sans text-[13px] font-semibold text-text-primary">
+        {isPending ? (
+          <Loader2 className="h-4 w-4 animate-spin" />
+        ) : (
+          <ArrowRight className="h-4 w-4" />
+        )}
         {t('enter')}
-      </Button>
+      </span>
     </Card>
   )
 }
 
-function FriendsStrip() {
+function FriendsStrip({ onCreateParty }: { onCreateParty: () => void }) {
   const { t } = useTranslation('arena')
   const { data: lb } = useLeaderboardQuery('algorithms')
   const gradients = ['violet-cyan', 'pink-violet', 'cyan-violet', 'success-cyan'] as const
@@ -344,7 +495,10 @@ function FriendsStrip() {
           { initials: 'М', username: '@misha', gradient: gradients[3] },
         ]
   return (
-    <Card className="flex-col items-start justify-between gap-4 p-4 lg:flex-row lg:items-center" interactive={false}>
+    <Card
+      className="flex-col items-start justify-between gap-4 p-4 lg:flex-row lg:items-center"
+      interactive={false}
+    >
       <div className="flex min-w-0 flex-wrap items-center gap-4">
         <span className="font-display text-sm font-bold text-text-primary">
           {t('friends_online', { count: friends.length })}
@@ -358,8 +512,12 @@ function FriendsStrip() {
           {friends.map((f) => f.username).join(' · ')}
         </span>
       </div>
-      <button className="inline-flex items-center gap-2 rounded-full border border-accent/40 bg-accent/10 px-4 py-2 font-sans text-[13px] font-semibold text-accent-hover hover:bg-accent/20">
-        <Plus className="h-3.5 w-3.5" />
+      <button
+        type="button"
+        onClick={onCreateParty}
+        className="inline-flex items-center gap-2 rounded-full border border-accent/40 bg-accent/10 px-4 py-2 font-sans text-[13px] font-semibold text-accent-hover hover:bg-accent/20"
+      >
+        <Users className="h-3.5 w-3.5" />
         {t('create_party')}
       </button>
     </Card>
@@ -371,11 +529,19 @@ export default function ArenaPage() {
   const navigate = useNavigate()
   const findMatch = useFindMatchMutation()
   const cancelSearch = useCancelSearchMutation()
+  const startPractice = useStartPracticeMutation()
   const [section, setSection] = useState<SectionKey>('algorithms')
-  const [mode] = useState<ArenaModeKey>('solo_1v1')
+  const [partyMode, setPartyMode] = useState<PartyMode>('solo')
+  const [neuralModel, setNeuralModel] = useState<NeuralModelKey>(loadNeuralModel())
   const [inQueue, setInQueue] = useState(false)
   const [waitSec, setWaitSec] = useState(0)
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
+  const [pendingMode, setPendingMode] = useState<string | null>(null)
+
+  // Persist neural model choice across visits.
+  useEffect(() => {
+    saveNeuralModel(neuralModel)
+  }, [neuralModel])
 
   // Tick the wait counter while we are queued.
   useEffect(() => {
@@ -387,34 +553,96 @@ export default function ArenaPage() {
     return () => window.clearInterval(id)
   }, [inQueue])
 
-  const handleFind = () => {
+  const enqueue = (mode: ArenaModeKey, modeKey: string) => {
     setErrorMsg(null)
+    setPendingMode(modeKey)
     findMatch.mutate(
-      { section, mode },
+      { section, mode, neuralModel: NEURAL_MODELS.includes(neuralModel) ? neuralModel : 'random' },
       {
         onSuccess: (resp) => {
+          setPendingMode(null)
           if (resp.match_id) {
-            navigate(`/arena/match/${resp.match_id}`)
+            const path =
+              mode === 'duo_2v2'
+                ? `/arena/2v2/${resp.match_id}`
+                : `/arena/match/${resp.match_id}`
+            navigate(path)
             return
           }
           setInQueue(true)
         },
         onError: (e: unknown) => {
+          setPendingMode(null)
           setErrorMsg((e as Error).message ?? 'failed to enqueue')
         },
       },
     )
   }
+
+  const handleFind = () => {
+    enqueue('ranked', 'hero')
+  }
+
   const handleCancel = () => {
     cancelSearch.mutate(undefined, {
-      onSettled: () => setInQueue(false),
+      onSettled: () => {
+        setInQueue(false)
+        setPendingMode(null)
+      },
     })
   }
+
+  const handleModeClick = (m: Mode) => {
+    if (m.key === 'custom') {
+      navigate('/lobby')
+      return
+    }
+    if (m.key === 'practice') {
+      setErrorMsg(null)
+      setPendingMode(m.key)
+      startPractice.mutate(
+        { section, neuralModel },
+        {
+          onSuccess: (resp) => {
+            setPendingMode(null)
+            navigate(`/arena/match/${resp.match_id}`)
+          },
+          onError: (e: unknown) => {
+            setPendingMode(null)
+            setErrorMsg((e as Error).message ?? 'failed to start practice')
+          },
+        },
+      )
+      return
+    }
+    if (m.requiresParty && partyMode !== 'party') {
+      setPartyMode('party')
+    }
+    if (!m.requiresParty && partyMode === 'party') {
+      setPartyMode('solo')
+    }
+    if (m.arenaMode) {
+      enqueue(m.arenaMode, m.key)
+    }
+  }
+
+  const handleCreateParty = () => {
+    setPartyMode('party')
+  }
+
+  const visibleModes = useMemo(() => {
+    if (partyMode === 'party') {
+      // Party mode emphasises 2v2 modes; solo modes hidden so the user is not
+      // tempted to enqueue a single-player ladder while a partner is waiting.
+      return MODES.filter((m) => m.requiresParty || m.key === 'custom')
+    }
+    return MODES.filter((m) => !m.requiresParty)
+  }, [partyMode])
 
   return (
     <AppShellV2>
       <div className="flex flex-col gap-6 px-4 py-6 sm:px-8 lg:px-20 lg:py-8">
-        <HeaderRow />
+        <HeaderRow partyMode={partyMode} onTogglePartyMode={setPartyMode} />
         <HeroQueue
           inQueue={inQueue}
           waitSeconds={waitSec}
@@ -425,19 +653,34 @@ export default function ArenaPage() {
           onFind={handleFind}
           onCancel={handleCancel}
         />
-        <AiPanel />
+        <AiPanel selectedModel={neuralModel} onSelectModel={setNeuralModel} />
         <div className="flex flex-col gap-4">
           <div className="flex items-end justify-between">
-            <h2 className="font-display text-xl font-bold text-text-primary">{t('all_modes')}</h2>
-            <span className="font-mono text-[11px] text-text-muted">{t('modes_available')}</span>
+            <h2 className="font-display text-xl font-bold text-text-primary">
+              {partyMode === 'party'
+                ? t('party_modes', { defaultValue: 'Командные режимы' })
+                : t('all_modes')}
+            </h2>
+            <span className="font-mono text-[11px] text-text-muted">
+              {t('modes_available_count', {
+                defaultValue: '{{count}} доступно',
+                count: visibleModes.length,
+              })}
+            </span>
           </div>
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
-            {MODES.map((m) => (
-              <ModeCard key={m.name} m={m} />
+            {visibleModes.map((m) => (
+              <ModeCard
+                key={m.key}
+                m={m}
+                isPending={pendingMode === m.key}
+                selectedModel={neuralModel}
+                onClick={() => handleModeClick(m)}
+              />
             ))}
           </div>
         </div>
-        <FriendsStrip />
+        <FriendsStrip onCreateParty={handleCreateParty} />
       </div>
     </AppShellV2>
   )

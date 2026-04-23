@@ -21,6 +21,8 @@ import (
 	"net/http"
 	"strings"
 	"time"
+
+	"druz9/shared/pkg/metrics"
 )
 
 // OpenRouterEndpoint is the OpenAI-compatible chat endpoint.
@@ -45,12 +47,16 @@ type OpenRouterExtractor struct {
 }
 
 // NewOpenRouterExtractor constructs a default-configured extractor.
-//   - apiKey may be empty for local dev — the extractor returns an empty
-//     skill list and logs a warning rather than failing the sync.
+//   - apiKey is required at construction. The wirer is responsible for
+//     skipping the extractor entirely when the env var is empty (and
+//     logging a startup WARN). Anti-fallback: passing "" here will cause
+//     Extract to return a hard error at request time, which is preferable
+//     to silently writing empty skill lists into the DB.
 //   - kv may be nil — cache is then disabled (every call hits the LLM).
+//   - log is required (anti-fallback policy).
 func NewOpenRouterExtractor(apiKey string, kv KV, log *slog.Logger) *OpenRouterExtractor {
 	if log == nil {
-		log = slog.New(slog.NewTextHandler(discardWriter{}, nil))
+		panic("vacancies.infra.NewOpenRouterExtractor: logger is required (anti-fallback policy: no silent noop loggers)")
 	}
 	return &OpenRouterExtractor{
 		apiKey:   apiKey,
@@ -112,8 +118,11 @@ Examples of valid output:
 ["python", "django", "celery", "redis", "docker"]`
 
 // Extract returns the LLM-normalised skill list. Cache hit ⇒ no network call.
-// On any non-fatal failure (no API key, HTTP error, malformed JSON) we log
-// and return an empty slice so the sync pipeline doesn't break.
+//
+// Anti-fallback policy: every previously-silent failure (missing API key,
+// HTTP error, non-2xx response, malformed JSON) is surfaced as a real
+// error. SyncJob.runOneParser's per-item logging keeps the sync loop alive
+// across individual failures while making each one loud.
 func (e *OpenRouterExtractor) Extract(ctx context.Context, description string) ([]string, error) {
 	desc := strings.TrimSpace(description)
 	if desc == "" {
@@ -127,14 +136,15 @@ func (e *OpenRouterExtractor) Extract(ctx context.Context, description string) (
 			}
 			e.log.Warn("vacancies.extractor: corrupt cache entry, refetching")
 		} else if !errors.Is(err, ErrCacheMiss) {
-			e.log.Warn("vacancies.extractor: cache Get failed, falling back",
-				slog.Any("err", err))
+			// Anti-fallback: real Redis failure propagates.
+			return nil, fmt.Errorf("vacancies.extractor: cache Get: %w", err)
 		}
 	}
 	if e.apiKey == "" {
-		// Local dev: no key → no extraction, but no error either.
-		e.log.Warn("vacancies.extractor: OPENROUTER_API_KEY empty, returning []")
-		return []string{}, nil
+		// Anti-fallback: silent empty result was hiding misconfigured envs.
+		// Wirers MUST omit the extractor (leave SyncJob.Extractor nil) when
+		// no key is set — this guard catches accidental misuse.
+		return nil, fmt.Errorf("vacancies.extractor: OPENROUTER_API_KEY empty — extractor must be unregistered when key absent")
 	}
 
 	body, err := json.Marshal(orReq{
@@ -158,21 +168,18 @@ func (e *OpenRouterExtractor) Extract(ctx context.Context, description string) (
 
 	resp, err := e.http.Do(req)
 	if err != nil {
-		e.log.Warn("vacancies.extractor: HTTP failed, returning []", slog.Any("err", err))
-		return []string{}, nil
+		// Anti-fallback: HTTP failure is real; surface it.
+		return nil, fmt.Errorf("vacancies.extractor.http: %w", err)
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode >= 400 {
 		raw, _ := io.ReadAll(resp.Body)
-		e.log.Warn("vacancies.extractor: non-2xx, returning []",
-			slog.Int("status", resp.StatusCode),
-			slog.String("body", truncate(string(raw), 256)))
-		return []string{}, nil
+		return nil, fmt.Errorf("vacancies.extractor: status=%d body=%q",
+			resp.StatusCode, truncate(string(raw), 256))
 	}
 	var parsed orResp
 	if err := json.NewDecoder(resp.Body).Decode(&parsed); err != nil {
-		e.log.Warn("vacancies.extractor: decode failed, returning []", slog.Any("err", err))
-		return []string{}, nil
+		return nil, fmt.Errorf("vacancies.extractor.decode: %w", err)
 	}
 	if len(parsed.Choices) == 0 {
 		return []string{}, nil
@@ -181,6 +188,7 @@ func (e *OpenRouterExtractor) Extract(ctx context.Context, description string) (
 	if e.kv != nil {
 		if data, jerr := json.Marshal(skills); jerr == nil {
 			if serr := e.kv.Set(ctx, extractCacheKey(desc), data, e.cacheTTL); serr != nil {
+				metrics.CacheSetErrorsTotal.WithLabelValues("vacancies_extractor").Inc()
 				e.log.Warn("vacancies.extractor: cache Set failed",
 					slog.Any("err", serr))
 			}

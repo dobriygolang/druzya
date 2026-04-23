@@ -20,7 +20,7 @@ func TestVKParser_Fetch_FromFixture(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	p := NewVK(nil).WithBaseURL(srv.URL)
+	p := NewVK(testLog()).WithBaseURL(srv.URL)
 	got, err := p.Fetch(context.Background())
 	if err != nil {
 		t.Fatalf("Fetch: %v", err)

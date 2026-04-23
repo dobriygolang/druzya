@@ -20,6 +20,7 @@ import (
 	"time"
 
 	"druz9/profile/app"
+	"druz9/shared/pkg/metrics"
 
 	"github.com/google/uuid"
 	"golang.org/x/sync/singleflight"
@@ -45,13 +46,13 @@ type ReportCache struct {
 }
 
 // NewReportCache constructs a ReportCache around the given loader and KV.
-// nil log → discard. ttl<=0 → DefaultReportCacheTTL.
+// log is required (anti-fallback policy). ttl<=0 → DefaultReportCacheTTL.
 func NewReportCache(loader ReportLoader, kv KV, ttl time.Duration, log *slog.Logger) *ReportCache {
 	if ttl <= 0 {
 		ttl = DefaultReportCacheTTL
 	}
 	if log == nil {
-		log = slog.New(slog.NewTextHandler(discardWriter{}, nil))
+		panic("profile.infra.NewReportCache: logger is required (anti-fallback policy: no silent noop loggers)")
 	}
 	return &ReportCache{
 		kv:     kv,
@@ -79,8 +80,8 @@ func (r *ReportCache) Get(ctx context.Context, userID uuid.UUID) (app.ReportView
 		r.log.Warn("profile.report_cache: corrupt entry, refreshing",
 			slog.String("key", key))
 	} else if !errors.Is(err, ErrCacheMiss) {
-		r.log.Warn("profile.report_cache: redis Get failed, falling back",
-			slog.String("key", key), slog.Any("err", err))
+		// Anti-fallback: real Redis failure propagates.
+		return app.ReportView{}, fmt.Errorf("profile.report_cache.Get: redis: %w", err)
 	}
 	v, err, _ := r.sf.Do(key, func() (any, error) {
 		return r.loader(ctx, userID, r.now())
@@ -94,6 +95,7 @@ func (r *ReportCache) Get(ctx context.Context, userID uuid.UUID) (app.ReportView
 	}
 	if data, jerr := json.Marshal(view); jerr == nil {
 		if serr := r.kv.Set(ctx, key, data, r.ttl); serr != nil {
+			metrics.CacheSetErrorsTotal.WithLabelValues("profile_report").Inc()
 			r.log.Warn("profile.report_cache: redis Set failed",
 				slog.String("key", key), slog.Any("err", serr))
 		}

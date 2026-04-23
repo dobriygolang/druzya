@@ -1,42 +1,11 @@
-// queries/codex.ts — раньше здесь жил `usePodcastCatalogQuery` для /codex.
+// queries/codex.ts — intentionally empty.
 //
-// /codex переехал на статический контент (см. src/content/codex.ts), поэтому
-// runtime-запросы со страницы убраны. Этот файл сохранён по двум причинам:
+// /codex moved to static content (см. src/content/codex.ts). The previous
+// `usePodcastCatalogQuery` hook lived here as an `enabled: false` shim for
+// backward-compat with MSW handlers. Anti-fallback policy: a hook that
+// never fires is dead code that confuses readers and obscures intent.
 //
-//   1) MSW-handlers и другие потребители ссылались на типы PodcastEpisode /
-//      PodcastCatalog — оставляем их как backward-compat shim, чтобы не
-//      лопнул контракт mock-сервера.
-//   2) Когда (если) заведём собственный CMS для /codex, можно будет вернуть
-//      хук под тем же именем.
-//
-// Текущая реализация не используется страницей CodexPage; для проверки
-// типов нужно, чтобы файл компилировался, поэтому оставлен реэкспорт.
-
-import { useQuery } from '@tanstack/react-query'
-import { api } from '../apiClient'
-
-export type PodcastEpisode = {
-  id: string
-  title: string
-  section: string
-  duration_min: number
-  published_at: string
-  description: string
-  cover: string | null
-  listened: boolean
-}
-
-export type PodcastCatalog = {
-  episodes: PodcastEpisode[]
-  sections: { key: string; title: string; count: number }[]
-}
-
-// usePodcastCatalogQuery — оставлен как опциональный fetch для возможного
-// будущего «Слушать» секции внутри /codex. Сейчас CodexPage его не зовёт.
-export function usePodcastCatalogQuery() {
-  return useQuery({
-    queryKey: ['podcast', 'catalog'],
-    queryFn: () => api<PodcastCatalog>('/podcast'),
-    enabled: false, // отключено по умолчанию — страница использует static
-  })
-}
+// Real podcast queries now live in src/lib/queries/podcasts.ts (consumed
+// by /podcasts page). The MSW handler at src/mocks/handlers/podcast.ts is
+// driven by that file, not this one.
+export {}

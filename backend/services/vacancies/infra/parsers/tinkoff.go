@@ -21,6 +21,7 @@ import (
 	"strings"
 	"time"
 
+	"druz9/shared/pkg/metrics"
 	"druz9/vacancies/domain"
 )
 
@@ -33,10 +34,11 @@ type TinkoffParser struct {
 	log        *slog.Logger
 }
 
-// NewTinkoff builds the default-configured parser.
+// NewTinkoff builds the default-configured parser. log is required
+// (anti-fallback policy).
 func NewTinkoff(log *slog.Logger) *TinkoffParser {
 	if log == nil {
-		log = slog.New(slog.NewTextHandler(noopWriter{}, nil))
+		panic("vacancies.parsers.NewTinkoff: logger is required (anti-fallback policy: no silent noop loggers)")
 	}
 	return &TinkoffParser{
 		baseURL:    tinkoffBaseURL,
@@ -60,33 +62,36 @@ type tinkoffPayload struct {
 	} `json:"payload"`
 }
 
-// Fetch GETs the listing JSON and converts items.
+// Fetch GETs the listing JSON and converts items. Anti-fallback: non-2xx
+// and decode errors propagate; SyncJob.runOneParser absorbs them at the
+// loop level + the parser_errors metric makes them alert-able.
 func (p *TinkoffParser) Fetch(ctx context.Context) ([]domain.Vacancy, error) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, p.baseURL, nil)
 	if err != nil {
+		metrics.VacanciesParserErrorsTotal.WithLabelValues(string(domain.SourceTinkoff)).Inc()
 		return nil, fmt.Errorf("vacancies.parser.tinkoff.newreq: %w", err)
 	}
 	req.Header.Set("User-Agent", "druz9/1.0 (+https://druz9.dev/contact)")
 	req.Header.Set("Accept", "application/json")
 	resp, err := p.httpClient.Do(req)
 	if err != nil {
+		metrics.VacanciesParserErrorsTotal.WithLabelValues(string(domain.SourceTinkoff)).Inc()
 		return nil, fmt.Errorf("vacancies.parser.tinkoff.do: %w", err)
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode >= 400 {
-		p.log.Warn("vacancies.parser.tinkoff: non-2xx, returning []",
-			slog.Int("status", resp.StatusCode))
-		return []domain.Vacancy{}, nil
+		metrics.VacanciesParserErrorsTotal.WithLabelValues(string(domain.SourceTinkoff)).Inc()
+		return nil, fmt.Errorf("vacancies.parser.tinkoff: non-2xx status=%d", resp.StatusCode)
 	}
 	body, err := io.ReadAll(io.LimitReader(resp.Body, 4<<20))
 	if err != nil {
+		metrics.VacanciesParserErrorsTotal.WithLabelValues(string(domain.SourceTinkoff)).Inc()
 		return nil, fmt.Errorf("vacancies.parser.tinkoff.read: %w", err)
 	}
 	var p1 tinkoffPayload
 	if err := json.Unmarshal(body, &p1); err != nil {
-		p.log.Warn("vacancies.parser.tinkoff: decode failed, returning []",
-			slog.Any("err", err))
-		return []domain.Vacancy{}, nil
+		metrics.VacanciesParserErrorsTotal.WithLabelValues(string(domain.SourceTinkoff)).Inc()
+		return nil, fmt.Errorf("vacancies.parser.tinkoff.decode: %w", err)
 	}
 	items := p1.Items
 	if len(items) == 0 {

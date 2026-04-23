@@ -20,7 +20,7 @@ func TestTinkoffParser_Fetch_FromFixture(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	p := NewTinkoff(nil).WithBaseURL(srv.URL)
+	p := NewTinkoff(testLog()).WithBaseURL(srv.URL)
 	got, err := p.Fetch(context.Background())
 	if err != nil {
 		t.Fatalf("Fetch: %v", err)
@@ -39,19 +39,16 @@ func TestTinkoffParser_Fetch_FromFixture(t *testing.T) {
 	}
 }
 
-func TestTinkoffParser_Non2xx_ReturnsEmpty(t *testing.T) {
+func TestTinkoffParser_Non2xx_ReturnsError(t *testing.T) {
 	t.Parallel()
+	// fallbacks were removed deliberately — non-2xx propagates.
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 	}))
 	defer srv.Close()
 
-	p := NewTinkoff(nil).WithBaseURL(srv.URL)
-	got, err := p.Fetch(context.Background())
-	if err != nil {
-		t.Fatalf("Fetch: %v", err)
-	}
-	if len(got) != 0 {
-		t.Errorf("want empty, got %d", len(got))
+	p := NewTinkoff(testLog()).WithBaseURL(srv.URL)
+	if _, err := p.Fetch(context.Background()); err == nil {
+		t.Fatalf("expected error on 5xx, got nil")
 	}
 }

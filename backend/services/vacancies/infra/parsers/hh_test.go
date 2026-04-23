@@ -2,6 +2,8 @@ package parsers
 
 import (
 	"context"
+	"io"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -10,6 +12,12 @@ import (
 
 	"druz9/vacancies/domain"
 )
+
+// testLog returns an explicit discard logger for unit tests. Constructors
+// now panic on nil log (anti-fallback policy).
+func testLog() *slog.Logger {
+	return slog.New(slog.NewTextHandler(io.Discard, nil))
+}
 
 func TestHHParser_Fetch_FromFixture(t *testing.T) {
 	t.Parallel()
@@ -30,7 +38,7 @@ func TestHHParser_Fetch_FromFixture(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	p := NewHH(nil).WithBaseURL(srv.URL).WithMaxPages(1)
+	p := NewHH(testLog()).WithBaseURL(srv.URL).WithMaxPages(1)
 	got, err := p.Fetch(context.Background())
 	if err != nil {
 		t.Fatalf("Fetch: %v", err)
@@ -74,7 +82,7 @@ func TestHHParser_FetchOne_FromFixture(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	p := NewHH(nil).WithBaseURL(srv.URL)
+	p := NewHH(testLog()).WithBaseURL(srv.URL)
 	v, err := p.FetchOne(context.Background(), "https://hh.ru/vacancy/55555")
 	if err != nil {
 		t.Fatalf("FetchOne: %v", err)

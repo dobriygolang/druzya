@@ -28,11 +28,11 @@ type UserNotificationsHandler struct {
 	Log         *slog.Logger
 }
 
-// NewUserNotificationsHandler конструктор с дефолтным slog.
+// NewUserNotificationsHandler конструктор. Log обязателен (anti-fallback policy).
 func NewUserNotificationsHandler(in UserNotificationsHandler) *UserNotificationsHandler {
 	h := in
 	if h.Log == nil {
-		h.Log = slog.Default()
+		panic("notify.ports.NewUserNotificationsHandler: Log is required (anti-fallback policy: no silent slog.Default fallback)")
 	}
 	return &h
 }

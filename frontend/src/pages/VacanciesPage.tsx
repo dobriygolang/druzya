@@ -9,9 +9,19 @@
 //   - Sidebar: фильтры (источник, скиллы, salary, location).
 //   - Grid: карточки с title/company/salary/skill diff vs profile.
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { Search, Briefcase, MapPin, Wallet, Sparkles, Bookmark } from 'lucide-react'
+import {
+  Search,
+  Briefcase,
+  MapPin,
+  Wallet,
+  Sparkles,
+  Bookmark,
+  RefreshCw,
+  CheckCircle2,
+  Clock,
+} from 'lucide-react'
 import { AppShellV2 } from '../components/AppShell'
 import { Button } from '../components/Button'
 import { Card } from '../components/Card'
@@ -19,6 +29,7 @@ import {
   useVacanciesList,
   useAnalyzeVacancy,
   useSaveVacancy,
+  useTriggerVacancySync,
   VACANCY_SOURCES,
   diffSkills,
   type Vacancy,
@@ -225,6 +236,28 @@ export default function VacanciesPage() {
   }, [profile.data])
   const navigate = useNavigate()
   const save = useSaveVacancy()
+  const sync = useTriggerVacancySync()
+
+  // Авто-триггер sync при первом пустом ответе. Защита от повторного дёргания
+  // в одной сессии — autoTriggeredRef. Без неё useEffect срабатывал бы каждый
+  // раз когда после refetch'а data снова пуста (а это всегда первые ~8s).
+  const autoTriggeredRef = useRef(false)
+  useEffect(() => {
+    if (
+      !autoTriggeredRef.current &&
+      !list.isLoading &&
+      !list.error &&
+      (list.data?.items.length ?? 0) === 0 &&
+      // Только если фильтры не выставлены — пользователь ничего не «отфильтровал».
+      sources.length === 0 &&
+      salaryMin === 0 &&
+      location === ''
+    ) {
+      autoTriggeredRef.current = true
+      sync.mutate()
+    }
+  }, [list.data, list.isLoading, list.error, sources, salaryMin, location, sync])
+
   const handleSave = (id: number) => {
     save.mutate({ vacancyId: id }, {
       onError: (err) => {
@@ -253,7 +286,13 @@ export default function VacanciesPage() {
           ) : list.error ? (
             <ErrorState />
           ) : (list.data?.items.length ?? 0) === 0 ? (
-            <EmptyState />
+            <EmptyState
+              onRefresh={() => sync.mutate()}
+              syncing={sync.isPending}
+              status={sync.data?.status}
+              retryAfter={sync.data?.retry_after}
+              autoTriggered={autoTriggeredRef.current}
+            />
           ) : (
             <>
               <div className="text-xs uppercase text-text-muted">
@@ -374,12 +413,86 @@ function ListSkeleton() {
   )
 }
 
-function EmptyState() {
+function EmptyState({
+  onRefresh,
+  syncing,
+  status,
+  retryAfter,
+  autoTriggered,
+}: {
+  onRefresh: () => void
+  syncing: boolean
+  status?: 'started' | 'already_running' | 'throttled'
+  retryAfter?: number
+  autoTriggered: boolean
+}) {
+  // Три визуальных состояния empty:
+  //   1) Sync уже запущен (status==='started' | 'already_running' или syncing)
+  //      — показываем «загружаем последние вакансии, ~10s».
+  //   2) Sync затроттлен (status==='throttled') — показываем countdown.
+  //   3) Иначе — стандартный «ничего нет, обнови сейчас».
+  const inProgress =
+    syncing || status === 'started' || status === 'already_running'
+  const throttled = status === 'throttled'
   return (
     <Card padding="lg">
-      <div className="text-sm text-text-secondary">
-        Ничего не найдено. Сбрось фильтры или подожди следующую синхронизацию
-        (раз в час).
+      <div className="flex flex-col items-start gap-4">
+        {inProgress ? (
+          <>
+            <div className="flex items-center gap-2 text-sm text-text-primary">
+              <RefreshCw className="h-4 w-4 animate-spin text-accent-hover" />
+              Подтягиваем свежие вакансии с HH/Yandex/Ozon… обычно ~10 секунд.
+            </div>
+            <div className="text-xs text-text-muted">
+              Страница обновится сама. Если ничего не появилось — нажми кнопку
+              ниже ещё раз.
+            </div>
+            <Button
+              size="sm"
+              variant="ghost"
+              icon={<RefreshCw className="h-4 w-4" />}
+              loading={syncing}
+              onClick={onRefresh}
+            >
+              Обновить ещё раз
+            </Button>
+          </>
+        ) : throttled ? (
+          <>
+            <div className="flex items-center gap-2 text-sm text-warn">
+              <Clock className="h-4 w-4" />
+              Подожди {retryAfter ?? 30} сек — sync уже только что запускался.
+            </div>
+            <Button
+              size="sm"
+              variant="ghost"
+              icon={<RefreshCw className="h-4 w-4" />}
+              onClick={onRefresh}
+            >
+              Попробовать сейчас
+            </Button>
+          </>
+        ) : (
+          <>
+            <div className="flex items-center gap-2 text-sm text-text-primary">
+              {autoTriggered ? (
+                <CheckCircle2 className="h-4 w-4 text-success" />
+              ) : (
+                <Search className="h-4 w-4 text-text-muted" />
+              )}
+              {autoTriggered
+                ? 'Синхронизация прошла, но по фильтрам ничего не нашлось. Сбрось фильтры или повтори.'
+                : 'Ничего не найдено. Можно дёрнуть синхронизацию вручную или сбросить фильтры.'}
+            </div>
+            <Button
+              size="sm"
+              icon={<RefreshCw className="h-4 w-4" />}
+              onClick={onRefresh}
+            >
+              Обновить сейчас
+            </Button>
+          </>
+        )}
       </div>
     </Card>
   )

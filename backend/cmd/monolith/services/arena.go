@@ -102,6 +102,12 @@ func NewArena(d Deps, ratingRepo *ratingInfra.Postgres) *Module {
 		rdb, rdb, pg, pg, d.Bus, hub, clock, d.Log,
 	)
 
+	// Practice mode is a chi-direct REST route (no proto contract yet — see
+	// ports/practice.go for the rationale). Wired below alongside the
+	// transcoded /arena/match/* routes.
+	practiceUC := &arenaApp.StartPractice{Matches: pg, Tasks: pg, Clock: clock}
+	practice := arenaPorts.NewPracticeHandler(practiceUC, eloFn)
+
 	connectPath, connectHandler := druz9v1connect.NewArenaServiceHandler(server)
 	transcoder := mustTranscode("arena", connectPath, connectHandler)
 
@@ -123,6 +129,9 @@ func NewArena(d Deps, ratingRepo *ratingInfra.Postgres) *Module {
 			// /matches/my теперь Connect-RPC GetMyMatches — идёт через тот
 			// же transcoder. Раньше был отдельный chi-route → удалён.
 			r.Get("/arena/matches/my", transcoder.ServeHTTP)
+			// Practice — instant single-player match against an AI opponent.
+			// Chi-direct (no proto), see ports/practice.go.
+			r.Post("/arena/practice", practice.ServeHTTP)
 		},
 		MountWS: func(ws chi.Router) {
 			ws.Get("/arena/{matchId}", hub.WSHandler)

@@ -69,6 +69,7 @@ const RatingPage = lazy(() => import('./pages/RatingPage'))
 const VacanciesPage = lazy(() => import('./pages/VacanciesPage'))
 const VacancyDetailPage = lazy(() => import('./pages/VacancyDetailPage'))
 const ApplicationsPage = lazy(() => import('./pages/ApplicationsPage'))
+const PodcastsPage = lazy(() => import('./pages/PodcastsPage'))
 
 export default function App() {
   return (
@@ -110,7 +111,13 @@ export default function App() {
         <Route path="/history" element={<MatchHistoryPage />} />
         <Route path="/daily/streak" element={<KataStreakPage />} />
         <Route path="/cards" element={<HeroCardsPage />} />
-        <Route path="/report" element={<WeeklyReportPage />} />
+        {/*
+          /weekly — primary route as advertised in nav. /report kept as alias
+          for backward compatibility (старые шеры в ссылках, e2e-тесты).
+        */}
+        <Route path="/weekly" element={<WeeklyReportPage />} />
+        <Route path="/report" element={<Navigate to="/weekly" replace />} />
+        <Route path="/podcasts" element={<PodcastsPage />} />
         <Route path="/arena/2v2/:matchId" element={<Arena2v2Page />} />
         <Route path="/sd-interview/:sessionId" element={<SystemDesignInterviewPage />} />
         <Route path="/playground" element={<CodeEditorPage />} />

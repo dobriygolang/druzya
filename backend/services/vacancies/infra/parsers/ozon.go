@@ -15,6 +15,7 @@ import (
 	"strings"
 	"time"
 
+	"druz9/shared/pkg/metrics"
 	"druz9/vacancies/domain"
 )
 
@@ -27,10 +28,11 @@ type OzonParser struct {
 	log        *slog.Logger
 }
 
-// NewOzon constructs the default-configured parser.
+// NewOzon constructs the default-configured parser. log is required
+// (anti-fallback policy).
 func NewOzon(log *slog.Logger) *OzonParser {
 	if log == nil {
-		log = slog.New(slog.NewTextHandler(noopWriter{}, nil))
+		panic("vacancies.parsers.NewOzon: logger is required (anti-fallback policy: no silent noop loggers)")
 	}
 	return &OzonParser{
 		baseURL:    ozonBaseURL,
@@ -45,22 +47,24 @@ func (p *OzonParser) WithBaseURL(u string) *OzonParser { p.baseURL = u; return p
 // Source implements domain.Parser.
 func (p *OzonParser) Source() domain.Source { return domain.SourceOzon }
 
-// Fetch behaves like the Yandex parser — same blob shape conventions, same
-// "decode-failure → empty + warn" policy.
+// Fetch behaves like the Yandex parser — same blob shape conventions.
+// Anti-fallback: schema surprises propagate as real errors and increment
+// vacancies_parser_errors_total{source=ozon}.
 func (p *OzonParser) Fetch(ctx context.Context) ([]domain.Vacancy, error) {
 	body, err := fetchHTML(ctx, p.httpClient, p.baseURL)
 	if err != nil {
-		return nil, err
+		metrics.VacanciesParserErrorsTotal.WithLabelValues(string(domain.SourceOzon)).Inc()
+		return nil, fmt.Errorf("vacancies.parser.ozon: fetch: %w", err)
 	}
 	blob, ok := extractNextData(body)
 	if !ok {
-		p.log.Warn("vacancies.parser.ozon: __NEXT_DATA__ blob not found, returning []")
-		return []domain.Vacancy{}, nil
+		metrics.VacanciesParserErrorsTotal.WithLabelValues(string(domain.SourceOzon)).Inc()
+		return nil, fmt.Errorf("vacancies.parser.ozon: __NEXT_DATA__ blob not found")
 	}
 	out, err := decodeOzonJobs(blob)
 	if err != nil {
-		p.log.Warn("vacancies.parser.ozon: decode failed, returning []", slog.Any("err", err))
-		return []domain.Vacancy{}, nil
+		metrics.VacanciesParserErrorsTotal.WithLabelValues(string(domain.SourceOzon)).Inc()
+		return nil, fmt.Errorf("vacancies.parser.ozon: decode: %w", err)
 	}
 	p.log.Info("vacancies.parser.ozon: fetched", slog.Int("count", len(out)))
 	return out, nil

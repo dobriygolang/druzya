@@ -5,19 +5,15 @@
 // mutating endpoints (save / update status / delete) require auth.
 import { useMutation, useQuery, useQueryClient, keepPreviousData, } from '@tanstack/react-query';
 import { api } from '../apiClient';
+// VACANCY_SOURCES is consumed by the filter sidebar — only the 5 sources
+// with working parsers belong here. Adding a new source requires a real
+// Parser implementation in backend/services/vacancies/infra/parsers/.
 export const VACANCY_SOURCES = [
     'hh',
     'yandex',
     'ozon',
     'tinkoff',
     'vk',
-    'sber',
-    'avito',
-    'wildberries',
-    'mts',
-    'kaspersky',
-    'jetbrains',
-    'lamoda',
 ];
 export const SAVED_STATUSES = [
     'saved',
@@ -101,6 +97,22 @@ export function useUpdateSavedStatus() {
         }),
         onSuccess: () => {
             void qc.invalidateQueries({ queryKey: ['vacancies', 'saved'] });
+        },
+    });
+}
+export function useTriggerVacancySync() {
+    const qc = useQueryClient();
+    return useMutation({
+        mutationFn: () => api(`/vacancies/sync`, { method: 'POST' }),
+        onSuccess: (res) => {
+            if (res.status === 'started') {
+                // Sync в фоне 5–10s. Refetch'ним каталог через 8s — обычно к этому
+                // времени уже есть первые HH-вакансии. Если ещё пусто — пользователь
+                // увидит «попробуй ещё раз» и нажмёт повторно.
+                setTimeout(() => {
+                    void qc.invalidateQueries({ queryKey: ['vacancies', 'list'] });
+                }, 8000);
+            }
         },
     });
 }

@@ -16,7 +16,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"log/slog"
 	"sync"
 	"time"
@@ -118,13 +117,13 @@ type MatchInfoCache struct {
 	sf     singleflight.Group
 }
 
-// NewMatchInfoCache wires the cache. nil log → discard.
+// NewMatchInfoCache wires the cache. log is required (anti-fallback policy).
 func NewMatchInfoCache(kv KV, ttl time.Duration, log *slog.Logger, loader MatchInfoLoader) *MatchInfoCache {
 	if ttl <= 0 {
 		ttl = DefaultMatchInfoTTL
 	}
 	if log == nil {
-		log = slog.New(slog.NewTextHandler(io.Discard, nil))
+		panic("arena.infra.NewMatchInfoCache: logger is required (anti-fallback policy: no silent noop loggers)")
 	}
 	return &MatchInfoCache{kv: kv, ttl: ttl, log: log, loader: loader}
 }
@@ -198,13 +197,13 @@ type QueueStatsCache struct {
 	sf     singleflight.Group
 }
 
-// NewQueueStatsCache wires the cache.
+// NewQueueStatsCache wires the cache. log is required (anti-fallback policy).
 func NewQueueStatsCache(kv KV, ttl time.Duration, log *slog.Logger, loader QueueStatsLoader) *QueueStatsCache {
 	if ttl <= 0 {
 		ttl = DefaultQueueStatsTTL
 	}
 	if log == nil {
-		log = slog.New(slog.NewTextHandler(io.Discard, nil))
+		panic("arena.infra.NewQueueStatsCache: logger is required (anti-fallback policy: no silent noop loggers)")
 	}
 	return &QueueStatsCache{kv: kv, ttl: ttl, log: log, loader: loader}
 }
@@ -299,13 +298,13 @@ type MatchHistoryCache struct {
 	epochs  map[uuid.UUID]uint64
 }
 
-// NewMatchHistoryCache wires the cache. nil log → discard.
+// NewMatchHistoryCache wires the cache. log is required (anti-fallback policy).
 func NewMatchHistoryCache(kv KV, ttl time.Duration, log *slog.Logger, loader MatchHistoryLoader) *MatchHistoryCache {
 	if ttl <= 0 {
 		ttl = DefaultMatchHistoryTTL
 	}
 	if log == nil {
-		log = slog.New(slog.NewTextHandler(io.Discard, nil))
+		panic("arena.infra.NewMatchHistoryCache: logger is required (anti-fallback policy: no silent noop loggers)")
 	}
 	return &MatchHistoryCache{
 		kv:     kv,

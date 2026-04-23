@@ -167,6 +167,31 @@ var ActiveUsers = prometheus.NewGaugeVec(
 	[]string{"tier"},
 )
 
+// ── Cache + parser observability ───────────────────────────────────────────
+
+// CacheSetErrorsTotal counts Redis SET failures encountered after a successful
+// upstream load. The read still succeeds (we have the value), but the cache
+// write was lost — alert when the rate climbs (Redis OOM / failover / bad
+// route). Labelled by module so ops can pinpoint the noisy client.
+var CacheSetErrorsTotal = prometheus.NewCounterVec(
+	prometheus.CounterOpts{
+		Name: "druz9_cache_set_errors_total",
+		Help: "Redis SET failures from per-module read-through caches. Read still served; cache write was lost.",
+	},
+	[]string{"module"},
+)
+
+// VacanciesParserErrorsTotal counts hard parser failures (fetch / decode /
+// non-2xx) per source. Loud sibling of the previous "log + return []" that
+// used to mask broken sources. Alert when one source's rate jumps.
+var VacanciesParserErrorsTotal = prometheus.NewCounterVec(
+	prometheus.CounterOpts{
+		Name: "druz9_vacancies_parser_errors_total",
+		Help: "Hard parser failures (fetch/decode/non-2xx) per source. Sync continues to next source.",
+	},
+	[]string{"source"},
+)
+
 func init() {
 	Registry.MustRegister(
 		HTTPRequestsTotal, HTTPRequestDuration, HTTPErrorsTotal,
@@ -175,6 +200,7 @@ func init() {
 		Judge0PendingSubmissions,
 		MatchesStartedTotal, MatchesFinishedTotal,
 		MockSessionsTotal, QueueWaitSeconds, ActiveUsers,
+		CacheSetErrorsTotal, VacanciesParserErrorsTotal,
 	)
 }
 

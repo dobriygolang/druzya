@@ -3,7 +3,7 @@ import { recentSorted, type FriendDTO } from '../lib/queries/friends'
 
 const mk = (over: Partial<FriendDTO>): FriendDTO => ({
   user_id: 'u', username: 'u', display_name: '', avatar_url: '',
-  tier: '', online: false, last_match_at: null, ...over,
+  tier: '', last_match_at: null, ...over,
 })
 
 describe('recentSorted', () => {

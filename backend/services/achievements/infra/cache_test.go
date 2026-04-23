@@ -2,6 +2,8 @@ package infra
 
 import (
 	"context"
+	"io"
+	"log/slog"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -11,6 +13,12 @@ import (
 
 	"github.com/google/uuid"
 )
+
+// testLog returns an explicit discard logger for unit tests. Constructors
+// now panic on nil log (anti-fallback policy).
+func testLog() *slog.Logger {
+	return slog.New(slog.NewTextHandler(io.Discard, nil))
+}
 
 // memKV — in-memory KV для тестов.
 type memKV struct {
@@ -79,7 +87,7 @@ func TestCachedRepo_List_HitMissAndInvalidate(t *testing.T) {
 	ctx := context.Background()
 	uid := uuid.New()
 	stub := &stubRepo{listResp: []domain.UserAchievement{{UserID: uid, Code: "x", Target: 1}}}
-	cache := NewCachedRepo(stub, newMemKV(), 1*time.Minute, nil)
+	cache := NewCachedRepo(stub, newMemKV(), 1*time.Minute, testLog())
 
 	// первый — miss → upstream
 	if _, err := cache.List(ctx, uid); err != nil {
@@ -109,7 +117,7 @@ func TestCachedRepo_Singleflight_CollapsesConcurrentMisses(t *testing.T) {
 	uid := uuid.New()
 	stub := &stubRepo{listResp: []domain.UserAchievement{{UserID: uid, Code: "x", Target: 1}}}
 	// blocked KV — с долгой задержкой имитирует тяжёлый upstream.
-	cache := NewCachedRepo(stub, newMemKV(), time.Minute, nil)
+	cache := NewCachedRepo(stub, newMemKV(), time.Minute, testLog())
 
 	var wg sync.WaitGroup
 	for i := 0; i < 20; i++ {

@@ -54,15 +54,13 @@ type FriendCodeRepo interface {
 	Resolve(ctx context.Context, code string) (uuid.UUID, error)
 }
 
-// PresenceProvider — узкий порт «онлайн или нет». Реализация может быть
-// stub-ом (всегда false) или адаптером к существующему ws-presence
-// (если такой есть).
-type PresenceProvider interface {
-	IsOnline(ctx context.Context, uid uuid.UUID) bool
-}
-
-// AlwaysOffline — fallback presence, если presence-провайдер ещё не реализован.
-type AlwaysOffline struct{}
-
-// IsOnline всегда false.
-func (AlwaysOffline) IsOnline(context.Context, uuid.UUID) bool { return false }
+// Anti-fallback policy: PresenceProvider + AlwaysOffline were removed.
+// The previous AlwaysOffline stub was hard-wired across List/ListBlocked/
+// ListSuggestions and made the frontend show every friend as offline,
+// regardless of reality. That created a "broken" UX where users assumed
+// the feature was buggy. There is no real presence module today (no
+// service exposes IsOnline beyond the editor's per-room WS heartbeats),
+// so we removed the Online field from the DTO entirely. When a real
+// presence service lands, restore PresenceProvider as a separate port
+// and wire it from the monolith services package — do NOT reintroduce a
+// hard-coded "always offline" stub.

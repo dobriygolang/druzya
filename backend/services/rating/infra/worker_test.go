@@ -97,7 +97,7 @@ func TestWorker_RecomputeOne_PopulatesZSet(t *testing.T) {
 	mock.EXPECT().Top(gomock.Any(), enums.SectionAlgorithms, gomock.Any()).Return(twoEntries(), nil)
 
 	z := newFakeZSet()
-	w := NewLeaderboardRecomputeWorker(mock, z, nil, time.Hour, 100)
+	w := NewLeaderboardRecomputeWorker(mock, z, testLog(), time.Hour, 100)
 	if err := w.recomputeOne(context.Background(), enums.SectionAlgorithms); err != nil {
 		t.Fatal(err)
 	}
@@ -118,7 +118,7 @@ func TestWorker_RecomputeOne_EmptySectionStillSetsMeta(t *testing.T) {
 	mock.EXPECT().Top(gomock.Any(), enums.SectionSQL, gomock.Any()).Return([]domain.LeaderboardEntry{}, nil)
 
 	z := newFakeZSet()
-	w := NewLeaderboardRecomputeWorker(mock, z, nil, time.Hour, 100)
+	w := NewLeaderboardRecomputeWorker(mock, z, testLog(), time.Hour, 100)
 	if err := w.recomputeOne(context.Background(), enums.SectionSQL); err != nil {
 		t.Fatal(err)
 	}
@@ -137,7 +137,7 @@ func TestWorker_RecomputeOne_RepoErrorPropagates(t *testing.T) {
 	mock := mocks.NewMockRatingRepo(ctrl)
 	mock.EXPECT().Top(gomock.Any(), enums.SectionGo, gomock.Any()).Return(nil, errors.New("pg down"))
 	z := newFakeZSet()
-	w := NewLeaderboardRecomputeWorker(mock, z, nil, time.Hour, 100)
+	w := NewLeaderboardRecomputeWorker(mock, z, testLog(), time.Hour, 100)
 	if err := w.recomputeOne(context.Background(), enums.SectionGo); err == nil {
 		t.Fatal("expected error from repo failure")
 	}
@@ -150,7 +150,7 @@ func TestWorker_RecomputeOne_DelErrorPropagates(t *testing.T) {
 	mock.EXPECT().Top(gomock.Any(), enums.SectionAlgorithms, gomock.Any()).Return(twoEntries(), nil)
 	z := newFakeZSet()
 	z.failDel = true
-	w := NewLeaderboardRecomputeWorker(mock, z, nil, time.Hour, 100)
+	w := NewLeaderboardRecomputeWorker(mock, z, testLog(), time.Hour, 100)
 	if err := w.recomputeOne(context.Background(), enums.SectionAlgorithms); err == nil {
 		t.Fatal("expected error from DEL failure")
 	}
@@ -172,7 +172,7 @@ func TestWorker_RecomputeAll_OneSectionFails_OthersSucceed(t *testing.T) {
 		}).AnyTimes()
 
 	z := newFakeZSet()
-	w := NewLeaderboardRecomputeWorker(mock, z, nil, time.Hour, 100)
+	w := NewLeaderboardRecomputeWorker(mock, z, testLog(), time.Hour, 100)
 	w.recomputeAll(context.Background())
 	_, meta := z.snapshot()
 	// Every section that succeeded should have written meta.
@@ -188,7 +188,7 @@ func TestWorker_Run_GracefulShutdown(t *testing.T) {
 	mock.EXPECT().Top(gomock.Any(), gomock.Any(), gomock.Any()).Return([]domain.LeaderboardEntry{}, nil).AnyTimes()
 
 	z := newFakeZSet()
-	w := NewLeaderboardRecomputeWorker(mock, z, nil, 10*time.Millisecond, 100)
+	w := NewLeaderboardRecomputeWorker(mock, z, testLog(), 10*time.Millisecond, 100)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	done := make(chan struct{})
@@ -217,7 +217,7 @@ func TestWorker_Run_TicksPeriodically(t *testing.T) {
 	mock := mocks.NewMockRatingRepo(ctrl)
 	mock.EXPECT().Top(gomock.Any(), gomock.Any(), gomock.Any()).Return([]domain.LeaderboardEntry{}, nil).AnyTimes()
 	z := newFakeZSet()
-	w := NewLeaderboardRecomputeWorker(mock, z, nil, 5*time.Millisecond, 100)
+	w := NewLeaderboardRecomputeWorker(mock, z, testLog(), 5*time.Millisecond, 100)
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Millisecond)
 	defer cancel()
 	w.Run(ctx)
@@ -228,7 +228,7 @@ func TestWorker_Run_TicksPeriodically(t *testing.T) {
 
 func TestWorker_DefaultsApplied(t *testing.T) {
 	t.Parallel()
-	w := NewLeaderboardRecomputeWorker(nil, newFakeZSet(), nil, 0, 0)
+	w := NewLeaderboardRecomputeWorker(nil, newFakeZSet(), testLog(), 0, 0)
 	if w.interval != DefaultRecomputeInterval || w.limit != DefaultRecomputeLimit {
 		t.Fatalf("defaults not applied: interval=%s limit=%d", w.interval, w.limit)
 	}

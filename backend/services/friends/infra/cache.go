@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"druz9/friends/domain"
+	"druz9/shared/pkg/metrics"
 
 	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
@@ -77,13 +78,13 @@ type CachedRepo struct {
 	sf       singleflight.Group
 }
 
-// NewCachedRepo конструктор.
+// NewCachedRepo конструктор. log обязателен (anti-fallback policy).
 func NewCachedRepo(d domain.FriendRepo, kv KV, ttl time.Duration, log *slog.Logger) *CachedRepo {
 	if ttl <= 0 {
 		ttl = DefaultListTTL
 	}
 	if log == nil {
-		log = slog.New(slog.NewTextHandler(discardWriter{}, nil))
+		panic("friends.infra.NewCachedRepo: logger is required (anti-fallback policy: no silent noop loggers)")
 	}
 	return &CachedRepo{delegate: d, kv: kv, ttl: ttl, log: log}
 }
@@ -102,7 +103,8 @@ func (c *CachedRepo) ListAccepted(ctx context.Context, uid uuid.UUID) ([]domain.
 		}
 		c.log.Warn("friends.cache: corrupt entry, refreshing", slog.String("key", key))
 	} else if !errors.Is(err, ErrCacheMiss) {
-		c.log.Warn("friends.cache: redis Get failed, fallback", slog.String("key", key), slog.Any("err", err))
+		// Anti-fallback: real Redis failure propagates.
+		return nil, fmt.Errorf("friends.cache.ListAccepted: redis: %w", err)
 	}
 	v, err, _ := c.sf.Do(key, func() (any, error) {
 		return c.delegate.ListAccepted(ctx, uid)
@@ -115,7 +117,11 @@ func (c *CachedRepo) ListAccepted(ctx context.Context, uid uuid.UUID) ([]domain.
 		return nil, fmt.Errorf("friends.cache: singleflight returned %T", v)
 	}
 	if data, jerr := json.Marshal(out); jerr == nil {
-		_ = c.kv.Set(ctx, key, data, c.ttl)
+		if serr := c.kv.Set(ctx, key, data, c.ttl); serr != nil {
+			metrics.CacheSetErrorsTotal.WithLabelValues("friends").Inc()
+			c.log.Warn("friends.cache: redis Set failed",
+				slog.String("key", key), slog.Any("err", serr))
+		}
 	}
 	return out, nil
 }
@@ -206,14 +212,16 @@ func (c *CachedRepo) Suggestions(ctx context.Context, uid uuid.UUID, limit int) 
 }
 
 func (c *CachedRepo) invalidate(ctx context.Context, uid uuid.UUID) {
-	_ = c.kv.Del(ctx, keyAccepted(uid))
+	if err := c.kv.Del(ctx, keyAccepted(uid)); err != nil {
+		c.log.Warn("friends.cache: redis Del failed",
+			slog.Any("user_id", uid), slog.Any("err", err))
+	}
 }
 func (c *CachedRepo) invalidatePair(ctx context.Context, a, b uuid.UUID) {
-	_ = c.kv.Del(ctx, keyAccepted(a), keyAccepted(b))
+	if err := c.kv.Del(ctx, keyAccepted(a), keyAccepted(b)); err != nil {
+		c.log.Warn("friends.cache: redis Del pair failed",
+			slog.Any("a", a), slog.Any("b", b), slog.Any("err", err))
+	}
 }
-
-type discardWriter struct{}
-
-func (discardWriter) Write(p []byte) (int, error) { return len(p), nil }
 
 var _ domain.FriendRepo = (*CachedRepo)(nil)

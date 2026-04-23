@@ -3,6 +3,8 @@ package infra
 import (
 	"context"
 	"errors"
+	"io"
+	"log/slog"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -138,7 +140,7 @@ func TestCachedRepo_GetGuild_MissThenHit(t *testing.T) {
 	mock.EXPECT().GetGuild(gomock.Any(), want.ID).Return(want, nil).Times(1)
 
 	kv := newMemKV()
-	repo := NewCachedRepo(mock, kv, time.Minute, 5*time.Minute, nil)
+	repo := NewCachedRepo(mock, kv, time.Minute, 5*time.Minute, slog.New(slog.NewTextHandler(io.Discard, nil)))
 
 	got1, err := repo.GetGuild(context.Background(), want.ID)
 	if err != nil || got1.Name != "ironclad" {
@@ -160,7 +162,7 @@ func TestCachedRepo_GetGuild_TTLExpiry(t *testing.T) {
 	kv := newMemKV()
 	now := time.Now()
 	kv.now = func() time.Time { return now }
-	repo := NewCachedRepo(mock, kv, time.Second, 5*time.Minute, nil)
+	repo := NewCachedRepo(mock, kv, time.Second, 5*time.Minute, slog.New(slog.NewTextHandler(io.Discard, nil)))
 
 	if _, err := repo.GetGuild(context.Background(), g.ID); err != nil {
 		t.Fatal(err)
@@ -180,7 +182,7 @@ func TestCachedRepo_GetGuild_RedisGetFailureFallsBack(t *testing.T) {
 
 	kv := newMemKV()
 	kv.failGet = true
-	repo := NewCachedRepo(mock, kv, time.Minute, 5*time.Minute, nil)
+	repo := NewCachedRepo(mock, kv, time.Minute, 5*time.Minute, slog.New(slog.NewTextHandler(io.Discard, nil)))
 
 	got, err := repo.GetGuild(context.Background(), g.ID)
 	if err != nil || got.Name != "phoenix" {
@@ -199,7 +201,7 @@ func TestCachedRepo_GetGuild_CorruptJSONFallsBack(t *testing.T) {
 
 	kv := newMemKV()
 	kv.putRaw(keyByID(g.ID), []byte("not valid json"))
-	repo := NewCachedRepo(mock, kv, time.Minute, 5*time.Minute, nil)
+	repo := NewCachedRepo(mock, kv, time.Minute, 5*time.Minute, slog.New(slog.NewTextHandler(io.Discard, nil)))
 
 	got, err := repo.GetGuild(context.Background(), g.ID)
 	if err != nil || got.Name != "garbage" {
@@ -216,7 +218,7 @@ func TestCachedRepo_GetGuild_UpstreamErrorPropagates(t *testing.T) {
 	mock.EXPECT().GetGuild(gomock.Any(), id).Return(domain.Guild{}, wantErr)
 
 	kv := newMemKV()
-	repo := NewCachedRepo(mock, kv, time.Minute, 5*time.Minute, nil)
+	repo := NewCachedRepo(mock, kv, time.Minute, 5*time.Minute, slog.New(slog.NewTextHandler(io.Discard, nil)))
 
 	if _, err := repo.GetGuild(context.Background(), id); !errors.Is(err, wantErr) {
 		t.Fatalf("want %v, got %v", wantErr, err)
@@ -231,7 +233,7 @@ func TestCachedRepo_Invalidate(t *testing.T) {
 	mock.EXPECT().GetGuild(gomock.Any(), g.ID).Return(g, nil).Times(2)
 
 	kv := newMemKV()
-	repo := NewCachedRepo(mock, kv, time.Minute, 5*time.Minute, nil)
+	repo := NewCachedRepo(mock, kv, time.Minute, 5*time.Minute, slog.New(slog.NewTextHandler(io.Discard, nil)))
 
 	if _, err := repo.GetGuild(context.Background(), g.ID); err != nil {
 		t.Fatal(err)
@@ -259,7 +261,7 @@ func TestCachedRepo_GetMyGuild_MissThenHitMaintainsIndex(t *testing.T) {
 	mock.EXPECT().GetMyGuild(gomock.Any(), uid).Return(g, nil).Times(1)
 
 	kv := newMemKV()
-	repo := NewCachedRepo(mock, kv, time.Minute, 5*time.Minute, nil)
+	repo := NewCachedRepo(mock, kv, time.Minute, 5*time.Minute, slog.New(slog.NewTextHandler(io.Discard, nil)))
 
 	if _, err := repo.GetMyGuild(context.Background(), uid); err != nil {
 		t.Fatal(err)
@@ -281,7 +283,7 @@ func TestCachedRepo_GetMyGuild_NotFoundNotCached(t *testing.T) {
 	mock.EXPECT().GetMyGuild(gomock.Any(), uid).Return(domain.Guild{}, domain.ErrNotFound).Times(2)
 
 	kv := newMemKV()
-	repo := NewCachedRepo(mock, kv, time.Minute, 5*time.Minute, nil)
+	repo := NewCachedRepo(mock, kv, time.Minute, 5*time.Minute, slog.New(slog.NewTextHandler(io.Discard, nil)))
 
 	if _, err := repo.GetMyGuild(context.Background(), uid); !errors.Is(err, domain.ErrNotFound) {
 		t.Fatalf("want ErrNotFound, got %v", err)
@@ -300,7 +302,7 @@ func TestCachedRepo_InvalidateUser(t *testing.T) {
 	mock.EXPECT().GetMyGuild(gomock.Any(), uid).Return(g, nil).Times(2)
 
 	kv := newMemKV()
-	repo := NewCachedRepo(mock, kv, time.Minute, 5*time.Minute, nil)
+	repo := NewCachedRepo(mock, kv, time.Minute, 5*time.Minute, slog.New(slog.NewTextHandler(io.Discard, nil)))
 
 	if _, err := repo.GetMyGuild(context.Background(), uid); err != nil {
 		t.Fatal(err)
@@ -327,7 +329,7 @@ func TestCachedRepo_ListTopGuilds_MissThenHit(t *testing.T) {
 	mock.EXPECT().ListTopGuilds(gomock.Any(), 20).Return(want, nil).Times(1)
 
 	kv := newMemKV()
-	repo := NewCachedRepo(mock, kv, time.Minute, 5*time.Minute, nil)
+	repo := NewCachedRepo(mock, kv, time.Minute, 5*time.Minute, slog.New(slog.NewTextHandler(io.Discard, nil)))
 
 	got1, err := repo.ListTopGuilds(context.Background(), 20)
 	if err != nil || len(got1) != 3 {
@@ -347,7 +349,7 @@ func TestCachedRepo_ListTopGuilds_DifferentLimitsAreSeparateKeys(t *testing.T) {
 	mock.EXPECT().ListTopGuilds(gomock.Any(), 50).Return(mkTop(50), nil).Times(1)
 
 	kv := newMemKV()
-	repo := NewCachedRepo(mock, kv, time.Minute, 5*time.Minute, nil)
+	repo := NewCachedRepo(mock, kv, time.Minute, 5*time.Minute, slog.New(slog.NewTextHandler(io.Discard, nil)))
 
 	if got, err := repo.ListTopGuilds(context.Background(), 10); err != nil || len(got) != 10 {
 		t.Fatalf("limit=10: got=%d err=%v", len(got), err)
@@ -371,7 +373,7 @@ func TestCachedRepo_InvalidateTop(t *testing.T) {
 	mock.EXPECT().ListTopGuilds(gomock.Any(), 20).Return(mkTop(2), nil).Times(2)
 
 	kv := newMemKV()
-	repo := NewCachedRepo(mock, kv, time.Minute, 5*time.Minute, nil)
+	repo := NewCachedRepo(mock, kv, time.Minute, 5*time.Minute, slog.New(slog.NewTextHandler(io.Discard, nil)))
 
 	if _, err := repo.ListTopGuilds(context.Background(), 20); err != nil {
 		t.Fatal(err)
@@ -392,7 +394,10 @@ func TestCachedRepo_InvalidateTop(t *testing.T) {
 
 func TestCachedRepo_DefaultTTLApplied(t *testing.T) {
 	t.Parallel()
-	repo := NewCachedRepo(nil, newMemKV(), 0, 0, nil)
+	// Explicit io.Discard logger — production constructors panic on nil
+	// (anti-fallback policy).
+	log := slog.New(slog.NewTextHandler(io.Discard, nil))
+	repo := NewCachedRepo(nil, newMemKV(), 0, 0, log)
 	if repo.ttl != DefaultGuildCacheTTL {
 		t.Fatalf("expected default per-guild TTL, got %v", repo.ttl)
 	}
@@ -411,7 +416,7 @@ func TestCachedRepo_PassthroughMembers(t *testing.T) {
 	mock.EXPECT().GetMember(gomock.Any(), gid, uid).Return(domain.Member{UserID: uid}, nil)
 
 	kv := newMemKV()
-	repo := NewCachedRepo(mock, kv, time.Minute, 5*time.Minute, nil)
+	repo := NewCachedRepo(mock, kv, time.Minute, 5*time.Minute, slog.New(slog.NewTextHandler(io.Discard, nil)))
 	if out, err := repo.ListGuildMembers(context.Background(), gid); err != nil || len(out) != 1 {
 		t.Fatalf("members: %v %v", out, err)
 	}
@@ -430,7 +435,7 @@ func TestCachedRepo_UpsertGuildBustsCaches(t *testing.T) {
 	mock.EXPECT().ListTopGuilds(gomock.Any(), 20).Return(mkTop(2), nil)
 
 	kv := newMemKV()
-	repo := NewCachedRepo(mock, kv, time.Minute, 5*time.Minute, nil)
+	repo := NewCachedRepo(mock, kv, time.Minute, 5*time.Minute, slog.New(slog.NewTextHandler(io.Discard, nil)))
 
 	if _, err := repo.GetGuild(context.Background(), g.ID); err != nil {
 		t.Fatal(err)
@@ -470,7 +475,7 @@ func TestCachedRepo_ConcurrentColdReadCollapsed(t *testing.T) {
 		}).MaxTimes(50)
 
 	kv := newMemKV()
-	repo := NewCachedRepo(mock, kv, time.Minute, 5*time.Minute, nil)
+	repo := NewCachedRepo(mock, kv, time.Minute, 5*time.Minute, slog.New(slog.NewTextHandler(io.Discard, nil)))
 
 	const N = 50
 	var wg sync.WaitGroup
@@ -498,7 +503,7 @@ func TestCachedRepo_InvalidateMatchParticipants(t *testing.T) {
 	mock.EXPECT().GetMyGuild(gomock.Any(), uid).Return(g, nil)
 
 	kv := newMemKV()
-	repo := NewCachedRepo(mock, kv, time.Minute, 5*time.Minute, nil)
+	repo := NewCachedRepo(mock, kv, time.Minute, 5*time.Minute, slog.New(slog.NewTextHandler(io.Discard, nil)))
 
 	// Prime the per-user and per-guild keys.
 	if _, err := repo.GetMyGuild(context.Background(), uid); err != nil {

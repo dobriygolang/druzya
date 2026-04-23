@@ -60,7 +60,7 @@ func (s *AuthServer) LoginYandex(
 	if err != nil {
 		return nil, fmt.Errorf("auth.LoginYandex: %w", s.toConnectErr(err))
 	}
-	return s.buildLoginResponse(res.User, res.Tokens, enums.AuthProviderYandex), nil
+	return s.buildLoginResponse(res.User, res.Tokens, enums.AuthProviderYandex, res.IsNewUser), nil
 }
 
 // LoginTelegram implements druz9.v1.AuthService/LoginTelegram.
@@ -86,17 +86,30 @@ func (s *AuthServer) LoginTelegram(
 	if err != nil {
 		return nil, fmt.Errorf("auth.LoginTelegram: %w", s.toConnectErr(err))
 	}
-	return s.buildLoginResponse(res.User, res.Tokens, enums.AuthProviderTelegram), nil
+	return s.buildLoginResponse(res.User, res.Tokens, enums.AuthProviderTelegram, res.IsNewUser), nil
 }
 
 // Refresh implements druz9.v1.AuthService/Refresh.
+//
+// The refresh token is read from either:
+//   - HttpOnly cookie `druz9_refresh` (legacy / web flow), OR
+//   - the X-Refresh-Token header (mobile / 3rd-party clients that can't
+//     juggle cross-origin cookies).
+//
+// Refresh never returns IsNewUser=true (the user existed already), so the
+// X-Is-New-User response header is omitted on this path.
 func (s *AuthServer) Refresh(
 	ctx context.Context,
 	req *connect.Request[pb.RefreshRequest],
 ) (*connect.Response[pb.AuthResponse], error) {
-	token, ok := readCookie(req.Header(), refreshCookieName)
-	if !ok {
-		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("missing refresh cookie"))
+	token := refreshTokenFromHeader(req.Header())
+	if token == "" {
+		if v, ok := readCookie(req.Header(), refreshCookieName); ok {
+			token = v
+		}
+	}
+	if token == "" {
+		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("missing refresh token"))
 	}
 	res, err := s.H.Refresh.Do(ctx, app.RefreshInput{
 		RefreshToken: token,
@@ -106,18 +119,28 @@ func (s *AuthServer) Refresh(
 	if err != nil {
 		return nil, fmt.Errorf("auth.Refresh: %w", s.toConnectErr(err))
 	}
-	// STUB: persist provider on the session so Refresh can restore it.
-	return s.buildLoginResponse(res.User, res.Tokens, enums.AuthProviderYandex), nil
+	// Refresh always operates on an existing user; isNewUser is irrelevant
+	// here. Provider is currently not persisted on the session row, so we
+	// default to Yandex for the AuthUser.provider claim — clients should
+	// rely on the access-token claim, not this projection.
+	return s.buildLoginResponse(res.User, res.Tokens, enums.AuthProviderYandex, false), nil
 }
 
 // Logout implements druz9.v1.AuthService/Logout.
+//
+// Best-effort: missing token → no-op (returns 200 + clears cookie). The same
+// X-Refresh-Token fallback as Refresh is honoured so SPA clients that hold
+// the token in localStorage (because cookies aren't viable for them) can
+// still revoke their session server-side.
 func (s *AuthServer) Logout(
 	ctx context.Context,
 	req *connect.Request[pb.LogoutRequest],
 ) (*connect.Response[pb.LogoutResponse], error) {
-	var token string
-	if v, ok := readCookie(req.Header(), refreshCookieName); ok {
-		token = v
+	token := refreshTokenFromHeader(req.Header())
+	if token == "" {
+		if v, ok := readCookie(req.Header(), refreshCookieName); ok {
+			token = v
+		}
 	}
 	if err := s.H.Logout.Do(ctx, token); err != nil {
 		s.H.Log.WarnContext(ctx, "auth.Logout", slog.Any("err", err))
@@ -131,7 +154,16 @@ func (s *AuthServer) Logout(
 
 // buildLoginResponse wraps the shared "set cookie + serialize AuthResponse"
 // dance used by the three login RPCs.
-func (s *AuthServer) buildLoginResponse(u domain.User, tp domain.TokenPair, provider enums.AuthProvider) *connect.Response[pb.AuthResponse] {
+//
+// Beyond the proto fields, two HTTP response headers are emitted:
+//   - Set-Cookie: druz9_refresh — HttpOnly cookie for browser flows.
+//   - X-Refresh-Token            — for clients that cannot persist cookies
+//     (cross-origin SPAs in environments without first-party cookie support,
+//     mobile shells). The same opaque value as the cookie.
+//   - X-Is-New-User: "1"|"0"     — surfaces the LoginYandex/LoginTelegram
+//     IsNewUser flag without bumping proto. Frontend reads this to route
+//     freshly-registered accounts to /onboarding.
+func (s *AuthServer) buildLoginResponse(u domain.User, tp domain.TokenPair, provider enums.AuthProvider, isNewUser bool) *connect.Response[pb.AuthResponse] {
 	out := &pb.AuthResponse{
 		AccessToken: tp.AccessToken,
 		ExpiresIn:   int32(tp.AccessExpiresIn),
@@ -139,7 +171,29 @@ func (s *AuthServer) buildLoginResponse(u domain.User, tp domain.TokenPair, prov
 	}
 	resp := connect.NewResponse(out)
 	resp.Header().Add("Set-Cookie", s.setRefreshCookieString(tp.RefreshToken, tp.RefreshExpires))
+	resp.Header().Set("X-Refresh-Token", tp.RefreshToken)
+	if isNewUser {
+		resp.Header().Set("X-Is-New-User", "1")
+	} else {
+		resp.Header().Set("X-Is-New-User", "0")
+	}
 	return resp
+}
+
+// refreshTokenFromHeader pulls the refresh token from the X-Refresh-Token
+// header (or Authorization: Bearer <opaque> when X-Refresh-Token is absent).
+// Returns "" when neither carries a value.
+func refreshTokenFromHeader(h http.Header) string {
+	if v := strings.TrimSpace(h.Get("X-Refresh-Token")); v != "" {
+		return v
+	}
+	if auth := strings.TrimSpace(h.Get("X-Refresh-Authorization")); auth != "" {
+		const prefix = "Bearer "
+		if strings.HasPrefix(auth, prefix) {
+			return strings.TrimSpace(auth[len(prefix):])
+		}
+	}
+	return ""
 }
 
 // setRefreshCookieString mirrors Handler.setRefreshCookie but returns the raw

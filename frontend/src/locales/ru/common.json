@@ -7,7 +7,10 @@
     "atlas": "Atlas",
     "codex": "Codex",
     "friends": "Друзья",
-    "help": "Помощь"
+    "help": "Помощь",
+    "podcasts": "Подкасты",
+    "weekly": "Weekly Report",
+    "logout": "Выйти"
   },
   "buttons": {
     "find_opponent": "Найти соперника",

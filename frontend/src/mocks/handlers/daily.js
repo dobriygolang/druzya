@@ -48,6 +48,14 @@ const calendar = {
 export const dailyHandlers = [
     http.get(`${base}/daily/kata`, () => HttpResponse.json(kata)),
     http.post(`${base}/daily/kata/submit`, () => HttpResponse.json({ passed: true, tests_passed: 5, tests_total: 5, xp_earned: 30, streak })),
+    // /daily/run — dry-grade execution (no streak side-effect). Mirrors the
+    // backend chi-handler shape so the editor's "Run" button works in MSW too.
+    http.post(`${base}/daily/run`, () => HttpResponse.json({
+        passed: true,
+        total: 5,
+        output: 'PASS — 5/5 test cases passed in 42ms',
+        time_ms: 42,
+    })),
     http.get(`${base}/daily/streak`, () => HttpResponse.json(streak)),
     http.get(`${base}/daily/calendar`, () => HttpResponse.json(calendar)),
     http.post(`${base}/daily/calendar`, () => HttpResponse.json(calendar)),

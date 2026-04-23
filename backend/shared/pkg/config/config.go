@@ -90,7 +90,12 @@ func Load() (Config, error) {
 	c.Judge0.URL = env("JUDGE0_URL", "http://judge0-server:2358")
 
 	c.Auth.JWTSecret = mustEnv("JWT_SECRET")
-	c.Auth.AccessTokenTTL = envInt("JWT_ACCESS_TTL", 900)
+	// Default access TTL bumped from 15 min → 24 h: the previous 900s window
+	// caused users to be silently kicked out mid-session ("постоянно
+	// авторизация спадает") because the SPA had no transparent refresh path.
+	// The frontend now also runs a silent-refresh timer at ~80% of TTL, so a
+	// 24 h floor gives a comfortable buffer even with intermittent networks.
+	c.Auth.AccessTokenTTL = envInt("JWT_ACCESS_TTL", 86400)
 	c.Auth.RefreshTokenTTL = envInt("JWT_REFRESH_TTL", 2592000)
 	c.Auth.YandexClientID = env("YANDEX_CLIENT_ID", "")
 	c.Auth.YandexSecret = env("YANDEX_CLIENT_SECRET", "")

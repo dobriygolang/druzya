@@ -52,10 +52,16 @@ type pollRequest struct {
 }
 
 type pollSuccessResponse struct {
-	AccessToken string   `json:"access_token"`
-	ExpiresIn   int      `json:"expires_in"`
-	User        pollUser `json:"user"`
-	IsNewUser   bool     `json:"is_new_user"`
+	AccessToken string `json:"access_token"`
+	ExpiresIn   int    `json:"expires_in"`
+	// RefreshToken is mirrored in the JSON body (in addition to the HttpOnly
+	// cookie + X-Refresh-Token header) so SPA clients running in strict-
+	// cookie environments can persist it directly without parsing headers
+	// from a fetch() response. The same opaque session UUID is shared by all
+	// three transports.
+	RefreshToken string   `json:"refresh_token,omitempty"`
+	User         pollUser `json:"user"`
+	IsNewUser    bool     `json:"is_new_user"`
 }
 
 type pollUser struct {
@@ -110,11 +116,20 @@ func (h *CodeFlowHandler) HandlePoll(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	// Set the refresh cookie via the AuthServer's existing helper so the
-	// behaviour is identical to LoginTelegram.
+	// behaviour is identical to LoginTelegram. We also publish X-Refresh-Token
+	// so clients without first-party cookie support can stash the value in
+	// localStorage and replay it via Authorization-style refresh.
 	w.Header().Add("Set-Cookie", h.Auth.setRefreshCookieString(res.Tokens.RefreshToken, res.Tokens.RefreshExpires))
+	w.Header().Set("X-Refresh-Token", res.Tokens.RefreshToken)
+	if res.IsNewUser {
+		w.Header().Set("X-Is-New-User", "1")
+	} else {
+		w.Header().Set("X-Is-New-User", "0")
+	}
 	writeJSON(w, http.StatusOK, pollSuccessResponse{
-		AccessToken: res.Tokens.AccessToken,
-		ExpiresIn:   res.Tokens.AccessExpiresIn,
+		AccessToken:  res.Tokens.AccessToken,
+		ExpiresIn:    res.Tokens.AccessExpiresIn,
+		RefreshToken: res.Tokens.RefreshToken,
 		User: pollUser{
 			ID:        res.User.ID.String(),
 			Email:     res.User.Email,

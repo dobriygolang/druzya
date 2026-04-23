@@ -214,5 +214,30 @@
       "rejected": "Rejected",
       "offer": "Offer"
     }
+  },
+  "podcasts": {
+    "title": "Podcasts",
+    "subtitle": "Interview deep-dives, system design patches, and prod war stories.",
+    "featured": "Podcast of the week",
+    "completed": "Played",
+    "search_placeholder": "Search episodes…",
+    "empty": "No episodes in the catalog yet.",
+    "no_match": "Nothing matched — try a different filter.",
+    "error": "Failed to load the catalog.",
+    "retry": "Retry",
+    "filter": {
+      "all": "All"
+    },
+    "sections": {
+      "algorithms": "Algorithms",
+      "sql": "SQL",
+      "go": "Go",
+      "system_design": "System Design",
+      "behavioral": "Behavioral",
+      "other": "Other"
+    }
+  },
+  "auth": {
+    "session_expired": "Session expired, please sign in again."
   }
 }

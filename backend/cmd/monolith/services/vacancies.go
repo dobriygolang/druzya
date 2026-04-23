@@ -35,8 +35,14 @@ func NewVacancies(d Deps) *Module {
 		)
 	}
 
+	// Anti-fallback: if OPENROUTER_API_KEY is empty, do NOT register the
+	// extractor at all. SyncJob's nil-check skips extraction with a clear
+	// startup WARN below — far better than the old "silently return [] at
+	// request time" which left vacancies with no skills and nobody knew.
 	var extractor vacDomain.SkillExtractor
-	{
+	if d.Cfg.LLM.OpenRouterAPIKey == "" {
+		d.Log.Warn("vacancies: OPENROUTER_API_KEY not set — skill extraction disabled, sync runs without skill normalization")
+	} else {
 		var kv vacInfra.KV
 		if d.Redis != nil {
 			kv = vacInfra.NewRedisKV(d.Redis)
@@ -63,7 +69,8 @@ func NewVacancies(d Deps) *Module {
 	h := &vacPorts.Handler{
 		Analyze: analyze, List: list, Get: get,
 		Save: save, Update: upd, Remove: rem, ListSaved: listSaved,
-		Log: d.Log,
+		Sync: sync,
+		Log:  d.Log,
 	}
 
 	return &Module{

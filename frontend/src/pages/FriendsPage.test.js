@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { recentSorted } from '../lib/queries/friends';
 const mk = (over) => ({
     user_id: 'u', username: 'u', display_name: '', avatar_url: '',
-    tier: '', online: false, last_match_at: null, ...over,
+    tier: '', last_match_at: null, ...over,
 });
 describe('recentSorted', () => {
     it('puts most recent first, nulls last, max 10', () => {

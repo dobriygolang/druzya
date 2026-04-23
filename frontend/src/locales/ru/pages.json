@@ -214,5 +214,30 @@
       "rejected": "Отказ",
       "offer": "Оффер"
     }
+  },
+  "podcasts": {
+    "title": "Подкасты",
+    "subtitle": "Слушай разборы интервью, патчи в системном дизайне и stories из прода.",
+    "featured": "Подкаст недели",
+    "completed": "Прослушан",
+    "search_placeholder": "Поиск по эпизодам…",
+    "empty": "Пока в каталоге нет ни одного эпизода.",
+    "no_match": "Ничего не нашлось — попробуй другой фильтр.",
+    "error": "Не удалось загрузить каталог.",
+    "retry": "Повторить",
+    "filter": {
+      "all": "Все"
+    },
+    "sections": {
+      "algorithms": "Алгоритмы",
+      "sql": "SQL",
+      "go": "Go",
+      "system_design": "System Design",
+      "behavioral": "Behavioral",
+      "other": "Другое"
+    }
+  },
+  "auth": {
+    "session_expired": "Сессия истекла, переавторизуйтесь."
   }
 }

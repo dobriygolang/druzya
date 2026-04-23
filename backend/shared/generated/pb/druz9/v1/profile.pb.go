@@ -490,13 +490,26 @@ type SkillNode struct {
 	Section     Section                `protobuf:"varint,4,opt,name=section,proto3,enum=druz9.v1.Section" json:"section,omitempty"`
 	// kind is "normal" | "keystone" | "ascendant" in OpenAPI; string preserves
 	// wire compat without declaring another enum.
-	Kind          string                 `protobuf:"bytes,5,opt,name=kind,proto3" json:"kind,omitempty"`
-	Progress      int32                  `protobuf:"varint,6,opt,name=progress,proto3" json:"progress,omitempty"`
-	Unlocked      bool                   `protobuf:"varint,7,opt,name=unlocked,proto3" json:"unlocked,omitempty"`
-	UnlockedAt    *timestamppb.Timestamp `protobuf:"bytes,8,opt,name=unlocked_at,json=unlockedAt,proto3" json:"unlocked_at,omitempty"`
-	Decaying      bool                   `protobuf:"varint,9,opt,name=decaying,proto3" json:"decaying,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Kind       string                 `protobuf:"bytes,5,opt,name=kind,proto3" json:"kind,omitempty"`
+	Progress   int32                  `protobuf:"varint,6,opt,name=progress,proto3" json:"progress,omitempty"`
+	Unlocked   bool                   `protobuf:"varint,7,opt,name=unlocked,proto3" json:"unlocked,omitempty"`
+	UnlockedAt *timestamppb.Timestamp `protobuf:"bytes,8,opt,name=unlocked_at,json=unlockedAt,proto3" json:"unlocked_at,omitempty"`
+	Decaying   bool                   `protobuf:"varint,9,opt,name=decaying,proto3" json:"decaying,omitempty"`
+	// Total/solved counts for the progress bar in the Atlas drawer. progress
+	// (field 6) — это уже процент 0–100, оставляем для wire-compat; новые поля
+	// нужны для красивого «Решено 8 из 23 задач» без пересчёта на фронте.
+	SolvedCount int32 `protobuf:"varint,10,opt,name=solved_count,json=solvedCount,proto3" json:"solved_count,omitempty"`
+	TotalCount  int32 `protobuf:"varint,11,opt,name=total_count,json=totalCount,proto3" json:"total_count,omitempty"`
+	// last_solved_at — последняя решённая задача в этой теме. Используется на
+	// фронте, чтобы посчитать «дней без практики» и подсветить decaying-узел
+	// тоже здесь, не только через bool decaying. Может быть unset (zero ts).
+	LastSolvedAt *timestamppb.Timestamp `protobuf:"bytes,12,opt,name=last_solved_at,json=lastSolvedAt,proto3" json:"last_solved_at,omitempty"`
+	// recommended_kata — топ-N (5) непрешённых ката из этой темы, отсортированных
+	// по сложности. Фронт показывает их в drawer'е как кликабельные ссылки.
+	// Источник — daily-каталог, см. profile/app/atlas.go.
+	RecommendedKata []*KataRef `protobuf:"bytes,13,rep,name=recommended_kata,json=recommendedKata,proto3" json:"recommended_kata,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
 }
 
 func (x *SkillNode) Reset() {
@@ -592,6 +605,107 @@ func (x *SkillNode) GetDecaying() bool {
 	return false
 }
 
+func (x *SkillNode) GetSolvedCount() int32 {
+	if x != nil {
+		return x.SolvedCount
+	}
+	return 0
+}
+
+func (x *SkillNode) GetTotalCount() int32 {
+	if x != nil {
+		return x.TotalCount
+	}
+	return 0
+}
+
+func (x *SkillNode) GetLastSolvedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.LastSolvedAt
+	}
+	return nil
+}
+
+func (x *SkillNode) GetRecommendedKata() []*KataRef {
+	if x != nil {
+		return x.RecommendedKata
+	}
+	return nil
+}
+
+// KataRef — лёгкий референс на ката для UI рекомендаций. Title/difficulty
+// денормализованы, чтобы не делать второй round-trip на /daily/kata/{id}.
+type KataRef struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	Id    string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Title string                 `protobuf:"bytes,2,opt,name=title,proto3" json:"title,omitempty"`
+	// difficulty: "easy" | "medium" | "hard". Строка, чтобы не плодить enum.
+	Difficulty string `protobuf:"bytes,3,opt,name=difficulty,proto3" json:"difficulty,omitempty"`
+	// estimated_minutes — приблизительная оценка времени решения, для UX «у тебя
+	// есть 15 мин — вот ката на 10».
+	EstimatedMinutes int32 `protobuf:"varint,4,opt,name=estimated_minutes,json=estimatedMinutes,proto3" json:"estimated_minutes,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
+}
+
+func (x *KataRef) Reset() {
+	*x = KataRef{}
+	mi := &file_druz9_v1_profile_proto_msgTypes[6]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *KataRef) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*KataRef) ProtoMessage() {}
+
+func (x *KataRef) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_profile_proto_msgTypes[6]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use KataRef.ProtoReflect.Descriptor instead.
+func (*KataRef) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_profile_proto_rawDescGZIP(), []int{6}
+}
+
+func (x *KataRef) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *KataRef) GetTitle() string {
+	if x != nil {
+		return x.Title
+	}
+	return ""
+}
+
+func (x *KataRef) GetDifficulty() string {
+	if x != nil {
+		return x.Difficulty
+	}
+	return ""
+}
+
+func (x *KataRef) GetEstimatedMinutes() int32 {
+	if x != nil {
+		return x.EstimatedMinutes
+	}
+	return 0
+}
+
 // SkillEdge mirrors OpenAPI SkillEdge.
 type SkillEdge struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
@@ -603,7 +717,7 @@ type SkillEdge struct {
 
 func (x *SkillEdge) Reset() {
 	*x = SkillEdge{}
-	mi := &file_druz9_v1_profile_proto_msgTypes[6]
+	mi := &file_druz9_v1_profile_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -615,7 +729,7 @@ func (x *SkillEdge) String() string {
 func (*SkillEdge) ProtoMessage() {}
 
 func (x *SkillEdge) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_profile_proto_msgTypes[6]
+	mi := &file_druz9_v1_profile_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -628,7 +742,7 @@ func (x *SkillEdge) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SkillEdge.ProtoReflect.Descriptor instead.
 func (*SkillEdge) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_profile_proto_rawDescGZIP(), []int{6}
+	return file_druz9_v1_profile_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *SkillEdge) GetFrom() string {
@@ -657,7 +771,7 @@ type SkillAtlas struct {
 
 func (x *SkillAtlas) Reset() {
 	*x = SkillAtlas{}
-	mi := &file_druz9_v1_profile_proto_msgTypes[7]
+	mi := &file_druz9_v1_profile_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -669,7 +783,7 @@ func (x *SkillAtlas) String() string {
 func (*SkillAtlas) ProtoMessage() {}
 
 func (x *SkillAtlas) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_profile_proto_msgTypes[7]
+	mi := &file_druz9_v1_profile_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -682,7 +796,7 @@ func (x *SkillAtlas) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SkillAtlas.ProtoReflect.Descriptor instead.
 func (*SkillAtlas) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_profile_proto_rawDescGZIP(), []int{7}
+	return file_druz9_v1_profile_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *SkillAtlas) GetCenterNode() string {
@@ -727,7 +841,7 @@ type ProfilePublic struct {
 
 func (x *ProfilePublic) Reset() {
 	*x = ProfilePublic{}
-	mi := &file_druz9_v1_profile_proto_msgTypes[8]
+	mi := &file_druz9_v1_profile_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -739,7 +853,7 @@ func (x *ProfilePublic) String() string {
 func (*ProfilePublic) ProtoMessage() {}
 
 func (x *ProfilePublic) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_profile_proto_msgTypes[8]
+	mi := &file_druz9_v1_profile_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -752,7 +866,7 @@ func (x *ProfilePublic) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ProfilePublic.ProtoReflect.Descriptor instead.
 func (*ProfilePublic) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_profile_proto_rawDescGZIP(), []int{8}
+	return file_druz9_v1_profile_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *ProfilePublic) GetUsername() string {
@@ -846,7 +960,7 @@ type ReportMetrics struct {
 
 func (x *ReportMetrics) Reset() {
 	*x = ReportMetrics{}
-	mi := &file_druz9_v1_profile_proto_msgTypes[9]
+	mi := &file_druz9_v1_profile_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -858,7 +972,7 @@ func (x *ReportMetrics) String() string {
 func (*ReportMetrics) ProtoMessage() {}
 
 func (x *ReportMetrics) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_profile_proto_msgTypes[9]
+	mi := &file_druz9_v1_profile_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -871,7 +985,7 @@ func (x *ReportMetrics) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ReportMetrics.ProtoReflect.Descriptor instead.
 func (*ReportMetrics) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_profile_proto_rawDescGZIP(), []int{9}
+	return file_druz9_v1_profile_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *ReportMetrics) GetTasksSolved() int32 {
@@ -920,7 +1034,7 @@ type ReportWeakness struct {
 
 func (x *ReportWeakness) Reset() {
 	*x = ReportWeakness{}
-	mi := &file_druz9_v1_profile_proto_msgTypes[10]
+	mi := &file_druz9_v1_profile_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -932,7 +1046,7 @@ func (x *ReportWeakness) String() string {
 func (*ReportWeakness) ProtoMessage() {}
 
 func (x *ReportWeakness) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_profile_proto_msgTypes[10]
+	mi := &file_druz9_v1_profile_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -945,7 +1059,7 @@ func (x *ReportWeakness) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ReportWeakness.ProtoReflect.Descriptor instead.
 func (*ReportWeakness) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_profile_proto_rawDescGZIP(), []int{10}
+	return file_druz9_v1_profile_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *ReportWeakness) GetAtlasNodeKey() string {
@@ -978,7 +1092,7 @@ type RecommendationAction struct {
 
 func (x *RecommendationAction) Reset() {
 	*x = RecommendationAction{}
-	mi := &file_druz9_v1_profile_proto_msgTypes[11]
+	mi := &file_druz9_v1_profile_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -990,7 +1104,7 @@ func (x *RecommendationAction) String() string {
 func (*RecommendationAction) ProtoMessage() {}
 
 func (x *RecommendationAction) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_profile_proto_msgTypes[11]
+	mi := &file_druz9_v1_profile_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1003,7 +1117,7 @@ func (x *RecommendationAction) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RecommendationAction.ProtoReflect.Descriptor instead.
 func (*RecommendationAction) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_profile_proto_rawDescGZIP(), []int{11}
+	return file_druz9_v1_profile_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *RecommendationAction) GetKind() string {
@@ -1032,7 +1146,7 @@ type Recommendation struct {
 
 func (x *Recommendation) Reset() {
 	*x = Recommendation{}
-	mi := &file_druz9_v1_profile_proto_msgTypes[12]
+	mi := &file_druz9_v1_profile_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1044,7 +1158,7 @@ func (x *Recommendation) String() string {
 func (*Recommendation) ProtoMessage() {}
 
 func (x *Recommendation) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_profile_proto_msgTypes[12]
+	mi := &file_druz9_v1_profile_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1057,7 +1171,7 @@ func (x *Recommendation) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Recommendation.ProtoReflect.Descriptor instead.
 func (*Recommendation) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_profile_proto_rawDescGZIP(), []int{12}
+	return file_druz9_v1_profile_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *Recommendation) GetTitle() string {
@@ -1100,7 +1214,7 @@ type SectionBreakdown struct {
 
 func (x *SectionBreakdown) Reset() {
 	*x = SectionBreakdown{}
-	mi := &file_druz9_v1_profile_proto_msgTypes[13]
+	mi := &file_druz9_v1_profile_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1112,7 +1226,7 @@ func (x *SectionBreakdown) String() string {
 func (*SectionBreakdown) ProtoMessage() {}
 
 func (x *SectionBreakdown) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_profile_proto_msgTypes[13]
+	mi := &file_druz9_v1_profile_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1125,7 +1239,7 @@ func (x *SectionBreakdown) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SectionBreakdown.ProtoReflect.Descriptor instead.
 func (*SectionBreakdown) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_profile_proto_rawDescGZIP(), []int{13}
+	return file_druz9_v1_profile_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *SectionBreakdown) GetSection() Section {
@@ -1185,7 +1299,7 @@ type WeekComparison struct {
 
 func (x *WeekComparison) Reset() {
 	*x = WeekComparison{}
-	mi := &file_druz9_v1_profile_proto_msgTypes[14]
+	mi := &file_druz9_v1_profile_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1197,7 +1311,7 @@ func (x *WeekComparison) String() string {
 func (*WeekComparison) ProtoMessage() {}
 
 func (x *WeekComparison) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_profile_proto_msgTypes[14]
+	mi := &file_druz9_v1_profile_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1210,7 +1324,7 @@ func (x *WeekComparison) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use WeekComparison.ProtoReflect.Descriptor instead.
 func (*WeekComparison) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_profile_proto_rawDescGZIP(), []int{14}
+	return file_druz9_v1_profile_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *WeekComparison) GetLabel() string {
@@ -1266,7 +1380,7 @@ type WeeklyReport struct {
 
 func (x *WeeklyReport) Reset() {
 	*x = WeeklyReport{}
-	mi := &file_druz9_v1_profile_proto_msgTypes[15]
+	mi := &file_druz9_v1_profile_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1278,7 +1392,7 @@ func (x *WeeklyReport) String() string {
 func (*WeeklyReport) ProtoMessage() {}
 
 func (x *WeeklyReport) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_profile_proto_msgTypes[15]
+	mi := &file_druz9_v1_profile_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1291,7 +1405,7 @@ func (x *WeeklyReport) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use WeeklyReport.ProtoReflect.Descriptor instead.
 func (*WeeklyReport) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_profile_proto_rawDescGZIP(), []int{15}
+	return file_druz9_v1_profile_proto_rawDescGZIP(), []int{16}
 }
 
 func (x *WeeklyReport) GetWeekStart() string {
@@ -1414,7 +1528,7 @@ type ProfileSettings struct {
 
 func (x *ProfileSettings) Reset() {
 	*x = ProfileSettings{}
-	mi := &file_druz9_v1_profile_proto_msgTypes[16]
+	mi := &file_druz9_v1_profile_proto_msgTypes[17]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1426,7 +1540,7 @@ func (x *ProfileSettings) String() string {
 func (*ProfileSettings) ProtoMessage() {}
 
 func (x *ProfileSettings) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_profile_proto_msgTypes[16]
+	mi := &file_druz9_v1_profile_proto_msgTypes[17]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1439,7 +1553,7 @@ func (x *ProfileSettings) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ProfileSettings.ProtoReflect.Descriptor instead.
 func (*ProfileSettings) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_profile_proto_rawDescGZIP(), []int{16}
+	return file_druz9_v1_profile_proto_rawDescGZIP(), []int{17}
 }
 
 func (x *ProfileSettings) GetDisplayName() string {
@@ -1489,7 +1603,7 @@ type UpdateProfileSettingsRequest struct {
 
 func (x *UpdateProfileSettingsRequest) Reset() {
 	*x = UpdateProfileSettingsRequest{}
-	mi := &file_druz9_v1_profile_proto_msgTypes[17]
+	mi := &file_druz9_v1_profile_proto_msgTypes[18]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1501,7 +1615,7 @@ func (x *UpdateProfileSettingsRequest) String() string {
 func (*UpdateProfileSettingsRequest) ProtoMessage() {}
 
 func (x *UpdateProfileSettingsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_profile_proto_msgTypes[17]
+	mi := &file_druz9_v1_profile_proto_msgTypes[18]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1514,7 +1628,7 @@ func (x *UpdateProfileSettingsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateProfileSettingsRequest.ProtoReflect.Descriptor instead.
 func (*UpdateProfileSettingsRequest) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_profile_proto_rawDescGZIP(), []int{17}
+	return file_druz9_v1_profile_proto_rawDescGZIP(), []int{18}
 }
 
 func (x *UpdateProfileSettingsRequest) GetSettings() *ProfileSettings {
@@ -1532,7 +1646,7 @@ type GetMyProfileRequest struct {
 
 func (x *GetMyProfileRequest) Reset() {
 	*x = GetMyProfileRequest{}
-	mi := &file_druz9_v1_profile_proto_msgTypes[18]
+	mi := &file_druz9_v1_profile_proto_msgTypes[19]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1544,7 +1658,7 @@ func (x *GetMyProfileRequest) String() string {
 func (*GetMyProfileRequest) ProtoMessage() {}
 
 func (x *GetMyProfileRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_profile_proto_msgTypes[18]
+	mi := &file_druz9_v1_profile_proto_msgTypes[19]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1557,7 +1671,7 @@ func (x *GetMyProfileRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetMyProfileRequest.ProtoReflect.Descriptor instead.
 func (*GetMyProfileRequest) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_profile_proto_rawDescGZIP(), []int{18}
+	return file_druz9_v1_profile_proto_rawDescGZIP(), []int{19}
 }
 
 type GetMyAtlasRequest struct {
@@ -1568,7 +1682,7 @@ type GetMyAtlasRequest struct {
 
 func (x *GetMyAtlasRequest) Reset() {
 	*x = GetMyAtlasRequest{}
-	mi := &file_druz9_v1_profile_proto_msgTypes[19]
+	mi := &file_druz9_v1_profile_proto_msgTypes[20]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1580,7 +1694,7 @@ func (x *GetMyAtlasRequest) String() string {
 func (*GetMyAtlasRequest) ProtoMessage() {}
 
 func (x *GetMyAtlasRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_profile_proto_msgTypes[19]
+	mi := &file_druz9_v1_profile_proto_msgTypes[20]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1593,7 +1707,7 @@ func (x *GetMyAtlasRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetMyAtlasRequest.ProtoReflect.Descriptor instead.
 func (*GetMyAtlasRequest) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_profile_proto_rawDescGZIP(), []int{19}
+	return file_druz9_v1_profile_proto_rawDescGZIP(), []int{20}
 }
 
 type GetMyReportRequest struct {
@@ -1604,7 +1718,7 @@ type GetMyReportRequest struct {
 
 func (x *GetMyReportRequest) Reset() {
 	*x = GetMyReportRequest{}
-	mi := &file_druz9_v1_profile_proto_msgTypes[20]
+	mi := &file_druz9_v1_profile_proto_msgTypes[21]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1616,7 +1730,7 @@ func (x *GetMyReportRequest) String() string {
 func (*GetMyReportRequest) ProtoMessage() {}
 
 func (x *GetMyReportRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_profile_proto_msgTypes[20]
+	mi := &file_druz9_v1_profile_proto_msgTypes[21]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1629,7 +1743,7 @@ func (x *GetMyReportRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetMyReportRequest.ProtoReflect.Descriptor instead.
 func (*GetMyReportRequest) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_profile_proto_rawDescGZIP(), []int{20}
+	return file_druz9_v1_profile_proto_rawDescGZIP(), []int{21}
 }
 
 type GetPublicProfileRequest struct {
@@ -1641,7 +1755,7 @@ type GetPublicProfileRequest struct {
 
 func (x *GetPublicProfileRequest) Reset() {
 	*x = GetPublicProfileRequest{}
-	mi := &file_druz9_v1_profile_proto_msgTypes[21]
+	mi := &file_druz9_v1_profile_proto_msgTypes[22]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1653,7 +1767,7 @@ func (x *GetPublicProfileRequest) String() string {
 func (*GetPublicProfileRequest) ProtoMessage() {}
 
 func (x *GetPublicProfileRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_profile_proto_msgTypes[21]
+	mi := &file_druz9_v1_profile_proto_msgTypes[22]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1666,7 +1780,7 @@ func (x *GetPublicProfileRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetPublicProfileRequest.ProtoReflect.Descriptor instead.
 func (*GetPublicProfileRequest) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_profile_proto_rawDescGZIP(), []int{21}
+	return file_druz9_v1_profile_proto_rawDescGZIP(), []int{22}
 }
 
 func (x *GetPublicProfileRequest) GetUsername() string {
@@ -1728,7 +1842,7 @@ const file_druz9_v1_profile_proto_rawDesc = "" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05title\x18\x02 \x01(\tR\x05title\x12 \n" +
 	"\vdescription\x18\x03 \x01(\tR\vdescription\x127\n" +
-	"\tearned_at\x18\x04 \x01(\v2\x1a.google.protobuf.TimestampR\bearnedAt\"\xa7\x02\n" +
+	"\tearned_at\x18\x04 \x01(\v2\x1a.google.protobuf.TimestampR\bearnedAt\"\xeb\x03\n" +
 	"\tSkillNode\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
 	"\x05title\x18\x02 \x01(\tR\x05title\x12 \n" +
@@ -1739,7 +1853,20 @@ const file_druz9_v1_profile_proto_rawDesc = "" +
 	"\bunlocked\x18\a \x01(\bR\bunlocked\x12;\n" +
 	"\vunlocked_at\x18\b \x01(\v2\x1a.google.protobuf.TimestampR\n" +
 	"unlockedAt\x12\x1a\n" +
-	"\bdecaying\x18\t \x01(\bR\bdecaying\"/\n" +
+	"\bdecaying\x18\t \x01(\bR\bdecaying\x12!\n" +
+	"\fsolved_count\x18\n" +
+	" \x01(\x05R\vsolvedCount\x12\x1f\n" +
+	"\vtotal_count\x18\v \x01(\x05R\n" +
+	"totalCount\x12@\n" +
+	"\x0elast_solved_at\x18\f \x01(\v2\x1a.google.protobuf.TimestampR\flastSolvedAt\x12<\n" +
+	"\x10recommended_kata\x18\r \x03(\v2\x11.druz9.v1.KataRefR\x0frecommendedKata\"|\n" +
+	"\aKataRef\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x14\n" +
+	"\x05title\x18\x02 \x01(\tR\x05title\x12\x1e\n" +
+	"\n" +
+	"difficulty\x18\x03 \x01(\tR\n" +
+	"difficulty\x12+\n" +
+	"\x11estimated_minutes\x18\x04 \x01(\x05R\x10estimatedMinutes\"/\n" +
 	"\tSkillEdge\x12\x12\n" +
 	"\x04from\x18\x01 \x01(\tR\x04from\x12\x0e\n" +
 	"\x02to\x18\x02 \x01(\tR\x02to\"\x83\x01\n" +
@@ -1852,7 +1979,7 @@ func file_druz9_v1_profile_proto_rawDescGZIP() []byte {
 	return file_druz9_v1_profile_proto_rawDescData
 }
 
-var file_druz9_v1_profile_proto_msgTypes = make([]protoimpl.MessageInfo, 23)
+var file_druz9_v1_profile_proto_msgTypes = make([]protoimpl.MessageInfo, 24)
 var file_druz9_v1_profile_proto_goTypes = []any{
 	(*Attributes)(nil),                   // 0: druz9.v1.Attributes
 	(*ProfileSubscription)(nil),          // 1: druz9.v1.ProfileSubscription
@@ -1860,74 +1987,77 @@ var file_druz9_v1_profile_proto_goTypes = []any{
 	(*ProfileSectionRating)(nil),         // 3: druz9.v1.ProfileSectionRating
 	(*Achievement)(nil),                  // 4: druz9.v1.Achievement
 	(*SkillNode)(nil),                    // 5: druz9.v1.SkillNode
-	(*SkillEdge)(nil),                    // 6: druz9.v1.SkillEdge
-	(*SkillAtlas)(nil),                   // 7: druz9.v1.SkillAtlas
-	(*ProfilePublic)(nil),                // 8: druz9.v1.ProfilePublic
-	(*ReportMetrics)(nil),                // 9: druz9.v1.ReportMetrics
-	(*ReportWeakness)(nil),               // 10: druz9.v1.ReportWeakness
-	(*RecommendationAction)(nil),         // 11: druz9.v1.RecommendationAction
-	(*Recommendation)(nil),               // 12: druz9.v1.Recommendation
-	(*SectionBreakdown)(nil),             // 13: druz9.v1.SectionBreakdown
-	(*WeekComparison)(nil),               // 14: druz9.v1.WeekComparison
-	(*WeeklyReport)(nil),                 // 15: druz9.v1.WeeklyReport
-	(*ProfileSettings)(nil),              // 16: druz9.v1.ProfileSettings
-	(*UpdateProfileSettingsRequest)(nil), // 17: druz9.v1.UpdateProfileSettingsRequest
-	(*GetMyProfileRequest)(nil),          // 18: druz9.v1.GetMyProfileRequest
-	(*GetMyAtlasRequest)(nil),            // 19: druz9.v1.GetMyAtlasRequest
-	(*GetMyReportRequest)(nil),           // 20: druz9.v1.GetMyReportRequest
-	(*GetPublicProfileRequest)(nil),      // 21: druz9.v1.GetPublicProfileRequest
-	nil,                                  // 22: druz9.v1.RecommendationAction.ParamsEntry
-	(SubscriptionPlan)(0),                // 23: druz9.v1.SubscriptionPlan
-	(*timestamppb.Timestamp)(nil),        // 24: google.protobuf.Timestamp
-	(CharClass)(0),                       // 25: druz9.v1.CharClass
-	(Section)(0),                         // 26: druz9.v1.Section
-	(Language)(0),                        // 27: druz9.v1.Language
-	(*NotificationPreferences)(nil),      // 28: druz9.v1.NotificationPreferences
+	(*KataRef)(nil),                      // 6: druz9.v1.KataRef
+	(*SkillEdge)(nil),                    // 7: druz9.v1.SkillEdge
+	(*SkillAtlas)(nil),                   // 8: druz9.v1.SkillAtlas
+	(*ProfilePublic)(nil),                // 9: druz9.v1.ProfilePublic
+	(*ReportMetrics)(nil),                // 10: druz9.v1.ReportMetrics
+	(*ReportWeakness)(nil),               // 11: druz9.v1.ReportWeakness
+	(*RecommendationAction)(nil),         // 12: druz9.v1.RecommendationAction
+	(*Recommendation)(nil),               // 13: druz9.v1.Recommendation
+	(*SectionBreakdown)(nil),             // 14: druz9.v1.SectionBreakdown
+	(*WeekComparison)(nil),               // 15: druz9.v1.WeekComparison
+	(*WeeklyReport)(nil),                 // 16: druz9.v1.WeeklyReport
+	(*ProfileSettings)(nil),              // 17: druz9.v1.ProfileSettings
+	(*UpdateProfileSettingsRequest)(nil), // 18: druz9.v1.UpdateProfileSettingsRequest
+	(*GetMyProfileRequest)(nil),          // 19: druz9.v1.GetMyProfileRequest
+	(*GetMyAtlasRequest)(nil),            // 20: druz9.v1.GetMyAtlasRequest
+	(*GetMyReportRequest)(nil),           // 21: druz9.v1.GetMyReportRequest
+	(*GetPublicProfileRequest)(nil),      // 22: druz9.v1.GetPublicProfileRequest
+	nil,                                  // 23: druz9.v1.RecommendationAction.ParamsEntry
+	(SubscriptionPlan)(0),                // 24: druz9.v1.SubscriptionPlan
+	(*timestamppb.Timestamp)(nil),        // 25: google.protobuf.Timestamp
+	(CharClass)(0),                       // 26: druz9.v1.CharClass
+	(Section)(0),                         // 27: druz9.v1.Section
+	(Language)(0),                        // 28: druz9.v1.Language
+	(*NotificationPreferences)(nil),      // 29: druz9.v1.NotificationPreferences
 }
 var file_druz9_v1_profile_proto_depIdxs = []int32{
-	23, // 0: druz9.v1.ProfileSubscription.plan:type_name -> druz9.v1.SubscriptionPlan
-	24, // 1: druz9.v1.ProfileSubscription.current_period_end:type_name -> google.protobuf.Timestamp
-	25, // 2: druz9.v1.ProfileFull.char_class:type_name -> druz9.v1.CharClass
+	24, // 0: druz9.v1.ProfileSubscription.plan:type_name -> druz9.v1.SubscriptionPlan
+	25, // 1: druz9.v1.ProfileSubscription.current_period_end:type_name -> google.protobuf.Timestamp
+	26, // 2: druz9.v1.ProfileFull.char_class:type_name -> druz9.v1.CharClass
 	0,  // 3: druz9.v1.ProfileFull.attributes:type_name -> druz9.v1.Attributes
 	1,  // 4: druz9.v1.ProfileFull.subscription:type_name -> druz9.v1.ProfileSubscription
-	24, // 5: druz9.v1.ProfileFull.created_at:type_name -> google.protobuf.Timestamp
-	26, // 6: druz9.v1.ProfileSectionRating.section:type_name -> druz9.v1.Section
-	24, // 7: druz9.v1.Achievement.earned_at:type_name -> google.protobuf.Timestamp
-	26, // 8: druz9.v1.SkillNode.section:type_name -> druz9.v1.Section
-	24, // 9: druz9.v1.SkillNode.unlocked_at:type_name -> google.protobuf.Timestamp
-	5,  // 10: druz9.v1.SkillAtlas.nodes:type_name -> druz9.v1.SkillNode
-	6,  // 11: druz9.v1.SkillAtlas.edges:type_name -> druz9.v1.SkillEdge
-	25, // 12: druz9.v1.ProfilePublic.char_class:type_name -> druz9.v1.CharClass
-	3,  // 13: druz9.v1.ProfilePublic.ratings:type_name -> druz9.v1.ProfileSectionRating
-	4,  // 14: druz9.v1.ProfilePublic.achievements:type_name -> druz9.v1.Achievement
-	7,  // 15: druz9.v1.ProfilePublic.atlas_preview:type_name -> druz9.v1.SkillAtlas
-	22, // 16: druz9.v1.RecommendationAction.params:type_name -> druz9.v1.RecommendationAction.ParamsEntry
-	11, // 17: druz9.v1.Recommendation.action:type_name -> druz9.v1.RecommendationAction
-	26, // 18: druz9.v1.SectionBreakdown.section:type_name -> druz9.v1.Section
-	9,  // 19: druz9.v1.WeeklyReport.metrics:type_name -> druz9.v1.ReportMetrics
-	10, // 20: druz9.v1.WeeklyReport.weaknesses:type_name -> druz9.v1.ReportWeakness
-	12, // 21: druz9.v1.WeeklyReport.recommendations:type_name -> druz9.v1.Recommendation
-	13, // 22: druz9.v1.WeeklyReport.strong_sections:type_name -> druz9.v1.SectionBreakdown
-	13, // 23: druz9.v1.WeeklyReport.weak_sections:type_name -> druz9.v1.SectionBreakdown
-	14, // 24: druz9.v1.WeeklyReport.weekly_xp:type_name -> druz9.v1.WeekComparison
-	27, // 25: druz9.v1.ProfileSettings.default_language:type_name -> druz9.v1.Language
-	28, // 26: druz9.v1.ProfileSettings.notifications:type_name -> druz9.v1.NotificationPreferences
-	16, // 27: druz9.v1.UpdateProfileSettingsRequest.settings:type_name -> druz9.v1.ProfileSettings
-	18, // 28: druz9.v1.ProfileService.GetMyProfile:input_type -> druz9.v1.GetMyProfileRequest
-	19, // 29: druz9.v1.ProfileService.GetMyAtlas:input_type -> druz9.v1.GetMyAtlasRequest
-	20, // 30: druz9.v1.ProfileService.GetMyReport:input_type -> druz9.v1.GetMyReportRequest
-	17, // 31: druz9.v1.ProfileService.UpdateSettings:input_type -> druz9.v1.UpdateProfileSettingsRequest
-	21, // 32: druz9.v1.ProfileService.GetPublicProfile:input_type -> druz9.v1.GetPublicProfileRequest
-	2,  // 33: druz9.v1.ProfileService.GetMyProfile:output_type -> druz9.v1.ProfileFull
-	7,  // 34: druz9.v1.ProfileService.GetMyAtlas:output_type -> druz9.v1.SkillAtlas
-	15, // 35: druz9.v1.ProfileService.GetMyReport:output_type -> druz9.v1.WeeklyReport
-	16, // 36: druz9.v1.ProfileService.UpdateSettings:output_type -> druz9.v1.ProfileSettings
-	8,  // 37: druz9.v1.ProfileService.GetPublicProfile:output_type -> druz9.v1.ProfilePublic
-	33, // [33:38] is the sub-list for method output_type
-	28, // [28:33] is the sub-list for method input_type
-	28, // [28:28] is the sub-list for extension type_name
-	28, // [28:28] is the sub-list for extension extendee
-	0,  // [0:28] is the sub-list for field type_name
+	25, // 5: druz9.v1.ProfileFull.created_at:type_name -> google.protobuf.Timestamp
+	27, // 6: druz9.v1.ProfileSectionRating.section:type_name -> druz9.v1.Section
+	25, // 7: druz9.v1.Achievement.earned_at:type_name -> google.protobuf.Timestamp
+	27, // 8: druz9.v1.SkillNode.section:type_name -> druz9.v1.Section
+	25, // 9: druz9.v1.SkillNode.unlocked_at:type_name -> google.protobuf.Timestamp
+	25, // 10: druz9.v1.SkillNode.last_solved_at:type_name -> google.protobuf.Timestamp
+	6,  // 11: druz9.v1.SkillNode.recommended_kata:type_name -> druz9.v1.KataRef
+	5,  // 12: druz9.v1.SkillAtlas.nodes:type_name -> druz9.v1.SkillNode
+	7,  // 13: druz9.v1.SkillAtlas.edges:type_name -> druz9.v1.SkillEdge
+	26, // 14: druz9.v1.ProfilePublic.char_class:type_name -> druz9.v1.CharClass
+	3,  // 15: druz9.v1.ProfilePublic.ratings:type_name -> druz9.v1.ProfileSectionRating
+	4,  // 16: druz9.v1.ProfilePublic.achievements:type_name -> druz9.v1.Achievement
+	8,  // 17: druz9.v1.ProfilePublic.atlas_preview:type_name -> druz9.v1.SkillAtlas
+	23, // 18: druz9.v1.RecommendationAction.params:type_name -> druz9.v1.RecommendationAction.ParamsEntry
+	12, // 19: druz9.v1.Recommendation.action:type_name -> druz9.v1.RecommendationAction
+	27, // 20: druz9.v1.SectionBreakdown.section:type_name -> druz9.v1.Section
+	10, // 21: druz9.v1.WeeklyReport.metrics:type_name -> druz9.v1.ReportMetrics
+	11, // 22: druz9.v1.WeeklyReport.weaknesses:type_name -> druz9.v1.ReportWeakness
+	13, // 23: druz9.v1.WeeklyReport.recommendations:type_name -> druz9.v1.Recommendation
+	14, // 24: druz9.v1.WeeklyReport.strong_sections:type_name -> druz9.v1.SectionBreakdown
+	14, // 25: druz9.v1.WeeklyReport.weak_sections:type_name -> druz9.v1.SectionBreakdown
+	15, // 26: druz9.v1.WeeklyReport.weekly_xp:type_name -> druz9.v1.WeekComparison
+	28, // 27: druz9.v1.ProfileSettings.default_language:type_name -> druz9.v1.Language
+	29, // 28: druz9.v1.ProfileSettings.notifications:type_name -> druz9.v1.NotificationPreferences
+	17, // 29: druz9.v1.UpdateProfileSettingsRequest.settings:type_name -> druz9.v1.ProfileSettings
+	19, // 30: druz9.v1.ProfileService.GetMyProfile:input_type -> druz9.v1.GetMyProfileRequest
+	20, // 31: druz9.v1.ProfileService.GetMyAtlas:input_type -> druz9.v1.GetMyAtlasRequest
+	21, // 32: druz9.v1.ProfileService.GetMyReport:input_type -> druz9.v1.GetMyReportRequest
+	18, // 33: druz9.v1.ProfileService.UpdateSettings:input_type -> druz9.v1.UpdateProfileSettingsRequest
+	22, // 34: druz9.v1.ProfileService.GetPublicProfile:input_type -> druz9.v1.GetPublicProfileRequest
+	2,  // 35: druz9.v1.ProfileService.GetMyProfile:output_type -> druz9.v1.ProfileFull
+	8,  // 36: druz9.v1.ProfileService.GetMyAtlas:output_type -> druz9.v1.SkillAtlas
+	16, // 37: druz9.v1.ProfileService.GetMyReport:output_type -> druz9.v1.WeeklyReport
+	17, // 38: druz9.v1.ProfileService.UpdateSettings:output_type -> druz9.v1.ProfileSettings
+	9,  // 39: druz9.v1.ProfileService.GetPublicProfile:output_type -> druz9.v1.ProfilePublic
+	35, // [35:40] is the sub-list for method output_type
+	30, // [30:35] is the sub-list for method input_type
+	30, // [30:30] is the sub-list for extension type_name
+	30, // [30:30] is the sub-list for extension extendee
+	0,  // [0:30] is the sub-list for field type_name
 }
 
 func init() { file_druz9_v1_profile_proto_init() }
@@ -1943,7 +2073,7 @@ func file_druz9_v1_profile_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_druz9_v1_profile_proto_rawDesc), len(file_druz9_v1_profile_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   23,
+			NumMessages:   24,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

@@ -102,10 +102,11 @@ type FeedHandlers struct {
 	Log   *slog.Logger
 }
 
-// NewFeedHandlers конструктор.
+// NewFeedHandlers конструктор. log обязателен (anti-fallback policy: no
+// silent slog.Default() fallback — wirers must pass an explicit logger).
 func NewFeedHandlers(repo domain.UserNotificationRepo, prefs domain.NotificationPrefsRepo, log *slog.Logger) *FeedHandlers {
 	if log == nil {
-		log = slog.Default()
+		panic("notify.app.NewFeedHandlers: logger is required (anti-fallback policy: no silent noop loggers)")
 	}
 	return &FeedHandlers{Repo: repo, Prefs: prefs, Log: log}
 }

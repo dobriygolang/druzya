@@ -123,7 +123,7 @@ func NewCachedSessionRepo(delegate domain.SessionRepo, kv KV, ttl time.Duration,
 		ttl = DefaultSessionCacheTTL
 	}
 	if log == nil {
-		log = slog.New(slog.NewTextHandler(discardWriter{}, nil))
+		panic("ai_mock.infra.NewCachedSessionRepo: logger is required (anti-fallback policy: no silent noop loggers)")
 	}
 	return &CachedSessionRepo{delegate: delegate, kv: kv, ttl: ttl, log: log}
 }
@@ -271,7 +271,7 @@ func NewReportCache(kv KV, ttl time.Duration, log *slog.Logger) *ReportCache {
 		ttl = DefaultReportCacheTTL
 	}
 	if log == nil {
-		log = slog.New(slog.NewTextHandler(discardWriter{}, nil))
+		panic("ai_mock.infra.NewReportCache: logger is required (anti-fallback policy: no silent noop loggers)")
 	}
 	return &ReportCache{kv: kv, ttl: ttl, log: log}
 }
@@ -333,11 +333,3 @@ func (c *ReportCache) Invalidate(ctx context.Context, sessionID uuid.UUID) {
 			slog.Any("session_id", sessionID), slog.Any("err", err))
 	}
 }
-
-// ── helpers ───────────────────────────────────────────────────────────────
-
-// discardWriter swallows bytes — used as the default slog destination when
-// callers pass nil for the logger.
-type discardWriter struct{}
-
-func (discardWriter) Write(p []byte) (int, error) { return len(p), nil }

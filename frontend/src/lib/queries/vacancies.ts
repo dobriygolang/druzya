@@ -16,6 +16,11 @@ import { api } from '../apiClient'
 // Types
 // ─────────────────────────────────────────────────────────────────────────
 
+// VacancySource keeps the full 12-entry union because the backend domain
+// retains all source codes (used by URL-detection in the analyze use case).
+// Only the 5 listed in VACANCY_SOURCES are actually scraped — the other 7
+// were stub parsers that always returned 0 vacancies and have been
+// unregistered (anti-fallback policy: no fake sources in the filter UI).
 export type VacancySource =
   | 'hh'
   | 'yandex'
@@ -30,19 +35,15 @@ export type VacancySource =
   | 'jetbrains'
   | 'lamoda'
 
+// VACANCY_SOURCES is consumed by the filter sidebar — only the 5 sources
+// with working parsers belong here. Adding a new source requires a real
+// Parser implementation in backend/services/vacancies/infra/parsers/.
 export const VACANCY_SOURCES: VacancySource[] = [
   'hh',
   'yandex',
   'ozon',
   'tinkoff',
   'vk',
-  'sber',
-  'avito',
-  'wildberries',
-  'mts',
-  'kaspersky',
-  'jetbrains',
-  'lamoda',
 ]
 
 export type SavedStatus =
@@ -203,6 +204,37 @@ export function useUpdateSavedStatus() {
       }),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ['vacancies', 'saved'] })
+    },
+  })
+}
+
+// useTriggerVacancySync — POST /vacancies/sync. Backend ставит SyncJob.RunOnce
+// в фон и возвращает 202 {status: "started"|"already_running"|"throttled"}.
+// Используется в EmptyState для «обновить сейчас» и автоматически дёргается
+// один раз при первом пустом ответе useVacanciesList (см. VacanciesPage).
+//
+// Throttle: backend держит in-process cooldown 30s. На 429 фронт показывает
+// сколько секунд ждать (retry_after). Никаких авто-ретраев — пусть юзер
+// решает.
+export type TriggerSyncResponse = {
+  status: 'started' | 'already_running' | 'throttled'
+  retry_after?: number
+}
+
+export function useTriggerVacancySync() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: () =>
+      api<TriggerSyncResponse>(`/vacancies/sync`, { method: 'POST' }),
+    onSuccess: (res) => {
+      if (res.status === 'started') {
+        // Sync в фоне 5–10s. Refetch'ним каталог через 8s — обычно к этому
+        // времени уже есть первые HH-вакансии. Если ещё пусто — пользователь
+        // увидит «попробуй ещё раз» и нажмёт повторно.
+        setTimeout(() => {
+          void qc.invalidateQueries({ queryKey: ['vacancies', 'list'] })
+        }, 8000)
+      }
     },
   })
 }

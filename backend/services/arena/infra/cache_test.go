@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"io"
+	"log/slog"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -119,7 +121,7 @@ func TestMatchInfoCache_MissThenHit(t *testing.T) {
 		return want, nil
 	}
 	kv := newMemKV()
-	c := NewMatchInfoCache(kv, time.Minute, nil, loader)
+	c := NewMatchInfoCache(kv, time.Minute, slog.New(slog.NewTextHandler(io.Discard, nil)), loader)
 
 	got, err := c.Get(context.Background(), want.Match.ID)
 	if err != nil {
@@ -147,7 +149,7 @@ func TestMatchInfoCache_TTLExpiry(t *testing.T) {
 	kv := newMemKV()
 	now := time.Now()
 	kv.now = func() time.Time { return now }
-	c := NewMatchInfoCache(kv, 30*time.Second, nil, loader)
+	c := NewMatchInfoCache(kv, 30*time.Second, slog.New(slog.NewTextHandler(io.Discard, nil)), loader)
 
 	if _, err := c.Get(context.Background(), id); err != nil {
 		t.Fatal(err)
@@ -170,7 +172,7 @@ func TestMatchInfoCache_Invalidate(t *testing.T) {
 		return want, nil
 	}
 	kv := newMemKV()
-	c := NewMatchInfoCache(kv, time.Minute, nil, loader)
+	c := NewMatchInfoCache(kv, time.Minute, slog.New(slog.NewTextHandler(io.Discard, nil)), loader)
 	if _, err := c.Get(context.Background(), want.Match.ID); err != nil {
 		t.Fatal(err)
 	}
@@ -192,7 +194,7 @@ func TestMatchInfoCache_RedisGetFailure_FallsBack(t *testing.T) {
 	loader := func(_ context.Context, _ uuid.UUID) (MatchInfoSnapshot, error) { return want, nil }
 	kv := newMemKV()
 	kv.failGet = true
-	c := NewMatchInfoCache(kv, time.Minute, nil, loader)
+	c := NewMatchInfoCache(kv, time.Minute, slog.New(slog.NewTextHandler(io.Discard, nil)), loader)
 
 	got, err := c.Get(context.Background(), want.Match.ID)
 	if err != nil {
@@ -214,7 +216,7 @@ func TestMatchInfoCache_CorruptJSON_RefreshFromUpstream(t *testing.T) {
 	}
 	kv := newMemKV()
 	kv.putRaw(keyMatchInfo(id), "{not-json")
-	c := NewMatchInfoCache(kv, time.Minute, nil, loader)
+	c := NewMatchInfoCache(kv, time.Minute, slog.New(slog.NewTextHandler(io.Discard, nil)), loader)
 
 	got, err := c.Get(context.Background(), id)
 	if err != nil {
@@ -235,7 +237,7 @@ func TestMatchInfoCache_LoaderError_Propagates(t *testing.T) {
 		return MatchInfoSnapshot{}, wantErr
 	}
 	kv := newMemKV()
-	c := NewMatchInfoCache(kv, time.Minute, nil, loader)
+	c := NewMatchInfoCache(kv, time.Minute, slog.New(slog.NewTextHandler(io.Discard, nil)), loader)
 
 	_, err := c.Get(context.Background(), uuid.New())
 	if !errors.Is(err, wantErr) {
@@ -254,7 +256,7 @@ func TestMatchInfoCache_Concurrent_SingleflightCollapses(t *testing.T) {
 		return MatchInfoSnapshot{Match: domain.Match{ID: id}}, nil
 	}
 	kv := newMemKV()
-	c := NewMatchInfoCache(kv, time.Minute, nil, loader)
+	c := NewMatchInfoCache(kv, time.Minute, slog.New(slog.NewTextHandler(io.Discard, nil)), loader)
 
 	var wg sync.WaitGroup
 	for i := 0; i < 8; i++ {
@@ -289,7 +291,7 @@ func TestQueueStatsCache_MissThenHit(t *testing.T) {
 		return want, nil
 	}
 	kv := newMemKV()
-	c := NewQueueStatsCache(kv, 10*time.Second, nil, loader)
+	c := NewQueueStatsCache(kv, 10*time.Second, slog.New(slog.NewTextHandler(io.Discard, nil)), loader)
 
 	got, err := c.Get(context.Background(), want.Mode, want.Section)
 	if err != nil {
@@ -316,7 +318,7 @@ func TestQueueStatsCache_TTLExpiry(t *testing.T) {
 	kv := newMemKV()
 	now := time.Now()
 	kv.now = func() time.Time { return now }
-	c := NewQueueStatsCache(kv, 10*time.Second, nil, loader)
+	c := NewQueueStatsCache(kv, 10*time.Second, slog.New(slog.NewTextHandler(io.Discard, nil)), loader)
 
 	if _, err := c.Get(context.Background(), enums.ArenaModeRanked, enums.SectionGo); err != nil {
 		t.Fatal(err)
@@ -336,7 +338,7 @@ func TestQueueStatsCache_Invalidate(t *testing.T) {
 		return QueueStats{Mode: m, Section: s, Waiting: 7}, nil
 	}
 	kv := newMemKV()
-	c := NewQueueStatsCache(kv, 10*time.Second, nil, loader)
+	c := NewQueueStatsCache(kv, 10*time.Second, slog.New(slog.NewTextHandler(io.Discard, nil)), loader)
 	if _, err := c.Get(context.Background(), enums.ArenaModeSolo1v1, enums.SectionAlgorithms); err != nil {
 		t.Fatal(err)
 	}
@@ -376,7 +378,7 @@ func TestQueueStatsCache_RedisFailure_FallsBack(t *testing.T) {
 	}
 	kv := newMemKV()
 	kv.failGet = true
-	c := NewQueueStatsCache(kv, 10*time.Second, nil, loader)
+	c := NewQueueStatsCache(kv, 10*time.Second, slog.New(slog.NewTextHandler(io.Discard, nil)), loader)
 	got, err := c.Get(context.Background(), enums.ArenaModeSolo1v1, enums.SectionSQL)
 	if err != nil {
 		t.Fatal(err)
@@ -420,7 +422,7 @@ func TestCachedMatchHistoryRepo_MissThenHit(t *testing.T) {
 		return want, nil
 	}
 	kv := newMemKV()
-	c := NewMatchHistoryCache(kv, 30*time.Second, nil, loader)
+	c := NewMatchHistoryCache(kv, 30*time.Second, slog.New(slog.NewTextHandler(io.Discard, nil)), loader)
 
 	f := MatchHistoryFilters{Limit: 20, Offset: 0}
 	if _, err := c.Get(context.Background(), uid, f); err != nil {
@@ -445,7 +447,7 @@ func TestCachedMatchHistoryRepo_TTLExpire(t *testing.T) {
 	kv := newMemKV()
 	now := time.Now()
 	kv.now = func() time.Time { return now }
-	c := NewMatchHistoryCache(kv, 30*time.Second, nil, loader)
+	c := NewMatchHistoryCache(kv, 30*time.Second, slog.New(slog.NewTextHandler(io.Discard, nil)), loader)
 
 	f := MatchHistoryFilters{Limit: 20}
 	if _, err := c.Get(context.Background(), uid, f); err != nil {
@@ -469,7 +471,7 @@ func TestCachedMatchHistoryRepo_Invalidate(t *testing.T) {
 		return sampleHistory(uid), nil
 	}
 	kv := newMemKV()
-	c := NewMatchHistoryCache(kv, 30*time.Second, nil, loader)
+	c := NewMatchHistoryCache(kv, 30*time.Second, slog.New(slog.NewTextHandler(io.Discard, nil)), loader)
 
 	f := MatchHistoryFilters{Limit: 20}
 	if _, err := c.Get(context.Background(), uid, f); err != nil {
@@ -493,7 +495,7 @@ func TestCachedMatchHistoryRepo_RedisFailure_Fallback(t *testing.T) {
 	}
 	kv := newMemKV()
 	kv.failGet = true
-	c := NewMatchHistoryCache(kv, 30*time.Second, nil, loader)
+	c := NewMatchHistoryCache(kv, 30*time.Second, slog.New(slog.NewTextHandler(io.Discard, nil)), loader)
 
 	got, err := c.Get(context.Background(), uid, MatchHistoryFilters{Limit: 20})
 	if err != nil {
@@ -515,7 +517,7 @@ func TestCachedMatchHistoryRepo_Concurrent_Singleflight(t *testing.T) {
 		return sampleHistory(uid), nil
 	}
 	kv := newMemKV()
-	c := NewMatchHistoryCache(kv, 30*time.Second, nil, loader)
+	c := NewMatchHistoryCache(kv, 30*time.Second, slog.New(slog.NewTextHandler(io.Discard, nil)), loader)
 
 	f := MatchHistoryFilters{Limit: 20}
 	var wg sync.WaitGroup
@@ -544,7 +546,7 @@ func TestCachedMatchHistoryRepo_DifferentFiltersAreIndependent(t *testing.T) {
 		return MatchHistorySnapshot{Total: 1}, nil
 	}
 	kv := newMemKV()
-	c := NewMatchHistoryCache(kv, 30*time.Second, nil, loader)
+	c := NewMatchHistoryCache(kv, 30*time.Second, slog.New(slog.NewTextHandler(io.Discard, nil)), loader)
 
 	// Three distinct filter tuples must each populate the loader exactly
 	// once; the 4th call repeats the first and must hit the cache.
@@ -606,7 +608,7 @@ func TestCachedHistoryRepo_PassThroughListByUser_CachesResult(t *testing.T) {
 	t.Parallel()
 	uid := uuid.New()
 	stub := &stubMatchRepo{items: []domain.MatchHistoryEntry{{MatchID: uuid.New()}}, total: 1}
-	cache := NewMatchHistoryCache(newMemKV(), 30*time.Second, nil,
+	cache := NewMatchHistoryCache(newMemKV(), 30*time.Second, slog.New(slog.NewTextHandler(io.Discard, nil)),
 		func(ctx context.Context, u uuid.UUID, f MatchHistoryFilters) (MatchHistorySnapshot, error) {
 			it, total, err := stub.ListByUser(ctx, u, f.Limit, f.Offset, f.Mode, f.Section)
 			return MatchHistorySnapshot{Items: it, Total: total}, err

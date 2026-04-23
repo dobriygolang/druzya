@@ -29,7 +29,7 @@ func TestReportCache_HitSecondCall(t *testing.T) {
 	uid := uuid.New()
 	loader := &stubLoader{view: app.ReportView{StreakDays: 7, BestStreak: 12}}
 	kv := newMemKV()
-	rc := NewReportCache(loader.load, kv, time.Minute, nil)
+	rc := NewReportCache(loader.load, kv, time.Minute, testLog())
 
 	if _, err := rc.Get(context.Background(), uid); err != nil {
 		t.Fatalf("first call: %v", err)
@@ -51,7 +51,7 @@ func TestReportCache_MissTriggersLoader(t *testing.T) {
 	uid := uuid.New()
 	loader := &stubLoader{view: app.ReportView{ActionsCount: 47}}
 	kv := newMemKV()
-	rc := NewReportCache(loader.load, kv, time.Minute, nil)
+	rc := NewReportCache(loader.load, kv, time.Minute, testLog())
 
 	got, err := rc.Get(context.Background(), uid)
 	if err != nil {
@@ -68,25 +68,26 @@ func TestReportCache_MissTriggersLoader(t *testing.T) {
 func TestReportCache_LoaderErrorPropagated(t *testing.T) {
 	t.Parallel()
 	loader := &stubLoader{err: errors.New("boom")}
-	rc := NewReportCache(loader.load, newMemKV(), time.Minute, nil)
+	rc := NewReportCache(loader.load, newMemKV(), time.Minute, testLog())
 	_, err := rc.Get(context.Background(), uuid.New())
 	if err == nil || !errors.Is(err, loader.err) {
 		t.Fatalf("expected wrapped boom, got %v", err)
 	}
 }
 
-func TestReportCache_RedisGetErrorFallsBackToLoader(t *testing.T) {
+func TestReportCache_RedisGetErrorPropagates(t *testing.T) {
 	t.Parallel()
+	// fallbacks were removed deliberately — Redis is required, errors propagate.
+	// Loader MUST NOT be invoked when Redis Get itself blew up.
 	loader := &stubLoader{view: app.ReportView{StreakDays: 3}}
 	kv := newMemKV()
 	kv.failGet = true
-	rc := NewReportCache(loader.load, kv, time.Minute, nil)
-	got, err := rc.Get(context.Background(), uuid.New())
-	if err != nil {
-		t.Fatalf("must not propagate redis Get error: %v", err)
+	rc := NewReportCache(loader.load, kv, time.Minute, testLog())
+	if _, err := rc.Get(context.Background(), uuid.New()); err == nil {
+		t.Fatalf("expected error when Redis Get fails, got nil")
 	}
-	if got.StreakDays != 3 {
-		t.Fatalf("streak=%d", got.StreakDays)
+	if loader.calls.Load() != 0 {
+		t.Fatalf("loader should not be invoked when Redis Get failed, calls=%d", loader.calls.Load())
 	}
 }
 
@@ -95,7 +96,7 @@ func TestReportCache_InvalidateBustsKey(t *testing.T) {
 	uid := uuid.New()
 	loader := &stubLoader{view: app.ReportView{ActionsCount: 1}}
 	kv := newMemKV()
-	rc := NewReportCache(loader.load, kv, time.Minute, nil)
+	rc := NewReportCache(loader.load, kv, time.Minute, testLog())
 	_, _ = rc.Get(context.Background(), uid)
 	rc.Invalidate(context.Background(), uid)
 	if _, err := rc.Get(context.Background(), uid); err != nil {
@@ -113,7 +114,7 @@ func TestReportCache_TTLExpiry(t *testing.T) {
 	kv := newMemKV()
 	now := time.Now()
 	kv.now = func() time.Time { return now }
-	rc := NewReportCache(loader.load, kv, time.Second, nil)
+	rc := NewReportCache(loader.load, kv, time.Second, testLog())
 	if _, err := rc.Get(context.Background(), uid); err != nil {
 		t.Fatalf("first: %v", err)
 	}
@@ -126,16 +127,26 @@ func TestReportCache_TTLExpiry(t *testing.T) {
 	}
 }
 
-func TestReportCache_NilLogDefaultsAndDefaultTTL(t *testing.T) {
+func TestReportCache_NilLogPanics(t *testing.T) {
+	t.Parallel()
+	// anti-fallback: nil logger must panic at construction (see NewReportCache).
+	defer func() {
+		if recover() == nil {
+			t.Fatalf("expected panic on nil logger")
+		}
+	}()
+	_ = NewReportCache(func(_ context.Context, _ uuid.UUID, _ time.Time) (app.ReportView, error) {
+		return app.ReportView{}, nil
+	}, newMemKV(), 0, nil)
+}
+
+func TestReportCache_DefaultTTLApplied(t *testing.T) {
 	t.Parallel()
 	rc := NewReportCache(func(_ context.Context, _ uuid.UUID, _ time.Time) (app.ReportView, error) {
 		return app.ReportView{}, nil
-	}, newMemKV(), 0, nil)
+	}, newMemKV(), 0, testLog())
 	if rc.ttl != DefaultReportCacheTTL {
 		t.Fatalf("expected default TTL, got %v", rc.ttl)
-	}
-	if rc.log == nil {
-		t.Fatalf("expected non-nil discard log")
 	}
 }
 
@@ -144,7 +155,7 @@ func TestReportCache_CorruptEntryRefreshes(t *testing.T) {
 	uid := uuid.New()
 	loader := &stubLoader{view: app.ReportView{ActionsCount: 5}}
 	kv := newMemKV()
-	rc := NewReportCache(loader.load, kv, time.Minute, nil)
+	rc := NewReportCache(loader.load, kv, time.Minute, testLog())
 	// Inject corrupt JSON under the report key.
 	_ = kv.Set(context.Background(), reportKey(uid), []byte("not-json{"), time.Minute)
 	got, err := rc.Get(context.Background(), uid)

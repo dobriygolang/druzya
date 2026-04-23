@@ -3,6 +3,8 @@ package infra
 import (
 	"context"
 	"errors"
+	"io"
+	"log/slog"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -10,6 +12,12 @@ import (
 
 	"druz9/vacancies/domain"
 )
+
+// testLog returns an explicit discard logger for unit tests. Constructors
+// now panic on nil log (anti-fallback policy).
+func testLog() *slog.Logger {
+	return slog.New(slog.NewTextHandler(io.Discard, nil))
+}
 
 // memKV is an in-memory KV mimicking Redis for the cache_test.
 type memKV struct {
@@ -181,7 +189,7 @@ func TestCachedRepo_GetByID_HitsCacheOnSecondCall(t *testing.T) {
 	kv := newMemKV()
 	pg := newFakeRepo()
 	_ = pg.Insert(context.Background(), &domain.Vacancy{Source: "hh", ExternalID: "1", Title: "A", Description: "d"})
-	c := NewCachedVacancyRepo(pg, kv, time.Minute, time.Hour, nil)
+	c := NewCachedVacancyRepo(pg, kv, time.Minute, time.Hour, testLog())
 
 	if _, err := c.GetByID(context.Background(), 1); err != nil {
 		t.Fatalf("first GetByID: %v", err)
@@ -200,7 +208,7 @@ func TestCachedRepo_Upsert_InvalidatesByID(t *testing.T) {
 	pg := newFakeRepo()
 	v := &domain.Vacancy{Source: "hh", ExternalID: "1", Title: "A", Description: "d"}
 	id, _ := pg.UpsertByExternal(context.Background(), v)
-	c := NewCachedVacancyRepo(pg, kv, time.Minute, time.Hour, nil)
+	c := NewCachedVacancyRepo(pg, kv, time.Minute, time.Hour, testLog())
 	// Warm cache.
 	_, _ = c.GetByID(context.Background(), id)
 	first := pg.get.Load()
@@ -217,20 +225,17 @@ func TestCachedRepo_Upsert_InvalidatesByID(t *testing.T) {
 	}
 }
 
-func TestCachedRepo_List_RedisFailureFallsBack(t *testing.T) {
+func TestCachedRepo_List_RedisFailurePropagates(t *testing.T) {
 	t.Parallel()
+	// fallbacks were removed deliberately — Redis is required, errors propagate.
 	kv := newMemKV()
 	kv.failGet = true
 	pg := newFakeRepo()
 	_ = pg.Insert(context.Background(), &domain.Vacancy{Source: "hh", ExternalID: "1", Title: "A", Description: "d"})
-	c := NewCachedVacancyRepo(pg, kv, time.Minute, time.Hour, nil)
+	c := NewCachedVacancyRepo(pg, kv, time.Minute, time.Hour, testLog())
 
-	p, err := c.ListByFilter(context.Background(), domain.ListFilter{})
-	if err != nil {
-		t.Fatalf("list: %v", err)
-	}
-	if len(p.Items) != 1 {
-		t.Errorf("want 1, got %d", len(p.Items))
+	if _, err := c.ListByFilter(context.Background(), domain.ListFilter{}); err == nil {
+		t.Fatalf("expected error when Redis Get fails, got nil")
 	}
 }
 
@@ -240,7 +245,7 @@ func TestCachedRepo_List_Singleflight(t *testing.T) {
 	pg := newFakeRepo()
 	_ = pg.Insert(context.Background(), &domain.Vacancy{Source: "hh", ExternalID: "1", Title: "A", Description: "d"})
 	// Slow-down the repo to widen the race window.
-	c := NewCachedVacancyRepo(pg, kv, time.Minute, time.Hour, nil)
+	c := NewCachedVacancyRepo(pg, kv, time.Minute, time.Hour, testLog())
 
 	var wg sync.WaitGroup
 	for i := 0; i < 8; i++ {

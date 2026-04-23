@@ -7,7 +7,10 @@
     "atlas": "Atlas",
     "codex": "Codex",
     "friends": "Friends",
-    "help": "Help"
+    "help": "Help",
+    "podcasts": "Podcasts",
+    "weekly": "Weekly Report",
+    "logout": "Sign out"
   },
   "buttons": {
     "find_opponent": "Find opponent",

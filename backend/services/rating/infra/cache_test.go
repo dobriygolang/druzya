@@ -6,6 +6,8 @@ package infra
 import (
 	"context"
 	"errors"
+	"io"
+	"log/slog"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -18,6 +20,12 @@ import (
 	"github.com/google/uuid"
 	"go.uber.org/mock/gomock"
 )
+
+// testLog returns an explicit discard logger for unit tests. Constructors
+// now panic on nil log (anti-fallback policy).
+func testLog() *slog.Logger {
+	return slog.New(slog.NewTextHandler(io.Discard, nil))
+}
 
 // memKV is a goroutine-safe in-memory KV for tests. Supports TTL and an
 // injectable failure mode for the redis-error fallback test.
@@ -115,7 +123,7 @@ func TestCachedRepo_List_MissThenHit(t *testing.T) {
 	want := sampleRatings(uid)
 	mock.EXPECT().List(gomock.Any(), uid).Return(want, nil).Times(1)
 
-	repo := NewCachedRepo(mock, newMemKV(), time.Minute, nil)
+	repo := NewCachedRepo(mock, newMemKV(), time.Minute, testLog())
 	if _, err := repo.List(context.Background(), uid); err != nil {
 		t.Fatalf("first call: %v", err)
 	}
@@ -139,7 +147,7 @@ func TestCachedRepo_List_TTLExpire(t *testing.T) {
 	now := time.Now()
 	kv := newMemKV()
 	kv.now = func() time.Time { return now }
-	repo := NewCachedRepo(mock, kv, 10*time.Second, nil)
+	repo := NewCachedRepo(mock, kv, 10*time.Second, testLog())
 	if _, err := repo.List(context.Background(), uid); err != nil {
 		t.Fatal(err)
 	}
@@ -149,24 +157,21 @@ func TestCachedRepo_List_TTLExpire(t *testing.T) {
 	}
 }
 
-func TestCachedRepo_List_RedisErrorFallback(t *testing.T) {
+func TestCachedRepo_List_RedisErrorPropagates(t *testing.T) {
 	t.Parallel()
+	// fallbacks were removed deliberately — Redis is required, errors propagate.
 	ctrl := gomock.NewController(t)
 	mock := mocks.NewMockRatingRepo(ctrl)
 	uid := uuid.New()
-	want := sampleRatings(uid)
-	mock.EXPECT().List(gomock.Any(), uid).Return(want, nil).Times(1)
+	// Upstream MUST NOT be invoked when Redis Get itself fails.
 
 	kv := newMemKV()
 	kv.failGet = true
-	repo := NewCachedRepo(mock, kv, time.Minute, nil)
-	got, err := repo.List(context.Background(), uid)
-	if err != nil {
-		t.Fatalf("expected fallback, got error: %v", err)
+	repo := NewCachedRepo(mock, kv, time.Minute, testLog())
+	if _, err := repo.List(context.Background(), uid); err == nil {
+		t.Fatalf("expected error when Redis Get fails, got nil")
 	}
-	if len(got) != len(want) {
-		t.Fatalf("expected %d entries, got %d", len(want), len(got))
-	}
+	_ = ctrl
 }
 
 func TestCachedRepo_List_CorruptJSONFallback(t *testing.T) {
@@ -179,7 +184,7 @@ func TestCachedRepo_List_CorruptJSONFallback(t *testing.T) {
 
 	kv := newMemKV()
 	kv.putRaw(keyMy(uid), []byte("not-json{{"))
-	repo := NewCachedRepo(mock, kv, time.Minute, nil)
+	repo := NewCachedRepo(mock, kv, time.Minute, testLog())
 	got, err := repo.List(context.Background(), uid)
 	if err != nil {
 		t.Fatalf("expected refresh, got error: %v", err)
@@ -199,7 +204,7 @@ func TestCachedRepo_Upsert_InvalidatesUserKey(t *testing.T) {
 	mock.EXPECT().Upsert(gomock.Any(), gomock.Any()).Return(nil).Times(1)
 
 	kv := newMemKV()
-	repo := NewCachedRepo(mock, kv, time.Minute, nil)
+	repo := NewCachedRepo(mock, kv, time.Minute, testLog())
 
 	if _, err := repo.List(context.Background(), uid); err != nil {
 		t.Fatal(err)
@@ -227,7 +232,7 @@ func TestCachedRepo_Invalidate_BustsKey(t *testing.T) {
 	mock.EXPECT().List(gomock.Any(), uid).Return(sampleRatings(uid), nil).Times(1)
 
 	kv := newMemKV()
-	repo := NewCachedRepo(mock, kv, time.Minute, nil)
+	repo := NewCachedRepo(mock, kv, time.Minute, testLog())
 	if _, err := repo.List(context.Background(), uid); err != nil {
 		t.Fatal(err)
 	}
@@ -250,7 +255,7 @@ func TestCachedRepo_List_SingleflightCollapsesConcurrentMisses(t *testing.T) {
 		return sampleRatings(uid), nil
 	}).Times(1)
 
-	repo := NewCachedRepo(mock, newMemKV(), time.Minute, nil)
+	repo := NewCachedRepo(mock, newMemKV(), time.Minute, testLog())
 
 	const N = 8
 	var wg sync.WaitGroup
@@ -277,7 +282,7 @@ func TestCachedRepo_List_DelegateError(t *testing.T) {
 	mock := mocks.NewMockRatingRepo(ctrl)
 	uid := uuid.New()
 	mock.EXPECT().List(gomock.Any(), uid).Return(nil, errors.New("pg down")).Times(1)
-	repo := NewCachedRepo(mock, newMemKV(), time.Minute, nil)
+	repo := NewCachedRepo(mock, newMemKV(), time.Minute, testLog())
 	if _, err := repo.List(context.Background(), uid); err == nil {
 		t.Fatal("expected error")
 	}
@@ -292,7 +297,7 @@ func TestCachedRepo_PassThrough_TopFindRankHistory(t *testing.T) {
 	mock.EXPECT().FindRank(gomock.Any(), uid, enums.SectionAlgorithms).Return(7, nil)
 	mock.EXPECT().HistoryLast12Weeks(gomock.Any(), uid).Return([]domain.HistorySample{}, nil)
 
-	repo := NewCachedRepo(mock, newMemKV(), time.Minute, nil)
+	repo := NewCachedRepo(mock, newMemKV(), time.Minute, testLog())
 	if _, err := repo.Top(context.Background(), enums.SectionAlgorithms, 10); err != nil {
 		t.Fatal(err)
 	}
@@ -308,7 +313,7 @@ func TestCachedRepo_DefaultTTLApplied(t *testing.T) {
 	t.Parallel()
 	ctrl := gomock.NewController(t)
 	mock := mocks.NewMockRatingRepo(ctrl)
-	repo := NewCachedRepo(mock, newMemKV(), 0, nil)
+	repo := NewCachedRepo(mock, newMemKV(), 0, testLog())
 	if repo.ttl != DefaultMyRatingsTTL {
 		t.Fatalf("default TTL not applied: %s", repo.ttl)
 	}

@@ -12,6 +12,32 @@
 // enums by name, not by lower-case alias.
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../apiClient';
+export const NEURAL_MODELS = ['random', 'llama3', 'claude', 'gpt4'];
+const NEURAL_MODEL_STORAGE_KEY = 'druz9.arena.neural_model';
+export function loadNeuralModel() {
+    try {
+        const raw = typeof window !== 'undefined'
+            ? window.localStorage.getItem(NEURAL_MODEL_STORAGE_KEY)
+            : null;
+        if (raw && NEURAL_MODELS.includes(raw)) {
+            return raw;
+        }
+    }
+    catch {
+        /* localStorage unavailable (SSR/private mode) — fall through to default. */
+    }
+    return 'random';
+}
+export function saveNeuralModel(key) {
+    try {
+        if (typeof window !== 'undefined') {
+            window.localStorage.setItem(NEURAL_MODEL_STORAGE_KEY, key);
+        }
+    }
+    catch {
+        /* swallow — model still works in-memory for the rest of the session. */
+    }
+}
 const SECTION_PROTO = {
     algorithms: 'SECTION_ALGORITHMS',
     sql: 'SECTION_SQL',
@@ -48,6 +74,7 @@ export function useFindMatchMutation() {
             body: JSON.stringify({
                 section: SECTION_PROTO[input.section],
                 mode: MODE_PROTO[input.mode],
+                ...(input.neuralModel ? { neural_model: input.neuralModel } : {}),
             }),
         }),
     });
@@ -96,3 +123,14 @@ export const ARENA_MODES = [
     { key: 'hardcore', section: 'algorithms' },
     { key: 'cursed', section: 'algorithms' },
 ];
+export function useStartPracticeMutation() {
+    return useMutation({
+        mutationFn: (input) => api('/arena/practice', {
+            method: 'POST',
+            body: JSON.stringify({
+                section: input.section,
+                neural_model: input.neuralModel ?? 'random',
+            }),
+        }),
+    });
+}

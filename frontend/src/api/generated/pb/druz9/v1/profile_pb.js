@@ -361,6 +361,34 @@ export class SkillNode extends Message {
      * @generated from field: bool decaying = 9;
      */
     decaying = false;
+    /**
+     * Total/solved counts for the progress bar in the Atlas drawer. progress
+     * (field 6) — это уже процент 0–100, оставляем для wire-compat; новые поля
+     * нужны для красивого «Решено 8 из 23 задач» без пересчёта на фронте.
+     *
+     * @generated from field: int32 solved_count = 10;
+     */
+    solvedCount = 0;
+    /**
+     * @generated from field: int32 total_count = 11;
+     */
+    totalCount = 0;
+    /**
+     * last_solved_at — последняя решённая задача в этой теме. Используется на
+     * фронте, чтобы посчитать «дней без практики» и подсветить decaying-узел
+     * тоже здесь, не только через bool decaying. Может быть unset (zero ts).
+     *
+     * @generated from field: google.protobuf.Timestamp last_solved_at = 12;
+     */
+    lastSolvedAt;
+    /**
+     * recommended_kata — топ-N (5) непрешённых ката из этой темы, отсортированных
+     * по сложности. Фронт показывает их в drawer'е как кликабельные ссылки.
+     * Источник — daily-каталог, см. profile/app/atlas.go.
+     *
+     * @generated from field: repeated druz9.v1.KataRef recommended_kata = 13;
+     */
+    recommendedKata = [];
     constructor(data) {
         super();
         proto3.util.initPartial(data, this);
@@ -377,6 +405,10 @@ export class SkillNode extends Message {
         { no: 7, name: "unlocked", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
         { no: 8, name: "unlocked_at", kind: "message", T: Timestamp },
         { no: 9, name: "decaying", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
+        { no: 10, name: "solved_count", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+        { no: 11, name: "total_count", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+        { no: 12, name: "last_solved_at", kind: "message", T: Timestamp },
+        { no: 13, name: "recommended_kata", kind: "message", T: KataRef, repeated: true },
     ]);
     static fromBinary(bytes, options) {
         return new SkillNode().fromBinary(bytes, options);
@@ -389,6 +421,59 @@ export class SkillNode extends Message {
     }
     static equals(a, b) {
         return proto3.util.equals(SkillNode, a, b);
+    }
+}
+/**
+ * KataRef — лёгкий референс на ката для UI рекомендаций. Title/difficulty
+ * денормализованы, чтобы не делать второй round-trip на /daily/kata/{id}.
+ *
+ * @generated from message druz9.v1.KataRef
+ */
+export class KataRef extends Message {
+    /**
+     * @generated from field: string id = 1;
+     */
+    id = "";
+    /**
+     * @generated from field: string title = 2;
+     */
+    title = "";
+    /**
+     * difficulty: "easy" | "medium" | "hard". Строка, чтобы не плодить enum.
+     *
+     * @generated from field: string difficulty = 3;
+     */
+    difficulty = "";
+    /**
+     * estimated_minutes — приблизительная оценка времени решения, для UX «у тебя
+     * есть 15 мин — вот ката на 10».
+     *
+     * @generated from field: int32 estimated_minutes = 4;
+     */
+    estimatedMinutes = 0;
+    constructor(data) {
+        super();
+        proto3.util.initPartial(data, this);
+    }
+    static runtime = proto3;
+    static typeName = "druz9.v1.KataRef";
+    static fields = proto3.util.newFieldList(() => [
+        { no: 1, name: "id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+        { no: 2, name: "title", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+        { no: 3, name: "difficulty", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+        { no: 4, name: "estimated_minutes", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    ]);
+    static fromBinary(bytes, options) {
+        return new KataRef().fromBinary(bytes, options);
+    }
+    static fromJson(jsonValue, options) {
+        return new KataRef().fromJson(jsonValue, options);
+    }
+    static fromJsonString(jsonString, options) {
+        return new KataRef().fromJsonString(jsonString, options);
+    }
+    static equals(a, b) {
+        return proto3.util.equals(KataRef, a, b);
     }
 }
 /**

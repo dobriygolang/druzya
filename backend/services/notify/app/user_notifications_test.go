@@ -2,6 +2,8 @@ package app
 
 import (
 	"context"
+	"io"
+	"log/slog"
 	"sync"
 	"testing"
 	"time"
@@ -113,7 +115,7 @@ func (s *stubPrefsRepo) Upsert(_ context.Context, p domain.NotificationPrefs) (d
 func TestFeedHandlers_OnArenaMatchCompleted_WriteWinAndLoss(t *testing.T) {
 	repo := newStubRepo()
 	prefs := newStubPrefsRepo()
-	h := NewFeedHandlers(repo, prefs, nil)
+	h := NewFeedHandlers(repo, prefs, slog.New(slog.NewTextHandler(io.Discard, nil)))
 	winner := uuid.New()
 	loser := uuid.New()
 	ev := sharedDomain.MatchCompleted{
@@ -142,7 +144,7 @@ func TestFeedHandlers_RespectsSilence(t *testing.T) {
 		UserID:       uid,
 		SilenceUntil: &silence,
 	})
-	h := NewFeedHandlers(repo, prefs, nil)
+	h := NewFeedHandlers(repo, prefs, slog.New(slog.NewTextHandler(io.Discard, nil)))
 	ev := sharedDomain.MatchCompleted{
 		MatchID: uuid.New(), WinnerID: uid,
 		EloDeltas: map[uuid.UUID]int{uid: +20},

@@ -132,7 +132,7 @@ func NewLeaderboardRecomputeWorker(
 		limit = DefaultRecomputeLimit
 	}
 	if log == nil {
-		log = slog.New(slog.NewTextHandler(discardWriter{}, nil))
+		panic("rating.infra.NewLeaderboardRecomputeWorker: logger is required (anti-fallback policy: no silent noop loggers)")
 	}
 	return &LeaderboardRecomputeWorker{
 		repo: repo, rdb: rdb, log: log,

@@ -49,6 +49,11 @@ func (c FriendCode) IsExpired(now time.Time) bool { return now.After(c.ExpiresAt
 //
 // Список собирается в repo (PgFriendRepo.ListAccepted) одной выборкой —
 // тут нет лишних роутингов.
+//
+// Anti-fallback: the Online bool was removed. There is no presence service
+// that fills it; the previous AlwaysOffline stub used to write `false` for
+// every entry. When real presence lands, add a separate PresenceProvider
+// port and merge it in the use case — do NOT add a hard-coded fallback.
 type FriendListEntry struct {
 	UserID      uuid.UUID
 	Username    string
@@ -56,6 +61,4 @@ type FriendListEntry struct {
 	AvatarFrame string
 	Tier        string // best section + ELO bucket label, пустое если нет
 	LastMatchAt *time.Time
-	// Online — выставляется отдельным presence-провайдером, не из БД.
-	Online bool
 }

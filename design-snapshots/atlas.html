@@ -1,0 +1,177 @@
+<!doctype html>
+<html lang="ru" class="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Atlas · druz9 · BROKEN — нужен redesign</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700;800&family=Geist+Mono:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script>
+  tailwind.config = { darkMode: 'class', theme: { extend: {
+    colors: {
+      bg: 'rgb(var(--color-bg) / <alpha-value>)',
+      surface: { 1: 'rgb(var(--color-surface-1) / <alpha-value>)', 2: 'rgb(var(--color-surface-2) / <alpha-value>)', 3: 'rgb(var(--color-surface-3) / <alpha-value>)' },
+      border: { DEFAULT: 'rgb(var(--color-border) / <alpha-value>)', strong: 'rgb(var(--color-border-strong) / <alpha-value>)' },
+      text: { primary: 'rgb(var(--color-text-primary) / <alpha-value>)', secondary: 'rgb(var(--color-text-secondary) / <alpha-value>)', muted: 'rgb(var(--color-text-muted) / <alpha-value>)' },
+      accent: 'rgb(var(--color-accent) / <alpha-value>)', cyan: 'rgb(var(--color-cyan) / <alpha-value>)', pink: 'rgb(var(--color-pink) / <alpha-value>)',
+      success: 'rgb(var(--color-success) / <alpha-value>)', warn: 'rgb(var(--color-warn) / <alpha-value>)', danger: 'rgb(var(--color-danger) / <alpha-value>)',
+    },
+    fontFamily: { display: ['Geist', 'Inter', 'sans-serif'], mono: ['Geist Mono', 'monospace'] },
+  }}}
+</script>
+<style>
+  :root, .dark {
+    --color-bg: 10 10 15; --color-surface-1: 20 20 37; --color-surface-2: 26 26 46; --color-surface-3: 45 27 77;
+    --color-border: 34 34 51; --color-border-strong: 42 42 63;
+    --color-text-primary: 255 255 255; --color-text-secondary: 192 192 192; --color-text-muted: 138 138 158;
+    --color-accent: 88 44 255; --color-success: 16 185 129; --color-danger: 239 68 68; --color-warn: 251 191 36;
+    --color-cyan: 34 211 238; --color-pink: 244 114 182;
+  }
+  body { font-family: 'Inter', system-ui, sans-serif; background: rgb(var(--color-bg)); color: rgb(var(--color-text-primary)); }
+  .font-display { font-family: 'Geist', 'Inter', sans-serif; }
+  .font-mono { font-family: 'Geist Mono', monospace; }
+</style>
+</head>
+<body class="min-h-screen">
+
+<header class="border-b border-border bg-bg px-4 sm:px-8 py-4">
+  <div class="mx-auto max-w-7xl flex items-center justify-between">
+    <a href="index.html" class="text-text-muted hover:text-text-primary text-sm">← все snapshots</a>
+    <h1 class="font-display text-xl font-bold">Atlas — Skill Graph</h1>
+    <div class="rounded bg-danger/15 text-danger px-3 py-1 text-[11px] font-mono uppercase tracking-wider">⚠ дизайн-debt</div>
+  </div>
+</header>
+
+<main class="mx-auto max-w-7xl px-4 sm:px-8 py-8">
+
+  <!-- Problem statement -->
+  <div class="rounded-xl border border-danger/30 bg-danger/5 p-5 mb-8">
+    <h2 class="font-display font-bold mb-3">Проблема</h2>
+    <p class="text-sm text-text-secondary leading-relaxed mb-3">
+      Сейчас radial layout раскладывает ноды по углам, но <strong class="text-danger">labels накладываются друг на друга</strong>,
+      <strong class="text-danger">edges не показывают направление</strong> (где prereq — где unlock),
+      и <strong class="text-danger">категории не визуально сгруппированы</strong> (нет hexagon-зон / тонировки).
+      Результат: юзер не понимает, что от чего зависит и где он находится в скилл-древе.
+    </p>
+    <div class="text-xs text-text-muted">Содержит ~40 нод по 5 категориям: Algorithms, Data Structures, System Design, Backend, Concurrency. У каждой — состояние locked/unlocked/mastered + decay-флаг (давно не решал → знание тает).</div>
+  </div>
+
+  <!-- BEFORE: current broken state -->
+  <div class="mb-10">
+    <div class="flex items-center gap-3 mb-3">
+      <h3 class="font-display text-lg font-bold">Сейчас (broken)</h3>
+      <span class="rounded bg-danger/20 text-danger px-2 py-0.5 text-[10px] font-mono uppercase">текущее состояние</span>
+    </div>
+    <div class="rounded-xl border border-border bg-surface-1 p-4">
+      <svg viewBox="0 0 800 500" class="w-full h-[500px]">
+        <!-- Background -->
+        <rect width="800" height="500" fill="rgb(20,20,37)" />
+
+        <!-- "Hexagon" categories overlapping each other -->
+        <polygon points="200,100 300,80 350,160 320,240 220,250 170,170" fill="rgba(88,44,255,0.06)" stroke="rgba(88,44,255,0.3)" stroke-width="1" />
+        <polygon points="380,180 480,160 530,240 510,320 410,330 350,250" fill="rgba(34,211,238,0.06)" stroke="rgba(34,211,238,0.3)" stroke-width="1" />
+        <polygon points="540,260 640,240 690,320 670,400 570,410 510,330" fill="rgba(244,114,182,0.06)" stroke="rgba(244,114,182,0.3)" stroke-width="1" />
+
+        <!-- Edges (incomplete - some don't connect properly, no arrows) -->
+        <line x1="240" y1="170" x2="320" y2="220" stroke="rgb(60,60,80)" stroke-width="1" />
+        <line x1="320" y1="220" x2="450" y2="240" stroke="rgb(60,60,80)" stroke-width="1" stroke-dasharray="4,4" />
+        <line x1="450" y1="240" x2="500" y2="180" stroke="rgb(60,60,80)" stroke-width="1" />
+        <line x1="500" y1="180" x2="600" y2="280" stroke="rgb(60,60,80)" stroke-width="1" />
+        <line x1="600" y1="280" x2="650" y2="380" stroke="rgb(60,60,80)" stroke-width="1" />
+        <!-- Some edges that "go nowhere" -->
+        <line x1="240" y1="170" x2="350" y2="100" stroke="rgb(60,60,80)" stroke-width="1" stroke-dasharray="2,4" />
+        <line x1="450" y1="240" x2="380" y2="350" stroke="rgb(60,60,80)" stroke-width="1" stroke-dasharray="2,4" />
+
+        <!-- Nodes -->
+        <circle cx="240" cy="170" r="14" fill="rgb(88,44,255)" stroke="white" stroke-width="2" />
+        <circle cx="320" cy="220" r="14" fill="rgb(88,44,255)" stroke="white" stroke-width="2" />
+        <circle cx="450" cy="240" r="14" fill="rgb(34,211,238)" stroke="white" stroke-width="2" />
+        <circle cx="500" cy="180" r="14" fill="rgb(34,211,238)" stroke="rgb(60,60,80)" stroke-width="2" opacity="0.5" />
+        <circle cx="600" cy="280" r="14" fill="rgb(244,114,182)" stroke="rgb(60,60,80)" stroke-width="2" opacity="0.5" />
+        <circle cx="650" cy="380" r="14" fill="rgb(60,60,80)" stroke="rgb(60,60,80)" stroke-width="2" />
+        <circle cx="350" cy="100" r="14" fill="rgb(60,60,80)" stroke="rgb(60,60,80)" stroke-width="2" />
+        <circle cx="380" cy="350" r="14" fill="rgb(60,60,80)" stroke="rgb(60,60,80)" stroke-width="2" />
+
+        <!-- Labels — пересекаются с нодами, друг с другом, и с зонами -->
+        <text x="50" y="100" fill="white" font-family="Inter" font-size="11" font-weight="600">Sliding Window</text>
+        <text x="120" y="220" fill="white" font-family="Inter" font-size="11" font-weight="600">Two Pointers</text>
+        <text x="280" y="270" fill="white" font-family="Inter" font-size="11" font-weight="600">Binary Search</text>
+        <text x="450" y="280" fill="white" font-family="Inter" font-size="11" font-weight="600">Hash Tables</text>
+        <text x="430" y="170" fill="rgb(192,192,192)" font-family="Inter" font-size="11" font-weight="600">Linked Lists</text>
+        <text x="540" y="290" fill="rgb(192,192,192)" font-family="Inter" font-size="11" font-weight="600">DFS / BFS Graphs</text>
+        <text x="610" y="395" fill="rgb(138,138,158)" font-family="Inter" font-size="11" font-weight="600">Topological Sort</text>
+        <text x="280" y="100" fill="rgb(138,138,158)" font-family="Inter" font-size="11" font-weight="600">Trie</text>
+        <text x="350" y="380" fill="rgb(138,138,158)" font-family="Inter" font-size="11" font-weight="600">Heaps / Priority Queue</text>
+        <text x="700" y="160" fill="rgb(138,138,158)" font-family="Inter" font-size="11" font-weight="600">Dynamic Programming (??)</text>
+        <text x="70" y="380" fill="rgb(138,138,158)" font-family="Inter" font-size="11" font-weight="600">String Algorithms</text>
+
+        <!-- Annotations -->
+        <text x="40" y="450" fill="rgb(239,68,68)" font-family="Geist Mono" font-size="11">⚠ labels overlap</text>
+        <text x="240" y="450" fill="rgb(239,68,68)" font-family="Geist Mono" font-size="11">⚠ edges no direction (prereq?)</text>
+        <text x="510" y="450" fill="rgb(239,68,68)" font-family="Geist Mono" font-size="11">⚠ categories ill-defined</text>
+        <text x="40" y="475" fill="rgb(239,68,68)" font-family="Geist Mono" font-size="11">⚠ no zoom / pan affordance · no legend</text>
+      </svg>
+    </div>
+  </div>
+
+  <!-- TARGET: what we want -->
+  <div>
+    <div class="flex items-center gap-3 mb-3">
+      <h3 class="font-display text-lg font-bold">Что хотим</h3>
+      <span class="rounded bg-success/20 text-success px-2 py-0.5 text-[10px] font-mono uppercase">target</span>
+    </div>
+    <div class="grid lg:grid-cols-3 gap-5">
+      <div class="rounded-xl border border-border bg-surface-1 p-5">
+        <div class="font-mono text-[10px] uppercase tracking-wider text-cyan mb-2">layout</div>
+        <h4 class="font-display font-bold mb-2">Категории — visible zones</h4>
+        <p class="text-xs text-text-secondary leading-relaxed">
+          Каждая из 5 категорий = тонированный hexagon/cluster с подписью сверху.
+          Внутри — radial-cluster по сложности (центр = базовое, край = advanced).
+          Никаких overlap-ов между зонами.
+        </p>
+      </div>
+      <div class="rounded-xl border border-border bg-surface-1 p-5">
+        <div class="font-mono text-[10px] uppercase tracking-wider text-cyan mb-2">edges</div>
+        <h4 class="font-display font-bold mb-2">Стрелки prereq → unlock</h4>
+        <p class="text-xs text-text-secondary leading-relaxed">
+          Каждое ребро направлено: prereq → ребёнок. Стиль:
+          <span class="text-success">solid</span> — оба unlocked,
+          <span class="text-warn">dashed</span> — prereq unlocked, ребёнок нет,
+          <span class="text-text-muted">faded</span> — оба locked.
+        </p>
+      </div>
+      <div class="rounded-xl border border-border bg-surface-1 p-5">
+        <div class="font-mono text-[10px] uppercase tracking-wider text-cyan mb-2">nodes</div>
+        <h4 class="font-display font-bold mb-2">Состояние нод считается с одного взгляда</h4>
+        <p class="text-xs text-text-secondary leading-relaxed">
+          locked = серый outline · unlocked = заливка категорийного цвета · mastered = glow + checkmark · decay = pulse warning ring.
+          Label всегда под нодой, fixed offset, никаких overlap-ов.
+        </p>
+      </div>
+    </div>
+
+    <div class="mt-5 rounded-xl border border-border bg-surface-1 p-5">
+      <div class="font-mono text-[10px] uppercase tracking-wider text-cyan mb-2">interaction</div>
+      <h4 class="font-display font-bold mb-2">Pan/zoom + клик-и-drawer</h4>
+      <p class="text-xs text-text-secondary leading-relaxed mb-3">
+        Hover на ноду → подсветка предков и потомков (rest faded к 30%).
+        Клик → правый drawer с описанием темы, прогрессом (12 / 18 задач), последним решением, decay-флагом, кнопкой «Решить рекомендованное».
+        Pan/zoom мышью + кнопки +/− и «fit». Mini-map в углу.
+      </p>
+    </div>
+
+    <div class="mt-5 rounded-xl border border-accent/40 bg-gradient-to-br from-surface-3 to-surface-1 p-6">
+      <h4 class="font-display font-bold mb-2">Bonus: «twin» режимы</h4>
+      <p class="text-xs text-text-secondary leading-relaxed">
+        <strong class="text-accent">Career mode</strong> — раскладка по reading order (от Two Sum к Skip List). <br>
+        <strong class="text-pink">Interview mode</strong> — фильтр под конкретную компанию (Яндекс / Ozon / VK), показывает только релевантные ноды и подсвечивает gap.
+      </p>
+    </div>
+
+  </div>
+
+  <p class="mt-12 text-center text-xs text-text-muted"><a href="index.html" class="hover:underline">← все snapshots</a></p>
+</main>
+
+</body>
+</html>

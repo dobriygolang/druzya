@@ -60,10 +60,10 @@ func (uc *Refresh) Do(ctx context.Context, in RefreshInput) (RefreshResult, erro
 	if delErr := uc.Sessions.Delete(ctx, sid); delErr != nil {
 		return RefreshResult{}, fmt.Errorf("auth.Refresh: revoke old session: %w", delErr)
 	}
-	// Provider is carried on the access-token claims but we don't know it here —
-	// default to Yandex for the claim. (A production system would persist it on
-	// the session row; tracked as a follow-up.)
-	// STUB: persist provider on session row so Refresh can round-trip it.
+	// Provider is carried on the access-token claims but the refresh session
+	// row currently does not persist it. Default to Yandex on the new
+	// AuthUser projection — clients that care about the live provider read
+	// it from the access-token claims, not from this projection.
 	pair, err := BuildTokenPair(ctx, uc.Issuer, uc.Sessions, user, enums.AuthProviderYandex, uc.RefreshTTL, in.UserAgent, in.IP)
 	if err != nil {
 		return RefreshResult{}, fmt.Errorf("auth.Refresh: build tokens: %w", err)

@@ -47,25 +47,49 @@ const profileFull = {
         },
     ],
 };
+// Wave-2: добавлены solved_count / total_count / last_solved_at /
+// recommended_kata, чтобы интерактивный drawer на /atlas в MSW-моде показывал
+// реальные данные а не пустоту. На бэкенде это всё реализовано через
+// proto-расширение SkillNode (см. proto/druz9/v1/profile.proto).
+const dpKata = [
+    { id: 'climbing-stairs', title: 'Climbing Stairs', difficulty: 'easy', estimated_minutes: 10 },
+    { id: 'house-robber', title: 'House Robber', difficulty: 'medium', estimated_minutes: 15 },
+    { id: 'edit-distance', title: 'Edit Distance', difficulty: 'hard', estimated_minutes: 30 },
+];
+const graphKata = [
+    { id: 'number-of-islands', title: 'Number of Islands', difficulty: 'medium', estimated_minutes: 18 },
+    { id: 'course-schedule', title: 'Course Schedule (топосорт)', difficulty: 'medium', estimated_minutes: 22 },
+    { id: 'word-ladder', title: 'Word Ladder (BFS)', difficulty: 'hard', estimated_minutes: 35 },
+];
+const sqlKata = [
+    { id: 'second-highest-salary', title: 'Second Highest Salary', difficulty: 'easy', estimated_minutes: 8 },
+    { id: 'department-top-three', title: 'Department Top Three Salaries', difficulty: 'medium', estimated_minutes: 18 },
+];
+const goKata = [
+    { id: 'rate-limiter', title: 'Token-bucket Rate Limiter', difficulty: 'medium', estimated_minutes: 20 },
+    { id: 'worker-pool', title: 'Worker Pool на каналах', difficulty: 'medium', estimated_minutes: 25 },
+];
+const fourteenDaysAgo = new Date(Date.now() - 14 * 86400000).toISOString();
+const yesterday = new Date(Date.now() - 86400000).toISOString();
 const atlas = {
     center_node: 'ascendant',
     nodes: [
-        { key: 'ascendant', title: 'Ascendant', section: 'algorithms', kind: 'ascendant', progress: 82, unlocked: true, decaying: false, description: 'Центр класса — ось твоего пути' },
-        { key: 'algo_dp', title: 'Dynamic Programming', section: 'algorithms', kind: 'keystone', progress: 74, unlocked: true, decaying: false, description: 'Memoization, Bottom-up' },
-        { key: 'algo_graphs', title: 'Graphs', section: 'algorithms', kind: 'normal', progress: 55, unlocked: true, decaying: true, description: 'BFS, DFS, Dijkstra' },
-        { key: 'sql_windows', title: 'Window functions', section: 'sql', kind: 'keystone', progress: 62, unlocked: true, decaying: false, description: 'ROW_NUMBER, LAG, LEAD' },
-        { key: 'go_concurrency', title: 'Concurrency', section: 'go', kind: 'keystone', progress: 71, unlocked: true, decaying: false, description: 'goroutines, channels' },
-        { key: 'sd_scaling', title: 'Horizontal scaling', section: 'system_design', kind: 'normal', progress: 20, unlocked: false, decaying: false, description: '' },
-        { key: 'beh_leadership', title: 'Leadership', section: 'behavioral', kind: 'normal', progress: 35, unlocked: true, decaying: false, description: '' },
+        { key: 'ascendant', title: 'Ascendant', section: 'algorithms', kind: 'ascendant', progress: 82, unlocked: true, decaying: false, description: 'Центр класса — ось твоего пути', solved_count: 1, total_count: 1, last_solved_at: yesterday, recommended_kata: dpKata.slice(0, 1) },
+        { key: 'algo_dp', title: 'Dynamic Programming', section: 'algorithms', kind: 'keystone', progress: 74, unlocked: true, decaying: false, description: 'Memoization, Bottom-up', solved_count: 22, total_count: 30, last_solved_at: yesterday, recommended_kata: dpKata },
+        { key: 'algo_graphs', title: 'Graphs', section: 'algorithms', kind: 'normal', progress: 55, unlocked: true, decaying: true, description: 'BFS, DFS, Dijkstra', solved_count: 10, total_count: 18, last_solved_at: fourteenDaysAgo, recommended_kata: graphKata },
+        { key: 'sql_windows', title: 'Window functions', section: 'sql', kind: 'keystone', progress: 62, unlocked: true, decaying: false, description: 'ROW_NUMBER, LAG, LEAD', solved_count: 9, total_count: 14, last_solved_at: yesterday, recommended_kata: sqlKata },
+        { key: 'go_concurrency', title: 'Concurrency', section: 'go', kind: 'keystone', progress: 71, unlocked: true, decaying: false, description: 'goroutines, channels', solved_count: 11, total_count: 16, last_solved_at: yesterday, recommended_kata: goKata },
+        { key: 'sd_scaling', title: 'Horizontal scaling', section: 'system_design', kind: 'normal', progress: 20, unlocked: false, decaying: false, description: '', solved_count: 1, total_count: 8, recommended_kata: [{ id: 'url-shortener', title: 'URL Shortener (bit.ly)', difficulty: 'medium', estimated_minutes: 30 }] },
+        { key: 'beh_leadership', title: 'Leadership', section: 'behavioral', kind: 'normal', progress: 35, unlocked: true, decaying: false, description: '', solved_count: 3, total_count: 10, last_solved_at: yesterday, recommended_kata: [{ id: 'leading-without-authority', title: '«Лидер без авторитета»', difficulty: 'medium', estimated_minutes: 18 }] },
         // STUB: denser atlas sample for layout demo
-        { key: 'algo_bigo', title: 'Big-O Literate', section: 'algorithms', kind: 'normal', progress: 88, unlocked: true, decaying: false, description: 'Амортизированная сложность, master-theorem' },
-        { key: 'sql_indexes', title: 'Index Whisperer', section: 'sql', kind: 'normal', progress: 47, unlocked: true, decaying: false, description: 'B-tree, covering, partial' },
-        { key: 'sql_cte', title: 'CTE Architect', section: 'sql', kind: 'normal', progress: 30, unlocked: false, decaying: false, description: 'Recursive CTE, materialization' },
-        { key: 'go_context', title: 'Context Keeper', section: 'go', kind: 'normal', progress: 58, unlocked: true, decaying: false, description: 'Cancellation, deadlines, values' },
-        { key: 'go_profiler', title: 'Zero-Alloc Rune', section: 'go', kind: 'normal', progress: 15, unlocked: false, decaying: false, description: 'pprof, escape-analysis' },
-        { key: 'sd_cap', title: 'CAP Triad', section: 'system_design', kind: 'keystone', progress: 10, unlocked: false, decaying: false, description: 'Consistency / Availability / Partition' },
-        { key: 'beh_star', title: 'STAR Recall', section: 'behavioral', kind: 'normal', progress: 62, unlocked: true, decaying: false, description: 'Structured storytelling' },
-        { key: 'beh_conflict', title: 'Conflict Harmony', section: 'behavioral', kind: 'keystone', progress: 44, unlocked: true, decaying: true, description: 'De-escalation, leadership aura' },
+        { key: 'algo_bigo', title: 'Big-O Literate', section: 'algorithms', kind: 'normal', progress: 88, unlocked: true, decaying: false, description: 'Амортизированная сложность, master-theorem', solved_count: 14, total_count: 16 },
+        { key: 'sql_indexes', title: 'Index Whisperer', section: 'sql', kind: 'normal', progress: 47, unlocked: true, decaying: false, description: 'B-tree, covering, partial', solved_count: 5, total_count: 11 },
+        { key: 'sql_cte', title: 'CTE Architect', section: 'sql', kind: 'normal', progress: 30, unlocked: false, decaying: false, description: 'Recursive CTE, materialization', solved_count: 0, total_count: 8 },
+        { key: 'go_context', title: 'Context Keeper', section: 'go', kind: 'normal', progress: 58, unlocked: true, decaying: false, description: 'Cancellation, deadlines, values', solved_count: 7, total_count: 12 },
+        { key: 'go_profiler', title: 'Zero-Alloc Rune', section: 'go', kind: 'normal', progress: 15, unlocked: false, decaying: false, description: 'pprof, escape-analysis', solved_count: 0, total_count: 9 },
+        { key: 'sd_cap', title: 'CAP Triad', section: 'system_design', kind: 'keystone', progress: 10, unlocked: false, decaying: false, description: 'Consistency / Availability / Partition', solved_count: 0, total_count: 6 },
+        { key: 'beh_star', title: 'STAR Recall', section: 'behavioral', kind: 'normal', progress: 62, unlocked: true, decaying: false, description: 'Structured storytelling', solved_count: 6, total_count: 10 },
+        { key: 'beh_conflict', title: 'Conflict Harmony', section: 'behavioral', kind: 'keystone', progress: 44, unlocked: true, decaying: true, description: 'De-escalation, leadership aura', solved_count: 4, total_count: 9, last_solved_at: fourteenDaysAgo },
     ],
     edges: [
         { from: 'ascendant', to: 'algo_dp' },

@@ -62,6 +62,12 @@ func NewDaily(d Deps) *Module {
 	streakCalendarUC := &dailyApp.GetStreakCalendar{Streaks: streaks, Katas: katas, Now: d.Now}
 	streakCalendarHandler := dailyPorts.NewStreakCalendarHandler(streakCalendarUC, d.Log)
 
+	// /daily/run — dry-grade endpoint reused by the editor's "Run" button.
+	// Lives outside the Connect contract because the wire shape is UI-tailored
+	// (passed/total/output/time_ms) and adding a proto would force a regen for
+	// a single endpoint. See ports/run_handler.go for the rationale.
+	runHandler := dailyPorts.NewRunHandler(judge, d.Log, d.Now)
+
 	connectPath, connectHandler := druz9v1connect.NewDailyServiceHandler(server)
 	transcoder := mustTranscode("daily", connectPath, connectHandler)
 
@@ -72,6 +78,10 @@ func NewDaily(d Deps) *Module {
 		MountREST: func(r chi.Router) {
 			r.Get("/daily/kata", transcoder.ServeHTTP)
 			r.Post("/daily/kata/submit", transcoder.ServeHTTP)
+			// /daily/run — bespoke chi handler used by the editor's "Run" button
+			// (no persistence, no streak side-effect). The "Submit" button keeps
+			// using the proto-declared /daily/kata/submit path above.
+			r.Post("/daily/run", runHandler.ServeHTTP)
 			r.Get("/daily/streak", transcoder.ServeHTTP)
 			r.Get("/daily/calendar", transcoder.ServeHTTP)
 			r.Post("/daily/calendar", transcoder.ServeHTTP)

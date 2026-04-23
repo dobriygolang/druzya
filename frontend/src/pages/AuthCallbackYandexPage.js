@@ -4,17 +4,21 @@ import { jsx as _jsx, Fragment as _Fragment, jsxs as _jsxs } from "react/jsx-run
 // Yandex редиректит пользователя сюда с ?code=...&state=... после успешной
 // авторизации. Мы сверяем state с тем, что положили в sessionStorage перед
 // редиректом (CSRF), POST'им code на /api/v1/auth/yandex и сохраняем
-// access_token.
+// access_token + refresh_token.
 //
 // Контракт ответа (см. backend/services/auth/ports/server.go,
 // AuthServer.LoginYandex → buildLoginResponse):
-//   {access_token, expires_in, user: {...}}
-// Refresh-токен ставится бэком в HttpOnly-cookie, фронт его не видит.
+//   body:    {access_token, expires_in, user: {...}}
+//   headers: X-Refresh-Token (полное значение опаковой сессии)
+//            X-Is-New-User: "1" | "0" — фронт читает эту букву, чтобы
+//            маршрутизировать только что зарегистрированных пользователей
+//            на /onboarding (не зашиваем в proto, т.к. перегенерация
+//            затрагивает много файлов).
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { Loader2 } from 'lucide-react';
-import { api } from '../lib/apiClient';
-import { persistAccessToken } from '../lib/queries/auth';
+import { API_BASE } from '../lib/apiClient';
+import { persistAuthTokens } from '../lib/queries/auth';
 export default function AuthCallbackYandexPage() {
     const [params] = useSearchParams();
     const navigate = useNavigate();
@@ -40,16 +44,33 @@ export default function AuthCallbackYandexPage() {
         let cancelled = false;
         void (async () => {
             try {
-                const res = await api('/auth/yandex', {
+                // We deliberately skip the central api() helper here so we can read
+                // response headers (X-Refresh-Token / X-Is-New-User) — api() returns
+                // only the parsed body.
+                const res = await fetch(`${API_BASE}/auth/yandex`, {
                     method: 'POST',
+                    credentials: 'include',
+                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ code, state: state ?? '' }),
                 });
+                if (!res.ok) {
+                    const text = await res.text().catch(() => '');
+                    throw new Error(`yandex ${res.status}: ${text}`);
+                }
+                const body = (await res.json());
                 if (cancelled)
                     return;
-                if (res?.access_token) {
-                    persistAccessToken(res.access_token);
+                if (!body.access_token) {
+                    throw new Error('пустой access_token');
                 }
-                navigate('/sanctum', { replace: true });
+                const refresh = res.headers.get('X-Refresh-Token');
+                const isNewUser = res.headers.get('X-Is-New-User') === '1';
+                persistAuthTokens({
+                    access_token: body.access_token,
+                    refresh_token: refresh,
+                    expires_in: body.expires_in ?? 0,
+                });
+                navigate(isNewUser ? '/onboarding' : '/sanctum', { replace: true });
             }
             catch (e) {
                 if (cancelled)

@@ -3,6 +3,8 @@ package ports
 import (
 	"context"
 	"encoding/json"
+	"io"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -31,7 +33,7 @@ func (stubRepo) Unlock(_ context.Context, uid uuid.UUID, code string, t int) (ac
 }
 
 func TestHandlerListReturnsCatalogue(t *testing.T) {
-	h := NewHandler(Handler{
+	h := NewHandler(Handler{Log: slog.New(slog.NewTextHandler(io.Discard, nil)),
 		List: &achApp.ListAchievements{Repo: stubRepo{}},
 		Get:  &achApp.GetSingle{Repo: stubRepo{}},
 	})
@@ -56,7 +58,7 @@ func TestHandlerListReturnsCatalogue(t *testing.T) {
 }
 
 func TestHandlerListUnauth(t *testing.T) {
-	h := NewHandler(Handler{
+	h := NewHandler(Handler{Log: slog.New(slog.NewTextHandler(io.Discard, nil)),
 		List: &achApp.ListAchievements{Repo: stubRepo{}},
 		Get:  &achApp.GetSingle{Repo: stubRepo{}},
 	})
@@ -71,7 +73,7 @@ func TestHandlerListUnauth(t *testing.T) {
 }
 
 func TestHandlerGet404(t *testing.T) {
-	h := NewHandler(Handler{
+	h := NewHandler(Handler{Log: slog.New(slog.NewTextHandler(io.Discard, nil)),
 		List: &achApp.ListAchievements{Repo: stubRepo{}},
 		Get:  &achApp.GetSingle{Repo: stubRepo{}},
 	})

@@ -8,7 +8,7 @@
 //   - explicit guild lookup — useGuildQuery(guildId) for /guild/:guildId
 //   - widened types          — TopGuildSummary mirrors the planned Connect
 //                              shape so a future migration is mechanical.
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../apiClient';
 // useMyGuildQuery — current user's guild detail, falls back to a clean
 // "no guild" state when the backend returns 404 (see ApiError handling).
@@ -63,5 +63,54 @@ export function useTopGuildsQuery(limit = 20) {
         queryFn: () => api(`/guilds/top?limit=${encodeURIComponent(limit)}`),
         staleTime: 5 * 60 * 1000,
         refetchOnWindowFocus: false,
+    });
+}
+export function useGuildListQuery(filters) {
+    const qs = new URLSearchParams();
+    if (filters.search)
+        qs.set('search', filters.search);
+    if (filters.tier)
+        qs.set('tier', filters.tier);
+    if (filters.page && filters.page > 1)
+        qs.set('page', String(filters.page));
+    const suffix = qs.toString() ? `?${qs.toString()}` : '';
+    return useQuery({
+        queryKey: ['guild', 'list', filters],
+        queryFn: () => api(`/guild/list${suffix}`),
+        staleTime: 30 * 1000,
+        refetchOnWindowFocus: false,
+    });
+}
+export function useJoinGuildMutation() {
+    const qc = useQueryClient();
+    return useMutation({
+        mutationFn: (guildID) => api(`/guild/${encodeURIComponent(guildID)}/join`, {
+            method: 'POST',
+            body: '{}',
+        }),
+        onSuccess: () => {
+            void qc.invalidateQueries({ queryKey: ['guild'] });
+        },
+    });
+}
+export function useLeaveGuildMutation() {
+    const qc = useQueryClient();
+    return useMutation({
+        mutationFn: (guildID) => api(`/guild/${encodeURIComponent(guildID)}/leave`, { method: 'POST', body: '{}' }),
+        onSuccess: () => {
+            void qc.invalidateQueries({ queryKey: ['guild'] });
+        },
+    });
+}
+export function useCreateGuildMutation() {
+    const qc = useQueryClient();
+    return useMutation({
+        mutationFn: (input) => api('/guild', {
+            method: 'POST',
+            body: JSON.stringify(input),
+        }),
+        onSuccess: () => {
+            void qc.invalidateQueries({ queryKey: ['guild'] });
+        },
     });
 }

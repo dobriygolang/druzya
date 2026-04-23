@@ -1,12 +1,14 @@
 import { ReactNode, useEffect, useRef, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { Bell, Menu, Search, X, Sun, Moon, Languages, User, LogOut, Settings, Users, HelpCircle, Shield, Briefcase } from 'lucide-react'
+import { Bell, Menu, Search, X, Sun, Moon, Languages, User, LogOut, Settings, Users, HelpCircle, Shield, Briefcase, Headphones, FileBarChart } from 'lucide-react'
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
 import { Avatar } from './Avatar'
 import { cn } from '../lib/cn'
 import { useTheme, getEffectiveTheme } from '../lib/theme'
 import { toggleLanguage, currentLanguage } from '../lib/i18n'
+import { useAdminDashboardQuery } from '../lib/queries/admin'
+import { logoutCurrentSession } from '../lib/queries/auth'
 
 // Главная навигация — только 6 ключевых разделов. Остальное (Друзья, Помощь,
 // Настройки, Выход) уехало в user-menu под аватаром, чтобы header не был
@@ -102,23 +104,35 @@ function LanguageToggleButton() {
 function UserMenu({ onClose }: { onClose: () => void }) {
   const { t } = useTranslation('common')
   const navigate = useNavigate()
+  // Admin-gate: пробим /admin/dashboard — если backend вернул 403, юзер не
+  // админ → скрываем пункт. Запрос кэшируется TanStack-ом (см. adminQueryKeys
+  // + ADMIN_DASHBOARD_STALE_MS), поэтому один fetch за сессию на всех, кто
+  // открывает меню. На 401 apiClient уже редиректит на /welcome, сюда не
+  // дойдём. Остальные ошибки трактуем как «не админ» (fail-closed для UI).
+  const admin = useAdminDashboardQuery()
+  const adminStatus = (admin.error as { status?: number } | null)?.status
+  const isAdmin = !admin.isError && admin.isSuccess && adminStatus !== 403
+  // Add Podcasts + Weekly Report into the user-menu (requested in
+  // production-readiness pass — main nav stays at 6 items, по договорённости).
   const items: { to: string; label: string; icon: typeof User }[] = [
     { to: '/profile', label: t('nav.profile', { defaultValue: 'Профиль' }), icon: User },
     { to: '/vacancies', label: t('nav.vacancies', { defaultValue: 'Вакансии' }), icon: Briefcase },
+    { to: '/podcasts', label: t('nav.podcasts', { defaultValue: 'Подкасты' }), icon: Headphones },
+    { to: '/weekly', label: t('nav.weekly', { defaultValue: 'Weekly Report' }), icon: FileBarChart },
     { to: '/settings', label: t('nav.settings', { defaultValue: 'Настройки' }), icon: Settings },
     { to: '/friends', label: t('nav.friends'), icon: Users },
     { to: '/notifications', label: t('nav.notifications', { defaultValue: 'Уведомления' }), icon: Bell },
     { to: '/help', label: t('nav.help'), icon: HelpCircle },
-    { to: '/admin', label: t('nav.admin', { defaultValue: 'Админка' }), icon: Shield },
+    ...(isAdmin ? [{ to: '/admin', label: t('nav.admin', { defaultValue: 'Админка' }), icon: Shield }] : []),
   ]
   function handleLogout() {
-    try {
-      window.localStorage.removeItem('druz9_access_token')
-    } catch {
-      /* ignore */
-    }
-    onClose()
-    navigate('/welcome')
+    // Best-effort server-side revocation. Failures are swallowed inside
+    // logoutCurrentSession (network down, refresh token already gone) — what
+    // matters is that local tokens get cleared and the user lands on /welcome.
+    void logoutCurrentSession().finally(() => {
+      onClose()
+      navigate('/welcome')
+    })
   }
   return (
     <div
@@ -252,6 +266,31 @@ function TopNav() {
   )
 }
 
+// SessionExpiredToast — крошечный inline-тост, реагирующий на событие
+// `druz9:session-expired`, которое эмитит apiClient после неуспешного refresh.
+// Показывается короткое время и поверх редиректа (на случай, если редирект
+// тормозит из-за in-flight нав-перехода).
+function SessionExpiredToast() {
+  const [visible, setVisible] = useState(false)
+  useEffect(() => {
+    function onExpired() {
+      setVisible(true)
+      window.setTimeout(() => setVisible(false), 4000)
+    }
+    window.addEventListener('druz9:session-expired', onExpired as EventListener)
+    return () => window.removeEventListener('druz9:session-expired', onExpired as EventListener)
+  }, [])
+  if (!visible) return null
+  return (
+    <div
+      role="status"
+      className="fixed left-1/2 top-4 z-[60] -translate-x-1/2 rounded-lg border border-warn/60 bg-surface-1 px-4 py-2 text-sm text-text-primary shadow-card"
+    >
+      Сессия истекла, переавторизуйтесь.
+    </div>
+  )
+}
+
 export function AppShellV2({ children }: { children: ReactNode }) {
   const location = useLocation()
   const reduced = useReducedMotion()
@@ -279,6 +318,7 @@ export function AppShellV2({ children }: { children: ReactNode }) {
   return (
     <div className="min-h-screen bg-bg text-text-primary">
       <TopNav />
+      <SessionExpiredToast />
       <AnimatePresence mode="wait">
         <motion.main key={location.pathname} {...motionProps}>
           {children}

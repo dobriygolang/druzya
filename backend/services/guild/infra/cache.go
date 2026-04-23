@@ -140,7 +140,7 @@ func NewCachedRepo(delegate domain.GuildRepo, kv KV, ttl, topTTL time.Duration, 
 		topTTL = DefaultTopGuildsCacheTTL
 	}
 	if log == nil {
-		log = slog.New(slog.NewTextHandler(discardWriter{}, nil))
+		panic("guild.infra.NewCachedRepo: log is required (anti-fallback policy: no silent noop loggers)")
 	}
 	return &CachedRepo{delegate: delegate, kv: kv, ttl: ttl, topTTL: topTTL, log: log}
 }
@@ -360,8 +360,3 @@ func (c *CachedRepo) write(ctx context.Context, key string, g domain.Guild, ttl 
 			slog.String("key", key), slog.Any("err", err))
 	}
 }
-
-// discardWriter swallows everything — default slog destination when nil.
-type discardWriter struct{}
-
-func (discardWriter) Write(p []byte) (int, error) { return len(p), nil }

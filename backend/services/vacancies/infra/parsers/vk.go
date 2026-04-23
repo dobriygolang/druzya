@@ -14,6 +14,7 @@ import (
 	"strings"
 	"time"
 
+	"druz9/shared/pkg/metrics"
 	"druz9/vacancies/domain"
 )
 
@@ -26,10 +27,10 @@ type VKParser struct {
 	log        *slog.Logger
 }
 
-// NewVK builds the default parser.
+// NewVK builds the default parser. log is required (anti-fallback policy).
 func NewVK(log *slog.Logger) *VKParser {
 	if log == nil {
-		log = slog.New(slog.NewTextHandler(noopWriter{}, nil))
+		panic("vacancies.parsers.NewVK: logger is required (anti-fallback policy: no silent noop loggers)")
 	}
 	return &VKParser{
 		baseURL:    vkBaseURL,
@@ -44,21 +45,23 @@ func (p *VKParser) WithBaseURL(u string) *VKParser { p.baseURL = u; return p }
 // Source implements domain.Parser.
 func (p *VKParser) Source() domain.Source { return domain.SourceVK }
 
-// Fetch — SSR-blob extraction; degrade to stub on failure.
+// Fetch — SSR-blob extraction. Anti-fallback: surface schema surprises
+// instead of silently returning [].
 func (p *VKParser) Fetch(ctx context.Context) ([]domain.Vacancy, error) {
 	body, err := fetchHTML(ctx, p.httpClient, p.baseURL)
 	if err != nil {
-		return nil, err
+		metrics.VacanciesParserErrorsTotal.WithLabelValues(string(domain.SourceVK)).Inc()
+		return nil, fmt.Errorf("vacancies.parser.vk: fetch: %w", err)
 	}
 	blob, ok := extractNextData(body)
 	if !ok {
-		p.log.Warn("vacancies.parser.vk: __NEXT_DATA__ blob not found, returning []")
-		return []domain.Vacancy{}, nil
+		metrics.VacanciesParserErrorsTotal.WithLabelValues(string(domain.SourceVK)).Inc()
+		return nil, fmt.Errorf("vacancies.parser.vk: __NEXT_DATA__ blob not found")
 	}
 	out, err := decodeVKJobs(blob)
 	if err != nil {
-		p.log.Warn("vacancies.parser.vk: decode failed, returning []", slog.Any("err", err))
-		return []domain.Vacancy{}, nil
+		metrics.VacanciesParserErrorsTotal.WithLabelValues(string(domain.SourceVK)).Inc()
+		return nil, fmt.Errorf("vacancies.parser.vk: decode: %w", err)
 	}
 	p.log.Info("vacancies.parser.vk: fetched", slog.Int("count", len(out)))
 	return out, nil

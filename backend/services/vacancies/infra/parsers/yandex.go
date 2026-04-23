@@ -19,6 +19,7 @@ import (
 	"strings"
 	"time"
 
+	"druz9/shared/pkg/metrics"
 	"druz9/vacancies/domain"
 )
 
@@ -32,10 +33,11 @@ type YandexParser struct {
 	log        *slog.Logger
 }
 
-// NewYandex builds the default-configured parser.
+// NewYandex builds the default-configured parser. log is required
+// (anti-fallback policy).
 func NewYandex(log *slog.Logger) *YandexParser {
 	if log == nil {
-		log = slog.New(slog.NewTextHandler(noopWriter{}, nil))
+		panic("vacancies.parsers.NewYandex: logger is required (anti-fallback policy: no silent noop loggers)")
 	}
 	return &YandexParser{
 		baseURL:    yandexFetchURL,
@@ -51,22 +53,28 @@ func (p *YandexParser) WithBaseURL(u string) *YandexParser { p.baseURL = u; retu
 func (p *YandexParser) Source() domain.Source { return domain.SourceYandex }
 
 // Fetch downloads the listing HTML and decodes the embedded __NEXT_DATA__
-// JSON. On any structural surprise we log a warning and return an empty
-// slice — the sync loop must keep working.
+// JSON.
+//
+// Anti-fallback policy: schema surprises (no blob, decode error) propagate
+// as real errors and increment vacancies_parser_errors_total{source=...}.
+// SyncJob.runOneParser already logs and continues to the next source, so
+// the sync loop keeps working — but each failure is now loud enough to
+// alert on instead of silently writing 0 vacancies.
 func (p *YandexParser) Fetch(ctx context.Context) ([]domain.Vacancy, error) {
 	body, err := fetchHTML(ctx, p.httpClient, p.baseURL)
 	if err != nil {
-		return nil, err
+		metrics.VacanciesParserErrorsTotal.WithLabelValues(string(domain.SourceYandex)).Inc()
+		return nil, fmt.Errorf("vacancies.parser.yandex: fetch: %w", err)
 	}
 	blob, ok := extractNextData(body)
 	if !ok {
-		p.log.Warn("vacancies.parser.yandex: __NEXT_DATA__ blob not found, returning []")
-		return []domain.Vacancy{}, nil
+		metrics.VacanciesParserErrorsTotal.WithLabelValues(string(domain.SourceYandex)).Inc()
+		return nil, fmt.Errorf("vacancies.parser.yandex: __NEXT_DATA__ blob not found")
 	}
 	out, err := decodeYandexJobs(blob)
 	if err != nil {
-		p.log.Warn("vacancies.parser.yandex: decode failed, returning []", slog.Any("err", err))
-		return []domain.Vacancy{}, nil
+		metrics.VacanciesParserErrorsTotal.WithLabelValues(string(domain.SourceYandex)).Inc()
+		return nil, fmt.Errorf("vacancies.parser.yandex: decode: %w", err)
 	}
 	p.log.Info("vacancies.parser.yandex: fetched", slog.Int("count", len(out)))
 	return out, nil

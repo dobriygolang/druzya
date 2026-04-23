@@ -64,6 +64,13 @@ export type Achievement = {
   earned_at: string
 }
 
+export type KataRef = {
+  id: string
+  title: string
+  difficulty: string // 'easy' | 'medium' | 'hard'
+  estimated_minutes?: number
+}
+
 export type AtlasNode = {
   key: string
   title: string
@@ -73,6 +80,12 @@ export type AtlasNode = {
   unlocked: boolean
   decaying: boolean
   description: string
+  // Wave-2 поля. Бэкенд отдаёт их через расширенный SkillNode-proto;
+  // legacy-ответы без них дают undefined → фронт показывает «нет данных».
+  solved_count?: number
+  total_count?: number
+  last_solved_at?: string
+  recommended_kata?: KataRef[]
 }
 
 export type AtlasEdge = { from: string; to: string }

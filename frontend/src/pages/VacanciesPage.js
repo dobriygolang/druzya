@@ -9,13 +9,13 @@ import { jsx as _jsx, jsxs as _jsxs, Fragment as _Fragment } from "react/jsx-run
 //   - Hero: заголовок, поле «вставь ссылку → /analyze».
 //   - Sidebar: фильтры (источник, скиллы, salary, location).
 //   - Grid: карточки с title/company/salary/skill diff vs profile.
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Search, Briefcase, MapPin, Wallet, Sparkles, Bookmark } from 'lucide-react';
+import { Search, Briefcase, MapPin, Wallet, Sparkles, Bookmark, RefreshCw, CheckCircle2, Clock, } from 'lucide-react';
 import { AppShellV2 } from '../components/AppShell';
 import { Button } from '../components/Button';
 import { Card } from '../components/Card';
-import { useVacanciesList, useAnalyzeVacancy, useSaveVacancy, VACANCY_SOURCES, diffSkills, } from '../lib/queries/vacancies';
+import { useVacanciesList, useAnalyzeVacancy, useSaveVacancy, useTriggerVacancySync, VACANCY_SOURCES, diffSkills, } from '../lib/queries/vacancies';
 import { useProfileQuery } from '../lib/queries/profile';
 function formatSalary(min, max, currency) {
     if (!min && !max)
@@ -75,6 +75,24 @@ export default function VacanciesPage() {
     }, [profile.data]);
     const navigate = useNavigate();
     const save = useSaveVacancy();
+    const sync = useTriggerVacancySync();
+    // Авто-триггер sync при первом пустом ответе. Защита от повторного дёргания
+    // в одной сессии — autoTriggeredRef. Без неё useEffect срабатывал бы каждый
+    // раз когда после refetch'а data снова пуста (а это всегда первые ~8s).
+    const autoTriggeredRef = useRef(false);
+    useEffect(() => {
+        if (!autoTriggeredRef.current &&
+            !list.isLoading &&
+            !list.error &&
+            (list.data?.items.length ?? 0) === 0 &&
+            // Только если фильтры не выставлены — пользователь ничего не «отфильтровал».
+            sources.length === 0 &&
+            salaryMin === 0 &&
+            location === '') {
+            autoTriggeredRef.current = true;
+            sync.mutate();
+        }
+    }, [list.data, list.isLoading, list.error, sources, salaryMin, location, sync]);
     const handleSave = (id) => {
         save.mutate({ vacancyId: id }, {
             onError: (err) => {
@@ -84,7 +102,7 @@ export default function VacanciesPage() {
             },
         });
     };
-    return (_jsxs(AppShellV2, { children: [_jsx(Hero, {}), _jsxs("div", { className: "grid grid-cols-1 gap-6 px-4 py-6 sm:px-8 lg:grid-cols-[280px_1fr] lg:px-20", children: [_jsx(FilterSidebar, { sources: sources, setSources: setSources, salaryMin: salaryMin, setSalaryMin: setSalaryMin, location: location, setLocation: setLocation }), _jsx("div", { className: "flex flex-col gap-4", children: list.isLoading ? (_jsx(ListSkeleton, {})) : list.error ? (_jsx(ErrorState, {})) : (list.data?.items.length ?? 0) === 0 ? (_jsx(EmptyState, {})) : (_jsxs(_Fragment, { children: [_jsxs("div", { className: "text-xs uppercase text-text-muted", children: [list.data?.total, " \u0432\u0430\u043A\u0430\u043D\u0441\u0438\u0439 \u00B7 \u0441\u0442\u0440. ", page] }), _jsx("div", { className: "grid gap-3 sm:grid-cols-2", children: list.data?.items.map((v) => (_jsx(VacancyCard, { v: v, userSkills: userSkills, onSave: handleSave }, v.id))) }), _jsx(Pagination, { page: page, total: list.data?.total ?? 0, limit: list.data?.limit ?? 30, onChange: setPage })] })) })] })] }));
+    return (_jsxs(AppShellV2, { children: [_jsx(Hero, {}), _jsxs("div", { className: "grid grid-cols-1 gap-6 px-4 py-6 sm:px-8 lg:grid-cols-[280px_1fr] lg:px-20", children: [_jsx(FilterSidebar, { sources: sources, setSources: setSources, salaryMin: salaryMin, setSalaryMin: setSalaryMin, location: location, setLocation: setLocation }), _jsx("div", { className: "flex flex-col gap-4", children: list.isLoading ? (_jsx(ListSkeleton, {})) : list.error ? (_jsx(ErrorState, {})) : (list.data?.items.length ?? 0) === 0 ? (_jsx(EmptyState, { onRefresh: () => sync.mutate(), syncing: sync.isPending, status: sync.data?.status, retryAfter: sync.data?.retry_after, autoTriggered: autoTriggeredRef.current })) : (_jsxs(_Fragment, { children: [_jsxs("div", { className: "text-xs uppercase text-text-muted", children: [list.data?.total, " \u0432\u0430\u043A\u0430\u043D\u0441\u0438\u0439 \u00B7 \u0441\u0442\u0440. ", page] }), _jsx("div", { className: "grid gap-3 sm:grid-cols-2", children: list.data?.items.map((v) => (_jsx(VacancyCard, { v: v, userSkills: userSkills, onSave: handleSave }, v.id))) }), _jsx(Pagination, { page: page, total: list.data?.total ?? 0, limit: list.data?.limit ?? 30, onChange: setPage })] })) })] })] }));
 }
 function Hero() {
     const [url, setUrl] = useState('');
@@ -111,8 +129,17 @@ function Pagination({ page, total, limit, onChange, }) {
 function ListSkeleton() {
     return (_jsx("div", { className: "grid gap-3 sm:grid-cols-2", children: Array.from({ length: 6 }).map((_, i) => (_jsx("div", { className: "h-40 animate-pulse rounded-xl border border-border bg-surface-1" }, i))) }));
 }
-function EmptyState() {
-    return (_jsx(Card, { padding: "lg", children: _jsx("div", { className: "text-sm text-text-secondary", children: "\u041D\u0438\u0447\u0435\u0433\u043E \u043D\u0435 \u043D\u0430\u0439\u0434\u0435\u043D\u043E. \u0421\u0431\u0440\u043E\u0441\u044C \u0444\u0438\u043B\u044C\u0442\u0440\u044B \u0438\u043B\u0438 \u043F\u043E\u0434\u043E\u0436\u0434\u0438 \u0441\u043B\u0435\u0434\u0443\u044E\u0449\u0443\u044E \u0441\u0438\u043D\u0445\u0440\u043E\u043D\u0438\u0437\u0430\u0446\u0438\u044E (\u0440\u0430\u0437 \u0432 \u0447\u0430\u0441)." }) }));
+function EmptyState({ onRefresh, syncing, status, retryAfter, autoTriggered, }) {
+    // Три визуальных состояния empty:
+    //   1) Sync уже запущен (status==='started' | 'already_running' или syncing)
+    //      — показываем «загружаем последние вакансии, ~10s».
+    //   2) Sync затроттлен (status==='throttled') — показываем countdown.
+    //   3) Иначе — стандартный «ничего нет, обнови сейчас».
+    const inProgress = syncing || status === 'started' || status === 'already_running';
+    const throttled = status === 'throttled';
+    return (_jsx(Card, { padding: "lg", children: _jsx("div", { className: "flex flex-col items-start gap-4", children: inProgress ? (_jsxs(_Fragment, { children: [_jsxs("div", { className: "flex items-center gap-2 text-sm text-text-primary", children: [_jsx(RefreshCw, { className: "h-4 w-4 animate-spin text-accent-hover" }), "\u041F\u043E\u0434\u0442\u044F\u0433\u0438\u0432\u0430\u0435\u043C \u0441\u0432\u0435\u0436\u0438\u0435 \u0432\u0430\u043A\u0430\u043D\u0441\u0438\u0438 \u0441 HH/Yandex/Ozon\u2026 \u043E\u0431\u044B\u0447\u043D\u043E ~10 \u0441\u0435\u043A\u0443\u043D\u0434."] }), _jsx("div", { className: "text-xs text-text-muted", children: "\u0421\u0442\u0440\u0430\u043D\u0438\u0446\u0430 \u043E\u0431\u043D\u043E\u0432\u0438\u0442\u0441\u044F \u0441\u0430\u043C\u0430. \u0415\u0441\u043B\u0438 \u043D\u0438\u0447\u0435\u0433\u043E \u043D\u0435 \u043F\u043E\u044F\u0432\u0438\u043B\u043E\u0441\u044C \u2014 \u043D\u0430\u0436\u043C\u0438 \u043A\u043D\u043E\u043F\u043A\u0443 \u043D\u0438\u0436\u0435 \u0435\u0449\u0451 \u0440\u0430\u0437." }), _jsx(Button, { size: "sm", variant: "ghost", icon: _jsx(RefreshCw, { className: "h-4 w-4" }), loading: syncing, onClick: onRefresh, children: "\u041E\u0431\u043D\u043E\u0432\u0438\u0442\u044C \u0435\u0449\u0451 \u0440\u0430\u0437" })] })) : throttled ? (_jsxs(_Fragment, { children: [_jsxs("div", { className: "flex items-center gap-2 text-sm text-warn", children: [_jsx(Clock, { className: "h-4 w-4" }), "\u041F\u043E\u0434\u043E\u0436\u0434\u0438 ", retryAfter ?? 30, " \u0441\u0435\u043A \u2014 sync \u0443\u0436\u0435 \u0442\u043E\u043B\u044C\u043A\u043E \u0447\u0442\u043E \u0437\u0430\u043F\u0443\u0441\u043A\u0430\u043B\u0441\u044F."] }), _jsx(Button, { size: "sm", variant: "ghost", icon: _jsx(RefreshCw, { className: "h-4 w-4" }), onClick: onRefresh, children: "\u041F\u043E\u043F\u0440\u043E\u0431\u043E\u0432\u0430\u0442\u044C \u0441\u0435\u0439\u0447\u0430\u0441" })] })) : (_jsxs(_Fragment, { children: [_jsxs("div", { className: "flex items-center gap-2 text-sm text-text-primary", children: [autoTriggered ? (_jsx(CheckCircle2, { className: "h-4 w-4 text-success" })) : (_jsx(Search, { className: "h-4 w-4 text-text-muted" })), autoTriggered
+                                ? 'Синхронизация прошла, но по фильтрам ничего не нашлось. Сбрось фильтры или повтори.'
+                                : 'Ничего не найдено. Можно дёрнуть синхронизацию вручную или сбросить фильтры.'] }), _jsx(Button, { size: "sm", icon: _jsx(RefreshCw, { className: "h-4 w-4" }), onClick: onRefresh, children: "\u041E\u0431\u043D\u043E\u0432\u0438\u0442\u044C \u0441\u0435\u0439\u0447\u0430\u0441" })] })) }) }));
 }
 function ErrorState() {
     return (_jsx(Card, { padding: "lg", children: _jsx("div", { className: "text-sm text-danger", children: "\u041D\u0435 \u0443\u0434\u0430\u043B\u043E\u0441\u044C \u0437\u0430\u0433\u0440\u0443\u0437\u0438\u0442\u044C \u0432\u0430\u043A\u0430\u043D\u0441\u0438\u0438." }) }));

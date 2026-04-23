@@ -11,8 +11,9 @@
 //     without needing miniredis;
 //   - singleflight collapses concurrent misses against the same uid into
 //     one upstream call (thundering-herd protection);
-//   - Redis errors NEVER fail the request — they are logged and we fall
-//     back to the upstream Postgres repo;
+//   - Anti-fallback policy: Redis Get failures propagate as real errors.
+//     Set failures emit the cache_set_errors_total{module="rating"}
+//     metric so ops can alert without blocking the read.
 //   - Bump operations forward to the delegate and then Invalidate(uid),
 //     keeping write-path freshness sub-second.
 package infra
@@ -27,6 +28,7 @@ import (
 
 	"druz9/rating/domain"
 	"druz9/shared/enums"
+	"druz9/shared/pkg/metrics"
 
 	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
@@ -110,14 +112,13 @@ var _ domain.RatingRepo = (*CachedRepo)(nil)
 
 // NewCachedRepo wraps delegate with Redis caching.
 //
-// If log is nil, a discard logger is used so the struct is safe in tests
-// without plumbing a slog.Handler. If ttl <= 0, DefaultMyRatingsTTL is used.
+// log is required (anti-fallback policy). If ttl <= 0, DefaultMyRatingsTTL is used.
 func NewCachedRepo(delegate domain.RatingRepo, kv KV, ttl time.Duration, log *slog.Logger) *CachedRepo {
 	if ttl <= 0 {
 		ttl = DefaultMyRatingsTTL
 	}
 	if log == nil {
-		log = slog.New(slog.NewTextHandler(discardWriter{}, nil))
+		panic("rating.infra.NewCachedRepo: logger is required (anti-fallback policy: no silent noop loggers)")
 	}
 	return &CachedRepo{delegate: delegate, kv: kv, ttl: ttl, log: log}
 }
@@ -133,8 +134,8 @@ func (c *CachedRepo) List(ctx context.Context, userID uuid.UUID) ([]domain.Secti
 		c.log.Warn("rating.cache: corrupt my entry, refreshing",
 			slog.String("key", key))
 	} else if !errors.Is(err, ErrCacheMiss) {
-		c.log.Warn("rating.cache: redis Get failed, falling back",
-			slog.String("key", key), slog.Any("err", err))
+		// Anti-fallback: real Redis failure propagates.
+		return nil, fmt.Errorf("rating.cache.List: redis: %w", err)
 	}
 	v, err, _ := c.sf.Do(key, func() (any, error) {
 		return c.delegate.List(ctx, userID)
@@ -148,6 +149,7 @@ func (c *CachedRepo) List(ctx context.Context, userID uuid.UUID) ([]domain.Secti
 	}
 	if data, jerr := json.Marshal(out); jerr == nil {
 		if serr := c.kv.Set(ctx, key, data, c.ttl); serr != nil {
+			metrics.CacheSetErrorsTotal.WithLabelValues("rating").Inc()
 			c.log.Warn("rating.cache: redis Set failed",
 				slog.String("key", key), slog.Any("err", serr))
 		}
@@ -201,8 +203,3 @@ func (c *CachedRepo) Invalidate(ctx context.Context, userID uuid.UUID) {
 			slog.Any("user_id", userID), slog.Any("err", err))
 	}
 }
-
-// discardWriter swallows all bytes — default slog destination when nil.
-type discardWriter struct{}
-
-func (discardWriter) Write(p []byte) (int, error) { return len(p), nil }

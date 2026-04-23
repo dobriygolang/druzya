@@ -226,7 +226,7 @@ func toAtlasProto(v app.AtlasView) *pb.SkillAtlas {
 		Edges:      make([]*pb.SkillEdge, 0, len(v.Edges)),
 	}
 	for _, n := range v.Nodes {
-		out.Nodes = append(out.Nodes, &pb.SkillNode{
+		node := &pb.SkillNode{
 			Key:         n.Key,
 			Title:       n.Title,
 			Description: n.Description,
@@ -235,7 +235,24 @@ func toAtlasProto(v app.AtlasView) *pb.SkillAtlas {
 			Progress:    int32(n.Progress),
 			Unlocked:    n.Unlocked,
 			Decaying:    n.Decaying,
-		})
+			SolvedCount: int32(n.SolvedCount),
+			TotalCount:  int32(n.TotalCount),
+		}
+		if n.LastSolvedAt != nil {
+			node.LastSolvedAt = timestamppb.New(*n.LastSolvedAt)
+		}
+		if len(n.RecommendedKata) > 0 {
+			node.RecommendedKata = make([]*pb.KataRef, 0, len(n.RecommendedKata))
+			for _, k := range n.RecommendedKata {
+				node.RecommendedKata = append(node.RecommendedKata, &pb.KataRef{
+					Id:               k.ID,
+					Title:            k.Title,
+					Difficulty:       k.Difficulty,
+					EstimatedMinutes: int32(k.EstimatedMinutes),
+				})
+			}
+		}
+		out.Nodes = append(out.Nodes, node)
 	}
 	for _, e := range v.Edges {
 		out.Edges = append(out.Edges, &pb.SkillEdge{From: e.From, To: e.To})

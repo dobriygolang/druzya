@@ -9,7 +9,7 @@
 //   - widened types          — TopGuildSummary mirrors the planned Connect
 //                              shape so a future migration is mechanical.
 
-import { useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '../apiClient'
 
 export type GuildMember = {
@@ -119,5 +119,111 @@ export function useTopGuildsQuery(limit: number = 20) {
       api<TopGuildsResponse>(`/guilds/top?limit=${encodeURIComponent(limit)}`),
     staleTime: 5 * 60 * 1000,
     refetchOnWindowFocus: false,
+  })
+}
+
+// ── discovery (Wave 3) ────────────────────────────────────────────────────
+//
+// Lives behind /api/v1/guild/list, /api/v1/guild (POST), /join, /leave —
+// chi REST handlers added in services/guild/ports/discovery_handler.go.
+
+export type PublicGuild = {
+  id: string
+  name: string
+  emblem: string
+  description: string
+  tier: string
+  guild_elo: number
+  members_count: number
+  max_members: number
+  join_policy: 'open' | 'invite' | 'closed' | string
+  is_public: boolean
+  wars_won: number
+}
+
+export type GuildListResponse = {
+  items: PublicGuild[]
+  total: number
+  page: number
+  page_size: number
+}
+
+export type GuildListFilters = {
+  search?: string
+  tier?: string
+  page?: number
+}
+
+export function useGuildListQuery(filters: GuildListFilters) {
+  const qs = new URLSearchParams()
+  if (filters.search) qs.set('search', filters.search)
+  if (filters.tier) qs.set('tier', filters.tier)
+  if (filters.page && filters.page > 1) qs.set('page', String(filters.page))
+  const suffix = qs.toString() ? `?${qs.toString()}` : ''
+  return useQuery({
+    queryKey: ['guild', 'list', filters],
+    queryFn: () => api<GuildListResponse>(`/guild/list${suffix}`),
+    staleTime: 30 * 1000,
+    refetchOnWindowFocus: false,
+  })
+}
+
+export type GuildJoinResponse = {
+  status: 'joined' | 'pending' | string
+  guild_id: string
+  pending?: boolean
+}
+
+export function useJoinGuildMutation() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (guildID: string) =>
+      api<GuildJoinResponse>(`/guild/${encodeURIComponent(guildID)}/join`, {
+        method: 'POST',
+        body: '{}',
+      }),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['guild'] })
+    },
+  })
+}
+
+export function useLeaveGuildMutation() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (guildID: string) =>
+      api<{ status: string; guild_id: string }>(
+        `/guild/${encodeURIComponent(guildID)}/leave`,
+        { method: 'POST', body: '{}' },
+      ),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['guild'] })
+    },
+  })
+}
+
+export type CreateGuildInput = {
+  name: string
+  description?: string
+  tier?: string
+  max_members?: number
+  join_policy?: 'open' | 'invite' | 'closed'
+}
+
+export type CreateGuildResponse = {
+  guild: PublicGuild
+}
+
+export function useCreateGuildMutation() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (input: CreateGuildInput) =>
+      api<CreateGuildResponse>('/guild', {
+        method: 'POST',
+        body: JSON.stringify(input),
+      }),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['guild'] })
+    },
   })
 }

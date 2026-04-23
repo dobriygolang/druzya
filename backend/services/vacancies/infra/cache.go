@@ -1,5 +1,7 @@
 // cache.go — Redis read-through cache for VacancyRepo. Mirrors the profile
-// cache pattern (KV interface, singleflight, fail-safe Redis).
+// cache pattern (KV interface, singleflight). Anti-fallback policy: Redis
+// Get failures propagate as real errors; Set failures emit
+// cache_set_errors_total{module="vacancies_*"} for ops alerting.
 //
 //   - GetByID: 1h TTL, key vacancies:v1:by_id:<id>
 //   - ListByFilter: 10min TTL, key vacancies:v1:list:<sha256(filter)>
@@ -21,6 +23,7 @@ import (
 	"strings"
 	"time"
 
+	"druz9/shared/pkg/metrics"
 	"druz9/vacancies/domain"
 
 	"github.com/redis/go-redis/v9"
@@ -105,7 +108,8 @@ type CachedVacancyRepo struct {
 var _ domain.VacancyRepo = (*CachedVacancyRepo)(nil)
 
 // NewCachedVacancyRepo wraps delegate in caching with the supplied TTLs.
-// Pass 0 for either TTL to use the package defaults.
+// Pass 0 for either TTL to use the package defaults. log is required
+// (anti-fallback policy).
 func NewCachedVacancyRepo(delegate domain.VacancyRepo, kv KV, listTTL, byIDTTL time.Duration, log *slog.Logger) *CachedVacancyRepo {
 	if listTTL <= 0 {
 		listTTL = DefaultListTTL
@@ -114,7 +118,7 @@ func NewCachedVacancyRepo(delegate domain.VacancyRepo, kv KV, listTTL, byIDTTL t
 		byIDTTL = DefaultByIDTTL
 	}
 	if log == nil {
-		log = slog.New(slog.NewTextHandler(discardWriter{}, nil))
+		panic("vacancies.infra.NewCachedVacancyRepo: logger is required (anti-fallback policy: no silent noop loggers)")
 	}
 	return &CachedVacancyRepo{
 		delegate: delegate, kv: kv,
@@ -130,12 +134,20 @@ func keyListNamespace() string {
 	return fmt.Sprintf("vacancies:%s:list_ns", CacheKeyVersion)
 }
 
-func (c *CachedVacancyRepo) keyList(ctx context.Context, f domain.ListFilter) string {
-	// Snapshot the namespace counter; the resulting key is invalidated
-	// implicitly by Incr-ing the counter.
+// keyList builds a list cache key including a snapshot of the list-namespace
+// counter so a single Incr atomically invalidates ALL list permutations. A
+// genuine cache-miss on the namespace key (counter was never set) is
+// expected and we fall back to "0"; a real Redis failure propagates via
+// (key="", err) — callers must surface it instead of serving a stale
+// permutation under a forged ns="0" key.
+func (c *CachedVacancyRepo) keyList(ctx context.Context, f domain.ListFilter) (string, error) {
 	ns, err := c.kv.Get(ctx, keyListNamespace())
 	if err != nil {
-		// On miss / error: use "0" — first INCR after invalidate jumps to 1.
+		if !errors.Is(err, ErrCacheMiss) {
+			return "", fmt.Errorf("vacancies.cache.keyList.ns: redis: %w", err)
+		}
+		// Expected miss — counter never set. First INCR after invalidate
+		// jumps to 1.
 		ns = "0"
 	}
 	hashIn := struct {
@@ -159,7 +171,7 @@ func (c *CachedVacancyRepo) keyList(ctx context.Context, f domain.ListFilter) st
 	sort.Strings(hashIn.Skills)
 	b, _ := json.Marshal(hashIn)
 	sum := sha256.Sum256(b)
-	return fmt.Sprintf("vacancies:%s:list:%s", CacheKeyVersion, hex.EncodeToString(sum[:16]))
+	return fmt.Sprintf("vacancies:%s:list:%s", CacheKeyVersion, hex.EncodeToString(sum[:16])), nil
 }
 
 // GetByID is the cached read.
@@ -172,8 +184,8 @@ func (c *CachedVacancyRepo) GetByID(ctx context.Context, id int64) (domain.Vacan
 		}
 		c.log.Warn("vacancies.cache: corrupt by_id, refreshing", slog.String("key", key))
 	} else if !errors.Is(err, ErrCacheMiss) {
-		c.log.Warn("vacancies.cache: redis Get failed (by_id), falling back",
-			slog.String("key", key), slog.Any("err", err))
+		// Anti-fallback: real Redis failure propagates.
+		return domain.Vacancy{}, fmt.Errorf("vacancies.cache.GetByID: redis: %w", err)
 	}
 	v, err, _ := c.sf.Do(key, func() (any, error) {
 		return c.delegate.GetByID(ctx, id)
@@ -184,6 +196,7 @@ func (c *CachedVacancyRepo) GetByID(ctx context.Context, id int64) (domain.Vacan
 	out := v.(domain.Vacancy)
 	if data, jerr := json.Marshal(out); jerr == nil {
 		if serr := c.kv.Set(ctx, key, data, c.byIDTTL); serr != nil {
+			metrics.CacheSetErrorsTotal.WithLabelValues("vacancies_by_id").Inc()
 			c.log.Warn("vacancies.cache: redis Set failed (by_id)",
 				slog.String("key", key), slog.Any("err", serr))
 		}
@@ -195,16 +208,19 @@ func (c *CachedVacancyRepo) GetByID(ctx context.Context, id int64) (domain.Vacan
 // list-namespace counter so a single Incr atomically invalidates ALL list
 // permutations.
 func (c *CachedVacancyRepo) ListByFilter(ctx context.Context, f domain.ListFilter) (domain.Page, error) {
-	key := c.keyList(ctx, f)
-	if raw, err := c.kv.Get(ctx, key); err == nil {
+	key, kerr := c.keyList(ctx, f)
+	if kerr != nil {
+		return domain.Page{}, fmt.Errorf("vacancies.cache.ListByFilter: %w", kerr)
+	}
+	if raw, gerr := c.kv.Get(ctx, key); gerr == nil {
 		var p domain.Page
 		if jerr := json.Unmarshal([]byte(raw), &p); jerr == nil {
 			return p, nil
 		}
 		c.log.Warn("vacancies.cache: corrupt list, refreshing", slog.String("key", key))
-	} else if !errors.Is(err, ErrCacheMiss) {
-		c.log.Warn("vacancies.cache: redis Get failed (list), falling back",
-			slog.String("key", key), slog.Any("err", err))
+	} else if !errors.Is(gerr, ErrCacheMiss) {
+		// Anti-fallback: real Redis failure propagates.
+		return domain.Page{}, fmt.Errorf("vacancies.cache.ListByFilter: redis: %w", gerr)
 	}
 	v, err, _ := c.sf.Do(key, func() (any, error) {
 		return c.delegate.ListByFilter(ctx, f)
@@ -215,6 +231,7 @@ func (c *CachedVacancyRepo) ListByFilter(ctx context.Context, f domain.ListFilte
 	out := v.(domain.Page)
 	if data, jerr := json.Marshal(out); jerr == nil {
 		if serr := c.kv.Set(ctx, key, data, c.listTTL); serr != nil {
+			metrics.CacheSetErrorsTotal.WithLabelValues("vacancies_list").Inc()
 			c.log.Warn("vacancies.cache: redis Set failed (list)",
 				slog.String("key", key), slog.Any("err", serr))
 		}
@@ -265,8 +282,3 @@ func (c *CachedVacancyRepo) invalidateLists(ctx context.Context) {
 			slog.Any("err", err))
 	}
 }
-
-// discardWriter swallows bytes — default sink for nil log.
-type discardWriter struct{}
-
-func (discardWriter) Write(p []byte) (int, error) { return len(p), nil }
