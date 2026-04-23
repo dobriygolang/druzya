@@ -22,6 +22,23 @@ import { useMyBookingsQuery, useCancelSlot, type MyBookingItem } from '../lib/qu
 import { ApiError } from '../lib/apiClient'
 import { humanizeDifficulty, humanizeSection } from '../lib/labels'
 
+// Date helpers — anti-fallback policy: never render "Invalid Date" or
+// "1 января 1970". Backend returns ISO timestamps, but a fresh user has
+// no finished matches / unlocked achievements yet, in which case the
+// server may emit an empty string or a zero-Timestamp. Show an em-dash.
+function fmtDateTime(iso?: string | null): string {
+  if (!iso || iso.startsWith('1970-')) return '—'
+  const t = new Date(iso).getTime()
+  if (!Number.isFinite(t) || t === 0) return '—'
+  return new Date(t).toLocaleString('ru-RU')
+}
+function fmtDate(iso?: string | null): string {
+  if (!iso || iso.startsWith('1970-')) return '—'
+  const t = new Date(iso).getTime()
+  if (!Number.isFinite(t) || t === 0) return '—'
+  return new Date(t).toLocaleDateString('ru-RU')
+}
+
 // ProfileViewModel is the union of /profile/me and /profile/{username}
 // rendered fields. Public-only routes get a partial — the UI degrades
 // gracefully when private fields (xp, ai_credits, etc.) are absent.
@@ -620,7 +637,7 @@ function MatchesPanel() {
                 </div>
               </div>
               <span className="font-mono text-[11px] text-text-muted">
-                {new Date(m.finished_at).toLocaleString('ru-RU')}
+                {fmtDateTime(m.finished_at)}
               </span>
               <span className={cn('font-mono text-[12px] font-bold uppercase', resultColor)}>{m.result}</span>
               <span className={cn('text-right font-mono text-[12px] font-semibold', positive ? 'text-success' : 'text-danger')}>
@@ -685,7 +702,7 @@ function AchievementsPanel() {
             <span className="line-clamp-2 font-mono text-[10px] text-white/80">{a.description}</span>
             {a.unlocked_at && (
               <span className="font-mono text-[10px] text-white/60">
-                {new Date(a.unlocked_at).toLocaleDateString('ru-RU')}
+                {fmtDate(a.unlocked_at)}
               </span>
             )}
           </div>

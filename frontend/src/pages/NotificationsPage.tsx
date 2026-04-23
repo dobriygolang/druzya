@@ -311,7 +311,10 @@ export default function NotificationsPage() {
       onMarkRead={() => markRead.mutate(n.id)}
       onAcceptFriend={(id) => acceptFriend.mutate(id)}
       onDeclineFriend={(id) => declineFriend.mutate(id)}
-      onOpenReplay={(matchID) => navigate(`/arena/match/${matchID}/replay`)}
+      // ArenaMatchPage at /arena/match/:matchId reads `?replay=1` to enter
+      // replay mode (see MatchEndPage). The bare /…/replay segment is not
+      // a registered route — fall through to NotFoundPage in production.
+      onOpenReplay={(matchID) => navigate(`/arena/match/${matchID}?replay=1`)}
       onOpenPlan={() => navigate('/weekly')}
     />
   )

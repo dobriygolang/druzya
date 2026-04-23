@@ -437,7 +437,9 @@ export default function MockSessionPage() {
             micOn={micOn}
             toggleMic={() => {
               setMicOn((on) => !on)
-              if (!micOn && sessionId) navigate(`/mock/${sessionId}/voice`)
+              // Voice route is registered as /voice-mock/:sessionId (see App.tsx).
+              // Sending users to /mock/:sessionId/voice 404'd.
+              if (!micOn && sessionId) navigate(`/voice-mock/${sessionId}`)
             }}
           />
         </div>
