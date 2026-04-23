@@ -54,6 +54,18 @@ export default {
         h3: ['24px', { lineHeight: '1.3', fontWeight: '700' }],
         h4: ['18px', { lineHeight: '1.4', fontWeight: '700' }],
       },
+      // Wave-10 — shimmer keyframe for <EmptySkeleton /> loading states.
+      // The bg-position trick paints a gradient under a fixed-width
+      // background-size so the gradient slides through the element.
+      keyframes: {
+        shimmer: {
+          '0%': { backgroundPosition: '-400px 0' },
+          '100%': { backgroundPosition: '400px 0' },
+        },
+      },
+      animation: {
+        shimmer: 'shimmer 1.6s linear infinite',
+      },
     },
   },
   plugins: [],

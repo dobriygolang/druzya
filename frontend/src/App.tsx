@@ -40,6 +40,13 @@ const LoginPage = lazy(() => import('./pages/LoginPage'))
 const AuthCallbackYandexPage = lazy(() => import('./pages/AuthCallbackYandexPage'))
 const OnboardingPage = lazy(() => import('./pages/OnboardingPage'))
 const AllSetPage = lazy(() => import('./pages/AllSetPage'))
+// Wave-10 onboarding flow (design-review v3 part A) — 5-step gated flow
+// living under /onboarding/{welcome,class,skill,task}. Step 5 is a tour
+// overlay on /sanctum (mounted via ?tour=1 query param).
+const OnbStep1 = lazy(() => import('./pages/onboarding/Step1Welcome'))
+const OnbStep2 = lazy(() => import('./pages/onboarding/Step2Class'))
+const OnbStep3 = lazy(() => import('./pages/onboarding/Step3Skill'))
+const OnbStep4 = lazy(() => import('./pages/onboarding/Step4Task'))
 const MockSessionPage = lazy(() => import('./pages/MockSessionPage'))
 const MockResultPage = lazy(() => import('./pages/MockResultPage'))
 const MockReplayPage = lazy(() => import('./pages/MockReplayPage'))
@@ -105,6 +112,13 @@ export default function App() {
         <Route path="/auth/callback/yandex" element={<AuthCallbackYandexPage />} />
         <Route path="/onboarding" element={<OnboardingPage />} />
         <Route path="/onboarding/done" element={<AllSetPage />} />
+        {/* Wave-10 onboarding (design-review v3) — 4 step pages.
+            Step 5 (sanctum tour) is rendered as an overlay inside
+            SanctumPage when ?tour=1 is present, no dedicated route. */}
+        <Route path="/onboarding/welcome" element={<OnbStep1 />} />
+        <Route path="/onboarding/class" element={<OnbStep2 />} />
+        <Route path="/onboarding/skill" element={<OnbStep3 />} />
+        <Route path="/onboarding/task" element={<OnbStep4 />} />
         <Route path="/mock/:sessionId" element={<MockSessionPage />} />
         <Route path="/mock/:sessionId/result" element={<MockResultPage />} />
         <Route path="/mock/:sessionId/replay" element={<MockReplayPage />} />
