@@ -6,6 +6,11 @@
 .env.*
 !.env.example
 !.env.prod.example
+# Frontend Vite-build envs нужно трекать — туда попадают VITE_* которые
+# встраиваются в bundle через `vite build`. Не содержат секретов: только
+# OAuth client_id (публичный, и так в URL Yandex authorize) и bot_name.
+!frontend/.env.production
+!frontend/.env.development
 
 # Go
 /bin/

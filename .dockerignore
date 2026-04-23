@@ -9,6 +9,11 @@
 .env
 .env.*
 !.env.example
+# Vite читает frontend/.env.production во время `vite build` внутри web-образа
+# (infra/web.Dockerfile). Без exception файл не попадает в Docker context,
+# build видит пустые VITE_* и кнопки на /login показывают заглушку "не настроено".
+!frontend/.env.production
+!frontend/.env.development
 
 # Frontend (the api image doesn't need it)
 frontend/node_modules
