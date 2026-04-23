@@ -1,12 +1,35 @@
-// yandex.go — careers.yandex.ru/jobs parser.
+// yandex.go — yandex.ru/jobs/api/publications parser.
 //
-// Yandex's careers site is Next.js — every page embeds the SSR payload as a
-// JSON blob in <script id="__NEXT_DATA__">. We extract that blob, navigate
-// to the jobs array, and convert each entry into a domain.Vacancy.
+// Verified live 2026-04-23 against production:
 //
-// Doing it this way (vs. a brittle DOM walk) keeps the parser stable across
-// CSS reshuffles. If Yandex ever swaps the SSR strategy and the blob
-// disappears we fall back to an empty fetch + a warning log.
+//	GET https://yandex.ru/jobs/api/publications?page_size=100
+//	→ 200 application/json, DRF-style cursor paging, count=1364.
+//	Shape:
+//	  {"count":1364,
+//	   "next":"…/jobs/api/publications/?cursor=…&page_size=…",
+//	   "previous":null,
+//	   "results":[
+//	     {"id":15322,
+//	      "publication_slug_url":"multitrack-…-15322",
+//	      "title":"…",
+//	      "short_summary":"…",
+//	      "vacancy":{
+//	        "cities":[{"id","name","slug"}],
+//	        "skills":[{"id","name"}],
+//	        "work_modes":[{"id","name","slug"}]},
+//	      "public_service":{"name","description","group"}}]}
+//
+// Public detail URL is https://yandex.ru/jobs/vacancies/{publication_slug_url}.
+//
+// The previous yandex parser scraped the listing HTML for an embedded
+// __NEXT_DATA__ blob — the page is now an App-Router RSC render with no
+// client-side data, so the blob never existed. Replaced with the real REST
+// endpoint that the SSR layer itself proxies to femida.yandex-team.ru.
+//
+// Anti-fallback: empty list + WARN if the wire shape drifts; metric tick on
+// any error. We do NOT walk pagination by default — first page (page_size=
+// 100) is enough for the kanban; fetching all 1364 every hour wastes budget.
+// SyncJob calls Fetch once; pagination is a v2 task.
 package parsers
 
 import (
@@ -14,203 +37,168 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log/slog"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
+
+	"log/slog"
 
 	"druz9/shared/pkg/metrics"
 	"druz9/vacancies/domain"
 )
 
-// yandexFetchURL is the listing URL the parser hits by default.
-const yandexFetchURL = "https://yandex.ru/jobs/services/all"
+const (
+	yandexAPIURL  = "https://yandex.ru/jobs/api/publications?page_size=100"
+	yandexSiteURL = "https://yandex.ru/jobs"
+)
 
-// YandexParser scrapes careers.yandex.ru / yandex.ru/jobs.
+// YandexParser hits the public publications API.
 type YandexParser struct {
-	baseURL    string
+	apiURL     string
 	httpClient *http.Client
 	log        *slog.Logger
 }
 
-// NewYandex builds the default-configured parser. log is required
-// (anti-fallback policy).
+// NewYandex builds the default parser. log is required.
 func NewYandex(log *slog.Logger) *YandexParser {
 	if log == nil {
 		panic("vacancies.parsers.NewYandex: logger is required (anti-fallback policy: no silent noop loggers)")
 	}
 	return &YandexParser{
-		baseURL:    yandexFetchURL,
-		httpClient: &http.Client{Timeout: 15 * time.Second},
-		log:        log,
+		apiURL: yandexAPIURL,
+		httpClient: &http.Client{
+			Timeout: 15 * time.Second,
+			CheckRedirect: func(req *http.Request, via []*http.Request) error {
+				if len(via) >= 5 {
+					return fmt.Errorf("stopped after 5 redirects")
+				}
+				return nil
+			},
+		},
+		log: log,
 	}
 }
 
-// WithBaseURL overrides the URL — used by tests to point at httptest.
-func (p *YandexParser) WithBaseURL(u string) *YandexParser { p.baseURL = u; return p }
+// WithBaseURL keeps the old test-helper name; sets the API URL.
+func (p *YandexParser) WithBaseURL(u string) *YandexParser { p.apiURL = u; return p }
 
 // Source implements domain.Parser.
 func (p *YandexParser) Source() domain.Source { return domain.SourceYandex }
 
-// Fetch downloads the listing HTML and decodes the embedded __NEXT_DATA__
-// JSON.
-//
-// Anti-fallback policy: schema surprises (no blob, decode error) propagate
-// as real errors and increment vacancies_parser_errors_total{source=...}.
-// SyncJob.runOneParser already logs and continues to the next source, so
-// the sync loop keeps working — but each failure is now loud enough to
-// alert on instead of silently writing 0 vacancies.
+// Fetch pulls the first page of publications (page_size=100). Errors tick
+// the parser-errors metric so ops can alert; an honest empty list does not.
 func (p *YandexParser) Fetch(ctx context.Context) ([]domain.Vacancy, error) {
-	body, err := fetchHTML(ctx, p.httpClient, p.baseURL)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, p.apiURL, nil)
 	if err != nil {
 		metrics.VacanciesParserErrorsTotal.WithLabelValues(string(domain.SourceYandex)).Inc()
-		return nil, fmt.Errorf("vacancies.parser.yandex: fetch: %w", err)
+		return nil, fmt.Errorf("vacancies.parser.yandex.newreq: %w", err)
 	}
-	blob, ok := extractNextData(body)
-	if !ok {
-		metrics.VacanciesParserErrorsTotal.WithLabelValues(string(domain.SourceYandex)).Inc()
-		return nil, fmt.Errorf("vacancies.parser.yandex: __NEXT_DATA__ blob not found")
-	}
-	out, err := decodeYandexJobs(blob)
+	req.Header.Set("User-Agent", scraperUA)
+	req.Header.Set("Accept", "application/json")
+	resp, err := p.httpClient.Do(req)
 	if err != nil {
 		metrics.VacanciesParserErrorsTotal.WithLabelValues(string(domain.SourceYandex)).Inc()
-		return nil, fmt.Errorf("vacancies.parser.yandex: decode: %w", err)
-	}
-	p.log.Info("vacancies.parser.yandex: fetched", slog.Int("count", len(out)))
-	return out, nil
-}
-
-// extractNextData finds the JSON content of <script id="__NEXT_DATA__"
-// type="application/json"> in the HTML. Returns the raw JSON + ok flag.
-func extractNextData(html string) (string, bool) {
-	const marker = `id="__NEXT_DATA__"`
-	idx := strings.Index(html, marker)
-	if idx < 0 {
-		return "", false
-	}
-	open := strings.Index(html[idx:], ">")
-	if open < 0 {
-		return "", false
-	}
-	start := idx + open + 1
-	end := strings.Index(html[start:], "</script>")
-	if end < 0 {
-		return "", false
-	}
-	return html[start : start+end], true
-}
-
-// decodeYandexJobs walks the __NEXT_DATA__ tree looking for a "jobs" or
-// "vacancies" array. Yandex restructures occasionally so we accept either.
-func decodeYandexJobs(raw string) ([]domain.Vacancy, error) {
-	var blob map[string]any
-	if err := json.Unmarshal([]byte(raw), &blob); err != nil {
-		return nil, fmt.Errorf("yandex.decode.unmarshal: %w", err)
-	}
-	jobs := findJobsArray(blob)
-	out := make([]domain.Vacancy, 0, len(jobs))
-	for _, j := range jobs {
-		jm, ok := j.(map[string]any)
-		if !ok {
-			continue
-		}
-		out = append(out, yandexJobToVacancy(jm))
-	}
-	return out, nil
-}
-
-// findJobsArray does a best-effort BFS for an array under common keys.
-func findJobsArray(blob map[string]any) []any {
-	keys := []string{"jobs", "vacancies", "items", "list"}
-	queue := []map[string]any{blob}
-	for len(queue) > 0 {
-		cur := queue[0]
-		queue = queue[1:]
-		for _, k := range keys {
-			if v, ok := cur[k]; ok {
-				if arr, ok := v.([]any); ok && len(arr) > 0 {
-					if _, isObj := arr[0].(map[string]any); isObj {
-						return arr
-					}
-				}
-			}
-		}
-		for _, v := range cur {
-			switch t := v.(type) {
-			case map[string]any:
-				queue = append(queue, t)
-			case []any:
-				for _, e := range t {
-					if m, ok := e.(map[string]any); ok {
-						queue = append(queue, m)
-					}
-				}
-			}
-		}
-	}
-	return nil
-}
-
-// yandexJobToVacancy maps a single jobs[] entry. Field names below are what
-// Yandex commonly emits; missing fields are simply left empty.
-func yandexJobToVacancy(j map[string]any) domain.Vacancy {
-	get := func(k string) string {
-		if v, ok := j[k].(string); ok {
-			return v
-		}
-		return ""
-	}
-	v := domain.Vacancy{
-		Source:      domain.SourceYandex,
-		ExternalID:  get("id"),
-		Title:       get("title"),
-		Company:     "Yandex",
-		Location:    get("city"),
-		URL:         get("url"),
-		Description: strings.TrimSpace(get("description") + "\n\n" + get("requirements") + "\n\n" + get("responsibilities")),
-		FetchedAt:   time.Now().UTC(),
-	}
-	if v.ExternalID == "" {
-		v.ExternalID = get("slug")
-	}
-	if v.URL == "" && v.ExternalID != "" {
-		v.URL = fmt.Sprintf("https://yandex.ru/jobs/vacancies/%s", v.ExternalID)
-	}
-	if skills, ok := j["skills"].([]any); ok {
-		for _, s := range skills {
-			if str, ok := s.(string); ok {
-				v.RawSkills = append(v.RawSkills, str)
-			}
-		}
-	}
-	v.NormalizedSkills = domain.NormalizeSkills(v.RawSkills)
-	if raw, err := json.Marshal(j); err == nil {
-		v.RawJSON = raw
-	}
-	return v
-}
-
-// fetchHTML is a polite GET helper shared by HTML-scraping parsers. It sets
-// the spec'd User-Agent and caps the body at 4 MiB to prevent OOM on a
-// hostile/malformed response.
-func fetchHTML(ctx context.Context, c *http.Client, urlStr string) (string, error) {
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, urlStr, nil)
-	if err != nil {
-		return "", fmt.Errorf("fetchHTML.newreq: %w", err)
-	}
-	req.Header.Set("User-Agent", "druz9/1.0 (+https://druz9.dev/contact)")
-	req.Header.Set("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8")
-	resp, err := c.Do(req)
-	if err != nil {
-		return "", fmt.Errorf("fetchHTML.do: %w", err)
+		return nil, fmt.Errorf("vacancies.parser.yandex.do: %w", err)
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode >= 400 {
-		return "", fmt.Errorf("fetchHTML: http %d", resp.StatusCode)
+		metrics.VacanciesParserErrorsTotal.WithLabelValues(string(domain.SourceYandex)).Inc()
+		return nil, fmt.Errorf("vacancies.parser.yandex: http %d", resp.StatusCode)
 	}
-	body, err := io.ReadAll(io.LimitReader(resp.Body, 4<<20))
+	body, err := io.ReadAll(io.LimitReader(resp.Body, 8<<20))
 	if err != nil {
-		return "", fmt.Errorf("fetchHTML.read: %w", err)
+		metrics.VacanciesParserErrorsTotal.WithLabelValues(string(domain.SourceYandex)).Inc()
+		return nil, fmt.Errorf("vacancies.parser.yandex.read: %w", err)
 	}
-	return string(body), nil
+	out, err := decodeYandexPublications(body)
+	if err != nil {
+		metrics.VacanciesParserErrorsTotal.WithLabelValues(string(domain.SourceYandex)).Inc()
+		return nil, fmt.Errorf("vacancies.parser.yandex.decode: %w", err)
+	}
+	if len(out) == 0 {
+		p.log.Warn("vacancies.parser.yandex: 0 publications in response (shape drift?)")
+	} else {
+		p.log.Info("vacancies.parser.yandex: fetched", slog.Int("count", len(out)))
+	}
+	return out, nil
+}
+
+type yandexAPIResp struct {
+	Count   int                 `json:"count"`
+	Results []yandexPublication `json:"results"`
+}
+
+type yandexPublication struct {
+	ID                 int64               `json:"id"`
+	PublicationSlugURL string              `json:"publication_slug_url"`
+	Title              string              `json:"title"`
+	ShortSummary       string              `json:"short_summary"`
+	Vacancy            yandexVacancyDetail `json:"vacancy"`
+	PublicService      struct {
+		Name string `json:"name"`
+	} `json:"public_service"`
+}
+
+type yandexVacancyDetail struct {
+	Cities    []yandexNamed `json:"cities"`
+	Skills    []yandexNamed `json:"skills"`
+	WorkModes []yandexNamed `json:"work_modes"`
+}
+
+type yandexNamed struct {
+	Name string `json:"name"`
+}
+
+func decodeYandexPublications(body []byte) ([]domain.Vacancy, error) {
+	if len(strings.TrimSpace(string(body))) == 0 {
+		return nil, fmt.Errorf("empty body")
+	}
+	var resp yandexAPIResp
+	if err := json.Unmarshal(body, &resp); err != nil {
+		return nil, fmt.Errorf("unmarshal: %w", err)
+	}
+	now := time.Now().UTC()
+	out := make([]domain.Vacancy, 0, len(resp.Results))
+	for _, r := range resp.Results {
+		if r.PublicationSlugURL == "" || strings.TrimSpace(r.Title) == "" {
+			continue
+		}
+		cities := make([]string, 0, len(r.Vacancy.Cities))
+		for _, c := range r.Vacancy.Cities {
+			if c.Name != "" {
+				cities = append(cities, c.Name)
+			}
+		}
+		modes := make([]string, 0, len(r.Vacancy.WorkModes))
+		for _, m := range r.Vacancy.WorkModes {
+			if m.Name != "" {
+				modes = append(modes, m.Name)
+			}
+		}
+		skills := make([]string, 0, len(r.Vacancy.Skills))
+		for _, s := range r.Vacancy.Skills {
+			if s.Name != "" {
+				skills = append(skills, s.Name)
+			}
+		}
+		v := domain.Vacancy{
+			Source:           domain.SourceYandex,
+			ExternalID:       strconv.FormatInt(r.ID, 10),
+			Title:            r.Title,
+			Company:          "Yandex",
+			Location:         strings.Join(cities, ", "),
+			EmploymentType:   strings.Join(modes, ", "),
+			URL:              fmt.Sprintf("%s/vacancies/%s", yandexSiteURL, r.PublicationSlugURL),
+			Description:      strings.TrimSpace(r.ShortSummary),
+			RawSkills:        skills,
+			NormalizedSkills: domain.NormalizeSkills(skills),
+			FetchedAt:        now,
+		}
+		if raw, err := json.Marshal(r); err == nil {
+			v.RawJSON = raw
+		}
+		out = append(out, v)
+	}
+	return out, nil
 }
