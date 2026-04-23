@@ -60,6 +60,10 @@ func TestGuildServer_GetMyGuild_Unauthenticated(t *testing.T) {
 	}
 }
 
+// TestGuildServer_GetMyGuild_NotFound — Wave-13 sanctum-bug fix: when the
+// user has no guild, GetMyGuild now returns OK with an empty Guild proto
+// (id == "") instead of Connect NotFound. This kills the noisy 404 log on
+// /sanctum for fresh accounts. Frontend treats id=="" as "no guild yet".
 func TestGuildServer_GetMyGuild_NotFound(t *testing.T) {
 	t.Parallel()
 	ctrl := gomock.NewController(t)
@@ -70,10 +74,15 @@ func TestGuildServer_GetMyGuild_NotFound(t *testing.T) {
 
 	srv := newTestServer(t, guilds, wars)
 	ctx := sharedMw.WithUserID(context.Background(), uid)
-	_, err := srv.GetMyGuild(ctx, connect.NewRequest(&pb.GetMyGuildRequest{}))
-	var ce *connect.Error
-	if !errors.As(err, &ce) || ce.Code() != connect.CodeNotFound {
-		t.Fatalf("expected NotFound, got %v", err)
+	resp, err := srv.GetMyGuild(ctx, connect.NewRequest(&pb.GetMyGuildRequest{}))
+	if err != nil {
+		t.Fatalf("expected nil err, got %v", err)
+	}
+	if resp == nil || resp.Msg == nil {
+		t.Fatal("expected non-nil response")
+	}
+	if resp.Msg.GetId() != "" {
+		t.Fatalf("expected empty Guild envelope (id==\"\"), got id=%q", resp.Msg.GetId())
 	}
 }
 

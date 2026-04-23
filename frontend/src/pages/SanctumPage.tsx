@@ -140,32 +140,29 @@ function MobileSubHeader() {
 
 // ── Hero greeting ─────────────────────────────────────────────────────────
 function HeroGreeting() {
-  const { t } = useTranslation(['sanctum', 'common'])
+  const { t } = useTranslation(['sanctum'])
   const { data: streak } = useStreakQuery()
   const { data: profile } = useProfileQuery()
-  const name = profile?.display_name ?? '—'
+  // Sanctum-bug 2026-04 (#3): when the profile has no display_name AND no
+  // username (fresh accounts before settings finish), the old code rendered
+  // "С возвращением, —" — embarrassing. Fall back through display_name →
+  // username → anonymous greeting (no trailing dash).
+  const cleanName =
+    (profile?.display_name && profile.display_name.trim()) ||
+    (profile?.username && profile.username.trim()) ||
+    ''
   const current = streak?.current ?? 0
+  // Sanctum-bug 2026-04 (#2): "Найти соперника" CTA removed from the hero.
+  // The same action lives in the Arena card row below + the bottom-nav FAB
+  // on mobile, so the hero entry was redundant.
   return (
-    <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-end sm:justify-between">
-      <div className="flex flex-col gap-1.5">
-        <h1 className="font-display text-[22px] font-bold leading-[0.95] text-text-primary sm:text-[28px] lg:text-[40px] lg:leading-[1.1]">
-          {t('sanctum:welcome', { name })}
-        </h1>
-        <p className="text-[12px] text-text-secondary sm:text-[13px] lg:text-sm">
-          {t('sanctum:subtitle', { streak: current })}
-        </p>
-      </div>
-      {/* Arena CTA — desktop/tablet only; on mobile the global FAB owns it. */}
-      <Link to="/arena" className="hidden w-full sm:inline-flex sm:w-auto">
-        <Button
-          variant="primary"
-          icon={<Swords className="h-[18px] w-[18px]" />}
-          iconRight={<ArrowRight className="h-4 w-4" />}
-          className="w-full justify-center px-5 py-3 text-sm sm:w-auto"
-        >
-          {t('common:buttons.find_opponent')}
-        </Button>
-      </Link>
+    <div className="flex flex-col items-start gap-1.5">
+      <h1 className="font-display text-[22px] font-bold leading-[0.95] text-text-primary sm:text-[28px] lg:text-[40px] lg:leading-[1.1]">
+        {cleanName ? t('sanctum:welcome', { name: cleanName }) : t('sanctum:welcome_anon')}
+      </h1>
+      <p className="text-[12px] text-text-secondary sm:text-[13px] lg:text-sm">
+        {t('sanctum:subtitle', { streak: current })}
+      </p>
     </div>
   )
 }

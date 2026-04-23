@@ -7,10 +7,12 @@
 
 import { useEffect, useRef, useState } from 'react';
 
-import { BrandMark, IconCamera, IconClose, IconCopy, IconMinimize, IconSend } from '../../components/icons';
+import { BrandMark, IconCamera, IconChevronDown, IconClose, IconCopy, IconMinimize, IconSend } from '../../components/icons';
 import { IconButton, Kbd, StatusDot } from '../../components/primitives';
+import { ProviderPicker } from '../../components/ProviderPicker';
 import { useConfig } from '../../hooks/use-config';
 import { useConversationStore, type UIMessage } from '../../stores/conversation';
+import { useSelectedModelStore } from '../../stores/selected-model';
 
 export function ExpandedScreen() {
   const { config } = useConfig();
@@ -20,7 +22,9 @@ export function ExpandedScreen() {
   const conversationId = useConversationStore((s) => s.conversationId);
   const beginTurn = useConversationStore((s) => s.beginTurn);
 
+  const selectedModel = useSelectedModelStore((s) => s.modelId);
   const [draft, setDraft] = useState('');
+  const [pickerOpen, setPickerOpen] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -43,7 +47,7 @@ export function ExpandedScreen() {
     const handle = await ipc({
       conversationId,
       promptText: text,
-      model: '',
+      model: selectedModel,
       attachments: [],
       triggerAction: 'quick_prompt',
       focusedAppHint: '',
@@ -51,7 +55,8 @@ export function ExpandedScreen() {
     beginTurn({ promptText: text, hasScreenshot: false, streamId: handle.streamId });
   };
 
-  const modelLabel = config?.models.find((m) => m.id === (config?.defaultModelId ?? ''))?.displayName ?? 'AI';
+  const activeModelId = selectedModel || config?.defaultModelId || '';
+  const modelLabel = config?.models.find((m) => m.id === activeModelId)?.displayName ?? 'AI';
 
   return (
     <div
@@ -80,12 +85,40 @@ export function ExpandedScreen() {
         } as React.CSSProperties}
       >
         <BrandMark size={22} />
-        <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.1 }}>
-          <span style={{ fontSize: 12, color: 'var(--d-text)' }}>{modelLabel}</span>
+        <button
+          onClick={() => setPickerOpen(true)}
+          disabled={!config}
+          title="Выбрать модель"
+          style={{
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'flex-start',
+            gap: 1,
+            padding: '4px 8px',
+            background: 'transparent',
+            border: '1px solid transparent',
+            borderRadius: 6,
+            color: 'inherit',
+            cursor: 'pointer',
+            WebkitAppRegion: 'no-drag',
+          } as React.CSSProperties}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.background = 'rgba(255,255,255,0.04)';
+            e.currentTarget.style.borderColor = 'var(--d-line)';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = 'transparent';
+            e.currentTarget.style.borderColor = 'transparent';
+          }}
+        >
+          <span style={{ fontSize: 12, color: 'var(--d-text)', display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+            {modelLabel}
+            <IconChevronDown size={10} />
+          </span>
           <span style={{ fontSize: 10, color: 'var(--d-text-3)', fontFamily: 'var(--f-mono)' }}>
             {streaming ? 'думает…' : 'готов'}
           </span>
-        </div>
+        </button>
         <div style={{ flex: 1 }} />
         <div style={{ display: 'flex', gap: 2, WebkitAppRegion: 'no-drag' } as React.CSSProperties}>
           <IconButton title="Свернуть" onClick={() => void window.druz9.windows.hide('expanded')}>
@@ -166,6 +199,14 @@ export function ExpandedScreen() {
           <IconSend size={15} />
         </IconButton>
       </div>
+
+      {pickerOpen && config && (
+        <ProviderPicker
+          models={config.models}
+          defaultModelId={config.defaultModelId}
+          onClose={() => setPickerOpen(false)}
+        />
+      )}
     </div>
   );
 }

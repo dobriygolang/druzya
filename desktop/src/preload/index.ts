@@ -12,6 +12,9 @@ import {
   invokeChannels,
   type AnalyzeInput,
   type AuthSession,
+  type ByokPresence,
+  type ByokProvider,
+  type ByokResult,
   type CaptureResult,
   type Druz9API,
   type PermissionKind,
@@ -81,6 +84,15 @@ const api: Druz9API = {
   messages: {
     rate: (id, rating) =>
       ipcRenderer.invoke(invokeChannels.rateMessage, id, rating) as Promise<void>,
+  },
+  byok: {
+    list: () => ipcRenderer.invoke(invokeChannels.byokList) as Promise<ByokPresence>,
+    save: (provider: ByokProvider, key: string) =>
+      ipcRenderer.invoke(invokeChannels.byokSave, provider, key) as Promise<ByokResult>,
+    delete: (provider: ByokProvider) =>
+      ipcRenderer.invoke(invokeChannels.byokDelete, provider) as Promise<void>,
+    test: (provider: ByokProvider) =>
+      ipcRenderer.invoke(invokeChannels.byokTest, provider) as Promise<ByokResult>,
   },
   on: <T>(channel: string, handler: (payload: T) => void) => {
     // Whitelist so renderer can't subscribe to arbitrary channels.

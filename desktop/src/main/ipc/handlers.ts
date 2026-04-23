@@ -4,8 +4,12 @@
 import { ipcMain } from 'electron';
 
 import {
+  eventChannels,
   invokeChannels,
   type AnalyzeInput,
+  type ByokPresence,
+  type ByokProvider,
+  type ByokResult,
   type CaptureResult,
   type PermissionKind,
   type WindowName,
@@ -13,6 +17,15 @@ import {
 import type { HotkeyBinding } from '@shared/types';
 
 import { clearSession, loadSession } from '../auth/keychain';
+import {
+  deleteKey as byokDelete,
+  listPresence,
+  loadKey as byokLoad,
+  saveKey as byokSave,
+  validateKeyShape,
+} from '../auth/byok-keychain';
+import { AnthropicProvider } from '../api/providers/anthropic';
+import { OpenAIProvider } from '../api/providers/openai';
 import { captureArea, captureFullScreen } from '../capture/screenshot';
 import { applyBindings, listBindings } from '../hotkeys/registry';
 import {
@@ -20,7 +33,7 @@ import {
   openPermissionPane,
   requestPermission,
 } from '../permissions/macos';
-import { hideWindow, setStealth, showWindow } from '../windows/window-manager';
+import { broadcast, hideWindow, setStealth, showWindow } from '../windows/window-manager';
 import type { WindowOptions } from '../windows/window-manager';
 
 import type { CopilotClient } from '../api/client';
@@ -156,4 +169,47 @@ export function registerHandlers(opts: RegisterOptions): void {
   ipcMain.handle(invokeChannels.rateMessage, async (_evt, id: string, rating: -1 | 0 | 1) => {
     await client.rateMessage({ messageId: id, rating, comment: '' });
   });
+
+  // ── BYOK ──
+  ipcMain.handle(invokeChannels.byokList, async (): Promise<ByokPresence> => listPresence());
+
+  ipcMain.handle(
+    invokeChannels.byokSave,
+    async (_evt, provider: ByokProvider, key: string): Promise<ByokResult> => {
+      const shapeErr = validateKeyShape(provider, key);
+      if (shapeErr) return { ok: false, detail: shapeErr };
+      // Test BEFORE persisting — refuse to save a key that does not work.
+      try {
+        const detail = await makeProvider(provider, key.trim()).test();
+        await byokSave(provider, key);
+        broadcast(eventChannels.byokChanged, await listPresence());
+        return { ok: true, detail };
+      } catch (err) {
+        return { ok: false, detail: (err as Error).message };
+      }
+    },
+  );
+
+  ipcMain.handle(invokeChannels.byokDelete, async (_evt, provider: ByokProvider) => {
+    await byokDelete(provider);
+    broadcast(eventChannels.byokChanged, await listPresence());
+  });
+
+  ipcMain.handle(
+    invokeChannels.byokTest,
+    async (_evt, provider: ByokProvider): Promise<ByokResult> => {
+      const key = await byokLoad(provider);
+      if (!key) return { ok: false, detail: 'no key configured' };
+      try {
+        const detail = await makeProvider(provider, key).test();
+        return { ok: true, detail };
+      } catch (err) {
+        return { ok: false, detail: (err as Error).message };
+      }
+    },
+  );
+}
+
+function makeProvider(family: ByokProvider, key: string) {
+  return family === 'openai' ? new OpenAIProvider(key) : new AnthropicProvider(key);
 }

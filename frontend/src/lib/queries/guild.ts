@@ -63,17 +63,24 @@ export type TopGuildsResponse = {
   items: TopGuildSummary[]
 }
 
-// useMyGuildQuery — current user's guild detail, falls back to a clean
-// "no guild" state when the backend returns 404 (see ApiError handling).
+// useMyGuildQuery — current user's guild detail.
+//
+// Backend (Wave-13 sanctum-bug fix): GetMyGuild now returns an empty
+// Guild envelope (id === "") when the user has no membership instead of
+// throwing 404 — eliminates the noisy console error on /sanctum for new
+// users. Legacy 404 path kept for older deployments.
 export function useMyGuildQuery() {
   return useQuery({
     queryKey: ['guild', 'my'],
     queryFn: async () => {
       try {
-        return await api<Guild>('/guild/my')
+        const g = await api<Guild>('/guild/my')
+        // Empty Guild envelope ⇒ user has no guild yet. Treat as null so
+        // existing callsites' `if (!guild)` empty-state path triggers.
+        if (!g || !g.id) return null
+        return g
       } catch (err) {
-        // 404 means "user has no guild" — surface as null instead of an
-        // error so the page can render the top-list view.
+        // Backwards compat: legacy backends still throw 404 for "no guild".
         if (err instanceof Error && /\b404\b/.test(err.message)) {
           return null
         }

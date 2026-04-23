@@ -7,12 +7,14 @@
 
 import { useEffect, useRef, useState } from 'react';
 
-import { BrandMark, IconCamera, IconMic, IconSettings } from '../../components/icons';
+import { BrandMark, IconCamera, IconChevronDown, IconMic, IconSettings } from '../../components/icons';
 import { IconButton, Kbd, StatusDot } from '../../components/primitives';
+import { ProviderPicker } from '../../components/ProviderPicker';
 import { useConfig } from '../../hooks/use-config';
 import { useHotkeyEvents } from '../../hooks/use-hotkey-events';
 import { useAuthStore } from '../../stores/auth';
 import { useConversationStore } from '../../stores/conversation';
+import { useSelectedModelStore } from '../../stores/selected-model';
 
 export function CompactScreen() {
   const { config } = useConfig();
@@ -22,9 +24,11 @@ export function CompactScreen() {
   const streaming = useConversationStore((s) => s.streaming);
   const beginTurn = useConversationStore((s) => s.beginTurn);
 
+  const selectedModel = useSelectedModelStore((s) => s.modelId);
   const [input, setInput] = useState('');
   const [status, setStatus] = useState<'idle' | 'ready' | 'thinking' | 'recording'>('ready');
   const [statusText, setStatusText] = useState('Готов');
+  const [pickerOpen, setPickerOpen] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   // One-time wiring.
@@ -38,15 +42,16 @@ export function CompactScreen() {
   }, [authBootstrap, conversationBootstrap]);
 
   // Streaming → local status dot.
+  const activeModelId = selectedModel || config?.defaultModelId || '';
   useEffect(() => {
     if (streaming) {
       setStatus('thinking');
-      setStatusText(`${modelLabel(config?.defaultModelId, config)} · думает…`);
+      setStatusText(`${modelLabel(activeModelId, config)} · думает…`);
     } else {
       setStatus('ready');
       setStatusText(session ? 'Готов' : 'Нужен вход');
     }
-  }, [streaming, session, config]);
+  }, [streaming, session, config, activeModelId]);
 
   useHotkeyEvents(async (action) => {
     if (action === 'screenshot_area' || action === 'screenshot_full') {
@@ -65,7 +70,7 @@ export function CompactScreen() {
     const handle = await window.druz9.analyze.start({
       conversationId: useConversationStore.getState().conversationId,
       promptText: text,
-      model: '',
+      model: selectedModel, // empty → server/router picks default
       attachments: [],
       triggerAction: 'quick_prompt',
       focusedAppHint: '',
@@ -195,12 +200,49 @@ export function CompactScreen() {
           <span>{statusText}</span>
         </div>
         <div
-          style={{ display: 'flex', alignItems: 'center', gap: 6, WebkitAppRegion: 'no-drag' } as React.CSSProperties}
+          style={{ display: 'flex', alignItems: 'center', gap: 10, WebkitAppRegion: 'no-drag' } as React.CSSProperties}
         >
+          <button
+            onClick={() => setPickerOpen(true)}
+            disabled={!config}
+            title="Выбрать модель"
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 4,
+              height: 16,
+              padding: '0 6px',
+              background: 'transparent',
+              border: '1px solid transparent',
+              borderRadius: 4,
+              color: 'var(--d-text-2)',
+              fontFamily: 'inherit',
+              fontSize: 10.5,
+              cursor: 'pointer',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = 'rgba(255,255,255,0.04)';
+              e.currentTarget.style.borderColor = 'var(--d-line)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'transparent';
+              e.currentTarget.style.borderColor = 'transparent';
+            }}
+          >
+            {modelLabel(activeModelId, config)}
+            <IconChevronDown size={10} />
+          </button>
           <Kbd size="sm">CommandOrControl+Shift+D</Kbd>
-          <span style={{ opacity: 0.6 }}>развернуть</span>
         </div>
       </div>
+
+      {pickerOpen && config && (
+        <ProviderPicker
+          models={config.models}
+          defaultModelId={config.defaultModelId}
+          onClose={() => setPickerOpen(false)}
+        />
+      )}
     </div>
   );
 }

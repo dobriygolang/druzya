@@ -480,6 +480,142 @@ breaking changes.
 
 ---
 
+## 6a. BYOK — Bring Your Own Key
+
+Users can supply their own OpenAI / Anthropic API key. When they do,
+**inference bypasses our backend entirely**: keys never leave the Mac,
+prompts never touch our server, and the user pays the provider directly.
+
+### Core guarantee
+
+> The API key is stored in the OS Keychain (keytar) and is only ever read
+> inside the Electron main process when issuing a request to the provider.
+> It is **never** sent to Druz9 servers, never logged, never put on the IPC
+> bus as plain text, and never written to disk outside the Keychain.
+
+### Decision tree per Analyze/Chat
+
+```
+User starts an Analyze turn for model M:
+  │
+  ├─ Parse provider family from M's id prefix (openai / anthropic / google)
+  │
+  ├─ Is there a Keychain entry for that provider?
+  │   ├─ YES → route via main/api/providers/<family>.ts directly to provider
+  │   │        ├─ Conversation & messages live ONLY in the renderer store
+  │   │        │  (in-memory; not synced to Druz9 backend)
+  │   │        ├─ Quota is unaffected on our side
+  │   │        └─ Emits the same IPC stream events as the server path
+  │   │           → renderer does not know the difference
+  │   │
+  │   └─ NO  → route via Connect-RPC to /copilot/analyze as before
+  │            (server LLM, server history, server quota)
+  │
+  └─ Same streamId flows into the renderer's conversation store
+     regardless of path.
+```
+
+The renderer never learns which path was taken; the conversation store
+continues to receive `analyze-delta` / `analyze-done` events the same
+way. The only user-visible difference is:
+
+1. A "BYOK" chip next to the model name in compact/expanded headers.
+2. The BYOK conversation does **not** appear in `ListHistory` results
+   (the server doesn't know about it).
+3. The BYOK turn does **not** count against Druz9 quota.
+
+### Trade-offs (deliberate, documented)
+
+| Concern | Decision | Reason |
+|---|---|---|
+| History sync | BYOK turns are memory-only in MVP | "Nothing on our server" is the product promise. A local SQLite cache is a Phase 6 opt-in. |
+| Multi-device | No sync for BYOK turns | Same reason. |
+| Rate-limit handling | Inherit from provider | OpenAI/Anthropic already return 429; we surface their `retry-after`. |
+| Model catalogue | Still driven by `DesktopConfig.Models` | Server decides which model ids are offered; keys decide whether the path is local or server. |
+| Vision support | Required | OpenAI and Anthropic both support image inputs — screenshots work in BYOK mode. |
+
+### Components
+
+```
+desktop/src/main/
+├── auth/
+│   └── byok-keychain.ts      # per-provider save/load/delete, validation
+├── api/
+│   ├── client.ts             # existing — Connect-RPC to our backend
+│   └── providers/
+│       ├── types.ts          # shared LocalLLMProvider interface + StreamEvent
+│       ├── openai.ts         # streaming chat completions + vision
+│       ├── anthropic.ts      # streaming messages API + vision
+│       └── router.ts         # choose local vs server based on key presence
+└── ipc/
+    └── streaming.ts          # calls router.start instead of client.analyze
+```
+
+Keychain accounts under service `app.druzya.copilot`:
+
+| Account key          | Contents                   |
+|----------------------|----------------------------|
+| `byok-openai`        | OpenAI API key (`sk-...`)  |
+| `byok-anthropic`     | Anthropic key (`sk-ant-...`) |
+| `byok-google`        | Gemini key (future)        |
+
+New IPC channels under `window.druz9.byok.*`:
+
+```ts
+byok.list():   Promise<{ openai: boolean; anthropic: boolean }>   // presence only
+byok.save(provider, key): Promise<{ ok: boolean; error?: string }> // tests the key
+byok.delete(provider): Promise<void>
+byok.test(provider): Promise<{ ok: boolean; error?: string }>     // ping /models
+```
+
+Note that `list` returns only **presence** booleans — actual key values
+never cross the IPC boundary. Saving a key emits `event:byok-changed`
+so the Settings UI and model picker can react live.
+
+### Security posture
+
+- Keys are written/read only by the main process via `keytar.setPassword` /
+  `keytar.getPassword`. No renderer code ever touches them.
+- Before saving, the key is shape-validated (`sk-`, `sk-ant-`) and tested
+  against the provider's `/models` or equivalent cheap endpoint.
+- Every outbound request that carries a key has `Authorization` redacted
+  in any debug logs.
+- On `byok.delete`, the Keychain entry is removed and in-memory
+  in-flight requests that use that provider are cancelled.
+- CSP in `renderer/index.html` already limits `connect-src` to our API —
+  BYOK requests happen in **main**, not renderer, so they don't need
+  CSP changes.
+
+### Feature-flag alignment
+
+`DesktopConfig.Flags[].byo_api_key` — the backend flips this to control
+whether the BYOK UI is visible to a user. Default **on** once Phase 6
+lands. Power-users can enable regardless of flag via a hidden dev menu.
+
+### Implementation status (as of 2026-04-24)
+
+All of the below has landed on `main`:
+
+- `desktop/src/main/auth/byok-keychain.ts` — per-provider Keychain
+  save/load/delete with shape validation (`sk-…`, `sk-ant-…`).
+- `desktop/src/main/api/providers/openai.ts` — streaming chat-completions
+  with vision (content-parts array).
+- `desktop/src/main/api/providers/anthropic.ts` — streaming Messages API
+  with vision (base64 image source) and system-prompt extraction.
+- `desktop/src/main/api/providers/router.ts` — per-turn decision between
+  local and server paths, uniform RoutedEvent output.
+- `desktop/src/main/ipc/streaming.ts` now calls the router; the renderer
+  sees the same IPC events regardless of upstream.
+- `desktop/src/main/ipc/handlers.ts` — new IPC handlers
+  `byok.list/save/delete/test` + `event:byok-changed`.
+- `desktop/src/shared/ipc.ts` + `preload/index.ts` — typed surface,
+  never carries raw keys across the boundary (only presence booleans).
+- `desktop/src/renderer/screens/settings/ByokSection.tsx` — Settings
+  section with add/test/delete UX. Test runs before save, so invalid
+  keys never land in the Keychain.
+
+---
+
 ## 7. Resolved decisions (locked)
 
 1. **Screenshots are not persisted.** Client sends image bytes inline in the

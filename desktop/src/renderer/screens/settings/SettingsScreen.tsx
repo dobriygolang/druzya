@@ -12,6 +12,7 @@ import { useConfig } from '../../hooks/use-config';
 import { useAuthStore } from '../../stores/auth';
 import { useQuotaStore } from '../../stores/quota';
 import type { ProviderModel } from '@shared/types';
+import { ByokSection } from './ByokSection';
 
 type Tab = 'general' | 'hotkeys' | 'providers' | 'about';
 
@@ -225,8 +226,16 @@ function ProvidersTab({ models }: { models: ProviderModel[] }) {
     <>
       <SectionTitle
         title="AI провайдеры"
-        subtitle="Модель по умолчанию задаёт Druz9 Cloud; ключи «принеси свой» — в будущей версии."
+        subtitle="Используй модели Druz9 Cloud или подключи свои ключи OpenAI / Anthropic."
       />
+
+      <div style={{ marginBottom: 22 }}>
+        <ByokSection />
+      </div>
+
+      <div style={{ fontSize: 11, color: 'var(--d-text-3)', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 10, fontFamily: 'var(--f-mono)' }}>
+        Каталог моделей
+      </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
         {models.map((m) => (
           <div

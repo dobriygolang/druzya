@@ -81,6 +81,12 @@ func (s *GuildServer) ListTopGuilds(
 }
 
 // GetMyGuild implements druz9.v1.GuildService/GetMyGuild.
+//
+// Sanctum-bug 2026-04: a brand-new user with no guild membership used to
+// trigger a Connect NotFound (HTTP 404 + code:5) which the browser logged
+// noisily on /sanctum even though SanctumPage handles "no guild" gracefully.
+// Fix: surface the empty state as a successful response with an empty Guild
+// proto (id == ""). Frontend treats that as null. NetTab no longer screams.
 func (s *GuildServer) GetMyGuild(
 	ctx context.Context,
 	_ *connect.Request[pb.GetMyGuildRequest],
@@ -91,6 +97,11 @@ func (s *GuildServer) GetMyGuild(
 	}
 	g, err := s.MyGuildUC.Do(ctx, uid)
 	if err != nil {
+		// Honest empty state for "no guild yet" — return an empty Guild
+		// envelope rather than 404. Real backend errors still propagate.
+		if errors.Is(err, domain.ErrNotFound) {
+			return connect.NewResponse(&pb.Guild{}), nil
+		}
 		return nil, fmt.Errorf("guild.GetMyGuild: %w", s.toConnectErr(err))
 	}
 	return connect.NewResponse(toGuildProto(g)), nil

@@ -41,6 +41,11 @@ export const invokeChannels = {
   providersList: 'providers:list',
   quotaGet: 'quota:get',
   rateMessage: 'messages:rate',
+
+  byokList: 'byok:list',
+  byokSave: 'byok:save',
+  byokDelete: 'byok:delete',
+  byokTest: 'byok:test',
 } as const;
 
 /** Events pushed from main → renderer. */
@@ -54,7 +59,26 @@ export const eventChannels = {
   configUpdated: 'event:config-updated',
   quotaUpdated: 'event:quota-updated',
   authChanged: 'event:auth-changed',
+  byokChanged: 'event:byok-changed',
 } as const;
+
+// ─────────────────────────────────────────────────────────────────────────
+// BYOK types
+// ─────────────────────────────────────────────────────────────────────────
+
+export type ByokProvider = 'openai' | 'anthropic';
+
+/** Presence map — never carries actual key material. */
+export interface ByokPresence {
+  openai: boolean;
+  anthropic: boolean;
+}
+
+export interface ByokResult {
+  ok: boolean;
+  /** Human-readable detail on success (e.g. model count); failure message otherwise. */
+  detail: string;
+}
 
 // ─────────────────────────────────────────────────────────────────────────
 // Invoke payloads
@@ -192,6 +216,18 @@ export interface Druz9API {
   providers: { list: () => Promise<unknown[]> };
   quota: { get: () => Promise<Quota> };
   messages: { rate: (id: string, rating: -1 | 0 | 1) => Promise<void> };
+
+  /**
+   * BYOK — bring-your-own API keys. Keys stay in the OS Keychain;
+   * `list()` returns presence booleans only so raw key material NEVER
+   * crosses the IPC boundary.
+   */
+  byok: {
+    list: () => Promise<ByokPresence>;
+    save: (provider: ByokProvider, key: string) => Promise<ByokResult>;
+    delete: (provider: ByokProvider) => Promise<void>;
+    test: (provider: ByokProvider) => Promise<ByokResult>;
+  };
 
   /** Subscribe to a main-process event. Returns an unsubscribe function. */
   on: <T = unknown>(channel: string, handler: (payload: T) => void) => () => void;

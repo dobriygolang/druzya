@@ -33,7 +33,20 @@ app.whenReady().then(async () => {
       : `file://${join(__dirname, '../renderer/index.html')}`;
   const windowOptions = { preloadPath, rendererURL, isDev: cfg.isDev };
 
-  const streamer = createStreamer({ client });
+  // Default model is sourced from the DesktopConfig fetched on the
+  // renderer-side handle but the streamer runs in main; we track it as
+  // a mutable closure value updated whenever the renderer fetches config.
+  let currentDefaultModel = 'openai/gpt-4o-mini';
+  void client
+    .getDesktopConfig({ knownRev: 0n })
+    .then((c) => {
+      if (c.defaultModelId) currentDefaultModel = c.defaultModelId;
+    })
+    .catch(() => {
+      /* keep the fallback — BYOK-only users can still operate */
+    });
+
+  const streamer = createStreamer({ client, defaultModel: () => currentDefaultModel });
 
   registerHandlers({
     client,
