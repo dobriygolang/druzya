@@ -1,0 +1,51 @@
+{
+  "title": "Настройки",
+  "subtitle": "Управляй аккаунтом, интеграциями и предпочтениями.",
+  "nav": {
+    "account": "Аккаунт",
+    "billing": "Биллинг",
+    "integrations": "Интеграции",
+    "notifications": "Нотификации",
+    "ai": "AI настройки",
+    "privacy": "Конфиденциальность",
+    "appearance": "Внешний вид",
+    "danger": "Опасная зона"
+  },
+  "profile": "Профиль",
+  "load_failed": "Не удалось загрузить",
+  "change": "Сменить",
+  "fields": {
+    "username": "Имя пользователя",
+    "display": "Отображаемое имя",
+    "email": "Email",
+    "city": "Город",
+    "bio": "Био"
+  },
+  "city": "Москва",
+  "bio_default": "Backend инженер. Решаю кату каждый день.",
+  "account_card": "Аккаунт",
+  "rows": {
+    "id": "ID Account",
+    "registered": "Регистрация",
+    "plan": "Тариф",
+    "devices": "Подключённые устройства"
+  },
+  "devices_value": "3 устройства · MacBook Pro, iPhone, Web",
+  "buy_premium": "Купить Premium",
+  "integrations_title": "Интеграции",
+  "connected": "Connected",
+  "not_connected": "Not connected",
+  "manage": "Manage",
+  "connect": "Connect",
+  "appearance_title": "Внешний вид",
+  "theme_label": "Тема оформления",
+  "theme_desc": "Выбери цветовую схему интерфейса.",
+  "theme_auto": "Авто",
+  "theme_auto_desc": "По системе",
+  "theme_dark": "Тёмная",
+  "theme_dark_desc": "По умолчанию",
+  "theme_light": "Светлая",
+  "theme_light_desc": "Для дневного света",
+  "language_label": "Язык интерфейса",
+  "language_desc": "Применится после смены."
+}

@@ -1,7 +1,10 @@
 package services
 
 import (
+	"context"
+	"log/slog"
 	"os"
+	"time"
 
 	podcastApp "druz9/podcast/app"
 	podcastDomain "druz9/podcast/domain"
@@ -46,13 +49,25 @@ func NewPodcast(d Deps) *Module {
 	// instead of a silent 500.
 	var rawStore podcastDomain.PodcastObjectStore
 	if d.Cfg.MinIO.AccessKey != "" && d.Cfg.MinIO.SecretKey != "" && d.Cfg.MinIO.Endpoint != "" {
-		rawStore = podcastInfra.NewMinIOPodcastStore(
+		minioStore := podcastInfra.NewMinIOPodcastStore(
 			d.Cfg.MinIO.Endpoint,
 			d.Cfg.MinIO.AccessKey,
 			d.Cfg.MinIO.SecretKey,
 			minioBucketPodcasts(),
 			d.Cfg.MinIO.UseSSL,
 		)
+		// Auto-create the bucket on boot if it doesn't exist. Removes the
+		// historical "operator must `mc mb minio/podcasts` manually" foot-gun.
+		// Failure is logged but non-fatal — minio may be eventually available;
+		// PUT will surface the real error if the bucket is still missing.
+		bootCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		if err := minioStore.EnsureBucket(bootCtx); err != nil {
+			d.Log.Warn("podcast: minio EnsureBucket failed; manual `mc mb` may be required",
+				slog.String("bucket", minioBucketPodcasts()),
+				slog.Any("err", err))
+		}
+		cancel()
+		rawStore = minioStore
 	} else {
 		rawStore = podcastInfra.NewUnconfiguredObjectStore()
 	}

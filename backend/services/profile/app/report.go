@@ -38,6 +38,12 @@ type ReportView struct {
 	// (OPENROUTER_API_KEY missing) or upstream call failed; the frontend
 	// hides the section in that case (anti-fallback policy).
 	AIInsight string
+
+	// Achievements — list of achievements unlocked in the [WeekStart, WeekEnd]
+	// window. Drives the "Achievements this week" dashboard grid AND feeds
+	// AchievementsCount into the LLM insight payload. Empty slice when nothing
+	// new was unlocked OR when the underlying repo call failed (best-effort).
+	Achievements []domain.AchievementBrief
 }
 
 // InsightPayload mirrors infra.InsightPayload but lives in the app layer to
@@ -144,6 +150,13 @@ func (uc *GetReport) Do(ctx context.Context, userID uuid.UUID, now time.Time) (R
 		view.BestStreak = best
 	}
 
+	// Achievements unlocked this week — best-effort. Failure leaves the field
+	// empty; report still ships. Drives both the dashboard "Achievements
+	// this week" grid AND the count fed into the LLM insight payload.
+	if achs, aerr := uc.Repo.ListAchievementsSince(ctx, userID, start); aerr == nil {
+		view.Achievements = achs
+	}
+
 	// ── Phase B: AI insight ────────────────────────────────────────────────
 	//
 	// Build the payload from already-aggregated fields (no extra SQL) and
@@ -183,15 +196,12 @@ func buildInsightPayload(v ReportView, weekEnd time.Time) InsightPayload {
 	}
 	year, week := weekEnd.ISOWeek()
 	return InsightPayload{
-		WeekISO:          fmt.Sprintf("%04d-W%02d", year, week),
-		EloDelta:         v.Metrics.RatingChange,
-		WinRateBySection: winRates,
-		HoursStudied:     float64(v.Metrics.TimeMinutes) / 60.0,
-		Streak:           v.StreakDays,
-		WeakestSection:   weakest,
-		// AchievementsCount stays 0 in MVP — ListAchievementsSince is a
-		// separate repo method not currently wired into the use case;
-		// extending it is Phase B+1 work and would inflate this PR.
-		AchievementsCount: 0,
+		WeekISO:           fmt.Sprintf("%04d-W%02d", year, week),
+		EloDelta:          v.Metrics.RatingChange,
+		WinRateBySection:  winRates,
+		HoursStudied:      float64(v.Metrics.TimeMinutes) / 60.0,
+		Streak:            v.StreakDays,
+		WeakestSection:    weakest,
+		AchievementsCount: len(v.Achievements),
 	}
 }

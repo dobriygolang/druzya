@@ -102,11 +102,11 @@ func NewArena(d Deps, ratingRepo *ratingInfra.Postgres) *Module {
 		rdb, rdb, pg, pg, d.Bus, hub, clock, d.Log,
 	)
 
-	// Practice mode is a chi-direct REST route (no proto contract yet — see
-	// ports/practice.go for the rationale). Wired below alongside the
-	// transcoded /arena/match/* routes.
-	practiceUC := &arenaApp.StartPractice{Matches: pg, Tasks: pg, Clock: clock}
-	practice := arenaPorts.NewPracticeHandler(practiceUC, eloFn)
+	// Practice-vs-AI mode was removed end-to-end: the concept is broken (AI
+	// always wins faster than humans), and Mock Interview already covers the
+	// "I want to practice with AI" use case appropriately. UI was deleted in
+	// Wave-4 A; backend (StartPractice + PracticeHandler + tests) is now
+	// deleted too — search the repo history if you need the old code.
 
 	// Current-match polling endpoint — the SPA polls /arena/match/current
 	// every 2s while the user is in the matchmaking queue and navigates to
@@ -138,9 +138,8 @@ func NewArena(d Deps, ratingRepo *ratingInfra.Postgres) *Module {
 			// /matches/my теперь Connect-RPC GetMyMatches — идёт через тот
 			// же transcoder. Раньше был отдельный chi-route → удалён.
 			r.Get("/arena/matches/my", transcoder.ServeHTTP)
-			// Practice — instant single-player match against an AI opponent.
-			// Chi-direct (no proto), see ports/practice.go.
-			r.Post("/arena/practice", practice.ServeHTTP)
+			// /arena/practice route deleted — see comment above. Use Mock
+			// Interview for AI-assisted practice.
 		},
 		MountWS: func(ws chi.Router) {
 			ws.Get("/arena/{matchId}", hub.WSHandler)

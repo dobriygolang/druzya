@@ -12,6 +12,18 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Brain, Share2, Trophy, Plus, X, Check } from 'lucide-react'
 import { motion } from 'framer-motion'
+import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  Legend,
+  Line,
+  LineChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from 'recharts'
 import { AppShellV2 } from '../components/AppShell'
 import { useWeeklyReportQuery, type WeeklyReport } from '../lib/queries/weekly'
 import {
@@ -308,70 +320,79 @@ function HourlyHeatmap({ data }: { data: number[] }) {
 }
 
 // ============================================================================
-// 3. <EloChart series={elo_series} /> — SVG line chart
+// 3. <EloChart series={elo_series} /> — recharts LineChart
 // ============================================================================
+//
+// Refactored from custom SVG to recharts (Phase D polish): we get free axis
+// scaling, hover tooltip, legend toggling, and animated path-draw without
+// re-implementing them. Section colors stay byte-identical via SECTION_COLORS.
 
-type EloHover = { x: number; y: number; date: string; elo: number; section: string } | null
+function formatEloDate(iso: string): string {
+  return new Date(iso).toLocaleDateString('ru', { day: 'numeric', month: 'short' })
+}
+
+// Wide-format row keyed by date with one numeric column per section. Recharts
+// expects this shape for multi-line charts (one <Line dataKey="..." /> per
+// section).
+type EloRow = { date: string; label: string } & Record<string, number | string>
+
+function EloChartTooltip({
+  active,
+  payload,
+  label,
+}: {
+  active?: boolean
+  payload?: Array<{ name: string; value: number; color: string; dataKey: string }>
+  label?: string
+}) {
+  if (!active || !payload || payload.length === 0) return null
+  return (
+    <div className="rounded-md bg-surface-3 px-3 py-2 text-[11px] shadow-md ring-1 ring-border">
+      <div className="mb-1 font-mono text-[10px] text-text-muted">
+        {label ? formatEloDate(label) : ''}
+      </div>
+      {payload.map((p) => (
+        <div key={p.dataKey} className="flex items-center gap-2">
+          <span className="h-2 w-2 rounded-full" style={{ background: p.color }} />
+          <span className="text-text-primary">
+            {sectionLabel(p.dataKey)} · <span className="font-semibold">{p.value}</span>
+          </span>
+        </div>
+      ))}
+    </div>
+  )
+}
 
 function EloChart({ series }: { series: EloPoint[] }) {
-  const [hover, setHover] = useState<EloHover>(null)
-
-  // Группировка по секциям — один polyline на секцию. Сортировка по date,
-  // чтобы линии не «прыгали» если бэк отдал в другом порядке.
-  // Хуки вызываются ДО early-return: rules-of-hooks. Пустой series → return
-  // null будет ниже, после всех useMemo.
-  const bySection = useMemo(() => {
-    const map = new Map<string, EloPoint[]>()
+  // Build wide-format rows: one row per unique date, columns per section.
+  // Sections list is stable-sorted to keep legend/line render order
+  // deterministic across re-renders.
+  const { rows, sections } = useMemo(() => {
+    const sectionSet = new Set<string>()
+    const byDate = new Map<string, EloRow>()
     for (const p of series) {
-      const arr = map.get(p.section) ?? []
-      arr.push(p)
-      map.set(p.section, arr)
+      sectionSet.add(p.section)
+      const existing = byDate.get(p.date)
+      if (existing) {
+        existing[p.section] = p.elo
+      } else {
+        byDate.set(p.date, { date: p.date, label: formatEloDate(p.date), [p.section]: p.elo })
+      }
     }
-    for (const arr of map.values()) {
-      arr.sort((a, b) => (a.date < b.date ? -1 : 1))
+    const sortedDates = Array.from(byDate.keys()).sort()
+    return {
+      rows: sortedDates.map((d) => byDate.get(d) as EloRow),
+      sections: Array.from(sectionSet).sort(),
     }
-    return map
-  }, [series])
-
-  // X-домен: уникальные ISO-даты, отсортированы. Y-домен: min..max ELO с
-  // паддингом ±20 чтобы точки не лежали на границе.
-  const dates = useMemo(() => {
-    const set = new Set<string>()
-    for (const p of series) set.add(p.date)
-    return Array.from(set).sort()
   }, [series])
 
   if (series.length === 0) return null // anti-fallback: пусто → секцию скрываем
 
+  // Y-axis padding ±20 (preserved from prior implementation) so points don't
+  // sit on the chart border.
   const elos = series.map((p) => p.elo)
   const minElo = Math.min(...elos) - 20
   const maxElo = Math.max(...elos) + 20
-
-  const W = 600
-  const H = 280
-  const PAD_L = 40
-  const PAD_R = 16
-  const PAD_T = 16
-  const PAD_B = 32
-  const innerW = W - PAD_L - PAD_R
-  const innerH = H - PAD_T - PAD_B
-
-  function xOf(date: string): number {
-    const i = dates.indexOf(date)
-    if (dates.length <= 1) return PAD_L + innerW / 2
-    return PAD_L + (i / (dates.length - 1)) * innerW
-  }
-  function yOf(elo: number): number {
-    if (maxElo === minElo) return PAD_T + innerH / 2
-    return PAD_T + innerH - ((elo - minElo) / (maxElo - minElo)) * innerH
-  }
-
-  // Y-axis — 4 горизонтальных линии-сетки с подписями ELO.
-  const yTicks = 4
-  const yLabels = Array.from({ length: yTicks + 1 }).map((_, i) => {
-    const elo = Math.round(minElo + ((maxElo - minElo) * (yTicks - i)) / yTicks)
-    return { y: PAD_T + (i / yTicks) * innerH, elo }
-  })
 
   return (
     <section className="flex flex-col gap-5 rounded-2xl bg-surface-2 p-5 sm:p-7">
@@ -379,111 +400,44 @@ function EloChart({ series }: { series: EloPoint[] }) {
         <h2 className="font-display text-lg font-bold text-text-primary">Динамика ELO</h2>
         <span className="font-mono text-[11px] text-text-muted">{series.length} точек</span>
       </div>
-      <div className="relative w-full overflow-x-auto">
-        <svg viewBox={`0 0 ${W} ${H}`} className="w-full min-w-[480px]" role="img" aria-label="ELO trajectory">
-          {/* grid */}
-          {yLabels.map((t, i) => (
-            <g key={i}>
-              <line
-                x1={PAD_L}
-                x2={W - PAD_R}
-                y1={t.y}
-                y2={t.y}
-                className="stroke-border"
-                strokeDasharray="2 4"
-                strokeWidth={1}
+      <div className="h-[280px] w-full">
+        <ResponsiveContainer width="100%" height="100%">
+          <LineChart data={rows} margin={{ top: 16, right: 16, left: 0, bottom: 8 }}>
+            <CartesianGrid stroke="rgb(var(--color-border))" strokeDasharray="2 4" />
+            <XAxis
+              dataKey="date"
+              tickFormatter={formatEloDate}
+              stroke="rgb(var(--color-text-muted))"
+              tick={{ fontSize: 10, fontFamily: 'ui-monospace, monospace' }}
+            />
+            <YAxis
+              domain={[Math.round(minElo), Math.round(maxElo)]}
+              stroke="rgb(var(--color-text-muted))"
+              tick={{ fontSize: 10, fontFamily: 'ui-monospace, monospace' }}
+              width={40}
+            />
+            <Tooltip content={<EloChartTooltip />} cursor={{ stroke: 'rgb(var(--color-border))' }} />
+            <Legend
+              iconType="circle"
+              wrapperStyle={{ fontSize: 12 }}
+              formatter={(v) => sectionLabel(String(v))}
+            />
+            {sections.map((s) => (
+              <Line
+                key={s}
+                type="monotone"
+                dataKey={s}
+                stroke={sectionColor(s)}
+                strokeWidth={2}
+                dot={{ r: 4, strokeWidth: 2, stroke: 'rgb(var(--color-surface-2))', fill: sectionColor(s) }}
+                activeDot={{ r: 5 }}
+                connectNulls
+                isAnimationActive
+                animationDuration={700}
               />
-              <text x={PAD_L - 6} y={t.y + 3} textAnchor="end" className="fill-text-muted font-mono text-[10px]">
-                {t.elo}
-              </text>
-            </g>
-          ))}
-          {/* x labels */}
-          {dates.map((d) => (
-            <text
-              key={d}
-              x={xOf(d)}
-              y={H - PAD_B + 16}
-              textAnchor="middle"
-              className="fill-text-muted font-mono text-[10px]"
-            >
-              {new Date(d).toLocaleDateString('ru', { day: 'numeric', month: 'short' })}
-            </text>
-          ))}
-          {/* lines per section */}
-          {Array.from(bySection.entries()).map(([section, pts]) => {
-            const color = sectionColor(section)
-            const points = pts.map((p) => `${xOf(p.date)},${yOf(p.elo)}`).join(' ')
-            return (
-              <g key={section}>
-                <motion.polyline
-                  fill="none"
-                  stroke={color}
-                  strokeWidth={2}
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  points={points}
-                  initial={{ pathLength: 0, opacity: 0 }}
-                  animate={{ pathLength: 1, opacity: 1 }}
-                  transition={{ duration: 0.7, ease: 'easeOut' }}
-                />
-                {pts.map((p) => (
-                  <circle
-                    key={`${section}-${p.date}`}
-                    cx={xOf(p.date)}
-                    cy={yOf(p.elo)}
-                    r={4}
-                    fill={color}
-                    stroke="rgb(var(--color-surface-2))"
-                    strokeWidth={2}
-                    onMouseEnter={() =>
-                      setHover({ x: xOf(p.date), y: yOf(p.elo), date: p.date, elo: p.elo, section })
-                    }
-                    onMouseLeave={() => setHover(null)}
-                    style={{ cursor: 'pointer' }}
-                  />
-                ))}
-              </g>
-            )
-          })}
-          {hover && (
-            <g pointerEvents="none">
-              <rect
-                x={Math.min(hover.x + 8, W - 140)}
-                y={Math.max(hover.y - 36, 4)}
-                width={130}
-                height={32}
-                rx={6}
-                className="fill-surface-3"
-                stroke={sectionColor(hover.section)}
-                strokeWidth={1}
-              />
-              <text
-                x={Math.min(hover.x + 8, W - 140) + 8}
-                y={Math.max(hover.y - 36, 4) + 14}
-                className="fill-text-primary text-[11px] font-semibold"
-              >
-                {sectionLabel(hover.section)} · {hover.elo}
-              </text>
-              <text
-                x={Math.min(hover.x + 8, W - 140) + 8}
-                y={Math.max(hover.y - 36, 4) + 26}
-                className="fill-text-muted text-[10px]"
-              >
-                {new Date(hover.date).toLocaleDateString('ru', { day: 'numeric', month: 'short' })}
-              </text>
-            </g>
-          )}
-        </svg>
-      </div>
-      {/* legend */}
-      <div className="flex flex-wrap gap-3">
-        {Array.from(bySection.keys()).map((s) => (
-          <div key={s} className="flex items-center gap-2">
-            <span className="h-2.5 w-2.5 rounded-full" style={{ background: sectionColor(s) }} />
-            <span className="text-[12px] text-text-secondary">{sectionLabel(s)}</span>
-          </div>
-        ))}
+            ))}
+          </LineChart>
+        </ResponsiveContainer>
       </div>
     </section>
   )
@@ -492,6 +446,30 @@ function EloChart({ series }: { series: EloPoint[] }) {
 // ============================================================================
 // 4. <SectionBars data={match_aggregates} />
 // ============================================================================
+
+// Tooltip for the recharts SectionBars — renders a per-section win/loss
+// summary instead of recharts' default (which lists series independently).
+function SectionBarsTooltip({
+  active,
+  payload,
+  label,
+}: {
+  active?: boolean
+  payload?: Array<{ payload: { section: string; wins: number; losses: number; win_rate_pct: number } }>
+  label?: string
+}) {
+  if (!active || !payload || payload.length === 0) return null
+  const row = payload[0].payload
+  return (
+    <div className="rounded-md bg-surface-3 px-3 py-2 text-[11px] shadow-md ring-1 ring-border">
+      <div className="mb-1 font-semibold text-text-primary">{label}</div>
+      <div className="font-mono text-text-muted">
+        <span className="text-success">{row.wins}W</span> ·{' '}
+        <span className="text-danger">{row.losses}L</span> · {row.win_rate_pct}% wr
+      </div>
+    </div>
+  )
+}
 
 function SectionBars({ data }: { data: SectionBreakdown[] }) {
   if (data.length === 0) {
@@ -504,41 +482,45 @@ function SectionBars({ data }: { data: SectionBreakdown[] }) {
       </section>
     )
   }
-  const maxTotal = Math.max(1, ...data.map((s) => s.matches))
+
+  // Recharts wants flat row objects. We project name (label) onto x-axis, and
+  // stack two numeric series (wins / losses) on y-axis.
+  const rows = data.map((s) => ({
+    section: s.section,
+    name: sectionLabel(s.section),
+    wins: s.wins,
+    losses: s.losses,
+    win_rate_pct: s.win_rate_pct,
+  }))
+
   return (
     <section className="flex flex-col gap-4 rounded-2xl bg-surface-2 p-5 sm:p-7">
       <div className="flex items-center justify-between">
         <h2 className="font-display text-lg font-bold text-text-primary">Секции недели</h2>
         <span className="font-mono text-[11px] text-text-muted">{data.length} разделов</span>
       </div>
-      <div className="flex flex-col gap-3">
-        {data.map((s) => {
-          const total = Math.max(s.matches, s.wins + s.losses, 1)
-          const winPct = (s.wins / total) * 100
-          const lossPct = (s.losses / total) * 100
-          const widthPct = (total / maxTotal) * 100
-          return (
-            <div key={s.section} className="flex flex-col gap-1.5">
-              <div className="flex items-center justify-between text-[12px]">
-                <span className="font-semibold text-text-primary">{sectionLabel(s.section)}</span>
-                <span className="font-mono text-text-muted">
-                  {s.wins}W · {s.losses}L · {s.win_rate_pct}% wr
-                </span>
-              </div>
-              <div className="h-3 w-full overflow-hidden rounded-full bg-surface-1">
-                <motion.div
-                  initial={{ width: 0 }}
-                  animate={{ width: `${widthPct}%` }}
-                  transition={{ duration: 0.6, ease: 'easeOut' }}
-                  className="flex h-full"
-                >
-                  <div className="h-full bg-success" style={{ width: `${winPct}%` }} />
-                  <div className="h-full bg-danger" style={{ width: `${lossPct}%` }} />
-                </motion.div>
-              </div>
-            </div>
-          )
-        })}
+      <div className="h-[260px] w-full">
+        <ResponsiveContainer width="100%" height="100%">
+          <BarChart data={rows} margin={{ top: 8, right: 8, left: 0, bottom: 8 }}>
+            <CartesianGrid stroke="rgb(var(--color-border))" strokeDasharray="2 4" vertical={false} />
+            <XAxis
+              dataKey="name"
+              stroke="rgb(var(--color-text-muted))"
+              tick={{ fontSize: 11 }}
+              interval={0}
+            />
+            <YAxis
+              allowDecimals={false}
+              stroke="rgb(var(--color-text-muted))"
+              tick={{ fontSize: 10, fontFamily: 'ui-monospace, monospace' }}
+              width={32}
+            />
+            <Tooltip content={<SectionBarsTooltip />} cursor={{ fill: 'rgb(var(--color-surface-1))' }} />
+            <Legend iconType="square" wrapperStyle={{ fontSize: 12 }} />
+            <Bar dataKey="wins" stackId="wl" name="Wins" fill="rgb(var(--color-success))" radius={[0, 0, 0, 0]} />
+            <Bar dataKey="losses" stackId="wl" name="Losses" fill="rgb(var(--color-danger))" radius={[4, 4, 0, 0]} />
+          </BarChart>
+        </ResponsiveContainer>
       </div>
     </section>
   )

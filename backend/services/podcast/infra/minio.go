@@ -66,6 +66,73 @@ func (s *MinIOPodcastStore) Available() bool {
 	return s != nil && s.Endpoint != "" && s.AccessKey != "" && s.SecretKey != ""
 }
 
+// EnsureBucket creates the bucket if it doesn't exist. Idempotent — safe to
+// call at boot. Without it, the operator must manually `mc mb minio/podcasts`
+// before the first upload, otherwise PUT returns NoSuchBucket. Returns nil
+// when the bucket already exists OR was just created.
+//
+// Errors are wrapped with context but NOT swallowed — boot-time failure
+// here is a real ops problem (wrong credentials, unreachable minio, region
+// mismatch) that deserves to crash the process.
+func (s *MinIOPodcastStore) EnsureBucket(ctx context.Context) error {
+	if !s.Available() {
+		return fmt.Errorf("podcast.minio.EnsureBucket: %w", domain.ErrObjectStoreUnavailable)
+	}
+	now := s.now().UTC()
+	// HEAD /<bucket> returns 200 if exists, 404/NoSuchBucket if not.
+	headURL := s.bucketURL()
+	req, err := http.NewRequestWithContext(ctx, http.MethodHead, headURL, nil)
+	if err != nil {
+		return fmt.Errorf("podcast.minio.EnsureBucket: build HEAD req: %w", err)
+	}
+	signV4Podcast(req, s.AccessKey, s.SecretKey, s.Region, "s3", emptySHA256, now)
+	resp, err := s.HTTP.Do(req)
+	if err != nil {
+		return fmt.Errorf("podcast.minio.EnsureBucket: HEAD: %w", err)
+	}
+	_ = resp.Body.Close()
+	if resp.StatusCode == http.StatusOK {
+		return nil // bucket exists
+	}
+	if resp.StatusCode != http.StatusNotFound {
+		return fmt.Errorf("podcast.minio.EnsureBucket: unexpected HEAD status %d", resp.StatusCode)
+	}
+	// Create. PUT /<bucket> with empty body. AWS S3 wants a region in the
+	// CreateBucketConfiguration body for non-us-east-1; minio is permissive
+	// about empty body in any region.
+	putReq, err := http.NewRequestWithContext(ctx, http.MethodPut, headURL, nil)
+	if err != nil {
+		return fmt.Errorf("podcast.minio.EnsureBucket: build PUT req: %w", err)
+	}
+	putReq.ContentLength = 0
+	signV4Podcast(putReq, s.AccessKey, s.SecretKey, s.Region, "s3", emptySHA256, s.now().UTC())
+	putResp, err := s.HTTP.Do(putReq)
+	if err != nil {
+		return fmt.Errorf("podcast.minio.EnsureBucket: PUT: %w", err)
+	}
+	defer putResp.Body.Close()
+	if putResp.StatusCode/100 != 2 && putResp.StatusCode != http.StatusConflict {
+		// 409 BucketAlreadyOwnedByYou is fine in race conditions.
+		body, _ := io.ReadAll(io.LimitReader(putResp.Body, 512))
+		return fmt.Errorf("podcast.minio.EnsureBucket: PUT %s: %s", putResp.Status, string(body))
+	}
+	return nil
+}
+
+// bucketURL returns scheme://endpoint/<bucket> — used by EnsureBucket's
+// HEAD/PUT. objectURL appends the key for object operations.
+func (s *MinIOPodcastStore) bucketURL() string {
+	scheme := "http"
+	if s.UseSSL {
+		scheme = "https"
+	}
+	return fmt.Sprintf("%s://%s/%s", scheme, s.Endpoint, s.Bucket)
+}
+
+// emptySHA256 is the well-known v4 hash of an empty payload — required for
+// HEAD/PUT requests with no body.
+const emptySHA256 = "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+
 // PutAudio uploads body under objectKey. Caller is responsible for
 // generating the key (e.g. "audio/<uuid>.mp3"); we reject empty keys.
 //

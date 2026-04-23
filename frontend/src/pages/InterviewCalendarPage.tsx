@@ -24,6 +24,7 @@ import {
   priorityLabelRU,
   type InterviewCalendarView,
 } from '../lib/queries/calendar'
+import { useCompaniesQuery } from '../lib/queries/companies'
 
 function ErrorChip() {
   return (
@@ -113,9 +114,11 @@ function renderWeekGrid(daysLeft: number) {
   ))
 }
 
-// EditDateModal — редактирует interview_date текущего календаря. company_id
-// сохраняется неизменным (бэкендный UpsertCalendar требует UUID, у нас нет
-// «компаний-пикера» в этом MVP), role/level можно отредактировать строкой.
+// EditDateModal — редактирует interview_date / company / role текущего
+// календаря. Список компаний приходит из GET /api/v1/companies
+// (см. lib/queries/companies.ts), default-selection = current.company_id.
+// UpsertCalendar требует валидный UUID компании, поэтому save заблокирован
+// пока companies загружаются или selection пуст.
 function EditDateModal({
   current,
   onClose,
@@ -124,8 +127,10 @@ function EditDateModal({
   onClose: () => void
 }) {
   const upsert = useUpsertCalendarMutation()
+  const companies = useCompaniesQuery()
   const [date, setDate] = useState(current.interview_date.slice(0, 10))
   const [role, setRole] = useState(current.role ?? '')
+  const [companyId, setCompanyId] = useState(current.company_id)
   const [err, setErr] = useState<string | null>(null)
 
   const onSubmit = async (e: React.FormEvent) => {
@@ -135,9 +140,13 @@ function EditDateModal({
       setErr('Укажи дату собеседования')
       return
     }
+    if (!companyId) {
+      setErr('Выбери компанию')
+      return
+    }
     try {
       await upsert.mutateAsync({
-        company_id: current.company_id,
+        company_id: companyId,
         role: role.trim() || undefined,
         interview_date: date,
       })
@@ -154,12 +163,37 @@ function EditDateModal({
         className="w-full max-w-md rounded-xl border border-border bg-surface-1 p-6 shadow-xl"
       >
         <h3 className="font-display text-lg font-bold text-text-primary">
-          Изменить дату собеседования
+          Изменить параметры собеседования
         </h3>
         <p className="mt-1 text-[12px] text-text-muted">
-          План подготовки пересчитается под новую дату.
+          План подготовки пересчитается под новые данные.
         </p>
         <label className="mt-4 flex flex-col gap-1 text-sm">
+          <span className="font-mono text-[11px] uppercase text-text-secondary">Компания</span>
+          <select
+            required
+            value={companyId}
+            onChange={(e) => setCompanyId(e.target.value)}
+            disabled={companies.isLoading || companies.isError}
+            className="rounded-md border border-border bg-surface-2 px-3 py-2 text-text-primary focus:border-accent focus:outline-none disabled:opacity-60"
+          >
+            {companies.isLoading && <option value={current.company_id}>Загрузка…</option>}
+            {!companies.isLoading && (companies.data ?? []).length === 0 && (
+              <option value={current.company_id}>Список пуст</option>
+            )}
+            {(companies.data ?? []).map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name}
+              </option>
+            ))}
+          </select>
+          {companies.isError && (
+            <span className="font-mono text-[10px] text-danger">
+              Не удалось загрузить компании.
+            </span>
+          )}
+        </label>
+        <label className="mt-3 flex flex-col gap-1 text-sm">
           <span className="font-mono text-[11px] uppercase text-text-secondary">Дата</span>
           <input
             type="date"
@@ -188,7 +222,12 @@ function EditDateModal({
           <Button variant="ghost" size="sm" onClick={onClose} type="button">
             Отмена
           </Button>
-          <Button variant="primary" size="sm" type="submit" disabled={upsert.isPending}>
+          <Button
+            variant="primary"
+            size="sm"
+            type="submit"
+            disabled={upsert.isPending || companies.isLoading || !companyId}
+          >
             {upsert.isPending ? 'Сохраняю…' : 'Сохранить'}
           </Button>
         </div>
@@ -272,7 +311,7 @@ export default function InterviewCalendarPage() {
                 icon={<Calendar className="h-3.5 w-3.5" />}
                 onClick={() => setEditOpen(true)}
               >
-                Изменить дату
+                Изменить
               </Button>
             </div>
           )}

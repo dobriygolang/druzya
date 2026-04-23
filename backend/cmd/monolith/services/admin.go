@@ -1,7 +1,11 @@
 package services
 
 import (
+	"log/slog"
+	"net/http"
+
 	adminApp "druz9/admin/app"
+	"druz9/admin/domain"
 	adminInfra "druz9/admin/infra"
 	adminPorts "druz9/admin/ports"
 	"druz9/shared/generated/pb/druz9/v1/druz9v1connect"
@@ -54,6 +58,14 @@ func NewAdmin(d Deps) *Module {
 	connectPath, connectHandler := druz9v1connect.NewAdminServiceHandler(server)
 	transcoder := mustTranscode("admin", connectPath, connectHandler)
 
+	// chi-direct /api/v1/companies — public read-only listing for authenticated
+	// users (no admin role check). Used by the /calendar EditDateModal company
+	// picker so candidates can pick a real company without needing the admin
+	// CMS surface. Adding it as a chi-direct handler avoids a proto regen and
+	// keeps the admin-gated /admin/companies surface untouched (curators still
+	// hit the proto endpoint to mutate).
+	ch := &companiesPublicHandler{repo: companies, log: d.Log}
+
 	return &Module{
 		ConnectPath:        connectPath,
 		ConnectHandler:     transcoder,
@@ -77,6 +89,46 @@ func NewAdmin(d Deps) *Module {
 
 			// Public /status — auth bypass enforced in router.go.
 			r.Get("/status", transcoder.ServeHTTP)
+
+			// /companies — read-only listing for any authenticated user.
+			// Powers the EditDateModal company picker on /calendar.
+			r.Get("/companies", ch.list)
 		},
 	}
+}
+
+// companiesPublicHandler exposes a non-admin read-only view over the
+// admin.CompanyRepo. The shape is intentionally minimal (id + name + slug)
+// so it stays usable as a picker option without leaking admin metadata.
+type companiesPublicHandler struct {
+	repo domain.CompanyRepo
+	log  *slog.Logger
+}
+
+type companyOptionDTO struct {
+	ID   string `json:"id"`
+	Slug string `json:"slug"`
+	Name string `json:"name"`
+}
+
+type companiesResponse struct {
+	Items []companyOptionDTO `json:"items"`
+}
+
+func (h *companiesPublicHandler) list(w http.ResponseWriter, r *http.Request) {
+	rows, err := h.repo.List(r.Context())
+	if err != nil {
+		h.log.ErrorContext(r.Context(), "companies.list", slog.Any("err", err))
+		http.Error(w, "internal", http.StatusInternalServerError)
+		return
+	}
+	out := companiesResponse{Items: make([]companyOptionDTO, 0, len(rows))}
+	for _, row := range rows {
+		out.Items = append(out.Items, companyOptionDTO{
+			ID:   row.ID.String(),
+			Slug: row.Slug,
+			Name: row.Name,
+		})
+	}
+	writeJSON(w, http.StatusOK, out)
 }

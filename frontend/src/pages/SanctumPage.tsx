@@ -439,7 +439,7 @@ function Activity() {
             <div className="flex min-w-0 flex-1 flex-col gap-0.5">
               <span className="truncate text-sm font-semibold text-text-primary">
                 {won ? 'Победа' : m.result === 'loss' ? 'Поражение' : 'Матч'} · vs @
-                {m.opponent_username || m.opponent_user_id.slice(0, 6)}
+                {m.opponent_username || m.opponent_user_id?.slice(0, 6) || 'неизв.'}
               </span>
               <span className="truncate text-[11px] text-text-muted">
                 {m.section} · {fmtDuration(m.duration_seconds)} · {lpSign}

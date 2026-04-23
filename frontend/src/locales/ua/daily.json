@@ -1,0 +1,17 @@
+{
+  "day_of": "DAILY · ДЕНЬ {{day}} ИЗ 365",
+  "passed_today": "Прошли сегодня",
+  "load_failed": "Не удалось загрузить",
+  "tabs": {
+    "description": "Описание"
+  },
+  "no_kata_today": "Ката ещё не назначена на сегодня",
+  "constraints": "Ограничения",
+  "time_limit": "Таймаут: {{sec}} с",
+  "memory_limit": "Память: {{mb}} МБ",
+  "tests_not_run": "Тесты ещё не запускались",
+  "run": "Run",
+  "submit": "Submit",
+  "streak_progress": "Прогресс серии",
+  "consecutive_days": "дней подряд"
+}

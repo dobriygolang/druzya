@@ -324,6 +324,9 @@ func TestGetWeeklyShare_HappyPath(t *testing.T) {
 		Return(nil, errors.New("ignored"))
 	repo.EXPECT().GetStreaks(gomock.Any(), uid).
 		Return(0, 0, errors.New("ignored"))
+	// ListAchievementsSince added by AchievementsCount-fix in InsightPayload.
+	repo.EXPECT().ListAchievementsSince(gomock.Any(), uid, gomock.Any()).
+		Return(nil, errors.New("ignored"))
 
 	srv := newTestServer(t, repo)
 	resp, err := srv.GetWeeklyShare(context.Background(),

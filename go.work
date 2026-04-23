@@ -20,6 +20,10 @@ use (
 	./backend/services/season
 	./backend/services/slot
 	./backend/services/vacancies
+	./backend/services/orgs
+	./backend/services/mentor_session
+	./backend/services/tg_coach
+	./backend/services/cohort
 	./backend/shared
 )
 
