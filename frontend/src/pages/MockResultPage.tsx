@@ -1,18 +1,29 @@
-// TODO i18n
-import { useParams } from 'react-router-dom'
+// MockResultPage — post-interview AI report.
+// Wires:
+//   - GET /mock/session/:id/report  via useMockReportQuery (polled until ready)
+//   - "Replay интервью" → /mock/:id/replay
+//   - "Слушать разбор" → POST /voice/tts (premium-only; 402 → upsell modal)
+//
+// Cards that don't yet have a backing endpoint (StressTimelineCard,
+// CompanyScoreCard) are MVP-static and clearly marked.
+import { useState } from 'react'
+import { useNavigate, useParams } from 'react-router-dom'
 import {
   ArrowLeft,
   Check,
   Download,
+  Loader2,
   Plus,
   RotateCcw,
   Sparkles,
+  Volume2,
   X,
 } from 'lucide-react'
 import { AppShellV2 } from '../components/AppShell'
 import { Button } from '../components/Button'
 import { Card } from '../components/Card'
 import { useMockReportQuery } from '../lib/queries/mock'
+import { API_BASE } from '../lib/apiClient'
 
 function ErrorChip() {
   return (
@@ -22,21 +33,45 @@ function ErrorChip() {
   )
 }
 
-function Header() {
+function Header({
+  onBack,
+  onReplay,
+  onListen,
+  listening,
+  premiumGated,
+}: {
+  onBack: () => void
+  onReplay: () => void
+  onListen: () => void
+  listening: boolean
+  premiumGated: boolean
+}) {
   return (
     <div className="flex h-16 items-center justify-between gap-2 border-b border-border bg-surface-1 px-4 sm:px-8">
-      <button className="grid h-9 w-9 place-items-center rounded-md text-text-secondary hover:bg-surface-2">
+      <button
+        type="button"
+        onClick={onBack}
+        className="grid h-9 w-9 place-items-center rounded-md text-text-secondary hover:bg-surface-2"
+        aria-label="back"
+      >
         <ArrowLeft className="h-5 w-5" />
       </button>
-      <span className="font-display text-base font-bold text-text-primary">
-        AI Mock Review · Senior Yandex · 28 апр
-      </span>
+      <span className="font-display text-base font-bold text-text-primary">AI Mock Review</span>
       <div className="flex items-center gap-2">
-        <Button variant="ghost" size="sm" icon={<Download className="h-4 w-4" />}>
+        <Button variant="ghost" size="sm" icon={<Download className="h-4 w-4" />} disabled>
           Export PDF
         </Button>
-        <Button variant="primary" size="sm" icon={<RotateCcw className="h-4 w-4" />}>
-          Повторить мок
+        <Button
+          variant="ghost"
+          size="sm"
+          icon={listening ? <Loader2 className="h-4 w-4 animate-spin" /> : <Volume2 className="h-4 w-4" />}
+          onClick={onListen}
+          title={premiumGated ? 'Премиум-голос — для подписчиков' : 'Озвучить разбор'}
+        >
+          Слушать разбор
+        </Button>
+        <Button variant="primary" size="sm" icon={<RotateCcw className="h-4 w-4" />} onClick={onReplay}>
+          Replay интервью
         </Button>
       </div>
     </div>
@@ -214,37 +249,120 @@ function ApplyCard() {
   )
 }
 
+function PremiumModal({ onClose }: { onClose: () => void }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
+      <div className="w-full max-w-md rounded-xl border border-warn/40 bg-surface-1 p-6 shadow-xl">
+        <h3 className="font-display text-lg font-bold text-warn">Премиум-голос только для подписчиков</h3>
+        <p className="mt-2 text-[13px] text-text-secondary">
+          Озвучка разбора с премиум-голосом доступна на тарифах Seeker и Ascendant.
+          Базовый разбор (текст + браузерный TTS) уже включён в бесплатный тариф.
+        </p>
+        <div className="mt-4 flex justify-end gap-2">
+          <Button variant="ghost" size="sm" onClick={onClose}>
+            Не сейчас
+          </Button>
+          <Button variant="primary" size="sm" onClick={() => { window.location.href = '/settings#billing' }}>
+            Оформить подписку
+          </Button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export default function MockResultPage() {
   const { sessionId } = useParams<{ sessionId: string }>()
-  const { data: report, isError } = useMockReportQuery(sessionId)
-  const overall = report?.overall_score ?? 72
+  const navigate = useNavigate()
+  const { data: report, isError, isLoading } = useMockReportQuery(sessionId)
+  const isProcessing = report?.status === 'processing' || (!report && isLoading)
+
+  // Empty / fallback values keep the page rendering coherently while the
+  // worker is still grading. Once the report lands, every cell shows real
+  // numbers — no hardcoded "72" sneaks through.
+  const overall = report?.overall_score ?? 0
   const sections = report?.sections ?? {}
-  const sec = (key: string, fallback: { score: number; comment: string }) =>
-    sections[key] ?? fallback
-  const ps = sec('problem_solving', { score: 80, comment: 'Уверенное решение алгоритмов' })
-  const cq = sec('code_quality', { score: 65, comment: 'Нейминг и структура хромают' })
-  const cm = sec('communication', { score: 75, comment: 'Хорошо думал вслух' })
-  const sh = sec('stress_handling', { score: 60, comment: 'Просадка на минуте 32' })
-  const strengths = report?.strengths?.length
-    ? report.strengths
-    : ['Чистая архитектура решения LRU', 'Точная оценка временной сложности', 'Хорошие вопросы по требованиям', 'Уверенно держал ритм диалога']
-  const weaknesses = report?.weaknesses?.length
-    ? report.weaknesses
-    : ['Не упомянул потокобезопасность', 'Слабый анализ trade-offs', 'Поверхностный system design', 'Долго думал перед кодом (4 мин)']
-  const recs = report?.recommendations?.length
-    ? report.recommendations.map((r, i) => ({ p: i < 2 ? 'P1' : 'P2', text: r.title }))
-    : [
-        { p: 'P1', text: 'Повтори concurrency patterns в Go' },
-        { p: 'P1', text: '5 задач по System Design (Scaling)' },
-        { p: 'P2', text: 'Тренируй STAR-формат ответов' },
-        { p: 'P2', text: 'Запиши 1 mock-видео для разбора' },
-      ]
+  const ps = sections['problem_solving'] ?? { score: 0, comment: '—' }
+  const cq = sections['code_quality'] ?? { score: 0, comment: '—' }
+  const cm = sections['communication'] ?? { score: 0, comment: '—' }
+  const sh = sections['stress_handling'] ?? { score: 0, comment: '—' }
+  const strengths = report?.strengths ?? []
+  const weaknesses = report?.weaknesses ?? []
+  const recs = (report?.recommendations ?? []).map((r, i) => ({ p: i < 2 ? 'P1' : 'P2', text: r.title }))
+
+  // ── audio playback ──────────────────────────────────────────────────
+  const [audioURL, setAudioURL] = useState<string | null>(null)
+  const [listening, setListening] = useState(false)
+  const [showPremium, setShowPremium] = useState(false)
+  const [premiumGated, setPremiumGated] = useState(false)
+
+  const buildSummary = () => {
+    if (!report) return ''
+    const head = `Общий балл ${report.overall_score} из 100. `
+    const body = (report.strengths ?? []).slice(0, 3).join('. ')
+    const tail = (report.recommendations ?? []).slice(0, 2).map((r) => r.title).join('. ')
+    return [head, body, tail].filter(Boolean).join(' ')
+  }
+
+  const onListen = async () => {
+    const text = buildSummary()
+    if (!text) return
+    setListening(true)
+    try {
+      const token = localStorage.getItem('druz9_access_token')
+      const res = await fetch(`${API_BASE}/voice/tts`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        credentials: 'include',
+        body: JSON.stringify({ text, voice: 'premium-male', lang: 'ru-RU' }),
+      })
+      if (res.status === 402) {
+        setPremiumGated(true)
+        setShowPremium(true)
+        return
+      }
+      if (res.status === 501) {
+        // Stub path — backend hasn't finished Edge TTS yet. Fall back to
+        // browser speech synthesis so the user still hears something.
+        if ('speechSynthesis' in window) {
+          const u = new SpeechSynthesisUtterance(text)
+          u.lang = 'ru-RU'
+          window.speechSynthesis.speak(u)
+        }
+        return
+      }
+      if (!res.ok) return
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      setAudioURL(url)
+      const a = new Audio(url)
+      void a.play().catch(() => undefined)
+    } finally {
+      setListening(false)
+    }
+  }
+
   return (
     <AppShellV2>
-      <Header />
+      <Header
+        onBack={() => navigate(-1)}
+        onReplay={() => sessionId && navigate(`/mock/${sessionId}/replay`)}
+        onListen={onListen}
+        listening={listening}
+        premiumGated={premiumGated}
+      />
       <Hero overall={overall} />
       <div className="flex flex-col gap-6 px-4 py-6 sm:px-8 lg:px-20 lg:py-8">
         {isError && <ErrorChip />}
+        {isProcessing && (
+          <div className="flex items-center gap-2 rounded-lg border border-cyan/40 bg-cyan/10 px-4 py-3 text-[13px] text-cyan">
+            <Loader2 className="h-4 w-4 animate-spin" />
+            AI ещё обрабатывает интервью — отчёт появится через 30–60 секунд.
+          </div>
+        )}
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <SectionCard label="Problem Solving" value={ps.score} variant={ps.score >= 70 ? 'success' : 'warn'} comment={ps.comment} />
           <SectionCard label="Code Quality" value={cq.score} variant={cq.score >= 70 ? 'success' : 'warn'} comment={cq.comment} />
@@ -253,9 +371,15 @@ export default function MockResultPage() {
         </div>
         <div className="flex flex-col gap-4 lg:flex-row lg:gap-6">
           <div className="flex flex-1 flex-col gap-4">
-            <StrengthsCard items={strengths} />
-            <WeaknessesCard items={weaknesses} />
-            <RecsCard items={recs} />
+            {strengths.length > 0 && <StrengthsCard items={strengths} />}
+            {weaknesses.length > 0 && <WeaknessesCard items={weaknesses} />}
+            {recs.length > 0 && <RecsCard items={recs} />}
+            {report?.stress_analysis && (
+              <Card className="flex-col gap-2 p-5" interactive={false}>
+                <h3 className="font-display text-base font-bold text-text-primary">Стресс-анализ</h3>
+                <p className="text-[13px] leading-relaxed text-text-secondary">{report.stress_analysis}</p>
+              </Card>
+            )}
           </div>
           <div className="flex w-full flex-col gap-4 lg:w-[380px]">
             <StressTimelineCard />
@@ -263,7 +387,11 @@ export default function MockResultPage() {
             <ApplyCard />
           </div>
         </div>
+        {audioURL && (
+          <audio src={audioURL} controls className="w-full" />
+        )}
       </div>
+      {showPremium && <PremiumModal onClose={() => setShowPremium(false)} />}
     </AppShellV2>
   )
 }

@@ -17,8 +17,22 @@ import (
 // NewAIMock wires the AI-mock-interview bounded context. The report worker
 // is a 2-goroutine pool with a 64-deep buffer; we Start it under the root
 // context and Close+Wait it during shutdown so in-flight reports finish.
+//
+// Sessions repo is wrapped with a Redis read-through cache: Get hits Redis
+// first (60s TTL) and SendMessage / FinishSession bust the entry on write.
+// The report cache is held inside CachedSessionRepo too — UpdateReport drops
+// both the session and the report key in one shot.
 func NewAIMock(d Deps) *Module {
-	sessions := aimockInfra.NewSessions(d.Pool)
+	rawSessions := aimockInfra.NewSessions(d.Pool)
+	var sessions aimockDomain.SessionRepo = rawSessions
+	if d.Redis != nil {
+		sessions = aimockInfra.NewCachedSessionRepo(
+			rawSessions,
+			aimockInfra.NewMockRedisKV(d.Redis),
+			aimockInfra.DefaultSessionCacheTTL,
+			d.Log,
+		)
+	}
 	messages := aimockInfra.NewMessages(d.Pool)
 	tasks := aimockInfra.NewTasks(d.Pool)
 	companies := aimockInfra.NewCompanies(d.Pool)

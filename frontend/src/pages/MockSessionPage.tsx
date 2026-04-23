@@ -1,17 +1,24 @@
-// TODO i18n
-import { useEffect, useState } from 'react'
-import { useParams } from 'react-router-dom'
+// MockSessionPage — main AI-interview UI. Wires:
+//   - GET /mock/session/:id  via useMockSessionQuery (initial bootstrap)
+//   - WS /ws/mock/:id        via useChannel (streaming AI tokens, stress)
+//   - POST /mock/session/:id/message  via useSendMockMessage (REST fallback)
+//   - POST /mock/session/:id/finish   via useFinishMockSessionMutation
+//
+// Hardcoded panels (notes / interviewer video / company score) are kept
+// purely visual — they don't have backing endpoints in MVP, only feature
+// flags that the bible defers to v2. Marked with `mvp-static` for grep.
+
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { useNavigate, useParams } from 'react-router-dom'
 import {
   Camera,
-  Check,
-  CheckCheck,
   FileCode,
   Lightbulb,
+  Loader2,
   Mic,
   PhoneOff,
-  Play,
+  Send,
   Sparkles,
-  Triangle,
   Upload,
   Video,
 } from 'lucide-react'
@@ -21,7 +28,12 @@ import { Card } from '../components/Card'
 import { Avatar } from '../components/Avatar'
 import { WSStatus } from '../components/ws/WSStatus'
 import { useChannel } from '../lib/ws'
-import { useMockSessionQuery } from '../lib/queries/mock'
+import {
+  useFinishMockSessionMutation,
+  useMockSessionQuery,
+  useSendMockMessage,
+  type MockMessage,
+} from '../lib/queries/mock'
 
 function ErrorChip() {
   return (
@@ -31,32 +43,50 @@ function ErrorChip() {
   )
 }
 
-type Metric = { label: string; value: number; color?: string }
 type AIMessage = { from: 'ai' | 'user'; text: string }
+type Stress = { pauses_score: number; backspace_score: number; chaos_score: number; paste_attempts: number }
 
-function MatchHeader() {
+function fromMessageRow(m: MockMessage): AIMessage {
+  return { from: m.role === 'user' ? 'user' : 'ai', text: m.content }
+}
+
+function fmtMmSs(totalSec: number): string {
+  const mm = Math.max(0, Math.floor(totalSec / 60))
+  const ss = Math.max(0, Math.floor(totalSec % 60))
+  return `${mm.toString().padStart(2, '0')}:${ss.toString().padStart(2, '0')}`
+}
+
+function MatchHeader({
+  elapsedSec,
+  durationMin,
+  onFinish,
+  finishing,
+}: {
+  elapsedSec: number
+  durationMin: number
+  onFinish: () => void
+  finishing: boolean
+}) {
   return (
     <div className="flex h-[80px] items-center justify-between gap-2 border-b border-border bg-surface-1 px-4 sm:px-8">
       <div className="hidden items-center gap-3 sm:flex">
         <span className="inline-flex items-center gap-1.5 rounded-full bg-success/15 px-2.5 py-1 font-mono text-[11px] font-semibold tracking-[0.08em] text-success">
           <span className="h-1.5 w-1.5 rounded-full bg-success" />
-          CODING INTERVIEW · LIVE
+          AI INTERVIEW · LIVE
         </span>
       </div>
       <div className="flex flex-col items-center gap-1">
         <span className="font-display text-[26px] font-extrabold leading-none text-text-primary">
-          37:42 <span className="text-text-muted">/ 45:00</span>
-        </span>
-        <span className="font-mono text-[11px] tracking-[0.08em] text-text-muted">
-          ВОПРОС 2 ИЗ 4
+          {fmtMmSs(elapsedSec)}{' '}
+          <span className="text-text-muted">/ {fmtMmSs(durationMin * 60)}</span>
         </span>
       </div>
       <div className="flex items-center gap-2">
         <Button variant="ghost" icon={<Lightbulb className="h-4 w-4" />} size="sm" className="hidden sm:inline-flex">
           Подсказка
         </Button>
-        <Button variant="danger" size="sm">
-          Завершить
+        <Button variant="danger" size="sm" onClick={onFinish} disabled={finishing}>
+          {finishing ? 'Завершаем…' : 'Завершить'}
         </Button>
       </div>
     </div>
@@ -90,125 +120,33 @@ function QuestionPanel({ title, description }: { title: string; description: str
   return (
     <Card className="flex-col gap-3 p-5" interactive={false}>
       <span className="inline-flex w-fit items-center gap-1 rounded-full bg-cyan/15 px-2.5 py-1 font-mono text-[11px] font-semibold text-cyan">
-        ВОПРОС 2 / 4
+        ВОПРОС
       </span>
-      <h3 className="font-display text-lg font-bold text-text-primary">
-        {title}
-      </h3>
-      <p className="text-[13px] leading-relaxed text-text-secondary">
-        {description}
-      </p>
-      <div className="rounded-md bg-surface-2 px-3 py-2 font-mono text-[11px] text-text-muted">
-        1 ≤ capacity ≤ 1000
-      </div>
-      <span className="inline-flex w-fit items-center gap-1.5 rounded-full bg-warn/15 px-2.5 py-1 text-[11px] font-semibold text-warn">
-        <Lightbulb className="h-3 w-3" /> Hint: используй хешмапу + двусвязный список
-      </span>
+      <h3 className="font-display text-lg font-bold text-text-primary">{title}</h3>
+      <p className="text-[13px] leading-relaxed text-text-secondary">{description}</p>
     </Card>
   )
 }
 
-function NotesPanel() {
-  const items = [
-    { icon: <Check className="h-3.5 w-3.5 text-success" />, text: 'Спросил про edge cases' },
-    { icon: <CheckCheck className="h-3.5 w-3.5 text-success" />, text: 'Объяснил выбор структуры' },
-    { icon: <Triangle className="h-3.5 w-3.5 text-warn" />, text: 'Не учёл потокобезопасность' },
-  ]
-  return (
-    <Card className="flex-col gap-3 p-5" interactive={false}>
-      <h3 className="text-sm font-bold text-text-primary">Заметки интервьюера</h3>
-      {items.map((it, i) => (
-        <div key={i} className="flex items-start gap-2">
-          <span className="mt-0.5">{it.icon}</span>
-          <span className="text-[13px] text-text-secondary">{it.text}</span>
-        </div>
-      ))}
-    </Card>
-  )
-}
-
-function EditorArea() {
-  const code = [
-    'package main',
-    '',
-    'type entry struct {',
-    '    key, val int',
-    '}',
-    '',
-    'type LRUCache struct {',
-    '    cap   int',
-    '    data  map[int]*list.Element',
-    '    order *list.List',
-    '}',
-    '',
-    'func (c *LRUCache) Get(key int) int {',
-    '    if el, ok := c.data[key]; ok {',
-    '        c.order.MoveToFront(el)',
-    '        return el.Value.(*entry).val',
-    '    }',
-    '    return -1',
-    '}',
-  ]
-  return (
-    <Card className="flex-1 flex-col p-0 overflow-hidden" interactive={false}>
-      <div className="flex h-11 items-center justify-between border-b border-border px-4">
-        <div className="flex items-center gap-2.5">
-          <FileCode className="h-4 w-4 text-text-secondary" />
-          <span className="font-mono text-[13px] text-text-primary">lru.go</span>
-          <span className="rounded-full bg-cyan/15 px-2 py-0.5 font-mono text-[10px] font-semibold text-cyan">
-            Go
-          </span>
-        </div>
-        <span className="font-mono text-[11px] text-text-muted">UTF-8 · LF</span>
-      </div>
-      <div className="flex flex-1 overflow-auto bg-surface-1">
-        <div className="flex flex-col items-end px-3 py-3 font-mono text-[12px] text-text-muted select-none">
-          {code.map((_, i) => (
-            <span key={i} className={i === 13 ? 'text-accent-hover font-semibold' : ''}>
-              {i + 1}
-            </span>
-          ))}
-        </div>
-        <div className="flex flex-1 flex-col py-3 pr-4 font-mono text-[12px] text-text-secondary">
-          {code.map((line, i) => (
-            <pre
-              key={i}
-              className={[
-                'whitespace-pre',
-                i === 13 ? 'bg-accent/15 text-text-primary -mx-2 px-2 rounded' : '',
-              ].join(' ')}
-            >
-              {line || ' '}
-            </pre>
-          ))}
-        </div>
-      </div>
-      <div className="flex h-14 items-center justify-between border-t border-border px-4">
-        <div className="flex items-center gap-2">
-          <Button variant="ghost" size="sm" icon={<Play className="h-3.5 w-3.5" />}>
-            Run
-          </Button>
-          <Button variant="primary" size="sm" icon={<Upload className="h-3.5 w-3.5" />}>
-            Submit
-          </Button>
-        </div>
-        <div className="flex items-center gap-3">
-          <span className="font-mono text-[12px] text-success">12/15 tests</span>
-          <div className="h-1.5 w-32 overflow-hidden rounded-full bg-black/30">
-            <div className="h-full w-[80%] bg-gradient-to-r from-success to-cyan" />
-          </div>
-        </div>
-      </div>
-    </Card>
-  )
-}
-
-function ControlsCard() {
-  const btn = (Icon: React.ElementType, danger?: boolean) => (
+function ControlsCard({
+  micOn,
+  toggleMic,
+  onLeave,
+}: {
+  micOn: boolean
+  toggleMic: () => void
+  onLeave: () => void
+}) {
+  const tile = (Icon: React.ElementType, danger?: boolean, active?: boolean, onClick?: () => void) => (
     <button
+      onClick={onClick}
       className={[
         'grid h-11 w-11 place-items-center rounded-full border',
-        danger ? 'border-danger/40 bg-danger/15 text-danger hover:bg-danger/25' : 'border-border bg-surface-2 text-text-secondary hover:bg-surface-3 hover:text-text-primary',
+        danger
+          ? 'border-danger/40 bg-danger/15 text-danger hover:bg-danger/25'
+          : active
+            ? 'border-cyan/40 bg-cyan/15 text-cyan hover:bg-cyan/25'
+            : 'border-border bg-surface-2 text-text-secondary hover:bg-surface-3 hover:text-text-primary',
       ].join(' ')}
     >
       <Icon className="h-4 w-4" />
@@ -216,82 +154,61 @@ function ControlsCard() {
   )
   return (
     <Card className="flex-row items-center justify-around p-4" interactive={false}>
-      {btn(Mic)}
-      {btn(Camera)}
-      {btn(Upload)}
-      {btn(PhoneOff, true)}
+      {tile(Mic, false, micOn, toggleMic)}
+      {tile(Camera)}
+      {tile(Upload)}
+      {tile(PhoneOff, true, false, onLeave)}
     </Card>
   )
 }
 
-const METRIC_COLORS = ['bg-success', 'bg-cyan', 'bg-accent', 'bg-warn']
-
-function EvaluationCard({ metrics }: { metrics: Metric[] }) {
-  return (
-    <Card className="flex-col gap-4 border-accent/30 bg-gradient-to-br from-surface-3 to-accent/40 p-5" interactive={false}>
-      <div className="flex items-center justify-between">
-        <h3 className="font-display text-base font-bold text-text-primary">AI Оценка</h3>
-        <Sparkles className="h-4 w-4 text-cyan" />
-      </div>
-      <div className="flex flex-col gap-3">
-        {metrics.map((m, i) => (
-          <div key={m.label} className="flex flex-col gap-1">
-            <div className="flex items-center justify-between">
-              <span className="text-[12px] text-text-secondary">{m.label}</span>
-              <span className="font-mono text-[12px] font-semibold text-text-primary">{m.value}</span>
-            </div>
-            <div className="h-1.5 overflow-hidden rounded-full bg-black/40">
-              <div
-                className={`h-full transition-all duration-700 ${m.color ?? METRIC_COLORS[i % METRIC_COLORS.length]}`}
-                style={{ width: `${m.value}%` }}
-              />
-            </div>
-          </div>
-        ))}
-      </div>
-    </Card>
-  )
-}
-
-function QATimeline() {
-  const items = [
-    { n: 1, label: 'Two Sum Variations', status: 'done', meta: '9.2 ★', color: 'bg-success' },
-    { n: 2, label: 'LRU Cache', status: 'active', meta: 'сейчас', color: 'bg-accent' },
-    { n: 3, label: 'Word Ladder', status: 'future', meta: '—', color: 'bg-border-strong' },
-    { n: 4, label: 'System Design', status: 'future', meta: '—', color: 'bg-border-strong' },
+function StressCard({ stress }: { stress: Stress }) {
+  const items: { label: string; value: number; color: string }[] = [
+    { label: 'Паузы', value: stress.pauses_score, color: 'bg-cyan' },
+    { label: 'Backspaces', value: stress.backspace_score, color: 'bg-warn' },
+    { label: 'Хаос', value: stress.chaos_score, color: 'bg-accent' },
+    { label: 'Paste-попытки', value: stress.paste_attempts, color: 'bg-danger' },
   ]
   return (
     <Card className="flex-col gap-3 p-5" interactive={false}>
-      <h3 className="text-sm font-bold text-text-primary">Вопросы</h3>
-      {items.map((q) => (
-        <div key={q.n} className="flex items-center gap-3">
-          <span className={`h-2 w-2 rounded-full ${q.color}`} />
-          <div className="flex flex-1 flex-col">
-            <span className={q.status === 'active' ? 'text-[13px] font-semibold text-text-primary' : 'text-[13px] text-text-secondary'}>
-              Q{q.n}. {q.label}
-            </span>
+      <div className="flex items-center justify-between">
+        <h3 className="text-sm font-bold text-text-primary">Стресс-метрики</h3>
+        <Sparkles className="h-4 w-4 text-cyan" />
+      </div>
+      {items.map((m) => (
+        <div key={m.label} className="flex flex-col gap-1">
+          <div className="flex items-center justify-between">
+            <span className="text-[12px] text-text-secondary">{m.label}</span>
+            <span className="font-mono text-[12px] font-semibold text-text-primary">{m.value}</span>
           </div>
-          <span className="font-mono text-[11px] text-text-muted">{q.meta}</span>
+          <div className="h-1.5 overflow-hidden rounded-full bg-black/40">
+            <div
+              className={`h-full transition-all duration-700 ${m.color}`}
+              style={{ width: `${Math.min(100, m.value)}%` }}
+            />
+          </div>
         </div>
       ))}
     </Card>
   )
 }
 
-const INITIAL_METRICS: Metric[] = [
-  { label: 'Корректность', value: 92, color: 'bg-success' },
-  { label: 'Эффективность', value: 78, color: 'bg-cyan' },
-  { label: 'Чистота кода', value: 85, color: 'bg-accent' },
-  { label: 'Коммуникация', value: 70, color: 'bg-warn' },
-]
-
-function TranscriptCard({ messages }: { messages: AIMessage[] }) {
-  if (messages.length === 0) return null
+function TranscriptCard({ messages, pending }: { messages: AIMessage[]; pending: boolean }) {
+  if (messages.length === 0 && !pending) {
+    return (
+      <Card className="flex-col gap-2 p-4" interactive={false}>
+        <h3 className="text-sm font-bold text-text-primary">Диалог</h3>
+        <p className="text-[12px] text-text-muted">
+          Начните с первого ответа AI-интервьюеру в поле ниже.
+        </p>
+      </Card>
+    )
+  }
   return (
     <Card className="flex-col gap-2 p-4" interactive={false}>
-      <h3 className="text-sm font-bold text-text-primary">Транскрипт</h3>
-      <div className="flex max-h-[200px] flex-col gap-1.5 overflow-y-auto">
-        {messages.slice(-20).map((m, i) => (
+      <h3 className="text-sm font-bold text-text-primary">Диалог</h3>
+      <div className="flex max-h-[240px] flex-col gap-1.5 overflow-y-auto">
+        {messages.slice(-30).map((m, i) => (
           <div key={i} className="text-[12px]">
             <span className={m.from === 'ai' ? 'text-cyan' : 'text-accent-hover'}>
               {m.from === 'ai' ? 'AI:' : 'Я:'}{' '}
@@ -299,6 +216,85 @@ function TranscriptCard({ messages }: { messages: AIMessage[] }) {
             <span className="text-text-secondary">{m.text}</span>
           </div>
         ))}
+        {pending && (
+          <div className="flex items-center gap-1.5 text-[12px] text-text-muted">
+            <Loader2 className="h-3 w-3 animate-spin" /> AI печатает…
+          </div>
+        )}
+      </div>
+    </Card>
+  )
+}
+
+function MessageBox({
+  value,
+  onChange,
+  onSend,
+  sending,
+  toggleMic,
+  micOn,
+}: {
+  value: string
+  onChange: (s: string) => void
+  onSend: () => void
+  sending: boolean
+  micOn: boolean
+  toggleMic: () => void
+}) {
+  return (
+    <Card className="flex-row items-center gap-2 p-3" interactive={false}>
+      <button
+        type="button"
+        onClick={toggleMic}
+        className={[
+          'grid h-9 w-9 shrink-0 place-items-center rounded-full border',
+          micOn
+            ? 'border-cyan/40 bg-cyan/15 text-cyan'
+            : 'border-border bg-surface-2 text-text-secondary hover:bg-surface-3',
+        ].join(' ')}
+        aria-label="toggle voice"
+      >
+        <Mic className="h-4 w-4" />
+      </button>
+      <input
+        className="flex-1 rounded-md border border-border bg-surface-2 px-3 py-2 text-[13px] text-text-primary outline-none focus:border-accent"
+        placeholder="Ответьте интервьюеру…"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' && !e.shiftKey && value.trim()) {
+            e.preventDefault()
+            onSend()
+          }
+        }}
+      />
+      <Button
+        variant="primary"
+        size="sm"
+        onClick={onSend}
+        disabled={sending || !value.trim()}
+        icon={sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+      >
+        {sending ? '…' : 'Отправить'}
+      </Button>
+    </Card>
+  )
+}
+
+function EditorPlaceholder() {
+  return (
+    <Card className="flex-1 flex-col p-0 overflow-hidden" interactive={false}>
+      <div className="flex h-11 items-center justify-between border-b border-border px-4">
+        <div className="flex items-center gap-2.5">
+          <FileCode className="h-4 w-4 text-text-secondary" />
+          <span className="font-mono text-[13px] text-text-primary">workspace</span>
+        </div>
+        <span className="font-mono text-[11px] text-text-muted">UTF-8 · LF</span>
+      </div>
+      <div className="flex flex-1 items-center justify-center bg-surface-1 p-6 text-center">
+        <p className="font-mono text-[12px] text-text-muted">
+          Code editor для этой секции откроется в отдельной странице · MVP уровня v1
+        </p>
       </div>
     </Card>
   )
@@ -306,38 +302,122 @@ function TranscriptCard({ messages }: { messages: AIMessage[] }) {
 
 export default function MockSessionPage() {
   const { sessionId } = useParams<{ sessionId: string }>()
+  const navigate = useNavigate()
   const channel = sessionId ? `mock/${sessionId}` : ''
-  const { lastEvent, data, status } = useChannel<Record<string, unknown>>(channel)
-  const { data: session, isError } = useMockSessionQuery(sessionId)
-  const qTitle = session?.task?.title ?? 'Реализуй LRU Cache'
-  const qDesc = session?.task?.description ?? 'Спроектируй структуру данных, которая поддерживает операции get и put за O(1) и вытесняет наименее недавно использованный элемент при превышении ёмкости.'
+  const { lastEvent, data: wsData, status: wsStatus } = useChannel<Record<string, unknown>>(channel)
+  const { data: session, isError, isLoading } = useMockSessionQuery(sessionId)
+  const sendMutation = useSendMockMessage(sessionId)
+  const finishMutation = useFinishMockSessionMutation(sessionId)
 
-  const [metrics, setMetrics] = useState<Metric[]>(INITIAL_METRICS)
-  const [transcript, setTranscript] = useState<AIMessage[]>(() =>
-    (session?.last_messages ?? []).map((m): AIMessage => ({
-      from: m.role === 'user' ? 'user' : 'ai',
-      text: m.content,
-    })),
-  )
+  const [draft, setDraft] = useState('')
+  const [micOn, setMicOn] = useState(false)
+  const [transcript, setTranscript] = useState<AIMessage[]>([])
+  const seedKeyRef = useRef<string | null>(null)
+  const [stress, setStress] = useState<Stress>({ pauses_score: 0, backspace_score: 0, chaos_score: 0, paste_attempts: 0 })
+  const [streamingDelta, setStreamingDelta] = useState('')
 
+  // Seed transcript from REST when the session first arrives (idempotent
+  // per session id so user-typed messages aren't blown away on refetch).
   useEffect(() => {
-    if (!lastEvent || !data) return
-    if (lastEvent === 'ai_evaluation') {
-      const m = (data as { metrics?: Metric[] }).metrics
-      if (Array.isArray(m)) setMetrics(m)
-    } else if (lastEvent === 'ai_message') {
-      setTranscript((prev) => [...prev, data as AIMessage])
+    if (!session) return
+    if (seedKeyRef.current === session.id) return
+    seedKeyRef.current = session.id
+    setTranscript((session.last_messages ?? []).map(fromMessageRow))
+    if (session.stress_profile) setStress(session.stress_profile)
+  }, [session])
+
+  // WS event fan-out. The hub emits these kinds:
+  //   ai_token           — partial assistant token (delta only)
+  //   ai_done            — final assistant message saved
+  //   user_message_ack   — server confirms our message landed
+  //   stress_update      — boundary crossing on a stress dimension
+  //   intervention       — AI nudges after user idle
+  useEffect(() => {
+    if (!lastEvent || !wsData) return
+    const payload = wsData as Record<string, unknown>
+    if (lastEvent === 'ai_token') {
+      const d = typeof payload.delta === 'string' ? payload.delta : ''
+      setStreamingDelta((prev) => prev + d)
+    } else if (lastEvent === 'ai_done') {
+      setStreamingDelta((prev) => {
+        if (prev) {
+          setTranscript((t) => [...t, { from: 'ai', text: prev }])
+        }
+        return ''
+      })
+    } else if (lastEvent === 'user_message_ack') {
+      const text = typeof payload.content === 'string' ? payload.content : ''
+      if (text) setTranscript((t) => [...t, { from: 'user', text }])
+    } else if (lastEvent === 'stress_update') {
+      const dim = typeof payload.dimension === 'string' ? payload.dimension : ''
+      const value = typeof payload.value === 'number' ? payload.value : 0
+      setStress((prev) => {
+        const next = { ...prev }
+        if (dim === 'pauses') next.pauses_score = value
+        else if (dim === 'backspace') next.backspace_score = value
+        else if (dim === 'chaos') next.chaos_score = value
+        else if (dim === 'paste') next.paste_attempts = value
+        return next
+      })
+    } else if (lastEvent === 'intervention') {
+      const text = typeof payload.text === 'string' ? payload.text : ''
+      if (text) setTranscript((t) => [...t, { from: 'ai', text }])
     }
-  }, [lastEvent, data])
+  }, [lastEvent, wsData])
+
+  // Wall-clock elapsed since started_at. Avoids re-rendering at >1Hz.
+  const startedAt = session?.started_at ? new Date(session.started_at).getTime() : Date.now()
+  const [elapsed, setElapsed] = useState(0)
+  useEffect(() => {
+    const tick = () => setElapsed(Math.max(0, Math.floor((Date.now() - startedAt) / 1000)))
+    tick()
+    const id = window.setInterval(tick, 1000)
+    return () => window.clearInterval(id)
+  }, [startedAt])
+
+  const qTitle = session?.task?.title ?? (isLoading ? 'Загрузка задачи…' : 'Задача')
+  const qDesc = session?.task?.description ?? (isLoading ? 'Подождите немного, загружаем условие интервью.' : 'Подождите AI-собеседника.')
+
+  const sendCurrentDraft = () => {
+    const content = draft.trim()
+    if (!content) return
+    setDraft('')
+    setTranscript((t) => [...t, { from: 'user', text: content }])
+    sendMutation.mutate({ content })
+  }
+
+  const onFinish = async () => {
+    if (!sessionId) return
+    try {
+      await finishMutation.mutateAsync()
+      navigate(`/mock/${sessionId}/result`)
+    } catch {
+      // surfaced via mutation.isError; chip on top right
+    }
+  }
+
+  // Build the live transcript: persisted lines + the in-flight streaming delta
+  // shown as a fake AI line so the candidate sees the answer materialise.
+  const liveLines = useMemo(() => {
+    if (!streamingDelta) return transcript
+    return [...transcript, { from: 'ai' as const, text: streamingDelta + '▍' }]
+  }, [transcript, streamingDelta])
+
+  const durationMin = session?.duration_min ?? 45
 
   return (
     <AppShellV2>
       <div className="relative">
         <div className="absolute right-4 top-4 z-10 flex items-center gap-2">
           {isError && <ErrorChip />}
-          <WSStatus status={status} />
+          <WSStatus status={wsStatus} />
         </div>
-        <MatchHeader />
+        <MatchHeader
+          elapsedSec={elapsed}
+          durationMin={durationMin}
+          onFinish={onFinish}
+          finishing={finishMutation.isPending}
+        />
       </div>
       <div className="flex flex-col gap-4 px-4 py-4 sm:px-8 lg:flex-row">
         <div className="flex w-full flex-col gap-4 lg:w-[360px]">
@@ -345,21 +425,25 @@ export default function MockSessionPage() {
           <div className="hidden lg:block">
             <InterviewerPanel />
           </div>
-          <div className="hidden lg:block">
-            <NotesPanel />
-          </div>
         </div>
         <div className="flex min-h-[400px] flex-1 flex-col gap-4">
-          <EditorArea />
-          <TranscriptCard messages={transcript} />
+          <EditorPlaceholder />
+          <TranscriptCard messages={liveLines} pending={sendMutation.isPending && !streamingDelta} />
+          <MessageBox
+            value={draft}
+            onChange={setDraft}
+            onSend={sendCurrentDraft}
+            sending={sendMutation.isPending}
+            micOn={micOn}
+            toggleMic={() => {
+              setMicOn((on) => !on)
+              if (!micOn && sessionId) navigate(`/mock/${sessionId}/voice`)
+            }}
+          />
         </div>
         <div className="flex w-full flex-col gap-4 lg:w-[320px]">
-          <ControlsCard />
-          <EvaluationCard metrics={metrics} />
-          <QATimeline />
-          <div className="lg:hidden">
-            <NotesPanel />
-          </div>
+          <ControlsCard micOn={micOn} toggleMic={() => setMicOn((v) => !v)} onLeave={onFinish} />
+          <StressCard stress={stress} />
         </div>
       </div>
     </AppShellV2>

@@ -27,17 +27,23 @@ type OpenRouter struct {
 	httpClient *http.Client
 	// maxRetries429 is the retry budget for HTTP 429 responses. Default 3.
 	maxRetries429 int
+	// maxRetries5xx is the retry budget for HTTP 5xx responses. Default 3.
+	maxRetries5xx int
 	// baseBackoff is the starting exponential-backoff delay.
 	baseBackoff time.Duration
 }
 
 // NewOpenRouter returns a default-configured client.
+//
+// Defaults: 30s request timeout (bible §8 — voice path can't tolerate longer),
+// 3 retries on both 429 and 5xx, 500ms base exponential backoff.
 func NewOpenRouter(apiKey string) *OpenRouter {
 	return &OpenRouter{
 		apiKey:        apiKey,
 		endpoint:      OpenRouterURL,
-		httpClient:    &http.Client{Timeout: 120 * time.Second},
+		httpClient:    &http.Client{Timeout: 30 * time.Second},
 		maxRetries429: 3,
+		maxRetries5xx: 3,
 		baseBackoff:   500 * time.Millisecond,
 	}
 }
@@ -203,8 +209,16 @@ func (c *OpenRouter) Stream(ctx context.Context, req domain.CompletionRequest) (
 // ─────────────────────────────────────────────────────────────────────────
 
 func (c *OpenRouter) doWithRetries(ctx context.Context, body []byte, stream bool) (*http.Response, error) {
+	// We share the retry budget loop between 429 and 5xx because the upstream
+	// failure modes are interchangeable from the caller's perspective: in both
+	// cases the right answer is "wait and try again with backoff". The cap is
+	// max(maxRetries429, maxRetries5xx)+1 attempts total.
+	maxRetries := c.maxRetries429
+	if c.maxRetries5xx > maxRetries {
+		maxRetries = c.maxRetries5xx
+	}
 	var lastErr error
-	for attempt := 0; attempt <= c.maxRetries429; attempt++ {
+	for attempt := 0; attempt <= maxRetries; attempt++ {
 		req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.endpoint, bytes.NewReader(body))
 		if err != nil {
 			return nil, fmt.Errorf("mock.OpenRouter.do: new request: %w", err)
@@ -223,7 +237,7 @@ func (c *OpenRouter) doWithRetries(ctx context.Context, body []byte, stream bool
 				return nil, fmt.Errorf("ctx cancelled: %w", ctx.Err())
 			}
 			// transport error — retry with backoff
-			if attempt < c.maxRetries429 {
+			if attempt < maxRetries {
 				if werr := backoffWait(ctx, c.baseBackoff, attempt); werr != nil {
 					return nil, werr
 				}
@@ -251,10 +265,22 @@ func (c *OpenRouter) doWithRetries(ctx context.Context, body []byte, stream bool
 			}
 			continue
 		}
+		if resp.StatusCode >= 500 && resp.StatusCode < 600 {
+			// 5xx: transient server error — retry with backoff.
+			b, _ := io.ReadAll(resp.Body)
+			_ = resp.Body.Close()
+			if attempt >= c.maxRetries5xx {
+				return nil, fmt.Errorf("mock.OpenRouter.do: http %d after %d attempts: %s", resp.StatusCode, attempt+1, truncate(string(b), 256))
+			}
+			if werr := backoffWait(ctx, c.baseBackoff, attempt); werr != nil {
+				return nil, werr
+			}
+			continue
+		}
 		if resp.StatusCode >= 400 {
 			b, _ := io.ReadAll(resp.Body)
 			_ = resp.Body.Close()
-			return nil, fmt.Errorf("mock.OpenRouter.do: http %d: %s", resp.StatusCode, string(b))
+			return nil, fmt.Errorf("mock.OpenRouter.do: http %d: %s", resp.StatusCode, truncate(string(b), 256))
 		}
 		return resp, nil
 	}
@@ -262,6 +288,14 @@ func (c *OpenRouter) doWithRetries(ctx context.Context, body []byte, stream bool
 		return nil, fmt.Errorf("mock.OpenRouter.do: exhausted retries: %w", lastErr)
 	}
 	return nil, fmt.Errorf("mock.OpenRouter.do: exhausted retries")
+}
+
+// truncate caps a string at n runes for safe error logging.
+func truncate(s string, n int) string {
+	if len(s) <= n {
+		return s
+	}
+	return s[:n] + "…"
 }
 
 func backoffWait(ctx context.Context, base time.Duration, attempt int) error {
