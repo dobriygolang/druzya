@@ -10,6 +10,7 @@ import {
   Zap,
   Bot,
   FileCode,
+  DoorOpen,
 } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
@@ -330,6 +331,7 @@ type Mode = {
     | 'mock'
     | 'ai_allowed'
     | 'pair_code'
+    | 'custom_lobby'
   name: string
   desc: string
   count: number | string
@@ -419,13 +421,26 @@ const MODES: Mode[] = [
     requiresParty: false,
     aiPowered: false,
   },
+  {
+    key: 'custom_lobby',
+    name: 'Custom Lobby',
+    desc: 'Создай приватную комнату, позови друзей по коду или ссылке.',
+    count: '—',
+    time: '—',
+    icon: <DoorOpen className="h-7 w-7 text-text-primary" />,
+    gradient: 'from-cyan to-success',
+    // arenaMode не используется — карточка ведёт на /lobbies (см. handleModeClick).
+    arenaMode: 'ranked',
+    requiresParty: false,
+    aiPowered: false,
+  },
 ]
-// Practice vs AI + Custom Lobby удалены (Wave-4 bugfix):
-// - Practice: бот априори решал быстрее человека, + матч оказывался
-//   в состоянии не ожидаемом WS-хабом ("match not in required state",
-//   бесконечный Reconnecting). Mock-interview покрывает AI-практику.
-// - Custom Lobby: бэкенда под кастом-комнаты нет, список хардкоженный,
-//   "войти" кидало в несуществующий /hub. Это v2-фича, возврат по спросу.
+// WAVE-11: Custom Lobby ВОССТАНОВЛЕН после Wave-4 удаления — теперь у фичи
+// есть реальный backend (services/lobby + 8 REST-endpoints в /api/v1/lobby/*),
+// 4-буквенные коды для приглашений и единая страница /lobby/{id} с
+// auto-redirect в /arena/match/{matchId} на старте. Practice vs AI остаётся
+// удалённым (Wave-4 bugfix): бот решал быстрее человека и матч не
+// синхронизировался с WS-хабом — Mock-interview покрывает AI-практику лучше.
 
 function ModeCard({
   m,
@@ -666,6 +681,10 @@ export default function ArenaPage() {
     // from the coming-soon empty-state on /mock.
     if (m.key === 'mock') {
       navigate('/mock')
+      return
+    }
+    if (m.key === 'custom_lobby') {
+      navigate('/lobbies')
       return
     }
     if (m.key === 'pair_code') {

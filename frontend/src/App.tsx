@@ -106,6 +106,12 @@ const CheckoutFailure = lazy(() => import('./pages/checkout/CheckoutFailure'))
 const PairLobbyPage = lazy(() => import('./pages/pair/PairLobbyPage'))
 const PairRoomPage = lazy(() => import('./pages/pair/PairRoomPage'))
 const PairInvitePage = lazy(() => import('./pages/pair/PairInvitePage'))
+// WAVE-11 — Custom Lobby restored. Backend: services/lobby + 8 REST endpoints
+// at /api/v1/lobby/*. /lobbies = public list + create + join-by-code; /lobby/:id
+// = single-room view that polls and auto-redirects to /arena/match/:matchId
+// once the owner clicks Start (status flips to 'live').
+const LobbyListPage = lazy(() => import('./pages/lobby/LobbyListPage'))
+const LobbyPage = lazy(() => import('./pages/lobby/LobbyPage'))
 
 export default function App() {
   return (
@@ -206,6 +212,11 @@ export default function App() {
         <Route path="/pair" element={<PairLobbyPage />} />
         <Route path="/pair/invite/:token" element={<PairInvitePage />} />
         <Route path="/pair/:roomId" element={<PairRoomPage />} />
+        {/* WAVE-11 Custom Lobby — restored. /lobbies = public list +
+            create + join-by-code; /lobby/:id = single-room with auto-redirect
+            to /arena/match/{match_id} when owner clicks Start. */}
+        <Route path="/lobbies" element={<LobbyListPage />} />
+        <Route path="/lobby/:id" element={<LobbyPage />} />
         {/* Legacy /v2/* — редирект на новый URL без префикса. */}
         <Route path="/v2/*" element={<LegacyV2Redirect />} />
         <Route path="*" element={<NotFoundPage />} />

@@ -76,20 +76,20 @@ const MaxCodeRetries = 5
 
 // Lobby is the room entity.
 type Lobby struct {
-	ID            uuid.UUID
-	Code          string
-	OwnerID       uuid.UUID
-	Mode          Mode
-	Section       string
-	Difficulty    string
-	Visibility    Visibility
-	MaxMembers    int
-	AIAllowed     bool
-	TimeLimitMin  int
-	Status        Status
-	MatchID       *uuid.UUID
-	CreatedAt     time.Time
-	UpdatedAt     time.Time
+	ID           uuid.UUID
+	Code         string
+	OwnerID      uuid.UUID
+	Mode         Mode
+	Section      string
+	Difficulty   string
+	Visibility   Visibility
+	MaxMembers   int
+	AIAllowed    bool
+	TimeLimitMin int
+	Status       Status
+	MatchID      *uuid.UUID
+	CreatedAt    time.Time
+	UpdatedAt    time.Time
 }
 
 // MaxSlotsForMode returns the canonical slot count for a mode. Used to

@@ -1,0 +1,417 @@
+// copilot.proto — Connect-RPC contract for the `copilot` bounded context.
+//
+// Powers the Druz9 Copilot desktop client: a stealth AI assistant that runs
+// on the user's macOS, captures screenshots via a global hotkey, and streams
+// LLM responses into a floating window invisible to screen-share viewers.
+//
+// Screenshots are NEVER persisted — they flow client → backend → LLM and are
+// discarded once the completion returns. A boolean flag on the message row
+// records that the turn included an image. See docs/copilot-architecture.md.
+//
+// Analyze and Chat are server-streaming RPCs (token deltas → final Done).
+// Vanguard does not transcode streaming RPCs to REST — desktop clients must
+// use the native Connect path for real-time streaming. REST fallbacks return
+// only the final JSON body.
+syntax = "proto3";
+package druz9.v1;
+
+import "druz9/v1/common.proto";
+import "google/api/annotations.proto";
+import "google/protobuf/timestamp.proto";
+
+option go_package = "druz9/shared/generated/pb/druz9/v1;druz9v1";
+
+// ============================================================================
+//  Enums
+// ============================================================================
+
+// AttachmentKind describes what the user attached to a user-role message.
+// Screenshots are ephemeral (not stored). Voice transcripts are collapsed
+// into Message.content as text; this enum exists so the client can render
+// the attachment chip correctly during streaming.
+enum CopilotAttachmentKind {
+  COPILOT_ATTACHMENT_KIND_UNSPECIFIED = 0;
+  COPILOT_ATTACHMENT_KIND_SCREENSHOT = 1;
+  COPILOT_ATTACHMENT_KIND_VOICE_TRANSCRIPT = 2;
+}
+
+// ClientOS identifies the desktop client platform for telemetry and for
+// serving the right hotkey defaults in DesktopConfig.
+enum ClientOS {
+  CLIENT_OS_UNSPECIFIED = 0;
+  CLIENT_OS_MACOS = 1;
+  CLIENT_OS_WINDOWS = 2;
+  CLIENT_OS_LINUX = 3;
+}
+
+// HotkeyAction enumerates every action the desktop can bind to a shortcut.
+// The server publishes default bindings via DesktopConfig so the client does
+// not hardcode them.
+enum HotkeyAction {
+  HOTKEY_ACTION_UNSPECIFIED = 0;
+  HOTKEY_ACTION_SCREENSHOT_AREA = 1;
+  HOTKEY_ACTION_SCREENSHOT_FULL = 2;
+  HOTKEY_ACTION_VOICE_INPUT = 3;
+  HOTKEY_ACTION_TOGGLE_WINDOW = 4;
+  HOTKEY_ACTION_QUICK_PROMPT = 5;
+  HOTKEY_ACTION_CLEAR_CONVERSATION = 6;
+}
+
+// ModelSpeedClass is a UI-only grouping shown in the provider picker.
+enum ModelSpeedClass {
+  MODEL_SPEED_CLASS_UNSPECIFIED = 0;
+  MODEL_SPEED_CLASS_FAST = 1;       // sub-2s typical latency
+  MODEL_SPEED_CLASS_BALANCED = 2;   // 2-5s
+  MODEL_SPEED_CLASS_REASONING = 3;  // 5s+, deep thinking
+}
+
+// ============================================================================
+//  Core entities
+// ============================================================================
+
+// CopilotConversation is a thread of messages grouped around an initial
+// Analyze call. Title is auto-derived from the first message.
+message CopilotConversation {
+  string id = 1;
+  string title = 2;
+  string model = 3;                               // provider-qualified id, e.g. "openai/gpt-4o-mini"
+  google.protobuf.Timestamp created_at = 4;
+  google.protobuf.Timestamp updated_at = 5;
+  int32 message_count = 6;
+}
+
+// CopilotMessage is a single turn in a conversation.
+message CopilotMessage {
+  string id = 1;
+  string conversation_id = 2;
+  MessageRole role = 3;
+  string content = 4;                             // Markdown. For voice: transcript.
+  bool has_screenshot = 5;                        // true iff user attached an image on this turn
+  int32 tokens_in = 6;
+  int32 tokens_out = 7;
+  int32 latency_ms = 8;
+  // Rating is optional: -1 (thumbs down), 0 (unset), +1 (thumbs up).
+  // Use int32 with UNSET sentinel instead of optional for Connect-Web compat.
+  int32 rating = 9;
+  google.protobuf.Timestamp created_at = 10;
+}
+
+// CopilotConversationDetail is returned by GetConversation — conversation
+// header + its full message list.
+message CopilotConversationDetail {
+  CopilotConversation conversation = 1;
+  repeated CopilotMessage messages = 2;
+}
+
+// CopilotQuota tells the client what the user is allowed to do right now.
+// requests_cap < 0 means unlimited.
+message CopilotQuota {
+  SubscriptionPlan plan = 1;
+  int32 requests_used = 2;
+  int32 requests_cap = 3;
+  google.protobuf.Timestamp resets_at = 4;
+  repeated string models_allowed = 5;             // provider-qualified ids
+}
+
+// CopilotProviderModel is one row in the provider picker. The client
+// renders these as-is — all metadata is server-driven.
+message CopilotProviderModel {
+  string id = 1;                                  // "openai/gpt-4o-mini"
+  string display_name = 2;                        // "GPT Fast"
+  string provider_name = 3;                       // "OpenAI"
+  ModelSpeedClass speed_class = 4;
+  bool supports_vision = 5;                       // can accept screenshots
+  bool supports_reasoning = 6;                    // shows 🧠 badge
+  int32 typical_latency_ms = 7;                   // for the "1.1s" label
+  int32 context_window_tokens = 8;
+  bool available_on_current_plan = 9;             // renders paywall chip if false
+}
+
+// ============================================================================
+//  DesktopConfig — remote configuration shipped to the client at startup
+// ============================================================================
+
+// HotkeyBinding pairs an action with a platform-specific accelerator string
+// following the Electron Accelerator syntax (e.g. "CommandOrControl+Shift+S").
+message HotkeyBinding {
+  HotkeyAction action = 1;
+  string accelerator = 2;
+}
+
+// FeatureFlag is a boolean capability gate. Stringly-typed so we can add
+// flags without proto changes.
+message FeatureFlag {
+  string key = 1;                                 // "voice_input", "masquerade", "byo_api_key"
+  bool enabled = 2;
+}
+
+// PaywallCopy is localized user-facing text for the paywall. The client is
+// forbidden from hardcoding pricing or plan names.
+message PaywallCopy {
+  string plan_id = 1;                             // "pro"
+  string display_name = 2;                        // "Pro"
+  string price_label = 3;                         // "$15/мес"
+  string tagline = 4;                             // "Безлимитные запросы, все модели"
+  repeated string bullets = 5;                    // feature list
+  string cta_label = 6;                           // "Обновить план"
+}
+
+// StealthCompatEntry flags a macOS / browser combination as known-broken for
+// the stealth overlay. The client shows a warning if the user is on one of
+// these versions.
+message StealthCompatEntry {
+  string os_version_min = 1;                      // "14.0"
+  string os_version_max = 2;                      // "14.3"
+  string browser_id = 3;                          // "chrome"
+  string browser_version_min = 4;                 // "120"
+  string browser_version_max = 5;                 // ""
+  string note = 6;                                // shown in UI warning
+}
+
+// DesktopConfig is the single source of truth for client-visible settings.
+// Delivered by GetDesktopConfig on every app start and on every
+// event:config-updated push.
+message DesktopConfig {
+  // Rev is bumped whenever the payload changes — client caches by rev.
+  int64 rev = 1;
+
+  // Model catalogue and defaults.
+  repeated CopilotProviderModel models = 2;
+  string default_model_id = 3;
+
+  // Hotkey defaults per OS. Client merges with user-local overrides.
+  repeated HotkeyBinding default_hotkeys = 4;
+
+  // Feature flags (voice, masquerade, byo-api-key, ...).
+  repeated FeatureFlag flags = 5;
+
+  // Paywall copy for all visible tiers (free + paid).
+  repeated PaywallCopy paywall = 6;
+
+  // Stealth-overlay compat warnings.
+  repeated StealthCompatEntry stealth_warnings = 7;
+
+  // Auto-update channel URL (electron-updater feed). Empty to disable.
+  string update_feed_url = 8;
+
+  // Minimum supported client version; below this, client shows a forced-update screen.
+  string min_client_version = 9;
+
+  // Opaque analytics opt-in policy key. Client prompts once on first run.
+  string analytics_policy_key = 10;
+}
+
+// ============================================================================
+//  Analyze / Chat streaming
+// ============================================================================
+
+// AttachmentInput is a single attachment sent with an Analyze or Chat turn.
+// For screenshots: `data` carries raw image bytes (PNG or JPEG). For voice
+// transcripts, prefer sending the transcript as `prompt_text` directly and
+// skip the attachment; this kind is reserved for future raw-audio uploads.
+message CopilotAttachmentInput {
+  CopilotAttachmentKind kind = 1;
+  bytes data = 2;
+  string mime_type = 3;                           // "image/png", "audio/wav"
+  int32 width = 4;                                // images only
+  int32 height = 5;                               // images only
+}
+
+// ClientContext gives the server telemetry / routing hints. Nothing here is
+// required; everything is best-effort to aid debugging and analytics.
+message ClientContext {
+  ClientOS os = 1;
+  string os_version = 2;                          // "14.5"
+  string app_version = 3;                         // "1.0.0"
+  HotkeyAction trigger_action = 4;                // which hotkey fired (if any)
+  string focused_app_hint = 5;                    // "com.microsoft.teams", "com.google.Chrome"
+}
+
+// AnalyzeRequest starts a new conversation (conversation_id empty) or
+// continues an existing one. Identical semantics to Chat apart from this.
+message AnalyzeRequest {
+  string conversation_id = 1;                     // optional — empty means "new"
+  string prompt_text = 2;                         // optional accompanying text
+  string model = 3;                               // empty → server picks default for plan
+  repeated CopilotAttachmentInput attachments = 4;
+  ClientContext client = 5;
+}
+
+// CopilotConversationCreated is the first event on a new Analyze stream.
+// For follow-up turns (Chat), the server emits this with the existing
+// conversation_id so the client can correlate.
+message CopilotConversationCreated {
+  string conversation_id = 1;
+  string user_message_id = 2;                     // id of the just-recorded user turn
+  string assistant_message_id = 3;                // id the streamed assistant reply will have
+  string model_id = 4;                            // model the server actually used
+}
+
+// CopilotTokenDelta is a partial assistant-content update. Concatenate
+// `text` in order — `index` is monotonic within a single stream.
+message CopilotTokenDelta {
+  int32 index = 1;
+  string text = 2;
+}
+
+// CopilotDone is emitted once at end of stream with final message metadata.
+message CopilotDone {
+  string assistant_message_id = 1;
+  int32 tokens_in = 2;
+  int32 tokens_out = 3;
+  int32 latency_ms = 4;
+  CopilotQuota updated_quota = 5;                 // pushed to avoid a follow-up fetch
+}
+
+// CopilotStreamError terminates the stream with a structured error. After
+// this, no further events arrive.
+message CopilotStreamError {
+  string code = 1;                                // "rate_limited", "model_unavailable", "invalid_input"
+  string message = 2;
+  int32 retry_after_seconds = 3;                  // for rate limiting
+}
+
+// AnalyzeEvent is the server-streaming frame. Exactly one `kind` per frame.
+message AnalyzeEvent {
+  oneof kind {
+    CopilotConversationCreated created = 1;
+    CopilotTokenDelta delta = 2;
+    CopilotDone done = 3;
+    CopilotStreamError error = 4;
+  }
+}
+
+// ChatRequest is a follow-up message in an existing conversation.
+message ChatRequest {
+  string conversation_id = 1;                     // required
+  string prompt_text = 2;
+  repeated CopilotAttachmentInput attachments = 3;
+  ClientContext client = 4;
+}
+
+// ChatEvent is structurally identical to AnalyzeEvent — same oneof shape,
+// kept as a distinct type so RPC-level observability can distinguish first
+// turn from follow-ups.
+message ChatEvent {
+  oneof kind {
+    CopilotConversationCreated created = 1;
+    CopilotTokenDelta delta = 2;
+    CopilotDone done = 3;
+    CopilotStreamError error = 4;
+  }
+}
+
+// ============================================================================
+//  Unary endpoints
+// ============================================================================
+
+message ListCopilotHistoryRequest {
+  // Opaque cursor from the previous response. Empty for first page.
+  string cursor = 1;
+  int32 limit = 2;                                // server clamps to [1, 50]; 0 → default 20
+}
+
+message ListCopilotHistoryResponse {
+  repeated CopilotConversation conversations = 1;
+  string next_cursor = 2;                         // empty when no more pages
+}
+
+message GetCopilotConversationRequest {
+  string id = 1;
+}
+
+message DeleteCopilotConversationRequest {
+  string id = 1;
+}
+
+message DeleteCopilotConversationResponse {}
+
+message ListCopilotProvidersRequest {}
+
+message ListCopilotProvidersResponse {
+  repeated CopilotProviderModel models = 1;
+}
+
+message GetCopilotQuotaRequest {}
+
+message GetDesktopConfigRequest {
+  // If the client passes its cached rev, the server may return an empty
+  // DesktopConfig with only `rev` set meaning "you are up to date".
+  int64 known_rev = 1;
+}
+
+message RateCopilotMessageRequest {
+  string message_id = 1;
+  // Rating is -1, 0, or +1. 0 clears a previous rating.
+  int32 rating = 2;
+  string comment = 3;                             // optional free-text feedback
+}
+
+message RateCopilotMessageResponse {}
+
+// ============================================================================
+//  Service
+// ============================================================================
+
+service CopilotService {
+  // Analyze is the primary entry point: the user triggered a hotkey, took
+  // a screenshot, and wants an answer. Emits ConversationCreated first,
+  // then token deltas, then Done. Errors are delivered via CopilotStreamError.
+  rpc Analyze(AnalyzeRequest) returns (stream AnalyzeEvent) {
+    option (google.api.http) = {
+      post: "/api/v1/copilot/analyze"
+      body: "*"
+    };
+  }
+
+  // Chat is a follow-up message in an existing conversation. Same streaming
+  // contract as Analyze.
+  rpc Chat(ChatRequest) returns (stream ChatEvent) {
+    option (google.api.http) = {
+      post: "/api/v1/copilot/conversations/{conversation_id}/chat"
+      body: "*"
+    };
+  }
+
+  // ListHistory returns paginated past conversations for the authenticated
+  // user, newest first.
+  rpc ListHistory(ListCopilotHistoryRequest) returns (ListCopilotHistoryResponse) {
+    option (google.api.http) = {get: "/api/v1/copilot/history"};
+  }
+
+  // GetConversation returns a single conversation + all its messages.
+  rpc GetConversation(GetCopilotConversationRequest) returns (CopilotConversationDetail) {
+    option (google.api.http) = {get: "/api/v1/copilot/conversations/{id}"};
+  }
+
+  // DeleteConversation hard-deletes a conversation and cascades to messages.
+  rpc DeleteConversation(DeleteCopilotConversationRequest) returns (DeleteCopilotConversationResponse) {
+    option (google.api.http) = {delete: "/api/v1/copilot/conversations/{id}"};
+  }
+
+  // ListProviders returns the catalogue of available models for the
+  // authenticated user, filtered by their plan.
+  rpc ListProviders(ListCopilotProvidersRequest) returns (ListCopilotProvidersResponse) {
+    option (google.api.http) = {get: "/api/v1/copilot/providers"};
+  }
+
+  // GetQuota returns the current quota snapshot (requests used, cap,
+  // reset time, allowed models).
+  rpc GetQuota(GetCopilotQuotaRequest) returns (CopilotQuota) {
+    option (google.api.http) = {get: "/api/v1/copilot/quota"};
+  }
+
+  // GetDesktopConfig returns the remote-config payload that drives the
+  // client. Called on every app start. Supports rev-based caching.
+  rpc GetDesktopConfig(GetDesktopConfigRequest) returns (DesktopConfig) {
+    option (google.api.http) = {get: "/api/v1/copilot/desktop-config"};
+  }
+
+  // RateMessage records user feedback on a specific assistant message.
+  rpc RateMessage(RateCopilotMessageRequest) returns (RateCopilotMessageResponse) {
+    option (google.api.http) = {
+      post: "/api/v1/copilot/messages/{message_id}/rate"
+      body: "*"
+    };
+  }
+}

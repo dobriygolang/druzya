@@ -38,7 +38,10 @@ export function AtlasPanel() {
   const [edgeError, setEdgeError] = useState<string | null>(null)
 
   const nodes = nodesQ.data?.items ?? []
-  const edges = edgesQ.data?.items ?? []
+  // Wrap in useMemo so the `?? []` fallback identity is stable across
+  // renders — otherwise the inner edgeCountByNode useMemo re-runs every
+  // render (its `edges` dep is a fresh `[]` literal each time).
+  const edges = useMemo(() => edgesQ.data?.items ?? [], [edgesQ.data])
 
   const edgeCountByNode = useMemo(() => {
     const m = new Map<string, number>()
@@ -55,7 +58,6 @@ export function AtlasPanel() {
       linked > 0
         ? `Удалить узел «${n.title}»? Это также удалит ${linked} связ${linked === 1 ? 'ь' : linked < 5 ? 'и' : 'ей'} (CASCADE).`
         : `Удалить узел «${n.title}»?`
-    // eslint-disable-next-line no-alert
     if (!window.confirm(msg)) return
     await deleteMut.mutateAsync(n.id)
   }
@@ -81,7 +83,6 @@ export function AtlasPanel() {
   }
 
   const handleDeleteEdge = async (e: AtlasAdminEdge) => {
-    // eslint-disable-next-line no-alert
     if (!window.confirm(`Удалить связь ${e.from} → ${e.to}?`)) return
     await deleteEdgeMut.mutateAsync(e.id)
   }

@@ -76,7 +76,9 @@ export default function MockPipelinePage() {
   const completeStage = useCompleteStageMutation(pipelineId)
   const finish = useFinishMockPipelineMutation(pipelineId)
 
-  const stages = pipeline.data?.stages ?? []
+  // Wrap in useMemo so the `?? []` fallback identity is stable; otherwise
+  // currentStage's useMemo re-runs every render with a fresh empty array.
+  const stages = useMemo(() => pipeline.data?.stages ?? [], [pipeline.data])
   const currentIdx = pipeline.data?.current_stage ?? 0
   const currentStage = useMemo(
     () => stages.find((s) => s.stage_idx === currentIdx) ?? stages[currentIdx],

@@ -315,6 +315,31 @@ type LlmModel struct {
 	UpdatedAt          pgtype.Timestamptz
 }
 
+type Lobby struct {
+	ID           pgtype.UUID
+	Code         string
+	OwnerID      pgtype.UUID
+	Mode         string
+	Section      string
+	Difficulty   string
+	Visibility   string
+	MaxMembers   int16
+	AiAllowed    bool
+	TimeLimitMin int16
+	Status       string
+	MatchID      pgtype.UUID
+	CreatedAt    pgtype.Timestamptz
+	UpdatedAt    pgtype.Timestamptz
+}
+
+type LobbyMember struct {
+	LobbyID  pgtype.UUID
+	UserID   pgtype.UUID
+	JoinedAt pgtype.Timestamptz
+	Role     string
+	Team     int16
+}
+
 type MentorSession struct {
 	ID          pgtype.UUID
 	MenteeID    pgtype.UUID

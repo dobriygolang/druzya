@@ -60,12 +60,12 @@ export default function CheckoutPage() {
   const planParam = params.get('plan')
   const periodParam = params.get('period')
 
-  if (!isPlanTier(planParam)) {
-    return <Navigate to="/pricing" replace />
-  }
-  const plan: Exclude<BillingPlanTier, 'free'> = planParam
+  // Hooks MUST be called before any early return — react-hooks/rules-of-hooks
+  // forbids conditional hook ordering. Compute the plan/price up front using
+  // safe defaults; the JSX redirects out of an invalid plan AFTER all hooks
+  // have run.
+  const plan: Exclude<BillingPlanTier, 'free'> = isPlanTier(planParam) ? planParam : 'premium'
   const period: BillingPeriod = isPeriod(periodParam) ? periodParam : 'monthly'
-
   const price = PRICE_TABLE[plan][period]
 
   const [method, setMethod] = useState<PaymentMethodKind>('card')
@@ -73,6 +73,19 @@ export default function CheckoutPage() {
   const [promoStatus, setPromoStatus] = useState<'idle' | 'invalid' | 'valid'>('idle')
   const [agreed, setAgreed] = useState(false)
   const checkout = useCheckoutMutation()
+
+  // Last hook in the function — must run BEFORE any early return so React
+  // sees the same hook ordering on every render (rules-of-hooks).
+  const totalLabel = useMemo(() => {
+    let base = price
+    if (promoStatus === 'valid') base = Math.round(base * 0.5)
+    return base
+  }, [price, promoStatus])
+
+  // Now safe to early-return — no hooks below this line.
+  if (!isPlanTier(planParam)) {
+    return <Navigate to="/pricing" replace />
+  }
 
   const onPromoBlur = () => {
     const code = promo.trim().toUpperCase()
@@ -114,12 +127,6 @@ export default function CheckoutPage() {
       },
     )
   }
-
-  const totalLabel = useMemo(() => {
-    let base = price
-    if (promoStatus === 'valid') base = Math.round(base * 0.5)
-    return base
-  }, [price, promoStatus])
 
   return (
     <AppShellV2>

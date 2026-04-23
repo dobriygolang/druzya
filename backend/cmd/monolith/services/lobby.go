@@ -1,21 +1,21 @@
 // Package services — wiring for the Custom-Lobby bounded context (WAVE-11).
 //
 // This file owns:
-//   1) the Postgres adapter for lobby/domain.Repo,
-//   2) the cross-context arena.MatchCreator adapter (so lobby/app stays
-//      unaware of arena types — it only depends on domain.MatchCreator),
-//   3) the chi-direct REST handlers for /api/v1/lobby/*.
+//  1. the Postgres adapter for lobby/domain.Repo,
+//  2. the cross-context arena.MatchCreator adapter (so lobby/app stays
+//     unaware of arena types — it only depends on domain.MatchCreator),
+//  3. the chi-direct REST handlers for /api/v1/lobby/*.
 //
 // Endpoints (all under /api/v1):
 //
-//   GET    /lobby/list?visibility=public&mode=&section=   public discovery
-//   POST   /lobby                                         create (auth)
-//   GET    /lobby/{id}                                    detail (public)
-//   GET    /lobby/code/{code}                             code lookup (public, case-insensitive)
-//   POST   /lobby/{id}/join                               (auth, 409 if full/closed)
-//   POST   /lobby/{id}/leave                              (auth; owner-leave cancels)
-//   POST   /lobby/{id}/start                              (auth, owner only)
-//   POST   /lobby/{id}/cancel                             (auth, owner only)
+//	GET    /lobby/list?visibility=public&mode=&section=   public discovery
+//	POST   /lobby                                         create (auth)
+//	GET    /lobby/{id}                                    detail (public)
+//	GET    /lobby/code/{code}                             code lookup (public, case-insensitive)
+//	POST   /lobby/{id}/join                               (auth, 409 if full/closed)
+//	POST   /lobby/{id}/leave                              (auth; owner-leave cancels)
+//	POST   /lobby/{id}/start                              (auth, owner only)
+//	POST   /lobby/{id}/cancel                             (auth, owner only)
 //
 // Anti-fallback:
 //   - 4-letter A-Z code generator retries up to domain.MaxCodeRetries on UNIQUE
@@ -222,12 +222,12 @@ type lobbyRow interface {
 
 func (p *lobbyPostgres) scanOne(row lobbyRow) (lobbyDomain.Lobby, error) {
 	var (
-		id, owner                       pgtype.UUID
-		matchID                         pgtype.UUID
-		code, mode, sec, diff, vis, st  string
-		maxMembers, timeLimit           int16
-		aiAllowed                       bool
-		created, updated                time.Time
+		id, owner                      pgtype.UUID
+		matchID                        pgtype.UUID
+		code, mode, sec, diff, vis, st string
+		maxMembers, timeLimit          int16
+		aiAllowed                      bool
+		created, updated               time.Time
 	)
 	if err := row.Scan(&id, &code, &owner, &mode, &sec, &diff, &vis,
 		&maxMembers, &aiAllowed, &timeLimit, &st, &matchID, &created, &updated); err != nil {

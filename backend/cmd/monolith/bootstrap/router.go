@@ -152,6 +152,10 @@ func restAuthGate(requireAuth func(http.Handler) http.Handler) func(http.Handler
 		// и /cohort/{id}/leaderboard — read-only, тоже без bearer'а
 		// (см. isPublic ниже для путей с префиксом /api/v1/cohort/).
 		"/api/v1/cohort/list": {},
+		// /api/v1/lobby/list — public discovery for /lobbies. Detail and
+		// code-lookup paths (/lobby/{id}, /lobby/code/{code}) are also
+		// public — see isPublic prefix check below.
+		"/api/v1/lobby/list": {},
 	}
 	isPublic := func(p string) bool {
 		if _, ok := publicPaths[p]; ok {
@@ -184,6 +188,17 @@ func restAuthGate(requireAuth func(http.Handler) http.Handler) func(http.Handler
 		if strings.HasPrefix(p, "/api/v1/cohort/") &&
 			!strings.HasSuffix(p, "/join") &&
 			!strings.HasSuffix(p, "/leave") {
+			return true
+		}
+		// /api/v1/lobby/{id} (GET detail) and /api/v1/lobby/code/{code} —
+		// public read-only paths. POST /lobby itself plus mutation suffixes
+		// (/join, /leave, /start, /cancel) stay gated. We special-case
+		// the bare /lobby pattern by requiring at least one extra segment.
+		if strings.HasPrefix(p, "/api/v1/lobby/") &&
+			!strings.HasSuffix(p, "/join") &&
+			!strings.HasSuffix(p, "/leave") &&
+			!strings.HasSuffix(p, "/start") &&
+			!strings.HasSuffix(p, "/cancel") {
 			return true
 		}
 		return false
