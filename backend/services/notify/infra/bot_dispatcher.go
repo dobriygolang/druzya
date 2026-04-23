@@ -2,9 +2,12 @@ package infra
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"strings"
+
+	"druz9/notify/domain"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
@@ -75,14 +78,35 @@ func (d CommandDispatcher) handleStart(ctx context.Context, msg *tgbotapi.Messag
 	if len(args) == 0 {
 		return d.bot.reply(ctx, msg.Chat.ID, d.bot.cfg.Replies.Welcome)
 	}
-	// /start <auth_token>
-	// TODO(auth-domain): this is the deep-link login flow. Requires a new
-	// openapi endpoint POST /auth/telegram/deeplink/exchange — flag that for
-	// the next iteration. For now, reply with a stub and log the token.
+	// /start <code> — deep-link auth flow (см. backend/services/auth/app/poll_telegram_code.go).
+	code := args[0]
 	d.bot.log.InfoContext(ctx, "notify.telegram.start.deeplink",
-		slog.String("token_prefix", safePrefix(args[0])),
+		slog.String("code_prefix", safePrefix(code)),
 		slog.Int64("chat_id", msg.Chat.ID))
-	return d.bot.reply(ctx, msg.Chat.ID, d.bot.cfg.Replies.WelcomeDeepLink)
+	if d.bot.codes == nil {
+		// CodeFiller не сконфигурирован (например, локальная разработка без auth-домена).
+		return d.bot.reply(ctx, msg.Chat.ID, d.bot.cfg.Replies.WelcomeDeepLink)
+	}
+	if msg.From == nil || msg.From.ID == 0 {
+		return d.bot.reply(ctx, msg.Chat.ID, d.bot.cfg.Replies.DeepLinkInvalidCode)
+	}
+	payload := domain.TelegramAuthPayload{
+		ID:        msg.From.ID,
+		FirstName: msg.From.FirstName,
+		LastName:  msg.From.LastName,
+		Username:  msg.From.UserName,
+		AuthDate:  int64(msg.Date),
+	}
+	if err := d.bot.codes.Fill(ctx, code, payload); err != nil {
+		if errors.Is(err, domain.ErrNotFound) {
+			return d.bot.reply(ctx, msg.Chat.ID, d.bot.cfg.Replies.DeepLinkInvalidCode)
+		}
+		d.bot.log.WarnContext(ctx, "notify.telegram.start.fill",
+			slog.String("code_prefix", safePrefix(code)),
+			slog.Any("err", err))
+		return d.bot.reply(ctx, msg.Chat.ID, d.bot.cfg.Replies.DeepLinkFailed)
+	}
+	return d.bot.reply(ctx, msg.Chat.ID, d.bot.cfg.Replies.DeepLinkOK)
 }
 
 func (d CommandDispatcher) handleHelp(ctx context.Context, msg *tgbotapi.Message, _ []string) error {

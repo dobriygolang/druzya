@@ -86,11 +86,13 @@ func (y *YandexOAuth) FetchUserInfo(ctx context.Context, accessToken string) (do
 		return domain.YandexUserInfo{}, fmt.Errorf("auth.YandexOAuth.FetchUserInfo: status %d", resp.StatusCode)
 	}
 	var raw struct {
-		ID           string `json:"id"`
-		Login        string `json:"login"`
-		DisplayName  string `json:"display_name"`
-		RealName     string `json:"real_name"`
-		DefaultEmail string `json:"default_email"`
+		ID              string `json:"id"`
+		Login           string `json:"login"`
+		DisplayName     string `json:"display_name"`
+		RealName        string `json:"real_name"`
+		DefaultEmail    string `json:"default_email"`
+		DefaultAvatarID string `json:"default_avatar_id"`
+		IsAvatarEmpty   bool   `json:"is_avatar_empty"`
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&raw); err != nil {
 		return domain.YandexUserInfo{}, fmt.Errorf("auth.YandexOAuth.FetchUserInfo: decode: %w", err)
@@ -100,9 +102,11 @@ func (y *YandexOAuth) FetchUserInfo(ctx context.Context, accessToken string) (do
 		name = raw.RealName
 	}
 	return domain.YandexUserInfo{
-		ID:           raw.ID,
-		Login:        raw.Login,
-		DisplayName:  name,
-		DefaultEmail: raw.DefaultEmail,
+		ID:              raw.ID,
+		Login:           raw.Login,
+		DisplayName:     name,
+		DefaultEmail:    raw.DefaultEmail,
+		DefaultAvatarID: raw.DefaultAvatarID,
+		IsAvatarEmpty:   raw.IsAvatarEmpty,
 	}, nil
 }

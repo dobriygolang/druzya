@@ -40,17 +40,18 @@ func (q *Queries) CreateOAuthAccount(ctx context.Context, arg CreateOAuthAccount
 }
 
 const createUser = `-- name: CreateUser :one
-INSERT INTO users(email, username, role, locale, display_name)
-VALUES (NULLIF($1::text, ''), $2, $3, $4, NULLIF($5::text, ''))
-RETURNING id, email, username, role, locale, display_name, created_at, updated_at
+INSERT INTO users(email, username, role, locale, display_name, avatar_url)
+VALUES (NULLIF($1::text, ''), $2, $3, $4, NULLIF($5::text, ''), $6)
+RETURNING id, email, username, role, locale, display_name, avatar_url, created_at, updated_at
 `
 
 type CreateUserParams struct {
-	Column1  string
-	Username string
-	Role     string
-	Locale   string
-	Column5  string
+	Column1   string
+	Username  string
+	Role      string
+	Locale    string
+	Column5   string
+	AvatarURL string
 }
 
 type CreateUserRow struct {
@@ -60,6 +61,7 @@ type CreateUserRow struct {
 	Role        string
 	Locale      string
 	DisplayName pgtype.Text
+	AvatarURL   string
 	CreatedAt   pgtype.Timestamptz
 	UpdatedAt   pgtype.Timestamptz
 }
@@ -71,6 +73,7 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (CreateU
 		arg.Role,
 		arg.Locale,
 		arg.Column5,
+		arg.AvatarURL,
 	)
 	var i CreateUserRow
 	err := row.Scan(
@@ -80,6 +83,7 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (CreateU
 		&i.Role,
 		&i.Locale,
 		&i.DisplayName,
+		&i.AvatarURL,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -106,7 +110,7 @@ func (q *Queries) FindOAuthLink(ctx context.Context, arg FindOAuthLinkParams) (p
 
 const findUserByID = `-- name: FindUserByID :one
 
-SELECT id, email, username, role, locale, display_name, created_at, updated_at
+SELECT id, email, username, role, locale, display_name, avatar_url, created_at, updated_at
 FROM users
 WHERE id = $1
 `
@@ -118,6 +122,7 @@ type FindUserByIDRow struct {
 	Role        string
 	Locale      string
 	DisplayName pgtype.Text
+	AvatarURL   string
 	CreatedAt   pgtype.Timestamptz
 	UpdatedAt   pgtype.Timestamptz
 }
@@ -134,6 +139,7 @@ func (q *Queries) FindUserByID(ctx context.Context, id pgtype.UUID) (FindUserByI
 		&i.Role,
 		&i.Locale,
 		&i.DisplayName,
+		&i.AvatarURL,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -141,7 +147,7 @@ func (q *Queries) FindUserByID(ctx context.Context, id pgtype.UUID) (FindUserByI
 }
 
 const findUserByUsername = `-- name: FindUserByUsername :one
-SELECT id, email, username, role, locale, display_name, created_at, updated_at
+SELECT id, email, username, role, locale, display_name, avatar_url, created_at, updated_at
 FROM users
 WHERE username = $1
 `
@@ -153,6 +159,7 @@ type FindUserByUsernameRow struct {
 	Role        string
 	Locale      string
 	DisplayName pgtype.Text
+	AvatarURL   string
 	CreatedAt   pgtype.Timestamptz
 	UpdatedAt   pgtype.Timestamptz
 }
@@ -167,6 +174,7 @@ func (q *Queries) FindUserByUsername(ctx context.Context, username string) (Find
 		&i.Role,
 		&i.Locale,
 		&i.DisplayName,
+		&i.AvatarURL,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -197,6 +205,25 @@ func (q *Queries) TouchOAuthTokens(ctx context.Context, arg TouchOAuthTokensPara
 		arg.RefreshTokenEnc,
 		arg.TokenExpiresAt,
 	)
+	return err
+}
+
+const updateUserAvatar = `-- name: UpdateUserAvatar :exec
+UPDATE users
+   SET avatar_url = $2,
+       updated_at = now()
+ WHERE id = $1
+   AND $2 <> ''
+   AND $2 IS DISTINCT FROM avatar_url
+`
+
+type UpdateUserAvatarParams struct {
+	ID        pgtype.UUID
+	AvatarURL string
+}
+
+func (q *Queries) UpdateUserAvatar(ctx context.Context, arg UpdateUserAvatarParams) error {
+	_, err := q.db.Exec(ctx, updateUserAvatar, arg.ID, arg.AvatarURL)
 	return err
 }
 

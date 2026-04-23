@@ -18,6 +18,7 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"sync"
 	"time"
 
 	"druz9/arena/domain"
@@ -40,6 +41,13 @@ const DefaultMatchInfoTTL = 60 * time.Second
 // DefaultQueueStatsTTL is the per-key TTL for the queue-stats card on the
 // arena landing page. Short — the count fluctuates every tick.
 const DefaultQueueStatsTTL = 10 * time.Second
+
+// DefaultMatchHistoryTTL is the per-key TTL for the /match-history page.
+// History only changes after a match completes — the inverse path is the
+// MatchEnded event handler that calls MatchHistoryCache.Invalidate(uid).
+// 30s is the bible cap — short enough that even a missed invalidation is
+// invisible to the user, long enough to absorb dashboard refresh hammering.
+const DefaultMatchHistoryTTL = 30 * time.Second
 
 // KV is the tiny subset of Redis used by the arena cache. *redis.Client
 // satisfies it via the kvAdapter below; tests inject an in-memory map.
@@ -247,3 +255,169 @@ func (c *QueueStatsCache) Invalidate(ctx context.Context, mode enums.ArenaMode, 
 			slog.Any("err", err))
 	}
 }
+
+// ── Match-history cache ───────────────────────────────────────────────────
+
+// MatchHistoryFilters captures the page window + optional filters. JSON-
+// serialised into the cache key so different (limit, offset, mode, section)
+// tuples cohabit without colliding.
+type MatchHistoryFilters struct {
+	Limit   int             `json:"limit"`
+	Offset  int             `json:"offset"`
+	Mode    enums.ArenaMode `json:"mode"`
+	Section enums.Section   `json:"section"`
+}
+
+// MatchHistorySnapshot is the cache-eligible projection of one history page.
+// We pin Total alongside Items so paginated UIs don't need a second
+// uncached count.
+type MatchHistorySnapshot struct {
+	Items []domain.MatchHistoryEntry `json:"items"`
+	Total int                        `json:"total"`
+}
+
+// MatchHistoryLoader fetches a page from the upstream (Postgres) on miss.
+type MatchHistoryLoader func(ctx context.Context, userID uuid.UUID, f MatchHistoryFilters) (MatchHistorySnapshot, error)
+
+// MatchHistoryCache wraps MatchHistoryLoader with read-through Redis +
+// per-user invalidation. Per-key TTL is the upper bound; explicit
+// Invalidate(uid) bumps a per-user "epoch" embedded in the key, which
+// causes every cached page for that user to instantly miss without
+// scanning Redis (mirrors the marker-key pattern used by profile/cache).
+type MatchHistoryCache struct {
+	kv     KV
+	ttl    time.Duration
+	log    *slog.Logger
+	loader MatchHistoryLoader
+	sf     singleflight.Group
+
+	// epochs is an in-process per-user counter that's bumped on Invalidate.
+	// Combined with the cache key it gives O(1) "evict everything for uid".
+	// The map is bounded by active users — we never delete entries (a stale
+	// epoch is harmless, the corresponding Redis keys age out via TTL).
+	epochMu sync.RWMutex
+	epochs  map[uuid.UUID]uint64
+}
+
+// NewMatchHistoryCache wires the cache. nil log → discard.
+func NewMatchHistoryCache(kv KV, ttl time.Duration, log *slog.Logger, loader MatchHistoryLoader) *MatchHistoryCache {
+	if ttl <= 0 {
+		ttl = DefaultMatchHistoryTTL
+	}
+	if log == nil {
+		log = slog.New(slog.NewTextHandler(io.Discard, nil))
+	}
+	return &MatchHistoryCache{
+		kv:     kv,
+		ttl:    ttl,
+		log:    log,
+		loader: loader,
+		epochs: make(map[uuid.UUID]uint64),
+	}
+}
+
+// epochOf returns the current invalidation generation for userID.
+func (c *MatchHistoryCache) epochOf(userID uuid.UUID) uint64 {
+	c.epochMu.RLock()
+	defer c.epochMu.RUnlock()
+	return c.epochs[userID]
+}
+
+// keyMatchHistory derives the per-(user, epoch, filters) Redis key. Bumping
+// the per-user epoch via Invalidate causes every old key to instantly miss.
+func keyMatchHistory(userID uuid.UUID, epoch uint64, f MatchHistoryFilters) string {
+	mode := string(f.Mode)
+	if mode == "" {
+		mode = "_"
+	}
+	sec := string(f.Section)
+	if sec == "" {
+		sec = "_"
+	}
+	return fmt.Sprintf("arena:%s:history:%s:e%d:%d:%d:%s:%s",
+		CacheKeyVersion, userID.String(), epoch, f.Limit, f.Offset, mode, sec)
+}
+
+// Get returns one history page, dialing the upstream on miss.
+func (c *MatchHistoryCache) Get(ctx context.Context, userID uuid.UUID, f MatchHistoryFilters) (MatchHistorySnapshot, error) {
+	epoch := c.epochOf(userID)
+	key := keyMatchHistory(userID, epoch, f)
+
+	if raw, err := c.kv.Get(ctx, key); err == nil {
+		var snap MatchHistorySnapshot
+		if jerr := json.Unmarshal([]byte(raw), &snap); jerr == nil {
+			return snap, nil
+		}
+		c.log.Warn("arena.cache: corrupt history entry, refreshing",
+			slog.String("key", key))
+	} else if !errors.Is(err, ErrCacheMiss) {
+		c.log.Warn("arena.cache: redis Get failed, falling back",
+			slog.String("key", key), slog.Any("err", err))
+	}
+	v, err, _ := c.sf.Do(key, func() (any, error) {
+		return c.loader(ctx, userID, f)
+	})
+	if err != nil {
+		return MatchHistorySnapshot{}, fmt.Errorf("arena.cache.MatchHistory.Get: %w", err)
+	}
+	snap, ok := v.(MatchHistorySnapshot)
+	if !ok {
+		return MatchHistorySnapshot{}, fmt.Errorf("arena.cache: singleflight returned %T", v)
+	}
+	if data, jerr := json.Marshal(snap); jerr == nil {
+		if serr := c.kv.Set(ctx, key, data, c.ttl); serr != nil {
+			c.log.Warn("arena.cache: redis Set failed",
+				slog.String("key", key), slog.Any("err", serr))
+		}
+	}
+	return snap, nil
+}
+
+// Invalidate evicts every cached page for userID by bumping the per-user
+// epoch counter. Old keys age out via TTL — no SCAN needed.
+func (c *MatchHistoryCache) Invalidate(_ context.Context, userID uuid.UUID) {
+	c.epochMu.Lock()
+	c.epochs[userID]++
+	c.epochMu.Unlock()
+}
+
+// ── CachedHistoryRepo — domain.MatchRepo wrapper that routes ListByUser
+// through MatchHistoryCache while passing every other call straight through
+// to the upstream repo. The wrapper is what app.GetMyMatches sees so the
+// use case stays Redis-agnostic.
+
+// CachedHistoryRepo composes a domain.MatchRepo with a MatchHistoryCache.
+type CachedHistoryRepo struct {
+	domain.MatchRepo
+	cache *MatchHistoryCache
+}
+
+// NewCachedHistoryRepo wires a CachedHistoryRepo around the given upstream
+// repo and cache. Both must be non-nil.
+func NewCachedHistoryRepo(upstream domain.MatchRepo, cache *MatchHistoryCache) *CachedHistoryRepo {
+	return &CachedHistoryRepo{MatchRepo: upstream, cache: cache}
+}
+
+// ListByUser routes through the cache. The upstream loader closed over by
+// the cache is responsible for hitting Postgres.
+func (c *CachedHistoryRepo) ListByUser(
+	ctx context.Context,
+	userID uuid.UUID,
+	limit, offset int,
+	modeFilter enums.ArenaMode,
+	sectionFilter enums.Section,
+) ([]domain.MatchHistoryEntry, int, error) {
+	snap, err := c.cache.Get(ctx, userID, MatchHistoryFilters{
+		Limit:   limit,
+		Offset:  offset,
+		Mode:    modeFilter,
+		Section: sectionFilter,
+	})
+	if err != nil {
+		return nil, 0, err
+	}
+	return snap.Items, snap.Total, nil
+}
+
+// Interface guard — keeps drift visible if MatchRepo grows new methods.
+var _ domain.MatchRepo = (*CachedHistoryRepo)(nil)

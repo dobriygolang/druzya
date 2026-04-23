@@ -83,3 +83,56 @@ const SuspicionHighThreshold = 75.0
 // AnomalousSpeedSuspicion — базовый score, начисляемый, когда решение быстрее
 // исторического p5.
 const AnomalousSpeedSuspicion = 40.0
+
+// ── Match history pagination ───────────────────────────────────────────────
+
+// HistoryDefaultLimit — page size, который вернётся, если клиент не передал
+// явный limit (или передал 0/отрицательное).
+const HistoryDefaultLimit = 20
+
+// HistoryMaxLimit — потолок per_page, чтобы один запрос не съел весь Postgres.
+const HistoryMaxLimit = 100
+
+// ClampHistoryLimit нормализует limit к [1, HistoryMaxLimit] с дефолтом
+// HistoryDefaultLimit для нулевых значений.
+func ClampHistoryLimit(limit int) int {
+	if limit <= 0 {
+		return HistoryDefaultLimit
+	}
+	if limit > HistoryMaxLimit {
+		return HistoryMaxLimit
+	}
+	return limit
+}
+
+// ClampHistoryOffset не даёт offset уйти в минус (Postgres всё равно отвергнет).
+func ClampHistoryOffset(offset int) int {
+	if offset < 0 {
+		return 0
+	}
+	return offset
+}
+
+// MatchResultLabel — строковые константы итога матча для одного игрока.
+const (
+	MatchResultWin       = "win"
+	MatchResultLoss      = "loss"
+	MatchResultDraw      = "draw"
+	MatchResultAbandoned = "abandoned"
+)
+
+// ResultFor возвращает результат матча с точки зрения userID. winnerID == nil
+// и status=cancelled → "abandoned"; winnerID == nil и status=finished → "draw"
+// (когда матч закончился без явного победителя — например ничья по таймауту).
+func ResultFor(userID uuid.UUID, winnerID *uuid.UUID, status enums.MatchStatus) string {
+	if status == enums.MatchStatusCancelled {
+		return MatchResultAbandoned
+	}
+	if winnerID == nil {
+		return MatchResultDraw
+	}
+	if *winnerID == userID {
+		return MatchResultWin
+	}
+	return MatchResultLoss
+}

@@ -28,6 +28,11 @@ type AuthModule struct {
 	// without re-piercing the auth bounded context.
 	Sessions   *authInfra.RedisSessions
 	RefreshTTL time.Duration
+	// TelegramCodes is the Redis-backed deep-link code repo. Wired into the
+	// Notify bot via SetCodeFiller after both modules are constructed.
+	TelegramCodes *authInfra.RedisTelegramCodeRepo
+	// CodeFlow is the chi-mountable handler for /auth/telegram/{start,poll}.
+	CodeFlow *authPorts.CodeFlowHandler
 }
 
 // NewAuth wires the auth bounded context. ENCRYPTION_KEY MUST be set —
@@ -46,6 +51,28 @@ func NewAuth(d Deps, encKey string) (*AuthModule, error) {
 	limiter := authInfra.NewRedisRateLimiter(d.Redis)
 	yandex := authInfra.NewYandexOAuth(d.Cfg.Auth.YandexClientID, d.Cfg.Auth.YandexSecret)
 	issuer := authApp.NewTokenIssuer(d.Cfg.Auth.JWTSecret, time.Duration(d.Cfg.Auth.AccessTokenTTL)*time.Second)
+	codeTTL := time.Duration(d.Cfg.Auth.TelegramCodeTTL) * time.Second
+	if codeTTL == 0 {
+		codeTTL = 5 * time.Minute
+	}
+	codes := authInfra.NewRedisTelegramCodeRepo(d.Redis, codeTTL)
+	startCode := &authApp.StartTelegramCode{
+		Codes:   codes,
+		Limiter: limiter,
+		BotName: d.Cfg.Auth.TelegramBotName,
+		CodeTTL: codeTTL,
+		Log:     d.Log,
+	}
+	pollCode := &authApp.PollTelegramCode{
+		Codes:      codes,
+		Users:      pg,
+		Sessions:   sessions,
+		Limiter:    limiter,
+		Bus:        d.Bus,
+		Issuer:     issuer,
+		RefreshTTL: time.Duration(d.Cfg.Auth.RefreshTokenTTL) * time.Second,
+		Log:        d.Log,
+	}
 
 	loginYandex := &authApp.LoginYandex{
 		OAuth: yandex, Users: pg, Sessions: sessions, Limiter: limiter,
@@ -72,6 +99,7 @@ func NewAuth(d Deps, encKey string) (*AuthModule, error) {
 		SecureCookies: d.Cfg.Env != "local", CookieDomain: "",
 	})
 	server := authPorts.NewAuthServer(h)
+	codeFlow := authPorts.NewCodeFlowHandler(startCode, pollCode, server, d.Log)
 
 	connectPath, connectHandler := druz9v1connect.NewAuthServiceHandler(server)
 	transcoder := mustTranscode("auth", connectPath, connectHandler)
@@ -86,12 +114,18 @@ func NewAuth(d Deps, encKey string) (*AuthModule, error) {
 				r.Post("/auth/telegram", transcoder.ServeHTTP)
 				r.Post("/auth/refresh", transcoder.ServeHTTP)
 				r.Delete("/auth/logout", transcoder.ServeHTTP)
+				// Deep-link code flow: plain chi handlers (not Connect-RPC).
+				// See backend/services/auth/ports/code_flow.go for shapes.
+				r.Post("/auth/telegram/start", codeFlow.HandleStart)
+				r.Post("/auth/telegram/poll", codeFlow.HandlePoll)
 			},
 		},
-		Issuer:      issuer,
-		RequireAuth: authPorts.RequireAuth(issuer),
-		Users:       pg,
-		Sessions:    sessions,
-		RefreshTTL:  time.Duration(d.Cfg.Auth.RefreshTokenTTL) * time.Second,
+		Issuer:        issuer,
+		RequireAuth:   authPorts.RequireAuth(issuer),
+		Users:         pg,
+		Sessions:      sessions,
+		RefreshTTL:    time.Duration(d.Cfg.Auth.RefreshTokenTTL) * time.Second,
+		TelegramCodes: codes,
+		CodeFlow:      codeFlow,
 	}, nil
 }

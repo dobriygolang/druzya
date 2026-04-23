@@ -64,3 +64,40 @@ SELECT id, version, slug, title_ru, description_ru, difficulty, section,
 SELECT id, version, slug, title_ru, description_ru, difficulty, section,
        time_limit_sec, memory_limit_mb
   FROM tasks WHERE id = $1;
+
+-- ListMyMatches and CountMyMatches power /api/v1/arena/matches/my. Both
+-- accept optional mode/section filters via NULLIF(...) — sqlc emits string
+-- params, so the application passes "" when the user wants no filter.
+-- Joined to users for opponent username + avatar_url (added in 00010).
+
+-- name: ListMyMatches :many
+SELECT m.id                AS match_id,
+       m.mode,
+       m.section,
+       m.status,
+       m.winner_id,
+       m.started_at,
+       m.finished_at,
+       me.elo_before       AS me_elo_before,
+       me.elo_after        AS me_elo_after,
+       opp.user_id         AS opponent_user_id,
+       opp_user.username   AS opponent_username,
+       opp_user.avatar_url AS opponent_avatar_url
+  FROM arena_matches m
+  JOIN arena_participants me  ON me.match_id  = m.id  AND me.user_id  = $1
+  LEFT JOIN arena_participants opp
+         ON opp.match_id = m.id AND opp.user_id <> $1
+  LEFT JOIN users opp_user ON opp_user.id = opp.user_id
+ WHERE m.status IN ('finished','cancelled')
+   AND ($2::text = '' OR m.mode    = $2)
+   AND ($3::text = '' OR m.section = $3)
+ ORDER BY COALESCE(m.finished_at, m.created_at) DESC, m.id DESC
+ LIMIT $4 OFFSET $5;
+
+-- name: CountMyMatches :one
+SELECT COUNT(*)::bigint AS total
+  FROM arena_matches m
+  JOIN arena_participants me ON me.match_id = m.id AND me.user_id = $1
+ WHERE m.status IN ('finished','cancelled')
+   AND ($2::text = '' OR m.mode    = $2)
+   AND ($3::text = '' OR m.section = $3);

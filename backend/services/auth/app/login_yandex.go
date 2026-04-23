@@ -56,8 +56,9 @@ type LoginYandexInput struct {
 
 // LoginYandexResult is what the HTTP handler returns to the client.
 type LoginYandexResult struct {
-	Tokens domain.TokenPair
-	User   domain.User
+	Tokens    domain.TokenPair
+	User      domain.User
+	IsNewUser bool // true когда мы вставили новую запись в users, иначе UPDATE
 }
 
 // Do runs the full Yandex OAuth flow: rate limit → exchange code → fetch profile
@@ -105,6 +106,7 @@ func (uc *LoginYandex) Do(ctx context.Context, in LoginYandexInput) (LoginYandex
 		Email:           info.DefaultEmail,
 		UsernameHint:    domain.NormaliseUsername(info.Login),
 		DisplayName:     info.DisplayName,
+		AvatarURL:       domain.YandexAvatarURL(info),
 		AccessTokenEnc:  accessEnc,
 		RefreshTokenEnc: refreshEnc,
 		TokenExpiresAt:  expiresAt,
@@ -125,7 +127,7 @@ func (uc *LoginYandex) Do(ctx context.Context, in LoginYandexInput) (LoginYandex
 		uc.Log.WarnContext(ctx, "auth.LoginYandex: publish event", slog.Any("err", err))
 	}
 
-	return LoginYandexResult{Tokens: pair, User: user}, nil
+	return LoginYandexResult{Tokens: pair, User: user, IsNewUser: created}, nil
 }
 
 func publishLoginEvent(ctx context.Context, bus sharedDomain.Bus, user domain.User, p enums.AuthProvider, created bool) error {

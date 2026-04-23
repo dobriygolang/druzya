@@ -25,6 +25,10 @@ type NotifyModule struct {
 	Module
 	WebhookHandler  *notifyPorts.WebhookHandler
 	RegisterWebhook func(ctx context.Context) error
+	// Bot is exposed so the bootstrap can call SetCodeFiller after the auth
+	// module is constructed (cyclic-dep avoidance — auth depends on the bus,
+	// notify depends on auth's RedisTelegramCodeRepo).
+	Bot *notifyInfra.TelegramBot
 }
 
 // NewNotify wires notifications: prefs CRUD, the multi-channel sender,
@@ -81,6 +85,7 @@ func NewNotify(d Deps) (*NotifyModule, error) {
 	mod := &NotifyModule{
 		WebhookHandler:  webhook,
 		RegisterWebhook: tg.RegisterWebhook,
+		Bot:             tg,
 		Module: Module{
 			ConnectPath:        connectPath,
 			ConnectHandler:     transcoder,

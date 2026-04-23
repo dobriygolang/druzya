@@ -32,6 +32,37 @@ type MatchRepo interface {
 
 	// UpsertParticipantResult записывает solve_time_ms, suspicion_score и submitted_at.
 	UpsertParticipantResult(ctx context.Context, p Participant) error
+
+	// ListByUser возвращает страницу истории матчей пользователя (только статусы
+	// finished/cancelled), отсортированную по finished_at DESC, и общее число
+	// строк под фильтром (для пагинации). modeFilter / sectionFilter = "" → без
+	// фильтрации по этому полю. limit/offset должны быть уже нормализованы
+	// вызывающей стороной.
+	ListByUser(
+		ctx context.Context,
+		userID uuid.UUID,
+		limit, offset int,
+		modeFilter enums.ArenaMode,
+		sectionFilter enums.Section,
+	) (items []MatchHistoryEntry, total int, err error)
+}
+
+// MatchHistoryEntry — плоская проекция одной строки истории, готовая к
+// рендерингу: с противником, итогом, дельтой LP и длительностью. Считается
+// в SQL одним запросом, чтобы фронт не дёргал отдельные ручки на каждую строку.
+type MatchHistoryEntry struct {
+	MatchID           uuid.UUID
+	FinishedAt        time.Time
+	Mode              enums.ArenaMode
+	Section           enums.Section
+	OpponentUserID    uuid.UUID
+	OpponentUsername  string
+	OpponentAvatarURL string
+	// Result — "win" | "loss" | "draw" | "abandoned". Хранится строкой ради
+	// прямого совпадения с OpenAPI / wire-форматом.
+	Result          string
+	LPChange        int
+	DurationSeconds int
 }
 
 // TaskRepo предоставляет минимальный интерфейс выборки задач, нужный арене:

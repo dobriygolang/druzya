@@ -90,3 +90,20 @@ UPDATE guild_wars
 UPDATE guild_wars
    SET winner_id = $2
  WHERE id = $1;
+
+-- name: ListTopGuilds :many
+-- Global guild leaderboard. We surface the existing guild_elo column as the
+-- primary ranking metric (the bible's "elo_total" — guilds carry a single
+-- ELO, members aren't summed, so this is the right pivot). members_count is
+-- a simple correlated count. wars_won counts every guild_wars row where
+-- this guild is the recorded winner. The ORDER BY is deterministic on ties
+-- (elo desc, id asc) so the cache is consistent across reads.
+SELECT g.id,
+       g.name,
+       g.emblem,
+       g.guild_elo,
+       (SELECT COUNT(*)::int FROM guild_members gm WHERE gm.guild_id = g.id)        AS members_count,
+       (SELECT COUNT(*)::int FROM guild_wars gw WHERE gw.winner_id = g.id)          AS wars_won
+  FROM guilds g
+ ORDER BY g.guild_elo DESC, g.id ASC
+ LIMIT $1;

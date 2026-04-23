@@ -1,30 +1,41 @@
-// OAuth-only login. Email/password убрали в Phase 2 — см. удалённый
-// frontend/src/lib/api/auth.ts и backend/cmd/monolith/services/auth_pwd.go.
+// LoginPage — единая точка входа/регистрации.
 //
-// Поток:
-//   • Yandex: кнопка строит authorize-URL (response_type=code) + редирект.
-//     Yandex редиректит обратно на /auth/callback/yandex?code=... — там
-//     AuthCallbackYandexPage POST'ит на /api/v1/auth/yandex и сохраняет токены.
-//   • Telegram: подгружаем Telegram Login Widget (telegram.org/js), он
-//     рендерит свою кнопку. Когда пользователь авторизуется в Telegram,
-//     виджет зовёт глобальный onTelegramAuth(user) — мы POST'им user
-//     на /api/v1/auth/telegram и сохраняем токены.
+// Контекст (см. требования redesign):
+//   * Yandex: тот же authorize-URL → /auth/callback/yandex (как раньше).
+//   * Telegram: НЕ Login Widget (был «Bot domain invalid» на dev-домене), а
+//     deep-link + код. Бэк генерит 8-символьный код, кладёт в Redis с TTL,
+//     и поллим `/auth/telegram/poll` пока Telegram-бот не пометит код как
+//     подтверждённый. См. backend/services/auth/ports/code_flow.go.
+//
+// После успешной авторизации (и Telegram, и Yandex):
+//   - access_token → localStorage (ключ druz9_access_token, тот же что
+//     читает /lib/apiClient.ts);
+//   - refresh-токен — HttpOnly cookie, ставится бэком;
+//   - редирект:
+//       is_new_user === true  → /onboarding (туториал без auth-форм)
+//       is_new_user === false → / (Sanctum)
+//     Для Yandex флаг is_new_user сейчас не возвращается — фронт делает
+//     fallback на /sanctum (см. AuthCallbackYandexPage).
+//
+// Email/пароль удалены ещё в Phase 2.
 
 import { useEffect, useRef, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
-import { ArrowRight, Loader2 } from 'lucide-react'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
+import { ArrowRight, Loader2, Send, X, Copy, ExternalLink, CheckCircle2 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
-import { api } from '../lib/apiClient'
+import {
+  pollTelegramAuth,
+  startTelegramAuth,
+  persistAccessToken,
+  type TelegramStartResponse,
+} from '../lib/queries/auth'
 
 const YANDEX_CLIENT_ID = import.meta.env.VITE_YANDEX_CLIENT_ID as string | undefined
-const TELEGRAM_BOT_NAME = import.meta.env.VITE_TELEGRAM_BOT_NAME as string | undefined
-// Redirect URI: фронт сам знает свой origin → /auth/callback/yandex.
-// Этот же URL должен быть зарегистрирован в Yandex OAuth app settings.
+const POLL_INTERVAL_MS = 2000
 const yandexRedirectURI = () => `${window.location.origin}/auth/callback/yandex`
 
 function buildYandexAuthorizeURL(): string | null {
   if (!YANDEX_CLIENT_ID) return null
-  // CSRF state: один раз сгенерили → положили в sessionStorage → callback сверит.
   const state = crypto.randomUUID()
   sessionStorage.setItem('oauth_state_yandex', state)
   const u = new URL('https://oauth.yandex.ru/authorize')
@@ -35,83 +46,94 @@ function buildYandexAuthorizeURL(): string | null {
   return u.toString()
 }
 
-interface TelegramAuthPayload {
-  id: number
-  first_name: string
-  last_name?: string
-  username?: string
-  photo_url?: string
-  auth_date: number
-  hash: string
-}
-
-declare global {
-  interface Window {
-    onTelegramAuth?: (user: TelegramAuthPayload) => void
-  }
-}
-
 export default function LoginPage() {
   const { t } = useTranslation('welcome')
   const navigate = useNavigate()
-  const tgContainer = useRef<HTMLDivElement>(null)
-  const [tgPending, setTgPending] = useState(false)
+  const [params] = useSearchParams()
+  const nextHref = params.get('next') ?? '/sanctum'
   const [error, setError] = useState<string | null>(null)
+  const [tgFlow, setTgFlow] = useState<TelegramStartResponse | null>(null)
+  const [tgPolling, setTgPolling] = useState(false)
+  const [tgStarting, setTgStarting] = useState(false)
+  const pollTimer = useRef<number | null>(null)
 
   useEffect(() => {
     document.body.classList.add('v2')
     return () => document.body.classList.remove('v2')
   }, [])
 
-  // Telegram Login Widget. Включаем только если задан BOT_NAME.
-  useEffect(() => {
-    if (!TELEGRAM_BOT_NAME || !tgContainer.current) return
+  // Cleanup polling on unmount.
+  useEffect(() => () => stopPolling(), [])
 
-    window.onTelegramAuth = async (user) => {
-      setTgPending(true)
-      setError(null)
-      try {
-        const res = await api<{ tokens: { access_token: string; refresh_token: string } }>(
-          '/auth/telegram',
-          {
-            method: 'POST',
-            body: JSON.stringify({
-              id: String(user.id),
-              first_name: user.first_name,
-              last_name: user.last_name ?? '',
-              username: user.username ?? '',
-              photo_url: user.photo_url ?? '',
-              auth_date: user.auth_date,
-              hash: user.hash,
-            }),
-          },
-        )
-        if (res?.tokens?.access_token) {
-          localStorage.setItem('druz9.access_token', res.tokens.access_token)
-        }
-        navigate('/', { replace: true })
-      } catch (e) {
-        const msg = e instanceof Error ? e.message : String(e)
-        setError(`Telegram авторизация не прошла: ${msg}`)
-      } finally {
-        setTgPending(false)
+  function stopPolling() {
+    if (pollTimer.current !== null) {
+      window.clearTimeout(pollTimer.current)
+      pollTimer.current = null
+    }
+    setTgPolling(false)
+  }
+
+  async function pollLoop(code: string) {
+    setTgPolling(true)
+    const tick = async () => {
+      const result = await pollTelegramAuth(code)
+      if (result.kind === 'pending') {
+        pollTimer.current = window.setTimeout(tick, POLL_INTERVAL_MS)
+        return
       }
+      stopPolling()
+      if (result.kind === 'ok') {
+        persistAccessToken(result.access_token)
+        const dest = result.is_new_user ? '/onboarding' : nextHref
+        navigate(dest, { replace: true })
+        return
+      }
+      if (result.kind === 'expired') {
+        setError('Код истёк. Попробуй ещё раз.')
+        setTgFlow(null)
+        return
+      }
+      if (result.kind === 'rate_limited') {
+        setError(`Слишком часто опрашиваем. Подожди ${result.retry_after}с.`)
+        return
+      }
+      setError(result.message || 'Не удалось проверить код.')
     }
+    pollTimer.current = window.setTimeout(tick, POLL_INTERVAL_MS)
+  }
 
-    const script = document.createElement('script')
-    script.async = true
-    script.src = 'https://telegram.org/js/telegram-widget.js?22'
-    script.setAttribute('data-telegram-login', TELEGRAM_BOT_NAME)
-    script.setAttribute('data-size', 'large')
-    script.setAttribute('data-radius', '10')
-    script.setAttribute('data-onauth', 'onTelegramAuth(user)')
-    script.setAttribute('data-request-access', 'write')
-    tgContainer.current.appendChild(script)
-
-    return () => {
-      delete window.onTelegramAuth
+  async function handleTelegramClick() {
+    setError(null)
+    setTgStarting(true)
+    try {
+      const res = await startTelegramAuth()
+      setTgFlow(res)
+      // Open the bot in a new tab — most users have the Telegram app installed
+      // and the t.me link will deep-link them straight to /start <code>.
+      window.open(res.deep_link, '_blank', 'noopener,noreferrer')
+      void pollLoop(res.code)
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e)
+      setError(`Не удалось запустить вход через Telegram: ${msg}`)
+    } finally {
+      setTgStarting(false)
     }
-  }, [navigate])
+  }
+
+  function handleCancelTelegram() {
+    stopPolling()
+    setTgFlow(null)
+    setError(null)
+  }
+
+  async function handleCopyCode() {
+    if (!tgFlow) return
+    try {
+      await navigator.clipboard.writeText(tgFlow.code)
+    } catch {
+      /* clipboard blocked — модалка всё равно показывает код. */
+    }
+  }
 
   const yandexHref = buildYandexAuthorizeURL()
 
@@ -124,15 +146,17 @@ export default function LoginPage() {
           </span>
           <span className="font-display text-lg font-bold text-text-primary">druz9</span>
         </Link>
-        <Link to="/onboarding?step=1" className="text-sm font-medium text-text-muted hover:text-text-secondary">
+        <Link to="/welcome" className="text-sm font-medium text-text-muted hover:text-text-secondary">
           {t('start')}
         </Link>
       </header>
 
       <main className="mx-auto flex w-full max-w-[420px] flex-col gap-8 px-4 py-12 sm:py-16">
-        <h1 className="font-display text-3xl font-extrabold text-text-primary sm:text-4xl">{t('login')}</h1>
+        <h1 className="font-display text-3xl font-extrabold text-text-primary sm:text-4xl">
+          Войти / Зарегистрироваться
+        </h1>
         <p className="text-[14px] text-text-muted">
-          Войди через свой профиль провайдера. Email/пароль больше не поддерживаются.
+          Один клик — и мы создадим профиль автоматически. Email и пароли больше не нужны.
         </p>
 
         {error && (
@@ -142,18 +166,22 @@ export default function LoginPage() {
         )}
 
         <div className="flex flex-col gap-4">
-          {/* Telegram — рендерит сам Telegram-виджет */}
+          {/* Telegram — deep-link + код */}
           <div>
             <div className="mb-2 text-[13px] uppercase tracking-wider text-text-muted">Telegram</div>
-            {TELEGRAM_BOT_NAME ? (
-              <div className="flex min-h-[48px] items-center justify-center" ref={tgContainer}>
-                {tgPending && <Loader2 className="h-5 w-5 animate-spin text-cyan" />}
-              </div>
-            ) : (
-              <div className="rounded-lg border border-border bg-surface-1 px-4 py-3 text-[13px] text-text-muted">
-                Telegram-логин не настроен (нет VITE_TELEGRAM_BOT_NAME).
-              </div>
-            )}
+            <button
+              type="button"
+              onClick={handleTelegramClick}
+              disabled={tgStarting || tgPolling}
+              className="flex h-12 w-full items-center justify-center gap-2 rounded-lg border border-cyan/40 bg-cyan/15 text-[15px] font-semibold text-text-primary transition-colors hover:bg-cyan/25 disabled:cursor-wait disabled:opacity-60"
+            >
+              {tgStarting ? (
+                <Loader2 className="h-5 w-5 animate-spin" />
+              ) : (
+                <Send className="h-5 w-5" />
+              )}
+              Войти через Telegram
+            </button>
           </div>
 
           {/* Yandex */}
@@ -176,12 +204,108 @@ export default function LoginPage() {
         </div>
 
         <p className="text-center text-[13px] text-text-muted">
-          Нет аккаунта? Просто войди через провайдера — мы создадим профиль автоматически.{' '}
-          <Link to="/onboarding?step=1" className="font-semibold text-accent-hover hover:underline">
-            или пройди онбординг
-          </Link>
+          Первый раз? Просто нажми Yandex или Telegram — мы создадим профиль автоматически.
         </p>
       </main>
+
+      {tgFlow && (
+        <TelegramCodeModal
+          code={tgFlow.code}
+          deepLink={tgFlow.deep_link}
+          polling={tgPolling}
+          onCopy={handleCopyCode}
+          onCancel={handleCancelTelegram}
+        />
+      )}
+    </div>
+  )
+}
+
+function TelegramCodeModal({
+  code,
+  deepLink,
+  polling,
+  onCopy,
+  onCancel,
+}: {
+  code: string
+  deepLink: string
+  polling: boolean
+  onCopy: () => void
+  onCancel: () => void
+}) {
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4"
+      onClick={onCancel}
+    >
+      <div
+        className="relative w-full max-w-[420px] rounded-2xl border border-border bg-surface-1 p-6"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <button
+          type="button"
+          aria-label="Закрыть"
+          onClick={onCancel}
+          className="absolute right-3 top-3 grid h-8 w-8 place-items-center rounded-md text-text-muted transition-colors hover:bg-surface-2 hover:text-text-primary"
+        >
+          <X className="h-5 w-5" />
+        </button>
+        <h2 className="font-display text-xl font-bold text-text-primary">Подтверди вход в Telegram</h2>
+        <p className="mt-2 text-[13px] text-text-muted">
+          Мы открыли бота в новой вкладке. Если этого не произошло — нажми «Открыть Telegram» ниже.
+          После того как бот пришлёт «Готово», ты автоматически окажешься на сайте.
+        </p>
+
+        <div className="mt-5 flex items-center justify-between gap-3 rounded-lg border border-border bg-bg px-4 py-3">
+          <div className="flex flex-col">
+            <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">Код</span>
+            <span className="font-mono text-2xl font-bold tracking-[0.12em] text-text-primary">{code}</span>
+          </div>
+          <button
+            type="button"
+            onClick={onCopy}
+            className="grid h-10 w-10 place-items-center rounded-md border border-border text-text-muted transition-colors hover:bg-surface-2 hover:text-text-primary"
+            aria-label="Скопировать код"
+          >
+            <Copy className="h-4 w-4" />
+          </button>
+        </div>
+
+        <a
+          href={deepLink}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="mt-4 flex h-12 w-full items-center justify-center gap-2 rounded-lg border border-cyan/40 bg-cyan/15 text-[14px] font-semibold text-text-primary transition-colors hover:bg-cyan/25"
+        >
+          <ExternalLink className="h-4 w-4" />
+          Открыть Telegram
+        </a>
+
+        <div className="mt-4 flex items-center gap-2 text-[12px] text-text-muted">
+          {polling ? (
+            <>
+              <Loader2 className="h-4 w-4 animate-spin text-cyan" />
+              Ждём подтверждения…
+            </>
+          ) : (
+            <>
+              <CheckCircle2 className="h-4 w-4 text-success" />
+              Готово.
+            </>
+          )}
+        </div>
+
+        <button
+          type="button"
+          onClick={onCancel}
+          className="mt-4 h-10 w-full rounded-lg border border-border text-[13px] font-medium text-text-muted transition-colors hover:bg-surface-2"
+        >
+          Отмена
+        </button>
+      </div>
     </div>
   )
 }

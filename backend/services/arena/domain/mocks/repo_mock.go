@@ -74,6 +74,22 @@ func (mr *MockMatchRepoMockRecorder) Get(ctx, id any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Get", reflect.TypeOf((*MockMatchRepo)(nil).Get), ctx, id)
 }
 
+// ListByUser mocks base method.
+func (m *MockMatchRepo) ListByUser(ctx context.Context, userID uuid.UUID, limit, offset int, modeFilter enums.ArenaMode, sectionFilter enums.Section) ([]domain.MatchHistoryEntry, int, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ListByUser", ctx, userID, limit, offset, modeFilter, sectionFilter)
+	ret0, _ := ret[0].([]domain.MatchHistoryEntry)
+	ret1, _ := ret[1].(int)
+	ret2, _ := ret[2].(error)
+	return ret0, ret1, ret2
+}
+
+// ListByUser indicates an expected call of ListByUser.
+func (mr *MockMatchRepoMockRecorder) ListByUser(ctx, userID, limit, offset, modeFilter, sectionFilter any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListByUser", reflect.TypeOf((*MockMatchRepo)(nil).ListByUser), ctx, userID, limit, offset, modeFilter, sectionFilter)
+}
+
 // ListParticipants mocks base method.
 func (m *MockMatchRepo) ListParticipants(ctx context.Context, matchID uuid.UUID) ([]domain.Participant, error) {
 	m.ctrl.T.Helper()

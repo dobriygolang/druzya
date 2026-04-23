@@ -1,9 +1,13 @@
 package services
 
 import (
+	"context"
+	"errors"
 	"fmt"
 
 	authApp "druz9/auth/app"
+	authDomain "druz9/auth/domain"
+	notifyDomain "druz9/notify/domain"
 
 	"github.com/google/uuid"
 )
@@ -44,4 +48,36 @@ func parseSubject(issuer *authApp.TokenIssuer, raw string) (uuid.UUID, error) {
 		return uuid.Nil, fmt.Errorf("parse subject uuid: %w", err)
 	}
 	return uid, nil
+}
+
+// telegramCodeFillerAdapter bridges notify.domain.CodeFiller (the bot's
+// abstraction) onto auth.domain.TelegramCodeRepo (the Redis-backed store).
+// It also translates the cross-domain payload type. Errors are mapped to
+// notify.ErrNotFound so the bot's reply branching stays uniform.
+type telegramCodeFillerAdapter struct{ repo authDomain.TelegramCodeRepo }
+
+// NewTelegramCodeFillerAdapter exposes the adapter for monolith wiring.
+func NewTelegramCodeFillerAdapter(repo authDomain.TelegramCodeRepo) notifyDomain.CodeFiller {
+	return telegramCodeFillerAdapter{repo: repo}
+}
+
+// Fill implements notify.domain.CodeFiller.
+func (a telegramCodeFillerAdapter) Fill(ctx context.Context, code string, p notifyDomain.TelegramAuthPayload) error {
+	if err := a.repo.Fill(ctx, code, authDomain.TelegramPayload{
+		ID:        p.ID,
+		FirstName: p.FirstName,
+		LastName:  p.LastName,
+		Username:  p.Username,
+		PhotoURL:  p.PhotoURL,
+		AuthDate:  p.AuthDate,
+		Hash:      p.Hash,
+	}); err != nil {
+		// Translate the auth-domain sentinel into the notify-domain one so
+		// the bot dispatcher can keep its single check on notifyDomain.ErrNotFound.
+		if errors.Is(err, authDomain.ErrCodeNotFound) {
+			return notifyDomain.ErrNotFound
+		}
+		return fmt.Errorf("monolith.telegramCodeFillerAdapter: %w", err)
+	}
+	return nil
 }

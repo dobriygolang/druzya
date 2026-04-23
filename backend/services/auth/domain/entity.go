@@ -17,6 +17,7 @@ type User struct {
 	Role        enums.UserRole
 	Locale      string
 	DisplayName string
+	AvatarURL   string // URL аватара (Yandex islands-200 / Telegram photo_url); пустая строка == "показать инициалы".
 	CreatedAt   time.Time
 	UpdatedAt   time.Time
 }
@@ -55,10 +56,21 @@ type TokenPair struct {
 
 // YandexUserInfo — релевантная часть ответа Yandex /info.
 type YandexUserInfo struct {
-	ID           string // числовой id Яндекса в виде строки
-	Login        string // login = кандидат в username
-	DisplayName  string
-	DefaultEmail string
+	ID              string // числовой id Яндекса в виде строки
+	Login           string // login = кандидат в username
+	DisplayName     string
+	DefaultEmail    string
+	DefaultAvatarID string // если есть — строим URL вида https://avatars.yandex.net/get-yapic/<id>/islands-200
+	IsAvatarEmpty   bool   // Yandex может вернуть is_avatar_empty=true → не показываем
+}
+
+// YandexAvatarURL — каноническая «islands-200» ссылка на аватар Яндекса.
+// Возвращает пустую строку для пустого id или is_avatar_empty=true.
+func YandexAvatarURL(info YandexUserInfo) string {
+	if info.DefaultAvatarID == "" || info.IsAvatarEmpty {
+		return ""
+	}
+	return "https://avatars.yandex.net/get-yapic/" + info.DefaultAvatarID + "/islands-200"
 }
 
 // TelegramProfile — верифицированный payload Telegram Login Widget.

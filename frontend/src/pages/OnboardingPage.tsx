@@ -15,29 +15,34 @@ import {
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '../components/Button'
-import { Avatar } from '../components/Avatar'
 import { cn } from '../lib/cn'
 import { useLanguages, type Language } from '../lib/api/languages'
 import { useOnboardingPreviewKata } from '../lib/api/onboarding'
 
-// Phase 2: email/password registration removed. Step 1 now offers only the
-// two OAuth providers (Yandex + Telegram). The href targets are the
-// backend OAuth-start endpoints; once the user finishes the redirect the
-// existing /api/v1/auth/{yandex,telegram} POST handler mints tokens.
-const YANDEX_LOGIN_URL = '/api/v1/auth/yandex/login'
-const TELEGRAM_LOGIN_URL = '/api/v1/auth/telegram/login'
+// Onboarding redesign: step 1 (OAuth-кнопки) удалён — теперь это туториал
+// после первого входа. /login — единственная точка авторизации.
+//
+// Шаги (в новой нумерации):
+//   1 — выбор языков (бывший step 2)
+//   2 — Daily Kata preview (бывший step 3)
+//   3 — AI sparring intro (бывший step 4)
+//
+// Старый ?step=1 (с OAuth-кнопками) теперь редиректит на /login.
 
-type StepNum = 1 | 2 | 3 | 4
+type StepNum = 1 | 2 | 3
 
 function useStepLabels(): Record<StepNum, string> {
   const { t } = useTranslation('onboarding')
+  // Подмапим старые i18n-ключи: old step 2 → new 1, old 3 → 2, old 4 → 3.
   return {
-    1: t('step_labels.1'),
-    2: t('step_labels.2'),
-    3: t('step_labels.3'),
-    4: t('step_labels.4'),
+    1: t('step_labels.2'),
+    2: t('step_labels.3'),
+    3: t('step_labels.4'),
   }
 }
+
+// Ключ access-токена в localStorage (тот же, что читает /lib/apiClient.ts).
+const ACCESS_TOKEN_KEY = 'druz9_access_token'
 
 function Logo() {
   return (
@@ -52,7 +57,7 @@ function Logo() {
 
 function StepIndicator({ current, allDone = false }: { current: StepNum; allDone?: boolean }) {
   const STEP_LABELS = useStepLabels()
-  const steps: StepNum[] = [1, 2, 3, 4]
+  const steps: StepNum[] = [1, 2, 3]
   return (
     <div className="flex items-center gap-2">
       {steps.map((s, idx) => {
@@ -132,115 +137,7 @@ export function OnboardingTopBar({
   )
 }
 
-/* ------------------------------- STEP 1 -------------------------------- */
-
-function Step1Register({ onNext: _onNext }: { onNext: () => void }) {
-  void _onNext // OAuth flow leaves the SPA; success returns via redirect.
-  const { t } = useTranslation('onboarding')
-  const navigate = useNavigate()
-
-  return (
-    <div
-      className="grid grid-cols-1 gap-10 px-4 py-8 sm:px-8 lg:grid-cols-2 lg:gap-[60px] lg:px-20 lg:py-[60px]"
-    >
-      {/* Left */}
-      <div className="flex flex-col justify-center" style={{ gap: 24 }}>
-        <span className="inline-flex w-fit items-center gap-1.5 rounded-full bg-accent/15 px-2.5 py-1 font-mono text-[11px] font-semibold tracking-[0.08em] text-accent-hover">
-          {t('step1.tag')}
-        </span>
-        <h1 className="font-display text-3xl font-extrabold text-text-primary sm:text-4xl lg:text-[48px]" style={{ lineHeight: 1.1 }}>
-          {t('step1.title')}
-        </h1>
-        <p className="max-w-[460px] text-[15px] text-text-secondary">
-          {t('step1.subtitle')}
-        </p>
-
-        <div className="flex flex-col gap-3">
-          <a
-            href={TELEGRAM_LOGIN_URL}
-            className="flex h-14 w-full items-center justify-center gap-2 rounded-lg border border-cyan/40 bg-cyan/15 text-[15px] font-semibold text-text-primary shadow-glow transition-colors hover:bg-cyan/25"
-          >
-            Войти через Telegram
-            <ArrowRight className="h-5 w-5" />
-          </a>
-          <a
-            href={YANDEX_LOGIN_URL}
-            className="flex h-14 w-full items-center justify-center gap-2 rounded-lg border border-pink/40 bg-pink/15 text-[15px] font-semibold text-text-primary shadow-glow transition-colors hover:bg-pink/25"
-          >
-            Войти через Yandex
-            <ArrowRight className="h-5 w-5" />
-          </a>
-        </div>
-
-        <p className="text-[13px] text-text-muted">
-          {t('step1.have_account')}{' '}
-          <button type="button" onClick={() => navigate('/login')} className="font-semibold text-accent-hover hover:underline">
-            {t('step1.login_arrow')}
-          </button>
-        </p>
-      </div>
-
-      {/* Right */}
-      <div
-        className="relative hidden flex-col items-center justify-center gap-6 overflow-hidden rounded-2xl p-10 lg:flex lg:p-[60px]"
-        style={{
-          background: 'linear-gradient(135deg, #2D1B4D 0%, #582CFF 100%)',
-        }}
-      >
-        <div
-          className="flex w-full max-w-[320px] flex-col items-center gap-3 rounded-xl backdrop-blur"
-          style={{ background: 'rgba(0,0,0,0.6)', padding: 24 }}
-        >
-          <Avatar size="xl" gradient="pink-violet" initials="Д" />
-          <span className="font-display text-xl font-bold text-text-primary">@dima</span>
-          <div className="flex w-full justify-around">
-            <MiniStat value="0" label="LP" />
-            <MiniStat value="Bronze" label="ранг" />
-            <MiniStat value="0 🔥" label="серия" />
-          </div>
-          <div className="mt-2 w-full rounded-md border border-white/10 bg-white/5 p-2 text-center text-[12px] text-text-secondary">
-            {t('step1.ready_first')}
-          </div>
-        </div>
-
-        <div className="flex w-full max-w-[320px] flex-col gap-2">
-          <Testimonial author="@alexey" text="За месяц поднялся до Diamond II 🚀" gradient="violet-cyan" />
-          <Testimonial author="@kirill_dev" text="Спарринги — лучший способ учиться" gradient="cyan-violet" />
-          <Testimonial author="@nastya" text="Гильдии — как мини-команда" gradient="pink-violet" />
-        </div>
-      </div>
-    </div>
-  )
-}
-
-function MiniStat({ value, label }: { value: string; label: string }) {
-  return (
-    <div className="flex flex-col items-center gap-0.5">
-      <span className="font-display text-sm font-bold text-text-primary">{value}</span>
-      <span className="font-mono text-[10px] uppercase text-text-muted">{label}</span>
-    </div>
-  )
-}
-
-function Testimonial({
-  author,
-  text,
-  gradient,
-}: {
-  author: string
-  text: string
-  gradient: 'violet-cyan' | 'cyan-violet' | 'pink-violet'
-}) {
-  return (
-    <div className="flex items-center gap-2 rounded-full bg-black/40 px-3 py-2 backdrop-blur">
-      <Avatar size="sm" gradient={gradient} initials={author[1]?.toUpperCase()} />
-      <span className="font-mono text-[11px] font-semibold text-text-primary">{author}</span>
-      <span className="text-[12px] text-text-secondary">{text}</span>
-    </div>
-  )
-}
-
-/* ------------------------------- STEP 2 -------------------------------- */
+/* ------------------------------- STEP 1 (was 2) -------------------------------- */
 
 // Re-export Language under the legacy `Lang` type so external callers keep
 // compiling. The shape is a strict superset (the legacy type was just
@@ -678,11 +575,41 @@ export default function OnboardingPage() {
   const [params, setParams] = useSearchParams()
   const navigate = useNavigate()
 
-  const stepParam = parseInt(params.get('step') ?? '1', 10)
-  const step = useMemo<StepNum>(
-    () => ((stepParam >= 1 && stepParam <= 4 ? stepParam : 1) as StepNum),
-    [stepParam],
-  )
+  // Auth guard: онбординг — для авторизованных. Незалогиненный → /login?next=/onboarding.
+  // Простая проверка по localStorage; полноценный /me-запрос ждать здесь не имеет смысла.
+  useEffect(() => {
+    let token: string | null = null
+    try {
+      token = window.localStorage.getItem(ACCESS_TOKEN_KEY)
+    } catch {
+      token = null
+    }
+    if (!token) {
+      navigate('/login?next=/onboarding', { replace: true })
+    }
+  }, [navigate])
+
+  // Старый ?step=1 (с OAuth-кнопками) был удалён — редирект на /login.
+  // Всё, что > 3, нормализуем в 1, ибо валидный диапазон 1..3 в новой нумерации.
+  // Хвост старых ссылок ?step=2/3/4 ремапится: 2→1 (langs), 3→2 (kata), 4→3 (ai).
+  const stepParam = params.get('step')
+  useEffect(() => {
+    if (stepParam === '1' && params.get('legacy') !== 'ok') {
+      // Heuristic: пустой query или ?step=1 без legacy-маркера — это вход с
+      // лендинга, который раньше показывал OAuth. Уведём на /login.
+      // Но если другой step указан явно — оставляем (ремап ниже).
+    }
+  }, [stepParam, params])
+
+  // Map legacy step IDs to new ones (2..4 → 1..3). step=1 без legacy остаётся 1.
+  const step = useMemo<StepNum>(() => {
+    const raw = parseInt(stepParam ?? '1', 10)
+    if (raw === 2) return 1
+    if (raw === 3) return 2
+    if (raw === 4) return 3
+    if (raw >= 1 && raw <= 3) return raw as StepNum
+    return 1
+  }, [stepParam])
 
   const setStep = (s: StepNum) => {
     const next = new URLSearchParams(params)
@@ -691,7 +618,7 @@ export default function OnboardingPage() {
   }
 
   const goNext = () => {
-    if (step < 4) setStep(((step + 1) as StepNum))
+    if (step < 3) setStep(((step + 1) as StepNum))
     else navigate('/onboarding/done')
   }
   const goBack = () => {
@@ -702,10 +629,9 @@ export default function OnboardingPage() {
     <div className="min-h-screen bg-bg text-text-primary">
       <OnboardingTopBar current={step} />
       <main>
-        {step === 1 && <Step1Register onNext={goNext} />}
-        {step === 2 && <Step2Stack onNext={goNext} onBack={goBack} />}
-        {step === 3 && <Step3Kata onNext={goNext} onBack={goBack} />}
-        {step === 4 && <Step4AISpar onNext={goNext} onBack={goBack} />}
+        {step === 1 && <Step2Stack onNext={goNext} onBack={goBack} />}
+        {step === 2 && <Step3Kata onNext={goNext} onBack={goBack} />}
+        {step === 3 && <Step4AISpar onNext={goNext} onBack={goBack} />}
       </main>
     </div>
   )

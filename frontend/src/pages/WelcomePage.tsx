@@ -24,7 +24,10 @@ function MinimalTopBar() {
         >
           {t('login')}
         </Link>
-        <Link to="/onboarding?step=1">
+        {/* Onboarding-туториал теперь только для авторизованных юзеров после
+            первого входа. На лендинге CTA ведёт на /login, а онбординг
+            запустится автоматически при первом успешном логине (см. is_new_user). */}
+        <Link to="/login">
           <Button variant="primary" iconRight={<ArrowRight className="h-4 w-4" />} className="px-3 shadow-glow sm:px-5">
             {t('start')}
           </Button>
@@ -96,7 +99,7 @@ export default function WelcomePage() {
         </p>
 
         <div className="mt-2 flex w-full flex-col items-stretch gap-3 sm:w-auto sm:flex-row sm:items-center sm:gap-4">
-          <Link to="/onboarding?step=1" className="w-full sm:w-auto">
+          <Link to="/login" className="w-full sm:w-auto">
             <Button
               variant="primary"
               iconRight={<ArrowRight className="h-5 w-5" />}

@@ -104,6 +104,21 @@ func (mr *MockGuildRepoMockRecorder) ListGuildMembers(ctx, guildID any) *gomock.
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListGuildMembers", reflect.TypeOf((*MockGuildRepo)(nil).ListGuildMembers), ctx, guildID)
 }
 
+// ListTopGuilds mocks base method.
+func (m *MockGuildRepo) ListTopGuilds(ctx context.Context, limit int) ([]domain.TopGuildSummary, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ListTopGuilds", ctx, limit)
+	ret0, _ := ret[0].([]domain.TopGuildSummary)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ListTopGuilds indicates an expected call of ListTopGuilds.
+func (mr *MockGuildRepoMockRecorder) ListTopGuilds(ctx, limit any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListTopGuilds", reflect.TypeOf((*MockGuildRepo)(nil).ListTopGuilds), ctx, limit)
+}
+
 // UpsertGuild mocks base method.
 func (m *MockGuildRepo) UpsertGuild(ctx context.Context, g domain.Guild) (domain.Guild, error) {
 	m.ctrl.T.Helper()

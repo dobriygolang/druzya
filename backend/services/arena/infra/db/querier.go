@@ -14,11 +14,13 @@ type Querier interface {
 	// arena queries consumed by sqlc (emitted into services/arena/infra/db).
 	// CRITICAL: solution_hint is NEVER selected into arena rows — tasks are read
 	// by id into a public projection that excludes the hint.
+	CountMyMatches(ctx context.Context, arg CountMyMatchesParams) (int64, error)
 	CreateArenaMatch(ctx context.Context, arg CreateArenaMatchParams) (ArenaMatch, error)
 	GetArenaMatch(ctx context.Context, id pgtype.UUID) (ArenaMatch, error)
 	GetArenaTaskPublic(ctx context.Context, id pgtype.UUID) (GetArenaTaskPublicRow, error)
 	InsertArenaParticipant(ctx context.Context, arg InsertArenaParticipantParams) error
 	ListArenaParticipants(ctx context.Context, matchID pgtype.UUID) ([]ArenaParticipant, error)
+	ListMyMatches(ctx context.Context, arg ListMyMatchesParams) ([]ListMyMatchesRow, error)
 	PickActiveTaskBySectionDifficulty(ctx context.Context, arg PickActiveTaskBySectionDifficultyParams) (PickActiveTaskBySectionDifficultyRow, error)
 	SetArenaMatchTask(ctx context.Context, arg SetArenaMatchTaskParams) (int64, error)
 	SetArenaMatchWinner(ctx context.Context, arg SetArenaMatchWinnerParams) (int64, error)

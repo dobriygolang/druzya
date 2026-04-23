@@ -77,6 +77,43 @@ export const matchesHandlers = [
     }),
   ),
 
+  // Phase 4-A: GET /arena/matches/my — paginated, filterable history.
+  http.get(`${base}/arena/matches/my`, ({ request }) => {
+    const url = new URL(request.url)
+    const limit = Math.min(Math.max(Number(url.searchParams.get('limit') ?? 20) || 20, 1), 100)
+    const offset = Math.max(Number(url.searchParams.get('offset') ?? 0) || 0, 0)
+    const modeFilter = url.searchParams.get('mode') ?? ''
+    const sectionFilter = url.searchParams.get('section') ?? ''
+
+    const allItems = [
+      { match_id: 'm1', mode: 'solo_1v1', section: 'algorithms', opp: 'kirill_dev', result: 'win', lp: 18, dur: 261 },
+      { match_id: 'm2', mode: 'solo_1v1', section: 'algorithms', opp: 'nastya', result: 'loss', lp: -12, dur: 600 },
+      { match_id: 'm3', mode: 'ranked', section: 'algorithms', opp: 'alexey', result: 'win', lp: 24, dur: 195 },
+      { match_id: 'm4', mode: 'solo_1v1', section: 'sql', opp: 'vasya', result: 'win', lp: 16, dur: 320 },
+      { match_id: 'm5', mode: 'ranked', section: 'go', opp: 'oleg', result: 'loss', lp: -8, dur: 540 },
+      { match_id: 'm6', mode: 'solo_1v1', section: 'algorithms', opp: 'denis', result: 'win', lp: 14, dur: 240 },
+      { match_id: 'm7', mode: 'duo_2v2', section: 'algorithms', opp: 'lera', result: 'win', lp: 20, dur: 420 },
+      { match_id: 'm8', mode: 'solo_1v1', section: 'algorithms', opp: 'misha', result: 'loss', lp: -10, dur: 510 },
+    ]
+
+    const filtered = allItems.filter(
+      (i) => (!modeFilter || i.mode === modeFilter) && (!sectionFilter || i.section === sectionFilter),
+    )
+    const page = filtered.slice(offset, offset + limit).map((i, n) => ({
+      match_id: i.match_id,
+      finished_at: new Date(Date.now() - n * 3600_000).toISOString(),
+      mode: i.mode,
+      section: i.section,
+      opponent_user_id: '00000000-0000-0000-0000-000000000000',
+      opponent_username: i.opp,
+      opponent_avatar_url: '',
+      result: i.result,
+      lp_change: i.lp,
+      duration_seconds: i.dur,
+    }))
+    return HttpResponse.json({ items: page, total: filtered.length })
+  }),
+
   http.get(`${base}/matches/:id/end`, ({ params }) =>
     HttpResponse.json({
       id: params.id,

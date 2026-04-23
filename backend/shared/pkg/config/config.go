@@ -41,6 +41,8 @@ type Config struct {
 		YandexClientID   string
 		YandexSecret     string
 		TelegramBotToken string
+		TelegramBotName  string // имя бота без @, используется в deep-link `https://t.me/<name>?start=<code>`
+		TelegramCodeTTL  int    // TTL deep-link кода в секундах (default 300)
 	}
 
 	LLM struct {
@@ -93,6 +95,8 @@ func Load() (Config, error) {
 	c.Auth.YandexClientID = env("YANDEX_CLIENT_ID", "")
 	c.Auth.YandexSecret = env("YANDEX_CLIENT_SECRET", "")
 	c.Auth.TelegramBotToken = env("TELEGRAM_BOT_TOKEN", "")
+	c.Auth.TelegramBotName = env("TELEGRAM_BOT_NAME", "")
+	c.Auth.TelegramCodeTTL = envInt("TELEGRAM_CODE_TTL", 300)
 
 	c.LLM.OpenRouterAPIKey = env("OPENROUTER_API_KEY", "")
 	c.LLM.DefaultModelFree = env("LLM_DEFAULT_FREE", "openai/gpt-4o-mini")

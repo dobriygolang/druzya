@@ -67,6 +67,14 @@ func (p *Postgres) UpsertByOAuth(ctx context.Context, in domain.UpsertOAuthInput
 		}); touchErr != nil {
 			return domain.User{}, false, fmt.Errorf("auth.Postgres.UpsertByOAuth: touch tokens: %w", touchErr)
 		}
+		// Refresh avatar opportunistically. The query is a no-op when the
+		// new value is empty or unchanged — see UpdateUserAvatar in auth.sql.
+		if avErr := qtx.UpdateUserAvatar(ctx, authdb.UpdateUserAvatarParams{
+			ID:        linkedID,
+			AvatarURL: in.AvatarURL,
+		}); avErr != nil {
+			return domain.User{}, false, fmt.Errorf("auth.Postgres.UpsertByOAuth: update avatar: %w", avErr)
+		}
 		row, findErr := qtx.FindUserByID(ctx, linkedID)
 		if findErr != nil {
 			return domain.User{}, false, fmt.Errorf("auth.Postgres.UpsertByOAuth: load existing user: %w", findErr)
@@ -91,11 +99,12 @@ func (p *Postgres) UpsertByOAuth(ctx context.Context, in domain.UpsertOAuthInput
 	}
 	role := enums.UserRoleUser
 	created, err := qtx.CreateUser(ctx, authdb.CreateUserParams{
-		Column1:  in.Email, // NULLIF($1,'') handles empty string
-		Username: username,
-		Role:     role.String(),
-		Locale:   "ru",
-		Column5:  in.DisplayName,
+		Column1:   in.Email, // NULLIF($1,'') handles empty string
+		Username:  username,
+		Role:      role.String(),
+		Locale:    "ru",
+		Column5:   in.DisplayName,
+		AvatarURL: in.AvatarURL,
 	})
 	if err != nil {
 		return domain.User{}, false, fmt.Errorf("auth.Postgres.UpsertByOAuth: insert user: %w", err)
@@ -216,6 +225,7 @@ func userFromFindRow(r authdb.FindUserByIDRow) (domain.User, error) {
 		Role:        role,
 		Locale:      r.Locale,
 		DisplayName: pgText(r.DisplayName),
+		AvatarURL:   r.AvatarURL,
 		CreatedAt:   r.CreatedAt.Time,
 		UpdatedAt:   r.UpdatedAt.Time,
 	}, nil

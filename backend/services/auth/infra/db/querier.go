@@ -19,6 +19,7 @@ type Querier interface {
 	FindUserByID(ctx context.Context, id pgtype.UUID) (FindUserByIDRow, error)
 	FindUserByUsername(ctx context.Context, username string) (FindUserByUsernameRow, error)
 	TouchOAuthTokens(ctx context.Context, arg TouchOAuthTokensParams) error
+	UpdateUserAvatar(ctx context.Context, arg UpdateUserAvatarParams) error
 	UsernameExists(ctx context.Context, username string) (bool, error)
 }
 

@@ -27,6 +27,12 @@ type GuildRepo interface {
 
 	// GetMember returns a single membership row, or ErrNotFound when missing.
 	GetMember(ctx context.Context, guildID, userID uuid.UUID) (Member, error)
+
+	// ListTopGuilds returns the global guild leaderboard ordered by guild_elo
+	// descending. The repo layer is responsible for the cap; callers should
+	// rely on it rather than re-checking. Empty result set → empty slice +
+	// nil error (NOT ErrNotFound — the leaderboard simply has zero rows).
+	ListTopGuilds(ctx context.Context, limit int) ([]TopGuildSummary, error)
 }
 
 // WarRepo persists `guild_wars` and the per-line JSONB score maps.

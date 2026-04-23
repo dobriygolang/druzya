@@ -103,3 +103,24 @@ type Contribution struct {
 	Score    int
 	AddedAt  time.Time
 }
+
+// TopGuildSummary is the aggregated row served by ListTopGuilds — guild
+// identity plus the leaderboard metrics. `Rank` is 1-indexed and assigned
+// at the use-case layer (the SQL only orders by elo_total desc).
+type TopGuildSummary struct {
+	GuildID      uuid.UUID
+	Name         string
+	Emblem       string
+	MembersCount int
+	EloTotal     int
+	WarsWon      int
+	Rank         int
+}
+
+// MaxTopGuildsLimit is the hard ceiling enforced by the repo and ports
+// layers — protects against accidental table-scans by misconfigured clients.
+const MaxTopGuildsLimit = 100
+
+// DefaultTopGuildsLimit is what the ports layer falls back to when the
+// caller omits or sends a non-positive `limit`.
+const DefaultTopGuildsLimit = 20

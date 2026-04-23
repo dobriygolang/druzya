@@ -185,6 +185,81 @@ func (p *Postgres) UpsertParticipantResult(ctx context.Context, part domain.Part
 	return nil
 }
 
+// ListByUser returns one paginated page of finished/cancelled matches for
+// userID and the unfiltered total count under the same filter. The query
+// joins arena_participants twice — once to get the caller's row (for the
+// LP delta), once to find the opponent (1v1 only for now; for 2v2 the
+// "first other" is returned, which the frontend treats as the opposing
+// captain). avatar_url is empty until profiles.media lands.
+func (p *Postgres) ListByUser(
+	ctx context.Context,
+	userID uuid.UUID,
+	limit, offset int,
+	modeFilter enums.ArenaMode,
+	sectionFilter enums.Section,
+) ([]domain.MatchHistoryEntry, int, error) {
+	rows, err := p.q.ListMyMatches(ctx, arenadb.ListMyMatchesParams{
+		UserID:  pgUUID(userID),
+		Mode:    string(modeFilter),
+		Section: string(sectionFilter),
+		Limit:   int32(limit),
+		Offset:  int32(offset),
+	})
+	if err != nil {
+		return nil, 0, fmt.Errorf("arena.pg.ListByUser: %w", err)
+	}
+	totalRaw, err := p.q.CountMyMatches(ctx, arenadb.CountMyMatchesParams{
+		UserID:  pgUUID(userID),
+		Mode:    string(modeFilter),
+		Section: string(sectionFilter),
+	})
+	if err != nil {
+		return nil, 0, fmt.Errorf("arena.pg.ListByUser: count: %w", err)
+	}
+	out := make([]domain.MatchHistoryEntry, 0, len(rows))
+	for _, r := range rows {
+		var winner *uuid.UUID
+		if r.WinnerID.Valid {
+			w := fromPgUUID(r.WinnerID)
+			winner = &w
+		}
+		entry := domain.MatchHistoryEntry{
+			MatchID: fromPgUUID(r.MatchID),
+			Mode:    enums.ArenaMode(r.Mode),
+			Section: enums.Section(r.Section),
+			Result:  domain.ResultFor(userID, winner, enums.MatchStatus(r.Status)),
+		}
+		if r.FinishedAt.Valid {
+			entry.FinishedAt = r.FinishedAt.Time.UTC()
+		}
+		if r.OpponentUserID.Valid {
+			entry.OpponentUserID = fromPgUUID(r.OpponentUserID)
+		}
+		if r.OpponentUsername.Valid {
+			entry.OpponentUsername = r.OpponentUsername.String
+		}
+		if r.OpponentAvatarURL.Valid {
+			entry.OpponentAvatarURL = r.OpponentAvatarURL.String
+		}
+		// LP delta — elo_after - elo_before; falls back to 0 if the rating
+		// domain hasn't yet settled the result on this row.
+		if r.MeEloAfter.Valid {
+			entry.LPChange = int(r.MeEloAfter.Int32) - int(r.MeEloBefore)
+		}
+		// Duration — finished_at - started_at, in whole seconds. Negative
+		// values are clamped to zero (clock skew).
+		if r.StartedAt.Valid && r.FinishedAt.Valid {
+			d := int(r.FinishedAt.Time.Sub(r.StartedAt.Time).Seconds())
+			if d < 0 {
+				d = 0
+			}
+			entry.DurationSeconds = d
+		}
+		out = append(out, entry)
+	}
+	return out, int(totalRaw), nil
+}
+
 // PickBySectionDifficulty returns a single active task for the given section+difficulty.
 // solution_hint is never selected.
 func (p *Postgres) PickBySectionDifficulty(ctx context.Context, section enums.Section, diff enums.Difficulty) (domain.TaskPublic, error) {

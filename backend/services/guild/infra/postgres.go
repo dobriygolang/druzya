@@ -105,6 +105,72 @@ func (p *Postgres) ListGuildMembers(ctx context.Context, guildID uuid.UUID) ([]d
 	return out, nil
 }
 
+// listTopGuildsSQL is hand-written rather than going through sqlc because the
+// query is read-only and `make gen-sqlc` is part of CI; keeping the literal
+// here avoids forcing a codegen run for a single new SELECT. The shape lines
+// up exactly with `name: ListTopGuilds :many` in queries/guild.sql so a
+// future sqlc bump can drop this in favour of the generated method.
+const listTopGuildsSQL = `
+SELECT g.id,
+       g.name,
+       g.emblem,
+       g.guild_elo,
+       (SELECT COUNT(*)::int FROM guild_members gm WHERE gm.guild_id = g.id)        AS members_count,
+       (SELECT COUNT(*)::int FROM guild_wars gw   WHERE gw.winner_id = g.id)        AS wars_won
+  FROM guilds g
+ ORDER BY g.guild_elo DESC, g.id ASC
+ LIMIT $1
+`
+
+// ListTopGuilds returns the global guild leaderboard ordered by guild_elo.
+// Limit is clamped to [1, MaxTopGuildsLimit]; non-positive becomes the
+// domain default. Empty result → empty slice + nil err.
+func (p *Postgres) ListTopGuilds(ctx context.Context, limit int) ([]domain.TopGuildSummary, error) {
+	if limit <= 0 {
+		limit = domain.DefaultTopGuildsLimit
+	}
+	if limit > domain.MaxTopGuildsLimit {
+		limit = domain.MaxTopGuildsLimit
+	}
+	rows, err := p.pool.Query(ctx, listTopGuildsSQL, int32(limit))
+	if err != nil {
+		return nil, fmt.Errorf("guild.pg.ListTopGuilds: %w", err)
+	}
+	defer rows.Close()
+	out := make([]domain.TopGuildSummary, 0, limit)
+	rank := 0
+	for rows.Next() {
+		rank++
+		var (
+			id           pgtype.UUID
+			name         string
+			emblem       pgtype.Text
+			guildElo     int32
+			membersCount int32
+			warsWon      int32
+		)
+		if scanErr := rows.Scan(&id, &name, &emblem, &guildElo, &membersCount, &warsWon); scanErr != nil {
+			return nil, fmt.Errorf("guild.pg.ListTopGuilds: scan: %w", scanErr)
+		}
+		s := domain.TopGuildSummary{
+			GuildID:      fromPgUUID(id),
+			Name:         name,
+			MembersCount: int(membersCount),
+			EloTotal:     int(guildElo),
+			WarsWon:      int(warsWon),
+			Rank:         rank,
+		}
+		if emblem.Valid {
+			s.Emblem = emblem.String
+		}
+		out = append(out, s)
+	}
+	if rerr := rows.Err(); rerr != nil {
+		return nil, fmt.Errorf("guild.pg.ListTopGuilds: rows: %w", rerr)
+	}
+	return out, nil
+}
+
 // GetMember returns a single membership row.
 func (p *Postgres) GetMember(ctx context.Context, guildID, userID uuid.UUID) (domain.Member, error) {
 	row, err := p.q.GetGuildMember(ctx, guilddb.GetGuildMemberParams{

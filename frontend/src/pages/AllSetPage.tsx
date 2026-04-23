@@ -66,7 +66,9 @@ export default function AllSetPage() {
 
   return (
     <div className="min-h-screen bg-bg text-text-primary">
-      <OnboardingTopBar current={4} allDone showSkip={false} />
+      {/* Onboarding теперь 3-шаговый (бывший step 1 — OAuth — переехал в /login).
+          allDone={true} включает галочки для всех шагов. */}
+      <OnboardingTopBar current={3} allDone showSkip={false} />
       <main
         className="flex flex-col items-center justify-center px-4 py-8 sm:px-8 lg:px-16 lg:py-14"
         style={{ gap: 28 }}

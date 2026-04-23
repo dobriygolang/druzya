@@ -385,3 +385,242 @@ func TestQueueStatsCache_RedisFailure_FallsBack(t *testing.T) {
 		t.Fatalf("expected fallback to upstream, got %+v", got)
 	}
 }
+
+// ── MatchHistoryCache ─────────────────────────────────────────────────────
+
+// sampleHistory builds a deterministic 1-row snapshot, sized so JSON round-
+// trips exercise UUID + timestamp encoding (the two forms most likely to
+// silently break under Marshal/Unmarshal drift).
+func sampleHistory(uid uuid.UUID) MatchHistorySnapshot {
+	return MatchHistorySnapshot{
+		Items: []domain.MatchHistoryEntry{
+			{
+				MatchID:          uuid.New(),
+				FinishedAt:       time.Now().UTC().Truncate(time.Second),
+				Mode:             enums.ArenaModeSolo1v1,
+				Section:          enums.SectionAlgorithms,
+				OpponentUserID:   uid, // any non-nil
+				OpponentUsername: "opp",
+				Result:           domain.MatchResultWin,
+				LPChange:         15,
+				DurationSeconds:  240,
+			},
+		},
+		Total: 1,
+	}
+}
+
+func TestCachedMatchHistoryRepo_MissThenHit(t *testing.T) {
+	t.Parallel()
+	uid := uuid.New()
+	want := sampleHistory(uid)
+	calls := atomic.Int64{}
+	loader := func(_ context.Context, _ uuid.UUID, _ MatchHistoryFilters) (MatchHistorySnapshot, error) {
+		calls.Add(1)
+		return want, nil
+	}
+	kv := newMemKV()
+	c := NewMatchHistoryCache(kv, 30*time.Second, nil, loader)
+
+	f := MatchHistoryFilters{Limit: 20, Offset: 0}
+	if _, err := c.Get(context.Background(), uid, f); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := c.Get(context.Background(), uid, f); err != nil {
+		t.Fatal(err)
+	}
+	if got := calls.Load(); got != 1 {
+		t.Fatalf("expected loader called once, got %d", got)
+	}
+}
+
+func TestCachedMatchHistoryRepo_TTLExpire(t *testing.T) {
+	t.Parallel()
+	uid := uuid.New()
+	calls := atomic.Int64{}
+	loader := func(_ context.Context, _ uuid.UUID, _ MatchHistoryFilters) (MatchHistorySnapshot, error) {
+		calls.Add(1)
+		return sampleHistory(uid), nil
+	}
+	kv := newMemKV()
+	now := time.Now()
+	kv.now = func() time.Time { return now }
+	c := NewMatchHistoryCache(kv, 30*time.Second, nil, loader)
+
+	f := MatchHistoryFilters{Limit: 20}
+	if _, err := c.Get(context.Background(), uid, f); err != nil {
+		t.Fatal(err)
+	}
+	now = now.Add(31 * time.Second)
+	if _, err := c.Get(context.Background(), uid, f); err != nil {
+		t.Fatal(err)
+	}
+	if got := calls.Load(); got != 2 {
+		t.Fatalf("expected loader called twice after TTL, got %d", got)
+	}
+}
+
+func TestCachedMatchHistoryRepo_Invalidate(t *testing.T) {
+	t.Parallel()
+	uid := uuid.New()
+	calls := atomic.Int64{}
+	loader := func(_ context.Context, _ uuid.UUID, _ MatchHistoryFilters) (MatchHistorySnapshot, error) {
+		calls.Add(1)
+		return sampleHistory(uid), nil
+	}
+	kv := newMemKV()
+	c := NewMatchHistoryCache(kv, 30*time.Second, nil, loader)
+
+	f := MatchHistoryFilters{Limit: 20}
+	if _, err := c.Get(context.Background(), uid, f); err != nil {
+		t.Fatal(err)
+	}
+	c.Invalidate(context.Background(), uid)
+	if _, err := c.Get(context.Background(), uid, f); err != nil {
+		t.Fatal(err)
+	}
+	if got := calls.Load(); got != 2 {
+		t.Fatalf("expected loader called twice after invalidate, got %d", got)
+	}
+}
+
+func TestCachedMatchHistoryRepo_RedisFailure_Fallback(t *testing.T) {
+	t.Parallel()
+	uid := uuid.New()
+	want := sampleHistory(uid)
+	loader := func(_ context.Context, _ uuid.UUID, _ MatchHistoryFilters) (MatchHistorySnapshot, error) {
+		return want, nil
+	}
+	kv := newMemKV()
+	kv.failGet = true
+	c := NewMatchHistoryCache(kv, 30*time.Second, nil, loader)
+
+	got, err := c.Get(context.Background(), uid, MatchHistoryFilters{Limit: 20})
+	if err != nil {
+		t.Fatalf("expected fallback to upstream: %v", err)
+	}
+	if got.Total != want.Total || len(got.Items) != len(want.Items) {
+		t.Fatalf("got %+v", got)
+	}
+}
+
+func TestCachedMatchHistoryRepo_Concurrent_Singleflight(t *testing.T) {
+	t.Parallel()
+	uid := uuid.New()
+	calls := atomic.Int64{}
+	gate := make(chan struct{})
+	loader := func(_ context.Context, _ uuid.UUID, _ MatchHistoryFilters) (MatchHistorySnapshot, error) {
+		calls.Add(1)
+		<-gate
+		return sampleHistory(uid), nil
+	}
+	kv := newMemKV()
+	c := NewMatchHistoryCache(kv, 30*time.Second, nil, loader)
+
+	f := MatchHistoryFilters{Limit: 20}
+	var wg sync.WaitGroup
+	for i := 0; i < 8; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			_, _ = c.Get(context.Background(), uid, f)
+		}()
+	}
+	time.Sleep(20 * time.Millisecond)
+	close(gate)
+	wg.Wait()
+
+	if got := calls.Load(); got != 1 {
+		t.Fatalf("expected singleflight to collapse 8 calls into 1, got %d", got)
+	}
+}
+
+func TestCachedMatchHistoryRepo_DifferentFiltersAreIndependent(t *testing.T) {
+	t.Parallel()
+	uid := uuid.New()
+	calls := atomic.Int64{}
+	loader := func(_ context.Context, _ uuid.UUID, _ MatchHistoryFilters) (MatchHistorySnapshot, error) {
+		calls.Add(1)
+		return MatchHistorySnapshot{Total: 1}, nil
+	}
+	kv := newMemKV()
+	c := NewMatchHistoryCache(kv, 30*time.Second, nil, loader)
+
+	// Three distinct filter tuples must each populate the loader exactly
+	// once; the 4th call repeats the first and must hit the cache.
+	if _, err := c.Get(context.Background(), uid, MatchHistoryFilters{Limit: 20, Offset: 0}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := c.Get(context.Background(), uid, MatchHistoryFilters{Limit: 20, Offset: 20}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := c.Get(context.Background(), uid, MatchHistoryFilters{Limit: 20, Mode: enums.ArenaModeRanked}); err != nil {
+		t.Fatal(err)
+	}
+	if got := calls.Load(); got != 3 {
+		t.Fatalf("expected 3 distinct loader calls, got %d", got)
+	}
+	if _, err := c.Get(context.Background(), uid, MatchHistoryFilters{Limit: 20, Offset: 0}); err != nil {
+		t.Fatal(err)
+	}
+	if got := calls.Load(); got != 3 {
+		t.Fatalf("repeated filter must hit cache; loader called %d times total", got)
+	}
+}
+
+func TestCachedMatchHistoryRepo_KeyContainsUserAndEpoch(t *testing.T) {
+	t.Parallel()
+	// Two distinct users must NEVER share a key.
+	uid1, uid2 := uuid.New(), uuid.New()
+	f := MatchHistoryFilters{Limit: 20, Offset: 0}
+	if keyMatchHistory(uid1, 0, f) == keyMatchHistory(uid2, 0, f) {
+		t.Fatalf("different users must not share key")
+	}
+	// Same user, different epoch must produce a different key (proves
+	// Invalidate's epoch bump can never accidentally collide).
+	if keyMatchHistory(uid1, 0, f) == keyMatchHistory(uid1, 1, f) {
+		t.Fatalf("epoch bump must change key")
+	}
+}
+
+// ── CachedHistoryRepo wrapper ─────────────────────────────────────────────
+
+// stubMatchRepo is a hand-rolled MatchRepo whose only job is to surface the
+// ListByUser arguments and counts back to the test. It's deliberately not a
+// gomock — the wrapper is so thin that gomock setup overhead would obscure
+// the assertion.
+type stubMatchRepo struct {
+	domain.MatchRepo
+	calls atomic.Int64
+	items []domain.MatchHistoryEntry
+	total int
+	err   error
+}
+
+func (s *stubMatchRepo) ListByUser(_ context.Context, _ uuid.UUID, _, _ int, _ enums.ArenaMode, _ enums.Section) ([]domain.MatchHistoryEntry, int, error) {
+	s.calls.Add(1)
+	return s.items, s.total, s.err
+}
+
+func TestCachedHistoryRepo_PassThroughListByUser_CachesResult(t *testing.T) {
+	t.Parallel()
+	uid := uuid.New()
+	stub := &stubMatchRepo{items: []domain.MatchHistoryEntry{{MatchID: uuid.New()}}, total: 1}
+	cache := NewMatchHistoryCache(newMemKV(), 30*time.Second, nil,
+		func(ctx context.Context, u uuid.UUID, f MatchHistoryFilters) (MatchHistorySnapshot, error) {
+			it, total, err := stub.ListByUser(ctx, u, f.Limit, f.Offset, f.Mode, f.Section)
+			return MatchHistorySnapshot{Items: it, Total: total}, err
+		},
+	)
+	repo := NewCachedHistoryRepo(stub, cache)
+
+	for i := 0; i < 5; i++ {
+		_, _, err := repo.ListByUser(context.Background(), uid, 20, 0, "", "")
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+	if stub.calls.Load() != 1 {
+		t.Fatalf("expected upstream called once across 5 reads, got %d", stub.calls.Load())
+	}
+}

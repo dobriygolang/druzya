@@ -80,6 +80,7 @@ export default function App() {
         <Route path="/autopsy/new" element={<InterviewAutopsyPage />} />
         <Route path="/autopsy/:id" element={<InterviewAutopsyPage />} />
         <Route path="/guild" element={<GuildPage />} />
+        <Route path="/guild/:guildId" element={<GuildPage />} />
         <Route path="/slots" element={<SlotsPage />} />
         <Route path="/season" element={<SeasonPage />} />
         <Route path="/achievements" element={<AchievementsPage />} />

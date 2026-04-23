@@ -42,8 +42,9 @@ type LoginTelegramInput struct {
 
 // LoginTelegramResult is passed back to the HTTP layer.
 type LoginTelegramResult struct {
-	Tokens domain.TokenPair
-	User   domain.User
+	Tokens    domain.TokenPair
+	User      domain.User
+	IsNewUser bool
 }
 
 // Do verifies HMAC → upserts user → mints tokens → publishes event.
@@ -86,6 +87,7 @@ func (uc *LoginTelegram) Do(ctx context.Context, in LoginTelegramInput) (LoginTe
 		Email:          "", // Telegram never exposes email.
 		UsernameHint:   usernameHint,
 		DisplayName:    display,
+		AvatarURL:      prof.PhotoURL,
 	})
 	if err != nil {
 		return LoginTelegramResult{}, fmt.Errorf("auth.LoginTelegram: upsert user: %w", err)
@@ -100,5 +102,5 @@ func (uc *LoginTelegram) Do(ctx context.Context, in LoginTelegramInput) (LoginTe
 		uc.Log.WarnContext(ctx, "auth.LoginTelegram: publish event", slog.Any("err", err))
 	}
 
-	return LoginTelegramResult{Tokens: pair, User: user}, nil
+	return LoginTelegramResult{Tokens: pair, User: user, IsNewUser: created}, nil
 }

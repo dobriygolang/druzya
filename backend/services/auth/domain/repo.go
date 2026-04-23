@@ -36,6 +36,7 @@ type UpsertOAuthInput struct {
 	Email           string // может быть пустым (Telegram)
 	UsernameHint    string // предпочитаемый login/username; репо дедуплицирует при конфликте
 	DisplayName     string
+	AvatarURL       string // URL аватара провайдера; пустой → не пишем (КРОМЕ insert: пишем '').
 	AccessTokenEnc  []byte
 	RefreshTokenEnc []byte
 	TokenExpiresAt  *time.Time

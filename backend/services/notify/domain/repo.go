@@ -76,3 +76,28 @@ type UserLookup interface {
 	// Отсутствующий пользователь подразумевает "ru" (дефолт по bible).
 	GetLocale(ctx context.Context, userID uuid.UUID) (string, error)
 }
+
+// TelegramAuthPayload — узкая копия auth.domain.TelegramPayload, чтобы
+// не пускать notify-bot в auth-домен напрямую. Контекст: бот получает
+// /start <code> от Telegram, формирует payload и передаёт его в порт
+// CodeFiller. Конкретный адаптер в monolith превращает это в
+// auth.domain.TelegramPayload и зовёт TelegramCodeRepo.Fill.
+type TelegramAuthPayload struct {
+	ID        int64
+	FirstName string
+	LastName  string
+	Username  string
+	PhotoURL  string
+	AuthDate  int64
+	Hash      string
+}
+
+// CodeFiller is implemented by an auth-domain adapter and wired into the
+// TelegramBot at construction time. The bot's /start <code> handler calls
+// Fill once per valid code; the auth domain owns persistence.
+//
+// Returning ErrNotFound means the bot should reply "code not found / expired",
+// not retry. Other errors are logged but don't surface to the user.
+type CodeFiller interface {
+	Fill(ctx context.Context, code string, payload TelegramAuthPayload) error
+}

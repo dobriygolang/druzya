@@ -2,18 +2,27 @@
 //
 // Yandex редиректит пользователя сюда с ?code=...&state=... после успешной
 // авторизации. Мы сверяем state с тем, что положили в sessionStorage перед
-// редиректом (CSRF), POST'им code на /api/v1/auth/yandex, сохраняем
-// access_token и редиректим на /.
+// редиректом (CSRF), POST'им code на /api/v1/auth/yandex и сохраняем
+// access_token.
 //
-// При ошибке показываем сообщение и кнопку "вернуться на /login".
+// Контракт ответа (см. backend/services/auth/ports/server.go,
+// AuthServer.LoginYandex → buildLoginResponse):
+//   {access_token, expires_in, user: {...}}
+// Refresh-токен ставится бэком в HttpOnly-cookie, фронт его не видит.
 
 import { useEffect, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { Loader2 } from 'lucide-react'
 import { api } from '../lib/apiClient'
+import { persistAccessToken, type AuthUser } from '../lib/queries/auth'
 
-interface AuthResponse {
-  tokens: { access_token: string; refresh_token?: string }
+interface YandexAuthResponse {
+  access_token: string
+  expires_in?: number
+  user?: AuthUser
+  // is_new_user не возвращается стандартным AuthResponse (нужно расширение
+  // proto), поэтому Yandex-вход всегда уходит на /sanctum.
+  // STUB: после расширения proto добавить is_new_user → /onboarding.
 }
 
 export default function AuthCallbackYandexPage() {
@@ -43,15 +52,15 @@ export default function AuthCallbackYandexPage() {
     let cancelled = false
     void (async () => {
       try {
-        const res = await api<AuthResponse>('/auth/yandex', {
+        const res = await api<YandexAuthResponse>('/auth/yandex', {
           method: 'POST',
           body: JSON.stringify({ code, state: state ?? '' }),
         })
         if (cancelled) return
-        if (res?.tokens?.access_token) {
-          localStorage.setItem('druz9.access_token', res.tokens.access_token)
+        if (res?.access_token) {
+          persistAccessToken(res.access_token)
         }
-        navigate('/', { replace: true })
+        navigate('/sanctum', { replace: true })
       } catch (e) {
         if (cancelled) return
         const msg = e instanceof Error ? e.message : String(e)

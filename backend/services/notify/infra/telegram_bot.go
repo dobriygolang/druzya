@@ -59,8 +59,14 @@ type TelegramBot struct {
 	log      *slog.Logger
 	prefs    domain.PreferencesRepo
 	users    domain.UserLookup
+	codes    domain.CodeFiller // optional: when set, /start <code> fills auth codes
 	dispatch CommandDispatcher
 }
+
+// SetCodeFiller installs the deep-link auth code filler. Wired by monolith
+// after the auth module is constructed (notify is built first → cyclic dep
+// avoided by post-construction injection).
+func (b *TelegramBot) SetCodeFiller(c domain.CodeFiller) { b.codes = c }
 
 // NewTelegramBot constructs a real bot from a token. If token is empty (common
 // in tests / local), a no-op stub is returned instead — this keeps main.go
