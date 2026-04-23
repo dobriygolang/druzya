@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import {
   User,
   CreditCard,
@@ -32,6 +33,7 @@ import { useUpdateProfileSettings } from '../lib/queries/settings'
 import { gradientStyleForUser } from '../lib/avatarGradients'
 import { useTheme, type ThemeMode } from '../lib/theme'
 import { changeLanguage, currentLanguage, type Lang } from '../lib/i18n'
+import { BillingTab } from './settings/BillingTab'
 
 type NavId =
   | 'account'
@@ -177,9 +179,12 @@ function AccountInfoCard() {
                 до {expiryDate}
               </span>
             )}
-            <Button variant="ghost" size="sm">
-              {t('buy_premium')}
-            </Button>
+            {/* Wave-11: «Управлять» → /pricing (was a no-op Button). */}
+            <Link to="/pricing">
+              <Button variant="ghost" size="sm">
+                {t('buy_premium')}
+              </Button>
+            </Link>
           </div>
         </InfoRow>
         <InfoRow label={t('rows.devices')} last>
@@ -525,6 +530,11 @@ export default function SettingsPage() {
           <div className="flex min-w-0 flex-1 flex-col gap-5">
             <ProfileCard />
             <AccountInfoCard />
+            {/* Wave-11: billing-secção (управление подпиской, история чеков,
+                cancel-flow). Sidebar nav-item «billing» уже подсвечивает её
+                как часть страницы — фактический tab-switch появится, когда
+                страница станет нативно tabbed (сейчас всё стэкается). */}
+            {active === 'billing' && <BillingTab />}
             <IntegrationsCard />
             <AICoachCard />
             <AppearanceCard />

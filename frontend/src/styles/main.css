@@ -102,3 +102,45 @@
     @apply text-ink-secondary font-medium rounded-md px-3.5 py-2 hover:bg-surface-2 transition-colors;
   }
 }
+
+@layer utilities {
+  /* Wave-11 share/og helpers — texture overlays + brand gradient slices.
+     Designer spec lives in og-cards.jsx / web-view.jsx / mobile-view.jsx. */
+  .tex-grid {
+    background-image:
+      linear-gradient(rgba(255,255,255,0.025) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,0.025) 1px, transparent 1px);
+    background-size: 40px 40px;
+  }
+  .tex-dots {
+    background-image: radial-gradient(rgba(255,255,255,0.06) 1px, transparent 1px);
+    background-size: 24px 24px;
+  }
+  .hairline {
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgb(var(--color-border-strong)), transparent);
+  }
+  /* g-pc — pink → cyan brand gradient text slice (share territory). */
+  .g-pc {
+    background: linear-gradient(90deg, rgb(var(--color-pink)) 0%, rgb(var(--color-cyan)) 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+  /* g-ac — accent → cyan (used by designer for hero numerals). */
+  .g-ac {
+    background: linear-gradient(90deg, rgb(var(--color-pink)) 0%, rgb(var(--color-accent)) 50%, rgb(var(--color-cyan)) 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+  /* Used by ShareScreenshotMode to suppress chrome around the 1200x630 stage. */
+  body.share-screenshot-mode {
+    overflow: hidden !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+  body.share-screenshot-mode #screenshot-stage ~ * {
+    display: none !important;
+  }
+}

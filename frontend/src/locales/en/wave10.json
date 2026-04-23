@@ -46,5 +46,23 @@
     "fullMap": "↗ full map",
     "fullMapTitle": "Atlas — full map",
     "close": "Close"
+  },
+  "globalError": {
+    "degraded": { "label": "degraded" },
+    "statusLink": "status",
+    "dismiss": "Dismiss",
+    "maintenance": {
+      "kicker": "maintenance",
+      "title": "Scheduled maintenance",
+      "startsIn": "starts in",
+      "endsIn": "ends in",
+      "active": "in progress"
+    },
+    "ws": {
+      "disconnected": "offline · {{sec}}s",
+      "reconnecting": "reconnecting · {{sec}}s",
+      "recovered": "✓ back online",
+      "retry": "Retry"
+    }
   }
 }

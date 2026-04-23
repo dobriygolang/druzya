@@ -5,10 +5,14 @@ import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
 import { MobileBottomNav } from './MobileBottomNav'
 import { Avatar } from './Avatar'
+import { DegradedBanner } from './global-error/DegradedBanner'
+import { NotificationsBell } from './notifications/NotificationsBell'
+import { NotificationsDrawer } from './notifications/NotificationsDrawer'
 import { cn } from '../lib/cn'
 import { useTheme, getEffectiveTheme } from '../lib/theme'
 import { changeLanguage, currentLanguage, LANG_LIST, type Lang } from '../lib/i18n'
 import { useAdminDashboardQuery } from '../lib/queries/admin'
+import { useUnreadCountQuery } from '../lib/queries/notifications'
 import { logoutCurrentSession } from '../lib/queries/auth'
 
 // Главная навигация — только 6 ключевых разделов. Остальное (Друзья, Помощь,
@@ -228,7 +232,7 @@ function UserMenu({ onClose }: { onClose: () => void }) {
   )
 }
 
-function TopNav() {
+function TopNav({ onOpenNotifications, unreadCount }: { onOpenNotifications: () => void; unreadCount: number }) {
   const { t } = useTranslation('common')
   const NAV_ITEMS = useNavItems()
   const [menuOpen, setMenuOpen] = useState(false)
@@ -271,6 +275,7 @@ function TopNav() {
         </button>
         <ThemeToggleButton />
         <LanguageToggleButton />
+        <NotificationsBell unreadCount={unreadCount} onClick={onOpenNotifications} />
         {/* Avatar + dropdown — кликабельный, открывает user-menu */}
         <div ref={userMenuRef} className="relative">
           <button
@@ -357,6 +362,12 @@ function SessionExpiredToast() {
 export function AppShellV2({ children }: { children: ReactNode }) {
   const location = useLocation()
   const reduced = useReducedMotion()
+  const [notifOpen, setNotifOpen] = useState(false)
+  // Unread count drives both the header bell badge and the mobile-nav profile
+  // tab badge. The hook polls every 60s and degrades to 0 on errors so a
+  // backend outage doesn't surface a misleading count.
+  const unread = useUnreadCountQuery()
+  const unreadCount = unread.data?.count ?? 0
 
   // Body class enables v2 design tokens & Inter font globally for the page.
   useEffect(() => {
@@ -380,7 +391,12 @@ export function AppShellV2({ children }: { children: ReactNode }) {
 
   return (
     <div className="min-h-screen bg-bg text-text-primary">
-      <TopNav />
+      {/* Wave-11 global error chrome — sticky degraded banner at the very
+          top of the page. Mounts when the apiClient routes a 5xx through
+          degradedBus.report(). Renders nothing in the happy path. */}
+      <DegradedBanner />
+      <TopNav onOpenNotifications={() => setNotifOpen(true)} unreadCount={unreadCount} />
+      <NotificationsDrawer open={notifOpen} onClose={() => setNotifOpen(false)} />
       <SessionExpiredToast />
       <AnimatePresence mode="wait">
         <motion.main
@@ -396,7 +412,7 @@ export function AppShellV2({ children }: { children: ReactNode }) {
           {children}
         </motion.main>
       </AnimatePresence>
-      <MobileBottomNav />
+      <MobileBottomNav unreadCount={unreadCount} />
     </div>
   )
 }

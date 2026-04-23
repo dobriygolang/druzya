@@ -47,5 +47,25 @@
     "fullMap": "↗ полная карта",
     "fullMapTitle": "Atlas — полная карта",
     "close": "Закрыть"
+  },
+  "globalError": {
+    "degraded": {
+      "label": "degraded"
+    },
+    "statusLink": "статус",
+    "dismiss": "Скрыть",
+    "maintenance": {
+      "kicker": "maintenance",
+      "title": "Плановые работы",
+      "startsIn": "до начала",
+      "endsIn": "до окончания",
+      "active": "идут работы"
+    },
+    "ws": {
+      "disconnected": "нет связи · {{sec}}с",
+      "reconnecting": "переподключение · {{sec}}с",
+      "recovered": "✓ снова в сети",
+      "retry": "Повторить"
+    }
   }
 }

@@ -110,6 +110,11 @@ function RightChip({
 // PremiumUpgradeHint — companion banner shown once below the locked rows
 // when the user is on free tier. Single inline upgrade affordance (per
 // design-review #2): "all locked rows act as previews; upgrade lives here".
+//
+// Wave-11: «Подключить →» теперь ведёт на /pricing (раньше был no-op /
+// optional-callback, что нарушало anti-fallback rule «не запирай фичу без
+// показа цены»). Если parent передаст onUpgrade — он вызовется ДО
+// навигации (полезно, например, чтобы залогировать impression).
 export function PremiumUpgradeHint({ onUpgrade }: { onUpgrade?: () => void }) {
   return (
     <div className="mt-3 flex items-center gap-3 rounded-md border border-warn/25 bg-warn/[0.04] px-4 py-2.5">
@@ -119,13 +124,15 @@ export function PremiumUpgradeHint({ onUpgrade }: { onUpgrade?: () => void }) {
       <span className="text-[12px] text-text-secondary">
         GPT-4o, Claude Sonnet 4, Gemini Pro
       </span>
-      <button
-        type="button"
-        onClick={onUpgrade}
+      <a
+        href="/pricing"
+        onClick={() => {
+          if (onUpgrade) onUpgrade()
+        }}
         className="ml-auto text-[12px] font-semibold text-warn hover:underline"
       >
         Подключить →
-      </button>
+      </a>
     </div>
   )
 }

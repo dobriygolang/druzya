@@ -258,11 +258,47 @@ export const api: Fetcher = async (path, init = {}) => {
 
   if (!res.ok) {
     const body = await res.text().catch(() => '')
+    // Wave-11 global-error wiring: 5xx + 502/503/504 fans out to the
+    // degradedBus so <DegradedBanner /> can surface a sticky note. Scope =
+    // the first path segment, e.g. "weekly-report" from /profile/me/report.
+    // Recovery is handled by callers via degradedBus.recover() — apiClient
+    // only knows about failures, not "this query is now happy again".
+    if (res.status >= 500 && res.status < 600) {
+      try {
+        // Lazy require keeps the bus out of the apiClient cold path when
+        // it never fails. Module-state singleton — no React context needed.
+        const { degradedBus } = await import('../components/global-error/degradedBus')
+        const scope = scopeFromPath(path)
+        degradedBus.report(scope, res.status === 503 ? 'unavailable' : `${res.status} ${res.statusText || 'server error'}`)
+      } catch {
+        /* importing the bus must never break the request — swallow */
+      }
+    }
     throw new ApiError(res.status, body)
   }
 
   if (res.status === 204) return undefined as never
   return res.json()
+}
+
+// scopeFromPath — derive a stable "scope" id from a request path so the
+// degradedBus can deduplicate noise and recover symmetrically. Examples:
+//   "/profile/me/report"        → "weekly-report"
+//   "/profile/weekly/share/:t"  → "weekly-share"
+//   "/ai/coach/insight"         → "ai-coach"
+// Falls back to the first non-version path segment if no special-case
+// rule matches.
+function scopeFromPath(path: string): string {
+  const clean = path.split('?')[0].replace(/^\/+/, '')
+  if (clean.startsWith('profile/me/report')) return 'weekly-report'
+  if (clean.startsWith('profile/weekly/share')) return 'weekly-share'
+  if (clean.startsWith('profile/me/atlas')) return 'atlas'
+  if (clean.startsWith('ai/coach') || clean.startsWith('ai/insight')) return 'ai-coach'
+  if (clean.startsWith('arena/match')) return 'arena'
+  if (clean.startsWith('voice')) return 'voice-mock'
+  if (clean.startsWith('vacancies')) return 'vacancies'
+  const seg = clean.split('/')[0] || 'api'
+  return seg
 }
 
 export class ApiError extends Error {

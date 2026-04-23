@@ -90,6 +90,13 @@ const ApplicationsPage = lazy(() => import('./pages/ApplicationsPage'))
 const PodcastsPage = lazy(() => import('./pages/PodcastsPage'))
 const CohortsPage = lazy(() => import('./pages/CohortsPage'))
 const CohortPage = lazy(() => import('./pages/CohortPage'))
+// Wave-11 — premium subscription flow (5 screens). /pricing is public; the
+// other three live behind whatever auth-state /sanctum reaches them with —
+// the routes themselves don't gate, AppShell + apiClient do.
+const PricingPage = lazy(() => import('./pages/pricing/PricingPage'))
+const CheckoutPage = lazy(() => import('./pages/checkout/CheckoutPage'))
+const CheckoutSuccess = lazy(() => import('./pages/checkout/CheckoutSuccess'))
+const CheckoutFailure = lazy(() => import('./pages/checkout/CheckoutFailure'))
 
 export default function App() {
   return (
@@ -172,6 +179,12 @@ export default function App() {
         {/* Cohorts (Phase 1 MVP) — list at /cohorts, detail at /c/{slug}. */}
         <Route path="/cohorts" element={<CohortsPage />} />
         <Route path="/c/:slug" element={<CohortPage />} />
+        {/* Wave-11: premium subscription flow. /pricing — public route
+            (рендерится для гостей тоже, не дёргает /profile/me). */}
+        <Route path="/pricing" element={<PricingPage />} />
+        <Route path="/checkout" element={<CheckoutPage />} />
+        <Route path="/checkout/success" element={<CheckoutSuccess />} />
+        <Route path="/checkout/failure" element={<CheckoutFailure />} />
         {/* Legacy /v2/* — редирект на новый URL без префикса. */}
         <Route path="/v2/*" element={<LegacyV2Redirect />} />
         <Route path="*" element={<NotFoundPage />} />
