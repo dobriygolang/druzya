@@ -36,6 +36,16 @@ SELECT kata_date, task_id, passed, freeze_used
  WHERE user_id = $1 AND kata_date >= $2 AND kata_date <= $3
  ORDER BY kata_date DESC;
 
+-- name: ListKataHistoryByYear :many
+-- Powers /api/v1/kata/streak's 12-month calendar grid. The caller passes
+-- pre-built [Jan 1, Dec 31] DATE bounds so we keep the predicate
+-- sargable (no EXTRACT in WHERE) — the existing
+-- idx_kata_history_user_date covers it.
+SELECT kata_date, task_id, passed, freeze_used
+  FROM daily_kata_history
+ WHERE user_id = $1 AND kata_date >= $2 AND kata_date <= $3
+ ORDER BY kata_date ASC;
+
 -- name: GetStreak :one
 SELECT current_streak, longest_streak, freeze_tokens, last_kata_date
   FROM daily_streaks WHERE user_id = $1;

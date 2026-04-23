@@ -1,8 +1,17 @@
-import { Trophy, Flame, Zap, Shield, Sparkles, Award, Swords, Crown, Lock } from 'lucide-react'
+import { useMemo, useState } from 'react'
+import { Trophy, Flame, Zap, Shield, Sparkles, Award, Swords, Crown, Lock, Users, Server } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { AppShellV2 } from '../components/AppShell'
 import { Card } from '../components/Card'
-import { useAchievementsQuery, type Achievement as ApiAchievement } from '../lib/queries/achievements'
+import {
+  useAchievementsQuery,
+  summarise,
+  isUnlocked,
+  progressLabel,
+  type Achievement,
+  type Tier,
+  type Category,
+} from '../lib/queries/achievements'
 
 function ErrorChip() {
   const { t } = useTranslation('pages')
@@ -13,84 +22,57 @@ function ErrorChip() {
   )
 }
 
-type Rarity = 'common' | 'rare' | 'legendary'
-
-type Achievement = {
-  name: string
-  progress: string
-  rarity: Rarity
-  icon: React.ReactNode
-  grad: string
-  locked?: boolean
-}
-
-const RARITY_BORDER: Record<Rarity, string> = {
+const RARITY_BORDER: Record<Tier, string> = {
   common: 'border-border-strong',
   rare: 'border-cyan/50',
   legendary: 'border-warn/60',
 }
 
-const RARITY_LABEL: Record<Rarity, string> = {
+const RARITY_LABEL: Record<Tier, string> = {
   common: 'COMMON',
   rare: 'RARE',
   legendary: 'LEGENDARY',
 }
 
-const RARITY_TEXT: Record<Rarity, string> = {
+const RARITY_TEXT: Record<Tier, string> = {
   common: 'text-text-muted',
   rare: 'text-cyan',
   legendary: 'text-warn',
 }
 
-const ICON_MAP: Record<string, { icon: React.ReactNode; grad: string }> = {
-  'speed-demon': { icon: <Flame className="h-10 w-10 text-text-primary" />, grad: 'from-warn to-danger' },
-  'first-blood': { icon: <Swords className="h-10 w-10 text-text-primary" />, grad: 'from-pink to-accent' },
-  'streak-master': { icon: <Zap className="h-10 w-10 text-text-primary" />, grad: 'from-cyan to-accent' },
-  'iron-defender': { icon: <Shield className="h-10 w-10 text-text-primary" />, grad: 'from-success to-cyan' },
-  'algo-sage': { icon: <Sparkles className="h-10 w-10 text-text-primary" />, grad: 'from-accent to-pink' },
-  'trophy-hunter': { icon: <Trophy className="h-10 w-10 text-text-primary" />, grad: 'from-warn to-pink' },
-  'champion': { icon: <Crown className="h-10 w-10 text-text-primary" />, grad: 'from-warn to-accent' },
-  'daily-hero': { icon: <Award className="h-10 w-10 text-text-primary" />, grad: 'from-cyan to-success' },
-  'code-warrior': { icon: <Swords className="h-10 w-10 text-text-primary" />, grad: 'from-accent to-cyan' },
-  'spark-caster': { icon: <Sparkles className="h-10 w-10 text-text-primary" />, grad: 'from-pink to-warn' },
-  'guardian': { icon: <Shield className="h-10 w-10 text-text-primary" />, grad: 'from-cyan to-accent' },
-  'inferno': { icon: <Flame className="h-10 w-10 text-text-primary" />, grad: 'from-danger to-warn' },
+// Маппинг category → визуал. Легче поддерживать, чем code-by-code.
+const CATEGORY_VISUAL: Record<Category, { icon: JSX.Element; grad: string }> = {
+  combat:      { icon: <Swords className="h-10 w-10 text-text-primary" />,    grad: 'from-pink to-accent' },
+  consistency: { icon: <Flame className="h-10 w-10 text-text-primary" />,     grad: 'from-warn to-danger' },
+  social:      { icon: <Users className="h-10 w-10 text-text-primary" />,     grad: 'from-accent to-cyan' },
+  mastery:     { icon: <Sparkles className="h-10 w-10 text-text-primary" />,  grad: 'from-cyan to-accent' },
+  secret:      { icon: <Server className="h-10 w-10 text-text-primary" />,    grad: 'from-surface-3 to-bg' },
 }
 
-function toUiAch(a: ApiAchievement): Achievement {
-  const map = ICON_MAP[a.id] ?? { icon: <Trophy className="h-10 w-10 text-text-primary" />, grad: 'from-surface-3 to-bg' }
+// LEGENDARY top-tier — пара иконок-фоллбеков.
+const TIER_ICON_OVERRIDE: Partial<Record<string, JSX.Element>> = {
+  champion: <Crown className="h-10 w-10 text-text-primary" />,
+  'streak-100': <Zap className="h-10 w-10 text-text-primary" />,
+  'arena-master': <Trophy className="h-10 w-10 text-text-primary" />,
+  'guardian': <Shield className="h-10 w-10 text-text-primary" />,
+  'iron-defender': <Shield className="h-10 w-10 text-text-primary" />,
+  'daily-first': <Award className="h-10 w-10 text-text-primary" />,
+}
+
+function visualFor(a: Achievement): { icon: JSX.Element; grad: string } {
+  const v = CATEGORY_VISUAL[a.category] ?? CATEGORY_VISUAL.combat
+  const overrideIcon = TIER_ICON_OVERRIDE[a.code]
   return {
-    name: a.name,
-    progress: a.progress,
-    rarity: a.rarity,
-    icon: map.icon,
-    grad: a.locked ? 'from-surface-3 to-bg' : map.grad,
-    locked: a.locked,
+    icon: overrideIcon ?? v.icon,
+    grad: isUnlocked(a) ? v.grad : 'from-surface-3 to-bg',
   }
 }
 
-const ACHS: Achievement[] = [
-  { name: 'Speed Demon', progress: '10 / 10', rarity: 'legendary', icon: <Flame className="h-10 w-10 text-text-primary" />, grad: 'from-warn to-danger' },
-  { name: 'First Blood', progress: '1 / 1', rarity: 'common', icon: <Swords className="h-10 w-10 text-text-primary" />, grad: 'from-pink to-accent' },
-  { name: 'Streak Master', progress: '12 / 30', rarity: 'rare', icon: <Zap className="h-10 w-10 text-text-primary" />, grad: 'from-cyan to-accent' },
-  { name: 'Iron Defender', progress: '5 / 10', rarity: 'rare', icon: <Shield className="h-10 w-10 text-text-primary" />, grad: 'from-success to-cyan' },
-  { name: 'Algorithm Sage', progress: '50 / 50', rarity: 'legendary', icon: <Sparkles className="h-10 w-10 text-text-primary" />, grad: 'from-accent to-pink' },
-  { name: 'Trophy Hunter', progress: '23 / 47', rarity: 'rare', icon: <Trophy className="h-10 w-10 text-text-primary" />, grad: 'from-warn to-pink' },
-  { name: 'Champion', progress: '1 / 1', rarity: 'legendary', icon: <Crown className="h-10 w-10 text-text-primary" />, grad: 'from-warn to-accent' },
-  { name: 'Daily Hero', progress: '30 / 30', rarity: 'common', icon: <Award className="h-10 w-10 text-text-primary" />, grad: 'from-cyan to-success' },
-  { name: 'Code Warrior', progress: '100 / 100', rarity: 'rare', icon: <Swords className="h-10 w-10 text-text-primary" />, grad: 'from-accent to-cyan' },
-  { name: 'Spark Caster', progress: '7 / 20', rarity: 'common', icon: <Sparkles className="h-10 w-10 text-text-primary" />, grad: 'from-pink to-warn' },
-  { name: 'Guardian', progress: '15 / 25', rarity: 'rare', icon: <Shield className="h-10 w-10 text-text-primary" />, grad: 'from-cyan to-accent' },
-  { name: 'Inferno', progress: '40 / 50', rarity: 'legendary', icon: <Flame className="h-10 w-10 text-text-primary" />, grad: 'from-danger to-warn' },
-  { name: '???', progress: '— / —', rarity: 'common', icon: <Trophy className="h-10 w-10 text-text-primary" />, grad: 'from-surface-3 to-bg', locked: true },
-  { name: '???', progress: '— / —', rarity: 'rare', icon: <Zap className="h-10 w-10 text-text-primary" />, grad: 'from-surface-3 to-bg', locked: true },
-  { name: '???', progress: '— / —', rarity: 'legendary', icon: <Crown className="h-10 w-10 text-text-primary" />, grad: 'from-surface-3 to-bg', locked: true },
-  { name: '???', progress: '— / —', rarity: 'common', icon: <Award className="h-10 w-10 text-text-primary" />, grad: 'from-surface-3 to-bg', locked: true },
-]
-
-function FilterChip({ label, active }: { label: string; active?: boolean }) {
+function FilterChip({ label, active, onClick }: { label: string; active?: boolean; onClick?: () => void }) {
   return (
     <button
+      type="button"
+      onClick={onClick}
       className={`rounded-full border px-3 py-1.5 text-[13px] transition-colors ${
         active
           ? 'border-accent bg-accent/15 font-semibold text-accent-hover'
@@ -102,95 +84,167 @@ function FilterChip({ label, active }: { label: string; active?: boolean }) {
   )
 }
 
-function Tile({ a }: { a: Achievement }) {
+function Tile({ a, hideName, onClick, selected }: { a: Achievement; hideName: boolean; onClick: () => void; selected: boolean }) {
+  const v = visualFor(a)
+  const locked = !isUnlocked(a)
+  const showAsHidden = locked && a.hidden && hideName
   return (
-    <div
-      className={`relative flex h-[200px] flex-col overflow-hidden rounded-[14px] border-2 bg-surface-2 ${RARITY_BORDER[a.rarity]} ${
-        a.locked ? 'opacity-40' : ''
-      }`}
+    <button
+      type="button"
+      onClick={onClick}
+      className={`relative flex h-[200px] flex-col overflow-hidden rounded-[14px] border-2 bg-surface-2 text-left transition-transform hover:-translate-y-0.5 ${RARITY_BORDER[a.tier]} ${
+        locked ? 'opacity-60' : ''
+      } ${selected ? 'ring-2 ring-accent' : ''}`}
     >
-      <div className={`grid h-[100px] place-items-center bg-gradient-to-br ${a.grad}`}>
-        {a.locked ? <Lock className="h-10 w-10 text-text-primary" /> : a.icon}
+      <div className={`grid h-[100px] place-items-center bg-gradient-to-br ${v.grad}`}>
+        {locked ? <Lock className="h-10 w-10 text-text-primary" /> : v.icon}
       </div>
       <div className="flex flex-1 flex-col gap-1 p-3">
-        <span className="font-sans text-[13px] font-bold text-text-primary">{a.name}</span>
-        <span className="font-mono text-[11px] text-text-muted">{a.progress}</span>
-        <span className={`mt-auto font-mono text-[10px] font-semibold tracking-[0.08em] ${RARITY_TEXT[a.rarity]}`}>
-          {RARITY_LABEL[a.rarity]}
+        <span className="font-sans text-[13px] font-bold text-text-primary">
+          {showAsHidden ? '???' : a.title}
+        </span>
+        <span className="font-mono text-[11px] text-text-muted">{showAsHidden ? '— / —' : progressLabel(a)}</span>
+        <span className={`mt-auto font-mono text-[10px] font-semibold tracking-[0.08em] ${RARITY_TEXT[a.tier]}`}>
+          {RARITY_LABEL[a.tier]}
         </span>
       </div>
-    </div>
+    </button>
   )
 }
 
-function FeaturedAch({ name, rarity, description, reward }: { name: string; rarity: Rarity; description: string; reward: string }) {
+function FeaturedAch({ a }: { a: Achievement | null }) {
   const { t } = useTranslation('pages')
+  if (!a) {
+    return (
+      <Card className="w-full flex-col gap-4 p-6 text-center text-sm text-text-secondary lg:w-[320px]">
+        {t('achievements.empty_featured', 'Выбери ачивку слева — здесь появятся подробности.')}
+      </Card>
+    )
+  }
+  const v = visualFor(a)
+  const locked = !isUnlocked(a)
   return (
     <Card className="w-full flex-col gap-4 p-0 lg:w-[320px]">
-      <div className="grid h-[180px] place-items-center bg-gradient-to-br from-warn to-danger">
-        <Flame className="h-16 w-16 text-text-primary" />
+      <div className={`grid h-[180px] place-items-center bg-gradient-to-br ${v.grad}`}>
+        {locked ? <Lock className="h-16 w-16 text-text-primary" /> : <span className="scale-[1.6]">{v.icon}</span>}
       </div>
       <div className="flex flex-col gap-3 p-5">
         <div className="flex items-center justify-between">
-          <h3 className="font-display text-xl font-bold text-text-primary">{name}</h3>
-          <span className={`font-mono text-[11px] font-semibold ${RARITY_TEXT[rarity]}`}>{RARITY_LABEL[rarity]}</span>
+          <h3 className="font-display text-xl font-bold text-text-primary">{locked && a.hidden ? '???' : a.title}</h3>
+          <span className={`font-mono text-[11px] font-semibold ${RARITY_TEXT[a.tier]}`}>{RARITY_LABEL[a.tier]}</span>
         </div>
-        <p className="text-xs text-text-secondary">
-          {description}
-        </p>
+        <p className="text-xs text-text-secondary">{a.description}</p>
         <div className="flex flex-col gap-2">
           <span className="font-mono text-[11px] font-semibold tracking-[0.08em] text-text-muted">{t('achievements.requirements')}</span>
-          <ul className="flex flex-col gap-1.5 text-[12px] text-text-secondary">
-            <li>· 10 решений Medium</li>
-            <li>· каждое менее 5:00</li>
-            <li>· без подсказок и AI</li>
-          </ul>
+          <p className="text-[12px] text-text-secondary whitespace-pre-line">{a.requirements}</p>
         </div>
-        <div className="rounded-lg border border-warn/30 bg-warn/10 p-3">
-          <span className="font-mono text-[11px] font-semibold text-warn">{t('achievements.reward')}</span>
-          <p className="mt-1 text-sm font-bold text-text-primary">{reward}</p>
-        </div>
+        {!!a.reward && (
+          <div className="rounded-lg border border-warn/30 bg-warn/10 p-3">
+            <span className="font-mono text-[11px] font-semibold text-warn">{t('achievements.reward')}</span>
+            <p className="mt-1 text-sm font-bold text-text-primary">{a.reward}</p>
+          </div>
+        )}
+        {!locked && a.unlocked_at && (
+          <span className="text-[11px] text-text-muted">
+            {t('achievements.unlocked_on', 'Получено')} · {new Date(a.unlocked_at).toLocaleDateString()}
+          </span>
+        )}
       </div>
     </Card>
   )
 }
 
+type StatusFilter = 'all' | 'unlocked' | 'hidden'
+type TierFilter = 'all' | Tier
+
+function applyFilters(items: Achievement[], status: StatusFilter, tier: TierFilter): Achievement[] {
+  return items.filter((a) => {
+    if (status === 'unlocked' && !isUnlocked(a)) return false
+    if (status === 'hidden' && !a.hidden) return false
+    if (tier !== 'all' && a.tier !== tier) return false
+    return true
+  })
+}
+
+function Skeleton() {
+  return (
+    <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+      {Array.from({ length: 12 }).map((_, i) => (
+        <div key={i} className="h-[200px] animate-pulse rounded-[14px] bg-surface-2" />
+      ))}
+    </div>
+  )
+}
+
 export default function AchievementsPage() {
   const { t } = useTranslation('pages')
-  const { data, isError } = useAchievementsQuery()
-  const total = data?.total ?? 47
-  const unlocked = data?.unlocked ?? 23
-  const rare = data?.rare_count ?? 6
-  const counts = data?.counts ?? { common: 30, rare: 12, legendary: 5, hidden: 12 }
-  const items = data?.items ? data.items.map(toUiAch) : ACHS
-  const featured = data?.items?.find((a) => a.id === data.featured_id)
-  const featuredName = featured?.name ?? 'Speed Demon'
-  const featuredRarity = (featured?.rarity ?? 'legendary') as Rarity
-  const featuredDesc = featured?.description ?? 'Решить 10 Medium-задач подряд за время менее 5 минут каждая. Только для самых быстрых.'
-  const featuredReward = featured?.reward ?? '+500 XP · +Title "Speed Demon"'
+  const { data, isError, isLoading } = useAchievementsQuery()
+  const [status, setStatus] = useState<StatusFilter>('all')
+  const [tier, setTier] = useState<TierFilter>('all')
+  const [selectedCode, setSelectedCode] = useState<string | null>(null)
+
+  // Stabilise the items reference: `data ?? []` would create a fresh empty
+  // array on every render and invalidate downstream useMemo hooks.
+  const items = useMemo(() => data ?? [], [data])
+  const summary = useMemo(() => summarise(items), [items])
+  const filtered = useMemo(() => applyFilters(items, status, tier), [items, status, tier])
+
+  const featured = useMemo(() => {
+    if (selectedCode) {
+      const found = items.find((a) => a.code === selectedCode)
+      if (found) return found
+    }
+    // если ничего не выбрано — самая редкая разблокированная.
+    const unlockedItems = items.filter(isUnlocked)
+    if (unlockedItems.length === 0) return null
+    const rank: Record<Tier, number> = { legendary: 3, rare: 2, common: 1 }
+    return unlockedItems.slice().sort((a, b) => rank[b.tier] - rank[a.tier])[0]
+  }, [items, selectedCode])
+
   return (
     <AppShellV2>
       <div className="flex flex-col gap-5 px-4 pb-6 pt-6 sm:px-8 lg:px-20 lg:pb-7 lg:pt-7">
         <div className="flex flex-col gap-1.5">
           <h1 className="font-display text-2xl lg:text-[32px] font-bold leading-[1.1] text-text-primary">{t('achievements.title')}</h1>
-          <p className="text-sm text-text-secondary">{t('achievements.summary', { unlocked, total, rare })}</p>
+          <p className="text-sm text-text-secondary">
+            {t('achievements.summary', { unlocked: summary.unlocked, total: summary.total, rare: summary.rareUnlocked })}
+          </p>
           {isError && <ErrorChip />}
         </div>
+
         <div className="flex flex-wrap gap-2">
-          <FilterChip label={`${t('achievements.all')} · ${total}`} active />
-          <FilterChip label={`${t('achievements.unlocked')} · ${unlocked}`} />
-          <FilterChip label={`${t('achievements.hidden')} · ${counts.hidden}`} />
-          <FilterChip label={`${t('achievements.common')} · ${counts.common}`} />
-          <FilterChip label={`${t('achievements.rare')} · ${counts.rare}`} />
-          <FilterChip label={`${t('achievements.legendary')} · ${counts.legendary}`} />
+          <FilterChip label={`${t('achievements.all')} · ${summary.total}`} active={status === 'all'} onClick={() => setStatus('all')} />
+          <FilterChip label={`${t('achievements.unlocked')} · ${summary.unlocked}`} active={status === 'unlocked'} onClick={() => setStatus('unlocked')} />
+          <FilterChip label={`${t('achievements.hidden')} · ${summary.hiddenLocked}`} active={status === 'hidden'} onClick={() => setStatus('hidden')} />
+          <span className="mx-1 self-center text-text-muted">·</span>
+          <FilterChip label={`${t('achievements.common')} · ${summary.byTier.common}`} active={tier === 'common'} onClick={() => setTier(tier === 'common' ? 'all' : 'common')} />
+          <FilterChip label={`${t('achievements.rare')} · ${summary.byTier.rare}`} active={tier === 'rare'} onClick={() => setTier(tier === 'rare' ? 'all' : 'rare')} />
+          <FilterChip label={`${t('achievements.legendary')} · ${summary.byTier.legendary}`} active={tier === 'legendary'} onClick={() => setTier(tier === 'legendary' ? 'all' : 'legendary')} />
         </div>
+
         <div className="flex flex-col gap-4 lg:flex-row lg:gap-6">
-          <div className="grid flex-1 grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
-            {items.map((a, i) => (
-              <Tile key={i} a={a} />
-            ))}
+          <div className="flex-1">
+            {isLoading ? (
+              <Skeleton />
+            ) : filtered.length === 0 ? (
+              <Card className="flex-col items-center gap-2 p-8 text-center text-sm text-text-secondary">
+                {t('achievements.empty_list', 'Пока ничего не разблокировано — сыграй матч!')}
+              </Card>
+            ) : (
+              <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+                {filtered.map((a) => (
+                  <Tile
+                    key={a.code}
+                    a={a}
+                    hideName={status !== 'hidden'}
+                    selected={selectedCode === a.code}
+                    onClick={() => setSelectedCode(a.code)}
+                  />
+                ))}
+              </div>
+            )}
           </div>
-          <FeaturedAch name={featuredName} rarity={featuredRarity} description={featuredDesc} reward={featuredReward} />
+          <FeaturedAch a={featured ?? null} />
         </div>
       </div>
     </AppShellV2>

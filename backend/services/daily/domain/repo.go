@@ -50,6 +50,10 @@ type KataRepo interface {
 	MarkSubmitted(ctx context.Context, userID uuid.UUID, date time.Time, passed bool) error
 	// HistoryLast30 returns the last 30 days in reverse chronological order.
 	HistoryLast30(ctx context.Context, userID uuid.UUID, today time.Time) ([]HistoryEntry, error)
+	// HistoryByYear returns every daily_kata_history row for the given UTC
+	// calendar year, ordered by date ASC. Powers the year-grid on
+	// /daily/streak (12 months × month-count cells).
+	HistoryByYear(ctx context.Context, userID uuid.UUID, year int) ([]HistoryEntry, error)
 }
 
 // Assignment is the daily_kata_history row.

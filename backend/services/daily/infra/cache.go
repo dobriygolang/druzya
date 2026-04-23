@@ -298,12 +298,64 @@ func (c *CachedKataRepo) HistoryLast30(ctx context.Context, userID uuid.UUID, to
 	return out, nil
 }
 
-// InvalidateHistory busts the per-user kata history key for the given day.
+// InvalidateHistory busts the per-user kata history keys for the given day —
+// both the rolling 30-day window and the year bucket containing it.
 func (c *CachedKataRepo) InvalidateHistory(ctx context.Context, userID uuid.UUID, today time.Time) {
-	if err := c.kv.Del(ctx, keyKataHistory(userID, today)); err != nil {
+	keys := []string{
+		keyKataHistory(userID, today),
+		keyKataHistoryYear(userID, today.UTC().Year()),
+	}
+	if err := c.kv.Del(ctx, keys...); err != nil {
 		c.log.Warn("daily.cache: redis Del kata failed",
 			slog.Any("user_id", userID), slog.Any("err", err))
 	}
+}
+
+// DefaultKataYearTTL is the per-key TTL applied to year-grid history cache
+// entries. The year-grid is only mounted on /daily/streak — burstier than
+// HistoryLast30 but not nearly as hot as the streak number; 5min keeps
+// the calendar page snappy on refresh while staying close-enough to
+// SubmitKata writes (which invalidate the bucket explicitly).
+const DefaultKataYearTTL = 5 * time.Minute
+
+// keyKataHistoryYear is the per-user, per-year Redis key for HistoryByYear.
+func keyKataHistoryYear(uid uuid.UUID, year int) string {
+	return fmt.Sprintf("daily:%s:kata-year:%s:%d", CacheKeyVersion, uid.String(), year)
+}
+
+// HistoryByYear is the cached year-grid path. Same read-through +
+// singleflight collapsing pattern as HistoryLast30; SubmitKata indirectly
+// invalidates via MarkSubmitted → InvalidateHistory (today's row mutates
+// → the year bucket containing today is also stale).
+func (c *CachedKataRepo) HistoryByYear(ctx context.Context, userID uuid.UUID, year int) ([]domain.HistoryEntry, error) {
+	key := keyKataHistoryYear(userID, year)
+	if raw, err := c.kv.Get(ctx, key); err == nil {
+		var out []domain.HistoryEntry
+		if jerr := json.Unmarshal([]byte(raw), &out); jerr == nil {
+			return out, nil
+		}
+		c.log.Warn("daily.cache: corrupt kata-year entry, refreshing", slog.String("key", key))
+	} else if !errors.Is(err, ErrCacheMiss) {
+		c.log.Warn("daily.cache: redis Get kata-year failed, falling back",
+			slog.String("key", key), slog.Any("err", err))
+	}
+	v, err, _ := c.sf.Do(key, func() (any, error) {
+		return c.delegate.HistoryByYear(ctx, userID, year)
+	})
+	if err != nil {
+		return nil, fmt.Errorf("daily.cache.HistoryByYear: %w", err)
+	}
+	out, ok := v.([]domain.HistoryEntry)
+	if !ok {
+		return nil, fmt.Errorf("daily.cache: singleflight returned %T", v)
+	}
+	if data, jerr := json.Marshal(out); jerr == nil {
+		if serr := c.kv.Set(ctx, key, data, DefaultKataYearTTL); serr != nil {
+			c.log.Warn("daily.cache: redis Set kata-year failed",
+				slog.String("key", key), slog.Any("err", serr))
+		}
+	}
+	return out, nil
 }
 
 // ── CalendarRepo cache ────────────────────────────────────────────────────

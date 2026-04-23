@@ -22,6 +22,7 @@ type Querier interface {
 	// CRITICAL: solution_hint is NEVER selected in the TaskPublic-shaped queries.
 	ListActiveTasks(ctx context.Context, arg ListActiveTasksParams) ([]ListActiveTasksRow, error)
 	ListKataHistory(ctx context.Context, arg ListKataHistoryParams) ([]ListKataHistoryRow, error)
+	ListKataHistoryByYear(ctx context.Context, arg ListKataHistoryByYearParams) ([]ListKataHistoryByYearRow, error)
 	MarkAutopsyReady(ctx context.Context, arg MarkAutopsyReadyParams) (int64, error)
 	MarkDailyKataSubmitted(ctx context.Context, arg MarkDailyKataSubmittedParams) (int64, error)
 	UpsertCalendar(ctx context.Context, arg UpsertCalendarParams) (UpsertCalendarRow, error)

@@ -1,0 +1,22 @@
+{
+  "items": [
+    {
+      "id": "t-1",
+      "title": "Java Developer",
+      "city": "Москва",
+      "url": "https://www.tbank.ru/career/it/vacancy/t-1/",
+      "description": "Backend platform team",
+      "requirements": "Java, Spring, PostgreSQL",
+      "skills": ["Java", "Spring", "PostgreSQL", "Kafka"]
+    },
+    {
+      "id": "t-2",
+      "title": "DevOps Engineer",
+      "city": "Москва",
+      "url": "https://www.tbank.ru/career/it/vacancy/t-2/",
+      "description": "Cloud infra team",
+      "requirements": "Kubernetes, Terraform, AWS",
+      "skills": ["Kubernetes", "Terraform", "AWS"]
+    }
+  ]
+}

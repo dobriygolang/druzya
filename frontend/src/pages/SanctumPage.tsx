@@ -1,6 +1,7 @@
-import { ArrowRight, Flame, Play, Sparkles, Shield, Swords, Trophy } from 'lucide-react'
+import { ArrowRight, Flame, Play, Sparkles, Shield, Swords } from 'lucide-react'
 import { motion, useReducedMotion } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
+import { Link } from 'react-router-dom'
 import { AppShellV2 } from '../components/AppShell'
 import { staggerContainer, staggerItem } from '../lib/motion'
 import { Button } from '../components/Button'
@@ -10,6 +11,8 @@ import { useDailyKataQuery, useStreakQuery } from '../lib/queries/daily'
 import { useSeasonQuery } from '../lib/queries/season'
 import { useRatingMeQuery, useLeaderboardQuery } from '../lib/queries/rating'
 import { useProfileQuery } from '../lib/queries/profile'
+import { useArenaHistoryQuery } from '../lib/queries/matches'
+import { useMyGuildQuery, useGuildWarQuery } from '../lib/queries/guild'
 import { cn } from '../lib/cn'
 
 function ErrorChip() {
@@ -37,21 +40,40 @@ function HeaderRow() {
           {t('sanctum:subtitle', { streak: current })}
         </p>
       </div>
-      <Button variant="primary" icon={<Swords className="h-[18px] w-[18px]" />} iconRight={<ArrowRight className="h-4 w-4" />} className="w-full justify-center px-5 py-3 text-sm sm:w-auto">
-        {t('common:buttons.find_opponent')}
-      </Button>
+      <Link to="/arena" className="w-full sm:w-auto">
+        <Button variant="primary" icon={<Swords className="h-[18px] w-[18px]" />} iconRight={<ArrowRight className="h-4 w-4" />} className="w-full justify-center px-5 py-3 text-sm sm:w-auto">
+          {t('common:buttons.find_opponent')}
+        </Button>
+      </Link>
     </div>
   )
 }
 
+// Время до сброса kata: считаем UTC-полночь как rolling deadline
+// (бэк выдаёт новую kata в 00:00 UTC). Возвращаем "HH:MM"; если до сброса
+// меньше часа — "MM:SS".
+function fmtTimeUntilUTCMidnight(now: Date = new Date()): string {
+  const next = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1, 0, 0, 0))
+  const diff = next.getTime() - now.getTime()
+  if (diff <= 0) return '00:00'
+  const totalSec = Math.floor(diff / 1000)
+  const h = Math.floor(totalSec / 3600)
+  const m = Math.floor((totalSec - h * 3600) / 60)
+  const s = totalSec - h * 3600 - m * 60
+  if (h > 0) return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`
+  return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
+}
+
 function DailyHero() {
   const { t } = useTranslation('sanctum')
-  const { data: kata, isError } = useDailyKataQuery()
+  const { data: kata, isError, isLoading } = useDailyKataQuery()
   const { data: streak } = useStreakQuery()
   const day = streak?.current ?? 0
-  const title = kata?.task?.title ?? '—'
-  const difficulty = kata?.task?.difficulty ?? '—'
-  const section = kata?.task?.section ?? '—'
+  const title = kata?.task?.title ?? (isLoading ? '...' : 'Сегодняшняя задача недоступна')
+  const difficulty = kata?.task?.difficulty
+  const section = kata?.task?.section
+  const meta = [difficulty, section].filter(Boolean).join(' · ') || '—'
+  const remaining = fmtTimeUntilUTCMidnight()
   return (
     <Card className="flex-1 flex-col gap-5 p-7" interactive={false}>
       <div className="flex items-start justify-between">
@@ -63,22 +85,30 @@ function DailyHero() {
           <h2 className="w-full max-w-[540px] font-display text-2xl font-bold text-text-primary">
             {title}
           </h2>
-          <p className="font-mono text-xs text-text-muted">{difficulty} · O(log n) · {section}</p>
+          <p className="font-mono text-xs text-text-muted">{meta}</p>
         </div>
         <div className="flex flex-col items-end gap-1">
-          <span className="font-display text-[32px] font-bold text-cyan">15:00</span>
+          <span className="font-display text-[28px] font-bold text-cyan">{remaining}</span>
           <span className="text-xs text-text-muted">{t('remaining')}</span>
         </div>
       </div>
       <div className="flex flex-col items-stretch gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div className="flex flex-wrap gap-6">
-          <Stat value="850 XP" label={t('reward')} />
-          <Stat value="62%" label={t('passed_today')} highlight="cyan" />
-          <Stat value={`${day} 🔥`} label={t('streak_days')} highlight="warn" />
+          {/* "Сегодня прошли %" не показываем — нет канала статистики
+              completion-rate. Срок жизни kata = 24h, день стрика и
+              already_submitted покрывают то же намерение. */}
+          <Stat value={`${day} ${day > 0 ? '🔥' : ''}`} label={t('streak_days')} highlight="warn" />
+          {kata?.already_submitted && <Stat value="✓" label={t('passed_today')} highlight="cyan" />}
         </div>
-        <Button variant="primary" iconRight={<ArrowRight className="h-4 w-4" />} className="bg-text-primary text-bg shadow-none hover:bg-white/90 hover:shadow-none">
-          {t('begin')}
-        </Button>
+        <Link to="/daily">
+          <Button
+            variant="primary"
+            iconRight={<ArrowRight className="h-4 w-4" />}
+            className="bg-text-primary text-bg shadow-none hover:bg-white/90 hover:shadow-none"
+          >
+            {kata?.already_submitted ? 'Открыть' : t('begin')}
+          </Button>
+        </Link>
       </div>
     </Card>
   )
@@ -162,77 +192,134 @@ function ArenaCard() {
         <Stat value={`${elo}`} label={t('elo')} highlight="cyan" />
         <Stat value={`${algo?.percentile ?? 0}%`} label={t('percentile')} highlight="cyan" />
       </div>
-      <Button variant="ghost" icon={<Play className="h-3.5 w-3.5" />} className="border-accent text-accent-hover hover:bg-accent/10">
-        {t('queue')}
-      </Button>
+      <Link to="/arena">
+        <Button variant="ghost" icon={<Play className="h-3.5 w-3.5" />} className="border-accent text-accent-hover hover:bg-accent/10">
+          {t('queue')}
+        </Button>
+      </Link>
     </Card>
   )
 }
 
 function GuildCard() {
   const { t } = useTranslation('sanctum')
+  const { data: guild } = useMyGuildQuery()
+  const warID = guild?.current_war_id ?? undefined
+  const { data: war } = useGuildWarQuery(warID)
+  if (!guild) {
+    // Empty-state: пользователь без гильдии — короткий CTA, без фейковых
+    // 2140 vs 1670. Линкуем на /guild, где можно создать или вступить.
+    return (
+      <Card className="flex-1 flex-col gap-3.5 p-5">
+        <div className="flex items-center gap-2">
+          <Shield className="h-4 w-4 text-cyan" />
+          <span className="font-mono text-[11px] font-semibold tracking-[0.08em] text-cyan">
+            {t('guild_war')}
+          </span>
+        </div>
+        <h3 className="font-display text-lg font-bold text-text-primary">Ты пока без гильдии</h3>
+        <p className="text-xs text-text-secondary">
+          Гильдии играют еженедельные guild-war-баталии. Найди свою или создай.
+        </p>
+        <Link to="/guild" className="text-xs font-semibold text-accent-hover hover:underline">
+          К списку гильдий →
+        </Link>
+      </Card>
+    )
+  }
+  // Если гильдия есть, но текущей войны нет — показываем имя гильдии и
+  // GP без поддельного скоринга.
+  if (!war) {
+    return (
+      <Card className="flex-1 flex-col gap-3.5 p-5">
+        <div className="flex items-center gap-2">
+          <Shield className="h-4 w-4 text-cyan" />
+          <span className="font-mono text-[11px] font-semibold tracking-[0.08em] text-cyan">
+            {t('guild_war')}
+          </span>
+        </div>
+        <h3 className="font-display text-lg font-bold text-text-primary">{guild.name}</h3>
+        <p className="text-xs text-text-secondary">
+          Активной войны нет — следующая стартует с понедельника.
+        </p>
+        <span className="font-mono text-xs text-text-muted">Guild ELO: {guild.guild_elo}</span>
+      </Card>
+    )
+  }
+  // Реальная война: суммируем линии. score_a/b — суммы по секциям.
+  const scoreA = war.lines.reduce((s, l) => s + (l.score_a ?? 0), 0)
+  const scoreB = war.lines.reduce((s, l) => s + (l.score_b ?? 0), 0)
+  const total = Math.max(1, scoreA + scoreB)
+  const aPct = Math.round((scoreA / total) * 100)
+  const bPct = 100 - aPct
   return (
     <Card className="flex-1 flex-col gap-3.5 p-5">
       <div className="flex items-center gap-2">
         <Shield className="h-4 w-4 text-cyan" />
-        <span className="font-mono text-[11px] font-semibold tracking-[0.08em] text-cyan">{t('guild_war')}</span>
+        <span className="font-mono text-[11px] font-semibold tracking-[0.08em] text-cyan">
+          {t('guild_war')}
+        </span>
       </div>
-      <h3 className="font-display text-lg font-bold text-text-primary">{t('guild_match')}</h3>
+      <h3 className="font-display text-lg font-bold text-text-primary">
+        {war.guild_a.name} vs {war.guild_b.name}
+      </h3>
       <div className="flex items-center gap-3">
-        <span className="font-display text-[22px] font-bold text-success">2 140</span>
+        <span className="font-display text-[22px] font-bold text-success">{scoreA}</span>
         <div className="flex h-2 flex-1 overflow-hidden rounded-full bg-black/30">
-          <div className="h-full w-[56%] bg-success" />
-          <div className="h-full w-[14%] bg-danger" />
+          <div className="h-full bg-success" style={{ width: `${aPct}%` }} />
+          <div className="h-full bg-danger" style={{ width: `${bPct}%` }} />
         </div>
-        <span className="font-display text-[22px] font-bold text-danger">1 670</span>
+        <span className="font-display text-[22px] font-bold text-danger">{scoreB}</span>
       </div>
-      <p className="text-xs text-text-secondary">{t('your_contribution', { points: 240 })}</p>
     </Card>
   )
 }
 
+// Карточка-CTA на еженедельный AI-отчёт. Заменила собой фиктивный
+// "Слабое место: dynamic programming · 3/10" — раньше это была статика
+// в локали, не данные. Реальный отчёт живёт на /weekly через
+// useWeeklyReportQuery (Group A).
 function CoachCard() {
   const { t } = useTranslation('sanctum')
   return (
     <div className="flex flex-1 flex-col gap-3 rounded-xl bg-gradient-to-br from-accent to-pink p-5 shadow-glow">
       <div className="flex items-center gap-2">
         <Sparkles className="h-4 w-4 text-text-primary" />
-        <span className="font-mono text-[11px] font-semibold tracking-[0.08em] text-text-primary">{t('ai_mentor')}</span>
+        <span className="font-mono text-[11px] font-semibold tracking-[0.08em] text-text-primary">
+          {t('ai_mentor')}
+        </span>
       </div>
       <h3 className="w-full max-w-[300px] font-display text-base font-bold text-text-primary">
-        {t('weak_spot')}
+        Еженедельный AI-разбор
       </h3>
       <p className="w-full max-w-[300px] text-xs text-white/80">
-        {t('weak_spot_desc')}
+        Слабые зоны, рекомендации и план — собирается по твоей активности за
+        прошлую неделю.
       </p>
-      <button className="inline-flex w-fit items-center gap-1.5 rounded-md bg-white/20 px-3.5 py-2 text-xs font-semibold text-text-primary hover:bg-white/30">
+      <Link
+        to="/weekly"
+        className="inline-flex w-fit items-center gap-1.5 rounded-md bg-white/20 px-3.5 py-2 text-xs font-semibold text-text-primary hover:bg-white/30"
+      >
         {t('open_plan')} <ArrowRight className="h-3.5 w-3.5" />
-      </button>
+      </Link>
     </div>
   )
 }
 
+// Mini-leaderboard — топ-5 algorithms-секции. Раньше показывали
+// захардкоженные имена (@alexey / @kirill_dev / @you), что вводило
+// пользователя в заблуждение, когда бэк падал. Теперь — реальные
+// записи; при isError или пустом ответе даём empty-state.
 function Leaderboard() {
   const { t } = useTranslation('sanctum')
-  const { data: lb, isError } = useLeaderboardQuery('algorithms')
-  const fallback = [
-    { rank: 1, name: '@alexey', tier: 'Grandmaster · 3 420 LP', delta: '+240', medal: 'gold' as const },
-    { rank: 2, name: '@kirill_dev', tier: 'Diamond I · 2 980 LP', delta: '+180', medal: 'silver' as const },
-    { rank: 3, name: '@you', tier: 'Diamond III · 2 840 LP', delta: '+124', medal: 'accent' as const, you: true },
-    { rank: 4, name: '@nastya', tier: 'Diamond IV · 2 610 LP', delta: '+90', medal: 'plain' as const },
-  ] as Array<{ rank: number; name: string; tier: string; delta: string; medal: 'gold' | 'silver' | 'accent' | 'plain'; you?: boolean }>
-  const rows = lb?.entries
-    ? lb.entries.slice(0, 4).map((e, idx) => ({
-        rank: e.rank,
-        name: `@${e.username}`,
-        tier: e.title ? `${e.title} · ${e.elo} ELO` : `${e.elo} ELO`,
-        delta: '',
-        medal: (idx === 0 ? 'gold' : idx === 1 ? 'silver' : idx === 2 ? 'accent' : 'plain') as 'gold' | 'silver' | 'accent' | 'plain',
-        you: false,
-      }))
-    : fallback
-  const medalBg = (m: string) =>
-    m === 'gold' ? 'bg-warn text-bg' : m === 'silver' ? 'bg-border-strong text-text-secondary' : m === 'accent' ? 'bg-accent text-text-primary' : 'bg-border-strong text-text-secondary'
+  const { data: lb, isError, isLoading } = useLeaderboardQuery({ section: 'algorithms', limit: 5 })
+  const entries = lb?.entries ?? []
+  const myRank = lb?.my_rank ?? 0
+  const medalBg = (idx: number) =>
+    idx === 0 ? 'bg-warn text-bg'
+      : idx === 1 ? 'bg-border-strong text-text-secondary'
+      : idx === 2 ? 'bg-accent text-text-primary'
+      : 'bg-border-strong text-text-secondary'
 
   return (
     <Card className="w-full flex-col gap-3 p-5 lg:w-[420px]">
@@ -240,56 +327,125 @@ function Leaderboard() {
         <h3 className="font-display text-base font-bold text-text-primary">{t('top_friends')}</h3>
         <span className="font-mono text-[11px] text-text-muted">{isError ? '—' : t('week')}</span>
       </div>
-      {rows.map((r) => (
-        <div
-          key={r.rank}
-          className={[
-            'flex items-center gap-3 rounded-lg px-2 py-2',
-            r.you ? 'bg-accent/10' : '',
-          ].join(' ')}
-        >
-          <span className={`grid h-7 w-7 shrink-0 place-items-center rounded-full font-display text-[13px] font-bold ${medalBg(r.medal)}`}>
-            {r.rank}
-          </span>
-          <Avatar size="sm" gradient="violet-cyan" initials={r.name[1]?.toUpperCase()} />
-          <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-            <span className={cn('truncate', r.you ? 'text-sm font-bold text-text-primary' : 'text-sm font-semibold text-text-primary')}>
-              {r.name}
+      {isError && <ErrorChip />}
+      {isLoading && (
+        <>
+          <div className="h-9 animate-pulse rounded bg-surface-2" />
+          <div className="h-9 animate-pulse rounded bg-surface-2" />
+          <div className="h-9 animate-pulse rounded bg-surface-2" />
+        </>
+      )}
+      {!isLoading && entries.length === 0 && !isError && (
+        <p className="text-xs text-text-muted">
+          Лидерборд секции пуст — сыграй ranked-матч.
+        </p>
+      )}
+      {entries.map((e, idx) => {
+        const you = myRank === e.rank
+        return (
+          <div
+            key={`${e.user_id}:${e.rank}`}
+            className={['flex items-center gap-3 rounded-lg px-2 py-2', you ? 'bg-accent/10' : ''].join(' ')}
+          >
+            <span
+              className={`grid h-7 w-7 shrink-0 place-items-center rounded-full font-display text-[13px] font-bold ${medalBg(idx)}`}
+            >
+              {e.rank}
             </span>
-            <span className={cn('truncate', r.you ? 'font-mono text-[11px] text-accent-hover' : 'font-mono text-[11px] text-text-muted')}>
-              {r.tier}
-            </span>
+            <Avatar size="sm" gradient="violet-cyan" initials={(e.username[0] ?? '?').toUpperCase()} />
+            <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+              <span className={cn('truncate', you ? 'text-sm font-bold text-text-primary' : 'text-sm font-semibold text-text-primary')}>
+                @{e.username}
+              </span>
+              <span className={cn('truncate font-mono text-[11px]', you ? 'text-accent-hover' : 'text-text-muted')}>
+                {e.title ? `${e.title} · ${e.elo} ELO` : `${e.elo} ELO`}
+              </span>
+            </div>
           </div>
-          <span className="shrink-0 font-mono text-sm font-semibold text-success">{r.delta || ''}</span>
-        </div>
-      ))}
+        )
+      })}
     </Card>
   )
 }
 
+// fmtAgo — компактный «5 мин» / «2 ч» / «3 д» для ленты активности.
+// Берём timestamp ISO с бэка и считаем относительно сейчас.
+function fmtAgo(iso: string, now: Date = new Date()): string {
+  const t = new Date(iso).getTime()
+  if (Number.isNaN(t)) return ''
+  const diffSec = Math.max(0, Math.floor((now.getTime() - t) / 1000))
+  if (diffSec < 60) return 'только что'
+  const m = Math.floor(diffSec / 60)
+  if (m < 60) return `${m} мин`
+  const h = Math.floor(m / 60)
+  if (h < 24) return `${h} ч`
+  const d = Math.floor(h / 24)
+  return `${d} д`
+}
+
+function fmtDuration(sec: number): string {
+  const m = Math.floor(sec / 60)
+  const s = sec - m * 60
+  return `${m}:${String(s).padStart(2, '0')}`
+}
+
 function Activity() {
   const { t } = useTranslation(['sanctum', 'common'])
-  const items = [
-    { icon: <Trophy className="h-4 w-4 text-warn" />, bg: 'bg-warn/15', title: 'Ачивмент · Speed Demon', sub: '10 задач под 5 минут подряд', time: 'вчера' },
-    { icon: <Swords className="h-4 w-4 text-accent-hover" />, bg: 'bg-accent/15', title: 'Победа в арене · vs @kirill_dev', sub: 'Median of Two Sorted Arrays · +18 LP', time: '1 ч назад' },
-    { icon: <Sparkles className="h-4 w-4 text-success" />, bg: 'bg-success/15', title: 'Two Sum · Easy', sub: 'Решено за 4:21 · +120 XP', time: '2 мин назад' },
-  ]
+  const { data, isError, isLoading } = useArenaHistoryQuery({ limit: 3 })
+  const items = data?.items ?? []
+
   return (
     <Card className="flex-1 flex-col gap-3.5 p-5">
       <div className="flex items-center justify-between">
-        <h3 className="font-display text-base font-bold text-text-primary">{t('sanctum:recent_activity')}</h3>
-        <button className="text-xs text-text-muted hover:text-text-secondary">{t('common:buttons.view_all')}</button>
+        <h3 className="font-display text-base font-bold text-text-primary">
+          {t('sanctum:recent_activity')}
+        </h3>
+        <Link to="/match-history" className="text-xs text-text-muted hover:text-text-secondary">
+          {t('common:buttons.view_all')}
+        </Link>
       </div>
-      {items.reverse().map((i, idx) => (
-        <div key={idx} className="flex items-center gap-3 py-2">
-          <span className={`grid h-9 w-9 shrink-0 place-items-center rounded-full ${i.bg}`}>{i.icon}</span>
-          <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-            <span className="truncate text-sm font-semibold text-text-primary">{i.title}</span>
-            <span className="truncate text-[11px] text-text-muted">{i.sub}</span>
+      {isError && <ErrorChip />}
+      {isLoading && (
+        <>
+          <div className="h-12 animate-pulse rounded bg-surface-2" />
+          <div className="h-12 animate-pulse rounded bg-surface-2" />
+        </>
+      )}
+      {!isLoading && items.length === 0 && !isError && (
+        <p className="text-xs text-text-muted">
+          Сыграй первый матч — он появится здесь.
+        </p>
+      )}
+      {items.map((m) => {
+        const won = m.result === 'win'
+        const lpSign = m.lp_change >= 0 ? '+' : ''
+        return (
+          <div key={m.match_id} className="flex items-center gap-3 py-2">
+            <span
+              className={`grid h-9 w-9 shrink-0 place-items-center rounded-full ${
+                won ? 'bg-success/15' : 'bg-danger/15'
+              }`}
+            >
+              <Swords
+                className={`h-4 w-4 ${won ? 'text-success' : 'text-danger'}`}
+              />
+            </span>
+            <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+              <span className="truncate text-sm font-semibold text-text-primary">
+                {won ? 'Победа' : m.result === 'loss' ? 'Поражение' : 'Матч'} · vs @
+                {m.opponent_username || m.opponent_user_id.slice(0, 6)}
+              </span>
+              <span className="truncate text-[11px] text-text-muted">
+                {m.section} · {fmtDuration(m.duration_seconds)} · {lpSign}
+                {m.lp_change} LP
+              </span>
+            </div>
+            <span className="shrink-0 font-mono text-[11px] text-text-muted">
+              {fmtAgo(m.finished_at)}
+            </span>
           </div>
-          <span className="shrink-0 font-mono text-[11px] text-text-muted">{i.time}</span>
-        </div>
-      ))}
+        )
+      })}
     </Card>
   )
 }

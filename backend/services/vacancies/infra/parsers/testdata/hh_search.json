@@ -1,0 +1,34 @@
+{
+  "items": [
+    {
+      "id": "12345",
+      "name": "Go Developer",
+      "alternate_url": "https://hh.ru/vacancy/12345",
+      "published_at": "2026-04-20T12:00:00+0300",
+      "snippet": {
+        "requirement": "Знание Go, PostgreSQL, gRPC",
+        "responsibility": "Разработка backend-сервисов"
+      },
+      "salary": {"from": 200000, "to": 350000, "currency": "RUR"},
+      "area": {"name": "Москва"},
+      "employer": {"name": "Acme Corp"},
+      "schedule": {"name": "Полный день"},
+      "experience": {"name": "От 3 до 6 лет"},
+      "key_skills": [{"name": "Go"}, {"name": "PostgreSQL"}, {"name": "gRPC"}]
+    },
+    {
+      "id": "67890",
+      "name": "Python Backend",
+      "alternate_url": "https://hh.ru/vacancy/67890",
+      "published_at": "2026-04-19T09:00:00+0300",
+      "snippet": {"requirement": "Python, Django", "responsibility": "Backend"},
+      "area": {"name": "Санкт-Петербург"},
+      "employer": {"name": "Foo Inc"},
+      "key_skills": [{"name": "Python"}, {"name": "Django"}]
+    }
+  ],
+  "page": 0,
+  "pages": 1,
+  "per_page": 100,
+  "found": 2
+}

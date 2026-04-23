@@ -364,6 +364,55 @@ func (q *Queries) ListKataHistory(ctx context.Context, arg ListKataHistoryParams
 	return items, nil
 }
 
+const listKataHistoryByYear = `-- name: ListKataHistoryByYear :many
+-- Powers /api/v1/kata/streak's 12-month calendar grid. The caller passes
+-- pre-built [Jan 1, Dec 31] DATE bounds so we keep the predicate
+-- sargable (no EXTRACT in WHERE) — the existing
+-- idx_kata_history_user_date covers it.
+SELECT kata_date, task_id, passed, freeze_used
+  FROM daily_kata_history
+ WHERE user_id = $1 AND kata_date >= $2 AND kata_date <= $3
+ ORDER BY kata_date ASC
+`
+
+type ListKataHistoryByYearParams struct {
+	UserID     pgtype.UUID
+	KataDate   pgtype.Date
+	KataDate_2 pgtype.Date
+}
+
+type ListKataHistoryByYearRow struct {
+	KataDate   pgtype.Date
+	TaskID     pgtype.UUID
+	Passed     pgtype.Bool
+	FreezeUsed bool
+}
+
+func (q *Queries) ListKataHistoryByYear(ctx context.Context, arg ListKataHistoryByYearParams) ([]ListKataHistoryByYearRow, error) {
+	rows, err := q.db.Query(ctx, listKataHistoryByYear, arg.UserID, arg.KataDate, arg.KataDate_2)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListKataHistoryByYearRow{}
+	for rows.Next() {
+		var i ListKataHistoryByYearRow
+		if err := rows.Scan(
+			&i.KataDate,
+			&i.TaskID,
+			&i.Passed,
+			&i.FreezeUsed,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const markAutopsyReady = `-- name: MarkAutopsyReady :execrows
 UPDATE interview_autopsies
    SET status = 'ready', analysis_json = $2::jsonb

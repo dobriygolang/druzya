@@ -168,6 +168,21 @@ func (mr *MockKataRepoMockRecorder) HistoryLast30(ctx, userID, today any) *gomoc
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "HistoryLast30", reflect.TypeOf((*MockKataRepo)(nil).HistoryLast30), ctx, userID, today)
 }
 
+// HistoryByYear mocks base method.
+func (m *MockKataRepo) HistoryByYear(ctx context.Context, userID uuid.UUID, year int) ([]domain.HistoryEntry, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "HistoryByYear", ctx, userID, year)
+	ret0, _ := ret[0].([]domain.HistoryEntry)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// HistoryByYear indicates an expected call of HistoryByYear.
+func (mr *MockKataRepoMockRecorder) HistoryByYear(ctx, userID, year any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "HistoryByYear", reflect.TypeOf((*MockKataRepo)(nil).HistoryByYear), ctx, userID, year)
+}
+
 // MarkSubmitted mocks base method.
 func (m *MockKataRepo) MarkSubmitted(ctx context.Context, userID uuid.UUID, date time.Time, passed bool) error {
 	m.ctrl.T.Helper()

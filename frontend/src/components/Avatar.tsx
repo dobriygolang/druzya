@@ -109,6 +109,10 @@ export const Avatar = React.forwardRef<HTMLDivElement, AvatarProps>(
           className={cn(
             'flex h-full w-full items-center justify-center overflow-hidden rounded-full font-display font-bold text-text-primary',
             SIZE_TEXT[size],
+            // ring-2 ring-bg по умолчанию: визуально отделяет аватары
+            // соседей в группах с -space-x (Friends online и т.п.).
+            // tier добавляет цветное кольцо поверх через offset.
+            !tier && 'ring-2 ring-bg',
             tier && `ring-2 ring-offset-2 ring-offset-bg ${TIER_RING[tier]}`,
           )}
           style={showImage ? undefined : { background: bg }}

@@ -4,6 +4,7 @@ const profileFull = {
     id: '00000000-0000-0000-0000-000000000001',
     username: 'hero',
     display_name: 'Aleksei',
+    email: 'hero@druz9.dev',
     level: 24,
     xp: 3620,
     xp_to_next: 4800,
@@ -87,18 +88,38 @@ const atlas = {
 const weeklyReport = {
     week_start: '2026-04-13',
     week_end: '2026-04-19',
-    metrics: { tasks_solved: 14, matches_won: 6, rating_change: 48, xp_earned: 820, time_minutes: 340 },
+    metrics: { tasks_solved: 23, matches_won: 12, rating_change: 18, xp_earned: 2480, time_minutes: 340 },
     heatmap: [2, 3, 4, 1, 3, 2, 0],
     strengths: ['Dynamic Programming', 'SQL Window Functions'],
     weaknesses: [
         { atlas_node_key: 'sd_scaling', reason: 'Пропал 8 дней, начинается декей' },
         { atlas_node_key: 'algo_graphs', reason: 'Медленное решение Dijkstra' },
     ],
-    stress_analysis: 'Ты сильнее после разогрева — первые 10 минут показываешь -20% к качеству.',
+    stress_analysis: 'На этой неделе ты делаешь плохие решения когда таймер < 5 мин — 4 из 5 проигрышей пришлись на цейтнот. Попробуй замедлиться в первой половине: 60 секунд на план перед кодом.',
     recommendations: [
-        { title: 'Пройди AI-мок по System Design', action: { kind: 'start_mock', params: { section: 'system_design' } } },
-        { title: 'Реши 3 Medium задачи на графы', action: { kind: 'solve_task', params: { atlas_node_key: 'algo_graphs' } } },
-        { title: 'Прослушай подкаст про scaling', action: { kind: 'listen_podcast', params: { section: 'system_design' } } },
+        { title: 'Решить 5 DP задач (medium)', action: { kind: 'solve_task', params: { atlas_node_key: 'algo_dp' } } },
+        { title: 'Mock interview по System Design', action: { kind: 'start_mock', params: { section: 'system_design' } } },
+        { title: 'Replay 3 проигрыша из истории', action: { kind: 'open_arena', params: {} } },
+    ],
+    // Поля, которые добавились вместе с расширением WeeklyReport-proto.
+    actions_count: 47,
+    streak_days: 12,
+    best_streak: 47,
+    prev_xp_earned: 1690,
+    strong_sections: [
+        { section: 'algorithms', matches: 9, wins: 7, losses: 2, xp_delta: 340, win_rate_pct: 78 },
+        { section: 'sql', matches: 6, wins: 4, losses: 2, xp_delta: 220, win_rate_pct: 67 },
+        { section: 'go', matches: 4, wins: 3, losses: 1, xp_delta: 180, win_rate_pct: 75 },
+    ],
+    weak_sections: [
+        { section: 'system_design', matches: 3, wins: 1, losses: 2, xp_delta: -80, win_rate_pct: 33 },
+        { section: 'behavioral', matches: 2, wins: 1, losses: 1, xp_delta: -40, win_rate_pct: 50 },
+    ],
+    weekly_xp: [
+        { label: 'Эта', xp: 2480, pct: 100 },
+        { label: '-1', xp: 1690, pct: 68 },
+        { label: '-2', xp: 2010, pct: 81 },
+        { label: '-3', xp: 1240, pct: 50 },
     ],
 };
 export const profileHandlers = [

@@ -66,6 +66,9 @@ const StressMeterPage = lazy(() => import('./pages/StressMeterPage'))
 const AdminPage = lazy(() => import('./pages/AdminPage'))
 const StatusPage = lazy(() => import('./pages/StatusPage'))
 const RatingPage = lazy(() => import('./pages/RatingPage'))
+const VacanciesPage = lazy(() => import('./pages/VacanciesPage'))
+const VacancyDetailPage = lazy(() => import('./pages/VacancyDetailPage'))
+const ApplicationsPage = lazy(() => import('./pages/ApplicationsPage'))
 
 export default function App() {
   return (
@@ -123,6 +126,9 @@ export default function App() {
         <Route path="/admin" element={<AdminPage />} />
         <Route path="/status" element={<StatusPage />} />
         <Route path="/rating" element={<RatingPage />} />
+        <Route path="/vacancies" element={<VacanciesPage />} />
+        <Route path="/vacancies/:id" element={<VacancyDetailPage />} />
+        <Route path="/applications" element={<ApplicationsPage />} />
         {/* Legacy /v2/* — редирект на новый URL без префикса. */}
         <Route path="/v2/*" element={<LegacyV2Redirect />} />
         <Route path="*" element={<NotFoundPage />} />

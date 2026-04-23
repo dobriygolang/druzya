@@ -2,6 +2,7 @@ go 1.25.6
 
 use (
 	./backend/cmd/monolith
+	./backend/services/achievements
 	./backend/services/admin
 	./backend/services/ai_mock
 	./backend/services/ai_native
@@ -10,6 +11,7 @@ use (
 	./backend/services/daily
 	./backend/services/editor
 	./backend/services/feed
+	./backend/services/friends
 	./backend/services/guild
 	./backend/services/notify
 	./backend/services/podcast
@@ -17,6 +19,7 @@ use (
 	./backend/services/rating
 	./backend/services/season
 	./backend/services/slot
+	./backend/services/vacancies
 	./backend/shared
 )
 

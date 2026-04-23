@@ -4,6 +4,7 @@ go 1.25.0
 
 require (
 	connectrpc.com/vanguard v0.3.0
+	druz9/achievements v0.0.0-00010101000000-000000000000
 	druz9/admin v0.0.0-00010101000000-000000000000
 	druz9/ai_mock v0.0.0-00010101000000-000000000000
 	druz9/ai_native v0.0.0-00010101000000-000000000000
@@ -12,6 +13,7 @@ require (
 	druz9/daily v0.0.0-00010101000000-000000000000
 	druz9/editor v0.0.0-00010101000000-000000000000
 	druz9/feed v0.0.0-00010101000000-000000000000
+	druz9/friends v0.0.0-00010101000000-000000000000
 	druz9/guild v0.0.0-00010101000000-000000000000
 	druz9/notify v0.0.0-00010101000000-000000000000
 	druz9/podcast v0.0.0-00010101000000-000000000000
@@ -20,6 +22,7 @@ require (
 	druz9/season v0.0.0-00010101000000-000000000000
 	druz9/shared v0.0.0
 	druz9/slot v0.0.0-00010101000000-000000000000
+	druz9/vacancies v0.0.0-00010101000000-000000000000
 	github.com/go-chi/chi/v5 v5.2.5
 	github.com/google/uuid v1.6.0
 	github.com/jackc/pgx/v5 v5.9.2
@@ -106,3 +109,9 @@ replace druz9/season => ../../services/season
 replace druz9/podcast => ../../services/podcast
 
 replace druz9/admin => ../../services/admin
+
+replace druz9/vacancies => ../../services/vacancies
+
+replace druz9/achievements => ../../services/achievements
+
+replace druz9/friends => ../../services/friends

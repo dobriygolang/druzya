@@ -94,6 +94,20 @@ func NewNotify(d Deps) (*NotifyModule, error) {
 		Log:       d.Log,
 	}
 
+	// In-app notifications feed (см. миграция 00017).
+	userNotifPg := notifyInfra.NewUserNotifPostgres(d.Pool)
+	prefsPg := notifyInfra.NewPrefsPostgres(d.Pool)
+	feedHandlers := notifyApp.NewFeedHandlers(userNotifPg, prefsPg, d.Log)
+	userNotifHandler := notifyPorts.NewUserNotificationsHandler(notifyPorts.UserNotificationsHandler{
+		List:        &notifyApp.ListUserNotifications{Repo: userNotifPg, Prefs: prefsPg, Log: d.Log},
+		Unread:      &notifyApp.CountUnread{Repo: userNotifPg},
+		MarkRead:    &notifyApp.MarkRead{Repo: userNotifPg},
+		MarkAllRead: &notifyApp.MarkAllRead{Repo: userNotifPg},
+		GetPrefs:    &notifyApp.GetPrefs{Repo: prefsPg},
+		UpdatePrefs: &notifyApp.UpdatePrefs{Repo: prefsPg},
+		Log:         d.Log,
+	})
+
 	mod := &NotifyModule{
 		WebhookHandler:  webhook,
 		RegisterWebhook: tg.RegisterWebhook,
@@ -107,6 +121,8 @@ func NewNotify(d Deps) (*NotifyModule, error) {
 				r.Put("/notify/preferences", transcoder.ServeHTTP)
 				// Public — без bearer auth (см. router.go public-paths whitelist).
 				r.Post("/support/ticket", supportHandler.ServeHTTP)
+				// In-app notifications feed.
+				userNotifHandler.Mount(r)
 			},
 			Subscribers: []func(*eventbus.InProcess){
 				func(b *eventbus.InProcess) {
@@ -121,6 +137,14 @@ func NewNotify(d Deps) (*NotifyModule, error) {
 					b.Subscribe(sharedDomain.UserRegistered{}.Topic(), handlers.OnUserRegistered)
 					b.Subscribe(sharedDomain.SlotBooked{}.Topic(), handlers.OnSlotBooked)
 					b.Subscribe(notifyDomain.WeeklyReportDue{}.Topic(), handlers.OnWeeklyReportDue)
+
+					// In-app notifications feed (NotificationsPage).
+					b.Subscribe(sharedDomain.MatchCompleted{}.Topic(), feedHandlers.OnArenaMatchCompleted)
+					b.Subscribe(sharedDomain.DailyKataMissed{}.Topic(), feedHandlers.OnDailyKataMissed)
+					b.Subscribe(sharedDomain.DailyKataCompleted{}.Topic(), feedHandlers.OnDailyKataCompletedFeed)
+					b.Subscribe(sharedDomain.GuildWarStarted{}.Topic(), feedHandlers.OnGuildWarStarted)
+					b.Subscribe(sharedDomain.GuildWarFinished{}.Topic(), feedHandlers.OnGuildWarFinished)
+					b.Subscribe("friends.RequestReceived", feedHandlers.OnFriendRequest)
 				},
 			},
 			Background: []func(ctx context.Context){

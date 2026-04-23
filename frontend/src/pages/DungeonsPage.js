@@ -1,48 +1,23 @@
-import { jsx as _jsx, jsxs as _jsxs } from "react/jsx-runtime";
-// TODO i18n
-import { ArrowRight, Filter, Lock, Crown } from 'lucide-react';
+import { jsx as _jsx } from "react/jsx-runtime";
+// DungeonsPage — placeholder while the dungeons backend is built.
+//
+// "Подземелья компаний" — large, multi-stage company-specific interview
+// gauntlets (NORMAL / HARD / BOSS tiers, 30..80 tasks each, ~10..28h
+// playtime). There is no `dungeons` bounded context in backend/services/
+// today and the persistence model alone (per-company task graphs, level
+// gates, multi-day progress, boss reward grants) is at least a sprint of
+// work. Rather than ship hard-coded company brackets and progress numbers
+// we render a ComingSoon banner so users know the surface is real-but-not-
+// yet-launched.
+//
+// Same pattern as TournamentPage / HeroCardsPage.
+import { useNavigate } from 'react-router-dom';
 import { AppShellV2 } from '../components/AppShell';
-import { Button } from '../components/Button';
-import { useDungeonsQuery } from '../lib/queries/dungeons';
-function ErrorChip() {
-    return (_jsx("span", { className: "rounded-full bg-danger/15 px-2 py-0.5 font-mono text-[10px] font-semibold text-danger", children: "\u041D\u0435 \u0443\u0434\u0430\u043B\u043E\u0441\u044C \u0437\u0430\u0433\u0440\u0443\u0437\u0438\u0442\u044C" }));
-}
-const NORMAL = [
-    { name: 'Avito', initial: 'A', color: '#10B981', tasks: 40, sections: 5, hours: 12, progress: 78, tags: ['Algorithms', 'SQL'] },
-    { name: 'VK', initial: 'В', color: '#22D3EE', tasks: 38, sections: 5, hours: 11, progress: 62, tags: ['Algorithms', 'System'] },
-    { name: 'Сбер', initial: 'С', color: '#10B981', tasks: 42, sections: 6, hours: 13, progress: 45, tags: ['Java', 'SQL'] },
-    { name: 'Wildberries', initial: 'W', color: '#F472B6', tasks: 35, sections: 5, hours: 10, progress: 12, tags: ['Go', 'Concurrency'] },
-    { name: 'Mail.ru', initial: 'M', color: '#582CFF', tasks: 36, sections: 5, hours: 10, progress: 0, tags: ['Algorithms'], locked: true },
-    { name: 'HH', initial: 'H', color: '#FBBF24', tasks: 30, sections: 4, hours: 8, progress: 0, tags: ['Frontend', 'JS'] },
-];
-const HARD = [
-    { name: 'Ozon', initial: 'O', color: '#582CFF', tasks: 60, sections: 6, hours: 18, progress: 32, tags: ['Backend', 'DB'] },
-    { name: 'Tinkoff Junior', initial: 'T', color: '#FBBF24', tasks: 55, sections: 6, hours: 16, progress: 28, tags: ['Java', 'Spring'] },
-    { name: 'Yandex Practicum', initial: 'Я', color: '#EF4444', tasks: 50, sections: 5, hours: 15, progress: 15, tags: ['Algorithms'] },
-    { name: 'Skyeng', initial: 'S', color: '#22D3EE', tasks: 48, sections: 5, hours: 14, progress: 0, tags: ['Python'], locked: true },
-];
-function CompanyCard({ c, hard }) {
-    const chipCls = hard ? 'bg-warn/20 text-warn' : 'bg-success/20 text-success';
-    const chipLabel = hard ? 'HARD' : 'NORMAL';
-    const borderCls = hard ? 'border-warn/30' : 'border-border';
-    return (_jsxs("div", { className: `flex h-[220px] w-full flex-col gap-2 rounded-xl border ${borderCls} bg-surface-2 p-4`, children: [_jsxs("div", { className: "flex items-center justify-between", children: [_jsx("span", { className: "grid h-12 w-12 place-items-center rounded-lg font-display text-lg font-extrabold text-text-primary", style: { background: c.color }, children: c.initial }), _jsx("span", { className: `rounded-full px-2 py-0.5 font-mono text-[10px] font-semibold ${chipCls}`, children: chipLabel })] }), _jsx("h3", { className: "font-display text-[16px] font-bold text-text-primary", children: c.name }), _jsxs("p", { className: "font-mono text-[11px] text-text-muted", children: [c.tasks, " \u0437\u0430\u0434\u0430\u0447 \u00B7 ", c.sections, " \u0441\u0435\u043A\u0446\u0438\u0439 \u00B7 ~", c.hours, "\u0447"] }), _jsx("div", { className: "mt-1 h-1.5 overflow-hidden rounded-full bg-black/40", children: _jsx("div", { className: `h-full ${hard ? 'bg-warn' : 'bg-success'}`, style: { width: `${c.progress}%` } }) }), _jsx("span", { className: "font-mono text-[11px] text-text-secondary", children: c.locked ? 'Заблокировано' : `${c.progress}% пройдено` }), _jsxs("div", { className: "mt-auto flex items-center justify-between", children: [_jsxs("span", { className: "font-mono text-[10px] text-text-muted", children: ["\u2713 ", c.tags.join(' · ')] }), c.locked ? (_jsx(Lock, { className: "h-4 w-4 text-text-muted" })) : (_jsx(ArrowRight, { className: "h-4 w-4 text-accent-hover" }))] })] }));
-}
-function BossCard({ name, initial, active, progress, yourLvl, }) {
-    return (_jsxs("div", { className: "flex h-[240px] flex-1 flex-col gap-2 rounded-xl border-2 border-danger p-5", style: {
-            background: 'linear-gradient(135deg, #1a0510 0%, #1A1A2E 100%)',
-            boxShadow: '0 6px 24px rgba(239,68,68,0.40)',
-        }, children: [_jsxs("div", { className: "flex items-center justify-between", children: [_jsx("span", { className: "grid h-16 w-16 place-items-center rounded-xl font-display text-2xl font-extrabold text-text-primary", style: { background: 'linear-gradient(135deg, #EF4444 0%, #582CFF 100%)' }, children: initial }), _jsx("span", { className: "rounded-full bg-danger/20 px-2.5 py-0.5 font-mono text-[10px] font-semibold text-danger", children: "BOSS \u00B7 LVL 30" })] }), _jsx("h3", { className: "font-display text-[22px] font-extrabold text-text-primary", children: name }), _jsx("p", { className: "font-mono text-[11px] text-text-muted", children: "Senior Backend track \u00B7 80 \u0437\u0430\u0434\u0430\u0447 \u00B7 4 \u0441\u0435\u043A\u0446\u0438\u0438 \u00B7 ~28\u0447" }), _jsxs("div", { className: "flex items-center justify-between rounded-md bg-black/30 px-3 py-2 text-[11px]", children: [_jsx("span", { className: "font-mono text-warn", children: "Lvl req: 30" }), _jsxs("span", { className: "font-mono text-text-secondary", children: ["\u0423 \u0442\u0435\u0431\u044F: Lvl ", yourLvl] }), active ? (_jsx("span", { className: "rounded-full bg-success/20 px-2 py-0.5 font-mono text-[10px] font-semibold text-success", children: "\u0410\u043A\u0442\u0438\u0432\u043D\u043E" })) : (_jsx("span", { className: "rounded-full bg-danger/20 px-2 py-0.5 font-mono text-[10px] font-semibold text-danger", children: "\u0417\u0430\u0431\u043B\u043E\u043A\u0438\u0440\u043E\u0432\u0430\u043D\u043E" }))] }), _jsxs("div", { className: "flex items-center gap-2 text-[11px]", children: [_jsx(Crown, { className: "h-4 w-4 text-warn" }), _jsx("span", { className: "text-text-secondary", children: "Reward: Hero Card + Title" })] }), active ? (_jsxs(Button, { variant: "primary", size: "sm", className: "mt-auto", children: ["\u041F\u0440\u043E\u0434\u043E\u043B\u0436\u0438\u0442\u044C \u00B7 ", progress, "%"] })) : (_jsx(Button, { variant: "ghost", size: "sm", className: "mt-auto", icon: _jsx(Lock, { className: "h-3.5 w-3.5" }), children: "\u041E\u0442\u043A\u0440\u044B\u0442\u044C \u043F\u043E\u0441\u043B\u0435 Lvl 30" }))] }));
-}
-const TABS = ['Все 12', 'Normal 6', 'Hard 4', 'Boss 2', 'Пройденные', 'Активные'];
+import { ComingSoon } from '../components/ComingSoon';
 export default function DungeonsPage() {
-    const { data, isError } = useDungeonsQuery();
-    const total = data?.total ?? 12;
-    const totalTasks = data?.total_tasks ?? 480;
-    const done = data?.done ?? 5;
-    return (_jsx(AppShellV2, { children: _jsxs("div", { className: "flex flex-col gap-6 px-4 py-6 sm:px-8 lg:px-20 lg:py-8", children: [_jsxs("div", { className: "flex flex-col items-start gap-3 lg:flex-row lg:items-end lg:justify-between", children: [_jsxs("div", { className: "flex flex-col gap-1.5", children: [_jsx("h1", { className: "font-display text-2xl lg:text-[32px] font-bold leading-[1.1] text-text-primary", children: "\u041F\u043E\u0434\u0437\u0435\u043C\u0435\u043B\u044C\u044F \u043A\u043E\u043C\u043F\u0430\u043D\u0438\u0439" }), _jsxs("p", { className: "text-sm text-text-secondary", children: [total, " \u043A\u043E\u043C\u043F\u0430\u043D\u0438\u0439 \u00B7 ", totalTasks, " \u0437\u0430\u0434\u0430\u0447"] }), isError && _jsx(ErrorChip, {})] }), _jsxs("div", { className: "flex items-center gap-3", children: [_jsxs("span", { className: "rounded-full bg-warn/15 px-3 py-1 font-mono text-[12px] font-semibold text-warn", children: [done, " / ", total, " \u043F\u0440\u043E\u0439\u0434\u0435\u043D\u043E"] }), _jsx(Button, { variant: "ghost", icon: _jsx(Filter, { className: "h-4 w-4" }), children: "\u0424\u0438\u043B\u044C\u0442\u0440\u044B" })] })] }), _jsx("div", { className: "flex items-center gap-1 overflow-x-auto border-b border-border", children: TABS.map((t, i) => (_jsx("button", { className: [
-                            'px-3 py-2.5 text-sm transition-colors',
-                            i === 0
-                                ? 'border-b-2 border-accent font-semibold text-text-primary'
-                                : 'text-text-secondary hover:text-text-primary',
-                        ].join(' '), children: t }, t))) }), _jsxs("div", { className: "flex flex-col gap-4", children: [_jsxs("div", { className: "flex items-center gap-2", children: [_jsx("span", { className: "rounded-full bg-success/20 px-2.5 py-0.5 font-mono text-[11px] font-semibold text-success", children: "NORMAL" }), _jsx("span", { className: "font-display text-[15px] font-bold text-text-primary", children: "Junior\u2013Middle level" })] }), _jsx("div", { className: "grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3", children: NORMAL.map((c) => (_jsx(CompanyCard, { c: c }, c.name))) })] }), _jsxs("div", { className: "flex flex-col gap-4", children: [_jsxs("div", { className: "flex items-center gap-2", children: [_jsx("span", { className: "rounded-full bg-warn/20 px-2.5 py-0.5 font-mono text-[11px] font-semibold text-warn", children: "HARD" }), _jsx("span", { className: "font-display text-[15px] font-bold text-text-primary", children: "Middle\u2013Senior" })] }), _jsx("div", { className: "grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4", children: HARD.map((c) => (_jsx(CompanyCard, { c: c, hard: true }, c.name))) })] }), _jsxs("div", { className: "flex flex-col gap-4", children: [_jsxs("div", { className: "flex items-center gap-2", children: [_jsx("span", { className: "rounded-full bg-danger/20 px-2.5 py-0.5 font-mono text-[11px] font-semibold text-danger", children: "BOSS" }), _jsx("span", { className: "font-display text-[15px] font-bold text-warn", children: "Senior+ \u00B7 \u0422\u0440\u0435\u0431\u0443\u0435\u0442\u0441\u044F Lvl 30+" })] }), _jsxs("div", { className: "flex flex-col gap-4 lg:flex-row", children: [_jsx(BossCard, { name: "Yandex", initial: "\u042F", active: false, progress: 0, yourLvl: 24 }), _jsx(BossCard, { name: "Tinkoff", initial: "T", active: true, progress: 5, yourLvl: 24 })] })] })] }) }));
+    const navigate = useNavigate();
+    return (_jsx(AppShellV2, { children: _jsx(ComingSoon, { title: "\u041F\u043E\u0434\u0437\u0435\u043C\u0435\u043B\u044C\u044F \u043A\u043E\u043C\u043F\u0430\u043D\u0438\u0439 \u0441\u043A\u043E\u0440\u043E \u043E\u0442\u043A\u0440\u043E\u044E\u0442\u0441\u044F", description: 'Большие многоэтапные интервью-сценарии под конкретные компании ' +
+                '(Avito, VK, Яндекс, Tinkoff и др.) с прогрессом по секциям и ' +
+                'наградой за прохождение Boss-уровня. Запуск — Q2 2026. Пока что ' +
+                'тренируйся на Арене или прогоняй мок-интервью.', primaryCta: { label: 'На Арену', onClick: () => navigate('/arena') }, secondaryCta: { label: 'Открыть Mock', onClick: () => navigate('/mock/new') } }) }));
 }

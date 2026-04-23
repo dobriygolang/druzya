@@ -1,196 +1,277 @@
-// TODO i18n
+// /atlas — skill graph пользователя.
+//
+// Источник правды — `profile.GetMyAtlas` (REST: GET /api/v1/profile/me/atlas)
+// через `useAtlasQuery` (queries/profile.ts). Ответ — { center_node, nodes,
+// edges }; nodes несут kind = "keystone" | "ascendant" | "normal", флаги
+// unlocked / decaying и progress.
+//
+// Раньше страница была захардкожена на 22 поддельных узла с pixel-coordinates
+// «top: 90, left: 500» и витиеватыми лейблами «Sliding Window Sage». Сейчас
+// — детерминированный radial-layout, считающийся на лету по реальному
+// каталогу: keystones и ascendants — на внешнем кольце, normal — на внутреннем,
+// центральный узел — в середине. Если бэк добавит новый skill, он автоматически
+// окажется в правильной зоне без ручной правки координат.
+//
+// Loading: skeleton со skeleton-ring узлов. Error: retry-CTA. Empty: пустое
+// состояние с пояснением.
+
+import { useState, useMemo } from 'react'
 import {
   Sparkles,
   RotateCcw,
-  ChevronDown,
   TrendingUp,
-  Eye,
   Unlock,
-  Check,
-  Zap,
   Hexagon,
+  AlertCircle,
 } from 'lucide-react'
 import { AppShellV2 } from '../components/AppShell'
 import { Button } from '../components/Button'
-import { useAtlasQuery } from '../lib/queries/profile'
+import { useAtlasQuery, type AtlasNode, type Atlas } from '../lib/queries/profile'
 
 const HEX_CLIP = 'polygon(50% 0%, 100% 25%, 100% 75%, 50% 100%, 0% 75%, 0% 25%)'
 
-function HeaderStrip() {
-  const { data: atlas, isError } = useAtlasQuery()
-  const total = atlas?.nodes?.length ?? 0
-  const unlocked = atlas?.nodes?.filter((n) => n.unlocked).length ?? 0
+// CANVAS_W / CANVAS_H — фиксированный логический размер графа. Реальный
+// контейнер скроллится; absolute-positioning внутри использует эти числа
+// как basis. radius_inner / outer выбраны так, чтобы 6–10 keystones и
+// 10–20 normal-узлов влезли без визуальных коллизий.
+const CANVAS_W = 960
+const CANVAS_H = 700
+const CENTER_X = CANVAS_W / 2
+const CENTER_Y = CANVAS_H / 2
+const RADIUS_INNER = 140
+const RADIUS_OUTER = 260
+const NODE_SIZE_NORMAL = 56
+const NODE_SIZE_KEYSTONE = 72
+const NODE_SIZE_CENTER = 96
+
+type NodePos = { node: AtlasNode; x: number; y: number; size: number }
+
+// computeLayout — детерминированный полярный layout.
+//   - центральный узел (по center_node) — в центре.
+//   - keystones и ascendants — равномерно по внешнему кольцу.
+//   - normal — равномерно по внутреннему.
+// Один и тот же массив nodes даёт ту же раскладку на каждом рендере, что
+// важно для пользовательской привычки.
+function computeLayout(atlas: Atlas): Map<string, NodePos> {
+  const positions = new Map<string, NodePos>()
+  const center = atlas.nodes.find((n) => n.key === atlas.center_node)
+  const others = atlas.nodes.filter((n) => n.key !== atlas.center_node)
+  const outer = others.filter((n) => n.kind === 'keystone' || n.kind === 'ascendant')
+  const inner = others.filter((n) => n.kind !== 'keystone' && n.kind !== 'ascendant')
+
+  if (center) {
+    positions.set(center.key, {
+      node: center,
+      x: CENTER_X,
+      y: CENTER_Y,
+      size: NODE_SIZE_CENTER,
+    })
+  }
+  // -π/2 — старт сверху, по часовой стрелке. Гарантирует «ALGO сверху»
+  // как в дизайне, без жёстких координат.
+  const placeRing = (list: AtlasNode[], radius: number, size: number) => {
+    if (list.length === 0) return
+    const step = (2 * Math.PI) / list.length
+    list.forEach((n, idx) => {
+      const angle = -Math.PI / 2 + step * idx
+      positions.set(n.key, {
+        node: n,
+        x: CENTER_X + radius * Math.cos(angle),
+        y: CENTER_Y + radius * Math.sin(angle),
+        size,
+      })
+    })
+  }
+  placeRing(outer, RADIUS_OUTER, NODE_SIZE_KEYSTONE)
+  placeRing(inner, RADIUS_INNER, NODE_SIZE_NORMAL)
+  return positions
+}
+
+function nodeStateColor(n: AtlasNode): { fill: string; ring: string; label: string } {
+  if (n.unlocked) {
+    if (n.kind === 'keystone') return { fill: 'bg-warn/90', ring: '', label: 'text-bg' }
+    if (n.kind === 'ascendant') return { fill: 'bg-pink', ring: '', label: 'text-bg' }
+    return { fill: 'bg-accent', ring: '', label: 'text-text-primary' }
+  }
+  if (n.progress > 0) {
+    return { fill: 'bg-bg', ring: 'border-2 border-dashed border-accent-hover', label: 'text-accent-hover' }
+  }
+  return { fill: 'bg-surface-2', ring: 'border border-border', label: 'text-text-muted' }
+}
+
+function NodeShape({
+  pos,
+  selected,
+  onClick,
+}: {
+  pos: NodePos
+  selected: boolean
+  onClick: () => void
+}) {
+  const { node, x, y, size } = pos
+  const { fill, ring, label } = nodeStateColor(node)
+  const shapeStyle =
+    node.kind === 'keystone' || node.kind === 'ascendant'
+      ? { clipPath: HEX_CLIP }
+      : {}
+  const glow = node.unlocked ? 'shadow-glow' : ''
+  const selectedRing = selected ? 'ring-2 ring-cyan ring-offset-2 ring-offset-bg' : ''
+  const decay = node.decaying ? 'opacity-60' : ''
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`absolute grid place-items-center font-display font-bold transition-transform hover:scale-110 ${fill} ${ring} ${glow} ${selectedRing} ${decay}`}
+      style={{
+        left: x - size / 2,
+        top: y - size / 2,
+        width: size,
+        height: size,
+        borderRadius: node.kind === 'keystone' || node.kind === 'ascendant' ? 0 : size / 2,
+        ...shapeStyle,
+      }}
+      aria-label={node.title}
+    >
+      <span className={`px-1 text-center font-mono text-[9px] uppercase tracking-[0.06em] ${label}`}>
+        {shortLabel(node.title)}
+      </span>
+    </button>
+  )
+}
+
+// shortLabel — даёт краткий ярлык 2–3 буквы. Для сегмента «Алгоритмы:
+// основы» вернёт «АЛГ». Не пытается быть умным: первые буквы слов из
+// первого « : »-сегмента.
+function shortLabel(title: string): string {
+  const main = title.split(':')[0].trim()
+  const words = main.split(/\s+/).filter(Boolean)
+  if (words.length === 1) return words[0].slice(0, 4).toUpperCase()
+  return words
+    .slice(0, 3)
+    .map((w) => w[0]?.toUpperCase() ?? '')
+    .join('')
+}
+
+function ConnectionLine({
+  x1,
+  y1,
+  x2,
+  y2,
+  highlighted,
+}: {
+  x1: number
+  y1: number
+  x2: number
+  y2: number
+  highlighted: boolean
+}) {
+  const dx = x2 - x1
+  const dy = y2 - y1
+  const len = Math.sqrt(dx * dx + dy * dy)
+  const angle = (Math.atan2(dy, dx) * 180) / Math.PI
+  return (
+    <div
+      className={`absolute origin-left ${highlighted ? 'bg-accent' : 'bg-border'}`}
+      style={{
+        left: x1,
+        top: y1,
+        width: len,
+        height: highlighted ? 2 : 1,
+        transform: `rotate(${angle}deg)`,
+      }}
+    />
+  )
+}
+
+function HeaderStrip({
+  unlocked,
+  total,
+  isError,
+  onRetry,
+}: {
+  unlocked: number
+  total: number
+  isError: boolean
+  onRetry: () => void
+}) {
   return (
     <div className="flex flex-col items-start gap-4 border-b border-border bg-surface-1 px-4 py-4 sm:px-8 lg:flex-row lg:items-center lg:justify-between lg:px-20 lg:py-6">
       <div className="flex flex-col gap-1">
         <h1 className="font-display text-2xl font-bold leading-[1.1] text-text-primary lg:text-[28px]">
-          Skill Tree
+          Skill Atlas
         </h1>
         <p className="font-mono text-xs text-text-muted">
-          {isError ? 'Не удалось загрузить' : `${unlocked} / ${total || 156} узлов открыто · Сезон 4`}
+          {isError ? 'Не удалось загрузить' : `${unlocked} / ${total} узлов открыто`}
         </p>
       </div>
-
       <div className="flex items-center gap-2">
-        <button
-          type="button"
-          className="inline-flex items-center gap-1.5 rounded-md border border-accent/40 bg-accent/15 px-3.5 py-2 text-[13px] font-semibold text-text-primary hover:bg-accent/25"
-        >
-          Все категории <ChevronDown className="h-3.5 w-3.5" />
-        </button>
-        <button
-          type="button"
-          className="inline-flex items-center gap-1.5 rounded-md border border-border bg-surface-2 px-3.5 py-2 text-[13px] text-text-secondary hover:bg-surface-3 hover:text-text-primary"
-        >
-          Доступные
-        </button>
-        <button
-          type="button"
-          className="inline-flex items-center gap-1.5 rounded-md border border-border bg-surface-2 px-3.5 py-2 text-[13px] text-text-secondary hover:bg-surface-3 hover:text-text-primary"
-        >
-          Скрыть открытые
-        </button>
-      </div>
-
-      <div className="flex flex-wrap items-center gap-3">
-        <span className="inline-flex items-center gap-1.5 rounded-full border border-warn/40 bg-warn/15 px-3 py-1.5 font-mono text-[12px] font-semibold text-warn">
-          <Sparkles className="h-3.5 w-3.5" /> 12 очков
-        </span>
-        <Button
-          variant="ghost"
-          icon={<RotateCcw className="h-3.5 w-3.5" />}
-          className="h-9 px-3.5 text-[13px]"
-        >
-          Сбросить дерево
-        </Button>
+        {isError && (
+          <Button
+            variant="ghost"
+            size="sm"
+            icon={<RotateCcw className="h-3.5 w-3.5" />}
+            onClick={onRetry}
+          >
+            Повторить
+          </Button>
+        )}
       </div>
     </div>
   )
 }
 
-type NodeState = 'unlocked' | 'available' | 'locked'
-
-function SmallNode({
-  top,
-  left,
-  state,
-}: {
-  top: number
-  left: number
-  state: NodeState
-}) {
-  const base =
-    'absolute rounded-full transition-all'
-  const stateCls =
-    state === 'unlocked'
-      ? 'bg-accent shadow-glow border-2 border-accent-hover'
-      : state === 'available'
-        ? 'border-2 border-dashed border-accent-hover bg-bg'
-        : 'border border-border bg-surface-1'
+function GraphSkeleton() {
+  // Простой shimmer-каркас: центральный узел + 6 «keystones» по кругу.
+  // Не пытается имитировать конкретное дерево пользователя.
+  const ring = Array.from({ length: 6 }).map((_, idx) => {
+    const angle = -Math.PI / 2 + (2 * Math.PI * idx) / 6
+    return {
+      x: CENTER_X + RADIUS_OUTER * Math.cos(angle),
+      y: CENTER_Y + RADIUS_OUTER * Math.sin(angle),
+    }
+  })
   return (
-    <div
-      className={`${base} ${stateCls}`}
-      style={{ top, left, width: 36, height: 36 }}
-    />
-  )
-}
-
-function Hex({
-  top,
-  left,
-  size,
-  fill,
-  border,
-  label,
-  labelClass,
-}: {
-  top: number
-  left: number
-  size: number
-  fill?: string
-  border?: string
-  label?: string
-  labelClass?: string
-}) {
-  return (
-    <div
-      className={`absolute grid place-items-center font-display font-bold text-text-primary ${fill ?? ''} ${border ?? ''}`}
-      style={{
-        top,
-        left,
-        width: size,
-        height: size,
-        clipPath: HEX_CLIP,
-      }}
-    >
-      {label && (
-        <span className={labelClass ?? 'font-mono text-[10px] tracking-[0.08em]'}>
-          {label}
-        </span>
-      )}
+    <div className="relative flex-1 overflow-auto bg-bg" style={{ minHeight: 720, padding: 40 }}>
+      <div className="relative" style={{ width: CANVAS_W, height: CANVAS_H }}>
+        <div
+          className="absolute animate-pulse rounded-full bg-surface-2"
+          style={{
+            left: CENTER_X - NODE_SIZE_CENTER / 2,
+            top: CENTER_Y - NODE_SIZE_CENTER / 2,
+            width: NODE_SIZE_CENTER,
+            height: NODE_SIZE_CENTER,
+          }}
+        />
+        {ring.map((p, i) => (
+          <div
+            key={i}
+            className="absolute animate-pulse rounded-md bg-surface-2"
+            style={{
+              left: p.x - NODE_SIZE_KEYSTONE / 2,
+              top: p.y - NODE_SIZE_KEYSTONE / 2,
+              width: NODE_SIZE_KEYSTONE,
+              height: NODE_SIZE_KEYSTONE,
+            }}
+          />
+        ))}
+      </div>
     </div>
   )
 }
 
-function ConnectionLine({
-  top,
-  left,
-  width,
-  rotate,
-  color = 'bg-border',
-  thickness = 2,
+function GraphCanvas({
+  atlas,
+  selectedKey,
+  onSelect,
 }: {
-  top: number
-  left: number
-  width: number
-  rotate: number
-  color?: string
-  thickness?: number
+  atlas: Atlas
+  selectedKey: string | null
+  onSelect: (k: string) => void
 }) {
+  const layout = useMemo(() => computeLayout(atlas), [atlas])
+  const positions = Array.from(layout.values())
   return (
-    <div
-      className={`absolute origin-left ${color}`}
-      style={{
-        top,
-        left,
-        width,
-        height: thickness,
-        transform: `rotate(${rotate}deg)`,
-      }}
-    />
-  )
-}
-
-function FloatingLabel({
-  top,
-  left,
-  text,
-  color = 'text-text-muted',
-}: {
-  top: number
-  left: number
-  text: string
-  color?: string
-}) {
-  return (
-    <span
-      className={`absolute font-mono text-[11px] tracking-[0.04em] ${color}`}
-      style={{ top, left }}
-    >
-      {text}
-    </span>
-  )
-}
-
-function Canvas() {
-  // Center of canvas roughly at (480, 350)
-  // Layout coordinates are top-left of each node.
-  return (
-    <div
-      className="relative flex-1 overflow-auto bg-bg"
-      style={{ minHeight: 720, padding: 40 }}
-    >
-      {/* Radial gradient backdrop */}
+    <div className="relative flex-1 overflow-auto bg-bg" style={{ minHeight: 720, padding: 40 }}>
       <div
         className="pointer-events-none absolute"
         style={{
@@ -199,204 +280,149 @@ function Canvas() {
           top: '50%',
           left: '50%',
           transform: 'translate(-50%, -50%)',
-          background:
-            'radial-gradient(ellipse at center, #2D1B4D 0%, transparent 70%)',
+          background: 'radial-gradient(ellipse at center, #2D1B4D 0%, transparent 70%)',
           opacity: 0.7,
         }}
       />
-
-      {/* Connection lines (drawn first, behind nodes) */}
-      {/* center (516, 314) hex 72 -> midpoint (552, 350)
-          We'll route from approx (552, 350) to keystone centers. */}
-
-      {/* Center -> ALGO (top) */}
-      <ConnectionLine top={210} left={552} width={130} rotate={-90} color="bg-accent" thickness={3} />
-      {/* Center -> DATA (right-top) */}
-      <ConnectionLine top={310} left={552} width={170} rotate={-30} color="bg-accent" thickness={3} />
-      {/* Center -> STR (right-bot) */}
-      <ConnectionLine top={370} left={552} width={170} rotate={30} color="bg-border" thickness={2} />
-      {/* Center -> MATH (bottom) */}
-      <ConnectionLine top={386} left={552} width={130} rotate={90} color="bg-border" thickness={2} />
-      {/* Center -> GRAPH (left) */}
-      <ConnectionLine top={350} left={552} width={200} rotate={180} color="bg-accent" thickness={3} />
-      {/* Center -> DP (left-top) */}
-      <ConnectionLine top={310} left={552} width={170} rotate={-150} color="bg-border" thickness={2} />
-
-      {/* Sub branches from keystones to small nodes (a few accent for unlocked paths) */}
-      <ConnectionLine top={170} left={540} width={70} rotate={-50} color="bg-accent/60" thickness={2} />
-      <ConnectionLine top={170} left={580} width={70} rotate={-130} color="bg-border" thickness={2} />
-      <ConnectionLine top={250} left={690} width={80} rotate={-20} color="bg-accent/60" thickness={2} />
-      <ConnectionLine top={400} left={690} width={80} rotate={20} color="bg-border" thickness={2} />
-      <ConnectionLine top={460} left={540} width={70} rotate={50} color="bg-border" thickness={2} />
-      <ConnectionLine top={460} left={560} width={70} rotate={130} color="bg-border" thickness={2} />
-      <ConnectionLine top={350} left={300} width={80} rotate={-20} color="bg-accent/60" thickness={2} />
-      <ConnectionLine top={350} left={300} width={80} rotate={20} color="bg-border" thickness={2} />
-      <ConnectionLine top={250} left={350} width={80} rotate={20} color="bg-border" thickness={2} />
-
-      {/* ROOT center hex */}
-      <Hex
-        top={314}
-        left={516}
-        size={72}
-        fill="bg-accent shadow-glow"
-        label="ROOT"
-        labelClass="font-display text-[11px] font-extrabold tracking-[0.1em]"
-      />
-
-      {/* Keystones (48x48) */}
-      {/* ALGO top */}
-      <Hex top={150} left={528} size={48} fill="bg-warn/90" label="ALGO" labelClass="font-mono text-[9px] font-bold text-bg tracking-[0.08em]" />
-      {/* DATA right-top */}
-      <Hex top={230} left={680} size={48} fill="bg-accent" label="DATA" labelClass="font-mono text-[9px] font-bold tracking-[0.08em]" />
-      {/* STR right-bot */}
-      <Hex top={420} left={680} size={48} border="border-2 border-accent-hover" label="STR" labelClass="font-mono text-[9px] font-bold text-accent-hover tracking-[0.08em]" />
-      {/* MATH bottom */}
-      <Hex top={500} left={528} size={48} border="border border-border bg-surface-2" label="MATH" labelClass="font-mono text-[9px] font-bold text-text-muted tracking-[0.08em]" />
-      {/* GRAPH left */}
-      <Hex top={328} left={250} size={48} fill="bg-warn/90" label="GRAPH" labelClass="font-mono text-[9px] font-bold text-bg tracking-[0.08em]" />
-      {/* DP left-top */}
-      <Hex top={230} left={350} size={48} border="border border-border bg-surface-2" label="DP" labelClass="font-mono text-[9px] font-bold text-text-muted tracking-[0.08em]" />
-
-      {/* Small ellipse nodes 36x36 (~22 of them) */}
-      {/* around ALGO (top) */}
-      <SmallNode top={90} left={500} state="unlocked" />
-      <SmallNode top={90} left={580} state="available" />
-      <SmallNode top={70} left={540} state="unlocked" />
-      <SmallNode top={150} left={460} state="unlocked" />
-      <SmallNode top={150} left={620} state="available" />
-
-      {/* around DATA */}
-      <SmallNode top={180} left={750} state="unlocked" />
-      <SmallNode top={240} left={770} state="unlocked" />
-      <SmallNode top={310} left={760} state="available" />
-      <SmallNode top={210} left={620} state="unlocked" />
-
-      {/* around STR */}
-      <SmallNode top={420} left={770} state="locked" />
-      <SmallNode top={490} left={750} state="locked" />
-      <SmallNode top={400} left={620} state="available" />
-
-      {/* around MATH */}
-      <SmallNode top={580} left={500} state="locked" />
-      <SmallNode top={580} left={580} state="locked" />
-      <SmallNode top={500} left={460} state="locked" />
-      <SmallNode top={500} left={620} state="locked" />
-
-      {/* around GRAPH */}
-      <SmallNode top={290} left={190} state="unlocked" />
-      <SmallNode top={350} left={170} state="unlocked" />
-      <SmallNode top={420} left={200} state="available" />
-      <SmallNode top={328} left={330} state="unlocked" />
-
-      {/* around DP */}
-      <SmallNode top={170} left={320} state="locked" />
-      <SmallNode top={170} left={400} state="locked" />
-      <SmallNode top={250} left={290} state="available" />
-
-      {/* Floating Geist Mono labels */}
-      <FloatingLabel top={60} left={420} text="Sliding Window Sage" color="text-accent-hover" />
-      <FloatingLabel top={130} left={620} text="Two Pointers Adept" color="text-text-secondary" />
-      <FloatingLabel top={170} left={770} text="BFS Specialist" color="text-text-muted" />
-      <FloatingLabel top={500} left={770} text="Memoization Master" color="text-text-muted" />
-      <FloatingLabel top={460} left={620} text="Binary Search Pro" color="text-text-secondary" />
-      <FloatingLabel top={620} left={500} text="Trie Builder" color="text-text-muted" />
-      <FloatingLabel top={260} left={140} text="Number Theorist" color="text-text-muted" />
-      <FloatingLabel top={140} left={300} text="KMP Initiate" color="text-text-muted" />
+      <div className="relative" style={{ width: CANVAS_W, height: CANVAS_H }}>
+        {/* Edges рисуем первыми, чтобы узлы перекрывали их концы. */}
+        {atlas.edges.map((e, idx) => {
+          const a = layout.get(e.from)
+          const b = layout.get(e.to)
+          if (!a || !b) return null
+          const highlighted = a.node.unlocked && b.node.unlocked
+          return (
+            <ConnectionLine
+              key={`${e.from}-${e.to}-${idx}`}
+              x1={a.x}
+              y1={a.y}
+              x2={b.x}
+              y2={b.y}
+              highlighted={highlighted}
+            />
+          )
+        })}
+        {positions.map((p) => (
+          <NodeShape
+            key={p.node.key}
+            pos={p}
+            selected={p.node.key === selectedKey}
+            onClick={() => onSelect(p.node.key)}
+          />
+        ))}
+      </div>
     </div>
   )
 }
 
-function NodeDetails() {
+function NodeDetails({ node }: { node: AtlasNode | null }) {
+  if (!node) {
+    return (
+      <aside className="flex w-full shrink-0 flex-col gap-3 border-t border-border bg-surface-1 p-6 lg:w-[380px] lg:border-l lg:border-t-0">
+        <span className="font-mono text-[11px] font-semibold tracking-[0.08em] text-text-muted">
+          ВЫБЕРИ УЗЕЛ
+        </span>
+        <p className="text-sm text-text-secondary">
+          Кликни на любой узел графа слева, чтобы увидеть его описание, эффекты и
+          предусловия.
+        </p>
+      </aside>
+    )
+  }
+  const kindLabel =
+    node.kind === 'keystone' ? 'Keystone'
+      : node.kind === 'ascendant' ? 'Ascendant'
+      : 'Notable'
+  const stateLabel = node.unlocked
+    ? 'Открыт'
+    : node.progress > 0
+      ? `В процессе · ${node.progress}%`
+      : 'Закрыт'
   return (
     <aside className="flex w-full shrink-0 flex-col gap-5 border-t border-border bg-surface-1 p-6 lg:w-[380px] lg:border-l lg:border-t-0">
       <div>
         <span className="inline-flex items-center gap-1.5 rounded-full bg-cyan/15 px-2.5 py-1 font-mono text-[11px] font-semibold tracking-[0.08em] text-cyan">
-          NOTABLE
+          {kindLabel.toUpperCase()}
         </span>
       </div>
 
       <div className="flex flex-col gap-1">
         <h2 className="font-display text-[24px] font-bold leading-tight text-text-primary">
-          Sliding Window Sage
+          {node.title}
         </h2>
         <span className="font-mono text-xs text-text-muted">
-          Algorithms · Tier 3
+          {sectionLabel(node.section)} · {stateLabel}
         </span>
       </div>
 
       <div className="rounded-lg bg-surface-2 p-4 text-[13px] leading-relaxed text-text-secondary">
-        Раскрывает мастерство техники скользящего окна. Ты начинаешь видеть
-        окна там, где раньше писал вложенные циклы — задачи на подстроки и
-        подмассивы решаются на 40% быстрее, а сложность падает с O(n²) до O(n).
+        {node.description || 'Описание узла появится позже.'}
       </div>
 
-      <div className="flex flex-col gap-2.5">
-        <span className="font-mono text-[11px] font-semibold tracking-[0.08em] text-text-muted">
-          ЭФФЕКТЫ
-        </span>
-        <div className="flex items-start gap-3">
-          <span className="mt-0.5 grid h-7 w-7 place-items-center rounded-full bg-success/15">
-            <TrendingUp className="h-3.5 w-3.5 text-success" />
+      {node.unlocked && (
+        <div className="flex flex-col gap-2.5">
+          <span className="font-mono text-[11px] font-semibold tracking-[0.08em] text-text-muted">
+            СТАТУС
           </span>
-          <span className="text-[13px] text-text-secondary">
-            +25% скорости на задачах с подмассивами
-          </span>
+          <div className="flex items-start gap-3">
+            <span className="mt-0.5 grid h-7 w-7 place-items-center rounded-full bg-success/15">
+              <Unlock className="h-3.5 w-3.5 text-success" />
+            </span>
+            <span className="text-[13px] text-text-secondary">Узел открыт</span>
+          </div>
+          {node.decaying && (
+            <div className="flex items-start gap-3">
+              <span className="mt-0.5 grid h-7 w-7 place-items-center rounded-full bg-warn/15">
+                <AlertCircle className="h-3.5 w-3.5 text-warn" />
+              </span>
+              <span className="text-[13px] text-text-secondary">
+                Прогресс затухает — реши задачу из секции, чтобы поддержать.
+              </span>
+            </div>
+          )}
         </div>
-        <div className="flex items-start gap-3">
-          <span className="mt-0.5 grid h-7 w-7 place-items-center rounded-full bg-cyan/15">
-            <Eye className="h-3.5 w-3.5 text-cyan" />
-          </span>
-          <span className="text-[13px] text-text-secondary">
-            Подсветка паттерна окна в редакторе кода
-          </span>
-        </div>
-        <div className="flex items-start gap-3">
-          <span className="mt-0.5 grid h-7 w-7 place-items-center rounded-full bg-accent/15">
-            <Unlock className="h-3.5 w-3.5 text-accent-hover" />
-          </span>
-          <span className="text-[13px] text-text-secondary">
-            Открывает 8 продвинутых задач по теме
-          </span>
-        </div>
-      </div>
+      )}
 
-      <div className="flex flex-col gap-2.5">
-        <span className="font-mono text-[11px] font-semibold tracking-[0.08em] text-text-muted">
-          ПРЕДУСЛОВИЯ
-        </span>
-        <div className="flex flex-wrap gap-2">
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-success/40 bg-success/10 px-2.5 py-1 text-[12px] font-medium text-success">
-            <Check className="h-3 w-3" /> Two Pointers
+      {!node.unlocked && (
+        <div className="flex flex-col gap-2.5">
+          <span className="font-mono text-[11px] font-semibold tracking-[0.08em] text-text-muted">
+            ПРОГРЕСС
           </span>
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-success/40 bg-success/10 px-2.5 py-1 text-[12px] font-medium text-success">
-            <Check className="h-3 w-3" /> Array Basics
-          </span>
+          <div className="h-2 overflow-hidden rounded-full bg-surface-2">
+            <div
+              className="h-full rounded-full bg-gradient-to-r from-cyan to-accent"
+              style={{ width: `${Math.max(0, Math.min(100, node.progress))}%` }}
+            />
+          </div>
+          <div className="flex items-start gap-3">
+            <span className="mt-0.5 grid h-7 w-7 place-items-center rounded-full bg-accent/15">
+              <TrendingUp className="h-3.5 w-3.5 text-accent-hover" />
+            </span>
+            <span className="text-[13px] text-text-secondary">
+              Решай задачи секции «{sectionLabel(node.section)}», чтобы открыть узел.
+            </span>
+          </div>
         </div>
-      </div>
-
-      <div className="mt-auto flex flex-col gap-3 rounded-lg bg-surface-2 p-4">
-        <div className="flex items-center justify-between">
-          <span className="text-[13px] text-text-secondary">Стоимость</span>
-          <span className="font-mono text-[13px] font-semibold text-warn">
-            3 очка
-          </span>
-        </div>
-        <div className="flex items-center justify-between">
-          <span className="text-[13px] text-text-secondary">У тебя</span>
-          <span className="font-mono text-[13px] font-semibold text-text-primary">
-            12 очков
-          </span>
-        </div>
-        <Button
-          variant="primary"
-          icon={<Zap className="h-4 w-4" />}
-          className="mt-1 w-full justify-center py-3 text-sm shadow-glow"
-        >
-          Вложить очко
-        </Button>
-      </div>
+      )}
     </aside>
   )
+}
+
+function sectionLabel(section: string): string {
+  // Бэк присылает enum-строку SECTION_ALGORITHMS / SECTION_SQL / etc.
+  const map: Record<string, string> = {
+    SECTION_ALGORITHMS: 'Алгоритмы',
+    SECTION_SQL: 'SQL',
+    SECTION_GO: 'Go',
+    SECTION_SYSTEM_DESIGN: 'System Design',
+    SECTION_BEHAVIORAL: 'Behavioral',
+    algorithms: 'Алгоритмы',
+    sql: 'SQL',
+    go: 'Go',
+    system_design: 'System Design',
+    behavioral: 'Behavioral',
+  }
+  return map[section] ?? section
 }
 
 function LegendStrip() {
@@ -408,7 +434,7 @@ function LegendStrip() {
       </div>
       <div className="flex items-center gap-2">
         <span className="h-3.5 w-3.5 rounded-full border-2 border-dashed border-accent-hover bg-bg" />
-        <span className="font-mono text-[12px] text-text-secondary">Доступно</span>
+        <span className="font-mono text-[12px] text-text-secondary">В процессе</span>
       </div>
       <div className="flex items-center gap-2">
         <span className="h-3.5 w-3.5 rounded-full border border-border bg-surface-2" />
@@ -418,18 +444,75 @@ function LegendStrip() {
         <Hexagon className="h-4 w-4 fill-warn text-warn" />
         <span className="font-mono text-[12px] text-text-secondary">Keystone</span>
       </div>
+      <div className="flex items-center gap-2">
+        <Hexagon className="h-4 w-4 fill-pink text-pink" />
+        <span className="font-mono text-[12px] text-text-secondary">Ascendant</span>
+      </div>
+      <div className="ml-auto flex items-center gap-2 pr-2">
+        <Sparkles className="h-3.5 w-3.5 text-text-muted" />
+        <span className="font-mono text-[11px] text-text-muted">
+          Layout — авто-radial по типу узла
+        </span>
+      </div>
     </div>
   )
 }
 
 export default function AtlasPage() {
+  const { data: atlas, isError, isLoading, refetch } = useAtlasQuery()
+  const total = atlas?.nodes.length ?? 0
+  const unlocked = atlas?.nodes.filter((n) => n.unlocked).length ?? 0
+  // Default-выделение: центральный узел, чтобы боковая панель не была
+  // пустой при первом открытии.
+  const [selectedKey, setSelectedKey] = useState<string | null>(null)
+  const effectiveKey = selectedKey ?? atlas?.center_node ?? null
+  const selectedNode =
+    atlas && effectiveKey ? atlas.nodes.find((n) => n.key === effectiveKey) ?? null : null
+
   return (
     <AppShellV2>
       <div className="flex flex-col">
-        <HeaderStrip />
+        <HeaderStrip
+          unlocked={unlocked}
+          total={total}
+          isError={isError}
+          onRetry={() => void refetch()}
+        />
         <div className="flex flex-col lg:flex-row">
-          <Canvas />
-          <NodeDetails />
+          {isLoading ? (
+            <GraphSkeleton />
+          ) : isError || !atlas ? (
+            <div className="flex flex-1 items-center justify-center bg-bg p-8">
+              <div className="flex max-w-md flex-col items-center gap-3 text-center">
+                <AlertCircle className="h-8 w-8 text-danger" />
+                <p className="text-sm text-text-secondary">
+                  Не удалось загрузить атлас. Попробуй обновить — если ошибка
+                  повторяется, проверь подключение.
+                </p>
+                <Button
+                  variant="primary"
+                  icon={<RotateCcw className="h-3.5 w-3.5" />}
+                  onClick={() => void refetch()}
+                >
+                  Повторить
+                </Button>
+              </div>
+            </div>
+          ) : atlas.nodes.length === 0 ? (
+            <div className="flex flex-1 items-center justify-center bg-bg p-8">
+              <p className="max-w-md text-center text-sm text-text-secondary">
+                В атласе пока нет узлов. Реши первую задачу — и сюда придут
+                первые навыки.
+              </p>
+            </div>
+          ) : (
+            <GraphCanvas
+              atlas={atlas}
+              selectedKey={effectiveKey}
+              onSelect={setSelectedKey}
+            />
+          )}
+          <NodeDetails node={selectedNode} />
         </div>
         <LegendStrip />
       </div>

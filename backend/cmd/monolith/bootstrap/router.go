@@ -138,6 +138,12 @@ func restAuthGate(requireAuth func(http.Handler) http.Handler) func(http.Handler
 		// и не-залогиненный мог написать. Авторизованный user_id берётся
 		// из context'а (если bearer есть, middleware его положит).
 		"/api/v1/support/ticket": {},
+		// /api/v1/vacancies/analyze — paste-the-link UX, must work for
+		// anonymous visitors evaluating the platform.
+		"/api/v1/vacancies/analyze": {},
+		// /api/v1/vacancies — read-only catalogue, public for SEO + the
+		// "browse without sign-up" flow.
+		"/api/v1/vacancies": {},
 	}
 	isPublic := func(p string) bool {
 		if _, ok := publicPaths[p]; ok {
@@ -146,6 +152,14 @@ func restAuthGate(requireAuth func(http.Handler) http.Handler) func(http.Handler
 		// /api/v1/profile/{username} — public, but /api/v1/profile/me*
 		// is NOT.
 		if strings.HasPrefix(p, "/api/v1/profile/") && !strings.HasPrefix(p, "/api/v1/profile/me") {
+			return true
+		}
+		// /api/v1/vacancies/{id} — public detail view. Saved-list paths
+		// (/vacancies/saved, /vacancies/{id}/save, /vacancies/saved/{id})
+		// stay gated.
+		if strings.HasPrefix(p, "/api/v1/vacancies/") &&
+			!strings.HasPrefix(p, "/api/v1/vacancies/saved") &&
+			!strings.HasSuffix(p, "/save") {
 			return true
 		}
 		return false

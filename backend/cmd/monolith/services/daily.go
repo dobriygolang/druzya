@@ -55,6 +55,13 @@ func NewDaily(d Deps) *Module {
 	server := dailyPorts.NewDailyServer(h)
 	onKataCompleted := &dailyApp.OnDailyKataCompleted{Bus: d.Bus, Log: d.Log}
 
+	// Year-grid endpoint for /daily/streak — chi-mounted REST handler
+	// (no Connect contract, see ports/streak_calendar_handler.go for
+	// the rationale). Reuses the cached StreakRepo + cached KataRepo,
+	// so SubmitKata invalidations cascade automatically.
+	streakCalendarUC := &dailyApp.GetStreakCalendar{Streaks: streaks, Katas: katas, Now: d.Now}
+	streakCalendarHandler := dailyPorts.NewStreakCalendarHandler(streakCalendarUC, d.Log)
+
 	connectPath, connectHandler := druz9v1connect.NewDailyServiceHandler(server)
 	transcoder := mustTranscode("daily", connectPath, connectHandler)
 
@@ -70,6 +77,8 @@ func NewDaily(d Deps) *Module {
 			r.Post("/daily/calendar", transcoder.ServeHTTP)
 			r.Post("/daily/autopsy", transcoder.ServeHTTP)
 			r.Get("/daily/autopsy/{autopsyId}", transcoder.ServeHTTP)
+			// Year-grid for KataStreakPage. See streak_calendar_handler.go.
+			r.Get("/kata/streak", streakCalendarHandler.ServeHTTP)
 		},
 		Subscribers: []func(*eventbus.InProcess){
 			func(b *eventbus.InProcess) {

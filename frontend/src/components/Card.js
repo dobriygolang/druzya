@@ -3,7 +3,11 @@ import * as React from 'react';
 import { cva } from 'class-variance-authority';
 import { motion, useReducedMotion } from 'framer-motion';
 import { cn } from '../lib/cn';
-const card = cva(['relative flex flex-col text-text-primary'], {
+// `min-w-0` критичен для flex-children: без него длинный контент внутри
+// (truncate / break-words) пушит саму карточку шире, чем заданная ширина
+// родителя — отсюда вылезающие "контент не помещается в блок".
+// `overflow-hidden` сохраняет border-radius при overflow в auto-children.
+const card = cva(['relative flex min-w-0 flex-col overflow-hidden text-text-primary'], {
     variants: {
         variant: {
             default: 'bg-surface-1 border border-border rounded-xl shadow-card',

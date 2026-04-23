@@ -172,6 +172,39 @@ func (p *TasksKatas) HistoryLast30(ctx context.Context, userID uuid.UUID, today 
 	return out, nil
 }
 
+// HistoryByYear returns every daily_kata_history row for the given UTC
+// calendar year. Bounds are pre-computed so the predicate stays sargable
+// against idx_kata_history_user_date.
+func (p *TasksKatas) HistoryByYear(ctx context.Context, userID uuid.UUID, year int) ([]domain.HistoryEntry, error) {
+	if year < 2000 || year > 9999 {
+		return nil, fmt.Errorf("daily.TasksKatas.HistoryByYear: year out of range %d", year)
+	}
+	from := time.Date(year, time.January, 1, 0, 0, 0, 0, time.UTC)
+	to := time.Date(year, time.December, 31, 0, 0, 0, 0, time.UTC)
+	rows, err := p.q.ListKataHistoryByYear(ctx, dailydb.ListKataHistoryByYearParams{
+		UserID:     pgUUID(userID),
+		KataDate:   pgtype.Date{Time: from, Valid: true},
+		KataDate_2: pgtype.Date{Time: to, Valid: true},
+	})
+	if err != nil {
+		return nil, fmt.Errorf("daily.TasksKatas.HistoryByYear: %w", err)
+	}
+	out := make([]domain.HistoryEntry, 0, len(rows))
+	for _, r := range rows {
+		e := domain.HistoryEntry{
+			Date:       r.KataDate.Time,
+			TaskID:     fromPgUUID(r.TaskID),
+			FreezeUsed: r.FreezeUsed,
+		}
+		if r.Passed.Valid {
+			b := r.Passed.Bool
+			e.Passed = &b
+		}
+		out = append(out, e)
+	}
+	return out, nil
+}
+
 // ─────────────────────────────────────────────────────────────────────────
 // StreakRepo
 // ─────────────────────────────────────────────────────────────────────────

@@ -1,6 +1,6 @@
-import { ReactNode, useEffect, useState } from 'react'
-import { Link, useLocation } from 'react-router-dom'
-import { Bell, Menu, Search, X, Sun, Moon, Languages } from 'lucide-react'
+import { ReactNode, useEffect, useRef, useState } from 'react'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { Bell, Menu, Search, X, Sun, Moon, Languages, User, LogOut, Settings, Users, HelpCircle, Shield, Briefcase } from 'lucide-react'
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
 import { Avatar } from './Avatar'
@@ -8,24 +8,25 @@ import { cn } from '../lib/cn'
 import { useTheme, getEffectiveTheme } from '../lib/theme'
 import { toggleLanguage, currentLanguage } from '../lib/i18n'
 
+// Главная навигация — только 6 ключевых разделов. Остальное (Друзья, Помощь,
+// Настройки, Выход) уехало в user-menu под аватаром, чтобы header не был
+// перегружен (раньше было 8 nav-items + 5 кнопок справа = 13 элементов).
 function useNavItems() {
   const { t } = useTranslation('common')
   return [
-    { to: '/v2/sanctum', label: t('nav.sanctum') },
-    { to: '/v2/arena', label: t('nav.arena') },
-    { to: '/v2/kata', label: t('nav.kata') },
-    { to: '/v2/guild', label: t('nav.guild') },
-    { to: '/v2/atlas', label: t('nav.atlas') },
-    { to: '/v2/codex', label: t('nav.codex') },
-    { to: '/friends', label: t('nav.friends') },
-    { to: '/help', label: t('nav.help') },
+    { to: '/sanctum', label: t('nav.sanctum') },
+    { to: '/arena', label: t('nav.arena') },
+    { to: '/daily', label: t('nav.kata') },
+    { to: '/guild', label: t('nav.guild') },
+    { to: '/atlas', label: t('nav.atlas') },
+    { to: '/codex', label: t('nav.codex') },
   ] as const
 }
 
 function Logo() {
   return (
-    <Link to="/v2/sanctum" className="flex items-center gap-2.5">
-      <span className="grid h-8 w-8 place-items-center rounded-md bg-gradient-to-br from-accent to-cyan font-display text-lg font-extrabold text-text-primary">
+    <Link to="/sanctum" className="flex items-center gap-2.5">
+      <span className="grid h-8 w-8 shrink-0 place-items-center rounded-md bg-gradient-to-br from-accent to-cyan font-display text-lg font-extrabold text-text-primary">
         9
       </span>
       <span className="font-display text-lg font-bold text-text-primary">druz9</span>
@@ -95,13 +96,83 @@ function LanguageToggleButton() {
   )
 }
 
+// UserMenu — выпадающее меню под аватаром: профиль, настройки, друзья,
+// уведомления, помощь, админка (если роль admin), выход. Раньше эти
+// разделы лежали в основном nav и захламляли его.
+function UserMenu({ onClose }: { onClose: () => void }) {
+  const { t } = useTranslation('common')
+  const navigate = useNavigate()
+  const items: { to: string; label: string; icon: typeof User }[] = [
+    { to: '/profile', label: t('nav.profile', { defaultValue: 'Профиль' }), icon: User },
+    { to: '/vacancies', label: t('nav.vacancies', { defaultValue: 'Вакансии' }), icon: Briefcase },
+    { to: '/settings', label: t('nav.settings', { defaultValue: 'Настройки' }), icon: Settings },
+    { to: '/friends', label: t('nav.friends'), icon: Users },
+    { to: '/notifications', label: t('nav.notifications', { defaultValue: 'Уведомления' }), icon: Bell },
+    { to: '/help', label: t('nav.help'), icon: HelpCircle },
+    { to: '/admin', label: t('nav.admin', { defaultValue: 'Админка' }), icon: Shield },
+  ]
+  function handleLogout() {
+    try {
+      window.localStorage.removeItem('druz9_access_token')
+    } catch {
+      /* ignore */
+    }
+    onClose()
+    navigate('/welcome')
+  }
+  return (
+    <div
+      className="absolute right-0 top-full z-50 mt-2 flex w-56 flex-col rounded-lg border border-border bg-surface-1 p-1.5 shadow-card"
+      role="menu"
+    >
+      {items.map((it) => (
+        <Link
+          key={it.to}
+          to={it.to}
+          onClick={onClose}
+          className="flex items-center gap-2.5 rounded-md px-3 py-2 text-sm text-text-secondary transition-colors hover:bg-surface-2 hover:text-text-primary"
+          role="menuitem"
+        >
+          <it.icon className="h-4 w-4 shrink-0" />
+          <span className="truncate">{it.label}</span>
+        </Link>
+      ))}
+      <div className="my-1 border-t border-border" />
+      <button
+        type="button"
+        onClick={handleLogout}
+        className="flex items-center gap-2.5 rounded-md px-3 py-2 text-sm text-text-secondary transition-colors hover:bg-surface-2 hover:text-text-primary"
+        role="menuitem"
+      >
+        <LogOut className="h-4 w-4 shrink-0" />
+        <span>{t('nav.logout', { defaultValue: 'Выйти' })}</span>
+      </button>
+    </div>
+  )
+}
+
 function TopNav() {
   const { t } = useTranslation('common')
   const NAV_ITEMS = useNavItems()
   const [menuOpen, setMenuOpen] = useState(false)
+  const [userMenuOpen, setUserMenuOpen] = useState(false)
+  const userMenuRef = useRef<HTMLDivElement>(null)
+
+  // Закрываем user-menu по клику снаружи.
+  useEffect(() => {
+    if (!userMenuOpen) return
+    const onClick = (e: MouseEvent) => {
+      if (userMenuRef.current && !userMenuRef.current.contains(e.target as Node)) {
+        setUserMenuOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', onClick)
+    return () => document.removeEventListener('mousedown', onClick)
+  }, [userMenuOpen])
+
   return (
-    <header className="flex h-[64px] items-center justify-between border-b border-border bg-bg px-4 sm:px-6 lg:h-[72px] lg:px-8">
-      <div className="flex items-center gap-4 lg:gap-10">
+    <header className="sticky top-0 z-40 flex h-[64px] items-center justify-between border-b border-border bg-bg px-4 sm:px-6 lg:h-[72px] lg:px-8">
+      <div className="flex min-w-0 items-center gap-4 lg:gap-8">
         <Logo />
         <nav className="hidden items-center gap-1 lg:flex">
           {NAV_ITEMS.map((item) => (
@@ -109,28 +180,33 @@ function TopNav() {
           ))}
         </nav>
       </div>
-      <div className="flex items-center gap-2 sm:gap-3 lg:gap-4">
-        <div className="hidden h-9 w-[280px] items-center gap-2 rounded-md border border-border bg-surface-2 px-3.5 md:flex">
-          <Search className="h-4 w-4 text-text-muted" />
-          <span className="font-sans text-[13px] text-text-muted">{t('labels.search_placeholder')}</span>
+      <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
+        <div className="hidden h-9 w-[240px] items-center gap-2 rounded-md border border-border bg-surface-2 px-3 lg:flex">
+          <Search className="h-4 w-4 shrink-0 text-text-muted" />
+          <span className="truncate font-sans text-[13px] text-text-muted">{t('labels.search_placeholder')}</span>
         </div>
         <button
           type="button"
-          className="grid h-9 w-9 place-items-center rounded-md text-text-secondary hover:bg-surface-2 md:hidden"
+          className="grid h-9 w-9 place-items-center rounded-md text-text-secondary hover:bg-surface-2 lg:hidden"
           aria-label="Search"
         >
           <Search className="h-5 w-5" />
         </button>
         <ThemeToggleButton />
         <LanguageToggleButton />
-        <button
-          type="button"
-          className="hidden h-9 w-9 place-items-center rounded-md text-text-secondary hover:bg-surface-2 sm:grid"
-          aria-label="Notifications"
-        >
-          <Bell className="h-5 w-5" />
-        </button>
-        <Avatar size="md" gradient="pink-violet" initials="Д" />
+        {/* Avatar + dropdown — кликабельный, открывает user-menu */}
+        <div ref={userMenuRef} className="relative">
+          <button
+            type="button"
+            onClick={() => setUserMenuOpen((v) => !v)}
+            className="grid h-9 w-9 place-items-center rounded-full transition hover:ring-2 hover:ring-accent/40"
+            aria-label="User menu"
+            aria-expanded={userMenuOpen}
+          >
+            <Avatar size="md" gradient="pink-violet" initials="Д" />
+          </button>
+          {userMenuOpen && <UserMenu onClose={() => setUserMenuOpen(false)} />}
+        </div>
         <button
           type="button"
           className="grid h-9 w-9 place-items-center rounded-md text-text-secondary hover:bg-surface-2 lg:hidden"
@@ -162,6 +238,12 @@ function TopNav() {
               {NAV_ITEMS.map((item) => (
                 <NavItem key={item.to} {...item} onClick={() => setMenuOpen(false)} />
               ))}
+              <div className="my-2 border-t border-border" />
+              <NavItem to="/profile" label={t('nav.profile', { defaultValue: 'Профиль' })} onClick={() => setMenuOpen(false)} />
+              <NavItem to="/settings" label={t('nav.settings', { defaultValue: 'Настройки' })} onClick={() => setMenuOpen(false)} />
+              <NavItem to="/friends" label={t('nav.friends')} onClick={() => setMenuOpen(false)} />
+              <NavItem to="/notifications" label={t('nav.notifications', { defaultValue: 'Уведомления' })} onClick={() => setMenuOpen(false)} />
+              <NavItem to="/help" label={t('nav.help')} onClick={() => setMenuOpen(false)} />
             </nav>
           </div>
         </div>
