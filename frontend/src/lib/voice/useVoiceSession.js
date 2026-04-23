@@ -118,7 +118,6 @@ export function useVoiceSession(opts) {
         sttRef.current = stt;
         setState('listening');
         stt.start();
-        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [opts.lang, processFinal]);
     const stop = useCallback(() => {
         runningRef.current = false;

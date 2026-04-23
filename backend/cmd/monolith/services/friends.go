@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+	"fmt"
 
 	friendsApp "druz9/friends/app"
 	friendsDomain "druz9/friends/domain"
@@ -12,12 +13,22 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
-// busAdapter — узкий обёртка eventbus.InProcess под app.Bus интерфейс
-// (избегает импорта eventbus в friends/app).
-type busAdapter struct{ b interface{ Publish(context.Context, sharedDomain.Event) error } }
+// publisher — узкий контракт, которому удовлетворяет eventbus.InProcess.
+// Вынесли в именованный тип, чтобы gofmt не пытался ужать длинную inline
+// interface{...} декларацию ниже в одну строку (gofmt-violation в CI).
+type publisher interface {
+	Publish(ctx context.Context, e sharedDomain.Event) error
+}
+
+// busAdapter — обёртка publisher под friendsApp.Bus (избегает импорта
+// eventbus в friends/app).
+type busAdapter struct{ b publisher }
 
 func (a busAdapter) Publish(ctx context.Context, e sharedDomain.Event) error {
-	return a.b.Publish(ctx, e)
+	if err := a.b.Publish(ctx, e); err != nil {
+		return fmt.Errorf("services.friends.busAdapter.Publish: %w", err)
+	}
+	return nil
 }
 
 // NewFriends wires the friends bounded context: friendships table,

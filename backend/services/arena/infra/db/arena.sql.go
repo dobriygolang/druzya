@@ -50,10 +50,23 @@ type CreateArenaMatchParams struct {
 	StartedAt   pgtype.Timestamptz
 }
 
+type CreateArenaMatchRow struct {
+	ID          pgtype.UUID
+	TaskID      pgtype.UUID
+	TaskVersion int32
+	Section     string
+	Mode        string
+	Status      string
+	WinnerID    pgtype.UUID
+	StartedAt   pgtype.Timestamptz
+	FinishedAt  pgtype.Timestamptz
+	CreatedAt   pgtype.Timestamptz
+}
+
 // arena queries consumed by sqlc (emitted into services/arena/infra/db).
 // CRITICAL: solution_hint is NEVER selected into arena rows — tasks are read
 // by id into a public projection that excludes the hint.
-func (q *Queries) CreateArenaMatch(ctx context.Context, arg CreateArenaMatchParams) (ArenaMatch, error) {
+func (q *Queries) CreateArenaMatch(ctx context.Context, arg CreateArenaMatchParams) (CreateArenaMatchRow, error) {
 	row := q.db.QueryRow(ctx, createArenaMatch,
 		arg.TaskID,
 		arg.TaskVersion,
@@ -62,7 +75,7 @@ func (q *Queries) CreateArenaMatch(ctx context.Context, arg CreateArenaMatchPara
 		arg.Status,
 		arg.StartedAt,
 	)
-	var i ArenaMatch
+	var i CreateArenaMatchRow
 	err := row.Scan(
 		&i.ID,
 		&i.TaskID,
@@ -84,9 +97,22 @@ SELECT id, task_id, task_version, section, mode, status, winner_id,
   FROM arena_matches WHERE id = $1
 `
 
-func (q *Queries) GetArenaMatch(ctx context.Context, id pgtype.UUID) (ArenaMatch, error) {
+type GetArenaMatchRow struct {
+	ID          pgtype.UUID
+	TaskID      pgtype.UUID
+	TaskVersion int32
+	Section     string
+	Mode        string
+	Status      string
+	WinnerID    pgtype.UUID
+	StartedAt   pgtype.Timestamptz
+	FinishedAt  pgtype.Timestamptz
+	CreatedAt   pgtype.Timestamptz
+}
+
+func (q *Queries) GetArenaMatch(ctx context.Context, id pgtype.UUID) (GetArenaMatchRow, error) {
 	row := q.db.QueryRow(ctx, getArenaMatch, id)
-	var i ArenaMatch
+	var i GetArenaMatchRow
 	err := row.Scan(
 		&i.ID,
 		&i.TaskID,
@@ -354,29 +380,6 @@ func (q *Queries) SetArenaMatchTask(ctx context.Context, arg SetArenaMatchTaskPa
 	return result.RowsAffected(), nil
 }
 
-const setArenaMatchWinningTeam = `-- name: SetArenaMatchWinningTeam :execrows
-UPDATE arena_matches
-   SET status           = 'finished',
-       winning_team_id  = $2,
-       finished_at      = $3
- WHERE id = $1
-`
-
-type SetArenaMatchWinningTeamParams struct {
-	ID             pgtype.UUID
-	WinningTeamID  int16
-	FinishedAt     pgtype.Timestamptz
-}
-
-// SetArenaMatchWinningTeam финализирует 2v2-матч; winner_id остаётся NULL.
-func (q *Queries) SetArenaMatchWinningTeam(ctx context.Context, arg SetArenaMatchWinningTeamParams) (int64, error) {
-	result, err := q.db.Exec(ctx, setArenaMatchWinningTeam, arg.ID, arg.WinningTeamID, arg.FinishedAt)
-	if err != nil {
-		return 0, err
-	}
-	return result.RowsAffected(), nil
-}
-
 const setArenaMatchWinner = `-- name: SetArenaMatchWinner :execrows
 UPDATE arena_matches
    SET status      = 'finished',
@@ -393,6 +396,30 @@ type SetArenaMatchWinnerParams struct {
 
 func (q *Queries) SetArenaMatchWinner(ctx context.Context, arg SetArenaMatchWinnerParams) (int64, error) {
 	result, err := q.db.Exec(ctx, setArenaMatchWinner, arg.ID, arg.WinnerID, arg.FinishedAt)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const setArenaMatchWinningTeam = `-- name: SetArenaMatchWinningTeam :execrows
+UPDATE arena_matches
+   SET status           = 'finished',
+       winning_team_id  = $2,
+       finished_at      = $3
+ WHERE id = $1
+`
+
+type SetArenaMatchWinningTeamParams struct {
+	ID            pgtype.UUID
+	WinningTeamID pgtype.Int2
+	FinishedAt    pgtype.Timestamptz
+}
+
+// SetArenaMatchWinningTeam — финализирует 2v2-матч. winner_id остаётся
+// NULL (для team-матчей логично смотреть на winning_team_id).
+func (q *Queries) SetArenaMatchWinningTeam(ctx context.Context, arg SetArenaMatchWinningTeamParams) (int64, error) {
+	result, err := q.db.Exec(ctx, setArenaMatchWinningTeam, arg.ID, arg.WinningTeamID, arg.FinishedAt)
 	if err != nil {
 		return 0, err
 	}

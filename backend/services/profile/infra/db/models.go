@@ -31,16 +31,17 @@ type AnticheatSignal struct {
 }
 
 type ArenaMatch struct {
-	ID          pgtype.UUID
-	TaskID      pgtype.UUID
-	TaskVersion int32
-	Section     string
-	Mode        string
-	Status      string
-	WinnerID    pgtype.UUID
-	StartedAt   pgtype.Timestamptz
-	FinishedAt  pgtype.Timestamptz
-	CreatedAt   pgtype.Timestamptz
+	ID            pgtype.UUID
+	TaskID        pgtype.UUID
+	TaskVersion   int32
+	Section       string
+	Mode          string
+	Status        string
+	WinnerID      pgtype.UUID
+	StartedAt     pgtype.Timestamptz
+	FinishedAt    pgtype.Timestamptz
+	CreatedAt     pgtype.Timestamptz
+	WinningTeamID pgtype.Int2
 }
 
 type ArenaParticipant struct {
@@ -136,6 +137,21 @@ type FollowUpQuestion struct {
 	OrderNum   int32
 }
 
+type FriendCode struct {
+	UserID    pgtype.UUID
+	Code      string
+	ExpiresAt pgtype.Timestamptz
+}
+
+type Friendship struct {
+	ID          int64
+	RequesterID pgtype.UUID
+	AddresseeID pgtype.UUID
+	Status      string
+	CreatedAt   pgtype.Timestamptz
+	AcceptedAt  pgtype.Timestamptz
+}
+
 type Guild struct {
 	ID        pgtype.UUID
 	OwnerID   pgtype.UUID
@@ -163,6 +179,17 @@ type GuildWar struct {
 	ScoresB   []byte
 	WinnerID  pgtype.UUID
 	CreatedAt pgtype.Timestamptz
+}
+
+type Incident struct {
+	ID               pgtype.UUID
+	StartedAt        pgtype.Timestamptz
+	EndedAt          pgtype.Timestamptz
+	Severity         string
+	Title            string
+	Description      string
+	AffectedServices []string
+	CreatedAt        pgtype.Timestamptz
 }
 
 type InterviewAutopsy struct {
@@ -262,6 +289,13 @@ type NativeSession struct {
 	FinishedAt        pgtype.Timestamptz
 }
 
+type NotificationPref struct {
+	UserID         pgtype.UUID
+	ChannelEnabled []byte
+	SilenceUntil   pgtype.Timestamptz
+	UpdatedAt      pgtype.Timestamptz
+}
+
 type NotificationPreference struct {
 	UserID                    pgtype.UUID
 	Channels                  []string
@@ -348,6 +382,16 @@ type Rating struct {
 	UpdatedAt    pgtype.Timestamptz
 }
 
+type SavedVacancy struct {
+	ID        int64
+	UserID    pgtype.UUID
+	VacancyID int64
+	Status    string
+	Notes     pgtype.Text
+	SavedAt   pgtype.Timestamptz
+	UpdatedAt pgtype.Timestamptz
+}
+
 type Season struct {
 	ID        pgtype.UUID
 	Name      string
@@ -406,6 +450,20 @@ type Subscription struct {
 	UpdatedAt        pgtype.Timestamptz
 }
 
+type SupportTicket struct {
+	ID           pgtype.UUID
+	UserID       pgtype.UUID
+	ContactKind  string
+	ContactValue string
+	Subject      string
+	Message      string
+	Status       string
+	InternalNote string
+	CreatedAt    pgtype.Timestamptz
+	UpdatedAt    pgtype.Timestamptz
+	ResolvedAt   pgtype.Timestamptz
+}
+
 type Task struct {
 	ID            pgtype.UUID
 	Slug          string
@@ -458,4 +516,71 @@ type User struct {
 	CreatedAt    pgtype.Timestamptz
 	UpdatedAt    pgtype.Timestamptz
 	AvatarUrl    string
+}
+
+type UserAchievement struct {
+	ID         int64
+	UserID     pgtype.UUID
+	Code       string
+	Progress   int32
+	Target     int32
+	UnlockedAt pgtype.Timestamptz
+	UpdatedAt  pgtype.Timestamptz
+}
+
+type UserBan struct {
+	ID        pgtype.UUID
+	UserID    pgtype.UUID
+	Reason    string
+	IssuedBy  pgtype.UUID
+	IssuedAt  pgtype.Timestamptz
+	ExpiresAt pgtype.Timestamptz
+	LiftedAt  pgtype.Timestamptz
+	LiftedBy  pgtype.UUID
+}
+
+type UserNotification struct {
+	ID        int64
+	UserID    pgtype.UUID
+	Channel   string
+	Type      string
+	Title     string
+	Body      pgtype.Text
+	Payload   []byte
+	Priority  int32
+	ReadAt    pgtype.Timestamptz
+	CreatedAt pgtype.Timestamptz
+}
+
+type UserReport struct {
+	ID          pgtype.UUID
+	ReporterID  pgtype.UUID
+	ReportedID  pgtype.UUID
+	Reason      string
+	Description string
+	Status      string
+	ResolvedAt  pgtype.Timestamptz
+	ResolvedBy  pgtype.UUID
+	CreatedAt   pgtype.Timestamptz
+}
+
+type Vacancy struct {
+	ID               int64
+	Source           string
+	ExternalID       string
+	Url              string
+	Title            string
+	Company          pgtype.Text
+	Location         pgtype.Text
+	EmploymentType   pgtype.Text
+	ExperienceLevel  pgtype.Text
+	SalaryMin        pgtype.Int4
+	SalaryMax        pgtype.Int4
+	Currency         pgtype.Text
+	Description      string
+	RawSkills        []string
+	NormalizedSkills []string
+	PostedAt         pgtype.Timestamptz
+	FetchedAt        pgtype.Timestamptz
+	RawJson          []byte
 }

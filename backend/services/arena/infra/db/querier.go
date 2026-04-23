@@ -15,8 +15,8 @@ type Querier interface {
 	// arena queries consumed by sqlc (emitted into services/arena/infra/db).
 	// CRITICAL: solution_hint is NEVER selected into arena rows — tasks are read
 	// by id into a public projection that excludes the hint.
-	CreateArenaMatch(ctx context.Context, arg CreateArenaMatchParams) (ArenaMatch, error)
-	GetArenaMatch(ctx context.Context, id pgtype.UUID) (ArenaMatch, error)
+	CreateArenaMatch(ctx context.Context, arg CreateArenaMatchParams) (CreateArenaMatchRow, error)
+	GetArenaMatch(ctx context.Context, id pgtype.UUID) (GetArenaMatchRow, error)
 	GetArenaTaskPublic(ctx context.Context, id pgtype.UUID) (GetArenaTaskPublicRow, error)
 	InsertArenaParticipant(ctx context.Context, arg InsertArenaParticipantParams) error
 	ListArenaParticipants(ctx context.Context, matchID pgtype.UUID) ([]ArenaParticipant, error)
@@ -29,7 +29,8 @@ type Querier interface {
 	PickActiveTaskBySectionDifficulty(ctx context.Context, arg PickActiveTaskBySectionDifficultyParams) (PickActiveTaskBySectionDifficultyRow, error)
 	SetArenaMatchTask(ctx context.Context, arg SetArenaMatchTaskParams) (int64, error)
 	SetArenaMatchWinner(ctx context.Context, arg SetArenaMatchWinnerParams) (int64, error)
-	// SetArenaMatchWinningTeam финализирует 2v2-матч; winner_id остаётся NULL.
+	// SetArenaMatchWinningTeam — финализирует 2v2-матч. winner_id остаётся
+	// NULL (для team-матчей логично смотреть на winning_team_id).
 	SetArenaMatchWinningTeam(ctx context.Context, arg SetArenaMatchWinningTeamParams) (int64, error)
 	UpdateArenaMatchStatus(ctx context.Context, arg UpdateArenaMatchStatusParams) (int64, error)
 	UpsertParticipantResult(ctx context.Context, arg UpsertParticipantResultParams) (int64, error)

@@ -22,6 +22,10 @@ type Querier interface {
 	// CRITICAL: solution_hint is NEVER selected in the TaskPublic-shaped queries.
 	ListActiveTasks(ctx context.Context, arg ListActiveTasksParams) ([]ListActiveTasksRow, error)
 	ListKataHistory(ctx context.Context, arg ListKataHistoryParams) ([]ListKataHistoryRow, error)
+	// Powers /api/v1/kata/streak's 12-month calendar grid. The caller passes
+	// pre-built [Jan 1, Dec 31] DATE bounds so we keep the predicate
+	// sargable (no EXTRACT in WHERE) — the existing
+	// idx_kata_history_user_date covers it.
 	ListKataHistoryByYear(ctx context.Context, arg ListKataHistoryByYearParams) ([]ListKataHistoryByYearRow, error)
 	MarkAutopsyReady(ctx context.Context, arg MarkAutopsyReadyParams) (int64, error)
 	MarkDailyKataSubmitted(ctx context.Context, arg MarkDailyKataSubmittedParams) (int64, error)

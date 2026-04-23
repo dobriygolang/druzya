@@ -39,6 +39,33 @@ export default [
       'react-hooks/exhaustive-deps': 'warn',
     },
   },
+  // Legacy plain JS sources (pre-TS migration) — same browser+ES env as the
+  // TS block, plus the react-hooks plugin so its rule names resolve in `.js`
+  // files that still use hooks (e.g. lib/voice/useVoiceSession.js). Without
+  // this, `js.configs.recommended` runs `no-undef` against browser globals
+  // (`window`, `document`, `fetch`, `URL`, `WebSocket`, …) and the lint
+  // gate explodes on perfectly valid client-side code.
+  {
+    files: ['**/*.{js,jsx,mjs,cjs}'],
+    ignores: ['**/*.config.{js,mjs,cjs}', 'vite.config.*'],
+    languageOptions: {
+      ecmaVersion: 'latest',
+      sourceType: 'module',
+      globals: {
+        ...globals.browser,
+        ...globals.es2022,
+      },
+    },
+    plugins: {
+      'react-hooks': reactHooks,
+      'react-refresh': reactRefresh,
+    },
+    rules: {
+      'no-console': 'warn',
+      'react-hooks/rules-of-hooks': 'error',
+      'react-hooks/exhaustive-deps': 'warn',
+    },
+  },
   // Build/config scripts run in Node — give them the Node globals.
   {
     files: ['**/*.config.{ts,js,mjs,cjs}', 'vite.config.*'],

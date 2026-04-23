@@ -333,21 +333,24 @@ func (x *ArenaParticipant) GetNextTierLabel() string {
 }
 
 // ArenaMatch mirrors OpenAPI ArenaMatch.
+//
+// 2v2 NOTE (Phase 5): for duo matches, winner_user_id is left empty and the
+// frontend infers the winning team by reading the per-participant
+// submitted_at + team. The next proto bump will add a dedicated
+// winning_team_id field; we postpone the proto edit to keep the wire format
+// stable for in-flight clients during the rollout.
 type ArenaMatch struct {
 	state  protoimpl.MessageState `protogen:"open.v1"`
 	Id     string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
 	Status MatchStatus            `protobuf:"varint,2,opt,name=status,proto3,enum=druz9.v1.MatchStatus" json:"status,omitempty"`
 	// mode is a string in OpenAPI, kept as ArenaMode enum internally.
-	Mode         ArenaMode              `protobuf:"varint,3,opt,name=mode,proto3,enum=druz9.v1.ArenaMode" json:"mode,omitempty"`
-	Section      Section                `protobuf:"varint,4,opt,name=section,proto3,enum=druz9.v1.Section" json:"section,omitempty"`
-	Task         *ArenaTaskPublic       `protobuf:"bytes,5,opt,name=task,proto3" json:"task,omitempty"`
-	Participants []*ArenaParticipant    `protobuf:"bytes,6,rep,name=participants,proto3" json:"participants,omitempty"`
-	StartedAt    *timestamppb.Timestamp `protobuf:"bytes,7,opt,name=started_at,json=startedAt,proto3" json:"started_at,omitempty"`
-	FinishedAt   *timestamppb.Timestamp `protobuf:"bytes,8,opt,name=finished_at,json=finishedAt,proto3" json:"finished_at,omitempty"`
-	WinnerUserId string                 `protobuf:"bytes,9,opt,name=winner_user_id,json=winnerUserId,proto3" json:"winner_user_id,omitempty"`
-	// winning_team_id — set for finished 2v2 matches (1 or 2). 0 means either
-	// a 1v1 match (use winner_user_id) or a duo draw / unfinished match.
-	WinningTeamId int32 `protobuf:"varint,10,opt,name=winning_team_id,json=winningTeamId,proto3" json:"winning_team_id,omitempty"`
+	Mode          ArenaMode              `protobuf:"varint,3,opt,name=mode,proto3,enum=druz9.v1.ArenaMode" json:"mode,omitempty"`
+	Section       Section                `protobuf:"varint,4,opt,name=section,proto3,enum=druz9.v1.Section" json:"section,omitempty"`
+	Task          *ArenaTaskPublic       `protobuf:"bytes,5,opt,name=task,proto3" json:"task,omitempty"`
+	Participants  []*ArenaParticipant    `protobuf:"bytes,6,rep,name=participants,proto3" json:"participants,omitempty"`
+	StartedAt     *timestamppb.Timestamp `protobuf:"bytes,7,opt,name=started_at,json=startedAt,proto3" json:"started_at,omitempty"`
+	FinishedAt    *timestamppb.Timestamp `protobuf:"bytes,8,opt,name=finished_at,json=finishedAt,proto3" json:"finished_at,omitempty"`
+	WinnerUserId  string                 `protobuf:"bytes,9,opt,name=winner_user_id,json=winnerUserId,proto3" json:"winner_user_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -443,13 +446,6 @@ func (x *ArenaMatch) GetWinnerUserId() string {
 		return x.WinnerUserId
 	}
 	return ""
-}
-
-func (x *ArenaMatch) GetWinningTeamId() int32 {
-	if x != nil {
-		return x.WinningTeamId
-	}
-	return 0
 }
 
 // FindMatchRequest mirrors OpenAPI FindMatchRequest.
@@ -1116,7 +1112,7 @@ const file_druz9_v1_arena_proto_rawDesc = "" +
 	"\n" +
 	"tier_label\x18\n" +
 	" \x01(\tR\ttierLabel\x12&\n" +
-	"\x0fnext_tier_label\x18\v \x01(\tR\rnextTierLabel\"\xd6\x03\n" +
+	"\x0fnext_tier_label\x18\v \x01(\tR\rnextTierLabel\"\xae\x03\n" +
 	"\n" +
 	"ArenaMatch\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12-\n" +
@@ -1129,9 +1125,7 @@ const file_druz9_v1_arena_proto_rawDesc = "" +
 	"started_at\x18\a \x01(\v2\x1a.google.protobuf.TimestampR\tstartedAt\x12;\n" +
 	"\vfinished_at\x18\b \x01(\v2\x1a.google.protobuf.TimestampR\n" +
 	"finishedAt\x12$\n" +
-	"\x0ewinner_user_id\x18\t \x01(\tR\fwinnerUserId\x12&\n" +
-	"\x0fwinning_team_id\x18\n" +
-	" \x01(\x05R\rwinningTeamId\"\x98\x01\n" +
+	"\x0ewinner_user_id\x18\t \x01(\tR\fwinnerUserId\"\x98\x01\n" +
 	"\x10FindMatchRequest\x12+\n" +
 	"\asection\x18\x01 \x01(\x0e2\x11.druz9.v1.SectionR\asection\x12'\n" +
 	"\x04mode\x18\x02 \x01(\x0e2\x13.druz9.v1.ArenaModeR\x04mode\x12.\n" +

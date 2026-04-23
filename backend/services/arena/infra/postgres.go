@@ -66,7 +66,7 @@ func (p *Postgres) CreateMatch(ctx context.Context, m domain.Match, parts []doma
 	if err := tx.Commit(ctx); err != nil {
 		return domain.Match{}, fmt.Errorf("arena.pg.CreateMatch: commit: %w", err)
 	}
-	return matchFromRow(row), nil
+	return matchFromRow(createRowToArenaMatch(row)), nil
 }
 
 // Get returns the match by id.
@@ -78,7 +78,7 @@ func (p *Postgres) Get(ctx context.Context, id uuid.UUID) (domain.Match, error) 
 		}
 		return domain.Match{}, fmt.Errorf("arena.pg.Get: %w", err)
 	}
-	return matchFromRow(row), nil
+	return matchFromRow(getRowToArenaMatch(row)), nil
 }
 
 // ListParticipants returns participants ordered by team.
@@ -146,7 +146,7 @@ func (p *Postgres) SetWinningTeam(ctx context.Context, id uuid.UUID, team int, f
 	}
 	affected, err := p.q.SetArenaMatchWinningTeam(ctx, arenadb.SetArenaMatchWinningTeamParams{
 		ID:            pgUUID(id),
-		WinningTeamID: int16(team),
+		WinningTeamID: pgtype.Int2{Int16: int16(team), Valid: true},
 		FinishedAt:    pgtype.Timestamptz{Time: finishedAt, Valid: true},
 	})
 	if err != nil {
@@ -342,6 +342,29 @@ func fromPgUUID(p pgtype.UUID) uuid.UUID {
 		return uuid.Nil
 	}
 	return uuid.UUID(p.Bytes)
+}
+
+// createRowToArenaMatch / getRowToArenaMatch — мостики после того, как sqlc
+// перешёл на subset-row-типы для CreateArenaMatch/GetArenaMatch (потому что
+// SELECT/RETURNING не включают winning_team_id). matchFromRow продолжает
+// принимать полную модель ArenaMatch — а здесь мы заполняем общие 10 полей,
+// оставляя WinningTeamID нулевым (для 1v1-матчей он в любом случае NULL).
+func createRowToArenaMatch(r arenadb.CreateArenaMatchRow) arenadb.ArenaMatch {
+	return arenadb.ArenaMatch{
+		ID: r.ID, TaskID: r.TaskID, TaskVersion: r.TaskVersion,
+		Section: r.Section, Mode: r.Mode, Status: r.Status,
+		WinnerID: r.WinnerID, StartedAt: r.StartedAt,
+		FinishedAt: r.FinishedAt, CreatedAt: r.CreatedAt,
+	}
+}
+
+func getRowToArenaMatch(r arenadb.GetArenaMatchRow) arenadb.ArenaMatch {
+	return arenadb.ArenaMatch{
+		ID: r.ID, TaskID: r.TaskID, TaskVersion: r.TaskVersion,
+		Section: r.Section, Mode: r.Mode, Status: r.Status,
+		WinnerID: r.WinnerID, StartedAt: r.StartedAt,
+		FinishedAt: r.FinishedAt, CreatedAt: r.CreatedAt,
+	}
 }
 
 func matchFromRow(r arenadb.ArenaMatch) domain.Match {
