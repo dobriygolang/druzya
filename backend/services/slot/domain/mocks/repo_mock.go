@@ -187,6 +187,21 @@ func (mr *MockBookingRepoMockRecorder) GetBySlotID(ctx, slotID any) *gomock.Call
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetBySlotID", reflect.TypeOf((*MockBookingRepo)(nil).GetBySlotID), ctx, slotID)
 }
 
+// ListByCandidate mocks base method.
+func (m *MockBookingRepo) ListByCandidate(ctx context.Context, candidateID uuid.UUID) ([]domain.BookingWithSlot, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ListByCandidate", ctx, candidateID)
+	ret0, _ := ret[0].([]domain.BookingWithSlot)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ListByCandidate indicates an expected call of ListByCandidate.
+func (mr *MockBookingRepoMockRecorder) ListByCandidate(ctx, candidateID any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListByCandidate", reflect.TypeOf((*MockBookingRepo)(nil).ListByCandidate), ctx, candidateID)
+}
+
 // MockReviewRepo is a mock of ReviewRepo interface.
 type MockReviewRepo struct {
 	ctrl     *gomock.Controller

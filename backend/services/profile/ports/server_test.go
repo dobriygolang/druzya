@@ -32,6 +32,7 @@ func newTestServer(t *testing.T, repo domain.ProfileRepo) *ProfileServer {
 		GetReport:      &app.GetReport{Repo: repo},
 		GetSettings:    &app.GetSettings{Repo: repo},
 		UpdateSettings: &app.UpdateSettings{Repo: repo},
+		Repo:           repo,
 		Log:            silentLogger(),
 	})
 	return NewProfileServer(h)
@@ -251,6 +252,147 @@ func TestUpdateSettings_RequiresAuth(t *testing.T) {
 	var ce *connect.Error
 	if !errors.As(err, &ce) || ce.Code() != connect.CodeUnauthenticated {
 		t.Fatalf("expected Unauthenticated, got %v", err)
+	}
+}
+
+// ── GetWeeklyShare (Phase C public share link) ──────────────────────────────
+
+func TestGetWeeklyShare_EmptyTokenInvalid(t *testing.T) {
+	t.Parallel()
+	ctrl := gomock.NewController(t)
+	repo := mocks.NewMockProfileRepo(ctrl)
+	srv := newTestServer(t, repo)
+
+	_, err := srv.GetWeeklyShare(context.Background(),
+		connect.NewRequest(&pb.GetWeeklyShareRequest{Token: ""}))
+	var ce *connect.Error
+	if !errors.As(err, &ce) || ce.Code() != connect.CodeInvalidArgument {
+		t.Fatalf("expected InvalidArgument, got %v", err)
+	}
+}
+
+func TestGetWeeklyShare_TokenNotFound(t *testing.T) {
+	t.Parallel()
+	ctrl := gomock.NewController(t)
+	repo := mocks.NewMockProfileRepo(ctrl)
+	repo.EXPECT().ResolveShareToken(gomock.Any(), "missing").
+		Return(domain.ShareResolution{}, domain.ErrNotFound)
+
+	srv := newTestServer(t, repo)
+	_, err := srv.GetWeeklyShare(context.Background(),
+		connect.NewRequest(&pb.GetWeeklyShareRequest{Token: "missing"}))
+	var ce *connect.Error
+	if !errors.As(err, &ce) || ce.Code() != connect.CodeNotFound {
+		t.Fatalf("expected NotFound, got %v", err)
+	}
+}
+
+// TestGetWeeklyShare_ExpiredMappedToNotFound — у нас infra/postgres.go
+// возвращает domain.ErrNotFound и для протухшего, и для отсутствующего
+// токена (UPDATE … WHERE expires_at > now() RETURNING). Здесь имитируем
+// тот же контракт.
+func TestGetWeeklyShare_ExpiredMappedToNotFound(t *testing.T) {
+	t.Parallel()
+	ctrl := gomock.NewController(t)
+	repo := mocks.NewMockProfileRepo(ctrl)
+	repo.EXPECT().ResolveShareToken(gomock.Any(), "expired").
+		Return(domain.ShareResolution{}, domain.ErrNotFound)
+
+	srv := newTestServer(t, repo)
+	_, err := srv.GetWeeklyShare(context.Background(),
+		connect.NewRequest(&pb.GetWeeklyShareRequest{Token: "expired"}))
+	var ce *connect.Error
+	if !errors.As(err, &ce) || ce.Code() != connect.CodeNotFound {
+		t.Fatalf("expected NotFound, got %v", err)
+	}
+}
+
+func TestGetWeeklyShare_HappyPath(t *testing.T) {
+	t.Parallel()
+	ctrl := gomock.NewController(t)
+	repo := mocks.NewMockProfileRepo(ctrl)
+	uid := uuid.New()
+	repo.EXPECT().ResolveShareToken(gomock.Any(), "abc123").
+		Return(domain.ShareResolution{UserID: uid, WeekISO: "2026-W17"}, nil)
+	// GetReport.Do делает 4 запроса; пустой Activity + nil-ошибки на остальных
+	// → отчёт деградирует, но запрос проходит.
+	repo.EXPECT().CountRecentActivity(gomock.Any(), uid, gomock.Any()).
+		Return(domain.Activity{XPEarned: 100, MatchesWon: 3}, nil)
+	repo.EXPECT().ListMatchAggregatesSince(gomock.Any(), uid, gomock.Any()).
+		Return(nil, errors.New("ignored"))
+	repo.EXPECT().ListWeeklyXPSince(gomock.Any(), uid, gomock.Any(), 4).
+		Return(nil, errors.New("ignored"))
+	repo.EXPECT().GetStreaks(gomock.Any(), uid).
+		Return(0, 0, errors.New("ignored"))
+
+	srv := newTestServer(t, repo)
+	resp, err := srv.GetWeeklyShare(context.Background(),
+		connect.NewRequest(&pb.GetWeeklyShareRequest{Token: "abc123"}))
+	if err != nil {
+		t.Fatalf("unexpected: %v", err)
+	}
+	if resp.Msg.GetShareToken() != "abc123" {
+		t.Fatalf("expected token echoed, got %q", resp.Msg.GetShareToken())
+	}
+	if resp.Msg.GetMetrics().GetXpEarned() != 100 {
+		t.Fatalf("expected metrics propagated, got %+v", resp.Msg.GetMetrics())
+	}
+}
+
+// TestGetMyReport_IssuesShareTokenWhenRequested — кнопка «Поделиться»
+// на /weekly: фронт делает повторный запрос с include_share_token=true,
+// бэк выпускает токен и кладёт его в ответ.
+func TestGetMyReport_IssuesShareTokenWhenRequested(t *testing.T) {
+	t.Parallel()
+	ctrl := gomock.NewController(t)
+	repo := mocks.NewMockProfileRepo(ctrl)
+	uid := uuid.New()
+	fetcher := &stubReportFetcher{view: app.ReportView{}}
+	repo.EXPECT().IssueShareToken(gomock.Any(), uid, gomock.Any()).
+		Return(domain.ShareToken{Token: "freshtoken"}, nil)
+	h := NewHandler(Handler{
+		GetReport:     &app.GetReport{Repo: repo},
+		ReportFetcher: fetcher,
+		Repo:          repo,
+		Log:           silentLogger(),
+	})
+	srv := NewProfileServer(h)
+	ctx := sharedMw.WithUserID(context.Background(), uid)
+	resp, err := srv.GetMyReport(ctx,
+		connect.NewRequest(&pb.GetMyReportRequest{IncludeShareToken: true}))
+	if err != nil {
+		t.Fatalf("unexpected: %v", err)
+	}
+	if resp.Msg.GetShareToken() != "freshtoken" {
+		t.Fatalf("expected token issued, got %q", resp.Msg.GetShareToken())
+	}
+}
+
+// TestGetMyReport_TokenIssueFailureDoesNotFailRequest — если IssueShareToken
+// упал (например, сеть БД дёрнулась), основной отчёт всё равно отдаётся.
+func TestGetMyReport_TokenIssueFailureDoesNotFailRequest(t *testing.T) {
+	t.Parallel()
+	ctrl := gomock.NewController(t)
+	repo := mocks.NewMockProfileRepo(ctrl)
+	uid := uuid.New()
+	fetcher := &stubReportFetcher{view: app.ReportView{}}
+	repo.EXPECT().IssueShareToken(gomock.Any(), uid, gomock.Any()).
+		Return(domain.ShareToken{}, errors.New("db down"))
+	h := NewHandler(Handler{
+		GetReport:     &app.GetReport{Repo: repo},
+		ReportFetcher: fetcher,
+		Repo:          repo,
+		Log:           silentLogger(),
+	})
+	srv := NewProfileServer(h)
+	ctx := sharedMw.WithUserID(context.Background(), uid)
+	resp, err := srv.GetMyReport(ctx,
+		connect.NewRequest(&pb.GetMyReportRequest{IncludeShareToken: true}))
+	if err != nil {
+		t.Fatalf("expected success despite token failure: %v", err)
+	}
+	if resp.Msg.GetShareToken() != "" {
+		t.Fatalf("expected empty token on issue failure, got %q", resp.Msg.GetShareToken())
 	}
 }
 

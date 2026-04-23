@@ -11,7 +11,7 @@
 /* eslint-disable */
 // @ts-nocheck
 
-import { GetMyAtlasRequest, GetMyProfileRequest, GetMyReportRequest, GetPublicProfileRequest, ProfileFull, ProfilePublic, ProfileSettings, SkillAtlas, UpdateProfileSettingsRequest, WeeklyReport } from "./profile_pb.js";
+import { GetMyAtlasRequest, GetMyProfileRequest, GetMyReportRequest, GetPublicProfileRequest, GetWeeklyShareRequest, ProfileFull, ProfilePublic, ProfileSettings, SkillAtlas, UpdateProfileSettingsRequest, WeeklyReport } from "./profile_pb.js";
 import { MethodKind } from "@bufbuild/protobuf";
 
 /**
@@ -73,6 +73,18 @@ export const ProfileService = {
       name: "GetPublicProfile",
       I: GetPublicProfileRequest,
       O: ProfilePublic,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * GetWeeklyShare returns a weekly report by share token. Public — no
+     * bearer auth required. Route is added to publicPaths in router.go.
+     *
+     * @generated from rpc druz9.v1.ProfileService.GetWeeklyShare
+     */
+    getWeeklyShare: {
+      name: "GetWeeklyShare",
+      I: GetWeeklyShareRequest,
+      O: WeeklyReport,
       kind: MethodKind.Unary,
     },
   }

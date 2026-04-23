@@ -2,6 +2,15 @@ import { lazy, Suspense } from 'react'
 import { Routes, Route, Navigate, useLocation, useParams } from 'react-router-dom'
 
 import RouteLoader from './components/RouteLoader'
+import { readAccessToken } from './lib/apiClient'
+
+// RootRedirect: посетитель без токена — на marketing /welcome, авторизованный
+// — сразу в /sanctum. Раньше "/" безусловно вёл на /sanctum, тот возвращал
+// 401, и apiClient кидал гостя на /login (минуя welcome) — пользователь
+// никогда не видел маркетинговый landing. См. user-bug 2026-04.
+function RootRedirect() {
+  return <Navigate to={readAccessToken() ? '/sanctum' : '/welcome'} replace />
+}
 
 // Legacy /v2/* URL'ы из старого дизайна — редиректим на чистый путь.
 // Также пара переименований: /v2/kata → /daily.
@@ -50,6 +59,7 @@ const MatchHistoryPage = lazy(() => import('./pages/MatchHistoryPage'))
 const KataStreakPage = lazy(() => import('./pages/KataStreakPage'))
 const HeroCardsPage = lazy(() => import('./pages/HeroCardsPage'))
 const WeeklyReportPage = lazy(() => import('./pages/WeeklyReportPage'))
+const WeeklyReportSharePage = lazy(() => import('./pages/WeeklyReportSharePage'))
 const Arena2v2Page = lazy(() => import('./pages/Arena2v2Page'))
 const SystemDesignInterviewPage = lazy(() => import('./pages/SystemDesignInterviewPage'))
 const CodeEditorPage = lazy(() => import('./pages/CodeEditorPage'))
@@ -74,7 +84,7 @@ export default function App() {
   return (
     <Suspense fallback={<RouteLoader />}>
       <Routes>
-        <Route path="/" element={<Navigate to="/sanctum" replace />} />
+        <Route path="/" element={<RootRedirect />} />
         <Route path="/sanctum" element={<SanctumPage />} />
         <Route path="/arena" element={<ArenaPage />} />
         <Route path="/arena/match/:matchId" element={<ArenaMatchPage />} />
@@ -117,6 +127,10 @@ export default function App() {
           for backward compatibility (старые шеры в ссылках, e2e-тесты).
         */}
         <Route path="/weekly" element={<WeeklyReportPage />} />
+        {/* Phase C: публичный share-link на недельный отчёт. Никаких guards —
+            страница сама дёргает /api/v1/profile/weekly/share/{token} без
+            bearer'а и показывает 404 при истёкшем токене. */}
+        <Route path="/weekly/share/:token" element={<WeeklyReportSharePage />} />
         <Route path="/report" element={<Navigate to="/weekly" replace />} />
         <Route path="/podcasts" element={<PodcastsPage />} />
         <Route path="/arena/2v2/:matchId" element={<Arena2v2Page />} />

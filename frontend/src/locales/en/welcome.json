@@ -7,5 +7,158 @@
   "subhead": "1v1 code duels, daily kata, AI mentor and guilds. Real progress — not just LeetCode in a browser.",
   "start_free": "Start free",
   "watch_demo": "Watch demo",
-  "developers_from": "Developers from"
+  "developers_from": "Developers from",
+
+  "nav": {
+    "features": "Features",
+    "stats": "Stats",
+    "testimonials": "Testimonials",
+    "pricing": "Pricing"
+  },
+
+  "features": {
+    "eyebrow": "What's inside",
+    "title": "A platform built for growth",
+    "subtitle": "Not just grinding tasks — beating live opponents and locking in the skill day after day.",
+    "pvp": {
+      "title": "Real-time PvP duels",
+      "desc": "1v1 boxes on speed and code quality. Rating-based matchmaking, anti-bot detection, fair timer."
+    },
+    "ai": {
+      "title": "AI mock interviews",
+      "desc": "Tech-interview simulation: algorithms, system design, behavioral. Voice, breakdown and recommendations."
+    },
+    "daily": {
+      "title": "Daily kata and streaks",
+      "desc": "A daily problem, streaks and a weekly report. A habit that compounds rating — while others scroll the feed."
+    },
+    "guilds": {
+      "title": "Guilds and seasons",
+      "desc": "Team tournaments, leagues, season pass. Progress visible to everyone — including those who hire."
+    },
+    "atlas": {
+      "title": "Skill atlas",
+      "desc": "Atlas covers topics from hash maps to distributed queues. See where you're strong and where to dig."
+    },
+    "podcasts": {
+      "title": "Podcasts and codex",
+      "desc": "Hiring stories, offer breakdowns, summaries. Content that actually helps in interviews."
+    }
+  },
+
+  "stats": {
+    "eyebrow": "Platform numbers",
+    "title": "Live audience, real matches",
+    "subtitle": "Metrics update in real time.",
+    "users": "developers",
+    "active": "online today",
+    "matches": "matches played",
+    "loading": "—"
+  },
+
+  "testimonials": {
+    "eyebrow": "Testimonials",
+    "title": "What people inside say",
+    "subtitle": "Names and companies are design placeholders. Real cases will appear after public launch.",
+    "items": [
+      {
+        "quote": "I solved more problems in a month than in half a year on LeetCode. When you're up against a real person, your brain just kicks in differently.",
+        "name": "Alex",
+        "role": "Backend Developer",
+        "company": "fintech"
+      },
+      {
+        "quote": "The AI mock pinpointed exactly the gaps I'd failed on in my last interview. Got the offer on attempt #2.",
+        "name": "Marina",
+        "role": "Middle Frontend",
+        "company": "e-commerce"
+      },
+      {
+        "quote": "Daily kata became my morning ritual. Streak of 87 — and it's clear my explanations got cleaner.",
+        "name": "Dmitri",
+        "role": "ML Engineer",
+        "company": "research"
+      },
+      {
+        "quote": "Guilds are the best way to get a team aligned. We code, argue, grow — together.",
+        "name": "Ilya",
+        "role": "Tech Lead",
+        "company": "startup"
+      }
+    ]
+  },
+
+  "pricing": {
+    "eyebrow": "Pricing",
+    "title": "Start free — grow without limits",
+    "subtitle": "All core mechanics are available on Free. Premium — for those who want to go deeper.",
+    "free": {
+      "name": "Free",
+      "price": "$0",
+      "period": "forever",
+      "desc": "Everything you need to get started.",
+      "features": [
+        "Unlimited 1v1 duels",
+        "Daily kata",
+        "Basic profile and rating",
+        "Atlas skills"
+      ],
+      "cta": "Get started"
+    },
+    "premium": {
+      "name": "Premium",
+      "price": "$5",
+      "period": "/ month",
+      "desc": "For those aiming at the offer.",
+      "badge": "Popular",
+      "features": [
+        "Everything in Free",
+        "Unlimited AI mocks",
+        "Interview transcript and breakdown",
+        "Weekly progress analytics",
+        "Private rooms with friends"
+      ],
+      "cta": "Get Premium"
+    },
+    "pro": {
+      "name": "Pro",
+      "price": "$12",
+      "period": "/ month",
+      "desc": "Teams, guilds, business.",
+      "features": [
+        "Everything in Premium",
+        "Guild up to 50 people",
+        "Branded tournaments",
+        "Team analytics",
+        "Priority support"
+      ],
+      "cta": "Get Pro"
+    }
+  },
+
+  "final_cta": {
+    "title": "Ready for the interview? Start now.",
+    "subtitle": "Sign-up takes 30 seconds. First duel — within a minute.",
+    "primary": "Start free",
+    "secondary": "Watch demo"
+  },
+
+  "footer": {
+    "tagline": "Next-generation technical interview prep platform.",
+    "product": "Product",
+    "resources": "Resources",
+    "community": "Community",
+    "links": {
+      "arena": "Arena",
+      "daily": "Daily kata",
+      "atlas": "Atlas",
+      "pricing": "Pricing",
+      "help": "Help",
+      "podcasts": "Podcasts",
+      "github": "GitHub",
+      "telegram": "Telegram",
+      "discord": "Discord"
+    },
+    "rights": "© {{year}} druz9. All rights reserved."
+  }
 }

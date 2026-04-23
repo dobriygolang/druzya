@@ -56,6 +56,9 @@ const (
 	// ProfileServiceGetPublicProfileProcedure is the fully-qualified name of the ProfileService's
 	// GetPublicProfile RPC.
 	ProfileServiceGetPublicProfileProcedure = "/druz9.v1.ProfileService/GetPublicProfile"
+	// ProfileServiceGetWeeklyShareProcedure is the fully-qualified name of the ProfileService's
+	// GetWeeklyShare RPC.
+	ProfileServiceGetWeeklyShareProcedure = "/druz9.v1.ProfileService/GetWeeklyShare"
 )
 
 // ProfileServiceClient is a client for the druz9.v1.ProfileService service.
@@ -70,6 +73,9 @@ type ProfileServiceClient interface {
 	UpdateSettings(context.Context, *connect.Request[v1.UpdateProfileSettingsRequest]) (*connect.Response[v1.ProfileSettings], error)
 	// GetPublicProfile returns the public /u/{username} view.
 	GetPublicProfile(context.Context, *connect.Request[v1.GetPublicProfileRequest]) (*connect.Response[v1.ProfilePublic], error)
+	// GetWeeklyShare returns a weekly report by share token. Public — no
+	// bearer auth required. Route is added to publicPaths in router.go.
+	GetWeeklyShare(context.Context, *connect.Request[v1.GetWeeklyShareRequest]) (*connect.Response[v1.WeeklyReport], error)
 }
 
 // NewProfileServiceClient constructs a client for the druz9.v1.ProfileService service. By default,
@@ -113,6 +119,12 @@ func NewProfileServiceClient(httpClient connect.HTTPClient, baseURL string, opts
 			connect.WithSchema(profileServiceMethods.ByName("GetPublicProfile")),
 			connect.WithClientOptions(opts...),
 		),
+		getWeeklyShare: connect.NewClient[v1.GetWeeklyShareRequest, v1.WeeklyReport](
+			httpClient,
+			baseURL+ProfileServiceGetWeeklyShareProcedure,
+			connect.WithSchema(profileServiceMethods.ByName("GetWeeklyShare")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -123,6 +135,7 @@ type profileServiceClient struct {
 	getMyReport      *connect.Client[v1.GetMyReportRequest, v1.WeeklyReport]
 	updateSettings   *connect.Client[v1.UpdateProfileSettingsRequest, v1.ProfileSettings]
 	getPublicProfile *connect.Client[v1.GetPublicProfileRequest, v1.ProfilePublic]
+	getWeeklyShare   *connect.Client[v1.GetWeeklyShareRequest, v1.WeeklyReport]
 }
 
 // GetMyProfile calls druz9.v1.ProfileService.GetMyProfile.
@@ -150,6 +163,11 @@ func (c *profileServiceClient) GetPublicProfile(ctx context.Context, req *connec
 	return c.getPublicProfile.CallUnary(ctx, req)
 }
 
+// GetWeeklyShare calls druz9.v1.ProfileService.GetWeeklyShare.
+func (c *profileServiceClient) GetWeeklyShare(ctx context.Context, req *connect.Request[v1.GetWeeklyShareRequest]) (*connect.Response[v1.WeeklyReport], error) {
+	return c.getWeeklyShare.CallUnary(ctx, req)
+}
+
 // ProfileServiceHandler is an implementation of the druz9.v1.ProfileService service.
 type ProfileServiceHandler interface {
 	// GetMyProfile returns the rich profile for the authenticated caller.
@@ -162,6 +180,9 @@ type ProfileServiceHandler interface {
 	UpdateSettings(context.Context, *connect.Request[v1.UpdateProfileSettingsRequest]) (*connect.Response[v1.ProfileSettings], error)
 	// GetPublicProfile returns the public /u/{username} view.
 	GetPublicProfile(context.Context, *connect.Request[v1.GetPublicProfileRequest]) (*connect.Response[v1.ProfilePublic], error)
+	// GetWeeklyShare returns a weekly report by share token. Public — no
+	// bearer auth required. Route is added to publicPaths in router.go.
+	GetWeeklyShare(context.Context, *connect.Request[v1.GetWeeklyShareRequest]) (*connect.Response[v1.WeeklyReport], error)
 }
 
 // NewProfileServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -201,6 +222,12 @@ func NewProfileServiceHandler(svc ProfileServiceHandler, opts ...connect.Handler
 		connect.WithSchema(profileServiceMethods.ByName("GetPublicProfile")),
 		connect.WithHandlerOptions(opts...),
 	)
+	profileServiceGetWeeklyShareHandler := connect.NewUnaryHandler(
+		ProfileServiceGetWeeklyShareProcedure,
+		svc.GetWeeklyShare,
+		connect.WithSchema(profileServiceMethods.ByName("GetWeeklyShare")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/druz9.v1.ProfileService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case ProfileServiceGetMyProfileProcedure:
@@ -213,6 +240,8 @@ func NewProfileServiceHandler(svc ProfileServiceHandler, opts ...connect.Handler
 			profileServiceUpdateSettingsHandler.ServeHTTP(w, r)
 		case ProfileServiceGetPublicProfileProcedure:
 			profileServiceGetPublicProfileHandler.ServeHTTP(w, r)
+		case ProfileServiceGetWeeklyShareProcedure:
+			profileServiceGetWeeklyShareHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -240,4 +269,8 @@ func (UnimplementedProfileServiceHandler) UpdateSettings(context.Context, *conne
 
 func (UnimplementedProfileServiceHandler) GetPublicProfile(context.Context, *connect.Request[v1.GetPublicProfileRequest]) (*connect.Response[v1.ProfilePublic], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.ProfileService.GetPublicProfile is not implemented"))
+}
+
+func (UnimplementedProfileServiceHandler) GetWeeklyShare(context.Context, *connect.Request[v1.GetWeeklyShareRequest]) (*connect.Response[v1.WeeklyReport], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.ProfileService.GetWeeklyShare is not implemented"))
 }

@@ -1963,9 +1963,14 @@ func (*GetMyAtlasRequest) Descriptor() ([]byte, []int) {
 }
 
 type GetMyReportRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// include_share_token — если true, бэк дополнительно вызывает
+	// IssueShareToken и кладёт свежий токен в WeeklyReport.share_token.
+	// Используется кнопкой «Поделиться» на /weekly: фронт делает
+	// повторный запрос с этим флагом и получает токен для clipboard'а.
+	IncludeShareToken bool `protobuf:"varint,1,opt,name=include_share_token,json=includeShareToken,proto3" json:"include_share_token,omitempty"`
+	unknownFields     protoimpl.UnknownFields
+	sizeCache         protoimpl.SizeCache
 }
 
 func (x *GetMyReportRequest) Reset() {
@@ -1996,6 +2001,13 @@ func (x *GetMyReportRequest) ProtoReflect() protoreflect.Message {
 // Deprecated: Use GetMyReportRequest.ProtoReflect.Descriptor instead.
 func (*GetMyReportRequest) Descriptor() ([]byte, []int) {
 	return file_druz9_v1_profile_proto_rawDescGZIP(), []int{24}
+}
+
+func (x *GetMyReportRequest) GetIncludeShareToken() bool {
+	if x != nil {
+		return x.IncludeShareToken
+	}
+	return false
 }
 
 type GetPublicProfileRequest struct {
@@ -2038,6 +2050,52 @@ func (*GetPublicProfileRequest) Descriptor() ([]byte, []int) {
 func (x *GetPublicProfileRequest) GetUsername() string {
 	if x != nil {
 		return x.Username
+	}
+	return ""
+}
+
+type GetWeeklyShareRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// token — публичный 64-hex токен из weekly_share_tokens. Resolved через
+	// ProfileRepo.ResolveShareToken. 404 если просрочен / отсутствует.
+	Token         string `protobuf:"bytes,1,opt,name=token,proto3" json:"token,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetWeeklyShareRequest) Reset() {
+	*x = GetWeeklyShareRequest{}
+	mi := &file_druz9_v1_profile_proto_msgTypes[26]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetWeeklyShareRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetWeeklyShareRequest) ProtoMessage() {}
+
+func (x *GetWeeklyShareRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_profile_proto_msgTypes[26]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetWeeklyShareRequest.ProtoReflect.Descriptor instead.
+func (*GetWeeklyShareRequest) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_profile_proto_rawDescGZIP(), []int{26}
+}
+
+func (x *GetWeeklyShareRequest) GetToken() string {
+	if x != nil {
+		return x.Token
 	}
 	return ""
 }
@@ -2230,17 +2288,21 @@ const file_druz9_v1_profile_proto_rawDesc = "" +
 	"\x1cUpdateProfileSettingsRequest\x125\n" +
 	"\bsettings\x18\x01 \x01(\v2\x19.druz9.v1.ProfileSettingsR\bsettings\"\x15\n" +
 	"\x13GetMyProfileRequest\"\x13\n" +
-	"\x11GetMyAtlasRequest\"\x14\n" +
-	"\x12GetMyReportRequest\"5\n" +
+	"\x11GetMyAtlasRequest\"D\n" +
+	"\x12GetMyReportRequest\x12.\n" +
+	"\x13include_share_token\x18\x01 \x01(\bR\x11includeShareToken\"5\n" +
 	"\x17GetPublicProfileRequest\x12\x1a\n" +
-	"\busername\x18\x01 \x01(\tR\busername2\xb6\x04\n" +
+	"\busername\x18\x01 \x01(\tR\busername\"-\n" +
+	"\x15GetWeeklyShareRequest\x12\x14\n" +
+	"\x05token\x18\x01 \x01(\tR\x05token2\xaf\x05\n" +
 	"\x0eProfileService\x12`\n" +
 	"\fGetMyProfile\x12\x1d.druz9.v1.GetMyProfileRequest\x1a\x15.druz9.v1.ProfileFull\"\x1a\x82\xd3\xe4\x93\x02\x14\x12\x12/api/v1/profile/me\x12a\n" +
 	"\n" +
 	"GetMyAtlas\x12\x1b.druz9.v1.GetMyAtlasRequest\x1a\x14.druz9.v1.SkillAtlas\" \x82\xd3\xe4\x93\x02\x1a\x12\x18/api/v1/profile/me/atlas\x12f\n" +
 	"\vGetMyReport\x12\x1c.druz9.v1.GetMyReportRequest\x1a\x16.druz9.v1.WeeklyReport\"!\x82\xd3\xe4\x93\x02\x1b\x12\x19/api/v1/profile/me/report\x12\x82\x01\n" +
 	"\x0eUpdateSettings\x12&.druz9.v1.UpdateProfileSettingsRequest\x1a\x19.druz9.v1.ProfileSettings\"-\x82\xd3\xe4\x93\x02':\bsettings\x1a\x1b/api/v1/profile/me/settings\x12r\n" +
-	"\x10GetPublicProfile\x12!.druz9.v1.GetPublicProfileRequest\x1a\x17.druz9.v1.ProfilePublic\"\"\x82\xd3\xe4\x93\x02\x1c\x12\x1a/api/v1/profile/{username}B\x89\x01\n" +
+	"\x10GetPublicProfile\x12!.druz9.v1.GetPublicProfileRequest\x1a\x17.druz9.v1.ProfilePublic\"\"\x82\xd3\xe4\x93\x02\x1c\x12\x1a/api/v1/profile/{username}\x12w\n" +
+	"\x0eGetWeeklyShare\x12\x1f.druz9.v1.GetWeeklyShareRequest\x1a\x16.druz9.v1.WeeklyReport\",\x82\xd3\xe4\x93\x02&\x12$/api/v1/profile/weekly/share/{token}B\x89\x01\n" +
 	"\fcom.druz9.v1B\fProfileProtoP\x01Z*druz9/shared/generated/pb/druz9/v1;druz9v1\xa2\x02\x03DXX\xaa\x02\bDruz9.V1\xca\x02\bDruz9\\V1\xe2\x02\x14Druz9\\V1\\GPBMetadata\xea\x02\tDruz9::V1b\x06proto3"
 
 var (
@@ -2255,7 +2317,7 @@ func file_druz9_v1_profile_proto_rawDescGZIP() []byte {
 	return file_druz9_v1_profile_proto_rawDescData
 }
 
-var file_druz9_v1_profile_proto_msgTypes = make([]protoimpl.MessageInfo, 27)
+var file_druz9_v1_profile_proto_msgTypes = make([]protoimpl.MessageInfo, 28)
 var file_druz9_v1_profile_proto_goTypes = []any{
 	(*Attributes)(nil),                   // 0: druz9.v1.Attributes
 	(*ProfileSubscription)(nil),          // 1: druz9.v1.ProfileSubscription
@@ -2283,36 +2345,37 @@ var file_druz9_v1_profile_proto_goTypes = []any{
 	(*GetMyAtlasRequest)(nil),            // 23: druz9.v1.GetMyAtlasRequest
 	(*GetMyReportRequest)(nil),           // 24: druz9.v1.GetMyReportRequest
 	(*GetPublicProfileRequest)(nil),      // 25: druz9.v1.GetPublicProfileRequest
-	nil,                                  // 26: druz9.v1.RecommendationAction.ParamsEntry
-	(SubscriptionPlan)(0),                // 27: druz9.v1.SubscriptionPlan
-	(*timestamppb.Timestamp)(nil),        // 28: google.protobuf.Timestamp
-	(CharClass)(0),                       // 29: druz9.v1.CharClass
-	(Section)(0),                         // 30: druz9.v1.Section
-	(Language)(0),                        // 31: druz9.v1.Language
-	(*NotificationPreferences)(nil),      // 32: druz9.v1.NotificationPreferences
+	(*GetWeeklyShareRequest)(nil),        // 26: druz9.v1.GetWeeklyShareRequest
+	nil,                                  // 27: druz9.v1.RecommendationAction.ParamsEntry
+	(SubscriptionPlan)(0),                // 28: druz9.v1.SubscriptionPlan
+	(*timestamppb.Timestamp)(nil),        // 29: google.protobuf.Timestamp
+	(CharClass)(0),                       // 30: druz9.v1.CharClass
+	(Section)(0),                         // 31: druz9.v1.Section
+	(Language)(0),                        // 32: druz9.v1.Language
+	(*NotificationPreferences)(nil),      // 33: druz9.v1.NotificationPreferences
 }
 var file_druz9_v1_profile_proto_depIdxs = []int32{
-	27, // 0: druz9.v1.ProfileSubscription.plan:type_name -> druz9.v1.SubscriptionPlan
-	28, // 1: druz9.v1.ProfileSubscription.current_period_end:type_name -> google.protobuf.Timestamp
-	29, // 2: druz9.v1.ProfileFull.char_class:type_name -> druz9.v1.CharClass
+	28, // 0: druz9.v1.ProfileSubscription.plan:type_name -> druz9.v1.SubscriptionPlan
+	29, // 1: druz9.v1.ProfileSubscription.current_period_end:type_name -> google.protobuf.Timestamp
+	30, // 2: druz9.v1.ProfileFull.char_class:type_name -> druz9.v1.CharClass
 	0,  // 3: druz9.v1.ProfileFull.attributes:type_name -> druz9.v1.Attributes
 	1,  // 4: druz9.v1.ProfileFull.subscription:type_name -> druz9.v1.ProfileSubscription
-	28, // 5: druz9.v1.ProfileFull.created_at:type_name -> google.protobuf.Timestamp
-	30, // 6: druz9.v1.ProfileSectionRating.section:type_name -> druz9.v1.Section
-	28, // 7: druz9.v1.Achievement.earned_at:type_name -> google.protobuf.Timestamp
-	30, // 8: druz9.v1.SkillNode.section:type_name -> druz9.v1.Section
-	28, // 9: druz9.v1.SkillNode.unlocked_at:type_name -> google.protobuf.Timestamp
-	28, // 10: druz9.v1.SkillNode.last_solved_at:type_name -> google.protobuf.Timestamp
+	29, // 5: druz9.v1.ProfileFull.created_at:type_name -> google.protobuf.Timestamp
+	31, // 6: druz9.v1.ProfileSectionRating.section:type_name -> druz9.v1.Section
+	29, // 7: druz9.v1.Achievement.earned_at:type_name -> google.protobuf.Timestamp
+	31, // 8: druz9.v1.SkillNode.section:type_name -> druz9.v1.Section
+	29, // 9: druz9.v1.SkillNode.unlocked_at:type_name -> google.protobuf.Timestamp
+	29, // 10: druz9.v1.SkillNode.last_solved_at:type_name -> google.protobuf.Timestamp
 	6,  // 11: druz9.v1.SkillNode.recommended_kata:type_name -> druz9.v1.KataRef
 	5,  // 12: druz9.v1.SkillAtlas.nodes:type_name -> druz9.v1.SkillNode
 	7,  // 13: druz9.v1.SkillAtlas.edges:type_name -> druz9.v1.SkillEdge
-	29, // 14: druz9.v1.ProfilePublic.char_class:type_name -> druz9.v1.CharClass
+	30, // 14: druz9.v1.ProfilePublic.char_class:type_name -> druz9.v1.CharClass
 	3,  // 15: druz9.v1.ProfilePublic.ratings:type_name -> druz9.v1.ProfileSectionRating
 	4,  // 16: druz9.v1.ProfilePublic.achievements:type_name -> druz9.v1.Achievement
 	8,  // 17: druz9.v1.ProfilePublic.atlas_preview:type_name -> druz9.v1.SkillAtlas
-	26, // 18: druz9.v1.RecommendationAction.params:type_name -> druz9.v1.RecommendationAction.ParamsEntry
+	27, // 18: druz9.v1.RecommendationAction.params:type_name -> druz9.v1.RecommendationAction.ParamsEntry
 	12, // 19: druz9.v1.Recommendation.action:type_name -> druz9.v1.RecommendationAction
-	30, // 20: druz9.v1.SectionBreakdown.section:type_name -> druz9.v1.Section
+	31, // 20: druz9.v1.SectionBreakdown.section:type_name -> druz9.v1.Section
 	10, // 21: druz9.v1.WeeklyReport.metrics:type_name -> druz9.v1.ReportMetrics
 	11, // 22: druz9.v1.WeeklyReport.weaknesses:type_name -> druz9.v1.ReportWeakness
 	13, // 23: druz9.v1.WeeklyReport.recommendations:type_name -> druz9.v1.Recommendation
@@ -2322,21 +2385,23 @@ var file_druz9_v1_profile_proto_depIdxs = []int32{
 	16, // 27: druz9.v1.WeeklyReport.elo_series:type_name -> druz9.v1.EloPoint
 	17, // 28: druz9.v1.WeeklyReport.percentiles:type_name -> druz9.v1.PercentileView
 	18, // 29: druz9.v1.WeeklyReport.achievements_this_week:type_name -> druz9.v1.AchievementBrief
-	31, // 30: druz9.v1.ProfileSettings.default_language:type_name -> druz9.v1.Language
-	32, // 31: druz9.v1.ProfileSettings.notifications:type_name -> druz9.v1.NotificationPreferences
+	32, // 30: druz9.v1.ProfileSettings.default_language:type_name -> druz9.v1.Language
+	33, // 31: druz9.v1.ProfileSettings.notifications:type_name -> druz9.v1.NotificationPreferences
 	20, // 32: druz9.v1.UpdateProfileSettingsRequest.settings:type_name -> druz9.v1.ProfileSettings
 	22, // 33: druz9.v1.ProfileService.GetMyProfile:input_type -> druz9.v1.GetMyProfileRequest
 	23, // 34: druz9.v1.ProfileService.GetMyAtlas:input_type -> druz9.v1.GetMyAtlasRequest
 	24, // 35: druz9.v1.ProfileService.GetMyReport:input_type -> druz9.v1.GetMyReportRequest
 	21, // 36: druz9.v1.ProfileService.UpdateSettings:input_type -> druz9.v1.UpdateProfileSettingsRequest
 	25, // 37: druz9.v1.ProfileService.GetPublicProfile:input_type -> druz9.v1.GetPublicProfileRequest
-	2,  // 38: druz9.v1.ProfileService.GetMyProfile:output_type -> druz9.v1.ProfileFull
-	8,  // 39: druz9.v1.ProfileService.GetMyAtlas:output_type -> druz9.v1.SkillAtlas
-	19, // 40: druz9.v1.ProfileService.GetMyReport:output_type -> druz9.v1.WeeklyReport
-	20, // 41: druz9.v1.ProfileService.UpdateSettings:output_type -> druz9.v1.ProfileSettings
-	9,  // 42: druz9.v1.ProfileService.GetPublicProfile:output_type -> druz9.v1.ProfilePublic
-	38, // [38:43] is the sub-list for method output_type
-	33, // [33:38] is the sub-list for method input_type
+	26, // 38: druz9.v1.ProfileService.GetWeeklyShare:input_type -> druz9.v1.GetWeeklyShareRequest
+	2,  // 39: druz9.v1.ProfileService.GetMyProfile:output_type -> druz9.v1.ProfileFull
+	8,  // 40: druz9.v1.ProfileService.GetMyAtlas:output_type -> druz9.v1.SkillAtlas
+	19, // 41: druz9.v1.ProfileService.GetMyReport:output_type -> druz9.v1.WeeklyReport
+	20, // 42: druz9.v1.ProfileService.UpdateSettings:output_type -> druz9.v1.ProfileSettings
+	9,  // 43: druz9.v1.ProfileService.GetPublicProfile:output_type -> druz9.v1.ProfilePublic
+	19, // 44: druz9.v1.ProfileService.GetWeeklyShare:output_type -> druz9.v1.WeeklyReport
+	39, // [39:45] is the sub-list for method output_type
+	33, // [33:39] is the sub-list for method input_type
 	33, // [33:33] is the sub-list for extension type_name
 	33, // [33:33] is the sub-list for extension extendee
 	0,  // [0:33] is the sub-list for field type_name
@@ -2355,7 +2420,7 @@ func file_druz9_v1_profile_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_druz9_v1_profile_proto_rawDesc), len(file_druz9_v1_profile_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   27,
+			NumMessages:   28,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

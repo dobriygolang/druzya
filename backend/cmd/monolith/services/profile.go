@@ -2,6 +2,8 @@ package services
 
 import (
 	"context"
+	"fmt"
+	"os"
 
 	profileApp "druz9/profile/app"
 	profileInfra "druz9/profile/infra"
@@ -11,7 +13,31 @@ import (
 	"druz9/shared/pkg/eventbus"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/google/uuid"
 )
+
+// insightGeneratorAdapter bridges app.InsightGenerator → infra.InsightClient.
+// Lives in the wirer (not in app/) so the app layer never imports infra,
+// preserving the inward dependency direction.
+type insightGeneratorAdapter struct{ c *profileInfra.InsightClient }
+
+func (a insightGeneratorAdapter) Generate(
+	ctx context.Context, uid uuid.UUID, p profileApp.InsightPayload,
+) (string, error) {
+	out, err := a.c.Generate(ctx, uid, profileInfra.InsightPayload{
+		WeekISO:           p.WeekISO,
+		EloDelta:          p.EloDelta,
+		WinRateBySection:  p.WinRateBySection,
+		HoursStudied:      p.HoursStudied,
+		Streak:            p.Streak,
+		WeakestSection:    p.WeakestSection,
+		AchievementsCount: p.AchievementsCount,
+	})
+	if err != nil {
+		return "", fmt.Errorf("profile.insightAdapter: %w", err)
+	}
+	return out, nil
+}
 
 // NewProfile wires the profile bounded context plus its three cross-domain
 // reactors (UserRegistered → bootstrap, XPGained → level up, RatingChanged
@@ -31,7 +57,24 @@ func NewProfile(d Deps) *Module {
 		profileInfra.DefaultProfileCacheTTL,
 		d.Log,
 	)
-	getReport := &profileApp.GetReport{Repo: cached}
+	// ── Phase B: AI insight ────────────────────────────────────────────────
+	//
+	// Build an InsightClient backed by OpenRouter. When OPENROUTER_API_KEY is
+	// empty the client self-disables (Generate returns "" + nil) and the
+	// frontend hides the section — anti-fallback policy in action: NO faked
+	// LLM output, the operator sees the WARN at startup.
+	//
+	// OPENROUTER_INSIGHT_MODEL allows overriding the model id without a
+	// rebuild; default is anthropic/claude-sonnet-4 for narrative quality.
+	insightModel := os.Getenv("OPENROUTER_INSIGHT_MODEL")
+	insightClient := profileInfra.NewInsightClient(
+		nil, d.Cfg.LLM.OpenRouterAPIKey, insightModel, d.Log,
+	).WithKV(kv)
+	getReport := &profileApp.GetReport{
+		Repo:    cached,
+		Insight: insightGeneratorAdapter{c: insightClient},
+		Log:     d.Log,
+	}
 	// /profile/me/report — собирает несколько SQL-агрегатов; отдельный 5-мин
 	// Redis-кеш окупается при любой нагрузке. Инвалидация ниже триггерится
 	// событиями MatchCompleted / XPGained.
@@ -46,6 +89,7 @@ func NewProfile(d Deps) *Module {
 		GetSettings:    &profileApp.GetSettings{Repo: cached},
 		UpdateSettings: &profileApp.UpdateSettings{Repo: cached},
 		ReportFetcher:  reportCache,
+		Repo:           cached,
 		Log:            d.Log,
 	})
 	server := profilePorts.NewProfileServer(h)
@@ -66,6 +110,9 @@ func NewProfile(d Deps) *Module {
 			r.Get("/profile/me/atlas", transcoder.ServeHTTP)
 			r.Get("/profile/me/report", transcoder.ServeHTTP)
 			r.Put("/profile/me/settings", transcoder.ServeHTTP)
+			// /profile/weekly/share/{token} — публичный, авторизация не нужна;
+			// REST gate пропускает по publicPaths-prefix /profile/weekly/share/.
+			r.Get("/profile/weekly/share/{token}", transcoder.ServeHTTP)
 			r.Get("/profile/{username}", transcoder.ServeHTTP)
 		},
 		Subscribers: []func(*eventbus.InProcess){

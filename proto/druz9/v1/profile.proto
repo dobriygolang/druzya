@@ -293,9 +293,20 @@ message UpdateProfileSettingsRequest {
 
 message GetMyProfileRequest {}
 message GetMyAtlasRequest {}
-message GetMyReportRequest {}
+message GetMyReportRequest {
+  // include_share_token — если true, бэк дополнительно вызывает
+  // IssueShareToken и кладёт свежий токен в WeeklyReport.share_token.
+  // Используется кнопкой «Поделиться» на /weekly: фронт делает
+  // повторный запрос с этим флагом и получает токен для clipboard'а.
+  bool include_share_token = 1;
+}
 message GetPublicProfileRequest {
   string username = 1;
+}
+message GetWeeklyShareRequest {
+  // token — публичный 64-hex токен из weekly_share_tokens. Resolved через
+  // ProfileRepo.ResolveShareToken. 404 если просрочен / отсутствует.
+  string token = 1;
 }
 
 service ProfileService {
@@ -325,5 +336,11 @@ service ProfileService {
   // GetPublicProfile returns the public /u/{username} view.
   rpc GetPublicProfile(GetPublicProfileRequest) returns (ProfilePublic) {
     option (google.api.http) = {get: "/api/v1/profile/{username}"};
+  }
+
+  // GetWeeklyShare returns a weekly report by share token. Public — no
+  // bearer auth required. Route is added to publicPaths in router.go.
+  rpc GetWeeklyShare(GetWeeklyShareRequest) returns (WeeklyReport) {
+    option (google.api.http) = {get: "/api/v1/profile/weekly/share/{token}"};
   }
 }

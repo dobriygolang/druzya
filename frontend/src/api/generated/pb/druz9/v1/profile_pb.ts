@@ -1638,6 +1638,16 @@ export class GetMyAtlasRequest extends Message<GetMyAtlasRequest> {
  * @generated from message druz9.v1.GetMyReportRequest
  */
 export class GetMyReportRequest extends Message<GetMyReportRequest> {
+  /**
+   * include_share_token — если true, бэк дополнительно вызывает
+   * IssueShareToken и кладёт свежий токен в WeeklyReport.share_token.
+   * Используется кнопкой «Поделиться» на /weekly: фронт делает
+   * повторный запрос с этим флагом и получает токен для clipboard'а.
+   *
+   * @generated from field: bool include_share_token = 1;
+   */
+  includeShareToken = false;
+
   constructor(data?: PartialMessage<GetMyReportRequest>) {
     super();
     proto3.util.initPartial(data, this);
@@ -1646,6 +1656,7 @@ export class GetMyReportRequest extends Message<GetMyReportRequest> {
   static readonly runtime: typeof proto3 = proto3;
   static readonly typeName = "druz9.v1.GetMyReportRequest";
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "include_share_token", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): GetMyReportRequest {
@@ -1699,6 +1710,46 @@ export class GetPublicProfileRequest extends Message<GetPublicProfileRequest> {
 
   static equals(a: GetPublicProfileRequest | PlainMessage<GetPublicProfileRequest> | undefined, b: GetPublicProfileRequest | PlainMessage<GetPublicProfileRequest> | undefined): boolean {
     return proto3.util.equals(GetPublicProfileRequest, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.GetWeeklyShareRequest
+ */
+export class GetWeeklyShareRequest extends Message<GetWeeklyShareRequest> {
+  /**
+   * token — публичный 64-hex токен из weekly_share_tokens. Resolved через
+   * ProfileRepo.ResolveShareToken. 404 если просрочен / отсутствует.
+   *
+   * @generated from field: string token = 1;
+   */
+  token = "";
+
+  constructor(data?: PartialMessage<GetWeeklyShareRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.GetWeeklyShareRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "token", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): GetWeeklyShareRequest {
+    return new GetWeeklyShareRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): GetWeeklyShareRequest {
+    return new GetWeeklyShareRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): GetWeeklyShareRequest {
+    return new GetWeeklyShareRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: GetWeeklyShareRequest | PlainMessage<GetWeeklyShareRequest> | undefined, b: GetWeeklyShareRequest | PlainMessage<GetWeeklyShareRequest> | undefined): boolean {
+    return proto3.util.equals(GetWeeklyShareRequest, a, b);
   }
 }
 

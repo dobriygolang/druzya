@@ -13,6 +13,7 @@ import { useRatingMeQuery, useLeaderboardQuery } from '../lib/queries/rating'
 import { useProfileQuery } from '../lib/queries/profile'
 import { useArenaHistoryQuery } from '../lib/queries/matches'
 import { useMyGuildQuery, useGuildWarQuery } from '../lib/queries/guild'
+import { useWeeklyReportQuery } from '../lib/queries/weekly'
 import { cn } from '../lib/cn'
 
 function ErrorChip() {
@@ -275,12 +276,16 @@ function GuildCard() {
   )
 }
 
-// Карточка-CTA на еженедельный AI-отчёт. Заменила собой фиктивный
-// "Слабое место: dynamic programming · 3/10" — раньше это была статика
-// в локали, не данные. Реальный отчёт живёт на /weekly через
-// useWeeklyReportQuery (Group A).
+// CoachCard — превью реального AI-инсайта недели. Phase B wired
+// `weekly_report.ai_insight` (claude-sonnet-4 через OpenRouter, 24h
+// Redis-cache). Если инсайт пуст (LLM не настроен / новый юзер без активности)
+// — показываем CTA на /weekly без ложного контента.
 function CoachCard() {
   const { t } = useTranslation('sanctum')
+  const report = useWeeklyReportQuery()
+  const insight = report.data?.ai_insight?.trim() ?? ''
+  // Усекаем до ~140 chars для preview (полный текст на /weekly).
+  const preview = insight.length > 140 ? insight.slice(0, 140).trimEnd() + '…' : insight
   return (
     <div className="flex flex-1 flex-col gap-3 rounded-xl bg-gradient-to-br from-accent to-pink p-5 shadow-glow">
       <div className="flex items-center gap-2">
@@ -292,15 +297,16 @@ function CoachCard() {
       <h3 className="w-full max-w-[300px] font-display text-base font-bold text-text-primary">
         Еженедельный AI-разбор
       </h3>
-      <p className="w-full max-w-[300px] text-xs text-white/80">
-        Слабые зоны, рекомендации и план — собирается по твоей активности за
-        прошлую неделю.
+      <p className="w-full max-w-[300px] text-xs leading-relaxed text-white/85">
+        {insight
+          ? preview
+          : 'Слабые зоны, рекомендации и план — собирается по твоей активности за прошлую неделю.'}
       </p>
       <Link
         to="/weekly"
         className="inline-flex w-fit items-center gap-1.5 rounded-md bg-white/20 px-3.5 py-2 text-xs font-semibold text-text-primary hover:bg-white/30"
       >
-        {t('open_plan')} <ArrowRight className="h-3.5 w-3.5" />
+        {insight ? 'Полный отчёт' : t('open_plan')} <ArrowRight className="h-3.5 w-3.5" />
       </Link>
     </div>
   )

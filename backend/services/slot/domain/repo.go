@@ -49,6 +49,20 @@ type SlotRepo interface {
 type BookingRepo interface {
 	// GetBySlotID returns the booking attached to a slot, or ErrBookingNotFound.
 	GetBySlotID(ctx context.Context, slotID uuid.UUID) (Booking, error)
+
+	// ListByCandidate returns every booking owned by the candidate, hydrated
+	// with the parent Slot. Ordered by Slot.StartsAt DESC so the page can
+	// show "upcoming on top, then past". Returns an empty slice (not error)
+	// when the candidate has nothing booked.
+	ListByCandidate(ctx context.Context, candidateID uuid.UUID) ([]BookingWithSlot, error)
+}
+
+// BookingWithSlot is the read-model used by /slot/my/bookings: a booking row
+// joined with its parent slot, so the candidate-facing list can render
+// "когда / какой раздел / meet-ссылка" без отдельного N+1 хвоста.
+type BookingWithSlot struct {
+	Booking Booking
+	Slot    Slot
 }
 
 // ReviewRepo persists the `slot_reviews` table and computes interviewer stats.

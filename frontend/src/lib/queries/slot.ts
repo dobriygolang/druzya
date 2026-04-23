@@ -111,6 +111,40 @@ export function useCancelSlot() {
   })
 }
 
+// MyBookingItem mirrors the chi-direct DTO shape returned by
+// GET /api/v1/slot/my/bookings (defined in cmd/monolith/services/slot.go).
+// Snake_case kept 1:1 with the wire so we don't need an extra mapper.
+export type MyBookingItem = {
+  id: string
+  slot_id: string
+  meet_url?: string
+  status: string
+  created_at: string
+  starts_at: string
+  duration_min: number
+  section: SlotSection
+  difficulty?: SlotDifficulty
+  language: string
+  price_rub: number
+  slot_status: SlotStatusValue
+}
+
+type MyBookingsWire = { items: MyBookingItem[] }
+
+// useMyBookingsQuery — GET /api/v1/slot/my/bookings. Возвращает все
+// букинги текущего пользователя (отсортированы по starts_at DESC). 200 OK
+// с пустым items[] — норма для пользователя без записей.
+export function useMyBookingsQuery() {
+  return useQuery({
+    queryKey: ['slots', 'my-bookings'],
+    queryFn: async () => {
+      const wire = await api<MyBookingsWire>('/slot/my/bookings')
+      return wire.items ?? []
+    },
+    staleTime: 30_000,
+  })
+}
+
 // derivePriceBuckets returns ordered price-cap suggestions from the available
 // slots — this replaces the "до 2000₽" hardcoded filter chip on /slots. We
 // pick a few quantile-ish breakpoints so the chips stay useful even when

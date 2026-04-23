@@ -74,9 +74,14 @@ func (s *ProfileServer) GetMyAtlas(
 }
 
 // GetMyReport implements (/profile/me/report).
+//
+// Если req.IncludeShareToken=true, бэк дополнительно выпускает токен
+// публичной ссылки через ProfileRepo.IssueShareToken и кладёт его в
+// WeeklyReport.share_token. Используется кнопкой «Поделиться» на /weekly.
+// Сбой выдачи токена НЕ роняет основной запрос — отчёт отдаётся без поля.
 func (s *ProfileServer) GetMyReport(
 	ctx context.Context,
-	_ *connect.Request[pb.GetMyReportRequest],
+	req *connect.Request[pb.GetMyReportRequest],
 ) (*connect.Response[pb.WeeklyReport], error) {
 	uid, ok := sharedMw.UserIDFromContext(ctx)
 	if !ok {
@@ -86,7 +91,79 @@ func (s *ProfileServer) GetMyReport(
 	if err != nil {
 		return nil, fmt.Errorf("profile.GetMyReport: %w", s.toConnectErr(err))
 	}
-	return connect.NewResponse(toReportProto(v)), nil
+	resp := toReportProto(v)
+	if req.Msg.GetIncludeShareToken() {
+		weekISO := isoWeekKey(v.WeekEnd)
+		if s.H.Repo != nil {
+			tok, terr := s.H.Repo.IssueShareToken(ctx, uid, weekISO)
+			if terr != nil {
+				s.H.Log.WarnContext(ctx, "profile.GetMyReport: issue share token",
+					slog.Any("err", terr))
+			} else {
+				resp.ShareToken = tok.Token
+			}
+		}
+	}
+	return connect.NewResponse(resp), nil
+}
+
+// GetWeeklyShare implements (/profile/weekly/share/{token}). Public — no
+// bearer auth. Resolves the token to (user_id, week_iso) via ProfileRepo,
+// then assembles the WeeklyReport for that week.
+//
+// Anti-fallback: 404 on missing/expired token. We do NOT return a 200 with
+// an empty payload — the share page must be able to distinguish.
+func (s *ProfileServer) GetWeeklyShare(
+	ctx context.Context,
+	req *connect.Request[pb.GetWeeklyShareRequest],
+) (*connect.Response[pb.WeeklyReport], error) {
+	token := req.Msg.GetToken()
+	if token == "" {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("token is required"))
+	}
+	if s.H.Repo == nil {
+		return nil, connect.NewError(connect.CodeInternal, errors.New("share lookup unavailable"))
+	}
+	resv, err := s.H.Repo.ResolveShareToken(ctx, token)
+	if err != nil {
+		return nil, fmt.Errorf("profile.GetWeeklyShare: resolve: %w", s.toConnectErr(err))
+	}
+	now := weekEndFromISO(resv.WeekISO)
+	v, err := s.H.GetReport.Do(ctx, resv.UserID, now)
+	if err != nil {
+		return nil, fmt.Errorf("profile.GetWeeklyShare: report: %w", s.toConnectErr(err))
+	}
+	resp := toReportProto(v)
+	// Echo the token back so the public page can show "this is share link".
+	resp.ShareToken = token
+	return connect.NewResponse(resp), nil
+}
+
+// isoWeekKey форматирует время в "YYYY-Www" (ISO 8601 неделя). Используется
+// как ключ weekly_share_tokens.week_iso.
+func isoWeekKey(t time.Time) string {
+	y, w := t.UTC().ISOWeek()
+	return fmt.Sprintf("%04d-W%02d", y, w)
+}
+
+// weekEndFromISO возвращает воскресенье 23:59:59 UTC для week_iso "YYYY-Www".
+// Используется в GetWeeklyShare как `now` для GetReport.Do (он вычисляет
+// окно как [now-7d, now]). При невалидной строке возвращает time.Now().
+func weekEndFromISO(iso string) time.Time {
+	var year, week int
+	if _, err := fmt.Sscanf(iso, "%4d-W%2d", &year, &week); err != nil {
+		return time.Now().UTC()
+	}
+	// 4 января всегда в неделе 1 по ISO 8601.
+	jan4 := time.Date(year, time.January, 4, 0, 0, 0, 0, time.UTC)
+	_, w1 := jan4.ISOWeek()
+	mondayWeek1 := jan4.AddDate(0, 0, -int(jan4.Weekday()-time.Monday))
+	if jan4.Weekday() == time.Sunday {
+		mondayWeek1 = jan4.AddDate(0, 0, -6)
+	}
+	monday := mondayWeek1.AddDate(0, 0, (week-w1)*7)
+	// week-end = monday + 7d (включая весь воскресный день).
+	return monday.AddDate(0, 0, 7)
 }
 
 // fetchReport prefers the cached ReportFetcher when configured; otherwise it
@@ -282,6 +359,7 @@ func toReportProto(r app.ReportView) *pb.WeeklyReport {
 		StreakDays:     int32(r.StreakDays),
 		BestStreak:     int32(r.BestStreak),
 		PrevXpEarned:   int32(r.PrevXPEarned),
+		AiInsight:      r.AIInsight,
 	}
 	for _, s := range r.StrongSections {
 		out.StrongSections = append(out.StrongSections, &pb.SectionBreakdown{

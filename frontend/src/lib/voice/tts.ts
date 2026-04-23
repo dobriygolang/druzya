@@ -87,16 +87,19 @@ async function speakPremium(text: string, opts: TTSOptions): Promise<void> {
     }),
   })
   if (res.status === 402) {
+    // eslint-disable-next-line no-console -- legitimate Web Speech API debug fallback
     console.warn('[tts] premium voice gated (402) — falling back to browser')
     await speakBrowser(text, { ...opts, voice: 'browser' })
     return
   }
   if (res.status === 501) {
+    // eslint-disable-next-line no-console -- legitimate Web Speech API debug fallback
     console.warn('[tts] premium voice backend stub (501) — falling back to browser')
     await speakBrowser(text, { ...opts, voice: 'browser' })
     return
   }
   if (!res.ok) {
+    // eslint-disable-next-line no-console -- legitimate Web Speech API debug fallback
     console.warn('[tts] premium failed', res.status, '— falling back to browser')
     await speakBrowser(text, { ...opts, voice: 'browser' })
     return

@@ -14,7 +14,7 @@
 // Ошибка 404 = у пользователя ещё нет активного календаря; страница покажет
 // CTA «Создать план». Все остальные коды → стандартный ErrorChip.
 
-import { useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '../apiClient'
 
 // Wire shape mirrors druz9v1.InterviewCalendar 1:1 (после vanguard
@@ -127,6 +127,34 @@ export function adaptCalendar(wire: InterviewCalendarWire, now: Date = new Date(
 
 export function priorityLabelRU(p: string): string {
   return PRIORITY_RU[p] ?? p
+}
+
+// UpsertCalendarPayload — поля, которые принимает POST /daily/calendar.
+// company_id обязателен (UUID существующей компании); role/level — опциональны
+// и сохраняются only если переданы непустыми.
+export type UpsertCalendarPayload = {
+  company_id: string
+  role?: string
+  interview_date: string // YYYY-MM-DD
+  current_level?: string
+}
+
+// useUpsertCalendarMutation — POST /daily/calendar. На успех инвалидирует
+// queryKey ['interview', 'calendar'], чтобы страница /calendar подтянула
+// свежие days_left/readiness без ручного refetch.
+export function useUpsertCalendarMutation() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (payload: UpsertCalendarPayload) =>
+      api<InterviewCalendarWire>('/daily/calendar', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      }),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['interview', 'calendar'] })
+    },
+  })
 }
 
 // useInterviewCalendarQuery — единственный публичный хук страницы /calendar.

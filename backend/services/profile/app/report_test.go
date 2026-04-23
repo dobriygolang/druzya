@@ -180,6 +180,92 @@ func TestGetReport_HeatmapDefaultsToZeros(t *testing.T) {
 	}
 }
 
+// stubInsight implements InsightGenerator. lastPayload captures the last
+// payload it received so we can assert the use case built it from the
+// already-aggregated ReportView fields (no extra SQL on the LLM path).
+type stubInsight struct {
+	out         string
+	err         error
+	called      int
+	lastPayload InsightPayload
+	lastUID     uuid.UUID
+}
+
+func (s *stubInsight) Generate(_ context.Context, uid uuid.UUID, p InsightPayload) (string, error) {
+	s.called++
+	s.lastPayload = p
+	s.lastUID = uid
+	return s.out, s.err
+}
+
+func TestGetReport_AIInsight_PopulatedWhenClientConfigured(t *testing.T) {
+	t.Parallel()
+	ctrl := gomock.NewController(t)
+	repo := mocks.NewMockProfileRepo(ctrl)
+	uid := uuid.New()
+	repo.EXPECT().CountRecentActivity(gomock.Any(), uid, gomock.Any()).Return(domain.Activity{
+		MatchesWon: 5, XPEarned: 1200, TimeMinutes: 240, RatingChange: 35,
+	}, nil)
+	repo.EXPECT().ListMatchAggregatesSince(gomock.Any(), uid, gomock.Any()).Return([]domain.MatchAggregate{
+		{Section: enums.SectionAlgorithms, Win: true, XPDelta: 200},
+		{Section: enums.SectionSQL, Win: false, XPDelta: -80},
+	}, nil)
+	repo.EXPECT().ListWeeklyXPSince(gomock.Any(), uid, gomock.Any(), 4).Return([]int{1200, 0, 0, 0}, nil)
+	repo.EXPECT().GetStreaks(gomock.Any(), uid).Return(3, 9, nil)
+
+	stub := &stubInsight{out: "AI-generated coaching narrative."}
+	uc := &GetReport{Repo: repo, Insight: stub}
+	v, err := uc.Do(context.Background(), uid, time.Now())
+	if err != nil {
+		t.Fatalf("unexpected: %v", err)
+	}
+	if v.AIInsight != "AI-generated coaching narrative." {
+		t.Fatalf("AIInsight not populated: %q", v.AIInsight)
+	}
+	if stub.called != 1 {
+		t.Fatalf("expected 1 insight call, got %d", stub.called)
+	}
+	if stub.lastUID != uid {
+		t.Fatalf("uid mismatch")
+	}
+	if stub.lastPayload.WeekISO == "" {
+		t.Fatalf("WeekISO not built")
+	}
+	if stub.lastPayload.EloDelta != 35 {
+		t.Fatalf("EloDelta mismatch: %d", stub.lastPayload.EloDelta)
+	}
+	if stub.lastPayload.HoursStudied != 4.0 {
+		t.Fatalf("HoursStudied mismatch: %v", stub.lastPayload.HoursStudied)
+	}
+	if stub.lastPayload.Streak != 3 {
+		t.Fatalf("Streak mismatch: %d", stub.lastPayload.Streak)
+	}
+	if stub.lastPayload.WeakestSection != enums.SectionSQL.String() {
+		t.Fatalf("WeakestSection mismatch: %q", stub.lastPayload.WeakestSection)
+	}
+}
+
+func TestGetReport_AIInsight_ErrorIsSwallowed(t *testing.T) {
+	t.Parallel()
+	ctrl := gomock.NewController(t)
+	repo := mocks.NewMockProfileRepo(ctrl)
+	uid := uuid.New()
+	expectActivity(repo, uid)
+	repo.EXPECT().ListMatchAggregatesSince(gomock.Any(), uid, gomock.Any()).Return(nil, nil)
+	repo.EXPECT().ListWeeklyXPSince(gomock.Any(), uid, gomock.Any(), 4).Return([]int{0, 0, 0, 0}, nil)
+	repo.EXPECT().GetStreaks(gomock.Any(), uid).Return(0, 0, nil)
+
+	stub := &stubInsight{err: errors.New("openrouter offline")}
+	uc := &GetReport{Repo: repo, Insight: stub}
+	v, err := uc.Do(context.Background(), uid, time.Now())
+	if err != nil {
+		t.Fatalf("insight failure must NOT bubble: %v", err)
+	}
+	if v.AIInsight != "" {
+		t.Fatalf("expected empty AIInsight on error, got %q", v.AIInsight)
+	}
+}
+
 func TestGetReport_StreakErrorTolerated(t *testing.T) {
 	t.Parallel()
 	ctrl := gomock.NewController(t)

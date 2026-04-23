@@ -70,11 +70,11 @@ func (uc *GetMyRatings) Do(ctx context.Context, userID uuid.UUID) (MyRatingsView
 func (uc *GetMyRatings) percentile(ctx context.Context, userID uuid.UUID, section enums.Section) (int, error) {
 	rank, err := uc.Ratings.FindRank(ctx, userID, section)
 	if err != nil {
-		return 0, err
+		return 0, fmt.Errorf("rating.GetMyRatings.percentile.FindRank: %w", err)
 	}
 	total, err := uc.Ratings.CountSection(ctx, section)
 	if err != nil {
-		return 0, err
+		return 0, fmt.Errorf("rating.GetMyRatings.percentile.CountSection: %w", err)
 	}
 	if rank <= 0 || total <= 0 {
 		return 0, nil

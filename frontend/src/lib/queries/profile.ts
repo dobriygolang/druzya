@@ -1,5 +1,5 @@
-import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { api } from '../apiClient'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { api, API_BASE } from '../apiClient'
 
 export type Attributes = {
   intellect: number
@@ -111,6 +111,28 @@ export type WeekComparison = {
   pct: number
 }
 
+// Phase A killer-stats типы. Бэк (proto/druz9/v1/profile.proto) расширил
+// WeeklyReport под /weekly dashboard rewrite — фронт читает их напрямую,
+// без перепаковки в weekly.ts adapter (там и так всё мёртвое legacy).
+export type EloPoint = {
+  date: string // ISO YYYY-MM-DD
+  elo: number
+  section: string // совпадает с pb.Section, без префиксов
+}
+
+export type PercentileView = {
+  in_tier: number // 0..100, целое
+  in_friends: number
+  in_global: number
+}
+
+export type AchievementBrief = {
+  code: string
+  title: string
+  unlocked_at: string // ISO-8601
+  tier: string // bronze|silver|gold|...
+}
+
 export type WeeklyReport = {
   week_start: string
   week_end: string
@@ -138,6 +160,14 @@ export type WeeklyReport = {
   strong_sections?: SectionBreakdown[]
   weak_sections?: SectionBreakdown[]
   weekly_xp?: WeekComparison[]
+  // Phase A killer-stats поля. Опциональны — старый бэк отдаст undefined,
+  // фронт безопасно переходит к empty-state.
+  hourly_heatmap?: number[] // 168 ячеек, dow*24+hour
+  elo_series?: EloPoint[]
+  percentiles?: PercentileView
+  ai_insight?: string
+  achievements_this_week?: AchievementBrief[]
+  share_token?: string
 }
 
 // Stable cache keys used across the app. Exported so write-paths (settings,
@@ -210,4 +240,57 @@ export function useWeeklyReportQuery() {
 export function useInvalidateProfile() {
   const qc = useQueryClient()
   return () => qc.invalidateQueries({ queryKey: profileQueryKeys.all })
+}
+
+// ── Phase C: weekly-report public share link ────────────────────────────────
+//
+// useWeeklyShareQuery — публичная страница /weekly/share/:token. Не требует
+// bearer (REST gate пропускает по publicPaths-prefix). Используем сырой
+// fetch, а не api(), чтобы случайно не залить access-токен и не дёрнуть
+// 401-refresh-loop, если у анонима его нет.
+export const weeklyShareQueryKey = (token: string) =>
+  ['profile', 'weekly', 'share', token] as const
+
+// fetchWeeklyShare — выделено отдельно от хука для unit-тестов: vitest умеет
+// замокать globalThis.fetch и проверить контракт без поднятия react-query.
+export async function fetchWeeklyShare(token: string): Promise<WeeklyReport> {
+  const res = await fetch(`${API_BASE}/profile/weekly/share/${encodeURIComponent(token)}`, {
+    headers: { 'Content-Type': 'application/json' },
+  })
+  if (res.status === 404) {
+    throw Object.assign(new Error('share token not found'), { status: 404 })
+  }
+  if (!res.ok) {
+    throw Object.assign(new Error(`share request failed: ${res.status}`), { status: res.status })
+  }
+  return (await res.json()) as WeeklyReport
+}
+
+export function useWeeklyShareQuery(token: string | undefined) {
+  const safe = (token ?? '').trim()
+  return useQuery({
+    queryKey: weeklyShareQueryKey(safe),
+    queryFn: () => fetchWeeklyShare(safe),
+    enabled: safe.length > 0,
+    staleTime: PROFILE_STALE_MS,
+    gcTime: PROFILE_GC_MS,
+    retry: (failureCount, err) => {
+      const status = (err as { status?: number } | null)?.status
+      if (status === 404) return false
+      return failureCount < 2
+    },
+  })
+}
+
+// useIssueShareTokenMutation — кнопка «Поделиться» на /weekly. Дёргает
+// /profile/me/report?include_share_token=true (через transcoded REST), бэк
+// возвращает WeeklyReport со свежим share_token. Возвращаем строку токена
+// (или пустую строку, если бэк по какой-то причине не выдал).
+export function useIssueShareTokenMutation() {
+  return useMutation({
+    mutationFn: async (): Promise<string> => {
+      const r = await api<WeeklyReport>('/profile/me/report?include_share_token=true')
+      return r.share_token ?? ''
+    },
+  })
 }

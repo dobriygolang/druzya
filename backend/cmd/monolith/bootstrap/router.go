@@ -153,6 +153,13 @@ func restAuthGate(requireAuth func(http.Handler) http.Handler) func(http.Handler
 		if _, ok := publicPaths[p]; ok {
 			return true
 		}
+		// /api/v1/profile/weekly/share/{token} — public weekly-report share
+		// link (Phase C killer-stats). Резолвится по токену в БД, поэтому
+		// bearer не нужен. Проверка отдельным префиксом, чтобы будущие
+		// приватные /profile/weekly/* пути НЕ стали публичными по ошибке.
+		if strings.HasPrefix(p, "/api/v1/profile/weekly/share/") {
+			return true
+		}
 		// /api/v1/profile/{username} — public, but /api/v1/profile/me*
 		// is NOT.
 		if strings.HasPrefix(p, "/api/v1/profile/") && !strings.HasPrefix(p, "/api/v1/profile/me") {

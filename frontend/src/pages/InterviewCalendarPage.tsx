@@ -12,12 +12,18 @@
 //     с CTA на /daily.
 //   - есть план, но пуст today_tasks → блок свернут.
 //   - week_plan пуст → grid не рисуется.
+import { useState } from 'react'
 import { Calendar, Check, AlertTriangle } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { AppShellV2 } from '../components/AppShell'
 import { Button } from '../components/Button'
 import { Card } from '../components/Card'
-import { useInterviewCalendarQuery, priorityLabelRU } from '../lib/queries/calendar'
+import {
+  useInterviewCalendarQuery,
+  useUpsertCalendarMutation,
+  priorityLabelRU,
+  type InterviewCalendarView,
+} from '../lib/queries/calendar'
 
 function ErrorChip() {
   return (
@@ -107,9 +113,94 @@ function renderWeekGrid(daysLeft: number) {
   ))
 }
 
+// EditDateModal — редактирует interview_date текущего календаря. company_id
+// сохраняется неизменным (бэкендный UpsertCalendar требует UUID, у нас нет
+// «компаний-пикера» в этом MVP), role/level можно отредактировать строкой.
+function EditDateModal({
+  current,
+  onClose,
+}: {
+  current: InterviewCalendarView
+  onClose: () => void
+}) {
+  const upsert = useUpsertCalendarMutation()
+  const [date, setDate] = useState(current.interview_date.slice(0, 10))
+  const [role, setRole] = useState(current.role ?? '')
+  const [err, setErr] = useState<string | null>(null)
+
+  const onSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setErr(null)
+    if (!date) {
+      setErr('Укажи дату собеседования')
+      return
+    }
+    try {
+      await upsert.mutateAsync({
+        company_id: current.company_id,
+        role: role.trim() || undefined,
+        interview_date: date,
+      })
+      onClose()
+    } catch (e) {
+      setErr((e as Error).message ?? 'Не удалось сохранить')
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4">
+      <form
+        onSubmit={onSubmit}
+        className="w-full max-w-md rounded-xl border border-border bg-surface-1 p-6 shadow-xl"
+      >
+        <h3 className="font-display text-lg font-bold text-text-primary">
+          Изменить дату собеседования
+        </h3>
+        <p className="mt-1 text-[12px] text-text-muted">
+          План подготовки пересчитается под новую дату.
+        </p>
+        <label className="mt-4 flex flex-col gap-1 text-sm">
+          <span className="font-mono text-[11px] uppercase text-text-secondary">Дата</span>
+          <input
+            type="date"
+            required
+            value={date}
+            onChange={(e) => setDate(e.target.value)}
+            className="rounded-md border border-border bg-surface-2 px-3 py-2 text-text-primary focus:border-accent focus:outline-none"
+          />
+        </label>
+        <label className="mt-3 flex flex-col gap-1 text-sm">
+          <span className="font-mono text-[11px] uppercase text-text-secondary">Роль</span>
+          <input
+            type="text"
+            value={role}
+            placeholder="Backend Engineer"
+            onChange={(e) => setRole(e.target.value)}
+            className="rounded-md border border-border bg-surface-2 px-3 py-2 text-text-primary focus:border-accent focus:outline-none"
+          />
+        </label>
+        {err && (
+          <div className="mt-3 rounded-md border border-danger/40 bg-danger/10 px-3 py-2 text-[12px] text-danger">
+            {err}
+          </div>
+        )}
+        <div className="mt-5 flex justify-end gap-2">
+          <Button variant="ghost" size="sm" onClick={onClose} type="button">
+            Отмена
+          </Button>
+          <Button variant="primary" size="sm" type="submit" disabled={upsert.isPending}>
+            {upsert.isPending ? 'Сохраняю…' : 'Сохранить'}
+          </Button>
+        </div>
+      </form>
+    </div>
+  )
+}
+
 export default function InterviewCalendarPage() {
   const { data, isError, isLoading, error } = useInterviewCalendarQuery()
   const status = (error as { status?: number } | null)?.status
+  const [editOpen, setEditOpen] = useState(false)
 
   if (isLoading) {
     return (
@@ -179,6 +270,7 @@ export default function InterviewCalendarPage() {
                 size="sm"
                 className="border-white/30 text-text-primary hover:bg-white/10"
                 icon={<Calendar className="h-3.5 w-3.5" />}
+                onClick={() => setEditOpen(true)}
               >
                 Изменить дату
               </Button>
@@ -277,6 +369,7 @@ export default function InterviewCalendarPage() {
           </Card>
         </div>
       </div>
+      {editOpen && <EditDateModal current={data} onClose={() => setEditOpen(false)} />}
     </AppShellV2>
   )
 }

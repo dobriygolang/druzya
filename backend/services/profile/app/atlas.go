@@ -126,6 +126,10 @@ func (uc *GetAtlas) Do(ctx context.Context, userID uuid.UUID) (AtlasView, error)
 // для «Решено X из Y». Числа подобраны на глаз по факту (sql:basics — 12
 // классических задач JOIN/GROUP BY и т.д.) — когда появится cross-context
 // read из daily, заменим на реальный SELECT count(*).
+//
+// TODO(admin-cms): the skill catalogue is hardcoded in this file because we
+// don't yet have admin UI to manage it. Migrate to a `skill_catalogue` table
+// with admin CRUD when content team is ready. Tracked in roadmap as P3.
 type catalogueNode struct {
 	Key         string
 	Title       string

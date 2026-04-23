@@ -5,6 +5,7 @@ import (
 	"log/slog"
 
 	"druz9/profile/app"
+	"druz9/profile/domain"
 
 	"github.com/google/uuid"
 )
@@ -23,7 +24,11 @@ type Handler struct {
 	// Если nil, GetMyReport вызывает GetReport напрямую. В проде wired в
 	// cmd/monolith/services/profile.go.
 	ReportFetcher ReportFetcher
-	Log           *slog.Logger
+	// Repo — прямой доступ к репозиторию для путей, где use case ещё не
+	// выделен (Issue/ResolveShareToken). Может быть nil в тестах, тогда
+	// share-эндпоинты вернут Internal/Unavailable.
+	Repo domain.ProfileRepo
+	Log  *slog.Logger
 }
 
 // ReportFetcher — узкий интерфейс, который ports.GetMyReport использует
