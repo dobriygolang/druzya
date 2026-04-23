@@ -55,6 +55,29 @@ type ArenaParticipant struct {
 	SubmittedAt    pgtype.Timestamptz
 }
 
+type AtlasEdge struct {
+	ID     int64
+	FromID string
+	ToID   string
+	Kind   string
+}
+
+type AtlasNode struct {
+	ID          string
+	Title       string
+	Section     string
+	Kind        string
+	Description string
+	TotalCount  int32
+	PosX        pgtype.Int4
+	PosY        pgtype.Int4
+	SortOrder   int32
+	IsActive    bool
+	CreatedAt   pgtype.Timestamptz
+	UpdatedAt   pgtype.Timestamptz
+	Cluster     string
+}
+
 type Booking struct {
 	ID          pgtype.UUID
 	SlotID      pgtype.UUID
@@ -272,6 +295,24 @@ type LlmConfig struct {
 	Temperature pgtype.Numeric
 	MaxTokens   int32
 	CreatedAt   pgtype.Timestamptz
+}
+
+type LlmModel struct {
+	ID                 int64
+	ModelID            string
+	Label              string
+	Provider           string
+	Tier               string
+	IsEnabled          bool
+	ContextWindow      pgtype.Int4
+	CostPer1kInputUsd  pgtype.Numeric
+	CostPer1kOutputUsd pgtype.Numeric
+	UseForArena        bool
+	UseForInsight      bool
+	UseForMock         bool
+	SortOrder          int32
+	CreatedAt          pgtype.Timestamptz
+	UpdatedAt          pgtype.Timestamptz
 }
 
 type MentorSession struct {
@@ -630,16 +671,19 @@ type TgUserLink struct {
 }
 
 type User struct {
-	ID           pgtype.UUID
-	Email        pgtype.Text
-	Username     string
-	PasswordHash pgtype.Text
-	Role         string
-	Locale       string
-	DisplayName  pgtype.Text
-	CreatedAt    pgtype.Timestamptz
-	UpdatedAt    pgtype.Timestamptz
-	AvatarUrl    string
+	ID                    pgtype.UUID
+	Email                 pgtype.Text
+	Username              string
+	PasswordHash          pgtype.Text
+	Role                  string
+	Locale                string
+	DisplayName           pgtype.Text
+	CreatedAt             pgtype.Timestamptz
+	UpdatedAt             pgtype.Timestamptz
+	AvatarUrl             string
+	AiInsightModel        pgtype.Text
+	OnboardingCompletedAt pgtype.Timestamptz
+	FocusClass            string
 }
 
 type UserAchievement struct {
