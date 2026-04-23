@@ -20,8 +20,10 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { AppShellV2 } from '../../components/AppShell'
 import { EmptyState } from '../../components/EmptyState'
 import { PipelineStepper } from '../../components/mock/PipelineStepper'
+import { AIAssistantChat } from '../../components/mock/AIAssistantChat'
 import {
   isComingSoonError,
+  MOCK_AI_ASSIST_STORAGE_KEY,
   STAGE_LABEL,
   useCompleteStageMutation,
   useFinishMockPipelineMutation,
@@ -30,6 +32,28 @@ import {
   type MockPipelineStage,
   type StageKind,
 } from '../../lib/queries/mockPipeline'
+
+// Stages where the AI assistant chat panel is useful. Screening / behavioral
+// happen on a voice channel; algo / sys_design / behavioral are text-friendly
+// surfaces where typed hints help. (Behavioral is included because the
+// candidate may want to refine STAR phrasing in text before recording.)
+const AI_ASSIST_STAGES: ReadonlySet<StageKind> = new Set<StageKind>([
+  'algo',
+  'sys_design',
+  'behavioral',
+])
+
+function readPipelineAiAssist(pipelineId: string | undefined, fromServer: boolean | undefined): boolean {
+  if (typeof fromServer === 'boolean') return fromServer
+  if (!pipelineId) return false
+  try {
+    if (typeof window === 'undefined') return false
+    const v = window.localStorage.getItem(`${MOCK_AI_ASSIST_STORAGE_KEY}.${pipelineId}`)
+    return v === '1'
+  } catch {
+    return false
+  }
+}
 
 // Lazy-loaded Excalidraw chunk — only imported when a sys_design stage
 // is actually active, so the main bundle stays slim. The dynamic import
@@ -177,7 +201,21 @@ export default function MockPipelinePage() {
           statuses={stages.map((s) => s.status)}
         />
 
-        <StageHost stage={currentStage} />
+        {(() => {
+          const aiAssist = readPipelineAiAssist(pipelineId, pipeline.data.ai_assist)
+          const showChat = aiAssist && AI_ASSIST_STAGES.has(currentStage.kind)
+          if (!showChat) {
+            return <StageHost stage={currentStage} />
+          }
+          return (
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-start">
+              <div className="min-w-0 flex-1">
+                <StageHost stage={currentStage} />
+              </div>
+              <AIAssistantChat />
+            </div>
+          )
+        })()}
 
         <div className="flex items-center justify-between gap-3 flex-wrap">
           <button

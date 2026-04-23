@@ -26,6 +26,7 @@ export type ArenaModeKey =
   | 'duo_2v2'
   | 'ranked'
   | 'hardcore'
+  // 'cursed' wire-mode kept for backward-compat; AI-allowed now lives as a Mock pipeline toggle.
   | 'cursed'
 
 export type ArenaLanguageKey =

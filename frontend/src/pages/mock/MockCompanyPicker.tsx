@@ -4,8 +4,14 @@
 //
 // The user picks one company → we POST /mock/pipelines → navigate to
 // /mock/pipeline/{id}. The 5 stages (screening → go+sql → algo →
-// sys_design → behavioral) live on the cockpit page; this screen only
-// owns the "which company are we simulating?" decision.
+// sys_design → behavioral) live on the cockpit page; this screen owns
+// two decisions:
+//   1. which company to simulate
+//   2. AI assistant — OFF (classic mock) or ON (chat panel during stages)
+//
+// Wave-12 UX consolidation: the AI-assist toggle replaces the separate
+// "AI-allowed Interview" arena card. Both flows are the same multi-stage
+// mock; the toggle just gates a right-side AIAssistantChat in the cockpit.
 //
 // Anti-fallback:
 //   - Companies fetched live via useMockCompaniesQuery. No hardcoded list.
@@ -13,24 +19,48 @@
 //     `mock_pipeline.coming_soon` and we render the EmptyState that links
 //     to the existing single-shot /voice-mock so users still have a path.
 
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { Bot, Check } from 'lucide-react'
 import { AppShellV2 } from '../../components/AppShell'
 import { EmptyState } from '../../components/EmptyState'
 import { CompanyCard } from '../../components/mock/CompanyCard'
 import {
   isComingSoonError,
+  MOCK_AI_ASSIST_STORAGE_KEY,
   useCreateMockPipelineMutation,
   useMockCompaniesQuery,
 } from '../../lib/queries/mockPipeline'
+
+function loadInitialAiAssist(): boolean {
+  try {
+    if (typeof window === 'undefined') return false
+    return window.localStorage.getItem(MOCK_AI_ASSIST_STORAGE_KEY) === '1'
+  } catch {
+    return false
+  }
+}
 
 export default function MockCompanyPicker() {
   const navigate = useNavigate()
   const companies = useMockCompaniesQuery()
   const create = useCreateMockPipelineMutation()
+  const [aiAssist, setAiAssist] = useState<boolean>(loadInitialAiAssist)
+
+  const persistAiAssist = (next: boolean) => {
+    setAiAssist(next)
+    try {
+      if (typeof window !== 'undefined') {
+        window.localStorage.setItem(MOCK_AI_ASSIST_STORAGE_KEY, next ? '1' : '0')
+      }
+    } catch {
+      /* localStorage unavailable — choice still applies for this session */
+    }
+  }
 
   const handlePick = (company_id: string) => {
     create.mutate(
-      { company_id },
+      { company_id, ai_assist: aiAssist },
       {
         onSuccess: (pipeline) => navigate(`/mock/pipeline/${pipeline.id}`),
       },
@@ -50,6 +80,28 @@ export default function MockCompanyPicker() {
             доской) → behavioral. На каждой секции ставится оценка, в конце — отчёт.
           </p>
         </header>
+
+        <fieldset
+          className="flex flex-col gap-2 rounded-xl border border-border bg-surface-1 p-4"
+          aria-label="Режим AI-помощника"
+        >
+          <legend className="font-mono text-[10px] uppercase tracking-wider text-text-muted px-1">
+            AI-помощник во время собеса
+          </legend>
+          <AiAssistOption
+            checked={!aiAssist}
+            onSelect={() => persistAiAssist(false)}
+            title="AI-помощник запрещён"
+            body="Классический mock: только ты, задачи и таймер. Так проходит реальный собес."
+          />
+          <AiAssistOption
+            checked={aiAssist}
+            onSelect={() => persistAiAssist(true)}
+            title="AI-помощник разрешён"
+            body="Справа во время алго / sys-design / behavioral будет чат с нейрокой — можно спрашивать подсказки."
+            icon={<Bot className="h-4 w-4 text-pink" />}
+          />
+        </fieldset>
 
         {companies.isLoading && <EmptyState variant="loading" skeletonLayout="card-grid" />}
 
@@ -101,5 +153,51 @@ export default function MockCompanyPicker() {
         )}
       </div>
     </AppShellV2>
+  )
+}
+
+function AiAssistOption({
+  checked,
+  onSelect,
+  title,
+  body,
+  icon,
+}: {
+  checked: boolean
+  onSelect: () => void
+  title: string
+  body: string
+  icon?: React.ReactNode
+}) {
+  return (
+    <button
+      type="button"
+      role="radio"
+      aria-checked={checked}
+      onClick={onSelect}
+      className={[
+        'flex items-start gap-3 rounded-lg border p-3 text-left transition-colors',
+        checked
+          ? 'border-accent bg-accent/10'
+          : 'border-border bg-surface-2 hover:border-border-strong',
+      ].join(' ')}
+    >
+      <span
+        className={[
+          'mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-full border',
+          checked ? 'border-accent bg-accent text-bg' : 'border-border bg-surface-1',
+        ].join(' ')}
+        aria-hidden
+      >
+        {checked && <Check className="h-3 w-3" />}
+      </span>
+      <div className="flex min-w-0 flex-col gap-0.5">
+        <span className="flex items-center gap-1.5 font-display text-sm font-bold text-text-primary">
+          {icon}
+          {title}
+        </span>
+        <span className="text-xs text-text-secondary">{body}</span>
+      </div>
+    </button>
   )
 }

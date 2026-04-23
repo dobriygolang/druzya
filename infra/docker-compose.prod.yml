@@ -203,9 +203,19 @@ services:
     depends_on:
       judge0-db:
         condition: service_healthy
+      judge0-redis:
+        condition: service_started
     networks: [judge-net]
     privileged: true
     restart: always
+    healthcheck:
+      # /system_info — лёгкий публичный endpoint judge0, отдаёт 200 как только
+      # rails-приложение поднялось. wget есть в базовом образе, curl — нет.
+      test: ["CMD-SHELL", "wget -q --spider http://127.0.0.1:2358/system_info || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 30s
     deploy:
       resources:
         limits:

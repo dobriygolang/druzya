@@ -137,7 +137,22 @@ function MatchHeader({
   )
 }
 
-function TaskPanel({ title, description, difficulty, section }: { title: string; description: string; difficulty: string; section: string }) {
+function TaskPanel({
+  title,
+  description,
+  difficulty,
+  section,
+  revealTask,
+}: {
+  title: string
+  description: string
+  difficulty: string
+  section: string
+  /** Anti-cheat (Wave-12): hide task body until BOTH players are confirmed
+   *  and the match is in `active` status. Otherwise the player who joined
+   *  first gets a head-start reading the problem. */
+  revealTask: boolean
+}) {
   return (
     <div className="flex w-full flex-col gap-4 border-b border-border bg-surface-2 p-4 sm:p-6 lg:w-[340px] lg:border-b-0 lg:border-r lg:overflow-y-auto">
       <div className="flex flex-wrap gap-1.5">
@@ -149,11 +164,31 @@ function TaskPanel({ title, description, difficulty, section }: { title: string;
         </span>
       </div>
       <h2 className="font-display text-lg font-bold text-text-primary break-words">
-        {title}
+        {revealTask ? title : 'Ожидаем подтверждения соперника…'}
       </h2>
-      <p className="text-[13px] leading-relaxed text-text-secondary break-words">
-        {description}
-      </p>
+      {revealTask ? (
+        <p className="text-[13px] leading-relaxed text-text-secondary break-words">
+          {description}
+        </p>
+      ) : (
+        <div className="flex flex-col gap-3">
+          <div className="rounded-md border border-border bg-bg/40 p-4">
+            <div className="font-mono text-[10px] uppercase tracking-wider text-text-muted mb-1.5">
+              условие задачи
+            </div>
+            <div className="space-y-2">
+              {/* Skeleton blur — width hints at content but no info. Same
+                  shape regardless of who joined first → no time advantage. */}
+              <div className="h-3 w-full rounded bg-surface-3 opacity-60 animate-pulse" />
+              <div className="h-3 w-5/6 rounded bg-surface-3 opacity-60 animate-pulse" />
+              <div className="h-3 w-4/6 rounded bg-surface-3 opacity-60 animate-pulse" />
+            </div>
+          </div>
+          <p className="text-[12px] text-text-muted leading-relaxed">
+            Условие появится у обоих игроков одновременно после подтверждения.
+          </p>
+        </div>
+      )}
     </div>
   )
 }
@@ -525,6 +560,9 @@ export default function ArenaMatchPage() {
             description={taskDesc}
             difficulty={taskDifficulty}
             section={taskSection}
+            // Reveal only when match is fully active — until both players
+            // have confirmed, both see the same skeleton (anti-cheat).
+            revealTask={match?.status === 'active'}
           />
           <CodeEditor
             language={language}

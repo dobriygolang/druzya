@@ -56,6 +56,14 @@ export type MockPipeline = {
   started_at: string
   finished_at: string | null
   stages: MockPipelineStage[]
+  /**
+   * Whether the candidate enabled the AI assistant chat panel during stages.
+   * WAVE-12 UX consolidation: previously a separate "AI-allowed Interview"
+   * arena card; now a per-pipeline toggle picked at company-selection time.
+   * Backend orchestrator may not echo this field yet — frontend mirrors the
+   * choice from localStorage `druz9.mock.ai_assist` until then.
+   */
+  ai_assist?: boolean
 }
 
 const PIPELINE_FEATURE_ENABLED = false // flipped on when backend ships
@@ -98,18 +106,36 @@ export function useMockPipelineQuery(id: string | undefined) {
   })
 }
 
+export const MOCK_AI_ASSIST_STORAGE_KEY = 'druz9.mock.ai_assist'
+
 export function useCreateMockPipelineMutation() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: async (input: { company_id: string }) => {
+    mutationFn: async (input: { company_id: string; ai_assist?: boolean }) => {
       if (!PIPELINE_FEATURE_ENABLED) throw new Error('mock_pipeline.coming_soon')
       return api<MockPipeline>('/mock/pipelines', {
         method: 'POST',
         body: JSON.stringify(input),
       })
     },
-    onSuccess: (data) => {
-      qc.setQueryData(mockPipelineKeys.pipeline(data.id), data)
+    onSuccess: (data, input) => {
+      // Backend may not echo ai_assist yet (Wave-12 backend gated). Mirror the
+      // user's choice locally so MockPipelinePage can decide whether to render
+      // the AI assistant chat panel.
+      try {
+        if (typeof window !== 'undefined') {
+          window.localStorage.setItem(
+            `${MOCK_AI_ASSIST_STORAGE_KEY}.${data.id}`,
+            input.ai_assist ? '1' : '0',
+          )
+        }
+      } catch {
+        /* ignore: localStorage may be unavailable in private mode */
+      }
+      qc.setQueryData(mockPipelineKeys.pipeline(data.id), {
+        ...data,
+        ai_assist: data.ai_assist ?? input.ai_assist ?? false,
+      })
     },
   })
 }

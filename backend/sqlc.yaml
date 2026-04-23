@@ -203,3 +203,17 @@ sql:
         emit_prepared_queries: false
         emit_exact_table_names: false
         emit_empty_slices: true
+
+  - engine: postgresql
+    name: "copilot"
+    queries: "services/copilot/infra/queries"
+    schema: "migrations"
+    gen:
+      go:
+        package: "copilotdb"
+        out: "services/copilot/infra/db"
+        sql_package: "pgx/v5"
+        emit_interface: true
+        emit_prepared_queries: false
+        emit_exact_table_names: false
+        emit_empty_slices: true

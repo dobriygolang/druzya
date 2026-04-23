@@ -329,7 +329,6 @@ type Mode = {
     | 'casual_1v1'
     | 'ranked_2v2'
     | 'mock'
-    | 'ai_allowed'
     | 'pair_code'
     | 'custom_lobby'
   name: string
@@ -387,24 +386,12 @@ const MODES: Mode[] = [
   {
     key: 'mock',
     name: 'Mock Interview',
-    desc: 'Симуляция собеса с таймером и AI-интервьюером.',
+    desc: 'Симуляция собеса с компанией, многоэтапный (screening → algo → sys-design → behavioral). AI-помощник опционально.',
     count: 94,
     time: '~45с',
     icon: <Video className="h-7 w-7 text-text-primary" />,
     gradient: 'from-success to-cyan',
     arenaMode: 'hardcore',
-    requiresParty: false,
-    aiPowered: true,
-  },
-  {
-    key: 'ai_allowed',
-    name: 'AI-allowed Interview',
-    desc: 'Собес с разрешённым AI-помощником.',
-    count: 132,
-    time: '~30с',
-    icon: <Sparkles className="h-7 w-7 text-text-primary" />,
-    gradient: 'from-warn to-danger',
-    arenaMode: 'cursed',
     requiresParty: false,
     aiPowered: true,
   },

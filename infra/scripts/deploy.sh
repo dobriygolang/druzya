@@ -3,6 +3,11 @@
 # GHCR. Pulls the new image, runs migrations, performs a rolling restart of
 # the api container (nginx stays up → zero user-visible downtime).
 #
+# NOTE [WAVE-12]: Judge0 (server + workers + own pg/redis) is part of the prod
+# stack now and is started here before migrate runs so the editor service has
+# a healthy sandbox at startup. If Judge0 fails to come up the rest of the
+# stack still ships — the editor falls back to an honest 503.
+#
 # Invocation (remote):
 #   IMAGE_TAG=sha-abc123 bash /opt/druz9/infra/scripts/deploy.sh
 
@@ -45,6 +50,27 @@ log "starting infra services (postgres/redis/minio/clickhouse) before app"
 # подняты — модули падают с "lookup redis: no such host" и прочим. Поднимаем
 # инфру заранее, потом миграции, потом api.
 $COMPOSE up -d postgres redis minio clickhouse
+
+# Judge0 isolated stack (own pg + redis + server + workers). Запускаем ДО миграций,
+# чтобы editor service не словил ECONNREFUSED при первом probe-запросе. Если
+# Judge0 не поднялся — деплой не валим, остальное должно уехать (editor вернёт
+# честный 503).
+log "starting Judge0 stack (db, redis, server, workers)"
+$COMPOSE up -d judge0-db judge0-redis || log "WARN: judge0 db/redis failed to start"
+$COMPOSE up -d judge0-server judge0-workers || log "WARN: judge0 server/workers failed to start"
+
+log "waiting for Judge0 healthcheck (max 60s)"
+for i in $(seq 1 30); do
+    j0_id=$($COMPOSE ps -q judge0-server 2>/dev/null || true)
+    if [ -n "$j0_id" ] && docker inspect --format='{{.State.Health.Status}}' "$j0_id" 2>/dev/null | grep -q healthy; then
+        log "judge0 healthy (attempt $i)"
+        break
+    fi
+    if [ "$i" = "30" ]; then
+        log "WARN: judge0 not healthy after 60s — proceeding (editor will 503 honestly)"
+    fi
+    sleep 2
+done
 
 log "applying migrations"
 $COMPOSE run --rm migrate || { echo "migrations FAILED"; exit 1; }

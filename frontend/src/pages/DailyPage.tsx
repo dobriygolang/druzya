@@ -249,12 +249,14 @@ function Editor3({ kataID, initialCode }: { kataID: string; initialCode: string 
   )
 }
 
-// sandboxFriendlyMessage — выдаёт честный empty-state, когда Judge0 не
-// настроен на dev (HTTP 503). Фолбэк — generic-сообщение.
+// sandboxFriendlyMessage — выдаёт честный empty-state, когда sandbox
+// возвращает 503 (Judge0 рестартует / временно недоступен). Фолбэк — generic.
+// До WAVE-12 prod был без Judge0, и здесь висел dev-specific текст; теперь
+// Judge0 деплоится автоматически через infra/scripts/deploy.sh.
 function sandboxFriendlyMessage(err: unknown, fallback: string): string {
   if (err instanceof ApiError) {
     if (err.status === 503) {
-      return 'Песочница временно недоступна. Это dev-окружение без Judge0; запусти локально или попробуй позже.'
+      return 'Песочница временно недоступна. Попробуй ещё раз через минуту.'
     }
     if (err.status === 0) {
       return 'Нет соединения с сервером. Проверь сеть и попробуй снова.'
