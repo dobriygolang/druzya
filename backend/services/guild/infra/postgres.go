@@ -324,20 +324,6 @@ func sectionFromPgText(t pgtype.Text) *enums.Section {
 	return &s
 }
 
-func guildFromRow(r guilddb.Guild) domain.Guild {
-	g := domain.Guild{
-		ID:        fromPgUUID(r.ID),
-		OwnerID:   fromPgUUID(r.OwnerID),
-		Name:      r.Name,
-		GuildElo:  int(r.GuildElo),
-		CreatedAt: r.CreatedAt.Time,
-	}
-	if r.Emblem.Valid {
-		g.Emblem = r.Emblem.String
-	}
-	return g
-}
-
 // upsertRowToGuild / getRowToGuild / myRowToGuild — bridges introduced after
 // sqlc moved UpsertGuild/GetGuild/GetMyGuild to subset row types (they
 // SELECT/RETURN only the 6 base columns, while guilddb.Guild now has the
