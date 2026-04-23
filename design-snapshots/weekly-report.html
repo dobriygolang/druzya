@@ -1,0 +1,249 @@
+<!doctype html>
+<html lang="ru" class="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Weekly Report · druz9</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700;800&family=Geist+Mono:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script>
+  tailwind.config = { darkMode: 'class', theme: { extend: {
+    colors: {
+      bg: 'rgb(var(--color-bg) / <alpha-value>)',
+      surface: { 1: 'rgb(var(--color-surface-1) / <alpha-value>)', 2: 'rgb(var(--color-surface-2) / <alpha-value>)', 3: 'rgb(var(--color-surface-3) / <alpha-value>)' },
+      border: { DEFAULT: 'rgb(var(--color-border) / <alpha-value>)', strong: 'rgb(var(--color-border-strong) / <alpha-value>)' },
+      text: { primary: 'rgb(var(--color-text-primary) / <alpha-value>)', secondary: 'rgb(var(--color-text-secondary) / <alpha-value>)', muted: 'rgb(var(--color-text-muted) / <alpha-value>)' },
+      accent: 'rgb(var(--color-accent) / <alpha-value>)',
+      cyan: 'rgb(var(--color-cyan) / <alpha-value>)', pink: 'rgb(var(--color-pink) / <alpha-value>)',
+      success: 'rgb(var(--color-success) / <alpha-value>)', warn: 'rgb(var(--color-warn) / <alpha-value>)', danger: 'rgb(var(--color-danger) / <alpha-value>)',
+    },
+    fontFamily: { display: ['Geist', 'Inter', 'sans-serif'], mono: ['Geist Mono', 'monospace'] },
+  }}}
+</script>
+<style>
+  :root, .dark {
+    --color-bg: 10 10 15; --color-surface-1: 20 20 37; --color-surface-2: 26 26 46; --color-surface-3: 45 27 77;
+    --color-border: 34 34 51; --color-border-strong: 42 42 63;
+    --color-text-primary: 255 255 255; --color-text-secondary: 192 192 192; --color-text-muted: 138 138 158;
+    --color-accent: 88 44 255; --color-success: 16 185 129; --color-danger: 239 68 68; --color-warn: 251 191 36;
+    --color-cyan: 34 211 238; --color-pink: 244 114 182;
+  }
+  body { font-family: 'Inter', system-ui, sans-serif; background: rgb(var(--color-bg)); color: rgb(var(--color-text-primary)); }
+  .font-display { font-family: 'Geist', 'Inter', sans-serif; }
+  .font-mono { font-family: 'Geist Mono', monospace; }
+</style>
+</head>
+<body class="min-h-screen">
+
+<header class="sticky top-0 z-40 flex h-[64px] items-center justify-between border-b border-border bg-bg px-4 sm:px-6 lg:h-[72px] lg:px-8">
+  <div class="flex min-w-0 items-center gap-4 lg:gap-8">
+    <a href="index.html" class="flex items-center gap-2.5">
+      <span class="grid h-8 w-8 shrink-0 place-items-center rounded-md bg-gradient-to-br from-accent to-cyan font-display text-lg font-extrabold">9</span>
+      <span class="font-display text-lg font-bold">druz9</span>
+    </a>
+    <nav class="hidden items-center gap-1 lg:flex text-sm">
+      <a href="sanctum.html" class="rounded-md px-3.5 py-2 font-medium text-text-secondary hover:bg-surface-2">Sanctum</a>
+      <a class="rounded-md bg-surface-2 px-3.5 py-2 font-semibold">Weekly</a>
+      <a href="atlas.html" class="rounded-md px-3.5 py-2 font-medium text-text-secondary hover:bg-surface-2">Atlas</a>
+    </nav>
+  </div>
+  <div class="grid h-9 w-9 place-items-center rounded-full" style="background: linear-gradient(135deg, #F472B6 0%, #582CFF 100%);"><span class="font-display text-sm font-bold">Д</span></div>
+</header>
+
+<main class="mx-auto max-w-7xl px-4 py-6 sm:px-8 lg:px-20 lg:py-10">
+
+  <!-- Hero -->
+  <div class="mb-8">
+    <div class="mb-2 flex items-center gap-3">
+      <button class="grid h-8 w-8 place-items-center rounded-md border border-border bg-surface-2 text-text-secondary hover:text-text-primary">‹</button>
+      <div class="font-mono text-[11px] uppercase tracking-wider text-text-muted">Неделя 17 · 22–28 апреля 2026</div>
+      <button class="grid h-8 w-8 place-items-center rounded-md border border-border bg-surface-2 text-text-secondary hover:text-text-primary">›</button>
+      <span class="ml-auto rounded-full bg-success/15 px-2.5 py-0.5 font-mono text-[10px] font-bold uppercase text-success">● текущая неделя</span>
+    </div>
+    <h1 class="font-display text-3xl font-bold lg:text-[40px] leading-[1.1]">Weekly <span class="bg-gradient-to-r from-cyan to-pink bg-clip-text text-transparent">отчёт</span></h1>
+    <p class="mt-1 text-sm text-text-secondary">Что прокачал, где провалился, что AI Coach думает по этому поводу.</p>
+  </div>
+
+  <!-- KPI strip -->
+  <div class="mb-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+    <div class="rounded-xl border border-border bg-surface-1 p-4">
+      <div class="font-mono text-[10px] uppercase text-text-muted mb-1">XP за неделю</div>
+      <div class="font-display text-2xl font-extrabold">+ 1 246</div>
+      <div class="mt-0.5 font-mono text-[10px] text-success">▲ +28% к прошлой</div>
+    </div>
+    <div class="rounded-xl border border-border bg-surface-1 p-4">
+      <div class="font-mono text-[10px] uppercase text-text-muted mb-1">ELO Δ</div>
+      <div class="font-display text-2xl font-extrabold text-success">+24</div>
+      <div class="mt-0.5 font-mono text-[10px] text-text-muted">2 412 → 2 436</div>
+    </div>
+    <div class="rounded-xl border border-border bg-surface-1 p-4">
+      <div class="font-mono text-[10px] uppercase text-text-muted mb-1">Активных дней</div>
+      <div class="font-display text-2xl font-extrabold">6 / 7</div>
+      <div class="mt-0.5 font-mono text-[10px] text-warn">streak 14 🔥</div>
+    </div>
+    <div class="rounded-xl border border-border bg-surface-1 p-4">
+      <div class="font-mono text-[10px] uppercase text-text-muted mb-1">Действий</div>
+      <div class="font-display text-2xl font-extrabold">42</div>
+      <div class="mt-0.5 font-mono text-[10px] text-text-muted">22 W · 14 L · 6 D</div>
+    </div>
+    <div class="rounded-xl border border-border bg-surface-1 p-4">
+      <div class="font-mono text-[10px] uppercase text-text-muted mb-1">Время</div>
+      <div class="font-display text-2xl font-extrabold">11:42</div>
+      <div class="mt-0.5 font-mono text-[10px] text-text-muted">часов</div>
+    </div>
+  </div>
+
+  <!-- Two-column body -->
+  <div class="grid gap-5 lg:grid-cols-3">
+
+    <!-- AI Coach insight (span 2) -->
+    <div class="lg:col-span-2 rounded-xl border border-pink/40 bg-gradient-to-br from-surface-3 to-surface-1 p-6 relative overflow-hidden">
+      <div class="absolute -top-12 -right-12 h-40 w-40 rounded-full bg-pink/30 blur-3xl"></div>
+      <div class="relative">
+        <div class="mb-3 flex items-center gap-2">
+          <div class="font-mono text-[10px] uppercase tracking-wider text-pink">✨ AI Coach insight</div>
+          <span class="rounded-full bg-surface-2 px-2 py-0.5 font-mono text-[9px] uppercase text-text-muted">claude-sonnet-4</span>
+        </div>
+        <h3 class="font-display text-xl font-bold mb-3 leading-tight">Ты бьёшь рекорды, но проседаешь в графах</h3>
+        <div class="space-y-3 text-[14px] leading-relaxed text-text-secondary">
+          <p>На этой неделе ты решил <strong class="text-text-primary">42 задачи</strong> — твой второй лучший показатель за месяц. ELO растёт стабильно (+24), а sandbox-тесты ты проходишь с первой попытки в <strong class="text-text-primary">73%</strong> случаев. Это сильно выше прошлой недели (61%).</p>
+          <p>Но <strong class="text-warn">5 из 7 проигранных матчей</strong> — на графах (DFS на матрицах + Dijkstra). Среднее время на этих задачах — 18 минут, тогда как на алго-задачах в среднем 6. Похоже, ты теряешь шаблон обхода и перегружаешь рабочую память состояниями.</p>
+          <p class="text-text-primary"><strong>Рекомендация:</strong> запусти focused-неделю. 3 графовых задачи в день по 30 минут, начни с матриц 4×4 чтобы построить мышечную память, постепенно переходи к взвешенным.</p>
+        </div>
+        <div class="mt-5 flex items-center gap-3">
+          <button class="rounded-md bg-accent px-4 py-2 text-sm font-semibold">Открыть план →</button>
+          <button class="rounded-md border border-border bg-surface-2 px-4 py-2 text-sm text-text-secondary">Поделиться</button>
+          <span class="ml-auto font-mono text-[10px] text-text-muted">сгенерировано 28 апр, 06:02</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Streak heatmap -->
+    <div class="rounded-xl border border-border bg-surface-1 p-5">
+      <div class="mb-3 flex items-center justify-between">
+        <h3 class="font-display font-bold">Активность · 7 дней</h3>
+        <span class="font-mono text-[10px] uppercase text-text-muted">ПН → ВС</span>
+      </div>
+      <div class="grid grid-cols-7 gap-1 mb-4">
+        <div class="aspect-square rounded-sm bg-success/40" title="Пн · 4"></div>
+        <div class="aspect-square rounded-sm bg-success/70"></div>
+        <div class="aspect-square rounded-sm bg-success/90"></div>
+        <div class="aspect-square rounded-sm bg-success"></div>
+        <div class="aspect-square rounded-sm bg-surface-2 border border-danger/40"></div>
+        <div class="aspect-square rounded-sm bg-success/70"></div>
+        <div class="aspect-square rounded-sm bg-warn/80 ring-2 ring-warn animate-pulse"></div>
+      </div>
+      <div class="space-y-2 text-xs">
+        <div class="flex items-center justify-between"><span class="text-text-muted">Лучший день</span><span class="font-mono text-success">ЧТ · 12 действий</span></div>
+        <div class="flex items-center justify-between"><span class="text-text-muted">Скип</span><span class="font-mono text-danger">ПТ · использован freeze</span></div>
+        <div class="flex items-center justify-between"><span class="text-text-muted">Сегодня</span><span class="font-mono text-warn">в процессе</span></div>
+      </div>
+    </div>
+
+    <!-- Strong sections -->
+    <div class="rounded-xl border border-border bg-surface-1 p-5">
+      <h3 class="font-display font-bold mb-3">Сильные секции</h3>
+      <div class="space-y-3">
+        <div>
+          <div class="mb-1 flex items-center justify-between text-xs">
+            <span>Algorithms</span><span class="font-mono text-success">86%</span>
+          </div>
+          <div class="h-1.5 rounded-full bg-surface-2"><div class="h-full rounded-full bg-success" style="width: 86%"></div></div>
+        </div>
+        <div>
+          <div class="mb-1 flex items-center justify-between text-xs"><span>Go</span><span class="font-mono text-success">78%</span></div>
+          <div class="h-1.5 rounded-full bg-surface-2"><div class="h-full rounded-full bg-success/80" style="width: 78%"></div></div>
+        </div>
+        <div>
+          <div class="mb-1 flex items-center justify-between text-xs"><span>System Design</span><span class="font-mono text-cyan">71%</span></div>
+          <div class="h-1.5 rounded-full bg-surface-2"><div class="h-full rounded-full bg-cyan" style="width: 71%"></div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Weak sections -->
+    <div class="rounded-xl border border-danger/30 bg-danger/5 p-5">
+      <h3 class="font-display font-bold mb-3">Где провалы</h3>
+      <div class="space-y-3">
+        <div>
+          <div class="mb-1 flex items-center justify-between text-xs"><span>Графы (DFS)</span><span class="font-mono text-danger">28%</span></div>
+          <div class="h-1.5 rounded-full bg-surface-2"><div class="h-full rounded-full bg-danger" style="width: 28%"></div></div>
+        </div>
+        <div>
+          <div class="mb-1 flex items-center justify-between text-xs"><span>SQL window funcs</span><span class="font-mono text-warn">42%</span></div>
+          <div class="h-1.5 rounded-full bg-surface-2"><div class="h-full rounded-full bg-warn" style="width: 42%"></div></div>
+        </div>
+        <div>
+          <div class="mb-1 flex items-center justify-between text-xs"><span>Behavioral</span><span class="font-mono text-warn">51%</span></div>
+          <div class="h-1.5 rounded-full bg-surface-2"><div class="h-full rounded-full bg-warn/80" style="width: 51%"></div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 4-week XP comparison chart (faux SVG) -->
+    <div class="rounded-xl border border-border bg-surface-1 p-5 lg:col-span-2">
+      <div class="mb-3 flex items-center justify-between">
+        <h3 class="font-display font-bold">Последние 4 недели</h3>
+        <span class="font-mono text-[10px] uppercase text-text-muted">XP earned</span>
+      </div>
+      <div class="h-44 w-full">
+        <svg viewBox="0 0 400 120" class="h-full w-full">
+          <defs>
+            <linearGradient id="xpGrad" x1="0" x2="0" y1="0" y2="1">
+              <stop offset="0%" stop-color="rgb(88,44,255)" stop-opacity="0.6"/>
+              <stop offset="100%" stop-color="rgb(88,44,255)" stop-opacity="0"/>
+            </linearGradient>
+          </defs>
+          <!-- gridlines -->
+          <line x1="20" y1="20" x2="380" y2="20" stroke="rgb(34,34,51)" stroke-dasharray="2 4"/>
+          <line x1="20" y1="60" x2="380" y2="60" stroke="rgb(34,34,51)" stroke-dasharray="2 4"/>
+          <line x1="20" y1="100" x2="380" y2="100" stroke="rgb(34,34,51)" stroke-dasharray="2 4"/>
+          <!-- area -->
+          <path d="M20,80 L120,68 L220,52 L320,30 L380,22 L380,100 L20,100 Z" fill="url(#xpGrad)"/>
+          <!-- line -->
+          <polyline fill="none" stroke="rgb(88,44,255)" stroke-width="2.5" points="20,80 120,68 220,52 320,30 380,22"/>
+          <!-- dots -->
+          <circle cx="20" cy="80" r="4" fill="rgb(88,44,255)"/>
+          <circle cx="120" cy="68" r="4" fill="rgb(88,44,255)"/>
+          <circle cx="220" cy="52" r="4" fill="rgb(88,44,255)"/>
+          <circle cx="320" cy="30" r="4" fill="rgb(88,44,255)"/>
+          <circle cx="380" cy="22" r="5" fill="rgb(34,211,238)" stroke="white" stroke-width="2"/>
+        </svg>
+      </div>
+      <div class="grid grid-cols-5 mt-2 font-mono text-[10px] text-text-muted text-center">
+        <span>W13</span><span>W14</span><span>W15</span><span>W16</span><span class="text-cyan">W17 ●</span>
+      </div>
+    </div>
+
+    <!-- Achievements -->
+    <div class="rounded-xl border border-border bg-surface-1 p-5">
+      <div class="mb-3 flex items-center justify-between">
+        <h3 class="font-display font-bold">Ачивки недели</h3>
+        <span class="font-mono text-[10px] uppercase text-warn">+3</span>
+      </div>
+      <div class="space-y-3">
+        <div class="flex items-center gap-3"><div class="grid h-10 w-10 place-items-center rounded-lg" style="background:linear-gradient(135deg,#FBBF24,#EF4444)">🔥</div><div class="min-w-0 flex-1"><div class="text-sm font-semibold">14-day streak</div><div class="font-mono text-[10px] text-text-muted">за 14 дней подряд</div></div></div>
+        <div class="flex items-center gap-3"><div class="grid h-10 w-10 place-items-center rounded-lg" style="background:linear-gradient(135deg,#22D3EE,#582CFF)">⚡</div><div class="min-w-0 flex-1"><div class="text-sm font-semibold">Speed demon</div><div class="font-mono text-[10px] text-text-muted">3 задачи под 1 минуту</div></div></div>
+        <div class="flex items-center gap-3"><div class="grid h-10 w-10 place-items-center rounded-lg" style="background:linear-gradient(135deg,#10B981,#22D3EE)">🎯</div><div class="min-w-0 flex-1"><div class="text-sm font-semibold">Daily perfectionist</div><div class="font-mono text-[10px] text-text-muted">7 daily без подсказок</div></div></div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Share band -->
+  <div class="mt-8 rounded-xl border border-border bg-gradient-to-r from-surface-3 via-surface-1 to-surface-2 p-5 flex flex-col sm:flex-row items-center justify-between gap-4">
+    <div>
+      <div class="font-display font-bold">Поделиться отчётом</div>
+      <p class="text-xs text-text-secondary">Публичная ссылка действует 30 дней. Username виден, email — нет.</p>
+    </div>
+    <div class="flex items-center gap-2">
+      <div class="rounded-md border border-border bg-bg/40 px-3 py-2 font-mono text-[11px] text-text-secondary truncate max-w-[280px]">druz9.online/profile/weekly/share/k7x2…</div>
+      <button class="rounded-md bg-accent px-4 py-2 text-sm font-semibold">Скопировать</button>
+    </div>
+  </div>
+
+  <p class="mt-12 text-center text-xs text-text-muted"><a href="index.html" class="hover:underline">← все snapshots</a></p>
+</main>
+
+</body>
+</html>

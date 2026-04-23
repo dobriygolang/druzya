@@ -1,0 +1,322 @@
+<!doctype html>
+<html lang="ru" class="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cohorts · druz9</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700;800&family=Geist+Mono:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script>
+  tailwind.config = { darkMode: 'class', theme: { extend: {
+    colors: {
+      bg: 'rgb(var(--color-bg) / <alpha-value>)',
+      surface: { 1: 'rgb(var(--color-surface-1) / <alpha-value>)', 2: 'rgb(var(--color-surface-2) / <alpha-value>)', 3: 'rgb(var(--color-surface-3) / <alpha-value>)' },
+      border: { DEFAULT: 'rgb(var(--color-border) / <alpha-value>)', strong: 'rgb(var(--color-border-strong) / <alpha-value>)' },
+      text: { primary: 'rgb(var(--color-text-primary) / <alpha-value>)', secondary: 'rgb(var(--color-text-secondary) / <alpha-value>)', muted: 'rgb(var(--color-text-muted) / <alpha-value>)' },
+      accent: 'rgb(var(--color-accent) / <alpha-value>)',
+      cyan: 'rgb(var(--color-cyan) / <alpha-value>)', pink: 'rgb(var(--color-pink) / <alpha-value>)',
+      success: 'rgb(var(--color-success) / <alpha-value>)', warn: 'rgb(var(--color-warn) / <alpha-value>)', danger: 'rgb(var(--color-danger) / <alpha-value>)',
+    },
+    fontFamily: { display: ['Geist', 'Inter', 'sans-serif'], mono: ['Geist Mono', 'monospace'] },
+  }}}
+</script>
+<style>
+  :root, .dark {
+    --color-bg: 10 10 15; --color-surface-1: 20 20 37; --color-surface-2: 26 26 46; --color-surface-3: 45 27 77;
+    --color-border: 34 34 51; --color-border-strong: 42 42 63;
+    --color-text-primary: 255 255 255; --color-text-secondary: 192 192 192; --color-text-muted: 138 138 158;
+    --color-accent: 88 44 255; --color-success: 16 185 129; --color-danger: 239 68 68; --color-warn: 251 191 36;
+    --color-cyan: 34 211 238; --color-pink: 244 114 182;
+  }
+  body { font-family: 'Inter', system-ui, sans-serif; background: rgb(var(--color-bg)); color: rgb(var(--color-text-primary)); }
+  .font-display { font-family: 'Geist', 'Inter', sans-serif; }
+  .font-mono { font-family: 'Geist Mono', monospace; }
+</style>
+</head>
+<body class="min-h-screen">
+
+<!-- ════════ Header (shared pattern) ════════ -->
+<header class="sticky top-0 z-40 flex h-[64px] items-center justify-between border-b border-border bg-bg px-4 sm:px-6 lg:h-[72px] lg:px-8">
+  <div class="flex min-w-0 items-center gap-4 lg:gap-8">
+    <a href="index.html" class="flex items-center gap-2.5">
+      <span class="grid h-8 w-8 shrink-0 place-items-center rounded-md bg-gradient-to-br from-accent to-cyan font-display text-lg font-extrabold">9</span>
+      <span class="font-display text-lg font-bold">druz9</span>
+    </a>
+    <nav class="hidden items-center gap-1 lg:flex text-sm">
+      <a href="sanctum.html" class="rounded-md px-3.5 py-2 font-medium text-text-secondary hover:bg-surface-2">Sanctum</a>
+      <a class="rounded-md px-3.5 py-2 font-medium text-text-secondary hover:bg-surface-2">Arena</a>
+      <a class="rounded-md px-3.5 py-2 font-medium text-text-secondary hover:bg-surface-2">Daily</a>
+      <a class="rounded-md bg-surface-2 px-3.5 py-2 font-semibold">Cohorts</a>
+      <a href="atlas.html" class="rounded-md px-3.5 py-2 font-medium text-text-secondary hover:bg-surface-2">Atlas</a>
+      <a href="vacancies.html" class="rounded-md px-3.5 py-2 font-medium text-text-secondary hover:bg-surface-2">Vacancies</a>
+    </nav>
+  </div>
+  <div class="flex items-center gap-2">
+    <button class="hidden h-9 items-center gap-1.5 rounded-md px-2.5 text-text-secondary hover:bg-surface-2 sm:flex"><span class="font-mono text-[12px] font-semibold">RU ▾</span></button>
+    <div class="grid h-9 w-9 place-items-center rounded-full" style="background: linear-gradient(135deg, #F472B6 0%, #582CFF 100%);"><span class="font-display text-sm font-bold">Д</span></div>
+  </div>
+</header>
+
+<main class="mx-auto max-w-7xl px-4 py-6 sm:px-8 lg:px-20 lg:py-8">
+
+  <!-- Page header -->
+  <div class="mb-7 flex items-end justify-between gap-4">
+    <div>
+      <div class="font-mono text-[11px] uppercase tracking-wider text-text-muted mb-1.5">Cohorts · обучение в команде</div>
+      <h1 class="font-display text-3xl font-bold lg:text-[40px] leading-[1.1]">
+        Когорты <span class="bg-gradient-to-r from-accent to-cyan bg-clip-text text-transparent">druz9</span>
+      </h1>
+      <p class="mt-1 max-w-xl text-sm text-text-secondary">Учись с группой. Общий прогресс, общий leaderboard, synced daily, войны когортами. Максимум 50 человек на когорту.</p>
+    </div>
+    <button class="hidden lg:flex items-center gap-2 rounded-md bg-accent px-4 py-2.5 text-sm font-semibold shadow-[0_6px_24px_rgba(88,44,255,0.4)]">
+      <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M12 5v14m-7-7h14"/></svg>
+      Создать когорту
+    </button>
+  </div>
+
+  <!-- Filters bar -->
+  <div class="mb-5 flex flex-wrap items-center gap-3">
+    <div class="flex gap-1 rounded-md border border-border bg-surface-2 p-1">
+      <button class="rounded-sm bg-accent px-3 py-1.5 font-mono text-[11px] font-bold uppercase">Все</button>
+      <button class="rounded-sm px-3 py-1.5 font-mono text-[11px] font-bold uppercase text-text-secondary hover:bg-surface-3">Активные</button>
+      <button class="rounded-sm px-3 py-1.5 font-mono text-[11px] font-bold uppercase text-text-secondary hover:bg-surface-3">Завершённые</button>
+    </div>
+    <div class="flex h-9 flex-1 min-w-[200px] items-center gap-2 rounded-md border border-border bg-surface-2 px-3">
+      <svg class="h-4 w-4 text-text-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8" stroke-width="2"/><path d="m21 21-4.3-4.3" stroke-width="2"/></svg>
+      <span class="text-[13px] text-text-muted">Поиск по названию когорты…</span>
+    </div>
+    <span class="font-mono text-[11px] text-text-muted">12 когорт · 248 участников</span>
+  </div>
+
+  <!-- Cohort grid -->
+  <div class="grid gap-5 lg:grid-cols-3">
+
+    <!-- Card 1 - active, user is member -->
+    <div class="rounded-xl border border-accent/40 bg-gradient-to-br from-surface-3/60 to-surface-1 p-5 shadow-card">
+      <div class="mb-4 flex items-start gap-3">
+        <div class="grid h-12 w-12 place-items-center rounded-lg" style="background: linear-gradient(135deg, #582CFF 0%, #22D3EE 100%);">
+          <span class="font-display text-xl font-bold">Я9</span>
+        </div>
+        <div class="min-w-0 flex-1">
+          <div class="flex items-center gap-2">
+            <h3 class="font-display text-lg font-bold truncate">Яндекс spring'26</h3>
+            <span class="shrink-0 rounded-full bg-success/20 px-2 py-0.5 font-mono text-[9px] font-bold uppercase text-success">● active</span>
+          </div>
+          <div class="mt-0.5 font-mono text-[11px] text-text-muted">/c/yandex-spring-26 · создана 3 апреля</div>
+        </div>
+        <span class="shrink-0 rounded-md bg-accent/20 px-2 py-0.5 font-mono text-[10px] font-semibold text-accent-hover">ТЫ УЧАСТНИК</span>
+      </div>
+      <p class="mb-4 text-sm text-text-secondary">Готовимся к собесам в Яндекс весенний найм. Daily algo + мок-секции каждую среду.</p>
+
+      <!-- Progress -->
+      <div class="mb-4">
+        <div class="mb-1.5 flex items-center justify-between font-mono text-[10px] text-text-muted">
+          <span>Участники</span><span>24/50</span>
+        </div>
+        <div class="h-1.5 overflow-hidden rounded-full bg-surface-2">
+          <div class="h-full rounded-full bg-gradient-to-r from-accent to-cyan" style="width: 48%"></div>
+        </div>
+      </div>
+
+      <!-- Member avatars -->
+      <div class="mb-4 flex items-center gap-2">
+        <div class="flex -space-x-2">
+          <div class="grid h-7 w-7 place-items-center rounded-full ring-2 ring-surface-1 text-xs font-bold" style="background: linear-gradient(135deg, #F472B6, #582CFF);">A</div>
+          <div class="grid h-7 w-7 place-items-center rounded-full ring-2 ring-surface-1 text-xs font-bold" style="background: linear-gradient(135deg, #22D3EE, #582CFF);">K</div>
+          <div class="grid h-7 w-7 place-items-center rounded-full ring-2 ring-surface-1 text-xs font-bold" style="background: linear-gradient(135deg, #FBBF24, #EF4444);">M</div>
+          <div class="grid h-7 w-7 place-items-center rounded-full ring-2 ring-surface-1 text-xs font-bold" style="background: linear-gradient(135deg, #10B981, #22D3EE);">N</div>
+          <div class="grid h-7 w-7 place-items-center rounded-full bg-surface-2 ring-2 ring-surface-1 text-xs font-bold text-text-secondary">+20</div>
+        </div>
+      </div>
+
+      <!-- Stats row -->
+      <div class="mb-4 grid grid-cols-3 gap-2 rounded-lg bg-surface-2/60 p-3 text-center">
+        <div>
+          <div class="font-display text-lg font-bold">2 716</div>
+          <div class="font-mono text-[9px] uppercase text-text-muted">avg ELO</div>
+        </div>
+        <div>
+          <div class="font-display text-lg font-bold text-warn">47</div>
+          <div class="font-mono text-[9px] uppercase text-text-muted">streak best</div>
+        </div>
+        <div>
+          <div class="font-display text-lg font-bold text-cyan">14</div>
+          <div class="font-mono text-[9px] uppercase text-text-muted">дней до</div>
+        </div>
+      </div>
+
+      <div class="flex gap-2">
+        <a class="flex-1 rounded-md bg-accent px-3 py-2 text-center text-sm font-semibold">Открыть →</a>
+        <button class="rounded-md border border-border bg-surface-2 px-3 py-2 text-sm text-text-secondary hover:text-danger" title="Выйти">
+          <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M9 19l-7-7 7-7m-7 7h18"/></svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- Card 2 - open to join -->
+    <div class="rounded-xl border border-border bg-surface-1 p-5 shadow-card hover:border-border-strong">
+      <div class="mb-4 flex items-start gap-3">
+        <div class="grid h-12 w-12 place-items-center rounded-lg" style="background: linear-gradient(135deg, #EF4444 0%, #FBBF24 100%);">
+          <span class="font-display text-xl font-bold">MS</span>
+        </div>
+        <div class="min-w-0 flex-1">
+          <div class="flex items-center gap-2">
+            <h3 class="font-display text-lg font-bold truncate">FAANG autumn</h3>
+            <span class="shrink-0 rounded-full bg-success/20 px-2 py-0.5 font-mono text-[9px] font-bold uppercase text-success">● active</span>
+          </div>
+          <div class="mt-0.5 font-mono text-[11px] text-text-muted">/c/faang-autumn · 12 апреля</div>
+        </div>
+      </div>
+      <p class="mb-4 text-sm text-text-secondary">Meta/Google/Amazon — system design + algo hard. Английский обязателен.</p>
+      <div class="mb-4">
+        <div class="mb-1.5 flex items-center justify-between font-mono text-[10px] text-text-muted"><span>Участники</span><span>41/50</span></div>
+        <div class="h-1.5 overflow-hidden rounded-full bg-surface-2"><div class="h-full bg-gradient-to-r from-warn to-danger" style="width: 82%"></div></div>
+      </div>
+      <div class="mb-4 flex items-center gap-2">
+        <div class="flex -space-x-2">
+          <div class="grid h-7 w-7 place-items-center rounded-full ring-2 ring-surface-1 text-xs font-bold" style="background: linear-gradient(135deg, #22D3EE, #582CFF);">D</div>
+          <div class="grid h-7 w-7 place-items-center rounded-full ring-2 ring-surface-1 text-xs font-bold" style="background: linear-gradient(135deg, #F472B6, #EF4444);">J</div>
+          <div class="grid h-7 w-7 place-items-center rounded-full bg-surface-2 ring-2 ring-surface-1 text-xs font-bold text-text-secondary">+39</div>
+        </div>
+      </div>
+      <div class="mb-4 grid grid-cols-3 gap-2 rounded-lg bg-surface-2/60 p-3 text-center">
+        <div><div class="font-display text-lg font-bold">2 940</div><div class="font-mono text-[9px] uppercase text-text-muted">avg ELO</div></div>
+        <div><div class="font-display text-lg font-bold text-warn">63</div><div class="font-mono text-[9px] uppercase text-text-muted">streak best</div></div>
+        <div><div class="font-display text-lg font-bold text-cyan">38</div><div class="font-mono text-[9px] uppercase text-text-muted">дней до</div></div>
+      </div>
+      <button class="w-full rounded-md border border-accent bg-accent/10 px-3 py-2 text-sm font-semibold text-accent-hover hover:bg-accent/20">Присоединиться →</button>
+    </div>
+
+    <!-- Card 3 - empty / new -->
+    <div class="rounded-xl border border-border bg-surface-1 p-5 shadow-card">
+      <div class="mb-4 flex items-start gap-3">
+        <div class="grid h-12 w-12 place-items-center rounded-lg" style="background: linear-gradient(135deg, #10B981 0%, #22D3EE 100%);">
+          <span class="font-display text-xl font-bold">SQL</span>
+        </div>
+        <div class="min-w-0 flex-1">
+          <div class="flex items-center gap-2">
+            <h3 class="font-display text-lg font-bold truncate">SQL mastery Q2</h3>
+            <span class="shrink-0 rounded-full bg-cyan/20 px-2 py-0.5 font-mono text-[9px] font-bold uppercase text-cyan">● only-sql</span>
+          </div>
+          <div class="mt-0.5 font-mono text-[11px] text-text-muted">/c/sql-mastery-q2 · сегодня</div>
+        </div>
+      </div>
+      <p class="mb-4 text-sm text-text-secondary">Только SQL-задачи. Для дата-инженеров и аналитиков.</p>
+      <div class="mb-4">
+        <div class="mb-1.5 flex items-center justify-between font-mono text-[10px] text-text-muted"><span>Участники</span><span>3/50</span></div>
+        <div class="h-1.5 overflow-hidden rounded-full bg-surface-2"><div class="h-full bg-accent" style="width: 6%"></div></div>
+      </div>
+      <div class="mb-4 flex items-center gap-2">
+        <div class="flex -space-x-2">
+          <div class="grid h-7 w-7 place-items-center rounded-full ring-2 ring-surface-1 text-xs font-bold" style="background: linear-gradient(135deg, #10B981, #22D3EE);">O</div>
+          <div class="grid h-7 w-7 place-items-center rounded-full ring-2 ring-surface-1 text-xs font-bold" style="background: linear-gradient(135deg, #F472B6, #582CFF);">V</div>
+          <div class="grid h-7 w-7 place-items-center rounded-full ring-2 ring-surface-1 text-xs font-bold" style="background: linear-gradient(135deg, #FBBF24, #EF4444);">E</div>
+        </div>
+      </div>
+      <div class="mb-4 grid grid-cols-3 gap-2 rounded-lg bg-surface-2/60 p-3 text-center">
+        <div><div class="font-display text-lg font-bold">2 110</div><div class="font-mono text-[9px] uppercase text-text-muted">avg ELO</div></div>
+        <div><div class="font-display text-lg font-bold text-warn">—</div><div class="font-mono text-[9px] uppercase text-text-muted">streak best</div></div>
+        <div><div class="font-display text-lg font-bold text-cyan">∞</div><div class="font-mono text-[9px] uppercase text-text-muted">open</div></div>
+      </div>
+      <button class="w-full rounded-md border border-accent bg-accent/10 px-3 py-2 text-sm font-semibold text-accent-hover hover:bg-accent/20">Присоединиться →</button>
+    </div>
+
+  </div>
+
+  <!-- ════════ Detail view (split) ════════ -->
+  <div class="mt-12 mb-4 flex items-end justify-between gap-4 border-t border-border pt-8">
+    <div>
+      <div class="font-mono text-[11px] uppercase tracking-wider text-text-muted mb-1.5">Detail view · /c/yandex-spring-26</div>
+      <h2 class="font-display text-2xl font-bold">Внутри когорты</h2>
+    </div>
+  </div>
+  <div class="grid gap-5 lg:grid-cols-[1fr_340px]">
+    <!-- Members table -->
+    <div class="rounded-xl border border-border bg-surface-1 p-5">
+      <div class="mb-4 flex items-center justify-between">
+        <h3 class="font-display font-bold">Участники · 24</h3>
+        <div class="flex gap-1 rounded-md border border-border bg-surface-2 p-1">
+          <button class="rounded-sm bg-surface-3 px-2 py-1 font-mono text-[10px] uppercase">ELO</button>
+          <button class="rounded-sm px-2 py-1 font-mono text-[10px] uppercase text-text-muted">Streak</button>
+          <button class="rounded-sm px-2 py-1 font-mono text-[10px] uppercase text-text-muted">Weekly XP</button>
+        </div>
+      </div>
+      <div class="space-y-1">
+        <!-- row -->
+        <div class="flex items-center gap-3 rounded-lg bg-surface-2/40 px-3 py-2.5">
+          <span class="w-6 text-center font-display font-bold text-warn">1</span>
+          <div class="grid h-8 w-8 place-items-center rounded-full font-bold text-xs" style="background: linear-gradient(135deg, #FBBF24, #F472B6);">А</div>
+          <div class="min-w-0 flex-1">
+            <div class="text-sm font-semibold truncate">@anna.kru</div>
+            <div class="font-mono text-[10px] text-text-muted">GOLD II · 47 дней · +124 XP week</div>
+          </div>
+          <span class="font-display text-lg font-bold text-warn">2 940</span>
+        </div>
+        <div class="flex items-center gap-3 rounded-lg px-3 py-2.5 hover:bg-surface-2/40">
+          <span class="w-6 text-center font-display font-bold text-text-secondary">2</span>
+          <div class="grid h-8 w-8 place-items-center rounded-full font-bold text-xs" style="background: linear-gradient(135deg, #22D3EE, #582CFF);">К</div>
+          <div class="min-w-0 flex-1">
+            <div class="text-sm font-semibold truncate">@kirill_dev</div>
+            <div class="font-mono text-[10px] text-text-muted">GOLD I · 12 дней · +88 XP week</div>
+          </div>
+          <span class="font-display text-lg font-bold">2 812</span>
+        </div>
+        <div class="flex items-center gap-3 rounded-lg px-3 py-2.5 hover:bg-surface-2/40">
+          <span class="w-6 text-center font-display font-bold text-text-muted">3</span>
+          <div class="grid h-8 w-8 place-items-center rounded-full font-bold text-xs" style="background: linear-gradient(135deg, #10B981, #22D3EE);">Н</div>
+          <div class="min-w-0 flex-1">
+            <div class="text-sm font-semibold truncate">@nastya.m</div>
+            <div class="font-mono text-[10px] text-text-muted">SILVER I · 21 день · +71 XP week</div>
+          </div>
+          <span class="font-display text-lg font-bold">2 620</span>
+        </div>
+        <!-- user highlight -->
+        <div class="flex items-center gap-3 rounded-lg -mx-2 bg-accent/10 px-5 py-2.5">
+          <span class="w-6 text-center font-display font-bold text-accent-hover">12</span>
+          <div class="grid h-8 w-8 place-items-center rounded-full font-bold text-xs" style="background: linear-gradient(135deg, #F472B6, #582CFF);">Д</div>
+          <div class="min-w-0 flex-1">
+            <div class="text-sm font-semibold truncate"><strong>ты</strong></div>
+            <div class="font-mono text-[10px] text-text-muted">GOLD II · 14 дней · +42 XP week</div>
+          </div>
+          <span class="font-display text-lg font-bold text-accent-hover">2 412</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Side panel: invite + shared streak -->
+    <div class="flex flex-col gap-5">
+      <div class="rounded-xl border border-border bg-surface-1 p-5">
+        <div class="font-mono text-[10px] uppercase tracking-wider text-text-muted mb-2">Общий streak</div>
+        <div class="font-display text-4xl font-extrabold text-warn">14 🔥</div>
+        <p class="mt-1 text-xs text-text-secondary">Хотя бы 1 dailу решают все в когорте — если пропустит двое → streak сгорит</p>
+        <div class="mt-4 grid grid-cols-7 gap-1">
+          <div class="aspect-square rounded-sm bg-success/70"></div>
+          <div class="aspect-square rounded-sm bg-success/70"></div>
+          <div class="aspect-square rounded-sm bg-success/70"></div>
+          <div class="aspect-square rounded-sm bg-warn/60"></div>
+          <div class="aspect-square rounded-sm bg-success/70"></div>
+          <div class="aspect-square rounded-sm bg-success/70"></div>
+          <div class="aspect-square rounded-sm bg-accent ring-2 ring-accent animate-pulse"></div>
+        </div>
+      </div>
+
+      <div class="rounded-xl border border-border bg-gradient-to-br from-surface-3 to-surface-1 p-5">
+        <div class="font-mono text-[10px] uppercase tracking-wider text-pink mb-2">💌 Invite a friend</div>
+        <p class="text-sm text-text-secondary mb-3">Ссылка действует 24ч. 26 мест свободны.</p>
+        <div class="rounded-md border border-border bg-bg/60 px-3 py-2 font-mono text-[11px] text-text-secondary overflow-hidden truncate">druz9.online/c/yandex-spring-26?invite=k7x2…</div>
+        <button class="mt-3 w-full rounded-md bg-accent px-3 py-2 text-sm font-semibold">Скопировать ссылку</button>
+      </div>
+
+      <div class="rounded-xl border border-danger/30 bg-danger/5 p-4">
+        <div class="font-mono text-[10px] uppercase tracking-wider text-danger mb-1">Danger zone</div>
+        <p class="text-xs text-text-muted mb-3">Покинуть когорту. Прогресс не потеряется, но стрик когорты упадёт.</p>
+        <button class="w-full rounded-md border border-danger/50 bg-danger/10 px-3 py-2 text-xs font-semibold text-danger hover:bg-danger/20">Выйти из когорты</button>
+      </div>
+    </div>
+  </div>
+
+  <p class="mt-12 text-center text-xs text-text-muted"><a href="index.html" class="hover:underline">← все snapshots</a></p>
+</main>
+
+</body>
+</html>

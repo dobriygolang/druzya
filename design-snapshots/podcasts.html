@@ -1,0 +1,240 @@
+<!doctype html>
+<html lang="ru" class="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Podcasts · druz9</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700;800&family=Geist+Mono:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script>
+  tailwind.config = { darkMode: 'class', theme: { extend: {
+    colors: {
+      bg: 'rgb(var(--color-bg) / <alpha-value>)',
+      surface: { 1: 'rgb(var(--color-surface-1) / <alpha-value>)', 2: 'rgb(var(--color-surface-2) / <alpha-value>)', 3: 'rgb(var(--color-surface-3) / <alpha-value>)' },
+      border: { DEFAULT: 'rgb(var(--color-border) / <alpha-value>)', strong: 'rgb(var(--color-border-strong) / <alpha-value>)' },
+      text: { primary: 'rgb(var(--color-text-primary) / <alpha-value>)', secondary: 'rgb(var(--color-text-secondary) / <alpha-value>)', muted: 'rgb(var(--color-text-muted) / <alpha-value>)' },
+      accent: 'rgb(var(--color-accent) / <alpha-value>)',
+      cyan: 'rgb(var(--color-cyan) / <alpha-value>)', pink: 'rgb(var(--color-pink) / <alpha-value>)',
+      success: 'rgb(var(--color-success) / <alpha-value>)', warn: 'rgb(var(--color-warn) / <alpha-value>)', danger: 'rgb(var(--color-danger) / <alpha-value>)',
+    },
+    fontFamily: { display: ['Geist', 'Inter', 'sans-serif'], mono: ['Geist Mono', 'monospace'] },
+  }}}
+</script>
+<style>
+  :root, .dark {
+    --color-bg: 10 10 15; --color-surface-1: 20 20 37; --color-surface-2: 26 26 46; --color-surface-3: 45 27 77;
+    --color-border: 34 34 51; --color-border-strong: 42 42 63;
+    --color-text-primary: 255 255 255; --color-text-secondary: 192 192 192; --color-text-muted: 138 138 158;
+    --color-accent: 88 44 255; --color-success: 16 185 129; --color-danger: 239 68 68; --color-warn: 251 191 36;
+    --color-cyan: 34 211 238; --color-pink: 244 114 182;
+  }
+  body { font-family: 'Inter', system-ui, sans-serif; background: rgb(var(--color-bg)); color: rgb(var(--color-text-primary)); }
+  .font-display { font-family: 'Geist', 'Inter', sans-serif; }
+  .font-mono { font-family: 'Geist Mono', monospace; }
+  /* Fake waveform */
+  .wave-bar { display: inline-block; width: 2px; margin-right: 2px; background: currentColor; border-radius: 1px; vertical-align: middle; }
+</style>
+</head>
+<body class="min-h-screen">
+
+<header class="sticky top-0 z-40 flex h-[64px] items-center justify-between border-b border-border bg-bg px-4 sm:px-6 lg:h-[72px] lg:px-8">
+  <div class="flex min-w-0 items-center gap-4 lg:gap-8">
+    <a href="index.html" class="flex items-center gap-2.5">
+      <span class="grid h-8 w-8 shrink-0 place-items-center rounded-md bg-gradient-to-br from-accent to-cyan font-display text-lg font-extrabold">9</span>
+      <span class="font-display text-lg font-bold">druz9</span>
+    </a>
+    <nav class="hidden items-center gap-1 lg:flex text-sm">
+      <a href="sanctum.html" class="rounded-md px-3.5 py-2 font-medium text-text-secondary hover:bg-surface-2">Sanctum</a>
+      <a class="rounded-md px-3.5 py-2 font-medium text-text-secondary hover:bg-surface-2">Arena</a>
+      <a class="rounded-md bg-surface-2 px-3.5 py-2 font-semibold">Codex · Podcasts</a>
+      <a href="cohorts.html" class="rounded-md px-3.5 py-2 font-medium text-text-secondary hover:bg-surface-2">Cohorts</a>
+      <a href="atlas.html" class="rounded-md px-3.5 py-2 font-medium text-text-secondary hover:bg-surface-2">Atlas</a>
+    </nav>
+  </div>
+  <div class="grid h-9 w-9 place-items-center rounded-full" style="background: linear-gradient(135deg, #F472B6 0%, #582CFF 100%);"><span class="font-display text-sm font-bold">Д</span></div>
+</header>
+
+<main class="mx-auto max-w-7xl px-4 py-6 sm:px-8 lg:px-20 lg:py-8">
+
+  <!-- Page header -->
+  <div class="mb-7">
+    <div class="font-mono text-[11px] uppercase tracking-wider text-text-muted mb-1.5">Codex · podcasts</div>
+    <h1 class="font-display text-3xl font-bold lg:text-[40px] leading-[1.1]">Подкасты и <span class="bg-gradient-to-r from-pink to-cyan bg-clip-text text-transparent">интервью</span></h1>
+    <p class="mt-1 text-sm text-text-secondary">Слушай инженеров Big-Tech. Прогресс сохраняется автоматически.</p>
+  </div>
+
+  <!-- Category chips -->
+  <div class="mb-6 flex flex-wrap gap-2">
+    <button class="rounded-full bg-accent px-3.5 py-1.5 font-mono text-[11px] font-bold uppercase">Все · 47</button>
+    <button class="rounded-full border border-border bg-surface-2 px-3.5 py-1.5 font-mono text-[11px] font-semibold text-text-secondary">System Design · 18</button>
+    <button class="rounded-full border border-border bg-surface-2 px-3.5 py-1.5 font-mono text-[11px] font-semibold text-text-secondary">Carrier · 14</button>
+    <button class="rounded-full border border-border bg-surface-2 px-3.5 py-1.5 font-mono text-[11px] font-semibold text-text-secondary">Algo · 9</button>
+    <button class="rounded-full border border-border bg-surface-2 px-3.5 py-1.5 font-mono text-[11px] font-semibold text-text-secondary">ML · 6</button>
+  </div>
+
+  <div class="grid gap-6 lg:grid-cols-[1fr_380px]">
+
+    <!-- Player column -->
+    <div class="flex flex-col gap-6">
+
+      <!-- Now playing card -->
+      <div class="rounded-2xl border border-accent/40 bg-gradient-to-br from-surface-3 to-surface-1 p-6 shadow-card relative overflow-hidden">
+        <div class="absolute -right-16 -top-16 h-48 w-48 rounded-full bg-pink/30 blur-3xl"></div>
+        <div class="absolute -left-8 -bottom-8 h-32 w-32 rounded-full bg-accent/30 blur-2xl"></div>
+
+        <div class="relative flex items-start gap-5">
+          <!-- Cover art -->
+          <div class="relative h-40 w-40 shrink-0 overflow-hidden rounded-xl" style="background: linear-gradient(135deg, #F472B6 0%, #582CFF 50%, #22D3EE 100%);">
+            <div class="absolute inset-0 grid place-items-center font-display text-6xl font-extrabold opacity-40">9</div>
+            <div class="absolute bottom-2 left-2 rounded-full bg-black/50 px-2 py-0.5 font-mono text-[9px] uppercase text-white/80">NOW PLAYING</div>
+          </div>
+          <div class="min-w-0 flex-1">
+            <div class="font-mono text-[10px] uppercase tracking-wider text-text-muted mb-1.5">System Design · EP 12</div>
+            <h2 class="font-display text-2xl font-bold leading-tight mb-1">Как устроен Instagram Stories на 500M DAU</h2>
+            <p class="text-sm text-text-secondary mb-3">Максим К., Staff Engineer @ Meta · интервью 52:14</p>
+            <div class="mb-4 flex items-center gap-2 text-xs text-text-muted font-mono">
+              <span>🎧 4.8k прослушиваний</span>
+              <span>·</span>
+              <span>⭐ 4.9</span>
+            </div>
+
+            <!-- Seek bar -->
+            <div class="mb-3">
+              <div class="group relative h-1.5 cursor-pointer rounded-full bg-surface-2">
+                <div class="absolute inset-y-0 left-0 rounded-full bg-gradient-to-r from-accent to-cyan" style="width: 32%"></div>
+                <div class="absolute left-[32%] top-1/2 -translate-y-1/2 h-3.5 w-3.5 -translate-x-1/2 rounded-full bg-text-primary opacity-0 group-hover:opacity-100 shadow-lg"></div>
+              </div>
+              <div class="mt-1.5 flex justify-between font-mono text-[10px] text-text-muted">
+                <span>16:44</span>
+                <span>−35:30</span>
+              </div>
+            </div>
+
+            <!-- Controls -->
+            <div class="flex items-center gap-3">
+              <button class="grid h-10 w-10 place-items-center rounded-full text-text-secondary hover:bg-surface-2">
+                <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M3 12a9 9 0 1 0 3-6.7L3 8m0-5v5h5"/></svg>
+                <span class="font-mono text-[9px] absolute mt-7">15</span>
+              </button>
+              <button class="grid h-14 w-14 place-items-center rounded-full bg-accent text-white shadow-[0_6px_24px_rgba(88,44,255,0.5)]">
+                <svg class="h-7 w-7" fill="currentColor" viewBox="0 0 24 24"><path d="M6 4h4v16H6zm8 0h4v16h-4z"/></svg>
+              </button>
+              <button class="grid h-10 w-10 place-items-center rounded-full text-text-secondary hover:bg-surface-2">
+                <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M21 12a9 9 0 1 1-3-6.7L21 8m0-5v5h-5"/></svg>
+                <span class="font-mono text-[9px] absolute mt-7">15</span>
+              </button>
+              <div class="ml-3 flex items-center gap-1.5">
+                <span class="font-mono text-[10px] text-text-muted">1.0×</span>
+                <button class="h-7 w-7 grid place-items-center rounded-md text-text-secondary hover:bg-surface-2 font-mono text-[11px] font-bold">×</button>
+              </div>
+              <div class="ml-auto flex items-center gap-2">
+                <button class="grid h-9 w-9 place-items-center rounded-md text-text-secondary hover:bg-surface-2">
+                  <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-width="2" d="M11 5 6 9H2v6h4l5 4zM19 12a4 4 0 0 0-2-3.46M22 12a7 7 0 0 0-3.5-6"/></svg>
+                </button>
+                <div class="h-1 w-16 rounded-full bg-surface-2"><div class="h-1 w-2/3 rounded-full bg-accent"></div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Show notes / chapters -->
+      <div class="rounded-xl border border-border bg-surface-1 p-5">
+        <div class="mb-4 flex items-center justify-between">
+          <h3 class="font-display font-bold">Главы</h3>
+          <span class="font-mono text-[10px] uppercase text-text-muted">6 chapters</span>
+        </div>
+        <div class="space-y-1">
+          <div class="flex items-center gap-3 rounded-md px-3 py-2 hover:bg-surface-2"><span class="font-mono text-[11px] text-text-muted w-12">00:00</span><span class="flex-1 text-sm">Intro — кто такой Максим</span></div>
+          <div class="flex items-center gap-3 rounded-md px-3 py-2 bg-accent/10"><span class="font-mono text-[11px] text-accent-hover w-12">16:44</span><span class="flex-1 text-sm font-semibold text-accent-hover">● CDN edge caching и fanout-on-read</span><span class="wave-bar animate-pulse h-4 text-accent-hover"></span></div>
+          <div class="flex items-center gap-3 rounded-md px-3 py-2 hover:bg-surface-2"><span class="font-mono text-[11px] text-text-muted w-12">28:11</span><span class="flex-1 text-sm">TTL тактика для быстрых 20% юзеров</span></div>
+          <div class="flex items-center gap-3 rounded-md px-3 py-2 hover:bg-surface-2"><span class="font-mono text-[11px] text-text-muted w-12">34:02</span><span class="flex-1 text-sm">Failures: что сломалось на NYE 2019</span></div>
+          <div class="flex items-center gap-3 rounded-md px-3 py-2 hover:bg-surface-2"><span class="font-mono text-[11px] text-text-muted w-12">45:38</span><span class="flex-1 text-sm">Q&A — tips на собес</span></div>
+          <div class="flex items-center gap-3 rounded-md px-3 py-2 hover:bg-surface-2"><span class="font-mono text-[11px] text-text-muted w-12">50:02</span><span class="flex-1 text-sm">Outro</span></div>
+        </div>
+      </div>
+
+      <!-- Transcript hint -->
+      <div class="rounded-xl border border-border bg-surface-1 p-5">
+        <div class="flex items-center justify-between mb-3">
+          <h3 class="font-display font-bold">Транскрипт</h3>
+          <button class="font-mono text-[10px] uppercase text-accent hover:underline">Скрыть</button>
+        </div>
+        <div class="space-y-3 text-sm leading-relaxed">
+          <p><span class="font-mono text-[11px] text-text-muted">[16:44]</span> <strong class="text-accent-hover">Максим:</strong> …сначала, когда мы проектировали fanout, первый вариант был fanout-on-write — популярный юзер с 10M подписчиков создаёт 10M записей в базу. Для Stories это было неприемлемо…</p>
+          <p class="text-text-secondary"><span class="font-mono text-[11px] text-text-muted">[17:12]</span> <strong>Ведущий:</strong> А ведь там ещё TTL 24 часа, верно?</p>
+          <p><span class="font-mono text-[11px] text-text-muted">[17:18]</span> <strong class="text-accent-hover">Максим:</strong> Именно. Поэтому мы перешли на lazy fanout-on-read, кэшируем на edge…</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Sidebar: queue + up-next -->
+    <div class="flex flex-col gap-5">
+      <div class="rounded-xl border border-border bg-surface-1 p-5">
+        <div class="flex items-center justify-between mb-3">
+          <h3 class="font-display font-bold">Очередь</h3>
+          <span class="font-mono text-[10px] uppercase text-text-muted">8 next</span>
+        </div>
+        <div class="space-y-2.5">
+          <div class="flex items-center gap-3">
+            <div class="h-11 w-11 shrink-0 rounded-md" style="background: linear-gradient(135deg, #22D3EE, #582CFF);"></div>
+            <div class="min-w-0 flex-1">
+              <div class="text-sm truncate">Redis под капотом: шардинг на 2 млрд ключей</div>
+              <div class="font-mono text-[10px] text-text-muted">Ольга Д. · 38 мин</div>
+            </div>
+            <button class="shrink-0 grid h-7 w-7 place-items-center rounded-md bg-surface-2 text-text-secondary hover:text-accent">▸</button>
+          </div>
+          <div class="flex items-center gap-3">
+            <div class="h-11 w-11 shrink-0 rounded-md" style="background: linear-gradient(135deg, #FBBF24, #EF4444);"></div>
+            <div class="min-w-0 flex-1">
+              <div class="text-sm truncate">Как я прошёл Google L5 на Python</div>
+              <div class="font-mono text-[10px] text-text-muted">Иван Л. · 1:02:40</div>
+            </div>
+            <button class="shrink-0 grid h-7 w-7 place-items-center rounded-md bg-surface-2 text-text-secondary hover:text-accent">▸</button>
+          </div>
+          <div class="flex items-center gap-3">
+            <div class="h-11 w-11 shrink-0 rounded-md" style="background: linear-gradient(135deg, #10B981, #22D3EE);"></div>
+            <div class="min-w-0 flex-1">
+              <div class="text-sm truncate">Раздача токенов в микросервисах</div>
+              <div class="font-mono text-[10px] text-text-muted">Timur R. · 42 мин</div>
+            </div>
+            <button class="shrink-0 grid h-7 w-7 place-items-center rounded-md bg-surface-2 text-text-secondary hover:text-accent">▸</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- My progress -->
+      <div class="rounded-xl border border-border bg-gradient-to-br from-surface-3 to-surface-1 p-5">
+        <div class="font-mono text-[10px] uppercase tracking-wider text-cyan mb-2">📈 Твой прогресс</div>
+        <div class="grid grid-cols-2 gap-3">
+          <div class="rounded-lg bg-surface-2/60 p-3">
+            <div class="font-display text-2xl font-bold">12</div>
+            <div class="font-mono text-[10px] text-text-muted uppercase">прослушано</div>
+          </div>
+          <div class="rounded-lg bg-surface-2/60 p-3">
+            <div class="font-display text-2xl font-bold">08:42</div>
+            <div class="font-mono text-[10px] text-text-muted uppercase">всего часов</div>
+          </div>
+        </div>
+        <div class="mt-4 rounded-lg bg-surface-2/40 p-3">
+          <div class="font-mono text-[10px] uppercase text-text-muted mb-1">В процессе</div>
+          <div class="text-sm">Как устроен Instagram Stories</div>
+          <div class="mt-2 h-1 rounded-full bg-surface-3"><div class="h-1 w-[32%] rounded-full bg-cyan"></div></div>
+          <div class="mt-1 font-mono text-[10px] text-text-muted">16:44 / 52:14 · 32%</div>
+        </div>
+      </div>
+
+      <!-- Recommend -->
+      <div class="rounded-xl border border-pink/30 bg-pink/5 p-5">
+        <div class="font-mono text-[10px] uppercase tracking-wider text-pink mb-2">💎 Premium · AI recaps</div>
+        <p class="text-sm text-text-secondary mb-3">Автоматический summary на 3 параграфа + ключевые таймкоды по любому эпизоду.</p>
+        <button class="w-full rounded-md bg-pink px-3 py-2 text-sm font-bold text-bg">Подключить</button>
+      </div>
+    </div>
+  </div>
+
+  <p class="mt-12 text-center text-xs text-text-muted"><a href="index.html" class="hover:underline">← все snapshots</a></p>
+</main>
+
+</body>
+</html>

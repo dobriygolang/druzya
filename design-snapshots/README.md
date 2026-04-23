@@ -19,6 +19,10 @@
 | `match-end.html` | **Emotion peak.** Победный экран после ranked. Promote, ачивки, статы, replay |
 | `achievements.html` | Grid-pattern. 38 ачивок, фильтры по статусу/тиру, 3 состояния (unlocked / progress / hidden) |
 | `vacancies.html` | Новый bounded context. Filter sidebar + cards со skill-gap визуализацией |
+| `cohorts.html` | **Wave-9 NEW.** Учебные когорты до 50 чел: каталог + детали + общий streak + invite-link + leaderboard |
+| `podcasts.html` | **Wave-9 NEW.** Кастомный плеер (seek/skip 15/volume/speed) + главы + транскрипт + premium-CTA |
+| `settings.html` | **Wave-9 UPDATED.** Sidebar nav + новый ✨ AI Coach model picker (free/💎premium) + 4 языка (RU/EN/KZ/UA) |
+| `weekly-report.html` | **Wave-9 NEW.** KPI strip · AI Coach narrative · 4-нед SVG-чарт · сильные/слабые секции · share-link |
 
 ## Как использовать с Claude Design
 
