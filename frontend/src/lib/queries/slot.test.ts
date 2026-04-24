@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { derivePriceBuckets, type Slot } from './slot'
+import { derivePriceBuckets, normalizeSlot, type Slot } from './slot'
 
 function slot(price: number, id = '00000000-0000-0000-0000-000000000000'): Slot {
   return {
@@ -69,5 +69,68 @@ describe('derivePriceBuckets', () => {
       Array.from({ length: 12 }, () => slot(900)),
     )
     expect(new Set(buckets).size).toBe(buckets.length)
+  })
+})
+
+describe('normalizeSlot', () => {
+  const base = {
+    id: 'slot-1',
+    interviewer: { user_id: 'u1', username: 'u' },
+    starts_at: '2026-04-22T18:00:00Z',
+    duration_min: 60,
+    language: 'ru',
+    price_rub: 1000,
+  }
+
+  it('maps canonical proto enum names to short form', () => {
+    const out = normalizeSlot({
+      ...base,
+      section: 'SECTION_ALGORITHMS',
+      difficulty: 'DIFFICULTY_MEDIUM',
+      status: 'SLOT_STATUS_AVAILABLE',
+    })
+    expect(out.section).toBe('algorithms')
+    expect(out.difficulty).toBe('medium')
+    expect(out.status).toBe('available')
+  })
+
+  it('accepts legacy short-form enums', () => {
+    const out = normalizeSlot({
+      ...base,
+      section: 'sql',
+      difficulty: 'easy',
+      status: 'booked',
+    })
+    expect(out.section).toBe('sql')
+    expect(out.difficulty).toBe('easy')
+    expect(out.status).toBe('booked')
+  })
+
+  it('leaves difficulty undefined when absent', () => {
+    const out = normalizeSlot({
+      ...base,
+      section: 'SECTION_BEHAVIORAL',
+      status: 'SLOT_STATUS_AVAILABLE',
+    })
+    expect(out.difficulty).toBeUndefined()
+  })
+
+  it('falls back to "available" on unknown status (forward-compat)', () => {
+    const out = normalizeSlot({
+      ...base,
+      section: 'SECTION_GO',
+      status: 'SLOT_STATUS_FUTURE_UNKNOWN',
+    })
+    expect(out.status).toBe('available')
+  })
+
+  it('throws on unknown section — surfaces proto drift loudly', () => {
+    expect(() =>
+      normalizeSlot({
+        ...base,
+        section: 'SECTION_FROM_MARS',
+        status: 'SLOT_STATUS_AVAILABLE',
+      }),
+    ).toThrow(/unknown slot section/)
   })
 })
