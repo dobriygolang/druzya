@@ -10,6 +10,7 @@
 // surfaced via the «Мои слоты» drawer (popup blockers + post-action UX).
 
 import { useMemo, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { Star, Video, Clock, ArrowUpDown, AlertCircle } from 'lucide-react'
 import { AppShellV2 } from '../components/AppShell'
 import { Button } from '../components/Button'
@@ -239,7 +240,13 @@ function SlotCard({ s, onBook, booking }: { s: Slot; onBook: () => void; booking
       <Avatar size="lg" gradient={pickGradient(s.interviewer.user_id)} initials={initial} />
       <div className="flex flex-1 flex-col gap-1">
         <div className="flex items-center gap-2">
-          <span className="text-sm font-bold text-text-primary">@{s.interviewer.username}</span>
+          <Link
+            to={`/interviewer/${encodeURIComponent(s.interviewer.user_id)}`}
+            state={{ username: s.interviewer.username }}
+            className="text-sm font-bold text-text-primary hover:text-accent-hover"
+          >
+            @{s.interviewer.username}
+          </Link>
         </div>
         <div className="flex items-center gap-2">
           {typeof s.interviewer.avg_rating === 'number' && s.interviewer.avg_rating > 0 ? (
