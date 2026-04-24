@@ -353,12 +353,13 @@ func conversationFromRow[R conversationRowLike](r R) domain.Conversation {
 		}
 	case copilotdb.GetCopilotConversationRow:
 		return domain.Conversation{
-			ID:        sharedpg.UUIDFrom(v.ID),
-			UserID:    sharedpg.UUIDFrom(v.UserID),
-			Title:     v.Title,
-			Model:     v.Model,
-			CreatedAt: v.CreatedAt.Time,
-			UpdatedAt: v.UpdatedAt.Time,
+			ID:             sharedpg.UUIDFrom(v.ID),
+			UserID:         sharedpg.UUIDFrom(v.UserID),
+			Title:          v.Title,
+			Model:          v.Model,
+			CreatedAt:      v.CreatedAt.Time,
+			UpdatedAt:      v.UpdatedAt.Time,
+			RunningSummary: v.RunningSummary,
 		}
 	case copilotdb.CopilotConversation:
 		return domain.Conversation{

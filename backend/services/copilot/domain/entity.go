@@ -17,6 +17,10 @@ type Conversation struct {
 	Model     string // provider-qualified, e.g. "openai/gpt-4o-mini"
 	CreatedAt time.Time
 	UpdatedAt time.Time
+	// RunningSummary — фоновый конспект старых turns, поддерживаемый
+	// compaction.Worker. Пустая строка у новых диалогов. Загружается только
+	// через Get (Create/List не возвращают, чтобы не раздувать history).
+	RunningSummary string
 }
 
 // Message is a single turn. Screenshots are not persisted — HasScreenshot is

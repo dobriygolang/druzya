@@ -33,6 +33,9 @@ type Session struct {
 	Stress         StressProfile
 	Report         []byte // ai_report JSONB — nil until report job finishes
 	ReplayURL      string
+	// RunningSummary — фоновый конспект старых mock_messages, поддерживаемый
+	// compaction.Worker. Пустая строка у свежих сессий.
+	RunningSummary string
 	StartedAt      *time.Time
 	FinishedAt     *time.Time
 	CreatedAt      time.Time

@@ -7,6 +7,7 @@ import { z } from 'zod';
 import {
   eventChannels,
   invokeChannels,
+  type AnalyzeInput,
   type CaptureResult,
 } from '@shared/ipc';
 
@@ -38,8 +39,7 @@ import { createPersonasClient, type PersonaDTO } from '../api/personas';
 import { createSessionsClient } from '../api/sessions';
 import { loadAppearance, saveAppearance, type AppearancePrefs } from '../settings/appearance';
 import { createSessionManager, type SessionManager } from '../sessions/manager';
-import type { SessionKind } from '@shared/types';
-import { applyPreset, getCurrent, listPresets, type MasqueradePreset } from '../masquerade';
+import { applyPreset, getCurrent, listPresets } from '../masquerade';
 import { checkNow, getStatus, installNow } from '../updater';
 import { captureArea, captureFullScreen } from '../capture/screenshot';
 import { applyBindings, listBindings } from '../hotkeys/registry';

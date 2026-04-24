@@ -334,6 +334,7 @@ func sessionFromRow(r ai_mockdb.MockSession) (domain.Session, error) {
 		t := r.FinishedAt.Time
 		out.FinishedAt = &t
 	}
+	out.RunningSummary = r.RunningSummary
 	if len(r.StressProfile) > 0 {
 		var sp domain.StressProfile
 		if err := json.Unmarshal(r.StressProfile, &sp); err == nil {
