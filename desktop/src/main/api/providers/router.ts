@@ -1,29 +1,17 @@
-// Routes an Analyze/Chat turn to either the local provider (BYOK) or the
-// Druz9 backend. The choice is per-turn, based on (model's provider family)
-// AND (Keychain entry presence for that family).
+// Routes every Analyze/Chat turn to the Druz9 backend via Connect-RPC.
 //
-// The router emits the same IPC-friendly event shape regardless of path, so
-// streaming.ts does not care which upstream answered.
-
-import { randomUUID } from 'node:crypto';
-
+// Prior to the BYOK removal this file branched between a local provider
+// path (direct OpenAI/Anthropic on user keys in Keychain) and the server
+// path. The local branch is gone — every turn now hits the server, which
+// dispatches via the llmchain (Groq → Cerebras → OpenRouter) multi-provider
+// router. The function is kept as a single entry point so streaming.ts
+// does not have to know about Connect — same IPC event shape as before.
 import type { AnalyzeInput } from '@shared/ipc';
 
-import { loadKey, type ByokProvider } from '../../auth/byok-keychain';
 import type { CopilotClient } from '../client';
-import { AnthropicProvider } from './anthropic';
-import { OpenAIProvider } from './openai';
-import {
-  familyOf,
-  type LocalLLMMessage,
-  type LocalLLMProvider,
-  type LocalStreamEvent,
-} from './types';
 
 // ─────────────────────────────────────────────────────────────────────────
-// Public event shape — superset of LocalStreamEvent plus the "created"
-// frame that the backend sends first. For BYOK turns, the router
-// synthesizes a Created frame with client-generated UUIDs.
+// Public event shape — matches what the backend streams over Connect.
 // ─────────────────────────────────────────────────────────────────────────
 
 export type RoutedEvent =
@@ -41,10 +29,7 @@ export type RoutedEvent =
       tokensIn: number;
       tokensOut: number;
       latencyMs: number;
-      /**
-       * Updated quota snapshot from the backend. BYOK turns don't touch
-       * server quota, so we leave this null in that case.
-       */
+      /** Updated quota snapshot from the backend. Always non-null now. */
       quota: null | {
         plan: 'free' | 'seeker' | 'ascendant' | '';
         requestsUsed: number;
@@ -78,117 +63,11 @@ export async function* routeTurn(
   signal: AbortSignal,
 ): AsyncGenerator<RoutedEvent, void, void> {
   const chosenModel = input.model || deps.defaultModel();
-  const family = familyOf(chosenModel);
-
-  // BYOK eligibility: the model belongs to a family we can drive locally
-  // AND we have a key for that family.
-  const byokKey = family ? await loadKey(family as ByokProvider) : null;
-
-  if (byokKey && family) {
-    yield* routeLocal({ input, chosenModel, family, apiKey: byokKey, signal });
-    return;
-  }
-
   yield* routeServer(deps.client, input, kind, chosenModel, signal);
 }
 
 // ─────────────────────────────────────────────────────────────────────────
-// Local path — BYOK
-// ─────────────────────────────────────────────────────────────────────────
-
-async function* routeLocal(args: {
-  input: AnalyzeInput;
-  chosenModel: string;
-  family: 'openai' | 'anthropic';
-  apiKey: string;
-  signal: AbortSignal;
-}): AsyncGenerator<RoutedEvent, void, void> {
-  const { input, chosenModel, family, apiKey, signal } = args;
-
-  // Client-generated ids — server doesn't know about this conversation.
-  const conversationId = input.conversationId || randomUUID();
-  const userMessageId = randomUUID();
-  const assistantMessageId = randomUUID();
-
-  yield {
-    type: 'created',
-    conversationId,
-    userMessageId,
-    assistantMessageId,
-    model: chosenModel,
-  };
-
-  const provider: LocalLLMProvider =
-    family === 'openai' ? new OpenAIProvider(apiKey) : new AnthropicProvider(apiKey);
-
-  const messages = buildMessages(input.promptText, input.attachments);
-  const start = Date.now();
-
-  for await (const ev of provider.stream({
-    model: chosenModel,
-    messages,
-    signal,
-  })) {
-    yield mapLocalEvent(ev, { assistantMessageId, start });
-    if (ev.type === 'done' || ev.type === 'error') return;
-  }
-}
-
-function buildMessages(
-  promptText: string,
-  attachments: AnalyzeInput['attachments'],
-): LocalLLMMessage[] {
-  // System prompt mirrors the backend's `systemPrompt` in app/analyze.go so
-  // BYOK turns get the same assistant persona.
-  const system: LocalLLMMessage = {
-    role: 'system',
-    content:
-      'You are Druz9 Copilot — a stealthy, precise assistant for software engineers.\n' +
-      "You are being shown a screenshot of the user's screen (code, terminal, a task, or an error).\n" +
-      'Answer in the language the user wrote to you (Russian by default).\n' +
-      'Be concise. Use Markdown. When quoting code, use fenced blocks with the correct language tag.\n' +
-      'When the screenshot shows a programming task, explain the idea first, then show a clean solution.\n' +
-      'Never mention that you cannot see the image if an image is provided — analyse it as given.',
-  };
-
-  const user: LocalLLMMessage = {
-    role: 'user',
-    content: promptText,
-    images: attachments
-      .filter((a) => a.kind === 'screenshot')
-      .map((a) => ({ mimeType: a.mimeType, dataBase64: a.dataBase64 })),
-  };
-  return [system, user];
-}
-
-function mapLocalEvent(
-  ev: LocalStreamEvent,
-  ctx: { assistantMessageId: string; start: number },
-): RoutedEvent {
-  switch (ev.type) {
-    case 'delta':
-      return { type: 'delta', text: ev.text };
-    case 'done':
-      return {
-        type: 'done',
-        assistantMessageId: ctx.assistantMessageId,
-        tokensIn: ev.tokensIn,
-        tokensOut: ev.tokensOut,
-        latencyMs: Date.now() - ctx.start,
-        quota: null,
-      };
-    case 'error':
-      return {
-        type: 'error',
-        code: ev.code,
-        message: ev.message,
-        retryAfterSeconds: ev.retryAfterSeconds ?? 0,
-      };
-  }
-}
-
-// ─────────────────────────────────────────────────────────────────────────
-// Server path — Connect-RPC to backend (existing behaviour)
+// Server path — Connect-RPC to backend.
 // ─────────────────────────────────────────────────────────────────────────
 
 async function* routeServer(

@@ -52,16 +52,9 @@ export const invokeChannels = {
   quotaGet: 'quota:get',
   rateMessage: 'messages:rate',
 
-  byokList: 'byok:list',
-  byokSave: 'byok:save',
-  byokDelete: 'byok:delete',
-  byokTest: 'byok:test',
-
   masqueradeList: 'masquerade:list',
   masqueradeGet: 'masquerade:get',
   masqueradeApply: 'masquerade:apply',
-
-  voiceTranscribe: 'voice:transcribe',
 
   updaterStatus: 'updater:status',
   updaterCheck: 'updater:check',
@@ -83,8 +76,6 @@ export const invokeChannels = {
   sessionCurrent: 'session:current',
   sessionList: 'session:list',
   sessionGetAnalysis: 'session:get-analysis',
-  /** Renderer → main reply to sessionRequestLocalTranscript. */
-  sessionSubmitLocalTranscript: 'session:submit-local-transcript',
   /** Expanded calls this on mount to pick up any userTurnStarted event
    *  that fired before its renderer had subscribed (race: compact kicks
    *  off analyze.start, main broadcasts, then compact asks main to
@@ -106,7 +97,6 @@ export const eventChannels = {
   configUpdated: 'event:config-updated',
   quotaUpdated: 'event:quota-updated',
   authChanged: 'event:auth-changed',
-  byokChanged: 'event:byok-changed',
   updateStatus: 'event:update-status',
   cursorFreezeChanged: 'event:cursor-freeze-changed',
   sessionChanged: 'event:session-changed',
@@ -115,10 +105,6 @@ export const eventChannels = {
    *  Emitted by the little "choose model" button in compact since the
    *  picker modal (440×520) doesn't fit inside the compact window. */
   openProviderPicker: 'event:open-provider-picker',
-  /** Main → renderer request for a serialized local transcript (BYOK
-   *  path). Renderer answers via ipcRenderer.send on
-   *  'session:local-transcript-response'. */
-  sessionRequestLocalTranscript: 'event:session-request-local-transcript',
   /** Fired by main right after analyze.start succeeds, so every window
    *  (compact for its own feed, expanded for the chat) can draw the
    *  optimistic user bubble — including the screenshot preview — before
@@ -143,24 +129,6 @@ export interface UserTurnStartedEvent {
   hasScreenshot: boolean;
   /** Full data URL (`data:image/png;base64,…`). Empty when no screenshot. */
   screenshotDataUrl: string;
-}
-
-// ─────────────────────────────────────────────────────────────────────────
-// BYOK types
-// ─────────────────────────────────────────────────────────────────────────
-
-export type ByokProvider = 'openai' | 'anthropic';
-
-/** Presence map — never carries actual key material. */
-export interface ByokPresence {
-  openai: boolean;
-  anthropic: boolean;
-}
-
-export interface ByokResult {
-  ok: boolean;
-  /** Human-readable detail on success (e.g. model count); failure message otherwise. */
-  detail: string;
 }
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -381,18 +349,6 @@ export interface Druz9API {
   messages: { rate: (id: string, rating: -1 | 0 | 1) => Promise<void> };
 
   /**
-   * BYOK — bring-your-own API keys. Keys stay in the OS Keychain;
-   * `list()` returns presence booleans only so raw key material NEVER
-   * crosses the IPC boundary.
-   */
-  byok: {
-    list: () => Promise<ByokPresence>;
-    save: (provider: ByokProvider, key: string) => Promise<ByokResult>;
-    delete: (provider: ByokProvider) => Promise<void>;
-    test: (provider: ByokProvider) => Promise<ByokResult>;
-  };
-
-  /**
    * Masquerade — swap the Dock icon and window titles at runtime. Process
    * renaming in Activity Monitor requires alternative build targets and
    * is not supported at runtime.
@@ -401,20 +357,6 @@ export interface Druz9API {
     list: () => Promise<MasqueradePresetInfo[]>;
     get: () => Promise<MasqueradePreset>;
     apply: (preset: MasqueradePreset) => Promise<void>;
-  };
-
-  /**
-   * Voice — the renderer captures audio via MediaRecorder and posts the
-   * bytes here for transcription. Requires a BYOK OpenAI key; returns
-   * an error string if one is not configured. Resolves with the
-   * transcript on success.
-   */
-  voice: {
-    transcribe: (input: {
-      audioBase64: string;
-      mimeType: string;
-      language?: string;
-    }) => Promise<{ ok: boolean; transcript?: string; error?: string }>;
   };
 
   /**
