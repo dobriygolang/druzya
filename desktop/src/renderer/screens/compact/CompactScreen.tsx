@@ -20,6 +20,7 @@ import { useConfig } from '../../hooks/use-config';
 import { useHotkeyEvents } from '../../hooks/use-hotkey-events';
 import { useAuthStore } from '../../stores/auth';
 import { useConversationStore } from '../../stores/conversation';
+import { applyPersonaPrefix, usePersonaStore } from '../../stores/persona';
 import { useCursorFreezeStore } from '../../stores/cursor-freeze';
 import { useSessionStore } from '../../stores/session';
 import {
@@ -66,6 +67,10 @@ export function CompactScreen() {
   const liveSession = useSessionStore((s) => s.current);
   const lastAnalysis = useSessionStore((s) => s.lastAnalysis);
   const sessionBootstrap = useSessionStore((s) => s.bootstrap);
+  // Active persona colors the BrandMark + (via the submit handlers
+  // reading from getState() directly, not this hook) controls the
+  // system-prompt prefix prepended to analyze.start / chat.start calls.
+  const activePersona = usePersonaStore((s) => s.active);
 
   const [input, setInput] = useState('');
   const [status, setStatus] = useState<'idle' | 'ready' | 'thinking' | 'recording'>('ready');
@@ -131,6 +136,11 @@ export function CompactScreen() {
       if (!shot) return;
 
       const text = input.trim();
+      // Persona prefix: when user picks "React Expert" in the dropdown,
+      // prepend the persona's "Инструкция: …" system block so the LLM
+      // narrows focus. Default persona → returns text untouched.
+      const activePersona = usePersonaStore.getState().active;
+      const promptWithPersona = applyPersonaPrefix(activePersona.prefix, text);
       const conversationId = useConversationStore.getState().conversationId;
       // Show expanded first so its renderer can subscribe to streaming
       // events (analyzeCreated/Delta/Done) before the first backend
@@ -139,7 +149,7 @@ export function CompactScreen() {
       void window.druz9.windows.show('expanded');
       const handle = await window.druz9.analyze.start({
         conversationId,
-        promptText: text,
+        promptText: promptWithPersona,
         model: selectedModel || config?.defaultModelId || '',
         attachments: [
           {
@@ -205,15 +215,20 @@ export function CompactScreen() {
       : [];
 
     const conversationId = useConversationStore.getState().conversationId;
+    const activePersona = usePersonaStore.getState().active;
+    const promptWithPersona = applyPersonaPrefix(activePersona.prefix, text);
     const handle = await window.druz9.analyze.start({
       conversationId,
-      promptText: text,
+      promptText: promptWithPersona,
       model: selectedModel || config?.defaultModelId || '',
       attachments,
       triggerAction: pending ? 'screenshot_area' : 'quick_prompt',
       focusedAppHint: '',
     });
     beginTurn({
+      // Keep the user-facing bubble showing ONLY the raw text. Persona
+      // prefix is an operator instruction, not part of what the user
+      // said — rendering it in the chat bubble would be confusing.
       promptText: text,
       hasScreenshot: !!pending,
       screenshotDataUrl: pending ? `data:${pending.mimeType};base64,${pending.dataBase64}` : undefined,
@@ -262,7 +277,7 @@ export function CompactScreen() {
         }}
       >
         <div style={{ position: 'relative', display: 'flex', alignItems: 'center', WebkitAppRegion: 'no-drag' } as React.CSSProperties}>
-          <BrandMark size={28} />
+          <BrandMark size={28} background={activePersona.brandGradient} />
           <div
             style={{
               position: 'absolute',
@@ -415,6 +430,7 @@ export function CompactScreen() {
         <div
           style={{ display: 'flex', alignItems: 'center', gap: 10, WebkitAppRegion: 'no-drag' } as React.CSSProperties}
         >
+          <PersonaPicker />
           <button
             onClick={() => void window.druz9.ui.openProviderPicker()}
             title={config ? 'Выбрать модель' : 'Нужен вход — зайди через Настройки'}
@@ -571,4 +587,184 @@ async function openReport(analysis: import('@shared/types').SessionAnalysis): Pr
     return;
   }
   await window.druz9.windows.show('expanded');
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+
+/**
+ * PersonaPicker — compact status-row dropdown for the expert-mode
+ * preset (React expert / System Design / Go-SRE / Behavioral / DSA).
+ * Lives right of the status icons, left of the model picker, so the
+ * user's eye naturally reads: mode → model → hotkey hint.
+ *
+ * Closed state renders the persona's emoji + short label inside a
+ * chip. Open state is a 200×auto dropdown anchored top-right to the
+ * chip; clicking an item swaps the active persona (which writes to
+ * localStorage via the store). Close on: click-outside, Esc, or pick.
+ */
+// Dropdown height in px — 6 rows of ~44px each + 8px padding. Used to
+// temporarily grow the compact window so the dropdown fits inside its
+// bounds (BrowserWindow clips any content that would spill outside).
+const PERSONA_DROPDOWN_HEIGHT = 292;
+
+function PersonaPicker() {
+  const active = usePersonaStore((s) => s.active);
+  const list = usePersonaStore((s) => s.list);
+  const setActive = usePersonaStore((s) => s.setActive);
+  const [open, setOpen] = useState(false);
+  const rootRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const onClickOutside = (e: MouseEvent) => {
+      if (rootRef.current && !rootRef.current.contains(e.target as Node)) setOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setOpen(false);
+    };
+    window.addEventListener('mousedown', onClickOutside);
+    window.addEventListener('keydown', onKey);
+    return () => {
+      window.removeEventListener('mousedown', onClickOutside);
+      window.removeEventListener('keydown', onKey);
+    };
+  }, [open]);
+
+  // Grow the compact window downward while the dropdown is open so the
+  // menu fits inside the BrowserWindow bounds (macOS clips anything
+  // outside). Shrink back on close. Using the existing window manager
+  // resize which pins the top-right corner, so the status row stays
+  // visually anchored and the new space appears below for the dropdown.
+  useEffect(() => {
+    if (!open) return;
+    void window.druz9.windows.resize(
+      'compact',
+      COMPACT_BASE_WIDTH,
+      COMPACT_BASE_HEIGHT + PERSONA_DROPDOWN_HEIGHT,
+    );
+    return () => {
+      void window.druz9.windows.resize('compact', COMPACT_BASE_WIDTH, COMPACT_BASE_HEIGHT);
+    };
+  }, [open]);
+
+  return (
+    <div ref={rootRef} style={{ position: 'relative' }}>
+      <button
+        onClick={() => setOpen((o) => !o)}
+        title={`Режим: ${active.label} — ${active.hint}`}
+        style={{
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: 4,
+          height: 16,
+          padding: '0 6px',
+          background: 'transparent',
+          border: '1px solid transparent',
+          borderRadius: 4,
+          color: 'var(--d-text-2)',
+          fontFamily: 'inherit',
+          fontSize: 10.5,
+          cursor: 'pointer',
+        }}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.background = 'rgba(255,255,255,0.04)';
+          e.currentTarget.style.borderColor = 'var(--d-line)';
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.background = 'transparent';
+          e.currentTarget.style.borderColor = 'transparent';
+        }}
+      >
+        <span style={{ fontSize: 12 }}>{active.icon}</span>
+        {active.label}
+        <IconChevronDown size={10} />
+      </button>
+
+      {open && (
+        <div
+          style={{
+            position: 'absolute',
+            // Anchor BELOW the status-row chip. Paired with the
+            // temporary window-resize effect above (compact grows by
+            // PERSONA_DROPDOWN_HEIGHT when open), so the menu fits
+            // inside the BrowserWindow. Anchoring above would be
+            // clipped even after resize because the status row stays
+            // pinned at the top — the new space opens downward.
+            top: '100%',
+            right: 0,
+            marginTop: 4,
+            width: 220,
+            background: 'var(--d-bg-1)',
+            border: '1px solid var(--d-line-strong)',
+            borderRadius: 8,
+            boxShadow: 'var(--s-float)',
+            padding: 4,
+            zIndex: 20,
+          }}
+        >
+          {list.map((p) => {
+            const chosen = p.id === active.id;
+            return (
+              <button
+                key={p.id}
+                onClick={() => {
+                  setActive(p.id);
+                  setOpen(false);
+                }}
+                style={{
+                  width: '100%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  padding: '6px 8px',
+                  background: chosen ? 'var(--d-accent-soft)' : 'transparent',
+                  border: 'none',
+                  borderRadius: 6,
+                  color: 'var(--d-text)',
+                  fontFamily: 'inherit',
+                  fontSize: 11.5,
+                  cursor: 'pointer',
+                  textAlign: 'left',
+                }}
+                onMouseEnter={(e) => {
+                  if (!chosen) e.currentTarget.style.background = 'rgba(255,255,255,0.04)';
+                }}
+                onMouseLeave={(e) => {
+                  if (!chosen) e.currentTarget.style.background = 'transparent';
+                }}
+              >
+                <span
+                  aria-hidden
+                  style={{
+                    display: 'inline-block',
+                    width: 16,
+                    height: 16,
+                    borderRadius: 4,
+                    background: p.brandGradient,
+                    flexShrink: 0,
+                  }}
+                />
+                <span style={{ fontSize: 13 }}>{p.icon}</span>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontWeight: chosen ? 600 : 400 }}>{p.label}</div>
+                  <div
+                    style={{
+                      fontSize: 9.5,
+                      color: 'var(--d-text-3)',
+                      fontFamily: 'var(--f-mono)',
+                      whiteSpace: 'nowrap',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                    }}
+                  >
+                    {p.hint}
+                  </div>
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
 }

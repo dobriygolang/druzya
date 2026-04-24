@@ -135,7 +135,13 @@ export function ExpandedScreen() {
         height: '100%',
         display: 'flex',
         flexDirection: 'column',
-        background: 'var(--d-bg-1)',
+        // Replaced solid var(--d-bg-1) with an alpha-composed rgba so the
+        // macOS vibrancy blur (enabled on the BrowserWindow in
+        // main/windows/window-manager.ts) shows through when the user
+        // drops the opacity slider. At bgAlpha=1.0 this is ~indistinguishable
+        // from the old opaque look; at bgAlpha=0.4 the window feels like
+        // a frosted pane over the desktop.
+        background: `rgba(12, 12, 14, ${bgAlpha})`,
         border: '1px solid var(--d-line)',
         borderRadius: 'var(--r-window)',
         boxShadow: 'var(--s-window)',

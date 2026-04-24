@@ -345,6 +345,17 @@ type InterviewCalendar struct {
 	UpdatedAt     pgtype.Timestamptz
 }
 
+type InterviewerApplication struct {
+	ID           pgtype.UUID
+	UserID       pgtype.UUID
+	Motivation   string
+	Status       string
+	ReviewedBy   pgtype.UUID
+	ReviewedAt   pgtype.Timestamptz
+	DecisionNote string
+	CreatedAt    pgtype.Timestamptz
+}
+
 type LlmConfig struct {
 	ID          pgtype.UUID
 	ScopeType   string
@@ -621,6 +632,8 @@ type Review struct {
 	CreatedAt     pgtype.Timestamptz
 	InterviewerID pgtype.UUID
 	UpdatedAt     pgtype.Timestamptz
+	Direction     string
+	SubjectID     pgtype.UUID
 }
 
 type SavedVacancy struct {

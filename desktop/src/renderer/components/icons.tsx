@@ -87,6 +87,17 @@ export function IconSparkles(p: Props) {
   );
 }
 
+export function IconPalette(p: Props) {
+  return (
+    <svg {...base(p)}>
+      <path d="M12 3a9 9 0 1 0 0 18 1.5 1.5 0 0 0 1.06-2.56A1.5 1.5 0 0 1 14.12 16H16a5 5 0 0 0 5-5c0-4.42-4.03-8-9-8z" />
+      <circle cx="7.5" cy="10.5" r="1" />
+      <circle cx="12" cy="7.5" r="1" />
+      <circle cx="16.5" cy="10.5" r="1" />
+    </svg>
+  );
+}
+
 export function IconHistory(p: Props) {
   return (
     <svg {...base(p)}>
@@ -138,17 +149,21 @@ export function IconKey(p: Props) {
   );
 }
 
-/** Brand mark — gradient square with a subtle shine. Used in onboarding and compact. */
-export function BrandMark({ size = 28 }: { size?: number }) {
+/** Brand mark — gradient square with a subtle shine. Used in onboarding and compact.
+ *  The optional `background` prop lets callers swap the gradient at runtime
+ *  (today: per-persona color — see stores/persona.ts). When undefined we fall
+ *  back to the baseline --d-gradient-hero purple→pink. */
+export function BrandMark({ size = 28, background }: { size?: number; background?: string }) {
   return (
     <div
       style={{
         width: size,
         height: size,
         borderRadius: size / 3.5,
-        background: 'var(--d-gradient-hero)',
+        background: background ?? 'var(--d-gradient-hero)',
         boxShadow: '0 2px 8px rgba(124, 92, 255, 0.35), inset 0 1px 0 rgba(255,255,255,0.2)',
         flexShrink: 0,
+        transition: 'background 180ms ease',
       }}
     />
   );

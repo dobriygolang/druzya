@@ -8,11 +8,12 @@ import { useEffect, useState } from 'react';
 
 import { HotkeyRecorder } from '../../components/HotkeyRecorder';
 import { useLocaleStore } from '../../i18n';
-import { BrandMark, IconKey, IconSettings, IconShield, IconSparkles } from '../../components/icons';
+import { BrandMark, IconKey, IconPalette, IconSettings, IconShield, IconSparkles } from '../../components/icons';
 import { Button, StatusDot } from '../../components/primitives';
 import { useConfig } from '../../hooks/use-config';
 import { useAuthStore } from '../../stores/auth';
 import { useHotkeyOverridesStore } from '../../stores/hotkey-overrides';
+import { useAppearanceStore } from '../../stores/appearance';
 import { usePaywallStore } from '../../stores/paywall';
 import { useQuotaStore } from '../../stores/quota';
 import {
@@ -23,12 +24,13 @@ import {
 } from '@shared/ipc';
 import type { HotkeyBinding, ProviderModel } from '@shared/types';
 
-type Tab = 'general' | 'hotkeys' | 'providers' | 'about';
+type Tab = 'general' | 'hotkeys' | 'providers' | 'appearance' | 'about';
 
 const tabs: Array<{ id: Tab; label: string; icon: React.ReactNode }> = [
   { id: 'general', label: 'Общее', icon: <IconSettings size={14} /> },
   { id: 'hotkeys', label: 'Горячие клавиши', icon: <IconKey size={14} /> },
   { id: 'providers', label: 'AI провайдеры', icon: <IconSparkles size={14} /> },
+  { id: 'appearance', label: 'Внешний вид', icon: <IconPalette size={14} /> },
   { id: 'about', label: 'О программе', icon: <IconShield size={14} /> },
 ];
 
@@ -46,8 +48,20 @@ export function SettingsScreen() {
     return unsub;
   }, [bootstrap, refreshQuota]);
 
+  // Settings window stays opaque — transparent + default window frame
+  // on macOS Tahoe (26.x) breaks the title bar (traffic lights + drag
+  // region stop responding). The slider only affects the chat
+  // (expanded) window where transparency doesn't conflict with window
+  // chrome because expanded uses frame: false.
+
   return (
-    <div style={{ display: 'flex', height: '100vh', background: 'var(--d-bg-0)' }}>
+    <div
+      style={{
+        display: 'flex',
+        height: '100vh',
+        background: 'var(--d-bg-0)',
+      }}
+    >
       {/* Sidebar */}
       <div
         style={{
@@ -95,6 +109,7 @@ export function SettingsScreen() {
         {tab === 'general' && <GeneralTab session={session} quota={quota} />}
         {tab === 'hotkeys' && <HotkeysTab />}
         {tab === 'providers' && <ProvidersTab models={config?.models ?? []} />}
+        {tab === 'appearance' && <AppearanceTab />}
         {tab === 'about' && <AboutTab />}
       </div>
     </div>
@@ -466,6 +481,95 @@ function ProvidersTab({ models }: { models: ProviderModel[] }) {
             </div>
           </div>
         ))}
+      </div>
+    </>
+  );
+}
+
+function AppearanceTab() {
+  const opacity = useAppearanceStore((s) => s.expandedOpacity);
+  const bootstrap = useAppearanceStore((s) => s.bootstrap);
+  const setOpacity = useAppearanceStore((s) => s.setExpandedOpacity);
+  useEffect(() => {
+    let unsub: (() => void) | null = null;
+    void bootstrap().then((u) => {
+      unsub = u;
+    });
+    return () => {
+      if (unsub) unsub();
+    };
+  }, [bootstrap]);
+
+  return (
+    <>
+      <SectionTitle
+        title="Внешний вид"
+        subtitle="Прозрачность окон Druz9 и размер окна чата"
+      />
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+        <div>
+          <div
+            style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'baseline',
+              marginBottom: 8,
+            }}
+          >
+            <div style={{ fontSize: 13, color: 'var(--d-text)' }}>
+              Прозрачность окон Druz9
+            </div>
+            <div style={{ fontFamily: 'var(--f-mono)', fontSize: 11, color: 'var(--d-text-2)' }}>
+              {opacity}%
+            </div>
+          </div>
+          <input
+            type="range"
+            min={0}
+            max={100}
+            step={1}
+            value={opacity}
+            onChange={(e) => {
+              const v = Number(e.target.value);
+              // Fire-and-forget; the store handles persistence + error
+              // recovery. We update UI state immediately so the slider
+              // doesn't jitter while the IPC round-trip happens.
+              void setOpacity(v);
+            }}
+            style={{ width: '100%', accentColor: 'var(--d-accent)' }}
+          />
+          <div
+            style={{
+              marginTop: 6,
+              fontSize: 11,
+              color: 'var(--d-text-3)',
+              lineHeight: 1.5,
+            }}
+          >
+            0% — полностью прозрачно (виден blur рабочего стола · macOS vibrancy).
+            100% — плотный фон. Применяется к окнам чата (expanded) и настроек
+            (этому) в реальном времени.
+          </div>
+        </div>
+
+        <div
+          style={{
+            padding: '12px 14px',
+            background: 'var(--d-bg-2)',
+            border: '1px solid var(--d-line)',
+            borderRadius: 8,
+            fontSize: 12,
+            color: 'var(--d-text-2)',
+            lineHeight: 1.5,
+          }}
+        >
+          <div style={{ fontWeight: 500, marginBottom: 4, color: 'var(--d-text)' }}>
+            Размер окна
+          </div>
+          Окно чата (expanded) свободно ресайзится — тяни за любой край.
+          Последний размер запоминается и восстанавливается при следующем
+          открытии.
+        </div>
       </div>
     </>
   );

@@ -632,6 +632,8 @@ type Review struct {
 	CreatedAt     pgtype.Timestamptz
 	InterviewerID pgtype.UUID
 	UpdatedAt     pgtype.Timestamptz
+	Direction     string
+	SubjectID     pgtype.UUID
 }
 
 type SavedVacancy struct {

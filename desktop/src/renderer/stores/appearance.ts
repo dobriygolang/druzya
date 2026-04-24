@@ -21,7 +21,7 @@ interface State {
   setExpandedOpacity: (value: number) => Promise<void>;
 }
 
-export const useAppearanceStore = create<State>((set, get) => ({
+export const useAppearanceStore = create<State>((set) => ({
   expandedOpacity: 85,
   loading: true,
 
@@ -57,14 +57,19 @@ export const useAppearanceStore = create<State>((set, get) => ({
 
 /**
  * sliderToAlpha — map 0-100 slider to a CSS alpha.
- * 0   → 0.40 (most transparent; still readable text on top)
+ * 0   → 0.10 (near-fully transparent; vibrancy blur dominates)
  * 100 → 1.00 (fully opaque; classic look, no vibrancy visible)
  *
- * Formula chosen so the slider has perceptually linear effect —
- * users report the lower 40% of the range feels "equivalent" if we use
- * a flat 0..1 mapping; compressing to 0.4..1.0 makes every tick visible.
+ * Earlier version capped at 0.40 on the low end to ensure text
+ * readability on top. But the chat's message bubbles, code blocks and
+ * sidebar cards all paint their own opaque backgrounds, so dropping
+ * the root to 0.40 produced only a subtle edge-glow effect — users
+ * reported "не работает" at slider=0. Dropping to 0.10 lets the
+ * vibrancy blur dominate the empty regions around content while the
+ * nested opaque cards keep text readable. If readability problems
+ * surface on light desktop backgrounds, bump the floor back up.
  */
 export function sliderToAlpha(slider: number): number {
   const clamped = Math.max(0, Math.min(100, slider));
-  return 0.4 + (clamped / 100) * 0.6;
+  return 0.1 + (clamped / 100) * 0.9;
 }

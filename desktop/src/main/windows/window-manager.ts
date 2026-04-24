@@ -86,6 +86,25 @@ export function showWindow(name: WindowName, opts: WindowOptions): BrowserWindow
     win.on('move', scheduleSave);
   }
 
+  // macOS Tahoe (26.x) regression: vibrancy set via the BrowserWindow
+  // constructor sometimes fails to attach to the NSVisualEffectView
+  // backing layer — the window ends up with transparent: true but no
+  // blur, and CSS alpha alone looks like a "brightness fade" rather
+  // than the frosted-glass effect. Re-applying vibrancy after the
+  // first paint reliably wires it up. Also force 'active' state so
+  // the blur doesn't dim when the window loses focus.
+  if (process.platform === 'darwin' && name === 'expanded') {
+    win.once('ready-to-show', () => {
+      if (win.isDestroyed()) return;
+      try {
+        win.setVibrancy('hud');
+        win.setBackgroundColor('#00000000');
+      } catch {
+        /* setVibrancy may throw on non-macOS or very old macOS — ignore */
+      }
+    });
+  }
+
   // Compact + expanded + history are stealth by default. Settings /
   // onboarding render system-level prompts, so we leave them visible
   // to the viewer.
@@ -249,7 +268,16 @@ function buildWindow(name: WindowName, opts: WindowOptions): BrowserWindow {
         frame: false,
         resizable: true,
         transparent: true,
-        vibrancy: process.platform === 'darwin' ? 'under-window' : undefined,
+        // 'hud' is the strongest desktop-blur material; 'under-window'
+        // from macOS 10.14 produces near-zero visible blur on Tahoe
+        // (26.x) — swapping material brought the effect back. We also
+        // re-apply via setVibrancy() after 'ready-to-show' below as a
+        // workaround for the constructor-time regression.
+        vibrancy: process.platform === 'darwin' ? 'hud' : undefined,
+        // 'active' keeps the blur visible even when the window is not
+        // focused. Default 'followsWindowActiveState' dims to a boring
+        // solid color on blur, which defeats the point of vibrancy.
+        visualEffectState: 'active',
         backgroundColor: '#00000000', // fully clear for vibrancy to show
         hasShadow: true,
         roundedCorners: true,
@@ -260,6 +288,15 @@ function buildWindow(name: WindowName, opts: WindowOptions): BrowserWindow {
       });
     }
     case 'settings':
+      // Reverted transparent + vibrancy: on macOS Tahoe (26.x) the
+      // combination `transparent: true` with the default window frame
+      // breaks the title-bar NSView — the traffic-light buttons stop
+      // receiving clicks and the title-bar drag region dies. Users
+      // reported Settings becoming "frozen" (no close/move/minimize).
+      // Settings stays opaque; the appearance slider still affects
+      // the chat (expanded) window where transparency is the real
+      // product value. If Electron fixes the frame-vs-transparent
+      // regression on Tahoe, re-enable here.
       return new BrowserWindow({
         ...base,
         width: 720,
