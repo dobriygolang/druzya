@@ -233,6 +233,20 @@ sql:
         emit_empty_slices: true
 
   - engine: postgresql
+    name: "subscription"
+    queries: "services/subscription/infra/queries"
+    schema: "migrations"
+    gen:
+      go:
+        package: "subscriptiondb"
+        out: "services/subscription/infra/db"
+        sql_package: "pgx/v5"
+        emit_interface: true
+        emit_prepared_queries: false
+        emit_exact_table_names: false
+        emit_empty_slices: true
+
+  - engine: postgresql
     name: "documents"
     queries: "services/documents/infra/queries"
     schema: "migrations"

@@ -3,6 +3,7 @@ module druz9/cmd/monolith
 go 1.25.0
 
 require (
+	connectrpc.com/connect v1.19.2
 	connectrpc.com/vanguard v0.3.0
 	druz9/achievements v0.0.0-00010101000000-000000000000
 	druz9/admin v0.0.0-00010101000000-000000000000
@@ -40,7 +41,6 @@ require (
 )
 
 require (
-	connectrpc.com/connect v1.19.2 // indirect
 	github.com/andybalholm/cascadia v1.3.3 // indirect
 	github.com/araddon/dateparse v0.0.0-20210429162001-6b43995a97de // indirect
 	github.com/beorn7/perks v1.0.1 // indirect

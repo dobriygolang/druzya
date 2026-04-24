@@ -786,6 +786,10 @@ type Subscription struct {
 	BoostyLevel      pgtype.Text
 	CurrentPeriodEnd pgtype.Timestamptz
 	UpdatedAt        pgtype.Timestamptz
+	Provider         pgtype.Text
+	ProviderSubID    pgtype.Text
+	StartedAt        pgtype.Timestamptz
+	GraceUntil       pgtype.Timestamptz
 }
 
 type SupportTicket struct {

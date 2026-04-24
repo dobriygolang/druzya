@@ -1,0 +1,55 @@
+// subscription.proto — Connect-RPC контракт централизованного subscription-
+// сервиса. Хранит tier пользователя (free/seeker/ascendant) + его lifecycle
+// (active/cancelled/expired) + привязку к провайдеру оплаты. Источник правды
+// для доступа к платным LLM-моделям (см. llmchain.candidates tier-gate) и
+// для фронта (paywall / upgrade-банер). Используется и druz9, и Hone, и
+// будущими проектами через shared/pkg/subclient.
+syntax = "proto3";
+package druz9.v1;
+
+import "google/api/annotations.proto";
+import "google/protobuf/timestamp.proto";
+
+option go_package = "druz9/shared/generated/pb/druz9/v1;druz9v1";
+
+service SubscriptionService {
+  // GetMyTier — эндпоинт для авторизованного пользователя. user_id
+  // резолвится из JWT, поэтому в запросе пусто.
+  rpc GetMyTier(GetMyTierRequest) returns (GetMyTierResponse) {
+    option (google.api.http) = { get: "/api/v1/subscription/tier" };
+  }
+
+  // GetTierByUserID — internal RPC для service-to-service вызовов
+  // (druz9 llmchain-gate, Hone, будущие). REST не expose'им, только
+  // Connect-path /druz9.v1.SubscriptionService/GetTierByUserID.
+  rpc GetTierByUserID(GetTierByUserIDRequest) returns (GetTierByUserIDResponse);
+
+  // AdminSetTier — выставление tier'а вручную. Требует role=admin.
+  // Используется (а) операторами для grant'а раннего доступа тестерам,
+  // (б) в M3 как fallback пока Boosty sync не настроен.
+  rpc AdminSetTier(AdminSetTierRequest) returns (AdminSetTierResponse) {
+    option (google.api.http) = { post: "/api/v1/admin/subscriptions/set-tier" body: "*" };
+  }
+}
+
+message GetMyTierRequest {}
+
+message GetMyTierResponse {
+  string tier = 1;                                // "free"|"seeker"|"ascendant"
+  string status = 2;                              // "active"|"cancelled"|"expired"
+  google.protobuf.Timestamp current_period_end = 3; // null для admin-выдачи без expiry
+  google.protobuf.Timestamp grace_until = 4;      // effective expiry (CPE + 24h)
+  string provider = 5;                            // "boosty"|"admin"|... — для UI подписи
+}
+
+message GetTierByUserIDRequest { string user_id = 1; }
+message GetTierByUserIDResponse { string tier = 1; }
+
+message AdminSetTierRequest {
+  string user_id = 1;
+  string tier = 2;
+  google.protobuf.Timestamp current_period_end = 3; // null = бессрочно (admin grant)
+  string reason = 4;                                 // в audit log
+}
+
+message AdminSetTierResponse { bool ok = 1; }

@@ -164,6 +164,7 @@ func New(ctx context.Context, cfg *config.Config) (app *App, otelShutdown func()
 		services.NewFriends(deps),
 		services.NewHone(deps),
 		services.NewLobby(deps),
+		services.NewSubscription(deps),
 	}
 
 	// Documents module is wired first so its searcher adapter can be
