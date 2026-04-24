@@ -263,10 +263,10 @@ func TestURLFetcher_SSRF_Localhost(t *testing.T) {
 func TestIsPrivateIP(t *testing.T) {
 	cases := map[string]bool{
 		// Public — must pass
-		"8.8.8.8":        false,
-		"1.1.1.1":        false,
-		"142.250.80.46":  false, // google.com
-		"2606:4700::":    false, // cloudflare IPv6
+		"8.8.8.8":       false,
+		"1.1.1.1":       false,
+		"142.250.80.46": false, // google.com
+		"2606:4700::":   false, // cloudflare IPv6
 
 		// Blocked — loopback
 		"127.0.0.1":  true,
@@ -287,16 +287,16 @@ func TestIsPrivateIP(t *testing.T) {
 		"fe80::1":         true,
 
 		// Blocked — shared (RFC 6598, carrier-grade NAT)
-		"100.64.0.1":   true,
-		"100.127.0.1":  true,
+		"100.64.0.1":  true,
+		"100.127.0.1": true,
 
 		// Blocked — unspecified
 		"0.0.0.0": true,
 		"::":      true,
 
 		// Edge — IPv4-mapped IPv6 of a private address
-		"::ffff:10.0.0.1":   true,
-		"::ffff:127.0.0.1":  true,
+		"::ffff:10.0.0.1":  true,
+		"::ffff:127.0.0.1": true,
 		// IPv4-mapped of public address → allowed
 		"::ffff:8.8.8.8": false,
 	}
@@ -317,16 +317,16 @@ func TestIsPrivateIP(t *testing.T) {
 // сайтах, которые шлют text/html; charset=windows-1251.
 func TestIsHTMLContentType(t *testing.T) {
 	cases := map[string]bool{
-		"text/html":                              true,
-		"text/html; charset=utf-8":               true,
-		"application/xhtml+xml":                  true,
-		"application/xhtml+xml; charset=utf-8":   true,
-		"text/plain":                             true,
-		"application/pdf":                        false,
-		"image/png":                              false,
-		"application/json":                       false,
-		"":                                       false,
-		"application/octet-stream":               false,
+		"text/html":                            true,
+		"text/html; charset=utf-8":             true,
+		"application/xhtml+xml":                true,
+		"application/xhtml+xml; charset=utf-8": true,
+		"text/plain":                           true,
+		"application/pdf":                      false,
+		"image/png":                            false,
+		"application/json":                     false,
+		"":                                     false,
+		"application/octet-stream":             false,
 	}
 	for ct, want := range cases {
 		if got := isHTMLContentType(strings.ToLower(ct)); got != want {

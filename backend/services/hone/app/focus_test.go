@@ -194,7 +194,9 @@ func TestGetStats_ComputesTotalAndLastSeven(t *testing.T) {
 	}
 	uc := &GetStats{
 		Streaks: &fakeStreakRepo{
-			getState:  func(_ context.Context, _ uuid.UUID) (domain.StreakState, error) { return domain.StreakState{CurrentStreak: 3, LongestStreak: 7}, nil },
+			getState: func(_ context.Context, _ uuid.UUID) (domain.StreakState, error) {
+				return domain.StreakState{CurrentStreak: 3, LongestStreak: 7}, nil
+			},
 			rangeDays: func(_ context.Context, _ uuid.UUID, _, _ time.Time) ([]domain.StreakDay, error) { return days, nil },
 		},
 		Now: fixedNow,

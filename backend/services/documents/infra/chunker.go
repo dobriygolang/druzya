@@ -79,9 +79,7 @@ func (c *SentenceChunker) Chunk(text string) []string {
 		// the embedder context.
 		if stoks > c.MaxTokens {
 			flush()
-			for _, piece := range splitLongSentence(s, c.MaxTokens) {
-				out = append(out, piece)
-			}
+			out = append(out, splitLongSentence(s, c.MaxTokens)...)
 			continue
 		}
 

@@ -6,10 +6,15 @@ import type { ReactNode } from 'react';
 
 export type TagTone = 'neutral' | 'warn' | 'ok' | 'error' | 'accent';
 
+// Tone → color triple. `accent` and `error` share the red palette by
+// design (the new Hone theme folded status-red into the primary accent).
+// Keeping them as separate keys preserves the semantic vocabulary —
+// callers saying `tone="error"` still read correctly even if visually
+// identical to `tone="accent"`.
 const tones: Record<TagTone, { fg: string; bg: string; border: string }> = {
   neutral: {
     fg: 'var(--d9-ink-dim)',
-    bg: 'oklch(1 0 0 / 0.06)',
+    bg: 'rgba(255, 255, 255, 0.06)',
     border: 'var(--d9-hairline)',
   },
   warn: {
@@ -23,9 +28,9 @@ const tones: Record<TagTone, { fg: string; bg: string; border: string }> = {
     border: 'oklch(0.6 0.15 150 / 0.3)',
   },
   error: {
-    fg: 'var(--d9-err)',
-    bg: 'oklch(0.6 0.18 25 / 0.14)',
-    border: 'oklch(0.6 0.18 25 / 0.35)',
+    fg: 'var(--d9-accent-hi)',
+    bg: 'var(--d9-accent-glow)',
+    border: 'rgba(255, 59, 48, 0.4)',
   },
   accent: {
     fg: 'var(--d9-accent-hi)',

@@ -20,10 +20,10 @@ import (
 // the client sees the new note immediately, connections populate a few
 // hundred ms later when the user hits ⌘J.
 type CreateNote struct {
-	Notes     domain.NoteRepo
-	EmbedFn   func(ctx context.Context, userID, noteID uuid.UUID, text string) // async
-	Log       *slog.Logger
-	Now       func() time.Time
+	Notes   domain.NoteRepo
+	EmbedFn func(ctx context.Context, userID, noteID uuid.UUID, text string) // async
+	Log     *slog.Logger
+	Now     func() time.Time
 }
 
 // CreateNoteInput — wire body.
@@ -107,7 +107,11 @@ type GetNote struct {
 
 // Do executes the use case.
 func (uc *GetNote) Do(ctx context.Context, userID, noteID uuid.UUID) (domain.Note, error) {
-	return uc.Notes.Get(ctx, userID, noteID)
+	n, err := uc.Notes.Get(ctx, userID, noteID)
+	if err != nil {
+		return domain.Note{}, fmt.Errorf("hone.GetNote.Do: %w", err)
+	}
+	return n, nil
 }
 
 // ListNotes returns the list-view projection, paginated.
@@ -120,7 +124,11 @@ func (uc *ListNotes) Do(ctx context.Context, userID uuid.UUID, limit int, cursor
 	if limit <= 0 || limit > 500 {
 		limit = 100
 	}
-	return uc.Notes.List(ctx, userID, limit, cursor)
+	rows, next, err := uc.Notes.List(ctx, userID, limit, cursor)
+	if err != nil {
+		return nil, "", fmt.Errorf("hone.ListNotes.Do: %w", err)
+	}
+	return rows, next, nil
 }
 
 // DeleteNote removes a note by id + owner.
@@ -130,7 +138,10 @@ type DeleteNote struct {
 
 // Do executes the use case.
 func (uc *DeleteNote) Do(ctx context.Context, userID, noteID uuid.UUID) error {
-	return uc.Notes.Delete(ctx, userID, noteID)
+	if err := uc.Notes.Delete(ctx, userID, noteID); err != nil {
+		return fmt.Errorf("hone.DeleteNote.Do: %w", err)
+	}
+	return nil
 }
 
 // ─── GetNoteConnections ────────────────────────────────────────────────────

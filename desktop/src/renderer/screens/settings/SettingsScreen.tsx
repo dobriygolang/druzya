@@ -111,6 +111,12 @@ export function SettingsScreen() {
             <button
               key={t.id}
               onClick={() => setTab(t.id)}
+              // Active tab owns a stronger highlight; inactive rows get
+              // the d9-row-hover fade-in. We keep the active style
+              // inline (wins over the class rule by specificity once
+              // :hover releases — CSS-var-only backgrounds don't fight
+              // inline styles here since we set background via class).
+              className={tab === t.id ? undefined : 'd9-row-hover'}
               style={{
                 display: 'flex',
                 alignItems: 'center',
@@ -121,7 +127,7 @@ export function SettingsScreen() {
                 fontWeight: 500,
                 letterSpacing: '-0.005em',
                 color: tab === t.id ? 'var(--d9-ink)' : 'var(--d9-ink-mute)',
-                background: tab === t.id ? 'oklch(1 0 0 / 0.06)' : 'transparent',
+                background: tab === t.id ? 'rgba(255,255,255,0.06)' : 'transparent',
                 boxShadow: tab === t.id ? 'inset 0 0.5px 0 rgba(255,255,255,0.08)' : 'none',
                 border: 'none',
                 borderRadius: 7,
@@ -1118,6 +1124,7 @@ function DocumentRow({
         type="button"
         onClick={() => onDelete(doc.id)}
         title="Удалить документ"
+        className="d9-icon-hover"
         style={{
           background: 'transparent',
           border: 0,
@@ -1127,6 +1134,7 @@ function DocumentRow({
           borderRadius: 6,
           display: 'inline-flex',
           alignItems: 'center',
+          transition: 'background 120ms, color 120ms',
         }}
       >
         <IconTrash size={14} />

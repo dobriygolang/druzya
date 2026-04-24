@@ -15,11 +15,9 @@
     "resolveJsonModule": true,
     "isolatedModules": true,
     "allowJs": true,
-    "baseUrl": ".",
-    "ignoreDeprecations": "5.0",
     "paths": {
-      "@shared/*": ["src/shared/*"],
-      "@renderer/*": ["src/renderer/src/*"],
+      "@shared/*": ["./src/shared/*"],
+      "@renderer/*": ["./src/renderer/src/*"],
       "@generated/*": ["../frontend/src/api/generated/*"]
     }
   },

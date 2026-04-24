@@ -38,15 +38,15 @@ func (k PlanItemKind) IsValid() bool {
 // client-side-stable so dismiss/complete can target a specific row without
 // requiring server roundtrip for insertion.
 type PlanItem struct {
-	ID            string
-	Kind          PlanItemKind
-	Title         string
-	Subtitle      string
-	TargetRef     string
-	DeepLink      string
-	EstimatedMin  int
-	Dismissed     bool
-	Completed     bool
+	ID           string
+	Kind         PlanItemKind
+	Title        string
+	Subtitle     string
+	TargetRef    string
+	DeepLink     string
+	EstimatedMin int
+	Dismissed    bool
+	Completed    bool
 }
 
 // Plan is one day's plan for one user.
@@ -77,26 +77,26 @@ func (m FocusMode) IsValid() bool {
 
 // FocusSession is one pomodoro-run or stopwatch-run.
 type FocusSession struct {
-	ID                  uuid.UUID
-	UserID              uuid.UUID
-	PlanID              *uuid.UUID
-	PlanItemID          string
-	PinnedTitle         string
-	Mode                FocusMode
-	StartedAt           time.Time
-	EndedAt             *time.Time
-	PomodorosCompleted  int
-	SecondsFocused      int
-	CreatedAt           time.Time
+	ID                 uuid.UUID
+	UserID             uuid.UUID
+	PlanID             *uuid.UUID
+	PlanItemID         string
+	PinnedTitle        string
+	Mode               FocusMode
+	StartedAt          time.Time
+	EndedAt            *time.Time
+	PomodorosCompleted int
+	SecondsFocused     int
+	CreatedAt          time.Time
 }
 
 // StreakState is the user-level summary used by /stats.
 type StreakState struct {
-	UserID         uuid.UUID
-	CurrentStreak  int
-	LongestStreak  int
-	LastQualified  *time.Time
-	UpdatedAt      time.Time
+	UserID        uuid.UUID
+	CurrentStreak int
+	LongestStreak int
+	LastQualified *time.Time
+	UpdatedAt     time.Time
 }
 
 // StreakDay is one per-user per-day aggregate row, populated as
@@ -114,11 +114,11 @@ type StreakDay struct {
 
 // Stats is the /stats response aggregate.
 type Stats struct {
-	CurrentStreakDays  int
-	LongestStreakDays  int
-	TotalFocusedSecs   int
-	Heatmap            []StreakDay // last 182 days (7x26) for Winter-style grid
-	LastSevenDays      []StreakDay // for the bar chart
+	CurrentStreakDays int
+	LongestStreakDays int
+	TotalFocusedSecs  int
+	Heatmap           []StreakDay // last 182 days (7x26) for Winter-style grid
+	LastSevenDays     []StreakDay // for the bar chart
 }
 
 // ─── Notes ─────────────────────────────────────────────────────────────────

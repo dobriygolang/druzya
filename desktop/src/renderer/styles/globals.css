@@ -93,6 +93,224 @@ button {
   50%      { opacity: 0.55; transform: scale(0.8); }
 }
 
+/* ─── Generic hover utilities ──────────────────────────────────────────
+   Used by buttons and clickable rows that would otherwise feel "dead"
+   in the new Hone palette — on pure black, a button without a hover
+   state reads as disabled. All of these are `:hover:not(:disabled)` so
+   they silent-fail on disabled controls. Transitions come from the
+   element's own inline style. */
+.d9-btn-secondary:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: var(--d9-hairline-b);
+}
+.d9-btn-primary:hover:not(:disabled) {
+  /* Subtle lift — flat red reads as "push" here, brightness would
+     invert the Hone flat-look. +4% value is ~1 perceptual step darker
+     than brightness(1.12) we had before. */
+  background: var(--d9-accent-hi);
+}
+.d9-btn-ghost:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--d9-ink);
+}
+.d9-btn-pill:hover:not(:disabled) {
+  background: var(--d9-slate-2);
+  border-color: var(--d9-hairline-b);
+}
+
+/* d9-row-hover — for "ghost" areas that aren't <Button> but feel
+   clickable (sidebar tabs, list rows, icon-only trash etc.). */
+.d9-row-hover:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.04);
+}
+.d9-row-hover-strong:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+/* d9-icon-hover — neutral icon button: darkens bg + raises ink. */
+.d9-icon-hover:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--d9-ink);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   Component styles — the ONE place to edit look-and-feel for popovers,
+   menu items, pills, chips. Replaces the inline-oklch mess scattered
+   across ModelDropdown, PersonaDropdown, Tag, ModelPill, PersonaChip.
+
+   Rule: if you're writing a background/border/hover inline in a picker
+   or dropdown, STOP and add a token + class here instead.
+   ═══════════════════════════════════════════════════════════════════ */
+
+/* ─── Popover — glass panel for dropdowns / pickers ────────────────── */
+.d9-popover {
+  border-radius: 14px;
+  /* Near-black vertical fade matching compact/expanded windows. Alpha
+     follows the global Appearance slider so pickers visually belong to
+     the window they float above. */
+  background:
+    linear-gradient(180deg,
+      rgba(22, 22, 22, calc(var(--d9-window-alpha) * 1.05)),
+      rgba(10, 10, 10, calc(var(--d9-window-alpha) * 1.1))
+    );
+  backdrop-filter: var(--d9-glass-blur);
+  -webkit-backdrop-filter: var(--d9-glass-blur);
+  border: 0.5px solid var(--d9-hairline-b);
+  box-shadow: var(--d9-shadow-pop);
+  padding: 6px;
+  -webkit-app-region: no-drag;
+}
+
+.d9-popover-label {
+  padding: 8px 10px 6px;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--d9-ink-ghost);
+  font-family: var(--d9-font-mono);
+}
+
+.d9-popover-empty {
+  padding: 10px 10px 12px;
+  font-size: 12px;
+  color: var(--d9-ink-mute);
+  letter-spacing: -0.005em;
+}
+
+.d9-popover-divider {
+  height: 0.5px;
+  background: var(--d9-hairline);
+  margin: 4px 8px;
+}
+
+/* ─── Menu item — a clickable row inside a popover ─────────────────── */
+/* Encodes all three states (idle / hover / active / disabled). Use
+   aria-selected="true" on the active item and aria-disabled="true"
+   for locked rows (see ModelDropdown's "pro" locked entries). */
+.d9-menu-item {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--d9-ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: background 120ms var(--d9-ease);
+}
+.d9-menu-item:hover:not([aria-disabled="true"]):not([aria-selected="true"]) {
+  background: rgba(255, 255, 255, 0.04);
+}
+.d9-menu-item[aria-selected="true"] {
+  background: rgba(255, 255, 255, 0.06);
+}
+.d9-menu-item[aria-disabled="true"] {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+/* Typography inside a menu item — matches old ModelDropdown/PersonaDropdown
+   copy specs exactly so we can drop inline styles without visual drift. */
+.d9-menu-item-title {
+  font-size: 12.5px;
+  color: var(--d9-ink);
+  font-weight: 500;
+  letter-spacing: -0.005em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.d9-menu-item-meta {
+  font-size: 10.5px;
+  color: var(--d9-ink-mute);
+  font-family: var(--d9-font-mono);
+  margin-top: 1px;
+  display: flex;
+  gap: 6px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ─── Pill (header-style) — ModelPill, PersonaChip (non-compact) ───── */
+.d9-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 22px;
+  padding: 0 8px;
+  border-radius: 999px;
+  border: 0.5px solid var(--d9-hairline);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--d9-ink-dim);
+  font: inherit;
+  font-size: 11px;
+  font-family: var(--d9-font-mono);
+  letter-spacing: -0.01em;
+  cursor: pointer;
+  transition: background 120ms var(--d9-ease), color 120ms var(--d9-ease);
+  -webkit-app-region: no-drag;
+}
+.d9-pill:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--d9-ink);
+}
+/* Ghost variant — used when the pill is inline in a status bar and the
+   containing row already has a background. */
+.d9-pill-ghost {
+  background: transparent;
+  border: 0;
+  padding: 0;
+  height: auto;
+}
+.d9-pill-ghost:hover:not(:disabled) {
+  background: transparent;
+  color: var(--d9-ink);
+}
+
+/* ─── Tags (small status/lock labels) ───────────────────────────────── */
+.d9-tag {
+  font-size: 9.5px;
+  font-family: var(--d9-font-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 2px 7px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+.d9-tag-locked {
+  background: var(--d9-accent-glow);
+  color: var(--d9-accent-hi);
+  border: 0.5px solid rgba(255, 59, 48, 0.35);
+}
+.d9-tag-ready {
+  background: oklch(0.8 0.17 150 / 0.12);
+  color: var(--d9-ok);
+  border: 0.5px solid oklch(0.8 0.17 150 / 0.28);
+}
+
+/* ─── Accent indicators — the tiny leading squares/dots used by pills
+   and menu rows. Keeps ModelPill and ModelDropdown in lock-step. ──── */
+.d9-accent-square {
+  width: 5px;
+  height: 5px;
+  border-radius: 1px;
+  background: var(--d9-accent);
+  box-shadow: 0 0 6px var(--d9-accent-glow);
+  flex: none;
+}
+.d9-gradient-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+  box-shadow: inset 0 0.5px 0 rgba(255, 255, 255, 0.3), 0 0 8px -2px currentColor;
+  flex: none;
+}
+
 /* Scrollbar — thin, dark, unobtrusive. Chromium only (Electron). */
 ::-webkit-scrollbar { width: 8px; height: 8px; }
 ::-webkit-scrollbar-track { background: transparent; }

@@ -1,7 +1,6 @@
-// PersonaChip — compact pill with gradient dot + label + caret.
-// Clicking toggles a dropdown; the parent manages open/close + selection.
-// The gradient dot uses .d9-grad-* utility classes driven by persona id,
-// falling back to --d9-accent when the persona isn't in the known set.
+// PersonaChip — compact pill with gradient dot + label + caret. All
+// visuals live in globals.css (.d9-pill + .d9-pill-ghost + .d9-gradient-dot).
+// Edits there; this file owns structure + behaviour only.
 
 import { type MouseEvent } from 'react';
 import { Caret } from './Caret';
@@ -30,54 +29,50 @@ export function PersonaChip({
   background,
 }: Props) {
   const grad = resolvePersonaGradient(personaId);
-  const dotClass = background ? undefined : `d9-grad-${grad}`;
+  // d9-grad-* sets the background-image for the gradient dot. If the
+  // server passed a raw `background`, we skip the class and apply the
+  // inline gradient directly.
+  const dotClass = background
+    ? 'd9-gradient-dot'
+    : `d9-gradient-dot d9-grad-${grad}`;
   return (
     <button
       type="button"
+      // Compact uses ghost (flat, no bg) for header rows that already
+      // frame the element. Non-compact gets the full pill with bg +
+      // hairline — matches old inline variant.
+      className={compact ? 'd9-pill d9-pill-ghost' : 'd9-pill'}
       onClick={onClick}
-      // Stop document-level mousedown inside dropdowns from racing the
-      // onClick toggle (same fix as ModelPill).
       onMouseDown={(e) => e.stopPropagation()}
       title={title}
       style={{
-        display: 'inline-flex',
-        alignItems: 'center',
-        gap: 6,
-        // Compact: ghost style, matches ModelPill's inline weight. The
-        // expanded variant keeps the soft pill for sidebar/header contexts.
-        padding: compact ? 0 : '4px 10px 4px 5px',
-        height: compact ? 22 : 26,
-        borderRadius: compact ? 0 : 999,
-        background: compact ? 'transparent' : 'oklch(1 0 0 / 0.06)',
-        border: compact ? 0 : '0.5px solid var(--d9-hairline)',
-        color: 'var(--d9-ink-dim)',
+        fontFamily: 'var(--d9-font-sans)',
+        letterSpacing: '-0.005em',
         fontSize: compact ? 11 : 12,
         fontWeight: 500,
-        letterSpacing: '-0.005em',
-        cursor: 'pointer',
-        transition: 'color 120ms var(--d9-ease)',
-        WebkitAppRegion: 'no-drag',
-      } as React.CSSProperties}
-      onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--d9-ink)')}
-      onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--d9-ink-dim)')}
+      }}
     >
       <span
         className={dotClass}
         style={{
+          // Round dot on chip (distinguishes from ModelDropdown's
+          // square). Size tracks compact.
           width: compact ? 14 : 16,
           height: compact ? 14 : 16,
           borderRadius: '50%',
           background,
-          boxShadow: 'inset 0 0.5px 0 rgba(255,255,255,0.3), 0 0 8px -2px currentColor',
-          flex: 'none',
         }}
       />
-      <span style={{
-        maxWidth: compact ? 120 : 160,
-        overflow: 'hidden',
-        textOverflow: 'ellipsis',
-        whiteSpace: 'nowrap',
-      }}>{label}</span>
+      <span
+        style={{
+          maxWidth: compact ? 120 : 160,
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+          whiteSpace: 'nowrap',
+        }}
+      >
+        {label}
+      </span>
       <Caret open={open} />
     </button>
   );

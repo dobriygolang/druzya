@@ -65,8 +65,10 @@ export function ToastScreen() {
           width: '100%',
           height: '100%',
           borderRadius: 12,
+          // Hone-aligned: near-black fade matching compact/expanded.
+          // Left accent bar still tints by kind (error/warn/info).
           background:
-            'linear-gradient(180deg, oklch(0.16 0.04 278 / 0.92), oklch(0.12 0.035 278 / 0.96))',
+            'linear-gradient(180deg, rgba(22, 22, 22, 0.92), rgba(10, 10, 10, 0.96))',
           backdropFilter: 'var(--d9-glass-blur)',
           WebkitBackdropFilter: 'var(--d9-glass-blur)' as unknown as string,
           border: '0.5px solid var(--d9-hairline-b)',

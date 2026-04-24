@@ -115,7 +115,7 @@ func normalizeWhitespace(s string) string {
 func extractPDFReader(r io.Reader, size int64) (string, error) {
 	buf, err := io.ReadAll(io.LimitReader(r, size))
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("read pdf: %w", err)
 	}
 	return ExtractPDF(buf)
 }

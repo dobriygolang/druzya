@@ -131,7 +131,7 @@ func unmarshalPlanItems(raw []byte) ([]domain.PlanItem, error) {
 	}
 	var out []domain.PlanItem
 	if err := json.Unmarshal(raw, &out); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("unmarshal plan items: %w", err)
 	}
 	return out, nil
 }
@@ -273,9 +273,9 @@ func (s *Streaks) GetState(ctx context.Context, userID uuid.UUID) (domain.Streak
 //  2. Upsert hone_streak_days with the delta; RETURN new qualifies_streak.
 //  3. If the day JUST crossed the threshold (was false, now true) AND
 //     we're not re-qualifying a day that was already qualified:
-//       - current_streak = last_qualified == day-1 ? prev.current + 1 : 1
-//       - longest_streak = max(prev.longest, current_streak)
-//       - last_qualified = day
+//     - current_streak = last_qualified == day-1 ? prev.current + 1 : 1
+//     - longest_streak = max(prev.longest, current_streak)
+//     - last_qualified = day
 //     Otherwise, leave the state untouched (idempotent on additional
 //     focus within an already-qualified day).
 //
@@ -343,7 +343,7 @@ func (s *Streaks) ApplyFocusSession(ctx context.Context, userID uuid.UUID, day t
 // possible outcomes by `last_qualified` relation to `day`:
 //
 //   - equal to day:        no-op (shouldn't normally hit — pre-qual check
-//                          guards — but safe under concurrent retries)
+//     guards — but safe under concurrent retries)
 //   - equal to day - 1:    current += 1   (streak continues)
 //   - else:                current = 1    (new streak starts today)
 //
@@ -371,7 +371,10 @@ func (s *Streaks) transitionState(ctx context.Context, tx pgx.Tx, userID uuid.UU
 		sharedpg.UUID(userID),
 		pgtype.Date{Time: day, Valid: true},
 	)
-	return err
+	if err != nil {
+		return fmt.Errorf("hone.Streaks.transitionState: %w", err)
+	}
+	return nil
 }
 
 // RangeDays returns days in [from, to] inclusive.
@@ -621,7 +624,10 @@ func (n *Notes) WithEmbeddingsForUser(ctx context.Context, userID uuid.UUID) ([]
 			Embedding: embedding,
 		})
 	}
-	return out, rows.Err()
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("hone.Notes.WithEmbeddingsForUser: rows: %w", err)
+	}
+	return out, nil
 }
 
 // ─── Whiteboards ───────────────────────────────────────────────────────────
@@ -752,7 +758,10 @@ func (w *Whiteboards) List(ctx context.Context, userID uuid.UUID) ([]domain.Whit
 			UpdatedAt: updatedAt,
 		})
 	}
-	return out, rows.Err()
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("hone.Whiteboards.List: rows: %w", err)
+	}
+	return out, nil
 }
 
 // Delete removes a board.

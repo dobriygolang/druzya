@@ -90,7 +90,7 @@ func parseDocxBody(data []byte) (string, error) {
 			break
 		}
 		if err != nil {
-			return "", err
+			return "", fmt.Errorf("xml token: %w", err)
 		}
 		switch t := tok.(type) {
 		case xml.StartElement:
@@ -99,7 +99,7 @@ func parseDocxBody(data []byte) (string, error) {
 				// <w:t> contains character data for a run.
 				var s string
 				if err := dec.DecodeElement(&s, &t); err != nil {
-					return "", err
+					return "", fmt.Errorf("decode w:t: %w", err)
 				}
 				b.WriteString(s)
 			case "tab":

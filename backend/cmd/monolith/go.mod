@@ -10,13 +10,14 @@ require (
 	druz9/ai_native v0.0.0-00010101000000-000000000000
 	druz9/arena v0.0.0-00010101000000-000000000000
 	druz9/auth v0.0.0-00010101000000-000000000000
+	druz9/cohort v0.0.0-00010101000000-000000000000
 	druz9/copilot v0.0.0-00010101000000-000000000000
 	druz9/daily v0.0.0-00010101000000-000000000000
 	druz9/documents v0.0.0-00010101000000-000000000000
 	druz9/editor v0.0.0-00010101000000-000000000000
 	druz9/feed v0.0.0-00010101000000-000000000000
 	druz9/friends v0.0.0-00010101000000-000000000000
-	druz9/cohort v0.0.0-00010101000000-000000000000
+	druz9/hone v0.0.0-00010101000000-000000000000
 	druz9/lobby v0.0.0-00010101000000-000000000000
 	druz9/mentor_session v0.0.0-00010101000000-000000000000
 	druz9/notify v0.0.0-00010101000000-000000000000
@@ -40,6 +41,8 @@ require (
 
 require (
 	connectrpc.com/connect v1.19.2 // indirect
+	github.com/andybalholm/cascadia v1.3.3 // indirect
+	github.com/araddon/dateparse v0.0.0-20210429162001-6b43995a97de // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/cenkalti/backoff/v4 v4.3.0 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
@@ -50,7 +53,10 @@ require (
 	github.com/go-playground/locales v0.14.1 // indirect
 	github.com/go-playground/universal-translator v0.18.1 // indirect
 	github.com/go-playground/validator/v10 v10.22.0 // indirect
+	github.com/go-shiori/dom v0.0.0-20230515143342-73569d674e1c // indirect
+	github.com/go-shiori/go-readability v0.0.0-20251205110129-5db1dc9836f0 // indirect
 	github.com/go-telegram-bot-api/telegram-bot-api/v5 v5.5.1 // indirect
+	github.com/gogs/chardet v0.0.0-20211120154057-b7413eaefb8f // indirect
 	github.com/golang-jwt/jwt/v5 v5.2.1 // indirect
 	github.com/gorilla/websocket v1.5.3 // indirect
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.22.0 // indirect
@@ -58,6 +64,7 @@ require (
 	github.com/jackc/pgservicefile v0.0.0-20240606120523-5a60cdf6a761 // indirect
 	github.com/jackc/puddle/v2 v2.2.2 // indirect
 	github.com/klauspost/compress v1.17.9 // indirect
+	github.com/ledongthuc/pdf v0.0.0-20250511090121-5959a4027728 // indirect
 	github.com/leodido/go-urn v1.4.0 // indirect
 	github.com/mfridman/interpolate v0.0.2 // indirect
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
@@ -123,6 +130,8 @@ replace druz9/vacancies => ../../services/vacancies
 replace druz9/achievements => ../../services/achievements
 
 replace druz9/friends => ../../services/friends
+
+replace druz9/hone => ../../services/hone
 
 replace druz9/copilot => ../../services/copilot
 

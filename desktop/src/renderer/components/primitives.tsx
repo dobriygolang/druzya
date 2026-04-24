@@ -17,7 +17,7 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button(
-  { variant = 'secondary', size = 'md', leading, trailing, children, style, ...rest },
+  { variant = 'secondary', size = 'md', leading, trailing, children, style, className, ...rest },
   ref,
 ) {
   const base: CSSProperties = {
@@ -31,15 +31,20 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
     borderRadius: variant === 'pill' ? 'var(--r-pill)' : 'var(--r-btn)',
     border: '1px solid transparent',
     cursor: 'pointer',
-    transition: 'background 120ms, border-color 120ms, opacity 120ms',
+    transition: 'background 120ms, border-color 120ms, filter 120ms, opacity 120ms',
     whiteSpace: 'nowrap',
     userSelect: 'none',
   };
+  // Hone-style primary: FLAT red, no gradient, no bloom-shadow. The
+  // previous red→red-hi gradient + rgba(255,59,48,0.28) glow read as
+  // "iOS-plastic" — too loud on pure black. A flat accent with a
+  // subtle inset highlight still says "primary CTA" without shouting.
+  // Secondary/ghost/pill unchanged — they were already muted.
   const variants: Record<Variant, CSSProperties> = {
     primary: {
-      background: 'linear-gradient(135deg, var(--d9-accent) 0%, var(--d9-cyan) 100%)',
+      background: 'var(--d9-accent)',
       color: 'white',
-      boxShadow: '0 1px 0 rgba(255,255,255,0.1) inset, 0 4px 12px rgba(124,92,255,0.28)',
+      boxShadow: '0 0.5px 0 rgba(255,255,255,0.14) inset, 0 1px 0 rgba(0,0,0,0.25)',
     },
     secondary: {
       background: 'var(--d9-slate)',
@@ -56,8 +61,13 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
       borderColor: 'var(--d9-hairline)',
     },
   };
+  // Hover classes live in globals.css — we compose the caller's
+  // className with ours so Tailwind-ish consumers don't lose their
+  // override access.
+  const hoverClass = 'd9-btn-' + variant;
+  const composed = className ? hoverClass + ' ' + className : hoverClass;
   return (
-    <button ref={ref} style={{ ...base, ...variants[variant], ...style }} {...rest}>
+    <button ref={ref} className={composed} style={{ ...base, ...variants[variant], ...style }} {...rest}>
       {leading}
       {children}
       {trailing}

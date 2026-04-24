@@ -89,14 +89,14 @@ func (u *Upload) Do(ctx context.Context, in UploadInput) (domain.Document, error
 		return doc, nil
 	}
 
-	if err := u.Repo.UpdateDocumentStatus(ctx, doc.ID, domain.StatusExtracting, "", 0, 0); err != nil {
-		return domain.Document{}, fmt.Errorf("update status extracting: %w", err)
+	if updErr := u.Repo.UpdateDocumentStatus(ctx, doc.ID, domain.StatusExtracting, "", 0, 0); updErr != nil {
+		return domain.Document{}, fmt.Errorf("update status extracting: %w", updErr)
 	}
 
 	text, err := u.Extractor.Extract(ctx, in.MIME, in.Content)
 	if err != nil {
 		_ = u.Repo.UpdateDocumentStatus(ctx, doc.ID, domain.StatusFailed, err.Error(), 0, 0)
-		return domain.Document{}, err
+		return domain.Document{}, fmt.Errorf("extract: %w", err)
 	}
 
 	pieces := u.Chunker.Chunk(text)
@@ -105,30 +105,34 @@ func (u *Upload) Do(ctx context.Context, in UploadInput) (domain.Document, error
 		return domain.Document{}, domain.ErrEmptyContent
 	}
 
-	if err := u.Repo.UpdateDocumentStatus(ctx, doc.ID, domain.StatusEmbedding, "", 0, 0); err != nil {
-		return domain.Document{}, fmt.Errorf("update status embedding: %w", err)
+	if updErr := u.Repo.UpdateDocumentStatus(ctx, doc.ID, domain.StatusEmbedding, "", 0, 0); updErr != nil {
+		return domain.Document{}, fmt.Errorf("update status embedding: %w", updErr)
 	}
 
 	chunks, totalTokens, err := u.embedAll(ctx, doc.ID, pieces)
 	if err != nil {
 		_ = u.Repo.UpdateDocumentStatus(ctx, doc.ID, domain.StatusFailed, err.Error(), 0, 0)
-		return domain.Document{}, err
+		return domain.Document{}, fmt.Errorf("embed: %w", err)
 	}
 
-	if err := u.Repo.InsertChunks(ctx, doc.ID, chunks); err != nil {
-		_ = u.Repo.UpdateDocumentStatus(ctx, doc.ID, domain.StatusFailed, err.Error(), 0, 0)
-		return domain.Document{}, fmt.Errorf("insert chunks: %w", err)
+	if insErr := u.Repo.InsertChunks(ctx, doc.ID, chunks); insErr != nil {
+		_ = u.Repo.UpdateDocumentStatus(ctx, doc.ID, domain.StatusFailed, insErr.Error(), 0, 0)
+		return domain.Document{}, fmt.Errorf("insert chunks: %w", insErr)
 	}
 
-	if err := u.Repo.UpdateDocumentStatus(ctx, doc.ID, domain.StatusReady, "", len(chunks), totalTokens); err != nil {
-		return domain.Document{}, fmt.Errorf("update status ready: %w", err)
+	if updErr := u.Repo.UpdateDocumentStatus(ctx, doc.ID, domain.StatusReady, "", len(chunks), totalTokens); updErr != nil {
+		return domain.Document{}, fmt.Errorf("update status ready: %w", updErr)
 	}
 
 	// Re-fetch to return the canonical row with the terminal status +
 	// counters populated. One extra roundtrip, but keeps the response
 	// shape truthful — returning `doc` from the insert call would show
 	// the stale 'pending' status and zero counters.
-	return u.Repo.GetDocument(ctx, in.UserID, doc.ID)
+	final, err := u.Repo.GetDocument(ctx, in.UserID, doc.ID)
+	if err != nil {
+		return domain.Document{}, fmt.Errorf("rehydrate: %w", err)
+	}
+	return final, nil
 }
 
 // embedAll runs Embed concurrently while preserving input order. Token
@@ -281,15 +285,19 @@ func (u *UploadFromURL) Do(ctx context.Context, in UploadFromURLInput) (domain.D
 	}
 	res, err := u.Fetcher.Fetch(ctx, in.URL)
 	if err != nil {
-		return domain.Document{}, err
+		return domain.Document{}, fmt.Errorf("fetch url: %w", err)
 	}
-	return u.Upload.Do(ctx, UploadInput{
+	doc, err := u.Upload.Do(ctx, UploadInput{
 		UserID:    in.UserID,
 		Filename:  res.Filename,
 		MIME:      "text/plain",
 		Content:   res.Content,
 		SourceURL: res.SourceURL,
 	})
+	if err != nil {
+		return domain.Document{}, fmt.Errorf("upload: %w", err)
+	}
+	return doc, nil
 }
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -301,7 +309,11 @@ type Get struct {
 }
 
 func (g *Get) Do(ctx context.Context, userID, id uuid.UUID) (domain.Document, error) {
-	return g.Repo.GetDocument(ctx, userID, id)
+	doc, err := g.Repo.GetDocument(ctx, userID, id)
+	if err != nil {
+		return domain.Document{}, fmt.Errorf("documents.Get.Do: %w", err)
+	}
+	return doc, nil
 }
 
 type List struct {
@@ -322,7 +334,7 @@ type ListOutput struct {
 func (l *List) Do(ctx context.Context, in ListInput) (ListOutput, error) {
 	docs, next, err := l.Repo.ListDocuments(ctx, in.UserID, in.Cursor, in.Limit)
 	if err != nil {
-		return ListOutput{}, err
+		return ListOutput{}, fmt.Errorf("documents.List.Do: %w", err)
 	}
 	return ListOutput{Documents: docs, NextCursor: next}, nil
 }
@@ -332,7 +344,10 @@ type Delete struct {
 }
 
 func (d *Delete) Do(ctx context.Context, userID, id uuid.UUID) error {
-	return d.Repo.DeleteDocument(ctx, userID, id)
+	if err := d.Repo.DeleteDocument(ctx, userID, id); err != nil {
+		return fmt.Errorf("documents.Delete.Do: %w", err)
+	}
+	return nil
 }
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -352,10 +367,10 @@ type Search struct {
 }
 
 type SearchInput struct {
-	UserID  uuid.UUID
-	DocIDs  []uuid.UUID
-	Query   string
-	TopK    int
+	UserID   uuid.UUID
+	DocIDs   []uuid.UUID
+	Query    string
+	TopK     int
 	MinScore float32
 }
 

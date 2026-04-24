@@ -5,6 +5,7 @@ package app
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"time"
 
@@ -46,7 +47,7 @@ func (uc *Transcribe) Do(ctx context.Context, in domain.TranscribeInput) (domain
 				slog.Int("audio_bytes", len(in.Audio)),
 				slog.Any("err", err))
 		}
-		return domain.TranscribeResult{}, err
+		return domain.TranscribeResult{}, fmt.Errorf("transcription.Transcribe.Do: %w", err)
 	}
 	if uc.Log != nil {
 		uc.Log.InfoContext(ctx, "transcription: ok",

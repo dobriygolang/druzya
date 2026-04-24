@@ -22,11 +22,11 @@ import (
 	"strconv"
 	"time"
 
-	"druz9/transcription/app"
-	"druz9/transcription/domain"
 	"druz9/shared/pkg/killswitch"
 	sharedMw "druz9/shared/pkg/middleware"
 	"druz9/shared/pkg/ratelimit"
+	"druz9/transcription/app"
+	"druz9/transcription/domain"
 
 	"github.com/go-chi/chi/v5"
 )

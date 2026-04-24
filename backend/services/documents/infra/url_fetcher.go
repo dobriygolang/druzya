@@ -91,12 +91,12 @@ func isPrivateIP(ip net.IP) bool {
 // URLFetcher turns a public URL into ingest-ready plaintext.
 //
 // The pipeline is deliberately tight:
-//   1. HTTP GET with bounded timeout + redirect budget.
-//   2. Reject non-HTML responses (we don't follow a bare PDF URL yet —
-//      users pasting a PDF link should download + upload manually).
-//   3. Pipe the body through go-readability so main content wins over
-//      navbars/footers/comments. Plaintext output feeds straight into
-//      the existing Upload pipeline as mime=text/plain.
+//  1. HTTP GET with bounded timeout + redirect budget.
+//  2. Reject non-HTML responses (we don't follow a bare PDF URL yet —
+//     users pasting a PDF link should download + upload manually).
+//  3. Pipe the body through go-readability so main content wins over
+//     navbars/footers/comments. Plaintext output feeds straight into
+//     the existing Upload pipeline as mime=text/plain.
 //
 // Not in scope (deferred):
 //   - fetching pages behind auth cookies;
@@ -182,7 +182,7 @@ func (f *URLFetcher) Fetch(ctx context.Context, rawURL string) (FetchResult, err
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, rawURL, nil)
 	if err != nil {
-		return FetchResult{}, err
+		return FetchResult{}, fmt.Errorf("build request: %w", err)
 	}
 	req.Header.Set("User-Agent", f.UserAgent)
 	// Signal that we want text. Some servers (HH, LinkedIn) serve

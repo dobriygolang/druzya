@@ -104,7 +104,7 @@ export function SummaryModal({ analysis, modelLabel, onClose }: Props) {
           flexDirection: 'column',
           borderRadius: 'var(--d9-r-xl)',
           background:
-            'linear-gradient(180deg, oklch(0.16 0.04 278 / 0.92), oklch(0.12 0.035 278 / 0.96))',
+            'linear-gradient(180deg, rgba(22, 22, 22, 0.92), rgba(10, 10, 10, 0.96))',
           boxShadow: 'var(--d9-shadow-pop)',
           border: '0.5px solid var(--d9-hairline-b)',
           color: 'var(--d9-ink)',
@@ -378,7 +378,7 @@ function SummaryTab({ a }: { a: SessionAnalysis }) {
               margin: 0,
               padding: '12px 14px',
               borderRadius: 9,
-              background: 'oklch(0.11 0.03 280 / 0.75)',
+              background: 'rgba(0, 0, 0, 0.6)',
               border: '0.5px solid var(--d9-hairline)',
               color: 'var(--d9-ink-dim)',
               fontFamily: 'var(--d9-font-sans)',

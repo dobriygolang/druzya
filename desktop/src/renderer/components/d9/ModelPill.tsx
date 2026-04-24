@@ -1,6 +1,7 @@
-// ModelPill — monospace label with a violet accent square and a caret,
-// used inline in compact/expanded status rows. The whole thing is a
-// button so the user can cycle model / open a picker.
+// ModelPill — inline monospace label with accent square + caret. Used
+// in compact/expanded headers; click opens a ModelDropdown.
+//
+// All visuals via the .d9-pill CSS class — update globals.css, not here.
 
 import { type MouseEvent, type ReactNode } from 'react';
 import { Caret } from './Caret';
@@ -20,52 +21,29 @@ export function ModelPill({ label, onClick, title, interactive = true, open, lea
   return (
     <button
       type="button"
+      // Ghost variant — no bg/border; the header row already frames it.
+      // Full pill styling kicks in when used outside a framed row.
+      className={interactive ? 'd9-pill d9-pill-ghost' : 'd9-pill d9-pill-ghost'}
       onClick={onClick}
-      // Stop the document-level mousedown listener inside PersonaDropdown /
-      // ModelDropdown from closing the panel BEFORE this button's click
-      // fires. Without this, the dropdown closes then the pill re-opens it,
-      // making the toggle feel broken.
+      // Stop the document-level mousedown listener inside
+      // PersonaDropdown / ModelDropdown from closing the panel BEFORE
+      // this button's click fires.
       onMouseDown={(e) => e.stopPropagation()}
       title={title}
-      style={{
-        display: 'inline-flex',
-        alignItems: 'center',
-        gap: 5,
-        padding: 0,
-        border: 0,
-        background: 'transparent',
-        fontSize: 11,
-        color: 'var(--d9-ink-dim)',
-        fontFamily: 'var(--d9-font-mono)',
-        letterSpacing: '-0.01em',
-        cursor: interactive ? 'pointer' : 'default',
-        transition: 'color 120ms var(--d9-ease)',
-        WebkitAppRegion: 'no-drag',
-      } as React.CSSProperties}
-      onMouseEnter={(e) => {
-        if (interactive) e.currentTarget.style.color = 'var(--d9-ink)';
-      }}
-      onMouseLeave={(e) => {
-        if (interactive) e.currentTarget.style.color = 'var(--d9-ink-dim)';
-      }}
+      disabled={!interactive}
+      style={{ cursor: interactive ? 'pointer' : 'default' }}
     >
-      {leading ?? (
-        <span
-          style={{
-            width: 5,
-            height: 5,
-            borderRadius: 1,
-            background: 'var(--d9-accent)',
-            boxShadow: '0 0 6px var(--d9-accent-glow)',
-          }}
-        />
-      )}
-      <span style={{
-        maxWidth: 180,
-        overflow: 'hidden',
-        textOverflow: 'ellipsis',
-        whiteSpace: 'nowrap',
-      }}>{label}</span>
+      {leading ?? <span className="d9-accent-square" />}
+      <span
+        style={{
+          maxWidth: 180,
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+          whiteSpace: 'nowrap',
+        }}
+      >
+        {label}
+      </span>
       {interactive && <Caret open={open} />}
     </button>
   );

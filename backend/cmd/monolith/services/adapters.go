@@ -153,7 +153,10 @@ func (a *honeSkillAtlasAdapter) WeakestNodes(ctx context.Context, userID uuid.UU
 			Priority:    priorityForProgress(int(progress)),
 		})
 	}
-	return out, rows.Err()
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("monolith.honeSkillAtlasAdapter.WeakestNodes: rows: %w", err)
+	}
+	return out, nil
 }
 
 func priorityForProgress(p int) string {

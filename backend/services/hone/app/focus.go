@@ -63,11 +63,11 @@ func (uc *StartFocus) Do(ctx context.Context, in StartFocusInput) (domain.FocusS
 // to avoid double-counting. The client uses expected_version-style retries
 // via session id — a second End with the same id is a bug, not a feature.
 type EndFocus struct {
-	Focus              domain.FocusRepo
-	Streaks            domain.StreakRepo
-	Log                *slog.Logger
-	Now                func() time.Time
-	QualifyingSeconds  int // defaults to MinQualifyingFocusSeconds
+	Focus             domain.FocusRepo
+	Streaks           domain.StreakRepo
+	Log               *slog.Logger
+	Now               func() time.Time
+	QualifyingSeconds int // defaults to MinQualifyingFocusSeconds
 }
 
 // EndFocusInput — wire body.
@@ -115,8 +115,8 @@ type GetStats struct {
 
 // GetStatsInput — wire body.
 type GetStatsInput struct {
-	UserID    uuid.UUID
-	UpToDate  time.Time // if zero, Now().UTC() truncated to day
+	UserID   uuid.UUID
+	UpToDate time.Time // if zero, Now().UTC() truncated to day
 }
 
 // Do executes the use case.

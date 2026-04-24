@@ -6,7 +6,8 @@
 // Keys are namespaced under `killswitch:<feature>`; presence of any
 // value (typically "on" or "1") flips the switch. Absence = feature
 // active. Operators can tune TTL if they want auto-recovery:
-//   SET killswitch:transcription on EX 3600
+//
+//	SET killswitch:transcription on EX 3600
 //
 // Checks are Redis GET per call. At 100 req/s per feature × 5 features
 // this is ~500 trivial GETs/s — negligible next to an LLM roundtrip.
@@ -28,11 +29,11 @@ import (
 type Feature string
 
 const (
-	FeatureDocumentsUpload    Feature = "documents_upload"
-	FeatureDocumentsURL       Feature = "documents_url"
-	FeatureTranscription      Feature = "transcription"
-	FeatureCopilotAnalyze     Feature = "copilot_analyze"
-	FeatureCopilotSuggestion  Feature = "copilot_suggestion"
+	FeatureDocumentsUpload   Feature = "documents_upload"
+	FeatureDocumentsURL      Feature = "documents_url"
+	FeatureTranscription     Feature = "transcription"
+	FeatureCopilotAnalyze    Feature = "copilot_analyze"
+	FeatureCopilotSuggestion Feature = "copilot_suggestion"
 )
 
 // Switch checks Redis for an active kill-switch on a feature. A nil

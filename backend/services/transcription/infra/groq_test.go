@@ -216,7 +216,7 @@ func TestGroqProvider_MalformedJSON(t *testing.T) {
 // wrap'аем в sentinel, а не просто пробрасываем сетевую ошибку.
 func TestGroqProvider_NetworkFailure(t *testing.T) {
 	p := NewGroqProvider("k")
-	p.BaseURL = "http://127.0.0.1:1" // заведомо закрытый порт
+	p.BaseURL = "http://127.0.0.1:1"   // заведомо закрытый порт
 	p.client.Timeout = 500 * 1_000_000 // 500ms
 
 	_, err := p.Transcribe(context.Background(), domain.TranscribeInput{Audio: []byte{0, 1}})

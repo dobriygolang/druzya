@@ -175,11 +175,11 @@ export function ExpandedScreen() {
         height: '100%',
         display: 'flex',
         flexDirection: 'column',
-        // Tinted-glass look — deep indigo-biased scrim. `transparent:
-        // true` on the BrowserWindow (main/windows/window-manager.ts
-        // 'expanded' case) lets desktop show through; alpha controlled
-        // by Appearance slider. No OS vibrancy (Tahoe 26.x regressions).
-        background: 'oklch(0.14 0.035 280 / var(--d9-window-alpha))',
+        // Hone-aligned scrim — pure black with the Appearance slider
+        // controlling alpha. Previously indigo-tinted; the new palette
+        // drops colour from the bg so accent content (red, persona
+        // gradients) pops without fighting a purple cast.
+        background: 'rgba(10, 10, 10, var(--d9-window-alpha))',
         border: '0.5px solid var(--d9-hairline-b)',
         borderRadius: 'var(--d9-r-xl)',
         boxShadow: 'var(--d9-shadow-win)',
@@ -553,13 +553,19 @@ function MessageBubble({ m, persona: _persona }: { m: UIMessage; persona: string
             maxWidth: '78%',
             padding: '10px 14px',
             borderRadius: '14px 14px 4px 14px',
-            background: 'linear-gradient(180deg, oklch(0.38 0.18 298), oklch(0.30 0.20 295))',
+            // Hone-style user bubble: neutral elevated surface, NOT
+            // branded red. Red accent is reserved for CTAs / status —
+            // painting every user message in accent would overwhelm.
+            // `--d9-slate-2` (#171717) reads as "one step above canvas"
+            // at a glance without coloured noise.
+            background: 'var(--d9-slate-2)',
+            border: '0.5px solid var(--d9-hairline)',
             color: 'var(--d9-ink)',
             fontSize: 13.5,
             lineHeight: 1.5,
             letterSpacing: '-0.005em',
             boxShadow:
-              'inset 0 0.5px 0 oklch(1 0 0 / 0.15), ' +
+              'inset 0 0.5px 0 rgba(255,255,255,0.04), ' +
               '0 1px 2px rgba(0,0,0,0.3)',
           }}
         >
@@ -788,7 +794,9 @@ function CodeBlock({ lang, code }: { lang: string; code: string }) {
       style={{
         margin: '8px 0 12px',
         borderRadius: 10,
-        background: 'oklch(0.11 0.03 280 / 0.75)',
+        // Code-block shell — deeper than the surrounding surface.
+        // Pure black 75% alpha lets the scrim show through slightly.
+        background: 'rgba(0, 0, 0, 0.6)',
         border: '0.5px solid var(--d9-hairline)',
         overflow: 'hidden',
       }}

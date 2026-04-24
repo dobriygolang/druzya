@@ -90,7 +90,11 @@ type GetWhiteboard struct {
 
 // Do executes the use case.
 func (uc *GetWhiteboard) Do(ctx context.Context, userID, wbID uuid.UUID) (domain.Whiteboard, error) {
-	return uc.Boards.Get(ctx, userID, wbID)
+	wb, err := uc.Boards.Get(ctx, userID, wbID)
+	if err != nil {
+		return domain.Whiteboard{}, fmt.Errorf("hone.GetWhiteboard.Do: %w", err)
+	}
+	return wb, nil
 }
 
 // ListWhiteboards returns list-view projections.
@@ -100,7 +104,11 @@ type ListWhiteboards struct {
 
 // Do executes the use case.
 func (uc *ListWhiteboards) Do(ctx context.Context, userID uuid.UUID) ([]domain.WhiteboardSummary, error) {
-	return uc.Boards.List(ctx, userID)
+	rows, err := uc.Boards.List(ctx, userID)
+	if err != nil {
+		return nil, fmt.Errorf("hone.ListWhiteboards.Do: %w", err)
+	}
+	return rows, nil
 }
 
 // DeleteWhiteboard removes a board by id + owner.
@@ -110,7 +118,10 @@ type DeleteWhiteboard struct {
 
 // Do executes the use case.
 func (uc *DeleteWhiteboard) Do(ctx context.Context, userID, wbID uuid.UUID) error {
-	return uc.Boards.Delete(ctx, userID, wbID)
+	if err := uc.Boards.Delete(ctx, userID, wbID); err != nil {
+		return fmt.Errorf("hone.DeleteWhiteboard.Do: %w", err)
+	}
+	return nil
 }
 
 // ─── CritiqueWhiteboard ────────────────────────────────────────────────────
@@ -124,9 +135,9 @@ func (uc *DeleteWhiteboard) Do(ctx context.Context, userID, wbID uuid.UUID) erro
 // plus the board title as context. Output is sectioned ("strengths /
 // concerns / missing / closing") and emitted as CritiquePacket stream.
 type CritiqueWhiteboard struct {
-	Boards    domain.WhiteboardRepo
-	Streamer  domain.CritiqueStreamer // nil when llmchain is nil
-	Log       *slog.Logger
+	Boards   domain.WhiteboardRepo
+	Streamer domain.CritiqueStreamer // nil when llmchain is nil
+	Log      *slog.Logger
 }
 
 // CritiqueWhiteboardInput — wire body.

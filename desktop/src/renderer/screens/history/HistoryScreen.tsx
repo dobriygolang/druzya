@@ -62,7 +62,7 @@ export function HistoryScreen() {
         height: '100%',
         display: 'flex',
         flexDirection: 'column',
-        background: 'oklch(0.14 0.035 280 / var(--d9-window-alpha))',
+        background: 'rgba(10, 10, 10, var(--d9-window-alpha))',
         border: '0.5px solid var(--d9-hairline-b)',
         borderRadius: 'var(--d9-r-xl)',
         boxShadow: 'var(--d9-shadow-win)',

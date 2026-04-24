@@ -115,15 +115,13 @@ function PersonaContent() {
 function PickerPlaceholder({ label, hint }: { label: string; hint?: string }) {
   return (
     <div
+      // Reuse the single Hone popover style from globals.css. Picker
+      // placeholder is rare ("no items yet") so we just borrow the same
+      // panel — visual identity stays locked to the dropdown system.
+      className="d9-popover"
       style={{
         width: '100%',
         padding: '20px 16px',
-        borderRadius: 14,
-        background:
-          'linear-gradient(180deg, oklch(0.18 0.04 278 / calc(var(--d9-window-alpha) * 1.05)), oklch(0.13 0.035 278 / calc(var(--d9-window-alpha) * 1.1)))',
-        backdropFilter: 'var(--d9-glass-blur)',
-        WebkitBackdropFilter: 'var(--d9-glass-blur)' as unknown as string,
-        boxShadow: 'var(--d9-shadow-pop)',
         textAlign: 'center',
       }}
     >

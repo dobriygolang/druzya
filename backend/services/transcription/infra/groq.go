@@ -68,7 +68,7 @@ func (g *GroqProvider) Transcribe(ctx context.Context, in domain.TranscribeInput
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, g.BaseURL+"/audio/transcriptions", body)
 	if err != nil {
-		return domain.TranscribeResult{}, err
+		return domain.TranscribeResult{}, fmt.Errorf("build request: %w", err)
 	}
 	req.Header.Set("Authorization", "Bearer "+g.APIKey)
 	req.Header.Set("Content-Type", contentType)
@@ -126,34 +126,34 @@ func (g *GroqProvider) buildMultipart(in domain.TranscribeInput) (io.Reader, str
 	h.Set("Content-Type", mime)
 	fw, err := mw.CreatePart(h)
 	if err != nil {
-		return nil, "", err
+		return nil, "", fmt.Errorf("multipart create part: %w", err)
 	}
 	if _, err := fw.Write(in.Audio); err != nil {
-		return nil, "", err
+		return nil, "", fmt.Errorf("multipart write audio: %w", err)
 	}
 
 	// Required form fields.
 	if err := mw.WriteField("model", g.Model); err != nil {
-		return nil, "", err
+		return nil, "", fmt.Errorf("multipart write model: %w", err)
 	}
 	if err := mw.WriteField("response_format", "verbose_json"); err != nil {
-		return nil, "", err
+		return nil, "", fmt.Errorf("multipart write response_format: %w", err)
 	}
 
 	// Optional hints.
 	if in.Language != "" {
 		if err := mw.WriteField("language", in.Language); err != nil {
-			return nil, "", err
+			return nil, "", fmt.Errorf("multipart write language: %w", err)
 		}
 	}
 	if in.Prompt != "" {
 		if err := mw.WriteField("prompt", in.Prompt); err != nil {
-			return nil, "", err
+			return nil, "", fmt.Errorf("multipart write prompt: %w", err)
 		}
 	}
 
 	if err := mw.Close(); err != nil {
-		return nil, "", err
+		return nil, "", fmt.Errorf("multipart close: %w", err)
 	}
 	return &buf, mw.FormDataContentType(), nil
 }
@@ -162,10 +162,10 @@ func (g *GroqProvider) buildMultipart(in domain.TranscribeInput) (io.Reader, str
 // (tokens, temperature, avg_logprob) are omitted — json decoder ignores
 // them silently.
 type groqResponse struct {
-	Text     string         `json:"text"`
-	Language string         `json:"language"`
-	Duration float64        `json:"duration"`
-	Segments []groqSegment  `json:"segments"`
+	Text     string        `json:"text"`
+	Language string        `json:"language"`
+	Duration float64       `json:"duration"`
+	Segments []groqSegment `json:"segments"`
 	// "error" field appears only on 2xx-with-error-body responses
 	// (Groq sometimes returns 200 with {"error":{"message":…}} on
 	// rate-limit edge cases — belt-and-suspenders parsing).

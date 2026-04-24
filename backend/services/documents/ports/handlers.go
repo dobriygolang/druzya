@@ -72,10 +72,10 @@ func (h *Handler) killedIf(w http.ResponseWriter, r *http.Request, f killswitch.
 // cost per chunk); URL fetch is externally-bandwidth expensive; search
 // embeds one query per call and hits pgvector-ish cosine, so cheaper.
 const (
-	uploadLimitPerMin     = 20
-	uploadURLLimitPerMin  = 10
-	searchLimitPerMin     = 60
-	deleteLimitPerMin     = 60
+	uploadLimitPerMin    = 20
+	uploadURLLimitPerMin = 10
+	searchLimitPerMin    = 60
+	deleteLimitPerMin    = 60
 )
 
 // checkLimit runs the limiter for (userID, op). Returns true when the
@@ -149,10 +149,10 @@ func toDTO(d domain.Document) documentDTO {
 }
 
 type uploadReq struct {
-	Filename     string `json:"filename"`
-	MIME         string `json:"mime"`
-	ContentB64   string `json:"content_base64"`
-	SourceURL    string `json:"source_url"`
+	Filename   string `json:"filename"`
+	MIME       string `json:"mime"`
+	ContentB64 string `json:"content_base64"`
+	SourceURL  string `json:"source_url"`
 }
 
 type uploadFromURLReq struct {

@@ -282,8 +282,12 @@ export function CompactScreen() {
           width: '100%',
           height: '100%',
           borderRadius: 18,
+          // Hone-aligned: near-black vertical fade, no blue tint. Top
+          // slightly lifted so the drag region reads as a "lip",
+          // bottom grounds into pure black. Alpha follows the global
+          // Appearance slider.
           background:
-            'linear-gradient(180deg, oklch(0.16 0.04 278 / calc(var(--d9-window-alpha) * 0.85)), oklch(0.12 0.035 278 / var(--d9-window-alpha)))',
+            'linear-gradient(180deg, rgba(20, 20, 20, calc(var(--d9-window-alpha) * 0.88)), rgba(8, 8, 8, var(--d9-window-alpha)))',
           backdropFilter: 'var(--d9-glass-blur)',
           WebkitBackdropFilter: 'var(--d9-glass-blur)' as unknown as string,
           boxShadow: 'var(--d9-shadow-win)',
@@ -551,7 +555,7 @@ function PreviewRow({
           width: 104,
           height: 64,
           flexShrink: 0,
-          background: 'oklch(0.08 0.02 280)',
+          background: 'var(--d9-void)',
           border: '0.5px solid var(--d9-hairline)',
           borderRadius: 6,
           overflow: 'hidden',

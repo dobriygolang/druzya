@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+	"fmt"
 	"os"
 
 	copilotDomain "druz9/copilot/domain"
@@ -101,7 +102,7 @@ type urlFetcherAdapter struct {
 func (a urlFetcherAdapter) Fetch(ctx context.Context, url string) (docsApp.URLFetchResult, error) {
 	res, err := a.inner.Fetch(ctx, url)
 	if err != nil {
-		return docsApp.URLFetchResult{}, err
+		return docsApp.URLFetchResult{}, fmt.Errorf("monolith.urlFetcherAdapter.Fetch: %w", err)
 	}
 	return docsApp.URLFetchResult{
 		Filename:  res.Filename,
@@ -132,7 +133,7 @@ func (a *documentsSearcherAdapter) SearchForSession(
 		TopK:   topK,
 	}, docsInfra.CosineTopK)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("monolith.documentsSearcherAdapter.SearchForSession: %w", err)
 	}
 
 	// Enrich SourceLabel with the filename. Fetching per-hit would be

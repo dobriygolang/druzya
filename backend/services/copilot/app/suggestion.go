@@ -101,8 +101,8 @@ func (uc *Suggest) Do(ctx context.Context, in SuggestInput) (SuggestResult, erro
 	}
 
 	var (
-		b        strings.Builder
-		tokensIn int
+		b         strings.Builder
+		tokensIn  int
 		tokensOut int
 	)
 	for ev := range events {

@@ -40,7 +40,7 @@ func (r *PgRepo) InsertDocument(ctx context.Context, d domain.Document) (domain.
 		SourceUrl: d.SourceURL,
 	})
 	if err != nil {
-		return domain.Document{}, err
+		return domain.Document{}, fmt.Errorf("documents.PgRepo.InsertDocument: %w", err)
 	}
 	return fromDB(row), nil
 }
@@ -53,7 +53,7 @@ func (r *PgRepo) GetDocument(ctx context.Context, userID, id uuid.UUID) (domain.
 		if errors.Is(err, pgx.ErrNoRows) {
 			return domain.Document{}, domain.ErrNotFound
 		}
-		return domain.Document{}, err
+		return domain.Document{}, fmt.Errorf("documents.PgRepo.GetDocument: %w", err)
 	}
 	return fromDB(row), nil
 }
@@ -85,7 +85,7 @@ func (r *PgRepo) ListDocuments(ctx context.Context, userID uuid.UUID, cursor str
 		PageSize:        int32(limit + 1),
 	})
 	if err != nil {
-		return nil, "", err
+		return nil, "", fmt.Errorf("documents.PgRepo.ListDocuments: %w", err)
 	}
 
 	var nextCursor string
@@ -110,7 +110,10 @@ func (r *PgRepo) UpdateDocumentStatus(ctx context.Context, id uuid.UUID, status 
 		ChunkCount:   int32(chunkCount),
 		TokenCount:   int32(tokenCount),
 	})
-	return err
+	if err != nil {
+		return fmt.Errorf("documents.PgRepo.UpdateDocumentStatus: %w", err)
+	}
+	return nil
 }
 
 func (r *PgRepo) DeleteDocument(ctx context.Context, userID, id uuid.UUID) error {
@@ -118,7 +121,7 @@ func (r *PgRepo) DeleteDocument(ctx context.Context, userID, id uuid.UUID) error
 		ID: toUUID(id), UserID: toUUID(userID),
 	})
 	if err != nil {
-		return err
+		return fmt.Errorf("documents.PgRepo.DeleteDocument: %w", err)
 	}
 	if n == 0 {
 		return domain.ErrNotFound
@@ -136,9 +139,12 @@ func (r *PgRepo) InsertChunks(ctx context.Context, docID uuid.UUID, chunks []dom
 
 	tx, err := r.pool.BeginTx(ctx, pgx.TxOptions{})
 	if err != nil {
-		return err
+		return fmt.Errorf("documents.PgRepo.InsertChunks: begin: %w", err)
 	}
-	defer tx.Rollback(ctx) //nolint:errcheck — commit-or-rollback is the norm.
+	// Commit-or-rollback is the norm; the deferred rollback is a no-op
+	// after a successful Commit. Explicit `_ =` beats a //nolint for the
+	// errcheck linter and keeps the intent obvious to readers.
+	defer func() { _ = tx.Rollback(ctx) }()
 
 	rows := make([][]any, len(chunks))
 	for i, c := range chunks {
@@ -163,7 +169,10 @@ func (r *PgRepo) InsertChunks(ctx context.Context, docID uuid.UUID, chunks []dom
 	if err != nil {
 		return fmt.Errorf("copy doc_chunks: %w", err)
 	}
-	return tx.Commit(ctx)
+	if err := tx.Commit(ctx); err != nil {
+		return fmt.Errorf("documents.PgRepo.InsertChunks: commit: %w", err)
+	}
+	return nil
 }
 
 func (r *PgRepo) ListChunks(ctx context.Context, docIDs []uuid.UUID) ([]domain.Chunk, error) {
@@ -176,7 +185,7 @@ func (r *PgRepo) ListChunks(ctx context.Context, docIDs []uuid.UUID) ([]domain.C
 	}
 	rows, err := r.q.ListChunksByDoc(ctx, ids)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("documents.PgRepo.ListChunks: %w", err)
 	}
 	out := make([]domain.Chunk, len(rows))
 	for i, r := range rows {
