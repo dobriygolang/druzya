@@ -22,6 +22,11 @@ CREATE TABLE mock_sessions (
     stress_profile JSONB,
     ai_report      JSONB,
     replay_url     TEXT,
+    -- running_summary: конденсат старых turns для sliding-window compaction
+    -- (Phase 4). Фоновый воркер обновляет колонку, когда сессия переваливает
+    -- COMPACTION_THRESHOLD сообщений. На hot-path SendMessage.generateReply
+    -- собирает prompt = system + running_summary + last_N.
+    running_summary TEXT NOT NULL DEFAULT '',
     started_at     TIMESTAMPTZ,
     finished_at    TIMESTAMPTZ,
     created_at     TIMESTAMPTZ NOT NULL DEFAULT now(),

@@ -376,13 +376,18 @@ CREATE UNIQUE INDEX idx_copilot_sessions_live
     ON copilot_sessions(user_id) WHERE finished_at IS NULL;
 
 CREATE TABLE copilot_conversations (
-    id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id     UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    session_id  UUID REFERENCES copilot_sessions(id) ON DELETE SET NULL,
-    title       TEXT NOT NULL DEFAULT '',
-    model       TEXT NOT NULL,
-    created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
-    updated_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+    id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id         UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    session_id      UUID REFERENCES copilot_sessions(id) ON DELETE SET NULL,
+    title           TEXT NOT NULL DEFAULT '',
+    model           TEXT NOT NULL,
+    -- running_summary: конденсат старых turns для sliding-window compaction
+    -- (Phase 4). Фоновый compaction-воркер пересчитывает эту колонку, когда
+    -- конверсация превышает COMPACTION_THRESHOLD turns. Hot-path строит
+    -- prompt как system + running_summary + last_N_turns.
+    running_summary TEXT NOT NULL DEFAULT '',
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at      TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 CREATE INDEX idx_copilot_conversations_user_updated
     ON copilot_conversations(user_id, updated_at DESC);
