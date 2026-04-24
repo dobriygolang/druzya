@@ -173,7 +173,10 @@ function scheduleSilentRefresh(expiresInSec: number): void {
     void refreshAccessTokenOnce().then((next) => {
       // If refresh failed and we still have an active session, surface the
       // expiry to the UI and redirect — the user lost their refresh slot.
+      // Skip on public pages: dropping tokens silently logs the user out
+      // even though they're just looking at marketing content.
       if (!next && readAccessToken()) {
+        if (isPublicPage(window.location.pathname)) return
         clearTokens()
         emitSessionExpired({ reason: 'refresh_failed' })
         redirectToLogin()
@@ -200,14 +203,26 @@ export function bootstrapSilentRefresh(): void {
   scheduleSilentRefresh(remainingSec)
 }
 
+// isPublicPage — pages that render without an auth-gated AppShell. A 401 on
+// these surfaces is almost always a background noise: react-query was still
+// holding promises from the previously-mounted authenticated page that
+// resolve into a refresh-failed-401 after the user has already navigated to
+// the public surface. Punishing them with clearTokens + redirect is wrong:
+// they came here intentionally and we'd rather keep their session intact
+// for the next time they navigate to a logged-in route.
+function isPublicPage(path: string): boolean {
+  return (
+    path.startsWith('/login') ||
+    path.startsWith('/welcome') ||
+    path.startsWith('/auth/') ||
+    path.startsWith('/copilot')
+  )
+}
+
 function redirectToLogin(): void {
   if (typeof window === 'undefined') return
-  const path = window.location.pathname
-  // Avoid loops when we're already on a public auth page.
-  if (path.startsWith('/login') || path.startsWith('/welcome') || path.startsWith('/auth/')) {
-    return
-  }
-  const next = encodeURIComponent(path + window.location.search)
+  if (isPublicPage(window.location.pathname)) return
+  const next = encodeURIComponent(window.location.pathname + window.location.search)
   window.location.href = `/login?next=${next}&reason=expired`
 }
 
@@ -249,6 +264,13 @@ export const api: Fetcher = async (path, init = {}) => {
       res = await doFetch({ path, init, bearer: token })
     }
     if (res.status === 401) {
+      // On public pages we surface the 401 to the caller but keep the
+      // session intact — the refresh fail almost always comes from a stale
+      // background fetch from the previously-mounted authenticated page,
+      // and dropping tokens here would silently log the user out.
+      if (typeof window !== 'undefined' && isPublicPage(window.location.pathname)) {
+        throw new ApiError(401, 'unauthorized')
+      }
       clearTokens()
       emitSessionExpired({ reason: 'refresh_failed' })
       redirectToLogin()
