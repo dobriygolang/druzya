@@ -200,14 +200,16 @@ func (uc *SendMessage) loadContext(ctx context.Context, s domain.Session) (domai
 	return task, history, user, company, nil
 }
 
+// fallbackModel picks a default model when the session doesn't pin one.
+// Paid tiers get the full GPT-4o; free and anything unknown fall back to
+// 4o-mini (cost-safe default).
 func (uc *SendMessage) fallbackModel(user domain.UserContext) string {
 	switch user.Subscription {
 	case enums.SubscriptionPlanSeeker, enums.SubscriptionPlanAscendant:
 		return enums.LLMModelGPT4o.String()
-	case enums.SubscriptionPlanFree:
+	default:
 		return enums.LLMModelGPT4oMini.String()
 	}
-	return enums.LLMModelGPT4oMini.String()
 }
 
 // buildLLMMessages produces the final [system, …history, user?] slice. The

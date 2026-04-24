@@ -132,12 +132,29 @@ func (w *ReportWorker) run(ctx context.Context, sessionID uuid.UUID) error {
 
 	// STUB: optional replay upload. The serialised shape is just the message
 	// transcript for now; future work should capture editor timeline + AV.
+	//
+	// Upload failures are logged but do not abort report persistence — a
+	// report without a replay URL is still useful to the user, whereas a
+	// lost report would require re-running the LLM grading call.
 	var replayURL string
 	if w.Replay != nil {
-		payload, _ := json.Marshal(msgs)
-		if url, uerr := w.Replay.Upload(ctx, sessionID, payload); uerr == nil {
-			replayURL = url
-			draft.ReplayURL = url
+		payload, merr := json.Marshal(msgs)
+		if merr != nil {
+			if w.log != nil {
+				w.log.Warn("mock.ReportWorker: marshal replay payload",
+					slog.String("session", sessionID.String()), slog.Any("err", merr))
+			}
+		} else {
+			url, uerr := w.Replay.Upload(ctx, sessionID, payload)
+			if uerr != nil {
+				if w.log != nil {
+					w.log.Warn("mock.ReportWorker: replay upload failed (report will be saved without replay URL)",
+						slog.String("session", sessionID.String()), slog.Any("err", uerr))
+				}
+			} else {
+				replayURL = url
+				draft.ReplayURL = url
+			}
 		}
 	}
 
