@@ -27,6 +27,9 @@ ALTER TABLE saved_vacancies
 
 -- Best-effort backfill: copy source/external_id and freeze the current row
 -- as the snapshot. Only runs if both legacy table and FK column still exist.
+-- StatementBegin/End is required because goose's default SQL splitter cuts on
+-- ';' and would shred the PL/pgSQL dollar-quoted body otherwise.
+-- +goose StatementBegin
 DO $$
 BEGIN
     IF EXISTS (SELECT 1 FROM information_schema.columns
@@ -47,6 +50,7 @@ BEGIN
         ALTER TABLE saved_vacancies DROP COLUMN vacancy_id;
     END IF;
 END$$;
+-- +goose StatementEnd
 
 -- Lock down the new identity columns now that backfill (if any) is done.
 ALTER TABLE saved_vacancies
