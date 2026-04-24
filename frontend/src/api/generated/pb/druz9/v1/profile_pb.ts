@@ -13,7 +13,7 @@
 
 import type { BinaryReadOptions, FieldList, JsonReadOptions, JsonValue, PartialMessage, PlainMessage } from "@bufbuild/protobuf";
 import { Message, proto3, Timestamp } from "@bufbuild/protobuf";
-import { CharClass, Language, Section, SubscriptionPlan } from "./common_pb.js";
+import { CharClass, Language, Section, SubscriptionPlan, UserRole } from "./common_pb.js";
 import { NotificationPreferences } from "./notify_pb.js";
 
 /**
@@ -220,6 +220,14 @@ export class ProfileFull extends Message<ProfileFull> {
    */
   email = "";
 
+  /**
+   * role зеркалирует users.role. Используется фронтом для RBAC-гейтов
+   * (например, кнопка «Создать слот» доступна только interviewer/admin).
+   *
+   * @generated from field: druz9.v1.UserRole role = 18;
+   */
+  role = UserRole.UNSPECIFIED;
+
   constructor(data?: PartialMessage<ProfileFull>) {
     super();
     proto3.util.initPartial(data, this);
@@ -245,6 +253,7 @@ export class ProfileFull extends Message<ProfileFull> {
     { no: 15, name: "created_at", kind: "message", T: Timestamp },
     { no: 16, name: "avatar_url", kind: "scalar", T: 9 /* ScalarType.STRING */ },
     { no: 17, name: "email", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 18, name: "role", kind: "enum", T: proto3.getEnumType(UserRole) },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ProfileFull {

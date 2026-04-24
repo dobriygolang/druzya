@@ -49,18 +49,25 @@ func (uc *BookSlot) Do(ctx context.Context, in BookSlotInput) (domain.Booking, e
 		return domain.Booking{}, fmt.Errorf("slot.BookSlot: %w", checkErr)
 	}
 
-	// The meet URL is deterministic on the slot id — generating it up-front
-	// keeps the transaction short. STUB: the real provider will call Google
-	// Calendar; on failure we still proceed with an empty URL and log.
-	meetURL, err := uc.Meet.GenerateMeetURL(ctx, in.SlotID)
-	if err != nil {
-		if uc.Log != nil {
-			uc.Log.WarnContext(ctx, "slot.BookSlot: meet room generation failed",
-				slog.String("slot_id", in.SlotID.String()),
-				slog.Any("err", err),
-			)
+	// Prefer the interviewer-supplied meet URL (set on the slot at create
+	// time, e.g. their personal Google Meet room). Fall back to the provider
+	// stub when empty so legacy slots without meet_url still get a value.
+	var meetURL string
+	if slot.MeetURL != "" {
+		meetURL = slot.MeetURL
+	} else {
+		generated, gerr := uc.Meet.GenerateMeetURL(ctx, in.SlotID)
+		if gerr != nil {
+			if uc.Log != nil {
+				uc.Log.WarnContext(ctx, "slot.BookSlot: meet room generation failed",
+					slog.String("slot_id", in.SlotID.String()),
+					slog.Any("err", gerr),
+				)
+			}
+			meetURL = ""
+		} else {
+			meetURL = generated
 		}
-		meetURL = ""
 	}
 
 	booking, err := uc.Slots.BookAtomically(ctx, in.SlotID, in.CandidateID, meetURL)

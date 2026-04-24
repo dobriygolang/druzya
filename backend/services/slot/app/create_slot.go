@@ -27,6 +27,9 @@ type CreateSlotInput struct {
 	Difficulty    *enums.Difficulty
 	Language      string
 	PriceRub      int
+	// MeetURL — interviewer-supplied video room URL (optional). Stored as-is
+	// on the slot row; BookSlot reuses it on the resulting booking when set.
+	MeetURL string
 }
 
 // Do validates the slot, runs overlap detection against the interviewer's
@@ -47,6 +50,7 @@ func (uc *CreateSlot) Do(ctx context.Context, in CreateSlotInput) (domain.Slot, 
 		Difficulty:    in.Difficulty,
 		Language:      lang,
 		PriceRub:      in.PriceRub,
+		MeetURL:       in.MeetURL,
 		Status:        enums.SlotStatusAvailable,
 	}
 	if err := domain.ValidateSlot(draft, now); err != nil {

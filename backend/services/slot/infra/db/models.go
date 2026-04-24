@@ -371,6 +371,7 @@ type LlmModel struct {
 	SortOrder          int32
 	CreatedAt          pgtype.Timestamptz
 	UpdatedAt          pgtype.Timestamptz
+	UseForVacancies    bool
 }
 
 type Lobby struct {
@@ -662,6 +663,7 @@ type Slot struct {
 	PriceRub      int32
 	Status        string
 	CreatedAt     pgtype.Timestamptz
+	MeetUrl       pgtype.Text
 }
 
 type SlotReview struct {
@@ -770,6 +772,7 @@ type User struct {
 	AiInsightModel        pgtype.Text
 	OnboardingCompletedAt pgtype.Timestamptz
 	FocusClass            string
+	AiVacanciesModel      pgtype.Text
 }
 
 type UserAchievement struct {

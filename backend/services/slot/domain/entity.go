@@ -50,8 +50,12 @@ type Slot struct {
 	Difficulty    *enums.Difficulty
 	Language      string
 	PriceRub      int
-	Status        enums.SlotStatus
-	CreatedAt     time.Time
+	// MeetURL is the interviewer-supplied video room URL (optional). When
+	// non-empty, BookSlot reuses this on the booking instead of asking
+	// MeetRoomProvider.GenerateMeetURL.
+	MeetURL   string
+	Status    enums.SlotStatus
+	CreatedAt time.Time
 
 	// Hydrated by the use-case layer for the public DTO.
 	InterviewerUsername     string
@@ -95,5 +99,8 @@ type ListFilter struct {
 	Difficulty *enums.Difficulty
 	From       *time.Time
 	To         *time.Time
-	Limit      int // 0 => default applied by infra
+	// PriceMax: when non-nil, restrict to slots with price_rub <= *PriceMax.
+	// Use 0 to mean "free only"; nil means "no price filter".
+	PriceMax *int
+	Limit    int // 0 => default applied by infra
 }

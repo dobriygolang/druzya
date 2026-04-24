@@ -138,6 +138,10 @@ function buildQS(f: SlotFilter): string {
   if (f.difficulty) params.push(`difficulty=${encodeURIComponent(DIFFICULTY_PROTO[f.difficulty])}`)
   if (f.from) params.push(`from=${encodeURIComponent(f.from)}`)
   if (f.to) params.push(`to=${encodeURIComponent(f.to)}`)
+  // price_max is a server-side predicate as of M2 (slot.proto:ListSlotsRequest).
+  if (typeof f.priceMax === 'number' && f.priceMax > 0) {
+    params.push(`price_max=${f.priceMax}`)
+  }
   return params.length === 0 ? '' : `?${params.join('&')}`
 }
 
@@ -161,17 +165,18 @@ function sortSlots(slots: Slot[], sort: SlotSort | undefined): Slot[] {
   })
 }
 
-// useSlotsQuery hits GET /api/v1/slot with the given filter. priceMax + sort
-// are applied client-side — the proto ListSlotsRequest does not yet accept
-// either predicate (tracked in M2; see slot.proto:ListSlotsRequest).
+// useSlotsQuery hits GET /api/v1/slot with the given filter. priceMax is now
+// a server-side predicate (M2). sort stays client-side — there's no useful
+// stable ordering on the wire beyond the default starts_at ASC.
 export function useSlotsQuery(filter: SlotFilter = {}) {
-  // priceMax + sort are client-only — keep them out of the wire QS so the
-  // queryKey still differentiates fetches that hit the network.
+  // sort is client-only — keep it out of the wire QS so the queryKey still
+  // differentiates fetches that actually hit the network.
   const wireFilter: SlotFilter = {
     section: filter.section,
     difficulty: filter.difficulty,
     from: filter.from,
     to: filter.to,
+    priceMax: filter.priceMax,
   }
   const qs = buildQS(wireFilter)
   return useQuery({
@@ -180,12 +185,45 @@ export function useSlotsQuery(filter: SlotFilter = {}) {
       const wire = await api<SlotListWire>(`/slot${qs}`)
       return unwrap(wire).map(normalizeSlot)
     },
-    select: (all) => {
-      const filtered =
-        typeof filter.priceMax === 'number'
-          ? all.filter((s) => s.price_rub <= filter.priceMax!)
-          : all
-      return sortSlots(filtered, filter.sort)
+    select: (all) => sortSlots(all, filter.sort),
+  })
+}
+
+// CreateSlotInput mirrors proto CreateSlotRequest. starts_at is an ISO
+// string (the wire-level Timestamp); duration_min/price_rub are positive ints.
+export type CreateSlotInput = {
+  starts_at: string
+  duration_min: number
+  section: SlotSection
+  difficulty?: SlotDifficulty
+  language: string
+  price_rub: number
+  meet_url?: string
+}
+
+// useCreateSlot wraps POST /api/v1/slot. Returns the created Slot.
+export function useCreateSlot() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (input: CreateSlotInput) => {
+      const body: Record<string, unknown> = {
+        starts_at: input.starts_at,
+        duration_min: input.duration_min,
+        section: SECTION_PROTO[input.section],
+        language: input.language,
+        price_rub: input.price_rub,
+      }
+      if (input.difficulty) body.difficulty = DIFFICULTY_PROTO[input.difficulty]
+      if (input.meet_url) body.meet_url = input.meet_url
+      const wire = await api<SlotWire>('/slot', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      })
+      return normalizeSlot(wire)
+    },
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['slots'] })
     },
   })
 }

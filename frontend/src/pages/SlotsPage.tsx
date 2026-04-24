@@ -17,7 +17,9 @@ import { Card } from '../components/Card'
 import { Avatar, type AvatarGradient } from '../components/Avatar'
 import { EmptyState } from '../components/EmptyState'
 import { MyBookingsDrawer } from '../components/slot/MyBookingsDrawer'
+import CreateSlotDialog from '../components/slot/CreateSlotDialog'
 import { humanizeDifficulty, humanizeSection } from '../lib/labels'
+import { isInterviewerOrAdmin, useProfileQuery } from '../lib/queries/profile'
 import {
   derivePriceBuckets,
   useBookSlot,
@@ -66,10 +68,14 @@ function Header({
   count,
   isError,
   onOpenBookings,
+  onCreateSlot,
+  isInterviewer,
 }: {
   count: number
   isError: boolean
   onOpenBookings: () => void
+  onCreateSlot: () => void
+  isInterviewer: boolean
 }) {
   return (
     <div className="flex flex-col items-start gap-4 px-4 pb-4 pt-6 sm:px-8 lg:flex-row lg:items-end lg:justify-between lg:px-20 lg:pt-7">
@@ -85,7 +91,11 @@ function Header({
       </div>
       <div className="flex gap-3">
         <Button variant="ghost" onClick={onOpenBookings}>Мои слоты</Button>
-        <Button>Стать интервьюером</Button>
+        {isInterviewer ? (
+          <Button onClick={onCreateSlot}>Создать слот</Button>
+        ) : (
+          <Button>Стать интервьюером</Button>
+        )}
       </div>
     </div>
   )
@@ -383,7 +393,11 @@ function BookedSidebar({ booked, onOpen }: { booked: Slot[]; onOpen: () => void 
 export default function SlotsPage() {
   const [filter, setFilter] = useState<SlotFilter>({ sort: 'soonest' })
   const [drawerOpen, setDrawerOpen] = useState(false)
+  const [createOpen, setCreateOpen] = useState(false)
   const [bookErr, setBookErr] = useState<string | null>(null)
+
+  const profile = useProfileQuery()
+  const isInterviewer = isInterviewerOrAdmin(profile.data?.role)
 
   const { data, isError, isLoading } = useSlotsQuery(filter)
   const slots = useMemo(() => data ?? [], [data])
@@ -407,7 +421,13 @@ export default function SlotsPage() {
 
   return (
     <AppShellV2>
-      <Header count={slots.length} isError={isError} onOpenBookings={() => setDrawerOpen(true)} />
+      <Header
+        count={slots.length}
+        isError={isError}
+        onOpenBookings={() => setDrawerOpen(true)}
+        onCreateSlot={() => setCreateOpen(true)}
+        isInterviewer={isInterviewer}
+      />
       <FilterBar filter={filter} setFilter={setFilter} priceBuckets={priceBuckets} />
       <div className="flex flex-col gap-4 px-4 pb-6 sm:px-8 lg:flex-row lg:gap-6 lg:px-20 lg:pb-7">
         <div className="flex flex-1 flex-col gap-4">
@@ -427,6 +447,7 @@ export default function SlotsPage() {
         </div>
       </div>
       <MyBookingsDrawer open={drawerOpen} onClose={() => setDrawerOpen(false)} />
+      <CreateSlotDialog open={createOpen} onClose={() => setCreateOpen(false)} />
     </AppShellV2>
   )
 }

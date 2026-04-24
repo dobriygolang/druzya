@@ -1,25 +1,25 @@
 -- slot queries consumed by sqlc (emitted into services/slot/infra/db).
 
 -- name: CreateSlot :one
-INSERT INTO slots(interviewer_id, starts_at, duration_min, section, difficulty, language, price_rub, status)
-VALUES ($1, $2, $3, $4, $5, $6, $7, 'available')
-RETURNING id, interviewer_id, starts_at, duration_min, section, difficulty, language, price_rub, status, created_at;
+INSERT INTO slots(interviewer_id, starts_at, duration_min, section, difficulty, language, price_rub, meet_url, status)
+VALUES ($1, $2, $3, $4, $5, $6, $7, NULLIF($8::text, ''), 'available')
+RETURNING id, interviewer_id, starts_at, duration_min, section, difficulty, language, price_rub, status, created_at, meet_url;
 
 -- name: GetSlot :one
-SELECT id, interviewer_id, starts_at, duration_min, section, difficulty, language, price_rub, status, created_at
+SELECT id, interviewer_id, starts_at, duration_min, section, difficulty, language, price_rub, status, created_at, meet_url
   FROM slots WHERE id = $1;
 
 -- name: GetSlotForUpdate :one
 -- SELECT ... FOR UPDATE inside a transaction so the book flow can atomically
 -- flip status=available → booked without racing against concurrent callers.
-SELECT id, interviewer_id, starts_at, duration_min, section, difficulty, language, price_rub, status, created_at
+SELECT id, interviewer_id, starts_at, duration_min, section, difficulty, language, price_rub, status, created_at, meet_url
   FROM slots WHERE id = $1 FOR UPDATE;
 
 -- name: ListAvailableSlotsBase :many
 -- Base listing used when the caller does not pass optional filters. The
 -- use-case layer composes richer filters via a hand-rolled SQL in postgres.go
 -- (daily / arena do the same for dynamic WHERE clauses sqlc cannot represent).
-SELECT id, interviewer_id, starts_at, duration_min, section, difficulty, language, price_rub, status, created_at
+SELECT id, interviewer_id, starts_at, duration_min, section, difficulty, language, price_rub, status, created_at, meet_url
   FROM slots
  WHERE status = 'available'
    AND starts_at > now()
@@ -29,7 +29,7 @@ SELECT id, interviewer_id, starts_at, duration_min, section, difficulty, languag
 -- name: ListByInterviewerInRange :many
 -- Returns every slot owned by the interviewer whose [starts_at, ends_at)
 -- overlaps the [from, to) window. Used for conflict detection at create time.
-SELECT id, interviewer_id, starts_at, duration_min, section, difficulty, language, price_rub, status, created_at
+SELECT id, interviewer_id, starts_at, duration_min, section, difficulty, language, price_rub, status, created_at, meet_url
   FROM slots
  WHERE interviewer_id = $1
    AND starts_at < $3::timestamptz

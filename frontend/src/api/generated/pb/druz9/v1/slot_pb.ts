@@ -128,6 +128,18 @@ export class Slot extends Message<Slot> {
    */
   status = SlotStatus.UNSPECIFIED;
 
+  /**
+   * meet_url is the interviewer-supplied video room URL (typically a
+   * Google Meet link they create themselves). When non-empty, BookSlot
+   * surfaces it on the resulting Booking; otherwise BookSlot falls back
+   * to MeetRoomProvider.GenerateMeetURL.
+   *
+   * Optional on the wire: empty when the interviewer hasn't pasted one yet.
+   *
+   * @generated from field: string meet_url = 10;
+   */
+  meetUrl = "";
+
   constructor(data?: PartialMessage<Slot>) {
     super();
     proto3.util.initPartial(data, this);
@@ -145,6 +157,7 @@ export class Slot extends Message<Slot> {
     { no: 7, name: "language", kind: "scalar", T: 9 /* ScalarType.STRING */ },
     { no: 8, name: "price_rub", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
     { no: 9, name: "status", kind: "enum", T: proto3.getEnumType(SlotStatus) },
+    { no: 10, name: "meet_url", kind: "scalar", T: 9 /* ScalarType.STRING */ },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): Slot {
@@ -288,6 +301,14 @@ export class ListSlotsRequest extends Message<ListSlotsRequest> {
    */
   to?: Timestamp;
 
+  /**
+   * price_max — upper-bound filter on price_rub. 0 means "no limit"; pass
+   * any positive int to cap.
+   *
+   * @generated from field: int32 price_max = 5;
+   */
+  priceMax = 0;
+
   constructor(data?: PartialMessage<ListSlotsRequest>) {
     super();
     proto3.util.initPartial(data, this);
@@ -300,6 +321,7 @@ export class ListSlotsRequest extends Message<ListSlotsRequest> {
     { no: 2, name: "difficulty", kind: "enum", T: proto3.getEnumType(Difficulty) },
     { no: 3, name: "from", kind: "message", T: Timestamp },
     { no: 4, name: "to", kind: "message", T: Timestamp },
+    { no: 5, name: "price_max", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ListSlotsRequest {
@@ -357,6 +379,15 @@ export class CreateSlotRequest extends Message<CreateSlotRequest> {
    */
   priceRub = 0;
 
+  /**
+   * meet_url — optional video-room URL the interviewer creates themselves
+   * (typically https://meet.google.com/...). When provided, BookSlot uses
+   * this exact URL on the resulting Booking instead of generating a mock.
+   *
+   * @generated from field: string meet_url = 7;
+   */
+  meetUrl = "";
+
   constructor(data?: PartialMessage<CreateSlotRequest>) {
     super();
     proto3.util.initPartial(data, this);
@@ -371,6 +402,7 @@ export class CreateSlotRequest extends Message<CreateSlotRequest> {
     { no: 4, name: "difficulty", kind: "enum", T: proto3.getEnumType(Difficulty) },
     { no: 5, name: "language", kind: "scalar", T: 9 /* ScalarType.STRING */ },
     { no: 6, name: "price_rub", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 7, name: "meet_url", kind: "scalar", T: 9 /* ScalarType.STRING */ },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): CreateSlotRequest {
@@ -498,6 +530,190 @@ export class CancelSlotResponse extends Message<CancelSlotResponse> {
 
   static equals(a: CancelSlotResponse | PlainMessage<CancelSlotResponse> | undefined, b: CancelSlotResponse | PlainMessage<CancelSlotResponse> | undefined): boolean {
     return proto3.util.equals(CancelSlotResponse, a, b);
+  }
+}
+
+/**
+ * ListMyBookingsRequest is empty — caller is identified by the bearer token.
+ *
+ * @generated from message druz9.v1.ListMyBookingsRequest
+ */
+export class ListMyBookingsRequest extends Message<ListMyBookingsRequest> {
+  constructor(data?: PartialMessage<ListMyBookingsRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.ListMyBookingsRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ListMyBookingsRequest {
+    return new ListMyBookingsRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): ListMyBookingsRequest {
+    return new ListMyBookingsRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): ListMyBookingsRequest {
+    return new ListMyBookingsRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: ListMyBookingsRequest | PlainMessage<ListMyBookingsRequest> | undefined, b: ListMyBookingsRequest | PlainMessage<ListMyBookingsRequest> | undefined): boolean {
+    return proto3.util.equals(ListMyBookingsRequest, a, b);
+  }
+}
+
+/**
+ * MyBookingItem mirrors the chi-direct DTO that previously served
+ * GET /api/v1/slot/my/bookings (cmd/monolith/services/slot.go). Combines
+ * booking + denormalized slot fields so the client can render its
+ * "Мои бронирования" panel without a second round-trip.
+ *
+ * @generated from message druz9.v1.MyBookingItem
+ */
+export class MyBookingItem extends Message<MyBookingItem> {
+  /**
+   * @generated from field: string id = 1;
+   */
+  id = "";
+
+  /**
+   * @generated from field: string slot_id = 2;
+   */
+  slotId = "";
+
+  /**
+   * @generated from field: string meet_url = 3;
+   */
+  meetUrl = "";
+
+  /**
+   * booking lifecycle status (active | cancelled | completed) — separate
+   * from slot_status which is the slot-side state.
+   *
+   * @generated from field: string status = 4;
+   */
+  status = "";
+
+  /**
+   * @generated from field: google.protobuf.Timestamp created_at = 5;
+   */
+  createdAt?: Timestamp;
+
+  /**
+   * @generated from field: google.protobuf.Timestamp starts_at = 6;
+   */
+  startsAt?: Timestamp;
+
+  /**
+   * @generated from field: int32 duration_min = 7;
+   */
+  durationMin = 0;
+
+  /**
+   * @generated from field: druz9.v1.Section section = 8;
+   */
+  section = Section.UNSPECIFIED;
+
+  /**
+   * @generated from field: druz9.v1.Difficulty difficulty = 9;
+   */
+  difficulty = Difficulty.UNSPECIFIED;
+
+  /**
+   * @generated from field: string language = 10;
+   */
+  language = "";
+
+  /**
+   * @generated from field: int32 price_rub = 11;
+   */
+  priceRub = 0;
+
+  /**
+   * @generated from field: druz9.v1.SlotStatus slot_status = 12;
+   */
+  slotStatus = SlotStatus.UNSPECIFIED;
+
+  constructor(data?: PartialMessage<MyBookingItem>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.MyBookingItem";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "slot_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 3, name: "meet_url", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 4, name: "status", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 5, name: "created_at", kind: "message", T: Timestamp },
+    { no: 6, name: "starts_at", kind: "message", T: Timestamp },
+    { no: 7, name: "duration_min", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 8, name: "section", kind: "enum", T: proto3.getEnumType(Section) },
+    { no: 9, name: "difficulty", kind: "enum", T: proto3.getEnumType(Difficulty) },
+    { no: 10, name: "language", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 11, name: "price_rub", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 12, name: "slot_status", kind: "enum", T: proto3.getEnumType(SlotStatus) },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): MyBookingItem {
+    return new MyBookingItem().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): MyBookingItem {
+    return new MyBookingItem().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): MyBookingItem {
+    return new MyBookingItem().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: MyBookingItem | PlainMessage<MyBookingItem> | undefined, b: MyBookingItem | PlainMessage<MyBookingItem> | undefined): boolean {
+    return proto3.util.equals(MyBookingItem, a, b);
+  }
+}
+
+/**
+ * MyBookingList wraps the repeated items so vanguard's REST transcoder
+ * emits {"items":[...]} (consistent with SlotList).
+ *
+ * @generated from message druz9.v1.MyBookingList
+ */
+export class MyBookingList extends Message<MyBookingList> {
+  /**
+   * @generated from field: repeated druz9.v1.MyBookingItem items = 1;
+   */
+  items: MyBookingItem[] = [];
+
+  constructor(data?: PartialMessage<MyBookingList>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.MyBookingList";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "items", kind: "message", T: MyBookingItem, repeated: true },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): MyBookingList {
+    return new MyBookingList().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): MyBookingList {
+    return new MyBookingList().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): MyBookingList {
+    return new MyBookingList().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: MyBookingList | PlainMessage<MyBookingList> | undefined, b: MyBookingList | PlainMessage<MyBookingList> | undefined): boolean {
+    return proto3.util.equals(MyBookingList, a, b);
   }
 }
 

@@ -21,6 +21,7 @@ type WireSlot = {
   language: string
   price_rub: number
   status: string
+  meet_url?: string
 }
 
 type WireBooking = {
@@ -115,11 +116,14 @@ function applyFilters(url: URL): WireSlot[] {
   const difficulty = url.searchParams.get('difficulty')
   const from = url.searchParams.get('from')
   const to = url.searchParams.get('to')
+  const priceMaxRaw = url.searchParams.get('price_max')
+  const priceMax = priceMaxRaw ? parseInt(priceMaxRaw, 10) : 0
   return slots.filter((s) => {
     if (section && s.section !== section) return false
     if (difficulty && s.difficulty !== difficulty) return false
     if (from && s.starts_at < from) return false
     if (to && s.starts_at > to) return false
+    if (priceMax > 0 && s.price_rub > priceMax) return false
     return true
   })
 }
@@ -131,7 +135,8 @@ export const slotHandlers = [
     return HttpResponse.json({ items })
   }),
 
-  // POST /api/v1/slot/{id}/book — BookSlot.
+  // POST /api/v1/slot/{id}/book — BookSlot. Reuses interviewer-supplied
+  // slot.meet_url when set (matches backend BookSlot.Do behaviour).
   http.post(`${base}/slot/:id/book`, ({ params }) => {
     const id = String(params.id)
     const slot = findSlot(id)
@@ -143,7 +148,7 @@ export const slotHandlers = [
     const booking: WireBooking = {
       id: `b-${Date.now()}`,
       slot: { ...slot },
-      meet_url: `https://meet.google.com/mock-${id.slice(0, 8)}`,
+      meet_url: slot.meet_url ?? `https://meet.google.com/mock-${id.slice(0, 8)}`,
       created_at: new Date().toISOString(),
     }
     bookings.set(id, booking)
@@ -160,9 +165,10 @@ export const slotHandlers = [
     return new HttpResponse(null, { status: 204 })
   }),
 
-  // POST /api/v1/slot — CreateSlot. Wired for M2 modal; appends to catalogue.
+  // POST /api/v1/slot — CreateSlot. Appends to catalogue; persists meet_url
+  // so the subsequent BookSlot reuses it (mirrors backend semantics).
   http.post(`${base}/slot`, async ({ request }) => {
-    const body = (await request.json()) as Partial<WireSlot> & { meet_url?: string }
+    const body = (await request.json()) as Partial<WireSlot>
     const created: WireSlot = {
       id: `created-${Date.now()}`,
       interviewer: { user_id: 'u-self', username: 'me' },
@@ -172,6 +178,7 @@ export const slotHandlers = [
       difficulty: body.difficulty,
       language: body.language ?? 'ru',
       price_rub: body.price_rub ?? 0,
+      meet_url: body.meet_url,
       status: 'SLOT_STATUS_AVAILABLE',
     }
     slots.unshift(created)

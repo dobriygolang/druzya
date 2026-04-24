@@ -48,6 +48,9 @@ const (
 	SlotServiceBookSlotProcedure = "/druz9.v1.SlotService/BookSlot"
 	// SlotServiceCancelSlotProcedure is the fully-qualified name of the SlotService's CancelSlot RPC.
 	SlotServiceCancelSlotProcedure = "/druz9.v1.SlotService/CancelSlot"
+	// SlotServiceListMyBookingsProcedure is the fully-qualified name of the SlotService's
+	// ListMyBookings RPC.
+	SlotServiceListMyBookingsProcedure = "/druz9.v1.SlotService/ListMyBookings"
 )
 
 // SlotServiceClient is a client for the druz9.v1.SlotService service.
@@ -60,6 +63,10 @@ type SlotServiceClient interface {
 	BookSlot(context.Context, *connect.Request[v1.BookSlotRequest]) (*connect.Response[v1.Booking], error)
 	// CancelSlot cancels the slot (owner-only) and any attached booking.
 	CancelSlot(context.Context, *connect.Request[v1.CancelSlotRequest]) (*connect.Response[v1.CancelSlotResponse], error)
+	// ListMyBookings returns every booking owned by the authenticated caller,
+	// ordered by slot starts_at DESC. Replaces the chi-direct handler that
+	// lived in cmd/monolith/services/slot.go.
+	ListMyBookings(context.Context, *connect.Request[v1.ListMyBookingsRequest]) (*connect.Response[v1.MyBookingList], error)
 }
 
 // NewSlotServiceClient constructs a client for the druz9.v1.SlotService service. By default, it
@@ -97,15 +104,22 @@ func NewSlotServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 			connect.WithSchema(slotServiceMethods.ByName("CancelSlot")),
 			connect.WithClientOptions(opts...),
 		),
+		listMyBookings: connect.NewClient[v1.ListMyBookingsRequest, v1.MyBookingList](
+			httpClient,
+			baseURL+SlotServiceListMyBookingsProcedure,
+			connect.WithSchema(slotServiceMethods.ByName("ListMyBookings")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
 // slotServiceClient implements SlotServiceClient.
 type slotServiceClient struct {
-	listSlots  *connect.Client[v1.ListSlotsRequest, v1.SlotList]
-	createSlot *connect.Client[v1.CreateSlotRequest, v1.Slot]
-	bookSlot   *connect.Client[v1.BookSlotRequest, v1.Booking]
-	cancelSlot *connect.Client[v1.CancelSlotRequest, v1.CancelSlotResponse]
+	listSlots      *connect.Client[v1.ListSlotsRequest, v1.SlotList]
+	createSlot     *connect.Client[v1.CreateSlotRequest, v1.Slot]
+	bookSlot       *connect.Client[v1.BookSlotRequest, v1.Booking]
+	cancelSlot     *connect.Client[v1.CancelSlotRequest, v1.CancelSlotResponse]
+	listMyBookings *connect.Client[v1.ListMyBookingsRequest, v1.MyBookingList]
 }
 
 // ListSlots calls druz9.v1.SlotService.ListSlots.
@@ -128,6 +142,11 @@ func (c *slotServiceClient) CancelSlot(ctx context.Context, req *connect.Request
 	return c.cancelSlot.CallUnary(ctx, req)
 }
 
+// ListMyBookings calls druz9.v1.SlotService.ListMyBookings.
+func (c *slotServiceClient) ListMyBookings(ctx context.Context, req *connect.Request[v1.ListMyBookingsRequest]) (*connect.Response[v1.MyBookingList], error) {
+	return c.listMyBookings.CallUnary(ctx, req)
+}
+
 // SlotServiceHandler is an implementation of the druz9.v1.SlotService service.
 type SlotServiceHandler interface {
 	// ListSlots returns the filtered catalog of available slots.
@@ -138,6 +157,10 @@ type SlotServiceHandler interface {
 	BookSlot(context.Context, *connect.Request[v1.BookSlotRequest]) (*connect.Response[v1.Booking], error)
 	// CancelSlot cancels the slot (owner-only) and any attached booking.
 	CancelSlot(context.Context, *connect.Request[v1.CancelSlotRequest]) (*connect.Response[v1.CancelSlotResponse], error)
+	// ListMyBookings returns every booking owned by the authenticated caller,
+	// ordered by slot starts_at DESC. Replaces the chi-direct handler that
+	// lived in cmd/monolith/services/slot.go.
+	ListMyBookings(context.Context, *connect.Request[v1.ListMyBookingsRequest]) (*connect.Response[v1.MyBookingList], error)
 }
 
 // NewSlotServiceHandler builds an HTTP handler from the service implementation. It returns the path
@@ -171,6 +194,12 @@ func NewSlotServiceHandler(svc SlotServiceHandler, opts ...connect.HandlerOption
 		connect.WithSchema(slotServiceMethods.ByName("CancelSlot")),
 		connect.WithHandlerOptions(opts...),
 	)
+	slotServiceListMyBookingsHandler := connect.NewUnaryHandler(
+		SlotServiceListMyBookingsProcedure,
+		svc.ListMyBookings,
+		connect.WithSchema(slotServiceMethods.ByName("ListMyBookings")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/druz9.v1.SlotService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case SlotServiceListSlotsProcedure:
@@ -181,6 +210,8 @@ func NewSlotServiceHandler(svc SlotServiceHandler, opts ...connect.HandlerOption
 			slotServiceBookSlotHandler.ServeHTTP(w, r)
 		case SlotServiceCancelSlotProcedure:
 			slotServiceCancelSlotHandler.ServeHTTP(w, r)
+		case SlotServiceListMyBookingsProcedure:
+			slotServiceListMyBookingsHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -204,4 +235,8 @@ func (UnimplementedSlotServiceHandler) BookSlot(context.Context, *connect.Reques
 
 func (UnimplementedSlotServiceHandler) CancelSlot(context.Context, *connect.Request[v1.CancelSlotRequest]) (*connect.Response[v1.CancelSlotResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.SlotService.CancelSlot is not implemented"))
+}
+
+func (UnimplementedSlotServiceHandler) ListMyBookings(context.Context, *connect.Request[v1.ListMyBookingsRequest]) (*connect.Response[v1.MyBookingList], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.SlotService.ListMyBookings is not implemented"))
 }

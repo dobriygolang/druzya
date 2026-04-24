@@ -51,6 +51,7 @@ func (p *Postgres) Create(ctx context.Context, s domain.Slot) (domain.Slot, erro
 		Difficulty:    diff,
 		Language:      s.Language,
 		PriceRub:      int32(s.PriceRub),
+		Column8:       s.MeetURL,
 	})
 	if err != nil {
 		return domain.Slot{}, fmt.Errorf("slot.pg.Create: %w", err)
@@ -99,13 +100,17 @@ func (p *Postgres) List(ctx context.Context, f domain.ListFilter) ([]domain.Slot
 		clauses = append(clauses, "starts_at <= "+argPos())
 		args = append(args, f.To.UTC())
 	}
+	if f.PriceMax != nil {
+		clauses = append(clauses, "price_rub <= "+argPos())
+		args = append(args, int32(*f.PriceMax))
+	}
 	limit := f.Limit
 	if limit <= 0 {
 		limit = defaultListLimit
 	}
 	clauses = append(clauses, "")
 	sql := `SELECT id, interviewer_id, starts_at, duration_min, section, difficulty,
-	       language, price_rub, status, created_at
+	       language, price_rub, status, created_at, meet_url
 	   FROM slots
 	  WHERE ` + strings.Join(clauses[:len(clauses)-1], " AND ") +
 		fmt.Sprintf(" ORDER BY starts_at ASC LIMIT %d", limit)
@@ -122,7 +127,7 @@ func (p *Postgres) List(ctx context.Context, f domain.ListFilter) ([]domain.Slot
 		if err := rows.Scan(
 			&r.ID, &r.InterviewerID, &r.StartsAt, &r.DurationMin,
 			&r.Section, &r.Difficulty, &r.Language, &r.PriceRub,
-			&r.Status, &r.CreatedAt,
+			&r.Status, &r.CreatedAt, &r.MeetUrl,
 		); err != nil {
 			return nil, fmt.Errorf("slot.pg.List: scan: %w", err)
 		}
@@ -368,6 +373,9 @@ func slotFromRow(r slotdb.Slot) domain.Slot {
 	if r.Difficulty.Valid {
 		d := enums.Difficulty(r.Difficulty.String)
 		s.Difficulty = &d
+	}
+	if r.MeetUrl.Valid {
+		s.MeetURL = r.MeetUrl.String
 	}
 	return s
 }

@@ -20,6 +20,9 @@ const profileFull = {
     ai_credits: 240,
     created_at: '2025-11-14T10:00:00Z',
     avatar_frame: 'crimson_sigil',
+    // role mirrors users.role; mock dev as interviewer so the «Создать слот»
+    // CTA on /slots is visible without backend role-flip.
+    role: 'USER_ROLE_INTERVIEWER',
     achievements: [
         {
             key: 'avito_cleared',

@@ -112,9 +112,16 @@ type Slot struct {
 	Difficulty  Difficulty             `protobuf:"varint,6,opt,name=difficulty,proto3,enum=druz9.v1.Difficulty" json:"difficulty,omitempty"`
 	// language mirrors OpenAPI Slot.language ("ru" | "en"). Kept as string —
 	// not the Language enum (that one is code languages: go/python/…).
-	Language      string     `protobuf:"bytes,7,opt,name=language,proto3" json:"language,omitempty"`
-	PriceRub      int32      `protobuf:"varint,8,opt,name=price_rub,json=priceRub,proto3" json:"price_rub,omitempty"`
-	Status        SlotStatus `protobuf:"varint,9,opt,name=status,proto3,enum=druz9.v1.SlotStatus" json:"status,omitempty"`
+	Language string     `protobuf:"bytes,7,opt,name=language,proto3" json:"language,omitempty"`
+	PriceRub int32      `protobuf:"varint,8,opt,name=price_rub,json=priceRub,proto3" json:"price_rub,omitempty"`
+	Status   SlotStatus `protobuf:"varint,9,opt,name=status,proto3,enum=druz9.v1.SlotStatus" json:"status,omitempty"`
+	// meet_url is the interviewer-supplied video room URL (typically a
+	// Google Meet link they create themselves). When non-empty, BookSlot
+	// surfaces it on the resulting Booking; otherwise BookSlot falls back
+	// to MeetRoomProvider.GenerateMeetURL.
+	//
+	// Optional on the wire: empty when the interviewer hasn't pasted one yet.
+	MeetUrl       string `protobuf:"bytes,10,opt,name=meet_url,json=meetUrl,proto3" json:"meet_url,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -210,6 +217,13 @@ func (x *Slot) GetStatus() SlotStatus {
 		return x.Status
 	}
 	return SlotStatus_SLOT_STATUS_UNSPECIFIED
+}
+
+func (x *Slot) GetMeetUrl() string {
+	if x != nil {
+		return x.MeetUrl
+	}
+	return ""
 }
 
 // SlotList is the vanguard-friendly wrapper — OpenAPI returns a JSON array
@@ -330,11 +344,14 @@ func (x *Booking) GetCreatedAt() *timestamppb.Timestamp {
 
 // ListSlotsRequest mirrors the OpenAPI query filters on GET /slot.
 type ListSlotsRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Section       Section                `protobuf:"varint,1,opt,name=section,proto3,enum=druz9.v1.Section" json:"section,omitempty"`
-	Difficulty    Difficulty             `protobuf:"varint,2,opt,name=difficulty,proto3,enum=druz9.v1.Difficulty" json:"difficulty,omitempty"`
-	From          *timestamppb.Timestamp `protobuf:"bytes,3,opt,name=from,proto3" json:"from,omitempty"`
-	To            *timestamppb.Timestamp `protobuf:"bytes,4,opt,name=to,proto3" json:"to,omitempty"`
+	state      protoimpl.MessageState `protogen:"open.v1"`
+	Section    Section                `protobuf:"varint,1,opt,name=section,proto3,enum=druz9.v1.Section" json:"section,omitempty"`
+	Difficulty Difficulty             `protobuf:"varint,2,opt,name=difficulty,proto3,enum=druz9.v1.Difficulty" json:"difficulty,omitempty"`
+	From       *timestamppb.Timestamp `protobuf:"bytes,3,opt,name=from,proto3" json:"from,omitempty"`
+	To         *timestamppb.Timestamp `protobuf:"bytes,4,opt,name=to,proto3" json:"to,omitempty"`
+	// price_max — upper-bound filter on price_rub. 0 means "no limit"; pass
+	// any positive int to cap.
+	PriceMax      int32 `protobuf:"varint,5,opt,name=price_max,json=priceMax,proto3" json:"price_max,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -397,6 +414,13 @@ func (x *ListSlotsRequest) GetTo() *timestamppb.Timestamp {
 	return nil
 }
 
+func (x *ListSlotsRequest) GetPriceMax() int32 {
+	if x != nil {
+		return x.PriceMax
+	}
+	return 0
+}
+
 // CreateSlotRequest mirrors OpenAPI CreateSlotRequest.
 type CreateSlotRequest struct {
 	state       protoimpl.MessageState `protogen:"open.v1"`
@@ -405,8 +429,12 @@ type CreateSlotRequest struct {
 	Section     Section                `protobuf:"varint,3,opt,name=section,proto3,enum=druz9.v1.Section" json:"section,omitempty"`
 	Difficulty  Difficulty             `protobuf:"varint,4,opt,name=difficulty,proto3,enum=druz9.v1.Difficulty" json:"difficulty,omitempty"`
 	// language is "ru" | "en" per OpenAPI enum. Preserved as string.
-	Language      string `protobuf:"bytes,5,opt,name=language,proto3" json:"language,omitempty"`
-	PriceRub      int32  `protobuf:"varint,6,opt,name=price_rub,json=priceRub,proto3" json:"price_rub,omitempty"`
+	Language string `protobuf:"bytes,5,opt,name=language,proto3" json:"language,omitempty"`
+	PriceRub int32  `protobuf:"varint,6,opt,name=price_rub,json=priceRub,proto3" json:"price_rub,omitempty"`
+	// meet_url — optional video-room URL the interviewer creates themselves
+	// (typically https://meet.google.com/...). When provided, BookSlot uses
+	// this exact URL on the resulting Booking instead of generating a mock.
+	MeetUrl       string `protobuf:"bytes,7,opt,name=meet_url,json=meetUrl,proto3" json:"meet_url,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -481,6 +509,13 @@ func (x *CreateSlotRequest) GetPriceRub() int32 {
 		return x.PriceRub
 	}
 	return 0
+}
+
+func (x *CreateSlotRequest) GetMeetUrl() string {
+	if x != nil {
+		return x.MeetUrl
+	}
+	return ""
 }
 
 // BookSlotRequest wraps the path param.
@@ -610,6 +645,227 @@ func (*CancelSlotResponse) Descriptor() ([]byte, []int) {
 	return file_druz9_v1_slot_proto_rawDescGZIP(), []int{8}
 }
 
+// ListMyBookingsRequest is empty — caller is identified by the bearer token.
+type ListMyBookingsRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListMyBookingsRequest) Reset() {
+	*x = ListMyBookingsRequest{}
+	mi := &file_druz9_v1_slot_proto_msgTypes[9]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListMyBookingsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListMyBookingsRequest) ProtoMessage() {}
+
+func (x *ListMyBookingsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_slot_proto_msgTypes[9]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListMyBookingsRequest.ProtoReflect.Descriptor instead.
+func (*ListMyBookingsRequest) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_slot_proto_rawDescGZIP(), []int{9}
+}
+
+// MyBookingItem mirrors the chi-direct DTO that previously served
+// GET /api/v1/slot/my/bookings (cmd/monolith/services/slot.go). Combines
+// booking + denormalized slot fields so the client can render its
+// "Мои бронирования" panel without a second round-trip.
+type MyBookingItem struct {
+	state   protoimpl.MessageState `protogen:"open.v1"`
+	Id      string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	SlotId  string                 `protobuf:"bytes,2,opt,name=slot_id,json=slotId,proto3" json:"slot_id,omitempty"`
+	MeetUrl string                 `protobuf:"bytes,3,opt,name=meet_url,json=meetUrl,proto3" json:"meet_url,omitempty"`
+	// booking lifecycle status (active | cancelled | completed) — separate
+	// from slot_status which is the slot-side state.
+	Status        string                 `protobuf:"bytes,4,opt,name=status,proto3" json:"status,omitempty"`
+	CreatedAt     *timestamppb.Timestamp `protobuf:"bytes,5,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	StartsAt      *timestamppb.Timestamp `protobuf:"bytes,6,opt,name=starts_at,json=startsAt,proto3" json:"starts_at,omitempty"`
+	DurationMin   int32                  `protobuf:"varint,7,opt,name=duration_min,json=durationMin,proto3" json:"duration_min,omitempty"`
+	Section       Section                `protobuf:"varint,8,opt,name=section,proto3,enum=druz9.v1.Section" json:"section,omitempty"`
+	Difficulty    Difficulty             `protobuf:"varint,9,opt,name=difficulty,proto3,enum=druz9.v1.Difficulty" json:"difficulty,omitempty"`
+	Language      string                 `protobuf:"bytes,10,opt,name=language,proto3" json:"language,omitempty"`
+	PriceRub      int32                  `protobuf:"varint,11,opt,name=price_rub,json=priceRub,proto3" json:"price_rub,omitempty"`
+	SlotStatus    SlotStatus             `protobuf:"varint,12,opt,name=slot_status,json=slotStatus,proto3,enum=druz9.v1.SlotStatus" json:"slot_status,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *MyBookingItem) Reset() {
+	*x = MyBookingItem{}
+	mi := &file_druz9_v1_slot_proto_msgTypes[10]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *MyBookingItem) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*MyBookingItem) ProtoMessage() {}
+
+func (x *MyBookingItem) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_slot_proto_msgTypes[10]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use MyBookingItem.ProtoReflect.Descriptor instead.
+func (*MyBookingItem) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_slot_proto_rawDescGZIP(), []int{10}
+}
+
+func (x *MyBookingItem) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *MyBookingItem) GetSlotId() string {
+	if x != nil {
+		return x.SlotId
+	}
+	return ""
+}
+
+func (x *MyBookingItem) GetMeetUrl() string {
+	if x != nil {
+		return x.MeetUrl
+	}
+	return ""
+}
+
+func (x *MyBookingItem) GetStatus() string {
+	if x != nil {
+		return x.Status
+	}
+	return ""
+}
+
+func (x *MyBookingItem) GetCreatedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.CreatedAt
+	}
+	return nil
+}
+
+func (x *MyBookingItem) GetStartsAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.StartsAt
+	}
+	return nil
+}
+
+func (x *MyBookingItem) GetDurationMin() int32 {
+	if x != nil {
+		return x.DurationMin
+	}
+	return 0
+}
+
+func (x *MyBookingItem) GetSection() Section {
+	if x != nil {
+		return x.Section
+	}
+	return Section_SECTION_UNSPECIFIED
+}
+
+func (x *MyBookingItem) GetDifficulty() Difficulty {
+	if x != nil {
+		return x.Difficulty
+	}
+	return Difficulty_DIFFICULTY_UNSPECIFIED
+}
+
+func (x *MyBookingItem) GetLanguage() string {
+	if x != nil {
+		return x.Language
+	}
+	return ""
+}
+
+func (x *MyBookingItem) GetPriceRub() int32 {
+	if x != nil {
+		return x.PriceRub
+	}
+	return 0
+}
+
+func (x *MyBookingItem) GetSlotStatus() SlotStatus {
+	if x != nil {
+		return x.SlotStatus
+	}
+	return SlotStatus_SLOT_STATUS_UNSPECIFIED
+}
+
+// MyBookingList wraps the repeated items so vanguard's REST transcoder
+// emits {"items":[...]} (consistent with SlotList).
+type MyBookingList struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Items         []*MyBookingItem       `protobuf:"bytes,1,rep,name=items,proto3" json:"items,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *MyBookingList) Reset() {
+	*x = MyBookingList{}
+	mi := &file_druz9_v1_slot_proto_msgTypes[11]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *MyBookingList) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*MyBookingList) ProtoMessage() {}
+
+func (x *MyBookingList) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_slot_proto_msgTypes[11]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use MyBookingList.ProtoReflect.Descriptor instead.
+func (*MyBookingList) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_slot_proto_rawDescGZIP(), []int{11}
+}
+
+func (x *MyBookingList) GetItems() []*MyBookingItem {
+	if x != nil {
+		return x.Items
+	}
+	return nil
+}
+
 var File_druz9_v1_slot_proto protoreflect.FileDescriptor
 
 const file_druz9_v1_slot_proto_rawDesc = "" +
@@ -620,7 +876,7 @@ const file_druz9_v1_slot_proto_rawDesc = "" +
 	"\busername\x18\x02 \x01(\tR\busername\x12\x1d\n" +
 	"\n" +
 	"avg_rating\x18\x03 \x01(\x02R\tavgRating\x12#\n" +
-	"\rreviews_count\x18\x04 \x01(\x05R\freviewsCount\"\xf9\x02\n" +
+	"\rreviews_count\x18\x04 \x01(\x05R\freviewsCount\"\x94\x03\n" +
 	"\x04Slot\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12;\n" +
 	"\vinterviewer\x18\x02 \x01(\v2\x19.druz9.v1.SlotInterviewerR\vinterviewer\x127\n" +
@@ -632,7 +888,9 @@ const file_druz9_v1_slot_proto_rawDesc = "" +
 	"difficulty\x12\x1a\n" +
 	"\blanguage\x18\a \x01(\tR\blanguage\x12\x1b\n" +
 	"\tprice_rub\x18\b \x01(\x05R\bpriceRub\x12,\n" +
-	"\x06status\x18\t \x01(\x0e2\x14.druz9.v1.SlotStatusR\x06status\"0\n" +
+	"\x06status\x18\t \x01(\x0e2\x14.druz9.v1.SlotStatusR\x06status\x12\x19\n" +
+	"\bmeet_url\x18\n" +
+	" \x01(\tR\ameetUrl\"0\n" +
 	"\bSlotList\x12$\n" +
 	"\x05items\x18\x01 \x03(\v2\x0e.druz9.v1.SlotR\x05items\"\x93\x01\n" +
 	"\aBooking\x12\x0e\n" +
@@ -640,14 +898,15 @@ const file_druz9_v1_slot_proto_rawDesc = "" +
 	"\x04slot\x18\x02 \x01(\v2\x0e.druz9.v1.SlotR\x04slot\x12\x19\n" +
 	"\bmeet_url\x18\x03 \x01(\tR\ameetUrl\x129\n" +
 	"\n" +
-	"created_at\x18\x04 \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\"\xd1\x01\n" +
+	"created_at\x18\x04 \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\"\xee\x01\n" +
 	"\x10ListSlotsRequest\x12+\n" +
 	"\asection\x18\x01 \x01(\x0e2\x11.druz9.v1.SectionR\asection\x124\n" +
 	"\n" +
 	"difficulty\x18\x02 \x01(\x0e2\x14.druz9.v1.DifficultyR\n" +
 	"difficulty\x12.\n" +
 	"\x04from\x18\x03 \x01(\v2\x1a.google.protobuf.TimestampR\x04from\x12*\n" +
-	"\x02to\x18\x04 \x01(\v2\x1a.google.protobuf.TimestampR\x02to\"\x8b\x02\n" +
+	"\x02to\x18\x04 \x01(\v2\x1a.google.protobuf.TimestampR\x02to\x12\x1b\n" +
+	"\tprice_max\x18\x05 \x01(\x05R\bpriceMax\"\xa6\x02\n" +
 	"\x11CreateSlotRequest\x127\n" +
 	"\tstarts_at\x18\x01 \x01(\v2\x1a.google.protobuf.TimestampR\bstartsAt\x12!\n" +
 	"\fduration_min\x18\x02 \x01(\x05R\vdurationMin\x12+\n" +
@@ -656,19 +915,42 @@ const file_druz9_v1_slot_proto_rawDesc = "" +
 	"difficulty\x18\x04 \x01(\x0e2\x14.druz9.v1.DifficultyR\n" +
 	"difficulty\x12\x1a\n" +
 	"\blanguage\x18\x05 \x01(\tR\blanguage\x12\x1b\n" +
-	"\tprice_rub\x18\x06 \x01(\x05R\bpriceRub\"*\n" +
+	"\tprice_rub\x18\x06 \x01(\x05R\bpriceRub\x12\x19\n" +
+	"\bmeet_url\x18\a \x01(\tR\ameetUrl\"*\n" +
 	"\x0fBookSlotRequest\x12\x17\n" +
 	"\aslot_id\x18\x01 \x01(\tR\x06slotId\",\n" +
 	"\x11CancelSlotRequest\x12\x17\n" +
 	"\aslot_id\x18\x01 \x01(\tR\x06slotId\"\x14\n" +
-	"\x12CancelSlotResponse2\x86\x03\n" +
+	"\x12CancelSlotResponse\"\x17\n" +
+	"\x15ListMyBookingsRequest\"\xd5\x03\n" +
+	"\rMyBookingItem\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x17\n" +
+	"\aslot_id\x18\x02 \x01(\tR\x06slotId\x12\x19\n" +
+	"\bmeet_url\x18\x03 \x01(\tR\ameetUrl\x12\x16\n" +
+	"\x06status\x18\x04 \x01(\tR\x06status\x129\n" +
+	"\n" +
+	"created_at\x18\x05 \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\x127\n" +
+	"\tstarts_at\x18\x06 \x01(\v2\x1a.google.protobuf.TimestampR\bstartsAt\x12!\n" +
+	"\fduration_min\x18\a \x01(\x05R\vdurationMin\x12+\n" +
+	"\asection\x18\b \x01(\x0e2\x11.druz9.v1.SectionR\asection\x124\n" +
+	"\n" +
+	"difficulty\x18\t \x01(\x0e2\x14.druz9.v1.DifficultyR\n" +
+	"difficulty\x12\x1a\n" +
+	"\blanguage\x18\n" +
+	" \x01(\tR\blanguage\x12\x1b\n" +
+	"\tprice_rub\x18\v \x01(\x05R\bpriceRub\x125\n" +
+	"\vslot_status\x18\f \x01(\x0e2\x14.druz9.v1.SlotStatusR\n" +
+	"slotStatus\">\n" +
+	"\rMyBookingList\x12-\n" +
+	"\x05items\x18\x01 \x03(\v2\x17.druz9.v1.MyBookingItemR\x05items2\xf4\x03\n" +
 	"\vSlotService\x12Q\n" +
 	"\tListSlots\x12\x1a.druz9.v1.ListSlotsRequest\x1a\x12.druz9.v1.SlotList\"\x14\x82\xd3\xe4\x93\x02\x0e\x12\f/api/v1/slot\x12R\n" +
 	"\n" +
 	"CreateSlot\x12\x1b.druz9.v1.CreateSlotRequest\x1a\x0e.druz9.v1.Slot\"\x17\x82\xd3\xe4\x93\x02\x11:\x01*\"\f/api/v1/slot\x12`\n" +
 	"\bBookSlot\x12\x19.druz9.v1.BookSlotRequest\x1a\x11.druz9.v1.Booking\"&\x82\xd3\xe4\x93\x02 :\x01*\"\x1b/api/v1/slot/{slot_id}/book\x12n\n" +
 	"\n" +
-	"CancelSlot\x12\x1b.druz9.v1.CancelSlotRequest\x1a\x1c.druz9.v1.CancelSlotResponse\"%\x82\xd3\xe4\x93\x02\x1f*\x1d/api/v1/slot/{slot_id}/cancelB\x86\x01\n" +
+	"CancelSlot\x12\x1b.druz9.v1.CancelSlotRequest\x1a\x1c.druz9.v1.CancelSlotResponse\"%\x82\xd3\xe4\x93\x02\x1f*\x1d/api/v1/slot/{slot_id}/cancel\x12l\n" +
+	"\x0eListMyBookings\x12\x1f.druz9.v1.ListMyBookingsRequest\x1a\x17.druz9.v1.MyBookingList\" \x82\xd3\xe4\x93\x02\x1a\x12\x18/api/v1/slot/my/bookingsB\x86\x01\n" +
 	"\fcom.druz9.v1B\tSlotProtoP\x01Z*druz9/shared/generated/pb/druz9/v1;druz9v1\xa2\x02\x03DXX\xaa\x02\bDruz9.V1\xca\x02\bDruz9\\V1\xe2\x02\x14Druz9\\V1\\GPBMetadata\xea\x02\tDruz9::V1b\x06proto3"
 
 var (
@@ -683,7 +965,7 @@ func file_druz9_v1_slot_proto_rawDescGZIP() []byte {
 	return file_druz9_v1_slot_proto_rawDescData
 }
 
-var file_druz9_v1_slot_proto_msgTypes = make([]protoimpl.MessageInfo, 9)
+var file_druz9_v1_slot_proto_msgTypes = make([]protoimpl.MessageInfo, 12)
 var file_druz9_v1_slot_proto_goTypes = []any{
 	(*SlotInterviewer)(nil),       // 0: druz9.v1.SlotInterviewer
 	(*Slot)(nil),                  // 1: druz9.v1.Slot
@@ -694,40 +976,51 @@ var file_druz9_v1_slot_proto_goTypes = []any{
 	(*BookSlotRequest)(nil),       // 6: druz9.v1.BookSlotRequest
 	(*CancelSlotRequest)(nil),     // 7: druz9.v1.CancelSlotRequest
 	(*CancelSlotResponse)(nil),    // 8: druz9.v1.CancelSlotResponse
-	(*timestamppb.Timestamp)(nil), // 9: google.protobuf.Timestamp
-	(Section)(0),                  // 10: druz9.v1.Section
-	(Difficulty)(0),               // 11: druz9.v1.Difficulty
-	(SlotStatus)(0),               // 12: druz9.v1.SlotStatus
+	(*ListMyBookingsRequest)(nil), // 9: druz9.v1.ListMyBookingsRequest
+	(*MyBookingItem)(nil),         // 10: druz9.v1.MyBookingItem
+	(*MyBookingList)(nil),         // 11: druz9.v1.MyBookingList
+	(*timestamppb.Timestamp)(nil), // 12: google.protobuf.Timestamp
+	(Section)(0),                  // 13: druz9.v1.Section
+	(Difficulty)(0),               // 14: druz9.v1.Difficulty
+	(SlotStatus)(0),               // 15: druz9.v1.SlotStatus
 }
 var file_druz9_v1_slot_proto_depIdxs = []int32{
 	0,  // 0: druz9.v1.Slot.interviewer:type_name -> druz9.v1.SlotInterviewer
-	9,  // 1: druz9.v1.Slot.starts_at:type_name -> google.protobuf.Timestamp
-	10, // 2: druz9.v1.Slot.section:type_name -> druz9.v1.Section
-	11, // 3: druz9.v1.Slot.difficulty:type_name -> druz9.v1.Difficulty
-	12, // 4: druz9.v1.Slot.status:type_name -> druz9.v1.SlotStatus
+	12, // 1: druz9.v1.Slot.starts_at:type_name -> google.protobuf.Timestamp
+	13, // 2: druz9.v1.Slot.section:type_name -> druz9.v1.Section
+	14, // 3: druz9.v1.Slot.difficulty:type_name -> druz9.v1.Difficulty
+	15, // 4: druz9.v1.Slot.status:type_name -> druz9.v1.SlotStatus
 	1,  // 5: druz9.v1.SlotList.items:type_name -> druz9.v1.Slot
 	1,  // 6: druz9.v1.Booking.slot:type_name -> druz9.v1.Slot
-	9,  // 7: druz9.v1.Booking.created_at:type_name -> google.protobuf.Timestamp
-	10, // 8: druz9.v1.ListSlotsRequest.section:type_name -> druz9.v1.Section
-	11, // 9: druz9.v1.ListSlotsRequest.difficulty:type_name -> druz9.v1.Difficulty
-	9,  // 10: druz9.v1.ListSlotsRequest.from:type_name -> google.protobuf.Timestamp
-	9,  // 11: druz9.v1.ListSlotsRequest.to:type_name -> google.protobuf.Timestamp
-	9,  // 12: druz9.v1.CreateSlotRequest.starts_at:type_name -> google.protobuf.Timestamp
-	10, // 13: druz9.v1.CreateSlotRequest.section:type_name -> druz9.v1.Section
-	11, // 14: druz9.v1.CreateSlotRequest.difficulty:type_name -> druz9.v1.Difficulty
-	4,  // 15: druz9.v1.SlotService.ListSlots:input_type -> druz9.v1.ListSlotsRequest
-	5,  // 16: druz9.v1.SlotService.CreateSlot:input_type -> druz9.v1.CreateSlotRequest
-	6,  // 17: druz9.v1.SlotService.BookSlot:input_type -> druz9.v1.BookSlotRequest
-	7,  // 18: druz9.v1.SlotService.CancelSlot:input_type -> druz9.v1.CancelSlotRequest
-	2,  // 19: druz9.v1.SlotService.ListSlots:output_type -> druz9.v1.SlotList
-	1,  // 20: druz9.v1.SlotService.CreateSlot:output_type -> druz9.v1.Slot
-	3,  // 21: druz9.v1.SlotService.BookSlot:output_type -> druz9.v1.Booking
-	8,  // 22: druz9.v1.SlotService.CancelSlot:output_type -> druz9.v1.CancelSlotResponse
-	19, // [19:23] is the sub-list for method output_type
-	15, // [15:19] is the sub-list for method input_type
-	15, // [15:15] is the sub-list for extension type_name
-	15, // [15:15] is the sub-list for extension extendee
-	0,  // [0:15] is the sub-list for field type_name
+	12, // 7: druz9.v1.Booking.created_at:type_name -> google.protobuf.Timestamp
+	13, // 8: druz9.v1.ListSlotsRequest.section:type_name -> druz9.v1.Section
+	14, // 9: druz9.v1.ListSlotsRequest.difficulty:type_name -> druz9.v1.Difficulty
+	12, // 10: druz9.v1.ListSlotsRequest.from:type_name -> google.protobuf.Timestamp
+	12, // 11: druz9.v1.ListSlotsRequest.to:type_name -> google.protobuf.Timestamp
+	12, // 12: druz9.v1.CreateSlotRequest.starts_at:type_name -> google.protobuf.Timestamp
+	13, // 13: druz9.v1.CreateSlotRequest.section:type_name -> druz9.v1.Section
+	14, // 14: druz9.v1.CreateSlotRequest.difficulty:type_name -> druz9.v1.Difficulty
+	12, // 15: druz9.v1.MyBookingItem.created_at:type_name -> google.protobuf.Timestamp
+	12, // 16: druz9.v1.MyBookingItem.starts_at:type_name -> google.protobuf.Timestamp
+	13, // 17: druz9.v1.MyBookingItem.section:type_name -> druz9.v1.Section
+	14, // 18: druz9.v1.MyBookingItem.difficulty:type_name -> druz9.v1.Difficulty
+	15, // 19: druz9.v1.MyBookingItem.slot_status:type_name -> druz9.v1.SlotStatus
+	10, // 20: druz9.v1.MyBookingList.items:type_name -> druz9.v1.MyBookingItem
+	4,  // 21: druz9.v1.SlotService.ListSlots:input_type -> druz9.v1.ListSlotsRequest
+	5,  // 22: druz9.v1.SlotService.CreateSlot:input_type -> druz9.v1.CreateSlotRequest
+	6,  // 23: druz9.v1.SlotService.BookSlot:input_type -> druz9.v1.BookSlotRequest
+	7,  // 24: druz9.v1.SlotService.CancelSlot:input_type -> druz9.v1.CancelSlotRequest
+	9,  // 25: druz9.v1.SlotService.ListMyBookings:input_type -> druz9.v1.ListMyBookingsRequest
+	2,  // 26: druz9.v1.SlotService.ListSlots:output_type -> druz9.v1.SlotList
+	1,  // 27: druz9.v1.SlotService.CreateSlot:output_type -> druz9.v1.Slot
+	3,  // 28: druz9.v1.SlotService.BookSlot:output_type -> druz9.v1.Booking
+	8,  // 29: druz9.v1.SlotService.CancelSlot:output_type -> druz9.v1.CancelSlotResponse
+	11, // 30: druz9.v1.SlotService.ListMyBookings:output_type -> druz9.v1.MyBookingList
+	26, // [26:31] is the sub-list for method output_type
+	21, // [21:26] is the sub-list for method input_type
+	21, // [21:21] is the sub-list for extension type_name
+	21, // [21:21] is the sub-list for extension extendee
+	0,  // [0:21] is the sub-list for field type_name
 }
 
 func init() { file_druz9_v1_slot_proto_init() }
@@ -742,7 +1035,7 @@ func file_druz9_v1_slot_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_druz9_v1_slot_proto_rawDesc), len(file_druz9_v1_slot_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   9,
+			NumMessages:   12,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

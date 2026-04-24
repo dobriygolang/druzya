@@ -10,7 +10,7 @@
 /* eslint-disable */
 // @ts-nocheck
 
-import { Booking, BookSlotRequest, CancelSlotRequest, CancelSlotResponse, CreateSlotRequest, ListSlotsRequest, Slot, SlotList } from "./slot_pb.js";
+import { Booking, BookSlotRequest, CancelSlotRequest, CancelSlotResponse, CreateSlotRequest, ListMyBookingsRequest, ListSlotsRequest, MyBookingList, Slot, SlotList } from "./slot_pb.js";
 import { MethodKind } from "@bufbuild/protobuf";
 
 /**
@@ -61,6 +61,19 @@ export const SlotService = {
       name: "CancelSlot",
       I: CancelSlotRequest,
       O: CancelSlotResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * ListMyBookings returns every booking owned by the authenticated caller,
+     * ordered by slot starts_at DESC. Replaces the chi-direct handler that
+     * lived in cmd/monolith/services/slot.go.
+     *
+     * @generated from rpc druz9.v1.SlotService.ListMyBookings
+     */
+    listMyBookings: {
+      name: "ListMyBookings",
+      I: ListMyBookingsRequest,
+      O: MyBookingList,
       kind: MethodKind.Unary,
     },
   }

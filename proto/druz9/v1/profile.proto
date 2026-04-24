@@ -55,6 +55,9 @@ message ProfileFull {
   // email из users.email — нужен на /settings (карточка аккаунта). Может быть
   // пустым у Telegram-логина без подтверждённого email.
   string email = 17;
+  // role зеркалирует users.role. Используется фронтом для RBAC-гейтов
+  // (например, кнопка «Создать слот» доступна только interviewer/admin).
+  UserRole role = 18;
 }
 
 // SectionRating mirrors the top-level OpenAPI SectionRating (rating.proto

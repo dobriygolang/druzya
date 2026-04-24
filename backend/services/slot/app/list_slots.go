@@ -21,6 +21,7 @@ type ListSlotsInput struct {
 	Difficulty *enums.Difficulty
 	From       *time.Time
 	To         *time.Time
+	PriceMax   *int
 	Limit      int
 }
 
@@ -33,6 +34,7 @@ func (uc *ListSlots) Do(ctx context.Context, in ListSlotsInput) ([]domain.Slot, 
 		Difficulty: in.Difficulty,
 		From:       in.From,
 		To:         in.To,
+		PriceMax:   in.PriceMax,
 		Limit:      in.Limit,
 	})
 	if err != nil {

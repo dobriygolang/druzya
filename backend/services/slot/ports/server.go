@@ -39,16 +39,17 @@ var _ druz9v1connect.SlotServiceHandler = (*SlotServer)(nil)
 // Field names use the UC suffix to avoid collisions with the generated
 // method names (ListSlots / CreateSlot / BookSlot / CancelSlot).
 type SlotServer struct {
-	ListUC   *app.ListSlots
-	CreateUC *app.CreateSlot
-	BookUC   *app.BookSlot
-	CancelUC *app.CancelSlot
-	Log      *slog.Logger
+	ListUC      *app.ListSlots
+	CreateUC    *app.CreateSlot
+	BookUC      *app.BookSlot
+	CancelUC    *app.CancelSlot
+	MyBookingUC *app.ListMyBookings
+	Log         *slog.Logger
 }
 
 // NewSlotServer wires a SlotServer.
-func NewSlotServer(list *app.ListSlots, create *app.CreateSlot, book *app.BookSlot, cancel *app.CancelSlot, log *slog.Logger) *SlotServer {
-	return &SlotServer{ListUC: list, CreateUC: create, BookUC: book, CancelUC: cancel, Log: log}
+func NewSlotServer(list *app.ListSlots, create *app.CreateSlot, book *app.BookSlot, cancel *app.CancelSlot, myBookings *app.ListMyBookings, log *slog.Logger) *SlotServer {
+	return &SlotServer{ListUC: list, CreateUC: create, BookUC: book, CancelUC: cancel, MyBookingUC: myBookings, Log: log}
 }
 
 // ListSlots implements druz9.v1.SlotService/ListSlots.
@@ -73,6 +74,10 @@ func (s *SlotServer) ListSlots(
 	if m.GetTo() != nil {
 		t := m.GetTo().AsTime()
 		in.To = &t
+	}
+	if pm := m.GetPriceMax(); pm > 0 {
+		v := int(pm)
+		in.PriceMax = &v
 	}
 	slots, err := s.ListUC.Do(ctx, in)
 	if err != nil {
@@ -109,6 +114,7 @@ func (s *SlotServer) CreateSlot(
 		Section:       sectionFromProtoSlot(m.GetSection()),
 		PriceRub:      int(m.GetPriceRub()),
 		Language:      m.GetLanguage(),
+		MeetURL:       m.GetMeetUrl(),
 	}
 	if pbDiff := m.GetDifficulty(); pbDiff != pb.Difficulty_DIFFICULTY_UNSPECIFIED {
 		d := difficultyFromProtoSlot(pbDiff)
@@ -142,6 +148,26 @@ func (s *SlotServer) BookSlot(
 		return nil, s.toConnectErr(err)
 	}
 	return connect.NewResponse(toBookingProto(booking)), nil
+}
+
+// ListMyBookings implements druz9.v1.SlotService/ListMyBookings.
+func (s *SlotServer) ListMyBookings(
+	ctx context.Context,
+	_ *connect.Request[pb.ListMyBookingsRequest],
+) (*connect.Response[pb.MyBookingList], error) {
+	uid, ok := sharedMw.UserIDFromContext(ctx)
+	if !ok {
+		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("unauthenticated"))
+	}
+	rows, err := s.MyBookingUC.Do(ctx, app.ListMyBookingsInput{CandidateID: uid})
+	if err != nil {
+		return nil, s.toConnectErr(err)
+	}
+	out := &pb.MyBookingList{Items: make([]*pb.MyBookingItem, 0, len(rows))}
+	for _, bw := range rows {
+		out.Items = append(out.Items, toMyBookingItemProto(bw))
+	}
+	return connect.NewResponse(out), nil
 }
 
 // CancelSlot implements druz9.v1.SlotService/CancelSlot.
@@ -201,6 +227,7 @@ func toSlotProto(sl domain.Slot) *pb.Slot {
 		Section:     sectionToProtoSlot(sl.Section),
 		Language:    sl.Language,
 		PriceRub:    int32(sl.PriceRub),
+		MeetUrl:     sl.MeetURL,
 		Status:      slotStatusToProto(sl.Status),
 		Interviewer: &pb.SlotInterviewer{
 			UserId:   sl.InterviewerID.String(),
@@ -218,6 +245,33 @@ func toSlotProto(sl domain.Slot) *pb.Slot {
 	}
 	if sl.InterviewerReviewsCount != nil {
 		out.Interviewer.ReviewsCount = int32(*sl.InterviewerReviewsCount)
+	}
+	return out
+}
+
+// toMyBookingItemProto flattens BookingWithSlot (domain) into the proto DTO
+// served by GET /api/v1/slot/my/bookings. Mirrors the chi-direct
+// bookingItemDTO this RPC replaces.
+func toMyBookingItemProto(bw domain.BookingWithSlot) *pb.MyBookingItem {
+	out := &pb.MyBookingItem{
+		Id:          bw.Booking.ID.String(),
+		SlotId:      bw.Booking.SlotID.String(),
+		MeetUrl:     bw.Booking.MeetURL,
+		Status:      bw.Booking.Status,
+		DurationMin: int32(bw.Slot.DurationMin),
+		Section:     sectionToProtoSlot(bw.Slot.Section),
+		Language:    bw.Slot.Language,
+		PriceRub:    int32(bw.Slot.PriceRub),
+		SlotStatus:  slotStatusToProto(bw.Slot.Status),
+	}
+	if !bw.Booking.CreatedAt.IsZero() {
+		out.CreatedAt = timestamppb.New(bw.Booking.CreatedAt.UTC())
+	}
+	if !bw.Slot.StartsAt.IsZero() {
+		out.StartsAt = timestamppb.New(bw.Slot.StartsAt.UTC())
+	}
+	if bw.Slot.Difficulty != nil {
+		out.Difficulty = difficultyToProtoSlot(*bw.Slot.Difficulty)
 	}
 	return out
 }

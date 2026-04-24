@@ -179,7 +179,10 @@ type ProfileFull struct {
 	AvatarUrl string `protobuf:"bytes,16,opt,name=avatar_url,json=avatarUrl,proto3" json:"avatar_url,omitempty"`
 	// email из users.email — нужен на /settings (карточка аккаунта). Может быть
 	// пустым у Telegram-логина без подтверждённого email.
-	Email         string `protobuf:"bytes,17,opt,name=email,proto3" json:"email,omitempty"`
+	Email string `protobuf:"bytes,17,opt,name=email,proto3" json:"email,omitempty"`
+	// role зеркалирует users.role. Используется фронтом для RBAC-гейтов
+	// (например, кнопка «Создать слот» доступна только interviewer/admin).
+	Role          UserRole `protobuf:"varint,18,opt,name=role,proto3,enum=druz9.v1.UserRole" json:"role,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -331,6 +334,13 @@ func (x *ProfileFull) GetEmail() string {
 		return x.Email
 	}
 	return ""
+}
+
+func (x *ProfileFull) GetRole() UserRole {
+	if x != nil {
+		return x.Role
+	}
+	return UserRole_USER_ROLE_UNSPECIFIED
 }
 
 // SectionRating mirrors the top-level OpenAPI SectionRating (rating.proto
@@ -2232,7 +2242,7 @@ const file_druz9_v1_profile_proto_rawDesc = "" +
 	"\x04will\x18\x04 \x01(\x05R\x04will\"\x8f\x01\n" +
 	"\x13ProfileSubscription\x12.\n" +
 	"\x04plan\x18\x01 \x01(\x0e2\x1a.druz9.v1.SubscriptionPlanR\x04plan\x12H\n" +
-	"\x12current_period_end\x18\x02 \x01(\v2\x1a.google.protobuf.TimestampR\x10currentPeriodEnd\"\xe6\x04\n" +
+	"\x12current_period_end\x18\x02 \x01(\v2\x1a.google.protobuf.TimestampR\x10currentPeriodEnd\"\x8e\x05\n" +
 	"\vProfileFull\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1a\n" +
 	"\busername\x18\x02 \x01(\tR\busername\x12!\n" +
@@ -2258,7 +2268,8 @@ const file_druz9_v1_profile_proto_rawDesc = "" +
 	"created_at\x18\x0f \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\x12\x1d\n" +
 	"\n" +
 	"avatar_url\x18\x10 \x01(\tR\tavatarUrl\x12\x14\n" +
-	"\x05email\x18\x11 \x01(\tR\x05email\"\xb6\x01\n" +
+	"\x05email\x18\x11 \x01(\tR\x05email\x12&\n" +
+	"\x04role\x18\x12 \x01(\x0e2\x12.druz9.v1.UserRoleR\x04role\"\xb6\x01\n" +
 	"\x14ProfileSectionRating\x12+\n" +
 	"\asection\x18\x01 \x01(\x0e2\x11.druz9.v1.SectionR\asection\x12\x10\n" +
 	"\x03elo\x18\x02 \x01(\x05R\x03elo\x12#\n" +
@@ -2482,9 +2493,10 @@ var file_druz9_v1_profile_proto_goTypes = []any{
 	(SubscriptionPlan)(0),                // 28: druz9.v1.SubscriptionPlan
 	(*timestamppb.Timestamp)(nil),        // 29: google.protobuf.Timestamp
 	(CharClass)(0),                       // 30: druz9.v1.CharClass
-	(Section)(0),                         // 31: druz9.v1.Section
-	(Language)(0),                        // 32: druz9.v1.Language
-	(*NotificationPreferences)(nil),      // 33: druz9.v1.NotificationPreferences
+	(UserRole)(0),                        // 31: druz9.v1.UserRole
+	(Section)(0),                         // 32: druz9.v1.Section
+	(Language)(0),                        // 33: druz9.v1.Language
+	(*NotificationPreferences)(nil),      // 34: druz9.v1.NotificationPreferences
 }
 var file_druz9_v1_profile_proto_depIdxs = []int32{
 	28, // 0: druz9.v1.ProfileSubscription.plan:type_name -> druz9.v1.SubscriptionPlan
@@ -2493,50 +2505,51 @@ var file_druz9_v1_profile_proto_depIdxs = []int32{
 	0,  // 3: druz9.v1.ProfileFull.attributes:type_name -> druz9.v1.Attributes
 	1,  // 4: druz9.v1.ProfileFull.subscription:type_name -> druz9.v1.ProfileSubscription
 	29, // 5: druz9.v1.ProfileFull.created_at:type_name -> google.protobuf.Timestamp
-	31, // 6: druz9.v1.ProfileSectionRating.section:type_name -> druz9.v1.Section
-	29, // 7: druz9.v1.Achievement.earned_at:type_name -> google.protobuf.Timestamp
-	31, // 8: druz9.v1.SkillNode.section:type_name -> druz9.v1.Section
-	29, // 9: druz9.v1.SkillNode.unlocked_at:type_name -> google.protobuf.Timestamp
-	29, // 10: druz9.v1.SkillNode.last_solved_at:type_name -> google.protobuf.Timestamp
-	6,  // 11: druz9.v1.SkillNode.recommended_kata:type_name -> druz9.v1.KataRef
-	5,  // 12: druz9.v1.SkillAtlas.nodes:type_name -> druz9.v1.SkillNode
-	7,  // 13: druz9.v1.SkillAtlas.edges:type_name -> druz9.v1.SkillEdge
-	30, // 14: druz9.v1.ProfilePublic.char_class:type_name -> druz9.v1.CharClass
-	3,  // 15: druz9.v1.ProfilePublic.ratings:type_name -> druz9.v1.ProfileSectionRating
-	4,  // 16: druz9.v1.ProfilePublic.achievements:type_name -> druz9.v1.Achievement
-	8,  // 17: druz9.v1.ProfilePublic.atlas_preview:type_name -> druz9.v1.SkillAtlas
-	27, // 18: druz9.v1.RecommendationAction.params:type_name -> druz9.v1.RecommendationAction.ParamsEntry
-	12, // 19: druz9.v1.Recommendation.action:type_name -> druz9.v1.RecommendationAction
-	31, // 20: druz9.v1.SectionBreakdown.section:type_name -> druz9.v1.Section
-	10, // 21: druz9.v1.WeeklyReport.metrics:type_name -> druz9.v1.ReportMetrics
-	11, // 22: druz9.v1.WeeklyReport.weaknesses:type_name -> druz9.v1.ReportWeakness
-	13, // 23: druz9.v1.WeeklyReport.recommendations:type_name -> druz9.v1.Recommendation
-	14, // 24: druz9.v1.WeeklyReport.strong_sections:type_name -> druz9.v1.SectionBreakdown
-	14, // 25: druz9.v1.WeeklyReport.weak_sections:type_name -> druz9.v1.SectionBreakdown
-	15, // 26: druz9.v1.WeeklyReport.weekly_xp:type_name -> druz9.v1.WeekComparison
-	16, // 27: druz9.v1.WeeklyReport.elo_series:type_name -> druz9.v1.EloPoint
-	17, // 28: druz9.v1.WeeklyReport.percentiles:type_name -> druz9.v1.PercentileView
-	18, // 29: druz9.v1.WeeklyReport.achievements_this_week:type_name -> druz9.v1.AchievementBrief
-	32, // 30: druz9.v1.ProfileSettings.default_language:type_name -> druz9.v1.Language
-	33, // 31: druz9.v1.ProfileSettings.notifications:type_name -> druz9.v1.NotificationPreferences
-	20, // 32: druz9.v1.UpdateProfileSettingsRequest.settings:type_name -> druz9.v1.ProfileSettings
-	22, // 33: druz9.v1.ProfileService.GetMyProfile:input_type -> druz9.v1.GetMyProfileRequest
-	23, // 34: druz9.v1.ProfileService.GetMyAtlas:input_type -> druz9.v1.GetMyAtlasRequest
-	24, // 35: druz9.v1.ProfileService.GetMyReport:input_type -> druz9.v1.GetMyReportRequest
-	21, // 36: druz9.v1.ProfileService.UpdateSettings:input_type -> druz9.v1.UpdateProfileSettingsRequest
-	25, // 37: druz9.v1.ProfileService.GetPublicProfile:input_type -> druz9.v1.GetPublicProfileRequest
-	26, // 38: druz9.v1.ProfileService.GetWeeklyShare:input_type -> druz9.v1.GetWeeklyShareRequest
-	2,  // 39: druz9.v1.ProfileService.GetMyProfile:output_type -> druz9.v1.ProfileFull
-	8,  // 40: druz9.v1.ProfileService.GetMyAtlas:output_type -> druz9.v1.SkillAtlas
-	19, // 41: druz9.v1.ProfileService.GetMyReport:output_type -> druz9.v1.WeeklyReport
-	20, // 42: druz9.v1.ProfileService.UpdateSettings:output_type -> druz9.v1.ProfileSettings
-	9,  // 43: druz9.v1.ProfileService.GetPublicProfile:output_type -> druz9.v1.ProfilePublic
-	19, // 44: druz9.v1.ProfileService.GetWeeklyShare:output_type -> druz9.v1.WeeklyReport
-	39, // [39:45] is the sub-list for method output_type
-	33, // [33:39] is the sub-list for method input_type
-	33, // [33:33] is the sub-list for extension type_name
-	33, // [33:33] is the sub-list for extension extendee
-	0,  // [0:33] is the sub-list for field type_name
+	31, // 6: druz9.v1.ProfileFull.role:type_name -> druz9.v1.UserRole
+	32, // 7: druz9.v1.ProfileSectionRating.section:type_name -> druz9.v1.Section
+	29, // 8: druz9.v1.Achievement.earned_at:type_name -> google.protobuf.Timestamp
+	32, // 9: druz9.v1.SkillNode.section:type_name -> druz9.v1.Section
+	29, // 10: druz9.v1.SkillNode.unlocked_at:type_name -> google.protobuf.Timestamp
+	29, // 11: druz9.v1.SkillNode.last_solved_at:type_name -> google.protobuf.Timestamp
+	6,  // 12: druz9.v1.SkillNode.recommended_kata:type_name -> druz9.v1.KataRef
+	5,  // 13: druz9.v1.SkillAtlas.nodes:type_name -> druz9.v1.SkillNode
+	7,  // 14: druz9.v1.SkillAtlas.edges:type_name -> druz9.v1.SkillEdge
+	30, // 15: druz9.v1.ProfilePublic.char_class:type_name -> druz9.v1.CharClass
+	3,  // 16: druz9.v1.ProfilePublic.ratings:type_name -> druz9.v1.ProfileSectionRating
+	4,  // 17: druz9.v1.ProfilePublic.achievements:type_name -> druz9.v1.Achievement
+	8,  // 18: druz9.v1.ProfilePublic.atlas_preview:type_name -> druz9.v1.SkillAtlas
+	27, // 19: druz9.v1.RecommendationAction.params:type_name -> druz9.v1.RecommendationAction.ParamsEntry
+	12, // 20: druz9.v1.Recommendation.action:type_name -> druz9.v1.RecommendationAction
+	32, // 21: druz9.v1.SectionBreakdown.section:type_name -> druz9.v1.Section
+	10, // 22: druz9.v1.WeeklyReport.metrics:type_name -> druz9.v1.ReportMetrics
+	11, // 23: druz9.v1.WeeklyReport.weaknesses:type_name -> druz9.v1.ReportWeakness
+	13, // 24: druz9.v1.WeeklyReport.recommendations:type_name -> druz9.v1.Recommendation
+	14, // 25: druz9.v1.WeeklyReport.strong_sections:type_name -> druz9.v1.SectionBreakdown
+	14, // 26: druz9.v1.WeeklyReport.weak_sections:type_name -> druz9.v1.SectionBreakdown
+	15, // 27: druz9.v1.WeeklyReport.weekly_xp:type_name -> druz9.v1.WeekComparison
+	16, // 28: druz9.v1.WeeklyReport.elo_series:type_name -> druz9.v1.EloPoint
+	17, // 29: druz9.v1.WeeklyReport.percentiles:type_name -> druz9.v1.PercentileView
+	18, // 30: druz9.v1.WeeklyReport.achievements_this_week:type_name -> druz9.v1.AchievementBrief
+	33, // 31: druz9.v1.ProfileSettings.default_language:type_name -> druz9.v1.Language
+	34, // 32: druz9.v1.ProfileSettings.notifications:type_name -> druz9.v1.NotificationPreferences
+	20, // 33: druz9.v1.UpdateProfileSettingsRequest.settings:type_name -> druz9.v1.ProfileSettings
+	22, // 34: druz9.v1.ProfileService.GetMyProfile:input_type -> druz9.v1.GetMyProfileRequest
+	23, // 35: druz9.v1.ProfileService.GetMyAtlas:input_type -> druz9.v1.GetMyAtlasRequest
+	24, // 36: druz9.v1.ProfileService.GetMyReport:input_type -> druz9.v1.GetMyReportRequest
+	21, // 37: druz9.v1.ProfileService.UpdateSettings:input_type -> druz9.v1.UpdateProfileSettingsRequest
+	25, // 38: druz9.v1.ProfileService.GetPublicProfile:input_type -> druz9.v1.GetPublicProfileRequest
+	26, // 39: druz9.v1.ProfileService.GetWeeklyShare:input_type -> druz9.v1.GetWeeklyShareRequest
+	2,  // 40: druz9.v1.ProfileService.GetMyProfile:output_type -> druz9.v1.ProfileFull
+	8,  // 41: druz9.v1.ProfileService.GetMyAtlas:output_type -> druz9.v1.SkillAtlas
+	19, // 42: druz9.v1.ProfileService.GetMyReport:output_type -> druz9.v1.WeeklyReport
+	20, // 43: druz9.v1.ProfileService.UpdateSettings:output_type -> druz9.v1.ProfileSettings
+	9,  // 44: druz9.v1.ProfileService.GetPublicProfile:output_type -> druz9.v1.ProfilePublic
+	19, // 45: druz9.v1.ProfileService.GetWeeklyShare:output_type -> druz9.v1.WeeklyReport
+	40, // [40:46] is the sub-list for method output_type
+	34, // [34:40] is the sub-list for method input_type
+	34, // [34:34] is the sub-list for extension type_name
+	34, // [34:34] is the sub-list for extension extendee
+	0,  // [0:34] is the sub-list for field type_name
 }
 
 func init() { file_druz9_v1_profile_proto_init() }

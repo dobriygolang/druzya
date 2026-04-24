@@ -261,6 +261,7 @@ func toProfileFullProto(v app.ProfileView) *pb.ProfileFull {
 		Subscription: &pb.ProfileSubscription{
 			Plan: subscriptionPlanToProto(b.Subscription.Plan),
 		},
+		Role: userRoleToProto(b.User.Role),
 	}
 	if b.Subscription.CurrentPeriodEnd != nil {
 		out.Subscription.CurrentPeriodEnd = timestamppb.New(b.Subscription.CurrentPeriodEnd.UTC())
@@ -269,6 +270,21 @@ func toProfileFullProto(v app.ProfileView) *pb.ProfileFull {
 		out.CreatedAt = timestamppb.New(b.User.CreatedAt.UTC())
 	}
 	return out
+}
+
+// userRoleToProto mirrors the auth-service helper. Lives here too to keep the
+// profile package free of cross-service imports.
+func userRoleToProto(r enums.UserRole) pb.UserRole {
+	switch r {
+	case enums.UserRoleUser:
+		return pb.UserRole_USER_ROLE_USER
+	case enums.UserRoleInterviewer:
+		return pb.UserRole_USER_ROLE_INTERVIEWER
+	case enums.UserRoleAdmin:
+		return pb.UserRole_USER_ROLE_ADMIN
+	default:
+		return pb.UserRole_USER_ROLE_UNSPECIFIED
+	}
 }
 
 func toProfilePublicProto(v app.PublicView) *pb.ProfilePublic {

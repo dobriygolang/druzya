@@ -33,6 +33,19 @@ export type Profile = {
   achievements?: Achievement[]
   avatar_frame?: string
   avatar_url?: string
+  // role mirrors users.role; surfaced for UI RBAC gates (e.g. interviewer-
+  // only «Создать слот» CTA on /slots). Wire enum is the canonical proto
+  // string (USER_ROLE_INTERVIEWER, …) — accept both forms in helpers below.
+  role?: string
+}
+
+// isInterviewerOrAdmin matches the backend SlotService.CreateSlot guard
+// (services/slot/ports/server.go). Use to gate interviewer-only CTAs.
+export function isInterviewerOrAdmin(role: string | null | undefined): boolean {
+  if (!role) return false
+  const norm = role.toUpperCase()
+  return norm === 'USER_ROLE_INTERVIEWER' || norm === 'INTERVIEWER'
+    || norm === 'USER_ROLE_ADMIN' || norm === 'ADMIN'
 }
 
 // PublicProfile matches backend ProfilePublic — strictly the SEO-visible

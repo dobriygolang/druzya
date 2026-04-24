@@ -36,6 +36,13 @@ message Slot {
   string language = 7;
   int32 price_rub = 8;
   SlotStatus status = 9;
+  // meet_url is the interviewer-supplied video room URL (typically a
+  // Google Meet link they create themselves). When non-empty, BookSlot
+  // surfaces it on the resulting Booking; otherwise BookSlot falls back
+  // to MeetRoomProvider.GenerateMeetURL.
+  //
+  // Optional on the wire: empty when the interviewer hasn't pasted one yet.
+  string meet_url = 10;
 }
 
 // SlotList is the vanguard-friendly wrapper — OpenAPI returns a JSON array
@@ -59,6 +66,9 @@ message ListSlotsRequest {
   Difficulty difficulty = 2;
   google.protobuf.Timestamp from = 3;
   google.protobuf.Timestamp to = 4;
+  // price_max — upper-bound filter on price_rub. 0 means "no limit"; pass
+  // any positive int to cap.
+  int32 price_max = 5;
 }
 
 // CreateSlotRequest mirrors OpenAPI CreateSlotRequest.
@@ -70,6 +80,10 @@ message CreateSlotRequest {
   // language is "ru" | "en" per OpenAPI enum. Preserved as string.
   string language = 5;
   int32 price_rub = 6;
+  // meet_url — optional video-room URL the interviewer creates themselves
+  // (typically https://meet.google.com/...). When provided, BookSlot uses
+  // this exact URL on the resulting Booking instead of generating a mock.
+  string meet_url = 7;
 }
 
 // BookSlotRequest wraps the path param.
@@ -84,6 +98,36 @@ message CancelSlotRequest {
 
 // CancelSlotResponse is empty — REST returns 204 No Content.
 message CancelSlotResponse {}
+
+// ListMyBookingsRequest is empty — caller is identified by the bearer token.
+message ListMyBookingsRequest {}
+
+// MyBookingItem mirrors the chi-direct DTO that previously served
+// GET /api/v1/slot/my/bookings (cmd/monolith/services/slot.go). Combines
+// booking + denormalized slot fields so the client can render its
+// "Мои бронирования" panel without a second round-trip.
+message MyBookingItem {
+  string id = 1;
+  string slot_id = 2;
+  string meet_url = 3;
+  // booking lifecycle status (active | cancelled | completed) — separate
+  // from slot_status which is the slot-side state.
+  string status = 4;
+  google.protobuf.Timestamp created_at = 5;
+  google.protobuf.Timestamp starts_at = 6;
+  int32 duration_min = 7;
+  Section section = 8;
+  Difficulty difficulty = 9;
+  string language = 10;
+  int32 price_rub = 11;
+  SlotStatus slot_status = 12;
+}
+
+// MyBookingList wraps the repeated items so vanguard's REST transcoder
+// emits {"items":[...]} (consistent with SlotList).
+message MyBookingList {
+  repeated MyBookingItem items = 1;
+}
 
 service SlotService {
   // ListSlots returns the filtered catalog of available slots.
@@ -110,5 +154,12 @@ service SlotService {
   // CancelSlot cancels the slot (owner-only) and any attached booking.
   rpc CancelSlot(CancelSlotRequest) returns (CancelSlotResponse) {
     option (google.api.http) = {delete: "/api/v1/slot/{slot_id}/cancel"};
+  }
+
+  // ListMyBookings returns every booking owned by the authenticated caller,
+  // ordered by slot starts_at DESC. Replaces the chi-direct handler that
+  // lived in cmd/monolith/services/slot.go.
+  rpc ListMyBookings(ListMyBookingsRequest) returns (MyBookingList) {
+    option (google.api.http) = {get: "/api/v1/slot/my/bookings"};
   }
 }

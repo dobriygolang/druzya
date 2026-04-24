@@ -89,11 +89,14 @@ function applyFilters(url) {
   const difficulty = url.searchParams.get('difficulty');
   const from = url.searchParams.get('from');
   const to = url.searchParams.get('to');
+  const priceMaxRaw = url.searchParams.get('price_max');
+  const priceMax = priceMaxRaw ? parseInt(priceMaxRaw, 10) : 0;
   return slots.filter((s) => {
     if (section && s.section !== section) return false;
     if (difficulty && s.difficulty !== difficulty) return false;
     if (from && s.starts_at < from) return false;
     if (to && s.starts_at > to) return false;
+    if (priceMax > 0 && s.price_rub > priceMax) return false;
     return true;
   });
 }
@@ -115,7 +118,7 @@ export const slotHandlers = [
     const booking = {
       id: `b-${Date.now()}`,
       slot: { ...slot },
-      meet_url: `https://meet.google.com/mock-${id.slice(0, 8)}`,
+      meet_url: slot.meet_url ?? `https://meet.google.com/mock-${id.slice(0, 8)}`,
       created_at: new Date().toISOString(),
     };
     bookings.set(id, booking);
@@ -142,6 +145,7 @@ export const slotHandlers = [
       difficulty: body.difficulty,
       language: body.language ?? 'ru',
       price_rub: body.price_rub ?? 0,
+      meet_url: body.meet_url,
       status: 'SLOT_STATUS_AVAILABLE',
     };
     slots.unshift(created);

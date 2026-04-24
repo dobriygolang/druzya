@@ -51,9 +51,9 @@ func (q *Queries) CreateBooking(ctx context.Context, arg CreateBookingParams) (B
 
 const createSlot = `-- name: CreateSlot :one
 
-INSERT INTO slots(interviewer_id, starts_at, duration_min, section, difficulty, language, price_rub, status)
-VALUES ($1, $2, $3, $4, $5, $6, $7, 'available')
-RETURNING id, interviewer_id, starts_at, duration_min, section, difficulty, language, price_rub, status, created_at
+INSERT INTO slots(interviewer_id, starts_at, duration_min, section, difficulty, language, price_rub, meet_url, status)
+VALUES ($1, $2, $3, $4, $5, $6, $7, NULLIF($8::text, ''), 'available')
+RETURNING id, interviewer_id, starts_at, duration_min, section, difficulty, language, price_rub, status, created_at, meet_url
 `
 
 type CreateSlotParams struct {
@@ -64,6 +64,7 @@ type CreateSlotParams struct {
 	Difficulty    pgtype.Text
 	Language      string
 	PriceRub      int32
+	Column8       string
 }
 
 // slot queries consumed by sqlc (emitted into services/slot/infra/db).
@@ -76,6 +77,7 @@ func (q *Queries) CreateSlot(ctx context.Context, arg CreateSlotParams) (Slot, e
 		arg.Difficulty,
 		arg.Language,
 		arg.PriceRub,
+		arg.Column8,
 	)
 	var i Slot
 	err := row.Scan(
@@ -89,6 +91,7 @@ func (q *Queries) CreateSlot(ctx context.Context, arg CreateSlotParams) (Slot, e
 		&i.PriceRub,
 		&i.Status,
 		&i.CreatedAt,
+		&i.MeetUrl,
 	)
 	return i, err
 }
@@ -113,7 +116,7 @@ func (q *Queries) GetBookingBySlotID(ctx context.Context, slotID pgtype.UUID) (B
 }
 
 const getSlot = `-- name: GetSlot :one
-SELECT id, interviewer_id, starts_at, duration_min, section, difficulty, language, price_rub, status, created_at
+SELECT id, interviewer_id, starts_at, duration_min, section, difficulty, language, price_rub, status, created_at, meet_url
   FROM slots WHERE id = $1
 `
 
@@ -131,12 +134,13 @@ func (q *Queries) GetSlot(ctx context.Context, id pgtype.UUID) (Slot, error) {
 		&i.PriceRub,
 		&i.Status,
 		&i.CreatedAt,
+		&i.MeetUrl,
 	)
 	return i, err
 }
 
 const getSlotForUpdate = `-- name: GetSlotForUpdate :one
-SELECT id, interviewer_id, starts_at, duration_min, section, difficulty, language, price_rub, status, created_at
+SELECT id, interviewer_id, starts_at, duration_min, section, difficulty, language, price_rub, status, created_at, meet_url
   FROM slots WHERE id = $1 FOR UPDATE
 `
 
@@ -156,6 +160,7 @@ func (q *Queries) GetSlotForUpdate(ctx context.Context, id pgtype.UUID) (Slot, e
 		&i.PriceRub,
 		&i.Status,
 		&i.CreatedAt,
+		&i.MeetUrl,
 	)
 	return i, err
 }
@@ -184,7 +189,7 @@ func (q *Queries) InterviewerReviewStats(ctx context.Context, interviewerID pgty
 }
 
 const listAvailableSlotsBase = `-- name: ListAvailableSlotsBase :many
-SELECT id, interviewer_id, starts_at, duration_min, section, difficulty, language, price_rub, status, created_at
+SELECT id, interviewer_id, starts_at, duration_min, section, difficulty, language, price_rub, status, created_at, meet_url
   FROM slots
  WHERE status = 'available'
    AND starts_at > now()
@@ -215,6 +220,7 @@ func (q *Queries) ListAvailableSlotsBase(ctx context.Context, limit int32) ([]Sl
 			&i.PriceRub,
 			&i.Status,
 			&i.CreatedAt,
+			&i.MeetUrl,
 		); err != nil {
 			return nil, err
 		}
@@ -227,7 +233,7 @@ func (q *Queries) ListAvailableSlotsBase(ctx context.Context, limit int32) ([]Sl
 }
 
 const listByInterviewerInRange = `-- name: ListByInterviewerInRange :many
-SELECT id, interviewer_id, starts_at, duration_min, section, difficulty, language, price_rub, status, created_at
+SELECT id, interviewer_id, starts_at, duration_min, section, difficulty, language, price_rub, status, created_at, meet_url
   FROM slots
  WHERE interviewer_id = $1
    AND starts_at < $3::timestamptz
@@ -263,6 +269,7 @@ func (q *Queries) ListByInterviewerInRange(ctx context.Context, arg ListByInterv
 			&i.PriceRub,
 			&i.Status,
 			&i.CreatedAt,
+			&i.MeetUrl,
 		); err != nil {
 			return nil, err
 		}
