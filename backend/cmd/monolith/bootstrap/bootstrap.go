@@ -146,6 +146,9 @@ func New(ctx context.Context, cfg *config.Config) (app *App, otelShutdown func()
 	// BookingRepo to validate ownership of the booking being reviewed.
 	slotMod, slotBookings := services.NewSlot(deps)
 	reviewMod := services.NewReview(deps, slotBookings)
+	// Circles wired ahead of `modules` so Events can borrow its handlers
+	// for the CircleAuthority gate without a second instantiation.
+	circlesMod := services.NewCircles(deps)
 
 	modules := []*services.Module{
 		&auth.Module,
@@ -170,6 +173,8 @@ func New(ctx context.Context, cfg *config.Config) (app *App, otelShutdown func()
 		services.NewFriends(deps),
 		services.NewHone(deps),
 		services.NewWhiteboardRooms(deps),
+		circlesMod.Module,
+		services.NewEvents(deps, circlesMod),
 		services.NewLobby(deps),
 		services.NewSubscription(deps),
 		services.NewLLMChainAdmin(deps, llmRawChain, llmRegisteredProviders(llmRawChain)),

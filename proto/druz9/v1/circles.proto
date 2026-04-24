@@ -1,0 +1,109 @@
+// circles.proto — Connect-RPC contract for the `circles` bounded context
+// (bible §9 Phase 6.5.3). Communities-by-interest, members, role-gates.
+// Events живут в отдельном events.proto и держат circle_id FK.
+syntax = "proto3";
+package druz9.v1;
+
+import "google/api/annotations.proto";
+import "google/protobuf/timestamp.proto";
+
+option go_package = "druz9/shared/generated/pb/druz9/v1;druz9v1";
+
+enum CircleRole {
+  CIRCLE_ROLE_UNSPECIFIED = 0;
+  CIRCLE_ROLE_ADMIN = 1;
+  CIRCLE_ROLE_MEMBER = 2;
+}
+
+message CircleMember {
+  string user_id = 1;
+  string username = 2;
+  CircleRole role = 3;
+  google.protobuf.Timestamp joined_at = 4;
+}
+
+message Circle {
+  string id = 1;
+  string name = 2;
+  string description = 3;
+  string owner_id = 4;
+  int32 member_count = 5;
+  google.protobuf.Timestamp created_at = 6;
+  google.protobuf.Timestamp updated_at = 7;
+  repeated CircleMember members = 8;
+}
+
+message CreateCircleRequest {
+  string name = 1;
+  string description = 2;
+}
+
+message GetCircleRequest {
+  string circle_id = 1;
+}
+
+message ListMyCirclesRequest {}
+
+message CircleList {
+  repeated Circle items = 1;
+}
+
+message JoinCircleRequest {
+  string circle_id = 1;
+}
+
+message LeaveCircleRequest {
+  string circle_id = 1;
+}
+
+message DeleteCircleRequest {
+  string circle_id = 1;
+}
+
+message CircleMutationResponse {
+  bool ok = 1;
+}
+
+service CirclesService {
+  // CreateCircle creates a new circle owned by the caller; the caller is
+  // seeded as admin.
+  rpc CreateCircle(CreateCircleRequest) returns (Circle) {
+    option (google.api.http) = {
+      post: "/api/v1/circles"
+      body: "*"
+    };
+  }
+
+  // GetCircle returns the circle with members. Auto-joins the caller as a
+  // member on first GET (share-link UX, mirrors whiteboard_rooms).
+  rpc GetCircle(GetCircleRequest) returns (Circle) {
+    option (google.api.http) = {get: "/api/v1/circles/{circle_id}"};
+  }
+
+  // ListMyCircles returns circles where the caller is a member (admin or
+  // member).
+  rpc ListMyCircles(ListMyCirclesRequest) returns (CircleList) {
+    option (google.api.http) = {get: "/api/v1/circles"};
+  }
+
+  // JoinCircle adds the caller as a member. Idempotent.
+  rpc JoinCircle(JoinCircleRequest) returns (CircleMutationResponse) {
+    option (google.api.http) = {
+      post: "/api/v1/circles/{circle_id}/join"
+      body: "*"
+    };
+  }
+
+  // LeaveCircle removes the caller. Owner cannot leave (must Delete).
+  rpc LeaveCircle(LeaveCircleRequest) returns (CircleMutationResponse) {
+    option (google.api.http) = {
+      post: "/api/v1/circles/{circle_id}/leave"
+      body: "*"
+    };
+  }
+
+  // DeleteCircle drops the circle. Owner-only.
+  rpc DeleteCircle(DeleteCircleRequest) returns (CircleMutationResponse) {
+    option (google.api.http) = {delete: "/api/v1/circles/{circle_id}"};
+  }
+}

@@ -8,11 +8,13 @@ use (
 	./backend/services/ai_native
 	./backend/services/arena
 	./backend/services/auth
+	./backend/services/circles
 	./backend/services/cohort
 	./backend/services/copilot
 	./backend/services/daily
 	./backend/services/documents
 	./backend/services/editor
+	./backend/services/events
 	./backend/services/feed
 	./backend/services/friends
 	./backend/services/hone

@@ -1,0 +1,124 @@
+// events.proto — Connect-RPC contract for the `events` bounded context.
+// Events are scoped to circles (bible §9 Phase 6.5.3). Hone displays a
+// calendar aggregated across the caller's circles.
+syntax = "proto3";
+package druz9.v1;
+
+import "google/api/annotations.proto";
+import "google/protobuf/timestamp.proto";
+
+option go_package = "druz9/shared/generated/pb/druz9/v1;druz9v1";
+
+enum EventRecurrence {
+  EVENT_RECURRENCE_UNSPECIFIED = 0;
+  EVENT_RECURRENCE_NONE = 1;
+  EVENT_RECURRENCE_WEEKLY_FRIDAY = 2;
+}
+
+message EventParticipant {
+  string user_id = 1;
+  string username = 2;
+  google.protobuf.Timestamp joined_at = 3;
+}
+
+message Event {
+  string id = 1;
+  string circle_id = 2;
+  string circle_name = 3; // denormalised — Hone shows "Book Club · Friday Read"
+  string title = 4;
+  string description = 5;
+  google.protobuf.Timestamp starts_at = 6;
+  int32 duration_min = 7;
+  // editor_room_id / whiteboard_room_id — optional shareable surfaces.
+  // Hone Join opens the appropriate room directly.
+  string editor_room_id = 8;
+  string whiteboard_room_id = 9;
+  EventRecurrence recurrence = 10;
+  string created_by = 11;
+  google.protobuf.Timestamp created_at = 12;
+  repeated EventParticipant participants = 13;
+}
+
+message CreateEventRequest {
+  string circle_id = 1;
+  string title = 2;
+  string description = 3;
+  google.protobuf.Timestamp starts_at = 4;
+  int32 duration_min = 5;
+  string editor_room_id = 6;
+  string whiteboard_room_id = 7;
+  EventRecurrence recurrence = 8;
+}
+
+message GetEventRequest {
+  string event_id = 1;
+}
+
+message ListMyEventsRequest {
+  // Optional window — left empty for MVP, server returns upcoming events
+  // from now() onwards.
+  google.protobuf.Timestamp from = 1;
+  google.protobuf.Timestamp to = 2;
+}
+
+message EventList {
+  repeated Event items = 1;
+}
+
+message JoinEventRequest {
+  string event_id = 1;
+}
+
+message LeaveEventRequest {
+  string event_id = 1;
+}
+
+message DeleteEventRequest {
+  string event_id = 1;
+}
+
+message EventMutationResponse {
+  bool ok = 1;
+}
+
+service EventsService {
+  // CreateEvent — caller must be admin of the target circle.
+  rpc CreateEvent(CreateEventRequest) returns (Event) {
+    option (google.api.http) = {
+      post: "/api/v1/events"
+      body: "*"
+    };
+  }
+
+  // GetEvent returns the event with participants. Caller must be a member
+  // of the parent circle.
+  rpc GetEvent(GetEventRequest) returns (Event) {
+    option (google.api.http) = {get: "/api/v1/events/{event_id}"};
+  }
+
+  // ListMyEvents returns upcoming events from every circle the caller is in.
+  rpc ListMyEvents(ListMyEventsRequest) returns (EventList) {
+    option (google.api.http) = {get: "/api/v1/events"};
+  }
+
+  // JoinEvent — RSVP. Returns the event with the caller in participants.
+  rpc JoinEvent(JoinEventRequest) returns (Event) {
+    option (google.api.http) = {
+      post: "/api/v1/events/{event_id}/join"
+      body: "*"
+    };
+  }
+
+  // LeaveEvent — un-RSVP.
+  rpc LeaveEvent(LeaveEventRequest) returns (EventMutationResponse) {
+    option (google.api.http) = {
+      post: "/api/v1/events/{event_id}/leave"
+      body: "*"
+    };
+  }
+
+  // DeleteEvent — circle admin / event creator only.
+  rpc DeleteEvent(DeleteEventRequest) returns (EventMutationResponse) {
+    option (google.api.http) = {delete: "/api/v1/events/{event_id}"};
+  }
+}

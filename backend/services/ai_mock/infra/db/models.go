@@ -87,6 +87,22 @@ type Booking struct {
 	CreatedAt   pgtype.Timestamptz
 }
 
+type Circle struct {
+	ID          pgtype.UUID
+	Name        string
+	Description string
+	OwnerID     pgtype.UUID
+	CreatedAt   pgtype.Timestamptz
+	UpdatedAt   pgtype.Timestamptz
+}
+
+type CircleMember struct {
+	CircleID pgtype.UUID
+	UserID   pgtype.UUID
+	Role     string
+	JoinedAt pgtype.Timestamptz
+}
+
 type Cohort struct {
 	ID          pgtype.UUID
 	OwnerID     pgtype.UUID
@@ -272,6 +288,26 @@ type EloSnapshotsDaily struct {
 	SnapshotDate  pgtype.Date
 	Elo           int32
 	MatchesPlayed int32
+}
+
+type Event struct {
+	ID               pgtype.UUID
+	CircleID         pgtype.UUID
+	Title            string
+	Description      string
+	StartsAt         pgtype.Timestamptz
+	DurationMin      int32
+	EditorRoomID     pgtype.UUID
+	WhiteboardRoomID pgtype.UUID
+	RecurrenceRule   string
+	CreatedBy        pgtype.UUID
+	CreatedAt        pgtype.Timestamptz
+}
+
+type EventParticipant struct {
+	EventID  pgtype.UUID
+	UserID   pgtype.UUID
+	JoinedAt pgtype.Timestamptz
 }
 
 type FollowUpQuestion struct {
@@ -959,4 +995,20 @@ type WeeklyShareToken struct {
 	CreatedAt  pgtype.Timestamptz
 	ExpiresAt  pgtype.Timestamptz
 	ViewsCount int32
+}
+
+type WhiteboardRoom struct {
+	ID        pgtype.UUID
+	OwnerID   pgtype.UUID
+	Title     string
+	Snapshot  []byte
+	ExpiresAt pgtype.Timestamptz
+	CreatedAt pgtype.Timestamptz
+	UpdatedAt pgtype.Timestamptz
+}
+
+type WhiteboardRoomParticipant struct {
+	RoomID   pgtype.UUID
+	UserID   pgtype.UUID
+	JoinedAt pgtype.Timestamptz
 }
