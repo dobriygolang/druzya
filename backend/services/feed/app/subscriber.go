@@ -37,7 +37,7 @@ func (s *Subscriber) Register(bus sharedDomain.Bus) {
 func (s *Subscriber) onMatchCompleted(_ context.Context, e sharedDomain.Event) error {
 	ev, ok := e.(sharedDomain.MatchCompleted)
 	if !ok {
-		return nil
+		return fmt.Errorf("feed.onMatchCompleted: unexpected event %T", e)
 	}
 	winner := feeddomain.Handle(ev.WinnerID)
 	section := sectionLabel(ev.Section)
@@ -59,7 +59,7 @@ func (s *Subscriber) onMatchCompleted(_ context.Context, e sharedDomain.Event) e
 func (s *Subscriber) onKataCompleted(_ context.Context, e sharedDomain.Event) error {
 	ev, ok := e.(sharedDomain.DailyKataCompleted)
 	if !ok {
-		return nil
+		return fmt.Errorf("feed.onKataCompleted: unexpected event %T", e)
 	}
 	h := feeddomain.Handle(ev.UserID)
 	txt := fmt.Sprintf("✦ %s extended a Daily Kata streak to %d days (+%d XP)", h, ev.StreakNew, ev.XPEarned)
@@ -73,7 +73,7 @@ func (s *Subscriber) onKataCompleted(_ context.Context, e sharedDomain.Event) er
 func (s *Subscriber) onNodeUnlocked(_ context.Context, e sharedDomain.Event) error {
 	ev, ok := e.(sharedDomain.SkillNodeUnlocked)
 	if !ok {
-		return nil
+		return fmt.Errorf("feed.onNodeUnlocked: unexpected event %T", e)
 	}
 	s.Out.Broadcast(feeddomain.FeedEvent{
 		Kind: feeddomain.KindNodeUnlocked,
@@ -86,7 +86,7 @@ func (s *Subscriber) onNodeUnlocked(_ context.Context, e sharedDomain.Event) err
 func (s *Subscriber) onCohortWarStarted(_ context.Context, e sharedDomain.Event) error {
 	ev, ok := e.(sharedDomain.CohortWarStarted)
 	if !ok {
-		return nil
+		return fmt.Errorf("feed.onGuildWarStarted: unexpected event %T", e)
 	}
 	s.Out.Broadcast(feeddomain.FeedEvent{
 		Kind: feeddomain.KindCohortWar,
@@ -99,7 +99,7 @@ func (s *Subscriber) onCohortWarStarted(_ context.Context, e sharedDomain.Event)
 func (s *Subscriber) onLevelUp(_ context.Context, e sharedDomain.Event) error {
 	ev, ok := e.(sharedDomain.LevelUp)
 	if !ok {
-		return nil
+		return fmt.Errorf("feed.onLevelUp: unexpected event %T", e)
 	}
 	s.Out.Broadcast(feeddomain.FeedEvent{
 		Kind: feeddomain.KindLevelUp,
