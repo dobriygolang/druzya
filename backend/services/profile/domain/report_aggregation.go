@@ -1,7 +1,8 @@
 package domain
 
 import (
-	"sort"
+	"cmp"
+	"slices"
 
 	"druz9/shared/enums"
 )
@@ -82,8 +83,8 @@ func AggregateBySection(matches []MatchAggregate) (strong, weak []SectionBreakdo
 		}
 	}
 	// Sort: strong desc by xp; weak asc (most painful first).
-	sort.SliceStable(strong, func(i, j int) bool { return strong[i].XPDelta > strong[j].XPDelta })
-	sort.SliceStable(weak, func(i, j int) bool { return weak[i].XPDelta < weak[j].XPDelta })
+	slices.SortStableFunc(strong, func(a, b SectionBreakdown) int { return cmp.Compare(b.XPDelta, a.XPDelta) })
+	slices.SortStableFunc(weak, func(a, b SectionBreakdown) int { return cmp.Compare(a.XPDelta, b.XPDelta) })
 	if len(strong) > 3 {
 		strong = strong[:3]
 	}

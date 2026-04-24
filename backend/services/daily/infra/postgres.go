@@ -8,6 +8,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"druz9/daily/domain"
@@ -105,7 +106,7 @@ func (p *TasksKatas) ListForTask(ctx context.Context, taskID uuid.UUID) ([]domai
 		return nil, fmt.Errorf("daily.TasksKatas.ListForTask: query: %w", err)
 	}
 	defer rows.Close()
-	var out []domain.TestCase
+	out := make([]domain.TestCase, 0, 8)
 	for rows.Next() {
 		var tc domain.TestCase
 		if err := rows.Scan(&tc.Input, &tc.Expected, &tc.IsHidden, &tc.Order); err != nil {
@@ -495,15 +496,15 @@ func pgText(t pgtype.Text) string {
 // admin CMS once that service exists; same table of truth as profile/app/atlas.go.
 func sectionFromNodeKey(key string) enums.Section {
 	switch {
-	case len(key) >= 4 && key[:4] == "algo":
+	case strings.HasPrefix(key, "algo"):
 		return enums.SectionAlgorithms
-	case len(key) >= 3 && key[:3] == "sql":
+	case strings.HasPrefix(key, "sql"):
 		return enums.SectionSQL
-	case len(key) >= 2 && key[:2] == "go":
+	case strings.HasPrefix(key, "go"):
 		return enums.SectionGo
-	case len(key) >= 2 && key[:2] == "sd":
+	case strings.HasPrefix(key, "sd"):
 		return enums.SectionSystemDesign
-	case len(key) >= 3 && key[:3] == "beh":
+	case strings.HasPrefix(key, "beh"):
 		return enums.SectionBehavioral
 	default:
 		return enums.SectionAlgorithms

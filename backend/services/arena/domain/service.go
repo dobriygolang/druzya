@@ -1,7 +1,8 @@
 package domain
 
 import (
-	"sort"
+	"cmp"
+	"slices"
 	"time"
 
 	"druz9/shared/enums"
@@ -71,12 +72,12 @@ func PickPairs(tickets []QueueTicket, now time.Time) []Pair {
 	if len(tickets) < 2 {
 		return nil
 	}
-	ts := append([]QueueTicket(nil), tickets...)
-	sort.SliceStable(ts, func(i, j int) bool {
-		if ts[i].Elo != ts[j].Elo {
-			return ts[i].Elo < ts[j].Elo
+	ts := slices.Clone(tickets)
+	slices.SortStableFunc(ts, func(a, b QueueTicket) int {
+		if c := cmp.Compare(a.Elo, b.Elo); c != 0 {
+			return c
 		}
-		return ts[i].EnqueuedAt.Before(ts[j].EnqueuedAt)
+		return a.EnqueuedAt.Compare(b.EnqueuedAt)
 	})
 
 	taken := make([]bool, len(ts))

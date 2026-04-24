@@ -14,7 +14,8 @@
 package domain
 
 import (
-	"sort"
+	"cmp"
+	"slices"
 	"time"
 
 	"github.com/google/uuid"
@@ -112,11 +113,11 @@ func PickQuads(tickets []QueueTicket, now time.Time) []Quad {
 	if len(live) < DuoMatchSize {
 		return nil
 	}
-	sort.SliceStable(live, func(i, j int) bool {
-		if live[i].Elo != live[j].Elo {
-			return live[i].Elo < live[j].Elo
+	slices.SortStableFunc(live, func(a, b QueueTicket) int {
+		if c := cmp.Compare(a.Elo, b.Elo); c != 0 {
+			return c
 		}
-		return live[i].EnqueuedAt.Before(live[j].EnqueuedAt)
+		return a.EnqueuedAt.Compare(b.EnqueuedAt)
 	})
 
 	quads := make([]Quad, 0, len(live)/DuoMatchSize)
