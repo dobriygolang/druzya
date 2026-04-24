@@ -167,11 +167,17 @@ type SavedVacancy struct {
 
 // SkillGap is the diff between a vacancy's required skills and what the
 // caller already has. Surfaced by AnalyzeURL and the detail page.
+//
+// JSON tags are MANDATORY: this struct is sent verbatim from the analyze
+// handler (no DTO wrap), and the frontend AnalyzeResultCard reads the
+// snake/lower-case keys. Without tags Go's encoding/json emits the
+// upper-case Go field names — frontend reads `undefined`, `.length`
+// crashes, page goes white. Don't strip the tags.
 type SkillGap struct {
-	Required []string // normalized list from the vacancy
-	Matched  []string // intersection
-	Missing  []string // required \ user
-	Extra    []string // user \ required (informational only)
+	Required []string `json:"required"` // normalized list from the vacancy
+	Matched  []string `json:"matched"`  // intersection
+	Missing  []string `json:"missing"`  // required \ user
+	Extra    []string `json:"extra"`    // user \ required (informational only)
 }
 
 // ListFilter is the query DTO for the listing endpoint. All fields are
