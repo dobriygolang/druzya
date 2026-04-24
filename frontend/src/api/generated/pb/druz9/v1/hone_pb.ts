@@ -83,6 +83,24 @@ export class PlanItem extends Message<PlanItem> {
    */
   completed = false;
 
+  /**
+   * Мотивирующий контекст — почему этот пункт полезен ИМЕННО этому юзеру
+   * («это закрывает твой gap в System Design: progress=28»). Строится
+   * синтезайзером из Skill Atlas. Пустой = отображается только subtitle.
+   *
+   * @generated from field: string rationale = 10;
+   */
+  rationale = "";
+
+  /**
+   * Ключ скилла, с которым item связан (NodeKey из WeakNode). Используется
+   * resistance-tracker'ом чтобы считать, сколько раз юзер dismiss'ил задачи
+   * одного и того же скилла подряд.
+   *
+   * @generated from field: string skill_key = 11;
+   */
+  skillKey = "";
+
   constructor(data?: PartialMessage<PlanItem>) {
     super();
     proto3.util.initPartial(data, this);
@@ -100,6 +118,8 @@ export class PlanItem extends Message<PlanItem> {
     { no: 7, name: "estimated_min", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
     { no: 8, name: "dismissed", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
     { no: 9, name: "completed", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
+    { no: 10, name: "rationale", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 11, name: "skill_key", kind: "scalar", T: 9 /* ScalarType.STRING */ },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): PlanItem {
@@ -482,6 +502,16 @@ export class EndFocusSessionRequest extends Message<EndFocusSessionRequest> {
    */
   secondsFocused = 0;
 
+  /**
+   * Необязательный «reflection» — одна строка «что сделал за эту сессию».
+   * Если непустой, бекенд создаёт отдельную заметку с title = pinned/plan
+   * item, body_md = reflection, и прикрепляет session id + дату. Stats
+   * агрегирует эти заметки в «хронологию прогресса».
+   *
+   * @generated from field: string reflection = 4;
+   */
+  reflection = "";
+
   constructor(data?: PartialMessage<EndFocusSessionRequest>) {
     super();
     proto3.util.initPartial(data, this);
@@ -493,6 +523,7 @@ export class EndFocusSessionRequest extends Message<EndFocusSessionRequest> {
     { no: 1, name: "session_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
     { no: 2, name: "pomodoros_completed", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
     { no: 3, name: "seconds_focused", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 4, name: "reflection", kind: "scalar", T: 9 /* ScalarType.STRING */ },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): EndFocusSessionRequest {
@@ -1627,6 +1658,64 @@ export class CritiqueWhiteboardRequest extends Message<CritiqueWhiteboardRequest
 }
 
 /**
+ * SaveCritiqueAsNote превращает последнюю AI-критику доски в приватную
+ * заметку. Клиент передаёт уже собранный markdown (стримлённые пакеты
+ * склеены по секциям) — сервер создаёт Note с title=title, body=body_md.
+ * Серверный re-run критики ради сохранения был бы дорог и не гарантирует
+ * идентичный результат (temperature>0). Клиент — источник истины того,
+ * что пользователь увидел.
+ *
+ * @generated from message druz9.v1.SaveCritiqueAsNoteRequest
+ */
+export class SaveCritiqueAsNoteRequest extends Message<SaveCritiqueAsNoteRequest> {
+  /**
+   * @generated from field: string whiteboard_id = 1;
+   */
+  whiteboardId = "";
+
+  /**
+   * если empty → "Critique: <whiteboard title>"
+   *
+   * @generated from field: string title = 2;
+   */
+  title = "";
+
+  /**
+   * @generated from field: string body_md = 3;
+   */
+  bodyMd = "";
+
+  constructor(data?: PartialMessage<SaveCritiqueAsNoteRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.SaveCritiqueAsNoteRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "whiteboard_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "title", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 3, name: "body_md", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): SaveCritiqueAsNoteRequest {
+    return new SaveCritiqueAsNoteRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): SaveCritiqueAsNoteRequest {
+    return new SaveCritiqueAsNoteRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): SaveCritiqueAsNoteRequest {
+    return new SaveCritiqueAsNoteRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: SaveCritiqueAsNoteRequest | PlainMessage<SaveCritiqueAsNoteRequest> | undefined, b: SaveCritiqueAsNoteRequest | PlainMessage<SaveCritiqueAsNoteRequest> | undefined): boolean {
+    return proto3.util.equals(SaveCritiqueAsNoteRequest, a, b);
+  }
+}
+
+/**
  * CritiquePacket is one streaming chunk of the AI architect's feedback.
  * Shape mirrors the SysDesignCritique task output: sectioned prose streamed
  * token-by-token. The client accumulates into a panel that fades in.
@@ -1682,6 +1771,108 @@ export class CritiquePacket extends Message<CritiquePacket> {
 
   static equals(a: CritiquePacket | PlainMessage<CritiquePacket> | undefined, b: CritiquePacket | PlainMessage<CritiquePacket> | undefined): boolean {
     return proto3.util.equals(CritiquePacket, a, b);
+  }
+}
+
+/**
+ * Три вопроса классического dev standup'а. Бекенд:
+ *   1. Создаёт заметку с заголовком «Standup YYYY-MM-DD» и body в формате
+ *      «## Yesterday / ## Today / ## Blockers».
+ *   2. Если «today» непустой, добавляет свежий PlanItem kind=custom с
+ *      title=«today»[:60] в сегодняшний Plan (не перегенеряя AI-план).
+ *   3. Возвращает созданную заметку + обновлённый Plan для мгновенного
+ *      рендера.
+ *
+ * @generated from message druz9.v1.RecordStandupRequest
+ */
+export class RecordStandupRequest extends Message<RecordStandupRequest> {
+  /**
+   * @generated from field: string yesterday = 1;
+   */
+  yesterday = "";
+
+  /**
+   * @generated from field: string today = 2;
+   */
+  today = "";
+
+  /**
+   * @generated from field: string blockers = 3;
+   */
+  blockers = "";
+
+  constructor(data?: PartialMessage<RecordStandupRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.RecordStandupRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "yesterday", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "today", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 3, name: "blockers", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): RecordStandupRequest {
+    return new RecordStandupRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): RecordStandupRequest {
+    return new RecordStandupRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): RecordStandupRequest {
+    return new RecordStandupRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: RecordStandupRequest | PlainMessage<RecordStandupRequest> | undefined, b: RecordStandupRequest | PlainMessage<RecordStandupRequest> | undefined): boolean {
+    return proto3.util.equals(RecordStandupRequest, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.RecordStandupResponse
+ */
+export class RecordStandupResponse extends Message<RecordStandupResponse> {
+  /**
+   * @generated from field: druz9.v1.Note note = 1;
+   */
+  note?: Note;
+
+  /**
+   * обновлённый сегодняшний план
+   *
+   * @generated from field: druz9.v1.Plan plan = 2;
+   */
+  plan?: Plan;
+
+  constructor(data?: PartialMessage<RecordStandupResponse>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.RecordStandupResponse";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "note", kind: "message", T: Note },
+    { no: 2, name: "plan", kind: "message", T: Plan },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): RecordStandupResponse {
+    return new RecordStandupResponse().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): RecordStandupResponse {
+    return new RecordStandupResponse().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): RecordStandupResponse {
+    return new RecordStandupResponse().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: RecordStandupResponse | PlainMessage<RecordStandupResponse> | undefined, b: RecordStandupResponse | PlainMessage<RecordStandupResponse> | undefined): boolean {
+    return proto3.util.equals(RecordStandupResponse, a, b);
   }
 }
 

@@ -47,6 +47,13 @@ type PlanItem struct {
 	EstimatedMin int
 	Dismissed    bool
 	Completed    bool
+	// Rationale — мотивирующий контекст («это закрывает твой gap в System
+	// Design: progress=28»). Строится синтезайзером из Skill Atlas. Пустая
+	// строка = нет rationale'а (клиент показывает только subtitle).
+	Rationale string
+	// SkillKey — NodeKey скилла которому item адресован, для resistance
+	// tracker'а. Пустой у custom/review-item'ов не связанных со skill atlas.
+	SkillKey string
 }
 
 // Plan is one day's plan for one user.

@@ -39,6 +39,10 @@ type Handler struct {
 	ListWhiteboards    *ListWhiteboards
 	DeleteWhiteboard   *DeleteWhiteboard
 	CritiqueWhiteboard *CritiqueWhiteboard
+	SaveCritiqueAsNote *SaveCritiqueAsNote
+
+	// Standup
+	RecordStandup *RecordStandup
 
 	Log *slog.Logger
 	Now func() time.Time

@@ -102,11 +102,13 @@ Constraints:
   - Prefer "solve" items targeting the weakest node; one per item.
   - Inject a "mock" item only when a weak node's progress is below 40 AND the section suggests a mock would help (system-design, behavioral).
   - subtitle MUST explain the "why" in one short sentence, referencing the weakness.
+  - rationale: SECOND explanatory line aimed at motivation — reference the specific skill gap and the current progress number. 6-12 words. Example: "Closes your System Design gap (progress=28 — lowest in atlas)." Leave empty for "review" / "custom" items not tied to a skill node.
+  - skill_key: MUST match the input node_key when the item targets a weak node (e.g. "algo.bfs"). Empty for "review" / "custom" items.
   - deep_link: for "solve" use "druz9://task/<target_ref>"; for "mock" use "druz9://mock/start?section=<target_ref>"; empty for others.
   - estimated_min: realistic, 15-60 range.
 
 Output EXACTLY this JSON shape, nothing else:
-{"items":[{"id":"<short-id>","kind":"solve|mock|review|read|custom","title":"...","subtitle":"...","target_ref":"...","deep_link":"...","estimated_min":25}]}
+{"items":[{"id":"<short-id>","kind":"solve|mock|review|read|custom","title":"...","subtitle":"...","rationale":"...","skill_key":"...","target_ref":"...","deep_link":"...","estimated_min":25}]}
 
 Return ONLY the JSON object. No prose, no code fences.`
 
@@ -181,6 +183,8 @@ type planJSONItem struct {
 	Kind         string `json:"kind"`
 	Title        string `json:"title"`
 	Subtitle     string `json:"subtitle"`
+	Rationale    string `json:"rationale"`
+	SkillKey     string `json:"skill_key"`
 	TargetRef    string `json:"target_ref"`
 	DeepLink     string `json:"deep_link"`
 	EstimatedMin int    `json:"estimated_min"`
@@ -221,6 +225,8 @@ func parsePlanJSON(raw string) ([]domain.PlanItem, error) {
 			Kind:         kind,
 			Title:        it.Title,
 			Subtitle:     it.Subtitle,
+			Rationale:    strings.TrimSpace(it.Rationale),
+			SkillKey:     strings.TrimSpace(it.SkillKey),
 			TargetRef:    it.TargetRef,
 			DeepLink:     it.DeepLink,
 			EstimatedMin: est,

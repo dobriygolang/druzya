@@ -206,6 +206,7 @@ func (s *HoneServer) EndFocusSession(
 		SessionID:          sid,
 		PomodorosCompleted: int(m.GetPomodorosCompleted()),
 		SecondsFocused:     int(m.GetSecondsFocused()),
+		Reflection:         m.GetReflection(),
 	})
 	if err != nil {
 		return nil, fmt.Errorf("hone.EndFocusSession: %w", s.toConnectErr(err))
@@ -477,6 +478,60 @@ func (s *HoneServer) DeleteWhiteboard(
 	return connect.NewResponse(&pb.DeleteWhiteboardResponse{}), nil
 }
 
+// SaveCritiqueAsNote implements druz9.v1.HoneService/SaveCritiqueAsNote.
+func (s *HoneServer) SaveCritiqueAsNote(
+	ctx context.Context,
+	req *connect.Request[pb.SaveCritiqueAsNoteRequest],
+) (*connect.Response[pb.Note], error) {
+	uid, err := requireUser(ctx)
+	if err != nil {
+		return nil, err
+	}
+	wbID, parseErr := uuid.Parse(req.Msg.GetWhiteboardId())
+	if parseErr != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("invalid whiteboard_id: %w", parseErr))
+	}
+	n, err := s.H.SaveCritiqueAsNote.Do(ctx, app.SaveCritiqueAsNoteInput{
+		UserID:       uid,
+		WhiteboardID: wbID,
+		Title:        req.Msg.GetTitle(),
+		BodyMD:       req.Msg.GetBodyMd(),
+	})
+	if err != nil {
+		return nil, fmt.Errorf("hone.SaveCritiqueAsNote: %w", s.toConnectErr(err))
+	}
+	return connect.NewResponse(toNoteProto(n)), nil
+}
+
+// RecordStandup implements druz9.v1.HoneService/RecordStandup.
+func (s *HoneServer) RecordStandup(
+	ctx context.Context,
+	req *connect.Request[pb.RecordStandupRequest],
+) (*connect.Response[pb.RecordStandupResponse], error) {
+	uid, err := requireUser(ctx)
+	if err != nil {
+		return nil, err
+	}
+	out, err := s.H.RecordStandup.Do(ctx, app.RecordStandupInput{
+		UserID:    uid,
+		Yesterday: req.Msg.GetYesterday(),
+		Today:     req.Msg.GetToday(),
+		Blockers:  req.Msg.GetBlockers(),
+	})
+	if err != nil {
+		return nil, fmt.Errorf("hone.RecordStandup: %w", s.toConnectErr(err))
+	}
+	resp := &pb.RecordStandupResponse{
+		Note: toNoteProto(out.Note),
+	}
+	// Plan может быть zero-value если сегодня ещё нет плана — не пихаем
+	// пустой proto, клиент разберёт по presence.
+	if !out.Plan.Date.IsZero() {
+		resp.Plan = toPlanProto(out.Plan)
+	}
+	return connect.NewResponse(resp), nil
+}
+
 // CritiqueWhiteboard implements druz9.v1.HoneService/CritiqueWhiteboard (server-streaming).
 func (s *HoneServer) CritiqueWhiteboard(
 	ctx context.Context,
@@ -522,6 +577,8 @@ func (s *HoneServer) toConnectErr(err error) error {
 		return connect.NewError(connect.CodePermissionDenied, err)
 	case errors.Is(err, domain.ErrStaleVersion):
 		return connect.NewError(connect.CodeAborted, err)
+	case errors.Is(err, domain.ErrInvalidInput):
+		return connect.NewError(connect.CodeInvalidArgument, err)
 	case errors.Is(err, domain.ErrLLMUnavailable), errors.Is(err, domain.ErrEmbeddingUnavailable):
 		s.H.Log.Warn("hone: AI subsystem unavailable", slog.Any("err", err))
 		return connect.NewError(connect.CodeUnavailable, err)
@@ -545,6 +602,8 @@ func toPlanProto(p domain.Plan) *pb.Plan {
 			Kind:         string(it.Kind),
 			Title:        it.Title,
 			Subtitle:     it.Subtitle,
+			Rationale:    it.Rationale,
+			SkillKey:     it.SkillKey,
 			TargetRef:    it.TargetRef,
 			DeepLink:     it.DeepLink,
 			EstimatedMin: int32(it.EstimatedMin),

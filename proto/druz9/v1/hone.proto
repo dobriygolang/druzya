@@ -46,6 +46,14 @@ message PlanItem {
   int32 estimated_min = 7;
   bool dismissed = 8;
   bool completed = 9;
+  // Мотивирующий контекст — почему этот пункт полезен ИМЕННО этому юзеру
+  // («это закрывает твой gap в System Design: progress=28»). Строится
+  // синтезайзером из Skill Atlas. Пустой = отображается только subtitle.
+  string rationale = 10;
+  // Ключ скилла, с которым item связан (NodeKey из WeakNode). Используется
+  // resistance-tracker'ом чтобы считать, сколько раз юзер dismiss'ил задачи
+  // одного и того же скилла подряд.
+  string skill_key = 11;
 }
 
 // Plan is one day's plan for one user.
@@ -97,6 +105,11 @@ message EndFocusSessionRequest {
   string session_id = 1;
   int32 pomodoros_completed = 2;
   int32 seconds_focused = 3;
+  // Необязательный «reflection» — одна строка «что сделал за эту сессию».
+  // Если непустой, бекенд создаёт отдельную заметку с title = pinned/plan
+  // item, body_md = reflection, и прикрепляет session id + дату. Stats
+  // агрегирует эти заметки в «хронологию прогресса».
+  string reflection = 4;
 }
 
 message GetStatsRequest {
@@ -248,6 +261,18 @@ message CritiqueWhiteboardRequest {
   string id = 1;
 }
 
+// SaveCritiqueAsNote превращает последнюю AI-критику доски в приватную
+// заметку. Клиент передаёт уже собранный markdown (стримлённые пакеты
+// склеены по секциям) — сервер создаёт Note с title=title, body=body_md.
+// Серверный re-run критики ради сохранения был бы дорог и не гарантирует
+// идентичный результат (temperature>0). Клиент — источник истины того,
+// что пользователь увидел.
+message SaveCritiqueAsNoteRequest {
+  string whiteboard_id = 1;
+  string title = 2;                  // если empty → "Critique: <whiteboard title>"
+  string body_md = 3;
+}
+
 // CritiquePacket is one streaming chunk of the AI architect's feedback.
 // Shape mirrors the SysDesignCritique task output: sectioned prose streamed
 // token-by-token. The client accumulates into a panel that fades in.
@@ -357,4 +382,38 @@ service HoneService {
   }
   // Server-streaming AI critique — mirrors the SysDesignCritique task.
   rpc CritiqueWhiteboard(CritiqueWhiteboardRequest) returns (stream CritiquePacket);
+  rpc SaveCritiqueAsNote(SaveCritiqueAsNoteRequest) returns (Note) {
+    option (google.api.http) = {
+      post: "/api/v1/hone/whiteboards/critique/save"
+      body: "*"
+    };
+  }
+
+  // ─── Standup ────────────────────────────────────────────────────────
+  rpc RecordStandup(RecordStandupRequest) returns (RecordStandupResponse) {
+    option (google.api.http) = {
+      post: "/api/v1/hone/standup"
+      body: "*"
+    };
+  }
+}
+
+// ─── Standup ───────────────────────────────────────────────────────────────
+
+// Три вопроса классического dev standup'а. Бекенд:
+//   1. Создаёт заметку с заголовком «Standup YYYY-MM-DD» и body в формате
+//      «## Yesterday / ## Today / ## Blockers».
+//   2. Если «today» непустой, добавляет свежий PlanItem kind=custom с
+//      title=«today»[:60] в сегодняшний Plan (не перегенеряя AI-план).
+//   3. Возвращает созданную заметку + обновлённый Plan для мгновенного
+//      рендера.
+message RecordStandupRequest {
+  string yesterday = 1;
+  string today = 2;
+  string blockers = 3;
+}
+
+message RecordStandupResponse {
+  Note note = 1;
+  Plan plan = 2;                    // обновлённый сегодняшний план
 }

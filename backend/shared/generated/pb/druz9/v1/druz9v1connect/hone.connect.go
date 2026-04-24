@@ -102,6 +102,12 @@ const (
 	// HoneServiceCritiqueWhiteboardProcedure is the fully-qualified name of the HoneService's
 	// CritiqueWhiteboard RPC.
 	HoneServiceCritiqueWhiteboardProcedure = "/druz9.v1.HoneService/CritiqueWhiteboard"
+	// HoneServiceSaveCritiqueAsNoteProcedure is the fully-qualified name of the HoneService's
+	// SaveCritiqueAsNote RPC.
+	HoneServiceSaveCritiqueAsNoteProcedure = "/druz9.v1.HoneService/SaveCritiqueAsNote"
+	// HoneServiceRecordStandupProcedure is the fully-qualified name of the HoneService's RecordStandup
+	// RPC.
+	HoneServiceRecordStandupProcedure = "/druz9.v1.HoneService/RecordStandup"
 )
 
 // HoneServiceClient is a client for the druz9.v1.HoneService service.
@@ -132,6 +138,9 @@ type HoneServiceClient interface {
 	DeleteWhiteboard(context.Context, *connect.Request[v1.DeleteWhiteboardRequest]) (*connect.Response[v1.DeleteWhiteboardResponse], error)
 	// Server-streaming AI critique — mirrors the SysDesignCritique task.
 	CritiqueWhiteboard(context.Context, *connect.Request[v1.CritiqueWhiteboardRequest]) (*connect.ServerStreamForClient[v1.CritiquePacket], error)
+	SaveCritiqueAsNote(context.Context, *connect.Request[v1.SaveCritiqueAsNoteRequest]) (*connect.Response[v1.Note], error)
+	// ─── Standup ────────────────────────────────────────────────────────
+	RecordStandup(context.Context, *connect.Request[v1.RecordStandupRequest]) (*connect.Response[v1.RecordStandupResponse], error)
 }
 
 // NewHoneServiceClient constructs a client for the druz9.v1.HoneService service. By default, it
@@ -259,6 +268,18 @@ func NewHoneServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 			connect.WithSchema(honeServiceMethods.ByName("CritiqueWhiteboard")),
 			connect.WithClientOptions(opts...),
 		),
+		saveCritiqueAsNote: connect.NewClient[v1.SaveCritiqueAsNoteRequest, v1.Note](
+			httpClient,
+			baseURL+HoneServiceSaveCritiqueAsNoteProcedure,
+			connect.WithSchema(honeServiceMethods.ByName("SaveCritiqueAsNote")),
+			connect.WithClientOptions(opts...),
+		),
+		recordStandup: connect.NewClient[v1.RecordStandupRequest, v1.RecordStandupResponse](
+			httpClient,
+			baseURL+HoneServiceRecordStandupProcedure,
+			connect.WithSchema(honeServiceMethods.ByName("RecordStandup")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -283,6 +304,8 @@ type honeServiceClient struct {
 	listWhiteboards    *connect.Client[v1.ListWhiteboardsRequest, v1.ListWhiteboardsResponse]
 	deleteWhiteboard   *connect.Client[v1.DeleteWhiteboardRequest, v1.DeleteWhiteboardResponse]
 	critiqueWhiteboard *connect.Client[v1.CritiqueWhiteboardRequest, v1.CritiquePacket]
+	saveCritiqueAsNote *connect.Client[v1.SaveCritiqueAsNoteRequest, v1.Note]
+	recordStandup      *connect.Client[v1.RecordStandupRequest, v1.RecordStandupResponse]
 }
 
 // GenerateDailyPlan calls druz9.v1.HoneService.GenerateDailyPlan.
@@ -380,6 +403,16 @@ func (c *honeServiceClient) CritiqueWhiteboard(ctx context.Context, req *connect
 	return c.critiqueWhiteboard.CallServerStream(ctx, req)
 }
 
+// SaveCritiqueAsNote calls druz9.v1.HoneService.SaveCritiqueAsNote.
+func (c *honeServiceClient) SaveCritiqueAsNote(ctx context.Context, req *connect.Request[v1.SaveCritiqueAsNoteRequest]) (*connect.Response[v1.Note], error) {
+	return c.saveCritiqueAsNote.CallUnary(ctx, req)
+}
+
+// RecordStandup calls druz9.v1.HoneService.RecordStandup.
+func (c *honeServiceClient) RecordStandup(ctx context.Context, req *connect.Request[v1.RecordStandupRequest]) (*connect.Response[v1.RecordStandupResponse], error) {
+	return c.recordStandup.CallUnary(ctx, req)
+}
+
 // HoneServiceHandler is an implementation of the druz9.v1.HoneService service.
 type HoneServiceHandler interface {
 	// ─── Plan ───────────────────────────────────────────────────────────
@@ -408,6 +441,9 @@ type HoneServiceHandler interface {
 	DeleteWhiteboard(context.Context, *connect.Request[v1.DeleteWhiteboardRequest]) (*connect.Response[v1.DeleteWhiteboardResponse], error)
 	// Server-streaming AI critique — mirrors the SysDesignCritique task.
 	CritiqueWhiteboard(context.Context, *connect.Request[v1.CritiqueWhiteboardRequest], *connect.ServerStream[v1.CritiquePacket]) error
+	SaveCritiqueAsNote(context.Context, *connect.Request[v1.SaveCritiqueAsNoteRequest]) (*connect.Response[v1.Note], error)
+	// ─── Standup ────────────────────────────────────────────────────────
+	RecordStandup(context.Context, *connect.Request[v1.RecordStandupRequest]) (*connect.Response[v1.RecordStandupResponse], error)
 }
 
 // NewHoneServiceHandler builds an HTTP handler from the service implementation. It returns the path
@@ -531,6 +567,18 @@ func NewHoneServiceHandler(svc HoneServiceHandler, opts ...connect.HandlerOption
 		connect.WithSchema(honeServiceMethods.ByName("CritiqueWhiteboard")),
 		connect.WithHandlerOptions(opts...),
 	)
+	honeServiceSaveCritiqueAsNoteHandler := connect.NewUnaryHandler(
+		HoneServiceSaveCritiqueAsNoteProcedure,
+		svc.SaveCritiqueAsNote,
+		connect.WithSchema(honeServiceMethods.ByName("SaveCritiqueAsNote")),
+		connect.WithHandlerOptions(opts...),
+	)
+	honeServiceRecordStandupHandler := connect.NewUnaryHandler(
+		HoneServiceRecordStandupProcedure,
+		svc.RecordStandup,
+		connect.WithSchema(honeServiceMethods.ByName("RecordStandup")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/druz9.v1.HoneService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case HoneServiceGenerateDailyPlanProcedure:
@@ -571,6 +619,10 @@ func NewHoneServiceHandler(svc HoneServiceHandler, opts ...connect.HandlerOption
 			honeServiceDeleteWhiteboardHandler.ServeHTTP(w, r)
 		case HoneServiceCritiqueWhiteboardProcedure:
 			honeServiceCritiqueWhiteboardHandler.ServeHTTP(w, r)
+		case HoneServiceSaveCritiqueAsNoteProcedure:
+			honeServiceSaveCritiqueAsNoteHandler.ServeHTTP(w, r)
+		case HoneServiceRecordStandupProcedure:
+			honeServiceRecordStandupHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -654,4 +706,12 @@ func (UnimplementedHoneServiceHandler) DeleteWhiteboard(context.Context, *connec
 
 func (UnimplementedHoneServiceHandler) CritiqueWhiteboard(context.Context, *connect.Request[v1.CritiqueWhiteboardRequest], *connect.ServerStream[v1.CritiquePacket]) error {
 	return connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.HoneService.CritiqueWhiteboard is not implemented"))
+}
+
+func (UnimplementedHoneServiceHandler) SaveCritiqueAsNote(context.Context, *connect.Request[v1.SaveCritiqueAsNoteRequest]) (*connect.Response[v1.Note], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.HoneService.SaveCritiqueAsNote is not implemented"))
+}
+
+func (UnimplementedHoneServiceHandler) RecordStandup(context.Context, *connect.Request[v1.RecordStandupRequest]) (*connect.Response[v1.RecordStandupResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.HoneService.RecordStandup is not implemented"))
 }

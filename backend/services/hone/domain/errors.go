@@ -29,3 +29,10 @@ var ErrLLMUnavailable = errors.New("hone: llm unavailable")
 // surfaces this to the client; the UI shows the "connections not indexed
 // yet" state rather than fabricating bogus edges.
 var ErrEmbeddingUnavailable = errors.New("hone: embedding unavailable")
+
+// ErrInvalidInput — запрос синтаксически валиден, но нарушает доменный
+// инвариант (пустой обязательный body, отрицательные величины и т.п.).
+// Маппится в connect.CodeInvalidArgument (HTTP 400). В отличие от
+// standard-library errors возврат этого sentinel'а НЕ значит, что request
+// пришёл поломанным — валидация wire-формата делается в proto-слое.
+var ErrInvalidInput = errors.New("hone: invalid input")

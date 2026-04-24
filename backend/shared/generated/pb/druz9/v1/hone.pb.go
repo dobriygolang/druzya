@@ -43,16 +43,24 @@ const (
 
 // PlanItem is one row in a day's plan.
 type PlanItem struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	Kind          string                 `protobuf:"bytes,2,opt,name=kind,proto3" json:"kind,omitempty"` // solve | mock | review | read | custom
-	Title         string                 `protobuf:"bytes,3,opt,name=title,proto3" json:"title,omitempty"`
-	Subtitle      string                 `protobuf:"bytes,4,opt,name=subtitle,proto3" json:"subtitle,omitempty"`                    // one-liner reason ("Targets your weak spot — BFS on trees")
-	TargetRef     string                 `protobuf:"bytes,5,opt,name=target_ref,json=targetRef,proto3" json:"target_ref,omitempty"` // deep-link payload (task slug, slot id, URL)
-	DeepLink      string                 `protobuf:"bytes,6,opt,name=deep_link,json=deepLink,proto3" json:"deep_link,omitempty"`    // fully-formed druz9:// or https:// link
-	EstimatedMin  int32                  `protobuf:"varint,7,opt,name=estimated_min,json=estimatedMin,proto3" json:"estimated_min,omitempty"`
-	Dismissed     bool                   `protobuf:"varint,8,opt,name=dismissed,proto3" json:"dismissed,omitempty"`
-	Completed     bool                   `protobuf:"varint,9,opt,name=completed,proto3" json:"completed,omitempty"`
+	state        protoimpl.MessageState `protogen:"open.v1"`
+	Id           string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Kind         string                 `protobuf:"bytes,2,opt,name=kind,proto3" json:"kind,omitempty"` // solve | mock | review | read | custom
+	Title        string                 `protobuf:"bytes,3,opt,name=title,proto3" json:"title,omitempty"`
+	Subtitle     string                 `protobuf:"bytes,4,opt,name=subtitle,proto3" json:"subtitle,omitempty"`                    // one-liner reason ("Targets your weak spot — BFS on trees")
+	TargetRef    string                 `protobuf:"bytes,5,opt,name=target_ref,json=targetRef,proto3" json:"target_ref,omitempty"` // deep-link payload (task slug, slot id, URL)
+	DeepLink     string                 `protobuf:"bytes,6,opt,name=deep_link,json=deepLink,proto3" json:"deep_link,omitempty"`    // fully-formed druz9:// or https:// link
+	EstimatedMin int32                  `protobuf:"varint,7,opt,name=estimated_min,json=estimatedMin,proto3" json:"estimated_min,omitempty"`
+	Dismissed    bool                   `protobuf:"varint,8,opt,name=dismissed,proto3" json:"dismissed,omitempty"`
+	Completed    bool                   `protobuf:"varint,9,opt,name=completed,proto3" json:"completed,omitempty"`
+	// Мотивирующий контекст — почему этот пункт полезен ИМЕННО этому юзеру
+	// («это закрывает твой gap в System Design: progress=28»). Строится
+	// синтезайзером из Skill Atlas. Пустой = отображается только subtitle.
+	Rationale string `protobuf:"bytes,10,opt,name=rationale,proto3" json:"rationale,omitempty"`
+	// Ключ скилла, с которым item связан (NodeKey из WeakNode). Используется
+	// resistance-tracker'ом чтобы считать, сколько раз юзер dismiss'ил задачи
+	// одного и того же скилла подряд.
+	SkillKey      string `protobuf:"bytes,11,opt,name=skill_key,json=skillKey,proto3" json:"skill_key,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -148,6 +156,20 @@ func (x *PlanItem) GetCompleted() bool {
 		return x.Completed
 	}
 	return false
+}
+
+func (x *PlanItem) GetRationale() string {
+	if x != nil {
+		return x.Rationale
+	}
+	return ""
+}
+
+func (x *PlanItem) GetSkillKey() string {
+	if x != nil {
+		return x.SkillKey
+	}
+	return ""
 }
 
 // Plan is one day's plan for one user.
@@ -556,8 +578,13 @@ type EndFocusSessionRequest struct {
 	SessionId          string                 `protobuf:"bytes,1,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
 	PomodorosCompleted int32                  `protobuf:"varint,2,opt,name=pomodoros_completed,json=pomodorosCompleted,proto3" json:"pomodoros_completed,omitempty"`
 	SecondsFocused     int32                  `protobuf:"varint,3,opt,name=seconds_focused,json=secondsFocused,proto3" json:"seconds_focused,omitempty"`
-	unknownFields      protoimpl.UnknownFields
-	sizeCache          protoimpl.SizeCache
+	// Необязательный «reflection» — одна строка «что сделал за эту сессию».
+	// Если непустой, бекенд создаёт отдельную заметку с title = pinned/plan
+	// item, body_md = reflection, и прикрепляет session id + дату. Stats
+	// агрегирует эти заметки в «хронологию прогресса».
+	Reflection    string `protobuf:"bytes,4,opt,name=reflection,proto3" json:"reflection,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *EndFocusSessionRequest) Reset() {
@@ -609,6 +636,13 @@ func (x *EndFocusSessionRequest) GetSecondsFocused() int32 {
 		return x.SecondsFocused
 	}
 	return 0
+}
+
+func (x *EndFocusSessionRequest) GetReflection() string {
+	if x != nil {
+		return x.Reflection
+	}
+	return ""
 }
 
 type GetStatsRequest struct {
@@ -1932,6 +1966,72 @@ func (x *CritiqueWhiteboardRequest) GetId() string {
 	return ""
 }
 
+// SaveCritiqueAsNote превращает последнюю AI-критику доски в приватную
+// заметку. Клиент передаёт уже собранный markdown (стримлённые пакеты
+// склеены по секциям) — сервер создаёт Note с title=title, body=body_md.
+// Серверный re-run критики ради сохранения был бы дорог и не гарантирует
+// идентичный результат (temperature>0). Клиент — источник истины того,
+// что пользователь увидел.
+type SaveCritiqueAsNoteRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	WhiteboardId  string                 `protobuf:"bytes,1,opt,name=whiteboard_id,json=whiteboardId,proto3" json:"whiteboard_id,omitempty"`
+	Title         string                 `protobuf:"bytes,2,opt,name=title,proto3" json:"title,omitempty"` // если empty → "Critique: <whiteboard title>"
+	BodyMd        string                 `protobuf:"bytes,3,opt,name=body_md,json=bodyMd,proto3" json:"body_md,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SaveCritiqueAsNoteRequest) Reset() {
+	*x = SaveCritiqueAsNoteRequest{}
+	mi := &file_druz9_v1_hone_proto_msgTypes[33]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SaveCritiqueAsNoteRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SaveCritiqueAsNoteRequest) ProtoMessage() {}
+
+func (x *SaveCritiqueAsNoteRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_hone_proto_msgTypes[33]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SaveCritiqueAsNoteRequest.ProtoReflect.Descriptor instead.
+func (*SaveCritiqueAsNoteRequest) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_hone_proto_rawDescGZIP(), []int{33}
+}
+
+func (x *SaveCritiqueAsNoteRequest) GetWhiteboardId() string {
+	if x != nil {
+		return x.WhiteboardId
+	}
+	return ""
+}
+
+func (x *SaveCritiqueAsNoteRequest) GetTitle() string {
+	if x != nil {
+		return x.Title
+	}
+	return ""
+}
+
+func (x *SaveCritiqueAsNoteRequest) GetBodyMd() string {
+	if x != nil {
+		return x.BodyMd
+	}
+	return ""
+}
+
 // CritiquePacket is one streaming chunk of the AI architect's feedback.
 // Shape mirrors the SysDesignCritique task output: sectioned prose streamed
 // token-by-token. The client accumulates into a panel that fades in.
@@ -1947,7 +2047,7 @@ type CritiquePacket struct {
 
 func (x *CritiquePacket) Reset() {
 	*x = CritiquePacket{}
-	mi := &file_druz9_v1_hone_proto_msgTypes[33]
+	mi := &file_druz9_v1_hone_proto_msgTypes[34]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1959,7 +2059,7 @@ func (x *CritiquePacket) String() string {
 func (*CritiquePacket) ProtoMessage() {}
 
 func (x *CritiquePacket) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_hone_proto_msgTypes[33]
+	mi := &file_druz9_v1_hone_proto_msgTypes[34]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1972,7 +2072,7 @@ func (x *CritiquePacket) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CritiquePacket.ProtoReflect.Descriptor instead.
 func (*CritiquePacket) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_hone_proto_rawDescGZIP(), []int{33}
+	return file_druz9_v1_hone_proto_rawDescGZIP(), []int{34}
 }
 
 func (x *CritiquePacket) GetSection() string {
@@ -1996,11 +2096,130 @@ func (x *CritiquePacket) GetDone() bool {
 	return false
 }
 
+// Три вопроса классического dev standup'а. Бекенд:
+//  1. Создаёт заметку с заголовком «Standup YYYY-MM-DD» и body в формате
+//     «## Yesterday / ## Today / ## Blockers».
+//  2. Если «today» непустой, добавляет свежий PlanItem kind=custom с
+//     title=«today»[:60] в сегодняшний Plan (не перегенеряя AI-план).
+//  3. Возвращает созданную заметку + обновлённый Plan для мгновенного
+//     рендера.
+type RecordStandupRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Yesterday     string                 `protobuf:"bytes,1,opt,name=yesterday,proto3" json:"yesterday,omitempty"`
+	Today         string                 `protobuf:"bytes,2,opt,name=today,proto3" json:"today,omitempty"`
+	Blockers      string                 `protobuf:"bytes,3,opt,name=blockers,proto3" json:"blockers,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RecordStandupRequest) Reset() {
+	*x = RecordStandupRequest{}
+	mi := &file_druz9_v1_hone_proto_msgTypes[35]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RecordStandupRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RecordStandupRequest) ProtoMessage() {}
+
+func (x *RecordStandupRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_hone_proto_msgTypes[35]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RecordStandupRequest.ProtoReflect.Descriptor instead.
+func (*RecordStandupRequest) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_hone_proto_rawDescGZIP(), []int{35}
+}
+
+func (x *RecordStandupRequest) GetYesterday() string {
+	if x != nil {
+		return x.Yesterday
+	}
+	return ""
+}
+
+func (x *RecordStandupRequest) GetToday() string {
+	if x != nil {
+		return x.Today
+	}
+	return ""
+}
+
+func (x *RecordStandupRequest) GetBlockers() string {
+	if x != nil {
+		return x.Blockers
+	}
+	return ""
+}
+
+type RecordStandupResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Note          *Note                  `protobuf:"bytes,1,opt,name=note,proto3" json:"note,omitempty"`
+	Plan          *Plan                  `protobuf:"bytes,2,opt,name=plan,proto3" json:"plan,omitempty"` // обновлённый сегодняшний план
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RecordStandupResponse) Reset() {
+	*x = RecordStandupResponse{}
+	mi := &file_druz9_v1_hone_proto_msgTypes[36]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RecordStandupResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RecordStandupResponse) ProtoMessage() {}
+
+func (x *RecordStandupResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_hone_proto_msgTypes[36]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RecordStandupResponse.ProtoReflect.Descriptor instead.
+func (*RecordStandupResponse) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_hone_proto_rawDescGZIP(), []int{36}
+}
+
+func (x *RecordStandupResponse) GetNote() *Note {
+	if x != nil {
+		return x.Note
+	}
+	return nil
+}
+
+func (x *RecordStandupResponse) GetPlan() *Plan {
+	if x != nil {
+		return x.Plan
+	}
+	return nil
+}
+
 var File_druz9_v1_hone_proto protoreflect.FileDescriptor
 
 const file_druz9_v1_hone_proto_rawDesc = "" +
 	"\n" +
-	"\x13druz9/v1/hone.proto\x12\bdruz9.v1\x1a\x1cgoogle/api/annotations.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\xfd\x01\n" +
+	"\x13druz9/v1/hone.proto\x12\bdruz9.v1\x1a\x1cgoogle/api/annotations.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\xb8\x02\n" +
 	"\bPlanItem\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04kind\x18\x02 \x01(\tR\x04kind\x12\x14\n" +
@@ -2011,7 +2230,10 @@ const file_druz9_v1_hone_proto_rawDesc = "" +
 	"\tdeep_link\x18\x06 \x01(\tR\bdeepLink\x12#\n" +
 	"\restimated_min\x18\a \x01(\x05R\festimatedMin\x12\x1c\n" +
 	"\tdismissed\x18\b \x01(\bR\tdismissed\x12\x1c\n" +
-	"\tcompleted\x18\t \x01(\bR\tcompleted\"\x97\x01\n" +
+	"\tcompleted\x18\t \x01(\bR\tcompleted\x12\x1c\n" +
+	"\trationale\x18\n" +
+	" \x01(\tR\trationale\x12\x1b\n" +
+	"\tskill_key\x18\v \x01(\tR\bskillKey\"\x97\x01\n" +
 	"\x04Plan\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04date\x18\x02 \x01(\tR\x04date\x12A\n" +
@@ -2039,12 +2261,15 @@ const file_druz9_v1_hone_proto_rawDesc = "" +
 	"\fplan_item_id\x18\x01 \x01(\tR\n" +
 	"planItemId\x12!\n" +
 	"\fpinned_title\x18\x02 \x01(\tR\vpinnedTitle\x12\x12\n" +
-	"\x04mode\x18\x03 \x01(\tR\x04mode\"\x91\x01\n" +
+	"\x04mode\x18\x03 \x01(\tR\x04mode\"\xb1\x01\n" +
 	"\x16EndFocusSessionRequest\x12\x1d\n" +
 	"\n" +
 	"session_id\x18\x01 \x01(\tR\tsessionId\x12/\n" +
 	"\x13pomodoros_completed\x18\x02 \x01(\x05R\x12pomodorosCompleted\x12'\n" +
-	"\x0fseconds_focused\x18\x03 \x01(\x05R\x0esecondsFocused\"/\n" +
+	"\x0fseconds_focused\x18\x03 \x01(\x05R\x0esecondsFocused\x12\x1e\n" +
+	"\n" +
+	"reflection\x18\x04 \x01(\tR\n" +
+	"reflection\"/\n" +
 	"\x0fGetStatsRequest\x12\x1c\n" +
 	"\n" +
 	"up_to_date\x18\x01 \x01(\tR\bupToDate\"[\n" +
@@ -2140,11 +2365,22 @@ const file_druz9_v1_hone_proto_rawDesc = "" +
 	"\x02id\x18\x01 \x01(\tR\x02id\"\x1a\n" +
 	"\x18DeleteWhiteboardResponse\"+\n" +
 	"\x19CritiqueWhiteboardRequest\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\tR\x02id\"T\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\"o\n" +
+	"\x19SaveCritiqueAsNoteRequest\x12#\n" +
+	"\rwhiteboard_id\x18\x01 \x01(\tR\fwhiteboardId\x12\x14\n" +
+	"\x05title\x18\x02 \x01(\tR\x05title\x12\x17\n" +
+	"\abody_md\x18\x03 \x01(\tR\x06bodyMd\"T\n" +
 	"\x0eCritiquePacket\x12\x18\n" +
 	"\asection\x18\x01 \x01(\tR\asection\x12\x14\n" +
 	"\x05delta\x18\x02 \x01(\tR\x05delta\x12\x12\n" +
-	"\x04done\x18\x03 \x01(\bR\x04done2\xd1\x0f\n" +
+	"\x04done\x18\x03 \x01(\bR\x04done\"f\n" +
+	"\x14RecordStandupRequest\x12\x1c\n" +
+	"\tyesterday\x18\x01 \x01(\tR\tyesterday\x12\x14\n" +
+	"\x05today\x18\x02 \x01(\tR\x05today\x12\x1a\n" +
+	"\bblockers\x18\x03 \x01(\tR\bblockers\"_\n" +
+	"\x15RecordStandupResponse\x12\"\n" +
+	"\x04note\x18\x01 \x01(\v2\x0e.druz9.v1.NoteR\x04note\x12\"\n" +
+	"\x04plan\x18\x02 \x01(\v2\x0e.druz9.v1.PlanR\x04plan2\xc2\x11\n" +
 	"\vHoneService\x12n\n" +
 	"\x11GenerateDailyPlan\x12\".druz9.v1.GenerateDailyPlanRequest\x1a\x0e.druz9.v1.Plan\"%\x82\xd3\xe4\x93\x02\x1f:\x01*\"\x1a/api/v1/hone/plan/generate\x12X\n" +
 	"\fGetDailyPlan\x12\x1d.druz9.v1.GetDailyPlanRequest\x1a\x0e.druz9.v1.Plan\"\x19\x82\xd3\xe4\x93\x02\x13\x12\x11/api/v1/hone/plan\x12i\n" +
@@ -2167,7 +2403,9 @@ const file_druz9_v1_hone_proto_rawDesc = "" +
 	"\rGetWhiteboard\x12\x1e.druz9.v1.GetWhiteboardRequest\x1a\x14.druz9.v1.Whiteboard\"%\x82\xd3\xe4\x93\x02\x1f\x12\x1d/api/v1/hone/whiteboards/{id}\x12x\n" +
 	"\x0fListWhiteboards\x12 .druz9.v1.ListWhiteboardsRequest\x1a!.druz9.v1.ListWhiteboardsResponse\" \x82\xd3\xe4\x93\x02\x1a\x12\x18/api/v1/hone/whiteboards\x12\x85\x01\n" +
 	"\x10DeleteWhiteboard\x12!.druz9.v1.DeleteWhiteboardRequest\x1a\".druz9.v1.DeleteWhiteboardResponse\"*\x82\xd3\xe4\x93\x02$:\x01*\"\x1f/api/v1/hone/whiteboards/delete\x12U\n" +
-	"\x12CritiqueWhiteboard\x12#.druz9.v1.CritiqueWhiteboardRequest\x1a\x18.druz9.v1.CritiquePacket0\x01B\x86\x01\n" +
+	"\x12CritiqueWhiteboard\x12#.druz9.v1.CritiqueWhiteboardRequest\x1a\x18.druz9.v1.CritiquePacket0\x01\x12|\n" +
+	"\x12SaveCritiqueAsNote\x12#.druz9.v1.SaveCritiqueAsNoteRequest\x1a\x0e.druz9.v1.Note\"1\x82\xd3\xe4\x93\x02+:\x01*\"&/api/v1/hone/whiteboards/critique/save\x12q\n" +
+	"\rRecordStandup\x12\x1e.druz9.v1.RecordStandupRequest\x1a\x1f.druz9.v1.RecordStandupResponse\"\x1f\x82\xd3\xe4\x93\x02\x19:\x01*\"\x14/api/v1/hone/standupB\x86\x01\n" +
 	"\fcom.druz9.v1B\tHoneProtoP\x01Z*druz9/shared/generated/pb/druz9/v1;druz9v1\xa2\x02\x03DXX\xaa\x02\bDruz9.V1\xca\x02\bDruz9\\V1\xe2\x02\x14Druz9\\V1\\GPBMetadata\xea\x02\tDruz9::V1b\x06proto3"
 
 var (
@@ -2182,7 +2420,7 @@ func file_druz9_v1_hone_proto_rawDescGZIP() []byte {
 	return file_druz9_v1_hone_proto_rawDescData
 }
 
-var file_druz9_v1_hone_proto_msgTypes = make([]protoimpl.MessageInfo, 34)
+var file_druz9_v1_hone_proto_msgTypes = make([]protoimpl.MessageInfo, 37)
 var file_druz9_v1_hone_proto_goTypes = []any{
 	(*PlanItem)(nil),                  // 0: druz9.v1.PlanItem
 	(*Plan)(nil),                      // 1: druz9.v1.Plan
@@ -2217,67 +2455,76 @@ var file_druz9_v1_hone_proto_goTypes = []any{
 	(*DeleteWhiteboardRequest)(nil),   // 30: druz9.v1.DeleteWhiteboardRequest
 	(*DeleteWhiteboardResponse)(nil),  // 31: druz9.v1.DeleteWhiteboardResponse
 	(*CritiqueWhiteboardRequest)(nil), // 32: druz9.v1.CritiqueWhiteboardRequest
-	(*CritiquePacket)(nil),            // 33: druz9.v1.CritiquePacket
-	(*timestamppb.Timestamp)(nil),     // 34: google.protobuf.Timestamp
+	(*SaveCritiqueAsNoteRequest)(nil), // 33: druz9.v1.SaveCritiqueAsNoteRequest
+	(*CritiquePacket)(nil),            // 34: druz9.v1.CritiquePacket
+	(*RecordStandupRequest)(nil),      // 35: druz9.v1.RecordStandupRequest
+	(*RecordStandupResponse)(nil),     // 36: druz9.v1.RecordStandupResponse
+	(*timestamppb.Timestamp)(nil),     // 37: google.protobuf.Timestamp
 }
 var file_druz9_v1_hone_proto_depIdxs = []int32{
-	34, // 0: druz9.v1.Plan.regenerated_at:type_name -> google.protobuf.Timestamp
+	37, // 0: druz9.v1.Plan.regenerated_at:type_name -> google.protobuf.Timestamp
 	0,  // 1: druz9.v1.Plan.items:type_name -> druz9.v1.PlanItem
-	34, // 2: druz9.v1.FocusSession.started_at:type_name -> google.protobuf.Timestamp
-	34, // 3: druz9.v1.FocusSession.ended_at:type_name -> google.protobuf.Timestamp
+	37, // 2: druz9.v1.FocusSession.started_at:type_name -> google.protobuf.Timestamp
+	37, // 3: druz9.v1.FocusSession.ended_at:type_name -> google.protobuf.Timestamp
 	10, // 4: druz9.v1.Stats.heatmap:type_name -> druz9.v1.FocusHeatmapDay
 	10, // 5: druz9.v1.Stats.last_seven_days:type_name -> druz9.v1.FocusHeatmapDay
-	34, // 6: druz9.v1.Note.created_at:type_name -> google.protobuf.Timestamp
-	34, // 7: druz9.v1.Note.updated_at:type_name -> google.protobuf.Timestamp
-	34, // 8: druz9.v1.NoteSummary.updated_at:type_name -> google.protobuf.Timestamp
+	37, // 6: druz9.v1.Note.created_at:type_name -> google.protobuf.Timestamp
+	37, // 7: druz9.v1.Note.updated_at:type_name -> google.protobuf.Timestamp
+	37, // 8: druz9.v1.NoteSummary.updated_at:type_name -> google.protobuf.Timestamp
 	13, // 9: druz9.v1.ListNotesResponse.notes:type_name -> druz9.v1.NoteSummary
-	34, // 10: druz9.v1.Whiteboard.created_at:type_name -> google.protobuf.Timestamp
-	34, // 11: druz9.v1.Whiteboard.updated_at:type_name -> google.protobuf.Timestamp
-	34, // 12: druz9.v1.WhiteboardSummary.updated_at:type_name -> google.protobuf.Timestamp
+	37, // 10: druz9.v1.Whiteboard.created_at:type_name -> google.protobuf.Timestamp
+	37, // 11: druz9.v1.Whiteboard.updated_at:type_name -> google.protobuf.Timestamp
+	37, // 12: druz9.v1.WhiteboardSummary.updated_at:type_name -> google.protobuf.Timestamp
 	24, // 13: druz9.v1.ListWhiteboardsResponse.whiteboards:type_name -> druz9.v1.WhiteboardSummary
-	2,  // 14: druz9.v1.HoneService.GenerateDailyPlan:input_type -> druz9.v1.GenerateDailyPlanRequest
-	3,  // 15: druz9.v1.HoneService.GetDailyPlan:input_type -> druz9.v1.GetDailyPlanRequest
-	4,  // 16: druz9.v1.HoneService.DismissPlanItem:input_type -> druz9.v1.DismissPlanItemRequest
-	5,  // 17: druz9.v1.HoneService.CompletePlanItem:input_type -> druz9.v1.CompletePlanItemRequest
-	7,  // 18: druz9.v1.HoneService.StartFocusSession:input_type -> druz9.v1.StartFocusSessionRequest
-	8,  // 19: druz9.v1.HoneService.EndFocusSession:input_type -> druz9.v1.EndFocusSessionRequest
-	9,  // 20: druz9.v1.HoneService.GetStats:input_type -> druz9.v1.GetStatsRequest
-	14, // 21: druz9.v1.HoneService.CreateNote:input_type -> druz9.v1.CreateNoteRequest
-	15, // 22: druz9.v1.HoneService.UpdateNote:input_type -> druz9.v1.UpdateNoteRequest
-	16, // 23: druz9.v1.HoneService.GetNote:input_type -> druz9.v1.GetNoteRequest
-	17, // 24: druz9.v1.HoneService.ListNotes:input_type -> druz9.v1.ListNotesRequest
-	19, // 25: druz9.v1.HoneService.DeleteNote:input_type -> druz9.v1.DeleteNoteRequest
-	22, // 26: druz9.v1.HoneService.GetNoteConnections:input_type -> druz9.v1.GetNoteConnectionsRequest
-	25, // 27: druz9.v1.HoneService.CreateWhiteboard:input_type -> druz9.v1.CreateWhiteboardRequest
-	26, // 28: druz9.v1.HoneService.UpdateWhiteboard:input_type -> druz9.v1.UpdateWhiteboardRequest
-	27, // 29: druz9.v1.HoneService.GetWhiteboard:input_type -> druz9.v1.GetWhiteboardRequest
-	28, // 30: druz9.v1.HoneService.ListWhiteboards:input_type -> druz9.v1.ListWhiteboardsRequest
-	30, // 31: druz9.v1.HoneService.DeleteWhiteboard:input_type -> druz9.v1.DeleteWhiteboardRequest
-	32, // 32: druz9.v1.HoneService.CritiqueWhiteboard:input_type -> druz9.v1.CritiqueWhiteboardRequest
-	1,  // 33: druz9.v1.HoneService.GenerateDailyPlan:output_type -> druz9.v1.Plan
-	1,  // 34: druz9.v1.HoneService.GetDailyPlan:output_type -> druz9.v1.Plan
-	1,  // 35: druz9.v1.HoneService.DismissPlanItem:output_type -> druz9.v1.Plan
-	1,  // 36: druz9.v1.HoneService.CompletePlanItem:output_type -> druz9.v1.Plan
-	6,  // 37: druz9.v1.HoneService.StartFocusSession:output_type -> druz9.v1.FocusSession
-	6,  // 38: druz9.v1.HoneService.EndFocusSession:output_type -> druz9.v1.FocusSession
-	11, // 39: druz9.v1.HoneService.GetStats:output_type -> druz9.v1.Stats
-	12, // 40: druz9.v1.HoneService.CreateNote:output_type -> druz9.v1.Note
-	12, // 41: druz9.v1.HoneService.UpdateNote:output_type -> druz9.v1.Note
-	12, // 42: druz9.v1.HoneService.GetNote:output_type -> druz9.v1.Note
-	18, // 43: druz9.v1.HoneService.ListNotes:output_type -> druz9.v1.ListNotesResponse
-	20, // 44: druz9.v1.HoneService.DeleteNote:output_type -> druz9.v1.DeleteNoteResponse
-	21, // 45: druz9.v1.HoneService.GetNoteConnections:output_type -> druz9.v1.Connection
-	23, // 46: druz9.v1.HoneService.CreateWhiteboard:output_type -> druz9.v1.Whiteboard
-	23, // 47: druz9.v1.HoneService.UpdateWhiteboard:output_type -> druz9.v1.Whiteboard
-	23, // 48: druz9.v1.HoneService.GetWhiteboard:output_type -> druz9.v1.Whiteboard
-	29, // 49: druz9.v1.HoneService.ListWhiteboards:output_type -> druz9.v1.ListWhiteboardsResponse
-	31, // 50: druz9.v1.HoneService.DeleteWhiteboard:output_type -> druz9.v1.DeleteWhiteboardResponse
-	33, // 51: druz9.v1.HoneService.CritiqueWhiteboard:output_type -> druz9.v1.CritiquePacket
-	33, // [33:52] is the sub-list for method output_type
-	14, // [14:33] is the sub-list for method input_type
-	14, // [14:14] is the sub-list for extension type_name
-	14, // [14:14] is the sub-list for extension extendee
-	0,  // [0:14] is the sub-list for field type_name
+	12, // 14: druz9.v1.RecordStandupResponse.note:type_name -> druz9.v1.Note
+	1,  // 15: druz9.v1.RecordStandupResponse.plan:type_name -> druz9.v1.Plan
+	2,  // 16: druz9.v1.HoneService.GenerateDailyPlan:input_type -> druz9.v1.GenerateDailyPlanRequest
+	3,  // 17: druz9.v1.HoneService.GetDailyPlan:input_type -> druz9.v1.GetDailyPlanRequest
+	4,  // 18: druz9.v1.HoneService.DismissPlanItem:input_type -> druz9.v1.DismissPlanItemRequest
+	5,  // 19: druz9.v1.HoneService.CompletePlanItem:input_type -> druz9.v1.CompletePlanItemRequest
+	7,  // 20: druz9.v1.HoneService.StartFocusSession:input_type -> druz9.v1.StartFocusSessionRequest
+	8,  // 21: druz9.v1.HoneService.EndFocusSession:input_type -> druz9.v1.EndFocusSessionRequest
+	9,  // 22: druz9.v1.HoneService.GetStats:input_type -> druz9.v1.GetStatsRequest
+	14, // 23: druz9.v1.HoneService.CreateNote:input_type -> druz9.v1.CreateNoteRequest
+	15, // 24: druz9.v1.HoneService.UpdateNote:input_type -> druz9.v1.UpdateNoteRequest
+	16, // 25: druz9.v1.HoneService.GetNote:input_type -> druz9.v1.GetNoteRequest
+	17, // 26: druz9.v1.HoneService.ListNotes:input_type -> druz9.v1.ListNotesRequest
+	19, // 27: druz9.v1.HoneService.DeleteNote:input_type -> druz9.v1.DeleteNoteRequest
+	22, // 28: druz9.v1.HoneService.GetNoteConnections:input_type -> druz9.v1.GetNoteConnectionsRequest
+	25, // 29: druz9.v1.HoneService.CreateWhiteboard:input_type -> druz9.v1.CreateWhiteboardRequest
+	26, // 30: druz9.v1.HoneService.UpdateWhiteboard:input_type -> druz9.v1.UpdateWhiteboardRequest
+	27, // 31: druz9.v1.HoneService.GetWhiteboard:input_type -> druz9.v1.GetWhiteboardRequest
+	28, // 32: druz9.v1.HoneService.ListWhiteboards:input_type -> druz9.v1.ListWhiteboardsRequest
+	30, // 33: druz9.v1.HoneService.DeleteWhiteboard:input_type -> druz9.v1.DeleteWhiteboardRequest
+	32, // 34: druz9.v1.HoneService.CritiqueWhiteboard:input_type -> druz9.v1.CritiqueWhiteboardRequest
+	33, // 35: druz9.v1.HoneService.SaveCritiqueAsNote:input_type -> druz9.v1.SaveCritiqueAsNoteRequest
+	35, // 36: druz9.v1.HoneService.RecordStandup:input_type -> druz9.v1.RecordStandupRequest
+	1,  // 37: druz9.v1.HoneService.GenerateDailyPlan:output_type -> druz9.v1.Plan
+	1,  // 38: druz9.v1.HoneService.GetDailyPlan:output_type -> druz9.v1.Plan
+	1,  // 39: druz9.v1.HoneService.DismissPlanItem:output_type -> druz9.v1.Plan
+	1,  // 40: druz9.v1.HoneService.CompletePlanItem:output_type -> druz9.v1.Plan
+	6,  // 41: druz9.v1.HoneService.StartFocusSession:output_type -> druz9.v1.FocusSession
+	6,  // 42: druz9.v1.HoneService.EndFocusSession:output_type -> druz9.v1.FocusSession
+	11, // 43: druz9.v1.HoneService.GetStats:output_type -> druz9.v1.Stats
+	12, // 44: druz9.v1.HoneService.CreateNote:output_type -> druz9.v1.Note
+	12, // 45: druz9.v1.HoneService.UpdateNote:output_type -> druz9.v1.Note
+	12, // 46: druz9.v1.HoneService.GetNote:output_type -> druz9.v1.Note
+	18, // 47: druz9.v1.HoneService.ListNotes:output_type -> druz9.v1.ListNotesResponse
+	20, // 48: druz9.v1.HoneService.DeleteNote:output_type -> druz9.v1.DeleteNoteResponse
+	21, // 49: druz9.v1.HoneService.GetNoteConnections:output_type -> druz9.v1.Connection
+	23, // 50: druz9.v1.HoneService.CreateWhiteboard:output_type -> druz9.v1.Whiteboard
+	23, // 51: druz9.v1.HoneService.UpdateWhiteboard:output_type -> druz9.v1.Whiteboard
+	23, // 52: druz9.v1.HoneService.GetWhiteboard:output_type -> druz9.v1.Whiteboard
+	29, // 53: druz9.v1.HoneService.ListWhiteboards:output_type -> druz9.v1.ListWhiteboardsResponse
+	31, // 54: druz9.v1.HoneService.DeleteWhiteboard:output_type -> druz9.v1.DeleteWhiteboardResponse
+	34, // 55: druz9.v1.HoneService.CritiqueWhiteboard:output_type -> druz9.v1.CritiquePacket
+	12, // 56: druz9.v1.HoneService.SaveCritiqueAsNote:output_type -> druz9.v1.Note
+	36, // 57: druz9.v1.HoneService.RecordStandup:output_type -> druz9.v1.RecordStandupResponse
+	37, // [37:58] is the sub-list for method output_type
+	16, // [16:37] is the sub-list for method input_type
+	16, // [16:16] is the sub-list for extension type_name
+	16, // [16:16] is the sub-list for extension extendee
+	0,  // [0:16] is the sub-list for field type_name
 }
 
 func init() { file_druz9_v1_hone_proto_init() }
@@ -2291,7 +2538,7 @@ func file_druz9_v1_hone_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_druz9_v1_hone_proto_rawDesc), len(file_druz9_v1_hone_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   34,
+			NumMessages:   37,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

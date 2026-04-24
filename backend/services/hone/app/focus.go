@@ -65,6 +65,8 @@ func (uc *StartFocus) Do(ctx context.Context, in StartFocusInput) (domain.FocusS
 type EndFocus struct {
 	Focus             domain.FocusRepo
 	Streaks           domain.StreakRepo
+	Notes             domain.NoteRepo // nullable — без него reflection игнорируется
+	EmbedFn           func(ctx context.Context, userID, noteID uuid.UUID, text string)
 	Log               *slog.Logger
 	Now               func() time.Time
 	QualifyingSeconds int // defaults to MinQualifyingFocusSeconds
@@ -76,6 +78,11 @@ type EndFocusInput struct {
 	SessionID          uuid.UUID
 	PomodorosCompleted int
 	SecondsFocused     int
+	// Reflection — опциональная одна строка «что сделал за эту сессию».
+	// Если непустая, создаётся заметка с title = pinned_title/plan_item_id
+	// + дата, body = reflection. Пустая строка = обычный end-focus без
+	// побочного эффекта.
+	Reflection string
 }
 
 // Do executes the use case.
@@ -100,6 +107,37 @@ func (uc *EndFocus) Do(ctx context.Context, in EndFocusInput) (domain.FocusSessi
 		// Don't fail the client — the session is ended and stored. Log so
 		// the streak reconciliation job (background) can pick up the miss.
 		uc.Log.Error("hone.EndFocus.Do: streak apply failed", slog.Any("err", err), slog.String("session_id", in.SessionID.String()))
+	}
+
+	// Reflection — auto-note «что сделал за эту сессию». Опциональный
+	// побочный эффект: ошибка не роняет EndFocus — сессия уже persisted
+	// и стрик применён, провал записи reflection'а — второстепенная
+	// потеря. Warn-лог достаточен.
+	if uc.Notes != nil && in.Reflection != "" {
+		title := ended.PinnedTitle
+		if title == "" {
+			title = "Focus session"
+		}
+		title = title + " — " + day.Format("2006-01-02")
+		body := in.Reflection +
+			"\n\n---\n" +
+			"Session: " + in.SessionID.String() + "  \n" +
+			"Duration: " + time.Duration(in.SecondsFocused*int(time.Second)).String()
+		n := domain.Note{
+			UserID:    in.UserID,
+			Title:     title,
+			BodyMD:    body,
+			SizeBytes: len(body),
+			CreatedAt: now,
+			UpdatedAt: now,
+		}
+		created, cerr := uc.Notes.Create(ctx, n)
+		if cerr != nil {
+			uc.Log.Warn("hone.EndFocus.Do: reflection note create failed",
+				slog.Any("err", cerr), slog.String("session_id", in.SessionID.String()))
+		} else if uc.EmbedFn != nil {
+			go uc.EmbedFn(context.Background(), in.UserID, created.ID, created.Title+"\n\n"+created.BodyMD)
+		}
 	}
 	return ended, nil
 }

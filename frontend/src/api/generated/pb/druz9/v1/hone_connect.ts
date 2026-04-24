@@ -21,7 +21,7 @@
 /* eslint-disable */
 // @ts-nocheck
 
-import { CompletePlanItemRequest, Connection, CreateNoteRequest, CreateWhiteboardRequest, CritiquePacket, CritiqueWhiteboardRequest, DeleteNoteRequest, DeleteNoteResponse, DeleteWhiteboardRequest, DeleteWhiteboardResponse, DismissPlanItemRequest, EndFocusSessionRequest, FocusSession, GenerateDailyPlanRequest, GetDailyPlanRequest, GetNoteConnectionsRequest, GetNoteRequest, GetStatsRequest, GetWhiteboardRequest, ListNotesRequest, ListNotesResponse, ListWhiteboardsRequest, ListWhiteboardsResponse, Note, Plan, StartFocusSessionRequest, Stats, UpdateNoteRequest, UpdateWhiteboardRequest, Whiteboard } from "./hone_pb.js";
+import { CompletePlanItemRequest, Connection, CreateNoteRequest, CreateWhiteboardRequest, CritiquePacket, CritiqueWhiteboardRequest, DeleteNoteRequest, DeleteNoteResponse, DeleteWhiteboardRequest, DeleteWhiteboardResponse, DismissPlanItemRequest, EndFocusSessionRequest, FocusSession, GenerateDailyPlanRequest, GetDailyPlanRequest, GetNoteConnectionsRequest, GetNoteRequest, GetStatsRequest, GetWhiteboardRequest, ListNotesRequest, ListNotesResponse, ListWhiteboardsRequest, ListWhiteboardsResponse, Note, Plan, RecordStandupRequest, RecordStandupResponse, SaveCritiqueAsNoteRequest, StartFocusSessionRequest, Stats, UpdateNoteRequest, UpdateWhiteboardRequest, Whiteboard } from "./hone_pb.js";
 import { MethodKind } from "@bufbuild/protobuf";
 
 /**
@@ -213,6 +213,26 @@ export const HoneService = {
       I: CritiqueWhiteboardRequest,
       O: CritiquePacket,
       kind: MethodKind.ServerStreaming,
+    },
+    /**
+     * @generated from rpc druz9.v1.HoneService.SaveCritiqueAsNote
+     */
+    saveCritiqueAsNote: {
+      name: "SaveCritiqueAsNote",
+      I: SaveCritiqueAsNoteRequest,
+      O: Note,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * ─── Standup ────────────────────────────────────────────────────────
+     *
+     * @generated from rpc druz9.v1.HoneService.RecordStandup
+     */
+    recordStandup: {
+      name: "RecordStandup",
+      I: RecordStandupRequest,
+      O: RecordStandupResponse,
+      kind: MethodKind.Unary,
     },
   }
 } as const;

@@ -30,6 +30,29 @@ func TestParsePlanJSON_HappyPath(t *testing.T) {
 	}
 }
 
+func TestParsePlanJSON_RationaleAndSkillKey(t *testing.T) {
+	t.Parallel()
+	raw := `{"items":[
+	  {"id":"a1","kind":"solve","title":"BFS on trees","subtitle":"weak spot",
+	   "rationale":"Closes your Graph Algorithms gap (progress=24 — lowest in atlas).",
+	   "skill_key":"algo.bfs",
+	   "target_ref":"dsa/bfs","deep_link":"druz9://task/dsa/bfs","estimated_min":25}
+	]}`
+	got, err := parsePlanJSON(raw)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(got) != 1 {
+		t.Fatalf("got %d items, want 1", len(got))
+	}
+	if got[0].SkillKey != "algo.bfs" {
+		t.Errorf("SkillKey = %q, want algo.bfs", got[0].SkillKey)
+	}
+	if !strings.Contains(got[0].Rationale, "Graph Algorithms") {
+		t.Errorf("Rationale = %q", got[0].Rationale)
+	}
+}
+
 func TestParsePlanJSON_StripsCodeFences(t *testing.T) {
 	t.Parallel()
 	raw := "```json\n" + `{"items":[{"id":"x","kind":"solve","title":"T","subtitle":"S","target_ref":"","deep_link":"","estimated_min":20}]}` + "\n```"

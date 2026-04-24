@@ -161,3 +161,67 @@ func (uc *CritiqueWhiteboard) Do(ctx context.Context, in CritiqueWhiteboardInput
 	}
 	return nil
 }
+
+// ─── SaveCritiqueAsNote ────────────────────────────────────────────────────
+
+// SaveCritiqueAsNote создаёт приватную Note с markdown'ом, собранным
+// клиентом из стрим-пакетов CritiqueWhiteboard. Клиент — источник истины
+// о том, что именно пользователь увидел (re-run критики на сервере был бы
+// дорогим и temperature>0 → результат мог отличаться).
+//
+// Бекенд здесь — простой оркестратор: валидация владения доской +
+// создание Note через существующий CreateNote use case (получаем
+// embedding-enqueue, size-bytes, id за счёт существующей логики).
+type SaveCritiqueAsNote struct {
+	Boards  domain.WhiteboardRepo
+	Notes   domain.NoteRepo
+	EmbedFn func(ctx context.Context, userID, noteID uuid.UUID, text string)
+	Log     *slog.Logger
+	Now     func() time.Time
+}
+
+// SaveCritiqueAsNoteInput — wire body.
+type SaveCritiqueAsNoteInput struct {
+	UserID       uuid.UUID
+	WhiteboardID uuid.UUID
+	Title        string
+	BodyMD       string
+}
+
+// Do executes the use case.
+func (uc *SaveCritiqueAsNote) Do(ctx context.Context, in SaveCritiqueAsNoteInput) (domain.Note, error) {
+	if in.BodyMD == "" {
+		return domain.Note{}, fmt.Errorf("hone.SaveCritiqueAsNote.Do: %w", domain.ErrInvalidInput)
+	}
+	// Ownership / existence check — иначе юзер мог бы создавать заметки
+	// «из» чужих или несуществующих досок.
+	wb, err := uc.Boards.Get(ctx, in.UserID, in.WhiteboardID)
+	if err != nil {
+		return domain.Note{}, fmt.Errorf("hone.SaveCritiqueAsNote.Do: load wb: %w", err)
+	}
+	title := in.Title
+	if title == "" {
+		if wb.Title != "" {
+			title = "Critique: " + wb.Title
+		} else {
+			title = "Whiteboard critique"
+		}
+	}
+	now := uc.Now().UTC()
+	n := domain.Note{
+		UserID:    in.UserID,
+		Title:     title,
+		BodyMD:    in.BodyMD,
+		SizeBytes: len(in.BodyMD),
+		CreatedAt: now,
+		UpdatedAt: now,
+	}
+	created, err := uc.Notes.Create(ctx, n)
+	if err != nil {
+		return domain.Note{}, fmt.Errorf("hone.SaveCritiqueAsNote.Do: %w", err)
+	}
+	if uc.EmbedFn != nil {
+		go uc.EmbedFn(context.Background(), in.UserID, created.ID, created.Title+"\n\n"+created.BodyMD)
+	}
+	return created, nil
+}
