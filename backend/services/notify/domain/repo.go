@@ -84,6 +84,7 @@ type UserLookup interface {
 // auth.domain.TelegramPayload и зовёт TelegramCodeRepo.Fill.
 type TelegramAuthPayload struct {
 	ID        int64
+	ChatID    int64 // msg.Chat.ID — нужен чтобы auth опубликовал TelegramChatLinked и notify-подписчик сохранил chat_id для уведомлений. Без этого /start <code> авторизовывал, но бот-уведомления не настраивались.
 	FirstName string
 	LastName  string
 	Username  string

@@ -44,6 +44,23 @@ type UserLoggedIn struct {
 
 func (UserLoggedIn) Topic() string { return "auth.UserLoggedIn" }
 
+// TelegramChatLinked публикуется auth-сервисом когда пользователь успешно
+// прошёл deep-link flow (`/start <code>` в боте → POST /auth/telegram/poll
+// резолвит user). В payload'е есть ChatID, что позволяет notify-сервису
+// атомарно записать telegram_chat_id в notification_preferences без
+// cross-domain import'а.
+//
+// Это ЕДИНСТВЕННЫЙ легитимный путь привязки chat_id к user_id — он
+// криптографически безопасен, потому что code однократный, expire'ится
+// через 5 минут, создаётся на сайте в авторизованной сессии.
+type TelegramChatLinked struct {
+	base
+	UserID uuid.UUID `json:"user_id"`
+	ChatID int64     `json:"chat_id"`
+}
+
+func (TelegramChatLinked) Topic() string { return "auth.TelegramChatLinked" }
+
 // ─────────────────────────────────────────────────────────────────────────
 // Arena
 // ─────────────────────────────────────────────────────────────────────────

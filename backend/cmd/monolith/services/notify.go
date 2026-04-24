@@ -65,7 +65,7 @@ func NewNotify(d Deps) (*NotifyModule, error) {
 		Prefs: pg, Logs: pg, Templates: templates, Queue: queue,
 		Users: pg, Log: d.Log, Now: d.Now,
 	}
-	handlers := notifyApp.NewHandlers(send, d.Log)
+	handlers := notifyApp.NewHandlers(send, d.Log).WithPrefs(pg)
 	server := notifyPorts.NewNotifyServer(get, upd, d.Log)
 	webhook := notifyPorts.NewWebhookHandler(tg, d.Cfg.Notify.TelegramWebhookSecret, d.Log)
 
@@ -150,6 +150,9 @@ func NewNotify(d Deps) (*NotifyModule, error) {
 					b.Subscribe(sharedDomain.UserRegistered{}.Topic(), handlers.OnUserRegistered)
 					b.Subscribe(sharedDomain.SlotBooked{}.Topic(), handlers.OnSlotBooked)
 					b.Subscribe(notifyDomain.WeeklyReportDue{}.Topic(), handlers.OnWeeklyReportDue)
+					// Legitimate path привязки telegram_chat_id: auth публикует
+					// TelegramChatLinked после криптографически-безопасного /start <code>.
+					b.Subscribe(sharedDomain.TelegramChatLinked{}.Topic(), handlers.OnTelegramChatLinked)
 
 					// In-app notifications feed (NotificationsPage).
 					b.Subscribe(sharedDomain.MatchCompleted{}.Topic(), feedHandlers.OnArenaMatchCompleted)

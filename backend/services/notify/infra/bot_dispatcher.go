@@ -91,6 +91,7 @@ func (d CommandDispatcher) handleStart(ctx context.Context, msg *tgbotapi.Messag
 	}
 	payload := domain.TelegramAuthPayload{
 		ID:        msg.From.ID,
+		ChatID:    msg.Chat.ID, // нужен auth'у чтобы опубликовать TelegramChatLinked
 		FirstName: msg.From.FirstName,
 		LastName:  msg.From.LastName,
 		Username:  msg.From.UserName,

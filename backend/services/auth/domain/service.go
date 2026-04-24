@@ -23,10 +23,18 @@ var ErrTelegramAuthExpired = errors.New("auth: telegram auth expired")
 // TelegramAuthMaxAge — жёсткий потолок устаревания auth_date.
 const TelegramAuthMaxAge = 24 * time.Hour
 
-// TelegramPayload — то, что приходит из callback Telegram Login Widget.
+// TelegramPayload — то, что приходит из callback Telegram Login Widget
+// ИЛИ заполняется ботом в deep-link flow `/start <code>`.
 // Поля — нетипизированные строки, чтобы можно было сериализовать их буквально для HMAC.
 type TelegramPayload struct {
-	ID        int64
+	ID int64
+	// ChatID — ID чата в Telegram (обычно равен UserID, но может быть другим
+	// для group chat). Заполняется ТОЛЬКО в deep-link flow (не Login Widget).
+	// Используется auth/app/poll_telegram_code.go чтобы опубликовать
+	// TelegramChatLinked event и notify-подписчик сохранил chat_id для
+	// отправки уведомлений. Hash НЕ считает ChatID, поэтому Login Widget
+	// этим полем пользоваться не должен (будет пустое значение).
+	ChatID    int64
 	FirstName string
 	LastName  string
 	Username  string

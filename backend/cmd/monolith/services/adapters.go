@@ -69,6 +69,7 @@ func NewTelegramCodeFillerAdapter(repo authDomain.TelegramCodeRepo) notifyDomain
 func (a telegramCodeFillerAdapter) Fill(ctx context.Context, code string, p notifyDomain.TelegramAuthPayload) error {
 	if err := a.repo.Fill(ctx, code, authDomain.TelegramPayload{
 		ID:        p.ID,
+		ChatID:    p.ChatID,
 		FirstName: p.FirstName,
 		LastName:  p.LastName,
 		Username:  p.Username,

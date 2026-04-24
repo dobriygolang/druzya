@@ -104,6 +104,20 @@ func (uc *PollTelegramCode) Do(ctx context.Context, in PollTelegramCodeInput) (P
 	if err := publishLoginEvent(ctx, uc.Bus, user, enums.AuthProviderTelegram, created); err != nil {
 		uc.Log.WarnContext(ctx, "auth.PollTelegramCode: publish event", slog.Any("err", err))
 	}
+	// Привязка chat_id к юзеру — единственный легитимный путь (криптографически
+	// безопасный потому что code однократный, создан в авторизованной сессии).
+	// notify-сервис подписан на TelegramChatLinked и вызовет SetTelegramChatID.
+	// При отсутствии ChatID (старый payload без поля) скипаем — не публикуем.
+	if payload.ChatID != 0 {
+		chatEv := sharedDomain.TelegramChatLinked{
+			UserID: user.ID,
+			ChatID: payload.ChatID,
+		}
+		if err := uc.Bus.Publish(ctx, chatEv); err != nil {
+			uc.Log.WarnContext(ctx, "auth.PollTelegramCode: publish TelegramChatLinked",
+				slog.Any("err", err))
+		}
+	}
 	return PollTelegramCodeResult{Tokens: pair, User: user, IsNewUser: created}, nil
 }
 
