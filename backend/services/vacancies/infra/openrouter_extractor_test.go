@@ -37,7 +37,7 @@ func TestExtractor_HappyPath_PromptAndParse(t *testing.T) {
 
 	kv := newMemKV()
 	e := NewOpenRouterExtractor("sk-test", kv, testLog()).WithEndpoint(srv.URL)
-	skills, err := e.Extract(context.Background(), "Looking for senior Go dev")
+	skills, err := e.Extract(context.Background(), "Looking for senior Go dev", "")
 	if err != nil {
 		t.Fatalf("Extract: %v", err)
 	}
@@ -67,8 +67,8 @@ func TestExtractor_CacheHit_SkipsHTTP(t *testing.T) {
 	kv := newMemKV()
 	e := NewOpenRouterExtractor("sk-test", kv, testLog()).WithEndpoint(srv.URL)
 	desc := "same description here"
-	_, _ = e.Extract(context.Background(), desc)
-	_, _ = e.Extract(context.Background(), desc)
+	_, _ = e.Extract(context.Background(), desc, "")
+	_, _ = e.Extract(context.Background(), desc, "")
 	if calls != 1 {
 		t.Errorf("HTTP calls = %d, want 1 (cache should hit)", calls)
 	}
@@ -79,7 +79,7 @@ func TestExtractor_NoAPIKey_ReturnsError(t *testing.T) {
 	// fallbacks were removed deliberately — empty API key now returns an
 	// error so misconfigured envs don't silently write empty skills.
 	e := NewOpenRouterExtractor("", nil, testLog())
-	if _, err := e.Extract(context.Background(), "anything"); err == nil {
+	if _, err := e.Extract(context.Background(), "anything", ""); err == nil {
 		t.Fatalf("expected error when API key is empty, got nil")
 	}
 }
@@ -91,7 +91,7 @@ func TestExtractor_MalformedJSONFallback(t *testing.T) {
 	}))
 	defer srv.Close()
 	e := NewOpenRouterExtractor("sk-test", nil, testLog()).WithEndpoint(srv.URL)
-	skills, _ := e.Extract(context.Background(), "x")
+	skills, _ := e.Extract(context.Background(), "x", "")
 	if !contains(skills, "go") || !contains(skills, "redis") {
 		t.Errorf("fallback parser missed tags: %v", skills)
 	}
@@ -104,7 +104,7 @@ func TestExtractor_FencedJSON(t *testing.T) {
 	}))
 	defer srv.Close()
 	e := NewOpenRouterExtractor("sk-test", nil, testLog()).WithEndpoint(srv.URL)
-	skills, _ := e.Extract(context.Background(), "x")
+	skills, _ := e.Extract(context.Background(), "x", "")
 	if !contains(skills, "go") || !contains(skills, "redis") {
 		t.Errorf("fenced parser failed: %v", skills)
 	}

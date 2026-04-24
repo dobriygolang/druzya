@@ -20,9 +20,6 @@ type Querier interface {
 	// SELECT ... FOR UPDATE inside a transaction so the book flow can atomically
 	// flip status=available → booked without racing against concurrent callers.
 	GetSlotForUpdate(ctx context.Context, id pgtype.UUID) (Slot, error)
-	// Aggregate rating + review count across every booking owned by the interviewer.
-	// Returns (avg, count) — avg is 0 when there are no reviews.
-	InterviewerReviewStats(ctx context.Context, interviewerID pgtype.UUID) (InterviewerReviewStatsRow, error)
 	// Base listing used when the caller does not pass optional filters. The
 	// use-case layer composes richer filters via a hand-rolled SQL in postgres.go
 	// (daily / arena do the same for dynamic WHERE clauses sqlc cannot represent).

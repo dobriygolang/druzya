@@ -51,6 +51,22 @@ type Config struct {
 		DefaultModelPaid string
 	}
 
+	// LLMChain is the multi-provider routing config. Any/all API keys
+	// may be empty — the chain's wirer skips drivers without a key and
+	// emits a startup WARN. OpenRouter key is re-read from LLM above
+	// (kept separate there for back-compat with legacy callers).
+	//
+	// ChainOrder is a comma-separated priority list: front = primary.
+	// Empty defaults to "groq,cerebras,openrouter" — Mistral omitted
+	// unless the operator explicitly opts in, because its free tier
+	// has tighter limits than Groq/Cerebras.
+	LLMChain struct {
+		GroqAPIKey     string
+		CerebrasAPIKey string
+		MistralAPIKey  string
+		ChainOrder     string
+	}
+
 	Notify struct {
 		TelegramBotToken      string
 		TelegramWebhookSecret string
@@ -106,6 +122,11 @@ func Load() (Config, error) {
 	c.LLM.OpenRouterAPIKey = env("OPENROUTER_API_KEY", "")
 	c.LLM.DefaultModelFree = env("LLM_DEFAULT_FREE", "openai/gpt-4o-mini")
 	c.LLM.DefaultModelPaid = env("LLM_DEFAULT_PAID", "openai/gpt-4o")
+
+	c.LLMChain.GroqAPIKey = env("GROQ_API_KEY", "")
+	c.LLMChain.CerebrasAPIKey = env("CEREBRAS_API_KEY", "")
+	c.LLMChain.MistralAPIKey = env("MISTRAL_API_KEY", "")
+	c.LLMChain.ChainOrder = env("LLM_CHAIN_ORDER", "groq,cerebras,openrouter")
 
 	c.Notify.TelegramBotToken = c.Auth.TelegramBotToken
 	c.Notify.TelegramWebhookSecret = env("TELEGRAM_WEBHOOK_SECRET", "")

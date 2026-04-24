@@ -72,52 +72,6 @@ func (mr *MockProfileRepoMockRecorder) CountRecentActivity(ctx, userID, since an
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CountRecentActivity", reflect.TypeOf((*MockProfileRepo)(nil).CountRecentActivity), ctx, userID, since)
 }
 
-// ListMatchAggregatesSince mocks base method.
-func (m *MockProfileRepo) ListMatchAggregatesSince(ctx context.Context, userID uuid.UUID, since time.Time) ([]domain.MatchAggregate, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ListMatchAggregatesSince", ctx, userID, since)
-	ret0, _ := ret[0].([]domain.MatchAggregate)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// ListMatchAggregatesSince indicates an expected call of ListMatchAggregatesSince.
-func (mr *MockProfileRepoMockRecorder) ListMatchAggregatesSince(ctx, userID, since any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListMatchAggregatesSince", reflect.TypeOf((*MockProfileRepo)(nil).ListMatchAggregatesSince), ctx, userID, since)
-}
-
-// ListWeeklyXPSince mocks base method.
-func (m *MockProfileRepo) ListWeeklyXPSince(ctx context.Context, userID uuid.UUID, now time.Time, weeks int) ([]int, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ListWeeklyXPSince", ctx, userID, now, weeks)
-	ret0, _ := ret[0].([]int)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// ListWeeklyXPSince indicates an expected call of ListWeeklyXPSince.
-func (mr *MockProfileRepoMockRecorder) ListWeeklyXPSince(ctx, userID, now, weeks any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListWeeklyXPSince", reflect.TypeOf((*MockProfileRepo)(nil).ListWeeklyXPSince), ctx, userID, now, weeks)
-}
-
-// GetStreaks mocks base method.
-func (m *MockProfileRepo) GetStreaks(ctx context.Context, userID uuid.UUID) (int, int, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetStreaks", ctx, userID)
-	ret0, _ := ret[0].(int)
-	ret1, _ := ret[1].(int)
-	ret2, _ := ret[2].(error)
-	return ret0, ret1, ret2
-}
-
-// GetStreaks indicates an expected call of GetStreaks.
-func (mr *MockProfileRepoMockRecorder) GetStreaks(ctx, userID any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetStreaks", reflect.TypeOf((*MockProfileRepo)(nil).GetStreaks), ctx, userID)
-}
-
 // EnsureDefaults mocks base method.
 func (m *MockProfileRepo) EnsureDefaults(ctx context.Context, userID uuid.UUID) error {
 	m.ctrl.T.Helper()
@@ -145,6 +99,21 @@ func (m *MockProfileRepo) GetByUserID(ctx context.Context, userID uuid.UUID) (do
 func (mr *MockProfileRepoMockRecorder) GetByUserID(ctx, userID any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetByUserID", reflect.TypeOf((*MockProfileRepo)(nil).GetByUserID), ctx, userID)
+}
+
+// GetPercentiles mocks base method.
+func (m *MockProfileRepo) GetPercentiles(ctx context.Context, userID uuid.UUID, weekEnd time.Time) (domain.PercentileView, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetPercentiles", ctx, userID, weekEnd)
+	ret0, _ := ret[0].(domain.PercentileView)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetPercentiles indicates an expected call of GetPercentiles.
+func (mr *MockProfileRepoMockRecorder) GetPercentiles(ctx, userID, weekEnd any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetPercentiles", reflect.TypeOf((*MockProfileRepo)(nil).GetPercentiles), ctx, userID, weekEnd)
 }
 
 // GetPublic mocks base method.
@@ -177,6 +146,97 @@ func (mr *MockProfileRepoMockRecorder) GetSettings(ctx, userID any) *gomock.Call
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetSettings", reflect.TypeOf((*MockProfileRepo)(nil).GetSettings), ctx, userID)
 }
 
+// GetStreaks mocks base method.
+func (m *MockProfileRepo) GetStreaks(ctx context.Context, userID uuid.UUID) (int, int, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetStreaks", ctx, userID)
+	ret0, _ := ret[0].(int)
+	ret1, _ := ret[1].(int)
+	ret2, _ := ret[2].(error)
+	return ret0, ret1, ret2
+}
+
+// GetStreaks indicates an expected call of GetStreaks.
+func (mr *MockProfileRepoMockRecorder) GetStreaks(ctx, userID any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetStreaks", reflect.TypeOf((*MockProfileRepo)(nil).GetStreaks), ctx, userID)
+}
+
+// IssueShareToken mocks base method.
+func (m *MockProfileRepo) IssueShareToken(ctx context.Context, userID uuid.UUID, weekISO string) (domain.ShareToken, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "IssueShareToken", ctx, userID, weekISO)
+	ret0, _ := ret[0].(domain.ShareToken)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// IssueShareToken indicates an expected call of IssueShareToken.
+func (mr *MockProfileRepoMockRecorder) IssueShareToken(ctx, userID, weekISO any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IssueShareToken", reflect.TypeOf((*MockProfileRepo)(nil).IssueShareToken), ctx, userID, weekISO)
+}
+
+// ListAchievementsSince mocks base method.
+func (m *MockProfileRepo) ListAchievementsSince(ctx context.Context, userID uuid.UUID, since time.Time) ([]domain.AchievementBrief, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ListAchievementsSince", ctx, userID, since)
+	ret0, _ := ret[0].([]domain.AchievementBrief)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ListAchievementsSince indicates an expected call of ListAchievementsSince.
+func (mr *MockProfileRepoMockRecorder) ListAchievementsSince(ctx, userID, since any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListAchievementsSince", reflect.TypeOf((*MockProfileRepo)(nil).ListAchievementsSince), ctx, userID, since)
+}
+
+// ListEloSnapshotsSince mocks base method.
+func (m *MockProfileRepo) ListEloSnapshotsSince(ctx context.Context, userID uuid.UUID, since time.Time) ([]domain.EloPoint, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ListEloSnapshotsSince", ctx, userID, since)
+	ret0, _ := ret[0].([]domain.EloPoint)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ListEloSnapshotsSince indicates an expected call of ListEloSnapshotsSince.
+func (mr *MockProfileRepoMockRecorder) ListEloSnapshotsSince(ctx, userID, since any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListEloSnapshotsSince", reflect.TypeOf((*MockProfileRepo)(nil).ListEloSnapshotsSince), ctx, userID, since)
+}
+
+// ListHourlyActivitySince mocks base method.
+func (m *MockProfileRepo) ListHourlyActivitySince(ctx context.Context, userID uuid.UUID, since time.Time) ([168]int, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ListHourlyActivitySince", ctx, userID, since)
+	ret0, _ := ret[0].([168]int)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ListHourlyActivitySince indicates an expected call of ListHourlyActivitySince.
+func (mr *MockProfileRepoMockRecorder) ListHourlyActivitySince(ctx, userID, since any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListHourlyActivitySince", reflect.TypeOf((*MockProfileRepo)(nil).ListHourlyActivitySince), ctx, userID, since)
+}
+
+// ListMatchAggregatesSince mocks base method.
+func (m *MockProfileRepo) ListMatchAggregatesSince(ctx context.Context, userID uuid.UUID, since time.Time) ([]domain.MatchAggregate, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ListMatchAggregatesSince", ctx, userID, since)
+	ret0, _ := ret[0].([]domain.MatchAggregate)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ListMatchAggregatesSince indicates an expected call of ListMatchAggregatesSince.
+func (mr *MockProfileRepoMockRecorder) ListMatchAggregatesSince(ctx, userID, since any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListMatchAggregatesSince", reflect.TypeOf((*MockProfileRepo)(nil).ListMatchAggregatesSince), ctx, userID, since)
+}
+
 // ListRatings mocks base method.
 func (m *MockProfileRepo) ListRatings(ctx context.Context, userID uuid.UUID) ([]domain.SectionRating, error) {
 	m.ctrl.T.Helper()
@@ -207,19 +267,34 @@ func (mr *MockProfileRepoMockRecorder) ListSkillNodes(ctx, userID any) *gomock.C
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListSkillNodes", reflect.TypeOf((*MockProfileRepo)(nil).ListSkillNodes), ctx, userID)
 }
 
-// UpsertSkillNode mocks base method.
-func (m *MockProfileRepo) UpsertSkillNode(ctx context.Context, userID uuid.UUID, nodeKey string, progress int) (domain.SkillNode, error) {
+// ListWeeklyXPSince mocks base method.
+func (m *MockProfileRepo) ListWeeklyXPSince(ctx context.Context, userID uuid.UUID, now time.Time, weeks int) ([]int, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "UpsertSkillNode", ctx, userID, nodeKey, progress)
-	ret0, _ := ret[0].(domain.SkillNode)
+	ret := m.ctrl.Call(m, "ListWeeklyXPSince", ctx, userID, now, weeks)
+	ret0, _ := ret[0].([]int)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// UpsertSkillNode indicates an expected call of UpsertSkillNode.
-func (mr *MockProfileRepoMockRecorder) UpsertSkillNode(ctx, userID, nodeKey, progress any) *gomock.Call {
+// ListWeeklyXPSince indicates an expected call of ListWeeklyXPSince.
+func (mr *MockProfileRepoMockRecorder) ListWeeklyXPSince(ctx, userID, now, weeks any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpsertSkillNode", reflect.TypeOf((*MockProfileRepo)(nil).UpsertSkillNode), ctx, userID, nodeKey, progress)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListWeeklyXPSince", reflect.TypeOf((*MockProfileRepo)(nil).ListWeeklyXPSince), ctx, userID, now, weeks)
+}
+
+// ResolveShareToken mocks base method.
+func (m *MockProfileRepo) ResolveShareToken(ctx context.Context, token string) (domain.ShareResolution, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ResolveShareToken", ctx, token)
+	ret0, _ := ret[0].(domain.ShareResolution)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ResolveShareToken indicates an expected call of ResolveShareToken.
+func (mr *MockProfileRepoMockRecorder) ResolveShareToken(ctx, token any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ResolveShareToken", reflect.TypeOf((*MockProfileRepo)(nil).ResolveShareToken), ctx, token)
 }
 
 // UpdateCareerStage mocks base method.
@@ -250,92 +325,17 @@ func (mr *MockProfileRepoMockRecorder) UpdateSettings(ctx, userID, s any) *gomoc
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateSettings", reflect.TypeOf((*MockProfileRepo)(nil).UpdateSettings), ctx, userID, s)
 }
 
-// ListHourlyActivitySince mocks base method.
-func (m *MockProfileRepo) ListHourlyActivitySince(ctx context.Context, userID uuid.UUID, since time.Time) ([168]int, error) {
+// UpsertSkillNode mocks base method.
+func (m *MockProfileRepo) UpsertSkillNode(ctx context.Context, userID uuid.UUID, nodeKey string, progress int) (domain.SkillNode, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ListHourlyActivitySince", ctx, userID, since)
-	ret0, _ := ret[0].([168]int)
+	ret := m.ctrl.Call(m, "UpsertSkillNode", ctx, userID, nodeKey, progress)
+	ret0, _ := ret[0].(domain.SkillNode)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// ListHourlyActivitySince indicates an expected call of ListHourlyActivitySince.
-func (mr *MockProfileRepoMockRecorder) ListHourlyActivitySince(ctx, userID, since any) *gomock.Call {
+// UpsertSkillNode indicates an expected call of UpsertSkillNode.
+func (mr *MockProfileRepoMockRecorder) UpsertSkillNode(ctx, userID, nodeKey, progress any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListHourlyActivitySince", reflect.TypeOf((*MockProfileRepo)(nil).ListHourlyActivitySince), ctx, userID, since)
-}
-
-// ListEloSnapshotsSince mocks base method.
-func (m *MockProfileRepo) ListEloSnapshotsSince(ctx context.Context, userID uuid.UUID, since time.Time) ([]domain.EloPoint, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ListEloSnapshotsSince", ctx, userID, since)
-	ret0, _ := ret[0].([]domain.EloPoint)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// ListEloSnapshotsSince indicates an expected call of ListEloSnapshotsSince.
-func (mr *MockProfileRepoMockRecorder) ListEloSnapshotsSince(ctx, userID, since any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListEloSnapshotsSince", reflect.TypeOf((*MockProfileRepo)(nil).ListEloSnapshotsSince), ctx, userID, since)
-}
-
-// GetPercentiles mocks base method.
-func (m *MockProfileRepo) GetPercentiles(ctx context.Context, userID uuid.UUID, weekEnd time.Time) (domain.PercentileView, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetPercentiles", ctx, userID, weekEnd)
-	ret0, _ := ret[0].(domain.PercentileView)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// GetPercentiles indicates an expected call of GetPercentiles.
-func (mr *MockProfileRepoMockRecorder) GetPercentiles(ctx, userID, weekEnd any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetPercentiles", reflect.TypeOf((*MockProfileRepo)(nil).GetPercentiles), ctx, userID, weekEnd)
-}
-
-// IssueShareToken mocks base method.
-func (m *MockProfileRepo) IssueShareToken(ctx context.Context, userID uuid.UUID, weekISO string) (domain.ShareToken, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "IssueShareToken", ctx, userID, weekISO)
-	ret0, _ := ret[0].(domain.ShareToken)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// IssueShareToken indicates an expected call of IssueShareToken.
-func (mr *MockProfileRepoMockRecorder) IssueShareToken(ctx, userID, weekISO any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IssueShareToken", reflect.TypeOf((*MockProfileRepo)(nil).IssueShareToken), ctx, userID, weekISO)
-}
-
-// ResolveShareToken mocks base method.
-func (m *MockProfileRepo) ResolveShareToken(ctx context.Context, token string) (domain.ShareResolution, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ResolveShareToken", ctx, token)
-	ret0, _ := ret[0].(domain.ShareResolution)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// ResolveShareToken indicates an expected call of ResolveShareToken.
-func (mr *MockProfileRepoMockRecorder) ResolveShareToken(ctx, token any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ResolveShareToken", reflect.TypeOf((*MockProfileRepo)(nil).ResolveShareToken), ctx, token)
-}
-
-// ListAchievementsSince mocks base method.
-func (m *MockProfileRepo) ListAchievementsSince(ctx context.Context, userID uuid.UUID, since time.Time) ([]domain.AchievementBrief, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ListAchievementsSince", ctx, userID, since)
-	ret0, _ := ret[0].([]domain.AchievementBrief)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// ListAchievementsSince indicates an expected call of ListAchievementsSince.
-func (mr *MockProfileRepoMockRecorder) ListAchievementsSince(ctx, userID, since any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListAchievementsSince", reflect.TypeOf((*MockProfileRepo)(nil).ListAchievementsSince), ctx, userID, since)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpsertSkillNode", reflect.TypeOf((*MockProfileRepo)(nil).UpsertSkillNode), ctx, userID, nodeKey, progress)
 }

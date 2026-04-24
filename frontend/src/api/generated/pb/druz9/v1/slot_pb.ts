@@ -638,6 +638,15 @@ export class MyBookingItem extends Message<MyBookingItem> {
    */
   slotStatus = SlotStatus.UNSPECIFIED;
 
+  /**
+   * has_review — true when the candidate already left a review for this
+   * booking. Lets the UI hide the "Оставить отзыв" CTA without a second
+   * round-trip to the review service.
+   *
+   * @generated from field: bool has_review = 13;
+   */
+  hasReview = false;
+
   constructor(data?: PartialMessage<MyBookingItem>) {
     super();
     proto3.util.initPartial(data, this);
@@ -658,6 +667,7 @@ export class MyBookingItem extends Message<MyBookingItem> {
     { no: 10, name: "language", kind: "scalar", T: 9 /* ScalarType.STRING */ },
     { no: 11, name: "price_rub", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
     { no: 12, name: "slot_status", kind: "enum", T: proto3.getEnumType(SlotStatus) },
+    { no: 13, name: "has_review", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): MyBookingItem {

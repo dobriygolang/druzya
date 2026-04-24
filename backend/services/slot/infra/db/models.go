@@ -372,6 +372,8 @@ type LlmModel struct {
 	CreatedAt          pgtype.Timestamptz
 	UpdatedAt          pgtype.Timestamptz
 	UseForVacancies    bool
+	ProviderID         string
+	IsVirtual          bool
 }
 
 type Lobby struct {
@@ -611,6 +613,16 @@ type Rating struct {
 	UpdatedAt    pgtype.Timestamptz
 }
 
+type Review struct {
+	BookingID     pgtype.UUID
+	ReviewerID    pgtype.UUID
+	Rating        int32
+	Feedback      pgtype.Text
+	CreatedAt     pgtype.Timestamptz
+	InterviewerID pgtype.UUID
+	UpdatedAt     pgtype.Timestamptz
+}
+
 type SavedVacancy struct {
 	ID           int64
 	UserID       pgtype.UUID
@@ -664,14 +676,6 @@ type Slot struct {
 	Status        string
 	CreatedAt     pgtype.Timestamptz
 	MeetUrl       pgtype.Text
-}
-
-type SlotReview struct {
-	BookingID  pgtype.UUID
-	ReviewerID pgtype.UUID
-	Rating     int32
-	Feedback   pgtype.Text
-	CreatedAt  pgtype.Timestamptz
 }
 
 type Subscription struct {
@@ -773,6 +777,7 @@ type User struct {
 	OnboardingCompletedAt pgtype.Timestamptz
 	FocusClass            string
 	AiVacanciesModel      pgtype.Text
+	AiDefaultModel        pgtype.Text
 }
 
 type UserAchievement struct {

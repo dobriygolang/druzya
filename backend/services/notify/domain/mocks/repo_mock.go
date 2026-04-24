@@ -436,3 +436,41 @@ func (mr *MockUserLookupMockRecorder) GetLocale(ctx, userID any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetLocale", reflect.TypeOf((*MockUserLookup)(nil).GetLocale), ctx, userID)
 }
+
+// MockCodeFiller is a mock of CodeFiller interface.
+type MockCodeFiller struct {
+	ctrl     *gomock.Controller
+	recorder *MockCodeFillerMockRecorder
+	isgomock struct{}
+}
+
+// MockCodeFillerMockRecorder is the mock recorder for MockCodeFiller.
+type MockCodeFillerMockRecorder struct {
+	mock *MockCodeFiller
+}
+
+// NewMockCodeFiller creates a new mock instance.
+func NewMockCodeFiller(ctrl *gomock.Controller) *MockCodeFiller {
+	mock := &MockCodeFiller{ctrl: ctrl}
+	mock.recorder = &MockCodeFillerMockRecorder{mock}
+	return mock
+}
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockCodeFiller) EXPECT() *MockCodeFillerMockRecorder {
+	return m.recorder
+}
+
+// Fill mocks base method.
+func (m *MockCodeFiller) Fill(ctx context.Context, code string, payload domain.TelegramAuthPayload) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Fill", ctx, code, payload)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Fill indicates an expected call of Fill.
+func (mr *MockCodeFillerMockRecorder) Fill(ctx, code, payload any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Fill", reflect.TypeOf((*MockCodeFiller)(nil).Fill), ctx, code, payload)
+}

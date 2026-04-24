@@ -10,32 +10,51 @@
 
 import { create } from 'zustand';
 
+import { eventChannels, type SelectedModelChangedEvent } from '@shared/ipc';
+
 const STORAGE_KEY = 'druz9.selectedModel';
 
 interface State {
   modelId: string;
   setModel: (id: string) => void;
   clear: () => void;
+  /** Mount once per window — subscribes to cross-window model-change
+   *  broadcasts so a pick in one renderer reflects everywhere. */
+  bootstrap: () => () => void;
 }
 
 const initial = typeof localStorage !== 'undefined' ? localStorage.getItem(STORAGE_KEY) ?? '' : '';
 
-export const useSelectedModelStore = create<State>((set) => ({
+function writeLocal(id: string): void {
+  try {
+    if (id) localStorage.setItem(STORAGE_KEY, id);
+    else localStorage.removeItem(STORAGE_KEY);
+  } catch {
+    /* private mode — ignore */
+  }
+}
+
+export const useSelectedModelStore = create<State>((set, get) => ({
   modelId: initial,
   setModel: (id) => {
+    if (get().modelId === id) return;
     set({ modelId: id });
-    try {
-      localStorage.setItem(STORAGE_KEY, id);
-    } catch {
-      /* private mode — ignore */
-    }
+    writeLocal(id);
+    // Fire-and-forget: let main rebroadcast to other windows. The echo
+    // will hit our own listener too — bootstrap dedupes via the
+    // equality guard above.
+    void window.druz9.ui.announceModelChanged(id);
   },
   clear: () => {
+    if (!get().modelId) return;
     set({ modelId: '' });
-    try {
-      localStorage.removeItem(STORAGE_KEY);
-    } catch {
-      /* ignore */
-    }
+    writeLocal('');
+    void window.druz9.ui.announceModelChanged('');
   },
+  bootstrap: () =>
+    window.druz9.on<SelectedModelChangedEvent>(eventChannels.selectedModelChanged, (ev) => {
+      if (get().modelId === ev.modelId) return;
+      set({ modelId: ev.modelId });
+      writeLocal(ev.modelId);
+    }),
 }));

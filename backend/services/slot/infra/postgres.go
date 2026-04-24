@@ -290,6 +290,38 @@ func (p *Postgres) GetBySlotID(ctx context.Context, slotID uuid.UUID) (domain.Bo
 	return bookingFromRow(row), nil
 }
 
+// GetWithSlotByID returns a single booking joined with its parent slot, by
+// booking id. ErrBookingNotFound when missing. Used cross-service by
+// review.CreateReview.
+func (p *Postgres) GetWithSlotByID(ctx context.Context, bookingID uuid.UUID) (domain.BookingWithSlot, error) {
+	const sql = `
+SELECT b.id, b.slot_id, b.candidate_id, b.meet_url, b.status, b.created_at,
+       s.id, s.interviewer_id, s.starts_at, s.duration_min, s.section,
+       s.difficulty, s.language, s.price_rub, s.status, s.created_at
+  FROM bookings b
+  JOIN slots    s ON s.id = b.slot_id
+ WHERE b.id = $1`
+	row := p.pool.QueryRow(ctx, sql, pgUUID(bookingID))
+	var (
+		b slotdb.Booking
+		s slotdb.Slot
+	)
+	if err := row.Scan(
+		&b.ID, &b.SlotID, &b.CandidateID, &b.MeetUrl, &b.Status, &b.CreatedAt,
+		&s.ID, &s.InterviewerID, &s.StartsAt, &s.DurationMin, &s.Section,
+		&s.Difficulty, &s.Language, &s.PriceRub, &s.Status, &s.CreatedAt,
+	); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return domain.BookingWithSlot{}, domain.ErrBookingNotFound
+		}
+		return domain.BookingWithSlot{}, fmt.Errorf("slot.pg.GetByID: %w", err)
+	}
+	return domain.BookingWithSlot{
+		Booking: bookingFromRow(b),
+		Slot:    slotFromRow(s),
+	}, nil
+}
+
 // ListByCandidate returns every booking the candidate owns joined with the
 // parent slot, newest-future-first. Implemented with a hand-rolled query
 // because sqlc would require a generated row-struct identical to a Slot+Booking
@@ -330,21 +362,6 @@ SELECT b.id, b.slot_id, b.candidate_id, b.meet_url, b.status, b.created_at,
 		return nil, fmt.Errorf("slot.pg.ListByCandidate: rows: %w", err)
 	}
 	return out, nil
-}
-
-// ── ReviewRepo ─────────────────────────────────────────────────────────────
-
-// InterviewerStats returns (avgRating, reviewCount) across every review the
-// interviewer has received.
-func (p *Postgres) InterviewerStats(ctx context.Context, interviewerID uuid.UUID) (float32, int, error) {
-	row, err := p.q.InterviewerReviewStats(ctx, pgUUID(interviewerID))
-	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return 0, 0, nil
-		}
-		return 0, 0, fmt.Errorf("slot.pg.InterviewerStats: %w", err)
-	}
-	return float32(row.AvgRating), int(row.ReviewsCount), nil
 }
 
 // ── helpers ────────────────────────────────────────────────────────────────
@@ -394,9 +411,10 @@ func bookingFromRow(r slotdb.Booking) domain.Booking {
 	return b
 }
 
-// Interface guards.
+// Interface guards. ReviewRepo / BookingHasReviewProvider are NOT satisfied
+// here — the implementations live in /Users/sedorofeevd/Desktop/druzya/backend/services/review
+// and are wired into the slot use cases at the monolith layer.
 var (
 	_ domain.SlotRepo    = (*Postgres)(nil)
 	_ domain.BookingRepo = (*Postgres)(nil)
-	_ domain.ReviewRepo  = (*Postgres)(nil)
 )

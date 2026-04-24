@@ -6,6 +6,7 @@ import (
 	"os"
 
 	copilotApp "druz9/copilot/app"
+	copilotDomain "druz9/copilot/domain"
 	copilotInfra "druz9/copilot/infra"
 	copilotPorts "druz9/copilot/ports"
 	"druz9/shared/generated/pb/druz9/v1/druz9v1connect"
@@ -28,7 +29,18 @@ func NewCopilot(d Deps) *Module {
 	quotas := copilotInfra.NewQuotas(d.Pool)
 	sessions := copilotInfra.NewSessions(d.Pool)
 	reports := copilotInfra.NewReports(d.Pool)
-	llm := copilotInfra.NewOpenRouter(d.Cfg.LLM.OpenRouterAPIKey)
+	// LLM dispatch: prefer the multi-provider chain when boot registered
+	// at least one driver; fall back to direct-OpenRouter otherwise so
+	// dev environments without GROQ_API_KEY still work. The chain is a
+	// superset of OpenRouter's behaviour — when only the OpenRouter
+	// driver is registered, it effectively emulates the legacy client
+	// with proper typed errors.
+	var llm copilotDomain.LLMProvider
+	if d.LLMChain != nil {
+		llm = copilotInfra.NewChainedLLM(d.LLMChain)
+	} else {
+		llm = copilotInfra.NewOpenRouter(d.Cfg.LLM.OpenRouterAPIKey)
+	}
 	cfgProvider := copilotInfra.NewStaticConfigProvider()
 
 	analyzer := copilotInfra.NewLLMAnalyzer(

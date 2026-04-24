@@ -9,9 +9,10 @@
 //   - "Видеозвонок" opens meet_url in a new tab; "Отменить" hits CancelSlot
 //     with inline confirm + error surface
 import { useEffect, useState } from 'react'
-import { Video, X } from 'lucide-react'
+import { Star, Video, X } from 'lucide-react'
 import { Button } from '../Button'
 import { EmptyState } from '../EmptyState'
+import ReviewDialog from './ReviewDialog'
 import { humanizeDifficulty, humanizeSection } from '../../lib/labels'
 import { useCancelSlot, useMyBookingsQuery, type MyBookingItem } from '../../lib/queries/slot'
 
@@ -101,8 +102,10 @@ export function MyBookingsDrawer({ open, onClose }: MyBookingsDrawerProps) {
 function BookingRow({ item }: { item: MyBookingItem }) {
   const cancel = useCancelSlot()
   const [confirming, setConfirming] = useState(false)
+  const [reviewOpen, setReviewOpen] = useState(false)
   const isPast = new Date(item.starts_at).getTime() < Date.now()
   const cancelled = item.slot_status === 'cancelled' || item.status === 'cancelled'
+  const reviewable = item.slot_status === 'completed' && !item.has_review
   const errMsg = cancel.isError ? (cancel.error instanceof Error ? cancel.error.message : 'Не удалось отменить') : null
 
   return (
@@ -165,7 +168,26 @@ function BookingRow({ item }: { item: MyBookingItem }) {
             </Button>
           )
         )}
+        {reviewable && (
+          <button
+            type="button"
+            onClick={() => setReviewOpen(true)}
+            className="inline-flex items-center gap-1.5 rounded-md border border-warn/40 bg-warn/10 px-2.5 py-1 text-[11px] font-semibold text-warn hover:bg-warn/20"
+          >
+            <Star className="h-3 w-3" /> Оставить отзыв
+          </button>
+        )}
+        {item.has_review && (
+          <span className="inline-flex items-center gap-1.5 text-[11px] text-text-muted">
+            <Star className="h-3 w-3 fill-warn text-warn" /> Отзыв оставлен
+          </span>
+        )}
       </div>
+      <ReviewDialog
+        open={reviewOpen}
+        bookingID={item.id}
+        onClose={() => setReviewOpen(false)}
+      />
     </li>
   )
 }

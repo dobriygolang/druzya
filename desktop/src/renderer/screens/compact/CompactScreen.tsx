@@ -43,6 +43,23 @@ export function CompactScreen() {
   const beginTurn = useConversationStore((s) => s.beginTurn);
 
   const selectedModel = useSelectedModelStore((s) => s.modelId);
+  const clearSelectedModel = useSelectedModelStore((s) => s.clear);
+  const modelBootstrap = useSelectedModelStore((s) => s.bootstrap);
+  useEffect(() => modelBootstrap(), [modelBootstrap]);
+
+  // Drop a persisted selection that no longer exists in the current
+  // catalogue (e.g. a paid model the user lost access to, or a renamed
+  // id after a server-side config change). Without this the client keeps
+  // sending the stale id and the server rejects with CodePermissionDenied
+  // "model not allowed on current plan".
+  useEffect(() => {
+    if (!config || !selectedModel) return;
+    const stillExists = config.models.some((m) => m.id === selectedModel);
+    const stillAllowed = config.models.some(
+      (m) => m.id === selectedModel && m.availableOnCurrentPlan,
+    );
+    if (!stillExists || !stillAllowed) clearSelectedModel();
+  }, [config, selectedModel, clearSelectedModel]);
   const pending = usePendingAttachmentStore((s) => s.pending);
   const setPending = usePendingAttachmentStore((s) => s.set);
   const clearPending = usePendingAttachmentStore((s) => s.clear);
@@ -121,7 +138,7 @@ export function CompactScreen() {
       const handle = await window.druz9.analyze.start({
         conversationId,
         promptText: text,
-        model: selectedModel,
+        model: selectedModel || config?.defaultModelId || '',
         attachments: [
           {
             kind: 'screenshot',
@@ -134,7 +151,12 @@ export function CompactScreen() {
         triggerAction: kind,
         focusedAppHint: '',
       });
-      beginTurn({ promptText: text, hasScreenshot: true, streamId: handle.streamId });
+      beginTurn({
+        promptText: text,
+        hasScreenshot: true,
+        screenshotDataUrl: `data:${shot.mimeType};base64,${shot.dataBase64}`,
+        streamId: handle.streamId,
+      });
       setInput('');
       clearPending();
       void window.druz9.windows.show('expanded');
@@ -157,8 +179,12 @@ export function CompactScreen() {
     }
   });
 
-  const submit = async () => {
-    const text = input.trim();
+  // Submits whatever's in the input (+ any pending screenshot). Extracted
+  // so voice transcripts can auto-send without relying on input-state
+  // timing (React batches state updates; reading `input` right after a
+  // setInput call would see the stale value).
+  const submitText = async (textOverride?: string) => {
+    const text = (textOverride ?? input).trim();
     if (streaming) return;
     if (!text && !pending) return;
 
@@ -178,16 +204,22 @@ export function CompactScreen() {
     const handle = await window.druz9.analyze.start({
       conversationId,
       promptText: text,
-      model: selectedModel,
+      model: selectedModel || config?.defaultModelId || '',
       attachments,
       triggerAction: pending ? 'screenshot_area' : 'quick_prompt',
       focusedAppHint: '',
     });
-    beginTurn({ promptText: text, hasScreenshot: !!pending, streamId: handle.streamId });
+    beginTurn({
+      promptText: text,
+      hasScreenshot: !!pending,
+      screenshotDataUrl: pending ? `data:${pending.mimeType};base64,${pending.dataBase64}` : undefined,
+      streamId: handle.streamId,
+    });
     setInput('');
     clearPending();
     void window.druz9.windows.show('expanded');
   };
+  const submit = () => submitText();
 
   return (
     <div
@@ -297,8 +329,15 @@ export function CompactScreen() {
             <IconCamera size={15} />
           </IconButton>
           <VoiceButton
-            onTranscript={(text) => setInput((prev) => (prev ? `${prev} ${text}` : text))}
-            onError={(msg) => setStatusText(msg.slice(0, 60))}
+            onTranscript={(text) => {
+              // Merge with anything already typed, then fire the turn
+              // immediately — the user expects voice to *send*, not just
+              // drop text into the input box.
+              const merged = input.trim() ? `${input.trim()} ${text}` : text;
+              setInput(merged);
+              void submitText(merged);
+            }}
+            onError={(msg) => setStatusText(msg.slice(0, 80))}
             hotkeyToggle={voiceToggleCount}
           />
           <IconButton title="Настройки" onClick={() => void window.druz9.windows.show('settings')}>

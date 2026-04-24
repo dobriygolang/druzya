@@ -18,8 +18,10 @@ require (
 	github.com/jackc/puddle/v2 v2.2.2 // indirect
 	github.com/stretchr/testify v1.11.1 // indirect
 	golang.org/x/crypto v0.50.0 // indirect
+	golang.org/x/mod v0.34.0 // indirect
 	golang.org/x/sync v0.20.0 // indirect
 	golang.org/x/text v0.36.0 // indirect
+	golang.org/x/tools v0.43.0 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20260414002931-afd174a4e478 // indirect
 )
 

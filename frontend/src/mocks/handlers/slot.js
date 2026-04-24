@@ -2,6 +2,7 @@
 // pre-existing duplicate kept in sync because index.js imports it explicitly).
 // See slot.ts for the source-of-truth and full doc comments.
 import { http, HttpResponse } from 'msw';
+import { hasReview } from './review';
 
 const base = '/api/v1';
 
@@ -166,7 +167,15 @@ export const slotHandlers = [
       language: b.slot.language,
       price_rub: b.slot.price_rub,
       slot_status: b.slot.status,
+      has_review: hasReview(b.id),
     }));
     return HttpResponse.json({ items });
   }),
 ];
+
+function devCompleteFirst() {
+  const first = Array.from(bookings.values())[0];
+  if (!first) return;
+  first.slot.status = 'SLOT_STATUS_COMPLETED';
+}
+globalThis.__mockSlotComplete = devCompleteFirst;

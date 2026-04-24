@@ -13,6 +13,7 @@ import (
 	authApp "druz9/auth/app"
 	"druz9/shared/pkg/config"
 	"druz9/shared/pkg/eventbus"
+	"druz9/shared/pkg/llmchain"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -32,6 +33,12 @@ type Deps struct {
 	Bus         *eventbus.InProcess
 	TokenIssuer *authApp.TokenIssuer
 	Now         func() time.Time
+	// LLMChain is the shared multi-provider router. nil when no
+	// provider keys were configured at boot — services must check
+	// and degrade to their feature-disabled branch (same contract as
+	// OPENROUTER_API_KEY=""). Built once in bootstrap; wiring
+	// details live in services/llmchain.go.
+	LLMChain *llmchain.Chain
 }
 
 // Module is what every NewXxx returns: enough metadata for router.go to

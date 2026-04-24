@@ -68,9 +68,20 @@ func New(ctx context.Context, cfg *config.Config) (app *App, otelShutdown func()
 	rdb := newRedis(cfg)
 	bus := newEventBus(log)
 
+	// Build the multi-provider LLM chain once. Errors from malformed
+	// driver construction are fatal (operator needs to fix config);
+	// "no providers configured" is not — BuildLLMChain returns nil and
+	// downstream services degrade to their feature-disabled branch.
+	llmChain, lcErr := services.BuildLLMChain(*cfg, log)
+	if lcErr != nil {
+		pool.Close()
+		_ = rdb.Close()
+		return nil, otelShutdown, fmt.Errorf("llmchain: %w", lcErr)
+	}
+
 	deps := services.Deps{
 		Cfg: cfg, Log: log, Pool: pool, Redis: rdb,
-		Bus: bus, Now: nowFunc(),
+		Bus: bus, Now: nowFunc(), LLMChain: llmChain,
 	}
 
 	// Auth must come first — its TokenIssuer + RequireAuth feed every
@@ -96,6 +107,11 @@ func New(ctx context.Context, cfg *config.Config) (app *App, otelShutdown func()
 
 	statsMod := services.NewStats(deps)
 
+	// Slot must be wired before Review — review.CreateReview needs slot's
+	// BookingRepo to validate ownership of the booking being reviewed.
+	slotMod, slotBookings := services.NewSlot(deps)
+	reviewMod := services.NewReview(deps, slotBookings)
+
 	modules := []*services.Module{
 		&auth.Module,
 		statsMod,
@@ -105,7 +121,8 @@ func New(ctx context.Context, cfg *config.Config) (app *App, otelShutdown func()
 		services.NewArena(deps, rating.Repo),
 		services.NewAIMock(deps),
 		services.NewAINative(deps),
-		services.NewSlot(deps),
+		slotMod,
+		reviewMod,
 		services.NewGuild(deps),
 		&notify.Module,
 		services.NewEditor(deps),

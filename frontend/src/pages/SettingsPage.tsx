@@ -29,7 +29,11 @@ import { AIModelRow, PremiumUpgradeHint } from '../components/AIModelRow'
 import { cn } from '../lib/cn'
 import { useProfileQuery } from '../lib/queries/profile'
 import { useAIModelsQuery } from '../lib/queries/ai'
-import { useUpdateProfileSettings } from '../lib/queries/settings'
+import {
+  useAIVacanciesModelQuery,
+  useUpdateAIVacanciesModel,
+  useUpdateProfileSettings,
+} from '../lib/queries/settings'
 import { gradientStyleForUser } from '../lib/avatarGradients'
 import { useTheme, type ThemeMode } from '../lib/theme'
 import { changeLanguage, currentLanguage, type Lang } from '../lib/i18n'
@@ -492,6 +496,7 @@ function AICoachCard() {
                 tier={m.tier}
                 selected={selected === m.id}
                 locked={locked}
+                isVirtual={m.is_virtual}
                 onSelect={onPick}
               />
             )
@@ -507,6 +512,99 @@ function AICoachCard() {
       {update.isError && (
         <div className="rounded-md bg-danger/15 px-3 py-2 font-mono text-[11px] text-danger">
           {t('ai_coach_save_failed', { defaultValue: 'Не удалось сохранить выбор' })}
+        </div>
+      )}
+    </Card>
+  )
+}
+
+// VacanciesModelCard — mirrors AICoachCard but targets the extractor that
+// powers the «Разобрать» flow on /vacancies. Hydrates from the dedicated
+// GET /profile/me/ai-vacancies-model (unlike insight's seed-from-empty),
+// so the row reflects the user's stored preference on mount. Uses the
+// `?use=vacancies` filter so only JSON-capable models show up.
+function VacanciesModelCard() {
+  const { data: profile } = useProfileQuery()
+  const { data: catalogue, isLoading, isError } = useAIModelsQuery('vacancies')
+  const { data: current } = useAIVacanciesModelQuery()
+  const update = useUpdateAIVacanciesModel()
+  const tier = profile?.tier ?? 'free'
+  const isPremium = tier === 'premium' || tier === 'pro'
+  const items = catalogue?.items ?? []
+  const available = catalogue?.available ?? false
+  const selected = current?.model_id ?? ''
+
+  const onPick = (id: string) => {
+    const model = items.find((m) => m.id === id)
+    if (model && model.tier === 'premium' && !isPremium) return
+    update.mutate(id)
+  }
+
+  return (
+    <Card className="flex-col gap-4 p-6">
+      <div className="flex items-center justify-between">
+        <div className="flex flex-col gap-1">
+          <h3 className="font-display text-lg font-bold text-text-primary">
+            Разбор вакансий — модель
+          </h3>
+          <p className="text-[12px] text-text-muted">
+            Выбор LLM для извлечения скиллов из вакансии при клике «Разобрать»
+            на /vacancies. Пусто ⇒ бесплатная qwen3-coder. Работают только
+            модели, надёжно держащие strict-JSON вывод.
+          </p>
+        </div>
+        {update.isPending && (
+          <span className="font-mono text-[10px] text-text-muted">saving…</span>
+        )}
+      </div>
+
+      {isLoading && (
+        <div className="font-mono text-[11px] text-text-muted">loading…</div>
+      )}
+      {isError && (
+        <div className="rounded-md bg-danger/15 px-3 py-2 font-mono text-[11px] text-danger">
+          Не удалось загрузить каталог моделей
+        </div>
+      )}
+      {!isLoading && !isError && !available && (
+        <div className="rounded-md bg-surface-2 px-3 py-2 font-mono text-[11px] text-text-muted">
+          Разбор вакансий сейчас отключён (OPENROUTER_API_KEY не задан)
+        </div>
+      )}
+      {available && items.length > 0 && (
+        <div className="flex flex-col gap-2">
+          <AIModelRow
+            id=""
+            label="По умолчанию (бесплатная)"
+            meta="сервер использует qwen3-coder:free"
+            tier="free"
+            selected={selected === ''}
+            onSelect={onPick}
+          />
+          {items.map((m) => {
+            const locked = m.tier === 'premium' && !isPremium
+            return (
+              <AIModelRow
+                key={m.id}
+                id={m.id}
+                label={m.label}
+                meta={`${m.provider} · ${m.id}`}
+                tier={m.tier}
+                selected={selected === m.id}
+                locked={locked}
+                isVirtual={m.is_virtual}
+                onSelect={onPick}
+              />
+            )
+          })}
+          {!isPremium && items.some((m) => m.tier === 'premium') && (
+            <PremiumUpgradeHint />
+          )}
+        </div>
+      )}
+      {update.isError && (
+        <div className="rounded-md bg-danger/15 px-3 py-2 font-mono text-[11px] text-danger">
+          Не удалось сохранить выбор
         </div>
       )}
     </Card>
@@ -537,6 +635,7 @@ export default function SettingsPage() {
             {active === 'billing' && <BillingTab />}
             <IntegrationsCard />
             <AICoachCard />
+            <VacanciesModelCard />
             <AppearanceCard />
             <DevTierCard />
           </div>

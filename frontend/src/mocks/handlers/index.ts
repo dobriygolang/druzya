@@ -10,6 +10,7 @@ import { seasonHandlers } from './season'
 import { settingsHandlers } from './settings'
 import { nativeHandlers } from './native'
 import { slotHandlers } from './slot'
+import { reviewHandlers } from './review'
 import { achievementsHandlers } from './achievements'
 import { notificationsHandlers } from './notifications'
 import { friendsHandlers } from './friends'
@@ -39,6 +40,7 @@ export const handlers = [
   ...settingsHandlers,
   ...nativeHandlers,
   ...slotHandlers,
+  ...reviewHandlers,
   ...achievementsHandlers,
   ...notificationsHandlers,
   ...friendsHandlers,

@@ -55,21 +55,44 @@ type BookingRepo interface {
 	// show "upcoming on top, then past". Returns an empty slice (not error)
 	// when the candidate has nothing booked.
 	ListByCandidate(ctx context.Context, candidateID uuid.UUID) ([]BookingWithSlot, error)
+
+	// GetWithSlotByID returns a single booking joined with its parent slot.
+	// Used by cross-service callers (review.CreateReview) that need to verify
+	// ownership and slot status before writing a related row.
+	GetWithSlotByID(ctx context.Context, bookingID uuid.UUID) (BookingWithSlot, error)
 }
 
 // BookingWithSlot is the read-model used by /slot/my/bookings: a booking row
 // joined with its parent slot, so the candidate-facing list can render
 // "когда / какой раздел / meet-ссылка" без отдельного N+1 хвоста.
+//
+// HasReview is hydrated by the app layer via BookingHasReviewProvider —
+// false until the candidate leaves a review for this booking. UI uses it to
+// gate the «Оставить отзыв» CTA.
 type BookingWithSlot struct {
-	Booking Booking
-	Slot    Slot
+	Booking    Booking
+	Slot       Slot
+	HasReview  bool
 }
 
-// ReviewRepo persists the `slot_reviews` table and computes interviewer stats.
+// ReviewRepo provides interviewer-rating stats for ListSlots' SlotInterviewer
+// hydration. The implementation lives outside the slot service since the
+// `reviews` table is owned by the review (mock-interview feedback) bounded
+// context — see /Users/sedorofeevd/Desktop/druzya/backend/services/review.
+//
+// The monolith wires a thin adapter (cmd/monolith/services/slot.go) that
+// delegates each call into review.app.GetInterviewerStats.
 type ReviewRepo interface {
 	// InterviewerStats returns (avgRating, reviewCount) across every review
 	// the interviewer has received. A user with zero reviews gets (0, 0).
 	InterviewerStats(ctx context.Context, interviewerID uuid.UUID) (float32, int, error)
+}
+
+// BookingHasReviewProvider is consumed by ListMyBookings to set the
+// `has_review` flag on each booking item. Same cross-service pattern as
+// ReviewRepo — implementation lives in the review service.
+type BookingHasReviewProvider interface {
+	HasReview(ctx context.Context, bookingID uuid.UUID) (bool, error)
 }
 
 // MeetRoomProvider abstracts the generation of the video-meet URL attached to

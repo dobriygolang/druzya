@@ -140,6 +140,12 @@ const api: Druz9API = {
   ui: {
     openProviderPicker: () =>
       ipcRenderer.invoke(invokeChannels.openProviderPicker) as Promise<void>,
+    getLastUserTurn: () =>
+      ipcRenderer.invoke(invokeChannels.getLastUserTurn) as Promise<
+        import('@shared/ipc').UserTurnStartedEvent | null
+      >,
+    announceModelChanged: (modelId: string) =>
+      ipcRenderer.invoke(invokeChannels.selectedModelChanged, modelId) as Promise<void>,
   },
   cursor: {
     state: () =>

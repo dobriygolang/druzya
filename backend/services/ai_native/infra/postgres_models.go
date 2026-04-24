@@ -35,9 +35,9 @@ func NewLLMModels(pool *pgxpool.Pool) *LLMModels {
 	return &LLMModels{pool: pool}
 }
 
-const llmModelColumns = `id, model_id, label, provider, tier, is_enabled,
+const llmModelColumns = `id, model_id, label, provider, provider_id, is_virtual, tier, is_enabled,
     context_window, cost_per_1k_input_usd, cost_per_1k_output_usd,
-    use_for_arena, use_for_insight, use_for_mock, sort_order,
+    use_for_arena, use_for_insight, use_for_mock, use_for_vacancies, sort_order,
     created_at, updated_at`
 
 // List returns rows ordered by (sort_order, label) so admin and public
@@ -56,6 +56,8 @@ func (r *LLMModels) List(ctx context.Context, f domain.LLMModelFilter) ([]domain
 			q += ` AND use_for_insight = TRUE`
 		case domain.LLMModelUseMock:
 			q += ` AND use_for_mock = TRUE`
+		case domain.LLMModelUseVacancies:
+			q += ` AND use_for_vacancies = TRUE`
 		default:
 			return nil, fmt.Errorf("ai_native.LLMModels.List: %w: unknown use %q", domain.ErrLLMModelInvalid, f.Use)
 		}
@@ -109,14 +111,14 @@ func (r *LLMModels) Create(ctx context.Context, m domain.LLMModel) (domain.LLMMo
 	}
 	row := r.pool.QueryRow(ctx,
 		`INSERT INTO llm_models (
-            model_id, label, provider, tier, is_enabled,
+            model_id, label, provider, provider_id, is_virtual, tier, is_enabled,
             context_window, cost_per_1k_input_usd, cost_per_1k_output_usd,
-            use_for_arena, use_for_insight, use_for_mock, sort_order
-         ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
+            use_for_arena, use_for_insight, use_for_mock, use_for_vacancies, sort_order
+         ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
          RETURNING `+llmModelColumns,
-		m.ModelID, m.Label, m.Provider, string(m.Tier), m.IsEnabled,
+		m.ModelID, m.Label, m.Provider, m.ProviderID, m.IsVirtual, string(m.Tier), m.IsEnabled,
 		m.ContextWindow, m.CostPer1KInputUSD, m.CostPer1KOutputUSD,
-		m.UseForArena, m.UseForInsight, m.UseForMock, m.SortOrder,
+		m.UseForArena, m.UseForInsight, m.UseForMock, m.UseForVacancies, m.SortOrder,
 	)
 	out, err := scanLLMModel(row)
 	if err != nil {
@@ -141,17 +143,17 @@ func (r *LLMModels) Update(ctx context.Context, modelID string, m domain.LLMMode
 	}
 	row := r.pool.QueryRow(ctx,
 		`UPDATE llm_models SET
-             model_id = $1, label = $2, provider = $3, tier = $4,
-             is_enabled = $5, context_window = $6,
-             cost_per_1k_input_usd = $7, cost_per_1k_output_usd = $8,
-             use_for_arena = $9, use_for_insight = $10, use_for_mock = $11,
-             sort_order = $12, updated_at = now()
-         WHERE model_id = $13
+             model_id = $1, label = $2, provider = $3, provider_id = $4, is_virtual = $5,
+             tier = $6, is_enabled = $7, context_window = $8,
+             cost_per_1k_input_usd = $9, cost_per_1k_output_usd = $10,
+             use_for_arena = $11, use_for_insight = $12, use_for_mock = $13,
+             use_for_vacancies = $14, sort_order = $15, updated_at = now()
+         WHERE model_id = $16
          RETURNING `+llmModelColumns,
-		m.ModelID, m.Label, m.Provider, string(m.Tier),
+		m.ModelID, m.Label, m.Provider, m.ProviderID, m.IsVirtual, string(m.Tier),
 		m.IsEnabled, m.ContextWindow,
 		m.CostPer1KInputUSD, m.CostPer1KOutputUSD,
-		m.UseForArena, m.UseForInsight, m.UseForMock,
+		m.UseForArena, m.UseForInsight, m.UseForMock, m.UseForVacancies,
 		m.SortOrder, modelID,
 	)
 	out, err := scanLLMModel(row)
@@ -215,9 +217,9 @@ func scanLLMModel(s scannable) (domain.LLMModel, error) {
 		tierRaw string
 	)
 	if err := s.Scan(
-		&m.ID, &m.ModelID, &m.Label, &m.Provider, &tierRaw, &m.IsEnabled,
+		&m.ID, &m.ModelID, &m.Label, &m.Provider, &m.ProviderID, &m.IsVirtual, &tierRaw, &m.IsEnabled,
 		&m.ContextWindow, &m.CostPer1KInputUSD, &m.CostPer1KOutputUSD,
-		&m.UseForArena, &m.UseForInsight, &m.UseForMock, &m.SortOrder,
+		&m.UseForArena, &m.UseForInsight, &m.UseForMock, &m.UseForVacancies, &m.SortOrder,
 		&m.CreatedAt, &m.UpdatedAt,
 	); err != nil {
 		return domain.LLMModel{}, fmt.Errorf("ai_native.scanLLMModel: %w", err)

@@ -263,6 +263,7 @@ func toMyBookingItemProto(bw domain.BookingWithSlot) *pb.MyBookingItem {
 		Language:    bw.Slot.Language,
 		PriceRub:    int32(bw.Slot.PriceRub),
 		SlotStatus:  slotStatusToProto(bw.Slot.Status),
+		HasReview:   bw.HasReview,
 	}
 	if !bw.Booking.CreatedAt.IsZero() {
 		out.CreatedAt = timestamppb.New(bw.Booking.CreatedAt.UTC())

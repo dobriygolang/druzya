@@ -30,6 +30,13 @@ export interface WindowOptions {
 export function showWindow(name: WindowName, opts: WindowOptions): BrowserWindow {
   const existing = windows.get(name);
   if (existing && !existing.isDestroyed()) {
+    // Undo the click-through / opacity dimming we applied on hide (see
+    // hideWindow). On macOS a transparent always-on-top window can leave
+    // a ghost surface after hide() that still catches mouse events —
+    // setIgnoreMouseEvents(true) at hide time prevents that; we flip it
+    // back here when the user brings the window back.
+    existing.setIgnoreMouseEvents(false);
+    existing.setOpacity(1);
     existing.show();
     existing.focus();
     return existing;
@@ -94,7 +101,22 @@ export function showWindow(name: WindowName, opts: WindowOptions): BrowserWindow
 
 export function hideWindow(name: WindowName): void {
   const w = windows.get(name);
-  if (w && !w.isDestroyed()) w.hide();
+  if (!w || w.isDestroyed()) return;
+  // macOS leaves a "ghost" surface after hide() on transparent +
+  // always-on-top + visibleOnAllWorkspaces windows: the pixels disappear
+  // but the window still grabs mouse clicks, so apps underneath become
+  // unclickable in that rectangle. Belt-and-suspenders:
+  //   1. setIgnoreMouseEvents(true) — even if AppKit re-displays the
+  //      surface, clicks fall through to whatever is behind.
+  //   2. setOpacity(0) — collapses any residual render.
+  //   3. hide() — removes from the window list.
+  try {
+    w.setIgnoreMouseEvents(true, { forward: false });
+    w.setOpacity(0);
+  } catch {
+    /* setIgnoreMouseEvents/setOpacity are no-ops on some platforms */
+  }
+  w.hide();
 }
 
 /**

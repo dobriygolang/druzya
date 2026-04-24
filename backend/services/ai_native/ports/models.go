@@ -54,6 +54,12 @@ type ModelDescriptor struct {
 	Provider  string `json:"provider"`
 	Tier      string `json:"tier"`
 	Available bool   `json:"available"`
+	// IsVirtual = true for chain-level pseudo-models (today only
+	// "druz9/turbo"). Frontend uses this to render the ⚡ badge and
+	// sort virtual rows to the top of the picker. Added in
+	// migration 00045. Omitted from the wire when false, keeping the
+	// response tight for the common real-model case.
+	IsVirtual bool `json:"is_virtual,omitempty"`
 }
 
 // ModelsResponse wraps the catalogue plus a top-level availability flag the
@@ -151,6 +157,7 @@ func (h *ModelsHandler) handleList(w http.ResponseWriter, r *http.Request) {
 			Provider:  m.Provider,
 			Tier:      string(m.Tier),
 			Available: m.IsEnabled,
+			IsVirtual: m.IsVirtual,
 		})
 	}
 	resp.Items = out

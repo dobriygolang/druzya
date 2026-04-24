@@ -31,6 +31,36 @@ export type ProfileSettings = {
   ai_insight_model?: string
 }
 
+// Vacancies-extractor model is stored in a separate users column
+// (ai_vacancies_model) and exposed via a dedicated REST pair
+// (GET + PUT /profile/me/ai-vacancies-model). Kept off the proto surface
+// on purpose — see the backend handler doc-comment for the rationale.
+export type AIVacanciesModelBody = { model_id: string }
+
+export function useAIVacanciesModelQuery() {
+  return useQuery({
+    queryKey: ['profile', 'me', 'ai-vacancies-model'],
+    queryFn: () => api<AIVacanciesModelBody>('/profile/me/ai-vacancies-model'),
+    // Model switches are rare; cache aggressively so the VacanciesPage hint
+    // doesn't re-fetch on every mount.
+    staleTime: 5 * 60 * 1000,
+  })
+}
+
+export function useUpdateAIVacanciesModel() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (modelID: string) =>
+      api<AIVacanciesModelBody>('/profile/me/ai-vacancies-model', {
+        method: 'PUT',
+        body: JSON.stringify({ model_id: modelID }),
+      }),
+    onSuccess: (data) => {
+      qc.setQueryData(['profile', 'me', 'ai-vacancies-model'], data)
+    },
+  })
+}
+
 export function useUpdateProfileSettings() {
   const qc = useQueryClient()
   return useMutation({

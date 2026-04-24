@@ -20,6 +20,10 @@ export interface UIMessage {
   role: 'user' | 'assistant';
   content: string;
   hasScreenshot: boolean;
+  /** data: URL for the attached screenshot, if any. Only populated for
+   *  locally-composed turns — server-hydrated history keeps a boolean
+   *  hasScreenshot flag since we don't ship the bytes back down. */
+  screenshotDataUrl?: string;
   pending: boolean; // assistant still streaming
   errorCode?: string;
   errorMessage?: string;
@@ -34,7 +38,12 @@ interface State {
   quota: Quota | null;
 
   /** Push the optimistic user turn and the empty assistant placeholder. */
-  beginTurn: (args: { promptText: string; hasScreenshot: boolean; streamId: string }) => void;
+  beginTurn: (args: {
+    promptText: string;
+    hasScreenshot: boolean;
+    screenshotDataUrl?: string;
+    streamId: string;
+  }) => void;
   receiveCreated: (ev: AnalyzeCreatedEvent) => void;
   receiveDelta: (ev: AnalyzeDeltaEvent) => void;
   receiveDone: (ev: AnalyzeDoneEvent) => void;
@@ -55,14 +64,21 @@ export const useConversationStore = create<State>((set, get) => ({
   streamId: null,
   quota: null,
 
-  beginTurn: ({ promptText, hasScreenshot, streamId }) => {
+  beginTurn: ({ promptText, hasScreenshot, screenshotDataUrl, streamId }) => {
     const userId = `local-user-${Date.now()}`;
     set((s) => ({
       streaming: true,
       streamId,
       messages: [
         ...s.messages,
-        { id: userId, role: 'user', content: promptText, hasScreenshot, pending: false },
+        {
+          id: userId,
+          role: 'user',
+          content: promptText,
+          hasScreenshot,
+          screenshotDataUrl,
+          pending: false,
+        },
         { id: EPHEMERAL_ASSISTANT_ID, role: 'assistant', content: '', hasScreenshot: false, pending: true },
       ],
     }));

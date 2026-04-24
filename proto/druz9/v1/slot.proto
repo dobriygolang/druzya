@@ -121,6 +121,10 @@ message MyBookingItem {
   string language = 10;
   int32 price_rub = 11;
   SlotStatus slot_status = 12;
+  // has_review — true when the candidate already left a review for this
+  // booking. Lets the UI hide the "Оставить отзыв" CTA without a second
+  // round-trip to the review service.
+  bool has_review = 13;
 }
 
 // MyBookingList wraps the repeated items so vanguard's REST transcoder

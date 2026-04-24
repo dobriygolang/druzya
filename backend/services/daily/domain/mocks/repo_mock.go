@@ -168,21 +168,6 @@ func (mr *MockKataRepoMockRecorder) GetOrAssign(ctx, userID, date, taskID, isCur
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetOrAssign", reflect.TypeOf((*MockKataRepo)(nil).GetOrAssign), ctx, userID, date, taskID, isCursed, isWeeklyBoss)
 }
 
-// HistoryLast30 mocks base method.
-func (m *MockKataRepo) HistoryLast30(ctx context.Context, userID uuid.UUID, today time.Time) ([]domain.HistoryEntry, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "HistoryLast30", ctx, userID, today)
-	ret0, _ := ret[0].([]domain.HistoryEntry)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// HistoryLast30 indicates an expected call of HistoryLast30.
-func (mr *MockKataRepoMockRecorder) HistoryLast30(ctx, userID, today any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "HistoryLast30", reflect.TypeOf((*MockKataRepo)(nil).HistoryLast30), ctx, userID, today)
-}
-
 // HistoryByYear mocks base method.
 func (m *MockKataRepo) HistoryByYear(ctx context.Context, userID uuid.UUID, year int) ([]domain.HistoryEntry, error) {
 	m.ctrl.T.Helper()
@@ -196,6 +181,21 @@ func (m *MockKataRepo) HistoryByYear(ctx context.Context, userID uuid.UUID, year
 func (mr *MockKataRepoMockRecorder) HistoryByYear(ctx, userID, year any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "HistoryByYear", reflect.TypeOf((*MockKataRepo)(nil).HistoryByYear), ctx, userID, year)
+}
+
+// HistoryLast30 mocks base method.
+func (m *MockKataRepo) HistoryLast30(ctx context.Context, userID uuid.UUID, today time.Time) ([]domain.HistoryEntry, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "HistoryLast30", ctx, userID, today)
+	ret0, _ := ret[0].([]domain.HistoryEntry)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// HistoryLast30 indicates an expected call of HistoryLast30.
+func (mr *MockKataRepoMockRecorder) HistoryLast30(ctx, userID, today any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "HistoryLast30", reflect.TypeOf((*MockKataRepo)(nil).HistoryLast30), ctx, userID, today)
 }
 
 // MarkSubmitted mocks base method.

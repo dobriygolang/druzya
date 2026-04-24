@@ -53,7 +53,9 @@ app.whenReady().then(async () => {
   // Default model is sourced from the DesktopConfig fetched on the
   // renderer-side handle but the streamer runs in main; we track it as
   // a mutable closure value updated whenever the renderer fetches config.
-  let currentDefaultModel = 'openai/gpt-4o-mini';
+  // Fallback must be a model the free plan can actually run — sending
+  // gpt-4o-mini to OpenRouter on an empty-credits account 402s.
+  let currentDefaultModel = 'qwen/qwen3-coder:free';
   void client
     .getDesktopConfig({ knownRev: 0n })
     .then((c) => {
@@ -79,6 +81,9 @@ app.whenReady().then(async () => {
     cancelAnalyze: (id) => streamer.cancel(id),
     resourcesPath,
     apiBaseURL: cfg.apiBaseURL,
+    onConfigLoaded: (id) => {
+      currentDefaultModel = id;
+    },
   });
 
   ensureTray({ resourcesPath, windowOptions });

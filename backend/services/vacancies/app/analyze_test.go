@@ -12,7 +12,7 @@ import (
 
 type stubExtractor struct{ out []string }
 
-func (s *stubExtractor) Extract(_ context.Context, _ string) ([]string, error) {
+func (s *stubExtractor) Extract(_ context.Context, _, _ string) ([]string, error) {
 	return s.out, nil
 }
 

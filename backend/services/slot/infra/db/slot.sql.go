@@ -165,29 +165,6 @@ func (q *Queries) GetSlotForUpdate(ctx context.Context, id pgtype.UUID) (Slot, e
 	return i, err
 }
 
-const interviewerReviewStats = `-- name: InterviewerReviewStats :one
-SELECT COALESCE(AVG(sr.rating)::float8, 0)::float8 AS avg_rating,
-       COUNT(*)::int                               AS reviews_count
-  FROM slot_reviews sr
-  JOIN bookings b ON b.id = sr.booking_id
-  JOIN slots    s ON s.id = b.slot_id
- WHERE s.interviewer_id = $1
-`
-
-type InterviewerReviewStatsRow struct {
-	AvgRating    float64
-	ReviewsCount int32
-}
-
-// Aggregate rating + review count across every booking owned by the interviewer.
-// Returns (avg, count) — avg is 0 when there are no reviews.
-func (q *Queries) InterviewerReviewStats(ctx context.Context, interviewerID pgtype.UUID) (InterviewerReviewStatsRow, error) {
-	row := q.db.QueryRow(ctx, interviewerReviewStats, interviewerID)
-	var i InterviewerReviewStatsRow
-	err := row.Scan(&i.AvgRating, &i.ReviewsCount)
-	return i, err
-}
-
 const listAvailableSlotsBase = `-- name: ListAvailableSlotsBase :many
 SELECT id, interviewer_id, starts_at, duration_min, section, difficulty, language, price_rub, status, created_at, meet_url
   FROM slots

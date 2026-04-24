@@ -26,6 +26,8 @@ export function ExpandedScreen() {
   const beginTurn = useConversationStore((s) => s.beginTurn);
 
   const selectedModel = useSelectedModelStore((s) => s.modelId);
+  const modelBootstrap = useSelectedModelStore((s) => s.bootstrap);
+  useEffect(() => modelBootstrap(), [modelBootstrap]);
   const lastAnalysis = useSessionStore((s) => s.lastAnalysis);
   const sessionBootstrap = useSessionStore((s) => s.bootstrap);
   const [draft, setDraft] = useState('');
@@ -40,10 +42,42 @@ export function ExpandedScreen() {
     const unsubPicker = window.druz9.on(eventChannels.openProviderPicker, () => {
       setPickerOpen(true);
     });
+    // Compact and expanded live in separate renderer processes, so they
+    // can't share the conversation store directly. Main broadcasts a
+    // userTurnStarted event from analyzeStart / chatStart so this window
+    // can paint the optimistic user bubble (with screenshot preview) the
+    // instant the turn begins.
+    const seenTurns = new Set<string>();
+    const applyTurn = (ev: import('@shared/ipc').UserTurnStartedEvent) => {
+      // Two paths can deliver the same turn: the live broadcast (fires
+      // before this window mounted when triggered from compact) AND the
+      // getLastUserTurn replay on mount. Dedupe by streamId.
+      if (seenTurns.has(ev.streamId)) return;
+      seenTurns.add(ev.streamId);
+      const { getState } = useConversationStore;
+      if (getState().streamId === ev.streamId) return; // local begin already ran
+      getState().beginTurn({
+        promptText: ev.promptText,
+        hasScreenshot: ev.hasScreenshot,
+        screenshotDataUrl: ev.screenshotDataUrl || undefined,
+        streamId: ev.streamId,
+      });
+    };
+    const unsubTurn = window.druz9.on<import('@shared/ipc').UserTurnStartedEvent>(
+      eventChannels.userTurnStarted,
+      applyTurn,
+    );
+    // Race fix: compact broadcasts userTurnStarted *before* this window
+    // exists. Pull the cached snapshot from main so we still draw the
+    // optimistic bubble on first paint.
+    void window.druz9.ui.getLastUserTurn().then((ev) => {
+      if (ev) applyTurn(ev);
+    });
     return () => {
       unsubConv();
       unsubSession();
       unsubPicker();
+      unsubTurn();
     };
   }, [bootstrap, sessionBootstrap]);
 
@@ -63,7 +97,7 @@ export function ExpandedScreen() {
     const handle = await ipc({
       conversationId,
       promptText: text,
-      model: selectedModel,
+      model: selectedModel || config?.defaultModelId || '',
       attachments: [],
       triggerAction: 'quick_prompt',
       focusedAppHint: '',
@@ -289,7 +323,34 @@ function MessageBubble({ m }: { m: UIMessage }) {
             boxShadow: '0 2px 8px rgba(124,92,255,0.25)',
           }}
         >
-          {m.hasScreenshot && (
+          {m.hasScreenshot && m.screenshotDataUrl && (
+            <a
+              href={m.screenshotDataUrl}
+              target="_blank"
+              rel="noreferrer"
+              title="Открыть в полном размере"
+              style={{
+                display: 'block',
+                marginBottom: m.content ? 8 : 0,
+                borderRadius: 8,
+                overflow: 'hidden',
+                border: '1px solid rgba(255,255,255,0.15)',
+                cursor: 'zoom-in',
+              }}
+            >
+              <img
+                src={m.screenshotDataUrl}
+                alt="скриншот"
+                style={{
+                  display: 'block',
+                  width: '100%',
+                  maxHeight: 240,
+                  objectFit: 'cover',
+                }}
+              />
+            </a>
+          )}
+          {m.hasScreenshot && !m.screenshotDataUrl && (
             <div
               style={{
                 display: 'flex',
@@ -304,7 +365,7 @@ function MessageBubble({ m }: { m: UIMessage }) {
               скриншот
             </div>
           )}
-          {m.content || <span style={{ opacity: 0.6 }}>(только скриншот)</span>}
+          {m.content || (!m.hasScreenshot && <span style={{ opacity: 0.6 }}>(пусто)</span>)}
         </div>
       </div>
     );
@@ -515,7 +576,12 @@ async function captureAndSend(
       triggerAction: 'screenshot_area',
       focusedAppHint: '',
     });
-    beginTurn({ promptText, hasScreenshot: true, streamId: handle.streamId });
+    beginTurn({
+      promptText,
+      hasScreenshot: true,
+      screenshotDataUrl: `data:${shot.mimeType};base64,${shot.dataBase64}`,
+      streamId: handle.streamId,
+    });
     setDraft('');
   } catch (err) {
     // eslint-disable-next-line no-console

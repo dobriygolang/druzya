@@ -29,6 +29,12 @@ export type AIModel = {
   provider: string
   tier: AIModelTier
   available: boolean
+  // is_virtual = true for chain-level pseudo-models (today only
+  // "druz9/turbo"). Backend sends `is_virtual` (snake_case) on the wire;
+  // the picker rows render a ⚡ badge when true and sort these to the
+  // top. Omitted from the response body when false — treat `undefined`
+  // as false at every call site.
+  is_virtual?: boolean
 }
 
 export type AIModelsResponse = {
@@ -36,10 +42,17 @@ export type AIModelsResponse = {
   items: AIModel[]
 }
 
-export function useAIModelsQuery() {
+// `use` narrows the catalogue to models flagged for a specific feature
+// surface via the use_for_{arena,insight,mock,vacancies} columns in
+// llm_models. Omit for the full list. Backend validates the value and
+// returns 400 on unknown strings — we don't enforce client-side.
+export type AIModelUse = 'arena' | 'insight' | 'mock' | 'vacancies'
+
+export function useAIModelsQuery(use?: AIModelUse) {
+  const path = use ? `/ai/models?use=${encodeURIComponent(use)}` : '/ai/models'
   return useQuery({
-    queryKey: ['ai', 'models'],
-    queryFn: () => api<AIModelsResponse>('/ai/models'),
+    queryKey: ['ai', 'models', use ?? 'all'],
+    queryFn: () => api<AIModelsResponse>(path),
     // Catalogue changes only on backend deploys — cache aggressively.
     staleTime: 5 * 60 * 1000,
   })

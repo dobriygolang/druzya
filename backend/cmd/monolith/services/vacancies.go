@@ -41,18 +41,23 @@ import (
 func NewVacancies(d Deps) *Module {
 	pgSaved := vacInfra.NewPgSavedRepo(d.Pool)
 
-	// Skill extractor: only registered when OPENROUTER_API_KEY is set. The
-	// AnalyzeURL flow's nil-check skips extraction with a clear startup WARN
-	// — far better than silently writing empty skill lists.
+	// Skill extractor: the llmchain (Groq+Cerebras+OpenRouter) path is
+	// preferred — it adds provider fallback and proactive rate-limit
+	// avoidance over the single-vendor OpenRouter client. Falls back
+	// to direct-OpenRouter when no chain was built (no provider keys
+	// set), and runs without normalization when even that is absent.
 	var extractor vacDomain.SkillExtractor
-	if d.Cfg.LLM.OpenRouterAPIKey == "" {
-		d.Log.Warn("vacancies: OPENROUTER_API_KEY not set — analyze runs without skill normalization")
-	} else {
-		var kv vacInfra.KV
-		if d.Redis != nil {
-			kv = vacInfra.NewRedisKV(d.Redis)
-		}
+	var kv vacInfra.KV
+	if d.Redis != nil {
+		kv = vacInfra.NewRedisKV(d.Redis)
+	}
+	switch {
+	case d.LLMChain != nil:
+		extractor = vacInfra.NewChainExtractor(d.LLMChain, kv, d.Log)
+	case d.Cfg.LLM.OpenRouterAPIKey != "":
 		extractor = vacInfra.NewOpenRouterExtractor(d.Cfg.LLM.OpenRouterAPIKey, kv, d.Log)
+	default:
+		d.Log.Warn("vacancies: no LLM provider configured — analyze runs without skill normalization")
 	}
 
 	parsers := vacParsers.RegisterAll(vacParsers.Config{Log: d.Log})
@@ -90,6 +95,10 @@ func NewVacancies(d Deps) *Module {
 		Details:   detailsCache,
 		Extractor: extractor,
 		UserSkill: resolver,
+		// Reads users.ai_vacancies_model per-request. Pg (not cached) is
+		// fine — one extra point read per /analyze call, already dominated
+		// by the OpenRouter round-trip.
+		UserModel: vacanciesModelAdapter{repo: profilePG},
 		Log:       d.Log,
 	}
 	list := &vacApp.ListVacancies{Cache: cache}
@@ -126,6 +135,21 @@ func NewVacancies(d Deps) *Module {
 			func(ctx context.Context) { go cache.Run(ctx) },
 		},
 	}
+}
+
+// vacanciesModelAdapter bridges profile.Postgres → vacApp.UserModelResolver.
+// Only wraps one method; kept inline in the wirer (no separate file) to
+// match the adapter pattern already used for ratingsAdapter.
+type vacanciesModelAdapter struct {
+	repo *profileInfra.Postgres
+}
+
+func (a vacanciesModelAdapter) ResolveVacanciesModel(ctx context.Context, userID uuid.UUID) (string, error) {
+	s, err := a.repo.GetVacanciesModel(ctx, userID)
+	if err != nil {
+		return "", fmt.Errorf("services.vacancies.vacanciesModelAdapter: %w", err)
+	}
+	return s, nil
 }
 
 // ratingsAdapter bridges profile.Postgres → vacancies infra. Two domains,

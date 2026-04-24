@@ -51,13 +51,33 @@ export async function captureArea(rect: { x: number; y: number; width: number; h
   return toResult(cropped);
 }
 
+// Max side in pixels for the image we actually send to the LLM. Vision
+// models (GPT-4o, Claude, Qwen-VL) internally resize anything larger
+// anyway, so sending a raw 3840×2400 retina grab just wastes tokens and
+// bandwidth. 1280 keeps text in screenshots legible while cutting the
+// base64 payload roughly 6-8× vs. the retina source.
+const MAX_IMAGE_SIDE = 1280;
+
 function toResult(image: Electron.NativeImage): CaptureResult {
-  const size = image.getSize();
-  const png = image.toPNG();
+  const resized = downscale(image, MAX_IMAGE_SIDE);
+  const size = resized.getSize();
+  const png = resized.toPNG();
   return {
     dataBase64: png.toString('base64'),
     mimeType: 'image/png',
     width: size.width,
     height: size.height,
   };
+}
+
+function downscale(image: Electron.NativeImage, maxSide: number): Electron.NativeImage {
+  const { width, height } = image.getSize();
+  const longest = Math.max(width, height);
+  if (longest <= maxSide) return image;
+  const scale = maxSide / longest;
+  return image.resize({
+    width: Math.round(width * scale),
+    height: Math.round(height * scale),
+    quality: 'good',
+  });
 }

@@ -28,9 +28,14 @@ import (
 // OpenRouterEndpoint is the OpenAI-compatible chat endpoint.
 const OpenRouterEndpoint = "https://openrouter.ai/api/v1/chat/completions"
 
-// DefaultExtractorModel is a small, cheap model — vacancy descriptions are
-// short and the task is structured extraction (no chain-of-thought).
-const DefaultExtractorModel = "openai/gpt-4o-mini"
+// DefaultExtractorModel is the zero-cost fallback. `qwen/qwen3-coder:free`
+// is the only OpenRouter :free model we've verified holds strict JSON
+// reliably on the vacancy-description workload (gpt-oss-120b:free drops
+// the JSON wrapper ~15% of the time; minimax/liquid are prose-first).
+// Users can override per-account via users.ai_vacancies_model (see
+// profile settings) — the Analyze wirer reads it and passes it as the
+// `modelOverride` arg to Extract at call time.
+const DefaultExtractorModel = "qwen/qwen3-coder:free"
 
 // DefaultExtractorCacheTTL is the spec'd 7-day TTL.
 const DefaultExtractorCacheTTL = 7 * 24 * time.Hour
@@ -85,10 +90,11 @@ func (e *OpenRouterExtractor) WithHTTPClient(h *http.Client) *OpenRouterExtracto
 }
 
 // extractCacheKey returns the Redis key for the cached skill list of one
-// description.
-func extractCacheKey(description string) string {
+// (description, model) pair. The model is part of the key because two
+// models can produce different skill normalisations on the same text.
+func extractCacheKey(description, model string) string {
 	sum := sha256.Sum256([]byte(strings.TrimSpace(description)))
-	return fmt.Sprintf("vacancies:%s:skills:%s", CacheKeyVersion, hex.EncodeToString(sum[:16]))
+	return fmt.Sprintf("vacancies:%s:skills:%s:%s", CacheKeyVersion, model, hex.EncodeToString(sum[:16]))
 }
 
 type orMsg struct {
@@ -126,13 +132,23 @@ Examples of valid output:
 // HTTP error, non-2xx response, malformed JSON) is surfaced as a real
 // error. SyncJob.runOneParser's per-item logging keeps the sync loop alive
 // across individual failures while making each one loud.
-func (e *OpenRouterExtractor) Extract(ctx context.Context, description string) ([]string, error) {
+func (e *OpenRouterExtractor) Extract(ctx context.Context, description, modelOverride string) ([]string, error) {
 	desc := strings.TrimSpace(description)
 	if desc == "" {
 		return []string{}, nil
 	}
+	// Pick per-call model: explicit override wins, otherwise the extractor's
+	// configured default. The override never mutates e.model, so concurrent
+	// calls from different users stay isolated.
+	model := strings.TrimSpace(modelOverride)
+	if model == "" {
+		model = e.model
+	}
+	// Cache key must include the model id — different models produce
+	// different normalisations on the same description, and we don't want
+	// user A's pick to silently serve user B on the next call.
 	if e.kv != nil {
-		if raw, err := e.kv.Get(ctx, extractCacheKey(desc)); err == nil {
+		if raw, err := e.kv.Get(ctx, extractCacheKey(desc, model)); err == nil {
 			var out []string
 			if jerr := json.Unmarshal([]byte(raw), &out); jerr == nil {
 				return out, nil
@@ -151,7 +167,7 @@ func (e *OpenRouterExtractor) Extract(ctx context.Context, description string) (
 	}
 
 	body, err := json.Marshal(orReq{
-		Model:       e.model,
+		Model:       model,
 		Temperature: 0.1,
 		MaxTokens:   256,
 		Messages: []orMsg{
@@ -190,7 +206,7 @@ func (e *OpenRouterExtractor) Extract(ctx context.Context, description string) (
 	skills := parseSkillList(parsed.Choices[0].Message.Content)
 	if e.kv != nil {
 		if data, jerr := json.Marshal(skills); jerr == nil {
-			if serr := e.kv.Set(ctx, extractCacheKey(desc), data, e.cacheTTL); serr != nil {
+			if serr := e.kv.Set(ctx, extractCacheKey(desc, model), data, e.cacheTTL); serr != nil {
 				metrics.CacheSetErrorsTotal.WithLabelValues("vacancies_extractor").Inc()
 				e.log.Warn("vacancies.extractor: cache Set failed",
 					slog.Any("err", serr))

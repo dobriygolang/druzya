@@ -15,7 +15,7 @@
 // looked like a half-rendered row, not a deliberate "you need to upgrade"
 // affordance. This is the deliberate version.
 
-import { Check, Lock } from 'lucide-react'
+import { Check, Lock, Zap } from 'lucide-react'
 import { cn } from '../lib/cn'
 
 export type AIModelTier = 'free' | 'premium'
@@ -31,10 +31,16 @@ export type AIModelRowProps = {
   selected: boolean
   /** When true, the row renders the locked state and onSelect is suppressed. */
   locked?: boolean
+  /** Virtual (chain-level pseudo) model — today only "druz9/turbo".
+   *  Rendered with an accent border + ⚡ badge regardless of tier, so
+   *  users immediately see it as "the smart default" rather than "just
+   *  another free model". Wired from the backend's is_virtual column
+   *  on llm_models (migration 00045). */
+  isVirtual?: boolean
   onSelect: (id: string) => void
 }
 
-export function AIModelRow({ id, label, meta, tier, selected, locked, onSelect }: AIModelRowProps) {
+export function AIModelRow({ id, label, meta, tier, selected, locked, isVirtual, onSelect }: AIModelRowProps) {
   return (
     <button
       type="button"
@@ -49,6 +55,7 @@ export function AIModelRow({ id, label, meta, tier, selected, locked, onSelect }
         selected
           ? 'border-accent bg-accent/10'
           : 'border-border bg-bg/40 hover:border-border-strong',
+        isVirtual && !selected && 'border-accent/50 bg-accent/[0.04] hover:border-accent',
         locked && 'cursor-not-allowed hover:border-warn/40 hover:bg-warn/[0.04]',
       )}
       title={locked ? 'Доступно на Premium подписке' : undefined}
@@ -75,7 +82,7 @@ export function AIModelRow({ id, label, meta, tier, selected, locked, onSelect }
       </div>
 
       {/* Right-side chip */}
-      <RightChip tier={tier} selected={selected} locked={locked} />
+      <RightChip tier={tier} selected={selected} locked={locked} isVirtual={isVirtual} />
     </button>
   )
 }
@@ -84,11 +91,23 @@ function RightChip({
   tier,
   selected,
   locked,
+  isVirtual,
 }: {
   tier: AIModelTier
   selected: boolean
   locked?: boolean
+  isVirtual?: boolean
 }) {
+  // Virtual rows (Turbo) win the chip slot regardless of tier/selected
+  // state — the ⚡ badge is the whole point of the row.
+  if (isVirtual) {
+    return (
+      <span className="flex items-center gap-1 rounded-md bg-accent/20 px-2 py-0.5 font-mono text-[10px] font-bold uppercase text-accent">
+        <Zap className="h-3 w-3" strokeWidth={3} />
+        турбо
+      </span>
+    )
+  }
   if (tier === 'premium') {
     return (
       <span

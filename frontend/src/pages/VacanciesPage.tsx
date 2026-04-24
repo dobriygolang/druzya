@@ -39,6 +39,7 @@ import {
   type AnalyzeResponse,
 } from '../lib/queries/vacancies'
 import { useProfileQuery } from '../lib/queries/profile'
+import { useAIVacanciesModelQuery } from '../lib/queries/settings'
 
 function formatSalary(min?: number, max?: number, currency?: string): string {
   if (!min && !max) return ''
@@ -467,6 +468,10 @@ function Hero() {
   const [url, setUrl] = useState('')
   const [clientError, setClientError] = useState<string | null>(null)
   const analyze = useAnalyzeVacancy()
+  const { data: modelChoice } = useAIVacanciesModelQuery()
+  const modelLabel = modelChoice?.model_id
+    ? modelChoice.model_id
+    : 'qwen/qwen3-coder:free (по умолчанию)'
   const submit = (e: React.FormEvent) => {
     e.preventDefault()
     setClientError(null)
@@ -523,6 +528,20 @@ function Hero() {
             Разобрать
           </Button>
         </form>
+        {/* Transparency: show which LLM will crunch the vacancy + deep-link
+            to the picker in Settings. Clicking the model id goes straight
+            to the AI tab so users don't hunt for the control. */}
+        <div className="flex max-w-[720px] flex-wrap items-center gap-1.5 text-[11px] text-white/70">
+          <span>Модель разбора:</span>
+          <span className="font-mono text-white">{modelLabel}</span>
+          <span>·</span>
+          <Link
+            to="/settings"
+            className="font-semibold text-accent hover:underline"
+          >
+            Изменить в настройках →
+          </Link>
+        </div>
         {errMsg && (
           <div role="alert" className="max-w-[720px] text-center text-xs text-danger">
             {errMsg}

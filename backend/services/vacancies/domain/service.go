@@ -19,8 +19,14 @@ type Parser interface {
 // SkillExtractor takes a free-form description and returns a normalized,
 // lower-cased list of skill tags. Implementations are expected to cache by
 // SHA256(description) — the LLM call is by far the most expensive step.
+//
+// modelOverride lets the caller pin a specific OpenRouter model id for
+// this one call (e.g. the user's ai_vacancies_model pick from Settings).
+// Empty string means "use implementation default" — this keeps the
+// interface concurrency-safe without forcing callers to clone the
+// extractor per-request.
 type SkillExtractor interface {
-	Extract(ctx context.Context, description string) (skills []string, err error)
+	Extract(ctx context.Context, description, modelOverride string) (skills []string, err error)
 }
 
 // ComputeSkillGap diffs required vs user-known. All inputs are normalised to

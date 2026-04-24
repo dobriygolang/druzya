@@ -75,6 +75,11 @@ export interface RegisterOptions {
   resourcesPath: string;
   /** Backend base URL — the telegram login code-flow needs it directly. */
   apiBaseURL: string;
+  /** Called whenever a fresh DesktopConfig fetch succeeds, so main can
+   *  update its fallback default-model id. Without this the streamer
+   *  keeps using whatever value was set at boot even when the server
+   *  rev has changed (e.g. migrating off a paid model onto a free one). */
+  onConfigLoaded?: (defaultModelId: string) => void;
 }
 
 // Exported so main/index.ts can dispose the manager on app quit.
@@ -84,7 +89,7 @@ export function getSessionManager(): SessionManager | null {
 }
 
 export function registerHandlers(opts: RegisterOptions): void {
-  const { client, windowOptions, startAnalyze, cancelAnalyze, resourcesPath, apiBaseURL } = opts;
+  const { client, windowOptions, startAnalyze, cancelAnalyze, resourcesPath, apiBaseURL, onConfigLoaded } = opts;
 
   const telegramClient: TelegramCodeClient = createTelegramCodeClient(apiBaseURL);
 
@@ -195,10 +200,12 @@ export function registerHandlers(opts: RegisterOptions): void {
   // ── Config ──
   ipcMain.handle(invokeChannels.configGet, async () => {
     const resp = await client.getDesktopConfig({ knownRev: 0n });
+    if (resp.defaultModelId) onConfigLoaded?.(resp.defaultModelId);
     return resp;
   });
   ipcMain.handle(invokeChannels.configRefresh, async () => {
     const resp = await client.getDesktopConfig({ knownRev: 0n });
+    if (resp.defaultModelId) onConfigLoaded?.(resp.defaultModelId);
     return resp;
   });
 
@@ -252,12 +259,42 @@ export function registerHandlers(opts: RegisterOptions): void {
   });
 
   // ── Analyze / Chat ──
+  // Cached so a window that mounts AFTER the broadcast (common when
+  // compact triggers a turn and then opens expanded for the first time)
+  // can still pick it up via getLastUserTurn on mount.
+  let lastUserTurn: {
+    streamId: string;
+    promptText: string;
+    hasScreenshot: boolean;
+    screenshotDataUrl: string;
+  } | null = null;
+  const announceTurnStart = (streamId: string, input: AnalyzeInput) => {
+    const shot = input.attachments.find((a) => a.kind === 'screenshot');
+    const ev = {
+      streamId,
+      promptText: input.promptText,
+      hasScreenshot: !!shot,
+      screenshotDataUrl: shot ? `data:${shot.mimeType};base64,${shot.dataBase64}` : '',
+    };
+    lastUserTurn = ev;
+    broadcast(eventChannels.userTurnStarted, ev);
+  };
+  ipcMain.handle(invokeChannels.getLastUserTurn, async () => lastUserTurn);
+
+  // Cross-window model-pick sync. One renderer writes → main fans out
+  // to every window so their zustand stores converge without each having
+  // to read localStorage on every render.
+  ipcMain.handle(invokeChannels.selectedModelChanged, async (_evt, modelId: string) => {
+    broadcast(eventChannels.selectedModelChanged, { modelId });
+  });
   ipcMain.handle(invokeChannels.analyzeStart, async (_evt, input: AnalyzeInput) => {
     const streamId = await startAnalyze(input, 'analyze');
+    announceTurnStart(streamId, input);
     return { streamId };
   });
   ipcMain.handle(invokeChannels.chatStart, async (_evt, input: AnalyzeInput) => {
     const streamId = await startAnalyze(input, 'chat');
+    announceTurnStart(streamId, input);
     return { streamId };
   });
   ipcMain.handle(invokeChannels.analyzeCancel, async (_evt, streamId: string) => {

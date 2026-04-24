@@ -33,7 +33,20 @@ type AnalyzeURL struct {
 	Details   DetailsReader             // Phase-4 lazy detail cache; pivots analysis off the rich description
 	Extractor domain.SkillExtractor     // optional; merges LLM-extracted skills into the gap calc
 	UserSkill domain.UserSkillsResolver // Phase-5; resolves user stack from real profile stats
+	// UserModel optionally resolves the user's preferred extractor model
+	// (users.ai_vacancies_model). Empty return = use extractor default.
+	// Nil = feature disabled; always use the default. Resolver errors are
+	// logged + swallowed — a settings-read failure must not block analyze.
+	UserModel UserModelResolver
 	Log       *slog.Logger
+}
+
+// UserModelResolver reads the caller's ai_vacancies_model setting. A thin
+// indirection so the vacancies module doesn't import profile/infra.
+// Implementations return "" when the user hasn't set a preference — that
+// signals the extractor to use its configured default.
+type UserModelResolver interface {
+	ResolveVacanciesModel(ctx context.Context, userID uuid.UUID) (string, error)
 }
 
 // AnalyzeResult is what the handler returns.
@@ -118,10 +131,25 @@ func (a *AnalyzeURL) Do(ctx context.Context, rawURL string, userID uuid.UUID) (A
 	}
 
 	if a.Extractor != nil && strings.TrimSpace(descriptionForExtraction) != "" {
+		// Per-user model override (Settings → AI tab). Resolver failure
+		// degrades to the extractor default rather than failing analyze —
+		// the user would see a generic error for what is really "we
+		// couldn't read your preferences". Log loud per anti-fallback.
+		var modelOverride string
+		if a.UserModel != nil {
+			if m, mErr := a.UserModel.ResolveVacanciesModel(ctx, userID); mErr != nil {
+				if a.Log != nil {
+					a.Log.Warn("vacancies.AnalyzeURL: resolve user vacancies model failed, using default",
+						slog.Any("err", mErr))
+				}
+			} else {
+				modelOverride = m
+			}
+		}
 		// Best-effort: extractor failure must not block the analyze
 		// response — keep the listing-level NormalizedSkills as the
 		// requirement set. Log + WARN per anti-fallback policy.
-		skills, exErr := a.Extractor.Extract(ctx, descriptionForExtraction)
+		skills, exErr := a.Extractor.Extract(ctx, descriptionForExtraction, modelOverride)
 		switch {
 		case exErr != nil:
 			if a.Log != nil {

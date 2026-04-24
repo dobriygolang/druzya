@@ -50,13 +50,3 @@ SELECT id, slot_id, candidate_id, meet_url, status, created_at
 
 -- name: CancelBookingBySlotID :execrows
 UPDATE bookings SET status = 'cancelled' WHERE slot_id = $1;
-
--- name: InterviewerReviewStats :one
--- Aggregate rating + review count across every booking owned by the interviewer.
--- Returns (avg, count) — avg is 0 when there are no reviews.
-SELECT COALESCE(AVG(sr.rating)::float8, 0)::float8 AS avg_rating,
-       COUNT(*)::int                               AS reviews_count
-  FROM slot_reviews sr
-  JOIN bookings b ON b.id = sr.booking_id
-  JOIN slots    s ON s.id = b.slot_id
- WHERE s.interviewer_id = $1;

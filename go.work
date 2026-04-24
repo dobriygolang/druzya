@@ -26,6 +26,7 @@ use (
 	./backend/services/cohort
 	./backend/services/copilot
 	./backend/services/lobby
+	./backend/services/review
 	./backend/shared
 )
 

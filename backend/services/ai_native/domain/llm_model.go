@@ -42,15 +42,16 @@ func (t LLMModelTier) IsValid() bool {
 type LLMModelUse string
 
 const (
-	LLMModelUseArena   LLMModelUse = "arena"
-	LLMModelUseInsight LLMModelUse = "insight"
-	LLMModelUseMock    LLMModelUse = "mock"
+	LLMModelUseArena     LLMModelUse = "arena"
+	LLMModelUseInsight   LLMModelUse = "insight"
+	LLMModelUseMock      LLMModelUse = "mock"
+	LLMModelUseVacancies LLMModelUse = "vacancies"
 )
 
 // IsValid reports whether the value matches a known use string.
 func (u LLMModelUse) IsValid() bool {
 	switch u {
-	case LLMModelUseArena, LLMModelUseInsight, LLMModelUseMock:
+	case LLMModelUseArena, LLMModelUseInsight, LLMModelUseMock, LLMModelUseVacancies:
 		return true
 	}
 	return false
@@ -66,6 +67,17 @@ type LLMModel struct {
 	ModelID            string
 	Label              string
 	Provider           string
+	// ProviderID — routing identity for the llmchain package ("groq" /
+	// "cerebras" / "mistral" / "openrouter" / "druz9" for virtual).
+	// Redundant with the "<prefix>/<rest>" shape of ModelID for real
+	// models, but stored explicitly so admin UI / backend dispatch
+	// don't rely on prefix parsing. Added in migration 00045.
+	ProviderID         string
+	// IsVirtual — marks llmchain pseudo-models (today only "druz9/turbo").
+	// UI treats virtual rows specially (⚡ badge, "Авто-роутинг" label);
+	// admin CMS hides the wire-format editor because the id is a
+	// contract, not a config value. Added in migration 00045.
+	IsVirtual          bool
 	Tier               LLMModelTier
 	IsEnabled          bool
 	ContextWindow      *int
@@ -74,6 +86,7 @@ type LLMModel struct {
 	UseForArena        bool
 	UseForInsight      bool
 	UseForMock         bool
+	UseForVacancies    bool
 	SortOrder          int
 	CreatedAt          time.Time
 	UpdatedAt          time.Time

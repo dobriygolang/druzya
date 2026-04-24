@@ -187,6 +187,21 @@ func (mr *MockBookingRepoMockRecorder) GetBySlotID(ctx, slotID any) *gomock.Call
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetBySlotID", reflect.TypeOf((*MockBookingRepo)(nil).GetBySlotID), ctx, slotID)
 }
 
+// GetWithSlotByID mocks base method.
+func (m *MockBookingRepo) GetWithSlotByID(ctx context.Context, bookingID uuid.UUID) (domain.BookingWithSlot, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetWithSlotByID", ctx, bookingID)
+	ret0, _ := ret[0].(domain.BookingWithSlot)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// GetWithSlotByID indicates an expected call of GetWithSlotByID.
+func (mr *MockBookingRepoMockRecorder) GetWithSlotByID(ctx, bookingID any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetWithSlotByID", reflect.TypeOf((*MockBookingRepo)(nil).GetWithSlotByID), ctx, bookingID)
+}
+
 // ListByCandidate mocks base method.
 func (m *MockBookingRepo) ListByCandidate(ctx context.Context, candidateID uuid.UUID) ([]domain.BookingWithSlot, error) {
 	m.ctrl.T.Helper()
@@ -240,6 +255,45 @@ func (m *MockReviewRepo) InterviewerStats(ctx context.Context, interviewerID uui
 func (mr *MockReviewRepoMockRecorder) InterviewerStats(ctx, interviewerID any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "InterviewerStats", reflect.TypeOf((*MockReviewRepo)(nil).InterviewerStats), ctx, interviewerID)
+}
+
+// MockBookingHasReviewProvider is a mock of BookingHasReviewProvider interface.
+type MockBookingHasReviewProvider struct {
+	ctrl     *gomock.Controller
+	recorder *MockBookingHasReviewProviderMockRecorder
+	isgomock struct{}
+}
+
+// MockBookingHasReviewProviderMockRecorder is the mock recorder for MockBookingHasReviewProvider.
+type MockBookingHasReviewProviderMockRecorder struct {
+	mock *MockBookingHasReviewProvider
+}
+
+// NewMockBookingHasReviewProvider creates a new mock instance.
+func NewMockBookingHasReviewProvider(ctrl *gomock.Controller) *MockBookingHasReviewProvider {
+	mock := &MockBookingHasReviewProvider{ctrl: ctrl}
+	mock.recorder = &MockBookingHasReviewProviderMockRecorder{mock}
+	return mock
+}
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockBookingHasReviewProvider) EXPECT() *MockBookingHasReviewProviderMockRecorder {
+	return m.recorder
+}
+
+// HasReview mocks base method.
+func (m *MockBookingHasReviewProvider) HasReview(ctx context.Context, bookingID uuid.UUID) (bool, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "HasReview", ctx, bookingID)
+	ret0, _ := ret[0].(bool)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// HasReview indicates an expected call of HasReview.
+func (mr *MockBookingHasReviewProviderMockRecorder) HasReview(ctx, bookingID any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "HasReview", reflect.TypeOf((*MockBookingHasReviewProvider)(nil).HasReview), ctx, bookingID)
 }
 
 // MockMeetRoomProvider is a mock of MeetRoomProvider interface.

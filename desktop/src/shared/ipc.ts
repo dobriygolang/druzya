@@ -85,6 +85,14 @@ export const invokeChannels = {
   sessionGetAnalysis: 'session:get-analysis',
   /** Renderer → main reply to sessionRequestLocalTranscript. */
   sessionSubmitLocalTranscript: 'session:submit-local-transcript',
+  /** Expanded calls this on mount to pick up any userTurnStarted event
+   *  that fired before its renderer had subscribed (race: compact kicks
+   *  off analyze.start, main broadcasts, then compact asks main to
+   *  open expanded — by the time expanded's useEffect runs, the event
+   *  has already been dispatched and lost). */
+  getLastUserTurn: 'ui:get-last-user-turn',
+  /** Any renderer announces a model-picker change; main fans it out. */
+  selectedModelChanged: 'ui:selected-model-changed',
 } as const;
 
 /** Events pushed from main → renderer. */
@@ -111,7 +119,31 @@ export const eventChannels = {
    *  path). Renderer answers via ipcRenderer.send on
    *  'session:local-transcript-response'. */
   sessionRequestLocalTranscript: 'event:session-request-local-transcript',
+  /** Fired by main right after analyze.start succeeds, so every window
+   *  (compact for its own feed, expanded for the chat) can draw the
+   *  optimistic user bubble — including the screenshot preview — before
+   *  the server sends its 'created' frame. Carries the full data URL so
+   *  the expanded window, which is a different renderer process, can
+   *  render the image without a round-trip through the main process. */
+  userTurnStarted: 'event:user-turn-started',
+  /** Model picked in one window → rebroadcast so the others sync their
+   *  selected-model store. Each BrowserWindow has its own renderer
+   *  process, so localStorage-backed zustand stores do not share state
+   *  cross-window without an explicit bridge. */
+  selectedModelChanged: 'event:selected-model-changed',
 } as const;
+
+export interface SelectedModelChangedEvent {
+  modelId: string;
+}
+
+export interface UserTurnStartedEvent {
+  streamId: string;
+  promptText: string;
+  hasScreenshot: boolean;
+  /** Full data URL (`data:image/png;base64,…`). Empty when no screenshot. */
+  screenshotDataUrl: string;
+}
 
 // ─────────────────────────────────────────────────────────────────────────
 // BYOK types
@@ -410,6 +442,13 @@ export interface Druz9API {
   ui: {
     /** Ask the expanded window to open the model picker on arrival. */
     openProviderPicker: () => Promise<void>;
+    /** Fetch the last user-turn snapshot from main — used by expanded on
+     *  mount to paint a turn that was kicked off from compact before this
+     *  window had a chance to subscribe to the broadcast. */
+    getLastUserTurn: () => Promise<UserTurnStartedEvent | null>;
+    /** Announce a model pick. Main rebroadcasts as selectedModelChanged
+     *  so every window's selected-model store stays in sync. */
+    announceModelChanged: (modelId: string) => Promise<void>;
   };
 
   /**

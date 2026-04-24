@@ -272,14 +272,19 @@ export type MyBookingItem = {
   language: string
   price_rub: number
   slot_status: SlotStatusValue
+  // has_review reflects whether the candidate already left a review for this
+  // booking (M3, slot.proto:MyBookingItem.has_review). Drives the «Оставить
+  // отзыв» CTA visibility on the drawer.
+  has_review?: boolean
 }
 
 // Wire shape: section/difficulty/slot_status arrive as enums.Section / proto
 // strings depending on whether the chi-direct or RPC path serves the request.
-type MyBookingItemWire = Omit<MyBookingItem, 'section' | 'difficulty' | 'slot_status'> & {
+type MyBookingItemWire = Omit<MyBookingItem, 'section' | 'difficulty' | 'slot_status' | 'has_review'> & {
   section: string
   difficulty?: string
   slot_status: string
+  has_review?: boolean
 }
 
 type MyBookingsWire = { items: MyBookingItemWire[] }
@@ -292,6 +297,7 @@ function normalizeMyBooking(w: MyBookingItemWire): MyBookingItem {
     section,
     difficulty: w.difficulty ? DIFFICULTY_FROM_WIRE[w.difficulty] : undefined,
     slot_status: STATUS_FROM_WIRE[w.slot_status] ?? 'available',
+    has_review: w.has_review ?? false,
   }
 }
 

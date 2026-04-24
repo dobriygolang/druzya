@@ -22,6 +22,7 @@ import (
 	"strings"
 	"time"
 
+	"druz9/shared/pkg/llmchain"
 	"druz9/shared/pkg/metrics"
 
 	"github.com/google/uuid"
@@ -30,10 +31,15 @@ import (
 // InsightOpenRouterEndpoint is the OpenAI-compatible chat endpoint.
 const InsightOpenRouterEndpoint = "https://openrouter.ai/api/v1/chat/completions"
 
-// DefaultInsightModel is a higher-quality model than the vacancies extractor —
-// the prompt asks for a coaching narrative in Russian, where chain-of-thought
-// quality matters. Override via OPENROUTER_INSIGHT_MODEL.
-const DefaultInsightModel = "anthropic/claude-sonnet-4"
+// DefaultInsightModel is the zero-cost fallback. Switched off
+// `anthropic/claude-sonnet-4` when we ran out of OpenRouter credits
+// (every weekly-report generation was returning 402). gpt-oss-120b:free
+// is the strongest OpenRouter :free pick for multi-paragraph Russian
+// prose (qwen3-coder is coder-tuned, minimax runs shorter, liquid is
+// a 1.2B reasoning model). Premium users still get claude-sonnet-4 via
+// users.ai_insight_model — that override takes precedence over this
+// default at InsightClient.Generate time.
+const DefaultInsightModel = "openai/gpt-oss-120b:free"
 
 // DefaultInsightCacheTTL — 24 h. The week's stats don't change once the week
 // is over, so the LLM output is effectively stable; we still cap at 24 h to
@@ -80,8 +86,17 @@ type InsightClient struct {
 	cacheTTL time.Duration
 	log      *slog.Logger
 
-	// disabled — true when constructed with empty apiKey. Generate returns
-	// ("", nil) immediately, skipping cache + HTTP entirely.
+	// chain — optional llmchain router. When set, Generate dispatches
+	// through it (Task=InsightProse for default routing; ModelOverride
+	// when the user / payload pins a concrete model). When nil, the
+	// legacy direct-OpenRouter HTTP path is used. Wired in the profile
+	// module (cmd/monolith/services/profile.go) when Deps.LLMChain is
+	// non-nil. The two paths share Cache + system prompt so output
+	// stays consistent across the rollout.
+	chain *llmchain.Chain
+
+	// disabled — true when constructed with empty apiKey AND chain is nil.
+	// Generate returns ("", nil) immediately, skipping cache + HTTP entirely.
 	disabled bool
 }
 
@@ -122,6 +137,19 @@ func NewInsightClient(httpClient *http.Client, apiKey, model string, log *slog.L
 
 // WithEndpoint overrides the URL — used by tests.
 func (c *InsightClient) WithEndpoint(u string) *InsightClient { c.endpoint = u; return c }
+
+// WithChain routes subsequent Generate calls through the llmchain
+// instead of direct OpenRouter HTTP. Wired by the profile module when
+// Deps.LLMChain is available. Nil chain = legacy path stays in effect.
+// Chaining a client also flips disabled=false so a dev env with no
+// direct-OpenRouter key but with Groq/Cerebras still works.
+func (c *InsightClient) WithChain(ch *llmchain.Chain) *InsightClient {
+	c.chain = ch
+	if ch != nil {
+		c.disabled = false
+	}
+	return c
+}
 
 // WithKV attaches a Redis KV for caching. Pass nil to disable caching.
 func (c *InsightClient) WithKV(kv KV) *InsightClient { c.kv = kv; return c }
@@ -273,6 +301,39 @@ func (c *InsightClient) Generate(ctx context.Context, uid uuid.UUID, payload Ins
 			// Anti-fallback: real Redis failure propagates.
 			return "", fmt.Errorf("profile.insight.Generate: cache Get: %w", err)
 		}
+	}
+
+	// Chain path — preferred when Deps.LLMChain was registered. Shares
+	// the same cache key as the direct path so a deploy that flips
+	// WithChain on (or off) doesn't invalidate warm entries.
+	if c.chain != nil {
+		lreq := llmchain.Request{
+			Messages: []llmchain.Message{
+				{Role: llmchain.RoleSystem, Content: insightSystemPrompt},
+				{Role: llmchain.RoleUser, Content: renderUserPrompt(payload)},
+			},
+			Temperature: 0.3,
+			MaxTokens:   400,
+		}
+		// Turbo / empty = Task-driven routing; concrete id = pin via
+		// ModelOverride so the user's choice isn't silently swapped.
+		if effectiveModel == "" || effectiveModel == "druz9/turbo" || effectiveModel == DefaultInsightModel {
+			lreq.Task = llmchain.TaskInsightProse
+		} else {
+			lreq.ModelOverride = effectiveModel
+		}
+		resp, cerr := c.chain.Chat(ctx, lreq)
+		if cerr != nil {
+			return "", fmt.Errorf("profile.insight.chain: %w", cerr)
+		}
+		out := strings.TrimSpace(resp.Content)
+		if c.kv != nil && out != "" {
+			if serr := c.kv.Set(ctx, key, []byte(out), c.cacheTTL); serr != nil {
+				metrics.CacheSetErrorsTotal.WithLabelValues("profile_insight").Inc()
+				c.log.Warn("profile.insight: cache Set failed", slog.Any("err", serr))
+			}
+		}
+		return out, nil
 	}
 
 	body, err := json.Marshal(insReq{

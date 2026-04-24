@@ -72,6 +72,13 @@ func NewProfile(d Deps) *Module {
 	insightClient := profileInfra.NewInsightClient(
 		nil, d.Cfg.LLM.OpenRouterAPIKey, insightModel, d.Log,
 	).WithKV(kv)
+	// When the multi-provider chain is built, route Insight through it
+	// instead of direct OpenRouter. Keeps the prompt + cache identical;
+	// only the HTTP dispatch swaps. Falling back to direct-OpenRouter
+	// without a chain keeps dev + single-provider envs working.
+	if d.LLMChain != nil {
+		insightClient = insightClient.WithChain(d.LLMChain)
+	}
 	getReport := &profileApp.GetReport{
 		Repo:    cached,
 		Insight: insightGeneratorAdapter{c: insightClient},
@@ -107,6 +114,13 @@ func NewProfile(d Deps) *Module {
 		profileApp.NewAllocateAtlasNode(cached, d.Log), d.Log,
 	)
 
+	// GET + PUT /profile/me/ai-vacancies-model — chi-direct, REST-only.
+	// Kept off the proto surface on purpose (see handler doc-comment);
+	// reads/writes go through the non-cached pg repo since the setting
+	// changes at most once per user per week and the cached-repo layer
+	// doesn't define this method.
+	vacanciesModel := profilePorts.NewAIVacanciesModelHandler(pg, d.Log)
+
 	onUserRegistered := &profileApp.OnUserRegistered{Repo: cached, Log: d.Log}
 	onXPGained := &profileApp.OnXPGained{Repo: cached, Bus: d.Bus, Log: d.Log}
 	onRatingChanged := &profileApp.OnRatingChanged{Repo: cached, Log: d.Log}
@@ -122,6 +136,8 @@ func NewProfile(d Deps) *Module {
 			r.Get("/profile/me", transcoder.ServeHTTP)
 			r.Get("/profile/me/atlas", transcoder.ServeHTTP)
 			r.Post("/profile/me/atlas/allocate", allocate.Handle)
+			r.Get("/profile/me/ai-vacancies-model", vacanciesModel.HandleGet)
+			r.Put("/profile/me/ai-vacancies-model", vacanciesModel.HandlePut)
 			r.Get("/profile/me/report", transcoder.ServeHTTP)
 			r.Put("/profile/me/settings", transcoder.ServeHTTP)
 			// /profile/weekly/share/{token} — публичный, авторизация не нужна;

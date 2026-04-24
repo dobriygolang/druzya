@@ -1,5 +1,6 @@
 // MSW handlers for SlotService — match the vanguard-transcoded REST shape
-// of proto/druz9/v1/slot.proto exactly:
+// of proto/druz9/v1/slot.proto exactly. Also surfaces has_review on the
+// /slot/my/bookings DTO so the «Оставить отзыв» CTA is wired in dev mode.
 //   - paths under /api/v1/slot (singular)
 //   - enum fields as canonical proto strings (SECTION_ALGORITHMS, …)
 //   - SlotList wrapped as { items: Slot[] } (vanguard array-flattening still
@@ -8,6 +9,7 @@
 // The handlers maintain in-memory state across requests (resets on reload)
 // so booking → my/bookings → cancel cycles work end-to-end in dev/MSW mode.
 import { http, HttpResponse } from 'msw'
+import { hasReview } from './review'
 
 const base = '/api/v1'
 
@@ -185,7 +187,8 @@ export const slotHandlers = [
     return HttpResponse.json(created)
   }),
 
-  // GET /api/v1/slot/my/bookings — chi-direct DTO (see cmd/monolith/services/slot.go).
+  // GET /api/v1/slot/my/bookings — proto-transcoded DTO (M2). has_review
+  // is sourced from the in-memory review handler so the UI flow round-trips.
   http.get(`${base}/slot/my/bookings`, () => {
     const items = Array.from(bookings.values()).map((b) => ({
       id: b.id,
@@ -200,7 +203,20 @@ export const slotHandlers = [
       language: b.slot.language,
       price_rub: b.slot.price_rub,
       slot_status: b.slot.status,
+      has_review: hasReview(b.id),
     }))
     return HttpResponse.json({ items })
   }),
 ]
+
+// devCompleteBooking — test helper exported for the mock /slots flow:
+// forces the most recent booking into "completed" state so the review CTA
+// becomes visible. Triggered by a `?dev_complete=1` query param on
+// /api/v1/slot/my/bookings (toggle below).
+function devCompleteFirst(): void {
+  const first = Array.from(bookings.values())[0]
+  if (!first) return
+  first.slot.status = 'SLOT_STATUS_COMPLETED'
+}
+// Eager export so callers (e.g. preview console) can flip state.
+;(globalThis as unknown as { __mockSlotComplete?: () => void }).__mockSlotComplete = devCompleteFirst

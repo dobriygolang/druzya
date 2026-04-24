@@ -693,15 +693,19 @@ type MyBookingItem struct {
 	MeetUrl string                 `protobuf:"bytes,3,opt,name=meet_url,json=meetUrl,proto3" json:"meet_url,omitempty"`
 	// booking lifecycle status (active | cancelled | completed) — separate
 	// from slot_status which is the slot-side state.
-	Status        string                 `protobuf:"bytes,4,opt,name=status,proto3" json:"status,omitempty"`
-	CreatedAt     *timestamppb.Timestamp `protobuf:"bytes,5,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
-	StartsAt      *timestamppb.Timestamp `protobuf:"bytes,6,opt,name=starts_at,json=startsAt,proto3" json:"starts_at,omitempty"`
-	DurationMin   int32                  `protobuf:"varint,7,opt,name=duration_min,json=durationMin,proto3" json:"duration_min,omitempty"`
-	Section       Section                `protobuf:"varint,8,opt,name=section,proto3,enum=druz9.v1.Section" json:"section,omitempty"`
-	Difficulty    Difficulty             `protobuf:"varint,9,opt,name=difficulty,proto3,enum=druz9.v1.Difficulty" json:"difficulty,omitempty"`
-	Language      string                 `protobuf:"bytes,10,opt,name=language,proto3" json:"language,omitempty"`
-	PriceRub      int32                  `protobuf:"varint,11,opt,name=price_rub,json=priceRub,proto3" json:"price_rub,omitempty"`
-	SlotStatus    SlotStatus             `protobuf:"varint,12,opt,name=slot_status,json=slotStatus,proto3,enum=druz9.v1.SlotStatus" json:"slot_status,omitempty"`
+	Status      string                 `protobuf:"bytes,4,opt,name=status,proto3" json:"status,omitempty"`
+	CreatedAt   *timestamppb.Timestamp `protobuf:"bytes,5,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	StartsAt    *timestamppb.Timestamp `protobuf:"bytes,6,opt,name=starts_at,json=startsAt,proto3" json:"starts_at,omitempty"`
+	DurationMin int32                  `protobuf:"varint,7,opt,name=duration_min,json=durationMin,proto3" json:"duration_min,omitempty"`
+	Section     Section                `protobuf:"varint,8,opt,name=section,proto3,enum=druz9.v1.Section" json:"section,omitempty"`
+	Difficulty  Difficulty             `protobuf:"varint,9,opt,name=difficulty,proto3,enum=druz9.v1.Difficulty" json:"difficulty,omitempty"`
+	Language    string                 `protobuf:"bytes,10,opt,name=language,proto3" json:"language,omitempty"`
+	PriceRub    int32                  `protobuf:"varint,11,opt,name=price_rub,json=priceRub,proto3" json:"price_rub,omitempty"`
+	SlotStatus  SlotStatus             `protobuf:"varint,12,opt,name=slot_status,json=slotStatus,proto3,enum=druz9.v1.SlotStatus" json:"slot_status,omitempty"`
+	// has_review — true when the candidate already left a review for this
+	// booking. Lets the UI hide the "Оставить отзыв" CTA without a second
+	// round-trip to the review service.
+	HasReview     bool `protobuf:"varint,13,opt,name=has_review,json=hasReview,proto3" json:"has_review,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -820,6 +824,13 @@ func (x *MyBookingItem) GetSlotStatus() SlotStatus {
 	return SlotStatus_SLOT_STATUS_UNSPECIFIED
 }
 
+func (x *MyBookingItem) GetHasReview() bool {
+	if x != nil {
+		return x.HasReview
+	}
+	return false
+}
+
 // MyBookingList wraps the repeated items so vanguard's REST transcoder
 // emits {"items":[...]} (consistent with SlotList).
 type MyBookingList struct {
@@ -922,7 +933,7 @@ const file_druz9_v1_slot_proto_rawDesc = "" +
 	"\x11CancelSlotRequest\x12\x17\n" +
 	"\aslot_id\x18\x01 \x01(\tR\x06slotId\"\x14\n" +
 	"\x12CancelSlotResponse\"\x17\n" +
-	"\x15ListMyBookingsRequest\"\xd5\x03\n" +
+	"\x15ListMyBookingsRequest\"\xf4\x03\n" +
 	"\rMyBookingItem\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x17\n" +
 	"\aslot_id\x18\x02 \x01(\tR\x06slotId\x12\x19\n" +
@@ -940,7 +951,9 @@ const file_druz9_v1_slot_proto_rawDesc = "" +
 	" \x01(\tR\blanguage\x12\x1b\n" +
 	"\tprice_rub\x18\v \x01(\x05R\bpriceRub\x125\n" +
 	"\vslot_status\x18\f \x01(\x0e2\x14.druz9.v1.SlotStatusR\n" +
-	"slotStatus\">\n" +
+	"slotStatus\x12\x1d\n" +
+	"\n" +
+	"has_review\x18\r \x01(\bR\thasReview\">\n" +
 	"\rMyBookingList\x12-\n" +
 	"\x05items\x18\x01 \x03(\v2\x17.druz9.v1.MyBookingItemR\x05items2\xf4\x03\n" +
 	"\vSlotService\x12Q\n" +
