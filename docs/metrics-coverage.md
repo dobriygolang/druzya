@@ -19,6 +19,9 @@ Legend: ✅ implemented · ⚠️ partial · 🔴 TODO · 👤 requires client e
 | `pg_stat_activity_count` | ✅ | scraped from `postgres_exporter` sidecar (see prometheus.yml) |
 | `redis_memory_used_bytes` | ✅ | scraped from `redis_exporter` sidecar |
 | `node_filesystem_avail_bytes` | 🔴 | requires `node_exporter` to be added to the prod compose file |
+| `druz9_pgxpool_*` (acquired / idle / total / max / wait / canceled) | ✅ | `metrics.RegisterPgxPoolCollector` started in `bootstrap.New`; samples `pool.Stat()` every 15s |
+| `druz9_eventbus_{published,handled,failed}_total` + `druz9_eventbus_handle_duration_seconds` | ✅ | instrumented in `shared/pkg/eventbus/inprocess.go` (Publish wrapper) |
+| `druz9_connect_{requests_total,request_duration_seconds}` | ⚠️ | declared in `metrics.go`; Connect interceptor not yet wired — Chi middleware still covers HTTP layer, but per-procedure labels stay empty until interceptor lands |
 
 ## Business metrics
 

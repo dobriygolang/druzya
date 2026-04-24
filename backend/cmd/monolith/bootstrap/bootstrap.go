@@ -19,6 +19,7 @@ import (
 	"druz9/cmd/monolith/services"
 	"druz9/shared/pkg/config"
 	"druz9/shared/pkg/eventbus"
+	"druz9/shared/pkg/metrics"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/redis/go-redis/v9"
@@ -67,6 +68,10 @@ func New(ctx context.Context, cfg *config.Config) (app *App, otelShutdown func()
 	}
 	rdb := newRedis(cfg)
 	bus := newEventBus(log)
+
+	// Start pgxpool stats sampler — populates druz9_pgxpool_* gauges from
+	// pool.Stat() on a 15s tick. Stops when ctx is cancelled (app tear-down).
+	metrics.RegisterPgxPoolCollector(ctx, pool, 0)
 
 	// Build the multi-provider LLM chain once. Errors from malformed
 	// driver construction are fatal (operator needs to fix config);

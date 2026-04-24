@@ -106,6 +106,109 @@ groups:
         annotations:
           summary: "DAU dropped > 20% vs yesterday"
 
+  - name: druz9-pgxpool
+    interval: 30s
+    rules:
+      - alert: PgxPoolAcquireWaitHigh
+        # Per-second wait pressure: if rate(wait_seconds_total) > 0.1 it
+        # means callers collectively spend >100 ms/sec blocked on Acquire.
+        expr: rate(druz9_pgxpool_acquire_wait_seconds_total[5m]) > 0.1
+        for: 5m
+        labels: { severity: page }
+        annotations:
+          summary: "pgxpool callers wait > 100ms/s for a connection"
+          description: "Rate = {{ $value }}s/s. Pool likely saturated — check TotalConns / MaxConns."
+
+      - alert: PgxPoolNearExhaustion
+        expr: druz9_pgxpool_acquired_connections / druz9_pgxpool_max_connections > 0.9
+        for: 5m
+        labels: { severity: page }
+        annotations:
+          summary: "pgxpool > 90% acquired"
+          description: "Acquired {{ $value | humanizePercentage }} of MaxConns."
+
+      - alert: PgxPoolCanceledAcquiresSpike
+        expr: rate(druz9_pgxpool_canceled_acquires_total[5m]) > 1
+        for: 10m
+        labels: { severity: warn }
+        annotations:
+          summary: "pgxpool canceled Acquires > 1/s"
+          description: "Callers giving up on Acquire — context timeouts or pool starvation."
+
+  - name: druz9-eventbus
+    interval: 30s
+    rules:
+      - alert: EventbusHandlerFailureRate
+        expr: |
+          sum(rate(druz9_eventbus_failed_total[5m]))
+          /
+          clamp_min(
+            sum(rate(druz9_eventbus_handled_total[5m]))
+            + sum(rate(druz9_eventbus_failed_total[5m])),
+            1
+          ) > 0.005
+        for: 10m
+        labels: { severity: warn }
+        annotations:
+          summary: "Eventbus handler failure rate > 0.5%"
+          description: "One or more topics have handlers raising errors — check {{ $labels.topic }} logs."
+
+      - alert: EventbusHandlerSlow
+        expr: |
+          histogram_quantile(0.99,
+            sum by (le, topic) (rate(druz9_eventbus_handle_duration_seconds_bucket[5m]))
+          ) > 1
+        for: 10m
+        labels: { severity: warn }
+        annotations:
+          summary: "Eventbus handler p99 > 1s on topic {{ $labels.topic }}"
+
+  - name: druz9-ws-drops
+    interval: 30s
+    rules:
+      # Connection drops = rapid decrease of the gauge. We use deriv() over
+      # a short window; any sustained negative slope > -5 conn/s means
+      # something is kicking clients (server crash, nginx, token expiry).
+      - alert: WSConnectionDropSpike
+        expr: deriv(sum(druz9_ws_active_connections)[2m:]) < -5
+        for: 2m
+        labels: { severity: page }
+        annotations:
+          summary: "WS connections dropping fast (> 5/s)"
+          description: "Clients disconnecting en masse — check API logs + nginx."
+
+  - name: druz9-auth
+    interval: 1m
+    rules:
+      # JWT refresh failures show up as 401/403 on /v1/auth.AuthService/Refresh.
+      # We tag auth errors via the shared HTTPErrorsTotal counter with path label.
+      - alert: JWTRefreshFailureSpike
+        expr: |
+          sum(rate(druz9_http_errors_total{path=~".*AuthService/Refresh.*",status=~"4.."}[5m]))
+          / clamp_min(sum(rate(druz9_http_requests_total{path=~".*AuthService/Refresh.*"}[5m])), 1) > 0.2
+        for: 10m
+        labels: { severity: page }
+        annotations:
+          summary: "JWT refresh failure rate > 20% for 10m"
+          description: "Signing key rotated without grace window, or clients sending stale tokens."
+
+  - name: druz9-claude
+    interval: 30s
+    rules:
+      # Claude provider latency — type label is free-form; we scope to
+      # anthropic/ models but fall back to a wildcard so renames don't
+      # silently disable the alert.
+      - alert: ClaudeRequestLatencyP99High
+        expr: |
+          histogram_quantile(0.99,
+            sum by (le) (rate(druz9_llm_request_duration_seconds_bucket{model=~"anthropic/.*|claude.*"}[5m]))
+          ) > 10
+        for: 10m
+        labels: { severity: warn }
+        annotations:
+          summary: "Claude p99 latency > 10s"
+          description: "Upstream provider slow; chain should failover — check llm.chain logs."
+
   - name: druz9-infra
     interval: 30s
     rules:

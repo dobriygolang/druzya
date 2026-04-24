@@ -8,8 +8,10 @@ import (
 	"fmt"
 	"log/slog"
 	"sync"
+	"time"
 
 	"druz9/shared/domain"
+	"druz9/shared/pkg/metrics"
 )
 
 type InProcess struct {
@@ -32,18 +34,27 @@ func (b *InProcess) Subscribe(topic string, h domain.Handler) {
 }
 
 func (b *InProcess) Publish(ctx context.Context, e domain.Event) error {
+	topic := e.Topic()
+	metrics.EventbusPublishedTotal.WithLabelValues(topic).Inc()
+
 	b.mu.RLock()
-	hs := append([]domain.Handler(nil), b.handlers[e.Topic()]...)
+	hs := append([]domain.Handler(nil), b.handlers[topic]...)
 	b.mu.RUnlock()
 
 	for _, h := range hs {
-		if err := h(ctx, e); err != nil {
+		start := time.Now()
+		err := h(ctx, e)
+		metrics.EventbusHandleDuration.WithLabelValues(topic).Observe(time.Since(start).Seconds())
+		if err != nil {
+			metrics.EventbusFailedTotal.WithLabelValues(topic).Inc()
 			// Логируем и продолжаем — фейл одного хендлера не должен блокировать остальные.
 			b.log.ErrorContext(ctx, "event handler failed",
-				slog.String("topic", e.Topic()),
+				slog.String("topic", topic),
 				slog.Any("err", err),
 			)
+			continue
 		}
+		metrics.EventbusHandledTotal.WithLabelValues(topic).Inc()
 	}
 	return nil
 }

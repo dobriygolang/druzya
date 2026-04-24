@@ -231,6 +231,41 @@ docker exec -it druz9-redis redis-cli
 
 ---
 
+## Alert → first-minute checks
+
+Quick map from alert name (see `infra/observability/alerts.yml`) to the
+first thing to check. If the fix isn't obvious in 5 min, escalate.
+
+### `PgxPoolAcquireWaitHigh` / `PgxPoolNearExhaustion`
+- Grafana `druz9-tech` → pgxpool panel (acquired vs max).
+- `docker exec druz9-postgres psql -U druz9 -c "SELECT query, state, wait_event, count(*) FROM pg_stat_activity GROUP BY 1,2,3 ORDER BY 4 DESC LIMIT 20;"` — is there a slow / long-running query holding conns?
+- Recent deploy? Roll back — probably a handler missing a `defer rows.Close()`.
+- Temporary relief: restart api — connections return to pool.
+
+### `PgxPoolCanceledAcquiresSpike`
+- Usually a downstream symptom of the two above, OR context deadlines too tight on hot paths. Check api logs for `context deadline exceeded` near pgx calls.
+
+### `EventbusHandlerFailureRate`
+- `docker logs druz9-api --since 15m | grep "event handler failed"` — which `topic=` is noisy?
+- Check the subscriber registered for that topic (see `services.registerSubscribers`). A single bad subscriber can't block others (bus logs and continues), but it can swamp error rate.
+
+### `EventbusHandlerSlow`
+- Same as above + check if the slow topic fan-outs to an expensive DB write or an outbound HTTP call (e.g. notify → Telegram). Consider moving handler to a background queue.
+
+### `WSConnectionDropSpike`
+- nginx reload / api restart → expected, auto-resolves in 1–2 min.
+- Otherwise: check api panics in logs (`panic:`), and `docker stats` for api OOM.
+
+### `JWTRefreshFailureSpike`
+- Was the signing key rotated? Old refresh tokens issued under the old key will 401 — check `AUTH_JWT_SECRET` env and deploy history.
+- Clock drift between api and clients (rare, but JWT exp is sensitive).
+
+### `ClaudeRequestLatencyP99High`
+- Upstream provider slow — check https://status.anthropic.com.
+- Confirm llm-chain failover is active: `docker logs druz9-api | grep "llmchain: provider.*failover"`. If chain has only one provider configured, there's nothing to fall back to — consider disabling feature.
+
+---
+
 ## Escalation
 
 If an issue is not in this runbook AND you can't fix in 15min, **page the second on-call** (Telegram alerts go to the ops chat — reply with `@here` to escalate). Default response window: 30min for critical, 4h for warning.

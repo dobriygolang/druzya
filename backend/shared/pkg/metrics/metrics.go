@@ -167,6 +167,133 @@ var ActiveUsers = prometheus.NewGaugeVec(
 	[]string{"tier"},
 )
 
+// ── Pgxpool metrics ────────────────────────────────────────────────────────
+//
+// These gauges are populated by a periodic sampler (see
+// RegisterPgxPoolCollector) from pgxpool.Stat() — pgx does not expose
+// Prometheus directly. Alert when acquire wait > 100 ms for 5 m.
+
+// PgxPoolAcquiredConns — currently acquired connections (busy).
+var PgxPoolAcquiredConns = prometheus.NewGauge(
+	prometheus.GaugeOpts{
+		Name: "druz9_pgxpool_acquired_connections",
+		Help: "Pgxpool connections currently acquired by callers (busy).",
+	},
+)
+
+// PgxPoolIdleConns — idle connections sitting in the pool.
+var PgxPoolIdleConns = prometheus.NewGauge(
+	prometheus.GaugeOpts{
+		Name: "druz9_pgxpool_idle_connections",
+		Help: "Pgxpool idle connections ready to be handed out.",
+	},
+)
+
+// PgxPoolTotalConns — total live connections (acquired + idle + constructing).
+var PgxPoolTotalConns = prometheus.NewGauge(
+	prometheus.GaugeOpts{
+		Name: "druz9_pgxpool_total_connections",
+		Help: "Pgxpool total live connections.",
+	},
+)
+
+// PgxPoolMaxConns — configured upper bound (rarely changes but exposed
+// so dashboards can plot utilization = total / max).
+var PgxPoolMaxConns = prometheus.NewGauge(
+	prometheus.GaugeOpts{
+		Name: "druz9_pgxpool_max_connections",
+		Help: "Pgxpool MaxConns configuration value.",
+	},
+)
+
+// PgxPoolAcquireWaitSeconds — cumulative wait time (counter-like, exposed
+// as a gauge because pgx keeps it as a monotonically-increasing Duration).
+// Use `rate(...[1m])` in Prometheus to derive per-second wait pressure.
+var PgxPoolAcquireWaitSeconds = prometheus.NewGauge(
+	prometheus.GaugeOpts{
+		Name: "druz9_pgxpool_acquire_wait_seconds_total",
+		Help: "Cumulative time callers spent waiting for a pgxpool connection. Derive rate() in alerts.",
+	},
+)
+
+// PgxPoolCanceledAcquires — Acquire calls cancelled before they got a conn.
+var PgxPoolCanceledAcquires = prometheus.NewGauge(
+	prometheus.GaugeOpts{
+		Name: "druz9_pgxpool_canceled_acquires_total",
+		Help: "Pgxpool Acquire calls cancelled by context.",
+	},
+)
+
+// ── Eventbus metrics ───────────────────────────────────────────────────────
+//
+// Populated by shared/pkg/eventbus. Labels keep topic cardinality bounded
+// by the domain event registry, not user input — safe.
+
+// EventbusPublishedTotal counts Publish() calls per topic.
+var EventbusPublishedTotal = prometheus.NewCounterVec(
+	prometheus.CounterOpts{
+		Name: "druz9_eventbus_published_total",
+		Help: "Domain events published via the in-process bus, by topic.",
+	},
+	[]string{"topic"},
+)
+
+// EventbusHandledTotal counts successful handler invocations per topic.
+// One publish may cause N handled (fan-out), so handled can exceed published.
+var EventbusHandledTotal = prometheus.NewCounterVec(
+	prometheus.CounterOpts{
+		Name: "druz9_eventbus_handled_total",
+		Help: "Event handler invocations that returned nil, by topic.",
+	},
+	[]string{"topic"},
+)
+
+// EventbusFailedTotal counts handler errors per topic.
+// Alert when failed / handled > 0.5%.
+var EventbusFailedTotal = prometheus.NewCounterVec(
+	prometheus.CounterOpts{
+		Name: "druz9_eventbus_failed_total",
+		Help: "Event handler invocations that returned an error, by topic.",
+	},
+	[]string{"topic"},
+)
+
+// EventbusHandleDuration measures per-handler latency.
+var EventbusHandleDuration = prometheus.NewHistogramVec(
+	prometheus.HistogramOpts{
+		Name:    "druz9_eventbus_handle_duration_seconds",
+		Help:    "Latency of event handler execution, by topic.",
+		Buckets: []float64{.001, .005, .01, .05, .1, .25, .5, 1, 2.5, 5},
+	},
+	[]string{"topic"},
+)
+
+// ── Connect-RPC metrics ────────────────────────────────────────────────────
+//
+// Populated by a Connect interceptor (see shared/pkg/metrics.ConnectInterceptor
+// — if the interceptor is not yet wired, these stay at zero; Chi middleware
+// covers the HTTP layer, but Connect procedures benefit from per-procedure
+// labels (package.Service/Method) which the router middleware loses.
+
+// ConnectRequestsTotal counts RPC calls per procedure + code.
+var ConnectRequestsTotal = prometheus.NewCounterVec(
+	prometheus.CounterOpts{
+		Name: "druz9_connect_requests_total",
+		Help: "Connect-RPC calls, by full procedure and Connect error code (ok|unknown|invalid_argument|...).",
+	},
+	[]string{"procedure", "code"},
+)
+
+// ConnectRequestDuration measures RPC latency per procedure.
+var ConnectRequestDuration = prometheus.NewHistogramVec(
+	prometheus.HistogramOpts{
+		Name:    "druz9_connect_request_duration_seconds",
+		Help:    "Connect-RPC call latency, by procedure.",
+		Buckets: []float64{.005, .01, .025, .05, .1, .25, .5, 1, 2.5, 5, 10},
+	},
+	[]string{"procedure"},
+)
+
 // ── Cache + parser observability ───────────────────────────────────────────
 
 // CacheSetErrorsTotal counts Redis SET failures encountered after a successful
@@ -227,6 +354,11 @@ func init() {
 		CacheSetErrorsTotal, VacanciesParserErrorsTotal,
 		VacanciesCacheRefreshErrorsTotal,
 		VacanciesDetailsFetchErrorsTotal,
+		PgxPoolAcquiredConns, PgxPoolIdleConns, PgxPoolTotalConns,
+		PgxPoolMaxConns, PgxPoolAcquireWaitSeconds, PgxPoolCanceledAcquires,
+		EventbusPublishedTotal, EventbusHandledTotal, EventbusFailedTotal,
+		EventbusHandleDuration,
+		ConnectRequestsTotal, ConnectRequestDuration,
 	)
 }
 
