@@ -138,10 +138,32 @@ function PermissionsStep({
     <div style={{ width: '100%', maxWidth: 520, display: 'flex', flexDirection: 'column', gap: 14 }}>
       <div style={{ textAlign: 'center', marginBottom: 12 }}>
         <h2 style={{ fontSize: 20, margin: '0 0 6px' }}>Разрешения macOS</h2>
-        <p style={{ fontSize: 13, color: 'var(--d-text-2)', margin: 0 }}>
+        <p style={{ fontSize: 13, color: 'var(--d9-ink-mute)', margin: 0 }}>
           Без них приложение не сможет работать полноценно.
         </p>
       </div>
+
+      {/* macOS quirk notice — screen recording status is cached until
+          the app process restarts. Users toggle the switch, come back,
+          and see "not granted" still. Explain + offer Restart button. */}
+      {perms?.screenRecording !== 'granted' && (
+        <div
+          style={{
+            padding: '10px 14px',
+            borderRadius: 9,
+            background: 'var(--d9-accent-glow)',
+            border: '0.5px solid oklch(0.72 0.23 300 / 0.35)',
+            fontSize: 11.5,
+            color: 'var(--d9-accent-hi)',
+            letterSpacing: '-0.005em',
+            lineHeight: 1.45,
+          }}
+        >
+          <b>Если переключатель уже включён, а доступа «нет»</b> — macOS кэширует
+          статус до рестарта процесса. Нажми «Рестарт» на строке «Запись экрана» после того как
+          включишь тоггл в Системных настройках.
+        </div>
+      )}
 
       <PermissionRow
         icon={<IconShield size={16} />}
@@ -238,17 +260,29 @@ function PermissionRow({
       {granted ? (
         <StatusDot state="ready" size={8} />
       ) : (
-        <Button
-          size="sm"
-          variant="secondary"
-          onClick={async () => {
-            await window.druz9.permissions.request(kind);
-            await window.druz9.permissions.openSettings(kind);
-            void refresh();
-          }}
-        >
-          Разрешить
-        </Button>
+        <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+          {kind === 'screen-recording' && (
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => void window.druz9.app.quit().then(() => void 0)}
+              title="Если разрешение уже дано — macOS требует рестарт процесса чтобы увидеть новое состояние"
+            >
+              Рестарт
+            </Button>
+          )}
+          <Button
+            size="sm"
+            variant="secondary"
+            onClick={async () => {
+              await window.druz9.permissions.request(kind);
+              await window.druz9.permissions.openSettings(kind);
+              void refresh();
+            }}
+          >
+            Разрешить
+          </Button>
+        </div>
       )}
     </div>
   );

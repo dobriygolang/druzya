@@ -10,7 +10,7 @@
 
 import { BrowserWindow, screen } from 'electron';
 
-import type { WindowName } from '@shared/ipc';
+import type { PickerKind, WindowName } from '@shared/ipc';
 
 import { loadAppearance, saveAppearance } from '../settings/appearance';
 import { hardenWindow } from './hardening';
@@ -136,6 +136,21 @@ export function showWindow(name: WindowName, opts: WindowOptions): BrowserWindow
     win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
   }
 
+  if (name === 'picker') {
+    // Picker rides above compact — same stealth treatment, one level
+    // higher so it sits on top of the compact's floating layer.
+    win.setContentProtection(true);
+    win.setAlwaysOnTop(true, 'floating', 2);
+    win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
+    // Auto-hide on blur so clicking anywhere outside dismisses the
+    // dropdown — matches the expected popup menu UX. Compact keeps
+    // focus of the parent input, so this fires when the user clicks
+    // back on the compact chrome or any other app.
+    win.on('blur', () => {
+      if (!win.isDestroyed()) hideWindow('picker');
+    });
+  }
+
   // The area-overlay is also stealthed: the crosshair itself should not
   // appear on the viewer's screen. The OS-level cursor still does (that
   // is the Phase 6 virtual-cursor feature), but the selection UI is ours.
@@ -152,6 +167,7 @@ export function showWindow(name: WindowName, opts: WindowOptions): BrowserWindow
     onboarding: '#/onboarding',
     'area-overlay': '#/area-overlay',
     history: '#/history',
+    picker: '#/picker',
   };
   const url = `${opts.rendererURL}${hashFor[name]}`;
   void win.loadURL(url);
@@ -230,6 +246,67 @@ export function resizeWindow(name: WindowName, width: number, height: number): v
   const newX = bounds.x + (bounds.width - width);
   w.setBounds({ x: newX, y: bounds.y, width, height }, true);
 }
+
+/**
+ * Show (or toggle-close) the floating picker window anchored below the
+ * compact window. Each kind gets a different anchor x within compact:
+ *   - 'model'   — under the model pill (left side of row 2, ~58px in)
+ *   - 'persona' — under the persona chip (center-right, ~200px in)
+ *
+ * Clicking the same kind again closes the picker. Clicking a different
+ * kind switches to it (by reloading the renderer URL with the new hash).
+ */
+export function showPicker(kind: PickerKind, opts: WindowOptions): void {
+  const compact = windows.get('compact');
+  if (!compact || compact.isDestroyed()) return;
+
+  const cBounds = compact.getBounds();
+  const PICKER_W = 320;
+  const PICKER_H = 340;
+  const GAP = 6;
+
+  // Anchor offsets inside compact. Model pill lives in row 2 at ~58px
+  // from left; persona chip at ~200px. Picker centers below the chip
+  // and is clamped to stay fully on-screen.
+  const anchorXFromLeft = kind === 'model' ? 58 : 210;
+  let x = cBounds.x + anchorXFromLeft - PICKER_W / 2 + 40;
+  let y = cBounds.y + cBounds.height + GAP;
+
+  // Clamp to the display containing compact.
+  const display = screen.getDisplayMatching(cBounds);
+  x = Math.max(display.bounds.x + 4, Math.min(x, display.bounds.x + display.bounds.width - PICKER_W - 4));
+  y = Math.max(display.bounds.y + 4, Math.min(y, display.bounds.y + display.bounds.height - PICKER_H - 4));
+
+  const existing = windows.get('picker');
+  // If picker is already open with this kind → toggle close.
+  if (existing && !existing.isDestroyed() && existing.isVisible()) {
+    const currentKind = pickerKind;
+    if (currentKind === kind) {
+      hideWindow('picker');
+      return;
+    }
+    // Switching kind: reload URL with new hash + reposition.
+    pickerKind = kind;
+    existing.setBounds({ x, y, width: PICKER_W, height: PICKER_H });
+    const url = `${opts.rendererURL}#/picker?kind=${kind}`;
+    void existing.loadURL(url);
+    existing.setIgnoreMouseEvents(false);
+    existing.setOpacity(1);
+    existing.show();
+    return;
+  }
+
+  pickerKind = kind;
+  const win = showWindow('picker', opts);
+  win.setBounds({ x, y, width: PICKER_W, height: PICKER_H });
+  // Override the default hash (set in hashFor) with the kind query
+  // so PickerScreen knows which dropdown to render.
+  const url = `${opts.rendererURL}#/picker?kind=${kind}`;
+  void win.loadURL(url);
+}
+
+// Track the currently-mounted picker kind so toggle-close works.
+let pickerKind: PickerKind | null = null;
 
 /** Toggle stealth on all floating windows (used by settings tab). */
 export function setStealth(on: boolean): void {
@@ -342,6 +419,25 @@ function buildWindow(name: WindowName, opts: WindowOptions): BrowserWindow {
         skipTaskbar: true,
         ...topRightPosition(560, 720, 140),
       });
+    case 'picker': {
+      // Floating glass panel anchored under the compact window. The
+      // renderer paints its own background — window stays fully
+      // transparent and frameless, no shadow (glass does it via CSS).
+      return new BrowserWindow({
+        ...base,
+        width: 320,
+        height: 360,
+        frame: false,
+        transparent: true,
+        hasShadow: false,
+        resizable: false,
+        movable: false,
+        skipTaskbar: true,
+        alwaysOnTop: true,
+        roundedCorners: false, // dropdown corners handled in CSS
+        focusable: true,
+      });
+    }
     case 'area-overlay': {
       // Full primary-display overlay. We intentionally do NOT use
       // fullscreen: true — that would trigger macOS fullscreen space

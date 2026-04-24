@@ -25,6 +25,7 @@ import {
   type TelegramLoginResult,
   type TelegramLoginStart,
   type UpdateStatus,
+  type PickerKind,
   type WindowName,
 } from '@shared/ipc';
 import type { HotkeyBinding, Quota, Session, SessionAnalysis, SessionKind } from '@shared/types';
@@ -73,6 +74,10 @@ const api: Druz9API = {
       ipcRenderer.invoke(invokeChannels.windowsToggleStealth, on) as Promise<void>,
     resize: (name: WindowName, width: number, height: number) =>
       ipcRenderer.invoke(invokeChannels.windowsResize, name, width, height) as Promise<void>,
+    showPicker: (kind: PickerKind) =>
+      ipcRenderer.invoke(invokeChannels.windowsShowPicker, kind) as Promise<void>,
+    hidePicker: () =>
+      ipcRenderer.invoke(invokeChannels.windowsHidePicker) as Promise<void>,
   },
   permissions: {
     check: () => ipcRenderer.invoke(invokeChannels.permissionsCheck) as Promise<PermissionState>,

@@ -373,6 +373,10 @@ export interface Druz9API {
     toggleStealth: (on: boolean) => Promise<void>;
     /** Animated resize of a floating window; width/height in CSS pixels. */
     resize: (name: WindowName, width: number, height: number) => Promise<void>;
+    /** Open the picker as a separate floating window anchored under
+     *  compact. Toggles: same kind → close; different kind → switch. */
+    showPicker: (kind: PickerKind) => Promise<void>;
+    hidePicker: () => Promise<void>;
   };
   permissions: {
     check: () => Promise<PermissionState>;

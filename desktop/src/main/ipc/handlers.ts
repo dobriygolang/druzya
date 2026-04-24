@@ -40,6 +40,7 @@ import {
   hideWindow,
   resizeWindow,
   setStealth,
+  showPicker,
   showWindow,
 } from '../windows/window-manager';
 import type { WindowOptions } from '../windows/window-manager';
@@ -315,6 +316,15 @@ export function registerHandlers(opts: RegisterOptions): void {
       resizeWindow(name, width, height);
     },
   );
+  ipcMain.handle(
+    invokeChannels.windowsShowPicker,
+    async (_evt, kind: import('@shared/ipc').PickerKind) => {
+      showPicker(kind, windowOptions);
+    },
+  );
+  ipcMain.handle(invokeChannels.windowsHidePicker, async () => {
+    hideWindow('picker');
+  });
 
   // ── Permissions ──
   ipcMain.handle(invokeChannels.permissionsCheck, async () => checkPermissions());
