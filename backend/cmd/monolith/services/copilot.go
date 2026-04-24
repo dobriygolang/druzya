@@ -33,7 +33,7 @@ func NewCopilot(d Deps) *Module {
 
 	analyzer := copilotInfra.NewLLMAnalyzer(
 		d.Cfg.LLM.OpenRouterAPIKey,
-		os.Getenv("COPILOT_ANALYZER_MODEL"),       // optional override; empty = gpt-4o-mini
+		os.Getenv("COPILOT_ANALYZER_MODEL"),      // optional override; empty = gpt-4o-mini
 		os.Getenv("COPILOT_REPORT_URL_TEMPLATE"), // optional override
 	)
 

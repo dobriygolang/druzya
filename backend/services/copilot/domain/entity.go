@@ -121,13 +121,13 @@ type ProviderModel struct {
 type HotkeyAction string
 
 const (
-	HotkeyActionUnspecified       HotkeyAction = ""
-	HotkeyActionScreenshotArea    HotkeyAction = "screenshot_area"
-	HotkeyActionScreenshotFull    HotkeyAction = "screenshot_full"
-	HotkeyActionVoiceInput        HotkeyAction = "voice_input"
-	HotkeyActionToggleWindow      HotkeyAction = "toggle_window"
-	HotkeyActionQuickPrompt       HotkeyAction = "quick_prompt"
-	HotkeyActionClearConversation HotkeyAction = "clear_conversation"
+	HotkeyActionUnspecified        HotkeyAction = ""
+	HotkeyActionScreenshotArea     HotkeyAction = "screenshot_area"
+	HotkeyActionScreenshotFull     HotkeyAction = "screenshot_full"
+	HotkeyActionVoiceInput         HotkeyAction = "voice_input"
+	HotkeyActionToggleWindow       HotkeyAction = "toggle_window"
+	HotkeyActionQuickPrompt        HotkeyAction = "quick_prompt"
+	HotkeyActionClearConversation  HotkeyAction = "clear_conversation"
 	HotkeyActionCursorFreezeToggle HotkeyAction = "cursor_freeze_toggle"
 )
 
@@ -147,12 +147,12 @@ type FeatureFlag struct {
 // PaywallCopy is localized user-facing plan copy. The client is forbidden
 // from hardcoding pricing — all of this is server-driven.
 type PaywallCopy struct {
-	PlanID       string
-	DisplayName  string
-	PriceLabel   string
-	Tagline      string
-	Bullets      []string
-	CTALabel     string
+	PlanID      string
+	DisplayName string
+	PriceLabel  string
+	Tagline     string
+	Bullets     []string
+	CTALabel    string
 	// SubscribeURL is the external URL the CTA button opens. For Boosty,
 	// a per-tier purchase link (https://boosty.to/<creator>/purchase/<id>).
 	// Empty for free / already-current plans.
@@ -252,6 +252,8 @@ func (k SessionKind) IsValid() bool {
 	switch k {
 	case SessionKindInterview, SessionKindWork, SessionKindCasual:
 		return true
+	case SessionKindUnspecified:
+		return false
 	}
 	return false
 }

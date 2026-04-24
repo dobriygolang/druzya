@@ -28,12 +28,12 @@ type SessionEndedEvent struct {
 
 // EndSession — implements POST /api/v1/copilot/sessions/{id}/end.
 // Side effects:
-//   1. End the session (finished_at = now).
-//   2. Initialize a pending report row so GetSessionAnalysis has
-//      something to return while the analyzer works.
-//   3. Publish SessionEndedEvent on the bus. Non-interview / byok-only
-//      sessions still fire the event; the analyzer itself decides
-//      whether to run.
+//  1. End the session (finished_at = now).
+//  2. Initialize a pending report row so GetSessionAnalysis has
+//     something to return while the analyzer works.
+//  3. Publish SessionEndedEvent on the bus. Non-interview / byok-only
+//     sessions still fire the event; the analyzer itself decides
+//     whether to run.
 type EndSession struct {
 	Sessions  domain.SessionRepo
 	Reports   domain.ReportRepo
@@ -56,8 +56,8 @@ func (uc *EndSession) Do(ctx context.Context, in EndSessionInput) (domain.Sessio
 	if s.UserID != in.UserID {
 		return domain.Session{}, fmt.Errorf("copilot.EndSession: %w", domain.ErrNotFound)
 	}
-	if err := uc.Sessions.End(ctx, in.SessionID, in.UserID); err != nil {
-		return domain.Session{}, fmt.Errorf("copilot.EndSession: %w", err)
+	if endErr := uc.Sessions.End(ctx, in.SessionID, in.UserID); endErr != nil {
+		return domain.Session{}, fmt.Errorf("copilot.EndSession: %w", endErr)
 	}
 
 	// Reload with the updated finished_at for the response.

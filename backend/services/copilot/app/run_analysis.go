@@ -12,11 +12,11 @@ import (
 
 // RunAnalysis — executed by the SessionEnded bus subscriber. Not an RPC
 // entry point (the desktop never calls this directly). Orchestrates:
-//   1. Load session; skip if not interview / byok / missing.
-//   2. Load conversations + their messages.
-//   3. Mark report running.
-//   4. Call Analyzer (LLM).
-//   5. Write result OR mark failed.
+//  1. Load session; skip if not interview / byok / missing.
+//  2. Load conversations + their messages.
+//  3. Mark report running.
+//  4. Call Analyzer (LLM).
+//  5. Write result OR mark failed.
 //
 // The use case swallows all errors into the report row — we don't want
 // a single bad analysis to crash the subscriber loop.
@@ -52,25 +52,25 @@ func (uc *RunAnalysis) Do(ctx context.Context, in RunAnalysisInput) error {
 		return nil
 	}
 
-	if err := uc.Reports.MarkRunning(ctx, in.SessionID); err != nil {
+	if mrErr := uc.Reports.MarkRunning(ctx, in.SessionID); mrErr != nil {
 		// Not fatal — could be that another worker beat us to it or
 		// the row was manually deleted. Continue and let Write sort it.
 		if uc.Log != nil {
-			uc.Log.Warn("copilot.RunAnalysis: mark running failed", "err", err, "session", in.SessionID)
+			uc.Log.Warn("copilot.RunAnalysis: mark running failed", "err", mrErr, "session", in.SessionID)
 		}
 	}
 
 	convs, err := uc.Sessions.ListConversations(ctx, in.SessionID)
 	if err != nil {
 		uc.fail(ctx, in.SessionID, err)
-		return err
+		return fmt.Errorf("copilot.RunAnalysis: list conversations: %w", err)
 	}
 	msgs := make(map[uuid.UUID][]domain.Message, len(convs))
 	for _, c := range convs {
-		mm, err := uc.Messages.List(ctx, c.ID)
-		if err != nil {
-			uc.fail(ctx, in.SessionID, err)
-			return err
+		mm, lErr := uc.Messages.List(ctx, c.ID)
+		if lErr != nil {
+			uc.fail(ctx, in.SessionID, lErr)
+			return fmt.Errorf("copilot.RunAnalysis: list messages: %w", lErr)
 		}
 		msgs[c.ID] = mm
 	}
@@ -82,16 +82,16 @@ func (uc *RunAnalysis) Do(ctx context.Context, in RunAnalysisInput) error {
 	})
 	if err != nil {
 		uc.fail(ctx, in.SessionID, err)
-		return err
+		return fmt.Errorf("copilot.RunAnalysis: analyze: %w", err)
 	}
 
 	reportURL := ""
 	if uc.ReportURLFor != nil {
 		reportURL = uc.ReportURLFor(in.SessionID.String())
 	}
-	if err := uc.Reports.Write(ctx, in.SessionID, result, reportURL); err != nil {
-		uc.fail(ctx, in.SessionID, err)
-		return err
+	if wErr := uc.Reports.Write(ctx, in.SessionID, result, reportURL); wErr != nil {
+		uc.fail(ctx, in.SessionID, wErr)
+		return fmt.Errorf("copilot.RunAnalysis: write: %w", wErr)
 	}
 	return nil
 }

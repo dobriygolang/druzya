@@ -297,6 +297,8 @@ func sessionKindFromProto(k pb.CopilotSessionKind) domain.SessionKind {
 		return domain.SessionKindWork
 	case pb.CopilotSessionKind_COPILOT_SESSION_KIND_CASUAL:
 		return domain.SessionKindCasual
+	case pb.CopilotSessionKind_COPILOT_SESSION_KIND_UNSPECIFIED:
+		return domain.SessionKindUnspecified
 	default:
 		return domain.SessionKindUnspecified
 	}
@@ -310,6 +312,8 @@ func sessionKindToProto(k domain.SessionKind) pb.CopilotSessionKind {
 		return pb.CopilotSessionKind_COPILOT_SESSION_KIND_WORK
 	case domain.SessionKindCasual:
 		return pb.CopilotSessionKind_COPILOT_SESSION_KIND_CASUAL
+	case domain.SessionKindUnspecified:
+		return pb.CopilotSessionKind_COPILOT_SESSION_KIND_UNSPECIFIED
 	default:
 		return pb.CopilotSessionKind_COPILOT_SESSION_KIND_UNSPECIFIED
 	}
