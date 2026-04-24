@@ -190,6 +190,19 @@ func NewHone(d Deps) *Module {
 	if embedWorker != nil {
 		mod.Background = append(mod.Background, func(ctx context.Context) { go embedWorker.Run(ctx) })
 	}
+
+	// Streak reconciliation — периодически чинит (user, day)-пары где
+	// agg focus_sessions разошёлся с streak_days (EndFocus упал на apply'е).
+	// Крутится всегда, независимо от Redis — зависит только от БД.
+	reconciler := &honeApp.StreakReconciler{
+		Streaks:           streaks,
+		Log:               d.Log,
+		Interval:          15 * time.Minute,
+		Lookback:          48 * time.Hour,
+		QualifyingSeconds: honeApp.MinQualifyingFocusSeconds,
+	}
+	mod.Background = append(mod.Background, func(ctx context.Context) { go reconciler.Run(ctx) })
+
 	return mod
 }
 

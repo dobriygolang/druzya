@@ -378,6 +378,153 @@ func (s *Streaks) transitionState(ctx context.Context, tx pgx.Tx, userID uuid.UU
 	return nil
 }
 
+// FindDrift сравнивает факт из hone_focus_sessions с агрегатом в
+// hone_streak_days и возвращает расхождения за последние `lookback`.
+//
+// Источник истины — focus_sessions (SUM(seconds_focused), COUNT(*)).
+// Drift случается, когда EndFocus сохранил сессию, но ApplyFocusSession
+// упал (транзиентная ошибка БД/Redis). Код-pathes логируют warning и
+// оставляют reconciliation background-job'у разобраться.
+//
+// FULL OUTER JOIN по (user_id, day) — потому что стороны могут не совпадать:
+// день может быть в focus_sessions и не быть в streak_days (пропущенный
+// upsert), или наоборот (ручная правка БД — сюда не должно возвращаться
+// но на всякий возвращаем StoredDayExists=true ActualSeconds=0 — пусть
+// reconciler решит что делать).
+func (s *Streaks) FindDrift(ctx context.Context, lookback time.Duration) ([]domain.DriftRow, error) {
+	cutoff := time.Now().UTC().Add(-lookback)
+	rows, err := s.pool.Query(ctx,
+		`WITH agg AS (
+		    SELECT user_id,
+		           (ended_at AT TIME ZONE 'UTC')::date AS day,
+		           COALESCE(SUM(seconds_focused), 0)::int AS secs,
+		           COUNT(*)::int                          AS sess
+		      FROM hone_focus_sessions
+		     WHERE ended_at IS NOT NULL
+		       AND ended_at >= $1
+		  GROUP BY user_id, day
+		)
+		SELECT COALESCE(a.user_id, d.user_id)                AS user_id,
+		       COALESCE(a.day, d.day)                         AS day,
+		       COALESCE(a.secs, 0)                            AS actual_secs,
+		       COALESCE(a.sess, 0)                            AS actual_sess,
+		       COALESCE(d.focused_seconds, 0)                 AS stored_secs,
+		       COALESCE(d.sessions_count, 0)                  AS stored_sess,
+		       (d.user_id IS NOT NULL)                        AS stored_exists
+		  FROM agg a
+		  FULL OUTER JOIN hone_streak_days d
+		    ON a.user_id = d.user_id AND a.day = d.day
+		 WHERE (COALESCE(a.day, d.day) >= $1::date)
+		   AND (
+		         d.user_id IS NULL
+		      OR a.user_id IS NULL
+		      OR COALESCE(a.secs, 0) <> d.focused_seconds
+		      OR COALESCE(a.sess, 0) <> d.sessions_count
+		   )`,
+		cutoff,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("hone.Streaks.FindDrift: %w", err)
+	}
+	defer rows.Close()
+	out := make([]domain.DriftRow, 0, 8)
+	for rows.Next() {
+		var (
+			userID      pgtype.UUID
+			day         pgtype.Date
+			actualSecs  int32
+			actualSess  int32
+			storedSecs  int32
+			storedSess  int32
+			storedExist bool
+		)
+		if err := rows.Scan(&userID, &day, &actualSecs, &actualSess, &storedSecs, &storedSess, &storedExist); err != nil {
+			return nil, fmt.Errorf("hone.Streaks.FindDrift: scan: %w", err)
+		}
+		out = append(out, domain.DriftRow{
+			UserID:          sharedpg.UUIDFrom(userID),
+			Day:             day.Time,
+			ActualSeconds:   int(actualSecs),
+			ActualSessions:  int(actualSess),
+			StoredSeconds:   int(storedSecs),
+			StoredSessions:  int(storedSess),
+			StoredDayExists: storedExist,
+		})
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("hone.Streaks.FindDrift: rows: %w", err)
+	}
+	return out, nil
+}
+
+// RecomputeDay перезаписывает строку hone_streak_days абсолютными значениями
+// и прогоняет transitionState, если qualifies флипнулось в true. В отличие
+// от ApplyFocusSession (который использует дельту), здесь мы знаем
+// source-of-truth агрегат и просто выставляем его.
+//
+// Идемпотентность: повторный вызов с теми же аргументами не меняет данные
+// (UPSERT SET absolute values, transitionState — nop если last_qualified
+// уже равен этому дню). Это позволяет reconciler'у безопасно запускаться
+// каждые N минут без риска двойного счёта.
+//
+// Edge-case: если qualifies было true, а новое значение ниже threshold —
+// мы понижаем qualifies, но state.current_streak НЕ трогаем (ломать streak
+// задним числом из-за reconciliation страшнее чем оставить маленький
+// drift). Это решение в пользу пользователя. Полноценный rebuild state
+// требует replay всей истории и в MVP не делается.
+func (s *Streaks) RecomputeDay(ctx context.Context, userID uuid.UUID, day time.Time, secondsAbs, sessionsAbs, qualifyingThreshold int) (domain.StreakState, error) {
+	day = day.UTC().Truncate(24 * time.Hour)
+
+	tx, err := s.pool.Begin(ctx)
+	if err != nil {
+		return domain.StreakState{}, fmt.Errorf("hone.Streaks.RecomputeDay: begin: %w", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
+	var wasQualifying bool
+	err = tx.QueryRow(ctx,
+		`SELECT qualifies_streak FROM hone_streak_days WHERE user_id=$1 AND day=$2`,
+		sharedpg.UUID(userID), pgtype.Date{Time: day, Valid: true},
+	).Scan(&wasQualifying)
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+		return domain.StreakState{}, fmt.Errorf("hone.Streaks.RecomputeDay: pre-qual: %w", err)
+	}
+
+	var nowQualifying bool
+	err = tx.QueryRow(ctx,
+		`INSERT INTO hone_streak_days (user_id, day, focused_seconds, sessions_count, qualifies_streak)
+		 VALUES ($1, $2, $3, $4, $3 >= $5)
+		 ON CONFLICT (user_id, day) DO UPDATE
+		   SET focused_seconds = EXCLUDED.focused_seconds,
+		       sessions_count  = EXCLUDED.sessions_count,
+		       qualifies_streak = EXCLUDED.qualifies_streak,
+		       updated_at = now()
+		 RETURNING qualifies_streak`,
+		sharedpg.UUID(userID),
+		pgtype.Date{Time: day, Valid: true},
+		int32(secondsAbs),
+		int32(sessionsAbs),
+		int32(qualifyingThreshold),
+	).Scan(&nowQualifying)
+	if err != nil {
+		return domain.StreakState{}, fmt.Errorf("hone.Streaks.RecomputeDay: upsert: %w", err)
+	}
+
+	// Flipped into qualifying → push state. Обратный флип не трогаем (см.
+	// Godoc) — оставляем возможный drift в state, но не ломаем streak
+	// пользователя из-за eventual-consistent reconciliation.
+	if !wasQualifying && nowQualifying {
+		if err := s.transitionState(ctx, tx, userID, day); err != nil {
+			return domain.StreakState{}, fmt.Errorf("hone.Streaks.RecomputeDay: transition: %w", err)
+		}
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return domain.StreakState{}, fmt.Errorf("hone.Streaks.RecomputeDay: commit: %w", err)
+	}
+	return s.GetState(ctx, userID)
+}
+
 // RangeDays returns days in [from, to] inclusive.
 func (s *Streaks) RangeDays(ctx context.Context, userID uuid.UUID, from, to time.Time) ([]domain.StreakDay, error) {
 	rows, err := s.pool.Query(ctx,

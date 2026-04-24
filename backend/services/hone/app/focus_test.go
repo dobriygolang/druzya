@@ -54,6 +54,12 @@ func (f *fakeStreakRepo) ApplyFocusSession(ctx context.Context, u uuid.UUID, day
 func (f *fakeStreakRepo) RangeDays(ctx context.Context, u uuid.UUID, from, to time.Time) ([]domain.StreakDay, error) {
 	return f.rangeDays(ctx, u, from, to)
 }
+func (f *fakeStreakRepo) FindDrift(context.Context, time.Duration) ([]domain.DriftRow, error) {
+	return nil, nil
+}
+func (f *fakeStreakRepo) RecomputeDay(context.Context, uuid.UUID, time.Time, int, int, int) (domain.StreakState, error) {
+	return domain.StreakState{}, nil
+}
 
 // ─── StartFocus ────────────────────────────────────────────────────────────
 

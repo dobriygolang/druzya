@@ -47,6 +47,35 @@ type StreakRepo interface {
 	// RangeDays returns all hone_streak_days in [from, to] inclusive. Used
 	// to hydrate Stats.Heatmap + LastSevenDays.
 	RangeDays(ctx context.Context, userID uuid.UUID, from, to time.Time) ([]StreakDay, error)
+
+	// FindDrift scans hone_focus_sessions vs hone_streak_days for (user, day)
+	// pairs where the aggregate diverges: session rows exist for a day but
+	// streak_days is missing or has stale focused_seconds / sessions_count.
+	// Used by StreakReconciler (background) to fix EndFocus failures where
+	// the apply-mutation step errored out while the session was persisted.
+	// `lookback` bounds the scan to the last N days — full-history rescan
+	// is wasteful and the reconciler runs frequently.
+	FindDrift(ctx context.Context, lookback time.Duration) ([]DriftRow, error)
+
+	// RecomputeDay overwrites hone_streak_days with absolute values (not a
+	// delta) and re-runs the state transition. Idempotent — running twice
+	// for the same inputs is safe. Called by the reconciler, not by normal
+	// request path (which uses ApplyFocusSession for the delta semantics).
+	RecomputeDay(ctx context.Context, userID uuid.UUID, day time.Time, secondsAbs, sessionsAbs, qualifyingThreshold int) (StreakState, error)
+}
+
+// DriftRow is the projection returned by FindDrift. `ActualSeconds` /
+// `ActualSessions` are source-of-truth aggregates from focus_sessions;
+// `StoredSeconds` / `StoredSessions` are what streak_days currently holds
+// (both zero when the streak_days row is missing entirely).
+type DriftRow struct {
+	UserID          uuid.UUID
+	Day             time.Time
+	ActualSeconds   int
+	ActualSessions  int
+	StoredSeconds   int
+	StoredSessions  int
+	StoredDayExists bool
 }
 
 // ─── Notes ─────────────────────────────────────────────────────────────────
