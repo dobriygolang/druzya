@@ -75,9 +75,9 @@ type Config struct {
 	}
 
 	LLMChain struct {
-		GroqAPIKey            string
-		CerebrasAPIKey        string
-		MistralAPIKey         string
+		GroqAPIKey     string
+		CerebrasAPIKey string
+		MistralAPIKey  string
 		// DeepSeekAPIKey — платный provider для paid-lane (deepseek-chat
 		// V3 и deepseek-reasoner R1). Используется в virtual-chain'ах
 		// druz9/pro и druz9/reasoning. Пустая строка → driver не регится,
