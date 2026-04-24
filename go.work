@@ -15,6 +15,7 @@ use (
 	./backend/services/editor
 	./backend/services/feed
 	./backend/services/friends
+	./backend/services/hone
 	./backend/services/lobby
 	./backend/services/mentor_session
 	./backend/services/notify
@@ -26,6 +27,7 @@ use (
 	./backend/services/season
 	./backend/services/slot
 	./backend/services/tg_coach
+	./backend/services/transcription
 	./backend/services/vacancies
 	./backend/shared
 )

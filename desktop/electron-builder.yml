@@ -8,6 +8,14 @@ directories:
 files:
   - out/**/*
   - package.json
+# The macOS system-audio capture helper (ScreenCaptureKit binary built
+# from desktop/native/audio-mac). Copied into Contents/Resources/native/
+# so main/capture/audio-mac.ts can resolve it via process.resourcesPath.
+# macOS-only — ignored on Windows/Linux builds.
+extraResources:
+  - from: resources/native
+    to: native
+    filter: ["**/*"]
 mac:
   category: public.app-category.developer-tools
   target:

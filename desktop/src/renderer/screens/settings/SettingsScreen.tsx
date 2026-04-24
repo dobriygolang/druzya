@@ -702,6 +702,7 @@ function DocumentsTab() {
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState('');
   const [dragging, setDragging] = useState(false);
+  const [urlDraft, setUrlDraft] = useState('');
   // Attached-to-session id set + liveSessionId so the UI can show an
   // attach/detach toggle per row when the user has a live copilot
   // session open. Without a live session the toggles are disabled —
@@ -815,6 +816,22 @@ function DocumentsTab() {
     await onFiles(e.dataTransfer.files);
   };
 
+  const onImportURL = async () => {
+    const url = urlDraft.trim();
+    if (!url) return;
+    setUploading(true);
+    setError('');
+    try {
+      await window.druz9.documents.uploadFromURL(url);
+      setUrlDraft('');
+      await refresh();
+    } catch (e) {
+      setError(humanizeError(e));
+    } finally {
+      setUploading(false);
+    }
+  };
+
   const onDelete = async (id: string) => {
     setError('');
     try {
@@ -903,6 +920,53 @@ function DocumentsTab() {
             </div>
           </>
         )}
+      </div>
+
+      {/* URL import — paste a JD/blog/Habr link and we fetch + readability-
+          extract on the server side. Sits BELOW the drop-zone because the
+          primary flow for users is still "drop CV.pdf here". */}
+      <div
+        style={{
+          display: 'flex',
+          gap: 8,
+          marginBottom: 16,
+          alignItems: 'stretch',
+        }}
+      >
+        <input
+          type="url"
+          placeholder="Или вставь ссылку на вакансию / статью …"
+          value={urlDraft}
+          onChange={(e) => setUrlDraft(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && !uploading && urlDraft.trim()) {
+              e.preventDefault();
+              void onImportURL();
+            }
+          }}
+          disabled={uploading}
+          spellCheck={false}
+          style={{
+            flex: 1,
+            height: 32,
+            padding: '0 12px',
+            fontSize: 12,
+            fontFamily: 'inherit',
+            color: 'var(--d9-ink)',
+            background: 'var(--d9-slate)',
+            border: '0.5px solid var(--d9-hairline)',
+            borderRadius: 8,
+            outline: 'none',
+          }}
+        />
+        <Button
+          size="sm"
+          variant="secondary"
+          onClick={() => void onImportURL()}
+          disabled={uploading || !urlDraft.trim()}
+        >
+          Загрузить ссылку
+        </Button>
       </div>
 
       {error && (

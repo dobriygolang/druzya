@@ -135,6 +135,18 @@ var DefaultTaskModelMap = TaskModelMap{
 		// LLM_CHAIN_ORDER=ollama,groq,… для этого task'а.
 		ProviderOllama: "qwen2.5:3b-instruct-q4_K_M",
 	},
+	TaskDailyPlanSynthesis: {
+		// Hone Today-план: нужен reasoning + строгий JSON-выход (3-4
+		// PlanItem'а). Качество приоритетно над latency — регенерация
+		// случается раз в день, юзер готов подождать 2-3 сек.
+		// 70B-класс на всех cloud-провайдерах; Ollama 3B — floor-fallback
+		// (план получится но более общий).
+		ProviderGroq:       "llama-3.3-70b-versatile",
+		ProviderCerebras:   "llama3.3-70b",
+		ProviderMistral:    "mistral-large-latest",
+		ProviderOpenRouter: "openai/gpt-oss-120b:free",
+		ProviderOllama:     "qwen2.5:3b-instruct-q4_K_M",
+	},
 }
 
 // Clone returns a deep copy so callers can mutate without affecting

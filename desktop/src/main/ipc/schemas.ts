@@ -133,6 +133,20 @@ export const sessionListSchema = z.object({
   kind: sessionKindSchema.optional(),
 });
 
+// ─── Transcription ────────────────────────────────────────────────────────
+
+// 25MB cap matches domain.MaxAudioBytes on the server. Language is
+// either a short BCP-47 code or empty (auto).
+export const transcribeSchema = z.object({
+  audio: z.instanceof(Uint8Array).refine((b) => b.byteLength <= 25 * 1024 * 1024, {
+    message: 'audio exceeds 25MB',
+  }),
+  mime: z.string().min(1).max(128),
+  filename: z.string().min(1).max(512),
+  language: z.string().max(16),
+  prompt: z.string().max(2048),
+});
+
 // ─── Documents ────────────────────────────────────────────────────────────
 
 // Raw bytes arrive as Uint8Array; zod's z.instanceof handles it cleanly.

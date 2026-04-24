@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 80" width="360" height="80">
+  <rect width="360" height="80" fill="#000"></rect>
+  <text x="24" y="52" font-family="&#39;JetBrains Mono&#39;,ui-monospace,monospace" font-weight="700" font-size="32" letter-spacing="8" fill="#fff">DRUZ9</text>
+  <circle cx="182" cy="42" r="3.2" fill="#FF3B30"></circle>
+</svg>

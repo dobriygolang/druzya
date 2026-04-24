@@ -109,6 +109,12 @@ const (
 	// Самая дешёвая модель из доступных: стоимость токенов важнее
 	// качества, summary потом может быть перечитан моделью посильнее.
 	TaskSummarize Task = "summarize"
+	// TaskDailyPlanSynthesis — синтез плана дня для Hone desktop-кокпита.
+	// Вход: Skill Atlas gaps + сегодняшний календарь + последние PR/сессии.
+	// Выход: 3-4 PlanItem'а с заголовком, subtitle-причиной, deep-link'ом.
+	// Reasoning-heavy (нужно взвесить приоритеты), но НЕ streaming — клиент
+	// ждёт целого JSON-ответа и рендерит карточки атомарно. 70B-класс.
+	TaskDailyPlanSynthesis Task = "daily_plan_synthesis"
 )
 
 // Role mirrors OpenAI chat roles. Kept as a string (not an enum) because

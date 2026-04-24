@@ -87,6 +87,12 @@ button {
   100% { transform: translateX(100%); }
 }
 
+/* Mic button recording indicator — small red dot fading in/out. */
+@keyframes d9-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%      { opacity: 0.55; transform: scale(0.8); }
+}
+
 /* Scrollbar — thin, dark, unobtrusive. Chromium only (Electron). */
 ::-webkit-scrollbar { width: 8px; height: 8px; }
 ::-webkit-scrollbar-track { background: transparent; }

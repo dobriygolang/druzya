@@ -90,9 +90,17 @@ export const invokeChannels = {
   sessionList: 'session:list',
   sessionGetAnalysis: 'session:get-analysis',
 
+  transcriptionTranscribe: 'transcription:transcribe',
+
+  audioCaptureStart: 'audio-capture:start',
+  audioCaptureStop: 'audio-capture:stop',
+  audioCaptureState: 'audio-capture:state',
+  audioCaptureIsAvailable: 'audio-capture:is-available',
+
   documentsList: 'documents:list',
   documentsGet: 'documents:get',
   documentsUpload: 'documents:upload',
+  documentsUploadFromURL: 'documents:upload-from-url',
   documentsDelete: 'documents:delete',
   documentsSearch: 'documents:search',
   documentsAttachToSession: 'documents:attach-to-session',
@@ -126,6 +134,11 @@ export const eventChannels = {
   cursorFreezeChanged: 'event:cursor-freeze-changed',
   sessionChanged: 'event:session-changed',
   sessionAnalysisReady: 'event:session-analysis-ready',
+  /** macOS system-audio capture pipeline pushes here. Carries either
+   *  a state transition or a transcript delta; never both. */
+  audioCaptureStateChanged: 'event:audio-capture-state-changed',
+  audioCaptureTranscript: 'event:audio-capture-transcript',
+  audioCaptureError: 'event:audio-capture-error',
   /** Compact → main → expanded: "open the provider picker on arrival".
    *  Emitted by the little "choose model" button in compact since the
    *  picker modal (440×520) doesn't fit inside the compact window. */
@@ -410,6 +423,38 @@ export interface DocumentListResult {
 }
 
 // ─────────────────────────────────────────────────────────────────────────
+// Transcription (mic → text)
+// ─────────────────────────────────────────────────────────────────────────
+
+export interface TranscribeInput {
+  /** Raw audio bytes from MediaRecorder. Capped at 25MB server-side. */
+  audio: Uint8Array;
+  mime: string;
+  filename: string;
+  /** BCP-47 hint. Empty = auto-detect. */
+  language: string;
+  /** Optional bias phrase for domain vocabulary. */
+  prompt: string;
+}
+
+export interface TranscribeResult {
+  text: string;
+  language: string;
+  duration: number;
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// macOS system-audio capture (etap 1 — system audio path)
+// ─────────────────────────────────────────────────────────────────────────
+
+export type AudioCaptureState = 'idle' | 'starting' | 'running' | 'stopping';
+
+export interface AudioCaptureTranscriptEvent {
+  text: string;
+  windowSec: number;
+}
+
+// ─────────────────────────────────────────────────────────────────────────
 // Typed API surface exposed to renderer as `window.druz9`.
 // The preload script wires ipcRenderer.invoke + ipcRenderer.on into these
 // methods; the renderer code is fully typed against this interface.
@@ -601,10 +646,35 @@ export interface Druz9API {
    * subsequent turn in that session pulls the top-K relevant chunks
    * into the system prompt.
    */
+  /**
+   * Transcription — mic audio → text via the backend STT provider.
+   * Disabled (module returns 404 for underlying REST) when
+   * GROQ_API_KEY is unset server-side; the renderer surfaces the error
+   * verbatim so users can fix the env var or pick a non-audio flow.
+   */
+  transcription: {
+    transcribe: (input: TranscribeInput) => Promise<TranscribeResult>;
+  };
+
+  /**
+   * macOS system-audio capture. Native helper binary is required
+   * (desktop/native/audio-mac/build.sh). On Windows/Linux the feature
+   * is unavailable — isAvailable() returns false and start() surfaces
+   * a clear error. Emits audio-capture-* events for the renderer to
+   * paint a live transcript.
+   */
+  audioCapture: {
+    start: () => Promise<void>;
+    stop: () => Promise<void>;
+    state: () => Promise<AudioCaptureState>;
+    isAvailable: () => Promise<boolean>;
+  };
+
   documents: {
     list: (cursor: string, limit: number) => Promise<DocumentListResult>;
     get: (id: string) => Promise<Document>;
     upload: (input: DocumentUploadInput) => Promise<Document>;
+    uploadFromURL: (url: string) => Promise<Document>;
     delete: (id: string) => Promise<void>;
     search: (docIds: string[], query: string, topK?: number) => Promise<DocumentSearchHit[]>;
     attachToSession: (sessionId: string, docId: string) => Promise<void>;

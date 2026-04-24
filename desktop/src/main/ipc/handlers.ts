@@ -27,6 +27,7 @@ import {
   sessionKindSchema,
   shortIdSchema,
   toastShowSchema,
+  transcribeSchema,
   urlSchema,
   windowNameSchema,
 } from './schemas';
@@ -40,6 +41,8 @@ import { currentState as cursorState, toggle as cursorToggle } from '../cursor/f
 import { createPersonasClient, type PersonaDTO } from '../api/personas';
 import { createSessionsClient } from '../api/sessions';
 import { createDocumentsClient } from '../api/documents';
+import { createTranscriptionClient } from '../api/transcription';
+import { createAudioCapture } from '../capture/audio-mac';
 import { loadAppearance, saveAppearance, type AppearancePrefs } from '../settings/appearance';
 import { createSessionManager, type SessionManager } from '../sessions/manager';
 import { applyPreset, getCurrent, listPresets } from '../masquerade';
@@ -115,6 +118,15 @@ export function registerHandlers(opts: RegisterOptions): void {
   // Documents REST client. Shares the same auth/token path as sessions
   // — both talk to /api/v1/* with the user's Druz9 bearer.
   const documentsREST = createDocumentsClient({
+    apiBaseURL,
+    updateFeedURL: '',
+    sentryDSN: '',
+    environment: '',
+    defaultLocale: 'ru',
+    isDev: false,
+  });
+
+  const transcriptionREST = createTranscriptionClient({
     apiBaseURL,
     updateFeedURL: '',
     sentryDSN: '',
@@ -541,6 +553,9 @@ export function registerHandlers(opts: RegisterOptions): void {
       sourceUrl: input.sourceUrl,
     }),
   );
+  handleIn(invokeChannels.documentsUploadFromURL, urlSchema, async (u) =>
+    documentsREST.uploadFromURL(u),
+  );
   handleIn(invokeChannels.documentsDelete, shortIdSchema, async (id) => {
     await documentsREST.delete(id);
   });
@@ -564,6 +579,37 @@ export function registerHandlers(opts: RegisterOptions): void {
   handleIn(invokeChannels.documentsListAttached, shortIdSchema, async (sessionId) =>
     documentsREST.listAttachedToSession(sessionId),
   );
+
+  // ── Transcription ──
+  handleIn(invokeChannels.transcriptionTranscribe, transcribeSchema, async (input) =>
+    transcriptionREST.transcribe(input),
+  );
+
+  // ── Audio capture (macOS system audio via ScreenCaptureKit native) ──
+  const audioCapture = createAudioCapture(
+    {
+      apiBaseURL,
+      updateFeedURL: '',
+      sentryDSN: '',
+      environment: '',
+      defaultLocale: 'ru',
+      isDev: false,
+    },
+    {
+      onState: (state) => broadcast(eventChannels.audioCaptureStateChanged, state),
+      onTranscript: (text, windowSec) =>
+        broadcast(eventChannels.audioCaptureTranscript, { text, windowSec }),
+      onError: (message) => broadcast(eventChannels.audioCaptureError, { message }),
+    },
+  );
+  ipcMain.handle(invokeChannels.audioCaptureStart, async () => {
+    await audioCapture.start();
+  });
+  ipcMain.handle(invokeChannels.audioCaptureStop, async () => {
+    await audioCapture.stop();
+  });
+  ipcMain.handle(invokeChannels.audioCaptureState, async () => audioCapture.state());
+  ipcMain.handle(invokeChannels.audioCaptureIsAvailable, async () => audioCapture.isAvailable());
 
 }
 

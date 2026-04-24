@@ -188,3 +188,30 @@ service HoneService {
 - Windows / Linux билд (только macOS в v1)
 - Light theme (только dark в v1)
 - Integrations: Linear, Jira, Notion
+
+## 11. Backend-дыры, которые не открылись к v1
+
+Зафиксировано 2026-04-24 после Phase 4. Всё компилируется, тесты зелёные, но
+эти хвосты стоит держать на радаре — ни один не блокирует публичный v1.
+
+- **Keyset cursor pagination для Notes.List** — сейчас отдаём первые 100 по
+  `updated_at DESC`, cursor игнорируется. Превратится в проблему когда у
+  кого-то накопится >100 заметок; для MVP (средний юзер ~10-50) ОК.
+- **Cross-domain connections для заметок** — `GetNoteConnections` сканирует
+  только note-to-note corpus. Следующий шаг: PR-edges через GitHub-activity
+  таблицу, task-edges через `daily_kata_history`, session-edges через
+  ai_mock. Нужна единая "artefact с embedding" таблица — отдельная миграция.
+- **Embedding async worker → proper queue** — сейчас `go uc.EmbedFn(...)`
+  fire-and-forget. При рестарте монолита inflight-эмбеддинги теряются.
+  Перевести на Redis-list или Postgres-NOTIFY когда корпус вырастет.
+- **Streak reconciliation background job** — `EndFocus` игнорирует ошибку
+  `ApplyFocusSession` (сессия сохранена, streak может задрейфовать). Нужен
+  периодический worker который пересчитывает `hone_streak_days` и
+  `hone_streak_state` из факта `hone_focus_sessions` за последние N дней.
+- **Rate limit на `GenerateDailyPlan`** — юзер может спамить `force=true` и
+  жечь LLM-квоту. Добавить per-user token bucket (1 regenerate / 5 минут)
+  через существующий `shared/pkg/ratelimit`.
+- **Domain mocks (mockgen)** — `domain/repo.go` имеет `go:generate` директиву,
+  но папки `mocks/` пока нет. Сейчас app-тесты используют hand-rolled fakes;
+  когда таблица интерфейсов стабилизируется, запустить mockgen и переписать
+  на gomock как в daily.

@@ -33,16 +33,18 @@ import (
 // Handler bundles use-case pointers plus the logger. Construction lives
 // in the monolith wiring so all deps flow through one spot.
 type Handler struct {
-	Upload *app.Upload
-	Get    *app.Get
-	List   *app.List
-	Delete *app.Delete
-	Search *app.Search
-	Log    *slog.Logger
+	Upload        *app.Upload
+	UploadFromURL *app.UploadFromURL
+	Get           *app.Get
+	List          *app.List
+	Delete        *app.Delete
+	Search        *app.Search
+	Log           *slog.Logger
 }
 
 func (h *Handler) Mount(r chi.Router) {
 	r.Post("/documents", h.handleUpload)
+	r.Post("/documents/from-url", h.handleUploadFromURL)
 	r.Post("/documents/search", h.handleSearch)
 	r.Get("/documents", h.handleList)
 	r.Get("/documents/{id}", h.handleGet)
@@ -88,6 +90,10 @@ type uploadReq struct {
 	MIME         string `json:"mime"`
 	ContentB64   string `json:"content_base64"`
 	SourceURL    string `json:"source_url"`
+}
+
+type uploadFromURLReq struct {
+	URL string `json:"url"`
 }
 
 type listResp struct {
@@ -167,6 +173,52 @@ func (h *Handler) handleUpload(w http.ResponseWriter, r *http.Request) {
 			writeError(w, http.StatusUnsupportedMediaType, err.Error())
 		default:
 			writeError(w, http.StatusInternalServerError, "upload failed")
+		}
+		return
+	}
+	writeJSON(w, http.StatusOK, toDTO(doc))
+}
+
+func (h *Handler) handleUploadFromURL(w http.ResponseWriter, r *http.Request) {
+	uid, ok := sharedMw.UserIDFromContext(r.Context())
+	if !ok {
+		writeError(w, http.StatusUnauthorized, "unauthenticated")
+		return
+	}
+	if h.UploadFromURL == nil {
+		writeError(w, http.StatusServiceUnavailable, "url ingestion not configured")
+		return
+	}
+	var req uploadFromURLReq
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid json body")
+		return
+	}
+	if req.URL == "" {
+		writeError(w, http.StatusBadRequest, "url is required")
+		return
+	}
+	doc, err := h.UploadFromURL.Do(r.Context(), app.UploadFromURLInput{
+		UserID: uid,
+		URL:    req.URL,
+	})
+	if err != nil {
+		h.logErr(r, "upload-from-url", err)
+		switch {
+		case errors.Is(err, domain.ErrTooLarge):
+			writeError(w, http.StatusRequestEntityTooLarge, err.Error())
+		case errors.Is(err, domain.ErrEmptyContent):
+			// Readability couldn't find content — usually SPA/auth-wall.
+			// 422 rather than 500 because the request was fine; the
+			// target URL is just not parseable.
+			writeError(w, http.StatusUnprocessableEntity, "could not extract content from url")
+		case errors.Is(err, domain.ErrUnsupportedMIME):
+			writeError(w, http.StatusUnsupportedMediaType, err.Error())
+		default:
+			// Surface the first error-line to the user — it contains
+			// the HTTP status or parse reason which is more actionable
+			// than "upload failed".
+			writeError(w, http.StatusBadGateway, err.Error())
 		}
 		return
 	}

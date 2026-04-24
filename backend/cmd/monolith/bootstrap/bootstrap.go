@@ -145,6 +145,7 @@ func New(ctx context.Context, cfg *config.Config) (app *App, otelShutdown func()
 		services.NewVacancies(deps),
 		services.NewAchievements(deps),
 		services.NewFriends(deps),
+		services.NewHone(deps),
 		services.NewLobby(deps),
 	}
 
@@ -155,6 +156,7 @@ func New(ctx context.Context, cfg *config.Config) (app *App, otelShutdown func()
 	documentsMod, docSearcher := services.NewDocuments(deps)
 	modules = append(modules,
 		documentsMod,
+		services.NewTranscription(deps),
 		services.NewCopilot(deps, docSearcher),
 	)
 

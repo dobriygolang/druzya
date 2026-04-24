@@ -1,0 +1,39 @@
+{
+  "name": "hone",
+  "productName": "Hone",
+  "version": "0.0.1",
+  "description": "Hone — minimal dark desktop focus cockpit for developers (druz9 ecosystem)",
+  "private": true,
+  "main": "out/main/index.js",
+  "scripts": {
+    "dev": "electron-vite dev",
+    "build": "electron-vite build",
+    "build:mac": "electron-vite build && electron-builder --mac",
+    "build:mac-dev": "electron-vite build && electron-builder --mac dir --arm64 --config.mac.identity=null --config.mac.hardenedRuntime=false --config.mac.gatekeeperAssess=false && codesign --force --deep --sign - 'dist/mac-arm64/Hone.app'",
+    "lint": "eslint 'src/**/*.{ts,tsx,jsx}'",
+    "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.node.json"
+  },
+  "dependencies": {
+    "@bufbuild/protobuf": "1.10.0",
+    "@connectrpc/connect": "^1.4.0",
+    "@connectrpc/connect-web": "^1.4.0",
+    "@fontsource/inter": "^5.2.8",
+    "@fontsource/jetbrains-mono": "^5.2.8",
+    "electron-updater": "^6.3.9",
+    "keytar": "^7.9.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "zustand": "^5.0.2"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "@types/react": "^18.3.17",
+    "@types/react-dom": "^18.3.5",
+    "@vitejs/plugin-react": "^4.3.4",
+    "electron": "41.2.2",
+    "electron-builder": "26.8.1",
+    "electron-vite": "^3.0.0",
+    "typescript": "^5.7.2",
+    "vite": "^6.0.3"
+  }
+}

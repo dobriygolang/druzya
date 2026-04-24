@@ -48,6 +48,7 @@ export interface DocumentsClient {
   list: (cursor: string, limit: number) => Promise<ListResult>;
   get: (id: string) => Promise<DocumentDTO>;
   upload: (input: UploadInput) => Promise<DocumentDTO>;
+  uploadFromURL: (url: string) => Promise<DocumentDTO>;
   delete: (id: string) => Promise<void>;
   search: (docIds: string[], query: string, topK?: number) => Promise<SearchHit[]>;
   // Session attachment: server keeps a set-like array on the session row.
@@ -131,6 +132,13 @@ export function createDocumentsClient(cfg: RuntimeConfig): DocumentsClient {
         mime: input.mime,
         content_base64: b64,
         source_url: input.sourceUrl ?? '',
+      });
+      return fromRawDoc(raw);
+    },
+
+    uploadFromURL: async (rawURL) => {
+      const raw = await call<Record<string, unknown>>('POST', '/api/v1/documents/from-url', {
+        url: rawURL,
       });
       return fromRawDoc(raw);
     },

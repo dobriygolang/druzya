@@ -29,6 +29,7 @@ require (
 	druz9/shared v0.0.0
 	druz9/slot v0.0.0-00010101000000-000000000000
 	druz9/tg_coach v0.0.0-00010101000000-000000000000
+	druz9/transcription v0.0.0-00010101000000-000000000000
 	druz9/vacancies v0.0.0-00010101000000-000000000000
 	github.com/go-chi/chi/v5 v5.2.5
 	github.com/google/uuid v1.6.0
@@ -126,6 +127,8 @@ replace druz9/friends => ../../services/friends
 replace druz9/copilot => ../../services/copilot
 
 replace druz9/documents => ../../services/documents
+
+replace druz9/transcription => ../../services/transcription
 
 replace druz9/lobby => ../../services/lobby
 

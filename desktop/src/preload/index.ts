@@ -23,6 +23,9 @@ import {
   type MasqueradePreset,
   type MasqueradePresetInfo,
   type Persona,
+  type TranscribeInput,
+  type TranscribeResult,
+  type AudioCaptureState,
   type CursorFreezeState,
   type PermissionKind,
   type PermissionState,
@@ -179,6 +182,16 @@ const api: Druz9API = {
     getAnalysis: (sessionId: string) =>
       ipcRenderer.invoke(invokeChannels.sessionGetAnalysis, sessionId) as Promise<SessionAnalysis>,
   },
+  transcription: {
+    transcribe: (input: TranscribeInput) =>
+      ipcRenderer.invoke(invokeChannels.transcriptionTranscribe, input) as Promise<TranscribeResult>,
+  },
+  audioCapture: {
+    start: () => ipcRenderer.invoke(invokeChannels.audioCaptureStart) as Promise<void>,
+    stop: () => ipcRenderer.invoke(invokeChannels.audioCaptureStop) as Promise<void>,
+    state: () => ipcRenderer.invoke(invokeChannels.audioCaptureState) as Promise<AudioCaptureState>,
+    isAvailable: () => ipcRenderer.invoke(invokeChannels.audioCaptureIsAvailable) as Promise<boolean>,
+  },
   documents: {
     list: (cursor: string, limit: number) =>
       ipcRenderer.invoke(invokeChannels.documentsList, cursor, limit) as Promise<DocumentListResult>,
@@ -186,6 +199,8 @@ const api: Druz9API = {
       ipcRenderer.invoke(invokeChannels.documentsGet, id) as Promise<Document>,
     upload: (input: DocumentUploadInput) =>
       ipcRenderer.invoke(invokeChannels.documentsUpload, input) as Promise<Document>,
+    uploadFromURL: (url: string) =>
+      ipcRenderer.invoke(invokeChannels.documentsUploadFromURL, url) as Promise<Document>,
     delete: (id: string) =>
       ipcRenderer.invoke(invokeChannels.documentsDelete, id) as Promise<void>,
     search: (docIds: string[], query: string, topK?: number) =>

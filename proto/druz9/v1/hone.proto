@@ -1,0 +1,360 @@
+// hone.proto — Connect-RPC contract for the `hone` bounded context.
+//
+// Hone is the desktop focus cockpit (Electron, macOS-first) in the druz9
+// ecosystem. Backend responsibility is narrow:
+//
+//   - Daily Plan  — AI-synthesised list of what the user should hone today,
+//                   seeded from Skill Atlas gaps + calendar + recent GitHub.
+//   - Focus       — pomodoro session lifecycle + streak/stat aggregation.
+//   - Notes       — private markdown store with AI-generated connections
+//                   (embeddings via bge-small, cosine over note corpus +
+//                   cross-domain artefacts like PRs / tasks / sessions).
+//   - Whiteboard  — persisted tldraw state + on-demand AI critique
+//                   (reuses TaskSysDesignCritique from llmchain).
+//
+// What hone is NOT: task authoring, arena, mock interviews, rating. Those
+// live on druz9.ru and are deep-linked from the client via druz9://… URIs.
+// See ../../../hone-bible.md + ../../../ecosystem.md for the hard boundary.
+syntax = "proto3";
+package druz9.v1;
+
+import "google/api/annotations.proto";
+import "google/protobuf/timestamp.proto";
+
+option go_package = "druz9/shared/generated/pb/druz9/v1;druz9v1";
+
+// ─── Daily Plan ────────────────────────────────────────────────────────────
+
+// PlanItemKind classifies a row in the AI-generated plan. The client renders
+// each kind differently (icon, deep-link shape). Kept as a string for wire
+// simplicity — the set is small and stable.
+//
+//   solve    — open a task on druz9.ru (carries target_ref like "dsa/p-102")
+//   mock     — scheduled mock interview (target_ref is a slot_id)
+//   review   — review PR / feedback waiting (target_ref is a URL)
+//   read     — reading / book continuation (target_ref optional)
+//   custom   — free-form item user added manually
+
+// PlanItem is one row in a day's plan.
+message PlanItem {
+  string id = 1;
+  string kind = 2;                   // solve | mock | review | read | custom
+  string title = 3;
+  string subtitle = 4;               // one-liner reason ("Targets your weak spot — BFS on trees")
+  string target_ref = 5;             // deep-link payload (task slug, slot id, URL)
+  string deep_link = 6;              // fully-formed druz9:// or https:// link
+  int32 estimated_min = 7;
+  bool dismissed = 8;
+  bool completed = 9;
+}
+
+// Plan is one day's plan for one user.
+message Plan {
+  string id = 1;
+  string date = 2;                   // ISO-8601 YYYY-MM-DD
+  google.protobuf.Timestamp regenerated_at = 3;
+  repeated PlanItem items = 4;
+}
+
+message GenerateDailyPlanRequest {
+  // If true, replace today's plan even if one exists. Default false: return
+  // the cached one to keep the UI stable across app restarts.
+  bool force = 1;
+}
+
+message GetDailyPlanRequest {}
+
+message DismissPlanItemRequest {
+  string item_id = 1;
+}
+
+message CompletePlanItemRequest {
+  string item_id = 1;
+}
+
+// ─── Focus Sessions ────────────────────────────────────────────────────────
+
+// FocusSession is one pomodoro-run or stopwatch-run, logged for stats.
+message FocusSession {
+  string id = 1;
+  string plan_item_id = 2;           // optional — links back to Today's plan
+  string pinned_title = 3;           // free-form when plan_item_id is empty
+  google.protobuf.Timestamp started_at = 4;
+  google.protobuf.Timestamp ended_at = 5;
+  int32 pomodoros_completed = 6;
+  int32 seconds_focused = 7;
+  // mode is "pomodoro" | "stopwatch". String preserves wire compat.
+  string mode = 8;
+}
+
+message StartFocusSessionRequest {
+  string plan_item_id = 1;           // optional
+  string pinned_title = 2;
+  string mode = 3;                   // pomodoro | stopwatch
+}
+
+message EndFocusSessionRequest {
+  string session_id = 1;
+  int32 pomodoros_completed = 2;
+  int32 seconds_focused = 3;
+}
+
+message GetStatsRequest {
+  // ISO-8601 date, defaults to today when empty. Used for anchoring the
+  // heatmap / 7-day bars in the client.
+  string up_to_date = 1;
+}
+
+message FocusHeatmapDay {
+  string date = 1;                   // YYYY-MM-DD
+  int32 seconds = 2;
+  int32 sessions = 3;
+}
+
+message Stats {
+  int32 current_streak_days = 1;
+  int32 longest_streak_days = 2;
+  int32 total_focused_seconds = 3;
+  // Last 26 weeks (7×26 = 182 days) for the Winter-style heatmap.
+  repeated FocusHeatmapDay heatmap = 4;
+  // Last 7 days for the bar-chart on stats page.
+  repeated FocusHeatmapDay last_seven_days = 5;
+}
+
+// ─── Notes ─────────────────────────────────────────────────────────────────
+
+message Note {
+  string id = 1;
+  string title = 2;
+  string body_md = 3;                // raw markdown — rendered client-side
+  google.protobuf.Timestamp created_at = 4;
+  google.protobuf.Timestamp updated_at = 5;
+  int32 size_bytes = 6;
+}
+
+message NoteSummary {
+  // Lightweight row for the left-hand list (no body, no embedding).
+  string id = 1;
+  string title = 2;
+  google.protobuf.Timestamp updated_at = 3;
+  int32 size_bytes = 4;
+}
+
+message CreateNoteRequest {
+  string title = 1;
+  string body_md = 2;
+}
+
+message UpdateNoteRequest {
+  string id = 1;
+  string title = 2;
+  string body_md = 3;
+}
+
+message GetNoteRequest {
+  string id = 1;
+}
+
+message ListNotesRequest {
+  int32 limit = 1;                   // default 100
+  string cursor = 2;                 // opaque pagination token
+}
+
+message ListNotesResponse {
+  repeated NoteSummary notes = 1;
+  string next_cursor = 2;
+}
+
+message DeleteNoteRequest {
+  string id = 1;
+}
+
+message DeleteNoteResponse {}
+
+// Connection is one AI-discovered edge from a note to another artefact.
+//
+//   kind = "note"      → target is another Note.id
+//   kind = "pr"        → target is a GitHub PR URL / druz9 backend ref
+//   kind = "task"      → target is a solved/attempted task slug
+//   kind = "session"   → target is a FocusSession.id or ai_mock session id
+//   kind = "book"      → free-form reading pointer
+message Connection {
+  string kind = 1;
+  string target_id = 2;              // opaque id within the kind's namespace
+  string display_title = 3;          // human label ("druz9/backend#421")
+  string snippet = 4;                // one-line context ("add redis lock …")
+  float similarity = 5;              // cosine 0..1
+}
+
+message GetNoteConnectionsRequest {
+  string note_id = 1;
+}
+
+// Server-streaming because the pipeline fans out across multiple sources
+// (notes corpus, tasks, PR metadata) — first packet should arrive while the
+// slower source is still searching.
+
+// ─── Whiteboard ────────────────────────────────────────────────────────────
+
+message Whiteboard {
+  string id = 1;
+  string title = 2;
+  // state_json is the opaque tldraw document blob. Server-side this is a
+  // jsonb column — we treat it as a string on the wire to avoid decoding
+  // bloat in the hot path (load / save).
+  string state_json = 3;
+  google.protobuf.Timestamp created_at = 4;
+  google.protobuf.Timestamp updated_at = 5;
+  int32 version = 6;
+}
+
+message WhiteboardSummary {
+  string id = 1;
+  string title = 2;
+  google.protobuf.Timestamp updated_at = 3;
+}
+
+message CreateWhiteboardRequest {
+  string title = 1;
+  string state_json = 2;
+}
+
+message UpdateWhiteboardRequest {
+  string id = 1;
+  string title = 2;
+  string state_json = 3;
+  // If provided, server rejects the update when current version != expected
+  // (optimistic concurrency). 0 = skip the check.
+  int32 expected_version = 4;
+}
+
+message GetWhiteboardRequest {
+  string id = 1;
+}
+
+message ListWhiteboardsRequest {}
+
+message ListWhiteboardsResponse {
+  repeated WhiteboardSummary whiteboards = 1;
+}
+
+message DeleteWhiteboardRequest {
+  string id = 1;
+}
+
+message DeleteWhiteboardResponse {}
+
+message CritiqueWhiteboardRequest {
+  string id = 1;
+}
+
+// CritiquePacket is one streaming chunk of the AI architect's feedback.
+// Shape mirrors the SysDesignCritique task output: sectioned prose streamed
+// token-by-token. The client accumulates into a panel that fades in.
+message CritiquePacket {
+  // role is "strengths" | "concerns" | "missing" | "closing".
+  string section = 1;
+  string delta = 2;                  // token / chunk of text for this section
+  bool done = 3;                     // true on the final packet
+}
+
+// ─── Service ───────────────────────────────────────────────────────────────
+
+service HoneService {
+  // ─── Plan ───────────────────────────────────────────────────────────
+  rpc GenerateDailyPlan(GenerateDailyPlanRequest) returns (Plan) {
+    option (google.api.http) = {
+      post: "/api/v1/hone/plan/generate"
+      body: "*"
+    };
+  }
+  rpc GetDailyPlan(GetDailyPlanRequest) returns (Plan) {
+    option (google.api.http) = {get: "/api/v1/hone/plan"};
+  }
+  rpc DismissPlanItem(DismissPlanItemRequest) returns (Plan) {
+    option (google.api.http) = {
+      post: "/api/v1/hone/plan/dismiss"
+      body: "*"
+    };
+  }
+  rpc CompletePlanItem(CompletePlanItemRequest) returns (Plan) {
+    option (google.api.http) = {
+      post: "/api/v1/hone/plan/complete"
+      body: "*"
+    };
+  }
+
+  // ─── Focus ──────────────────────────────────────────────────────────
+  rpc StartFocusSession(StartFocusSessionRequest) returns (FocusSession) {
+    option (google.api.http) = {
+      post: "/api/v1/hone/focus/start"
+      body: "*"
+    };
+  }
+  rpc EndFocusSession(EndFocusSessionRequest) returns (FocusSession) {
+    option (google.api.http) = {
+      post: "/api/v1/hone/focus/end"
+      body: "*"
+    };
+  }
+  rpc GetStats(GetStatsRequest) returns (Stats) {
+    option (google.api.http) = {get: "/api/v1/hone/stats"};
+  }
+
+  // ─── Notes ──────────────────────────────────────────────────────────
+  rpc CreateNote(CreateNoteRequest) returns (Note) {
+    option (google.api.http) = {
+      post: "/api/v1/hone/notes"
+      body: "*"
+    };
+  }
+  rpc UpdateNote(UpdateNoteRequest) returns (Note) {
+    option (google.api.http) = {
+      post: "/api/v1/hone/notes/update"
+      body: "*"
+    };
+  }
+  rpc GetNote(GetNoteRequest) returns (Note) {
+    option (google.api.http) = {get: "/api/v1/hone/notes/{id}"};
+  }
+  rpc ListNotes(ListNotesRequest) returns (ListNotesResponse) {
+    option (google.api.http) = {get: "/api/v1/hone/notes"};
+  }
+  rpc DeleteNote(DeleteNoteRequest) returns (DeleteNoteResponse) {
+    option (google.api.http) = {
+      post: "/api/v1/hone/notes/delete"
+      body: "*"
+    };
+  }
+  // Server-streaming: first results (in-corpus notes) arrive fast, while
+  // cross-domain edges (PRs, tasks) trail by a few hundred ms.
+  rpc GetNoteConnections(GetNoteConnectionsRequest) returns (stream Connection);
+
+  // ─── Whiteboard ─────────────────────────────────────────────────────
+  rpc CreateWhiteboard(CreateWhiteboardRequest) returns (Whiteboard) {
+    option (google.api.http) = {
+      post: "/api/v1/hone/whiteboards"
+      body: "*"
+    };
+  }
+  rpc UpdateWhiteboard(UpdateWhiteboardRequest) returns (Whiteboard) {
+    option (google.api.http) = {
+      post: "/api/v1/hone/whiteboards/update"
+      body: "*"
+    };
+  }
+  rpc GetWhiteboard(GetWhiteboardRequest) returns (Whiteboard) {
+    option (google.api.http) = {get: "/api/v1/hone/whiteboards/{id}"};
+  }
+  rpc ListWhiteboards(ListWhiteboardsRequest) returns (ListWhiteboardsResponse) {
+    option (google.api.http) = {get: "/api/v1/hone/whiteboards"};
+  }
+  rpc DeleteWhiteboard(DeleteWhiteboardRequest) returns (DeleteWhiteboardResponse) {
+    option (google.api.http) = {
+      post: "/api/v1/hone/whiteboards/delete"
+      body: "*"
+    };
+  }
+  // Server-streaming AI critique — mirrors the SysDesignCritique task.
+  rpc CritiqueWhiteboard(CritiqueWhiteboardRequest) returns (stream CritiquePacket);
+}

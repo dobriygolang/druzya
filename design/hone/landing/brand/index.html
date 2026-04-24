@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>druz9 — Brand assets</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@300;400;500;700&display=swap" rel="stylesheet"/>
+<style>
+  :root { --hair: rgba(255,255,255,0.06); --hair-2: rgba(255,255,255,0.12); }
+  html,body { margin:0; padding:0; background:#000; color:#fff; font-family:'Inter',system-ui,sans-serif; -webkit-font-smoothing:antialiased; }
+  .mono { font-family:'JetBrains Mono',ui-monospace,monospace; }
+  .wrap { max-width: 1200px; margin: 0 auto; padding: 80px 28px; }
+  h1 { font-size: clamp(40px, 6vw, 72px); font-weight:400; letter-spacing:-0.03em; margin:0; line-height:1.05; }
+  h2 { font-size: 11px; letter-spacing:.28em; color: rgba(255,255,255,0.4); text-transform: uppercase; font-family:'JetBrains Mono',monospace; font-weight: 500; margin: 0 0 28px; }
+  .sub { color: rgba(255,255,255,0.6); margin: 20px 0 0; max-width: 620px; line-height: 1.6; }
+  section { padding: 80px 0; border-top: 1px solid var(--hair); }
+  .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+  .grid-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; }
+  .card { border: 1px solid var(--hair); border-radius: 14px; padding: 28px; background: rgba(10,10,10,0.4); }
+  .mark-tile { aspect-ratio: 1; border-radius: 14px; background: #000; border: 1px solid var(--hair); display:flex; align-items:center; justify-content:center; margin-bottom: 18px; overflow: hidden; }
+  .mark-tile img { width: 60%; height: 60%; }
+  .banner-tile { aspect-ratio: 1200/630; border-radius: 10px; overflow: hidden; border: 1px solid var(--hair); background: #000; }
+  .banner-tile img { width: 100%; height: 100%; display: block; }
+  .row { display:flex; gap:10px; flex-wrap:wrap; margin-top: 14px; }
+  .chip { display:inline-flex; align-items:center; gap: 8px; padding: 6px 12px; border: 1px solid var(--hair-2); border-radius: 999px; font-size: 12px; color: rgba(255,255,255,0.8); font-family:'JetBrains Mono',monospace; text-decoration:none; }
+  .swatch { display:flex; align-items:center; gap:14px; padding: 14px 16px; border: 1px solid var(--hair); border-radius: 12px; }
+  .swatch .dot { width: 36px; height: 36px; border-radius: 8px; border: 1px solid var(--hair-2); flex-shrink:0; }
+  .swatch .name { font-size: 13px; }
+  .swatch .hex { font-family:'JetBrains Mono',monospace; font-size:12px; color: rgba(255,255,255,0.5); margin-top: 2px; }
+  .product-name { font-family:'JetBrains Mono',monospace; font-size: 20px; font-weight: 500; }
+  .product-tag { font-family:'JetBrains Mono',monospace; font-size: 10px; color: rgba(255,255,255,0.4); letter-spacing:.2em; margin-left: 8px; }
+  .small { font-size: 13px; color: rgba(255,255,255,0.6); line-height: 1.55; }
+  code { font-family:'JetBrains Mono',monospace; font-size: 12px; background: rgba(255,255,255,0.05); padding: 2px 6px; border-radius: 4px; color: rgba(255,255,255,0.85); }
+  .top { display:flex; align-items:baseline; justify-content:space-between; gap: 24px; flex-wrap:wrap; }
+  .mini { font-family:'JetBrains Mono',monospace; font-size: 11px; letter-spacing:.22em; color: rgba(255,255,255,0.4); }
+  @media (max-width: 800px) { .grid-3, .grid-2 { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <div>
+      <div class="mono" style="font-size:13px;font-weight:700;letter-spacing:.28em;">DRUZ9</div>
+      <h1 style="margin-top:20px;">Brand assets.</h1>
+      <p class="sub">Logos, icons, and Open Graph banners for druz9, Hone, and Cue. Pure black, single-accent red, two type families.</p>
+    </div>
+    <div class="mini">BRAND · v.0.1</div>
+  </div>
+
+  <section>
+    <h2>Product marks</h2>
+    <div class="grid-3">
+      <div class="card">
+        <div class="mark-tile"><img src="druz9-mark.svg" alt="druz9 mark"/></div>
+        <div><span class="product-name">druz9</span><span class="product-tag">ARENA</span></div>
+        <p class="small" style="margin-top:8px;">Nested squares at 10° — two fighters mid-rotation. Red dot = live.</p>
+        <div class="row">
+          <a class="chip" href="druz9-mark.svg" download>druz9-mark.svg</a>
+          <a class="chip" href="druz9-wordmark.svg" download>wordmark.svg</a>
+        </div>
+      </div>
+      <div class="card">
+        <div class="mark-tile"><img src="hone-mark.svg" alt="Hone mark"/></div>
+        <div><span class="product-name">Hone</span><span class="product-tag">FOCUS</span></div>
+        <p class="small" style="margin-top:8px;">A single stroke across a horizon — sharpening. Spark = the present moment.</p>
+        <div class="row">
+          <a class="chip" href="hone-mark.svg" download>hone-mark.svg</a>
+        </div>
+      </div>
+      <div class="card">
+        <div class="mark-tile"><img src="cue-mark.svg" alt="Cue mark"/></div>
+        <div><span class="product-name">Cue</span><span class="product-tag">COPILOT</span></div>
+        <p class="small" style="margin-top:8px;">Concentric arcs — a whisper spreading. Red slash = hidden from capture.</p>
+        <div class="row">
+          <a class="chip" href="cue-mark.svg" download>cue-mark.svg</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Open Graph banners · 1200 × 630</h2>
+    <div class="grid-2" style="gap:24px;">
+      <div class="card">
+        <div class="banner-tile"><img src="og-druz9.png" alt="druz9 OG"/></div>
+        <div style="margin-top:16px; display:flex; justify-content:space-between; align-items:center;">
+          <div><span class="product-name">druz9</span><span class="product-tag">ECOSYSTEM</span></div>
+          <a class="chip" href="og-druz9.png" download>og-druz9.png</a>
+        </div>
+      </div>
+      <div class="card">
+        <div class="banner-tile"><img src="og-hone.png" alt="Hone OG"/></div>
+        <div style="margin-top:16px; display:flex; justify-content:space-between; align-items:center;">
+          <div><span class="product-name">Hone</span><span class="product-tag">FOCUS</span></div>
+          <a class="chip" href="og-hone.png" download>og-hone.png</a>
+        </div>
+      </div>
+      <div class="card" style="grid-column: 1 / -1;">
+        <div class="banner-tile"><img src="og-cue.png" alt="Cue OG"/></div>
+        <div style="margin-top:16px; display:flex; justify-content:space-between; align-items:center;">
+          <div><span class="product-name">Cue</span><span class="product-tag">COPILOT</span></div>
+          <a class="chip" href="og-cue.png" download>og-cue.png</a>
+        </div>
+      </div>
+    </div>
+    <p class="small" style="margin-top:20px;">Drop into <code>&lt;meta property="og:image" content="..."/&gt;</code>. Safe-zone padding: 56px.</p>
+  </section>
+
+  <section>
+    <h2>Color</h2>
+    <div class="grid-3" style="gap:12px;">
+      <div class="swatch"><div class="dot" style="background:#000;border-color:rgba(255,255,255,0.2);"></div><div><div class="name">Canvas</div><div class="hex">#000000</div></div></div>
+      <div class="swatch"><div class="dot" style="background:#fff;"></div><div><div class="name">Ink</div><div class="hex">#FFFFFF</div></div></div>
+      <div class="swatch"><div class="dot" style="background:#FF3B30;"></div><div><div class="name">Live / Accent</div><div class="hex">#FF3B30</div></div></div>
+    </div>
+    <p class="small" style="margin-top:18px;">One accent, used sparingly: live pulses, new-tag, critical CTAs. Never decorative. Greys are white@60/40/12/6%.</p>
+  </section>
+
+  <section>
+    <h2>Typography</h2>
+    <div class="grid-2">
+      <div class="card">
+        <div class="mini">SANS</div>
+        <div style="font-size: 48px; font-weight: 400; letter-spacing:-0.02em; margin-top: 14px;">Inter</div>
+        <p class="small" style="margin-top:10px;">Body copy, headlines, UI labels. Weights 400 / 500 / 600 / 700.</p>
+      </div>
+      <div class="card">
+        <div class="mini">MONO</div>
+        <div class="mono" style="font-size: 48px; font-weight: 500; letter-spacing:-0.01em; margin-top: 14px;">JetBrains Mono</div>
+        <p class="small" style="margin-top:10px;">All numerics, timers, kbd, product names, uppercase labels.</p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Usage</h2>
+    <div class="small" style="max-width:720px;">
+      <p>• Always on pure black. Never on white, never on gradients.</p>
+      <p>• Marks have built-in breathing room — don't crop the 28px corner radius.</p>
+      <p>• The red dot is the only colored element. If you add another color, you're off-brand.</p>
+      <p>• Hairlines: <code>rgba(255,255,255,0.06)</code> for dividers, <code>0.12</code> for borders.</p>
+      <p>• Never rotate the marks. They're already rotated.</p>
+    </div>
+  </section>
+
+  <footer style="padding: 40px 0; border-top: 1px solid var(--hair); margin-top: 40px;">
+    <div class="mini">DRUZ9 · BRAND · MADE IN RUSSIA · 2026</div>
+  </footer>
+</div>
+</body>
+</html>

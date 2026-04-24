@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"log/slog"
 	"sort"
+	"strings"
 	"sync"
 	"time"
 
@@ -237,6 +238,58 @@ func approxWords(s string) int {
 		}
 	}
 	return n
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// UploadFromURL
+// ─────────────────────────────────────────────────────────────────────────
+
+// URLFetcher abstracts the URL→plaintext step so tests can stub it. The
+// shape mirrors infra.URLFetcher.Fetch exactly — the adapter in wiring
+// is a pass-through.
+type URLFetcher interface {
+	Fetch(ctx context.Context, url string) (URLFetchResult, error)
+}
+
+type URLFetchResult struct {
+	Filename  string
+	Content   []byte
+	SourceURL string
+}
+
+// UploadFromURL fetches a URL, runs it through readability to extract
+// the main content, then hands the plaintext to the normal Upload
+// pipeline. The user-visible Document ends up with mime=text/plain and
+// source_url pointing at the canonical (post-redirect) URL.
+//
+// Errors bubble from the fetcher (ErrUnsupportedMIME for non-HTML
+// responses, ErrTooLarge for oversize pages) and the embedder (transient
+// Ollama failures) — handler layer maps to HTTP codes.
+type UploadFromURL struct {
+	Fetcher URLFetcher
+	Upload  *Upload
+}
+
+type UploadFromURLInput struct {
+	UserID uuid.UUID
+	URL    string
+}
+
+func (u *UploadFromURL) Do(ctx context.Context, in UploadFromURLInput) (domain.Document, error) {
+	if strings.TrimSpace(in.URL) == "" {
+		return domain.Document{}, fmt.Errorf("url is required")
+	}
+	res, err := u.Fetcher.Fetch(ctx, in.URL)
+	if err != nil {
+		return domain.Document{}, err
+	}
+	return u.Upload.Do(ctx, UploadInput{
+		UserID:    in.UserID,
+		Filename:  res.Filename,
+		MIME:      "text/plain",
+		Content:   res.Content,
+		SourceURL: res.SourceURL,
+	})
 }
 
 // ─────────────────────────────────────────────────────────────────────────

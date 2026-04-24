@@ -11,7 +11,8 @@
     "build:mac": "electron-vite build && electron-builder --mac",
     "build:mac-dev": "electron-vite build && electron-builder --mac dir --arm64 --config.mac.identity=null --config.mac.hardenedRuntime=false --config.mac.gatekeeperAssess=false && codesign --force --deep --sign - 'dist/mac-arm64/Druz9 Copilot.app'",
     "lint": "eslint 'src/**/*.{ts,tsx}'",
-    "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.node.json"
+    "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.node.json",
+    "build:native-mac": "./native/audio-mac/build.sh"
   },
   "dependencies": {
     "@bufbuild/protobuf": "1.10.0",

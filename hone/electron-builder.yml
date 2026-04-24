@@ -1,0 +1,29 @@
+appId: app.druzya.hone
+productName: Hone
+copyright: Copyright © 2026 druz9
+asar: true
+directories:
+  output: dist
+  buildResources: resources
+files:
+  - out/**/*
+  - package.json
+
+mac:
+  category: public.app-category.productivity
+  target:
+    - target: dmg
+      arch: [arm64, x64]
+  hardenedRuntime: true
+  gatekeeperAssess: false
+  # druz9:// URL scheme is shared with the rest of the ecosystem
+  # (stealth / web) so a single deep-link (druz9://focus/start?...) can
+  # land in whichever app the user has installed. When both Hone and the
+  # stealth app are installed, macOS picks the most-recently-registered
+  # handler; that ambiguity is acceptable for MVP (both ship in the
+  # same install flow).
+  extendInfo:
+    CFBundleURLTypes:
+      - CFBundleURLName: druz9
+        CFBundleURLSchemes:
+          - druz9

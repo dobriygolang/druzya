@@ -55,10 +55,19 @@ func NewDocuments(d Deps) (*Module, copilotDomain.DocumentSearcher) {
 	list := &docsApp.List{Repo: repo}
 	del := &docsApp.Delete{Repo: repo}
 	search := &docsApp.Search{Repo: repo, Embedder: embedder, TopK: 5}
+	uploadFromURL := &docsApp.UploadFromURL{
+		Fetcher: urlFetcherAdapter{inner: docsInfra.NewURLFetcher()},
+		Upload:  upload,
+	}
 
 	h := &docsPorts.Handler{
-		Upload: upload, Get: get, List: list, Delete: del, Search: search,
-		Log: d.Log,
+		Upload:        upload,
+		UploadFromURL: uploadFromURL,
+		Get:           get,
+		List:          list,
+		Delete:        del,
+		Search:        search,
+		Log:           d.Log,
 	}
 
 	searcher := &documentsSearcherAdapter{search: search, repo: repo}
@@ -68,6 +77,26 @@ func NewDocuments(d Deps) (*Module, copilotDomain.DocumentSearcher) {
 			h.Mount(r)
 		},
 	}, searcher
+}
+
+// urlFetcherAdapter bridges infra.URLFetcher (returns FetchResult) to
+// the app.URLFetcher interface (expects URLFetchResult). Both structs
+// have the same shape — keeping them separate avoids the app layer
+// importing infra types, which would break the dependency direction.
+type urlFetcherAdapter struct {
+	inner *docsInfra.URLFetcher
+}
+
+func (a urlFetcherAdapter) Fetch(ctx context.Context, url string) (docsApp.URLFetchResult, error) {
+	res, err := a.inner.Fetch(ctx, url)
+	if err != nil {
+		return docsApp.URLFetchResult{}, err
+	}
+	return docsApp.URLFetchResult{
+		Filename:  res.Filename,
+		Content:   res.Content,
+		SourceURL: res.SourceURL,
+	}, nil
 }
 
 // documentsSearcherAdapter bridges documents/app Search to copilot's

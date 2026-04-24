@@ -28,7 +28,7 @@ import {
   StatusDot,
   StreamingHairline,
 } from '../../components/d9';
-import { IconHistory, IconSend } from '../../components/icons';
+import { IconHistory, IconMic, IconSend } from '../../components/icons';
 import { ProviderPicker } from '../../components/ProviderPicker';
 import { useConfig } from '../../hooks/use-config';
 import { exportConversationAsMarkdown } from '../../lib/export-markdown';
@@ -39,6 +39,7 @@ import { usePersonaStore } from '../../stores/persona';
 import { useQuotaStore } from '../../stores/quota';
 import { useSelectedModelStore } from '../../stores/selected-model';
 import { useSessionStore } from '../../stores/session';
+import { useAudioCaptureStore } from '../../stores/audio-capture';
 import { SummaryModal } from '../summary/SummaryModal';
 
 export function ExpandedScreen() {
@@ -52,6 +53,7 @@ export function ExpandedScreen() {
   const modelBootstrap = useSelectedModelStore((s) => s.bootstrap);
   useEffect(() => modelBootstrap(), [modelBootstrap]);
   const sessionBootstrap = useSessionStore((s) => s.bootstrap);
+  const audioCaptureBootstrap = useAudioCaptureStore((s) => s.bootstrap);
 
   const activePersona = usePersonaStore((s) => s.active);
   const personaBootstrap = usePersonaStore((s) => s.bootstrap);
@@ -84,6 +86,7 @@ export function ExpandedScreen() {
   useEffect(() => {
     const unsubConv = bootstrap();
     const unsubSession = sessionBootstrap();
+    const unsubAudio = audioCaptureBootstrap();
     // Compact broadcasts this when the user clicks the model label —
     // expanded is the right place for the 440×520 picker modal.
     const unsubPicker = window.druz9.on(eventChannels.openProviderPicker, () => {
@@ -122,10 +125,11 @@ export function ExpandedScreen() {
     return () => {
       unsubConv();
       unsubSession();
+      unsubAudio();
       unsubPicker();
       unsubTurn();
     };
-  }, [bootstrap, sessionBootstrap]);
+  }, [bootstrap, sessionBootstrap, audioCaptureBootstrap]);
 
   useEffect(() => {
     // Pin to bottom while streaming. Manual scroll-away handling is out
@@ -215,6 +219,7 @@ export function ExpandedScreen() {
         </div>
         <div style={{ flex: 1 }} />
         <div style={{ display: 'flex', gap: 2, WebkitAppRegion: 'no-drag' } as React.CSSProperties}>
+          <MeetingRecordButton />
           <AttachedDocsBadge />
           {lastAnalysis && lastAnalysis.status === 'ready' && (
             <button
@@ -294,6 +299,11 @@ export function ExpandedScreen() {
         )}
       </div>
 
+      {/* Live transcript ticker — visible only when macOS system-
+          audio capture is running or has accumulated chunks. Click to
+          splice the full transcript into the draft. */}
+      <LiveTranscriptStrip draft={draft} setDraft={setDraft} />
+
       {/* Follow-up input */}
       <div
         style={{
@@ -344,6 +354,7 @@ export function ExpandedScreen() {
               resize: 'none',
             }}
           />
+          <MicButton draft={draft} setDraft={setDraft} />
           <IconButton
             title="Скриншот (⌘⇧S)"
             onClick={() => void captureAndSend(conversationId, draft, setDraft, selectedModel || config?.defaultModelId || '')}
@@ -885,6 +896,392 @@ async function captureAndSend(
     // eslint-disable-next-line no-console
     console.error('screenshot failed', err);
   }
+}
+
+/**
+ * MicButton — one-click voice dictation. States:
+ *   idle      → click to start recording;
+ *   recording → pulsing accent dot; click again to stop;
+ *   busy      → sending to backend / waiting for transcript;
+ *
+ * Pipeline:
+ *   getUserMedia(audio) → MediaRecorder(webm/opus) → onstop combines
+ *   chunks into a Blob → ArrayBuffer → Uint8Array → IPC → main →
+ *   multipart POST → Groq whisper-large-v3-turbo → transcript.
+ *
+ * On success the transcript is APPENDED (not replaced) to the current
+ * draft so user's typed context is preserved. Space separator inserted
+ * iff the existing draft doesn't already end in whitespace.
+ *
+ * Errors (denied mic, backend 502, etc.) land as an inline tooltip
+ * title on the button; we don't toast to avoid two error surfaces.
+ * The user clicks again to retry.
+ *
+ * Not in scope here: system-audio capture (requires native Swift/
+ * WASAPI modules — see docs/etap-1-audio.md next iteration), VAD,
+ * streaming STT, diarization.
+ */
+function MicButton({ draft, setDraft }: { draft: string; setDraft: (s: string) => void }) {
+  const [state, setState] = useState<'idle' | 'recording' | 'busy'>('idle');
+  const [error, setError] = useState<string | null>(null);
+  const recorderRef = useRef<MediaRecorder | null>(null);
+  const chunksRef = useRef<Blob[]>([]);
+  const streamRef = useRef<MediaStream | null>(null);
+
+  const stopStream = () => {
+    streamRef.current?.getTracks().forEach((t) => t.stop());
+    streamRef.current = null;
+  };
+
+  const startRecording = async () => {
+    setError(null);
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      streamRef.current = stream;
+
+      // Pick the MIME the browser can actually produce. Safari reports
+      // webm;codecs=opus as supported but then fails to finalize the
+      // container — mp4/m4a is a better default on macOS's WebKit path.
+      // Our Electron build ships Chromium so webm always wins, but the
+      // fallback keeps us honest if we ever ship a Safari-based runtime.
+      const candidates = [
+        'audio/webm;codecs=opus',
+        'audio/webm',
+        'audio/mp4',
+        '',
+      ];
+      const mime = candidates.find((m) => !m || MediaRecorder.isTypeSupported(m)) ?? '';
+      const rec = new MediaRecorder(stream, mime ? { mimeType: mime } : undefined);
+      recorderRef.current = rec;
+      chunksRef.current = [];
+
+      rec.ondataavailable = (e) => {
+        if (e.data && e.data.size > 0) chunksRef.current.push(e.data);
+      };
+      rec.onstop = async () => {
+        stopStream();
+        setState('busy');
+        try {
+          const blob = new Blob(chunksRef.current, { type: rec.mimeType || 'audio/webm' });
+          if (blob.size === 0) {
+            setError('Пустая запись');
+            setState('idle');
+            return;
+          }
+          const buf = await blob.arrayBuffer();
+          const ext = (rec.mimeType || 'audio/webm').includes('mp4') ? 'm4a' : 'webm';
+          const result = await window.druz9.transcription.transcribe({
+            audio: new Uint8Array(buf),
+            mime: rec.mimeType || 'audio/webm',
+            filename: `voice.${ext}`,
+            language: '',
+            prompt: '',
+          });
+          const text = result.text.trim();
+          if (text) {
+            const joiner = draft.length === 0 || /\s$/.test(draft) ? '' : ' ';
+            setDraft(draft + joiner + text);
+          }
+        } catch (e) {
+          setError(e instanceof Error ? e.message : 'Ошибка распознавания');
+        } finally {
+          setState('idle');
+        }
+      };
+      rec.start();
+      setState('recording');
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Нет доступа к микрофону');
+      setState('idle');
+      stopStream();
+    }
+  };
+
+  const stopRecording = () => {
+    const rec = recorderRef.current;
+    if (rec && rec.state !== 'inactive') {
+      rec.stop(); // → triggers onstop → sends to backend.
+    }
+  };
+
+  const toggle = () => {
+    if (state === 'recording') stopRecording();
+    else if (state === 'idle') void startRecording();
+  };
+
+  const title =
+    error ??
+    (state === 'recording'
+      ? 'Остановить и распознать'
+      : state === 'busy'
+        ? 'Распознавание…'
+        : 'Голосовой ввод');
+
+  return (
+    <button
+      type="button"
+      onClick={toggle}
+      disabled={state === 'busy'}
+      title={title}
+      style={{
+        position: 'relative',
+        display: 'inline-flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        width: 28,
+        height: 28,
+        padding: 0,
+        borderRadius: 7,
+        background:
+          state === 'recording'
+            ? 'oklch(0.6 0.2 25 / 0.15)'
+            : 'transparent',
+        border: '0.5px solid ' + (state === 'recording' ? 'oklch(0.6 0.2 25 / 0.5)' : 'transparent'),
+        color:
+          error
+            ? 'oklch(0.75 0.18 25)'
+            : state === 'recording'
+              ? 'oklch(0.75 0.18 25)'
+              : state === 'busy'
+                ? 'var(--d9-ink-ghost)'
+                : 'var(--d9-ink-mute)',
+        cursor: state === 'busy' ? 'wait' : 'pointer',
+        transition: 'background 120ms var(--d9-ease), color 120ms var(--d9-ease)',
+      }}
+    >
+      <IconMic size={14} />
+      {state === 'recording' && (
+        <span
+          style={{
+            position: 'absolute',
+            top: 4,
+            right: 4,
+            width: 6,
+            height: 6,
+            borderRadius: '50%',
+            background: 'oklch(0.65 0.22 25)',
+            boxShadow: '0 0 6px oklch(0.65 0.22 25 / 0.8)',
+            animation: 'd9-pulse 1s ease-in-out infinite',
+          }}
+        />
+      )}
+    </button>
+  );
+}
+
+/**
+ * LiveTranscriptStrip — one-line pill above the input that shows the
+ * most recent transcript chunk streaming from the meeting. Clicking
+ * it splices the FULL accumulated transcript into the draft and
+ * clears the store, so the user can then edit + send to copilot.
+ *
+ * Hidden when there's nothing to show (no chunks yet and not
+ * recording). A running-but-empty state renders the "слушаю…" hint
+ * so the user knows audio is flowing even before the first chunk
+ * transcribes.
+ */
+function LiveTranscriptStrip({
+  draft,
+  setDraft,
+}: {
+  draft: string;
+  setDraft: (s: string) => void;
+}) {
+  const state = useAudioCaptureStore((s) => s.state);
+  const chunks = useAudioCaptureStore((s) => s.chunks);
+  const fullText = useAudioCaptureStore((s) => s.fullText);
+  const clear = useAudioCaptureStore((s) => s.clear);
+  const error = useAudioCaptureStore((s) => s.error);
+
+  const recording = state === 'running' || state === 'starting';
+  if (!recording && chunks.length === 0 && !error) return null;
+
+  const last = chunks[chunks.length - 1]?.text ?? '';
+  const hint = recording && !last ? 'Слушаю встречу…' : last;
+
+  const onClickSplice = () => {
+    const text = fullText().trim();
+    if (!text) return;
+    const joiner = draft.length === 0 || /\s$/.test(draft) ? '' : ' ';
+    setDraft(draft + joiner + text);
+    clear();
+  };
+
+  return (
+    <div
+      style={{
+        padding: '6px 12px 0',
+        WebkitAppRegion: 'no-drag',
+      } as React.CSSProperties}
+    >
+      <button
+        type="button"
+        onClick={chunks.length > 0 ? onClickSplice : undefined}
+        disabled={chunks.length === 0}
+        title={
+          chunks.length > 0
+            ? 'Вставить полный транскрипт в поле ввода'
+            : error || 'Идёт запись…'
+        }
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 8,
+          width: '100%',
+          padding: '6px 10px',
+          borderRadius: 8,
+          background: error
+            ? 'oklch(0.6 0.2 25 / 0.12)'
+            : recording
+              ? 'oklch(0.72 0.23 300 / 0.08)'
+              : 'oklch(1 0 0 / 0.04)',
+          border: `0.5px solid ${
+            error
+              ? 'oklch(0.6 0.2 25 / 0.35)'
+              : recording
+                ? 'oklch(0.72 0.23 300 / 0.3)'
+                : 'var(--d9-hairline)'
+          }`,
+          color: error ? 'oklch(0.75 0.18 25)' : 'var(--d9-ink-mute)',
+          fontSize: 12,
+          fontFamily: 'inherit',
+          letterSpacing: '-0.005em',
+          textAlign: 'left',
+          cursor: chunks.length > 0 ? 'pointer' : 'default',
+          overflow: 'hidden',
+        }}
+      >
+        {recording && !error && (
+          <span
+            aria-hidden
+            style={{
+              flex: 'none',
+              width: 6,
+              height: 6,
+              borderRadius: '50%',
+              background: 'oklch(0.65 0.22 25)',
+              animation: 'd9-pulse 1s ease-in-out infinite',
+            }}
+          />
+        )}
+        <span
+          style={{
+            flex: 1,
+            whiteSpace: 'nowrap',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+          }}
+        >
+          {error ? `Запись: ${error}` : hint || 'Транскрипт пуст'}
+        </span>
+        {chunks.length > 0 && (
+          <span
+            style={{
+              fontSize: 10,
+              fontFamily: 'var(--d9-font-mono)',
+              color: 'var(--d9-ink-ghost)',
+              textTransform: 'uppercase',
+              letterSpacing: '0.06em',
+            }}
+          >
+            {chunks.length} • нажми чтобы вставить
+          </span>
+        )}
+      </button>
+    </div>
+  );
+}
+
+/**
+ * MeetingRecordButton — toggles macOS system-audio capture.
+ *
+ * States:
+ *   hidden    — when binary missing (Windows/Linux or un-built dev),
+ *               we render nothing rather than a disabled button;
+ *   idle      — red-dot capsule "Запись встречи" — click to start;
+ *   starting  — brief; shows spinner while TCC prompt may fire;
+ *   running   — animated dot + elapsed-seconds counter; click to stop;
+ *   stopping  — waiting for final chunk to drain.
+ *
+ * Each captured 5s window is POSTed to /transcription and the result
+ * lands in `useAudioCaptureStore.chunks`. The chat input row rendered
+ * below picks those up and shows a live-transcript ticker; the user
+ * clicks it to splice the accumulated text into the draft.
+ */
+function MeetingRecordButton() {
+  const state = useAudioCaptureStore((s) => s.state);
+  const startedAt = useAudioCaptureStore((s) => s.startedAt);
+  const available = useAudioCaptureStore((s) => s.available);
+  const start = useAudioCaptureStore((s) => s.start);
+  const stop = useAudioCaptureStore((s) => s.stop);
+  const [tick, setTick] = useState(0);
+
+  // 1s repaint so the elapsed counter advances. Only runs while we're
+  // in a recording-ish state to avoid touching the tree idle.
+  useEffect(() => {
+    if (state !== 'running') return;
+    const h = setInterval(() => setTick((t) => t + 1), 1000);
+    return () => clearInterval(h);
+  }, [state]);
+
+  if (!available) return null;
+
+  const elapsed = startedAt ? Math.max(0, Math.floor((Date.now() - startedAt) / 1000)) : 0;
+  const mm = Math.floor(elapsed / 60);
+  const ss = elapsed % 60;
+  const elapsedLabel = `${mm}:${ss.toString().padStart(2, '0')}`;
+
+  const recording = state === 'running';
+  const busy = state === 'starting' || state === 'stopping';
+  const label =
+    state === 'starting'
+      ? 'Запуск…'
+      : state === 'stopping'
+        ? 'Остановка…'
+        : recording
+          ? `● ${elapsedLabel}`
+          : 'Запись встречи';
+
+  const onClick = () => {
+    if (busy) return;
+    if (recording) void stop();
+    else void start();
+  };
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={busy}
+      title={
+        recording
+          ? 'Остановить запись встречи'
+          : 'Начать запись системного звука (macOS Screen Recording permission)'
+      }
+      style={{
+        padding: '4px 10px',
+        marginRight: 4,
+        borderRadius: 7,
+        background: recording
+          ? 'oklch(0.6 0.2 25 / 0.15)'
+          : 'oklch(1 0 0 / 0.04)',
+        border: `0.5px solid ${recording ? 'oklch(0.6 0.2 25 / 0.5)' : 'var(--d9-hairline)'}`,
+        color: recording ? 'oklch(0.75 0.18 25)' : 'var(--d9-ink-mute)',
+        fontSize: 11.5,
+        fontFamily: recording ? 'var(--d9-font-mono)' : 'inherit',
+        letterSpacing: '-0.005em',
+        cursor: busy ? 'wait' : 'pointer',
+        whiteSpace: 'nowrap',
+        transition: 'background 120ms var(--d9-ease), color 120ms var(--d9-ease)',
+      }}
+    >
+      {/* Invisible refresh — referencing `tick` inside a side-effect
+          field would break SSR/Strict; reading the counter in JSX
+          keeps the subscription live. */}
+      <span style={{ display: 'none' }}>{tick}</span>
+      {label}
+    </button>
+  );
 }
 
 /**
