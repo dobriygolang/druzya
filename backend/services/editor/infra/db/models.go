@@ -452,6 +452,16 @@ type LlmModel struct {
 	UpdatedAt          pgtype.Timestamptz
 }
 
+type LlmRuntimeConfig struct {
+	ID            int32
+	Version       int64
+	ChainOrder    []string
+	TaskMap       []byte
+	VirtualChains []byte
+	UpdatedAt     pgtype.Timestamptz
+	UpdatedBy     pgtype.UUID
+}
+
 type Lobby struct {
 	ID           pgtype.UUID
 	Code         string
