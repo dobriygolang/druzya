@@ -24,13 +24,19 @@ import { useProfileQuery } from '../lib/queries/profile'
 import CreateCohortDialog from '../components/cohort/CreateCohortDialog'
 
 type StatusFilter = '' | 'active' | 'graduated'
-
-const COHORT_CAPACITY = 50
+type SortKey = 'newest' | 'active' | 'fullness' | 'ending'
 
 const TABS: { key: StatusFilter; label: string }[] = [
   { key: '', label: 'Все' },
   { key: 'active', label: 'Активные' },
   { key: 'graduated', label: 'Завершены' },
+]
+
+const SORTS: { key: SortKey; label: string }[] = [
+  { key: 'newest', label: 'Свежие' },
+  { key: 'active', label: 'Активные сначала' },
+  { key: 'fullness', label: 'По заполненности' },
+  { key: 'ending', label: 'Скоро заканчиваются' },
 ]
 
 // Hash a string into one of N preset gradients. Stable per cohort.id so
@@ -65,11 +71,16 @@ function daysUntil(iso: string): number {
 export default function CohortsPage() {
   const [status, setStatus] = useState<StatusFilter>('')
   const [search, setSearch] = useState('')
+  const [sort, setSort] = useState<SortKey>('newest')
   const [createOpen, setCreateOpen] = useState(false)
 
   const filters = useMemo(
-    () => ({ status: status || undefined, search: search || undefined }),
-    [status, search],
+    () => ({
+      status: status || undefined,
+      search: search || undefined,
+      sort: sort === 'newest' ? undefined : sort,
+    }),
+    [status, search, sort],
   )
   const list = useCohortListInfiniteQuery(filters)
   const profile = useProfileQuery()
@@ -123,6 +134,18 @@ export default function CohortsPage() {
               </button>
             ))}
           </div>
+          <select
+            value={sort}
+            onChange={(e) => setSort(e.target.value as SortKey)}
+            className="h-9 rounded-md border border-border bg-surface-2 px-2 text-[11px] font-mono uppercase text-text-secondary"
+            aria-label="Сортировка"
+          >
+            {SORTS.map((s) => (
+              <option key={s.key} value={s.key}>
+                {s.label}
+              </option>
+            ))}
+          </select>
           <div className="ml-auto flex h-9 flex-1 items-center gap-1.5 rounded-md border border-border bg-surface-2 px-2.5 sm:max-w-xs">
             <Search className="h-3.5 w-3.5 text-text-muted" />
             <input
@@ -133,6 +156,12 @@ export default function CohortsPage() {
               className="flex-1 bg-transparent text-sm text-text-primary outline-none placeholder:text-text-muted"
             />
           </div>
+          <Link
+            to="/cohorts/archive"
+            className="h-9 rounded-md border border-border bg-surface-2 px-3 py-1.5 text-[11px] font-mono uppercase text-text-secondary hover:bg-surface-3"
+          >
+            🎓 Архив
+          </Link>
         </div>
 
         {/* States */}
@@ -199,7 +228,7 @@ function CohortCard({ cohort }: { cohort: Cohort }) {
   const profile = useProfileQuery()
   const isOwner = !!profile.data && cohort.owner_id === profile.data.id
   const isMember = !!cohort.is_member || isOwner
-  const capacity = cohort.capacity ?? COHORT_CAPACITY
+  const capacity = cohort.capacity ?? 50
 
   const progress = Math.min(100, Math.round((cohort.members_count / capacity) * 100))
   const days = daysUntil(cohort.ends_at)

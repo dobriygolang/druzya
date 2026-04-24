@@ -108,6 +108,7 @@ const VacancyDetailPage = lazy(() => import('./pages/VacancyDetailPage'))
 const ApplicationsPage = lazy(() => import('./pages/ApplicationsPage'))
 const PodcastsPage = lazy(() => import('./pages/PodcastsPage'))
 const CohortsPage = lazy(() => import('./pages/CohortsPage'))
+const CohortsArchivePage = lazy(() => import('./pages/CohortsArchivePage'))
 const CohortPage = lazy(() => import('./pages/CohortPage'))
 const CohortJoinByTokenPage = lazy(() => import('./pages/CohortJoinByTokenPage'))
 // Wave-11 — premium subscription flow (5 screens). /pricing is public; the
@@ -231,6 +232,7 @@ export default function App() {
         <Route path="/applications" element={<ApplicationsPage />} />
         {/* Cohorts (Phase 1 MVP) — list at /cohorts, detail at /c/{slug}. */}
         <Route path="/cohorts" element={<CohortsPage />} />
+        <Route path="/cohorts/archive" element={<CohortsArchivePage />} />
         <Route path="/c/join/:token" element={<CohortJoinByTokenPage />} />
         <Route path="/c/:slug" element={<CohortPage />} />
         {/* Wave-11: premium subscription flow. /pricing — public route

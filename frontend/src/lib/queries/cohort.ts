@@ -70,6 +70,7 @@ export type CohortListResponse = {
 export type CohortListFilters = {
   status?: string
   search?: string
+  sort?: 'newest' | 'active' | 'fullness' | 'ending'
   page?: number
 }
 
@@ -77,6 +78,7 @@ export function useCohortListQuery(filters: CohortListFilters = {}) {
   const qs = new URLSearchParams()
   if (filters.status) qs.set('status', filters.status)
   if (filters.search) qs.set('search', filters.search)
+  if (filters.sort) qs.set('sort', filters.sort)
   if (filters.page && filters.page > 1) qs.set('page', String(filters.page))
   const suffix = qs.toString() ? `?${qs.toString()}` : ''
   return useQuery({
@@ -98,6 +100,7 @@ export function useCohortListInfiniteQuery(filters: Omit<CohortListFilters, 'pag
       const qs = new URLSearchParams()
       if (filters.status) qs.set('status', filters.status)
       if (filters.search) qs.set('search', filters.search)
+      if (filters.sort) qs.set('sort', filters.sort)
       if (pageParam > 1) qs.set('page', String(pageParam))
       const suffix = qs.toString() ? `?${qs.toString()}` : ''
       return api<CohortListResponse>(`/cohort/list${suffix}`)

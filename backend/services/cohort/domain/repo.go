@@ -18,10 +18,15 @@ var ErrCohortFull = errors.New("cohort: full")
 
 // ListFilter — параметры пагинации/фильтрации для ListPublic.
 type ListFilter struct {
-	Status   string // "", "active", "graduated", "cancelled"
-	Search   string // подстрока в name (case-insensitive)
-	Page     int    // 1-indexed
-	PageSize int    // 1..50
+	Status string // "", "active", "graduated", "cancelled"
+	Search string // подстрока в name (case-insensitive)
+	// Sort: "", "newest" — by created_at DESC (default);
+	//       "active"     — active status first, then newest;
+	//       "fullness"   — members_count DESC (most-filled first);
+	//       "ending"     — nearest ends_at first (active only).
+	Sort     string
+	Page     int // 1-indexed
+	PageSize int // 1..50
 }
 
 // ListPage — страница публичных когорт.

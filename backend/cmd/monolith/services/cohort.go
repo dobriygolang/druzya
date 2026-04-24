@@ -472,14 +472,15 @@ func (p *cohortPostgres) ListPublic(ctx context.Context, f cohortDomain.ListFilt
 	pageSize := f.PageSize
 	listArgs := append([]any{}, args...)
 	listArgs = append(listArgs, pageSize, (page-1)*pageSize)
+	orderBy := sortClause(f.Sort)
 	listSQL := fmt.Sprintf(`
 		SELECT c.id, c.slug, c.name, c.owner_id, c.starts_at, c.ends_at, c.status, c.visibility, c.capacity, c.created_at,
 		       (SELECT COUNT(*)::int FROM cohort_members m WHERE m.cohort_id = c.id) AS members_count
 		  FROM cohorts c
 		 WHERE %s
-		 ORDER BY c.starts_at DESC, c.id ASC
+		 ORDER BY %s
 		 LIMIT $%d OFFSET $%d
-	`, whereSQL, len(args)+1, len(args)+2)
+	`, whereSQL, orderBy, len(args)+1, len(args)+2)
 	// Phase 3.1: top-3 members per cohort for the catalogue avatar
 	// strip. Kept as a second query (keyed by cohort_id) instead of a
 	// LATERAL join on listSQL so the main query stays plain and we can
@@ -657,6 +658,24 @@ func (p *cohortPostgres) Leaderboard(ctx context.Context, cohortID uuid.UUID, _ 
 	return out, nil
 }
 
+// sortClause — whitelist-based ORDER BY builder for ListPublic. Never
+// feeds user input into the SQL text — only the enum key is consulted.
+// Default: created_at DESC (newest-first). All branches include a tie-
+// break on c.id for deterministic pagination.
+func sortClause(sort string) string {
+	switch strings.ToLower(sort) {
+	case "active":
+		return "(c.status = 'active') DESC, c.created_at DESC, c.id ASC"
+	case "fullness":
+		return "(SELECT COUNT(*) FROM cohort_members m WHERE m.cohort_id = c.id) DESC, c.created_at DESC, c.id ASC"
+	case "ending":
+		return "c.ends_at ASC, c.id ASC"
+	default:
+		// "", "newest"
+		return "c.created_at DESC, c.id ASC"
+	}
+}
+
 // isUniqueViolationErr — SQLSTATE 23505 sniff, см. guild/discovery_handler.
 func isUniqueViolationErr(err error) bool {
 	if err == nil {
@@ -822,6 +841,7 @@ func (h *cohortHTTP) handleList(w http.ResponseWriter, r *http.Request) {
 	f := cohortDomain.ListFilter{
 		Status:   strings.TrimSpace(q.Get("status")),
 		Search:   strings.TrimSpace(q.Get("search")),
+		Sort:     strings.TrimSpace(q.Get("sort")),
 		Page:     page,
 		PageSize: pageSize,
 	}
