@@ -3,8 +3,18 @@ name: CI
 on:
   push:
     branches: [main]
+    paths-ignore:
+      - 'docs/**'
+      - '**.md'
+      - 'design/**'
+      - 'design-snapshots/**'
   pull_request:
     branches: [main]
+    paths-ignore:
+      - 'docs/**'
+      - '**.md'
+      - 'design/**'
+      - 'design-snapshots/**'
 
 concurrency:
   group: ci-${{ github.ref }}
@@ -22,61 +32,103 @@ env:
   GOPROXY: "https://proxy.golang.org,direct"
   GOSUMDB: "off"
   GOFLAGS: "-mod=mod"
+  # Shared build/module caches — reused across shards & jobs via actions/cache.
+  GOCACHE: /home/runner/.cache/go-build
+  GOMODCACHE: /home/runner/go/pkg/mod
+  GOLANGCI_LINT_CACHE: /home/runner/.cache/golangci-lint
 
 jobs:
-  backend:
-    name: Go — lint + test
+  # ─── Enumerate backend modules once; matrix-split them into N shards. ───
+  # Keeps the matrix definition data-driven so adding a service doesn't need
+  # a workflow edit.
+  plan:
+    name: Plan — shard backend modules
     runs-on: ubuntu-latest
+    outputs:
+      shards: ${{ steps.shard.outputs.shards }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: shard
+        run: |
+          # 4 shards — empirically the sweet spot for ~28 modules: more shards
+          # means more per-job setup overhead (checkout + setup-go + cache restore
+          # ~30s) eats the savings.
+          mods=$(find backend -name go.mod -not -path '*/tools/*' | sort)
+          n=4
+          i=0
+          for m in $mods; do
+            dir=$(dirname "$m")
+            eval "s$((i % n))=\"\${s$((i % n)):-}$dir \""
+            i=$((i + 1))
+          done
+          # Emit JSON array of {shard, mods} for matrix fan-out.
+          out='['
+          for k in $(seq 0 $((n - 1))); do
+            val=$(eval "echo \$s$k")
+            out="${out}{\"shard\":\"$k\",\"mods\":\"${val% }\"},"
+          done
+          out="${out%,}]"
+          echo "shards=$out" >> "$GITHUB_OUTPUT"
+          echo "Computed shards: $out"
+
+  backend:
+    name: Go — shard ${{ matrix.shard }}
+    needs: plan
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJson(needs.plan.outputs.shards) }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with:
           go-version: ${{ env.GO_VERSION }}
-          cache: true
-          cache-dependency-path: backend/**/go.sum
+          cache: false # we manage our own layered cache below
+
+      # Layered cache: mod cache + build cache + golangci-lint cache — all keyed
+      # on go.sum + .golangci.yml. Shard-suffixed restore-keys so an adjacent
+      # shard's warm cache can seed a cold one.
+      - name: Cache Go build + module + lint
+        uses: actions/cache@v4
+        with:
+          path: |
+            /home/runner/go/pkg/mod
+            /home/runner/.cache/go-build
+            /home/runner/.cache/golangci-lint
+          key: go-${{ runner.os }}-${{ env.GO_VERSION }}-shard${{ matrix.shard }}-${{ hashFiles('backend/**/go.sum', 'backend/.golangci.yml') }}
+          restore-keys: |
+            go-${{ runner.os }}-${{ env.GO_VERSION }}-shard${{ matrix.shard }}-
+            go-${{ runner.os }}-${{ env.GO_VERSION }}-
 
       - name: Go workspace sync
         run: go work sync
 
-      # Lint each backend module directly. golangci-lint 1.61 doesn't
-      # understand workspace mode, and our root GOFLAGS=-mod=mod clashes
-      # with workspace-mode's readonly requirement. Disabling GOWORK and
-      # clearing GOFLAGS for this step makes each module self-contained.
-      # The action only handles a single working-directory, so install the
-      # binary once and loop over every go.mod we want to lint.
-      # Build from source so the binary is compiled with Go 1.25 — the
-      # prebuilt v1.61 release fails on Go 1.25 export data ("unsupported
-      # version: 2"). v1.64.x is the last v1 release line and keeps the
-      # existing .golangci.yml v1 config format working.
+      # Install golangci-lint binary once per shard. Compiled with Go 1.25
+      # because the prebuilt v1.61 release fails on Go 1.25 export data.
       - name: Install golangci-lint
         run: go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.64.8
-      - name: golangci-lint
+
+      - name: Lint shard
         env:
           GOWORK: "off"
           GOFLAGS: ""
         run: |
           fail=0
-          for mod in $(find backend -name go.mod -not -path '*/tools/*' | sort); do
-            dir=$(dirname "$mod")
+          for dir in ${{ matrix.mods }}; do
             echo "::group::lint $dir"
-            # go build ./... обязателен ПЕРЕД линтером — иначе goanalysis_metalinter
-            # не сможет загрузить export data для свежих локальных пакетов
-            # (типа druz9/cmd/monolith/bootstrap после рефакторинга).
-            (cd "$dir" && go mod download && go build ./... && golangci-lint run --config="$GITHUB_WORKSPACE/backend/.golangci.yml" --timeout=5m ./...) || fail=1
+            (cd "$dir" && go mod download && go build ./... && \
+              golangci-lint run --config="$GITHUB_WORKSPACE/backend/.golangci.yml" --timeout=5m ./...) || fail=1
             echo "::endgroup::"
           done
           exit $fail
 
-      - name: Tests
-        # Workspace mode handles cross-module imports, but `go test ./backend/...`
-        # from repo root doesn't expand into work-listed modules. Loop instead.
-        # Clear GOFLAGS because root -mod=mod conflicts with workspace mode.
+      - name: Test shard
         env:
           GOFLAGS: ""
         run: |
           fail=0
-          for mod in $(find backend -name go.mod -not -path '*/tools/*' | sort); do
-            dir=$(dirname "$mod")
+          for dir in ${{ matrix.mods }}; do
             echo "::group::test $dir"
             (cd "$dir" && go test -race -count=1 ./...) || fail=1
             echo "::endgroup::"
@@ -94,6 +146,17 @@ jobs:
           cache: npm
           cache-dependency-path: frontend/package-lock.json
 
+      # Additional layered cache on top of setup-node's: the action only caches
+      # the npm global cache, not node_modules itself. Caching node_modules
+      # directly saves ~20s of `npm ci` link resolution on warm hits.
+      - name: Cache frontend node_modules
+        uses: actions/cache@v4
+        with:
+          path: frontend/node_modules
+          key: nm-${{ runner.os }}-node20-${{ hashFiles('frontend/package-lock.json') }}
+          restore-keys: |
+            nm-${{ runner.os }}-node20-
+
       # The lockfile is generated on a corp-laptop that proxies npm via
       # artifactory.s.o3.ru. GitHub runners can't reach that host. Rewrite
       # to the public registry — integrity SHA-512 hashes are content-addressed
@@ -106,19 +169,26 @@ jobs:
 
       - name: Install
         working-directory: frontend
-        run: npm ci --no-audit --no-fund
+        run: npm ci --no-audit --no-fund --prefer-offline
 
-      - name: Lint
+      # Run lint + typecheck + build in parallel via & / wait. Build doesn't
+      # depend on lint passing in CI gating order — we just need all three green.
+      - name: Lint + Typecheck + Build (parallel)
         working-directory: frontend
-        run: npm run lint
-
-      - name: Typecheck
-        working-directory: frontend
-        run: npm run typecheck
-
-      - name: Build
-        working-directory: frontend
-        run: npm run build
+        run: |
+          set -e
+          npm run lint         > /tmp/lint.log 2>&1 & lint_pid=$!
+          npm run typecheck    > /tmp/tc.log 2>&1   & tc_pid=$!
+          npm run build        > /tmp/build.log 2>&1 & build_pid=$!
+          fail=0
+          wait $lint_pid  || { echo "::error::lint failed";      cat /tmp/lint.log;  fail=1; }
+          wait $tc_pid    || { echo "::error::typecheck failed"; cat /tmp/tc.log;    fail=1; }
+          wait $build_pid || { echo "::error::build failed";     cat /tmp/build.log; fail=1; }
+          # Always surface logs so successes are still inspectable.
+          echo "──── lint log ────";      cat /tmp/lint.log  || true
+          echo "──── typecheck log ────"; cat /tmp/tc.log    || true
+          echo "──── build log ────";     cat /tmp/build.log || true
+          exit $fail
 
   proto:
     name: Proto — buf lint
@@ -126,8 +196,19 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
-        with: { go-version: "${{ env.GO_VERSION }}" }
+        with:
+          go-version: "${{ env.GO_VERSION }}"
+          cache: true
+          cache-dependency-path: backend/tools/go.sum
+      # Cache the buf binary across runs — installing from source takes ~30s.
+      - name: Cache buf binary
+        id: buf-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/go/bin/buf
+          key: buf-${{ runner.os }}-v1.50.0
       - name: Install buf
+        if: steps.buf-cache.outputs.cache-hit != 'true'
         run: go install github.com/bufbuild/buf/cmd/buf@v1.50.0
       - name: Lint
         working-directory: proto
@@ -153,7 +234,14 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
         with: { go-version: "${{ env.GO_VERSION }}" }
+      - name: Cache goose binary
+        id: goose-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/go/bin/goose
+          key: goose-${{ runner.os }}-v3.19.2
       - name: Install goose
+        if: steps.goose-cache.outputs.cache-hit != 'true'
         run: go install github.com/pressly/goose/v3/cmd/goose@v3.19.2
       - name: Up
         run: goose -dir backend/migrations postgres "host=localhost port=5432 user=druz9 password=druz9 dbname=druz9 sslmode=disable" up
@@ -166,12 +254,20 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
-        with: { go-version: "${{ env.GO_VERSION }}" }
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache: true
+          cache-dependency-path: backend/tools/go.sum
       - uses: actions/setup-node@v4
         with:
           node-version: "20"
           cache: npm
           cache-dependency-path: frontend/package-lock.json
+      - name: Cache tools binaries (buf, protoc-gen-*, sqlc, mockgen)
+        uses: actions/cache@v4
+        with:
+          path: bin
+          key: tools-${{ runner.os }}-${{ hashFiles('backend/tools/go.sum') }}
       - name: Rewrite npm registry URLs to public registry
         working-directory: frontend
         run: |
@@ -179,7 +275,7 @@ jobs:
           echo "registry=https://registry.npmjs.org/" > .npmrc
       - name: Install frontend deps
         working-directory: frontend
-        run: npm ci --no-audit --no-fund
+        run: npm ci --no-audit --no-fund --prefer-offline
       - name: Run full codegen
         run: make gen
       - name: Fail on drift
