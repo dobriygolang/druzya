@@ -1,3 +1,4 @@
+# syntax=docker/dockerfile:1.7
 # Web-образ: nginx + встроенный билд фронта.
 # Собирается из корня репо: docker build -f infra/web.Dockerfile .
 #
@@ -19,16 +20,26 @@ FROM node:22-slim AS frontend
 WORKDIR /src/frontend
 ENV NODE_OPTIONS=--max-old-space-size=4096 CI=true
 RUN corepack enable && corepack prepare yarn@1.22.22 --activate
+
+# ── Layer 1: manifests only. Changes to .ts/.tsx don't bust this layer,
+# so `yarn install` runs once per lockfile change.
 COPY frontend/package.json frontend/package-lock.json* ./
 # yarn import конвертирует package-lock.json → yarn.lock (одноразово в build-стадии);
 # затем install --frozen-lockfile гарантирует бит-в-бит ту же версионную смесь.
-RUN yarn import || true
-RUN yarn install --frozen-lockfile --non-interactive --no-progress
+# Cache mount on /usr/local/share/.cache/yarn persists across builds — yarn
+# reuses tarballs without re-download even when node_modules layer invalidates.
+RUN --mount=type=cache,target=/usr/local/share/.cache/yarn \
+    yarn import || true
+RUN --mount=type=cache,target=/usr/local/share/.cache/yarn \
+    yarn install --frozen-lockfile --non-interactive --no-progress
+
+# ── Layer 2: source tree. Bust on any frontend change.
 COPY frontend ./
 ENV VITE_USE_MSW=false
 # Зовём vite напрямую через локальный bin, чтобы npx не вздумал качать
 # свою свежую версию (как было: npx тянул vite@8 и ломал резолв конфига).
-RUN ./node_modules/.bin/vite build
+RUN --mount=type=cache,target=/src/frontend/node_modules/.vite \
+    ./node_modules/.bin/vite build
 
 # ── Stage 2: nginx с фронтом и нашим конфигом.
 FROM nginx:1.27-alpine
