@@ -132,6 +132,11 @@ export function CompactScreen() {
 
       const text = input.trim();
       const conversationId = useConversationStore.getState().conversationId;
+      // Show expanded first so its renderer can subscribe to streaming
+      // events (analyzeCreated/Delta/Done) before the first backend
+      // response arrives. Without this, fast LLMs (Groq/Cerebras) can
+      // fire all events before expanded's bootstrap() runs.
+      void window.druz9.windows.show('expanded');
       const handle = await window.druz9.analyze.start({
         conversationId,
         promptText: text,
@@ -156,9 +161,13 @@ export function CompactScreen() {
       });
       setInput('');
       clearPending();
-      void window.druz9.windows.show('expanded');
     } catch (err) {
-      setStatusText(`Ошибка: ${(err as Error).message.slice(0, 50)}`);
+      // Room for the full "Screen Recording запрещён. Открой Системные
+      // настройки → Конфиденциальность → Запись экрана и включи Electron…"
+      // path. 50 was the old truncate limit and it cut the message in the
+      // middle of the remediation step. 240 keeps it single-line-ish in
+      // the status row and still fits "Ошибка: " prefix.
+      setStatusText(`Ошибка: ${(err as Error).message.slice(0, 240)}`);
       // eslint-disable-next-line no-console
       console.error('screenshot failed', err);
     }

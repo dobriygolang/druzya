@@ -56,6 +56,9 @@ export const invokeChannels = {
   masqueradeGet: 'masquerade:get',
   masqueradeApply: 'masquerade:apply',
 
+  appearanceGet: 'appearance:get',
+  appearanceSet: 'appearance:set',
+
   updaterStatus: 'updater:status',
   updaterCheck: 'updater:check',
   updaterInstall: 'updater:install',
@@ -97,6 +100,7 @@ export const eventChannels = {
   configUpdated: 'event:config-updated',
   quotaUpdated: 'event:quota-updated',
   authChanged: 'event:auth-changed',
+  appearanceChanged: 'event:appearance-changed',
   updateStatus: 'event:update-status',
   cursorFreezeChanged: 'event:cursor-freeze-changed',
   sessionChanged: 'event:session-changed',
@@ -129,6 +133,19 @@ export interface UserTurnStartedEvent {
   hasScreenshot: boolean;
   /** Full data URL (`data:image/png;base64,…`). Empty when no screenshot. */
   screenshotDataUrl: string;
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Appearance
+// ─────────────────────────────────────────────────────────────────────────
+
+/** User-tunable look-and-feel. Today: only the expanded chat's
+ *  background opacity (0 = fully transparent / blurred, 100 = fully
+ *  opaque). Expanded window bounds (user-resized) also persist but
+ *  aren't surfaced in the UI — they restore automatically on next
+ *  open. */
+export interface AppearancePrefs {
+  expandedOpacity: number;
 }
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -357,6 +374,16 @@ export interface Druz9API {
     list: () => Promise<MasqueradePresetInfo[]>;
     get: () => Promise<MasqueradePreset>;
     apply: (preset: MasqueradePreset) => Promise<void>;
+  };
+
+  /**
+   * Appearance — expanded-chat background opacity slider. The expanded
+   * window is freely resizable; the last user-set bounds are persisted
+   * automatically and not exposed in this API (restored on next open).
+   */
+  appearance: {
+    get: () => Promise<AppearancePrefs>;
+    set: (prefs: Partial<AppearancePrefs>) => Promise<AppearancePrefs>;
   };
 
   /**

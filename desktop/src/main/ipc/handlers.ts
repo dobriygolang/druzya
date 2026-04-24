@@ -21,6 +21,7 @@ import {
 } from '../auth/telegram-code';
 import { currentState as cursorState, toggle as cursorToggle } from '../cursor/freeze-js';
 import { createSessionsClient } from '../api/sessions';
+import { loadAppearance, saveAppearance, type AppearancePrefs } from '../settings/appearance';
 import { createSessionManager, type SessionManager } from '../sessions/manager';
 import type { SessionKind } from '@shared/types';
 import { applyPreset, getCurrent, listPresets, type MasqueradePreset } from '../masquerade';
@@ -327,6 +328,33 @@ export function registerHandlers(opts: RegisterOptions): void {
   ipcMain.handle(invokeChannels.rateMessage, async (_evt, id: string, rating: -1 | 0 | 1) => {
     await client.rateMessage({ messageId: id, rating, comment: '' });
   });
+
+  // ── Appearance ──
+  // Read-through JSON file (userData/appearance.json). On set, we
+  // broadcast `appearanceChanged` so every live window can update its
+  // CSS vars live — compact doesn't care today, but expanded re-reads
+  // on the event and the user sees the slider's effect without waiting
+  // for a re-render cycle.
+  ipcMain.handle(invokeChannels.appearanceGet, async (): Promise<AppearancePrefs> => {
+    return loadAppearance();
+  });
+  ipcMain.handle(
+    invokeChannels.appearanceSet,
+    async (_evt, prefs: Partial<AppearancePrefs>): Promise<AppearancePrefs> => {
+      // Defensive clamping — the renderer's slider is 0-100 but nothing
+      // stops a renderer bug from sending 500. Keep persisted value sane.
+      const clamped: Partial<AppearancePrefs> = {};
+      if (typeof prefs.expandedOpacity === 'number') {
+        clamped.expandedOpacity = Math.max(0, Math.min(100, prefs.expandedOpacity));
+      }
+      if (prefs.expandedBounds) {
+        clamped.expandedBounds = prefs.expandedBounds;
+      }
+      const saved = await saveAppearance(clamped);
+      broadcast(eventChannels.appearanceChanged, saved);
+      return saved;
+    },
+  );
 
   // ── Masquerade ──
   ipcMain.handle(invokeChannels.masqueradeList, async () => listPresets());

@@ -8,6 +8,7 @@ import { eventChannels } from '@shared/ipc';
 
 import { registerDeepLinks } from './auth/deeplink';
 import { createCopilotClient } from './api/client';
+import { ensureScreenRecordingPrompted } from './capture/screenshot';
 import { loadRuntimeConfig } from './config/bootstrap';
 import { applyBindings, disposeHotkeys, setHotkeyHandler } from './hotkeys/registry';
 import { registerHandlers } from './ipc/handlers';
@@ -16,6 +17,27 @@ import { initSentryMain } from './sentry';
 import { destroyTray, ensureTray } from './tray';
 import { wireAutoUpdate } from './updater';
 import { broadcast, showWindow } from './windows/window-manager';
+
+// Opt out of the ScreenCaptureKit picker path on macOS Sonoma+. Electron 33
+// enables `ScreenCaptureKitPickerScreen` + `ScreenCaptureKitStreamPickerSonoma`
+// by default on macOS 14+; both trigger the native "choose a window to share"
+// prompt the first time `desktopCapturer.getSources()` runs in a session.
+//
+// Our UX (⌘⇧S area-overlay, ⌘⇧A full-screen) expects an instant capture — no
+// modal. The new path surfaces a system dialog the user can't always see
+// (our area-overlay and compact window can sit on top of it), so area captures
+// appear to "do nothing": the user drags a rect, overlay closes, and the
+// promise hangs until the invisible system prompt times out. Disabling these
+// features forces Electron back onto the legacy ScreenCaptureKit-less
+// CGDisplayCreateImage path, which never prompts once the user has granted
+// Screen Recording permission in System Settings → Privacy.
+//
+// MUST be called BEFORE app.whenReady() — Chromium bakes the feature list
+// into its command-line at early startup, and later mutations are ignored.
+app.commandLine.appendSwitch(
+  'disable-features',
+  'ScreenCaptureKitPickerScreen,ScreenCaptureKitStreamPickerSonoma',
+);
 
 // Force the display name before anything else — Electron infers name
 // from the parent process in dev (e.g. "claude" when launched from the
@@ -119,6 +141,20 @@ app.whenReady().then(async () => {
     { action: 'clear_conversation', accelerator: 'CommandOrControl+Shift+K' },
     { action: 'cursor_freeze_toggle', accelerator: 'CommandOrControl+Shift+Y' },
   ]);
+
+  // Trigger macOS Screen Recording prompt BEFORE the compact window
+  // appears. Compact is setContentProtection(true) + alwaysOnTop —
+  // it can and does sit on top of the system permission dialog,
+  // which is why users never see the prompt and the app never shows
+  // up in Privacy → Screen Recording.
+  //
+  // We AWAIT here (rather than void + fire-and-forget) so the dialog
+  // gets a bare desktop to render on. The bootstrap returns as soon
+  // as macOS finishes its bookkeeping (~100ms on 'granted', blocks
+  // until user clicks Allow/Deny on 'not-determined'). Worst case
+  // ~200ms delay before compact appears on a happy-path boot — we
+  // accept that trade-off for "first ⌘⇧A actually captures".
+  await ensureScreenRecordingPrompted();
 
   showWindow('compact', windowOptions);
 });

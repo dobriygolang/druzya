@@ -11,6 +11,7 @@ import {
   eventChannels,
   invokeChannels,
   type AnalyzeInput,
+  type AppearancePrefs,
   type AreaRect,
   type AuthSession,
   type CaptureResult,
@@ -104,6 +105,11 @@ const api: Druz9API = {
     get: () => ipcRenderer.invoke(invokeChannels.masqueradeGet) as Promise<MasqueradePreset>,
     apply: (preset: MasqueradePreset) =>
       ipcRenderer.invoke(invokeChannels.masqueradeApply, preset) as Promise<void>,
+  },
+  appearance: {
+    get: () => ipcRenderer.invoke(invokeChannels.appearanceGet) as Promise<AppearancePrefs>,
+    set: (prefs: Partial<AppearancePrefs>) =>
+      ipcRenderer.invoke(invokeChannels.appearanceSet, prefs) as Promise<AppearancePrefs>,
   },
   updater: {
     status: () => ipcRenderer.invoke(invokeChannels.updaterStatus) as Promise<UpdateStatus>,

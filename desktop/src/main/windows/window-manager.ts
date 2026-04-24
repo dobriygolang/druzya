@@ -12,6 +12,7 @@ import { BrowserWindow, screen } from 'electron';
 
 import type { WindowName } from '@shared/ipc';
 
+import { loadAppearance, saveAppearance } from '../settings/appearance';
 import { hardenWindow } from './hardening';
 
 const windows = new Map<WindowName, BrowserWindow>();
@@ -49,6 +50,41 @@ export function showWindow(name: WindowName, opts: WindowOptions): BrowserWindow
   win.on('closed', () => {
     windows.delete(name);
   });
+
+  // Expanded window: restore last-known bounds (from appearance.json)
+  // + persist new bounds whenever the user finishes resizing/moving.
+  // 'resize' / 'move' fire on every drag tick so we coalesce with a
+  // short debounce — writing JSON 60 times during a single drag is
+  // wasteful and can throw EAGAIN in edge cases.
+  if (name === 'expanded') {
+    void loadAppearance().then((prefs) => {
+      if (prefs.expandedBounds && !win.isDestroyed()) {
+        const b = prefs.expandedBounds;
+        // Clamp to the current display bounds — a saved position that
+        // points to a now-unplugged external monitor would leave the
+        // window offscreen otherwise.
+        const display = screen.getDisplayMatching(b);
+        const clamped = {
+          x: Math.max(display.bounds.x, Math.min(b.x, display.bounds.x + display.bounds.width - 100)),
+          y: Math.max(display.bounds.y, Math.min(b.y, display.bounds.y + display.bounds.height - 100)),
+          width: Math.max(360, Math.min(b.width, display.bounds.width)),
+          height: Math.max(240, Math.min(b.height, display.bounds.height)),
+        };
+        win.setBounds(clamped);
+      }
+    });
+    let saveTimer: ReturnType<typeof setTimeout> | null = null;
+    const scheduleSave = () => {
+      if (saveTimer) clearTimeout(saveTimer);
+      saveTimer = setTimeout(() => {
+        saveTimer = null;
+        if (win.isDestroyed()) return;
+        void saveAppearance({ expandedBounds: win.getBounds() });
+      }, 400);
+    };
+    win.on('resize', scheduleSave);
+    win.on('move', scheduleSave);
+  }
 
   // Compact + expanded + history are stealth by default. Settings /
   // onboarding render system-level prompts, so we leave them visible
@@ -194,7 +230,18 @@ function buildWindow(name: WindowName, opts: WindowOptions): BrowserWindow {
         skipTaskbar: true,
         ...topRightPosition(460, 92),
       });
-    case 'expanded':
+    case 'expanded': {
+      // Restore last user-set bounds (width/height/position) when the
+      // user has resized or moved the window previously. On fresh
+      // installs we fall back to the default tall preset. Bounds are
+      // persisted on the 'close' handler below.
+      //
+      // vibrancy: 'under-window' enables macOS native blur on whatever
+      // sits under the window. Combined with transparent: true and a
+      // semi-transparent background color on the React root, the user
+      // gets the frosted-glass look of macOS system sheets without any
+      // third-party compositing. No-op on Windows/Linux (falls through
+      // to plain transparent window).
       return new BrowserWindow({
         ...base,
         width: 520,
@@ -202,11 +249,16 @@ function buildWindow(name: WindowName, opts: WindowOptions): BrowserWindow {
         frame: false,
         resizable: true,
         transparent: true,
+        vibrancy: process.platform === 'darwin' ? 'under-window' : undefined,
+        backgroundColor: '#00000000', // fully clear for vibrancy to show
         hasShadow: true,
         roundedCorners: true,
         skipTaskbar: true,
+        // Ignored when loadedBounds overrides below — but still used as
+        // fallback if preferences fail to load.
         ...topRightPosition(520, 680, 120),
       });
+    }
     case 'settings':
       return new BrowserWindow({
         ...base,

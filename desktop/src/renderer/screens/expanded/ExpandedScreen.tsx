@@ -12,6 +12,7 @@ import { BrandMark, IconCamera, IconChevronDown, IconClose, IconCopy, IconHistor
 import { IconButton, Kbd, StatusDot } from '../../components/primitives';
 import { ProviderPicker } from '../../components/ProviderPicker';
 import { useConfig } from '../../hooks/use-config';
+import { useAppearanceStore, sliderToAlpha } from '../../stores/appearance';
 import { useConversationStore, type UIMessage } from '../../stores/conversation';
 import { useSelectedModelStore } from '../../stores/selected-model';
 import { useSessionStore } from '../../stores/session';
@@ -27,6 +28,21 @@ export function ExpandedScreen() {
   const modelBootstrap = useSelectedModelStore((s) => s.bootstrap);
   useEffect(() => modelBootstrap(), [modelBootstrap]);
   const sessionBootstrap = useSessionStore((s) => s.bootstrap);
+  // Appearance — bootstrap once on mount + re-subscribe if unmount/mount.
+  // The alpha value drives a CSS var on the root; children read it for
+  // their backgrounds so the whole expanded chat shares one opacity.
+  const opacitySlider = useAppearanceStore((s) => s.expandedOpacity);
+  const appearanceBootstrap = useAppearanceStore((s) => s.bootstrap);
+  useEffect(() => {
+    let unsub: (() => void) | null = null;
+    void appearanceBootstrap().then((u) => {
+      unsub = u;
+    });
+    return () => {
+      if (unsub) unsub();
+    };
+  }, [appearanceBootstrap]);
+  const bgAlpha = sliderToAlpha(opacitySlider);
   const [draft, setDraft] = useState('');
   const [pickerOpen, setPickerOpen] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -556,13 +572,8 @@ async function captureAndSend(
   try {
     const shot = await window.druz9.capture.screenshotArea();
     if (!shot) return; // user cancelled the overlay
-    // See the send() note: don't beginTurn directly; main broadcasts
-    // `userTurnStarted` with the full data URL (announceTurnStart
-    // renders data:<mime>;base64,<...>), applyTurn dedupes and paints
-    // the bubble with the screenshot. Double-painting is the bug we
-    // are fixing here.
     const ipc = conversationId ? window.druz9.analyze.chat : window.druz9.analyze.start;
-    await ipc({
+    const handle = await ipc({
       conversationId,
       promptText,
       model,
@@ -578,6 +589,19 @@ async function captureAndSend(
       triggerAction: 'screenshot_area',
       focusedAppHint: '',
     });
+    // Main broadcasts `userTurnStarted` before the handle returns, but the
+    // push and the invoke response travel independently — the push can lose
+    // the race on some Electron builds. If the broadcast already triggered
+    // applyTurn the store's streamId will already match; skip to avoid a
+    // double message. Otherwise paint the optimistic bubble now.
+    if (useConversationStore.getState().streamId !== handle.streamId) {
+      useConversationStore.getState().beginTurn({
+        promptText,
+        hasScreenshot: true,
+        screenshotDataUrl: `data:${shot.mimeType};base64,${shot.dataBase64}`,
+        streamId: handle.streamId,
+      });
+    }
     setDraft('');
   } catch (err) {
     // eslint-disable-next-line no-console
