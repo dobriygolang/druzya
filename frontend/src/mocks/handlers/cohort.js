@@ -189,6 +189,31 @@ export const cohortHandlers = [
     return HttpResponse.json({ status: 'joined', cohort_id: c.id, slug: c.slug });
   }),
 
+  http.get(`${base}/cohort/:id/streak`, ({ params, request }) => {
+    const id = String(params.id);
+    const c = cohorts.find((c) => c.id === id);
+    if (!c) return HttpResponse.json({ items: [], days: 14 });
+    const url = new URL(request.url);
+    const days = Math.min(30, Math.max(1, parseInt(url.searchParams.get('days') ?? '14', 10) || 14));
+    const detail = detailCache[c.slug];
+    const today = new Date();
+    today.setUTCHours(0, 0, 0, 0);
+    const items = (detail?.members ?? []).map((m) => {
+      const dayCells = Array.from({ length: days }, (_, i) => {
+        const d = new Date(today.getTime() - (days - 1 - i) * 86_400_000);
+        const dateISO = d.toISOString().slice(0, 10);
+        let h = 0;
+        const seed = `${m.user_id}|${dateISO}`;
+        for (let k = 0; k < seed.length; k++) h = (h * 31 + seed.charCodeAt(k)) >>> 0;
+        const r = (h % 1000) / 1000;
+        const threshold = m.user_id === SELF_ID ? 0.78 : 0.55;
+        return { date: dateISO, solved: r < threshold };
+      });
+      return { user_id: m.user_id, username: m.username, display_name: m.display_name, days: dayCells };
+    });
+    return HttpResponse.json({ items, days });
+  }),
+
   http.get(`${base}/cohort/:id/leaderboard`, ({ params }) => {
     const id = String(params.id);
     const c = cohorts.find((c) => c.id === id);

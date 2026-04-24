@@ -241,3 +241,10 @@ func TestListCohorts_DefaultsAndNonNil(t *testing.T) {
 		t.Fatal("Items must be non-nil slice (anti-fallback)")
 	}
 }
+
+func (f *fakeRepo) StreakHeatmap(_ context.Context, _ uuid.UUID, days int) ([]domain.StreakHeatmapRow, error) {
+	if days <= 0 {
+		days = 14
+	}
+	return []domain.StreakHeatmapRow{}, nil
+}

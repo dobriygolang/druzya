@@ -131,6 +131,42 @@ export type CohortLeaderboardRow = {
   weekly_xp: number
 }
 
+// Phase 2 — daily streak heatmap. Returns one row per member with N
+// {date, solved} cells covering the most recent N days (UTC, default 14).
+export type StreakHeatmapDay = {
+  date: string  // YYYY-MM-DD
+  solved: boolean
+}
+
+export type StreakHeatmapRow = {
+  user_id: string
+  username?: string
+  display_name?: string
+  days: StreakHeatmapDay[]
+}
+
+export type StreakHeatmapResponse = {
+  items: StreakHeatmapRow[]
+  days: number
+}
+
+export function useCohortStreakHeatmapQuery(
+  cohortID: string | undefined,
+  days = 14,
+  opts: { enabled?: boolean } = {},
+) {
+  return useQuery({
+    queryKey: ['cohort', 'streak', cohortID ?? '', days],
+    queryFn: () =>
+      api<StreakHeatmapResponse>(
+        `/cohort/${encodeURIComponent(cohortID ?? '')}/streak?days=${days}`,
+      ),
+    enabled: (opts.enabled ?? true) && !!cohortID,
+    staleTime: 60_000,
+    refetchOnWindowFocus: false,
+  })
+}
+
 export function useCohortLeaderboardQuery(cohortID: string | undefined) {
   return useQuery({
     queryKey: ['cohort', 'leaderboard', cohortID],

@@ -63,4 +63,9 @@ type Repo interface {
 	ConsumeInvite(ctx context.Context, token string) (uuid.UUID, error)
 
 	Leaderboard(ctx context.Context, cohortID uuid.UUID, weekISO string) ([]MemberStanding, error)
+
+	// StreakHeatmap returns one row per member with `days` bools covering
+	// the last `days` calendar days (UTC). True = passed Daily that day.
+	// Used by the «Streak» tab on /c/{slug}.
+	StreakHeatmap(ctx context.Context, cohortID uuid.UUID, days int) ([]StreakHeatmapRow, error)
 }

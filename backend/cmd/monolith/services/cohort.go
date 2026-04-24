@@ -22,6 +22,7 @@ package services
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -115,6 +116,7 @@ func NewCohort(d Deps) (*Module, cohortDomain.Repo) {
 	joinByToken := cohortApp.NewJoinByToken(repo, d.Log)
 	joinByToken.Bus = d.Bus
 	graduate := cohortApp.NewGraduateCohort(repo, d.Bus, d.Log)
+	streakHM := cohortApp.NewGetStreakHeatmap(repo, d.Log)
 
 	h := &cohortHTTP{
 		Create:        create,
@@ -129,6 +131,7 @@ func NewCohort(d Deps) (*Module, cohortDomain.Repo) {
 		IssueInvite:   issueInvite,
 		JoinByToken:   joinByToken,
 		Graduate:      graduate,
+		StreakHeatmap: streakHM,
 		Repo:          repo,
 		Log:           d.Log,
 	}
@@ -140,6 +143,7 @@ func NewCohort(d Deps) (*Module, cohortDomain.Repo) {
 			r.Get("/cohort/list", h.handleList)
 			r.Get("/cohort/{slug}", h.handleGetBySlug)
 			r.Get("/cohort/{id}/leaderboard", h.handleLeaderboard)
+			r.Get("/cohort/{id}/streak", h.handleStreakHeatmap)
 
 			// Writes — auth required (auth gate в router.go).
 			r.Post("/cohort", h.handleCreate)
@@ -577,6 +581,73 @@ func isUniqueViolationErr(err error) bool {
 		strings.Contains(msg, "duplicate key value violates unique constraint")
 }
 
+// StreakHeatmap — one row per member with `days` bools across the most
+// recent N days (UTC). True = passed Daily that day, false = miss.
+//
+// Hand-rolled because the SELECT has a generate_series cross-join that
+// sqlc can't statically analyse. Single round-trip.
+func (p *cohortPostgres) StreakHeatmap(ctx context.Context, cohortID uuid.UUID, days int) ([]cohortDomain.StreakHeatmapRow, error) {
+	if days <= 0 || days > 30 {
+		days = 14
+	}
+	const q = `
+WITH days AS (
+  SELECT generate_series(
+           (CURRENT_DATE - ($2::int - 1))::date,
+           CURRENT_DATE,
+           '1 day'::interval
+         )::date AS d
+),
+members AS (
+  SELECT m.user_id, COALESCE(u.username, '')::text AS username,
+         COALESCE(u.display_name, '')::text AS display_name
+    FROM cohort_members m
+    LEFT JOIN users u ON u.id = m.user_id
+   WHERE m.cohort_id = $1
+)
+SELECT m.user_id, m.username, m.display_name, d.d,
+       (h.passed = TRUE) AS solved
+  FROM members m
+  CROSS JOIN days d
+  LEFT JOIN daily_kata_history h
+    ON h.user_id = m.user_id AND h.kata_date = d.d
+ ORDER BY m.user_id, d.d`
+	rows, err := p.pool.Query(ctx, q, cPgUUID(cohortID), days)
+	if err != nil {
+		return nil, fmt.Errorf("cohort.Postgres.StreakHeatmap: %w", err)
+	}
+	defer rows.Close()
+	// Group by user_id while scanning. Order BY ensures contiguous runs.
+	out := make([]cohortDomain.StreakHeatmapRow, 0)
+	var current *cohortDomain.StreakHeatmapRow
+	for rows.Next() {
+		var (
+			uid                       pgtype.UUID
+			username, displayName     string
+			day                       time.Time
+			solved                    sql.NullBool
+		)
+		if err := rows.Scan(&uid, &username, &displayName, &day, &solved); err != nil {
+			return nil, fmt.Errorf("cohort.Postgres.StreakHeatmap: scan: %w", err)
+		}
+		userID := cFromPgUUID(uid)
+		if current == nil || current.UserID != userID {
+			out = append(out, cohortDomain.StreakHeatmapRow{
+				UserID:      userID,
+				Username:    username,
+				DisplayName: displayName,
+				Days:        make([]bool, 0, days),
+			})
+			current = &out[len(out)-1]
+		}
+		current.Days = append(current.Days, solved.Valid && solved.Bool)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("cohort.Postgres.StreakHeatmap: rows: %w", err)
+	}
+	return out, nil
+}
+
 // ── HTTP handlers ─────────────────────────────────────────────────────────
 
 type cohortHTTP struct {
@@ -592,6 +663,7 @@ type cohortHTTP struct {
 	IssueInvite   *cohortApp.IssueInvite
 	JoinByToken   *cohortApp.JoinByToken
 	Graduate      *cohortApp.GraduateCohort
+	StreakHeatmap *cohortApp.GetStreakHeatmap
 	// Repo — direct access to the underlying cohort.Repo for cross-cutting
 	// reads (e.g. HasMember in handleList) that don't justify a use case.
 	Repo cohortDomain.Repo
@@ -1130,4 +1202,57 @@ func (h *cohortHTTP) handleGraduate(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(cohortToDTO(out, 0))
+}
+
+// GET /cohort/{id}/streak?days=14
+type streakHeatmapDayDTO struct {
+	Date   string `json:"date"`
+	Solved bool   `json:"solved"`
+}
+
+type streakHeatmapRowDTO struct {
+	UserID      string                `json:"user_id"`
+	Username    string                `json:"username,omitempty"`
+	DisplayName string                `json:"display_name,omitempty"`
+	Days        []streakHeatmapDayDTO `json:"days"`
+}
+
+func (h *cohortHTTP) handleStreakHeatmap(w http.ResponseWriter, r *http.Request) {
+	cohortID, err := uuid.Parse(chi.URLParam(r, "id"))
+	if err != nil {
+		writeCohortErr(w, http.StatusBadRequest, "invalid cohort id")
+		return
+	}
+	days, _ := strconv.Atoi(r.URL.Query().Get("days"))
+	if days <= 0 {
+		days = 14
+	}
+	rows, err := h.StreakHeatmap.Do(r.Context(), cohortID, days)
+	if err != nil {
+		h.Log.ErrorContext(r.Context(), "cohort.StreakHeatmap", slog.Any("err", err))
+		writeCohortErr(w, http.StatusInternalServerError, "streak failed")
+		return
+	}
+	// Stamp dates on every cell so the frontend can render labels without
+	// reconstructing the calendar arithmetic. Days are UTC.
+	startDate := time.Now().UTC().AddDate(0, 0, -(days - 1))
+	out := make([]streakHeatmapRowDTO, 0, len(rows))
+	for _, row := range rows {
+		dayDTOs := make([]streakHeatmapDayDTO, 0, len(row.Days))
+		for i, solved := range row.Days {
+			d := startDate.AddDate(0, 0, i)
+			dayDTOs = append(dayDTOs, streakHeatmapDayDTO{
+				Date:   d.Format("2006-01-02"),
+				Solved: solved,
+			})
+		}
+		out = append(out, streakHeatmapRowDTO{
+			UserID:      row.UserID.String(),
+			Username:    row.Username,
+			DisplayName: row.DisplayName,
+			Days:        dayDTOs,
+		})
+	}
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(map[string]any{"items": out, "days": days})
 }

@@ -691,3 +691,29 @@ var (
 	ErrInvalidVisibility = errors.New("cohort: invalid visibility")
 	ErrInvalidRole       = errors.New("cohort: invalid role")
 )
+
+// GetStreakHeatmap returns the per-cohort daily-kata streak grid for the
+// «Streak» tab. days is clamped 1..30 in the repo. Public — anyone can
+// see how active a cohort is.
+type GetStreakHeatmap struct {
+	repo domain.Repo
+	log  *slog.Logger
+}
+
+func NewGetStreakHeatmap(repo domain.Repo, log *slog.Logger) *GetStreakHeatmap {
+	if repo == nil {
+		panic("cohort.GetStreakHeatmap: nil repo")
+	}
+	if log == nil {
+		panic("cohort.GetStreakHeatmap: nil log")
+	}
+	return &GetStreakHeatmap{repo: repo, log: log}
+}
+
+func (uc *GetStreakHeatmap) Do(ctx context.Context, cohortID uuid.UUID, days int) ([]domain.StreakHeatmapRow, error) {
+	out, err := uc.repo.StreakHeatmap(ctx, cohortID, days)
+	if err != nil {
+		return nil, fmt.Errorf("cohort.GetStreakHeatmap: %w", err)
+	}
+	return out, nil
+}

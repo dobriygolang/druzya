@@ -57,6 +57,16 @@ type Cohort struct {
 	CreatedAt  time.Time
 }
 
+// StreakHeatmapRow is one member's daily-kata streak snapshot for the
+// per-cohort heatmap. Days[0] is `today - (len-1)`; Days[len-1] is today.
+// True = passed Daily that day, false = missed/no record.
+type StreakHeatmapRow struct {
+	UserID      uuid.UUID
+	Username    string
+	DisplayName string
+	Days        []bool
+}
+
 // CohortPatch is the editable subset of a Cohort row. nil = leave unchanged.
 type CohortPatch struct {
 	Name       *string

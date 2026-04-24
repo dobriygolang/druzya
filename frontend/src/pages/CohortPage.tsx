@@ -23,6 +23,7 @@ import { readAccessToken } from '../lib/apiClient'
 import {
   useCohortLeaderboardQuery,
   useCohortQuery,
+  useCohortStreakHeatmapQuery,
   useDisbandCohortMutation,
   useGraduateCohortMutation,
   useIssueInviteMutation,
@@ -30,6 +31,7 @@ import {
   useLeaveCohortMutation,
   useSetMemberRoleMutation,
   type IssueInviteResponse,
+  type StreakHeatmapRow,
 } from '../lib/queries/cohort'
 import { useProfileQuery } from '../lib/queries/profile'
 import CohortSettingsDialog from '../components/cohort/CohortSettingsDialog'
@@ -271,7 +273,7 @@ export default function CohortPage() {
             }
           />
         )}
-        {tab === 'streak' && <StreakTab />}
+        {tab === 'streak' && <StreakTab cohortID={cohort.id} selfID={profile.data?.id} />}
         {tab === 'invite' && (
           <InviteTab
             cohort={cohort}
@@ -472,15 +474,107 @@ function MembersTab({
   )
 }
 
-function StreakTab() {
-  // Honest placeholder — backend doesn't yet aggregate daily streaks per
-  // cohort. Surface the gap rather than fake a heatmap.
+function StreakTab({ cohortID, selfID }: { cohortID: string; selfID?: string }) {
+  const heatmap = useCohortStreakHeatmapQuery(cohortID, 14)
+  const items = heatmap.data?.items ?? []
+
+  if (heatmap.isLoading) return <EmptyState variant="loading" skeletonLayout="single-card" />
+  if (heatmap.isError) {
+    return (
+      <EmptyState
+        variant="error"
+        title="Не удалось загрузить streak"
+        body="Попробуй обновить страницу — если повторится, мы уже видим в логах."
+      />
+    )
+  }
+  if (items.length === 0) {
+    return (
+      <EmptyState
+        variant="no-data"
+        title="В когорте никого нет"
+        body="Когда участники появятся и начнут решать Daily — заполнится heatmap."
+      />
+    )
+  }
+  // Sort: self first, then by activity (descending solved-count).
+  const sorted = [...items].sort((a, b) => {
+    if (a.user_id === selfID) return -1
+    if (b.user_id === selfID) return 1
+    const ca = a.days.filter((d) => d.solved).length
+    const cb = b.days.filter((d) => d.solved).length
+    return cb - ca
+  })
   return (
-    <EmptyState
-      variant="coming-soon"
-      title="Streak-трекер скоро"
-      body="Здесь будет недельный heatmap: кто решал каждый день, кто ронял streak. Пока готовим агрегат на бэкенде."
-    />
+    <Card className="flex-col items-stretch gap-4 p-5">
+      <div className="flex items-center justify-between">
+        <div className="font-mono text-[10px] uppercase tracking-wide text-text-muted">
+          последние {heatmap.data?.days ?? 14} дней · daily kata
+        </div>
+        <Legend />
+      </div>
+      <div className="flex flex-col gap-1">
+        {sorted.map((row) => (
+          <StreakRow key={row.user_id} row={row} isSelf={row.user_id === selfID} />
+        ))}
+      </div>
+    </Card>
+  )
+}
+
+function StreakRow({ row, isSelf }: { row: StreakHeatmapRow; isSelf: boolean }) {
+  const solvedCount = row.days.filter((d) => d.solved).length
+  // Trailing streak — count consecutive `solved` cells from the end.
+  let trailing = 0
+  for (let i = row.days.length - 1; i >= 0; i--) {
+    if (row.days[i]!.solved) trailing++
+    else break
+  }
+  const handle = row.username
+    ? `@${row.username}`
+    : row.display_name || row.user_id.slice(0, 8)
+  return (
+    <div
+      className={cn(
+        'flex items-center gap-3 rounded-lg px-2 py-1.5',
+        isSelf ? 'bg-accent/10' : 'hover:bg-surface-2/50',
+      )}
+    >
+      <div className="w-28 min-w-0">
+        <div className="truncate text-sm font-semibold text-text-primary">
+          {isSelf ? 'ты' : handle}
+        </div>
+        <div className="font-mono text-[10px] text-text-muted">
+          {solvedCount}/{row.days.length}
+          {trailing > 0 && ` · 🔥 ${trailing}`}
+        </div>
+      </div>
+      <div className="flex flex-1 gap-[2px]">
+        {row.days.map((d) => (
+          <div
+            key={d.date}
+            title={`${d.date}${d.solved ? ' · solved' : ' · missed'}`}
+            className={cn(
+              'h-5 flex-1 rounded-sm',
+              d.solved ? 'bg-success/80' : 'bg-surface-2 border border-border/40',
+            )}
+          />
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function Legend() {
+  return (
+    <div className="flex items-center gap-2 font-mono text-[9px] uppercase text-text-muted">
+      <span className="inline-flex items-center gap-1">
+        <span className="h-2.5 w-2.5 rounded-sm bg-success/80" /> solved
+      </span>
+      <span className="inline-flex items-center gap-1">
+        <span className="h-2.5 w-2.5 rounded-sm border border-border/40 bg-surface-2" /> miss
+      </span>
+    </div>
   )
 }
 
