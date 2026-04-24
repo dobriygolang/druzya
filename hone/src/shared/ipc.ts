@@ -2,22 +2,21 @@
 // stealth/copilot app (desktop/) has a much larger IPC surface because
 // it touches capture / hotkeys / permissions; Hone is a single main
 // window that mostly speaks to the backend directly, so the preload
-// bridge is nearly empty in v0.
-//
-// As we wire Connect-RPC into the renderer and start exposing
-// native-side helpers (deep-links, update feed, keychain-backed auth),
-// this file grows — keep its shape symmetric with
-// desktop/src/shared/ipc.ts so a future shared/electron-core can
-// extract the common subset.
+// bridge stays compact.
 
 export const invokeChannels = {
   appVersion: 'app:version',
   authSession: 'auth:session',
+  authPersist: 'auth:persist',
   authLogout: 'auth:logout',
+  pomodoroLoad: 'pomodoro:load',
+  pomodoroSave: 'pomodoro:save',
+  shellOpenExternal: 'shell:open-external',
 } as const;
 
 export const eventChannels = {
   deepLink: 'app:deep-link',
+  authChanged: 'auth:changed',
 } as const;
 
 /** Stable shape of the window.hone API exposed via contextBridge. */
@@ -28,7 +27,16 @@ export interface HoneAPI {
   auth: {
     /** Returns null when the user has not yet logged in. */
     session: () => Promise<AuthSession | null>;
+    /** Persists a session received via deep-link OAuth callback. */
+    persist: (s: AuthSession) => Promise<void>;
     logout: () => Promise<void>;
+  };
+  pomodoro: {
+    load: () => Promise<PomodoroSnapshot | null>;
+    save: (s: PomodoroSnapshot) => Promise<void>;
+  };
+  shell: {
+    openExternal: (url: string) => Promise<void>;
   };
   /** Subscribe to a main→renderer push (returns an unsubscribe fn). */
   on: <K extends keyof typeof eventChannels>(
@@ -40,9 +48,27 @@ export interface HoneAPI {
 export interface AuthSession {
   userId: string;
   accessToken: string;
-  expiresAt: number; // unix-ms
+  /** Refresh token, opaque to renderer. May be empty in dev-token paths. */
+  refreshToken: string;
+  /** Unix-ms when the access token stops being valid. 0 = unknown. */
+  expiresAt: number;
+}
+
+// PomodoroSnapshot — что main персистит на каждом изменении остатка
+// или running-флага. Восстанавливается на mount renderer'а; даёт
+// «таймер не слетает на reload» свойство, обещанное в Phase 5b.3.
+export interface PomodoroSnapshot {
+  /** Секунды, оставшиеся в текущем pomodoro'е. */
+  remainSec: number;
+  /** Был ли таймер запущен в момент сохранения. */
+  running: boolean;
+  /** Unix-ms когда сделан snapshot — нужно чтобы restore догнал часы. */
+  savedAt: number;
 }
 
 export interface EventPayload {
   deepLink: { url: string };
+  // authChanged — main говорит renderer'у «сессия обновилась» (например
+  // пришёл OAuth deep-link). Renderer должен hydrate'нуть store.
+  authChanged: AuthSession | null;
 }
