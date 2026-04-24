@@ -22,7 +22,7 @@ const profileFull = {
     avatar_frame: 'crimson_sigil',
     // role mirrors users.role; mock dev as interviewer so the «Создать слот»
     // CTA on /slots is visible without backend role-flip.
-    role: 'USER_ROLE_INTERVIEWER',
+    role: 'USER_ROLE_USER',
     achievements: [
         {
             key: 'avito_cleared',
@@ -149,6 +149,7 @@ const weeklyReport = {
         { label: '-3', xp: 1240, pct: 50 },
     ],
 };
+let mockRole = profileFull.role;
 export const profileHandlers = [
     http.get(`${base}/profile/me`, () => {
         let tier = 'free';
@@ -160,7 +161,11 @@ export const profileHandlers = [
         catch {
             /* noop */
         }
-        return HttpResponse.json({ ...profileFull, tier });
+        return HttpResponse.json({ ...profileFull, tier, role: mockRole });
+    }),
+    http.post(`${base}/profile/me/become-interviewer`, () => {
+        mockRole = 'USER_ROLE_INTERVIEWER';
+        return HttpResponse.json({ ...profileFull, role: mockRole });
     }),
     http.get(`${base}/profile/me/atlas`, () => HttpResponse.json(atlas)),
     http.get(`${base}/profile/me/report`, () => HttpResponse.json(weeklyReport)),

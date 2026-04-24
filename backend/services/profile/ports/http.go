@@ -20,6 +20,7 @@ type Handler struct {
 	GetReport      *app.GetReport
 	GetSettings    *app.GetSettings // reserved for a future GET /me/settings
 	UpdateSettings *app.UpdateSettings
+	BecomeUC       *app.BecomeInterviewer
 	// ReportFetcher — необязательный опитимизирующий wrapper (Redis-cache).
 	// Если nil, GetMyReport вызывает GetReport напрямую. В проде wired в
 	// cmd/monolith/services/profile.go.

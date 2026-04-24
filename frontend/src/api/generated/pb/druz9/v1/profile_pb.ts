@@ -1868,3 +1868,37 @@ export class GetWeeklyShareRequest extends Message<GetWeeklyShareRequest> {
   }
 }
 
+/**
+ * BecomeInterviewerRequest is currently empty — caller is identified by
+ * the bearer token. Future: `motivation` field for moderation context.
+ *
+ * @generated from message druz9.v1.BecomeInterviewerRequest
+ */
+export class BecomeInterviewerRequest extends Message<BecomeInterviewerRequest> {
+  constructor(data?: PartialMessage<BecomeInterviewerRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.BecomeInterviewerRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): BecomeInterviewerRequest {
+    return new BecomeInterviewerRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): BecomeInterviewerRequest {
+    return new BecomeInterviewerRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): BecomeInterviewerRequest {
+    return new BecomeInterviewerRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: BecomeInterviewerRequest | PlainMessage<BecomeInterviewerRequest> | undefined, b: BecomeInterviewerRequest | PlainMessage<BecomeInterviewerRequest> | undefined): boolean {
+    return proto3.util.equals(BecomeInterviewerRequest, a, b);
+  }
+}
+

@@ -346,6 +346,16 @@ func (c *CachedRepo) UpdateSettings(ctx context.Context, userID uuid.UUID, s dom
 	return nil
 }
 
+// UpdateRole — write pass-through with cache invalidation (role lives on the
+// User row inside the cached bundle).
+func (c *CachedRepo) UpdateRole(ctx context.Context, userID uuid.UUID, role string) error {
+	if err := c.delegate.UpdateRole(ctx, userID, role); err != nil {
+		return fmt.Errorf("profile.cache.UpdateRole: %w", err)
+	}
+	c.Invalidate(ctx, userID)
+	return nil
+}
+
 // ListSkillNodes — uncached pass-through (atlas page only, separate hot path).
 func (c *CachedRepo) ListSkillNodes(ctx context.Context, userID uuid.UUID) ([]domain.SkillNode, error) {
 	out, err := c.delegate.ListSkillNodes(ctx, userID)

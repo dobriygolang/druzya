@@ -230,6 +230,25 @@ export function useProfileQuery() {
   })
 }
 
+// useBecomeInterviewer wraps POST /api/v1/profile/me/become-interviewer.
+// Idempotent backend — calling on an already-interviewer is a no-op.
+// On success, invalidates the profile query so the «Создать слот» CTA on
+// /slots flips in immediately.
+export function useBecomeInterviewer() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: () =>
+      api<Profile>('/profile/me/become-interviewer', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: '{}',
+      }),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: profileQueryKeys.me() })
+    },
+  })
+}
+
 // usePublicProfileQuery is the hook for /profile/:username. Pass an empty
 // string to disable the query (useful when the route param hasn't resolved
 // yet); the request will not fire until a non-empty username is supplied.

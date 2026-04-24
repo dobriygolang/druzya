@@ -90,13 +90,15 @@ func NewProfile(d Deps) *Module {
 	reportCache := profileInfra.NewReportCache(
 		getReport.Do, kv, profileInfra.DefaultReportCacheTTL, d.Log,
 	)
+	getProfile := &profileApp.GetProfile{Repo: cached}
 	h := profilePorts.NewHandler(profilePorts.Handler{
-		GetProfile:     &profileApp.GetProfile{Repo: cached},
+		GetProfile:     getProfile,
 		GetPublic:      &profileApp.GetPublic{Repo: cached},
 		GetAtlas:       &profileApp.GetAtlas{Repo: cached, Catalogue: atlasCat},
 		GetReport:      getReport,
 		GetSettings:    &profileApp.GetSettings{Repo: cached},
 		UpdateSettings: &profileApp.UpdateSettings{Repo: cached},
+		BecomeUC:       &profileApp.BecomeInterviewer{Repo: cached, GetUC: getProfile},
 		ReportFetcher:  reportCache,
 		Repo:           cached,
 		Log:            d.Log,
@@ -140,6 +142,7 @@ func NewProfile(d Deps) *Module {
 			r.Put("/profile/me/ai-vacancies-model", vacanciesModel.HandlePut)
 			r.Get("/profile/me/report", transcoder.ServeHTTP)
 			r.Put("/profile/me/settings", transcoder.ServeHTTP)
+			r.Post("/profile/me/become-interviewer", transcoder.ServeHTTP)
 			// /profile/weekly/share/{token} — публичный, авторизация не нужна;
 			// REST gate пропускает по publicPaths-prefix /profile/weekly/share/.
 			r.Get("/profile/weekly/share/{token}", transcoder.ServeHTTP)

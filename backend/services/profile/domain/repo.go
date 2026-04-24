@@ -32,6 +32,10 @@ type ProfileRepo interface {
 	GetSettings(ctx context.Context, userID uuid.UUID) (Settings, error)
 	UpdateSettings(ctx context.Context, userID uuid.UUID, s Settings) error
 
+	// UpdateRole rewrites users.role. Used by BecomeInterviewer to promote
+	// a regular user; idempotent (no-op when current role is already >= role).
+	UpdateRole(ctx context.Context, userID uuid.UUID, role string) error
+
 	// Atlas.
 	ListSkillNodes(ctx context.Context, userID uuid.UUID) ([]SkillNode, error)
 	// UpsertSkillNode upserts a (user, node_key) row in skill_nodes with the

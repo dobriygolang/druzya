@@ -206,6 +206,24 @@ func (s *ProfileServer) UpdateSettings(
 	return connect.NewResponse(toSettingsProto(out)), nil
 }
 
+// BecomeInterviewer implements (POST /profile/me/become-interviewer).
+// MVP self-service promotion — see app.BecomeInterviewer for the
+// future-admin-approval roadmap.
+func (s *ProfileServer) BecomeInterviewer(
+	ctx context.Context,
+	_ *connect.Request[pb.BecomeInterviewerRequest],
+) (*connect.Response[pb.ProfileFull], error) {
+	uid, ok := sharedMw.UserIDFromContext(ctx)
+	if !ok {
+		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("unauthenticated"))
+	}
+	v, err := s.H.BecomeUC.Do(ctx, uid)
+	if err != nil {
+		return nil, fmt.Errorf("profile.BecomeInterviewer: %w", s.toConnectErr(err))
+	}
+	return connect.NewResponse(toProfileFullProto(v)), nil
+}
+
 // GetPublicProfile implements (/profile/{username}).
 func (s *ProfileServer) GetPublicProfile(
 	ctx context.Context,

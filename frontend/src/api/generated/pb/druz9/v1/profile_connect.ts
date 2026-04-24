@@ -11,7 +11,7 @@
 /* eslint-disable */
 // @ts-nocheck
 
-import { GetMyAtlasRequest, GetMyProfileRequest, GetMyReportRequest, GetPublicProfileRequest, GetWeeklyShareRequest, ProfileFull, ProfilePublic, ProfileSettings, SkillAtlas, UpdateProfileSettingsRequest, WeeklyReport } from "./profile_pb.js";
+import { BecomeInterviewerRequest, GetMyAtlasRequest, GetMyProfileRequest, GetMyReportRequest, GetPublicProfileRequest, GetWeeklyShareRequest, ProfileFull, ProfilePublic, ProfileSettings, SkillAtlas, UpdateProfileSettingsRequest, WeeklyReport } from "./profile_pb.js";
 import { MethodKind } from "@bufbuild/protobuf";
 
 /**
@@ -85,6 +85,21 @@ export const ProfileService = {
       name: "GetWeeklyShare",
       I: GetWeeklyShareRequest,
       O: WeeklyReport,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * BecomeInterviewer promotes the authenticated caller's role to
+     * `interviewer`, unlocking the «Создать слот» flow on /slots. MVP is
+     * self-service auto-approve; the longer-term plan is admin moderation
+     * (a `pending_interviewer_apps` table + admin queue) — until then this
+     * is idempotent and instant.
+     *
+     * @generated from rpc druz9.v1.ProfileService.BecomeInterviewer
+     */
+    becomeInterviewer: {
+      name: "BecomeInterviewer",
+      I: BecomeInterviewerRequest,
+      O: ProfileFull,
       kind: MethodKind.Unary,
     },
   }

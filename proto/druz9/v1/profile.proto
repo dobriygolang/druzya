@@ -395,4 +395,20 @@ service ProfileService {
   rpc GetWeeklyShare(GetWeeklyShareRequest) returns (WeeklyReport) {
     option (google.api.http) = {get: "/api/v1/profile/weekly/share/{token}"};
   }
+
+  // BecomeInterviewer promotes the authenticated caller's role to
+  // `interviewer`, unlocking the «Создать слот» flow on /slots. MVP is
+  // self-service auto-approve; the longer-term plan is admin moderation
+  // (a `pending_interviewer_apps` table + admin queue) — until then this
+  // is idempotent and instant.
+  rpc BecomeInterviewer(BecomeInterviewerRequest) returns (ProfileFull) {
+    option (google.api.http) = {
+      post: "/api/v1/profile/me/become-interviewer"
+      body: "*"
+    };
+  }
 }
+
+// BecomeInterviewerRequest is currently empty — caller is identified by
+// the bearer token. Future: `motivation` field for moderation context.
+message BecomeInterviewerRequest {}

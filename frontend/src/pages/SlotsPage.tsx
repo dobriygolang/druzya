@@ -19,7 +19,7 @@ import { EmptyState } from '../components/EmptyState'
 import { MyBookingsDrawer } from '../components/slot/MyBookingsDrawer'
 import CreateSlotDialog from '../components/slot/CreateSlotDialog'
 import { humanizeDifficulty, humanizeSection } from '../lib/labels'
-import { isInterviewerOrAdmin, useProfileQuery } from '../lib/queries/profile'
+import { isInterviewerOrAdmin, useBecomeInterviewer, useProfileQuery } from '../lib/queries/profile'
 import {
   derivePriceBuckets,
   useBookSlot,
@@ -69,13 +69,17 @@ function Header({
   isError,
   onOpenBookings,
   onCreateSlot,
+  onBecomeInterviewer,
   isInterviewer,
+  promoting,
 }: {
   count: number
   isError: boolean
   onOpenBookings: () => void
   onCreateSlot: () => void
+  onBecomeInterviewer: () => void
   isInterviewer: boolean
+  promoting: boolean
 }) {
   return (
     <div className="flex flex-col items-start gap-4 px-4 pb-4 pt-6 sm:px-8 lg:flex-row lg:items-end lg:justify-between lg:px-20 lg:pt-7">
@@ -94,7 +98,9 @@ function Header({
         {isInterviewer ? (
           <Button onClick={onCreateSlot}>Создать слот</Button>
         ) : (
-          <Button>Стать интервьюером</Button>
+          <Button onClick={onBecomeInterviewer} disabled={promoting}>
+            {promoting ? 'Отправляем…' : 'Стать интервьюером'}
+          </Button>
         )}
       </div>
     </div>
@@ -328,14 +334,37 @@ function BookingErrorBanner({ message, onDismiss }: { message: string; onDismiss
   )
 }
 
-function PromoCard() {
+function PromoCard({
+  onApply,
+  isInterviewer,
+  promoting,
+  promoted,
+}: {
+  onApply: () => void
+  isInterviewer: boolean
+  promoting: boolean
+  promoted: boolean
+}) {
   return (
     <div className="flex flex-col gap-4 rounded-xl bg-gradient-to-br from-accent to-pink p-5 shadow-glow">
-      <h3 className="font-display text-lg font-bold text-text-primary">Стань интервьюером</h3>
-      <p className="text-xs text-white/80">Зарабатывай на mock-интервью — тариф устанавливаешь сам.</p>
-      <button className="inline-flex items-center justify-center rounded-md bg-white/20 px-3.5 py-2 text-xs font-semibold text-text-primary hover:bg-white/30">
-        Подать заявку
-      </button>
+      <h3 className="font-display text-lg font-bold text-text-primary">
+        {isInterviewer ? 'Ты — интервьюер' : 'Стань интервьюером'}
+      </h3>
+      <p className="text-xs text-white/80">
+        {isInterviewer
+          ? 'Создавай слоты в каталоге и зарабатывай на mock-интервью.'
+          : 'Зарабатывай на mock-интервью — тариф устанавливаешь сам.'}
+      </p>
+      {!isInterviewer && (
+        <button
+          type="button"
+          onClick={onApply}
+          disabled={promoting}
+          className="inline-flex items-center justify-center rounded-md bg-white/20 px-3.5 py-2 text-xs font-semibold text-text-primary hover:bg-white/30 disabled:opacity-60"
+        >
+          {promoting ? 'Отправляем…' : promoted ? 'Заявка одобрена' : 'Подать заявку'}
+        </button>
+      )}
     </div>
   )
 }
@@ -398,6 +427,14 @@ export default function SlotsPage() {
 
   const profile = useProfileQuery()
   const isInterviewer = isInterviewerOrAdmin(profile.data?.role)
+  const become = useBecomeInterviewer()
+  const onBecomeInterviewer = () => {
+    become.mutate(undefined, {
+      onError: (err) => {
+        setBookErr(err instanceof Error ? err.message : 'Не удалось отправить заявку')
+      },
+    })
+  }
 
   const { data, isError, isLoading } = useSlotsQuery(filter)
   const slots = useMemo(() => data ?? [], [data])
@@ -426,7 +463,9 @@ export default function SlotsPage() {
         isError={isError}
         onOpenBookings={() => setDrawerOpen(true)}
         onCreateSlot={() => setCreateOpen(true)}
+        onBecomeInterviewer={onBecomeInterviewer}
         isInterviewer={isInterviewer}
+        promoting={become.isPending}
       />
       <FilterBar filter={filter} setFilter={setFilter} priceBuckets={priceBuckets} />
       <div className="flex flex-col gap-4 px-4 pb-6 sm:px-8 lg:flex-row lg:gap-6 lg:px-20 lg:pb-7">
@@ -442,7 +481,12 @@ export default function SlotsPage() {
           />
         </div>
         <div className="flex w-full flex-col gap-5 lg:w-[380px]">
-          <PromoCard />
+          <PromoCard
+            onApply={onBecomeInterviewer}
+            isInterviewer={isInterviewer}
+            promoting={become.isPending}
+            promoted={become.isSuccess}
+          />
           <BookedSidebar booked={bookedSlots} onOpen={() => setDrawerOpen(true)} />
         </div>
       </div>

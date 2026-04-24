@@ -59,6 +59,9 @@ const (
 	// ProfileServiceGetWeeklyShareProcedure is the fully-qualified name of the ProfileService's
 	// GetWeeklyShare RPC.
 	ProfileServiceGetWeeklyShareProcedure = "/druz9.v1.ProfileService/GetWeeklyShare"
+	// ProfileServiceBecomeInterviewerProcedure is the fully-qualified name of the ProfileService's
+	// BecomeInterviewer RPC.
+	ProfileServiceBecomeInterviewerProcedure = "/druz9.v1.ProfileService/BecomeInterviewer"
 )
 
 // ProfileServiceClient is a client for the druz9.v1.ProfileService service.
@@ -76,6 +79,12 @@ type ProfileServiceClient interface {
 	// GetWeeklyShare returns a weekly report by share token. Public — no
 	// bearer auth required. Route is added to publicPaths in router.go.
 	GetWeeklyShare(context.Context, *connect.Request[v1.GetWeeklyShareRequest]) (*connect.Response[v1.WeeklyReport], error)
+	// BecomeInterviewer promotes the authenticated caller's role to
+	// `interviewer`, unlocking the «Создать слот» flow on /slots. MVP is
+	// self-service auto-approve; the longer-term plan is admin moderation
+	// (a `pending_interviewer_apps` table + admin queue) — until then this
+	// is idempotent and instant.
+	BecomeInterviewer(context.Context, *connect.Request[v1.BecomeInterviewerRequest]) (*connect.Response[v1.ProfileFull], error)
 }
 
 // NewProfileServiceClient constructs a client for the druz9.v1.ProfileService service. By default,
@@ -125,17 +134,24 @@ func NewProfileServiceClient(httpClient connect.HTTPClient, baseURL string, opts
 			connect.WithSchema(profileServiceMethods.ByName("GetWeeklyShare")),
 			connect.WithClientOptions(opts...),
 		),
+		becomeInterviewer: connect.NewClient[v1.BecomeInterviewerRequest, v1.ProfileFull](
+			httpClient,
+			baseURL+ProfileServiceBecomeInterviewerProcedure,
+			connect.WithSchema(profileServiceMethods.ByName("BecomeInterviewer")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
 // profileServiceClient implements ProfileServiceClient.
 type profileServiceClient struct {
-	getMyProfile     *connect.Client[v1.GetMyProfileRequest, v1.ProfileFull]
-	getMyAtlas       *connect.Client[v1.GetMyAtlasRequest, v1.SkillAtlas]
-	getMyReport      *connect.Client[v1.GetMyReportRequest, v1.WeeklyReport]
-	updateSettings   *connect.Client[v1.UpdateProfileSettingsRequest, v1.ProfileSettings]
-	getPublicProfile *connect.Client[v1.GetPublicProfileRequest, v1.ProfilePublic]
-	getWeeklyShare   *connect.Client[v1.GetWeeklyShareRequest, v1.WeeklyReport]
+	getMyProfile      *connect.Client[v1.GetMyProfileRequest, v1.ProfileFull]
+	getMyAtlas        *connect.Client[v1.GetMyAtlasRequest, v1.SkillAtlas]
+	getMyReport       *connect.Client[v1.GetMyReportRequest, v1.WeeklyReport]
+	updateSettings    *connect.Client[v1.UpdateProfileSettingsRequest, v1.ProfileSettings]
+	getPublicProfile  *connect.Client[v1.GetPublicProfileRequest, v1.ProfilePublic]
+	getWeeklyShare    *connect.Client[v1.GetWeeklyShareRequest, v1.WeeklyReport]
+	becomeInterviewer *connect.Client[v1.BecomeInterviewerRequest, v1.ProfileFull]
 }
 
 // GetMyProfile calls druz9.v1.ProfileService.GetMyProfile.
@@ -168,6 +184,11 @@ func (c *profileServiceClient) GetWeeklyShare(ctx context.Context, req *connect.
 	return c.getWeeklyShare.CallUnary(ctx, req)
 }
 
+// BecomeInterviewer calls druz9.v1.ProfileService.BecomeInterviewer.
+func (c *profileServiceClient) BecomeInterviewer(ctx context.Context, req *connect.Request[v1.BecomeInterviewerRequest]) (*connect.Response[v1.ProfileFull], error) {
+	return c.becomeInterviewer.CallUnary(ctx, req)
+}
+
 // ProfileServiceHandler is an implementation of the druz9.v1.ProfileService service.
 type ProfileServiceHandler interface {
 	// GetMyProfile returns the rich profile for the authenticated caller.
@@ -183,6 +204,12 @@ type ProfileServiceHandler interface {
 	// GetWeeklyShare returns a weekly report by share token. Public — no
 	// bearer auth required. Route is added to publicPaths in router.go.
 	GetWeeklyShare(context.Context, *connect.Request[v1.GetWeeklyShareRequest]) (*connect.Response[v1.WeeklyReport], error)
+	// BecomeInterviewer promotes the authenticated caller's role to
+	// `interviewer`, unlocking the «Создать слот» flow on /slots. MVP is
+	// self-service auto-approve; the longer-term plan is admin moderation
+	// (a `pending_interviewer_apps` table + admin queue) — until then this
+	// is idempotent and instant.
+	BecomeInterviewer(context.Context, *connect.Request[v1.BecomeInterviewerRequest]) (*connect.Response[v1.ProfileFull], error)
 }
 
 // NewProfileServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -228,6 +255,12 @@ func NewProfileServiceHandler(svc ProfileServiceHandler, opts ...connect.Handler
 		connect.WithSchema(profileServiceMethods.ByName("GetWeeklyShare")),
 		connect.WithHandlerOptions(opts...),
 	)
+	profileServiceBecomeInterviewerHandler := connect.NewUnaryHandler(
+		ProfileServiceBecomeInterviewerProcedure,
+		svc.BecomeInterviewer,
+		connect.WithSchema(profileServiceMethods.ByName("BecomeInterviewer")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/druz9.v1.ProfileService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case ProfileServiceGetMyProfileProcedure:
@@ -242,6 +275,8 @@ func NewProfileServiceHandler(svc ProfileServiceHandler, opts ...connect.Handler
 			profileServiceGetPublicProfileHandler.ServeHTTP(w, r)
 		case ProfileServiceGetWeeklyShareProcedure:
 			profileServiceGetWeeklyShareHandler.ServeHTTP(w, r)
+		case ProfileServiceBecomeInterviewerProcedure:
+			profileServiceBecomeInterviewerHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -273,4 +308,8 @@ func (UnimplementedProfileServiceHandler) GetPublicProfile(context.Context, *con
 
 func (UnimplementedProfileServiceHandler) GetWeeklyShare(context.Context, *connect.Request[v1.GetWeeklyShareRequest]) (*connect.Response[v1.WeeklyReport], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.ProfileService.GetWeeklyShare is not implemented"))
+}
+
+func (UnimplementedProfileServiceHandler) BecomeInterviewer(context.Context, *connect.Request[v1.BecomeInterviewerRequest]) (*connect.Response[v1.ProfileFull], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.ProfileService.BecomeInterviewer is not implemented"))
 }

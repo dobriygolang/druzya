@@ -22,9 +22,11 @@ const profileFull = {
   ai_credits: 240,
   created_at: '2025-11-14T10:00:00Z',
   avatar_frame: 'crimson_sigil',
-  // role mirrors users.role; mock dev as interviewer so the «Создать слот»
-  // CTA on /slots is visible without backend role-flip.
-  role: 'USER_ROLE_INTERVIEWER',
+  // role mirrors users.role; default to plain user so the
+  // BecomeInterviewer flow on /slots is exercisable. Toggle via the POST
+  // /profile/me/become-interviewer mock below — the mutation flips this
+  // to USER_ROLE_INTERVIEWER for the rest of the session.
+  role: 'USER_ROLE_USER',
   achievements: [
     {
       key: 'avito_cleared',
@@ -156,6 +158,11 @@ const weeklyReport = {
   ],
 }
 
+// mockRole is mutated by the BecomeInterviewer handler so the role-gated
+// UI flips after the mutation succeeds. Lives at module scope (resets on
+// page reload) — same convention as the slot bookings map.
+let mockRole: string = profileFull.role
+
 export const profileHandlers = [
   http.get(`${base}/profile/me`, () => {
     let tier: 'free' | 'premium' | 'pro' = 'free'
@@ -165,7 +172,11 @@ export const profileHandlers = [
     } catch {
       /* noop */
     }
-    return HttpResponse.json({ ...profileFull, tier })
+    return HttpResponse.json({ ...profileFull, tier, role: mockRole })
+  }),
+  http.post(`${base}/profile/me/become-interviewer`, () => {
+    mockRole = 'USER_ROLE_INTERVIEWER'
+    return HttpResponse.json({ ...profileFull, role: mockRole })
   }),
   http.get(`${base}/profile/me/atlas`, () => HttpResponse.json(atlas)),
   http.get(`${base}/profile/me/report`, () => HttpResponse.json(weeklyReport)),

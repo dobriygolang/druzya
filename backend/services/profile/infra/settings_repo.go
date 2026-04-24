@@ -146,3 +146,20 @@ func (p *Postgres) UpdateSettings(ctx context.Context, userID uuid.UUID, s domai
 	}
 	return nil
 }
+
+// UpdateRole rewrites users.role. Idempotent — admins stay admin even when
+// asked to "promote" to interviewer. The proto/handler layer enforces the
+// only legal target (`interviewer`); the repo trusts whatever it gets.
+func (p *Postgres) UpdateRole(ctx context.Context, userID uuid.UUID, role string) error {
+	if _, err := p.pool.Exec(ctx,
+		`UPDATE users
+		    SET role = $2
+		  WHERE id = $1
+		    AND role <> 'admin'
+		    AND role <> $2`,
+		pgUUID(userID), role,
+	); err != nil {
+		return fmt.Errorf("profile.Postgres.UpdateRole: %w", err)
+	}
+	return nil
+}
