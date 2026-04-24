@@ -19,7 +19,8 @@ export type PageId =
   | 'stats'
   | 'podcasts'
   | 'editor'
-  | 'shared_boards';
+  | 'shared_boards'
+  | 'events';
 // PaletteAction — то, что палетка может попросить App'а сделать.
 // Помимо переключения page и copilot'а, добавили `standup` —
 // открывает модалку из 3 вопросов для daily-standup.
@@ -52,6 +53,7 @@ export function Palette({ onClose, onOpen }: PaletteProps) {
       { id: 'podcasts', label: 'Podcasts', sc: 'P', run: () => onOpen('podcasts') },
       { id: 'editor', label: 'Code rooms', sc: 'E', run: () => onOpen('editor') },
       { id: 'shared_boards', label: 'Shared boards', sc: 'B', run: () => onOpen('shared_boards') },
+      { id: 'events', label: 'Events', sc: 'V', run: () => onOpen('events') },
       { id: 'standup', label: 'Daily standup', sc: '', run: () => onOpen('standup') },
       // "Open druz9.ru" is intentionally a no-op for now — in Phase 5b
       // we'll route through shell.openExternal via the preload bridge so
