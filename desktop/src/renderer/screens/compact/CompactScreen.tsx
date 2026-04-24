@@ -14,7 +14,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 
-import { BrandMark, IconCamera, IconChevronDown, IconClose, IconSend, IconSettings } from '../../components/icons';
+import { BrandMark, IconCamera, IconChevronDown, IconClose, IconMinimize, IconSend, IconSettings } from '../../components/icons';
 import { IconButton, Kbd, StatusDot } from '../../components/primitives';
 import { ProviderPicker } from '../../components/ProviderPicker';
 import { VoiceButton } from '../../components/VoiceButton';
@@ -103,23 +103,42 @@ export function CompactScreen() {
     }
   }, [streaming, session, config, activeModelId]);
 
+  // Capture → INSTANT send. The input's current text (if any) rides
+  // along as the prompt. Users who want to type first can do so — this
+  // handler takes whatever's in the input at screenshot time. Users
+  // who want to retake just hit ⌘⇧S again.
   const capture = async (kind: 'screenshot_area' | 'screenshot_full') => {
     try {
       const shot =
         kind === 'screenshot_full'
           ? await window.druz9.capture.screenshotFull()
           : await window.druz9.capture.screenshotArea();
-      if (!shot) return; // user cancelled the overlay
-      setPending({
-        dataBase64: shot.dataBase64,
-        mimeType: shot.mimeType,
-        width: shot.width,
-        height: shot.height,
-        capturedAt: Date.now(),
+      if (!shot) return;
+
+      const text = input.trim();
+      const conversationId = useConversationStore.getState().conversationId;
+      const handle = await window.druz9.analyze.start({
+        conversationId,
+        promptText: text,
+        model: selectedModel,
+        attachments: [
+          {
+            kind: 'screenshot',
+            dataBase64: shot.dataBase64,
+            mimeType: shot.mimeType,
+            width: shot.width,
+            height: shot.height,
+          },
+        ],
+        triggerAction: kind,
+        focusedAppHint: '',
       });
-      // Bring focus to input so user can type context immediately.
-      setTimeout(() => inputRef.current?.focus(), 30);
+      beginTurn({ promptText: text, hasScreenshot: true, streamId: handle.streamId });
+      setInput('');
+      clearPending();
+      void window.druz9.windows.show('expanded');
     } catch (err) {
+      setStatusText(`Ошибка: ${(err as Error).message.slice(0, 50)}`);
       // eslint-disable-next-line no-console
       console.error('screenshot failed', err);
     }
@@ -284,6 +303,22 @@ export function CompactScreen() {
           <IconButton title="Настройки" onClick={() => void window.druz9.windows.show('settings')}>
             <IconSettings size={15} />
           </IconButton>
+          <IconButton
+            title="Свернуть (⌘⇧D скроет/покажет)"
+            onClick={() => void window.druz9.windows.hide('compact')}
+          >
+            <IconMinimize size={15} />
+          </IconButton>
+          <IconButton
+            title="Закрыть приложение"
+            onClick={() => {
+              if (confirm('Закрыть Druz9 Copilot?\n\nПросто свернуть — ⌘⇧D или кнопка с чертой.')) {
+                void window.druz9.app.quit();
+              }
+            }}
+          >
+            <IconClose size={15} />
+          </IconButton>
         </div>
       </div>
 
@@ -366,8 +401,7 @@ export function CompactScreen() {
         >
           <button
             onClick={() => setPickerOpen(true)}
-            disabled={!config}
-            title="Выбрать модель"
+            title={config ? 'Выбрать модель' : 'Нужен вход — зайди через Настройки'}
             style={{
               display: 'inline-flex',
               alignItems: 'center',
@@ -398,10 +432,13 @@ export function CompactScreen() {
         </div>
       </div>
 
-      {pickerOpen && config && (
+      {pickerOpen && (
         <ProviderPicker
-          models={config.models}
-          defaultModelId={config.defaultModelId}
+          // When config is missing (user isn't logged in yet), render
+          // with an empty catalogue — the modal shows a "login first"
+          // hint via its own empty state.
+          models={config?.models ?? []}
+          defaultModelId={config?.defaultModelId ?? ''}
           onClose={() => setPickerOpen(false)}
         />
       )}

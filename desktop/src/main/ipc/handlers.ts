@@ -1,7 +1,7 @@
 // All IPC invoke handlers live here. Channel names come from @shared/ipc
 // so main and renderer share a single source of truth.
 
-import { ipcMain, shell } from 'electron';
+import { app, ipcMain, shell } from 'electron';
 
 import {
   eventChannels,
@@ -386,6 +386,12 @@ export function registerHandlers(opts: RegisterOptions): void {
   ipcMain.handle(invokeChannels.shellOpenExternal, async (_evt, url: string) => {
     if (!/^https?:\/\//i.test(url)) return;
     await shell.openExternal(url);
+  });
+
+  // ── App lifecycle ──
+  ipcMain.handle(invokeChannels.appQuit, async () => {
+    // Give the analyzer subscriber a moment to drain; then quit.
+    setTimeout(() => app.quit(), 50);
   });
 
   // ── Cursor freeze ── (the "virtual cursor" UX)

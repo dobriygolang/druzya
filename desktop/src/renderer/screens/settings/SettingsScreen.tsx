@@ -474,8 +474,25 @@ function AboutTab() {
           title="Обратная связь"
           hint="Telegram-канал проекта"
           control={
-            <Button variant="secondary" size="sm" disabled>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => void window.druz9.shell.openExternal('https://t.me/druz9_community')}
+            >
               Написать
+            </Button>
+          }
+        />
+        <Row
+          title="Сайт"
+          hint="druz9.online"
+          control={
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => void window.druz9.shell.openExternal('https://druz9.online')}
+            >
+              Открыть
             </Button>
           }
         />
@@ -507,6 +524,17 @@ function UpdateRow() {
     };
   }, []);
 
+  const [checking, setChecking] = useState(false);
+  const onCheck = async () => {
+    setChecking(true);
+    try {
+      await window.druz9.updater.check();
+    } finally {
+      // Let the push events land naturally; release our local spinner.
+      setTimeout(() => setChecking(false), 600);
+    }
+  };
+
   return (
     <Row
       title="Обновления"
@@ -516,14 +544,22 @@ function UpdateRow() {
           <Button size="sm" variant="primary" onClick={() => void window.druz9.updater.install()}>
             Установить и перезапустить
           </Button>
-        ) : status.kind === 'checking' || status.kind === 'downloading' ? (
-          <StatusDot state="thinking" size={8} />
-        ) : (
-          <Button
-            size="sm"
-            variant="secondary"
-            onClick={() => void window.druz9.updater.check()}
+        ) : status.kind === 'checking' || status.kind === 'downloading' || checking ? (
+          <span
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 8,
+              fontSize: 12,
+              color: 'var(--d-text-2)',
+              fontFamily: 'var(--f-mono)',
+            }}
           >
+            <StatusDot state="thinking" size={8} />
+            {status.kind === 'downloading' ? `${status.percent}%` : 'проверка…'}
+          </span>
+        ) : (
+          <Button size="sm" variant="secondary" onClick={() => void onCheck()}>
             Проверить
           </Button>
         )

@@ -134,6 +134,9 @@ const api: Druz9API = {
     openExternal: (url: string) =>
       ipcRenderer.invoke(invokeChannels.shellOpenExternal, url) as Promise<void>,
   },
+  app: {
+    quit: () => ipcRenderer.invoke(invokeChannels.appQuit) as Promise<void>,
+  },
   cursor: {
     state: () =>
       ipcRenderer.invoke(invokeChannels.cursorFreezeState) as Promise<CursorFreezeState>,

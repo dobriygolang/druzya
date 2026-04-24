@@ -69,6 +69,8 @@ export const invokeChannels = {
 
   shellOpenExternal: 'shell:open-external',
 
+  appQuit: 'app:quit',
+
   cursorFreezeState: 'cursor:freeze-state',
   cursorFreezeToggle: 'cursor:freeze-toggle',
 
@@ -389,6 +391,11 @@ export interface Druz9API {
    *  allow-list enforces http/https only. */
   shell: {
     openExternal: (url: string) => Promise<void>;
+  };
+
+  app: {
+    /** Quit the entire application. User-confirmed elsewhere. */
+    quit: () => Promise<void>;
   };
 
   /**

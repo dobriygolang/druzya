@@ -141,7 +141,19 @@ export function ProviderPicker({ models, defaultModelId, onClose }: ProviderPick
         </div>
 
         <div style={{ flex: 1, overflowY: 'auto', padding: '8px 0' }}>
-          {grouped.length === 0 && (
+          {grouped.length === 0 && models.length === 0 && (
+            <div style={{ padding: 24, textAlign: 'center', color: 'var(--d-text-3)', fontSize: 12, lineHeight: 1.5 }}>
+              <div style={{ fontSize: 13, color: 'var(--d-text)', marginBottom: 4 }}>
+                Сначала нужно войти
+              </div>
+              Открой Настройки → Общее → Войти,
+              <br />
+              или добавь свой OpenAI / Anthropic ключ
+              <br />
+              в Настройки → AI провайдеры.
+            </div>
+          )}
+          {grouped.length === 0 && models.length > 0 && (
             <div style={{ padding: 24, textAlign: 'center', color: 'var(--d-text-3)', fontSize: 12 }}>
               Ничего не найдено
             </div>
