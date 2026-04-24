@@ -23,12 +23,24 @@ export type Cohort = {
   visibility: 'public' | 'invite' | string
   created_at: string
   members_count: number
+  // is_member is hydrated server-side when the caller is authed
+  // (cmd/monolith/services/cohort.go handleList). Anonymous reads always
+  // see false.
+  is_member?: boolean
+  // capacity surfaces the soft cap (currently MaxMembersPhase1 = 50) so
+  // the catalogue UI doesn't hard-code it client-side.
+  capacity?: number
 }
 
 export type CohortMember = {
   user_id: string
   role: 'member' | 'coach' | 'owner' | string
   joined_at: string
+  // display_name + avatar_seed are hydrated by the MSW mock today; the
+  // real backend handler currently only returns user_id (TODO M5d when
+  // we migrate to ConnectRPC + denormalize username).
+  display_name?: string
+  avatar_seed?: string
 }
 
 export type CohortDetail = {

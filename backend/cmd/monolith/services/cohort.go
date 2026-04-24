@@ -62,6 +62,7 @@ func NewCohort(d Deps) *Module {
 		Join:        join,
 		Leave:       leave,
 		Leaderboard: leaderboard,
+		Repo:        repo,
 		Log:         d.Log,
 	}
 
@@ -387,7 +388,10 @@ type cohortHTTP struct {
 	Join        *cohortApp.JoinCohort
 	Leave       *cohortApp.LeaveCohort
 	Leaderboard *cohortApp.GetLeaderboard
-	Log         *slog.Logger
+	// Repo — direct access to the underlying cohort.Repo for cross-cutting
+	// reads (e.g. HasMember in handleList) that don't justify a use case.
+	Repo cohortDomain.Repo
+	Log  *slog.Logger
 }
 
 type cohortDTO struct {
@@ -401,6 +405,13 @@ type cohortDTO struct {
 	Visibility   string `json:"visibility"`
 	CreatedAt    string `json:"created_at"`
 	MembersCount int    `json:"members_count"`
+	// IsMember is true when the authenticated caller is in this cohort
+	// (any role). Always false for anonymous reads — public catalogue.
+	// Populated only by handleList when an auth context is present.
+	IsMember bool `json:"is_member"`
+	// Capacity is the soft cap from cohortDomain.MaxMembersPhase1; surfaced
+	// here so the catalogue UI doesn't hard-code "/50" client-side.
+	Capacity int `json:"capacity"`
 }
 
 func cohortToDTO(c cohortDomain.Cohort, count int) cohortDTO {
@@ -415,6 +426,7 @@ func cohortToDTO(c cohortDomain.Cohort, count int) cohortDTO {
 		Visibility:   string(c.Visibility),
 		CreatedAt:    c.CreatedAt.UTC().Format(time.RFC3339),
 		MembersCount: count,
+		Capacity:     cohortDomain.MaxMembersPhase1,
 	}
 }
 
@@ -443,9 +455,21 @@ func (h *cohortHTTP) handleList(w http.ResponseWriter, r *http.Request) {
 		writeCohortErr(w, http.StatusInternalServerError, "list failed")
 		return
 	}
+	// Resolve membership only when the caller is authed — anonymous reads
+	// stay cheap (one query per page) and IsMember falls back to false.
+	uid, authed := sharedMw.UserIDFromContext(r.Context())
 	items := make([]cohortDTO, 0, len(out.Items))
 	for _, c := range out.Items {
-		items = append(items, cohortToDTO(c.Cohort, c.MembersCount))
+		dto := cohortToDTO(c.Cohort, c.MembersCount)
+		if authed {
+			has, err := h.Repo.HasMember(r.Context(), c.Cohort.ID, uid)
+			if err == nil {
+				dto.IsMember = has
+			}
+			// On HasMember error we leave IsMember=false rather than failing
+			// the listing — the «ТЫ»-chip just doesn't render that row.
+		}
+		items = append(items, dto)
 	}
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(map[string]any{

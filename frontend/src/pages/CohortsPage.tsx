@@ -177,14 +177,14 @@ export default function CohortsPage() {
 function CohortCard({ cohort }: { cohort: Cohort }) {
   const join = useJoinCohortMutation()
   const [errMsg, setErrMsg] = useState<string | null>(null)
-  // The list endpoint doesn't expose membership; we infer via owner_id and
-  // fall back on local optimistic state from the join mutation.
+  // is_member is hydrated server-side (M5a). Owner-check is a defensive
+  // fallback for older backends that don't yet return is_member.
   const profile = useProfileQuery()
   const isOwner = !!profile.data && cohort.owner_id === profile.data.id
-  const [optimisticJoined, setOptimisticJoined] = useState(false)
-  const isMember = isOwner || optimisticJoined
+  const isMember = !!cohort.is_member || isOwner
+  const capacity = cohort.capacity ?? COHORT_CAPACITY
 
-  const progress = Math.min(100, Math.round((cohort.members_count / COHORT_CAPACITY) * 100))
+  const progress = Math.min(100, Math.round((cohort.members_count / capacity) * 100))
   const days = daysUntil(cohort.ends_at)
   const statusLabel = labelForStatus(cohort.status)
   const statusTone = toneForStatus(cohort.status)
@@ -193,7 +193,6 @@ function CohortCard({ cohort }: { cohort: Cohort }) {
     e.preventDefault()
     setErrMsg(null)
     join.mutate(cohort.id, {
-      onSuccess: () => setOptimisticJoined(true),
       onError: (err) => setErrMsg(err instanceof Error ? err.message : 'Не удалось присоединиться'),
     })
   }
@@ -265,7 +264,7 @@ function CohortCard({ cohort }: { cohort: Cohort }) {
         >
           {isMember ? 'Открыть →' : 'Подробнее →'}
         </Link>
-        {!isMember && cohort.status === 'active' && (
+        {!isMember && cohort.status === 'active' && cohort.members_count < capacity && (
           <button
             type="button"
             onClick={onJoin}
@@ -275,6 +274,11 @@ function CohortCard({ cohort }: { cohort: Cohort }) {
             <Users className="-mt-0.5 mr-0.5 inline h-3 w-3" />
             {join.isPending ? '…' : '+'}
           </button>
+        )}
+        {!isMember && cohort.members_count >= capacity && (
+          <span className="rounded-md border border-border bg-surface-2 px-3 py-1.5 font-mono text-[10px] uppercase text-text-muted">
+            Полно
+          </span>
         )}
       </div>
     </Card>

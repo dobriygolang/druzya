@@ -134,14 +134,20 @@ export const cohortHandlers = [
     const url = new URL(request.url)
     const status = url.searchParams.get('status')
     const search = (url.searchParams.get('search') ?? '').trim().toLowerCase()
-    const items = cohorts.filter((c) => {
-      if (status && c.status !== status) return false
-      if (search) {
-        const haystack = `${c.name} ${c.slug}`.toLowerCase()
-        if (!haystack.includes(search)) return false
-      }
-      return true
-    })
+    const items = cohorts
+      .filter((c) => {
+        if (status && c.status !== status) return false
+        if (search) {
+          const haystack = `${c.name} ${c.slug}`.toLowerCase()
+          if (!haystack.includes(search)) return false
+        }
+        return true
+      })
+      .map((c) => ({
+        ...c,
+        is_member: memberships.has(c.id),
+        capacity: 50,
+      }))
     return HttpResponse.json({
       items,
       total: items.length,
