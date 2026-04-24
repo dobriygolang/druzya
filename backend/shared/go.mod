@@ -45,3 +45,18 @@ require (
 	github.com/prometheus/procfs v0.15.1 // indirect
 	golang.org/x/sys v0.43.0 // indirect
 )
+
+// llmcache (Phase: semantic-cache поверх llmchain) требует Redis-клиент.
+// Версия совпадает с /backend/cmd/monolith/go.mod, чтобы go workspace не
+// диагонализировал граф через две разные версии одной зависимости.
+require github.com/redis/go-redis/v9 v9.6.1
+
+// Test-only: miniredis для unit-тестов llmcache. Не тащится в prod
+// через indirect — используется только _test.go файлами.
+require github.com/alicebob/miniredis/v2 v2.33.0
+
+require (
+	github.com/alicebob/gopher-json v0.0.0-20230218143504-906a9b012302 // indirect
+	github.com/dgryski/go-rendezvous v0.0.0-20200823014737-9f7001d12a5f // indirect
+	github.com/yuin/gopher-lua v1.1.1 // indirect
+)

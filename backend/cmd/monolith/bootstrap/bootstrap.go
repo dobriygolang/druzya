@@ -38,6 +38,11 @@ type App struct {
 	notify  *services.NotifyModule
 	modules []*services.Module
 
+	// llmCacheClose — дренит worker-пул llmcache.SemanticCache при
+	// graceful shutdown. Всегда non-nil (NoopCache.Close тоже no-op);
+	// регистрируется через registerInfraClosers в общий closers-chain.
+	llmCacheClose func() error
+
 	// closers run in reverse-of-registration order during Shutdown. Each
 	// one is recovered individually so a single bad cleanup can't take
 	// the rest down.
@@ -73,11 +78,13 @@ func New(ctx context.Context, cfg *config.Config) (app *App, otelShutdown func()
 	// pool.Stat() on a 15s tick. Stops when ctx is cancelled (app tear-down).
 	metrics.RegisterPgxPoolCollector(ctx, pool, 0)
 
-	// Build the multi-provider LLM chain once. Errors from malformed
-	// driver construction are fatal (operator needs to fix config);
-	// "no providers configured" is not — BuildLLMChain returns nil and
-	// downstream services degrade to their feature-disabled branch.
-	llmChain, lcErr := services.BuildLLMChain(*cfg, log)
+	// Build the multi-provider LLM chain once, оборачиваем семантическим
+	// кешем (Ollama embedder + Redis). Ошибки конструкции драйверов —
+	// фатальны (оператору нужно чинить конфиг); "no providers configured"
+	// не фатально — BuildLLMChainWithCache возвращает nil ChatClient и
+	// downstream-сервисы деградируют в disabled-ветку. Cache-shutdown
+	// регистрируется ниже в registerInfraClosers через поле llmCacheClose.
+	llmChain, llmCacheClose, lcErr := services.BuildLLMChainWithCache(*cfg, log, rdb)
 	if lcErr != nil {
 		pool.Close()
 		_ = rdb.Close()
@@ -162,6 +169,7 @@ func New(ctx context.Context, cfg *config.Config) (app *App, otelShutdown func()
 		cfg: cfg, log: log,
 		pool: pool, redis: rdb, bus: bus,
 		httpSrv: httpSrv, notify: notify, modules: modules,
+		llmCacheClose: llmCacheClose,
 	}
 	a.registerInfraClosers()
 	return a, otelShutdown, nil
@@ -180,6 +188,12 @@ func (a *App) registerInfraClosers() {
 			continue
 		}
 		a.closers = append(a.closers, m.Shutdown...)
+	}
+	// llmcache drain идёт ПЕРЕД Redis-close: воркеры пишут в Redis на
+	// flush'е in-flight Store-job'ов, если мы закроем Redis раньше —
+	// получим ошибки дрейна в логе.
+	if a.llmCacheClose != nil {
+		a.closers = append(a.closers, func(context.Context) error { return a.llmCacheClose() })
 	}
 	a.closers = append(a.closers,
 		func(context.Context) error { a.pool.Close(); return nil },

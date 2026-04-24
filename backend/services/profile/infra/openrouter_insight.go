@@ -93,7 +93,7 @@ type InsightClient struct {
 	// module (cmd/monolith/services/profile.go) when Deps.LLMChain is
 	// non-nil. The two paths share Cache + system prompt so output
 	// stays consistent across the rollout.
-	chain *llmchain.Chain
+	chain llmchain.ChatClient
 
 	// disabled — true when constructed with empty apiKey AND chain is nil.
 	// Generate returns ("", nil) immediately, skipping cache + HTTP entirely.
@@ -143,7 +143,7 @@ func (c *InsightClient) WithEndpoint(u string) *InsightClient { c.endpoint = u; 
 // Deps.LLMChain is available. Nil chain = legacy path stays in effect.
 // Chaining a client also flips disabled=false so a dev env with no
 // direct-OpenRouter key but with Groq/Cerebras still works.
-func (c *InsightClient) WithChain(ch *llmchain.Chain) *InsightClient {
+func (c *InsightClient) WithChain(ch llmchain.ChatClient) *InsightClient {
 	c.chain = ch
 	if ch != nil {
 		c.disabled = false

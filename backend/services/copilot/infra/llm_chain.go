@@ -30,7 +30,11 @@ import (
 // giving the user's chosen model direct dispatch without fallback (if
 // the user pinned a specific id, they don't want "silently swap").
 type ChainedLLM struct {
-	Chain   *llmchain.Chain
+	// Chain — интерфейсный тип llmchain.ChatClient, а не *llmchain.Chain
+	// напрямую, чтобы монолит мог подсунуть декоратор (llmcache.CachingChain)
+	// без правок в каждом консумере. Контракт Chat/ChatStream остался
+	// тем же — адаптер вызывает только их.
+	Chain   llmchain.ChatClient
 	TurboID string // default "druz9/turbo"
 }
 
@@ -41,7 +45,7 @@ const TurboModelID = "druz9/turbo"
 
 // NewChainedLLM builds the adapter. chain MUST be non-nil — callers
 // should check cfg availability before constructing.
-func NewChainedLLM(chain *llmchain.Chain) *ChainedLLM {
+func NewChainedLLM(chain llmchain.ChatClient) *ChainedLLM {
 	if chain == nil {
 		panic("copilot.NewChainedLLM: chain is required (anti-fallback policy)")
 	}

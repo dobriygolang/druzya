@@ -44,7 +44,9 @@ import (
 // (users.ai_vacancies_model) are the caller's source of truth for
 // which override to pass — see the vacancies app layer.
 type ChainExtractor struct {
-	chain    *llmchain.Chain
+	// chain — llmchain.ChatClient (интерфейсный тип), чтобы монолит мог
+	// подсунуть декоратор (llmcache.CachingChain) без правок тут.
+	chain    llmchain.ChatClient
 	kv       KV
 	cacheTTL time.Duration
 	log      *slog.Logger
@@ -52,7 +54,7 @@ type ChainExtractor struct {
 
 // NewChainExtractor constructs the adapter. chain MUST be non-nil (the
 // wirer checks before calling). log is required per anti-fallback policy.
-func NewChainExtractor(chain *llmchain.Chain, kv KV, log *slog.Logger) *ChainExtractor {
+func NewChainExtractor(chain llmchain.ChatClient, kv KV, log *slog.Logger) *ChainExtractor {
 	if chain == nil {
 		panic("vacancies.infra.NewChainExtractor: chain is required")
 	}

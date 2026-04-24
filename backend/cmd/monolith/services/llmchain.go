@@ -6,7 +6,10 @@ import (
 	"strings"
 
 	"druz9/shared/pkg/config"
+	"druz9/shared/pkg/llmcache"
 	"druz9/shared/pkg/llmchain"
+
+	"github.com/redis/go-redis/v9"
 )
 
 // BuildLLMChain is the single source of truth for assembling the
@@ -27,6 +30,10 @@ import (
 // cross-user (matches the fact that our API keys are cross-user), and
 // sharing one instance means a 429 observed by one service pre-empts
 // the others from hammering the same provider.
+// BuildLLMChain builds the raw provider chain (see doc comment above).
+// Kept unchanged in signature + semantics so existing tests/callers that
+// want direct access to *llmchain.Chain continue to work. The
+// cache-decorated entry point is BuildLLMChainWithCache below.
 func BuildLLMChain(cfg config.Config, log *slog.Logger) (*llmchain.Chain, error) {
 	drivers := map[llmchain.Provider]llmchain.Driver{}
 
@@ -69,6 +76,17 @@ func BuildLLMChain(cfg config.Config, log *slog.Logger) (*llmchain.Chain, error)
 	if cfg.LLM.OpenRouterAPIKey != "" {
 		drivers[llmchain.ProviderOpenRouter] = llmchain.NewOpenRouterDriver(cfg.LLM.OpenRouterAPIKey)
 	}
+	// Ollama self-hosted sidecar — self-hosted floor-fallback против
+	// исчерпания cloud free-tier квот. Регистрируется только при явно
+	// заданном OLLAMA_HOST (пустой host ⇒ NewOllamaDriver возвращает nil
+	// и сервис остаётся cloud-only). Из default LLM_CHAIN_ORDER Ollama
+	// отсутствует — оператор включает его явно, напр.
+	// LLM_CHAIN_ORDER=groq,cerebras,openrouter,ollama.
+	if cfg.LLMChain.OllamaHost != "" {
+		if d := llmchain.NewOllamaDriver(cfg.LLMChain.OllamaHost); d != nil {
+			drivers[llmchain.ProviderOllama] = d
+		}
+	}
 
 	if len(drivers) == 0 {
 		log.Warn("llmchain: no provider API keys configured — chain unavailable, services will degrade to error")
@@ -87,6 +105,44 @@ func BuildLLMChain(cfg config.Config, log *slog.Logger) (*llmchain.Chain, error)
 		return nil, fmt.Errorf("llmchain: build chain: %w", err)
 	}
 	return chain, nil
+}
+
+// BuildLLMChainWithCache оборачивает raw *llmchain.Chain семантическим
+// кешем (llmcache.CachingChain) поверх Ollama embedder'а + Redis.
+//
+// Возвращает:
+//   - client: llmchain.ChatClient, которым инициализируется Deps.LLMChain
+//     (nil если BuildLLMChain вернул nil — т.е. ни один провайдер не
+//     зарегистрирован, сервисы должны деградировать как раньше).
+//   - shutdown: no-op когда cache disabled, иначе дренит worker-пул.
+//     Вызывающий код обязан поставить shutdown в deferred-shutdown список.
+//
+// Graceful degradation: если OLLAMA_HOST пуст ИЛИ Redis nil ⇒ cache =
+// NoopCache, CachingChain всё равно оборачивает Chain чтобы Deps.LLMChain
+// имел единый тип (llmchain.ChatClient) независимо от конфига. Lookup
+// превращается в мгновенный miss, Store — no-op.
+func BuildLLMChainWithCache(cfg config.Config, log *slog.Logger, rdb *redis.Client) (llmchain.ChatClient, func() error, error) {
+	raw, err := BuildLLMChain(cfg, log)
+	if err != nil {
+		return nil, func() error { return nil }, err
+	}
+	if raw == nil {
+		// Ни одного драйвера не зарегистрировано — сервисы видят nil и
+		// идут в свою disabled-ветку. Обёртка не нужна.
+		return nil, func() error { return nil }, nil
+	}
+	var cache llmcache.Cache = llmcache.NoopCache{}
+	if cfg.LLMChain.OllamaHost != "" && rdb != nil {
+		embedder := llmcache.NewOllamaEmbedder(cfg.LLMChain.OllamaHost, llmcache.DefaultOllamaEmbedModel, 0)
+		cache = llmcache.NewSemanticCache(rdb, embedder, llmcache.Options{Log: log})
+		log.Info("llmcache: semantic cache enabled",
+			slog.String("ollama_host", cfg.LLMChain.OllamaHost),
+			slog.String("embed_model", llmcache.DefaultOllamaEmbedModel))
+	} else {
+		log.Info("llmcache: semantic cache disabled (OLLAMA_HOST or Redis unavailable) — passthrough only")
+	}
+	cc := &llmcache.CachingChain{Chain: raw, Cache: cache, Log: log}
+	return cc, cache.Close, nil
 }
 
 // parseChainOrder turns "groq,cerebras,openrouter" into the typed slice.

@@ -33,12 +33,16 @@ type Deps struct {
 	Bus         *eventbus.InProcess
 	TokenIssuer *authApp.TokenIssuer
 	Now         func() time.Time
-	// LLMChain is the shared multi-provider router. nil when no
-	// provider keys were configured at boot — services must check
-	// and degrade to their feature-disabled branch (same contract as
-	// OPENROUTER_API_KEY=""). Built once in bootstrap; wiring
-	// details live in services/llmchain.go.
-	LLMChain *llmchain.Chain
+	// LLMChain is the shared multi-provider router. Typed as the
+	// ChatClient interface rather than *llmchain.Chain so that the
+	// monolith can opt-in to a decorator (semantic-cache via
+	// llmcache.CachingChain) without touching each consumer.
+	//
+	// nil when no provider keys were configured at boot — services
+	// must check and degrade to their feature-disabled branch (same
+	// contract as OPENROUTER_API_KEY=""). Built once in bootstrap;
+	// wiring details live in services/llmchain.go.
+	LLMChain llmchain.ChatClient
 }
 
 // Module is what every NewXxx returns: enough metadata for router.go to
