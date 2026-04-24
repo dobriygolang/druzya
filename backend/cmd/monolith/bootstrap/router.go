@@ -131,6 +131,7 @@ func buildHandler(d routerDeps) http.Handler {
 func restAuthGate(requireAuth func(http.Handler) http.Handler) func(http.Handler) http.Handler {
 	publicPaths := map[string]struct{}{
 		"/api/v1/auth/yandex":             {},
+		"/api/v1/auth/yandex/start":       {},
 		"/api/v1/auth/telegram":           {},
 		"/api/v1/auth/telegram/start":     {},
 		"/api/v1/auth/telegram/poll":      {},

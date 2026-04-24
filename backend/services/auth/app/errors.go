@@ -24,3 +24,8 @@ func (e *RateLimitedError) Is(target error) bool {
 func isRateLimited(err error) bool { return errors.Is(err, domain.ErrRateLimited) }
 
 func rateLimitedErr(retry int) error { return &RateLimitedError{RetryAfterSec: retry} }
+
+// ErrInvalidState возвращается, когда OAuth-callback приносит `state`, которого
+// нет в store (истёк, уже использовался или подделан). Маппится в 400 на HTTP
+// уровне — это и есть анти-CSRF гарантия для OAuth-flow.
+var ErrInvalidState = errors.New("auth: invalid oauth state")

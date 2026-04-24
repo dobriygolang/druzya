@@ -60,3 +60,24 @@ type RateLimiter interface {
 
 // ErrRateLimited означает, что вызывающий превысил квоту окна.
 var ErrRateLimited = errors.New("auth: rate limited")
+
+// OAuthStateStore связывает одноразовый CSRF-токен `state` с PKCE-верификатором
+// на время OAuth-редиректа. Реализация держит пары в Redis с TTL ≈10 мин.
+//
+// Порядок жизненного цикла:
+//  1. StartLoginYandex → SaveState(state, codeVerifier, ttl)
+//  2. Callback (LoginYandex) → ConsumeState(state) удаляет ключ атомарно
+//     (GETDEL) и возвращает сохранённый codeVerifier. Повторный вызов
+//     вернёт ErrStateNotFound — это гарантирует one-shot использование и
+//     блокирует CSRF-replay.
+type OAuthStateStore interface {
+	// SaveState сохраняет пару {state → codeVerifier} с TTL.
+	SaveState(ctx context.Context, state, codeVerifier string, ttl time.Duration) error
+	// ConsumeState атомарно читает и удаляет state. При отсутствии ключа —
+	// ErrStateNotFound (истёк, не существовал или уже использовался).
+	ConsumeState(ctx context.Context, state string) (codeVerifier string, err error)
+}
+
+// ErrStateNotFound возвращается OAuthStateStore, когда state не найден —
+// обычно из-за истечения TTL, повторного использования или CSRF-подделки.
+var ErrStateNotFound = errors.New("auth: oauth state not found")

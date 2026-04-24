@@ -50,6 +50,8 @@ func NewAuth(d Deps, encKey string) (*AuthModule, error) {
 	sessions := authInfra.NewRedisSessions(d.Redis, time.Duration(d.Cfg.Auth.RefreshTokenTTL)*time.Second)
 	limiter := authInfra.NewRedisRateLimiter(d.Redis)
 	yandex := authInfra.NewYandexOAuth(d.Cfg.Auth.YandexClientID, d.Cfg.Auth.YandexSecret)
+	// OAuth-state store — связка {state → code_verifier} для CSRF+PKCE.
+	oauthStates := authInfra.NewRedisOAuthStateStore(d.Redis)
 	issuer := authApp.NewTokenIssuer(d.Cfg.Auth.JWTSecret, time.Duration(d.Cfg.Auth.AccessTokenTTL)*time.Second)
 	codeTTL := time.Duration(d.Cfg.Auth.TelegramCodeTTL) * time.Second
 	if codeTTL == 0 {
@@ -77,8 +79,16 @@ func NewAuth(d Deps, encKey string) (*AuthModule, error) {
 	loginYandex := &authApp.LoginYandex{
 		OAuth: yandex, Users: pg, Sessions: sessions, Limiter: limiter,
 		Bus: d.Bus, Issuer: issuer, Enc: encryptor,
+		States:     oauthStates,
 		RefreshTTL: time.Duration(d.Cfg.Auth.RefreshTokenTTL) * time.Second,
 		Log:        d.Log,
+	}
+	startYandex := &authApp.StartLoginYandex{
+		ClientID: d.Cfg.Auth.YandexClientID,
+		States:   oauthStates,
+		Limiter:  limiter,
+		TTL:      authApp.StateTTL,
+		Log:      d.Log,
 	}
 	loginTelegram := &authApp.LoginTelegram{
 		BotToken: d.Cfg.Auth.TelegramBotToken,
@@ -100,6 +110,7 @@ func NewAuth(d Deps, encKey string) (*AuthModule, error) {
 	})
 	server := authPorts.NewAuthServer(h)
 	codeFlow := authPorts.NewCodeFlowHandler(startCode, pollCode, server, d.Log)
+	yandexStart := authPorts.NewYandexStartHandler(startYandex, d.Log)
 
 	connectPath, connectHandler := druz9v1connect.NewAuthServiceHandler(server)
 	transcoder := mustTranscode("auth", connectPath, connectHandler)
@@ -118,6 +129,9 @@ func NewAuth(d Deps, encKey string) (*AuthModule, error) {
 				// See backend/services/auth/ports/code_flow.go for shapes.
 				r.Post("/auth/telegram/start", codeFlow.HandleStart)
 				r.Post("/auth/telegram/poll", codeFlow.HandlePoll)
+				// Yandex OAuth start — выдаёт authorize-URL с server-side
+				// сгенерированными state+PKCE challenge.
+				r.Post("/auth/yandex/start", yandexStart.ServeHTTP)
 			},
 		},
 		Issuer:        issuer,

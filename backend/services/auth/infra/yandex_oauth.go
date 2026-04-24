@@ -33,13 +33,19 @@ func NewYandexOAuth(clientID, clientSecret string) *YandexOAuth {
 	}
 }
 
-// Exchange calls /token with grant_type=authorization_code.
-func (y *YandexOAuth) Exchange(ctx context.Context, code string) (app.YandexTokenResponse, error) {
+// Exchange calls /token with grant_type=authorization_code. При непустом
+// codeVerifier добавляет PKCE-поле code_verifier (RFC 7636). Пустое значение
+// обратно-совместимо со старым flow — но в связке со StartLoginYandex
+// verifier всегда присутствует.
+func (y *YandexOAuth) Exchange(ctx context.Context, code, codeVerifier string) (app.YandexTokenResponse, error) {
 	form := url.Values{}
 	form.Set("grant_type", "authorization_code")
 	form.Set("code", code)
 	form.Set("client_id", y.clientID)
 	form.Set("client_secret", y.clientSecret)
+	if codeVerifier != "" {
+		form.Set("code_verifier", codeVerifier)
+	}
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, y.tokenURL, strings.NewReader(form.Encode()))
 	if err != nil {

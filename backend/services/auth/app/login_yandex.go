@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"time"
@@ -15,7 +16,10 @@ import (
 // implementation lives in infra.
 type YandexOAuthClient interface {
 	// Exchange swaps an authorization code for access/refresh tokens.
-	Exchange(ctx context.Context, code string) (YandexTokenResponse, error)
+	// `codeVerifier` — тот же случайный verifier, для которого перед редиректом
+	// на Yandex был сформирован code_challenge (PKCE, RFC 7636). Если он пуст,
+	// PKCE-поле не отправляется (для обратной совместимости с flow без PKCE).
+	Exchange(ctx context.Context, code, codeVerifier string) (YandexTokenResponse, error)
 	// FetchUserInfo pulls the user profile using a live access token.
 	FetchUserInfo(ctx context.Context, accessToken string) (domain.YandexUserInfo, error)
 }
@@ -35,13 +39,16 @@ type TokenEncryptor interface {
 
 // LoginYandex is the use case for POST /auth/yandex.
 type LoginYandex struct {
-	OAuth      YandexOAuthClient
-	Users      domain.UserRepo
-	Sessions   domain.SessionRepo
-	Limiter    domain.RateLimiter
-	Bus        sharedDomain.Bus
-	Issuer     *TokenIssuer
-	Enc        TokenEncryptor
+	OAuth    YandexOAuthClient
+	Users    domain.UserRepo
+	Sessions domain.SessionRepo
+	Limiter  domain.RateLimiter
+	Bus      sharedDomain.Bus
+	Issuer   *TokenIssuer
+	Enc      TokenEncryptor
+	// States хранит одноразовые OAuth-state (анти-CSRF) и связанный с ним
+	// PKCE code_verifier. Заполняется в StartLoginYandex, потребляется здесь.
+	States     domain.OAuthStateStore
 	RefreshTTL time.Duration
 	Log        *slog.Logger
 }
@@ -61,8 +68,9 @@ type LoginYandexResult struct {
 	IsNewUser bool // true когда мы вставили новую запись в users, иначе UPDATE
 }
 
-// Do runs the full Yandex OAuth flow: rate limit → exchange code → fetch profile
-// → upsert user → issue tokens → publish event. Errors are wrapped with context.
+// Do runs the full Yandex OAuth flow: rate limit → validate state → exchange
+// code → fetch profile → upsert user → issue tokens → publish event.
+// Errors are wrapped with context.
 func (uc *LoginYandex) Do(ctx context.Context, in LoginYandexInput) (LoginYandexResult, error) {
 	// 1. Rate limit per IP (10/min per bible §11).
 	if _, retry, err := uc.Limiter.Allow(ctx, "rl:auth:yandex:"+in.IP, 10, time.Minute); err != nil {
@@ -72,8 +80,22 @@ func (uc *LoginYandex) Do(ctx context.Context, in LoginYandexInput) (LoginYandex
 		return LoginYandexResult{}, fmt.Errorf("auth.LoginYandex: rate limit: %w", err)
 	}
 
-	// 2. Exchange code for tokens.
-	toks, err := uc.OAuth.Exchange(ctx, in.Code)
+	// 2. Валидация CSRF-state: атомарно потребляем его из store и достаём
+	// привязанный к нему code_verifier для PKCE. Отсутствие ключа — жёсткий
+	// отказ (CSRF / replay / истёкший state); НИКАКОГО silent-fallback.
+	if in.State == "" {
+		return LoginYandexResult{}, fmt.Errorf("auth.LoginYandex: empty state: %w", ErrInvalidState)
+	}
+	verifier, err := uc.States.ConsumeState(ctx, in.State)
+	if err != nil {
+		if errors.Is(err, domain.ErrStateNotFound) {
+			return LoginYandexResult{}, fmt.Errorf("auth.LoginYandex: consume state: %w", ErrInvalidState)
+		}
+		return LoginYandexResult{}, fmt.Errorf("auth.LoginYandex: consume state: %w", err)
+	}
+
+	// 3. Exchange code for tokens (с PKCE code_verifier).
+	toks, err := uc.OAuth.Exchange(ctx, in.Code, verifier)
 	if err != nil {
 		return LoginYandexResult{}, fmt.Errorf("auth.LoginYandex: exchange code: %w", err)
 	}

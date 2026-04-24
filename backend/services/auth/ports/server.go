@@ -267,6 +267,10 @@ func (s *AuthServer) toConnectErr(err error) error {
 		e := connect.NewError(connect.CodeResourceExhausted, err)
 		e.Meta().Set("Retry-After", fmt.Sprintf("%d", rl.RetryAfterSec))
 		return e
+	case errors.Is(err, app.ErrInvalidState):
+		// CSRF-защита: state не совпал / истёк / повторно использован →
+		// 400 InvalidArgument. Юзер должен начать OAuth-flow заново.
+		return connect.NewError(connect.CodeInvalidArgument, err)
 	case errors.Is(err, app.ErrInvalidToken),
 		errors.Is(err, domain.ErrInvalidTelegramHash),
 		errors.Is(err, domain.ErrTelegramAuthExpired):

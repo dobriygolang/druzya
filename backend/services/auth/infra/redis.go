@@ -90,6 +90,45 @@ func (r *RedisSessions) Delete(ctx context.Context, id uuid.UUID) error {
 	return nil
 }
 
+// RedisOAuthStateStore хранит пары {state → code_verifier} для OAuth-flow
+// в Redis под ключом `auth:oauth:state:{state}`. Используется в связке
+// StartLoginYandex → LoginYandex для защиты от CSRF и выполнения PKCE.
+//
+// ConsumeState делает GETDEL (Redis 6.2+) — атомарное чтение с удалением;
+// благодаря этому state гарантированно одноразовый (повторный callback не
+// сможет обойти проверку).
+type RedisOAuthStateStore struct {
+	rdb *redis.Client
+}
+
+// NewRedisOAuthStateStore оборачивает go-redis клиент в доменный store.
+func NewRedisOAuthStateStore(rdb *redis.Client) *RedisOAuthStateStore {
+	return &RedisOAuthStateStore{rdb: rdb}
+}
+
+func oauthStateKey(state string) string { return "auth:oauth:state:" + state }
+
+// SaveState сохраняет code_verifier с переданным TTL под ключом state.
+func (r *RedisOAuthStateStore) SaveState(ctx context.Context, state, codeVerifier string, ttl time.Duration) error {
+	if err := r.rdb.Set(ctx, oauthStateKey(state), codeVerifier, ttl).Err(); err != nil {
+		return fmt.Errorf("auth.RedisOAuthStateStore.SaveState: %w", err)
+	}
+	return nil
+}
+
+// ConsumeState атомарно читает и удаляет state. Если ключ отсутствует —
+// возвращает domain.ErrStateNotFound.
+func (r *RedisOAuthStateStore) ConsumeState(ctx context.Context, state string) (string, error) {
+	v, err := r.rdb.GetDel(ctx, oauthStateKey(state)).Result()
+	if err != nil {
+		if errors.Is(err, redis.Nil) {
+			return "", fmt.Errorf("auth.RedisOAuthStateStore.ConsumeState: %w", domain.ErrStateNotFound)
+		}
+		return "", fmt.Errorf("auth.RedisOAuthStateStore.ConsumeState: %w", err)
+	}
+	return v, nil
+}
+
 // RedisRateLimiter is a fixed-window counter keyed per caller+endpoint.
 type RedisRateLimiter struct {
 	rdb *redis.Client
