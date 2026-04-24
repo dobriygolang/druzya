@@ -14,7 +14,8 @@ export type HotkeyAction =
   | 'voice_input'
   | 'toggle_window'
   | 'quick_prompt'
-  | 'clear_conversation';
+  | 'clear_conversation'
+  | 'cursor_freeze_toggle';
 
 export interface HotkeyBinding {
   action: HotkeyAction;
@@ -47,6 +48,8 @@ export interface PaywallCopy {
   tagline: string;
   bullets: string[];
   ctaLabel: string;
+  /** URL the CTA opens (empty for free plan). */
+  subscribeUrl: string;
 }
 
 export interface StealthCompatEntry {
@@ -103,4 +106,41 @@ export interface Conversation {
   messageCount: number;
   createdAt: string;
   updatedAt: string;
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Sessions (Phase 12)
+// ─────────────────────────────────────────────────────────────────────────
+
+export type SessionKind = 'interview' | 'work' | 'casual' | '';
+
+export interface Session {
+  id: string;
+  kind: SessionKind;
+  startedAt: string; // ISO-8601
+  finishedAt: string; // ISO-8601 or empty while live
+  conversationCount: number;
+  byokOnly: boolean;
+}
+
+export type AnalysisStatus = 'pending' | 'running' | 'ready' | 'failed' | '';
+
+export interface AnalysisLink {
+  label: string;
+  url: string;
+}
+
+export interface SessionAnalysis {
+  sessionId: string;
+  status: AnalysisStatus;
+  overallScore: number;
+  sectionScores: Record<string, number>;
+  weaknesses: string[];
+  recommendations: string[];
+  links: AnalysisLink[];
+  reportMarkdown: string;
+  reportUrl: string;
+  errorMessage: string;
+  startedAt: string;
+  finishedAt: string;
 }

@@ -147,3 +147,13 @@ desktop-build: ## Build desktop .app and .dmg for macOS
 .PHONY: desktop-typecheck
 desktop-typecheck: ## Type-check desktop (renderer + main)
 	cd desktop && npm run typecheck
+
+.PHONY: cursor-helper-build
+cursor-helper-build: ## Build the Swift CursorHelper binary + stage into resources/
+	cd desktop/native/CursorHelper && swift build -c release
+	mkdir -p desktop/resources/native
+	cp desktop/native/CursorHelper/.build/release/CursorHelper desktop/resources/native/
+
+.PHONY: desktop-build-masquerade
+desktop-build-masquerade: ## Build alt-branded .dmgs (Notes/Telegram/Xcode/Slack)
+	cd desktop && node scripts/build-masquerade.mjs

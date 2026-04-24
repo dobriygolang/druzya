@@ -128,6 +128,7 @@ const (
 	HotkeyActionToggleWindow      HotkeyAction = "toggle_window"
 	HotkeyActionQuickPrompt       HotkeyAction = "quick_prompt"
 	HotkeyActionClearConversation HotkeyAction = "clear_conversation"
+	HotkeyActionCursorFreezeToggle HotkeyAction = "cursor_freeze_toggle"
 )
 
 // HotkeyBinding pairs an action with an Electron accelerator string.
@@ -146,12 +147,16 @@ type FeatureFlag struct {
 // PaywallCopy is localized user-facing plan copy. The client is forbidden
 // from hardcoding pricing — all of this is server-driven.
 type PaywallCopy struct {
-	PlanID      string
-	DisplayName string
-	PriceLabel  string
-	Tagline     string
-	Bullets     []string
-	CTALabel    string
+	PlanID       string
+	DisplayName  string
+	PriceLabel   string
+	Tagline      string
+	Bullets      []string
+	CTALabel     string
+	// SubscribeURL is the external URL the CTA button opens. For Boosty,
+	// a per-tier purchase link (https://boosty.to/<creator>/purchase/<id>).
+	// Empty for free / already-current plans.
+	SubscribeURL string
 }
 
 // StealthCompatEntry records a known-broken (OS, browser) combination for
@@ -224,4 +229,109 @@ type AttachmentInput struct {
 // IsScreenshot is a convenience for the HasScreenshot flag.
 func (a AttachmentInput) IsScreenshot() bool {
 	return a.Kind == AttachmentKindScreenshot && len(a.Data) > 0
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Sessions (Phase 12)
+// ─────────────────────────────────────────────────────────────────────────
+
+// SessionKind tags how a session should be treated downstream. Interview
+// triggers the full analyzer path; work / casual are stored for future
+// filtering but do not kick off a report.
+type SessionKind string
+
+const (
+	SessionKindUnspecified SessionKind = ""
+	SessionKindInterview   SessionKind = "interview"
+	SessionKindWork        SessionKind = "work"
+	SessionKindCasual      SessionKind = "casual"
+)
+
+// IsValid guards the app layer from persisting a bogus kind.
+func (k SessionKind) IsValid() bool {
+	switch k {
+	case SessionKindInterview, SessionKindWork, SessionKindCasual:
+		return true
+	}
+	return false
+}
+
+// Session is a grouping of copilot conversations the user explicitly
+// started ("Start interview session" in the desktop tray). All turns
+// created between StartSession and EndSession attach here via the
+// conversations.session_id FK.
+type Session struct {
+	ID         uuid.UUID
+	UserID     uuid.UUID
+	Kind       SessionKind
+	StartedAt  time.Time
+	FinishedAt *time.Time
+	// BYOKOnly — once any server-visible turn used BYOK (future: via
+	// client header hint), we mark the session so the analyzer skips.
+	// In the current MVP this stays false because BYOK turns never
+	// reach the server at all — the desktop runs its own local
+	// analysis instead.
+	BYOKOnly bool
+}
+
+// IsFinished — helper for the "live session" partial unique index.
+func (s Session) IsFinished() bool { return s.FinishedAt != nil }
+
+// AnalysisStatus progresses through the analyzer job lifecycle.
+type AnalysisStatus string
+
+const (
+	AnalysisStatusPending AnalysisStatus = "pending"
+	AnalysisStatusRunning AnalysisStatus = "running"
+	AnalysisStatusReady   AnalysisStatus = "ready"
+	AnalysisStatusFailed  AnalysisStatus = "failed"
+)
+
+// AnalysisLink — a labeled URL the analyzer includes in the report,
+// typically pointing into Druzya's content tree.
+type AnalysisLink struct {
+	Label string
+	URL   string
+}
+
+// SessionReport is the analyzer output attached to a session. Stored
+// flat so sqlc doesn't need nested structs; JSON-encoded fields are
+// round-tripped through []byte in the postgres layer.
+type SessionReport struct {
+	SessionID       uuid.UUID
+	Status          AnalysisStatus
+	OverallScore    int
+	SectionScores   map[string]int // "algorithms" → 78, ...
+	Weaknesses      []string
+	Recommendations []string
+	Links           []AnalysisLink
+	ReportMarkdown  string
+	ReportURL       string
+	ErrorMessage    string
+	StartedAt       *time.Time
+	FinishedAt      *time.Time
+	UpdatedAt       time.Time
+}
+
+// AnalyzerInput is what the analyzer receives from the subscriber —
+// everything needed to produce the report without querying the DB
+// itself. Keeps the analyzer layer pure (no repo dependencies).
+type AnalyzerInput struct {
+	Session       Session
+	Conversations []Conversation
+	// MessagesByConvID: messages grouped per-conversation so the
+	// analyzer can reconstruct turn order and flag multi-turn threads.
+	MessagesByConvID map[uuid.UUID][]Message
+}
+
+// AnalyzerResult is the structured output the LLM produces. Shape mirrors
+// SessionReport fields 1:1 — the repo layer just copies fields and
+// stamps ids / timestamps.
+type AnalyzerResult struct {
+	OverallScore    int
+	SectionScores   map[string]int
+	Weaknesses      []string
+	Recommendations []string
+	Links           []AnalysisLink
+	ReportMarkdown  string
 }

@@ -12,20 +12,21 @@ first, implementation follows.
 | Feature | Status |
 |---|---|
 | Stealth window (invisible to Zoom / Meet / Chrome screen-share) | ✅ shipped |
-| Global hotkeys (screenshot, toggle window, quick prompt) | ✅ shipped |
+| Global hotkeys (screenshot, toggle window, quick prompt, voice) | ✅ shipped |
 | Multi-provider catalogue (OpenAI / Anthropic / Google / xAI) | ✅ shipped |
-| **Provider picker** in compact + expanded (click model → dropdown) | ✅ shipped |
-| **BYOK** — OpenAI / Anthropic keys in OS Keychain, direct-to-provider | ✅ shipped |
-| **Area screenshot picker** — drag-to-select, crop, stealthed overlay | ✅ shipped |
-| **Masquerade** — runtime Dock icon + window title swap | ✅ shipped (partial) |
-| Masquerade in Activity Monitor | ⚠️ requires alt-build target (bundle-time) |
-| Voice input | ⏳ Phase 6 — proto reserved |
-| Virtual cursor (frozen cursor for viewers) | ⏳ Phase 6 — needs Swift helper |
-| Post-interview analysis | 🔀 lives in Druzya web app by design |
-| Auto-update | ⏳ Phase 6 |
-| History panel as dedicated screen | ⏳ Phase 6 |
-| Paywall modal | ⏳ Phase 6 |
-| Windows / Linux builds | ⏳ Phase 6 |
+| Provider picker in compact + expanded (click model → dropdown) | ✅ shipped |
+| BYOK — OpenAI / Anthropic keys in OS Keychain, direct-to-provider | ✅ shipped |
+| Area screenshot picker — drag-to-select, crop, stealthed overlay | ✅ shipped |
+| Masquerade — runtime Dock icon + window title swap | ✅ shipped |
+| Voice input via OpenAI Whisper (BYOK-driven) | ✅ shipped |
+| Auto-update via electron-updater (feed URL from DesktopConfig) | ✅ shipped |
+| Paywall modal + Boosty subscription flow | ✅ shipped (desktop); webhook TODO — see [Boosty doc](copilot-boosty-integration.md) |
+| History panel — dedicated stealth window with paginated list + delete | ✅ shipped |
+| Window hardening — deny in-app popups, lock navigation, default-deny perms | ✅ shipped |
+| Masquerade alt-build pipeline (Activity Monitor rename) | ✅ shipped — `make desktop-build-masquerade` |
+| Virtual cursor (frozen cursor for viewers) | ✅ shipped — `robotjs`/`@nut-tree-fork/libnut` park-loop, toggle via `⌘⇧Y`; Swift helper still scaffolded for eventual promotion |
+| Post-interview analysis — sessions + LLM analyzer + Druzya report | ✅ shipped — see [copilot-sessions.md](copilot-sessions.md) |
+| Windows / Linux builds | ⏳ Phase 13+ |
 
 ---
 

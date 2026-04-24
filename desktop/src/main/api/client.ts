@@ -18,6 +18,9 @@ import { CopilotService } from '@generated/pb/druz9/v1/copilot_connect';
 import type { RuntimeConfig } from '../config/bootstrap';
 import { loadSession } from '../auth/keychain';
 
+// Connect v1 API (matches the frontend's generated stubs from
+// @connectrpc/protoc-gen-connect-es ^1.4.0). If we ever regenerate to
+// v2, switch to createClient / Client here.
 export type CopilotClient = PromiseClient<typeof CopilotService>;
 
 /**

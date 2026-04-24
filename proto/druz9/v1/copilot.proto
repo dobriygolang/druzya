@@ -55,6 +55,7 @@ enum HotkeyAction {
   HOTKEY_ACTION_TOGGLE_WINDOW = 4;
   HOTKEY_ACTION_QUICK_PROMPT = 5;
   HOTKEY_ACTION_CLEAR_CONVERSATION = 6;
+  HOTKEY_ACTION_CURSOR_FREEZE_TOGGLE = 7;
 }
 
 // ModelSpeedClass is a UI-only grouping shown in the provider picker.
@@ -63,6 +64,25 @@ enum ModelSpeedClass {
   MODEL_SPEED_CLASS_FAST = 1;       // sub-2s typical latency
   MODEL_SPEED_CLASS_BALANCED = 2;   // 2-5s
   MODEL_SPEED_CLASS_REASONING = 3;  // 5s+, deep thinking
+}
+
+// SessionKind tags a conversation group for downstream analysis. For MVP
+// we only produce a rich report for interview sessions; other kinds are
+// stored for future filtering.
+enum CopilotSessionKind {
+  COPILOT_SESSION_KIND_UNSPECIFIED = 0;
+  COPILOT_SESSION_KIND_INTERVIEW = 1;
+  COPILOT_SESSION_KIND_WORK = 2;
+  COPILOT_SESSION_KIND_CASUAL = 3;
+}
+
+// AnalysisStatus reflects the background-job lifecycle.
+enum CopilotAnalysisStatus {
+  COPILOT_ANALYSIS_STATUS_UNSPECIFIED = 0;
+  COPILOT_ANALYSIS_STATUS_PENDING = 1;   // queued, not started
+  COPILOT_ANALYSIS_STATUS_RUNNING = 2;   // LLM in flight
+  COPILOT_ANALYSIS_STATUS_READY = 3;     // report_markdown populated
+  COPILOT_ANALYSIS_STATUS_FAILED = 4;    // LLM failed; error_message populated
 }
 
 // ============================================================================
@@ -78,6 +98,88 @@ message CopilotConversation {
   google.protobuf.Timestamp created_at = 4;
   google.protobuf.Timestamp updated_at = 5;
   int32 message_count = 6;
+  // Optional — session this conversation belongs to. Empty for
+  // conversations created outside an explicit session.
+  string session_id = 7;
+}
+
+// CopilotSession groups a run of conversations the user chose to bundle
+// ("Start interview session" in the desktop tray). All turns that
+// happen between StartSession and EndSession attach here via
+// copilot_conversations.session_id.
+//
+// Analysis is NOT done by the copilot service. On EndSession we emit
+// an event on the internal bus; a separate analyzer (ai_native or a
+// dedicated job) picks it up, runs the LLM, and writes the report
+// into copilot_session_reports where GetSessionAnalysis can read it.
+message CopilotSession {
+  string id = 1;
+  CopilotSessionKind kind = 2;
+  google.protobuf.Timestamp started_at = 3;
+  google.protobuf.Timestamp finished_at = 4;  // unset while live
+  int32 conversation_count = 5;
+  // Whether any turn inside this session used a BYOK key. When true,
+  // the post-session analysis path is ALSO local (desktop-driven)
+  // rather than backend-driven — the client is responsible for
+  // rendering the report.
+  bool byok_only = 6;
+}
+
+message CopilotAnalysisLink {
+  string label = 1;
+  string url = 2;
+}
+
+// CopilotSessionAnalysis is the report the analyzer produces after a
+// session ends. Populated asynchronously — clients poll GetSessionAnalysis
+// (or listen for event:analysis-ready via a push channel).
+message CopilotSessionAnalysis {
+  string session_id = 1;
+  CopilotAnalysisStatus status = 2;
+
+  int32 overall_score = 3;                        // 0..100
+  // Section keys: "algorithms", "sql", "go", "system_design", "behavioral".
+  map<string, int32> section_scores = 4;
+  repeated string weaknesses = 5;
+  repeated string recommendations = 6;
+  repeated CopilotAnalysisLink links = 7;
+  string report_markdown = 8;
+
+  google.protobuf.Timestamp started_at = 9;
+  google.protobuf.Timestamp finished_at = 10;
+  string error_message = 11;                      // set when status=FAILED
+
+  // Web URL where the full report lives inside Druzya. Always set; the
+  // desktop client can skip its embedded renderer and open the URL
+  // externally. Empty for BYOK reports — those are desktop-local.
+  string report_url = 12;
+}
+
+// ----------------------------------------------------------------------
+// Session RPC messages
+// ----------------------------------------------------------------------
+
+message StartCopilotSessionRequest {
+  CopilotSessionKind kind = 1;
+}
+
+message EndCopilotSessionRequest {
+  string session_id = 1;
+}
+
+message GetCopilotSessionAnalysisRequest {
+  string session_id = 1;
+}
+
+message ListCopilotSessionsRequest {
+  string cursor = 1;
+  int32 limit = 2;
+  CopilotSessionKind kind = 3; // optional filter
+}
+
+message ListCopilotSessionsResponse {
+  repeated CopilotSession sessions = 1;
+  string next_cursor = 2;
 }
 
 // CopilotMessage is a single turn in a conversation.
@@ -154,6 +256,10 @@ message PaywallCopy {
   string tagline = 4;                             // "Безлимитные запросы, все модели"
   repeated string bullets = 5;                    // feature list
   string cta_label = 6;                           // "Обновить план"
+  // URL the CTA button opens in the user's browser. For Boosty: a
+  // per-tier subscribe link such as https://boosty.to/druz9/purchase/XXXX.
+  // Empty for the "free" plan (no purchase flow).
+  string subscribe_url = 7;
 }
 
 // StealthCompatEntry flags a macOS / browser combination as known-broken for
@@ -413,5 +519,40 @@ service CopilotService {
       post: "/api/v1/copilot/messages/{message_id}/rate"
       body: "*"
     };
+  }
+
+  // ---- Sessions (Phase 12) ----
+
+  // StartSession opens a new group. All subsequent Analyze/Chat turns
+  // attach to this session until EndSession. Only one live session
+  // per user.
+  rpc StartSession(StartCopilotSessionRequest) returns (CopilotSession) {
+    option (google.api.http) = {
+      post: "/api/v1/copilot/sessions"
+      body: "*"
+    };
+  }
+
+  // EndSession stamps finished_at, emits an internal SessionEnded event
+  // (which an analyzer subscribes to), and returns immediately. Poll
+  // GetSessionAnalysis for the report.
+  rpc EndSession(EndCopilotSessionRequest) returns (CopilotSession) {
+    option (google.api.http) = {
+      post: "/api/v1/copilot/sessions/{session_id}/end"
+      body: "*"
+    };
+  }
+
+  // GetSessionAnalysis returns the current state of the post-session
+  // analysis. Status progresses pending → running → ready | failed.
+  rpc GetSessionAnalysis(GetCopilotSessionAnalysisRequest) returns (CopilotSessionAnalysis) {
+    option (google.api.http) = {
+      get: "/api/v1/copilot/sessions/{session_id}/analysis"
+    };
+  }
+
+  // ListSessions — paginated history of sessions for the caller.
+  rpc ListSessions(ListCopilotSessionsRequest) returns (ListCopilotSessionsResponse) {
+    option (google.api.http) = {get: "/api/v1/copilot/sessions"};
   }
 }

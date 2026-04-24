@@ -12,23 +12,29 @@
     "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.node.json"
   },
   "dependencies": {
-    "@bufbuild/protobuf": "^2.2.0",
-    "@connectrpc/connect": "^2.0.0",
-    "@connectrpc/connect-web": "^2.0.0",
+    "@bufbuild/protobuf": "^1.10.0",
+    "@connectrpc/connect": "^1.4.0",
+    "@connectrpc/connect-web": "^1.4.0",
+    "@sentry/electron": "^5.11.0",
     "electron-updater": "^6.3.9",
     "keytar": "^7.9.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "zustand": "^5.0.2"
   },
+  "optionalDependencies": {
+    "@nut-tree-fork/libnut": "^2.6.0"
+  },
   "devDependencies": {
+    "@types/js-yaml": "^4.0.9",
     "@types/node": "^22.10.2",
     "@types/react": "^18.3.17",
     "@types/react-dom": "^18.3.5",
     "@vitejs/plugin-react": "^4.3.4",
-    "electron": "^33.2.1",
-    "electron-builder": "^25.1.8",
+    "electron": "*",
+    "electron-builder": "*",
     "electron-vite": "^3.0.0",
+    "js-yaml": "^4.1.0",
     "typescript": "^5.7.2",
     "vite": "^6.0.3"
   }

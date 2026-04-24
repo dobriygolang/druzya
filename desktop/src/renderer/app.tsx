@@ -5,17 +5,32 @@
 
 import { useEffect, useState } from 'react';
 
+import { PaywallPortal } from './components/PaywallPortal';
 import { AreaOverlayScreen } from './screens/area-overlay/AreaOverlayScreen';
 import { CompactScreen } from './screens/compact/CompactScreen';
 import { ExpandedScreen } from './screens/expanded/ExpandedScreen';
+import { HistoryScreen } from './screens/history/HistoryScreen';
 import { OnboardingScreen } from './screens/onboarding/OnboardingScreen';
 import { SettingsScreen } from './screens/settings/SettingsScreen';
 
-type Route = 'compact' | 'expanded' | 'settings' | 'onboarding' | 'area-overlay';
+type Route =
+  | 'compact'
+  | 'expanded'
+  | 'settings'
+  | 'onboarding'
+  | 'area-overlay'
+  | 'history';
 
 function readRoute(): Route {
   const h = window.location.hash.replace(/^#\/?/, '');
-  if (h === 'expanded' || h === 'settings' || h === 'onboarding' || h === 'area-overlay') return h;
+  if (
+    h === 'expanded' ||
+    h === 'settings' ||
+    h === 'onboarding' ||
+    h === 'area-overlay' ||
+    h === 'history'
+  )
+    return h;
   return 'compact';
 }
 
@@ -28,16 +43,21 @@ export function App() {
     return () => window.removeEventListener('hashchange', onHash);
   }, []);
 
-  switch (route) {
-    case 'compact':
-      return <CompactScreen />;
-    case 'expanded':
-      return <ExpandedScreen />;
-    case 'settings':
-      return <SettingsScreen />;
-    case 'onboarding':
-      return <OnboardingScreen />;
-    case 'area-overlay':
-      return <AreaOverlayScreen />;
-  }
+  // Area overlay is a raw drag-select UI; it deliberately skips the
+  // paywall portal so modals don't appear over a fullscreen crosshair.
+  if (route === 'area-overlay') return <AreaOverlayScreen />;
+
+  const screen =
+    route === 'compact' ? <CompactScreen /> :
+    route === 'expanded' ? <ExpandedScreen /> :
+    route === 'settings' ? <SettingsScreen /> :
+    route === 'history' ? <HistoryScreen /> :
+    <OnboardingScreen />;
+
+  return (
+    <>
+      {screen}
+      <PaywallPortal />
+    </>
+  );
 }

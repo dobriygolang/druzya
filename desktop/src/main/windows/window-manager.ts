@@ -9,9 +9,10 @@
 // starts sharing.
 
 import { BrowserWindow, screen } from 'electron';
-import { join } from 'node:path';
 
 import type { WindowName } from '@shared/ipc';
+
+import { hardenWindow } from './hardening';
 
 const windows = new Map<WindowName, BrowserWindow>();
 
@@ -35,15 +36,17 @@ export function showWindow(name: WindowName, opts: WindowOptions): BrowserWindow
   }
 
   const win = buildWindow(name, opts);
+  hardenWindow(win);
   windows.set(name, win);
 
   win.on('closed', () => {
     windows.delete(name);
   });
 
-  // Compact + expanded are stealth by default. Settings / onboarding
-  // render system-level prompts, so we leave them visible to the viewer.
-  if (name === 'compact' || name === 'expanded') {
+  // Compact + expanded + history are stealth by default. Settings /
+  // onboarding render system-level prompts, so we leave them visible
+  // to the viewer.
+  if (name === 'compact' || name === 'expanded' || name === 'history') {
     // setContentProtection on macOS uses NSWindowSharingNone: viewers of
     // a screen share see the desktop background where this window is.
     win.setContentProtection(true);
@@ -67,11 +70,24 @@ export function showWindow(name: WindowName, opts: WindowOptions): BrowserWindow
     settings: '#/settings',
     onboarding: '#/onboarding',
     'area-overlay': '#/area-overlay',
+    history: '#/history',
   };
-  const url = opts.isDev
-    ? `${opts.rendererURL}${hashFor[name]}`
-    : `${opts.rendererURL}${hashFor[name]}`;
+  const url = `${opts.rendererURL}${hashFor[name]}`;
   void win.loadURL(url);
+
+  // Show the window once its first paint is ready. The `show: false`
+  // default in buildWindow prevents the flash of un-styled background
+  // that would otherwise be visible (transparent + frameless). Without
+  // calling show() explicitly here, the window stays invisible forever.
+  win.once('ready-to-show', () => {
+    if (!win.isDestroyed()) win.show();
+  });
+  // Safety net: if ready-to-show doesn't fire within 2s (happens on
+  // renderer bundle errors), force-show the window so the user at
+  // least sees the system frame / can open devtools.
+  setTimeout(() => {
+    if (!win.isDestroyed() && !win.isVisible()) win.show();
+  }, 2000);
 
   return win;
 }
@@ -90,6 +106,22 @@ export function broadcast(channel: string, payload: unknown): void {
   for (const w of windows.values()) {
     if (!w.isDestroyed()) w.webContents.send(channel, payload);
   }
+}
+
+/**
+ * Animated resize — keeps the compact window's top-right corner pinned
+ * while height grows (when an attachment is staged) or shrinks back.
+ * No-op on non-existent or destroyed windows.
+ */
+export function resizeWindow(name: WindowName, width: number, height: number): void {
+  const w = windows.get(name);
+  if (!w || w.isDestroyed()) return;
+  const bounds = w.getBounds();
+  // Pin the top-right corner so the window feels "anchored" as content
+  // reflows downward. On windows that track an explicit corner (compact,
+  // expanded, history) this matches the initial placement.
+  const newX = bounds.x + (bounds.width - width);
+  w.setBounds({ x: newX, y: bounds.y, width, height }, true);
 }
 
 /** Toggle stealth on all floating windows (used by settings tab). */
@@ -158,6 +190,19 @@ function buildWindow(name: WindowName, opts: WindowOptions): BrowserWindow {
         title: 'Druz9 Copilot',
         resizable: false,
         center: true,
+      });
+    case 'history':
+      return new BrowserWindow({
+        ...base,
+        width: 560,
+        height: 720,
+        frame: false,
+        resizable: true,
+        transparent: true,
+        hasShadow: true,
+        roundedCorners: true,
+        skipTaskbar: true,
+        ...topRightPosition(560, 720, 140),
       });
     case 'area-overlay': {
       // Full primary-display overlay. We intentionally do NOT use

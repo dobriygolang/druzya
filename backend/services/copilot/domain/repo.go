@@ -139,3 +139,63 @@ type ConfigProvider interface {
 	// propagate the change to clients.
 	Load(ctx context.Context) (DesktopConfig, error)
 }
+
+// ─────────────────────────────────────────────────────────────────────────
+// Sessions (Phase 12)
+// ─────────────────────────────────────────────────────────────────────────
+
+// ErrLiveSessionExists — StartSession was called while one is already open.
+// Surfaced to the client as FailedPrecondition so the UI can close/restart.
+var ErrLiveSessionExists = errors.New("copilot: a live session already exists")
+
+// SessionRepo persists copilot_sessions rows.
+type SessionRepo interface {
+	Create(ctx context.Context, userID uuid.UUID, kind SessionKind) (Session, error)
+	Get(ctx context.Context, id uuid.UUID) (Session, error)
+	// GetLive returns the user's single live session, or ErrNotFound.
+	GetLive(ctx context.Context, userID uuid.UUID) (Session, error)
+	// End stamps finished_at=now() and is a no-op if already ended.
+	// Returns ErrNotFound when the row does not exist or belongs to a
+	// different user.
+	End(ctx context.Context, id, userID uuid.UUID) error
+	// MarkByok sets byok_only=true; once flipped, never unsets.
+	MarkByok(ctx context.Context, id uuid.UUID) error
+	// ListForUser returns summaries newest-first, keyset paginated.
+	ListForUser(ctx context.Context, userID uuid.UUID, kind SessionKind, cursor Cursor, limit int) ([]SessionSummary, Cursor, error)
+	// AttachConversation is called by Analyze when a live session exists
+	// — stamps session_id onto the just-created conversation row.
+	AttachConversation(ctx context.Context, conversationID, sessionID uuid.UUID) error
+	// ListConversations returns all conversations the session owns.
+	// Used by the analyzer to assemble its input.
+	ListConversations(ctx context.Context, sessionID uuid.UUID) ([]Conversation, error)
+}
+
+// SessionSummary adds the conversation count to a Session for the
+// history list. Matches the ConversationSummary shape in spirit.
+type SessionSummary struct {
+	Session
+	ConversationCount int
+}
+
+// ReportRepo persists copilot_session_reports rows.
+type ReportRepo interface {
+	// Init idempotently creates a pending report row for a session.
+	// Called by EndSession so GetSessionAnalysis has something to
+	// return while the analyzer works.
+	Init(ctx context.Context, sessionID uuid.UUID) (SessionReport, error)
+	Get(ctx context.Context, sessionID uuid.UUID) (SessionReport, error)
+	// MarkRunning bumps status from pending → running and stamps
+	// started_at. A no-op if the row is already in a terminal state.
+	MarkRunning(ctx context.Context, sessionID uuid.UUID) error
+	// Write commits a successful analyzer result → status=ready.
+	Write(ctx context.Context, sessionID uuid.UUID, r AnalyzerResult, reportURL string) error
+	// Fail commits an analyzer error → status=failed.
+	Fail(ctx context.Context, sessionID uuid.UUID, errMsg string) error
+}
+
+// Analyzer turns an AnalyzerInput into an AnalyzerResult. Implementation
+// is LLM-backed (see infra/llm_analyzer.go); the interface keeps app
+// layer testable against a deterministic fake.
+type Analyzer interface {
+	Analyze(ctx context.Context, in AnalyzerInput) (AnalyzerResult, error)
+}

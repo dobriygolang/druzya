@@ -141,6 +141,7 @@ type CopilotConversation struct {
 	Model     string
 	CreatedAt pgtype.Timestamptz
 	UpdatedAt pgtype.Timestamptz
+	SessionID pgtype.UUID
 }
 
 type CopilotMessage struct {
@@ -164,6 +165,31 @@ type CopilotQuota struct {
 	ResetsAt      pgtype.Timestamptz
 	ModelsAllowed []string
 	UpdatedAt     pgtype.Timestamptz
+}
+
+type CopilotSession struct {
+	ID         pgtype.UUID
+	UserID     pgtype.UUID
+	Kind       string
+	StartedAt  pgtype.Timestamptz
+	FinishedAt pgtype.Timestamptz
+	ByokOnly   bool
+}
+
+type CopilotSessionReport struct {
+	SessionID       pgtype.UUID
+	Status          string
+	OverallScore    int32
+	SectionScores   []byte
+	Weaknesses      []byte
+	Recommendations []byte
+	Links           []byte
+	ReportMarkdown  string
+	ReportUrl       string
+	ErrorMessage    string
+	StartedAt       pgtype.Timestamptz
+	FinishedAt      pgtype.Timestamptz
+	UpdatedAt       pgtype.Timestamptz
 }
 
 type DailyKataHistory struct {
@@ -585,13 +611,16 @@ type Rating struct {
 }
 
 type SavedVacancy struct {
-	ID        int64
-	UserID    pgtype.UUID
-	VacancyID int64
-	Status    string
-	Notes     pgtype.Text
-	SavedAt   pgtype.Timestamptz
-	UpdatedAt pgtype.Timestamptz
+	ID           int64
+	UserID       pgtype.UUID
+	VacancyID    int64
+	Status       string
+	Notes        pgtype.Text
+	SavedAt      pgtype.Timestamptz
+	UpdatedAt    pgtype.Timestamptz
+	Source       string
+	ExternalID   string
+	SnapshotJson []byte
 }
 
 type Season struct {
@@ -787,27 +816,6 @@ type UserReport struct {
 	ResolvedAt  pgtype.Timestamptz
 	ResolvedBy  pgtype.UUID
 	CreatedAt   pgtype.Timestamptz
-}
-
-type Vacancy struct {
-	ID               int64
-	Source           string
-	ExternalID       string
-	Url              string
-	Title            string
-	Company          pgtype.Text
-	Location         pgtype.Text
-	EmploymentType   pgtype.Text
-	ExperienceLevel  pgtype.Text
-	SalaryMin        pgtype.Int4
-	SalaryMax        pgtype.Int4
-	Currency         pgtype.Text
-	Description      string
-	RawSkills        []string
-	NormalizedSkills []string
-	PostedAt         pgtype.Timestamptz
-	FetchedAt        pgtype.Timestamptz
-	RawJson          []byte
 }
 
 type WeeklyShareToken struct {

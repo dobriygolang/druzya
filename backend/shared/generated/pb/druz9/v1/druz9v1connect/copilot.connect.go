@@ -72,6 +72,18 @@ const (
 	// CopilotServiceRateMessageProcedure is the fully-qualified name of the CopilotService's
 	// RateMessage RPC.
 	CopilotServiceRateMessageProcedure = "/druz9.v1.CopilotService/RateMessage"
+	// CopilotServiceStartSessionProcedure is the fully-qualified name of the CopilotService's
+	// StartSession RPC.
+	CopilotServiceStartSessionProcedure = "/druz9.v1.CopilotService/StartSession"
+	// CopilotServiceEndSessionProcedure is the fully-qualified name of the CopilotService's EndSession
+	// RPC.
+	CopilotServiceEndSessionProcedure = "/druz9.v1.CopilotService/EndSession"
+	// CopilotServiceGetSessionAnalysisProcedure is the fully-qualified name of the CopilotService's
+	// GetSessionAnalysis RPC.
+	CopilotServiceGetSessionAnalysisProcedure = "/druz9.v1.CopilotService/GetSessionAnalysis"
+	// CopilotServiceListSessionsProcedure is the fully-qualified name of the CopilotService's
+	// ListSessions RPC.
+	CopilotServiceListSessionsProcedure = "/druz9.v1.CopilotService/ListSessions"
 )
 
 // CopilotServiceClient is a client for the druz9.v1.CopilotService service.
@@ -101,6 +113,19 @@ type CopilotServiceClient interface {
 	GetDesktopConfig(context.Context, *connect.Request[v1.GetDesktopConfigRequest]) (*connect.Response[v1.DesktopConfig], error)
 	// RateMessage records user feedback on a specific assistant message.
 	RateMessage(context.Context, *connect.Request[v1.RateCopilotMessageRequest]) (*connect.Response[v1.RateCopilotMessageResponse], error)
+	// StartSession opens a new group. All subsequent Analyze/Chat turns
+	// attach to this session until EndSession. Only one live session
+	// per user.
+	StartSession(context.Context, *connect.Request[v1.StartCopilotSessionRequest]) (*connect.Response[v1.CopilotSession], error)
+	// EndSession stamps finished_at, emits an internal SessionEnded event
+	// (which an analyzer subscribes to), and returns immediately. Poll
+	// GetSessionAnalysis for the report.
+	EndSession(context.Context, *connect.Request[v1.EndCopilotSessionRequest]) (*connect.Response[v1.CopilotSession], error)
+	// GetSessionAnalysis returns the current state of the post-session
+	// analysis. Status progresses pending → running → ready | failed.
+	GetSessionAnalysis(context.Context, *connect.Request[v1.GetCopilotSessionAnalysisRequest]) (*connect.Response[v1.CopilotSessionAnalysis], error)
+	// ListSessions — paginated history of sessions for the caller.
+	ListSessions(context.Context, *connect.Request[v1.ListCopilotSessionsRequest]) (*connect.Response[v1.ListCopilotSessionsResponse], error)
 }
 
 // NewCopilotServiceClient constructs a client for the druz9.v1.CopilotService service. By default,
@@ -168,6 +193,30 @@ func NewCopilotServiceClient(httpClient connect.HTTPClient, baseURL string, opts
 			connect.WithSchema(copilotServiceMethods.ByName("RateMessage")),
 			connect.WithClientOptions(opts...),
 		),
+		startSession: connect.NewClient[v1.StartCopilotSessionRequest, v1.CopilotSession](
+			httpClient,
+			baseURL+CopilotServiceStartSessionProcedure,
+			connect.WithSchema(copilotServiceMethods.ByName("StartSession")),
+			connect.WithClientOptions(opts...),
+		),
+		endSession: connect.NewClient[v1.EndCopilotSessionRequest, v1.CopilotSession](
+			httpClient,
+			baseURL+CopilotServiceEndSessionProcedure,
+			connect.WithSchema(copilotServiceMethods.ByName("EndSession")),
+			connect.WithClientOptions(opts...),
+		),
+		getSessionAnalysis: connect.NewClient[v1.GetCopilotSessionAnalysisRequest, v1.CopilotSessionAnalysis](
+			httpClient,
+			baseURL+CopilotServiceGetSessionAnalysisProcedure,
+			connect.WithSchema(copilotServiceMethods.ByName("GetSessionAnalysis")),
+			connect.WithClientOptions(opts...),
+		),
+		listSessions: connect.NewClient[v1.ListCopilotSessionsRequest, v1.ListCopilotSessionsResponse](
+			httpClient,
+			baseURL+CopilotServiceListSessionsProcedure,
+			connect.WithSchema(copilotServiceMethods.ByName("ListSessions")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -182,6 +231,10 @@ type copilotServiceClient struct {
 	getQuota           *connect.Client[v1.GetCopilotQuotaRequest, v1.CopilotQuota]
 	getDesktopConfig   *connect.Client[v1.GetDesktopConfigRequest, v1.DesktopConfig]
 	rateMessage        *connect.Client[v1.RateCopilotMessageRequest, v1.RateCopilotMessageResponse]
+	startSession       *connect.Client[v1.StartCopilotSessionRequest, v1.CopilotSession]
+	endSession         *connect.Client[v1.EndCopilotSessionRequest, v1.CopilotSession]
+	getSessionAnalysis *connect.Client[v1.GetCopilotSessionAnalysisRequest, v1.CopilotSessionAnalysis]
+	listSessions       *connect.Client[v1.ListCopilotSessionsRequest, v1.ListCopilotSessionsResponse]
 }
 
 // Analyze calls druz9.v1.CopilotService.Analyze.
@@ -229,6 +282,26 @@ func (c *copilotServiceClient) RateMessage(ctx context.Context, req *connect.Req
 	return c.rateMessage.CallUnary(ctx, req)
 }
 
+// StartSession calls druz9.v1.CopilotService.StartSession.
+func (c *copilotServiceClient) StartSession(ctx context.Context, req *connect.Request[v1.StartCopilotSessionRequest]) (*connect.Response[v1.CopilotSession], error) {
+	return c.startSession.CallUnary(ctx, req)
+}
+
+// EndSession calls druz9.v1.CopilotService.EndSession.
+func (c *copilotServiceClient) EndSession(ctx context.Context, req *connect.Request[v1.EndCopilotSessionRequest]) (*connect.Response[v1.CopilotSession], error) {
+	return c.endSession.CallUnary(ctx, req)
+}
+
+// GetSessionAnalysis calls druz9.v1.CopilotService.GetSessionAnalysis.
+func (c *copilotServiceClient) GetSessionAnalysis(ctx context.Context, req *connect.Request[v1.GetCopilotSessionAnalysisRequest]) (*connect.Response[v1.CopilotSessionAnalysis], error) {
+	return c.getSessionAnalysis.CallUnary(ctx, req)
+}
+
+// ListSessions calls druz9.v1.CopilotService.ListSessions.
+func (c *copilotServiceClient) ListSessions(ctx context.Context, req *connect.Request[v1.ListCopilotSessionsRequest]) (*connect.Response[v1.ListCopilotSessionsResponse], error) {
+	return c.listSessions.CallUnary(ctx, req)
+}
+
 // CopilotServiceHandler is an implementation of the druz9.v1.CopilotService service.
 type CopilotServiceHandler interface {
 	// Analyze is the primary entry point: the user triggered a hotkey, took
@@ -256,6 +329,19 @@ type CopilotServiceHandler interface {
 	GetDesktopConfig(context.Context, *connect.Request[v1.GetDesktopConfigRequest]) (*connect.Response[v1.DesktopConfig], error)
 	// RateMessage records user feedback on a specific assistant message.
 	RateMessage(context.Context, *connect.Request[v1.RateCopilotMessageRequest]) (*connect.Response[v1.RateCopilotMessageResponse], error)
+	// StartSession opens a new group. All subsequent Analyze/Chat turns
+	// attach to this session until EndSession. Only one live session
+	// per user.
+	StartSession(context.Context, *connect.Request[v1.StartCopilotSessionRequest]) (*connect.Response[v1.CopilotSession], error)
+	// EndSession stamps finished_at, emits an internal SessionEnded event
+	// (which an analyzer subscribes to), and returns immediately. Poll
+	// GetSessionAnalysis for the report.
+	EndSession(context.Context, *connect.Request[v1.EndCopilotSessionRequest]) (*connect.Response[v1.CopilotSession], error)
+	// GetSessionAnalysis returns the current state of the post-session
+	// analysis. Status progresses pending → running → ready | failed.
+	GetSessionAnalysis(context.Context, *connect.Request[v1.GetCopilotSessionAnalysisRequest]) (*connect.Response[v1.CopilotSessionAnalysis], error)
+	// ListSessions — paginated history of sessions for the caller.
+	ListSessions(context.Context, *connect.Request[v1.ListCopilotSessionsRequest]) (*connect.Response[v1.ListCopilotSessionsResponse], error)
 }
 
 // NewCopilotServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -319,6 +405,30 @@ func NewCopilotServiceHandler(svc CopilotServiceHandler, opts ...connect.Handler
 		connect.WithSchema(copilotServiceMethods.ByName("RateMessage")),
 		connect.WithHandlerOptions(opts...),
 	)
+	copilotServiceStartSessionHandler := connect.NewUnaryHandler(
+		CopilotServiceStartSessionProcedure,
+		svc.StartSession,
+		connect.WithSchema(copilotServiceMethods.ByName("StartSession")),
+		connect.WithHandlerOptions(opts...),
+	)
+	copilotServiceEndSessionHandler := connect.NewUnaryHandler(
+		CopilotServiceEndSessionProcedure,
+		svc.EndSession,
+		connect.WithSchema(copilotServiceMethods.ByName("EndSession")),
+		connect.WithHandlerOptions(opts...),
+	)
+	copilotServiceGetSessionAnalysisHandler := connect.NewUnaryHandler(
+		CopilotServiceGetSessionAnalysisProcedure,
+		svc.GetSessionAnalysis,
+		connect.WithSchema(copilotServiceMethods.ByName("GetSessionAnalysis")),
+		connect.WithHandlerOptions(opts...),
+	)
+	copilotServiceListSessionsHandler := connect.NewUnaryHandler(
+		CopilotServiceListSessionsProcedure,
+		svc.ListSessions,
+		connect.WithSchema(copilotServiceMethods.ByName("ListSessions")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/druz9.v1.CopilotService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case CopilotServiceAnalyzeProcedure:
@@ -339,6 +449,14 @@ func NewCopilotServiceHandler(svc CopilotServiceHandler, opts ...connect.Handler
 			copilotServiceGetDesktopConfigHandler.ServeHTTP(w, r)
 		case CopilotServiceRateMessageProcedure:
 			copilotServiceRateMessageHandler.ServeHTTP(w, r)
+		case CopilotServiceStartSessionProcedure:
+			copilotServiceStartSessionHandler.ServeHTTP(w, r)
+		case CopilotServiceEndSessionProcedure:
+			copilotServiceEndSessionHandler.ServeHTTP(w, r)
+		case CopilotServiceGetSessionAnalysisProcedure:
+			copilotServiceGetSessionAnalysisHandler.ServeHTTP(w, r)
+		case CopilotServiceListSessionsProcedure:
+			copilotServiceListSessionsHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -382,4 +500,20 @@ func (UnimplementedCopilotServiceHandler) GetDesktopConfig(context.Context, *con
 
 func (UnimplementedCopilotServiceHandler) RateMessage(context.Context, *connect.Request[v1.RateCopilotMessageRequest]) (*connect.Response[v1.RateCopilotMessageResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.CopilotService.RateMessage is not implemented"))
+}
+
+func (UnimplementedCopilotServiceHandler) StartSession(context.Context, *connect.Request[v1.StartCopilotSessionRequest]) (*connect.Response[v1.CopilotSession], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.CopilotService.StartSession is not implemented"))
+}
+
+func (UnimplementedCopilotServiceHandler) EndSession(context.Context, *connect.Request[v1.EndCopilotSessionRequest]) (*connect.Response[v1.CopilotSession], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.CopilotService.EndSession is not implemented"))
+}
+
+func (UnimplementedCopilotServiceHandler) GetSessionAnalysis(context.Context, *connect.Request[v1.GetCopilotSessionAnalysisRequest]) (*connect.Response[v1.CopilotSessionAnalysis], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.CopilotService.GetSessionAnalysis is not implemented"))
+}
+
+func (UnimplementedCopilotServiceHandler) ListSessions(context.Context, *connect.Request[v1.ListCopilotSessionsRequest]) (*connect.Response[v1.ListCopilotSessionsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.CopilotService.ListSessions is not implemented"))
 }

@@ -12,6 +12,9 @@ import { loadRuntimeConfig } from './config/bootstrap';
 import { applyBindings, disposeHotkeys, setHotkeyHandler } from './hotkeys/registry';
 import { registerHandlers } from './ipc/handlers';
 import { createStreamer } from './ipc/streaming';
+import { initSentryMain } from './sentry';
+import { destroyTray, ensureTray } from './tray';
+import { wireAutoUpdate } from './updater';
 import { broadcast, showWindow } from './windows/window-manager';
 
 // Enforce single instance — required for the deep-link handler to route
@@ -24,6 +27,9 @@ if (!gotLock) {
 
 app.whenReady().then(async () => {
   const cfg = loadRuntimeConfig();
+  // Sentry FIRST so any bootstrap error gets captured. No-op when
+  // DSN is empty.
+  await initSentryMain(cfg, app.getVersion());
   const client = createCopilotClient(cfg);
 
   const preloadPath = join(__dirname, '../preload/index.js');
@@ -41,6 +47,9 @@ app.whenReady().then(async () => {
     .getDesktopConfig({ knownRev: 0n })
     .then((c) => {
       if (c.defaultModelId) currentDefaultModel = c.defaultModelId;
+      // Wire the auto-updater once we have a server-supplied feed URL.
+      // No-op when the URL is empty or when running in dev.
+      wireAutoUpdate(c.updateFeedUrl ?? '');
     })
     .catch(() => {
       /* keep the fallback — BYOK-only users can still operate */
@@ -48,23 +57,36 @@ app.whenReady().then(async () => {
 
   const streamer = createStreamer({ client, defaultModel: () => currentDefaultModel });
 
+  const resourcesPath = cfg.isDev
+    ? join(__dirname, '../../resources')
+    : join(process.resourcesPath, 'resources');
+
   registerHandlers({
     client,
     windowOptions,
     startAnalyze: (input, kind) => streamer.start(input, kind),
     cancelAnalyze: (id) => streamer.cancel(id),
-    resourcesPath: cfg.isDev
-      ? join(__dirname, '../../resources')
-      : join(process.resourcesPath, 'resources'),
+    resourcesPath,
+    apiBaseURL: cfg.apiBaseURL,
   });
 
-  registerDeepLinks((session) => {
-    broadcast(eventChannels.authChanged, {
-      session: { userId: session.userId, expiresAt: session.expiresAt },
-    });
-  });
+  ensureTray({ resourcesPath, windowOptions });
 
-  setHotkeyHandler((action) => {
+  // Telegram login is pull-based (POST /auth/telegram/poll) — no deep
+  // link callback needed. registerDeepLinks is a no-op shim today; kept
+  // for future non-auth deep links (share URLs, etc.).
+  registerDeepLinks(null);
+
+  setHotkeyHandler(async (action) => {
+    if (action === 'cursor_freeze_toggle') {
+      // Handled entirely in main — no renderer UI needed to toggle.
+      // Renderer gets a separate cursor-freeze-changed push so the
+      // status bar / Tray indicator can update.
+      const { toggle: cursorToggle } = await import('./cursor/freeze-js');
+      const next = await cursorToggle();
+      broadcast(eventChannels.cursorFreezeChanged, next);
+      return;
+    }
     broadcast(eventChannels.hotkeyFired, { action });
   });
 
@@ -97,6 +119,9 @@ app.on('activate', () => {
   }
 });
 
-app.on('will-quit', () => {
+app.on('will-quit', async () => {
   disposeHotkeys();
+  destroyTray();
+  const { shutdown: cursorShutdown } = await import('./cursor/freeze-js');
+  cursorShutdown();
 });

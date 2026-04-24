@@ -7,6 +7,12 @@ export interface RuntimeConfig {
   apiBaseURL: string;
   /** Channel for electron-updater. Empty disables auto-update. */
   updateFeedURL: string;
+  /** Sentry DSN for crash reporting. Empty disables Sentry entirely. */
+  sentryDSN: string;
+  /** "production" | "development" — forwarded to Sentry environment tag. */
+  environment: string;
+  /** Initial UI locale. User can override via Settings later. */
+  defaultLocale: 'ru' | 'en';
   /** true when running via `electron-vite dev`. */
   isDev: boolean;
 }
@@ -16,8 +22,17 @@ export function loadRuntimeConfig(): RuntimeConfig {
   return {
     apiBaseURL:
       process.env.DRUZ9_API_BASE_URL ||
-      (isDev ? 'http://localhost:8080' : 'https://api.druzya.tech'),
+      // Production Druzya deployment — matches infra/nginx/nginx.prod.conf
+      // (server_name druz9.online). Both dev and prod default here
+      // because the local docker-compose setup is seldom what desktop
+      // users want; set DRUZ9_API_BASE_URL=http://localhost:8080 to
+      // override when doing full-stack local work.
+      'https://druz9.online',
     updateFeedURL: process.env.DRUZ9_UPDATE_FEED_URL || '',
+    sentryDSN: process.env.DRUZ9_SENTRY_DSN || '',
+    environment: isDev ? 'development' : 'production',
+    defaultLocale:
+      (process.env.DRUZ9_DEFAULT_LOCALE === 'en' ? 'en' : 'ru') as 'ru' | 'en',
     isDev,
   };
 }

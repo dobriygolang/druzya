@@ -138,6 +138,134 @@ UPDATE copilot_quotas
        updated_at    = now()
  WHERE user_id = $1;
 
+-- =============================================================================
+-- Sessions
+-- =============================================================================
+
+-- name: CreateCopilotSession :one
+-- A user may have at most one live (finished_at IS NULL) session; the
+-- unique partial index enforces this at the DB layer.
+INSERT INTO copilot_sessions (user_id, kind)
+VALUES ($1, $2)
+RETURNING id, user_id, kind, started_at, finished_at, byok_only;
+
+-- name: GetCopilotSession :one
+SELECT id, user_id, kind, started_at, finished_at, byok_only
+  FROM copilot_sessions
+ WHERE id = $1;
+
+-- name: GetLiveCopilotSession :one
+-- Returns the user's currently-open session, if any. Used by the
+-- Analyze use case to auto-attach turns.
+SELECT id, user_id, kind, started_at, finished_at, byok_only
+  FROM copilot_sessions
+ WHERE user_id = $1
+   AND finished_at IS NULL;
+
+-- name: EndCopilotSession :execrows
+UPDATE copilot_sessions
+   SET finished_at = now()
+ WHERE id = $1
+   AND user_id = $2
+   AND finished_at IS NULL;
+
+-- name: MarkCopilotSessionByok :execrows
+-- Called when any turn inside a session used BYOK. Once true, stays true.
+UPDATE copilot_sessions
+   SET byok_only = TRUE
+ WHERE id = $1
+   AND byok_only = FALSE;
+
+-- name: ListCopilotSessionsForUser :many
+-- Keyset pagination identical in shape to the conversation history query.
+-- Filter by kind is optional: pass empty string to return all kinds.
+SELECT s.id, s.user_id, s.kind, s.started_at, s.finished_at, s.byok_only,
+       COALESCE(c.conv_count, 0)::INT AS conversation_count
+  FROM copilot_sessions s
+  LEFT JOIN (
+    SELECT session_id, COUNT(*) AS conv_count
+      FROM copilot_conversations
+     WHERE session_id IS NOT NULL
+     GROUP BY session_id
+  ) c ON c.session_id = s.id
+ WHERE s.user_id = $1
+   AND (sqlc.arg('kind_filter')::TEXT = '' OR s.kind = sqlc.arg('kind_filter')::TEXT)
+   AND (
+     sqlc.arg('is_first_page')::BOOLEAN
+     OR (s.started_at, s.id) < (sqlc.arg('cursor_started_at')::TIMESTAMPTZ, sqlc.arg('cursor_id')::UUID)
+   )
+ ORDER BY s.started_at DESC, s.id DESC
+ LIMIT sqlc.arg('page_size')::INT;
+
+-- name: AttachConversationToSession :execrows
+-- Called by Analyze when a live session exists — stamps session_id
+-- onto the freshly created conversation.
+UPDATE copilot_conversations
+   SET session_id = $2
+ WHERE id = $1
+   AND session_id IS NULL;
+
+-- name: ListConversationsInSession :many
+-- Used by the analyzer to hydrate the session's full turn history.
+SELECT id, user_id, title, model, created_at, updated_at
+  FROM copilot_conversations
+ WHERE session_id = $1
+ ORDER BY created_at ASC, id ASC;
+
+-- =============================================================================
+-- Session reports
+-- =============================================================================
+
+-- name: InitCopilotSessionReport :one
+-- Idempotent — on re-run (duplicate SessionEnded event) keeps the
+-- existing row. Starting state is always 'pending'.
+INSERT INTO copilot_session_reports (session_id, status)
+VALUES ($1, 'pending')
+ON CONFLICT (session_id) DO UPDATE
+   SET updated_at = copilot_session_reports.updated_at
+RETURNING session_id, status, overall_score, section_scores, weaknesses,
+          recommendations, links, report_markdown, report_url,
+          error_message, started_at, finished_at, updated_at;
+
+-- name: GetCopilotSessionReport :one
+SELECT session_id, status, overall_score, section_scores, weaknesses,
+       recommendations, links, report_markdown, report_url,
+       error_message, started_at, finished_at, updated_at
+  FROM copilot_session_reports
+ WHERE session_id = $1;
+
+-- name: MarkCopilotSessionReportRunning :execrows
+UPDATE copilot_session_reports
+   SET status = 'running',
+       started_at = now(),
+       updated_at = now()
+ WHERE session_id = $1
+   AND status = 'pending';
+
+-- name: WriteCopilotSessionReport :execrows
+-- Commits a successful analysis. Status jumps to 'ready' regardless of
+-- prior state — the analyzer owns the transition.
+UPDATE copilot_session_reports
+   SET status = 'ready',
+       overall_score = $2,
+       section_scores = $3,
+       weaknesses = $4,
+       recommendations = $5,
+       links = $6,
+       report_markdown = $7,
+       report_url = $8,
+       finished_at = now(),
+       updated_at = now()
+ WHERE session_id = $1;
+
+-- name: FailCopilotSessionReport :execrows
+UPDATE copilot_session_reports
+   SET status = 'failed',
+       error_message = $2,
+       finished_at = now(),
+       updated_at = now()
+ WHERE session_id = $1;
+
 -- name: UpdateCopilotQuotaPlan :execrows
 -- Called by the billing service (or admin tool) when a user's subscription
 -- changes. Caps and allowed models are plan-derived — callers pass the full

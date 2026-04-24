@@ -2,7 +2,10 @@ import React from 'react';
 import { createRoot } from 'react-dom/client';
 
 import { App } from './app';
+import { initSentryRenderer } from './sentry';
 import './styles/globals.css';
+
+void initSentryRenderer();
 
 declare global {
   interface Window {

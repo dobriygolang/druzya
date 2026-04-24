@@ -17,10 +17,12 @@ mac:
   gatekeeperAssess: false
   entitlements: resources/entitlements.mac.plist
   entitlementsInherit: resources/entitlements.mac.plist
-  # Register the druz9:// URL scheme for Telegram OAuth deep-link callback.
+  # druz9:// URL scheme is no longer used for auth (telegram flow is
+  # pull-based). Left registered so future non-auth deep-links (share
+  # URLs, settings link, etc.) can land here without a rebuild.
   extendInfo:
     CFBundleURLTypes:
-      - CFBundleURLName: Druz9 Copilot Auth
+      - CFBundleURLName: Druz9 Copilot
         CFBundleURLSchemes: [druz9]
     NSScreenCaptureUsageDescription: >-
       Druz9 Copilot captures the area you select so the AI can answer

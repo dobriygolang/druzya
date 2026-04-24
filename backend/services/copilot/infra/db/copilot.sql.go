@@ -11,6 +11,28 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const attachConversationToSession = `-- name: AttachConversationToSession :execrows
+UPDATE copilot_conversations
+   SET session_id = $2
+ WHERE id = $1
+   AND session_id IS NULL
+`
+
+type AttachConversationToSessionParams struct {
+	ID        pgtype.UUID
+	SessionID pgtype.UUID
+}
+
+// Called by Analyze when a live session exists — stamps session_id
+// onto the freshly created conversation.
+func (q *Queries) AttachConversationToSession(ctx context.Context, arg AttachConversationToSessionParams) (int64, error) {
+	result, err := q.db.Exec(ctx, attachConversationToSession, arg.ID, arg.SessionID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const createCopilotConversation = `-- name: CreateCopilotConversation :one
 
 
@@ -25,15 +47,24 @@ type CreateCopilotConversationParams struct {
 	Model  string
 }
 
+type CreateCopilotConversationRow struct {
+	ID        pgtype.UUID
+	UserID    pgtype.UUID
+	Title     string
+	Model     string
+	CreatedAt pgtype.Timestamptz
+	UpdatedAt pgtype.Timestamptz
+}
+
 // Queries consumed by sqlc; mirror hand-rolled pgx in infra/postgres.go.
 // Screenshot bytes are NEVER persisted — the `has_screenshot` flag on
 // copilot_messages is the only record of an image attachment.
 // =============================================================================
 // Conversations
 // =============================================================================
-func (q *Queries) CreateCopilotConversation(ctx context.Context, arg CreateCopilotConversationParams) (CopilotConversation, error) {
+func (q *Queries) CreateCopilotConversation(ctx context.Context, arg CreateCopilotConversationParams) (CreateCopilotConversationRow, error) {
 	row := q.db.QueryRow(ctx, createCopilotConversation, arg.UserID, arg.Title, arg.Model)
-	var i CopilotConversation
+	var i CreateCopilotConversationRow
 	err := row.Scan(
 		&i.ID,
 		&i.UserID,
@@ -41,6 +72,37 @@ func (q *Queries) CreateCopilotConversation(ctx context.Context, arg CreateCopil
 		&i.Model,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const createCopilotSession = `-- name: CreateCopilotSession :one
+
+INSERT INTO copilot_sessions (user_id, kind)
+VALUES ($1, $2)
+RETURNING id, user_id, kind, started_at, finished_at, byok_only
+`
+
+type CreateCopilotSessionParams struct {
+	UserID pgtype.UUID
+	Kind   string
+}
+
+// =============================================================================
+// Sessions
+// =============================================================================
+// A user may have at most one live (finished_at IS NULL) session; the
+// unique partial index enforces this at the DB layer.
+func (q *Queries) CreateCopilotSession(ctx context.Context, arg CreateCopilotSessionParams) (CopilotSession, error) {
+	row := q.db.QueryRow(ctx, createCopilotSession, arg.UserID, arg.Kind)
+	var i CopilotSession
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.Kind,
+		&i.StartedAt,
+		&i.FinishedAt,
+		&i.ByokOnly,
 	)
 	return i, err
 }
@@ -64,15 +126,67 @@ func (q *Queries) DeleteCopilotConversation(ctx context.Context, arg DeleteCopil
 	return result.RowsAffected(), nil
 }
 
+const endCopilotSession = `-- name: EndCopilotSession :execrows
+UPDATE copilot_sessions
+   SET finished_at = now()
+ WHERE id = $1
+   AND user_id = $2
+   AND finished_at IS NULL
+`
+
+type EndCopilotSessionParams struct {
+	ID     pgtype.UUID
+	UserID pgtype.UUID
+}
+
+func (q *Queries) EndCopilotSession(ctx context.Context, arg EndCopilotSessionParams) (int64, error) {
+	result, err := q.db.Exec(ctx, endCopilotSession, arg.ID, arg.UserID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const failCopilotSessionReport = `-- name: FailCopilotSessionReport :execrows
+UPDATE copilot_session_reports
+   SET status = 'failed',
+       error_message = $2,
+       finished_at = now(),
+       updated_at = now()
+ WHERE session_id = $1
+`
+
+type FailCopilotSessionReportParams struct {
+	SessionID    pgtype.UUID
+	ErrorMessage string
+}
+
+func (q *Queries) FailCopilotSessionReport(ctx context.Context, arg FailCopilotSessionReportParams) (int64, error) {
+	result, err := q.db.Exec(ctx, failCopilotSessionReport, arg.SessionID, arg.ErrorMessage)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const getCopilotConversation = `-- name: GetCopilotConversation :one
 SELECT id, user_id, title, model, created_at, updated_at
   FROM copilot_conversations
  WHERE id = $1
 `
 
-func (q *Queries) GetCopilotConversation(ctx context.Context, id pgtype.UUID) (CopilotConversation, error) {
+type GetCopilotConversationRow struct {
+	ID        pgtype.UUID
+	UserID    pgtype.UUID
+	Title     string
+	Model     string
+	CreatedAt pgtype.Timestamptz
+	UpdatedAt pgtype.Timestamptz
+}
+
+func (q *Queries) GetCopilotConversation(ctx context.Context, id pgtype.UUID) (GetCopilotConversationRow, error) {
 	row := q.db.QueryRow(ctx, getCopilotConversation, id)
-	var i CopilotConversation
+	var i GetCopilotConversationRow
 	err := row.Scan(
 		&i.ID,
 		&i.UserID,
@@ -126,6 +240,78 @@ func (q *Queries) GetCopilotQuota(ctx context.Context, userID pgtype.UUID) (Copi
 	return i, err
 }
 
+const getCopilotSession = `-- name: GetCopilotSession :one
+SELECT id, user_id, kind, started_at, finished_at, byok_only
+  FROM copilot_sessions
+ WHERE id = $1
+`
+
+func (q *Queries) GetCopilotSession(ctx context.Context, id pgtype.UUID) (CopilotSession, error) {
+	row := q.db.QueryRow(ctx, getCopilotSession, id)
+	var i CopilotSession
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.Kind,
+		&i.StartedAt,
+		&i.FinishedAt,
+		&i.ByokOnly,
+	)
+	return i, err
+}
+
+const getCopilotSessionReport = `-- name: GetCopilotSessionReport :one
+SELECT session_id, status, overall_score, section_scores, weaknesses,
+       recommendations, links, report_markdown, report_url,
+       error_message, started_at, finished_at, updated_at
+  FROM copilot_session_reports
+ WHERE session_id = $1
+`
+
+func (q *Queries) GetCopilotSessionReport(ctx context.Context, sessionID pgtype.UUID) (CopilotSessionReport, error) {
+	row := q.db.QueryRow(ctx, getCopilotSessionReport, sessionID)
+	var i CopilotSessionReport
+	err := row.Scan(
+		&i.SessionID,
+		&i.Status,
+		&i.OverallScore,
+		&i.SectionScores,
+		&i.Weaknesses,
+		&i.Recommendations,
+		&i.Links,
+		&i.ReportMarkdown,
+		&i.ReportUrl,
+		&i.ErrorMessage,
+		&i.StartedAt,
+		&i.FinishedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const getLiveCopilotSession = `-- name: GetLiveCopilotSession :one
+SELECT id, user_id, kind, started_at, finished_at, byok_only
+  FROM copilot_sessions
+ WHERE user_id = $1
+   AND finished_at IS NULL
+`
+
+// Returns the user's currently-open session, if any. Used by the
+// Analyze use case to auto-attach turns.
+func (q *Queries) GetLiveCopilotSession(ctx context.Context, userID pgtype.UUID) (CopilotSession, error) {
+	row := q.db.QueryRow(ctx, getLiveCopilotSession, userID)
+	var i CopilotSession
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.Kind,
+		&i.StartedAt,
+		&i.FinishedAt,
+		&i.ByokOnly,
+	)
+	return i, err
+}
+
 const incrementCopilotQuotaUsage = `-- name: IncrementCopilotQuotaUsage :execrows
 UPDATE copilot_quotas
    SET requests_used = requests_used + 1,
@@ -142,6 +328,43 @@ func (q *Queries) IncrementCopilotQuotaUsage(ctx context.Context, userID pgtype.
 		return 0, err
 	}
 	return result.RowsAffected(), nil
+}
+
+const initCopilotSessionReport = `-- name: InitCopilotSessionReport :one
+
+INSERT INTO copilot_session_reports (session_id, status)
+VALUES ($1, 'pending')
+ON CONFLICT (session_id) DO UPDATE
+   SET updated_at = copilot_session_reports.updated_at
+RETURNING session_id, status, overall_score, section_scores, weaknesses,
+          recommendations, links, report_markdown, report_url,
+          error_message, started_at, finished_at, updated_at
+`
+
+// =============================================================================
+// Session reports
+// =============================================================================
+// Idempotent — on re-run (duplicate SessionEnded event) keeps the
+// existing row. Starting state is always 'pending'.
+func (q *Queries) InitCopilotSessionReport(ctx context.Context, sessionID pgtype.UUID) (CopilotSessionReport, error) {
+	row := q.db.QueryRow(ctx, initCopilotSessionReport, sessionID)
+	var i CopilotSessionReport
+	err := row.Scan(
+		&i.SessionID,
+		&i.Status,
+		&i.OverallScore,
+		&i.SectionScores,
+		&i.Weaknesses,
+		&i.Recommendations,
+		&i.Links,
+		&i.ReportMarkdown,
+		&i.ReportUrl,
+		&i.ErrorMessage,
+		&i.StartedAt,
+		&i.FinishedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
 }
 
 const insertCopilotMessage = `-- name: InsertCopilotMessage :one
@@ -191,6 +414,50 @@ func (q *Queries) InsertCopilotMessage(ctx context.Context, arg InsertCopilotMes
 		&i.CreatedAt,
 	)
 	return i, err
+}
+
+const listConversationsInSession = `-- name: ListConversationsInSession :many
+SELECT id, user_id, title, model, created_at, updated_at
+  FROM copilot_conversations
+ WHERE session_id = $1
+ ORDER BY created_at ASC, id ASC
+`
+
+type ListConversationsInSessionRow struct {
+	ID        pgtype.UUID
+	UserID    pgtype.UUID
+	Title     string
+	Model     string
+	CreatedAt pgtype.Timestamptz
+	UpdatedAt pgtype.Timestamptz
+}
+
+// Used by the analyzer to hydrate the session's full turn history.
+func (q *Queries) ListConversationsInSession(ctx context.Context, sessionID pgtype.UUID) ([]ListConversationsInSessionRow, error) {
+	rows, err := q.db.Query(ctx, listConversationsInSession, sessionID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListConversationsInSessionRow{}
+	for rows.Next() {
+		var i ListConversationsInSessionRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.UserID,
+			&i.Title,
+			&i.Model,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const listCopilotConversationsForUser = `-- name: ListCopilotConversationsForUser :many
@@ -304,6 +571,115 @@ func (q *Queries) ListCopilotMessagesForConversation(ctx context.Context, conver
 		return nil, err
 	}
 	return items, nil
+}
+
+const listCopilotSessionsForUser = `-- name: ListCopilotSessionsForUser :many
+SELECT s.id, s.user_id, s.kind, s.started_at, s.finished_at, s.byok_only,
+       COALESCE(c.conv_count, 0)::INT AS conversation_count
+  FROM copilot_sessions s
+  LEFT JOIN (
+    SELECT session_id, COUNT(*) AS conv_count
+      FROM copilot_conversations
+     WHERE session_id IS NOT NULL
+     GROUP BY session_id
+  ) c ON c.session_id = s.id
+ WHERE s.user_id = $1
+   AND ($2::TEXT = '' OR s.kind = $2::TEXT)
+   AND (
+     $3::BOOLEAN
+     OR (s.started_at, s.id) < ($4::TIMESTAMPTZ, $5::UUID)
+   )
+ ORDER BY s.started_at DESC, s.id DESC
+ LIMIT $6::INT
+`
+
+type ListCopilotSessionsForUserParams struct {
+	UserID          pgtype.UUID
+	KindFilter      string
+	IsFirstPage     bool
+	CursorStartedAt pgtype.Timestamptz
+	CursorID        pgtype.UUID
+	PageSize        int32
+}
+
+type ListCopilotSessionsForUserRow struct {
+	ID                pgtype.UUID
+	UserID            pgtype.UUID
+	Kind              string
+	StartedAt         pgtype.Timestamptz
+	FinishedAt        pgtype.Timestamptz
+	ByokOnly          bool
+	ConversationCount int32
+}
+
+// Keyset pagination identical in shape to the conversation history query.
+// Filter by kind is optional: pass empty string to return all kinds.
+func (q *Queries) ListCopilotSessionsForUser(ctx context.Context, arg ListCopilotSessionsForUserParams) ([]ListCopilotSessionsForUserRow, error) {
+	rows, err := q.db.Query(ctx, listCopilotSessionsForUser,
+		arg.UserID,
+		arg.KindFilter,
+		arg.IsFirstPage,
+		arg.CursorStartedAt,
+		arg.CursorID,
+		arg.PageSize,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListCopilotSessionsForUserRow{}
+	for rows.Next() {
+		var i ListCopilotSessionsForUserRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.UserID,
+			&i.Kind,
+			&i.StartedAt,
+			&i.FinishedAt,
+			&i.ByokOnly,
+			&i.ConversationCount,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const markCopilotSessionByok = `-- name: MarkCopilotSessionByok :execrows
+UPDATE copilot_sessions
+   SET byok_only = TRUE
+ WHERE id = $1
+   AND byok_only = FALSE
+`
+
+// Called when any turn inside a session used BYOK. Once true, stays true.
+func (q *Queries) MarkCopilotSessionByok(ctx context.Context, id pgtype.UUID) (int64, error) {
+	result, err := q.db.Exec(ctx, markCopilotSessionByok, id)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const markCopilotSessionReportRunning = `-- name: MarkCopilotSessionReportRunning :execrows
+UPDATE copilot_session_reports
+   SET status = 'running',
+       started_at = now(),
+       updated_at = now()
+ WHERE session_id = $1
+   AND status = 'pending'
+`
+
+func (q *Queries) MarkCopilotSessionReportRunning(ctx context.Context, sessionID pgtype.UUID) (int64, error) {
+	result, err := q.db.Exec(ctx, markCopilotSessionReportRunning, sessionID)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }
 
 const rateCopilotMessage = `-- name: RateCopilotMessage :execrows
@@ -471,4 +847,49 @@ func (q *Queries) UpsertCopilotQuotaDefault(ctx context.Context, userID pgtype.U
 		&i.UpdatedAt,
 	)
 	return i, err
+}
+
+const writeCopilotSessionReport = `-- name: WriteCopilotSessionReport :execrows
+UPDATE copilot_session_reports
+   SET status = 'ready',
+       overall_score = $2,
+       section_scores = $3,
+       weaknesses = $4,
+       recommendations = $5,
+       links = $6,
+       report_markdown = $7,
+       report_url = $8,
+       finished_at = now(),
+       updated_at = now()
+ WHERE session_id = $1
+`
+
+type WriteCopilotSessionReportParams struct {
+	SessionID       pgtype.UUID
+	OverallScore    int32
+	SectionScores   []byte
+	Weaknesses      []byte
+	Recommendations []byte
+	Links           []byte
+	ReportMarkdown  string
+	ReportUrl       string
+}
+
+// Commits a successful analysis. Status jumps to 'ready' regardless of
+// prior state — the analyzer owns the transition.
+func (q *Queries) WriteCopilotSessionReport(ctx context.Context, arg WriteCopilotSessionReportParams) (int64, error) {
+	result, err := q.db.Exec(ctx, writeCopilotSessionReport,
+		arg.SessionID,
+		arg.OverallScore,
+		arg.SectionScores,
+		arg.Weaknesses,
+		arg.Recommendations,
+		arg.Links,
+		arg.ReportMarkdown,
+		arg.ReportUrl,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }

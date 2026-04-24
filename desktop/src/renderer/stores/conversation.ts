@@ -13,6 +13,8 @@ import {
 } from '@shared/ipc';
 import type { Message, Quota } from '@shared/types';
 
+import { usePaywallStore } from './paywall';
+
 export interface UIMessage {
   id: string;
   role: 'user' | 'assistant';
@@ -112,6 +114,13 @@ export const useConversationStore = create<State>((set, get) => ({
           : m,
       ),
     }));
+    // Auto-pop the paywall on quota exhaustion. Other error codes stay
+    // inline in the chat bubble — only this one needs an upgrade path.
+    if (ev.code === 'rate_limited') {
+      usePaywallStore.getState().show({
+        reason: 'Лимит запросов на сегодня исчерпан',
+      });
+    }
   },
 
   reset: () =>

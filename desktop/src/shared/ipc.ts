@@ -8,7 +8,12 @@ import type { DesktopConfig, Quota, HotkeyAction, HotkeyBinding } from './types'
 
 /** Channels invoked from renderer → main (request/response). */
 export const invokeChannels = {
-  authLoginTelegram: 'auth:login-telegram',
+  /** Start the Telegram code-flow; returns {code, deepLink, expiresAt}. */
+  authLoginTelegramStart: 'auth:login-telegram-start',
+  /** Blocking poll — resolves with SessionProfile on success. */
+  authLoginTelegramAwait: 'auth:login-telegram-await',
+  /** Abort the in-flight await so the user can restart. */
+  authLoginTelegramCancel: 'auth:login-telegram-cancel',
   authLogout: 'auth:logout',
   authSession: 'auth:session',
 
@@ -33,6 +38,7 @@ export const invokeChannels = {
   windowsShow: 'windows:show',
   windowsHide: 'windows:hide',
   windowsToggleStealth: 'windows:toggle-stealth',
+  windowsResize: 'windows:resize',
 
   permissionsCheck: 'permissions:check',
   permissionsRequest: 'permissions:request',
@@ -60,6 +66,19 @@ export const invokeChannels = {
   updaterStatus: 'updater:status',
   updaterCheck: 'updater:check',
   updaterInstall: 'updater:install',
+
+  shellOpenExternal: 'shell:open-external',
+
+  cursorFreezeState: 'cursor:freeze-state',
+  cursorFreezeToggle: 'cursor:freeze-toggle',
+
+  sessionStart: 'session:start',
+  sessionEnd: 'session:end',
+  sessionCurrent: 'session:current',
+  sessionList: 'session:list',
+  sessionGetAnalysis: 'session:get-analysis',
+  /** Renderer → main reply to sessionRequestLocalTranscript. */
+  sessionSubmitLocalTranscript: 'session:submit-local-transcript',
 } as const;
 
 /** Events pushed from main → renderer. */
@@ -75,6 +94,13 @@ export const eventChannels = {
   authChanged: 'event:auth-changed',
   byokChanged: 'event:byok-changed',
   updateStatus: 'event:update-status',
+  cursorFreezeChanged: 'event:cursor-freeze-changed',
+  sessionChanged: 'event:session-changed',
+  sessionAnalysisReady: 'event:session-analysis-ready',
+  /** Main → renderer request for a serialized local transcript (BYOK
+   *  path). Renderer answers via ipcRenderer.send on
+   *  'session:local-transcript-response'. */
+  sessionRequestLocalTranscript: 'event:session-request-local-transcript',
 } as const;
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -110,6 +136,8 @@ export interface MasqueradePresetInfo {
 // Auto-update types
 // ─────────────────────────────────────────────────────────────────────────
 
+export type CursorFreezeState = 'thawed' | 'frozen' | 'unavailable';
+
 export type UpdateStatus =
   | { kind: 'idle' }
   | { kind: 'checking' }
@@ -125,7 +153,25 @@ export type UpdateStatus =
 
 export interface AuthSession {
   userId: string;
+  username?: string;
+  avatarURL?: string;
   expiresAt: string; // ISO-8601
+}
+
+export interface TelegramLoginStart {
+  /** 8-char Crockford base32. Shown to the user so they can verify the bot. */
+  code: string;
+  /** https://t.me/<bot>?start=<code>. Already opened in the browser by main. */
+  deepLink: string;
+  /** ISO-8601 — after this the code is garbage-collected, start over. */
+  expiresAt: string;
+}
+
+export interface TelegramLoginResult {
+  userId: string;
+  username: string;
+  avatarURL: string;
+  isNewUser: boolean;
 }
 
 export interface CaptureResult {
@@ -164,7 +210,13 @@ export interface PermissionState {
 
 export type PermissionKind = 'screen-recording' | 'accessibility' | 'microphone';
 
-export type WindowName = 'compact' | 'expanded' | 'settings' | 'onboarding' | 'area-overlay';
+export type WindowName =
+  | 'compact'
+  | 'expanded'
+  | 'settings'
+  | 'onboarding'
+  | 'area-overlay'
+  | 'history';
 
 /** Rect selected by the user in the area-picker overlay. Absolute pixels
  *  on the primary display. Returned from `capture:start-area`. */
@@ -224,7 +276,11 @@ export interface AuthChangedEvent {
 
 export interface Druz9API {
   auth: {
-    loginTelegram: () => Promise<AuthSession>;
+    /** Kick off the code-flow and return the code + deep-link. */
+    loginTelegramStart: () => Promise<TelegramLoginStart>;
+    /** Poll for completion; resolves with the new user's profile. */
+    loginTelegramAwait: () => Promise<TelegramLoginResult>;
+    loginTelegramCancel: () => Promise<void>;
     logout: () => Promise<void>;
     session: () => Promise<AuthSession | null>;
   };
@@ -259,6 +315,8 @@ export interface Druz9API {
     show: (name: WindowName) => Promise<void>;
     hide: (name: WindowName) => Promise<void>;
     toggleStealth: (on: boolean) => Promise<void>;
+    /** Animated resize of a floating window; width/height in CSS pixels. */
+    resize: (name: WindowName, width: number, height: number) => Promise<void>;
   };
   permissions: {
     check: () => Promise<PermissionState>;
@@ -266,8 +324,14 @@ export interface Druz9API {
     openSettings: (kind: PermissionKind) => Promise<void>;
   };
   history: {
-    list: (cursor: string, limit: number) => Promise<{ conversations: unknown[]; nextCursor: string }>;
-    get: (id: string) => Promise<unknown>;
+    list: (
+      cursor: string,
+      limit: number,
+    ) => Promise<{ conversations: import('./types').Conversation[]; nextCursor: string }>;
+    get: (id: string) => Promise<{
+      conversation: import('./types').Conversation;
+      messages: import('./types').Message[];
+    }>;
     delete: (id: string) => Promise<void>;
   };
   providers: { list: () => Promise<unknown[]> };
@@ -319,6 +383,47 @@ export interface Druz9API {
     status: () => Promise<UpdateStatus>;
     check: () => Promise<UpdateStatus>;
     install: () => Promise<void>;
+  };
+
+  /** Opens an external URL in the user's default browser. Main-side
+   *  allow-list enforces http/https only. */
+  shell: {
+    openExternal: (url: string) => Promise<void>;
+  };
+
+  /**
+   * Virtual cursor — parks the system cursor at its current position
+   * by warping it back every frame. Requires a native mouse-control
+   * module (robotjs or @nut-tree-fork/libnut); if none is installed,
+   * toggle() returns 'unavailable' and the UI surfaces a hint.
+   */
+  cursor: {
+    state: () => Promise<CursorFreezeState>;
+    toggle: () => Promise<CursorFreezeState>;
+  };
+
+  /**
+   * Sessions (Phase 12) — explicit group-of-conversations for post-
+   * analysis. BYOK users get an in-process analyzer; everyone else
+   * gets a server-driven one with the report at `reportUrl`.
+   */
+  sessions: {
+    start: (
+      kind: import('./types').SessionKind,
+    ) => Promise<import('./types').Session>;
+    end: () => Promise<import('./types').Session | null>;
+    current: () => Promise<import('./types').Session | null>;
+    list: (
+      cursor: string,
+      limit: number,
+      kind?: import('./types').SessionKind,
+    ) => Promise<{ sessions: import('./types').Session[]; nextCursor: string }>;
+    getAnalysis: (
+      sessionId: string,
+    ) => Promise<import('./types').SessionAnalysis>;
+    /** Renderer → main: reply to sessionRequestLocalTranscript event
+     *  with a Markdown dump of the in-memory turns. Fire-and-forget. */
+    submitLocalTranscript: (markdown: string) => void;
   };
 
   /** Subscribe to a main-process event. Returns an unsubscribe function. */

@@ -7,12 +7,14 @@
 
 import { useEffect, useRef, useState } from 'react';
 
-import { BrandMark, IconCamera, IconChevronDown, IconClose, IconCopy, IconMinimize, IconSend } from '../../components/icons';
+import { BrandMark, IconCamera, IconChevronDown, IconClose, IconCopy, IconHistory, IconMinimize, IconSend } from '../../components/icons';
 import { IconButton, Kbd, StatusDot } from '../../components/primitives';
 import { ProviderPicker } from '../../components/ProviderPicker';
+import { SessionReportView } from '../../components/SessionReportView';
 import { useConfig } from '../../hooks/use-config';
 import { useConversationStore, type UIMessage } from '../../stores/conversation';
 import { useSelectedModelStore } from '../../stores/selected-model';
+import { useSessionStore } from '../../stores/session';
 
 export function ExpandedScreen() {
   const { config } = useConfig();
@@ -23,13 +25,20 @@ export function ExpandedScreen() {
   const beginTurn = useConversationStore((s) => s.beginTurn);
 
   const selectedModel = useSelectedModelStore((s) => s.modelId);
+  const lastAnalysis = useSessionStore((s) => s.lastAnalysis);
+  const sessionBootstrap = useSessionStore((s) => s.bootstrap);
   const [draft, setDraft] = useState('');
   const [pickerOpen, setPickerOpen] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    return bootstrap();
-  }, [bootstrap]);
+    const unsubConv = bootstrap();
+    const unsubSession = sessionBootstrap();
+    return () => {
+      unsubConv();
+      unsubSession();
+    };
+  }, [bootstrap, sessionBootstrap]);
 
   useEffect(() => {
     // Pin to bottom while streaming. When the user manually scrolls away
@@ -121,6 +130,9 @@ export function ExpandedScreen() {
         </button>
         <div style={{ flex: 1 }} />
         <div style={{ display: 'flex', gap: 2, WebkitAppRegion: 'no-drag' } as React.CSSProperties}>
+          <IconButton title="История" onClick={() => void window.druz9.windows.show('history')}>
+            <IconHistory size={15} />
+          </IconButton>
           <IconButton title="Свернуть" onClick={() => void window.druz9.windows.hide('expanded')}>
             <IconMinimize size={15} />
           </IconButton>
@@ -145,7 +157,13 @@ export function ExpandedScreen() {
           gap: 14,
         }}
       >
-        {messages.length === 0 && <EmptyState />}
+        {/* Session report takes precedence over the empty state — when
+            BYOK analysis lands, the user probably wants to see it
+            instead of a "press Cmd+Shift+S" prompt. */}
+        {messages.length === 0 && lastAnalysis && !lastAnalysis.reportUrl && (
+          <SessionReportView analysis={lastAnalysis} />
+        )}
+        {messages.length === 0 && !lastAnalysis && <EmptyState />}
         {messages.map((m) => (
           <MessageBubble key={m.id} m={m} />
         ))}

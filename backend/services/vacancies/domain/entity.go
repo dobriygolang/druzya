@@ -142,6 +142,12 @@ type Vacancy struct {
 	PostedAt         *time.Time `json:"posted_at,omitempty"`
 	FetchedAt        time.Time  `json:"fetched_at"`
 	RawJSON          []byte     `json:"-"`
+
+	// DetailsKey is the source-specific identifier the per-source detail
+	// fetcher needs when it differs from ExternalID. Currently only MTS
+	// uses it (their detail endpoint is keyed on slug, not numeric id).
+	// Empty for sources where ExternalID itself is the detail key.
+	DetailsKey string `json:"-"`
 }
 
 // SavedVacancy is the per-user kanban row. The Snapshot is what the kanban

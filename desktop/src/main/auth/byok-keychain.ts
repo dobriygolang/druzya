@@ -5,7 +5,9 @@
 // by main-process code that constructs LLM requests on the user's behalf.
 // `list()` returns presence booleans and nothing else.
 
-import keytar from 'keytar';
+// createRequire — see ../auth/keychain.ts for the rationale.
+import { createRequire } from 'node:module';
+const keytar = createRequire(import.meta.url)('keytar') as typeof import('keytar');
 
 const SERVICE = 'app.druzya.copilot';
 

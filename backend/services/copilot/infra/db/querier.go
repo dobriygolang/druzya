@@ -11,15 +11,26 @@ import (
 )
 
 type Querier interface {
+	// Called by Analyze when a live session exists — stamps session_id
+	// onto the freshly created conversation.
+	AttachConversationToSession(ctx context.Context, arg AttachConversationToSessionParams) (int64, error)
 	// Queries consumed by sqlc; mirror hand-rolled pgx in infra/postgres.go.
 	// Screenshot bytes are NEVER persisted — the `has_screenshot` flag on
 	// copilot_messages is the only record of an image attachment.
 	// =============================================================================
 	// Conversations
 	// =============================================================================
-	CreateCopilotConversation(ctx context.Context, arg CreateCopilotConversationParams) (CopilotConversation, error)
+	CreateCopilotConversation(ctx context.Context, arg CreateCopilotConversationParams) (CreateCopilotConversationRow, error)
+	// =============================================================================
+	// Sessions
+	// =============================================================================
+	// A user may have at most one live (finished_at IS NULL) session; the
+	// unique partial index enforces this at the DB layer.
+	CreateCopilotSession(ctx context.Context, arg CreateCopilotSessionParams) (CopilotSession, error)
 	DeleteCopilotConversation(ctx context.Context, arg DeleteCopilotConversationParams) (int64, error)
-	GetCopilotConversation(ctx context.Context, id pgtype.UUID) (CopilotConversation, error)
+	EndCopilotSession(ctx context.Context, arg EndCopilotSessionParams) (int64, error)
+	FailCopilotSessionReport(ctx context.Context, arg FailCopilotSessionReportParams) (int64, error)
+	GetCopilotConversation(ctx context.Context, id pgtype.UUID) (GetCopilotConversationRow, error)
 	// Used by the app layer to enforce ownership before calling RateCopilotMessage.
 	// Returns the user_id of the conversation that owns this message.
 	GetCopilotMessageOwner(ctx context.Context, id pgtype.UUID) (pgtype.UUID, error)
@@ -27,20 +38,39 @@ type Querier interface {
 	// Quotas
 	// =============================================================================
 	GetCopilotQuota(ctx context.Context, userID pgtype.UUID) (CopilotQuota, error)
+	GetCopilotSession(ctx context.Context, id pgtype.UUID) (CopilotSession, error)
+	GetCopilotSessionReport(ctx context.Context, sessionID pgtype.UUID) (CopilotSessionReport, error)
+	// Returns the user's currently-open session, if any. Used by the
+	// Analyze use case to auto-attach turns.
+	GetLiveCopilotSession(ctx context.Context, userID pgtype.UUID) (CopilotSession, error)
 	// Called inside the Analyze / Chat transaction after a successful LLM call.
 	// The app layer checks (requests_used < requests_cap OR requests_cap < 0)
 	// before calling.
 	IncrementCopilotQuotaUsage(ctx context.Context, userID pgtype.UUID) (int64, error)
 	// =============================================================================
+	// Session reports
+	// =============================================================================
+	// Idempotent — on re-run (duplicate SessionEnded event) keeps the
+	// existing row. Starting state is always 'pending'.
+	InitCopilotSessionReport(ctx context.Context, sessionID pgtype.UUID) (CopilotSessionReport, error)
+	// =============================================================================
 	// Messages
 	// =============================================================================
 	InsertCopilotMessage(ctx context.Context, arg InsertCopilotMessageParams) (CopilotMessage, error)
+	// Used by the analyzer to hydrate the session's full turn history.
+	ListConversationsInSession(ctx context.Context, sessionID pgtype.UUID) ([]ListConversationsInSessionRow, error)
 	// Keyset pagination by updated_at DESC, id DESC (stable order).
 	// Passing zero-value cursor (cursor_updated_at = 'epoch', cursor_id = all-zeros
 	// UUID) returns the newest page. The $4 epoch flag lets the caller request
 	// "page 1" without synthesizing a bogus timestamp.
 	ListCopilotConversationsForUser(ctx context.Context, arg ListCopilotConversationsForUserParams) ([]ListCopilotConversationsForUserRow, error)
 	ListCopilotMessagesForConversation(ctx context.Context, conversationID pgtype.UUID) ([]CopilotMessage, error)
+	// Keyset pagination identical in shape to the conversation history query.
+	// Filter by kind is optional: pass empty string to return all kinds.
+	ListCopilotSessionsForUser(ctx context.Context, arg ListCopilotSessionsForUserParams) ([]ListCopilotSessionsForUserRow, error)
+	// Called when any turn inside a session used BYOK. Once true, stays true.
+	MarkCopilotSessionByok(ctx context.Context, id pgtype.UUID) (int64, error)
+	MarkCopilotSessionReportRunning(ctx context.Context, sessionID pgtype.UUID) (int64, error)
 	// Updates the rating on an assistant message. user_id guard is enforced by
 	// joining to the parent conversation — sqlc cannot express that in one query,
 	// so the app layer calls GetCopilotMessageOwner first.
@@ -60,6 +90,9 @@ type Querier interface {
 	// Lazily creates a free-tier quota row on first use. Idempotent: if a row
 	// already exists, returns it unchanged.
 	UpsertCopilotQuotaDefault(ctx context.Context, userID pgtype.UUID) (CopilotQuota, error)
+	// Commits a successful analysis. Status jumps to 'ready' regardless of
+	// prior state — the analyzer owns the transition.
+	WriteCopilotSessionReport(ctx context.Context, arg WriteCopilotSessionReportParams) (int64, error)
 }
 
 var _ Querier = (*Queries)(nil)

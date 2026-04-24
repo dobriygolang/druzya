@@ -325,15 +325,51 @@ func (r *Quotas) UpdatePlan(ctx context.Context, userID uuid.UUID, plan enums.Su
 // Row → domain conversions
 // ─────────────────────────────────────────────────────────────────────────
 
-func conversationFromRow(r copilotdb.CopilotConversation) domain.Conversation {
-	return domain.Conversation{
-		ID:        fromPgUUID(r.ID),
-		UserID:    fromPgUUID(r.UserID),
-		Title:     r.Title,
-		Model:     r.Model,
-		CreatedAt: r.CreatedAt.Time,
-		UpdatedAt: r.UpdatedAt.Time,
+// conversationRowLike is the minimum shape the Create/Get sqlc rows have
+// in common. Generated Create/Get row types are structurally identical
+// to `copilotdb.CopilotConversation` for our callers, but sqlc emits
+// distinct named types when the query doesn't select * — so we match
+// by field rather than by nominal type.
+type conversationRowLike interface {
+	copilotdb.CreateCopilotConversationRow | copilotdb.GetCopilotConversationRow | copilotdb.CopilotConversation
+}
+
+func conversationFromRow[R conversationRowLike](r R) domain.Conversation {
+	// We destructure via a type switch because each concrete type has
+	// identical fields but is a distinct named type. Generic constraints
+	// can't enforce field access yet (Go 1.25 still no type sets with
+	// field access), so we pay one switch per conversion.
+	switch v := any(r).(type) {
+	case copilotdb.CreateCopilotConversationRow:
+		return domain.Conversation{
+			ID:        fromPgUUID(v.ID),
+			UserID:    fromPgUUID(v.UserID),
+			Title:     v.Title,
+			Model:     v.Model,
+			CreatedAt: v.CreatedAt.Time,
+			UpdatedAt: v.UpdatedAt.Time,
+		}
+	case copilotdb.GetCopilotConversationRow:
+		return domain.Conversation{
+			ID:        fromPgUUID(v.ID),
+			UserID:    fromPgUUID(v.UserID),
+			Title:     v.Title,
+			Model:     v.Model,
+			CreatedAt: v.CreatedAt.Time,
+			UpdatedAt: v.UpdatedAt.Time,
+		}
+	case copilotdb.CopilotConversation:
+		return domain.Conversation{
+			ID:        fromPgUUID(v.ID),
+			UserID:    fromPgUUID(v.UserID),
+			Title:     v.Title,
+			Model:     v.Model,
+			CreatedAt: v.CreatedAt.Time,
+			UpdatedAt: v.UpdatedAt.Time,
+		}
 	}
+	// Unreachable — the type set guards this.
+	return domain.Conversation{}
 }
 
 func messageFromRow(r copilotdb.CopilotMessage) domain.Message {

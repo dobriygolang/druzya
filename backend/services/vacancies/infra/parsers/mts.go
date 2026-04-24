@@ -206,6 +206,7 @@ func decodeMTSVacancies(body []byte) ([]domain.Vacancy, error) {
 		out = append(out, domain.Vacancy{
 			Source:           domain.SourceMTS,
 			ExternalID:       strconv.FormatInt(it.ID, 10),
+			DetailsKey:       it.Slug,
 			Title:            it.Title,
 			Company:          company,
 			Location:         it.Region.Title,

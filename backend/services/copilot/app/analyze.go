@@ -120,6 +120,9 @@ type Analyze struct {
 	Quotas        domain.QuotaRepo
 	LLM           domain.LLMProvider
 	Config        domain.ConfigProvider
+	// Sessions is optional. When non-nil, new conversations created by
+	// this handler are auto-attached to the user's live session (if any).
+	Sessions domain.SessionRepo
 
 	Log *slog.Logger
 	Now func() time.Time
@@ -178,6 +181,18 @@ func (uc *Analyze) Do(ctx context.Context, in AnalyzeInput) (<-chan StreamFrame,
 		conv, err = uc.Conversations.Create(ctx, in.UserID, deriveTitle(in.PromptText), model)
 		if err != nil {
 			return nil, fmt.Errorf("copilot.Analyze: create conversation: %w", err)
+		}
+		// Auto-attach to the user's live session if one exists. This is
+		// best-effort: a failure here does NOT roll back the
+		// conversation create — the turn still succeeds, the session
+		// just misses one conversation.
+		if uc.Sessions != nil {
+			if live, lerr := uc.Sessions.GetLive(ctx, in.UserID); lerr == nil {
+				if aerr := uc.Sessions.AttachConversation(ctx, conv.ID, live.ID); aerr != nil && uc.Log != nil {
+					uc.Log.Warn("copilot.Analyze: attach to live session failed",
+						"err", aerr, "conv", conv.ID, "session", live.ID)
+				}
+			}
 		}
 	} else {
 		conv, err = uc.Conversations.Get(ctx, in.ConversationID)

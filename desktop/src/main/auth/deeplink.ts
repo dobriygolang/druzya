@@ -1,71 +1,10 @@
-// druz9:// URL scheme handler. Telegram login widget redirects the browser
-// to druz9://auth/telegram?access_token=...&refresh_token=...&user_id=...
-// &expires_at=...; macOS hands that URL to the running Electron instance
-// (or launches it if cold) and we feed it back through this parser.
+// Legacy — the desktop used to receive a druz9://auth/telegram?token=…
+// callback from the frontend. That pattern did NOT match the Druzya
+// backend (which is pull-based via /auth/telegram/start + /poll), so
+// this module is reduced to a stub until a non-auth deep-link use
+// case appears (e.g. opening a conversation by link from a share URL).
 
-import { app, BrowserWindow } from 'electron';
-
-import { saveSession, type StoredSession } from './keychain';
-
-const SCHEME = 'druz9';
-
-export type DeepLinkListener = (session: StoredSession) => void;
-
-let listener: DeepLinkListener | null = null;
-
-/** Registers the protocol and begins listening for login callbacks. */
-export function registerDeepLinks(onLogin: DeepLinkListener): void {
-  listener = onLogin;
-
-  // Register as the default handler for druz9://.
-  if (process.defaultApp) {
-    if (process.argv.length >= 2) {
-      app.setAsDefaultProtocolClient(SCHEME, process.execPath, [process.argv[1]!]);
-    }
-  } else {
-    app.setAsDefaultProtocolClient(SCHEME);
-  }
-
-  app.on('open-url', (event, url) => {
-    event.preventDefault();
-    void handleCallbackURL(url);
-  });
-
-  // Windows/Linux: protocol URLs arrive via second-instance arguments.
-  app.on('second-instance', (_event, argv) => {
-    const url = argv.find((a) => a.startsWith(`${SCHEME}://`));
-    if (url) {
-      void handleCallbackURL(url);
-    }
-    // Foreground whatever window is open so the user sees the result.
-    const win = BrowserWindow.getAllWindows()[0];
-    if (win) {
-      if (win.isMinimized()) win.restore();
-      win.focus();
-    }
-  });
-}
-
-async function handleCallbackURL(rawURL: string): Promise<void> {
-  const parsed = safeParseURL(rawURL);
-  if (!parsed) return;
-  if (parsed.host !== 'auth' || !parsed.pathname.startsWith('/telegram')) return;
-
-  const accessToken = parsed.searchParams.get('access_token');
-  const refreshToken = parsed.searchParams.get('refresh_token');
-  const userId = parsed.searchParams.get('user_id');
-  const expiresAt = parsed.searchParams.get('expires_at');
-  if (!accessToken || !refreshToken || !userId || !expiresAt) return;
-
-  const session: StoredSession = { accessToken, refreshToken, userId, expiresAt };
-  await saveSession(session);
-  listener?.(session);
-}
-
-function safeParseURL(raw: string): URL | null {
-  try {
-    return new URL(raw);
-  } catch {
-    return null;
-  }
+/** Placeholder — no-op. See main/auth/telegram-code.ts for the real login flow. */
+export function registerDeepLinks(_: unknown): void {
+  // Intentionally empty.
 }

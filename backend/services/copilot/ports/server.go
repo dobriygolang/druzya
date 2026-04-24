@@ -47,10 +47,18 @@ type CopilotServer struct {
 	GetDesktopConfigUC *app.GetDesktopConfig
 	RateMessageUC      *app.RateMessage
 
+	// Sessions (Phase 12).
+	StartSessionUC       *app.StartSession
+	EndSessionUC         *app.EndSession
+	GetSessionAnalysisUC *app.GetSessionAnalysis
+	ListSessionsUC       *app.ListSessions
+
 	Log *slog.Logger
 }
 
-// NewCopilotServer wires the server.
+// NewCopilotServer wires the server. Session-related use cases are
+// optional to ease migration — passing nil for any of them causes the
+// corresponding RPC to return CodeUnimplemented at runtime.
 func NewCopilotServer(
 	analyze *app.Analyze,
 	chat *app.Chat,
@@ -61,19 +69,27 @@ func NewCopilotServer(
 	getQuota *app.GetQuota,
 	getConfig *app.GetDesktopConfig,
 	rate *app.RateMessage,
+	startSession *app.StartSession,
+	endSession *app.EndSession,
+	getAnalysis *app.GetSessionAnalysis,
+	listSessions *app.ListSessions,
 	log *slog.Logger,
 ) *CopilotServer {
 	return &CopilotServer{
-		AnalyzeUC:          analyze,
-		ChatUC:             chat,
-		ListHistoryUC:      listHistory,
-		GetConversationUC:  getConv,
-		DeleteConvUC:       deleteConv,
-		ListProvidersUC:    listProviders,
-		GetQuotaUC:         getQuota,
-		GetDesktopConfigUC: getConfig,
-		RateMessageUC:      rate,
-		Log:                log,
+		AnalyzeUC:            analyze,
+		ChatUC:               chat,
+		ListHistoryUC:        listHistory,
+		GetConversationUC:    getConv,
+		DeleteConvUC:         deleteConv,
+		ListProvidersUC:      listProviders,
+		GetQuotaUC:           getQuota,
+		GetDesktopConfigUC:   getConfig,
+		RateMessageUC:        rate,
+		StartSessionUC:       startSession,
+		EndSessionUC:         endSession,
+		GetSessionAnalysisUC: getAnalysis,
+		ListSessionsUC:       listSessions,
+		Log:                  log,
 	}
 }
 
@@ -259,6 +275,94 @@ func (s *CopilotServer) GetDesktopConfig(
 		return nil, s.toConnectErr(err)
 	}
 	return connect.NewResponse(desktopConfigToProto(cfg)), nil
+}
+
+// StartSession — POST /api/v1/copilot/sessions.
+func (s *CopilotServer) StartSession(
+	ctx context.Context,
+	req *connect.Request[pb.StartCopilotSessionRequest],
+) (*connect.Response[pb.CopilotSession], error) {
+	uid, ok := sharedMw.UserIDFromContext(ctx)
+	if !ok {
+		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("unauthenticated"))
+	}
+	out, err := s.StartSessionUC.Do(ctx, app.StartSessionInput{
+		UserID: uid,
+		Kind:   sessionKindFromProto(req.Msg.GetKind()),
+	})
+	if err != nil {
+		if errors.Is(err, domain.ErrLiveSessionExists) {
+			return nil, connect.NewError(connect.CodeFailedPrecondition, err)
+		}
+		return nil, s.toConnectErr(err)
+	}
+	return connect.NewResponse(sessionToProto(out, 0)), nil
+}
+
+// EndSession — POST /api/v1/copilot/sessions/{id}/end.
+func (s *CopilotServer) EndSession(
+	ctx context.Context,
+	req *connect.Request[pb.EndCopilotSessionRequest],
+) (*connect.Response[pb.CopilotSession], error) {
+	uid, ok := sharedMw.UserIDFromContext(ctx)
+	if !ok {
+		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("unauthenticated"))
+	}
+	id, err := uuid.Parse(req.Msg.GetSessionId())
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("invalid session_id: %w", err))
+	}
+	out, err := s.EndSessionUC.Do(ctx, app.EndSessionInput{UserID: uid, SessionID: id})
+	if err != nil {
+		return nil, s.toConnectErr(err)
+	}
+	return connect.NewResponse(sessionToProto(out, 0)), nil
+}
+
+// GetSessionAnalysis — GET /api/v1/copilot/sessions/{id}/analysis.
+func (s *CopilotServer) GetSessionAnalysis(
+	ctx context.Context,
+	req *connect.Request[pb.GetCopilotSessionAnalysisRequest],
+) (*connect.Response[pb.CopilotSessionAnalysis], error) {
+	uid, ok := sharedMw.UserIDFromContext(ctx)
+	if !ok {
+		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("unauthenticated"))
+	}
+	id, err := uuid.Parse(req.Msg.GetSessionId())
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("invalid session_id: %w", err))
+	}
+	r, err := s.GetSessionAnalysisUC.Do(ctx, app.GetSessionAnalysisInput{UserID: uid, SessionID: id})
+	if err != nil {
+		return nil, s.toConnectErr(err)
+	}
+	return connect.NewResponse(reportToProto(r)), nil
+}
+
+// ListSessions — GET /api/v1/copilot/sessions.
+func (s *CopilotServer) ListSessions(
+	ctx context.Context,
+	req *connect.Request[pb.ListCopilotSessionsRequest],
+) (*connect.Response[pb.ListCopilotSessionsResponse], error) {
+	uid, ok := sharedMw.UserIDFromContext(ctx)
+	if !ok {
+		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("unauthenticated"))
+	}
+	out, err := s.ListSessionsUC.Do(ctx, app.ListSessionsInput{
+		UserID: uid,
+		Kind:   sessionKindFromProto(req.Msg.GetKind()),
+		Cursor: domain.Cursor(req.Msg.GetCursor()),
+		Limit:  int(req.Msg.GetLimit()),
+	})
+	if err != nil {
+		return nil, s.toConnectErr(err)
+	}
+	resp := &pb.ListCopilotSessionsResponse{NextCursor: string(out.NextCursor)}
+	resp.Sessions = make([]*pb.CopilotSession, 0, len(out.Sessions))
+	for _, ss := range out.Sessions {
+		resp.Sessions = append(resp.Sessions, sessionSummaryToProto(ss))
+	}
+	return connect.NewResponse(resp), nil
 }
 
 // RateMessage records thumbs-up/down/clear on an assistant message.

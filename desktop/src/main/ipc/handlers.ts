@@ -1,7 +1,7 @@
 // All IPC invoke handlers live here. Channel names come from @shared/ipc
 // so main and renderer share a single source of truth.
 
-import { ipcMain } from 'electron';
+import { ipcMain, shell } from 'electron';
 
 import {
   eventChannels,
@@ -19,6 +19,10 @@ import type { HotkeyBinding } from '@shared/types';
 
 import { clearSession, loadSession } from '../auth/keychain';
 import {
+  createTelegramCodeClient,
+  type TelegramCodeClient,
+} from '../auth/telegram-code';
+import {
   deleteKey as byokDelete,
   listPresence,
   loadKey as byokLoad,
@@ -28,6 +32,12 @@ import {
 import { AnthropicProvider } from '../api/providers/anthropic';
 import { OpenAIProvider } from '../api/providers/openai';
 import { transcribe } from '../api/providers/whisper';
+import { currentState as cursorState, toggle as cursorToggle } from '../cursor/freeze-js';
+import { createSessionsClient } from '../api/sessions';
+import { createSessionManager, type SessionManager } from '../sessions/manager';
+import { runByokAnalysis } from '../sessions/byok-analyzer';
+import { listPresence as byokListPresence } from '../auth/byok-keychain';
+import type { SessionKind } from '@shared/types';
 import { applyPreset, getCurrent, listPresets, type MasqueradePreset } from '../masquerade';
 import { checkNow, getStatus, installNow } from '../updater';
 import { captureArea, captureFullScreen } from '../capture/screenshot';
@@ -37,7 +47,13 @@ import {
   openPermissionPane,
   requestPermission,
 } from '../permissions/macos';
-import { broadcast, hideWindow, setStealth, showWindow } from '../windows/window-manager';
+import {
+  broadcast,
+  hideWindow,
+  resizeWindow,
+  setStealth,
+  showWindow,
+} from '../windows/window-manager';
 import type { WindowOptions } from '../windows/window-manager';
 
 import type { CopilotClient } from '../api/client';
@@ -56,28 +72,123 @@ export interface RegisterOptions {
   cancelAnalyze: (streamId: string) => void;
   /** Path to the `resources/` folder — needed for masquerade icon swap. */
   resourcesPath: string;
+  /** Backend base URL — the telegram login code-flow needs it directly. */
+  apiBaseURL: string;
+}
+
+// Exported so main/index.ts can dispose the manager on app quit.
+let sessionManager: SessionManager | null = null;
+export function getSessionManager(): SessionManager | null {
+  return sessionManager;
 }
 
 export function registerHandlers(opts: RegisterOptions): void {
-  const { client, windowOptions, startAnalyze, cancelAnalyze, resourcesPath } = opts;
+  const { client, windowOptions, startAnalyze, cancelAnalyze, resourcesPath, apiBaseURL } = opts;
+
+  const telegramClient: TelegramCodeClient = createTelegramCodeClient(apiBaseURL);
+
+  // Sessions manager lives for the app lifetime. The BYOK hook reads
+  // the live conversation-store transcript via IPC at analysis time
+  // (registered below under session:request-byok-transcript).
+  let pendingByokTranscript: string | null = null;
+  // The REST client only needs apiBaseURL; the other RuntimeConfig
+  // fields are irrelevant here, so we construct a minimal object.
+  const sessionsREST = createSessionsClient({
+    apiBaseURL,
+    updateFeedURL: '',
+    sentryDSN: '',
+    environment: '',
+    defaultLocale: 'ru',
+    isDev: false,
+  });
+  sessionManager = createSessionManager({
+    client: sessionsREST,
+    isByokActive: async () => {
+      const p = await byokListPresence();
+      return p.openai || p.anthropic;
+    },
+    runLocalAnalysis: async (session) => {
+      // Ask the renderer to serialize the session's local turns.
+      // Renderer responds synchronously via the session:local-transcript
+      // event it registered at startup. Timeout at 2s — if the renderer
+      // didn't answer, fall back to an empty transcript (the analyzer
+      // will produce a "too short" report).
+      pendingByokTranscript = null;
+      broadcast(eventChannels.sessionRequestLocalTranscript, { sessionId: session.id });
+      const deadline = Date.now() + 2000;
+      while (Date.now() < deadline && pendingByokTranscript === null) {
+        await new Promise((r) => setTimeout(r, 50));
+      }
+      const markdown = pendingByokTranscript ?? '';
+      pendingByokTranscript = null;
+      return runByokAnalysis(session, { markdown });
+    },
+  });
+  ipcMain.on(invokeChannels.sessionSubmitLocalTranscript, (_evt, payload: { markdown: string }) => {
+    pendingByokTranscript = payload?.markdown ?? '';
+  });
+  // At most one in-flight login attempt. Starting a new one aborts the
+  // previous awaitCompletion so the poll loop stops.
+  let loginAbort: AbortController | null = null;
+  let lastStartedCode: string | null = null;
 
   // ── Auth ──
   ipcMain.handle(invokeChannels.authSession, async () => {
     const s = await loadSession();
     if (!s) return null;
-    return { userId: s.userId, expiresAt: s.expiresAt };
+    return {
+      userId: s.profile.userId,
+      username: s.profile.username,
+      avatarURL: s.profile.avatarURL,
+      expiresAt: s.expiresAt,
+    };
   });
   ipcMain.handle(invokeChannels.authLogout, async () => {
+    loginAbort?.abort();
+    loginAbort = null;
     await clearSession();
+    broadcast(eventChannels.authChanged, { session: null });
   });
-  ipcMain.handle(invokeChannels.authLoginTelegram, async () => {
-    // Opens a browser to the Telegram widget; the deep-link handler in
-    // auth/deeplink.ts stores the session and we re-read it here.
-    // MVP stub: return current session; the real login is initiated by
-    // the renderer via windows/onboarding.
-    const s = await loadSession();
-    if (!s) throw new Error('not logged in');
-    return { userId: s.userId, expiresAt: s.expiresAt };
+  ipcMain.handle(invokeChannels.authLoginTelegramStart, async () => {
+    loginAbort?.abort();
+    loginAbort = new AbortController();
+    const started = await telegramClient.start();
+    lastStartedCode = started.code;
+    return {
+      code: started.code,
+      deepLink: started.deepLink,
+      expiresAt: started.expiresAt,
+    };
+  });
+  ipcMain.handle(invokeChannels.authLoginTelegramAwait, async () => {
+    if (!loginAbort) throw new Error('no login in progress');
+    // The renderer typically calls start() then immediately await(), so
+    // we don't need the code — it's whatever the last start() returned.
+    // Stash it inside the client in a production setup; for MVP we
+    // accept only one concurrent login and reuse the same abort signal.
+    const code = lastStartedCode;
+    if (!code) throw new Error('no login in progress');
+    try {
+      const profile = await telegramClient.awaitCompletion(code, loginAbort.signal);
+      // Notify all windows so they can react (e.g. close onboarding).
+      broadcast(eventChannels.authChanged, {
+        session: {
+          userId: profile.userId,
+          username: profile.username,
+          avatarURL: profile.avatarURL,
+          expiresAt: (await loadSession())?.expiresAt ?? '',
+        },
+      });
+      return profile;
+    } finally {
+      loginAbort = null;
+      lastStartedCode = null;
+    }
+  });
+  ipcMain.handle(invokeChannels.authLoginTelegramCancel, async () => {
+    loginAbort?.abort();
+    loginAbort = null;
+    lastStartedCode = null;
   });
 
   // ── Config ──
@@ -171,6 +282,12 @@ export function registerHandlers(opts: RegisterOptions): void {
   ipcMain.handle(invokeChannels.windowsToggleStealth, async (_evt, on: boolean) => {
     setStealth(on);
   });
+  ipcMain.handle(
+    invokeChannels.windowsResize,
+    async (_evt, name: WindowName, width: number, height: number) => {
+      resizeWindow(name, width, height);
+    },
+  );
 
   // ── Permissions ──
   ipcMain.handle(invokeChannels.permissionsCheck, async () => checkPermissions());
@@ -185,12 +302,16 @@ export function registerHandlers(opts: RegisterOptions): void {
   ipcMain.handle(invokeChannels.historyList, async (_evt, cursor: string, limit: number) => {
     const resp = await client.listHistory({ cursor, limit });
     return {
-      conversations: resp.conversations,
+      conversations: resp.conversations.map(mapConversationPB),
       nextCursor: resp.nextCursor,
     };
   });
   ipcMain.handle(invokeChannels.historyGet, async (_evt, id: string) => {
-    return client.getConversation({ id });
+    const resp = await client.getConversation({ id });
+    return {
+      conversation: mapConversationPB(resp.conversation),
+      messages: (resp.messages ?? []).map(mapMessagePB),
+    };
   });
   ipcMain.handle(invokeChannels.historyDelete, async (_evt, id: string) => {
     await client.deleteConversation({ id });
@@ -261,6 +382,45 @@ export function registerHandlers(opts: RegisterOptions): void {
   ipcMain.handle(invokeChannels.updaterCheck, async () => checkNow());
   ipcMain.handle(invokeChannels.updaterInstall, async () => installNow());
 
+  // ── Shell ── (narrow surface: http/https only, rejects other schemes).
+  ipcMain.handle(invokeChannels.shellOpenExternal, async (_evt, url: string) => {
+    if (!/^https?:\/\//i.test(url)) return;
+    await shell.openExternal(url);
+  });
+
+  // ── Cursor freeze ── (the "virtual cursor" UX)
+  ipcMain.handle(invokeChannels.cursorFreezeState, async () => cursorState());
+  ipcMain.handle(invokeChannels.cursorFreezeToggle, async () => {
+    const next = await cursorToggle();
+    broadcast(eventChannels.cursorFreezeChanged, next);
+    return next;
+  });
+
+  // ── Sessions (Phase 12) ──
+  ipcMain.handle(invokeChannels.sessionStart, async (_evt, kind: SessionKind) => {
+    if (!sessionManager) throw new Error('sessions disabled');
+    return sessionManager.start(kind);
+  });
+  ipcMain.handle(invokeChannels.sessionEnd, async () => {
+    if (!sessionManager) return null;
+    return sessionManager.end();
+  });
+  ipcMain.handle(invokeChannels.sessionCurrent, async () => {
+    if (!sessionManager) return null;
+    return sessionManager.current();
+  });
+  ipcMain.handle(
+    invokeChannels.sessionList,
+    async (_evt, cursor: string, limit: number, kind?: SessionKind) => {
+      if (!sessionManager) return { sessions: [], nextCursor: '' };
+      return sessionManager.list(cursor, limit, kind);
+    },
+  );
+  ipcMain.handle(invokeChannels.sessionGetAnalysis, async (_evt, sessionId: string) => {
+    if (!sessionManager) throw new Error('sessions disabled');
+    return sessionManager.getAnalysis(sessionId);
+  });
+
   // ── Voice (Whisper via BYOK OpenAI) ──
   ipcMain.handle(
     invokeChannels.voiceTranscribe,
@@ -294,4 +454,60 @@ export function registerHandlers(opts: RegisterOptions): void {
 
 function makeProvider(family: ByokProvider, key: string) {
   return family === 'openai' ? new OpenAIProvider(key) : new AnthropicProvider(key);
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// proto → renderer shape. The renderer types (@shared/types) are the
+// source of truth on the client side; we adapt Connect responses to
+// those shapes here so the IPC contract is always clean JSON — no
+// BigInt, Date, or message-class instances crossing the bridge.
+// ─────────────────────────────────────────────────────────────────────────
+
+type AnyConv = {
+  id?: string;
+  title?: string;
+  model?: string;
+  messageCount?: number;
+  createdAt?: { toDate?: () => Date };
+  updatedAt?: { toDate?: () => Date };
+};
+type AnyMsg = {
+  id?: string;
+  conversationId?: string;
+  role?: number;
+  content?: string;
+  hasScreenshot?: boolean;
+  tokensIn?: number;
+  tokensOut?: number;
+  latencyMs?: number;
+  rating?: number;
+  createdAt?: { toDate?: () => Date };
+};
+
+function mapConversationPB(c: AnyConv | undefined) {
+  return {
+    id: String(c?.id ?? ''),
+    title: String(c?.title ?? ''),
+    model: String(c?.model ?? ''),
+    messageCount: Number(c?.messageCount ?? 0),
+    createdAt: c?.createdAt?.toDate?.()?.toISOString() ?? '',
+    updatedAt: c?.updatedAt?.toDate?.()?.toISOString() ?? '',
+  };
+}
+
+function mapMessagePB(m: AnyMsg) {
+  // proto MessageRole enum: 0=unspecified, 1=system, 2=user, 3=assistant.
+  const role = m.role === 1 ? 'system' : m.role === 2 ? 'user' : m.role === 3 ? 'assistant' : '';
+  return {
+    id: String(m.id ?? ''),
+    conversationId: String(m.conversationId ?? ''),
+    role: role as '' | 'system' | 'user' | 'assistant',
+    content: String(m.content ?? ''),
+    hasScreenshot: !!m.hasScreenshot,
+    tokensIn: Number(m.tokensIn ?? 0),
+    tokensOut: Number(m.tokensOut ?? 0),
+    latencyMs: Number(m.latencyMs ?? 0),
+    rating: (m.rating === -1 || m.rating === 0 || m.rating === 1 ? m.rating : 0) as -1 | 0 | 1,
+    createdAt: m.createdAt?.toDate?.()?.toISOString() ?? '',
+  };
 }

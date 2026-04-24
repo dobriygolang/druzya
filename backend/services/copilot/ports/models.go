@@ -69,6 +69,8 @@ func hotkeyActionToProto(a domain.HotkeyAction) pb.HotkeyAction {
 		return pb.HotkeyAction_HOTKEY_ACTION_QUICK_PROMPT
 	case domain.HotkeyActionClearConversation:
 		return pb.HotkeyAction_HOTKEY_ACTION_CLEAR_CONVERSATION
+	case domain.HotkeyActionCursorFreezeToggle:
+		return pb.HotkeyAction_HOTKEY_ACTION_CURSOR_FREEZE_TOGGLE
 	default:
 		return pb.HotkeyAction_HOTKEY_ACTION_UNSPECIFIED
 	}
@@ -90,6 +92,8 @@ func hotkeyActionFromProto(p pb.HotkeyAction) domain.HotkeyAction {
 		return domain.HotkeyActionQuickPrompt
 	case pb.HotkeyAction_HOTKEY_ACTION_CLEAR_CONVERSATION:
 		return domain.HotkeyActionClearConversation
+	case pb.HotkeyAction_HOTKEY_ACTION_CURSOR_FREEZE_TOGGLE:
+		return domain.HotkeyActionCursorFreezeToggle
 	default:
 		return domain.HotkeyActionUnspecified
 	}
@@ -208,12 +212,13 @@ func featureFlagToProto(f domain.FeatureFlag) *pb.FeatureFlag {
 
 func paywallCopyToProto(p domain.PaywallCopy) *pb.PaywallCopy {
 	return &pb.PaywallCopy{
-		PlanId:      p.PlanID,
-		DisplayName: p.DisplayName,
-		PriceLabel:  p.PriceLabel,
-		Tagline:     p.Tagline,
-		Bullets:     append([]string(nil), p.Bullets...),
-		CtaLabel:    p.CTALabel,
+		PlanId:       p.PlanID,
+		DisplayName:  p.DisplayName,
+		PriceLabel:   p.PriceLabel,
+		Tagline:      p.Tagline,
+		Bullets:      append([]string(nil), p.Bullets...),
+		CtaLabel:     p.CTALabel,
+		SubscribeUrl: p.SubscribeURL,
 	}
 }
 
@@ -280,6 +285,92 @@ func attachmentsFromProto(in []*pb.CopilotAttachmentInput) []domain.AttachmentIn
 	out := make([]domain.AttachmentInput, 0, len(in))
 	for _, p := range in {
 		out = append(out, attachmentFromProto(p))
+	}
+	return out
+}
+
+func sessionKindFromProto(k pb.CopilotSessionKind) domain.SessionKind {
+	switch k {
+	case pb.CopilotSessionKind_COPILOT_SESSION_KIND_INTERVIEW:
+		return domain.SessionKindInterview
+	case pb.CopilotSessionKind_COPILOT_SESSION_KIND_WORK:
+		return domain.SessionKindWork
+	case pb.CopilotSessionKind_COPILOT_SESSION_KIND_CASUAL:
+		return domain.SessionKindCasual
+	default:
+		return domain.SessionKindUnspecified
+	}
+}
+
+func sessionKindToProto(k domain.SessionKind) pb.CopilotSessionKind {
+	switch k {
+	case domain.SessionKindInterview:
+		return pb.CopilotSessionKind_COPILOT_SESSION_KIND_INTERVIEW
+	case domain.SessionKindWork:
+		return pb.CopilotSessionKind_COPILOT_SESSION_KIND_WORK
+	case domain.SessionKindCasual:
+		return pb.CopilotSessionKind_COPILOT_SESSION_KIND_CASUAL
+	default:
+		return pb.CopilotSessionKind_COPILOT_SESSION_KIND_UNSPECIFIED
+	}
+}
+
+func analysisStatusToProto(s domain.AnalysisStatus) pb.CopilotAnalysisStatus {
+	switch s {
+	case domain.AnalysisStatusPending:
+		return pb.CopilotAnalysisStatus_COPILOT_ANALYSIS_STATUS_PENDING
+	case domain.AnalysisStatusRunning:
+		return pb.CopilotAnalysisStatus_COPILOT_ANALYSIS_STATUS_RUNNING
+	case domain.AnalysisStatusReady:
+		return pb.CopilotAnalysisStatus_COPILOT_ANALYSIS_STATUS_READY
+	case domain.AnalysisStatusFailed:
+		return pb.CopilotAnalysisStatus_COPILOT_ANALYSIS_STATUS_FAILED
+	default:
+		return pb.CopilotAnalysisStatus_COPILOT_ANALYSIS_STATUS_UNSPECIFIED
+	}
+}
+
+func sessionToProto(s domain.Session, convCount int) *pb.CopilotSession {
+	out := &pb.CopilotSession{
+		Id:                s.ID.String(),
+		Kind:              sessionKindToProto(s.Kind),
+		StartedAt:         timestamppb.New(s.StartedAt),
+		ConversationCount: int32(convCount),
+		ByokOnly:          s.BYOKOnly,
+	}
+	if s.FinishedAt != nil {
+		out.FinishedAt = timestamppb.New(*s.FinishedAt)
+	}
+	return out
+}
+
+func sessionSummaryToProto(s domain.SessionSummary) *pb.CopilotSession {
+	return sessionToProto(s.Session, s.ConversationCount)
+}
+
+func reportToProto(r domain.SessionReport) *pb.CopilotSessionAnalysis {
+	out := &pb.CopilotSessionAnalysis{
+		SessionId:       r.SessionID.String(),
+		Status:          analysisStatusToProto(r.Status),
+		OverallScore:    int32(r.OverallScore),
+		SectionScores:   make(map[string]int32, len(r.SectionScores)),
+		Weaknesses:      append([]string(nil), r.Weaknesses...),
+		Recommendations: append([]string(nil), r.Recommendations...),
+		ReportMarkdown:  r.ReportMarkdown,
+		ReportUrl:       r.ReportURL,
+		ErrorMessage:    r.ErrorMessage,
+	}
+	for k, v := range r.SectionScores {
+		out.SectionScores[k] = int32(v)
+	}
+	for _, l := range r.Links {
+		out.Links = append(out.Links, &pb.CopilotAnalysisLink{Label: l.Label, Url: l.URL})
+	}
+	if r.StartedAt != nil {
+		out.StartedAt = timestamppb.New(*r.StartedAt)
+	}
+	if r.FinishedAt != nil {
+		out.FinishedAt = timestamppb.New(*r.FinishedAt)
 	}
 	return out
 }

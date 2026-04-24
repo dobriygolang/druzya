@@ -15,11 +15,11 @@
     "resolveJsonModule": true,
     "isolatedModules": true,
     "baseUrl": ".",
+    "ignoreDeprecations": "6.0",
     "paths": {
       "@shared/*": ["src/shared/*"],
       "@renderer/*": ["src/renderer/*"]
-    },
-    "types": ["vite/client"]
+    }
   },
   "include": ["src/renderer/**/*", "src/preload/**/*", "src/shared/**/*"],
   "exclude": ["src/main/**/*", "out", "dist", "node_modules"]

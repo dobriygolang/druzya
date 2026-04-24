@@ -6,12 +6,21 @@
 
 import { useEffect, useState } from 'react';
 
+import { HotkeyRecorder } from '../../components/HotkeyRecorder';
+import { useLocaleStore } from '../../i18n';
 import { BrandMark, IconKey, IconSettings, IconShield, IconSparkles } from '../../components/icons';
-import { Button, Kbd, StatusDot } from '../../components/primitives';
+import { Button, StatusDot } from '../../components/primitives';
 import { useConfig } from '../../hooks/use-config';
 import { useAuthStore } from '../../stores/auth';
+import { useHotkeyOverridesStore } from '../../stores/hotkey-overrides';
+import { usePaywallStore } from '../../stores/paywall';
 import { useQuotaStore } from '../../stores/quota';
-import type { MasqueradePreset, MasqueradePresetInfo } from '@shared/ipc';
+import {
+  eventChannels,
+  type MasqueradePreset,
+  type MasqueradePresetInfo,
+  type UpdateStatus,
+} from '@shared/ipc';
 import type { ProviderModel } from '@shared/types';
 import { ByokSection } from './ByokSection';
 
@@ -167,29 +176,76 @@ function GeneralTab({
             )
           }
         />
-        <Row
-          title="План"
-          hint={
-            quota
-              ? `${quota.plan || '—'} · ${quota.requestsUsed}/${
-                  quota.requestsCap < 0 ? '∞' : quota.requestsCap
-                } запросов`
-              : 'загрузка…'
-          }
-          control={
-            <Button variant="secondary" size="sm" disabled>
-              Обновить план
-            </Button>
-          }
-        />
+        <PlanRow quota={quota} />
         <Row
           title="Stealth при демонстрации экрана"
           hint="Скрывает окно от Zoom, Meet и Chrome."
           control={<StatusDot state="ready" size={8} />}
         />
+        <LocaleRow />
         <MasqueradeRow />
       </div>
     </>
+  );
+}
+
+/**
+ * PlanRow — shows the current plan + lets the user open the paywall.
+ * Pro/Team users see "Управлять подпиской" leading back to the same
+ * Boosty CTA; free users see "Обновить план".
+ */
+function PlanRow({ quota }: { quota: ReturnType<typeof useQuotaStore.getState>['quota'] }) {
+  const showPaywall = usePaywallStore((s) => s.show);
+  const isPaid = !!quota && quota.plan !== 'free' && quota.plan !== '';
+  return (
+    <Row
+      title="План"
+      hint={
+        quota
+          ? `${quota.plan || '—'} · ${quota.requestsUsed}/${
+              quota.requestsCap < 0 ? '∞' : quota.requestsCap
+            } запросов`
+          : 'загрузка…'
+      }
+      control={
+        <Button
+          variant={isPaid ? 'secondary' : 'primary'}
+          size="sm"
+          onClick={() => showPaywall()}
+        >
+          {isPaid ? 'Управлять подпиской' : 'Обновить план'}
+        </Button>
+      }
+    />
+  );
+}
+
+function LocaleRow() {
+  const locale = useLocaleStore((s) => s.locale);
+  const setLocale = useLocaleStore((s) => s.setLocale);
+  return (
+    <Row
+      title="Язык"
+      hint="Интерфейс. Ответы модели остаются на языке твоего запроса."
+      control={
+        <select
+          value={locale}
+          onChange={(e) => setLocale(e.target.value as 'ru' | 'en')}
+          style={{
+            height: 28,
+            padding: '0 10px',
+            fontSize: 12,
+            color: 'var(--d-text)',
+            background: 'var(--d-bg-1)',
+            border: '1px solid var(--d-line-strong)',
+            borderRadius: 6,
+          }}
+        >
+          <option value="ru">Русский</option>
+          <option value="en">English</option>
+        </select>
+      }
+    />
   );
 }
 
@@ -271,29 +327,58 @@ function MasqueradeRow() {
 
 function HotkeysTab() {
   const { config } = useConfig();
-  const bindings = config?.defaultHotkeys ?? [];
+  const overrides = useHotkeyOverridesStore((s) => s.overrides);
+  const setOverride = useHotkeyOverridesStore((s) => s.set);
+  const clearOverride = useHotkeyOverridesStore((s) => s.clear);
+  const merge = useHotkeyOverridesStore((s) => s.merge);
+
+  const defaults = config?.defaultHotkeys ?? [];
+
+  // Whenever defaults or overrides change, push the merged bindings to
+  // main so the globalShortcut registry re-registers under the new
+  // accelerators. This also runs on first mount, re-applying user
+  // overrides that were persisted from a previous session.
+  useEffect(() => {
+    if (defaults.length === 0) return;
+    const merged = merge(defaults);
+    void window.druz9.hotkeys.update(merged);
+  }, [defaults, overrides, merge]);
+
   const labels: Record<string, string> = {
     screenshot_area: 'Скриншот области',
     screenshot_full: 'Скриншот экрана',
     voice_input: 'Голосовой ввод',
-    toggle_window: 'Показать/скрыть окно',
+    toggle_window: 'Показать / скрыть окно',
     quick_prompt: 'Быстрый вопрос',
     clear_conversation: 'Очистить диалог',
   };
+
   return (
     <>
       <SectionTitle
         title="Горячие клавиши"
-        subtitle="Клавиши работают в любом приложении. Перезапись — в будущей версии."
+        subtitle="Клавиши работают в любом приложении. Клик по сочетанию — перезапись."
       />
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-        {bindings.map((b) => (
-          <Row
-            key={b.action}
-            title={labels[b.action] ?? b.action}
-            control={<Kbd>{b.accelerator}</Kbd>}
-          />
-        ))}
+        {defaults.map((b) => {
+          const override = overrides[b.action];
+          const accelerator = override ?? b.accelerator;
+          return (
+            <Row
+              key={b.action}
+              title={labels[b.action] ?? b.action}
+              control={
+                <HotkeyRecorder
+                  action={b.action}
+                  accelerator={accelerator}
+                  isOverridden={!!override}
+                  onSave={(accel) => setOverride(b.action, accel)}
+                  onReset={() => clearOverride(b.action)}
+                />
+              }
+            />
+          );
+        })}
       </div>
     </>
   );
@@ -384,6 +469,7 @@ function AboutTab() {
       <SectionTitle title="О программе" subtitle="Druz9 Copilot" />
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
         <Row title="Версия" control={<span style={{ fontFamily: 'var(--f-mono)' }}>0.1.0</span>} />
+        <UpdateRow />
         <Row
           title="Обратная связь"
           hint="Telegram-канал проекта"
@@ -396,4 +482,71 @@ function AboutTab() {
       </div>
     </>
   );
+}
+
+/**
+ * UpdateRow — surfaces electron-updater state and lets the user force a
+ * check or install a downloaded update. Silent when auto-update is
+ * disabled (dev build or no feed URL).
+ */
+function UpdateRow() {
+  const [status, setStatus] = useState<UpdateStatus>({ kind: 'idle' });
+
+  useEffect(() => {
+    let disposed = false;
+    void (async () => {
+      const s = await window.druz9.updater.status();
+      if (!disposed) setStatus(s);
+    })();
+    const unsub = window.druz9.on<UpdateStatus>(eventChannels.updateStatus, (s) => {
+      if (!disposed) setStatus(s);
+    });
+    return () => {
+      disposed = true;
+      unsub();
+    };
+  }, []);
+
+  return (
+    <Row
+      title="Обновления"
+      hint={describe(status)}
+      control={
+        status.kind === 'ready' ? (
+          <Button size="sm" variant="primary" onClick={() => void window.druz9.updater.install()}>
+            Установить и перезапустить
+          </Button>
+        ) : status.kind === 'checking' || status.kind === 'downloading' ? (
+          <StatusDot state="thinking" size={8} />
+        ) : (
+          <Button
+            size="sm"
+            variant="secondary"
+            onClick={() => void window.druz9.updater.check()}
+          >
+            Проверить
+          </Button>
+        )
+      }
+    />
+  );
+}
+
+function describe(s: UpdateStatus): string {
+  switch (s.kind) {
+    case 'idle':
+      return 'Обновления не проверялись';
+    case 'checking':
+      return 'Проверяю…';
+    case 'available':
+      return `Доступна версия ${s.version} — скачивается`;
+    case 'downloading':
+      return `Скачивание ${s.percent}%`;
+    case 'ready':
+      return `Версия ${s.version} готова к установке`;
+    case 'not-available':
+      return 'У тебя последняя версия';
+    case 'error':
+      return `Ошибка: ${s.message.slice(0, 80)}`;
+  }
 }

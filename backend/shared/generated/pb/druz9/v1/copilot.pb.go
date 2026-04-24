@@ -151,13 +151,14 @@ func (ClientOS) EnumDescriptor() ([]byte, []int) {
 type HotkeyAction int32
 
 const (
-	HotkeyAction_HOTKEY_ACTION_UNSPECIFIED        HotkeyAction = 0
-	HotkeyAction_HOTKEY_ACTION_SCREENSHOT_AREA    HotkeyAction = 1
-	HotkeyAction_HOTKEY_ACTION_SCREENSHOT_FULL    HotkeyAction = 2
-	HotkeyAction_HOTKEY_ACTION_VOICE_INPUT        HotkeyAction = 3
-	HotkeyAction_HOTKEY_ACTION_TOGGLE_WINDOW      HotkeyAction = 4
-	HotkeyAction_HOTKEY_ACTION_QUICK_PROMPT       HotkeyAction = 5
-	HotkeyAction_HOTKEY_ACTION_CLEAR_CONVERSATION HotkeyAction = 6
+	HotkeyAction_HOTKEY_ACTION_UNSPECIFIED          HotkeyAction = 0
+	HotkeyAction_HOTKEY_ACTION_SCREENSHOT_AREA      HotkeyAction = 1
+	HotkeyAction_HOTKEY_ACTION_SCREENSHOT_FULL      HotkeyAction = 2
+	HotkeyAction_HOTKEY_ACTION_VOICE_INPUT          HotkeyAction = 3
+	HotkeyAction_HOTKEY_ACTION_TOGGLE_WINDOW        HotkeyAction = 4
+	HotkeyAction_HOTKEY_ACTION_QUICK_PROMPT         HotkeyAction = 5
+	HotkeyAction_HOTKEY_ACTION_CLEAR_CONVERSATION   HotkeyAction = 6
+	HotkeyAction_HOTKEY_ACTION_CURSOR_FREEZE_TOGGLE HotkeyAction = 7
 )
 
 // Enum value maps for HotkeyAction.
@@ -170,15 +171,17 @@ var (
 		4: "HOTKEY_ACTION_TOGGLE_WINDOW",
 		5: "HOTKEY_ACTION_QUICK_PROMPT",
 		6: "HOTKEY_ACTION_CLEAR_CONVERSATION",
+		7: "HOTKEY_ACTION_CURSOR_FREEZE_TOGGLE",
 	}
 	HotkeyAction_value = map[string]int32{
-		"HOTKEY_ACTION_UNSPECIFIED":        0,
-		"HOTKEY_ACTION_SCREENSHOT_AREA":    1,
-		"HOTKEY_ACTION_SCREENSHOT_FULL":    2,
-		"HOTKEY_ACTION_VOICE_INPUT":        3,
-		"HOTKEY_ACTION_TOGGLE_WINDOW":      4,
-		"HOTKEY_ACTION_QUICK_PROMPT":       5,
-		"HOTKEY_ACTION_CLEAR_CONVERSATION": 6,
+		"HOTKEY_ACTION_UNSPECIFIED":          0,
+		"HOTKEY_ACTION_SCREENSHOT_AREA":      1,
+		"HOTKEY_ACTION_SCREENSHOT_FULL":      2,
+		"HOTKEY_ACTION_VOICE_INPUT":          3,
+		"HOTKEY_ACTION_TOGGLE_WINDOW":        4,
+		"HOTKEY_ACTION_QUICK_PROMPT":         5,
+		"HOTKEY_ACTION_CLEAR_CONVERSATION":   6,
+		"HOTKEY_ACTION_CURSOR_FREEZE_TOGGLE": 7,
 	}
 )
 
@@ -262,16 +265,130 @@ func (ModelSpeedClass) EnumDescriptor() ([]byte, []int) {
 	return file_druz9_v1_copilot_proto_rawDescGZIP(), []int{3}
 }
 
+// SessionKind tags a conversation group for downstream analysis. For MVP
+// we only produce a rich report for interview sessions; other kinds are
+// stored for future filtering.
+type CopilotSessionKind int32
+
+const (
+	CopilotSessionKind_COPILOT_SESSION_KIND_UNSPECIFIED CopilotSessionKind = 0
+	CopilotSessionKind_COPILOT_SESSION_KIND_INTERVIEW   CopilotSessionKind = 1
+	CopilotSessionKind_COPILOT_SESSION_KIND_WORK        CopilotSessionKind = 2
+	CopilotSessionKind_COPILOT_SESSION_KIND_CASUAL      CopilotSessionKind = 3
+)
+
+// Enum value maps for CopilotSessionKind.
+var (
+	CopilotSessionKind_name = map[int32]string{
+		0: "COPILOT_SESSION_KIND_UNSPECIFIED",
+		1: "COPILOT_SESSION_KIND_INTERVIEW",
+		2: "COPILOT_SESSION_KIND_WORK",
+		3: "COPILOT_SESSION_KIND_CASUAL",
+	}
+	CopilotSessionKind_value = map[string]int32{
+		"COPILOT_SESSION_KIND_UNSPECIFIED": 0,
+		"COPILOT_SESSION_KIND_INTERVIEW":   1,
+		"COPILOT_SESSION_KIND_WORK":        2,
+		"COPILOT_SESSION_KIND_CASUAL":      3,
+	}
+)
+
+func (x CopilotSessionKind) Enum() *CopilotSessionKind {
+	p := new(CopilotSessionKind)
+	*p = x
+	return p
+}
+
+func (x CopilotSessionKind) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (CopilotSessionKind) Descriptor() protoreflect.EnumDescriptor {
+	return file_druz9_v1_copilot_proto_enumTypes[4].Descriptor()
+}
+
+func (CopilotSessionKind) Type() protoreflect.EnumType {
+	return &file_druz9_v1_copilot_proto_enumTypes[4]
+}
+
+func (x CopilotSessionKind) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use CopilotSessionKind.Descriptor instead.
+func (CopilotSessionKind) EnumDescriptor() ([]byte, []int) {
+	return file_druz9_v1_copilot_proto_rawDescGZIP(), []int{4}
+}
+
+// AnalysisStatus reflects the background-job lifecycle.
+type CopilotAnalysisStatus int32
+
+const (
+	CopilotAnalysisStatus_COPILOT_ANALYSIS_STATUS_UNSPECIFIED CopilotAnalysisStatus = 0
+	CopilotAnalysisStatus_COPILOT_ANALYSIS_STATUS_PENDING     CopilotAnalysisStatus = 1 // queued, not started
+	CopilotAnalysisStatus_COPILOT_ANALYSIS_STATUS_RUNNING     CopilotAnalysisStatus = 2 // LLM in flight
+	CopilotAnalysisStatus_COPILOT_ANALYSIS_STATUS_READY       CopilotAnalysisStatus = 3 // report_markdown populated
+	CopilotAnalysisStatus_COPILOT_ANALYSIS_STATUS_FAILED      CopilotAnalysisStatus = 4 // LLM failed; error_message populated
+)
+
+// Enum value maps for CopilotAnalysisStatus.
+var (
+	CopilotAnalysisStatus_name = map[int32]string{
+		0: "COPILOT_ANALYSIS_STATUS_UNSPECIFIED",
+		1: "COPILOT_ANALYSIS_STATUS_PENDING",
+		2: "COPILOT_ANALYSIS_STATUS_RUNNING",
+		3: "COPILOT_ANALYSIS_STATUS_READY",
+		4: "COPILOT_ANALYSIS_STATUS_FAILED",
+	}
+	CopilotAnalysisStatus_value = map[string]int32{
+		"COPILOT_ANALYSIS_STATUS_UNSPECIFIED": 0,
+		"COPILOT_ANALYSIS_STATUS_PENDING":     1,
+		"COPILOT_ANALYSIS_STATUS_RUNNING":     2,
+		"COPILOT_ANALYSIS_STATUS_READY":       3,
+		"COPILOT_ANALYSIS_STATUS_FAILED":      4,
+	}
+)
+
+func (x CopilotAnalysisStatus) Enum() *CopilotAnalysisStatus {
+	p := new(CopilotAnalysisStatus)
+	*p = x
+	return p
+}
+
+func (x CopilotAnalysisStatus) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (CopilotAnalysisStatus) Descriptor() protoreflect.EnumDescriptor {
+	return file_druz9_v1_copilot_proto_enumTypes[5].Descriptor()
+}
+
+func (CopilotAnalysisStatus) Type() protoreflect.EnumType {
+	return &file_druz9_v1_copilot_proto_enumTypes[5]
+}
+
+func (x CopilotAnalysisStatus) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use CopilotAnalysisStatus.Descriptor instead.
+func (CopilotAnalysisStatus) EnumDescriptor() ([]byte, []int) {
+	return file_druz9_v1_copilot_proto_rawDescGZIP(), []int{5}
+}
+
 // CopilotConversation is a thread of messages grouped around an initial
 // Analyze call. Title is auto-derived from the first message.
 type CopilotConversation struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	Title         string                 `protobuf:"bytes,2,opt,name=title,proto3" json:"title,omitempty"`
-	Model         string                 `protobuf:"bytes,3,opt,name=model,proto3" json:"model,omitempty"` // provider-qualified id, e.g. "openai/gpt-4o-mini"
-	CreatedAt     *timestamppb.Timestamp `protobuf:"bytes,4,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
-	UpdatedAt     *timestamppb.Timestamp `protobuf:"bytes,5,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
-	MessageCount  int32                  `protobuf:"varint,6,opt,name=message_count,json=messageCount,proto3" json:"message_count,omitempty"`
+	state        protoimpl.MessageState `protogen:"open.v1"`
+	Id           string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Title        string                 `protobuf:"bytes,2,opt,name=title,proto3" json:"title,omitempty"`
+	Model        string                 `protobuf:"bytes,3,opt,name=model,proto3" json:"model,omitempty"` // provider-qualified id, e.g. "openai/gpt-4o-mini"
+	CreatedAt    *timestamppb.Timestamp `protobuf:"bytes,4,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	UpdatedAt    *timestamppb.Timestamp `protobuf:"bytes,5,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
+	MessageCount int32                  `protobuf:"varint,6,opt,name=message_count,json=messageCount,proto3" json:"message_count,omitempty"`
+	// Optional — session this conversation belongs to. Empty for
+	// conversations created outside an explicit session.
+	SessionId     string `protobuf:"bytes,7,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -348,6 +465,545 @@ func (x *CopilotConversation) GetMessageCount() int32 {
 	return 0
 }
 
+func (x *CopilotConversation) GetSessionId() string {
+	if x != nil {
+		return x.SessionId
+	}
+	return ""
+}
+
+// CopilotSession groups a run of conversations the user chose to bundle
+// ("Start interview session" in the desktop tray). All turns that
+// happen between StartSession and EndSession attach here via
+// copilot_conversations.session_id.
+//
+// Analysis is NOT done by the copilot service. On EndSession we emit
+// an event on the internal bus; a separate analyzer (ai_native or a
+// dedicated job) picks it up, runs the LLM, and writes the report
+// into copilot_session_reports where GetSessionAnalysis can read it.
+type CopilotSession struct {
+	state             protoimpl.MessageState `protogen:"open.v1"`
+	Id                string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Kind              CopilotSessionKind     `protobuf:"varint,2,opt,name=kind,proto3,enum=druz9.v1.CopilotSessionKind" json:"kind,omitempty"`
+	StartedAt         *timestamppb.Timestamp `protobuf:"bytes,3,opt,name=started_at,json=startedAt,proto3" json:"started_at,omitempty"`
+	FinishedAt        *timestamppb.Timestamp `protobuf:"bytes,4,opt,name=finished_at,json=finishedAt,proto3" json:"finished_at,omitempty"` // unset while live
+	ConversationCount int32                  `protobuf:"varint,5,opt,name=conversation_count,json=conversationCount,proto3" json:"conversation_count,omitempty"`
+	// Whether any turn inside this session used a BYOK key. When true,
+	// the post-session analysis path is ALSO local (desktop-driven)
+	// rather than backend-driven — the client is responsible for
+	// rendering the report.
+	ByokOnly      bool `protobuf:"varint,6,opt,name=byok_only,json=byokOnly,proto3" json:"byok_only,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CopilotSession) Reset() {
+	*x = CopilotSession{}
+	mi := &file_druz9_v1_copilot_proto_msgTypes[1]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CopilotSession) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CopilotSession) ProtoMessage() {}
+
+func (x *CopilotSession) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_copilot_proto_msgTypes[1]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CopilotSession.ProtoReflect.Descriptor instead.
+func (*CopilotSession) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_copilot_proto_rawDescGZIP(), []int{1}
+}
+
+func (x *CopilotSession) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *CopilotSession) GetKind() CopilotSessionKind {
+	if x != nil {
+		return x.Kind
+	}
+	return CopilotSessionKind_COPILOT_SESSION_KIND_UNSPECIFIED
+}
+
+func (x *CopilotSession) GetStartedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.StartedAt
+	}
+	return nil
+}
+
+func (x *CopilotSession) GetFinishedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.FinishedAt
+	}
+	return nil
+}
+
+func (x *CopilotSession) GetConversationCount() int32 {
+	if x != nil {
+		return x.ConversationCount
+	}
+	return 0
+}
+
+func (x *CopilotSession) GetByokOnly() bool {
+	if x != nil {
+		return x.ByokOnly
+	}
+	return false
+}
+
+type CopilotAnalysisLink struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Label         string                 `protobuf:"bytes,1,opt,name=label,proto3" json:"label,omitempty"`
+	Url           string                 `protobuf:"bytes,2,opt,name=url,proto3" json:"url,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CopilotAnalysisLink) Reset() {
+	*x = CopilotAnalysisLink{}
+	mi := &file_druz9_v1_copilot_proto_msgTypes[2]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CopilotAnalysisLink) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CopilotAnalysisLink) ProtoMessage() {}
+
+func (x *CopilotAnalysisLink) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_copilot_proto_msgTypes[2]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CopilotAnalysisLink.ProtoReflect.Descriptor instead.
+func (*CopilotAnalysisLink) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_copilot_proto_rawDescGZIP(), []int{2}
+}
+
+func (x *CopilotAnalysisLink) GetLabel() string {
+	if x != nil {
+		return x.Label
+	}
+	return ""
+}
+
+func (x *CopilotAnalysisLink) GetUrl() string {
+	if x != nil {
+		return x.Url
+	}
+	return ""
+}
+
+// CopilotSessionAnalysis is the report the analyzer produces after a
+// session ends. Populated asynchronously — clients poll GetSessionAnalysis
+// (or listen for event:analysis-ready via a push channel).
+type CopilotSessionAnalysis struct {
+	state        protoimpl.MessageState `protogen:"open.v1"`
+	SessionId    string                 `protobuf:"bytes,1,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
+	Status       CopilotAnalysisStatus  `protobuf:"varint,2,opt,name=status,proto3,enum=druz9.v1.CopilotAnalysisStatus" json:"status,omitempty"`
+	OverallScore int32                  `protobuf:"varint,3,opt,name=overall_score,json=overallScore,proto3" json:"overall_score,omitempty"` // 0..100
+	// Section keys: "algorithms", "sql", "go", "system_design", "behavioral".
+	SectionScores   map[string]int32       `protobuf:"bytes,4,rep,name=section_scores,json=sectionScores,proto3" json:"section_scores,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"varint,2,opt,name=value"`
+	Weaknesses      []string               `protobuf:"bytes,5,rep,name=weaknesses,proto3" json:"weaknesses,omitempty"`
+	Recommendations []string               `protobuf:"bytes,6,rep,name=recommendations,proto3" json:"recommendations,omitempty"`
+	Links           []*CopilotAnalysisLink `protobuf:"bytes,7,rep,name=links,proto3" json:"links,omitempty"`
+	ReportMarkdown  string                 `protobuf:"bytes,8,opt,name=report_markdown,json=reportMarkdown,proto3" json:"report_markdown,omitempty"`
+	StartedAt       *timestamppb.Timestamp `protobuf:"bytes,9,opt,name=started_at,json=startedAt,proto3" json:"started_at,omitempty"`
+	FinishedAt      *timestamppb.Timestamp `protobuf:"bytes,10,opt,name=finished_at,json=finishedAt,proto3" json:"finished_at,omitempty"`
+	ErrorMessage    string                 `protobuf:"bytes,11,opt,name=error_message,json=errorMessage,proto3" json:"error_message,omitempty"` // set when status=FAILED
+	// Web URL where the full report lives inside Druzya. Always set; the
+	// desktop client can skip its embedded renderer and open the URL
+	// externally. Empty for BYOK reports — those are desktop-local.
+	ReportUrl     string `protobuf:"bytes,12,opt,name=report_url,json=reportUrl,proto3" json:"report_url,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CopilotSessionAnalysis) Reset() {
+	*x = CopilotSessionAnalysis{}
+	mi := &file_druz9_v1_copilot_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CopilotSessionAnalysis) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CopilotSessionAnalysis) ProtoMessage() {}
+
+func (x *CopilotSessionAnalysis) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_copilot_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CopilotSessionAnalysis.ProtoReflect.Descriptor instead.
+func (*CopilotSessionAnalysis) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_copilot_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *CopilotSessionAnalysis) GetSessionId() string {
+	if x != nil {
+		return x.SessionId
+	}
+	return ""
+}
+
+func (x *CopilotSessionAnalysis) GetStatus() CopilotAnalysisStatus {
+	if x != nil {
+		return x.Status
+	}
+	return CopilotAnalysisStatus_COPILOT_ANALYSIS_STATUS_UNSPECIFIED
+}
+
+func (x *CopilotSessionAnalysis) GetOverallScore() int32 {
+	if x != nil {
+		return x.OverallScore
+	}
+	return 0
+}
+
+func (x *CopilotSessionAnalysis) GetSectionScores() map[string]int32 {
+	if x != nil {
+		return x.SectionScores
+	}
+	return nil
+}
+
+func (x *CopilotSessionAnalysis) GetWeaknesses() []string {
+	if x != nil {
+		return x.Weaknesses
+	}
+	return nil
+}
+
+func (x *CopilotSessionAnalysis) GetRecommendations() []string {
+	if x != nil {
+		return x.Recommendations
+	}
+	return nil
+}
+
+func (x *CopilotSessionAnalysis) GetLinks() []*CopilotAnalysisLink {
+	if x != nil {
+		return x.Links
+	}
+	return nil
+}
+
+func (x *CopilotSessionAnalysis) GetReportMarkdown() string {
+	if x != nil {
+		return x.ReportMarkdown
+	}
+	return ""
+}
+
+func (x *CopilotSessionAnalysis) GetStartedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.StartedAt
+	}
+	return nil
+}
+
+func (x *CopilotSessionAnalysis) GetFinishedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.FinishedAt
+	}
+	return nil
+}
+
+func (x *CopilotSessionAnalysis) GetErrorMessage() string {
+	if x != nil {
+		return x.ErrorMessage
+	}
+	return ""
+}
+
+func (x *CopilotSessionAnalysis) GetReportUrl() string {
+	if x != nil {
+		return x.ReportUrl
+	}
+	return ""
+}
+
+type StartCopilotSessionRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Kind          CopilotSessionKind     `protobuf:"varint,1,opt,name=kind,proto3,enum=druz9.v1.CopilotSessionKind" json:"kind,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *StartCopilotSessionRequest) Reset() {
+	*x = StartCopilotSessionRequest{}
+	mi := &file_druz9_v1_copilot_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *StartCopilotSessionRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*StartCopilotSessionRequest) ProtoMessage() {}
+
+func (x *StartCopilotSessionRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_copilot_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use StartCopilotSessionRequest.ProtoReflect.Descriptor instead.
+func (*StartCopilotSessionRequest) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_copilot_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *StartCopilotSessionRequest) GetKind() CopilotSessionKind {
+	if x != nil {
+		return x.Kind
+	}
+	return CopilotSessionKind_COPILOT_SESSION_KIND_UNSPECIFIED
+}
+
+type EndCopilotSessionRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	SessionId     string                 `protobuf:"bytes,1,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *EndCopilotSessionRequest) Reset() {
+	*x = EndCopilotSessionRequest{}
+	mi := &file_druz9_v1_copilot_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *EndCopilotSessionRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*EndCopilotSessionRequest) ProtoMessage() {}
+
+func (x *EndCopilotSessionRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_copilot_proto_msgTypes[5]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use EndCopilotSessionRequest.ProtoReflect.Descriptor instead.
+func (*EndCopilotSessionRequest) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_copilot_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *EndCopilotSessionRequest) GetSessionId() string {
+	if x != nil {
+		return x.SessionId
+	}
+	return ""
+}
+
+type GetCopilotSessionAnalysisRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	SessionId     string                 `protobuf:"bytes,1,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetCopilotSessionAnalysisRequest) Reset() {
+	*x = GetCopilotSessionAnalysisRequest{}
+	mi := &file_druz9_v1_copilot_proto_msgTypes[6]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetCopilotSessionAnalysisRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetCopilotSessionAnalysisRequest) ProtoMessage() {}
+
+func (x *GetCopilotSessionAnalysisRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_copilot_proto_msgTypes[6]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetCopilotSessionAnalysisRequest.ProtoReflect.Descriptor instead.
+func (*GetCopilotSessionAnalysisRequest) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_copilot_proto_rawDescGZIP(), []int{6}
+}
+
+func (x *GetCopilotSessionAnalysisRequest) GetSessionId() string {
+	if x != nil {
+		return x.SessionId
+	}
+	return ""
+}
+
+type ListCopilotSessionsRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Cursor        string                 `protobuf:"bytes,1,opt,name=cursor,proto3" json:"cursor,omitempty"`
+	Limit         int32                  `protobuf:"varint,2,opt,name=limit,proto3" json:"limit,omitempty"`
+	Kind          CopilotSessionKind     `protobuf:"varint,3,opt,name=kind,proto3,enum=druz9.v1.CopilotSessionKind" json:"kind,omitempty"` // optional filter
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListCopilotSessionsRequest) Reset() {
+	*x = ListCopilotSessionsRequest{}
+	mi := &file_druz9_v1_copilot_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListCopilotSessionsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListCopilotSessionsRequest) ProtoMessage() {}
+
+func (x *ListCopilotSessionsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_copilot_proto_msgTypes[7]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListCopilotSessionsRequest.ProtoReflect.Descriptor instead.
+func (*ListCopilotSessionsRequest) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_copilot_proto_rawDescGZIP(), []int{7}
+}
+
+func (x *ListCopilotSessionsRequest) GetCursor() string {
+	if x != nil {
+		return x.Cursor
+	}
+	return ""
+}
+
+func (x *ListCopilotSessionsRequest) GetLimit() int32 {
+	if x != nil {
+		return x.Limit
+	}
+	return 0
+}
+
+func (x *ListCopilotSessionsRequest) GetKind() CopilotSessionKind {
+	if x != nil {
+		return x.Kind
+	}
+	return CopilotSessionKind_COPILOT_SESSION_KIND_UNSPECIFIED
+}
+
+type ListCopilotSessionsResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Sessions      []*CopilotSession      `protobuf:"bytes,1,rep,name=sessions,proto3" json:"sessions,omitempty"`
+	NextCursor    string                 `protobuf:"bytes,2,opt,name=next_cursor,json=nextCursor,proto3" json:"next_cursor,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListCopilotSessionsResponse) Reset() {
+	*x = ListCopilotSessionsResponse{}
+	mi := &file_druz9_v1_copilot_proto_msgTypes[8]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListCopilotSessionsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListCopilotSessionsResponse) ProtoMessage() {}
+
+func (x *ListCopilotSessionsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_copilot_proto_msgTypes[8]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListCopilotSessionsResponse.ProtoReflect.Descriptor instead.
+func (*ListCopilotSessionsResponse) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_copilot_proto_rawDescGZIP(), []int{8}
+}
+
+func (x *ListCopilotSessionsResponse) GetSessions() []*CopilotSession {
+	if x != nil {
+		return x.Sessions
+	}
+	return nil
+}
+
+func (x *ListCopilotSessionsResponse) GetNextCursor() string {
+	if x != nil {
+		return x.NextCursor
+	}
+	return ""
+}
+
 // CopilotMessage is a single turn in a conversation.
 type CopilotMessage struct {
 	state          protoimpl.MessageState `protogen:"open.v1"`
@@ -369,7 +1025,7 @@ type CopilotMessage struct {
 
 func (x *CopilotMessage) Reset() {
 	*x = CopilotMessage{}
-	mi := &file_druz9_v1_copilot_proto_msgTypes[1]
+	mi := &file_druz9_v1_copilot_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -381,7 +1037,7 @@ func (x *CopilotMessage) String() string {
 func (*CopilotMessage) ProtoMessage() {}
 
 func (x *CopilotMessage) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_copilot_proto_msgTypes[1]
+	mi := &file_druz9_v1_copilot_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -394,7 +1050,7 @@ func (x *CopilotMessage) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CopilotMessage.ProtoReflect.Descriptor instead.
 func (*CopilotMessage) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_copilot_proto_rawDescGZIP(), []int{1}
+	return file_druz9_v1_copilot_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *CopilotMessage) GetId() string {
@@ -479,7 +1135,7 @@ type CopilotConversationDetail struct {
 
 func (x *CopilotConversationDetail) Reset() {
 	*x = CopilotConversationDetail{}
-	mi := &file_druz9_v1_copilot_proto_msgTypes[2]
+	mi := &file_druz9_v1_copilot_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -491,7 +1147,7 @@ func (x *CopilotConversationDetail) String() string {
 func (*CopilotConversationDetail) ProtoMessage() {}
 
 func (x *CopilotConversationDetail) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_copilot_proto_msgTypes[2]
+	mi := &file_druz9_v1_copilot_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -504,7 +1160,7 @@ func (x *CopilotConversationDetail) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CopilotConversationDetail.ProtoReflect.Descriptor instead.
 func (*CopilotConversationDetail) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_copilot_proto_rawDescGZIP(), []int{2}
+	return file_druz9_v1_copilot_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *CopilotConversationDetail) GetConversation() *CopilotConversation {
@@ -536,7 +1192,7 @@ type CopilotQuota struct {
 
 func (x *CopilotQuota) Reset() {
 	*x = CopilotQuota{}
-	mi := &file_druz9_v1_copilot_proto_msgTypes[3]
+	mi := &file_druz9_v1_copilot_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -548,7 +1204,7 @@ func (x *CopilotQuota) String() string {
 func (*CopilotQuota) ProtoMessage() {}
 
 func (x *CopilotQuota) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_copilot_proto_msgTypes[3]
+	mi := &file_druz9_v1_copilot_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -561,7 +1217,7 @@ func (x *CopilotQuota) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CopilotQuota.ProtoReflect.Descriptor instead.
 func (*CopilotQuota) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_copilot_proto_rawDescGZIP(), []int{3}
+	return file_druz9_v1_copilot_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *CopilotQuota) GetPlan() SubscriptionPlan {
@@ -618,7 +1274,7 @@ type CopilotProviderModel struct {
 
 func (x *CopilotProviderModel) Reset() {
 	*x = CopilotProviderModel{}
-	mi := &file_druz9_v1_copilot_proto_msgTypes[4]
+	mi := &file_druz9_v1_copilot_proto_msgTypes[12]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -630,7 +1286,7 @@ func (x *CopilotProviderModel) String() string {
 func (*CopilotProviderModel) ProtoMessage() {}
 
 func (x *CopilotProviderModel) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_copilot_proto_msgTypes[4]
+	mi := &file_druz9_v1_copilot_proto_msgTypes[12]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -643,7 +1299,7 @@ func (x *CopilotProviderModel) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CopilotProviderModel.ProtoReflect.Descriptor instead.
 func (*CopilotProviderModel) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_copilot_proto_rawDescGZIP(), []int{4}
+	return file_druz9_v1_copilot_proto_rawDescGZIP(), []int{12}
 }
 
 func (x *CopilotProviderModel) GetId() string {
@@ -721,7 +1377,7 @@ type HotkeyBinding struct {
 
 func (x *HotkeyBinding) Reset() {
 	*x = HotkeyBinding{}
-	mi := &file_druz9_v1_copilot_proto_msgTypes[5]
+	mi := &file_druz9_v1_copilot_proto_msgTypes[13]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -733,7 +1389,7 @@ func (x *HotkeyBinding) String() string {
 func (*HotkeyBinding) ProtoMessage() {}
 
 func (x *HotkeyBinding) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_copilot_proto_msgTypes[5]
+	mi := &file_druz9_v1_copilot_proto_msgTypes[13]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -746,7 +1402,7 @@ func (x *HotkeyBinding) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use HotkeyBinding.ProtoReflect.Descriptor instead.
 func (*HotkeyBinding) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_copilot_proto_rawDescGZIP(), []int{5}
+	return file_druz9_v1_copilot_proto_rawDescGZIP(), []int{13}
 }
 
 func (x *HotkeyBinding) GetAction() HotkeyAction {
@@ -775,7 +1431,7 @@ type FeatureFlag struct {
 
 func (x *FeatureFlag) Reset() {
 	*x = FeatureFlag{}
-	mi := &file_druz9_v1_copilot_proto_msgTypes[6]
+	mi := &file_druz9_v1_copilot_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -787,7 +1443,7 @@ func (x *FeatureFlag) String() string {
 func (*FeatureFlag) ProtoMessage() {}
 
 func (x *FeatureFlag) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_copilot_proto_msgTypes[6]
+	mi := &file_druz9_v1_copilot_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -800,7 +1456,7 @@ func (x *FeatureFlag) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use FeatureFlag.ProtoReflect.Descriptor instead.
 func (*FeatureFlag) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_copilot_proto_rawDescGZIP(), []int{6}
+	return file_druz9_v1_copilot_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *FeatureFlag) GetKey() string {
@@ -820,20 +1476,24 @@ func (x *FeatureFlag) GetEnabled() bool {
 // PaywallCopy is localized user-facing text for the paywall. The client is
 // forbidden from hardcoding pricing or plan names.
 type PaywallCopy struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	PlanId        string                 `protobuf:"bytes,1,opt,name=plan_id,json=planId,proto3" json:"plan_id,omitempty"`                // "pro"
-	DisplayName   string                 `protobuf:"bytes,2,opt,name=display_name,json=displayName,proto3" json:"display_name,omitempty"` // "Pro"
-	PriceLabel    string                 `protobuf:"bytes,3,opt,name=price_label,json=priceLabel,proto3" json:"price_label,omitempty"`    // "$15/мес"
-	Tagline       string                 `protobuf:"bytes,4,opt,name=tagline,proto3" json:"tagline,omitempty"`                            // "Безлимитные запросы, все модели"
-	Bullets       []string               `protobuf:"bytes,5,rep,name=bullets,proto3" json:"bullets,omitempty"`                            // feature list
-	CtaLabel      string                 `protobuf:"bytes,6,opt,name=cta_label,json=ctaLabel,proto3" json:"cta_label,omitempty"`          // "Обновить план"
+	state       protoimpl.MessageState `protogen:"open.v1"`
+	PlanId      string                 `protobuf:"bytes,1,opt,name=plan_id,json=planId,proto3" json:"plan_id,omitempty"`                // "pro"
+	DisplayName string                 `protobuf:"bytes,2,opt,name=display_name,json=displayName,proto3" json:"display_name,omitempty"` // "Pro"
+	PriceLabel  string                 `protobuf:"bytes,3,opt,name=price_label,json=priceLabel,proto3" json:"price_label,omitempty"`    // "$15/мес"
+	Tagline     string                 `protobuf:"bytes,4,opt,name=tagline,proto3" json:"tagline,omitempty"`                            // "Безлимитные запросы, все модели"
+	Bullets     []string               `protobuf:"bytes,5,rep,name=bullets,proto3" json:"bullets,omitempty"`                            // feature list
+	CtaLabel    string                 `protobuf:"bytes,6,opt,name=cta_label,json=ctaLabel,proto3" json:"cta_label,omitempty"`          // "Обновить план"
+	// URL the CTA button opens in the user's browser. For Boosty: a
+	// per-tier subscribe link such as https://boosty.to/druz9/purchase/XXXX.
+	// Empty for the "free" plan (no purchase flow).
+	SubscribeUrl  string `protobuf:"bytes,7,opt,name=subscribe_url,json=subscribeUrl,proto3" json:"subscribe_url,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *PaywallCopy) Reset() {
 	*x = PaywallCopy{}
-	mi := &file_druz9_v1_copilot_proto_msgTypes[7]
+	mi := &file_druz9_v1_copilot_proto_msgTypes[15]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -845,7 +1505,7 @@ func (x *PaywallCopy) String() string {
 func (*PaywallCopy) ProtoMessage() {}
 
 func (x *PaywallCopy) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_copilot_proto_msgTypes[7]
+	mi := &file_druz9_v1_copilot_proto_msgTypes[15]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -858,7 +1518,7 @@ func (x *PaywallCopy) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PaywallCopy.ProtoReflect.Descriptor instead.
 func (*PaywallCopy) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_copilot_proto_rawDescGZIP(), []int{7}
+	return file_druz9_v1_copilot_proto_rawDescGZIP(), []int{15}
 }
 
 func (x *PaywallCopy) GetPlanId() string {
@@ -903,6 +1563,13 @@ func (x *PaywallCopy) GetCtaLabel() string {
 	return ""
 }
 
+func (x *PaywallCopy) GetSubscribeUrl() string {
+	if x != nil {
+		return x.SubscribeUrl
+	}
+	return ""
+}
+
 // StealthCompatEntry flags a macOS / browser combination as known-broken for
 // the stealth overlay. The client shows a warning if the user is on one of
 // these versions.
@@ -920,7 +1587,7 @@ type StealthCompatEntry struct {
 
 func (x *StealthCompatEntry) Reset() {
 	*x = StealthCompatEntry{}
-	mi := &file_druz9_v1_copilot_proto_msgTypes[8]
+	mi := &file_druz9_v1_copilot_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -932,7 +1599,7 @@ func (x *StealthCompatEntry) String() string {
 func (*StealthCompatEntry) ProtoMessage() {}
 
 func (x *StealthCompatEntry) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_copilot_proto_msgTypes[8]
+	mi := &file_druz9_v1_copilot_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -945,7 +1612,7 @@ func (x *StealthCompatEntry) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StealthCompatEntry.ProtoReflect.Descriptor instead.
 func (*StealthCompatEntry) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_copilot_proto_rawDescGZIP(), []int{8}
+	return file_druz9_v1_copilot_proto_rawDescGZIP(), []int{16}
 }
 
 func (x *StealthCompatEntry) GetOsVersionMin() string {
@@ -1020,7 +1687,7 @@ type DesktopConfig struct {
 
 func (x *DesktopConfig) Reset() {
 	*x = DesktopConfig{}
-	mi := &file_druz9_v1_copilot_proto_msgTypes[9]
+	mi := &file_druz9_v1_copilot_proto_msgTypes[17]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1032,7 +1699,7 @@ func (x *DesktopConfig) String() string {
 func (*DesktopConfig) ProtoMessage() {}
 
 func (x *DesktopConfig) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_copilot_proto_msgTypes[9]
+	mi := &file_druz9_v1_copilot_proto_msgTypes[17]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1045,7 +1712,7 @@ func (x *DesktopConfig) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DesktopConfig.ProtoReflect.Descriptor instead.
 func (*DesktopConfig) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_copilot_proto_rawDescGZIP(), []int{9}
+	return file_druz9_v1_copilot_proto_rawDescGZIP(), []int{17}
 }
 
 func (x *DesktopConfig) GetRev() int64 {
@@ -1135,7 +1802,7 @@ type CopilotAttachmentInput struct {
 
 func (x *CopilotAttachmentInput) Reset() {
 	*x = CopilotAttachmentInput{}
-	mi := &file_druz9_v1_copilot_proto_msgTypes[10]
+	mi := &file_druz9_v1_copilot_proto_msgTypes[18]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1147,7 +1814,7 @@ func (x *CopilotAttachmentInput) String() string {
 func (*CopilotAttachmentInput) ProtoMessage() {}
 
 func (x *CopilotAttachmentInput) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_copilot_proto_msgTypes[10]
+	mi := &file_druz9_v1_copilot_proto_msgTypes[18]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1160,7 +1827,7 @@ func (x *CopilotAttachmentInput) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CopilotAttachmentInput.ProtoReflect.Descriptor instead.
 func (*CopilotAttachmentInput) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_copilot_proto_rawDescGZIP(), []int{10}
+	return file_druz9_v1_copilot_proto_rawDescGZIP(), []int{18}
 }
 
 func (x *CopilotAttachmentInput) GetKind() CopilotAttachmentKind {
@@ -1213,7 +1880,7 @@ type ClientContext struct {
 
 func (x *ClientContext) Reset() {
 	*x = ClientContext{}
-	mi := &file_druz9_v1_copilot_proto_msgTypes[11]
+	mi := &file_druz9_v1_copilot_proto_msgTypes[19]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1225,7 +1892,7 @@ func (x *ClientContext) String() string {
 func (*ClientContext) ProtoMessage() {}
 
 func (x *ClientContext) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_copilot_proto_msgTypes[11]
+	mi := &file_druz9_v1_copilot_proto_msgTypes[19]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1238,7 +1905,7 @@ func (x *ClientContext) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ClientContext.ProtoReflect.Descriptor instead.
 func (*ClientContext) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_copilot_proto_rawDescGZIP(), []int{11}
+	return file_druz9_v1_copilot_proto_rawDescGZIP(), []int{19}
 }
 
 func (x *ClientContext) GetOs() ClientOS {
@@ -1291,7 +1958,7 @@ type AnalyzeRequest struct {
 
 func (x *AnalyzeRequest) Reset() {
 	*x = AnalyzeRequest{}
-	mi := &file_druz9_v1_copilot_proto_msgTypes[12]
+	mi := &file_druz9_v1_copilot_proto_msgTypes[20]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1303,7 +1970,7 @@ func (x *AnalyzeRequest) String() string {
 func (*AnalyzeRequest) ProtoMessage() {}
 
 func (x *AnalyzeRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_copilot_proto_msgTypes[12]
+	mi := &file_druz9_v1_copilot_proto_msgTypes[20]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1316,7 +1983,7 @@ func (x *AnalyzeRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AnalyzeRequest.ProtoReflect.Descriptor instead.
 func (*AnalyzeRequest) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_copilot_proto_rawDescGZIP(), []int{12}
+	return file_druz9_v1_copilot_proto_rawDescGZIP(), []int{20}
 }
 
 func (x *AnalyzeRequest) GetConversationId() string {
@@ -1369,7 +2036,7 @@ type CopilotConversationCreated struct {
 
 func (x *CopilotConversationCreated) Reset() {
 	*x = CopilotConversationCreated{}
-	mi := &file_druz9_v1_copilot_proto_msgTypes[13]
+	mi := &file_druz9_v1_copilot_proto_msgTypes[21]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1381,7 +2048,7 @@ func (x *CopilotConversationCreated) String() string {
 func (*CopilotConversationCreated) ProtoMessage() {}
 
 func (x *CopilotConversationCreated) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_copilot_proto_msgTypes[13]
+	mi := &file_druz9_v1_copilot_proto_msgTypes[21]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1394,7 +2061,7 @@ func (x *CopilotConversationCreated) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CopilotConversationCreated.ProtoReflect.Descriptor instead.
 func (*CopilotConversationCreated) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_copilot_proto_rawDescGZIP(), []int{13}
+	return file_druz9_v1_copilot_proto_rawDescGZIP(), []int{21}
 }
 
 func (x *CopilotConversationCreated) GetConversationId() string {
@@ -1437,7 +2104,7 @@ type CopilotTokenDelta struct {
 
 func (x *CopilotTokenDelta) Reset() {
 	*x = CopilotTokenDelta{}
-	mi := &file_druz9_v1_copilot_proto_msgTypes[14]
+	mi := &file_druz9_v1_copilot_proto_msgTypes[22]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1449,7 +2116,7 @@ func (x *CopilotTokenDelta) String() string {
 func (*CopilotTokenDelta) ProtoMessage() {}
 
 func (x *CopilotTokenDelta) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_copilot_proto_msgTypes[14]
+	mi := &file_druz9_v1_copilot_proto_msgTypes[22]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1462,7 +2129,7 @@ func (x *CopilotTokenDelta) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CopilotTokenDelta.ProtoReflect.Descriptor instead.
 func (*CopilotTokenDelta) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_copilot_proto_rawDescGZIP(), []int{14}
+	return file_druz9_v1_copilot_proto_rawDescGZIP(), []int{22}
 }
 
 func (x *CopilotTokenDelta) GetIndex() int32 {
@@ -1493,7 +2160,7 @@ type CopilotDone struct {
 
 func (x *CopilotDone) Reset() {
 	*x = CopilotDone{}
-	mi := &file_druz9_v1_copilot_proto_msgTypes[15]
+	mi := &file_druz9_v1_copilot_proto_msgTypes[23]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1505,7 +2172,7 @@ func (x *CopilotDone) String() string {
 func (*CopilotDone) ProtoMessage() {}
 
 func (x *CopilotDone) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_copilot_proto_msgTypes[15]
+	mi := &file_druz9_v1_copilot_proto_msgTypes[23]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1518,7 +2185,7 @@ func (x *CopilotDone) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CopilotDone.ProtoReflect.Descriptor instead.
 func (*CopilotDone) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_copilot_proto_rawDescGZIP(), []int{15}
+	return file_druz9_v1_copilot_proto_rawDescGZIP(), []int{23}
 }
 
 func (x *CopilotDone) GetAssistantMessageId() string {
@@ -1569,7 +2236,7 @@ type CopilotStreamError struct {
 
 func (x *CopilotStreamError) Reset() {
 	*x = CopilotStreamError{}
-	mi := &file_druz9_v1_copilot_proto_msgTypes[16]
+	mi := &file_druz9_v1_copilot_proto_msgTypes[24]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1581,7 +2248,7 @@ func (x *CopilotStreamError) String() string {
 func (*CopilotStreamError) ProtoMessage() {}
 
 func (x *CopilotStreamError) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_copilot_proto_msgTypes[16]
+	mi := &file_druz9_v1_copilot_proto_msgTypes[24]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1594,7 +2261,7 @@ func (x *CopilotStreamError) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CopilotStreamError.ProtoReflect.Descriptor instead.
 func (*CopilotStreamError) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_copilot_proto_rawDescGZIP(), []int{16}
+	return file_druz9_v1_copilot_proto_rawDescGZIP(), []int{24}
 }
 
 func (x *CopilotStreamError) GetCode() string {
@@ -1634,7 +2301,7 @@ type AnalyzeEvent struct {
 
 func (x *AnalyzeEvent) Reset() {
 	*x = AnalyzeEvent{}
-	mi := &file_druz9_v1_copilot_proto_msgTypes[17]
+	mi := &file_druz9_v1_copilot_proto_msgTypes[25]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1646,7 +2313,7 @@ func (x *AnalyzeEvent) String() string {
 func (*AnalyzeEvent) ProtoMessage() {}
 
 func (x *AnalyzeEvent) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_copilot_proto_msgTypes[17]
+	mi := &file_druz9_v1_copilot_proto_msgTypes[25]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1659,7 +2326,7 @@ func (x *AnalyzeEvent) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AnalyzeEvent.ProtoReflect.Descriptor instead.
 func (*AnalyzeEvent) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_copilot_proto_rawDescGZIP(), []int{17}
+	return file_druz9_v1_copilot_proto_rawDescGZIP(), []int{25}
 }
 
 func (x *AnalyzeEvent) GetKind() isAnalyzeEvent_Kind {
@@ -1746,7 +2413,7 @@ type ChatRequest struct {
 
 func (x *ChatRequest) Reset() {
 	*x = ChatRequest{}
-	mi := &file_druz9_v1_copilot_proto_msgTypes[18]
+	mi := &file_druz9_v1_copilot_proto_msgTypes[26]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1758,7 +2425,7 @@ func (x *ChatRequest) String() string {
 func (*ChatRequest) ProtoMessage() {}
 
 func (x *ChatRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_copilot_proto_msgTypes[18]
+	mi := &file_druz9_v1_copilot_proto_msgTypes[26]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1771,7 +2438,7 @@ func (x *ChatRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ChatRequest.ProtoReflect.Descriptor instead.
 func (*ChatRequest) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_copilot_proto_rawDescGZIP(), []int{18}
+	return file_druz9_v1_copilot_proto_rawDescGZIP(), []int{26}
 }
 
 func (x *ChatRequest) GetConversationId() string {
@@ -1820,7 +2487,7 @@ type ChatEvent struct {
 
 func (x *ChatEvent) Reset() {
 	*x = ChatEvent{}
-	mi := &file_druz9_v1_copilot_proto_msgTypes[19]
+	mi := &file_druz9_v1_copilot_proto_msgTypes[27]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1832,7 +2499,7 @@ func (x *ChatEvent) String() string {
 func (*ChatEvent) ProtoMessage() {}
 
 func (x *ChatEvent) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_copilot_proto_msgTypes[19]
+	mi := &file_druz9_v1_copilot_proto_msgTypes[27]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1845,7 +2512,7 @@ func (x *ChatEvent) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ChatEvent.ProtoReflect.Descriptor instead.
 func (*ChatEvent) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_copilot_proto_rawDescGZIP(), []int{19}
+	return file_druz9_v1_copilot_proto_rawDescGZIP(), []int{27}
 }
 
 func (x *ChatEvent) GetKind() isChatEvent_Kind {
@@ -1930,7 +2597,7 @@ type ListCopilotHistoryRequest struct {
 
 func (x *ListCopilotHistoryRequest) Reset() {
 	*x = ListCopilotHistoryRequest{}
-	mi := &file_druz9_v1_copilot_proto_msgTypes[20]
+	mi := &file_druz9_v1_copilot_proto_msgTypes[28]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1942,7 +2609,7 @@ func (x *ListCopilotHistoryRequest) String() string {
 func (*ListCopilotHistoryRequest) ProtoMessage() {}
 
 func (x *ListCopilotHistoryRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_copilot_proto_msgTypes[20]
+	mi := &file_druz9_v1_copilot_proto_msgTypes[28]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1955,7 +2622,7 @@ func (x *ListCopilotHistoryRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListCopilotHistoryRequest.ProtoReflect.Descriptor instead.
 func (*ListCopilotHistoryRequest) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_copilot_proto_rawDescGZIP(), []int{20}
+	return file_druz9_v1_copilot_proto_rawDescGZIP(), []int{28}
 }
 
 func (x *ListCopilotHistoryRequest) GetCursor() string {
@@ -1982,7 +2649,7 @@ type ListCopilotHistoryResponse struct {
 
 func (x *ListCopilotHistoryResponse) Reset() {
 	*x = ListCopilotHistoryResponse{}
-	mi := &file_druz9_v1_copilot_proto_msgTypes[21]
+	mi := &file_druz9_v1_copilot_proto_msgTypes[29]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1994,7 +2661,7 @@ func (x *ListCopilotHistoryResponse) String() string {
 func (*ListCopilotHistoryResponse) ProtoMessage() {}
 
 func (x *ListCopilotHistoryResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_copilot_proto_msgTypes[21]
+	mi := &file_druz9_v1_copilot_proto_msgTypes[29]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2007,7 +2674,7 @@ func (x *ListCopilotHistoryResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListCopilotHistoryResponse.ProtoReflect.Descriptor instead.
 func (*ListCopilotHistoryResponse) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_copilot_proto_rawDescGZIP(), []int{21}
+	return file_druz9_v1_copilot_proto_rawDescGZIP(), []int{29}
 }
 
 func (x *ListCopilotHistoryResponse) GetConversations() []*CopilotConversation {
@@ -2033,7 +2700,7 @@ type GetCopilotConversationRequest struct {
 
 func (x *GetCopilotConversationRequest) Reset() {
 	*x = GetCopilotConversationRequest{}
-	mi := &file_druz9_v1_copilot_proto_msgTypes[22]
+	mi := &file_druz9_v1_copilot_proto_msgTypes[30]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2045,7 +2712,7 @@ func (x *GetCopilotConversationRequest) String() string {
 func (*GetCopilotConversationRequest) ProtoMessage() {}
 
 func (x *GetCopilotConversationRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_copilot_proto_msgTypes[22]
+	mi := &file_druz9_v1_copilot_proto_msgTypes[30]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2058,7 +2725,7 @@ func (x *GetCopilotConversationRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetCopilotConversationRequest.ProtoReflect.Descriptor instead.
 func (*GetCopilotConversationRequest) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_copilot_proto_rawDescGZIP(), []int{22}
+	return file_druz9_v1_copilot_proto_rawDescGZIP(), []int{30}
 }
 
 func (x *GetCopilotConversationRequest) GetId() string {
@@ -2077,7 +2744,7 @@ type DeleteCopilotConversationRequest struct {
 
 func (x *DeleteCopilotConversationRequest) Reset() {
 	*x = DeleteCopilotConversationRequest{}
-	mi := &file_druz9_v1_copilot_proto_msgTypes[23]
+	mi := &file_druz9_v1_copilot_proto_msgTypes[31]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2089,7 +2756,7 @@ func (x *DeleteCopilotConversationRequest) String() string {
 func (*DeleteCopilotConversationRequest) ProtoMessage() {}
 
 func (x *DeleteCopilotConversationRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_copilot_proto_msgTypes[23]
+	mi := &file_druz9_v1_copilot_proto_msgTypes[31]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2102,7 +2769,7 @@ func (x *DeleteCopilotConversationRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteCopilotConversationRequest.ProtoReflect.Descriptor instead.
 func (*DeleteCopilotConversationRequest) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_copilot_proto_rawDescGZIP(), []int{23}
+	return file_druz9_v1_copilot_proto_rawDescGZIP(), []int{31}
 }
 
 func (x *DeleteCopilotConversationRequest) GetId() string {
@@ -2120,7 +2787,7 @@ type DeleteCopilotConversationResponse struct {
 
 func (x *DeleteCopilotConversationResponse) Reset() {
 	*x = DeleteCopilotConversationResponse{}
-	mi := &file_druz9_v1_copilot_proto_msgTypes[24]
+	mi := &file_druz9_v1_copilot_proto_msgTypes[32]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2132,7 +2799,7 @@ func (x *DeleteCopilotConversationResponse) String() string {
 func (*DeleteCopilotConversationResponse) ProtoMessage() {}
 
 func (x *DeleteCopilotConversationResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_copilot_proto_msgTypes[24]
+	mi := &file_druz9_v1_copilot_proto_msgTypes[32]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2145,7 +2812,7 @@ func (x *DeleteCopilotConversationResponse) ProtoReflect() protoreflect.Message 
 
 // Deprecated: Use DeleteCopilotConversationResponse.ProtoReflect.Descriptor instead.
 func (*DeleteCopilotConversationResponse) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_copilot_proto_rawDescGZIP(), []int{24}
+	return file_druz9_v1_copilot_proto_rawDescGZIP(), []int{32}
 }
 
 type ListCopilotProvidersRequest struct {
@@ -2156,7 +2823,7 @@ type ListCopilotProvidersRequest struct {
 
 func (x *ListCopilotProvidersRequest) Reset() {
 	*x = ListCopilotProvidersRequest{}
-	mi := &file_druz9_v1_copilot_proto_msgTypes[25]
+	mi := &file_druz9_v1_copilot_proto_msgTypes[33]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2168,7 +2835,7 @@ func (x *ListCopilotProvidersRequest) String() string {
 func (*ListCopilotProvidersRequest) ProtoMessage() {}
 
 func (x *ListCopilotProvidersRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_copilot_proto_msgTypes[25]
+	mi := &file_druz9_v1_copilot_proto_msgTypes[33]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2181,7 +2848,7 @@ func (x *ListCopilotProvidersRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListCopilotProvidersRequest.ProtoReflect.Descriptor instead.
 func (*ListCopilotProvidersRequest) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_copilot_proto_rawDescGZIP(), []int{25}
+	return file_druz9_v1_copilot_proto_rawDescGZIP(), []int{33}
 }
 
 type ListCopilotProvidersResponse struct {
@@ -2193,7 +2860,7 @@ type ListCopilotProvidersResponse struct {
 
 func (x *ListCopilotProvidersResponse) Reset() {
 	*x = ListCopilotProvidersResponse{}
-	mi := &file_druz9_v1_copilot_proto_msgTypes[26]
+	mi := &file_druz9_v1_copilot_proto_msgTypes[34]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2205,7 +2872,7 @@ func (x *ListCopilotProvidersResponse) String() string {
 func (*ListCopilotProvidersResponse) ProtoMessage() {}
 
 func (x *ListCopilotProvidersResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_copilot_proto_msgTypes[26]
+	mi := &file_druz9_v1_copilot_proto_msgTypes[34]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2218,7 +2885,7 @@ func (x *ListCopilotProvidersResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListCopilotProvidersResponse.ProtoReflect.Descriptor instead.
 func (*ListCopilotProvidersResponse) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_copilot_proto_rawDescGZIP(), []int{26}
+	return file_druz9_v1_copilot_proto_rawDescGZIP(), []int{34}
 }
 
 func (x *ListCopilotProvidersResponse) GetModels() []*CopilotProviderModel {
@@ -2236,7 +2903,7 @@ type GetCopilotQuotaRequest struct {
 
 func (x *GetCopilotQuotaRequest) Reset() {
 	*x = GetCopilotQuotaRequest{}
-	mi := &file_druz9_v1_copilot_proto_msgTypes[27]
+	mi := &file_druz9_v1_copilot_proto_msgTypes[35]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2248,7 +2915,7 @@ func (x *GetCopilotQuotaRequest) String() string {
 func (*GetCopilotQuotaRequest) ProtoMessage() {}
 
 func (x *GetCopilotQuotaRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_copilot_proto_msgTypes[27]
+	mi := &file_druz9_v1_copilot_proto_msgTypes[35]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2261,7 +2928,7 @@ func (x *GetCopilotQuotaRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetCopilotQuotaRequest.ProtoReflect.Descriptor instead.
 func (*GetCopilotQuotaRequest) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_copilot_proto_rawDescGZIP(), []int{27}
+	return file_druz9_v1_copilot_proto_rawDescGZIP(), []int{35}
 }
 
 type GetDesktopConfigRequest struct {
@@ -2275,7 +2942,7 @@ type GetDesktopConfigRequest struct {
 
 func (x *GetDesktopConfigRequest) Reset() {
 	*x = GetDesktopConfigRequest{}
-	mi := &file_druz9_v1_copilot_proto_msgTypes[28]
+	mi := &file_druz9_v1_copilot_proto_msgTypes[36]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2287,7 +2954,7 @@ func (x *GetDesktopConfigRequest) String() string {
 func (*GetDesktopConfigRequest) ProtoMessage() {}
 
 func (x *GetDesktopConfigRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_copilot_proto_msgTypes[28]
+	mi := &file_druz9_v1_copilot_proto_msgTypes[36]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2300,7 +2967,7 @@ func (x *GetDesktopConfigRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetDesktopConfigRequest.ProtoReflect.Descriptor instead.
 func (*GetDesktopConfigRequest) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_copilot_proto_rawDescGZIP(), []int{28}
+	return file_druz9_v1_copilot_proto_rawDescGZIP(), []int{36}
 }
 
 func (x *GetDesktopConfigRequest) GetKnownRev() int64 {
@@ -2322,7 +2989,7 @@ type RateCopilotMessageRequest struct {
 
 func (x *RateCopilotMessageRequest) Reset() {
 	*x = RateCopilotMessageRequest{}
-	mi := &file_druz9_v1_copilot_proto_msgTypes[29]
+	mi := &file_druz9_v1_copilot_proto_msgTypes[37]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2334,7 +3001,7 @@ func (x *RateCopilotMessageRequest) String() string {
 func (*RateCopilotMessageRequest) ProtoMessage() {}
 
 func (x *RateCopilotMessageRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_copilot_proto_msgTypes[29]
+	mi := &file_druz9_v1_copilot_proto_msgTypes[37]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2347,7 +3014,7 @@ func (x *RateCopilotMessageRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RateCopilotMessageRequest.ProtoReflect.Descriptor instead.
 func (*RateCopilotMessageRequest) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_copilot_proto_rawDescGZIP(), []int{29}
+	return file_druz9_v1_copilot_proto_rawDescGZIP(), []int{37}
 }
 
 func (x *RateCopilotMessageRequest) GetMessageId() string {
@@ -2379,7 +3046,7 @@ type RateCopilotMessageResponse struct {
 
 func (x *RateCopilotMessageResponse) Reset() {
 	*x = RateCopilotMessageResponse{}
-	mi := &file_druz9_v1_copilot_proto_msgTypes[30]
+	mi := &file_druz9_v1_copilot_proto_msgTypes[38]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2391,7 +3058,7 @@ func (x *RateCopilotMessageResponse) String() string {
 func (*RateCopilotMessageResponse) ProtoMessage() {}
 
 func (x *RateCopilotMessageResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_copilot_proto_msgTypes[30]
+	mi := &file_druz9_v1_copilot_proto_msgTypes[38]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2404,14 +3071,14 @@ func (x *RateCopilotMessageResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RateCopilotMessageResponse.ProtoReflect.Descriptor instead.
 func (*RateCopilotMessageResponse) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_copilot_proto_rawDescGZIP(), []int{30}
+	return file_druz9_v1_copilot_proto_rawDescGZIP(), []int{38}
 }
 
 var File_druz9_v1_copilot_proto protoreflect.FileDescriptor
 
 const file_druz9_v1_copilot_proto_rawDesc = "" +
 	"\n" +
-	"\x16druz9/v1/copilot.proto\x12\bdruz9.v1\x1a\x15druz9/v1/common.proto\x1a\x1cgoogle/api/annotations.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\xec\x01\n" +
+	"\x16druz9/v1/copilot.proto\x12\bdruz9.v1\x1a\x15druz9/v1/common.proto\x1a\x1cgoogle/api/annotations.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\x8b\x02\n" +
 	"\x13CopilotConversation\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x14\n" +
 	"\x05title\x18\x02 \x01(\tR\x05title\x12\x14\n" +
@@ -2420,7 +3087,60 @@ const file_druz9_v1_copilot_proto_rawDesc = "" +
 	"created_at\x18\x04 \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\x129\n" +
 	"\n" +
 	"updated_at\x18\x05 \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt\x12#\n" +
-	"\rmessage_count\x18\x06 \x01(\x05R\fmessageCount\"\xe3\x02\n" +
+	"\rmessage_count\x18\x06 \x01(\x05R\fmessageCount\x12\x1d\n" +
+	"\n" +
+	"session_id\x18\a \x01(\tR\tsessionId\"\x96\x02\n" +
+	"\x0eCopilotSession\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x120\n" +
+	"\x04kind\x18\x02 \x01(\x0e2\x1c.druz9.v1.CopilotSessionKindR\x04kind\x129\n" +
+	"\n" +
+	"started_at\x18\x03 \x01(\v2\x1a.google.protobuf.TimestampR\tstartedAt\x12;\n" +
+	"\vfinished_at\x18\x04 \x01(\v2\x1a.google.protobuf.TimestampR\n" +
+	"finishedAt\x12-\n" +
+	"\x12conversation_count\x18\x05 \x01(\x05R\x11conversationCount\x12\x1b\n" +
+	"\tbyok_only\x18\x06 \x01(\bR\bbyokOnly\"=\n" +
+	"\x13CopilotAnalysisLink\x12\x14\n" +
+	"\x05label\x18\x01 \x01(\tR\x05label\x12\x10\n" +
+	"\x03url\x18\x02 \x01(\tR\x03url\"\x97\x05\n" +
+	"\x16CopilotSessionAnalysis\x12\x1d\n" +
+	"\n" +
+	"session_id\x18\x01 \x01(\tR\tsessionId\x127\n" +
+	"\x06status\x18\x02 \x01(\x0e2\x1f.druz9.v1.CopilotAnalysisStatusR\x06status\x12#\n" +
+	"\roverall_score\x18\x03 \x01(\x05R\foverallScore\x12Z\n" +
+	"\x0esection_scores\x18\x04 \x03(\v23.druz9.v1.CopilotSessionAnalysis.SectionScoresEntryR\rsectionScores\x12\x1e\n" +
+	"\n" +
+	"weaknesses\x18\x05 \x03(\tR\n" +
+	"weaknesses\x12(\n" +
+	"\x0frecommendations\x18\x06 \x03(\tR\x0frecommendations\x123\n" +
+	"\x05links\x18\a \x03(\v2\x1d.druz9.v1.CopilotAnalysisLinkR\x05links\x12'\n" +
+	"\x0freport_markdown\x18\b \x01(\tR\x0ereportMarkdown\x129\n" +
+	"\n" +
+	"started_at\x18\t \x01(\v2\x1a.google.protobuf.TimestampR\tstartedAt\x12;\n" +
+	"\vfinished_at\x18\n" +
+	" \x01(\v2\x1a.google.protobuf.TimestampR\n" +
+	"finishedAt\x12#\n" +
+	"\rerror_message\x18\v \x01(\tR\ferrorMessage\x12\x1d\n" +
+	"\n" +
+	"report_url\x18\f \x01(\tR\treportUrl\x1a@\n" +
+	"\x12SectionScoresEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\x05R\x05value:\x028\x01\"N\n" +
+	"\x1aStartCopilotSessionRequest\x120\n" +
+	"\x04kind\x18\x01 \x01(\x0e2\x1c.druz9.v1.CopilotSessionKindR\x04kind\"9\n" +
+	"\x18EndCopilotSessionRequest\x12\x1d\n" +
+	"\n" +
+	"session_id\x18\x01 \x01(\tR\tsessionId\"A\n" +
+	" GetCopilotSessionAnalysisRequest\x12\x1d\n" +
+	"\n" +
+	"session_id\x18\x01 \x01(\tR\tsessionId\"|\n" +
+	"\x1aListCopilotSessionsRequest\x12\x16\n" +
+	"\x06cursor\x18\x01 \x01(\tR\x06cursor\x12\x14\n" +
+	"\x05limit\x18\x02 \x01(\x05R\x05limit\x120\n" +
+	"\x04kind\x18\x03 \x01(\x0e2\x1c.druz9.v1.CopilotSessionKindR\x04kind\"t\n" +
+	"\x1bListCopilotSessionsResponse\x124\n" +
+	"\bsessions\x18\x01 \x03(\v2\x18.druz9.v1.CopilotSessionR\bsessions\x12\x1f\n" +
+	"\vnext_cursor\x18\x02 \x01(\tR\n" +
+	"nextCursor\"\xe3\x02\n" +
 	"\x0eCopilotMessage\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12'\n" +
 	"\x0fconversation_id\x18\x02 \x01(\tR\x0econversationId\x12)\n" +
@@ -2461,7 +3181,7 @@ const file_druz9_v1_copilot_proto_rawDesc = "" +
 	"\vaccelerator\x18\x02 \x01(\tR\vaccelerator\"9\n" +
 	"\vFeatureFlag\x12\x10\n" +
 	"\x03key\x18\x01 \x01(\tR\x03key\x12\x18\n" +
-	"\aenabled\x18\x02 \x01(\bR\aenabled\"\xbb\x01\n" +
+	"\aenabled\x18\x02 \x01(\bR\aenabled\"\xe0\x01\n" +
 	"\vPaywallCopy\x12\x17\n" +
 	"\aplan_id\x18\x01 \x01(\tR\x06planId\x12!\n" +
 	"\fdisplay_name\x18\x02 \x01(\tR\vdisplayName\x12\x1f\n" +
@@ -2469,7 +3189,8 @@ const file_druz9_v1_copilot_proto_rawDesc = "" +
 	"priceLabel\x12\x18\n" +
 	"\atagline\x18\x04 \x01(\tR\atagline\x12\x18\n" +
 	"\abullets\x18\x05 \x03(\tR\abullets\x12\x1b\n" +
-	"\tcta_label\x18\x06 \x01(\tR\bctaLabel\"\xf3\x01\n" +
+	"\tcta_label\x18\x06 \x01(\tR\bctaLabel\x12#\n" +
+	"\rsubscribe_url\x18\a \x01(\tR\fsubscribeUrl\"\xf3\x01\n" +
 	"\x12StealthCompatEntry\x12$\n" +
 	"\x0eos_version_min\x18\x01 \x01(\tR\fosVersionMin\x12$\n" +
 	"\x0eos_version_max\x18\x02 \x01(\tR\fosVersionMax\x12\x1d\n" +
@@ -2581,7 +3302,7 @@ const file_druz9_v1_copilot_proto_rawDesc = "" +
 	"\x15CLIENT_OS_UNSPECIFIED\x10\x00\x12\x13\n" +
 	"\x0fCLIENT_OS_MACOS\x10\x01\x12\x15\n" +
 	"\x11CLIENT_OS_WINDOWS\x10\x02\x12\x13\n" +
-	"\x0fCLIENT_OS_LINUX\x10\x03*\xf9\x01\n" +
+	"\x0fCLIENT_OS_LINUX\x10\x03*\xa1\x02\n" +
 	"\fHotkeyAction\x12\x1d\n" +
 	"\x19HOTKEY_ACTION_UNSPECIFIED\x10\x00\x12!\n" +
 	"\x1dHOTKEY_ACTION_SCREENSHOT_AREA\x10\x01\x12!\n" +
@@ -2589,12 +3310,24 @@ const file_druz9_v1_copilot_proto_rawDesc = "" +
 	"\x19HOTKEY_ACTION_VOICE_INPUT\x10\x03\x12\x1f\n" +
 	"\x1bHOTKEY_ACTION_TOGGLE_WINDOW\x10\x04\x12\x1e\n" +
 	"\x1aHOTKEY_ACTION_QUICK_PROMPT\x10\x05\x12$\n" +
-	" HOTKEY_ACTION_CLEAR_CONVERSATION\x10\x06*\x91\x01\n" +
+	" HOTKEY_ACTION_CLEAR_CONVERSATION\x10\x06\x12&\n" +
+	"\"HOTKEY_ACTION_CURSOR_FREEZE_TOGGLE\x10\a*\x91\x01\n" +
 	"\x0fModelSpeedClass\x12!\n" +
 	"\x1dMODEL_SPEED_CLASS_UNSPECIFIED\x10\x00\x12\x1a\n" +
 	"\x16MODEL_SPEED_CLASS_FAST\x10\x01\x12\x1e\n" +
 	"\x1aMODEL_SPEED_CLASS_BALANCED\x10\x02\x12\x1f\n" +
-	"\x1bMODEL_SPEED_CLASS_REASONING\x10\x032\x82\t\n" +
+	"\x1bMODEL_SPEED_CLASS_REASONING\x10\x03*\x9e\x01\n" +
+	"\x12CopilotSessionKind\x12$\n" +
+	" COPILOT_SESSION_KIND_UNSPECIFIED\x10\x00\x12\"\n" +
+	"\x1eCOPILOT_SESSION_KIND_INTERVIEW\x10\x01\x12\x1d\n" +
+	"\x19COPILOT_SESSION_KIND_WORK\x10\x02\x12\x1f\n" +
+	"\x1bCOPILOT_SESSION_KIND_CASUAL\x10\x03*\xd1\x01\n" +
+	"\x15CopilotAnalysisStatus\x12'\n" +
+	"#COPILOT_ANALYSIS_STATUS_UNSPECIFIED\x10\x00\x12#\n" +
+	"\x1fCOPILOT_ANALYSIS_STATUS_PENDING\x10\x01\x12#\n" +
+	"\x1fCOPILOT_ANALYSIS_STATUS_RUNNING\x10\x02\x12!\n" +
+	"\x1dCOPILOT_ANALYSIS_STATUS_READY\x10\x03\x12\"\n" +
+	"\x1eCOPILOT_ANALYSIS_STATUS_FAILED\x10\x042\x96\r\n" +
 	"\x0eCopilotService\x12a\n" +
 	"\aAnalyze\x12\x18.druz9.v1.AnalyzeRequest\x1a\x16.druz9.v1.AnalyzeEvent\"\"\x82\xd3\xe4\x93\x02\x1c:\x01*\"\x17/api/v1/copilot/analyze0\x01\x12u\n" +
 	"\x04Chat\x12\x15.druz9.v1.ChatRequest\x1a\x13.druz9.v1.ChatEvent\"?\x82\xd3\xe4\x93\x029:\x01*\"4/api/v1/copilot/conversations/{conversation_id}/chat0\x01\x12y\n" +
@@ -2604,7 +3337,12 @@ const file_druz9_v1_copilot_proto_rawDesc = "" +
 	"\rListProviders\x12%.druz9.v1.ListCopilotProvidersRequest\x1a&.druz9.v1.ListCopilotProvidersResponse\"!\x82\xd3\xe4\x93\x02\x1b\x12\x19/api/v1/copilot/providers\x12c\n" +
 	"\bGetQuota\x12 .druz9.v1.GetCopilotQuotaRequest\x1a\x16.druz9.v1.CopilotQuota\"\x1d\x82\xd3\xe4\x93\x02\x17\x12\x15/api/v1/copilot/quota\x12v\n" +
 	"\x10GetDesktopConfig\x12!.druz9.v1.GetDesktopConfigRequest\x1a\x17.druz9.v1.DesktopConfig\"&\x82\xd3\xe4\x93\x02 \x12\x1e/api/v1/copilot/desktop-config\x12\x8f\x01\n" +
-	"\vRateMessage\x12#.druz9.v1.RateCopilotMessageRequest\x1a$.druz9.v1.RateCopilotMessageResponse\"5\x82\xd3\xe4\x93\x02/:\x01*\"*/api/v1/copilot/messages/{message_id}/rateB\x89\x01\n" +
+	"\vRateMessage\x12#.druz9.v1.RateCopilotMessageRequest\x1a$.druz9.v1.RateCopilotMessageResponse\"5\x82\xd3\xe4\x93\x02/:\x01*\"*/api/v1/copilot/messages/{message_id}/rate\x12s\n" +
+	"\fStartSession\x12$.druz9.v1.StartCopilotSessionRequest\x1a\x18.druz9.v1.CopilotSession\"#\x82\xd3\xe4\x93\x02\x1d:\x01*\"\x18/api/v1/copilot/sessions\x12\x80\x01\n" +
+	"\n" +
+	"EndSession\x12\".druz9.v1.EndCopilotSessionRequest\x1a\x18.druz9.v1.CopilotSession\"4\x82\xd3\xe4\x93\x02.:\x01*\")/api/v1/copilot/sessions/{session_id}/end\x12\x9a\x01\n" +
+	"\x12GetSessionAnalysis\x12*.druz9.v1.GetCopilotSessionAnalysisRequest\x1a .druz9.v1.CopilotSessionAnalysis\"6\x82\xd3\xe4\x93\x020\x12./api/v1/copilot/sessions/{session_id}/analysis\x12}\n" +
+	"\fListSessions\x12$.druz9.v1.ListCopilotSessionsRequest\x1a%.druz9.v1.ListCopilotSessionsResponse\" \x82\xd3\xe4\x93\x02\x1a\x12\x18/api/v1/copilot/sessionsB\x89\x01\n" +
 	"\fcom.druz9.v1B\fCopilotProtoP\x01Z*druz9/shared/generated/pb/druz9/v1;druz9v1\xa2\x02\x03DXX\xaa\x02\bDruz9.V1\xca\x02\bDruz9\\V1\xe2\x02\x14Druz9\\V1\\GPBMetadata\xea\x02\tDruz9::V1b\x06proto3"
 
 var (
@@ -2619,105 +3357,135 @@ func file_druz9_v1_copilot_proto_rawDescGZIP() []byte {
 	return file_druz9_v1_copilot_proto_rawDescData
 }
 
-var file_druz9_v1_copilot_proto_enumTypes = make([]protoimpl.EnumInfo, 4)
-var file_druz9_v1_copilot_proto_msgTypes = make([]protoimpl.MessageInfo, 31)
+var file_druz9_v1_copilot_proto_enumTypes = make([]protoimpl.EnumInfo, 6)
+var file_druz9_v1_copilot_proto_msgTypes = make([]protoimpl.MessageInfo, 40)
 var file_druz9_v1_copilot_proto_goTypes = []any{
 	(CopilotAttachmentKind)(0),                // 0: druz9.v1.CopilotAttachmentKind
 	(ClientOS)(0),                             // 1: druz9.v1.ClientOS
 	(HotkeyAction)(0),                         // 2: druz9.v1.HotkeyAction
 	(ModelSpeedClass)(0),                      // 3: druz9.v1.ModelSpeedClass
-	(*CopilotConversation)(nil),               // 4: druz9.v1.CopilotConversation
-	(*CopilotMessage)(nil),                    // 5: druz9.v1.CopilotMessage
-	(*CopilotConversationDetail)(nil),         // 6: druz9.v1.CopilotConversationDetail
-	(*CopilotQuota)(nil),                      // 7: druz9.v1.CopilotQuota
-	(*CopilotProviderModel)(nil),              // 8: druz9.v1.CopilotProviderModel
-	(*HotkeyBinding)(nil),                     // 9: druz9.v1.HotkeyBinding
-	(*FeatureFlag)(nil),                       // 10: druz9.v1.FeatureFlag
-	(*PaywallCopy)(nil),                       // 11: druz9.v1.PaywallCopy
-	(*StealthCompatEntry)(nil),                // 12: druz9.v1.StealthCompatEntry
-	(*DesktopConfig)(nil),                     // 13: druz9.v1.DesktopConfig
-	(*CopilotAttachmentInput)(nil),            // 14: druz9.v1.CopilotAttachmentInput
-	(*ClientContext)(nil),                     // 15: druz9.v1.ClientContext
-	(*AnalyzeRequest)(nil),                    // 16: druz9.v1.AnalyzeRequest
-	(*CopilotConversationCreated)(nil),        // 17: druz9.v1.CopilotConversationCreated
-	(*CopilotTokenDelta)(nil),                 // 18: druz9.v1.CopilotTokenDelta
-	(*CopilotDone)(nil),                       // 19: druz9.v1.CopilotDone
-	(*CopilotStreamError)(nil),                // 20: druz9.v1.CopilotStreamError
-	(*AnalyzeEvent)(nil),                      // 21: druz9.v1.AnalyzeEvent
-	(*ChatRequest)(nil),                       // 22: druz9.v1.ChatRequest
-	(*ChatEvent)(nil),                         // 23: druz9.v1.ChatEvent
-	(*ListCopilotHistoryRequest)(nil),         // 24: druz9.v1.ListCopilotHistoryRequest
-	(*ListCopilotHistoryResponse)(nil),        // 25: druz9.v1.ListCopilotHistoryResponse
-	(*GetCopilotConversationRequest)(nil),     // 26: druz9.v1.GetCopilotConversationRequest
-	(*DeleteCopilotConversationRequest)(nil),  // 27: druz9.v1.DeleteCopilotConversationRequest
-	(*DeleteCopilotConversationResponse)(nil), // 28: druz9.v1.DeleteCopilotConversationResponse
-	(*ListCopilotProvidersRequest)(nil),       // 29: druz9.v1.ListCopilotProvidersRequest
-	(*ListCopilotProvidersResponse)(nil),      // 30: druz9.v1.ListCopilotProvidersResponse
-	(*GetCopilotQuotaRequest)(nil),            // 31: druz9.v1.GetCopilotQuotaRequest
-	(*GetDesktopConfigRequest)(nil),           // 32: druz9.v1.GetDesktopConfigRequest
-	(*RateCopilotMessageRequest)(nil),         // 33: druz9.v1.RateCopilotMessageRequest
-	(*RateCopilotMessageResponse)(nil),        // 34: druz9.v1.RateCopilotMessageResponse
-	(*timestamppb.Timestamp)(nil),             // 35: google.protobuf.Timestamp
-	(MessageRole)(0),                          // 36: druz9.v1.MessageRole
-	(SubscriptionPlan)(0),                     // 37: druz9.v1.SubscriptionPlan
+	(CopilotSessionKind)(0),                   // 4: druz9.v1.CopilotSessionKind
+	(CopilotAnalysisStatus)(0),                // 5: druz9.v1.CopilotAnalysisStatus
+	(*CopilotConversation)(nil),               // 6: druz9.v1.CopilotConversation
+	(*CopilotSession)(nil),                    // 7: druz9.v1.CopilotSession
+	(*CopilotAnalysisLink)(nil),               // 8: druz9.v1.CopilotAnalysisLink
+	(*CopilotSessionAnalysis)(nil),            // 9: druz9.v1.CopilotSessionAnalysis
+	(*StartCopilotSessionRequest)(nil),        // 10: druz9.v1.StartCopilotSessionRequest
+	(*EndCopilotSessionRequest)(nil),          // 11: druz9.v1.EndCopilotSessionRequest
+	(*GetCopilotSessionAnalysisRequest)(nil),  // 12: druz9.v1.GetCopilotSessionAnalysisRequest
+	(*ListCopilotSessionsRequest)(nil),        // 13: druz9.v1.ListCopilotSessionsRequest
+	(*ListCopilotSessionsResponse)(nil),       // 14: druz9.v1.ListCopilotSessionsResponse
+	(*CopilotMessage)(nil),                    // 15: druz9.v1.CopilotMessage
+	(*CopilotConversationDetail)(nil),         // 16: druz9.v1.CopilotConversationDetail
+	(*CopilotQuota)(nil),                      // 17: druz9.v1.CopilotQuota
+	(*CopilotProviderModel)(nil),              // 18: druz9.v1.CopilotProviderModel
+	(*HotkeyBinding)(nil),                     // 19: druz9.v1.HotkeyBinding
+	(*FeatureFlag)(nil),                       // 20: druz9.v1.FeatureFlag
+	(*PaywallCopy)(nil),                       // 21: druz9.v1.PaywallCopy
+	(*StealthCompatEntry)(nil),                // 22: druz9.v1.StealthCompatEntry
+	(*DesktopConfig)(nil),                     // 23: druz9.v1.DesktopConfig
+	(*CopilotAttachmentInput)(nil),            // 24: druz9.v1.CopilotAttachmentInput
+	(*ClientContext)(nil),                     // 25: druz9.v1.ClientContext
+	(*AnalyzeRequest)(nil),                    // 26: druz9.v1.AnalyzeRequest
+	(*CopilotConversationCreated)(nil),        // 27: druz9.v1.CopilotConversationCreated
+	(*CopilotTokenDelta)(nil),                 // 28: druz9.v1.CopilotTokenDelta
+	(*CopilotDone)(nil),                       // 29: druz9.v1.CopilotDone
+	(*CopilotStreamError)(nil),                // 30: druz9.v1.CopilotStreamError
+	(*AnalyzeEvent)(nil),                      // 31: druz9.v1.AnalyzeEvent
+	(*ChatRequest)(nil),                       // 32: druz9.v1.ChatRequest
+	(*ChatEvent)(nil),                         // 33: druz9.v1.ChatEvent
+	(*ListCopilotHistoryRequest)(nil),         // 34: druz9.v1.ListCopilotHistoryRequest
+	(*ListCopilotHistoryResponse)(nil),        // 35: druz9.v1.ListCopilotHistoryResponse
+	(*GetCopilotConversationRequest)(nil),     // 36: druz9.v1.GetCopilotConversationRequest
+	(*DeleteCopilotConversationRequest)(nil),  // 37: druz9.v1.DeleteCopilotConversationRequest
+	(*DeleteCopilotConversationResponse)(nil), // 38: druz9.v1.DeleteCopilotConversationResponse
+	(*ListCopilotProvidersRequest)(nil),       // 39: druz9.v1.ListCopilotProvidersRequest
+	(*ListCopilotProvidersResponse)(nil),      // 40: druz9.v1.ListCopilotProvidersResponse
+	(*GetCopilotQuotaRequest)(nil),            // 41: druz9.v1.GetCopilotQuotaRequest
+	(*GetDesktopConfigRequest)(nil),           // 42: druz9.v1.GetDesktopConfigRequest
+	(*RateCopilotMessageRequest)(nil),         // 43: druz9.v1.RateCopilotMessageRequest
+	(*RateCopilotMessageResponse)(nil),        // 44: druz9.v1.RateCopilotMessageResponse
+	nil,                                       // 45: druz9.v1.CopilotSessionAnalysis.SectionScoresEntry
+	(*timestamppb.Timestamp)(nil),             // 46: google.protobuf.Timestamp
+	(MessageRole)(0),                          // 47: druz9.v1.MessageRole
+	(SubscriptionPlan)(0),                     // 48: druz9.v1.SubscriptionPlan
 }
 var file_druz9_v1_copilot_proto_depIdxs = []int32{
-	35, // 0: druz9.v1.CopilotConversation.created_at:type_name -> google.protobuf.Timestamp
-	35, // 1: druz9.v1.CopilotConversation.updated_at:type_name -> google.protobuf.Timestamp
-	36, // 2: druz9.v1.CopilotMessage.role:type_name -> druz9.v1.MessageRole
-	35, // 3: druz9.v1.CopilotMessage.created_at:type_name -> google.protobuf.Timestamp
-	4,  // 4: druz9.v1.CopilotConversationDetail.conversation:type_name -> druz9.v1.CopilotConversation
-	5,  // 5: druz9.v1.CopilotConversationDetail.messages:type_name -> druz9.v1.CopilotMessage
-	37, // 6: druz9.v1.CopilotQuota.plan:type_name -> druz9.v1.SubscriptionPlan
-	35, // 7: druz9.v1.CopilotQuota.resets_at:type_name -> google.protobuf.Timestamp
-	3,  // 8: druz9.v1.CopilotProviderModel.speed_class:type_name -> druz9.v1.ModelSpeedClass
-	2,  // 9: druz9.v1.HotkeyBinding.action:type_name -> druz9.v1.HotkeyAction
-	8,  // 10: druz9.v1.DesktopConfig.models:type_name -> druz9.v1.CopilotProviderModel
-	9,  // 11: druz9.v1.DesktopConfig.default_hotkeys:type_name -> druz9.v1.HotkeyBinding
-	10, // 12: druz9.v1.DesktopConfig.flags:type_name -> druz9.v1.FeatureFlag
-	11, // 13: druz9.v1.DesktopConfig.paywall:type_name -> druz9.v1.PaywallCopy
-	12, // 14: druz9.v1.DesktopConfig.stealth_warnings:type_name -> druz9.v1.StealthCompatEntry
-	0,  // 15: druz9.v1.CopilotAttachmentInput.kind:type_name -> druz9.v1.CopilotAttachmentKind
-	1,  // 16: druz9.v1.ClientContext.os:type_name -> druz9.v1.ClientOS
-	2,  // 17: druz9.v1.ClientContext.trigger_action:type_name -> druz9.v1.HotkeyAction
-	14, // 18: druz9.v1.AnalyzeRequest.attachments:type_name -> druz9.v1.CopilotAttachmentInput
-	15, // 19: druz9.v1.AnalyzeRequest.client:type_name -> druz9.v1.ClientContext
-	7,  // 20: druz9.v1.CopilotDone.updated_quota:type_name -> druz9.v1.CopilotQuota
-	17, // 21: druz9.v1.AnalyzeEvent.created:type_name -> druz9.v1.CopilotConversationCreated
-	18, // 22: druz9.v1.AnalyzeEvent.delta:type_name -> druz9.v1.CopilotTokenDelta
-	19, // 23: druz9.v1.AnalyzeEvent.done:type_name -> druz9.v1.CopilotDone
-	20, // 24: druz9.v1.AnalyzeEvent.error:type_name -> druz9.v1.CopilotStreamError
-	14, // 25: druz9.v1.ChatRequest.attachments:type_name -> druz9.v1.CopilotAttachmentInput
-	15, // 26: druz9.v1.ChatRequest.client:type_name -> druz9.v1.ClientContext
-	17, // 27: druz9.v1.ChatEvent.created:type_name -> druz9.v1.CopilotConversationCreated
-	18, // 28: druz9.v1.ChatEvent.delta:type_name -> druz9.v1.CopilotTokenDelta
-	19, // 29: druz9.v1.ChatEvent.done:type_name -> druz9.v1.CopilotDone
-	20, // 30: druz9.v1.ChatEvent.error:type_name -> druz9.v1.CopilotStreamError
-	4,  // 31: druz9.v1.ListCopilotHistoryResponse.conversations:type_name -> druz9.v1.CopilotConversation
-	8,  // 32: druz9.v1.ListCopilotProvidersResponse.models:type_name -> druz9.v1.CopilotProviderModel
-	16, // 33: druz9.v1.CopilotService.Analyze:input_type -> druz9.v1.AnalyzeRequest
-	22, // 34: druz9.v1.CopilotService.Chat:input_type -> druz9.v1.ChatRequest
-	24, // 35: druz9.v1.CopilotService.ListHistory:input_type -> druz9.v1.ListCopilotHistoryRequest
-	26, // 36: druz9.v1.CopilotService.GetConversation:input_type -> druz9.v1.GetCopilotConversationRequest
-	27, // 37: druz9.v1.CopilotService.DeleteConversation:input_type -> druz9.v1.DeleteCopilotConversationRequest
-	29, // 38: druz9.v1.CopilotService.ListProviders:input_type -> druz9.v1.ListCopilotProvidersRequest
-	31, // 39: druz9.v1.CopilotService.GetQuota:input_type -> druz9.v1.GetCopilotQuotaRequest
-	32, // 40: druz9.v1.CopilotService.GetDesktopConfig:input_type -> druz9.v1.GetDesktopConfigRequest
-	33, // 41: druz9.v1.CopilotService.RateMessage:input_type -> druz9.v1.RateCopilotMessageRequest
-	21, // 42: druz9.v1.CopilotService.Analyze:output_type -> druz9.v1.AnalyzeEvent
-	23, // 43: druz9.v1.CopilotService.Chat:output_type -> druz9.v1.ChatEvent
-	25, // 44: druz9.v1.CopilotService.ListHistory:output_type -> druz9.v1.ListCopilotHistoryResponse
-	6,  // 45: druz9.v1.CopilotService.GetConversation:output_type -> druz9.v1.CopilotConversationDetail
-	28, // 46: druz9.v1.CopilotService.DeleteConversation:output_type -> druz9.v1.DeleteCopilotConversationResponse
-	30, // 47: druz9.v1.CopilotService.ListProviders:output_type -> druz9.v1.ListCopilotProvidersResponse
-	7,  // 48: druz9.v1.CopilotService.GetQuota:output_type -> druz9.v1.CopilotQuota
-	13, // 49: druz9.v1.CopilotService.GetDesktopConfig:output_type -> druz9.v1.DesktopConfig
-	34, // 50: druz9.v1.CopilotService.RateMessage:output_type -> druz9.v1.RateCopilotMessageResponse
-	42, // [42:51] is the sub-list for method output_type
-	33, // [33:42] is the sub-list for method input_type
-	33, // [33:33] is the sub-list for extension type_name
-	33, // [33:33] is the sub-list for extension extendee
-	0,  // [0:33] is the sub-list for field type_name
+	46, // 0: druz9.v1.CopilotConversation.created_at:type_name -> google.protobuf.Timestamp
+	46, // 1: druz9.v1.CopilotConversation.updated_at:type_name -> google.protobuf.Timestamp
+	4,  // 2: druz9.v1.CopilotSession.kind:type_name -> druz9.v1.CopilotSessionKind
+	46, // 3: druz9.v1.CopilotSession.started_at:type_name -> google.protobuf.Timestamp
+	46, // 4: druz9.v1.CopilotSession.finished_at:type_name -> google.protobuf.Timestamp
+	5,  // 5: druz9.v1.CopilotSessionAnalysis.status:type_name -> druz9.v1.CopilotAnalysisStatus
+	45, // 6: druz9.v1.CopilotSessionAnalysis.section_scores:type_name -> druz9.v1.CopilotSessionAnalysis.SectionScoresEntry
+	8,  // 7: druz9.v1.CopilotSessionAnalysis.links:type_name -> druz9.v1.CopilotAnalysisLink
+	46, // 8: druz9.v1.CopilotSessionAnalysis.started_at:type_name -> google.protobuf.Timestamp
+	46, // 9: druz9.v1.CopilotSessionAnalysis.finished_at:type_name -> google.protobuf.Timestamp
+	4,  // 10: druz9.v1.StartCopilotSessionRequest.kind:type_name -> druz9.v1.CopilotSessionKind
+	4,  // 11: druz9.v1.ListCopilotSessionsRequest.kind:type_name -> druz9.v1.CopilotSessionKind
+	7,  // 12: druz9.v1.ListCopilotSessionsResponse.sessions:type_name -> druz9.v1.CopilotSession
+	47, // 13: druz9.v1.CopilotMessage.role:type_name -> druz9.v1.MessageRole
+	46, // 14: druz9.v1.CopilotMessage.created_at:type_name -> google.protobuf.Timestamp
+	6,  // 15: druz9.v1.CopilotConversationDetail.conversation:type_name -> druz9.v1.CopilotConversation
+	15, // 16: druz9.v1.CopilotConversationDetail.messages:type_name -> druz9.v1.CopilotMessage
+	48, // 17: druz9.v1.CopilotQuota.plan:type_name -> druz9.v1.SubscriptionPlan
+	46, // 18: druz9.v1.CopilotQuota.resets_at:type_name -> google.protobuf.Timestamp
+	3,  // 19: druz9.v1.CopilotProviderModel.speed_class:type_name -> druz9.v1.ModelSpeedClass
+	2,  // 20: druz9.v1.HotkeyBinding.action:type_name -> druz9.v1.HotkeyAction
+	18, // 21: druz9.v1.DesktopConfig.models:type_name -> druz9.v1.CopilotProviderModel
+	19, // 22: druz9.v1.DesktopConfig.default_hotkeys:type_name -> druz9.v1.HotkeyBinding
+	20, // 23: druz9.v1.DesktopConfig.flags:type_name -> druz9.v1.FeatureFlag
+	21, // 24: druz9.v1.DesktopConfig.paywall:type_name -> druz9.v1.PaywallCopy
+	22, // 25: druz9.v1.DesktopConfig.stealth_warnings:type_name -> druz9.v1.StealthCompatEntry
+	0,  // 26: druz9.v1.CopilotAttachmentInput.kind:type_name -> druz9.v1.CopilotAttachmentKind
+	1,  // 27: druz9.v1.ClientContext.os:type_name -> druz9.v1.ClientOS
+	2,  // 28: druz9.v1.ClientContext.trigger_action:type_name -> druz9.v1.HotkeyAction
+	24, // 29: druz9.v1.AnalyzeRequest.attachments:type_name -> druz9.v1.CopilotAttachmentInput
+	25, // 30: druz9.v1.AnalyzeRequest.client:type_name -> druz9.v1.ClientContext
+	17, // 31: druz9.v1.CopilotDone.updated_quota:type_name -> druz9.v1.CopilotQuota
+	27, // 32: druz9.v1.AnalyzeEvent.created:type_name -> druz9.v1.CopilotConversationCreated
+	28, // 33: druz9.v1.AnalyzeEvent.delta:type_name -> druz9.v1.CopilotTokenDelta
+	29, // 34: druz9.v1.AnalyzeEvent.done:type_name -> druz9.v1.CopilotDone
+	30, // 35: druz9.v1.AnalyzeEvent.error:type_name -> druz9.v1.CopilotStreamError
+	24, // 36: druz9.v1.ChatRequest.attachments:type_name -> druz9.v1.CopilotAttachmentInput
+	25, // 37: druz9.v1.ChatRequest.client:type_name -> druz9.v1.ClientContext
+	27, // 38: druz9.v1.ChatEvent.created:type_name -> druz9.v1.CopilotConversationCreated
+	28, // 39: druz9.v1.ChatEvent.delta:type_name -> druz9.v1.CopilotTokenDelta
+	29, // 40: druz9.v1.ChatEvent.done:type_name -> druz9.v1.CopilotDone
+	30, // 41: druz9.v1.ChatEvent.error:type_name -> druz9.v1.CopilotStreamError
+	6,  // 42: druz9.v1.ListCopilotHistoryResponse.conversations:type_name -> druz9.v1.CopilotConversation
+	18, // 43: druz9.v1.ListCopilotProvidersResponse.models:type_name -> druz9.v1.CopilotProviderModel
+	26, // 44: druz9.v1.CopilotService.Analyze:input_type -> druz9.v1.AnalyzeRequest
+	32, // 45: druz9.v1.CopilotService.Chat:input_type -> druz9.v1.ChatRequest
+	34, // 46: druz9.v1.CopilotService.ListHistory:input_type -> druz9.v1.ListCopilotHistoryRequest
+	36, // 47: druz9.v1.CopilotService.GetConversation:input_type -> druz9.v1.GetCopilotConversationRequest
+	37, // 48: druz9.v1.CopilotService.DeleteConversation:input_type -> druz9.v1.DeleteCopilotConversationRequest
+	39, // 49: druz9.v1.CopilotService.ListProviders:input_type -> druz9.v1.ListCopilotProvidersRequest
+	41, // 50: druz9.v1.CopilotService.GetQuota:input_type -> druz9.v1.GetCopilotQuotaRequest
+	42, // 51: druz9.v1.CopilotService.GetDesktopConfig:input_type -> druz9.v1.GetDesktopConfigRequest
+	43, // 52: druz9.v1.CopilotService.RateMessage:input_type -> druz9.v1.RateCopilotMessageRequest
+	10, // 53: druz9.v1.CopilotService.StartSession:input_type -> druz9.v1.StartCopilotSessionRequest
+	11, // 54: druz9.v1.CopilotService.EndSession:input_type -> druz9.v1.EndCopilotSessionRequest
+	12, // 55: druz9.v1.CopilotService.GetSessionAnalysis:input_type -> druz9.v1.GetCopilotSessionAnalysisRequest
+	13, // 56: druz9.v1.CopilotService.ListSessions:input_type -> druz9.v1.ListCopilotSessionsRequest
+	31, // 57: druz9.v1.CopilotService.Analyze:output_type -> druz9.v1.AnalyzeEvent
+	33, // 58: druz9.v1.CopilotService.Chat:output_type -> druz9.v1.ChatEvent
+	35, // 59: druz9.v1.CopilotService.ListHistory:output_type -> druz9.v1.ListCopilotHistoryResponse
+	16, // 60: druz9.v1.CopilotService.GetConversation:output_type -> druz9.v1.CopilotConversationDetail
+	38, // 61: druz9.v1.CopilotService.DeleteConversation:output_type -> druz9.v1.DeleteCopilotConversationResponse
+	40, // 62: druz9.v1.CopilotService.ListProviders:output_type -> druz9.v1.ListCopilotProvidersResponse
+	17, // 63: druz9.v1.CopilotService.GetQuota:output_type -> druz9.v1.CopilotQuota
+	23, // 64: druz9.v1.CopilotService.GetDesktopConfig:output_type -> druz9.v1.DesktopConfig
+	44, // 65: druz9.v1.CopilotService.RateMessage:output_type -> druz9.v1.RateCopilotMessageResponse
+	7,  // 66: druz9.v1.CopilotService.StartSession:output_type -> druz9.v1.CopilotSession
+	7,  // 67: druz9.v1.CopilotService.EndSession:output_type -> druz9.v1.CopilotSession
+	9,  // 68: druz9.v1.CopilotService.GetSessionAnalysis:output_type -> druz9.v1.CopilotSessionAnalysis
+	14, // 69: druz9.v1.CopilotService.ListSessions:output_type -> druz9.v1.ListCopilotSessionsResponse
+	57, // [57:70] is the sub-list for method output_type
+	44, // [44:57] is the sub-list for method input_type
+	44, // [44:44] is the sub-list for extension type_name
+	44, // [44:44] is the sub-list for extension extendee
+	0,  // [0:44] is the sub-list for field type_name
 }
 
 func init() { file_druz9_v1_copilot_proto_init() }
@@ -2726,13 +3494,13 @@ func file_druz9_v1_copilot_proto_init() {
 		return
 	}
 	file_druz9_v1_common_proto_init()
-	file_druz9_v1_copilot_proto_msgTypes[17].OneofWrappers = []any{
+	file_druz9_v1_copilot_proto_msgTypes[25].OneofWrappers = []any{
 		(*AnalyzeEvent_Created)(nil),
 		(*AnalyzeEvent_Delta)(nil),
 		(*AnalyzeEvent_Done)(nil),
 		(*AnalyzeEvent_Error)(nil),
 	}
-	file_druz9_v1_copilot_proto_msgTypes[19].OneofWrappers = []any{
+	file_druz9_v1_copilot_proto_msgTypes[27].OneofWrappers = []any{
 		(*ChatEvent_Created)(nil),
 		(*ChatEvent_Delta)(nil),
 		(*ChatEvent_Done)(nil),
@@ -2743,8 +3511,8 @@ func file_druz9_v1_copilot_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_druz9_v1_copilot_proto_rawDesc), len(file_druz9_v1_copilot_proto_rawDesc)),
-			NumEnums:      4,
-			NumMessages:   31,
+			NumEnums:      6,
+			NumMessages:   40,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

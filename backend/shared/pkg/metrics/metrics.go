@@ -204,6 +204,18 @@ var VacanciesCacheRefreshErrorsTotal = prometheus.NewCounterVec(
 	[]string{"source"},
 )
 
+// VacanciesDetailsFetchErrorsTotal counts per-source detail-endpoint
+// failures (Phase 4 lazy detail enrichment). Anti-fallback: on failure the
+// detail cache returns the listing snapshot as VacancyDetails — never a
+// fabricated description. Alert when one source's rate climbs.
+var VacanciesDetailsFetchErrorsTotal = prometheus.NewCounterVec(
+	prometheus.CounterOpts{
+		Name: "druz9_vacancies_details_fetch_errors_total",
+		Help: "Per-source detail enrichment failures (lazy detail cache).",
+	},
+	[]string{"source"},
+)
+
 func init() {
 	Registry.MustRegister(
 		HTTPRequestsTotal, HTTPRequestDuration, HTTPErrorsTotal,
@@ -214,6 +226,7 @@ func init() {
 		MockSessionsTotal, QueueWaitSeconds, ActiveUsers,
 		CacheSetErrorsTotal, VacanciesParserErrorsTotal,
 		VacanciesCacheRefreshErrorsTotal,
+		VacanciesDetailsFetchErrorsTotal,
 	)
 }
 

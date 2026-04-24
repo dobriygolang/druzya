@@ -253,28 +253,145 @@ function PermissionRow({
 }
 
 function LoginStep() {
-  const [waiting, setWaiting] = useState(false);
+  // State machine for the login flow, mirroring the frontend (see
+  // frontend/src/pages/LoginPage.tsx):
+  //   idle → starting → waiting (polling) → done
+  //                   └→ error
+  const [state, setState] = useState<
+    | { kind: 'idle' }
+    | { kind: 'starting' }
+    | { kind: 'waiting'; code: string; deepLink: string }
+    | { kind: 'error'; message: string }
+  >({ kind: 'idle' });
+
+  // When the user chooses "Log in", main does the start + we call await.
+  // Pressing "Restart" cancels the in-flight poll and reruns start.
+  useEffect(() => {
+    if (state.kind !== 'waiting') return;
+    let cancelled = false;
+    void (async () => {
+      try {
+        await window.druz9.auth.loginTelegramAwait();
+        // Onboarding watches the auth store for isNewUser === true via
+        // the event:auth-changed push; this component just waits for
+        // the outer effect to move to 'done'.
+        if (!cancelled) {
+          /* success — parent effect handles transition */
+        }
+      } catch (err) {
+        if (!cancelled) {
+          setState({ kind: 'error', message: (err as Error).message });
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [state.kind === 'waiting' ? state.code : '']);
+
+  const begin = async () => {
+    setState({ kind: 'starting' });
+    try {
+      const r = await window.druz9.auth.loginTelegramStart();
+      setState({ kind: 'waiting', code: r.code, deepLink: r.deepLink });
+    } catch (err) {
+      setState({ kind: 'error', message: (err as Error).message });
+    }
+  };
+
+  const restart = async () => {
+    await window.druz9.auth.loginTelegramCancel().catch(() => undefined);
+    await begin();
+  };
+
+  if (state.kind === 'idle' || state.kind === 'starting') {
+    return (
+      <div style={{ textAlign: 'center', maxWidth: 420 }}>
+        <IconSparkles size={40} />
+        <h2 style={{ fontSize: 22, margin: '16px 0 8px' }}>Вход в Druz9</h2>
+        <p style={{ fontSize: 13, color: 'var(--d-text-2)', lineHeight: 1.5, margin: '0 0 24px' }}>
+          Откроем Telegram-бота. Жми в боте «Start» — мы узнаем об этом и
+          продолжим сами.
+        </p>
+        <Button variant="primary" disabled={state.kind === 'starting'} onClick={() => void begin()}>
+          {state.kind === 'starting' ? 'Готовим…' : 'Войти через Telegram'}
+        </Button>
+      </div>
+    );
+  }
+
+  if (state.kind === 'waiting') {
+    return (
+      <div style={{ textAlign: 'center', maxWidth: 460 }}>
+        <IconSparkles size={40} />
+        <h2 style={{ fontSize: 22, margin: '16px 0 8px' }}>Подтверди вход в Telegram</h2>
+        <p style={{ fontSize: 13, color: 'var(--d-text-2)', lineHeight: 1.5, margin: '0 0 20px' }}>
+          Мы открыли бота в браузере. Жми{' '}
+          <span style={{ fontFamily: 'var(--f-mono)', color: 'var(--d-text)' }}>/start</span>{' '}
+          там. Этот код должен совпасть с тем, что бот отправит тебе:
+        </p>
+
+        {/* Big code display — purely advisory so users can verify they're
+            talking to the right bot. No copy/paste required; backend already
+            knows this code belongs to our session. */}
+        <div
+          style={{
+            display: 'inline-flex',
+            padding: '10px 18px',
+            background: 'var(--d-gradient-hero-soft)',
+            border: '1px solid var(--d-line)',
+            borderRadius: 10,
+            fontFamily: 'var(--f-mono)',
+            fontSize: 22,
+            letterSpacing: 4,
+            color: 'var(--d-text)',
+          }}
+        >
+          {state.code}
+        </div>
+
+        <div style={{ marginTop: 18, display: 'flex', justifyContent: 'center', gap: 8 }}>
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => void window.druz9.shell.openExternal(state.deepLink)}
+          >
+            Открыть бот ещё раз
+          </Button>
+          <Button variant="ghost" size="sm" onClick={() => void restart()}>
+            Новый код
+          </Button>
+        </div>
+
+        <div style={{ marginTop: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, fontSize: 11, color: 'var(--d-text-3)' }}>
+          <StatusDot state="thinking" size={6} />
+          <span>ждём подтверждения в Telegram…</span>
+        </div>
+      </div>
+    );
+  }
+
+  // error
   return (
     <div style={{ textAlign: 'center', maxWidth: 420 }}>
-      <IconSparkles size={40} />
-      <h2 style={{ fontSize: 22, margin: '16px 0 8px' }}>Вход в Druz9</h2>
-      <p style={{ fontSize: 13, color: 'var(--d-text-2)', lineHeight: 1.5, margin: '0 0 24px' }}>
-        Мы откроем браузер с Telegram-логином. После подтверждения вернёмся сюда автоматически.
+      <h2 style={{ fontSize: 20, margin: '0 0 8px', color: 'var(--d-red)' }}>
+        Не получилось войти
+      </h2>
+      <p style={{ fontSize: 13, color: 'var(--d-text-2)', margin: '0 0 18px' }}>
+        {humanizeError(state.message)}
       </p>
-      <Button
-        variant="primary"
-        onClick={async () => {
-          setWaiting(true);
-          // Main opens the browser to the Telegram widget; the deep-link
-          // handler pushes the session via event:auth-changed and we
-          // move on automatically (see effect in OnboardingScreen).
-          await openTelegramLogin();
-        }}
-      >
-        {waiting ? 'Ждём подтверждения…' : 'Войти через Telegram'}
+      <Button variant="primary" onClick={() => void restart()}>
+        Попробовать снова
       </Button>
     </div>
   );
+}
+
+function humanizeError(m: string): string {
+  if (m === 'code_expired') return 'Код устарел — запросим новый.';
+  if (m.startsWith('rate_limited')) return 'Слишком много попыток. Попробуй через минуту.';
+  if (m === 'aborted') return 'Вход отменён.';
+  return m.slice(0, 160);
 }
 
 function DoneStep() {
@@ -307,10 +424,7 @@ function DoneStep() {
 
 // ─────────────────────────────────────────────────────────────────────────
 
-async function openTelegramLogin(): Promise<void> {
-  // Main process owns the URL; exposing a dedicated IPC method for this
-  // would be cleaner but for MVP we piggyback on `permissions.openSettings`
-  // style — the real URL comes from DesktopConfig in a future revision.
-  // Placeholder: just wait for the deep-link callback from an external flow.
-  await new Promise((r) => setTimeout(r, 0));
-}
+// openTelegramLogin was a stub for a deep-link callback flow. The real
+// flow lives in auth.loginTelegramStart / loginTelegramAwait IPC — see
+// main/auth/telegram-code.ts. The OnboardingScreen's LoginStep calls
+// those directly above.

@@ -20,15 +20,24 @@ import {
   type Druz9API,
   type MasqueradePreset,
   type MasqueradePresetInfo,
+  type CursorFreezeState,
   type PermissionKind,
   type PermissionState,
+  type TelegramLoginResult,
+  type TelegramLoginStart,
+  type UpdateStatus,
   type WindowName,
 } from '@shared/ipc';
-import type { HotkeyBinding, Quota } from '@shared/types';
+import type { HotkeyBinding, Quota, Session, SessionAnalysis, SessionKind } from '@shared/types';
 
 const api: Druz9API = {
   auth: {
-    loginTelegram: () => ipcRenderer.invoke(invokeChannels.authLoginTelegram) as Promise<AuthSession>,
+    loginTelegramStart: () =>
+      ipcRenderer.invoke(invokeChannels.authLoginTelegramStart) as Promise<TelegramLoginStart>,
+    loginTelegramAwait: () =>
+      ipcRenderer.invoke(invokeChannels.authLoginTelegramAwait) as Promise<TelegramLoginResult>,
+    loginTelegramCancel: () =>
+      ipcRenderer.invoke(invokeChannels.authLoginTelegramCancel) as Promise<void>,
     logout: () => ipcRenderer.invoke(invokeChannels.authLogout) as Promise<void>,
     session: () => ipcRenderer.invoke(invokeChannels.authSession) as Promise<AuthSession | null>,
   },
@@ -63,6 +72,8 @@ const api: Druz9API = {
     hide: (name: WindowName) => ipcRenderer.invoke(invokeChannels.windowsHide, name) as Promise<void>,
     toggleStealth: (on: boolean) =>
       ipcRenderer.invoke(invokeChannels.windowsToggleStealth, on) as Promise<void>,
+    resize: (name: WindowName, width: number, height: number) =>
+      ipcRenderer.invoke(invokeChannels.windowsResize, name, width, height) as Promise<void>,
   },
   permissions: {
     check: () => ipcRenderer.invoke(invokeChannels.permissionsCheck) as Promise<PermissionState>,
@@ -113,6 +124,37 @@ const api: Druz9API = {
         transcript?: string;
         error?: string;
       }>,
+  },
+  updater: {
+    status: () => ipcRenderer.invoke(invokeChannels.updaterStatus) as Promise<UpdateStatus>,
+    check: () => ipcRenderer.invoke(invokeChannels.updaterCheck) as Promise<UpdateStatus>,
+    install: () => ipcRenderer.invoke(invokeChannels.updaterInstall) as Promise<void>,
+  },
+  shell: {
+    openExternal: (url: string) =>
+      ipcRenderer.invoke(invokeChannels.shellOpenExternal, url) as Promise<void>,
+  },
+  cursor: {
+    state: () =>
+      ipcRenderer.invoke(invokeChannels.cursorFreezeState) as Promise<CursorFreezeState>,
+    toggle: () =>
+      ipcRenderer.invoke(invokeChannels.cursorFreezeToggle) as Promise<CursorFreezeState>,
+  },
+  sessions: {
+    start: (kind: SessionKind) =>
+      ipcRenderer.invoke(invokeChannels.sessionStart, kind) as Promise<Session>,
+    end: () => ipcRenderer.invoke(invokeChannels.sessionEnd) as Promise<Session | null>,
+    current: () =>
+      ipcRenderer.invoke(invokeChannels.sessionCurrent) as Promise<Session | null>,
+    list: (cursor: string, limit: number, kind?: SessionKind) =>
+      ipcRenderer.invoke(invokeChannels.sessionList, cursor, limit, kind) as Promise<{
+        sessions: Session[];
+        nextCursor: string;
+      }>,
+    getAnalysis: (sessionId: string) =>
+      ipcRenderer.invoke(invokeChannels.sessionGetAnalysis, sessionId) as Promise<SessionAnalysis>,
+    submitLocalTranscript: (markdown: string) =>
+      ipcRenderer.send(invokeChannels.sessionSubmitLocalTranscript, { markdown }),
   },
   on: <T>(channel: string, handler: (payload: T) => void) => {
     // Whitelist so renderer can't subscribe to arbitrary channels.

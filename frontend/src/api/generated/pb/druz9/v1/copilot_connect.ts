@@ -18,7 +18,7 @@
 /* eslint-disable */
 // @ts-nocheck
 
-import { AnalyzeEvent, AnalyzeRequest, ChatEvent, ChatRequest, CopilotConversationDetail, CopilotQuota, DeleteCopilotConversationRequest, DeleteCopilotConversationResponse, DesktopConfig, GetCopilotConversationRequest, GetCopilotQuotaRequest, GetDesktopConfigRequest, ListCopilotHistoryRequest, ListCopilotHistoryResponse, ListCopilotProvidersRequest, ListCopilotProvidersResponse, RateCopilotMessageRequest, RateCopilotMessageResponse } from "./copilot_pb.js";
+import { AnalyzeEvent, AnalyzeRequest, ChatEvent, ChatRequest, CopilotConversationDetail, CopilotQuota, CopilotSession, CopilotSessionAnalysis, DeleteCopilotConversationRequest, DeleteCopilotConversationResponse, DesktopConfig, EndCopilotSessionRequest, GetCopilotConversationRequest, GetCopilotQuotaRequest, GetCopilotSessionAnalysisRequest, GetDesktopConfigRequest, ListCopilotHistoryRequest, ListCopilotHistoryResponse, ListCopilotProvidersRequest, ListCopilotProvidersResponse, ListCopilotSessionsRequest, ListCopilotSessionsResponse, RateCopilotMessageRequest, RateCopilotMessageResponse, StartCopilotSessionRequest } from "./copilot_pb.js";
 import { MethodKind } from "@bufbuild/protobuf";
 
 /**
@@ -131,6 +131,55 @@ export const CopilotService = {
       name: "RateMessage",
       I: RateCopilotMessageRequest,
       O: RateCopilotMessageResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * StartSession opens a new group. All subsequent Analyze/Chat turns
+     * attach to this session until EndSession. Only one live session
+     * per user.
+     *
+     * @generated from rpc druz9.v1.CopilotService.StartSession
+     */
+    startSession: {
+      name: "StartSession",
+      I: StartCopilotSessionRequest,
+      O: CopilotSession,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * EndSession stamps finished_at, emits an internal SessionEnded event
+     * (which an analyzer subscribes to), and returns immediately. Poll
+     * GetSessionAnalysis for the report.
+     *
+     * @generated from rpc druz9.v1.CopilotService.EndSession
+     */
+    endSession: {
+      name: "EndSession",
+      I: EndCopilotSessionRequest,
+      O: CopilotSession,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * GetSessionAnalysis returns the current state of the post-session
+     * analysis. Status progresses pending → running → ready | failed.
+     *
+     * @generated from rpc druz9.v1.CopilotService.GetSessionAnalysis
+     */
+    getSessionAnalysis: {
+      name: "GetSessionAnalysis",
+      I: GetCopilotSessionAnalysisRequest,
+      O: CopilotSessionAnalysis,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * ListSessions — paginated history of sessions for the caller.
+     *
+     * @generated from rpc druz9.v1.CopilotService.ListSessions
+     */
+    listSessions: {
+      name: "ListSessions",
+      I: ListCopilotSessionsRequest,
+      O: ListCopilotSessionsResponse,
       kind: MethodKind.Unary,
     },
   }

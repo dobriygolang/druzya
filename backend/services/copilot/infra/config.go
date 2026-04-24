@@ -31,7 +31,7 @@ func (p *StaticConfigProvider) Load(_ context.Context) (domain.DesktopConfig, er
 // dumb. Bump Rev on every change.
 func DefaultDesktopConfig() domain.DesktopConfig {
 	return domain.DesktopConfig{
-		Rev: 2,
+		Rev: 3,
 		Models: []domain.ProviderModel{
 			{
 				ID:                     "openai/gpt-4o-mini",
@@ -119,6 +119,7 @@ func DefaultDesktopConfig() domain.DesktopConfig {
 			{Action: domain.HotkeyActionToggleWindow, Accelerator: "CommandOrControl+Shift+D"},
 			{Action: domain.HotkeyActionQuickPrompt, Accelerator: "CommandOrControl+Shift+Q"},
 			{Action: domain.HotkeyActionClearConversation, Accelerator: "CommandOrControl+Shift+K"},
+			{Action: domain.HotkeyActionCursorFreezeToggle, Accelerator: "CommandOrControl+Shift+Y"},
 		},
 		Flags: []domain.FeatureFlag{
 			{Key: "voice_input", Enabled: false},
@@ -128,21 +129,18 @@ func DefaultDesktopConfig() domain.DesktopConfig {
 		},
 		Paywall: []domain.PaywallCopy{
 			{
-				PlanID:      "free",
-				DisplayName: "Free",
-				PriceLabel:  "Бесплатно",
-				Tagline:     "Для знакомства с продуктом",
-				Bullets: []string{
-					"20 запросов в день",
-					"GPT Fast",
-					"Только macOS",
-				},
-				CTALabel: "Текущий план",
+				PlanID:       "free",
+				DisplayName:  "Free",
+				PriceLabel:   "Бесплатно",
+				Tagline:      "Для знакомства с продуктом",
+				Bullets:      []string{"20 запросов в день", "GPT Fast", "Только macOS"},
+				CTALabel:     "Текущий план",
+				SubscribeURL: "",
 			},
 			{
 				PlanID:      "seeker",
 				DisplayName: "Pro",
-				PriceLabel:  "$15/мес",
+				PriceLabel:  "499 ₽/мес",
 				Tagline:     "Для ежедневной работы",
 				Bullets: []string{
 					"Безлимитные запросы",
@@ -150,7 +148,24 @@ func DefaultDesktopConfig() domain.DesktopConfig {
 					"История с облачной синхронизацией",
 					"Приоритетная поддержка",
 				},
-				CTALabel: "Обновить до Pro",
+				CTALabel: "Подписаться через Boosty",
+				// Point at your Boosty tier. Override via env on the
+				// backend (COPILOT_BOOSTY_SEEKER_URL) once you wire it up.
+				SubscribeURL: "https://boosty.to/druz9/purchase/seeker",
+			},
+			{
+				PlanID:      "ascendant",
+				DisplayName: "Team",
+				PriceLabel:  "1490 ₽/мес",
+				Tagline:     "Для команд, работающих с прод-кодом",
+				Bullets: []string{
+					"Всё из Pro",
+					"До 5 сидов в команде",
+					"SSO через Telegram / Yandex",
+					"Приоритетная поддержка в течение 4 часов",
+				},
+				CTALabel:     "Подписаться через Boosty",
+				SubscribeURL: "https://boosty.to/druz9/purchase/ascendant",
 			},
 		},
 		StealthWarnings: []domain.StealthCompatEntry{
