@@ -9,6 +9,8 @@ export const invokeChannels = {
   authSession: 'auth:session',
   authPersist: 'auth:persist',
   authLogout: 'auth:logout',
+  authTgStart: 'auth:tg-start',
+  authTgPoll: 'auth:tg-poll',
   pomodoroLoad: 'pomodoro:load',
   pomodoroSave: 'pomodoro:save',
   shellOpenExternal: 'shell:open-external',
@@ -33,6 +35,20 @@ export interface HoneAPI {
     /** Persists a session received via deep-link OAuth callback. */
     persist: (s: AuthSession) => Promise<void>;
     logout: () => Promise<void>;
+    /**
+     * Begin the Telegram code-flow. Hone main hits the backend directly —
+     * unlike the web flow, no /login intermediary, no druz9:// redirect.
+     * Returns the code + deep-link to t.me/<bot>?start=<code> for the
+     * user to confirm.
+     */
+    tgStart: () => Promise<TelegramStart>;
+    /**
+     * Poll the backend for the Telegram code's confirmation. The discriminated
+     * `kind` mirrors the web's PollResult. On `ok` Hone main also persists the
+     * session to the keychain and broadcasts authChanged — caller just needs
+     * to update its store.
+     */
+    tgPoll: (code: string) => Promise<TelegramPollResult>;
   };
   pomodoro: {
     load: () => Promise<PomodoroSnapshot | null>;
@@ -53,6 +69,19 @@ export interface HoneAPI {
     listener: (payload: EventPayload[K]) => void,
   ) => () => void;
 }
+
+export interface TelegramStart {
+  code: string;
+  deepLink: string;
+  expiresAt: string;
+}
+
+export type TelegramPollResult =
+  | { kind: 'ok'; session: AuthSession; isNewUser: boolean }
+  | { kind: 'pending' }
+  | { kind: 'expired' }
+  | { kind: 'rate_limited'; retryAfter: number }
+  | { kind: 'error'; message: string };
 
 export interface AuthSession {
   userId: string;

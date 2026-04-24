@@ -28,10 +28,21 @@ import { init as sentryInit } from '@sentry/electron/main';
 import { join } from 'node:path';
 import { URL } from 'node:url';
 
-import { eventChannels, invokeChannels, type AuthSession } from '@shared/ipc';
+import {
+  eventChannels,
+  invokeChannels,
+  type AuthSession,
+  type TelegramPollResult,
+  type TelegramStart,
+} from '@shared/ipc';
 import { clearSession, loadSession, saveSession } from './keychain';
 import { loadPomodoro, savePomodoro } from './pomodoro_store';
 import { checkForUpdates, quitAndInstall, startPeriodicCheck, wireUpdater } from './updater';
+
+// Backend host. Hardcoded prod URL — bible §5: «Домены прода захардкожены»
+// (см. hone/src/renderer/src/api/config.ts). Main can't import the renderer
+// alias due to electron-vite's split bundles, so we duplicate the constant.
+const API_BASE = 'https://druz9.online';
 
 // Sentry: main-process handler. DSN приходит из env (HONE_SENTRY_DSN) в
 // prod-билде через electron-builder config; пустая DSN → no-op, что
@@ -210,6 +221,74 @@ app.whenReady().then(() => {
       mainWindow.webContents.send(eventChannels.authChanged, null);
     }
   });
+
+  // Telegram code-flow IPC. Direct fetch to the backend — no /login web hop,
+  // no druz9:// redirect dance. Replaces the historical LoginScreen flow that
+  // depended on browser → custom-scheme handover (which Chrome blocks from
+  // async contexts and which silently no-ops in dev when LaunchServices has
+  // not registered the protocol).
+  ipcMain.handle(invokeChannels.authTgStart, async (): Promise<TelegramStart> => {
+    const res = await fetch(`${API_BASE}/api/v1/auth/telegram/start`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: '{}',
+    });
+    if (!res.ok) {
+      const text = await res.text().catch(() => '');
+      throw new Error(`telegram/start ${res.status}: ${text}`);
+    }
+    const body = (await res.json()) as { code: string; deep_link: string; expires_at: string };
+    return { code: body.code, deepLink: body.deep_link, expiresAt: body.expires_at };
+  });
+
+  ipcMain.handle(
+    invokeChannels.authTgPoll,
+    async (_e, code: string): Promise<TelegramPollResult> => {
+      let res: Response;
+      try {
+        res = await fetch(`${API_BASE}/api/v1/auth/telegram/poll`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ code }),
+        });
+      } catch (e) {
+        return { kind: 'error', message: e instanceof Error ? e.message : String(e) };
+      }
+      if (res.status === 202) return { kind: 'pending' };
+      if (res.status === 410) return { kind: 'expired' };
+      if (res.status === 429) {
+        const retry = Number(res.headers.get('Retry-After') ?? '60');
+        return { kind: 'rate_limited', retryAfter: Number.isFinite(retry) ? retry : 60 };
+      }
+      if (!res.ok) {
+        const text = await res.text().catch(() => '');
+        return { kind: 'error', message: `poll ${res.status}: ${text}` };
+      }
+      const body = (await res.json()) as {
+        access_token: string;
+        refresh_token?: string;
+        expires_in?: number;
+        user?: { id?: string };
+        is_new_user?: boolean;
+      };
+      const refresh = body.refresh_token ?? res.headers.get('X-Refresh-Token') ?? '';
+      const session: AuthSession = {
+        userId: body.user?.id ?? '',
+        accessToken: body.access_token,
+        refreshToken: refresh,
+        expiresAt: body.expires_in ? Date.now() + body.expires_in * 1000 : 0,
+      };
+      // Persist + broadcast so the renderer's session store hydrates without
+      // the legacy druz9:// round-trip.
+      await saveSession(session).catch(() => {
+        // Keychain failure is non-fatal — session still flows to renderer.
+      });
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send(eventChannels.authChanged, session);
+      }
+      return { kind: 'ok', session, isNewUser: Boolean(body.is_new_user) };
+    },
+  );
 
   ipcMain.handle(invokeChannels.pomodoroLoad, async () => await loadPomodoro());
   ipcMain.handle(invokeChannels.pomodoroSave, async (_e, snap) => {

@@ -14,6 +14,8 @@ import {
   type AuthSession,
   type HoneAPI,
   type PomodoroSnapshot,
+  type TelegramPollResult,
+  type TelegramStart,
 } from '@shared/ipc';
 
 const api: HoneAPI = {
@@ -26,6 +28,10 @@ const api: HoneAPI = {
     persist: (s: AuthSession) =>
       ipcRenderer.invoke(invokeChannels.authPersist, s) as Promise<void>,
     logout: () => ipcRenderer.invoke(invokeChannels.authLogout) as Promise<void>,
+    tgStart: () =>
+      ipcRenderer.invoke(invokeChannels.authTgStart) as Promise<TelegramStart>,
+    tgPoll: (code: string) =>
+      ipcRenderer.invoke(invokeChannels.authTgPoll, code) as Promise<TelegramPollResult>,
   },
   pomodoro: {
     load: () =>
