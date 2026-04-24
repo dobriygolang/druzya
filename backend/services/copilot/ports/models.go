@@ -363,12 +363,40 @@ func reportToProto(r domain.SessionReport) *pb.CopilotSessionAnalysis {
 		ReportMarkdown:  r.ReportMarkdown,
 		ReportUrl:       r.ReportURL,
 		ErrorMessage:    r.ErrorMessage,
+		Title:           r.Title,
+		// Phase 3 structured summary — mapped 1:1 from domain.SessionAnalysis.
+		Tldr:          r.Analysis.TLDR,
+		KeyTopics:     append([]string(nil), r.Analysis.KeyTopics...),
+		OpenQuestions: append([]string(nil), r.Analysis.OpenQuestions...),
 	}
 	for k, v := range r.SectionScores {
 		out.SectionScores[k] = int32(v)
 	}
 	for _, l := range r.Links {
 		out.Links = append(out.Links, &pb.CopilotAnalysisLink{Label: l.Label, Url: l.URL})
+	}
+	for _, it := range r.Analysis.ActionItems {
+		out.ActionItems = append(out.ActionItems, &pb.CopilotAnalysisItem{
+			Title: it.Title, Detail: it.Detail,
+		})
+	}
+	for _, it := range r.Analysis.Decisions {
+		out.Decisions = append(out.Decisions, &pb.CopilotAnalysisItem{
+			Title: it.Title, Detail: it.Detail,
+		})
+	}
+	for _, t := range r.Analysis.Terminology {
+		out.Terminology = append(out.Terminology, &pb.CopilotAnalysisTerm{
+			Term: t.Term, Definition: t.Definition,
+		})
+	}
+	if r.Analysis.Usage != nil {
+		out.Usage = &pb.CopilotAnalysisUsage{
+			Turns:          int32(r.Analysis.Usage.Turns),
+			TokensIn:       int32(r.Analysis.Usage.TokensIn),
+			TokensOut:      int32(r.Analysis.Usage.TokensOut),
+			TotalLatencyMs: int32(r.Analysis.Usage.TotalLatencyMs),
+		}
 	}
 	if r.StartedAt != nil {
 		out.StartedAt = timestamppb.New(*r.StartedAt)

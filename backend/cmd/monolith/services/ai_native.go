@@ -66,6 +66,13 @@ func NewAINative(d Deps) *Module {
 	)
 	adminModels := ainativePorts.NewAdminModelsHandler(llmModelsRepo, d.Log)
 
+	// Personas catalogue (migration 00051). Same shape as llm_models —
+	// public GET for the desktop picker, admin CRUD for hot-editing
+	// system prompts without a redeploy.
+	personasRepo := ainativeInfra.NewPersonas(d.Pool)
+	personas := ainativePorts.NewPersonasHandler(personasRepo, d.Log)
+	adminPersonas := ainativePorts.NewAdminPersonasHandler(personasRepo, d.Log)
+
 	connectPath, connectHandler := druz9v1connect.NewNativeServiceHandler(server)
 	transcoder := mustTranscode("native", connectPath, connectHandler)
 
@@ -81,6 +88,8 @@ func NewAINative(d Deps) *Module {
 			r.Get("/native/session/{sessionId}/score", transcoder.ServeHTTP)
 			models.Mount(r)
 			adminModels.Mount(r)
+			personas.Mount(r)
+			adminPersonas.Mount(r)
 		},
 	}
 }

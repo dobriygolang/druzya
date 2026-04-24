@@ -18,6 +18,7 @@ import {
   type Druz9API,
   type MasqueradePreset,
   type MasqueradePresetInfo,
+  type Persona,
   type CursorFreezeState,
   type PermissionKind,
   type PermissionState,
@@ -110,6 +111,9 @@ const api: Druz9API = {
     get: () => ipcRenderer.invoke(invokeChannels.appearanceGet) as Promise<AppearancePrefs>,
     set: (prefs: Partial<AppearancePrefs>) =>
       ipcRenderer.invoke(invokeChannels.appearanceSet, prefs) as Promise<AppearancePrefs>,
+  },
+  personas: {
+    list: () => ipcRenderer.invoke(invokeChannels.personasList) as Promise<Persona[]>,
   },
   updater: {
     status: () => ipcRenderer.invoke(invokeChannels.updaterStatus) as Promise<UpdateStatus>,

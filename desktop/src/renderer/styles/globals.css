@@ -1,3 +1,12 @@
+/* Font faces — bundled locally (stealth: no CDN fetch at runtime) */
+@import '@fontsource/instrument-serif/400.css';
+@import '@fontsource/manrope/400.css';
+@import '@fontsource/manrope/500.css';
+@import '@fontsource/manrope/600.css';
+@import '@fontsource/manrope/700.css';
+@import '@fontsource/jetbrains-mono/400.css';
+@import '@fontsource/jetbrains-mono/500.css';
+
 @import './tokens.css';
 
 * {
@@ -11,17 +20,18 @@ body,
   padding: 0;
   height: 100%;
   background: transparent;
-  color: var(--d-text);
-  font-family: var(--f-ui);
+  color: var(--d9-ink);
+  font-family: var(--d9-font-sans);
   font-size: 13px;
   line-height: 1.4;
+  font-feature-settings: "ss01", "cv11";
   -webkit-font-smoothing: antialiased;
   user-select: none;
 }
 
 code,
 pre {
-  font-family: var(--f-mono);
+  font-family: var(--d9-font-mono);
 }
 
 button {
@@ -29,9 +39,28 @@ button {
   color: inherit;
 }
 
+/* Input placeholder — match design/tokens muted-ink, slightly subdued.
+   Scoped to .d9-root so the older screens (Settings, Onboarding) that
+   still read --d-text-3 from the back-compat aliases keep their
+   existing behaviour. */
+.d9-root input::placeholder,
+.d9-root textarea::placeholder {
+  color: var(--d9-ink-mute);
+  opacity: 1;
+}
+.d9-root input:focus::placeholder,
+.d9-root textarea:focus::placeholder {
+  color: var(--d9-ink-ghost);
+}
+
 @keyframes druz9-pulse {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.4; }
+}
+
+@keyframes d9-hairline-sweep {
+  0%   { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
 }
 
 /* Scrollbar — thin, dark, unobtrusive. Chromium only (Electron). */

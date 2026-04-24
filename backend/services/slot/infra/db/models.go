@@ -106,6 +106,23 @@ type Cohort struct {
 	CreatedAt  pgtype.Timestamptz
 }
 
+type CohortAnnouncement struct {
+	ID        pgtype.UUID
+	CohortID  pgtype.UUID
+	AuthorID  pgtype.UUID
+	Body      string
+	Pinned    bool
+	CreatedAt pgtype.Timestamptz
+	UpdatedAt pgtype.Timestamptz
+}
+
+type CohortAnnouncementReaction struct {
+	AnnouncementID pgtype.UUID
+	UserID         pgtype.UUID
+	Emoji          string
+	CreatedAt      pgtype.Timestamptz
+}
+
 type CohortInvite struct {
 	Token     string
 	CohortID  pgtype.UUID
@@ -190,6 +207,8 @@ type CopilotSessionReport struct {
 	StartedAt       pgtype.Timestamptz
 	FinishedAt      pgtype.Timestamptz
 	UpdatedAt       pgtype.Timestamptz
+	Analysis        []byte
+	Title           string
 }
 
 type DailyKataHistory struct {
@@ -558,6 +577,20 @@ type Organization struct {
 	Plan        string
 	SeatQuota   int32
 	CreatedAt   pgtype.Timestamptz
+}
+
+type Persona struct {
+	ID            string
+	Label         string
+	Hint          string
+	IconEmoji     string
+	BrandGradient string
+	SuggestedTask string
+	SystemPrompt  string
+	SortOrder     int32
+	IsEnabled     bool
+	CreatedAt     pgtype.Timestamptz
+	UpdatedAt     pgtype.Timestamptz
 }
 
 type Podcast struct {

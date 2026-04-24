@@ -241,6 +241,10 @@ func (r *Reports) Write(ctx context.Context, sessionID uuid.UUID, res domain.Ana
 	if err != nil {
 		return fmt.Errorf("copilot.Reports.Write: marshal links: %w", err)
 	}
+	analysisJSON, err := json.Marshal(res.Analysis)
+	if err != nil {
+		return fmt.Errorf("copilot.Reports.Write: marshal analysis: %w", err)
+	}
 	if _, err := r.q.WriteCopilotSessionReport(ctx, copilotdb.WriteCopilotSessionReportParams{
 		SessionID:       pgUUID(sessionID),
 		OverallScore:    int32(res.OverallScore),
@@ -250,6 +254,8 @@ func (r *Reports) Write(ctx context.Context, sessionID uuid.UUID, res domain.Ana
 		Links:           linksJSON,
 		ReportMarkdown:  res.ReportMarkdown,
 		ReportUrl:       reportURL,
+		Analysis:        analysisJSON,
+		Title:           res.Title,
 	}); err != nil {
 		return fmt.Errorf("copilot.Reports.Write: %w", err)
 	}
@@ -294,6 +300,7 @@ func reportFromRow(r copilotdb.CopilotSessionReport) (domain.SessionReport, erro
 		ReportURL:      r.ReportUrl,
 		ErrorMessage:   r.ErrorMessage,
 		UpdatedAt:      r.UpdatedAt.Time,
+		Title:          r.Title,
 	}
 	if r.StartedAt.Valid {
 		t := r.StartedAt.Time
@@ -323,6 +330,15 @@ func reportFromRow(r copilotdb.CopilotSessionReport) (domain.SessionReport, erro
 	if len(r.Links) > 0 {
 		if err := json.Unmarshal(r.Links, &out.Links); err != nil {
 			return out, fmt.Errorf("copilot.reportFromRow: links: %w", err)
+		}
+	}
+	// Phase-3 structured analysis. The column is `NOT NULL DEFAULT '{}'`
+	// so it's always at least an empty JSON object; unmarshal into the
+	// struct writes zero-value fields everywhere, which the desktop UI
+	// treats as "no data, hide the section".
+	if len(r.Analysis) > 0 {
+		if err := json.Unmarshal(r.Analysis, &out.Analysis); err != nil {
+			return out, fmt.Errorf("copilot.reportFromRow: analysis: %w", err)
 		}
 	}
 	return out, nil

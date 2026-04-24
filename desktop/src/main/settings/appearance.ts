@@ -28,11 +28,24 @@ export interface AppearancePrefs {
    * open. Null when user has never resized/moved (= fresh install).
    */
   expandedBounds: { x: number; y: number; width: number; height: number } | null;
+  /**
+   * Last user-set bounds of the compact window (the always-on-top
+   * floating bar). Width/height are ignored — compact is not
+   * resizable — but we keep them in the same shape to reuse the
+   * same setBounds helper. Null = first run, use the top-right
+   * default anchored position.
+   *
+   * This is the "follows your eyes" feature: the user drags compact
+   * to wherever they're looking (IDE left panel, Zoom window middle,
+   * etc.) and it stays there across app restarts / window re-opens.
+   */
+  compactBounds: { x: number; y: number; width: number; height: number } | null;
 }
 
 export const DefaultAppearance: AppearancePrefs = {
   expandedOpacity: 85,
   expandedBounds: null,
+  compactBounds: null,
 };
 
 function filePath(): string {

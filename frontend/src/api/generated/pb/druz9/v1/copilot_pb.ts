@@ -481,6 +481,155 @@ export class CopilotAnalysisLink extends Message<CopilotAnalysisLink> {
 }
 
 /**
+ * CopilotAnalysisItem — titled paragraph used for action items and
+ * decisions. `detail` is optional (one-liner → just title).
+ *
+ * @generated from message druz9.v1.CopilotAnalysisItem
+ */
+export class CopilotAnalysisItem extends Message<CopilotAnalysisItem> {
+  /**
+   * @generated from field: string title = 1;
+   */
+  title = "";
+
+  /**
+   * @generated from field: string detail = 2;
+   */
+  detail = "";
+
+  constructor(data?: PartialMessage<CopilotAnalysisItem>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.CopilotAnalysisItem";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "title", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "detail", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): CopilotAnalysisItem {
+    return new CopilotAnalysisItem().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): CopilotAnalysisItem {
+    return new CopilotAnalysisItem().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): CopilotAnalysisItem {
+    return new CopilotAnalysisItem().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: CopilotAnalysisItem | PlainMessage<CopilotAnalysisItem> | undefined, b: CopilotAnalysisItem | PlainMessage<CopilotAnalysisItem> | undefined): boolean {
+    return proto3.util.equals(CopilotAnalysisItem, a, b);
+  }
+}
+
+/**
+ * CopilotAnalysisTerm — glossary entry.
+ *
+ * @generated from message druz9.v1.CopilotAnalysisTerm
+ */
+export class CopilotAnalysisTerm extends Message<CopilotAnalysisTerm> {
+  /**
+   * @generated from field: string term = 1;
+   */
+  term = "";
+
+  /**
+   * @generated from field: string definition = 2;
+   */
+  definition = "";
+
+  constructor(data?: PartialMessage<CopilotAnalysisTerm>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.CopilotAnalysisTerm";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "term", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "definition", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): CopilotAnalysisTerm {
+    return new CopilotAnalysisTerm().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): CopilotAnalysisTerm {
+    return new CopilotAnalysisTerm().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): CopilotAnalysisTerm {
+    return new CopilotAnalysisTerm().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: CopilotAnalysisTerm | PlainMessage<CopilotAnalysisTerm> | undefined, b: CopilotAnalysisTerm | PlainMessage<CopilotAnalysisTerm> | undefined): boolean {
+    return proto3.util.equals(CopilotAnalysisTerm, a, b);
+  }
+}
+
+/**
+ * CopilotAnalysisUsage — token / latency accounting for the session.
+ * Ground truth from the message rows, not the LLM.
+ *
+ * @generated from message druz9.v1.CopilotAnalysisUsage
+ */
+export class CopilotAnalysisUsage extends Message<CopilotAnalysisUsage> {
+  /**
+   * @generated from field: int32 turns = 1;
+   */
+  turns = 0;
+
+  /**
+   * @generated from field: int32 tokens_in = 2;
+   */
+  tokensIn = 0;
+
+  /**
+   * @generated from field: int32 tokens_out = 3;
+   */
+  tokensOut = 0;
+
+  /**
+   * @generated from field: int32 total_latency_ms = 4;
+   */
+  totalLatencyMs = 0;
+
+  constructor(data?: PartialMessage<CopilotAnalysisUsage>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.CopilotAnalysisUsage";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "turns", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 2, name: "tokens_in", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 3, name: "tokens_out", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 4, name: "total_latency_ms", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): CopilotAnalysisUsage {
+    return new CopilotAnalysisUsage().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): CopilotAnalysisUsage {
+    return new CopilotAnalysisUsage().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): CopilotAnalysisUsage {
+    return new CopilotAnalysisUsage().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: CopilotAnalysisUsage | PlainMessage<CopilotAnalysisUsage> | undefined, b: CopilotAnalysisUsage | PlainMessage<CopilotAnalysisUsage> | undefined): boolean {
+    return proto3.util.equals(CopilotAnalysisUsage, a, b);
+  }
+}
+
+/**
  * CopilotSessionAnalysis is the report the analyzer produces after a
  * session ends. Populated asynchronously — clients poll GetSessionAnalysis
  * (or listen for event:analysis-ready via a push channel).
@@ -558,6 +707,56 @@ export class CopilotSessionAnalysis extends Message<CopilotSessionAnalysis> {
    */
   reportUrl = "";
 
+  /**
+   * ── Phase 3 structured summary (migration 00053) ─────────────────
+   * Powers the desktop's Cluely-style Session Summary view. Each sub-
+   * list is optional — the client hides empty sections.
+   *
+   * "Sorting at scale · leader-follower"
+   *
+   * @generated from field: string title = 13;
+   */
+  title = "";
+
+  /**
+   * 1-3 sentence summary
+   *
+   * @generated from field: string tldr = 14;
+   */
+  tldr = "";
+
+  /**
+   * "quicksort", "replication"
+   *
+   * @generated from field: repeated string key_topics = 15;
+   */
+  keyTopics: string[] = [];
+
+  /**
+   * @generated from field: repeated druz9.v1.CopilotAnalysisItem action_items = 16;
+   */
+  actionItems: CopilotAnalysisItem[] = [];
+
+  /**
+   * @generated from field: repeated druz9.v1.CopilotAnalysisTerm terminology = 17;
+   */
+  terminology: CopilotAnalysisTerm[] = [];
+
+  /**
+   * @generated from field: repeated druz9.v1.CopilotAnalysisItem decisions = 18;
+   */
+  decisions: CopilotAnalysisItem[] = [];
+
+  /**
+   * @generated from field: repeated string open_questions = 19;
+   */
+  openQuestions: string[] = [];
+
+  /**
+   * @generated from field: druz9.v1.CopilotAnalysisUsage usage = 20;
+   */
+  usage?: CopilotAnalysisUsage;
+
   constructor(data?: PartialMessage<CopilotSessionAnalysis>) {
     super();
     proto3.util.initPartial(data, this);
@@ -578,6 +777,14 @@ export class CopilotSessionAnalysis extends Message<CopilotSessionAnalysis> {
     { no: 10, name: "finished_at", kind: "message", T: Timestamp },
     { no: 11, name: "error_message", kind: "scalar", T: 9 /* ScalarType.STRING */ },
     { no: 12, name: "report_url", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 13, name: "title", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 14, name: "tldr", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 15, name: "key_topics", kind: "scalar", T: 9 /* ScalarType.STRING */, repeated: true },
+    { no: 16, name: "action_items", kind: "message", T: CopilotAnalysisItem, repeated: true },
+    { no: 17, name: "terminology", kind: "message", T: CopilotAnalysisTerm, repeated: true },
+    { no: 18, name: "decisions", kind: "message", T: CopilotAnalysisItem, repeated: true },
+    { no: 19, name: "open_questions", kind: "scalar", T: 9 /* ScalarType.STRING */, repeated: true },
+    { no: 20, name: "usage", kind: "message", T: CopilotAnalysisUsage },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): CopilotSessionAnalysis {

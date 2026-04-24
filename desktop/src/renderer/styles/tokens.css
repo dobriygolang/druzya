@@ -1,59 +1,159 @@
-/* Druz9 Copilot — design tokens (mirrors design/tokens.css). Change here,
-   not in component styles. */
+/* Druz9 — Midnight-velvet design tokens.
+   Deep indigo/violet base, jewel-toned accents, editorial-premium.
+   Source of truth: design/tokens.css. Change here, not in components.
+
+   Back-compat: legacy `--d-*` aliases at the bottom keep older screens
+   compiling while we migrate them piece by piece. Delete once every
+   screen is on `--d9-*`. */
+
 :root {
-  /* Surfaces */
-  --d-bg-0: #0A0A0A;
-  --d-bg-1: #121212;
-  --d-bg-2: #1A1A1A;
-  --d-bg-3: #1F1F1F;
-  --d-bg-code: #0D0D0D;
+  /* ── Base surface (deep midnight, slightly blue-shifted) ─────────── */
+  --d9-void:        oklch(0.10 0.030 282);
+  --d9-obsidian:    oklch(0.14 0.035 280);
+  --d9-slate:       oklch(0.20 0.038 278);
+  --d9-slate-2:     oklch(0.26 0.042 276);
+  --d9-hairline:    oklch(0.46 0.040 278 / 0.28);
+  --d9-hairline-b:  oklch(0.85 0.055 285 / 0.14);
 
-  /* Hairlines */
-  --d-line: rgba(255, 255, 255, 0.06);
-  --d-line-strong: rgba(255, 255, 255, 0.10);
-  --d-line-focus: rgba(124, 92, 255, 0.45);
+  /* ── Text ──────────────────────────────────────────────────────── */
+  --d9-ink:         oklch(0.97 0.012 285);
+  --d9-ink-dim:     oklch(0.80 0.020 285);
+  --d9-ink-mute:    oklch(0.62 0.025 285);
+  --d9-ink-ghost:   oklch(0.48 0.030 285);
 
-  /* Text */
-  --d-text: #EEEEEE;
-  --d-text-2: #9CA3AF;
-  --d-text-3: #6B7280;
-  --d-text-4: #4A5058;
+  /* ── Accent — Violet plasma ────────────────────────────────────── */
+  --d9-accent:      oklch(0.72 0.23 300);
+  --d9-accent-hi:   oklch(0.82 0.20 310);
+  --d9-accent-lo:   oklch(0.54 0.22 295);
+  --d9-accent-glow: oklch(0.72 0.23 300 / 0.35);
 
-  /* Accent — purple / blue */
-  --d-accent: #7C5CFF;
-  --d-accent-hover: #8E72FF;
-  --d-accent-soft: rgba(124, 92, 255, 0.14);
-  --d-accent-2: #4C8BFF;
-  --d-accent-2-soft: rgba(76, 139, 255, 0.14);
-  --d-gradient-hero: linear-gradient(135deg, #7C5CFF 0%, #4C8BFF 100%);
-  --d-gradient-hero-soft: linear-gradient(135deg, rgba(124, 92, 255, 0.18) 0%, rgba(76, 139, 255, 0.18) 100%);
+  /* Jewel tones (personas) */
+  --d9-cyan:    oklch(0.80 0.15 210);
+  --d9-cyan-2:  oklch(0.62 0.18 220);
+  --d9-purple:  oklch(0.70 0.22 305);
+  --d9-purple-2:oklch(0.52 0.24 295);
+  --d9-teal:    oklch(0.78 0.14 180);
+  --d9-teal-2:  oklch(0.58 0.16 190);
+  --d9-amber:   oklch(0.82 0.16 70);
+  --d9-amber-2: oklch(0.66 0.20 50);
+  --d9-green:   oklch(0.82 0.18 150);
+  --d9-green-2: oklch(0.62 0.20 155);
 
-  /* Semantic */
-  --d-green: #34C759;
-  --d-yellow: #FFCC00;
-  --d-red: #FF453A;
+  /* Status */
+  --d9-ok:      oklch(0.80 0.17 150);
+  --d9-warn:    oklch(0.82 0.17 70);
+  --d9-err:     oklch(0.68 0.22 25);
 
-  /* Radii */
-  --r-window: 12px;
-  --r-inner: 8px;
-  --r-btn: 6px;
-  --r-pill: 999px;
+  /* Glass scrim layered over desktop */
+  --d9-scrim:   oklch(0.14 0.035 280 / 0.62);
+  --d9-scrim-2: oklch(0.14 0.035 280 / 0.82);
 
-  /* Shadows */
-  --s-window: 0 8px 32px rgba(0, 0, 0, 0.5), 0 1px 0 rgba(255, 255, 255, 0.05) inset;
-  --s-float: 0 20px 60px rgba(0, 0, 0, 0.6), 0 1px 0 rgba(255, 255, 255, 0.04) inset;
+  /* ── Radii ──────────────────────────────────────────────────────── */
+  --d9-r-xs: 6px;
+  --d9-r-sm: 8px;
+  --d9-r-md: 12px;
+  --d9-r-lg: 16px;
+  --d9-r-xl: 18px;
+  --d9-r-full: 9999px;
+
+  /* ── Spacing (4 / 8 / 12 / 16 / 24 / 32) ───────────────────────── */
+  --d9-s-1: 4px;
+  --d9-s-2: 8px;
+  --d9-s-3: 12px;
+  --d9-s-4: 16px;
+  --d9-s-5: 24px;
+  --d9-s-6: 32px;
+
+  /* ── Elevation (floating windows over desktop) ─────────────────── */
+  --d9-shadow-win:
+    0 .5px 0 rgba(255,255,255,.06) inset,
+    0 0 0 .5px rgba(255,255,255,.08),
+    0 1px 1px rgba(0,0,0,.35),
+    0 20px 50px -10px rgba(0,0,0,.55),
+    0 60px 80px -30px rgba(0,0,0,.45);
+  --d9-shadow-pop:
+    0 .5px 0 rgba(255,255,255,.06) inset,
+    0 0 0 .5px rgba(255,255,255,.10),
+    0 8px 24px -4px rgba(0,0,0,.55),
+    0 24px 48px -12px rgba(0,0,0,.45);
+  --d9-shadow-key:
+    0 .5px 0 rgba(255,255,255,.12) inset,
+    0 1px 0 rgba(0,0,0,.35),
+    0 0 0 .5px rgba(255,255,255,.08);
+
+  /* Focus */
+  --d9-ring: 0 0 0 1.5px var(--d9-accent), 0 0 0 4px var(--d9-accent-glow);
+
+  /* Motion */
+  --d9-dur-hover: 120ms;
+  --d9-dur-press: 80ms;
+  --d9-dur-focus: 160ms;
+  --d9-dur-morph: 480ms;
+  --d9-ease:      cubic-bezier(.2,.7,.2,1);
+  --d9-ease-in:   cubic-bezier(.5,0,.9,.3);
+  --d9-ease-out:  cubic-bezier(.15,.85,.3,1);
 
   /* Type */
-  --f-ui: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", system-ui, sans-serif;
-  --f-display: -apple-system, BlinkMacSystemFont, "SF Pro Display", system-ui, sans-serif;
-  --f-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  --d9-font-display: "Instrument Serif", "Cormorant Garamond", Georgia, serif;
+  --d9-font-sans:    "Manrope", ui-sans-serif, -apple-system, "SF Pro Text", system-ui, sans-serif;
+  --d9-font-mono:    "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
 
-  /* Spacing */
-  --sp-1: 4px;
-  --sp-2: 8px;
-  --sp-3: 12px;
-  --sp-4: 16px;
+  /* Blur for heavy-glass */
+  --d9-glass-blur: blur(30px) saturate(1.4);
+
+  /* ── Legacy `--d-*` aliases (remove once migration is done) ────── */
+  --d-bg-0: var(--d9-void);
+  --d-bg-1: var(--d9-obsidian);
+  --d-bg-2: var(--d9-slate);
+  --d-bg-3: var(--d9-slate-2);
+  --d-bg-code: var(--d9-void);
+
+  --d-line: var(--d9-hairline);
+  --d-line-strong: var(--d9-hairline-b);
+  --d-line-focus: var(--d9-accent-glow);
+
+  --d-text: var(--d9-ink);
+  --d-text-2: var(--d9-ink-dim);
+  --d-text-3: var(--d9-ink-mute);
+  --d-text-4: var(--d9-ink-ghost);
+
+  --d-accent: var(--d9-accent);
+  --d-accent-hover: var(--d9-accent-hi);
+  --d-accent-soft: var(--d9-accent-glow);
+  --d-accent-2: var(--d9-cyan);
+  --d-accent-2-soft: oklch(0.80 0.15 210 / 0.18);
+  --d-gradient-hero: linear-gradient(135deg, var(--d9-accent) 0%, var(--d9-cyan) 100%);
+  --d-gradient-hero-soft: linear-gradient(135deg, var(--d9-accent-glow) 0%, oklch(0.80 0.15 210 / 0.18) 100%);
+
+  --d-green: var(--d9-ok);
+  --d-yellow: var(--d9-warn);
+  --d-red: var(--d9-err);
+
+  --r-window: var(--d9-r-xl);
+  --r-inner: var(--d9-r-md);
+  --r-btn: var(--d9-r-xs);
+  --r-pill: var(--d9-r-full);
+
+  --s-window: var(--d9-shadow-win);
+  --s-float:  var(--d9-shadow-pop);
+
+  --f-ui:      var(--d9-font-sans);
+  --f-display: var(--d9-font-display);
+  --f-mono:    var(--d9-font-mono);
+
+  --sp-1: var(--d9-s-1);
+  --sp-2: var(--d9-s-2);
+  --sp-3: var(--d9-s-3);
+  --sp-4: var(--d9-s-4);
   --sp-5: 20px;
-  --sp-6: 24px;
-  --sp-8: 32px;
+  --sp-6: var(--d9-s-5);
+  --sp-8: var(--d9-s-6);
 }
+
+/* Persona gradient utilities — reused across BrandMark, chips, dropdown. */
+.d9-grad-react     { background-image: linear-gradient(135deg, var(--d9-cyan) 0%,   var(--d9-cyan-2) 100%); }
+.d9-grad-sysdesign { background-image: linear-gradient(135deg, var(--d9-purple) 0%, var(--d9-purple-2) 100%); }
+.d9-grad-sre       { background-image: linear-gradient(135deg, var(--d9-teal) 0%,   var(--d9-teal-2) 100%); }
+.d9-grad-behav     { background-image: linear-gradient(135deg, var(--d9-amber) 0%,  var(--d9-amber-2) 100%); }
+.d9-grad-dsa       { background-image: linear-gradient(135deg, var(--d9-green) 0%,  var(--d9-green-2) 100%); }
+.d9-grad-accent    { background-image: linear-gradient(135deg, var(--d9-accent) 0%, var(--d9-accent-lo) 100%); }

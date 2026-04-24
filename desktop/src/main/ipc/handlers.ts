@@ -20,6 +20,7 @@ import {
   type TelegramCodeClient,
 } from '../auth/telegram-code';
 import { currentState as cursorState, toggle as cursorToggle } from '../cursor/freeze-js';
+import { createPersonasClient, type PersonaDTO } from '../api/personas';
 import { createSessionsClient } from '../api/sessions';
 import { loadAppearance, saveAppearance, type AppearancePrefs } from '../settings/appearance';
 import { createSessionManager, type SessionManager } from '../sessions/manager';
@@ -90,6 +91,34 @@ export function registerHandlers(opts: RegisterOptions): void {
     isDev: false,
   });
   sessionManager = createSessionManager({ client: sessionsREST });
+
+  // Personas catalogue — fetched once at startup from /api/v1/personas
+  // (migration 00051 seeds the baseline set). Cached in memory; renderer
+  // reads via the `personasList` IPC invoke. Fetch failure → empty cache,
+  // picker falls back to showing only the default baseline persona.
+  const personasREST = createPersonasClient({
+    apiBaseURL,
+    updateFeedURL: '',
+    sentryDSN: '',
+    environment: '',
+    defaultLocale: 'ru',
+    isDev: false,
+  });
+  let personasCache: PersonaDTO[] = [];
+  const refreshPersonas = async () => {
+    try {
+      personasCache = await personasREST.list();
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.warn('[personas] cache refresh failed:', err);
+    }
+  };
+  // Fire-and-forget at boot. The renderer's compact window typically
+  // renders within ~200ms of main being ready; if the fetch hasn't
+  // completed by then the picker shows the baseline persona only and
+  // will pick up the full list on a subsequent IPC call.
+  void refreshPersonas();
+
   // At most one in-flight login attempt. Starting a new one aborts the
   // previous awaitCompletion so the poll loop stops.
   let loginAbort: AbortController | null = null;
@@ -355,6 +384,16 @@ export function registerHandlers(opts: RegisterOptions): void {
       return saved;
     },
   );
+
+  // ── Personas ──
+  // On a cache miss (fetch hadn't completed yet at boot, or errored),
+  // trigger a re-fetch. Still returns whatever is in cache right now —
+  // UX-wise an empty list for a fraction of a second is preferable to
+  // blocking the compact window on a slow network.
+  ipcMain.handle(invokeChannels.personasList, async (): Promise<PersonaDTO[]> => {
+    if (personasCache.length === 0) void refreshPersonas();
+    return personasCache;
+  });
 
   // ── Masquerade ──
   ipcMain.handle(invokeChannels.masqueradeList, async () => listPresets());

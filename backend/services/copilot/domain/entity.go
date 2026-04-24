@@ -299,6 +299,12 @@ type AnalysisLink struct {
 // SessionReport is the analyzer output attached to a session. Stored
 // flat so sqlc doesn't need nested structs; JSON-encoded fields are
 // round-tripped through []byte in the postgres layer.
+//
+// `Analysis` / `Title` were added in migration 00053 to power the
+// Cluely-style Session Summary view in the desktop. The older fields
+// (OverallScore, SectionScores, Weaknesses, Recommendations, Links,
+// ReportMarkdown) are kept for back-compat — the web report renderer
+// still uses them and old rows keep rendering.
 type SessionReport struct {
 	SessionID       uuid.UUID
 	Status          AnalysisStatus
@@ -313,6 +319,73 @@ type SessionReport struct {
 	StartedAt       *time.Time
 	FinishedAt      *time.Time
 	UpdatedAt       time.Time
+
+	// Title is a short human-readable summary derived by the analyzer
+	// from the transcript ("Sorting at scale · leader-follower"). Empty
+	// on reports from the pre-00053 schema or when the analyzer skipped
+	// / failed. Rendered in the Summary header + history row.
+	Title string
+
+	// Analysis is the structured Cluely-style breakdown. Every sub-list
+	// is optional; empty slices/maps render as "no items detected" in
+	// the UI rather than a hard error.
+	Analysis SessionAnalysis
+}
+
+// SessionAnalysis is the structured post-session report the desktop's
+// Summary view consumes. All fields are optional — the LLM emits what
+// it can confidently extract from the transcript and leaves the rest
+// empty. Treat missing sections as "not applicable", not "error".
+//
+// JSON field names are the wire format between the LLM (JSON-mode
+// response), the DB (JSONB column), and the desktop (IPC payload).
+// Keep them snake_case to match the prompt contract.
+type SessionAnalysis struct {
+	// TLDR — 1-3 sentence elevator pitch of what the session covered.
+	TLDR string `json:"tldr,omitempty"`
+	// KeyTopics — the technical themes discussed, most-significant
+	// first. Rendered as chips in the Summary tab.
+	KeyTopics []string `json:"key_topics,omitempty"`
+	// ActionItems — concrete things the user should do after the
+	// session ("повторить heap-sort", "пройти mock с behavioral").
+	ActionItems []AnalysisItem `json:"action_items,omitempty"`
+	// Terminology — glossary of technical terms that came up, with a
+	// one-line plain-language gloss. Helps the user reinforce
+	// vocabulary without re-reading the whole transcript.
+	Terminology []AnalysisTerm `json:"terminology,omitempty"`
+	// Decisions — design / approach decisions the user made during
+	// the session ("chose quicksort over merge sort for in-memory").
+	Decisions []AnalysisItem `json:"decisions,omitempty"`
+	// OpenQuestions — things the user asked about that remained
+	// unresolved. Prompts the next study session.
+	OpenQuestions []string `json:"open_questions,omitempty"`
+	// Usage — aggregated token / latency / cost accounting. The
+	// analyzer does not invent these — they come from the repo layer
+	// summing Message rows for the session.
+	Usage *AnalysisUsage `json:"usage,omitempty"`
+}
+
+// AnalysisItem is a titled paragraph — used for action items and
+// decisions. Detail may be empty when a one-liner is enough.
+type AnalysisItem struct {
+	Title  string `json:"title"`
+	Detail string `json:"detail,omitempty"`
+}
+
+// AnalysisTerm is a glossary entry.
+type AnalysisTerm struct {
+	Term       string `json:"term"`
+	Definition string `json:"definition"`
+}
+
+// AnalysisUsage is the token / latency aggregate for the session.
+// Populated outside the LLM — we sum from message rows. Rendered on
+// the Usage tab: total turns, tokens in/out, wall time.
+type AnalysisUsage struct {
+	Turns          int `json:"turns"`
+	TokensIn       int `json:"tokens_in"`
+	TokensOut      int `json:"tokens_out"`
+	TotalLatencyMs int `json:"total_latency_ms"`
 }
 
 // AnalyzerInput is what the analyzer receives from the subscriber —
@@ -329,6 +402,11 @@ type AnalyzerInput struct {
 // AnalyzerResult is the structured output the LLM produces. Shape mirrors
 // SessionReport fields 1:1 — the repo layer just copies fields and
 // stamps ids / timestamps.
+//
+// Title + Analysis were added in Phase 3 (migration 00053) to feed the
+// desktop's Session Summary view. The legacy scalar fields
+// (OverallScore, Weaknesses, …) are still populated for the web report
+// so both renderers work off a single analyzer run.
 type AnalyzerResult struct {
 	OverallScore    int
 	SectionScores   map[string]int
@@ -336,4 +414,6 @@ type AnalyzerResult struct {
 	Recommendations []string
 	Links           []AnalysisLink
 	ReportMarkdown  string
+	Title           string
+	Analysis        SessionAnalysis
 }

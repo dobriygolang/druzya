@@ -59,6 +59,8 @@ export const invokeChannels = {
   appearanceGet: 'appearance:get',
   appearanceSet: 'appearance:set',
 
+  personasList: 'personas:list',
+
   updaterStatus: 'updater:status',
   updaterCheck: 'updater:check',
   updaterInstall: 'updater:install',
@@ -146,6 +148,25 @@ export interface UserTurnStartedEvent {
  *  open. */
 export interface AppearancePrefs {
   expandedOpacity: number;
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Personas (server-driven catalogue of expert-mode presets)
+// ─────────────────────────────────────────────────────────────────────────
+
+/** Wire shape of one persona as served by /api/v1/personas. Matches
+ *  the backend PersonaDTO (services/ai_native/ports/personas.go).
+ *  Renderer picks this up via `window.druz9.personas.list()` which in
+ *  turn reads the in-process cache populated by main at startup. */
+export interface Persona {
+  id: string;
+  label: string;
+  hint: string;
+  icon_emoji: string;
+  brand_gradient: string;
+  suggested_task?: string;
+  system_prompt: string;
+  sort_order: number;
 }
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -374,6 +395,17 @@ export interface Druz9API {
     list: () => Promise<MasqueradePresetInfo[]>;
     get: () => Promise<MasqueradePreset>;
     apply: (preset: MasqueradePreset) => Promise<void>;
+  };
+
+  /**
+   * Personas — server-driven catalogue of expert-mode presets.
+   * Main fetches once at startup from /api/v1/personas and caches;
+   * renderer reads via this IPC method. Empty array on network
+   * failure — compact picker handles it by showing only the default
+   * baseline persona (always seeded server-side in migration 00051).
+   */
+  personas: {
+    list: () => Promise<Persona[]>;
   };
 
   /**

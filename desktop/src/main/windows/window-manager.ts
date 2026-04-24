@@ -51,6 +51,44 @@ export function showWindow(name: WindowName, opts: WindowOptions): BrowserWindow
     windows.delete(name);
   });
 
+  // Compact window: restore last drag position ("follows your eyes"
+  // feature — user drags compact to wherever they're looking and it
+  // stays there across sessions). Width/height stay at the defaults
+  // (compact is non-resizable) but x/y persist. Debounced save
+  // mirrors the expanded pattern.
+  if (name === 'compact') {
+    void loadAppearance().then((prefs) => {
+      if (prefs.compactBounds && !win.isDestroyed()) {
+        const b = prefs.compactBounds;
+        const display = screen.getDisplayMatching({
+          x: b.x, y: b.y, width: 460, height: 92,
+        });
+        // Clamp to keep the window on-screen — a saved position from
+        // a detached external monitor would orphan compact otherwise.
+        // Use 20px inset so a fully-offscreen drag also stays reachable.
+        const clamped = {
+          x: Math.max(display.bounds.x + 20, Math.min(b.x, display.bounds.x + display.bounds.width - 100)),
+          y: Math.max(display.bounds.y + 20, Math.min(b.y, display.bounds.y + display.bounds.height - 100)),
+          width: 460,
+          height: 92,
+        };
+        win.setBounds(clamped);
+      }
+    });
+    let compactSaveTimer: ReturnType<typeof setTimeout> | null = null;
+    const scheduleCompactSave = () => {
+      if (compactSaveTimer) clearTimeout(compactSaveTimer);
+      compactSaveTimer = setTimeout(() => {
+        compactSaveTimer = null;
+        if (win.isDestroyed()) return;
+        // Only persist position (width/height are fixed for compact)
+        // but we store the whole rect to reuse AppearancePrefs shape.
+        void saveAppearance({ compactBounds: win.getBounds() });
+      }, 400);
+    };
+    win.on('move', scheduleCompactSave);
+  }
+
   // Expanded window: restore last-known bounds (from appearance.json)
   // + persist new bounds whenever the user finishes resizing/moving.
   // 'resize' / 'move' fire on every drag tick so we coalesce with a
@@ -84,25 +122,6 @@ export function showWindow(name: WindowName, opts: WindowOptions): BrowserWindow
     };
     win.on('resize', scheduleSave);
     win.on('move', scheduleSave);
-  }
-
-  // macOS Tahoe (26.x) regression: vibrancy set via the BrowserWindow
-  // constructor sometimes fails to attach to the NSVisualEffectView
-  // backing layer — the window ends up with transparent: true but no
-  // blur, and CSS alpha alone looks like a "brightness fade" rather
-  // than the frosted-glass effect. Re-applying vibrancy after the
-  // first paint reliably wires it up. Also force 'active' state so
-  // the blur doesn't dim when the window loses focus.
-  if (process.platform === 'darwin' && name === 'expanded') {
-    win.once('ready-to-show', () => {
-      if (win.isDestroyed()) return;
-      try {
-        win.setVibrancy('hud');
-        win.setBackgroundColor('#00000000');
-      } catch {
-        /* setVibrancy may throw on non-macOS or very old macOS — ignore */
-      }
-    });
   }
 
   // Compact + expanded + history are stealth by default. Settings /
@@ -261,6 +280,13 @@ function buildWindow(name: WindowName, opts: WindowOptions): BrowserWindow {
       // gets the frosted-glass look of macOS system sheets without any
       // third-party compositing. No-op on Windows/Linux (falls through
       // to plain transparent window).
+      // No vibrancy — the feature was abandoned after macOS Tahoe
+      // (26.x) shipped a regression that broke NSVisualEffectView
+      // attach on windows with a custom frame. Instead we use plain
+      // `transparent: true` and let the React root paint an RGBA
+      // background: you get the crisp tinted-glass look without any
+      // OS blur. See desktop/src/renderer/screens/expanded for the
+      // CSS side of this story.
       return new BrowserWindow({
         ...base,
         width: 520,
@@ -268,17 +294,7 @@ function buildWindow(name: WindowName, opts: WindowOptions): BrowserWindow {
         frame: false,
         resizable: true,
         transparent: true,
-        // 'hud' is the strongest desktop-blur material; 'under-window'
-        // from macOS 10.14 produces near-zero visible blur on Tahoe
-        // (26.x) — swapping material brought the effect back. We also
-        // re-apply via setVibrancy() after 'ready-to-show' below as a
-        // workaround for the constructor-time regression.
-        vibrancy: process.platform === 'darwin' ? 'hud' : undefined,
-        // 'active' keeps the blur visible even when the window is not
-        // focused. Default 'followsWindowActiveState' dims to a boring
-        // solid color on blur, which defeats the point of vibrancy.
-        visualEffectState: 'active',
-        backgroundColor: '#00000000', // fully clear for vibrancy to show
+        backgroundColor: '#00000000', // fully clear so RGBA content shows through
         hasShadow: true,
         roundedCorners: true,
         skipTaskbar: true,

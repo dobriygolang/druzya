@@ -61,20 +61,54 @@ export function createSessionsClient(cfg: RuntimeConfig): SessionsClient {
     byokOnly: Boolean(raw.byok_only ?? raw.byokOnly),
   });
 
-  const fromRawAnalysis = (raw: Record<string, unknown>): SessionAnalysis => ({
-    sessionId: String(raw.session_id ?? raw.sessionId ?? ''),
-    status: (raw.status as SessionAnalysis['status']) ?? '',
-    overallScore: Number(raw.overall_score ?? raw.overallScore ?? 0),
-    sectionScores: (raw.section_scores ?? raw.sectionScores ?? {}) as Record<string, number>,
-    weaknesses: (raw.weaknesses ?? []) as string[],
-    recommendations: (raw.recommendations ?? []) as string[],
-    links: ((raw.links ?? []) as Array<{ label: string; url: string }>) ?? [],
-    reportMarkdown: String(raw.report_markdown ?? raw.reportMarkdown ?? ''),
-    reportUrl: String(raw.report_url ?? raw.reportUrl ?? ''),
-    errorMessage: String(raw.error_message ?? raw.errorMessage ?? ''),
-    startedAt: String(raw.started_at ?? raw.startedAt ?? ''),
-    finishedAt: String(raw.finished_at ?? raw.finishedAt ?? ''),
-  });
+  const fromRawAnalysis = (raw: Record<string, unknown>): SessionAnalysis => {
+    // Phase 3 structured fields. Connect's JSON serializer emits
+    // snake_case on the wire; we also accept camelCase for the (rare)
+    // case the server ever switches encoders.
+    const usageRaw = (raw.usage ?? null) as Record<string, unknown> | null;
+    const usage = usageRaw
+      ? {
+          turns: Number(usageRaw.turns ?? 0),
+          tokensIn: Number(usageRaw.tokens_in ?? usageRaw.tokensIn ?? 0),
+          tokensOut: Number(usageRaw.tokens_out ?? usageRaw.tokensOut ?? 0),
+          totalLatencyMs: Number(usageRaw.total_latency_ms ?? usageRaw.totalLatencyMs ?? 0),
+        }
+      : null;
+
+    const asItems = (v: unknown) =>
+      ((v as Array<Record<string, unknown>>) ?? []).map((it) => ({
+        title: String(it.title ?? ''),
+        detail: String(it.detail ?? ''),
+      }));
+    const asTerms = (v: unknown) =>
+      ((v as Array<Record<string, unknown>>) ?? []).map((it) => ({
+        term: String(it.term ?? ''),
+        definition: String(it.definition ?? ''),
+      }));
+
+    return {
+      sessionId: String(raw.session_id ?? raw.sessionId ?? ''),
+      status: (raw.status as SessionAnalysis['status']) ?? '',
+      overallScore: Number(raw.overall_score ?? raw.overallScore ?? 0),
+      sectionScores: (raw.section_scores ?? raw.sectionScores ?? {}) as Record<string, number>,
+      weaknesses: (raw.weaknesses ?? []) as string[],
+      recommendations: (raw.recommendations ?? []) as string[],
+      links: ((raw.links ?? []) as Array<{ label: string; url: string }>) ?? [],
+      reportMarkdown: String(raw.report_markdown ?? raw.reportMarkdown ?? ''),
+      reportUrl: String(raw.report_url ?? raw.reportUrl ?? ''),
+      errorMessage: String(raw.error_message ?? raw.errorMessage ?? ''),
+      startedAt: String(raw.started_at ?? raw.startedAt ?? ''),
+      finishedAt: String(raw.finished_at ?? raw.finishedAt ?? ''),
+      title: String(raw.title ?? ''),
+      tldr: String(raw.tldr ?? ''),
+      keyTopics: ((raw.key_topics ?? raw.keyTopics ?? []) as string[]),
+      actionItems: asItems(raw.action_items ?? raw.actionItems),
+      terminology: asTerms(raw.terminology),
+      decisions: asItems(raw.decisions),
+      openQuestions: ((raw.open_questions ?? raw.openQuestions ?? []) as string[]),
+      usage,
+    };
+  };
 
   return {
     start: async (kind) => {

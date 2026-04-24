@@ -4,7 +4,7 @@
 import { Link } from 'react-router-dom'
 import { Avatar } from '../../components/Avatar'
 
-export type Tab = 'dashboard' | 'users' | 'reports' | 'podcasts' | 'ai_models' | 'atlas'
+export type Tab = 'dashboard' | 'users' | 'reports' | 'podcasts' | 'ai_models' | 'personas' | 'atlas'
 
 export function Sidebar({ tab, setTab, pendingReports }: { tab: Tab; setTab: (t: Tab) => void; pendingReports: number }) {
   const items: Array<{ id: Tab; label: string; chip?: string; chipColor?: string }> = [
@@ -19,6 +19,7 @@ export function Sidebar({ tab, setTab, pendingReports }: { tab: Tab; setTab: (t:
     { id: 'podcasts', label: 'Подкасты' },
     { id: 'atlas', label: 'Atlas CMS' },
     { id: 'ai_models', label: 'AI Modельки' },
+    { id: 'personas', label: 'Персоны' },
   ]
   return (
     <aside className="flex w-full flex-col border-b border-border bg-surface-1 lg:w-60 lg:border-b-0 lg:border-r">

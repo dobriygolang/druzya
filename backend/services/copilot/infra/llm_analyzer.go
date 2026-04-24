@@ -19,6 +19,15 @@ import (
 // JSON we log and fall back to a stub report; we never return an error
 // up to the subscriber because a bad LLM run shouldn't crash the event
 // loop — we mark the report as failed via ReportRepo.Fail instead.
+//
+// Phase 3 (2026-04): prompt now asks the model for both the legacy
+// score-card (overall_score, weaknesses, …) AND the structured
+// Cluely-style breakdown (tldr, key_topics, action_items, terminology,
+// decisions, open_questions). Both live on AnalyzerResult — the web
+// report uses the former, the desktop's Summary view uses the latter.
+// AnalysisUsage is filled outside the LLM (token sums from messages)
+// because we already have ground truth there and shouldn't let the LLM
+// invent numbers.
 type LLMAnalyzer struct {
 	apiKey     string
 	endpoint   string
@@ -60,7 +69,9 @@ func (a *LLMAnalyzer) ReportURLFor(sessionID string) string {
 }
 
 // Analyze — implements domain.Analyzer. Pure function from input to
-// result; no I/O beyond the LLM call.
+// result; no I/O beyond the LLM call. Usage totals are computed locally
+// from the Messages (ground truth for tokens/latency) rather than
+// asking the LLM, which would invent numbers.
 func (a *LLMAnalyzer) Analyze(ctx context.Context, in domain.AnalyzerInput) (domain.AnalyzerResult, error) {
 	if len(in.Conversations) == 0 {
 		// No turns — return an honest "session was too short" report.
@@ -68,6 +79,10 @@ func (a *LLMAnalyzer) Analyze(ctx context.Context, in domain.AnalyzerInput) (dom
 			OverallScore: 0,
 			ReportMarkdown: "Сессия завершилась без содержимого — " +
 				"анализ не проведён.",
+			Analysis: domain.SessionAnalysis{
+				TLDR:  "Пустая сессия — нет диалогов для анализа.",
+				Usage: computeUsage(in),
+			},
 		}, nil
 	}
 
@@ -78,11 +93,8 @@ func (a *LLMAnalyzer) Analyze(ctx context.Context, in domain.AnalyzerInput) (dom
 		"model": a.model,
 		"messages": []map[string]any{
 			{
-				"role": "system",
-				"content": "Ты — технический тренер по собеседованиям. Возвращай СТРОГО JSON " +
-					"без префиксов, с полями overall_score (int 0..100), section_scores (map string->int 0..100), " +
-					"weaknesses (array of strings), recommendations (array of strings), " +
-					"report_markdown (string). Отвечай по-русски.",
+				"role":    "system",
+				"content": systemPrompt(),
 			},
 			{"role": "user", "content": prompt},
 		},
@@ -125,7 +137,36 @@ func (a *LLMAnalyzer) Analyze(ctx context.Context, in domain.AnalyzerInput) (dom
 		return domain.AnalyzerResult{}, fmt.Errorf("copilot.LLMAnalyzer: empty choices")
 	}
 
-	return parseAnalyzerJSON(parsed.Choices[0].Message.Content)
+	res, err := parseAnalyzerJSON(parsed.Choices[0].Message.Content)
+	if err != nil {
+		return domain.AnalyzerResult{}, err
+	}
+	// Usage is our source of truth — overwrite anything the LLM
+	// hallucinated here (some models include turn counts even when told
+	// not to).
+	usage := computeUsage(in)
+	res.Analysis.Usage = usage
+	return res, nil
+}
+
+func systemPrompt() string {
+	return "Ты — технический тренер по собеседованиям. Возвращай СТРОГО JSON без " +
+		"префиксов, без markdown-ограждений. Отвечай по-русски. Схема:\n" +
+		"{\n" +
+		"  \"title\": string — 4-7 слов, суть сессии,\n" +
+		"  \"overall_score\": int 0..100,\n" +
+		"  \"section_scores\": map[string]int 0..100 — ключи из {algorithms,sql,go,system_design,behavioral}, только реально упомянутые,\n" +
+		"  \"weaknesses\": []string — 3-5 коротких пунктов про слабые места,\n" +
+		"  \"recommendations\": []string — 3-5 конкретных действий,\n" +
+		"  \"report_markdown\": string — 3-5 абзацев на русском с подзаголовками ## Сильные стороны / ## Слабые места / ## Рекомендации,\n" +
+		"  \"tldr\": string — 1-3 предложения, что было в сессии,\n" +
+		"  \"key_topics\": []string — 3-8 основных тем,\n" +
+		"  \"action_items\": [{title: string, detail?: string}] — 2-5 конкретных follow-up дел,\n" +
+		"  \"terminology\": [{term: string, definition: string}] — 3-8 терминов, которые всплыли, с 1-строчным определением,\n" +
+		"  \"decisions\": [{title: string, detail?: string}] — 0-4 design/подход-решения, которые пользователь озвучил,\n" +
+		"  \"open_questions\": []string — 0-5 вопросов, оставшихся без ответа\n" +
+		"}\n" +
+		"Если какая-то секция неприменима (ничего по ней не было в транскрипте) — вернуть пустой массив/объект, НЕ выдумывать."
 }
 
 // buildTranscript — a compact textual rendering of all turns in the
@@ -148,16 +189,27 @@ func buildTranscript(in domain.AnalyzerInput) string {
 }
 
 func buildPrompt(transcript string) string {
-	return "Ниже — транскрипт подсказок AI-копайлота, которые пользователь запрашивал " +
-		"во время собеседования. Проанализируй его и выдай JSON-отчёт: " +
-		"\n- overall_score (0..100, твоя общая оценка уверенности кандидата)" +
-		"\n- section_scores: ключи из {\"algorithms\",\"sql\",\"go\",\"system_design\",\"behavioral\"} " +
-		"— только те, что реально фигурировали. Значения 0..100." +
-		"\n- weaknesses: 3-5 коротких пунктов про слабые места" +
-		"\n- recommendations: 3-5 конкретных действий, что повторить/изучить" +
-		"\n- report_markdown: развёрнутое summary 3-5 абзацев на русском, " +
-		"с подзаголовками (## Сильные стороны, ## Слабые места, ## Рекомендации)." +
-		"\n\nТранскрипт:" + transcript
+	return "Ниже — транскрипт подсказок AI-копайлота за одну сессию собеседования. " +
+		"Верни JSON по схеме из system-промпта. Не добавляй ничего вне JSON.\n" +
+		"\nТранскрипт:" + transcript
+}
+
+// computeUsage aggregates token / latency accounting from the messages.
+// We intentionally do this locally instead of asking the LLM so the
+// numbers match what billing / quota subsystems see.
+func computeUsage(in domain.AnalyzerInput) *domain.AnalysisUsage {
+	u := domain.AnalysisUsage{}
+	for _, msgs := range in.MessagesByConvID {
+		for _, m := range msgs {
+			if m.Role == "user" {
+				u.Turns++
+			}
+			u.TokensIn += m.TokensIn
+			u.TokensOut += m.TokensOut
+			u.TotalLatencyMs += m.LatencyMs
+		}
+	}
+	return &u
 }
 
 // parseAnalyzerJSON — permissive parse. If the LLM returns close-but-not-
@@ -165,7 +217,7 @@ func buildPrompt(transcript string) string {
 // try again.
 func parseAnalyzerJSON(raw string) (domain.AnalyzerResult, error) {
 	cleaned := strings.TrimSpace(raw)
-	// Strip ``` ```json fences if present.
+	// Strip ``` / ```json fences if present.
 	if strings.HasPrefix(cleaned, "```") {
 		cleaned = strings.TrimPrefix(cleaned, "```json")
 		cleaned = strings.TrimPrefix(cleaned, "```")
@@ -174,11 +226,18 @@ func parseAnalyzerJSON(raw string) (domain.AnalyzerResult, error) {
 	}
 
 	var parsed struct {
-		OverallScore    int            `json:"overall_score"`
-		SectionScores   map[string]int `json:"section_scores"`
-		Weaknesses      []string       `json:"weaknesses"`
-		Recommendations []string       `json:"recommendations"`
-		ReportMarkdown  string         `json:"report_markdown"`
+		Title           string                 `json:"title"`
+		OverallScore    int                    `json:"overall_score"`
+		SectionScores   map[string]int         `json:"section_scores"`
+		Weaknesses      []string               `json:"weaknesses"`
+		Recommendations []string               `json:"recommendations"`
+		ReportMarkdown  string                 `json:"report_markdown"`
+		TLDR            string                 `json:"tldr"`
+		KeyTopics       []string               `json:"key_topics"`
+		ActionItems     []domain.AnalysisItem  `json:"action_items"`
+		Terminology     []domain.AnalysisTerm  `json:"terminology"`
+		Decisions       []domain.AnalysisItem  `json:"decisions"`
+		OpenQuestions   []string               `json:"open_questions"`
 	}
 	if err := json.Unmarshal([]byte(cleaned), &parsed); err != nil {
 		return domain.AnalyzerResult{}, fmt.Errorf("copilot.parseAnalyzerJSON: %w", err)
@@ -196,6 +255,16 @@ func parseAnalyzerJSON(raw string) (domain.AnalyzerResult, error) {
 		Weaknesses:      parsed.Weaknesses,
 		Recommendations: parsed.Recommendations,
 		ReportMarkdown:  parsed.ReportMarkdown,
+		Title:           strings.TrimSpace(parsed.Title),
+		Analysis: domain.SessionAnalysis{
+			TLDR:          strings.TrimSpace(parsed.TLDR),
+			KeyTopics:     parsed.KeyTopics,
+			ActionItems:   parsed.ActionItems,
+			Terminology:   parsed.Terminology,
+			Decisions:     parsed.Decisions,
+			OpenQuestions: parsed.OpenQuestions,
+			// Usage is filled by the caller (Analyze) from message rows.
+		},
 	}, nil
 }
 

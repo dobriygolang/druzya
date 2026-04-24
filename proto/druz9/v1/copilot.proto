@@ -130,6 +130,28 @@ message CopilotAnalysisLink {
   string url = 2;
 }
 
+// CopilotAnalysisItem — titled paragraph used for action items and
+// decisions. `detail` is optional (one-liner → just title).
+message CopilotAnalysisItem {
+  string title = 1;
+  string detail = 2;
+}
+
+// CopilotAnalysisTerm — glossary entry.
+message CopilotAnalysisTerm {
+  string term = 1;
+  string definition = 2;
+}
+
+// CopilotAnalysisUsage — token / latency accounting for the session.
+// Ground truth from the message rows, not the LLM.
+message CopilotAnalysisUsage {
+  int32 turns = 1;
+  int32 tokens_in = 2;
+  int32 tokens_out = 3;
+  int32 total_latency_ms = 4;
+}
+
 // CopilotSessionAnalysis is the report the analyzer produces after a
 // session ends. Populated asynchronously — clients poll GetSessionAnalysis
 // (or listen for event:analysis-ready via a push channel).
@@ -153,6 +175,18 @@ message CopilotSessionAnalysis {
   // desktop client can skip its embedded renderer and open the URL
   // externally. Empty for BYOK reports — those are desktop-local.
   string report_url = 12;
+
+  // ── Phase 3 structured summary (migration 00053) ─────────────────
+  // Powers the desktop's Cluely-style Session Summary view. Each sub-
+  // list is optional — the client hides empty sections.
+  string title = 13;                              // "Sorting at scale · leader-follower"
+  string tldr = 14;                               // 1-3 sentence summary
+  repeated string key_topics = 15;                // "quicksort", "replication"
+  repeated CopilotAnalysisItem action_items = 16;
+  repeated CopilotAnalysisTerm terminology = 17;
+  repeated CopilotAnalysisItem decisions = 18;
+  repeated string open_questions = 19;
+  CopilotAnalysisUsage usage = 20;
 }
 
 // ----------------------------------------------------------------------

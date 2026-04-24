@@ -21,6 +21,7 @@ import { ReportsPanel } from './ReportsPanel'
 import { PodcastsPanel } from './PodcastsPanel'
 import { AtlasPanel } from './AtlasPanel'
 import { AIModelsPanel } from './AIModelsPanel'
+import { PersonasPanel } from './PersonasPanel'
 
 export default function AdminPage() {
   const profile = useProfileQuery()
@@ -67,7 +68,9 @@ export default function AdminPage() {
                       ? 'Подкасты'
                       : tab === 'atlas'
                         ? 'Atlas CMS'
-                        : 'AI Modельки'}
+                        : tab === 'personas'
+                          ? 'Персоны'
+                          : 'AI Modельки'}
             </h1>
             <span className="font-mono text-[11px] text-text-muted">Операционная панель druz9</span>
           </div>
@@ -78,6 +81,7 @@ export default function AdminPage() {
         {tab === 'podcasts' && <PodcastsPanel />}
         {tab === 'atlas' && <AtlasPanel />}
         {tab === 'ai_models' && <AIModelsPanel />}
+        {tab === 'personas' && <PersonasPanel />}
       </main>
     </div>
   )

@@ -143,4 +143,34 @@ export interface SessionAnalysis {
   errorMessage: string;
   startedAt: string;
   finishedAt: string;
+  // Phase 3 structured summary — populated once migration 00053 has
+  // landed + the desktop has fetched a newly-analyzed session. For
+  // older rows the LLM didn't know to fill these in, so they arrive as
+  // empty strings / empty arrays; the Summary view treats empty
+  // sections as "not applicable" and hides them.
+  title: string;
+  tldr: string;
+  keyTopics: string[];
+  actionItems: AnalysisItem[];
+  terminology: AnalysisTerm[];
+  decisions: AnalysisItem[];
+  openQuestions: string[];
+  usage: AnalysisUsage | null;
+}
+
+export interface AnalysisItem {
+  title: string;
+  detail: string;
+}
+
+export interface AnalysisTerm {
+  term: string;
+  definition: string;
+}
+
+export interface AnalysisUsage {
+  turns: number;
+  tokensIn: number;
+  tokensOut: number;
+  totalLatencyMs: number;
 }

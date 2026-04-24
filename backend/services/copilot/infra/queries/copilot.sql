@@ -225,12 +225,14 @@ ON CONFLICT (session_id) DO UPDATE
    SET updated_at = copilot_session_reports.updated_at
 RETURNING session_id, status, overall_score, section_scores, weaknesses,
           recommendations, links, report_markdown, report_url,
-          error_message, started_at, finished_at, updated_at;
+          error_message, started_at, finished_at, updated_at,
+          analysis, title;
 
 -- name: GetCopilotSessionReport :one
 SELECT session_id, status, overall_score, section_scores, weaknesses,
        recommendations, links, report_markdown, report_url,
-       error_message, started_at, finished_at, updated_at
+       error_message, started_at, finished_at, updated_at,
+       analysis, title
   FROM copilot_session_reports
  WHERE session_id = $1;
 
@@ -254,6 +256,8 @@ UPDATE copilot_session_reports
        links = $6,
        report_markdown = $7,
        report_url = $8,
+       analysis = $9,
+       title = $10,
        finished_at = now(),
        updated_at = now()
  WHERE session_id = $1;

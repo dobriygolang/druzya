@@ -263,7 +263,8 @@ func (q *Queries) GetCopilotSession(ctx context.Context, id pgtype.UUID) (Copilo
 const getCopilotSessionReport = `-- name: GetCopilotSessionReport :one
 SELECT session_id, status, overall_score, section_scores, weaknesses,
        recommendations, links, report_markdown, report_url,
-       error_message, started_at, finished_at, updated_at
+       error_message, started_at, finished_at, updated_at,
+       analysis, title
   FROM copilot_session_reports
  WHERE session_id = $1
 `
@@ -285,6 +286,8 @@ func (q *Queries) GetCopilotSessionReport(ctx context.Context, sessionID pgtype.
 		&i.StartedAt,
 		&i.FinishedAt,
 		&i.UpdatedAt,
+		&i.Analysis,
+		&i.Title,
 	)
 	return i, err
 }
@@ -338,7 +341,8 @@ ON CONFLICT (session_id) DO UPDATE
    SET updated_at = copilot_session_reports.updated_at
 RETURNING session_id, status, overall_score, section_scores, weaknesses,
           recommendations, links, report_markdown, report_url,
-          error_message, started_at, finished_at, updated_at
+          error_message, started_at, finished_at, updated_at,
+          analysis, title
 `
 
 // =============================================================================
@@ -363,6 +367,8 @@ func (q *Queries) InitCopilotSessionReport(ctx context.Context, sessionID pgtype
 		&i.StartedAt,
 		&i.FinishedAt,
 		&i.UpdatedAt,
+		&i.Analysis,
+		&i.Title,
 	)
 	return i, err
 }
@@ -859,6 +865,8 @@ UPDATE copilot_session_reports
        links = $6,
        report_markdown = $7,
        report_url = $8,
+       analysis = $9,
+       title = $10,
        finished_at = now(),
        updated_at = now()
  WHERE session_id = $1
@@ -873,6 +881,8 @@ type WriteCopilotSessionReportParams struct {
 	Links           []byte
 	ReportMarkdown  string
 	ReportUrl       string
+	Analysis        []byte
+	Title           string
 }
 
 // Commits a successful analysis. Status jumps to 'ready' regardless of
@@ -887,6 +897,8 @@ func (q *Queries) WriteCopilotSessionReport(ctx context.Context, arg WriteCopilo
 		arg.Links,
 		arg.ReportMarkdown,
 		arg.ReportUrl,
+		arg.Analysis,
+		arg.Title,
 	)
 	if err != nil {
 		return 0, err

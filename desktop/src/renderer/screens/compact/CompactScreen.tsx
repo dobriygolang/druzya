@@ -1,21 +1,40 @@
-// Compact floating window — the app's always-on entry point.
+// CompactScreen — 1:1 port of `CompactWindow` from the design package
+// (design/windows.jsx, lines 6-70). The layout + inline styles below
+// are copied verbatim from the design JSX; only demo-mode props
+// (`state='idle'`, hard-coded persona strings) have been replaced with
+// live data from the zustand stores.
 //
-// Layout: a stack of up to three rows.
-//   [optional] preview row — thumbnail of the pending screenshot +
-//                            send / retake / discard actions.
-//   input row — brand mark, prompt field, screenshot / voice / settings
-//               buttons.
-//   status row — model pill, "ready/thinking" dot, toggle-window hint.
+// Design reference (don't drift without updating the mockup):
+//   design/windows.jsx      — CompactWindow
+//   design/components.jsx   — PERSONAS / IconButton / BrandMark / ModelPill / PersonaChip
+//   design/tokens.css       — OKLCH palette, radii, shadows, motion
 //
-// Screenshots are staged as a PendingAttachment before sending. The
-// user can add text, retake, or discard — we only burn an Analyze call
-// when they actually confirm. The compact window grows and shrinks via
-// `windows.resize` so the preview fits without cramping the input.
+// Layout: 460×92 (grows to 520×180 w/ preview, or +300 w/ persona dropdown).
+//   Row 1 (height ~34): BrandMark(30) · input pill (⌘⏎ chip) · camera · settings
+//   Row 2 (height 22):  ModelPill · PersonaChip · status text · spacer · QuotaMeterMini
+//   Bottom edge:        StreamingHairline while streaming
+//
+// Window chrome lives in main/windows/window-manager.ts: frame:false +
+// transparent:true. We paint the glass ourselves here so the design
+// tokens (gradient + backdrop-filter + shadow) are applied identically
+// to the mockup.
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
-import { BrandMark, IconCamera, IconChevronDown, IconClose, IconSend, IconSettings } from '../../components/icons';
-import { IconButton, Kbd, StatusDot } from '../../components/primitives';
+import {
+  BrandMark,
+  Caret,
+  D9IconCamera,
+  D9IconClose,
+  D9IconSettings,
+  IconButton,
+  Kbds,
+  PersonaDropdown,
+  type PersonaDropdownItem,
+  QuotaMeterMini,
+  StatusDot,
+  StreamingHairline,
+} from '../../components/d9';
 import { useConfig } from '../../hooks/use-config';
 import { useHotkeyEvents } from '../../hooks/use-hotkey-events';
 import { useAuthStore } from '../../stores/auth';
@@ -33,6 +52,10 @@ const COMPACT_BASE_WIDTH = 460;
 const COMPACT_BASE_HEIGHT = 92;
 const COMPACT_WITH_PREVIEW_WIDTH = 520;
 const COMPACT_WITH_PREVIEW_HEIGHT = 180;
+// When the persona dropdown opens we grow the window downward so the
+// absolutely-positioned panel fits inside the BrowserWindow bounds
+// (Electron clips anything outside). 300px = 6 items × ~44px + padding.
+const PERSONA_DROPDOWN_HEIGHT = 300;
 
 export function CompactScreen() {
   const { config } = useConfig();
@@ -47,19 +70,17 @@ export function CompactScreen() {
   const modelBootstrap = useSelectedModelStore((s) => s.bootstrap);
   useEffect(() => modelBootstrap(), [modelBootstrap]);
 
-  // Drop a persisted selection that no longer exists in the current
-  // catalogue (e.g. a paid model the user lost access to, or a renamed
-  // id after a server-side config change). Without this the client keeps
-  // sending the stale id and the server rejects with CodePermissionDenied
-  // "model not allowed on current plan".
+  // Drop a persisted selection that no longer exists / is no longer
+  // allowed — otherwise the server keeps rejecting with
+  // CodePermissionDenied "model not allowed on current plan".
   useEffect(() => {
     if (!config || !selectedModel) return;
-    const stillExists = config.models.some((m) => m.id === selectedModel);
     const stillAllowed = config.models.some(
       (m) => m.id === selectedModel && m.availableOnCurrentPlan,
     );
-    if (!stillExists || !stillAllowed) clearSelectedModel();
+    if (!stillAllowed) clearSelectedModel();
   }, [config, selectedModel, clearSelectedModel]);
+
   const pending = usePendingAttachmentStore((s) => s.pending);
   const clearPending = usePendingAttachmentStore((s) => s.clear);
   const cursorState = useCursorFreezeStore((s) => s.state);
@@ -67,20 +88,18 @@ export function CompactScreen() {
   const liveSession = useSessionStore((s) => s.current);
   const lastAnalysis = useSessionStore((s) => s.lastAnalysis);
   const sessionBootstrap = useSessionStore((s) => s.bootstrap);
-  // Active persona colors the BrandMark + (via the submit handlers
-  // reading from getState() directly, not this hook) controls the
-  // system-prompt prefix prepended to analyze.start / chat.start calls.
+
   const activePersona = usePersonaStore((s) => s.active);
+  const personaList = usePersonaStore((s) => s.list);
+  const setActivePersona = usePersonaStore((s) => s.setActive);
+  const personaBootstrap = usePersonaStore((s) => s.bootstrap);
+  useEffect(() => { void personaBootstrap(); }, [personaBootstrap]);
 
   const [input, setInput] = useState('');
-  const [status, setStatus] = useState<'idle' | 'ready' | 'thinking' | 'recording'>('ready');
-  const [statusText, setStatusText] = useState('Готов');
-  // Model picker lives in expanded (compact is too small for the 440×520
-  // modal). Clicking the model label in compact opens expanded and
-  // signals via localStorage to pop the picker on mount.
+  const [personaOpen, setPersonaOpen] = useState(false);
+  const [statusError, setStatusError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Auth + conversation + cursor + session store subscriptions.
   useEffect(() => {
     const unsubAuth = authBootstrap();
     const unsubConv = conversationBootstrap();
@@ -94,8 +113,8 @@ export function CompactScreen() {
     };
   }, [authBootstrap, conversationBootstrap, cursorBootstrap, sessionBootstrap]);
 
-  // 1Hz tick so the "live session 12:34" label updates. Cheap — just a
-  // state tick, no re-renders outside compact.
+  // 1Hz tick so the "SESSION 12:34" timer updates while a live session
+  // is running. Cheap; only re-renders compact.
   const [, setTickTs] = useState(0);
   useEffect(() => {
     if (!liveSession) return;
@@ -103,30 +122,16 @@ export function CompactScreen() {
     return () => clearInterval(t);
   }, [liveSession]);
 
-  // Grow / shrink the window to accommodate the preview row. Works
-  // whether the state change came from hotkey, click, or voice handoff.
+  // Grow / shrink the window for preview + persona dropdown.
   useEffect(() => {
-    const [w, h] = pending
-      ? [COMPACT_WITH_PREVIEW_WIDTH, COMPACT_WITH_PREVIEW_HEIGHT]
-      : [COMPACT_BASE_WIDTH, COMPACT_BASE_HEIGHT];
+    let w = COMPACT_BASE_WIDTH;
+    let h = COMPACT_BASE_HEIGHT;
+    if (pending) { w = COMPACT_WITH_PREVIEW_WIDTH; h = COMPACT_WITH_PREVIEW_HEIGHT; }
+    if (personaOpen) h += PERSONA_DROPDOWN_HEIGHT;
     void window.druz9.windows.resize('compact', w, h);
-  }, [pending]);
+  }, [pending, personaOpen]);
 
-  const activeModelId = selectedModel || config?.defaultModelId || '';
-  useEffect(() => {
-    if (streaming) {
-      setStatus('thinking');
-      setStatusText(`${modelLabel(activeModelId, config)} · думает…`);
-    } else {
-      setStatus('ready');
-      setStatusText(session ? 'Готов' : 'Нужен вход');
-    }
-  }, [streaming, session, config, activeModelId]);
-
-  // Capture → INSTANT send. The input's current text (if any) rides
-  // along as the prompt. Users who want to type first can do so — this
-  // handler takes whatever's in the input at screenshot time. Users
-  // who want to retake just hit ⌘⇧S again.
+  // Capture → instant send (input text rides along as the prompt).
   const capture = async (kind: 'screenshot_area' | 'screenshot_full') => {
     try {
       const shot =
@@ -136,16 +141,12 @@ export function CompactScreen() {
       if (!shot) return;
 
       const text = input.trim();
-      // Persona prefix: when user picks "React Expert" in the dropdown,
-      // prepend the persona's "Инструкция: …" system block so the LLM
-      // narrows focus. Default persona → returns text untouched.
-      const activePersona = usePersonaStore.getState().active;
-      const promptWithPersona = applyPersonaPrefix(activePersona.prefix, text);
+      const currentPersona = usePersonaStore.getState().active;
+      const promptWithPersona = applyPersonaPrefix(currentPersona.system_prompt, text);
       const conversationId = useConversationStore.getState().conversationId;
       // Show expanded first so its renderer can subscribe to streaming
-      // events (analyzeCreated/Delta/Done) before the first backend
-      // response arrives. Without this, fast LLMs (Groq/Cerebras) can
-      // fire all events before expanded's bootstrap() runs.
+      // events before the first backend response arrives (fast
+      // providers otherwise fire events before bootstrap()).
       void window.druz9.windows.show('expanded');
       const handle = await window.druz9.analyze.start({
         conversationId,
@@ -171,13 +172,9 @@ export function CompactScreen() {
       });
       setInput('');
       clearPending();
+      setStatusError(null);
     } catch (err) {
-      // Room for the full "Screen Recording запрещён. Открой Системные
-      // настройки → Конфиденциальность → Запись экрана и включи Electron…"
-      // path. 50 was the old truncate limit and it cut the message in the
-      // middle of the remediation step. 240 keeps it single-line-ish in
-      // the status row and still fits "Ошибка: " prefix.
-      setStatusText(`Ошибка: ${(err as Error).message.slice(0, 240)}`);
+      setStatusError((err as Error).message.slice(0, 120));
       // eslint-disable-next-line no-console
       console.error('screenshot failed', err);
     }
@@ -193,11 +190,7 @@ export function CompactScreen() {
     }
   });
 
-  // Submits whatever's in the input (+ any pending screenshot). Extracted
-  // so voice transcripts can auto-send without relying on input-state
-  // timing (React batches state updates; reading `input` right after a
-  // setInput call would see the stale value).
-  const submitText = async (textOverride?: string) => {
+  const submit = async (textOverride?: string) => {
     const text = (textOverride ?? input).trim();
     if (streaming) return;
     if (!text && !pending) return;
@@ -215,8 +208,8 @@ export function CompactScreen() {
       : [];
 
     const conversationId = useConversationStore.getState().conversationId;
-    const activePersona = usePersonaStore.getState().active;
-    const promptWithPersona = applyPersonaPrefix(activePersona.prefix, text);
+    const currentPersona = usePersonaStore.getState().active;
+    const promptWithPersona = applyPersonaPrefix(currentPersona.system_prompt, text);
     const handle = await window.druz9.analyze.start({
       conversationId,
       promptText: promptWithPersona,
@@ -226,9 +219,6 @@ export function CompactScreen() {
       focusedAppHint: '',
     });
     beginTurn({
-      // Keep the user-facing bubble showing ONLY the raw text. Persona
-      // prefix is an operator instruction, not part of what the user
-      // said — rendering it in the chat bubble would be confusing.
       promptText: text,
       hasScreenshot: !!pending,
       screenshotDataUrl: pending ? `data:${pending.mimeType};base64,${pending.dataBase64}` : undefined,
@@ -238,233 +228,335 @@ export function CompactScreen() {
     clearPending();
     void window.druz9.windows.show('expanded');
   };
-  const submit = () => submitText();
+
+  const personaDropdownItems: PersonaDropdownItem[] = useMemo(
+    () =>
+      personaList.slice(0, 9).map((p, i) => ({
+        id: p.id,
+        label: p.label,
+        hint: p.hint,
+        hotkey: String(i + 1),
+        background: p.brand_gradient,
+      })),
+    [personaList],
+  );
+
+  const activeModelId = selectedModel || config?.defaultModelId || '';
+  const modelDisplayName = config?.models.find((m) => m.id === activeModelId)?.displayName ?? 'AI';
+  // Map internal status to design-package StatusDot state.
+  const dotState: 'idle' | 'ready' | 'thinking' | 'streaming' | 'recording' =
+    liveSession ? 'recording' : streaming ? 'streaming' : session ? 'ready' : 'idle';
+  const statusLabel =
+    statusError ? `Ошибка: ${statusError}` :
+    liveSession ? `SESSION ${formatElapsed(liveSession.startedAt)}` :
+    streaming ? 'Streaming…' :
+    session ? 'Ready' : 'Нужен вход';
 
   return (
+    // Outer — positioned; hosts the glass surface + dropdown + streaming hairline.
     <div
+      className="d9-root"
       style={{
+        position: 'relative',
         width: '100%',
         height: '100%',
-        display: 'flex',
-        flexDirection: 'column',
-        background: 'var(--d-bg-1)',
-        border: '1px solid var(--d-line)',
-        borderRadius: 'var(--r-window)',
-        boxShadow: 'var(--s-window)',
-        WebkitAppRegion: 'drag',
-        overflow: 'hidden',
-      } as React.CSSProperties}
+      }}
     >
-      {pending && (
-        <PreviewRow
-          pending={pending}
-          onRetake={async () => {
-            clearPending();
-            await capture('screenshot_area');
-          }}
-          onDiscard={clearPending}
-        />
-      )}
-
-      {/* Input row */}
+      {/* WindowShell (heavy glass). Copied from design/components.jsx
+          WindowShell heavy variant + wrapped in the drag region. */}
       <div
         style={{
-          height: 48,
-          display: 'flex',
-          alignItems: 'center',
-          padding: '0 10px 0 12px',
-          gap: 10,
-        }}
+          width: '100%',
+          height: '100%',
+          borderRadius: 18,
+          background:
+            'linear-gradient(180deg, oklch(0.16 0.04 278 / 0.72), oklch(0.12 0.035 278 / 0.82))',
+          backdropFilter: 'var(--d9-glass-blur)',
+          WebkitBackdropFilter: 'var(--d9-glass-blur)' as unknown as string,
+          boxShadow: 'var(--d9-shadow-win)',
+          color: 'var(--d9-ink)',
+          fontFamily: 'var(--d9-font-sans)',
+          position: 'relative',
+          overflow: 'hidden',
+          WebkitAppRegion: 'drag',
+        } as React.CSSProperties}
       >
-        <div style={{ position: 'relative', display: 'flex', alignItems: 'center', WebkitAppRegion: 'no-drag' } as React.CSSProperties}>
-          <BrandMark size={28} background={activePersona.brandGradient} />
-          <div
-            style={{
-              position: 'absolute',
-              right: -2,
-              bottom: -2,
-              width: 10,
-              height: 10,
-              borderRadius: 5,
-              border: '2px solid var(--d-bg-1)',
-              background: 'transparent',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            <StatusDot state={status} size={6} />
-          </div>
-        </div>
+        {/* Inner hairline highlight — design/components.jsx WindowShell */}
+        <div
+          aria-hidden
+          style={{
+            position: 'absolute',
+            inset: 0,
+            borderRadius: 'inherit',
+            border: '0.5px solid var(--d9-hairline-b)',
+            pointerEvents: 'none',
+          }}
+        />
 
+        {pending && (
+          <PreviewRow
+            pending={pending}
+            onRetake={async () => {
+              clearPending();
+              await capture('screenshot_area');
+            }}
+            onDiscard={clearPending}
+          />
+        )}
+
+        {/* Inner padded column (design: 12px 14px, gap 8) */}
         <div
           style={{
-            flex: 1,
+            padding: pending ? '10px 14px 12px' : '12px 14px',
             display: 'flex',
-            alignItems: 'center',
+            flexDirection: 'column',
             gap: 8,
-            height: 32,
-            padding: '0 10px',
-            background: 'rgba(255,255,255,0.03)',
-            border: '1px solid var(--d-line)',
-            borderRadius: 'var(--r-inner)',
-            WebkitAppRegion: 'no-drag',
-          } as React.CSSProperties}
+            height: pending ? undefined : '100%',
+            position: 'relative',
+            zIndex: 1,
+          }}
         >
-          <input
-            ref={inputRef}
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                void submit();
-              } else if (e.key === 'Escape' && pending) {
-                e.preventDefault();
-                clearPending();
-              }
-            }}
-            placeholder={pending ? 'Добавь вопрос к скриншоту…' : 'Сообщение или вопрос…'}
+          {/* Row 1 — primary input. design/windows.jsx:15-39 */}
+          <div
             style={{
-              flex: 1,
-              border: 'none',
-              background: 'transparent',
-              color: 'var(--d-text)',
-              fontSize: 13,
-              outline: 'none',
-            }}
-          />
-          {pending ? (
-            <IconButton title="Отправить (Enter)" onClick={() => void submit()}>
-              <IconSend size={14} />
-            </IconButton>
-          ) : (
-            <Kbd size="sm">Enter</Kbd>
-          )}
-        </div>
+              display: 'flex',
+              alignItems: 'center',
+              gap: 10,
+              WebkitAppRegion: 'no-drag',
+            } as React.CSSProperties}
+          >
+            <BrandMark
+              persona={activePersona.id}
+              background={activePersona.brand_gradient}
+              size={30}
+            />
 
-        <div style={{ display: 'flex', gap: 2, WebkitAppRegion: 'no-drag' } as React.CSSProperties}>
-          <IconButton title="Скриншот области (⌘⇧S)" onClick={() => void capture('screenshot_area')}>
-            <IconCamera size={15} />
-          </IconButton>
-          <IconButton title="Настройки" onClick={() => void window.druz9.windows.show('settings')}>
-            <IconSettings size={15} />
-          </IconButton>
-        </div>
-      </div>
-
-      {/* Status row */}
-      <div
-        style={{
-          height: 24,
-          borderTop: '1px solid var(--d-line)',
-          padding: '0 14px',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          fontSize: 10.5,
-          color: 'var(--d-text-3)',
-          fontFamily: 'var(--f-mono)',
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-          <StatusDot state={status} size={5} />
-          <span>{statusText}</span>
-          {cursorState === 'frozen' && (
-            <span
-              title="Курсор заморожен. ⌘⇧Y — разморозить"
+            {/* Input pill */}
+            <div
               style={{
-                marginLeft: 6,
-                padding: '1px 6px',
-                background: 'var(--d-accent-soft)',
-                color: 'var(--d-accent)',
-                borderRadius: 3,
-                fontSize: 9.5,
-                letterSpacing: 0.5,
+                flex: 1,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 6,
+                height: 34,
+                padding: '0 10px 0 12px',
+                borderRadius: 10,
+                background: 'oklch(1 0 0 / 0.05)',
+                border: '0.5px solid var(--d9-hairline)',
+                boxShadow: 'inset 0 0.5px 0 rgba(255,255,255,0.04)',
               }}
             >
-              CURSOR LOCK
-            </span>
-          )}
-          {liveSession && (
-            <span
-              title={`Идёт сессия (${liveSession.kind}). Закончить — через трей.`}
+              <input
+                ref={inputRef}
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    void submit();
+                  } else if (e.key === 'Escape' && pending) {
+                    e.preventDefault();
+                    clearPending();
+                  }
+                }}
+                placeholder={pending ? 'Добавь вопрос к скриншоту…' : 'Спроси о коде или вопросе…'}
+                style={{
+                  flex: 1,
+                  fontSize: 13,
+                  color: 'var(--d9-ink)',
+                  letterSpacing: '-0.005em',
+                  background: 'transparent',
+                  border: 'none',
+                  outline: 'none',
+                  // `::placeholder` is styled via globals.css — matches
+                  // design's `color: var(--d9-ink-mute)` idle-state text.
+                }}
+              />
+              <Kbds keys={['⌘', '⏎']} size="sm" sep="" />
+            </div>
+
+            <IconButton
+              title="Скриншот области (⌘⇧S)"
+              onClick={() => void capture('screenshot_area')}
+            >
+              <D9IconCamera size={14} />
+            </IconButton>
+            <IconButton
+              title="Настройки"
+              onClick={() => void window.druz9.windows.show('settings')}
+            >
+              <D9IconSettings size={14} />
+            </IconButton>
+          </div>
+
+          {/* Row 2 — status. design/windows.jsx:42-59 */}
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 10,
+              height: 22,
+              WebkitAppRegion: 'no-drag',
+            } as React.CSSProperties}
+          >
+            {/* Model picker — design/windows.jsx ModelPill inline */}
+            <button
+              onClick={() => void window.druz9.ui.openProviderPicker()}
+              title={config ? 'Выбрать модель' : 'Нужен вход'}
               style={{
-                marginLeft: 6,
-                padding: '1px 6px',
-                background: 'rgba(255, 69, 58, 0.15)',
-                color: 'var(--d-red)',
-                borderRadius: 3,
-                fontSize: 9.5,
-                letterSpacing: 0.5,
                 display: 'inline-flex',
                 alignItems: 'center',
-                gap: 4,
+                gap: 5,
+                fontSize: 11,
+                color: 'var(--d9-ink-dim)',
+                fontFamily: 'var(--d9-font-mono)',
+                letterSpacing: '-0.01em',
+                background: 'transparent',
+                border: 0,
+                padding: 0,
+                cursor: 'pointer',
               }}
             >
-              <StatusDot state="recording" size={5} />
-              SESSION {formatElapsed(liveSession.startedAt)}
-            </span>
-          )}
-          {!liveSession && lastAnalysis && (
+              <span style={{
+                width: 5, height: 5, borderRadius: 1,
+                background: 'var(--d9-accent)',
+                boxShadow: '0 0 6px var(--d9-accent-glow)',
+              }} />
+              <span style={{ maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {modelDisplayName}
+              </span>
+              <Caret />
+            </button>
+
+            <Dot />
+
+            {/* Persona picker — design/windows.jsx PersonaChip compact */}
             <button
-              onClick={() => void openReport(lastAnalysis)}
-              title="Отчёт по сессии готов — открыть"
+              onClick={() => setPersonaOpen((o) => !o)}
+              title={activePersona.hint}
               style={{
-                marginLeft: 6,
-                padding: '1px 6px',
-                background: 'rgba(52, 199, 89, 0.15)',
-                color: 'var(--d-green)',
-                borderRadius: 3,
-                border: 'none',
-                fontSize: 9.5,
-                letterSpacing: 0.5,
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+                padding: '2px 8px 2px 4px',
+                height: 22,
+                borderRadius: 999,
+                background: 'oklch(1 0 0 / 0.06)',
+                border: '0.5px solid var(--d9-hairline)',
+                color: 'var(--d9-ink-dim)',
+                fontSize: 11,
+                fontWeight: 500,
+                letterSpacing: '-0.005em',
                 cursor: 'pointer',
                 fontFamily: 'inherit',
               }}
             >
-              REPORT READY
+              <span style={{
+                width: 14, height: 14, borderRadius: '50%',
+                background: activePersona.brand_gradient,
+                boxShadow: 'inset 0 0.5px 0 rgba(255,255,255,0.3), 0 0 8px -2px currentColor',
+                flex: 'none',
+              }} />
+              <span>{activePersona.label}</span>
+              <Caret />
             </button>
-          )}
+
+            <Dot />
+
+            <span style={{
+              display: 'inline-flex', alignItems: 'center', gap: 6,
+              fontSize: 11, color: 'var(--d9-ink-mute)', letterSpacing: '-0.005em',
+            }}>
+              <StatusDot state={dotState} size={6} />
+              {statusLabel}
+            </span>
+
+            {cursorState === 'frozen' && (
+              <span
+                title="Курсор заморожен. ⌘⇧Y — разморозить"
+                style={{
+                  padding: '1px 6px',
+                  background: 'var(--d9-accent-glow)',
+                  color: 'var(--d9-accent-hi)',
+                  borderRadius: 3,
+                  fontSize: 9.5,
+                  fontFamily: 'var(--d9-font-mono)',
+                  letterSpacing: 0.5,
+                }}
+              >
+                CURSOR LOCK
+              </span>
+            )}
+            {!liveSession && lastAnalysis && (
+              <button
+                onClick={() => void openReport(lastAnalysis)}
+                title="Отчёт по сессии готов — открыть"
+                style={{
+                  padding: '1px 6px',
+                  background: 'oklch(0.6 0.15 150 / 0.18)',
+                  color: 'var(--d9-ok)',
+                  borderRadius: 3,
+                  border: 'none',
+                  fontSize: 9.5,
+                  fontFamily: 'var(--d9-font-mono)',
+                  letterSpacing: 0.5,
+                  cursor: 'pointer',
+                }}
+              >
+                REPORT READY
+              </button>
+            )}
+
+            <span style={{ flex: 1 }} />
+
+            {/* Quota — rendered only once DesktopConfig ships counters.
+                Not-yet-implemented in the server config, so this stays
+                null for now and the slot is invisible. */}
+            {false && <QuotaMeterMini used={0} cap={0} />}
+          </div>
         </div>
-        <div
-          style={{ display: 'flex', alignItems: 'center', gap: 10, WebkitAppRegion: 'no-drag' } as React.CSSProperties}
-        >
-          <PersonaPicker />
-          <button
-            onClick={() => void window.druz9.ui.openProviderPicker()}
-            title={config ? 'Выбрать модель' : 'Нужен вход — зайди через Настройки'}
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: 4,
-              height: 16,
-              padding: '0 6px',
-              background: 'transparent',
-              border: '1px solid transparent',
-              borderRadius: 4,
-              color: 'var(--d-text-2)',
-              fontFamily: 'inherit',
-              fontSize: 10.5,
-              cursor: 'pointer',
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.background = 'rgba(255,255,255,0.04)';
-              e.currentTarget.style.borderColor = 'var(--d-line)';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.background = 'transparent';
-              e.currentTarget.style.borderColor = 'transparent';
-            }}
-          >
-            {modelLabel(activeModelId, config)}
-            <IconChevronDown size={10} />
-          </button>
-          <Kbd size="sm">CommandOrControl+Shift+D</Kbd>
-        </div>
+
+        {streaming && <StreamingHairline />}
       </div>
 
+      {/* Persona dropdown — absolute-positioned panel below the glass. */}
+      {personaOpen && (
+        <div
+          style={{
+            position: 'absolute',
+            top: COMPACT_BASE_HEIGHT + (pending ? 90 : 4),
+            right: 14,
+            zIndex: 30,
+          }}
+        >
+          <PersonaDropdown
+            items={personaDropdownItems}
+            activeId={activePersona.id}
+            onSelect={(id) => {
+              setActivePersona(id);
+              setPersonaOpen(false);
+            }}
+            onClose={() => setPersonaOpen(false)}
+          />
+        </div>
+      )}
     </div>
+  );
+}
+
+// Small bullet separator between pills in row 2. design/windows.jsx:72-74.
+function Dot() {
+  return (
+    <span
+      style={{
+        width: 2,
+        height: 2,
+        borderRadius: 2,
+        background: 'var(--d9-ink-ghost)',
+        opacity: 0.6,
+        flex: 'none',
+      }}
+    />
   );
 }
 
@@ -486,20 +578,21 @@ function PreviewRow({
         display: 'flex',
         alignItems: 'center',
         gap: 12,
-        padding: '10px 12px',
-        borderBottom: '1px solid var(--d-line)',
-        background: 'var(--d-bg-2)',
+        padding: '10px 14px',
+        borderBottom: '0.5px solid var(--d9-hairline)',
+        background: 'oklch(1 0 0 / 0.03)',
+        position: 'relative',
+        zIndex: 1,
         WebkitAppRegion: 'no-drag',
       } as React.CSSProperties}
     >
-      {/* Thumbnail */}
       <div
         style={{
           width: 104,
           height: 64,
           flexShrink: 0,
-          background: 'var(--d-bg-code)',
-          border: '1px solid var(--d-line)',
+          background: 'oklch(0.08 0.02 280)',
+          border: '0.5px solid var(--d9-hairline)',
           borderRadius: 6,
           overflow: 'hidden',
           display: 'flex',
@@ -513,39 +606,43 @@ function PreviewRow({
           style={{ maxWidth: '100%', maxHeight: '100%', display: 'block' }}
         />
       </div>
-
-      {/* Meta + actions */}
       <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', gap: 4 }}>
         <div
           style={{
             fontSize: 12,
             fontWeight: 500,
-            color: 'var(--d-text)',
+            color: 'var(--d9-ink)',
             display: 'flex',
             alignItems: 'center',
             gap: 6,
+            letterSpacing: '-0.005em',
           }}
         >
-          <IconCamera size={12} />
+          <D9IconCamera size={12} />
           Скриншот готов
         </div>
-        <div style={{ fontSize: 10.5, color: 'var(--d-text-3)', fontFamily: 'var(--f-mono)' }}>
+        <div
+          style={{
+            fontSize: 10.5,
+            color: 'var(--d9-ink-mute)',
+            fontFamily: 'var(--d9-font-mono)',
+          }}
+        >
           {pending.width}×{pending.height} · добавь вопрос и жми Enter
         </div>
         <div style={{ display: 'flex', gap: 6, marginTop: 2 }}>
           <button
             onClick={() => void onRetake()}
             style={smallChip}
-            onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(255,255,255,0.06)')}
+            onMouseEnter={(e) => (e.currentTarget.style.background = 'oklch(1 0 0 / 0.06)')}
             onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
           >
             Переделать
           </button>
         </div>
       </div>
-
       <IconButton title="Отменить (Esc)" onClick={onDiscard}>
-        <IconClose size={14} />
+        <D9IconClose size={12} />
       </IconButton>
     </div>
   );
@@ -555,18 +652,13 @@ const smallChip: React.CSSProperties = {
   fontSize: 11,
   padding: '3px 8px',
   background: 'transparent',
-  color: 'var(--d-text-2)',
-  border: '1px solid var(--d-line)',
+  color: 'var(--d9-ink-dim)',
+  border: '0.5px solid var(--d9-hairline)',
   borderRadius: 4,
   cursor: 'pointer',
   fontFamily: 'inherit',
+  letterSpacing: '-0.005em',
 };
-
-function modelLabel(id: string | undefined, cfg: ReturnType<typeof useConfig>['config']): string {
-  if (!id || !cfg) return 'AI';
-  const m = cfg.models.find((x) => x.id === id);
-  return m?.displayName ?? 'AI';
-}
 
 function formatElapsed(iso: string): string {
   if (!iso) return '';
@@ -578,193 +670,12 @@ function formatElapsed(iso: string): string {
   return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
 }
 
-async function openReport(analysis: import('@shared/types').SessionAnalysis): Promise<void> {
-  // Preference order:
-  //   1. Server report URL → open in the OS browser (full Druzya UI).
-  //   2. No URL (BYOK) → show in the expanded window's inline viewer.
+async function openReport(
+  analysis: import('@shared/types').SessionAnalysis,
+): Promise<void> {
   if (analysis.reportUrl) {
     await window.druz9.shell.openExternal(analysis.reportUrl);
     return;
   }
   await window.druz9.windows.show('expanded');
-}
-
-// ─────────────────────────────────────────────────────────────────────────
-
-/**
- * PersonaPicker — compact status-row dropdown for the expert-mode
- * preset (React expert / System Design / Go-SRE / Behavioral / DSA).
- * Lives right of the status icons, left of the model picker, so the
- * user's eye naturally reads: mode → model → hotkey hint.
- *
- * Closed state renders the persona's emoji + short label inside a
- * chip. Open state is a 200×auto dropdown anchored top-right to the
- * chip; clicking an item swaps the active persona (which writes to
- * localStorage via the store). Close on: click-outside, Esc, or pick.
- */
-// Dropdown height in px — 6 rows of ~44px each + 8px padding. Used to
-// temporarily grow the compact window so the dropdown fits inside its
-// bounds (BrowserWindow clips any content that would spill outside).
-const PERSONA_DROPDOWN_HEIGHT = 292;
-
-function PersonaPicker() {
-  const active = usePersonaStore((s) => s.active);
-  const list = usePersonaStore((s) => s.list);
-  const setActive = usePersonaStore((s) => s.setActive);
-  const [open, setOpen] = useState(false);
-  const rootRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!open) return;
-    const onClickOutside = (e: MouseEvent) => {
-      if (rootRef.current && !rootRef.current.contains(e.target as Node)) setOpen(false);
-    };
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setOpen(false);
-    };
-    window.addEventListener('mousedown', onClickOutside);
-    window.addEventListener('keydown', onKey);
-    return () => {
-      window.removeEventListener('mousedown', onClickOutside);
-      window.removeEventListener('keydown', onKey);
-    };
-  }, [open]);
-
-  // Grow the compact window downward while the dropdown is open so the
-  // menu fits inside the BrowserWindow bounds (macOS clips anything
-  // outside). Shrink back on close. Using the existing window manager
-  // resize which pins the top-right corner, so the status row stays
-  // visually anchored and the new space appears below for the dropdown.
-  useEffect(() => {
-    if (!open) return;
-    void window.druz9.windows.resize(
-      'compact',
-      COMPACT_BASE_WIDTH,
-      COMPACT_BASE_HEIGHT + PERSONA_DROPDOWN_HEIGHT,
-    );
-    return () => {
-      void window.druz9.windows.resize('compact', COMPACT_BASE_WIDTH, COMPACT_BASE_HEIGHT);
-    };
-  }, [open]);
-
-  return (
-    <div ref={rootRef} style={{ position: 'relative' }}>
-      <button
-        onClick={() => setOpen((o) => !o)}
-        title={`Режим: ${active.label} — ${active.hint}`}
-        style={{
-          display: 'inline-flex',
-          alignItems: 'center',
-          gap: 4,
-          height: 16,
-          padding: '0 6px',
-          background: 'transparent',
-          border: '1px solid transparent',
-          borderRadius: 4,
-          color: 'var(--d-text-2)',
-          fontFamily: 'inherit',
-          fontSize: 10.5,
-          cursor: 'pointer',
-        }}
-        onMouseEnter={(e) => {
-          e.currentTarget.style.background = 'rgba(255,255,255,0.04)';
-          e.currentTarget.style.borderColor = 'var(--d-line)';
-        }}
-        onMouseLeave={(e) => {
-          e.currentTarget.style.background = 'transparent';
-          e.currentTarget.style.borderColor = 'transparent';
-        }}
-      >
-        <span style={{ fontSize: 12 }}>{active.icon}</span>
-        {active.label}
-        <IconChevronDown size={10} />
-      </button>
-
-      {open && (
-        <div
-          style={{
-            position: 'absolute',
-            // Anchor BELOW the status-row chip. Paired with the
-            // temporary window-resize effect above (compact grows by
-            // PERSONA_DROPDOWN_HEIGHT when open), so the menu fits
-            // inside the BrowserWindow. Anchoring above would be
-            // clipped even after resize because the status row stays
-            // pinned at the top — the new space opens downward.
-            top: '100%',
-            right: 0,
-            marginTop: 4,
-            width: 220,
-            background: 'var(--d-bg-1)',
-            border: '1px solid var(--d-line-strong)',
-            borderRadius: 8,
-            boxShadow: 'var(--s-float)',
-            padding: 4,
-            zIndex: 20,
-          }}
-        >
-          {list.map((p) => {
-            const chosen = p.id === active.id;
-            return (
-              <button
-                key={p.id}
-                onClick={() => {
-                  setActive(p.id);
-                  setOpen(false);
-                }}
-                style={{
-                  width: '100%',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 8,
-                  padding: '6px 8px',
-                  background: chosen ? 'var(--d-accent-soft)' : 'transparent',
-                  border: 'none',
-                  borderRadius: 6,
-                  color: 'var(--d-text)',
-                  fontFamily: 'inherit',
-                  fontSize: 11.5,
-                  cursor: 'pointer',
-                  textAlign: 'left',
-                }}
-                onMouseEnter={(e) => {
-                  if (!chosen) e.currentTarget.style.background = 'rgba(255,255,255,0.04)';
-                }}
-                onMouseLeave={(e) => {
-                  if (!chosen) e.currentTarget.style.background = 'transparent';
-                }}
-              >
-                <span
-                  aria-hidden
-                  style={{
-                    display: 'inline-block',
-                    width: 16,
-                    height: 16,
-                    borderRadius: 4,
-                    background: p.brandGradient,
-                    flexShrink: 0,
-                  }}
-                />
-                <span style={{ fontSize: 13 }}>{p.icon}</span>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontWeight: chosen ? 600 : 400 }}>{p.label}</div>
-                  <div
-                    style={{
-                      fontSize: 9.5,
-                      color: 'var(--d-text-3)',
-                      fontFamily: 'var(--f-mono)',
-                      whiteSpace: 'nowrap',
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                    }}
-                  >
-                    {p.hint}
-                  </div>
-                </div>
-              </button>
-            );
-          })}
-        </div>
-      )}
-    </div>
-  );
 }

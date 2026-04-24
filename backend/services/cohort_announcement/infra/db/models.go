@@ -207,6 +207,8 @@ type CopilotSessionReport struct {
 	StartedAt       pgtype.Timestamptz
 	FinishedAt      pgtype.Timestamptz
 	UpdatedAt       pgtype.Timestamptz
+	Analysis        []byte
+	Title           string
 }
 
 type DailyKataHistory struct {

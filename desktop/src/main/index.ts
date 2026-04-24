@@ -52,10 +52,23 @@ if (process.platform === 'darwin') {
 
 // Enforce single instance — required for the deep-link handler to route
 // druz9:// callbacks into the already-running process.
-const gotLock = app.requestSingleInstanceLock();
-if (!gotLock) {
-  app.quit();
-  process.exit(0);
+//
+// DEV CAVEAT: in `electron-vite dev` we run the raw Electron.app binary,
+// which ships with bundleId `com.github.electron`. That lock is shared
+// across *every* Electron app on the system — Claude Desktop, VS Code,
+// Slack, Discord, etc. If any of them is running, `requestSingleInstanceLock`
+// returns false and the dev run self-exits with code 0 silently. Skip
+// the lock entirely in dev; production (packaged app) keeps the lock
+// because it ships with a unique bundle id set in electron-builder.yml.
+if (!process.env.ELECTRON_RENDERER_URL) {
+  const gotLock = app.requestSingleInstanceLock();
+  if (!gotLock) {
+    console.error('[druz9 main] single-instance lock failed; another instance already running');
+    app.quit();
+    process.exit(0);
+  }
+} else {
+  console.log('[druz9 main] dev mode — skipping single-instance lock');
 }
 
 app.whenReady().then(async () => {
