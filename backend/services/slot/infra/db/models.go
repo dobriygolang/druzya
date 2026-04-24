@@ -342,6 +342,14 @@ type HoneNote struct {
 	UpdatedAt      pgtype.Timestamptz
 }
 
+type HonePlanSkip struct {
+	UserID      pgtype.UUID
+	SkillKey    string
+	ItemID      string
+	PlanDate    pgtype.Date
+	DismissedAt pgtype.Timestamptz
+}
+
 type HoneStreakDay struct {
 	UserID          pgtype.UUID
 	Day             pgtype.Date
