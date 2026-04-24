@@ -46,9 +46,28 @@ logs: ## Tail api logs
 .PHONY: lint
 lint: lint-go lint-ts ## Run all linters
 
+# Parallelism defaults: use all cores, fall back to 4 if nproc missing (macOS).
+# Override via `make lint-go JOBS=8`.
+JOBS ?= $(shell (command -v nproc >/dev/null && nproc) || sysctl -n hw.ncpu 2>/dev/null || echo 4)
+
+# List of Go modules under backend/, excluding backend/tools (out-of-workspace,
+# codegen-only). Computed once so lint/test/build share the same list.
+GO_MODULES = $(shell find backend -name go.mod -not -path '*/tools/*' -exec dirname {} \; | sort)
+
 .PHONY: lint-go
-lint-go: ## Run golangci-lint across all Go modules
-	cd backend && golangci-lint run ./...
+lint-go: ## Run golangci-lint across all Go modules (parallel, per-module)
+	@# Per-module (GOWORK=off) avoids golangci-lint's workspace-mode issues and
+	@# lets us parallelise with xargs -P. Each module builds first so analyser
+	@# can load export data. GOLANGCI_LINT_CACHE fans into a single shared dir
+	@# for massive reuse between modules.
+	@mkdir -p .cache/golangci-lint
+	@export GOLANGCI_LINT_CACHE="$(CURDIR)/.cache/golangci-lint"; \
+	 printf '%s\n' $(GO_MODULES) | xargs -P $(JOBS) -I{} bash -c '\
+	   set -e; \
+	   cd "{}"; \
+	   echo "→ lint {}"; \
+	   GOWORK=off GOFLAGS="" go build ./... >/dev/null; \
+	   GOWORK=off GOFLAGS="" golangci-lint run --config="$(CURDIR)/backend/.golangci.yml" --timeout=5m ./...'
 
 .PHONY: lint-ts
 lint-ts: ## Run ESLint + tsc on frontend
@@ -58,8 +77,12 @@ lint-ts: ## Run ESLint + tsc on frontend
 test: test-go test-ts ## Run all tests
 
 .PHONY: test-go
-test-go: ## Run Go tests with race detector
-	cd backend && go test -race ./...
+test-go: ## Run Go tests with race detector (parallel, per-module)
+	@printf '%s\n' $(GO_MODULES) | xargs -P $(JOBS) -I{} bash -c '\
+	  set -e; \
+	  cd "{}"; \
+	  echo "→ test {}"; \
+	  GOFLAGS="" go test -race -count=1 ./...'
 
 .PHONY: test-ts
 test-ts: ## Run frontend tests
