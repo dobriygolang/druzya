@@ -70,6 +70,39 @@ build: ## Build backend + frontend
 	cd frontend && npm run build
 	cd backend && go build -o ../bin/monolith ./cmd/monolith
 
+.PHONY: tidy
+tidy: ## Run `go mod tidy` in every Go module (go.work + backend/tools)
+	@# Source-of-truth list: each go.mod under backend/. We discover them
+	@# dynamically so adding a new service doesn't require touching this
+	@# target. backend/tools is OUT of the workspace (see go.work) but
+	@# still needs tidy when its codegen deps drift.
+	@# Continue on per-module failures (e.g. flaky proxy) so a single
+	@# broken module doesn't block tidying the other 25; collect failures
+	@# and exit non-zero at the end so CI still catches them.
+	@failed=""; \
+	for mod in $$(find backend -name go.mod -not -path '*/node_modules/*' | sort); do \
+		dir=$$(dirname $$mod); \
+		printf "→ tidy %s ... " "$$dir"; \
+		if [ "$$dir" = "backend/tools" ]; then \
+			(cd $$dir && GOWORK=off go mod tidy) >/dev/null 2>&1 \
+				&& echo "ok" || { echo "FAIL"; failed="$$failed $$dir"; }; \
+		else \
+			(cd $$dir && go mod tidy) >/dev/null 2>&1 \
+				&& echo "ok" || { echo "FAIL"; failed="$$failed $$dir"; }; \
+		fi; \
+	done; \
+	if [ -n "$$failed" ]; then \
+		echo ""; \
+		echo "Failed modules:$$failed"; \
+		echo "(re-run inside each dir to see the error — usually a goproxy hiccup)"; \
+		exit 1; \
+	fi
+
+.PHONY: tidy-check
+tidy-check: tidy ## Fail if `go mod tidy` produced changes (CI guard)
+	@git diff --exit-code -- '**/go.mod' '**/go.sum' \
+		|| (echo "go.mod/go.sum drifted — run 'make tidy' and commit" && exit 1)
+
 .PHONY: gen
 gen: gen-proto gen-sqlc gen-mocks gen-ts ## Run all code generators
 
