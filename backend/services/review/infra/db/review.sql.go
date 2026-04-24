@@ -28,22 +28,10 @@ type CreateReviewParams struct {
 	Feedback      pgtype.Text
 }
 
-type CreateReviewRow struct {
-	BookingID     pgtype.UUID
-	Direction     string
-	ReviewerID    pgtype.UUID
-	InterviewerID pgtype.UUID
-	SubjectID     pgtype.UUID
-	Rating        int32
-	Feedback      pgtype.Text
-	CreatedAt     pgtype.Timestamptz
-	UpdatedAt     pgtype.Timestamptz
-}
-
 // review queries (sqlc → services/review/infra/db).
 // (booking_id, direction) is the composite PK; a duplicate raises
 // 23505 which the app layer maps to ErrAlreadyReviewed.
-func (q *Queries) CreateReview(ctx context.Context, arg CreateReviewParams) (CreateReviewRow, error) {
+func (q *Queries) CreateReview(ctx context.Context, arg CreateReviewParams) (Review, error) {
 	row := q.db.QueryRow(ctx, createReview,
 		arg.BookingID,
 		arg.Direction,
@@ -53,7 +41,7 @@ func (q *Queries) CreateReview(ctx context.Context, arg CreateReviewParams) (Cre
 		arg.Rating,
 		arg.Feedback,
 	)
-	var i CreateReviewRow
+	var i Review
 	err := row.Scan(
 		&i.BookingID,
 		&i.Direction,
@@ -78,21 +66,9 @@ type GetReviewByBookingDirectionParams struct {
 	Direction string
 }
 
-type GetReviewByBookingDirectionRow struct {
-	BookingID     pgtype.UUID
-	Direction     string
-	ReviewerID    pgtype.UUID
-	InterviewerID pgtype.UUID
-	SubjectID     pgtype.UUID
-	Rating        int32
-	Feedback      pgtype.Text
-	CreatedAt     pgtype.Timestamptz
-	UpdatedAt     pgtype.Timestamptz
-}
-
-func (q *Queries) GetReviewByBookingDirection(ctx context.Context, arg GetReviewByBookingDirectionParams) (GetReviewByBookingDirectionRow, error) {
+func (q *Queries) GetReviewByBookingDirection(ctx context.Context, arg GetReviewByBookingDirectionParams) (Review, error) {
 	row := q.db.QueryRow(ctx, getReviewByBookingDirection, arg.BookingID, arg.Direction)
-	var i GetReviewByBookingDirectionRow
+	var i Review
 	err := row.Scan(
 		&i.BookingID,
 		&i.Direction,
@@ -141,29 +117,17 @@ type ListReviewsBySubjectParams struct {
 	Limit     int32
 }
 
-type ListReviewsBySubjectRow struct {
-	BookingID     pgtype.UUID
-	Direction     string
-	ReviewerID    pgtype.UUID
-	InterviewerID pgtype.UUID
-	SubjectID     pgtype.UUID
-	Rating        int32
-	Feedback      pgtype.Text
-	CreatedAt     pgtype.Timestamptz
-	UpdatedAt     pgtype.Timestamptz
-}
-
 // Filters on subject_id (denormalized) so the same query backs both the
 // interviewer's public card and the candidate's own card.
-func (q *Queries) ListReviewsBySubject(ctx context.Context, arg ListReviewsBySubjectParams) ([]ListReviewsBySubjectRow, error) {
+func (q *Queries) ListReviewsBySubject(ctx context.Context, arg ListReviewsBySubjectParams) ([]Review, error) {
 	rows, err := q.db.Query(ctx, listReviewsBySubject, arg.SubjectID, arg.Limit)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	items := []ListReviewsBySubjectRow{}
+	items := []Review{}
 	for rows.Next() {
-		var i ListReviewsBySubjectRow
+		var i Review
 		if err := rows.Scan(
 			&i.BookingID,
 			&i.Direction,

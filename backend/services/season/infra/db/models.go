@@ -38,10 +38,10 @@ type ArenaMatch struct {
 	Mode          string
 	Status        string
 	WinnerID      pgtype.UUID
+	WinningTeamID pgtype.Int2
 	StartedAt     pgtype.Timestamptz
 	FinishedAt    pgtype.Timestamptz
 	CreatedAt     pgtype.Timestamptz
-	WinningTeamID pgtype.Int2
 }
 
 type ArenaParticipant struct {
@@ -67,6 +67,7 @@ type AtlasNode struct {
 	Title       string
 	Section     string
 	Kind        string
+	Cluster     string
 	Description string
 	TotalCount  int32
 	PosX        pgtype.Int4
@@ -75,7 +76,6 @@ type AtlasNode struct {
 	IsActive    bool
 	CreatedAt   pgtype.Timestamptz
 	UpdatedAt   pgtype.Timestamptz
-	Cluster     string
 }
 
 type Booking struct {
@@ -100,12 +100,12 @@ type Cohort struct {
 	Name        string
 	Emblem      pgtype.Text
 	CohortElo   int32
-	CreatedAt   pgtype.Timestamptz
 	Description pgtype.Text
 	Tier        pgtype.Text
 	IsPublic    bool
 	JoinPolicy  string
 	MaxMembers  int32
+	CreatedAt   pgtype.Timestamptz
 }
 
 type CohortMember struct {
@@ -141,11 +141,11 @@ type Company struct {
 type CopilotConversation struct {
 	ID        pgtype.UUID
 	UserID    pgtype.UUID
+	SessionID pgtype.UUID
 	Title     string
 	Model     string
 	CreatedAt pgtype.Timestamptz
 	UpdatedAt pgtype.Timestamptz
-	SessionID pgtype.UUID
 }
 
 type CopilotMessage struct {
@@ -343,6 +343,8 @@ type LlmModel struct {
 	ModelID            string
 	Label              string
 	Provider           string
+	ProviderID         string
+	IsVirtual          bool
 	Tier               string
 	IsEnabled          bool
 	ContextWindow      pgtype.Int4
@@ -351,12 +353,10 @@ type LlmModel struct {
 	UseForArena        bool
 	UseForInsight      bool
 	UseForMock         bool
+	UseForVacancies    bool
 	SortOrder          int32
 	CreatedAt          pgtype.Timestamptz
 	UpdatedAt          pgtype.Timestamptz
-	UseForVacancies    bool
-	ProviderID         string
-	IsVirtual          bool
 }
 
 type Lobby struct {
@@ -555,12 +555,12 @@ type Podcast struct {
 	DurationSec int32
 	AudioKey    string
 	IsPublished bool
-	CreatedAt   pgtype.Timestamptz
 	Host        pgtype.Text
 	CategoryID  pgtype.UUID
 	EpisodeNum  pgtype.Int4
 	CoverUrl    pgtype.Text
 	PublishedAt pgtype.Timestamptz
+	CreatedAt   pgtype.Timestamptz
 	UpdatedAt   pgtype.Timestamptz
 }
 
@@ -593,12 +593,12 @@ type Profile struct {
 	Strength         int32
 	Dexterity        int32
 	Will             int32
-	UpdatedAt        pgtype.Timestamptz
 	IsMentor         bool
 	MentorHourlyRate int32
 	MentorBio        string
 	MentorLanguages  []string
 	MentorVerified   bool
+	UpdatedAt        pgtype.Timestamptz
 }
 
 type Rating struct {
@@ -612,27 +612,26 @@ type Rating struct {
 
 type Review struct {
 	BookingID     pgtype.UUID
+	Direction     string
 	ReviewerID    pgtype.UUID
+	InterviewerID pgtype.UUID
+	SubjectID     pgtype.UUID
 	Rating        int32
 	Feedback      pgtype.Text
 	CreatedAt     pgtype.Timestamptz
-	InterviewerID pgtype.UUID
 	UpdatedAt     pgtype.Timestamptz
-	Direction     string
-	SubjectID     pgtype.UUID
 }
 
 type SavedVacancy struct {
 	ID           int64
 	UserID       pgtype.UUID
-	VacancyID    int64
+	Source       string
+	ExternalID   string
+	SnapshotJson []byte
 	Status       string
 	Notes        pgtype.Text
 	SavedAt      pgtype.Timestamptz
 	UpdatedAt    pgtype.Timestamptz
-	Source       string
-	ExternalID   string
-	SnapshotJson []byte
 }
 
 type Season struct {
@@ -769,14 +768,14 @@ type User struct {
 	Role                  string
 	Locale                string
 	DisplayName           pgtype.Text
-	CreatedAt             pgtype.Timestamptz
-	UpdatedAt             pgtype.Timestamptz
 	AvatarUrl             string
 	AiInsightModel        pgtype.Text
-	OnboardingCompletedAt pgtype.Timestamptz
-	FocusClass            string
 	AiVacanciesModel      pgtype.Text
 	AiDefaultModel        pgtype.Text
+	OnboardingCompletedAt pgtype.Timestamptz
+	FocusClass            string
+	CreatedAt             pgtype.Timestamptz
+	UpdatedAt             pgtype.Timestamptz
 }
 
 type UserAchievement struct {
