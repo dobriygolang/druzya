@@ -1,6 +1,7 @@
 package services
 
 import (
+	"fmt"
 	"log/slog"
 	"strings"
 
@@ -58,10 +59,14 @@ func BuildLLMChain(cfg config.Config, log *slog.Logger) (*llmchain.Chain, error)
 	}
 
 	order := parseChainOrder(cfg.LLMChain.ChainOrder)
-	return llmchain.NewChain(drivers, llmchain.Options{
+	chain, err := llmchain.NewChain(drivers, llmchain.Options{
 		Order: order,
 		Log:   log,
 	})
+	if err != nil {
+		return nil, fmt.Errorf("llmchain: build chain: %w", err)
+	}
+	return chain, nil
 }
 
 // parseChainOrder turns "groq,cerebras,openrouter" into the typed slice.

@@ -13,6 +13,7 @@ package services
 import (
 	"context"
 	"errors"
+	"fmt"
 	"time"
 
 	reviewApp "druz9/review/app"
@@ -51,7 +52,7 @@ func (s SlotBookingLookup) LookupBooking(ctx context.Context, bookingID uuid.UUI
 		if errors.Is(err, slotDomain.ErrBookingNotFound) || errors.Is(err, slotDomain.ErrNotFound) {
 			return reviewApp.BookingMeta{}, reviewDomain.ErrNotFound
 		}
-		return reviewApp.BookingMeta{}, err
+		return reviewApp.BookingMeta{}, fmt.Errorf("slot booking lookup: %w", err)
 	}
 	return reviewApp.BookingMeta{
 		BookingID:     bw.Booking.ID,
@@ -114,7 +115,7 @@ func (SlotInterviewerStatsAdapter) InterviewerStats(ctx context.Context, intervi
 	}
 	st, err := reviewLive.StatsUC.Do(ctx, interviewerID)
 	if err != nil {
-		return 0, 0, err
+		return 0, 0, fmt.Errorf("review stats: %w", err)
 	}
 	return st.AvgRating, st.ReviewsCount, nil
 }
@@ -126,7 +127,11 @@ func (SlotBookingHasReviewAdapter) HasReview(ctx context.Context, bookingID uuid
 	if reviewLive.Repo == nil {
 		return false, nil
 	}
-	return reviewLive.Repo.HasReview(ctx, bookingID)
+	has, err := reviewLive.Repo.HasReview(ctx, bookingID)
+	if err != nil {
+		return false, fmt.Errorf("review has-review: %w", err)
+	}
+	return has, nil
 }
 
 // Compile-time assertions.
