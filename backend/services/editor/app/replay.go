@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"druz9/editor/domain"
@@ -31,8 +32,13 @@ func (uc *Replay) Do(ctx context.Context, roomID, callerID uuid.UUID) (domain.Re
 	}
 	if _, err := uc.Participants.GetRole(ctx, roomID, callerID); err != nil {
 		// GetRole returns ErrNotFound for non-participants — map to Forbidden
-		// at the port layer.
-		return domain.ReplayURL{}, fmt.Errorf("editor.Replay: %w", domain.ErrForbidden)
+		// so we don't leak "no such participant row" at the port layer. Any
+		// other error (e.g. DB failure) must propagate as-is, not get
+		// silently rebadged as a permission denial.
+		if errors.Is(err, domain.ErrNotFound) {
+			return domain.ReplayURL{}, fmt.Errorf("editor.Replay: %w", domain.ErrForbidden)
+		}
+		return domain.ReplayURL{}, fmt.Errorf("editor.Replay: role: %w", err)
 	}
 
 	var payload []byte
