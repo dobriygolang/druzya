@@ -1,7 +1,7 @@
 // Package domain — vacancies bounded context.
 //
 // Aggregates: Vacancy (parsed posting) and SavedVacancy (per-user kanban).
-// Ports: VacancyRepo, SavedVacancyRepo, Parser, SingleFetcher, SkillExtractor.
+// Ports: VacancyRepo, SavedVacancyRepo, Parser, SkillExtractor.
 //
 // The pipeline is:
 //

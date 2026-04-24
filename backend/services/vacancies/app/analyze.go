@@ -2,8 +2,11 @@ package app
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/url"
+	"path"
+	"regexp"
 	"strings"
 
 	"druz9/vacancies/domain"
@@ -11,18 +14,20 @@ import (
 
 // AnalyzeURL is the use case behind POST /vacancies/analyze. The user
 // pastes a single vacancy link; we detect the source from the host,
-// dispatch to that source's SingleFetcher, route the result through the
-// cache (Upsert) so it's immediately addressable, run the optional skill
-// extractor, and compute the gap vs the caller's known skills.
+// extract the source-specific external_id from the path, look it up in
+// the listing cache (which holds the entire 5-portal catalogue refreshed
+// every 15 min by Phase 3) and return the cached vacancy + skill-gap.
+//
+// Architectural note: prior to Phase 3 every parser implemented an
+// optional `domain.SingleFetcher` for one-off URL lookups. After the
+// cache pivot that path was redundant — the cache always has fresher data
+// than a fresh single-URL fetch would produce. AnalyzeURL is now a thin
+// shim over `cache.Get`, with one nuance: MTS uses a slug in URLs but
+// stores `id` as the cache key, so we reverse-resolve via the per-source
+// detail key when needed.
 type AnalyzeURL struct {
-	Parsers   []domain.Parser
-	Cache     CacheUpserter
-	Extractor domain.SkillExtractor
-}
-
-// CacheUpserter is the cache surface AnalyzeURL needs.
-type CacheUpserter interface {
-	Upsert(v domain.Vacancy)
+	Cache     CacheReader           // shared with list/get use cases (see list.go)
+	Extractor domain.SkillExtractor // optional; merges LLM-extracted skills into the gap calc
 }
 
 // AnalyzeResult is what the handler returns.
@@ -31,49 +36,133 @@ type AnalyzeResult struct {
 	Gap     domain.SkillGap
 }
 
-// Do does the full analyze flow. userSkills can be nil — the gap then has
-// every required skill in Missing.
+// ErrVacancyNotInCache surfaces when DetectSource + URL parsing succeed
+// but the resolved (source, external_id) isn't in the catalogue. Two
+// reasons in practice: the vacancy was published after the last 15-min
+// refresh, or it was unpublished by the employer. Either way: honest
+// error, never a fake "best-guess" payload.
+var ErrVacancyNotInCache = errors.New("vacancies.AnalyzeURL: vacancy not found in catalogue (refreshes every 15 min)")
+
+// Do does the full analyze flow. userSkills can be nil — the gap then
+// has every required skill in Missing.
 func (a *AnalyzeURL) Do(ctx context.Context, rawURL string, userSkills []string) (AnalyzeResult, error) {
 	src, err := DetectSource(rawURL)
 	if err != nil {
 		return AnalyzeResult{}, err
 	}
-	parser := a.findParser(src)
-	if parser == nil {
-		return AnalyzeResult{}, fmt.Errorf("vacancies.AnalyzeURL: no parser for source %q", src)
-	}
-	sf, ok := parser.(domain.SingleFetcher)
-	if !ok {
-		return AnalyzeResult{}, fmt.Errorf("vacancies.AnalyzeURL: source %q does not support single-URL fetch", src)
-	}
-	v, err := sf.FetchOne(ctx, rawURL)
+	extID, err := extractExternalID(src, rawURL)
 	if err != nil {
-		return AnalyzeResult{}, fmt.Errorf("vacancies.AnalyzeURL.Fetch: %w", err)
+		return AnalyzeResult{}, fmt.Errorf("vacancies.AnalyzeURL: %w", err)
 	}
-	if v.ExternalID == "" {
-		return AnalyzeResult{}, fmt.Errorf("vacancies.AnalyzeURL: parser returned empty external_id")
+	if a.Cache == nil {
+		return AnalyzeResult{}, fmt.Errorf("vacancies.AnalyzeURL: cache is nil (wiring bug)")
 	}
-	if a.Extractor != nil {
-		// Best-effort: extractor failure must not block the analyze response.
-		// Skill-gap with whatever we have is still useful.
-		if skills, exErr := a.Extractor.Extract(ctx, v.Description); exErr == nil {
-			v.NormalizedSkills = domain.NormalizeSkills(append(append([]string{}, v.RawSkills...), skills...))
+	v, err := a.Cache.Get(src, extID)
+	if err != nil {
+		// MTS edge: URL holds the slug, cache is keyed by numeric id. We
+		// preserve the slug in Vacancy.DetailsKey at parse time, so a
+		// short linear scan resolves it without extra HTTP.
+		if src == domain.SourceMTS {
+			if vv, ok := lookupMTSBySlug(a.Cache.ListBySource(src), extID); ok {
+				v = vv
+				err = nil
+			}
+		}
+		if err != nil {
+			return AnalyzeResult{}, fmt.Errorf("vacancies.AnalyzeURL: %w", ErrVacancyNotInCache)
 		}
 	}
-	if a.Cache != nil {
-		a.Cache.Upsert(v)
+	if a.Extractor != nil && strings.TrimSpace(v.Description) != "" {
+		// Best-effort: extractor failure must not block the analyze
+		// response. Skill-gap with whatever we have is still useful.
+		if skills, exErr := a.Extractor.Extract(ctx, v.Description); exErr == nil && len(skills) > 0 {
+			merged := append(append([]string{}, v.RawSkills...), skills...)
+			v.NormalizedSkills = domain.NormalizeSkills(merged)
+		}
 	}
 	gap := domain.ComputeSkillGap(v.NormalizedSkills, userSkills)
 	return AnalyzeResult{Vacancy: v, Gap: gap}, nil
 }
 
-func (a *AnalyzeURL) findParser(s domain.Source) domain.Parser {
-	for _, p := range a.Parsers {
-		if p.Source() == s {
-			return p
+// lookupMTSBySlug walks the bucket looking for an item whose DetailsKey
+// (the slug, populated at parse time) matches the URL slug. ~25 items/page
+// in MTS, O(N) is fine.
+func lookupMTSBySlug(items []domain.Vacancy, slug string) (domain.Vacancy, bool) {
+	for _, v := range items {
+		if v.DetailsKey == slug {
+			return v, true
 		}
 	}
-	return nil
+	return domain.Vacancy{}, false
+}
+
+// ── URL → external_id extraction ────────────────────────────────────────
+//
+// Per-source URL shapes (verified 2026-04-23):
+//
+//	Yandex      yandex.ru/jobs/vacancies/{slug-with-trailing-numeric-id}
+//	            e.g.  /jobs/vacancies/multitrack-…-15322            → 15322
+//	WB          career.rwb.ru/vacancies/{numeric-id}                → id
+//	            (or career.wb.ru/vacancies/{id} — host alias)
+//	VK          team.vk.company/vacancy/{numeric-id}/               → id
+//	MTS         job.mts.ru/vacancies/{slug}                         → slug
+//	            (cache uses numeric id; reverse-lookup via DetailsKey)
+//	Ozon        career.ozon.ru/vacancy/{uuid}            → uuid (path)
+//	            or  career.ozon.ru/vacancy/?id={uuid}    → uuid (query)
+//
+// We extract the source-side identifier and let the cache layer worry
+// about whether that matches its key.
+
+var yandexSlugIDRe = regexp.MustCompile(`-(\d+)/?$`)
+
+func extractExternalID(src domain.Source, rawURL string) (string, error) {
+	u, err := url.Parse(strings.TrimSpace(rawURL))
+	if err != nil {
+		return "", fmt.Errorf("parse url: %w", err)
+	}
+	cleanPath := strings.Trim(u.Path, "/")
+	switch src {
+	case domain.SourceYandex:
+		// Yandex slugs end with -NN where NN is the publication id.
+		m := yandexSlugIDRe.FindStringSubmatch(cleanPath)
+		if len(m) < 2 {
+			return "", fmt.Errorf("yandex: trailing -id not found in path %q", u.Path)
+		}
+		return m[1], nil
+	case domain.SourceWildberries, domain.SourceVK:
+		// Last path segment is the numeric id.
+		seg := path.Base(cleanPath)
+		if seg == "" || seg == "." {
+			return "", fmt.Errorf("%s: empty path", src)
+		}
+		return seg, nil
+	case domain.SourceMTS:
+		// Last path segment is the slug.
+		seg := path.Base(cleanPath)
+		if seg == "" || seg == "." {
+			return "", fmt.Errorf("mts: empty path")
+		}
+		return seg, nil
+	case domain.SourceOzon:
+		// Two shapes: /vacancy/{uuid} or /vacancy/?id={uuid}.
+		if id := u.Query().Get("id"); id != "" {
+			return id, nil
+		}
+		seg := path.Base(cleanPath)
+		if seg == "" || seg == "." || seg == "vacancy" {
+			return "", fmt.Errorf("ozon: id not in path or ?id=")
+		}
+		return seg, nil
+	case domain.SourceOzonTech, domain.SourceTinkoff, domain.SourceSber,
+		domain.SourceAvito, domain.SourceKaspersky, domain.SourceJetBrains,
+		domain.SourceLamoda:
+		// Sources whose constants exist for historical / future use but
+		// are NOT in RegisterAll today (no parser, no cache bucket).
+		// Fail honestly rather than guess at a URL shape we never verified.
+		return "", fmt.Errorf("source %q is detected but not catalogued", src)
+	default:
+		return "", fmt.Errorf("source %q is detected but not catalogued", src)
+	}
 }
 
 // DetectSource maps a raw URL onto the source enum. Public so the handler

@@ -15,9 +15,14 @@ import (
 // CacheReader is the cache surface the read use cases need. The concrete
 // implementation is *infra/cache.Cache; declared as an interface here so
 // tests can inject a fake.
+//
+// ListBySource returns one source's bucket as a flat slice — used by
+// AnalyzeURL to reverse-resolve URL slugs back to cache keys when the
+// upstream URL identifier doesn't match what we use as the key (MTS).
 type CacheReader interface {
 	List(filter domain.ListFilter) domain.Page
 	Get(source domain.Source, externalID string) (domain.Vacancy, error)
+	ListBySource(source domain.Source) []domain.Vacancy
 	Facets() domain.Facets
 }
 

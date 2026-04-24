@@ -182,6 +182,23 @@ func (c *Cache) Get(source domain.Source, externalID string) (domain.Vacancy, er
 	return v, nil
 }
 
+// ListBySource returns a flat copy of one source's bucket. Used by the
+// AnalyzeURL flow for sources whose URL slug doesn't match the cache key
+// (e.g. MTS — URL has slug, cache is keyed by numeric id, so we scan).
+func (c *Cache) ListBySource(source domain.Source) []domain.Vacancy {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	bucket, ok := c.buckets[source]
+	if !ok {
+		return nil
+	}
+	out := make([]domain.Vacancy, 0, len(bucket))
+	for _, v := range bucket {
+		out = append(out, v)
+	}
+	return out
+}
+
 // Upsert inserts/updates a single vacancy in its source bucket. Used by the
 // AnalyzeURL flow so a freshly-resolved single posting becomes immediately
 // addressable by Get without waiting for the next tick.

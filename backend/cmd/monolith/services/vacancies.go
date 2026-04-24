@@ -67,7 +67,7 @@ func NewVacancies(d Deps) *Module {
 	detailFetchers := vacDetails.RegisterAll(vacDetails.Config{Log: d.Log})
 	detailsCache := vacCache.NewDetails(cache, detailFetchers, d.Log, vacCache.DetailsOptions{})
 
-	analyze := &vacApp.AnalyzeURL{Parsers: parsers, Cache: cache, Extractor: extractor}
+	analyze := &vacApp.AnalyzeURL{Cache: cache, Extractor: extractor}
 	list := &vacApp.ListVacancies{Cache: cache}
 	get := &vacApp.GetVacancy{Cache: cache}
 	getDetails := &vacApp.GetVacancyDetails{Details: detailsCache}

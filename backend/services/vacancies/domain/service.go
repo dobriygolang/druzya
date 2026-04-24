@@ -16,13 +16,6 @@ type Parser interface {
 	Fetch(ctx context.Context) ([]Vacancy, error)
 }
 
-// SingleFetcher is an optional capability — parsers that can resolve a single
-// canonical URL (paste-the-link UX) implement it. The router uses this for
-// /vacancies/analyze.
-type SingleFetcher interface {
-	FetchOne(ctx context.Context, url string) (Vacancy, error)
-}
-
 // SkillExtractor takes a free-form description and returns a normalized,
 // lower-cased list of skill tags. Implementations are expected to cache by
 // SHA256(description) — the LLM call is by far the most expensive step.
