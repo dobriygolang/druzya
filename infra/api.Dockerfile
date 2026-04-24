@@ -1,4 +1,4 @@
-# syntax=docker/dockerfile:1.7
+# syntax=docker/dockerfile:1.7-labs
 # API-образ: только Go-монолит. Фронт собирается отдельно
 # (см. infra/web.Dockerfile → ghcr.io/.../druz9-web).
 #
