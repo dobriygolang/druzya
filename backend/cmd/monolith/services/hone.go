@@ -16,6 +16,20 @@ import (
 	"github.com/google/uuid"
 )
 
+// honeEmbedQueueAdapter адаптирует infra.RedisEmbedQueue под app.EmbedQueue.
+// Конвертер payload'а, иначе пришлось бы делать infra→app импорт через
+// domain (нежелательно — app держит доменный тип EmbedJobItem, infra
+// держит свой wire-формат).
+type honeEmbedQueueAdapter struct{ q *honeInfra.RedisEmbedQueue }
+
+func (a *honeEmbedQueueAdapter) Dequeue(ctx context.Context) (honeApp.EmbedJobItem, error) {
+	job, err := a.q.Dequeue(ctx)
+	if err != nil {
+		return honeApp.EmbedJobItem{}, err
+	}
+	return honeApp.EmbedJobItem{UserID: job.UserID, NoteID: job.NoteID, Text: job.Text}, nil
+}
+
 // NewHone wires the Hone desktop-cockpit bounded context.
 //
 // Adapter selection is governed by what's configured at boot:
@@ -67,10 +81,40 @@ func NewHone(d Deps) *Module {
 	// in adapters.go to keep boundaries clean (hone never imports profile).
 	skills := NewHoneSkillAtlasAdapter(d.Pool)
 
-	// Embedding job: async hook from CreateNote/UpdateNote. When a real
-	// embedder is wired, the closure computes + persists the vector so
-	// GetNoteConnections has warm data. When not wired, it's a debug log.
-	embedFn := makeHoneEmbedJob(embedder, notes, d.Log)
+	// Embedding job: CreateNote/UpdateNote enqueue job в Redis List, background
+	// EmbedWorker дрейнит очередь и персистит вектора. Redis-less окружение
+	// (tests) — fallback на in-process goroutine (Phase 4 поведение).
+	var (
+		embedFn     func(ctx context.Context, userID, noteID uuid.UUID, text string)
+		embedWorker *honeApp.EmbedWorker
+	)
+	if d.Redis != nil {
+		queue := honeInfra.NewRedisEmbedQueue(d.Redis)
+		embedFn = func(ctx context.Context, userID, noteID uuid.UUID, text string) {
+			// Enqueue под отдельным коротким timeout'ом: request-ctx может
+			// cancel'нуться сразу после 200 OK, а мы всё ещё хотим поставить
+			// job. 2 секунды — щедрый потолок для LPUSH.
+			eCtx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+			defer cancel()
+			if err := queue.Enqueue(eCtx, honeInfra.EmbedJob{UserID: userID, NoteID: noteID, Text: text}); err != nil {
+				d.Log.Warn("hone: embed enqueue failed",
+					slog.Any("err", err),
+					slog.String("note_id", noteID.String()))
+			}
+		}
+		embedWorker = &honeApp.EmbedWorker{
+			Queue:    &honeEmbedQueueAdapter{q: queue},
+			Embedder: embedder,
+			Notes:    notes,
+			Log:      d.Log,
+			Now:      d.Now,
+			PoolSize: 2,
+		}
+		d.Log.Info("hone: embed queue wired (Redis list)")
+	} else {
+		embedFn = makeHoneEmbedJob(embedder, notes, d.Log)
+		d.Log.Warn("hone: Redis not configured — embed jobs run in-process (fire-and-forget)")
+	}
 
 	h := honeApp.NewHandler(honeApp.Handler{
 		// Plan
@@ -113,7 +157,7 @@ func NewHone(d Deps) *Module {
 	connectPath, connectHandler := druz9v1connect.NewHoneServiceHandler(server)
 	transcoder := mustTranscode("hone", connectPath, connectHandler)
 
-	return &Module{
+	mod := &Module{
 		ConnectPath:        connectPath,
 		ConnectHandler:     transcoder,
 		RequireConnectAuth: true,
@@ -143,6 +187,10 @@ func NewHone(d Deps) *Module {
 			// Clients use Connect native transport, no REST alias needed.
 		},
 	}
+	if embedWorker != nil {
+		mod.Background = append(mod.Background, func(ctx context.Context) { go embedWorker.Run(ctx) })
+	}
+	return mod
 }
 
 // makeHoneEmbedJob returns the EmbedFn handed to CreateNote/UpdateNote. The
