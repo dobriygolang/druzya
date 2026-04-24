@@ -170,10 +170,13 @@ if [ "$api_ok" = "1" ]; then
     echo "   Verify:  $COMPOSE run --rm --entrypoint ls certbot /etc/letsencrypt/live"
     echo "            (--entrypoint обязателен — default-entrypoint certbot'а"
     echo "             это while-loop с renew, игнорирует передаваемый cmd)"
-    echo "   Fix:     $COMPOSE run --rm certbot certonly --webroot -w /var/www/certbot \\"
+    echo "   Fix:     $COMPOSE run --rm --entrypoint certbot certbot \\"
+    echo "                certonly --webroot -w /var/www/certbot \\"
     echo "                -d druz9.online -d www.druz9.online \\"
     echo "                --email you@druzya.tech --agree-tos --non-interactive"
     echo "            $COMPOSE restart nginx"
+    echo "            (--entrypoint обязателен — default-entrypoint сервиса"
+    echo "             это while-loop renew; без override он игнорирует args)"
     echo
     echo "nginx logs (last 30):"
     $COMPOSE logs --tail=30 nginx || true
