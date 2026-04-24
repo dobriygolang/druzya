@@ -546,6 +546,10 @@ func (s *CopilotServer) toConnectErr(err error) error {
 		return connect.NewError(connect.CodeInvalidArgument, err)
 	case errors.Is(err, domain.ErrQuotaExceeded):
 		return connect.NewError(connect.CodeResourceExhausted, err)
+	case errors.Is(err, domain.ErrRateLimited):
+		// Rate-limit по IP/User — 429 через Connect CodeResourceExhausted,
+		// симметрично ErrQuotaExceeded (ops-метрики различают их по тексту).
+		return connect.NewError(connect.CodeResourceExhausted, err)
 	case errors.Is(err, domain.ErrModelNotAllowed):
 		return connect.NewError(connect.CodePermissionDenied, err)
 	default:

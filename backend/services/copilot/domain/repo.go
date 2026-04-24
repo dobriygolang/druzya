@@ -4,6 +4,7 @@ package domain
 import (
 	"context"
 	"errors"
+	"time"
 
 	"druz9/shared/enums"
 
@@ -29,6 +30,23 @@ var ErrModelNotAllowed = errors.New("copilot: model not allowed on current plan"
 // ErrInvalidInput is returned for shape violations the server must refuse
 // (empty prompt with no attachment, oversized image, etc.).
 var ErrInvalidInput = errors.New("copilot: invalid input")
+
+// ErrRateLimited — счётчик в Redis превысил квоту окна. Возвращается
+// RateLimiter.Allow и маппится на 429 / Connect CodeResourceExhausted.
+// Держим отдельный sentinel в домене copilot — кросс-доменный импорт
+// из auth/domain создал бы неоправданную связность.
+var ErrRateLimited = errors.New("copilot: rate limited")
+
+// RateLimiter — фикс-windowed счётчик. Интерфейс узкий: реализация живёт в
+// copilot/infra и шэрит Redis-клиент с остальным проектом. Используется,
+// в частности, в StartSession, чтобы free-tier юзер не мог спамом сжечь
+// общий LLM-бюджет.
+type RateLimiter interface {
+	// Allow инкрементирует счётчик `key` в текущем окне.
+	// Возвращает (remaining, retryAfterSec, err). При превышении лимита
+	// err = ErrRateLimited, а retryAfterSec — оставшийся TTL окна.
+	Allow(ctx context.Context, key string, limit int, window time.Duration) (remaining int, retryAfter int, err error)
+}
 
 // Cursor is the opaque keyset-pagination token for ListHistory. Empty value
 // means "first page"; the repo layer re-encodes a non-empty cursor from the

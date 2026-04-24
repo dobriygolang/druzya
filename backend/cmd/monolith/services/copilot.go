@@ -75,7 +75,13 @@ func NewCopilot(d Deps) *Module {
 	sessionEvents := make(chan copilotApp.SessionEndedEvent, 32)
 	publisher := channelPublisher{ch: sessionEvents}
 
-	startSession := &copilotApp.StartSession{Sessions: sessions}
+	// Rate-limit 10/min per user на StartSession — защита LLM-бюджета free-tier:
+	// без лимита юзер мог бы в цикле start/end и тихо жечь бюджет через бэкграунд-аналайзер.
+	var startLimiter copilotDomain.RateLimiter
+	if d.Redis != nil {
+		startLimiter = copilotInfra.NewRedisRateLimiter(d.Redis)
+	}
+	startSession := &copilotApp.StartSession{Sessions: sessions, Limiter: startLimiter}
 	endSession := &copilotApp.EndSession{
 		Sessions:  sessions,
 		Reports:   reports,
