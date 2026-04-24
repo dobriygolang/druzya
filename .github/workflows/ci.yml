@@ -190,6 +190,50 @@ jobs:
           echo "──── build log ────";     cat /tmp/build.log || true
           exit $fail
 
+  desktop:
+    name: Desktop — typecheck + build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: desktop/package-lock.json
+
+      - name: Cache desktop node_modules
+        uses: actions/cache@v4
+        with:
+          path: desktop/node_modules
+          key: nm-desktop-${{ runner.os }}-node20-${{ hashFiles('desktop/package-lock.json') }}
+          restore-keys: |
+            nm-desktop-${{ runner.os }}-node20-
+
+      # Same reason as the frontend job: the lockfile references an internal
+      # artifactory proxy that GitHub runners cannot reach. Integrity SHAs
+      # are content-addressed and remain valid against the public registry.
+      - name: Rewrite npm registry URLs to public registry
+        working-directory: desktop
+        run: |
+          sed -i 's|https://artifactory\.s\.o3\.ru/artifactory/api/npm/npm-all-virtual|https://registry.npmjs.org|g' package-lock.json
+          echo "registry=https://registry.npmjs.org/" > .npmrc
+
+      - name: Install
+        working-directory: desktop
+        run: npm ci --no-audit --no-fund --prefer-offline
+
+      - name: Typecheck
+        working-directory: desktop
+        run: npm run typecheck
+
+      # electron-vite bundles main/preload/renderer into plain JS; the
+      # output is OS-agnostic. We skip electron-builder packaging in CI —
+      # it requires macOS signing certs (for DMG) and Windows EV certs
+      # (for code signing). Packaging happens in the release workflow.
+      - name: Build
+        working-directory: desktop
+        run: npm run build
+
   proto:
     name: Proto — buf lint
     runs-on: ubuntu-latest

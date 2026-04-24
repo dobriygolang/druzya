@@ -2,17 +2,31 @@
 // so main and renderer share a single source of truth.
 
 import { app, ipcMain, shell } from 'electron';
+import { z } from 'zod';
 
 import {
   eventChannels,
   invokeChannels,
-  type AnalyzeInput,
-  type AreaRect,
   type CaptureResult,
-  type PermissionKind,
-  type WindowName,
 } from '@shared/ipc';
-import type { HotkeyBinding } from '@shared/types';
+
+import { handleIn, handleInTuple, onIn } from './validated';
+import {
+  analyzeInputSchema,
+  appearancePrefsPartialSchema,
+  areaRectSchema,
+  hotkeyBindingsSchema,
+  masqueradeApplySchema,
+  permissionKindSchema,
+  pickerKindSchema,
+  ratingSchema,
+  resizeSchema,
+  sessionKindSchema,
+  shortIdSchema,
+  toastShowSchema,
+  urlSchema,
+  windowNameSchema,
+} from './schemas';
 
 import { clearSession, loadSession } from '../auth/keychain';
 import {
@@ -224,7 +238,7 @@ export function registerHandlers(opts: RegisterOptions): void {
       });
     },
   );
-  ipcMain.on(invokeChannels.captureAreaCommit, async (_evt, rect: AreaRect) => {
+  onIn(invokeChannels.captureAreaCommit, areaRectSchema, (rect) => {
     // Fully tear down the overlay window — reusing it leaves stale React
     // state (last drag coords / lingering event listeners) that corrupts
     // the next area capture.
@@ -232,12 +246,7 @@ export function registerHandlers(opts: RegisterOptions): void {
     if (!pendingArea) return;
     const p = pendingArea;
     pendingArea = null;
-    try {
-      const shot = await captureArea(rect);
-      p.resolve(shot);
-    } catch (err) {
-      p.reject(err as Error);
-    }
+    void captureArea(rect).then(p.resolve, (err) => p.reject(err as Error));
   });
   ipcMain.on(invokeChannels.captureAreaCancel, () => {
     closeWindow('area-overlay');
@@ -257,7 +266,7 @@ export function registerHandlers(opts: RegisterOptions): void {
     hasScreenshot: boolean;
     screenshotDataUrl: string;
   } | null = null;
-  const announceTurnStart = (streamId: string, input: AnalyzeInput) => {
+  const announceTurnStart = (streamId: string, input: z.infer<typeof analyzeInputSchema>) => {
     const shot = input.attachments.find((a) => a.kind === 'screenshot');
     const ev = {
       streamId,
@@ -273,29 +282,29 @@ export function registerHandlers(opts: RegisterOptions): void {
   // Cross-window model-pick sync. One renderer writes → main fans out
   // to every window so their zustand stores converge without each having
   // to read localStorage on every render.
-  ipcMain.handle(invokeChannels.activePersonaChanged, async (_evt, personaId: string) => {
+  handleIn(invokeChannels.activePersonaChanged, shortIdSchema, async (personaId) => {
     broadcast(eventChannels.activePersonaChanged, { personaId });
   });
-  ipcMain.handle(invokeChannels.selectedModelChanged, async (_evt, modelId: string) => {
+  handleIn(invokeChannels.selectedModelChanged, shortIdSchema, async (modelId) => {
     broadcast(eventChannels.selectedModelChanged, { modelId });
   });
-  ipcMain.handle(invokeChannels.analyzeStart, async (_evt, input: AnalyzeInput) => {
+  handleIn(invokeChannels.analyzeStart, analyzeInputSchema, async (input) => {
     const streamId = await startAnalyze(input, 'analyze');
     announceTurnStart(streamId, input);
     return { streamId };
   });
-  ipcMain.handle(invokeChannels.chatStart, async (_evt, input: AnalyzeInput) => {
+  handleIn(invokeChannels.chatStart, analyzeInputSchema, async (input) => {
     const streamId = await startAnalyze(input, 'chat');
     announceTurnStart(streamId, input);
     return { streamId };
   });
-  ipcMain.handle(invokeChannels.analyzeCancel, async (_evt, streamId: string) => {
+  handleIn(invokeChannels.analyzeCancel, shortIdSchema, async (streamId) => {
     cancelAnalyze(streamId);
   });
 
   // ── Hotkeys ──
   ipcMain.handle(invokeChannels.hotkeysList, async () => listBindings());
-  ipcMain.handle(invokeChannels.hotkeysUpdate, async (_evt, bindings: HotkeyBinding[]) => {
+  handleIn(invokeChannels.hotkeysUpdate, hotkeyBindingsSchema, async (bindings) => {
     applyBindings(bindings);
   });
   ipcMain.handle(invokeChannels.hotkeysCaptureOnce, async () => {
@@ -306,33 +315,32 @@ export function registerHandlers(opts: RegisterOptions): void {
   });
 
   // ── Windows ──
-  ipcMain.handle(invokeChannels.windowsShow, async (_evt, name: WindowName) => {
+  handleIn(invokeChannels.windowsShow, windowNameSchema, async (name) => {
     showWindow(name, windowOptions);
   });
-  ipcMain.handle(invokeChannels.windowsHide, async (_evt, name: WindowName) => {
+  handleIn(invokeChannels.windowsHide, windowNameSchema, async (name) => {
     hideWindow(name);
   });
-  ipcMain.handle(invokeChannels.windowsToggleStealth, async (_evt, on: boolean) => {
+  handleIn(invokeChannels.windowsToggleStealth, z.boolean(), async (on) => {
     setStealth(on);
   });
-  ipcMain.handle(
+  handleInTuple(
     invokeChannels.windowsResize,
-    async (_evt, name: WindowName, width: number, height: number) => {
+    z.tuple([windowNameSchema, resizeSchema.shape.width, resizeSchema.shape.height]),
+    async ([name, width, height]) => {
       resizeWindow(name, width, height);
     },
   );
-  ipcMain.handle(
-    invokeChannels.windowsShowPicker,
-    async (_evt, kind: import('@shared/ipc').PickerKind) => {
-      showPicker(kind, windowOptions);
-    },
-  );
+  handleIn(invokeChannels.windowsShowPicker, pickerKindSchema, async (kind) => {
+    showPicker(kind, windowOptions);
+  });
   ipcMain.handle(invokeChannels.windowsHidePicker, async () => {
     hideWindow('picker');
   });
-  ipcMain.handle(
+  handleInTuple(
     invokeChannels.toastShow,
-    async (_evt, msg: string, kind: 'error' | 'warn' | 'info') => {
+    z.tuple([toastShowSchema.shape.msg, toastShowSchema.shape.kind]),
+    async ([msg, kind]) => {
       showToast({ msg, kind }, windowOptions);
     },
   );
@@ -342,29 +350,33 @@ export function registerHandlers(opts: RegisterOptions): void {
 
   // ── Permissions ──
   ipcMain.handle(invokeChannels.permissionsCheck, async () => checkPermissions());
-  ipcMain.handle(invokeChannels.permissionsRequest, async (_evt, kind: PermissionKind) => {
+  handleIn(invokeChannels.permissionsRequest, permissionKindSchema, async (kind) => {
     await requestPermission(kind);
   });
-  ipcMain.handle(invokeChannels.permissionsOpenSettings, async (_evt, kind: PermissionKind) => {
+  handleIn(invokeChannels.permissionsOpenSettings, permissionKindSchema, async (kind) => {
     await openPermissionPane(kind);
   });
 
   // ── History ──
-  ipcMain.handle(invokeChannels.historyList, async (_evt, cursor: string, limit: number) => {
-    const resp = await client.listHistory({ cursor, limit });
-    return {
-      conversations: resp.conversations.map(mapConversationPB),
-      nextCursor: resp.nextCursor,
-    };
-  });
-  ipcMain.handle(invokeChannels.historyGet, async (_evt, id: string) => {
+  handleInTuple(
+    invokeChannels.historyList,
+    z.tuple([z.string().max(256), z.number().int().positive().max(500)]),
+    async ([cursor, limit]) => {
+      const resp = await client.listHistory({ cursor, limit });
+      return {
+        conversations: resp.conversations.map(mapConversationPB),
+        nextCursor: resp.nextCursor,
+      };
+    },
+  );
+  handleIn(invokeChannels.historyGet, shortIdSchema, async (id) => {
     const resp = await client.getConversation({ id });
     return {
       conversation: mapConversationPB(resp.conversation),
       messages: (resp.messages ?? []).map(mapMessagePB),
     };
   });
-  ipcMain.handle(invokeChannels.historyDelete, async (_evt, id: string) => {
+  handleIn(invokeChannels.historyDelete, shortIdSchema, async (id) => {
     await client.deleteConversation({ id });
   });
 
@@ -378,9 +390,13 @@ export function registerHandlers(opts: RegisterOptions): void {
   });
 
   // ── Rate ──
-  ipcMain.handle(invokeChannels.rateMessage, async (_evt, id: string, rating: -1 | 0 | 1) => {
-    await client.rateMessage({ messageId: id, rating, comment: '' });
-  });
+  handleInTuple(
+    invokeChannels.rateMessage,
+    z.tuple([shortIdSchema, ratingSchema]),
+    async ([id, rating]) => {
+      await client.rateMessage({ messageId: id, rating, comment: '' });
+    },
+  );
 
   // ── Appearance ──
   // Read-through JSON file (userData/appearance.json). On set, we
@@ -391,9 +407,10 @@ export function registerHandlers(opts: RegisterOptions): void {
   ipcMain.handle(invokeChannels.appearanceGet, async (): Promise<AppearancePrefs> => {
     return loadAppearance();
   });
-  ipcMain.handle(
+  handleIn(
     invokeChannels.appearanceSet,
-    async (_evt, prefs: Partial<AppearancePrefs>): Promise<AppearancePrefs> => {
+    appearancePrefsPartialSchema,
+    async (prefs): Promise<AppearancePrefs> => {
       // Defensive clamping — the renderer's slider is 0-100 but nothing
       // stops a renderer bug from sending 500. Keep persisted value sane.
       const clamped: Partial<AppearancePrefs> = {};
@@ -422,7 +439,7 @@ export function registerHandlers(opts: RegisterOptions): void {
   // ── Masquerade ──
   ipcMain.handle(invokeChannels.masqueradeList, async () => listPresets());
   ipcMain.handle(invokeChannels.masqueradeGet, async () => getCurrent());
-  ipcMain.handle(invokeChannels.masqueradeApply, async (_evt, preset: MasqueradePreset) => {
+  handleIn(invokeChannels.masqueradeApply, masqueradeApplySchema, async (preset) => {
     applyPreset(preset, resourcesPath);
   });
 
@@ -432,7 +449,7 @@ export function registerHandlers(opts: RegisterOptions): void {
   ipcMain.handle(invokeChannels.updaterInstall, async () => installNow());
 
   // ── Shell ── (narrow surface: http/https only, rejects other schemes).
-  ipcMain.handle(invokeChannels.shellOpenExternal, async (_evt, url: string) => {
+  handleIn(invokeChannels.shellOpenExternal, urlSchema, async (url) => {
     if (!/^https?:\/\//i.test(url)) return;
     await shell.openExternal(url);
   });
@@ -463,7 +480,7 @@ export function registerHandlers(opts: RegisterOptions): void {
   });
 
   // ── Sessions (Phase 12) ──
-  ipcMain.handle(invokeChannels.sessionStart, async (_evt, kind: SessionKind) => {
+  handleIn(invokeChannels.sessionStart, sessionKindSchema, async (kind) => {
     if (!sessionManager) throw new Error('sessions disabled');
     return sessionManager.start(kind);
   });
@@ -475,14 +492,19 @@ export function registerHandlers(opts: RegisterOptions): void {
     if (!sessionManager) return null;
     return sessionManager.current();
   });
-  ipcMain.handle(
+  handleInTuple(
     invokeChannels.sessionList,
-    async (_evt, cursor: string, limit: number, kind?: SessionKind) => {
+    z.tuple([
+      z.string().max(256),
+      z.number().int().positive().max(500),
+      sessionKindSchema.optional(),
+    ]),
+    async ([cursor, limit, kind]) => {
       if (!sessionManager) return { sessions: [], nextCursor: '' };
       return sessionManager.list(cursor, limit, kind);
     },
   );
-  ipcMain.handle(invokeChannels.sessionGetAnalysis, async (_evt, sessionId: string) => {
+  handleIn(invokeChannels.sessionGetAnalysis, shortIdSchema, async (sessionId) => {
     if (!sessionManager) throw new Error('sessions disabled');
     return sessionManager.getAnalysis(sessionId);
   });
