@@ -55,6 +55,13 @@ type SuggestInput struct {
 	// Language — BCP-47 hint ("ru", "en"). Empty → respond in the
 	// language of Question.
 	Language string
+	// UserTier — актуальный tier подписки. Передаётся в LLM-chain для
+	// paid-model gate'а. Пустая строка = free. Caller (ports-handler)
+	// резолвит через subscription-сервис перед вызовом Do().
+	UserTier string
+	// ModelOverride — явный выбор модели юзером из UI (например "druz9/pro",
+	// "druz9/ultra"). Если пусто — используется cfg.DefaultModelID.
+	ModelOverride string
 }
 
 // SuggestResult is the single-text payload handed back to the client.
@@ -87,6 +94,9 @@ func (uc *Suggest) Do(ctx context.Context, in SuggestInput) (SuggestResult, erro
 		return SuggestResult{}, fmt.Errorf("copilot.Suggest: load config: %w", err)
 	}
 	model := cfg.DefaultModelID
+	if in.ModelOverride != "" {
+		model = in.ModelOverride
+	}
 
 	started := time.Now()
 	messages := buildSuggestMessages(in)
@@ -95,6 +105,7 @@ func (uc *Suggest) Do(ctx context.Context, in SuggestInput) (SuggestResult, erro
 		Messages:    messages,
 		Temperature: 0.2, // low — auto-triggers want precise, not creative
 		MaxTokens:   180, // ~2-3 sentences; hard cap on Groq minutes
+		UserTier:    in.UserTier,
 	})
 	if err != nil {
 		return SuggestResult{}, fmt.Errorf("copilot.Suggest: open stream: %w", err)

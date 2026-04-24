@@ -9,6 +9,7 @@
 package bootstrap
 
 import (
+	"context"
 	"log/slog"
 	"net/http"
 	"strings"
@@ -20,6 +21,7 @@ import (
 	dotel "druz9/shared/pkg/otel"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/redis/go-redis/v9"
 )
@@ -32,6 +34,11 @@ type routerDeps struct {
 	Pool        *pgxpool.Pool
 	Redis       *redis.Client
 	RequireAuth func(http.Handler) http.Handler
+	// ResolveTier — функция резолвинга tier'а для аутентифицированного
+	// user_id. nil допустимо (без subscription-сервиса tier всегда пустой
+	// = free). Вызывается per-request после auth, результат кладётся в
+	// context'е через sharedMw.WithUserTier.
+	ResolveTier func(ctx context.Context, userID uuid.UUID) string
 	Notify      *services.NotifyModule
 	Modules     []*services.Module // every Module in mount order, including auth's
 }
@@ -83,6 +90,7 @@ func buildHandler(d routerDeps) http.Handler {
 
 		api.Group(func(gated chi.Router) {
 			gated.Use(restAuthGate(d.RequireAuth))
+			gated.Use(tierEnrichment(d.ResolveTier))
 			for _, m := range d.Modules {
 				if m != nil && m.MountREST != nil {
 					m.MountREST(gated)
@@ -100,7 +108,7 @@ func buildHandler(d routerDeps) http.Handler {
 			continue
 		}
 		if m.RequireConnectAuth {
-			connectMux.Handle(m.ConnectPath, d.RequireAuth(m.ConnectHandler))
+			connectMux.Handle(m.ConnectPath, d.RequireAuth(tierEnrichment(d.ResolveTier)(m.ConnectHandler)))
 		} else {
 			connectMux.Handle(m.ConnectPath, m.ConnectHandler)
 		}
@@ -206,6 +214,34 @@ func restAuthGate(requireAuth func(http.Handler) http.Handler) func(http.Handler
 				return
 			}
 			requireAuth(next).ServeHTTP(w, r)
+		})
+	}
+}
+
+// tierEnrichment — middleware, резолвящий subscription tier для
+// аутентифицированного юзера и складывающий результат в context через
+// sharedMw.WithUserTier. Запускается ПОСЛЕ auth middleware, поэтому в
+// context'е уже есть UserID. Неавторизованный запрос / отсутствие
+// subscription-записи / resolver == nil → tier остаётся пустым (free).
+//
+// Fail-open: любая ошибка резолвера silent (не ломает запрос). Кост —
+// одно DB-чтение на запрос; измерим в Grafana после выкатки, если станет
+// узким местом — добавим Redis-cache TTL 60s.
+func tierEnrichment(resolve func(context.Context, uuid.UUID) string) func(http.Handler) http.Handler {
+	if resolve == nil {
+		return func(next http.Handler) http.Handler { return next }
+	}
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			uid, ok := mw.UserIDFromContext(r.Context())
+			if !ok {
+				next.ServeHTTP(w, r)
+				return
+			}
+			if tier := resolve(r.Context(), uid); tier != "" {
+				r = r.WithContext(mw.WithUserTier(r.Context(), tier))
+			}
+			next.ServeHTTP(w, r)
 		})
 	}
 }

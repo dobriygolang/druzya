@@ -10,6 +10,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"druz9/shared/enums"
 )
 
 // Chain orchestrates multiple Driver instances. It is the primary public
@@ -73,6 +75,9 @@ var defaultTimeouts = map[Provider]time.Duration{
 	// модели может прилететь через 5-8s. Ставим 60s — мы и так в fallback,
 	// прилично дождаться законченного ответа важнее чем "быстро провалиться".
 	ProviderOllama: 60 * time.Second,
+	// DeepSeek — платный, API быстрый (sub-second first byte), но reasoner
+	// (R1) при extended-thinking может thinking'ать 15-30s. 30s — компромисс.
+	ProviderDeepSeek: 30 * time.Second,
 }
 
 // Options configures a new Chain.
@@ -265,8 +270,33 @@ type candidate struct {
 }
 
 func (c *Chain) candidates(req Request) ([]candidate, error) {
+	// ── Virtual-model expansion ────────────────────────────────────────
+	// "druz9/pro", "druz9/ultra", "druz9/reasoning" etc. — разворачиваются
+	// в multi-provider chain. Tier-gate ДО expand'а, чтобы free-юзер не
+	// видел состав paid-цепочки в сообщении об ошибке.
+	if IsVirtualModel(req.ModelOverride) {
+		required, ok := VirtualModelMinTier[req.ModelOverride]
+		if !ok {
+			return nil, fmt.Errorf("%w: unknown virtual model %q", ErrNoProvider, req.ModelOverride)
+		}
+		if !TierCovers(req.UserTier, required) {
+			return nil, fmt.Errorf("%w: %q needs %s, got %s",
+				ErrTierRequired, req.ModelOverride, required, effectiveTier(req.UserTier))
+		}
+		vChain, ok := virtualChains[req.ModelOverride]
+		if !ok {
+			return nil, fmt.Errorf("%w: no chain for virtual %q", ErrNoProvider, req.ModelOverride)
+		}
+		return c.expandVirtualChain(vChain), nil
+	}
+
 	if req.ModelOverride != "" {
 		// Concrete model picked — single candidate, no fallback.
+		// Tier-gate проверяет что paid-модель доступна юзеру.
+		if required := ModelRequiresTier(req.ModelOverride); !TierCovers(req.UserTier, required) {
+			return nil, fmt.Errorf("%w: %q needs %s, got %s",
+				ErrTierRequired, req.ModelOverride, required, effectiveTier(req.UserTier))
+		}
 		p := providerFromModelID(req.ModelOverride)
 		d, ok := c.drivers[p]
 		if !ok {
@@ -281,6 +311,12 @@ func (c *Chain) candidates(req Request) ([]candidate, error) {
 	for _, p := range c.order {
 		model := c.taskMap.ModelFor(req.Task, p)
 		if model == "" {
+			continue
+		}
+		// Tier-gate: пропускаем paid-модели для юзеров с недостаточным tier'ом.
+		// По умолчанию все task-map модели free, но defensive — если кто-то
+		// добавит paid-модель в default map, tier-gate автоматом её отрежет.
+		if required := ModelRequiresTier(model); !TierCovers(req.UserTier, required) {
 			continue
 		}
 		d, ok := c.drivers[p]
@@ -376,6 +412,11 @@ func (c *Chain) reorderByLatency(in []candidate, task Task) []candidate {
 // else (which is what OpenRouter itself expects — its ids are always
 // "vendor/model"). See migration 00045 for the conventions.
 func providerFromModelID(id string) Provider {
+	// DeepSeek ids — без slash'а ("deepseek-chat", "deepseek-reasoner").
+	// Exact-match, чтобы не путать с условным "deepseek-ai/..." от OpenRouter.
+	if id == "deepseek-chat" || id == "deepseek-reasoner" {
+		return ProviderDeepSeek
+	}
 	if idx := strings.Index(id, "/"); idx > 0 {
 		prefix := Provider(id[:idx])
 		switch prefix {
@@ -385,6 +426,7 @@ func providerFromModelID(id string) Provider {
 			ProviderSambaNova,
 			ProviderOpenRouter,
 			ProviderCloudflareAI,
+			ProviderDeepSeek,
 			ProviderOllama:
 			return prefix
 		}
@@ -397,6 +439,31 @@ func providerFromModelID(id string) Provider {
 		}
 	}
 	return ProviderOpenRouter
+}
+
+// expandVirtualChain конвертирует список virtualCandidate (provider+model
+// без driver) в candidate'ы, подтягивая реальные driver'ы из chain'а.
+// Элементы без зарегистрированного драйвера ТИХО скипаются — соответствует
+// семантике task-based candidates: если оператор не настроил key для
+// OpenRouter, pro-цепочка просто "сожмётся" до работающих звеньев.
+func (c *Chain) expandVirtualChain(vc []virtualCandidate) []candidate {
+	out := make([]candidate, 0, len(vc))
+	for _, v := range vc {
+		d, ok := c.drivers[v.Provider]
+		if !ok {
+			continue
+		}
+		out = append(out, candidate{provider: v.Provider, model: v.Model, driver: d})
+	}
+	return out
+}
+
+// effectiveTier заменяет пустое значение на "free" для error-сообщений.
+func effectiveTier(t enums.SubscriptionPlan) enums.SubscriptionPlan {
+	if t == "" {
+		return enums.SubscriptionPlanFree
+	}
+	return t
 }
 
 // ─────────────────────────────────────────────────────────────────────────

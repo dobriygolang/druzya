@@ -74,6 +74,7 @@ func (c *ChainedLLM) Stream(ctx context.Context, req domain.CompletionRequest) (
 		Messages:    msgs,
 		Temperature: req.Temperature,
 		MaxTokens:   req.MaxTokens,
+		UserTier:    enums.SubscriptionPlan(req.UserTier),
 	}
 	// Turbo / empty-model → let chain pick. Concrete model → pin it so
 	// the user's deliberate choice isn't silently overridden on fallback.

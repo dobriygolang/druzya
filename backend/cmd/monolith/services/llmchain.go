@@ -76,6 +76,13 @@ func BuildLLMChain(cfg config.Config, log *slog.Logger) (*llmchain.Chain, error)
 	if cfg.LLM.OpenRouterAPIKey != "" {
 		drivers[llmchain.ProviderOpenRouter] = llmchain.NewOpenRouterDriver(cfg.LLM.OpenRouterAPIKey)
 	}
+	// DeepSeek direct — платный, используется в paid-virtual-chain'ах
+	// druz9/pro и druz9/reasoning. Регистрируется опционально — если ключа
+	// нет, pro/reasoning-цепочки деградируют на OpenRouter paid-models
+	// (они дороже, но тот же функционал). См. shared/pkg/llmchain/tier.go.
+	if cfg.LLMChain.DeepSeekAPIKey != "" {
+		drivers[llmchain.ProviderDeepSeek] = llmchain.NewDeepSeekDriver(cfg.LLMChain.DeepSeekAPIKey)
+	}
 	// Ollama self-hosted sidecar — self-hosted floor-fallback против
 	// исчерпания cloud free-tier квот. Регистрируется только при явно
 	// заданном OLLAMA_HOST (пустой host ⇒ NewOllamaDriver возвращает nil

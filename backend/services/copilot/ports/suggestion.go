@@ -100,6 +100,12 @@ func (h *SuggestionHandler) handleSuggest(w http.ResponseWriter, r *http.Request
 		Context:  req.Context,
 		Persona:  req.Persona,
 		Language: req.Language,
+		// Tier резолвится tier-enrichment middleware'ом (см. shared/pkg/
+		// middleware/middleware.go WithUserTier). Пока нет middleware на
+		// роуте — будет пустая строка → llmchain трактует как free, все
+		// текущие model-id'ы ("druz9/turbo" и free-модели) проходят
+		// tier-gate нормально. paid-модели ждут M2 wiring.
+		UserTier: sharedMw.UserTierFromContext(r.Context()),
 	})
 	if err != nil {
 		if h.Log != nil {

@@ -67,6 +67,11 @@ type Config struct {
 		SambaNovaAPIKey       string
 		CloudflareAIAccountID string
 		CloudflareAIToken     string
+		// DeepSeekAPIKey — платный provider для paid-lane (deepseek-chat
+		// V3 и deepseek-reasoner R1). Используется в virtual-chain'ах
+		// druz9/pro и druz9/reasoning. Пустая строка → driver не регится,
+		// pro/reasoning chain работает только через OpenRouter paid-models.
+		DeepSeekAPIKey string
 		// OllamaHost — base URL локального Ollama sidecar'а
 		// ("http://ollama:11434" в docker-compose). Пустая строка —
 		// сервис не зарегистрирован, всё работает как раньше (cloud-only).
@@ -137,6 +142,7 @@ func Load() (Config, error) {
 	c.LLMChain.SambaNovaAPIKey = env("SAMBANOVA_API_KEY", "")
 	c.LLMChain.CloudflareAIAccountID = env("CLOUDFLARE_AI_ACCOUNT_ID", "")
 	c.LLMChain.CloudflareAIToken = env("CLOUDFLARE_AI_TOKEN", "")
+	c.LLMChain.DeepSeekAPIKey = env("DEEPSEEK_API_KEY", "")
 	c.LLMChain.OllamaHost = env("OLLAMA_HOST", "")
 	c.LLMChain.ChainOrder = env("LLM_CHAIN_ORDER", "groq,cerebras,openrouter")
 

@@ -125,6 +125,12 @@ type CompletionRequest struct {
 	Messages    []LLMMessage
 	Temperature float64
 	MaxTokens   int
+	// UserTier — tier подписки юзера ("free"/"seeker"/"ascendant"), пустая
+	// строка трактуется как free. Передаётся в llmchain.Request.UserTier
+	// для paid-model gate'а (см. shared/pkg/llmchain/tier.go). Caller
+	// (copilot ports-handler) резолвит через subscription-сервис или
+	// context middleware перед вызовом Stream().
+	UserTier string
 }
 
 // StreamEvent is one frame from a streaming LLM response. Exactly one of

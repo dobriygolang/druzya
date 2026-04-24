@@ -16,6 +16,7 @@ const (
 	ctxKeyRequestID ctxKey = "request_id"
 	ctxKeyUserID    ctxKey = "user_id"
 	ctxKeyUserRole  ctxKey = "user_role"
+	ctxKeyUserTier  ctxKey = "user_tier"
 )
 
 // RequestID генерирует или прокидывает X-Request-ID.
@@ -95,6 +96,22 @@ func UserRoleFromContext(ctx context.Context) (string, bool) {
 // WithUserRole кладёт роль пользователя в контекст.
 func WithUserRole(ctx context.Context, role string) context.Context {
 	return context.WithValue(ctx, ctxKeyUserRole, role)
+}
+
+// UserTierFromContext извлекает subscription tier'а пользователя. Возвращает
+// пустую строку если middleware не резолвила его (например юзер неавторизован,
+// subscription-service недоступен — graceful fail-open).
+// Caller-ы LLM-chain-а (copilot, vacancies, profile) читают это значение и
+// кладут в llmchain.Request.UserTier для paid-model gate'а.
+func UserTierFromContext(ctx context.Context) string {
+	v, _ := ctx.Value(ctxKeyUserTier).(string)
+	return v
+}
+
+// WithUserTier кладёт tier в контекст. Используется middleware резолвером
+// подписки (см. cmd/monolith/bootstrap/router.go) после auth middleware.
+func WithUserTier(ctx context.Context, tier string) context.Context {
+	return context.WithValue(ctx, ctxKeyUserTier, tier)
 }
 
 type statusWriter struct {

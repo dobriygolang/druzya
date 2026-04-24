@@ -48,6 +48,8 @@ package llmchain
 import (
 	"context"
 	"time"
+
+	"druz9/shared/enums"
 )
 
 // Provider is the stable id of one upstream. Used as a label in metrics,
@@ -62,6 +64,10 @@ const (
 	ProviderOpenRouter   Provider = "openrouter"
 	ProviderSambaNova    Provider = "sambanova"
 	ProviderCloudflareAI Provider = "cloudflare"
+	// ProviderDeepSeek — paid: api.deepseek.com. Используется в virtual-chain'ах
+	// druz9/pro и druz9/reasoning (см. tier.go). В DefaultTaskModelMap
+	// отсутствует — это exclusive для paid-tier'ов.
+	ProviderDeepSeek Provider = "deepseek"
 	// ProviderOllama — self-hosted sidecar (Qwen 2.5 3B Q4_K_M на CPU).
 	// Задача: floor-fallback, когда все free-tier cloud провайдеры исчерпали
 	// дневные квоты. Медленно (20-30 tok/s на VPS без GPU), но unlimited и
@@ -174,6 +180,13 @@ type Request struct {
 	// chain's per-provider default (groq 10s, cerebras 20s, others 45s).
 	// Individual caller overrides are mostly for tests.
 	AttemptTimeout time.Duration
+
+	// UserTier — актуальный tier подписки (free/seeker/ascendant). Пустая
+	// строка трактуется как free (graceful default для legacy-caller'ов).
+	// Используется для tier-gate'а paid-моделей в candidates(): если
+	// ModelOverride требует seeker+, а UserTier=free → ErrTierRequired.
+	// Caller обычно заполняет через shared middleware UserTierFromContext.
+	UserTier enums.SubscriptionPlan
 }
 
 // Response is the non-streaming result.

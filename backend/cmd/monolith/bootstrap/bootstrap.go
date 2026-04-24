@@ -22,8 +22,12 @@ import (
 	"druz9/shared/pkg/killswitch"
 	"druz9/shared/pkg/metrics"
 	"druz9/shared/pkg/quota"
+	subApp "druz9/subscription/app"
+	subDomain "druz9/subscription/domain"
+	subInfra "druz9/subscription/infra"
 	"strconv"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/redis/go-redis/v9"
 )
@@ -180,9 +184,26 @@ func New(ctx context.Context, cfg *config.Config) (app *App, otelShutdown func()
 
 	registerSubscribers(bus, modules)
 
+	// Tier-enrichment resolver — отдельный экземпляр subscription use-case'а
+	// специально для HTTP-middleware. Не разделяем с subscription-Module'ом,
+	// потому что там он — app-level компонент, а тут — infra-layer тонкий
+	// шим. Clock = RealClock (UTC), errors silent (fail-open до free).
+	subPg := subInfra.NewPostgres(pool)
+	subGetTier := subApp.NewGetTier(subPg, subDomain.RealClock{})
+	resolveTier := func(ctx context.Context, uid uuid.UUID) string {
+		tier, err := subGetTier.Do(ctx, uid)
+		if err != nil {
+			log.WarnContext(ctx, "tierEnrichment: resolve failed — fail-open to free",
+				"err", err, "user_id", uid.String())
+			return ""
+		}
+		return string(tier)
+	}
+
 	handler := buildHandler(routerDeps{
 		Log: log, Pool: pool, Redis: rdb,
 		RequireAuth: auth.RequireAuth,
+		ResolveTier: resolveTier,
 		Notify:      notify,
 		Modules:     modules,
 	})
