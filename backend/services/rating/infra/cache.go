@@ -157,14 +157,25 @@ func (c *CachedRepo) List(ctx context.Context, userID uuid.UUID) ([]domain.Secti
 	return out, nil
 }
 
-// Upsert forwards to the delegate then busts the user key. This is the
-// canonical write-path hook called by the rating event handlers.
+// Upsert forwards to the delegate then busts the user key. Абсолютная
+// запись — только для seed/admin; хэндлеры матча должны вызывать ApplyDelta.
 func (c *CachedRepo) Upsert(ctx context.Context, r domain.SectionRating) error {
 	if err := c.delegate.Upsert(ctx, r); err != nil {
 		return fmt.Errorf("rating.cache.Upsert: %w", err)
 	}
 	c.Invalidate(ctx, r.UserID)
 	return nil
+}
+
+// ApplyDelta форвардит атомарный инкремент в delegate и инвалидирует
+// кеш пользователя, чтобы следующий List увидел свежий ELO.
+func (c *CachedRepo) ApplyDelta(ctx context.Context, d domain.RatingDelta) (int, error) {
+	newElo, err := c.delegate.ApplyDelta(ctx, d)
+	if err != nil {
+		return 0, fmt.Errorf("rating.cache.ApplyDelta: %w", err)
+	}
+	c.Invalidate(ctx, d.UserID)
+	return newElo, nil
 }
 
 // Top is uncached at this layer — the existing LeaderboardCache (redis.go)

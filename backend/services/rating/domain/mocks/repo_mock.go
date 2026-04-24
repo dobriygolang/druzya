@@ -44,6 +44,21 @@ func (m *MockRatingRepo) EXPECT() *MockRatingRepoMockRecorder {
 	return m.recorder
 }
 
+// ApplyDelta mocks base method.
+func (m *MockRatingRepo) ApplyDelta(ctx context.Context, d domain.RatingDelta) (int, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ApplyDelta", ctx, d)
+	ret0, _ := ret[0].(int)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ApplyDelta indicates an expected call of ApplyDelta.
+func (mr *MockRatingRepoMockRecorder) ApplyDelta(ctx, d any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ApplyDelta", reflect.TypeOf((*MockRatingRepo)(nil).ApplyDelta), ctx, d)
+}
+
 // CountSection mocks base method.
 func (m *MockRatingRepo) CountSection(ctx context.Context, section enums.Section) (int, error) {
 	m.ctrl.T.Helper()

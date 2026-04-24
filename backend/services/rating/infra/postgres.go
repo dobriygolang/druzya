@@ -41,7 +41,8 @@ func (p *Postgres) List(ctx context.Context, userID uuid.UUID) ([]domain.Section
 	return out, nil
 }
 
-// Upsert inserts or updates the (user_id, section) row.
+// Upsert inserts or updates the (user_id, section) row (absolute write —
+// only for seed/admin flows; match handlers must use ApplyDelta).
 func (p *Postgres) Upsert(ctx context.Context, r domain.SectionRating) error {
 	var last pgtype.Timestamptz
 	if r.LastMatchAt != nil {
@@ -57,6 +58,22 @@ func (p *Postgres) Upsert(ctx context.Context, r domain.SectionRating) error {
 		return fmt.Errorf("rating.pg.Upsert: %w", err)
 	}
 	return nil
+}
+
+// ApplyDelta атомарно применяет изменение ELO. См. domain.RatingRepo.ApplyDelta.
+// Реализовано через единственный INSERT ... ON CONFLICT ... DO UPDATE SET
+// elo = ratings.elo + $delta (см. queries/rating.sql).
+func (p *Postgres) ApplyDelta(ctx context.Context, d domain.RatingDelta) (int, error) {
+	newElo, err := p.q.ApplyRatingDelta(ctx, ratingdb.ApplyRatingDeltaParams{
+		UserID:      pgUUID(d.UserID),
+		Section:     string(d.Section),
+		EloDelta:    int32(d.EloDelta),
+		LastMatchAt: pgtype.Timestamptz{Time: d.LastMatchAt, Valid: true},
+	})
+	if err != nil {
+		return 0, fmt.Errorf("rating.pg.ApplyDelta: %w", err)
+	}
+	return int(newElo), nil
 }
 
 // Top returns the leaderboard for a section.

@@ -71,9 +71,18 @@ func (h *OnMatchCompleted) applyDelta(ctx context.Context, userID uuid.UUID, sec
 	return applyDelta(ctx, h.Ratings, h.Bus, h.Log, userID, section, delta, source, matchID)
 }
 
-// applyDelta reads the current rating, applies the delta, persists, and
-// publishes a RatingChanged event. Repos must treat missing rows as "start
-// at InitialELO".
+// applyDelta атомарно применяет ELO-инкремент и публикует RatingChanged.
+//
+// Раньше здесь был read-modify-write через List+Upsert, что в конкурентной
+// среде (две одновременно завершившиеся игры одного юзера) приводило к
+// потере инкрементов: оба хэндлера читали одинаковый oldElo и перетирали
+// друг друга абсолютной записью. Теперь используется RatingRepo.ApplyDelta,
+// который за один SQL-стейтмент делает `elo = ratings.elo + $delta`.
+//
+// oldElo для события RatingChanged восстанавливается как newElo - delta —
+// в пути INSERT это ровно InitialELO (1000 + delta - delta), в пути UPDATE
+// это реальный ELO до операции под row-lock, поэтому значение всегда
+// корректное.
 func applyDelta(
 	ctx context.Context,
 	ratings domain.RatingRepo,
@@ -85,36 +94,22 @@ func applyDelta(
 	source string,
 	matchID *uuid.UUID,
 ) error {
-	list, err := ratings.List(ctx, userID)
-	if err != nil {
-		return fmt.Errorf("load ratings: %w", err)
-	}
-	// Find existing row (or seed).
-	cur := domain.SectionRating{
-		UserID:  userID,
-		Section: section,
-		Elo:     domain.InitialELO,
-	}
-	for _, r := range list {
-		if r.Section == section {
-			cur = r
-			break
-		}
-	}
-	oldElo := cur.Elo
-	cur.Elo += delta
-	cur.MatchesCount++
 	now := time.Now().UTC()
-	cur.LastMatchAt = &now
-	cur.UpdatedAt = now
-	if err := ratings.Upsert(ctx, cur); err != nil {
-		return fmt.Errorf("upsert: %w", err)
+	newElo, err := ratings.ApplyDelta(ctx, domain.RatingDelta{
+		UserID:      userID,
+		Section:     section,
+		EloDelta:    delta,
+		LastMatchAt: now,
+	})
+	if err != nil {
+		return fmt.Errorf("apply delta: %w", err)
 	}
+	oldElo := newElo - delta
 	if perr := bus.Publish(ctx, sharedDomain.RatingChanged{
 		UserID:  userID,
 		Section: section,
 		EloOld:  oldElo,
-		EloNew:  cur.Elo,
+		EloNew:  newElo,
 		Source:  source,
 		MatchID: matchID,
 	}); perr != nil {

@@ -7,6 +7,10 @@ WHERE user_id = $1
 ORDER BY section;
 
 -- name: UpsertRating :exec
+-- Абсолютный overwrite — оставлен для seed/admin, где нужно выставить
+-- конкретный ELO вручную. НЕ вызывать из хэндлера матча (race condition —
+-- параллельные read-modify-write теряют инкременты). Для матчей использовать
+-- ApplyRatingDelta.
 INSERT INTO ratings(user_id, section, elo, matches_count, last_match_at)
 VALUES ($1, $2, $3, $4, $5)
 ON CONFLICT (user_id, section) DO UPDATE
@@ -14,6 +18,24 @@ ON CONFLICT (user_id, section) DO UPDATE
         matches_count = EXCLUDED.matches_count,
         last_match_at = EXCLUDED.last_match_at,
         updated_at    = now();
+
+-- name: ApplyRatingDelta :one
+-- Атомарный инкремент ELO и matches_count за один SQL-стейтмент.
+-- Исключает race condition, при котором два параллельных матча читают
+-- одинаковый oldElo и перетирают друг друга абсолютной записью.
+-- При отсутствии строки — seed через ON CONFLICT (elo = 1000 + delta,
+-- matches_count = 1). Стартовое значение 1000 должно совпадать с
+-- domain.InitialELO и DEFAULT в migrations/00002_rating_progression.sql.
+-- Возвращает новый ELO; oldElo при необходимости восстанавливается
+-- как newElo - delta.
+INSERT INTO ratings(user_id, section, elo, matches_count, last_match_at)
+VALUES (@user_id, @section, 1000 + @elo_delta::int, 1, @last_match_at)
+ON CONFLICT (user_id, section) DO UPDATE
+    SET elo           = ratings.elo + @elo_delta::int,
+        matches_count = ratings.matches_count + 1,
+        last_match_at = EXCLUDED.last_match_at,
+        updated_at    = now()
+RETURNING elo;
 
 -- name: TopLeaderboard :many
 SELECT r.user_id,

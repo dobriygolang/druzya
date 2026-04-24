@@ -11,6 +11,15 @@ import (
 )
 
 type Querier interface {
+	// Атомарный инкремент ELO и matches_count за один SQL-стейтмент.
+	// Исключает race condition, при котором два параллельных матча читают
+	// одинаковый oldElo и перетирают друг друга абсолютной записью.
+	// При отсутствии строки — seed через ON CONFLICT (elo = 1000 + delta,
+	// matches_count = 1). Стартовое значение 1000 должно совпадать с
+	// domain.InitialELO и DEFAULT в migrations/00002_rating_progression.sql.
+	// Возвращает новый ELO; oldElo при необходимости восстанавливается
+	// как newElo - delta.
+	ApplyRatingDelta(ctx context.Context, arg ApplyRatingDeltaParams) (int32, error)
 	// Total rated users in a section. Used to derive percentile rank.
 	CountSection(ctx context.Context, section string) (int32, error)
 	// Use a CTE that ranks every row within a section, then filter to the user.
@@ -18,6 +27,10 @@ type Querier interface {
 	// rating queries consumed by sqlc (emitted into services/rating/infra/db).
 	GetRatingsByUser(ctx context.Context, userID pgtype.UUID) ([]Rating, error)
 	TopLeaderboard(ctx context.Context, arg TopLeaderboardParams) ([]TopLeaderboardRow, error)
+	// Абсолютный overwrite — оставлен для seed/admin, где нужно выставить
+	// конкретный ELO вручную. НЕ вызывать из хэндлера матча (race condition —
+	// параллельные read-modify-write теряют инкременты). Для матчей использовать
+	// ApplyRatingDelta.
 	UpsertRating(ctx context.Context, arg UpsertRatingParams) error
 }
 
