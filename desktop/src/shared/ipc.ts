@@ -39,6 +39,9 @@ export const invokeChannels = {
   windowsHide: 'windows:hide',
   windowsToggleStealth: 'windows:toggle-stealth',
   windowsResize: 'windows:resize',
+  /** Open the floating picker (persona or model) anchored to compact. */
+  windowsShowPicker: 'windows:show-picker',
+  windowsHidePicker: 'windows:hide-picker',
 
   permissionsCheck: 'permissions:check',
   permissionsRequest: 'permissions:request',
@@ -264,7 +267,12 @@ export type WindowName =
   | 'settings'
   | 'onboarding'
   | 'area-overlay'
-  | 'history';
+  | 'history'
+  | 'picker';
+
+/** Picker kind — which dropdown the compact opens in the floating picker
+ *  window. Persona / Model each reuse their own dropdown component. */
+export type PickerKind = 'persona' | 'model';
 
 /** Rect selected by the user in the area-picker overlay. Absolute pixels
  *  on the primary display. Returned from `capture:start-area`. */

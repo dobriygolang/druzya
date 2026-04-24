@@ -29,6 +29,17 @@ body,
   user-select: none;
 }
 
+/* Native form controls need interactions back. Global user-select: none
+   broke range slider dragging (Settings → Внешний вид). */
+input[type='range'],
+input[type='text'],
+input[type='password'],
+input[type='email'],
+textarea {
+  user-select: auto;
+  -webkit-user-select: auto;
+}
+
 code,
 pre {
   font-family: var(--d9-font-mono);

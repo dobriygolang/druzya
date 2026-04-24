@@ -104,6 +104,7 @@ type Cohort struct {
 	Status     string
 	Visibility string
 	CreatedAt  pgtype.Timestamptz
+	Capacity   int32
 }
 
 type CohortAnnouncement struct {

@@ -19,6 +19,11 @@ export function ModelPill({ label, onClick, title, interactive = true, leading }
     <button
       type="button"
       onClick={onClick}
+      // Stop the document-level mousedown listener inside PersonaDropdown /
+      // ModelDropdown from closing the panel BEFORE this button's click
+      // fires. Without this, the dropdown closes then the pill re-opens it,
+      // making the toggle feel broken.
+      onMouseDown={(e) => e.stopPropagation()}
       title={title}
       style={{
         display: 'inline-flex',

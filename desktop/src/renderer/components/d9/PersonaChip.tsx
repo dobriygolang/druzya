@@ -32,6 +32,9 @@ export function PersonaChip({
     <button
       type="button"
       onClick={onClick}
+      // Stop document-level mousedown inside dropdowns from racing the
+      // onClick toggle (same fix as ModelPill).
+      onMouseDown={(e) => e.stopPropagation()}
       title={title}
       style={{
         display: 'inline-flex',
