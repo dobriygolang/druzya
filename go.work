@@ -30,6 +30,7 @@ use (
 	./backend/services/tg_coach
 	./backend/services/transcription
 	./backend/services/vacancies
+	./backend/services/whiteboard_rooms
 	./backend/shared
 )
 

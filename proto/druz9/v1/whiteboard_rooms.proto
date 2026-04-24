@@ -1,0 +1,84 @@
+// whiteboard_rooms.proto — Connect-RPC contract for shared multiplayer
+// whiteboards (bible §9 Phase 6.5.4). The collaborative WebSocket at
+// /ws/whiteboard/{room_id} is NOT part of this proto — Connect does not
+// transcode WebSockets, the raw chi handler in ports/ws.go handles the
+// Yjs op fanout (same split as editor / ai_mock).
+syntax = "proto3";
+package druz9.v1;
+
+import "google/api/annotations.proto";
+import "google/protobuf/timestamp.proto";
+
+option go_package = "druz9/shared/generated/pb/druz9/v1;druz9v1";
+
+// WhiteboardParticipant — user_id + join time for UI chips.
+message WhiteboardParticipant {
+  string user_id = 1;
+  string username = 2;
+  google.protobuf.Timestamp joined_at = 3;
+}
+
+// WhiteboardRoom — the shared whiteboard entity as surfaced to clients.
+// `snapshot_b64` carries the base64-encoded Yjs document for the initial
+// load; the WS stream delivers incremental updates thereafter.
+message WhiteboardRoom {
+  string id = 1;
+  string owner_id = 2;
+  string title = 3;
+  string ws_url = 4;
+  google.protobuf.Timestamp expires_at = 5;
+  google.protobuf.Timestamp created_at = 6;
+  repeated WhiteboardParticipant participants = 7;
+  // Optional initial Yjs document; empty for rooms that haven't persisted yet.
+  bytes snapshot = 8;
+}
+
+message CreateWhiteboardRoomRequest {
+  string title = 1;
+}
+
+message GetWhiteboardRoomRequest {
+  string room_id = 1;
+}
+
+message ListMyWhiteboardRoomsRequest {}
+
+message WhiteboardRoomList {
+  repeated WhiteboardRoom items = 1;
+}
+
+message DeleteWhiteboardRoomRequest {
+  string room_id = 1;
+}
+
+message DeleteWhiteboardRoomResponse {
+  bool deleted = 1;
+}
+
+service WhiteboardRoomsService {
+  // CreateRoom mints a shared whiteboard and adds the caller as the owner
+  // participant. Expires at now+24h by default (extended on activity).
+  rpc CreateRoom(CreateWhiteboardRoomRequest) returns (WhiteboardRoom) {
+    option (google.api.http) = {
+      post: "/api/v1/whiteboard/room"
+      body: "*"
+    };
+  }
+
+  // GetRoom returns the room with its current snapshot + participants.
+  // Auto-joins the caller as a participant if not already one.
+  rpc GetRoom(GetWhiteboardRoomRequest) returns (WhiteboardRoom) {
+    option (google.api.http) = {get: "/api/v1/whiteboard/room/{room_id}"};
+  }
+
+  // ListMyRooms returns rooms where the caller is a participant (owner or
+  // invited). Expired rooms are excluded.
+  rpc ListMyRooms(ListMyWhiteboardRoomsRequest) returns (WhiteboardRoomList) {
+    option (google.api.http) = {get: "/api/v1/whiteboard/room"};
+  }
+
+  // DeleteRoom removes the room. Owner-only.
+  rpc DeleteRoom(DeleteWhiteboardRoomRequest) returns (DeleteWhiteboardRoomResponse) {
+    option (google.api.http) = {delete: "/api/v1/whiteboard/room/{room_id}"};
+  }
+}

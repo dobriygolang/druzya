@@ -169,6 +169,7 @@ func New(ctx context.Context, cfg *config.Config) (app *App, otelShutdown func()
 		services.NewAchievements(deps),
 		services.NewFriends(deps),
 		services.NewHone(deps),
+		services.NewWhiteboardRooms(deps),
 		services.NewLobby(deps),
 		services.NewSubscription(deps),
 		services.NewLLMChainAdmin(deps, llmRawChain, llmRegisteredProviders(llmRawChain)),

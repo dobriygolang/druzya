@@ -44,6 +44,13 @@ func (a editorTokenVerifier) Verify(raw string) (uuid.UUID, error) {
 	return parseSubject(a.issuer, raw)
 }
 
+// whiteboardTokenVerifier satisfies druz9/whiteboard_rooms/domain.TokenVerifier.
+type whiteboardTokenVerifier struct{ issuer *authApp.TokenIssuer }
+
+func (a whiteboardTokenVerifier) Verify(raw string) (uuid.UUID, error) {
+	return parseSubject(a.issuer, raw)
+}
+
 func parseSubject(issuer *authApp.TokenIssuer, raw string) (uuid.UUID, error) {
 	claims, err := issuer.Parse(raw)
 	if err != nil {
