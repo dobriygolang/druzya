@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+	"fmt"
 
 	circlesApp "druz9/circles/app"
 	circlesInfra "druz9/circles/infra"
@@ -18,11 +19,19 @@ import (
 type CirclesAuthorityAdapter struct{ H *circlesApp.Handlers }
 
 func (a CirclesAuthorityAdapter) IsAdmin(ctx context.Context, circleID, userID uuid.UUID) (bool, error) {
-	return a.H.IsAdmin(ctx, circleID, userID)
+	ok, err := a.H.IsAdmin(ctx, circleID, userID)
+	if err != nil {
+		return false, fmt.Errorf("circles.IsAdmin: %w", err)
+	}
+	return ok, nil
 }
 
 func (a CirclesAuthorityAdapter) IsMember(ctx context.Context, circleID, userID uuid.UUID) (bool, error) {
-	return a.H.IsMember(ctx, circleID, userID)
+	ok, err := a.H.IsMember(ctx, circleID, userID)
+	if err != nil {
+		return false, fmt.Errorf("circles.IsMember: %w", err)
+	}
+	return ok, nil
 }
 
 // NewCircles wires the circles bounded-context. The handlers struct is

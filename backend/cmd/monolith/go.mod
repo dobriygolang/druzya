@@ -41,6 +41,10 @@ require (
 )
 
 require (
+	druz9/circles v0.0.0
+	druz9/events v0.0.0
+	druz9/subscription v0.0.0
+	druz9/whiteboard_rooms v0.0.0
 	github.com/andybalholm/cascadia v1.3.3 // indirect
 	github.com/araddon/dateparse v0.0.0-20210429162001-6b43995a97de // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
@@ -148,3 +152,11 @@ replace druz9/mentor_session => ../../services/mentor_session
 replace druz9/orgs => ../../services/orgs
 
 replace druz9/tg_coach => ../../services/tg_coach
+
+replace druz9/subscription => ../../services/subscription
+
+replace druz9/whiteboard_rooms => ../../services/whiteboard_rooms
+
+replace druz9/circles => ../../services/circles
+
+replace druz9/events => ../../services/events
