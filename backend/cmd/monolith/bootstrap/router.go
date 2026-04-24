@@ -164,7 +164,7 @@ func restAuthGate(requireAuth func(http.Handler) http.Handler) func(http.Handler
 		// public — see isPublic prefix check below.
 		"/api/v1/lobby/list": {},
 	}
-	isPublic := func(p string) bool {
+	isPublic := func(method, p string) bool {
 		if _, ok := publicPaths[p]; ok {
 			return true
 		}
@@ -189,14 +189,38 @@ func restAuthGate(requireAuth func(http.Handler) http.Handler) func(http.Handler
 			!strings.HasSuffix(p, "/save") {
 			return true
 		}
-		// /api/v1/cohort/{slug} (GET) и /api/v1/cohort/{id}/leaderboard
-		// (GET) — публичные read-only пути для cohort discovery.
-		// POST /cohort, /join, /leave остаются под bearer-gate, потому что
-		// эти suffix-проверки исключают их.
-		if strings.HasPrefix(p, "/api/v1/cohort/") &&
-			!strings.HasSuffix(p, "/join") &&
-			!strings.HasSuffix(p, "/leave") {
-			return true
+		// Cohort public surface is a strict whitelist, NOT a prefix with
+		// suffix exclusions — the blanket approach silently let /announcement,
+		// /invite, /disband, /graduate, /transfer, /role and PATCH /cohort/{id}
+		// bypass bearer auth, so authed-only handlers downstream answered
+		// every call with 401 and the frontend interpreted that as a
+		// session-expired redirect (fixed: /login?reason=expired on click).
+		//
+		// Allowed without bearer:
+		//   GET /api/v1/cohort/{slug}                 — detail page
+		//   GET /api/v1/cohort/{id}/leaderboard       — public ranks
+		//   GET /api/v1/cohort/{id}/streak            — kata heatmap
+		// Everything else (including /announcement*, PATCH /cohort/{id},
+		// /disband, /graduate, /transfer, /invite, /members/{id}/role,
+		// /join, /leave, POST /cohort) MUST go through requireAuth.
+		if strings.HasPrefix(p, "/api/v1/cohort/") {
+			// Only GETs can be public — PATCH /cohort/{id} (UpdateCohort)
+			// and POST writes must always hit requireAuth.
+			if method != http.MethodGet {
+				return false
+			}
+			tail := strings.TrimPrefix(p, "/api/v1/cohort/")
+			if tail == "" {
+				return false
+			}
+			// Single segment → GET /cohort/{slug}.
+			if !strings.Contains(tail, "/") {
+				return true
+			}
+			if strings.HasSuffix(p, "/leaderboard") || strings.HasSuffix(p, "/streak") {
+				return true
+			}
+			return false
 		}
 		// /api/v1/lobby/{id} (GET detail) and /api/v1/lobby/code/{code} —
 		// public read-only paths. POST /lobby itself plus mutation suffixes
@@ -213,7 +237,7 @@ func restAuthGate(requireAuth func(http.Handler) http.Handler) func(http.Handler
 	}
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			if isPublic(r.URL.Path) {
+			if isPublic(r.Method, r.URL.Path) {
 				next.ServeHTTP(w, r)
 				return
 			}
