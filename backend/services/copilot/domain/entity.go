@@ -157,9 +157,11 @@ type PaywallCopy struct {
 	Tagline     string
 	Bullets     []string
 	CTALabel    string
-	// SubscribeURL is the external URL the CTA button opens. For Boosty,
-	// a per-tier purchase link (https://boosty.to/<creator>/purchase/<id>).
-	// Empty for free / already-current plans.
+	// SubscribeURL is the external URL the CTA button opens — выдаётся
+	// централизованным subscription-сервисом (см. services/subscription/)
+	// как одноразовый checkout-URL провайдера (Boosty / ЮKassa / ...).
+	// Empty для free-plan или когда subscription-сервис ещё не wired —
+	// клиент в этом случае показывает "Coming soon" или скрывает CTA.
 	SubscribeURL string
 }
 

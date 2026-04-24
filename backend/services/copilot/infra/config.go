@@ -208,10 +208,12 @@ func DefaultDesktopConfig() domain.DesktopConfig {
 					"История с облачной синхронизацией",
 					"Приоритетная поддержка",
 				},
-				CTALabel: "Подписаться через Boosty",
-				// Point at your Boosty tier. Override via env on the
-				// backend (COPILOT_BOOSTY_SEEKER_URL) once you wire it up.
-				SubscribeURL: "https://boosty.to/druz9/purchase/seeker",
+				CTALabel: "Оформить подписку",
+				// SubscribeURL будет выдан централизованным subscription-сервисом
+				// (M1+M3) — он формирует одноразовый checkout-URL через Boosty/
+				// ЮKassa API с привязкой user_id и tier. Пустой → frontend
+				// показывает "Coming soon" / скрывает кнопку до выкатки M3.
+				SubscribeURL: "",
 			},
 			{
 				PlanID:      "ascendant",
@@ -224,8 +226,8 @@ func DefaultDesktopConfig() domain.DesktopConfig {
 					"SSO через Telegram / Yandex",
 					"Приоритетная поддержка в течение 4 часов",
 				},
-				CTALabel:     "Подписаться через Boosty",
-				SubscribeURL: "https://boosty.to/druz9/purchase/ascendant",
+				CTALabel:     "Оформить подписку",
+				SubscribeURL: "",
 			},
 		},
 		StealthWarnings: []domain.StealthCompatEntry{

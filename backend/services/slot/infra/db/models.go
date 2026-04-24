@@ -87,13 +87,6 @@ type Booking struct {
 	CreatedAt   pgtype.Timestamptz
 }
 
-type BoostyAccount struct {
-	UserID         pgtype.UUID
-	BoostyUsername string
-	VerifiedAt     pgtype.Timestamptz
-	CreatedAt      pgtype.Timestamptz
-}
-
 type Cohort struct {
 	ID          pgtype.UUID
 	OwnerID     pgtype.UUID
