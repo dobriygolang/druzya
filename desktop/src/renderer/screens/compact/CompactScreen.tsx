@@ -23,12 +23,15 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 
 import {
   BrandMark,
-  Caret,
   D9IconCamera,
   D9IconClose,
   D9IconSettings,
   IconButton,
   Kbds,
+  ModelDropdown,
+  type ModelDropdownItem,
+  ModelPill,
+  PersonaChip,
   PersonaDropdown,
   type PersonaDropdownItem,
   QuotaMeterMini,
@@ -41,6 +44,7 @@ import { useAuthStore } from '../../stores/auth';
 import { useConversationStore } from '../../stores/conversation';
 import { applyPersonaPrefix, usePersonaStore } from '../../stores/persona';
 import { useCursorFreezeStore } from '../../stores/cursor-freeze';
+import { useQuotaStore } from '../../stores/quota';
 import { useSessionStore } from '../../stores/session';
 import {
   usePendingAttachmentStore,
@@ -95,8 +99,16 @@ export function CompactScreen() {
   const personaBootstrap = usePersonaStore((s) => s.bootstrap);
   useEffect(() => { void personaBootstrap(); }, [personaBootstrap]);
 
+  const quota = useQuotaStore((s) => s.quota);
+  const refreshQuota = useQuotaStore((s) => s.refresh);
+  useEffect(() => { void refreshQuota(); }, [refreshQuota]);
+
   const [input, setInput] = useState('');
-  const [personaOpen, setPersonaOpen] = useState(false);
+  // Single-dropdown state — guarantees model and persona pickers can never
+  // be visible simultaneously (prevents overlap + resize race bugs).
+  const [openPicker, setOpenPicker] = useState<'none' | 'persona' | 'model'>('none');
+  const personaOpen = openPicker === 'persona';
+  const modelOpen = openPicker === 'model';
   const [statusError, setStatusError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -122,14 +134,14 @@ export function CompactScreen() {
     return () => clearInterval(t);
   }, [liveSession]);
 
-  // Grow / shrink the window for preview + persona dropdown.
+  // Grow / shrink the window for preview + persona / model dropdown.
   useEffect(() => {
     let w = COMPACT_BASE_WIDTH;
     let h = COMPACT_BASE_HEIGHT;
     if (pending) { w = COMPACT_WITH_PREVIEW_WIDTH; h = COMPACT_WITH_PREVIEW_HEIGHT; }
-    if (personaOpen) h += PERSONA_DROPDOWN_HEIGHT;
+    if (personaOpen || modelOpen) h += PERSONA_DROPDOWN_HEIGHT;
     void window.druz9.windows.resize('compact', w, h);
-  }, [pending, personaOpen]);
+  }, [pending, personaOpen, modelOpen]);
 
   // Capture → instant send (input text rides along as the prompt).
   const capture = async (kind: 'screenshot_area' | 'screenshot_full') => {
@@ -241,6 +253,19 @@ export function CompactScreen() {
     [personaList],
   );
 
+  const modelDropdownItems: ModelDropdownItem[] = useMemo(
+    () =>
+      (config?.models ?? []).map((m) => ({
+        id: m.id,
+        displayName: m.displayName,
+        providerName: m.providerName,
+        latencyMs: m.typicalLatencyMs,
+        availableOnCurrentPlan: m.availableOnCurrentPlan,
+        supportsVision: m.supportsVision,
+      })),
+    [config],
+  );
+
   const activeModelId = selectedModel || config?.defaultModelId || '';
   const modelDisplayName = config?.models.find((m) => m.id === activeModelId)?.displayName ?? 'AI';
   // Map internal status to design-package StatusDot state.
@@ -325,11 +350,17 @@ export function CompactScreen() {
               WebkitAppRegion: 'no-drag',
             } as React.CSSProperties}
           >
-            <BrandMark
-              persona={activePersona.id}
-              background={activePersona.brand_gradient}
-              size={30}
-            />
+            <div
+              style={{
+                animation: streaming ? 'd9-brand-pulse 1.8s ease-in-out infinite' : undefined,
+              }}
+            >
+              <BrandMark
+                persona={activePersona.id}
+                background={activePersona.brand_gradient}
+                size={30}
+              />
+            </div>
 
             {/* Input pill */}
             <div
@@ -359,7 +390,13 @@ export function CompactScreen() {
                     clearPending();
                   }
                 }}
-                placeholder={pending ? 'Добавь вопрос к скриншоту…' : 'Спроси о коде или вопросе…'}
+                placeholder={
+                  streaming
+                    ? 'Думаю…'
+                    : pending
+                    ? 'Добавь вопрос к скриншоту…'
+                    : 'Спроси о коде или вопросе…'
+                }
                 style={{
                   flex: 1,
                   fontSize: 13,
@@ -399,67 +436,22 @@ export function CompactScreen() {
               WebkitAppRegion: 'no-drag',
             } as React.CSSProperties}
           >
-            {/* Model picker — design/windows.jsx ModelPill inline */}
-            <button
-              onClick={() => void window.druz9.ui.openProviderPicker()}
+            <ModelPill
+              label={modelDisplayName}
+              onClick={() => setOpenPicker((p) => (p === 'model' ? 'none' : 'model'))}
               title={config ? 'Выбрать модель' : 'Нужен вход'}
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 5,
-                fontSize: 11,
-                color: 'var(--d9-ink-dim)',
-                fontFamily: 'var(--d9-font-mono)',
-                letterSpacing: '-0.01em',
-                background: 'transparent',
-                border: 0,
-                padding: 0,
-                cursor: 'pointer',
-              }}
-            >
-              <span style={{
-                width: 5, height: 5, borderRadius: 1,
-                background: 'var(--d9-accent)',
-                boxShadow: '0 0 6px var(--d9-accent-glow)',
-              }} />
-              <span style={{ maxWidth: 180, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                {modelDisplayName}
-              </span>
-              <Caret />
-            </button>
+            />
 
             <Dot />
 
-            {/* Persona picker — design/windows.jsx PersonaChip compact */}
-            <button
-              onClick={() => setPersonaOpen((o) => !o)}
+            <PersonaChip
+              personaId={activePersona.id}
+              label={activePersona.label}
+              background={activePersona.brand_gradient}
+              onClick={() => setOpenPicker((p) => (p === 'persona' ? 'none' : 'persona'))}
               title={activePersona.hint}
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 6,
-                padding: '2px 8px 2px 4px',
-                height: 22,
-                borderRadius: 999,
-                background: 'oklch(1 0 0 / 0.06)',
-                border: '0.5px solid var(--d9-hairline)',
-                color: 'var(--d9-ink-dim)',
-                fontSize: 11,
-                fontWeight: 500,
-                letterSpacing: '-0.005em',
-                cursor: 'pointer',
-                fontFamily: 'inherit',
-              }}
-            >
-              <span style={{
-                width: 14, height: 14, borderRadius: '50%',
-                background: activePersona.brand_gradient,
-                boxShadow: 'inset 0 0.5px 0 rgba(255,255,255,0.3), 0 0 8px -2px currentColor',
-                flex: 'none',
-              }} />
-              <span>{activePersona.label}</span>
-              <Caret />
-            </button>
+              compact
+            />
 
             <Dot />
 
@@ -509,10 +501,9 @@ export function CompactScreen() {
 
             <span style={{ flex: 1 }} />
 
-            {/* Quota — rendered only once DesktopConfig ships counters.
-                Not-yet-implemented in the server config, so this stays
-                null for now and the slot is invisible. */}
-            {false && <QuotaMeterMini used={0} cap={0} />}
+            {quota && quota.requestsCap > 0 && (
+              <QuotaMeterMini used={quota.requestsUsed} cap={quota.requestsCap} />
+            )}
           </div>
         </div>
 
@@ -534,9 +525,35 @@ export function CompactScreen() {
             activeId={activePersona.id}
             onSelect={(id) => {
               setActivePersona(id);
-              setPersonaOpen(false);
+              setOpenPicker('none');
             }}
-            onClose={() => setPersonaOpen(false)}
+            onClose={() => setOpenPicker('none')}
+          />
+        </div>
+      )}
+
+      {/* Model dropdown — anchored under the model pill (left of center). */}
+      {modelOpen && (
+        <div
+          style={{
+            position: 'absolute',
+            top: COMPACT_BASE_HEIGHT + (pending ? 90 : 4),
+            left: 58,
+            zIndex: 30,
+          }}
+        >
+          <ModelDropdown
+            items={modelDropdownItems}
+            activeId={activeModelId}
+            onSelect={(id) => {
+              useSelectedModelStore.getState().setModel(id);
+              setOpenPicker('none');
+            }}
+            onClose={() => setOpenPicker('none')}
+            onManage={() => {
+              setOpenPicker('none');
+              void window.druz9.ui.openProviderPicker();
+            }}
           />
         </div>
       )}

@@ -25,6 +25,8 @@ export function ModelPill({ label, onClick, title, interactive = true, leading }
         alignItems: 'center',
         gap: 5,
         padding: 0,
+        border: 0,
+        background: 'transparent',
         fontSize: 11,
         color: 'var(--d9-ink-dim)',
         fontFamily: 'var(--d9-font-mono)',

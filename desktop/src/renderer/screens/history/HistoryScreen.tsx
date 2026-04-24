@@ -9,7 +9,8 @@ import { useEffect, useState } from 'react';
 
 import type { Conversation } from '@shared/types';
 
-import { BrandMark, IconClose, IconCopy, IconHistory } from '../../components/icons';
+import { IconClose, IconCopy, IconHistory } from '../../components/icons';
+import { BrandMark } from '../../components/d9';
 import { IconButton, Kbd } from '../../components/primitives';
 import { useConversationStore } from '../../stores/conversation';
 

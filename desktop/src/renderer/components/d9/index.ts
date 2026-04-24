@@ -18,6 +18,8 @@ export { WindowShell } from './WindowShell';
 export type { GlassIntensity } from './WindowShell';
 export { PersonaDropdown } from './PersonaDropdown';
 export type { PersonaDropdownItem } from './PersonaDropdown';
+export { ModelDropdown } from './ModelDropdown';
+export type { ModelDropdownItem } from './ModelDropdown';
 export { Tag } from './Tag';
 export type { TagTone } from './Tag';
 export {

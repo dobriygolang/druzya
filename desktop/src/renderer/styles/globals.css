@@ -58,6 +58,18 @@ button {
   50% { opacity: 0.4; }
 }
 
+/* BrandMark pulse while AI is streaming — subtle scale + glow ramp. */
+@keyframes d9-brand-pulse {
+  0%, 100% { filter: brightness(1) saturate(1); transform: scale(1); }
+  50%      { filter: brightness(1.15) saturate(1.2); transform: scale(1.04); }
+}
+
+/* Placeholder dots while Thinking — three-dot pulse in the input label. */
+@keyframes d9-thinking-dots {
+  0%, 100% { opacity: 0.35; }
+  50%      { opacity: 1; }
+}
+
 @keyframes d9-hairline-sweep {
   0%   { transform: translateX(-100%); }
   100% { transform: translateX(100%); }

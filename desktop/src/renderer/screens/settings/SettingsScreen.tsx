@@ -8,8 +8,9 @@ import { useEffect, useState } from 'react';
 
 import { HotkeyRecorder } from '../../components/HotkeyRecorder';
 import { useLocaleStore } from '../../i18n';
-import { BrandMark, IconKey, IconPalette, IconSettings, IconShield, IconSparkles } from '../../components/icons';
+import { IconKey, IconPalette, IconSettings, IconShield, IconSparkles } from '../../components/icons';
 import { Button, StatusDot } from '../../components/primitives';
+import { BrandMark } from '../../components/d9';
 import { useConfig } from '../../hooks/use-config';
 import { useAuthStore } from '../../stores/auth';
 import { useHotkeyOverridesStore } from '../../stores/hotkey-overrides';
@@ -56,26 +57,41 @@ export function SettingsScreen() {
 
   return (
     <div
+      className="d9-root"
       style={{
         display: 'flex',
         height: '100vh',
-        background: 'var(--d-bg-0)',
+        background: 'var(--d9-obsidian)',
+        color: 'var(--d9-ink)',
+        fontFamily: 'var(--d9-font-sans)',
       }}
     >
-      {/* Sidebar */}
+      {/* Sidebar — design/windows.jsx SettingsWindow sidebar (180px) */}
       <div
         style={{
           width: 200,
-          borderRight: '1px solid var(--d-line)',
+          flex: 'none',
+          borderRight: '0.5px solid var(--d9-hairline)',
           padding: '18px 10px',
           display: 'flex',
           flexDirection: 'column',
           gap: 14,
+          background: 'oklch(0.12 0.03 278)',
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '0 8px' }}>
-          <BrandMark size={26} />
-          <span style={{ fontSize: 13, fontWeight: 600 }}>Druz9</span>
+          <BrandMark size={28} />
+          <span
+            style={{
+              fontFamily: 'var(--d9-font-display)',
+              fontStyle: 'italic',
+              fontSize: 18,
+              letterSpacing: '-0.01em',
+              color: 'var(--d9-ink)',
+            }}
+          >
+            Druz9
+          </span>
         </div>
         <nav style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
           {tabs.map((t) => (
@@ -85,16 +101,20 @@ export function SettingsScreen() {
               style={{
                 display: 'flex',
                 alignItems: 'center',
-                gap: 8,
-                padding: '8px 10px',
+                gap: 10,
+                padding: '8px 12px',
                 fontSize: 12.5,
-                color: tab === t.id ? 'var(--d-text)' : 'var(--d-text-2)',
-                background: tab === t.id ? 'var(--d-accent-soft)' : 'transparent',
+                fontFamily: 'inherit',
+                fontWeight: 500,
+                letterSpacing: '-0.005em',
+                color: tab === t.id ? 'var(--d9-ink)' : 'var(--d9-ink-mute)',
+                background: tab === t.id ? 'oklch(1 0 0 / 0.06)' : 'transparent',
+                boxShadow: tab === t.id ? 'inset 0 0.5px 0 rgba(255,255,255,0.08)' : 'none',
                 border: 'none',
-                borderRadius: 6,
+                borderRadius: 7,
                 textAlign: 'left',
                 cursor: 'pointer',
-                transition: 'background 120ms, color 120ms',
+                transition: 'background 120ms var(--d9-ease), color 120ms var(--d9-ease)',
               }}
             >
               {t.icon}
@@ -105,7 +125,7 @@ export function SettingsScreen() {
       </div>
 
       {/* Content */}
-      <div style={{ flex: 1, overflowY: 'auto', padding: '28px 32px' }}>
+      <div style={{ flex: 1, overflowY: 'auto', padding: '28px 36px 40px' }}>
         {tab === 'general' && <GeneralTab session={session} quota={quota} />}
         {tab === 'hotkeys' && <HotkeysTab />}
         {tab === 'providers' && <ProvidersTab models={config?.models ?? []} />}
@@ -120,15 +140,38 @@ export function SettingsScreen() {
 
 function SectionTitle({ title, subtitle }: { title: string; subtitle?: string }) {
   return (
-    <div style={{ marginBottom: 18 }}>
-      <h2 style={{ fontSize: 18, margin: 0, fontFamily: 'var(--f-display)' }}>{title}</h2>
+    <div style={{ marginBottom: 22 }}>
+      <h2
+        style={{
+          fontFamily: 'var(--d9-font-display)',
+          fontStyle: 'italic',
+          fontSize: 26,
+          letterSpacing: '-0.01em',
+          margin: 0,
+          color: 'var(--d9-ink)',
+          lineHeight: 1.1,
+        }}
+      >
+        {title}
+      </h2>
       {subtitle && (
-        <p style={{ fontSize: 12.5, color: 'var(--d-text-3)', margin: '4px 0 0' }}>{subtitle}</p>
+        <p
+          style={{
+            fontSize: 12.5,
+            color: 'var(--d9-ink-mute)',
+            margin: '6px 0 0',
+            letterSpacing: '-0.005em',
+          }}
+        >
+          {subtitle}
+        </p>
       )}
     </div>
   );
 }
 
+// SettingRow — design/windows.jsx:446-456 SettingRow pattern.
+// 180px label column + 1fr control; hairline separator below.
 function Row({
   title,
   hint,
@@ -141,20 +184,40 @@ function Row({
   return (
     <div
       style={{
-        display: 'flex',
+        display: 'grid',
+        gridTemplateColumns: '200px 1fr',
         alignItems: 'center',
-        gap: 16,
-        padding: '14px 16px',
-        background: 'var(--d-bg-2)',
-        border: '1px solid var(--d-line)',
-        borderRadius: 10,
+        gap: 24,
+        padding: '14px 0',
+        borderBottom: '0.5px solid var(--d9-hairline)',
       }}
     >
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: 13, fontWeight: 500 }}>{title}</div>
-        {hint && <div style={{ fontSize: 11, color: 'var(--d-text-3)', marginTop: 2 }}>{hint}</div>}
+      <div>
+        <div
+          style={{
+            fontSize: 12.5,
+            color: 'var(--d9-ink)',
+            fontWeight: 500,
+            letterSpacing: '-0.005em',
+          }}
+        >
+          {title}
+        </div>
+        {hint && (
+          <div
+            style={{
+              fontSize: 11,
+              color: 'var(--d9-ink-ghost)',
+              marginTop: 3,
+              lineHeight: 1.4,
+              letterSpacing: '-0.002em',
+            }}
+          >
+            {hint}
+          </div>
+        )}
       </div>
-      {control}
+      <div style={{ display: 'flex', justifyContent: 'flex-end' }}>{control}</div>
     </div>
   );
 }
@@ -170,7 +233,7 @@ function GeneralTab({
   return (
     <>
       <SectionTitle title="Общее" subtitle="Аккаунт и план" />
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+      <div style={{ display: 'flex', flexDirection: 'column' }}>
         <Row
           title={session ? 'Аккаунт Druz9' : 'Не выполнен вход'}
           hint={session ? session.userId : 'Войди через онбординг'}
@@ -191,11 +254,8 @@ function GeneralTab({
           }
         />
         <PlanRow quota={quota} />
-        <Row
-          title="Stealth при демонстрации экрана"
-          hint="Скрывает окно от Zoom, Meet и Chrome."
-          control={<StatusDot state="ready" size={8} />}
-        />
+        <StealthRow />
+
         <LocaleRow />
         <MasqueradeRow />
       </div>
@@ -234,6 +294,79 @@ function PlanRow({ quota }: { quota: ReturnType<typeof useQuotaStore.getState>['
   );
 }
 
+/**
+ * StealthRow — toggles setContentProtection on compact + expanded windows.
+ * Stealth on (default): окна невидимы в Zoom/Meet/screenshot.
+ * Stealth off: можно заскринить для отладки / чтобы прислать разработчику.
+ */
+function StealthRow() {
+  const [on, setOn] = useState(true);
+  return (
+    <Row
+      title="Stealth при демонстрации экрана"
+      hint={
+        on
+          ? 'Скрывает окно от Zoom, Meet, Chrome и системных скриншотов. Выключи временно, чтобы заскринить UI для отладки.'
+          : 'ВНИМАНИЕ: окно видно при демонстрации и на скриншотах. Включи обратно после отладки.'
+      }
+      control={
+        <Toggle
+          on={on}
+          onChange={async (next) => {
+            setOn(next);
+            try {
+              await window.druz9.windows.toggleStealth(next);
+            } catch {
+              // Revert UI if IPC fails.
+              setOn(!next);
+            }
+          }}
+        />
+      }
+    />
+  );
+}
+
+/**
+ * Toggle — d9-style pill switch. design/windows.jsx:485-501 Toggle mock.
+ */
+function Toggle({ on, onChange }: { on: boolean; onChange: (next: boolean) => void }) {
+  return (
+    <button
+      type="button"
+      onClick={() => onChange(!on)}
+      style={{
+        width: 36,
+        height: 20,
+        borderRadius: 10,
+        position: 'relative',
+        background: on ? 'var(--d9-accent)' : 'oklch(1 0 0 / 0.1)',
+        boxShadow: on ? '0 0 12px -2px var(--d9-accent-glow)' : 'none',
+        border: 0,
+        padding: 0,
+        cursor: 'pointer',
+        transition: 'background 120ms var(--d9-ease)',
+        flex: 'none',
+      }}
+      aria-pressed={on}
+    >
+      <span
+        style={{
+          position: 'absolute',
+          top: 2,
+          left: on ? 18 : 2,
+          width: 16,
+          height: 16,
+          borderRadius: '50%',
+          background: 'white',
+          boxShadow: '0 1px 2px rgba(0,0,0,0.25)',
+          transition: 'left 120ms var(--d9-ease)',
+        }}
+      />
+    </button>
+  );
+}
+
 function LocaleRow() {
   const locale = useLocaleStore((s) => s.locale);
   const setLocale = useLocaleStore((s) => s.setLocale);
@@ -245,15 +378,7 @@ function LocaleRow() {
         <select
           value={locale}
           onChange={(e) => setLocale(e.target.value as 'ru' | 'en')}
-          style={{
-            height: 28,
-            padding: '0 10px',
-            fontSize: 12,
-            color: 'var(--d-text)',
-            background: 'var(--d-bg-1)',
-            border: '1px solid var(--d-line-strong)',
-            borderRadius: 6,
-          }}
+          style={selectStyle}
         >
           <option value="ru">Русский</option>
           <option value="en">English</option>
@@ -295,22 +420,10 @@ function MasqueradeRow() {
   if (presets.length === 0) return null;
 
   return (
-    <div
-      style={{
-        padding: '14px 16px',
-        background: 'var(--d-bg-2)',
-        border: '1px solid var(--d-line)',
-        borderRadius: 10,
-      }}
-    >
-      <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-        <div style={{ flex: 1 }}>
-          <div style={{ fontSize: 13, fontWeight: 500 }}>Маскировка</div>
-          <div style={{ fontSize: 11, color: 'var(--d-text-3)', marginTop: 2 }}>
-            Меняет иконку в Dock и заголовки окон. Имя в Activity Monitor фиксируется при сборке —
-            выбери другой билд (Notes.app, Xcode.app), если нужно полное переименование.
-          </div>
-        </div>
+    <Row
+      title="Маскировка"
+      hint="Меняет иконку в Dock и заголовки окон. Имя в Activity Monitor фиксируется при сборке — выбери другой билд (Notes.app, Xcode.app), если нужно полное переименование."
+      control={
         <select
           value={current}
           onChange={async (e) => {
@@ -318,15 +431,7 @@ function MasqueradeRow() {
             setCurrent(next);
             await window.druz9.masquerade.apply(next);
           }}
-          style={{
-            height: 28,
-            padding: '0 10px',
-            fontSize: 12,
-            color: 'var(--d-text)',
-            background: 'var(--d-bg-1)',
-            border: '1px solid var(--d-line-strong)',
-            borderRadius: 6,
-          }}
+          style={selectStyle}
         >
           {presets.map((p) => (
             <option key={p.id} value={p.id}>
@@ -334,10 +439,24 @@ function MasqueradeRow() {
             </option>
           ))}
         </select>
-      </div>
-    </div>
+      }
+    />
   );
 }
+
+// Consistent select styling — used across General/Masquerade/Locale rows.
+const selectStyle: React.CSSProperties = {
+  height: 30,
+  padding: '0 12px',
+  fontSize: 12,
+  fontFamily: 'inherit',
+  color: 'var(--d9-ink)',
+  background: 'var(--d9-slate)',
+  border: '0.5px solid var(--d9-hairline)',
+  borderRadius: 8,
+  outline: 'none',
+  cursor: 'pointer',
+};
 
 function HotkeysTab() {
   const { config } = useConfig();
@@ -386,7 +505,7 @@ function HotkeysTab() {
         title="Горячие клавиши"
         subtitle="Клавиши работают в любом приложении. Клик по сочетанию — перезапись."
       />
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+      <div style={{ display: 'flex', flexDirection: 'column' }}>
         {defaults.map((b) => {
           const override = overrides[b.action];
           const accelerator = override ?? b.accelerator;
@@ -419,10 +538,19 @@ function ProvidersTab({ models }: { models: ProviderModel[] }) {
         subtitle="Каталог моделей, доступных через Druz9 Cloud."
       />
 
-      <div style={{ fontSize: 11, color: 'var(--d-text-3)', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 10, fontFamily: 'var(--f-mono)' }}>
+      <div
+        style={{
+          fontSize: 10,
+          color: 'var(--d9-ink-ghost)',
+          textTransform: 'uppercase',
+          letterSpacing: '0.08em',
+          marginBottom: 12,
+          fontFamily: 'var(--d9-font-mono)',
+        }}
+      >
         Каталог моделей
       </div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+      <div style={{ display: 'flex', flexDirection: 'column' }}>
         {models.map((m) => (
           <div
             key={m.id}
@@ -430,16 +558,28 @@ function ProvidersTab({ models }: { models: ProviderModel[] }) {
               display: 'flex',
               alignItems: 'center',
               gap: 14,
-              padding: '12px 16px',
-              background: 'var(--d-bg-2)',
-              border: '1px solid var(--d-line)',
-              borderRadius: 10,
+              padding: '14px 0',
+              borderBottom: '0.5px solid var(--d9-hairline)',
             }}
           >
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: 13, fontWeight: 500 }}>
+              <div
+                style={{
+                  fontSize: 12.5,
+                  fontWeight: 500,
+                  color: 'var(--d9-ink)',
+                  letterSpacing: '-0.005em',
+                }}
+              >
                 {m.displayName}{' '}
-                <span style={{ color: 'var(--d-text-3)', fontSize: 11, fontFamily: 'var(--f-mono)' }}>
+                <span
+                  style={{
+                    color: 'var(--d9-ink-ghost)',
+                    fontSize: 11,
+                    fontFamily: 'var(--d9-font-mono)',
+                    marginLeft: 4,
+                  }}
+                >
                   {m.id}
                 </span>
               </div>
@@ -449,8 +589,9 @@ function ProvidersTab({ models }: { models: ProviderModel[] }) {
                   alignItems: 'center',
                   gap: 6,
                   fontSize: 11,
-                  color: 'var(--d-text-3)',
+                  color: 'var(--d9-ink-mute)',
                   marginTop: 3,
+                  fontFamily: 'var(--d9-font-mono)',
                 }}
               >
                 <span>{m.providerName}</span>
@@ -467,14 +608,20 @@ function ProvidersTab({ models }: { models: ProviderModel[] }) {
             <div
               style={{
                 fontSize: 10,
-                fontFamily: 'var(--f-mono)',
+                fontFamily: 'var(--d9-font-mono)',
                 textTransform: 'uppercase',
-                padding: '2px 8px',
-                borderRadius: 10,
+                letterSpacing: '0.06em',
+                padding: '3px 9px',
+                borderRadius: 999,
                 background: m.availableOnCurrentPlan
-                  ? 'rgba(52, 199, 89, 0.12)'
-                  : 'var(--d-accent-2-soft)',
-                color: m.availableOnCurrentPlan ? 'var(--d-green)' : 'var(--d-accent-2)',
+                  ? 'oklch(0.8 0.17 150 / 0.12)'
+                  : 'var(--d9-accent-glow)',
+                color: m.availableOnCurrentPlan ? 'var(--d9-ok)' : 'var(--d9-accent-hi)',
+                border: `0.5px solid ${
+                  m.availableOnCurrentPlan
+                    ? 'oklch(0.8 0.17 150 / 0.28)'
+                    : 'oklch(0.72 0.23 300 / 0.35)'
+                }`,
               }}
             >
               {m.availableOnCurrentPlan ? 'доступна' : 'pro'}
@@ -506,71 +653,56 @@ function AppearanceTab() {
         title="Внешний вид"
         subtitle="Прозрачность окон Druz9 и размер окна чата"
       />
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-        <div>
-          <div
-            style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'baseline',
-              marginBottom: 8,
-            }}
-          >
-            <div style={{ fontSize: 13, color: 'var(--d-text)' }}>
-              Прозрачность окон Druz9
-            </div>
-            <div style={{ fontFamily: 'var(--f-mono)', fontSize: 11, color: 'var(--d-text-2)' }}>
+      <Row
+        title="Прозрачность окон"
+        hint="0% — виден blur рабочего стола (macOS vibrancy). 100% — плотный фон. Применяется к окнам чата и настроек в реальном времени."
+        control={
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 260 }}>
+            <input
+              type="range"
+              min={0}
+              max={100}
+              step={1}
+              value={opacity}
+              onChange={(e) => void setOpacity(Number(e.target.value))}
+              style={{
+                flex: 1,
+                accentColor: 'var(--d9-accent)',
+                cursor: 'pointer',
+              }}
+            />
+            <span
+              style={{
+                fontFamily: 'var(--d9-font-mono)',
+                fontSize: 11,
+                color: 'var(--d9-ink-mute)',
+                width: 36,
+                textAlign: 'right',
+                fontVariantNumeric: 'tabular-nums',
+              }}
+            >
               {opacity}%
-            </div>
+            </span>
           </div>
-          <input
-            type="range"
-            min={0}
-            max={100}
-            step={1}
-            value={opacity}
-            onChange={(e) => {
-              const v = Number(e.target.value);
-              // Fire-and-forget; the store handles persistence + error
-              // recovery. We update UI state immediately so the slider
-              // doesn't jitter while the IPC round-trip happens.
-              void setOpacity(v);
-            }}
-            style={{ width: '100%', accentColor: 'var(--d-accent)' }}
-          />
-          <div
+        }
+      />
+      <Row
+        title="Размер окна"
+        hint="Окно чата (expanded) свободно ресайзится — тяни за любой край. Последний размер запоминается и восстанавливается при следующем открытии."
+        control={
+          <span
             style={{
-              marginTop: 6,
-              fontSize: 11,
-              color: 'var(--d-text-3)',
-              lineHeight: 1.5,
+              fontFamily: 'var(--d9-font-mono)',
+              fontSize: 10.5,
+              color: 'var(--d9-ink-ghost)',
+              letterSpacing: '0.04em',
+              textTransform: 'uppercase',
             }}
           >
-            0% — полностью прозрачно (виден blur рабочего стола · macOS vibrancy).
-            100% — плотный фон. Применяется к окнам чата (expanded) и настроек
-            (этому) в реальном времени.
-          </div>
-        </div>
-
-        <div
-          style={{
-            padding: '12px 14px',
-            background: 'var(--d-bg-2)',
-            border: '1px solid var(--d-line)',
-            borderRadius: 8,
-            fontSize: 12,
-            color: 'var(--d-text-2)',
-            lineHeight: 1.5,
-          }}
-        >
-          <div style={{ fontWeight: 500, marginBottom: 4, color: 'var(--d-text)' }}>
-            Размер окна
-          </div>
-          Окно чата (expanded) свободно ресайзится — тяни за любой край.
-          Последний размер запоминается и восстанавливается при следующем
-          открытии.
-        </div>
-      </div>
+            авто
+          </span>
+        }
+      />
     </>
   );
 }
@@ -579,7 +711,7 @@ function AboutTab() {
   return (
     <>
       <SectionTitle title="О программе" subtitle="Druz9 Copilot" />
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+      <div style={{ display: 'flex', flexDirection: 'column' }}>
         <Row title="Версия" control={<span style={{ fontFamily: 'var(--f-mono)' }}>0.1.0</span>} />
         <UpdateRow />
         <Row

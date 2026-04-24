@@ -47,8 +47,12 @@ interface KbdsProps {
 }
 
 export function Kbds({ keys, size = 'md', sep = '+' }: KbdsProps) {
+  // When sep is empty (mac-chord style like ⌘⏎), the outer gap alone decides
+  // how tight the chips sit. 3px reads as "grouped but legible" and matches
+  // the spacing shown in design/windows.jsx screenshots.
+  const outerGap = sep ? 2 : 6;
   return (
-    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 2 }}>
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: outerGap }}>
       {keys.map((k, i) => (
         <span key={`${k}-${i}`} style={{ display: 'inline-flex', alignItems: 'center', gap: 2 }}>
           {i > 0 && sep && (

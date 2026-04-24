@@ -10,13 +10,13 @@
 import { useEffect, useState } from 'react';
 
 import {
-  BrandMark,
   IconCheck,
   IconKey,
   IconMic,
   IconShield,
   IconSparkles,
 } from '../../components/icons';
+import { BrandMark } from '../../components/d9';
 import { Button, Kbd, StatusDot } from '../../components/primitives';
 import type { PermissionKind, PermissionState } from '@shared/ipc';
 import { useAuthStore } from '../../stores/auth';
@@ -61,12 +61,14 @@ export function OnboardingScreen() {
 
   return (
     <div
+      className="d9-root"
       style={{
         height: '100vh',
         display: 'flex',
         flexDirection: 'column',
-        background: 'var(--d-bg-0)',
-        color: 'var(--d-text)',
+        background: 'var(--d9-obsidian)',
+        color: 'var(--d9-ink)',
+        fontFamily: 'var(--d9-font-sans)',
       }}
     >
       <StepDots current={step} />

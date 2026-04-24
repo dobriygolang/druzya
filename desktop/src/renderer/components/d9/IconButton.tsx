@@ -70,6 +70,8 @@ export function IconButton({
         width: size,
         height: size,
         borderRadius: 8,
+        border: 0,
+        padding: 0,
         display: 'inline-flex',
         alignItems: 'center',
         justifyContent: 'center',

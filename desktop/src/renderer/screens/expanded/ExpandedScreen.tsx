@@ -24,6 +24,7 @@ import {
   IconButton,
   Kbds,
   ModelPill,
+  QuotaMeterMini,
   StatusDot,
   StreamingHairline,
 } from '../../components/d9';
@@ -34,6 +35,7 @@ import { exportConversationAsMarkdown } from '../../lib/export-markdown';
 import { useAppearanceStore, sliderToAlpha } from '../../stores/appearance';
 import { useConversationStore, type UIMessage } from '../../stores/conversation';
 import { usePersonaStore } from '../../stores/persona';
+import { useQuotaStore } from '../../stores/quota';
 import { useSelectedModelStore } from '../../stores/selected-model';
 import { useSessionStore } from '../../stores/session';
 import { SummaryModal } from '../summary/SummaryModal';
@@ -53,6 +55,10 @@ export function ExpandedScreen() {
   const activePersona = usePersonaStore((s) => s.active);
   const personaBootstrap = usePersonaStore((s) => s.bootstrap);
   useEffect(() => { void personaBootstrap(); }, [personaBootstrap]);
+
+  const quota = useQuotaStore((s) => s.quota);
+  const refreshQuota = useQuotaStore((s) => s.refresh);
+  useEffect(() => { void refreshQuota(); }, [refreshQuota]);
 
   // Appearance — bootstrap once + re-subscribe if remounted. Alpha value
   // drives the rgba scrim behind the glass.
@@ -375,11 +381,15 @@ export function ExpandedScreen() {
           <Kbds keys={['⌘', '⇧', 'S']} size="sm" sep="" />
           <span>screenshot</span>
           <span style={{ flex: 1 }} />
-          {streaming && (
+          {streaming ? (
             <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
               <StatusDot state="streaming" size={6} />
               streaming
             </span>
+          ) : (
+            quota && quota.requestsCap > 0 && (
+              <QuotaMeterMini used={quota.requestsUsed} cap={quota.requestsCap} />
+            )
           )}
         </div>
       </div>

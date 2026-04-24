@@ -11,6 +11,8 @@
 
 import { useEffect, useRef, useState } from 'react';
 
+import { Kbd } from '../../components/d9';
+
 interface Rect {
   x: number;
   y: number;
@@ -74,24 +76,24 @@ export function AreaOverlayScreen() {
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
       onContextMenu={onContextMenu}
+      className="d9-root"
       style={{
         position: 'fixed',
         inset: 0,
         cursor: 'crosshair',
-        // A very faint backdrop makes the overlay's presence obvious
-        // without obscuring the underlying screen. The "hole" over the
-        // selection is rendered via a clip-path on the backdrop layer.
         background: 'transparent',
         outline: 'none',
         userSelect: 'none',
       }}
     >
-      {/* Dimmed backdrop with a cut-out over the selection */}
+      {/* Dimmed backdrop — design/windows.jsx AreaOverlay scrim */}
       <div
         style={{
           position: 'absolute',
           inset: 0,
-          background: 'rgba(0, 0, 0, 0.35)',
+          background: 'oklch(0.05 0.01 280 / 0.55)',
+          backdropFilter: 'saturate(0.7)',
+          WebkitBackdropFilter: 'saturate(0.7)',
           clipPath: rect
             ? `polygon(
                 0 0, 100% 0, 100% 100%, 0 100%, 0 0,
@@ -105,7 +107,7 @@ export function AreaOverlayScreen() {
         }}
       />
 
-      {/* Selection outline */}
+      {/* Selection outline + corner handles */}
       {rect && (
         <div
           style={{
@@ -114,53 +116,92 @@ export function AreaOverlayScreen() {
             top: rect.y,
             width: rect.width,
             height: rect.height,
-            border: '1.5px solid var(--d-accent)',
-            boxShadow: '0 0 0 1px rgba(124, 92, 255, 0.25)',
+            border: '1px solid var(--d9-accent-hi)',
+            boxShadow: '0 0 24px -2px var(--d9-accent-glow)',
             pointerEvents: 'none',
-          }}
-        />
-      )}
-
-      {/* Size readout near cursor */}
-      {rect && (
-        <div
-          style={{
-            position: 'absolute',
-            left: rect.x + rect.width + 8,
-            top: rect.y + rect.height + 8,
-            padding: '4px 8px',
-            background: 'var(--d-bg-1)',
-            color: 'var(--d-text)',
-            border: '1px solid var(--d-line)',
-            borderRadius: 4,
-            fontSize: 11,
-            fontFamily: 'var(--f-mono)',
-            pointerEvents: 'none',
-            boxShadow: 'var(--s-window)',
           }}
         >
-          {rect.width}×{rect.height}
+          {[[0, 0], [1, 0], [0, 1], [1, 1]].map(([x, y], i) => (
+            <span
+              key={i}
+              style={{
+                position: 'absolute',
+                left: x ? 'auto' : -3,
+                right: x ? -3 : 'auto',
+                top: y ? 'auto' : -3,
+                bottom: y ? -3 : 'auto',
+                width: 7,
+                height: 7,
+                background: 'var(--d9-ink)',
+                border: '1px solid var(--d9-accent-hi)',
+              }}
+            />
+          ))}
+
+          {/* Size readout above selection */}
+          <span
+            style={{
+              position: 'absolute',
+              top: -26,
+              left: 0,
+              fontFamily: 'var(--d9-font-mono)',
+              fontSize: 10.5,
+              color: 'var(--d9-ink)',
+              background: 'oklch(0.12 0.04 280 / 0.85)',
+              padding: '3px 6px',
+              borderRadius: 4,
+              letterSpacing: '0.02em',
+              border: '0.5px solid var(--d9-hairline-b)',
+            }}
+          >
+            {rect.width} × {rect.height}
+          </span>
         </div>
       )}
 
-      {/* Hint bar */}
+      {/* Hint bar — design/windows.jsx AreaOverlay bottom pill */}
       <div
         style={{
           position: 'absolute',
           left: '50%',
-          top: 24,
+          bottom: 24,
           transform: 'translateX(-50%)',
-          padding: '6px 12px',
-          background: 'var(--d-bg-1)',
-          border: '1px solid var(--d-line)',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 12,
+          padding: '8px 14px',
           borderRadius: 999,
-          fontSize: 11,
-          color: 'var(--d-text-2)',
-          boxShadow: 'var(--s-window)',
+          background: 'oklch(0.12 0.04 280 / 0.85)',
+          backdropFilter: 'var(--d9-glass-blur)',
+          WebkitBackdropFilter: 'var(--d9-glass-blur)' as unknown as string,
+          boxShadow: 'var(--d9-shadow-pop)',
+          border: '0.5px solid var(--d9-hairline-b)',
+          fontSize: 12,
+          color: 'var(--d9-ink-dim)',
+          letterSpacing: '-0.005em',
           pointerEvents: 'none',
-        }}
+        } as React.CSSProperties}
       >
-        Выдели область · <span style={{ fontFamily: 'var(--f-mono)' }}>Esc</span> — отмена
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+          <span
+            style={{
+              width: 5,
+              height: 5,
+              borderRadius: '50%',
+              background: 'var(--d9-accent-hi)',
+              boxShadow: '0 0 6px var(--d9-accent-glow)',
+            }}
+          />
+          Выдели область
+        </span>
+        <span style={{ width: 1, height: 12, background: 'var(--d9-hairline)' }} />
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+          <Kbd size="sm">⏎</Kbd> отправить
+        </span>
+        <span style={{ width: 1, height: 12, background: 'var(--d9-hairline)' }} />
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+          <Kbd size="sm">Esc</Kbd> отмена
+        </span>
       </div>
     </div>
   );
