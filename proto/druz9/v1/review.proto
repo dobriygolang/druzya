@@ -1,0 +1,83 @@
+// review.proto — Connect-RPC contract for the `review` (Mock-Interview
+// Review) bounded context.
+//
+// Owns the `reviews` table (formerly slot_reviews — see migration 00046).
+// Slot service consumes review aggregates via the Go-side
+// InterviewerStatsProvider interface (wired in cmd/monolith); cross-service
+// state stays out of the SQL layer.
+syntax = "proto3";
+package druz9.v1;
+
+import "google/api/annotations.proto";
+import "google/protobuf/timestamp.proto";
+
+option go_package = "druz9/shared/generated/pb/druz9/v1;druz9v1";
+
+// Review mirrors a `reviews` row.
+message Review {
+  string id = 1;             // booking_id (PK in current schema)
+  string booking_id = 2;
+  string reviewer_id = 3;
+  string interviewer_id = 4;
+  // rating ∈ [1, 5].
+  int32 rating = 5;
+  string feedback = 6;
+  google.protobuf.Timestamp created_at = 7;
+  google.protobuf.Timestamp updated_at = 8;
+}
+
+// ReviewList — vanguard wrapper.
+message ReviewList {
+  repeated Review items = 1;
+}
+
+// CreateReviewRequest — caller is identified via bearer token.
+message CreateReviewRequest {
+  string booking_id = 1;
+  int32 rating = 2;
+  string feedback = 3;
+}
+
+// ListReviewsByInterviewerRequest — public, read-only listing for the
+// interviewer's profile card.
+message ListReviewsByInterviewerRequest {
+  string interviewer_id = 1;
+  int32 limit = 2;
+}
+
+// InterviewerStats is the aggregate consumed by the slot service when
+// rendering SlotInterviewer.avg_rating. Exposed via Connect for cross-
+// service callers; the monolith wires it directly via Go interface.
+message InterviewerStats {
+  string interviewer_id = 1;
+  float avg_rating = 2;
+  int32 reviews_count = 3;
+}
+
+message GetInterviewerStatsRequest {
+  string interviewer_id = 1;
+}
+
+service ReviewService {
+  // CreateReview persists a new review for a completed booking owned by
+  // the authenticated caller. One review per booking — repeats fail with
+  // ALREADY_EXISTS.
+  rpc CreateReview(CreateReviewRequest) returns (Review) {
+    option (google.api.http) = {
+      post: "/api/v1/review"
+      body: "*"
+    };
+  }
+
+  // ListReviewsByInterviewer returns the latest reviews for the given
+  // interviewer (default limit applied server-side). Public — no auth.
+  rpc ListReviewsByInterviewer(ListReviewsByInterviewerRequest) returns (ReviewList) {
+    option (google.api.http) = {get: "/api/v1/review"};
+  }
+
+  // GetInterviewerStats returns avg_rating + reviews_count for the
+  // interviewer. Used by slot.ListSlots to hydrate SlotInterviewer.
+  rpc GetInterviewerStats(GetInterviewerStatsRequest) returns (InterviewerStats) {
+    option (google.api.http) = {get: "/api/v1/review/stats/{interviewer_id}"};
+  }
+}
