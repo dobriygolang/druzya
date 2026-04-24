@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"druz9/auth/domain"
+	sharedratelimit "druz9/shared/pkg/ratelimit"
 
 	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
@@ -129,35 +130,27 @@ func (r *RedisOAuthStateStore) ConsumeState(ctx context.Context, state string) (
 	return v, nil
 }
 
-// RedisRateLimiter is a fixed-window counter keyed per caller+endpoint.
+// RedisRateLimiter — тонкая обёртка над sharedratelimit.RedisFixedWindow,
+// которая превращает результат в (remaining, retryAfterSec, err) с
+// domain.ErrRateLimited для интеграции с auth/app.
 type RedisRateLimiter struct {
-	rdb *redis.Client
+	inner *sharedratelimit.RedisFixedWindow
 }
 
 // NewRedisRateLimiter constructs the limiter over a shared client.
 func NewRedisRateLimiter(rdb *redis.Client) *RedisRateLimiter {
-	return &RedisRateLimiter{rdb: rdb}
+	return &RedisRateLimiter{inner: sharedratelimit.NewRedisFixedWindow(rdb)}
 }
 
 // Allow increments the counter and returns (remaining, retryAfterSec, err).
 // Returns domain.ErrRateLimited wrapped when quota is exhausted.
 func (r *RedisRateLimiter) Allow(ctx context.Context, key string, limit int, window time.Duration) (int, int, error) {
-	n, err := r.rdb.Incr(ctx, key).Result()
+	res, err := r.inner.Allow(ctx, key, limit, window)
 	if err != nil {
-		return 0, 0, fmt.Errorf("auth.RedisRateLimiter.Allow: incr: %w", err)
+		return 0, 0, fmt.Errorf("auth.RedisRateLimiter.Allow: %w", err)
 	}
-	if n == 1 {
-		// First hit of the window — attach the TTL.
-		if err := r.rdb.Expire(ctx, key, window).Err(); err != nil {
-			return 0, 0, fmt.Errorf("auth.RedisRateLimiter.Allow: expire: %w", err)
-		}
+	if !res.Allowed {
+		return 0, res.RetryAfterSec, fmt.Errorf("auth.RedisRateLimiter.Allow: %w", domain.ErrRateLimited)
 	}
-	if int(n) > limit {
-		ttl, err := r.rdb.TTL(ctx, key).Result()
-		if err != nil || ttl < 0 {
-			ttl = window
-		}
-		return 0, int(ttl.Seconds()), fmt.Errorf("auth.RedisRateLimiter.Allow: %w", domain.ErrRateLimited)
-	}
-	return limit - int(n), 0, nil
+	return res.Remaining, 0, nil
 }
