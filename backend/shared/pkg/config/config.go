@@ -60,6 +60,20 @@ type Config struct {
 	// Empty defaults to "groq,cerebras,openrouter" — Mistral omitted
 	// unless the operator explicitly opts in, because its free tier
 	// has tighter limits than Groq/Cerebras.
+	Subscription struct {
+		// Boosty — long-lived creator access_token (получен вручную в личном
+		// кабинете boosty.to/{creator}/settings/apps и положен в env). Если
+		// пусто — sync worker не стартует, tier выставляется только через
+		// admin-endpoint.
+		BoostyAccessToken string
+		BoostyBlogSlug    string // URL-slug блога (boosty.to/{this_slug})
+		// TierMapping — формат "Поддержка:seeker,Вознёсшийся:ascendant".
+		// Ключ — exact имя уровня у Boosty (Cyrillic sensitive), значение —
+		// наш tier free|seeker|ascendant. Пустое → sync не сможет маппить
+		// tier'ы и будет все их пропускать с bad_tier-инкрементом.
+		BoostyTierMapping string
+	}
+
 	LLMChain struct {
 		GroqAPIKey            string
 		CerebrasAPIKey        string
@@ -143,6 +157,9 @@ func Load() (Config, error) {
 	c.LLMChain.CloudflareAIAccountID = env("CLOUDFLARE_AI_ACCOUNT_ID", "")
 	c.LLMChain.CloudflareAIToken = env("CLOUDFLARE_AI_TOKEN", "")
 	c.LLMChain.DeepSeekAPIKey = env("DEEPSEEK_API_KEY", "")
+	c.Subscription.BoostyAccessToken = env("BOOSTY_ACCESS_TOKEN", "")
+	c.Subscription.BoostyBlogSlug = env("BOOSTY_BLOG_SLUG", "")
+	c.Subscription.BoostyTierMapping = env("BOOSTY_TIER_MAPPING", "")
 	c.LLMChain.OllamaHost = env("OLLAMA_HOST", "")
 	c.LLMChain.ChainOrder = env("LLM_CHAIN_ORDER", "groq,cerebras,openrouter")
 

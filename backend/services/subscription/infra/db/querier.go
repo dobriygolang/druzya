@@ -11,14 +11,25 @@ import (
 )
 
 type Querier interface {
+	// Reverse lookup для sync'а: Boosty response → ищем нашего user_id по
+	// (provider='boosty', external_id=username).
+	FindUserByExternalID(ctx context.Context, arg FindUserByExternalIDParams) (pgtype.UUID, error)
+	GetProviderLink(ctx context.Context, arg GetProviderLinkParams) (ProviderLink, error)
 	// subscription queries, consumed by sqlc → services/subscription/infra/db/.
 	// Все запросы работают с existing таблицей `subscriptions` (00008 + 00019).
 	GetSubscription(ctx context.Context, userID pgtype.UUID) (GetSubscriptionRow, error)
+	// Админский dashboard + ручная sync-операция. Итерация постраничная.
+	ListLinksByProvider(ctx context.Context, arg ListLinksByProviderParams) ([]ProviderLink, error)
 	// Hot path для admin-dashboard. Partial index idx_subscriptions_plan_active
 	// ускоряет до ≤10ms на сотнях тысяч строк.
 	ListSubscriptionsByPlan(ctx context.Context, arg ListSubscriptionsByPlanParams) ([]ListSubscriptionsByPlanRow, error)
 	// Batch-update всех истёкших подписок (grace_until < $1). Cron раз в час.
 	MarkExpiredSubscriptions(ctx context.Context, graceUntil pgtype.Timestamptz) (int64, error)
+	// provider_links queries — линкерная таблица user_id ↔ external provider
+	// account. Отдельный файл чтобы sqlc-package subscription не разрастался.
+	// Идемпотентная запись линка. external_tier и verified_at обновляются на
+	// каждом sync (new data = more recent truth); created_at сохраняется.
+	UpsertProviderLink(ctx context.Context, arg UpsertProviderLinkParams) error
 	// Идемпотентная запись. Используется Admin SetTier и (в M3) Boosty sync.
 	// Ставим все колонки явно, чтобы NULL не перезаписывал случайно (например
 	// provider_sub_id при ручной admin-выдаче).
