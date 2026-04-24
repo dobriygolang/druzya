@@ -72,6 +72,31 @@ for i in $(seq 1 30); do
     sleep 2
 done
 
+# Ollama sidecar (self-host LLM floor-fallback, Qwen 2.5 3B + bge-small
+# для semantic cache). Поднимаем ДО api — драйвер в llmchain активируется
+# только если в .env.prod задан OLLAMA_HOST=http://ollama:11434. Если
+# Ollama не стартанула — api всё равно работает на cloud-провайдерах
+# (Groq/Cerebras/Mistral/OpenRouter), просто без free-tier floor.
+log "starting Ollama sidecar (LLM self-host floor-fallback)"
+$COMPOSE up -d ollama || log "WARN: ollama failed to start — cloud-only chain"
+
+log "waiting for Ollama healthcheck (max 120s)"
+for i in $(seq 1 60); do
+    ol_id=$($COMPOSE ps -q ollama 2>/dev/null || true)
+    if [ -n "$ol_id" ] && docker inspect --format='{{.State.Health.Status}}' "$ol_id" 2>/dev/null | grep -q healthy; then
+        log "ollama healthy (attempt $i) — pulling models (one-shot)"
+        # ollama-init — restart=no, завершается после pull'а. Повторный
+        # запуск безопасен (pull инкрементальный). Первый деплой ~5-10 мин
+        # на 2.6GB моделей, следующие — быстрые (volume кеширует).
+        $COMPOSE run --rm ollama-init || log "WARN: model pull failed — retry next deploy"
+        break
+    fi
+    if [ "$i" = "60" ]; then
+        log "WARN: ollama not healthy after 120s — пропускаем init, chain упадёт на cloud"
+    fi
+    sleep 2
+done
+
 log "applying migrations"
 $COMPOSE run --rm migrate || { echo "migrations FAILED"; exit 1; }
 
