@@ -79,14 +79,23 @@ func InitTracer(serviceName, version string) (func(), error) {
 		return nil, fmt.Errorf("otel: create otlp http exporter: %w", err)
 	}
 
-	res, err := resource.Merge(
-		resource.Default(),
-		resource.NewWithAttributes(
-			semconv.SchemaURL,
+	// resource.Default() в новых версиях SDK (1.37+) использует SchemaURL
+	// v1.37.0, а наш semconv импорт pin'нут на v1.26.0 — merge падает с
+	// "conflicting Schema URL". Используем resource.New с явным SchemaURL
+	// и детекторами; они merge'атся правильно относительно заданной схемы.
+	ctxRes, cancelRes := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancelRes()
+	res, err := resource.New(ctxRes,
+		resource.WithSchemaURL(semconv.SchemaURL),
+		resource.WithAttributes(
 			semconv.ServiceName(serviceName),
 			semconv.ServiceVersion(version),
 			semconv.DeploymentEnvironment(os.Getenv("APP_ENV")),
 		),
+		resource.WithFromEnv(),      // OTEL_RESOURCE_ATTRIBUTES
+		resource.WithProcess(),      // process.{pid, executable, ...}
+		resource.WithHost(),         // host.name
+		resource.WithTelemetrySDK(), // telemetry.sdk.{name, language, version}
 	)
 	if err != nil {
 		return nil, fmt.Errorf("otel: build resource: %w", err)

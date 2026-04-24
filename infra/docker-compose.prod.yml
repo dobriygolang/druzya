@@ -152,11 +152,16 @@ services:
     mem_limit: 3500m
     cpus: 2.0
     healthcheck:
-      test: ["CMD", "wget", "-q", "--spider", "http://localhost:11434/api/tags"]
-      interval: 30s
-      timeout: 5s
-      retries: 3
-      start_period: 60s
+      # `ollama list` коннектится к локальному сокету :11434 — гарантированно
+      # существует в образе (сам ollama-бинарь), не зависит от wget/curl.
+      # start_period 120s — при первом старте модель грузится в память ~30-60s
+      # (Qwen 3B Q4 = 2.3GB через mmap). retries 5 × interval 15s = ~75s
+      # tolerance на transient lag (компакция moonlite при `ollama pull`).
+      test: ["CMD-SHELL", "ollama list >/dev/null 2>&1 || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 120s
 
   # Одноразовый pull моделей. restart=no: контейнер завершится после
   # того как обе модели скачаны. Повторный запуск безопасен — pull

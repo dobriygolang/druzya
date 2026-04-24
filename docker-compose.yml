@@ -153,11 +153,15 @@ services:
     mem_limit: 3500m
     cpus: 2.0
     healthcheck:
-      test: ["CMD", "wget", "-q", "--spider", "http://localhost:11434/api/tags"]
-      interval: 30s
-      timeout: 5s
-      retries: 3
-      start_period: 60s
+      # `ollama list` использует локальный socket :11434 — гарантированно
+      # есть в образе, не зависит от wget/curl. retries 5 × interval 15s
+      # + start_period 120s — tolerance на warm-load модели (Qwen 3B Q4
+      # mmap ~30-60s при первом старте).
+      test: ["CMD-SHELL", "ollama list >/dev/null 2>&1 || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 120s
 
   # One-shot pull моделей после того как ollama здоров. restart=no,
   # завершится после ollama pull. Запускать повторно безопасно (pull
