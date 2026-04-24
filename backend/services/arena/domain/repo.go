@@ -51,10 +51,10 @@ type MatchRepo interface {
 		sectionFilter enums.Section,
 	) (items []MatchHistoryEntry, total int, err error)
 
-	// FindCurrentMatch returns the user's most recent non-finished match
-	// (status IN searching|confirming|active). The SPA polls this endpoint
-	// while in queue so it can navigate to /arena/match/:id the moment a
-	// match becomes available. Returns ErrNotFound if no such match exists.
+	// FindCurrentMatch возвращает последний незавершённый матч пользователя
+	// (status IN searching|confirming|active). SPA опрашивает этот endpoint,
+	// пока пользователь в очереди, чтобы в момент появления матча перейти
+	// на /arena/match/:id. Возвращает ErrNotFound, если такого матча нет.
 	FindCurrentMatch(ctx context.Context, userID uuid.UUID) (Match, error)
 }
 

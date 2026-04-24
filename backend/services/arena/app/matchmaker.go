@@ -1,4 +1,4 @@
-// Package app contains the arena use cases and the matchmaker dispatcher.
+// Package app содержит use-case'ы arena и диспетчер matchmaker.
 package app
 
 import (
@@ -16,20 +16,20 @@ import (
 	"github.com/google/uuid"
 )
 
-// LockTTL is the Redis lock held on a user_id while they are being locked into
-// a created match. Kept short so a crashed dispatcher doesn't strand the user.
+// LockTTL — Redis-лок на user_id на время фиксации игрока в только что
+// созданный матч. Делаем коротким, чтобы упавший диспетчер не «застревал» на пользователе.
 const LockTTL = 15 * time.Second
 
-// TickInterval is how often the dispatcher wakes up to sweep queues.
+// TickInterval — как часто диспетчер просыпается, чтобы пройти по очередям.
 const TickInterval = 2 * time.Second
 
-// MatchNotifier is the hook the matchmaker uses to notify the WS layer that a
-// match has been created for a user. The WS hub implements this.
+// MatchNotifier — хук, через который matchmaker уведомляет WS-слой о
+// том, что для пользователя создан матч. Реализуется WS-хабом.
 type MatchNotifier interface {
 	NotifyMatched(ctx context.Context, userID uuid.UUID, matchID uuid.UUID)
 }
 
-// Matchmaker runs the dispatcher loop.
+// Matchmaker крутит цикл диспетчера.
 type Matchmaker struct {
 	Queue    domain.QueueRepo
 	Ready    domain.ReadyCheckRepo
@@ -40,18 +40,18 @@ type Matchmaker struct {
 	Clock    domain.Clock
 	Log      *slog.Logger
 
-	// Sections and modes to sweep each tick. Defaults to all sections × Solo1v1.
+	// Секции и режимы, которые проходим на каждом tick. По умолчанию — все секции × Solo1v1.
 	SweepPairs []SweepKey
 }
 
-// SweepKey names one queue to scan every tick.
+// SweepKey описывает одну очередь для сканирования на каждом tick.
 type SweepKey struct {
 	Section enums.Section
 	Mode    enums.ArenaMode
 }
 
-// NewMatchmaker builds a matchmaker with default sweeps (all sections × all
-// modes, including duo_2v2 since Phase 5).
+// NewMatchmaker собирает matchmaker с дефолтным набором sweep'ов (все
+// секции × все режимы, включая duo_2v2 с Phase 5).
 func NewMatchmaker(
 	q domain.QueueRepo,
 	ready domain.ReadyCheckRepo,
@@ -84,8 +84,8 @@ func NewMatchmaker(
 	}
 }
 
-// Start spawns the dispatcher goroutine and returns a stop function.
-// The returned stop is idempotent.
+// Start запускает goroutine диспетчера и возвращает функцию stop.
+// Возвращаемая stop идемпотентна.
 func (mm *Matchmaker) Start(ctx context.Context) (stop func()) {
 	ctx, cancel := context.WithCancel(ctx)
 	var wg sync.WaitGroup
@@ -114,8 +114,8 @@ func (mm *Matchmaker) Start(ctx context.Context) (stop func()) {
 	}
 }
 
-// Tick sweeps every configured (section, mode) pair, picks pairs (1v1) or
-// quads (2v2), locks the participants, and creates matches.
+// Tick проходит по каждой сконфигурированной паре (section, mode),
+// набирает пары (1v1) или четвёрки (2v2), локает участников и создаёт матчи.
 func (mm *Matchmaker) Tick(ctx context.Context, now time.Time) error {
 	for _, sk := range mm.SweepPairs {
 		tickets, err := mm.Queue.Snapshot(ctx, sk.Section, sk.Mode)
@@ -144,11 +144,13 @@ func (mm *Matchmaker) Tick(ctx context.Context, now time.Time) error {
 	return nil
 }
 
-// tickDuo handles the duo_2v2 queue for one section: prunes expired tickets,
-// then forms balanced quads and creates 2v2 matches.
+// tickDuo обрабатывает очередь duo_2v2 для одной секции: чистит
+// просроченные тикеты, затем формирует сбалансированные четвёрки и
+// создаёт 2v2-матчи.
 func (mm *Matchmaker) tickDuo(ctx context.Context, sk SweepKey, tickets []domain.QueueTicket, now time.Time) {
-	// Drop tickets that have waited longer than DuoQueueTimeout. We do this
-	// best-effort in Redis so position numbers stay correct for the survivors.
+	// Удаляем тикеты, ждавшие дольше DuoQueueTimeout. Делаем это
+	// best-effort в Redis, чтобы номера позиций оставались корректными
+	// для оставшихся.
 	for _, t := range tickets {
 		if domain.IsDuoTicketExpired(t, now) {
 			if err := mm.Queue.Remove(ctx, t.UserID, sk.Section, sk.Mode); err != nil {
@@ -173,12 +175,12 @@ func (mm *Matchmaker) tickDuo(ctx context.Context, sk SweepKey, tickets []domain
 	}
 }
 
-// createMatchFromQuad locks all four participants, picks a task, persists
-// the match (with team_id assigned per balancing) and starts ready-check.
+// createMatchFromQuad локает всех четверых, выбирает таск, сохраняет
+// матч (team_id назначается балансировкой) и запускает ready-check.
 func (mm *Matchmaker) createMatchFromQuad(ctx context.Context, sk SweepKey, q domain.Quad, now time.Time) error {
-	// Acquire locks; release any acquired one if a later one fails / is
-	// already taken. Ordered by UserID byte order to reduce deadlock risk
-	// across concurrent dispatchers.
+	// Берём локи; отпускаем уже взятые, если следующий не сработает или
+	// уже занят. Порядок — по байтовому порядку UserID, чтобы снизить
+	// риск deadlock между конкурирующими диспетчерами.
 	uids := [domain.DuoMatchSize]uuid.UUID{
 		q.Players[0].UserID, q.Players[1].UserID,
 		q.Players[2].UserID, q.Players[3].UserID,
@@ -197,7 +199,7 @@ func (mm *Matchmaker) createMatchFromQuad(ctx context.Context, sk SweepKey, q do
 		}
 		if !ok {
 			releaseAll()
-			return nil // someone else grabbed this player; try again next tick.
+			return nil // игрока уже перехватил кто-то другой; попробуем на следующем tick.
 		}
 		acquired = append(acquired, id)
 	}
@@ -273,7 +275,7 @@ func (mm *Matchmaker) createMatchFromPair(ctx context.Context, sk SweepKey, p do
 		return nil
 	}
 
-	// Pick a task — difficulty by mean ELO band.
+	// Выбираем таск — сложность по среднему ELO-бэнду.
 	mean := (p.A.Elo + p.B.Elo) / 2
 	diff := domain.DifficultyForEloBand(mean)
 	task, err := mm.Tasks.PickBySectionDifficulty(ctx, sk.Section, diff)
@@ -301,21 +303,22 @@ func (mm *Matchmaker) createMatchFromPair(ctx context.Context, sk SweepKey, p do
 		return fmt.Errorf("arena.createMatch: persist: %w", err)
 	}
 
-	// Remove both from the queue.
+	// Удаляем обоих из очереди.
 	_ = mm.Queue.Remove(ctx, p.A.UserID, sk.Section, sk.Mode)
 	_ = mm.Queue.Remove(ctx, p.B.UserID, sk.Section, sk.Mode)
 
-	// Start ready-check.
+	// Запускаем ready-check.
 	deadline := domain.ReadyCheckDeadline(now)
 	if err := mm.Ready.Start(ctx, created.ID, []uuid.UUID{p.A.UserID, p.B.UserID}, deadline); err != nil {
 		mm.Log.WarnContext(ctx, "arena.createMatch: readycheck.Start", slog.Any("err", err))
 	}
 
-	// Publish the event. NOTE: shared/events.go MatchStarted's embedded `base`
-	// is unexported so OccurredAt() reports a zero time from outside shared.
-	// Downstream handlers (rating, notify) only read the exported fields, so
-	// this is functionally fine for MVP; when a domain needs wall-clock OccurredAt
-	// the shared/events.go side should expose a constructor.
+	// Публикуем событие. NOTE: встроенный `base` у MatchStarted в
+	// shared/events.go неэкспортируем, поэтому OccurredAt() снаружи shared
+	// возвращает нулевое время. Downstream-обработчики (rating, notify)
+	// читают только экспортированные поля — для MVP это функционально ок;
+	// когда domain'у реально понадобится wall-clock OccurredAt, в
+	// shared/events.go надо выставить конструктор.
 	if err := mm.Bus.Publish(ctx, sharedDomain.MatchStarted{
 		MatchID: created.ID,
 		Section: sk.Section,
@@ -333,7 +336,7 @@ func (mm *Matchmaker) createMatchFromPair(ctx context.Context, sk SweepKey, p do
 	return nil
 }
 
-// EnqueueInput asks the matchmaker to enqueue a user.
+// EnqueueInput — запрос matchmaker'у поставить пользователя в очередь.
 type EnqueueInput struct {
 	UserID  uuid.UUID
 	Elo     int
@@ -341,13 +344,13 @@ type EnqueueInput struct {
 	Mode    enums.ArenaMode
 }
 
-// FindMatch enqueues the user (or returns that they're already matched).
+// FindMatch ставит пользователя в очередь (или возвращает, что он уже в матче).
 type FindMatch struct {
 	Queue domain.QueueRepo
 	Clock domain.Clock
 }
 
-// FindMatchOutput is the response shape.
+// FindMatchOutput — форма ответа.
 type FindMatchOutput struct {
 	Status        string // "queued" | "matched"
 	QueuePosition int
@@ -355,7 +358,7 @@ type FindMatchOutput struct {
 	MatchID       *uuid.UUID
 }
 
-// Do enqueues and returns current state.
+// Do ставит в очередь и возвращает текущее состояние.
 func (uc *FindMatch) Do(ctx context.Context, in EnqueueInput) (FindMatchOutput, error) {
 	if !in.Section.IsValid() || !in.Mode.IsValid() {
 		return FindMatchOutput{}, fmt.Errorf("arena.FindMatch: invalid section/mode")
@@ -378,7 +381,7 @@ func (uc *FindMatch) Do(ctx context.Context, in EnqueueInput) (FindMatchOutput, 
 	if err != nil {
 		return FindMatchOutput{}, fmt.Errorf("arena.FindMatch: position: %w", err)
 	}
-	// 5s per person ahead — rough MVP estimate (bible §3.4 allows this heuristic).
+	// 5с на каждого впереди — грубая MVP-оценка (bible §3.4 допускает эту эвристику).
 	est := (pos - 1) * 5
 	if est < 0 {
 		est = 0
@@ -390,15 +393,15 @@ func (uc *FindMatch) Do(ctx context.Context, in EnqueueInput) (FindMatchOutput, 
 	}, nil
 }
 
-// CancelSearch removes the user from every queue.
+// CancelSearch удаляет пользователя из всех очередей.
 type CancelSearch struct {
 	Queue domain.QueueRepo
 }
 
-// Do removes the user's ticket.
+// Do удаляет тикет пользователя.
 func (uc *CancelSearch) Do(ctx context.Context, userID uuid.UUID) error {
-	// We don't know the section/mode here — Remove is idempotent and falls
-	// back to the stored index.
+	// Здесь не знаем section/mode — Remove идемпотентна и откатывается на
+	// сохранённый индекс.
 	for _, s := range enums.AllSections() {
 		for _, m := range []enums.ArenaMode{
 			enums.ArenaModeSolo1v1, enums.ArenaModeRanked, enums.ArenaModeHardcore, enums.ArenaModeCursed, enums.ArenaModeDuo2v2,

@@ -1,14 +1,14 @@
-// Package infra: cache.go is the Redis-backed read-through cache for the
-// arena bounded context. Two hot reads benefit from caching today:
+// Package infra: cache.go — read-through cache поверх Redis для
+// arena bounded context. Сейчас от кэша выигрывают два hot-read:
 //
-//   - GET /api/v1/arena/match/{matchId}  →  MatchInfoCache (60s TTL)
-//   - "queue stats" displayed on /arena  →  QueueStatsCache (10s TTL)
+//   - GET /api/v1/arena/match/{matchId}  →  MatchInfoCache (TTL 60с)
+//   - «queue stats» на /arena            →  QueueStatsCache (TTL 10с)
 //
-// Both follow the same shape as profile/infra/cache.go: a tiny KV interface
-// (Get/Set/Del), JSON marshalling, singleflight to collapse stampedes,
-// Redis errors are LOGGED but NEVER fail the request — we always fall back
-// to the upstream loader. Explicit Invalidate hooks let writers bust the
-// cache deterministically (e.g. on match end).
+// Оба по форме повторяют profile/infra/cache.go: крохотный интерфейс KV
+// (Get/Set/Del), JSON-маршалинг, singleflight для схлопывания stampede,
+// ошибки Redis ЛОГИРУЮТСЯ, но НИКОГДА не ломают запрос — всегда
+// падаем на upstream-loader. Явные Invalidate-хуки дают писателям
+// детерминированно сбивать кэш (например, при завершении матча).
 package infra
 
 import (
@@ -28,41 +28,43 @@ import (
 	"golang.org/x/sync/singleflight"
 )
 
-// CacheKeyVersion is bumped whenever the on-disk JSON shape changes. Bumping
-// causes a rolling cache miss without a manual FLUSHDB.
+// CacheKeyVersion поднимают всякий раз, когда меняется on-disk форма JSON.
+// Подъём вызывает roll-over промахов кэша без ручного FLUSHDB.
 const CacheKeyVersion = "v1"
 
-// DefaultMatchInfoTTL is the per-key TTL applied to cached match views.
-// Match metadata barely changes after start; we still cap at 60s so
-// participant ELO updates after MatchCompleted are picked up promptly.
+// DefaultMatchInfoTTL — per-key TTL для кэшированных match-view.
+// Метаданные матча после старта почти не меняются; всё же ограничиваем 60с,
+// чтобы обновления ELO участников после MatchCompleted подхватывались быстро.
 const DefaultMatchInfoTTL = 60 * time.Second
 
-// DefaultQueueStatsTTL is the per-key TTL for the queue-stats card on the
-// arena landing page. Short — the count fluctuates every tick.
+// DefaultQueueStatsTTL — per-key TTL для карточки queue-stats на лендинге
+// arena. Маленький — счётчик колеблется каждый tick.
 const DefaultQueueStatsTTL = 10 * time.Second
 
-// DefaultMatchHistoryTTL is the per-key TTL for the /match-history page.
-// History only changes after a match completes — the inverse path is the
-// MatchEnded event handler that calls MatchHistoryCache.Invalidate(uid).
-// 30s is the bible cap — short enough that even a missed invalidation is
-// invisible to the user, long enough to absorb dashboard refresh hammering.
+// DefaultMatchHistoryTTL — per-key TTL для страницы /match-history.
+// История меняется только после завершения матча — обратный путь:
+// обработчик события MatchEnded вызывает MatchHistoryCache.Invalidate(uid).
+// 30с — потолок по bible: коротко, чтобы пропущенный invalidate был
+// незаметен пользователю, и достаточно долго, чтобы гасить шторм
+// обновлений dashboard'а.
 const DefaultMatchHistoryTTL = 30 * time.Second
 
-// KV is the tiny subset of Redis used by the arena cache. *redis.Client
-// satisfies it via the kvAdapter below; tests inject an in-memory map.
+// KV — маленькое подмножество Redis, используемое arena-кэшем.
+// *redis.Client удовлетворяет его через kvAdapter ниже; тесты подсовывают
+// in-memory map.
 type KV interface {
 	Get(ctx context.Context, key string) (string, error)
 	Set(ctx context.Context, key string, value []byte, ttl time.Duration) error
 	Del(ctx context.Context, keys ...string) error
 }
 
-// ErrCacheMiss is the sentinel returned by KV.Get when the key is absent.
+// ErrCacheMiss — sentinel, который KV.Get возвращает при отсутствии ключа.
 var ErrCacheMiss = errors.New("arena.cache: miss")
 
-// kvAdapter adapts *redis.Client to the KV interface.
+// kvAdapter адаптирует *redis.Client к интерфейсу KV.
 type kvAdapter struct{ rdb *redis.Client }
 
-// NewRedisKV wires the production KV around a real Redis client.
+// NewRedisKV собирает продакшн-KV поверх реального Redis-клиента.
 func NewRedisKV(rdb *redis.Client) KV { return kvAdapter{rdb: rdb} }
 
 func (a kvAdapter) Get(ctx context.Context, key string) (string, error) {
@@ -93,22 +95,22 @@ func (a kvAdapter) Del(ctx context.Context, keys ...string) error {
 	return nil
 }
 
-// ── MatchInfo cache ───────────────────────────────────────────────────────
+// ── Кэш MatchInfo ─────────────────────────────────────────────────────────
 
-// MatchInfoSnapshot is the cache-eligible projection of a match. We only
-// store immutable / slow-moving fields — code, suspicion scores, anti-cheat
-// counters do NOT live here, by design (they are read-once and refresh fast).
+// MatchInfoSnapshot — проекция матча, пригодная к кэшированию. Храним
+// только неизменные / медленно меняющиеся поля — кода, suspicion score'ов,
+// anti-cheat счётчиков тут НЕТ (намеренно: их читают разово и они быстро
+// обновляются).
 type MatchInfoSnapshot struct {
 	Match        domain.Match
 	Task         *domain.TaskPublic
 	Participants []domain.Participant
 }
 
-// MatchInfoLoader fetches the snapshot from the upstream (Postgres) when the
-// cache misses.
+// MatchInfoLoader подгружает snapshot из upstream (Postgres) при промахе кэша.
 type MatchInfoLoader func(ctx context.Context, matchID uuid.UUID) (MatchInfoSnapshot, error)
 
-// MatchInfoCache wraps a loader with read-through Redis caching.
+// MatchInfoCache оборачивает loader read-through-кэшем поверх Redis.
 type MatchInfoCache struct {
 	kv     KV
 	ttl    time.Duration
@@ -117,7 +119,7 @@ type MatchInfoCache struct {
 	sf     singleflight.Group
 }
 
-// NewMatchInfoCache wires the cache. log is required (anti-fallback policy).
+// NewMatchInfoCache собирает кэш. log обязателен (anti-fallback policy).
 func NewMatchInfoCache(kv KV, ttl time.Duration, log *slog.Logger, loader MatchInfoLoader) *MatchInfoCache {
 	if ttl <= 0 {
 		ttl = DefaultMatchInfoTTL
@@ -128,12 +130,12 @@ func NewMatchInfoCache(kv KV, ttl time.Duration, log *slog.Logger, loader MatchI
 	return &MatchInfoCache{kv: kv, ttl: ttl, log: log, loader: loader}
 }
 
-// keyMatchInfo returns the Redis key for match-info by match-id.
+// keyMatchInfo возвращает Redis-ключ для match-info по match-id.
 func keyMatchInfo(matchID uuid.UUID) string {
 	return fmt.Sprintf("arena:%s:match:%s", CacheKeyVersion, matchID.String())
 }
 
-// Get returns the snapshot, dialing the upstream on miss.
+// Get возвращает snapshot, обращаясь к upstream при промахе.
 func (c *MatchInfoCache) Get(ctx context.Context, matchID uuid.UUID) (MatchInfoSnapshot, error) {
 	key := keyMatchInfo(matchID)
 	if raw, err := c.kv.Get(ctx, key); err == nil {
@@ -166,7 +168,7 @@ func (c *MatchInfoCache) Get(ctx context.Context, matchID uuid.UUID) (MatchInfoS
 	return snap, nil
 }
 
-// Invalidate evicts the entry. Safe to call before/after a write; idempotent.
+// Invalidate выселяет запись. Безопасен до/после записи; идемпотентен.
 func (c *MatchInfoCache) Invalidate(ctx context.Context, matchID uuid.UUID) {
 	if err := c.kv.Del(ctx, keyMatchInfo(matchID)); err != nil {
 		c.log.Warn("arena.cache: redis Del failed",
@@ -174,10 +176,10 @@ func (c *MatchInfoCache) Invalidate(ctx context.Context, matchID uuid.UUID) {
 	}
 }
 
-// ── Queue-stats cache ─────────────────────────────────────────────────────
+// ── Кэш queue-stats ───────────────────────────────────────────────────────
 
-// QueueStats is the small payload shown on /arena (count of waiting players
-// per (mode, section), with a coarse ETA derived from queue depth).
+// QueueStats — маленький payload, показываемый на /arena (число ожидающих
+// игроков по паре (mode, section) и грубая ETA, выведенная из длины очереди).
 type QueueStats struct {
 	Mode      enums.ArenaMode `json:"mode"`
 	Section   enums.Section   `json:"section"`
@@ -185,10 +187,10 @@ type QueueStats struct {
 	EstWaitMs int64           `json:"est_wait_ms"`
 }
 
-// QueueStatsLoader returns fresh stats from Redis ZSET counts.
+// QueueStatsLoader возвращает свежие stats из счётчиков Redis ZSET.
 type QueueStatsLoader func(ctx context.Context, mode enums.ArenaMode, section enums.Section) (QueueStats, error)
 
-// QueueStatsCache wraps a loader with a 10s TTL.
+// QueueStatsCache оборачивает loader кэшем с TTL 10с.
 type QueueStatsCache struct {
 	kv     KV
 	ttl    time.Duration
@@ -197,7 +199,7 @@ type QueueStatsCache struct {
 	sf     singleflight.Group
 }
 
-// NewQueueStatsCache wires the cache. log is required (anti-fallback policy).
+// NewQueueStatsCache собирает кэш. log обязателен (anti-fallback policy).
 func NewQueueStatsCache(kv KV, ttl time.Duration, log *slog.Logger, loader QueueStatsLoader) *QueueStatsCache {
 	if ttl <= 0 {
 		ttl = DefaultQueueStatsTTL
@@ -208,12 +210,12 @@ func NewQueueStatsCache(kv KV, ttl time.Duration, log *slog.Logger, loader Queue
 	return &QueueStatsCache{kv: kv, ttl: ttl, log: log, loader: loader}
 }
 
-// keyQueueStats returns the Redis key for queue stats by (mode, section).
+// keyQueueStats возвращает Redis-ключ для queue-stats по (mode, section).
 func keyQueueStats(mode enums.ArenaMode, section enums.Section) string {
 	return fmt.Sprintf("arena:%s:queue_stats:%s:%s", CacheKeyVersion, mode, section)
 }
 
-// Get returns the stats, dialing the upstream on miss.
+// Get возвращает stats, обращаясь к upstream при промахе.
 func (c *QueueStatsCache) Get(ctx context.Context, mode enums.ArenaMode, section enums.Section) (QueueStats, error) {
 	key := keyQueueStats(mode, section)
 	if raw, err := c.kv.Get(ctx, key); err == nil {
@@ -246,7 +248,7 @@ func (c *QueueStatsCache) Get(ctx context.Context, mode enums.ArenaMode, section
 	return s, nil
 }
 
-// Invalidate evicts a specific (mode, section) stat.
+// Invalidate выселяет конкретный stat по (mode, section).
 func (c *QueueStatsCache) Invalidate(ctx context.Context, mode enums.ArenaMode, section enums.Section) {
 	if err := c.kv.Del(ctx, keyQueueStats(mode, section)); err != nil {
 		c.log.Warn("arena.cache: redis Del failed",
@@ -255,11 +257,11 @@ func (c *QueueStatsCache) Invalidate(ctx context.Context, mode enums.ArenaMode, 
 	}
 }
 
-// ── Match-history cache ───────────────────────────────────────────────────
+// ── Кэш match-history ─────────────────────────────────────────────────────
 
-// MatchHistoryFilters captures the page window + optional filters. JSON-
-// serialised into the cache key so different (limit, offset, mode, section)
-// tuples cohabit without colliding.
+// MatchHistoryFilters фиксирует окно страницы + опциональные фильтры.
+// JSON-сериализуются в ключ кэша, чтобы разные кортежи
+// (limit, offset, mode, section) уживались, не сталкиваясь.
 type MatchHistoryFilters struct {
 	Limit   int             `json:"limit"`
 	Offset  int             `json:"offset"`
@@ -267,22 +269,22 @@ type MatchHistoryFilters struct {
 	Section enums.Section   `json:"section"`
 }
 
-// MatchHistorySnapshot is the cache-eligible projection of one history page.
-// We pin Total alongside Items so paginated UIs don't need a second
-// uncached count.
+// MatchHistorySnapshot — кэшируемая проекция одной страницы истории.
+// Рядом с Items храним Total, чтобы пагинируемым UI не пришлось делать
+// второй некэшированный COUNT.
 type MatchHistorySnapshot struct {
 	Items []domain.MatchHistoryEntry `json:"items"`
 	Total int                        `json:"total"`
 }
 
-// MatchHistoryLoader fetches a page from the upstream (Postgres) on miss.
+// MatchHistoryLoader подгружает страницу из upstream (Postgres) при промахе.
 type MatchHistoryLoader func(ctx context.Context, userID uuid.UUID, f MatchHistoryFilters) (MatchHistorySnapshot, error)
 
-// MatchHistoryCache wraps MatchHistoryLoader with read-through Redis +
-// per-user invalidation. Per-key TTL is the upper bound; explicit
-// Invalidate(uid) bumps a per-user "epoch" embedded in the key, which
-// causes every cached page for that user to instantly miss without
-// scanning Redis (mirrors the marker-key pattern used by profile/cache).
+// MatchHistoryCache оборачивает MatchHistoryLoader read-through-кэшем
+// поверх Redis + per-user инвалидацией. Per-key TTL — верхняя граница;
+// явный Invalidate(uid) бампает per-user «эпоху», встроенную в ключ,
+// из-за чего каждая закэшированная страница этого пользователя мгновенно
+// промахивается без SCAN по Redis (паттерн marker-key, как в profile/cache).
 type MatchHistoryCache struct {
 	kv     KV
 	ttl    time.Duration
@@ -290,15 +292,15 @@ type MatchHistoryCache struct {
 	loader MatchHistoryLoader
 	sf     singleflight.Group
 
-	// epochs is an in-process per-user counter that's bumped on Invalidate.
-	// Combined with the cache key it gives O(1) "evict everything for uid".
-	// The map is bounded by active users — we never delete entries (a stale
-	// epoch is harmless, the corresponding Redis keys age out via TTL).
+	// epochs — in-process per-user счётчик, который бампается на Invalidate.
+	// В сочетании с ключом кэша даёт O(1) «выгнать всё для uid».
+	// Map ограничен активными пользователями — записи не удаляем (устаревшая
+	// эпоха безвредна, соответствующие Redis-ключи сами истекают по TTL).
 	epochMu sync.RWMutex
 	epochs  map[uuid.UUID]uint64
 }
 
-// NewMatchHistoryCache wires the cache. log is required (anti-fallback policy).
+// NewMatchHistoryCache собирает кэш. log обязателен (anti-fallback policy).
 func NewMatchHistoryCache(kv KV, ttl time.Duration, log *slog.Logger, loader MatchHistoryLoader) *MatchHistoryCache {
 	if ttl <= 0 {
 		ttl = DefaultMatchHistoryTTL
@@ -315,15 +317,15 @@ func NewMatchHistoryCache(kv KV, ttl time.Duration, log *slog.Logger, loader Mat
 	}
 }
 
-// epochOf returns the current invalidation generation for userID.
+// epochOf возвращает текущее «поколение» инвалидации для userID.
 func (c *MatchHistoryCache) epochOf(userID uuid.UUID) uint64 {
 	c.epochMu.RLock()
 	defer c.epochMu.RUnlock()
 	return c.epochs[userID]
 }
 
-// keyMatchHistory derives the per-(user, epoch, filters) Redis key. Bumping
-// the per-user epoch via Invalidate causes every old key to instantly miss.
+// keyMatchHistory выводит Redis-ключ по (user, epoch, filters). Бамп
+// per-user эпохи через Invalidate мгновенно делает все старые ключи miss'ом.
 func keyMatchHistory(userID uuid.UUID, epoch uint64, f MatchHistoryFilters) string {
 	mode := string(f.Mode)
 	if mode == "" {
@@ -337,7 +339,7 @@ func keyMatchHistory(userID uuid.UUID, epoch uint64, f MatchHistoryFilters) stri
 		CacheKeyVersion, userID.String(), epoch, f.Limit, f.Offset, mode, sec)
 }
 
-// Get returns one history page, dialing the upstream on miss.
+// Get возвращает одну страницу истории, обращаясь к upstream при промахе.
 func (c *MatchHistoryCache) Get(ctx context.Context, userID uuid.UUID, f MatchHistoryFilters) (MatchHistorySnapshot, error) {
 	epoch := c.epochOf(userID)
 	key := keyMatchHistory(userID, epoch, f)
@@ -372,33 +374,33 @@ func (c *MatchHistoryCache) Get(ctx context.Context, userID uuid.UUID, f MatchHi
 	return snap, nil
 }
 
-// Invalidate evicts every cached page for userID by bumping the per-user
-// epoch counter. Old keys age out via TTL — no SCAN needed.
+// Invalidate выселяет все закэшированные страницы userID, бампая per-user
+// счётчик эпох. Старые ключи сами истекают по TTL — SCAN не нужен.
 func (c *MatchHistoryCache) Invalidate(_ context.Context, userID uuid.UUID) {
 	c.epochMu.Lock()
 	c.epochs[userID]++
 	c.epochMu.Unlock()
 }
 
-// ── CachedHistoryRepo — domain.MatchRepo wrapper that routes ListByUser
-// through MatchHistoryCache while passing every other call straight through
-// to the upstream repo. The wrapper is what app.GetMyMatches sees so the
-// use case stays Redis-agnostic.
+// ── CachedHistoryRepo — обёртка над domain.MatchRepo, которая роутит
+// ListByUser через MatchHistoryCache, а все остальные вызовы прокидывает
+// в upstream repo напрямую. Именно эту обёртку видит app.GetMyMatches,
+// поэтому use-case остаётся независимым от Redis.
 
-// CachedHistoryRepo composes a domain.MatchRepo with a MatchHistoryCache.
+// CachedHistoryRepo композирует domain.MatchRepo с MatchHistoryCache.
 type CachedHistoryRepo struct {
 	domain.MatchRepo
 	cache *MatchHistoryCache
 }
 
-// NewCachedHistoryRepo wires a CachedHistoryRepo around the given upstream
-// repo and cache. Both must be non-nil.
+// NewCachedHistoryRepo собирает CachedHistoryRepo поверх переданного
+// upstream repo и кэша. Оба должны быть не-nil.
 func NewCachedHistoryRepo(upstream domain.MatchRepo, cache *MatchHistoryCache) *CachedHistoryRepo {
 	return &CachedHistoryRepo{MatchRepo: upstream, cache: cache}
 }
 
-// ListByUser routes through the cache. The upstream loader closed over by
-// the cache is responsible for hitting Postgres.
+// ListByUser роутит через кэш. За реальный поход в Postgres отвечает
+// upstream-loader, замкнутый на кэше.
 func (c *CachedHistoryRepo) ListByUser(
 	ctx context.Context,
 	userID uuid.UUID,
@@ -418,5 +420,5 @@ func (c *CachedHistoryRepo) ListByUser(
 	return snap.Items, snap.Total, nil
 }
 
-// Interface guard — keeps drift visible if MatchRepo grows new methods.
+// Interface guard — делает drift заметным, если у MatchRepo появятся новые методы.
 var _ domain.MatchRepo = (*CachedHistoryRepo)(nil)

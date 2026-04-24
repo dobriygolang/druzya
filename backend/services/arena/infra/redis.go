@@ -15,21 +15,22 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
-// Key layout (bible §3.4):
-//   arena:queue:{section}:{mode}          ZSET  score=elo member="{user_id}|{enq_unix}"
-//   arena:queue:user:{user_id}            HASH  maps to (section, mode, enqueued_at) so we can remove idempotently
-//   arena:lock:{user_id}                  STRING NX+EX 15s
-//   arena:readycheck:{match_id}           HASH  users = <csv>, deadline = unix, confirmed:{uid} = "1"
+// Схема ключей (bible §3.4):
+//   arena:queue:{section}:{mode}           ZSET   score=elo member="{user_id}|{enq_unix}"
+//   arena:queue:user:{user_id}             HASH   карта в (section, mode, enqueued_at) — чтобы идемпотентно удалять
+//   arena:lock:{user_id}                   STRING NX+EX 15s
+//   arena:readycheck:{match_id}            HASH   users = <csv>, deadline = unix, confirmed:{uid} = "1"
 //   arena:anticheat:score:{match_id}:{uid} STRING float
 //   arena:anticheat:tabs:{match_id}:{uid}  STRING int
 
-// Redis is the arena-domain Redis adapter. One type so callers don't juggle
-// three small structs; interfaces are still split at the domain boundary.
+// Redis — Redis-адаптер для arena-домена. Один тип, чтобы вызывающим не
+// приходилось жонглировать тремя маленькими структурами; интерфейсы всё
+// равно разделены на границе domain.
 type Redis struct {
 	rdb *redis.Client
 }
 
-// NewRedis wires a Redis adapter.
+// NewRedis собирает Redis-адаптер.
 func NewRedis(rdb *redis.Client) *Redis {
 	return &Redis{rdb: rdb}
 }
@@ -44,8 +45,8 @@ func userIndexKey(userID uuid.UUID) string {
 	return fmt.Sprintf("arena:queue:user:%s", userID)
 }
 
-// Enqueue pushes the ticket to the section+mode queue. ErrAlreadyInQueue when
-// the user already has an entry.
+// Enqueue кладёт тикет в очередь section+mode. Возвращает ErrAlreadyInQueue,
+// если у пользователя уже есть запись.
 func (r *Redis) Enqueue(ctx context.Context, t domain.QueueTicket) error {
 	if !t.Section.IsValid() || !t.Mode.IsValid() {
 		return fmt.Errorf("arena.redis.Enqueue: invalid section/mode")
@@ -65,7 +66,7 @@ func (r *Redis) Enqueue(ctx context.Context, t domain.QueueTicket) error {
 	}).Err(); err != nil {
 		return fmt.Errorf("arena.redis.Enqueue: zadd: %w", err)
 	}
-	// Remember (section, mode, member) so Remove can find it back.
+	// Запоминаем (section, mode, member), чтобы Remove мог его найти.
 	if err := r.rdb.HSet(ctx, idxKey, map[string]any{
 		"section":  string(t.Section),
 		"mode":     string(t.Mode),
@@ -81,14 +82,14 @@ func (r *Redis) Enqueue(ctx context.Context, t domain.QueueTicket) error {
 	return nil
 }
 
-// Remove removes the user from the queue (idempotent).
+// Remove удаляет пользователя из очереди (идемпотентно).
 func (r *Redis) Remove(ctx context.Context, userID uuid.UUID, section enums.Section, mode enums.ArenaMode) error {
 	idxKey := userIndexKey(userID)
 	idx, err := r.rdb.HGetAll(ctx, idxKey).Result()
 	if err != nil && !errors.Is(err, redis.Nil) {
 		return fmt.Errorf("arena.redis.Remove: idx: %w", err)
 	}
-	// Fallback to passed-in section/mode when the index is empty (best-effort).
+	// Fallback на переданные section/mode, если индекс пуст (best-effort).
 	secStr := idx["section"]
 	modeStr := idx["mode"]
 	member := idx["member"]
@@ -109,7 +110,7 @@ func (r *Redis) Remove(ctx context.Context, userID uuid.UUID, section enums.Sect
 	return nil
 }
 
-// Snapshot returns every ticket in (section, mode) sorted by ELO asc.
+// Snapshot возвращает все тикеты в (section, mode), отсортированные по ELO ASC.
 func (r *Redis) Snapshot(ctx context.Context, section enums.Section, mode enums.ArenaMode) ([]domain.QueueTicket, error) {
 	items, err := r.rdb.ZRangeWithScores(ctx, queueKey(section, mode), 0, -1).Result()
 	if err != nil {
@@ -141,7 +142,7 @@ func (r *Redis) Snapshot(ctx context.Context, section enums.Section, mode enums.
 	return out, nil
 }
 
-// AcquireLock tries to SETNX arena:lock:{user_id}.
+// AcquireLock пытается SETNX arena:lock:{user_id}.
 func (r *Redis) AcquireLock(ctx context.Context, userID uuid.UUID, ttl time.Duration) (bool, error) {
 	ok, err := r.rdb.SetNX(ctx, fmt.Sprintf("arena:lock:%s", userID), "1", ttl).Result()
 	if err != nil {
@@ -150,7 +151,7 @@ func (r *Redis) AcquireLock(ctx context.Context, userID uuid.UUID, ttl time.Dura
 	return ok, nil
 }
 
-// ReleaseLock deletes the lock.
+// ReleaseLock удаляет лок.
 func (r *Redis) ReleaseLock(ctx context.Context, userID uuid.UUID) error {
 	if err := r.rdb.Del(ctx, fmt.Sprintf("arena:lock:%s", userID)).Err(); err != nil {
 		return fmt.Errorf("arena.redis.ReleaseLock: %w", err)
@@ -158,7 +159,7 @@ func (r *Redis) ReleaseLock(ctx context.Context, userID uuid.UUID) error {
 	return nil
 }
 
-// Position returns the 1-based position of the user in the queue.
+// Position возвращает 1-based позицию пользователя в очереди.
 func (r *Redis) Position(ctx context.Context, userID uuid.UUID, section enums.Section, mode enums.ArenaMode) (int, error) {
 	idxKey := userIndexKey(userID)
 	member, err := r.rdb.HGet(ctx, idxKey, "member").Result()
@@ -182,7 +183,7 @@ func (r *Redis) Position(ctx context.Context, userID uuid.UUID, section enums.Se
 
 func readyKey(matchID uuid.UUID) string { return fmt.Sprintf("arena:readycheck:%s", matchID) }
 
-// Start records a new ready-check.
+// Start фиксирует новый ready-check.
 func (r *Redis) Start(ctx context.Context, matchID uuid.UUID, userIDs []uuid.UUID, deadline time.Time) error {
 	ids := make([]string, 0, len(userIDs))
 	for _, u := range userIDs {
@@ -205,7 +206,7 @@ func (r *Redis) Start(ctx context.Context, matchID uuid.UUID, userIDs []uuid.UUI
 	return nil
 }
 
-// Confirm marks a user as ready; returns everyone=true when the final user confirms.
+// Confirm помечает пользователя готовым; возвращает everyone=true, когда подтвердился последний.
 func (r *Redis) Confirm(ctx context.Context, matchID, userID uuid.UUID) (bool, error) {
 	key := readyKey(matchID)
 	state, ok, err := r.Get(ctx, matchID)
@@ -218,7 +219,7 @@ func (r *Redis) Confirm(ctx context.Context, matchID, userID uuid.UUID) (bool, e
 	if _, hsErr := r.rdb.HSet(ctx, key, "confirmed:"+userID.String(), "1").Result(); hsErr != nil {
 		return false, fmt.Errorf("arena.redis.Confirm: %w", hsErr)
 	}
-	// Refresh the snapshot — re-read confirmations.
+	// Обновляем snapshot — перечитываем подтверждения.
 	state, _, err = r.Get(ctx, matchID)
 	if err != nil {
 		return false, err
@@ -231,7 +232,7 @@ func (r *Redis) Confirm(ctx context.Context, matchID, userID uuid.UUID) (bool, e
 	return true, nil
 }
 
-// Get returns the ready-check state.
+// Get возвращает состояние ready-check.
 func (r *Redis) Get(ctx context.Context, matchID uuid.UUID) (domain.ReadyCheckState, bool, error) {
 	key := readyKey(matchID)
 	raw, err := r.rdb.HGetAll(ctx, key).Result()
@@ -263,7 +264,7 @@ func (r *Redis) Get(ctx context.Context, matchID uuid.UUID) (domain.ReadyCheckSt
 	return state, true, nil
 }
 
-// Clear removes the ready-check entry.
+// Clear удаляет запись ready-check.
 func (r *Redis) Clear(ctx context.Context, matchID uuid.UUID) error {
 	if err := r.rdb.Del(ctx, readyKey(matchID)).Err(); err != nil {
 		return fmt.Errorf("arena.redis.Clear: %w", err)
@@ -280,7 +281,7 @@ func tabKey(matchID, uid uuid.UUID) string {
 	return fmt.Sprintf("arena:anticheat:tabs:%s:%s", matchID, uid)
 }
 
-// AddSuspicion bumps the score by delta and returns the new total.
+// AddSuspicion увеличивает score на delta и возвращает новое значение.
 func (r *Redis) AddSuspicion(ctx context.Context, matchID, uid uuid.UUID, delta float64) (float64, error) {
 	v, err := r.rdb.IncrByFloat(ctx, susKey(matchID, uid), delta).Result()
 	if err != nil {
@@ -290,7 +291,7 @@ func (r *Redis) AddSuspicion(ctx context.Context, matchID, uid uuid.UUID, delta 
 	return v, nil
 }
 
-// GetSuspicion returns the current score (0 if absent).
+// GetSuspicion возвращает текущий score (0, если записи нет).
 func (r *Redis) GetSuspicion(ctx context.Context, matchID, uid uuid.UUID) (float64, error) {
 	raw, err := r.rdb.Get(ctx, susKey(matchID, uid)).Float64()
 	if err != nil {
@@ -302,7 +303,7 @@ func (r *Redis) GetSuspicion(ctx context.Context, matchID, uid uuid.UUID) (float
 	return raw, nil
 }
 
-// IncrTabSwitch bumps the tab counter and returns the new value.
+// IncrTabSwitch инкрементирует счётчик вкладок и возвращает новое значение.
 func (r *Redis) IncrTabSwitch(ctx context.Context, matchID, uid uuid.UUID) (int, error) {
 	v, err := r.rdb.Incr(ctx, tabKey(matchID, uid)).Result()
 	if err != nil {
@@ -312,7 +313,7 @@ func (r *Redis) IncrTabSwitch(ctx context.Context, matchID, uid uuid.UUID) (int,
 	return int(v), nil
 }
 
-// parseInt64 is a tiny helper to avoid strconv imports in multiple places.
+// parseInt64 — маленький хелпер, чтобы не тянуть strconv в несколько мест.
 func parseInt64(s string) (int64, error) {
 	var v int64
 	if _, err := fmt.Sscanf(s, "%d", &v); err != nil {
@@ -321,7 +322,7 @@ func parseInt64(s string) (int64, error) {
 	return v, nil
 }
 
-// Interface guards.
+// Interface guards — проверки соответствия интерфейсам.
 var (
 	_ domain.QueueRepo      = (*Redis)(nil)
 	_ domain.ReadyCheckRepo = (*Redis)(nil)

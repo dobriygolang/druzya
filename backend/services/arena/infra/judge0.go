@@ -8,26 +8,26 @@ import (
 	"druz9/arena/domain"
 )
 
-// FakeJudge0 is a stand-in client that "passes" every submission after a short
-// artificial delay. It exists so the arena domain can wire an async worker and
-// the end-to-end happy path is testable without Judge0.
+// FakeJudge0 — подставной клиент, который «проходит» каждую отправку после
+// небольшой искусственной задержки. Нужен, чтобы arena-домен мог подключить
+// async-worker, а end-to-end happy path тестировался без Judge0.
 //
-// STUB: real Judge0 client lives in its own package (planned: druz9/infra/judge0).
-// That client will:
-//   - POST /submissions?wait=true with base64 source + stdin
-//   - poll for status if wait=false
-//   - map Judge0 status codes to (passed, total, passed_count, runtime_ms, memory_kb)
+// STUB: настоящий клиент Judge0 живёт в отдельном пакете (план: druz9/infra/judge0).
+// Он будет:
+//   - POST /submissions?wait=true с base64 source + stdin
+//   - polling статуса, если wait=false
+//   - маппинг status-кодов Judge0 в (passed, total, passed_count, runtime_ms, memory_kb)
 type FakeJudge0 struct {
-	// Delay simulates the grader latency so the async worker is exercised.
+	// Delay имитирует задержку грейдера, чтобы прогонялся async-worker.
 	Delay time.Duration
 }
 
-// NewFakeJudge0 returns a stub with a 200ms artificial delay.
+// NewFakeJudge0 возвращает stub с искусственной задержкой 200мс.
 func NewFakeJudge0() *FakeJudge0 {
 	return &FakeJudge0{Delay: 200 * time.Millisecond}
 }
 
-// Submit is the stub implementation — always passes with 1/1 tests.
+// Submit — stub-реализация: всегда «проходит» с 1/1 тестов.
 func (f *FakeJudge0) Submit(ctx context.Context, _ string, _ string, _ domain.TaskPublic) (domain.Judge0Result, error) {
 	if f.Delay > 0 {
 		select {
@@ -45,5 +45,5 @@ func (f *FakeJudge0) Submit(ctx context.Context, _ string, _ string, _ domain.Ta
 	}, nil
 }
 
-// Interface guard.
+// Interface guard — проверка соответствия интерфейсу.
 var _ domain.Judge0Client = (*FakeJudge0)(nil)

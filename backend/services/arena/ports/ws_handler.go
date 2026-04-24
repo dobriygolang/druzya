@@ -7,9 +7,10 @@ import (
 	"github.com/google/uuid"
 )
 
-// WSHandler is the chi-compatible HandlerFunc registered at /ws/arena/{matchId}.
-// oapi-codegen doesn't generate WS routes, so the caller (cmd/monolith) mounts
-// this one route manually next to the generated API router.
+// WSHandler — chi-совместимый HandlerFunc, зарегистрированный на
+// /ws/arena/{matchId}. oapi-codegen не генерирует WS-роуты, поэтому
+// вызывающий (cmd/monolith) монтирует этот единственный роут вручную
+// рядом со сгенерированным API-роутером.
 func (h *Hub) WSHandler(w http.ResponseWriter, r *http.Request) {
 	raw := chi.URLParam(r, "matchId")
 	matchID, err := uuid.Parse(raw)

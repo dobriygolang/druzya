@@ -1,4 +1,4 @@
-// Package infra holds Postgres, Redis and Judge0 adapters for the arena domain.
+// Package infra содержит Postgres-, Redis- и Judge0-адаптеры для arena-домена.
 package infra
 
 import (
@@ -18,18 +18,18 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-// Postgres implements domain.MatchRepo and domain.TaskRepo via sqlc.
+// Postgres реализует domain.MatchRepo и domain.TaskRepo через sqlc.
 type Postgres struct {
 	pool *pgxpool.Pool
 	q    *arenadb.Queries
 }
 
-// NewPostgres wires a Postgres adapter.
+// NewPostgres собирает Postgres-адаптер.
 func NewPostgres(pool *pgxpool.Pool) *Postgres {
 	return &Postgres{pool: pool, q: arenadb.New(pool)}
 }
 
-// CreateMatch atomically inserts an arena_matches row + all participant rows.
+// CreateMatch атомарно вставляет строку arena_matches и все строки участников.
 func (p *Postgres) CreateMatch(ctx context.Context, m domain.Match, parts []domain.Participant) (domain.Match, error) {
 	tx, err := p.pool.Begin(ctx)
 	if err != nil {
@@ -69,7 +69,7 @@ func (p *Postgres) CreateMatch(ctx context.Context, m domain.Match, parts []doma
 	return matchFromRow(createRowToArenaMatch(row)), nil
 }
 
-// Get returns the match by id.
+// Get возвращает матч по id.
 func (p *Postgres) Get(ctx context.Context, id uuid.UUID) (domain.Match, error) {
 	row, err := p.q.GetArenaMatch(ctx, pgUUID(id))
 	if err != nil {
@@ -81,7 +81,7 @@ func (p *Postgres) Get(ctx context.Context, id uuid.UUID) (domain.Match, error) 
 	return matchFromRow(getRowToArenaMatch(row)), nil
 }
 
-// ListParticipants returns participants ordered by team.
+// ListParticipants возвращает участников, упорядоченных по команде.
 func (p *Postgres) ListParticipants(ctx context.Context, matchID uuid.UUID) ([]domain.Participant, error) {
 	rows, err := p.q.ListArenaParticipants(ctx, pgUUID(matchID))
 	if err != nil {
@@ -94,7 +94,7 @@ func (p *Postgres) ListParticipants(ctx context.Context, matchID uuid.UUID) ([]d
 	return out, nil
 }
 
-// UpdateStatus transitions status and optionally stamps the timestamps.
+// UpdateStatus переводит статус и при необходимости проставляет временные метки.
 func (p *Postgres) UpdateStatus(ctx context.Context, id uuid.UUID, status enums.MatchStatus, startedAt, finishedAt *time.Time) error {
 	if !status.IsValid() {
 		return fmt.Errorf("arena.pg.UpdateStatus: invalid status %q", status)
@@ -122,7 +122,7 @@ func (p *Postgres) UpdateStatus(ctx context.Context, id uuid.UUID, status enums.
 	return nil
 }
 
-// SetWinner records the winner and finishes the match.
+// SetWinner фиксирует победителя и завершает матч.
 func (p *Postgres) SetWinner(ctx context.Context, id uuid.UUID, winner uuid.UUID, finishedAt time.Time) error {
 	affected, err := p.q.SetArenaMatchWinner(ctx, arenadb.SetArenaMatchWinnerParams{
 		ID:         pgUUID(id),
@@ -138,8 +138,8 @@ func (p *Postgres) SetWinner(ctx context.Context, id uuid.UUID, winner uuid.UUID
 	return nil
 }
 
-// SetWinningTeam finalises a 2v2 match. winner_id stays NULL — clients
-// distinguish 1v1 vs 2v2 by reading winning_team_id.
+// SetWinningTeam финализирует 2v2-матч. winner_id остаётся NULL — клиенты
+// различают 1v1 и 2v2 по winning_team_id.
 func (p *Postgres) SetWinningTeam(ctx context.Context, id uuid.UUID, team int, finishedAt time.Time) error {
 	if team != domain.Team1 && team != domain.Team2 {
 		return fmt.Errorf("arena.pg.SetWinningTeam: invalid team %d", team)
@@ -158,7 +158,7 @@ func (p *Postgres) SetWinningTeam(ctx context.Context, id uuid.UUID, team int, f
 	return nil
 }
 
-// SetTask stamps the selected task onto the match.
+// SetTask проставляет выбранный task на матч.
 func (p *Postgres) SetTask(ctx context.Context, id uuid.UUID, taskID uuid.UUID, taskVersion int) error {
 	affected, err := p.q.SetArenaMatchTask(ctx, arenadb.SetArenaMatchTaskParams{
 		ID:          pgUUID(id),
@@ -174,7 +174,7 @@ func (p *Postgres) SetTask(ctx context.Context, id uuid.UUID, taskID uuid.UUID, 
 	return nil
 }
 
-// UpsertParticipantResult writes the solver's outcome.
+// UpsertParticipantResult записывает итог решающего участника.
 func (p *Postgres) UpsertParticipantResult(ctx context.Context, part domain.Participant) error {
 	var solve pgtype.Int8
 	if part.SolveTimeMs != nil {
@@ -205,12 +205,13 @@ func (p *Postgres) UpsertParticipantResult(ctx context.Context, part domain.Part
 	return nil
 }
 
-// ListByUser returns one paginated page of finished/cancelled matches for
-// userID and the unfiltered total count under the same filter. The query
-// joins arena_participants twice — once to get the caller's row (for the
-// LP delta), once to find the opponent (1v1 only for now; for 2v2 the
-// "first other" is returned, which the frontend treats as the opposing
-// captain). avatar_url is empty until profiles.media lands.
+// ListByUser возвращает одну пагинированную страницу finished/cancelled
+// матчей пользователя userID и общее число строк под тем же фильтром.
+// Запрос делает JOIN с arena_participants дважды — первый раз, чтобы
+// получить строку вызывающего (для LP-дельты), второй — чтобы найти
+// оппонента (пока только для 1v1; для 2v2 возвращается «первый другой»,
+// которого фронт трактует как капитана противоположной команды).
+// avatar_url пустой до появления profiles.media.
 func (p *Postgres) ListByUser(
 	ctx context.Context,
 	userID uuid.UUID,
@@ -261,13 +262,13 @@ func (p *Postgres) ListByUser(
 		if r.OpponentAvatarUrl.Valid {
 			entry.OpponentAvatarURL = r.OpponentAvatarUrl.String
 		}
-		// LP delta — elo_after - elo_before; falls back to 0 if the rating
-		// domain hasn't yet settled the result on this row.
+		// LP-дельта — elo_after - elo_before; падаем в 0, если rating-домен
+		// ещё не финализировал результат по этой строке.
 		if r.MeEloAfter.Valid {
 			entry.LPChange = int(r.MeEloAfter.Int32) - int(r.MeEloBefore)
 		}
-		// Duration — finished_at - started_at, in whole seconds. Negative
-		// values are clamped to zero (clock skew).
+		// Длительность — finished_at - started_at в целых секундах.
+		// Отрицательные значения прижимаем к нулю (clock skew).
 		if r.StartedAt.Valid && r.FinishedAt.Valid {
 			d := int(r.FinishedAt.Time.Sub(r.StartedAt.Time).Seconds())
 			if d < 0 {
@@ -280,8 +281,8 @@ func (p *Postgres) ListByUser(
 	return out, int(totalRaw), nil
 }
 
-// PickBySectionDifficulty returns a single active task for the given section+difficulty.
-// solution_hint is never selected.
+// PickBySectionDifficulty возвращает одну активную task'у по заданным
+// section+difficulty. solution_hint никогда не выбирается.
 func (p *Postgres) PickBySectionDifficulty(ctx context.Context, section enums.Section, diff enums.Difficulty) (domain.TaskPublic, error) {
 	if !section.IsValid() || !diff.IsValid() {
 		return domain.TaskPublic{}, fmt.Errorf("arena.pg.PickBySectionDifficulty: invalid enums")
@@ -310,13 +311,14 @@ func (p *Postgres) PickBySectionDifficulty(ctx context.Context, section enums.Se
 	}, nil
 }
 
-// FindCurrentMatch returns the user's most recent non-finished match (status
-// IN searching/confirming/active). The SPA polls this while in the queue so
-// it can navigate to /arena/match/:id the moment a match becomes available.
+// FindCurrentMatch возвращает последний незавершённый матч пользователя
+// (status IN searching/confirming/active). SPA опрашивает это, пока
+// пользователь в очереди, чтобы в момент появления матча перейти на
+// /arena/match/:id.
 //
-// Hand-rolled pgx (no sqlc) because this is a single-row lookup with a 3-
-// element status filter — overkill to wire through sqlc just for that. If
-// more polling-style endpoints land, promote to a query file.
+// Написано руками через pgx (без sqlc), потому что это single-row lookup
+// с фильтром по трём статусам — заводить ради этого sqlc-запрос избыточно.
+// Если появятся ещё polling-endpoint'ы — имеет смысл вынести в query-файл.
 func (p *Postgres) FindCurrentMatch(ctx context.Context, userID uuid.UUID) (domain.Match, error) {
 	const sql = `
 		SELECT m.id, m.task_id, m.task_version, m.section, m.mode, m.status,
@@ -344,7 +346,7 @@ func (p *Postgres) FindCurrentMatch(ctx context.Context, userID uuid.UUID) (doma
 	return matchFromRow(am), nil
 }
 
-// GetByID fetches a task by id, solution_hint excluded.
+// GetByID тянет task по id, solution_hint исключается.
 func (p *Postgres) GetByID(ctx context.Context, id uuid.UUID) (domain.TaskPublic, error) {
 	row, err := p.q.GetArenaTaskPublic(ctx, pgUUID(id))
 	if err != nil {
@@ -367,7 +369,7 @@ func (p *Postgres) GetByID(ctx context.Context, id uuid.UUID) (domain.TaskPublic
 	}, nil
 }
 
-// ── helpers ────────────────────────────────────────────────────────────────
+// ── вспомогательные функции ────────────────────────────────────────────────
 
 func pgUUID(id uuid.UUID) pgtype.UUID { return pgtype.UUID{Bytes: id, Valid: true} }
 
@@ -442,9 +444,9 @@ func participantFromRow(r arenadb.ArenaParticipant) domain.Participant {
 		p.SolveTimeMs = &v
 	}
 	if r.SuspicionScore.Valid && r.SuspicionScore.Int != nil {
-		// Convert fixed-point numeric to float64.
+		// Конвертируем fixed-point numeric в float64.
 		f, _ := new(big.Float).SetInt(r.SuspicionScore.Int).Float64()
-		// Adjust for exponent.
+		// Корректируем по показателю степени.
 		for i := int32(0); i < -r.SuspicionScore.Exp; i++ {
 			f /= 10
 		}
@@ -460,7 +462,7 @@ func participantFromRow(r arenadb.ArenaParticipant) domain.Participant {
 	return p
 }
 
-// Interface guards.
+// Interface guards — проверки соответствия интерфейсам.
 var (
 	_ domain.MatchRepo = (*Postgres)(nil)
 	_ domain.TaskRepo  = (*Postgres)(nil)

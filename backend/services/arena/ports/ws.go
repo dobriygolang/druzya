@@ -1,4 +1,4 @@
-// Package ports wires the arena domain to HTTP + WebSocket transports.
+// Package ports подключает arena-домен к HTTP- и WebSocket-транспортам.
 package ports
 
 import (
@@ -16,15 +16,15 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-// TokenVerifier is the local interface the WS hub uses to validate JWT tokens
-// at handshake. Implemented by the auth domain's TokenIssuer; injected by
-// cmd/monolith wiring.
+// TokenVerifier — локальный интерфейс, через который WS-хаб валидирует
+// JWT-токены на handshake. Реализуется TokenIssuer из auth-домена;
+// инжектится в cmd/monolith-wiring.
 type TokenVerifier interface {
-	// VerifyAccess parses a raw token and returns the user id it belongs to.
+	// VerifyAccess парсит сырой токен и возвращает user id его владельца.
 	VerifyAccess(raw string) (uuid.UUID, error)
 }
 
-// Outbound message types (server → client) — bible / openapi x-websocket.
+// Типы исходящих сообщений (server → client) — bible / openapi x-websocket.
 const (
 	MsgMatchStart       = "match_start"
 	MsgOpponentAccepted = "opponent_accepted"
@@ -33,12 +33,12 @@ const (
 	MsgCountdown        = "countdown"
 )
 
-// Inbound message types (client → server).
+// Типы входящих сообщений (client → server).
 const (
 	MsgMatchReady = "match_ready"
 	MsgCodeSubmit = "code_submit"
 	MsgHeartbeat  = "heartbeat"
-	// Extra anticheat-signal messages.
+	// Дополнительные сообщения anticheat-сигналов.
 	MsgPasteAttempt = "paste_attempt"
 	MsgTabSwitch    = "tab_switch"
 )
@@ -46,26 +46,26 @@ const (
 // rateLimit: 20 msgs/sec per connection (bible §11).
 const maxMsgsPerSecond = 20
 
-// Envelope is the common message shape.
+// Envelope — общая форма сообщения.
 type Envelope struct {
 	Type string          `json:"type"`
 	Data json.RawMessage `json:"data,omitempty"`
 }
 
-// client is one WS connection attached to a match.
+// client — одно WS-соединение, привязанное к матчу.
 type client struct {
 	matchID uuid.UUID
 	userID  uuid.UUID
 	conn    *websocket.Conn
 	send    chan []byte
 	log     *slog.Logger
-	// rate limiting window
+	// окно rate limiting'а
 	rlMu    sync.Mutex
 	rlStart time.Time
 	rlCount int
 }
 
-// Hub owns per-match rooms.
+// Hub владеет per-match комнатами.
 type Hub struct {
 	Log            *slog.Logger
 	Verifier       TokenVerifier
@@ -75,19 +75,19 @@ type Hub struct {
 	mu    sync.RWMutex
 	rooms map[uuid.UUID]map[*client]struct{}
 
-	// anticheat hooks — wired from cmd/monolith.
+	// anticheat-хуки — инжектятся из cmd/monolith.
 	OnPaste OnPasteFunc
 	OnTab   OnTabSwitchFunc
 }
 
-// OnPasteFunc is invoked whenever a client sends a paste_attempt event.
+// OnPasteFunc вызывается каждый раз, когда клиент шлёт событие paste_attempt.
 type OnPasteFunc func(ctx context.Context, matchID, userID uuid.UUID)
 
-// OnTabSwitchFunc is invoked on tab_switch events.
+// OnTabSwitchFunc вызывается на событиях tab_switch.
 type OnTabSwitchFunc func(ctx context.Context, matchID, userID uuid.UUID)
 
-// NewHub wires a hub. Origins is the comma-separated list of allowed origins;
-// an empty list accepts any origin for local dev.
+// NewHub собирает hub. Origins — список допустимых origin'ов через запятую;
+// пустой список принимает любой origin для local dev.
 func NewHub(log *slog.Logger, verifier TokenVerifier, allowedOrigins []string) *Hub {
 	h := &Hub{
 		Log:            log,
@@ -114,7 +114,7 @@ func (h *Hub) originAllowed(r *http.Request) bool {
 	return false
 }
 
-// register adds a client to a room.
+// register добавляет клиента в комнату.
 func (h *Hub) register(c *client) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
@@ -126,7 +126,7 @@ func (h *Hub) register(c *client) {
 	room[c] = struct{}{}
 }
 
-// unregister removes a client and closes its send channel.
+// unregister удаляет клиента и закрывает его send-канал.
 func (h *Hub) unregister(c *client) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
@@ -141,7 +141,7 @@ func (h *Hub) unregister(c *client) {
 	}
 }
 
-// Broadcast sends the envelope to every client in the match room.
+// Broadcast рассылает envelope всем клиентам в комнате матча.
 func (h *Hub) Broadcast(matchID uuid.UUID, msgType string, payload any) {
 	env := Envelope{Type: msgType}
 	if payload != nil {
@@ -159,7 +159,7 @@ func (h *Hub) Broadcast(matchID uuid.UUID, msgType string, payload any) {
 	}
 	h.mu.RLock()
 	room := h.rooms[matchID]
-	// snapshot recipients so we don't hold the lock during slow writes
+	// снимаем snapshot получателей, чтобы не держать lock на медленных записях
 	targets := make([]*client, 0, len(room))
 	for c := range room {
 		targets = append(targets, c)
@@ -169,7 +169,7 @@ func (h *Hub) Broadcast(matchID uuid.UUID, msgType string, payload any) {
 		select {
 		case c.send <- buf:
 		default:
-			// Client is slow — drop and log; don't block the hub.
+			// Клиент медленный — дропаем и логируем; hub не блокируем.
 			h.Log.Warn("arena.ws: slow client dropped",
 				slog.String("user", c.userID.String()),
 				slog.String("match", matchID.String()))
@@ -177,12 +177,12 @@ func (h *Hub) Broadcast(matchID uuid.UUID, msgType string, payload any) {
 	}
 }
 
-// NotifyMatched implements app.MatchNotifier — called by the matchmaker. The
-// WS hub forwards a match_start envelope addressed to the given user only.
+// NotifyMatched реализует app.MatchNotifier — вызывается matchmaker'ом.
+// WS-хаб шлёт envelope match_start, адресованный только указанному пользователю.
 func (h *Hub) NotifyMatched(_ context.Context, userID, matchID uuid.UUID) {
-	// Per-user routing — find their connection (if they are already connected
-	// to the room) and send the envelope. If they aren't connected yet the
-	// initial GET /match/{matchId} will fill in state.
+	// Per-user routing — ищем соединение пользователя (если он уже подключён
+	// к комнате) и шлём envelope. Если ещё не подключён — начальный
+	// GET /match/{matchId} подтянет состояние.
 	h.mu.RLock()
 	room := h.rooms[matchID]
 	targets := make([]*client, 0, len(room))
@@ -201,8 +201,8 @@ func (h *Hub) NotifyMatched(_ context.Context, userID, matchID uuid.UUID) {
 	}
 }
 
-// ServeWS upgrades the HTTP connection and starts the client's read/write loops.
-// matchId is parsed from the URL by the caller.
+// ServeWS апгрейдит HTTP-соединение и запускает read/write-циклы клиента.
+// matchId извлекается из URL вызывающим.
 func (h *Hub) ServeWS(w http.ResponseWriter, r *http.Request, matchID uuid.UUID, userID uuid.UUID) {
 	conn, err := h.upgrader.Upgrade(w, r, nil)
 	if err != nil {
@@ -222,12 +222,12 @@ func (h *Hub) ServeWS(w http.ResponseWriter, r *http.Request, matchID uuid.UUID,
 	go c.readPump(h)
 }
 
-// STUB: spectator read-only WS — for spectator mode we'd accept connections
-// without matching the user to a participant and skip the rate-limit drop,
-// but allow no inbound messages. Out of MVP scope.
+// STUB: spectator read-only WS — для режима наблюдателя принимали бы
+// соединения, не матча пользователя к участнику, пропускали rate-limit
+// дроп, но не принимали входящих сообщений. Вне scope MVP.
 
-// readPump reads inbound messages from the client, rate-limits them, and
-// dispatches by type.
+// readPump читает входящие сообщения клиента, применяет rate-limit и
+// диспетчеризует по типу.
 func (c *client) readPump(h *Hub) {
 	defer func() {
 		h.unregister(c)
@@ -255,16 +255,16 @@ func (c *client) readPump(h *Hub) {
 		}
 		switch env.Type {
 		case MsgHeartbeat:
-			// no-op — pong keeps the deadline fresh via pong handler
+			// no-op — pong держит deadline свежим через pong-handler
 		case MsgMatchReady:
-			// The HTTP /confirm endpoint is the source of truth; the WS event
-			// just echoes readiness to the opposite side.
+			// HTTP /confirm — источник истины; WS-событие просто эхоит
+			// готовность на противоположную сторону.
 			h.Broadcast(c.matchID, MsgOpponentAccepted, map[string]any{
 				"user_id": c.userID,
 			})
 		case MsgCodeSubmit:
-			// Submissions are also served via HTTP. A WS-delivered submission
-			// would broadcast progress; out-of-scope for MVP.
+			// Отправки также обслуживаются по HTTP. WS-отправка бродкастила
+			// бы прогресс; вне scope MVP.
 		case MsgPasteAttempt:
 			if h.OnPaste != nil {
 				h.OnPaste(context.Background(), c.matchID, c.userID)
@@ -274,12 +274,12 @@ func (c *client) readPump(h *Hub) {
 				h.OnTab(context.Background(), c.matchID, c.userID)
 			}
 		default:
-			// Unknown type — ignore.
+			// Неизвестный тип — игнорируем.
 		}
 	}
 }
 
-// rateOk returns true when the client is under the 20 msg/sec budget.
+// rateOk возвращает true, пока клиент вписывается в бюджет 20 сообщений/сек.
 func (c *client) rateOk() bool {
 	c.rlMu.Lock()
 	defer c.rlMu.Unlock()
@@ -292,7 +292,7 @@ func (c *client) rateOk() bool {
 	return c.rlCount <= maxMsgsPerSecond
 }
 
-// writePump streams outgoing messages + sends periodic pings.
+// writePump стримит исходящие сообщения и шлёт периодические ping'и.
 func (c *client) writePump() {
 	ping := time.NewTicker(30 * time.Second)
 	defer func() {
@@ -319,5 +319,5 @@ func (c *client) writePump() {
 	}
 }
 
-// Compile-time: Hub implements app.MatchNotifier.
+// Compile-time: Hub реализует app.MatchNotifier.
 var _ app.MatchNotifier = (*Hub)(nil)

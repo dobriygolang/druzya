@@ -13,8 +13,8 @@ import (
 	"github.com/google/uuid"
 )
 
-// ConfirmReady records a ready-check confirmation and transitions the match to
-// active once both players confirm.
+// ConfirmReady фиксирует подтверждение ready-check и переводит матч в
+// active, когда оба игрока подтвердили.
 type ConfirmReady struct {
 	Matches  domain.MatchRepo
 	Ready    domain.ReadyCheckRepo
@@ -24,7 +24,7 @@ type ConfirmReady struct {
 	Log      *slog.Logger
 }
 
-// Do handles one confirm call.
+// Do обрабатывает один вызов confirm.
 func (uc *ConfirmReady) Do(ctx context.Context, matchID, userID uuid.UUID) error {
 	clk := uc.Clock
 	if clk == nil {
@@ -67,8 +67,8 @@ func (uc *ConfirmReady) Do(ctx context.Context, matchID, userID uuid.UUID) error
 	return nil
 }
 
-// HandleReadyCheckTimeout must be called by a separate sweeper (or on demand
-// from a GET /match/{id}) when the deadline passes without both confirmations.
+// HandleReadyCheckTimeout должен вызываться отдельным sweeper'ом (или по
+// требованию из GET /match/{id}), когда deadline прошёл без обоих подтверждений.
 type HandleReadyCheckTimeout struct {
 	Queue   domain.QueueRepo
 	Matches domain.MatchRepo
@@ -78,9 +78,10 @@ type HandleReadyCheckTimeout struct {
 	Log     *slog.Logger
 }
 
-// Sweep checks the match's ready-check state and, if expired with outstanding
-// confirms, cancels the match, re-queues the confirming user with a +5 ELO
-// bonus, and raises an anticheat signal on the non-confirming one.
+// Sweep проверяет состояние ready-check матча и, если deadline просрочен
+// с не полученными подтверждениями, отменяет матч, возвращает в очередь
+// подтвердившего с бонусом +5 ELO и поднимает anticheat-сигнал на
+// неподтвердившего.
 func (uc *HandleReadyCheckTimeout) Sweep(ctx context.Context, matchID uuid.UUID) error {
 	clk := uc.Clock
 	if clk == nil {
@@ -98,7 +99,7 @@ func (uc *HandleReadyCheckTimeout) Sweep(ctx context.Context, matchID uuid.UUID)
 	if !domain.IsReadyCheckExpired(state.Deadline, now) {
 		return nil
 	}
-	// Identify who confirmed / who didn't.
+	// Определяем, кто подтвердил, а кто нет.
 	var confirmed, nonConfirmed []uuid.UUID
 	for _, u := range state.UserIDs {
 		if state.Confirmed[u] {
@@ -107,12 +108,12 @@ func (uc *HandleReadyCheckTimeout) Sweep(ctx context.Context, matchID uuid.UUID)
 			nonConfirmed = append(nonConfirmed, u)
 		}
 	}
-	// Load match to know section+mode.
+	// Загружаем матч, чтобы знать section+mode.
 	m, err := uc.Matches.Get(ctx, matchID)
 	if err != nil {
 		return fmt.Errorf("arena.HandleReadyCheckTimeout: load match: %w", err)
 	}
-	// Cancel.
+	// Отменяем.
 	if err := uc.Matches.UpdateStatus(ctx, matchID, enums.MatchStatusCancelled, nil, &now); err != nil {
 		return fmt.Errorf("arena.HandleReadyCheckTimeout: update: %w", err)
 	}
@@ -121,7 +122,7 @@ func (uc *HandleReadyCheckTimeout) Sweep(ctx context.Context, matchID uuid.UUID)
 		MatchID: matchID,
 		Reason:  "ready_check_timeout",
 	})
-	// Re-queue confirming users with +5 ELO bonus.
+	// Возвращаем подтвердивших в очередь с бонусом +5 ELO.
 	parts, _ := uc.Matches.ListParticipants(ctx, matchID)
 	eloByUser := map[uuid.UUID]int{}
 	for _, p := range parts {
@@ -136,9 +137,9 @@ func (uc *HandleReadyCheckTimeout) Sweep(ctx context.Context, matchID uuid.UUID)
 			EnqueuedAt: now,
 		})
 	}
-	// Anticheat signal on non-confirming users. NOTE: bible asks for
-	// AnticheatTabSwitch if a WS disconnect was observed. The WS hub sets that
-	// flag; here we conservatively raise SuspiciousPattern.
+	// Anticheat-сигнал на неподтвердивших. NOTE: bible требует
+	// AnticheatTabSwitch, если был зафиксирован WS-disconnect. Этот флаг
+	// ставит WS-хаб; здесь консервативно поднимаем SuspiciousPattern.
 	for _, u := range nonConfirmed {
 		mID := matchID
 		_ = uc.Bus.Publish(ctx, sharedDomain.AnticheatSignalRaised{
@@ -152,8 +153,8 @@ func (uc *HandleReadyCheckTimeout) Sweep(ctx context.Context, matchID uuid.UUID)
 	return nil
 }
 
-// SubmitCode validates size + language, invokes Judge0, and on first pass
-// declares the winner and closes the match.
+// SubmitCode валидирует размер + язык, вызывает Judge0 и по первому
+// успешному прохождению объявляет победителя и закрывает матч.
 type SubmitCode struct {
 	Matches   domain.MatchRepo
 	Tasks     domain.TaskRepo
@@ -164,7 +165,7 @@ type SubmitCode struct {
 	Log       *slog.Logger
 }
 
-// SubmitCodeInput is the input shape.
+// SubmitCodeInput — форма входа.
 type SubmitCodeInput struct {
 	MatchID  uuid.UUID
 	UserID   uuid.UUID
@@ -172,7 +173,7 @@ type SubmitCodeInput struct {
 	Language enums.Language
 }
 
-// SubmitCodeOutput is the result returned synchronously.
+// SubmitCodeOutput — результат, возвращаемый синхронно.
 type SubmitCodeOutput struct {
 	Passed      bool
 	TestsTotal  int
@@ -181,7 +182,7 @@ type SubmitCodeOutput struct {
 	MemoryKB    int
 }
 
-// Do runs a submission end-to-end.
+// Do прогоняет отправку end-to-end.
 func (uc *SubmitCode) Do(ctx context.Context, in SubmitCodeInput) (SubmitCodeOutput, error) {
 	if len(in.Code) > domain.MaxCodeSizeBytes {
 		return SubmitCodeOutput{}, domain.ErrCodeTooLarge
@@ -193,7 +194,7 @@ func (uc *SubmitCode) Do(ctx context.Context, in SubmitCodeInput) (SubmitCodeOut
 	if err != nil {
 		return SubmitCodeOutput{}, fmt.Errorf("arena.SubmitCode: %w", err)
 	}
-	// Only participants may submit.
+	// Отправлять могут только участники.
 	parts, err := uc.Matches.ListParticipants(ctx, in.MatchID)
 	if err != nil {
 		return SubmitCodeOutput{}, fmt.Errorf("arena.SubmitCode: participants: %w", err)
@@ -208,10 +209,10 @@ func (uc *SubmitCode) Do(ctx context.Context, in SubmitCodeInput) (SubmitCodeOut
 	if !isPart {
 		return SubmitCodeOutput{}, domain.ErrNotParticipant
 	}
-	// Validate state — only active.
+	// Проверяем состояние — только active.
 	switch m.Status {
 	case enums.MatchStatusActive:
-		// ok
+		// всё ок
 	case enums.MatchStatusSearching, enums.MatchStatusConfirming,
 		enums.MatchStatusFinished, enums.MatchStatusCancelled:
 		return SubmitCodeOutput{}, domain.ErrMatchStateWrong
@@ -250,9 +251,9 @@ func (uc *SubmitCode) Do(ctx context.Context, in SubmitCodeInput) (SubmitCodeOut
 		if m.Mode == enums.ArenaModeDuo2v2 {
 			uc.maybeFinishDuo(ctx, in.MatchID, in.UserID, m, parts, now)
 		} else {
-			// First passing submission wins. Idempotent: SetWinner only succeeds once.
+			// Побеждает первая успешная отправка. Идемпотентно: SetWinner отрабатывает только один раз.
 			if err := uc.Matches.SetWinner(ctx, in.MatchID, in.UserID, now); err != nil {
-				// If the row doesn't exist, bubble; otherwise treat as lost race.
+				// Если строки нет — пробрасываем; иначе считаем, что гонку проиграли.
 				uc.Log.WarnContext(ctx, "arena.SubmitCode: SetWinner", slog.Any("err", err))
 			} else {
 				losers := make([]uuid.UUID, 0, len(parts)-1)
@@ -270,7 +271,7 @@ func (uc *SubmitCode) Do(ctx context.Context, in SubmitCodeInput) (SubmitCodeOut
 					Section:    m.Section,
 					WinnerID:   in.UserID,
 					LoserIDs:   losers,
-					EloDeltas:  map[uuid.UUID]int{}, // rating domain computes the real delta
+					EloDeltas:  map[uuid.UUID]int{}, // реальную дельту считает rating domain
 					DurationMs: dur,
 				})
 			}
@@ -293,13 +294,13 @@ func (uc *SubmitCode) clockNow() time.Time {
 	return time.Now().UTC()
 }
 
-// maybeFinishDuo decides whether the just-passing submission completes a 2v2
-// match. A 2v2 match is won by the first team where *both* members have
-// submitted_at set on their participant row (the SubmitCode upsert above
-// stamps it). If only one team-member has submitted we wait.
+// maybeFinishDuo решает, завершает ли только что прошедшая отправка 2v2-матч.
+// 2v2-матч выигрывает первая команда, у которой *обоим* участникам
+// проставлен submitted_at в их participant-строке (upsert выше в SubmitCode
+// это делает). Если отправил только один из команды — ждём.
 //
-// The persistence is best-effort idempotent: SetWinningTeam updates rows
-// matching `id = $1`, so a duplicate call only re-stamps finished_at.
+// Persistence — best-effort идемпотентно: SetWinningTeam обновляет строки
+// по `id = $1`, поэтому повторный вызов лишь перепроставит finished_at.
 func (uc *SubmitCode) maybeFinishDuo(
 	ctx context.Context,
 	matchID, justFinishedUser uuid.UUID,
@@ -307,10 +308,11 @@ func (uc *SubmitCode) maybeFinishDuo(
 	parts []domain.Participant,
 	now time.Time,
 ) {
-	// Build a passed-set: a participant is considered passed when their
-	// row already has a submitted_at OR when they're the just-finished user
-	// (whose row was upserted by SubmitCode but the local `parts` slice was
-	// loaded *before* that upsert, so submitted_at could still be nil here).
+	// Строим множество passed: участник считается passed, если у его
+	// строки уже есть submitted_at ИЛИ если это только что финишировавший
+	// пользователь (его строку upsert'нул SubmitCode выше, но локальный
+	// slice `parts` загружен *до* этого upsert'а, так что submitted_at
+	// здесь всё ещё может быть nil).
 	passed := make(map[uuid.UUID]bool, len(parts))
 	for _, p := range parts {
 		if p.SubmittedAt != nil {
@@ -327,10 +329,10 @@ func (uc *SubmitCode) maybeFinishDuo(
 		uc.Log.WarnContext(ctx, "arena.SubmitCode: SetWinningTeam", slog.Any("err", err))
 		return
 	}
-	// MatchCompleted requires a single WinnerID — for 2v2 we publish the
-	// just-finished user as the "winning captain" and put both teammates in
-	// LoserIDs of the opposing team. The rating domain will read the
-	// participant team_id from postgres directly to award team-level deltas.
+	// MatchCompleted требует один WinnerID — для 2v2 публикуем только что
+	// финишировавшего пользователя как «капитана-победителя», а обоих
+	// членов проигравшей команды кладём в LoserIDs. Rating domain читает
+	// participant.team_id напрямую из postgres, чтобы начислить team-level дельты.
 	losers := make([]uuid.UUID, 0, len(parts))
 	for _, p := range parts {
 		if p.Team != winningTeam {
@@ -351,20 +353,20 @@ func (uc *SubmitCode) maybeFinishDuo(
 	})
 }
 
-// GetMatch returns the match+participants view.
+// GetMatch возвращает связку match+participants.
 type GetMatch struct {
 	Matches domain.MatchRepo
 	Tasks   domain.TaskRepo
 }
 
-// MatchView is the rendered view.
+// MatchView — отрисованная view.
 type MatchView struct {
 	Match        domain.Match
 	Task         *domain.TaskPublic
 	Participants []domain.Participant
 }
 
-// Do returns the match detail.
+// Do возвращает детальную карточку матча.
 func (uc *GetMatch) Do(ctx context.Context, matchID uuid.UUID) (MatchView, error) {
 	m, err := uc.Matches.Get(ctx, matchID)
 	if err != nil {
@@ -384,14 +386,14 @@ func (uc *GetMatch) Do(ctx context.Context, matchID uuid.UUID) (MatchView, error
 	return v, nil
 }
 
-// OnPasteAttempt accumulates suspicion score on paste events. Returns the new
-// score and a raised flag when High threshold is crossed.
+// OnPasteAttempt накапливает suspicion score на событиях paste. Возвращает
+// новый score и флаг срабатывания при пересечении порога High.
 type OnPasteAttempt struct {
 	Anticheat domain.AnticheatRepo
 	Bus       sharedDomain.Bus
 }
 
-// Apply ingests one paste event.
+// Apply принимает одно событие paste.
 func (uc *OnPasteAttempt) Apply(ctx context.Context, matchID, userID uuid.UUID) error {
 	cur, err := uc.Anticheat.GetSuspicion(ctx, matchID, userID)
 	if err != nil {
@@ -414,13 +416,13 @@ func (uc *OnPasteAttempt) Apply(ctx context.Context, matchID, userID uuid.UUID) 
 	return nil
 }
 
-// OnTabSwitch records a tab-switch event.
+// OnTabSwitch фиксирует событие переключения вкладки.
 type OnTabSwitch struct {
 	Anticheat domain.AnticheatRepo
 	Bus       sharedDomain.Bus
 }
 
-// Apply records one tab-switch event.
+// Apply фиксирует одно событие tab-switch.
 func (uc *OnTabSwitch) Apply(ctx context.Context, matchID, userID uuid.UUID) error {
 	n, err := uc.Anticheat.IncrTabSwitch(ctx, matchID, userID)
 	if err != nil {

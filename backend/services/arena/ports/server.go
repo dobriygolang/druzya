@@ -1,13 +1,13 @@
-// Package ports exposes the arena domain via Connect-RPC.
+// Package ports публикует arena-домен через Connect-RPC.
 //
-// ArenaServer implements druz9v1connect.ArenaServiceHandler (generated from
-// proto/druz9/v1/arena.proto). It is mounted in main.go via
-// NewArenaServiceHandler + vanguard, so the same handlers serve both the
-// native Connect path (/druz9.v1.ArenaService/*) and the REST paths
-// (/api/v1/arena/*) declared via google.api.http annotations.
+// ArenaServer реализует druz9v1connect.ArenaServiceHandler (сгенерирован из
+// proto/druz9/v1/arena.proto). Он монтируется в main.go через
+// NewArenaServiceHandler + vanguard, поэтому одни и те же handler'ы
+// обслуживают и нативный Connect-путь (/druz9.v1.ArenaService/*),
+// и REST-пути (/api/v1/arena/*), заданные через google.api.http аннотации.
 //
-// The /ws/arena/{matchId} WebSocket is NOT part of Connect — it stays in
-// ws.go / ws_handler.go as a raw chi route.
+// WebSocket /ws/arena/{matchId} НЕ часть Connect — он остаётся в
+// ws.go / ws_handler.go как обычный chi-роут.
 package ports
 
 import (
@@ -28,10 +28,10 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
-// Compile-time assertion — ArenaServer satisfies the generated handler.
+// Compile-time проверка — ArenaServer удовлетворяет сгенерированному handler'у.
 var _ druz9v1connect.ArenaServiceHandler = (*ArenaServer)(nil)
 
-// ArenaServer adapts arena use cases to the Connect handler interface.
+// ArenaServer адаптирует use-case'ы arena к интерфейсу Connect-handler'а.
 type ArenaServer struct {
 	Find      *app.FindMatch
 	Cancel    *app.CancelSearch
@@ -44,11 +44,11 @@ type ArenaServer struct {
 	Log       *slog.Logger
 }
 
-// UserEloFunc resolves the user's ELO for a section. Injected so arena stays
-// decoupled from the rating domain (no cross-imports).
+// UserEloFunc резолвит ELO пользователя по секции. Инжектится, чтобы
+// arena оставалась развязанной с rating-доменом (без cross-импорта).
 type UserEloFunc func(ctx any, userID uuid.UUID, section enums.Section) int
 
-// NewArenaServer wires an ArenaServer.
+// NewArenaServer собирает ArenaServer.
 func NewArenaServer(
 	find *app.FindMatch,
 	cancel *app.CancelSearch,
@@ -111,9 +111,9 @@ func (s *ArenaServer) GetMyMatches(
 	}), nil
 }
 
-// ── Connect handlers ──────────────────────────────────────────────────────
+// ── Connect-handler'ы ─────────────────────────────────────────────────────
 
-// FindMatch implements (POST /api/v1/arena/match/find).
+// FindMatch реализует (POST /api/v1/arena/match/find).
 func (s *ArenaServer) FindMatch(
 	ctx context.Context,
 	req *connect.Request[pb.FindMatchRequest],
@@ -154,7 +154,7 @@ func (s *ArenaServer) FindMatch(
 	return connect.NewResponse(resp), nil
 }
 
-// CancelSearch implements (DELETE /api/v1/arena/match/cancel).
+// CancelSearch реализует (DELETE /api/v1/arena/match/cancel).
 func (s *ArenaServer) CancelSearch(
 	ctx context.Context,
 	_ *connect.Request[pb.CancelMatchRequest],
@@ -169,7 +169,7 @@ func (s *ArenaServer) CancelSearch(
 	return connect.NewResponse(&pb.CancelMatchRequest{}), nil
 }
 
-// GetMatch implements (GET /api/v1/arena/match/{match_id}).
+// GetMatch реализует (GET /api/v1/arena/match/{match_id}).
 func (s *ArenaServer) GetMatch(
 	ctx context.Context,
 	req *connect.Request[pb.GetMatchRequest],
@@ -186,7 +186,7 @@ func (s *ArenaServer) GetMatch(
 	if err != nil {
 		return nil, s.toConnectErr(err)
 	}
-	// Only participants may view the match — bible §11 leakage prevention.
+	// Смотреть матч могут только участники — bible §11, защита от утечки.
 	authorized := false
 	for _, p := range view.Participants {
 		if p.UserID == uid {
@@ -197,15 +197,15 @@ func (s *ArenaServer) GetMatch(
 	if !authorized {
 		return nil, connect.NewError(connect.CodePermissionDenied, errors.New("forbidden"))
 	}
-	// On-demand timeout sweep so ready-check expiry is observed without a
-	// separate cron.
+	// On-demand sweep таймаутов — ready-check expiry отрабатывает без
+	// отдельного cron'а.
 	if s.Timeouts != nil {
 		_ = s.Timeouts.Sweep(ctx, matchID)
 	}
 	return connect.NewResponse(toArenaMatchProto(view)), nil
 }
 
-// ConfirmReady implements (POST /api/v1/arena/match/{match_id}/confirm).
+// ConfirmReady реализует (POST /api/v1/arena/match/{match_id}/confirm).
 func (s *ArenaServer) ConfirmReady(
 	ctx context.Context,
 	req *connect.Request[pb.ConfirmMatchRequest],
@@ -224,7 +224,7 @@ func (s *ArenaServer) ConfirmReady(
 	return connect.NewResponse(&pb.ConfirmMatchRequest{}), nil
 }
 
-// SubmitCode implements (POST /api/v1/arena/match/{match_id}/submit).
+// SubmitCode реализует (POST /api/v1/arena/match/{match_id}/submit).
 func (s *ArenaServer) SubmitCode(
 	ctx context.Context,
 	req *connect.Request[pb.SubmitCodeRequest],
@@ -256,7 +256,7 @@ func (s *ArenaServer) SubmitCode(
 	}), nil
 }
 
-// ── error mapping ─────────────────────────────────────────────────────────
+// ── маппинг ошибок ────────────────────────────────────────────────────────
 
 func (s *ArenaServer) toConnectErr(err error) error {
 	switch {
@@ -276,7 +276,7 @@ func (s *ArenaServer) toConnectErr(err error) error {
 	}
 }
 
-// ── converters (domain → proto) ───────────────────────────────────────────
+// ── конверсии (domain → proto) ────────────────────────────────────────────
 
 func toArenaMatchProto(v app.MatchView) *pb.ArenaMatch {
 	m := v.Match
@@ -306,8 +306,8 @@ func toArenaMatchProto(v app.MatchView) *pb.ArenaMatch {
 				Team:      int32(p.Team),
 				EloBefore: int32(p.EloBefore),
 			}
-			// Username is STUB-populated; profile cross-call deferred (same as
-			// legacy REST path).
+			// Username пока заполняется STUB'ом; cross-call в profile отложен
+			// (как и в legacy REST-пути).
 			if p.EloAfter != nil {
 				ap.EloAfter = int32(*p.EloAfter)
 			}
@@ -317,9 +317,9 @@ func toArenaMatchProto(v app.MatchView) *pb.ArenaMatch {
 			if p.SuspicionScore != nil {
 				ap.SuspicionScore = float32(*p.SuspicionScore)
 			}
-			// MatchEnd-page enrichment: tier label + XP breakdown. Fields are
-			// only populated for finished matches, otherwise frontend just sees
-			// zero/empty and falls back to its loading skeleton.
+			// Обогащение для страницы MatchEnd: tier label + XP breakdown.
+			// Поля заполняются только для завершённых матчей; иначе фронт
+			// видит zero/empty и откатывается на свой loading skeleton.
 			if m.Status == enums.MatchStatusFinished {
 				eloFinal := p.EloBefore
 				if p.EloAfter != nil {
@@ -379,7 +379,7 @@ func toArenaTaskProto(t domain.TaskPublic) *pb.ArenaTaskPublic {
 	return out
 }
 
-// ── enum adapters ─────────────────────────────────────────────────────────
+// ── адаптеры enum'ов ──────────────────────────────────────────────────────
 
 func sectionToProto(s enums.Section) pb.Section {
 	switch s {
