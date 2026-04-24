@@ -182,8 +182,14 @@ func (s *CohortServer) toConnectErr(err error) error {
 		errors.Is(err, domain.ErrInvalidLanguage):
 		return connect.NewError(connect.CodeInvalidArgument, err)
 	default:
+		// Unknown error path = 500. Логируем ПОЛНУЮ цепочку ошибок через %+v,
+		// чтобы в Grafana Loki можно было отфильтровать по подстроке "cohort:"
+		// и сразу увидеть где именно упало (сache/pg/war/singleflight/...).
+		// Клиенту отдаём opaque "cohort failure" без утечки внутренностей.
 		if s.Log != nil {
-			s.Log.Error("cohort: unexpected error", slog.Any("err", err))
+			s.Log.Error("cohort: unexpected error",
+				slog.String("err", fmt.Sprintf("%+v", err)),
+				slog.String("err_type", fmt.Sprintf("%T", err)))
 		}
 		return connect.NewError(connect.CodeInternal, errors.New("cohort failure"))
 	}
