@@ -2,6 +2,7 @@ package infra
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -10,6 +11,7 @@ import (
 	"druz9/shared/enums"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
@@ -35,9 +37,9 @@ func (p *Postgres) CountRecentActivity(ctx context.Context, userID uuid.UUID, si
 // arena_participants. XPDelta берётся как (elo_after - elo_before) — это
 // прокси-LP, который коррелирует с XP-наградой за матч.
 //
-// Если арена-таблиц нет / запрос провалился, возвращаем пустой срез без
-// ошибки — отчёт деградирует к «нет данных», базовые метрики продолжают
-// работать.
+// Ошибки (отсутствие таблиц, SQL-проблемы) пробрасываются наверх; use case
+// (см. app/report.go) логирует и деградирует к «нет данных», не роняя весь
+// отчёт. Anti-fallback: здесь silent-swallow запрещён.
 func (p *Postgres) ListMatchAggregatesSince(ctx context.Context, userID uuid.UUID, since time.Time) ([]domain.MatchAggregate, error) {
 	const q = `
 		SELECT m.section, m.winner_id = $1 AS won,
@@ -48,8 +50,7 @@ func (p *Postgres) ListMatchAggregatesSince(ctx context.Context, userID uuid.UUI
 		   AND m.finished_at >= $2`
 	rows, err := p.pool.Query(ctx, q, pgUUID(userID), since)
 	if err != nil {
-		// Не роняем отчёт — арена-данных может не быть в среде разработки.
-		return nil, nil
+		return nil, fmt.Errorf("profile.Postgres.ListMatchAggregatesSince: %w", err)
 	}
 	defer rows.Close()
 	out := make([]domain.MatchAggregate, 0, 16)
@@ -58,7 +59,7 @@ func (p *Postgres) ListMatchAggregatesSince(ctx context.Context, userID uuid.UUI
 		var won bool
 		var xpDelta int
 		if err := rows.Scan(&section, &won, &xpDelta); err != nil {
-			continue
+			return nil, fmt.Errorf("profile.Postgres.ListMatchAggregatesSince: scan: %w", err)
 		}
 		out = append(out, domain.MatchAggregate{
 			Section: enums.Section(section),
@@ -66,43 +67,67 @@ func (p *Postgres) ListMatchAggregatesSince(ctx context.Context, userID uuid.UUI
 			XPDelta: xpDelta,
 		})
 	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("profile.Postgres.ListMatchAggregatesSince: rows: %w", err)
+	}
 	return out, nil
 }
 
 // ListWeeklyXPSince возвращает XP за каждую из последних `weeks` календарных
-// недель. Индекс 0 = текущая неделя. Если таблиц для XP-history нет, тихо
-// возвращаем нули — фронт нарисует «пусто».
+// недель. Индекс 0 = текущая неделя.
+//
+// Одним запросом аггрегируем по bucket-индексу (0..weeks-1), чтобы избежать
+// N+1 (раньше был цикл с отдельным QueryRow). Любые SQL-ошибки пробрасываются
+// наверх; use case (report.go) логирует и деградирует к нулям.
 func (p *Postgres) ListWeeklyXPSince(ctx context.Context, userID uuid.UUID, now time.Time, weeks int) ([]int, error) {
 	if weeks <= 0 {
 		return nil, nil
 	}
 	out := make([]int, weeks)
 	end := now.UTC().Truncate(24 * time.Hour)
-	for i := 0; i < weeks; i++ {
-		start := end.Add(-time.Duration(i+1) * 7 * 24 * time.Hour)
-		stop := end.Add(-time.Duration(i) * 7 * 24 * time.Hour)
-		const q = `
-			SELECT COALESCE(SUM(GREATEST(COALESCE(ap.elo_after, ap.elo_before) - ap.elo_before, 0)),0)::int
-			  FROM arena_matches m
-			  JOIN arena_participants ap ON ap.match_id = m.id AND ap.user_id = $1
-			 WHERE m.status = 'finished'
-			   AND m.finished_at >= $2
-			   AND m.finished_at < $3`
-		var xp int
-		_ = p.pool.QueryRow(ctx, q, pgUUID(userID), start, stop).Scan(&xp)
-		out[i] = xp
+	windowStart := end.Add(-time.Duration(weeks) * 7 * 24 * time.Hour)
+	const q = `
+		SELECT FLOOR(EXTRACT(EPOCH FROM ($3::timestamptz - m.finished_at)) / (7 * 86400))::int AS bucket,
+		       COALESCE(SUM(GREATEST(COALESCE(ap.elo_after, ap.elo_before) - ap.elo_before, 0)), 0)::int AS xp
+		  FROM arena_matches m
+		  JOIN arena_participants ap ON ap.match_id = m.id AND ap.user_id = $1
+		 WHERE m.status = 'finished'
+		   AND m.finished_at >= $2
+		   AND m.finished_at < $3
+		 GROUP BY bucket`
+	rows, err := p.pool.Query(ctx, q, pgUUID(userID), windowStart, end)
+	if err != nil {
+		return nil, fmt.Errorf("profile.Postgres.ListWeeklyXPSince: %w", err)
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var bucket, xp int
+		if err := rows.Scan(&bucket, &xp); err != nil {
+			return nil, fmt.Errorf("profile.Postgres.ListWeeklyXPSince: scan: %w", err)
+		}
+		if bucket < 0 || bucket >= weeks {
+			continue
+		}
+		out[bucket] = xp
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("profile.Postgres.ListWeeklyXPSince: rows: %w", err)
 	}
 	return out, nil
 }
 
-// GetStreaks читает текущий и лучший streak из daily_streaks. Если таблицы
-// нет, возвращаем (0, 0) без ошибки.
+// GetStreaks читает текущий и лучший streak из daily_streaks. Отсутствие
+// строки (pgx.ErrNoRows) — нормальный кейс для новых пользователей и
+// возвращает (0, 0, nil). Остальные ошибки пробрасываются наверх (use case
+// логирует и деградирует).
 func (p *Postgres) GetStreaks(ctx context.Context, userID uuid.UUID) (int, int, error) {
 	const q = `SELECT current_streak, best_streak FROM daily_streaks WHERE user_id = $1`
 	var cur, best int
 	if err := p.pool.QueryRow(ctx, q, pgUUID(userID)).Scan(&cur, &best); err != nil {
-		// Включая pgx.ErrNoRows — у новых пользователей просто нет строки.
-		return 0, 0, nil
+		if errors.Is(err, pgx.ErrNoRows) {
+			return 0, 0, nil
+		}
+		return 0, 0, fmt.Errorf("profile.Postgres.GetStreaks: %w", err)
 	}
 	return cur, best, nil
 }

@@ -5,7 +5,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"time"
 
 	"druz9/rating/domain"
 	ratingdb "druz9/rating/infra/db"
@@ -143,10 +142,3 @@ func toSectionRating(r ratingdb.Rating) domain.SectionRating {
 
 // Ensure Postgres satisfies the domain port.
 var _ domain.RatingRepo = (*Postgres)(nil)
-
-// tickNow is a tiny helper used only in tests; kept here to avoid a test
-// dependency on time.Now in infra code paths.
-func tickNow() time.Time { return time.Now().UTC() }
-
-// Suppress unused warning in the non-test build path.
-var _ = tickNow

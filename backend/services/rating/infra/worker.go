@@ -197,8 +197,13 @@ func (w *LeaderboardRecomputeWorker) recomputeOne(ctx context.Context, section e
 		return fmt.Errorf("rdb.Del: %w", err)
 	}
 	if len(rows) == 0 {
-		// Empty section is fine — record the meta tick and move on.
-		_ = w.rdb.Set(ctx, metaKey, time.Now().UTC().Format(time.RFC3339), 0)
+		// Empty section is fine — record the meta tick and move on. Meta
+		// failure is informational only (same policy as the non-empty branch
+		// below): log and proceed.
+		if err := w.rdb.Set(ctx, metaKey, time.Now().UTC().Format(time.RFC3339), 0); err != nil {
+			w.log.Warn("rating.worker: meta set failed",
+				slog.String("key", metaKey), slog.Any("err", err))
+		}
 		return nil
 	}
 	members := make([]ZMember, 0, len(rows))
