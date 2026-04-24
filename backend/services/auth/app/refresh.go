@@ -19,6 +19,10 @@ type Refresh struct {
 	Sessions   domain.SessionRepo
 	Issuer     *TokenIssuer
 	RefreshTTL time.Duration
+	// Limiter — фикс-windowed счётчик по IP. Без него злоумышленник может
+	// брутфорсить session-ID через Refresh: каждая попытка стоит один Redis
+	// GET. 10 req/min per IP — симметрично с LoginYandex/LoginTelegram.
+	Limiter domain.RateLimiter
 }
 
 // RefreshInput carries the refresh-token cookie value and request metadata.
@@ -36,6 +40,18 @@ type RefreshResult struct {
 
 // Do validates the refresh token, rotates the session, and mints a new access token.
 func (uc *Refresh) Do(ctx context.Context, in RefreshInput) (RefreshResult, error) {
+	// 0. Rate-limit по IP (10/min) — закрываем brute-force по session-ID.
+	// Ключ симметричен схеме Yandex/Telegram, чтобы операторам было проще
+	// грепать rate-limited события. Если Limiter не сконфигурирован — ок,
+	// это оставлено для legacy-тестов и сторонних билдов use case'а.
+	if uc.Limiter != nil {
+		if _, retry, err := uc.Limiter.Allow(ctx, "rl:auth:refresh:"+in.IP, 10, time.Minute); err != nil {
+			if isRateLimited(err) {
+				return RefreshResult{}, rateLimitedErr(retry)
+			}
+			return RefreshResult{}, fmt.Errorf("auth.Refresh: rate limit: %w", err)
+		}
+	}
 	sid, err := uuid.Parse(in.RefreshToken)
 	if err != nil {
 		return RefreshResult{}, fmt.Errorf("auth.Refresh: parse refresh token: %w", ErrInvalidToken)

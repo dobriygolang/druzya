@@ -100,6 +100,8 @@ func NewAuth(d Deps, encKey string) (*AuthModule, error) {
 	refresh := &authApp.Refresh{
 		Users: pg, Sessions: sessions, Issuer: issuer,
 		RefreshTTL: time.Duration(d.Cfg.Auth.RefreshTokenTTL) * time.Second,
+		// Rate-limit 10/min per IP — защита от brute-force session-ID через /auth/refresh.
+		Limiter: limiter,
 	}
 	logout := &authApp.Logout{Sessions: sessions}
 	h := authPorts.NewHandler(authPorts.Handler{
