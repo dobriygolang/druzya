@@ -1,0 +1,346 @@
+// cohort.proto — Connect-RPC contract for the `cohort` (group-learning)
+// bounded context.
+//
+// Phase 7b of the cohort migration — adds a first-class Connect service
+// alongside the existing chi/REST surface in cmd/monolith/services/cohort.go.
+// Phase 7b.1 lands only the proto + generated stubs; the runtime still
+// serves chi REST. Phase 7b.2+ wires the server, rewrites the frontend
+// hooks, and removes the chi handlers.
+syntax = "proto3";
+package druz9.v1;
+
+import "google/api/annotations.proto";
+import "google/protobuf/timestamp.proto";
+
+option go_package = "druz9/shared/generated/pb/druz9/v1;druz9v1";
+
+// CohortStatus mirrors the `cohorts.status` column.
+enum CohortStatus {
+  COHORT_STATUS_UNSPECIFIED = 0;
+  COHORT_STATUS_ACTIVE = 1;
+  COHORT_STATUS_GRADUATED = 2;
+  COHORT_STATUS_CANCELLED = 3;
+}
+
+// CohortVisibility mirrors the `cohorts.visibility` column.
+enum CohortVisibility {
+  COHORT_VISIBILITY_UNSPECIFIED = 0;
+  COHORT_VISIBILITY_PUBLIC = 1;
+  COHORT_VISIBILITY_INVITE = 2;
+}
+
+// CohortRole covers the membership role set (member / coach / owner).
+enum CohortRole {
+  COHORT_ROLE_UNSPECIFIED = 0;
+  COHORT_ROLE_MEMBER = 1;
+  COHORT_ROLE_COACH = 2;
+  COHORT_ROLE_OWNER = 3;
+}
+
+// CohortSortOrder — catalogue sort options surfaced by ListCohorts.
+enum CohortSortOrder {
+  COHORT_SORT_ORDER_UNSPECIFIED = 0;  // → newest (default)
+  COHORT_SORT_ORDER_NEWEST = 1;
+  COHORT_SORT_ORDER_ACTIVE = 2;
+  COHORT_SORT_ORDER_FULLNESS = 3;
+  COHORT_SORT_ORDER_ENDING = 4;
+}
+
+// Cohort mirrors a `cohorts` row with the denormalized members_count
+// and capacity columns.
+message Cohort {
+  string id = 1;
+  string slug = 2;
+  string name = 3;
+  string owner_id = 4;
+  google.protobuf.Timestamp starts_at = 5;
+  google.protobuf.Timestamp ends_at = 6;
+  CohortStatus status = 7;
+  CohortVisibility visibility = 8;
+  int32 capacity = 9;
+  int32 members_count = 10;
+  google.protobuf.Timestamp created_at = 11;
+  // is_member is hydrated server-side when the caller is authed.
+  // Anonymous reads always return false.
+  bool is_member = 12;
+  // top_members — first 3 members (by joined_at ASC) for the catalogue
+  // avatar strip. Absent on GetCohort (full member list is in members[]).
+  repeated CohortMemberPreview top_members = 13;
+}
+
+// CohortMemberPreview — denormalized user snippet used by avatar strips
+// and leaderboards. Does NOT carry joined_at / role (those live on
+// CohortMember for the detail view).
+message CohortMemberPreview {
+  string user_id = 1;
+  string username = 2;
+  string display_name = 3;
+  string avatar_url = 4;
+}
+
+// CohortMember mirrors a `cohort_members` row with the denormalized user
+// JOIN (username/display_name/avatar_url).
+message CohortMember {
+  string user_id = 1;
+  CohortRole role = 2;
+  google.protobuf.Timestamp joined_at = 3;
+  string username = 4;
+  string display_name = 5;
+  string avatar_url = 6;
+}
+
+// CohortDetail — full view returned by GetCohort.
+message CohortDetail {
+  Cohort cohort = 1;
+  repeated CohortMember members = 2;
+}
+
+// MemberStanding — one row of the cohort leaderboard.
+message MemberStanding {
+  string user_id = 1;
+  string display_name = 2;
+  int64 weekly_xp = 3;
+  int32 overall_elo = 4;
+}
+
+// StreakHeatmapCell — one day's solved flag with its UTC date.
+message StreakHeatmapCell {
+  string date = 1;  // "YYYY-MM-DD" UTC
+  bool solved = 2;
+}
+
+// StreakHeatmapRow — one member's last-N-days kata activity.
+message StreakHeatmapRow {
+  string user_id = 1;
+  string username = 2;
+  string display_name = 3;
+  repeated StreakHeatmapCell days = 4;
+}
+
+// ── Request / response envelopes ──────────────────────────────────────────
+
+message ListCohortsRequest {
+  // Empty status → all. Otherwise one of "active" / "graduated" /
+  // "cancelled" (mirrors the legacy string-enum on the REST surface).
+  CohortStatus status = 1;
+  string search = 2;
+  CohortSortOrder sort = 3;
+  int32 page = 4;       // 1-indexed
+  int32 page_size = 5;  // 1..50
+}
+
+message ListCohortsResponse {
+  repeated Cohort items = 1;
+  int32 total = 2;
+  int32 page = 3;
+  int32 page_size = 4;
+}
+
+message GetCohortRequest {
+  string slug = 1;
+}
+
+message CreateCohortRequest {
+  string slug = 1;  // optional — auto-derived from name when empty
+  string name = 2;
+  google.protobuf.Timestamp starts_at = 3;
+  google.protobuf.Timestamp ends_at = 4;
+  CohortVisibility visibility = 5;
+  int32 capacity = 6;  // 2..500; 0 → default 50
+}
+
+message CreateCohortResponse {
+  string id = 1;
+}
+
+message JoinCohortRequest {
+  string cohort_id = 1;
+}
+
+message JoinCohortResponse {
+  string cohort_id = 1;
+}
+
+message LeaveCohortRequest {
+  string cohort_id = 1;
+}
+
+message LeaveCohortResponse {
+  string cohort_id = 1;
+  string status = 2;  // "left" | "disbanded"
+}
+
+message GetCohortLeaderboardRequest {
+  string cohort_id = 1;
+  // week_iso is reserved for future weekly-XP delta; ignored today.
+  string week_iso = 2;
+}
+
+message GetCohortLeaderboardResponse {
+  repeated MemberStanding items = 1;
+}
+
+message UpdateCohortRequest {
+  string cohort_id = 1;
+  // Optional patches; absence of a field = leave unchanged. Proto3 lacks
+  // required/absent distinction for scalars, so the server treats a
+  // zero-value for name/capacity as "no change" and relies on has_*
+  // semantics for enums via CohortVisibility_UNSPECIFIED = no change.
+  string name = 2;
+  google.protobuf.Timestamp ends_at = 3;
+  CohortVisibility visibility = 4;
+  int32 capacity = 5;
+}
+
+message DisbandCohortRequest {
+  string cohort_id = 1;
+}
+
+message DisbandCohortResponse {
+  string cohort_id = 1;
+  string status = 2;  // "disbanded"
+}
+
+message SetMemberRoleRequest {
+  string cohort_id = 1;
+  string user_id = 2;
+  CohortRole role = 3;  // must be MEMBER or COACH — OWNER is moved via
+                        // TransferOwnership.
+}
+
+message SetMemberRoleResponse {
+  string status = 1;  // "ok"
+}
+
+message IssueInviteRequest {
+  string cohort_id = 1;
+  int32 max_uses = 2;     // 0 = unlimited, 1..100 inclusive
+  int32 ttl_seconds = 3;  // 0 = never expires
+}
+
+message IssueInviteResponse {
+  string token = 1;
+  string url = 2;  // "/c/join/<token>"
+  google.protobuf.Timestamp expires_at = 3;
+}
+
+message JoinByTokenRequest {
+  string token = 1;
+}
+
+message JoinByTokenResponse {
+  string cohort_id = 1;
+  string slug = 2;
+  string status = 3;  // "joined"
+}
+
+message GraduateCohortRequest {
+  string cohort_id = 1;
+}
+
+message TransferOwnershipRequest {
+  string cohort_id = 1;
+  string new_owner_id = 2;
+}
+
+message GetStreakHeatmapRequest {
+  string cohort_id = 1;
+  int32 days = 2;  // 1..30; 0 → default 14
+}
+
+message GetStreakHeatmapResponse {
+  repeated StreakHeatmapRow items = 1;
+  int32 days = 2;
+}
+
+// CohortService — all 15 cohort RPCs. Read paths (List/Get/Leaderboard/
+// StreakHeatmap) are public; writes (Create/Join/Leave/Update/Disband/
+// SetMemberRole/IssueInvite/JoinByToken/Graduate/TransferOwnership) are
+// gated by the bearer-auth middleware.
+service CohortService {
+  rpc ListCohorts(ListCohortsRequest) returns (ListCohortsResponse) {
+    option (google.api.http) = {get: "/api/v1/cohort/list"};
+  }
+
+  rpc GetCohort(GetCohortRequest) returns (CohortDetail) {
+    option (google.api.http) = {get: "/api/v1/cohort/{slug}"};
+  }
+
+  rpc CreateCohort(CreateCohortRequest) returns (CreateCohortResponse) {
+    option (google.api.http) = {
+      post: "/api/v1/cohort"
+      body: "*"
+    };
+  }
+
+  rpc JoinCohort(JoinCohortRequest) returns (JoinCohortResponse) {
+    option (google.api.http) = {
+      post: "/api/v1/cohort/{cohort_id}/join"
+      body: "*"
+    };
+  }
+
+  rpc LeaveCohort(LeaveCohortRequest) returns (LeaveCohortResponse) {
+    option (google.api.http) = {
+      post: "/api/v1/cohort/{cohort_id}/leave"
+      body: "*"
+    };
+  }
+
+  rpc GetLeaderboard(GetCohortLeaderboardRequest) returns (GetCohortLeaderboardResponse) {
+    option (google.api.http) = {get: "/api/v1/cohort/{cohort_id}/leaderboard"};
+  }
+
+  rpc UpdateCohort(UpdateCohortRequest) returns (Cohort) {
+    option (google.api.http) = {
+      patch: "/api/v1/cohort/{cohort_id}"
+      body: "*"
+    };
+  }
+
+  rpc DisbandCohort(DisbandCohortRequest) returns (DisbandCohortResponse) {
+    option (google.api.http) = {
+      post: "/api/v1/cohort/{cohort_id}/disband"
+      body: "*"
+    };
+  }
+
+  rpc SetMemberRole(SetMemberRoleRequest) returns (SetMemberRoleResponse) {
+    option (google.api.http) = {
+      post: "/api/v1/cohort/{cohort_id}/members/{user_id}/role"
+      body: "*"
+    };
+  }
+
+  rpc IssueInvite(IssueInviteRequest) returns (IssueInviteResponse) {
+    option (google.api.http) = {
+      post: "/api/v1/cohort/{cohort_id}/invite"
+      body: "*"
+    };
+  }
+
+  rpc JoinByToken(JoinByTokenRequest) returns (JoinByTokenResponse) {
+    option (google.api.http) = {
+      post: "/api/v1/cohort/join/by-token"
+      body: "*"
+    };
+  }
+
+  rpc GraduateCohort(GraduateCohortRequest) returns (Cohort) {
+    option (google.api.http) = {
+      post: "/api/v1/cohort/{cohort_id}/graduate"
+      body: "*"
+    };
+  }
+
+  rpc TransferOwnership(TransferOwnershipRequest) returns (Cohort) {
+    option (google.api.http) = {
+      post: "/api/v1/cohort/{cohort_id}/transfer"
+      body: "*"
+    };
+  }
+
+  rpc GetStreakHeatmap(GetStreakHeatmapRequest) returns (GetStreakHeatmapResponse) {
+    option (google.api.http) = {get: "/api/v1/cohort/{cohort_id}/streak"};
+  }
+}
