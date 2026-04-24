@@ -143,10 +143,13 @@ func (uc *ListByInterviewer) Do(ctx context.Context, in ListByInterviewerInput) 
 // GetInterviewerStats implements GET /api/v1/review/stats/{interviewer_id}.
 // Also called directly by slot.ListSlots via the StatsProvider adapter.
 //
-// Aggregates only the CANDIDATE→INTERVIEWER reviews — the rating shown on
-// the slot card / public profile reflects how candidates rated this person
-// as an interviewer. The reverse direction has its own stats path used by
-// the candidate's private dashboard (not exposed publicly).
+// Aggregates ALL reviews where the user is the subject (both directions)
+// — that is what the underlying GetSubjectStats SQL does. Public "slot
+// card" usage passes an interviewer id; in practice interviewer→candidate
+// rows store the interviewer as reviewer_id (not subject_id), so the
+// aggregate for an interviewer subject is dominated by candidate→interviewer
+// rows. If a per-direction split is ever required, add a dedicated query
+// — do NOT filter in Go, that would ignore the index on (subject_id).
 type GetInterviewerStats struct {
 	Reviews domain.ReviewRepo
 }
