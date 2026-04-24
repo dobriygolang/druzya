@@ -18,10 +18,21 @@ import (
 	pb "druz9/shared/generated/pb/druz9/v1"
 	"druz9/shared/generated/pb/druz9/v1/druz9v1connect"
 	sharedMw "druz9/shared/pkg/middleware"
+	"druz9/shared/pkg/ratelimit"
 
 	"connectrpc.com/connect"
 	"github.com/google/uuid"
 	"google.golang.org/protobuf/types/known/timestamppb"
+)
+
+// ForcePlanLimitPerWindow / ForcePlanWindow — лимит на ручную регенерацию
+// дневного плана. 1 запрос в 5 минут на пользователя защищает LLM-квоту от
+// спама «⌘R, ⌘R, ⌘R» в UI и от случайного цикла при сбое кеш-слоя.
+// Автоматические вызовы (force=false) не лимитируются — они возвращают
+// кеш за миллисекунды.
+const (
+	ForcePlanLimitPerWindow = 1
+	ForcePlanWindow         = 5 * time.Minute
 )
 
 // Compile-time assertion — HoneServer satisfies the generated handler. This
@@ -39,10 +50,22 @@ var _ = druz9v1connect.NewDailyServiceHandler
 // HoneServer adapts hone use cases to Connect.
 type HoneServer struct {
 	H *app.Handler
+	// PlanLimiter rate-limits GenerateDailyPlan when force=true. nil-safe:
+	// when Redis is not wired (tests, local-dev without redis), force calls
+	// pass through unlimited — the only cost is shared LLM-quota burn, which
+	// matters in production and not in dev.
+	PlanLimiter *ratelimit.RedisFixedWindow
 }
 
 // NewHoneServer wires a HoneServer around the Handler.
 func NewHoneServer(h *app.Handler) *HoneServer { return &HoneServer{H: h} }
+
+// WithPlanLimiter returns a copy with the rate-limiter attached. Call from
+// monolith wiring once Redis is available.
+func (s *HoneServer) WithPlanLimiter(l *ratelimit.RedisFixedWindow) *HoneServer {
+	s.PlanLimiter = l
+	return s
+}
 
 // ─── Plan ──────────────────────────────────────────────────────────────────
 
@@ -54,6 +77,25 @@ func (s *HoneServer) GenerateDailyPlan(
 	uid, err := requireUser(ctx)
 	if err != nil {
 		return nil, err
+	}
+	if req.Msg.GetForce() && s.PlanLimiter != nil {
+		key := "rl:hone:plan:force:" + uid.String()
+		res, rlErr := s.PlanLimiter.Allow(ctx, key, ForcePlanLimitPerWindow, ForcePlanWindow)
+		if rlErr != nil {
+			// Fail-open: ratelimit infra fault should not block a legitimate
+			// regen. We log via toConnectErr's default branch only on the
+			// actual app error; here just skip the gate.
+			s.H.Log.Warn("hone.GenerateDailyPlan: ratelimit check failed (fail-open)",
+				slog.Any("err", rlErr), slog.String("user_id", uid.String()))
+		} else if !res.Allowed {
+			cerr := connect.NewError(
+				connect.CodeResourceExhausted,
+				fmt.Errorf("force regeneration limited to %d per %s; retry in %ds",
+					ForcePlanLimitPerWindow, ForcePlanWindow, res.RetryAfterSec),
+			)
+			cerr.Meta().Set("Retry-After", fmt.Sprintf("%d", res.RetryAfterSec))
+			return nil, cerr
+		}
 	}
 	p, err := s.H.GeneratePlan.Do(ctx, app.GeneratePlanInput{
 		UserID: uid,
