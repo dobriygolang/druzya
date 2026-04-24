@@ -85,12 +85,12 @@ func (h *WSHandler) Handle(w http.ResponseWriter, r *http.Request) {
 	// Also bail early if the room is missing (participant was deleted first).
 	// Room state itself is consulted on each op via Hub.RoomResolver; here we
 	// only care that the row exists right now.
-	if _, err := h.Rooms.Get(r.Context(), roomID); err != nil {
-		if errors.Is(err, domain.ErrNotFound) {
+	if _, roomErr := h.Rooms.Get(r.Context(), roomID); roomErr != nil {
+		if errors.Is(roomErr, domain.ErrNotFound) {
 			http.Error(w, "room not found", http.StatusNotFound)
 			return
 		}
-		h.Log.Warn("editor.ws: rooms.Get", slog.Any("err", err))
+		h.Log.Warn("editor.ws: rooms.Get", slog.Any("err", roomErr))
 		http.Error(w, "internal", http.StatusInternalServerError)
 		return
 	}

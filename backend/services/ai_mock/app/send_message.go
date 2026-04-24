@@ -207,6 +207,8 @@ func (uc *SendMessage) fallbackModel(user domain.UserContext) string {
 	switch user.Subscription {
 	case enums.SubscriptionPlanSeeker, enums.SubscriptionPlanAscendant:
 		return enums.LLMModelGPT4o.String()
+	case enums.SubscriptionPlanFree:
+		return enums.LLMModelGPT4oMini.String()
 	default:
 		return enums.LLMModelGPT4oMini.String()
 	}
