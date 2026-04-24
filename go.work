@@ -8,24 +8,24 @@ use (
 	./backend/services/ai_native
 	./backend/services/arena
 	./backend/services/auth
+	./backend/services/cohort
+	./backend/services/copilot
 	./backend/services/daily
 	./backend/services/editor
 	./backend/services/feed
 	./backend/services/friends
-	./backend/services/guild
+	./backend/services/lobby
+	./backend/services/mentor_session
 	./backend/services/notify
+	./backend/services/orgs
 	./backend/services/podcast
 	./backend/services/profile
 	./backend/services/rating
+	./backend/services/review
 	./backend/services/season
 	./backend/services/slot
-	./backend/services/vacancies
-	./backend/services/orgs
-	./backend/services/mentor_session
 	./backend/services/tg_coach
-	./backend/services/copilot
-	./backend/services/lobby
-	./backend/services/review
+	./backend/services/vacancies
 	./backend/shared
 )
 

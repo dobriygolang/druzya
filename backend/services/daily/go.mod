@@ -7,17 +7,14 @@ require (
 	druz9/shared v0.0.0
 	github.com/go-playground/validator/v10 v10.22.0
 	github.com/google/uuid v1.6.0
-	github.com/jackc/pgx/v5 v5.7.5
+	github.com/jackc/pgx/v5 v5.9.2
 	github.com/redis/go-redis/v9 v9.6.1
 	go.uber.org/mock v0.6.0
 	golang.org/x/sync v0.20.0
 	google.golang.org/protobuf v1.36.11
 )
 
-require (
-	github.com/stretchr/testify v1.11.1 // indirect
-	google.golang.org/genproto/googleapis/api v0.0.0-20260414002931-afd174a4e478 // indirect
-)
+require google.golang.org/genproto/googleapis/api v0.0.0-20260414002931-afd174a4e478 // indirect
 
 require (
 	github.com/beorn7/perks v1.0.1 // indirect
