@@ -1,16 +1,18 @@
-// App — the orchestrator. Holds:
-//   1. Which page is showing (home / today / focus / notes / board / stats).
-//   2. Whether the ⌘K palette / Copilot / Standup overlay is open.
-//   3. Pomodoro timer tick.
-//   4. Focus session context (planItemId + pinnedTitle, passed to Focus on start).
-//
-// Routing is a single `page` state (no react-router) — Hone has no URL
-// surface in v0; deep-links land via preload and flip `page` directly.
-import { useCallback, useEffect, useState } from 'react';
+// App — orchestrator с auth-гейтом, deep-link listener'ом и pomodoro-
+// persist'ом. Структура:
+//   - bootstrap session из keychain (через preload IPC) на mount
+//   - подписка на authChanged (deep-link OAuth callback) и deepLink
+//     (focus/start, custom routes)
+//   - pomodoro snapshot восстанавливается из main-process store, новые
+//     значения пушатся в save с rate-limit'ом 1 раз/сек
+//   - guest → LoginScreen, иначе обычные страницы
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { CanvasBg, type CanvasMode } from './components/CanvasBg';
 import { Wordmark, Versionmark } from './components/Chrome';
 import { Dock } from './components/Dock';
+import { LoginScreen } from './components/LoginScreen';
+import { OnboardingModal } from './components/OnboardingModal';
 import { Palette, type PageId } from './components/Palette';
 import { Copilot } from './components/Copilot';
 import { StandupModal } from './components/StandupModal';
@@ -20,40 +22,126 @@ import { FocusPage } from './pages/Focus';
 import { NotesPage } from './pages/Notes';
 import { WhiteboardPage } from './pages/Whiteboard';
 import { StatsPage } from './pages/Stats';
+import { useSessionStore } from './stores/session';
 
 const POMODORO_SECONDS = 25 * 60;
+const ONBOARDING_KEY = 'hone:onboarded:v1';
 
 export default function App() {
+  const status = useSessionStore((s) => s.status);
+  const bootstrap = useSessionStore((s) => s.bootstrap);
+  const hydrate = useSessionStore((s) => s.hydrate);
+  const clear = useSessionStore((s) => s.clear);
+
   const [page, setPage] = useState<PageId>('home');
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [copilotOpen, setCopilotOpen] = useState(false);
   const [standupOpen, setStandupOpen] = useState(false);
+  const [onboardingOpen, setOnboardingOpen] = useState(false);
 
   const [remain, setRemain] = useState(POMODORO_SECONDS);
   const [running, setRunning] = useState(false);
   const [vol, setVol] = useState(40);
 
-  // Focus-session context — set when user хочет сфокусироваться на
-  // конкретном PlanItem. null = free-form focus without backend plan link.
   const [focusArgs, setFocusArgs] = useState<StartFocusArgs | null>(null);
-  // stopRequested — App сообщает FocusPage что пользователь нажал S
-  // (или timer дошёл до нуля). FocusPage на этот сигнал поднимает
-  // reflection-modal. onStopTick — FocusPage просит остановить тикать.
   const [stopRequested, setStopRequested] = useState(false);
-  // bump — ключ для re-mount FocusPage между сессиями; иначе startedRef
-  // внутри FocusPage не сбросится и вторая сессия подряд не создастся.
   const [focusBump, setFocusBump] = useState(0);
 
-  // Pomodoro tick.
+  // ── Bootstrap: session + pomodoro snapshot + IPC subscribers ────────────
+  useEffect(() => {
+    void bootstrap();
+    const bridge = typeof window !== 'undefined' ? window.hone : undefined;
+    if (!bridge) return;
+
+    // pomodoro snapshot restore.
+    void bridge.pomodoro.load().then((snap) => {
+      if (!snap) return;
+      const elapsedMs = Date.now() - snap.savedAt;
+      // Если timer был запущен дольше чем remainSec — он дотикал во сне.
+      if (snap.running && elapsedMs >= snap.remainSec * 1000) {
+        setRemain(0);
+        setRunning(false);
+        return;
+      }
+      const adjusted = snap.running
+        ? Math.max(0, snap.remainSec - Math.floor(elapsedMs / 1000))
+        : snap.remainSec;
+      setRemain(adjusted);
+      setRunning(false); // restore без авто-старта; юзер ткнёт пробел
+    });
+
+    // authChanged push: deep-link OAuth callback.
+    const offAuth = bridge.on('authChanged', (session) => {
+      if (session) {
+        hydrate({
+          userId: session.userId,
+          accessToken: session.accessToken,
+          refreshToken: session.refreshToken,
+          expiresAt: session.expiresAt,
+        });
+      } else {
+        void clear();
+      }
+    });
+
+    // deepLink push: focus/start, etc.
+    const offDeep = bridge.on('deepLink', ({ url }) => {
+      try {
+        const u = new URL(url);
+        if (u.host === 'focus') {
+          // druz9://focus?task=<id>&title=<urlenc>
+          const planItemId = u.searchParams.get('task') ?? undefined;
+          const pinnedTitle = u.searchParams.get('title') ?? undefined;
+          openImpl('focus', { planItemId, pinnedTitle });
+        }
+      } catch {
+        /* ignore malformed */
+      }
+    });
+
+    return () => {
+      offAuth();
+      offDeep();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // ── Onboarding: первый запуск показывает modal с шорткатами ─────────────
+  useEffect(() => {
+    if (status !== 'signed_in') return;
+    if (typeof window === 'undefined') return;
+    if (window.localStorage.getItem(ONBOARDING_KEY)) return;
+    setOnboardingOpen(true);
+  }, [status]);
+
+  const dismissOnboarding = () => {
+    setOnboardingOpen(false);
+    try {
+      window.localStorage.setItem(ONBOARDING_KEY, '1');
+    } catch {
+      /* ignore */
+    }
+  };
+
+  // ── Pomodoro tick + persist ─────────────────────────────────────────────
   useEffect(() => {
     if (!running) return;
     const id = window.setInterval(() => setRemain((r) => Math.max(0, r - 1)), 1000);
     return () => window.clearInterval(id);
   }, [running]);
 
-  // Auto-stop when timer hits zero. Triggers reflection flow through
-  // stopRequested — FocusPage решает, показывать modal или нет (если
-  // сессия так и не создалась, она просто onEnd'ит).
+  // Сохраняем snapshot при значимых изменениях, не на каждом тике —
+  // достаточно при start/stop и при изменении remain раз в 5 секунд.
+  const lastSavedRef = useRef(0);
+  useEffect(() => {
+    const bridge = typeof window !== 'undefined' ? window.hone : undefined;
+    if (!bridge) return;
+    const now = Date.now();
+    if (now - lastSavedRef.current < 5000 && remain > 0) return;
+    lastSavedRef.current = now;
+    void bridge.pomodoro.save({ remainSec: remain, running, savedAt: now });
+  }, [remain, running]);
+
   useEffect(() => {
     if (page === 'focus' && remain === 0 && running) {
       setRunning(false);
@@ -61,7 +149,7 @@ export default function App() {
     }
   }, [page, remain, running]);
 
-  const open = (id: PageId | 'copilot', args?: StartFocusArgs) => {
+  const openImpl = useCallback((id: PageId | 'copilot', args?: StartFocusArgs) => {
     if (id === 'copilot') {
       setCopilotOpen(true);
       return;
@@ -74,7 +162,9 @@ export default function App() {
       setRunning(true);
     }
     setPage(id);
-  };
+  }, []);
+
+  const open = openImpl;
 
   const goHome = () => {
     if (page === 'focus') {
@@ -86,8 +176,6 @@ export default function App() {
     setPage('home');
   };
 
-  // onFocusEnd — FocusPage завершил сессию (успешно или после skip'а
-  // reflection'а). Возвращаемся в home + сбрасываем таймер.
   const handleFocusEnd = useCallback(() => {
     setRunning(false);
     setRemain(POMODORO_SECONDS);
@@ -100,7 +188,7 @@ export default function App() {
     setRunning(false);
   }, []);
 
-  // Global keyboard handler.
+  // ── Global keyboard ─────────────────────────────────────────────────────
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const isMod = e.metaKey || e.ctrlKey;
@@ -123,6 +211,10 @@ export default function App() {
       }
 
       if (e.key === 'Escape') {
+        if (onboardingOpen) {
+          dismissOnboarding();
+          return;
+        }
         if (standupOpen) {
           setStandupOpen(false);
           return;
@@ -141,7 +233,7 @@ export default function App() {
         }
         return;
       }
-      if (isText || paletteOpen || standupOpen) return;
+      if (isText || paletteOpen || standupOpen || onboardingOpen) return;
 
       if (page === 'focus') {
         if (e.code === 'Space') {
@@ -165,11 +257,26 @@ export default function App() {
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [paletteOpen, copilotOpen, standupOpen, page]);
+  }, [paletteOpen, copilotOpen, standupOpen, onboardingOpen, page]);
 
   const focusMode = page === 'focus';
   const canvasMode: CanvasMode =
     page === 'home' || page === 'stats' ? 'full' : focusMode ? 'void' : 'quiet';
+
+  // Pre-bootstrap: чёрный экран без UI шевеления (длится <100ms обычно).
+  if (status === 'unknown') {
+    return <div style={{ position: 'fixed', inset: 0, background: '#000' }} />;
+  }
+
+  // Guest → login screen, ничего больше не рендерим (palette / dock тоже off).
+  if (status === 'guest') {
+    return (
+      <div style={{ position: 'fixed', inset: 0, background: '#000', overflow: 'hidden' }}>
+        <CanvasBg mode="full" />
+        <LoginScreen />
+      </div>
+    );
+  }
 
   return (
     <div style={{ position: 'fixed', inset: 0, background: '#000', overflow: 'hidden' }}>
@@ -221,6 +328,7 @@ export default function App() {
       )}
       {copilotOpen && <Copilot onClose={() => setCopilotOpen(false)} />}
       {standupOpen && <StandupModal onClose={() => setStandupOpen(false)} />}
+      {onboardingOpen && <OnboardingModal onClose={dismissOnboarding} />}
     </div>
   );
 }

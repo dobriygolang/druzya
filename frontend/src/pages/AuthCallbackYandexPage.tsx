@@ -19,6 +19,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { Loader2 } from 'lucide-react'
 import { API_BASE } from '../lib/apiClient'
 import { persistAuthTokens, type AuthUser } from '../lib/queries/auth'
+import { maybeRedirectToDesktop } from './LoginPage'
 
 interface YandexAuthResponse {
   access_token: string
@@ -78,6 +79,16 @@ export default function AuthCallbackYandexPage() {
           refresh_token: refresh,
           expires_in: body.expires_in ?? 0,
         })
+        if (
+          maybeRedirectToDesktop({
+            access_token: body.access_token,
+            refresh_token: refresh,
+            user_id: body.user?.id,
+            expires_in: body.expires_in,
+          })
+        ) {
+          return
+        }
         navigate(isNewUser ? '/onboarding' : '/sanctum', { replace: true })
       } catch (e) {
         if (cancelled) return

@@ -33,6 +33,46 @@ import {
 const YANDEX_CLIENT_ID = import.meta.env.VITE_YANDEX_CLIENT_ID as string | undefined
 const POLL_INTERVAL_MS = 2000
 const yandexRedirectURI = () => `${window.location.origin}/auth/callback/yandex`
+const DESKTOP_RETURN_KEY = 'desktop_return_url'
+
+// Разрешённые префиксы для desktop-return. Страхует от XSS-injection'а
+// через ?desktop=javascript:... — хоть open-url и не выполнит, всё
+// равно whitelist'им явно известные схемы.
+const ALLOWED_DESKTOP_SCHEMES = ['druz9://']
+
+function sanitizeDesktopReturn(raw: string | null): string | null {
+  if (!raw) return null
+  return ALLOWED_DESKTOP_SCHEMES.some((s) => raw.startsWith(s)) ? raw : null
+}
+
+/**
+ * Если пользователь пришёл на /login?desktop=druz9://auth из hone-desktop'а,
+ * после успешного persist'а токенов мы редиректим браузер в
+ * `druz9://auth?token=...` — OS доставит URL приложению через
+ * protocol-handler.
+ *
+ * Возвращает true когда redirect произошёл — callback'и тогда НЕ делают
+ * обычный navigate('/sanctum').
+ */
+export function maybeRedirectToDesktop(tokens: {
+  access_token: string
+  refresh_token?: string | null
+  user_id?: string
+  expires_in?: number
+}): boolean {
+  const ret = sanitizeDesktopReturn(sessionStorage.getItem(DESKTOP_RETURN_KEY))
+  if (!ret) return false
+  sessionStorage.removeItem(DESKTOP_RETURN_KEY)
+  const u = new URL(ret)
+  u.searchParams.set('token', tokens.access_token)
+  if (tokens.refresh_token) u.searchParams.set('refresh', tokens.refresh_token)
+  if (tokens.user_id) u.searchParams.set('user', tokens.user_id)
+  if (tokens.expires_in) {
+    u.searchParams.set('exp', String(Date.now() + tokens.expires_in * 1000))
+  }
+  window.location.href = u.toString()
+  return true
+}
 
 function buildYandexAuthorizeURL(): string | null {
   if (!YANDEX_CLIENT_ID) return null
@@ -68,6 +108,16 @@ export default function LoginPage() {
     return () => document.body.classList.remove('v2')
   }, [])
 
+  // Desktop-return flow: если нас открыл Hone-desktop с ?desktop=druz9://auth,
+  // кладём return-URL в sessionStorage — после OAuth callback'а его прочитает
+  // maybeRedirectToDesktop() и отправит в druz9:// вместо /sanctum.
+  useEffect(() => {
+    const ret = sanitizeDesktopReturn(params.get('desktop'))
+    if (ret) {
+      sessionStorage.setItem(DESKTOP_RETURN_KEY, ret)
+    }
+  }, [params])
+
   // Cleanup polling on unmount.
   useEffect(() => () => stopPolling(), [])
 
@@ -94,6 +144,16 @@ export default function LoginPage() {
           refresh_token: result.refresh_token,
           expires_in: result.expires_in,
         })
+        if (
+          maybeRedirectToDesktop({
+            access_token: result.access_token,
+            refresh_token: result.refresh_token,
+            user_id: result.user?.id,
+            expires_in: result.expires_in,
+          })
+        ) {
+          return
+        }
         const dest = result.is_new_user ? '/onboarding' : nextHref
         navigate(dest, { replace: true })
         return
