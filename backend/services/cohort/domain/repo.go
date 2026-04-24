@@ -33,10 +33,13 @@ type ListPage struct {
 }
 
 // CohortWithCount расширяет Cohort количеством членов — чтобы фронт списка
-// не делал N+1 на каждый ряд.
+// не делал N+1 на каждый ряд. TopMembers — first N users (by joined_at ASC)
+// used by the catalogue card avatar strip; the query resolves them in a
+// single round-trip via LATERAL join.
 type CohortWithCount struct {
 	Cohort
 	MembersCount int
+	TopMembers   []CohortMember
 }
 
 // Repo is the persistence port for cohorts.

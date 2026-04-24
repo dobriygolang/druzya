@@ -179,17 +179,21 @@ func cFromPgUUID(p pgtype.UUID) uuid.UUID {
 
 func (p *cohortPostgres) Create(ctx context.Context, c cohortDomain.Cohort) (uuid.UUID, error) {
 	const q = `
-		INSERT INTO cohorts(id, slug, name, owner_id, starts_at, ends_at, status, visibility)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+		INSERT INTO cohorts(id, slug, name, owner_id, starts_at, ends_at, status, visibility, capacity)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
 		RETURNING id`
 	id := c.ID
 	if id == uuid.Nil {
 		id = uuid.New()
 	}
+	capacity := c.Capacity
+	if capacity <= 0 {
+		capacity = cohortDomain.MaxMembersPhase1
+	}
 	var out pgtype.UUID
 	err := p.pool.QueryRow(ctx, q,
 		cPgUUID(id), c.Slug, c.Name, cPgUUID(c.OwnerID),
-		c.StartsAt, c.EndsAt, string(c.Status), string(c.Visibility),
+		c.StartsAt, c.EndsAt, string(c.Status), string(c.Visibility), capacity,
 	).Scan(&out)
 	if err != nil {
 		if isUniqueViolationErr(err) {
@@ -202,14 +206,14 @@ func (p *cohortPostgres) Create(ctx context.Context, c cohortDomain.Cohort) (uui
 
 func (p *cohortPostgres) GetBySlug(ctx context.Context, slug string) (cohortDomain.Cohort, error) {
 	const q = `
-		SELECT id, slug, name, owner_id, starts_at, ends_at, status, visibility, created_at
+		SELECT id, slug, name, owner_id, starts_at, ends_at, status, visibility, capacity, created_at
 		  FROM cohorts WHERE slug = $1`
 	return p.scanOne(p.pool.QueryRow(ctx, q, slug))
 }
 
 func (p *cohortPostgres) Get(ctx context.Context, id uuid.UUID) (cohortDomain.Cohort, error) {
 	const q = `
-		SELECT id, slug, name, owner_id, starts_at, ends_at, status, visibility, created_at
+		SELECT id, slug, name, owner_id, starts_at, ends_at, status, visibility, capacity, created_at
 		  FROM cohorts WHERE id = $1`
 	return p.scanOne(p.pool.QueryRow(ctx, q, cPgUUID(id)))
 }
@@ -223,8 +227,9 @@ func (p *cohortPostgres) scanOne(row pgRow) (cohortDomain.Cohort, error) {
 		id, owner               pgtype.UUID
 		slug, name, status, vis string
 		starts, ends, created   time.Time
+		capacity                int
 	)
-	if err := row.Scan(&id, &slug, &name, &owner, &starts, &ends, &status, &vis, &created); err != nil {
+	if err := row.Scan(&id, &slug, &name, &owner, &starts, &ends, &status, &vis, &capacity, &created); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return cohortDomain.Cohort{}, cohortDomain.ErrNotFound
 		}
@@ -236,6 +241,7 @@ func (p *cohortPostgres) scanOne(row pgRow) (cohortDomain.Cohort, error) {
 		StartsAt: starts, EndsAt: ends,
 		Status:     cohortDomain.Status(status),
 		Visibility: cohortDomain.Visibility(vis),
+		Capacity:   capacity,
 		CreatedAt:  created,
 	}, nil
 }
@@ -395,21 +401,26 @@ func (p *cohortPostgres) UpdateMeta(ctx context.Context, cohortID uuid.UUID, pat
 		args = append(args, string(*patch.Status))
 		setParts = append(setParts, fmt.Sprintf("status = $%d", len(args)))
 	}
+	if patch.Capacity != nil {
+		args = append(args, *patch.Capacity)
+		setParts = append(setParts, fmt.Sprintf("capacity = $%d", len(args)))
+	}
 	if len(setParts) == 0 {
 		// Nothing to do — return current row.
 		return p.Get(ctx, cohortID)
 	}
 	sql := fmt.Sprintf(
 		`UPDATE cohorts SET %s WHERE id = $1
-		 RETURNING id, slug, name, owner_id, starts_at, ends_at, status, visibility, created_at`,
+		 RETURNING id, slug, name, owner_id, starts_at, ends_at, status, visibility, capacity, created_at`,
 		strings.Join(setParts, ", "),
 	)
 	var c cohortDomain.Cohort
 	var status, visibility string
+	var capacity int
 	row := p.pool.QueryRow(ctx, sql, args...)
 	var id, ownerID pgtype.UUID
 	var startsAt, endsAt, createdAt pgtype.Timestamptz
-	if err := row.Scan(&id, &c.Slug, &c.Name, &ownerID, &startsAt, &endsAt, &status, &visibility, &createdAt); err != nil {
+	if err := row.Scan(&id, &c.Slug, &c.Name, &ownerID, &startsAt, &endsAt, &status, &visibility, &capacity, &createdAt); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return cohortDomain.Cohort{}, cohortDomain.ErrNotFound
 		}
@@ -422,6 +433,7 @@ func (p *cohortPostgres) UpdateMeta(ctx context.Context, cohortID uuid.UUID, pat
 	c.CreatedAt = createdAt.Time
 	c.Status = cohortDomain.Status(status)
 	c.Visibility = cohortDomain.Visibility(visibility)
+	c.Capacity = capacity
 	return c, nil
 }
 
@@ -448,13 +460,18 @@ func (p *cohortPostgres) ListPublic(ctx context.Context, f cohortDomain.ListFilt
 	listArgs := append([]any{}, args...)
 	listArgs = append(listArgs, pageSize, (page-1)*pageSize)
 	listSQL := fmt.Sprintf(`
-		SELECT c.id, c.slug, c.name, c.owner_id, c.starts_at, c.ends_at, c.status, c.visibility, c.created_at,
+		SELECT c.id, c.slug, c.name, c.owner_id, c.starts_at, c.ends_at, c.status, c.visibility, c.capacity, c.created_at,
 		       (SELECT COUNT(*)::int FROM cohort_members m WHERE m.cohort_id = c.id) AS members_count
 		  FROM cohorts c
 		 WHERE %s
 		 ORDER BY c.starts_at DESC, c.id ASC
 		 LIMIT $%d OFFSET $%d
 	`, whereSQL, len(args)+1, len(args)+2)
+	// Phase 3.1: top-3 members per cohort for the catalogue avatar
+	// strip. Kept as a second query (keyed by cohort_id) instead of a
+	// LATERAL join on listSQL so the main query stays plain and we can
+	// reuse the IN-clause path. Two round-trips > an unreadable WITH
+	// chain — the avatar strip is cosmetic, not hot.
 	rows, err := p.pool.Query(ctx, listSQL, listArgs...)
 	if err != nil {
 		return cohortDomain.ListPage{}, fmt.Errorf("cohort.Postgres.ListPublic: query: %w", err)
@@ -469,10 +486,10 @@ func (p *cohortPostgres) ListPublic(ctx context.Context, f cohortDomain.ListFilt
 			id, owner               pgtype.UUID
 			slug, name, status, vis string
 			starts, ends, created   time.Time
-			count                   int
+			capacity, count         int
 		)
-		if err := rows.Scan(&id, &slug, &name, &owner, &starts, &ends, &status, &vis, &created, &count); err != nil {
-			return cohortDomain.ListPage{}, fmt.Errorf("cohort.Postgres.ListPublic: scan: %w", err)
+		if scanErr := rows.Scan(&id, &slug, &name, &owner, &starts, &ends, &status, &vis, &capacity, &created, &count); scanErr != nil {
+			return cohortDomain.ListPage{}, fmt.Errorf("cohort.Postgres.ListPublic: scan: %w", scanErr)
 		}
 		out.Items = append(out.Items, cohortDomain.CohortWithCount{
 			Cohort: cohortDomain.Cohort{
@@ -481,10 +498,66 @@ func (p *cohortPostgres) ListPublic(ctx context.Context, f cohortDomain.ListFilt
 				StartsAt: starts, EndsAt: ends,
 				Status:     cohortDomain.Status(status),
 				Visibility: cohortDomain.Visibility(vis),
+				Capacity:   capacity,
 				CreatedAt:  created,
 			},
 			MembersCount: count,
 		})
+	}
+	if len(out.Items) == 0 {
+		return out, nil
+	}
+	// Second round-trip: top-3 members per cohort for the avatar strip.
+	// ROW_NUMBER() over a cohort_id partition gives us a clean «first 3
+	// by joined_at ASC» without a LATERAL subquery.
+	cohortIDs := make([]pgtype.UUID, 0, len(out.Items))
+	for _, it := range out.Items {
+		cohortIDs = append(cohortIDs, cPgUUID(it.Cohort.ID))
+	}
+	const topQ = `
+		WITH ranked AS (
+		  SELECT m.cohort_id, m.user_id, m.role, m.joined_at,
+		         COALESCE(u.username, '')::text     AS username,
+		         COALESCE(u.display_name, '')::text AS display_name,
+		         COALESCE(u.avatar_url, '')::text   AS avatar_url,
+		         ROW_NUMBER() OVER (PARTITION BY m.cohort_id ORDER BY m.joined_at ASC) AS rn
+		    FROM cohort_members m
+		    LEFT JOIN users u ON u.id = m.user_id
+		   WHERE m.cohort_id = ANY($1)
+		)
+		SELECT cohort_id, user_id, role, joined_at, username, display_name, avatar_url
+		  FROM ranked
+		 WHERE rn <= 3
+		 ORDER BY cohort_id, rn`
+	topRows, err := p.pool.Query(ctx, topQ, cohortIDs)
+	if err != nil {
+		return out, nil //nolint:nilerr // avatar strip is cosmetic, degrade without it
+	}
+	defer topRows.Close()
+	byCohort := make(map[uuid.UUID][]cohortDomain.CohortMember, len(out.Items))
+	for topRows.Next() {
+		var (
+			cid, uid                      pgtype.UUID
+			role                          string
+			joined                        time.Time
+			username, displayName, avatar string
+		)
+		if scanErr := topRows.Scan(&cid, &uid, &role, &joined, &username, &displayName, &avatar); scanErr != nil {
+			return out, nil //nolint:nilerr
+		}
+		cUUID := cFromPgUUID(cid)
+		byCohort[cUUID] = append(byCohort[cUUID], cohortDomain.CohortMember{
+			CohortID:    cUUID,
+			UserID:      cFromPgUUID(uid),
+			Role:        cohortDomain.Role(role),
+			JoinedAt:    joined,
+			Username:    username,
+			DisplayName: displayName,
+			AvatarURL:   avatar,
+		})
+	}
+	for i := range out.Items {
+		out.Items[i].TopMembers = byCohort[out.Items[i].Cohort.ID]
 	}
 	return out, nil
 }
@@ -685,12 +758,25 @@ type cohortDTO struct {
 	// (any role). Always false for anonymous reads — public catalogue.
 	// Populated only by handleList when an auth context is present.
 	IsMember bool `json:"is_member"`
-	// Capacity is the soft cap from cohortDomain.MaxMembersPhase1; surfaced
-	// here so the catalogue UI doesn't hard-code "/50" client-side.
+	// Capacity — per-row member cap (since Phase 3.3 / migration 00054).
 	Capacity int `json:"capacity"`
+	// TopMembers — first N joined members for the catalogue avatar
+	// strip. Populated only by handleList; nil elsewhere.
+	TopMembers []topMemberDTO `json:"top_members,omitempty"`
+}
+
+type topMemberDTO struct {
+	UserID      string `json:"user_id"`
+	Username    string `json:"username,omitempty"`
+	DisplayName string `json:"display_name,omitempty"`
+	AvatarURL   string `json:"avatar_url,omitempty"`
 }
 
 func cohortToDTO(c cohortDomain.Cohort, count int) cohortDTO {
+	capacity := c.Capacity
+	if capacity <= 0 {
+		capacity = cohortDomain.MaxMembersPhase1
+	}
 	return cohortDTO{
 		ID:           c.ID.String(),
 		Slug:         c.Slug,
@@ -702,7 +788,7 @@ func cohortToDTO(c cohortDomain.Cohort, count int) cohortDTO {
 		Visibility:   string(c.Visibility),
 		CreatedAt:    c.CreatedAt.UTC().Format(time.RFC3339),
 		MembersCount: count,
-		Capacity:     cohortDomain.MaxMembersPhase1,
+		Capacity:     capacity,
 	}
 }
 
@@ -745,6 +831,18 @@ func (h *cohortHTTP) handleList(w http.ResponseWriter, r *http.Request) {
 			// On HasMember error we leave IsMember=false rather than failing
 			// the listing — the «ТЫ»-chip just doesn't render that row.
 		}
+		if len(c.TopMembers) > 0 {
+			tm := make([]topMemberDTO, 0, len(c.TopMembers))
+			for _, m := range c.TopMembers {
+				tm = append(tm, topMemberDTO{
+					UserID:      m.UserID.String(),
+					Username:    m.Username,
+					DisplayName: m.DisplayName,
+					AvatarURL:   m.AvatarURL,
+				})
+			}
+			dto.TopMembers = tm
+		}
 		items = append(items, dto)
 	}
 	w.Header().Set("Content-Type", "application/json")
@@ -759,6 +857,7 @@ type createCohortReq struct {
 	StartsAt   string `json:"starts_at"`
 	EndsAt     string `json:"ends_at"`
 	Visibility string `json:"visibility"`
+	Capacity   int    `json:"capacity"`
 }
 
 // POST /cohort
@@ -801,6 +900,7 @@ func (h *cohortHTTP) handleCreate(w http.ResponseWriter, r *http.Request) {
 	id, err := h.Create.DoFull(r.Context(), cohortApp.CreateCohortInput{
 		OwnerID: uid, Slug: req.Slug, Name: req.Name,
 		StartsAt: starts, EndsAt: ends, Visibility: vis,
+		Capacity: req.Capacity,
 	})
 	if err != nil {
 		if errors.Is(err, cohortApp.ErrInvalidInput) {
@@ -953,6 +1053,7 @@ type updateCohortReq struct {
 	Name       *string `json:"name,omitempty"`
 	EndsAt     *string `json:"ends_at,omitempty"`
 	Visibility *string `json:"visibility,omitempty"`
+	Capacity   *int    `json:"capacity,omitempty"`
 }
 
 // PATCH /cohort/{id}
@@ -985,6 +1086,9 @@ func (h *cohortHTTP) handleUpdate(w http.ResponseWriter, r *http.Request) {
 		v := cohortDomain.Visibility(*req.Visibility)
 		in.Visibility = &v
 	}
+	if req.Capacity != nil {
+		in.Capacity = req.Capacity
+	}
 	out, err := h.Update.Do(r.Context(), in)
 	if err != nil {
 		switch {
@@ -992,7 +1096,8 @@ func (h *cohortHTTP) handleUpdate(w http.ResponseWriter, r *http.Request) {
 			writeCohortErr(w, http.StatusForbidden, "owner-only")
 		case errors.Is(err, cohortApp.ErrInvalidName),
 			errors.Is(err, cohortApp.ErrInvalidEnd),
-			errors.Is(err, cohortApp.ErrInvalidVisibility):
+			errors.Is(err, cohortApp.ErrInvalidVisibility),
+			errors.Is(err, cohortApp.ErrInvalidCapacity):
 			writeCohortErr(w, http.StatusBadRequest, err.Error())
 		case errors.Is(err, cohortDomain.ErrNotFound):
 			writeCohortErr(w, http.StatusNotFound, "cohort not found")

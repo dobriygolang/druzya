@@ -248,7 +248,7 @@ function CohortCard({ cohort }: { cohort: Cohort }) {
               </span>
             )}
             <span className="font-mono text-[10px] text-text-muted">
-              {cohort.members_count}/{COHORT_CAPACITY}
+              {cohort.members_count}/{capacity}
               {cohort.status === 'active' && days > 0 && ` · ${days}d до конца`}
             </span>
           </div>
@@ -267,6 +267,23 @@ function CohortCard({ cohort }: { cohort: Cohort }) {
           style={{ width: `${Math.max(4, progress)}%` }}
         />
       </div>
+
+      {/* Avatar strip — top-3 joined members + overflow chip. Hidden on
+          mobile (cards are tighter) but shown from sm+ upward. */}
+      {cohort.top_members && cohort.top_members.length > 0 && (
+        <div className="hidden items-center gap-1.5 sm:flex">
+          <div className="flex -space-x-1.5">
+            {cohort.top_members.slice(0, 3).map((m) => (
+              <MemberAvatar key={m.user_id} member={m} />
+            ))}
+          </div>
+          {cohort.members_count > 3 && (
+            <span className="rounded-full bg-surface-2 px-1.5 py-0.5 font-mono text-[10px] text-text-muted">
+              +{cohort.members_count - 3}
+            </span>
+          )}
+        </div>
+      )}
 
       {errMsg && (
         <div className="rounded-md border border-danger/40 bg-danger/10 px-2.5 py-1.5 text-[11px] text-danger">
@@ -299,6 +316,33 @@ function CohortCard({ cohort }: { cohort: Cohort }) {
         )}
       </div>
     </Card>
+  )
+}
+
+function MemberAvatar({
+  member,
+}: {
+  member: { user_id: string; username?: string; display_name?: string; avatar_url?: string }
+}) {
+  const label = (member.display_name || member.username || '?').trim()
+  const initial = label.slice(0, 1).toUpperCase() || '?'
+  if (member.avatar_url) {
+    return (
+      <img
+        src={member.avatar_url}
+        alt={label}
+        className="h-6 w-6 rounded-full border border-surface-1 object-cover"
+      />
+    )
+  }
+  return (
+    <span
+      className="grid h-6 w-6 place-items-center rounded-full border border-surface-1 font-mono text-[10px] font-semibold text-white"
+      style={{ background: pickGradient(member.user_id) }}
+      title={label}
+    >
+      {initial}
+    </span>
   )
 }
 

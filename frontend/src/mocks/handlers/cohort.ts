@@ -25,6 +25,7 @@ type WireCohort = {
   visibility: 'public' | 'invite'
   created_at: string
   members_count: number
+  capacity: number
 }
 
 type WireMember = {
@@ -60,6 +61,7 @@ const cohorts: WireCohort[] = [
     visibility: 'public',
     created_at: isoIn(-45),
     members_count: 24,
+    capacity: 50,
   },
   {
     id: 'c-faang-autumn',
@@ -72,6 +74,7 @@ const cohorts: WireCohort[] = [
     visibility: 'public',
     created_at: isoIn(-21),
     members_count: 41,
+    capacity: 50,
   },
   {
     id: 'c-sql-mastery-q2',
@@ -84,6 +87,7 @@ const cohorts: WireCohort[] = [
     visibility: 'public',
     created_at: isoIn(-3),
     members_count: 3,
+    capacity: 12,
   },
   {
     id: 'c-system-design-foundations',
@@ -96,6 +100,7 @@ const cohorts: WireCohort[] = [
     visibility: 'public',
     created_at: isoIn(-90),
     members_count: 38,
+    capacity: 50,
   },
 ]
 
@@ -156,11 +161,20 @@ export const cohortHandlers = [
         }
         return true
       })
-      .map((c) => ({
-        ...c,
-        is_member: memberships.has(c.id),
-        capacity: 50,
-      }))
+      .map((c) => {
+        const detail = detailCache[c.slug]
+        const top = (detail?.members ?? []).slice(0, 3).map((m) => ({
+          user_id: m.user_id,
+          username: m.username,
+          display_name: m.display_name,
+          avatar_url: m.avatar_url,
+        }))
+        return {
+          ...c,
+          is_member: memberships.has(c.id),
+          top_members: top,
+        }
+      })
     return HttpResponse.json({
       items,
       total: items.length,
@@ -176,6 +190,7 @@ export const cohortHandlers = [
       starts_at?: string
       ends_at?: string
       visibility?: 'public' | 'invite'
+      capacity?: number
     }
     if (!body.name) return new HttpResponse('name required', { status: 400 })
     const slug =
@@ -196,6 +211,7 @@ export const cohortHandlers = [
       visibility: body.visibility ?? 'public',
       created_at: new Date().toISOString(),
       members_count: 1,
+      capacity: body.capacity && body.capacity >= 2 && body.capacity <= 500 ? body.capacity : 50,
     }
     cohorts.unshift(c)
     memberships.add(c.id)
@@ -267,11 +283,22 @@ export const cohortHandlers = [
     const id = String(params.id)
     const c = cohorts.find((c) => c.id === id)
     if (!c) return new HttpResponse('not found', { status: 404 })
-    const body = (await request.json()) as { name?: string; ends_at?: string; visibility?: 'public' | 'invite' }
+    const body = (await request.json()) as {
+      name?: string
+      ends_at?: string
+      visibility?: 'public' | 'invite'
+      capacity?: number
+    }
     if (body.name !== undefined) c.name = body.name
     if (body.ends_at !== undefined) c.ends_at = body.ends_at
     if (body.visibility !== undefined) c.visibility = body.visibility
-    return HttpResponse.json({ ...c, is_member: memberships.has(c.id), capacity: 50 })
+    if (body.capacity !== undefined) {
+      if (body.capacity < 2 || body.capacity > 500 || body.capacity < c.members_count) {
+        return new HttpResponse('invalid capacity', { status: 400 })
+      }
+      c.capacity = body.capacity
+    }
+    return HttpResponse.json({ ...c, is_member: memberships.has(c.id) })
   }),
 
   // POST /cohort/{id}/graduate — owner closes the cohort and emits the
@@ -282,7 +309,7 @@ export const cohortHandlers = [
     const c = cohorts.find((c) => c.id === id)
     if (!c) return new HttpResponse('not found', { status: 404 })
     c.status = 'graduated'
-    return HttpResponse.json({ ...c, is_member: memberships.has(c.id), capacity: 50 })
+    return HttpResponse.json({ ...c, is_member: memberships.has(c.id) })
   }),
 
   // M5c: POST /cohort/{id}/disband

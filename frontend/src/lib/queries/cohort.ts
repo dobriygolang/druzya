@@ -27,9 +27,17 @@ export type Cohort = {
   // (cmd/monolith/services/cohort.go handleList). Anonymous reads always
   // see false.
   is_member?: boolean
-  // capacity surfaces the soft cap (currently MaxMembersPhase1 = 50) so
-  // the catalogue UI doesn't hard-code it client-side.
+  // capacity surfaces the per-row member cap (migration 00054). May
+  // be absent on older backends; UI falls back to 50.
   capacity?: number
+  // top_members — first 3 joined members, used by the catalogue card
+  // avatar strip. Absent on /cohort/{slug} detail endpoint.
+  top_members?: Array<{
+    user_id: string
+    username?: string
+    display_name?: string
+    avatar_url?: string
+  }>
 }
 
 export type CohortMember = {
@@ -217,6 +225,7 @@ export type CreateCohortPayload = {
   starts_at?: string
   ends_at?: string
   visibility?: 'public' | 'invite'
+  capacity?: number
 }
 
 export function useCreateCohortMutation() {
@@ -240,6 +249,7 @@ export type UpdateCohortPayload = {
   name?: string
   ends_at?: string
   visibility?: 'public' | 'invite'
+  capacity?: number
 }
 
 export function useUpdateCohortMutation() {

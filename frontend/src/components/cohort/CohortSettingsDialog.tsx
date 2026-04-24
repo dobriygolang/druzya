@@ -21,6 +21,7 @@ export default function CohortSettingsDialog({ open, cohort, onClose }: Props) {
   const update = useUpdateCohortMutation()
   const [name, setName] = useState(cohort.name)
   const [endsAt, setEndsAt] = useState(toLocalDate(cohort.ends_at))
+  const [capacity, setCapacity] = useState<number>(cohort.capacity ?? 50)
   const [visibility, setVisibility] = useState<'public' | 'invite'>(
     cohort.visibility === 'invite' ? 'invite' : 'public',
   )
@@ -31,6 +32,7 @@ export default function CohortSettingsDialog({ open, cohort, onClose }: Props) {
     if (!open) return
     setName(cohort.name)
     setEndsAt(toLocalDate(cohort.ends_at))
+    setCapacity(cohort.capacity ?? 50)
     setVisibility(cohort.visibility === 'invite' ? 'invite' : 'public')
     setErrorMsg(null)
   }, [open, cohort])
@@ -45,11 +47,16 @@ export default function CohortSettingsDialog({ open, cohort, onClose }: Props) {
       return
     }
     try {
+      if (capacity < 2 || capacity > 500) {
+        setErrorMsg('Размер когорты должен быть от 2 до 500')
+        return
+      }
       await update.mutateAsync({
         cohortID: cohort.id,
         name: name !== cohort.name ? name.trim() : undefined,
         ends_at: endsAt !== toLocalDate(cohort.ends_at) ? new Date(endsAt).toISOString() : undefined,
         visibility: visibility !== cohort.visibility ? visibility : undefined,
+        capacity: capacity !== (cohort.capacity ?? 50) ? capacity : undefined,
       })
       onClose()
     } catch (err) {
@@ -94,6 +101,21 @@ export default function CohortSettingsDialog({ open, cohort, onClose }: Props) {
             required
             className="h-9 w-full rounded-md border border-border bg-surface-2 px-2 text-sm text-text-primary"
           />
+        </Field>
+
+        <Field label="Размер когорты">
+          <input
+            type="number"
+            min={2}
+            max={500}
+            value={capacity}
+            onChange={(e) => setCapacity(parseInt(e.target.value, 10) || 0)}
+            required
+            className="h-9 w-full rounded-md border border-border bg-surface-2 px-2 text-sm text-text-primary"
+          />
+          <p className="mt-1 text-[11px] text-text-muted">
+            Нельзя опустить ниже числа уже вступивших участников.
+          </p>
         </Field>
 
         <Field label="Видимость">

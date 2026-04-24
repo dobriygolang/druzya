@@ -149,18 +149,25 @@ export default function CohortPage() {
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-2">
                 <h1 className="font-display text-xl font-bold text-text-primary sm:text-2xl">{cohort.name}</h1>
-                <span
-                  className={cn(
-                    'shrink-0 rounded-full px-2 py-0.5 font-mono text-[10px] font-bold uppercase',
-                    cohort.status === 'active'
-                      ? 'bg-success/20 text-success'
-                      : cohort.status === 'graduated'
-                        ? 'bg-cyan/20 text-cyan'
+                {cohort.status === 'graduated' ? (
+                  <span
+                    className="shrink-0 rounded-full border border-cyan/40 bg-gradient-to-r from-cyan/20 to-accent/20 px-2.5 py-0.5 font-mono text-[10px] font-bold uppercase text-cyan"
+                    title={`Выпущена ${fmtDate(cohort.ends_at)}`}
+                  >
+                    🎓 Graduated · {fmtDate(cohort.ends_at)}
+                  </span>
+                ) : (
+                  <span
+                    className={cn(
+                      'shrink-0 rounded-full px-2 py-0.5 font-mono text-[10px] font-bold uppercase',
+                      cohort.status === 'active'
+                        ? 'bg-success/20 text-success'
                         : 'bg-surface-2 text-text-muted',
-                  )}
-                >
-                  ● {cohort.status === 'active' ? 'active' : cohort.status === 'graduated' ? 'finished' : 'cancelled'}
-                </span>
+                    )}
+                  >
+                    ● {cohort.status === 'active' ? 'active' : 'cancelled'}
+                  </span>
+                )}
                 {isMember && (
                   <span className="shrink-0 rounded-md bg-accent/20 px-2 py-0.5 font-mono text-[10px] font-semibold text-accent-hover">
                     ТЫ {isOwner && '· OWNER'}

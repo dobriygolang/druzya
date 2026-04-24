@@ -30,6 +30,9 @@ type CreateCohortInput struct {
 	StartsAt   time.Time
 	EndsAt     time.Time
 	Visibility domain.Visibility
+	// Capacity — per-row member cap. 0 → defaults to MaxMembersPhase1.
+	// Valid range 2..500 (mirrors SQL CHECK constraint in migration 00054).
+	Capacity int
 }
 
 // CreateCohort use case.
@@ -81,6 +84,12 @@ func (uc *CreateCohort) DoFull(ctx context.Context, in CreateCohortInput) (uuid.
 	if in.Visibility == "" {
 		in.Visibility = domain.VisibilityPublic
 	}
+	if in.Capacity == 0 {
+		in.Capacity = domain.MaxMembersPhase1
+	}
+	if in.Capacity < 2 || in.Capacity > 500 {
+		return uuid.Nil, fmt.Errorf("cohort.Create: capacity must be 2..500: %w", errInvalidInput)
+	}
 	c := domain.Cohort{
 		ID:         uuid.New(),
 		Slug:       in.Slug,
@@ -90,6 +99,7 @@ func (uc *CreateCohort) DoFull(ctx context.Context, in CreateCohortInput) (uuid.
 		EndsAt:     in.EndsAt,
 		Status:     domain.StatusActive,
 		Visibility: in.Visibility,
+		Capacity:   in.Capacity,
 	}
 	id, err := uc.Repo.Create(ctx, c)
 	if err != nil {
@@ -236,7 +246,11 @@ func (uc *JoinCohort) DoByID(ctx context.Context, cohortID, userID uuid.UUID) er
 	if err != nil {
 		return fmt.Errorf("cohort.Join: count: %w", err)
 	}
-	if count >= domain.MaxMembersPhase1 {
+	cap := c.Capacity
+	if cap <= 0 {
+		cap = domain.MaxMembersPhase1
+	}
+	if count >= cap {
 		return domain.ErrCohortFull
 	}
 	if err := uc.Repo.AddMember(ctx, domain.CohortMember{
@@ -518,6 +532,7 @@ type UpdateCohortInput struct {
 	Name       *string
 	EndsAt     *time.Time
 	Visibility *domain.Visibility
+	Capacity   *int
 }
 
 // Do checks ownership then writes the patch.
@@ -547,10 +562,25 @@ func (uc *UpdateCohort) Do(ctx context.Context, in UpdateCohortInput) (domain.Co
 			return domain.Cohort{}, ErrInvalidVisibility
 		}
 	}
+	if in.Capacity != nil {
+		if *in.Capacity < 2 || *in.Capacity > 500 {
+			return domain.Cohort{}, ErrInvalidCapacity
+		}
+		// Can't shrink below the current member count — that would
+		// orphan existing members above the new cap.
+		count, cerr := uc.repo.CountMembers(ctx, in.CohortID)
+		if cerr != nil {
+			return domain.Cohort{}, fmt.Errorf("cohort.UpdateCohort: count: %w", cerr)
+		}
+		if *in.Capacity < count {
+			return domain.Cohort{}, ErrInvalidCapacity
+		}
+	}
 	out, err := uc.repo.UpdateMeta(ctx, in.CohortID, domain.CohortPatch{
 		Name:       in.Name,
 		EndsAt:     in.EndsAt,
 		Visibility: in.Visibility,
+		Capacity:   in.Capacity,
 	})
 	if err != nil {
 		return domain.Cohort{}, fmt.Errorf("cohort.UpdateCohort: %w", err)
@@ -690,6 +720,7 @@ var (
 	ErrInvalidEnd        = errors.New("cohort: ends_at must be in the future")
 	ErrInvalidVisibility = errors.New("cohort: invalid visibility")
 	ErrInvalidRole       = errors.New("cohort: invalid role")
+	ErrInvalidCapacity   = errors.New("cohort: capacity must be 2..500 and ≥ current member count")
 )
 
 // GetStreakHeatmap returns the per-cohort daily-kata streak grid for the

@@ -32,6 +32,7 @@ export default function CreateCohortDialog({ open, onClose }: Props) {
   const [name, setName] = useState('')
   const [slug, setSlug] = useState('')
   const [endsAt, setEndsAt] = useState(defaultEnds)
+  const [capacity, setCapacity] = useState<number>(50)
   const [visibility, setVisibility] = useState<'public' | 'invite'>('public')
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
   // Track whether the user manually edited the slug — once they did, we
@@ -59,6 +60,10 @@ export default function CreateCohortDialog({ open, onClose }: Props) {
       setErrorMsg('Название обязательно')
       return
     }
+    if (capacity < 2 || capacity > 500) {
+      setErrorMsg('Размер когорты должен быть от 2 до 500')
+      return
+    }
     try {
       const out = await create.mutateAsync({
         name: name.trim(),
@@ -66,6 +71,7 @@ export default function CreateCohortDialog({ open, onClose }: Props) {
         starts_at: new Date().toISOString(),
         ends_at: endsAt ? new Date(endsAt).toISOString() : undefined,
         visibility,
+        capacity,
       })
       onClose()
       // Best-effort jump to the new cohort if we have its slug; otherwise
@@ -135,6 +141,21 @@ export default function CreateCohortDialog({ open, onClose }: Props) {
             required
             className="h-9 w-full rounded-md border border-border bg-surface-2 px-2 text-sm text-text-primary"
           />
+        </Field>
+
+        <Field label="Размер когорты">
+          <input
+            type="number"
+            min={2}
+            max={500}
+            value={capacity}
+            onChange={(e) => setCapacity(parseInt(e.target.value, 10) || 0)}
+            required
+            className="h-9 w-full rounded-md border border-border bg-surface-2 px-2 text-sm text-text-primary"
+          />
+          <p className="mt-1 text-[11px] text-text-muted">
+            От 2 до 500 участников. По умолчанию 50 — хватает на учебную группу.
+          </p>
         </Field>
 
         <Field label="Видимость">
