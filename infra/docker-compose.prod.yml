@@ -71,6 +71,23 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:-druz9}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?missing POSTGRES_PASSWORD}
       POSTGRES_DB: ${POSTGRES_DB:-druz9}
+    # Урезанный RAM-профиль (2026-04): ~2.2GB вместо дефолтных ~4GB, чтобы
+    # освободить 1.8GB под Ollama 7B модель. На нашей нагрузке (≤100 rps,
+    # хот-вёркинг-сет в пределах 1-1.5GB) не ощутимо.
+    # shared_buffers 512MB — ~25% от effective memory (рекомендация PG).
+    # work_mem 4MB × max_connections — предохранитель от OOM при JOIN'ах.
+    command:
+      - postgres
+      - -c
+      - shared_buffers=512MB
+      - -c
+      - effective_cache_size=1536MB
+      - -c
+      - work_mem=4MB
+      - -c
+      - maintenance_work_mem=128MB
+      - -c
+      - max_connections=100
     volumes:
       - pg_data:/var/lib/postgresql/data
     # Bind to loopback only — access via SSH tunnel.
@@ -78,6 +95,7 @@ services:
       - "127.0.0.1:5432:5432"
     networks: [app-net, obs-net]
     restart: always
+    mem_limit: 2200m
     healthcheck:
       # ${POSTGRES_USER:-druz9} — берём из env, дефолт оставляем как было.
       # Хардкод 'druz9' ломал healthcheck при кастомных POSTGRES_USER (typo
@@ -87,13 +105,27 @@ services:
 
   redis:
     image: redis:7-alpine
-    command: ["redis-server", "--save", "60", "1", "--requirepass", "${REDIS_PASSWORD:?missing REDIS_PASSWORD}"]
+    # maxmemory 1gb + allkeys-lru (2026-04): вместо дефолта, чтобы гарантированно
+    # удерживать работу в рамках 1GB RAM. Сессии + кеши + очереди + llmcache
+    # (40MB) легко влезают в 1GB по прогнозу из bible §10.5.
+    command:
+      - redis-server
+      - --save
+      - "60"
+      - "1"
+      - --requirepass
+      - ${REDIS_PASSWORD:?missing REDIS_PASSWORD}
+      - --maxmemory
+      - 1gb
+      - --maxmemory-policy
+      - allkeys-lru
     volumes:
       - redis_data:/data
     ports:
       - "127.0.0.1:6379:6379"
     networks: [app-net, obs-net]
     restart: always
+    mem_limit: 1200m
     healthcheck:
       test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
       interval: 10s
@@ -149,7 +181,12 @@ services:
     volumes:
       - ollama_data:/root/.ollama
     networks: [app-net]
-    mem_limit: 3500m
+    # RAM budget (2026-04): 5500m для Qwen 2.5 7B Q4_K_M (~4.5GB модель +
+    # overhead runtime + bge-small 130MB для semantic cache embeddings).
+    # VPS 12GB:  PG 2.2 + Redis 1.2 + Ollama 5.5 + API 0.5 + nginx/minio 0.8
+    # + OS 1.5 = 11.7 из 12GB. Тонко, но после урезания PG/Redis хватает.
+    # Qwen 7B на 8 ядрах CPU выдаёт 10-15 tok/s — приемлемо для fallback-path'а.
+    mem_limit: 5500m
     cpus: 2.0
     healthcheck:
       # `ollama list` коннектится к локальному сокету :11434 — гарантированно
@@ -177,6 +214,7 @@ services:
     entrypoint: /bin/sh
     command: >
       -c "
+        OLLAMA_HOST=http://ollama:11434 ollama pull qwen2.5:7b-instruct-q4_K_M &&
         OLLAMA_HOST=http://ollama:11434 ollama pull qwen2.5:3b-instruct-q4_K_M &&
         OLLAMA_HOST=http://ollama:11434 ollama pull bge-small-en-v1.5
       "

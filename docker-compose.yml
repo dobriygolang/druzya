@@ -150,7 +150,7 @@ services:
       - ollama_data:/root/.ollama
     # Порт НЕ exposed наружу — работает только внутри app-net.
     networks: [app-net]
-    mem_limit: 3500m
+    mem_limit: 5500m
     cpus: 2.0
     healthcheck:
       # `ollama list` использует локальный socket :11434 — гарантированно
@@ -175,6 +175,7 @@ services:
     entrypoint: /bin/sh
     command: >
       -c "
+        OLLAMA_HOST=http://ollama:11434 ollama pull qwen2.5:7b-instruct-q4_K_M &&
         OLLAMA_HOST=http://ollama:11434 ollama pull qwen2.5:3b-instruct-q4_K_M &&
         OLLAMA_HOST=http://ollama:11434 ollama pull bge-small-en-v1.5
       "

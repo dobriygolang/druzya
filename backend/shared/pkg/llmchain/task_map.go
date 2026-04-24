@@ -53,7 +53,7 @@ var DefaultTaskModelMap = TaskModelMap{
 		// Ollama floor-fallback: Qwen 2.5 3B с JSON-mode. Структура хуже
 		// чем у cloud 8B-70B, но для "крайнего случая" (все провайдеры
 		// исчерпаны) лучше чем error.
-		ProviderOllama: "qwen2.5:3b-instruct-q4_K_M",
+		ProviderOllama: "qwen2.5:7b-instruct-q4_K_M",
 	},
 	TaskInsightProse: {
 		ProviderGroq:       "llama-3.3-70b-versatile",
@@ -62,7 +62,7 @@ var DefaultTaskModelMap = TaskModelMap{
 		ProviderOpenRouter: "openai/gpt-oss-120b:free",
 		// Качество 3B заметно хуже 70B для длинной русской прозы —
 		// но в fallback это приемлемо (дегредированный UX > ошибка).
-		ProviderOllama: "qwen2.5:3b-instruct-q4_K_M",
+		ProviderOllama: "qwen2.5:7b-instruct-q4_K_M",
 	},
 	TaskCopilotStream: {
 		ProviderGroq:       "llama-3.3-70b-versatile",
@@ -91,10 +91,10 @@ var DefaultTaskModelMap = TaskModelMap{
 		// OpenRouter deliberately omitted: qwen3-coder:free has higher
 		// p95 first-byte latency in our tests and this task is the one
 		// where that matters most.
-		// Ollama: для hint'ов локалка даже может быть примером primary —
-		// мы не жжём cloud-квоту на фоновую подсказку. Latency 3-5s до
-		// первого байта терпима (подсказка появляется ±1 абзац позже).
-		// Но по умолчанию оставляем в конце цепочки через LLM_CHAIN_ORDER.
+		// Ollama: для hint'ов локалка может быть primary — мы не жжём cloud
+		// квоту на фоновую подсказку. Но для этой task'и latency — весь
+		// смысл (подсказка обсолетная если опоздала), поэтому держим 3B
+		// а не 7B — 3B выдаёт 25-30 tok/s на 8 CPU, первый токен через 1-2s.
 		ProviderOllama: "qwen2.5:3b-instruct-q4_K_M",
 	},
 	TaskCodeReview: {
@@ -108,7 +108,7 @@ var DefaultTaskModelMap = TaskModelMap{
 		ProviderOpenRouter: "openai/gpt-oss-120b:free",
 		// Code review на Qwen 3B — заметно хуже 70B по глубине анализа,
 		// но рабочий floor. Fallback path.
-		ProviderOllama: "qwen2.5:3b-instruct-q4_K_M",
+		ProviderOllama: "qwen2.5:7b-instruct-q4_K_M",
 	},
 	TaskSysDesignCritique: {
 		// Long-context architectural diagrams + spec. Qwen2.5-72B с 128k
@@ -120,7 +120,7 @@ var DefaultTaskModelMap = TaskModelMap{
 		ProviderOpenRouter: "openai/gpt-oss-120b:free",
 		// Qwen 3B с 32k context — достаточно для большинства диаграмм,
 		// но реальные архитектурные разборы лучше всё-таки cloud 70B.
-		ProviderOllama: "qwen2.5:3b-instruct-q4_K_M",
+		ProviderOllama: "qwen2.5:7b-instruct-q4_K_M",
 	},
 	TaskSummarize: {
 		// Cheapest-available on each provider — summarize runs in the
@@ -131,8 +131,8 @@ var DefaultTaskModelMap = TaskModelMap{
 		ProviderMistral:  "mistral-small-latest",
 		// Для bg-summarize Ollama — отличная опция: работает без лимита,
 		// качество "достаточное" (summary всё равно читается потом более
-		// сильной моделью). Идеальный кандидат в primary через
-		// LLM_CHAIN_ORDER=ollama,groq,… для этого task'а.
+		// сильной моделью). 3B тут осознанно вместо 7B — скорость важнее
+		// на фоновой задаче, и качество самари у 3B вполне адекватное.
 		ProviderOllama: "qwen2.5:3b-instruct-q4_K_M",
 	},
 	TaskDailyPlanSynthesis: {
