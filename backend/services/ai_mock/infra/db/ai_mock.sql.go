@@ -58,7 +58,8 @@ INSERT INTO mock_sessions (
 ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
 RETURNING id, user_id, company_id, task_id, section, difficulty, status,
           duration_min, voice_mode, paired_user_id, llm_model,
-          stress_profile, ai_report, replay_url, started_at, finished_at, created_at
+          stress_profile, ai_report, replay_url, running_summary,
+          started_at, finished_at, created_at
 `
 
 type CreateMockSessionParams struct {
@@ -108,6 +109,7 @@ func (q *Queries) CreateMockSession(ctx context.Context, arg CreateMockSessionPa
 		&i.StressProfile,
 		&i.AiReport,
 		&i.ReplayUrl,
+		&i.RunningSummary,
 		&i.StartedAt,
 		&i.FinishedAt,
 		&i.CreatedAt,
@@ -137,7 +139,8 @@ func (q *Queries) GetCompanyForMock(ctx context.Context, id pgtype.UUID) (GetCom
 const getMockSession = `-- name: GetMockSession :one
 SELECT id, user_id, company_id, task_id, section, difficulty, status,
        duration_min, voice_mode, paired_user_id, llm_model,
-       stress_profile, ai_report, replay_url, started_at, finished_at, created_at
+       stress_profile, ai_report, replay_url, running_summary,
+       started_at, finished_at, created_at
   FROM mock_sessions
  WHERE id = $1
 `
@@ -160,6 +163,7 @@ func (q *Queries) GetMockSession(ctx context.Context, id pgtype.UUID) (MockSessi
 		&i.StressProfile,
 		&i.AiReport,
 		&i.ReplayUrl,
+		&i.RunningSummary,
 		&i.StartedAt,
 		&i.FinishedAt,
 		&i.CreatedAt,
@@ -346,6 +350,28 @@ type UpdateMockSessionReportParams struct {
 
 func (q *Queries) UpdateMockSessionReport(ctx context.Context, arg UpdateMockSessionReportParams) (int64, error) {
 	result, err := q.db.Exec(ctx, updateMockSessionReport, arg.ID, arg.Column2, arg.Column3)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const updateMockSessionRunningSummary = `-- name: UpdateMockSessionRunningSummary :execrows
+UPDATE mock_sessions
+   SET running_summary = $2
+ WHERE id = $1
+`
+
+type UpdateMockSessionRunningSummaryParams struct {
+	ID             pgtype.UUID
+	RunningSummary string
+}
+
+// Вызывается фоновым compaction.Worker после суммаризации старых turns.
+// См. backend/shared/pkg/compaction/worker.go. Пишем атомарно поверх
+// любого предыдущего значения — решение о запуске принимает воркер.
+func (q *Queries) UpdateMockSessionRunningSummary(ctx context.Context, arg UpdateMockSessionRunningSummaryParams) (int64, error) {
+	result, err := q.db.Exec(ctx, updateMockSessionRunningSummary, arg.ID, arg.RunningSummary)
 	if err != nil {
 		return 0, err
 	}

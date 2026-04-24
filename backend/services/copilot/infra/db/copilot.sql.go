@@ -170,18 +170,19 @@ func (q *Queries) FailCopilotSessionReport(ctx context.Context, arg FailCopilotS
 }
 
 const getCopilotConversation = `-- name: GetCopilotConversation :one
-SELECT id, user_id, title, model, created_at, updated_at
+SELECT id, user_id, title, model, created_at, updated_at, running_summary
   FROM copilot_conversations
  WHERE id = $1
 `
 
 type GetCopilotConversationRow struct {
-	ID        pgtype.UUID
-	UserID    pgtype.UUID
-	Title     string
-	Model     string
-	CreatedAt pgtype.Timestamptz
-	UpdatedAt pgtype.Timestamptz
+	ID             pgtype.UUID
+	UserID         pgtype.UUID
+	Title          string
+	Model          string
+	CreatedAt      pgtype.Timestamptz
+	UpdatedAt      pgtype.Timestamptz
+	RunningSummary string
 }
 
 func (q *Queries) GetCopilotConversation(ctx context.Context, id pgtype.UUID) (GetCopilotConversationRow, error) {
@@ -194,6 +195,7 @@ func (q *Queries) GetCopilotConversation(ctx context.Context, id pgtype.UUID) (G
 		&i.Model,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+		&i.RunningSummary,
 	)
 	return i, err
 }
@@ -771,6 +773,29 @@ func (q *Queries) UpdateCopilotAssistantMessage(ctx context.Context, arg UpdateC
 		arg.TokensOut,
 		arg.LatencyMs,
 	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const updateCopilotConversationRunningSummary = `-- name: UpdateCopilotConversationRunningSummary :execrows
+UPDATE copilot_conversations
+   SET running_summary = $2,
+       updated_at      = now()
+ WHERE id = $1
+`
+
+type UpdateCopilotConversationRunningSummaryParams struct {
+	ID             pgtype.UUID
+	RunningSummary string
+}
+
+// Вызывается фоновым compaction.Worker после успешной суммаризации старых
+// turns (см. backend/shared/pkg/compaction/worker.go). Пишется атомарно
+// поверх любого предыдущего значения — воркер сам решает, когда запускать.
+func (q *Queries) UpdateCopilotConversationRunningSummary(ctx context.Context, arg UpdateCopilotConversationRunningSummaryParams) (int64, error) {
+	result, err := q.db.Exec(ctx, updateCopilotConversationRunningSummary, arg.ID, arg.RunningSummary)
 	if err != nil {
 		return 0, err
 	}

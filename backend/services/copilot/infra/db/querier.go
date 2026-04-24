@@ -82,6 +82,10 @@ type Querier interface {
 	// Called when the streaming completion finishes to commit the final assistant
 	// text + token accounting onto the placeholder row created at stream start.
 	UpdateCopilotAssistantMessage(ctx context.Context, arg UpdateCopilotAssistantMessageParams) (int64, error)
+	// Вызывается фоновым compaction.Worker после успешной суммаризации старых
+	// turns (см. backend/shared/pkg/compaction/worker.go). Пишется атомарно
+	// поверх любого предыдущего значения — воркер сам решает, когда запускать.
+	UpdateCopilotConversationRunningSummary(ctx context.Context, arg UpdateCopilotConversationRunningSummaryParams) (int64, error)
 	UpdateCopilotConversationTitle(ctx context.Context, arg UpdateCopilotConversationTitleParams) (int64, error)
 	// Called by the billing service (or admin tool) when a user's subscription
 	// changes. Caps and allowed models are plan-derived — callers pass the full

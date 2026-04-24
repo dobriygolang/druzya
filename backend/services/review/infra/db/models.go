@@ -139,13 +139,14 @@ type Company struct {
 }
 
 type CopilotConversation struct {
-	ID        pgtype.UUID
-	UserID    pgtype.UUID
-	SessionID pgtype.UUID
-	Title     string
-	Model     string
-	CreatedAt pgtype.Timestamptz
-	UpdatedAt pgtype.Timestamptz
+	ID             pgtype.UUID
+	UserID         pgtype.UUID
+	SessionID      pgtype.UUID
+	Title          string
+	Model          string
+	RunningSummary string
+	CreatedAt      pgtype.Timestamptz
+	UpdatedAt      pgtype.Timestamptz
 }
 
 type CopilotMessage struct {
@@ -409,23 +410,24 @@ type MockMessage struct {
 }
 
 type MockSession struct {
-	ID            pgtype.UUID
-	UserID        pgtype.UUID
-	CompanyID     pgtype.UUID
-	TaskID        pgtype.UUID
-	Section       string
-	Difficulty    string
-	Status        string
-	DurationMin   int32
-	VoiceMode     bool
-	PairedUserID  pgtype.UUID
-	LlmModel      pgtype.Text
-	StressProfile []byte
-	AiReport      []byte
-	ReplayUrl     pgtype.Text
-	StartedAt     pgtype.Timestamptz
-	FinishedAt    pgtype.Timestamptz
-	CreatedAt     pgtype.Timestamptz
+	ID             pgtype.UUID
+	UserID         pgtype.UUID
+	CompanyID      pgtype.UUID
+	TaskID         pgtype.UUID
+	Section        string
+	Difficulty     string
+	Status         string
+	DurationMin    int32
+	VoiceMode      bool
+	PairedUserID   pgtype.UUID
+	LlmModel       pgtype.Text
+	StressProfile  []byte
+	AiReport       []byte
+	ReplayUrl      pgtype.Text
+	RunningSummary string
+	StartedAt      pgtype.Timestamptz
+	FinishedAt     pgtype.Timestamptz
+	CreatedAt      pgtype.Timestamptz
 }
 
 type NativeProvenance struct {

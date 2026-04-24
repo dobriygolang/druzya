@@ -9,13 +9,23 @@ INSERT INTO mock_sessions (
 ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
 RETURNING id, user_id, company_id, task_id, section, difficulty, status,
           duration_min, voice_mode, paired_user_id, llm_model,
-          stress_profile, ai_report, replay_url, started_at, finished_at, created_at;
+          stress_profile, ai_report, replay_url, running_summary,
+          started_at, finished_at, created_at;
 
 -- name: GetMockSession :one
 SELECT id, user_id, company_id, task_id, section, difficulty, status,
        duration_min, voice_mode, paired_user_id, llm_model,
-       stress_profile, ai_report, replay_url, started_at, finished_at, created_at
+       stress_profile, ai_report, replay_url, running_summary,
+       started_at, finished_at, created_at
   FROM mock_sessions
+ WHERE id = $1;
+
+-- name: UpdateMockSessionRunningSummary :execrows
+-- Вызывается фоновым compaction.Worker после суммаризации старых turns.
+-- См. backend/shared/pkg/compaction/worker.go. Пишем атомарно поверх
+-- любого предыдущего значения — решение о запуске принимает воркер.
+UPDATE mock_sessions
+   SET running_summary = $2
  WHERE id = $1;
 
 -- name: UpdateMockSessionStatus :execrows

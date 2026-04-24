@@ -12,8 +12,17 @@ VALUES ($1, $2, $3)
 RETURNING id, user_id, title, model, created_at, updated_at;
 
 -- name: GetCopilotConversation :one
-SELECT id, user_id, title, model, created_at, updated_at
+SELECT id, user_id, title, model, created_at, updated_at, running_summary
   FROM copilot_conversations
+ WHERE id = $1;
+
+-- name: UpdateCopilotConversationRunningSummary :execrows
+-- Вызывается фоновым compaction.Worker после успешной суммаризации старых
+-- turns (см. backend/shared/pkg/compaction/worker.go). Пишется атомарно
+-- поверх любого предыдущего значения — воркер сам решает, когда запускать.
+UPDATE copilot_conversations
+   SET running_summary = $2,
+       updated_at      = now()
  WHERE id = $1;
 
 -- name: UpdateCopilotConversationTitle :execrows
