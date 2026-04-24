@@ -54,7 +54,7 @@ hone/
             ├── App.tsx          orchestrator (routing + hotkeys + pomodoro)
             ├── main.tsx         createRoot mount
             ├── api/             Connect-RPC transport + typed wrappers
-            │   ├── config.ts        VITE_DRUZ9_API_BASE + dev-token hatch
+            │   ├── config.ts        API/WEB base (hardcoded prod) + dev-token hatch
             │   ├── transport.ts     singleton Connect transport + auth
             │   └── hone.ts          typed wrappers (getStats, …)
             ├── components/
@@ -84,21 +84,35 @@ hone/
 - Connect-RPC TS stubs are emitted into `../frontend/src/api/generated/`
   by `make gen-proto` and aliased here as `@generated/*`.
 
-## Vertical slice: Stats → real backend
+## Запуск
 
-1. Run the monolith: `make dev` from the repo root.
-2. Grab a dev bearer token (until keychain auth ships). The simplest path
-   is to log in once on `druz9.ru` locally, copy the access token from
-   browser devtools.
-3. Export it before `npm run dev`:
-   ```bash
-   export VITE_DRUZ9_API_BASE=http://localhost:8080
-   export VITE_DRUZ9_DEV_TOKEN=eyJ…           # paste token here
-   npm run dev
-   ```
-4. Press **S** (or ⌘K → Stats). Widgets hydrate from `/api/v1/hone/stats`.
-   Empty on day one — open `/api/v1/hone/focus/start` + `/focus/end`
-   against the backend to seed a day.
+Адреса прода захардкожены в `src/renderer/src/api/config.ts`:
+- API: `https://api.druz9.ru`
+- Web: `https://druz9.ru` (для OAuth redirect'а)
+
+```bash
+cd hone
+npm install
+npm run dev
+```
+
+Откроется Electron окно → LoginScreen → «Sign in with druz9» открывает
+браузер на `/login?desktop=druz9://auth` → после Yandex/Telegram login'а
+web редиректит на `druz9://auth?token=...` → hone ловит и шифрует в
+keychain (safeStorage). Следующий запуск — session автоматически.
+
+### Dev-token hatch
+
+Если нужно задебажить конкретный сценарий без OAuth-flow, можно подсунуть
+токен напрямую:
+
+```bash
+export VITE_DRUZ9_DEV_TOKEN=eyJ…       # access_token из druz9.ru
+npm run dev
+```
+
+Токен читает `transport.ts` поверх keychain-сессии (override). Для
+production-билдов не экспортируется.
 
 ## Phase 5b next steps
 

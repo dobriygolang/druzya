@@ -5,16 +5,10 @@
 // ...&user=... — main-process ловит, persist'ит в keychain, шлёт
 // authChanged → renderer hydrate'ает store, App'у переключается в
 // signed_in.
-//
-// Дефолтный URL druz9.ru конфигурируем через VITE_DRUZ9_WEB_BASE — в
-// dev/staging это может быть localhost:5173.
 import { useState } from 'react';
 
+import { WEB_BASE_URL } from '../api/config';
 import { Wordmark } from './Chrome';
-
-const WEB_BASE =
-  ((import.meta.env.VITE_DRUZ9_WEB_BASE as string | undefined) ?? '').trim() ||
-  'https://druz9.ru';
 
 const RETURN_URL = 'druz9://auth';
 
@@ -22,7 +16,7 @@ function loginURL(): string {
   // Отдельная страница на web'е (LoginPage с desktop=...) — она
   // прокидывает return через OAuth state, и callback редиректит на
   // RETURN_URL после persist'а.
-  const u = new URL('/login', WEB_BASE);
+  const u = new URL('/login', WEB_BASE_URL);
   u.searchParams.set('desktop', RETURN_URL);
   return u.toString();
 }

@@ -1,20 +1,20 @@
-// API config — where the Connect-RPC client points to. Resolved once at
-// boot from Vite env vars so the bundle is a plain constant, no runtime
-// window lookups.
+// API config — где живёт Connect-RPC endpoint. Хардкод на прод — у нас
+// один production-environment (api.druz9.ru), локального monolith'а не
+// запускаем из hone'а (в dev backend открываем отдельно на :8080 когда
+// действительно нужно).
 //
-// Dev default points at the monorepo's local monolith (make dev). Prod
-// builds set VITE_DRUZ9_API_BASE via electron-builder / CI so the DMG
-// ships with api.druzya.tech baked in.
-//
-// `VITE_DRUZ9_DEV_TOKEN` is a hatch-escape for smoke-testing the
-// vertical slice (Stats page against a real backend) before the keychain
-// auth flow lands. When set, the interceptor attaches it as a Bearer
-// token; in prod it's unset and the interceptor reads from the keytar
-// session instead.
+// Если когда-нибудь понадобится staging/local — возвращаем
+// import.meta.env.VITE_DRUZ9_API_BASE обратно и выставляем через
+// electron-vite. Пока не нужно.
 
-const envBase = (import.meta.env.VITE_DRUZ9_API_BASE ?? '').trim();
+export const API_BASE_URL = 'https://api.druz9.ru';
 
-export const API_BASE_URL = envBase || 'http://localhost:8080';
+// Публичный web-адрес для OAuth redirect'а и deep-link'ов.
+// druz9.online — алиас, держим как константу на случай ре-брендинга.
+export const WEB_BASE_URL = 'https://druz9.ru';
 
+// DEV_BEARER_TOKEN остаётся env-переменной — единственный кейс когда она
+// нужна — smoke-test'ить CI против прода без OAuth flow. В стандартном
+// юзер-сценарии логин через LoginScreen → druz9://auth deep-link.
 export const DEV_BEARER_TOKEN: string | null =
   (import.meta.env.VITE_DRUZ9_DEV_TOKEN ?? '').trim() || null;
