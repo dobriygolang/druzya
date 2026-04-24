@@ -11,6 +11,7 @@ use (
 	./backend/services/cohort
 	./backend/services/copilot
 	./backend/services/daily
+	./backend/services/documents
 	./backend/services/editor
 	./backend/services/feed
 	./backend/services/friends

@@ -34,6 +34,15 @@ func (e *TextExtractor) Extract(_ context.Context, mime string, content []byte) 
 		return extractPlain(content)
 	case m == "text/html", strings.HasPrefix(m, "text/html;"):
 		return extractHTML(content)
+	case m == "application/pdf":
+		return ExtractPDF(content)
+	case m == "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+		m == "application/msword":
+		// application/msword is the legacy .doc type. We route it here
+		// because some browsers mislabel .docx as application/msword;
+		// the ExtractDOCX path sniffs the zip magic and rejects real
+		// .doc files (OLE compound) with ErrUnsupportedMIME.
+		return ExtractDOCX(content)
 	default:
 		return "", domain.ErrUnsupportedMIME
 	}

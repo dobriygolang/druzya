@@ -16,6 +16,8 @@ import {
   analyzeInputSchema,
   appearancePrefsPartialSchema,
   areaRectSchema,
+  documentSearchSchema,
+  documentUploadSchema,
   hotkeyBindingsSchema,
   masqueradeApplySchema,
   permissionKindSchema,
@@ -37,6 +39,7 @@ import {
 import { currentState as cursorState, toggle as cursorToggle } from '../cursor/freeze-js';
 import { createPersonasClient, type PersonaDTO } from '../api/personas';
 import { createSessionsClient } from '../api/sessions';
+import { createDocumentsClient } from '../api/documents';
 import { loadAppearance, saveAppearance, type AppearancePrefs } from '../settings/appearance';
 import { createSessionManager, type SessionManager } from '../sessions/manager';
 import { applyPreset, getCurrent, listPresets } from '../masquerade';
@@ -108,6 +111,17 @@ export function registerHandlers(opts: RegisterOptions): void {
     isDev: false,
   });
   sessionManager = createSessionManager({ client: sessionsREST });
+
+  // Documents REST client. Shares the same auth/token path as sessions
+  // — both talk to /api/v1/* with the user's Druz9 bearer.
+  const documentsREST = createDocumentsClient({
+    apiBaseURL,
+    updateFeedURL: '',
+    sentryDSN: '',
+    environment: '',
+    defaultLocale: 'ru',
+    isDev: false,
+  });
 
   // Personas catalogue — fetched once at startup from /api/v1/personas
   // (migration 00051 seeds the baseline set). Cached in memory; renderer
@@ -508,6 +522,48 @@ export function registerHandlers(opts: RegisterOptions): void {
     if (!sessionManager) throw new Error('sessions disabled');
     return sessionManager.getAnalysis(sessionId);
   });
+
+  // ── Documents ──
+  // The REST client raises on any non-2xx; we pass errors through so
+  // the renderer can surface the server-side message (e.g. "file too
+  // large") in a toast. No silent swallowing.
+  handleInTuple(
+    invokeChannels.documentsList,
+    z.tuple([z.string().max(256), z.number().int().nonnegative().max(100)]),
+    async ([cursor, limit]) => documentsREST.list(cursor, limit),
+  );
+  handleIn(invokeChannels.documentsGet, shortIdSchema, async (id) => documentsREST.get(id));
+  handleIn(invokeChannels.documentsUpload, documentUploadSchema, async (input) =>
+    documentsREST.upload({
+      filename: input.filename,
+      mime: input.mime,
+      content: input.content,
+      sourceUrl: input.sourceUrl,
+    }),
+  );
+  handleIn(invokeChannels.documentsDelete, shortIdSchema, async (id) => {
+    await documentsREST.delete(id);
+  });
+  handleIn(invokeChannels.documentsSearch, documentSearchSchema, async (req) =>
+    documentsREST.search(req.docIds, req.query, req.topK),
+  );
+  handleInTuple(
+    invokeChannels.documentsAttachToSession,
+    z.tuple([shortIdSchema, shortIdSchema]),
+    async ([sessionId, docId]) => {
+      await documentsREST.attachToSession(sessionId, docId);
+    },
+  );
+  handleInTuple(
+    invokeChannels.documentsDetachFromSession,
+    z.tuple([shortIdSchema, shortIdSchema]),
+    async ([sessionId, docId]) => {
+      await documentsREST.detachFromSession(sessionId, docId);
+    },
+  );
+  handleIn(invokeChannels.documentsListAttached, shortIdSchema, async (sessionId) =>
+    documentsREST.listAttachedToSession(sessionId),
+  );
 
 }
 

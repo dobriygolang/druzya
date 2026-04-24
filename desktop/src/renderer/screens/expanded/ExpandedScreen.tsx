@@ -215,6 +215,7 @@ export function ExpandedScreen() {
         </div>
         <div style={{ flex: 1 }} />
         <div style={{ display: 'flex', gap: 2, WebkitAppRegion: 'no-drag' } as React.CSSProperties}>
+          <AttachedDocsBadge />
           {lastAnalysis && lastAnalysis.status === 'ready' && (
             <button
               onClick={() => setSummaryOpen(true)}
@@ -886,3 +887,42 @@ async function captureAndSend(
   }
 }
 
+/**
+ * AttachedDocsBadge — compact pill in the expanded header that tells the
+ * user how many documents feed the current turn's RAG context. Hidden
+ * when there's no live session OR when the user hasn't attached
+ * anything. Clicking opens the Settings → Documents tab where the user
+ * can toggle attachments.
+ *
+ * This is informational-only here; full management (attach/detach,
+ * upload) lives in Settings where there's room for a drop-zone and
+ * list. Keeping the badge simple avoids a second picker-panel to own.
+ */
+function AttachedDocsBadge() {
+  const current = useSessionStore((s) => s.current);
+  const attached = useSessionStore((s) => s.attachedDocIds);
+  if (!current || current.finishedAt || attached.length === 0) return null;
+  const plural = attached.length === 1 ? 'документ' : attached.length < 5 ? 'документа' : 'документов';
+  return (
+    <button
+      type="button"
+      onClick={() => void window.druz9.windows.show('settings')}
+      title={`Copilot учитывает ${attached.length} ${plural} в контексте. Открыть Настройки → Документы.`}
+      style={{
+        padding: '4px 10px',
+        marginRight: 4,
+        borderRadius: 7,
+        background: 'oklch(0.8 0.17 150 / 0.12)',
+        border: '0.5px solid oklch(0.8 0.17 150 / 0.28)',
+        color: 'var(--d9-ok)',
+        fontSize: 11.5,
+        fontFamily: 'inherit',
+        letterSpacing: '-0.005em',
+        cursor: 'pointer',
+        whiteSpace: 'nowrap',
+      }}
+    >
+      📎 {attached.length} {plural}
+    </button>
+  );
+}

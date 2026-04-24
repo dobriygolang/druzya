@@ -31,8 +31,43 @@ type SessionDocumentsHandler struct {
 }
 
 func (h *SessionDocumentsHandler) Mount(r chi.Router) {
+	r.Get("/copilot/sessions/{sessionId}/documents", h.handleList)
 	r.Post("/copilot/sessions/{sessionId}/documents/{docId}", h.handleAttach)
 	r.Delete("/copilot/sessions/{sessionId}/documents/{docId}", h.handleDetach)
+}
+
+// handleList returns the currently-attached document ids for a session.
+// Desktop uses this to draw the "N docs attached" badge and the per-
+// session picker; we keep the payload to just ids (not full Document
+// rows) because the desktop already caches the user's library via
+// GET /documents and only needs to know which are ticked here.
+func (h *SessionDocumentsHandler) handleList(w http.ResponseWriter, r *http.Request) {
+	uid, ok := sharedMw.UserIDFromContext(r.Context())
+	if !ok {
+		writeJSONErr(w, http.StatusUnauthorized, "unauthenticated")
+		return
+	}
+	sessID, err := uuid.Parse(chi.URLParam(r, "sessionId"))
+	if err != nil {
+		writeJSONErr(w, http.StatusBadRequest, "invalid session id")
+		return
+	}
+	// Use Get+ownership check rather than a dedicated list query —
+	// Session.DocumentIDs is already on the row. One SELECT, same cost.
+	s, err := h.Sessions.Get(r.Context(), sessID)
+	if err != nil || s.UserID != uid {
+		// 404 regardless of "not found" vs "foreign" to avoid leaking
+		// existence of other users' sessions.
+		writeJSONErr(w, http.StatusNotFound, "session not found")
+		return
+	}
+	ids := make([]string, len(s.DocumentIDs))
+	for i, id := range s.DocumentIDs {
+		ids[i] = id.String()
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	_ = json.NewEncoder(w).Encode(map[string]any{"document_ids": ids})
 }
 
 func (h *SessionDocumentsHandler) handleAttach(w http.ResponseWriter, r *http.Request) {

@@ -89,6 +89,15 @@ export const invokeChannels = {
   sessionCurrent: 'session:current',
   sessionList: 'session:list',
   sessionGetAnalysis: 'session:get-analysis',
+
+  documentsList: 'documents:list',
+  documentsGet: 'documents:get',
+  documentsUpload: 'documents:upload',
+  documentsDelete: 'documents:delete',
+  documentsSearch: 'documents:search',
+  documentsAttachToSession: 'documents:attach-to-session',
+  documentsDetachFromSession: 'documents:detach-from-session',
+  documentsListAttached: 'documents:list-attached',
   /** Expanded calls this on mount to pick up any userTurnStarted event
    *  that fired before its renderer had subscribed (race: compact kicks
    *  off analyze.start, main broadcasts, then compact asks main to
@@ -349,6 +358,58 @@ export interface AuthChangedEvent {
 }
 
 // ─────────────────────────────────────────────────────────────────────────
+// Documents (RAG store)
+// ─────────────────────────────────────────────────────────────────────────
+
+/** Status of the async ingest pipeline. Mirrors backend documents.Status. */
+export type DocumentStatus =
+  | 'pending'
+  | 'extracting'
+  | 'embedding'
+  | 'ready'
+  | 'failed'
+  | 'deleting';
+
+export interface Document {
+  id: string;
+  filename: string;
+  mime: string;
+  sizeBytes: number;
+  sourceUrl: string;
+  status: DocumentStatus;
+  errorMessage: string;
+  chunkCount: number;
+  tokenCount: number;
+  createdAt: string; // ISO-8601
+  updatedAt: string; // ISO-8601
+}
+
+/** Payload for uploading a document. Content is the raw bytes — the
+ *  renderer reads the File via `arrayBuffer()` and hands over a
+ *  Uint8Array. The main process base64-encodes before hitting the REST
+ *  API; we deliberately don't leak base64 across the IPC boundary (the
+ *  8-bit binary crosses zero-copy as a transferable buffer). */
+export interface DocumentUploadInput {
+  filename: string;
+  mime: string;
+  content: Uint8Array;
+  sourceUrl?: string;
+}
+
+export interface DocumentSearchHit {
+  docId: string;
+  chunkId: string;
+  ord: number;
+  score: number;
+  content: string;
+}
+
+export interface DocumentListResult {
+  documents: Document[];
+  nextCursor: string;
+}
+
+// ─────────────────────────────────────────────────────────────────────────
 // Typed API surface exposed to renderer as `window.druz9`.
 // The preload script wires ipcRenderer.invoke + ipcRenderer.on into these
 // methods; the renderer code is fully typed against this interface.
@@ -528,6 +589,27 @@ export interface Druz9API {
     getAnalysis: (
       sessionId: string,
     ) => Promise<import('./types').SessionAnalysis>;
+  };
+
+  /**
+   * Documents — user-uploaded files (CV, JD, notes) that power the
+   * RAG-context injection in copilot. Upload goes bytes-in-bytes-out;
+   * the main process base64-encodes at the REST boundary so renderer
+   * code never deals with encoding.
+   *
+   * Attach/detach is scoped to a session: once attached, every
+   * subsequent turn in that session pulls the top-K relevant chunks
+   * into the system prompt.
+   */
+  documents: {
+    list: (cursor: string, limit: number) => Promise<DocumentListResult>;
+    get: (id: string) => Promise<Document>;
+    upload: (input: DocumentUploadInput) => Promise<Document>;
+    delete: (id: string) => Promise<void>;
+    search: (docIds: string[], query: string, topK?: number) => Promise<DocumentSearchHit[]>;
+    attachToSession: (sessionId: string, docId: string) => Promise<void>;
+    detachFromSession: (sessionId: string, docId: string) => Promise<void>;
+    listAttachedToSession: (sessionId: string) => Promise<string[]>;
   };
 
   /** Subscribe to a main-process event. Returns an unsubscribe function. */

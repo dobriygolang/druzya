@@ -15,6 +15,10 @@ import {
   type AreaRect,
   type AuthSession,
   type CaptureResult,
+  type Document,
+  type DocumentListResult,
+  type DocumentSearchHit,
+  type DocumentUploadInput,
   type Druz9API,
   type MasqueradePreset,
   type MasqueradePresetInfo,
@@ -174,6 +178,28 @@ const api: Druz9API = {
       }>,
     getAnalysis: (sessionId: string) =>
       ipcRenderer.invoke(invokeChannels.sessionGetAnalysis, sessionId) as Promise<SessionAnalysis>,
+  },
+  documents: {
+    list: (cursor: string, limit: number) =>
+      ipcRenderer.invoke(invokeChannels.documentsList, cursor, limit) as Promise<DocumentListResult>,
+    get: (id: string) =>
+      ipcRenderer.invoke(invokeChannels.documentsGet, id) as Promise<Document>,
+    upload: (input: DocumentUploadInput) =>
+      ipcRenderer.invoke(invokeChannels.documentsUpload, input) as Promise<Document>,
+    delete: (id: string) =>
+      ipcRenderer.invoke(invokeChannels.documentsDelete, id) as Promise<void>,
+    search: (docIds: string[], query: string, topK?: number) =>
+      ipcRenderer.invoke(invokeChannels.documentsSearch, {
+        docIds,
+        query,
+        topK,
+      }) as Promise<DocumentSearchHit[]>,
+    attachToSession: (sessionId: string, docId: string) =>
+      ipcRenderer.invoke(invokeChannels.documentsAttachToSession, sessionId, docId) as Promise<void>,
+    detachFromSession: (sessionId: string, docId: string) =>
+      ipcRenderer.invoke(invokeChannels.documentsDetachFromSession, sessionId, docId) as Promise<void>,
+    listAttachedToSession: (sessionId: string) =>
+      ipcRenderer.invoke(invokeChannels.documentsListAttached, sessionId) as Promise<string[]>,
   },
   on: <T>(channel: string, handler: (payload: T) => void) => {
     // Whitelist so renderer can't subscribe to arbitrary channels.

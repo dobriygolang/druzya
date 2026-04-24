@@ -149,6 +149,24 @@ export function IconKey(p: Props) {
   );
 }
 
+export function IconDocument(p: Props) {
+  return (
+    <svg {...base(p)}>
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+      <path d="M14 2v6h6" />
+      <path d="M8 13h8M8 17h6M8 9h2" />
+    </svg>
+  );
+}
+
+export function IconTrash(p: Props) {
+  return (
+    <svg {...base(p)}>
+      <path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+    </svg>
+  );
+}
+
 /** Brand mark — gradient square with a subtle shine. Used in onboarding and compact.
  *  The optional `background` prop lets callers swap the gradient at runtime
  *  (today: per-persona color — see stores/persona.ts). When undefined we fall

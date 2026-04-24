@@ -133,6 +133,26 @@ export const sessionListSchema = z.object({
   kind: sessionKindSchema.optional(),
 });
 
+// ─── Documents ────────────────────────────────────────────────────────────
+
+// Raw bytes arrive as Uint8Array; zod's z.instanceof handles it cleanly.
+// 10MB cap mirrors the server-side documents.MaxUploadBytes — rejecting
+// earlier in main avoids a wasted round-trip.
+export const documentUploadSchema = z.object({
+  filename: z.string().min(1).max(512),
+  mime: z.string().min(1).max(128),
+  content: z.instanceof(Uint8Array).refine((b) => b.byteLength <= 10 * 1024 * 1024, {
+    message: 'content exceeds 10MB',
+  }),
+  sourceUrl: z.string().max(2048).optional(),
+});
+
+export const documentSearchSchema = z.object({
+  docIds: z.array(z.string().min(1).max(128)).max(32),
+  query: z.string().min(1).max(8_000),
+  topK: z.number().int().positive().max(50).optional(),
+});
+
 // ─── Shell ────────────────────────────────────────────────────────────────
 
 // The handler additionally enforces http/https via regex; the schema only
