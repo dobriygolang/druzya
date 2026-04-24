@@ -32,14 +32,23 @@ type OllamaEmbedder struct {
 	http     *http.Client
 }
 
-// BgeSmallEnDim — размерность bge-small-en-v1.5. Пакет константно подшивается
-// к 384: если оператор укажет другую embedding-модель (например nomic-embed-
-// text с 768), придётся завести отдельный OllamaEmbedder с другим Dim, и это
-// ок — SemanticCache хранит по task'у, миграция кеша = flushdb нужного префикса.
-const BgeSmallEnDim = 384
+// BgeM3Dim — размерность bge-m3 (1024). bge-m3 выбран вместо bge-small-en-v1.5
+// потому что (а) он multilingual и отлично работает с русским — основной язык
+// druz9, (б) bge-small-en-v1.5 в Ollama registry отсутствует как pull'аемый тег
+// (2026-Q2). Легаси-имя константы оставлено как BgeSmallEnDim для back-compat,
+// но указывает на актуальную размерность.
+const BgeM3Dim = 1024
 
-// DefaultOllamaEmbedModel — имя модели в Ollama registry.
-const DefaultOllamaEmbedModel = "bge-small-en-v1.5"
+// BgeSmallEnDim — deprecated alias, оставлен чтобы не ломать внешние каллеры.
+// Смотри BgeM3Dim.
+//
+// Deprecated: использовать BgeM3Dim.
+const BgeSmallEnDim = BgeM3Dim
+
+// DefaultOllamaEmbedModel — имя модели в Ollama registry. bge-m3 вместо
+// bge-small-en-v1.5: multilingual (ru+en), качество для русского заметно
+// лучше, и ключевое — реально существует в Ollama.
+const DefaultOllamaEmbedModel = "bge-m3"
 
 // DefaultOllamaEmbedTimeout — 3s. Embed выполняется синхронно перед Lookup'ом,
 // и cache-hit имеет смысл только если он заметно быстрее реального LLM вызова
@@ -67,13 +76,13 @@ func NewOllamaEmbedder(host, model string, timeout time.Duration) *OllamaEmbedde
 	return &OllamaEmbedder{
 		endpoint: host + "/api/embeddings",
 		model:    model,
-		dim:      BgeSmallEnDim,
+		dim:      BgeM3Dim,
 		http:     &http.Client{Timeout: timeout},
 	}
 }
 
-// Dim — размерность вектора. Hardcoded к 384 (bge-small-en-v1.5); если
-// оператор подсунет другую модель с другим dim, Embed вернёт ошибку
+// Dim — размерность вектора. Hardcoded к 1024 (bge-m3); если оператор
+// подсунет другую модель с другим dim, Embed вернёт ошибку
 // ErrEmbedDimMismatch на первом ответе, и кеш уйдёт в degraded-path
 // без silent-использования неверного вектора.
 func (e *OllamaEmbedder) Dim() int { return e.dim }
