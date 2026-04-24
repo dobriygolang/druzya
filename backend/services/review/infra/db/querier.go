@@ -12,14 +12,16 @@ import (
 
 type Querier interface {
 	// review queries (sqlc → services/review/infra/db).
-	// Booking_id is the PK so a duplicate INSERT raises a unique-violation that
-	// the app layer maps to ErrAlreadyReviewed.
+	// (booking_id, direction) is the composite PK; a duplicate raises
+	// 23505 which the app layer maps to ErrAlreadyReviewed.
 	CreateReview(ctx context.Context, arg CreateReviewParams) (CreateReviewRow, error)
+	GetReviewByBookingDirection(ctx context.Context, arg GetReviewByBookingDirectionParams) (GetReviewByBookingDirectionRow, error)
 	// avg_rating is 0 when there are no reviews — caller decides whether to
 	// surface the stat or treat zero as "no data" (slot does the latter).
-	GetInterviewerStats(ctx context.Context, interviewerID pgtype.UUID) (GetInterviewerStatsRow, error)
-	GetReviewByBooking(ctx context.Context, bookingID pgtype.UUID) (GetReviewByBookingRow, error)
-	ListReviewsByInterviewer(ctx context.Context, arg ListReviewsByInterviewerParams) ([]ListReviewsByInterviewerRow, error)
+	GetSubjectStats(ctx context.Context, subjectID pgtype.UUID) (GetSubjectStatsRow, error)
+	// Filters on subject_id (denormalized) so the same query backs both the
+	// interviewer's public card and the candidate's own card.
+	ListReviewsBySubject(ctx context.Context, arg ListReviewsBySubjectParams) ([]ListReviewsBySubjectRow, error)
 }
 
 var _ Querier = (*Queries)(nil)

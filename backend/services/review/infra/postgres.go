@@ -16,7 +16,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-// defaultListLimit caps the public per-interviewer feed.
+// defaultListLimit caps the public per-subject feed.
 const defaultListLimit = 50
 
 // Postgres implements domain.ReviewRepo on a *pgxpool.Pool via the sqlc
@@ -31,12 +31,14 @@ func NewPostgres(pool *pgxpool.Pool) *Postgres {
 	return &Postgres{pool: pool, q: reviewdb.New(pool)}
 }
 
-// Create inserts a review. A duplicate booking_id (PK) maps to ErrAlreadyReviewed.
+// Create inserts a review. Duplicate (booking_id, direction) → ErrAlreadyReviewed.
 func (p *Postgres) Create(ctx context.Context, r domain.Review) (domain.Review, error) {
 	row, err := p.q.CreateReview(ctx, reviewdb.CreateReviewParams{
 		BookingID:     pgUUID(r.BookingID),
+		Direction:     string(r.Direction),
 		ReviewerID:    pgUUID(r.ReviewerID),
 		InterviewerID: pgUUID(r.InterviewerID),
+		SubjectID:     pgUUID(r.SubjectID),
 		Rating:        int32(r.Rating),
 		Feedback:      pgText(r.Feedback),
 	})
@@ -49,8 +51,10 @@ func (p *Postgres) Create(ctx context.Context, r domain.Review) (domain.Review, 
 	}
 	return domain.Review{
 		BookingID:     fromPgUUID(row.BookingID),
+		Direction:     domain.Direction(row.Direction),
 		ReviewerID:    fromPgUUID(row.ReviewerID),
 		InterviewerID: fromPgUUID(row.InterviewerID),
+		SubjectID:     fromPgUUID(row.SubjectID),
 		Rating:        int(row.Rating),
 		Feedback:      row.Feedback.String,
 		CreatedAt:     row.CreatedAt.Time,
@@ -58,19 +62,24 @@ func (p *Postgres) Create(ctx context.Context, r domain.Review) (domain.Review, 
 	}, nil
 }
 
-// GetByBooking — ErrNotFound when the candidate hasn't reviewed yet.
-func (p *Postgres) GetByBooking(ctx context.Context, bookingID uuid.UUID) (domain.Review, error) {
-	row, err := p.q.GetReviewByBooking(ctx, pgUUID(bookingID))
+// GetByBookingDirection — ErrNotFound when the side hasn't reviewed yet.
+func (p *Postgres) GetByBookingDirection(ctx context.Context, bookingID uuid.UUID, dir domain.Direction) (domain.Review, error) {
+	row, err := p.q.GetReviewByBookingDirection(ctx, reviewdb.GetReviewByBookingDirectionParams{
+		BookingID: pgUUID(bookingID),
+		Direction: string(dir),
+	})
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return domain.Review{}, domain.ErrNotFound
 		}
-		return domain.Review{}, fmt.Errorf("review.pg.GetByBooking: %w", err)
+		return domain.Review{}, fmt.Errorf("review.pg.GetByBookingDirection: %w", err)
 	}
 	return domain.Review{
 		BookingID:     fromPgUUID(row.BookingID),
+		Direction:     domain.Direction(row.Direction),
 		ReviewerID:    fromPgUUID(row.ReviewerID),
 		InterviewerID: fromPgUUID(row.InterviewerID),
+		SubjectID:     fromPgUUID(row.SubjectID),
 		Rating:        int(row.Rating),
 		Feedback:      row.Feedback.String,
 		CreatedAt:     row.CreatedAt.Time,
@@ -78,25 +87,26 @@ func (p *Postgres) GetByBooking(ctx context.Context, bookingID uuid.UUID) (domai
 	}, nil
 }
 
-// ListByInterviewer returns the latest `limit` reviews. limit ≤ 0 falls back
-// to defaultListLimit.
-func (p *Postgres) ListByInterviewer(ctx context.Context, interviewerID uuid.UUID, limit int) ([]domain.Review, error) {
+// ListBySubject returns the latest `limit` reviews about a user.
+func (p *Postgres) ListBySubject(ctx context.Context, subjectID uuid.UUID, limit int) ([]domain.Review, error) {
 	if limit <= 0 {
 		limit = defaultListLimit
 	}
-	rows, err := p.q.ListReviewsByInterviewer(ctx, reviewdb.ListReviewsByInterviewerParams{
-		InterviewerID: pgUUID(interviewerID),
-		Limit:         int32(limit),
+	rows, err := p.q.ListReviewsBySubject(ctx, reviewdb.ListReviewsBySubjectParams{
+		SubjectID: pgUUID(subjectID),
+		Limit:     int32(limit),
 	})
 	if err != nil {
-		return nil, fmt.Errorf("review.pg.ListByInterviewer: %w", err)
+		return nil, fmt.Errorf("review.pg.ListBySubject: %w", err)
 	}
 	out := make([]domain.Review, 0, len(rows))
 	for _, r := range rows {
 		out = append(out, domain.Review{
 			BookingID:     fromPgUUID(r.BookingID),
+			Direction:     domain.Direction(r.Direction),
 			ReviewerID:    fromPgUUID(r.ReviewerID),
 			InterviewerID: fromPgUUID(r.InterviewerID),
+			SubjectID:     fromPgUUID(r.SubjectID),
 			Rating:        int(r.Rating),
 			Feedback:      r.Feedback.String,
 			CreatedAt:     r.CreatedAt.Time,
@@ -106,23 +116,25 @@ func (p *Postgres) ListByInterviewer(ctx context.Context, interviewerID uuid.UUI
 	return out, nil
 }
 
-// InterviewerStats returns avg rating + count.
-func (p *Postgres) InterviewerStats(ctx context.Context, interviewerID uuid.UUID) (domain.Stats, error) {
-	row, err := p.q.GetInterviewerStats(ctx, pgUUID(interviewerID))
+// SubjectStats returns avg rating + count across both review directions.
+func (p *Postgres) SubjectStats(ctx context.Context, subjectID uuid.UUID) (domain.Stats, error) {
+	row, err := p.q.GetSubjectStats(ctx, pgUUID(subjectID))
 	if err != nil {
-		return domain.Stats{}, fmt.Errorf("review.pg.InterviewerStats: %w", err)
+		return domain.Stats{}, fmt.Errorf("review.pg.SubjectStats: %w", err)
 	}
 	return domain.Stats{
-		InterviewerID: interviewerID,
-		AvgRating:     float32(row.AvgRating),
-		ReviewsCount:  int(row.ReviewsCount),
+		SubjectID:    subjectID,
+		AvgRating:    float32(row.AvgRating),
+		ReviewsCount: int(row.ReviewsCount),
 	}, nil
 }
 
-// HasReview — single-row existence check used by slot.ListMyBookings to set
-// the has_review flag without doing a separate join in slot's SQL.
-func (p *Postgres) HasReview(ctx context.Context, bookingID uuid.UUID) (bool, error) {
-	_, err := p.q.GetReviewByBooking(ctx, pgUUID(bookingID))
+// HasReview — existence check for one side of a booking.
+func (p *Postgres) HasReview(ctx context.Context, bookingID uuid.UUID, dir domain.Direction) (bool, error) {
+	_, err := p.q.GetReviewByBookingDirection(ctx, reviewdb.GetReviewByBookingDirectionParams{
+		BookingID: pgUUID(bookingID),
+		Direction: string(dir),
+	})
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return false, nil

@@ -17,7 +17,7 @@ import (
 	"time"
 
 	reviewApp "druz9/review/app"
-	reviewDomain "druz9/review/domain"
+	reviewDomain "druz9/review/domain" //nolint:gci
 	reviewInfra "druz9/review/infra"
 	reviewPorts "druz9/review/ports"
 	"druz9/shared/generated/pb/druz9/v1/druz9v1connect"
@@ -121,13 +121,19 @@ func (SlotInterviewerStatsAdapter) InterviewerStats(ctx context.Context, intervi
 }
 
 // SlotBookingHasReviewAdapter satisfies slot.domain.BookingHasReviewProvider.
+// Direction is passed through as a string (slot has no direct dep on
+// review.domain) and parsed back into the typed enum here.
 type SlotBookingHasReviewAdapter struct{}
 
-func (SlotBookingHasReviewAdapter) HasReview(ctx context.Context, bookingID uuid.UUID) (bool, error) {
+func (SlotBookingHasReviewAdapter) HasReview(ctx context.Context, bookingID uuid.UUID, direction string) (bool, error) {
 	if reviewLive.Repo == nil {
 		return false, nil
 	}
-	has, err := reviewLive.Repo.HasReview(ctx, bookingID)
+	dir := reviewDomain.Direction(direction)
+	if !dir.IsValid() {
+		dir = reviewDomain.DirCandidateToInterviewer
+	}
+	has, err := reviewLive.Repo.HasReview(ctx, bookingID, dir)
 	if err != nil {
 		return false, fmt.Errorf("review has-review: %w", err)
 	}

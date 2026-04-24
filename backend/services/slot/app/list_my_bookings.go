@@ -50,7 +50,7 @@ func (uc *ListMyBookings) Do(ctx context.Context, in ListMyBookingsInput) ([]dom
 		if rows[i].Slot.Status != enums.SlotStatusCompleted {
 			continue
 		}
-		has, herr := uc.HasReview.HasReview(ctx, rows[i].Booking.ID)
+		has, herr := uc.HasReview.HasReview(ctx, rows[i].Booking.ID, "candidate_to_interviewer")
 		if herr != nil {
 			// Don't fail the listing on a stats lookup — log via caller.
 			continue

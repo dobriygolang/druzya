@@ -322,6 +322,51 @@ SELECT b.id, b.slot_id, b.candidate_id, b.meet_url, b.status, b.created_at,
 	}, nil
 }
 
+// ListHostedByInterviewer returns every booking on slots OWNED by the given
+// interviewer, joined with candidate username for the drawer.
+func (p *Postgres) ListHostedByInterviewer(ctx context.Context, interviewerID uuid.UUID) ([]domain.HostedBooking, error) {
+	const sql = `
+SELECT b.id, b.slot_id, b.candidate_id, b.meet_url, b.status, b.created_at,
+       s.id, s.interviewer_id, s.starts_at, s.duration_min, s.section,
+       s.difficulty, s.language, s.price_rub, s.status, s.created_at,
+       u.username
+  FROM bookings b
+  JOIN slots    s ON s.id = b.slot_id
+  JOIN users    u ON u.id = b.candidate_id
+ WHERE s.interviewer_id = $1
+ ORDER BY s.starts_at DESC`
+	rows, err := p.pool.Query(ctx, sql, pgUUID(interviewerID))
+	if err != nil {
+		return nil, fmt.Errorf("slot.pg.ListHostedByInterviewer: %w", err)
+	}
+	defer rows.Close()
+	out := make([]domain.HostedBooking, 0)
+	for rows.Next() {
+		var (
+			b        slotdb.Booking
+			s        slotdb.Slot
+			username string
+		)
+		if err := rows.Scan(
+			&b.ID, &b.SlotID, &b.CandidateID, &b.MeetUrl, &b.Status, &b.CreatedAt,
+			&s.ID, &s.InterviewerID, &s.StartsAt, &s.DurationMin, &s.Section,
+			&s.Difficulty, &s.Language, &s.PriceRub, &s.Status, &s.CreatedAt,
+			&username,
+		); err != nil {
+			return nil, fmt.Errorf("slot.pg.ListHostedByInterviewer: scan: %w", err)
+		}
+		out = append(out, domain.HostedBooking{
+			Booking:           bookingFromRow(b),
+			Slot:              slotFromRow(s),
+			CandidateUsername: username,
+		})
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("slot.pg.ListHostedByInterviewer: rows: %w", err)
+	}
+	return out, nil
+}
+
 // ListByCandidate returns every booking the candidate owns joined with the
 // parent slot, newest-future-first. Implemented with a hand-rolled query
 // because sqlc would require a generated row-struct identical to a Slot+Booking

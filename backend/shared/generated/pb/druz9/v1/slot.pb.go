@@ -702,9 +702,10 @@ type MyBookingItem struct {
 	Language    string                 `protobuf:"bytes,10,opt,name=language,proto3" json:"language,omitempty"`
 	PriceRub    int32                  `protobuf:"varint,11,opt,name=price_rub,json=priceRub,proto3" json:"price_rub,omitempty"`
 	SlotStatus  SlotStatus             `protobuf:"varint,12,opt,name=slot_status,json=slotStatus,proto3,enum=druz9.v1.SlotStatus" json:"slot_status,omitempty"`
-	// has_review — true when the candidate already left a review for this
-	// booking. Lets the UI hide the "Оставить отзыв" CTA without a second
-	// round-trip to the review service.
+	// has_review — true when the candidate already left a CANDIDATE→
+	// INTERVIEWER review for this booking. Lets the UI hide the
+	// "Оставить отзыв" CTA without a second round-trip to the review
+	// service. Set on the candidate-side drawer (My bookings).
 	HasReview     bool `protobuf:"varint,13,opt,name=has_review,json=hasReview,proto3" json:"has_review,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -831,6 +832,247 @@ func (x *MyBookingItem) GetHasReview() bool {
 	return false
 }
 
+// HostedBookingItem mirrors MyBookingItem but for the interviewer-side
+// drawer ("Мои проведённые слоты"). candidate_username + has_review
+// (interviewer→candidate) hydrated server-side.
+type HostedBookingItem struct {
+	state             protoimpl.MessageState `protogen:"open.v1"`
+	Id                string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	SlotId            string                 `protobuf:"bytes,2,opt,name=slot_id,json=slotId,proto3" json:"slot_id,omitempty"`
+	CandidateId       string                 `protobuf:"bytes,3,opt,name=candidate_id,json=candidateId,proto3" json:"candidate_id,omitempty"`
+	CandidateUsername string                 `protobuf:"bytes,4,opt,name=candidate_username,json=candidateUsername,proto3" json:"candidate_username,omitempty"`
+	MeetUrl           string                 `protobuf:"bytes,5,opt,name=meet_url,json=meetUrl,proto3" json:"meet_url,omitempty"`
+	Status            string                 `protobuf:"bytes,6,opt,name=status,proto3" json:"status,omitempty"`
+	CreatedAt         *timestamppb.Timestamp `protobuf:"bytes,7,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	StartsAt          *timestamppb.Timestamp `protobuf:"bytes,8,opt,name=starts_at,json=startsAt,proto3" json:"starts_at,omitempty"`
+	DurationMin       int32                  `protobuf:"varint,9,opt,name=duration_min,json=durationMin,proto3" json:"duration_min,omitempty"`
+	Section           Section                `protobuf:"varint,10,opt,name=section,proto3,enum=druz9.v1.Section" json:"section,omitempty"`
+	Difficulty        Difficulty             `protobuf:"varint,11,opt,name=difficulty,proto3,enum=druz9.v1.Difficulty" json:"difficulty,omitempty"`
+	Language          string                 `protobuf:"bytes,12,opt,name=language,proto3" json:"language,omitempty"`
+	PriceRub          int32                  `protobuf:"varint,13,opt,name=price_rub,json=priceRub,proto3" json:"price_rub,omitempty"`
+	SlotStatus        SlotStatus             `protobuf:"varint,14,opt,name=slot_status,json=slotStatus,proto3,enum=druz9.v1.SlotStatus" json:"slot_status,omitempty"`
+	// has_review — true when the *interviewer* already submitted an
+	// INTERVIEWER→CANDIDATE review for this booking.
+	HasReview     bool `protobuf:"varint,15,opt,name=has_review,json=hasReview,proto3" json:"has_review,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *HostedBookingItem) Reset() {
+	*x = HostedBookingItem{}
+	mi := &file_druz9_v1_slot_proto_msgTypes[11]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *HostedBookingItem) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*HostedBookingItem) ProtoMessage() {}
+
+func (x *HostedBookingItem) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_slot_proto_msgTypes[11]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use HostedBookingItem.ProtoReflect.Descriptor instead.
+func (*HostedBookingItem) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_slot_proto_rawDescGZIP(), []int{11}
+}
+
+func (x *HostedBookingItem) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *HostedBookingItem) GetSlotId() string {
+	if x != nil {
+		return x.SlotId
+	}
+	return ""
+}
+
+func (x *HostedBookingItem) GetCandidateId() string {
+	if x != nil {
+		return x.CandidateId
+	}
+	return ""
+}
+
+func (x *HostedBookingItem) GetCandidateUsername() string {
+	if x != nil {
+		return x.CandidateUsername
+	}
+	return ""
+}
+
+func (x *HostedBookingItem) GetMeetUrl() string {
+	if x != nil {
+		return x.MeetUrl
+	}
+	return ""
+}
+
+func (x *HostedBookingItem) GetStatus() string {
+	if x != nil {
+		return x.Status
+	}
+	return ""
+}
+
+func (x *HostedBookingItem) GetCreatedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.CreatedAt
+	}
+	return nil
+}
+
+func (x *HostedBookingItem) GetStartsAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.StartsAt
+	}
+	return nil
+}
+
+func (x *HostedBookingItem) GetDurationMin() int32 {
+	if x != nil {
+		return x.DurationMin
+	}
+	return 0
+}
+
+func (x *HostedBookingItem) GetSection() Section {
+	if x != nil {
+		return x.Section
+	}
+	return Section_SECTION_UNSPECIFIED
+}
+
+func (x *HostedBookingItem) GetDifficulty() Difficulty {
+	if x != nil {
+		return x.Difficulty
+	}
+	return Difficulty_DIFFICULTY_UNSPECIFIED
+}
+
+func (x *HostedBookingItem) GetLanguage() string {
+	if x != nil {
+		return x.Language
+	}
+	return ""
+}
+
+func (x *HostedBookingItem) GetPriceRub() int32 {
+	if x != nil {
+		return x.PriceRub
+	}
+	return 0
+}
+
+func (x *HostedBookingItem) GetSlotStatus() SlotStatus {
+	if x != nil {
+		return x.SlotStatus
+	}
+	return SlotStatus_SLOT_STATUS_UNSPECIFIED
+}
+
+func (x *HostedBookingItem) GetHasReview() bool {
+	if x != nil {
+		return x.HasReview
+	}
+	return false
+}
+
+type HostedBookingList struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Items         []*HostedBookingItem   `protobuf:"bytes,1,rep,name=items,proto3" json:"items,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *HostedBookingList) Reset() {
+	*x = HostedBookingList{}
+	mi := &file_druz9_v1_slot_proto_msgTypes[12]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *HostedBookingList) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*HostedBookingList) ProtoMessage() {}
+
+func (x *HostedBookingList) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_slot_proto_msgTypes[12]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use HostedBookingList.ProtoReflect.Descriptor instead.
+func (*HostedBookingList) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_slot_proto_rawDescGZIP(), []int{12}
+}
+
+func (x *HostedBookingList) GetItems() []*HostedBookingItem {
+	if x != nil {
+		return x.Items
+	}
+	return nil
+}
+
+type ListHostedBookingsRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListHostedBookingsRequest) Reset() {
+	*x = ListHostedBookingsRequest{}
+	mi := &file_druz9_v1_slot_proto_msgTypes[13]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListHostedBookingsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListHostedBookingsRequest) ProtoMessage() {}
+
+func (x *ListHostedBookingsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_slot_proto_msgTypes[13]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListHostedBookingsRequest.ProtoReflect.Descriptor instead.
+func (*ListHostedBookingsRequest) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_slot_proto_rawDescGZIP(), []int{13}
+}
+
 // MyBookingList wraps the repeated items so vanguard's REST transcoder
 // emits {"items":[...]} (consistent with SlotList).
 type MyBookingList struct {
@@ -842,7 +1084,7 @@ type MyBookingList struct {
 
 func (x *MyBookingList) Reset() {
 	*x = MyBookingList{}
-	mi := &file_druz9_v1_slot_proto_msgTypes[11]
+	mi := &file_druz9_v1_slot_proto_msgTypes[14]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -854,7 +1096,7 @@ func (x *MyBookingList) String() string {
 func (*MyBookingList) ProtoMessage() {}
 
 func (x *MyBookingList) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_slot_proto_msgTypes[11]
+	mi := &file_druz9_v1_slot_proto_msgTypes[14]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -867,7 +1109,7 @@ func (x *MyBookingList) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MyBookingList.ProtoReflect.Descriptor instead.
 func (*MyBookingList) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_slot_proto_rawDescGZIP(), []int{11}
+	return file_druz9_v1_slot_proto_rawDescGZIP(), []int{14}
 }
 
 func (x *MyBookingList) GetItems() []*MyBookingItem {
@@ -953,9 +1195,34 @@ const file_druz9_v1_slot_proto_rawDesc = "" +
 	"\vslot_status\x18\f \x01(\x0e2\x14.druz9.v1.SlotStatusR\n" +
 	"slotStatus\x12\x1d\n" +
 	"\n" +
-	"has_review\x18\r \x01(\bR\thasReview\">\n" +
+	"has_review\x18\r \x01(\bR\thasReview\"\xca\x04\n" +
+	"\x11HostedBookingItem\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x17\n" +
+	"\aslot_id\x18\x02 \x01(\tR\x06slotId\x12!\n" +
+	"\fcandidate_id\x18\x03 \x01(\tR\vcandidateId\x12-\n" +
+	"\x12candidate_username\x18\x04 \x01(\tR\x11candidateUsername\x12\x19\n" +
+	"\bmeet_url\x18\x05 \x01(\tR\ameetUrl\x12\x16\n" +
+	"\x06status\x18\x06 \x01(\tR\x06status\x129\n" +
+	"\n" +
+	"created_at\x18\a \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\x127\n" +
+	"\tstarts_at\x18\b \x01(\v2\x1a.google.protobuf.TimestampR\bstartsAt\x12!\n" +
+	"\fduration_min\x18\t \x01(\x05R\vdurationMin\x12+\n" +
+	"\asection\x18\n" +
+	" \x01(\x0e2\x11.druz9.v1.SectionR\asection\x124\n" +
+	"\n" +
+	"difficulty\x18\v \x01(\x0e2\x14.druz9.v1.DifficultyR\n" +
+	"difficulty\x12\x1a\n" +
+	"\blanguage\x18\f \x01(\tR\blanguage\x12\x1b\n" +
+	"\tprice_rub\x18\r \x01(\x05R\bpriceRub\x125\n" +
+	"\vslot_status\x18\x0e \x01(\x0e2\x14.druz9.v1.SlotStatusR\n" +
+	"slotStatus\x12\x1d\n" +
+	"\n" +
+	"has_review\x18\x0f \x01(\bR\thasReview\"F\n" +
+	"\x11HostedBookingList\x121\n" +
+	"\x05items\x18\x01 \x03(\v2\x1b.druz9.v1.HostedBookingItemR\x05items\"\x1b\n" +
+	"\x19ListHostedBookingsRequest\">\n" +
 	"\rMyBookingList\x12-\n" +
-	"\x05items\x18\x01 \x03(\v2\x17.druz9.v1.MyBookingItemR\x05items2\xf4\x03\n" +
+	"\x05items\x18\x01 \x03(\v2\x17.druz9.v1.MyBookingItemR\x05items2\xec\x04\n" +
 	"\vSlotService\x12Q\n" +
 	"\tListSlots\x12\x1a.druz9.v1.ListSlotsRequest\x1a\x12.druz9.v1.SlotList\"\x14\x82\xd3\xe4\x93\x02\x0e\x12\f/api/v1/slot\x12R\n" +
 	"\n" +
@@ -963,7 +1230,8 @@ const file_druz9_v1_slot_proto_rawDesc = "" +
 	"\bBookSlot\x12\x19.druz9.v1.BookSlotRequest\x1a\x11.druz9.v1.Booking\"&\x82\xd3\xe4\x93\x02 :\x01*\"\x1b/api/v1/slot/{slot_id}/book\x12n\n" +
 	"\n" +
 	"CancelSlot\x12\x1b.druz9.v1.CancelSlotRequest\x1a\x1c.druz9.v1.CancelSlotResponse\"%\x82\xd3\xe4\x93\x02\x1f*\x1d/api/v1/slot/{slot_id}/cancel\x12l\n" +
-	"\x0eListMyBookings\x12\x1f.druz9.v1.ListMyBookingsRequest\x1a\x17.druz9.v1.MyBookingList\" \x82\xd3\xe4\x93\x02\x1a\x12\x18/api/v1/slot/my/bookingsB\x86\x01\n" +
+	"\x0eListMyBookings\x12\x1f.druz9.v1.ListMyBookingsRequest\x1a\x17.druz9.v1.MyBookingList\" \x82\xd3\xe4\x93\x02\x1a\x12\x18/api/v1/slot/my/bookings\x12v\n" +
+	"\x12ListHostedBookings\x12#.druz9.v1.ListHostedBookingsRequest\x1a\x1b.druz9.v1.HostedBookingList\"\x1e\x82\xd3\xe4\x93\x02\x18\x12\x16/api/v1/slot/my/hostedB\x86\x01\n" +
 	"\fcom.druz9.v1B\tSlotProtoP\x01Z*druz9/shared/generated/pb/druz9/v1;druz9v1\xa2\x02\x03DXX\xaa\x02\bDruz9.V1\xca\x02\bDruz9\\V1\xe2\x02\x14Druz9\\V1\\GPBMetadata\xea\x02\tDruz9::V1b\x06proto3"
 
 var (
@@ -978,62 +1246,73 @@ func file_druz9_v1_slot_proto_rawDescGZIP() []byte {
 	return file_druz9_v1_slot_proto_rawDescData
 }
 
-var file_druz9_v1_slot_proto_msgTypes = make([]protoimpl.MessageInfo, 12)
+var file_druz9_v1_slot_proto_msgTypes = make([]protoimpl.MessageInfo, 15)
 var file_druz9_v1_slot_proto_goTypes = []any{
-	(*SlotInterviewer)(nil),       // 0: druz9.v1.SlotInterviewer
-	(*Slot)(nil),                  // 1: druz9.v1.Slot
-	(*SlotList)(nil),              // 2: druz9.v1.SlotList
-	(*Booking)(nil),               // 3: druz9.v1.Booking
-	(*ListSlotsRequest)(nil),      // 4: druz9.v1.ListSlotsRequest
-	(*CreateSlotRequest)(nil),     // 5: druz9.v1.CreateSlotRequest
-	(*BookSlotRequest)(nil),       // 6: druz9.v1.BookSlotRequest
-	(*CancelSlotRequest)(nil),     // 7: druz9.v1.CancelSlotRequest
-	(*CancelSlotResponse)(nil),    // 8: druz9.v1.CancelSlotResponse
-	(*ListMyBookingsRequest)(nil), // 9: druz9.v1.ListMyBookingsRequest
-	(*MyBookingItem)(nil),         // 10: druz9.v1.MyBookingItem
-	(*MyBookingList)(nil),         // 11: druz9.v1.MyBookingList
-	(*timestamppb.Timestamp)(nil), // 12: google.protobuf.Timestamp
-	(Section)(0),                  // 13: druz9.v1.Section
-	(Difficulty)(0),               // 14: druz9.v1.Difficulty
-	(SlotStatus)(0),               // 15: druz9.v1.SlotStatus
+	(*SlotInterviewer)(nil),           // 0: druz9.v1.SlotInterviewer
+	(*Slot)(nil),                      // 1: druz9.v1.Slot
+	(*SlotList)(nil),                  // 2: druz9.v1.SlotList
+	(*Booking)(nil),                   // 3: druz9.v1.Booking
+	(*ListSlotsRequest)(nil),          // 4: druz9.v1.ListSlotsRequest
+	(*CreateSlotRequest)(nil),         // 5: druz9.v1.CreateSlotRequest
+	(*BookSlotRequest)(nil),           // 6: druz9.v1.BookSlotRequest
+	(*CancelSlotRequest)(nil),         // 7: druz9.v1.CancelSlotRequest
+	(*CancelSlotResponse)(nil),        // 8: druz9.v1.CancelSlotResponse
+	(*ListMyBookingsRequest)(nil),     // 9: druz9.v1.ListMyBookingsRequest
+	(*MyBookingItem)(nil),             // 10: druz9.v1.MyBookingItem
+	(*HostedBookingItem)(nil),         // 11: druz9.v1.HostedBookingItem
+	(*HostedBookingList)(nil),         // 12: druz9.v1.HostedBookingList
+	(*ListHostedBookingsRequest)(nil), // 13: druz9.v1.ListHostedBookingsRequest
+	(*MyBookingList)(nil),             // 14: druz9.v1.MyBookingList
+	(*timestamppb.Timestamp)(nil),     // 15: google.protobuf.Timestamp
+	(Section)(0),                      // 16: druz9.v1.Section
+	(Difficulty)(0),                   // 17: druz9.v1.Difficulty
+	(SlotStatus)(0),                   // 18: druz9.v1.SlotStatus
 }
 var file_druz9_v1_slot_proto_depIdxs = []int32{
 	0,  // 0: druz9.v1.Slot.interviewer:type_name -> druz9.v1.SlotInterviewer
-	12, // 1: druz9.v1.Slot.starts_at:type_name -> google.protobuf.Timestamp
-	13, // 2: druz9.v1.Slot.section:type_name -> druz9.v1.Section
-	14, // 3: druz9.v1.Slot.difficulty:type_name -> druz9.v1.Difficulty
-	15, // 4: druz9.v1.Slot.status:type_name -> druz9.v1.SlotStatus
+	15, // 1: druz9.v1.Slot.starts_at:type_name -> google.protobuf.Timestamp
+	16, // 2: druz9.v1.Slot.section:type_name -> druz9.v1.Section
+	17, // 3: druz9.v1.Slot.difficulty:type_name -> druz9.v1.Difficulty
+	18, // 4: druz9.v1.Slot.status:type_name -> druz9.v1.SlotStatus
 	1,  // 5: druz9.v1.SlotList.items:type_name -> druz9.v1.Slot
 	1,  // 6: druz9.v1.Booking.slot:type_name -> druz9.v1.Slot
-	12, // 7: druz9.v1.Booking.created_at:type_name -> google.protobuf.Timestamp
-	13, // 8: druz9.v1.ListSlotsRequest.section:type_name -> druz9.v1.Section
-	14, // 9: druz9.v1.ListSlotsRequest.difficulty:type_name -> druz9.v1.Difficulty
-	12, // 10: druz9.v1.ListSlotsRequest.from:type_name -> google.protobuf.Timestamp
-	12, // 11: druz9.v1.ListSlotsRequest.to:type_name -> google.protobuf.Timestamp
-	12, // 12: druz9.v1.CreateSlotRequest.starts_at:type_name -> google.protobuf.Timestamp
-	13, // 13: druz9.v1.CreateSlotRequest.section:type_name -> druz9.v1.Section
-	14, // 14: druz9.v1.CreateSlotRequest.difficulty:type_name -> druz9.v1.Difficulty
-	12, // 15: druz9.v1.MyBookingItem.created_at:type_name -> google.protobuf.Timestamp
-	12, // 16: druz9.v1.MyBookingItem.starts_at:type_name -> google.protobuf.Timestamp
-	13, // 17: druz9.v1.MyBookingItem.section:type_name -> druz9.v1.Section
-	14, // 18: druz9.v1.MyBookingItem.difficulty:type_name -> druz9.v1.Difficulty
-	15, // 19: druz9.v1.MyBookingItem.slot_status:type_name -> druz9.v1.SlotStatus
-	10, // 20: druz9.v1.MyBookingList.items:type_name -> druz9.v1.MyBookingItem
-	4,  // 21: druz9.v1.SlotService.ListSlots:input_type -> druz9.v1.ListSlotsRequest
-	5,  // 22: druz9.v1.SlotService.CreateSlot:input_type -> druz9.v1.CreateSlotRequest
-	6,  // 23: druz9.v1.SlotService.BookSlot:input_type -> druz9.v1.BookSlotRequest
-	7,  // 24: druz9.v1.SlotService.CancelSlot:input_type -> druz9.v1.CancelSlotRequest
-	9,  // 25: druz9.v1.SlotService.ListMyBookings:input_type -> druz9.v1.ListMyBookingsRequest
-	2,  // 26: druz9.v1.SlotService.ListSlots:output_type -> druz9.v1.SlotList
-	1,  // 27: druz9.v1.SlotService.CreateSlot:output_type -> druz9.v1.Slot
-	3,  // 28: druz9.v1.SlotService.BookSlot:output_type -> druz9.v1.Booking
-	8,  // 29: druz9.v1.SlotService.CancelSlot:output_type -> druz9.v1.CancelSlotResponse
-	11, // 30: druz9.v1.SlotService.ListMyBookings:output_type -> druz9.v1.MyBookingList
-	26, // [26:31] is the sub-list for method output_type
-	21, // [21:26] is the sub-list for method input_type
-	21, // [21:21] is the sub-list for extension type_name
-	21, // [21:21] is the sub-list for extension extendee
-	0,  // [0:21] is the sub-list for field type_name
+	15, // 7: druz9.v1.Booking.created_at:type_name -> google.protobuf.Timestamp
+	16, // 8: druz9.v1.ListSlotsRequest.section:type_name -> druz9.v1.Section
+	17, // 9: druz9.v1.ListSlotsRequest.difficulty:type_name -> druz9.v1.Difficulty
+	15, // 10: druz9.v1.ListSlotsRequest.from:type_name -> google.protobuf.Timestamp
+	15, // 11: druz9.v1.ListSlotsRequest.to:type_name -> google.protobuf.Timestamp
+	15, // 12: druz9.v1.CreateSlotRequest.starts_at:type_name -> google.protobuf.Timestamp
+	16, // 13: druz9.v1.CreateSlotRequest.section:type_name -> druz9.v1.Section
+	17, // 14: druz9.v1.CreateSlotRequest.difficulty:type_name -> druz9.v1.Difficulty
+	15, // 15: druz9.v1.MyBookingItem.created_at:type_name -> google.protobuf.Timestamp
+	15, // 16: druz9.v1.MyBookingItem.starts_at:type_name -> google.protobuf.Timestamp
+	16, // 17: druz9.v1.MyBookingItem.section:type_name -> druz9.v1.Section
+	17, // 18: druz9.v1.MyBookingItem.difficulty:type_name -> druz9.v1.Difficulty
+	18, // 19: druz9.v1.MyBookingItem.slot_status:type_name -> druz9.v1.SlotStatus
+	15, // 20: druz9.v1.HostedBookingItem.created_at:type_name -> google.protobuf.Timestamp
+	15, // 21: druz9.v1.HostedBookingItem.starts_at:type_name -> google.protobuf.Timestamp
+	16, // 22: druz9.v1.HostedBookingItem.section:type_name -> druz9.v1.Section
+	17, // 23: druz9.v1.HostedBookingItem.difficulty:type_name -> druz9.v1.Difficulty
+	18, // 24: druz9.v1.HostedBookingItem.slot_status:type_name -> druz9.v1.SlotStatus
+	11, // 25: druz9.v1.HostedBookingList.items:type_name -> druz9.v1.HostedBookingItem
+	10, // 26: druz9.v1.MyBookingList.items:type_name -> druz9.v1.MyBookingItem
+	4,  // 27: druz9.v1.SlotService.ListSlots:input_type -> druz9.v1.ListSlotsRequest
+	5,  // 28: druz9.v1.SlotService.CreateSlot:input_type -> druz9.v1.CreateSlotRequest
+	6,  // 29: druz9.v1.SlotService.BookSlot:input_type -> druz9.v1.BookSlotRequest
+	7,  // 30: druz9.v1.SlotService.CancelSlot:input_type -> druz9.v1.CancelSlotRequest
+	9,  // 31: druz9.v1.SlotService.ListMyBookings:input_type -> druz9.v1.ListMyBookingsRequest
+	13, // 32: druz9.v1.SlotService.ListHostedBookings:input_type -> druz9.v1.ListHostedBookingsRequest
+	2,  // 33: druz9.v1.SlotService.ListSlots:output_type -> druz9.v1.SlotList
+	1,  // 34: druz9.v1.SlotService.CreateSlot:output_type -> druz9.v1.Slot
+	3,  // 35: druz9.v1.SlotService.BookSlot:output_type -> druz9.v1.Booking
+	8,  // 36: druz9.v1.SlotService.CancelSlot:output_type -> druz9.v1.CancelSlotResponse
+	14, // 37: druz9.v1.SlotService.ListMyBookings:output_type -> druz9.v1.MyBookingList
+	12, // 38: druz9.v1.SlotService.ListHostedBookings:output_type -> druz9.v1.HostedBookingList
+	33, // [33:39] is the sub-list for method output_type
+	27, // [27:33] is the sub-list for method input_type
+	27, // [27:27] is the sub-list for extension type_name
+	27, // [27:27] is the sub-list for extension extendee
+	0,  // [0:27] is the sub-list for field type_name
 }
 
 func init() { file_druz9_v1_slot_proto_init() }
@@ -1048,7 +1327,7 @@ func file_druz9_v1_slot_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_druz9_v1_slot_proto_rawDesc), len(file_druz9_v1_slot_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   12,
+			NumMessages:   15,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

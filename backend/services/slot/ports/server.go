@@ -35,21 +35,19 @@ import (
 var _ druz9v1connect.SlotServiceHandler = (*SlotServer)(nil)
 
 // SlotServer adapts slot use cases to Connect.
-//
-// Field names use the UC suffix to avoid collisions with the generated
-// method names (ListSlots / CreateSlot / BookSlot / CancelSlot).
 type SlotServer struct {
-	ListUC      *app.ListSlots
-	CreateUC    *app.CreateSlot
-	BookUC      *app.BookSlot
-	CancelUC    *app.CancelSlot
-	MyBookingUC *app.ListMyBookings
-	Log         *slog.Logger
+	ListUC          *app.ListSlots
+	CreateUC        *app.CreateSlot
+	BookUC          *app.BookSlot
+	CancelUC        *app.CancelSlot
+	MyBookingUC     *app.ListMyBookings
+	HostedBookingUC *app.ListHostedBookings
+	Log             *slog.Logger
 }
 
 // NewSlotServer wires a SlotServer.
-func NewSlotServer(list *app.ListSlots, create *app.CreateSlot, book *app.BookSlot, cancel *app.CancelSlot, myBookings *app.ListMyBookings, log *slog.Logger) *SlotServer {
-	return &SlotServer{ListUC: list, CreateUC: create, BookUC: book, CancelUC: cancel, MyBookingUC: myBookings, Log: log}
+func NewSlotServer(list *app.ListSlots, create *app.CreateSlot, book *app.BookSlot, cancel *app.CancelSlot, myBookings *app.ListMyBookings, hostedBookings *app.ListHostedBookings, log *slog.Logger) *SlotServer {
+	return &SlotServer{ListUC: list, CreateUC: create, BookUC: book, CancelUC: cancel, MyBookingUC: myBookings, HostedBookingUC: hostedBookings, Log: log}
 }
 
 // ListSlots implements druz9.v1.SlotService/ListSlots.
@@ -170,6 +168,26 @@ func (s *SlotServer) ListMyBookings(
 	return connect.NewResponse(out), nil
 }
 
+// ListHostedBookings implements druz9.v1.SlotService/ListHostedBookings.
+func (s *SlotServer) ListHostedBookings(
+	ctx context.Context,
+	_ *connect.Request[pb.ListHostedBookingsRequest],
+) (*connect.Response[pb.HostedBookingList], error) {
+	uid, ok := sharedMw.UserIDFromContext(ctx)
+	if !ok {
+		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("unauthenticated"))
+	}
+	rows, err := s.HostedBookingUC.Do(ctx, app.ListHostedBookingsInput{InterviewerID: uid})
+	if err != nil {
+		return nil, s.toConnectErr(err)
+	}
+	out := &pb.HostedBookingList{Items: make([]*pb.HostedBookingItem, 0, len(rows))}
+	for _, hb := range rows {
+		out.Items = append(out.Items, toHostedBookingItemProto(hb))
+	}
+	return connect.NewResponse(out), nil
+}
+
 // CancelSlot implements druz9.v1.SlotService/CancelSlot.
 func (s *SlotServer) CancelSlot(
 	ctx context.Context,
@@ -273,6 +291,35 @@ func toMyBookingItemProto(bw domain.BookingWithSlot) *pb.MyBookingItem {
 	}
 	if bw.Slot.Difficulty != nil {
 		out.Difficulty = difficultyToProtoSlot(*bw.Slot.Difficulty)
+	}
+	return out
+}
+
+// toHostedBookingItemProto mirrors toMyBookingItemProto for the
+// interviewer-side projection.
+func toHostedBookingItemProto(hb domain.HostedBooking) *pb.HostedBookingItem {
+	out := &pb.HostedBookingItem{
+		Id:                hb.Booking.ID.String(),
+		SlotId:            hb.Booking.SlotID.String(),
+		CandidateId:       hb.Booking.CandidateID.String(),
+		CandidateUsername: hb.CandidateUsername,
+		MeetUrl:           hb.Booking.MeetURL,
+		Status:            hb.Booking.Status,
+		DurationMin:       int32(hb.Slot.DurationMin),
+		Section:           sectionToProtoSlot(hb.Slot.Section),
+		Language:          hb.Slot.Language,
+		PriceRub:          int32(hb.Slot.PriceRub),
+		SlotStatus:        slotStatusToProto(hb.Slot.Status),
+		HasReview:         hb.HasReview,
+	}
+	if !hb.Booking.CreatedAt.IsZero() {
+		out.CreatedAt = timestamppb.New(hb.Booking.CreatedAt.UTC())
+	}
+	if !hb.Slot.StartsAt.IsZero() {
+		out.StartsAt = timestamppb.New(hb.Slot.StartsAt.UTC())
+	}
+	if hb.Slot.Difficulty != nil {
+		out.Difficulty = difficultyToProtoSlot(*hb.Slot.Difficulty)
 	}
 	return out
 }

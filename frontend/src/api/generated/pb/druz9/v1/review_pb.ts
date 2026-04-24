@@ -15,13 +15,43 @@ import type { BinaryReadOptions, FieldList, JsonReadOptions, JsonValue, PartialM
 import { Message, proto3, Timestamp } from "@bufbuild/protobuf";
 
 /**
+ * ReviewDirection differentiates "candidate reviews interviewer" vs
+ * "interviewer reviews candidate" — a single booking can have at most
+ * one of each.
+ *
+ * @generated from enum druz9.v1.ReviewDirection
+ */
+export enum ReviewDirection {
+  /**
+   * @generated from enum value: REVIEW_DIRECTION_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * @generated from enum value: REVIEW_DIRECTION_CANDIDATE_TO_INTERVIEWER = 1;
+   */
+  CANDIDATE_TO_INTERVIEWER = 1,
+
+  /**
+   * @generated from enum value: REVIEW_DIRECTION_INTERVIEWER_TO_CANDIDATE = 2;
+   */
+  INTERVIEWER_TO_CANDIDATE = 2,
+}
+// Retrieve enum metadata with: proto3.getEnumType(ReviewDirection)
+proto3.util.setEnumType(ReviewDirection, "druz9.v1.ReviewDirection", [
+  { no: 0, name: "REVIEW_DIRECTION_UNSPECIFIED" },
+  { no: 1, name: "REVIEW_DIRECTION_CANDIDATE_TO_INTERVIEWER" },
+  { no: 2, name: "REVIEW_DIRECTION_INTERVIEWER_TO_CANDIDATE" },
+]);
+
+/**
  * Review mirrors a `reviews` row.
  *
  * @generated from message druz9.v1.Review
  */
 export class Review extends Message<Review> {
   /**
-   * booking_id (PK in current schema)
+   * id is now `<booking_id>:<direction>` since the PK is composite.
    *
    * @generated from field: string id = 1;
    */
@@ -38,6 +68,10 @@ export class Review extends Message<Review> {
   reviewerId = "";
 
   /**
+   * interviewer_id is the slot owner — kept separately from subject_id
+   * so the read path can filter "all reviews about interviewer X" cheaply
+   * for the public profile, regardless of which side authored.
+   *
    * @generated from field: string interviewer_id = 4;
    */
   interviewerId = "";
@@ -64,6 +98,20 @@ export class Review extends Message<Review> {
    */
   updatedAt?: Timestamp;
 
+  /**
+   * direction + subject_id are the M4b additions. subject_id is the user
+   * being reviewed (interviewer when CANDIDATE_TO_INTERVIEWER, else the
+   * candidate). The two together form the composite PK with booking_id.
+   *
+   * @generated from field: druz9.v1.ReviewDirection direction = 9;
+   */
+  direction = ReviewDirection.UNSPECIFIED;
+
+  /**
+   * @generated from field: string subject_id = 10;
+   */
+  subjectId = "";
+
   constructor(data?: PartialMessage<Review>) {
     super();
     proto3.util.initPartial(data, this);
@@ -80,6 +128,8 @@ export class Review extends Message<Review> {
     { no: 6, name: "feedback", kind: "scalar", T: 9 /* ScalarType.STRING */ },
     { no: 7, name: "created_at", kind: "message", T: Timestamp },
     { no: 8, name: "updated_at", kind: "message", T: Timestamp },
+    { no: 9, name: "direction", kind: "enum", T: proto3.getEnumType(ReviewDirection) },
+    { no: 10, name: "subject_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): Review {
@@ -139,7 +189,9 @@ export class ReviewList extends Message<ReviewList> {
 }
 
 /**
- * CreateReviewRequest — caller is identified via bearer token.
+ * CreateReviewRequest — caller is identified via bearer token. Direction
+ * must match the caller's side of the booking (candidate vs interviewer);
+ * the backend rejects mismatches with PERMISSION_DENIED.
  *
  * @generated from message druz9.v1.CreateReviewRequest
  */
@@ -159,6 +211,11 @@ export class CreateReviewRequest extends Message<CreateReviewRequest> {
    */
   feedback = "";
 
+  /**
+   * @generated from field: druz9.v1.ReviewDirection direction = 4;
+   */
+  direction = ReviewDirection.UNSPECIFIED;
+
   constructor(data?: PartialMessage<CreateReviewRequest>) {
     super();
     proto3.util.initPartial(data, this);
@@ -170,6 +227,7 @@ export class CreateReviewRequest extends Message<CreateReviewRequest> {
     { no: 1, name: "booking_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
     { no: 2, name: "rating", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
     { no: 3, name: "feedback", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 4, name: "direction", kind: "enum", T: proto3.getEnumType(ReviewDirection) },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): CreateReviewRequest {

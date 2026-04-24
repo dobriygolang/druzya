@@ -10,7 +10,7 @@
 /* eslint-disable */
 // @ts-nocheck
 
-import { Booking, BookSlotRequest, CancelSlotRequest, CancelSlotResponse, CreateSlotRequest, ListMyBookingsRequest, ListSlotsRequest, MyBookingList, Slot, SlotList } from "./slot_pb.js";
+import { Booking, BookSlotRequest, CancelSlotRequest, CancelSlotResponse, CreateSlotRequest, HostedBookingList, ListHostedBookingsRequest, ListMyBookingsRequest, ListSlotsRequest, MyBookingList, Slot, SlotList } from "./slot_pb.js";
 import { MethodKind } from "@bufbuild/protobuf";
 
 /**
@@ -74,6 +74,20 @@ export const SlotService = {
       name: "ListMyBookings",
       I: ListMyBookingsRequest,
       O: MyBookingList,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * ListHostedBookings — interviewer's view of bookings on their own slots
+     * (candidate side surfaced via candidate_username). Used by the «Я как
+     * интервьюер» tab in the My bookings drawer to render the
+     * INTERVIEWER→CANDIDATE review CTA.
+     *
+     * @generated from rpc druz9.v1.SlotService.ListHostedBookings
+     */
+    listHostedBookings: {
+      name: "ListHostedBookings",
+      I: ListHostedBookingsRequest,
+      O: HostedBookingList,
       kind: MethodKind.Unary,
     },
   }

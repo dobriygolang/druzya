@@ -203,9 +203,18 @@ export const slotHandlers = [
       language: b.slot.language,
       price_rub: b.slot.price_rub,
       slot_status: b.slot.status,
-      has_review: hasReview(b.id),
+      has_review: hasReview(b.id, 'candidate_to_interviewer'),
     }))
     return HttpResponse.json({ items })
+  }),
+
+  // GET /api/v1/slot/my/hosted — interviewer's hosted bookings (M4b).
+  // Mock seeds an empty list since the mock current user is the candidate
+  // for booked rows; in real use the dev can flip role and create slots
+  // that other (mocked) candidates would book — for now this stays []
+  // unless a separate mock seed is added.
+  http.get(`${base}/slot/my/hosted`, () => {
+    return HttpResponse.json({ items: [] })
   }),
 ]
 

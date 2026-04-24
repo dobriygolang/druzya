@@ -13,17 +13,35 @@ import "google/protobuf/timestamp.proto";
 
 option go_package = "druz9/shared/generated/pb/druz9/v1;druz9v1";
 
+// ReviewDirection differentiates "candidate reviews interviewer" vs
+// "interviewer reviews candidate" — a single booking can have at most
+// one of each.
+enum ReviewDirection {
+  REVIEW_DIRECTION_UNSPECIFIED = 0;
+  REVIEW_DIRECTION_CANDIDATE_TO_INTERVIEWER = 1;
+  REVIEW_DIRECTION_INTERVIEWER_TO_CANDIDATE = 2;
+}
+
 // Review mirrors a `reviews` row.
 message Review {
-  string id = 1;             // booking_id (PK in current schema)
+  // id is now `<booking_id>:<direction>` since the PK is composite.
+  string id = 1;
   string booking_id = 2;
   string reviewer_id = 3;
+  // interviewer_id is the slot owner — kept separately from subject_id
+  // so the read path can filter "all reviews about interviewer X" cheaply
+  // for the public profile, regardless of which side authored.
   string interviewer_id = 4;
   // rating ∈ [1, 5].
   int32 rating = 5;
   string feedback = 6;
   google.protobuf.Timestamp created_at = 7;
   google.protobuf.Timestamp updated_at = 8;
+  // direction + subject_id are the M4b additions. subject_id is the user
+  // being reviewed (interviewer when CANDIDATE_TO_INTERVIEWER, else the
+  // candidate). The two together form the composite PK with booking_id.
+  ReviewDirection direction = 9;
+  string subject_id = 10;
 }
 
 // ReviewList — vanguard wrapper.
@@ -31,11 +49,14 @@ message ReviewList {
   repeated Review items = 1;
 }
 
-// CreateReviewRequest — caller is identified via bearer token.
+// CreateReviewRequest — caller is identified via bearer token. Direction
+// must match the caller's side of the booking (candidate vs interviewer);
+// the backend rejects mismatches with PERMISSION_DENIED.
 message CreateReviewRequest {
   string booking_id = 1;
   int32 rating = 2;
   string feedback = 3;
+  ReviewDirection direction = 4;
 }
 
 // ListReviewsByInterviewerRequest — public, read-only listing for the

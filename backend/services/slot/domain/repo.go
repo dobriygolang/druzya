@@ -60,6 +60,20 @@ type BookingRepo interface {
 	// Used by cross-service callers (review.CreateReview) that need to verify
 	// ownership and slot status before writing a related row.
 	GetWithSlotByID(ctx context.Context, bookingID uuid.UUID) (BookingWithSlot, error)
+
+	// ListHostedByInterviewer returns bookings on slots OWNED by the given
+	// interviewer (their hosted sessions). Hydrates candidate username via
+	// a JOIN. Used by the «Я как интервьюер» tab in the My-bookings drawer.
+	ListHostedByInterviewer(ctx context.Context, interviewerID uuid.UUID) ([]HostedBooking, error)
+}
+
+// HostedBooking is the read-model for the interviewer-side drawer:
+// the booking + the slot they own + the candidate's username.
+type HostedBooking struct {
+	Booking           Booking
+	Slot              Slot
+	CandidateUsername string
+	HasReview         bool
 }
 
 // BookingWithSlot is the read-model used by /slot/my/bookings: a booking row
@@ -88,11 +102,13 @@ type ReviewRepo interface {
 	InterviewerStats(ctx context.Context, interviewerID uuid.UUID) (float32, int, error)
 }
 
-// BookingHasReviewProvider is consumed by ListMyBookings to set the
-// `has_review` flag on each booking item. Same cross-service pattern as
-// ReviewRepo — implementation lives in the review service.
+// BookingHasReviewProvider is consumed by ListMyBookings + ListHostedBookings
+// to set the `has_review` flag on each booking item. The `direction`
+// argument lets the slot service ask "did the candidate review the
+// interviewer here" (drawer "Я кандидат") vs "did the interviewer review
+// the candidate" (drawer "Я интервьюер").
 type BookingHasReviewProvider interface {
-	HasReview(ctx context.Context, bookingID uuid.UUID) (bool, error)
+	HasReview(ctx context.Context, bookingID uuid.UUID, direction string) (bool, error)
 }
 
 // MeetRoomProvider abstracts the generation of the video-meet URL attached to

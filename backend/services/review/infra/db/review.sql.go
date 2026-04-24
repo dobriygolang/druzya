@@ -13,23 +13,27 @@ import (
 
 const createReview = `-- name: CreateReview :one
 
-INSERT INTO reviews(booking_id, reviewer_id, interviewer_id, rating, feedback, created_at, updated_at)
-VALUES ($1, $2, $3, $4, $5, now(), now())
-RETURNING booking_id, reviewer_id, interviewer_id, rating, feedback, created_at, updated_at
+INSERT INTO reviews(booking_id, direction, reviewer_id, interviewer_id, subject_id, rating, feedback, created_at, updated_at)
+VALUES ($1, $2, $3, $4, $5, $6, $7, now(), now())
+RETURNING booking_id, direction, reviewer_id, interviewer_id, subject_id, rating, feedback, created_at, updated_at
 `
 
 type CreateReviewParams struct {
 	BookingID     pgtype.UUID
+	Direction     string
 	ReviewerID    pgtype.UUID
 	InterviewerID pgtype.UUID
+	SubjectID     pgtype.UUID
 	Rating        int32
 	Feedback      pgtype.Text
 }
 
 type CreateReviewRow struct {
 	BookingID     pgtype.UUID
+	Direction     string
 	ReviewerID    pgtype.UUID
 	InterviewerID pgtype.UUID
+	SubjectID     pgtype.UUID
 	Rating        int32
 	Feedback      pgtype.Text
 	CreatedAt     pgtype.Timestamptz
@@ -37,21 +41,25 @@ type CreateReviewRow struct {
 }
 
 // review queries (sqlc → services/review/infra/db).
-// Booking_id is the PK so a duplicate INSERT raises a unique-violation that
-// the app layer maps to ErrAlreadyReviewed.
+// (booking_id, direction) is the composite PK; a duplicate raises
+// 23505 which the app layer maps to ErrAlreadyReviewed.
 func (q *Queries) CreateReview(ctx context.Context, arg CreateReviewParams) (CreateReviewRow, error) {
 	row := q.db.QueryRow(ctx, createReview,
 		arg.BookingID,
+		arg.Direction,
 		arg.ReviewerID,
 		arg.InterviewerID,
+		arg.SubjectID,
 		arg.Rating,
 		arg.Feedback,
 	)
 	var i CreateReviewRow
 	err := row.Scan(
 		&i.BookingID,
+		&i.Direction,
 		&i.ReviewerID,
 		&i.InterviewerID,
+		&i.SubjectID,
 		&i.Rating,
 		&i.Feedback,
 		&i.CreatedAt,
@@ -60,93 +68,108 @@ func (q *Queries) CreateReview(ctx context.Context, arg CreateReviewParams) (Cre
 	return i, err
 }
 
-const getInterviewerStats = `-- name: GetInterviewerStats :one
+const getReviewByBookingDirection = `-- name: GetReviewByBookingDirection :one
+SELECT booking_id, direction, reviewer_id, interviewer_id, subject_id, rating, feedback, created_at, updated_at
+  FROM reviews WHERE booking_id = $1 AND direction = $2
+`
+
+type GetReviewByBookingDirectionParams struct {
+	BookingID pgtype.UUID
+	Direction string
+}
+
+type GetReviewByBookingDirectionRow struct {
+	BookingID     pgtype.UUID
+	Direction     string
+	ReviewerID    pgtype.UUID
+	InterviewerID pgtype.UUID
+	SubjectID     pgtype.UUID
+	Rating        int32
+	Feedback      pgtype.Text
+	CreatedAt     pgtype.Timestamptz
+	UpdatedAt     pgtype.Timestamptz
+}
+
+func (q *Queries) GetReviewByBookingDirection(ctx context.Context, arg GetReviewByBookingDirectionParams) (GetReviewByBookingDirectionRow, error) {
+	row := q.db.QueryRow(ctx, getReviewByBookingDirection, arg.BookingID, arg.Direction)
+	var i GetReviewByBookingDirectionRow
+	err := row.Scan(
+		&i.BookingID,
+		&i.Direction,
+		&i.ReviewerID,
+		&i.InterviewerID,
+		&i.SubjectID,
+		&i.Rating,
+		&i.Feedback,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const getSubjectStats = `-- name: GetSubjectStats :one
 SELECT COALESCE(AVG(rating)::float8, 0)::float8 AS avg_rating,
        COUNT(*)::int                            AS reviews_count
   FROM reviews
- WHERE interviewer_id = $1
+ WHERE subject_id = $1
 `
 
-type GetInterviewerStatsRow struct {
+type GetSubjectStatsRow struct {
 	AvgRating    float64
 	ReviewsCount int32
 }
 
 // avg_rating is 0 when there are no reviews — caller decides whether to
 // surface the stat or treat zero as "no data" (slot does the latter).
-func (q *Queries) GetInterviewerStats(ctx context.Context, interviewerID pgtype.UUID) (GetInterviewerStatsRow, error) {
-	row := q.db.QueryRow(ctx, getInterviewerStats, interviewerID)
-	var i GetInterviewerStatsRow
+func (q *Queries) GetSubjectStats(ctx context.Context, subjectID pgtype.UUID) (GetSubjectStatsRow, error) {
+	row := q.db.QueryRow(ctx, getSubjectStats, subjectID)
+	var i GetSubjectStatsRow
 	err := row.Scan(&i.AvgRating, &i.ReviewsCount)
 	return i, err
 }
 
-const getReviewByBooking = `-- name: GetReviewByBooking :one
-SELECT booking_id, reviewer_id, interviewer_id, rating, feedback, created_at, updated_at
-  FROM reviews WHERE booking_id = $1
-`
-
-type GetReviewByBookingRow struct {
-	BookingID     pgtype.UUID
-	ReviewerID    pgtype.UUID
-	InterviewerID pgtype.UUID
-	Rating        int32
-	Feedback      pgtype.Text
-	CreatedAt     pgtype.Timestamptz
-	UpdatedAt     pgtype.Timestamptz
-}
-
-func (q *Queries) GetReviewByBooking(ctx context.Context, bookingID pgtype.UUID) (GetReviewByBookingRow, error) {
-	row := q.db.QueryRow(ctx, getReviewByBooking, bookingID)
-	var i GetReviewByBookingRow
-	err := row.Scan(
-		&i.BookingID,
-		&i.ReviewerID,
-		&i.InterviewerID,
-		&i.Rating,
-		&i.Feedback,
-		&i.CreatedAt,
-		&i.UpdatedAt,
-	)
-	return i, err
-}
-
-const listReviewsByInterviewer = `-- name: ListReviewsByInterviewer :many
-SELECT booking_id, reviewer_id, interviewer_id, rating, feedback, created_at, updated_at
+const listReviewsBySubject = `-- name: ListReviewsBySubject :many
+SELECT booking_id, direction, reviewer_id, interviewer_id, subject_id, rating, feedback, created_at, updated_at
   FROM reviews
- WHERE interviewer_id = $1
+ WHERE subject_id = $1
  ORDER BY created_at DESC
  LIMIT $2
 `
 
-type ListReviewsByInterviewerParams struct {
-	InterviewerID pgtype.UUID
-	Limit         int32
+type ListReviewsBySubjectParams struct {
+	SubjectID pgtype.UUID
+	Limit     int32
 }
 
-type ListReviewsByInterviewerRow struct {
+type ListReviewsBySubjectRow struct {
 	BookingID     pgtype.UUID
+	Direction     string
 	ReviewerID    pgtype.UUID
 	InterviewerID pgtype.UUID
+	SubjectID     pgtype.UUID
 	Rating        int32
 	Feedback      pgtype.Text
 	CreatedAt     pgtype.Timestamptz
 	UpdatedAt     pgtype.Timestamptz
 }
 
-func (q *Queries) ListReviewsByInterviewer(ctx context.Context, arg ListReviewsByInterviewerParams) ([]ListReviewsByInterviewerRow, error) {
-	rows, err := q.db.Query(ctx, listReviewsByInterviewer, arg.InterviewerID, arg.Limit)
+// Filters on subject_id (denormalized) so the same query backs both the
+// interviewer's public card and the candidate's own card.
+func (q *Queries) ListReviewsBySubject(ctx context.Context, arg ListReviewsBySubjectParams) ([]ListReviewsBySubjectRow, error) {
+	rows, err := q.db.Query(ctx, listReviewsBySubject, arg.SubjectID, arg.Limit)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	items := []ListReviewsByInterviewerRow{}
+	items := []ListReviewsBySubjectRow{}
 	for rows.Next() {
-		var i ListReviewsByInterviewerRow
+		var i ListReviewsBySubjectRow
 		if err := rows.Scan(
 			&i.BookingID,
+			&i.Direction,
 			&i.ReviewerID,
 			&i.InterviewerID,
+			&i.SubjectID,
 			&i.Rating,
 			&i.Feedback,
 			&i.CreatedAt,

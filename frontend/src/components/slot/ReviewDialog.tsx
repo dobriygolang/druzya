@@ -5,12 +5,16 @@
 // Star widget is a 5-button row — keyboard-friendly, no external lib.
 import { useState } from 'react'
 import { Star } from 'lucide-react'
-import { useCreateReview } from '../../lib/queries/review'
+import { useCreateReview, type ReviewDirection } from '../../lib/queries/review'
 
 type Props = {
   open: boolean
   bookingID: string
-  interviewerHandle?: string
+  /** Direction the form authors. Defaults to candidate→interviewer (the
+   *  «Я кандидат» drawer tab) — interviewer-side flows pass the reverse. */
+  direction?: ReviewDirection
+  /** Counterparty's handle for copy ("@username"). */
+  subjectHandle?: string
   onClose: () => void
   onSubmitted?: () => void
 }
@@ -18,7 +22,8 @@ type Props = {
 export default function ReviewDialog({
   open,
   bookingID,
-  interviewerHandle,
+  direction = 'REVIEW_DIRECTION_CANDIDATE_TO_INTERVIEWER',
+  subjectHandle,
   onClose,
   onSubmitted,
 }: Props) {
@@ -26,6 +31,8 @@ export default function ReviewDialog({
   const [rating, setRating] = useState(0)
   const [feedback, setFeedback] = useState('')
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
+  const isOnCandidate = direction === 'REVIEW_DIRECTION_INTERVIEWER_TO_CANDIDATE'
+  const titleVerb = isOnCandidate ? 'Оценить кандидата' : 'Оставить отзыв'
 
   if (!open) return null
 
@@ -41,6 +48,7 @@ export default function ReviewDialog({
         booking_id: bookingID,
         rating,
         feedback: feedback.trim() || undefined,
+        direction,
       })
       onSubmitted?.()
       onClose()
@@ -59,12 +67,12 @@ export default function ReviewDialog({
         onSubmit={onSubmit}
         className="w-full max-w-md rounded-lg border border-border bg-surface-1 p-6 shadow-xl"
       >
-        <h2 className="font-display mb-1 text-xl font-bold text-text-primary">
-          Оставить отзыв
-        </h2>
+        <h2 className="font-display mb-1 text-xl font-bold text-text-primary">{titleVerb}</h2>
         <p className="mb-4 text-xs text-text-muted">
-          {interviewerHandle ? `Интервьюер @${interviewerHandle}. ` : ''}
-          Оценка влияет на рейтинг интервьюера в каталоге.
+          {subjectHandle ? `${isOnCandidate ? 'Кандидат' : 'Интервьюер'} @${subjectHandle}. ` : ''}
+          {isOnCandidate
+            ? 'Оценка попадёт в карточку кандидата — другие интервьюеры её увидят.'
+            : 'Оценка влияет на рейтинг интервьюера в каталоге.'}
         </p>
 
         <div className="mb-4">

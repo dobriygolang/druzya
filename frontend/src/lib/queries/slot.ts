@@ -301,6 +301,60 @@ function normalizeMyBooking(w: MyBookingItemWire): MyBookingItem {
   }
 }
 
+// HostedBookingItem mirrors slot.proto:HostedBookingItem (the
+// interviewer-side projection). candidate_username + has_review come
+// hydrated from the server.
+export type HostedBookingItem = {
+  id: string
+  slot_id: string
+  candidate_id: string
+  candidate_username: string
+  meet_url?: string
+  status: string
+  created_at: string
+  starts_at: string
+  duration_min: number
+  section: SlotSection
+  difficulty?: SlotDifficulty
+  language: string
+  price_rub: number
+  slot_status: SlotStatusValue
+  has_review?: boolean
+}
+
+type HostedBookingItemWire = Omit<HostedBookingItem, 'section' | 'difficulty' | 'slot_status' | 'has_review'> & {
+  section: string
+  difficulty?: string
+  slot_status: string
+  has_review?: boolean
+}
+
+function normalizeHostedBooking(w: HostedBookingItemWire): HostedBookingItem {
+  const section = SECTION_FROM_WIRE[w.section]
+  if (!section) throw new Error(`unknown hosted-booking section: ${w.section}`)
+  return {
+    ...w,
+    section,
+    difficulty: w.difficulty ? DIFFICULTY_FROM_WIRE[w.difficulty] : undefined,
+    slot_status: STATUS_FROM_WIRE[w.slot_status] ?? 'available',
+    has_review: w.has_review ?? false,
+  }
+}
+
+// useHostedBookingsQuery — GET /api/v1/slot/my/hosted (interviewer's
+// hosted sessions). Lazy: only fires when enabled.
+export function useHostedBookingsQuery(opts: { enabled?: boolean } = {}) {
+  return useQuery({
+    queryKey: ['slots', 'my-hosted'],
+    queryFn: async () => {
+      const wire = await api<{ items: HostedBookingItemWire[] }>('/slot/my/hosted')
+      return (wire.items ?? []).map(normalizeHostedBooking)
+    },
+    staleTime: 30_000,
+    enabled: opts.enabled ?? true,
+  })
+}
+
 // useMyBookingsQuery — GET /api/v1/slot/my/bookings. Возвращает все
 // букинги текущего пользователя (отсортированы по starts_at DESC). 200 OK
 // с пустым items[] — норма для пользователя без записей.

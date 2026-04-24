@@ -639,9 +639,10 @@ export class MyBookingItem extends Message<MyBookingItem> {
   slotStatus = SlotStatus.UNSPECIFIED;
 
   /**
-   * has_review — true when the candidate already left a review for this
-   * booking. Lets the UI hide the "Оставить отзыв" CTA without a second
-   * round-trip to the review service.
+   * has_review — true when the candidate already left a CANDIDATE→
+   * INTERVIEWER review for this booking. Lets the UI hide the
+   * "Оставить отзыв" CTA without a second round-trip to the review
+   * service. Set on the candidate-side drawer (My bookings).
    *
    * @generated from field: bool has_review = 13;
    */
@@ -684,6 +685,202 @@ export class MyBookingItem extends Message<MyBookingItem> {
 
   static equals(a: MyBookingItem | PlainMessage<MyBookingItem> | undefined, b: MyBookingItem | PlainMessage<MyBookingItem> | undefined): boolean {
     return proto3.util.equals(MyBookingItem, a, b);
+  }
+}
+
+/**
+ * HostedBookingItem mirrors MyBookingItem but for the interviewer-side
+ * drawer ("Мои проведённые слоты"). candidate_username + has_review
+ * (interviewer→candidate) hydrated server-side.
+ *
+ * @generated from message druz9.v1.HostedBookingItem
+ */
+export class HostedBookingItem extends Message<HostedBookingItem> {
+  /**
+   * @generated from field: string id = 1;
+   */
+  id = "";
+
+  /**
+   * @generated from field: string slot_id = 2;
+   */
+  slotId = "";
+
+  /**
+   * @generated from field: string candidate_id = 3;
+   */
+  candidateId = "";
+
+  /**
+   * @generated from field: string candidate_username = 4;
+   */
+  candidateUsername = "";
+
+  /**
+   * @generated from field: string meet_url = 5;
+   */
+  meetUrl = "";
+
+  /**
+   * @generated from field: string status = 6;
+   */
+  status = "";
+
+  /**
+   * @generated from field: google.protobuf.Timestamp created_at = 7;
+   */
+  createdAt?: Timestamp;
+
+  /**
+   * @generated from field: google.protobuf.Timestamp starts_at = 8;
+   */
+  startsAt?: Timestamp;
+
+  /**
+   * @generated from field: int32 duration_min = 9;
+   */
+  durationMin = 0;
+
+  /**
+   * @generated from field: druz9.v1.Section section = 10;
+   */
+  section = Section.UNSPECIFIED;
+
+  /**
+   * @generated from field: druz9.v1.Difficulty difficulty = 11;
+   */
+  difficulty = Difficulty.UNSPECIFIED;
+
+  /**
+   * @generated from field: string language = 12;
+   */
+  language = "";
+
+  /**
+   * @generated from field: int32 price_rub = 13;
+   */
+  priceRub = 0;
+
+  /**
+   * @generated from field: druz9.v1.SlotStatus slot_status = 14;
+   */
+  slotStatus = SlotStatus.UNSPECIFIED;
+
+  /**
+   * has_review — true when the *interviewer* already submitted an
+   * INTERVIEWER→CANDIDATE review for this booking.
+   *
+   * @generated from field: bool has_review = 15;
+   */
+  hasReview = false;
+
+  constructor(data?: PartialMessage<HostedBookingItem>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.HostedBookingItem";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "slot_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 3, name: "candidate_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 4, name: "candidate_username", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 5, name: "meet_url", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 6, name: "status", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 7, name: "created_at", kind: "message", T: Timestamp },
+    { no: 8, name: "starts_at", kind: "message", T: Timestamp },
+    { no: 9, name: "duration_min", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 10, name: "section", kind: "enum", T: proto3.getEnumType(Section) },
+    { no: 11, name: "difficulty", kind: "enum", T: proto3.getEnumType(Difficulty) },
+    { no: 12, name: "language", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 13, name: "price_rub", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 14, name: "slot_status", kind: "enum", T: proto3.getEnumType(SlotStatus) },
+    { no: 15, name: "has_review", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): HostedBookingItem {
+    return new HostedBookingItem().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): HostedBookingItem {
+    return new HostedBookingItem().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): HostedBookingItem {
+    return new HostedBookingItem().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: HostedBookingItem | PlainMessage<HostedBookingItem> | undefined, b: HostedBookingItem | PlainMessage<HostedBookingItem> | undefined): boolean {
+    return proto3.util.equals(HostedBookingItem, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.HostedBookingList
+ */
+export class HostedBookingList extends Message<HostedBookingList> {
+  /**
+   * @generated from field: repeated druz9.v1.HostedBookingItem items = 1;
+   */
+  items: HostedBookingItem[] = [];
+
+  constructor(data?: PartialMessage<HostedBookingList>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.HostedBookingList";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "items", kind: "message", T: HostedBookingItem, repeated: true },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): HostedBookingList {
+    return new HostedBookingList().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): HostedBookingList {
+    return new HostedBookingList().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): HostedBookingList {
+    return new HostedBookingList().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: HostedBookingList | PlainMessage<HostedBookingList> | undefined, b: HostedBookingList | PlainMessage<HostedBookingList> | undefined): boolean {
+    return proto3.util.equals(HostedBookingList, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.ListHostedBookingsRequest
+ */
+export class ListHostedBookingsRequest extends Message<ListHostedBookingsRequest> {
+  constructor(data?: PartialMessage<ListHostedBookingsRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.ListHostedBookingsRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ListHostedBookingsRequest {
+    return new ListHostedBookingsRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): ListHostedBookingsRequest {
+    return new ListHostedBookingsRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): ListHostedBookingsRequest {
+    return new ListHostedBookingsRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: ListHostedBookingsRequest | PlainMessage<ListHostedBookingsRequest> | undefined, b: ListHostedBookingsRequest | PlainMessage<ListHostedBookingsRequest> | undefined): boolean {
+    return proto3.util.equals(ListHostedBookingsRequest, a, b);
   }
 }
 

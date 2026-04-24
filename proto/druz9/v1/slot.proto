@@ -121,11 +121,41 @@ message MyBookingItem {
   string language = 10;
   int32 price_rub = 11;
   SlotStatus slot_status = 12;
-  // has_review — true when the candidate already left a review for this
-  // booking. Lets the UI hide the "Оставить отзыв" CTA without a second
-  // round-trip to the review service.
+  // has_review — true when the candidate already left a CANDIDATE→
+  // INTERVIEWER review for this booking. Lets the UI hide the
+  // "Оставить отзыв" CTA without a second round-trip to the review
+  // service. Set on the candidate-side drawer (My bookings).
   bool has_review = 13;
 }
+
+// HostedBookingItem mirrors MyBookingItem but for the interviewer-side
+// drawer ("Мои проведённые слоты"). candidate_username + has_review
+// (interviewer→candidate) hydrated server-side.
+message HostedBookingItem {
+  string id = 1;
+  string slot_id = 2;
+  string candidate_id = 3;
+  string candidate_username = 4;
+  string meet_url = 5;
+  string status = 6;
+  google.protobuf.Timestamp created_at = 7;
+  google.protobuf.Timestamp starts_at = 8;
+  int32 duration_min = 9;
+  Section section = 10;
+  Difficulty difficulty = 11;
+  string language = 12;
+  int32 price_rub = 13;
+  SlotStatus slot_status = 14;
+  // has_review — true when the *interviewer* already submitted an
+  // INTERVIEWER→CANDIDATE review for this booking.
+  bool has_review = 15;
+}
+
+message HostedBookingList {
+  repeated HostedBookingItem items = 1;
+}
+
+message ListHostedBookingsRequest {}
 
 // MyBookingList wraps the repeated items so vanguard's REST transcoder
 // emits {"items":[...]} (consistent with SlotList).
@@ -165,5 +195,13 @@ service SlotService {
   // lived in cmd/monolith/services/slot.go.
   rpc ListMyBookings(ListMyBookingsRequest) returns (MyBookingList) {
     option (google.api.http) = {get: "/api/v1/slot/my/bookings"};
+  }
+
+  // ListHostedBookings — interviewer's view of bookings on their own slots
+  // (candidate side surfaced via candidate_username). Used by the «Я как
+  // интервьюер» tab in the My bookings drawer to render the
+  // INTERVIEWER→CANDIDATE review CTA.
+  rpc ListHostedBookings(ListHostedBookingsRequest) returns (HostedBookingList) {
+    option (google.api.http) = {get: "/api/v1/slot/my/hosted"};
   }
 }

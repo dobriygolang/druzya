@@ -36,7 +36,8 @@ func NewSlot(d Deps) (*Module, slotDomain.BookingRepo) {
 	book := &slotApp.BookSlot{Slots: pg, Meet: meet, Bus: d.Bus, Log: d.Log, Now: time.Now}
 	cancelUC := &slotApp.CancelSlot{Slots: pg, Bus: d.Bus, Log: d.Log}
 	myBookings := &slotApp.ListMyBookings{Bookings: pg, HasReview: SlotBookingHasReviewAdapter{}}
-	server := slotPorts.NewSlotServer(list, create, book, cancelUC, myBookings, d.Log)
+	hostedBookings := &slotApp.ListHostedBookings{Bookings: pg, HasReview: SlotBookingHasReviewAdapter{}}
+	server := slotPorts.NewSlotServer(list, create, book, cancelUC, myBookings, hostedBookings, d.Log)
 
 	connectPath, connectHandler := druz9v1connect.NewSlotServiceHandler(server)
 	transcoder := mustTranscode("slot", connectPath, connectHandler)
@@ -53,6 +54,7 @@ func NewSlot(d Deps) (*Module, slotDomain.BookingRepo) {
 			// /slot/my/bookings now goes through the proto transcoder
 			// (ListMyBookings RPC) — no more chi-direct shim.
 			r.Get("/slot/my/bookings", transcoder.ServeHTTP)
+			r.Get("/slot/my/hosted", transcoder.ServeHTTP)
 		},
 		Subscribers: []func(*eventbus.InProcess){
 			func(b *eventbus.InProcess) { slotApp.SubscribeHandlers(b) },

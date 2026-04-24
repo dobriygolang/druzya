@@ -53,9 +53,11 @@ func (s *ReviewServer) CreateReview(
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("invalid booking_id: %w", err))
 	}
+	dir := directionFromProto(req.Msg.GetDirection())
 	rev, err := s.CreateUC.Do(ctx, app.CreateReviewInput{
 		BookingID:  bookingID,
 		ReviewerID: uid,
+		Direction:  dir,
 		Rating:     int(req.Msg.GetRating()),
 		Feedback:   req.Msg.GetFeedback(),
 	})
@@ -127,10 +129,12 @@ func (s *ReviewServer) toConnectErr(err error) error {
 
 func toReviewProto(r domain.Review) *pb.Review {
 	out := &pb.Review{
-		Id:            r.BookingID.String(),
+		Id:            r.BookingID.String() + ":" + string(r.Direction),
 		BookingId:     r.BookingID.String(),
 		ReviewerId:    r.ReviewerID.String(),
 		InterviewerId: r.InterviewerID.String(),
+		SubjectId:     r.SubjectID.String(),
+		Direction:     directionToProto(r.Direction),
 		Rating:        int32(r.Rating),
 		Feedback:      r.Feedback,
 	}
@@ -141,4 +145,24 @@ func toReviewProto(r domain.Review) *pb.Review {
 		out.UpdatedAt = timestamppb.New(r.UpdatedAt.UTC())
 	}
 	return out
+}
+
+func directionFromProto(d pb.ReviewDirection) domain.Direction {
+	switch d {
+	case pb.ReviewDirection_REVIEW_DIRECTION_INTERVIEWER_TO_CANDIDATE:
+		return domain.DirInterviewerToCandidate
+	default: // includes UNSPECIFIED → default to candidate→interviewer for back-compat
+		return domain.DirCandidateToInterviewer
+	}
+}
+
+func directionToProto(d domain.Direction) pb.ReviewDirection {
+	switch d {
+	case domain.DirInterviewerToCandidate:
+		return pb.ReviewDirection_REVIEW_DIRECTION_INTERVIEWER_TO_CANDIDATE
+	case domain.DirCandidateToInterviewer:
+		return pb.ReviewDirection_REVIEW_DIRECTION_CANDIDATE_TO_INTERVIEWER
+	default:
+		return pb.ReviewDirection_REVIEW_DIRECTION_UNSPECIFIED
+	}
 }

@@ -6,6 +6,7 @@ import { http, HttpResponse } from 'msw';
 const base = '/api/v1';
 
 const reviews = new Map();
+const key = (bookingID, direction) => `${bookingID}:${direction}`;
 
 export const reviewHandlers = [
   http.post(`${base}/review`, async ({ request }) => {
@@ -14,21 +15,25 @@ export const reviewHandlers = [
     if (!body.rating || body.rating < 1 || body.rating > 5) {
       return new HttpResponse('rating out of range', { status: 400 });
     }
-    if (reviews.has(body.booking_id)) {
-      return new HttpResponse('already reviewed', { status: 409 });
-    }
+    const dirRaw = body.direction || 'REVIEW_DIRECTION_CANDIDATE_TO_INTERVIEWER';
+    const isC2I = dirRaw === 'REVIEW_DIRECTION_CANDIDATE_TO_INTERVIEWER';
+    const dir = isC2I ? 'candidate_to_interviewer' : 'interviewer_to_candidate';
+    const k = key(body.booking_id, dir);
+    if (reviews.has(k)) return new HttpResponse('already reviewed', { status: 409 });
     const now = new Date().toISOString();
     const r = {
-      id: body.booking_id,
+      id: k,
       booking_id: body.booking_id,
       reviewer_id: 'u-self',
       interviewer_id: 'u-mentor-mock',
+      subject_id: isC2I ? 'u-mentor-mock' : 'u-self',
+      direction: dir,
       rating: body.rating,
       feedback: body.feedback,
       created_at: now,
       updated_at: now,
     };
-    reviews.set(body.booking_id, r);
+    reviews.set(k, r);
     return HttpResponse.json(r);
   }),
 
@@ -36,14 +41,17 @@ export const reviewHandlers = [
     const url = new URL(request.url);
     const interviewerID = url.searchParams.get('interviewer_id');
     const items = Array.from(reviews.values())
-      .filter((r) => !interviewerID || r.interviewer_id === interviewerID)
+      .filter((r) => r.direction === 'candidate_to_interviewer')
+      .filter((r) => !interviewerID || r.subject_id === interviewerID)
       .sort((a, b) => b.created_at.localeCompare(a.created_at));
     return HttpResponse.json({ items });
   }),
 
   http.get(`${base}/review/stats/:interviewer_id`, ({ params }) => {
     const id = String(params.interviewer_id);
-    const list = Array.from(reviews.values()).filter((r) => r.interviewer_id === id);
+    const list = Array.from(reviews.values()).filter(
+      (r) => r.subject_id === id && r.direction === 'candidate_to_interviewer',
+    );
     if (list.length === 0) {
       return HttpResponse.json({ interviewer_id: id, avg_rating: 0, reviews_count: 0 });
     }
@@ -52,6 +60,6 @@ export const reviewHandlers = [
   }),
 ];
 
-export function hasReview(bookingID) {
-  return reviews.has(bookingID);
+export function hasReview(bookingID, direction = 'candidate_to_interviewer') {
+  return reviews.has(key(bookingID, direction));
 }

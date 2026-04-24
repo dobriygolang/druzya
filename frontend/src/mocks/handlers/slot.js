@@ -167,9 +167,12 @@ export const slotHandlers = [
       language: b.slot.language,
       price_rub: b.slot.price_rub,
       slot_status: b.slot.status,
-      has_review: hasReview(b.id),
+      has_review: hasReview(b.id, 'candidate_to_interviewer'),
     }));
     return HttpResponse.json({ items });
+  }),
+  http.get(`${base}/slot/my/hosted`, () => {
+    return HttpResponse.json({ items: [] });
   }),
 ];
 

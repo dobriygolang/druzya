@@ -31,18 +31,79 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+// ReviewDirection differentiates "candidate reviews interviewer" vs
+// "interviewer reviews candidate" — a single booking can have at most
+// one of each.
+type ReviewDirection int32
+
+const (
+	ReviewDirection_REVIEW_DIRECTION_UNSPECIFIED              ReviewDirection = 0
+	ReviewDirection_REVIEW_DIRECTION_CANDIDATE_TO_INTERVIEWER ReviewDirection = 1
+	ReviewDirection_REVIEW_DIRECTION_INTERVIEWER_TO_CANDIDATE ReviewDirection = 2
+)
+
+// Enum value maps for ReviewDirection.
+var (
+	ReviewDirection_name = map[int32]string{
+		0: "REVIEW_DIRECTION_UNSPECIFIED",
+		1: "REVIEW_DIRECTION_CANDIDATE_TO_INTERVIEWER",
+		2: "REVIEW_DIRECTION_INTERVIEWER_TO_CANDIDATE",
+	}
+	ReviewDirection_value = map[string]int32{
+		"REVIEW_DIRECTION_UNSPECIFIED":              0,
+		"REVIEW_DIRECTION_CANDIDATE_TO_INTERVIEWER": 1,
+		"REVIEW_DIRECTION_INTERVIEWER_TO_CANDIDATE": 2,
+	}
+)
+
+func (x ReviewDirection) Enum() *ReviewDirection {
+	p := new(ReviewDirection)
+	*p = x
+	return p
+}
+
+func (x ReviewDirection) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (ReviewDirection) Descriptor() protoreflect.EnumDescriptor {
+	return file_druz9_v1_review_proto_enumTypes[0].Descriptor()
+}
+
+func (ReviewDirection) Type() protoreflect.EnumType {
+	return &file_druz9_v1_review_proto_enumTypes[0]
+}
+
+func (x ReviewDirection) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use ReviewDirection.Descriptor instead.
+func (ReviewDirection) EnumDescriptor() ([]byte, []int) {
+	return file_druz9_v1_review_proto_rawDescGZIP(), []int{0}
+}
+
 // Review mirrors a `reviews` row.
 type Review struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"` // booking_id (PK in current schema)
-	BookingId     string                 `protobuf:"bytes,2,opt,name=booking_id,json=bookingId,proto3" json:"booking_id,omitempty"`
-	ReviewerId    string                 `protobuf:"bytes,3,opt,name=reviewer_id,json=reviewerId,proto3" json:"reviewer_id,omitempty"`
-	InterviewerId string                 `protobuf:"bytes,4,opt,name=interviewer_id,json=interviewerId,proto3" json:"interviewer_id,omitempty"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// id is now `<booking_id>:<direction>` since the PK is composite.
+	Id         string `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	BookingId  string `protobuf:"bytes,2,opt,name=booking_id,json=bookingId,proto3" json:"booking_id,omitempty"`
+	ReviewerId string `protobuf:"bytes,3,opt,name=reviewer_id,json=reviewerId,proto3" json:"reviewer_id,omitempty"`
+	// interviewer_id is the slot owner — kept separately from subject_id
+	// so the read path can filter "all reviews about interviewer X" cheaply
+	// for the public profile, regardless of which side authored.
+	InterviewerId string `protobuf:"bytes,4,opt,name=interviewer_id,json=interviewerId,proto3" json:"interviewer_id,omitempty"`
 	// rating ∈ [1, 5].
-	Rating        int32                  `protobuf:"varint,5,opt,name=rating,proto3" json:"rating,omitempty"`
-	Feedback      string                 `protobuf:"bytes,6,opt,name=feedback,proto3" json:"feedback,omitempty"`
-	CreatedAt     *timestamppb.Timestamp `protobuf:"bytes,7,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
-	UpdatedAt     *timestamppb.Timestamp `protobuf:"bytes,8,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
+	Rating    int32                  `protobuf:"varint,5,opt,name=rating,proto3" json:"rating,omitempty"`
+	Feedback  string                 `protobuf:"bytes,6,opt,name=feedback,proto3" json:"feedback,omitempty"`
+	CreatedAt *timestamppb.Timestamp `protobuf:"bytes,7,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	UpdatedAt *timestamppb.Timestamp `protobuf:"bytes,8,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
+	// direction + subject_id are the M4b additions. subject_id is the user
+	// being reviewed (interviewer when CANDIDATE_TO_INTERVIEWER, else the
+	// candidate). The two together form the composite PK with booking_id.
+	Direction     ReviewDirection `protobuf:"varint,9,opt,name=direction,proto3,enum=druz9.v1.ReviewDirection" json:"direction,omitempty"`
+	SubjectId     string          `protobuf:"bytes,10,opt,name=subject_id,json=subjectId,proto3" json:"subject_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -133,6 +194,20 @@ func (x *Review) GetUpdatedAt() *timestamppb.Timestamp {
 	return nil
 }
 
+func (x *Review) GetDirection() ReviewDirection {
+	if x != nil {
+		return x.Direction
+	}
+	return ReviewDirection_REVIEW_DIRECTION_UNSPECIFIED
+}
+
+func (x *Review) GetSubjectId() string {
+	if x != nil {
+		return x.SubjectId
+	}
+	return ""
+}
+
 // ReviewList — vanguard wrapper.
 type ReviewList struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
@@ -178,12 +253,15 @@ func (x *ReviewList) GetItems() []*Review {
 	return nil
 }
 
-// CreateReviewRequest — caller is identified via bearer token.
+// CreateReviewRequest — caller is identified via bearer token. Direction
+// must match the caller's side of the booking (candidate vs interviewer);
+// the backend rejects mismatches with PERMISSION_DENIED.
 type CreateReviewRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	BookingId     string                 `protobuf:"bytes,1,opt,name=booking_id,json=bookingId,proto3" json:"booking_id,omitempty"`
 	Rating        int32                  `protobuf:"varint,2,opt,name=rating,proto3" json:"rating,omitempty"`
 	Feedback      string                 `protobuf:"bytes,3,opt,name=feedback,proto3" json:"feedback,omitempty"`
+	Direction     ReviewDirection        `protobuf:"varint,4,opt,name=direction,proto3,enum=druz9.v1.ReviewDirection" json:"direction,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -237,6 +315,13 @@ func (x *CreateReviewRequest) GetFeedback() string {
 		return x.Feedback
 	}
 	return ""
+}
+
+func (x *CreateReviewRequest) GetDirection() ReviewDirection {
+	if x != nil {
+		return x.Direction
+	}
+	return ReviewDirection_REVIEW_DIRECTION_UNSPECIFIED
 }
 
 // ListReviewsByInterviewerRequest — public, read-only listing for the
@@ -404,7 +489,7 @@ var File_druz9_v1_review_proto protoreflect.FileDescriptor
 
 const file_druz9_v1_review_proto_rawDesc = "" +
 	"\n" +
-	"\x15druz9/v1/review.proto\x12\bdruz9.v1\x1a\x1cgoogle/api/annotations.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\xa9\x02\n" +
+	"\x15druz9/v1/review.proto\x12\bdruz9.v1\x1a\x1cgoogle/api/annotations.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\x81\x03\n" +
 	"\x06Review\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1d\n" +
 	"\n" +
@@ -417,15 +502,20 @@ const file_druz9_v1_review_proto_rawDesc = "" +
 	"\n" +
 	"created_at\x18\a \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\x129\n" +
 	"\n" +
-	"updated_at\x18\b \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt\"4\n" +
+	"updated_at\x18\b \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt\x127\n" +
+	"\tdirection\x18\t \x01(\x0e2\x19.druz9.v1.ReviewDirectionR\tdirection\x12\x1d\n" +
+	"\n" +
+	"subject_id\x18\n" +
+	" \x01(\tR\tsubjectId\"4\n" +
 	"\n" +
 	"ReviewList\x12&\n" +
-	"\x05items\x18\x01 \x03(\v2\x10.druz9.v1.ReviewR\x05items\"h\n" +
+	"\x05items\x18\x01 \x03(\v2\x10.druz9.v1.ReviewR\x05items\"\xa1\x01\n" +
 	"\x13CreateReviewRequest\x12\x1d\n" +
 	"\n" +
 	"booking_id\x18\x01 \x01(\tR\tbookingId\x12\x16\n" +
 	"\x06rating\x18\x02 \x01(\x05R\x06rating\x12\x1a\n" +
-	"\bfeedback\x18\x03 \x01(\tR\bfeedback\"^\n" +
+	"\bfeedback\x18\x03 \x01(\tR\bfeedback\x127\n" +
+	"\tdirection\x18\x04 \x01(\x0e2\x19.druz9.v1.ReviewDirectionR\tdirection\"^\n" +
 	"\x1fListReviewsByInterviewerRequest\x12%\n" +
 	"\x0einterviewer_id\x18\x01 \x01(\tR\rinterviewerId\x12\x14\n" +
 	"\x05limit\x18\x02 \x01(\x05R\x05limit\"}\n" +
@@ -435,7 +525,11 @@ const file_druz9_v1_review_proto_rawDesc = "" +
 	"avg_rating\x18\x02 \x01(\x02R\tavgRating\x12#\n" +
 	"\rreviews_count\x18\x03 \x01(\x05R\freviewsCount\"C\n" +
 	"\x1aGetInterviewerStatsRequest\x12%\n" +
-	"\x0einterviewer_id\x18\x01 \x01(\tR\rinterviewerId2\xe9\x02\n" +
+	"\x0einterviewer_id\x18\x01 \x01(\tR\rinterviewerId*\x91\x01\n" +
+	"\x0fReviewDirection\x12 \n" +
+	"\x1cREVIEW_DIRECTION_UNSPECIFIED\x10\x00\x12-\n" +
+	")REVIEW_DIRECTION_CANDIDATE_TO_INTERVIEWER\x10\x01\x12-\n" +
+	")REVIEW_DIRECTION_INTERVIEWER_TO_CANDIDATE\x10\x022\xe9\x02\n" +
 	"\rReviewService\x12Z\n" +
 	"\fCreateReview\x12\x1d.druz9.v1.CreateReviewRequest\x1a\x10.druz9.v1.Review\"\x19\x82\xd3\xe4\x93\x02\x13:\x01*\"\x0e/api/v1/review\x12s\n" +
 	"\x18ListReviewsByInterviewer\x12).druz9.v1.ListReviewsByInterviewerRequest\x1a\x14.druz9.v1.ReviewList\"\x16\x82\xd3\xe4\x93\x02\x10\x12\x0e/api/v1/review\x12\x86\x01\n" +
@@ -454,31 +548,35 @@ func file_druz9_v1_review_proto_rawDescGZIP() []byte {
 	return file_druz9_v1_review_proto_rawDescData
 }
 
+var file_druz9_v1_review_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
 var file_druz9_v1_review_proto_msgTypes = make([]protoimpl.MessageInfo, 6)
 var file_druz9_v1_review_proto_goTypes = []any{
-	(*Review)(nil),                          // 0: druz9.v1.Review
-	(*ReviewList)(nil),                      // 1: druz9.v1.ReviewList
-	(*CreateReviewRequest)(nil),             // 2: druz9.v1.CreateReviewRequest
-	(*ListReviewsByInterviewerRequest)(nil), // 3: druz9.v1.ListReviewsByInterviewerRequest
-	(*InterviewerStats)(nil),                // 4: druz9.v1.InterviewerStats
-	(*GetInterviewerStatsRequest)(nil),      // 5: druz9.v1.GetInterviewerStatsRequest
-	(*timestamppb.Timestamp)(nil),           // 6: google.protobuf.Timestamp
+	(ReviewDirection)(0),                    // 0: druz9.v1.ReviewDirection
+	(*Review)(nil),                          // 1: druz9.v1.Review
+	(*ReviewList)(nil),                      // 2: druz9.v1.ReviewList
+	(*CreateReviewRequest)(nil),             // 3: druz9.v1.CreateReviewRequest
+	(*ListReviewsByInterviewerRequest)(nil), // 4: druz9.v1.ListReviewsByInterviewerRequest
+	(*InterviewerStats)(nil),                // 5: druz9.v1.InterviewerStats
+	(*GetInterviewerStatsRequest)(nil),      // 6: druz9.v1.GetInterviewerStatsRequest
+	(*timestamppb.Timestamp)(nil),           // 7: google.protobuf.Timestamp
 }
 var file_druz9_v1_review_proto_depIdxs = []int32{
-	6, // 0: druz9.v1.Review.created_at:type_name -> google.protobuf.Timestamp
-	6, // 1: druz9.v1.Review.updated_at:type_name -> google.protobuf.Timestamp
-	0, // 2: druz9.v1.ReviewList.items:type_name -> druz9.v1.Review
-	2, // 3: druz9.v1.ReviewService.CreateReview:input_type -> druz9.v1.CreateReviewRequest
-	3, // 4: druz9.v1.ReviewService.ListReviewsByInterviewer:input_type -> druz9.v1.ListReviewsByInterviewerRequest
-	5, // 5: druz9.v1.ReviewService.GetInterviewerStats:input_type -> druz9.v1.GetInterviewerStatsRequest
-	0, // 6: druz9.v1.ReviewService.CreateReview:output_type -> druz9.v1.Review
-	1, // 7: druz9.v1.ReviewService.ListReviewsByInterviewer:output_type -> druz9.v1.ReviewList
-	4, // 8: druz9.v1.ReviewService.GetInterviewerStats:output_type -> druz9.v1.InterviewerStats
-	6, // [6:9] is the sub-list for method output_type
-	3, // [3:6] is the sub-list for method input_type
-	3, // [3:3] is the sub-list for extension type_name
-	3, // [3:3] is the sub-list for extension extendee
-	0, // [0:3] is the sub-list for field type_name
+	7, // 0: druz9.v1.Review.created_at:type_name -> google.protobuf.Timestamp
+	7, // 1: druz9.v1.Review.updated_at:type_name -> google.protobuf.Timestamp
+	0, // 2: druz9.v1.Review.direction:type_name -> druz9.v1.ReviewDirection
+	1, // 3: druz9.v1.ReviewList.items:type_name -> druz9.v1.Review
+	0, // 4: druz9.v1.CreateReviewRequest.direction:type_name -> druz9.v1.ReviewDirection
+	3, // 5: druz9.v1.ReviewService.CreateReview:input_type -> druz9.v1.CreateReviewRequest
+	4, // 6: druz9.v1.ReviewService.ListReviewsByInterviewer:input_type -> druz9.v1.ListReviewsByInterviewerRequest
+	6, // 7: druz9.v1.ReviewService.GetInterviewerStats:input_type -> druz9.v1.GetInterviewerStatsRequest
+	1, // 8: druz9.v1.ReviewService.CreateReview:output_type -> druz9.v1.Review
+	2, // 9: druz9.v1.ReviewService.ListReviewsByInterviewer:output_type -> druz9.v1.ReviewList
+	5, // 10: druz9.v1.ReviewService.GetInterviewerStats:output_type -> druz9.v1.InterviewerStats
+	8, // [8:11] is the sub-list for method output_type
+	5, // [5:8] is the sub-list for method input_type
+	5, // [5:5] is the sub-list for extension type_name
+	5, // [5:5] is the sub-list for extension extendee
+	0, // [0:5] is the sub-list for field type_name
 }
 
 func init() { file_druz9_v1_review_proto_init() }
@@ -491,13 +589,14 @@ func file_druz9_v1_review_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_druz9_v1_review_proto_rawDesc), len(file_druz9_v1_review_proto_rawDesc)),
-			NumEnums:      0,
+			NumEnums:      1,
 			NumMessages:   6,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
 		GoTypes:           file_druz9_v1_review_proto_goTypes,
 		DependencyIndexes: file_druz9_v1_review_proto_depIdxs,
+		EnumInfos:         file_druz9_v1_review_proto_enumTypes,
 		MessageInfos:      file_druz9_v1_review_proto_msgTypes,
 	}.Build()
 	File_druz9_v1_review_proto = out.File
