@@ -56,10 +56,12 @@ import (
 type Provider string
 
 const (
-	ProviderGroq       Provider = "groq"
-	ProviderCerebras   Provider = "cerebras"
-	ProviderMistral    Provider = "mistral"
-	ProviderOpenRouter Provider = "openrouter"
+	ProviderGroq         Provider = "groq"
+	ProviderCerebras     Provider = "cerebras"
+	ProviderMistral      Provider = "mistral"
+	ProviderOpenRouter   Provider = "openrouter"
+	ProviderSambaNova    Provider = "sambanova"
+	ProviderCloudflareAI Provider = "cloudflare"
 )
 
 // Task identifies a semantic workload class. Each task has its own
@@ -84,6 +86,22 @@ const (
 	// TaskReasoning — session analyzer + any other "give me a structured
 	// analysis" caller. Quality-heavy; mirrors copilot for now.
 	TaskReasoning Task = "reasoning"
+	// TaskCodingHint — короткий намёк юзеру который молчит >2 мин в
+	// mock-интервью. Small model, low latency: первый байт должен
+	// прилететь за ~секунду, иначе намёк опоздал и ломает флоу.
+	TaskCodingHint Task = "coding_hint"
+	// TaskCodeReview — разбор пользовательского сабмита после mock.
+	// Reasoning-heavy; длинный вывод с цитированием кода. Предпочитаем
+	// DeepSeek-R1 / llama-70b — скорость не критична, глубина важна.
+	TaskCodeReview Task = "code_review"
+	// TaskSysDesignCritique — критика архитектурной диаграммы в system-
+	// design треке. Quality > speed; требует длинного контекста (чтобы
+	// уместить диаграмму + требования), Qwen2.5-72B sweet spot.
+	TaskSysDesignCritique Task = "sysdesign_critique"
+	// TaskSummarize — суммаризация для background-summarizer (Phase 4).
+	// Самая дешёвая модель из доступных: стоимость токенов важнее
+	// качества, summary потом может быть перечитан моделью посильнее.
+	TaskSummarize Task = "summarize"
 )
 
 // Role mirrors OpenAI chat roles. Kept as a string (not an enum) because

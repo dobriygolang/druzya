@@ -58,6 +58,15 @@ var defaultTimeouts = map[Provider]time.Duration{
 	ProviderCerebras:   20 * time.Second,
 	ProviderMistral:    30 * time.Second,
 	ProviderOpenRouter: 45 * time.Second,
+	// SambaNova RDU hardware advertises ~580 tok/s on Llama-70B — even
+	// a full 70B reply fits comfortably within 20s. Tighter than
+	// Mistral because their p99 stays under Groq on ≥70B models.
+	ProviderSambaNova: 20 * time.Second,
+	// Cloudflare runs inference at the edge but the extra proxy hop
+	// adds measurable overhead vs. direct provider endpoints; 30s
+	// matches our Mistral budget, erring on the side of completion for
+	// the rare-but-valuable 70B free slot.
+	ProviderCloudflareAI: 30 * time.Second,
 }
 
 // Options configures a new Chain.
@@ -364,10 +373,20 @@ func providerFromModelID(id string) Provider {
 	if idx := strings.Index(id, "/"); idx > 0 {
 		prefix := Provider(id[:idx])
 		switch prefix {
-		case ProviderGroq, ProviderCerebras, ProviderMistral:
+		case ProviderGroq,
+			ProviderCerebras,
+			ProviderMistral,
+			ProviderSambaNova,
+			ProviderOpenRouter,
+			ProviderCloudflareAI:
 			return prefix
-		case ProviderOpenRouter:
-			return prefix
+		}
+		// Cloudflare canonical model ids start with "@cf/..." — "@cf" is
+		// the vendor-of-vendor token, not our prefix convention. Exact-
+		// match keeps us from accidentally routing OpenRouter ids with
+		// a stray "@" through Cloudflare.
+		if prefix == "@cf" {
+			return ProviderCloudflareAI
 		}
 	}
 	return ProviderOpenRouter

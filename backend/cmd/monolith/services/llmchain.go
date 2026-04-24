@@ -43,6 +43,26 @@ func BuildLLMChain(cfg config.Config, log *slog.Logger) (*llmchain.Chain, error)
 	if cfg.LLMChain.MistralAPIKey != "" {
 		drivers[llmchain.ProviderMistral] = llmchain.NewMistralDriver(cfg.LLMChain.MistralAPIKey)
 	}
+	// SambaNova Cloud — щедрый free tier на Llama-70B / DeepSeek-R1 /
+	// Qwen-72B. Самый быстрый по tok/s из всех (~580 tok/s), удобен как
+	// primary для reasoning-heavy тасок.
+	if cfg.LLMChain.SambaNovaAPIKey != "" {
+		drivers[llmchain.ProviderSambaNova] = llmchain.NewSambaNovaDriver(cfg.LLMChain.SambaNovaAPIKey)
+	}
+	// Cloudflare Workers AI — требует ДВА секрета (accountID в URL +
+	// Bearer токен). Регистрируем только когда оба выставлены:
+	// driver с пустым accountID всегда получит 404, а пустой токен —
+	// 401; в обоих случаях это одно мёртвое звено цепочки на каждый
+	// запрос.
+	if cfg.LLMChain.CloudflareAIAccountID != "" && cfg.LLMChain.CloudflareAIToken != "" {
+		drivers[llmchain.ProviderCloudflareAI] = llmchain.NewCloudflareAIDriver(
+			cfg.LLMChain.CloudflareAIAccountID,
+			cfg.LLMChain.CloudflareAIToken,
+		)
+	} else if cfg.LLMChain.CloudflareAIAccountID != "" || cfg.LLMChain.CloudflareAIToken != "" {
+		// Only one of the two was set — operator mistake, loud warn.
+		log.Warn("llmchain: Cloudflare AI partial config — need BOTH CLOUDFLARE_AI_ACCOUNT_ID and CLOUDFLARE_AI_TOKEN, skipping")
+	}
 	// OpenRouter key is shared with the legacy LLM config section so
 	// back-compat callers (the Insight client, existing copilot) keep
 	// working while the chain coexists during rollout.
@@ -75,6 +95,16 @@ func BuildLLMChain(cfg config.Config, log *slog.Logger) (*llmchain.Chain, error)
 // entries that don't match any registered driver, so the operator sees
 // the typo there. Empty input returns the baked-in default
 // (groq → cerebras → openrouter — Mistral absent).
+//
+// Recommended prod string once all keys are set:
+//
+//	LLM_CHAIN_ORDER=sambanova,groq,cerebras,cloudflare,mistral,openrouter
+//
+// Rationale: SambaNova is both the fastest free-tier (~580 tok/s) and
+// the most generous on 70B reasoning, so it leads; Groq/Cerebras keep
+// their speed-oriented role for short-JSON tasks; Cloudflare fills the
+// "another free 70B pool" slot for when the rest are cooled;
+// Mistral/OpenRouter remain as last-resort fallbacks.
 func parseChainOrder(raw string) []llmchain.Provider {
 	raw = strings.TrimSpace(raw)
 	if raw == "" {

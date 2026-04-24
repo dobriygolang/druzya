@@ -61,10 +61,13 @@ type Config struct {
 	// unless the operator explicitly opts in, because its free tier
 	// has tighter limits than Groq/Cerebras.
 	LLMChain struct {
-		GroqAPIKey     string
-		CerebrasAPIKey string
-		MistralAPIKey  string
-		ChainOrder     string
+		GroqAPIKey            string
+		CerebrasAPIKey        string
+		MistralAPIKey         string
+		SambaNovaAPIKey       string
+		CloudflareAIAccountID string
+		CloudflareAIToken     string
+		ChainOrder            string
 	}
 
 	Notify struct {
@@ -126,6 +129,9 @@ func Load() (Config, error) {
 	c.LLMChain.GroqAPIKey = env("GROQ_API_KEY", "")
 	c.LLMChain.CerebrasAPIKey = env("CEREBRAS_API_KEY", "")
 	c.LLMChain.MistralAPIKey = env("MISTRAL_API_KEY", "")
+	c.LLMChain.SambaNovaAPIKey = env("SAMBANOVA_API_KEY", "")
+	c.LLMChain.CloudflareAIAccountID = env("CLOUDFLARE_AI_ACCOUNT_ID", "")
+	c.LLMChain.CloudflareAIToken = env("CLOUDFLARE_AI_TOKEN", "")
 	c.LLMChain.ChainOrder = env("LLM_CHAIN_ORDER", "groq,cerebras,openrouter")
 
 	c.Notify.TelegramBotToken = c.Auth.TelegramBotToken
