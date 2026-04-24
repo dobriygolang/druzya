@@ -126,8 +126,8 @@ tidy-check: tidy ## Fail if `go mod tidy` produced changes (CI guard)
 	@git diff --exit-code -- '**/go.mod' '**/go.sum' \
 		|| (echo "go.mod/go.sum drifted — run 'make tidy' and commit" && exit 1)
 
-.PHONY: gen
-gen: gen-proto gen-sqlc gen-mocks gen-ts ## Run all code generators
+.PHONY: generate
+generate: gen-proto gen-sqlc gen-mocks gen-ts ## Run all code generators
 
 .PHONY: gen-proto
 gen-proto: ## Generate Go + TS stubs from proto/*.proto via buf (all 14 services)
@@ -164,9 +164,9 @@ gen-mocks: ## Generate mockgen mocks from //go:generate directives
 	done
 
 .PHONY: gen-check
-gen-check: gen ## Fail if codegen output drifted from committed files (CI)
+gen-check: generate ## Fail if codegen output drifted from committed files (CI)
 	@git diff --exit-code -- backend/shared/generated backend/services/*/infra/db backend/services/*/domain/mocks frontend/src/api/generated \
-		|| (echo "codegen drift — run 'make gen' and commit" && exit 1)
+		|| (echo "codegen drift — run 'make generate' and commit" && exit 1)
 
 .PHONY: migrate-up
 migrate-up: ## Apply all pending migrations

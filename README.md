@@ -59,7 +59,7 @@ make front       # фронт натив (MSW включён)
 Единственный источник правды API — `.proto` файлы в `proto/druz9/v1/`. Из них генерятся и Go-сервер (Connect-RPC) и TS-клиент:
 
 ```bash
-make gen         # gen-proto + gen-sqlc + gen-mocks + gen-ts (TS типы для фронта)
+make generate         # gen-proto + gen-sqlc + gen-mocks + gen-ts (TS типы для фронта)
 make gen-proto   # только proto
 make gen-check   # проверка что коммиченные generated-файлы не дрифтят (CI)
 ```
@@ -97,7 +97,7 @@ make check-stubs # grep всех // STUB: комментариев
 - ✅ **60 RPC методов** на Connect-RPC, из них 40 — с `google.api.http` REST-паритетом через vanguard
 - ✅ **4 WebSocket хаба** — `/ws/arena`, `/ws/mock`, `/ws/editor`, `/ws/feed`
 - ✅ **OpenAPI + apigen полностью удалены** (архивная yaml в `docs/legacy/`)
-- ✅ Кодоген pipeline — `make gen` = proto + sqlc + mockgen + openapi-typescript (для MSW), генерируемые файлы коммитятся, CI ловит drift
+- ✅ Кодоген pipeline — `make generate` = proto + sqlc + mockgen + openapi-typescript (для MSW), генерируемые файлы коммитятся, CI ловит drift
 - ✅ Frontend: Vite + React + TS + MSW моки, Atlas PoE2 SVG tree, 14 страниц, Cormorant шрифты (кириллица)
 - ✅ Seed: 50 задач (30 algo + 15 SQL + 3 Go + 2 SD), 5 компаний, 12 подкастов, 158 test cases
 - ✅ Production: `docker-compose.prod.yml` с nginx+certbot+prometheus+grafana+loki+pgbackup

@@ -321,11 +321,11 @@ jobs:
         working-directory: frontend
         run: npm ci --no-audit --no-fund --prefer-offline
       - name: Run full codegen
-        run: make gen
+        run: make generate
       - name: Fail on drift
         run: |
           git diff --exit-code -- backend/shared/generated backend/services/*/infra/db backend/services/*/domain/mocks frontend/src/api/generated \
-            || (echo "codegen drift — run 'make gen' locally and commit" && exit 1)
+            || (echo "codegen drift — run 'make generate' locally and commit" && exit 1)
 
   # Build + push the api image on main only. PR builds just verify the Dockerfile.
   image:
