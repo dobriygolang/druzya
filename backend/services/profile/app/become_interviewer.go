@@ -17,8 +17,8 @@ import (
 // when that lands the use case stays the same but Do becomes "create
 // pending application" and an AdminApprove use case flips the role.
 type BecomeInterviewer struct {
-	Repo    domain.ProfileRepo
-	GetUC   *GetProfile
+	Repo  domain.ProfileRepo
+	GetUC *GetProfile
 }
 
 // Do is idempotent — calling it on an already-interviewer (or admin)
