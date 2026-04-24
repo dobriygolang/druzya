@@ -3,7 +3,6 @@ package infra
 import (
 	"context"
 	"errors"
-	"fmt"
 	"log/slog"
 	"strings"
 
@@ -113,57 +112,44 @@ func (d CommandDispatcher) handleHelp(ctx context.Context, msg *tgbotapi.Message
 	return d.bot.reply(ctx, msg.Chat.ID, d.bot.cfg.Replies.Help)
 }
 
-// handleLink associates the incoming Telegram chat with a druz9 account.
+// handleLink — ОТКЛЮЧЕН (2026-04-24 security hotfix).
 //
-//	/link <username>
+// Старая реализация принимала `/link <druz9_username>` и безусловно писала
+// telegram_chat_id = msg.Chat.ID на найденный user_id БЕЗ верификации того,
+// что запрашивающий в Telegram реально владеет этим druz9-аккаунтом. Плюс
+// telegram_chat_id в БД не был UNIQUE — один чат мог быть привязан к нескольким
+// user_id, приводя к тому что уведомления чужих пользователей попадали в чат
+// первого, кто "/link"-нул их username.
 //
-// Verification: the user's Telegram username (msg.From.UserName) MUST match
-// the stored profile's telegram_username. For MVP we only verify that msg.From
-// provides SOME username (bible §9 already uses the Login Widget to bind
-// telegram → user during login). A mismatch replies with LinkUsernameMiss.
-func (d CommandDispatcher) handleLink(ctx context.Context, msg *tgbotapi.Message, args []string) error {
-	if len(args) == 0 {
-		return d.bot.reply(ctx, msg.Chat.ID, d.bot.cfg.Replies.LinkMissingArg)
-	}
-	username := strings.TrimPrefix(args[0], "@")
-	uid, err := d.bot.users.FindIDByUsername(ctx, username)
-	if err != nil {
-		return d.bot.reply(ctx, msg.Chat.ID, d.bot.cfg.Replies.LinkNoUser)
-	}
-	if msg.From == nil || msg.From.UserName == "" {
-		return d.bot.reply(ctx, msg.Chat.ID, d.bot.cfg.Replies.LinkUsernameMiss)
-	}
-	// STUB: cross-domain telegram_username check against auth.users would go
-	// here. For MVP we accept any authenticated Telegram user whose druz9
-	// username exists — the Login Widget already binds them. This is tracked
-	// as a bible §9 follow-up.
-	chatID := fmt.Sprintf("%d", msg.Chat.ID)
-	if err := d.bot.prefs.SetTelegramChatID(ctx, uid, chatID); err != nil {
-		return fmt.Errorf("handleLink: %w", err)
-	}
-	d.bot.log.InfoContext(ctx, "notify.telegram.linked",
-		slog.String("user_id", uid.String()),
-		slog.Int64("chat_id", msg.Chat.ID))
-	return d.bot.reply(ctx, msg.Chat.ID, d.bot.cfg.Replies.LinkOK)
+// Легитимный путь привязки — deep-link /start <code>, где code одноразовый и
+// создаётся на сайте после авторизованного действия пользователя (см.
+// handleStart → codes.Fill → auth/app/poll_telegram_code.go). На этом пути
+// личность автора Telegram-обращения криптографически связана с druz9-user'ом
+// через обмен через наш backend.
+//
+// Пока не сделаем отдельный "Привязать Telegram" button на сайте с секретным
+// одноразовым токеном — команду /link просто отключаем. SetTelegramChatID
+// не дёргается; пользователю отправляем инструкцию как привязаться через сайт.
+func (d CommandDispatcher) handleLink(ctx context.Context, msg *tgbotapi.Message, _ []string) error {
+	d.bot.log.InfoContext(ctx, "notify.telegram.link.blocked",
+		slog.Int64("chat_id", msg.Chat.ID),
+		slog.String("reason", "disabled_security_hotfix"))
+	return d.bot.reply(ctx, msg.Chat.ID, d.bot.cfg.Replies.LinkDisabled)
 }
 
+// handleUnlink — ОТКЛЮЧЕН аналогично handleLink.
+//
+// Старая реализация вызывала FindIDByUsername(msg.From.UserName) — это Telegram
+// username, не druz9 username; совпадали они или нет — случайность. А сам
+// ClearTelegramChatID тоже не верифицировал владельца строки.
+//
+// Отвязка должна происходить через Settings на сайте или через deep-link flow
+// аналогичный привязке (одноразовый код).
 func (d CommandDispatcher) handleUnlink(ctx context.Context, msg *tgbotapi.Message, _ []string) error {
-	// We don't know the user_id from the Telegram chat alone — resolve by
-	// looking up *any* preferences row with telegram_chat_id = msg.Chat.ID.
-	// STUB: the MVP uses username verification via msg.From. If the user
-	// hasn't set their Telegram username, /unlink fails with an instructive
-	// reply.
-	if msg.From == nil || msg.From.UserName == "" {
-		return d.bot.reply(ctx, msg.Chat.ID, d.bot.cfg.Replies.LinkUsernameMiss)
-	}
-	uid, err := d.bot.users.FindIDByUsername(ctx, msg.From.UserName)
-	if err != nil {
-		return d.bot.reply(ctx, msg.Chat.ID, d.bot.cfg.Replies.LinkNoUser)
-	}
-	if err := d.bot.prefs.ClearTelegramChatID(ctx, uid); err != nil {
-		return fmt.Errorf("handleUnlink: %w", err)
-	}
-	return d.bot.reply(ctx, msg.Chat.ID, d.bot.cfg.Replies.Unlinked)
+	d.bot.log.InfoContext(ctx, "notify.telegram.unlink.blocked",
+		slog.Int64("chat_id", msg.Chat.ID),
+		slog.String("reason", "disabled_security_hotfix"))
+	return d.bot.reply(ctx, msg.Chat.ID, d.bot.cfg.Replies.LinkDisabled)
 }
 
 // TODO: /streak reads daily_streaks and replies with the user's current streak.

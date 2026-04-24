@@ -16,6 +16,7 @@ type BotReplies struct {
 	LinkNoUser          string
 	LinkUsernameMiss    string // telegram username not set in profile
 	LinkOK              string
+	LinkDisabled        string // /link отключён security-хотфиксом 2026-04
 	Unlinked            string
 	StreakStub          string
 	LeaderboardStub     string
@@ -36,7 +37,9 @@ var RussianReplies = BotReplies{
 	LinkNoUser:          "Пользователь не найден.",
 	LinkUsernameMiss: "У тебя в Telegram не задан username или он не совпадает с профилем. " +
 		"Открой Telegram → Настройки → Имя пользователя и проверь профиль druz9.",
-	LinkOK:          "Готово! Теперь уведомления будут приходить сюда.",
+	LinkOK: "Готово! Теперь уведомления будут приходить сюда.",
+	LinkDisabled: "Привязка через бот временно отключена. Откройте druz9.online → Настройки → Telegram и получите одноразовый код, " +
+		"затем отправьте его командой /start <код> сюда.",
 	Unlinked:        "Отвязал. Уведомления в этот чат больше не будут приходить.",
 	StreakStub:      "⚡ Streak — команда в работе. Пока смотри на сайте.",
 	LeaderboardStub: "🏆 Лидерборд — команда в работе. Пока смотри на сайте.",

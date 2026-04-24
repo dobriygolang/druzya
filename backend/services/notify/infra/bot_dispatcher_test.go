@@ -147,59 +147,43 @@ func TestDispatch_Help(t *testing.T) {
 	}
 }
 
-func TestDispatch_Link_MissingArg(t *testing.T) {
-	api := &fakeAPI{}
-	bot := newTestBot(api, newFakePrefs(), &fakeUsers{})
-	msg := makeMsg("link", "", "alice", 42)
-	_ = bot.dispatch.Dispatch(context.Background(), msg)
-	if api.lastText() != RussianReplies.LinkMissingArg {
-		t.Fatalf("got %q", api.lastText())
+// TestDispatch_Link_Disabled — /link теперь всегда возвращает LinkDisabled
+// и НЕ модифицирует prefs (security hotfix 2026-04). См. комментарий в
+// bot_dispatcher.go: старая реализация принимала любой druz9 username без
+// верификации владельца, позволяя перехватывать чужие уведомления.
+func TestDispatch_Link_Disabled(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		arg  string
+	}{
+		{"no_arg", ""},
+		{"with_username", "alice"},
+		{"with_at_prefix", "@alice"},
+		{"nonexistent_user", "ghost"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			api := &fakeAPI{}
+			prefs := newFakePrefs()
+			uid := uuid.New()
+			users := &fakeUsers{byUsername: map[string]uuid.UUID{"alice": uid}}
+			bot := newTestBot(api, prefs, users)
+			msg := makeMsg("link", tc.arg, "alice_tg", 1234)
+			_ = bot.dispatch.Dispatch(context.Background(), msg)
+			if api.lastText() != RussianReplies.LinkDisabled {
+				t.Fatalf("want LinkDisabled reply, got %q", api.lastText())
+			}
+			// Главное: prefs НЕ модифицированы — никакого chat_id не записано.
+			if len(prefs.set) != 0 {
+				t.Fatalf("handleLink must not call SetTelegramChatID; got %+v", prefs.set)
+			}
+		})
 	}
 }
 
-func TestDispatch_Link_UserNotFound(t *testing.T) {
-	api := &fakeAPI{}
-	users := &fakeUsers{byUsername: map[string]uuid.UUID{}}
-	bot := newTestBot(api, newFakePrefs(), users)
-	msg := makeMsg("link", "ghost", "alice", 42)
-	_ = bot.dispatch.Dispatch(context.Background(), msg)
-	if api.lastText() != RussianReplies.LinkNoUser {
-		t.Fatalf("got %q", api.lastText())
-	}
-}
-
-func TestDispatch_Link_Success(t *testing.T) {
-	api := &fakeAPI{}
-	prefs := newFakePrefs()
-	uid := uuid.New()
-	users := &fakeUsers{byUsername: map[string]uuid.UUID{"alice": uid}}
-	bot := newTestBot(api, prefs, users)
-	msg := makeMsg("link", "alice", "alice_tg", 1234)
-	if err := bot.dispatch.Dispatch(context.Background(), msg); err != nil {
-		t.Fatal(err)
-	}
-	if api.lastText() != RussianReplies.LinkOK {
-		t.Fatalf("got %q", api.lastText())
-	}
-	if prefs.set[uid] != "1234" {
-		t.Fatalf("want chat_id 1234, got %q", prefs.set[uid])
-	}
-}
-
-func TestDispatch_Link_AtPrefixStripped(t *testing.T) {
-	api := &fakeAPI{}
-	prefs := newFakePrefs()
-	uid := uuid.New()
-	users := &fakeUsers{byUsername: map[string]uuid.UUID{"alice": uid}}
-	bot := newTestBot(api, prefs, users)
-	msg := makeMsg("link", "@alice", "alice_tg", 1234)
-	_ = bot.dispatch.Dispatch(context.Background(), msg)
-	if prefs.set[uid] != "1234" {
-		t.Fatalf("expected @alice → alice stripping")
-	}
-}
-
-func TestDispatch_Unlink_Success(t *testing.T) {
+// TestDispatch_Unlink_Disabled — /unlink тоже отключён (аналогичный security
+// rationale: старая реализация резолвила user_id по Telegram username, что
+// не давало гарантии владения druz9-аккаунтом).
+func TestDispatch_Unlink_Disabled(t *testing.T) {
 	api := &fakeAPI{}
 	prefs := newFakePrefs()
 	uid := uuid.New()
@@ -207,11 +191,11 @@ func TestDispatch_Unlink_Success(t *testing.T) {
 	bot := newTestBot(api, prefs, users)
 	msg := makeMsg("unlink", "", "alice", 1234)
 	_ = bot.dispatch.Dispatch(context.Background(), msg)
-	if api.lastText() != RussianReplies.Unlinked {
-		t.Fatalf("got %q", api.lastText())
+	if api.lastText() != RussianReplies.LinkDisabled {
+		t.Fatalf("want LinkDisabled reply, got %q", api.lastText())
 	}
-	if !prefs.clear[uid] {
-		t.Fatalf("expected ClearTelegramChatID call")
+	if len(prefs.clear) != 0 {
+		t.Fatalf("handleUnlink must not call ClearTelegramChatID; got %+v", prefs.clear)
 	}
 }
 
