@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { api, API_BASE } from '../apiClient'
+import { api, API_BASE, forceRefresh } from '../apiClient'
 
 export type Attributes = {
   intellect: number
@@ -232,17 +232,29 @@ export function useProfileQuery() {
 
 // useBecomeInterviewer wraps POST /api/v1/profile/me/become-interviewer.
 // Idempotent backend — calling on an already-interviewer is a no-op.
-// On success, invalidates the profile query so the «Создать слот» CTA on
-// /slots flips in immediately.
+//
+// IMPORTANT: the auth middleware reads role from the bearer-token claims
+// (see backend/services/auth/ports/middleware.go), not from the DB. After
+// promotion the user's existing access token still encodes the OLD role,
+// so subsequent role-gated RPCs (e.g. CreateSlot) would 403. We force a
+// refresh here so the next access token picks up the fresh role from
+// users.role via Refresh.Do → Users.FindByID.
 export function useBecomeInterviewer() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: () =>
-      api<Profile>('/profile/me/become-interviewer', {
+    mutationFn: async () => {
+      const profile = await api<Profile>('/profile/me/become-interviewer', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: '{}',
-      }),
+      })
+      // Re-mint the access token with the new role baked into the claims.
+      // Failure is non-fatal — the silent-refresh timer will eventually
+      // pick it up; the worst-case UX is one stale 403 on first
+      // CreateSlot click which the user can retry after ~minutes.
+      await forceRefresh()
+      return profile
+    },
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: profileQueryKeys.me() })
     },

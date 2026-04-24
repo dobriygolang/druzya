@@ -143,7 +143,14 @@ async function performRefresh(): Promise<string | null> {
   }
 }
 
-/** Coalesces concurrent refresh attempts into a single in-flight promise. */
+/** Coalesces concurrent refresh attempts into a single in-flight promise.
+ *  Exported as forceRefresh so callers (e.g. role-mutation flows that
+ *  invalidate JWT-claim freshness) can yank a new access token without
+ *  waiting for the silent timer or the next 401. */
+export async function forceRefresh(): Promise<string | null> {
+  return refreshAccessTokenOnce()
+}
+
 async function refreshAccessTokenOnce(): Promise<string | null> {
   if (inflightRefresh) return inflightRefresh
   inflightRefresh = performRefresh().finally(() => {
