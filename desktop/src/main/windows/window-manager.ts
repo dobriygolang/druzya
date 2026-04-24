@@ -509,7 +509,7 @@ function buildWindow(name: WindowName, opts: WindowOptions): BrowserWindow {
         ...base,
         width: 720,
         height: 720,
-        title: 'Druz9 Copilot — Settings',
+        title: 'Cue — Settings',
         resizable: true,
       });
     case 'onboarding':
@@ -517,7 +517,7 @@ function buildWindow(name: WindowName, opts: WindowOptions): BrowserWindow {
         ...base,
         width: 760,
         height: 580,
-        title: 'Druz9 Copilot',
+        title: 'Cue',
         resizable: false,
         center: true,
       });

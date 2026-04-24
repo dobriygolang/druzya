@@ -6,7 +6,7 @@
 //      rebuild triggered a password prompt that looked like phishing.
 //   2. Tried: Electron `safeStorage`. Turned out safeStorage on macOS
 //      is itself Keychain-backed — same prompt, different entry name
-//      ("Druz9 Copilot Safe Storage"). Not a real fix.
+//      ("Cue Safe Storage"). Not a real fix.
 //   3. Current: plain JSON in userData. No prompts, ever.
 //
 // Threat model — why this is acceptable:

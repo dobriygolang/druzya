@@ -15,7 +15,11 @@
     "paths": {
       "@shared/*": ["./src/shared/*"],
       "@main/*": ["./src/main/*"],
-      "@generated/*": ["../frontend/src/api/generated/*"]
+      "@generated/*": ["../frontend/src/api/generated/*"],
+      "@bufbuild/protobuf": ["./node_modules/@bufbuild/protobuf"],
+      "@bufbuild/protobuf/*": ["./node_modules/@bufbuild/protobuf/*"],
+      "@connectrpc/connect": ["./node_modules/@connectrpc/connect"],
+      "@connectrpc/connect/*": ["./node_modules/@connectrpc/connect/*"]
     },
     "types": ["node"]
   },

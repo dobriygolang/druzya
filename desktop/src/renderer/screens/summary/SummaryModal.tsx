@@ -52,7 +52,7 @@ export function SummaryModal({ analysis, modelLabel, onClose }: Props) {
   const markdown = useMemo(
     () =>
       exportConversationAsMarkdown(messages, {
-        title: analysis.title || 'Druz9 Copilot — session summary',
+        title: analysis.title || 'Cue — session summary',
         modelLabel,
       }),
     [messages, modelLabel, analysis.title],
@@ -733,7 +733,7 @@ function labelize(key: string): string {
  */
 function summaryToMarkdown(a: SessionAnalysis): string {
   const lines: string[] = [];
-  const title = a.title || 'Druz9 Copilot — session summary';
+  const title = a.title || 'Cue — session summary';
   lines.push(`# ${title}`);
   if (a.tldr) {
     lines.push('');

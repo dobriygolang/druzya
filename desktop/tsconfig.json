@@ -16,7 +16,11 @@
     "isolatedModules": true,
     "paths": {
       "@shared/*": ["./src/shared/*"],
-      "@renderer/*": ["./src/renderer/*"]
+      "@renderer/*": ["./src/renderer/*"],
+      "@bufbuild/protobuf": ["./node_modules/@bufbuild/protobuf"],
+      "@bufbuild/protobuf/*": ["./node_modules/@bufbuild/protobuf/*"],
+      "@connectrpc/connect": ["./node_modules/@connectrpc/connect"],
+      "@connectrpc/connect/*": ["./node_modules/@connectrpc/connect/*"]
     }
   },
   "include": ["src/renderer/**/*", "src/preload/**/*", "src/shared/**/*"],

@@ -20,13 +20,13 @@ export const en: Dict = {
   expandedEmptyCta: 'Press Cmd+Shift+S for a screenshot',
   expandedEmptyHint: 'or type a question in the compact window',
 
-  onboardingWelcomeTitle: 'Druz9 Copilot',
+  onboardingWelcomeTitle: 'Cue',
   onboardingWelcomeBody:
     'A stealth AI assistant for developers. Take a screenshot and get the answer next to it — while your screen is shared.',
   onboardingStart: 'Get started',
   onboardingPermsTitle: 'macOS permissions',
   onboardingPermsBody: "We can't function without these.",
-  onboardingLoginTitle: 'Sign in to Druz9',
+  onboardingLoginTitle: 'Sign in to Cue',
   onboardingLoginBody:
     "We'll open the Telegram bot. Tap /start in the bot — we'll catch the confirmation and continue.",
   onboardingLoginButton: 'Sign in via Telegram',

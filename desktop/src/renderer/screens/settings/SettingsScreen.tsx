@@ -103,7 +103,7 @@ export function SettingsScreen() {
               color: 'var(--d9-ink)',
             }}
           >
-            Druz9
+            Cue
           </span>
         </div>
         <nav style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
@@ -256,7 +256,7 @@ function GeneralTab({
       <SectionTitle title="Общее" subtitle="Аккаунт и план" />
       <div style={{ display: 'flex', flexDirection: 'column' }}>
         <Row
-          title={session ? 'Аккаунт Druz9' : 'Не выполнен вход'}
+          title={session ? 'Аккаунт Cue' : 'Не выполнен вход'}
           hint={session ? session.userId : 'Войди через онбординг'}
           control={
             session ? (
@@ -563,7 +563,7 @@ function ProvidersTab({ models }: { models: ProviderModel[] }) {
     <>
       <SectionTitle
         title="AI провайдеры"
-        subtitle="Каталог моделей, доступных через Druz9 Cloud."
+        subtitle="Каталог моделей, доступных через Cue Cloud."
       />
 
       <div
@@ -1253,7 +1253,7 @@ function AppearanceTab() {
     <>
       <SectionTitle
         title="Внешний вид"
-        subtitle="Прозрачность окон Druz9 и размер окна чата"
+        subtitle="Прозрачность окон Cue и размер окна чата"
       />
       <Row
         title="Прозрачность окон"
@@ -1324,7 +1324,7 @@ function PermissionsTab() {
     <>
       <SectionTitle
         title="Доступы macOS"
-        subtitle="Выдать сейчас или позже — без них Druz9 всё равно работает, но часть функций недоступна."
+        subtitle="Выдать сейчас или позже — без них Cue всё равно работает, но часть функций недоступна."
       />
 
       {needsRestart && (
@@ -1428,7 +1428,7 @@ function PermRow({
 function AboutTab() {
   return (
     <>
-      <SectionTitle title="О программе" subtitle="Druz9 Copilot" />
+      <SectionTitle title="О программе" subtitle="Cue" />
       <div style={{ display: 'flex', flexDirection: 'column' }}>
         <Row title="Версия" control={<span style={{ fontFamily: 'var(--d9-font-mono)' }}>0.1.0</span>} />
         <UpdateRow />

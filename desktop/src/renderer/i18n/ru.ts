@@ -1,5 +1,5 @@
 // Russian dictionary — the default. Keep it honest and developer-speak;
-// Druz9's primary audience is Russian-speaking devs.
+// Cue's primary audience is Russian-speaking devs.
 
 import type { Dict } from './types';
 
@@ -20,13 +20,13 @@ export const ru: Dict = {
   expandedEmptyCta: 'Нажми Cmd+Shift+S для скриншота',
   expandedEmptyHint: 'или напиши вопрос в compact-окно',
 
-  onboardingWelcomeTitle: 'Druz9 Copilot',
+  onboardingWelcomeTitle: 'Cue',
   onboardingWelcomeBody:
     'Невидимый AI-помощник для разработчиков. Скриншот — и ответ рядом, пока ты делишь экран.',
   onboardingStart: 'Начать',
   onboardingPermsTitle: 'Разрешения macOS',
   onboardingPermsBody: 'Без них приложение не сможет работать полноценно.',
-  onboardingLoginTitle: 'Вход в Druz9',
+  onboardingLoginTitle: 'Вход в Cue',
   onboardingLoginBody:
     'Откроем Telegram-бота. Жми в боте /start — мы узнаем об этом и продолжим сами.',
   onboardingLoginButton: 'Войти через Telegram',

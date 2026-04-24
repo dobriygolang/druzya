@@ -111,7 +111,7 @@ function WelcomeStep({ onNext }: { onNext: () => void }) {
     <div style={{ textAlign: 'center', maxWidth: 440 }}>
       <BrandMark size={72} />
       <h1 style={{ fontSize: 28, margin: '20px 0 8px', fontFamily: 'var(--d9-font-display)' }}>
-        Druz9 Copilot
+        Cue
       </h1>
       <p style={{ fontSize: 14, color: 'var(--d9-ink-dim)', lineHeight: 1.5, margin: '0 0 28px' }}>
         Невидимый AI-помощник для разработчиков. Скриншот — и ответ рядом, пока ты делишь экран.
@@ -362,7 +362,7 @@ function LoginStep() {
     return (
       <div style={{ textAlign: 'center', maxWidth: 420 }}>
         <IconSparkles size={40} />
-        <h2 style={{ fontSize: 22, margin: '16px 0 8px' }}>Вход в Druz9</h2>
+        <h2 style={{ fontSize: 22, margin: '16px 0 8px' }}>Вход в Cue</h2>
         <p style={{ fontSize: 13, color: 'var(--d9-ink-dim)', lineHeight: 1.5, margin: '0 0 24px' }}>
           Откроем Telegram-бота. Жми в боте «Start» — мы узнаем об этом и
           продолжим сами.

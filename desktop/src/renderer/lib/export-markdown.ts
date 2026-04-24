@@ -23,7 +23,7 @@
 import type { UIMessage } from '../stores/conversation';
 
 export interface ExportOptions {
-  /** Used in the header "Druz9 Copilot · сессия от <when>". Pass the
+  /** Used in the header "Cue · сессия от <when>". Pass the
    *  conversation title when available for context; defaults to a
    *  formatted timestamp. */
   title?: string;
@@ -37,7 +37,7 @@ export interface ExportOptions {
  *
  * Output shape:
  *
- *   # Druz9 Copilot · сессия 24 апр 2026, 15:42
+ *   # Cue · сессия 24 апр 2026, 15:42
  *   _Модель: groq/llama-3.3-70b · 3 turn_
  *
  *   ---
@@ -70,7 +70,7 @@ export function exportConversationAsMarkdown(
   });
 
   const lines: string[] = [];
-  lines.push(`# ${opts.title ?? `Druz9 Copilot · сессия ${dateHuman}`}`);
+  lines.push(`# ${opts.title ?? `Cue · сессия ${dateHuman}`}`);
   const metaParts: string[] = [];
   if (opts.modelLabel) metaParts.push(`Модель: \`${opts.modelLabel}\``);
   metaParts.push(

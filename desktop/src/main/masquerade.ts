@@ -28,7 +28,7 @@ interface Preset {
 }
 
 const PRESETS: Record<MasqueradePreset, Preset> = {
-  druz9:    { id: 'druz9',    displayName: 'Druz9 Copilot', windowTitle: 'Druz9 Copilot', iconFile: null },
+  druz9:    { id: 'druz9',    displayName: 'Cue', windowTitle: 'Cue', iconFile: null },
   notes:    { id: 'notes',    displayName: 'Notes',         windowTitle: 'Notes',         iconFile: 'notes.png' },
   telegram: { id: 'telegram', displayName: 'Telegram',      windowTitle: 'Telegram',      iconFile: 'telegram.png' },
   xcode:    { id: 'xcode',    displayName: 'Xcode',         windowTitle: 'Xcode',         iconFile: 'xcode.png' },

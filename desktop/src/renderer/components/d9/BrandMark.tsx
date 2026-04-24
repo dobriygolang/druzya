@@ -1,8 +1,7 @@
-// BrandMark — gradient pill with the "9" glyph. Glyph is drawn with
-// Manrope 800 (bold sans), matching the web favicon in
-// `frontend/public/favicon.svg`. Italic Instrument Serif was tried
-// earlier and rejected — reads as decorative vs. the rest of the
-// product type.
+// BrandMark — gradient pill with the "C" glyph (Cue). Previously rendered
+// "9" (when the product was Druz9 Copilot); post-rename the glyph is the
+// product initial. Still Manrope 800 — matches the Cue wordmark in
+// design/hone/landing/brand/cue-mark.svg.
 //
 // Accepts:
 //   - `persona` id ("react" / "sysdesign" / "sre" / "behav" / "dsa")
@@ -38,7 +37,7 @@ interface BrandMarkProps {
   /** Raw gradient string. Takes precedence over `persona` when provided. */
   background?: string;
   size?: number;
-  /** Show the "9" glyph. Default true. Pass false for the bare square. */
+  /** Show the "C" glyph. Default true. Pass false for the bare square. */
   glyph?: boolean;
   style?: CSSProperties;
 }
@@ -83,7 +82,7 @@ export function BrandMark({
         ...style,
       }}
     >
-      {glyph && <span style={{ transform: 'translateY(0.5px)' }}>9</span>}
+      {glyph && <span style={{ transform: 'translateY(0.5px)' }}>C</span>}
     </div>
   );
 }

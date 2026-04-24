@@ -107,7 +107,7 @@ export function PaywallModal({ copy, currentPlan, reason, onClose, onRefresh }: 
           </div>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontSize: 16, fontWeight: 600, fontFamily: 'var(--d9-font-display)' }}>
-              {reason ?? 'Расширь возможности Druz9'}
+              {reason ?? 'Расширь возможности Cue'}
             </div>
             <div style={{ fontSize: 12.5, color: 'var(--d9-ink-dim)', marginTop: 4, lineHeight: 1.5 }}>
               Или подключи свой OpenAI / Anthropic ключ в Настройках — инференс пойдёт напрямую,

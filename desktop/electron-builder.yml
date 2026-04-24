@@ -1,5 +1,5 @@
 appId: app.druzya.copilot
-productName: Druz9 Copilot
+productName: Cue
 copyright: Copyright © 2026 Druz9
 asar: true
 directories:
@@ -30,11 +30,11 @@ mac:
   # URLs, settings link, etc.) can land here without a rebuild.
   extendInfo:
     CFBundleURLTypes:
-      - CFBundleURLName: Druz9 Copilot
+      - CFBundleURLName: Cue
         CFBundleURLSchemes: [druz9]
     NSScreenCaptureUsageDescription: >-
-      Druz9 Copilot captures the area you select so the AI can answer
+      Cue captures the area you select so the AI can answer
       questions about what's on your screen.
     NSMicrophoneUsageDescription: >-
-      Druz9 Copilot records your voice only when you explicitly start voice
+      Cue records your voice only when you explicitly start voice
       input. Audio is sent for transcription and then discarded.

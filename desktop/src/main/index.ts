@@ -42,10 +42,10 @@ app.commandLine.appendSwitch(
 // Force the display name before anything else — Electron infers name
 // from the parent process in dev (e.g. "claude" when launched from the
 // Claude CLI), and that leaks into the macOS menu bar and About panel.
-app.setName('Druz9 Copilot');
+app.setName('Cue');
 if (process.platform === 'darwin') {
   app.setAboutPanelOptions({
-    applicationName: 'Druz9 Copilot',
+    applicationName: 'Cue',
     applicationVersion: app.getVersion(),
   });
 }

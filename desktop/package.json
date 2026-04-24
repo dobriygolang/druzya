@@ -1,15 +1,15 @@
 {
   "name": "druz9-copilot",
-  "productName": "Druz9 Copilot",
+  "productName": "Cue",
   "version": "0.1.0",
-  "description": "Druz9 Copilot — stealthy AI assistant for developers (macOS desktop)",
+  "description": "Cue — stealthy AI assistant for developers (macOS desktop)",
   "private": true,
   "main": "out/main/index.js",
   "scripts": {
     "dev": "electron-vite dev",
     "build": "electron-vite build",
     "build:mac": "electron-vite build && electron-builder --mac",
-    "build:mac-dev": "electron-vite build && electron-builder --mac dir --arm64 --config.mac.identity=null --config.mac.hardenedRuntime=false --config.mac.gatekeeperAssess=false && codesign --force --deep --sign - 'dist/mac-arm64/Druz9 Copilot.app'",
+    "build:mac-dev": "electron-vite build && electron-builder --mac dir --arm64 --config.mac.identity=null --config.mac.hardenedRuntime=false --config.mac.gatekeeperAssess=false && codesign --force --deep --sign - 'dist/mac-arm64/Cue.app'",
     "lint": "eslint 'src/**/*.{ts,tsx}'",
     "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.node.json",
     "build:native-mac": "./native/audio-mac/build.sh"

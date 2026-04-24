@@ -19,7 +19,7 @@ import type { CaptureResult } from '@shared/ipc';
 // Recording" to render a "Открыть настройки" shortcut instead of a
 // generic error toast.
 export const screenRecordingDeniedMessage =
-  'Screen Recording запрещён. Открой Системные настройки → Конфиденциальность и безопасность → Запись экрана и включи там Electron (или Druz9 Copilot в прод-билде).';
+  'Screen Recording запрещён. Открой Системные настройки → Конфиденциальность и безопасность → Запись экрана и включи там Electron (или Cue в прод-билде).';
 
 // checkScreenRecordingPermission returns null when capture is allowed OR
 // when macOS hasn't decided yet (so the caller proceeds and lets

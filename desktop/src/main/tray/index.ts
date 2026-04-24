@@ -62,10 +62,11 @@ export function ensureTray(deps: TrayDeps): void {
   tray = new Tray(icon);
   // Always set a short textual marker alongside the icon — when the
   // template PNG is missing (dev builds) the icon is empty, and even
-  // when present the text makes the Druz9 tray instantly findable
-  // among other menu-bar items.
-  tray.setTitle(icon.isEmpty() ? 'D9' : ' D9');
-  tray.setToolTip('Druz9 Copilot');
+  // when present the text makes the Cue tray instantly findable
+  // among other menu-bar items. "Cue" (previously "D9") matches the
+  // BrandMark "C" glyph.
+  tray.setTitle(icon.isEmpty() ? 'Cue' : ' Cue');
+  tray.setToolTip('Cue');
 
   // Clicking the icon shows the compact window AND opens the menu —
   // macOS convention. We only want the menu; compact is already
@@ -111,7 +112,7 @@ function refreshMenu(deps: TrayDeps): void {
   if (!tray || tray.isDestroyed()) return;
   const menu = Menu.buildFromTemplate([
     {
-      label: 'Druz9 Copilot',
+      label: 'Cue',
       enabled: false,
     },
     { type: 'separator' },
