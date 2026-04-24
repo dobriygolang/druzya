@@ -96,7 +96,11 @@ func NewInsightClient(httpClient *http.Client, apiKey, model string, log *slog.L
 		panic("profile.infra.NewInsightClient: logger is required (anti-fallback policy: no silent noop loggers)")
 	}
 	if httpClient == nil {
-		httpClient = &http.Client{Timeout: 30 * time.Second}
+		// 180s: insight is async/analytical (weekly reports, profile
+		// summaries) — no real-time UX bound. Modern reasoning-tier
+		// models on 1-2K-token summaries can break 30s; 180s buys a
+		// comfortable margin without enabling a hung process.
+		httpClient = &http.Client{Timeout: 180 * time.Second}
 	}
 	if model == "" {
 		model = DefaultInsightModel

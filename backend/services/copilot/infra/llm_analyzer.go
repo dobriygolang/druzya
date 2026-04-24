@@ -41,10 +41,13 @@ func NewLLMAnalyzer(apiKey, model, reportURLTemplate string) *LLMAnalyzer {
 		reportURLTemplate = "https://druzya.tech/copilot/reports/%s"
 	}
 	return &LLMAnalyzer{
-		apiKey:            apiKey,
-		endpoint:          OpenRouterURL,
-		model:             model,
-		httpClient:        &http.Client{Timeout: 60 * time.Second},
+		apiKey:   apiKey,
+		endpoint: OpenRouterURL,
+		model:    model,
+		// 180s: post-session report is non-streaming and asks the model
+		// for a structured 1-2K-token summary over the full transcript.
+		// Reasoning models on long contexts routinely break 60s.
+		httpClient:        &http.Client{Timeout: 180 * time.Second},
 		reportURLTemplate: reportURLTemplate,
 	}
 }

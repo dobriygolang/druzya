@@ -31,9 +31,12 @@ type OpenRouter struct {
 // NewOpenRouter returns a default-configured client.
 func NewOpenRouter(apiKey string) *OpenRouter {
 	return &OpenRouter{
-		apiKey:        apiKey,
-		endpoint:      OpenRouterURL,
-		httpClient:    &http.Client{Timeout: 120 * time.Second},
+		apiKey:   apiKey,
+		endpoint: OpenRouterURL,
+		// 180s — bumped from 120s for consistency with the rest of the
+		// LLM clients; reasoning-tier models on big contexts occasionally
+		// brushed against 120s.
+		httpClient:    &http.Client{Timeout: 180 * time.Second},
 		maxRetries429: 3,
 		baseBackoff:   500 * time.Millisecond,
 	}

@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"strconv"
 	"strings"
@@ -37,13 +38,31 @@ type OpenRouter struct {
 
 // NewOpenRouter returns a default-configured streaming client.
 //
-// Defaults: 60s request timeout (streams may stay open longer than ai_mock's
-// text-only calls), 3 retries on 429 and 5xx, 500ms base exponential backoff.
+// Defaults: NO overall client timeout — SSE streams stay open for the full
+// generation (minutes for long reasoning models), and http.Client.Timeout
+// bounds the entire request including body read, so anything non-zero would
+// cut the stream mid-flight. We bound dial+TLS+response-header phases
+// explicitly via a custom Transport instead; the body read is governed by
+// the caller's ctx (request context from the Connect handler). 3 retries
+// on 429 and 5xx, 500ms base exponential backoff.
 func NewOpenRouter(apiKey string) *OpenRouter {
+	transport := &http.Transport{
+		DialContext: (&net.Dialer{
+			Timeout:   10 * time.Second,
+			KeepAlive: 30 * time.Second,
+		}).DialContext,
+		TLSHandshakeTimeout: 10 * time.Second,
+		// 60s for first byte: a reasoning-tier model may "think" silently
+		// before opening the SSE stream; 30s clipped legit slow starts.
+		ResponseHeaderTimeout: 60 * time.Second,
+		ExpectContinueTimeout: 1 * time.Second,
+		IdleConnTimeout:       90 * time.Second,
+		MaxIdleConns:          100,
+	}
 	return &OpenRouter{
 		apiKey:        apiKey,
 		endpoint:      OpenRouterURL,
-		httpClient:    &http.Client{Timeout: 60 * time.Second},
+		httpClient:    &http.Client{Transport: transport}, // no Timeout: stream may run for minutes
 		maxRetries429: 3,
 		maxRetries5xx: 3,
 		baseBackoff:   500 * time.Millisecond,

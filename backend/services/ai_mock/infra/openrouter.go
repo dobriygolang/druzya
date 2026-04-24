@@ -35,13 +35,18 @@ type OpenRouter struct {
 
 // NewOpenRouter returns a default-configured client.
 //
-// Defaults: 30s request timeout (bible §8 — voice path can't tolerate longer),
+// Defaults: 60s request timeout. Bible §8 ("voice path can't tolerate
+// longer") was written when 30s covered every reasonable model; modern
+// reasoning-tier models routinely break that even on short prompts. 60s
+// is the practical ceiling for voice — past it the user thinks we
+// crashed. Real-time path callers should still wrap with their own
+// ctx.WithTimeout if their UX needs to be tighter.
 // 3 retries on both 429 and 5xx, 500ms base exponential backoff.
 func NewOpenRouter(apiKey string) *OpenRouter {
 	return &OpenRouter{
 		apiKey:        apiKey,
 		endpoint:      OpenRouterURL,
-		httpClient:    &http.Client{Timeout: 30 * time.Second},
+		httpClient:    &http.Client{Timeout: 60 * time.Second},
 		maxRetries429: 3,
 		maxRetries5xx: 3,
 		baseBackoff:   500 * time.Millisecond,

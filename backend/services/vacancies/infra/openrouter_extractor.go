@@ -62,7 +62,10 @@ func NewOpenRouterExtractor(apiKey string, kv KV, log *slog.Logger) *OpenRouterE
 		apiKey:   apiKey,
 		endpoint: OpenRouterEndpoint,
 		model:    DefaultExtractorModel,
-		http:     &http.Client{Timeout: 30 * time.Second},
+		// 180s: Phase-5 feeds extractor the full Phase-4 detail (rich
+		// description + bullet sections, often 3-6× the listing snippet).
+		// On reasoning-tier models 30s was clipping legitimate runs.
+		http:     &http.Client{Timeout: 180 * time.Second},
 		kv:       kv,
 		cacheTTL: DefaultExtractorCacheTTL,
 		log:      log,
