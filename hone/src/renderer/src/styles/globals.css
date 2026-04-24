@@ -258,3 +258,58 @@ textarea {
     0 1px 1px rgba(0, 0, 0, 0.6),
     0 30px 80px -10px rgba(0, 0, 0, 0.7);
 }
+
+/* Markdown rendering для Notes — тихая типография в духе Winter.
+ * Заголовки без heavy-weight'ов, code-blocks в чёрной рамке, отступы
+ * ритмические (26/18/12 px multiples). */
+.mono-markdown h1,
+.mono-markdown h2,
+.mono-markdown h3 {
+  font-weight: 500;
+  letter-spacing: -0.015em;
+  margin: 26px 0 8px;
+}
+.mono-markdown h1 { font-size: 22px; }
+.mono-markdown h2 { font-size: 17px; color: var(--ink); }
+.mono-markdown h3 { font-size: 14px; color: var(--ink-90); text-transform: uppercase; letter-spacing: 0.08em; }
+.mono-markdown p { margin: 0 0 12px; }
+.mono-markdown ul,
+.mono-markdown ol { margin: 0 0 12px; padding-left: 22px; }
+.mono-markdown li { margin: 2px 0; }
+.mono-markdown a { color: var(--ink); text-decoration: underline; text-decoration-color: rgba(255,255,255,0.25); }
+.mono-markdown a:hover { text-decoration-color: rgba(255,255,255,0.6); }
+.mono-markdown code {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: rgba(255,255,255,0.05);
+  color: var(--ink);
+}
+.mono-markdown pre {
+  margin: 12px 0;
+  padding: 12px 14px;
+  border-radius: 6px;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.06);
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  line-height: 1.6;
+  overflow-x: auto;
+}
+.mono-markdown pre code {
+  background: transparent;
+  padding: 0;
+  font-size: 12.5px;
+}
+.mono-markdown blockquote {
+  margin: 12px 0;
+  padding-left: 14px;
+  border-left: 2px solid rgba(255,255,255,0.12);
+  color: var(--ink-60);
+}
+.mono-markdown hr {
+  border: 0;
+  border-top: 1px solid rgba(255,255,255,0.08);
+  margin: 20px 0;
+}

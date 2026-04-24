@@ -1,44 +1,56 @@
-// Whiteboard — реальный CRUD + AI critique stream + save-as-note.
+// Whiteboard — tldraw-powered canvas с персистентностью через backend
+// UpdateWhiteboard + AI critique stream + SaveCritiqueAsNote.
 //
-// Phase 5b ограничения: tldraw-редактор не привезён ещё, держим placeholder
-// SVG и не персистим shapes. Что РЕАЛЬНО работает: загрузка списка досок,
-// автосоздание дефолтной доски при пустом списке, ⌘E запуск критики через
-// сервер-стрим, сборка markdown'а из стрима, кнопка «save as note».
+// Поток:
+//   1. bootstrap: listWhiteboards → если пусто, create «Untitled board».
+//      Иначе берём первую.
+//   2. getWhiteboard(id) — достаём stateJson (может быть "" для новых).
+//   3. рендерим <Tldraw> с persistenceKey + onMount → editor available.
+//      stateJson НЕ пустой — вызываем `editor.store.loadSnapshot(parsed)`.
+//   4. Подписываемся на editor.store.listen() (changes), debounced 1.5с
+//      запускает UpdateWhiteboard с свежим getSnapshot + version.
+//   5. ⌘E → critiqueWhiteboardStream, аккумулируем по секциям.
+//   6. После стрима — «Save as note» → saveCritiqueAsNote.
 //
-// Stream-аккумуляция: каждый CritiquePacket добавляется в карту по секциям.
-// Когда стрим закрылся (done=true в последнем пакете), мы знаем что markdown
-// готов и можно показать «Save as note».
-import { useEffect, useMemo, useRef, useState } from 'react';
+// Optimistic-concurrency: мы держим version локально; UpdateWhiteboard
+// возвращает новый version'у и мы перезаписываем. При ErrStaleVersion
+// (Code.Aborted) логируем и отказываемся сохранять без пере-load'а (для
+// v0 ОК — один юзер / одна машина одновременно).
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { ConnectError, Code } from '@connectrpc/connect';
+import { Tldraw, type Editor, type StoreSnapshot, type TLRecord } from 'tldraw';
+import 'tldraw/tldraw.css';
 
 import { Icon } from '../components/primitives/Icon';
 import {
   listWhiteboards,
   createWhiteboard,
+  getWhiteboard,
+  updateWhiteboard,
   critiqueWhiteboardStream,
   saveCritiqueAsNote,
-  type WhiteboardSummary,
+  type Whiteboard,
   type CritiquePacket,
 } from '../api/hone';
 
 interface BoardState {
   status: 'loading' | 'ok' | 'error';
-  current: WhiteboardSummary | null;
+  board: Whiteboard | null;
   error: string | null;
   errorCode: Code | null;
 }
 
 const INITIAL_BOARD: BoardState = {
   status: 'loading',
-  current: null,
+  board: null,
   error: null,
   errorCode: null,
 };
 
 interface CritiqueState {
   status: 'idle' | 'streaming' | 'done' | 'error';
-  sections: Record<string, string>; // section → accumulated text
-  order: string[]; // порядок появления секций для рендера
+  sections: Record<string, string>;
+  order: string[];
   error: string | null;
 }
 
@@ -51,45 +63,42 @@ function critiqueToMarkdown(c: CritiqueState): string {
 }
 
 export function WhiteboardPage() {
-  const [tool, setTool] = useState('V');
   const [board, setBoard] = useState<BoardState>(INITIAL_BOARD);
   const [critique, setCritique] = useState<CritiqueState>(INITIAL_CRITIQUE);
   const [savingNote, setSavingNote] = useState(false);
   const [savedNoteFlash, setSavedNoteFlash] = useState(false);
-  const ensuringRef = useRef(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
-  // Bootstrap: если нет доски — автосоздаём одну. Иначе работаем с первой.
+  const editorRef = useRef<Editor | null>(null);
+  const versionRef = useRef(0);
+  const saveTimer = useRef<number | null>(null);
+  const bootstrapRef = useRef(false);
+
+  // Bootstrap.
   useEffect(() => {
-    if (ensuringRef.current) return;
-    ensuringRef.current = true;
+    if (bootstrapRef.current) return;
+    bootstrapRef.current = true;
     let cancelled = false;
     (async () => {
       try {
         const boards = await listWhiteboards();
         if (cancelled) return;
-        if (boards.length > 0) {
-          setBoard({
-            status: 'ok',
-            current: boards[0] ?? null,
-            error: null,
-            errorCode: null,
-          });
-          return;
+        const targetId = boards[0]?.id;
+        let wb: Whiteboard;
+        if (targetId) {
+          wb = await getWhiteboard(targetId);
+        } else {
+          wb = await createWhiteboard('Untitled board', '');
         }
-        const created = await createWhiteboard('Untitled board', '');
         if (cancelled) return;
-        setBoard({
-          status: 'ok',
-          current: { id: created.id, title: created.title, updatedAt: created.updatedAt },
-          error: null,
-          errorCode: null,
-        });
+        versionRef.current = wb.version;
+        setBoard({ status: 'ok', board: wb, error: null, errorCode: null });
       } catch (err: unknown) {
         if (cancelled) return;
         const ce = ConnectError.from(err);
         setBoard({
           status: 'error',
-          current: null,
+          board: null,
           error: ce.rawMessage || ce.message,
           errorCode: ce.code,
         });
@@ -100,17 +109,86 @@ export function WhiteboardPage() {
     };
   }, []);
 
+  // Save снимает snapshot tldraw и пушит в backend.
+  const flushSave = useCallback(async () => {
+    const editor = editorRef.current;
+    const current = board.board;
+    if (!editor || !current) return;
+    const snapshot = editor.store.getStoreSnapshot();
+    const json = JSON.stringify(snapshot);
+    try {
+      const updated = await updateWhiteboard({
+        id: current.id,
+        title: current.title,
+        stateJson: json,
+        expectedVersion: versionRef.current,
+      });
+      versionRef.current = updated.version;
+      setSaveError(null);
+      setBoard((prev) => (prev.board ? { ...prev, board: updated } : prev));
+    } catch (err: unknown) {
+      const ce = ConnectError.from(err);
+      setSaveError(ce.rawMessage || ce.message);
+    }
+  }, [board.board]);
+
+  const onMount = useCallback(
+    (editor: Editor) => {
+      editorRef.current = editor;
+      // Load existing snapshot if present.
+      const json = board.board?.stateJson;
+      if (json) {
+        try {
+          const parsed = JSON.parse(json) as StoreSnapshot<TLRecord>;
+          editor.store.loadStoreSnapshot(parsed);
+        } catch {
+          // Non-fatal — начинаем с пустого canvas'а.
+        }
+      }
+      // Дебаунс-save на изменения store'а.
+      const unsubscribe = editor.store.listen(
+        () => {
+          if (saveTimer.current !== null) window.clearTimeout(saveTimer.current);
+          saveTimer.current = window.setTimeout(() => {
+            void flushSave();
+          }, 1500);
+        },
+        { scope: 'document', source: 'user' },
+      );
+      return () => {
+        unsubscribe();
+        if (saveTimer.current !== null) window.clearTimeout(saveTimer.current);
+      };
+    },
+    [board.board, flushSave],
+  );
+
+  // ⌘E — toggle critique. Когда idle → start stream. Когда done/error →
+  // reset. Streaming — игнорируем повторный тычок.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'e') {
+        e.preventDefault();
+        void handleCritiqueToggle();
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [board.board, critique.status]);
+
   const handleCritiqueToggle = async () => {
-    if (!board.current) return;
+    if (!board.board) return;
     if (critique.status === 'streaming') return;
     if (critique.status === 'done' || critique.status === 'error') {
-      // Toggle off → reset.
       setCritique(INITIAL_CRITIQUE);
       return;
     }
+    // Перед критикой flush текущий state чтобы бекенд видел свежий snapshot.
+    await flushSave();
     setCritique({ status: 'streaming', sections: {}, order: [], error: null });
     try {
-      await critiqueWhiteboardStream(board.current.id, (pkt: CritiquePacket) => {
+      await critiqueWhiteboardStream(board.board.id, (pkt: CritiquePacket) => {
         setCritique((prev) => {
           const sections = { ...prev.sections };
           const order = prev.order.includes(pkt.section)
@@ -125,7 +203,6 @@ export function WhiteboardPage() {
           };
         });
       });
-      // Гарантия: даже если stream завершился без done=true пакета, mark as done.
       setCritique((prev) =>
         prev.status === 'streaming' ? { ...prev, status: 'done' } : prev,
       );
@@ -140,13 +217,13 @@ export function WhiteboardPage() {
   };
 
   const handleSaveAsNote = async () => {
-    if (!board.current || critique.status !== 'done') return;
+    if (!board.board || critique.status !== 'done') return;
     const md = critiqueToMarkdown(critique);
     if (!md.trim()) return;
     setSavingNote(true);
     try {
       await saveCritiqueAsNote({
-        whiteboardId: board.current.id,
+        whiteboardId: board.board.id,
         bodyMd: md,
       });
       setSavedNoteFlash(true);
@@ -165,7 +242,7 @@ export function WhiteboardPage() {
   const critiquePanelOpen = critique.status !== 'idle';
   const showSaveButton = critique.status === 'done' && critique.order.length > 0;
 
-  const critiqueButtonLabel = useMemo(() => {
+  const critiqueButtonLabel = (() => {
     switch (critique.status) {
       case 'streaming':
         return 'Critiquing…';
@@ -176,119 +253,27 @@ export function WhiteboardPage() {
       default:
         return '⌘E critique';
     }
-  }, [critique.status]);
+  })();
 
   return (
     <div className="fadein" style={{ position: 'absolute', inset: 0 }}>
-      <div
-        style={{
-          position: 'absolute',
-          inset: 0,
-          backgroundImage: 'radial-gradient(rgba(255,255,255,0.06) 1px, transparent 1px)',
-          backgroundSize: '24px 24px',
-        }}
-      />
-
-      {/* Placeholder SVG sketch — реальный tldraw в Phase 5c */}
-      <PlaceholderSketch />
-
-      {/* Critique panel */}
-      {critiquePanelOpen && (
+      {board.status === 'loading' && (
         <div
-          className="fadein"
+          className="mono"
           style={{
             position: 'absolute',
-            top: 120,
-            right: 80,
-            width: 440,
-            maxHeight: 'calc(100% - 240px)',
-            overflowY: 'auto',
-            fontSize: 13,
-            color: 'var(--ink-90)',
-            lineHeight: 1.75,
-            letterSpacing: '-0.005em',
+            inset: 0,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: 11,
+            letterSpacing: '.2em',
+            color: 'var(--ink-40)',
           }}
         >
-          <div
-            className="mono"
-            style={{
-              fontSize: 10,
-              letterSpacing: '.22em',
-              color: 'var(--ink-40)',
-              marginBottom: 16,
-            }}
-          >
-            SENIOR REVIEW
-            {critique.status === 'streaming' && ' · STREAMING…'}
-          </div>
-          {critique.error ? (
-            <p style={{ color: 'var(--ink-60)' }}>{critique.error}</p>
-          ) : (
-            critique.order.map((sec) => (
-              <div key={sec} style={{ marginBottom: 18 }}>
-                <div
-                  className="mono"
-                  style={{
-                    fontSize: 10,
-                    color: 'var(--ink-60)',
-                    letterSpacing: '.18em',
-                    marginBottom: 6,
-                  }}
-                >
-                  {sec.toUpperCase()}
-                </div>
-                <p style={{ margin: 0 }}>{critique.sections[sec]}</p>
-              </div>
-            ))
-          )}
-
-          {showSaveButton && (
-            <button
-              onClick={handleSaveAsNote}
-              disabled={savingNote}
-              className="focus-ring"
-              style={{
-                marginTop: 8,
-                padding: '8px 14px',
-                fontSize: 12,
-                fontWeight: 500,
-                borderRadius: 999,
-                background: savedNoteFlash ? 'rgba(255,255,255,0.18)' : '#fff',
-                color: savedNoteFlash ? 'var(--ink)' : '#000',
-                transition: 'background 200ms ease, color 200ms ease',
-              }}
-            >
-              {savingNote
-                ? 'Saving…'
-                : savedNoteFlash
-                  ? '✓ Saved as note'
-                  : 'Save as note'}
-            </button>
-          )}
+          LOADING BOARD…
         </div>
       )}
-
-      <div style={{ position: 'absolute', top: 86, right: 32 }}>
-        <button
-          onClick={handleCritiqueToggle}
-          disabled={!board.current || critique.status === 'streaming'}
-          className="focus-ring"
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: 8,
-            padding: '7px 13px',
-            borderRadius: 999,
-            background: critiquePanelOpen ? '#fff' : 'rgba(255,255,255,0.06)',
-            color: critiquePanelOpen ? '#000' : 'var(--ink)',
-            fontSize: 12.5,
-            border: '1px solid rgba(255,255,255,0.08)',
-          }}
-        >
-          <Icon name="sparkle" size={12} /> {critiqueButtonLabel}
-        </button>
-      </div>
-
       {board.status === 'error' && (
         <div
           className="mono"
@@ -306,187 +291,136 @@ export function WhiteboardPage() {
         </div>
       )}
 
-      {/* Tool row — positioned ABOVE the persistent timer dock. */}
-      <div
-        style={{
-          position: 'absolute',
-          bottom: 92,
-          left: '50%',
-          transform: 'translateX(-50%)',
-          display: 'flex',
-          gap: 4,
-          padding: 6,
-          borderRadius: 999,
-          background: 'rgba(10,10,10,0.72)',
-          border: '1px solid rgba(255,255,255,0.08)',
-          backdropFilter: 'blur(18px)',
-        }}
-      >
-        {['V', 'R', 'O', 'L', 'T', 'E'].map((k) => {
-          const active = tool === k;
-          return (
+      {board.status === 'ok' && board.board && (
+        <div
+          className="hone-tldraw-mount"
+          style={{ position: 'absolute', inset: 0 }}
+        >
+          <Tldraw
+            onMount={onMount}
+            // persistenceKey даёт локальный IndexedDB backup на случай
+            // временной потери коннекта к бекенду; не подменяет main
+            // source-of-truth (UpdateWhiteboard).
+            persistenceKey={`hone:${board.board.id}`}
+            hideUi={false}
+            inferDarkMode
+          />
+        </div>
+      )}
+
+      {/* Critique panel overlay */}
+      {critiquePanelOpen && (
+        <div
+          className="fadein"
+          style={{
+            position: 'absolute',
+            top: 120,
+            right: 80,
+            width: 440,
+            maxHeight: 'calc(100% - 240px)',
+            overflowY: 'auto',
+            padding: '18px 22px',
+            background: 'rgba(8,8,8,0.92)',
+            border: '1px solid rgba(255,255,255,0.08)',
+            borderRadius: 12,
+            fontSize: 13,
+            color: 'var(--ink-90)',
+            lineHeight: 1.75,
+            letterSpacing: '-0.005em',
+            backdropFilter: 'blur(18px)',
+          }}
+        >
+          <div
+            className="mono"
+            style={{
+              fontSize: 10,
+              letterSpacing: '.22em',
+              color: 'var(--ink-40)',
+              marginBottom: 12,
+            }}
+          >
+            SENIOR REVIEW
+            {critique.status === 'streaming' && ' · STREAMING…'}
+          </div>
+          {critique.error ? (
+            <p style={{ color: 'var(--ink-60)' }}>{critique.error}</p>
+          ) : (
+            critique.order.map((sec) => (
+              <div key={sec} style={{ marginBottom: 14 }}>
+                <div
+                  className="mono"
+                  style={{
+                    fontSize: 10,
+                    color: 'var(--ink-60)',
+                    letterSpacing: '.18em',
+                    marginBottom: 4,
+                  }}
+                >
+                  {sec.toUpperCase()}
+                </div>
+                <p style={{ margin: 0 }}>{critique.sections[sec]}</p>
+              </div>
+            ))
+          )}
+
+          {showSaveButton && (
             <button
-              key={k}
-              onClick={() => setTool(k)}
-              className="focus-ring mono"
+              onClick={handleSaveAsNote}
+              disabled={savingNote}
+              className="focus-ring"
               style={{
-                width: 32,
-                height: 32,
-                borderRadius: 999,
+                marginTop: 8,
+                padding: '7px 13px',
                 fontSize: 12,
                 fontWeight: 500,
-                background: active ? 'rgba(255,255,255,0.1)' : 'transparent',
-                color: active ? 'var(--ink)' : 'var(--ink-60)',
+                borderRadius: 999,
+                background: savedNoteFlash ? 'rgba(255,255,255,0.18)' : '#fff',
+                color: savedNoteFlash ? 'var(--ink)' : '#000',
+                transition: 'background 200ms ease',
               }}
             >
-              {k}
+              {savingNote ? 'Saving…' : savedNoteFlash ? '✓ Saved as note' : 'Save as note'}
             </button>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
+          )}
+        </div>
+      )}
 
-function PlaceholderSketch() {
-  return (
-    <svg
-      width="100%"
-      height="100%"
-      viewBox="0 0 1600 900"
-      preserveAspectRatio="xMidYMid meet"
-      style={{ position: 'absolute', inset: 0 }}
-    >
-      <g transform="translate(560 360)">
-        <rect
-          width="200"
-          height="110"
-          rx="6"
-          fill="rgba(255,255,255,0.025)"
-          stroke="rgba(255,255,255,0.75)"
-          strokeWidth="1.3"
-        />
-        <text x="16" y="32" fill="rgba(255,255,255,0.95)" fontFamily="JetBrains Mono" fontSize="15">
-          api
-        </text>
-        <text x="16" y="56" fill="rgba(255,255,255,0.45)" fontFamily="Inter" fontSize="12">
-          Go · 3 replicas
-        </text>
-        <text x="16" y="84" fill="rgba(255,255,255,0.4)" fontFamily="JetBrains Mono" fontSize="11">
-          /v1/*
-        </text>
-      </g>
-      <g transform="translate(920 290)">
-        <circle
-          cx="70"
-          cy="70"
-          r="66"
-          fill="rgba(255,255,255,0.02)"
-          stroke="rgba(255,255,255,0.75)"
-          strokeWidth="1.3"
-        />
-        <text
-          x="70"
-          y="66"
-          textAnchor="middle"
-          fill="rgba(255,255,255,0.95)"
-          fontFamily="JetBrains Mono"
-          fontSize="15"
+      <div style={{ position: 'absolute', top: 86, right: 32, zIndex: 20 }}>
+        <button
+          onClick={() => void handleCritiqueToggle()}
+          disabled={!board.board || critique.status === 'streaming'}
+          className="focus-ring"
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 8,
+            padding: '7px 13px',
+            borderRadius: 999,
+            background: critiquePanelOpen ? '#fff' : 'rgba(255,255,255,0.06)',
+            color: critiquePanelOpen ? '#000' : 'var(--ink)',
+            fontSize: 12.5,
+            border: '1px solid rgba(255,255,255,0.08)',
+          }}
         >
-          postgres
-        </text>
-        <text
-          x="70"
-          y="86"
-          textAnchor="middle"
-          fill="rgba(255,255,255,0.4)"
-          fontFamily="Inter"
-          fontSize="12"
+          <Icon name="sparkle" size={12} /> {critiqueButtonLabel}
+        </button>
+      </div>
+
+      {saveError && (
+        <div
+          className="mono"
+          style={{
+            position: 'absolute',
+            bottom: 120,
+            left: 32,
+            fontSize: 10,
+            color: 'var(--ink-40)',
+            letterSpacing: '.12em',
+          }}
         >
-          primary + RR
-        </text>
-      </g>
-      <g transform="translate(920 510)">
-        <circle
-          cx="70"
-          cy="70"
-          r="66"
-          fill="rgba(255,255,255,0.02)"
-          stroke="rgba(255,255,255,0.75)"
-          strokeWidth="1.3"
-        />
-        <text
-          x="70"
-          y="66"
-          textAnchor="middle"
-          fill="rgba(255,255,255,0.95)"
-          fontFamily="JetBrains Mono"
-          fontSize="15"
-        >
-          s3
-        </text>
-        <text
-          x="70"
-          y="86"
-          textAnchor="middle"
-          fill="rgba(255,255,255,0.4)"
-          fontFamily="Inter"
-          fontSize="12"
-        >
-          blobs
-        </text>
-      </g>
-      <g transform="translate(320 390)">
-        <rect
-          width="150"
-          height="70"
-          rx="6"
-          fill="none"
-          stroke="rgba(255,255,255,0.4)"
-          strokeWidth="1.2"
-          strokeDasharray="4 4"
-        />
-        <text x="16" y="30" fill="rgba(255,255,255,0.7)" fontFamily="JetBrains Mono" fontSize="13">
-          client
-        </text>
-        <text x="16" y="52" fill="rgba(255,255,255,0.4)" fontFamily="Inter" fontSize="11">
-          web / ios
-        </text>
-      </g>
-      <defs>
-        <marker
-          id="ahw"
-          viewBox="0 0 10 10"
-          refX="8"
-          refY="5"
-          markerWidth="7"
-          markerHeight="7"
-          orient="auto-start-reverse"
-        >
-          <path d="M0,0 L10,5 L0,10 z" fill="rgba(255,255,255,0.8)" />
-        </marker>
-      </defs>
-      <path
-        d="M470,422 L560,415"
-        stroke="rgba(255,255,255,0.6)"
-        strokeWidth="1.2"
-        fill="none"
-        markerEnd="url(#ahw)"
-      />
-      <path
-        d="M760,385 L920,355"
-        stroke="rgba(255,255,255,0.6)"
-        strokeWidth="1.2"
-        fill="none"
-        markerEnd="url(#ahw)"
-      />
-      <path
-        d="M760,440 L920,575"
-        stroke="rgba(255,255,255,0.6)"
-        strokeWidth="1.2"
-        fill="none"
-        markerEnd="url(#ahw)"
-      />
-    </svg>
+          SAVE: {saveError}
+        </div>
+      )}
+    </div>
   );
 }

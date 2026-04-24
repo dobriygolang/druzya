@@ -1,27 +1,29 @@
-// Notes — two-column list/editor поверх реальных RPC.
+// Notes — two-column list/editor поверх реальных RPC + markdown render
+// + ⌘J connections panel.
 //
-// Лево: ListNotes (keyset cursor — пока pull только первой страницы; для
-// корпуса <100 заметок этого хватает, кнопка «more» появится когда будет
-// нужна). Право: GetNote → editor с локальным debounced UpdateNote.
+// Phase 5b scope:
+//   - list / get / create / update (debounced 600ms) / delete
+//   - preview toggle в editor'е: Edit (textarea) / Preview (marked)
+//   - ⌘J открывает панель справа, запускает getNoteConnections stream
+//     для активной заметки, показывает top-10 similarity-matches
 //
-// Create — открывает inline-форму над списком (title + body), сохраняет
-// один раз и закрывает форму. Delete — кнопка в editor'е, требует confirm
-// через двойной click (без модалки — ритуал минимальный).
-//
-// Phase 5b ограничения (известные): нет markdown-рендера (показываем raw
-// в pre), нет поиска/⌘P, нет ⌘J connections-панели. Эти приедут отдельным
-// циклом.
+// Connections-панель оверлейная (не меняет сетку), закрывается Esc /
+// повторным ⌘J / клик по backdrop'у. Panel фетчит строго для того note
+// который открыт в момент нажатия ⌘J (не пере-фетчит на каждый select).
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ConnectError, Code } from '@connectrpc/connect';
 
 import { Kbd } from '../components/primitives/Kbd';
+import { MarkdownView } from '../components/MarkdownView';
 import {
   listNotes,
   getNote,
   createNote,
   updateNote,
   deleteNote,
+  getNoteConnectionsStream,
   type Note,
+  type NoteConnection,
   type NoteSummary,
 } from '../api/hone';
 
@@ -34,19 +36,22 @@ interface ListState {
 
 const INITIAL_LIST: ListState = { status: 'loading', notes: [], error: null, errorCode: null };
 
+type EditorMode = 'edit' | 'preview';
+
 export function NotesPage() {
   const [list, setList] = useState<ListState>(INITIAL_LIST);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [active, setActive] = useState<Note | null>(null);
   const [activeError, setActiveError] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
-  // Локальные «working» копии для editor'а: позволяют тайпать без roundtrip.
   const [draftTitle, setDraftTitle] = useState('');
   const [draftBody, setDraftBody] = useState('');
+  const [mode, setMode] = useState<EditorMode>('edit');
   const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [connectionsOpen, setConnectionsOpen] = useState(false);
   const saveTimer = useRef<number | null>(null);
 
-  // Initial list load.
+  // Initial list.
   useEffect(() => {
     let cancelled = false;
     listNotes()
@@ -70,12 +75,10 @@ export function NotesPage() {
     return () => {
       cancelled = true;
     };
-    // selectedId намеренно не в deps — мы хотим bootstrap'нуть его один
-    // раз, дальше пользователь сам управляет выделением.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Selection change → fetch full note.
+  // Selection change.
   useEffect(() => {
     if (!selectedId) {
       setActive(null);
@@ -114,7 +117,9 @@ export function NotesPage() {
             setList((prev) => ({
               ...prev,
               notes: prev.notes.map((row) =>
-                row.id === id ? { ...row, title: n.title, updatedAt: n.updatedAt, sizeBytes: n.sizeBytes } : row,
+                row.id === id
+                  ? { ...row, title: n.title, updatedAt: n.updatedAt, sizeBytes: n.sizeBytes }
+                  : row,
               ),
             }));
           })
@@ -126,7 +131,6 @@ export function NotesPage() {
     [active, draftTitle, draftBody],
   );
 
-  // Debounce saves: 600ms после последнего keypress в title/body.
   useEffect(() => {
     if (!active) return;
     if (draftTitle === active.title && draftBody === active.bodyMd) return;
@@ -136,6 +140,19 @@ export function NotesPage() {
       if (saveTimer.current !== null) window.clearTimeout(saveTimer.current);
     };
   }, [draftTitle, draftBody, active, persistDraft]);
+
+  // ⌘J global hotkey (когда мы на notes-странице) — toggle connections.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'j') {
+        e.preventDefault();
+        if (!active) return;
+        setConnectionsOpen((o) => !o);
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [active]);
 
   const handleCreate = async (title: string, body: string) => {
     try {
@@ -266,6 +283,8 @@ export function NotesPage() {
           <ActiveNoteEditor
             title={draftTitle}
             body={draftBody}
+            mode={mode}
+            onModeChange={setMode}
             onTitleChange={setDraftTitle}
             onBodyChange={setDraftBody}
             onDelete={handleDelete}
@@ -299,6 +318,19 @@ export function NotesPage() {
           ⌘J for connections
         </div>
       </section>
+
+      {connectionsOpen && active && (
+        <ConnectionsPanel
+          noteId={active.id}
+          onClose={() => setConnectionsOpen(false)}
+          onPick={(id) => {
+            // Клик по соединению типа note — переключаем выбор. Остальные
+            // kinds пока просто закрывают панель (будут deep-link'и в v2).
+            setSelectedId(id);
+            setConnectionsOpen(false);
+          }}
+        />
+      )}
     </div>
   );
 }
@@ -385,6 +417,8 @@ function CreateNoteForm({ onCancel, onSubmit }: CreateNoteFormProps) {
 interface ActiveEditorProps {
   title: string;
   body: string;
+  mode: EditorMode;
+  onModeChange: (m: EditorMode) => void;
   onTitleChange: (v: string) => void;
   onBodyChange: (v: string) => void;
   onDelete: () => void;
@@ -394,6 +428,8 @@ interface ActiveEditorProps {
 function ActiveNoteEditor({
   title,
   body,
+  mode,
+  onModeChange,
   onTitleChange,
   onBodyChange,
   onDelete,
@@ -416,35 +452,231 @@ function ActiveNoteEditor({
             border: 'none',
           }}
         />
-        <button
-          onClick={onDelete}
-          className="focus-ring mono"
+        <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+          <ModeToggle mode={mode} onChange={onModeChange} />
+          <button
+            onClick={onDelete}
+            className="focus-ring mono"
+            style={{
+              padding: '5px 10px',
+              fontSize: 10,
+              letterSpacing: '.12em',
+              color: confirmingDelete ? 'var(--red)' : 'var(--ink-40)',
+              borderRadius: 6,
+            }}
+          >
+            {confirmingDelete ? 'CLICK AGAIN' : 'DELETE'}
+          </button>
+        </div>
+      </div>
+      {mode === 'edit' ? (
+        <textarea
+          value={body}
+          onChange={(e) => onBodyChange(e.target.value)}
+          rows={20}
+          className="mono"
           style={{
-            padding: '5px 10px',
-            fontSize: 10,
-            letterSpacing: '.12em',
-            color: confirmingDelete ? 'var(--red)' : 'var(--ink-40)',
-            borderRadius: 6,
+            width: '100%',
+            marginTop: 26,
+            fontSize: 13,
+            lineHeight: 1.75,
+            color: 'var(--ink-90)',
+            background: 'transparent',
+            resize: 'none',
+          }}
+        />
+      ) : (
+        <div style={{ marginTop: 26 }}>
+          <MarkdownView source={body} />
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ModeToggle({ mode, onChange }: { mode: EditorMode; onChange: (m: EditorMode) => void }) {
+  const btn = (label: EditorMode, displayed: string) => (
+    <button
+      onClick={() => onChange(label)}
+      className="focus-ring mono"
+      style={{
+        padding: '5px 10px',
+        fontSize: 10,
+        letterSpacing: '.12em',
+        color: mode === label ? 'var(--ink)' : 'var(--ink-40)',
+        background: mode === label ? 'rgba(255,255,255,0.05)' : 'transparent',
+        borderRadius: 6,
+      }}
+    >
+      {displayed}
+    </button>
+  );
+  return (
+    <div style={{ display: 'flex', gap: 2 }}>
+      {btn('edit', 'EDIT')}
+      {btn('preview', 'PREVIEW')}
+    </div>
+  );
+}
+
+interface ConnectionsPanelProps {
+  noteId: string;
+  onClose: () => void;
+  onPick: (id: string) => void;
+}
+
+function ConnectionsPanel({ noteId, onClose, onPick }: ConnectionsPanelProps) {
+  const [status, setStatus] = useState<'loading' | 'ok' | 'error'>('loading');
+  const [items, setItems] = useState<NoteConnection[]>([]);
+  const [err, setErr] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    const acc: NoteConnection[] = [];
+    setStatus('loading');
+    setItems([]);
+    getNoteConnectionsStream(noteId, (c) => {
+      if (cancelled) return;
+      acc.push(c);
+      setItems([...acc]);
+    })
+      .then(() => {
+        if (!cancelled) setStatus('ok');
+      })
+      .catch((e: unknown) => {
+        if (cancelled) return;
+        const ce = ConnectError.from(e);
+        setErr(ce.rawMessage || ce.message);
+        setStatus('error');
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [noteId]);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onClose]);
+
+  return (
+    <div
+      className="fadein"
+      style={{
+        position: 'absolute',
+        inset: 0,
+        zIndex: 55,
+        background: 'rgba(0,0,0,0.5)',
+        backdropFilter: 'blur(8px)',
+        display: 'flex',
+        justifyContent: 'flex-end',
+      }}
+      onClick={onClose}
+    >
+      <aside
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          width: 420,
+          height: '100%',
+          background: 'rgba(8,8,8,0.96)',
+          borderLeft: '1px solid rgba(255,255,255,0.08)',
+          padding: '90px 28px 40px',
+          overflowY: 'auto',
+        }}
+      >
+        <div
+          className="mono"
+          style={{ fontSize: 10, letterSpacing: '.24em', color: 'var(--ink-40)' }}
+        >
+          CONNECTIONS {status === 'loading' && '· STREAMING…'}
+        </div>
+        <h3
+          style={{
+            margin: '10px 0 24px',
+            fontSize: 22,
+            fontWeight: 400,
+            letterSpacing: '-0.015em',
           }}
         >
-          {confirmingDelete ? 'CLICK AGAIN' : 'DELETE'}
-        </button>
-      </div>
-      <textarea
-        value={body}
-        onChange={(e) => onBodyChange(e.target.value)}
-        rows={20}
-        className="mono"
-        style={{
-          width: '100%',
-          marginTop: 26,
-          fontSize: 13,
-          lineHeight: 1.75,
-          color: 'var(--ink-90)',
-          background: 'transparent',
-          resize: 'none',
-        }}
-      />
+          What this note relates to.
+        </h3>
+
+        {status === 'error' && (
+          <p style={{ fontSize: 13, color: 'var(--ink-60)' }}>
+            {err?.includes('embedding') ? 'Embeddings not available yet.' : err}
+          </p>
+        )}
+        {status === 'ok' && items.length === 0 && (
+          <p style={{ fontSize: 13, color: 'var(--ink-60)' }}>
+            Nothing above the similarity floor yet. Write a few more notes.
+          </p>
+        )}
+
+        <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>
+          {items.map((c, i) => (
+            <li
+              key={`${c.kind}:${c.targetId}:${i}`}
+              style={{
+                padding: '12px 0',
+                borderBottom: '1px solid rgba(255,255,255,0.04)',
+              }}
+            >
+              <button
+                onClick={() => (c.kind === 'note' ? onPick(c.targetId) : undefined)}
+                className="focus-ring"
+                style={{
+                  display: 'block',
+                  width: '100%',
+                  textAlign: 'left',
+                  cursor: c.kind === 'note' ? 'pointer' : 'default',
+                }}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}>
+                  <span style={{ fontSize: 13.5, color: 'var(--ink)' }}>
+                    {c.displayTitle || '(untitled)'}
+                  </span>
+                  <span
+                    className="mono"
+                    style={{ fontSize: 10, color: 'var(--ink-40)', flexShrink: 0 }}
+                  >
+                    {c.kind.toUpperCase()} · {(c.similarity * 100).toFixed(0)}%
+                  </span>
+                </div>
+                {c.snippet && (
+                  <div
+                    style={{
+                      marginTop: 4,
+                      fontSize: 12,
+                      color: 'var(--ink-60)',
+                      lineHeight: 1.5,
+                    }}
+                  >
+                    {c.snippet}
+                  </div>
+                )}
+              </button>
+            </li>
+          ))}
+        </ul>
+
+        <div
+          className="mono"
+          style={{
+            marginTop: 20,
+            fontSize: 10,
+            color: 'var(--ink-40)',
+            letterSpacing: '.12em',
+          }}
+        >
+          ESC TO CLOSE
+        </div>
+      </aside>
     </div>
   );
 }

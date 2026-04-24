@@ -24,12 +24,28 @@
 // renderer решает что делать (или ignore).
 
 import { app, BrowserWindow, ipcMain, shell } from 'electron';
+import { init as sentryInit } from '@sentry/electron/main';
 import { join } from 'node:path';
 import { URL } from 'node:url';
 
 import { eventChannels, invokeChannels, type AuthSession } from '@shared/ipc';
 import { clearSession, loadSession, saveSession } from './keychain';
 import { loadPomodoro, savePomodoro } from './pomodoro_store';
+
+// Sentry: main-process handler. DSN приходит из env (HONE_SENTRY_DSN) в
+// prod-билде через electron-builder config; пустая DSN → no-op, что
+// позволяет разработчику запускать dev без внешних зависимостей.
+const sentryDSN = process.env.HONE_SENTRY_DSN ?? '';
+if (sentryDSN) {
+  sentryInit({
+    dsn: sentryDSN,
+    release: `hone@${app.getVersion()}`,
+    environment: process.env.NODE_ENV ?? 'production',
+    // Sampling: 100% crashes main-process'а (их мало, каждый важен),
+    // 10% renderer'а — ограничено инициализацией в renderer/index.tsx.
+    tracesSampleRate: 0,
+  });
+}
 
 // druz9:// scheme registration.
 if (process.defaultApp) {

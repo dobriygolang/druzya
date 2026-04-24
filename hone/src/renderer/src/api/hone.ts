@@ -100,6 +100,14 @@ export interface CritiquePacket {
   done: boolean;
 }
 
+export interface NoteConnection {
+  kind: 'note' | 'pr' | 'task' | 'session' | 'book' | string;
+  targetId: string;
+  displayTitle: string;
+  snippet: string;
+  similarity: number;
+}
+
 export interface StandupResult {
   note: Note;
   plan: Plan | null; // null когда плана ещё нет (beckend не возвращает proto)
@@ -336,6 +344,24 @@ export async function updateNote(id: string, title: string, bodyMd: string): Pro
 
 export async function deleteNote(id: string): Promise<void> {
   await client.deleteNote({ id });
+}
+
+// getNoteConnectionsStream — server-streaming. Для ⌘J панели в Notes
+// мы аккумулируем соединения и вызываем onConnection на каждый. Ошибки
+// пробрасываем наружу (панель покажет error-state).
+export async function getNoteConnectionsStream(
+  noteId: string,
+  onConnection: (c: NoteConnection) => void,
+): Promise<void> {
+  for await (const c of client.getNoteConnections({ noteId })) {
+    onConnection({
+      kind: c.kind,
+      targetId: c.targetId,
+      displayTitle: c.displayTitle,
+      snippet: c.snippet,
+      similarity: c.similarity,
+    });
+  }
 }
 
 // ─── Whiteboards ────────────────────────────────────────────────────────────
