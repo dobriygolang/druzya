@@ -88,7 +88,7 @@ export function ProfileTabBar({ tab, setTab, isOwn }: { tab: ProfileTab; setTab:
     Overview: 'tabs.overview',
     Matches: 'tabs.matches',
     Achievements: 'tabs.achievements',
-    Guilds: 'tabs.guilds',
+    Cohorts: 'tabs.cohorts',
     Stats: 'tabs.stats',
     Bookings: 'tabs.bookings',
   }

@@ -69,7 +69,7 @@ type compositeServer struct {
     Arena   *arenaPorts.ArenaServer
     Mock    *aimockPorts.MockServer
     Notify  *notifyPorts.NotifyServer
-    Guild   *guildPorts.GuildServer
+    Cohort   *cohortPorts.CohortServer
     Season  *seasonPorts.SeasonServer
     Podcast *podcastPorts.PodcastServer // ← add this
 }

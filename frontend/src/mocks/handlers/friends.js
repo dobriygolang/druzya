@@ -14,7 +14,7 @@ const offline = [
 ];
 const requests = [
     { id: 'r1', name: 'sergey_kt', subtitle: '12 общих друзей', gradient: 'violet-cyan' },
-    { id: 'r2', name: 'tanya_dev', subtitle: 'играли вместе в гильдии', gradient: 'pink-violet' },
+    { id: 'r2', name: 'tanya_dev', subtitle: 'играли вместе в когорты', gradient: 'pink-violet' },
     { id: 'r3', name: 'anton_be', subtitle: '6 общих друзей', gradient: 'success-cyan' },
 ];
 const suggestions = [
@@ -25,7 +25,7 @@ const suggestions = [
 ];
 export const friendsHandlers = [
     http.get(`${base}/friends`, () => HttpResponse.json({
-        counts: { online: 47, total: 124, requests: 3, guild: 32 },
+        counts: { online: 47, total: 124, requests: 3, cohort: 32 },
         friend_code: 'DRUZ9-K7M2-X9P',
         online,
         offline,

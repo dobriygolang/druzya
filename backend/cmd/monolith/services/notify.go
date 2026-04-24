@@ -134,8 +134,8 @@ func NewNotify(d Deps) (*NotifyModule, error) {
 					b.Subscribe(sharedDomain.DailyKataMissed{}.Topic(), handlers.OnDailyKataMissed)
 					b.Subscribe(sharedDomain.MatchStarted{}.Topic(), handlers.OnMatchStarted)
 					b.Subscribe(sharedDomain.MatchCompleted{}.Topic(), handlers.OnMatchCompleted)
-					b.Subscribe(sharedDomain.GuildWarStarted{}.Topic(), handlers.OnGuildWarStarted)
-					b.Subscribe(sharedDomain.GuildWarFinished{}.Topic(), handlers.OnGuildWarFinished)
+					b.Subscribe(sharedDomain.CohortWarStarted{}.Topic(), handlers.OnCohortWarStarted)
+					b.Subscribe(sharedDomain.CohortWarFinished{}.Topic(), handlers.OnCohortWarFinished)
 					b.Subscribe(sharedDomain.SubscriptionActivated{}.Topic(), handlers.OnSubscriptionActivated)
 					b.Subscribe(sharedDomain.SkillDecayed{}.Topic(), handlers.OnSkillDecayed)
 					b.Subscribe(sharedDomain.UserRegistered{}.Topic(), handlers.OnUserRegistered)
@@ -146,8 +146,8 @@ func NewNotify(d Deps) (*NotifyModule, error) {
 					b.Subscribe(sharedDomain.MatchCompleted{}.Topic(), feedHandlers.OnArenaMatchCompleted)
 					b.Subscribe(sharedDomain.DailyKataMissed{}.Topic(), feedHandlers.OnDailyKataMissed)
 					b.Subscribe(sharedDomain.DailyKataCompleted{}.Topic(), feedHandlers.OnDailyKataCompletedFeed)
-					b.Subscribe(sharedDomain.GuildWarStarted{}.Topic(), feedHandlers.OnGuildWarStarted)
-					b.Subscribe(sharedDomain.GuildWarFinished{}.Topic(), feedHandlers.OnGuildWarFinished)
+					b.Subscribe(sharedDomain.CohortWarStarted{}.Topic(), feedHandlers.OnCohortWarStarted)
+					b.Subscribe(sharedDomain.CohortWarFinished{}.Topic(), feedHandlers.OnCohortWarFinished)
 					b.Subscribe("friends.RequestReceived", feedHandlers.OnFriendRequest)
 				},
 			},

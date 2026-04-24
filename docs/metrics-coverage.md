@@ -29,7 +29,7 @@ Legend: ✅ implemented · ⚠️ partial · 🔴 TODO · 👤 requires client e
 | Avg match wait time | ⚠️ | `RecordQueueWait` exists; matchmaker should call it when a match is formed. |
 | Mock completed / abandoned | ⚠️ | `RecordMockSessionCompleted` / `Abandoned` exist; `ai_mock/app.FinishSession` and the session-timeout reaper must call them. |
 | Avg score per section | ⚠️ | computed in CH from `mock_completed.score` — depends on RecordMockSessionCompleted being called. |
-| Active guilds per week | 🔴 | dashboard SQL assumes `guild_id` in `events.props`; needs a `RecordGuildContribution` helper plus wiring in `guild/app.Contribute`. |
+| Active cohorts per week | 🔴 | dashboard SQL assumes `cohort_id` in `events.props`; needs a `RecordCohortContribution` helper plus wiring in `cohort/app.Contribute`. |
 | Conversion free → premium | 🔴 | `RecordPremiumUpgrade` exists, but no payments domain emits it yet (no payments domain shipped). |
 | DAU / MAU | 👤 | derived from `events.user_id` in CH. Backend can stamp `auth/login` and `request_started`, but accuracy depends on **frontend `session_start` event** at app boot. |
 | Retention D1/D7/D30 | 👤 | same as DAU — needs reliable per-user event stream. |

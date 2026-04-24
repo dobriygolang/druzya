@@ -24,7 +24,7 @@ const season = {
     { tier: 19, reward: 'Title: Seeker', reward_kind: 'title', done: false },
     {
       tier: 20,
-      reward: 'Guild Emblem',
+      reward: 'Cohort Emblem',
       reward_kind: 'emblem',
       done: false,
       big: true,

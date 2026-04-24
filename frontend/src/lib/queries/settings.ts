@@ -6,7 +6,7 @@ export type NotifyPreferences = {
   email_calendar: boolean
   telegram_daily: boolean
   push_arena_invite: boolean
-  push_guild_war: boolean
+  push_cohort_war: boolean
   quiet_hours_start: string
   quiet_hours_end: string
 }

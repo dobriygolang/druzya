@@ -121,13 +121,13 @@ sql:
         emit_empty_slices: true
 
   - engine: postgresql
-    name: "guild"
-    queries: "services/guild/infra/queries"
+    name: "cohort"
+    queries: "services/cohort/infra/queries"
     schema: "migrations"
     gen:
       go:
-        package: "guilddb"
-        out: "services/guild/infra/db"
+        package: "cohortdb"
+        out: "services/cohort/infra/db"
         sql_package: "pgx/v5"
         emit_interface: true
         emit_prepared_queries: false
@@ -156,20 +156,6 @@ sql:
       go:
         package: "reviewdb"
         out: "services/review/infra/db"
-        sql_package: "pgx/v5"
-        emit_interface: true
-        emit_prepared_queries: false
-        emit_exact_table_names: false
-        emit_empty_slices: true
-
-  - engine: postgresql
-    name: "cohort_announcement"
-    queries: "services/cohort_announcement/infra/queries"
-    schema: "migrations"
-    gen:
-      go:
-        package: "announcementdb"
-        out: "services/cohort_announcement/infra/db"
         sql_package: "pgx/v5"
         emit_interface: true
         emit_prepared_queries: false

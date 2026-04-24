@@ -36,7 +36,7 @@ export type LeaderboardEntry = {
   username: string
   elo: number
   title: string | null
-  guild_emblem?: string | null
+  cohort_emblem?: string | null
 }
 
 export type Leaderboard = {

@@ -7,7 +7,7 @@ Connect serves native Connect, gRPC, gRPC-Web, and plain HTTP+JSON from one
 transcoding via `google.api.http` annotations, so existing REST clients keep
 working at `/api/v1/<domain>/*` paths.
 
-**Status:** all 14 bounded contexts (auth, profile, daily, notify, guild,
+**Status:** all 14 bounded contexts (auth, profile, daily, notify, cohort,
 rating, arena, ai_mock, ai_native, slot, editor, season, podcast, admin) are
 on Connect-RPC. OpenAPI + `oapi-codegen` have been retired; the historical
 spec lives under [`docs/legacy/openapi-v1.yaml`](./legacy/openapi-v1.yaml) for

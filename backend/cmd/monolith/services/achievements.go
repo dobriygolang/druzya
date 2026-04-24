@@ -47,7 +47,7 @@ func NewAchievements(d Deps) *Module {
 				b.Subscribe(sharedDomain.XPGained{}.Topic(), subs.OnXPGained)
 				b.Subscribe(sharedDomain.RatingChanged{}.Topic(), subs.OnRatingChanged)
 				b.Subscribe(sharedDomain.LevelUp{}.Topic(), subs.OnLevelUp)
-				b.Subscribe(sharedDomain.GuildWarFinished{}.Topic(), subs.OnGuildWarFinished)
+				b.Subscribe(sharedDomain.CohortWarFinished{}.Topic(), subs.OnCohortWarFinished)
 			},
 		},
 	}

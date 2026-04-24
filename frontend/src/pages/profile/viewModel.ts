@@ -58,6 +58,6 @@ export const SECTION_LABELS: Record<string, string> = {
   behavioral: 'Behavioral',
 }
 
-export const PROFILE_TABS_OWN = ['Overview', 'Matches', 'Achievements', 'Guilds', 'Stats', 'Bookings'] as const
-export const PROFILE_TABS_PUBLIC = ['Overview', 'Matches', 'Achievements', 'Guilds', 'Stats'] as const
+export const PROFILE_TABS_OWN = ['Overview', 'Matches', 'Achievements', 'Cohorts', 'Stats', 'Bookings'] as const
+export const PROFILE_TABS_PUBLIC = ['Overview', 'Matches', 'Achievements', 'Cohorts', 'Stats'] as const
 export type ProfileTab = (typeof PROFILE_TABS_OWN)[number]

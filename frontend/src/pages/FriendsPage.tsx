@@ -239,8 +239,8 @@ export default function FriendsPage() {
   const suggestionList = suggestions.data ?? []
   const blockedList = blocked.data ?? []
 
-  // Anti-fallback: `online` count + `guild` count removed (no presence
-  // service; friends API doesn't expose guild-membership cross-join). When
+  // Anti-fallback: `online` count + `cohort` count removed (no presence
+  // service; friends API doesn't expose cohort-membership cross-join). When
   // either landing — restore via the corresponding field on FriendListEntry.
   const counts = {
     total: friends.data?.total ?? accepted.length,
@@ -295,7 +295,7 @@ export default function FriendsPage() {
                 {counts.requests > 0 && <span className="h-1.5 w-1.5 rounded-full bg-danger" />}
               </span>
             </Tabs.Tab>
-            {/* "guild" tab dropped: friends API doesn't expose guild-membership cross-join. */}
+            {/* "cohort" tab dropped: friends API doesn't expose cohort-membership cross-join. */}
             <Tabs.Tab id="blocked">{t('friends.blocked')} {counts.blocked}</Tabs.Tab>
           </Tabs.List>
         </Tabs>

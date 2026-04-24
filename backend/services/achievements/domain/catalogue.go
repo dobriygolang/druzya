@@ -7,7 +7,7 @@ package domain
 // читать из репо. До этого момента изменения каталога — это PR
 // в этот файл (никаких миграций не требуется, прогресс хранится по code).
 //
-// Цель ~40 записей: покрыть основные домены (arena, daily, guild, social,
+// Цель ~40 записей: покрыть основные домены (arena, daily, cohort, social,
 // profile/mastery), плюс несколько hidden-ачивок для пасхалок.
 
 // catalogue — приватный список. Доступ через Catalogue() / ByCode().
@@ -133,7 +133,7 @@ var catalogue = []Achievement{
 		RequirementsText: "100 решений (любых).", RewardText: "+700 XP",
 		Target: 100},
 
-	// ── Social / Friends / Guild ────────────────────────────────────────────
+	// ── Social / Friends / Cohort ────────────────────────────────────────────
 	{Code: "first-friend", Title: "Hello, World", Description: "Добавить первого друга.",
 		Category: CategorySocial, Tier: TierCommon,
 		RequirementsText: "1 принятая дружба.", RewardText: "+30 XP",
@@ -150,17 +150,17 @@ var catalogue = []Achievement{
 		Category: CategorySocial, Tier: TierCommon,
 		RequirementsText: "10 challenge-матчей с друзьями.", RewardText: "+150 XP",
 		Target: 10},
-	{Code: "guild-joined", Title: "Joined the Guild", Description: "Вступить в гильдию.",
+	{Code: "cohort-joined", Title: "Joined the Cohort", Description: "Вступить в когорту.",
 		Category: CategorySocial, Tier: TierCommon,
-		RequirementsText: "1 принятое приглашение в гильдию.", RewardText: "+50 XP",
+		RequirementsText: "1 принятое приглашение в когорту.", RewardText: "+50 XP",
 		Target: 1},
-	{Code: "guild-war-won", Title: "Guild War Champion", Description: "Победить в войне гильдий.",
+	{Code: "cohort-war-won", Title: "Cohort War Champion", Description: "Победить в войне когорт.",
 		Category: CategorySocial, Tier: TierRare,
-		RequirementsText: "1 победа в Guild War.", RewardText: "+500 XP",
+		RequirementsText: "1 победа в Cohort War.", RewardText: "+500 XP",
 		Target: 1},
-	{Code: "guild-war-mvp", Title: "War MVP", Description: "Стать MVP в Guild War.",
+	{Code: "cohort-war-mvp", Title: "War MVP", Description: "Стать MVP в Cohort War.",
 		Category: CategorySocial, Tier: TierLegendary,
-		RequirementsText: "MVP-флаг в Guild War.", RewardText: "+1500 XP · title MVP",
+		RequirementsText: "MVP-флаг в Cohort War.", RewardText: "+1500 XP · title MVP",
 		Target: 1},
 	// ── Secret / hidden ────────────────────────────────────────────────────
 	{Code: "secret-night-grind", Title: "Insomniac", Description: "10 решений между 02:00 и 05:00.",

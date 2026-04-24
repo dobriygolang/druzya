@@ -8,7 +8,7 @@ import { type Profile } from '../../lib/queries/profile'
 import { useRatingMeQuery } from '../../lib/queries/rating'
 import { useAchievementsQuery, isUnlocked } from '../../lib/queries/achievements'
 import { useArenaHistoryQuery } from '../../lib/queries/matches'
-import { useMyGuildQuery } from '../../lib/queries/guild'
+import { useMyCohortQuery } from '../../lib/queries/cohort'
 import { humanizeSection } from '../../lib/labels'
 import { fmtDate, fmtDateTime } from './dateHelpers'
 
@@ -135,8 +135,8 @@ export function AchievementsPanel() {
   )
 }
 
-export function GuildsPanel() {
-  const { data: guild, isLoading, isError, refetch } = useMyGuildQuery()
+export function CohortsPanel() {
+  const { data: cohort, isLoading, isError, refetch } = useMyCohortQuery()
   if (isLoading) {
     return (
       <Card className="flex-col gap-2 p-5" interactive={false}>
@@ -147,16 +147,16 @@ export function GuildsPanel() {
   if (isError) {
     return (
       <Card className="flex-col items-start gap-3 p-5" interactive={false}>
-        <p className="text-sm text-danger">Не удалось загрузить гильдию.</p>
+        <p className="text-sm text-danger">Не удалось загрузить когорту.</p>
         <Button size="sm" onClick={() => refetch()}>Повторить</Button>
       </Card>
     )
   }
-  if (!guild) {
+  if (!cohort) {
     return (
       <Card className="flex-col items-start gap-3 p-5" interactive={false}>
-        <p className="text-sm text-text-secondary">Ты пока без гильдии.</p>
-        <Link to="/guild"><Button size="sm">Найти гильдию</Button></Link>
+        <p className="text-sm text-text-secondary">Ты пока без когорты.</p>
+        <Link to="/cohort"><Button size="sm">Найти когорту</Button></Link>
       </Card>
     )
   }
@@ -165,14 +165,14 @@ export function GuildsPanel() {
       <div className="flex items-center gap-3">
         <Shield className="h-6 w-6 text-cyan" />
         <div className="flex flex-col">
-          <h3 className="font-display text-lg font-bold text-text-primary">{guild.name}</h3>
+          <h3 className="font-display text-lg font-bold text-text-primary">{cohort.name}</h3>
           <span className="font-mono text-[11px] text-text-muted">
-            {(guild.members?.length ?? 0)} участников · ELO {guild.guild_elo}
+            {(cohort.members?.length ?? 0)} участников · ELO {cohort.cohort_elo}
           </span>
         </div>
       </div>
-      <Link to="/guild" className="font-mono text-[12px] text-cyan hover:underline">
-        Открыть страницу гильдии ›
+      <Link to="/cohort" className="font-mono text-[12px] text-cyan hover:underline">
+        Открыть страницу когорты ›
       </Link>
     </Card>
   )

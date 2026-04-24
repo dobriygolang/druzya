@@ -16,7 +16,7 @@ import { useSeasonQuery } from '../lib/queries/season'
 import { useRatingMeQuery, useLeaderboardQuery } from '../lib/queries/rating'
 import { useProfileQuery } from '../lib/queries/profile'
 import { useArenaHistoryQuery } from '../lib/queries/matches'
-import { useMyGuildQuery, useGuildWarQuery } from '../lib/queries/guild'
+import { useMyCohortQuery, useCohortWarQuery } from '../lib/queries/cohort'
 import { useWeeklyReportQuery } from '../lib/queries/weekly'
 import { cn } from '../lib/cn'
 import { humanizeDifficulty, humanizeSection } from '../lib/labels'
@@ -368,26 +368,26 @@ function ArenaCard() {
   )
 }
 
-function GuildCard() {
+function CohortCard() {
   const { t } = useTranslation('sanctum')
-  const { data: guild } = useMyGuildQuery()
-  const warID = guild?.current_war_id ?? undefined
-  const { data: war } = useGuildWarQuery(warID)
-  if (!guild) {
+  const { data: cohort } = useMyCohortQuery()
+  const warID = cohort?.current_war_id ?? undefined
+  const { data: war } = useCohortWarQuery(warID)
+  if (!cohort) {
     return (
       <Card className="flex-1 flex-col gap-3.5 p-5">
         <div className="flex items-center gap-2">
           <Shield className="h-4 w-4 text-cyan" />
           <span className="font-mono text-[11px] font-semibold tracking-[0.08em] text-cyan">
-            {t('guild_war')}
+            {t('cohort_war')}
           </span>
         </div>
-        <h3 className="font-display text-lg font-bold text-text-primary">Ты пока без гильдии</h3>
+        <h3 className="font-display text-lg font-bold text-text-primary">Ты пока без когорты</h3>
         <p className="text-xs text-text-secondary">
-          Гильдии играют еженедельные guild-war-баталии. Найди свою или создай.
+          Когорты играют еженедельные cohort-war-баталии. Найди свою или создай.
         </p>
-        <Link to="/guild" className="text-xs font-semibold text-accent-hover hover:underline">
-          К списку гильдий →
+        <Link to="/cohort" className="text-xs font-semibold text-accent-hover hover:underline">
+          К списку когорт →
         </Link>
       </Card>
     )
@@ -398,14 +398,14 @@ function GuildCard() {
         <div className="flex items-center gap-2">
           <Shield className="h-4 w-4 text-cyan" />
           <span className="font-mono text-[11px] font-semibold tracking-[0.08em] text-cyan">
-            {t('guild_war')}
+            {t('cohort_war')}
           </span>
         </div>
-        <h3 className="font-display text-lg font-bold text-text-primary">{guild.name}</h3>
+        <h3 className="font-display text-lg font-bold text-text-primary">{cohort.name}</h3>
         <p className="text-xs text-text-secondary">
           Активной войны нет — следующая стартует с понедельника.
         </p>
-        <span className="font-mono text-xs text-text-muted">Guild ELO: {guild.guild_elo}</span>
+        <span className="font-mono text-xs text-text-muted">Cohort ELO: {cohort.cohort_elo}</span>
       </Card>
     )
   }
@@ -419,11 +419,11 @@ function GuildCard() {
       <div className="flex items-center gap-2">
         <Shield className="h-4 w-4 text-cyan" />
         <span className="font-mono text-[11px] font-semibold tracking-[0.08em] text-cyan">
-          {t('guild_war')}
+          {t('cohort_war')}
         </span>
       </div>
       <h3 className="font-display text-lg font-bold text-text-primary">
-        {war.guild_a.name} vs {war.guild_b.name}
+        {war.cohort_a.name} vs {war.cohort_b.name}
       </h3>
       <div className="flex items-center gap-3">
         <span className="font-display text-[22px] font-bold text-success">{scoreA}</span>
@@ -731,7 +731,7 @@ export default function SanctumPageV2() {
         queryClient.invalidateQueries({ queryKey: ['arena', 'history'] }),
         queryClient.invalidateQueries({ queryKey: ['rating'] }),
         queryClient.invalidateQueries({ queryKey: ['leaderboard'] }),
-        queryClient.invalidateQueries({ queryKey: ['guild'] }),
+        queryClient.invalidateQueries({ queryKey: ['cohort'] }),
         queryClient.invalidateQueries({ queryKey: ['season'] }),
       ])
     } catch (err) {
@@ -791,7 +791,7 @@ export default function SanctumPageV2() {
           <MobileStatStrip />
         </motion.div>
 
-        {/* Tablet 768 layout: 2-col grid (left = Daily/Guild/Activity already
+        {/* Tablet 768 layout: 2-col grid (left = Daily/Cohort/Activity already
             split; right column starts with Arena+Coach pair). Desktop keeps
             the original 3-col flow row from the prior version. */}
         <motion.div
@@ -803,7 +803,7 @@ export default function SanctumPageV2() {
           <div className="hidden sm:contents">
             <ArenaCard />
           </div>
-          <GuildCard />
+          <CohortCard />
           <div data-tour="coach" className="contents">
             {/* Big AI-mentor banner: tablet/desktop only. Mobile gets the
                 cyan secondary card lower down so it doesn't fight the FAB. */}

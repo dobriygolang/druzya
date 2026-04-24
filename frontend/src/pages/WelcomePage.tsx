@@ -109,13 +109,13 @@ function FadeInSection({
   )
 }
 
-type FeatureKey = 'pvp' | 'ai' | 'daily' | 'guilds' | 'atlas' | 'podcasts'
+type FeatureKey = 'pvp' | 'ai' | 'daily' | 'cohorts' | 'atlas' | 'podcasts'
 
 const FEATURE_ICONS: Record<FeatureKey, React.ComponentType<{ className?: string }>> = {
   pvp: Sword,
   ai: Bot,
   daily: Flame,
-  guilds: Users,
+  cohorts: Users,
   atlas: Map,
   podcasts: Headphones,
 }
@@ -393,7 +393,7 @@ export default function WelcomePage() {
     ? {}
     : { initial: { opacity: 0, y: 16 }, animate: { opacity: 1, y: 0 } }
 
-  const features: FeatureKey[] = ['pvp', 'ai', 'daily', 'guilds', 'atlas', 'podcasts']
+  const features: FeatureKey[] = ['pvp', 'ai', 'daily', 'cohorts', 'atlas', 'podcasts']
   const testimonials = t('testimonials.items', { returnObjects: true }) as Testimonial[]
 
   return (

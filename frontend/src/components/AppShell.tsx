@@ -34,7 +34,7 @@ function useNavItems() {
     { to: '/codex', label: t('nav.codex') },
     { to: '/vacancies', label: t('nav.vacancies') },
     { to: '/slots', label: t('nav.slots') },
-    { to: '/guild', label: t('nav.guild') },
+    { to: '/cohort', label: t('nav.cohort') },
   ] as const
 }
 
@@ -192,7 +192,7 @@ function UserMenu({ onClose }: { onClose: () => void }) {
   //   - Vacancies удалён (теперь top-nav entry).
   // В меню остались персональные разделы и админка.
   // Wave-13: «Copilot» surfaced here with a NEW badge. Header nav already
-  // has 7 entries (Sanctum/Arena/Atlas/Кодекс/Вакансии/Слоты/Гильдия) so
+  // has 7 entries (Sanctum/Arena/Atlas/Кодекс/Вакансии/Слоты/Когорта) so
   // adding a 8th would overflow on tablet — we use the user-menu instead
   // and rely on the NEW badge + the /welcome promo banner for discovery.
   const items: { to: string; label: string; icon: typeof User; badge?: 'new' }[] = [

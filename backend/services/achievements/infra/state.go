@@ -1,6 +1,6 @@
 // state.go — реализация app.UserStateProvider поверх существующих таблиц
-// (profiles, ratings, daily_streaks, daily_kata_history, arena_*, guild_members,
-// guild_wars, friendships).
+// (profiles, ratings, daily_streaks, daily_kata_history, arena_*, cohort_members,
+// cohort_wars, friendships).
 //
 // Cross-domain reads OK здесь — это именно adapter, чьё назначение — клеить
 // state из соседних таблиц (а не дёргать чужие Go-репо). Никаких импортов
@@ -121,24 +121,24 @@ func (s *StateProvider) Snapshot(ctx context.Context, uid uuid.UUID) (achApp.Use
 		st.CurrentWinStreak = streak
 	}
 
-	// guild_members: состоит ли в гильдии.
-	row = s.pool.QueryRow(ctx, `SELECT 1 FROM guild_members WHERE user_id = $1`, uid)
+	// cohort_members: состоит ли в когорты.
+	row = s.pool.QueryRow(ctx, `SELECT 1 FROM cohort_members WHERE user_id = $1`, uid)
 	var x int
 	if err := row.Scan(&x); err == nil {
-		st.GuildJoined = true
+		st.CohortJoined = true
 	}
 
-	// guild_wars: побед гильдии где user — member.
+	// cohort_wars: побед когорты где user — member.
 	row = s.pool.QueryRow(ctx, `
 		SELECT COUNT(*)
-		  FROM guild_wars w
-		  JOIN guild_members m ON m.guild_id = w.winner_id
+		  FROM cohort_wars w
+		  JOIN cohort_members m ON m.cohort_id = w.winner_id
 		 WHERE m.user_id = $1
 	`, uid)
-	if err := row.Scan(&st.GuildWarsWon); err != nil && !errors.Is(err, pgx.ErrNoRows) {
-		// игнорим — guild_wars может быть пуст или таблица отсутствовать;
-		// guild_wars_won остаётся 0, что корректно для дефолтной картины.
-		st.GuildWarsWon = 0
+	if err := row.Scan(&st.CohortWarsWon); err != nil && !errors.Is(err, pgx.ErrNoRows) {
+		// игнорим — cohort_wars может быть пуст или таблица отсутствовать;
+		// cohort_wars_won остаётся 0, что корректно для дефолтной картины.
+		st.CohortWarsWon = 0
 	}
 
 	// friendships.count (00016). Если таблицы ещё нет — попадём в catch.

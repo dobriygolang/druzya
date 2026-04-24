@@ -85,15 +85,15 @@ func (s *Subscribers) OnLevelUp(ctx context.Context, ev sharedDomain.Event) erro
 	return nil
 }
 
-// OnGuildWarFinished — обновляем по обоим guild'ам — попробуем найти
-// member'ов через State (он умеет в guild_wars_won), а здесь просто
+// OnCohortWarFinished — обновляем по обоим cohort'ам — попробуем найти
+// member'ов через State (он умеет в cohort_wars_won), а здесь просто
 // триггерим пересчёт по winner.
-func (s *Subscribers) OnGuildWarFinished(ctx context.Context, ev sharedDomain.Event) error {
-	e, ok := ev.(sharedDomain.GuildWarFinished)
+func (s *Subscribers) OnCohortWarFinished(ctx context.Context, ev sharedDomain.Event) error {
+	e, ok := ev.(sharedDomain.CohortWarFinished)
 	if !ok || e.WinnerID == nil {
 		return nil
 	}
-	// Без guild-membership-репо тут мы можем только публиковать факт.
+	// Без cohort-membership-репо тут мы можем только публиковать факт.
 	// Реальный пересчёт случится при следующем XP/match событии.
 	// (Защита от over-fetch: не дёргаем БД на ВСЕ membership.)
 	return nil

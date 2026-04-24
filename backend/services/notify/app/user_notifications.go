@@ -213,22 +213,22 @@ type friendRequestPayloader interface {
 	FriendshipID() int64
 }
 
-// OnGuildWarStarted — guild channel.
-func (h *FeedHandlers) OnGuildWarStarted(ctx context.Context, ev sharedDomain.Event) error {
-	e, ok := ev.(sharedDomain.GuildWarStarted)
+// OnCohortWarStarted — cohort channel.
+func (h *FeedHandlers) OnCohortWarStarted(ctx context.Context, ev sharedDomain.Event) error {
+	e, ok := ev.(sharedDomain.CohortWarStarted)
 	if !ok {
 		return nil
 	}
-	// Без guild_members-репо мы не знаем, кому слать. Скорее всего вырастет
-	// отдельный publisher в guild-домене. На этот этап — лог-тейпинг.
-	h.Log.InfoContext(ctx, "notify.feed.OnGuildWarStarted: no member-fanout yet",
+	// Без cohort_members-репо мы не знаем, кому слать. Скорее всего вырастет
+	// отдельный publisher в cohort-домене. На этот этап — лог-тейпинг.
+	h.Log.InfoContext(ctx, "notify.feed.OnCohortWarStarted: no member-fanout yet",
 		slog.String("war_id", e.WarID.String()))
 	return nil
 }
 
-// OnGuildWarFinished — то же.
-func (h *FeedHandlers) OnGuildWarFinished(ctx context.Context, ev sharedDomain.Event) error {
-	_, _ = ev.(sharedDomain.GuildWarFinished)
+// OnCohortWarFinished — то же.
+func (h *FeedHandlers) OnCohortWarFinished(ctx context.Context, ev sharedDomain.Event) error {
+	_, _ = ev.(sharedDomain.CohortWarFinished)
 	return nil
 }
 

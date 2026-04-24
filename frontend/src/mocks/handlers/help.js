@@ -3,7 +3,7 @@ const base = '/api/v1';
 const categories = [
     { id: 'start', label: 'Старт', count: 8, kind: 'rocket' },
     { id: 'arena', label: 'Арена и матчи', count: 14, kind: 'swords' },
-    { id: 'guild', label: 'Гильдии', count: 11, kind: 'shield' },
+    { id: 'cohort', label: 'Когорты', count: 11, kind: 'shield' },
     { id: 'premium', label: 'Premium', count: 6, kind: 'crown' },
     { id: 'ai', label: 'AI настройки', count: 9, kind: 'sparkles' },
     { id: 'security', label: 'Безопасность', count: 5, kind: 'lock' },
@@ -16,7 +16,7 @@ const faq = [
         tags: ['MMR vs LP', 'Сезонный сброс', 'Decay'],
     },
     { id: 'f2', question: 'Что даёт Premium?', answer: '', tags: [] },
-    { id: 'f3', question: 'Как создать гильдию?', answer: '', tags: [] },
+    { id: 'f3', question: 'Как создать когорту?', answer: '', tags: [] },
     { id: 'f4', question: 'Какие AI модели доступны?', answer: '', tags: [] },
     { id: 'f5', question: 'Как работает Streak Freeze?', answer: '', tags: [] },
     { id: 'f6', question: 'Возврат денег за подписку', answer: '', tags: [] },

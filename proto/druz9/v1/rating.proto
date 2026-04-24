@@ -40,7 +40,7 @@ message LeaderboardEntry {
   string username = 3;
   int32 elo = 4;
   string title = 5;
-  string guild_emblem = 6;
+  string cohort_emblem = 6;
 }
 
 message GetLeaderboardRequest {

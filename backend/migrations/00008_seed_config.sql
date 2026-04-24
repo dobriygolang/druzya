@@ -15,7 +15,7 @@ INSERT INTO dynamic_config(key, value, type, description) VALUES
   ('xp_kata_cursed_multiplier',   to_jsonb(3),     'int',   'Множитель XP за проклятую Kata'),
   ('skill_decay_days',            to_jsonb(7),     'int',   'Дней без практики до начала деградации'),
   ('skill_decay_rate_pct',        to_jsonb(2),     'int',   'Процент деградации в день'),
-  ('guild_max_size',              to_jsonb(10),    'int',   'Максимум участников гильдии'),
+  ('cohort_max_size',              to_jsonb(10),    'int',   'Максимум участников когорты'),
   ('season_pass_enabled',         to_jsonb(true),  'bool',  'Включён ли Season Pass'),
   ('voice_mode_enabled',          to_jsonb(false), 'bool',  'Включён ли голосовой мок режим'),
   ('llm_default_free_model',      to_jsonb('openai/gpt-4o-mini'::text), 'string', 'Дефолтная LLM для free'),

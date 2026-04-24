@@ -8,7 +8,7 @@ import { api } from '../apiClient'
 export type NotificationChannel =
   | 'social'
   | 'match'
-  | 'guild'
+  | 'cohort'
   | 'system'
   | 'challenges'
   | 'wins'

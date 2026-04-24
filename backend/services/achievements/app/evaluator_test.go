@@ -109,8 +109,8 @@ func TestScoreForCode_SamplesAllArms(t *testing.T) {
 		DailyTotalDone:   5,
 		CurrentStreak:    8,
 		FriendsCount:     6,
-		GuildJoined:      true,
-		GuildWarsWon:     1,
+		CohortJoined:     true,
+		CohortWarsWon:    1,
 		AnySolved:        50,
 		HardSolved:       3,
 		ChallengesSent:   4,
@@ -124,8 +124,8 @@ func TestScoreForCode_SamplesAllArms(t *testing.T) {
 	if got := scoreForCode("ranked-promotion-platinum", st); got != 1 {
 		t.Fatalf("plat promo: %d", got)
 	}
-	if got := scoreForCode("guild-joined", st); got != 1 {
-		t.Fatalf("guild-joined: %d", got)
+	if got := scoreForCode("cohort-joined", st); got != 1 {
+		t.Fatalf("cohort-joined: %d", got)
 	}
 	if got := scoreForCode("speed-demon", st); got != -1 {
 		t.Fatalf("speed-demon should be no-data: %d", got)

@@ -123,7 +123,7 @@ func New(ctx context.Context, cfg *config.Config) (app *App, otelShutdown func()
 		services.NewAINative(deps),
 		slotMod,
 		reviewMod,
-		services.NewGuild(deps),
+		services.NewCohort(deps),
 		&notify.Module,
 		services.NewEditor(deps),
 		services.NewSeason(deps),

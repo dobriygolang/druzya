@@ -262,7 +262,7 @@ type LeaderboardEntry struct {
 	Username      string                 `protobuf:"bytes,3,opt,name=username,proto3" json:"username,omitempty"`
 	Elo           int32                  `protobuf:"varint,4,opt,name=elo,proto3" json:"elo,omitempty"`
 	Title         string                 `protobuf:"bytes,5,opt,name=title,proto3" json:"title,omitempty"`
-	GuildEmblem   string                 `protobuf:"bytes,6,opt,name=guild_emblem,json=guildEmblem,proto3" json:"guild_emblem,omitempty"`
+	CohortEmblem  string                 `protobuf:"bytes,6,opt,name=cohort_emblem,json=cohortEmblem,proto3" json:"cohort_emblem,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -332,9 +332,9 @@ func (x *LeaderboardEntry) GetTitle() string {
 	return ""
 }
 
-func (x *LeaderboardEntry) GetGuildEmblem() string {
+func (x *LeaderboardEntry) GetCohortEmblem() string {
 	if x != nil {
-		return x.GuildEmblem
+		return x.CohortEmblem
 	}
 	return ""
 }
@@ -480,14 +480,14 @@ const file_druz9_v1_rating_proto_rawDesc = "" +
 	"\x14GetMyRatingsResponse\x121\n" +
 	"\aratings\x18\x01 \x03(\v2\x17.druz9.v1.SectionRatingR\aratings\x12,\n" +
 	"\x12global_power_score\x18\x02 \x01(\x05R\x10globalPowerScore\x121\n" +
-	"\ahistory\x18\x03 \x03(\v2\x17.druz9.v1.HistorySampleR\ahistory\"\xa6\x01\n" +
+	"\ahistory\x18\x03 \x03(\v2\x17.druz9.v1.HistorySampleR\ahistory\"\xa8\x01\n" +
 	"\x10LeaderboardEntry\x12\x12\n" +
 	"\x04rank\x18\x01 \x01(\x05R\x04rank\x12\x17\n" +
 	"\auser_id\x18\x02 \x01(\tR\x06userId\x12\x1a\n" +
 	"\busername\x18\x03 \x01(\tR\busername\x12\x10\n" +
 	"\x03elo\x18\x04 \x01(\x05R\x03elo\x12\x14\n" +
-	"\x05title\x18\x05 \x01(\tR\x05title\x12!\n" +
-	"\fguild_emblem\x18\x06 \x01(\tR\vguildEmblem\"Z\n" +
+	"\x05title\x18\x05 \x01(\tR\x05title\x12#\n" +
+	"\rcohort_emblem\x18\x06 \x01(\tR\fcohortEmblem\"Z\n" +
 	"\x15GetLeaderboardRequest\x12+\n" +
 	"\asection\x18\x01 \x01(\x0e2\x11.druz9.v1.SectionR\asection\x12\x14\n" +
 	"\x05limit\x18\x02 \x01(\x05R\x05limit\"\xcf\x01\n" +

@@ -7,7 +7,7 @@ import { Avatar } from '../../components/Avatar'
 import { cn } from '../../lib/cn'
 import { useRatingMeQuery, useLeaderboardQuery } from '../../lib/queries/rating'
 import { useAchievementsQuery, isUnlocked } from '../../lib/queries/achievements'
-import { useMyGuildQuery } from '../../lib/queries/guild'
+import { useMyCohortQuery } from '../../lib/queries/cohort'
 import { SECTION_LABELS } from './viewModel'
 
 // SkillsCard renders the live section ratings only — no synthetic fallback.
@@ -102,10 +102,10 @@ export function AchievementsCard() {
   )
 }
 
-// GuildCard now reads useMyGuildQuery — shows real membership or empty state.
-export function GuildCard() {
+// CohortCard now reads useMyCohortQuery — shows real membership or empty state.
+export function CohortCard() {
   const { t } = useTranslation('profile')
-  const { data: guild, isLoading } = useMyGuildQuery()
+  const { data: cohort, isLoading } = useMyCohortQuery()
   if (isLoading) {
     return (
       <Card className="flex-col gap-2 p-5">
@@ -114,20 +114,20 @@ export function GuildCard() {
       </Card>
     )
   }
-  if (!guild) {
+  if (!cohort) {
     return (
       <Card className="flex-col gap-0 overflow-hidden p-0" interactive={false}>
         <div className="flex flex-col gap-2 bg-gradient-to-br from-accent via-pink to-cyan p-5">
           <div className="flex items-center gap-2">
             <Shield className="h-4 w-4 text-white" />
-            <span className="font-mono text-[11px] font-semibold tracking-[0.08em] text-white">{t('guild_label')}</span>
+            <span className="font-mono text-[11px] font-semibold tracking-[0.08em] text-white">{t('cohort_label')}</span>
           </div>
-          <h3 className="font-display text-xl font-extrabold text-white">Без гильдии</h3>
+          <h3 className="font-display text-xl font-extrabold text-white">Без когорты</h3>
           <p className="text-xs text-white/85">Найди команду — рейтинги, войны, общие награды.</p>
         </div>
         <div className="flex items-center justify-between p-4">
-          <Link to="/guild" className="font-mono text-[12px] font-semibold text-cyan hover:underline">
-            Найти гильдию ›
+          <Link to="/cohort" className="font-mono text-[12px] font-semibold text-cyan hover:underline">
+            Найти когорту ›
           </Link>
         </div>
       </Card>
@@ -138,16 +138,16 @@ export function GuildCard() {
       <div className="flex flex-col gap-2 bg-gradient-to-br from-accent via-pink to-cyan p-5">
         <div className="flex items-center gap-2">
           <Shield className="h-4 w-4 text-white" />
-          <span className="font-mono text-[11px] font-semibold tracking-[0.08em] text-white">{t('guild_label')}</span>
+          <span className="font-mono text-[11px] font-semibold tracking-[0.08em] text-white">{t('cohort_label')}</span>
         </div>
-        <h3 className="font-display text-xl font-extrabold text-white">{guild.name}</h3>
+        <h3 className="font-display text-xl font-extrabold text-white">{cohort.name}</h3>
         <p className="text-xs text-white/85">
-          {(guild.members?.length ?? 0)} участников · ELO {guild.guild_elo}
+          {(cohort.members?.length ?? 0)} участников · ELO {cohort.cohort_elo}
         </p>
       </div>
       <div className="flex items-center justify-between p-4">
-        <Link to="/guild" className="font-mono text-[12px] font-semibold text-cyan hover:underline">
-          Открыть гильдию ›
+        <Link to="/cohort" className="font-mono text-[12px] font-semibold text-cyan hover:underline">
+          Открыть когорту ›
         </Link>
       </div>
     </Card>
@@ -155,7 +155,7 @@ export function GuildCard() {
 }
 
 // Leaderboard scopes — only "global" is implemented end-to-end. The other
-// scopes (friends/guild/region) were previously rendered as fake tabs that
+// scopes (friends/cohort/region) were previously rendered as fake tabs that
 // returned the same hardcoded data; per production feedback we now expose
 // only what we can actually back with real data.
 type Scope = 'global'

@@ -4,7 +4,7 @@
   "developers_inside": "{{count}} developers already inside",
   "headline_1": "Coding is a sport.",
   "headline_2": "Train like an athlete.",
-  "subhead": "A gamified algorithms platform. Real-time duels, guilds, AI mentor, seasonal rewards.",
+  "subhead": "A gamified algorithms platform. Real-time duels, cohorts, AI mentor, seasonal rewards.",
   "start_free": "Start free",
   "watch_demo": "Watch demo",
   "developers_from": "Developers from",
@@ -32,8 +32,8 @@
       "title": "Daily kata and streaks",
       "desc": "A daily problem, streaks and a weekly report. A habit that compounds rating — while others scroll the feed."
     },
-    "guilds": {
-      "title": "Guilds and seasons",
+    "cohorts": {
+      "title": "Cohorts and seasons",
       "desc": "Team tournaments, leagues, season pass. Progress visible to everyone — including those who hire."
     },
     "atlas": {
@@ -80,7 +80,7 @@
         "company": "research"
       },
       {
-        "quote": "Guilds are the best way to get a team aligned. We code, argue, grow — together.",
+        "quote": "Cohorts are the best way to get a team aligned. We code, argue, grow — together.",
         "name": "Ilya",
         "role": "Tech Lead",
         "company": "startup"
@@ -124,10 +124,10 @@
       "name": "Pro",
       "price": "$12",
       "period": "/ month",
-      "desc": "Teams, guilds, business.",
+      "desc": "Teams, cohorts, business.",
       "features": [
         "Everything in Premium",
-        "Guild up to 50 people",
+        "Cohort up to 50 people",
         "Branded tournaments",
         "Team analytics",
         "Priority support"

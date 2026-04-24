@@ -2,7 +2,7 @@
   "nav": {
     "sanctum": "Sanctum",
     "arena": "Arena",
-    "guild": "Guild",
+    "cohort": "Cohort",
     "atlas": "Atlas",
     "codex": "Codex",
     "friends": "Friends",
@@ -32,7 +32,7 @@
     "login": "Sign in"
   },
   "labels": {
-    "search_placeholder": "Search kata, friends, guilds…",
+    "search_placeholder": "Search kata, friends, cohorts…",
     "loading": "Loading...",
     "empty": "Empty",
     "error": "Error",

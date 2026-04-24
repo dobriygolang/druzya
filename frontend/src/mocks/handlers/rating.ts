@@ -32,7 +32,7 @@ export const ratingHandlers = [
         username: i === 0 ? 'shadow_777' : `player_${i + 1}`,
         elo: 1980 - i * 18,
         title: i === 0 ? 'Champion' : null,
-        guild_emblem: null,
+        cohort_emblem: null,
       })),
     })
   }),

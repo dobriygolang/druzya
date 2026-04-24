@@ -49,7 +49,7 @@ const ic = (Comp: typeof Rocket, cls = 'h-5 w-5') => createElement(Comp, { class
 export const HELP_CATEGORIES: HelpCategory[] = [
   { slug: 'start', icon: ic(Rocket), color: 'text-cyan', bg: 'bg-cyan/15', label: 'Старт', count: 8 },
   { slug: 'arena', icon: ic(Swords), color: 'text-accent-hover', bg: 'bg-accent/15', label: 'Арена и матчи', count: 14 },
-  { slug: 'guild', icon: ic(Shield), color: 'text-pink', bg: 'bg-pink/15', label: 'Гильдии', count: 11 },
+  { slug: 'cohort', icon: ic(Shield), color: 'text-pink', bg: 'bg-pink/15', label: 'Когорты', count: 11 },
   { slug: 'premium', icon: ic(Crown), color: 'text-warn', bg: 'bg-warn/15', label: 'Premium', count: 6 },
   { slug: 'ai', icon: ic(Sparkles), color: 'text-pink', bg: 'bg-pink/15', label: 'AI-собеседование', count: 9 },
   { slug: 'security', icon: ic(Lock), color: 'text-success', bg: 'bg-success/15', label: 'Безопасность', count: 5 },
@@ -73,11 +73,11 @@ export const HELP_FAQ: HelpFAQ[] = [
       'Premium даёт безлимит mock-интервью с моделью GPT-4o (вместо free GPT-4o-mini), премиальные TTS-голоса для разбора, расширенную аналитику в weekly-report и эксклюзивные бейджи. Цена 490₽/мес или 4900₽/год. Оплата через Boosty, отмена в любой момент.',
   },
   {
-    id: 'guild-create',
-    question: 'Как создать гильдию?',
-    tags: ['Гильдии'],
+    id: 'cohort-create',
+    question: 'Как создать когорту?',
+    tags: ['Когорты'],
     answer:
-      'Создание гильдии откроется после достижения 1500 ELO в любой из секций (algorithms / SQL / etc). Стоимость регистрации — 5000 XP. Гильдия имеет до 30 участников, своё название и эмблему. Раз в неделю — guild war против другой гильдии того же тира.',
+      'Создание когорты откроется после достижения 1500 ELO в любой из секций (algorithms / SQL / etc). Стоимость регистрации — 5000 XP. Когорта имеет до 30 участников, своё название и эмблему. Раз в неделю — cohort war против другой когорты того же тира.',
   },
   {
     id: 'ai-models',
@@ -102,7 +102,7 @@ export const HELP_FAQ: HelpFAQ[] = [
   },
 ]
 
-export const HELP_QUICK_QUESTIONS = ['Как поднять LP?', 'Создать гильдию', 'Купить Premium']
+export const HELP_QUICK_QUESTIONS = ['Как поднять LP?', 'Создать когорту', 'Купить Premium']
 
 export const HELP_CONTACTS: HelpContact[] = [
   {

@@ -14,13 +14,13 @@ import { ApiError } from '../../lib/apiClient'
 import { Hero, ProfileTabBar } from './ProfileHeader'
 import {
   AchievementsCard,
-  GuildCard,
+  CohortCard,
   Leaderboard,
   SkillsCard,
 } from './ProfileOverview'
 import {
   AchievementsPanel,
-  GuildsPanel,
+  CohortsPanel,
   MatchesPanel,
   StatsPanel,
 } from './ProfilePanels'
@@ -124,7 +124,7 @@ export default function ProfilePage() {
             <div className="flex w-full shrink-0 flex-col gap-5 lg:w-[380px]">
               <SkillsCard />
               {isOwn && <AchievementsCard />}
-              <GuildCard />
+              <CohortCard />
             </div>
             <div className="flex min-w-0 flex-1 flex-col">
               <Leaderboard />
@@ -133,7 +133,7 @@ export default function ProfilePage() {
         )}
         {tab === 'Matches' && <MatchesPanel />}
         {tab === 'Achievements' && <AchievementsPanel />}
-        {tab === 'Guilds' && <GuildsPanel />}
+        {tab === 'Cohorts' && <CohortsPanel />}
         {tab === 'Stats' && <StatsPanel ownProfile={isOwn ? (ownQuery.data as Profile | undefined) : undefined} />}
         {tab === 'Bookings' && isOwn && <BookingsPanel />}
       </div>

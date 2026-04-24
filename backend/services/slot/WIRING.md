@@ -62,7 +62,7 @@ type compositeServer struct {
     Arena   *arenaPorts.ArenaServer
     Mock    *aimockPorts.MockServer
     Native  *ainativePorts.NativeServer
-    Guild   *guildPorts.GuildServer
+    Cohort   *cohortPorts.CohortServer
     Notify  *notifyPorts.NotifyServer
     Slot    *slotPorts.SlotServer // ← add this
 }
@@ -79,7 +79,7 @@ return &compositeServer{
     Arena:   arenaServer,
     Mock:    mockServer,
     Native:  nativeServer,
-    Guild:   guildServer,
+    Cohort:   cohortServer,
     Notify:  notifyServer,
     Slot:    slotServer, // ← add this
 }
@@ -87,7 +87,7 @@ return &compositeServer{
 
 ## 5. Per-method forwarders in `cmd/monolith/server.go`
 
-Follows the Guild pattern exactly — four thin forwarders:
+Follows the Cohort pattern exactly — four thin forwarders:
 
 ```go
 // ── slot ───────────────────────────────────────────────────────────────────

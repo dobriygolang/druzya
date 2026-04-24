@@ -69,7 +69,7 @@ const MockPipelinePage = lazy(() => import('./pages/mock/MockPipelinePage'))
 const MockPipelineDebrief = lazy(() => import('./pages/mock/MockPipelineDebrief'))
 const NativeRoundPage = lazy(() => import('./pages/NativeRoundPage'))
 const InterviewAutopsyPage = lazy(() => import('./pages/InterviewAutopsyPage'))
-const GuildPage = lazy(() => import('./pages/GuildPage'))
+const CohortPage = lazy(() => import('./pages/CohortPage'))
 const SlotsPage = lazy(() => import('./pages/SlotsPage'))
 const SeasonPage = lazy(() => import('./pages/SeasonPage'))
 const AchievementsPage = lazy(() => import('./pages/AchievementsPage'))
@@ -180,8 +180,8 @@ export default function App() {
         <Route path="/native/:sessionId" element={<NativeRoundPage />} />
         <Route path="/autopsy/new" element={<InterviewAutopsyPage />} />
         <Route path="/autopsy/:id" element={<InterviewAutopsyPage />} />
-        <Route path="/guild" element={<GuildPage />} />
-        <Route path="/guild/:guildId" element={<GuildPage />} />
+        <Route path="/cohort" element={<CohortPage />} />
+        <Route path="/cohort/:cohortId" element={<CohortPage />} />
         <Route path="/slots" element={<SlotsPage />} />
         <Route path="/season" element={<SeasonPage />} />
         <Route path="/achievements" element={<AchievementsPage />} />
@@ -215,7 +215,7 @@ export default function App() {
         <Route path="/obituary/:id" element={<CodeObituaryPage />} />
         <Route path="/practice/ghosts/:kataId" element={<GhostRunsPage />} />
         <Route path="/necromancy/:bountyId" element={<NecromancyPage />} />
-        <Route path="/guild/warroom/:incidentId" element={<WarRoomPage />} />
+        <Route path="/cohort/warroom/:incidentId" element={<WarRoomPage />} />
         <Route path="/voice-mock/:sessionId" element={<VoiceMockPage />} />
         <Route path="/stress" element={<StressMeterPage />} />
         <Route path="/admin" element={<AdminPage />} />

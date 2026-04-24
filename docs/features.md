@@ -77,7 +77,7 @@
 | **Advanced anti-cheat** (ML-based pattern detection, не только paste) | 💭 | 1 месяц | High — для prize tournaments |
 | **AR Code Lens** — наведи мышь на чужой код в Spectator → визуализация | 💭 | 3 недели | Med — wow-фактор |
 | **AI-симуляция конкретного интервьюера** ("стиль строгий FAANG") | 💭 | 1 месяц | High — уникально |
-| **Skill Tree v2** с keystone-узлами за командные достижения | 💭 | 2 недели | Med — гильдийная attraction |
+| **Skill Tree v2** с keystone-узлами за командные достижения | 💭 | 2 недели | Med — когортная attraction |
 | **Mentor marketplace** (peer-mentoring за gems) | 💭 | 1 месяц | Med — supply-side контента |
 
 ### 2028+ (Y3 платформенные)

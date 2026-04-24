@@ -15,7 +15,7 @@ require (
 	druz9/editor v0.0.0-00010101000000-000000000000
 	druz9/feed v0.0.0-00010101000000-000000000000
 	druz9/friends v0.0.0-00010101000000-000000000000
-	druz9/guild v0.0.0-00010101000000-000000000000
+	druz9/cohort v0.0.0-00010101000000-000000000000
 	druz9/lobby v0.0.0-00010101000000-000000000000
 	druz9/mentor_session v0.0.0-00010101000000-000000000000
 	druz9/notify v0.0.0-00010101000000-000000000000
@@ -102,7 +102,7 @@ replace druz9/notify => ../../services/notify
 
 replace druz9/feed => ../../services/feed
 
-replace druz9/guild => ../../services/guild
+replace druz9/cohort => ../../services/cohort
 
 replace druz9/ai_native => ../../services/ai_native
 

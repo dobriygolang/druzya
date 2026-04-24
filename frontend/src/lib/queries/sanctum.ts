@@ -2,7 +2,7 @@
 //
 // SanctumPage сам по себе агрегирует несколько bounded-контекстов
 // (daily kata + streak, season pass, rating, profile, arena history,
-// guild). Чтобы импортный блок страницы не был километровым и для
+// cohort). Чтобы импортный блок страницы не был километровым и для
 // будущего реюза «дашборд для виджета X» — собираем удобные алиасы
 // здесь.
 //
@@ -13,7 +13,7 @@ export { useSeasonQuery } from './season'
 export { useRatingMeQuery, useLeaderboardQuery } from './rating'
 export { useProfileQuery } from './profile'
 export { useArenaHistoryQuery } from './matches'
-export { useMyGuildQuery, useGuildWarQuery } from './guild'
+export { useMyCohortQuery, useCohortWarQuery } from './cohort'
 
 // useSanctumGreeting — крошечный синтетический селектор. Пара
 // {displayName, streak} — то, что использует HeaderRow на главной.

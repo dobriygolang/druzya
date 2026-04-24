@@ -221,26 +221,26 @@ type SkillDecayed struct {
 func (SkillDecayed) Topic() string { return "progress.SkillDecayed" }
 
 // ─────────────────────────────────────────────────────────────────────────
-// Guild
+// Cohort
 // ─────────────────────────────────────────────────────────────────────────
 
-type GuildWarStarted struct {
+type CohortWarStarted struct {
 	base
-	WarID  uuid.UUID `json:"war_id"`
-	GuildA uuid.UUID `json:"guild_a"`
-	GuildB uuid.UUID `json:"guild_b"`
-	EndsAt time.Time `json:"ends_at"`
+	WarID   uuid.UUID `json:"war_id"`
+	CohortA uuid.UUID `json:"cohort_a"`
+	CohortB uuid.UUID `json:"cohort_b"`
+	EndsAt  time.Time `json:"ends_at"`
 }
 
-func (GuildWarStarted) Topic() string { return "guild.WarStarted" }
+func (CohortWarStarted) Topic() string { return "cohort.WarStarted" }
 
-type GuildWarFinished struct {
+type CohortWarFinished struct {
 	base
 	WarID    uuid.UUID  `json:"war_id"`
 	WinnerID *uuid.UUID `json:"winner_id,omitempty"` // nil при ничьей
 }
 
-func (GuildWarFinished) Topic() string { return "guild.WarFinished" }
+func (CohortWarFinished) Topic() string { return "cohort.WarFinished" }
 
 // ─────────────────────────────────────────────────────────────────────────
 // Slot / Human Mock

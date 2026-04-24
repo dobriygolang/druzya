@@ -117,7 +117,7 @@ func (a editorTokenVerifierAdapter) Verify(raw string) (uuid.UUID, error) {
 
 ## 4. Composite server embed — `cmd/monolith/server.go`
 
-Add alongside the Guild block:
+Add alongside the Cohort block:
 
 ```go
 import editorPorts "druz9/editor/ports"

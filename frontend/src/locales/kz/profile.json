@@ -14,22 +14,22 @@
     "overview": "Обзор",
     "matches": "Матчи",
     "achievements": "Достижения",
-    "guilds": "Гильдии",
+    "cohorts": "Когорты",
     "stats": "Статистика",
     "bookings": "Брони"
   },
   "skills": "Навыки",
   "achievements_title": "Ачивменты",
-  "guild_label": "ГИЛЬДИЯ",
-  "guild_top": "Топ-3 на сезон 4",
-  "rank_in_guild": "ранг",
+  "cohort_label": "ГИЛЬДИЯ",
+  "cohort_top": "Топ-3 на сезон 4",
+  "rank_in_cohort": "ранг",
   "your_contribution": "твой вклад",
   "points": "{{n}} очков",
   "leaderboard": "Лидерборд",
   "scopes": {
     "global": "Глобальный",
     "friends": "Друзья",
-    "guild": "Гильдия",
+    "cohort": "Когорта",
     "region": "Регион"
   },
   "table": {

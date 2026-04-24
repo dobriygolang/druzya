@@ -83,15 +83,15 @@ var rawTemplates = map[enums.NotificationType]map[string]string{
 		"ru": `🎯 Матч найден! {{.Section}}. Заходи быстрее — противник ждёт.`,
 		"en": `🎯 Match found! {{.Section}}. Hurry — your opponent is waiting.`,
 	},
-	// payload: {EnemyGuild:string, Days:int}
-	enums.NotificationTypeGuildWarStart: {
-		"ru": `🏰 Война началась против {{.EnemyGuild}}. {{.Days}} дней до конца.`,
-		"en": `🏰 War started against {{.EnemyGuild}}. {{.Days}} days remaining.`,
+	// payload: {EnemyCohort:string, Days:int}
+	enums.NotificationTypeCohortWarStart: {
+		"ru": `🏰 Война началась против {{.EnemyCohort}}. {{.Days}} дней до конца.`,
+		"en": `🏰 War started against {{.EnemyCohort}}. {{.Days}} days remaining.`,
 	},
 	// payload: {Won:bool, Points:int}
-	enums.NotificationTypeGuildWarResult: {
-		"ru": `{{if .Won}}Victory! Ваша гильдия заработала {{.Points}} очков.{{else}}Поражение. Очков: {{.Points}}. В следующий раз.{{end}}`,
-		"en": `{{if .Won}}Victory! Your guild earned {{.Points}} points.{{else}}Defeat. Points: {{.Points}}. Better luck next time.{{end}}`,
+	enums.NotificationTypeCohortWarResult: {
+		"ru": `{{if .Won}}Victory! Ваша когорта заработала {{.Points}} очков.{{else}}Поражение. Очков: {{.Points}}. В следующий раз.{{end}}`,
+		"en": `{{if .Won}}Victory! Your cohort earned {{.Points}} points.{{else}}Defeat. Points: {{.Points}}. Better luck next time.{{end}}`,
 	},
 	// payload: {NodeKey:string, DaysInactive:int}
 	enums.NotificationTypeSkillDecay: {
@@ -115,7 +115,7 @@ var rawTemplates = map[enums.NotificationType]map[string]string{
 	},
 }
 
-// SubscriptionActivatedTemplate, UserRegisteredTemplate and GuildWarResult
+// SubscriptionActivatedTemplate, UserRegisteredTemplate and CohortWarResult
 // (losing variant) are reused via the {Won:bool} flag. Additional free-form
 // templates used by the bot command dispatcher (welcome message, etc.) live in
 // bot_text.go.

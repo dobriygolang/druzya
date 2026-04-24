@@ -95,51 +95,37 @@ type BoostyAccount struct {
 }
 
 type Cohort struct {
-	ID         pgtype.UUID
-	Slug       string
-	Name       string
-	OwnerID    pgtype.UUID
-	StartsAt   pgtype.Timestamptz
-	EndsAt     pgtype.Timestamptz
-	Status     string
-	Visibility string
-	CreatedAt  pgtype.Timestamptz
-	Capacity   int32
-}
-
-type CohortAnnouncement struct {
-	ID        pgtype.UUID
-	CohortID  pgtype.UUID
-	AuthorID  pgtype.UUID
-	Body      string
-	Pinned    bool
-	CreatedAt pgtype.Timestamptz
-	UpdatedAt pgtype.Timestamptz
-}
-
-type CohortAnnouncementReaction struct {
-	AnnouncementID pgtype.UUID
-	UserID         pgtype.UUID
-	Emoji          string
-	CreatedAt      pgtype.Timestamptz
-}
-
-type CohortInvite struct {
-	Token     string
-	CohortID  pgtype.UUID
-	CreatedBy pgtype.UUID
-	CreatedAt pgtype.Timestamptz
-	ExpiresAt pgtype.Timestamptz
-	MaxUses   int32
-	UsedCount int32
+	ID          pgtype.UUID
+	OwnerID     pgtype.UUID
+	Name        string
+	Emblem      pgtype.Text
+	CohortElo   int32
+	CreatedAt   pgtype.Timestamptz
+	Description pgtype.Text
+	Tier        pgtype.Text
+	IsPublic    bool
+	JoinPolicy  string
+	MaxMembers  int32
 }
 
 type CohortMember struct {
-	CohortID pgtype.UUID
-	UserID   pgtype.UUID
-	Role     string
-	JoinedAt pgtype.Timestamptz
-	LeftAt   pgtype.Timestamptz
+	CohortID        pgtype.UUID
+	UserID          pgtype.UUID
+	Role            string
+	AssignedSection pgtype.Text
+	JoinedAt        pgtype.Timestamptz
+}
+
+type CohortWar struct {
+	ID        pgtype.UUID
+	CohortAID pgtype.UUID
+	CohortBID pgtype.UUID
+	WeekStart pgtype.Date
+	WeekEnd   pgtype.Date
+	ScoresA   []byte
+	ScoresB   []byte
+	WinnerID  pgtype.UUID
+	CreatedAt pgtype.Timestamptz
 }
 
 type Company struct {
@@ -289,40 +275,6 @@ type Friendship struct {
 	Status      string
 	CreatedAt   pgtype.Timestamptz
 	AcceptedAt  pgtype.Timestamptz
-}
-
-type Guild struct {
-	ID          pgtype.UUID
-	OwnerID     pgtype.UUID
-	Name        string
-	Emblem      pgtype.Text
-	GuildElo    int32
-	CreatedAt   pgtype.Timestamptz
-	Description pgtype.Text
-	Tier        pgtype.Text
-	IsPublic    bool
-	JoinPolicy  string
-	MaxMembers  int32
-}
-
-type GuildMember struct {
-	GuildID         pgtype.UUID
-	UserID          pgtype.UUID
-	Role            string
-	AssignedSection pgtype.Text
-	JoinedAt        pgtype.Timestamptz
-}
-
-type GuildWar struct {
-	ID        pgtype.UUID
-	GuildAID  pgtype.UUID
-	GuildBID  pgtype.UUID
-	WeekStart pgtype.Date
-	WeekEnd   pgtype.Date
-	ScoresA   []byte
-	ScoresB   []byte
-	WinnerID  pgtype.UUID
-	CreatedAt pgtype.Timestamptz
 }
 
 type Incident struct {

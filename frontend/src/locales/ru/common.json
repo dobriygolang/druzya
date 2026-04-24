@@ -2,7 +2,7 @@
   "nav": {
     "sanctum": "Sanctum",
     "arena": "Arena",
-    "guild": "Гильдия",
+    "cohort": "Когорта",
     "atlas": "Atlas",
     "codex": "Кодекс",
     "friends": "Друзья",
@@ -32,7 +32,7 @@
     "login": "Войти"
   },
   "labels": {
-    "search_placeholder": "Поиск ката, друзей, гильдий…",
+    "search_placeholder": "Поиск ката, друзей, когорт…",
     "loading": "Загрузка...",
     "empty": "Пусто",
     "error": "Ошибка",

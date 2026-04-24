@@ -230,9 +230,9 @@ export class LeaderboardEntry extends Message<LeaderboardEntry> {
   title = "";
 
   /**
-   * @generated from field: string guild_emblem = 6;
+   * @generated from field: string cohort_emblem = 6;
    */
-  guildEmblem = "";
+  cohortEmblem = "";
 
   constructor(data?: PartialMessage<LeaderboardEntry>) {
     super();
@@ -247,7 +247,7 @@ export class LeaderboardEntry extends Message<LeaderboardEntry> {
     { no: 3, name: "username", kind: "scalar", T: 9 /* ScalarType.STRING */ },
     { no: 4, name: "elo", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
     { no: 5, name: "title", kind: "scalar", T: 9 /* ScalarType.STRING */ },
-    { no: 6, name: "guild_emblem", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 6, name: "cohort_emblem", kind: "scalar", T: 9 /* ScalarType.STRING */ },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): LeaderboardEntry {

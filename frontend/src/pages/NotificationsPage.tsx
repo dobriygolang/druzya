@@ -55,8 +55,8 @@ function visualFor(n: NotificationItem): { icon: JSX.Element; bg: string } {
       return { icon: <Award className="h-4 w-4 text-warn" />, bg: 'bg-warn/15' }
     case 'streak_at_risk':
       return { icon: <Bell className="h-4 w-4 text-pink" />, bg: 'bg-pink/15' }
-    case 'guild_war_started':
-    case 'guild_war_ended':
+    case 'cohort_war_started':
+    case 'cohort_war_ended':
       return { icon: <Shield className="h-4 w-4 text-cyan" />, bg: 'bg-cyan/15' }
     case 'plan_ready':
       return { icon: <Sparkles className="h-4 w-4 text-pink" />, bg: 'bg-pink/15' }
@@ -67,7 +67,7 @@ function visualFor(n: NotificationItem): { icon: JSX.Element; bg: string } {
           return { icon: <Trophy className="h-4 w-4 text-warn" />, bg: 'bg-warn/15' }
         case 'social':
           return { icon: <Users className="h-4 w-4 text-accent-hover" />, bg: 'bg-accent/15' }
-        case 'guild':
+        case 'cohort':
           return { icon: <Shield className="h-4 w-4 text-cyan" />, bg: 'bg-cyan/15' }
         case 'system':
           return { icon: <Server className="h-4 w-4 text-text-secondary" />, bg: 'bg-surface-3' }
@@ -91,14 +91,14 @@ function relativeTime(iso: string, now: Date = new Date()): string {
   return d.toLocaleDateString()
 }
 
-type Tab = 'all' | 'unread_tab' | 'social' | 'match' | 'guild' | 'system'
+type Tab = 'all' | 'unread_tab' | 'social' | 'match' | 'cohort' | 'system'
 
 const TAB_TO_FILTER: Record<Tab, NotificationFilter> = {
   all: {},
   unread_tab: { unread: true },
   social: { channel: 'social' },
   match: { channel: 'match' },
-  guild: { channel: 'guild' },
+  cohort: { channel: 'cohort' },
   system: { channel: 'system' },
 }
 
@@ -194,7 +194,7 @@ function SettingsPanel() {
     { id: 'wins', label: 'Победы', icon: <Trophy className="h-3.5 w-3.5" /> },
     { id: 'match', label: 'Матчи', icon: <Swords className="h-3.5 w-3.5" /> },
     { id: 'social', label: 'Соц', icon: <Users className="h-3.5 w-3.5" /> },
-    { id: 'guild', label: 'Гильдия', icon: <Shield className="h-3.5 w-3.5" /> },
+    { id: 'cohort', label: 'Когорта', icon: <Shield className="h-3.5 w-3.5" /> },
     { id: 'system', label: 'Система', icon: <Server className="h-3.5 w-3.5" /> },
   ]
 
@@ -292,16 +292,16 @@ export default function NotificationsPage() {
     let unread = 0
     let social = 0
     let match = 0
-    let guild = 0
+    let cohort = 0
     let system = 0
     for (const n of items) {
       if (n.read_at == null) unread++
       if (n.channel === 'social') social++
       if (n.channel === 'match') match++
-      if (n.channel === 'guild') guild++
+      if (n.channel === 'cohort') cohort++
       if (n.channel === 'system') system++
     }
-    return { all, unread, social, match, guild, system }
+    return { all, unread, social, match, cohort, system }
   }, [items])
 
   const renderRow = (n: NotificationItem) => (
@@ -349,7 +349,7 @@ export default function NotificationsPage() {
             <Tabs.Tab id="unread_tab">{t('notifications.unread_tab')} {counts.unread}</Tabs.Tab>
             <Tabs.Tab id="social">{t('notifications.social')} {counts.social}</Tabs.Tab>
             <Tabs.Tab id="match">{t('notifications.match')} {counts.match}</Tabs.Tab>
-            <Tabs.Tab id="guild">{t('notifications.guild')} {counts.guild}</Tabs.Tab>
+            <Tabs.Tab id="cohort">{t('notifications.cohort')} {counts.cohort}</Tabs.Tab>
             <Tabs.Tab id="system">{t('notifications.system')} {counts.system}</Tabs.Tab>
           </Tabs.List>
         </Tabs>

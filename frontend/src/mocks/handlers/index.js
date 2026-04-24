@@ -4,7 +4,7 @@ import { arenaHandlers } from './arena';
 import { mockHandlers } from './mock';
 import { dailyHandlers } from './daily';
 import { ratingHandlers } from './rating';
-import { guildHandlers } from './guild';
+import { cohortHandlers } from './cohort';
 import { podcastHandlers } from './podcast';
 import { seasonHandlers } from './season';
 import { settingsHandlers } from './settings';
@@ -33,7 +33,7 @@ export const handlers = [
     ...mockHandlers,
     ...dailyHandlers,
     ...ratingHandlers,
-    ...guildHandlers,
+    ...cohortHandlers,
     ...podcastHandlers,
     ...seasonHandlers,
     ...settingsHandlers,

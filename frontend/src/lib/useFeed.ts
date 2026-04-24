@@ -6,7 +6,7 @@ export type FeedEvent = {
     | 'match_loss'
     | 'kata_done'
     | 'node_unlocked'
-    | 'guild_war'
+    | 'cohort_war'
     | 'level_up'
   text: string
   at: string

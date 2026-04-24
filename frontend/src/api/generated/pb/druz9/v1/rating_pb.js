@@ -182,9 +182,9 @@ export class LeaderboardEntry extends Message {
      */
     title = "";
     /**
-     * @generated from field: string guild_emblem = 6;
+     * @generated from field: string cohort_emblem = 6;
      */
-    guildEmblem = "";
+    cohortEmblem = "";
     constructor(data) {
         super();
         proto3.util.initPartial(data, this);
@@ -197,7 +197,7 @@ export class LeaderboardEntry extends Message {
         { no: 3, name: "username", kind: "scalar", T: 9 /* ScalarType.STRING */ },
         { no: 4, name: "elo", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
         { no: 5, name: "title", kind: "scalar", T: 9 /* ScalarType.STRING */ },
-        { no: 6, name: "guild_emblem", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+        { no: 6, name: "cohort_emblem", kind: "scalar", T: 9 /* ScalarType.STRING */ },
     ]);
     static fromBinary(bytes, options) {
         return new LeaderboardEntry().fromBinary(bytes, options);

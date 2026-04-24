@@ -13,22 +13,22 @@
     "overview": "Overview",
     "matches": "Matches",
     "achievements": "Achievements",
-    "guilds": "Guilds",
+    "cohorts": "Cohorts",
     "stats": "Stats",
     "bookings": "Bookings"
   },
   "skills": "Skills",
   "achievements_title": "Achievements",
-  "guild_label": "GUILD",
-  "guild_top": "Top-3 in season 4",
-  "rank_in_guild": "rank",
+  "cohort_label": "COHORT",
+  "cohort_top": "Top-3 in season 4",
+  "rank_in_cohort": "rank",
   "your_contribution": "your contribution",
   "points": "{{n}} points",
   "leaderboard": "Leaderboard",
   "scopes": {
     "global": "Global",
     "friends": "Friends",
-    "guild": "Guild",
+    "cohort": "Cohort",
     "region": "Region"
   },
   "table": {

@@ -235,7 +235,7 @@ function RightComms({ logs }: { logs: LogEvent[] }) {
       <Card className="flex-col gap-2 border-warn/40 p-4" interactive={false}>
         <h3 className="font-display text-sm font-bold text-warn">Награда за победу</h3>
         <div className="flex justify-between text-xs">
-          <span className="text-text-secondary">Гильдия</span>
+          <span className="text-text-secondary">Когорта</span>
           <span className="font-mono text-warn">+1500 SP</span>
         </div>
         <div className="flex justify-between text-xs">

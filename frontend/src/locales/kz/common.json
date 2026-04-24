@@ -3,7 +3,7 @@
   "nav": {
     "sanctum": "Сенімхана",
     "arena": "Арена",
-    "guild": "Гильдия",
+    "cohort": "Когорта",
     "atlas": "Атлас",
     "codex": "Кодекс",
     "friends": "Достар",
@@ -33,7 +33,7 @@
     "login": "Кіру"
   },
   "labels": {
-    "search_placeholder": "Ката, дос, гильдия іздеу…",
+    "search_placeholder": "Ката, дос, когорта іздеу…",
     "loading": "Жүктелуде...",
     "empty": "Бос",
     "error": "Қате",

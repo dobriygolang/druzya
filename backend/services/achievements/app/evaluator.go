@@ -52,10 +52,10 @@ type UserState struct {
 	// ChallengesSent — challenges sent.
 	ChallengesSent int
 
-	// GuildJoined — true если состоит в гильдии.
-	GuildJoined bool
-	// GuildWarsWon — побед гильдии.
-	GuildWarsWon int
+	// CohortJoined — true если состоит в когорты.
+	CohortJoined bool
+	// CohortWarsWon — побед когорты.
+	CohortWarsWon int
 	// HardSolved — solved Hard-задач.
 	HardSolved int
 	// MediumSolved — solved Medium-задач.
@@ -201,7 +201,7 @@ func scoreForCode(code string, st UserState) int {
 	case "code-warrior":
 		return st.AnySolved
 
-	// Social / friends / guild
+	// Social / friends / cohort
 	case "first-friend":
 		if st.FriendsCount >= 1 {
 			return 1
@@ -213,14 +213,14 @@ func scoreForCode(code string, st UserState) int {
 		return st.FriendsCount
 	case "challenger":
 		return st.ChallengesSent
-	case "guild-joined":
-		if st.GuildJoined {
+	case "cohort-joined":
+		if st.CohortJoined {
 			return 1
 		}
 		return 0
-	case "guild-war-won":
-		return st.GuildWarsWon
-	case "guild-war-mvp":
+	case "cohort-war-won":
+		return st.CohortWarsWon
+	case "cohort-war-mvp":
 		// не агрегируется в snapshot — отдельный publisher.
 		return -1
 	}

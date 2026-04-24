@@ -7,7 +7,7 @@ let notifyPrefs = {
   email_calendar: true,
   telegram_daily: false,
   push_arena_invite: true,
-  push_guild_war: true,
+  push_cohort_war: true,
   quiet_hours_start: '23:00',
   quiet_hours_end: '08:00',
 }
