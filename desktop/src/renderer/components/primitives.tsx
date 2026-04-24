@@ -37,23 +37,23 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(function Button
   };
   const variants: Record<Variant, CSSProperties> = {
     primary: {
-      background: 'var(--d-gradient-hero)',
+      background: 'linear-gradient(135deg, var(--d9-accent) 0%, var(--d9-cyan) 100%)',
       color: 'white',
       boxShadow: '0 1px 0 rgba(255,255,255,0.1) inset, 0 4px 12px rgba(124,92,255,0.28)',
     },
     secondary: {
-      background: 'var(--d-bg-2)',
-      color: 'var(--d-text)',
-      borderColor: 'var(--d-line-strong)',
+      background: 'var(--d9-slate)',
+      color: 'var(--d9-ink)',
+      borderColor: 'var(--d9-hairline-b)',
     },
     ghost: {
       background: 'transparent',
-      color: 'var(--d-text-2)',
+      color: 'var(--d9-ink-dim)',
     },
     pill: {
-      background: 'var(--d-bg-2)',
-      color: 'var(--d-text-2)',
-      borderColor: 'var(--d-line)',
+      background: 'var(--d9-slate)',
+      color: 'var(--d9-ink-dim)',
+      borderColor: 'var(--d9-hairline)',
     },
   };
   return (
@@ -87,7 +87,7 @@ export const IconButton = forwardRef<HTMLButtonElement, IconButtonProps>(functio
         alignItems: 'center',
         justifyContent: 'center',
         background: 'transparent',
-        color: 'var(--d-text-2)',
+        color: 'var(--d9-ink-dim)',
         border: '1px solid transparent',
         borderRadius: 'var(--r-btn)',
         cursor: 'pointer',
@@ -96,11 +96,11 @@ export const IconButton = forwardRef<HTMLButtonElement, IconButtonProps>(functio
       }}
       onMouseEnter={(e) => {
         e.currentTarget.style.background = 'rgba(255,255,255,0.04)';
-        e.currentTarget.style.color = 'var(--d-text)';
+        e.currentTarget.style.color = 'var(--d9-ink)';
       }}
       onMouseLeave={(e) => {
         e.currentTarget.style.background = 'transparent';
-        e.currentTarget.style.color = 'var(--d-text-2)';
+        e.currentTarget.style.color = 'var(--d9-ink-dim)';
       }}
       {...rest}
     >
@@ -146,10 +146,10 @@ export function Kbd({ children, size = 'md' }: { children: ReactNode; size?: 'sm
             height: size === 'sm' ? 16 : 20,
             padding: '0 4px',
             fontSize: size === 'sm' ? 10 : 11,
-            fontFamily: 'var(--f-mono)',
-            color: 'var(--d-text-3)',
+            fontFamily: 'var(--d9-font-mono)',
+            color: 'var(--d9-ink-mute)',
             background: 'rgba(255,255,255,0.05)',
-            border: '1px solid var(--d-line)',
+            border: '1px solid var(--d9-hairline)',
             borderRadius: 4,
           }}
         >
@@ -169,11 +169,11 @@ export type DotState = 'idle' | 'ready' | 'thinking' | 'recording' | 'error';
 
 export function StatusDot({ state, size = 6 }: { state: DotState; size?: number }) {
   const colour: Record<DotState, string> = {
-    idle: 'var(--d-text-4)',
-    ready: 'var(--d-green)',
-    thinking: 'var(--d-accent)',
-    recording: 'var(--d-red)',
-    error: 'var(--d-red)',
+    idle: 'var(--d9-ink-ghost)',
+    ready: 'var(--d9-ok)',
+    thinking: 'var(--d9-accent)',
+    recording: 'var(--d9-err)',
+    error: 'var(--d9-err)',
   };
   return (
     <span
@@ -212,8 +212,8 @@ export function Surface({
     <div
       className={className}
       style={{
-        background: 'var(--d-bg-1)',
-        border: '1px solid var(--d-line)',
+        background: 'var(--d9-obsidian)',
+        border: '1px solid var(--d9-hairline)',
         borderRadius: 'var(--r-window)',
         boxShadow: 'var(--s-window)',
         overflow: 'hidden',

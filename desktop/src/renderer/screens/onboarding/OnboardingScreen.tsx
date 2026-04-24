@@ -42,16 +42,15 @@ export function OnboardingScreen() {
   };
 
   useEffect(() => {
-    if (step === 'permissions') {
-      void refreshPerms();
-      const h = setInterval(refreshPerms, 1500);
-      const onFocus = () => void refreshPerms();
-      window.addEventListener('focus', onFocus);
-      return () => {
-        clearInterval(h);
-        window.removeEventListener('focus', onFocus);
-      };
-    }
+    if (step !== 'permissions') return;
+    void refreshPerms();
+    const h = setInterval(refreshPerms, 1500);
+    const onFocus = () => void refreshPerms();
+    window.addEventListener('focus', onFocus);
+    return () => {
+      clearInterval(h);
+      window.removeEventListener('focus', onFocus);
+    };
   }, [step]);
 
   // Move past login automatically once session appears.
@@ -98,7 +97,7 @@ function StepDots({ current }: { current: Step }) {
             width: 24,
             height: 4,
             borderRadius: 2,
-            background: i <= idx ? 'var(--d-accent)' : 'var(--d-line-strong)',
+            background: i <= idx ? 'var(--d9-accent)' : 'var(--d9-hairline-b)',
             transition: 'background 160ms',
           }}
         />
@@ -111,10 +110,10 @@ function WelcomeStep({ onNext }: { onNext: () => void }) {
   return (
     <div style={{ textAlign: 'center', maxWidth: 440 }}>
       <BrandMark size={72} />
-      <h1 style={{ fontSize: 28, margin: '20px 0 8px', fontFamily: 'var(--f-display)' }}>
+      <h1 style={{ fontSize: 28, margin: '20px 0 8px', fontFamily: 'var(--d9-font-display)' }}>
         Druz9 Copilot
       </h1>
-      <p style={{ fontSize: 14, color: 'var(--d-text-2)', lineHeight: 1.5, margin: '0 0 28px' }}>
+      <p style={{ fontSize: 14, color: 'var(--d9-ink-dim)', lineHeight: 1.5, margin: '0 0 28px' }}>
         Невидимый AI-помощник для разработчиков. Скриншот — и ответ рядом, пока ты делишь экран.
       </p>
       <Button variant="primary" size="md" onClick={onNext}>
@@ -243,8 +242,8 @@ function PermissionRow({
         alignItems: 'center',
         gap: 14,
         padding: '14px 16px',
-        background: 'var(--d-bg-2)',
-        border: '1px solid var(--d-line)',
+        background: 'var(--d9-slate)',
+        border: '1px solid var(--d9-hairline)',
         borderRadius: 10,
       }}
     >
@@ -256,8 +255,8 @@ function PermissionRow({
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          background: granted ? 'rgba(52, 199, 89, 0.12)' : 'var(--d-accent-soft)',
-          color: granted ? 'var(--d-green)' : 'var(--d-accent)',
+          background: granted ? 'rgba(52, 199, 89, 0.12)' : 'var(--d9-accent-glow)',
+          color: granted ? 'var(--d9-ok)' : 'var(--d9-accent)',
           flexShrink: 0,
         }}
       >
@@ -267,12 +266,12 @@ function PermissionRow({
         <div style={{ fontSize: 13, fontWeight: 500, display: 'flex', alignItems: 'center', gap: 6 }}>
           {title}
           {!required && (
-            <span style={{ fontSize: 10, color: 'var(--d-text-3)', fontFamily: 'var(--f-mono)' }}>
+            <span style={{ fontSize: 10, color: 'var(--d9-ink-mute)', fontFamily: 'var(--d9-font-mono)' }}>
               опционально
             </span>
           )}
         </div>
-        <div style={{ fontSize: 11, color: 'var(--d-text-3)', marginTop: 2 }}>{hint}</div>
+        <div style={{ fontSize: 11, color: 'var(--d9-ink-mute)', marginTop: 2 }}>{hint}</div>
       </div>
       {granted ? (
         <StatusDot state="ready" size={8} />
@@ -364,7 +363,7 @@ function LoginStep() {
       <div style={{ textAlign: 'center', maxWidth: 420 }}>
         <IconSparkles size={40} />
         <h2 style={{ fontSize: 22, margin: '16px 0 8px' }}>Вход в Druz9</h2>
-        <p style={{ fontSize: 13, color: 'var(--d-text-2)', lineHeight: 1.5, margin: '0 0 24px' }}>
+        <p style={{ fontSize: 13, color: 'var(--d9-ink-dim)', lineHeight: 1.5, margin: '0 0 24px' }}>
           Откроем Telegram-бота. Жми в боте «Start» — мы узнаем об этом и
           продолжим сами.
         </p>
@@ -380,9 +379,9 @@ function LoginStep() {
       <div style={{ textAlign: 'center', maxWidth: 460 }}>
         <IconSparkles size={40} />
         <h2 style={{ fontSize: 22, margin: '16px 0 8px' }}>Подтверди вход в Telegram</h2>
-        <p style={{ fontSize: 13, color: 'var(--d-text-2)', lineHeight: 1.5, margin: '0 0 20px' }}>
+        <p style={{ fontSize: 13, color: 'var(--d9-ink-dim)', lineHeight: 1.5, margin: '0 0 20px' }}>
           Мы открыли бота в браузере. Жми{' '}
-          <span style={{ fontFamily: 'var(--f-mono)', color: 'var(--d-text)' }}>/start</span>{' '}
+          <span style={{ fontFamily: 'var(--d9-font-mono)', color: 'var(--d9-ink)' }}>/start</span>{' '}
           там. Этот код должен совпасть с тем, что бот отправит тебе:
         </p>
 
@@ -393,13 +392,13 @@ function LoginStep() {
           style={{
             display: 'inline-flex',
             padding: '10px 18px',
-            background: 'var(--d-gradient-hero-soft)',
-            border: '1px solid var(--d-line)',
+            background: 'var(--d9-accent-glow)',
+            border: '1px solid var(--d9-hairline)',
             borderRadius: 10,
-            fontFamily: 'var(--f-mono)',
+            fontFamily: 'var(--d9-font-mono)',
             fontSize: 22,
             letterSpacing: 4,
-            color: 'var(--d-text)',
+            color: 'var(--d9-ink)',
           }}
         >
           {state.code}
@@ -418,7 +417,7 @@ function LoginStep() {
           </Button>
         </div>
 
-        <div style={{ marginTop: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, fontSize: 11, color: 'var(--d-text-3)' }}>
+        <div style={{ marginTop: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, fontSize: 11, color: 'var(--d9-ink-mute)' }}>
           <StatusDot state="thinking" size={6} />
           <span>ждём подтверждения в Telegram…</span>
         </div>
@@ -429,10 +428,10 @@ function LoginStep() {
   // error
   return (
     <div style={{ textAlign: 'center', maxWidth: 420 }}>
-      <h2 style={{ fontSize: 20, margin: '0 0 8px', color: 'var(--d-red)' }}>
+      <h2 style={{ fontSize: 20, margin: '0 0 8px', color: 'var(--d9-err)' }}>
         Не получилось войти
       </h2>
-      <p style={{ fontSize: 13, color: 'var(--d-text-2)', margin: '0 0 18px' }}>
+      <p style={{ fontSize: 13, color: 'var(--d9-ink-dim)', margin: '0 0 18px' }}>
         {humanizeError(state.message)}
       </p>
       <Button variant="primary" onClick={() => void restart()}>
@@ -461,13 +460,13 @@ function DoneStep() {
           display: 'inline-flex',
           alignItems: 'center',
           justifyContent: 'center',
-          color: 'var(--d-green)',
+          color: 'var(--d9-ok)',
         }}
       >
         <IconCheck size={28} />
       </div>
       <h2 style={{ fontSize: 22, margin: '16px 0 8px' }}>Всё готово</h2>
-      <p style={{ fontSize: 13, color: 'var(--d-text-2)', lineHeight: 1.5, margin: '0 0 18px' }}>
+      <p style={{ fontSize: 13, color: 'var(--d9-ink-dim)', lineHeight: 1.5, margin: '0 0 18px' }}>
         Нажми <Kbd size="sm">CommandOrControl+Shift+S</Kbd>, чтобы задать свой первый вопрос по скриншоту.
       </p>
       <Button variant="primary" onClick={() => void window.druz9.windows.hide('onboarding')}>

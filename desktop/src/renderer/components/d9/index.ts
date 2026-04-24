@@ -22,6 +22,8 @@ export { ModelDropdown } from './ModelDropdown';
 export type { ModelDropdownItem } from './ModelDropdown';
 export { Tag } from './Tag';
 export type { TagTone } from './Tag';
+export { RangeSlider } from './RangeSlider';
+export { Seg } from './Seg';
 export {
   D9IconCamera,
   D9IconSettings,

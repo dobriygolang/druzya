@@ -42,8 +42,14 @@ const api: Druz9API = {
     session: () => ipcRenderer.invoke(invokeChannels.authSession) as Promise<AuthSession | null>,
   },
   config: {
-    get: () => ipcRenderer.invoke(invokeChannels.configGet) as Promise<ReturnType<Druz9API['config']['get']>> as ReturnType<Druz9API['config']['get']>,
-    refresh: () => ipcRenderer.invoke(invokeChannels.configRefresh) as ReturnType<Druz9API['config']['refresh']>,
+    // `ReturnType<Druz9API['config']['get']>` is itself `Promise<DesktopConfig>`,
+    // so casting `ipcRenderer.invoke(...)` (already `Promise<any>`) directly
+    // to it is sufficient — the double cast via `as unknown` chain earlier
+    // confused TS into seeing `Promise<Promise<DesktopConfig>>`.
+    get: () =>
+      ipcRenderer.invoke(invokeChannels.configGet) as ReturnType<Druz9API['config']['get']>,
+    refresh: () =>
+      ipcRenderer.invoke(invokeChannels.configRefresh) as ReturnType<Druz9API['config']['refresh']>,
   },
   capture: {
     screenshotArea: () =>
@@ -93,11 +99,11 @@ const api: Druz9API = {
   },
   history: {
     list: (cursor: string, limit: number) =>
-      ipcRenderer.invoke(invokeChannels.historyList, cursor, limit) as Promise<{
-        conversations: unknown[];
-        nextCursor: string;
-      }>,
-    get: (id: string) => ipcRenderer.invoke(invokeChannels.historyGet, id),
+      ipcRenderer.invoke(invokeChannels.historyList, cursor, limit) as ReturnType<
+        Druz9API['history']['list']
+      >,
+    get: (id: string) =>
+      ipcRenderer.invoke(invokeChannels.historyGet, id) as ReturnType<Druz9API['history']['get']>,
     delete: (id: string) => ipcRenderer.invoke(invokeChannels.historyDelete, id) as Promise<void>,
   },
   providers: {

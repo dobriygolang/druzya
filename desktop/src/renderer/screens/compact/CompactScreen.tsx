@@ -99,6 +99,10 @@ export function CompactScreen() {
 
   const [input, setInput] = useState('');
   const [statusError, setStatusError] = useState<string | null>(null);
+  // Which picker window is currently open, mirrored from main via
+  // `pickerStateChanged` broadcast. Drives the caret-rotation on the
+  // matching pill (model / persona). null = no picker open.
+  const [openPicker, setOpenPicker] = useState<'model' | 'persona' | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -113,6 +117,18 @@ export function CompactScreen() {
       unsubSession();
     };
   }, [authBootstrap, conversationBootstrap, cursorBootstrap, sessionBootstrap]);
+
+  // Mirror the picker-window state so the caret on the corresponding
+  // pill rotates. Picker runs in a separate BrowserWindow — we can't
+  // observe its mount locally, so main broadcasts pickerStateChanged
+  // on show/hide.
+  useEffect(() => {
+    const unsub = window.druz9.on<import('@shared/ipc').PickerStateEvent>(
+      'event:picker-state-changed',
+      (ev) => setOpenPicker(ev.kind),
+    );
+    return unsub;
+  }, []);
 
   // 1Hz tick so the "SESSION 12:34" timer updates while a live session
   // is running. Cheap; only re-renders compact.
@@ -412,6 +428,7 @@ export function CompactScreen() {
               label={modelDisplayName}
               onClick={() => void window.druz9.windows.showPicker('model')}
               title={config ? 'Выбрать модель' : 'Нужен вход'}
+              open={openPicker === 'model'}
             />
 
             <Dot />
@@ -423,6 +440,7 @@ export function CompactScreen() {
               onClick={() => void window.druz9.windows.showPicker('persona')}
               title={activePersona.hint}
               compact
+              open={openPicker === 'persona'}
             />
 
             <Dot />

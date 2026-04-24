@@ -10,7 +10,7 @@ import { HotkeyRecorder } from '../../components/HotkeyRecorder';
 import { useLocaleStore } from '../../i18n';
 import { IconKey, IconPalette, IconSettings, IconShield, IconSparkles } from '../../components/icons';
 import { Button, StatusDot } from '../../components/primitives';
-import { BrandMark } from '../../components/d9';
+import { BrandMark, RangeSlider, Seg } from '../../components/d9';
 import { useConfig } from '../../hooks/use-config';
 import { useAuthStore } from '../../stores/auth';
 import { useHotkeyOverridesStore } from '../../stores/hotkey-overrides';
@@ -379,14 +379,11 @@ function LocaleRow() {
       title="Язык"
       hint="Интерфейс. Ответы модели остаются на языке твоего запроса."
       control={
-        <select
-          value={locale}
-          onChange={(e) => setLocale(e.target.value as 'ru' | 'en')}
-          style={selectStyle}
-        >
-          <option value="ru">Русский</option>
-          <option value="en">English</option>
-        </select>
+        <Seg
+          options={['Русский', 'English'] as const}
+          value={locale === 'ru' ? 'Русский' : 'English'}
+          onChange={(v) => setLocale(v === 'Русский' ? 'ru' : 'en')}
+        />
       }
     />
   );
@@ -689,33 +686,13 @@ function AppearanceTab() {
         title="Прозрачность окон"
         hint="0% — виден blur рабочего стола (macOS vibrancy). 100% — плотный фон. Применяется к окнам чата и настроек в реальном времени."
         control={
-          <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 260 }}>
-            <input
-              type="range"
-              min={0}
-              max={100}
-              step={1}
-              value={opacity}
-              onChange={(e) => void setOpacity(Number(e.target.value))}
-              style={{
-                flex: 1,
-                accentColor: 'var(--d9-accent)',
-                cursor: 'pointer',
-              }}
-            />
-            <span
-              style={{
-                fontFamily: 'var(--d9-font-mono)',
-                fontSize: 11,
-                color: 'var(--d9-ink-mute)',
-                width: 36,
-                textAlign: 'right',
-                fontVariantNumeric: 'tabular-nums',
-              }}
-            >
-              {opacity}%
-            </span>
-          </div>
+          <RangeSlider
+            value={opacity}
+            min={0}
+            max={100}
+            onChange={(v) => void setOpacity(v)}
+            suffix="%"
+          />
         }
       />
       <Row
@@ -880,7 +857,7 @@ function AboutTab() {
     <>
       <SectionTitle title="О программе" subtitle="Druz9 Copilot" />
       <div style={{ display: 'flex', flexDirection: 'column' }}>
-        <Row title="Версия" control={<span style={{ fontFamily: 'var(--f-mono)' }}>0.1.0</span>} />
+        <Row title="Версия" control={<span style={{ fontFamily: 'var(--d9-font-mono)' }}>0.1.0</span>} />
         <UpdateRow />
         <Row
           title="Обратная связь"
@@ -963,8 +940,8 @@ function UpdateRow() {
               alignItems: 'center',
               gap: 8,
               fontSize: 12,
-              color: 'var(--d-text-2)',
-              fontFamily: 'var(--f-mono)',
+              color: 'var(--d9-ink-dim)',
+              fontFamily: 'var(--d9-font-mono)',
             }}
           >
             <StatusDot state="thinking" size={8} />

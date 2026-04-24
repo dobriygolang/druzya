@@ -48,6 +48,9 @@ const WelcomeDemoPage = lazy(() => import('./pages/WelcomeDemoPage'))
 // new macOS desktop product. Linked from /welcome via CopilotPromoBanner +
 // header nav "NEW" badge.
 const CopilotLandingPage = lazy(() => import('./pages/CopilotLandingPage'))
+const CopilotReportPage = lazy(() =>
+  import('./pages/CopilotReportPage').then((m) => ({ default: m.CopilotReportPage })),
+)
 const LoginPage = lazy(() => import('./pages/LoginPage'))
 const AuthCallbackYandexPage = lazy(() => import('./pages/AuthCallbackYandexPage'))
 const OnboardingPage = lazy(() => import('./pages/OnboardingPage'))
@@ -153,6 +156,10 @@ export default function App() {
         <Route path="/welcome/demo" element={<WelcomeDemoPage />} />
         {/* Druz9 Copilot — public landing for the new macOS desktop product. */}
         <Route path="/copilot" element={<CopilotLandingPage />} />
+        {/* Public read of a session's structured analysis (Phase 3).
+            The desktop's Summary modal "Открыть в браузере" button
+            opens this URL. Backend reportURLTemplate points here. */}
+        <Route path="/copilot/reports/:sessionId" element={<CopilotReportPage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/auth/callback/yandex" element={<AuthCallbackYandexPage />} />
         <Route path="/onboarding" element={<OnboardingPage />} />

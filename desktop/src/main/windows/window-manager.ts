@@ -10,7 +10,7 @@
 
 import { BrowserWindow, screen } from 'electron';
 
-import type { PickerKind, WindowName } from '@shared/ipc';
+import { eventChannels, type PickerKind, type WindowName } from '@shared/ipc';
 
 import { loadAppearance, saveAppearance } from '../settings/appearance';
 import { hardenWindow } from './hardening';
@@ -208,6 +208,18 @@ export function hideWindow(name: WindowName): void {
     /* setIgnoreMouseEvents/setOpacity are no-ops on some platforms */
   }
   w.hide();
+  // Broadcast picker-close so the compact can drop the caret-open state
+  // on whichever pill was active. No-op for other windows.
+  if (name === 'picker') {
+    // Remember which kind was closed + when — the blur-race guard in
+    // showPicker reads this to swallow the immediate re-open that
+    // happens when a user clicks the SAME pill that was anchoring the
+    // now-closing picker.
+    lastPickerHideKind = pickerKind;
+    lastPickerHideAt = Date.now();
+    pickerKind = null;
+    broadcast(eventChannels.pickerStateChanged, { kind: null });
+  }
 }
 
 /**
@@ -261,6 +273,27 @@ export function showPicker(kind: PickerKind, opts: WindowOptions): void {
   const compact = windows.get('compact');
   if (!compact || compact.isDestroyed()) return;
 
+  // Swallow rapid re-opens caused by the blur→click race. When the user
+  // clicks the SAME pill that's currently anchoring an open picker, the
+  // sequence on macOS is:
+  //   (a) mousedown lands on compact → compact gains focus
+  //   (b) picker window blurs → hideWindow('picker') runs (see blur
+  //       handler in buildWindow), which clears pickerKind=null
+  //   (c) compact's onClick fires → IPC showPicker(<same kind>)
+  //       arrives here, but pickerKind is already null so the "toggle
+  //       close" branch (kind match) never fires — we'd re-open.
+  // Fix: if the very same kind was closed in the last 250ms, treat
+  // the new call as the user's intended "click to close" and stay shut.
+  const now = Date.now();
+  if (
+    lastPickerHideKind === kind &&
+    now - lastPickerHideAt < 250
+  ) {
+    lastPickerHideKind = null;
+    lastPickerHideAt = 0;
+    return;
+  }
+
   const cBounds = compact.getBounds();
   const PICKER_W = 320;
   const PICKER_H = 340;
@@ -294,6 +327,7 @@ export function showPicker(kind: PickerKind, opts: WindowOptions): void {
     existing.setIgnoreMouseEvents(false);
     existing.setOpacity(1);
     existing.show();
+    broadcast(eventChannels.pickerStateChanged, { kind });
     return;
   }
 
@@ -304,10 +338,15 @@ export function showPicker(kind: PickerKind, opts: WindowOptions): void {
   // so PickerScreen knows which dropdown to render.
   const url = `${opts.rendererURL}#/picker?kind=${kind}`;
   void win.loadURL(url);
+  broadcast(eventChannels.pickerStateChanged, { kind });
 }
 
 // Track the currently-mounted picker kind so toggle-close works.
 let pickerKind: PickerKind | null = null;
+// Track the last-closed picker kind + timestamp for the blur-race fix.
+// See the guard at the top of showPicker().
+let lastPickerHideKind: PickerKind | null = null;
+let lastPickerHideAt = 0;
 
 // ─────────────────────────────────────────────────────────────────────────
 // Toast — ephemeral notification anchored beside compact.

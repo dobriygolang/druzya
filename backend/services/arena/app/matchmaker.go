@@ -292,9 +292,13 @@ func (mm *Matchmaker) createMatchFromPair(ctx context.Context, sk SweepKey, p do
 		Mode:        sk.Mode,
 		Status:      enums.MatchStatusConfirming,
 	}
+	// 1v1: стороны матча обозначаются теми же Team1/Team2 константами, что и
+	// в 2v2 (domain.Team1=1, domain.Team2=2). Раньше здесь был хардкод 0/1 —
+	// 0 коллизит с «нет команды / дефолт», а 1 — с Team1 2v2-матчей. Используем
+	// именованные константы, чтобы исключить ребус и выровнять семантику.
 	parts := []domain.Participant{
-		{UserID: p.A.UserID, Team: 0, EloBefore: p.A.Elo},
-		{UserID: p.B.UserID, Team: 1, EloBefore: p.B.Elo},
+		{UserID: p.A.UserID, Team: domain.Team1, EloBefore: p.A.Elo},
+		{UserID: p.B.UserID, Team: domain.Team2, EloBefore: p.B.Elo},
 	}
 	created, err := mm.Matches.CreateMatch(ctx, m, parts)
 	if err != nil {

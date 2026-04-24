@@ -160,7 +160,7 @@ export function BrandMark({ size = 28, background }: { size?: number; background
         width: size,
         height: size,
         borderRadius: size / 3.5,
-        background: background ?? 'var(--d-gradient-hero)',
+        background: background ?? 'linear-gradient(135deg, var(--d9-accent) 0%, var(--d9-cyan) 100%)',
         boxShadow: '0 2px 8px rgba(124, 92, 255, 0.35), inset 0 1px 0 rgba(255,255,255,0.2)',
         flexShrink: 0,
         transition: 'background 180ms ease',

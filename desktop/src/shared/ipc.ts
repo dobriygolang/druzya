@@ -137,7 +137,15 @@ export const eventChannels = {
    *  rebroadcast so Compact/Expanded/etc mirror the selection. Same
    *  cross-renderer sync pattern as selectedModelChanged. */
   activePersonaChanged: 'event:active-persona-changed',
+  /** Picker window opened / closed. Compact subscribes so the caret
+   *  on the corresponding pill rotates up. Payload: PickerStateEvent. */
+  pickerStateChanged: 'event:picker-state-changed',
 } as const;
+
+export interface PickerStateEvent {
+  /** Which picker is open. null when no picker is visible. */
+  kind: PickerKind | null;
+}
 
 export interface ActivePersonaChangedEvent {
   personaId: string;

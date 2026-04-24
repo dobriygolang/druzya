@@ -69,8 +69,8 @@ export function PaywallModal({ copy, currentPlan, reason, onClose, onRefresh }: 
         style={{
           width: 'min(720px, 100%)',
           maxHeight: 'calc(100vh - 48px)',
-          background: 'var(--d-bg-1)',
-          border: '1px solid var(--d-line-strong)',
+          background: 'var(--d9-obsidian)',
+          border: '1px solid var(--d9-hairline-b)',
           borderRadius: 14,
           boxShadow: 'var(--s-float)',
           overflow: 'hidden',
@@ -82,8 +82,8 @@ export function PaywallModal({ copy, currentPlan, reason, onClose, onRefresh }: 
         <div
           style={{
             padding: '20px 24px',
-            background: 'var(--d-gradient-hero-soft)',
-            borderBottom: '1px solid var(--d-line)',
+            background: 'var(--d9-accent-glow)',
+            borderBottom: '1px solid var(--d9-hairline)',
             display: 'flex',
             alignItems: 'flex-start',
             gap: 14,
@@ -94,7 +94,7 @@ export function PaywallModal({ copy, currentPlan, reason, onClose, onRefresh }: 
               width: 40,
               height: 40,
               borderRadius: 10,
-              background: 'var(--d-gradient-hero)',
+              background: 'linear-gradient(135deg, var(--d9-accent) 0%, var(--d9-cyan) 100%)',
               color: 'white',
               display: 'flex',
               alignItems: 'center',
@@ -106,10 +106,10 @@ export function PaywallModal({ copy, currentPlan, reason, onClose, onRefresh }: 
             <IconSparkles size={18} />
           </div>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 16, fontWeight: 600, fontFamily: 'var(--f-display)' }}>
+            <div style={{ fontSize: 16, fontWeight: 600, fontFamily: 'var(--d9-font-display)' }}>
               {reason ?? 'Расширь возможности Druz9'}
             </div>
-            <div style={{ fontSize: 12.5, color: 'var(--d-text-2)', marginTop: 4, lineHeight: 1.5 }}>
+            <div style={{ fontSize: 12.5, color: 'var(--d9-ink-dim)', marginTop: 4, lineHeight: 1.5 }}>
               Или подключи свой OpenAI / Anthropic ключ в Настройках — инференс пойдёт напрямую,
               без подписки.
             </div>
@@ -123,7 +123,7 @@ export function PaywallModal({ copy, currentPlan, reason, onClose, onRefresh }: 
               display: 'inline-flex',
               alignItems: 'center',
               justifyContent: 'center',
-              color: 'var(--d-text-3)',
+              color: 'var(--d9-ink-mute)',
               background: 'transparent',
               border: '1px solid transparent',
               borderRadius: 6,
@@ -154,13 +154,13 @@ export function PaywallModal({ copy, currentPlan, reason, onClose, onRefresh }: 
           <div
             style={{
               padding: '12px 24px',
-              borderTop: '1px solid var(--d-line)',
+              borderTop: '1px solid var(--d9-hairline)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',
-              background: 'var(--d-bg-2)',
+              background: 'var(--d9-slate)',
               fontSize: 12,
-              color: 'var(--d-text-3)',
+              color: 'var(--d9-ink-mute)',
             }}
           >
             <span>После оплаты на Boosty ваш план обновится в течение минуты.</span>
@@ -197,8 +197,8 @@ function PlanCard({ plan, isCurrent }: { plan: PaywallCopy; isCurrent: boolean }
       style={{
         position: 'relative',
         padding: '18px 18px 16px',
-        background: isHighlighted ? 'var(--d-bg-2)' : 'var(--d-bg-2)',
-        border: isHighlighted ? '1px solid var(--d-accent)' : '1px solid var(--d-line)',
+        background: isHighlighted ? 'var(--d9-slate)' : 'var(--d9-slate)',
+        border: isHighlighted ? '1px solid var(--d9-accent)' : '1px solid var(--d9-hairline)',
         borderRadius: 12,
         display: 'flex',
         flexDirection: 'column',
@@ -214,10 +214,10 @@ function PlanCard({ plan, isCurrent }: { plan: PaywallCopy; isCurrent: boolean }
             left: 14,
             padding: '2px 8px',
             fontSize: 10,
-            fontFamily: 'var(--f-mono)',
+            fontFamily: 'var(--d9-font-mono)',
             textTransform: 'uppercase',
             letterSpacing: 0.5,
-            background: 'var(--d-gradient-hero)',
+            background: 'linear-gradient(135deg, var(--d9-accent) 0%, var(--d9-cyan) 100%)',
             color: 'white',
             borderRadius: 10,
           }}
@@ -232,12 +232,12 @@ function PlanCard({ plan, isCurrent }: { plan: PaywallCopy; isCurrent: boolean }
           <span
             style={{
               fontSize: 10,
-              fontFamily: 'var(--f-mono)',
+              fontFamily: 'var(--d9-font-mono)',
               textTransform: 'uppercase',
               padding: '2px 8px',
               borderRadius: 10,
               background: 'rgba(52, 199, 89, 0.12)',
-              color: 'var(--d-green)',
+              color: 'var(--d9-ok)',
             }}
           >
             текущий
@@ -245,11 +245,11 @@ function PlanCard({ plan, isCurrent }: { plan: PaywallCopy; isCurrent: boolean }
         )}
       </div>
 
-      <div style={{ fontSize: 20, fontWeight: 600, fontFamily: 'var(--f-display)' }}>
+      <div style={{ fontSize: 20, fontWeight: 600, fontFamily: 'var(--d9-font-display)' }}>
         {plan.priceLabel}
       </div>
 
-      <div style={{ fontSize: 12, color: 'var(--d-text-2)', lineHeight: 1.5 }}>{plan.tagline}</div>
+      <div style={{ fontSize: 12, color: 'var(--d9-ink-dim)', lineHeight: 1.5 }}>{plan.tagline}</div>
 
       <ul style={{ margin: '6px 0 0', padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 6 }}>
         {plan.bullets.map((b, i) => (
@@ -259,11 +259,11 @@ function PlanCard({ plan, isCurrent }: { plan: PaywallCopy; isCurrent: boolean }
               display: 'flex',
               gap: 8,
               fontSize: 12,
-              color: 'var(--d-text)',
+              color: 'var(--d9-ink)',
               lineHeight: 1.5,
             }}
           >
-            <span style={{ color: 'var(--d-green)', flexShrink: 0, marginTop: 2 }}>
+            <span style={{ color: 'var(--d9-ok)', flexShrink: 0, marginTop: 2 }}>
               <IconCheck size={12} />
             </span>
             <span>{b}</span>

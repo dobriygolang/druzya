@@ -73,8 +73,8 @@ export function HotkeyRecorder({
           border: '1px solid rgba(255, 69, 58, 0.45)',
           borderRadius: 'var(--r-btn)',
           fontSize: 11,
-          fontFamily: 'var(--f-mono)',
-          color: 'var(--d-red)',
+          fontFamily: 'var(--d9-font-mono)',
+          color: 'var(--d9-err)',
         }}
       >
         <StatusDot state="recording" size={6} />
@@ -101,7 +101,7 @@ export function HotkeyRecorder({
         }}
         onMouseEnter={(e) => {
           e.currentTarget.style.background = 'rgba(255,255,255,0.04)';
-          e.currentTarget.style.borderColor = 'var(--d-line)';
+          e.currentTarget.style.borderColor = 'var(--d9-hairline)';
         }}
         onMouseLeave={(e) => {
           e.currentTarget.style.background = 'transparent';
@@ -116,9 +116,9 @@ export function HotkeyRecorder({
           style={{
             background: 'transparent',
             border: 'none',
-            color: 'var(--d-text-3)',
+            color: 'var(--d9-ink-mute)',
             fontSize: 10.5,
-            fontFamily: 'var(--f-mono)',
+            fontFamily: 'var(--d9-font-mono)',
             cursor: 'pointer',
             padding: 0,
           }}

@@ -80,7 +80,7 @@ export function HistoryScreen() {
           alignItems: 'center',
           padding: '0 8px 0 14px',
           gap: 10,
-          borderBottom: '1px solid var(--d-line)',
+          borderBottom: '1px solid var(--d9-hairline)',
           WebkitAppRegion: 'drag',
         } as React.CSSProperties}
       >
@@ -90,8 +90,8 @@ export function HistoryScreen() {
         <div
           style={{
             fontSize: 10,
-            fontFamily: 'var(--f-mono)',
-            color: 'var(--d-text-3)',
+            fontFamily: 'var(--d9-font-mono)',
+            color: 'var(--d9-ink-mute)',
             WebkitAppRegion: 'no-drag',
           } as React.CSSProperties}
         >
@@ -132,9 +132,9 @@ export function HistoryScreen() {
               marginTop: 8,
               padding: 10,
               background: 'transparent',
-              border: '1px dashed var(--d-line)',
+              border: '1px dashed var(--d9-hairline)',
               borderRadius: 8,
-              color: 'var(--d-text-2)',
+              color: 'var(--d9-ink-dim)',
               fontSize: 12,
               cursor: loading ? 'default' : 'pointer',
             }}
@@ -149,7 +149,7 @@ export function HistoryScreen() {
               margin: '8px 0',
               padding: '8px 10px',
               fontSize: 11,
-              color: 'var(--d-red)',
+              color: 'var(--d9-err)',
               background: 'rgba(255, 69, 58, 0.08)',
               border: '1px solid rgba(255, 69, 58, 0.3)',
               borderRadius: 6,
@@ -164,12 +164,12 @@ export function HistoryScreen() {
       <div
         style={{
           padding: '8px 14px',
-          borderTop: '1px solid var(--d-line)',
+          borderTop: '1px solid var(--d9-hairline)',
           fontSize: 10.5,
-          color: 'var(--d-text-3)',
+          color: 'var(--d9-ink-mute)',
           display: 'flex',
           justifyContent: 'space-between',
-          fontFamily: 'var(--f-mono)',
+          fontFamily: 'var(--d9-font-mono)',
         }}
       >
         <span>
@@ -219,8 +219,8 @@ function HistoryRow({
       style={{
         position: 'relative',
         padding: '10px 12px',
-        background: 'var(--d-bg-2)',
-        border: '1px solid var(--d-line)',
+        background: 'var(--d9-slate)',
+        border: '1px solid var(--d9-hairline)',
         borderRadius: 8,
         display: 'flex',
         gap: 12,
@@ -229,10 +229,10 @@ function HistoryRow({
       }}
       onClick={onOpen}
       onMouseEnter={(e) => {
-        e.currentTarget.style.borderColor = 'var(--d-line-strong)';
+        e.currentTarget.style.borderColor = 'var(--d9-hairline-b)';
       }}
       onMouseLeave={(e) => {
-        e.currentTarget.style.borderColor = 'var(--d-line)';
+        e.currentTarget.style.borderColor = 'var(--d9-hairline)';
       }}
     >
       <div
@@ -240,7 +240,7 @@ function HistoryRow({
           width: 4,
           alignSelf: 'stretch',
           borderRadius: 2,
-          background: 'var(--d-gradient-hero)',
+          background: 'linear-gradient(135deg, var(--d9-accent) 0%, var(--d9-cyan) 100%)',
           opacity: 0.7,
         }}
       />
@@ -248,7 +248,7 @@ function HistoryRow({
         <div
           style={{
             fontSize: 13,
-            color: 'var(--d-text)',
+            color: 'var(--d9-ink)',
             overflow: 'hidden',
             textOverflow: 'ellipsis',
             whiteSpace: 'nowrap',
@@ -260,8 +260,8 @@ function HistoryRow({
           style={{
             marginTop: 3,
             fontSize: 10.5,
-            fontFamily: 'var(--f-mono)',
-            color: 'var(--d-text-3)',
+            fontFamily: 'var(--d9-font-mono)',
+            color: 'var(--d9-ink-mute)',
             display: 'flex',
             gap: 8,
           }}
@@ -293,7 +293,7 @@ function EmptyState() {
       style={{
         padding: 40,
         textAlign: 'center',
-        color: 'var(--d-text-3)',
+        color: 'var(--d9-ink-mute)',
       }}
     >
       <div
@@ -301,15 +301,15 @@ function EmptyState() {
           display: 'inline-flex',
           padding: 14,
           borderRadius: 12,
-          background: 'var(--d-bg-2)',
-          border: '1px solid var(--d-line)',
-          color: 'var(--d-text-2)',
+          background: 'var(--d9-slate)',
+          border: '1px solid var(--d9-hairline)',
+          color: 'var(--d9-ink-dim)',
           marginBottom: 12,
         }}
       >
         <IconHistory size={20} />
       </div>
-      <div style={{ fontSize: 13, color: 'var(--d-text-2)' }}>Диалогов пока нет</div>
+      <div style={{ fontSize: 13, color: 'var(--d9-ink-dim)' }}>Диалогов пока нет</div>
       <div style={{ marginTop: 4, fontSize: 11 }}>
         Сделай скриншот или задай вопрос в compact-окне
       </div>

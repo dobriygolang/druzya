@@ -82,8 +82,8 @@ export function ProviderPicker({ models, defaultModelId, onClose }: ProviderPick
         style={{
           width: 440,
           maxHeight: 520,
-          background: 'var(--d-bg-1)',
-          border: '1px solid var(--d-line-strong)',
+          background: 'var(--d9-obsidian)',
+          border: '1px solid var(--d9-hairline-b)',
           borderRadius: 12,
           boxShadow: 'var(--s-float)',
           display: 'flex',
@@ -91,7 +91,7 @@ export function ProviderPicker({ models, defaultModelId, onClose }: ProviderPick
           overflow: 'hidden',
         }}
       >
-        <div style={{ padding: '12px 14px', borderBottom: '1px solid var(--d-line)' }}>
+        <div style={{ padding: '12px 14px', borderBottom: '1px solid var(--d9-hairline)' }}>
           <input
             autoFocus
             value={query}
@@ -102,9 +102,9 @@ export function ProviderPicker({ models, defaultModelId, onClose }: ProviderPick
               height: 30,
               padding: '0 10px',
               background: 'transparent',
-              border: '1px solid var(--d-line)',
+              border: '1px solid var(--d9-hairline)',
               borderRadius: 8,
-              color: 'var(--d-text)',
+              color: 'var(--d9-ink)',
               fontSize: 13,
               outline: 'none',
             }}
@@ -113,16 +113,16 @@ export function ProviderPicker({ models, defaultModelId, onClose }: ProviderPick
 
         <div style={{ flex: 1, overflowY: 'auto', padding: '8px 0' }}>
           {grouped.length === 0 && models.length === 0 && !session && (
-            <div style={{ padding: 24, textAlign: 'center', color: 'var(--d-text-3)', fontSize: 12, lineHeight: 1.5 }}>
-              <div style={{ fontSize: 13, color: 'var(--d-text)', marginBottom: 4 }}>
+            <div style={{ padding: 24, textAlign: 'center', color: 'var(--d9-ink-mute)', fontSize: 12, lineHeight: 1.5 }}>
+              <div style={{ fontSize: 13, color: 'var(--d9-ink)', marginBottom: 4 }}>
                 Сначала нужно войти
               </div>
               Открой Настройки → Общее → Войти.
             </div>
           )}
           {grouped.length === 0 && models.length === 0 && session && (
-            <div style={{ padding: 24, textAlign: 'center', color: 'var(--d-text-3)', fontSize: 12, lineHeight: 1.5 }}>
-              <div style={{ fontSize: 13, color: 'var(--d-text)', marginBottom: 4 }}>
+            <div style={{ padding: 24, textAlign: 'center', color: 'var(--d9-ink-mute)', fontSize: 12, lineHeight: 1.5 }}>
+              <div style={{ fontSize: 13, color: 'var(--d9-ink)', marginBottom: 4 }}>
                 Каталог моделей не загрузился
               </div>
               Сервер недоступен или вернул ошибку.
@@ -131,7 +131,7 @@ export function ProviderPicker({ models, defaultModelId, onClose }: ProviderPick
             </div>
           )}
           {grouped.length === 0 && models.length > 0 && (
-            <div style={{ padding: 24, textAlign: 'center', color: 'var(--d-text-3)', fontSize: 12 }}>
+            <div style={{ padding: 24, textAlign: 'center', color: 'var(--d9-ink-mute)', fontSize: 12 }}>
               Ничего не найдено
             </div>
           )}
@@ -141,10 +141,10 @@ export function ProviderPicker({ models, defaultModelId, onClose }: ProviderPick
                 style={{
                   padding: '8px 16px 4px',
                   fontSize: 10,
-                  fontFamily: 'var(--f-mono)',
+                  fontFamily: 'var(--d9-font-mono)',
                   textTransform: 'uppercase',
                   letterSpacing: 0.5,
-                  color: 'var(--d-text-3)',
+                  color: 'var(--d9-ink-mute)',
                 }}
               >
                 {provider}
@@ -167,9 +167,9 @@ export function ProviderPicker({ models, defaultModelId, onClose }: ProviderPick
                       alignItems: 'center',
                       gap: 10,
                       padding: '8px 16px',
-                      background: chosen ? 'var(--d-accent-soft)' : 'transparent',
+                      background: chosen ? 'var(--d9-accent-glow)' : 'transparent',
                       border: 'none',
-                      color: available ? 'var(--d-text)' : 'var(--d-text-3)',
+                      color: available ? 'var(--d9-ink)' : 'var(--d9-ink-mute)',
                       cursor: available ? 'pointer' : 'not-allowed',
                       textAlign: 'left',
                     }}
@@ -193,9 +193,9 @@ export function ProviderPicker({ models, defaultModelId, onClose }: ProviderPick
                         {m.displayName}
                         <span
                           style={{
-                            fontFamily: 'var(--f-mono)',
+                            fontFamily: 'var(--d9-font-mono)',
                             fontSize: 10,
-                            color: 'var(--d-text-3)',
+                            color: 'var(--d9-ink-mute)',
                             fontWeight: 400,
                           }}
                         >
@@ -209,7 +209,7 @@ export function ProviderPicker({ models, defaultModelId, onClose }: ProviderPick
                           gap: 6,
                           marginTop: 2,
                           fontSize: 10.5,
-                          color: 'var(--d-text-3)',
+                          color: 'var(--d9-ink-mute)',
                         }}
                       >
                         {m.supportsReasoning && <IconSparkles size={11} />}
@@ -244,8 +244,8 @@ function Badge({
   tone: 'plan' | 'locked';
 }) {
   const tones: Record<typeof tone, { bg: string; fg: string }> = {
-    plan: { bg: 'rgba(52, 199, 89, 0.12)', fg: 'var(--d-green)' },
-    locked: { bg: 'var(--d-accent-2-soft)', fg: 'var(--d-accent-2)' },
+    plan: { bg: 'rgba(52, 199, 89, 0.12)', fg: 'var(--d9-ok)' },
+    locked: { bg: 'oklch(0.80 0.15 210 / 0.18)', fg: 'var(--d9-cyan)' },
   };
   const s = tones[tone];
   return (
@@ -255,7 +255,7 @@ function Badge({
         alignItems: 'center',
         gap: 4,
         fontSize: 10,
-        fontFamily: 'var(--f-mono)',
+        fontFamily: 'var(--d9-font-mono)',
         textTransform: 'uppercase',
         padding: '2px 8px',
         borderRadius: 10,
