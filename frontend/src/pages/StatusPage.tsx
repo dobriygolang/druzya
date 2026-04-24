@@ -121,7 +121,7 @@ function ServicesList({ services }: { services: StatusServiceState[] }) {
               <span className="text-sm font-semibold text-text-primary">{s.name}</span>
               <span className="font-mono text-[10px] text-text-muted">
                 {s.slug}
-                {typeof s.latency_ms === 'number' && s.latency_ms > 0 ? ` · ${s.latency_ms} ms` : ''}
+                {typeof s.latencyMs === 'number' && s.latencyMs > 0 ? ` · ${s.latencyMs} ms` : ''}
               </span>
             </div>
             <div className="flex h-6 flex-1 items-center gap-[1px]">
@@ -140,7 +140,7 @@ function ServicesList({ services }: { services: StatusServiceState[] }) {
                   s.status === 'operational' ? 'text-success' : s.status === 'degraded' ? 'text-warn' : 'text-danger'
                 }`}
               >
-                {s.uptime_30d}
+                {s.uptime30d}
               </span>
               <span className="font-mono text-[10px] text-text-muted">uptime 30d</span>
             </div>
@@ -174,7 +174,7 @@ function IncidentsCard({ incidents }: { incidents: StatusIncident[] }) {
       )}
       <div className="mt-4 flex flex-col gap-3">
         {incidents.map((inc) => {
-          const resolved = inc.ended_at !== null && inc.ended_at !== undefined && inc.ended_at !== ''
+          const resolved = inc.endedAt !== null && inc.endedAt !== undefined && inc.endedAt !== ''
           return (
             <div key={inc.id} className="rounded-[10px] bg-surface-1 p-3.5">
               <div className="flex items-center justify-between">
@@ -186,14 +186,14 @@ function IncidentsCard({ incidents }: { incidents: StatusIncident[] }) {
                   {resolved ? 'RESOLVED' : (inc.severity || 'open').toUpperCase()}
                 </span>
                 <span className="font-mono text-[11px] text-text-muted">
-                  {new Date(inc.started_at).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short', year: 'numeric' })}
+                  {new Date(inc.startedAt).toLocaleDateString('ru-RU', { day: 'numeric', month: 'short', year: 'numeric' })}
                 </span>
               </div>
               <h4 className="mt-2 font-display text-sm font-bold text-text-primary">{inc.title}</h4>
               {inc.description && <p className="mt-1 text-xs text-text-secondary">{inc.description}</p>}
-              {inc.affected_services.length > 0 && (
+              {inc.affectedServices.length > 0 && (
                 <div className="mt-2 flex flex-wrap gap-1">
-                  {inc.affected_services.map((s) => (
+                  {inc.affectedServices.map((s) => (
                     <span key={s} className="rounded-full bg-surface-3 px-2 py-0.5 font-mono text-[10px] text-text-muted">
                       {s}
                     </span>
@@ -307,13 +307,13 @@ export default function StatusPage() {
   return (
     <div className="min-h-screen bg-bg text-text-primary">
       <TopBar />
-      <Hero status={data.overall_status} uptime90d={data.uptime_90d} generatedAt={data.generated_at} />
+      <Hero status={data.overallStatus} uptime90d={data.uptime90d} generatedAt={data.generatedAt} />
       <div className="flex flex-col gap-5 px-4 pb-6 sm:px-8 lg:px-20 lg:pb-7">
-        <ServicesList services={data.services} />
-        <IncidentsCard incidents={data.incidents} />
+        <ServicesList services={data.services ?? []} />
+        <IncidentsCard incidents={data.incidents ?? []} />
         <div className="flex flex-col gap-4 lg:flex-row lg:gap-5">
           <SubscribeCard />
-          <MetricsCard uptime90d={data.uptime_90d} incidentCount={data.incidents.length} />
+          <MetricsCard uptime90d={data.uptime90d} incidentCount={(data.incidents ?? []).length} />
         </div>
       </div>
     </div>

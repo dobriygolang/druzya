@@ -3,6 +3,10 @@
 // No bearer required — the endpoint is open to anonymous visitors. The
 // hook is configured with refetchInterval=30s so the page stays fresh
 // without manual reloads.
+//
+// КОНТРАКТ: бэк отдаёт Connect-RPC protobuf-JSON (camelCase поля +
+// опускает пустые массивы / default значения). Поэтому incidents и
+// latencyMs могут отсутствовать — читаем через optional chaining + ??.
 import { useQuery } from '@tanstack/react-query'
 import { api } from '../apiClient'
 
@@ -10,8 +14,8 @@ export type StatusServiceState = {
   name: string
   slug: string
   status: 'operational' | 'degraded' | 'down' | string
-  uptime_30d: string
-  latency_ms: number
+  uptime30d: string
+  latencyMs?: number
 }
 
 export type StatusIncident = {
@@ -19,17 +23,17 @@ export type StatusIncident = {
   title: string
   description: string
   severity: 'minor' | 'major' | 'critical' | string
-  started_at: string
-  ended_at?: string | null
-  affected_services: string[]
+  startedAt: string
+  endedAt?: string | null
+  affectedServices: string[]
 }
 
 export type StatusPage = {
-  overall_status: 'operational' | 'degraded' | 'down' | string
-  uptime_90d: string
+  overallStatus: 'operational' | 'degraded' | 'down' | string
+  uptime90d: string
   services: StatusServiceState[]
-  incidents: StatusIncident[]
-  generated_at: string
+  incidents?: StatusIncident[]
+  generatedAt: string
 }
 
 export const statusQueryKeys = {
