@@ -6,10 +6,12 @@ import (
 	"fmt"
 
 	"druz9/profile/domain"
+	profiledb "druz9/profile/infra/db"
 	"druz9/shared/enums"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 // GetSettings composes users + notification_preferences.
@@ -162,4 +164,120 @@ func (p *Postgres) UpdateRole(ctx context.Context, userID uuid.UUID, role string
 		return fmt.Errorf("profile.Postgres.UpdateRole: %w", err)
 	}
 	return nil
+}
+
+// ── Interviewer application moderation queue (M4a) ────────────────────────
+
+func (p *Postgres) SubmitInterviewerApplication(ctx context.Context, userID uuid.UUID, motivation string) (domain.InterviewerApplication, error) {
+	row, err := p.q.SubmitInterviewerApplication(ctx, profiledb.SubmitInterviewerApplicationParams{
+		UserID:     pgUUID(userID),
+		Motivation: motivation,
+	})
+	if err != nil {
+		return domain.InterviewerApplication{}, fmt.Errorf("profile.Postgres.SubmitInterviewerApplication: %w", err)
+	}
+	return interviewerAppFromCols(row.ID, row.UserID, row.Motivation, row.Status,
+		row.ReviewedBy, row.ReviewedAt, row.DecisionNote, row.CreatedAt, "", ""), nil
+}
+
+func (p *Postgres) GetMyInterviewerApplication(ctx context.Context, userID uuid.UUID) (domain.InterviewerApplication, error) {
+	row, err := p.q.GetMyInterviewerApplication(ctx, pgUUID(userID))
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return domain.InterviewerApplication{}, domain.ErrNotFound
+		}
+		return domain.InterviewerApplication{}, fmt.Errorf("profile.Postgres.GetMyInterviewerApplication: %w", err)
+	}
+	return interviewerAppFromCols(row.ID, row.UserID, row.Motivation, row.Status,
+		row.ReviewedBy, row.ReviewedAt, row.DecisionNote, row.CreatedAt, "", ""), nil
+}
+
+func (p *Postgres) ListInterviewerApplications(ctx context.Context, status string) ([]domain.InterviewerApplication, error) {
+	if status == "" {
+		status = domain.ApplicationStatusPending
+	}
+	rows, err := p.q.ListInterviewerApplications(ctx, status)
+	if err != nil {
+		return nil, fmt.Errorf("profile.Postgres.ListInterviewerApplications: %w", err)
+	}
+	out := make([]domain.InterviewerApplication, 0, len(rows))
+	for _, r := range rows {
+		out = append(out, interviewerAppFromCols(r.ID, r.UserID, r.Motivation, r.Status,
+			r.ReviewedBy, r.ReviewedAt, r.DecisionNote, r.CreatedAt, r.UserUsername, r.UserDisplayName))
+	}
+	return out, nil
+}
+
+func (p *Postgres) GetInterviewerApplication(ctx context.Context, applicationID uuid.UUID) (domain.InterviewerApplication, error) {
+	row, err := p.q.GetInterviewerApplicationByID(ctx, pgUUID(applicationID))
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return domain.InterviewerApplication{}, domain.ErrNotFound
+		}
+		return domain.InterviewerApplication{}, fmt.Errorf("profile.Postgres.GetInterviewerApplication: %w", err)
+	}
+	return interviewerAppFromCols(row.ID, row.UserID, row.Motivation, row.Status,
+		row.ReviewedBy, row.ReviewedAt, row.DecisionNote, row.CreatedAt, "", ""), nil
+}
+
+func (p *Postgres) ApproveInterviewerApplication(ctx context.Context, applicationID, adminID uuid.UUID, note string) (domain.InterviewerApplication, error) {
+	row, err := p.q.ApproveInterviewerApplication(ctx, profiledb.ApproveInterviewerApplicationParams{
+		ID:           pgUUID(applicationID),
+		ReviewedBy:   pgtype.UUID{Bytes: adminID, Valid: true},
+		DecisionNote: note,
+	})
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return domain.InterviewerApplication{}, domain.ErrNotFound
+		}
+		return domain.InterviewerApplication{}, fmt.Errorf("profile.Postgres.ApproveInterviewerApplication: %w", err)
+	}
+	return interviewerAppFromCols(row.ID, row.UserID, row.Motivation, row.Status,
+		row.ReviewedBy, row.ReviewedAt, row.DecisionNote, row.CreatedAt, "", ""), nil
+}
+
+func (p *Postgres) RejectInterviewerApplication(ctx context.Context, applicationID, adminID uuid.UUID, note string) (domain.InterviewerApplication, error) {
+	row, err := p.q.RejectInterviewerApplication(ctx, profiledb.RejectInterviewerApplicationParams{
+		ID:           pgUUID(applicationID),
+		ReviewedBy:   pgtype.UUID{Bytes: adminID, Valid: true},
+		DecisionNote: note,
+	})
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return domain.InterviewerApplication{}, domain.ErrNotFound
+		}
+		return domain.InterviewerApplication{}, fmt.Errorf("profile.Postgres.RejectInterviewerApplication: %w", err)
+	}
+	return interviewerAppFromCols(row.ID, row.UserID, row.Motivation, row.Status,
+		row.ReviewedBy, row.ReviewedAt, row.DecisionNote, row.CreatedAt, "", ""), nil
+}
+
+func interviewerAppFromCols(
+	id, userID pgtype.UUID,
+	motivation, status string,
+	reviewedBy pgtype.UUID,
+	reviewedAt pgtype.Timestamptz,
+	decisionNote string,
+	createdAt pgtype.Timestamptz,
+	username, displayName string,
+) domain.InterviewerApplication {
+	a := domain.InterviewerApplication{
+		ID:              uuid.UUID(id.Bytes),
+		UserID:          uuid.UUID(userID.Bytes),
+		Motivation:      motivation,
+		Status:          status,
+		DecisionNote:    decisionNote,
+		CreatedAt:       createdAt.Time,
+		UserUsername:    username,
+		UserDisplayName: displayName,
+	}
+	if reviewedBy.Valid {
+		v := uuid.UUID(reviewedBy.Bytes)
+		a.ReviewedBy = &v
+	}
+	if reviewedAt.Valid {
+		t := reviewedAt.Time
+		a.ReviewedAt = &t
+	}
+	return a
 }

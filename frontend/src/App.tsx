@@ -99,6 +99,7 @@ const WarRoomPage = lazy(() => import('./pages/WarRoomPage'))
 const VoiceMockPage = lazy(() => import('./pages/VoiceMockPage'))
 const StressMeterPage = lazy(() => import('./pages/StressMeterPage'))
 const AdminPage = lazy(() => import('./pages/AdminPage'))
+const AdminInterviewerApplicationsPage = lazy(() => import('./pages/AdminInterviewerApplicationsPage'))
 const StatusPage = lazy(() => import('./pages/StatusPage'))
 const RatingPage = lazy(() => import('./pages/RatingPage'))
 const VacanciesPage = lazy(() => import('./pages/VacanciesPage'))
@@ -219,6 +220,7 @@ export default function App() {
         <Route path="/voice-mock/:sessionId" element={<VoiceMockPage />} />
         <Route path="/stress" element={<StressMeterPage />} />
         <Route path="/admin" element={<AdminPage />} />
+        <Route path="/admin/interviewers" element={<AdminInterviewerApplicationsPage />} />
         <Route path="/status" element={<StatusPage />} />
         <Route path="/rating" element={<RatingPage />} />
         <Route path="/vacancies" element={<VacanciesPage />} />

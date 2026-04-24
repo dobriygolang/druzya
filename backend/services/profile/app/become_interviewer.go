@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"druz9/profile/domain"
@@ -10,29 +11,86 @@ import (
 	"github.com/google/uuid"
 )
 
-// BecomeInterviewer promotes the caller's role to `interviewer`.
+// BecomeInterviewer creates a pending interviewer application in the
+// moderation queue. Idempotent — re-applying when an open application
+// already exists returns the existing row.
 //
-// MVP semantics — instant self-service approval. The longer-term plan is
-// admin moderation (a `pending_interviewer_apps` queue + admin sign-off);
-// when that lands the use case stays the same but Do becomes "create
-// pending application" and an AdminApprove use case flips the role.
+// Approval flips users.role to `interviewer` (handled by ApproveInterviewer).
 type BecomeInterviewer struct {
-	Repo  domain.ProfileRepo
-	GetUC *GetProfile
+	Repo domain.ProfileRepo
 }
 
-// Do is idempotent — calling it on an already-interviewer (or admin)
-// returns the current ProfileView without touching the role column.
-func (uc *BecomeInterviewer) Do(ctx context.Context, userID uuid.UUID) (ProfileView, error) {
-	if uc.Repo == nil || uc.GetUC == nil {
-		return ProfileView{}, fmt.Errorf("profile.BecomeInterviewer: nil deps")
+func (uc *BecomeInterviewer) Do(ctx context.Context, userID uuid.UUID, motivation string) (domain.InterviewerApplication, error) {
+	if uc.Repo == nil {
+		return domain.InterviewerApplication{}, fmt.Errorf("profile.BecomeInterviewer: nil deps")
 	}
-	if err := uc.Repo.UpdateRole(ctx, userID, string(enums.UserRoleInterviewer)); err != nil {
-		return ProfileView{}, fmt.Errorf("profile.BecomeInterviewer: %w", err)
-	}
-	view, err := uc.GetUC.Do(ctx, userID)
+	app, err := uc.Repo.SubmitInterviewerApplication(ctx, userID, motivation)
 	if err != nil {
-		return ProfileView{}, fmt.Errorf("profile.BecomeInterviewer: refetch: %w", err)
+		return domain.InterviewerApplication{}, fmt.Errorf("profile.BecomeInterviewer: %w", err)
 	}
-	return view, nil
+	return app, nil
+}
+
+// GetMyInterviewerApplication is the read counterpart used by the /slots
+// PromoCard to render the right CTA (apply / pending / rejected).
+type GetMyInterviewerApplication struct {
+	Repo domain.ProfileRepo
+}
+
+func (uc *GetMyInterviewerApplication) Do(ctx context.Context, userID uuid.UUID) (domain.InterviewerApplication, error) {
+	app, err := uc.Repo.GetMyInterviewerApplication(ctx, userID)
+	if err != nil {
+		return domain.InterviewerApplication{}, fmt.Errorf("profile.GetMyInterviewerApplication: %w", err)
+	}
+	return app, nil
+}
+
+// ListInterviewerApplications — admin queue read.
+type ListInterviewerApplications struct {
+	Repo domain.ProfileRepo
+}
+
+func (uc *ListInterviewerApplications) Do(ctx context.Context, status string) ([]domain.InterviewerApplication, error) {
+	out, err := uc.Repo.ListInterviewerApplications(ctx, status)
+	if err != nil {
+		return nil, fmt.Errorf("profile.ListInterviewerApplications: %w", err)
+	}
+	return out, nil
+}
+
+// ApproveInterviewerApplication marks the application approved AND flips
+// the applicant's role to `interviewer`. Both writes happen in this use
+// case (no DB transaction — small risk window where the role flips and
+// the moderation row stays pending; we accept since both writes are
+// idempotent and the queue worker can retry on partial failure).
+type ApproveInterviewerApplication struct {
+	Repo domain.ProfileRepo
+}
+
+func (uc *ApproveInterviewerApplication) Do(ctx context.Context, applicationID, adminID uuid.UUID, note string) (domain.InterviewerApplication, error) {
+	app, err := uc.Repo.ApproveInterviewerApplication(ctx, applicationID, adminID, note)
+	if err != nil {
+		if errors.Is(err, domain.ErrNotFound) {
+			return domain.InterviewerApplication{}, fmt.Errorf("profile.ApproveInterviewerApplication: %w", err)
+		}
+		return domain.InterviewerApplication{}, fmt.Errorf("profile.ApproveInterviewerApplication: %w", err)
+	}
+	if err := uc.Repo.UpdateRole(ctx, app.UserID, string(enums.UserRoleInterviewer)); err != nil {
+		return domain.InterviewerApplication{}, fmt.Errorf("profile.ApproveInterviewerApplication: promote: %w", err)
+	}
+	return app, nil
+}
+
+// RejectInterviewerApplication marks the application rejected with an
+// optional moderator note. Does NOT touch users.role.
+type RejectInterviewerApplication struct {
+	Repo domain.ProfileRepo
+}
+
+func (uc *RejectInterviewerApplication) Do(ctx context.Context, applicationID, adminID uuid.UUID, note string) (domain.InterviewerApplication, error) {
+	app, err := uc.Repo.RejectInterviewerApplication(ctx, applicationID, adminID, note)
+	if err != nil {
+		return domain.InterviewerApplication{}, fmt.Errorf("profile.RejectInterviewerApplication: %w", err)
+	}
+	return app, nil
 }

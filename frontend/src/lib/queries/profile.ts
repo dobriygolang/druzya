@@ -212,6 +212,7 @@ export const profileQueryKeys = {
   me: () => ['profile', 'me'] as const,
   meAtlas: () => ['profile', 'me', 'atlas'] as const,
   meReport: () => ['profile', 'me', 'report'] as const,
+  myInterviewerApp: () => ['profile', 'me', 'interviewer-app'] as const,
   public: (username: string) => ['profile', 'public', username.toLowerCase()] as const,
 }
 
@@ -230,33 +231,99 @@ export function useProfileQuery() {
   })
 }
 
+// InterviewerApplication mirrors profile.proto:InterviewerApplication.
+// status ∈ {"pending","approved","rejected"}. ReviewedAt is empty until
+// an admin moderates the row.
+export type InterviewerApplication = {
+  id: string
+  user_id: string
+  motivation: string
+  status: 'pending' | 'approved' | 'rejected' | string
+  reviewed_by?: string
+  reviewed_at?: string
+  decision_note: string
+  created_at: string
+  user_username?: string
+  user_display_name?: string
+}
+
 // useBecomeInterviewer wraps POST /api/v1/profile/me/become-interviewer.
-// Idempotent backend — calling on an already-interviewer is a no-op.
-//
-// IMPORTANT: the auth middleware reads role from the bearer-token claims
-// (see backend/services/auth/ports/middleware.go), not from the DB. After
-// promotion the user's existing access token still encodes the OLD role,
-// so subsequent role-gated RPCs (e.g. CreateSlot) would 403. We force a
-// refresh here so the next access token picks up the fresh role from
-// users.role via Refresh.Do → Users.FindByID.
+// Backend now creates a *pending* application instead of flipping the
+// role directly — admin moderation lives in /admin/interviewers.
+// Idempotent: re-applying while pending returns the existing row.
 export function useBecomeInterviewer() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: async () => {
-      const profile = await api<Profile>('/profile/me/become-interviewer', {
+    mutationFn: (motivation: string = '') =>
+      api<InterviewerApplication>('/profile/me/become-interviewer', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: '{}',
-      })
-      // Re-mint the access token with the new role baked into the claims.
-      // Failure is non-fatal — the silent-refresh timer will eventually
-      // pick it up; the worst-case UX is one stale 403 on first
-      // CreateSlot click which the user can retry after ~minutes.
-      await forceRefresh()
-      return profile
-    },
+        body: JSON.stringify({ motivation }),
+      }),
     onSuccess: () => {
-      void qc.invalidateQueries({ queryKey: profileQueryKeys.me() })
+      void qc.invalidateQueries({ queryKey: profileQueryKeys.myInterviewerApp() })
+    },
+  })
+}
+
+// useMyInterviewerApplicationQuery — GET /profile/me/interviewer-application.
+// 404 → null (the user has never applied).
+export function useMyInterviewerApplicationQuery() {
+  return useQuery({
+    queryKey: profileQueryKeys.myInterviewerApp(),
+    queryFn: async () => {
+      try {
+        return await api<InterviewerApplication>('/profile/me/interviewer-application')
+      } catch (err) {
+        const status = (err as { status?: number } | null)?.status
+        if (status === 404) return null
+        throw err
+      }
+    },
+    staleTime: 30_000,
+  })
+}
+
+// Admin-side hooks (gated server-side).
+export function useAdminInterviewerApplicationsQuery(status: 'pending' | 'approved' | 'rejected' = 'pending') {
+  return useQuery({
+    queryKey: ['profile', 'admin', 'interviewer-apps', status],
+    queryFn: async () => {
+      const wire = await api<{ items: InterviewerApplication[] }>(`/admin/interviewer-applications?status=${status}`)
+      return wire.items ?? []
+    },
+  })
+}
+
+export function useApproveInterviewerApplication() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, note }: { id: string; note?: string }) =>
+      api<InterviewerApplication>(`/admin/interviewer-applications/${encodeURIComponent(id)}/approve`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ note: note ?? '' }),
+      }),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['profile', 'admin', 'interviewer-apps'] })
+      // Force-refresh in case the approving admin promoted themselves —
+      // the JWT-claim role would otherwise stay stale.
+      void forceRefresh()
+    },
+  })
+}
+
+export function useRejectInterviewerApplication() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, note }: { id: string; note?: string }) =>
+      api<InterviewerApplication>(`/admin/interviewer-applications/${encodeURIComponent(id)}/reject`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ note: note ?? '' }),
+      }),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['profile', 'admin', 'interviewer-apps'] })
     },
   })
 }

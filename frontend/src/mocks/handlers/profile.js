@@ -150,22 +150,92 @@ const weeklyReport = {
     ],
 };
 let mockRole = profileFull.role;
+const mockApps = [
+    {
+        id: 'app-seed-1',
+        user_id: 'u-applicant-1',
+        motivation: 'Senior Go-разработчик в Авито 4 года, ментор у себя в команде.',
+        status: 'pending',
+        decision_note: '',
+        created_at: new Date(Date.now() - 4 * 3600_000).toISOString(),
+        user_username: 'alexey_skripka',
+        user_display_name: 'Алексей',
+    },
+    {
+        id: 'app-seed-2',
+        user_id: 'u-applicant-2',
+        motivation: '',
+        status: 'pending',
+        decision_note: '',
+        created_at: new Date(Date.now() - 24 * 3600_000).toISOString(),
+        user_username: 'mariya_db',
+        user_display_name: 'Мария',
+    },
+];
+function findMyApp() {
+    return [...mockApps].reverse().find((a) => a.user_id === profileFull.id);
+}
 export const profileHandlers = [
     http.get(`${base}/profile/me`, () => {
         let tier = 'free';
+        let roleOverride = null;
         try {
             const v = typeof localStorage !== 'undefined' ? localStorage.getItem('druz9_user_tier') : null;
-            if (v === 'premium' || v === 'pro' || v === 'free')
-                tier = v;
+            if (v === 'premium' || v === 'pro' || v === 'free') tier = v;
+            const r = typeof localStorage !== 'undefined' ? localStorage.getItem('druz9_role') : null;
+            if (r === 'admin') roleOverride = 'USER_ROLE_ADMIN';
+            else if (r === 'interviewer') roleOverride = 'USER_ROLE_INTERVIEWER';
+            else if (r === 'user') roleOverride = 'USER_ROLE_USER';
         }
-        catch {
-            /* noop */
-        }
-        return HttpResponse.json({ ...profileFull, tier, role: mockRole });
+        catch { /* noop */ }
+        return HttpResponse.json({ ...profileFull, tier, role: roleOverride ?? mockRole });
     }),
-    http.post(`${base}/profile/me/become-interviewer`, () => {
-        mockRole = 'USER_ROLE_INTERVIEWER';
-        return HttpResponse.json({ ...profileFull, role: mockRole });
+    http.post(`${base}/profile/me/become-interviewer`, async ({ request }) => {
+        const body = await request.json().catch(() => ({}));
+        const existing = findMyApp();
+        if (existing && existing.status === 'pending') return HttpResponse.json(existing);
+        const app = {
+            id: `app-${Date.now()}`,
+            user_id: profileFull.id,
+            motivation: body.motivation ?? '',
+            status: 'pending',
+            decision_note: '',
+            created_at: new Date().toISOString(),
+            user_username: profileFull.username,
+            user_display_name: profileFull.display_name,
+        };
+        mockApps.push(app);
+        return HttpResponse.json(app);
+    }),
+    http.get(`${base}/profile/me/interviewer-application`, () => {
+        const app = findMyApp();
+        if (!app) return new HttpResponse('not found', { status: 404 });
+        return HttpResponse.json(app);
+    }),
+    http.get(`${base}/admin/interviewer-applications`, ({ request }) => {
+        const status = new URL(request.url).searchParams.get('status') || 'pending';
+        return HttpResponse.json({ items: mockApps.filter((a) => a.status === status) });
+    }),
+    http.post(`${base}/admin/interviewer-applications/:id/approve`, async ({ params, request }) => {
+        const body = await request.json().catch(() => ({}));
+        const app = mockApps.find((a) => a.id === String(params.id));
+        if (!app) return new HttpResponse('not found', { status: 404 });
+        app.status = 'approved';
+        app.decision_note = body.note ?? '';
+        app.reviewed_at = new Date().toISOString();
+        app.reviewed_by = profileFull.id;
+        if (app.user_id === profileFull.id) mockRole = 'USER_ROLE_INTERVIEWER';
+        return HttpResponse.json(app);
+    }),
+    http.post(`${base}/admin/interviewer-applications/:id/reject`, async ({ params, request }) => {
+        const body = await request.json().catch(() => ({}));
+        const app = mockApps.find((a) => a.id === String(params.id));
+        if (!app) return new HttpResponse('not found', { status: 404 });
+        app.status = 'rejected';
+        app.decision_note = body.note ?? '';
+        app.reviewed_at = new Date().toISOString();
+        app.reviewed_by = profileFull.id;
+        return HttpResponse.json(app);
     }),
     http.get(`${base}/profile/me/atlas`, () => HttpResponse.json(atlas)),
     http.get(`${base}/profile/me/report`, () => HttpResponse.json(weeklyReport)),

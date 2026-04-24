@@ -11,7 +11,7 @@
 /* eslint-disable */
 // @ts-nocheck
 
-import { BecomeInterviewerRequest, GetMyAtlasRequest, GetMyProfileRequest, GetMyReportRequest, GetPublicProfileRequest, GetWeeklyShareRequest, ProfileFull, ProfilePublic, ProfileSettings, SkillAtlas, UpdateProfileSettingsRequest, WeeklyReport } from "./profile_pb.js";
+import { ApproveInterviewerApplicationRequest, BecomeInterviewerRequest, GetMyAtlasRequest, GetMyInterviewerApplicationRequest, GetMyProfileRequest, GetMyReportRequest, GetPublicProfileRequest, GetWeeklyShareRequest, InterviewerApplication, InterviewerApplicationList, ListInterviewerApplicationsRequest, ProfileFull, ProfilePublic, ProfileSettings, RejectInterviewerApplicationRequest, SkillAtlas, UpdateProfileSettingsRequest, WeeklyReport } from "./profile_pb.js";
 import { MethodKind } from "@bufbuild/protobuf";
 
 /**
@@ -88,18 +88,72 @@ export const ProfileService = {
       kind: MethodKind.Unary,
     },
     /**
-     * BecomeInterviewer promotes the authenticated caller's role to
-     * `interviewer`, unlocking the «Создать слот» flow on /slots. MVP is
-     * self-service auto-approve; the longer-term plan is admin moderation
-     * (a `pending_interviewer_apps` table + admin queue) — until then this
-     * is idempotent and instant.
+     * BecomeInterviewer creates a pending application in the
+     * `interviewer_applications` queue. Admins moderate via
+     * ListInterviewerApplications + ApproveInterviewerApplication /
+     * RejectInterviewerApplication. The role on users.role only flips
+     * after approval — see backend/services/profile/app/become_interviewer.go.
+     *
+     * Returns the freshly-created application (with status=pending). When
+     * the caller already has an open pending app, the existing row is
+     * returned instead of erroring (idempotent).
      *
      * @generated from rpc druz9.v1.ProfileService.BecomeInterviewer
      */
     becomeInterviewer: {
       name: "BecomeInterviewer",
       I: BecomeInterviewerRequest,
-      O: ProfileFull,
+      O: InterviewerApplication,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * GetMyInterviewerApplication returns the current caller's application
+     * status (any of pending/approved/rejected, or NOT_FOUND when the user
+     * has never applied). Used by the /slots PromoCard to render the right
+     * CTA (apply / pending / rejected with retry).
+     *
+     * @generated from rpc druz9.v1.ProfileService.GetMyInterviewerApplication
+     */
+    getMyInterviewerApplication: {
+      name: "GetMyInterviewerApplication",
+      I: GetMyInterviewerApplicationRequest,
+      O: InterviewerApplication,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * ListInterviewerApplications — admin-only. Returns the queue filtered
+     * by status (default: pending). Auth + role check inside the handler.
+     *
+     * @generated from rpc druz9.v1.ProfileService.ListInterviewerApplications
+     */
+    listInterviewerApplications: {
+      name: "ListInterviewerApplications",
+      I: ListInterviewerApplicationsRequest,
+      O: InterviewerApplicationList,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * ApproveInterviewerApplication — admin flips users.role to interviewer
+     * and marks the application approved.
+     *
+     * @generated from rpc druz9.v1.ProfileService.ApproveInterviewerApplication
+     */
+    approveInterviewerApplication: {
+      name: "ApproveInterviewerApplication",
+      I: ApproveInterviewerApplicationRequest,
+      O: InterviewerApplication,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * RejectInterviewerApplication — admin marks application rejected
+     * (with optional note). Does NOT touch users.role.
+     *
+     * @generated from rpc druz9.v1.ProfileService.RejectInterviewerApplication
+     */
+    rejectInterviewerApplication: {
+      name: "RejectInterviewerApplication",
+      I: RejectInterviewerApplicationRequest,
+      O: InterviewerApplication,
       kind: MethodKind.Unary,
     },
   }

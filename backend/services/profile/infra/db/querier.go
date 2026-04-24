@@ -11,16 +11,28 @@ import (
 )
 
 type Querier interface {
+	ApproveInterviewerApplication(ctx context.Context, arg ApproveInterviewerApplicationParams) (InterviewerApplication, error)
 	CountWeeklyActivity(ctx context.Context, arg CountWeeklyActivityParams) (CountWeeklyActivityRow, error)
 	EnsureAICredits(ctx context.Context, userID pgtype.UUID) error
 	EnsureNotificationPrefs(ctx context.Context, userID pgtype.UUID) error
 	EnsureProfile(ctx context.Context, userID pgtype.UUID) error
 	EnsureSubscription(ctx context.Context, userID pgtype.UUID) error
+	GetInterviewerApplicationByID(ctx context.Context, id pgtype.UUID) (InterviewerApplication, error)
+	// Most-recent application for the user (any status).
+	GetMyInterviewerApplication(ctx context.Context, userID pgtype.UUID) (InterviewerApplication, error)
 	// Queries consumed by sqlc; mirror the hand-rolled pgx code in infra/postgres.go.
 	GetProfileBundle(ctx context.Context, id pgtype.UUID) (GetProfileBundleRow, error)
 	GetProfilePublic(ctx context.Context, username string) (GetProfilePublicRow, error)
+	// Admin queue. Sorted oldest-first inside a status group so the FIFO
+	// principle is obvious to moderators.
+	ListInterviewerApplications(ctx context.Context, status string) ([]ListInterviewerApplicationsRow, error)
 	ListRatings(ctx context.Context, userID pgtype.UUID) ([]ListRatingsRow, error)
 	ListSkillNodes(ctx context.Context, userID pgtype.UUID) ([]ListSkillNodesRow, error)
+	RejectInterviewerApplication(ctx context.Context, arg RejectInterviewerApplicationParams) (InterviewerApplication, error)
+	// Idempotent: if there's already a pending row for the user, return it
+	// (the partial unique index would otherwise fire 23505). Approved/
+	// rejected history rows do not block re-application.
+	SubmitInterviewerApplication(ctx context.Context, arg SubmitInterviewerApplicationParams) (InterviewerApplication, error)
 	UpdateCareerStage(ctx context.Context, arg UpdateCareerStageParams) error
 	UpdateProfileXPLevel(ctx context.Context, arg UpdateProfileXPLevelParams) error
 }

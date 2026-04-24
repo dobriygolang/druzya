@@ -19,7 +19,12 @@ import { EmptyState } from '../components/EmptyState'
 import { MyBookingsDrawer } from '../components/slot/MyBookingsDrawer'
 import CreateSlotDialog from '../components/slot/CreateSlotDialog'
 import { humanizeDifficulty, humanizeSection } from '../lib/labels'
-import { isInterviewerOrAdmin, useBecomeInterviewer, useProfileQuery } from '../lib/queries/profile'
+import {
+  isInterviewerOrAdmin,
+  useBecomeInterviewer,
+  useMyInterviewerApplicationQuery,
+  useProfileQuery,
+} from '../lib/queries/profile'
 import {
   derivePriceBuckets,
   useBookSlot,
@@ -72,6 +77,7 @@ function Header({
   onBecomeInterviewer,
   isInterviewer,
   promoting,
+  appStatus,
 }: {
   count: number
   isError: boolean
@@ -80,6 +86,7 @@ function Header({
   onBecomeInterviewer: () => void
   isInterviewer: boolean
   promoting: boolean
+  appStatus: 'pending' | 'approved' | 'rejected' | undefined
 }) {
   return (
     <div className="flex flex-col items-start gap-4 px-4 pb-4 pt-6 sm:px-8 lg:flex-row lg:items-end lg:justify-between lg:px-20 lg:pt-7">
@@ -97,9 +104,11 @@ function Header({
         <Button variant="ghost" onClick={onOpenBookings}>Мои слоты</Button>
         {isInterviewer ? (
           <Button onClick={onCreateSlot}>Создать слот</Button>
+        ) : appStatus === 'pending' ? (
+          <Button disabled>На рассмотрении</Button>
         ) : (
           <Button onClick={onBecomeInterviewer} disabled={promoting}>
-            {promoting ? 'Отправляем…' : 'Стать интервьюером'}
+            {promoting ? 'Отправляем…' : appStatus === 'rejected' ? 'Подать ещё раз' : 'Стать интервьюером'}
           </Button>
         )}
       </div>
@@ -338,31 +347,41 @@ function PromoCard({
   onApply,
   isInterviewer,
   promoting,
-  promoted,
+  appStatus,
 }: {
   onApply: () => void
   isInterviewer: boolean
   promoting: boolean
-  promoted: boolean
+  appStatus: 'pending' | 'approved' | 'rejected' | undefined
 }) {
+  // Render order: role > application status > default invite.
+  const title = isInterviewer
+    ? 'Ты — интервьюер'
+    : appStatus === 'pending'
+      ? 'Заявка на рассмотрении'
+      : appStatus === 'rejected'
+        ? 'Заявка отклонена'
+        : 'Стань интервьюером'
+  const body = isInterviewer
+    ? 'Создавай слоты в каталоге и зарабатывай на mock-интервью.'
+    : appStatus === 'pending'
+      ? 'Админы посмотрят твою заявку и пришлют решение в течение 48 часов.'
+      : appStatus === 'rejected'
+        ? 'Можешь подать ещё раз — добавь больше контекста о своём опыте.'
+        : 'Зарабатывай на mock-интервью — тариф устанавливаешь сам.'
+  const showCta = !isInterviewer && appStatus !== 'pending'
   return (
     <div className="flex flex-col gap-4 rounded-xl bg-gradient-to-br from-accent to-pink p-5 shadow-glow">
-      <h3 className="font-display text-lg font-bold text-text-primary">
-        {isInterviewer ? 'Ты — интервьюер' : 'Стань интервьюером'}
-      </h3>
-      <p className="text-xs text-white/80">
-        {isInterviewer
-          ? 'Создавай слоты в каталоге и зарабатывай на mock-интервью.'
-          : 'Зарабатывай на mock-интервью — тариф устанавливаешь сам.'}
-      </p>
-      {!isInterviewer && (
+      <h3 className="font-display text-lg font-bold text-text-primary">{title}</h3>
+      <p className="text-xs text-white/80">{body}</p>
+      {showCta && (
         <button
           type="button"
           onClick={onApply}
           disabled={promoting}
           className="inline-flex items-center justify-center rounded-md bg-white/20 px-3.5 py-2 text-xs font-semibold text-text-primary hover:bg-white/30 disabled:opacity-60"
         >
-          {promoting ? 'Отправляем…' : promoted ? 'Заявка одобрена' : 'Подать заявку'}
+          {promoting ? 'Отправляем…' : appStatus === 'rejected' ? 'Подать ещё раз' : 'Подать заявку'}
         </button>
       )}
     </div>
@@ -427,9 +446,11 @@ export default function SlotsPage() {
 
   const profile = useProfileQuery()
   const isInterviewer = isInterviewerOrAdmin(profile.data?.role)
+  const myApp = useMyInterviewerApplicationQuery()
+  const appStatus = myApp.data?.status as 'pending' | 'approved' | 'rejected' | undefined
   const become = useBecomeInterviewer()
   const onBecomeInterviewer = () => {
-    become.mutate(undefined, {
+    become.mutate('', {
       onError: (err) => {
         setBookErr(err instanceof Error ? err.message : 'Не удалось отправить заявку')
       },
@@ -466,6 +487,7 @@ export default function SlotsPage() {
         onBecomeInterviewer={onBecomeInterviewer}
         isInterviewer={isInterviewer}
         promoting={become.isPending}
+        appStatus={appStatus}
       />
       <FilterBar filter={filter} setFilter={setFilter} priceBuckets={priceBuckets} />
       <div className="flex flex-col gap-4 px-4 pb-6 sm:px-8 lg:flex-row lg:gap-6 lg:px-20 lg:pb-7">
@@ -485,7 +507,7 @@ export default function SlotsPage() {
             onApply={onBecomeInterviewer}
             isInterviewer={isInterviewer}
             promoting={become.isPending}
-            promoted={become.isSuccess}
+            appStatus={appStatus}
           />
           <BookedSidebar booked={bookedSlots} onOpen={() => setDrawerOpen(true)} />
         </div>

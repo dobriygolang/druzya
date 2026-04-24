@@ -158,25 +158,116 @@ const weeklyReport = {
   ],
 }
 
-// mockRole is mutated by the BecomeInterviewer handler so the role-gated
-// UI flips after the mutation succeeds. Lives at module scope (resets on
-// page reload) — same convention as the slot bookings map.
+// mockRole is mutated by the admin Approve handler so the role-gated UI
+// flips after moderation. Lives at module scope (resets on page reload).
 let mockRole: string = profileFull.role
+type MockApp = {
+  id: string
+  user_id: string
+  motivation: string
+  status: 'pending' | 'approved' | 'rejected'
+  reviewed_by?: string
+  reviewed_at?: string
+  decision_note: string
+  created_at: string
+  user_username?: string
+  user_display_name?: string
+}
+// Pre-seed two pending applications so the admin queue isn't empty
+// before the dev clicks "Подать заявку".
+const mockApps: MockApp[] = [
+  {
+    id: 'app-seed-1',
+    user_id: 'u-applicant-1',
+    motivation: 'Senior Go-разработчик в Авито 4 года, ментор у себя в команде. Хочу попробовать mock-интервью как практику.',
+    status: 'pending',
+    decision_note: '',
+    created_at: new Date(Date.now() - 4 * 3600_000).toISOString(),
+    user_username: 'alexey_skripka',
+    user_display_name: 'Алексей',
+  },
+  {
+    id: 'app-seed-2',
+    user_id: 'u-applicant-2',
+    motivation: '',
+    status: 'pending',
+    decision_note: '',
+    created_at: new Date(Date.now() - 24 * 3600_000).toISOString(),
+    user_username: 'mariya_db',
+    user_display_name: 'Мария',
+  },
+]
+function findMyApp(): MockApp | undefined {
+  // The mock single-user always submits as profileFull.id.
+  return [...mockApps].reverse().find((a) => a.user_id === profileFull.id)
+}
 
 export const profileHandlers = [
   http.get(`${base}/profile/me`, () => {
     let tier: 'free' | 'premium' | 'pro' = 'free'
+    let roleOverride: string | null = null
     try {
       const v = typeof localStorage !== 'undefined' ? localStorage.getItem('druz9_user_tier') : null
       if (v === 'premium' || v === 'pro' || v === 'free') tier = v
+      // Dev override: localStorage.druz9_role = 'admin' | 'interviewer' | 'user'
+      // lets the dev jump between role-gated UIs without touching the mock.
+      const r = typeof localStorage !== 'undefined' ? localStorage.getItem('druz9_role') : null
+      if (r === 'admin') roleOverride = 'USER_ROLE_ADMIN'
+      else if (r === 'interviewer') roleOverride = 'USER_ROLE_INTERVIEWER'
+      else if (r === 'user') roleOverride = 'USER_ROLE_USER'
     } catch {
       /* noop */
     }
-    return HttpResponse.json({ ...profileFull, tier, role: mockRole })
+    return HttpResponse.json({ ...profileFull, tier, role: roleOverride ?? mockRole })
   }),
-  http.post(`${base}/profile/me/become-interviewer`, () => {
-    mockRole = 'USER_ROLE_INTERVIEWER'
-    return HttpResponse.json({ ...profileFull, role: mockRole })
+  http.post(`${base}/profile/me/become-interviewer`, async ({ request }) => {
+    const body = (await request.json().catch(() => ({}))) as { motivation?: string }
+    const existing = findMyApp()
+    if (existing && existing.status === 'pending') {
+      return HttpResponse.json(existing) // idempotent
+    }
+    const app: MockApp = {
+      id: `app-${Date.now()}`,
+      user_id: profileFull.id,
+      motivation: body.motivation ?? '',
+      status: 'pending',
+      decision_note: '',
+      created_at: new Date().toISOString(),
+      user_username: profileFull.username,
+      user_display_name: profileFull.display_name,
+    }
+    mockApps.push(app)
+    return HttpResponse.json(app)
+  }),
+  http.get(`${base}/profile/me/interviewer-application`, () => {
+    const app = findMyApp()
+    if (!app) return new HttpResponse('not found', { status: 404 })
+    return HttpResponse.json(app)
+  }),
+  http.get(`${base}/admin/interviewer-applications`, ({ request }) => {
+    const status = (new URL(request.url).searchParams.get('status') || 'pending') as MockApp['status']
+    return HttpResponse.json({ items: mockApps.filter((a) => a.status === status) })
+  }),
+  http.post(`${base}/admin/interviewer-applications/:id/approve`, async ({ params, request }) => {
+    const body = (await request.json().catch(() => ({}))) as { note?: string }
+    const app = mockApps.find((a) => a.id === String(params.id))
+    if (!app) return new HttpResponse('not found', { status: 404 })
+    app.status = 'approved'
+    app.decision_note = body.note ?? ''
+    app.reviewed_at = new Date().toISOString()
+    app.reviewed_by = profileFull.id
+    if (app.user_id === profileFull.id) mockRole = 'USER_ROLE_INTERVIEWER'
+    return HttpResponse.json(app)
+  }),
+  http.post(`${base}/admin/interviewer-applications/:id/reject`, async ({ params, request }) => {
+    const body = (await request.json().catch(() => ({}))) as { note?: string }
+    const app = mockApps.find((a) => a.id === String(params.id))
+    if (!app) return new HttpResponse('not found', { status: 404 })
+    app.status = 'rejected'
+    app.decision_note = body.note ?? ''
+    app.reviewed_at = new Date().toISOString()
+    app.reviewed_by = profileFull.id
+    return HttpResponse.json(app)
   }),
   http.get(`${base}/profile/me/atlas`, () => HttpResponse.json(atlas)),
   http.get(`${base}/profile/me/report`, () => HttpResponse.json(weeklyReport)),

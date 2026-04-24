@@ -207,21 +207,138 @@ func (s *ProfileServer) UpdateSettings(
 }
 
 // BecomeInterviewer implements (POST /profile/me/become-interviewer).
-// MVP self-service promotion — see app.BecomeInterviewer for the
-// future-admin-approval roadmap.
+// Creates a pending application — admin moderation flips the role.
 func (s *ProfileServer) BecomeInterviewer(
 	ctx context.Context,
-	_ *connect.Request[pb.BecomeInterviewerRequest],
-) (*connect.Response[pb.ProfileFull], error) {
+	req *connect.Request[pb.BecomeInterviewerRequest],
+) (*connect.Response[pb.InterviewerApplication], error) {
 	uid, ok := sharedMw.UserIDFromContext(ctx)
 	if !ok {
 		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("unauthenticated"))
 	}
-	v, err := s.H.BecomeUC.Do(ctx, uid)
+	app, err := s.H.BecomeUC.Do(ctx, uid, req.Msg.GetMotivation())
 	if err != nil {
 		return nil, fmt.Errorf("profile.BecomeInterviewer: %w", s.toConnectErr(err))
 	}
-	return connect.NewResponse(toProfileFullProto(v)), nil
+	return connect.NewResponse(toInterviewerAppProto(app)), nil
+}
+
+// GetMyInterviewerApplication implements (GET /profile/me/interviewer-application).
+// Returns NOT_FOUND when the user has never applied — frontend treats
+// that as "show apply button".
+func (s *ProfileServer) GetMyInterviewerApplication(
+	ctx context.Context,
+	_ *connect.Request[pb.GetMyInterviewerApplicationRequest],
+) (*connect.Response[pb.InterviewerApplication], error) {
+	uid, ok := sharedMw.UserIDFromContext(ctx)
+	if !ok {
+		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("unauthenticated"))
+	}
+	app, err := s.H.GetMyAppUC.Do(ctx, uid)
+	if err != nil {
+		return nil, fmt.Errorf("profile.GetMyInterviewerApplication: %w", s.toConnectErr(err))
+	}
+	return connect.NewResponse(toInterviewerAppProto(app)), nil
+}
+
+// ListInterviewerApplications — admin-only.
+func (s *ProfileServer) ListInterviewerApplications(
+	ctx context.Context,
+	req *connect.Request[pb.ListInterviewerApplicationsRequest],
+) (*connect.Response[pb.InterviewerApplicationList], error) {
+	if err := requireAdmin(ctx); err != nil {
+		return nil, err
+	}
+	rows, err := s.H.ListAppsUC.Do(ctx, req.Msg.GetStatus())
+	if err != nil {
+		return nil, fmt.Errorf("profile.ListInterviewerApplications: %w", s.toConnectErr(err))
+	}
+	out := &pb.InterviewerApplicationList{Items: make([]*pb.InterviewerApplication, 0, len(rows))}
+	for _, r := range rows {
+		out.Items = append(out.Items, toInterviewerAppProto(r))
+	}
+	return connect.NewResponse(out), nil
+}
+
+func (s *ProfileServer) ApproveInterviewerApplication(
+	ctx context.Context,
+	req *connect.Request[pb.ApproveInterviewerApplicationRequest],
+) (*connect.Response[pb.InterviewerApplication], error) {
+	adminID, err := requireAdminUID(ctx)
+	if err != nil {
+		return nil, err
+	}
+	appID, err := uuid.Parse(req.Msg.GetApplicationId())
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("invalid application_id: %w", err))
+	}
+	app, err := s.H.ApproveAppUC.Do(ctx, appID, adminID, req.Msg.GetNote())
+	if err != nil {
+		return nil, fmt.Errorf("profile.ApproveInterviewerApplication: %w", s.toConnectErr(err))
+	}
+	return connect.NewResponse(toInterviewerAppProto(app)), nil
+}
+
+func (s *ProfileServer) RejectInterviewerApplication(
+	ctx context.Context,
+	req *connect.Request[pb.RejectInterviewerApplicationRequest],
+) (*connect.Response[pb.InterviewerApplication], error) {
+	adminID, err := requireAdminUID(ctx)
+	if err != nil {
+		return nil, err
+	}
+	appID, err := uuid.Parse(req.Msg.GetApplicationId())
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("invalid application_id: %w", err))
+	}
+	app, err := s.H.RejectAppUC.Do(ctx, appID, adminID, req.Msg.GetNote())
+	if err != nil {
+		return nil, fmt.Errorf("profile.RejectInterviewerApplication: %w", s.toConnectErr(err))
+	}
+	return connect.NewResponse(toInterviewerAppProto(app)), nil
+}
+
+// requireAdmin returns Unauthenticated/PermissionDenied unless the caller
+// has role=admin in their JWT claims.
+func requireAdmin(ctx context.Context) error {
+	if _, err := requireAdminUID(ctx); err != nil {
+		return err
+	}
+	return nil
+}
+
+func requireAdminUID(ctx context.Context) (uuid.UUID, error) {
+	uid, ok := sharedMw.UserIDFromContext(ctx)
+	if !ok {
+		return uuid.Nil, connect.NewError(connect.CodeUnauthenticated, errors.New("unauthenticated"))
+	}
+	role, _ := sharedMw.UserRoleFromContext(ctx)
+	if role != string(enums.UserRoleAdmin) {
+		return uuid.Nil, connect.NewError(connect.CodePermissionDenied, errors.New("admin role required"))
+	}
+	return uid, nil
+}
+
+func toInterviewerAppProto(a domain.InterviewerApplication) *pb.InterviewerApplication {
+	out := &pb.InterviewerApplication{
+		Id:              a.ID.String(),
+		UserId:          a.UserID.String(),
+		Motivation:      a.Motivation,
+		Status:          a.Status,
+		DecisionNote:    a.DecisionNote,
+		UserUsername:    a.UserUsername,
+		UserDisplayName: a.UserDisplayName,
+	}
+	if !a.CreatedAt.IsZero() {
+		out.CreatedAt = timestamppb.New(a.CreatedAt.UTC())
+	}
+	if a.ReviewedBy != nil {
+		out.ReviewedBy = a.ReviewedBy.String()
+	}
+	if a.ReviewedAt != nil {
+		out.ReviewedAt = timestamppb.New(a.ReviewedAt.UTC())
+	}
+	return out
 }
 
 // GetPublicProfile implements (/profile/{username}).

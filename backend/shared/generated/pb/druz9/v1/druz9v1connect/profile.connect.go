@@ -62,6 +62,18 @@ const (
 	// ProfileServiceBecomeInterviewerProcedure is the fully-qualified name of the ProfileService's
 	// BecomeInterviewer RPC.
 	ProfileServiceBecomeInterviewerProcedure = "/druz9.v1.ProfileService/BecomeInterviewer"
+	// ProfileServiceGetMyInterviewerApplicationProcedure is the fully-qualified name of the
+	// ProfileService's GetMyInterviewerApplication RPC.
+	ProfileServiceGetMyInterviewerApplicationProcedure = "/druz9.v1.ProfileService/GetMyInterviewerApplication"
+	// ProfileServiceListInterviewerApplicationsProcedure is the fully-qualified name of the
+	// ProfileService's ListInterviewerApplications RPC.
+	ProfileServiceListInterviewerApplicationsProcedure = "/druz9.v1.ProfileService/ListInterviewerApplications"
+	// ProfileServiceApproveInterviewerApplicationProcedure is the fully-qualified name of the
+	// ProfileService's ApproveInterviewerApplication RPC.
+	ProfileServiceApproveInterviewerApplicationProcedure = "/druz9.v1.ProfileService/ApproveInterviewerApplication"
+	// ProfileServiceRejectInterviewerApplicationProcedure is the fully-qualified name of the
+	// ProfileService's RejectInterviewerApplication RPC.
+	ProfileServiceRejectInterviewerApplicationProcedure = "/druz9.v1.ProfileService/RejectInterviewerApplication"
 )
 
 // ProfileServiceClient is a client for the druz9.v1.ProfileService service.
@@ -79,12 +91,30 @@ type ProfileServiceClient interface {
 	// GetWeeklyShare returns a weekly report by share token. Public — no
 	// bearer auth required. Route is added to publicPaths in router.go.
 	GetWeeklyShare(context.Context, *connect.Request[v1.GetWeeklyShareRequest]) (*connect.Response[v1.WeeklyReport], error)
-	// BecomeInterviewer promotes the authenticated caller's role to
-	// `interviewer`, unlocking the «Создать слот» flow on /slots. MVP is
-	// self-service auto-approve; the longer-term plan is admin moderation
-	// (a `pending_interviewer_apps` table + admin queue) — until then this
-	// is idempotent and instant.
-	BecomeInterviewer(context.Context, *connect.Request[v1.BecomeInterviewerRequest]) (*connect.Response[v1.ProfileFull], error)
+	// BecomeInterviewer creates a pending application in the
+	// `interviewer_applications` queue. Admins moderate via
+	// ListInterviewerApplications + ApproveInterviewerApplication /
+	// RejectInterviewerApplication. The role on users.role only flips
+	// after approval — see backend/services/profile/app/become_interviewer.go.
+	//
+	// Returns the freshly-created application (with status=pending). When
+	// the caller already has an open pending app, the existing row is
+	// returned instead of erroring (idempotent).
+	BecomeInterviewer(context.Context, *connect.Request[v1.BecomeInterviewerRequest]) (*connect.Response[v1.InterviewerApplication], error)
+	// GetMyInterviewerApplication returns the current caller's application
+	// status (any of pending/approved/rejected, or NOT_FOUND when the user
+	// has never applied). Used by the /slots PromoCard to render the right
+	// CTA (apply / pending / rejected with retry).
+	GetMyInterviewerApplication(context.Context, *connect.Request[v1.GetMyInterviewerApplicationRequest]) (*connect.Response[v1.InterviewerApplication], error)
+	// ListInterviewerApplications — admin-only. Returns the queue filtered
+	// by status (default: pending). Auth + role check inside the handler.
+	ListInterviewerApplications(context.Context, *connect.Request[v1.ListInterviewerApplicationsRequest]) (*connect.Response[v1.InterviewerApplicationList], error)
+	// ApproveInterviewerApplication — admin flips users.role to interviewer
+	// and marks the application approved.
+	ApproveInterviewerApplication(context.Context, *connect.Request[v1.ApproveInterviewerApplicationRequest]) (*connect.Response[v1.InterviewerApplication], error)
+	// RejectInterviewerApplication — admin marks application rejected
+	// (with optional note). Does NOT touch users.role.
+	RejectInterviewerApplication(context.Context, *connect.Request[v1.RejectInterviewerApplicationRequest]) (*connect.Response[v1.InterviewerApplication], error)
 }
 
 // NewProfileServiceClient constructs a client for the druz9.v1.ProfileService service. By default,
@@ -134,10 +164,34 @@ func NewProfileServiceClient(httpClient connect.HTTPClient, baseURL string, opts
 			connect.WithSchema(profileServiceMethods.ByName("GetWeeklyShare")),
 			connect.WithClientOptions(opts...),
 		),
-		becomeInterviewer: connect.NewClient[v1.BecomeInterviewerRequest, v1.ProfileFull](
+		becomeInterviewer: connect.NewClient[v1.BecomeInterviewerRequest, v1.InterviewerApplication](
 			httpClient,
 			baseURL+ProfileServiceBecomeInterviewerProcedure,
 			connect.WithSchema(profileServiceMethods.ByName("BecomeInterviewer")),
+			connect.WithClientOptions(opts...),
+		),
+		getMyInterviewerApplication: connect.NewClient[v1.GetMyInterviewerApplicationRequest, v1.InterviewerApplication](
+			httpClient,
+			baseURL+ProfileServiceGetMyInterviewerApplicationProcedure,
+			connect.WithSchema(profileServiceMethods.ByName("GetMyInterviewerApplication")),
+			connect.WithClientOptions(opts...),
+		),
+		listInterviewerApplications: connect.NewClient[v1.ListInterviewerApplicationsRequest, v1.InterviewerApplicationList](
+			httpClient,
+			baseURL+ProfileServiceListInterviewerApplicationsProcedure,
+			connect.WithSchema(profileServiceMethods.ByName("ListInterviewerApplications")),
+			connect.WithClientOptions(opts...),
+		),
+		approveInterviewerApplication: connect.NewClient[v1.ApproveInterviewerApplicationRequest, v1.InterviewerApplication](
+			httpClient,
+			baseURL+ProfileServiceApproveInterviewerApplicationProcedure,
+			connect.WithSchema(profileServiceMethods.ByName("ApproveInterviewerApplication")),
+			connect.WithClientOptions(opts...),
+		),
+		rejectInterviewerApplication: connect.NewClient[v1.RejectInterviewerApplicationRequest, v1.InterviewerApplication](
+			httpClient,
+			baseURL+ProfileServiceRejectInterviewerApplicationProcedure,
+			connect.WithSchema(profileServiceMethods.ByName("RejectInterviewerApplication")),
 			connect.WithClientOptions(opts...),
 		),
 	}
@@ -145,13 +199,17 @@ func NewProfileServiceClient(httpClient connect.HTTPClient, baseURL string, opts
 
 // profileServiceClient implements ProfileServiceClient.
 type profileServiceClient struct {
-	getMyProfile      *connect.Client[v1.GetMyProfileRequest, v1.ProfileFull]
-	getMyAtlas        *connect.Client[v1.GetMyAtlasRequest, v1.SkillAtlas]
-	getMyReport       *connect.Client[v1.GetMyReportRequest, v1.WeeklyReport]
-	updateSettings    *connect.Client[v1.UpdateProfileSettingsRequest, v1.ProfileSettings]
-	getPublicProfile  *connect.Client[v1.GetPublicProfileRequest, v1.ProfilePublic]
-	getWeeklyShare    *connect.Client[v1.GetWeeklyShareRequest, v1.WeeklyReport]
-	becomeInterviewer *connect.Client[v1.BecomeInterviewerRequest, v1.ProfileFull]
+	getMyProfile                  *connect.Client[v1.GetMyProfileRequest, v1.ProfileFull]
+	getMyAtlas                    *connect.Client[v1.GetMyAtlasRequest, v1.SkillAtlas]
+	getMyReport                   *connect.Client[v1.GetMyReportRequest, v1.WeeklyReport]
+	updateSettings                *connect.Client[v1.UpdateProfileSettingsRequest, v1.ProfileSettings]
+	getPublicProfile              *connect.Client[v1.GetPublicProfileRequest, v1.ProfilePublic]
+	getWeeklyShare                *connect.Client[v1.GetWeeklyShareRequest, v1.WeeklyReport]
+	becomeInterviewer             *connect.Client[v1.BecomeInterviewerRequest, v1.InterviewerApplication]
+	getMyInterviewerApplication   *connect.Client[v1.GetMyInterviewerApplicationRequest, v1.InterviewerApplication]
+	listInterviewerApplications   *connect.Client[v1.ListInterviewerApplicationsRequest, v1.InterviewerApplicationList]
+	approveInterviewerApplication *connect.Client[v1.ApproveInterviewerApplicationRequest, v1.InterviewerApplication]
+	rejectInterviewerApplication  *connect.Client[v1.RejectInterviewerApplicationRequest, v1.InterviewerApplication]
 }
 
 // GetMyProfile calls druz9.v1.ProfileService.GetMyProfile.
@@ -185,8 +243,28 @@ func (c *profileServiceClient) GetWeeklyShare(ctx context.Context, req *connect.
 }
 
 // BecomeInterviewer calls druz9.v1.ProfileService.BecomeInterviewer.
-func (c *profileServiceClient) BecomeInterviewer(ctx context.Context, req *connect.Request[v1.BecomeInterviewerRequest]) (*connect.Response[v1.ProfileFull], error) {
+func (c *profileServiceClient) BecomeInterviewer(ctx context.Context, req *connect.Request[v1.BecomeInterviewerRequest]) (*connect.Response[v1.InterviewerApplication], error) {
 	return c.becomeInterviewer.CallUnary(ctx, req)
+}
+
+// GetMyInterviewerApplication calls druz9.v1.ProfileService.GetMyInterviewerApplication.
+func (c *profileServiceClient) GetMyInterviewerApplication(ctx context.Context, req *connect.Request[v1.GetMyInterviewerApplicationRequest]) (*connect.Response[v1.InterviewerApplication], error) {
+	return c.getMyInterviewerApplication.CallUnary(ctx, req)
+}
+
+// ListInterviewerApplications calls druz9.v1.ProfileService.ListInterviewerApplications.
+func (c *profileServiceClient) ListInterviewerApplications(ctx context.Context, req *connect.Request[v1.ListInterviewerApplicationsRequest]) (*connect.Response[v1.InterviewerApplicationList], error) {
+	return c.listInterviewerApplications.CallUnary(ctx, req)
+}
+
+// ApproveInterviewerApplication calls druz9.v1.ProfileService.ApproveInterviewerApplication.
+func (c *profileServiceClient) ApproveInterviewerApplication(ctx context.Context, req *connect.Request[v1.ApproveInterviewerApplicationRequest]) (*connect.Response[v1.InterviewerApplication], error) {
+	return c.approveInterviewerApplication.CallUnary(ctx, req)
+}
+
+// RejectInterviewerApplication calls druz9.v1.ProfileService.RejectInterviewerApplication.
+func (c *profileServiceClient) RejectInterviewerApplication(ctx context.Context, req *connect.Request[v1.RejectInterviewerApplicationRequest]) (*connect.Response[v1.InterviewerApplication], error) {
+	return c.rejectInterviewerApplication.CallUnary(ctx, req)
 }
 
 // ProfileServiceHandler is an implementation of the druz9.v1.ProfileService service.
@@ -204,12 +282,30 @@ type ProfileServiceHandler interface {
 	// GetWeeklyShare returns a weekly report by share token. Public — no
 	// bearer auth required. Route is added to publicPaths in router.go.
 	GetWeeklyShare(context.Context, *connect.Request[v1.GetWeeklyShareRequest]) (*connect.Response[v1.WeeklyReport], error)
-	// BecomeInterviewer promotes the authenticated caller's role to
-	// `interviewer`, unlocking the «Создать слот» flow on /slots. MVP is
-	// self-service auto-approve; the longer-term plan is admin moderation
-	// (a `pending_interviewer_apps` table + admin queue) — until then this
-	// is idempotent and instant.
-	BecomeInterviewer(context.Context, *connect.Request[v1.BecomeInterviewerRequest]) (*connect.Response[v1.ProfileFull], error)
+	// BecomeInterviewer creates a pending application in the
+	// `interviewer_applications` queue. Admins moderate via
+	// ListInterviewerApplications + ApproveInterviewerApplication /
+	// RejectInterviewerApplication. The role on users.role only flips
+	// after approval — see backend/services/profile/app/become_interviewer.go.
+	//
+	// Returns the freshly-created application (with status=pending). When
+	// the caller already has an open pending app, the existing row is
+	// returned instead of erroring (idempotent).
+	BecomeInterviewer(context.Context, *connect.Request[v1.BecomeInterviewerRequest]) (*connect.Response[v1.InterviewerApplication], error)
+	// GetMyInterviewerApplication returns the current caller's application
+	// status (any of pending/approved/rejected, or NOT_FOUND when the user
+	// has never applied). Used by the /slots PromoCard to render the right
+	// CTA (apply / pending / rejected with retry).
+	GetMyInterviewerApplication(context.Context, *connect.Request[v1.GetMyInterviewerApplicationRequest]) (*connect.Response[v1.InterviewerApplication], error)
+	// ListInterviewerApplications — admin-only. Returns the queue filtered
+	// by status (default: pending). Auth + role check inside the handler.
+	ListInterviewerApplications(context.Context, *connect.Request[v1.ListInterviewerApplicationsRequest]) (*connect.Response[v1.InterviewerApplicationList], error)
+	// ApproveInterviewerApplication — admin flips users.role to interviewer
+	// and marks the application approved.
+	ApproveInterviewerApplication(context.Context, *connect.Request[v1.ApproveInterviewerApplicationRequest]) (*connect.Response[v1.InterviewerApplication], error)
+	// RejectInterviewerApplication — admin marks application rejected
+	// (with optional note). Does NOT touch users.role.
+	RejectInterviewerApplication(context.Context, *connect.Request[v1.RejectInterviewerApplicationRequest]) (*connect.Response[v1.InterviewerApplication], error)
 }
 
 // NewProfileServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -261,6 +357,30 @@ func NewProfileServiceHandler(svc ProfileServiceHandler, opts ...connect.Handler
 		connect.WithSchema(profileServiceMethods.ByName("BecomeInterviewer")),
 		connect.WithHandlerOptions(opts...),
 	)
+	profileServiceGetMyInterviewerApplicationHandler := connect.NewUnaryHandler(
+		ProfileServiceGetMyInterviewerApplicationProcedure,
+		svc.GetMyInterviewerApplication,
+		connect.WithSchema(profileServiceMethods.ByName("GetMyInterviewerApplication")),
+		connect.WithHandlerOptions(opts...),
+	)
+	profileServiceListInterviewerApplicationsHandler := connect.NewUnaryHandler(
+		ProfileServiceListInterviewerApplicationsProcedure,
+		svc.ListInterviewerApplications,
+		connect.WithSchema(profileServiceMethods.ByName("ListInterviewerApplications")),
+		connect.WithHandlerOptions(opts...),
+	)
+	profileServiceApproveInterviewerApplicationHandler := connect.NewUnaryHandler(
+		ProfileServiceApproveInterviewerApplicationProcedure,
+		svc.ApproveInterviewerApplication,
+		connect.WithSchema(profileServiceMethods.ByName("ApproveInterviewerApplication")),
+		connect.WithHandlerOptions(opts...),
+	)
+	profileServiceRejectInterviewerApplicationHandler := connect.NewUnaryHandler(
+		ProfileServiceRejectInterviewerApplicationProcedure,
+		svc.RejectInterviewerApplication,
+		connect.WithSchema(profileServiceMethods.ByName("RejectInterviewerApplication")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/druz9.v1.ProfileService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case ProfileServiceGetMyProfileProcedure:
@@ -277,6 +397,14 @@ func NewProfileServiceHandler(svc ProfileServiceHandler, opts ...connect.Handler
 			profileServiceGetWeeklyShareHandler.ServeHTTP(w, r)
 		case ProfileServiceBecomeInterviewerProcedure:
 			profileServiceBecomeInterviewerHandler.ServeHTTP(w, r)
+		case ProfileServiceGetMyInterviewerApplicationProcedure:
+			profileServiceGetMyInterviewerApplicationHandler.ServeHTTP(w, r)
+		case ProfileServiceListInterviewerApplicationsProcedure:
+			profileServiceListInterviewerApplicationsHandler.ServeHTTP(w, r)
+		case ProfileServiceApproveInterviewerApplicationProcedure:
+			profileServiceApproveInterviewerApplicationHandler.ServeHTTP(w, r)
+		case ProfileServiceRejectInterviewerApplicationProcedure:
+			profileServiceRejectInterviewerApplicationHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -310,6 +438,22 @@ func (UnimplementedProfileServiceHandler) GetWeeklyShare(context.Context, *conne
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.ProfileService.GetWeeklyShare is not implemented"))
 }
 
-func (UnimplementedProfileServiceHandler) BecomeInterviewer(context.Context, *connect.Request[v1.BecomeInterviewerRequest]) (*connect.Response[v1.ProfileFull], error) {
+func (UnimplementedProfileServiceHandler) BecomeInterviewer(context.Context, *connect.Request[v1.BecomeInterviewerRequest]) (*connect.Response[v1.InterviewerApplication], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.ProfileService.BecomeInterviewer is not implemented"))
+}
+
+func (UnimplementedProfileServiceHandler) GetMyInterviewerApplication(context.Context, *connect.Request[v1.GetMyInterviewerApplicationRequest]) (*connect.Response[v1.InterviewerApplication], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.ProfileService.GetMyInterviewerApplication is not implemented"))
+}
+
+func (UnimplementedProfileServiceHandler) ListInterviewerApplications(context.Context, *connect.Request[v1.ListInterviewerApplicationsRequest]) (*connect.Response[v1.InterviewerApplicationList], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.ProfileService.ListInterviewerApplications is not implemented"))
+}
+
+func (UnimplementedProfileServiceHandler) ApproveInterviewerApplication(context.Context, *connect.Request[v1.ApproveInterviewerApplicationRequest]) (*connect.Response[v1.InterviewerApplication], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.ProfileService.ApproveInterviewerApplication is not implemented"))
+}
+
+func (UnimplementedProfileServiceHandler) RejectInterviewerApplication(context.Context, *connect.Request[v1.RejectInterviewerApplicationRequest]) (*connect.Response[v1.InterviewerApplication], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.ProfileService.RejectInterviewerApplication is not implemented"))
 }

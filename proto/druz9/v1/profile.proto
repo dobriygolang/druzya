@@ -396,19 +396,94 @@ service ProfileService {
     option (google.api.http) = {get: "/api/v1/profile/weekly/share/{token}"};
   }
 
-  // BecomeInterviewer promotes the authenticated caller's role to
-  // `interviewer`, unlocking the «Создать слот» flow on /slots. MVP is
-  // self-service auto-approve; the longer-term plan is admin moderation
-  // (a `pending_interviewer_apps` table + admin queue) — until then this
-  // is idempotent and instant.
-  rpc BecomeInterviewer(BecomeInterviewerRequest) returns (ProfileFull) {
+  // BecomeInterviewer creates a pending application in the
+  // `interviewer_applications` queue. Admins moderate via
+  // ListInterviewerApplications + ApproveInterviewerApplication /
+  // RejectInterviewerApplication. The role on users.role only flips
+  // after approval — see backend/services/profile/app/become_interviewer.go.
+  //
+  // Returns the freshly-created application (with status=pending). When
+  // the caller already has an open pending app, the existing row is
+  // returned instead of erroring (idempotent).
+  rpc BecomeInterviewer(BecomeInterviewerRequest) returns (InterviewerApplication) {
     option (google.api.http) = {
       post: "/api/v1/profile/me/become-interviewer"
       body: "*"
     };
   }
+
+  // GetMyInterviewerApplication returns the current caller's application
+  // status (any of pending/approved/rejected, or NOT_FOUND when the user
+  // has never applied). Used by the /slots PromoCard to render the right
+  // CTA (apply / pending / rejected with retry).
+  rpc GetMyInterviewerApplication(GetMyInterviewerApplicationRequest) returns (InterviewerApplication) {
+    option (google.api.http) = {get: "/api/v1/profile/me/interviewer-application"};
+  }
+
+  // ListInterviewerApplications — admin-only. Returns the queue filtered
+  // by status (default: pending). Auth + role check inside the handler.
+  rpc ListInterviewerApplications(ListInterviewerApplicationsRequest) returns (InterviewerApplicationList) {
+    option (google.api.http) = {get: "/api/v1/admin/interviewer-applications"};
+  }
+
+  // ApproveInterviewerApplication — admin flips users.role to interviewer
+  // and marks the application approved.
+  rpc ApproveInterviewerApplication(ApproveInterviewerApplicationRequest) returns (InterviewerApplication) {
+    option (google.api.http) = {
+      post: "/api/v1/admin/interviewer-applications/{application_id}/approve"
+      body: "*"
+    };
+  }
+
+  // RejectInterviewerApplication — admin marks application rejected
+  // (with optional note). Does NOT touch users.role.
+  rpc RejectInterviewerApplication(RejectInterviewerApplicationRequest) returns (InterviewerApplication) {
+    option (google.api.http) = {
+      post: "/api/v1/admin/interviewer-applications/{application_id}/reject"
+      body: "*"
+    };
+  }
 }
 
-// BecomeInterviewerRequest is currently empty — caller is identified by
-// the bearer token. Future: `motivation` field for moderation context.
-message BecomeInterviewerRequest {}
+// BecomeInterviewerRequest carries an optional motivation paragraph the
+// applicant ships to admins to nudge approval.
+message BecomeInterviewerRequest {
+  string motivation = 1;
+}
+
+message GetMyInterviewerApplicationRequest {}
+
+// InterviewerApplication mirrors a row in `interviewer_applications`.
+// status: "pending" | "approved" | "rejected".
+message InterviewerApplication {
+  string id = 1;
+  string user_id = 2;
+  string motivation = 3;
+  string status = 4;
+  string reviewed_by = 5;
+  google.protobuf.Timestamp reviewed_at = 6;
+  string decision_note = 7;
+  google.protobuf.Timestamp created_at = 8;
+  // Hydrated for the admin queue (denormalised from users).
+  string user_username = 9;
+  string user_display_name = 10;
+}
+
+message InterviewerApplicationList {
+  repeated InterviewerApplication items = 1;
+}
+
+message ListInterviewerApplicationsRequest {
+  // status filter; empty defaults to "pending".
+  string status = 1;
+}
+
+message ApproveInterviewerApplicationRequest {
+  string application_id = 1;
+  string note = 2;
+}
+
+message RejectInterviewerApplicationRequest {
+  string application_id = 1;
+  string note = 2;
+}

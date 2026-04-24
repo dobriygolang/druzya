@@ -36,6 +36,14 @@ type ProfileRepo interface {
 	// a regular user; idempotent (no-op when current role is already >= role).
 	UpdateRole(ctx context.Context, userID uuid.UUID, role string) error
 
+	// Interviewer-application moderation queue (M4a).
+	SubmitInterviewerApplication(ctx context.Context, userID uuid.UUID, motivation string) (InterviewerApplication, error)
+	GetMyInterviewerApplication(ctx context.Context, userID uuid.UUID) (InterviewerApplication, error)
+	ListInterviewerApplications(ctx context.Context, status string) ([]InterviewerApplication, error)
+	GetInterviewerApplication(ctx context.Context, applicationID uuid.UUID) (InterviewerApplication, error)
+	ApproveInterviewerApplication(ctx context.Context, applicationID, adminID uuid.UUID, note string) (InterviewerApplication, error)
+	RejectInterviewerApplication(ctx context.Context, applicationID, adminID uuid.UUID, note string) (InterviewerApplication, error)
+
 	// Atlas.
 	ListSkillNodes(ctx context.Context, userID uuid.UUID) ([]SkillNode, error)
 	// UpsertSkillNode upserts a (user, node_key) row in skill_nodes with the

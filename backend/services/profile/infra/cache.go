@@ -356,6 +356,58 @@ func (c *CachedRepo) UpdateRole(ctx context.Context, userID uuid.UUID, role stri
 	return nil
 }
 
+// ── Interviewer application moderation (M4a) — uncached pass-throughs.
+// The applications queue isn't cached anywhere, so we just forward.
+// Approve/Reject additionally invalidate the applicant's cached bundle
+// because role changes (approve path) flow through UpdateRole upstream.
+func (c *CachedRepo) SubmitInterviewerApplication(ctx context.Context, userID uuid.UUID, motivation string) (domain.InterviewerApplication, error) {
+	out, err := c.delegate.SubmitInterviewerApplication(ctx, userID, motivation)
+	if err != nil {
+		return domain.InterviewerApplication{}, fmt.Errorf("profile.cache.SubmitInterviewerApplication: %w", err)
+	}
+	return out, nil
+}
+
+func (c *CachedRepo) GetMyInterviewerApplication(ctx context.Context, userID uuid.UUID) (domain.InterviewerApplication, error) {
+	out, err := c.delegate.GetMyInterviewerApplication(ctx, userID)
+	if err != nil {
+		return domain.InterviewerApplication{}, fmt.Errorf("profile.cache.GetMyInterviewerApplication: %w", err)
+	}
+	return out, nil
+}
+
+func (c *CachedRepo) ListInterviewerApplications(ctx context.Context, status string) ([]domain.InterviewerApplication, error) {
+	out, err := c.delegate.ListInterviewerApplications(ctx, status)
+	if err != nil {
+		return nil, fmt.Errorf("profile.cache.ListInterviewerApplications: %w", err)
+	}
+	return out, nil
+}
+
+func (c *CachedRepo) GetInterviewerApplication(ctx context.Context, applicationID uuid.UUID) (domain.InterviewerApplication, error) {
+	out, err := c.delegate.GetInterviewerApplication(ctx, applicationID)
+	if err != nil {
+		return domain.InterviewerApplication{}, fmt.Errorf("profile.cache.GetInterviewerApplication: %w", err)
+	}
+	return out, nil
+}
+
+func (c *CachedRepo) ApproveInterviewerApplication(ctx context.Context, applicationID, adminID uuid.UUID, note string) (domain.InterviewerApplication, error) {
+	out, err := c.delegate.ApproveInterviewerApplication(ctx, applicationID, adminID, note)
+	if err != nil {
+		return domain.InterviewerApplication{}, fmt.Errorf("profile.cache.ApproveInterviewerApplication: %w", err)
+	}
+	return out, nil
+}
+
+func (c *CachedRepo) RejectInterviewerApplication(ctx context.Context, applicationID, adminID uuid.UUID, note string) (domain.InterviewerApplication, error) {
+	out, err := c.delegate.RejectInterviewerApplication(ctx, applicationID, adminID, note)
+	if err != nil {
+		return domain.InterviewerApplication{}, fmt.Errorf("profile.cache.RejectInterviewerApplication: %w", err)
+	}
+	return out, nil
+}
+
 // ListSkillNodes — uncached pass-through (atlas page only, separate hot path).
 func (c *CachedRepo) ListSkillNodes(ctx context.Context, userID uuid.UUID) ([]domain.SkillNode, error) {
 	out, err := c.delegate.ListSkillNodes(ctx, userID)

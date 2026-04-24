@@ -11,6 +11,39 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const approveInterviewerApplication = `-- name: ApproveInterviewerApplication :one
+UPDATE interviewer_applications
+   SET status = 'approved',
+       reviewed_by = $2,
+       reviewed_at = now(),
+       decision_note = $3
+ WHERE id = $1
+   AND status = 'pending'
+RETURNING id, user_id, motivation, status, reviewed_by, reviewed_at, decision_note, created_at
+`
+
+type ApproveInterviewerApplicationParams struct {
+	ID           pgtype.UUID
+	ReviewedBy   pgtype.UUID
+	DecisionNote string
+}
+
+func (q *Queries) ApproveInterviewerApplication(ctx context.Context, arg ApproveInterviewerApplicationParams) (InterviewerApplication, error) {
+	row := q.db.QueryRow(ctx, approveInterviewerApplication, arg.ID, arg.ReviewedBy, arg.DecisionNote)
+	var i InterviewerApplication
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.Motivation,
+		&i.Status,
+		&i.ReviewedBy,
+		&i.ReviewedAt,
+		&i.DecisionNote,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
 const countWeeklyActivity = `-- name: CountWeeklyActivity :one
 SELECT
   (SELECT COUNT(*)::int FROM daily_kata_history dkh WHERE dkh.user_id = $1 AND dkh.passed = true AND dkh.submitted_at >= $2)::int AS katas_passed,
@@ -76,6 +109,53 @@ INSERT INTO subscriptions(user_id, plan, status) VALUES ($1, 'free', 'active')
 func (q *Queries) EnsureSubscription(ctx context.Context, userID pgtype.UUID) error {
 	_, err := q.db.Exec(ctx, ensureSubscription, userID)
 	return err
+}
+
+const getInterviewerApplicationByID = `-- name: GetInterviewerApplicationByID :one
+SELECT id, user_id, motivation, status, reviewed_by, reviewed_at, decision_note, created_at
+  FROM interviewer_applications
+ WHERE id = $1
+`
+
+func (q *Queries) GetInterviewerApplicationByID(ctx context.Context, id pgtype.UUID) (InterviewerApplication, error) {
+	row := q.db.QueryRow(ctx, getInterviewerApplicationByID, id)
+	var i InterviewerApplication
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.Motivation,
+		&i.Status,
+		&i.ReviewedBy,
+		&i.ReviewedAt,
+		&i.DecisionNote,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
+const getMyInterviewerApplication = `-- name: GetMyInterviewerApplication :one
+SELECT id, user_id, motivation, status, reviewed_by, reviewed_at, decision_note, created_at
+  FROM interviewer_applications
+ WHERE user_id = $1
+ ORDER BY created_at DESC
+ LIMIT 1
+`
+
+// Most-recent application for the user (any status).
+func (q *Queries) GetMyInterviewerApplication(ctx context.Context, userID pgtype.UUID) (InterviewerApplication, error) {
+	row := q.db.QueryRow(ctx, getMyInterviewerApplication, userID)
+	var i InterviewerApplication
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.Motivation,
+		&i.Status,
+		&i.ReviewedBy,
+		&i.ReviewedAt,
+		&i.DecisionNote,
+		&i.CreatedAt,
+	)
+	return i, err
 }
 
 const getProfileBundle = `-- name: GetProfileBundle :one
@@ -187,6 +267,62 @@ func (q *Queries) GetProfilePublic(ctx context.Context, username string) (GetPro
 	return i, err
 }
 
+const listInterviewerApplications = `-- name: ListInterviewerApplications :many
+SELECT a.id, a.user_id, a.motivation, a.status, a.reviewed_by, a.reviewed_at, a.decision_note, a.created_at,
+       u.username::text AS user_username, COALESCE(u.display_name, '')::text AS user_display_name
+  FROM interviewer_applications a
+  JOIN users u ON u.id = a.user_id
+ WHERE a.status = $1
+ ORDER BY a.created_at ASC
+ LIMIT 200
+`
+
+type ListInterviewerApplicationsRow struct {
+	ID              pgtype.UUID
+	UserID          pgtype.UUID
+	Motivation      string
+	Status          string
+	ReviewedBy      pgtype.UUID
+	ReviewedAt      pgtype.Timestamptz
+	DecisionNote    string
+	CreatedAt       pgtype.Timestamptz
+	UserUsername    string
+	UserDisplayName string
+}
+
+// Admin queue. Sorted oldest-first inside a status group so the FIFO
+// principle is obvious to moderators.
+func (q *Queries) ListInterviewerApplications(ctx context.Context, status string) ([]ListInterviewerApplicationsRow, error) {
+	rows, err := q.db.Query(ctx, listInterviewerApplications, status)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListInterviewerApplicationsRow{}
+	for rows.Next() {
+		var i ListInterviewerApplicationsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.UserID,
+			&i.Motivation,
+			&i.Status,
+			&i.ReviewedBy,
+			&i.ReviewedAt,
+			&i.DecisionNote,
+			&i.CreatedAt,
+			&i.UserUsername,
+			&i.UserDisplayName,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listRatings = `-- name: ListRatings :many
 SELECT section, elo, matches_count, last_match_at
   FROM ratings WHERE user_id = $1
@@ -261,6 +397,71 @@ func (q *Queries) ListSkillNodes(ctx context.Context, userID pgtype.UUID) ([]Lis
 		return nil, err
 	}
 	return items, nil
+}
+
+const rejectInterviewerApplication = `-- name: RejectInterviewerApplication :one
+UPDATE interviewer_applications
+   SET status = 'rejected',
+       reviewed_by = $2,
+       reviewed_at = now(),
+       decision_note = $3
+ WHERE id = $1
+   AND status = 'pending'
+RETURNING id, user_id, motivation, status, reviewed_by, reviewed_at, decision_note, created_at
+`
+
+type RejectInterviewerApplicationParams struct {
+	ID           pgtype.UUID
+	ReviewedBy   pgtype.UUID
+	DecisionNote string
+}
+
+func (q *Queries) RejectInterviewerApplication(ctx context.Context, arg RejectInterviewerApplicationParams) (InterviewerApplication, error) {
+	row := q.db.QueryRow(ctx, rejectInterviewerApplication, arg.ID, arg.ReviewedBy, arg.DecisionNote)
+	var i InterviewerApplication
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.Motivation,
+		&i.Status,
+		&i.ReviewedBy,
+		&i.ReviewedAt,
+		&i.DecisionNote,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
+const submitInterviewerApplication = `-- name: SubmitInterviewerApplication :one
+INSERT INTO interviewer_applications(user_id, motivation)
+VALUES ($1, $2)
+ON CONFLICT (user_id) WHERE status = 'pending' DO UPDATE
+   SET motivation = EXCLUDED.motivation
+RETURNING id, user_id, motivation, status, reviewed_by, reviewed_at, decision_note, created_at
+`
+
+type SubmitInterviewerApplicationParams struct {
+	UserID     pgtype.UUID
+	Motivation string
+}
+
+// Idempotent: if there's already a pending row for the user, return it
+// (the partial unique index would otherwise fire 23505). Approved/
+// rejected history rows do not block re-application.
+func (q *Queries) SubmitInterviewerApplication(ctx context.Context, arg SubmitInterviewerApplicationParams) (InterviewerApplication, error) {
+	row := q.db.QueryRow(ctx, submitInterviewerApplication, arg.UserID, arg.Motivation)
+	var i InterviewerApplication
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.Motivation,
+		&i.Status,
+		&i.ReviewedBy,
+		&i.ReviewedAt,
+		&i.DecisionNote,
+		&i.CreatedAt,
+	)
+	return i, err
 }
 
 const updateCareerStage = `-- name: UpdateCareerStage :exec

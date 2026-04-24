@@ -1869,12 +1869,17 @@ export class GetWeeklyShareRequest extends Message<GetWeeklyShareRequest> {
 }
 
 /**
- * BecomeInterviewerRequest is currently empty — caller is identified by
- * the bearer token. Future: `motivation` field for moderation context.
+ * BecomeInterviewerRequest carries an optional motivation paragraph the
+ * applicant ships to admins to nudge approval.
  *
  * @generated from message druz9.v1.BecomeInterviewerRequest
  */
 export class BecomeInterviewerRequest extends Message<BecomeInterviewerRequest> {
+  /**
+   * @generated from field: string motivation = 1;
+   */
+  motivation = "";
+
   constructor(data?: PartialMessage<BecomeInterviewerRequest>) {
     super();
     proto3.util.initPartial(data, this);
@@ -1883,6 +1888,7 @@ export class BecomeInterviewerRequest extends Message<BecomeInterviewerRequest> 
   static readonly runtime: typeof proto3 = proto3;
   static readonly typeName = "druz9.v1.BecomeInterviewerRequest";
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "motivation", kind: "scalar", T: 9 /* ScalarType.STRING */ },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): BecomeInterviewerRequest {
@@ -1899,6 +1905,295 @@ export class BecomeInterviewerRequest extends Message<BecomeInterviewerRequest> 
 
   static equals(a: BecomeInterviewerRequest | PlainMessage<BecomeInterviewerRequest> | undefined, b: BecomeInterviewerRequest | PlainMessage<BecomeInterviewerRequest> | undefined): boolean {
     return proto3.util.equals(BecomeInterviewerRequest, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.GetMyInterviewerApplicationRequest
+ */
+export class GetMyInterviewerApplicationRequest extends Message<GetMyInterviewerApplicationRequest> {
+  constructor(data?: PartialMessage<GetMyInterviewerApplicationRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.GetMyInterviewerApplicationRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): GetMyInterviewerApplicationRequest {
+    return new GetMyInterviewerApplicationRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): GetMyInterviewerApplicationRequest {
+    return new GetMyInterviewerApplicationRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): GetMyInterviewerApplicationRequest {
+    return new GetMyInterviewerApplicationRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: GetMyInterviewerApplicationRequest | PlainMessage<GetMyInterviewerApplicationRequest> | undefined, b: GetMyInterviewerApplicationRequest | PlainMessage<GetMyInterviewerApplicationRequest> | undefined): boolean {
+    return proto3.util.equals(GetMyInterviewerApplicationRequest, a, b);
+  }
+}
+
+/**
+ * InterviewerApplication mirrors a row in `interviewer_applications`.
+ * status: "pending" | "approved" | "rejected".
+ *
+ * @generated from message druz9.v1.InterviewerApplication
+ */
+export class InterviewerApplication extends Message<InterviewerApplication> {
+  /**
+   * @generated from field: string id = 1;
+   */
+  id = "";
+
+  /**
+   * @generated from field: string user_id = 2;
+   */
+  userId = "";
+
+  /**
+   * @generated from field: string motivation = 3;
+   */
+  motivation = "";
+
+  /**
+   * @generated from field: string status = 4;
+   */
+  status = "";
+
+  /**
+   * @generated from field: string reviewed_by = 5;
+   */
+  reviewedBy = "";
+
+  /**
+   * @generated from field: google.protobuf.Timestamp reviewed_at = 6;
+   */
+  reviewedAt?: Timestamp;
+
+  /**
+   * @generated from field: string decision_note = 7;
+   */
+  decisionNote = "";
+
+  /**
+   * @generated from field: google.protobuf.Timestamp created_at = 8;
+   */
+  createdAt?: Timestamp;
+
+  /**
+   * Hydrated for the admin queue (denormalised from users).
+   *
+   * @generated from field: string user_username = 9;
+   */
+  userUsername = "";
+
+  /**
+   * @generated from field: string user_display_name = 10;
+   */
+  userDisplayName = "";
+
+  constructor(data?: PartialMessage<InterviewerApplication>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.InterviewerApplication";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "user_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 3, name: "motivation", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 4, name: "status", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 5, name: "reviewed_by", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 6, name: "reviewed_at", kind: "message", T: Timestamp },
+    { no: 7, name: "decision_note", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 8, name: "created_at", kind: "message", T: Timestamp },
+    { no: 9, name: "user_username", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 10, name: "user_display_name", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): InterviewerApplication {
+    return new InterviewerApplication().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): InterviewerApplication {
+    return new InterviewerApplication().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): InterviewerApplication {
+    return new InterviewerApplication().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: InterviewerApplication | PlainMessage<InterviewerApplication> | undefined, b: InterviewerApplication | PlainMessage<InterviewerApplication> | undefined): boolean {
+    return proto3.util.equals(InterviewerApplication, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.InterviewerApplicationList
+ */
+export class InterviewerApplicationList extends Message<InterviewerApplicationList> {
+  /**
+   * @generated from field: repeated druz9.v1.InterviewerApplication items = 1;
+   */
+  items: InterviewerApplication[] = [];
+
+  constructor(data?: PartialMessage<InterviewerApplicationList>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.InterviewerApplicationList";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "items", kind: "message", T: InterviewerApplication, repeated: true },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): InterviewerApplicationList {
+    return new InterviewerApplicationList().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): InterviewerApplicationList {
+    return new InterviewerApplicationList().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): InterviewerApplicationList {
+    return new InterviewerApplicationList().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: InterviewerApplicationList | PlainMessage<InterviewerApplicationList> | undefined, b: InterviewerApplicationList | PlainMessage<InterviewerApplicationList> | undefined): boolean {
+    return proto3.util.equals(InterviewerApplicationList, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.ListInterviewerApplicationsRequest
+ */
+export class ListInterviewerApplicationsRequest extends Message<ListInterviewerApplicationsRequest> {
+  /**
+   * status filter; empty defaults to "pending".
+   *
+   * @generated from field: string status = 1;
+   */
+  status = "";
+
+  constructor(data?: PartialMessage<ListInterviewerApplicationsRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.ListInterviewerApplicationsRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "status", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ListInterviewerApplicationsRequest {
+    return new ListInterviewerApplicationsRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): ListInterviewerApplicationsRequest {
+    return new ListInterviewerApplicationsRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): ListInterviewerApplicationsRequest {
+    return new ListInterviewerApplicationsRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: ListInterviewerApplicationsRequest | PlainMessage<ListInterviewerApplicationsRequest> | undefined, b: ListInterviewerApplicationsRequest | PlainMessage<ListInterviewerApplicationsRequest> | undefined): boolean {
+    return proto3.util.equals(ListInterviewerApplicationsRequest, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.ApproveInterviewerApplicationRequest
+ */
+export class ApproveInterviewerApplicationRequest extends Message<ApproveInterviewerApplicationRequest> {
+  /**
+   * @generated from field: string application_id = 1;
+   */
+  applicationId = "";
+
+  /**
+   * @generated from field: string note = 2;
+   */
+  note = "";
+
+  constructor(data?: PartialMessage<ApproveInterviewerApplicationRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.ApproveInterviewerApplicationRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "application_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "note", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ApproveInterviewerApplicationRequest {
+    return new ApproveInterviewerApplicationRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): ApproveInterviewerApplicationRequest {
+    return new ApproveInterviewerApplicationRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): ApproveInterviewerApplicationRequest {
+    return new ApproveInterviewerApplicationRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: ApproveInterviewerApplicationRequest | PlainMessage<ApproveInterviewerApplicationRequest> | undefined, b: ApproveInterviewerApplicationRequest | PlainMessage<ApproveInterviewerApplicationRequest> | undefined): boolean {
+    return proto3.util.equals(ApproveInterviewerApplicationRequest, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.RejectInterviewerApplicationRequest
+ */
+export class RejectInterviewerApplicationRequest extends Message<RejectInterviewerApplicationRequest> {
+  /**
+   * @generated from field: string application_id = 1;
+   */
+  applicationId = "";
+
+  /**
+   * @generated from field: string note = 2;
+   */
+  note = "";
+
+  constructor(data?: PartialMessage<RejectInterviewerApplicationRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.RejectInterviewerApplicationRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "application_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "note", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): RejectInterviewerApplicationRequest {
+    return new RejectInterviewerApplicationRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): RejectInterviewerApplicationRequest {
+    return new RejectInterviewerApplicationRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): RejectInterviewerApplicationRequest {
+    return new RejectInterviewerApplicationRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: RejectInterviewerApplicationRequest | PlainMessage<RejectInterviewerApplicationRequest> | undefined, b: RejectInterviewerApplicationRequest | PlainMessage<RejectInterviewerApplicationRequest> | undefined): boolean {
+    return proto3.util.equals(RejectInterviewerApplicationRequest, a, b);
   }
 }
 

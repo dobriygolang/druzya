@@ -158,3 +158,26 @@ type AchievementBrief struct {
 	UnlockedAt time.Time
 	Tier       string
 }
+
+// InterviewerApplication mirrors a row in `interviewer_applications`.
+// Status is one of ApplicationStatus*. `UserUsername`/`UserDisplayName`
+// are hydrated by ListInterviewerApplications for the admin queue;
+// single-row reads leave them empty.
+type InterviewerApplication struct {
+	ID              uuid.UUID
+	UserID          uuid.UUID
+	Motivation      string
+	Status          string
+	ReviewedBy      *uuid.UUID
+	ReviewedAt      *time.Time
+	DecisionNote    string
+	CreatedAt       time.Time
+	UserUsername    string
+	UserDisplayName string
+}
+
+const (
+	ApplicationStatusPending  = "pending"
+	ApplicationStatusApproved = "approved"
+	ApplicationStatusRejected = "rejected"
+)

@@ -98,7 +98,11 @@ func NewProfile(d Deps) *Module {
 		GetReport:      getReport,
 		GetSettings:    &profileApp.GetSettings{Repo: cached},
 		UpdateSettings: &profileApp.UpdateSettings{Repo: cached},
-		BecomeUC:       &profileApp.BecomeInterviewer{Repo: cached, GetUC: getProfile},
+		BecomeUC:       &profileApp.BecomeInterviewer{Repo: cached},
+		GetMyAppUC:     &profileApp.GetMyInterviewerApplication{Repo: cached},
+		ListAppsUC:     &profileApp.ListInterviewerApplications{Repo: cached},
+		ApproveAppUC:   &profileApp.ApproveInterviewerApplication{Repo: cached},
+		RejectAppUC:    &profileApp.RejectInterviewerApplication{Repo: cached},
 		ReportFetcher:  reportCache,
 		Repo:           cached,
 		Log:            d.Log,
@@ -143,6 +147,10 @@ func NewProfile(d Deps) *Module {
 			r.Get("/profile/me/report", transcoder.ServeHTTP)
 			r.Put("/profile/me/settings", transcoder.ServeHTTP)
 			r.Post("/profile/me/become-interviewer", transcoder.ServeHTTP)
+			r.Get("/profile/me/interviewer-application", transcoder.ServeHTTP)
+			r.Get("/admin/interviewer-applications", transcoder.ServeHTTP)
+			r.Post("/admin/interviewer-applications/{application_id}/approve", transcoder.ServeHTTP)
+			r.Post("/admin/interviewer-applications/{application_id}/reject", transcoder.ServeHTTP)
 			// /profile/weekly/share/{token} — публичный, авторизация не нужна;
 			// REST gate пропускает по publicPaths-prefix /profile/weekly/share/.
 			r.Get("/profile/weekly/share/{token}", transcoder.ServeHTTP)

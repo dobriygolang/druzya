@@ -353,3 +353,76 @@ func (mr *MockProfileRepoMockRecorder) UpsertSkillNode(ctx, userID, nodeKey, pro
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpsertSkillNode", reflect.TypeOf((*MockProfileRepo)(nil).UpsertSkillNode), ctx, userID, nodeKey, progress)
 }
+
+// SubmitInterviewerApplication mocks base method.
+func (m *MockProfileRepo) SubmitInterviewerApplication(ctx context.Context, userID uuid.UUID, motivation string) (domain.InterviewerApplication, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SubmitInterviewerApplication", ctx, userID, motivation)
+	ret0, _ := ret[0].(domain.InterviewerApplication)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+func (mr *MockProfileRepoMockRecorder) SubmitInterviewerApplication(ctx, userID, motivation any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SubmitInterviewerApplication", reflect.TypeOf((*MockProfileRepo)(nil).SubmitInterviewerApplication), ctx, userID, motivation)
+}
+
+func (m *MockProfileRepo) GetMyInterviewerApplication(ctx context.Context, userID uuid.UUID) (domain.InterviewerApplication, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetMyInterviewerApplication", ctx, userID)
+	ret0, _ := ret[0].(domain.InterviewerApplication)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+func (mr *MockProfileRepoMockRecorder) GetMyInterviewerApplication(ctx, userID any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetMyInterviewerApplication", reflect.TypeOf((*MockProfileRepo)(nil).GetMyInterviewerApplication), ctx, userID)
+}
+
+func (m *MockProfileRepo) ListInterviewerApplications(ctx context.Context, status string) ([]domain.InterviewerApplication, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ListInterviewerApplications", ctx, status)
+	ret0, _ := ret[0].([]domain.InterviewerApplication)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+func (mr *MockProfileRepoMockRecorder) ListInterviewerApplications(ctx, status any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListInterviewerApplications", reflect.TypeOf((*MockProfileRepo)(nil).ListInterviewerApplications), ctx, status)
+}
+
+func (m *MockProfileRepo) GetInterviewerApplication(ctx context.Context, id uuid.UUID) (domain.InterviewerApplication, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetInterviewerApplication", ctx, id)
+	ret0, _ := ret[0].(domain.InterviewerApplication)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+func (mr *MockProfileRepoMockRecorder) GetInterviewerApplication(ctx, id any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetInterviewerApplication", reflect.TypeOf((*MockProfileRepo)(nil).GetInterviewerApplication), ctx, id)
+}
+
+func (m *MockProfileRepo) ApproveInterviewerApplication(ctx context.Context, id, adminID uuid.UUID, note string) (domain.InterviewerApplication, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ApproveInterviewerApplication", ctx, id, adminID, note)
+	ret0, _ := ret[0].(domain.InterviewerApplication)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+func (mr *MockProfileRepoMockRecorder) ApproveInterviewerApplication(ctx, id, adminID, note any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ApproveInterviewerApplication", reflect.TypeOf((*MockProfileRepo)(nil).ApproveInterviewerApplication), ctx, id, adminID, note)
+}
+
+func (m *MockProfileRepo) RejectInterviewerApplication(ctx context.Context, id, adminID uuid.UUID, note string) (domain.InterviewerApplication, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "RejectInterviewerApplication", ctx, id, adminID, note)
+	ret0, _ := ret[0].(domain.InterviewerApplication)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+func (mr *MockProfileRepoMockRecorder) RejectInterviewerApplication(ctx, id, adminID, note any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RejectInterviewerApplication", reflect.TypeOf((*MockProfileRepo)(nil).RejectInterviewerApplication), ctx, id, adminID, note)
+}
