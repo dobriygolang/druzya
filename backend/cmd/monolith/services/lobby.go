@@ -51,6 +51,18 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
+// isUniqueViolationErr — SQLSTATE 23505 sniff, local copy since the
+// cohort Postgres adapter (which used to own a package-level helper)
+// moved to cohort/infra in Phase 7.
+func isUniqueViolationErr(err error) bool {
+	if err == nil {
+		return false
+	}
+	msg := err.Error()
+	return strings.Contains(msg, "SQLSTATE 23505") ||
+		strings.Contains(msg, "duplicate key value violates unique constraint")
+}
+
 // NewLobby wires the Custom-Lobby bounded context.
 //
 // We construct a fresh arena Postgres adapter (it's stateless — just a
