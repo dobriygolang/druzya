@@ -6,8 +6,6 @@
 //   3. On end, kick off a poll loop on GetSessionAnalysis and push a
 //      'event:session-analysis-ready' event to the renderer when
 //      status flips to ready or failed.
-//   4. For BYOK mode, skip the server analysis path and instead call
-//      the local BYOK analyzer (see cursor/byok-analyzer.ts).
 //
 // Not a singleton — one instance per main process, owned by
 // registerHandlers. The renderer talks to it exclusively via IPC.
@@ -36,10 +34,6 @@ export interface SessionManager {
 
 export interface ManagerDeps {
   client: SessionsClient;
-  /** Called when a session ends and we need to do BYOK-side analysis. */
-  runLocalAnalysis: (session: Session) => Promise<SessionAnalysis>;
-  /** Returns true iff the user has at least one BYOK provider key. */
-  isByokActive: () => Promise<boolean>;
 }
 
 export function createSessionManager(deps: ManagerDeps): SessionManager {
@@ -83,7 +77,6 @@ export function createSessionManager(deps: ManagerDeps): SessionManager {
     end: async () => {
       if (!current) return null;
       const sessionID = current.id;
-      const byok = await deps.isByokActive().catch(() => false);
       let ended: Session;
       try {
         ended = await deps.client.end(sessionID);
@@ -96,36 +89,8 @@ export function createSessionManager(deps: ManagerDeps): SessionManager {
       }
       current = null;
       emitChanged();
-
-      // Kick off the appropriate analysis path.
-      if (byok) {
-        // BYOK: all turns inside the session MAY have gone direct to
-        // the provider. We run a local analysis as a strict superset
-        // of what the server could do, and skip the server-polling
-        // entirely. (The server will also produce an empty report
-        // because no conversations were attached — harmless.)
-        void deps
-          .runLocalAnalysis(ended)
-          .then((analysis) => broadcast(eventChannels.sessionAnalysisReady, analysis))
-          .catch((err) => {
-            broadcast(eventChannels.sessionAnalysisReady, {
-              sessionId: sessionID,
-              status: 'failed',
-              overallScore: 0,
-              sectionScores: {},
-              weaknesses: [],
-              recommendations: [],
-              links: [],
-              reportMarkdown: '',
-              reportUrl: '',
-              errorMessage: (err as Error).message,
-              startedAt: '',
-              finishedAt: '',
-            });
-          });
-      } else {
-        void pollServerAnalysis(sessionID);
-      }
+      // Kick off backend analysis polling.
+      void pollServerAnalysis(sessionID);
       return ended;
     },
 

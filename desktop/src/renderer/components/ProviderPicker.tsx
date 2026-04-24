@@ -1,32 +1,22 @@
 // Provider picker modal — opens when the user clicks the model name in
 // the compact/expanded header. Lists every model from DesktopConfig
 // annotated with availability:
-//   - "available" (green) — Druz9 Cloud allows it OR the user has a BYOK
-//     key for its family.
-//   - "pro" (purple) — locked behind a paid plan, no BYOK for family.
+//   - "available" (green) — Druz9 Cloud allows it on the user's plan.
+//   - "pro" (purple) — locked behind a paid plan.
 //
 // Clicking an available model writes to the selected-model store; the
-// next Analyze/Chat turn uses it. BYOK-backed rows show a small "ключ"
-// badge so the user knows the request will go direct.
+// next Analyze/Chat turn uses it. Every call goes through the backend
+// — the BYOK "bring your own key" path was removed, so there is no
+// "ваш ключ" badge anymore.
 
 import { useEffect, useMemo, useState } from 'react';
 
-import { eventChannels, type ByokPresence } from '@shared/ipc';
 import type { ProviderModel } from '@shared/types';
 
-import { IconCheck, IconKey, IconSparkles } from './icons';
+import { IconCheck, IconSparkles } from './icons';
 import { StatusDot } from './primitives';
 import { useAuthStore } from '../stores/auth';
 import { useSelectedModelStore } from '../stores/selected-model';
-
-type Family = 'openai' | 'anthropic' | 'google' | 'other';
-
-function familyOf(id: string): Family {
-  if (id.startsWith('openai/')) return 'openai';
-  if (id.startsWith('anthropic/')) return 'anthropic';
-  if (id.startsWith('google/')) return 'google';
-  return 'other';
-}
 
 export interface ProviderPickerProps {
   /** Full model catalogue from DesktopConfig. */
@@ -41,29 +31,14 @@ export function ProviderPicker({ models, defaultModelId, onClose }: ProviderPick
   const selected = useSelectedModelStore((s) => s.modelId);
   const setSelected = useSelectedModelStore((s) => s.setModel);
   const session = useAuthStore((s) => s.session);
-  const [byok, setByok] = useState<ByokPresence>({ openai: false, anthropic: false });
   const [query, setQuery] = useState('');
 
   useEffect(() => {
-    let disposed = false;
-    void (async () => {
-      try {
-        const p = await window.druz9.byok.list();
-        if (!disposed) setByok(p);
-      } catch {
-        /* empty presence = no BYOK rows highlighted */
-      }
-    })();
-    const unsub = window.druz9.on<ByokPresence>(eventChannels.byokChanged, (p) => {
-      if (!disposed) setByok(p);
-    });
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose();
     };
     window.addEventListener('keydown', onKey);
     return () => {
-      disposed = true;
-      unsub();
       window.removeEventListener('keydown', onKey);
     };
   }, [onClose]);
@@ -88,12 +63,6 @@ export function ProviderPicker({ models, defaultModelId, onClose }: ProviderPick
     }
     return Object.entries(by);
   }, [filtered]);
-
-  const byokFor = (fam: Family): boolean => {
-    if (fam === 'openai') return byok.openai;
-    if (fam === 'anthropic') return byok.anthropic;
-    return false;
-  };
 
   return (
     <div
@@ -148,11 +117,7 @@ export function ProviderPicker({ models, defaultModelId, onClose }: ProviderPick
               <div style={{ fontSize: 13, color: 'var(--d-text)', marginBottom: 4 }}>
                 Сначала нужно войти
               </div>
-              Открой Настройки → Общее → Войти,
-              <br />
-              или добавь свой OpenAI / Anthropic ключ
-              <br />
-              в Настройки → AI провайдеры.
+              Открой Настройки → Общее → Войти.
             </div>
           )}
           {grouped.length === 0 && models.length === 0 && session && (
@@ -162,9 +127,7 @@ export function ProviderPicker({ models, defaultModelId, onClose }: ProviderPick
               </div>
               Сервер недоступен или вернул ошибку.
               <br />
-              Попробуй ещё раз через минуту,
-              <br />
-              либо добавь свой ключ в Настройки → AI провайдеры.
+              Попробуй ещё раз через минуту.
             </div>
           )}
           {grouped.length === 0 && models.length > 0 && (
@@ -187,9 +150,7 @@ export function ProviderPicker({ models, defaultModelId, onClose }: ProviderPick
                 {provider}
               </div>
               {list.map((m) => {
-                const fam = familyOf(m.id);
-                const hasByok = byokFor(fam);
-                const available = m.availableOnCurrentPlan || hasByok;
+                const available = m.availableOnCurrentPlan;
                 const chosen = m.id === effectiveSelected;
                 return (
                   <button
@@ -257,11 +218,7 @@ export function ProviderPicker({ models, defaultModelId, onClose }: ProviderPick
                       </div>
                     </div>
 
-                    {hasByok ? (
-                      <Badge tone="byok">
-                        <IconKey size={10} /> ваш ключ
-                      </Badge>
-                    ) : m.availableOnCurrentPlan ? (
+                    {m.availableOnCurrentPlan ? (
                       <Badge tone="plan">доступно</Badge>
                     ) : (
                       <Badge tone="locked">pro</Badge>
@@ -284,10 +241,9 @@ function Badge({
   tone,
 }: {
   children: React.ReactNode;
-  tone: 'byok' | 'plan' | 'locked';
+  tone: 'plan' | 'locked';
 }) {
   const tones: Record<typeof tone, { bg: string; fg: string }> = {
-    byok: { bg: 'var(--d-accent-soft)', fg: 'var(--d-accent)' },
     plan: { bg: 'rgba(52, 199, 89, 0.12)', fg: 'var(--d-green)' },
     locked: { bg: 'var(--d-accent-2-soft)', fg: 'var(--d-accent-2)' },
   };

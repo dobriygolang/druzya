@@ -22,7 +22,6 @@ import {
   type UpdateStatus,
 } from '@shared/ipc';
 import type { HotkeyBinding, ProviderModel } from '@shared/types';
-import { ByokSection } from './ByokSection';
 
 type Tab = 'general' | 'hotkeys' | 'providers' | 'about';
 
@@ -402,12 +401,8 @@ function ProvidersTab({ models }: { models: ProviderModel[] }) {
     <>
       <SectionTitle
         title="AI провайдеры"
-        subtitle="Используй модели Druz9 Cloud или подключи свои ключи OpenAI / Anthropic."
+        subtitle="Каталог моделей, доступных через Druz9 Cloud."
       />
-
-      <div style={{ marginBottom: 22 }}>
-        <ByokSection />
-      </div>
 
       <div style={{ fontSize: 11, color: 'var(--d-text-3)', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 10, fontFamily: 'var(--f-mono)' }}>
         Каталог моделей

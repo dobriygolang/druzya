@@ -406,8 +406,8 @@ export interface Druz9API {
 
   /**
    * Sessions (Phase 12) — explicit group-of-conversations for post-
-   * analysis. BYOK users get an in-process analyzer; everyone else
-   * gets a server-driven one with the report at `reportUrl`.
+   * analysis. Analyzer runs on the backend and the final report URL
+   * lands at `reportUrl`.
    */
   sessions: {
     start: (
@@ -423,9 +423,6 @@ export interface Druz9API {
     getAnalysis: (
       sessionId: string,
     ) => Promise<import('./types').SessionAnalysis>;
-    /** Renderer → main: reply to sessionRequestLocalTranscript event
-     *  with a Markdown dump of the in-memory turns. Fire-and-forget. */
-    submitLocalTranscript: (markdown: string) => void;
   };
 
   /** Subscribe to a main-process event. Returns an unsubscribe function. */

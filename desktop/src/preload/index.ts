@@ -13,9 +13,6 @@ import {
   type AnalyzeInput,
   type AreaRect,
   type AuthSession,
-  type ByokPresence,
-  type ByokProvider,
-  type ByokResult,
   type CaptureResult,
   type Druz9API,
   type MasqueradePreset,
@@ -101,29 +98,12 @@ const api: Druz9API = {
     rate: (id, rating) =>
       ipcRenderer.invoke(invokeChannels.rateMessage, id, rating) as Promise<void>,
   },
-  byok: {
-    list: () => ipcRenderer.invoke(invokeChannels.byokList) as Promise<ByokPresence>,
-    save: (provider: ByokProvider, key: string) =>
-      ipcRenderer.invoke(invokeChannels.byokSave, provider, key) as Promise<ByokResult>,
-    delete: (provider: ByokProvider) =>
-      ipcRenderer.invoke(invokeChannels.byokDelete, provider) as Promise<void>,
-    test: (provider: ByokProvider) =>
-      ipcRenderer.invoke(invokeChannels.byokTest, provider) as Promise<ByokResult>,
-  },
   masquerade: {
     list: () =>
       ipcRenderer.invoke(invokeChannels.masqueradeList) as Promise<MasqueradePresetInfo[]>,
     get: () => ipcRenderer.invoke(invokeChannels.masqueradeGet) as Promise<MasqueradePreset>,
     apply: (preset: MasqueradePreset) =>
       ipcRenderer.invoke(invokeChannels.masqueradeApply, preset) as Promise<void>,
-  },
-  voice: {
-    transcribe: (input: { audioBase64: string; mimeType: string; language?: string }) =>
-      ipcRenderer.invoke(invokeChannels.voiceTranscribe, input) as Promise<{
-        ok: boolean;
-        transcript?: string;
-        error?: string;
-      }>,
   },
   updater: {
     status: () => ipcRenderer.invoke(invokeChannels.updaterStatus) as Promise<UpdateStatus>,
@@ -166,8 +146,6 @@ const api: Druz9API = {
       }>,
     getAnalysis: (sessionId: string) =>
       ipcRenderer.invoke(invokeChannels.sessionGetAnalysis, sessionId) as Promise<SessionAnalysis>,
-    submitLocalTranscript: (markdown: string) =>
-      ipcRenderer.send(invokeChannels.sessionSubmitLocalTranscript, { markdown }),
   },
   on: <T>(channel: string, handler: (payload: T) => void) => {
     // Whitelist so renderer can't subscribe to arbitrary channels.

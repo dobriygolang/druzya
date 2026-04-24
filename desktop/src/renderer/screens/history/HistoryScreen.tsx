@@ -171,7 +171,6 @@ export function HistoryScreen() {
         <span>
           <Kbd size="sm">Esc</Kbd> — закрыть
         </span>
-        <span>BYOK-диалоги не сохраняются</span>
       </div>
     </div>
   );

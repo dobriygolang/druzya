@@ -11,7 +11,6 @@ import { eventChannels } from '@shared/ipc';
 import { BrandMark, IconCamera, IconChevronDown, IconClose, IconCopy, IconHistory, IconMinimize, IconSend } from '../../components/icons';
 import { IconButton, Kbd, StatusDot } from '../../components/primitives';
 import { ProviderPicker } from '../../components/ProviderPicker';
-import { SessionReportView } from '../../components/SessionReportView';
 import { useConfig } from '../../hooks/use-config';
 import { useConversationStore, type UIMessage } from '../../stores/conversation';
 import { useSelectedModelStore } from '../../stores/selected-model';
@@ -23,12 +22,10 @@ export function ExpandedScreen() {
   const messages = useConversationStore((s) => s.messages);
   const streaming = useConversationStore((s) => s.streaming);
   const conversationId = useConversationStore((s) => s.conversationId);
-  const beginTurn = useConversationStore((s) => s.beginTurn);
 
   const selectedModel = useSelectedModelStore((s) => s.modelId);
   const modelBootstrap = useSelectedModelStore((s) => s.bootstrap);
   useEffect(() => modelBootstrap(), [modelBootstrap]);
-  const lastAnalysis = useSessionStore((s) => s.lastAnalysis);
   const sessionBootstrap = useSessionStore((s) => s.bootstrap);
   const [draft, setDraft] = useState('');
   const [pickerOpen, setPickerOpen] = useState(false);
@@ -93,8 +90,16 @@ export function ExpandedScreen() {
     setDraft('');
     // If this is the first message in this window session, analyze.start
     // creates the conversation; subsequent turns use analyze.chat.
+    //
+    // Why no direct beginTurn here: main broadcasts `userTurnStarted`
+    // inside the ipc handler BEFORE returning. Our applyTurn subscription
+    // (see useEffect above, with seenTurns dedupe) paints the optimistic
+    // bubble on broadcast arrival. Calling beginTurn here too used to
+    // race with that broadcast and double the user message when the
+    // event handler ran first — line 56 streamId-guard saw null and let
+    // beginTurn through, then this second call appended a duplicate.
     const ipc = conversationId ? window.druz9.analyze.chat : window.druz9.analyze.start;
-    const handle = await ipc({
+    await ipc({
       conversationId,
       promptText: text,
       model: selectedModel || config?.defaultModelId || '',
@@ -102,7 +107,6 @@ export function ExpandedScreen() {
       triggerAction: 'quick_prompt',
       focusedAppHint: '',
     });
-    beginTurn({ promptText: text, hasScreenshot: false, streamId: handle.streamId });
   };
 
   const activeModelId = selectedModel || config?.defaultModelId || '';
@@ -198,13 +202,7 @@ export function ExpandedScreen() {
           gap: 14,
         }}
       >
-        {/* Session report takes precedence over the empty state — when
-            BYOK analysis lands, the user probably wants to see it
-            instead of a "press Cmd+Shift+S" prompt. */}
-        {messages.length === 0 && lastAnalysis && !lastAnalysis.reportUrl && (
-          <SessionReportView analysis={lastAnalysis} />
-        )}
-        {messages.length === 0 && !lastAnalysis && <EmptyState />}
+        {messages.length === 0 && <EmptyState />}
         {messages.map((m) => (
           <MessageBubble key={m.id} m={m} />
         ))}
@@ -224,7 +222,7 @@ export function ExpandedScreen() {
       >
         <IconButton
           title="Скриншот (⌘⇧S)"
-          onClick={() => void captureAndSend(conversationId, draft, beginTurn, setDraft, selectedModel)}
+          onClick={() => void captureAndSend(conversationId, draft, setDraft, selectedModel)}
         >
           <IconCamera size={15} />
         </IconButton>
@@ -552,15 +550,19 @@ function CodeBlock({ lang, code }: { lang: string; code: string }) {
 async function captureAndSend(
   conversationId: string,
   promptText: string,
-  beginTurn: ReturnType<typeof useConversationStore.getState>['beginTurn'],
   setDraft: (s: string) => void,
   model: string,
 ) {
   try {
     const shot = await window.druz9.capture.screenshotArea();
     if (!shot) return; // user cancelled the overlay
+    // See the send() note: don't beginTurn directly; main broadcasts
+    // `userTurnStarted` with the full data URL (announceTurnStart
+    // renders data:<mime>;base64,<...>), applyTurn dedupes and paints
+    // the bubble with the screenshot. Double-painting is the bug we
+    // are fixing here.
     const ipc = conversationId ? window.druz9.analyze.chat : window.druz9.analyze.start;
-    const handle = await ipc({
+    await ipc({
       conversationId,
       promptText,
       model,
@@ -575,12 +577,6 @@ async function captureAndSend(
       ],
       triggerAction: 'screenshot_area',
       focusedAppHint: '',
-    });
-    beginTurn({
-      promptText,
-      hasScreenshot: true,
-      screenshotDataUrl: `data:${shot.mimeType};base64,${shot.dataBase64}`,
-      streamId: handle.streamId,
     });
     setDraft('');
   } catch (err) {

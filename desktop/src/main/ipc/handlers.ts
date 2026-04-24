@@ -8,9 +8,6 @@ import {
   invokeChannels,
   type AnalyzeInput,
   type AreaRect,
-  type ByokPresence,
-  type ByokProvider,
-  type ByokResult,
   type CaptureResult,
   type PermissionKind,
   type WindowName,
@@ -22,21 +19,9 @@ import {
   createTelegramCodeClient,
   type TelegramCodeClient,
 } from '../auth/telegram-code';
-import {
-  deleteKey as byokDelete,
-  listPresence,
-  loadKey as byokLoad,
-  saveKey as byokSave,
-  validateKeyShape,
-} from '../auth/byok-keychain';
-import { AnthropicProvider } from '../api/providers/anthropic';
-import { OpenAIProvider } from '../api/providers/openai';
-import { transcribe } from '../api/providers/whisper';
 import { currentState as cursorState, toggle as cursorToggle } from '../cursor/freeze-js';
 import { createSessionsClient } from '../api/sessions';
 import { createSessionManager, type SessionManager } from '../sessions/manager';
-import { runByokAnalysis } from '../sessions/byok-analyzer';
-import { listPresence as byokListPresence } from '../auth/byok-keychain';
 import type { SessionKind } from '@shared/types';
 import { applyPreset, getCurrent, listPresets, type MasqueradePreset } from '../masquerade';
 import { checkNow, getStatus, installNow } from '../updater';
@@ -93,12 +78,8 @@ export function registerHandlers(opts: RegisterOptions): void {
 
   const telegramClient: TelegramCodeClient = createTelegramCodeClient(apiBaseURL);
 
-  // Sessions manager lives for the app lifetime. The BYOK hook reads
-  // the live conversation-store transcript via IPC at analysis time
-  // (registered below under session:request-byok-transcript).
-  let pendingByokTranscript: string | null = null;
-  // The REST client only needs apiBaseURL; the other RuntimeConfig
-  // fields are irrelevant here, so we construct a minimal object.
+  // Sessions manager lives for the app lifetime. Every session analysis
+  // runs on the backend; no local analyzer path since BYOK was removed.
   const sessionsREST = createSessionsClient({
     apiBaseURL,
     updateFeedURL: '',
@@ -107,32 +88,7 @@ export function registerHandlers(opts: RegisterOptions): void {
     defaultLocale: 'ru',
     isDev: false,
   });
-  sessionManager = createSessionManager({
-    client: sessionsREST,
-    isByokActive: async () => {
-      const p = await byokListPresence();
-      return p.openai || p.anthropic;
-    },
-    runLocalAnalysis: async (session) => {
-      // Ask the renderer to serialize the session's local turns.
-      // Renderer responds synchronously via the session:local-transcript
-      // event it registered at startup. Timeout at 2s — if the renderer
-      // didn't answer, fall back to an empty transcript (the analyzer
-      // will produce a "too short" report).
-      pendingByokTranscript = null;
-      broadcast(eventChannels.sessionRequestLocalTranscript, { sessionId: session.id });
-      const deadline = Date.now() + 2000;
-      while (Date.now() < deadline && pendingByokTranscript === null) {
-        await new Promise((r) => setTimeout(r, 50));
-      }
-      const markdown = pendingByokTranscript ?? '';
-      pendingByokTranscript = null;
-      return runByokAnalysis(session, { markdown });
-    },
-  });
-  ipcMain.on(invokeChannels.sessionSubmitLocalTranscript, (_evt, payload: { markdown: string }) => {
-    pendingByokTranscript = payload?.markdown ?? '';
-  });
+  sessionManager = createSessionManager({ client: sessionsREST });
   // At most one in-flight login attempt. Starting a new one aborts the
   // previous awaitCompletion so the poll loop stops.
   let loginAbort: AbortController | null = null;
@@ -372,45 +328,6 @@ export function registerHandlers(opts: RegisterOptions): void {
     await client.rateMessage({ messageId: id, rating, comment: '' });
   });
 
-  // ── BYOK ──
-  ipcMain.handle(invokeChannels.byokList, async (): Promise<ByokPresence> => listPresence());
-
-  ipcMain.handle(
-    invokeChannels.byokSave,
-    async (_evt, provider: ByokProvider, key: string): Promise<ByokResult> => {
-      const shapeErr = validateKeyShape(provider, key);
-      if (shapeErr) return { ok: false, detail: shapeErr };
-      // Test BEFORE persisting — refuse to save a key that does not work.
-      try {
-        const detail = await makeProvider(provider, key.trim()).test();
-        await byokSave(provider, key);
-        broadcast(eventChannels.byokChanged, await listPresence());
-        return { ok: true, detail };
-      } catch (err) {
-        return { ok: false, detail: (err as Error).message };
-      }
-    },
-  );
-
-  ipcMain.handle(invokeChannels.byokDelete, async (_evt, provider: ByokProvider) => {
-    await byokDelete(provider);
-    broadcast(eventChannels.byokChanged, await listPresence());
-  });
-
-  ipcMain.handle(
-    invokeChannels.byokTest,
-    async (_evt, provider: ByokProvider): Promise<ByokResult> => {
-      const key = await byokLoad(provider);
-      if (!key) return { ok: false, detail: 'no key configured' };
-      try {
-        const detail = await makeProvider(provider, key).test();
-        return { ok: true, detail };
-      } catch (err) {
-        return { ok: false, detail: (err as Error).message };
-      }
-    },
-  );
-
   // ── Masquerade ──
   ipcMain.handle(invokeChannels.masqueradeList, async () => listPresets());
   ipcMain.handle(invokeChannels.masqueradeGet, async () => getCurrent());
@@ -479,39 +396,6 @@ export function registerHandlers(opts: RegisterOptions): void {
     return sessionManager.getAnalysis(sessionId);
   });
 
-  // ── Voice (Whisper via BYOK OpenAI) ──
-  ipcMain.handle(
-    invokeChannels.voiceTranscribe,
-    async (
-      _evt,
-      input: { audioBase64: string; mimeType: string; language?: string },
-    ): Promise<{ ok: boolean; transcript?: string; error?: string }> => {
-      const key = await byokLoad('openai');
-      if (!key) {
-        return {
-          ok: false,
-          error:
-            'Для голосового ввода нужен OpenAI API-ключ. Добавь его в Настройки → AI провайдеры.',
-        };
-      }
-      try {
-        const audio = Uint8Array.from(Buffer.from(input.audioBase64, 'base64'));
-        const transcript = await transcribe({
-          apiKey: key,
-          audio,
-          mimeType: input.mimeType,
-          language: input.language,
-        });
-        return { ok: true, transcript };
-      } catch (err) {
-        return { ok: false, error: (err as Error).message };
-      }
-    },
-  );
-}
-
-function makeProvider(family: ByokProvider, key: string) {
-  return family === 'openai' ? new OpenAIProvider(key) : new AnthropicProvider(key);
 }
 
 // ─────────────────────────────────────────────────────────────────────────

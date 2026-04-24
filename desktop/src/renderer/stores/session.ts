@@ -3,18 +3,12 @@
 //
 // Two event channels we subscribe to:
 //   sessionChanged → live session reference updates
-//   sessionAnalysisReady → final report arrived (server or BYOK)
-//
-// BYOK path: we also handle sessionRequestLocalTranscript by
-// serializing the current conversation store's turns back through
-// session:local-transcript-response.
+//   sessionAnalysisReady → final report arrived from the backend
 
 import { create } from 'zustand';
 
 import { eventChannels } from '@shared/ipc';
 import type { Session, SessionAnalysis, SessionKind } from '@shared/types';
-
-import { useConversationStore } from './conversation';
 
 interface State {
   current: Session | null;
@@ -76,34 +70,8 @@ export const useSessionStore = create<State>((set, get) => ({
       window.druz9.on<SessionAnalysis>(eventChannels.sessionAnalysisReady, (a) => {
         set({ lastAnalysis: a });
       }),
-      // BYOK transcript request from main. Renderer owns the actual
-      // conversation content in BYOK mode (those turns never reach the
-      // server), so main has to ask us for it.
-      window.druz9.on<{ sessionId: string }>(
-        eventChannels.sessionRequestLocalTranscript,
-        () => {
-          window.druz9.sessions.submitLocalTranscript(serializeConversationStore());
-        },
-      ),
     ];
 
     return () => unsubs.forEach((u) => u());
   },
 }));
-
-/**
- * Render the active conversation store into a Markdown transcript the
- * BYOK analyzer can consume. Keeps it short (last 40 turns to bound
- * LLM token cost).
- */
-function serializeConversationStore(): string {
-  const { messages } = useConversationStore.getState();
-  const trimmed = messages.slice(-40);
-  const lines: string[] = [];
-  for (const m of trimmed) {
-    const role = m.role === 'user' ? 'Пользователь' : 'Ассистент';
-    const note = m.hasScreenshot ? ' (со скриншотом)' : '';
-    lines.push(`**${role}${note}:**\n${m.content}\n`);
-  }
-  return lines.join('\n---\n');
-}

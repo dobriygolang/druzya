@@ -31,10 +31,22 @@ func (p *StaticConfigProvider) Load(_ context.Context) (domain.DesktopConfig, er
 // dumb. Bump Rev on every change.
 func DefaultDesktopConfig() domain.DesktopConfig {
 	return domain.DesktopConfig{
-		Rev: 4,
+		Rev: 5,
 		Models: []domain.ProviderModel{
+			// ── Turbo (auto-routing) — the virtual model backed by the
+			// server-side llmchain. Goes first so it's the obvious pick.
+			{
+				ID:                     "druz9/turbo",
+				DisplayName:            "Турбо ⚡ (авто)",
+				ProviderName:           "Druz9",
+				SpeedClass:             domain.ModelSpeedClassFast,
+				SupportsVision:         false,
+				SupportsReasoning:      true,
+				TypicalLatencyMs:       800,
+				ContextWindowTokens:    131_072,
+				AvailableOnCurrentPlan: true,
+			},
 			// ── Free tier — served via OpenRouter's zero-cost :free lane.
-			// These come first so the picker lists them at the top.
 			{
 				ID:                     "openai/gpt-oss-120b:free",
 				DisplayName:            "GPT-OSS 120B · free",
@@ -158,7 +170,7 @@ func DefaultDesktopConfig() domain.DesktopConfig {
 				AvailableOnCurrentPlan: false,
 			},
 		},
-		DefaultModelID: "qwen/qwen3-coder:free",
+		DefaultModelID: "druz9/turbo",
 		DefaultHotkeys: []domain.HotkeyBinding{
 			{Action: domain.HotkeyActionScreenshotArea, Accelerator: "CommandOrControl+Shift+S"},
 			{Action: domain.HotkeyActionScreenshotFull, Accelerator: "CommandOrControl+Shift+A"},
@@ -171,7 +183,8 @@ func DefaultDesktopConfig() domain.DesktopConfig {
 		Flags: []domain.FeatureFlag{
 			{Key: "voice_input", Enabled: false},
 			{Key: "masquerade", Enabled: true},
-			{Key: "byo_api_key", Enabled: true},
+			// byo_api_key removed after BYOK was cut — keys no longer
+			// cross the client boundary; all dispatch goes via the server.
 			{Key: "stealth_overlay", Enabled: true},
 		},
 		Paywall: []domain.PaywallCopy{

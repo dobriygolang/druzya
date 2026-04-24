@@ -14,9 +14,8 @@
 
 import { useEffect, useRef, useState } from 'react';
 
-import { BrandMark, IconCamera, IconChevronDown, IconSend, IconSettings } from '../../components/icons';
+import { BrandMark, IconCamera, IconChevronDown, IconClose, IconSend, IconSettings } from '../../components/icons';
 import { IconButton, Kbd, StatusDot } from '../../components/primitives';
-import { VoiceButton } from '../../components/VoiceButton';
 import { useConfig } from '../../hooks/use-config';
 import { useHotkeyEvents } from '../../hooks/use-hotkey-events';
 import { useAuthStore } from '../../stores/auth';
@@ -61,7 +60,6 @@ export function CompactScreen() {
     if (!stillExists || !stillAllowed) clearSelectedModel();
   }, [config, selectedModel, clearSelectedModel]);
   const pending = usePendingAttachmentStore((s) => s.pending);
-  const setPending = usePendingAttachmentStore((s) => s.set);
   const clearPending = usePendingAttachmentStore((s) => s.clear);
   const cursorState = useCursorFreezeStore((s) => s.state);
   const cursorBootstrap = useCursorFreezeStore((s) => s.bootstrap);
@@ -75,7 +73,6 @@ export function CompactScreen() {
   // Model picker lives in expanded (compact is too small for the 440×520
   // modal). Clicking the model label in compact opens expanded and
   // signals via localStorage to pop the picker on mount.
-  const [voiceToggleCount, setVoiceToggleCount] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
 
   // Auth + conversation + cursor + session store subscriptions.
@@ -174,8 +171,6 @@ export function CompactScreen() {
       inputRef.current?.focus();
     } else if (action === 'toggle_window') {
       void window.druz9.windows.show('expanded');
-    } else if (action === 'voice_input') {
-      setVoiceToggleCount((c) => c + 1);
     }
   });
 
@@ -328,18 +323,6 @@ export function CompactScreen() {
           <IconButton title="Скриншот области (⌘⇧S)" onClick={() => void capture('screenshot_area')}>
             <IconCamera size={15} />
           </IconButton>
-          <VoiceButton
-            onTranscript={(text) => {
-              // Merge with anything already typed, then fire the turn
-              // immediately — the user expects voice to *send*, not just
-              // drop text into the input box.
-              const merged = input.trim() ? `${input.trim()} ${text}` : text;
-              setInput(merged);
-              void submitText(merged);
-            }}
-            onError={(msg) => setStatusText(msg.slice(0, 80))}
-            hotkeyToggle={voiceToggleCount}
-          />
           <IconButton title="Настройки" onClick={() => void window.druz9.windows.show('settings')}>
             <IconSettings size={15} />
           </IconButton>
