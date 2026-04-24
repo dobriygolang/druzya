@@ -78,6 +78,29 @@ type DriftRow struct {
 	StoredDayExists bool
 }
 
+// ─── Resistance ────────────────────────────────────────────────────────────
+
+// ResistanceRepo — persist dismiss-event'ы для «chronic skip» детектора.
+// Запись идёт из DismissPlanItem только когда item.SkillKey непустой
+// (custom/review item'ы в resistance-логике не участвуют).
+type ResistanceRepo interface {
+	// Record пишет одну dismiss-event. Идемпотентен: PRIMARY KEY
+	// (user, skill, item_id, plan_date) гарантирует, что повторный dismiss
+	// того же item'а в тот же день не создаст дубль.
+	Record(ctx context.Context, userID uuid.UUID, skillKey, itemID string, planDate time.Time) error
+	// ChronicSkills возвращает скиллы, от которых пользователь отмахивался
+	// `minCount`+ раз за `window`. Пустой slice — нет сопротивления, obvious
+	// result. Используется синтезайзером.
+	ChronicSkills(ctx context.Context, userID uuid.UUID, window time.Duration, minCount int) ([]ChronicSkill, error)
+}
+
+// ChronicSkill — агрегат для синтезайзера.
+type ChronicSkill struct {
+	SkillKey  string
+	SkipCount int
+	LastSkip  time.Time
+}
+
 // ─── Notes ─────────────────────────────────────────────────────────────────
 
 // NoteRepo persists hone_notes.
@@ -154,6 +177,11 @@ type CritiqueStreamer interface {
 // calls TaskDailyPlanSynthesis with a strict-JSON prompt; STUB returns
 // ErrLLMUnavailable. A nil synthesiser in the app struct must be checked
 // at call time — the service boots without LLM when no keys are configured.
+//
+// chronic — скиллы с высокой «стеной сопротивления» (>= N dismiss'ов за
+// последние M дней). Синтезайзер использует их чтобы разбивать pump-up
+// задачи на меньшие или генерировать reflection-prompt'ы. nil/empty —
+// обычный plan без поправок.
 type PlanSynthesizer interface {
-	Synthesise(ctx context.Context, userID uuid.UUID, weakNodes []WeakNode, date time.Time) ([]PlanItem, error)
+	Synthesise(ctx context.Context, userID uuid.UUID, weakNodes []WeakNode, chronic []ChronicSkill, date time.Time) ([]PlanItem, error)
 }

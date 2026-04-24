@@ -10,6 +10,16 @@ import (
 	"druz9/hone/domain"
 )
 
+// ChronicSkipWindow / ChronicSkipMinCount — порог «chronic skip» для
+// resistance-tracker'а. 14 дней — достаточный lookback чтобы отловить
+// устойчивое избегание, и достаточно короткий чтобы «починенный» skill
+// (пользователь наконец-то сделал задачу) быстро выпал. 2 — минимальная
+// повторность, отличающая «не успел сегодня» от «активно отмахивается».
+const (
+	ChronicSkipWindow   = 14 * 24 * time.Hour
+	ChronicSkipMinCount = 2
+)
+
 // Handler bundles all Hone use cases. Constructed in
 // cmd/monolith/services/hone.go and handed to ports.NewHoneServer.
 type Handler struct {

@@ -3,6 +3,7 @@ package app
 import (
 	"context"
 	"errors"
+	"strings"
 	"testing"
 	"time"
 
@@ -156,6 +157,73 @@ func TestEndFocus_DoesNotFailWhenStreakApplyErrors(t *testing.T) {
 	}
 	if _, err := uc.Do(context.Background(), EndFocusInput{UserID: uuid.New(), SessionID: uuid.New()}); err != nil {
 		t.Fatalf("End should succeed even when streak apply fails; got %v", err)
+	}
+}
+
+func TestEndFocus_ReflectionCreatesNote(t *testing.T) {
+	t.Parallel()
+	uid := uuid.New()
+	sid := uuid.New()
+	streak := &fakeStreakRepo{
+		applyFocusSession: func(_ context.Context, _ uuid.UUID, _ time.Time, _ int, _ int, _ int) (domain.StreakState, error) {
+			return domain.StreakState{}, nil
+		},
+	}
+	notes := &fakeNotes{}
+	uc := &EndFocus{
+		Focus: fakeFocusRepo{
+			end: func(_ context.Context, _ uuid.UUID, _ uuid.UUID, _ time.Time, _ int, secs int) (domain.FocusSession, error) {
+				return domain.FocusSession{ID: sid, UserID: uid, PinnedTitle: "BFS on trees", SecondsFocused: secs}, nil
+			},
+		},
+		Streaks: streak,
+		Notes:   notes,
+		Log:     discardLogger(),
+		Now:     fixedNow,
+	}
+	_, err := uc.Do(context.Background(), EndFocusInput{
+		UserID: uid, SessionID: sid, SecondsFocused: 1500, PomodorosCompleted: 1,
+		Reflection: "Understood the algorithm, need to redo it from scratch tomorrow",
+	})
+	if err != nil {
+		t.Fatalf("unexpected err: %v", err)
+	}
+	if len(notes.created) != 1 {
+		t.Fatalf("expected 1 reflection note, got %d", len(notes.created))
+	}
+	if !strings.Contains(notes.created[0].Title, "BFS on trees") {
+		t.Errorf("note title = %q", notes.created[0].Title)
+	}
+	if !strings.Contains(notes.created[0].BodyMD, "Understood the algorithm") {
+		t.Errorf("note body missing reflection")
+	}
+}
+
+func TestEndFocus_EmptyReflection_NoNote(t *testing.T) {
+	t.Parallel()
+	streak := &fakeStreakRepo{
+		applyFocusSession: func(_ context.Context, _ uuid.UUID, _ time.Time, _ int, _ int, _ int) (domain.StreakState, error) {
+			return domain.StreakState{}, nil
+		},
+	}
+	notes := &fakeNotes{}
+	uc := &EndFocus{
+		Focus: fakeFocusRepo{
+			end: func(_ context.Context, _ uuid.UUID, _ uuid.UUID, _ time.Time, _ int, _ int) (domain.FocusSession, error) {
+				return domain.FocusSession{}, nil
+			},
+		},
+		Streaks: streak,
+		Notes:   notes,
+		Log:     discardLogger(),
+		Now:     fixedNow,
+	}
+	_, err := uc.Do(context.Background(), EndFocusInput{UserID: uuid.New(), SessionID: uuid.New()})
+	if err != nil {
+		t.Fatalf("unexpected err: %v", err)
+	}
+	if len(notes.created) != 0 {
+		t.Errorf("expected 0 notes for empty reflection, got %d", len(notes.created))
 	}
 }
 

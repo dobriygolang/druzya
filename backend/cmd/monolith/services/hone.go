@@ -51,6 +51,7 @@ func NewHone(d Deps) *Module {
 	streaks := honeInfra.NewStreaks(d.Pool)
 	notes := honeInfra.NewNotes(d.Pool)
 	whiteboards := honeInfra.NewWhiteboards(d.Pool)
+	resistance := honeInfra.NewResistance(d.Pool)
 
 	// LLM adapters — pick real vs floor per config.
 	var (
@@ -120,14 +121,14 @@ func NewHone(d Deps) *Module {
 
 	h := honeApp.NewHandler(honeApp.Handler{
 		// Plan
-		GeneratePlan:     &honeApp.GeneratePlan{Plans: plans, Skills: skills, Synthesiser: synthesiser, Log: d.Log, Now: d.Now},
+		GeneratePlan:     &honeApp.GeneratePlan{Plans: plans, Skills: skills, Resistance: resistance, Synthesiser: synthesiser, Log: d.Log, Now: d.Now},
 		GetPlan:          &honeApp.GetPlan{Plans: plans, Now: d.Now},
-		DismissPlanItem:  &honeApp.DismissPlanItem{Plans: plans, Now: d.Now},
+		DismissPlanItem:  &honeApp.DismissPlanItem{Plans: plans, Resistance: resistance, Log: d.Log, Now: d.Now},
 		CompletePlanItem: &honeApp.CompletePlanItem{Plans: plans, Now: d.Now},
 
 		// Focus
 		StartFocus: &honeApp.StartFocus{Focus: focus, Log: d.Log, Now: d.Now},
-		EndFocus:   &honeApp.EndFocus{Focus: focus, Streaks: streaks, Log: d.Log, Now: d.Now},
+		EndFocus:   &honeApp.EndFocus{Focus: focus, Streaks: streaks, Notes: notes, EmbedFn: embedFn, Log: d.Log, Now: d.Now},
 		GetStats:   &honeApp.GetStats{Streaks: streaks, Now: d.Now},
 
 		// Notes
@@ -145,6 +146,10 @@ func NewHone(d Deps) *Module {
 		ListWhiteboards:    &honeApp.ListWhiteboards{Boards: whiteboards},
 		DeleteWhiteboard:   &honeApp.DeleteWhiteboard{Boards: whiteboards},
 		CritiqueWhiteboard: &honeApp.CritiqueWhiteboard{Boards: whiteboards, Streamer: critiqueStreamer, Log: d.Log},
+		SaveCritiqueAsNote: &honeApp.SaveCritiqueAsNote{Boards: whiteboards, Notes: notes, EmbedFn: embedFn, Log: d.Log, Now: d.Now},
+
+		// Standup
+		RecordStandup: &honeApp.RecordStandup{Notes: notes, Plans: plans, EmbedFn: embedFn, Log: d.Log, Now: d.Now},
 
 		Log: d.Log,
 		Now: d.Now,

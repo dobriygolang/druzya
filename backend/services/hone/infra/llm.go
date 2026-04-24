@@ -34,7 +34,7 @@ type NoLLMPlanSynthesiser struct{}
 func NewNoLLMPlanSynthesiser() *NoLLMPlanSynthesiser { return &NoLLMPlanSynthesiser{} }
 
 // Synthesise always returns ErrLLMUnavailable.
-func (*NoLLMPlanSynthesiser) Synthesise(_ context.Context, _ uuid.UUID, _ []domain.WeakNode, _ time.Time) ([]domain.PlanItem, error) {
+func (*NoLLMPlanSynthesiser) Synthesise(_ context.Context, _ uuid.UUID, _ []domain.WeakNode, _ []domain.ChronicSkill, _ time.Time) ([]domain.PlanItem, error) {
 	return nil, fmt.Errorf("hone.NoLLMPlanSynthesiser.Synthesise: %w", domain.ErrLLMUnavailable)
 }
 
@@ -107,14 +107,22 @@ Constraints:
   - deep_link: for "solve" use "druz9://task/<target_ref>"; for "mock" use "druz9://mock/start?section=<target_ref>"; empty for others.
   - estimated_min: realistic, 15-60 range.
 
+Resistance handling (CRITICAL):
+  - The user prompt MAY include a "Chronic skips" section listing skills that have been dismissed multiple times recently.
+  - For EACH chronic skill, you MUST produce ONE item that either:
+      (a) breaks the topic into the smallest possible concrete sub-task (prefix title with "tiny: "; estimated_min=15), OR
+      (b) replaces it with a reflection prompt — kind="custom", title="Why are you avoiding <skill>?", subtitle="Notice the resistance, name it. 2-minute write-up.", estimated_min=10, target_ref="", deep_link="".
+  - Pick (a) when the skill has a clear atomic sub-task; (b) when the user has skipped it 3+ times and small tasks haven't worked.
+  - Set skill_key to the chronic skill's key for both (a) and (b).
+
 Output EXACTLY this JSON shape, nothing else:
 {"items":[{"id":"<short-id>","kind":"solve|mock|review|read|custom","title":"...","subtitle":"...","rationale":"...","skill_key":"...","target_ref":"...","deep_link":"...","estimated_min":25}]}
 
 Return ONLY the JSON object. No prose, no code fences.`
 
 // Synthesise builds the prompt, calls the chain, parses the response.
-func (s *LLMChainPlanSynthesiser) Synthesise(ctx context.Context, userID uuid.UUID, weak []domain.WeakNode, date time.Time) ([]domain.PlanItem, error) {
-	userMsg := buildPlanUserPrompt(weak, date)
+func (s *LLMChainPlanSynthesiser) Synthesise(ctx context.Context, userID uuid.UUID, weak []domain.WeakNode, chronic []domain.ChronicSkill, date time.Time) ([]domain.PlanItem, error) {
+	userMsg := buildPlanUserPrompt(weak, chronic, date)
 
 	ctx, cancel := context.WithTimeout(ctx, s.timeout)
 	defer cancel()
@@ -159,16 +167,22 @@ func (s *LLMChainPlanSynthesiser) Synthesise(ctx context.Context, userID uuid.UU
 	return nil, fmt.Errorf("hone.LLMChainPlanSynthesiser.Synthesise: both attempts failed: %w (%w)", lastErr, domain.ErrLLMUnavailable)
 }
 
-func buildPlanUserPrompt(weak []domain.WeakNode, date time.Time) string {
+func buildPlanUserPrompt(weak []domain.WeakNode, chronic []domain.ChronicSkill, date time.Time) string {
 	var sb strings.Builder
 	fmt.Fprintf(&sb, "Date: %s\n\n", date.Format("2006-01-02"))
 	if len(weak) == 0 {
 		sb.WriteString("Weakest nodes: none known yet — produce a generic balanced plan (one algo, one system-design read, one review).\n")
-		return sb.String()
+	} else {
+		sb.WriteString("Weakest skill nodes (progress 0..100, lower = weaker):\n")
+		for _, n := range weak {
+			fmt.Fprintf(&sb, "  - %s (%s) progress=%d priority=%s\n", n.NodeKey, n.DisplayName, n.Progress, n.Priority)
+		}
 	}
-	sb.WriteString("Weakest skill nodes (progress 0..100, lower = weaker):\n")
-	for _, n := range weak {
-		fmt.Fprintf(&sb, "  - %s (%s) progress=%d priority=%s\n", n.NodeKey, n.DisplayName, n.Progress, n.Priority)
+	if len(chronic) > 0 {
+		sb.WriteString("\nChronic skips — skills dismissed repeatedly. For EACH of these you MUST include a tiny-task OR reflection-prompt item (see system prompt Resistance handling):\n")
+		for _, c := range chronic {
+			fmt.Fprintf(&sb, "  - %s skipped %d times (last: %s)\n", c.SkillKey, c.SkipCount, c.LastSkip.Format("2006-01-02"))
+		}
 	}
 	return sb.String()
 }

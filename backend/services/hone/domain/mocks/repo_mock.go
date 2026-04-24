@@ -256,6 +256,59 @@ func (mr *MockStreakRepoMockRecorder) RecomputeDay(ctx, userID, day, secondsAbs,
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RecomputeDay", reflect.TypeOf((*MockStreakRepo)(nil).RecomputeDay), ctx, userID, day, secondsAbs, sessionsAbs, qualifyingThreshold)
 }
 
+// MockResistanceRepo is a mock of ResistanceRepo interface.
+type MockResistanceRepo struct {
+	ctrl     *gomock.Controller
+	recorder *MockResistanceRepoMockRecorder
+	isgomock struct{}
+}
+
+// MockResistanceRepoMockRecorder is the mock recorder for MockResistanceRepo.
+type MockResistanceRepoMockRecorder struct {
+	mock *MockResistanceRepo
+}
+
+// NewMockResistanceRepo creates a new mock instance.
+func NewMockResistanceRepo(ctrl *gomock.Controller) *MockResistanceRepo {
+	mock := &MockResistanceRepo{ctrl: ctrl}
+	mock.recorder = &MockResistanceRepoMockRecorder{mock}
+	return mock
+}
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockResistanceRepo) EXPECT() *MockResistanceRepoMockRecorder {
+	return m.recorder
+}
+
+// ChronicSkills mocks base method.
+func (m *MockResistanceRepo) ChronicSkills(ctx context.Context, userID uuid.UUID, window time.Duration, minCount int) ([]domain.ChronicSkill, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ChronicSkills", ctx, userID, window, minCount)
+	ret0, _ := ret[0].([]domain.ChronicSkill)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ChronicSkills indicates an expected call of ChronicSkills.
+func (mr *MockResistanceRepoMockRecorder) ChronicSkills(ctx, userID, window, minCount any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ChronicSkills", reflect.TypeOf((*MockResistanceRepo)(nil).ChronicSkills), ctx, userID, window, minCount)
+}
+
+// Record mocks base method.
+func (m *MockResistanceRepo) Record(ctx context.Context, userID uuid.UUID, skillKey, itemID string, planDate time.Time) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Record", ctx, userID, skillKey, itemID, planDate)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Record indicates an expected call of Record.
+func (mr *MockResistanceRepoMockRecorder) Record(ctx, userID, skillKey, itemID, planDate any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Record", reflect.TypeOf((*MockResistanceRepo)(nil).Record), ctx, userID, skillKey, itemID, planDate)
+}
+
 // MockNoteRepo is a mock of NoteRepo interface.
 type MockNoteRepo struct {
 	ctrl     *gomock.Controller
@@ -624,16 +677,16 @@ func (m *MockPlanSynthesizer) EXPECT() *MockPlanSynthesizerMockRecorder {
 }
 
 // Synthesise mocks base method.
-func (m *MockPlanSynthesizer) Synthesise(ctx context.Context, userID uuid.UUID, weakNodes []domain.WeakNode, date time.Time) ([]domain.PlanItem, error) {
+func (m *MockPlanSynthesizer) Synthesise(ctx context.Context, userID uuid.UUID, weakNodes []domain.WeakNode, chronic []domain.ChronicSkill, date time.Time) ([]domain.PlanItem, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Synthesise", ctx, userID, weakNodes, date)
+	ret := m.ctrl.Call(m, "Synthesise", ctx, userID, weakNodes, chronic, date)
 	ret0, _ := ret[0].([]domain.PlanItem)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // Synthesise indicates an expected call of Synthesise.
-func (mr *MockPlanSynthesizerMockRecorder) Synthesise(ctx, userID, weakNodes, date any) *gomock.Call {
+func (mr *MockPlanSynthesizerMockRecorder) Synthesise(ctx, userID, weakNodes, chronic, date any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Synthesise", reflect.TypeOf((*MockPlanSynthesizer)(nil).Synthesise), ctx, userID, weakNodes, date)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Synthesise", reflect.TypeOf((*MockPlanSynthesizer)(nil).Synthesise), ctx, userID, weakNodes, chronic, date)
 }

@@ -26,6 +26,7 @@ import (
 type GeneratePlan struct {
 	Plans       domain.PlanRepo
 	Skills      domain.SkillAtlasReader
+	Resistance  domain.ResistanceRepo  // nullable — без него chronic-skip empty
 	Synthesiser domain.PlanSynthesizer // nil when llmchain is nil
 	Log         *slog.Logger
 	Now         func() time.Time
@@ -59,11 +60,27 @@ func (uc *GeneratePlan) Do(ctx context.Context, in GeneratePlanInput) (domain.Pl
 		return domain.Plan{}, fmt.Errorf("hone.GeneratePlan.Do: weakest nodes: %w", err)
 	}
 
+	// Resistance-tracker — скиллы, от которых пользователь отмахивался
+	// последние 14 дней. Нулевой chronic-список не меняет поведение
+	// синтезайзера; непустой — ломает обычный flow и вставляет tiny-task
+	// или reflection-prompt (см. system prompt).
+	var chronic []domain.ChronicSkill
+	if uc.Resistance != nil {
+		c, cerr := uc.Resistance.ChronicSkills(ctx, in.UserID, ChronicSkipWindow, ChronicSkipMinCount)
+		if cerr != nil {
+			// Non-fatal: plan synth продолжает без chronic-сигнала.
+			uc.Log.Warn("hone.GeneratePlan.Do: chronic skills lookup failed",
+				slog.Any("err", cerr), slog.String("user_id", in.UserID.String()))
+		} else {
+			chronic = c
+		}
+	}
+
 	// STUB: enrich weak-node list with calendar events + recent PRs before
 	// handing to the synthesiser. For MVP we go weak-nodes-only; the
 	// synthesiser produces one solve item per weak node and decides whether
 	// to inject a mock/review/read item via prompt signals.
-	items, err := uc.Synthesiser.Synthesise(ctx, in.UserID, weak, today)
+	items, err := uc.Synthesiser.Synthesise(ctx, in.UserID, weak, chronic, today)
 	if err != nil {
 		return domain.Plan{}, fmt.Errorf("hone.GeneratePlan.Do: synthesise: %w", err)
 	}
@@ -112,8 +129,10 @@ func (uc *GetPlan) Do(ctx context.Context, userID uuid.UUID) (domain.Plan, error
 // DismissPlanItem flips the Dismissed flag on one PlanItem. Idempotent
 // (dismiss-twice is a no-op).
 type DismissPlanItem struct {
-	Plans domain.PlanRepo
-	Now   func() time.Time
+	Plans      domain.PlanRepo
+	Resistance domain.ResistanceRepo // nullable
+	Log        *slog.Logger
+	Now        func() time.Time
 }
 
 // DismissPlanItemInput — request body.
@@ -128,6 +147,22 @@ func (uc *DismissPlanItem) Do(ctx context.Context, in DismissPlanItemInput) (dom
 	p, err := uc.Plans.PatchItem(ctx, in.UserID, today, in.ItemID, true, false)
 	if err != nil {
 		return domain.Plan{}, fmt.Errorf("hone.DismissPlanItem.Do: %w", err)
+	}
+	// Resistance-tracker: фиксируем skip только если у item'а есть skill_key
+	// (custom/review item'ы пропускаем). Ошибка записи — non-fatal: dismiss
+	// уже успел, resistance-signal потерять можно, plan сломать нельзя.
+	if uc.Resistance != nil {
+		for _, it := range p.Items {
+			if it.ID == in.ItemID && it.SkillKey != "" {
+				if rerr := uc.Resistance.Record(ctx, in.UserID, it.SkillKey, it.ID, today); rerr != nil && uc.Log != nil {
+					uc.Log.Warn("hone.DismissPlanItem.Do: resistance record failed",
+						slog.Any("err", rerr),
+						slog.String("user_id", in.UserID.String()),
+						slog.String("skill", it.SkillKey))
+				}
+				break
+			}
+		}
 	}
 	return p, nil
 }

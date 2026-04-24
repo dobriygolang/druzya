@@ -51,7 +51,7 @@ type fakeSynthesiser struct {
 	calls int
 }
 
-func (f *fakeSynthesiser) Synthesise(_ context.Context, _ uuid.UUID, _ []domain.WeakNode, _ time.Time) ([]domain.PlanItem, error) {
+func (f *fakeSynthesiser) Synthesise(_ context.Context, _ uuid.UUID, _ []domain.WeakNode, _ []domain.ChronicSkill, _ time.Time) ([]domain.PlanItem, error) {
 	f.calls++
 	return f.items, f.err
 }
