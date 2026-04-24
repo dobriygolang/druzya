@@ -49,6 +49,17 @@ func NewCopilot(d Deps) *Module {
 		os.Getenv("COPILOT_REPORT_URL_TEMPLATE"), // optional override
 	)
 
+	// Context-compaction worker: sliding-window + фоновая суммаризация.
+	// SummaryStore пишет running_summary в copilot_conversations. Worker
+	// может быть nil (disabled-ветка), если LLMChain не был построен —
+	// тогда Analyze просто обрезает prior до WindowSize без фонового
+	// summary-пересчёта. См. services/compaction.go.
+	summaryStore := copilotInfra.NewConversationSummaryStore(d.Pool)
+	compactor, compactionCfg, cwErr := BuildCompactionWorker(d.LLMChain, summaryStore, d.Log)
+	if cwErr != nil && d.Log != nil {
+		d.Log.Info("copilot: compaction worker disabled", "reason", cwErr)
+	}
+
 	analyze := &copilotApp.Analyze{
 		Conversations: conversations,
 		Messages:      messages,
@@ -56,6 +67,8 @@ func NewCopilot(d Deps) *Module {
 		LLM:           llm,
 		Config:        cfgProvider,
 		Sessions:      sessions, // auto-attach new turns to live session
+		Compactor:     compactor,
+		CompactionCfg: compactionCfg,
 		Log:           d.Log,
 		Now:           d.Now,
 	}
@@ -143,10 +156,24 @@ func NewCopilot(d Deps) *Module {
 				sub := runAnalysisSubscriber(sessionEvents, runAnalysis, d.Log)
 				go sub(ctx)
 			},
+			// Start воркера compaction (если создан) под rootCtx.
+			// Внутри Start — fire-and-forget goroutines, не блокирует.
+			func(ctx context.Context) {
+				if compactor != nil {
+					compactor.Start(ctx)
+				}
+			},
 		},
 		Shutdown: []func(ctx context.Context) error{
 			func(context.Context) error {
 				close(sessionEvents)
+				return nil
+			},
+			// Drain in-flight compaction-jobs до закрытия Redis/pool.
+			func(context.Context) error {
+				if compactor != nil {
+					compactor.Shutdown()
+				}
 				return nil
 			},
 		},

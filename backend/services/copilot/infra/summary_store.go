@@ -5,8 +5,8 @@ import (
 	"fmt"
 
 	copilotdb "druz9/copilot/infra/db"
-	sharedpg "druz9/shared/pkg/pg"
 	"druz9/shared/pkg/compaction"
+	sharedpg "druz9/shared/pkg/pg"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"

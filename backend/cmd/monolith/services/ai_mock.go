@@ -75,10 +75,21 @@ func NewAIMock(d Deps) *Module {
 		Sessions: sessions, Messages: messages, Tasks: tasks,
 		LastMessagesLimit: 20,
 	}
+	// Context-compaction worker для mock-сессий. См. аналог в copilot.go.
+	// Worker может быть nil — тогда SendMessage обрезает prior до WindowSize
+	// без фоновой суммаризации.
+	summaryStore := aimockInfra.NewSessionSummaryStore(d.Pool)
+	compactor, compactionCfg, cwErr := BuildCompactionWorker(d.LLMChain, summaryStore, d.Log)
+	if cwErr != nil && d.Log != nil {
+		d.Log.Info("ai_mock: compaction worker disabled", "reason", cwErr)
+	}
+
 	sendMessage := &aimockApp.SendMessage{
 		Sessions: sessions, Messages: messages, Tasks: tasks,
 		Users: users, Companies: companies,
 		LLM: llm, Limiter: limiter, Log: d.Log, Now: d.Now,
+		Compactor:     compactor,
+		CompactionCfg: compactionCfg,
 	}
 	stress := &aimockApp.IngestStress{
 		Sessions: sessions,
@@ -123,11 +134,22 @@ func NewAIMock(d Deps) *Module {
 		},
 		Background: []func(ctx context.Context){
 			func(ctx context.Context) { reportWorker.Start(ctx) },
+			func(ctx context.Context) {
+				if compactor != nil {
+					compactor.Start(ctx)
+				}
+			},
 		},
 		Shutdown: []func(ctx context.Context) error{
 			func(ctx context.Context) error {
 				reportWorker.Close()
 				reportWorker.Wait()
+				return nil
+			},
+			func(context.Context) error {
+				if compactor != nil {
+					compactor.Shutdown()
+				}
 				return nil
 			},
 		},
