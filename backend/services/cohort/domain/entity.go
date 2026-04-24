@@ -57,6 +57,13 @@ type Cohort struct {
 	CreatedAt  time.Time
 }
 
+// CohortPatch is the editable subset of a Cohort row. nil = leave unchanged.
+type CohortPatch struct {
+	Name       *string
+	EndsAt     *time.Time
+	Visibility *Visibility
+}
+
 // CohortMember binds a user to a cohort.
 type CohortMember struct {
 	CohortID uuid.UUID

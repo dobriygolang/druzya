@@ -369,3 +369,141 @@ func slugify(name string) string {
 	}
 	return out
 }
+
+// ── M5c: owner-side cohort moderation ─────────────────────────────────────
+
+// UpdateCohort lets the owner rewrite name / ends_at / visibility.
+// Returns the freshly-loaded row.
+type UpdateCohort struct {
+	repo domain.Repo
+	log  *slog.Logger
+}
+
+func NewUpdateCohort(repo domain.Repo, log *slog.Logger) *UpdateCohort {
+	if repo == nil {
+		panic("cohort.UpdateCohort: nil repo")
+	}
+	if log == nil {
+		panic("cohort.UpdateCohort: nil log")
+	}
+	return &UpdateCohort{repo: repo, log: log}
+}
+
+type UpdateCohortInput struct {
+	CohortID   uuid.UUID
+	ActorID    uuid.UUID
+	Name       *string
+	EndsAt     *time.Time
+	Visibility *domain.Visibility
+}
+
+// Do checks ownership then writes the patch.
+func (uc *UpdateCohort) Do(ctx context.Context, in UpdateCohortInput) (domain.Cohort, error) {
+	c, err := uc.repo.Get(ctx, in.CohortID)
+	if err != nil {
+		return domain.Cohort{}, fmt.Errorf("cohort.UpdateCohort: load: %w", err)
+	}
+	if c.OwnerID != in.ActorID {
+		return domain.Cohort{}, ErrForbidden
+	}
+	if in.Name != nil {
+		name := strings.TrimSpace(*in.Name)
+		if name == "" {
+			return domain.Cohort{}, ErrInvalidName
+		}
+		in.Name = &name
+	}
+	if in.EndsAt != nil && in.EndsAt.Before(time.Now()) {
+		return domain.Cohort{}, ErrInvalidEnd
+	}
+	if in.Visibility != nil {
+		switch *in.Visibility {
+		case domain.VisibilityPublic, domain.VisibilityInvite:
+			// ok
+		default:
+			return domain.Cohort{}, ErrInvalidVisibility
+		}
+	}
+	out, err := uc.repo.UpdateMeta(ctx, in.CohortID, domain.CohortPatch{
+		Name:       in.Name,
+		EndsAt:     in.EndsAt,
+		Visibility: in.Visibility,
+	})
+	if err != nil {
+		return domain.Cohort{}, fmt.Errorf("cohort.UpdateCohort: %w", err)
+	}
+	return out, nil
+}
+
+// DisbandCohort marks the cohort cancelled. Owner-only.
+type DisbandCohort struct {
+	repo domain.Repo
+	log  *slog.Logger
+}
+
+func NewDisbandCohort(repo domain.Repo, log *slog.Logger) *DisbandCohort {
+	if repo == nil {
+		panic("cohort.DisbandCohort: nil repo")
+	}
+	if log == nil {
+		panic("cohort.DisbandCohort: nil log")
+	}
+	return &DisbandCohort{repo: repo, log: log}
+}
+
+func (uc *DisbandCohort) Do(ctx context.Context, cohortID, actorID uuid.UUID) error {
+	c, err := uc.repo.Get(ctx, cohortID)
+	if err != nil {
+		return fmt.Errorf("cohort.DisbandCohort: load: %w", err)
+	}
+	if c.OwnerID != actorID {
+		return ErrForbidden
+	}
+	if err := uc.repo.Disband(ctx, cohortID); err != nil {
+		return fmt.Errorf("cohort.DisbandCohort: %w", err)
+	}
+	return nil
+}
+
+// SetMemberRole — owner-only role change (member ↔ coach).
+type SetMemberRole struct {
+	repo domain.Repo
+	log  *slog.Logger
+}
+
+func NewSetMemberRole(repo domain.Repo, log *slog.Logger) *SetMemberRole {
+	if repo == nil {
+		panic("cohort.SetMemberRole: nil repo")
+	}
+	if log == nil {
+		panic("cohort.SetMemberRole: nil log")
+	}
+	return &SetMemberRole{repo: repo, log: log}
+}
+
+func (uc *SetMemberRole) Do(ctx context.Context, cohortID, actorID, targetID uuid.UUID, role domain.Role) error {
+	c, err := uc.repo.Get(ctx, cohortID)
+	if err != nil {
+		return fmt.Errorf("cohort.SetMemberRole: load: %w", err)
+	}
+	if c.OwnerID != actorID {
+		return ErrForbidden
+	}
+	// Don't let the owner demote themselves through this path — they have
+	// to use disband or transfer-ownership (out of scope for M5c).
+	if targetID == c.OwnerID {
+		return ErrForbidden
+	}
+	if role != domain.RoleMember && role != domain.RoleCoach {
+		return ErrInvalidRole
+	}
+	return fmt.Errorf("cohort.SetMemberRole: %w", uc.repo.UpdateMemberRole(ctx, cohortID, targetID, role))
+}
+
+var (
+	ErrForbidden         = errors.New("cohort: forbidden")
+	ErrInvalidName       = errors.New("cohort: invalid name")
+	ErrInvalidEnd        = errors.New("cohort: ends_at must be in the future")
+	ErrInvalidVisibility = errors.New("cohort: invalid visibility")
+	ErrInvalidRole       = errors.New("cohort: invalid role")
+)

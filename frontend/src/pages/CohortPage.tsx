@@ -13,7 +13,7 @@
 //     aggregation by cohort isn't on the backend yet — honest about it)
 import { useMemo, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { ArrowLeft, Check, Copy, LogOut, Share2, Users, Zap } from 'lucide-react'
+import { ArrowLeft, Check, Copy, LogOut, Settings, Share2, Users, Zap } from 'lucide-react'
 import { AppShellV2 } from '../components/AppShell'
 import { Card } from '../components/Card'
 import { Button } from '../components/Button'
@@ -23,10 +23,13 @@ import { readAccessToken } from '../lib/apiClient'
 import {
   useCohortLeaderboardQuery,
   useCohortQuery,
+  useDisbandCohortMutation,
   useJoinCohortMutation,
   useLeaveCohortMutation,
+  useSetMemberRoleMutation,
 } from '../lib/queries/cohort'
 import { useProfileQuery } from '../lib/queries/profile'
+import CohortSettingsDialog from '../components/cohort/CohortSettingsDialog'
 
 type Tab = 'members' | 'streak' | 'invite'
 
@@ -76,9 +79,11 @@ export default function CohortPage() {
 
   const [tab, setTab] = useState<Tab>('members')
   const [confirmingLeave, setConfirmingLeave] = useState(false)
+  const [settingsOpen, setSettingsOpen] = useState(false)
 
   const join = useJoinCohortMutation()
   const leave = useLeaveCohortMutation()
+  const disband = useDisbandCohortMutation()
 
   if (detail.isLoading) {
     return (
@@ -197,6 +202,11 @@ export default function CohortPage() {
               {!isMember && members.length >= capacity && (
                 <Button disabled>Когорта заполнена</Button>
               )}
+              {isOwner && (
+                <Button variant="ghost" onClick={() => setSettingsOpen(true)}>
+                  <Settings className="mr-1 h-3.5 w-3.5" /> Настройки
+                </Button>
+              )}
             </div>
           )}
         </Card>
@@ -230,6 +240,9 @@ export default function CohortPage() {
             leaderboard={leaderboard.data?.items ?? []}
             leaderboardLoading={leaderboard.isLoading}
             selfID={profile.data?.id}
+            cohortID={cohort.id}
+            ownerCanModerate={isOwner}
+            ownerID={cohort.owner_id}
           />
         )}
         {tab === 'streak' && <StreakTab />}
@@ -245,16 +258,33 @@ export default function CohortPage() {
             onAsk={() => setConfirmingLeave(true)}
             onCancel={() => setConfirmingLeave(false)}
             onConfirm={() => {
-              leave.mutate(cohort.id, {
-                onSuccess: (res) => {
-                  setConfirmingLeave(false)
-                  if (res.status === 'disbanded') {
+              if (isOwner) {
+                disband.mutate(cohort.id, {
+                  onSuccess: () => {
+                    setConfirmingLeave(false)
                     navigate('/cohorts')
-                  }
-                },
-              })
+                  },
+                })
+              } else {
+                leave.mutate(cohort.id, {
+                  onSuccess: (res) => {
+                    setConfirmingLeave(false)
+                    if (res.status === 'disbanded') {
+                      navigate('/cohorts')
+                    }
+                  },
+                })
+              }
             }}
-            pending={leave.isPending}
+            pending={leave.isPending || disband.isPending}
+          />
+        )}
+
+        {isOwner && (
+          <CohortSettingsDialog
+            open={settingsOpen}
+            cohort={cohort}
+            onClose={() => setSettingsOpen(false)}
           />
         )}
       </div>
@@ -283,12 +313,19 @@ function MembersTab({
   leaderboard,
   leaderboardLoading,
   selfID,
+  cohortID,
+  ownerCanModerate,
+  ownerID,
 }: {
   members: Member[]
   leaderboard: LBRow[]
   leaderboardLoading: boolean
   selfID?: string
+  cohortID: string
+  ownerCanModerate: boolean
+  ownerID: string
 }) {
+  const setRole = useSetMemberRoleMutation()
   // Merge leaderboard ELO into the members list (by user_id) so each row
   // can show «GOLD II · +42» style stats per the v2 design.
   const merged = useMemo(() => {
@@ -320,6 +357,8 @@ function MembersTab({
       {merged.map((m, i) => {
         const isSelf = m.user_id === selfID
         const isPodium = i < 3 && m.elo !== null
+        // Owner can promote/demote everyone except themselves.
+        const canChangeRole = ownerCanModerate && m.user_id !== ownerID
         return (
           <div
             key={m.user_id}
@@ -356,6 +395,23 @@ function MembersTab({
                 {m.weekly_xp !== null && ` · +${m.weekly_xp} xp/нед`}
               </div>
             </div>
+            {canChangeRole && m.role !== 'owner' && (
+              <button
+                type="button"
+                onClick={() =>
+                  setRole.mutate({
+                    cohortID,
+                    userID: m.user_id,
+                    role: m.role === 'coach' ? 'member' : 'coach',
+                  })
+                }
+                disabled={setRole.isPending}
+                className="rounded-md border border-border bg-surface-2 px-2 py-1 font-mono text-[10px] uppercase text-text-secondary hover:text-text-primary disabled:opacity-60"
+                title={m.role === 'coach' ? 'Снять роль coach' : 'Назначить coach'}
+              >
+                {m.role === 'coach' ? '−coach' : '+coach'}
+              </button>
+            )}
             {m.elo !== null && (
               <span className="font-display text-[14px] font-bold text-warn">{m.elo}</span>
             )}

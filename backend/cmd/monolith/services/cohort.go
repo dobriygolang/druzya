@@ -54,16 +54,22 @@ func NewCohort(d Deps) *Module {
 	join := cohortApp.NewJoinCohort(repo, d.Log)
 	leave := cohortApp.NewLeaveCohort(repo, d.Log)
 	leaderboard := cohortApp.NewGetLeaderboard(repo, d.Log)
+	update := cohortApp.NewUpdateCohort(repo, d.Log)
+	disband := cohortApp.NewDisbandCohort(repo, d.Log)
+	setRole := cohortApp.NewSetMemberRole(repo, d.Log)
 
 	h := &cohortHTTP{
-		Create:      create,
-		Get:         get,
-		List:        list,
-		Join:        join,
-		Leave:       leave,
-		Leaderboard: leaderboard,
-		Repo:        repo,
-		Log:         d.Log,
+		Create:        create,
+		Get:           get,
+		List:          list,
+		Join:          join,
+		Leave:         leave,
+		Leaderboard:   leaderboard,
+		Update:        update,
+		Disband:       disband,
+		SetMemberRole: setRole,
+		Repo:          repo,
+		Log:           d.Log,
 	}
 
 	return &Module{
@@ -78,6 +84,10 @@ func NewCohort(d Deps) *Module {
 			r.Post("/cohort", h.handleCreate)
 			r.Post("/cohort/{id}/join", h.handleJoin)
 			r.Post("/cohort/{id}/leave", h.handleLeave)
+			// M5c — owner-only moderation.
+			r.Patch("/cohort/{id}", h.handleUpdate)
+			r.Post("/cohort/{id}/disband", h.handleDisband)
+			r.Post("/cohort/{id}/members/{userID}/role", h.handleSetMemberRole)
 		},
 	}
 }
@@ -253,6 +263,81 @@ func (p *cohortPostgres) Disband(ctx context.Context, cohortID uuid.UUID) error 
 	return nil
 }
 
+func (p *cohortPostgres) GetMemberRole(ctx context.Context, cohortID, userID uuid.UUID) (cohortDomain.Role, error) {
+	var role string
+	if err := p.pool.QueryRow(ctx,
+		`SELECT role FROM cohort_members WHERE cohort_id=$1 AND user_id=$2`,
+		cPgUUID(cohortID), cPgUUID(userID)).Scan(&role); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return "", cohortDomain.ErrNotFound
+		}
+		return "", fmt.Errorf("cohort.Postgres.GetMemberRole: %w", err)
+	}
+	return cohortDomain.Role(role), nil
+}
+
+func (p *cohortPostgres) UpdateMemberRole(ctx context.Context, cohortID, userID uuid.UUID, role cohortDomain.Role) error {
+	tag, err := p.pool.Exec(ctx,
+		`UPDATE cohort_members SET role=$3 WHERE cohort_id=$1 AND user_id=$2`,
+		cPgUUID(cohortID), cPgUUID(userID), string(role))
+	if err != nil {
+		return fmt.Errorf("cohort.Postgres.UpdateMemberRole: %w", err)
+	}
+	if tag.RowsAffected() == 0 {
+		return cohortDomain.ErrNotFound
+	}
+	return nil
+}
+
+// UpdateMeta — partial update via COALESCE; nil patch fields preserve the
+// existing column. Returns the freshly-loaded row.
+func (p *cohortPostgres) UpdateMeta(ctx context.Context, cohortID uuid.UUID, patch cohortDomain.CohortPatch) (cohortDomain.Cohort, error) {
+	// Build dynamic SET clause. Hand-rolled because each combination of
+	// nil/non-nil fields is a different statement.
+	setParts := []string{}
+	args := []any{cPgUUID(cohortID)}
+	if patch.Name != nil {
+		args = append(args, *patch.Name)
+		setParts = append(setParts, fmt.Sprintf("name = $%d", len(args)))
+	}
+	if patch.EndsAt != nil {
+		args = append(args, patch.EndsAt.UTC())
+		setParts = append(setParts, fmt.Sprintf("ends_at = $%d", len(args)))
+	}
+	if patch.Visibility != nil {
+		args = append(args, string(*patch.Visibility))
+		setParts = append(setParts, fmt.Sprintf("visibility = $%d", len(args)))
+	}
+	if len(setParts) == 0 {
+		// Nothing to do — return current row.
+		return p.Get(ctx, cohortID)
+	}
+	sql := fmt.Sprintf(
+		`UPDATE cohorts SET %s WHERE id = $1
+		 RETURNING id, slug, name, owner_id, starts_at, ends_at, status, visibility, created_at`,
+		strings.Join(setParts, ", "),
+	)
+	var c cohortDomain.Cohort
+	var status, visibility string
+	row := p.pool.QueryRow(ctx, sql, args...)
+	var id, ownerID pgtype.UUID
+	var startsAt, endsAt, createdAt pgtype.Timestamptz
+	if err := row.Scan(&id, &c.Slug, &c.Name, &ownerID, &startsAt, &endsAt, &status, &visibility, &createdAt); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return cohortDomain.Cohort{}, cohortDomain.ErrNotFound
+		}
+		return cohortDomain.Cohort{}, fmt.Errorf("cohort.Postgres.UpdateMeta: %w", err)
+	}
+	c.ID = uuid.UUID(id.Bytes)
+	c.OwnerID = uuid.UUID(ownerID.Bytes)
+	c.StartsAt = startsAt.Time
+	c.EndsAt = endsAt.Time
+	c.CreatedAt = createdAt.Time
+	c.Status = cohortDomain.Status(status)
+	c.Visibility = cohortDomain.Visibility(visibility)
+	return c, nil
+}
+
 func (p *cohortPostgres) ListPublic(ctx context.Context, f cohortDomain.ListFilter) (cohortDomain.ListPage, error) {
 	whereParts := []string{"visibility = 'public'"}
 	args := []any{}
@@ -382,12 +467,15 @@ func isUniqueViolationErr(err error) bool {
 // ── HTTP handlers ─────────────────────────────────────────────────────────
 
 type cohortHTTP struct {
-	Create      *cohortApp.CreateCohort
-	Get         *cohortApp.GetCohort
-	List        *cohortApp.ListCohorts
-	Join        *cohortApp.JoinCohort
-	Leave       *cohortApp.LeaveCohort
-	Leaderboard *cohortApp.GetLeaderboard
+	Create        *cohortApp.CreateCohort
+	Get           *cohortApp.GetCohort
+	List          *cohortApp.ListCohorts
+	Join          *cohortApp.JoinCohort
+	Leave         *cohortApp.LeaveCohort
+	Leaderboard   *cohortApp.GetLeaderboard
+	Update        *cohortApp.UpdateCohort
+	Disband       *cohortApp.DisbandCohort
+	SetMemberRole *cohortApp.SetMemberRole
 	// Repo — direct access to the underlying cohort.Repo for cross-cutting
 	// reads (e.g. HasMember in handleList) that don't justify a use case.
 	Repo cohortDomain.Repo
@@ -663,4 +751,135 @@ func (h *cohortHTTP) handleLeaderboard(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(map[string]any{"items": out})
+}
+
+// ── M5c handlers ──────────────────────────────────────────────────────────
+
+type updateCohortReq struct {
+	Name       *string `json:"name,omitempty"`
+	EndsAt     *string `json:"ends_at,omitempty"`
+	Visibility *string `json:"visibility,omitempty"`
+}
+
+// PATCH /cohort/{id}
+func (h *cohortHTTP) handleUpdate(w http.ResponseWriter, r *http.Request) {
+	uid, ok := sharedMw.UserIDFromContext(r.Context())
+	if !ok {
+		writeCohortErr(w, http.StatusUnauthorized, "unauthenticated")
+		return
+	}
+	cohortID, err := uuid.Parse(chi.URLParam(r, "id"))
+	if err != nil {
+		writeCohortErr(w, http.StatusBadRequest, "invalid cohort id")
+		return
+	}
+	var req updateCohortReq
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeCohortErr(w, http.StatusBadRequest, "invalid body")
+		return
+	}
+	in := cohortApp.UpdateCohortInput{CohortID: cohortID, ActorID: uid, Name: req.Name}
+	if req.EndsAt != nil && *req.EndsAt != "" {
+		t, err := time.Parse(time.RFC3339, *req.EndsAt)
+		if err != nil {
+			writeCohortErr(w, http.StatusBadRequest, "invalid ends_at")
+			return
+		}
+		in.EndsAt = &t
+	}
+	if req.Visibility != nil && *req.Visibility != "" {
+		v := cohortDomain.Visibility(*req.Visibility)
+		in.Visibility = &v
+	}
+	out, err := h.Update.Do(r.Context(), in)
+	if err != nil {
+		switch {
+		case errors.Is(err, cohortApp.ErrForbidden):
+			writeCohortErr(w, http.StatusForbidden, "owner-only")
+		case errors.Is(err, cohortApp.ErrInvalidName),
+			errors.Is(err, cohortApp.ErrInvalidEnd),
+			errors.Is(err, cohortApp.ErrInvalidVisibility):
+			writeCohortErr(w, http.StatusBadRequest, err.Error())
+		case errors.Is(err, cohortDomain.ErrNotFound):
+			writeCohortErr(w, http.StatusNotFound, "cohort not found")
+		default:
+			h.Log.ErrorContext(r.Context(), "cohort.Update", slog.Any("err", err))
+			writeCohortErr(w, http.StatusInternalServerError, "update failed")
+		}
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(cohortToDTO(out, 0))
+}
+
+// POST /cohort/{id}/disband
+func (h *cohortHTTP) handleDisband(w http.ResponseWriter, r *http.Request) {
+	uid, ok := sharedMw.UserIDFromContext(r.Context())
+	if !ok {
+		writeCohortErr(w, http.StatusUnauthorized, "unauthenticated")
+		return
+	}
+	cohortID, err := uuid.Parse(chi.URLParam(r, "id"))
+	if err != nil {
+		writeCohortErr(w, http.StatusBadRequest, "invalid cohort id")
+		return
+	}
+	if err := h.Disband.Do(r.Context(), cohortID, uid); err != nil {
+		switch {
+		case errors.Is(err, cohortApp.ErrForbidden):
+			writeCohortErr(w, http.StatusForbidden, "owner-only")
+		case errors.Is(err, cohortDomain.ErrNotFound):
+			writeCohortErr(w, http.StatusNotFound, "cohort not found")
+		default:
+			h.Log.ErrorContext(r.Context(), "cohort.Disband", slog.Any("err", err))
+			writeCohortErr(w, http.StatusInternalServerError, "disband failed")
+		}
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(map[string]any{"status": "disbanded", "cohort_id": cohortID.String()})
+}
+
+type setRoleReq struct {
+	Role string `json:"role"`
+}
+
+// POST /cohort/{id}/members/{userID}/role
+func (h *cohortHTTP) handleSetMemberRole(w http.ResponseWriter, r *http.Request) {
+	actorID, ok := sharedMw.UserIDFromContext(r.Context())
+	if !ok {
+		writeCohortErr(w, http.StatusUnauthorized, "unauthenticated")
+		return
+	}
+	cohortID, err := uuid.Parse(chi.URLParam(r, "id"))
+	if err != nil {
+		writeCohortErr(w, http.StatusBadRequest, "invalid cohort id")
+		return
+	}
+	targetID, err := uuid.Parse(chi.URLParam(r, "userID"))
+	if err != nil {
+		writeCohortErr(w, http.StatusBadRequest, "invalid user id")
+		return
+	}
+	var body setRoleReq
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		writeCohortErr(w, http.StatusBadRequest, "invalid body")
+		return
+	}
+	if err := h.SetMemberRole.Do(r.Context(), cohortID, actorID, targetID, cohortDomain.Role(body.Role)); err != nil {
+		switch {
+		case errors.Is(err, cohortApp.ErrForbidden):
+			writeCohortErr(w, http.StatusForbidden, "owner-only")
+		case errors.Is(err, cohortApp.ErrInvalidRole):
+			writeCohortErr(w, http.StatusBadRequest, "invalid role")
+		case errors.Is(err, cohortDomain.ErrNotFound):
+			writeCohortErr(w, http.StatusNotFound, "membership not found")
+		default:
+			h.Log.ErrorContext(r.Context(), "cohort.SetMemberRole", slog.Any("err", err))
+			writeCohortErr(w, http.StatusInternalServerError, "role update failed")
+		}
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(map[string]any{"status": "ok"})
 }

@@ -50,7 +50,12 @@ type Repo interface {
 	RemoveMember(ctx context.Context, cohortID, userID uuid.UUID) error
 	CountMembers(ctx context.Context, cohortID uuid.UUID) (int, error)
 	HasMember(ctx context.Context, cohortID, userID uuid.UUID) (bool, error)
+	GetMemberRole(ctx context.Context, cohortID, userID uuid.UUID) (Role, error)
+	UpdateMemberRole(ctx context.Context, cohortID, userID uuid.UUID, role Role) error
 	Disband(ctx context.Context, cohortID uuid.UUID) error
+	// UpdateMeta rewrites the editable cohort fields (name, ends_at,
+	// visibility). Owner-only at the use case layer.
+	UpdateMeta(ctx context.Context, cohortID uuid.UUID, patch CohortPatch) (Cohort, error)
 
 	ListPublic(ctx context.Context, f ListFilter) (ListPage, error)
 

@@ -7,7 +7,7 @@
 //   POST /cohort/{id}/join             (auth)
 //   POST /cohort/{id}/leave            (auth)
 //   GET  /cohort/{id}/leaderboard      public
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api, ApiError } from '../apiClient'
 
 export type CohortStatus = 'active' | 'graduated' | 'cancelled' | string
@@ -70,6 +70,31 @@ export function useCohortListQuery(filters: CohortListFilters = {}) {
   return useQuery({
     queryKey: ['cohort', 'list', filters],
     queryFn: () => api<CohortListResponse>(`/cohort/list${suffix}`),
+    staleTime: 30 * 1000,
+    refetchOnWindowFocus: false,
+  })
+}
+
+// useCohortListInfiniteQuery — paginated catalogue read for the «load more»
+// button. Each fetch returns a CohortListResponse; getNextPageParam advances
+// while pages keep returning a full page_size. `filters` excludes `page`
+// — that's managed by react-query.
+export function useCohortListInfiniteQuery(filters: Omit<CohortListFilters, 'page'> = {}) {
+  return useInfiniteQuery({
+    queryKey: ['cohort', 'list', 'infinite', filters],
+    queryFn: ({ pageParam }) => {
+      const qs = new URLSearchParams()
+      if (filters.status) qs.set('status', filters.status)
+      if (filters.search) qs.set('search', filters.search)
+      if (pageParam > 1) qs.set('page', String(pageParam))
+      const suffix = qs.toString() ? `?${qs.toString()}` : ''
+      return api<CohortListResponse>(`/cohort/list${suffix}`)
+    },
+    initialPageParam: 1,
+    getNextPageParam: (last) => {
+      if (last.items.length < last.page_size) return undefined
+      return last.page + 1
+    },
     staleTime: 30 * 1000,
     refetchOnWindowFocus: false,
   })
@@ -164,6 +189,63 @@ export function useCreateCohortMutation() {
       }),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ['cohort', 'list'] })
+    },
+  })
+}
+
+// ── M5c — owner-only moderation ───────────────────────────────────────────
+
+export type UpdateCohortPayload = {
+  cohortID: string
+  name?: string
+  ends_at?: string
+  visibility?: 'public' | 'invite'
+}
+
+export function useUpdateCohortMutation() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ cohortID, ...patch }: UpdateCohortPayload) =>
+      api<Cohort>(`/cohort/${encodeURIComponent(cohortID)}`, {
+        method: 'PATCH',
+        body: JSON.stringify(patch),
+      }),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['cohort'] })
+    },
+  })
+}
+
+export function useDisbandCohortMutation() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (cohortID: string) =>
+      api<{ status: string }>(`/cohort/${encodeURIComponent(cohortID)}/disband`, {
+        method: 'POST',
+        body: '{}',
+      }),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['cohort'] })
+    },
+  })
+}
+
+export type SetMemberRolePayload = {
+  cohortID: string
+  userID: string
+  role: 'member' | 'coach'
+}
+
+export function useSetMemberRoleMutation() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ cohortID, userID, role }: SetMemberRolePayload) =>
+      api<{ status: string }>(
+        `/cohort/${encodeURIComponent(cohortID)}/members/${encodeURIComponent(userID)}/role`,
+        { method: 'POST', body: JSON.stringify({ role }) },
+      ),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['cohort'] })
     },
   })
 }

@@ -245,6 +245,44 @@ export const cohortHandlers = [
     return HttpResponse.json({ status: 'left', cohort_id: id })
   }),
 
+  // M5c: PATCH /cohort/{id}
+  http.patch(`${base}/cohort/:id`, async ({ params, request }) => {
+    const id = String(params.id)
+    const c = cohorts.find((c) => c.id === id)
+    if (!c) return new HttpResponse('not found', { status: 404 })
+    const body = (await request.json()) as { name?: string; ends_at?: string; visibility?: 'public' | 'invite' }
+    if (body.name !== undefined) c.name = body.name
+    if (body.ends_at !== undefined) c.ends_at = body.ends_at
+    if (body.visibility !== undefined) c.visibility = body.visibility
+    return HttpResponse.json({ ...c, is_member: memberships.has(c.id), capacity: 50 })
+  }),
+
+  // M5c: POST /cohort/{id}/disband
+  http.post(`${base}/cohort/:id/disband`, ({ params }) => {
+    const id = String(params.id)
+    const c = cohorts.find((c) => c.id === id)
+    if (!c) return new HttpResponse('not found', { status: 404 })
+    c.status = 'cancelled'
+    return HttpResponse.json({ status: 'disbanded', cohort_id: id })
+  }),
+
+  // M5c: POST /cohort/{id}/members/{userID}/role
+  http.post(`${base}/cohort/:id/members/:userID/role`, async ({ params, request }) => {
+    const cid = String(params.id)
+    const uid = String(params.userID)
+    const body = (await request.json()) as { role?: string }
+    const detail = Object.values(detailCache).find((d) => d.cohort.id === cid)
+    if (!detail) return new HttpResponse('not found', { status: 404 })
+    const target = detail.members.find((m) => m.user_id === uid)
+    if (!target) return new HttpResponse('member not found', { status: 404 })
+    if (body.role === 'member' || body.role === 'coach') {
+      target.role = body.role
+    } else {
+      return new HttpResponse('invalid role', { status: 400 })
+    }
+    return HttpResponse.json({ status: 'ok' })
+  }),
+
   http.get(`${base}/cohort/:id/leaderboard`, ({ params }) => {
     const id = String(params.id)
     const c = cohorts.find((c) => c.id === id)

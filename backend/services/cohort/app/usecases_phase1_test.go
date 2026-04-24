@@ -84,6 +84,40 @@ func (f *fakeRepo) HasMember(_ context.Context, cohortID, userID uuid.UUID) (boo
 	}
 	return false, nil
 }
+func (f *fakeRepo) GetMemberRole(_ context.Context, cohortID, userID uuid.UUID) (domain.Role, error) {
+	for _, m := range f.members[cohortID] {
+		if m.UserID == userID {
+			return m.Role, nil
+		}
+	}
+	return "", domain.ErrNotFound
+}
+func (f *fakeRepo) UpdateMemberRole(_ context.Context, cohortID, userID uuid.UUID, role domain.Role) error {
+	for i, m := range f.members[cohortID] {
+		if m.UserID == userID {
+			f.members[cohortID][i].Role = role
+			return nil
+		}
+	}
+	return domain.ErrNotFound
+}
+func (f *fakeRepo) UpdateMeta(_ context.Context, cohortID uuid.UUID, patch domain.CohortPatch) (domain.Cohort, error) {
+	c, ok := f.cohorts[cohortID]
+	if !ok {
+		return domain.Cohort{}, domain.ErrNotFound
+	}
+	if patch.Name != nil {
+		c.Name = *patch.Name
+	}
+	if patch.EndsAt != nil {
+		c.EndsAt = *patch.EndsAt
+	}
+	if patch.Visibility != nil {
+		c.Visibility = *patch.Visibility
+	}
+	f.cohorts[cohortID] = c
+	return c, nil
+}
 func (f *fakeRepo) Disband(_ context.Context, cohortID uuid.UUID) error {
 	c := f.cohorts[cohortID]
 	c.Status = domain.StatusCancelled

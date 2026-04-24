@@ -19,7 +19,7 @@ import { Card } from '../components/Card'
 import { Button } from '../components/Button'
 import { EmptyState } from '../components/EmptyState'
 import { cn } from '../lib/cn'
-import { useCohortListQuery, useJoinCohortMutation, type Cohort, type CohortStatus } from '../lib/queries/cohort'
+import { useCohortListInfiniteQuery, useJoinCohortMutation, type Cohort, type CohortStatus } from '../lib/queries/cohort'
 import { useProfileQuery } from '../lib/queries/profile'
 import CreateCohortDialog from '../components/cohort/CreateCohortDialog'
 
@@ -71,9 +71,12 @@ export default function CohortsPage() {
     () => ({ status: status || undefined, search: search || undefined }),
     [status, search],
   )
-  const list = useCohortListQuery(filters)
+  const list = useCohortListInfiniteQuery(filters)
   const profile = useProfileQuery()
-  const items = list.data?.items ?? []
+  const items = useMemo(
+    () => list.data?.pages.flatMap((p) => p.items) ?? [],
+    [list.data],
+  )
 
   return (
     <AppShellV2>
@@ -156,6 +159,20 @@ export default function CohortsPage() {
             {items.map((c) => (
               <CohortCard key={c.id} cohort={c} />
             ))}
+          </div>
+        )}
+
+        {/* Load more */}
+        {list.hasNextPage && (
+          <div className="flex justify-center pt-2">
+            <button
+              type="button"
+              onClick={() => void list.fetchNextPage()}
+              disabled={list.isFetchingNextPage}
+              className="rounded-md border border-border bg-surface-2 px-4 py-2 text-sm text-text-secondary hover:bg-surface-3 hover:text-text-primary disabled:opacity-60"
+            >
+              {list.isFetchingNextPage ? 'Загружаем…' : 'Загрузить ещё'}
+            </button>
           </div>
         )}
       </div>
