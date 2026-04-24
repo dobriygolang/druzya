@@ -81,7 +81,6 @@ const NotFoundPage = lazy(() => import('./pages/NotFoundPage'))
 const InterviewCalendarPage = lazy(() => import('./pages/InterviewCalendarPage'))
 const MatchHistoryPage = lazy(() => import('./pages/MatchHistoryPage'))
 const KataStreakPage = lazy(() => import('./pages/KataStreakPage'))
-const HeroCardsPage = lazy(() => import('./pages/HeroCardsPage'))
 const WeeklyReportPage = lazy(() => import('./pages/WeeklyReportPage'))
 // WeeklyShareView (Wave-10 P1) — dedicated public view (replaces the legacy
 // WeeklyReportSharePage which mirrored the authorized /weekly layout).
@@ -89,8 +88,6 @@ const WeeklyShareView = lazy(() => import('./pages/WeeklyShareView'))
 const Arena2v2Page = lazy(() => import('./pages/Arena2v2Page'))
 const SystemDesignInterviewPage = lazy(() => import('./pages/SystemDesignInterviewPage'))
 const CodeEditorPage = lazy(() => import('./pages/CodeEditorPage'))
-const DungeonsPage = lazy(() => import('./pages/DungeonsPage'))
-const TournamentPage = lazy(() => import('./pages/TournamentPage'))
 const SpectatorPage = lazy(() => import('./pages/SpectatorPage'))
 const CodeObituaryPage = lazy(() => import('./pages/CodeObituaryPage'))
 const GhostRunsPage = lazy(() => import('./pages/GhostRunsPage'))
@@ -192,7 +189,6 @@ export default function App() {
         <Route path="/calendar" element={<InterviewCalendarPage />} />
         <Route path="/history" element={<MatchHistoryPage />} />
         <Route path="/daily/streak" element={<KataStreakPage />} />
-        <Route path="/cards" element={<HeroCardsPage />} />
         {/*
           /weekly — primary route as advertised in nav. /report kept as alias
           for backward compatibility (старые шеры в ссылках, e2e-тесты).
@@ -209,8 +205,6 @@ export default function App() {
         <Route path="/arena/2v2/:matchId" element={<Arena2v2Page />} />
         <Route path="/sd-interview/:sessionId" element={<SystemDesignInterviewPage />} />
         <Route path="/playground" element={<CodeEditorPage />} />
-        <Route path="/dungeons" element={<DungeonsPage />} />
-        <Route path="/tournament/:id" element={<TournamentPage />} />
         <Route path="/spectator/:matchId" element={<SpectatorPage />} />
         <Route path="/obituary/:id" element={<CodeObituaryPage />} />
         <Route path="/practice/ghosts/:kataId" element={<GhostRunsPage />} />

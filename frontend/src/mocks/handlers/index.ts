@@ -15,12 +15,9 @@ import { achievementsHandlers } from './achievements'
 import { notificationsHandlers } from './notifications'
 import { friendsHandlers } from './friends'
 import { helpHandlers } from './help'
-import { heroCardsHandlers } from './herocards'
 import { streakHandlers } from './streak'
 import { weeklyHandlers } from './weekly'
 import { matchesHandlers } from './matches'
-import { tournamentHandlers } from './tournament'
-import { dungeonsHandlers } from './dungeons'
 import { calendarHandlers } from './calendar'
 import { sysdesignHandlers } from './sysdesign'
 import { autopsyHandlers } from './autopsy'
@@ -45,12 +42,9 @@ export const handlers = [
   ...notificationsHandlers,
   ...friendsHandlers,
   ...helpHandlers,
-  ...heroCardsHandlers,
   ...streakHandlers,
   ...weeklyHandlers,
   ...matchesHandlers,
-  ...tournamentHandlers,
-  ...dungeonsHandlers,
   ...calendarHandlers,
   ...sysdesignHandlers,
   ...autopsyHandlers,
