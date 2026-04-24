@@ -10,8 +10,10 @@ import (
 	honeInfra "druz9/hone/infra"
 	honePorts "druz9/hone/ports"
 	"druz9/shared/generated/pb/druz9/v1/druz9v1connect"
+	"druz9/shared/pkg/metrics"
 	"druz9/shared/pkg/ratelimit"
 
+	"connectrpc.com/connect"
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 )
@@ -154,7 +156,12 @@ func NewHone(d Deps) *Module {
 	if d.Redis != nil {
 		server = server.WithPlanLimiter(ratelimit.NewRedisFixedWindow(d.Redis))
 	}
-	connectPath, connectHandler := druz9v1connect.NewHoneServiceHandler(server)
+	// Per-procedure Prometheus metrics (Connect-слой) — ChiMiddleware дает
+	// только route-level агрегат, который для RPC мало полезен.
+	connectPath, connectHandler := druz9v1connect.NewHoneServiceHandler(
+		server,
+		connect.WithInterceptors(metrics.ConnectInterceptor()),
+	)
 	transcoder := mustTranscode("hone", connectPath, connectHandler)
 
 	mod := &Module{
