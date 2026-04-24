@@ -56,10 +56,10 @@ const minSamplesForReorder = 10
 // latencyWindow is a fixed-capacity ring buffer of durations plus a
 // fill count. Read via P95; written via Record.
 type latencyWindow struct {
-	mu      sync.Mutex
-	buf     []time.Duration
-	idx     int // next write position
-	filled  int // how many slots have real data (≤ cap)
+	mu     sync.Mutex
+	buf    []time.Duration
+	idx    int // next write position
+	filled int // how many slots have real data (≤ cap)
 }
 
 func newLatencyWindow(cap int) *latencyWindow {
@@ -114,7 +114,7 @@ func (w *latencyWindow) P95() (time.Duration, bool) {
 // latencyStore indexes windows by (provider, model, task). The chain
 // holds one store; each key gets its own window on first record.
 type latencyStore struct {
-	windows sync.Map // key: "<provider>/<model>/<task>" → *latencyWindow
+	windows    sync.Map // key: "<provider>/<model>/<task>" → *latencyWindow
 	windowSize int
 }
 

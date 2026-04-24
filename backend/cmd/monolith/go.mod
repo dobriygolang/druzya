@@ -22,6 +22,7 @@ require (
 	druz9/podcast v0.0.0-00010101000000-000000000000
 	druz9/profile v0.0.0-00010101000000-000000000000
 	druz9/rating v0.0.0-00010101000000-000000000000
+	druz9/review v0.0.0-00010101000000-000000000000
 	druz9/season v0.0.0-00010101000000-000000000000
 	druz9/shared v0.0.0
 	druz9/slot v0.0.0-00010101000000-000000000000
@@ -124,3 +125,5 @@ replace druz9/cohort => ../../services/cohort
 replace druz9/copilot => ../../services/copilot
 
 replace druz9/lobby => ../../services/lobby
+
+replace druz9/review => ../../services/review

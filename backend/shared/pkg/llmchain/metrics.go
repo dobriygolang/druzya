@@ -10,23 +10,23 @@ import (
 
 // Three metrics tell the whole story of chain health in production:
 //
-//   druz9_llm_call_total{provider,task,status}
-//       — per-attempt counter. One increment per chain hop; a fallback
-//         chain that eventually succeeds produces multiple increments
-//         (one failed + one ok). Label "task" is the Task constant
-//         ("vacancies_json" etc.); "status" is classLabel (ok /
-//         rate_limited / provider_down / timeout / unauthorized /
-//         bad_request / not_supported / unknown).
+//	druz9_llm_call_total{provider,task,status}
+//	    — per-attempt counter. One increment per chain hop; a fallback
+//	      chain that eventually succeeds produces multiple increments
+//	      (one failed + one ok). Label "task" is the Task constant
+//	      ("vacancies_json" etc.); "status" is classLabel (ok /
+//	      rate_limited / provider_down / timeout / unauthorized /
+//	      bad_request / not_supported / unknown).
 //
-//   druz9_llm_call_duration_seconds{provider,task}
-//       — per-attempt wall clock. Histogram. Buckets are coarse because
-//         we mostly care about p50 vs p99, not sub-second resolution.
+//	druz9_llm_call_duration_seconds{provider,task}
+//	    — per-attempt wall clock. Histogram. Buckets are coarse because
+//	      we mostly care about p50 vs p99, not sub-second resolution.
 //
-//   druz9_llm_fallback_total{provider,reason}
-//       — counts every SKIP of a provider because it was cooled at hop
-//         time. Helps distinguish "Groq is slow" (rate_limited calls on
-//         the duration histogram) from "Groq is permanently blacklisted
-//         in our state" (flood of fallback_total with reason=cooled).
+//	druz9_llm_fallback_total{provider,reason}
+//	    — counts every SKIP of a provider because it was cooled at hop
+//	      time. Helps distinguish "Groq is slow" (rate_limited calls on
+//	      the duration histogram) from "Groq is permanently blacklisted
+//	      in our state" (flood of fallback_total with reason=cooled).
 var (
 	llmCallTotal = prometheus.NewCounterVec(
 		prometheus.CounterOpts{

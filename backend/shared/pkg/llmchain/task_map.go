@@ -4,20 +4,20 @@ package llmchain
 // reads it to pick the right model on whichever provider is healthy at
 // call time. Keeping this in code (not the DB) because:
 //
-//   • It changes with model availability on each provider, not with
+//   - It changes with model availability on each provider, not with
 //     operator choice. A deploy is the right cadence.
-//   • The chain needs it synchronously; a DB lookup per call would add
+//   - The chain needs it synchronously; a DB lookup per call would add
 //     latency to the hot path.
-//   • Admins still edit llm_models (user-facing list + per-model flags);
+//   - Admins still edit llm_models (user-facing list + per-model flags);
 //     this map is the chain's opinion of "best technical pick per task".
 //
 // Criteria for picks (as of 2026-04):
 //
-//   VacanciesJSON    — 8B-class, JSON mode reliable. Latency blocks the UI.
-//   InsightProse     — 70B-class, Russian prose quality matters.
-//   CopilotStream    — 70B-class, reasoning + streaming. Same as insight
-//                      but accessed via ChatStream.
-//   Reasoning        — 70B-class, analyzer / structured output tasks.
+//	VacanciesJSON    — 8B-class, JSON mode reliable. Latency blocks the UI.
+//	InsightProse     — 70B-class, Russian prose quality matters.
+//	CopilotStream    — 70B-class, reasoning + streaming. Same as insight
+//	                   but accessed via ChatStream.
+//	Reasoning        — 70B-class, analyzer / structured output tasks.
 //
 // When a provider doesn't have a model for a task (e.g. Mistral-free
 // lacks an 8B instant option), the chain skips that provider for the

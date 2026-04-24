@@ -16,15 +16,15 @@ import (
 //
 // Fields:
 //
-//   • blockedUntil — until when this (provider,model) is cooled. Zero
+//   - blockedUntil — until when this (provider,model) is cooled. Zero
 //     value = healthy. Set by circuit-breaker decisions (429/5xx/401)
 //     AND by proactive cooling when remaining drops ≤ 2.
 //
-//   • reason — human-readable last cooldown reason. Logged on every
+//   - reason — human-readable last cooldown reason. Logged on every
 //     skip so we can answer "why is the chain bouncing off Groq?" in
 //     one Grafana panel.
 //
-//   • remaining / resetAt — the latest x-ratelimit-* budget reading.
+//   - remaining / resetAt — the latest x-ratelimit-* budget reading.
 //     Kept separately from blockedUntil so a "soft hint" (remaining=5,
 //     reset=+30s) stays informational until it trips the ≤2 threshold.
 type rateState struct {

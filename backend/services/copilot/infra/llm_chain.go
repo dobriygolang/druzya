@@ -114,6 +114,8 @@ func roleFromDomain(r enums.MessageRole) llmchain.Role {
 		return llmchain.RoleSystem
 	case enums.MessageRoleAssistant:
 		return llmchain.RoleAssistant
+	case enums.MessageRoleUser:
+		return llmchain.RoleUser
 	default:
 		return llmchain.RoleUser
 	}

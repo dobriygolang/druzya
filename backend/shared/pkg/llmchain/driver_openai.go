@@ -372,10 +372,10 @@ type httpStatusError struct {
 func (e *httpStatusError) Error() string {
 	return fmt.Sprintf("http %d: %s", e.status, truncate(e.body, 200))
 }
-func (e *httpStatusError) Unwrap() error           { return e.sentinel }
-func (e *httpStatusError) Is(target error) bool    { return errors.Is(e.sentinel, target) }
-func (e *httpStatusError) Status() int             { return e.status }
-func (e *httpStatusError) Headers() http.Header    { return e.header }
+func (e *httpStatusError) Unwrap() error        { return e.sentinel }
+func (e *httpStatusError) Is(target error) bool { return errors.Is(e.sentinel, target) }
+func (e *httpStatusError) Status() int          { return e.status }
+func (e *httpStatusError) Headers() http.Header { return e.header }
 
 func classifyTransportError(err error, ctx context.Context) error {
 	if ctx.Err() != nil {

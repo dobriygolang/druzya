@@ -70,9 +70,9 @@ type BookingRepo interface {
 // false until the candidate leaves a review for this booking. UI uses it to
 // gate the «Оставить отзыв» CTA.
 type BookingWithSlot struct {
-	Booking    Booking
-	Slot       Slot
-	HasReview  bool
+	Booking   Booking
+	Slot      Slot
+	HasReview bool
 }
 
 // ReviewRepo provides interviewer-rating stats for ListSlots' SlotInterviewer

@@ -183,7 +183,7 @@ func (c *Chain) Chat(ctx context.Context, req Request) (Response, error) {
 		})
 		observeCall(cand.provider, string(req.Task), classLabel(cerr), dur)
 		if decision := c.handleError(cand.provider, cand.model, cerr); decision == decisionFatal {
-			return Response{}, cerr
+			return Response{}, fmt.Errorf("llmchain.Chat: %w", cerr)
 		}
 	}
 	return Response{}, &AllProvidersUnavailableError{Task: req.Task, Attempts: attempts}
@@ -233,7 +233,7 @@ func (c *Chain) ChatStream(ctx context.Context, req Request) (<-chan StreamEvent
 		})
 		observeCall(cand.provider, string(req.Task), classLabel(cerr), dur)
 		if decision := c.handleError(cand.provider, cand.model, cerr); decision == decisionFatal {
-			return nil, cerr
+			return nil, fmt.Errorf("llmchain.ChatStream: %w", cerr)
 		}
 	}
 	return nil, &AllProvidersUnavailableError{Task: req.Task, Attempts: attempts}
@@ -365,6 +365,8 @@ func providerFromModelID(id string) Provider {
 		prefix := Provider(id[:idx])
 		switch prefix {
 		case ProviderGroq, ProviderCerebras, ProviderMistral:
+			return prefix
+		case ProviderOpenRouter:
 			return prefix
 		}
 	}

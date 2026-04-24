@@ -5,11 +5,11 @@ import "context"
 // OpenRouter (https://openrouter.ai) — OpenAI-compatible aggregator.
 // Kept in the chain as the tertiary (tail) provider for two reasons:
 //
-//   1. It speaks every premium model (Claude Sonnet, GPT-4o, Gemini Pro)
-//      for BYOK / paid-tier users who picked a concrete OpenRouter id.
+//  1. It speaks every premium model (Claude Sonnet, GPT-4o, Gemini Pro)
+//     for BYOK / paid-tier users who picked a concrete OpenRouter id.
 //
-//   2. Its :free lane (qwen/qwen3-coder:free, openai/gpt-oss-120b:free)
-//      is our last-resort fallback if Groq + Cerebras are both cold.
+//  2. Its :free lane (qwen/qwen3-coder:free, openai/gpt-oss-120b:free)
+//     is our last-resort fallback if Groq + Cerebras are both cold.
 //
 // Model IDs on OpenRouter always include a vendor prefix
 // ("anthropic/claude-…", "qwen/qwen3-coder:free"). We pass them through

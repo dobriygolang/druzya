@@ -6,8 +6,9 @@
 // (/api/v1/review*).
 //
 // AuthN: CreateReview requires bearer token (caller becomes ReviewerID).
-//        ListReviewsByInterviewer + GetInterviewerStats are read-only
-//        public endpoints.
+//
+//	ListReviewsByInterviewer + GetInterviewerStats are read-only
+//	public endpoints.
 package ports
 
 import (

@@ -11,29 +11,29 @@
 // Design decisions and the failure modes they target (see also
 // ../../../../README_LLMCHAIN.md or the PR description):
 //
-//   • Task-based model selection, not provider-based. Callers pass a Task
+//   - Task-based model selection, not provider-based. Callers pass a Task
 //     (VacanciesJSON / InsightProse / CopilotStream / Reasoning); the chain
 //     picks the optimal model for that task on each provider. Example: for
 //     VacanciesJSON, Groq uses llama-3.1-8b-instant (fastest JSON), not the
 //     70B model — one less config error per integration.
 //
-//   • Per-(provider,model) circuit state. If Groq's 70B is rate-limited but
+//   - Per-(provider,model) circuit state. If Groq's 70B is rate-limited but
 //     the 8B is free, we only cool the 70B. Cross-user; the rate limit lives
 //     on our API key, not the user's.
 //
-//   • Proactive cooling from response headers. Groq/Cerebras emit
+//   - Proactive cooling from response headers. Groq/Cerebras emit
 //     x-ratelimit-remaining-requests + x-ratelimit-reset-requests on every
 //     response. When remaining drops ≤ 2, we pre-emptively cool that
 //     (provider,model) until the reset timestamp — saves one rejected
 //     request on every failure boundary.
 //
-//   • No mid-stream fallback. Once the first SSE chunk arrives the response
+//   - No mid-stream fallback. Once the first SSE chunk arrives the response
 //     is committed: a provider dying mid-stream propagates an error to the
 //     caller rather than appending Cerebras's continuation to Groq's prefix.
 //     The alternative (buffer-and-commit) adds latency we can't afford for
 //     a streaming UI.
 //
-//   • Error-class-aware retry. 429/5xx → next provider. 401 → alert +
+//   - Error-class-aware retry. 429/5xx → next provider. 401 → alert +
 //     cooldown 1h (config issue, retry won't help). 400/403 → return
 //     immediately (same input will fail identically everywhere). This is
 //     cheaper than a flat "3 retries any error".

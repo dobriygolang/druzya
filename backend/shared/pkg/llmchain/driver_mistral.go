@@ -7,11 +7,11 @@ import "context"
 // Small / Codestral with modest quotas.
 //
 // Caveats:
-//   • The free tier has documented rate limits but doesn't emit
+//   - The free tier has documented rate limits but doesn't emit
 //     x-ratelimit-* headers — proactive cooling is disabled for Mistral
 //     (see ratelimit.go, parseRateLimitHeaders branch). Reactive 429
 //     handling only.
-//   • Vision: text-only for the free lane. Pixtral on paid — not in our
+//   - Vision: text-only for the free lane. Pixtral on paid — not in our
 //     default chain.
 const MistralEndpoint = "https://api.mistral.ai/v1/chat/completions"
 

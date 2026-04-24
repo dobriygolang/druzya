@@ -7,10 +7,10 @@ import "context"
 // Groq on identical Llama variants).
 //
 // Known caveats:
-//   • JSON mode is flaky on Cerebras free tier — response_format=
+//   - JSON mode is flaky on Cerebras free tier — response_format=
 //     json_object is accepted but not always enforced. We leave it
 //     enabled (harmless hint) and rely on prompt-level JSON discipline.
-//   • Vision: text-only.
+//   - Vision: text-only.
 const CerebrasEndpoint = "https://api.cerebras.ai/v1/chat/completions"
 
 // NewCerebrasDriver constructs the Cerebras driver. Empty apiKey ⇒ the

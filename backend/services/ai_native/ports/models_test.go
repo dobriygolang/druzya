@@ -45,6 +45,10 @@ func (r *fakeLLMModelRepo) List(_ context.Context, f domain.LLMModelFilter) ([]d
 			if !m.UseForMock {
 				continue
 			}
+		case domain.LLMModelUseVacancies:
+			if !m.UseForVacancies {
+				continue
+			}
 		}
 		out = append(out, m)
 	}

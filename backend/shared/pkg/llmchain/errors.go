@@ -13,15 +13,15 @@ import (
 //
 // The split mirrors HTTP semantics:
 //
-//   • Retryable (ErrRateLimited, ErrProviderDown, ErrTimeout) — same
+//   - Retryable (ErrRateLimited, ErrProviderDown, ErrTimeout) — same
 //     input may succeed on a different provider. Chain falls through.
 //
-//   • Fatal-for-this-call (ErrBadRequest, ErrUnauthorized,
+//   - Fatal-for-this-call (ErrBadRequest, ErrUnauthorized,
 //     ErrModelNotSupported) — same input will fail identically
 //     everywhere (400) or needs operator action (401). Chain returns
 //     the error immediately without fallback.
 //
-//   • ErrAllProvidersUnavailable — chain-level terminal error raised
+//   - ErrAllProvidersUnavailable — chain-level terminal error raised
 //     when every provider in the order returned a retryable error.
 //     Wraps a list of per-provider attempt results for debugging.
 var (
