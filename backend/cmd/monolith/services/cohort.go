@@ -117,6 +117,7 @@ func NewCohort(d Deps) (*Module, cohortDomain.Repo) {
 	joinByToken.Bus = d.Bus
 	graduate := cohortApp.NewGraduateCohort(repo, d.Bus, d.Log)
 	streakHM := cohortApp.NewGetStreakHeatmap(repo, d.Log)
+	transferOwn := cohortApp.NewTransferOwnership(repo, d.Log)
 
 	h := &cohortHTTP{
 		Create:        create,
@@ -132,6 +133,7 @@ func NewCohort(d Deps) (*Module, cohortDomain.Repo) {
 		JoinByToken:   joinByToken,
 		Graduate:      graduate,
 		StreakHeatmap: streakHM,
+		Transfer:      transferOwn,
 		Repo:          repo,
 		Log:           d.Log,
 	}
@@ -157,6 +159,7 @@ func NewCohort(d Deps) (*Module, cohortDomain.Repo) {
 			r.Post("/cohort/{id}/invite", h.handleIssueInvite)
 			r.Post("/cohort/join/by-token", h.handleJoinByToken)
 			r.Post("/cohort/{id}/graduate", h.handleGraduate)
+			r.Post("/cohort/{id}/transfer", h.handleTransferOwnership)
 		},
 	}, repo
 }
@@ -363,6 +366,16 @@ func (p *cohortPostgres) GetMemberRole(ctx context.Context, cohortID, userID uui
 		return "", fmt.Errorf("cohort.Postgres.GetMemberRole: %w", err)
 	}
 	return cohortDomain.Role(role), nil
+}
+
+// TransferOwner rewrites cohorts.owner_id and returns the reloaded row.
+// The membership-role flip for the old/new owner is done by the use
+// case via UpdateMemberRole so this layer stays small.
+func (p *cohortPostgres) TransferOwner(ctx context.Context, cohortID, newOwnerID uuid.UUID) (cohortDomain.Cohort, error) {
+	const q = `
+		UPDATE cohorts SET owner_id = $2 WHERE id = $1
+		 RETURNING id, slug, name, owner_id, starts_at, ends_at, status, visibility, capacity, created_at`
+	return p.scanOne(p.pool.QueryRow(ctx, q, cPgUUID(cohortID), cPgUUID(newOwnerID)))
 }
 
 func (p *cohortPostgres) UpdateMemberRole(ctx context.Context, cohortID, userID uuid.UUID, role cohortDomain.Role) error {
@@ -737,6 +750,7 @@ type cohortHTTP struct {
 	JoinByToken   *cohortApp.JoinByToken
 	Graduate      *cohortApp.GraduateCohort
 	StreakHeatmap *cohortApp.GetStreakHeatmap
+	Transfer      *cohortApp.TransferOwnership
 	// Repo — direct access to the underlying cohort.Repo for cross-cutting
 	// reads (e.g. HasMember in handleList) that don't justify a use case.
 	Repo cohortDomain.Repo
@@ -1302,6 +1316,51 @@ func (h *cohortHTTP) handleGraduate(w http.ResponseWriter, r *http.Request) {
 		default:
 			h.Log.ErrorContext(r.Context(), "cohort.Graduate", slog.Any("err", err))
 			writeCohortErr(w, http.StatusInternalServerError, "graduate failed")
+		}
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(cohortToDTO(out, 0))
+}
+
+// POST /cohort/{id}/transfer { "new_owner_id": "uuid" }
+type transferOwnershipReq struct {
+	NewOwnerID string `json:"new_owner_id"`
+}
+
+func (h *cohortHTTP) handleTransferOwnership(w http.ResponseWriter, r *http.Request) {
+	uid, ok := sharedMw.UserIDFromContext(r.Context())
+	if !ok {
+		writeCohortErr(w, http.StatusUnauthorized, "unauthenticated")
+		return
+	}
+	cohortID, err := uuid.Parse(chi.URLParam(r, "id"))
+	if err != nil {
+		writeCohortErr(w, http.StatusBadRequest, "invalid cohort id")
+		return
+	}
+	var req transferOwnershipReq
+	if decErr := json.NewDecoder(r.Body).Decode(&req); decErr != nil {
+		writeCohortErr(w, http.StatusBadRequest, "invalid body")
+		return
+	}
+	newOwner, err := uuid.Parse(strings.TrimSpace(req.NewOwnerID))
+	if err != nil {
+		writeCohortErr(w, http.StatusBadRequest, "invalid new_owner_id")
+		return
+	}
+	out, err := h.Transfer.Do(r.Context(), cohortID, uid, newOwner)
+	if err != nil {
+		switch {
+		case errors.Is(err, cohortApp.ErrForbidden):
+			writeCohortErr(w, http.StatusForbidden, "owner-only")
+		case errors.Is(err, cohortApp.ErrInvalidTarget):
+			writeCohortErr(w, http.StatusBadRequest, "new owner must be a cohort member")
+		case errors.Is(err, cohortDomain.ErrNotFound):
+			writeCohortErr(w, http.StatusNotFound, "cohort not found")
+		default:
+			h.Log.ErrorContext(r.Context(), "cohort.Transfer", slog.Any("err", err))
+			writeCohortErr(w, http.StatusInternalServerError, "transfer failed")
 		}
 		return
 	}

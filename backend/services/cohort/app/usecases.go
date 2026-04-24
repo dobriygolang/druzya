@@ -535,14 +535,23 @@ type UpdateCohortInput struct {
 	Capacity   *int
 }
 
-// Do checks ownership then writes the patch.
+// Do checks ownership (or coach for the limited subset) then writes the
+// patch. Coach can edit name + ends_at only — NOT visibility/capacity.
 func (uc *UpdateCohort) Do(ctx context.Context, in UpdateCohortInput) (domain.Cohort, error) {
 	c, err := uc.repo.Get(ctx, in.CohortID)
 	if err != nil {
 		return domain.Cohort{}, fmt.Errorf("cohort.UpdateCohort: load: %w", err)
 	}
-	if c.OwnerID != in.ActorID {
-		return domain.Cohort{}, ErrForbidden
+	isOwner := c.OwnerID == in.ActorID
+	if !isOwner {
+		role, rerr := uc.repo.GetMemberRole(ctx, in.CohortID, in.ActorID)
+		if rerr != nil || role != domain.RoleCoach {
+			return domain.Cohort{}, ErrForbidden
+		}
+		// Coach-edit restriction: only name + ends_at are writable.
+		if in.Visibility != nil || in.Capacity != nil {
+			return domain.Cohort{}, ErrForbidden
+		}
 	}
 	if in.Name != nil {
 		name := strings.TrimSpace(*in.Name)
@@ -714,8 +723,75 @@ func (uc *SetMemberRole) Do(ctx context.Context, cohortID, actorID, targetID uui
 	return fmt.Errorf("cohort.SetMemberRole: %w", uc.repo.UpdateMemberRole(ctx, cohortID, targetID, role))
 }
 
+// TransferOwnership lets the current owner hand the cohort to another
+// existing member. The target becomes the new owner; the old owner
+// stays in the cohort with role = coach (so they can still moderate
+// without owning it). Sentinel errors map to 403/404/400 at the HTTP
+// layer.
+type TransferOwnership struct {
+	repo domain.Repo
+	log  *slog.Logger
+}
+
+func NewTransferOwnership(repo domain.Repo, log *slog.Logger) *TransferOwnership {
+	if repo == nil {
+		panic("cohort.TransferOwnership: nil repo")
+	}
+	if log == nil {
+		panic("cohort.TransferOwnership: nil log")
+	}
+	return &TransferOwnership{repo: repo, log: log}
+}
+
+func (uc *TransferOwnership) Do(ctx context.Context, cohortID, actorID, newOwnerID uuid.UUID) (domain.Cohort, error) {
+	if newOwnerID == uuid.Nil || actorID == uuid.Nil {
+		return domain.Cohort{}, ErrForbidden
+	}
+	c, err := uc.repo.Get(ctx, cohortID)
+	if err != nil {
+		return domain.Cohort{}, fmt.Errorf("cohort.TransferOwnership: load: %w", err)
+	}
+	if c.OwnerID != actorID {
+		return domain.Cohort{}, ErrForbidden
+	}
+	if newOwnerID == actorID {
+		// Already the owner — idempotent no-op.
+		return c, nil
+	}
+	// New owner must be a member.
+	targetRole, err := uc.repo.GetMemberRole(ctx, cohortID, newOwnerID)
+	if err != nil {
+		if errors.Is(err, domain.ErrNotFound) {
+			return domain.Cohort{}, ErrInvalidTarget
+		}
+		return domain.Cohort{}, fmt.Errorf("cohort.TransferOwnership: target role: %w", err)
+	}
+	_ = targetRole // any member can be promoted
+	// Demote current owner to coach so they keep moderator powers.
+	if rerr := uc.repo.UpdateMemberRole(ctx, cohortID, actorID, domain.RoleCoach); rerr != nil {
+		return domain.Cohort{}, fmt.Errorf("cohort.TransferOwnership: demote old: %w", rerr)
+	}
+	// Promote target to owner role on the membership row.
+	if rerr := uc.repo.UpdateMemberRole(ctx, cohortID, newOwnerID, domain.RoleOwner); rerr != nil {
+		// Best-effort rollback — put the old owner back. Any error here
+		// just gets logged, the cohort is in an inconsistent state and
+		// owner rerun will eventually reconcile.
+		if rbErr := uc.repo.UpdateMemberRole(ctx, cohortID, actorID, domain.RoleOwner); rbErr != nil && uc.log != nil {
+			uc.log.WarnContext(ctx, "cohort.TransferOwnership: rollback failed", slog.Any("err", rbErr))
+		}
+		return domain.Cohort{}, fmt.Errorf("cohort.TransferOwnership: promote new: %w", rerr)
+	}
+	// Update the owner_id column on cohorts itself.
+	out, err := uc.repo.TransferOwner(ctx, cohortID, newOwnerID)
+	if err != nil {
+		return domain.Cohort{}, fmt.Errorf("cohort.TransferOwnership: %w", err)
+	}
+	return out, nil
+}
+
 var (
 	ErrForbidden         = errors.New("cohort: forbidden")
+	ErrInvalidTarget     = errors.New("cohort: target must be a member")
 	ErrInvalidName       = errors.New("cohort: invalid name")
 	ErrInvalidEnd        = errors.New("cohort: ends_at must be in the future")
 	ErrInvalidVisibility = errors.New("cohort: invalid visibility")

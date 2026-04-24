@@ -3,11 +3,19 @@
 // visibility. Form is initialised from the current cohort so unchanged
 // fields keep their values; backend uses null-aware partial update.
 import { useEffect, useState } from 'react'
-import { useUpdateCohortMutation, type Cohort } from '../../lib/queries/cohort'
+import {
+  useUpdateCohortMutation,
+  useTransferOwnershipMutation,
+  type Cohort,
+  type CohortMember,
+} from '../../lib/queries/cohort'
 
 type Props = {
   open: boolean
   cohort: Cohort
+  members?: CohortMember[]
+  /** 'coach' gets a restricted form (name + ends_at only). */
+  role?: 'owner' | 'coach'
   onClose: () => void
 }
 
@@ -17,8 +25,12 @@ function toLocalDate(iso: string): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
 }
 
-export default function CohortSettingsDialog({ open, cohort, onClose }: Props) {
+export default function CohortSettingsDialog({ open, cohort, members, role = 'owner', onClose }: Props) {
+  const isOwner = role === 'owner'
   const update = useUpdateCohortMutation()
+  const transfer = useTransferOwnershipMutation()
+  const [transferTo, setTransferTo] = useState<string>('')
+  const [transferBusy, setTransferBusy] = useState(false)
   const [name, setName] = useState(cohort.name)
   const [endsAt, setEndsAt] = useState(toLocalDate(cohort.ends_at))
   const [capacity, setCapacity] = useState<number>(cohort.capacity ?? 50)
@@ -47,7 +59,7 @@ export default function CohortSettingsDialog({ open, cohort, onClose }: Props) {
       return
     }
     try {
-      if (capacity < 2 || capacity > 500) {
+      if (isOwner && (capacity < 2 || capacity > 500)) {
         setErrorMsg('Размер когорты должен быть от 2 до 500')
         return
       }
@@ -55,8 +67,9 @@ export default function CohortSettingsDialog({ open, cohort, onClose }: Props) {
         cohortID: cohort.id,
         name: name !== cohort.name ? name.trim() : undefined,
         ends_at: endsAt !== toLocalDate(cohort.ends_at) ? new Date(endsAt).toISOString() : undefined,
-        visibility: visibility !== cohort.visibility ? visibility : undefined,
-        capacity: capacity !== (cohort.capacity ?? 50) ? capacity : undefined,
+        // coach-edit restriction: visibility + capacity are owner-only.
+        visibility: isOwner && visibility !== cohort.visibility ? visibility : undefined,
+        capacity: isOwner && capacity !== (cohort.capacity ?? 50) ? capacity : undefined,
       })
       onClose()
     } catch (err) {
@@ -78,8 +91,9 @@ export default function CohortSettingsDialog({ open, cohort, onClose }: Props) {
           Настройки когорты
         </h2>
         <p className="mb-4 text-xs text-text-muted">
-          Можешь поменять название, продлить дату окончания, переключить видимость.
-          Slug менять нельзя — он часть публичного URL.
+          {isOwner
+            ? 'Поменяй название, продли дату окончания, переключи видимость, размер или передай права другому участнику. Slug менять нельзя — он часть публичного URL.'
+            : 'Coach может править только название и дату окончания. Видимость, размер и состав — у owner\u2019а.'}
         </p>
 
         <Field label="Название">
@@ -103,7 +117,7 @@ export default function CohortSettingsDialog({ open, cohort, onClose }: Props) {
           />
         </Field>
 
-        <Field label="Размер когорты">
+        {isOwner && <Field label="Размер когорты">
           <input
             type="number"
             min={2}
@@ -116,9 +130,9 @@ export default function CohortSettingsDialog({ open, cohort, onClose }: Props) {
           <p className="mt-1 text-[11px] text-text-muted">
             Нельзя опустить ниже числа уже вступивших участников.
           </p>
-        </Field>
+        </Field>}
 
-        <Field label="Видимость">
+        {isOwner && <Field label="Видимость">
           <div className="flex gap-1">
             {(['public', 'invite'] as const).map((v) => (
               <button
@@ -135,11 +149,63 @@ export default function CohortSettingsDialog({ open, cohort, onClose }: Props) {
               </button>
             ))}
           </div>
-        </Field>
+        </Field>}
 
         {errorMsg && (
           <div className="mb-3 rounded-md border border-danger/40 bg-danger/10 px-3 py-2 text-sm text-danger">
             {errorMsg}
+          </div>
+        )}
+
+        {isOwner && members && members.length > 1 && (
+          <div className="mb-4 rounded-md border border-border bg-surface-2/60 p-3">
+            <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-text-muted">
+              Передать права
+            </div>
+            <p className="mb-2 text-[11px] text-text-secondary">
+              Новый owner получит полный доступ; ты станешь coach&apos;ем и сохранишь
+              модераторские права.
+            </p>
+            <div className="flex gap-2">
+              <select
+                value={transferTo}
+                onChange={(e) => setTransferTo(e.target.value)}
+                className="h-9 flex-1 rounded-md border border-border bg-surface-1 px-2 text-sm text-text-primary"
+              >
+                <option value="">— выберите участника —</option>
+                {members
+                  .filter((m) => m.user_id !== cohort.owner_id && m.role !== 'owner')
+                  .map((m) => (
+                    <option key={m.user_id} value={m.user_id}>
+                      {m.display_name || m.username || m.user_id}
+                      {m.role === 'coach' && ' · coach'}
+                    </option>
+                  ))}
+              </select>
+              <button
+                type="button"
+                disabled={!transferTo || transferBusy || transfer.isPending}
+                onClick={async () => {
+                  if (!transferTo) return
+                  const target = members.find((m) => m.user_id === transferTo)
+                  const label = target?.display_name || target?.username || 'участника'
+                  if (!window.confirm(`Передать owner-права «${label}»?`)) return
+                  setTransferBusy(true)
+                  try {
+                    await transfer.mutateAsync({ cohortID: cohort.id, newOwnerID: transferTo })
+                    setTransferTo('')
+                    onClose()
+                  } catch (err) {
+                    setErrorMsg(err instanceof Error ? err.message : 'Не удалось передать права')
+                  } finally {
+                    setTransferBusy(false)
+                  }
+                }}
+                className="h-9 rounded-md border border-accent/60 bg-accent/15 px-3 text-xs font-semibold text-accent-hover hover:bg-accent/25 disabled:opacity-40"
+              >
+                {transferBusy || transfer.isPending ? '…' : 'Передать'}
+              </button>
+            </div>
           </div>
         )}
 

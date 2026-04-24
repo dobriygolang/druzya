@@ -119,6 +119,8 @@ export default function CohortPage() {
 
   const { cohort, members } = detail.data
   const isOwner = !!profile.data && cohort.owner_id === profile.data.id
+  const selfRole = profile.data ? members.find((m) => m.user_id === profile.data?.id)?.role : undefined
+  const isCoach = selfRole === 'coach'
   const isMember = isOwner || members.some((m) => m.user_id === profile.data?.id)
   const capacity = COHORT_CAPACITY_FALLBACK
   const progress = Math.min(100, Math.round((members.length / capacity) * 100))
@@ -217,7 +219,7 @@ export default function CohortPage() {
               {!isMember && members.length >= capacity && (
                 <Button disabled>Когорта заполнена</Button>
               )}
-              {isOwner && (
+              {(isOwner || isCoach) && (
                 <Button variant="ghost" onClick={() => setSettingsOpen(true)}>
                   <Settings className="mr-1 h-3.5 w-3.5" /> Настройки
                 </Button>
@@ -320,10 +322,12 @@ export default function CohortPage() {
           />
         )}
 
-        {isOwner && (
+        {(isOwner || isCoach) && (
           <CohortSettingsDialog
             open={settingsOpen}
             cohort={cohort}
+            members={members}
+            role={isOwner ? 'owner' : 'coach'}
             onClose={() => setSettingsOpen(false)}
           />
         )}

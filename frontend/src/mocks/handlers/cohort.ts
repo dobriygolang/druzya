@@ -312,6 +312,25 @@ export const cohortHandlers = [
     return HttpResponse.json({ ...c, is_member: memberships.has(c.id) })
   }),
 
+  // Phase 4: POST /cohort/{id}/transfer
+  http.post(`${base}/cohort/:id/transfer`, async ({ params, request }) => {
+    const id = String(params.id)
+    const c = cohorts.find((c) => c.id === id)
+    if (!c) return new HttpResponse('not found', { status: 404 })
+    const body = (await request.json()) as { new_owner_id?: string }
+    const targetID = body.new_owner_id ?? ''
+    if (!targetID) return new HttpResponse('invalid', { status: 400 })
+    const detail = Object.values(detailCache).find((d) => d.cohort.id === id)
+    if (!detail) return new HttpResponse('not found', { status: 404 })
+    const target = detail.members.find((m) => m.user_id === targetID)
+    if (!target) return new HttpResponse('new owner must be a cohort member', { status: 400 })
+    const oldOwner = detail.members.find((m) => m.user_id === c.owner_id)
+    if (oldOwner) oldOwner.role = 'coach'
+    target.role = 'owner'
+    c.owner_id = targetID
+    return HttpResponse.json({ ...c, is_member: memberships.has(c.id) })
+  }),
+
   // M5c: POST /cohort/{id}/disband
   http.post(`${base}/cohort/:id/disband`, ({ params }) => {
     const id = String(params.id)

@@ -283,6 +283,25 @@ export function useGraduateCohortMutation() {
   })
 }
 
+export type TransferOwnershipPayload = {
+  cohortID: string
+  newOwnerID: string
+}
+
+export function useTransferOwnershipMutation() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ cohortID, newOwnerID }: TransferOwnershipPayload) =>
+      api<Cohort>(`/cohort/${encodeURIComponent(cohortID)}/transfer`, {
+        method: 'POST',
+        body: JSON.stringify({ new_owner_id: newOwnerID }),
+      }),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['cohort'] })
+    },
+  })
+}
+
 export function useDisbandCohortMutation() {
   const qc = useQueryClient()
   return useMutation({

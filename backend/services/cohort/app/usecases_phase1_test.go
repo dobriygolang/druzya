@@ -101,6 +101,15 @@ func (f *fakeRepo) UpdateMemberRole(_ context.Context, cohortID, userID uuid.UUI
 	}
 	return domain.ErrNotFound
 }
+func (f *fakeRepo) TransferOwner(_ context.Context, cohortID, newOwnerID uuid.UUID) (domain.Cohort, error) {
+	c, ok := f.cohorts[cohortID]
+	if !ok {
+		return domain.Cohort{}, domain.ErrNotFound
+	}
+	c.OwnerID = newOwnerID
+	f.cohorts[cohortID] = c
+	return c, nil
+}
 func (f *fakeRepo) UpdateMeta(_ context.Context, cohortID uuid.UUID, patch domain.CohortPatch) (domain.Cohort, error) {
 	c, ok := f.cohorts[cohortID]
 	if !ok {
