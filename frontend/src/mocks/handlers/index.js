@@ -11,6 +11,7 @@ import { settingsHandlers } from './settings';
 import { nativeHandlers } from './native';
 import { slotHandlers } from './slot';
 import { reviewHandlers } from './review';
+import { cohortHandlers } from './cohort';
 import { achievementsHandlers } from './achievements';
 import { notificationsHandlers } from './notifications';
 import { friendsHandlers } from './friends';
@@ -40,6 +41,7 @@ export const handlers = [
     ...nativeHandlers,
     ...slotHandlers,
     ...reviewHandlers,
+    ...cohortHandlers,
     ...achievementsHandlers,
     ...notificationsHandlers,
     ...friendsHandlers,
