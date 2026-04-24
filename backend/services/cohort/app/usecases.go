@@ -35,6 +35,7 @@ type CreateCohortInput struct {
 // CreateCohort use case.
 type CreateCohort struct {
 	Repo domain.Repo
+	Bus  sharedDomain.Bus
 	Log  *slog.Logger
 }
 
@@ -103,6 +104,7 @@ func (uc *CreateCohort) DoFull(ctx context.Context, in CreateCohortInput) (uuid.
 	}); err != nil {
 		return uuid.Nil, fmt.Errorf("cohort.Create: addMember(owner): %w", err)
 	}
+	publishMemberJoined(ctx, uc.Bus, uc.Log, id, in.OwnerID, domain.RoleOwner)
 	return id, nil
 }
 
@@ -187,6 +189,7 @@ func (uc *ListCohorts) Do(ctx context.Context, f domain.ListFilter) (domain.List
 // JoinCohort — присоединение к когорте по cohort_id (Phase 1: без токенов).
 type JoinCohort struct {
 	Repo domain.Repo
+	Bus  sharedDomain.Bus
 	Log  *slog.Logger
 }
 
@@ -244,7 +247,24 @@ func (uc *JoinCohort) DoByID(ctx context.Context, cohortID, userID uuid.UUID) er
 	}); err != nil {
 		return fmt.Errorf("cohort.Join: insert: %w", err)
 	}
+	publishMemberJoined(ctx, uc.Bus, uc.Log, cohortID, userID, domain.RoleMember)
 	return nil
+}
+
+// publishMemberJoined emits sharedDomain.CohortMemberJoined best-effort —
+// failure to publish must never fail the join. Centralised so JoinCohort,
+// JoinByToken, and CreateCohort share the same semantics.
+func publishMemberJoined(ctx context.Context, bus sharedDomain.Bus, log *slog.Logger, cohortID, userID uuid.UUID, role domain.Role) {
+	if bus == nil {
+		return
+	}
+	if err := bus.Publish(ctx, sharedDomain.CohortMemberJoined{
+		CohortID: cohortID,
+		UserID:   userID,
+		Role:     string(role),
+	}); err != nil && log != nil {
+		log.WarnContext(ctx, "cohort: publish CohortMemberJoined", slog.Any("err", err))
+	}
 }
 
 // LeaveCohort — выход из когорты, авто-распуск при последнем участнике.
@@ -385,6 +405,7 @@ func (uc *IssueInvite) Do(ctx context.Context, cohortID, actorID uuid.UUID, maxU
 // member; otherwise returns ErrAlreadyMember without consuming a slot.
 type JoinByToken struct {
 	Repo domain.Repo
+	Bus  sharedDomain.Bus
 	Log  *slog.Logger
 }
 
@@ -425,6 +446,7 @@ func (uc *JoinByToken) Do(ctx context.Context, token string, userID uuid.UUID) (
 		}
 		return uuid.Nil, fmt.Errorf("cohort.JoinByToken: add member: %w", err)
 	}
+	publishMemberJoined(ctx, uc.Bus, uc.Log, cohortID, userID, domain.RoleMember)
 	return cohortID, nil
 }
 

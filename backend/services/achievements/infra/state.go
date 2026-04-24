@@ -153,6 +153,20 @@ func (s *StateProvider) Snapshot(ctx context.Context, uid uuid.UUID) (achApp.Use
 		st.FriendsCount = 0
 	}
 
+	// cohort_members JOIN cohorts on graduated status — counts how many
+	// graduated cohorts the user is a member of. Drives cohort-graduated badge.
+	row = s.pool.QueryRow(ctx, `
+		SELECT COUNT(*)
+		  FROM cohort_members cm
+		  JOIN cohorts c ON c.id = cm.cohort_id
+		 WHERE cm.user_id = $1
+		   AND c.status = 'graduated'
+	`, uid)
+	if err := row.Scan(&st.CohortGraduatedCount); err != nil && !errors.Is(err, pgx.ErrNoRows) {
+		// Tables missing in tests / fresh installs — degrade to 0.
+		st.CohortGraduatedCount = 0
+	}
+
 	// Atlas — % разблокированных skill_nodes (примерная heuristic): unlocked >= 1
 	// делим на total заполненных строк.
 	row = s.pool.QueryRow(ctx, `

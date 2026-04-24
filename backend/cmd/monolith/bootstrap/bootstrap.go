@@ -112,9 +112,11 @@ func New(ctx context.Context, cfg *config.Config) (app *App, otelShutdown func()
 	slotMod, slotBookings := services.NewSlot(deps)
 	reviewMod := services.NewReview(deps, slotBookings)
 	// Cohort returns its repo so the announcement service can bridge into
-	// membership lookups (CohortMembershipBridge).
+	// membership lookups (CohortMembershipBridge). Notify also gets the
+	// bridge for cohort event fan-out (announcement/join/graduate).
 	cohortMod, cohortRepo := services.NewCohort(deps)
 	cohortAnnouncementMod := services.NewCohortAnnouncement(deps, cohortRepo)
+	notify.Handlers.Cohorts = services.NotifyCohortBridge{Cohorts: cohortRepo}
 
 	modules := []*services.Module{
 		&auth.Module,

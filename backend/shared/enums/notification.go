@@ -30,6 +30,9 @@ const (
 	NotificationTypeSkillDecay     NotificationType = "skill_decay"
 	NotificationTypeSeasonEnding   NotificationType = "season_ending"
 	NotificationTypeDailyKata      NotificationType = "daily_kata"
+	NotificationTypeCohortPost     NotificationType = "cohort_post"
+	NotificationTypeCohortJoin     NotificationType = "cohort_join"
+	NotificationTypeCohortGraduate NotificationType = "cohort_graduate"
 )
 
 func (t NotificationType) IsValid() bool {
@@ -37,7 +40,8 @@ func (t NotificationType) IsValid() bool {
 	case NotificationTypeSlotReminder, NotificationTypeMatchFound, NotificationTypeMatchResult,
 		NotificationTypeGuildWarStart, NotificationTypeGuildWarResult,
 		NotificationTypeWeeklyReport, NotificationTypeSkillDecay,
-		NotificationTypeSeasonEnding, NotificationTypeDailyKata:
+		NotificationTypeSeasonEnding, NotificationTypeDailyKata,
+		NotificationTypeCohortPost, NotificationTypeCohortJoin, NotificationTypeCohortGraduate:
 		return true
 	}
 	return false

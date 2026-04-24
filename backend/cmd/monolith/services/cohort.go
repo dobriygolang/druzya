@@ -42,18 +42,70 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
+// NotifyCohortBridge adapts cohort.Repo to notifyApp.CohortMembersLookup —
+// notify uses it to fan-out CohortAnnouncementPosted / CohortMemberJoined /
+// CohortGraduated events without directly importing cohort/domain.
+type NotifyCohortBridge struct {
+	Cohorts cohortDomain.Repo
+}
+
+// ListMemberIDs returns every member's user_id as a string. Errors flow
+// up; notify handler short-circuits on lookup failure rather than failing.
+func (b NotifyCohortBridge) ListMemberIDs(ctx context.Context, cohortID string) ([]string, error) {
+	cid, err := uuid.Parse(cohortID)
+	if err != nil {
+		return nil, err
+	}
+	rows, err := b.Cohorts.ListMembers(ctx, cid)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]string, 0, len(rows))
+	for _, m := range rows {
+		out = append(out, m.UserID.String())
+	}
+	return out, nil
+}
+
+func (b NotifyCohortBridge) GetOwnerID(ctx context.Context, cohortID string) (string, error) {
+	cid, err := uuid.Parse(cohortID)
+	if err != nil {
+		return "", err
+	}
+	c, err := b.Cohorts.Get(ctx, cid)
+	if err != nil {
+		return "", err
+	}
+	return c.OwnerID.String(), nil
+}
+
+func (b NotifyCohortBridge) GetCohortName(ctx context.Context, cohortID string) (string, error) {
+	cid, err := uuid.Parse(cohortID)
+	if err != nil {
+		return "", err
+	}
+	c, err := b.Cohorts.Get(ctx, cid)
+	if err != nil {
+		return "", err
+	}
+	return c.Name, nil
+}
+
 // NewCohort wires the cohort bounded context. Returns (Module, Repo) —
 // the repo is needed by services that bridge into membership lookups
-// (cohort_announcement uses it via CohortMembershipBridge).
+// (cohort_announcement uses it via CohortMembershipBridge; notify via
+// NotifyCohortBridge).
 func NewCohort(d Deps) (*Module, cohortDomain.Repo) {
 	if d.Log == nil {
 		panic("services.NewCohort: log is required")
 	}
 	repo := newCohortPostgres(d.Pool)
 	create := cohortApp.NewCreateCohort(repo, d.Log)
+	create.Bus = d.Bus
 	get := cohortApp.NewGetCohort(repo, d.Log)
 	list := cohortApp.NewListCohorts(repo, d.Log)
 	join := cohortApp.NewJoinCohort(repo, d.Log)
+	join.Bus = d.Bus
 	leave := cohortApp.NewLeaveCohort(repo, d.Log)
 	leaderboard := cohortApp.NewGetLeaderboard(repo, d.Log)
 	update := cohortApp.NewUpdateCohort(repo, d.Log)
@@ -61,6 +113,7 @@ func NewCohort(d Deps) (*Module, cohortDomain.Repo) {
 	setRole := cohortApp.NewSetMemberRole(repo, d.Log)
 	issueInvite := cohortApp.NewIssueInvite(repo, d.Log)
 	joinByToken := cohortApp.NewJoinByToken(repo, d.Log)
+	joinByToken.Bus = d.Bus
 	graduate := cohortApp.NewGraduateCohort(repo, d.Bus, d.Log)
 
 	h := &cohortHTTP{
