@@ -102,16 +102,32 @@ $COMPOSE run --rm migrate || { echo "migrations FAILED"; exit 1; }
 
 log "rolling restart of api + support services"
 $COMPOSE up -d --no-deps --force-recreate api
-$COMPOSE up -d --no-deps prometheus loki promtail grafana || true
+# Observability: prometheus scrapes + promtail ships logs to Grafana Cloud.
+# NB: `loki` and `grafana` services were removed when we moved the dashboards
+# to Grafana Cloud — listing them here used to spit "no such service" into
+# the deploy log.
+$COMPOSE up -d --no-deps prometheus promtail || true
 # nginx тоже force-recreate: образ druz9-web мог обновиться на тот же :latest
 # тег, и без --force-recreate compose оставит старый контейнер.
 $COMPOSE up -d --no-deps --force-recreate nginx
 
 log "waiting for /health/ready"
-# Бьём по nginx через https://localhost с -k: серт у нас на druz9.online,
-# поэтому без -k curl упадёт на TLS-name mismatch ещё до того, как увидит
-# 200 от api. Содержимое запроса всё равно идёт на тот же loopback.
+# Two-layer probe, with the *right* failure message:
+#
+#   1. Direct api container — proves the app itself booted. If this fails
+#      after 60s it's either a crashloop or unhealthy dependencies.
+#   2. Nginx + TLS at https://localhost — proves the edge is intact. Fails
+#      here → nginx down OR TLS cert missing (certbot volume lost is the
+#      most common cause; see §Rollback in DEPLOYMENT.md).
+#
+# Previously only layer 2 existed, so a cert outage looked identical to an
+# api crash and the log just said "failed after 60s".
+api_cid=$($COMPOSE ps -q api 2>/dev/null || true)
+api_ok=""
 for i in $(seq 1 30); do
+    if [ -n "$api_cid" ] && docker exec "$api_cid" wget -qO- http://127.0.0.1:8080/health/ready >/dev/null 2>&1; then
+        api_ok=1
+    fi
     if curl -sfk -o /dev/null https://localhost/health/ready; then
         log "deploy healthy (attempt $i)"
 
@@ -147,6 +163,20 @@ for i in $(seq 1 30); do
     sleep 2
 done
 
-echo "xx /health/ready failed after 60s — inspect logs:"
-$COMPOSE logs --tail=50 api
+echo "xx /health/ready failed after 60s"
+if [ "$api_ok" = "1" ]; then
+    echo "xx api itself is healthy internally — nginx / TLS edge is the blocker."
+    echo "   Most common cause: certbot_conf volume empty (cert lost)."
+    echo "   Verify:  $COMPOSE run --rm certbot ls /etc/letsencrypt/live"
+    echo "   Fix:     $COMPOSE run --rm certbot certonly --webroot -w /var/www/certbot \\"
+    echo "                -d druz9.online -d www.druz9.online \\"
+    echo "                --email you@druzya.tech --agree-tos --non-interactive"
+    echo "            $COMPOSE restart nginx"
+    echo
+    echo "nginx logs (last 30):"
+    $COMPOSE logs --tail=30 nginx || true
+else
+    echo "xx api container is NOT serving /health/ready — inspect app logs:"
+    $COMPOSE logs --tail=50 api
+fi
 exit 1

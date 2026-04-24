@@ -347,11 +347,7 @@ export function CompactScreen() {
                 animation: streaming ? 'd9-brand-pulse 1.8s ease-in-out infinite' : undefined,
               }}
             >
-              <BrandMark
-                persona={activePersona.id}
-                background={activePersona.brand_gradient}
-                size={30}
-              />
+              <BrandMark size={30} />
             </div>
 
             {/* Input pill */}

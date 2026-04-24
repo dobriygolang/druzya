@@ -199,11 +199,7 @@ export function ExpandedScreen() {
           WebkitAppRegion: 'drag',
         } as React.CSSProperties}
       >
-        <BrandMark
-          persona={activePersona.id}
-          background={activePersona.brand_gradient}
-          size={24}
-        />
+        <BrandMark size={24} />
         <span
           style={{
             fontSize: 13,
@@ -434,8 +430,9 @@ export function ExpandedScreen() {
 // ─────────────────────────────────────────────────────────────────────────
 
 function EmptyState() {
+  // The hero BrandMark is now always black (post-Cue rebrand), so we
+  // only need the persona label for the subtitle — no gradient lookup.
   const persona = usePersonaStore((s) => s.active);
-  const grad = persona.brand_gradient;
   return (
     <div
       style={{
@@ -449,16 +446,13 @@ function EmptyState() {
       }}
     >
       <BrandMark
-        persona={persona.id}
-        background={grad}
         size={76}
         style={{
           borderRadius: 22,
           boxShadow:
             'inset 0 0.5px 0 rgba(255,255,255,0.3), ' +
-            '0 4px 20px -2px currentColor, ' +
-            '0 0 40px -8px currentColor',
-          fontSize: 44,
+            '0 4px 20px -2px rgba(0,0,0,0.4), ' +
+            '0 0 40px -8px rgba(0,0,0,0.4)',
         }}
       />
       <div style={{ textAlign: 'center' }}>

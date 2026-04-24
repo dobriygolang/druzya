@@ -2,6 +2,12 @@
 
 Как релиз попадает на прод и что делать если всё сломалось. Сервер уже поднят — инструкция по провижну в [SERVER-SETUP.md](./SERVER-SETUP.md).
 
+> **Область:** этот файл про **web + backend monolith** на VPS.
+>
+> Для desktop-приложений экосистемы — отдельные runbook'и:
+> - [HONE-RELEASE.md](./HONE-RELEASE.md) — Hone (focus cockpit) DMG + auto-update
+> - [CUE-RELEASE.md](./CUE-RELEASE.md) — Cue (stealth copilot) DMG + notarize
+
 ## Пайплайн в одной картинке
 
 ```

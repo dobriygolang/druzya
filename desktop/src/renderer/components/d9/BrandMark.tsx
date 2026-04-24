@@ -1,28 +1,29 @@
-// BrandMark — gradient pill with the Cue brand mark. Source of truth
-// for the shape is [`design/hone/landing/brand/cue-mark.svg`]: three
-// concentric radio-wave arcs + centre dot + a single red antenna
-// stroke. We inline the SVG (not <img>) so it paints at any size
-// without blur and so the red stroke can share `--d9-accent` with
-// the rest of the theme.
+// BrandMark — black pill with the Cue brand mark.
 //
-// The gradient background comes from the persona (`.d9-grad-*`);
-// the SVG overlays. This lets persona chips keep their jewel-tone
-// identity while the mark stays the same across personas.
+// Source of truth for the shape: [`design/hone/landing/brand/cue-mark.svg`].
+// Three concentric radio-wave arcs (opacity ladder) + centre dot + a
+// single red antenna stroke. The SVG is inlined here so:
+//   1. it paints at any size without blur;
+//   2. the antenna shares `--d9-accent` with the rest of the theme
+//      (red today, whatever we choose tomorrow — zero edits here);
+//   3. bundle size stays under the fetch cost of a separate asset.
 //
-// History: was "9" when the product was Druz9 Copilot, then "C"
-// during the rename. Both text glyphs are deprecated in favour of
-// the proper brand mark.
+// Background is always black. The persona jewel-tone gradients used
+// to live here (d9-grad-react, etc.) but they drowned out the
+// white-arc + red-antenna contrast — the whole point of the mark.
+// Persona identity now lives exclusively in PersonaChip's
+// `.d9-gradient-dot` (see components/d9/PersonaChip.tsx).
 //
-// Accepts:
-//   - `persona` id ("react" / "sysdesign" / "sre" / "behav" / "dsa")
-//     which maps to a `.d9-grad-*` utility class in tokens.css.
-//   - `background` — raw gradient string override (takes precedence;
-//     lets the server-driven Persona table push arbitrary gradients).
-//
-// When the slug is unknown, falls back to the accent gradient.
+// History: was "9" glyph (Druz9 Copilot), then "C" glyph (rename),
+// now the proper brand mark on solid black. `persona` / `background`
+// props removed — any caller that wants a custom panel colour should
+// wrap BrandMark in its own container instead of mutating the mark.
 
 import type { CSSProperties } from 'react';
 
+// resolvePersonaGradient is still exported because PersonaChip /
+// PersonaDropdown consume it for their gradient dots. Keeping the
+// resolver here avoids a second lookup table in the persona files.
 export type BrandPersona = 'react' | 'sysdesign' | 'sre' | 'behav' | 'dsa' | 'accent';
 
 const KNOWN: Record<string, BrandPersona> = {
@@ -43,42 +44,27 @@ export function resolvePersonaGradient(slug: string | undefined): BrandPersona {
 }
 
 interface BrandMarkProps {
-  persona?: string;
-  /** Raw gradient string. Takes precedence over `persona` when provided. */
-  background?: string;
   size?: number;
   /** Show the brand mark (arcs + dot + antenna). Default true. Pass
-   *  false for the bare gradient square — used in skeleton states. */
+   *  false for the bare black square — used in skeleton states. */
   glyph?: boolean;
   style?: CSSProperties;
 }
 
-export function BrandMark({
-  persona,
-  background,
-  size = 28,
-  glyph = true,
-  style,
-}: BrandMarkProps) {
-  const resolved = resolvePersonaGradient(persona);
-  const className = background ? undefined : `d9-grad-${resolved}`;
+export function BrandMark({ size = 28, glyph = true, style }: BrandMarkProps) {
   return (
     <div
-      className={className}
       style={{
         width: size,
         height: size,
         borderRadius: size * 0.28,
-        background,
+        background: '#000',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
         boxShadow:
-          'inset 0 0.5px 0 rgba(255,255,255,0.28), ' +
-          'inset 0 -0.5px 0 rgba(0,0,0,0.18), ' +
-          '0 1px 2px rgba(0,0,0,0.35), ' +
-          '0 0 14px -4px currentColor',
-        color: 'rgba(255,255,255,0.97)',
+          'inset 0 0.5px 0 rgba(255,255,255,0.10), ' +
+          '0 1px 2px rgba(0,0,0,0.35)',
         userSelect: 'none',
         flex: 'none',
         overflow: 'hidden',
@@ -92,15 +78,12 @@ export function BrandMark({
 
 // CueMark — inlined copy of design/hone/landing/brand/cue-mark.svg.
 // Three concentric arcs (opacity ladder for "radio waves"), centre
-// dot, and a red antenna stroke. The SVG's own black background rect
-// from the source file is omitted — the surrounding BrandMark div
-// already provides the pill shape + the persona gradient behind the
-// strokes, so drawing a black rect here would hide the gradient.
+// dot, and a red antenna stroke. Source SVG's black <rect> is omitted
+// — the surrounding BrandMark div provides the pill + background.
 //
-// stroke-width 2 in the 128-viewBox translates to ~0.44px at size=28
-// which is crisp on retina; at size=72 (Onboarding hero) it's
-// ~1.1px — still hairline. No size-based tuning needed across the
-// range we actually use (18-96px).
+// stroke-width 2 at viewBox 128 → ~0.44px at size=28 (crisp on
+// retina), ~1.1px at size=76 (onboarding hero). No size-based
+// stroke-tuning needed across the range we actually use (18-96px).
 function CueMark({ size }: { size: number }) {
   return (
     <svg
@@ -116,8 +99,8 @@ function CueMark({ size }: { size: number }) {
         <path d="M24,64 a40,40 0 0 1 80,0" opacity={0.28} />
       </g>
       <circle cx={64} cy={64} r={4} fill="#fff" />
-      {/* Antenna — red accent. Uses the CSS variable so any future
-          tokens.css tweak propagates without touching this file. */}
+      {/* Antenna — red accent via CSS var so future token tweaks
+          propagate without touching this file. */}
       <line
         x1={88}
         y1={40}
