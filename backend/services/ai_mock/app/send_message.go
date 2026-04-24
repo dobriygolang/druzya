@@ -2,12 +2,15 @@ package app
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
+	"strings"
 	"time"
 
 	"druz9/ai_mock/domain"
 	"druz9/shared/enums"
+	"druz9/shared/pkg/compaction"
 
 	"github.com/google/uuid"
 )
@@ -33,6 +36,12 @@ type SendMessage struct {
 	Limiter   domain.RateLimiter
 	Log       *slog.Logger
 	Now       func() time.Time
+
+	// Compactor — опциональный фоновый суммаризатор. Nil → окно всё равно
+	// обрезается (последние 10 turns), но running_summary не пересчитывается.
+	// См. backend/shared/pkg/compaction.
+	Compactor     *compaction.Worker
+	CompactionCfg compaction.Config
 }
 
 // SendMessageInput carries the user-supplied payload.
@@ -85,7 +94,7 @@ func (uc *SendMessage) Do(ctx context.Context, in SendMessageInput) (SendMessage
 		return SendMessageResult{}, fmt.Errorf("mock.SendMessage: persist user: %w", err)
 	}
 
-	assistantContent, tokens, err := uc.generateReply(ctx, s, in.CodeSnapshot)
+	assistantContent, tokens, window, err := uc.generateReply(ctx, s, in.CodeSnapshot)
 	if err != nil {
 		return SendMessageResult{}, fmt.Errorf("mock.SendMessage: generate: %w", err)
 	}
@@ -99,6 +108,8 @@ func (uc *SendMessage) Do(ctx context.Context, in SendMessageInput) (SendMessage
 	if err != nil {
 		return SendMessageResult{}, fmt.Errorf("mock.SendMessage: persist assistant: %w", err)
 	}
+
+	uc.maybeSubmitCompaction(s, window, userMsg, assistant)
 
 	// Transition created → in_progress on first message.
 	if s.Status == enums.MockStatusCreated {
@@ -130,12 +141,14 @@ func (uc *SendMessage) loadSession(ctx context.Context, userID, sessionID uuid.U
 
 // generateReply assembles the full prompt context and calls the LLM.
 // Non-streaming path used by the HTTP endpoint; StreamReply is the WS path.
-func (uc *SendMessage) generateReply(ctx context.Context, s domain.Session, currentCode string) (string, int, error) {
-	task, history, user, company, err := uc.loadContext(ctx, s)
+// Возвращает также compaction.Window, построенное ДО текущего ответа —
+// caller использует его в maybeSubmitCompaction после persist.
+func (uc *SendMessage) generateReply(ctx context.Context, s domain.Session, currentCode string) (string, int, compaction.Window, error) {
+	task, window, user, company, err := uc.loadContext(ctx, s)
 	if err != nil {
-		return "", 0, err
+		return "", 0, compaction.Window{}, err
 	}
-	msgs := buildLLMMessages(s, task, user, company, history, currentCode, time.Since(firstOr(s.StartedAt, s.CreatedAt)))
+	msgs := buildLLMMessages(s, task, user, company, window, currentCode, time.Since(firstOr(s.StartedAt, s.CreatedAt)))
 
 	model := s.LLMModel.String()
 	if model == "" {
@@ -148,20 +161,20 @@ func (uc *SendMessage) generateReply(ctx context.Context, s domain.Session, curr
 		MaxTokens:   1024,
 	})
 	if err != nil {
-		return "", 0, fmt.Errorf("mock.SendMessage: complete: %w", err)
+		return "", 0, compaction.Window{}, fmt.Errorf("mock.SendMessage: complete: %w", err)
 	}
-	return resp.Content, resp.TokensUsed, nil
+	return resp.Content, resp.TokensUsed, window, nil
 }
 
 // StreamReply is the WS path: builds context, persists user message ahead of
 // time (done by the caller), then streams tokens over the returned channel.
 // Caller must persist the assistant message from the accumulated content.
 func (uc *SendMessage) StreamReply(ctx context.Context, s domain.Session, currentCode string) (<-chan domain.Token, error) {
-	task, history, user, company, err := uc.loadContext(ctx, s)
+	task, window, user, company, err := uc.loadContext(ctx, s)
 	if err != nil {
 		return nil, err
 	}
-	msgs := buildLLMMessages(s, task, user, company, history, currentCode, time.Since(firstOr(s.StartedAt, s.CreatedAt)))
+	msgs := buildLLMMessages(s, task, user, company, window, currentCode, time.Since(firstOr(s.StartedAt, s.CreatedAt)))
 	model := s.LLMModel.String()
 	if model == "" {
 		model = uc.fallbackModel(user)
@@ -178,26 +191,78 @@ func (uc *SendMessage) StreamReply(ctx context.Context, s domain.Session, curren
 	return stream, nil
 }
 
-func (uc *SendMessage) loadContext(ctx context.Context, s domain.Session) (domain.TaskWithHint, []domain.Message, domain.UserContext, domain.CompanyContext, error) {
+func (uc *SendMessage) loadContext(ctx context.Context, s domain.Session) (domain.TaskWithHint, compaction.Window, domain.UserContext, domain.CompanyContext, error) {
 	task, err := uc.Tasks.GetWithHint(ctx, s.TaskID)
 	if err != nil {
-		return domain.TaskWithHint{}, nil, domain.UserContext{}, domain.CompanyContext{}, fmt.Errorf("task: %w", err)
+		return domain.TaskWithHint{}, compaction.Window{}, domain.UserContext{}, domain.CompanyContext{}, fmt.Errorf("task: %w", err)
 	}
-	// SummarizeOlder is the future compaction step. For now we just take the
-	// tail; see STUB note below.
-	history, err := SummarizeOlder(ctx, uc.Messages, s.ID, MessageContextSize)
+	// Было SummarizeOlder(keep=MessageContextSize) — теперь BuildWindow:
+	// грузим полный список, отдаём LLM последние WindowSize turns; старые
+	// turns (выше threshold'а) уже сжаты в Session.RunningSummary фоновым
+	// воркером и вставятся отдельным system-сообщением в buildLLMMessages.
+	all, err := uc.Messages.ListAll(ctx, s.ID)
 	if err != nil {
-		return domain.TaskWithHint{}, nil, domain.UserContext{}, domain.CompanyContext{}, fmt.Errorf("history: %w", err)
+		return domain.TaskWithHint{}, compaction.Window{}, domain.UserContext{}, domain.CompanyContext{}, fmt.Errorf("history: %w", err)
 	}
+	window := compaction.BuildWindow(turnsFromMessages(all), s.RunningSummary, uc.compactionConfig())
 	user, err := uc.Users.Get(ctx, s.UserID)
 	if err != nil {
-		return domain.TaskWithHint{}, nil, domain.UserContext{}, domain.CompanyContext{}, fmt.Errorf("user: %w", err)
+		return domain.TaskWithHint{}, compaction.Window{}, domain.UserContext{}, domain.CompanyContext{}, fmt.Errorf("user: %w", err)
 	}
 	company, err := uc.Companies.Get(ctx, s.CompanyID)
 	if err != nil {
-		return domain.TaskWithHint{}, nil, domain.UserContext{}, domain.CompanyContext{}, fmt.Errorf("company: %w", err)
+		return domain.TaskWithHint{}, compaction.Window{}, domain.UserContext{}, domain.CompanyContext{}, fmt.Errorf("company: %w", err)
 	}
-	return task, history, user, company, nil
+	return task, window, user, company, nil
+}
+
+// compactionConfig — защита от невалидного/пустого поля: подменяем
+// дефолтами, если вне bootstrap'а кто-то инстанциировал SendMessage без
+// конфига (unit-тесты). BuildWindow и так fail-soft, но отдать ему
+// заведомо валидное значение понятнее.
+func (uc *SendMessage) compactionConfig() compaction.Config {
+	if uc.CompactionCfg.WindowSize > 0 && uc.CompactionCfg.Threshold >= uc.CompactionCfg.WindowSize {
+		return uc.CompactionCfg
+	}
+	return compaction.DefaultConfig()
+}
+
+// maybeSubmitCompaction — после persist'а свежего user/assistant turn'а
+// перестраивает окно и non-blocking Submit'ит Job, если переполнение.
+func (uc *SendMessage) maybeSubmitCompaction(s domain.Session, priorWindow compaction.Window, user, assistant domain.Message) {
+	if uc.Compactor == nil {
+		return
+	}
+	turns := append([]compaction.Turn(nil), priorWindow.Tail...)
+	if strings.TrimSpace(user.Content) != "" {
+		turns = append(turns, compaction.Turn{Role: string(user.Role), Content: user.Content})
+	}
+	if strings.TrimSpace(assistant.Content) != "" {
+		turns = append(turns, compaction.Turn{Role: string(assistant.Role), Content: assistant.Content})
+	}
+	fresh := compaction.BuildWindow(turns, priorWindow.RunningSummary, uc.compactionConfig())
+	if !fresh.NeedsCompaction {
+		return
+	}
+	err := uc.Compactor.Submit(compaction.Job{
+		SessionKey:  s.ID.String(),
+		PrevSummary: fresh.RunningSummary,
+		OldTurns:    fresh.OldTurns,
+	})
+	if err != nil && !errors.Is(err, compaction.ErrWorkerStopped) && uc.Log != nil {
+		uc.Log.Warn("mock.SendMessage: compaction submit failed",
+			slog.Any("err", err), slog.String("session", s.ID.String()))
+	}
+}
+
+// turnsFromMessages — мост между domain.Message и compaction.Turn
+// (пакет compaction — domain-agnostic). Симметричен copilot/app.
+func turnsFromMessages(msgs []domain.Message) []compaction.Turn {
+	out := make([]compaction.Turn, 0, len(msgs))
+	for _, m := range msgs {
+		out = append(out, compaction.Turn{Role: string(m.Role), Content: m.Content})
+	}
+	return out
 }
 
 // fallbackModel picks a default model when the session doesn't pin one.
@@ -214,12 +279,31 @@ func (uc *SendMessage) fallbackModel(user domain.UserContext) string {
 	}
 }
 
-// buildLLMMessages produces the final [system, …history, user?] slice. The
-// caller already persisted the incoming user message into history.
-func buildLLMMessages(s domain.Session, t domain.TaskWithHint, user domain.UserContext, company domain.CompanyContext, history []domain.Message, currentCode string, elapsed time.Duration) []domain.LLMMessage {
+// buildLLMMessages produces the final [system, summary?, …tail] slice.
+// Если у session.RunningSummary непустая строка — вставляем её отдельным
+// system-сообщением СРАЗУ после главного prompt'а (до tail turns).
+// Сам tail уже обрезан BuildWindow'ом до WindowSize последних turns.
+func buildLLMMessages(s domain.Session, t domain.TaskWithHint, user domain.UserContext, company domain.CompanyContext, window compaction.Window, currentCode string, elapsed time.Duration) []domain.LLMMessage {
 	sys := domain.BuildSystemPrompt(s, t, user, company, elapsed, s.Stress, currentCode)
 	msgs := []domain.LLMMessage{{Role: domain.LLMRoleSystem, Content: sys}}
-	msgs = append(msgs, domain.ToLLMMessages(history, MessageContextSize)...)
+	if sum := strings.TrimSpace(window.RunningSummary); sum != "" {
+		msgs = append(msgs, domain.LLMMessage{
+			Role:    domain.LLMRoleSystem,
+			Content: "Previous conversation summary:\n" + sum,
+		})
+	}
+	for _, t := range window.Tail {
+		role := domain.LLMRoleUser
+		switch enums.MessageRole(t.Role) {
+		case enums.MessageRoleSystem:
+			role = domain.LLMRoleSystem
+		case enums.MessageRoleAssistant:
+			role = domain.LLMRoleAssistant
+		case enums.MessageRoleUser:
+			role = domain.LLMRoleUser
+		}
+		msgs = append(msgs, domain.LLMMessage{Role: role, Content: t.Content})
+	}
 	return msgs
 }
 

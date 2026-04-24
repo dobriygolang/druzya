@@ -250,7 +250,7 @@ func TestServer_SendMessage_Happy(t *testing.T) {
 	}
 	sessions.EXPECT().Get(gomock.Any(), sid).Return(sess, nil).AnyTimes()
 	tasks.EXPECT().GetWithHint(gomock.Any(), tid).Return(domain.TaskWithHint{ID: tid}, nil)
-	messages.EXPECT().ListLast(gomock.Any(), sid, gomock.Any()).Return(nil, nil)
+	messages.EXPECT().ListAll(gomock.Any(), sid).Return(nil, nil)
 	users.EXPECT().Get(gomock.Any(), uid).Return(domain.UserContext{ID: uid}, nil)
 	companies.EXPECT().Get(gomock.Any(), cid).Return(domain.CompanyContext{ID: cid}, nil)
 
