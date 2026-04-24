@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"strings"
@@ -9,6 +10,7 @@ import (
 
 	"druz9/copilot/domain"
 	"druz9/shared/enums"
+	"druz9/shared/pkg/compaction"
 
 	"github.com/google/uuid"
 )
@@ -124,6 +126,12 @@ type Analyze struct {
 	// this handler are auto-attached to the user's live session (if any).
 	Sessions domain.SessionRepo
 
+	// Compactor — опциональный фоновый суммаризатор. Если nil, sliding-
+	// window работает в режиме "только обрезка tail'а", без генерации
+	// running_summary. См. backend/shared/pkg/compaction.
+	Compactor     *compaction.Worker
+	CompactionCfg compaction.Config
+
 	Log *slog.Logger
 	Now func() time.Time
 
@@ -233,7 +241,12 @@ func (uc *Analyze) Do(ctx context.Context, in AnalyzeInput) (<-chan StreamFrame,
 		return nil, fmt.Errorf("copilot.Analyze: prior: %w", err)
 	}
 
-	llmMessages := buildLLMMessages(prior, in.PromptText, in.Attachments)
+	// Sliding-window компакция: урезаем prior до последних WindowSize turns,
+	// runningSummary (если есть) вставляется отдельным system-сообщением в
+	// buildLLMMessages. OldTurns + NeedsCompaction пригодятся ПОСЛЕ stream'а,
+	// чтобы заказать фоновую пересборку summary.
+	window := compaction.BuildWindow(turnsFromMessages(prior), conv.RunningSummary, uc.compactionConfig())
+	llmMessages := buildLLMMessages(window.RunningSummary, turnsToMessages(window.Tail), in.PromptText, in.Attachments)
 
 	// Open the LLM stream.
 	events, err := uc.LLM.Stream(ctx, domain.CompletionRequest{
@@ -259,6 +272,8 @@ func (uc *Analyze) Do(ctx context.Context, in AnalyzeInput) (<-chan StreamFrame,
 		started:     started,
 		userID:      in.UserID,
 		isFirstTurn: in.ConversationID == uuid.Nil,
+		userPrompt:  in.PromptText,
+		priorWindow: window,
 	})
 	return out, nil
 }
@@ -277,6 +292,14 @@ type pumpCtx struct {
 	started     time.Time
 	userID      uuid.UUID
 	isFirstTurn bool
+	// userPrompt — текст только что отправленного пользователем сообщения;
+	// нужен, чтобы после stream'а собрать полный набор turns и решить,
+	// пора ли запускать compaction.
+	userPrompt string
+	// priorWindow — срез sliding-window, построенный ДО вставки
+	// текущего user/assistant turn'а. Если NeedsCompaction=true, мы после
+	// успешной завершения stream'а сабмитим Job воркеру (см. Analyze.Compactor).
+	priorWindow compaction.Window
 }
 
 // pump bridges the provider's StreamEvent channel into the use-case's
@@ -350,6 +373,54 @@ func (uc *Analyze) pump(ctx context.Context, p pumpCtx) {
 		LatencyMs:          latency,
 		Quota:              quota,
 	}}
+
+	// Фоновая компакция: формируем полный набор turns = priorWindow.tail +
+	// user + assistant и проверяем threshold заново. Если переполнение —
+	// Submit non-blocking (drop-oldest внутри воркера).
+	uc.maybeSubmitCompaction(p, content)
+}
+
+// maybeSubmitCompaction — решает, запускать ли фоновую суммаризацию после
+// завершения текущего turn'а. Правило: пересчитываем окно поверх полного
+// множества turns (prior tail + только что записанные user/assistant) и,
+// если BuildWindow вернул NeedsCompaction=true, отправляем Job.
+//
+// Все ошибки submit'а — неблокирующие: drop-oldest уже обеспечен выше
+// по стеку, на критический путь ответа клиенту мы ничего не вешаем.
+func (uc *Analyze) maybeSubmitCompaction(p pumpCtx, assistantContent string) {
+	if uc.Compactor == nil {
+		return
+	}
+	turns := append([]compaction.Turn(nil), p.priorWindow.Tail...)
+	if strings.TrimSpace(p.userPrompt) != "" {
+		turns = append(turns, compaction.Turn{Role: string(enums.MessageRoleUser), Content: p.userPrompt})
+	}
+	if strings.TrimSpace(assistantContent) != "" {
+		turns = append(turns, compaction.Turn{Role: string(enums.MessageRoleAssistant), Content: assistantContent})
+	}
+	fresh := compaction.BuildWindow(turns, p.priorWindow.RunningSummary, uc.compactionConfig())
+	if !fresh.NeedsCompaction {
+		return
+	}
+	err := uc.Compactor.Submit(compaction.Job{
+		SessionKey:  p.conv.ID.String(),
+		PrevSummary: fresh.RunningSummary,
+		OldTurns:    fresh.OldTurns,
+	})
+	if err != nil && !errors.Is(err, compaction.ErrWorkerStopped) && uc.Log != nil {
+		uc.Log.Warn("copilot.Analyze: compaction submit failed",
+			"err", err, "conv", p.conv.ID)
+	}
+}
+
+// compactionConfig возвращает Config из поля — или дефолты, если не
+// настроен. Держим fail-soft, потому что Validate проверяется на старте
+// монолита (см. bootstrap).
+func (uc *Analyze) compactionConfig() compaction.Config {
+	if uc.CompactionCfg.WindowSize > 0 && uc.CompactionCfg.Threshold >= uc.CompactionCfg.WindowSize {
+		return uc.CompactionCfg
+	}
+	return compaction.DefaultConfig()
 }
 
 // commitAssistant is the minimal-info variant used on error paths.
@@ -393,11 +464,20 @@ func (uc *Analyze) priorMessages(ctx context.Context, conversationID, currentUse
 	return out, nil
 }
 
-// buildLLMMessages packs the system prompt + prior turns + current user
-// turn (with images) into the provider-agnostic shape.
-func buildLLMMessages(prior []domain.Message, currentText string, attachments []domain.AttachmentInput) []domain.LLMMessage {
-	out := make([]domain.LLMMessage, 0, len(prior)+2)
+// buildLLMMessages packs the system prompt + optional running-summary +
+// prior tail + current user turn (with images) into the provider-agnostic
+// shape. runningSummary — пустая строка у свежих диалогов; не-пустая
+// вставляется отдельным system-сообщением СРАЗУ после основного system-
+// промпта, чтобы LLM увидел конспект до конкретных turn'ов.
+func buildLLMMessages(runningSummary string, prior []domain.Message, currentText string, attachments []domain.AttachmentInput) []domain.LLMMessage {
+	out := make([]domain.LLMMessage, 0, len(prior)+3)
 	out = append(out, domain.LLMMessage{Role: enums.MessageRoleSystem, Content: systemPrompt})
+	if s := strings.TrimSpace(runningSummary); s != "" {
+		out = append(out, domain.LLMMessage{
+			Role:    enums.MessageRoleSystem,
+			Content: "Previous conversation summary:\n" + s,
+		})
+	}
 	for _, m := range prior {
 		out = append(out, domain.LLMMessage{Role: m.Role, Content: m.Content})
 	}
@@ -406,5 +486,25 @@ func buildLLMMessages(prior []domain.Message, currentText string, attachments []
 		Content: currentText,
 		Images:  toLLMImages(attachments),
 	})
+	return out
+}
+
+// turnsFromMessages / turnsToMessages — конверсия между доменным Message
+// и compaction.Turn. Пакет compaction domain-agnostic (см. doc.go), а мы
+// внутри copilot работаем в терминах domain.Message — мост между ними
+// живёт здесь, на границе use-case'а.
+func turnsFromMessages(msgs []domain.Message) []compaction.Turn {
+	out := make([]compaction.Turn, 0, len(msgs))
+	for _, m := range msgs {
+		out = append(out, compaction.Turn{Role: string(m.Role), Content: m.Content})
+	}
+	return out
+}
+
+func turnsToMessages(turns []compaction.Turn) []domain.Message {
+	out := make([]domain.Message, 0, len(turns))
+	for _, t := range turns {
+		out = append(out, domain.Message{Role: enums.MessageRole(t.Role), Content: t.Content})
+	}
 	return out
 }
