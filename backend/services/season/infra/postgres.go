@@ -9,9 +9,10 @@ import (
 	"druz9/season/domain"
 	seasondb "druz9/season/infra/db"
 
+	sharedpg "druz9/shared/pkg/pg"
+
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -42,8 +43,8 @@ func (p *Postgres) GetCurrent(ctx context.Context) (domain.Season, error) {
 // GetProgress loads (user, season). Missing → zero-valued Progress.
 func (p *Postgres) GetProgress(ctx context.Context, userID, seasonID uuid.UUID) (domain.Progress, error) {
 	row, err := p.q.GetSeasonProgress(ctx, seasondb.GetSeasonProgressParams{
-		UserID:   pgUUID(userID),
-		SeasonID: pgUUID(seasonID),
+		UserID:   sharedpg.UUID(userID),
+		SeasonID: sharedpg.UUID(seasonID),
 	})
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -52,8 +53,8 @@ func (p *Postgres) GetProgress(ctx context.Context, userID, seasonID uuid.UUID) 
 		return domain.Progress{}, fmt.Errorf("season.pg.GetProgress: %w", err)
 	}
 	return domain.Progress{
-		UserID:    fromPgUUID(row.UserID),
-		SeasonID:  fromPgUUID(row.SeasonID),
+		UserID:    sharedpg.UUIDFrom(row.UserID),
+		SeasonID:  sharedpg.UUIDFrom(row.SeasonID),
 		Points:    int(row.Points),
 		Tier:      int(row.Tier),
 		IsPremium: row.IsPremium,
@@ -64,8 +65,8 @@ func (p *Postgres) GetProgress(ctx context.Context, userID, seasonID uuid.UUID) 
 // IncrementPoints atomically bumps points and returns the new total.
 func (p *Postgres) IncrementPoints(ctx context.Context, userID, seasonID uuid.UUID, delta int) (int, error) {
 	total, err := p.q.IncrementSeasonPoints(ctx, seasondb.IncrementSeasonPointsParams{
-		UserID:   pgUUID(userID),
-		SeasonID: pgUUID(seasonID),
+		UserID:   sharedpg.UUID(userID),
+		SeasonID: sharedpg.UUID(seasonID),
 		Points:   int32(delta),
 	})
 	if err != nil {
@@ -77,8 +78,8 @@ func (p *Postgres) IncrementPoints(ctx context.Context, userID, seasonID uuid.UU
 // UpdateTier writes the recomputed tier.
 func (p *Postgres) UpdateTier(ctx context.Context, userID, seasonID uuid.UUID, tier int) error {
 	if err := p.q.UpdateSeasonTier(ctx, seasondb.UpdateSeasonTierParams{
-		UserID:   pgUUID(userID),
-		SeasonID: pgUUID(seasonID),
+		UserID:   sharedpg.UUID(userID),
+		SeasonID: sharedpg.UUID(seasonID),
 		Tier:     int32(tier),
 	}); err != nil {
 		return fmt.Errorf("season.pg.UpdateTier: %w", err)
@@ -88,20 +89,9 @@ func (p *Postgres) UpdateTier(ctx context.Context, userID, seasonID uuid.UUID, t
 
 // ── helpers ────────────────────────────────────────────────────────────────
 
-func pgUUID(id uuid.UUID) pgtype.UUID {
-	return pgtype.UUID{Bytes: id, Valid: true}
-}
-
-func fromPgUUID(p pgtype.UUID) uuid.UUID {
-	if !p.Valid {
-		return uuid.Nil
-	}
-	return uuid.UUID(p.Bytes)
-}
-
 func toSeason(r seasondb.Season) domain.Season {
 	out := domain.Season{
-		ID:        fromPgUUID(r.ID),
+		ID:        sharedpg.UUIDFrom(r.ID),
 		Name:      r.Name,
 		Slug:      r.Slug,
 		IsCurrent: r.IsCurrent,
@@ -142,8 +132,8 @@ func NewClaimStore(pool *pgxpool.Pool) *ClaimStore {
 // это валидная NewClaimState, не ошибка.
 func (c *ClaimStore) Get(ctx context.Context, userID, seasonID uuid.UUID) (domain.ClaimState, error) {
 	rows, err := c.q.ListSeasonRewardClaims(ctx, seasondb.ListSeasonRewardClaimsParams{
-		UserID:   pgUUID(userID),
-		SeasonID: pgUUID(seasonID),
+		UserID:   sharedpg.UUID(userID),
+		SeasonID: sharedpg.UUID(seasonID),
 	})
 	if err != nil {
 		return domain.ClaimState{}, fmt.Errorf("season.pg.ClaimStore.Get: %w", err)
@@ -172,8 +162,8 @@ func (c *ClaimStore) MarkClaimed(ctx context.Context, userID, seasonID uuid.UUID
 		return fmt.Errorf("season.pg.ClaimStore.MarkClaimed: unknown track %q", kind)
 	}
 	_, err := c.q.InsertSeasonRewardClaim(ctx, seasondb.InsertSeasonRewardClaimParams{
-		UserID:   pgUUID(userID),
-		SeasonID: pgUUID(seasonID),
+		UserID:   sharedpg.UUID(userID),
+		SeasonID: sharedpg.UUID(seasonID),
 		Kind:     string(kind),
 		Tier:     int32(tier),
 	})

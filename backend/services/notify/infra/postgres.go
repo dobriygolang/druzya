@@ -12,6 +12,8 @@ import (
 	notifydb "druz9/notify/infra/db"
 	"druz9/shared/enums"
 
+	sharedpg "druz9/shared/pkg/pg"
+
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -34,7 +36,7 @@ func NewPostgres(pool *pgxpool.Pool) *Postgres {
 
 // Get loads a row. Returns (DefaultPreferences-ish, ErrNotFound) if missing.
 func (p *Postgres) Get(ctx context.Context, userID uuid.UUID) (domain.Preferences, error) {
-	row, err := p.q.GetPreferences(ctx, pgUUID(userID))
+	row, err := p.q.GetPreferences(ctx, sharedpg.UUID(userID))
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return domain.Preferences{UserID: userID}, domain.ErrNotFound
@@ -47,7 +49,7 @@ func (p *Postgres) Get(ctx context.Context, userID uuid.UUID) (domain.Preference
 // Upsert persists a preferences row and returns the authoritative copy.
 func (p *Postgres) Upsert(ctx context.Context, pref domain.Preferences) (domain.Preferences, error) {
 	params := notifydb.UpsertPreferencesParams{
-		UserID:                    pgUUID(pref.UserID),
+		UserID:                    sharedpg.UUID(pref.UserID),
 		Channels:                  channelsToStrings(pref.Channels),
 		TelegramChatID:            pgText(pref.TelegramChatID),
 		QuietHoursFrom:            pgTimeOfDay(pref.Quiet, true),
@@ -65,7 +67,7 @@ func (p *Postgres) Upsert(ctx context.Context, pref domain.Preferences) (domain.
 // SetTelegramChatID stores the chat_id reported by the bot /link flow.
 func (p *Postgres) SetTelegramChatID(ctx context.Context, userID uuid.UUID, chatID string) error {
 	if err := p.q.SetTelegramChatID(ctx, notifydb.SetTelegramChatIDParams{
-		UserID:         pgUUID(userID),
+		UserID:         sharedpg.UUID(userID),
 		TelegramChatID: pgText(chatID),
 	}); err != nil {
 		return fmt.Errorf("notify.pg.SetTelegramChatID: %w", err)
@@ -75,7 +77,7 @@ func (p *Postgres) SetTelegramChatID(ctx context.Context, userID uuid.UUID, chat
 
 // ClearTelegramChatID nulls out the chat_id (called by /unlink).
 func (p *Postgres) ClearTelegramChatID(ctx context.Context, userID uuid.UUID) error {
-	if err := p.q.ClearTelegramChatID(ctx, pgUUID(userID)); err != nil {
+	if err := p.q.ClearTelegramChatID(ctx, sharedpg.UUID(userID)); err != nil {
 		return fmt.Errorf("notify.pg.ClearTelegramChatID: %w", err)
 	}
 	return nil
@@ -89,7 +91,7 @@ func (p *Postgres) ListWeeklyReportEnabled(ctx context.Context) ([]uuid.UUID, er
 	}
 	out := make([]uuid.UUID, 0, len(rows))
 	for _, r := range rows {
-		out = append(out, fromPgUUID(r))
+		out = append(out, sharedpg.UUIDFrom(r))
 	}
 	return out, nil
 }
@@ -103,7 +105,7 @@ func (p *Postgres) Insert(ctx context.Context, e domain.LogEntry) (domain.LogEnt
 		return domain.LogEntry{}, fmt.Errorf("notify.pg.Insert: marshal payload: %w", err)
 	}
 	row, err := p.q.InsertLog(ctx, notifydb.InsertLogParams{
-		UserID:  pgUUID(e.UserID),
+		UserID:  sharedpg.UUID(e.UserID),
 		Channel: string(e.Channel),
 		Type:    string(e.Type),
 		Payload: payload,
@@ -118,7 +120,7 @@ func (p *Postgres) Insert(ctx context.Context, e domain.LogEntry) (domain.LogEnt
 // RecentByType returns rows newer than `since` for dedup.
 func (p *Postgres) RecentByType(ctx context.Context, userID uuid.UUID, typ enums.NotificationType, since time.Time) ([]domain.LogEntry, error) {
 	rows, err := p.q.RecentLogByType(ctx, notifydb.RecentLogByTypeParams{
-		UserID:    pgUUID(userID),
+		UserID:    sharedpg.UUID(userID),
 		Type:      string(typ),
 		CreatedAt: pgtype.Timestamptz{Time: since, Valid: true},
 	})
@@ -135,7 +137,7 @@ func (p *Postgres) RecentByType(ctx context.Context, userID uuid.UUID, typ enums
 // MarkSent flips a row to status=sent.
 func (p *Postgres) MarkSent(ctx context.Context, id uuid.UUID, at time.Time) error {
 	if err := p.q.MarkLogSent(ctx, notifydb.MarkLogSentParams{
-		ID:     pgUUID(id),
+		ID:     sharedpg.UUID(id),
 		SentAt: pgtype.Timestamptz{Time: at, Valid: true},
 	}); err != nil {
 		return fmt.Errorf("notify.pg.MarkSent: %w", err)
@@ -146,7 +148,7 @@ func (p *Postgres) MarkSent(ctx context.Context, id uuid.UUID, at time.Time) err
 // MarkFailed flips a row to status=failed with a short error message.
 func (p *Postgres) MarkFailed(ctx context.Context, id uuid.UUID, errMsg string) error {
 	if err := p.q.MarkLogFailed(ctx, notifydb.MarkLogFailedParams{
-		ID:    pgUUID(id),
+		ID:    sharedpg.UUID(id),
 		Error: pgText(errMsg),
 	}); err != nil {
 		return fmt.Errorf("notify.pg.MarkFailed: %w", err)
@@ -165,12 +167,12 @@ func (p *Postgres) FindIDByUsername(ctx context.Context, username string) (uuid.
 		}
 		return uuid.Nil, fmt.Errorf("notify.pg.FindIDByUsername: %w", err)
 	}
-	return fromPgUUID(id), nil
+	return sharedpg.UUIDFrom(id), nil
 }
 
 // GetLocale returns the user's profile locale (defaults to "ru").
 func (p *Postgres) GetLocale(ctx context.Context, userID uuid.UUID) (string, error) {
-	loc, err := p.q.GetUserLocale(ctx, pgUUID(userID))
+	loc, err := p.q.GetUserLocale(ctx, sharedpg.UUID(userID))
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return "ru", nil
@@ -191,17 +193,6 @@ var (
 )
 
 // ── helpers ────────────────────────────────────────────────────────────────
-
-func pgUUID(id uuid.UUID) pgtype.UUID {
-	return pgtype.UUID{Bytes: id, Valid: true}
-}
-
-func fromPgUUID(p pgtype.UUID) uuid.UUID {
-	if !p.Valid {
-		return uuid.Nil
-	}
-	return uuid.UUID(p.Bytes)
-}
 
 func pgText(s string) pgtype.Text {
 	if s == "" {
@@ -248,7 +239,7 @@ func stringsToChannels(ss []string) []enums.NotificationChannel {
 
 func toPreferences(r notifydb.NotificationPreference) domain.Preferences {
 	p := domain.Preferences{
-		UserID:                    fromPgUUID(r.UserID),
+		UserID:                    sharedpg.UUIDFrom(r.UserID),
 		Channels:                  stringsToChannels(r.Channels),
 		WeeklyReportEnabled:       r.WeeklyReportEnabled,
 		SkillDecayWarningsEnabled: r.SkillDecayWarningsEnabled,
@@ -277,8 +268,8 @@ func microsToTime(micros int64) time.Time {
 
 func toLogEntry(r notifydb.NotificationsLog) domain.LogEntry {
 	out := domain.LogEntry{
-		ID:        fromPgUUID(r.ID),
-		UserID:    fromPgUUID(r.UserID),
+		ID:        sharedpg.UUIDFrom(r.ID),
+		UserID:    sharedpg.UUIDFrom(r.UserID),
 		Channel:   enums.NotificationChannel(r.Channel),
 		Type:      enums.NotificationType(r.Type),
 		Status:    r.Status,

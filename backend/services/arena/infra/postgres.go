@@ -12,6 +12,8 @@ import (
 	arenadb "druz9/arena/infra/db"
 	"druz9/shared/enums"
 
+	sharedpg "druz9/shared/pkg/pg"
+
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -43,7 +45,7 @@ func (p *Postgres) CreateMatch(ctx context.Context, m domain.Match, parts []doma
 		startedAt = pgtype.Timestamptz{Time: *m.StartedAt, Valid: true}
 	}
 	row, err := qtx.CreateArenaMatch(ctx, arenadb.CreateArenaMatchParams{
-		TaskID:      pgUUID(m.TaskID),
+		TaskID:      sharedpg.UUID(m.TaskID),
 		TaskVersion: int32(m.TaskVersion),
 		Section:     string(m.Section),
 		Mode:        string(m.Mode),
@@ -56,7 +58,7 @@ func (p *Postgres) CreateMatch(ctx context.Context, m domain.Match, parts []doma
 	for _, part := range parts {
 		if err := qtx.InsertArenaParticipant(ctx, arenadb.InsertArenaParticipantParams{
 			MatchID:   row.ID,
-			UserID:    pgUUID(part.UserID),
+			UserID:    sharedpg.UUID(part.UserID),
 			Team:      int32(part.Team),
 			EloBefore: int32(part.EloBefore),
 		}); err != nil {
@@ -71,7 +73,7 @@ func (p *Postgres) CreateMatch(ctx context.Context, m domain.Match, parts []doma
 
 // Get возвращает матч по id.
 func (p *Postgres) Get(ctx context.Context, id uuid.UUID) (domain.Match, error) {
-	row, err := p.q.GetArenaMatch(ctx, pgUUID(id))
+	row, err := p.q.GetArenaMatch(ctx, sharedpg.UUID(id))
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return domain.Match{}, domain.ErrNotFound
@@ -83,7 +85,7 @@ func (p *Postgres) Get(ctx context.Context, id uuid.UUID) (domain.Match, error) 
 
 // ListParticipants возвращает участников, упорядоченных по команде.
 func (p *Postgres) ListParticipants(ctx context.Context, matchID uuid.UUID) ([]domain.Participant, error) {
-	rows, err := p.q.ListArenaParticipants(ctx, pgUUID(matchID))
+	rows, err := p.q.ListArenaParticipants(ctx, sharedpg.UUID(matchID))
 	if err != nil {
 		return nil, fmt.Errorf("arena.pg.ListParticipants: %w", err)
 	}
@@ -108,7 +110,7 @@ func (p *Postgres) UpdateStatus(ctx context.Context, id uuid.UUID, status enums.
 		fa = pgtype.Timestamptz{Time: *finishedAt, Valid: true}
 	}
 	affected, err := p.q.UpdateArenaMatchStatus(ctx, arenadb.UpdateArenaMatchStatusParams{
-		ID:         pgUUID(id),
+		ID:         sharedpg.UUID(id),
 		Status:     string(status),
 		StartedAt:  sa,
 		FinishedAt: fa,
@@ -125,8 +127,8 @@ func (p *Postgres) UpdateStatus(ctx context.Context, id uuid.UUID, status enums.
 // SetWinner фиксирует победителя и завершает матч.
 func (p *Postgres) SetWinner(ctx context.Context, id uuid.UUID, winner uuid.UUID, finishedAt time.Time) error {
 	affected, err := p.q.SetArenaMatchWinner(ctx, arenadb.SetArenaMatchWinnerParams{
-		ID:         pgUUID(id),
-		WinnerID:   pgUUID(winner),
+		ID:         sharedpg.UUID(id),
+		WinnerID:   sharedpg.UUID(winner),
 		FinishedAt: pgtype.Timestamptz{Time: finishedAt, Valid: true},
 	})
 	if err != nil {
@@ -145,7 +147,7 @@ func (p *Postgres) SetWinningTeam(ctx context.Context, id uuid.UUID, team int, f
 		return fmt.Errorf("arena.pg.SetWinningTeam: invalid team %d", team)
 	}
 	affected, err := p.q.SetArenaMatchWinningTeam(ctx, arenadb.SetArenaMatchWinningTeamParams{
-		ID:            pgUUID(id),
+		ID:            sharedpg.UUID(id),
 		WinningTeamID: pgtype.Int2{Int16: int16(team), Valid: true},
 		FinishedAt:    pgtype.Timestamptz{Time: finishedAt, Valid: true},
 	})
@@ -161,8 +163,8 @@ func (p *Postgres) SetWinningTeam(ctx context.Context, id uuid.UUID, team int, f
 // SetTask проставляет выбранный task на матч.
 func (p *Postgres) SetTask(ctx context.Context, id uuid.UUID, taskID uuid.UUID, taskVersion int) error {
 	affected, err := p.q.SetArenaMatchTask(ctx, arenadb.SetArenaMatchTaskParams{
-		ID:          pgUUID(id),
-		TaskID:      pgUUID(taskID),
+		ID:          sharedpg.UUID(id),
+		TaskID:      sharedpg.UUID(taskID),
 		TaskVersion: int32(taskVersion),
 	})
 	if err != nil {
@@ -190,8 +192,8 @@ func (p *Postgres) UpsertParticipantResult(ctx context.Context, part domain.Part
 		submitted = pgtype.Timestamptz{Time: *part.SubmittedAt, Valid: true}
 	}
 	affected, err := p.q.UpsertParticipantResult(ctx, arenadb.UpsertParticipantResultParams{
-		MatchID:        pgUUID(part.MatchID),
-		UserID:         pgUUID(part.UserID),
+		MatchID:        sharedpg.UUID(part.MatchID),
+		UserID:         sharedpg.UUID(part.UserID),
 		SolveTimeMs:    solve,
 		SuspicionScore: susp,
 		SubmittedAt:    submitted,
@@ -220,7 +222,7 @@ func (p *Postgres) ListByUser(
 	sectionFilter enums.Section,
 ) ([]domain.MatchHistoryEntry, int, error) {
 	rows, err := p.q.ListMyMatches(ctx, arenadb.ListMyMatchesParams{
-		UserID:    pgUUID(userID),
+		UserID:    sharedpg.UUID(userID),
 		Mode:      string(modeFilter),
 		Section:   string(sectionFilter),
 		LimitVal:  int32(limit),
@@ -230,7 +232,7 @@ func (p *Postgres) ListByUser(
 		return nil, 0, fmt.Errorf("arena.pg.ListByUser: %w", err)
 	}
 	totalRaw, err := p.q.CountMyMatches(ctx, arenadb.CountMyMatchesParams{
-		UserID:  pgUUID(userID),
+		UserID:  sharedpg.UUID(userID),
 		Mode:    string(modeFilter),
 		Section: string(sectionFilter),
 	})
@@ -241,11 +243,11 @@ func (p *Postgres) ListByUser(
 	for _, r := range rows {
 		var winner *uuid.UUID
 		if r.WinnerID.Valid {
-			w := fromPgUUID(r.WinnerID)
+			w := sharedpg.UUIDFrom(r.WinnerID)
 			winner = &w
 		}
 		entry := domain.MatchHistoryEntry{
-			MatchID: fromPgUUID(r.MatchID),
+			MatchID: sharedpg.UUIDFrom(r.MatchID),
 			Mode:    enums.ArenaMode(r.Mode),
 			Section: enums.Section(r.Section),
 			Result:  domain.ResultFor(userID, winner, enums.MatchStatus(r.Status)),
@@ -254,7 +256,7 @@ func (p *Postgres) ListByUser(
 			entry.FinishedAt = r.FinishedAt.Time.UTC()
 		}
 		if r.OpponentUserID.Valid {
-			entry.OpponentUserID = fromPgUUID(r.OpponentUserID)
+			entry.OpponentUserID = sharedpg.UUIDFrom(r.OpponentUserID)
 		}
 		if r.OpponentUsername.Valid {
 			entry.OpponentUsername = r.OpponentUsername.String
@@ -298,7 +300,7 @@ func (p *Postgres) PickBySectionDifficulty(ctx context.Context, section enums.Se
 		return domain.TaskPublic{}, fmt.Errorf("arena.pg.PickBySectionDifficulty: %w", err)
 	}
 	return domain.TaskPublic{
-		ID:            fromPgUUID(row.ID),
+		ID:            sharedpg.UUIDFrom(row.ID),
 		Version:       int(row.Version),
 		Slug:          row.Slug,
 		Title:         row.TitleRu,
@@ -330,7 +332,7 @@ func (p *Postgres) FindCurrentMatch(ctx context.Context, userID uuid.UUID) (doma
 		 ORDER BY m.created_at DESC
 		 LIMIT 1
 	`
-	row := p.pool.QueryRow(ctx, sql, pgUUID(userID))
+	row := p.pool.QueryRow(ctx, sql, sharedpg.UUID(userID))
 	var (
 		am arenadb.ArenaMatch
 	)
@@ -348,7 +350,7 @@ func (p *Postgres) FindCurrentMatch(ctx context.Context, userID uuid.UUID) (doma
 
 // GetByID тянет task по id, solution_hint исключается.
 func (p *Postgres) GetByID(ctx context.Context, id uuid.UUID) (domain.TaskPublic, error) {
-	row, err := p.q.GetArenaTaskPublic(ctx, pgUUID(id))
+	row, err := p.q.GetArenaTaskPublic(ctx, sharedpg.UUID(id))
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return domain.TaskPublic{}, domain.ErrNotFound
@@ -356,7 +358,7 @@ func (p *Postgres) GetByID(ctx context.Context, id uuid.UUID) (domain.TaskPublic
 		return domain.TaskPublic{}, fmt.Errorf("arena.pg.GetByID: %w", err)
 	}
 	return domain.TaskPublic{
-		ID:            fromPgUUID(row.ID),
+		ID:            sharedpg.UUIDFrom(row.ID),
 		Version:       int(row.Version),
 		Slug:          row.Slug,
 		Title:         row.TitleRu,
@@ -370,15 +372,6 @@ func (p *Postgres) GetByID(ctx context.Context, id uuid.UUID) (domain.TaskPublic
 }
 
 // ── вспомогательные функции ────────────────────────────────────────────────
-
-func pgUUID(id uuid.UUID) pgtype.UUID { return pgtype.UUID{Bytes: id, Valid: true} }
-
-func fromPgUUID(p pgtype.UUID) uuid.UUID {
-	if !p.Valid {
-		return uuid.Nil
-	}
-	return uuid.UUID(p.Bytes)
-}
 
 // createRowToArenaMatch / getRowToArenaMatch — мостики после того, как sqlc
 // перешёл на subset-row-типы для CreateArenaMatch/GetArenaMatch (потому что
@@ -405,8 +398,8 @@ func getRowToArenaMatch(r arenadb.GetArenaMatchRow) arenadb.ArenaMatch {
 
 func matchFromRow(r arenadb.ArenaMatch) domain.Match {
 	m := domain.Match{
-		ID:          fromPgUUID(r.ID),
-		TaskID:      fromPgUUID(r.TaskID),
+		ID:          sharedpg.UUIDFrom(r.ID),
+		TaskID:      sharedpg.UUIDFrom(r.TaskID),
 		TaskVersion: int(r.TaskVersion),
 		Section:     enums.Section(r.Section),
 		Mode:        enums.ArenaMode(r.Mode),
@@ -414,7 +407,7 @@ func matchFromRow(r arenadb.ArenaMatch) domain.Match {
 		CreatedAt:   r.CreatedAt.Time,
 	}
 	if r.WinnerID.Valid {
-		w := fromPgUUID(r.WinnerID)
+		w := sharedpg.UUIDFrom(r.WinnerID)
 		m.WinnerID = &w
 	}
 	if r.StartedAt.Valid {
@@ -430,8 +423,8 @@ func matchFromRow(r arenadb.ArenaMatch) domain.Match {
 
 func participantFromRow(r arenadb.ArenaParticipant) domain.Participant {
 	p := domain.Participant{
-		MatchID:   fromPgUUID(r.MatchID),
-		UserID:    fromPgUUID(r.UserID),
+		MatchID:   sharedpg.UUIDFrom(r.MatchID),
+		UserID:    sharedpg.UUIDFrom(r.UserID),
 		Team:      int(r.Team),
 		EloBefore: int(r.EloBefore),
 	}

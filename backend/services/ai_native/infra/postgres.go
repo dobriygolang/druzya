@@ -14,6 +14,8 @@ import (
 	ai_nativedb "druz9/ai_native/infra/db"
 	"druz9/shared/enums"
 
+	sharedpg "druz9/shared/pkg/pg"
+
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -38,8 +40,8 @@ func NewSessions(pool *pgxpool.Pool) *Sessions {
 // Create inserts a new native_sessions row and returns the hydrated entity.
 func (s *Sessions) Create(ctx context.Context, in domain.Session) (domain.Session, error) {
 	params := ai_nativedb.CreateNativeSessionParams{
-		UserID:     pgUUID(in.UserID),
-		TaskID:     pgUUID(in.TaskID),
+		UserID:     sharedpg.UUID(in.UserID),
+		TaskID:     sharedpg.UUID(in.TaskID),
 		Section:    in.Section.String(),
 		Difficulty: in.Difficulty.String(),
 		LlmModel:   pgText(in.LLMModel.String()),
@@ -53,7 +55,7 @@ func (s *Sessions) Create(ctx context.Context, in domain.Session) (domain.Sessio
 
 // Get loads a session by id.
 func (s *Sessions) Get(ctx context.Context, id uuid.UUID) (domain.Session, error) {
-	row, err := s.q.GetNativeSession(ctx, pgUUID(id))
+	row, err := s.q.GetNativeSession(ctx, sharedpg.UUID(id))
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return domain.Session{}, fmt.Errorf("native.Sessions.Get: %w", domain.ErrNotFound)
@@ -66,7 +68,7 @@ func (s *Sessions) Get(ctx context.Context, id uuid.UUID) (domain.Session, error
 // UpdateScores writes the latest snapshot without touching finished_at.
 func (s *Sessions) UpdateScores(ctx context.Context, id uuid.UUID, scores domain.Scores) error {
 	affected, err := s.q.UpdateNativeSessionScores(ctx, ai_nativedb.UpdateNativeSessionScoresParams{
-		ID:                pgUUID(id),
+		ID:                sharedpg.UUID(id),
 		ContextScore:      int32(scores.Context),
 		VerificationScore: int32(scores.Verification),
 		JudgmentScore:     int32(scores.Judgment),
@@ -85,7 +87,7 @@ func (s *Sessions) UpdateScores(ctx context.Context, id uuid.UUID, scores domain
 // returns ErrInvalidState on a second attempt.
 func (s *Sessions) MarkFinished(ctx context.Context, id uuid.UUID, scores domain.Scores) error {
 	affected, err := s.q.MarkNativeSessionFinished(ctx, ai_nativedb.MarkNativeSessionFinishedParams{
-		ID:                pgUUID(id),
+		ID:                sharedpg.UUID(id),
 		ContextScore:      int32(scores.Context),
 		VerificationScore: int32(scores.Verification),
 		JudgmentScore:     int32(scores.Judgment),
@@ -121,14 +123,14 @@ func (p *Provenance) Insert(ctx context.Context, in domain.ProvenanceRecord) (do
 		return domain.ProvenanceRecord{}, fmt.Errorf("native.Provenance.Insert: invalid kind %q", in.Kind)
 	}
 	params := ai_nativedb.InsertNativeProvenanceParams{
-		SessionID:            pgUUID(in.SessionID),
+		SessionID:            sharedpg.UUID(in.SessionID),
 		Kind:                 in.Kind.String(),
 		Snippet:              in.Snippet,
 		Column5:              in.AIPrompt,
 		HasHallucinationTrap: in.HasHallucinationTrap,
 	}
 	if in.ParentID != nil {
-		params.ParentID = pgUUID(*in.ParentID)
+		params.ParentID = sharedpg.UUID(*in.ParentID)
 	}
 	row, err := p.q.InsertNativeProvenance(ctx, params)
 	if err != nil {
@@ -139,7 +141,7 @@ func (p *Provenance) Insert(ctx context.Context, in domain.ProvenanceRecord) (do
 
 // Get returns the provenance record with the given id.
 func (p *Provenance) Get(ctx context.Context, id uuid.UUID) (domain.ProvenanceRecord, error) {
-	row, err := p.q.GetNativeProvenance(ctx, pgUUID(id))
+	row, err := p.q.GetNativeProvenance(ctx, sharedpg.UUID(id))
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return domain.ProvenanceRecord{}, fmt.Errorf("native.Provenance.Get: %w", domain.ErrNotFound)
@@ -151,7 +153,7 @@ func (p *Provenance) Get(ctx context.Context, id uuid.UUID) (domain.ProvenanceRe
 
 // List returns all provenance records for a session, in creation order.
 func (p *Provenance) List(ctx context.Context, sessionID uuid.UUID) ([]domain.ProvenanceRecord, error) {
-	rows, err := p.q.ListNativeProvenance(ctx, pgUUID(sessionID))
+	rows, err := p.q.ListNativeProvenance(ctx, sharedpg.UUID(sessionID))
 	if err != nil {
 		return nil, fmt.Errorf("native.Provenance.List: %w", err)
 	}
@@ -169,7 +171,7 @@ func (p *Provenance) MarkVerified(ctx context.Context, id uuid.UUID, newKind str
 		return fmt.Errorf("native.Provenance.MarkVerified: invalid kind %q", newKind)
 	}
 	affected, err := p.q.MarkNativeProvenanceVerified(ctx, ai_nativedb.MarkNativeProvenanceVerifiedParams{
-		ID:   pgUUID(id),
+		ID:   sharedpg.UUID(id),
 		Kind: newKind,
 	})
 	if err != nil {
@@ -206,7 +208,7 @@ func (t *Tasks) PickForSession(ctx context.Context, section, difficulty string) 
 		return domain.TaskWithHint{}, fmt.Errorf("native.Tasks.PickForSession: %w", err)
 	}
 	return domain.TaskWithHint{
-		ID:           fromPgUUID(row.ID),
+		ID:           sharedpg.UUIDFrom(row.ID),
 		Slug:         row.Slug,
 		Title:        row.TitleRu,
 		Description:  row.DescriptionRu,
@@ -218,7 +220,7 @@ func (t *Tasks) PickForSession(ctx context.Context, section, difficulty string) 
 
 // GetWithHint fetches a task by id, hint included.
 func (t *Tasks) GetWithHint(ctx context.Context, id uuid.UUID) (domain.TaskWithHint, error) {
-	row, err := t.q.GetNativeTaskWithHint(ctx, pgUUID(id))
+	row, err := t.q.GetNativeTaskWithHint(ctx, sharedpg.UUID(id))
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return domain.TaskWithHint{}, fmt.Errorf("native.Tasks.GetWithHint: %w", domain.ErrNotFound)
@@ -226,7 +228,7 @@ func (t *Tasks) GetWithHint(ctx context.Context, id uuid.UUID) (domain.TaskWithH
 		return domain.TaskWithHint{}, fmt.Errorf("native.Tasks.GetWithHint: %w", err)
 	}
 	return domain.TaskWithHint{
-		ID:           fromPgUUID(row.ID),
+		ID:           sharedpg.UUIDFrom(row.ID),
 		Slug:         row.Slug,
 		Title:        row.TitleRu,
 		Description:  row.DescriptionRu,
@@ -247,7 +249,7 @@ func NewUsers(pool *pgxpool.Pool) *Users { return &Users{q: ai_nativedb.New(pool
 // Get returns the minimal user context. Free-plan is the conservative fallback
 // when the subscription row is missing.
 func (u *Users) Get(ctx context.Context, id uuid.UUID) (domain.UserContext, error) {
-	plan, err := u.q.GetNativeUserSubscription(ctx, pgUUID(id))
+	plan, err := u.q.GetNativeUserSubscription(ctx, sharedpg.UUID(id))
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return domain.UserContext{ID: id, Subscription: enums.SubscriptionPlanFree}, nil
@@ -272,9 +274,9 @@ func sessionFromRow(r ai_nativedb.NativeSession) (domain.Session, error) {
 		return domain.Session{}, fmt.Errorf("native.sessionFromRow: invalid enum section=%q diff=%q", sec, diff)
 	}
 	out := domain.Session{
-		ID:         fromPgUUID(r.ID),
-		UserID:     fromPgUUID(r.UserID),
-		TaskID:     fromPgUUID(r.TaskID),
+		ID:         sharedpg.UUIDFrom(r.ID),
+		UserID:     sharedpg.UUIDFrom(r.UserID),
+		TaskID:     sharedpg.UUIDFrom(r.TaskID),
 		Section:    sec,
 		Difficulty: diff,
 		Scores: domain.Scores{
@@ -299,15 +301,15 @@ func sessionFromRow(r ai_nativedb.NativeSession) (domain.Session, error) {
 
 func provenanceFromRow(r ai_nativedb.NativeProvenance) domain.ProvenanceRecord {
 	out := domain.ProvenanceRecord{
-		ID:                   fromPgUUID(r.ID),
-		SessionID:            fromPgUUID(r.SessionID),
+		ID:                   sharedpg.UUIDFrom(r.ID),
+		SessionID:            sharedpg.UUIDFrom(r.SessionID),
 		Kind:                 enums.ProvenanceKind(r.Kind),
 		Snippet:              r.Snippet,
 		HasHallucinationTrap: r.HasHallucinationTrap,
 		CreatedAt:            r.CreatedAt.Time,
 	}
 	if r.ParentID.Valid {
-		pid := fromPgUUID(r.ParentID)
+		pid := sharedpg.UUIDFrom(r.ParentID)
 		out.ParentID = &pid
 	}
 	if r.AiPrompt.Valid {
@@ -318,15 +320,6 @@ func provenanceFromRow(r ai_nativedb.NativeProvenance) domain.ProvenanceRecord {
 		out.VerifiedAt = &t
 	}
 	return out
-}
-
-func pgUUID(id uuid.UUID) pgtype.UUID { return pgtype.UUID{Bytes: id, Valid: true} }
-
-func fromPgUUID(p pgtype.UUID) uuid.UUID {
-	if !p.Valid {
-		return uuid.Nil
-	}
-	return uuid.UUID(p.Bytes)
 }
 
 func pgText(s string) pgtype.Text { return pgtype.Text{String: s, Valid: s != ""} }

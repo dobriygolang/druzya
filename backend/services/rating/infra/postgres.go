@@ -10,6 +10,8 @@ import (
 	ratingdb "druz9/rating/infra/db"
 	"druz9/shared/enums"
 
+	sharedpg "druz9/shared/pkg/pg"
+
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -30,7 +32,7 @@ func NewPostgres(pool *pgxpool.Pool) *Postgres {
 
 // List returns every section rating for a user.
 func (p *Postgres) List(ctx context.Context, userID uuid.UUID) ([]domain.SectionRating, error) {
-	rows, err := p.q.GetRatingsByUser(ctx, pgUUID(userID))
+	rows, err := p.q.GetRatingsByUser(ctx, sharedpg.UUID(userID))
 	if err != nil {
 		return nil, fmt.Errorf("rating.pg.List: %w", err)
 	}
@@ -49,7 +51,7 @@ func (p *Postgres) Upsert(ctx context.Context, r domain.SectionRating) error {
 		last = pgtype.Timestamptz{Time: *r.LastMatchAt, Valid: true}
 	}
 	if err := p.q.UpsertRating(ctx, ratingdb.UpsertRatingParams{
-		UserID:       pgUUID(r.UserID),
+		UserID:       sharedpg.UUID(r.UserID),
 		Section:      string(r.Section),
 		Elo:          int32(r.Elo),
 		MatchesCount: int32(r.MatchesCount),
@@ -65,7 +67,7 @@ func (p *Postgres) Upsert(ctx context.Context, r domain.SectionRating) error {
 // elo = ratings.elo + $delta (см. queries/rating.sql).
 func (p *Postgres) ApplyDelta(ctx context.Context, d domain.RatingDelta) (int, error) {
 	newElo, err := p.q.ApplyRatingDelta(ctx, ratingdb.ApplyRatingDeltaParams{
-		UserID:      pgUUID(d.UserID),
+		UserID:      sharedpg.UUID(d.UserID),
 		Section:     string(d.Section),
 		EloDelta:    int32(d.EloDelta),
 		LastMatchAt: pgtype.Timestamptz{Time: d.LastMatchAt, Valid: true},
@@ -88,7 +90,7 @@ func (p *Postgres) Top(ctx context.Context, section enums.Section, limit int) ([
 	out := make([]domain.LeaderboardEntry, 0, len(rows))
 	for _, r := range rows {
 		out = append(out, domain.LeaderboardEntry{
-			UserID:   fromPgUUID(r.UserID),
+			UserID:   sharedpg.UUIDFrom(r.UserID),
 			Username: r.Username,
 			Title:    r.Title,
 			Elo:      int(r.Elo),
@@ -101,7 +103,7 @@ func (p *Postgres) Top(ctx context.Context, section enums.Section, limit int) ([
 // FindRank returns the user's 1-based rank within a section.
 func (p *Postgres) FindRank(ctx context.Context, userID uuid.UUID, section enums.Section) (int, error) {
 	rank, err := p.q.FindRank(ctx, ratingdb.FindRankParams{
-		UserID:  pgUUID(userID),
+		UserID:  sharedpg.UUID(userID),
 		Section: string(section),
 	})
 	if err != nil {
@@ -131,20 +133,9 @@ func (p *Postgres) HistoryLast12Weeks(_ context.Context, _ uuid.UUID) ([]domain.
 
 // ── helpers ────────────────────────────────────────────────────────────────
 
-func pgUUID(id uuid.UUID) pgtype.UUID {
-	return pgtype.UUID{Bytes: id, Valid: true}
-}
-
-func fromPgUUID(p pgtype.UUID) uuid.UUID {
-	if !p.Valid {
-		return uuid.Nil
-	}
-	return uuid.UUID(p.Bytes)
-}
-
 func toSectionRating(r ratingdb.Rating) domain.SectionRating {
 	out := domain.SectionRating{
-		UserID:       fromPgUUID(r.UserID),
+		UserID:       sharedpg.UUIDFrom(r.UserID),
 		Section:      enums.Section(r.Section),
 		Elo:          int(r.Elo),
 		MatchesCount: int(r.MatchesCount),

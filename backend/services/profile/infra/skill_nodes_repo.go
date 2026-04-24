@@ -7,13 +7,15 @@ import (
 	"druz9/profile/domain"
 	"druz9/shared/enums"
 
+	sharedpg "druz9/shared/pkg/pg"
+
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
 // ListSkillNodes via sqlc.
 func (p *Postgres) ListSkillNodes(ctx context.Context, userID uuid.UUID) ([]domain.SkillNode, error) {
-	rows, err := p.q.ListSkillNodes(ctx, pgUUID(userID))
+	rows, err := p.q.ListSkillNodes(ctx, sharedpg.UUID(userID))
 	if err != nil {
 		return nil, fmt.Errorf("profile.Postgres.ListSkillNodes: %w", err)
 	}
@@ -75,7 +77,7 @@ func (p *Postgres) UpsertSkillNode(ctx context.Context, userID uuid.UUID, nodeKe
 	sn.NodeKey = nodeKey
 	var unlocked, decayed pgtype.Timestamptz
 	var updated pgtype.Timestamptz
-	if err := p.pool.QueryRow(ctx, q, pgUUID(userID), nodeKey, int32(progress)).Scan(
+	if err := p.pool.QueryRow(ctx, q, sharedpg.UUID(userID), nodeKey, int32(progress)).Scan(
 		&sn.Progress, &unlocked, &decayed, &updated,
 	); err != nil {
 		return domain.SkillNode{}, fmt.Errorf("profile.Postgres.UpsertSkillNode: %w", err)
@@ -96,7 +98,7 @@ func (p *Postgres) UpsertSkillNode(ctx context.Context, userID uuid.UUID, nodeKe
 
 // ListRatings via sqlc.
 func (p *Postgres) ListRatings(ctx context.Context, userID uuid.UUID) ([]domain.SectionRating, error) {
-	rows, err := p.q.ListRatings(ctx, pgUUID(userID))
+	rows, err := p.q.ListRatings(ctx, sharedpg.UUID(userID))
 	if err != nil {
 		return nil, fmt.Errorf("profile.Postgres.ListRatings: %w", err)
 	}

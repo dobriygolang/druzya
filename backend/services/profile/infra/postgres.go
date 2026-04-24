@@ -24,6 +24,8 @@ import (
 	profiledb "druz9/profile/infra/db"
 	"druz9/shared/enums"
 
+	sharedpg "druz9/shared/pkg/pg"
+
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -44,7 +46,7 @@ func NewPostgres(pool *pgxpool.Pool) *Postgres {
 // GetByUserID joins users + profiles + subscriptions + ai_credits via sqlc,
 // then pulls ratings separately.
 func (p *Postgres) GetByUserID(ctx context.Context, userID uuid.UUID) (domain.Bundle, error) {
-	row, err := p.q.GetProfileBundle(ctx, pgUUID(userID))
+	row, err := p.q.GetProfileBundle(ctx, sharedpg.UUID(userID))
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return domain.Bundle{}, fmt.Errorf("profile.Postgres.GetByUserID: %w", domain.ErrNotFound)
@@ -53,7 +55,7 @@ func (p *Postgres) GetByUserID(ctx context.Context, userID uuid.UUID) (domain.Bu
 	}
 	b := domain.Bundle{}
 	b.User = domain.User{
-		ID:          fromPgUUID(row.ID),
+		ID:          sharedpg.UUIDFrom(row.ID),
 		Email:       pgText(row.Email),
 		Username:    row.Username,
 		Role:        enums.UserRole(row.Role),
@@ -113,7 +115,7 @@ func (p *Postgres) GetPublic(ctx context.Context, username string) (domain.Publi
 	}
 	b := domain.PublicBundle{}
 	b.User = domain.User{
-		ID:          fromPgUUID(row.ID),
+		ID:          sharedpg.UUIDFrom(row.ID),
 		Username:    row.Username,
 		DisplayName: pgText(row.DisplayName),
 		CreatedAt:   row.CreatedAt.Time,
@@ -150,7 +152,7 @@ func (p *Postgres) EnsureDefaults(ctx context.Context, userID uuid.UUID) error {
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
 	qtx := p.q.WithTx(tx)
-	uid := pgUUID(userID)
+	uid := sharedpg.UUID(userID)
 
 	if err := qtx.EnsureProfile(ctx, uid); err != nil {
 		return fmt.Errorf("profile.Postgres.EnsureDefaults: profile: %w", err)
@@ -178,7 +180,7 @@ func (p *Postgres) EnsureDefaults(ctx context.Context, userID uuid.UUID) error {
 // ApplyXPDelta updates level+xp via sqlc.
 func (p *Postgres) ApplyXPDelta(ctx context.Context, userID uuid.UUID, addXP int, newLevel int, remainderXP int64) error {
 	if err := p.q.UpdateProfileXPLevel(ctx, profiledb.UpdateProfileXPLevelParams{
-		UserID: pgUUID(userID),
+		UserID: sharedpg.UUID(userID),
 		Level:  int32(newLevel),
 		Xp:     remainderXP,
 	}); err != nil {
@@ -194,7 +196,7 @@ func (p *Postgres) UpdateCareerStage(ctx context.Context, userID uuid.UUID, stag
 		return fmt.Errorf("profile.Postgres.UpdateCareerStage: invalid stage %q", stage)
 	}
 	if err := p.q.UpdateCareerStage(ctx, profiledb.UpdateCareerStageParams{
-		UserID:      pgUUID(userID),
+		UserID:      sharedpg.UUID(userID),
 		CareerStage: stage.String(),
 	}); err != nil {
 		return fmt.Errorf("profile.Postgres.UpdateCareerStage: %w", err)
@@ -203,15 +205,6 @@ func (p *Postgres) UpdateCareerStage(ctx context.Context, userID uuid.UUID, stag
 }
 
 // ── helpers ────────────────────────────────────────────────────────────────
-
-func pgUUID(id uuid.UUID) pgtype.UUID { return pgtype.UUID{Bytes: id, Valid: true} }
-
-func fromPgUUID(p pgtype.UUID) uuid.UUID {
-	if !p.Valid {
-		return uuid.Nil
-	}
-	return uuid.UUID(p.Bytes)
-}
 
 func pgText(t pgtype.Text) string {
 	if !t.Valid {

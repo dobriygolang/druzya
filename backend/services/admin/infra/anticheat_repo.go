@@ -9,6 +9,8 @@ import (
 	admindb "druz9/admin/infra/db"
 	"druz9/shared/enums"
 
+	sharedpg "druz9/shared/pkg/pg"
+
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -117,8 +119,8 @@ type anticheatRow struct {
 
 func anticheatFromRow(r anticheatRow) domain.AnticheatSignal {
 	out := domain.AnticheatSignal{
-		ID:        fromPgUUID(r.ID),
-		UserID:    fromPgUUID(r.UserID),
+		ID:        sharedpg.UUIDFrom(r.ID),
+		UserID:    sharedpg.UUIDFrom(r.UserID),
 		Username:  r.Username.String,
 		Type:      enums.AnticheatSignalType(r.Type),
 		Severity:  enums.SeverityLevel(r.Severity),
@@ -126,7 +128,7 @@ func anticheatFromRow(r anticheatRow) domain.AnticheatSignal {
 		CreatedAt: r.CreatedAt.Time,
 	}
 	if r.MatchID.Valid {
-		m := fromPgUUID(r.MatchID)
+		m := sharedpg.UUIDFrom(r.MatchID)
 		out.MatchID = &m
 	}
 	return out

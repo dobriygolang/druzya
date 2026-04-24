@@ -10,6 +10,8 @@ import (
 	admindb "druz9/admin/infra/db"
 	"druz9/shared/enums"
 
+	sharedpg "druz9/shared/pkg/pg"
+
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -117,7 +119,7 @@ func (t *Tasks) List(ctx context.Context, f domain.TaskFilter) (domain.TaskPage,
 // GetByID fetches a task plus its nested collections (test cases, templates,
 // follow-up questions). Returns ErrNotFound when the row is missing.
 func (t *Tasks) GetByID(ctx context.Context, id uuid.UUID) (domain.AdminTask, error) {
-	row, err := t.q.GetTaskByID(ctx, pgUUID(id))
+	row, err := t.q.GetTaskByID(ctx, sharedpg.UUID(id))
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return domain.AdminTask{}, fmt.Errorf("admin.Tasks.GetByID: %w", domain.ErrNotFound)
@@ -155,7 +157,7 @@ func (t *Tasks) Create(ctx context.Context, in domain.TaskUpsert) (domain.AdminT
 		if err != nil {
 			return mapUniqueErr(err)
 		}
-		taskID := fromPgUUID(row.ID)
+		taskID := sharedpg.UUIDFrom(row.ID)
 		if err := insertChildren(ctx, q, row.ID, in); err != nil {
 			return err
 		}
@@ -181,7 +183,7 @@ func (t *Tasks) Update(ctx context.Context, id uuid.UUID, in domain.TaskUpsert) 
 	err := pgx.BeginFunc(ctx, t.pool, func(tx pgx.Tx) error {
 		q := t.q.WithTx(tx)
 		row, err := q.UpdateTask(ctx, admindb.UpdateTaskParams{
-			ID:            pgUUID(id),
+			ID:            sharedpg.UUID(id),
 			Slug:          in.Slug,
 			TitleRu:       in.TitleRU,
 			TitleEn:       in.TitleEN,
@@ -212,7 +214,7 @@ func (t *Tasks) Update(ctx context.Context, id uuid.UUID, in domain.TaskUpsert) 
 		if err := insertChildren(ctx, q, row.ID, in); err != nil {
 			return err
 		}
-		taskID := fromPgUUID(row.ID)
+		taskID := sharedpg.UUIDFrom(row.ID)
 		out = domain.AdminTask{
 			ID: taskID, Slug: row.Slug, TitleRU: row.TitleRu, TitleEN: row.TitleEn,
 			DescriptionRU: row.DescriptionRu, DescriptionEN: row.DescriptionEn,
@@ -231,7 +233,7 @@ func (t *Tasks) Update(ctx context.Context, id uuid.UUID, in domain.TaskUpsert) 
 
 // hydrate loads the child collections for a task row.
 func (t *Tasks) hydrate(ctx context.Context, q *admindb.Queries, r taskRow) (domain.AdminTask, error) {
-	id := fromPgUUID(r.ID)
+	id := sharedpg.UUIDFrom(r.ID)
 	out := taskFromRow(r)
 	if err := t.fillChildren(ctx, q, id, &out); err != nil {
 		return domain.AdminTask{}, fmt.Errorf("admin.Tasks.hydrate: %w", err)
@@ -240,21 +242,21 @@ func (t *Tasks) hydrate(ctx context.Context, q *admindb.Queries, r taskRow) (dom
 }
 
 func (t *Tasks) fillChildren(ctx context.Context, q *admindb.Queries, id uuid.UUID, out *domain.AdminTask) error {
-	tcRows, err := q.ListTestCases(ctx, pgUUID(id))
+	tcRows, err := q.ListTestCases(ctx, sharedpg.UUID(id))
 	if err != nil {
 		return fmt.Errorf("list test_cases: %w", err)
 	}
 	out.TestCases = make([]domain.TestCase, 0, len(tcRows))
 	for _, r := range tcRows {
 		out.TestCases = append(out.TestCases, domain.TestCase{
-			ID:             fromPgUUID(r.ID),
+			ID:             sharedpg.UUIDFrom(r.ID),
 			Input:          r.Input,
 			ExpectedOutput: r.ExpectedOutput,
 			IsHidden:       r.IsHidden,
 			OrderNum:       int(r.OrderNum),
 		})
 	}
-	tplRows, err := q.ListTaskTemplates(ctx, pgUUID(id))
+	tplRows, err := q.ListTaskTemplates(ctx, sharedpg.UUID(id))
 	if err != nil {
 		return fmt.Errorf("list task_templates: %w", err)
 	}
@@ -265,14 +267,14 @@ func (t *Tasks) fillChildren(ctx context.Context, q *admindb.Queries, id uuid.UU
 			StarterCode: r.StarterCode,
 		})
 	}
-	fqRows, err := q.ListFollowUpQuestions(ctx, pgUUID(id))
+	fqRows, err := q.ListFollowUpQuestions(ctx, sharedpg.UUID(id))
 	if err != nil {
 		return fmt.Errorf("list follow_up_questions: %w", err)
 	}
 	out.FollowUpQuestions = make([]domain.FollowUpQuestion, 0, len(fqRows))
 	for _, r := range fqRows {
 		out.FollowUpQuestions = append(out.FollowUpQuestions, domain.FollowUpQuestion{
-			ID:         fromPgUUID(r.ID),
+			ID:         sharedpg.UUIDFrom(r.ID),
 			QuestionRU: r.QuestionRu,
 			QuestionEN: r.QuestionEn,
 			AnswerHint: r.AnswerHint.String,
@@ -341,7 +343,7 @@ type taskRow struct {
 
 func taskFromRow(r taskRow) domain.AdminTask {
 	return domain.AdminTask{
-		ID:            fromPgUUID(r.ID),
+		ID:            sharedpg.UUIDFrom(r.ID),
 		Slug:          r.Slug,
 		TitleRU:       r.TitleRu,
 		TitleEN:       r.TitleEn,

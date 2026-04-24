@@ -8,6 +8,8 @@ import (
 	"druz9/admin/domain"
 	admindb "druz9/admin/infra/db"
 
+	sharedpg "druz9/shared/pkg/pg"
+
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -58,7 +60,7 @@ func (c *Config) Get(ctx context.Context, key string) (domain.ConfigEntry, error
 func (c *Config) Upsert(ctx context.Context, entry domain.ConfigEntry, updatedBy *uuid.UUID) (domain.ConfigEntry, error) {
 	var by pgtype.UUID
 	if updatedBy != nil {
-		by = pgUUID(*updatedBy)
+		by = sharedpg.UUID(*updatedBy)
 	}
 	row, err := c.q.UpsertDynamicConfig(ctx, admindb.UpsertDynamicConfigParams{
 		Key:         entry.Key,
@@ -82,7 +84,7 @@ func configFromRow(r admindb.DynamicConfig) domain.ConfigEntry {
 		UpdatedAt:   r.UpdatedAt.Time,
 	}
 	if r.UpdatedBy.Valid {
-		u := fromPgUUID(r.UpdatedBy)
+		u := sharedpg.UUIDFrom(r.UpdatedBy)
 		out.UpdatedBy = &u
 	}
 	return out

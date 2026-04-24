@@ -15,6 +15,8 @@ import (
 	ai_mockdb "druz9/ai_mock/infra/db"
 	"druz9/shared/enums"
 
+	sharedpg "druz9/shared/pkg/pg"
+
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -39,9 +41,9 @@ func NewSessions(pool *pgxpool.Pool) *Sessions {
 // Create inserts a new session row and returns the hydrated entity.
 func (s *Sessions) Create(ctx context.Context, in domain.Session) (domain.Session, error) {
 	params := ai_mockdb.CreateMockSessionParams{
-		UserID:      pgUUID(in.UserID),
-		CompanyID:   pgUUID(in.CompanyID),
-		TaskID:      pgUUID(in.TaskID),
+		UserID:      sharedpg.UUID(in.UserID),
+		CompanyID:   sharedpg.UUID(in.CompanyID),
+		TaskID:      sharedpg.UUID(in.TaskID),
 		Section:     in.Section.String(),
 		Difficulty:  in.Difficulty.String(),
 		Status:      in.Status.String(),
@@ -50,7 +52,7 @@ func (s *Sessions) Create(ctx context.Context, in domain.Session) (domain.Sessio
 		LlmModel:    pgText(in.LLMModel.String()),
 	}
 	if in.PairedUserID != nil {
-		params.PairedUserID = pgUUID(*in.PairedUserID)
+		params.PairedUserID = sharedpg.UUID(*in.PairedUserID)
 	}
 	if in.StartedAt != nil {
 		params.StartedAt = pgtype.Timestamptz{Time: *in.StartedAt, Valid: true}
@@ -64,7 +66,7 @@ func (s *Sessions) Create(ctx context.Context, in domain.Session) (domain.Sessio
 
 // Get loads a session by id.
 func (s *Sessions) Get(ctx context.Context, id uuid.UUID) (domain.Session, error) {
-	row, err := s.q.GetMockSession(ctx, pgUUID(id))
+	row, err := s.q.GetMockSession(ctx, sharedpg.UUID(id))
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return domain.Session{}, fmt.Errorf("mock.Sessions.Get: %w", domain.ErrNotFound)
@@ -77,7 +79,7 @@ func (s *Sessions) Get(ctx context.Context, id uuid.UUID) (domain.Session, error
 // UpdateStatus sets the session status; finishedAt=true stamps finished_at=now().
 func (s *Sessions) UpdateStatus(ctx context.Context, id uuid.UUID, status string, finishedAt bool) error {
 	affected, err := s.q.UpdateMockSessionStatus(ctx, ai_mockdb.UpdateMockSessionStatusParams{
-		ID:      pgUUID(id),
+		ID:      sharedpg.UUID(id),
 		Status:  status,
 		Column3: finishedAt,
 	})
@@ -97,7 +99,7 @@ func (s *Sessions) UpdateStress(ctx context.Context, id uuid.UUID, profile domai
 		return fmt.Errorf("mock.Sessions.UpdateStress: marshal: %w", err)
 	}
 	affected, err := s.q.UpdateMockSessionStress(ctx, ai_mockdb.UpdateMockSessionStressParams{
-		ID:      pgUUID(id),
+		ID:      sharedpg.UUID(id),
 		Column2: b,
 	})
 	if err != nil {
@@ -112,7 +114,7 @@ func (s *Sessions) UpdateStress(ctx context.Context, id uuid.UUID, profile domai
 // UpdateReport writes the ai_report blob + replay_url.
 func (s *Sessions) UpdateReport(ctx context.Context, id uuid.UUID, reportJSON []byte, replayURL string) error {
 	affected, err := s.q.UpdateMockSessionReport(ctx, ai_mockdb.UpdateMockSessionReportParams{
-		ID:      pgUUID(id),
+		ID:      sharedpg.UUID(id),
 		Column2: reportJSON,
 		Column3: replayURL,
 	})
@@ -146,7 +148,7 @@ func (m *Messages) Append(ctx context.Context, msg domain.Message) (domain.Messa
 		return domain.Message{}, fmt.Errorf("mock.Messages.Append: invalid role %q", msg.Role)
 	}
 	row, err := m.q.AppendMockMessage(ctx, ai_mockdb.AppendMockMessageParams{
-		SessionID:      pgUUID(msg.SessionID),
+		SessionID:      sharedpg.UUID(msg.SessionID),
 		Role:           msg.Role.String(),
 		Content:        msg.Content,
 		Column4:        msg.CodeSnapshot,
@@ -167,7 +169,7 @@ func (m *Messages) ListLast(ctx context.Context, sessionID uuid.UUID, limit int)
 		limit = 10
 	}
 	rows, err := m.q.ListLastMockMessages(ctx, ai_mockdb.ListLastMockMessagesParams{
-		SessionID: pgUUID(sessionID),
+		SessionID: sharedpg.UUID(sessionID),
 		Limit:     int32(limit),
 	})
 	if err != nil {
@@ -183,7 +185,7 @@ func (m *Messages) ListLast(ctx context.Context, sessionID uuid.UUID, limit int)
 
 // ListAll returns every message for the session in chronological order.
 func (m *Messages) ListAll(ctx context.Context, sessionID uuid.UUID) ([]domain.Message, error) {
-	rows, err := m.q.ListAllMockMessages(ctx, pgUUID(sessionID))
+	rows, err := m.q.ListAllMockMessages(ctx, sharedpg.UUID(sessionID))
 	if err != nil {
 		return nil, fmt.Errorf("mock.Messages.ListAll: %w", err)
 	}
@@ -224,7 +226,7 @@ func (t *Tasks) PickForSession(ctx context.Context, section, difficulty string) 
 
 // GetWithHint fetches a task by id, hint included.
 func (t *Tasks) GetWithHint(ctx context.Context, id uuid.UUID) (domain.TaskWithHint, error) {
-	row, err := t.q.GetTaskWithHint(ctx, pgUUID(id))
+	row, err := t.q.GetTaskWithHint(ctx, sharedpg.UUID(id))
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return domain.TaskWithHint{}, fmt.Errorf("mock.Tasks.GetWithHint: %w", domain.ErrNotFound)
@@ -251,7 +253,7 @@ func NewCompanies(pool *pgxpool.Pool) *Companies { return &Companies{q: ai_mockd
 // STUB: promote `llm_model_override` + `default_level` to companies schema in
 // a future migration (bible §8 mentions per-company model override).
 func (c *Companies) Get(ctx context.Context, id uuid.UUID) (domain.CompanyContext, error) {
-	row, err := c.q.GetCompanyForMock(ctx, pgUUID(id))
+	row, err := c.q.GetCompanyForMock(ctx, sharedpg.UUID(id))
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return domain.CompanyContext{}, fmt.Errorf("mock.Companies.Get: %w", domain.ErrNotFound)
@@ -259,7 +261,7 @@ func (c *Companies) Get(ctx context.Context, id uuid.UUID) (domain.CompanyContex
 		return domain.CompanyContext{}, fmt.Errorf("mock.Companies.Get: %w", err)
 	}
 	return domain.CompanyContext{
-		ID:   fromPgUUID(row.ID),
+		ID:   sharedpg.UUIDFrom(row.ID),
 		Name: row.Name,
 	}, nil
 }
@@ -276,7 +278,7 @@ func NewUsers(pool *pgxpool.Pool) *Users { return &Users{q: ai_mockdb.New(pool)}
 // Get returns the minimal user context. Free-plan is the conservative fallback
 // when the subscription row is missing (e.g. new user pre-onboarding).
 func (u *Users) Get(ctx context.Context, id uuid.UUID) (domain.UserContext, error) {
-	plan, err := u.q.GetUserSubscription(ctx, pgUUID(id))
+	plan, err := u.q.GetUserSubscription(ctx, sharedpg.UUID(id))
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return domain.UserContext{ID: id, Subscription: enums.SubscriptionPlanFree}, nil
@@ -302,10 +304,10 @@ func sessionFromRow(r ai_mockdb.MockSession) (domain.Session, error) {
 		return domain.Session{}, fmt.Errorf("mock.sessionFromRow: invalid enum section=%q diff=%q status=%q", sec, diff, status)
 	}
 	out := domain.Session{
-		ID:          fromPgUUID(r.ID),
-		UserID:      fromPgUUID(r.UserID),
-		CompanyID:   fromPgUUID(r.CompanyID),
-		TaskID:      fromPgUUID(r.TaskID),
+		ID:          sharedpg.UUIDFrom(r.ID),
+		UserID:      sharedpg.UUIDFrom(r.UserID),
+		CompanyID:   sharedpg.UUIDFrom(r.CompanyID),
+		TaskID:      sharedpg.UUIDFrom(r.TaskID),
 		Section:     sec,
 		Difficulty:  diff,
 		Status:      status,
@@ -315,7 +317,7 @@ func sessionFromRow(r ai_mockdb.MockSession) (domain.Session, error) {
 		Report:      r.AiReport,
 	}
 	if r.PairedUserID.Valid {
-		u := fromPgUUID(r.PairedUserID)
+		u := sharedpg.UUIDFrom(r.PairedUserID)
 		out.PairedUserID = &u
 	}
 	if r.LlmModel.Valid {
@@ -343,8 +345,8 @@ func sessionFromRow(r ai_mockdb.MockSession) (domain.Session, error) {
 
 func messageFromRow(r ai_mockdb.MockMessage) domain.Message {
 	out := domain.Message{
-		ID:             fromPgUUID(r.ID),
-		SessionID:      fromPgUUID(r.SessionID),
+		ID:             sharedpg.UUIDFrom(r.ID),
+		SessionID:      sharedpg.UUIDFrom(r.SessionID),
 		Role:           enums.MessageRole(r.Role),
 		Content:        r.Content,
 		StressSnapshot: r.StressSnapshot,
@@ -361,7 +363,7 @@ func messageFromRow(r ai_mockdb.MockMessage) domain.Message {
 
 func taskFromPickRow(r ai_mockdb.PickTaskForSectionRow) domain.TaskWithHint {
 	return domain.TaskWithHint{
-		ID:           fromPgUUID(r.ID),
+		ID:           sharedpg.UUIDFrom(r.ID),
 		Slug:         r.Slug,
 		Title:        r.TitleRu,
 		Description:  r.DescriptionRu,
@@ -373,7 +375,7 @@ func taskFromPickRow(r ai_mockdb.PickTaskForSectionRow) domain.TaskWithHint {
 
 func taskFromHintRow(r ai_mockdb.GetTaskWithHintRow) domain.TaskWithHint {
 	return domain.TaskWithHint{
-		ID:           fromPgUUID(r.ID),
+		ID:           sharedpg.UUIDFrom(r.ID),
 		Slug:         r.Slug,
 		Title:        r.TitleRu,
 		Description:  r.DescriptionRu,
@@ -381,15 +383,6 @@ func taskFromHintRow(r ai_mockdb.GetTaskWithHintRow) domain.TaskWithHint {
 		Section:      enums.Section(r.Section),
 		SolutionHint: pgTextStr(r.SolutionHint),
 	}
-}
-
-func pgUUID(id uuid.UUID) pgtype.UUID { return pgtype.UUID{Bytes: id, Valid: true} }
-
-func fromPgUUID(p pgtype.UUID) uuid.UUID {
-	if !p.Valid {
-		return uuid.Nil
-	}
-	return uuid.UUID(p.Bytes)
 }
 
 func pgText(s string) pgtype.Text { return pgtype.Text{String: s, Valid: s != ""} }

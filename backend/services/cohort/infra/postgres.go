@@ -15,6 +15,8 @@ import (
 	cohortdb "druz9/cohort/infra/db"
 	"druz9/shared/enums"
 
+	sharedpg "druz9/shared/pkg/pg"
+
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -50,7 +52,7 @@ func NewPostgres(pool *pgxpool.Pool) *Postgres {
 // UpsertCohort inserts or updates a cohort row.
 func (p *Postgres) UpsertCohort(ctx context.Context, g domain.Cohort) (domain.Cohort, error) {
 	row, err := p.q.UpsertCohort(ctx, cohortdb.UpsertCohortParams{
-		OwnerID:   pgUUID(g.OwnerID),
+		OwnerID:   sharedpg.UUID(g.OwnerID),
 		Name:      g.Name,
 		Emblem:    pgText(g.Emblem),
 		CohortElo: int32(g.CohortElo),
@@ -63,7 +65,7 @@ func (p *Postgres) UpsertCohort(ctx context.Context, g domain.Cohort) (domain.Co
 
 // GetCohort loads a cohort by id.
 func (p *Postgres) GetCohort(ctx context.Context, id uuid.UUID) (domain.Cohort, error) {
-	row, err := p.q.GetCohort(ctx, pgUUID(id))
+	row, err := p.q.GetCohort(ctx, sharedpg.UUID(id))
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return domain.Cohort{}, domain.ErrNotFound
@@ -75,7 +77,7 @@ func (p *Postgres) GetCohort(ctx context.Context, id uuid.UUID) (domain.Cohort, 
 
 // GetMyCohort resolves the cohort the user is a member of.
 func (p *Postgres) GetMyCohort(ctx context.Context, userID uuid.UUID) (domain.Cohort, error) {
-	row, err := p.q.GetMyCohort(ctx, pgUUID(userID))
+	row, err := p.q.GetMyCohort(ctx, sharedpg.UUID(userID))
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return domain.Cohort{}, domain.ErrNotFound
@@ -87,15 +89,15 @@ func (p *Postgres) GetMyCohort(ctx context.Context, userID uuid.UUID) (domain.Co
 
 // ListCohortMembers returns every member of a cohort.
 func (p *Postgres) ListCohortMembers(ctx context.Context, cohortID uuid.UUID) ([]domain.Member, error) {
-	rows, err := p.q.ListCohortMembers(ctx, pgUUID(cohortID))
+	rows, err := p.q.ListCohortMembers(ctx, sharedpg.UUID(cohortID))
 	if err != nil {
 		return nil, fmt.Errorf("cohort.pg.ListCohortMembers: %w", err)
 	}
 	out := make([]domain.Member, 0, len(rows))
 	for _, r := range rows {
 		out = append(out, domain.Member{
-			CohortID:        fromPgUUID(r.CohortID),
-			UserID:          fromPgUUID(r.UserID),
+			CohortID:        sharedpg.UUIDFrom(r.CohortID),
+			UserID:          sharedpg.UUIDFrom(r.UserID),
 			Username:        r.Username,
 			Role:            r.Role,
 			AssignedSection: sectionFromPgText(r.AssignedSection),
@@ -153,7 +155,7 @@ func (p *Postgres) ListTopCohorts(ctx context.Context, limit int) ([]domain.TopC
 			return nil, fmt.Errorf("cohort.pg.ListTopCohorts: scan: %w", scanErr)
 		}
 		s := domain.TopCohortSummary{
-			CohortID:     fromPgUUID(id),
+			CohortID:     sharedpg.UUIDFrom(id),
 			Name:         name,
 			MembersCount: int(membersCount),
 			EloTotal:     int(cohortElo),
@@ -174,8 +176,8 @@ func (p *Postgres) ListTopCohorts(ctx context.Context, limit int) ([]domain.TopC
 // GetMember returns a single membership row.
 func (p *Postgres) GetMember(ctx context.Context, cohortID, userID uuid.UUID) (domain.Member, error) {
 	row, err := p.q.GetCohortMember(ctx, cohortdb.GetCohortMemberParams{
-		CohortID: pgUUID(cohortID),
-		UserID:   pgUUID(userID),
+		CohortID: sharedpg.UUID(cohortID),
+		UserID:   sharedpg.UUID(userID),
 	})
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -184,8 +186,8 @@ func (p *Postgres) GetMember(ctx context.Context, cohortID, userID uuid.UUID) (d
 		return domain.Member{}, fmt.Errorf("cohort.pg.GetMember: %w", err)
 	}
 	return domain.Member{
-		CohortID:        fromPgUUID(row.CohortID),
-		UserID:          fromPgUUID(row.UserID),
+		CohortID:        sharedpg.UUIDFrom(row.CohortID),
+		UserID:          sharedpg.UUIDFrom(row.UserID),
 		Username:        row.Username,
 		Role:            row.Role,
 		AssignedSection: sectionFromPgText(row.AssignedSection),
@@ -198,7 +200,7 @@ func (p *Postgres) GetMember(ctx context.Context, cohortID, userID uuid.UUID) (d
 // GetCurrentWarForCohort returns the war covering `now` for the cohort.
 func (p *Postgres) GetCurrentWarForCohort(ctx context.Context, cohortID uuid.UUID, now time.Time) (domain.War, error) {
 	row, err := p.q.GetCurrentWarForCohort(ctx, cohortdb.GetCurrentWarForCohortParams{
-		CohortAID: pgUUID(cohortID),
+		CohortAID: sharedpg.UUID(cohortID),
 		Column2:   pgtype.Date{Time: now.UTC(), Valid: true},
 	})
 	if err != nil {
@@ -212,7 +214,7 @@ func (p *Postgres) GetCurrentWarForCohort(ctx context.Context, cohortID uuid.UUI
 
 // GetWar loads a war by id.
 func (p *Postgres) GetWar(ctx context.Context, warID uuid.UUID) (domain.War, error) {
-	row, err := p.q.GetWar(ctx, pgUUID(warID))
+	row, err := p.q.GetWar(ctx, sharedpg.UUID(warID))
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return domain.War{}, domain.ErrNotFound
@@ -236,13 +238,13 @@ func (p *Postgres) UpsertWarScore(ctx context.Context, warID uuid.UUID, section 
 	switch side {
 	case domain.SideA:
 		affected, err = p.q.UpsertWarScoreA(ctx, cohortdb.UpsertWarScoreAParams{
-			ID:      pgUUID(warID),
+			ID:      sharedpg.UUID(warID),
 			Column2: string(section),
 			Column3: int32(delta),
 		})
 	case domain.SideB:
 		affected, err = p.q.UpsertWarScoreB(ctx, cohortdb.UpsertWarScoreBParams{
-			ID:      pgUUID(warID),
+			ID:      sharedpg.UUID(warID),
 			Column2: string(section),
 			Column3: int32(delta),
 		})
@@ -283,10 +285,10 @@ func (p *Postgres) ListContributions(ctx context.Context, warID uuid.UUID) ([]do
 func (p *Postgres) SetWinner(ctx context.Context, warID uuid.UUID, winner *uuid.UUID) error {
 	var wid pgtype.UUID
 	if winner != nil {
-		wid = pgUUID(*winner)
+		wid = sharedpg.UUID(*winner)
 	}
 	affected, err := p.q.SetWarWinner(ctx, cohortdb.SetWarWinnerParams{
-		ID:       pgUUID(warID),
+		ID:       sharedpg.UUID(warID),
 		WinnerID: wid,
 	})
 	if err != nil {
@@ -299,15 +301,6 @@ func (p *Postgres) SetWinner(ctx context.Context, warID uuid.UUID, winner *uuid.
 }
 
 // ── helpers ───────────────────────────────────────────────────────────────
-
-func pgUUID(id uuid.UUID) pgtype.UUID { return pgtype.UUID{Bytes: id, Valid: true} }
-
-func fromPgUUID(p pgtype.UUID) uuid.UUID {
-	if !p.Valid {
-		return uuid.Nil
-	}
-	return uuid.UUID(p.Bytes)
-}
 
 func pgText(s string) pgtype.Text {
 	if s == "" {
@@ -333,8 +326,8 @@ func sectionFromPgText(t pgtype.Text) *enums.Section {
 // hit GetCohort via the cache wrapper.
 func upsertRowToCohort(r cohortdb.UpsertCohortRow) domain.Cohort {
 	g := domain.Cohort{
-		ID:        fromPgUUID(r.ID),
-		OwnerID:   fromPgUUID(r.OwnerID),
+		ID:        sharedpg.UUIDFrom(r.ID),
+		OwnerID:   sharedpg.UUIDFrom(r.OwnerID),
 		Name:      r.Name,
 		CohortElo: int(r.CohortElo),
 		CreatedAt: r.CreatedAt.Time,
@@ -347,8 +340,8 @@ func upsertRowToCohort(r cohortdb.UpsertCohortRow) domain.Cohort {
 
 func getRowToCohort(r cohortdb.GetCohortRow) domain.Cohort {
 	g := domain.Cohort{
-		ID:        fromPgUUID(r.ID),
-		OwnerID:   fromPgUUID(r.OwnerID),
+		ID:        sharedpg.UUIDFrom(r.ID),
+		OwnerID:   sharedpg.UUIDFrom(r.OwnerID),
 		Name:      r.Name,
 		CohortElo: int(r.CohortElo),
 		CreatedAt: r.CreatedAt.Time,
@@ -361,8 +354,8 @@ func getRowToCohort(r cohortdb.GetCohortRow) domain.Cohort {
 
 func myRowToCohort(r cohortdb.GetMyCohortRow) domain.Cohort {
 	g := domain.Cohort{
-		ID:        fromPgUUID(r.ID),
-		OwnerID:   fromPgUUID(r.OwnerID),
+		ID:        sharedpg.UUIDFrom(r.ID),
+		OwnerID:   sharedpg.UUIDFrom(r.OwnerID),
 		Name:      r.Name,
 		CohortElo: int(r.CohortElo),
 		CreatedAt: r.CreatedAt.Time,
@@ -375,15 +368,15 @@ func myRowToCohort(r cohortdb.GetMyCohortRow) domain.Cohort {
 
 func warFromRow(r cohortdb.CohortWar) (domain.War, error) {
 	w := domain.War{
-		ID:        fromPgUUID(r.ID),
-		CohortAID: fromPgUUID(r.CohortAID),
-		CohortBID: fromPgUUID(r.CohortBID),
+		ID:        sharedpg.UUIDFrom(r.ID),
+		CohortAID: sharedpg.UUIDFrom(r.CohortAID),
+		CohortBID: sharedpg.UUIDFrom(r.CohortBID),
 		WeekStart: r.WeekStart.Time,
 		WeekEnd:   r.WeekEnd.Time,
 		CreatedAt: r.CreatedAt.Time,
 	}
 	if r.WinnerID.Valid {
-		id := fromPgUUID(r.WinnerID)
+		id := sharedpg.UUIDFrom(r.WinnerID)
 		w.WinnerID = &id
 	}
 	scoresA, err := unmarshalScores(r.ScoresA)

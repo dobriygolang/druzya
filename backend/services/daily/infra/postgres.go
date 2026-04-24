@@ -15,6 +15,8 @@ import (
 	dailydb "druz9/daily/infra/db"
 	"druz9/shared/enums"
 
+	sharedpg "druz9/shared/pkg/pg"
+
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -64,7 +66,7 @@ func (p *TasksKatas) ListActiveBySectionDifficulty(ctx context.Context, section 
 
 // GetByID fetches a single task, without solution_hint.
 func (p *TasksKatas) GetByID(ctx context.Context, id uuid.UUID) (domain.TaskPublic, error) {
-	r, err := p.q.GetTaskPublic(ctx, pgUUID(id))
+	r, err := p.q.GetTaskPublic(ctx, sharedpg.UUID(id))
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return domain.TaskPublic{}, fmt.Errorf("daily.TasksKatas.GetByID: %w", domain.ErrNotFound)
@@ -101,7 +103,7 @@ func (p *TasksKatas) ListForTask(ctx context.Context, taskID uuid.UUID) ([]domai
 		`SELECT input, expected_output, is_hidden, order_num
 		   FROM test_cases
 		  WHERE task_id = $1
-		  ORDER BY order_num ASC`, pgUUID(taskID))
+		  ORDER BY order_num ASC`, sharedpg.UUID(taskID))
 	if err != nil {
 		return nil, fmt.Errorf("daily.TasksKatas.ListForTask: query: %w", err)
 	}
@@ -122,7 +124,7 @@ func (p *TasksKatas) ListForTask(ctx context.Context, taskID uuid.UUID) ([]domai
 
 // WeakestNode picks the lowest-progress skill node for the user.
 func (p *TasksKatas) WeakestNode(ctx context.Context, userID uuid.UUID) (domain.NodeWeakness, error) {
-	r, err := p.q.WeakestSkillNode(ctx, pgUUID(userID))
+	r, err := p.q.WeakestSkillNode(ctx, sharedpg.UUID(userID))
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return domain.NodeWeakness{
@@ -151,9 +153,9 @@ func (p *TasksKatas) GetOrAssign(ctx context.Context, userID uuid.UUID, date tim
 	pgDate := pgtype.Date{Time: d, Valid: true}
 
 	insRow, err := p.q.AssignDailyKata(ctx, dailydb.AssignDailyKataParams{
-		UserID:       pgUUID(userID),
+		UserID:       sharedpg.UUID(userID),
 		KataDate:     pgDate,
-		TaskID:       pgUUID(taskID),
+		TaskID:       sharedpg.UUID(taskID),
 		IsCursed:     isCursed,
 		IsWeeklyBoss: isWeeklyBoss,
 	})
@@ -163,7 +165,7 @@ func (p *TasksKatas) GetOrAssign(ctx context.Context, userID uuid.UUID, date tim
 	case errors.Is(err, pgx.ErrNoRows):
 		// Row existed — fetch it.
 		existing, getErr := p.q.GetDailyKata(ctx, dailydb.GetDailyKataParams{
-			UserID:   pgUUID(userID),
+			UserID:   sharedpg.UUID(userID),
 			KataDate: pgDate,
 		})
 		if getErr != nil {
@@ -179,7 +181,7 @@ func (p *TasksKatas) GetOrAssign(ctx context.Context, userID uuid.UUID, date tim
 func (p *TasksKatas) MarkSubmitted(ctx context.Context, userID uuid.UUID, date time.Time, passed bool) error {
 	d := date.UTC().Truncate(24 * time.Hour)
 	affected, err := p.q.MarkDailyKataSubmitted(ctx, dailydb.MarkDailyKataSubmittedParams{
-		UserID:   pgUUID(userID),
+		UserID:   sharedpg.UUID(userID),
 		KataDate: pgtype.Date{Time: d, Valid: true},
 		Passed:   pgtype.Bool{Bool: passed, Valid: true},
 	})
@@ -196,7 +198,7 @@ func (p *TasksKatas) MarkSubmitted(ctx context.Context, userID uuid.UUID, date t
 func (p *TasksKatas) HistoryLast30(ctx context.Context, userID uuid.UUID, today time.Time) ([]domain.HistoryEntry, error) {
 	from := today.AddDate(0, 0, -29)
 	rows, err := p.q.ListKataHistory(ctx, dailydb.ListKataHistoryParams{
-		UserID:     pgUUID(userID),
+		UserID:     sharedpg.UUID(userID),
 		KataDate:   pgtype.Date{Time: from, Valid: true},
 		KataDate_2: pgtype.Date{Time: today, Valid: true},
 	})
@@ -207,7 +209,7 @@ func (p *TasksKatas) HistoryLast30(ctx context.Context, userID uuid.UUID, today 
 	for _, r := range rows {
 		e := domain.HistoryEntry{
 			Date:       r.KataDate.Time,
-			TaskID:     fromPgUUID(r.TaskID),
+			TaskID:     sharedpg.UUIDFrom(r.TaskID),
 			FreezeUsed: r.FreezeUsed,
 		}
 		if r.Passed.Valid {
@@ -229,7 +231,7 @@ func (p *TasksKatas) HistoryByYear(ctx context.Context, userID uuid.UUID, year i
 	from := time.Date(year, time.January, 1, 0, 0, 0, 0, time.UTC)
 	to := time.Date(year, time.December, 31, 0, 0, 0, 0, time.UTC)
 	rows, err := p.q.ListKataHistoryByYear(ctx, dailydb.ListKataHistoryByYearParams{
-		UserID:     pgUUID(userID),
+		UserID:     sharedpg.UUID(userID),
 		KataDate:   pgtype.Date{Time: from, Valid: true},
 		KataDate_2: pgtype.Date{Time: to, Valid: true},
 	})
@@ -240,7 +242,7 @@ func (p *TasksKatas) HistoryByYear(ctx context.Context, userID uuid.UUID, year i
 	for _, r := range rows {
 		e := domain.HistoryEntry{
 			Date:       r.KataDate.Time,
-			TaskID:     fromPgUUID(r.TaskID),
+			TaskID:     sharedpg.UUIDFrom(r.TaskID),
 			FreezeUsed: r.FreezeUsed,
 		}
 		if r.Passed.Valid {
@@ -269,7 +271,7 @@ func NewStreaks(pool *pgxpool.Pool) *Streaks {
 
 // Get returns the streak row.
 func (p *Streaks) Get(ctx context.Context, userID uuid.UUID) (domain.StreakState, error) {
-	r, err := p.q.GetStreak(ctx, pgUUID(userID))
+	r, err := p.q.GetStreak(ctx, sharedpg.UUID(userID))
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return domain.StreakState{}, domain.ErrNotFound
@@ -295,7 +297,7 @@ func (p *Streaks) Update(ctx context.Context, userID uuid.UUID, s domain.StreakS
 		last = pgtype.Date{Time: *s.LastKataDate, Valid: true}
 	}
 	if err := p.q.UpsertStreak(ctx, dailydb.UpsertStreakParams{
-		UserID:        pgUUID(userID),
+		UserID:        sharedpg.UUID(userID),
 		CurrentStreak: int32(s.CurrentStreak),
 		LongestStreak: int32(s.LongestStreak),
 		FreezeTokens:  int32(s.FreezeTokens),
@@ -324,7 +326,7 @@ func NewCalendars(pool *pgxpool.Pool) *Calendars {
 // GetActive returns the upcoming calendar, ErrNotFound otherwise.
 func (p *Calendars) GetActive(ctx context.Context, userID uuid.UUID, today time.Time) (domain.InterviewCalendar, error) {
 	r, err := p.q.GetActiveCalendar(ctx, dailydb.GetActiveCalendarParams{
-		UserID:        pgUUID(userID),
+		UserID:        sharedpg.UUID(userID),
 		InterviewDate: pgtype.Date{Time: today, Valid: true},
 	})
 	if err != nil {
@@ -334,9 +336,9 @@ func (p *Calendars) GetActive(ctx context.Context, userID uuid.UUID, today time.
 		return domain.InterviewCalendar{}, fmt.Errorf("daily.Calendars.GetActive: %w", err)
 	}
 	return domain.InterviewCalendar{
-		ID:            fromPgUUID(r.ID),
-		UserID:        fromPgUUID(r.UserID),
-		CompanyID:     fromPgUUID(r.CompanyID),
+		ID:            sharedpg.UUIDFrom(r.ID),
+		UserID:        sharedpg.UUIDFrom(r.UserID),
+		CompanyID:     sharedpg.UUIDFrom(r.CompanyID),
 		Role:          r.Role,
 		InterviewDate: r.InterviewDate.Time,
 		CurrentLevel:  pgText(r.CurrentLevel),
@@ -362,8 +364,8 @@ func (p *Calendars) Upsert(ctx context.Context, c domain.InterviewCalendar) (dom
 	}
 	qtx := p.q.WithTx(tx)
 	row, err := qtx.UpsertCalendar(ctx, dailydb.UpsertCalendarParams{
-		UserID:        pgUUID(c.UserID),
-		CompanyID:     pgUUID(c.CompanyID),
+		UserID:        sharedpg.UUID(c.UserID),
+		CompanyID:     sharedpg.UUID(c.CompanyID),
 		Role:          c.Role,
 		InterviewDate: pgtype.Date{Time: c.InterviewDate, Valid: true},
 		CurrentLevel:  pgtype.Text{String: c.CurrentLevel, Valid: c.CurrentLevel != ""},
@@ -375,9 +377,9 @@ func (p *Calendars) Upsert(ctx context.Context, c domain.InterviewCalendar) (dom
 		return domain.InterviewCalendar{}, fmt.Errorf("daily.Calendars.Upsert: commit: %w", err)
 	}
 	return domain.InterviewCalendar{
-		ID:            fromPgUUID(row.ID),
-		UserID:        fromPgUUID(row.UserID),
-		CompanyID:     fromPgUUID(row.CompanyID),
+		ID:            sharedpg.UUIDFrom(row.ID),
+		UserID:        sharedpg.UUIDFrom(row.UserID),
+		CompanyID:     sharedpg.UUIDFrom(row.CompanyID),
 		Role:          row.Role,
 		InterviewDate: row.InterviewDate.Time,
 		CurrentLevel:  pgText(row.CurrentLevel),
@@ -411,8 +413,8 @@ func (p *Autopsies) Create(ctx context.Context, a domain.Autopsy) (domain.Autops
 		iDate = pgtype.Date{Time: *a.InterviewDate, Valid: true}
 	}
 	row, err := p.q.CreateAutopsy(ctx, dailydb.CreateAutopsyParams{
-		UserID:        pgUUID(a.UserID),
-		CompanyID:     pgUUID(a.CompanyID),
+		UserID:        sharedpg.UUID(a.UserID),
+		CompanyID:     sharedpg.UUID(a.CompanyID),
 		Section:       a.Section.String(),
 		Outcome:       a.Outcome.String(),
 		InterviewDate: iDate,
@@ -430,7 +432,7 @@ func (p *Autopsies) Create(ctx context.Context, a domain.Autopsy) (domain.Autops
 
 // Get loads an autopsy by id.
 func (p *Autopsies) Get(ctx context.Context, id uuid.UUID) (domain.Autopsy, error) {
-	row, err := p.q.GetAutopsy(ctx, pgUUID(id))
+	row, err := p.q.GetAutopsy(ctx, sharedpg.UUID(id))
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return domain.Autopsy{}, fmt.Errorf("daily.Autopsies.Get: %w", domain.ErrNotFound)
@@ -443,7 +445,7 @@ func (p *Autopsies) Get(ctx context.Context, id uuid.UUID) (domain.Autopsy, erro
 // MarkReady sets status=ready + writes analysis JSON.
 func (p *Autopsies) MarkReady(ctx context.Context, id uuid.UUID, analysisJSON []byte) error {
 	affected, err := p.q.MarkAutopsyReady(ctx, dailydb.MarkAutopsyReadyParams{
-		ID:      pgUUID(id),
+		ID:      sharedpg.UUID(id),
 		Column2: analysisJSON,
 	})
 	if err != nil {
@@ -476,15 +478,6 @@ func (*NoSandboxJudge0) Submit(_ context.Context, _ string, _ string, _ domain.T
 
 // ── helpers ────────────────────────────────────────────────────────────────
 
-func pgUUID(id uuid.UUID) pgtype.UUID { return pgtype.UUID{Bytes: id, Valid: true} }
-
-func fromPgUUID(p pgtype.UUID) uuid.UUID {
-	if !p.Valid {
-		return uuid.Nil
-	}
-	return uuid.UUID(p.Bytes)
-}
-
 func pgText(t pgtype.Text) string {
 	if !t.Valid {
 		return ""
@@ -512,15 +505,15 @@ func sectionFromNodeKey(key string) enums.Section {
 }
 
 func taskPublicFromActiveRow(r dailydb.ListActiveTasksRow) (domain.TaskPublic, error) {
-	return assembleTask(fromPgUUID(r.ID), r.Slug, r.TitleRu, r.DescriptionRu, r.Difficulty, r.Section, r.TimeLimitSec, r.MemoryLimitMb)
+	return assembleTask(sharedpg.UUIDFrom(r.ID), r.Slug, r.TitleRu, r.DescriptionRu, r.Difficulty, r.Section, r.TimeLimitSec, r.MemoryLimitMb)
 }
 
 func taskPublicFromTaskRow(r dailydb.GetTaskPublicRow) (domain.TaskPublic, error) {
-	return assembleTask(fromPgUUID(r.ID), r.Slug, r.TitleRu, r.DescriptionRu, r.Difficulty, r.Section, r.TimeLimitSec, r.MemoryLimitMb)
+	return assembleTask(sharedpg.UUIDFrom(r.ID), r.Slug, r.TitleRu, r.DescriptionRu, r.Difficulty, r.Section, r.TimeLimitSec, r.MemoryLimitMb)
 }
 
 func taskPublicFromBySlugRow(r dailydb.GetTaskBySlugRow) (domain.TaskPublic, error) {
-	return assembleTask(fromPgUUID(r.ID), r.Slug, r.TitleRu, r.DescriptionRu, r.Difficulty, r.Section, r.TimeLimitSec, r.MemoryLimitMb)
+	return assembleTask(sharedpg.UUIDFrom(r.ID), r.Slug, r.TitleRu, r.DescriptionRu, r.Difficulty, r.Section, r.TimeLimitSec, r.MemoryLimitMb)
 }
 
 func assembleTask(id uuid.UUID, slug, title, desc, difficulty, section string, timeLimit, memoryLimit int32) (domain.TaskPublic, error) {
@@ -546,7 +539,7 @@ func assignmentFromAssignRow(userID uuid.UUID, d time.Time, r dailydb.AssignDail
 	out := domain.Assignment{
 		UserID:       userID,
 		KataDate:     d,
-		TaskID:       fromPgUUID(r.TaskID),
+		TaskID:       sharedpg.UUIDFrom(r.TaskID),
 		IsCursed:     r.IsCursed,
 		IsWeeklyBoss: r.IsWeeklyBoss,
 		FreezeUsed:   r.FreezeUsed,
@@ -566,7 +559,7 @@ func assignmentFromGetRow(userID uuid.UUID, d time.Time, r dailydb.GetDailyKataR
 	out := domain.Assignment{
 		UserID:       userID,
 		KataDate:     d,
-		TaskID:       fromPgUUID(r.TaskID),
+		TaskID:       sharedpg.UUIDFrom(r.TaskID),
 		IsCursed:     r.IsCursed,
 		IsWeeklyBoss: r.IsWeeklyBoss,
 		FreezeUsed:   r.FreezeUsed,
@@ -584,9 +577,9 @@ func assignmentFromGetRow(userID uuid.UUID, d time.Time, r dailydb.GetDailyKataR
 
 func autopsyFromRow(r dailydb.InterviewAutopsy) domain.Autopsy {
 	out := domain.Autopsy{
-		ID:           fromPgUUID(r.ID),
-		UserID:       fromPgUUID(r.UserID),
-		CompanyID:    fromPgUUID(r.CompanyID),
+		ID:           sharedpg.UUIDFrom(r.ID),
+		UserID:       sharedpg.UUIDFrom(r.UserID),
+		CompanyID:    sharedpg.UUIDFrom(r.CompanyID),
 		Section:      enums.Section(r.Section),
 		Outcome:      domain.AutopsyOutcome(r.Outcome),
 		Questions:    pgText(r.QuestionsRaw),

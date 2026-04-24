@@ -10,6 +10,8 @@ import (
 
 	"druz9/profile/domain"
 
+	sharedpg "druz9/shared/pkg/pg"
+
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -27,7 +29,7 @@ func (p *Postgres) IssueShareToken(ctx context.Context, userID uuid.UUID, weekIS
 	const q = `
 		INSERT INTO weekly_share_tokens(user_id, week_iso, token, expires_at)
 		VALUES ($1, $2, $3, $4)`
-	if _, err := p.pool.Exec(ctx, q, pgUUID(userID), weekISO, tok, expires); err != nil {
+	if _, err := p.pool.Exec(ctx, q, sharedpg.UUID(userID), weekISO, tok, expires); err != nil {
 		return domain.ShareToken{}, fmt.Errorf("profile.Postgres.IssueShareToken: insert: %w", err)
 	}
 	return domain.ShareToken{
@@ -54,7 +56,7 @@ func (p *Postgres) ResolveShareToken(ctx context.Context, token string) (domain.
 		return domain.ShareResolution{}, fmt.Errorf("profile.Postgres.ResolveShareToken: %w", err)
 	}
 	return domain.ShareResolution{
-		UserID:  fromPgUUID(uid),
+		UserID:  sharedpg.UUIDFrom(uid),
 		WeekISO: weekISO,
 	}, nil
 }

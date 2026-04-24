@@ -12,6 +12,8 @@ import (
 	editordb "druz9/editor/infra/db"
 	"druz9/shared/enums"
 
+	sharedpg "druz9/shared/pkg/pg"
+
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -32,14 +34,14 @@ func NewRooms(pool *pgxpool.Pool) *Rooms {
 // Create inserts a new room.
 func (r *Rooms) Create(ctx context.Context, in domain.Room) (domain.Room, error) {
 	params := editordb.CreateRoomParams{
-		OwnerID:   pgUUID(in.OwnerID),
+		OwnerID:   sharedpg.UUID(in.OwnerID),
 		Type:      in.Type.String(),
 		Language:  in.Language.String(),
 		IsFrozen:  in.IsFrozen,
 		ExpiresAt: pgtype.Timestamptz{Time: in.ExpiresAt, Valid: !in.ExpiresAt.IsZero()},
 	}
 	if in.TaskID != nil {
-		params.TaskID = pgUUID(*in.TaskID)
+		params.TaskID = sharedpg.UUID(*in.TaskID)
 	}
 	row, err := r.q.CreateRoom(ctx, params)
 	if err != nil {
@@ -50,7 +52,7 @@ func (r *Rooms) Create(ctx context.Context, in domain.Room) (domain.Room, error)
 
 // Get loads a room by id.
 func (r *Rooms) Get(ctx context.Context, id uuid.UUID) (domain.Room, error) {
-	row, err := r.q.GetRoom(ctx, pgUUID(id))
+	row, err := r.q.GetRoom(ctx, sharedpg.UUID(id))
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return domain.Room{}, fmt.Errorf("editor.Rooms.Get: %w", domain.ErrNotFound)
@@ -63,7 +65,7 @@ func (r *Rooms) Get(ctx context.Context, id uuid.UUID) (domain.Room, error) {
 // UpdateFreeze sets is_frozen.
 func (r *Rooms) UpdateFreeze(ctx context.Context, id uuid.UUID, frozen bool) (domain.Room, error) {
 	row, err := r.q.UpdateRoomFreeze(ctx, editordb.UpdateRoomFreezeParams{
-		ID:       pgUUID(id),
+		ID:       sharedpg.UUID(id),
 		IsFrozen: frozen,
 	})
 	if err != nil {
@@ -78,7 +80,7 @@ func (r *Rooms) UpdateFreeze(ctx context.Context, id uuid.UUID, frozen bool) (do
 // ExtendExpires bumps the room's expires_at timestamp.
 func (r *Rooms) ExtendExpires(ctx context.Context, id uuid.UUID, newExpires time.Time) error {
 	affected, err := r.q.ExtendRoomExpires(ctx, editordb.ExtendRoomExpiresParams{
-		ID:        pgUUID(id),
+		ID:        sharedpg.UUID(id),
 		ExpiresAt: pgtype.Timestamptz{Time: newExpires, Valid: true},
 	})
 	if err != nil {
@@ -106,8 +108,8 @@ func (p *Participants) Add(ctx context.Context, in domain.Participant) (domain.P
 		return domain.Participant{}, fmt.Errorf("editor.Participants.Add: invalid role %q", in.Role)
 	}
 	row, err := p.q.AddParticipant(ctx, editordb.AddParticipantParams{
-		RoomID: pgUUID(in.RoomID),
-		UserID: pgUUID(in.UserID),
+		RoomID: sharedpg.UUID(in.RoomID),
+		UserID: sharedpg.UUID(in.UserID),
 		Role:   in.Role.String(),
 	})
 	if err != nil {
@@ -118,7 +120,7 @@ func (p *Participants) Add(ctx context.Context, in domain.Participant) (domain.P
 
 // List returns all participants of a room.
 func (p *Participants) List(ctx context.Context, roomID uuid.UUID) ([]domain.Participant, error) {
-	rows, err := p.q.ListParticipants(ctx, pgUUID(roomID))
+	rows, err := p.q.ListParticipants(ctx, sharedpg.UUID(roomID))
 	if err != nil {
 		return nil, fmt.Errorf("editor.Participants.List: %w", err)
 	}
@@ -132,8 +134,8 @@ func (p *Participants) List(ctx context.Context, roomID uuid.UUID) ([]domain.Par
 // GetRole returns the role of a participant or ErrNotFound.
 func (p *Participants) GetRole(ctx context.Context, roomID, userID uuid.UUID) (enums.EditorRole, error) {
 	role, err := p.q.GetParticipantRole(ctx, editordb.GetParticipantRoleParams{
-		RoomID: pgUUID(roomID),
-		UserID: pgUUID(userID),
+		RoomID: sharedpg.UUID(roomID),
+		UserID: sharedpg.UUID(userID),
 	})
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -154,8 +156,8 @@ func (p *Participants) GetRole(ctx context.Context, roomID, userID uuid.UUID) (e
 
 func roomFromRow(r editordb.EditorRoom) domain.Room {
 	out := domain.Room{
-		ID:        fromPgUUID(r.ID),
-		OwnerID:   fromPgUUID(r.OwnerID),
+		ID:        sharedpg.UUIDFrom(r.ID),
+		OwnerID:   sharedpg.UUIDFrom(r.OwnerID),
 		Type:      domain.RoomType(r.Type),
 		Language:  enums.Language(r.Language),
 		IsFrozen:  r.IsFrozen,
@@ -163,7 +165,7 @@ func roomFromRow(r editordb.EditorRoom) domain.Room {
 		CreatedAt: r.CreatedAt.Time,
 	}
 	if r.TaskID.Valid {
-		t := fromPgUUID(r.TaskID)
+		t := sharedpg.UUIDFrom(r.TaskID)
 		out.TaskID = &t
 	}
 	return out
@@ -171,20 +173,11 @@ func roomFromRow(r editordb.EditorRoom) domain.Room {
 
 func participantFromRow(r editordb.EditorParticipant) domain.Participant {
 	return domain.Participant{
-		RoomID:   fromPgUUID(r.RoomID),
-		UserID:   fromPgUUID(r.UserID),
+		RoomID:   sharedpg.UUIDFrom(r.RoomID),
+		UserID:   sharedpg.UUIDFrom(r.UserID),
 		Role:     enums.EditorRole(r.Role),
 		JoinedAt: r.JoinedAt.Time,
 	}
-}
-
-func pgUUID(id uuid.UUID) pgtype.UUID { return pgtype.UUID{Bytes: id, Valid: true} }
-
-func fromPgUUID(p pgtype.UUID) uuid.UUID {
-	if !p.Valid {
-		return uuid.Nil
-	}
-	return uuid.UUID(p.Bytes)
 }
 
 // Interface guards.

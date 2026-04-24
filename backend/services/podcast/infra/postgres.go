@@ -10,6 +10,8 @@ import (
 	podcastdb "druz9/podcast/infra/db"
 	"druz9/shared/enums"
 
+	sharedpg "druz9/shared/pkg/pg"
+
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -30,7 +32,7 @@ func NewPostgres(pool *pgxpool.Pool) *Postgres {
 // ListForUser returns a catalog with per-user progress joined in.
 func (p *Postgres) ListForUser(ctx context.Context, userID uuid.UUID, section *enums.Section) ([]domain.Listing, error) {
 	params := podcastdb.ListPodcastsWithProgressParams{
-		UserID: pgUUID(userID),
+		UserID: sharedpg.UUID(userID),
 	}
 	if section != nil && section.IsValid() {
 		params.FilterBySection = true
@@ -43,7 +45,7 @@ func (p *Postgres) ListForUser(ctx context.Context, userID uuid.UUID, section *e
 	out := make([]domain.Listing, 0, len(rows))
 	for _, r := range rows {
 		pod := domain.Podcast{
-			ID:          fromPgUUID(r.ID),
+			ID:          sharedpg.UUIDFrom(r.ID),
 			TitleRu:     r.TitleRu,
 			TitleEn:     r.TitleEn,
 			Section:     enums.Section(r.Section),
@@ -65,7 +67,7 @@ func (p *Postgres) ListForUser(ctx context.Context, userID uuid.UUID, section *e
 
 // GetByID returns a single podcast.
 func (p *Postgres) GetByID(ctx context.Context, podcastID uuid.UUID) (domain.Podcast, error) {
-	row, err := p.q.GetPodcastByID(ctx, pgUUID(podcastID))
+	row, err := p.q.GetPodcastByID(ctx, sharedpg.UUID(podcastID))
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return domain.Podcast{}, fmt.Errorf("podcast.pg.GetByID: %w", domain.ErrNotFound)
@@ -73,7 +75,7 @@ func (p *Postgres) GetByID(ctx context.Context, podcastID uuid.UUID) (domain.Pod
 		return domain.Podcast{}, fmt.Errorf("podcast.pg.GetByID: %w", err)
 	}
 	out := domain.Podcast{
-		ID:          fromPgUUID(row.ID),
+		ID:          sharedpg.UUIDFrom(row.ID),
 		TitleRu:     row.TitleRu,
 		TitleEn:     row.TitleEn,
 		Section:     enums.Section(row.Section),
@@ -91,8 +93,8 @@ func (p *Postgres) GetByID(ctx context.Context, podcastID uuid.UUID) (domain.Pod
 // GetProgress returns (user, podcast). Missing → zero-valued.
 func (p *Postgres) GetProgress(ctx context.Context, userID, podcastID uuid.UUID) (domain.Progress, error) {
 	row, err := p.q.GetPodcastProgress(ctx, podcastdb.GetPodcastProgressParams{
-		UserID:    pgUUID(userID),
-		PodcastID: pgUUID(podcastID),
+		UserID:    sharedpg.UUID(userID),
+		PodcastID: sharedpg.UUID(podcastID),
 	})
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
@@ -101,8 +103,8 @@ func (p *Postgres) GetProgress(ctx context.Context, userID, podcastID uuid.UUID)
 		return domain.Progress{}, fmt.Errorf("podcast.pg.GetProgress: %w", err)
 	}
 	out := domain.Progress{
-		UserID:      fromPgUUID(row.UserID),
-		PodcastID:   fromPgUUID(row.PodcastID),
+		UserID:      sharedpg.UUIDFrom(row.UserID),
+		PodcastID:   sharedpg.UUIDFrom(row.PodcastID),
 		ListenedSec: int(row.ListenedSec),
 		UpdatedAt:   row.UpdatedAt.Time,
 	}
@@ -120,8 +122,8 @@ func (p *Postgres) UpsertProgress(ctx context.Context, prog domain.Progress) err
 		completed = pgtype.Timestamptz{Time: *prog.CompletedAt, Valid: true}
 	}
 	if err := p.q.UpsertPodcastProgress(ctx, podcastdb.UpsertPodcastProgressParams{
-		UserID:      pgUUID(prog.UserID),
-		PodcastID:   pgUUID(prog.PodcastID),
+		UserID:      sharedpg.UUID(prog.UserID),
+		PodcastID:   sharedpg.UUID(prog.PodcastID),
 		ListenedSec: int32(prog.ListenedSec),
 		CompletedAt: completed,
 	}); err != nil {
@@ -151,17 +153,6 @@ func (s *FakeSigner) Sign(_ context.Context, audioKey string) (string, error) {
 }
 
 // ── helpers ────────────────────────────────────────────────────────────────
-
-func pgUUID(id uuid.UUID) pgtype.UUID {
-	return pgtype.UUID{Bytes: id, Valid: true}
-}
-
-func fromPgUUID(p pgtype.UUID) uuid.UUID {
-	if !p.Valid {
-		return uuid.Nil
-	}
-	return uuid.UUID(p.Bytes)
-}
 
 // Compile-time assertions.
 var (

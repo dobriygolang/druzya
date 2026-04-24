@@ -8,6 +8,8 @@ import (
 
 	"druz9/profile/domain"
 
+	sharedpg "druz9/shared/pkg/pg"
+
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 )
@@ -24,7 +26,7 @@ func (p *Postgres) ListAchievementsSince(ctx context.Context, userID uuid.UUID, 
 		   AND unlocked_at IS NOT NULL
 		   AND unlocked_at >= $2
 		 ORDER BY unlocked_at DESC`
-	rows, err := p.pool.Query(ctx, q, pgUUID(userID), since)
+	rows, err := p.pool.Query(ctx, q, sharedpg.UUID(userID), since)
 	if err != nil {
 		return nil, fmt.Errorf("profile.Postgres.ListAchievementsSince: %w", err)
 	}
@@ -71,7 +73,7 @@ func (p *Postgres) GetPercentiles(ctx context.Context, userID uuid.UUID, _ time.
 		)
 		SELECT pr FROM ranked WHERE user_id = $1`
 	var prGlobal float64
-	if err := p.pool.QueryRow(ctx, qGlobal, pgUUID(userID)).Scan(&prGlobal); err != nil && !errors.Is(err, pgx.ErrNoRows) {
+	if err := p.pool.QueryRow(ctx, qGlobal, sharedpg.UUID(userID)).Scan(&prGlobal); err != nil && !errors.Is(err, pgx.ErrNoRows) {
 		return view, fmt.Errorf("profile.Postgres.GetPercentiles: global: %w", err)
 	}
 	view.InGlobal = clampPct(prGlobal)
@@ -96,7 +98,7 @@ func (p *Postgres) GetPercentiles(ctx context.Context, userID uuid.UUID, _ time.
 		)
 		SELECT pr FROM ranked WHERE user_id = $1`
 	var prTier float64
-	if err := p.pool.QueryRow(ctx, qTier, pgUUID(userID)).Scan(&prTier); err != nil && !errors.Is(err, pgx.ErrNoRows) {
+	if err := p.pool.QueryRow(ctx, qTier, sharedpg.UUID(userID)).Scan(&prTier); err != nil && !errors.Is(err, pgx.ErrNoRows) {
 		return view, fmt.Errorf("profile.Postgres.GetPercentiles: tier: %w", err)
 	}
 	view.InTier = clampPct(prTier)
@@ -124,7 +126,7 @@ func (p *Postgres) GetPercentiles(ctx context.Context, userID uuid.UUID, _ time.
 		)
 		SELECT pr FROM ranked WHERE user_id = $1`
 	var prFriends float64
-	if err := p.pool.QueryRow(ctx, qFriends, pgUUID(userID)).Scan(&prFriends); err != nil && !errors.Is(err, pgx.ErrNoRows) {
+	if err := p.pool.QueryRow(ctx, qFriends, sharedpg.UUID(userID)).Scan(&prFriends); err != nil && !errors.Is(err, pgx.ErrNoRows) {
 		return view, fmt.Errorf("profile.Postgres.GetPercentiles: friends: %w", err)
 	}
 	view.InFriends = clampPct(prFriends)

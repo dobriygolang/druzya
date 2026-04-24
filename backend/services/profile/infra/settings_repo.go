@@ -9,6 +9,8 @@ import (
 	profiledb "druz9/profile/infra/db"
 	"druz9/shared/enums"
 
+	sharedpg "druz9/shared/pkg/pg"
+
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -159,7 +161,7 @@ func (p *Postgres) UpdateRole(ctx context.Context, userID uuid.UUID, role string
 		  WHERE id = $1
 		    AND role <> 'admin'
 		    AND role <> $2`,
-		pgUUID(userID), role,
+		sharedpg.UUID(userID), role,
 	); err != nil {
 		return fmt.Errorf("profile.Postgres.UpdateRole: %w", err)
 	}
@@ -170,7 +172,7 @@ func (p *Postgres) UpdateRole(ctx context.Context, userID uuid.UUID, role string
 
 func (p *Postgres) SubmitInterviewerApplication(ctx context.Context, userID uuid.UUID, motivation string) (domain.InterviewerApplication, error) {
 	row, err := p.q.SubmitInterviewerApplication(ctx, profiledb.SubmitInterviewerApplicationParams{
-		UserID:     pgUUID(userID),
+		UserID:     sharedpg.UUID(userID),
 		Motivation: motivation,
 	})
 	if err != nil {
@@ -181,7 +183,7 @@ func (p *Postgres) SubmitInterviewerApplication(ctx context.Context, userID uuid
 }
 
 func (p *Postgres) GetMyInterviewerApplication(ctx context.Context, userID uuid.UUID) (domain.InterviewerApplication, error) {
-	row, err := p.q.GetMyInterviewerApplication(ctx, pgUUID(userID))
+	row, err := p.q.GetMyInterviewerApplication(ctx, sharedpg.UUID(userID))
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return domain.InterviewerApplication{}, domain.ErrNotFound
@@ -209,7 +211,7 @@ func (p *Postgres) ListInterviewerApplications(ctx context.Context, status strin
 }
 
 func (p *Postgres) GetInterviewerApplication(ctx context.Context, applicationID uuid.UUID) (domain.InterviewerApplication, error) {
-	row, err := p.q.GetInterviewerApplicationByID(ctx, pgUUID(applicationID))
+	row, err := p.q.GetInterviewerApplicationByID(ctx, sharedpg.UUID(applicationID))
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return domain.InterviewerApplication{}, domain.ErrNotFound
@@ -222,7 +224,7 @@ func (p *Postgres) GetInterviewerApplication(ctx context.Context, applicationID 
 
 func (p *Postgres) ApproveInterviewerApplication(ctx context.Context, applicationID, adminID uuid.UUID, note string) (domain.InterviewerApplication, error) {
 	row, err := p.q.ApproveInterviewerApplication(ctx, profiledb.ApproveInterviewerApplicationParams{
-		ID:           pgUUID(applicationID),
+		ID:           sharedpg.UUID(applicationID),
 		ReviewedBy:   pgtype.UUID{Bytes: adminID, Valid: true},
 		DecisionNote: note,
 	})
@@ -238,7 +240,7 @@ func (p *Postgres) ApproveInterviewerApplication(ctx context.Context, applicatio
 
 func (p *Postgres) RejectInterviewerApplication(ctx context.Context, applicationID, adminID uuid.UUID, note string) (domain.InterviewerApplication, error) {
 	row, err := p.q.RejectInterviewerApplication(ctx, profiledb.RejectInterviewerApplicationParams{
-		ID:           pgUUID(applicationID),
+		ID:           sharedpg.UUID(applicationID),
 		ReviewedBy:   pgtype.UUID{Bytes: adminID, Valid: true},
 		DecisionNote: note,
 	})

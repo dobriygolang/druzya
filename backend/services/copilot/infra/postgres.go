@@ -14,6 +14,8 @@ import (
 	copilotdb "druz9/copilot/infra/db"
 	"druz9/shared/enums"
 
+	sharedpg "druz9/shared/pkg/pg"
+
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -38,7 +40,7 @@ func NewConversations(pool *pgxpool.Pool) *Conversations {
 // Create inserts a new conversation row and returns the hydrated entity.
 func (r *Conversations) Create(ctx context.Context, userID uuid.UUID, title, model string) (domain.Conversation, error) {
 	row, err := r.q.CreateCopilotConversation(ctx, copilotdb.CreateCopilotConversationParams{
-		UserID: pgUUID(userID),
+		UserID: sharedpg.UUID(userID),
 		Title:  title,
 		Model:  model,
 	})
@@ -50,7 +52,7 @@ func (r *Conversations) Create(ctx context.Context, userID uuid.UUID, title, mod
 
 // Get loads a conversation by id.
 func (r *Conversations) Get(ctx context.Context, id uuid.UUID) (domain.Conversation, error) {
-	row, err := r.q.GetCopilotConversation(ctx, pgUUID(id))
+	row, err := r.q.GetCopilotConversation(ctx, sharedpg.UUID(id))
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return domain.Conversation{}, fmt.Errorf("copilot.Conversations.Get: %w", domain.ErrNotFound)
@@ -63,7 +65,7 @@ func (r *Conversations) Get(ctx context.Context, id uuid.UUID) (domain.Conversat
 // UpdateTitle writes a new title and bumps updated_at.
 func (r *Conversations) UpdateTitle(ctx context.Context, id uuid.UUID, title string) error {
 	affected, err := r.q.UpdateCopilotConversationTitle(ctx, copilotdb.UpdateCopilotConversationTitleParams{
-		ID:    pgUUID(id),
+		ID:    sharedpg.UUID(id),
 		Title: title,
 	})
 	if err != nil {
@@ -77,7 +79,7 @@ func (r *Conversations) UpdateTitle(ctx context.Context, id uuid.UUID, title str
 
 // Touch bumps updated_at without otherwise modifying the row.
 func (r *Conversations) Touch(ctx context.Context, id uuid.UUID) error {
-	affected, err := r.q.TouchCopilotConversation(ctx, pgUUID(id))
+	affected, err := r.q.TouchCopilotConversation(ctx, sharedpg.UUID(id))
 	if err != nil {
 		return fmt.Errorf("copilot.Conversations.Touch: %w", err)
 	}
@@ -91,8 +93,8 @@ func (r *Conversations) Touch(ctx context.Context, id uuid.UUID) error {
 // deletion by anyone other than the owner via the (id, user_id) pair.
 func (r *Conversations) Delete(ctx context.Context, id, userID uuid.UUID) error {
 	affected, err := r.q.DeleteCopilotConversation(ctx, copilotdb.DeleteCopilotConversationParams{
-		ID:     pgUUID(id),
-		UserID: pgUUID(userID),
+		ID:     sharedpg.UUID(id),
+		UserID: sharedpg.UUID(userID),
 	})
 	if err != nil {
 		return fmt.Errorf("copilot.Conversations.Delete: %w", err)
@@ -127,10 +129,10 @@ func (r *Conversations) ListForUser(ctx context.Context, userID uuid.UUID, curso
 	}
 
 	rows, err := r.q.ListCopilotConversationsForUser(ctx, copilotdb.ListCopilotConversationsForUserParams{
-		UserID:          pgUUID(userID),
+		UserID:          sharedpg.UUID(userID),
 		IsFirstPage:     isFirstPage,
 		CursorUpdatedAt: pgTimestamptz(cursorUpdatedAt),
-		CursorID:        pgUUID(cursorID),
+		CursorID:        sharedpg.UUID(cursorID),
 		PageSize:        int32(limit + 1), // fetch N+1 to detect a next page
 	})
 	if err != nil {
@@ -144,8 +146,8 @@ func (r *Conversations) ListForUser(ctx context.Context, userID uuid.UUID, curso
 		}
 		out = append(out, domain.ConversationSummary{
 			Conversation: domain.Conversation{
-				ID:        fromPgUUID(row.ID),
-				UserID:    fromPgUUID(row.UserID),
+				ID:        sharedpg.UUIDFrom(row.ID),
+				UserID:    sharedpg.UUIDFrom(row.UserID),
 				Title:     row.Title,
 				Model:     row.Model,
 				CreatedAt: row.CreatedAt.Time,
@@ -181,7 +183,7 @@ func NewMessages(pool *pgxpool.Pool) *Messages {
 // Insert writes a new message and returns the hydrated entity.
 func (r *Messages) Insert(ctx context.Context, m domain.Message) (domain.Message, error) {
 	row, err := r.q.InsertCopilotMessage(ctx, copilotdb.InsertCopilotMessageParams{
-		ConversationID: pgUUID(m.ConversationID),
+		ConversationID: sharedpg.UUID(m.ConversationID),
 		Role:           string(m.Role),
 		Content:        m.Content,
 		HasScreenshot:  m.HasScreenshot,
@@ -199,7 +201,7 @@ func (r *Messages) Insert(ctx context.Context, m domain.Message) (domain.Message
 // placeholder assistant row created when the stream opened.
 func (r *Messages) UpdateAssistant(ctx context.Context, id uuid.UUID, content string, tokensIn, tokensOut, latencyMs int) error {
 	affected, err := r.q.UpdateCopilotAssistantMessage(ctx, copilotdb.UpdateCopilotAssistantMessageParams{
-		ID:        pgUUID(id),
+		ID:        sharedpg.UUID(id),
 		Content:   content,
 		TokensIn:  int32(tokensIn),
 		TokensOut: int32(tokensOut),
@@ -216,7 +218,7 @@ func (r *Messages) UpdateAssistant(ctx context.Context, id uuid.UUID, content st
 
 // List returns all messages for a conversation in creation order.
 func (r *Messages) List(ctx context.Context, conversationID uuid.UUID) ([]domain.Message, error) {
-	rows, err := r.q.ListCopilotMessagesForConversation(ctx, pgUUID(conversationID))
+	rows, err := r.q.ListCopilotMessagesForConversation(ctx, sharedpg.UUID(conversationID))
 	if err != nil {
 		return nil, fmt.Errorf("copilot.Messages.List: %w", err)
 	}
@@ -231,7 +233,7 @@ func (r *Messages) List(ctx context.Context, conversationID uuid.UUID) ([]domain
 // the caller via OwnerOf.
 func (r *Messages) Rate(ctx context.Context, messageID uuid.UUID, rating int8) error {
 	affected, err := r.q.RateCopilotMessage(ctx, copilotdb.RateCopilotMessageParams{
-		ID:     pgUUID(messageID),
+		ID:     sharedpg.UUID(messageID),
 		Rating: pgInt2(int16(rating)),
 	})
 	if err != nil {
@@ -245,14 +247,14 @@ func (r *Messages) Rate(ctx context.Context, messageID uuid.UUID, rating int8) e
 
 // OwnerOf returns the user_id of the conversation owning a message.
 func (r *Messages) OwnerOf(ctx context.Context, messageID uuid.UUID) (uuid.UUID, error) {
-	owner, err := r.q.GetCopilotMessageOwner(ctx, pgUUID(messageID))
+	owner, err := r.q.GetCopilotMessageOwner(ctx, sharedpg.UUID(messageID))
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return uuid.Nil, fmt.Errorf("copilot.Messages.OwnerOf: %w", domain.ErrNotFound)
 		}
 		return uuid.Nil, fmt.Errorf("copilot.Messages.OwnerOf: %w", err)
 	}
-	return fromPgUUID(owner), nil
+	return sharedpg.UUIDFrom(owner), nil
 }
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -272,7 +274,7 @@ func NewQuotas(pool *pgxpool.Pool) *Quotas {
 
 // GetOrInit loads the quota row, creating a free-tier default on first use.
 func (r *Quotas) GetOrInit(ctx context.Context, userID uuid.UUID) (domain.Quota, error) {
-	row, err := r.q.UpsertCopilotQuotaDefault(ctx, pgUUID(userID))
+	row, err := r.q.UpsertCopilotQuotaDefault(ctx, sharedpg.UUID(userID))
 	if err != nil {
 		return domain.Quota{}, fmt.Errorf("copilot.Quotas.GetOrInit: %w", err)
 	}
@@ -282,7 +284,7 @@ func (r *Quotas) GetOrInit(ctx context.Context, userID uuid.UUID) (domain.Quota,
 // IncrementUsage bumps requests_used by 1. Callers must have already
 // verified HasBudget; this adapter does not enforce the cap.
 func (r *Quotas) IncrementUsage(ctx context.Context, userID uuid.UUID) error {
-	affected, err := r.q.IncrementCopilotQuotaUsage(ctx, pgUUID(userID))
+	affected, err := r.q.IncrementCopilotQuotaUsage(ctx, sharedpg.UUID(userID))
 	if err != nil {
 		return fmt.Errorf("copilot.Quotas.IncrementUsage: %w", err)
 	}
@@ -294,7 +296,7 @@ func (r *Quotas) IncrementUsage(ctx context.Context, userID uuid.UUID) error {
 
 // ResetWindow zeros the counter and shifts resets_at 24h into the future.
 func (r *Quotas) ResetWindow(ctx context.Context, userID uuid.UUID) error {
-	affected, err := r.q.ResetCopilotQuotaWindow(ctx, pgUUID(userID))
+	affected, err := r.q.ResetCopilotQuotaWindow(ctx, sharedpg.UUID(userID))
 	if err != nil {
 		return fmt.Errorf("copilot.Quotas.ResetWindow: %w", err)
 	}
@@ -307,7 +309,7 @@ func (r *Quotas) ResetWindow(ctx context.Context, userID uuid.UUID) error {
 // UpdatePlan writes a new plan + its derived cap and allow-list.
 func (r *Quotas) UpdatePlan(ctx context.Context, userID uuid.UUID, plan enums.SubscriptionPlan, cap int, modelsAllowed []string) error {
 	affected, err := r.q.UpdateCopilotQuotaPlan(ctx, copilotdb.UpdateCopilotQuotaPlanParams{
-		UserID:        pgUUID(userID),
+		UserID:        sharedpg.UUID(userID),
 		Plan:          string(plan),
 		RequestsCap:   int32(cap),
 		ModelsAllowed: modelsAllowed,
@@ -342,8 +344,8 @@ func conversationFromRow[R conversationRowLike](r R) domain.Conversation {
 	switch v := any(r).(type) {
 	case copilotdb.CreateCopilotConversationRow:
 		return domain.Conversation{
-			ID:        fromPgUUID(v.ID),
-			UserID:    fromPgUUID(v.UserID),
+			ID:        sharedpg.UUIDFrom(v.ID),
+			UserID:    sharedpg.UUIDFrom(v.UserID),
 			Title:     v.Title,
 			Model:     v.Model,
 			CreatedAt: v.CreatedAt.Time,
@@ -351,8 +353,8 @@ func conversationFromRow[R conversationRowLike](r R) domain.Conversation {
 		}
 	case copilotdb.GetCopilotConversationRow:
 		return domain.Conversation{
-			ID:        fromPgUUID(v.ID),
-			UserID:    fromPgUUID(v.UserID),
+			ID:        sharedpg.UUIDFrom(v.ID),
+			UserID:    sharedpg.UUIDFrom(v.UserID),
 			Title:     v.Title,
 			Model:     v.Model,
 			CreatedAt: v.CreatedAt.Time,
@@ -360,8 +362,8 @@ func conversationFromRow[R conversationRowLike](r R) domain.Conversation {
 		}
 	case copilotdb.CopilotConversation:
 		return domain.Conversation{
-			ID:        fromPgUUID(v.ID),
-			UserID:    fromPgUUID(v.UserID),
+			ID:        sharedpg.UUIDFrom(v.ID),
+			UserID:    sharedpg.UUIDFrom(v.UserID),
 			Title:     v.Title,
 			Model:     v.Model,
 			CreatedAt: v.CreatedAt.Time,
@@ -374,8 +376,8 @@ func conversationFromRow[R conversationRowLike](r R) domain.Conversation {
 
 func messageFromRow(r copilotdb.CopilotMessage) domain.Message {
 	m := domain.Message{
-		ID:             fromPgUUID(r.ID),
-		ConversationID: fromPgUUID(r.ConversationID),
+		ID:             sharedpg.UUIDFrom(r.ID),
+		ConversationID: sharedpg.UUIDFrom(r.ConversationID),
 		Role:           enums.MessageRole(r.Role),
 		Content:        r.Content,
 		HasScreenshot:  r.HasScreenshot,
@@ -393,7 +395,7 @@ func messageFromRow(r copilotdb.CopilotMessage) domain.Message {
 
 func quotaFromRow(r copilotdb.CopilotQuota) domain.Quota {
 	return domain.Quota{
-		UserID:        fromPgUUID(r.UserID),
+		UserID:        sharedpg.UUIDFrom(r.UserID),
 		Plan:          enums.SubscriptionPlan(r.Plan),
 		RequestsUsed:  int(r.RequestsUsed),
 		RequestsCap:   int(r.RequestsCap),
@@ -406,15 +408,6 @@ func quotaFromRow(r copilotdb.CopilotQuota) domain.Quota {
 // ─────────────────────────────────────────────────────────────────────────
 // pg helpers
 // ─────────────────────────────────────────────────────────────────────────
-
-func pgUUID(id uuid.UUID) pgtype.UUID { return pgtype.UUID{Bytes: id, Valid: true} }
-
-func fromPgUUID(p pgtype.UUID) uuid.UUID {
-	if !p.Valid {
-		return uuid.Nil
-	}
-	return uuid.UUID(p.Bytes)
-}
 
 func pgTimestamptz(t time.Time) pgtype.Timestamptz {
 	if t.IsZero() {

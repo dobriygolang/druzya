@@ -10,6 +10,8 @@ import (
 	profiledb "druz9/profile/infra/db"
 	"druz9/shared/enums"
 
+	sharedpg "druz9/shared/pkg/pg"
+
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -18,7 +20,7 @@ import (
 // CountRecentActivity via sqlc-generated weekly counts.
 func (p *Postgres) CountRecentActivity(ctx context.Context, userID uuid.UUID, since time.Time) (domain.Activity, error) {
 	row, err := p.q.CountWeeklyActivity(ctx, profiledb.CountWeeklyActivityParams{
-		UserID:      pgUUID(userID),
+		UserID:      sharedpg.UUID(userID),
 		SubmittedAt: pgtype.Timestamptz{Time: since, Valid: true},
 	})
 	if err != nil {
@@ -48,7 +50,7 @@ func (p *Postgres) ListMatchAggregatesSince(ctx context.Context, userID uuid.UUI
 		  JOIN arena_participants ap ON ap.match_id = m.id AND ap.user_id = $1
 		 WHERE m.status = 'finished'
 		   AND m.finished_at >= $2`
-	rows, err := p.pool.Query(ctx, q, pgUUID(userID), since)
+	rows, err := p.pool.Query(ctx, q, sharedpg.UUID(userID), since)
 	if err != nil {
 		return nil, fmt.Errorf("profile.Postgres.ListMatchAggregatesSince: %w", err)
 	}
@@ -95,7 +97,7 @@ func (p *Postgres) ListWeeklyXPSince(ctx context.Context, userID uuid.UUID, now 
 		   AND m.finished_at >= $2
 		   AND m.finished_at < $3
 		 GROUP BY bucket`
-	rows, err := p.pool.Query(ctx, q, pgUUID(userID), windowStart, end)
+	rows, err := p.pool.Query(ctx, q, sharedpg.UUID(userID), windowStart, end)
 	if err != nil {
 		return nil, fmt.Errorf("profile.Postgres.ListWeeklyXPSince: %w", err)
 	}
@@ -123,7 +125,7 @@ func (p *Postgres) ListWeeklyXPSince(ctx context.Context, userID uuid.UUID, now 
 func (p *Postgres) GetStreaks(ctx context.Context, userID uuid.UUID) (int, int, error) {
 	const q = `SELECT current_streak, best_streak FROM daily_streaks WHERE user_id = $1`
 	var cur, best int
-	if err := p.pool.QueryRow(ctx, q, pgUUID(userID)).Scan(&cur, &best); err != nil {
+	if err := p.pool.QueryRow(ctx, q, sharedpg.UUID(userID)).Scan(&cur, &best); err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return 0, 0, nil
 		}
@@ -148,7 +150,7 @@ func (p *Postgres) ListHourlyActivitySince(ctx context.Context, userID uuid.UUID
 		 WHERE m.started_at IS NOT NULL
 		   AND m.started_at >= $2
 		 GROUP BY dow, hour`
-	rows, err := p.pool.Query(ctx, q, pgUUID(userID), since)
+	rows, err := p.pool.Query(ctx, q, sharedpg.UUID(userID), since)
 	if err != nil {
 		return out, fmt.Errorf("profile.Postgres.ListHourlyActivitySince: %w", err)
 	}
@@ -177,7 +179,7 @@ func (p *Postgres) ListEloSnapshotsSince(ctx context.Context, userID uuid.UUID, 
 		  FROM elo_snapshots_daily
 		 WHERE user_id = $1 AND snapshot_date >= $2::date
 		 ORDER BY snapshot_date ASC, section ASC`
-	rows, err := p.pool.Query(ctx, q, pgUUID(userID), since)
+	rows, err := p.pool.Query(ctx, q, sharedpg.UUID(userID), since)
 	if err != nil {
 		return nil, fmt.Errorf("profile.Postgres.ListEloSnapshotsSince: %w", err)
 	}

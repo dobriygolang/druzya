@@ -8,6 +8,8 @@ import (
 	admindb "druz9/admin/infra/db"
 	"druz9/shared/enums"
 
+	sharedpg "druz9/shared/pkg/pg"
+
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -58,7 +60,7 @@ func companyFromRow(r admindb.Company) domain.AdminCompany {
 		sections = append(sections, enums.Section(s))
 	}
 	return domain.AdminCompany{
-		ID:               fromPgUUID(r.ID),
+		ID:               sharedpg.UUIDFrom(r.ID),
 		Slug:             r.Slug,
 		Name:             r.Name,
 		Difficulty:       enums.DungeonTier(r.Difficulty),

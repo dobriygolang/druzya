@@ -9,6 +9,8 @@ import (
 	"druz9/review/domain"
 	reviewdb "druz9/review/infra/db"
 
+	sharedpg "druz9/shared/pkg/pg"
+
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
@@ -34,11 +36,11 @@ func NewPostgres(pool *pgxpool.Pool) *Postgres {
 // Create inserts a review. Duplicate (booking_id, direction) → ErrAlreadyReviewed.
 func (p *Postgres) Create(ctx context.Context, r domain.Review) (domain.Review, error) {
 	row, err := p.q.CreateReview(ctx, reviewdb.CreateReviewParams{
-		BookingID:     pgUUID(r.BookingID),
+		BookingID:     sharedpg.UUID(r.BookingID),
 		Direction:     string(r.Direction),
-		ReviewerID:    pgUUID(r.ReviewerID),
-		InterviewerID: pgUUID(r.InterviewerID),
-		SubjectID:     pgUUID(r.SubjectID),
+		ReviewerID:    sharedpg.UUID(r.ReviewerID),
+		InterviewerID: sharedpg.UUID(r.InterviewerID),
+		SubjectID:     sharedpg.UUID(r.SubjectID),
 		Rating:        int32(r.Rating),
 		Feedback:      pgText(r.Feedback),
 	})
@@ -50,11 +52,11 @@ func (p *Postgres) Create(ctx context.Context, r domain.Review) (domain.Review, 
 		return domain.Review{}, fmt.Errorf("review.pg.Create: %w", err)
 	}
 	return domain.Review{
-		BookingID:     fromPgUUID(row.BookingID),
+		BookingID:     sharedpg.UUIDFrom(row.BookingID),
 		Direction:     domain.Direction(row.Direction),
-		ReviewerID:    fromPgUUID(row.ReviewerID),
-		InterviewerID: fromPgUUID(row.InterviewerID),
-		SubjectID:     fromPgUUID(row.SubjectID),
+		ReviewerID:    sharedpg.UUIDFrom(row.ReviewerID),
+		InterviewerID: sharedpg.UUIDFrom(row.InterviewerID),
+		SubjectID:     sharedpg.UUIDFrom(row.SubjectID),
 		Rating:        int(row.Rating),
 		Feedback:      row.Feedback.String,
 		CreatedAt:     row.CreatedAt.Time,
@@ -65,7 +67,7 @@ func (p *Postgres) Create(ctx context.Context, r domain.Review) (domain.Review, 
 // GetByBookingDirection — ErrNotFound when the side hasn't reviewed yet.
 func (p *Postgres) GetByBookingDirection(ctx context.Context, bookingID uuid.UUID, dir domain.Direction) (domain.Review, error) {
 	row, err := p.q.GetReviewByBookingDirection(ctx, reviewdb.GetReviewByBookingDirectionParams{
-		BookingID: pgUUID(bookingID),
+		BookingID: sharedpg.UUID(bookingID),
 		Direction: string(dir),
 	})
 	if err != nil {
@@ -75,11 +77,11 @@ func (p *Postgres) GetByBookingDirection(ctx context.Context, bookingID uuid.UUI
 		return domain.Review{}, fmt.Errorf("review.pg.GetByBookingDirection: %w", err)
 	}
 	return domain.Review{
-		BookingID:     fromPgUUID(row.BookingID),
+		BookingID:     sharedpg.UUIDFrom(row.BookingID),
 		Direction:     domain.Direction(row.Direction),
-		ReviewerID:    fromPgUUID(row.ReviewerID),
-		InterviewerID: fromPgUUID(row.InterviewerID),
-		SubjectID:     fromPgUUID(row.SubjectID),
+		ReviewerID:    sharedpg.UUIDFrom(row.ReviewerID),
+		InterviewerID: sharedpg.UUIDFrom(row.InterviewerID),
+		SubjectID:     sharedpg.UUIDFrom(row.SubjectID),
 		Rating:        int(row.Rating),
 		Feedback:      row.Feedback.String,
 		CreatedAt:     row.CreatedAt.Time,
@@ -93,7 +95,7 @@ func (p *Postgres) ListBySubject(ctx context.Context, subjectID uuid.UUID, limit
 		limit = defaultListLimit
 	}
 	rows, err := p.q.ListReviewsBySubject(ctx, reviewdb.ListReviewsBySubjectParams{
-		SubjectID: pgUUID(subjectID),
+		SubjectID: sharedpg.UUID(subjectID),
 		Limit:     int32(limit),
 	})
 	if err != nil {
@@ -102,11 +104,11 @@ func (p *Postgres) ListBySubject(ctx context.Context, subjectID uuid.UUID, limit
 	out := make([]domain.Review, 0, len(rows))
 	for _, r := range rows {
 		out = append(out, domain.Review{
-			BookingID:     fromPgUUID(r.BookingID),
+			BookingID:     sharedpg.UUIDFrom(r.BookingID),
 			Direction:     domain.Direction(r.Direction),
-			ReviewerID:    fromPgUUID(r.ReviewerID),
-			InterviewerID: fromPgUUID(r.InterviewerID),
-			SubjectID:     fromPgUUID(r.SubjectID),
+			ReviewerID:    sharedpg.UUIDFrom(r.ReviewerID),
+			InterviewerID: sharedpg.UUIDFrom(r.InterviewerID),
+			SubjectID:     sharedpg.UUIDFrom(r.SubjectID),
 			Rating:        int(r.Rating),
 			Feedback:      r.Feedback.String,
 			CreatedAt:     r.CreatedAt.Time,
@@ -118,7 +120,7 @@ func (p *Postgres) ListBySubject(ctx context.Context, subjectID uuid.UUID, limit
 
 // SubjectStats returns avg rating + count across both review directions.
 func (p *Postgres) SubjectStats(ctx context.Context, subjectID uuid.UUID) (domain.Stats, error) {
-	row, err := p.q.GetSubjectStats(ctx, pgUUID(subjectID))
+	row, err := p.q.GetSubjectStats(ctx, sharedpg.UUID(subjectID))
 	if err != nil {
 		return domain.Stats{}, fmt.Errorf("review.pg.SubjectStats: %w", err)
 	}
@@ -132,7 +134,7 @@ func (p *Postgres) SubjectStats(ctx context.Context, subjectID uuid.UUID) (domai
 // HasReview — existence check for one side of a booking.
 func (p *Postgres) HasReview(ctx context.Context, bookingID uuid.UUID, dir domain.Direction) (bool, error) {
 	_, err := p.q.GetReviewByBookingDirection(ctx, reviewdb.GetReviewByBookingDirectionParams{
-		BookingID: pgUUID(bookingID),
+		BookingID: sharedpg.UUID(bookingID),
 		Direction: string(dir),
 	})
 	if err != nil {
@@ -145,17 +147,6 @@ func (p *Postgres) HasReview(ctx context.Context, bookingID uuid.UUID, dir domai
 }
 
 // ── helpers ───────────────────────────────────────────────────────────────
-
-func pgUUID(id uuid.UUID) pgtype.UUID {
-	return pgtype.UUID{Bytes: id, Valid: id != uuid.Nil}
-}
-
-func fromPgUUID(p pgtype.UUID) uuid.UUID {
-	if !p.Valid {
-		return uuid.Nil
-	}
-	return uuid.UUID(p.Bytes)
-}
 
 func pgText(s string) pgtype.Text {
 	if s == "" {

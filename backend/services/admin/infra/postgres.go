@@ -23,7 +23,6 @@ import (
 
 	"druz9/admin/domain"
 
-	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgtype"
 )
@@ -53,15 +52,6 @@ func mapUniqueErr(err error) error {
 		return domain.ErrConflict
 	}
 	return err
-}
-
-func pgUUID(id uuid.UUID) pgtype.UUID { return pgtype.UUID{Bytes: id, Valid: true} }
-
-func fromPgUUID(p pgtype.UUID) uuid.UUID {
-	if !p.Valid {
-		return uuid.Nil
-	}
-	return uuid.UUID(p.Bytes)
 }
 
 func pgText(s string) pgtype.Text {

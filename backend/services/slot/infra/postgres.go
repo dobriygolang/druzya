@@ -14,6 +14,8 @@ import (
 	"druz9/slot/domain"
 	slotdb "druz9/slot/infra/db"
 
+	sharedpg "druz9/shared/pkg/pg"
+
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -44,7 +46,7 @@ func (p *Postgres) Create(ctx context.Context, s domain.Slot) (domain.Slot, erro
 		diff = pgtype.Text{String: string(*s.Difficulty), Valid: true}
 	}
 	row, err := p.q.CreateSlot(ctx, slotdb.CreateSlotParams{
-		InterviewerID: pgUUID(s.InterviewerID),
+		InterviewerID: sharedpg.UUID(s.InterviewerID),
 		StartsAt:      pgtype.Timestamptz{Time: s.StartsAt.UTC(), Valid: true},
 		DurationMin:   int32(s.DurationMin),
 		Section:       string(s.Section),
@@ -61,7 +63,7 @@ func (p *Postgres) Create(ctx context.Context, s domain.Slot) (domain.Slot, erro
 
 // GetByID returns a slot by id.
 func (p *Postgres) GetByID(ctx context.Context, id uuid.UUID) (domain.Slot, error) {
-	row, err := p.q.GetSlot(ctx, pgUUID(id))
+	row, err := p.q.GetSlot(ctx, sharedpg.UUID(id))
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return domain.Slot{}, domain.ErrNotFound
@@ -142,7 +144,7 @@ func (p *Postgres) List(ctx context.Context, f domain.ListFilter) ([]domain.Slot
 // ListByInterviewer returns overlapping slots of the given owner.
 func (p *Postgres) ListByInterviewer(ctx context.Context, interviewerID uuid.UUID, from, to time.Time) ([]domain.Slot, error) {
 	rows, err := p.q.ListByInterviewerInRange(ctx, slotdb.ListByInterviewerInRangeParams{
-		InterviewerID: pgUUID(interviewerID),
+		InterviewerID: sharedpg.UUID(interviewerID),
 		Column2:       pgtype.Timestamptz{Time: from.UTC(), Valid: true},
 		Column3:       pgtype.Timestamptz{Time: to.UTC(), Valid: true},
 	})
@@ -159,7 +161,7 @@ func (p *Postgres) ListByInterviewer(ctx context.Context, interviewerID uuid.UUI
 // UpdateStatus sets the status column (non-transactional).
 func (p *Postgres) UpdateStatus(ctx context.Context, id uuid.UUID, status string) error {
 	affected, err := p.q.UpdateSlotStatus(ctx, slotdb.UpdateSlotStatusParams{
-		ID:     pgUUID(id),
+		ID:     sharedpg.UUID(id),
 		Status: status,
 	})
 	if err != nil {
@@ -182,7 +184,7 @@ func (p *Postgres) BookAtomically(ctx context.Context, slotID, candidateID uuid.
 
 	qtx := p.q.WithTx(tx)
 
-	row, err := qtx.GetSlotForUpdate(ctx, pgUUID(slotID))
+	row, err := qtx.GetSlotForUpdate(ctx, sharedpg.UUID(slotID))
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return domain.Booking{}, domain.ErrNotFound
@@ -201,7 +203,7 @@ func (p *Postgres) BookAtomically(ctx context.Context, slotID, candidateID uuid.
 	}
 
 	if affected, updErr := qtx.UpdateSlotStatus(ctx, slotdb.UpdateSlotStatusParams{
-		ID:     pgUUID(slotID),
+		ID:     sharedpg.UUID(slotID),
 		Status: string(enums.SlotStatusBooked),
 	}); updErr != nil {
 		return domain.Booking{}, fmt.Errorf("slot.pg.BookAtomically: flip: %w", updErr)
@@ -210,8 +212,8 @@ func (p *Postgres) BookAtomically(ctx context.Context, slotID, candidateID uuid.
 	}
 
 	brow, err := qtx.CreateBooking(ctx, slotdb.CreateBookingParams{
-		SlotID:      pgUUID(slotID),
-		CandidateID: pgUUID(candidateID),
+		SlotID:      sharedpg.UUID(slotID),
+		CandidateID: sharedpg.UUID(candidateID),
 		MeetUrl:     pgtype.Text{String: meetURL, Valid: meetURL != ""},
 	})
 	if err != nil {
@@ -236,7 +238,7 @@ func (p *Postgres) CancelSlotWithBooking(ctx context.Context, slotID uuid.UUID) 
 
 	qtx := p.q.WithTx(tx)
 
-	row, err := qtx.GetSlotForUpdate(ctx, pgUUID(slotID))
+	row, err := qtx.GetSlotForUpdate(ctx, sharedpg.UUID(slotID))
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return domain.Booking{}, false, domain.ErrNotFound
@@ -249,7 +251,7 @@ func (p *Postgres) CancelSlotWithBooking(ctx context.Context, slotID uuid.UUID) 
 	var booking domain.Booking
 	hadBooking := false
 	if string(s.Status) == string(enums.SlotStatusBooked) {
-		brow, berr := qtx.GetBookingBySlotID(ctx, pgUUID(slotID))
+		brow, berr := qtx.GetBookingBySlotID(ctx, sharedpg.UUID(slotID))
 		if berr != nil && !errors.Is(berr, pgx.ErrNoRows) {
 			return domain.Booking{}, false, fmt.Errorf("slot.pg.CancelSlotWithBooking: load booking: %w", berr)
 		}
@@ -260,13 +262,13 @@ func (p *Postgres) CancelSlotWithBooking(ctx context.Context, slotID uuid.UUID) 
 	}
 
 	if _, err := qtx.UpdateSlotStatus(ctx, slotdb.UpdateSlotStatusParams{
-		ID:     pgUUID(slotID),
+		ID:     sharedpg.UUID(slotID),
 		Status: string(enums.SlotStatusCancelled),
 	}); err != nil {
 		return domain.Booking{}, false, fmt.Errorf("slot.pg.CancelSlotWithBooking: flip: %w", err)
 	}
 	if hadBooking {
-		if _, err := qtx.CancelBookingBySlotID(ctx, pgUUID(slotID)); err != nil {
+		if _, err := qtx.CancelBookingBySlotID(ctx, sharedpg.UUID(slotID)); err != nil {
 			return domain.Booking{}, false, fmt.Errorf("slot.pg.CancelSlotWithBooking: cancel booking: %w", err)
 		}
 	}
@@ -280,7 +282,7 @@ func (p *Postgres) CancelSlotWithBooking(ctx context.Context, slotID uuid.UUID) 
 
 // GetBySlotID returns the booking attached to a slot.
 func (p *Postgres) GetBySlotID(ctx context.Context, slotID uuid.UUID) (domain.Booking, error) {
-	row, err := p.q.GetBookingBySlotID(ctx, pgUUID(slotID))
+	row, err := p.q.GetBookingBySlotID(ctx, sharedpg.UUID(slotID))
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return domain.Booking{}, domain.ErrBookingNotFound
@@ -301,7 +303,7 @@ SELECT b.id, b.slot_id, b.candidate_id, b.meet_url, b.status, b.created_at,
   FROM bookings b
   JOIN slots    s ON s.id = b.slot_id
  WHERE b.id = $1`
-	row := p.pool.QueryRow(ctx, sql, pgUUID(bookingID))
+	row := p.pool.QueryRow(ctx, sql, sharedpg.UUID(bookingID))
 	var (
 		b slotdb.Booking
 		s slotdb.Slot
@@ -335,7 +337,7 @@ SELECT b.id, b.slot_id, b.candidate_id, b.meet_url, b.status, b.created_at,
   JOIN users    u ON u.id = b.candidate_id
  WHERE s.interviewer_id = $1
  ORDER BY s.starts_at DESC`
-	rows, err := p.pool.Query(ctx, sql, pgUUID(interviewerID))
+	rows, err := p.pool.Query(ctx, sql, sharedpg.UUID(interviewerID))
 	if err != nil {
 		return nil, fmt.Errorf("slot.pg.ListHostedByInterviewer: %w", err)
 	}
@@ -380,7 +382,7 @@ SELECT b.id, b.slot_id, b.candidate_id, b.meet_url, b.status, b.created_at,
   JOIN slots    s ON s.id = b.slot_id
  WHERE b.candidate_id = $1
  ORDER BY s.starts_at DESC`
-	rows, err := p.pool.Query(ctx, sql, pgUUID(candidateID))
+	rows, err := p.pool.Query(ctx, sql, sharedpg.UUID(candidateID))
 	if err != nil {
 		return nil, fmt.Errorf("slot.pg.ListByCandidate: %w", err)
 	}
@@ -411,19 +413,10 @@ SELECT b.id, b.slot_id, b.candidate_id, b.meet_url, b.status, b.created_at,
 
 // ── helpers ────────────────────────────────────────────────────────────────
 
-func pgUUID(id uuid.UUID) pgtype.UUID { return pgtype.UUID{Bytes: id, Valid: true} }
-
-func fromPgUUID(p pgtype.UUID) uuid.UUID {
-	if !p.Valid {
-		return uuid.Nil
-	}
-	return uuid.UUID(p.Bytes)
-}
-
 func slotFromRow(r slotdb.Slot) domain.Slot {
 	s := domain.Slot{
-		ID:            fromPgUUID(r.ID),
-		InterviewerID: fromPgUUID(r.InterviewerID),
+		ID:            sharedpg.UUIDFrom(r.ID),
+		InterviewerID: sharedpg.UUIDFrom(r.InterviewerID),
 		StartsAt:      r.StartsAt.Time,
 		DurationMin:   int(r.DurationMin),
 		Section:       enums.Section(r.Section),
@@ -444,9 +437,9 @@ func slotFromRow(r slotdb.Slot) domain.Slot {
 
 func bookingFromRow(r slotdb.Booking) domain.Booking {
 	b := domain.Booking{
-		ID:          fromPgUUID(r.ID),
-		SlotID:      fromPgUUID(r.SlotID),
-		CandidateID: fromPgUUID(r.CandidateID),
+		ID:          sharedpg.UUIDFrom(r.ID),
+		SlotID:      sharedpg.UUIDFrom(r.SlotID),
+		CandidateID: sharedpg.UUIDFrom(r.CandidateID),
 		Status:      r.Status,
 		CreatedAt:   r.CreatedAt.Time,
 	}

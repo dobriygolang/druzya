@@ -13,6 +13,8 @@ import (
 
 	"druz9/notify/domain"
 
+	sharedpg "druz9/shared/pkg/pg"
+
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -33,7 +35,7 @@ func NewSupportPostgres(pool *pgxpool.Pool) *SupportPostgres {
 func (p *SupportPostgres) Create(ctx context.Context, t *domain.SupportTicket) error {
 	var userID any
 	if t.UserID != nil {
-		userID = pgUUID(*t.UserID)
+		userID = sharedpg.UUID(*t.UserID)
 	}
 	row := p.pool.QueryRow(ctx, `
 		INSERT INTO support_tickets

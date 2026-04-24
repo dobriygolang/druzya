@@ -11,6 +11,8 @@ import (
 	"druz9/copilot/domain"
 	copilotdb "druz9/copilot/infra/db"
 
+	sharedpg "druz9/shared/pkg/pg"
+
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -31,7 +33,7 @@ func NewSessions(pool *pgxpool.Pool) *Sessions {
 
 func (r *Sessions) Create(ctx context.Context, userID uuid.UUID, kind domain.SessionKind) (domain.Session, error) {
 	row, err := r.q.CreateCopilotSession(ctx, copilotdb.CreateCopilotSessionParams{
-		UserID: pgUUID(userID),
+		UserID: sharedpg.UUID(userID),
 		Kind:   string(kind),
 	})
 	if err != nil {
@@ -47,7 +49,7 @@ func (r *Sessions) Create(ctx context.Context, userID uuid.UUID, kind domain.Ses
 }
 
 func (r *Sessions) Get(ctx context.Context, id uuid.UUID) (domain.Session, error) {
-	row, err := r.q.GetCopilotSession(ctx, pgUUID(id))
+	row, err := r.q.GetCopilotSession(ctx, sharedpg.UUID(id))
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return domain.Session{}, fmt.Errorf("copilot.Sessions.Get: %w", domain.ErrNotFound)
@@ -58,7 +60,7 @@ func (r *Sessions) Get(ctx context.Context, id uuid.UUID) (domain.Session, error
 }
 
 func (r *Sessions) GetLive(ctx context.Context, userID uuid.UUID) (domain.Session, error) {
-	row, err := r.q.GetLiveCopilotSession(ctx, pgUUID(userID))
+	row, err := r.q.GetLiveCopilotSession(ctx, sharedpg.UUID(userID))
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return domain.Session{}, fmt.Errorf("copilot.Sessions.GetLive: %w", domain.ErrNotFound)
@@ -70,8 +72,8 @@ func (r *Sessions) GetLive(ctx context.Context, userID uuid.UUID) (domain.Sessio
 
 func (r *Sessions) End(ctx context.Context, id, userID uuid.UUID) error {
 	affected, err := r.q.EndCopilotSession(ctx, copilotdb.EndCopilotSessionParams{
-		ID:     pgUUID(id),
-		UserID: pgUUID(userID),
+		ID:     sharedpg.UUID(id),
+		UserID: sharedpg.UUID(userID),
 	})
 	if err != nil {
 		return fmt.Errorf("copilot.Sessions.End: %w", err)
@@ -83,7 +85,7 @@ func (r *Sessions) End(ctx context.Context, id, userID uuid.UUID) error {
 }
 
 func (r *Sessions) MarkByok(ctx context.Context, id uuid.UUID) error {
-	if _, err := r.q.MarkCopilotSessionByok(ctx, pgUUID(id)); err != nil {
+	if _, err := r.q.MarkCopilotSessionByok(ctx, sharedpg.UUID(id)); err != nil {
 		return fmt.Errorf("copilot.Sessions.MarkByok: %w", err)
 	}
 	return nil
@@ -115,11 +117,11 @@ func (r *Sessions) ListForUser(
 	}
 
 	rows, err := r.q.ListCopilotSessionsForUser(ctx, copilotdb.ListCopilotSessionsForUserParams{
-		UserID:          pgUUID(userID),
+		UserID:          sharedpg.UUID(userID),
 		KindFilter:      string(kind),
 		IsFirstPage:     isFirstPage,
 		CursorStartedAt: pgTimestamptz(cursorTS),
-		CursorID:        pgUUID(cursorID),
+		CursorID:        sharedpg.UUID(cursorID),
 		PageSize:        int32(limit + 1),
 	})
 	if err != nil {
@@ -132,8 +134,8 @@ func (r *Sessions) ListForUser(
 			break
 		}
 		s := domain.Session{
-			ID:        fromPgUUID(row.ID),
-			UserID:    fromPgUUID(row.UserID),
+			ID:        sharedpg.UUIDFrom(row.ID),
+			UserID:    sharedpg.UUIDFrom(row.UserID),
 			Kind:      domain.SessionKind(row.Kind),
 			StartedAt: row.StartedAt.Time,
 			BYOKOnly:  row.ByokOnly,
@@ -158,8 +160,8 @@ func (r *Sessions) ListForUser(
 
 func (r *Sessions) AttachConversation(ctx context.Context, conversationID, sessionID uuid.UUID) error {
 	if _, err := r.q.AttachConversationToSession(ctx, copilotdb.AttachConversationToSessionParams{
-		ID:        pgUUID(conversationID),
-		SessionID: pgUUID(sessionID),
+		ID:        sharedpg.UUID(conversationID),
+		SessionID: sharedpg.UUID(sessionID),
 	}); err != nil {
 		return fmt.Errorf("copilot.Sessions.AttachConversation: %w", err)
 	}
@@ -167,15 +169,15 @@ func (r *Sessions) AttachConversation(ctx context.Context, conversationID, sessi
 }
 
 func (r *Sessions) ListConversations(ctx context.Context, sessionID uuid.UUID) ([]domain.Conversation, error) {
-	rows, err := r.q.ListConversationsInSession(ctx, pgUUID(sessionID))
+	rows, err := r.q.ListConversationsInSession(ctx, sharedpg.UUID(sessionID))
 	if err != nil {
 		return nil, fmt.Errorf("copilot.Sessions.ListConversations: %w", err)
 	}
 	out := make([]domain.Conversation, 0, len(rows))
 	for _, row := range rows {
 		out = append(out, domain.Conversation{
-			ID:        fromPgUUID(row.ID),
-			UserID:    fromPgUUID(row.UserID),
+			ID:        sharedpg.UUIDFrom(row.ID),
+			UserID:    sharedpg.UUIDFrom(row.UserID),
 			Title:     row.Title,
 			Model:     row.Model,
 			CreatedAt: row.CreatedAt.Time,
@@ -199,7 +201,7 @@ func NewReports(pool *pgxpool.Pool) *Reports {
 }
 
 func (r *Reports) Init(ctx context.Context, sessionID uuid.UUID) (domain.SessionReport, error) {
-	row, err := r.q.InitCopilotSessionReport(ctx, pgUUID(sessionID))
+	row, err := r.q.InitCopilotSessionReport(ctx, sharedpg.UUID(sessionID))
 	if err != nil {
 		return domain.SessionReport{}, fmt.Errorf("copilot.Reports.Init: %w", err)
 	}
@@ -207,7 +209,7 @@ func (r *Reports) Init(ctx context.Context, sessionID uuid.UUID) (domain.Session
 }
 
 func (r *Reports) Get(ctx context.Context, sessionID uuid.UUID) (domain.SessionReport, error) {
-	row, err := r.q.GetCopilotSessionReport(ctx, pgUUID(sessionID))
+	row, err := r.q.GetCopilotSessionReport(ctx, sharedpg.UUID(sessionID))
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return domain.SessionReport{}, fmt.Errorf("copilot.Reports.Get: %w", domain.ErrNotFound)
@@ -218,7 +220,7 @@ func (r *Reports) Get(ctx context.Context, sessionID uuid.UUID) (domain.SessionR
 }
 
 func (r *Reports) MarkRunning(ctx context.Context, sessionID uuid.UUID) error {
-	if _, err := r.q.MarkCopilotSessionReportRunning(ctx, pgUUID(sessionID)); err != nil {
+	if _, err := r.q.MarkCopilotSessionReportRunning(ctx, sharedpg.UUID(sessionID)); err != nil {
 		return fmt.Errorf("copilot.Reports.MarkRunning: %w", err)
 	}
 	return nil
@@ -246,7 +248,7 @@ func (r *Reports) Write(ctx context.Context, sessionID uuid.UUID, res domain.Ana
 		return fmt.Errorf("copilot.Reports.Write: marshal analysis: %w", err)
 	}
 	if _, err := r.q.WriteCopilotSessionReport(ctx, copilotdb.WriteCopilotSessionReportParams{
-		SessionID:       pgUUID(sessionID),
+		SessionID:       sharedpg.UUID(sessionID),
 		OverallScore:    int32(res.OverallScore),
 		SectionScores:   sectionJSON,
 		Weaknesses:      weaknessesJSON,
@@ -264,7 +266,7 @@ func (r *Reports) Write(ctx context.Context, sessionID uuid.UUID, res domain.Ana
 
 func (r *Reports) Fail(ctx context.Context, sessionID uuid.UUID, errMsg string) error {
 	if _, err := r.q.FailCopilotSessionReport(ctx, copilotdb.FailCopilotSessionReportParams{
-		SessionID:    pgUUID(sessionID),
+		SessionID:    sharedpg.UUID(sessionID),
 		ErrorMessage: errMsg,
 	}); err != nil {
 		return fmt.Errorf("copilot.Reports.Fail: %w", err)
@@ -278,8 +280,8 @@ func (r *Reports) Fail(ctx context.Context, sessionID uuid.UUID, errMsg string) 
 
 func sessionFromRow(r copilotdb.CopilotSession) domain.Session {
 	s := domain.Session{
-		ID:        fromPgUUID(r.ID),
-		UserID:    fromPgUUID(r.UserID),
+		ID:        sharedpg.UUIDFrom(r.ID),
+		UserID:    sharedpg.UUIDFrom(r.UserID),
 		Kind:      domain.SessionKind(r.Kind),
 		StartedAt: r.StartedAt.Time,
 		BYOKOnly:  r.ByokOnly,
@@ -293,7 +295,7 @@ func sessionFromRow(r copilotdb.CopilotSession) domain.Session {
 
 func reportFromRow(r copilotdb.CopilotSessionReport) (domain.SessionReport, error) {
 	out := domain.SessionReport{
-		SessionID:      fromPgUUID(r.SessionID),
+		SessionID:      sharedpg.UUIDFrom(r.SessionID),
 		Status:         domain.AnalysisStatus(r.Status),
 		OverallScore:   int(r.OverallScore),
 		ReportMarkdown: r.ReportMarkdown,

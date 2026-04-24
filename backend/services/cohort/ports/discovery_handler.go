@@ -35,6 +35,8 @@ import (
 	"druz9/cohort/domain"
 	sharedMw "druz9/shared/pkg/middleware"
 
+	sharedpg "druz9/shared/pkg/pg"
+
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -183,7 +185,7 @@ func (h *DiscoveryHandler) HandleList(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		out.Items = append(out.Items, publicCohort{
-			ID:           uuidFromPg(id).String(),
+			ID:           sharedpg.UUIDFrom(id).String(),
 			Name:         name,
 			Emblem:       emblem,
 			Description:  description,
@@ -272,7 +274,7 @@ func (h *DiscoveryHandler) HandleCreate(w http.ResponseWriter, r *http.Request) 
 	var existing pgtype.UUID
 	preErr := h.Pool.QueryRow(r.Context(),
 		`SELECT cohort_id FROM cohort_members WHERE user_id = $1 LIMIT 1`,
-		pgUUID(uid)).Scan(&existing)
+		sharedpg.UUID(uid)).Scan(&existing)
 	if preErr == nil && existing.Valid {
 		writeJSONError(w, http.StatusConflict, "user already in a cohort")
 		return
@@ -306,7 +308,7 @@ func (h *DiscoveryHandler) HandleCreate(w http.ResponseWriter, r *http.Request) 
 		RETURNING id, COALESCE(emblem, ''), COALESCE(description, ''), cohort_elo, max_members, join_policy, is_public
 	`
 	insertErr := tx.QueryRow(r.Context(), insertSQL,
-		pgUUID(uid),
+		sharedpg.UUID(uid),
 		req.Name,
 		req.Description,
 		tier,
@@ -328,7 +330,7 @@ func (h *DiscoveryHandler) HandleCreate(w http.ResponseWriter, r *http.Request) 
 	// scenario (cohort created, no members) is impossible.
 	if _, err := tx.Exec(r.Context(),
 		`INSERT INTO cohort_members(cohort_id, user_id, role) VALUES ($1, $2, 'captain')`,
-		newID, pgUUID(uid),
+		newID, sharedpg.UUID(uid),
 	); err != nil {
 		h.Log.ErrorContext(r.Context(), "cohort.Create: insert membership failed", slog.Any("err", err))
 		writeJSONError(w, http.StatusInternalServerError, "create failed")
@@ -340,7 +342,7 @@ func (h *DiscoveryHandler) HandleCreate(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	gid := uuidFromPg(newID)
+	gid := sharedpg.UUIDFrom(newID)
 	if h.Cache != nil {
 		h.Cache.Invalidate(r.Context(), gid)
 		h.Cache.InvalidateUser(r.Context(), uid)
@@ -402,9 +404,9 @@ func (h *DiscoveryHandler) HandleJoin(w http.ResponseWriter, r *http.Request) {
 	var existing pgtype.UUID
 	preErr := h.Pool.QueryRow(r.Context(),
 		`SELECT cohort_id FROM cohort_members WHERE user_id = $1 LIMIT 1`,
-		pgUUID(uid)).Scan(&existing)
+		sharedpg.UUID(uid)).Scan(&existing)
 	if preErr == nil && existing.Valid {
-		if uuidFromPg(existing) == cohortID {
+		if sharedpg.UUIDFrom(existing) == cohortID {
 			writeJSONError(w, http.StatusConflict, "already a member")
 			return
 		}
@@ -429,7 +431,7 @@ func (h *DiscoveryHandler) HandleJoin(w http.ResponseWriter, r *http.Request) {
 		       (SELECT COUNT(*)::int FROM cohort_members gm WHERE gm.cohort_id = g.id)
 		  FROM cohorts g
 		 WHERE g.id = $1
-	`, pgUUID(cohortID)).Scan(&policy, &isPub, &maxMembers, &membersCount)
+	`, sharedpg.UUID(cohortID)).Scan(&policy, &isPub, &maxMembers, &membersCount)
 	if errors.Is(err, pgx.ErrNoRows) {
 		writeJSONError(w, http.StatusNotFound, "cohort not found")
 		return
@@ -470,7 +472,7 @@ func (h *DiscoveryHandler) HandleJoin(w http.ResponseWriter, r *http.Request) {
 
 	if _, err := h.Pool.Exec(r.Context(),
 		`INSERT INTO cohort_members(cohort_id, user_id, role) VALUES ($1, $2, 'member')`,
-		pgUUID(cohortID), pgUUID(uid),
+		sharedpg.UUID(cohortID), sharedpg.UUID(uid),
 	); err != nil {
 		if isUniqueViolation(err) {
 			writeJSONError(w, http.StatusConflict, "already a member")
@@ -533,7 +535,7 @@ func (h *DiscoveryHandler) HandleLeave(w http.ResponseWriter, r *http.Request) {
 	var role string
 	err = h.Pool.QueryRow(r.Context(),
 		`SELECT role FROM cohort_members WHERE cohort_id = $1 AND user_id = $2`,
-		pgUUID(cohortID), pgUUID(uid)).Scan(&role)
+		sharedpg.UUID(cohortID), sharedpg.UUID(uid)).Scan(&role)
 	if errors.Is(err, pgx.ErrNoRows) {
 		writeJSONError(w, http.StatusNotFound, "not a member")
 		return
@@ -574,7 +576,7 @@ func (h *DiscoveryHandler) HandleLeave(w http.ResponseWriter, r *http.Request) {
 
 	if _, err := h.Pool.Exec(r.Context(),
 		`DELETE FROM cohort_members WHERE cohort_id = $1 AND user_id = $2`,
-		pgUUID(cohortID), pgUUID(uid),
+		sharedpg.UUID(cohortID), sharedpg.UUID(uid),
 	); err != nil {
 		h.Log.ErrorContext(r.Context(), "cohort.Leave: delete failed", slog.Any("err", err))
 		writeJSONError(w, http.StatusInternalServerError, "leave failed")
@@ -619,14 +621,14 @@ func (h *DiscoveryHandler) captainLeave(
 		 WHERE cohort_id = $1 AND user_id <> $2
 		 ORDER BY joined_at ASC, user_id ASC
 		 LIMIT 1
-	`, pgUUID(cohortID), pgUUID(uid)).Scan(&heir)
+	`, sharedpg.UUID(cohortID), sharedpg.UUID(uid)).Scan(&heir)
 
 	switch {
 	case errors.Is(scanErr, pgx.ErrNoRows):
 		// Sole member — disband the cohort. ON DELETE CASCADE on
 		// cohort_members + cohort_wars (FK to cohorts.id) handles the rest.
 		if _, err := tx.Exec(ctx,
-			`DELETE FROM cohorts WHERE id = $1`, pgUUID(cohortID),
+			`DELETE FROM cohorts WHERE id = $1`, sharedpg.UUID(cohortID),
 		); err != nil {
 			return "", uuid.Nil, fmt.Errorf("delete cohort: %w", err)
 		}
@@ -639,25 +641,25 @@ func (h *DiscoveryHandler) captainLeave(
 		return "", uuid.Nil, fmt.Errorf("pick heir: %w", scanErr)
 	}
 
-	heirID := uuidFromPg(heir)
+	heirID := sharedpg.UUIDFrom(heir)
 
 	// Promote heir → captain, then delete the original captain's row.
 	if _, err := tx.Exec(ctx, `
 		UPDATE cohort_members SET role = 'captain'
 		 WHERE cohort_id = $1 AND user_id = $2
-	`, pgUUID(cohortID), pgUUID(heirID)); err != nil {
+	`, sharedpg.UUID(cohortID), sharedpg.UUID(heirID)); err != nil {
 		return "", uuid.Nil, fmt.Errorf("promote heir: %w", err)
 	}
 	// Also pin the new captain on cohorts.owner_id so downstream logic that
 	// reads owner_id stays consistent.
 	if _, err := tx.Exec(ctx, `
 		UPDATE cohorts SET owner_id = $1 WHERE id = $2
-	`, pgUUID(heirID), pgUUID(cohortID)); err != nil {
+	`, sharedpg.UUID(heirID), sharedpg.UUID(cohortID)); err != nil {
 		return "", uuid.Nil, fmt.Errorf("update owner: %w", err)
 	}
 	if _, err := tx.Exec(ctx, `
 		DELETE FROM cohort_members WHERE cohort_id = $1 AND user_id = $2
-	`, pgUUID(cohortID), pgUUID(uid)); err != nil {
+	`, sharedpg.UUID(cohortID), sharedpg.UUID(uid)); err != nil {
 		return "", uuid.Nil, fmt.Errorf("delete captain row: %w", err)
 	}
 	if err := tx.Commit(ctx); err != nil {
@@ -667,15 +669,6 @@ func (h *DiscoveryHandler) captainLeave(
 }
 
 // ── helpers ───────────────────────────────────────────────────────────────
-
-func pgUUID(id uuid.UUID) pgtype.UUID { return pgtype.UUID{Bytes: id, Valid: true} }
-
-func uuidFromPg(p pgtype.UUID) uuid.UUID {
-	if !p.Valid {
-		return uuid.Nil
-	}
-	return uuid.UUID(p.Bytes)
-}
 
 // isUniqueViolation matches Postgres SQLSTATE 23505. We avoid pulling in
 // pgconn just for the constant; the textual sniff covers both wrapped and

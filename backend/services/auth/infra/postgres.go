@@ -15,6 +15,8 @@ import (
 	authdb "druz9/auth/infra/db"
 	"druz9/shared/enums"
 
+	sharedpg "druz9/shared/pkg/pg"
+
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -131,7 +133,7 @@ func (p *Postgres) UpsertByOAuth(ctx context.Context, in domain.UpsertOAuthInput
 
 // FindByID loads a user by primary key.
 func (p *Postgres) FindByID(ctx context.Context, id uuid.UUID) (domain.User, error) {
-	row, err := p.q.FindUserByID(ctx, pgUUID(id))
+	row, err := p.q.FindUserByID(ctx, sharedpg.UUID(id))
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return domain.User{}, fmt.Errorf("auth.Postgres.FindByID: %w", domain.ErrNotFound)
@@ -189,15 +191,6 @@ func ensureUniqueUsername(ctx context.Context, q *authdb.Queries, hint string) (
 	return fmt.Sprintf("%s_%s", hint, uuid.New().String()[:8]), nil
 }
 
-func pgUUID(id uuid.UUID) pgtype.UUID { return pgtype.UUID{Bytes: id, Valid: true} }
-
-func fromPgUUID(p pgtype.UUID) uuid.UUID {
-	if !p.Valid {
-		return uuid.Nil
-	}
-	return uuid.UUID(p.Bytes)
-}
-
 func pgText(s pgtype.Text) string {
 	if !s.Valid {
 		return ""
@@ -219,7 +212,7 @@ func userFromFindRow(r authdb.FindUserByIDRow) (domain.User, error) {
 		return domain.User{}, fmt.Errorf("invalid role %q from db", r.Role)
 	}
 	return domain.User{
-		ID:          fromPgUUID(r.ID),
+		ID:          sharedpg.UUIDFrom(r.ID),
 		Email:       pgText(r.Email),
 		Username:    r.Username,
 		Role:        role,
