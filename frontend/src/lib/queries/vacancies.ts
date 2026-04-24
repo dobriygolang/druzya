@@ -162,9 +162,21 @@ export type SkillGap = {
   extra: string[]
 }
 
+// UserSkillsProfile is the resolver output that Phase 5 surfaces alongside
+// the gap. Skills/Sections are normalized lower-case strings; confidence is
+// a 0..100 score per skill; source is "stats" today (future: "explicit").
+export type UserSkillsProfile = {
+  skills: string[]
+  sections: string[]
+  confidence: Record<string, number>
+  source: string
+}
+
 export type AnalyzeResponse = {
   vacancy: Vacancy
   gap: SkillGap
+  match_score: number
+  user_profile: UserSkillsProfile
 }
 
 export type ListResponse = {
@@ -252,7 +264,9 @@ export function useSavedVacancies() {
 
 export function useAnalyzeVacancy() {
   return useMutation({
-    mutationFn: (input: { url: string; user_skills?: string[] }) =>
+    // Phase 5: backend resolves the user's stack from real profile stats —
+    // FE no longer sends user_skills.
+    mutationFn: (input: { url: string }) =>
       api<AnalyzeResponse>(`/vacancies/analyze`, {
         method: 'POST',
         body: JSON.stringify(input),

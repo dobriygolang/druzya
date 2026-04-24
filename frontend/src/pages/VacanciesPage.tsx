@@ -18,6 +18,7 @@ import {
   Wallet,
   Sparkles,
   Bookmark,
+  X,
 } from 'lucide-react'
 import { AppShellV2 } from '../components/AppShell'
 import { Button } from '../components/Button'
@@ -35,6 +36,7 @@ import {
   type VacancySource,
   type VacancyCategory,
   type FacetEntry,
+  type AnalyzeResponse,
 } from '../lib/queries/vacancies'
 import { useProfileQuery } from '../lib/queries/profile'
 
@@ -465,7 +467,6 @@ function Hero() {
   const [url, setUrl] = useState('')
   const [clientError, setClientError] = useState<string | null>(null)
   const analyze = useAnalyzeVacancy()
-  const navigate = useNavigate()
   const submit = (e: React.FormEvent) => {
     e.preventDefault()
     setClientError(null)
@@ -480,19 +481,16 @@ function Hero() {
       )
       return
     }
-    analyze.mutate(
-      { url: trimmed },
-      {
-        onSuccess: (res) => {
-          navigate(`/vacancies/${res.vacancy.source}/${encodeURIComponent(res.vacancy.external_id)}`)
-        },
-      },
-    )
+    analyze.mutate({ url: trimmed })
   }
   const errMsg = clientError ?? (analyze.error ? extractAnalyzeErrorMessage(analyze.error) : null)
+  const reset = () => {
+    analyze.reset()
+    setUrl('')
+  }
   return (
-    <div className="relative h-auto overflow-hidden bg-gradient-to-br from-surface-3 to-accent lg:h-[240px]">
-      <div className="flex h-full flex-col items-center justify-center gap-4 px-4 py-8 sm:px-8 lg:py-0">
+    <div className="relative overflow-hidden bg-gradient-to-br from-surface-3 to-accent">
+      <div className="flex flex-col items-center justify-center gap-4 px-4 py-8 sm:px-8">
         <h1 className="font-display text-3xl font-extrabold text-text-primary sm:text-4xl">
           Вакансии для прокачки
         </h1>
@@ -530,6 +528,146 @@ function Hero() {
             {errMsg}
           </div>
         )}
+        {analyze.isPending && <AnalyzeSkeleton />}
+        {analyze.data && !analyze.isPending && (
+          <AnalyzeResultCard res={analyze.data} onReset={reset} />
+        )}
+      </div>
+    </div>
+  )
+}
+
+// AnalyzeSkeleton — placeholder while the LLM extractor + resolver run.
+// Sits in the same slot as the real result card so the layout doesn't
+// jump on completion.
+function AnalyzeSkeleton() {
+  return (
+    <div className="w-full max-w-[720px] animate-pulse rounded-xl border border-border bg-surface-1 p-4">
+      <div className="mb-3 h-4 w-32 rounded bg-surface-2" />
+      <div className="mb-2 h-2 w-full rounded bg-surface-2" />
+      <div className="flex flex-wrap gap-1.5">
+        {Array.from({ length: 6 }).map((_, i) => (
+          <div key={i} className="h-5 w-16 rounded-full bg-surface-2" />
+        ))}
+      </div>
+    </div>
+  )
+}
+
+// scoreColor maps match-score onto the design-system status palette:
+// <40 = error/red, 40-69 = warning/amber, 70+ = success/green.
+function scoreColor(score: number): { text: string; bar: string } {
+  if (score >= 70) return { text: 'text-success', bar: 'bg-success' }
+  if (score >= 40) return { text: 'text-warning', bar: 'bg-warning' }
+  return { text: 'text-danger', bar: 'bg-danger' }
+}
+
+// AnalyzeResultCard renders the Phase-5 match-score + matched/missing/extra
+// chip rows below the search bar. Empty user_profile.skills triggers the
+// "play matches / level up Atlas" banner instead of a misleading 0% score.
+function AnalyzeResultCard({ res, onReset }: { res: AnalyzeResponse; onReset: () => void }) {
+  const hasUserStack = res.user_profile.skills.length > 0
+  const c = scoreColor(res.match_score)
+  return (
+    <div className="w-full max-w-[720px] rounded-xl border border-border bg-surface-1 p-4 text-left shadow-lg">
+      <div className="mb-3 flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div className="font-display text-sm font-semibold text-text-primary">
+            {res.vacancy.title}
+          </div>
+          {res.vacancy.company && (
+            <div className="text-xs text-text-muted">{res.vacancy.company}</div>
+          )}
+        </div>
+        <button
+          type="button"
+          onClick={onReset}
+          className="shrink-0 rounded p-1 text-text-muted hover:text-text-primary"
+          aria-label="Сбросить"
+        >
+          <X className="h-4 w-4" />
+        </button>
+      </div>
+
+      {hasUserStack ? (
+        <>
+          <div className="mb-1 flex items-baseline justify-between gap-2">
+            <span className={`font-display text-lg font-bold ${c.text}`}>
+              Совпадение {res.match_score}%
+            </span>
+            <span className="font-mono text-[10px] uppercase text-text-muted">
+              {res.gap.matched.length} из {res.gap.required.length} навыков
+            </span>
+          </div>
+          <div className="mb-3 h-1.5 w-full overflow-hidden rounded-full bg-surface-3">
+            <div
+              className={`h-full ${c.bar} transition-all`}
+              style={{ width: `${Math.max(2, res.match_score)}%` }}
+            />
+          </div>
+
+          {res.gap.matched.length > 0 && (
+            <ChipRow label="Уже умеешь" skills={res.gap.matched} state="matched" />
+          )}
+          {res.gap.missing.length > 0 && (
+            <ChipRow label="Чему стоит подучиться" skills={res.gap.missing} state="gap" />
+          )}
+          {res.gap.extra.length > 0 && (
+            <div className="mt-2 text-[11px] text-text-muted">
+              <span className="uppercase">Бонус: </span>
+              {res.gap.extra.join(', ')}
+            </div>
+          )}
+        </>
+      ) : (
+        <>
+          <div className="mb-3 rounded-md border border-border bg-surface-2 p-3 text-xs text-text-secondary">
+            Сыграй несколько матчей или прокачай Атлас, чтобы я знал твой стек.
+            Пока что просто покажу, что нужно для этой вакансии:
+          </div>
+          {res.gap.required.length > 0 ? (
+            <ChipRow label="Что нужно для этой вакансии" skills={res.gap.required} state="gap" />
+          ) : (
+            <div className="text-xs text-text-muted">Не удалось извлечь требования.</div>
+          )}
+        </>
+      )}
+
+      <div className="mt-3 flex items-center justify-between border-t border-border pt-3">
+        <Link
+          to={`/vacancies/${res.vacancy.source}/${encodeURIComponent(res.vacancy.external_id)}`}
+          className="text-xs font-semibold text-accent hover:underline"
+        >
+          Открыть вакансию →
+        </Link>
+        <button
+          type="button"
+          onClick={onReset}
+          className="text-[11px] text-text-muted hover:text-text-primary hover:underline"
+        >
+          Сбросить
+        </button>
+      </div>
+    </div>
+  )
+}
+
+function ChipRow({
+  label,
+  skills,
+  state,
+}: {
+  label: string
+  skills: string[]
+  state: 'matched' | 'gap' | 'extra'
+}) {
+  return (
+    <div className="mb-2">
+      <div className="mb-1 text-[10px] uppercase text-text-muted">{label}</div>
+      <div className="flex flex-wrap gap-1.5">
+        {skills.map((s) => (
+          <SkillChip key={s} s={s} state={state} />
+        ))}
       </div>
     </div>
   )

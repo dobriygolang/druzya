@@ -2,9 +2,12 @@ package services
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"time"
 
+	profileDomain "druz9/profile/domain"
+	profileInfra "druz9/profile/infra"
 	vacApp "druz9/vacancies/app"
 	vacDomain "druz9/vacancies/domain"
 	vacInfra "druz9/vacancies/infra"
@@ -14,6 +17,7 @@ import (
 	vacPorts "druz9/vacancies/ports"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/google/uuid"
 )
 
 // NewVacancies wires the vacancies bounded context.
@@ -67,7 +71,27 @@ func NewVacancies(d Deps) *Module {
 	detailFetchers := vacDetails.RegisterAll(vacDetails.Config{Log: d.Log})
 	detailsCache := vacCache.NewDetails(cache, detailFetchers, d.Log, vacCache.DetailsOptions{})
 
-	analyze := &vacApp.AnalyzeURL{Cache: cache, Extractor: extractor}
+	// Phase 5: derive the user's stack from real profile statistics.
+	// Cross-bounded-context plumbing via thin adapters — vacancies module
+	// stays free of profile imports; the wirer (this file) is the only
+	// place where the two domains meet. The atlas-side adapter caches the
+	// catalogue (≤200 nodes today) on first call so the per-analyze
+	// JOIN is two SQL reads, not a graph fan-out.
+	profilePG := profileInfra.NewPostgres(d.Pool)
+	atlasCat := profileInfra.NewAtlasCataloguePostgres(d.Pool)
+	resolver := vacInfra.NewUserSkillsResolver(
+		ratingsAdapter{repo: profilePG},
+		newAtlasMasteryAdapter(profilePG, atlasCat, d.Log),
+		d.Log,
+	)
+
+	analyze := &vacApp.AnalyzeURL{
+		Cache:     cache,
+		Details:   detailsCache,
+		Extractor: extractor,
+		UserSkill: resolver,
+		Log:       d.Log,
+	}
 	list := &vacApp.ListVacancies{Cache: cache}
 	get := &vacApp.GetVacancy{Cache: cache}
 	getDetails := &vacApp.GetVacancyDetails{Details: detailsCache}
@@ -102,6 +126,76 @@ func NewVacancies(d Deps) *Module {
 			func(ctx context.Context) { go cache.Run(ctx) },
 		},
 	}
+}
+
+// ratingsAdapter bridges profile.Postgres → vacancies infra. Two domains,
+// two struct shapes — adapter copies the four fields we care about.
+type ratingsAdapter struct {
+	repo *profileInfra.Postgres
+}
+
+func (a ratingsAdapter) ListRatings(ctx context.Context, userID uuid.UUID) ([]vacInfra.SectionRating, error) {
+	rs, err := a.repo.ListRatings(ctx, userID)
+	if err != nil {
+		return nil, fmt.Errorf("services.vacancies.ratingsAdapter: %w", err)
+	}
+	out := make([]vacInfra.SectionRating, 0, len(rs))
+	for _, r := range rs {
+		out = append(out, vacInfra.SectionRating{
+			Section:      string(r.Section),
+			Elo:          r.Elo,
+			MatchesCount: r.MatchesCount,
+			LastMatchAt:  r.LastMatchAt,
+		})
+	}
+	return out, nil
+}
+
+// atlasMasteryAdapter bridges (skill_nodes + atlas_nodes.section) into the
+// flat shape vacancies' resolver expects. Caches the atlas catalogue on
+// first call (≤200 nodes; rebuilds at process restart) so the per-analyze
+// path is one user-scoped query plus an in-memory map join.
+type atlasMasteryAdapter struct {
+	skills *profileInfra.Postgres
+	cat    profileDomain.AtlasCatalogueRepo
+	log    *slog.Logger
+}
+
+func newAtlasMasteryAdapter(skills *profileInfra.Postgres, cat profileDomain.AtlasCatalogueRepo, log *slog.Logger) *atlasMasteryAdapter {
+	return &atlasMasteryAdapter{skills: skills, cat: cat, log: log}
+}
+
+func (a *atlasMasteryAdapter) ListUserSkillNodesWithSection(ctx context.Context, userID uuid.UUID) ([]vacInfra.SkillNodeMastery, error) {
+	nodes, err := a.skills.ListSkillNodes(ctx, userID)
+	if err != nil {
+		return nil, fmt.Errorf("services.vacancies.atlasMasteryAdapter: skill_nodes: %w", err)
+	}
+	if len(nodes) == 0 {
+		return nil, nil
+	}
+	cat, err := a.cat.ListNodes(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("services.vacancies.atlasMasteryAdapter: catalogue: %w", err)
+	}
+	sectionByNode := make(map[string]string, len(cat))
+	for _, n := range cat {
+		sectionByNode[n.ID] = n.Section
+	}
+	out := make([]vacInfra.SkillNodeMastery, 0, len(nodes))
+	for _, n := range nodes {
+		sec, ok := sectionByNode[n.NodeKey]
+		if !ok {
+			// Skill node referencing a now-inactive catalogue row. Skip
+			// silently — this is a known race during atlas re-indexing.
+			continue
+		}
+		out = append(out, vacInfra.SkillNodeMastery{
+			NodeKey:  n.NodeKey,
+			Section:  sec,
+			Progress: n.Progress,
+		})
+	}
+	return out, nil
 }
 
 func logBootCounts(log *slog.Logger, counts map[vacDomain.Source]int) {

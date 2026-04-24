@@ -6,12 +6,22 @@ import (
 	"testing"
 
 	"druz9/vacancies/domain"
+
+	"github.com/google/uuid"
 )
 
 type stubExtractor struct{ out []string }
 
 func (s *stubExtractor) Extract(_ context.Context, _ string) ([]string, error) {
 	return s.out, nil
+}
+
+// stubResolver returns a fixed user-skill profile. Used to exercise the
+// Phase-5 match-score arithmetic without standing up a profile-side fake.
+type stubResolver struct{ profile domain.UserSkillsProfile }
+
+func (s *stubResolver) Resolve(_ context.Context, _ uuid.UUID) (domain.UserSkillsProfile, error) {
+	return s.profile, nil
 }
 
 // stubCacheReader simulates the Phase-3 listing cache. Items are keyed by
@@ -142,8 +152,9 @@ func TestAnalyzeURL_HappyPath_CacheHit(t *testing.T) {
 	}
 	cache := newStubCache(v)
 	ext := &stubExtractor{out: []string{"go", "kubernetes"}}
-	a := &AnalyzeURL{Cache: cache, Extractor: ext}
-	res, err := a.Do(context.Background(), "https://yandex.ru/jobs/vacancies/senior-go-999", []string{"go", "redis"})
+	resolver := &stubResolver{profile: domain.UserSkillsProfile{Skills: []string{"go", "redis"}, Source: "stats"}}
+	a := &AnalyzeURL{Cache: cache, Extractor: ext, UserSkill: resolver}
+	res, err := a.Do(context.Background(), "https://yandex.ru/jobs/vacancies/senior-go-999", uuid.New())
 	if err != nil {
 		t.Fatalf("Do: %v", err)
 	}
@@ -163,13 +174,61 @@ func TestAnalyzeURL_HappyPath_CacheHit(t *testing.T) {
 	if !contains(res.Gap.Extra, "redis") {
 		t.Errorf("expected redis in extra: %+v", res.Gap)
 	}
+	if res.UserProfile.Source != "stats" {
+		t.Errorf("expected resolver source propagated: %+v", res.UserProfile)
+	}
+}
+
+// TestAnalyzeURL_MatchScore checks the round(matched/required*100) formula
+// with stubbed cache + extractor + resolver. Required={go, sql, kubernetes},
+// user knows {go, sql} → matched=2, required=3 → score=67 (round-half-up).
+func TestAnalyzeURL_MatchScore(t *testing.T) {
+	t.Parallel()
+	v := domain.Vacancy{
+		Source:           domain.SourceYandex,
+		ExternalID:       "777",
+		Title:            "Backend",
+		Description:      "Go + SQL + k8s",
+		NormalizedSkills: []string{"go", "sql", "kubernetes"},
+	}
+	cache := newStubCache(v)
+	resolver := &stubResolver{profile: domain.UserSkillsProfile{Skills: []string{"go", "sql"}, Source: "stats"}}
+	a := &AnalyzeURL{Cache: cache, UserSkill: resolver}
+	res, err := a.Do(context.Background(), "https://yandex.ru/jobs/vacancies/x-777", uuid.New())
+	if err != nil {
+		t.Fatalf("Do: %v", err)
+	}
+	if want := 67; res.MatchScore != want {
+		t.Errorf("match_score=%d, want %d", res.MatchScore, want)
+	}
+	if !contains(res.Gap.Missing, "kubernetes") {
+		t.Errorf("expected kubernetes missing: %+v", res.Gap)
+	}
+}
+
+// TestAnalyzeURL_EmptyRequired_ScoresZero documents the silent-extraction
+// case: when the vacancy has no normalized skills the score is 0 (frontend
+// renders the "what you need" requirement list as empty too).
+func TestAnalyzeURL_EmptyRequired_ScoresZero(t *testing.T) {
+	t.Parallel()
+	v := domain.Vacancy{Source: domain.SourceYandex, ExternalID: "888"}
+	cache := newStubCache(v)
+	resolver := &stubResolver{profile: domain.UserSkillsProfile{Skills: []string{"go"}}}
+	a := &AnalyzeURL{Cache: cache, UserSkill: resolver}
+	res, err := a.Do(context.Background(), "https://yandex.ru/jobs/vacancies/x-888", uuid.New())
+	if err != nil {
+		t.Fatalf("Do: %v", err)
+	}
+	if res.MatchScore != 0 {
+		t.Errorf("match_score=%d, want 0", res.MatchScore)
+	}
 }
 
 func TestAnalyzeURL_CacheMiss(t *testing.T) {
 	t.Parallel()
 	cache := newStubCache() // empty
 	a := &AnalyzeURL{Cache: cache}
-	_, err := a.Do(context.Background(), "https://yandex.ru/jobs/vacancies/foo-1234", nil)
+	_, err := a.Do(context.Background(), "https://yandex.ru/jobs/vacancies/foo-1234", uuid.New())
 	if err == nil {
 		t.Fatalf("want ErrVacancyNotInCache")
 	}
@@ -190,7 +249,7 @@ func TestAnalyzeURL_MTSSlugReverseLookup(t *testing.T) {
 	}
 	cache := newStubCache(v)
 	a := &AnalyzeURL{Cache: cache}
-	res, err := a.Do(context.Background(), "https://job.mts.ru/vacancies/651331801431670850-some-slug", nil)
+	res, err := a.Do(context.Background(), "https://job.mts.ru/vacancies/651331801431670850-some-slug", uuid.New())
 	if err != nil {
 		t.Fatalf("Do: %v", err)
 	}
@@ -202,7 +261,7 @@ func TestAnalyzeURL_MTSSlugReverseLookup(t *testing.T) {
 func TestAnalyzeURL_UnsupportedSource(t *testing.T) {
 	t.Parallel()
 	a := &AnalyzeURL{Cache: newStubCache()}
-	if _, err := a.Do(context.Background(), "https://example.com/job/1", nil); err == nil {
+	if _, err := a.Do(context.Background(), "https://example.com/job/1", uuid.New()); err == nil {
 		t.Fatalf("want unsupported-host error")
 	}
 }

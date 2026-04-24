@@ -163,16 +163,48 @@ func toSavedDTO(s domain.SavedVacancy) savedDTO {
 // ─────────────────────────────────────────────────────────────────────────
 
 type analyzeReq struct {
-	URL        string   `json:"url"`
-	UserSkills []string `json:"user_skills,omitempty"`
+	URL string `json:"url"`
+}
+
+type userProfileDTO struct {
+	Skills     []string       `json:"skills"`
+	Sections   []string       `json:"sections"`
+	Confidence map[string]int `json:"confidence"`
+	Source     string         `json:"source"`
 }
 
 type analyzeResp struct {
-	Vacancy vacancyDTO      `json:"vacancy"`
-	Gap     domain.SkillGap `json:"gap"`
+	Vacancy     vacancyDTO      `json:"vacancy"`
+	Gap         domain.SkillGap `json:"gap"`
+	MatchScore  int             `json:"match_score"`
+	UserProfile userProfileDTO  `json:"user_profile"`
+}
+
+func toUserProfileDTO(p domain.UserSkillsProfile) userProfileDTO {
+	out := userProfileDTO{
+		Skills:     p.Skills,
+		Sections:   p.Sections,
+		Confidence: p.Confidence,
+		Source:     p.Source,
+	}
+	if out.Skills == nil {
+		out.Skills = []string{}
+	}
+	if out.Sections == nil {
+		out.Sections = []string{}
+	}
+	if out.Confidence == nil {
+		out.Confidence = map[string]int{}
+	}
+	return out
 }
 
 func (h *Handler) handleAnalyze(w http.ResponseWriter, r *http.Request) {
+	uid, ok := sharedMw.UserIDFromContext(r.Context())
+	if !ok {
+		writeError(w, http.StatusUnauthorized, "unauthenticated")
+		return
+	}
 	var req analyzeReq
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		writeError(w, http.StatusBadRequest, "invalid json: "+err.Error())
@@ -182,15 +214,17 @@ func (h *Handler) handleAnalyze(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, "url is required")
 		return
 	}
-	res, err := h.Analyze.Do(r.Context(), req.URL, req.UserSkills)
+	res, err := h.Analyze.Do(r.Context(), req.URL, uid)
 	if err != nil {
 		h.logErr(r, "analyze", err)
 		writeError(w, http.StatusBadRequest, err.Error())
 		return
 	}
 	writeJSON(w, http.StatusOK, analyzeResp{
-		Vacancy: toVacancyDTO(res.Vacancy),
-		Gap:     res.Gap,
+		Vacancy:     toVacancyDTO(res.Vacancy),
+		Gap:         res.Gap,
+		MatchScore:  res.MatchScore,
+		UserProfile: toUserProfileDTO(res.UserProfile),
 	})
 }
 
