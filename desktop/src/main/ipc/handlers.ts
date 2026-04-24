@@ -43,6 +43,8 @@ import { createSessionsClient } from '../api/sessions';
 import { createDocumentsClient } from '../api/documents';
 import { createTranscriptionClient } from '../api/transcription';
 import { createAudioCapture } from '../capture/audio-mac';
+import { createSuggestionClient } from '../api/suggestion';
+import { createTriggerPolicy } from '../coach/trigger-policy';
 import { loadAppearance, saveAppearance, type AppearancePrefs } from '../settings/appearance';
 import { createSessionManager, type SessionManager } from '../sessions/manager';
 import { applyPreset, getCurrent, listPresets } from '../masquerade';
@@ -586,6 +588,43 @@ export function registerHandlers(opts: RegisterOptions): void {
   );
 
   // ── Audio capture (macOS system audio via ScreenCaptureKit native) ──
+  // The trigger policy hooks into the same transcript stream the
+  // renderer subscribes to, so we wire it here before the audio
+  // capture is constructed.
+  const suggestionREST = createSuggestionClient({
+    apiBaseURL,
+    updateFeedURL: '',
+    sentryDSN: '',
+    environment: '',
+    defaultLocale: 'ru',
+    isDev: false,
+  });
+  const coachPolicy = createTriggerPolicy(
+    suggestionREST,
+    (ev) => {
+      switch (ev.kind) {
+        case 'suggestion':
+          broadcast(eventChannels.coachSuggestion, {
+            id: ev.id,
+            question: ev.question,
+            text: ev.text,
+            latencyMs: ev.latencyMs,
+          });
+          break;
+        case 'status':
+          broadcast(eventChannels.coachStatus, {
+            enabled: ev.enabled,
+            thinking: ev.thinking,
+          });
+          break;
+        case 'error':
+          broadcast(eventChannels.coachError, { message: ev.message });
+          break;
+      }
+    },
+    { persona: 'meeting' },
+  );
+
   const audioCapture = createAudioCapture(
     {
       apiBaseURL,
@@ -597,8 +636,13 @@ export function registerHandlers(opts: RegisterOptions): void {
     },
     {
       onState: (state) => broadcast(eventChannels.audioCaptureStateChanged, state),
-      onTranscript: (text, windowSec) =>
-        broadcast(eventChannels.audioCaptureTranscript, { text, windowSec }),
+      onTranscript: (text, windowSec) => {
+        broadcast(eventChannels.audioCaptureTranscript, { text, windowSec });
+        // Feed the auto-trigger policy. It no-ops when toggled off
+        // but still rolls the context window, so a toggle-on mid-
+        // meeting has recent history to draw from.
+        coachPolicy.onTranscript(text);
+      },
       onError: (message) => broadcast(eventChannels.audioCaptureError, { message }),
     },
   );
@@ -610,6 +654,12 @@ export function registerHandlers(opts: RegisterOptions): void {
   });
   ipcMain.handle(invokeChannels.audioCaptureState, async () => audioCapture.state());
   ipcMain.handle(invokeChannels.audioCaptureIsAvailable, async () => audioCapture.isAvailable());
+
+  // ── Coach (auto-suggest) ──
+  handleIn(invokeChannels.coachSetAutoSuggest, z.boolean(), async (on) => {
+    coachPolicy.setEnabled(on);
+  });
+  ipcMain.handle(invokeChannels.coachGetAutoSuggest, async () => coachPolicy.isEnabled());
 
 }
 

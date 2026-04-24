@@ -13,7 +13,9 @@ import (
 	authApp "druz9/auth/app"
 	"druz9/shared/pkg/config"
 	"druz9/shared/pkg/eventbus"
+	"druz9/shared/pkg/killswitch"
 	"druz9/shared/pkg/llmchain"
+	"druz9/shared/pkg/quota"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -43,6 +45,18 @@ type Deps struct {
 	// contract as OPENROUTER_API_KEY=""). Built once in bootstrap;
 	// wiring details live in services/llmchain.go.
 	LLMChain llmchain.ChatClient
+
+	// KillSwitch — operator-controlled feature disable. Handlers on
+	// the hot path (documents upload, URL fetch, transcription,
+	// copilot analyze/suggestion) check this before doing work and
+	// return 503 when flipped. nil-safe (always off).
+	KillSwitch *killswitch.Switch
+
+	// TokenQuota — per-user daily LLM token cap. Protects the shared
+	// Groq free-tier pool from single-account drain. Copilot
+	// Analyze/Suggest check before opening a stream and consume after
+	// Done. nil-safe.
+	TokenQuota *quota.DailyTokenQuota
 }
 
 // Module is what every NewXxx returns: enough metadata for router.go to

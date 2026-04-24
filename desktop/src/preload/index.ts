@@ -192,6 +192,12 @@ const api: Druz9API = {
     state: () => ipcRenderer.invoke(invokeChannels.audioCaptureState) as Promise<AudioCaptureState>,
     isAvailable: () => ipcRenderer.invoke(invokeChannels.audioCaptureIsAvailable) as Promise<boolean>,
   },
+  coach: {
+    setAutoSuggest: (on: boolean) =>
+      ipcRenderer.invoke(invokeChannels.coachSetAutoSuggest, on) as Promise<void>,
+    getAutoSuggest: () =>
+      ipcRenderer.invoke(invokeChannels.coachGetAutoSuggest) as Promise<boolean>,
+  },
   documents: {
     list: (cursor: string, limit: number) =>
       ipcRenderer.invoke(invokeChannels.documentsList, cursor, limit) as Promise<DocumentListResult>,

@@ -10,6 +10,7 @@ import (
 	copilotInfra "druz9/copilot/infra"
 	copilotPorts "druz9/copilot/ports"
 	"druz9/shared/generated/pb/druz9/v1/druz9v1connect"
+	"druz9/shared/pkg/ratelimit"
 
 	"github.com/go-chi/chi/v5"
 )
@@ -68,6 +69,8 @@ func NewCopilot(d Deps, docSearcher copilotDomain.DocumentSearcher) *Module {
 		Config:        cfgProvider,
 		Sessions:      sessions,    // auto-attach new turns to live session
 		DocSearcher:   docSearcher, // nil when documents module is disabled — RAG cleanly skipped
+		KillSwitch:    d.KillSwitch,
+		TokenQuota:    d.TokenQuota,
 		Compactor:     compactor,
 		CompactionCfg: compactionCfg,
 		Log:           d.Log,
@@ -128,6 +131,21 @@ func NewCopilot(d Deps, docSearcher copilotDomain.DocumentSearcher) *Module {
 	// below in MountREST.
 	sessionDocs := &copilotPorts.SessionDocumentsHandler{Sessions: sessions, Log: d.Log}
 
+	// Auto-trigger suggestion endpoint (etap 3). Ephemeral — no
+	// conversation persistence. Shares the LLM provider with
+	// Analyze/Chat but with tighter temperature + token budget.
+	suggest := &copilotApp.Suggest{LLM: llm, Config: cfgProvider, TokenQuota: d.TokenQuota}
+	var suggestLimiter *ratelimit.RedisFixedWindow
+	if d.Redis != nil {
+		suggestLimiter = ratelimit.NewRedisFixedWindow(d.Redis)
+	}
+	suggestionHandler := &copilotPorts.SuggestionHandler{
+		Suggest:    suggest,
+		Limiter:    suggestLimiter,
+		KillSwitch: d.KillSwitch,
+		Log:        d.Log,
+	}
+
 	return &Module{
 		ConnectPath:        connectPath,
 		ConnectHandler:     transcoder,
@@ -155,6 +173,9 @@ func NewCopilot(d Deps, docSearcher copilotDomain.DocumentSearcher) *Module {
 			// Session ↔ documents attachment. Plain REST, not RPC —
 			// see ports/session_docs.go for rationale.
 			sessionDocs.Mount(r)
+
+			// Ephemeral auto-trigger suggestion (etap 3).
+			suggestionHandler.Mount(r)
 		},
 		Background: []func(ctx context.Context){
 			// MUST go: App.Run calls each Background bg(rootCtx) inline,

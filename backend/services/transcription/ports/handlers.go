@@ -19,16 +19,32 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
+	"strconv"
+	"time"
 
 	"druz9/transcription/app"
 	"druz9/transcription/domain"
+	"druz9/shared/pkg/killswitch"
 	sharedMw "druz9/shared/pkg/middleware"
+	"druz9/shared/pkg/ratelimit"
 
 	"github.com/go-chi/chi/v5"
 )
 
+// transcribeLimitPerMin — 60 req/min per user. Sized for the
+// production hot path: AudioCaptureMac emits at most one chunk every
+// ~2 seconds (with VAD), so 60/min gives ~2x headroom for mic bursts.
+// Higher would expose us to runaway Groq bills if a client bug
+// spammed /transcription.
+const transcribeLimitPerMin = 60
+
 type Handler struct {
 	Transcribe *app.Transcribe
+	// Limiter guards the Groq-per-user call rate. nil → no limit
+	// (dev without Redis).
+	Limiter *ratelimit.RedisFixedWindow
+	// KillSwitch — operator flip for emergency disable.
+	KillSwitch *killswitch.Switch
 	Log        *slog.Logger
 }
 
@@ -43,9 +59,26 @@ type transcribeResponse struct {
 }
 
 func (h *Handler) handleTranscribe(w http.ResponseWriter, r *http.Request) {
-	if _, ok := sharedMw.UserIDFromContext(r.Context()); !ok {
+	if h.KillSwitch != nil && h.KillSwitch.IsOn(r.Context(), killswitch.FeatureTranscription) {
+		w.Header().Set("Retry-After", "60")
+		writeErr(w, http.StatusServiceUnavailable, "transcription temporarily disabled by operator")
+		return
+	}
+	uid, ok := sharedMw.UserIDFromContext(r.Context())
+	if !ok {
 		writeErr(w, http.StatusUnauthorized, "unauthenticated")
 		return
+	}
+	if h.Limiter != nil {
+		key := "rl:trans:" + uid.String()
+		res, err := h.Limiter.Allow(r.Context(), key, transcribeLimitPerMin, time.Minute)
+		if err == nil && !res.Allowed {
+			w.Header().Set("Retry-After", strconv.Itoa(res.RetryAfterSec))
+			writeErr(w, http.StatusTooManyRequests, "rate limited, retry in "+strconv.Itoa(res.RetryAfterSec)+"s")
+			return
+		}
+		// err != nil → Redis transport fault, fail-open (match
+		// documents behaviour — one Redis blip shouldn't break STT).
 	}
 
 	// MaxBytesReader applies to the WHOLE request including form

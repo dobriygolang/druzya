@@ -31,7 +31,7 @@ const PlaceholderPersona: Persona = {
   hint: '',
   icon_emoji: '💬',
   brand_gradient:
-    'linear-gradient(135deg, oklch(0.72 0.23 300) 0%, oklch(0.80 0.15 210) 100%)',
+    'linear-gradient(135deg, var(--d9-accent) 0%, oklch(0.80 0.15 210) 100%)',
   suggested_task: '',
   system_prompt: '',
   sort_order: 0,

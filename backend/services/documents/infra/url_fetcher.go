@@ -5,15 +5,88 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"net/url"
 	"strings"
+	"syscall"
 	"time"
 
 	"druz9/documents/domain"
 
 	readability "github.com/go-shiori/go-readability"
 )
+
+// ErrBlockedIP is what the SSRF guard returns when a fetch resolves
+// to an address in the blocklist. Wrapped in an *url.Error by the
+// http.Client; callers match via errors.Is.
+var ErrBlockedIP = errors.New("ssrf: blocked IP (private/loopback/link-local)")
+
+// dialGuard returns a net.Dialer.Control function that rejects any
+// outbound TCP connection whose resolved IP sits in a non-public
+// range. The check runs AFTER DNS resolution (Go resolves the
+// hostname before calling Control) so a malicious `evil.example.com`
+// pointing at `169.254.169.254` gets blocked even though the string
+// URL looks public.
+//
+// Blocklist covers:
+//   - IPv4/IPv6 loopback (127/8, ::1)
+//   - RFC1918 private (10/8, 172.16/12, 192.168/16) + unique local ULA (fc00::/7)
+//   - link-local (169.254/16 — catches AWS/GCP metadata 169.254.169.254)
+//   - unspecified (0.0.0.0, ::)
+//   - multicast + broadcast
+//
+// We intentionally DO NOT allow per-install overrides. Admins with a
+// genuine need for internal URL fetches should run a separate service;
+// making the guard configurable is the #1 way SSRF blocklists fail.
+func dialGuard(network, address string, _ syscall.RawConn) error {
+	// address is "host:port" with host as an IP literal (Go resolves
+	// hostnames before invoking Control). Strip the port.
+	host, _, err := net.SplitHostPort(address)
+	if err != nil {
+		// Unparseable — fail closed; real traffic always has host:port.
+		return fmt.Errorf("%w: bad address %q", ErrBlockedIP, address)
+	}
+	ip := net.ParseIP(host)
+	if ip == nil {
+		return fmt.Errorf("%w: host is not an IP literal: %q", ErrBlockedIP, host)
+	}
+	if isPrivateIP(ip) {
+		return fmt.Errorf("%w: %s → %s", ErrBlockedIP, network, ip)
+	}
+	return nil
+}
+
+// isPrivateIP returns true for any address the SSRF guard should block.
+// Go's net.IP helpers cover most; IsPrivate (Go 1.17+) matches RFC 1918
+// + ULA. We add link-local + a safety check for IPv4-mapped IPv6
+// (parse ::ffff:10.0.0.1 → 10.0.0.1; Go's To4() normalizes this).
+func isPrivateIP(ip net.IP) bool {
+	if ip == nil {
+		return true
+	}
+	// Normalize v4-in-v6 so an attacker can't slip "::ffff:127.0.0.1"
+	// past us by disguising as an IPv6 address.
+	if v4 := ip.To4(); v4 != nil {
+		ip = v4
+	}
+	switch {
+	case ip.IsLoopback(),
+		ip.IsPrivate(),
+		ip.IsLinkLocalUnicast(),
+		ip.IsLinkLocalMulticast(),
+		ip.IsMulticast(),
+		ip.IsUnspecified():
+		return true
+	}
+	// Shared address space (RFC 6598) — 100.64.0.0/10. Go's IsPrivate
+	// doesn't cover this; commonly used in carrier-grade NAT and
+	// increasingly in cloud private networks.
+	if v4 := ip.To4(); v4 != nil && v4[0] == 100 && v4[1] >= 64 && v4[1] <= 127 {
+		return true
+	}
+	return false
+}
 
 // URLFetcher turns a public URL into ingest-ready plaintext.
 //
@@ -47,11 +120,30 @@ type URLFetcher struct {
 //   - 15s total budget (connect + read);
 //   - up to 5 redirects;
 //   - 5MB body cap;
-//   - identifying UA.
+//   - identifying UA;
+//   - SSRF guard at the dial layer (rejects private/loopback/link-local).
 func NewURLFetcher() *URLFetcher {
+	// Custom transport with a dial guard. Every TCP connect —
+	// including those via redirects — goes through Control, which
+	// refuses any address in the private-net blocklist. http.Client
+	// surfaces the dial error verbatim, so errors.Is(err, ErrBlockedIP)
+	// works at the caller.
+	dialer := &net.Dialer{
+		Timeout:   5 * time.Second,
+		KeepAlive: 30 * time.Second,
+		Control:   dialGuard,
+	}
+	transport := &http.Transport{
+		DialContext:           dialer.DialContext,
+		MaxIdleConns:          10,
+		IdleConnTimeout:       60 * time.Second,
+		TLSHandshakeTimeout:   5 * time.Second,
+		ExpectContinueTimeout: 1 * time.Second,
+	}
 	return &URLFetcher{
 		client: &http.Client{
-			Timeout: 15 * time.Second,
+			Transport: transport,
+			Timeout:   15 * time.Second,
 			CheckRedirect: func(req *http.Request, via []*http.Request) error {
 				if len(via) >= 5 {
 					return errors.New("too many redirects (>5)")

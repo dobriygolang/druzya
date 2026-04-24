@@ -152,7 +152,7 @@ function PermissionsStep({
             padding: '10px 14px',
             borderRadius: 9,
             background: 'var(--d9-accent-glow)',
-            border: '0.5px solid oklch(0.72 0.23 300 / 0.35)',
+            border: '0.5px solid rgba(255, 59, 48, 0.35)',
             fontSize: 11.5,
             color: 'var(--d9-accent-hi)',
             letterSpacing: '-0.005em',

@@ -30,7 +30,7 @@ const tones: Record<TagTone, { fg: string; bg: string; border: string }> = {
   accent: {
     fg: 'var(--d9-accent-hi)',
     bg: 'var(--d9-accent-glow)',
-    border: 'oklch(0.72 0.23 300 / 0.4)',
+    border: 'rgba(255, 59, 48, 0.4)',
   },
 };
 

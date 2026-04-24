@@ -40,6 +40,7 @@ import { useQuotaStore } from '../../stores/quota';
 import { useSelectedModelStore } from '../../stores/selected-model';
 import { useSessionStore } from '../../stores/session';
 import { useAudioCaptureStore } from '../../stores/audio-capture';
+import { useCoachStore } from '../../stores/coach';
 import { SummaryModal } from '../summary/SummaryModal';
 
 export function ExpandedScreen() {
@@ -54,6 +55,7 @@ export function ExpandedScreen() {
   useEffect(() => modelBootstrap(), [modelBootstrap]);
   const sessionBootstrap = useSessionStore((s) => s.bootstrap);
   const audioCaptureBootstrap = useAudioCaptureStore((s) => s.bootstrap);
+  const coachBootstrap = useCoachStore((s) => s.bootstrap);
 
   const activePersona = usePersonaStore((s) => s.active);
   const personaBootstrap = usePersonaStore((s) => s.bootstrap);
@@ -87,6 +89,7 @@ export function ExpandedScreen() {
     const unsubConv = bootstrap();
     const unsubSession = sessionBootstrap();
     const unsubAudio = audioCaptureBootstrap();
+    const unsubCoach = coachBootstrap();
     // Compact broadcasts this when the user clicks the model label —
     // expanded is the right place for the 440×520 picker modal.
     const unsubPicker = window.druz9.on(eventChannels.openProviderPicker, () => {
@@ -126,10 +129,11 @@ export function ExpandedScreen() {
       unsubConv();
       unsubSession();
       unsubAudio();
+      unsubCoach();
       unsubPicker();
       unsubTurn();
     };
-  }, [bootstrap, sessionBootstrap, audioCaptureBootstrap]);
+  }, [bootstrap, sessionBootstrap, audioCaptureBootstrap, coachBootstrap]);
 
   useEffect(() => {
     // Pin to bottom while streaming. Manual scroll-away handling is out
@@ -219,6 +223,7 @@ export function ExpandedScreen() {
         </div>
         <div style={{ flex: 1 }} />
         <div style={{ display: 'flex', gap: 2, WebkitAppRegion: 'no-drag' } as React.CSSProperties}>
+          <AutoSuggestToggle />
           <MeetingRecordButton />
           <AttachedDocsBadge />
           {lastAnalysis && lastAnalysis.status === 'ready' && (
@@ -230,7 +235,7 @@ export function ExpandedScreen() {
                 marginRight: 4,
                 borderRadius: 7,
                 background: 'var(--d9-accent-glow)',
-                border: '0.5px solid oklch(0.72 0.23 300 / 0.35)',
+                border: '0.5px solid rgba(255, 59, 48, 0.35)',
                 color: 'var(--d9-accent-hi)',
                 fontSize: 11.5,
                 fontFamily: 'inherit',
@@ -303,6 +308,11 @@ export function ExpandedScreen() {
           audio capture is running or has accumulated chunks. Click to
           splice the full transcript into the draft. */}
       <LiveTranscriptStrip draft={draft} setDraft={setDraft} />
+
+      {/* Auto-suggest pill — renders the latest AI suggestion from
+          the etap-3 trigger policy. Hidden when no suggestion +
+          toggle off. */}
+      <AutoSuggestPill draft={draft} setDraft={setDraft} />
 
       {/* Follow-up input */}
       <div
@@ -653,7 +663,7 @@ function ErrorCard({ code, message }: { code: string; message: string }) {
         style={{
           padding: '10px 12px',
           background: 'var(--d9-accent-glow)',
-          border: '0.5px solid oklch(0.72 0.23 300 / 0.4)',
+          border: '0.5px solid rgba(255, 59, 48, 0.4)',
           borderRadius: 9,
           color: 'var(--d9-accent-hi)',
           fontSize: 12.5,
@@ -1070,6 +1080,216 @@ function MicButton({ draft, setDraft }: { draft: string; setDraft: (s: string) =
 }
 
 /**
+ * AutoSuggestToggle — 🤖 Auto on/off pill next to the record
+ * button. When ON, the trigger-policy in main watches the live
+ * transcript for end-of-question boundaries and auto-invokes
+ * /copilot/suggestion.
+ *
+ * Visible only when audio capture is available — without capture
+ * the coach has nothing to listen to. The button also hides when
+ * state=idle + chunks empty + toggle off (nothing to surface).
+ */
+function AutoSuggestToggle() {
+  const enabled = useCoachStore((s) => s.enabled);
+  const thinking = useCoachStore((s) => s.thinking);
+  const toggle = useCoachStore((s) => s.toggle);
+  const audioAvailable = useAudioCaptureStore((s) => s.available);
+  if (!audioAvailable) return null;
+  return (
+    <button
+      type="button"
+      onClick={() => void toggle()}
+      title={
+        enabled
+          ? 'Авто-подсказки включены — AI предлагает ответы на вопросы собеседника'
+          : 'Авто-подсказки выключены — AI молчит, пока ты сам не нажмёшь'
+      }
+      style={{
+        padding: '4px 10px',
+        marginRight: 4,
+        borderRadius: 7,
+        background: enabled
+          ? 'rgba(255, 59, 48, 0.12)'
+          : 'oklch(1 0 0 / 0.04)',
+        border: `0.5px solid ${enabled ? 'rgba(255, 59, 48, 0.35)' : 'var(--d9-hairline)'}`,
+        color: enabled ? 'var(--d9-accent-hi)' : 'var(--d9-ink-mute)',
+        fontSize: 11.5,
+        fontFamily: 'inherit',
+        letterSpacing: '-0.005em',
+        cursor: 'pointer',
+        whiteSpace: 'nowrap',
+        transition: 'background 120ms var(--d9-ease), color 120ms var(--d9-ease)',
+      }}
+    >
+      {thinking ? '🤖 думаю…' : enabled ? '🤖 авто' : '🤖 off'}
+    </button>
+  );
+}
+
+/**
+ * AutoSuggestPill — floating suggestion strip above the input row.
+ * Shows the most recent /copilot/suggestion result, the question
+ * that triggered it, and an action to splice into the draft.
+ * Dismissable; auto-replaced on the next trigger.
+ *
+ * Accent glow differentiates it from the transcript strip so the
+ * user instantly reads "this is AI" vs "this is raw transcript".
+ */
+function AutoSuggestPill({
+  draft,
+  setDraft,
+}: {
+  draft: string;
+  setDraft: (s: string) => void;
+}) {
+  const suggestion = useCoachStore((s) => s.suggestion);
+  const thinking = useCoachStore((s) => s.thinking);
+  const enabled = useCoachStore((s) => s.enabled);
+  const error = useCoachStore((s) => s.error);
+  const dismiss = useCoachStore((s) => s.dismiss);
+
+  // Render only when there's something to say. Toggle off + no
+  // active suggestion + no error = stay invisible.
+  if (!suggestion && !thinking && !error) return null;
+  if (!enabled && !suggestion) return null;
+
+  const insert = () => {
+    if (!suggestion) return;
+    const joiner = draft.length === 0 || /\s$/.test(draft) ? '' : '\n';
+    setDraft(draft + joiner + suggestion.text);
+    dismiss();
+  };
+
+  return (
+    <div
+      style={{
+        padding: '6px 12px 0',
+        WebkitAppRegion: 'no-drag',
+      } as React.CSSProperties}
+    >
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'flex-start',
+          gap: 10,
+          padding: '8px 12px',
+          borderRadius: 10,
+          background: error
+            ? 'oklch(0.6 0.2 25 / 0.1)'
+            : 'linear-gradient(135deg, rgba(255, 59, 48, 0.1), rgba(255, 107, 96, 0.08))',
+          border: `0.5px solid ${error ? 'oklch(0.6 0.2 25 / 0.35)' : 'rgba(255, 59, 48, 0.3)'}`,
+          boxShadow: error ? 'none' : '0 0 14px -4px var(--d9-accent-glow)',
+        }}
+      >
+        <span
+          aria-hidden
+          style={{
+            flex: 'none',
+            fontSize: 13,
+            lineHeight: '1.5em',
+          }}
+        >
+          {error ? '⚠️' : thinking ? '💭' : '💡'}
+        </span>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          {error ? (
+            <div
+              style={{
+                fontSize: 11.5,
+                color: 'oklch(0.75 0.18 25)',
+                letterSpacing: '-0.005em',
+              }}
+            >
+              {error}
+            </div>
+          ) : thinking && !suggestion ? (
+            <div
+              style={{
+                fontSize: 11.5,
+                color: 'var(--d9-accent-hi)',
+                letterSpacing: '-0.005em',
+                fontStyle: 'italic',
+              }}
+            >
+              AI формулирует ответ на вопрос собеседника…
+            </div>
+          ) : suggestion ? (
+            <>
+              <div
+                style={{
+                  fontSize: 10,
+                  color: 'var(--d9-ink-ghost)',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.06em',
+                  fontFamily: 'var(--d9-font-mono)',
+                  marginBottom: 3,
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                Q: {suggestion.question}
+              </div>
+              <div
+                style={{
+                  fontSize: 12.5,
+                  color: 'var(--d9-ink)',
+                  lineHeight: 1.45,
+                  letterSpacing: '-0.005em',
+                  whiteSpace: 'pre-wrap',
+                }}
+              >
+                {suggestion.text}
+              </div>
+            </>
+          ) : null}
+        </div>
+        {suggestion && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 4, flex: 'none' }}>
+            <button
+              type="button"
+              onClick={insert}
+              title="Вставить в поле ввода"
+              style={{
+                padding: '3px 8px',
+                fontSize: 10.5,
+                fontFamily: 'inherit',
+                background: 'var(--d9-accent)',
+                color: 'white',
+                border: 0,
+                borderRadius: 5,
+                cursor: 'pointer',
+                letterSpacing: '-0.005em',
+              }}
+            >
+              в ввод
+            </button>
+            <button
+              type="button"
+              onClick={dismiss}
+              title="Скрыть"
+              style={{
+                padding: '3px 8px',
+                fontSize: 10.5,
+                fontFamily: 'inherit',
+                background: 'transparent',
+                color: 'var(--d9-ink-ghost)',
+                border: '0.5px solid var(--d9-hairline)',
+                borderRadius: 5,
+                cursor: 'pointer',
+                letterSpacing: '-0.005em',
+              }}
+            >
+              закрыть
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/**
  * LiveTranscriptStrip — one-line pill above the input that shows the
  * most recent transcript chunk streaming from the meeting. Clicking
  * it splices the FULL accumulated transcript into the draft and
@@ -1133,13 +1353,13 @@ function LiveTranscriptStrip({
           background: error
             ? 'oklch(0.6 0.2 25 / 0.12)'
             : recording
-              ? 'oklch(0.72 0.23 300 / 0.08)'
+              ? 'rgba(255, 59, 48, 0.08)'
               : 'oklch(1 0 0 / 0.04)',
           border: `0.5px solid ${
             error
               ? 'oklch(0.6 0.2 25 / 0.35)'
               : recording
-                ? 'oklch(0.72 0.23 300 / 0.3)'
+                ? 'rgba(255, 59, 48, 0.3)'
                 : 'var(--d9-hairline)'
           }`,
           color: error ? 'oklch(0.75 0.18 25)' : 'var(--d9-ink-mute)',

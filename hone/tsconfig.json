@@ -19,7 +19,8 @@
     "ignoreDeprecations": "5.0",
     "paths": {
       "@shared/*": ["src/shared/*"],
-      "@renderer/*": ["src/renderer/src/*"]
+      "@renderer/*": ["src/renderer/src/*"],
+      "@generated/*": ["../frontend/src/api/generated/*"]
     }
   },
   "include": ["src/renderer/**/*", "src/preload/**/*", "src/shared/**/*"],

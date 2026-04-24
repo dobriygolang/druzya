@@ -19,7 +19,10 @@ import (
 	"druz9/cmd/monolith/services"
 	"druz9/shared/pkg/config"
 	"druz9/shared/pkg/eventbus"
+	"druz9/shared/pkg/killswitch"
 	"druz9/shared/pkg/metrics"
+	"druz9/shared/pkg/quota"
+	"strconv"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/redis/go-redis/v9"
@@ -91,9 +94,23 @@ func New(ctx context.Context, cfg *config.Config) (app *App, otelShutdown func()
 		return nil, otelShutdown, fmt.Errorf("llmchain: %w", lcErr)
 	}
 
+	// Daily token cap — env COPILOT_DAILY_TOKEN_CAP overrides the
+	// default 200k/user/day. Tune to Groq free-tier headroom: a
+	// reasonable interview user burns ~20k tokens/day (copilot +
+	// suggestions), so 200k is a 10x headroom while still stopping a
+	// runaway account at ~$6 of Groq paid-tier equivalent.
+	dailyCap := 200_000
+	if s := os.Getenv("COPILOT_DAILY_TOKEN_CAP"); s != "" {
+		if n, perr := strconv.Atoi(s); perr == nil && n > 0 {
+			dailyCap = n
+		}
+	}
+
 	deps := services.Deps{
 		Cfg: cfg, Log: log, Pool: pool, Redis: rdb,
 		Bus: bus, Now: nowFunc(), LLMChain: llmChain,
+		KillSwitch: killswitch.New(rdb),
+		TokenQuota: quota.New(rdb, dailyCap),
 	}
 
 	// Auth must come first — its TokenIssuer + RequireAuth feed every

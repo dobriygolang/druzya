@@ -97,6 +97,9 @@ export const invokeChannels = {
   audioCaptureState: 'audio-capture:state',
   audioCaptureIsAvailable: 'audio-capture:is-available',
 
+  coachSetAutoSuggest: 'coach:set-auto-suggest',
+  coachGetAutoSuggest: 'coach:get-auto-suggest',
+
   documentsList: 'documents:list',
   documentsGet: 'documents:get',
   documentsUpload: 'documents:upload',
@@ -139,6 +142,12 @@ export const eventChannels = {
   audioCaptureStateChanged: 'event:audio-capture-state-changed',
   audioCaptureTranscript: 'event:audio-capture-transcript',
   audioCaptureError: 'event:audio-capture-error',
+  /** Etap-3 auto-trigger suggestions. `suggestion` is a fresh AI
+   *  reply, `status` carries toggle + thinking state, `error` is a
+   *  transient /copilot/suggestion failure (429/502). */
+  coachSuggestion: 'event:coach-suggestion',
+  coachStatus: 'event:coach-status',
+  coachError: 'event:coach-error',
   /** Compact → main → expanded: "open the provider picker on arrival".
    *  Emitted by the little "choose model" button in compact since the
    *  picker modal (440×520) doesn't fit inside the compact window. */
@@ -454,6 +463,20 @@ export interface AudioCaptureTranscriptEvent {
   windowSec: number;
 }
 
+export interface CoachSuggestionEvent {
+  id: string;
+  question: string;
+  text: string;
+  latencyMs: number;
+}
+export interface CoachStatusEvent {
+  enabled: boolean;
+  thinking: boolean;
+}
+export interface CoachErrorEvent {
+  message: string;
+}
+
 // ─────────────────────────────────────────────────────────────────────────
 // Typed API surface exposed to renderer as `window.druz9`.
 // The preload script wires ipcRenderer.invoke + ipcRenderer.on into these
@@ -668,6 +691,17 @@ export interface Druz9API {
     stop: () => Promise<void>;
     state: () => Promise<AudioCaptureState>;
     isAvailable: () => Promise<boolean>;
+  };
+
+  /**
+   * Auto-suggest coach (etap 3). When enabled, the main-process
+   * trigger policy watches the audio-capture transcript for end-of-
+   * question boundaries and invokes /copilot/suggestion. Results
+   * land in the renderer via `coach:suggestion` broadcasts.
+   */
+  coach: {
+    setAutoSuggest: (on: boolean) => Promise<void>;
+    getAutoSuggest: () => Promise<boolean>;
   };
 
   documents: {

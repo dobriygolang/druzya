@@ -1,52 +1,67 @@
-/* Druz9 — Midnight-velvet design tokens.
-   Deep indigo/violet base, jewel-toned accents, editorial-premium.
-   Source of truth: design/tokens.css. Change here, not in components.
+/* Druz9 — Hone-aligned design tokens.
+   Pure black canvas, white-alpha ink, red accent (#FF3B30).
+   Matches design/hone/ visual language — minimalist Apple-ish,
+   starfield-friendly. Source of truth: design/hone/index.html → :root.
 
-   Back-compat: legacy `--d-*` aliases at the bottom keep older screens
-   compiling while we migrate them piece by piece. Delete once every
-   screen is on `--d9-*`. */
+   Tokens names (`--d9-*`) preserved for continuity: every component
+   still reads the same variable, we only swapped the values. Back-
+   compat `--d-*` aliases remain below for legacy code.
+
+   Migration notes:
+   - `--d9-accent` was violet plasma oklch(0.72 0.23 300); now tomato red
+     #FF3B30. All usages (buttons, rings, glows) pick it up automatically.
+   - `--d9-obsidian` was tinted-dark-indigo oklch(0.14); now near-black
+     #0a0a0a. Screens that expect "slightly above bg" still work.
+   - Persona gradients in .d9-grad-* stay — they're the only surviving
+     color splash (BrandMark, cohort chips). Kept as-is so user-set
+     persona still carries identity against the new monochrome base.
+ */
 
 :root {
-  /* ── Base surface (deep midnight, slightly blue-shifted) ─────────── */
-  --d9-void:        oklch(0.10 0.030 282);
-  --d9-obsidian:    oklch(0.14 0.035 280);
-  --d9-slate:       oklch(0.20 0.038 278);
-  --d9-slate-2:     oklch(0.26 0.042 276);
-  --d9-hairline:    oklch(0.46 0.040 278 / 0.28);
-  --d9-hairline-b:  oklch(0.85 0.055 285 / 0.14);
+  /* ── Base surface (pure black family) ─────────────────────────── */
+  --d9-void:        #000000;
+  --d9-obsidian:    #0a0a0a;
+  --d9-slate:       #111111;
+  --d9-slate-2:     #171717;
+  --d9-hairline:    rgba(255, 255, 255, 0.08);
+  --d9-hairline-b:  rgba(255, 255, 255, 0.12);
 
-  /* ── Text ──────────────────────────────────────────────────────── */
-  --d9-ink:         oklch(0.97 0.012 285);
-  --d9-ink-dim:     oklch(0.80 0.020 285);
-  --d9-ink-mute:    oklch(0.62 0.025 285);
-  --d9-ink-ghost:   oklch(0.48 0.030 285);
+  /* ── Text (Hone's ink ramp: 100 / 90 / 60 / 40) ─────────────── */
+  --d9-ink:         #ffffff;
+  --d9-ink-dim:     rgba(255, 255, 255, 0.90);
+  --d9-ink-mute:    rgba(255, 255, 255, 0.60);
+  --d9-ink-ghost:   rgba(255, 255, 255, 0.40);
 
-  /* ── Accent — Violet plasma ────────────────────────────────────── */
-  --d9-accent:      oklch(0.72 0.23 300);
-  --d9-accent-hi:   oklch(0.82 0.20 310);
-  --d9-accent-lo:   oklch(0.54 0.22 295);
-  --d9-accent-glow: oklch(0.72 0.23 300 / 0.35);
+  /* ── Accent — Tomato red (matches Hone #FF3B30) ──────────────── */
+  --d9-accent:      #FF3B30;
+  --d9-accent-hi:   #FF6B60;
+  --d9-accent-lo:   #D32A20;
+  --d9-accent-glow: rgba(255, 59, 48, 0.25);
 
-  /* Jewel tones (personas) */
-  --d9-cyan:    oklch(0.80 0.15 210);
-  --d9-cyan-2:  oklch(0.62 0.18 220);
-  --d9-purple:  oklch(0.70 0.22 305);
-  --d9-purple-2:oklch(0.52 0.24 295);
-  --d9-teal:    oklch(0.78 0.14 180);
-  --d9-teal-2:  oklch(0.58 0.16 190);
-  --d9-amber:   oklch(0.82 0.16 70);
-  --d9-amber-2: oklch(0.66 0.20 50);
-  --d9-green:   oklch(0.82 0.18 150);
-  --d9-green-2: oklch(0.62 0.20 155);
+  /* Jewel tones (personas) — toned down for pure-black canvas.
+     Deliberately NOT pure oklch extremes: on #000 the fully-saturated
+     hues scream. Kept as gradient building blocks for BrandMark /
+     persona chips only; mainstream UI now reads --d9-accent. */
+  --d9-cyan:     oklch(0.78 0.12 210);
+  --d9-cyan-2:   oklch(0.58 0.15 220);
+  --d9-purple:   oklch(0.68 0.18 305);
+  --d9-purple-2: oklch(0.48 0.20 295);
+  --d9-teal:     oklch(0.74 0.11 180);
+  --d9-teal-2:   oklch(0.54 0.13 190);
+  --d9-amber:    oklch(0.80 0.13 70);
+  --d9-amber-2:  oklch(0.62 0.17 50);
+  --d9-green:    oklch(0.78 0.15 150);
+  --d9-green-2:  oklch(0.58 0.17 155);
 
-  /* Status */
-  --d9-ok:      oklch(0.80 0.17 150);
-  --d9-warn:    oklch(0.82 0.17 70);
-  --d9-err:     oklch(0.68 0.22 25);
+  /* Status — semantic, not branded. Kept on oklch for consistency
+     with existing component literals that hardcode status reds/greens. */
+  --d9-ok:      oklch(0.78 0.15 150);
+  --d9-warn:    oklch(0.80 0.15 70);
+  --d9-err:     var(--d9-accent);
 
-  /* Glass scrim layered over desktop */
-  --d9-scrim:   oklch(0.14 0.035 280 / 0.62);
-  --d9-scrim-2: oklch(0.14 0.035 280 / 0.82);
+  /* Glass scrim layered over desktop (swapped obsidian→black). */
+  --d9-scrim:   rgba(0, 0, 0, 0.62);
+  --d9-scrim-2: rgba(0, 0, 0, 0.82);
 
   /* ── Radii ──────────────────────────────────────────────────────── */
   --d9-r-xs: 6px;
@@ -69,19 +84,19 @@
     0 .5px 0 rgba(255,255,255,.06) inset,
     0 0 0 .5px rgba(255,255,255,.08),
     0 1px 1px rgba(0,0,0,.35),
-    0 20px 50px -10px rgba(0,0,0,.55),
-    0 60px 80px -30px rgba(0,0,0,.45);
+    0 20px 50px -10px rgba(0,0,0,.65),
+    0 60px 80px -30px rgba(0,0,0,.55);
   --d9-shadow-pop:
     0 .5px 0 rgba(255,255,255,.06) inset,
     0 0 0 .5px rgba(255,255,255,.10),
-    0 8px 24px -4px rgba(0,0,0,.55),
-    0 24px 48px -12px rgba(0,0,0,.45);
+    0 8px 24px -4px rgba(0,0,0,.65),
+    0 24px 48px -12px rgba(0,0,0,.55);
   --d9-shadow-key:
     0 .5px 0 rgba(255,255,255,.12) inset,
     0 1px 0 rgba(0,0,0,.35),
     0 0 0 .5px rgba(255,255,255,.08);
 
-  /* Focus */
+  /* Focus — red ring replacing violet. */
   --d9-ring: 0 0 0 1.5px var(--d9-accent), 0 0 0 4px var(--d9-accent-glow);
 
   /* Motion */
@@ -93,9 +108,11 @@
   --d9-ease-in:   cubic-bezier(.5,0,.9,.3);
   --d9-ease-out:  cubic-bezier(.15,.85,.3,1);
 
-  /* Type */
+  /* Type — Inter matches the Hone landing + app. Manrope stays loaded
+     as a fallback in case older sessions cached it; Inter wins the
+     stack. Instrument Serif kept for the brand display accent. */
   --d9-font-display: "Instrument Serif", "Cormorant Garamond", Georgia, serif;
-  --d9-font-sans:    "Manrope", ui-sans-serif, -apple-system, "SF Pro Text", system-ui, sans-serif;
+  --d9-font-sans:    "Inter", "Manrope", ui-sans-serif, -apple-system, "SF Pro Text", system-ui, sans-serif;
   --d9-font-mono:    "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
 
   /* Blur for heavy-glass */
@@ -128,9 +145,12 @@
   --d-accent-hover: var(--d9-accent-hi);
   --d-accent-soft: var(--d9-accent-glow);
   --d-accent-2: var(--d9-cyan);
-  --d-accent-2-soft: oklch(0.80 0.15 210 / 0.18);
-  --d-gradient-hero: linear-gradient(135deg, var(--d9-accent) 0%, var(--d9-cyan) 100%);
-  --d-gradient-hero-soft: linear-gradient(135deg, var(--d9-accent-glow) 0%, oklch(0.80 0.15 210 / 0.18) 100%);
+  --d-accent-2-soft: oklch(0.78 0.12 210 / 0.18);
+  /* Hero gradient now goes red→amber to match the Hone aesthetic.
+     Previously was violet→cyan jewel; on pure black the red/amber
+     fade reads as "focus" vs "cosmic". */
+  --d-gradient-hero: linear-gradient(135deg, var(--d9-accent) 0%, var(--d9-amber) 100%);
+  --d-gradient-hero-soft: linear-gradient(135deg, var(--d9-accent-glow) 0%, oklch(0.80 0.13 70 / 0.18) 100%);
 
   --d-green: var(--d9-ok);
   --d-yellow: var(--d9-warn);
@@ -157,7 +177,9 @@
   --sp-8: var(--d9-s-6);
 }
 
-/* Persona gradient utilities — reused across BrandMark, chips, dropdown. */
+/* Persona gradient utilities — reused across BrandMark, chips, dropdown.
+   On the new pure-black canvas the saturated jewel tones ground the
+   identity that would otherwise wash out with the monochrome shift. */
 .d9-grad-react     { background-image: linear-gradient(135deg, var(--d9-cyan) 0%,   var(--d9-cyan-2) 100%); }
 .d9-grad-sysdesign { background-image: linear-gradient(135deg, var(--d9-purple) 0%, var(--d9-purple-2) 100%); }
 .d9-grad-sre       { background-image: linear-gradient(135deg, var(--d9-teal) 0%,   var(--d9-teal-2) 100%); }

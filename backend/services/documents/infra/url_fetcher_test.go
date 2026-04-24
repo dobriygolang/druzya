@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -13,9 +14,26 @@ import (
 	"druz9/documents/domain"
 )
 
-// newTestFetcher — то же что NewURLFetcher, но с коротким таймаутом,
-// чтобы любой случайный долгий тест не висел.
+// newTestFetcher — то же что NewURLFetcher, но с коротким таймаутом
+// и БЕЗ SSRF-guard'а, так как httptest.Server биндится на 127.0.0.1.
+// Production-фетчер ВСЕГДА с guard'ом (см. NewURLFetcher) — этот
+// override только для сценариев happy-path против локального mock'а.
 func newTestFetcher() *URLFetcher {
+	f := NewURLFetcher()
+	f.client.Timeout = 2 * time.Second
+	// Replace transport with a plain dialer (no guard) so httptest
+	// loopback servers are reachable. Any real-prod fetcher built via
+	// NewURLFetcher retains the guard.
+	f.client.Transport = &http.Transport{
+		DialContext: (&net.Dialer{Timeout: 2 * time.Second}).DialContext,
+	}
+	return f
+}
+
+// newGuardedTestFetcher — NewURLFetcher без overrides, используется
+// только в SSRF-тестах ниже, чтобы убедиться что guard реально
+// блокирует localhost.
+func newGuardedTestFetcher() *URLFetcher {
 	f := NewURLFetcher()
 	f.client.Timeout = 2 * time.Second
 	return f
@@ -215,6 +233,82 @@ func TestURLFetcher_FallbackFilename(t *testing.T) {
 	}
 	if strings.Contains(res.Filename, "Title") {
 		t.Errorf("unexpected title in filename: %q", res.Filename)
+	}
+}
+
+// TestURLFetcher_SSRF_Localhost — httptest.NewServer биндится на
+// 127.0.0.1, что делает его идеальной целью для SSRF-теста: если бы
+// блокировка не работала, fetch бы прошёл. Ожидаем error, содержащий
+// "blocked IP".
+func TestURLFetcher_SSRF_Localhost(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Если fetcher дошёл сюда — SSRF guard не сработал.
+		t.Error("SSRF guard failed — request reached localhost handler")
+		w.WriteHeader(200)
+	}))
+	defer srv.Close()
+
+	f := newGuardedTestFetcher()
+	_, err := f.Fetch(context.Background(), srv.URL)
+	if err == nil {
+		t.Fatalf("expected SSRF rejection, got nil error")
+	}
+	if !strings.Contains(err.Error(), "blocked IP") {
+		t.Errorf("error should mention blocked IP: %v", err)
+	}
+}
+
+// TestIsPrivateIP — табличный тест блоклиста. Покрывает каждую ветку
+// isPrivateIP: без этого легко сломать guard тихим рефакторингом.
+func TestIsPrivateIP(t *testing.T) {
+	cases := map[string]bool{
+		// Public — must pass
+		"8.8.8.8":        false,
+		"1.1.1.1":        false,
+		"142.250.80.46":  false, // google.com
+		"2606:4700::":    false, // cloudflare IPv6
+
+		// Blocked — loopback
+		"127.0.0.1":  true,
+		"127.0.0.53": true, // systemd-resolved
+		"::1":        true,
+
+		// Blocked — private (RFC 1918)
+		"10.0.0.1":      true,
+		"10.255.255.1":  true,
+		"172.16.0.1":    true,
+		"172.31.255.1":  true,
+		"192.168.1.1":   true,
+		"192.168.0.100": true,
+
+		// Blocked — link-local + metadata
+		"169.254.169.254": true, // AWS/GCP metadata
+		"169.254.0.1":     true,
+		"fe80::1":         true,
+
+		// Blocked — shared (RFC 6598, carrier-grade NAT)
+		"100.64.0.1":   true,
+		"100.127.0.1":  true,
+
+		// Blocked — unspecified
+		"0.0.0.0": true,
+		"::":      true,
+
+		// Edge — IPv4-mapped IPv6 of a private address
+		"::ffff:10.0.0.1":   true,
+		"::ffff:127.0.0.1":  true,
+		// IPv4-mapped of public address → allowed
+		"::ffff:8.8.8.8": false,
+	}
+	for s, want := range cases {
+		ip := net.ParseIP(s)
+		if ip == nil {
+			t.Errorf("parse %q: nil", s)
+			continue
+		}
+		if got := isPrivateIP(ip); got != want {
+			t.Errorf("isPrivateIP(%q) = %v, want %v", s, got, want)
+		}
 	}
 }
 

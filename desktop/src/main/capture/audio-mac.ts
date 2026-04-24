@@ -29,18 +29,23 @@ const SAMPLE_RATE = 16_000;
 /** 16-bit mono PCM — matches encodeWAV below and Whisper's preferred
  *  input. `2` is bytes per frame (single channel × 16 bits). */
 const BYTES_PER_FRAME = 2;
-/** Emit a chunk every N seconds. 5s is the sweet spot for Whisper:
- *  short enough to feel responsive, long enough that overhead
- *  (HTTP, model load) doesn't dominate latency. */
-const CHUNK_SECONDS = 5;
-const CHUNK_BYTES = SAMPLE_RATE * BYTES_PER_FRAME * CHUNK_SECONDS;
+
+// VAD-driven chunking replaces the old fixed-5s scheme. Swift emits
+// PCM only while RMS > threshold and writes "BOUNDARY\n" on stderr
+// when a ≥600ms silence ends an utterance. We flush on boundary for
+// semantic cuts; a hard ceiling prevents a single long utterance
+// from growing past Whisper's comfort zone.
+const MIN_CHUNK_BYTES = SAMPLE_RATE * BYTES_PER_FRAME * 1; // 1s minimum
+const MAX_CHUNK_BYTES = SAMPLE_RATE * BYTES_PER_FRAME * 3; // 3s hard cap
 
 export type AudioCaptureState = 'idle' | 'starting' | 'running' | 'stopping';
 
 export interface AudioCaptureEvents {
   onState: (state: AudioCaptureState) => void;
   /** Each successfully transcribed chunk. Text is the raw delta from
-   *  Whisper for that 5s window; caller is expected to concatenate. */
+   *  Whisper for that VAD-delimited utterance; caller is expected to
+   *  concatenate. windowSec is the audio duration of the chunk (1-3s
+   *  depending on where the boundary fell). */
   onTranscript: (text: string, windowSec: number) => void;
   onError: (message: string) => void;
 }
@@ -128,6 +133,7 @@ export function createAudioCapture(
 
   const transcribeChunk = async (pcm: Buffer) => {
     const wav = encodeWAV(pcm);
+    const windowSec = pcm.length / (SAMPLE_RATE * BYTES_PER_FRAME);
     try {
       const result = await transcriber.transcribe({
         audio: new Uint8Array(wav.buffer, wav.byteOffset, wav.byteLength),
@@ -138,7 +144,7 @@ export function createAudioCapture(
       });
       chunkSeq += 1;
       if (result.text.trim()) {
-        events.onTranscript(result.text, CHUNK_SECONDS);
+        events.onTranscript(result.text, windowSec);
       }
     } catch (err) {
       // Don't kill the capture on a single failed chunk — the next
@@ -148,27 +154,27 @@ export function createAudioCapture(
     }
   };
 
-  const onPCMData = (chunk: Buffer) => {
-    buf = buf.length === 0 ? chunk : Buffer.concat([buf, chunk]);
-    while (buf.length >= CHUNK_BYTES) {
-      const pcm = buf.subarray(0, CHUNK_BYTES);
-      buf = buf.subarray(CHUNK_BYTES);
-      // Copy the subarray into its own buffer so the async transcribe
-      // call doesn't hold a reference into our sliding window.
-      const owned = Buffer.from(pcm);
-      void transcribeChunk(owned);
+  const flushBuffer = (reason: 'boundary' | 'max' | 'stop') => {
+    if (buf.length < MIN_CHUNK_BYTES) {
+      // Too short to be a useful utterance. Discard on stop (stop
+      // click right after start); keep on boundary (next boundary
+      // may extend it further); keep on max (shouldn't happen —
+      // we're below min but max triggered, probably a buggy event).
+      if (reason === 'stop') buf = Buffer.alloc(0);
+      return;
     }
+    const owned = Buffer.from(buf);
+    buf = Buffer.alloc(0);
+    void transcribeChunk(owned);
   };
 
-  const flushRemainder = async () => {
-    // At least 1s of audio worth keeping. Anything shorter is pure
-    // filler from a stop-right-after-start click.
-    if (buf.length >= SAMPLE_RATE * BYTES_PER_FRAME) {
-      const owned = Buffer.from(buf);
-      buf = Buffer.alloc(0);
-      await transcribeChunk(owned);
-    } else {
-      buf = Buffer.alloc(0);
+  const onPCMData = (chunk: Buffer) => {
+    buf = buf.length === 0 ? chunk : Buffer.concat([buf, chunk]);
+    // Hard ceiling — Whisper-turbo is happiest with ≤3s. The Swift
+    // VAD normally beats us to a boundary long before this, but a
+    // monologue with no sub-600ms pauses can slip through.
+    if (buf.length >= MAX_CHUNK_BYTES) {
+      flushBuffer('max');
     }
   };
 
@@ -204,6 +210,13 @@ export function createAudioCapture(
         stderrBuf = stderrBuf.slice(nl + 1);
         nl = stderrBuf.indexOf('\n');
         if (!line) continue;
+        if (line === 'BOUNDARY') {
+          // End-of-utterance signal from the Swift VAD. Flush the
+          // accumulated PCM as one chunk (if it passes the min-size
+          // filter) and start a new utterance buffer.
+          flushBuffer('boundary');
+          continue;
+        }
         if (line.startsWith('ERROR:')) {
           events.onError(line.replace(/^ERROR:\s*/, ''));
         } else if (line.startsWith('READY:')) {
@@ -219,10 +232,9 @@ export function createAudioCapture(
     proc.on('exit', (code, signal) => {
       // eslint-disable-next-line no-console
       console.log('[AudioCaptureMac] exited', { code, signal });
-      void flushRemainder().finally(() => {
-        proc = null;
-        setState('idle');
-      });
+      flushBuffer('stop');
+      proc = null;
+      setState('idle');
     });
     proc.on('error', (err) => {
       events.onError(`spawn failed: ${err.message}`);

@@ -26,15 +26,37 @@ import Foundation
 import AVFoundation
 import ScreenCaptureKit
 
-// MARK: - PCM output
+// MARK: - PCM output with inline VAD
+
+/// Tunables for the silence detector. Values chosen empirically for
+/// laptop microphones + system audio bleeding through speakers:
+///   - threshold 0.008 cuts typical fan noise / room hum but keeps
+///     soft consonants ("sh", "th") audible;
+///   - silence-for-boundary 600ms matches a natural end-of-sentence
+///     pause in Russian/English speech. Shorter and we'd fire mid-
+///     sentence; longer and the auto-trigger loop feels sluggish.
+///   - force-boundary 8s guards against a monologue (presenter mode)
+///     where pauses never drop below threshold.
+private let vadRMSThreshold: Float = 0.008
+private let vadSilenceSamplesForBoundary: Int = 16_000 * 6 / 10     // 600ms @ 16kHz
+private let vadMaxSamplesWithoutBoundary: Int = 16_000 * 8          // 8s  @ 16kHz
 
 /// Stream output receiver. Converts Float32 non-interleaved to Int16
-/// little-endian mono and writes to a provided sink.
+/// little-endian mono AND runs a RMS-based VAD so we:
+///   (a) don't write silent PCM to stdout (costs $ through Groq);
+///   (b) emit BOUNDARY events on stderr at end-of-utterance so the
+///       Electron-side chunker can cut semantically-coherent pieces.
 final class AudioCaptureOutput: NSObject, SCStreamOutput {
     private let sink: (Data) -> Void
+    private let onBoundary: () -> Void
+    // VAD state. Single-writer (sampleHandlerQueue) so no lock needed.
+    private var silentSamples = 0
+    private var samplesSinceBoundary = 0
+    private var isSpeaking = false
 
-    init(sink: @escaping (Data) -> Void) {
+    init(sink: @escaping (Data) -> Void, onBoundary: @escaping () -> Void) {
         self.sink = sink
+        self.onBoundary = onBoundary
         super.init()
     }
 
@@ -44,21 +66,53 @@ final class AudioCaptureOutput: NSObject, SCStreamOutput {
         guard type == .audio else { return }
         guard sampleBuffer.isValid, CMSampleBufferDataIsReady(sampleBuffer) else { return }
 
-        // ScreenCaptureKit always delivers Float32 PCM per its docs,
-        // possibly interleaved if channelCount > 1. We asked for 1ch,
-        // so interleaved == non-interleaved here, but we handle both to
-        // stay robust to Apple tightening the contract.
-        guard let pcm = sampleBufferToPCM16Mono(sampleBuffer) else {
+        // sampleBufferToPCM16Mono returns (PCM16 bytes, RMS of the
+        // buffer). We use the RMS for the VAD decision; PCM passes
+        // through unchanged.
+        guard let (pcm, rms) = sampleBufferToPCM16Mono(sampleBuffer) else {
             FileHandle.standardError.write("WARN: failed to convert sample buffer\n".data(using: .utf8)!)
             return
         }
-        sink(pcm)
+        let frameCount = pcm.count / 2
+
+        if rms > vadRMSThreshold {
+            // Speech. Flush any pending silence hold, write PCM.
+            silentSamples = 0
+            isSpeaking = true
+            samplesSinceBoundary += frameCount
+            sink(pcm)
+
+            // Safety net: if a single utterance runs past the forced-
+            // boundary budget (8s) emit a cut even without silence.
+            // Electron will close a chunk and start a new one. Keeps
+            // Whisper input bounded.
+            if samplesSinceBoundary >= vadMaxSamplesWithoutBoundary {
+                onBoundary()
+                samplesSinceBoundary = 0
+            }
+        } else {
+            silentSamples += frameCount
+            if isSpeaking && silentSamples >= vadSilenceSamplesForBoundary {
+                // Transition speaking → silent long enough for an
+                // end-of-utterance boundary. Emit marker, reset.
+                onBoundary()
+                isSpeaking = false
+                samplesSinceBoundary = 0
+            }
+            // Silent samples are deliberately NOT written to stdout —
+            // that's the cost-saving half of the VAD. The trailing
+            // speech tail (last ~200ms of the utterance) IS preserved
+            // via the first silentSamples += frameCount because we
+            // only flip isSpeaking=false AFTER vadSilenceSamplesForBoundary.
+        }
     }
 }
 
 /// Extract a Float32 channel array from the sample buffer, fold to mono
-/// if needed, then encode as Int16 LE.
-private func sampleBufferToPCM16Mono(_ sb: CMSampleBuffer) -> Data? {
+/// if needed, then encode as Int16 LE. Returns the PCM bytes plus the
+/// per-buffer RMS (root mean square of the mono Float32 samples) so
+/// the caller can make a VAD decision without a second pass.
+private func sampleBufferToPCM16Mono(_ sb: CMSampleBuffer) -> (Data, Float)? {
     guard let fmtDesc = CMSampleBufferGetFormatDescription(sb),
           let asbd = CMAudioFormatDescriptionGetStreamBasicDescription(fmtDesc)?.pointee else {
         return nil
@@ -122,16 +176,20 @@ private func sampleBufferToPCM16Mono(_ sb: CMSampleBuffer) -> Data? {
     _ = isFloat // silence unused warning — kept for a future "integer input" branch
 
     // Float [-1..1] → Int16 [-32768..32767]. Clip hard on overflow
-    // (Whisper is tolerant of occasional clipped samples).
+    // (Whisper is tolerant of occasional clipped samples). Compute
+    // RMS in the same pass so VAD doesn't need a second sweep.
     var out = Data(count: frameCount * 2)
+    var sumSq: Float = 0
     out.withUnsafeMutableBytes { raw in
         guard let base = raw.bindMemory(to: Int16.self).baseAddress else { return }
         for i in 0..<frameCount {
             let s = max(-1.0, min(1.0, mono[i]))
             base[i] = Int16(s * 32767.0)
+            sumSq += s * s
         }
     }
-    return out
+    let rms = sqrt(sumSq / Float(max(frameCount, 1)))
+    return (out, rms)
 }
 
 // MARK: - Capture controller
@@ -169,12 +227,19 @@ actor CaptureController {
         cfg.height = 2
         cfg.minimumFrameInterval = CMTime(value: 1, timescale: 1)
 
-        let output = AudioCaptureOutput { pcm in
-            // stdout is thread-safe per POSIX for small writes; the
-            // buffer here is typically 10-20 KB, well under PIPE_BUF
-            // boundaries. Electron reads in its own rhythm.
-            FileHandle.standardOutput.write(pcm)
-        }
+        let output = AudioCaptureOutput(
+            sink: { pcm in
+                // stdout is thread-safe per POSIX for small writes; the
+                // buffer here is typically 10-20 KB, well under PIPE_BUF
+                // boundaries. Electron reads in its own rhythm.
+                FileHandle.standardOutput.write(pcm)
+            },
+            onBoundary: {
+                // Cheap signal to Electron: "flush whatever you have".
+                // Carried on stderr as a one-token line so it parses
+                // the same way as log() output.
+                FileHandle.standardError.write("BOUNDARY\n".data(using: .utf8)!)
+            })
         let s = SCStream(filter: filter, configuration: cfg, delegate: nil)
         try s.addStreamOutput(output, type: .audio, sampleHandlerQueue: sampleQueue)
         try await s.startCapture()

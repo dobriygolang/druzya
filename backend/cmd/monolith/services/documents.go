@@ -11,6 +11,7 @@ import (
 	docsExtractor "druz9/documents/infra/extractor"
 	docsPorts "druz9/documents/ports"
 	"druz9/shared/pkg/llmcache"
+	"druz9/shared/pkg/ratelimit"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
@@ -60,6 +61,14 @@ func NewDocuments(d Deps) (*Module, copilotDomain.DocumentSearcher) {
 		Upload:  upload,
 	}
 
+	// Rate limiter: only active when Redis is configured. Without it
+	// the handlers fall through to unlimited (matches dev-mode copilot
+	// behaviour where Redis-less builds skip the `StartSession` limit).
+	var limiter *ratelimit.RedisFixedWindow
+	if d.Redis != nil {
+		limiter = ratelimit.NewRedisFixedWindow(d.Redis)
+	}
+
 	h := &docsPorts.Handler{
 		Upload:        upload,
 		UploadFromURL: uploadFromURL,
@@ -67,6 +76,8 @@ func NewDocuments(d Deps) (*Module, copilotDomain.DocumentSearcher) {
 		List:          list,
 		Delete:        del,
 		Search:        search,
+		Limiter:       limiter,
+		KillSwitch:    d.KillSwitch,
 		Log:           d.Log,
 	}
 

@@ -13,6 +13,7 @@
 package ports
 
 import (
+	"context"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
@@ -24,7 +25,9 @@ import (
 	"druz9/documents/app"
 	"druz9/documents/domain"
 	"druz9/documents/infra"
+	"druz9/shared/pkg/killswitch"
 	sharedMw "druz9/shared/pkg/middleware"
+	"druz9/shared/pkg/ratelimit"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
@@ -39,7 +42,67 @@ type Handler struct {
 	List          *app.List
 	Delete        *app.Delete
 	Search        *app.Search
-	Log           *slog.Logger
+	// Limiter guards write-path endpoints from burn-through on the
+	// Groq free-tier embedder budget. nil = rate limiting disabled
+	// (dev without Redis).
+	Limiter *ratelimit.RedisFixedWindow
+	// Kill switch — operator can flip `killswitch:documents_upload`
+	// or `killswitch:documents_url` in Redis to instantly 503 those
+	// endpoints without a deploy. Reads don't kill (GET/list stay up
+	// so users don't lose visibility into what they already have).
+	KillSwitch *killswitch.Switch
+	Log        *slog.Logger
+}
+
+// killedIf returns true + writes 503 when the named feature is
+// tripped; false otherwise. Caller early-returns on true.
+func (h *Handler) killedIf(w http.ResponseWriter, r *http.Request, f killswitch.Feature) bool {
+	if h.KillSwitch == nil {
+		return false
+	}
+	if !h.KillSwitch.IsOn(r.Context(), f) {
+		return false
+	}
+	w.Header().Set("Retry-After", "60")
+	writeError(w, http.StatusServiceUnavailable, "feature temporarily disabled by operator")
+	return true
+}
+
+// Per-op budgets — all user-scoped. Upload is the priciest (embedder
+// cost per chunk); URL fetch is externally-bandwidth expensive; search
+// embeds one query per call and hits pgvector-ish cosine, so cheaper.
+const (
+	uploadLimitPerMin     = 20
+	uploadURLLimitPerMin  = 10
+	searchLimitPerMin     = 60
+	deleteLimitPerMin     = 60
+)
+
+// checkLimit runs the limiter for (userID, op). Returns true when the
+// request should proceed; on rate-limit it emits the proper 429 +
+// Retry-After header and returns false. A nil Limiter degrades to
+// "always allow" so dev-without-Redis stays usable.
+func (h *Handler) checkLimit(ctx context.Context, w http.ResponseWriter, userID uuid.UUID, op string, limit int) bool {
+	if h.Limiter == nil {
+		return true
+	}
+	key := "rl:docs:" + op + ":" + userID.String()
+	res, err := h.Limiter.Allow(ctx, key, limit, time.Minute)
+	if err != nil {
+		// Fail-open on Redis transport errors. A Redis outage
+		// shouldn't lock users out of the whole feature.
+		if h.Log != nil {
+			h.Log.Warn("documents: rate-limit probe failed — allowing",
+				slog.String("op", op), slog.Any("err", err))
+		}
+		return true
+	}
+	if !res.Allowed {
+		w.Header().Set("Retry-After", strconv.Itoa(res.RetryAfterSec))
+		writeError(w, http.StatusTooManyRequests, "rate limited, retry in "+strconv.Itoa(res.RetryAfterSec)+"s")
+		return false
+	}
+	return true
 }
 
 func (h *Handler) Mount(r chi.Router) {
@@ -125,9 +188,15 @@ type searchResp struct {
 // ─────────────────────────────────────────────────────────────────────────
 
 func (h *Handler) handleUpload(w http.ResponseWriter, r *http.Request) {
+	if h.killedIf(w, r, killswitch.FeatureDocumentsUpload) {
+		return
+	}
 	uid, ok := sharedMw.UserIDFromContext(r.Context())
 	if !ok {
 		writeError(w, http.StatusUnauthorized, "unauthenticated")
+		return
+	}
+	if !h.checkLimit(r.Context(), w, uid, "upload", uploadLimitPerMin) {
 		return
 	}
 
@@ -180,6 +249,9 @@ func (h *Handler) handleUpload(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handler) handleUploadFromURL(w http.ResponseWriter, r *http.Request) {
+	if h.killedIf(w, r, killswitch.FeatureDocumentsURL) {
+		return
+	}
 	uid, ok := sharedMw.UserIDFromContext(r.Context())
 	if !ok {
 		writeError(w, http.StatusUnauthorized, "unauthenticated")
@@ -187,6 +259,9 @@ func (h *Handler) handleUploadFromURL(w http.ResponseWriter, r *http.Request) {
 	}
 	if h.UploadFromURL == nil {
 		writeError(w, http.StatusServiceUnavailable, "url ingestion not configured")
+		return
+	}
+	if !h.checkLimit(r.Context(), w, uid, "upload-url", uploadURLLimitPerMin) {
 		return
 	}
 	var req uploadFromURLReq
@@ -284,6 +359,9 @@ func (h *Handler) handleDelete(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusUnauthorized, "unauthenticated")
 		return
 	}
+	if !h.checkLimit(r.Context(), w, uid, "delete", deleteLimitPerMin) {
+		return
+	}
 	id, err := uuid.Parse(chi.URLParam(r, "id"))
 	if err != nil {
 		writeError(w, http.StatusBadRequest, "invalid id")
@@ -305,6 +383,9 @@ func (h *Handler) handleSearch(w http.ResponseWriter, r *http.Request) {
 	uid, ok := sharedMw.UserIDFromContext(r.Context())
 	if !ok {
 		writeError(w, http.StatusUnauthorized, "unauthenticated")
+		return
+	}
+	if !h.checkLimit(r.Context(), w, uid, "search", searchLimitPerMin) {
 		return
 	}
 	var req searchReq

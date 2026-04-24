@@ -1,6 +1,7 @@
 package services
 
 import (
+	"druz9/shared/pkg/ratelimit"
 	transcriptionApp "druz9/transcription/app"
 	transcriptionInfra "druz9/transcription/infra"
 	transcriptionPorts "druz9/transcription/ports"
@@ -30,7 +31,11 @@ func NewTranscription(d Deps) *Module {
 		Log:      d.Log,
 		Now:      d.Now,
 	}
-	h := &transcriptionPorts.Handler{Transcribe: uc, Log: d.Log}
+	var limiter *ratelimit.RedisFixedWindow
+	if d.Redis != nil {
+		limiter = ratelimit.NewRedisFixedWindow(d.Redis)
+	}
+	h := &transcriptionPorts.Handler{Transcribe: uc, Limiter: limiter, KillSwitch: d.KillSwitch, Log: d.Log}
 
 	return &Module{
 		MountREST: func(r chi.Router) {

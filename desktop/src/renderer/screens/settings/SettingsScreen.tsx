@@ -89,7 +89,7 @@ export function SettingsScreen() {
           display: 'flex',
           flexDirection: 'column',
           gap: 14,
-          background: 'oklch(0.12 0.03 278)',
+          background: 'var(--d9-obsidian)',
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '0 8px' }}>
@@ -660,7 +660,7 @@ function ProvidersTab({ models }: { models: ProviderModel[] }) {
                 border: `0.5px solid ${
                   m.availableOnCurrentPlan
                     ? 'oklch(0.8 0.17 150 / 0.28)'
-                    : 'oklch(0.72 0.23 300 / 0.35)'
+                    : 'rgba(255, 59, 48, 0.35)'
                 }`,
               }}
             >
@@ -1173,7 +1173,7 @@ function StatusPill({ status }: { status: Document['status'] }) {
             ? 'oklch(0.8 0.17 150 / 0.28)'
             : isFailed
               ? 'oklch(0.6 0.2 25 / 0.35)'
-              : 'oklch(0.72 0.23 300 / 0.35)'
+              : 'rgba(255, 59, 48, 0.35)'
         }`,
         whiteSpace: 'nowrap',
       }}
@@ -1325,7 +1325,7 @@ function PermissionsTab() {
             padding: '10px 14px',
             borderRadius: 9,
             background: 'var(--d9-accent-glow)',
-            border: '0.5px solid oklch(0.72 0.23 300 / 0.35)',
+            border: '0.5px solid rgba(255, 59, 48, 0.35)',
             fontSize: 11.5,
             color: 'var(--d9-accent-hi)',
             letterSpacing: '-0.005em',

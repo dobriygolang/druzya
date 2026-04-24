@@ -27,6 +27,11 @@ var ErrQuotaExceeded = errors.New("copilot: quota exceeded")
 // user's plan allow-list.
 var ErrModelNotAllowed = errors.New("copilot: model not allowed on current plan")
 
+// ErrServiceUnavailable signals a transient, operator-controlled block
+// (kill-switch tripped, dependency down). Maps to HTTP 503 /
+// Connect Unavailable; client retries.
+var ErrServiceUnavailable = errors.New("copilot: service unavailable")
+
 // ErrInvalidInput is returned for shape violations the server must refuse
 // (empty prompt with no attachment, oversized image, etc.).
 var ErrInvalidInput = errors.New("copilot: invalid input")
