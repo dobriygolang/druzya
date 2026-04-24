@@ -21,6 +21,7 @@ import { ReportsPanel } from './ReportsPanel'
 import { PodcastsPanel } from './PodcastsPanel'
 import { AtlasPanel } from './AtlasPanel'
 import { AIModelsPanel } from './AIModelsPanel'
+import { LLMChainPanel } from './LLMChainPanel'
 import { PersonasPanel } from './PersonasPanel'
 
 export default function AdminPage() {
@@ -70,7 +71,9 @@ export default function AdminPage() {
                         ? 'Atlas CMS'
                         : tab === 'personas'
                           ? 'Персоны'
-                          : 'AI Modельки'}
+                          : tab === 'llm_chain'
+                            ? 'LLM Chain'
+                            : 'AI Modельки'}
             </h1>
             <span className="font-mono text-[11px] text-text-muted">Операционная панель druz9</span>
           </div>
@@ -81,6 +84,7 @@ export default function AdminPage() {
         {tab === 'podcasts' && <PodcastsPanel />}
         {tab === 'atlas' && <AtlasPanel />}
         {tab === 'ai_models' && <AIModelsPanel />}
+        {tab === 'llm_chain' && <LLMChainPanel />}
         {tab === 'personas' && <PersonasPanel />}
       </main>
     </div>
