@@ -10,7 +10,15 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 
 import { Kbd } from './primitives/Kbd';
 
-export type PageId = 'home' | 'today' | 'focus' | 'notes' | 'board' | 'stats' | 'podcasts';
+export type PageId =
+  | 'home'
+  | 'today'
+  | 'focus'
+  | 'notes'
+  | 'board'
+  | 'stats'
+  | 'podcasts'
+  | 'editor';
 // PaletteAction — то, что палетка может попросить App'а сделать.
 // Помимо переключения page и copilot'а, добавили `standup` —
 // открывает модалку из 3 вопросов для daily-standup.
@@ -41,6 +49,7 @@ export function Palette({ onClose, onOpen }: PaletteProps) {
       { id: 'board', label: 'Whiteboard', sc: 'D', run: () => onOpen('board') },
       { id: 'stats', label: 'Stats', sc: 'S', run: () => onOpen('stats') },
       { id: 'podcasts', label: 'Podcasts', sc: 'P', run: () => onOpen('podcasts') },
+      { id: 'editor', label: 'Code rooms', sc: 'E', run: () => onOpen('editor') },
       { id: 'standup', label: 'Daily standup', sc: '', run: () => onOpen('standup') },
       // "Open druz9.ru" is intentionally a no-op for now — in Phase 5b
       // we'll route through shell.openExternal via the preload bridge so
