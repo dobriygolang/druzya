@@ -1,7 +1,7 @@
 # Hone — Project Bible
 
 > Minimal dark desktop focus cockpit + consumption-surface экосистемы druz9.
-> Версия 0.4 · apr 2026 · **DNA-revision**: Hone — primary daily-companion, web — admin + creation.
+> Версия 0.5 · apr 2026 · **Phase 6.5 closed** — multiplayer Excalidraw + Circles/Events + auth-fix.
 
 Hone — один из трёх продуктов экосистемы druz9. См [ecosystem.md](./ecosystem.md) и [cue-bible.md](./cue-bible.md).
 
@@ -51,7 +51,8 @@ Hone — desktop-приложение: ежедневный ритуал + consu
 | **Stats** | `S` | Focus heatmap + streak + 7d bars | — | `/hone/stats` |
 | **Podcasts** | `P` | Плеер + прогресс-трекер | — | `/podcast`, `/podcast/{id}/progress` |
 | **Editor rooms** | `E` | Real-time collab (Yjs + CodeMirror) | — | `/editor/room/*`, `ws/editor/{id}` |
-| **Events** *(Phase 6.5)* | *TBD* | Book Club Fridays + join-ссылки | — | `/events/*` *(new service)* |
+| **Shared boards** | `B` | Multiplayer Excalidraw (Yjs + WS) | — | `/whiteboard/room/*`, `ws/whiteboard/{id}` |
+| **Events** | `V` | Календарь events из моих circles | — | `/events/*` + `/circles/*` |
 | Palette | `⌘K` | единый вход + Daily Standup + New room | — | — |
 
 ⌘⇧Space в Hone — promo overlay c демо «как это выглядело бы в Cue». Реальный stealth-моат живёт в `desktop/`.
@@ -209,11 +210,13 @@ backend/services/hone/
    - Pro-gate: `TierReader` + `ErrProRequired` (403 на GeneratePlan/Critique/Connections)
    - Onboarding v2 wizard
 
-✅ **Phase 6.5 (in progress) — consumption surface expansion**:
+✅ **Phase 6.5 — consumption surface expansion + multiplayer + auth-fix** (closed apr 2026):
    - ✅ Podcasts — плеер + progress tracking через `UpdateProgress`
    - ✅ Editor rooms — Yjs + CodeMirror 6 + WebSocket `/ws/editor/{id}` + Copy URL + Open on web
-   - 🟡 Events/Calendar — backend service + Hone page + web admin form (текущая итерация)
-   - 🟡 Cleanup web — удалить `/editor` `/podcast` из frontend, оставить event-creation
+   - ✅ **Shared boards** — multiplayer Excalidraw через Yjs + `/ws/whiteboard/{id}`. Snapshot persistence (debounce 30s). Hotkey B
+   - ✅ **Circles + Events** — community-layer (circles) + календарь events (hotkey V в Hone). Web circles UI делается отдельно
+   - ✅ **Auth-fix** — Telegram code-flow перенесён в Hone main-process: `/auth/telegram/start` + polling прямо через IPC, без web /login и без `druz9://` redirect dance. Решает «логонюсь в браузере и ничего не происходит»
+   - ⏳ Cleanup web (`/editor`, `/podcast`) — Sergey сам сделает
 
 **CI зелёный:** `golangci-lint`, `gofmt`, `go vet`, `go test` по backend; `npm run typecheck` + `npm run build` в hone/ и frontend/.
 
@@ -225,18 +228,28 @@ backend/services/hone/
 
 ---
 
-## 9. Phase 6.5 — consumption-surface expansion (текущая итерация)
+## 9. Phase 6.5 — consumption-surface expansion + multiplayer (CLOSED apr 2026)
 
-Переносим три web-only поверхности в Hone и делаем их primary там. Web остаётся shareable-fallback + event-creation admin. Обосновано §2.1 DNA-revision.
+Переносим shareable-поверхности в Hone и делаем их primary. Web остаётся shareable-fallback + creation-admin (circles UI). Обосновано §2.1 DNA-revision.
 
 | # | Задача | Статус |
 |---|---|---|
 | 6.5.1 | **Podcasts** — PodcastService wrapper + страница + <audio> player + throttled UpdateProgress | ✅ |
-| 6.5.2 | **Editor rooms** — EditorService RPC + WebSocket + Yjs + CodeMirror 6 + participants + Copy URL + Open on web | ✅ |
-| 6.5.3 | **Events/Calendar** — новый `events` backend-сервис (schema + 4 RPC), Hone-страница с списком ивентов, web admin-форма для создания (Book Club Fridays) | 🟡 in progress |
-| 6.5.4 | **Cleanup web** — удалить routes `/editor`, `/podcast` из `frontend/src/App.tsx` и их pages; оставить event-creation | ⏳ |
+| 6.5.2 | **Editor rooms** — Yjs + CodeMirror 6 + WS + participants + Copy URL + Open on web | ✅ |
+| 6.5.3 | **Circles + Events** — два backend-сервиса (`circles/`, `events/`), миграции 00023+00024, proto с enum'ами, Hone Events page (hotkey V) | ✅ |
+| 6.5.4 | **Shared boards (multiplayer Excalidraw)** — backend `whiteboard_rooms/` (миграция 00022), opaque Yjs WS-relay, snapshot debounce-flush, Hone page (hotkey B) | ✅ |
+| 6.5.5 | **Auth-fix** — Telegram code-flow в Hone main вместо web-перескока (Chrome blocks custom-scheme redirect из async, dev-Electron не register'ит druz9:// в LaunchServices) | ✅ |
+| 6.5.6 | **Cleanup web** (удалить routes `/editor`, `/podcast`) — Sergey сам | ⏳ |
 
-**Gate:** 200 DAU пользуются Podcasts или Editor rooms в Hone хоть раз в неделю.
+**Multiplayer realtime-стек** (one mental model для editor + shared boards):
+- Y.Doc на клиенте (CRDT) — auto-merge без конфликтов
+- Opaque WebSocket relay в Go (in-memory hub, sub-100ms fanout)
+- Snapshot hydration на handshake — late-joiner видит state мгновенно
+- Awareness channel для presence (cursors, имена) — не persistится
+
+**Trade-off shared boards (MVP):** Y.Map<'scene'> хранит сериализованный elements-array, last-writer-wins per change. Достаточно для разных областей canvas'а. Per-element CRDT-merge (`Y.Array<Y.Map>`) — Phase 7 если будут жалобы на конфликты.
+
+**Gate:** 200 DAU пользуются Podcasts / Editor rooms / Shared boards / Events в Hone хоть раз в неделю.
 
 ---
 
