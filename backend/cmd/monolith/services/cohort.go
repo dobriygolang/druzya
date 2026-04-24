@@ -42,8 +42,10 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-// NewCohort wires the cohort bounded context.
-func NewCohort(d Deps) *Module {
+// NewCohort wires the cohort bounded context. Returns (Module, Repo) —
+// the repo is needed by services that bridge into membership lookups
+// (cohort_announcement uses it via CohortMembershipBridge).
+func NewCohort(d Deps) (*Module, cohortDomain.Repo) {
 	if d.Log == nil {
 		panic("services.NewCohort: log is required")
 	}
@@ -57,6 +59,9 @@ func NewCohort(d Deps) *Module {
 	update := cohortApp.NewUpdateCohort(repo, d.Log)
 	disband := cohortApp.NewDisbandCohort(repo, d.Log)
 	setRole := cohortApp.NewSetMemberRole(repo, d.Log)
+	issueInvite := cohortApp.NewIssueInvite(repo, d.Log)
+	joinByToken := cohortApp.NewJoinByToken(repo, d.Log)
+	graduate := cohortApp.NewGraduateCohort(repo, d.Bus, d.Log)
 
 	h := &cohortHTTP{
 		Create:        create,
@@ -68,6 +73,9 @@ func NewCohort(d Deps) *Module {
 		Update:        update,
 		Disband:       disband,
 		SetMemberRole: setRole,
+		IssueInvite:   issueInvite,
+		JoinByToken:   joinByToken,
+		Graduate:      graduate,
 		Repo:          repo,
 		Log:           d.Log,
 	}
@@ -88,8 +96,12 @@ func NewCohort(d Deps) *Module {
 			r.Patch("/cohort/{id}", h.handleUpdate)
 			r.Post("/cohort/{id}/disband", h.handleDisband)
 			r.Post("/cohort/{id}/members/{userID}/role", h.handleSetMemberRole)
+			// Phase-2 invite tokens.
+			r.Post("/cohort/{id}/invite", h.handleIssueInvite)
+			r.Post("/cohort/join/by-token", h.handleJoinByToken)
+			r.Post("/cohort/{id}/graduate", h.handleGraduate)
 		},
-	}
+	}, repo
 }
 
 // ── Postgres adapter ──────────────────────────────────────────────────────
@@ -193,10 +205,18 @@ func (p *cohortPostgres) AddMember(ctx context.Context, m cohortDomain.CohortMem
 }
 
 func (p *cohortPostgres) ListMembers(ctx context.Context, cohortID uuid.UUID) ([]cohortDomain.CohortMember, error) {
+	// Denormalised JOIN with users so the catalogue UI doesn't need a
+	// second round-trip per member to render @username + display name +
+	// avatar (M5+; previously the response returned only user_id).
 	const q = `
-		SELECT cohort_id, user_id, role, joined_at, left_at
-		  FROM cohort_members WHERE cohort_id = $1
-		 ORDER BY joined_at ASC`
+		SELECT m.cohort_id, m.user_id, m.role, m.joined_at, m.left_at,
+		       COALESCE(u.username, '')::text     AS username,
+		       COALESCE(u.display_name, '')::text AS display_name,
+		       COALESCE(u.avatar_url, '')::text   AS avatar_url
+		  FROM cohort_members m
+		  LEFT JOIN users u ON u.id = m.user_id
+		 WHERE m.cohort_id = $1
+		 ORDER BY m.joined_at ASC`
 	rows, err := p.pool.Query(ctx, q, cPgUUID(cohortID))
 	if err != nil {
 		return nil, fmt.Errorf("cohort.Postgres.ListMembers: %w", err)
@@ -205,17 +225,23 @@ func (p *cohortPostgres) ListMembers(ctx context.Context, cohortID uuid.UUID) ([
 	out := make([]cohortDomain.CohortMember, 0, 8)
 	for rows.Next() {
 		var (
-			cid, uid pgtype.UUID
-			role     string
-			joined   time.Time
-			left     pgtype.Timestamptz
+			cid, uid                       pgtype.UUID
+			role                           string
+			joined                         time.Time
+			left                           pgtype.Timestamptz
+			username, displayName, avatar  string
 		)
-		if err := rows.Scan(&cid, &uid, &role, &joined, &left); err != nil {
+		if err := rows.Scan(&cid, &uid, &role, &joined, &left, &username, &displayName, &avatar); err != nil {
 			return nil, fmt.Errorf("cohort.Postgres.ListMembers: scan: %w", err)
 		}
 		m := cohortDomain.CohortMember{
-			CohortID: cFromPgUUID(cid), UserID: cFromPgUUID(uid),
-			Role: cohortDomain.Role(role), JoinedAt: joined,
+			CohortID:    cFromPgUUID(cid),
+			UserID:      cFromPgUUID(uid),
+			Role:        cohortDomain.Role(role),
+			JoinedAt:    joined,
+			Username:    username,
+			DisplayName: displayName,
+			AvatarURL:   avatar,
 		}
 		if left.Valid {
 			t := left.Time
@@ -307,6 +333,10 @@ func (p *cohortPostgres) UpdateMeta(ctx context.Context, cohortID uuid.UUID, pat
 	if patch.Visibility != nil {
 		args = append(args, string(*patch.Visibility))
 		setParts = append(setParts, fmt.Sprintf("visibility = $%d", len(args)))
+	}
+	if patch.Status != nil {
+		args = append(args, string(*patch.Status))
+		setParts = append(setParts, fmt.Sprintf("status = $%d", len(args)))
 	}
 	if len(setParts) == 0 {
 		// Nothing to do — return current row.
@@ -402,14 +432,44 @@ func (p *cohortPostgres) ListPublic(ctx context.Context, f cohortDomain.ListFilt
 	return out, nil
 }
 
-func (p *cohortPostgres) IssueInvite(_ context.Context, _ cohortDomain.CohortInvite) error {
-	// Phase 2.
-	return cohortDomain.ErrNotImplemented
+// IssueInvite (Phase 2) — INSERT into cohort_invites. Token is generated
+// server-side; max_uses=0 means unlimited.
+func (p *cohortPostgres) IssueInvite(ctx context.Context, inv cohortDomain.CohortInvite) error {
+	const q = `
+		INSERT INTO cohort_invites(token, cohort_id, created_by, expires_at, max_uses, used_count)
+		VALUES ($1, $2, $3, $4, $5, 0)`
+	var expires any
+	if !inv.ExpiresAt.IsZero() {
+		expires = inv.ExpiresAt
+	}
+	_, err := p.pool.Exec(ctx, q,
+		inv.Token, cPgUUID(inv.CohortID), cPgUUID(inv.CreatedBy), expires, inv.MaxUses,
+	)
+	if err != nil {
+		return fmt.Errorf("cohort.Postgres.IssueInvite: %w", err)
+	}
+	return nil
 }
 
-func (p *cohortPostgres) ConsumeInvite(_ context.Context, _ string) (uuid.UUID, error) {
-	// Phase 2.
-	return uuid.Nil, cohortDomain.ErrNotImplemented
+// ConsumeInvite (Phase 2) — atomically validates + increments used_count
+// in a single UPDATE…WHERE so two concurrent calls race safely. Returns
+// the cohort_id on success, ErrNotFound on missing/expired/exhausted.
+func (p *cohortPostgres) ConsumeInvite(ctx context.Context, token string) (uuid.UUID, error) {
+	const q = `
+		UPDATE cohort_invites
+		   SET used_count = used_count + 1
+		 WHERE token = $1
+		   AND (expires_at IS NULL OR expires_at > now())
+		   AND (max_uses = 0 OR used_count < max_uses)
+		RETURNING cohort_id`
+	var cohortID pgtype.UUID
+	if err := p.pool.QueryRow(ctx, q, token).Scan(&cohortID); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return uuid.Nil, cohortDomain.ErrNotFound
+		}
+		return uuid.Nil, fmt.Errorf("cohort.Postgres.ConsumeInvite: %w", err)
+	}
+	return cFromPgUUID(cohortID), nil
 }
 
 // Leaderboard — внутри когорты сортируем по сумме elo (ratings.elo) среди
@@ -476,6 +536,9 @@ type cohortHTTP struct {
 	Update        *cohortApp.UpdateCohort
 	Disband       *cohortApp.DisbandCohort
 	SetMemberRole *cohortApp.SetMemberRole
+	IssueInvite   *cohortApp.IssueInvite
+	JoinByToken   *cohortApp.JoinByToken
+	Graduate      *cohortApp.GraduateCohort
 	// Repo — direct access to the underlying cohort.Repo for cross-cutting
 	// reads (e.g. HasMember in handleList) that don't justify a use case.
 	Repo cohortDomain.Repo
@@ -646,16 +709,22 @@ func (h *cohortHTTP) handleGetBySlug(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	type memberDTO struct {
-		UserID   string `json:"user_id"`
-		Role     string `json:"role"`
-		JoinedAt string `json:"joined_at"`
+		UserID      string `json:"user_id"`
+		Role        string `json:"role"`
+		JoinedAt    string `json:"joined_at"`
+		Username    string `json:"username,omitempty"`
+		DisplayName string `json:"display_name,omitempty"`
+		AvatarURL   string `json:"avatar_url,omitempty"`
 	}
 	members := make([]memberDTO, 0, len(view.Members))
 	for _, m := range view.Members {
 		members = append(members, memberDTO{
-			UserID:   m.UserID.String(),
-			Role:     string(m.Role),
-			JoinedAt: m.JoinedAt.UTC().Format(time.RFC3339),
+			UserID:      m.UserID.String(),
+			Role:        string(m.Role),
+			JoinedAt:    m.JoinedAt.UTC().Format(time.RFC3339),
+			Username:    m.Username,
+			DisplayName: m.DisplayName,
+			AvatarURL:   m.AvatarURL,
 		})
 	}
 	w.Header().Set("Content-Type", "application/json")
@@ -882,4 +951,130 @@ func (h *cohortHTTP) handleSetMemberRole(w http.ResponseWriter, r *http.Request)
 	}
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(map[string]any{"status": "ok"})
+}
+
+// ── Phase-2 invite-token handlers (Task B) ────────────────────────────────
+
+type issueInviteReq struct {
+	MaxUses    int    `json:"max_uses"`    // 0 = unlimited
+	TTLSeconds int    `json:"ttl_seconds"` // 0 = never expires
+}
+
+type issueInviteResp struct {
+	Token     string `json:"token"`
+	URL       string `json:"url"`
+	ExpiresAt string `json:"expires_at,omitempty"`
+}
+
+// POST /cohort/{id}/invite
+func (h *cohortHTTP) handleIssueInvite(w http.ResponseWriter, r *http.Request) {
+	uid, ok := sharedMw.UserIDFromContext(r.Context())
+	if !ok {
+		writeCohortErr(w, http.StatusUnauthorized, "unauthenticated")
+		return
+	}
+	cohortID, err := uuid.Parse(chi.URLParam(r, "id"))
+	if err != nil {
+		writeCohortErr(w, http.StatusBadRequest, "invalid cohort id")
+		return
+	}
+	var req issueInviteReq
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeCohortErr(w, http.StatusBadRequest, "invalid body")
+		return
+	}
+	ttl := time.Duration(req.TTLSeconds) * time.Second
+	token, err := h.IssueInvite.Do(r.Context(), cohortID, uid, req.MaxUses, ttl)
+	if err != nil {
+		switch {
+		case errors.Is(err, cohortApp.ErrForbidden):
+			writeCohortErr(w, http.StatusForbidden, "must be coach or owner")
+		case errors.Is(err, cohortApp.ErrInvalidMaxUses):
+			writeCohortErr(w, http.StatusBadRequest, err.Error())
+		default:
+			h.Log.ErrorContext(r.Context(), "cohort.IssueInvite", slog.Any("err", err))
+			writeCohortErr(w, http.StatusInternalServerError, "issue failed")
+		}
+		return
+	}
+	out := issueInviteResp{Token: token, URL: "/c/join/" + token}
+	if ttl > 0 {
+		out.ExpiresAt = time.Now().Add(ttl).UTC().Format(time.RFC3339)
+	}
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(out)
+}
+
+type joinByTokenReq struct {
+	Token string `json:"token"`
+}
+
+// POST /cohort/join/by-token
+func (h *cohortHTTP) handleJoinByToken(w http.ResponseWriter, r *http.Request) {
+	uid, ok := sharedMw.UserIDFromContext(r.Context())
+	if !ok {
+		writeCohortErr(w, http.StatusUnauthorized, "unauthenticated")
+		return
+	}
+	var req joinByTokenReq
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeCohortErr(w, http.StatusBadRequest, "invalid body")
+		return
+	}
+	cohortID, err := h.JoinByToken.Do(r.Context(), req.Token, uid)
+	if err != nil {
+		switch {
+		case errors.Is(err, cohortApp.ErrInvalidToken):
+			writeCohortErr(w, http.StatusGone, "invite expired or invalid")
+		default:
+			h.Log.ErrorContext(r.Context(), "cohort.JoinByToken", slog.Any("err", err))
+			writeCohortErr(w, http.StatusInternalServerError, "join failed")
+		}
+		return
+	}
+	// Look up the cohort slug so the frontend can navigate without
+	// asking for /cohort/{id} → /cohort/{slug} mapping.
+	c, err := h.Repo.Get(r.Context(), cohortID)
+	if err != nil {
+		h.Log.ErrorContext(r.Context(), "cohort.JoinByToken: load slug", slog.Any("err", err))
+		// Degrade — still return cohort_id; the page can fall back to /cohorts.
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(map[string]any{"status": "joined", "cohort_id": cohortID.String()})
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(map[string]any{
+		"status":    "joined",
+		"cohort_id": cohortID.String(),
+		"slug":      c.Slug,
+	})
+}
+
+// POST /cohort/{id}/graduate
+func (h *cohortHTTP) handleGraduate(w http.ResponseWriter, r *http.Request) {
+	uid, ok := sharedMw.UserIDFromContext(r.Context())
+	if !ok {
+		writeCohortErr(w, http.StatusUnauthorized, "unauthenticated")
+		return
+	}
+	cohortID, err := uuid.Parse(chi.URLParam(r, "id"))
+	if err != nil {
+		writeCohortErr(w, http.StatusBadRequest, "invalid cohort id")
+		return
+	}
+	out, err := h.Graduate.Do(r.Context(), cohortID, uid)
+	if err != nil {
+		switch {
+		case errors.Is(err, cohortApp.ErrForbidden):
+			writeCohortErr(w, http.StatusForbidden, "owner-only")
+		case errors.Is(err, cohortDomain.ErrNotFound):
+			writeCohortErr(w, http.StatusNotFound, "cohort not found")
+		default:
+			h.Log.ErrorContext(r.Context(), "cohort.Graduate", slog.Any("err", err))
+			writeCohortErr(w, http.StatusInternalServerError, "graduate failed")
+		}
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(cohortToDTO(out, 0))
 }

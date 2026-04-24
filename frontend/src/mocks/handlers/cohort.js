@@ -18,11 +18,14 @@ const cohorts = [
 ];
 
 const memberships = new Set(['c-yandex-spring-26']);
+const inviteTokens = new Map();
 
 function seedMembers(names) {
   return names.map((n, i) => ({
     user_id: `u-${i}-${n.toLowerCase()}`,
     display_name: n,
+    username: `${n.toLowerCase()}_${i}`,
+    avatar_url: '',
     avatar_seed: n,
     role: i === 0 ? 'owner' : 'member',
     joined_at: isoIn(-Math.floor(Math.random() * 30)),
@@ -74,7 +77,7 @@ export const cohortHandlers = [
     memberships.add(c.id);
     detailCache[slug] = {
       cohort: c,
-      members: [{ user_id: SELF_ID, display_name: 'ты', avatar_seed: 'me', role: 'owner', joined_at: c.created_at }],
+      members: [{ user_id: SELF_ID, display_name: 'ты', username: 'me', avatar_url: '', avatar_seed: 'me', role: 'owner', joined_at: c.created_at }],
     };
     return HttpResponse.json({ id: c.id });
   }),
@@ -95,7 +98,7 @@ export const cohortHandlers = [
       c.members_count += 1;
       const detail = detailCache[c.slug];
       if (detail) {
-        detail.members.push({ user_id: SELF_ID, display_name: 'ты', avatar_seed: 'me', role: 'member', joined_at: new Date().toISOString() });
+        detail.members.push({ user_id: SELF_ID, display_name: 'ты', username: 'me', avatar_url: '', avatar_seed: 'me', role: 'member', joined_at: new Date().toISOString() });
       }
     }
     return HttpResponse.json({ status: 'joined', cohort_id: id });
@@ -125,6 +128,14 @@ export const cohortHandlers = [
     return HttpResponse.json({ ...c, is_member: memberships.has(c.id), capacity: 50 });
   }),
 
+  http.post(`${base}/cohort/:id/graduate`, ({ params }) => {
+    const id = String(params.id);
+    const c = cohorts.find((c) => c.id === id);
+    if (!c) return new HttpResponse('not found', { status: 404 });
+    c.status = 'graduated';
+    return HttpResponse.json({ ...c, is_member: memberships.has(c.id), capacity: 50 });
+  }),
+
   http.post(`${base}/cohort/:id/disband`, ({ params }) => {
     const id = String(params.id);
     const c = cohorts.find((c) => c.id === id);
@@ -147,6 +158,35 @@ export const cohortHandlers = [
       return new HttpResponse('invalid role', { status: 400 });
     }
     return HttpResponse.json({ status: 'ok' });
+  }),
+
+  http.post(`${base}/cohort/:id/invite`, async ({ params, request }) => {
+    const cohortID = String(params.id);
+    const c = cohorts.find((c) => c.id === cohortID);
+    if (!c) return new HttpResponse('not found', { status: 404 });
+    const body = await request.json();
+    const token = `mock-${Math.random().toString(36).slice(2, 14)}`;
+    const ttl = body.ttl_seconds ?? 0;
+    inviteTokens.set(token, { cohort_id: cohortID, max_uses: body.max_uses ?? 0, used_count: 0, expires_at: ttl > 0 ? Date.now() + ttl * 1000 : 0 });
+    return HttpResponse.json({ token, url: `/c/join/${token}`, expires_at: ttl > 0 ? new Date(Date.now() + ttl * 1000).toISOString() : '' });
+  }),
+
+  http.post(`${base}/cohort/join/by-token`, async ({ request }) => {
+    const body = await request.json();
+    const inv = body.token ? inviteTokens.get(body.token) : undefined;
+    if (!inv) return new HttpResponse('invite expired or invalid', { status: 410 });
+    if (inv.expires_at && Date.now() > inv.expires_at) return new HttpResponse('invite expired', { status: 410 });
+    if (inv.max_uses > 0 && inv.used_count >= inv.max_uses) return new HttpResponse('invite exhausted', { status: 410 });
+    inv.used_count += 1;
+    const c = cohorts.find((c) => c.id === inv.cohort_id);
+    if (!c) return new HttpResponse('cohort gone', { status: 404 });
+    if (!memberships.has(c.id)) {
+      memberships.add(c.id);
+      c.members_count += 1;
+      const detail = detailCache[c.slug];
+      if (detail) detail.members.push({ user_id: SELF_ID, display_name: 'ты', username: 'me', avatar_url: '', avatar_seed: 'me', role: 'member', joined_at: new Date().toISOString() });
+    }
+    return HttpResponse.json({ status: 'joined', cohort_id: c.id, slug: c.slug });
   }),
 
   http.get(`${base}/cohort/:id/leaderboard`, ({ params }) => {

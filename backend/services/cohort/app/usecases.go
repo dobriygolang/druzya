@@ -8,6 +8,7 @@ package app
 import (
 	"context"
 	"crypto/rand"
+	"encoding/base64"
 	"encoding/hex"
 	"errors"
 	"fmt"
@@ -16,6 +17,7 @@ import (
 	"time"
 
 	"druz9/cohort/domain"
+	sharedDomain "druz9/shared/domain"
 
 	"github.com/google/uuid"
 )
@@ -323,23 +325,122 @@ func (uc *GetLeaderboard) Do(ctx context.Context, cohortID uuid.UUID, weekISO st
 	return out, nil
 }
 
-// IssueInvite — Phase 2 (оставлен как stub, тест ожидает ErrNotImplemented).
+// IssueInvite — owner/coach generates a one-time-or-multi-use invite token.
+// MaxUses = 0 means unlimited. ttl = 0 means no expiry.
 type IssueInvite struct {
 	Repo domain.Repo
 	Log  *slog.Logger
 }
 
-// NewIssueInvite constructor.
 func NewIssueInvite(r domain.Repo, log *slog.Logger) *IssueInvite {
+	if r == nil {
+		panic("cohort/app: nil repo passed to NewIssueInvite")
+	}
 	if log == nil {
 		panic("cohort/app: nil logger passed to NewIssueInvite")
 	}
 	return &IssueInvite{Repo: r, Log: log}
 }
 
-// Do — STRATEGIC SCAFFOLD: token-based invite — Phase 2.
-func (uc *IssueInvite) Do(_ context.Context, _ uuid.UUID, _ uuid.UUID, _ int, _ time.Duration) (string, error) {
-	return "", domain.ErrNotImplemented
+// Do issues an invite token. ActorID must be a coach or owner of the cohort.
+// Returns the freshly-minted token (caller renders it as druz9.online/c/join/{token}).
+func (uc *IssueInvite) Do(ctx context.Context, cohortID, actorID uuid.UUID, maxUses int, ttl time.Duration) (string, error) {
+	if cohortID == uuid.Nil || actorID == uuid.Nil {
+		return "", ErrForbidden
+	}
+	if maxUses < 0 || maxUses > 100 {
+		return "", ErrInvalidMaxUses
+	}
+	role, err := uc.Repo.GetMemberRole(ctx, cohortID, actorID)
+	if err != nil {
+		if errors.Is(err, domain.ErrNotFound) {
+			return "", ErrForbidden
+		}
+		return "", fmt.Errorf("cohort.IssueInvite: load role: %w", err)
+	}
+	if role != domain.RoleCoach && role != domain.RoleOwner {
+		return "", ErrForbidden
+	}
+	token, err := newInviteToken()
+	if err != nil {
+		return "", fmt.Errorf("cohort.IssueInvite: token: %w", err)
+	}
+	inv := domain.CohortInvite{
+		Token:     token,
+		CohortID:  cohortID,
+		CreatedBy: actorID,
+		MaxUses:   maxUses,
+	}
+	if ttl > 0 {
+		inv.ExpiresAt = time.Now().Add(ttl).UTC()
+	}
+	if err := uc.Repo.IssueInvite(ctx, inv); err != nil {
+		return "", fmt.Errorf("cohort.IssueInvite: %w", err)
+	}
+	return token, nil
+}
+
+// JoinByToken consumes an invite token + adds the user as a member.
+// Idempotent on re-use of an active token only when the user wasn't yet a
+// member; otherwise returns ErrAlreadyMember without consuming a slot.
+type JoinByToken struct {
+	Repo domain.Repo
+	Log  *slog.Logger
+}
+
+func NewJoinByToken(r domain.Repo, log *slog.Logger) *JoinByToken {
+	if r == nil {
+		panic("cohort/app: nil repo passed to NewJoinByToken")
+	}
+	if log == nil {
+		panic("cohort/app: nil logger passed to NewJoinByToken")
+	}
+	return &JoinByToken{Repo: r, Log: log}
+}
+
+func (uc *JoinByToken) Do(ctx context.Context, token string, userID uuid.UUID) (uuid.UUID, error) {
+	if token == "" || userID == uuid.Nil {
+		return uuid.Nil, ErrInvalidToken
+	}
+	cohortID, err := uc.Repo.ConsumeInvite(ctx, token)
+	if err != nil {
+		if errors.Is(err, domain.ErrNotFound) {
+			return uuid.Nil, ErrInvalidToken
+		}
+		return uuid.Nil, fmt.Errorf("cohort.JoinByToken: consume: %w", err)
+	}
+	// Already-a-member is a benign success path — return the cohort_id so
+	// the frontend can navigate to it without a confusing error.
+	if has, _ := uc.Repo.HasMember(ctx, cohortID, userID); has {
+		return cohortID, nil
+	}
+	if err := uc.Repo.AddMember(ctx, domain.CohortMember{
+		CohortID: cohortID,
+		UserID:   userID,
+		Role:     domain.RoleMember,
+		JoinedAt: time.Now().UTC(),
+	}); err != nil {
+		if errors.Is(err, domain.ErrAlreadyMember) {
+			return cohortID, nil
+		}
+		return uuid.Nil, fmt.Errorf("cohort.JoinByToken: add member: %w", err)
+	}
+	return cohortID, nil
+}
+
+var (
+	ErrInvalidMaxUses = errors.New("cohort: max_uses must be 0 (unlimited) or 1..100")
+	ErrInvalidToken   = errors.New("cohort: invalid or expired invite token")
+)
+
+// newInviteToken — 16 random bytes → URL-safe base64 (≈22 chars).
+func newInviteToken() (string, error) {
+	var buf [16]byte
+	if _, err := rand.Read(buf[:]); err != nil {
+		return "", err
+	}
+	// base64-url, no padding — keeps the link copy-paste friendly.
+	return base64.RawURLEncoding.EncodeToString(buf[:]), nil
 }
 
 // slugify — простая транслитерация: lower, пробелы → "-", оставляем
@@ -431,6 +532,67 @@ func (uc *UpdateCohort) Do(ctx context.Context, in UpdateCohortInput) (domain.Co
 	})
 	if err != nil {
 		return domain.Cohort{}, fmt.Errorf("cohort.UpdateCohort: %w", err)
+	}
+	return out, nil
+}
+
+// GraduateCohort flips status active → graduated AND emits a
+// sharedDomain.CohortGraduated event for the achievements service to
+// award badges to every member. Owner-only.
+type GraduateCohort struct {
+	repo domain.Repo
+	bus  sharedDomain.Bus
+	log  *slog.Logger
+}
+
+func NewGraduateCohort(repo domain.Repo, bus sharedDomain.Bus, log *slog.Logger) *GraduateCohort {
+	if repo == nil {
+		panic("cohort.GraduateCohort: nil repo")
+	}
+	if log == nil {
+		panic("cohort.GraduateCohort: nil log")
+	}
+	return &GraduateCohort{repo: repo, bus: bus, log: log}
+}
+
+func (uc *GraduateCohort) Do(ctx context.Context, cohortID, actorID uuid.UUID) (domain.Cohort, error) {
+	c, err := uc.repo.Get(ctx, cohortID)
+	if err != nil {
+		return domain.Cohort{}, fmt.Errorf("cohort.GraduateCohort: load: %w", err)
+	}
+	if c.OwnerID != actorID {
+		return domain.Cohort{}, ErrForbidden
+	}
+	if c.Status != domain.StatusActive {
+		// Already graduated/cancelled — idempotent: return as-is, no event.
+		return c, nil
+	}
+	members, err := uc.repo.ListMembers(ctx, cohortID)
+	if err != nil {
+		return domain.Cohort{}, fmt.Errorf("cohort.GraduateCohort: members: %w", err)
+	}
+	// Atomic: flip the status via UpdateMeta with a status-aware patch.
+	graduatedStatus := domain.StatusGraduated
+	out, err := uc.repo.UpdateMeta(ctx, cohortID, domain.CohortPatch{Status: &graduatedStatus})
+	if err != nil {
+		return domain.Cohort{}, fmt.Errorf("cohort.GraduateCohort: %w", err)
+	}
+	// Publish event — handler failures must not fail the graduation.
+	if uc.bus != nil {
+		ids := make([]uuid.UUID, 0, len(members))
+		for _, m := range members {
+			ids = append(ids, m.UserID)
+		}
+		ev := sharedDomain.CohortGraduated{
+			CohortID:    out.ID,
+			CohortSlug:  out.Slug,
+			CohortName:  out.Name,
+			MemberIDs:   ids,
+			GraduatedAt: time.Now().UTC(),
+		}
+		if perr := uc.bus.Publish(ctx, ev); perr != nil && uc.log != nil {
+			uc.log.WarnContext(ctx, "cohort.GraduateCohort: publish CohortGraduated", slog.Any("err", perr))
+		}
 	}
 	return out, nil
 }

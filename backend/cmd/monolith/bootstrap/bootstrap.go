@@ -111,6 +111,10 @@ func New(ctx context.Context, cfg *config.Config) (app *App, otelShutdown func()
 	// BookingRepo to validate ownership of the booking being reviewed.
 	slotMod, slotBookings := services.NewSlot(deps)
 	reviewMod := services.NewReview(deps, slotBookings)
+	// Cohort returns its repo so the announcement service can bridge into
+	// membership lookups (CohortMembershipBridge).
+	cohortMod, cohortRepo := services.NewCohort(deps)
+	cohortAnnouncementMod := services.NewCohortAnnouncement(deps, cohortRepo)
 
 	modules := []*services.Module{
 		&auth.Module,
@@ -133,7 +137,8 @@ func New(ctx context.Context, cfg *config.Config) (app *App, otelShutdown func()
 		services.NewVacancies(deps),
 		services.NewAchievements(deps),
 		services.NewFriends(deps),
-		services.NewCohort(deps),
+		cohortMod,
+		cohortAnnouncementMod,
 		services.NewLobby(deps),
 		services.NewCopilot(deps),
 	}

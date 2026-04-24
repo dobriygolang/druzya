@@ -13,7 +13,7 @@
 //     aggregation by cohort isn't on the backend yet — honest about it)
 import { useMemo, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
-import { ArrowLeft, Check, Copy, LogOut, Settings, Share2, Users, Zap } from 'lucide-react'
+import { ArrowLeft, Check, Copy, LogOut, MessageSquare, Settings, Share2, Users, Zap } from 'lucide-react'
 import { AppShellV2 } from '../components/AppShell'
 import { Card } from '../components/Card'
 import { Button } from '../components/Button'
@@ -24,19 +24,24 @@ import {
   useCohortLeaderboardQuery,
   useCohortQuery,
   useDisbandCohortMutation,
+  useGraduateCohortMutation,
+  useIssueInviteMutation,
   useJoinCohortMutation,
   useLeaveCohortMutation,
   useSetMemberRoleMutation,
+  type IssueInviteResponse,
 } from '../lib/queries/cohort'
 import { useProfileQuery } from '../lib/queries/profile'
 import CohortSettingsDialog from '../components/cohort/CohortSettingsDialog'
+import AnnouncementsTab from '../components/cohort/AnnouncementsTab'
 
-type Tab = 'members' | 'streak' | 'invite'
+type Tab = 'members' | 'feed' | 'streak' | 'invite'
 
 const COHORT_CAPACITY_FALLBACK = 50
 
 const TABS: { key: Tab; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
   { key: 'members', label: 'Участники', icon: Users },
+  { key: 'feed', label: 'Лента', icon: MessageSquare },
   { key: 'streak', label: 'Streak', icon: Zap },
   { key: 'invite', label: 'Invite', icon: Share2 },
 ]
@@ -84,6 +89,7 @@ export default function CohortPage() {
   const join = useJoinCohortMutation()
   const leave = useLeaveCohortMutation()
   const disband = useDisbandCohortMutation()
+  const graduate = useGraduateCohortMutation()
 
   if (detail.isLoading) {
     return (
@@ -207,6 +213,16 @@ export default function CohortPage() {
                   <Settings className="mr-1 h-3.5 w-3.5" /> Настройки
                 </Button>
               )}
+              {isOwner && days === 0 && (
+                <Button
+                  variant="ghost"
+                  onClick={() => graduate.mutate(cohort.id)}
+                  disabled={graduate.isPending}
+                  title="Срок когорты истёк — выпустить участников и выдать им бейдж"
+                >
+                  🎓 {graduate.isPending ? 'Выпускаем…' : 'Завершить'}
+                </Button>
+              )}
             </div>
           )}
         </Card>
@@ -245,9 +261,24 @@ export default function CohortPage() {
             ownerID={cohort.owner_id}
           />
         )}
+        {tab === 'feed' && (
+          <AnnouncementsTab
+            cohortID={cohort.id}
+            selfID={profile.data?.id}
+            ownerID={cohort.owner_id}
+            canPost={
+              isOwner || members.find((m) => m.user_id === profile.data?.id)?.role === 'coach'
+            }
+          />
+        )}
         {tab === 'streak' && <StreakTab />}
         {tab === 'invite' && (
-          <InviteTab cohort={cohort} canShare={isMember} visibility={cohort.visibility} />
+          <InviteTab
+            cohort={cohort}
+            canShare={isMember}
+            canIssue={isOwner || members.find((m) => m.user_id === profile.data?.id)?.role === 'coach'}
+            visibility={cohort.visibility}
+          />
         )}
 
         {/* Danger zone */}
@@ -305,7 +336,14 @@ function Stat({ label, value }: { label: string; value: string }) {
 
 // ── tabs ──────────────────────────────────────────────────────────────────
 
-type Member = { user_id: string; role: string; joined_at: string; display_name?: string }
+type Member = {
+  user_id: string
+  role: string
+  joined_at: string
+  display_name?: string
+  username?: string
+  avatar_url?: string
+}
 type LBRow = { user_id: string; display_name: string; overall_elo: number; weekly_xp: number }
 
 function MembersTab({
@@ -375,15 +413,27 @@ function MembersTab({
             >
               {i + 1}
             </span>
-            <div
-              className="grid h-7 w-7 place-items-center rounded-full font-display text-[10px] font-bold text-white"
-              style={{ background: pickGradient(m.user_id) }}
-            >
-              {(m.display_name?.[0] ?? '?').toUpperCase()}
-            </div>
+            {m.avatar_url ? (
+              <img
+                src={m.avatar_url}
+                alt=""
+                className="h-7 w-7 rounded-full object-cover"
+              />
+            ) : (
+              <div
+                className="grid h-7 w-7 place-items-center rounded-full font-display text-[10px] font-bold text-white"
+                style={{ background: pickGradient(m.user_id) }}
+              >
+                {(m.display_name?.[0] ?? m.username?.[0] ?? '?').toUpperCase()}
+              </div>
+            )}
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-1.5 text-sm font-semibold text-text-primary">
-                <span className="truncate">{isSelf ? 'ты' : m.display_name || m.user_id.slice(0, 8)}</span>
+                <span className="truncate">
+                  {isSelf
+                    ? 'ты'
+                    : m.display_name || (m.username ? `@${m.username}` : m.user_id.slice(0, 8))}
+                </span>
                 {m.role !== 'member' && (
                   <span className="rounded bg-cyan/15 px-1 font-mono text-[9px] uppercase text-cyan">
                     {m.role}
@@ -434,26 +484,61 @@ function StreakTab() {
   )
 }
 
+const TTL_OPTIONS: { value: number; label: string }[] = [
+  { value: 24 * 3600, label: '1 день' },
+  { value: 7 * 24 * 3600, label: '7 дней' },
+  { value: 30 * 24 * 3600, label: '30 дней' },
+  { value: 0, label: 'Без срока' },
+]
+const MAX_USES_OPTIONS: { value: number; label: string }[] = [
+  { value: 1, label: '1 раз' },
+  { value: 5, label: '5 раз' },
+  { value: 25, label: '25 раз' },
+  { value: 0, label: 'Без лимита' },
+]
+
 function InviteTab({
   cohort,
   canShare,
+  canIssue,
   visibility,
 }: {
-  cohort: { slug: string; name: string }
+  cohort: { id: string; slug: string; name: string }
   canShare: boolean
+  canIssue: boolean
   visibility: string
 }) {
   const [copied, setCopied] = useState(false)
-  const url = typeof window !== 'undefined' ? `${window.location.origin}/c/${cohort.slug}` : `/c/${cohort.slug}`
+  const [tokenCopied, setTokenCopied] = useState(false)
+  const [maxUses, setMaxUses] = useState(5)
+  const [ttl, setTtl] = useState(7 * 24 * 3600)
+  const issue = useIssueInviteMutation()
+  const [generated, setGenerated] = useState<IssueInviteResponse | null>(null)
 
-  const onCopy = async () => {
+  const url = typeof window !== 'undefined' ? `${window.location.origin}/c/${cohort.slug}` : `/c/${cohort.slug}`
+  const tokenURL = generated
+    ? typeof window !== 'undefined'
+      ? `${window.location.origin}/c/join/${generated.token}`
+      : `/c/join/${generated.token}`
+    : ''
+
+  const copyTo = async (text: string, mark: (b: boolean) => void) => {
     try {
-      await navigator.clipboard.writeText(url)
-      setCopied(true)
-      setTimeout(() => setCopied(false), 2000)
+      await navigator.clipboard.writeText(text)
+      mark(true)
+      setTimeout(() => mark(false), 2000)
     } catch {
-      /* user can copy manually from the readonly input */
+      /* manual select fallback */
     }
+  }
+
+  const onIssue = () => {
+    issue.mutate(
+      { cohortID: cohort.id, max_uses: maxUses, ttl_seconds: ttl },
+      {
+        onSuccess: (resp) => setGenerated(resp),
+      },
+    )
   }
 
   if (!canShare) {
@@ -481,7 +566,7 @@ function InviteTab({
           />
           <button
             type="button"
-            onClick={onCopy}
+            onClick={() => copyTo(url, setCopied)}
             className="inline-flex items-center gap-1.5 rounded-md border border-border bg-surface-2 px-3 text-[12px] text-text-secondary hover:text-text-primary"
           >
             {copied ? <Check className="h-3.5 w-3.5 text-success" /> : <Copy className="h-3.5 w-3.5" />}
@@ -492,8 +577,7 @@ function InviteTab({
 
       {visibility === 'invite' ? (
         <div className="rounded-md border border-cyan/30 bg-cyan/5 p-3 text-xs text-cyan">
-          Когорта по приглашению — ссылка пускает только тех, кто получил её от тебя или
-          другого участника. Публикация в каналах не сработает.
+          Когорта по приглашению — публичная ссылка не пустит чужих. Используй token-инвайт ниже.
         </div>
       ) : (
         <div className="rounded-md border border-border bg-surface-2 p-3 text-xs text-text-secondary">
@@ -501,15 +585,86 @@ function InviteTab({
         </div>
       )}
 
-      <div>
-        <div className="mb-2 font-mono text-[10px] uppercase tracking-wide text-text-muted">
-          одноразовый invite-токен
+      {canIssue ? (
+        <div className="flex flex-col gap-3 border-t border-border pt-4">
+          <div className="font-mono text-[10px] uppercase tracking-wide text-text-muted">
+            одноразовый invite-токен
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <label className="flex flex-col gap-1">
+              <span className="text-[10px] uppercase text-text-muted">Использований</span>
+              <select
+                value={maxUses}
+                onChange={(e) => setMaxUses(Number(e.target.value))}
+                className="h-8 rounded-md border border-border bg-surface-2 px-2 text-xs text-text-primary"
+              >
+                {MAX_USES_OPTIONS.map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="flex flex-col gap-1">
+              <span className="text-[10px] uppercase text-text-muted">Срок</span>
+              <select
+                value={ttl}
+                onChange={(e) => setTtl(Number(e.target.value))}
+                className="h-8 rounded-md border border-border bg-surface-2 px-2 text-xs text-text-primary"
+              >
+                {TTL_OPTIONS.map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+          <button
+            type="button"
+            onClick={onIssue}
+            disabled={issue.isPending}
+            className="w-fit rounded-md bg-accent px-4 py-1.5 text-xs font-semibold text-white hover:bg-accent/90 disabled:opacity-60"
+          >
+            {issue.isPending ? 'Создаём…' : 'Создать ссылку'}
+          </button>
+          {issue.isError && (
+            <div className="rounded-md border border-danger/40 bg-danger/10 px-3 py-2 text-xs text-danger">
+              {issue.error instanceof Error ? issue.error.message : 'Не удалось создать токен'}
+            </div>
+          )}
+          {generated && (
+            <div className="flex flex-col gap-2 rounded-md border border-success/30 bg-success/5 p-3">
+              <div className="font-mono text-[10px] uppercase text-success">токен готов</div>
+              <div className="flex gap-2">
+                <input
+                  readOnly
+                  value={tokenURL}
+                  className="h-9 flex-1 rounded-md border border-border bg-bg px-2 font-mono text-[11px] text-text-primary"
+                  onFocus={(e) => e.currentTarget.select()}
+                />
+                <button
+                  type="button"
+                  onClick={() => copyTo(tokenURL, setTokenCopied)}
+                  className="inline-flex items-center gap-1.5 rounded-md border border-border bg-surface-2 px-3 text-[12px] text-text-secondary hover:text-text-primary"
+                >
+                  {tokenCopied ? <Check className="h-3.5 w-3.5 text-success" /> : <Copy className="h-3.5 w-3.5" />}
+                  {tokenCopied ? 'Скопировано' : 'Копировать'}
+                </button>
+              </div>
+              {generated.expires_at && (
+                <p className="font-mono text-[10px] text-text-muted">
+                  Истекает {new Date(generated.expires_at).toLocaleString('ru-RU')}
+                </p>
+              )}
+            </div>
+          )}
         </div>
-        <div className="rounded-md border border-warn/30 bg-warn/5 px-3 py-2 text-xs text-warn">
-          В разработке: API IssueInvite (cohort.app.IssueInvite) сейчас Phase-2 stub.
-          Скоро добавим генерацию ссылок на N приглашений с истекающим сроком.
+      ) : (
+        <div className="rounded-md border border-border bg-surface-2 p-3 text-xs text-text-secondary">
+          Только owner / coach могут создавать токены приглашений.
         </div>
-      </div>
+      )}
     </Card>
   )
 }

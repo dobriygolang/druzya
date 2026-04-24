@@ -36,10 +36,14 @@ export type CohortMember = {
   user_id: string
   role: 'member' | 'coach' | 'owner' | string
   joined_at: string
-  // display_name + avatar_seed are hydrated by the MSW mock today; the
-  // real backend handler currently only returns user_id (TODO M5d when
-  // we migrate to ConnectRPC + denormalize username).
+  // username/display_name/avatar_url denormalised server-side via JOIN
+  // with users (cmd/monolith/services/cohort.go::handleGetBySlug). All
+  // optional — empty when the joined row is missing or the legacy
+  // backend hasn't shipped the JOIN yet.
+  username?: string
   display_name?: string
+  avatar_url?: string
+  /** Legacy MSW-only field kept for backward render compat. */
   avatar_seed?: string
 }
 
@@ -216,6 +220,23 @@ export function useUpdateCohortMutation() {
   })
 }
 
+// useGraduateCohortMutation — owner action that flips status active →
+// graduated AND emits CohortGraduated event server-side; achievements
+// service awards each member a "cohort_graduated" badge.
+export function useGraduateCohortMutation() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (cohortID: string) =>
+      api<Cohort>(`/cohort/${encodeURIComponent(cohortID)}/graduate`, {
+        method: 'POST',
+        body: '{}',
+      }),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['cohort'] })
+    },
+  })
+}
+
 export function useDisbandCohortMutation() {
   const qc = useQueryClient()
   return useMutation({
@@ -234,6 +255,48 @@ export type SetMemberRolePayload = {
   cohortID: string
   userID: string
   role: 'member' | 'coach'
+}
+
+export type IssueInvitePayload = {
+  cohortID: string
+  max_uses: number
+  ttl_seconds: number
+}
+
+export type IssueInviteResponse = {
+  token: string
+  url: string
+  expires_at?: string
+}
+
+export function useIssueInviteMutation() {
+  return useMutation({
+    mutationFn: ({ cohortID, ...body }: IssueInvitePayload) =>
+      api<IssueInviteResponse>(`/cohort/${encodeURIComponent(cohortID)}/invite`, {
+        method: 'POST',
+        body: JSON.stringify(body),
+      }),
+  })
+}
+
+export type JoinByTokenResponse = {
+  status: string
+  cohort_id: string
+  slug?: string
+}
+
+export function useJoinByTokenMutation() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (token: string) =>
+      api<JoinByTokenResponse>('/cohort/join/by-token', {
+        method: 'POST',
+        body: JSON.stringify({ token }),
+      }),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['cohort'] })
+    },
+  })
 }
 
 export function useSetMemberRoleMutation() {

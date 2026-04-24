@@ -30,6 +30,8 @@ type WireCohort = {
 type WireMember = {
   user_id: string
   display_name: string
+  username: string
+  avatar_url: string
   avatar_seed: string
   role: 'member' | 'coach' | 'owner'
   joined_at: string
@@ -100,6 +102,15 @@ const cohorts: WireCohort[] = [
 // Track membership locally so join/leave flips the catalogue card.
 const memberships = new Set<string>(['c-yandex-spring-26'])
 
+// Phase-2: in-memory invite-token store. Resets on page reload.
+type InviteState = {
+  cohort_id: string
+  max_uses: number   // 0 = unlimited
+  used_count: number
+  expires_at: number // 0 = never expires; otherwise unix ms
+}
+const inviteTokens = new Map<string, InviteState>()
+
 const detailCache: Record<string, WireCohortDetail> = {
   'yandex-spring-26': {
     cohort: cohorts[0]!,
@@ -123,6 +134,8 @@ function seedMembers(names: string[]): WireMember[] {
   return names.map((n, i) => ({
     user_id: `u-${i}-${n.toLowerCase()}`,
     display_name: n,
+    username: `${n.toLowerCase()}_${i}`,
+    avatar_url: '',
     avatar_seed: n,
     role: i === 0 ? 'owner' : 'member',
     joined_at: isoIn(-Math.floor(Math.random() * 30)),
@@ -192,6 +205,8 @@ export const cohortHandlers = [
         {
           user_id: SELF_ID,
           display_name: 'ты',
+          username: 'me',
+          avatar_url: '',
           avatar_seed: 'me',
           role: 'owner',
           joined_at: c.created_at,
@@ -221,6 +236,8 @@ export const cohortHandlers = [
         detail.members.push({
           user_id: SELF_ID,
           display_name: 'ты',
+          username: 'me',
+          avatar_url: '',
           avatar_seed: 'me',
           role: 'member',
           joined_at: new Date().toISOString(),
@@ -257,6 +274,17 @@ export const cohortHandlers = [
     return HttpResponse.json({ ...c, is_member: memberships.has(c.id), capacity: 50 })
   }),
 
+  // POST /cohort/{id}/graduate — owner closes the cohort and emits the
+  // CohortGraduated event (mock just flips status; achievement award
+  // happens server-side in real backend).
+  http.post(`${base}/cohort/:id/graduate`, ({ params }) => {
+    const id = String(params.id)
+    const c = cohorts.find((c) => c.id === id)
+    if (!c) return new HttpResponse('not found', { status: 404 })
+    c.status = 'graduated'
+    return HttpResponse.json({ ...c, is_member: memberships.has(c.id), capacity: 50 })
+  }),
+
   // M5c: POST /cohort/{id}/disband
   http.post(`${base}/cohort/:id/disband`, ({ params }) => {
     const id = String(params.id)
@@ -281,6 +309,60 @@ export const cohortHandlers = [
       return new HttpResponse('invalid role', { status: 400 })
     }
     return HttpResponse.json({ status: 'ok' })
+  }),
+
+  // Phase-2 invite-token: POST /cohort/{id}/invite
+  http.post(`${base}/cohort/:id/invite`, async ({ params, request }) => {
+    const cohortID = String(params.id)
+    const c = cohorts.find((c) => c.id === cohortID)
+    if (!c) return new HttpResponse('not found', { status: 404 })
+    const body = (await request.json()) as { max_uses?: number; ttl_seconds?: number }
+    const token = `mock-${Math.random().toString(36).slice(2, 14)}`
+    const ttl = body.ttl_seconds ?? 0
+    inviteTokens.set(token, {
+      cohort_id: cohortID,
+      max_uses: body.max_uses ?? 0,
+      used_count: 0,
+      expires_at: ttl > 0 ? Date.now() + ttl * 1000 : 0,
+    })
+    return HttpResponse.json({
+      token,
+      url: `/c/join/${token}`,
+      expires_at: ttl > 0 ? new Date(Date.now() + ttl * 1000).toISOString() : '',
+    })
+  }),
+
+  // Phase-2 invite-token: POST /cohort/join/by-token
+  http.post(`${base}/cohort/join/by-token`, async ({ request }) => {
+    const body = (await request.json()) as { token?: string }
+    const inv = body.token ? inviteTokens.get(body.token) : undefined
+    if (!inv) return new HttpResponse('invite expired or invalid', { status: 410 })
+    if (inv.expires_at && Date.now() > inv.expires_at) {
+      return new HttpResponse('invite expired', { status: 410 })
+    }
+    if (inv.max_uses > 0 && inv.used_count >= inv.max_uses) {
+      return new HttpResponse('invite exhausted', { status: 410 })
+    }
+    inv.used_count += 1
+    const c = cohorts.find((c) => c.id === inv.cohort_id)
+    if (!c) return new HttpResponse('cohort gone', { status: 404 })
+    if (!memberships.has(c.id)) {
+      memberships.add(c.id)
+      c.members_count += 1
+      const detail = detailCache[c.slug]
+      if (detail) {
+        detail.members.push({
+          user_id: SELF_ID,
+          display_name: 'ты',
+          username: 'me',
+          avatar_url: '',
+          avatar_seed: 'me',
+          role: 'member',
+          joined_at: new Date().toISOString(),
+        })
+      }
+    }
+    return HttpResponse.json({ status: 'joined', cohort_id: c.id, slug: c.slug })
   }),
 
   http.get(`${base}/cohort/:id/leaderboard`, ({ params }) => {

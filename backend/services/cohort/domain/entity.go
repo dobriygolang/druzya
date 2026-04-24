@@ -62,15 +62,23 @@ type CohortPatch struct {
 	Name       *string
 	EndsAt     *time.Time
 	Visibility *Visibility
+	Status     *Status
 }
 
 // CohortMember binds a user to a cohort.
+//
+// Username/DisplayName/AvatarURL are denormalised — populated by ListMembers
+// via JOIN with users. Single-row HasMember/AddMember reads leave them
+// empty (callers don't need the projection for those paths).
 type CohortMember struct {
-	CohortID uuid.UUID
-	UserID   uuid.UUID
-	Role     Role
-	JoinedAt time.Time
-	LeftAt   *time.Time
+	CohortID    uuid.UUID
+	UserID      uuid.UUID
+	Role        Role
+	JoinedAt    time.Time
+	LeftAt      *time.Time
+	Username    string
+	DisplayName string
+	AvatarURL   string
 }
 
 // CohortInvite is a multi-use, time-bounded invite token.
