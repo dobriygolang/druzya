@@ -27,6 +27,7 @@ volumes:
   prometheus_data:    # маленький буфер 6h на случай обрыва связи с Grafana Cloud
   certbot_www:
   certbot_conf:
+  ollama_data:        # кеш моделей Ollama (Qwen 2.5 3B ≈ 2.3GB + bge-small ≈ 130MB)
 
 services:
   # ── Edge
@@ -127,6 +128,55 @@ services:
     restart: always
     ulimits:
       nofile: { soft: 262144, hard: 262144 }
+
+  # ── Ollama self-hosted LLM sidecar (floor-fallback для llmchain).
+  # Активируется выставлением OLLAMA_HOST=http://ollama:11434 в .env.prod
+  # и добавлением "ollama" в LLM_CHAIN_ORDER (напр. "groq,cerebras,
+  # openrouter,ollama"). Сервис сам по себе стартует всегда (чтобы успел
+  # прогреть модель к моменту когда cloud-квоты закончатся), но API его
+  # НЕ видит пока OLLAMA_HOST не задан в env.
+  #
+  # RAM budget: Qwen 2.5 3B Q4_K_M ≈ 2.5GB + bge-small ≈ 130MB + overhead
+  # ≤ 3.5GB. Плюс к PG 4GB + Redis 2GB + API 0.5GB + nginx + minio → ~10GB
+  # из 12GB VPS. CPU 2.0 cores (из 8) — Qwen 3B выдаёт 20-30 tok/s на CPU,
+  # параллельных стримов на VPS мы не ждём.
+  #
+  # Port 11434 НЕ exposed наружу — только внутри app-net. Security: LLM
+  # без rate-limit на публичном интернете — tarpit magnet.
+  ollama:
+    image: ollama/ollama:latest
+    restart: always
+    volumes:
+      - ollama_data:/root/.ollama
+    networks: [app-net]
+    mem_limit: 3500m
+    cpus: 2.0
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:11434/api/tags"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
+
+  # Одноразовый pull моделей. restart=no: контейнер завершится после
+  # того как обе модели скачаны. Повторный запуск безопасен — pull
+  # инкрементальный. Запуск: `docker compose -f infra/docker-compose.prod.yml
+  # --env-file .env.prod run --rm ollama-init` либо просто `up -d` если
+  # depends_on отработает. Параллельный llmcache агент отдельно использует
+  # bge-small-en-v1.5 для semantic cache embeddings — отсюда второй pull.
+  ollama-init:
+    image: ollama/ollama:latest
+    depends_on:
+      ollama:
+        condition: service_healthy
+    entrypoint: /bin/sh
+    command: >
+      -c "
+        OLLAMA_HOST=http://ollama:11434 ollama pull qwen2.5:3b-instruct-q4_K_M &&
+        OLLAMA_HOST=http://ollama:11434 ollama pull bge-small-en-v1.5
+      "
+    networks: [app-net]
+    restart: "no"
 
   # ── Application
   api:

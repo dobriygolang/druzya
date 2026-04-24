@@ -62,6 +62,13 @@ const (
 	ProviderOpenRouter   Provider = "openrouter"
 	ProviderSambaNova    Provider = "sambanova"
 	ProviderCloudflareAI Provider = "cloudflare"
+	// ProviderOllama — self-hosted sidecar (Qwen 2.5 3B Q4_K_M на CPU).
+	// Задача: floor-fallback, когда все free-tier cloud провайдеры исчерпали
+	// дневные квоты. Медленно (20-30 tok/s на VPS без GPU), но unlimited и
+	// полностью под нашим контролем. В DefaultTaskModelMap присутствует во
+	// всех chat-тасках как "последний рубеж"; активируется только если
+	// оператор задал OLLAMA_HOST и положил "ollama" в LLM_CHAIN_ORDER.
+	ProviderOllama Provider = "ollama"
 )
 
 // Task identifies a semantic workload class. Each task has its own

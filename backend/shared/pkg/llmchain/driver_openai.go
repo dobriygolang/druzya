@@ -43,6 +43,15 @@ type openAIDriver struct {
 	// response_format={"type":"json_object"}. Unsupported means we
 	// still pass the hint but rely on prompt-level JSON instruction.
 	supportsJSONMode bool
+
+	// skipAuth — отключает Authorization header целиком. Нужно для
+	// локального Ollama-инстанса, у которого нет API key и который
+	// отвечает 401 на любой Bearer с пустым токеном. Cloud-провайдеры
+	// (Groq/Cerebras/Mistral/…) держат это поле в false — для них
+	// пустой apiKey означает "драйвер не должен был регистрироваться"
+	// и мы хотим, чтобы первый же запрос громко упал с 401, а не
+	// молча прошёл в анонимном режиме.
+	skipAuth bool
 }
 
 // newOpenAIDriver is the shared constructor. Per-provider files call
@@ -321,6 +330,9 @@ func (d *openAIDriver) pumpSSE(ctx context.Context, resp *http.Response, reqMode
 // ─────────────────────────────────────────────────────────────────────────
 
 func (d *openAIDriver) setAuthHeaders(r *http.Request) {
+	if d.skipAuth {
+		return
+	}
 	if d.apiKey == "" {
 		return
 	}

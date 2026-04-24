@@ -12,6 +12,7 @@ volumes:
   redis_data:
   minio_data:
   clickhouse_data:
+  ollama_data:
 
 services:
   postgres:
@@ -114,6 +115,12 @@ services:
       CEREBRAS_API_KEY: ${CEREBRAS_API_KEY:-}
       MISTRAL_API_KEY: ${MISTRAL_API_KEY:-}
       LLM_CHAIN_ORDER: ${LLM_CHAIN_ORDER:-groq,cerebras,openrouter}
+      # Ollama self-hosted fallback — пусто по умолчанию (cloud-only).
+      # Оператор ставит OLLAMA_HOST=http://ollama:11434 в .env + добавляет
+      # "ollama" в LLM_CHAIN_ORDER чтобы активировать. Сервис поднимается
+      # отдельно через профиль `ollama` (см. ниже), чтобы dev-workflow
+      # без fallback не тянул 2.5GB модель зря.
+      OLLAMA_HOST: ${OLLAMA_HOST:-}
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
       YANDEX_CLIENT_ID: ${YANDEX_CLIENT_ID:-}
       YANDEX_CLIENT_SECRET: ${YANDEX_CLIENT_SECRET:-}
@@ -129,6 +136,46 @@ services:
       - "8080:8080"
     networks: [app-net, judge-net]
     restart: unless-stopped
+
+  # ── Ollama self-hosted LLM sidecar (floor-fallback для llmchain).
+  # Под profile `ollama` — не стартует по умолчанию (`docker compose up`
+  # поднимает без него). Активация: `docker compose --profile ollama up`
+  # + выставить OLLAMA_HOST=http://ollama:11434 в .env. См. backend/shared/
+  # pkg/llmchain/driver_ollama.go.
+  ollama:
+    image: ollama/ollama:latest
+    profiles: ["ollama"]
+    restart: unless-stopped
+    volumes:
+      - ollama_data:/root/.ollama
+    # Порт НЕ exposed наружу — работает только внутри app-net.
+    networks: [app-net]
+    mem_limit: 3500m
+    cpus: 2.0
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:11434/api/tags"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
+
+  # One-shot pull моделей после того как ollama здоров. restart=no,
+  # завершится после ollama pull. Запускать повторно безопасно (pull
+  # инкрементальный, если модель уже есть — быстрый no-op).
+  ollama-init:
+    image: ollama/ollama:latest
+    profiles: ["ollama"]
+    depends_on:
+      ollama:
+        condition: service_healthy
+    entrypoint: /bin/sh
+    command: >
+      -c "
+        OLLAMA_HOST=http://ollama:11434 ollama pull qwen2.5:3b-instruct-q4_K_M &&
+        OLLAMA_HOST=http://ollama:11434 ollama pull bge-small-en-v1.5
+      "
+    networks: [app-net]
+    restart: "no"
 
   frontend:
     image: node:20-alpine

@@ -67,6 +67,12 @@ var defaultTimeouts = map[Provider]time.Duration{
 	// matches our Mistral budget, erring on the side of completion for
 	// the rare-but-valuable 70B free slot.
 	ProviderCloudflareAI: 30 * time.Second,
+	// Ollama — self-hosted CPU-only на VPS (8 ядер, ~25 tok/s на Qwen 3B
+	// Q4_K_M). Обычный cloud timeout (10-30s) для локали слишком жёсткий:
+	// ответ 300 токенов занимает ~12s + первый байт после холодного загруза
+	// модели может прилететь через 5-8s. Ставим 60s — мы и так в fallback,
+	// прилично дождаться законченного ответа важнее чем "быстро провалиться".
+	ProviderOllama: 60 * time.Second,
 }
 
 // Options configures a new Chain.
@@ -378,7 +384,8 @@ func providerFromModelID(id string) Provider {
 			ProviderMistral,
 			ProviderSambaNova,
 			ProviderOpenRouter,
-			ProviderCloudflareAI:
+			ProviderCloudflareAI,
+			ProviderOllama:
 			return prefix
 		}
 		// Cloudflare canonical model ids start with "@cf/..." — "@cf" is

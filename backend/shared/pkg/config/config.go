@@ -67,7 +67,12 @@ type Config struct {
 		SambaNovaAPIKey       string
 		CloudflareAIAccountID string
 		CloudflareAIToken     string
-		ChainOrder            string
+		// OllamaHost — base URL локального Ollama sidecar'а
+		// ("http://ollama:11434" в docker-compose). Пустая строка —
+		// сервис не зарегистрирован, всё работает как раньше (cloud-only).
+		// Self-hosted safety net против исчерпания free-tier cloud квот.
+		OllamaHost string
+		ChainOrder string
 	}
 
 	Notify struct {
@@ -132,6 +137,7 @@ func Load() (Config, error) {
 	c.LLMChain.SambaNovaAPIKey = env("SAMBANOVA_API_KEY", "")
 	c.LLMChain.CloudflareAIAccountID = env("CLOUDFLARE_AI_ACCOUNT_ID", "")
 	c.LLMChain.CloudflareAIToken = env("CLOUDFLARE_AI_TOKEN", "")
+	c.LLMChain.OllamaHost = env("OLLAMA_HOST", "")
 	c.LLMChain.ChainOrder = env("LLM_CHAIN_ORDER", "groq,cerebras,openrouter")
 
 	c.Notify.TelegramBotToken = c.Auth.TelegramBotToken

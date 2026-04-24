@@ -103,11 +103,11 @@ func parseRateLimitHeaders(p Provider, h http.Header, now time.Time) (remaining 
 		return parseGroqLikeHeaders(h, now)
 	case ProviderOpenRouter:
 		return parseOpenRouterHeaders(h, now)
-	case ProviderMistral, ProviderCloudflareAI:
+	case ProviderMistral, ProviderCloudflareAI, ProviderOllama:
 		// Mistral free tier lacks documented rate-limit headers;
-		// Cloudflare Workers AI emits neuron-quota headers in its
-		// own namespace (x-cloudflare-ai-quota-*) which we do not
-		// speak — reactive-only cooling for both.
+		// Cloudflare Workers AI emits neuron-quota headers в своём
+		// неймспейсе (x-cloudflare-ai-quota-*) который мы не парсим;
+		// Ollama — self-hosted без rate-limit — reactive-only cooling.
 		return -1, time.Time{}
 	}
 	return -1, time.Time{}
