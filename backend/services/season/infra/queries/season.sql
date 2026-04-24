@@ -35,3 +35,19 @@ UPDATE season_progress
 SET tier       = $3,
     updated_at = now()
 WHERE user_id = $1 AND season_id = $2;
+
+-- name: InsertSeasonRewardClaim :one
+-- Атомарная идемпотентная вставка клейма. При повторном вызове с тем же
+-- ключом (user_id, season_id, kind, tier) ничего не происходит и RETURNING
+-- отдаёт 0 строк — вызывающий код мэппит это в domain.ErrAlreadyClaimed.
+INSERT INTO season_reward_claims (user_id, season_id, kind, tier)
+VALUES ($1, $2, $3, $4)
+ON CONFLICT (user_id, season_id, kind, tier) DO NOTHING
+RETURNING id;
+
+-- name: ListSeasonRewardClaims :many
+-- Читается целиком: объём на одну (user, season) пару заведомо мал
+-- (≤ 40 tiers × 2 kind ⇒ 80 строк максимум).
+SELECT kind, tier
+FROM season_reward_claims
+WHERE user_id = $1 AND season_id = $2;

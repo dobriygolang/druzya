@@ -59,7 +59,7 @@ export function ModelDropdown({ items, activeId, onSelect, onClose, onManage, st
         width: 300,
         borderRadius: 14,
         background:
-          'linear-gradient(180deg, oklch(0.18 0.04 278 / 0.92), oklch(0.13 0.035 278 / 0.96))',
+          'linear-gradient(180deg, oklch(0.18 0.04 278 / calc(var(--d9-window-alpha) * 1.05)), oklch(0.13 0.035 278 / calc(var(--d9-window-alpha) * 1.1)))',
         backdropFilter: 'var(--d9-glass-blur)',
         WebkitBackdropFilter: 'var(--d9-glass-blur)' as unknown as string,
         boxShadow: 'var(--d9-shadow-pop)',

@@ -4,7 +4,7 @@
 // systemPreferences and hand-hold the user through opening the right
 // pane.
 
-import { shell, systemPreferences } from 'electron';
+import { desktopCapturer, shell, systemPreferences } from 'electron';
 
 import type { PermissionKind, PermissionState } from '@shared/ipc';
 
@@ -29,10 +29,20 @@ export async function requestPermission(kind: PermissionKind): Promise<void> {
   if (process.platform !== 'darwin') return;
   switch (kind) {
     case 'screen-recording':
-      // There is no API to trigger the Screen Recording prompt directly —
-      // the OS only shows it when a capture attempt is made. We do a
-      // throwaway capture via desktopCapturer.getSources in the caller,
-      // which nudges the OS into displaying its dialog.
+      // macOS has no direct API to trigger the Screen Recording prompt.
+      // Calling `desktopCapturer.getSources({ types: ['screen'] })` makes
+      // a capture attempt, which is what macOS watches for — first call
+      // registers the bundle in
+      // System Settings → Privacy → Screen & System Audio Recording and
+      // shows the TCC prompt. Without this, clicking "Разрешить" in
+      // onboarding silently noops and the app never appears in the
+      // system list (you reported this).
+      try {
+        await desktopCapturer.getSources({ types: ['screen'], thumbnailSize: { width: 1, height: 1 } });
+      } catch {
+        // Denied/not-determined both throw — that's fine, the side effect
+        // (adding the bundle to the TCC list) happens either way.
+      }
       return;
     case 'accessibility':
       // Passing true prompts.

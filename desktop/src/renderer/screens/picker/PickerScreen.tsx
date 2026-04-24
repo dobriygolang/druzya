@@ -58,6 +58,8 @@ function close() {
 function PersonaContent() {
   const activePersona = usePersonaStore((s) => s.active);
   const list = usePersonaStore((s) => s.list);
+  const loaded = usePersonaStore((s) => s.loaded);
+  const error = usePersonaStore((s) => s.error);
   const setActive = usePersonaStore((s) => s.setActive);
   const bootstrap = usePersonaStore((s) => s.bootstrap);
   useEffect(() => { void bootstrap(); }, [bootstrap]);
@@ -74,6 +76,28 @@ function PersonaContent() {
     [list],
   );
 
+  // Placeholder states — no fake data, just a clear signal:
+  //   not-loaded        → spinner stub
+  //   loaded + error    → "недоступны" + backend hint
+  //   loaded + empty ok → "каталог пуст" (admin hasn't seeded yet)
+  if (!loaded) return <PickerPlaceholder label="Загружаю персоны…" />;
+  if (error) {
+    return (
+      <PickerPlaceholder
+        label="Персоны недоступны"
+        hint="Сервер не отдал каталог. Проверь подключение или перезайди."
+      />
+    );
+  }
+  if (items.length === 0) {
+    return (
+      <PickerPlaceholder
+        label="Каталог пуст"
+        hint="Админ ещё не засеял персон в системе."
+      />
+    );
+  }
+
   return (
     <PersonaDropdown
       items={items}
@@ -85,6 +109,47 @@ function PersonaContent() {
       onClose={close}
       style={{ width: '100%' }}
     />
+  );
+}
+
+function PickerPlaceholder({ label, hint }: { label: string; hint?: string }) {
+  return (
+    <div
+      style={{
+        width: '100%',
+        padding: '20px 16px',
+        borderRadius: 14,
+        background:
+          'linear-gradient(180deg, oklch(0.18 0.04 278 / calc(var(--d9-window-alpha) * 1.05)), oklch(0.13 0.035 278 / calc(var(--d9-window-alpha) * 1.1)))',
+        backdropFilter: 'var(--d9-glass-blur)',
+        WebkitBackdropFilter: 'var(--d9-glass-blur)' as unknown as string,
+        boxShadow: 'var(--d9-shadow-pop)',
+        textAlign: 'center',
+      }}
+    >
+      <div
+        style={{
+          fontSize: 13,
+          color: 'var(--d9-ink)',
+          fontWeight: 500,
+          letterSpacing: '-0.005em',
+          marginBottom: hint ? 4 : 0,
+        }}
+      >
+        {label}
+      </div>
+      {hint && (
+        <div
+          style={{
+            fontSize: 11.5,
+            color: 'var(--d9-ink-mute)',
+            lineHeight: 1.4,
+          }}
+        >
+          {hint}
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -109,6 +174,26 @@ function ModelContent() {
   );
 
   const activeId = selected || config?.defaultModelId || '';
+
+  // No loading flag on useConfig — config === null means either still
+  // fetching on mount or backend failed. Either way, nothing useful to
+  // pick from, so show the placeholder.
+  if (!config) {
+    return (
+      <PickerPlaceholder
+        label="Модели недоступны"
+        hint="Сервер не отдал каталог. Войди или проверь подключение."
+      />
+    );
+  }
+  if (items.length === 0) {
+    return (
+      <PickerPlaceholder
+        label="Каталог пуст"
+        hint="На твоём плане нет доступных моделей."
+      />
+    );
+  }
 
   return (
     <ModelDropdown

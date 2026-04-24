@@ -18,7 +18,11 @@ func NewSeason(d Deps) *Module {
 	pg := seasonInfra.NewPostgres(d.Pool)
 	tiers := seasonInfra.NewStaticTiers()
 	challenges := seasonInfra.NewStaticChallenges()
-	claims := seasonInfra.NewMemClaimStore()
+	// Persistent ClaimRepo: идемпотентные вставки на уникальном индексе
+	// (user_id, season_id, kind, tier). Заменяет in-memory memClaimStore,
+	// который ломался при horizontal-scale (два инстанса API → дубли
+	// наград) и имел TOCTOU даже внутри одного процесса.
+	claims := seasonInfra.NewClaimStore(d.Pool)
 	getCurrent := seasonApp.NewGetCurrent(pg, tiers, challenges, claims)
 	_ = seasonApp.NewClaimReward(pg, tiers, claims) // no HTTP route yet
 	onXP := seasonApp.NewOnXPGained(pg, tiers, d.Bus, d.Log)

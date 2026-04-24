@@ -49,9 +49,16 @@ type TierRepo interface {
 
 // ClaimRepo tracks which tiers the user has redeemed.
 //
-// STUB: MVP implementation keeps claims in-memory. A future migration adds a
-// `season_reward_claims` table.
+// Production implementation is Postgres-backed (see
+// infra.ClaimStore): a row in `season_reward_claims` with UNIQUE
+// (user_id, season_id, kind, tier) makes MarkClaimed atomically
+// idempotent — повторный вызов возвращает ErrAlreadyClaimed без
+// гонок и без шеринга in-memory state между инстансами.
 type ClaimRepo interface {
 	Get(ctx context.Context, userID, seasonID uuid.UUID) (ClaimState, error)
+	// MarkClaimed пишет клейм. Реализация обязана быть атомарно
+	// идемпотентной: повторный вызов с тем же (userID, seasonID, kind,
+	// tier) должен вернуть ErrAlreadyClaimed (обёрнутый через %w) без
+	// side-эффектов.
 	MarkClaimed(ctx context.Context, userID, seasonID uuid.UUID, kind TrackKind, tier int) error
 }

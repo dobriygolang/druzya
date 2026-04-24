@@ -10,6 +10,22 @@ import { create } from 'zustand';
 
 import { eventChannels, type AppearancePrefs } from '@shared/ipc';
 
+/**
+ * Write the current slider value to a single :root CSS variable so every
+ * window (compact, expanded, settings, history, picker) can read it via
+ * `var(--d9-window-alpha)`. One source of truth — when the slider moves
+ * in Settings, all open renderers update because each one runs this
+ * subscription and re-writes its own :root. No React re-renders needed
+ * for the visual change itself.
+ */
+function writeAlphaVar(slider: number) {
+  if (typeof document === 'undefined') return;
+  document.documentElement.style.setProperty(
+    '--d9-window-alpha',
+    String(sliderToAlpha(slider)),
+  );
+}
+
 interface State {
   /** 0..100 slider value. Default 85 — bumped from 100 so first-time
    *  users immediately see the vibrancy blur through the window. */
@@ -29,12 +45,17 @@ export const useAppearanceStore = create<State>((set) => ({
     try {
       const prefs = await window.druz9.appearance.get();
       set({ expandedOpacity: prefs.expandedOpacity, loading: false });
+      writeAlphaVar(prefs.expandedOpacity);
     } catch {
       set({ loading: false });
+      writeAlphaVar(85);
     }
     const unsub = window.druz9.on<AppearancePrefs>(
       eventChannels.appearanceChanged,
-      (prefs) => set({ expandedOpacity: prefs.expandedOpacity }),
+      (prefs) => {
+        set({ expandedOpacity: prefs.expandedOpacity });
+        writeAlphaVar(prefs.expandedOpacity);
+      },
     );
     return unsub;
   },
@@ -43,6 +64,7 @@ export const useAppearanceStore = create<State>((set) => ({
     // Optimistic update — slider feels laggy otherwise. The main-side
     // broadcast that comes back will be a no-op (same value).
     set({ expandedOpacity: value });
+    writeAlphaVar(value);
     try {
       await window.druz9.appearance.set({ expandedOpacity: value });
     } catch (err) {

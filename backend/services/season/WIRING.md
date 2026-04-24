@@ -26,7 +26,7 @@ are already in scope.
 seasonPG         := seasonInfra.NewPostgres(pool)
 seasonTiers      := seasonInfra.NewStaticTiers()
 seasonChallenges := seasonInfra.NewStaticChallenges()
-seasonClaims     := seasonInfra.NewMemClaimStore() // STUB: in-memory
+seasonClaims     := seasonInfra.NewClaimStore(pool) // persistent (ON CONFLICT DO NOTHING)
 
 seasonGetCurrent := seasonApp.NewGetCurrent(seasonPG, seasonTiers, seasonChallenges, seasonClaims)
 // ClaimReward has no HTTP endpoint yet; construct if you want to exercise it
@@ -112,9 +112,9 @@ Document only — not wired in MVP:
 - **Per-user challenge progress is not persisted.** The GET endpoint returns
   `progress: 0` for every challenge. Add a `season_challenge_progress` table
   and corresponding sqlc queries when the challenge-completion flow ships.
-- **Claims are in-memory.** `infra.memClaimStore` is a stopgap — add a
-  `season_reward_claims(user_id, season_id, kind, tier, claimed_at)` table
-  and replace the constructor call.
+- **Claims are persisted** в `season_reward_claims` (миграция 00010).
+  Wire-up использует `infra.NewClaimStore(pool)`; `memClaimStore` остаётся
+  в пакете только как тестовая реализация того же контракта.
 - **`ClaimReward` has no HTTP route** because `shared/openapi.yaml` doesn't
   expose one yet. The helper is ready to wire as soon as the contract grows
   a `POST /season/claim` endpoint.

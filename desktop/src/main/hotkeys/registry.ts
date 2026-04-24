@@ -21,6 +21,19 @@ export function setHotkeyHandler(h: HotkeyHandler): void {
 }
 
 /**
+ * fireAction — programmatically invoke the same pipeline a globalShortcut
+ * would trigger. Used by the Tray menu so clicks go through the
+ * main-side handler (which does e.g. cursor_freeze_toggle + event
+ * broadcast) instead of only broadcasting to renderers.
+ *
+ * Safe to call before setHotkeyHandler has been registered — the default
+ * handler is a no-op.
+ */
+export function fireAction(action: HotkeyAction): void {
+  handler(action);
+}
+
+/**
  * Replace all registered bindings. Unregisters whatever was active
  * before, then registers the new set. Silently skips accelerators that
  * collide with other apps — the settings UI should let the user know

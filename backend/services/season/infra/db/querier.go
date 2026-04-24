@@ -6,6 +6,8 @@ package seasondb
 
 import (
 	"context"
+
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 type Querier interface {
@@ -15,6 +17,13 @@ type Querier interface {
 	// Atomic SP bump. Creates the row at (points=delta, tier=0) when missing.
 	// Returns the resulting points total so the caller can recompute the tier.
 	IncrementSeasonPoints(ctx context.Context, arg IncrementSeasonPointsParams) (int32, error)
+	// Атомарная идемпотентная вставка клейма. При повторном вызове с тем же
+	// ключом (user_id, season_id, kind, tier) ничего не происходит и RETURNING
+	// отдаёт 0 строк — вызывающий код мэппит это в domain.ErrAlreadyClaimed.
+	InsertSeasonRewardClaim(ctx context.Context, arg InsertSeasonRewardClaimParams) (pgtype.UUID, error)
+	// Читается целиком: объём на одну (user, season) пару заведомо мал
+	// (≤ 40 tiers × 2 kind ⇒ 80 строк максимум).
+	ListSeasonRewardClaims(ctx context.Context, arg ListSeasonRewardClaimsParams) ([]ListSeasonRewardClaimsRow, error)
 	UpdateSeasonTier(ctx context.Context, arg UpdateSeasonTierParams) error
 	UpsertSeasonProgress(ctx context.Context, arg UpsertSeasonProgressParams) error
 }

@@ -168,6 +168,7 @@ export function showWindow(name: WindowName, opts: WindowOptions): BrowserWindow
     'area-overlay': '#/area-overlay',
     history: '#/history',
     picker: '#/picker',
+    toast: '#/toast',
   };
   const url = `${opts.rendererURL}${hashFor[name]}`;
   void win.loadURL(url);
@@ -307,6 +308,82 @@ export function showPicker(kind: PickerKind, opts: WindowOptions): void {
 
 // Track the currently-mounted picker kind so toggle-close works.
 let pickerKind: PickerKind | null = null;
+
+// ─────────────────────────────────────────────────────────────────────────
+// Toast — ephemeral notification anchored beside compact.
+// ─────────────────────────────────────────────────────────────────────────
+
+let toastDismissTimer: ReturnType<typeof setTimeout> | null = null;
+
+export interface ToastShowOpts {
+  msg: string;
+  kind: 'error' | 'warn' | 'info';
+  /** Auto-dismiss after this many ms. 0 = stay until user closes. */
+  ttlMs?: number;
+}
+
+/** Show or update the floating toast window next to compact. The
+ *  message + kind travel to the renderer via hash-fragment params, so
+ *  the toast renders instantly without an extra IPC round-trip. */
+export function showToast(opts: ToastShowOpts, wopts: WindowOptions): void {
+  const compact = windows.get('compact');
+  const ttl = opts.ttlMs ?? 6000;
+
+  // Position: below the compact window, aligned to its right edge, 6px gap.
+  // Fall back to primary display top-right when compact isn't open.
+  const TOAST_W = 360;
+  const TOAST_H = 90;
+  const GAP = 6;
+  let x: number;
+  let y: number;
+  if (compact && !compact.isDestroyed()) {
+    const cb = compact.getBounds();
+    x = cb.x + cb.width - TOAST_W;
+    y = cb.y + cb.height + GAP;
+  } else {
+    const d = screen.getPrimaryDisplay().bounds;
+    x = d.x + d.width - TOAST_W - 16;
+    y = d.y + 16;
+  }
+  // Clamp inside the display containing the anchor point.
+  const display = screen.getDisplayMatching({ x, y, width: TOAST_W, height: TOAST_H });
+  x = Math.max(display.bounds.x + 4, Math.min(x, display.bounds.x + display.bounds.width - TOAST_W - 4));
+  y = Math.max(display.bounds.y + 4, Math.min(y, display.bounds.y + display.bounds.height - TOAST_H - 4));
+
+  const existing = windows.get('toast');
+  const params = new URLSearchParams({ msg: opts.msg, kind: opts.kind });
+  const url = `${wopts.rendererURL}#/toast?${params.toString()}`;
+  if (existing && !existing.isDestroyed()) {
+    existing.setBounds({ x, y, width: TOAST_W, height: TOAST_H });
+    void existing.loadURL(url);
+    existing.showInactive();
+  } else {
+    const win = showWindow('toast', wopts);
+    win.setBounds({ x, y, width: TOAST_W, height: TOAST_H });
+    void win.loadURL(url);
+  }
+
+  // Restart the auto-dismiss timer. Multiple quick toasts → only the
+  // last one's timer is active.
+  if (toastDismissTimer) {
+    clearTimeout(toastDismissTimer);
+    toastDismissTimer = null;
+  }
+  if (ttl > 0) {
+    toastDismissTimer = setTimeout(() => {
+      toastDismissTimer = null;
+      hideWindow('toast');
+    }, ttl);
+  }
+}
+
+export function hideToast(): void {
+  if (toastDismissTimer) {
+    clearTimeout(toastDismissTimer);
+    toastDismissTimer = null;
+  }
+  hideWindow('toast');
+}
 
 /** Toggle stealth on all floating windows (used by settings tab). */
 export function setStealth(on: boolean): void {
@@ -458,6 +535,26 @@ function buildWindow(name: WindowName, opts: WindowOptions): BrowserWindow {
         skipTaskbar: true,
         focusable: true,
         // No rounded corners — full-bleed.
+        roundedCorners: false,
+      });
+    }
+    case 'toast': {
+      // Floating notification panel anchored under compact. Same
+      // frameless-transparent treatment as the picker — renderer paints
+      // its own glass. Always-on-top + focusable: false so clicking a
+      // toast doesn't steal focus from whatever the user is typing into.
+      return new BrowserWindow({
+        ...base,
+        width: 360,
+        height: 90,
+        frame: false,
+        transparent: true,
+        hasShadow: false,
+        resizable: false,
+        movable: false,
+        skipTaskbar: true,
+        alwaysOnTop: true,
+        focusable: false,
         roundedCorners: false,
       });
     }

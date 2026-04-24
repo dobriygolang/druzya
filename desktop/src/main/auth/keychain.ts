@@ -1,26 +1,41 @@
-// Secure token storage via OS keychain. We mirror the frontend's
-// post-login shape — access (JWT) + refresh (opaque session UUID) +
-// expiresAt for silent-refresh scheduling. The lightweight profile
-// (userId, username, avatar) is kept alongside so we can render "hi,
-// @you" without decoding the JWT on every read.
+// Plain-file session storage — trades stronger-at-rest encryption for
+// a zero-prompt UX.
+//
+// History of this file:
+//   1. Original: keytar → macOS login Keychain. Every ad-hoc-signed
+//      rebuild triggered a password prompt that looked like phishing.
+//   2. Tried: Electron `safeStorage`. Turned out safeStorage on macOS
+//      is itself Keychain-backed — same prompt, different entry name
+//      ("Druz9 Copilot Safe Storage"). Not a real fix.
+//   3. Current: plain JSON in userData. No prompts, ever.
+//
+// Threat model — why this is acceptable:
+//   • userData path is under the current macOS user's home, readable
+//     only by that user and root. Anyone with read access to it has
+//     already compromised your session a dozen other ways.
+//   • Tokens are short-lived JWTs; refresh flow re-issues on expiry.
+//   • No keychain / secrets manager prompt ever — critical for the
+//     "stealth AI assistant" product: first-run UX can't look like a
+//     password stealer.
+//
+// If we later get a stable Developer ID signing identity and want
+// at-rest encryption back, swap `fs.readFile`/`fs.writeFile` in here
+// for `safeStorage.decryptString`/`encryptString` — the Keychain
+// prompt only fires once per signed-identity, so it becomes acceptable.
 
-// keytar is a CommonJS native addon. electron-vite's ESM bundle wraps
-// default/namespace imports in a way that loses the function table.
-// createRequire gives us the raw CJS module as the runtime would see
-// it — bypasses the bundler interop entirely.
-import { createRequire } from 'node:module';
-const keytar = createRequire(import.meta.url)('keytar') as typeof import('keytar');
+import { promises as fs } from 'node:fs';
+import { join } from 'node:path';
 
-const SERVICE = 'app.druzya.copilot';
-const ACCOUNT_ACCESS = 'access-token';
-const ACCOUNT_REFRESH = 'refresh-token';
-const ACCOUNT_EXPIRES = 'access-expires-at';
-const ACCOUNT_PROFILE = 'profile'; // JSON blob — not secret
+import { app } from 'electron';
+
+function blobPath(): string {
+  return join(app.getPath('userData'), 'session.json');
+}
 
 export interface StoredSession {
   accessToken: string;
   refreshToken: string;
-  /** ISO-8601 string. We keep a string so IPC transport doesn't mangle it. */
+  /** ISO-8601 string. Kept as string so IPC transport doesn't mangle it. */
   expiresAt: string;
   profile: SessionProfile;
 }
@@ -34,38 +49,31 @@ export interface SessionProfile {
 }
 
 export async function saveSession(s: StoredSession): Promise<void> {
-  await Promise.all([
-    keytar.setPassword(SERVICE, ACCOUNT_ACCESS, s.accessToken),
-    keytar.setPassword(SERVICE, ACCOUNT_REFRESH, s.refreshToken),
-    keytar.setPassword(SERVICE, ACCOUNT_EXPIRES, s.expiresAt),
-    keytar.setPassword(SERVICE, ACCOUNT_PROFILE, JSON.stringify(s.profile)),
-  ]);
+  // Restrictive permissions — macOS / Linux respect the 0600 mode, so
+  // other users on the machine can't read the file even if they get
+  // list-directory access to userData.
+  await fs.writeFile(blobPath(), JSON.stringify(s, null, 0), { mode: 0o600 });
 }
 
 export async function loadSession(): Promise<StoredSession | null> {
-  const [accessToken, refreshToken, expiresAt, profileRaw] = await Promise.all([
-    keytar.getPassword(SERVICE, ACCOUNT_ACCESS),
-    keytar.getPassword(SERVICE, ACCOUNT_REFRESH),
-    keytar.getPassword(SERVICE, ACCOUNT_EXPIRES),
-    keytar.getPassword(SERVICE, ACCOUNT_PROFILE),
-  ]);
-  if (!accessToken || !refreshToken || !expiresAt) return null;
-  let profile: SessionProfile = { userId: '', username: '', avatarURL: '', isNewUser: false };
-  if (profileRaw) {
-    try {
-      profile = JSON.parse(profileRaw);
-    } catch {
-      /* corrupt entry — fall back to empty profile */
+  try {
+    const raw = await fs.readFile(blobPath(), 'utf8');
+    const parsed = JSON.parse(raw) as StoredSession;
+    if (!parsed.accessToken || !parsed.refreshToken || !parsed.expiresAt) {
+      return null;
     }
+    return parsed;
+  } catch {
+    // Missing / malformed → treat as no session. Caller redirects to
+    // onboarding.
+    return null;
   }
-  return { accessToken, refreshToken, expiresAt, profile };
 }
 
 export async function clearSession(): Promise<void> {
-  await Promise.all([
-    keytar.deletePassword(SERVICE, ACCOUNT_ACCESS),
-    keytar.deletePassword(SERVICE, ACCOUNT_REFRESH),
-    keytar.deletePassword(SERVICE, ACCOUNT_EXPIRES),
-    keytar.deletePassword(SERVICE, ACCOUNT_PROFILE),
-  ]);
+  try {
+    await fs.unlink(blobPath());
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException).code !== 'ENOENT') throw err;
+  }
 }

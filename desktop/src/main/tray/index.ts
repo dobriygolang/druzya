@@ -19,8 +19,7 @@ import { join } from 'node:path';
 
 import type { WindowOptions } from '../windows/window-manager';
 import { showWindow } from '../windows/window-manager';
-import { broadcast } from '../windows/window-manager';
-import { eventChannels } from '@shared/ipc';
+import { fireAction } from '../hotkeys/registry';
 import { getSessionManager } from '../ipc/handlers';
 
 let tray: Tray | null = null;
@@ -120,27 +119,26 @@ function refreshMenu(deps: TrayDeps): void {
       label: 'Скриншот области',
       accelerator: 'CommandOrControl+Shift+S',
       click: () => {
-        // Re-use the hotkey-fired event so the renderer can react the
-        // same way whether the trigger came from a shortcut or the
-        // tray menu.
-        broadcast(eventChannels.hotkeyFired, { action: 'screenshot_area' });
+        // Route through the same handler a globalShortcut would trigger.
+        // Previously we broadcast hotkeyFired directly to renderers, but
+        // `cursor_freeze_toggle` is processed main-side (cursor module
+        // lives there), so a broadcast-only path silently ignored it.
+        // fireAction() invokes the handler registered in main/index.ts.
+        fireAction('screenshot_area');
       },
     },
     {
       label: 'Голос',
       accelerator: 'CommandOrControl+Shift+V',
       click: () => {
-        broadcast(eventChannels.hotkeyFired, { action: 'voice_input' });
+        fireAction('voice_input');
       },
     },
     {
       label: 'Заморозить курсор',
       accelerator: 'CommandOrControl+Shift+Y',
-      click: async () => {
-        // Route through the hotkey handler so freeze state stays in
-        // sync with the main-side cursor module. Can't import the
-        // cursor module here without a circular ref.
-        broadcast(eventChannels.hotkeyFired, { action: 'cursor_freeze_toggle' });
+      click: () => {
+        fireAction('cursor_freeze_toggle');
       },
     },
     { type: 'separator' },

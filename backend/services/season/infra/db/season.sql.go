@@ -84,6 +84,73 @@ func (q *Queries) IncrementSeasonPoints(ctx context.Context, arg IncrementSeason
 	return points, err
 }
 
+const insertSeasonRewardClaim = `-- name: InsertSeasonRewardClaim :one
+INSERT INTO season_reward_claims (user_id, season_id, kind, tier)
+VALUES ($1, $2, $3, $4)
+ON CONFLICT (user_id, season_id, kind, tier) DO NOTHING
+RETURNING id
+`
+
+type InsertSeasonRewardClaimParams struct {
+	UserID   pgtype.UUID
+	SeasonID pgtype.UUID
+	Kind     string
+	Tier     int32
+}
+
+// Атомарная идемпотентная вставка клейма. При повторном вызове с тем же
+// ключом (user_id, season_id, kind, tier) ничего не происходит и RETURNING
+// отдаёт 0 строк — вызывающий код мэппит это в domain.ErrAlreadyClaimed.
+func (q *Queries) InsertSeasonRewardClaim(ctx context.Context, arg InsertSeasonRewardClaimParams) (pgtype.UUID, error) {
+	row := q.db.QueryRow(ctx, insertSeasonRewardClaim,
+		arg.UserID,
+		arg.SeasonID,
+		arg.Kind,
+		arg.Tier,
+	)
+	var id pgtype.UUID
+	err := row.Scan(&id)
+	return id, err
+}
+
+const listSeasonRewardClaims = `-- name: ListSeasonRewardClaims :many
+SELECT kind, tier
+FROM season_reward_claims
+WHERE user_id = $1 AND season_id = $2
+`
+
+type ListSeasonRewardClaimsParams struct {
+	UserID   pgtype.UUID
+	SeasonID pgtype.UUID
+}
+
+type ListSeasonRewardClaimsRow struct {
+	Kind string
+	Tier int32
+}
+
+// Читается целиком: объём на одну (user, season) пару заведомо мал
+// (≤ 40 tiers × 2 kind ⇒ 80 строк максимум).
+func (q *Queries) ListSeasonRewardClaims(ctx context.Context, arg ListSeasonRewardClaimsParams) ([]ListSeasonRewardClaimsRow, error) {
+	rows, err := q.db.Query(ctx, listSeasonRewardClaims, arg.UserID, arg.SeasonID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []ListSeasonRewardClaimsRow{}
+	for rows.Next() {
+		var i ListSeasonRewardClaimsRow
+		if err := rows.Scan(&i.Kind, &i.Tier); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const updateSeasonTier = `-- name: UpdateSeasonTier :exec
 UPDATE season_progress
 SET tier       = $3,

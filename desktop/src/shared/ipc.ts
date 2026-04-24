@@ -42,6 +42,11 @@ export const invokeChannels = {
   /** Open the floating picker (persona or model) anchored to compact. */
   windowsShowPicker: 'windows:show-picker',
   windowsHidePicker: 'windows:hide-picker',
+  /** Show a small floating toast window next to compact. Used for
+   *  errors that don't fit in the compact's 460×92 footprint (e.g. the
+   *  full Screen Recording permission path). */
+  toastShow: 'toast:show',
+  toastDismiss: 'toast:dismiss',
 
   permissionsCheck: 'permissions:check',
   permissionsRequest: 'permissions:request',
@@ -92,6 +97,8 @@ export const invokeChannels = {
   getLastUserTurn: 'ui:get-last-user-turn',
   /** Any renderer announces a model-picker change; main fans it out. */
   selectedModelChanged: 'ui:selected-model-changed',
+  /** Renderer → main: announce persona pick, rebroadcast to all windows. */
+  activePersonaChanged: 'ui:active-persona-changed',
 } as const;
 
 /** Events pushed from main → renderer. */
@@ -126,7 +133,15 @@ export const eventChannels = {
    *  process, so localStorage-backed zustand stores do not share state
    *  cross-window without an explicit bridge. */
   selectedModelChanged: 'event:selected-model-changed',
+  /** Persona picked in one window (e.g. separate picker window) →
+   *  rebroadcast so Compact/Expanded/etc mirror the selection. Same
+   *  cross-renderer sync pattern as selectedModelChanged. */
+  activePersonaChanged: 'event:active-persona-changed',
 } as const;
+
+export interface ActivePersonaChangedEvent {
+  personaId: string;
+}
 
 export interface SelectedModelChangedEvent {
   modelId: string;
@@ -268,7 +283,8 @@ export type WindowName =
   | 'onboarding'
   | 'area-overlay'
   | 'history'
-  | 'picker';
+  | 'picker'
+  | 'toast';
 
 /** Picker kind — which dropdown the compact opens in the floating picker
  *  window. Persona / Model each reuse their own dropdown component. */
@@ -378,6 +394,13 @@ export interface Druz9API {
     showPicker: (kind: PickerKind) => Promise<void>;
     hidePicker: () => Promise<void>;
   };
+  toast: {
+    /** Show a floating notification next to the compact window.
+     *  `kind` tints the left accent bar (error/warn/info).
+     *  Auto-dismisses after ~6s unless the user clicks it. */
+    show: (msg: string, kind?: 'error' | 'warn' | 'info') => Promise<void>;
+    dismiss: () => Promise<void>;
+  };
   permissions: {
     check: () => Promise<PermissionState>;
     request: (kind: PermissionKind) => Promise<void>;
@@ -462,6 +485,9 @@ export interface Druz9API {
     /** Announce a model pick. Main rebroadcasts as selectedModelChanged
      *  so every window's selected-model store stays in sync. */
     announceModelChanged: (modelId: string) => Promise<void>;
+    /** Announce a persona pick. Main rebroadcasts as activePersonaChanged
+     *  so Compact / Expanded / Picker mirror the selection. */
+    announcePersonaChanged: (personaId: string) => Promise<void>;
   };
 
   /**

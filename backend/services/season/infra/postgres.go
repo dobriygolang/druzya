@@ -118,11 +118,82 @@ func toSeason(r seasondb.Season) domain.Season {
 var _ domain.SeasonRepo = (*Postgres)(nil)
 
 // ─────────────────────────────────────────────────────────────────────────
-// ClaimStore (in-memory)
+// ClaimStore — Postgres-backed.
 //
-// STUB: the `season_progress` schema has no claim-tracking column today. MVP
-// keeps claims in an in-memory map; a future migration will add
-// `season_reward_claims(user_id, season_id, kind, tier, claimed_at)`.
+// Таблица season_reward_claims с UNIQUE (user_id, season_id, kind, tier)
+// и запросом `INSERT ... ON CONFLICT DO NOTHING RETURNING id` обеспечивает
+// атомарную идемпотентность: повторная вставка возвращает pgx.ErrNoRows,
+// мы мэппим это в domain.ErrAlreadyClaimed. Этого достаточно, чтобы
+// закрыть TOCTOU и работать корректно при horizontal-scale.
+// ─────────────────────────────────────────────────────────────────────────
+
+// ClaimStore is the Postgres-backed ClaimRepo.
+type ClaimStore struct {
+	pool *pgxpool.Pool
+	q    *seasondb.Queries
+}
+
+// NewClaimStore wires a Postgres-backed ClaimRepo.
+func NewClaimStore(pool *pgxpool.Pool) *ClaimStore {
+	return &ClaimStore{pool: pool, q: seasondb.New(pool)}
+}
+
+// Get возвращает ClaimState для (user, season). Пустой набор клеймов —
+// это валидная NewClaimState, не ошибка.
+func (c *ClaimStore) Get(ctx context.Context, userID, seasonID uuid.UUID) (domain.ClaimState, error) {
+	rows, err := c.q.ListSeasonRewardClaims(ctx, seasondb.ListSeasonRewardClaimsParams{
+		UserID:   pgUUID(userID),
+		SeasonID: pgUUID(seasonID),
+	})
+	if err != nil {
+		return domain.ClaimState{}, fmt.Errorf("season.pg.ClaimStore.Get: %w", err)
+	}
+	out := domain.NewClaimState()
+	for _, r := range rows {
+		switch domain.TrackKind(r.Kind) {
+		case domain.TrackFree:
+			out.FreeClaimed[int(r.Tier)] = true
+		case domain.TrackPremium:
+			out.PremiumClaimed[int(r.Tier)] = true
+		default:
+			// Непредвиденный kind в БД — игнорируем, не роняем чтение:
+			// CHECK-констрейнт в миграции не даст такому значению туда попасть.
+		}
+	}
+	return out, nil
+}
+
+// MarkClaimed атомарно вставляет клейм. Если строка уже существует
+// (ON CONFLICT DO NOTHING → RETURNING без строк → pgx.ErrNoRows) —
+// возвращается domain.ErrAlreadyClaimed. Это закрывает TOCTOU между
+// Get+CanClaim и MarkClaimed в app/claim_reward.go.
+func (c *ClaimStore) MarkClaimed(ctx context.Context, userID, seasonID uuid.UUID, kind domain.TrackKind, tier int) error {
+	if !kind.IsValid() {
+		return fmt.Errorf("season.pg.ClaimStore.MarkClaimed: unknown track %q", kind)
+	}
+	_, err := c.q.InsertSeasonRewardClaim(ctx, seasondb.InsertSeasonRewardClaimParams{
+		UserID:   pgUUID(userID),
+		SeasonID: pgUUID(seasonID),
+		Kind:     string(kind),
+		Tier:     int32(tier),
+	})
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return fmt.Errorf("season.pg.ClaimStore.MarkClaimed: %w", domain.ErrAlreadyClaimed)
+		}
+		return fmt.Errorf("season.pg.ClaimStore.MarkClaimed: %w", err)
+	}
+	return nil
+}
+
+var _ domain.ClaimRepo = (*ClaimStore)(nil)
+
+// ─────────────────────────────────────────────────────────────────────────
+// memClaimStore — in-memory ClaimRepo для юнит-тестов/локальной отладки.
+//
+// Production wiring в cmd/monolith использует ClaimStore (Postgres).
+// Этот тип сохранён как удобная реализация домены для тестов, которые не
+// хотят поднимать БД.
 // ─────────────────────────────────────────────────────────────────────────
 
 type memClaimStore struct {
@@ -158,8 +229,13 @@ func (m *memClaimStore) Get(_ context.Context, userID, seasonID uuid.UUID) (doma
 	return out, nil
 }
 
-// MarkClaimed flips the bit for (kind, tier).
+// MarkClaimed атомарно (под mutex'ом) вставляет клейм. На повторную
+// попытку возвращает domain.ErrAlreadyClaimed — идентично
+// Postgres-реализации, чтобы тесты могли полагаться на тот же контракт.
 func (m *memClaimStore) MarkClaimed(_ context.Context, userID, seasonID uuid.UUID, kind domain.TrackKind, tier int) error {
+	if !kind.IsValid() {
+		return fmt.Errorf("season.memClaimStore: unknown track %q", kind)
+	}
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	key := claimKey{userID, seasonID}
@@ -167,14 +243,17 @@ func (m *memClaimStore) MarkClaimed(_ context.Context, userID, seasonID uuid.UUI
 	if !ok {
 		s = domain.NewClaimState()
 	}
+	var claimed map[int]bool
 	switch kind {
 	case domain.TrackFree:
-		s.FreeClaimed[tier] = true
+		claimed = s.FreeClaimed
 	case domain.TrackPremium:
-		s.PremiumClaimed[tier] = true
-	default:
-		return fmt.Errorf("season.memClaimStore: unknown track %q", kind)
+		claimed = s.PremiumClaimed
 	}
+	if claimed[tier] {
+		return fmt.Errorf("season.memClaimStore: %w", domain.ErrAlreadyClaimed)
+	}
+	claimed[tier] = true
 	m.state[key] = s
 	return nil
 }

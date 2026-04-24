@@ -13,6 +13,8 @@ interface Props {
   compact?: boolean;
   onClick?: (e: MouseEvent<HTMLButtonElement>) => void;
   title?: string;
+  /** Whether the controlled dropdown is open — rotates the caret. */
+  open?: boolean;
   /** Raw gradient string override (used when persona table pushes
    *  a custom brand_gradient). */
   background?: string;
@@ -24,6 +26,7 @@ export function PersonaChip({
   compact = false,
   onClick,
   title,
+  open,
   background,
 }: Props) {
   const grad = resolvePersonaGradient(personaId);
@@ -40,18 +43,23 @@ export function PersonaChip({
         display: 'inline-flex',
         alignItems: 'center',
         gap: 6,
-        padding: compact ? '2px 8px 2px 4px' : '4px 10px 4px 5px',
+        // Compact: ghost style, matches ModelPill's inline weight. The
+        // expanded variant keeps the soft pill for sidebar/header contexts.
+        padding: compact ? 0 : '4px 10px 4px 5px',
         height: compact ? 22 : 26,
-        borderRadius: 999,
-        background: 'oklch(1 0 0 / 0.06)',
-        border: '0.5px solid var(--d9-hairline)',
+        borderRadius: compact ? 0 : 999,
+        background: compact ? 'transparent' : 'oklch(1 0 0 / 0.06)',
+        border: compact ? 0 : '0.5px solid var(--d9-hairline)',
         color: 'var(--d9-ink-dim)',
         fontSize: compact ? 11 : 12,
         fontWeight: 500,
         letterSpacing: '-0.005em',
         cursor: 'pointer',
+        transition: 'color 120ms var(--d9-ease)',
         WebkitAppRegion: 'no-drag',
       } as React.CSSProperties}
+      onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--d9-ink)')}
+      onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--d9-ink-dim)')}
     >
       <span
         className={dotClass}
@@ -70,7 +78,7 @@ export function PersonaChip({
         textOverflow: 'ellipsis',
         whiteSpace: 'nowrap',
       }}>{label}</span>
-      <Caret />
+      <Caret open={open} />
     </button>
   );
 }

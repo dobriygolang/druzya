@@ -21,17 +21,20 @@ import {
   eventChannels,
   type MasqueradePreset,
   type MasqueradePresetInfo,
+  type PermissionKind,
+  type PermissionState,
   type UpdateStatus,
 } from '@shared/ipc';
 import type { HotkeyBinding, ProviderModel } from '@shared/types';
 
-type Tab = 'general' | 'hotkeys' | 'providers' | 'appearance' | 'about';
+type Tab = 'general' | 'hotkeys' | 'providers' | 'appearance' | 'permissions' | 'about';
 
 const tabs: Array<{ id: Tab; label: string; icon: React.ReactNode }> = [
   { id: 'general', label: 'Общее', icon: <IconSettings size={14} /> },
   { id: 'hotkeys', label: 'Горячие клавиши', icon: <IconKey size={14} /> },
   { id: 'providers', label: 'AI провайдеры', icon: <IconSparkles size={14} /> },
   { id: 'appearance', label: 'Внешний вид', icon: <IconPalette size={14} /> },
+  { id: 'permissions', label: 'Доступы macOS', icon: <IconShield size={14} /> },
   { id: 'about', label: 'О программе', icon: <IconShield size={14} /> },
 ];
 
@@ -83,10 +86,10 @@ export function SettingsScreen() {
           <BrandMark size={28} />
           <span
             style={{
-              fontFamily: 'var(--d9-font-display)',
-              fontStyle: 'italic',
-              fontSize: 18,
-              letterSpacing: '-0.01em',
+              fontFamily: 'var(--d9-font-sans)',
+              fontWeight: 700,
+              fontSize: 15,
+              letterSpacing: '-0.02em',
               color: 'var(--d9-ink)',
             }}
           >
@@ -130,6 +133,7 @@ export function SettingsScreen() {
         {tab === 'hotkeys' && <HotkeysTab />}
         {tab === 'providers' && <ProvidersTab models={config?.models ?? []} />}
         {tab === 'appearance' && <AppearanceTab />}
+        {tab === 'permissions' && <PermissionsTab />}
         {tab === 'about' && <AboutTab />}
       </div>
     </div>
@@ -143,13 +147,13 @@ function SectionTitle({ title, subtitle }: { title: string; subtitle?: string })
     <div style={{ marginBottom: 22 }}>
       <h2
         style={{
-          fontFamily: 'var(--d9-font-display)',
-          fontStyle: 'italic',
-          fontSize: 26,
-          letterSpacing: '-0.01em',
+          fontFamily: 'var(--d9-font-sans)',
+          fontWeight: 700,
+          fontSize: 22,
+          letterSpacing: '-0.02em',
           margin: 0,
           color: 'var(--d9-ink)',
-          lineHeight: 1.1,
+          lineHeight: 1.2,
         }}
       >
         {title}
@@ -477,7 +481,17 @@ function HotkeysTab() {
     { action: 'clear_conversation', accelerator: 'CommandOrControl+Shift+K' },
     { action: 'cursor_freeze_toggle', accelerator: 'CommandOrControl+Shift+Y' },
   ];
-  const defaults = config?.defaultHotkeys?.length ? config.defaultHotkeys : LOCAL_DEFAULTS;
+  // Always iterate LOCAL_DEFAULTS for the UI — server may return
+  // placeholders with numeric action strings which break the label
+  // mapping. Accelerators from the server override per-action only when
+  // the action name is a known one.
+  const serverByAction = new Map(
+    (config?.defaultHotkeys ?? []).map((b) => [b.action, b.accelerator] as const),
+  );
+  const defaults: HotkeyBinding[] = LOCAL_DEFAULTS.map((b) => ({
+    action: b.action,
+    accelerator: serverByAction.get(b.action) ?? b.accelerator,
+  }));
 
   // Whenever defaults or overrides change, push the merged bindings to
   // main so the globalShortcut registry re-registers under the new
@@ -550,6 +564,24 @@ function ProvidersTab({ models }: { models: ProviderModel[] }) {
       >
         Каталог моделей
       </div>
+      {models.length === 0 && (
+        <div
+          style={{
+            padding: '24px 20px',
+            textAlign: 'center',
+            borderRadius: 10,
+            background: 'oklch(1 0 0 / 0.03)',
+            border: '0.5px dashed var(--d9-hairline)',
+            color: 'var(--d9-ink-mute)',
+            fontSize: 12.5,
+            letterSpacing: '-0.005em',
+            lineHeight: 1.5,
+          }}
+        >
+          Каталог пуст. Войди через онбординг — после авторизации здесь
+          появятся модели, доступные на твоём плане.
+        </div>
+      )}
       <div style={{ display: 'flex', flexDirection: 'column' }}>
         {models.map((m) => (
           <div
@@ -704,6 +736,142 @@ function AppearanceTab() {
         }
       />
     </>
+  );
+}
+
+/**
+ * PermissionsTab — same three macOS permissions as the onboarding step,
+ * accessible post-onboarding from Settings. Users can skip the step on
+ * first launch and come here when they actually need screenshots /
+ * global hotkeys / voice input.
+ */
+function PermissionsTab() {
+  const [perms, setPerms] = useState<PermissionState | null>(null);
+
+  const refresh = async () => {
+    try {
+      setPerms(await window.druz9.permissions.check());
+    } catch {
+      /* noop */
+    }
+  };
+
+  useEffect(() => {
+    void refresh();
+    const h = setInterval(refresh, 1500);
+    const onFocus = () => void refresh();
+    window.addEventListener('focus', onFocus);
+    return () => {
+      clearInterval(h);
+      window.removeEventListener('focus', onFocus);
+    };
+  }, []);
+
+  const needsRestart =
+    perms?.screenRecording !== 'granted' || perms?.accessibility !== 'granted';
+
+  return (
+    <>
+      <SectionTitle
+        title="Доступы macOS"
+        subtitle="Выдать сейчас или позже — без них Druz9 всё равно работает, но часть функций недоступна."
+      />
+
+      {needsRestart && (
+        <div
+          style={{
+            padding: '10px 14px',
+            borderRadius: 9,
+            background: 'var(--d9-accent-glow)',
+            border: '0.5px solid oklch(0.72 0.23 300 / 0.35)',
+            fontSize: 11.5,
+            color: 'var(--d9-accent-hi)',
+            letterSpacing: '-0.005em',
+            lineHeight: 1.45,
+            marginBottom: 14,
+          }}
+        >
+          <b>Если переключатель уже включён, а доступа «нет»</b> — macOS кэширует
+          статус до рестарта процесса. Включи тоггл в Системных настройках → нажми
+          «Рестарт».
+        </div>
+      )}
+
+      <div style={{ display: 'flex', flexDirection: 'column' }}>
+        <PermRow
+          title="Запись экрана"
+          hint="Чтобы делать скриншоты для AI."
+          kind="screen-recording"
+          state={perms?.screenRecording}
+          refresh={refresh}
+        />
+        <PermRow
+          title="Универсальный доступ"
+          hint="Чтобы глобальные хоткеи работали в любом приложении."
+          kind="accessibility"
+          state={perms?.accessibility}
+          refresh={refresh}
+        />
+        <PermRow
+          title="Микрофон"
+          hint="Опционально — для голосового ввода."
+          kind="microphone"
+          state={perms?.microphone}
+          refresh={refresh}
+        />
+      </div>
+    </>
+  );
+}
+
+function PermRow({
+  title,
+  hint,
+  kind,
+  state,
+  refresh,
+}: {
+  title: string;
+  hint: string;
+  kind: PermissionKind;
+  state: PermissionState[keyof PermissionState] | undefined;
+  refresh: () => Promise<void>;
+}) {
+  const granted = state === 'granted';
+  return (
+    <Row
+      title={title}
+      hint={hint}
+      control={
+        granted ? (
+          <StatusDot state="ready" size={8} />
+        ) : (
+          <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+            {(kind === 'screen-recording' || kind === 'accessibility') && (
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => void window.druz9.app.quit()}
+                title="macOS кэширует статус до рестарта процесса"
+              >
+                Рестарт
+              </Button>
+            )}
+            <Button
+              size="sm"
+              variant="secondary"
+              onClick={async () => {
+                await window.druz9.permissions.request(kind);
+                await window.druz9.permissions.openSettings(kind);
+                void refresh();
+              }}
+            >
+              Разрешить
+            </Button>
+          </div>
+        )
+      }
+    />
   );
 }
 

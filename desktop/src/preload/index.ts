@@ -79,6 +79,11 @@ const api: Druz9API = {
     hidePicker: () =>
       ipcRenderer.invoke(invokeChannels.windowsHidePicker) as Promise<void>,
   },
+  toast: {
+    show: (msg: string, kind?: 'error' | 'warn' | 'info') =>
+      ipcRenderer.invoke(invokeChannels.toastShow, msg, kind ?? 'info') as Promise<void>,
+    dismiss: () => ipcRenderer.invoke(invokeChannels.toastDismiss) as Promise<void>,
+  },
   permissions: {
     check: () => ipcRenderer.invoke(invokeChannels.permissionsCheck) as Promise<PermissionState>,
     request: (kind: PermissionKind) =>
@@ -141,6 +146,8 @@ const api: Druz9API = {
       >,
     announceModelChanged: (modelId: string) =>
       ipcRenderer.invoke(invokeChannels.selectedModelChanged, modelId) as Promise<void>,
+    announcePersonaChanged: (personaId: string) =>
+      ipcRenderer.invoke(invokeChannels.activePersonaChanged, personaId) as Promise<void>,
   },
   cursor: {
     state: () =>

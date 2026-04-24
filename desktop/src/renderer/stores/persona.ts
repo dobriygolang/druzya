@@ -13,22 +13,25 @@
 
 import { create } from 'zustand';
 
-import type { Persona } from '@shared/ipc';
+import { eventChannels, type ActivePersonaChangedEvent, type Persona } from '@shared/ipc';
 
 const STORAGE_KEY = 'druz9.persona.active-id';
 
-// Inline default-baseline persona. Used as the absolute fallback when
-// the server catalogue is empty (fresh install before migration 00051
-// has been applied to the environment, or network failure). The
-// server's seeded "default" row has the same id + empty prefix, so
-// once the fetch succeeds this gets transparently replaced.
-const InlineDefaultPersona: Persona = {
+// Single zero-persona stub used while the server catalogue is still
+// loading or has hard-failed. Never presented as a real choice — it's
+// the bare minimum shape so type-consumers (pickActive, compact brand
+// mark) don't null-check everywhere. Real personas come from
+// GET /api/v1/personas (migration 00052 seeds them on the backend).
+// When the fetch fails, the picker surfaces an error state (see
+// PickerScreen / PersonaDropdown), it does NOT show this stub as a
+// selectable option.
+const PlaceholderPersona: Persona = {
   id: 'default',
   label: 'Обычный',
-  hint: 'Без специализации — универсальный режим',
+  hint: '',
   icon_emoji: '💬',
   brand_gradient:
-    'linear-gradient(135deg, var(--d-accent) 0%, var(--d-accent-2) 100%)',
+    'linear-gradient(135deg, oklch(0.72 0.23 300) 0%, oklch(0.80 0.15 210) 100%)',
   suggested_task: '',
   system_prompt: '',
   sort_order: 0,
@@ -42,7 +45,7 @@ function pickActive(list: Persona[], persistedId: string | null): Persona {
   const def = list.find((p) => p.id === 'default');
   if (def) return def;
   if (list.length > 0) return list[0];
-  return InlineDefaultPersona;
+  return PlaceholderPersona;
 }
 
 function readPersistedId(): string | null {
@@ -58,6 +61,12 @@ interface State {
   list: Persona[];
   /** Whether the initial fetch has completed (success or error). */
   loaded: boolean;
+  /** Null until first load attempt. When the server endpoint responds
+   *  with an error (network / 404 / 401) we keep the last successful
+   *  list (may be empty) and surface this message to the UI so the
+   *  picker can render a proper error state instead of silently
+   *  degrading. `null` when the last fetch succeeded. */
+  error: string | null;
   /** Pull catalogue from main + resolve active persona. Idempotent;
    *  safe to call from multiple window mount effects. */
   bootstrap: () => Promise<void>;
@@ -66,21 +75,43 @@ interface State {
 }
 
 export const usePersonaStore = create<State>((set, get) => ({
-  active: InlineDefaultPersona,
-  list: [InlineDefaultPersona],
+  // Zero-state until bootstrap resolves. An empty list is the correct
+  // initial shape — the server owns the catalogue, we just show it.
+  active: PlaceholderPersona,
+  list: [],
   loaded: false,
+  error: null,
 
   bootstrap: async () => {
-    if (get().loaded) return;
-    try {
-      const fetched = await window.druz9.personas.list();
-      const list = fetched.length > 0 ? fetched : [InlineDefaultPersona];
-      const active = pickActive(list, readPersistedId());
-      set({ list, active, loaded: true });
-    } catch {
-      // Keep inline default; mark loaded so re-mounts don't re-fire.
-      set({ loaded: true });
+    // Subscribe unconditionally (even on repeat mounts) so every window
+    // tracks cross-process persona picks. The loaded-guard only skips
+    // the fetch, not the listener.
+    if (!get().loaded) {
+      try {
+        const fetched = await window.druz9.personas.list();
+        const active = pickActive(fetched, readPersistedId());
+        set({ list: fetched, active, loaded: true, error: null });
+      } catch (err) {
+        set({
+          loaded: true,
+          error: (err as Error)?.message || 'personas fetch failed',
+        });
+      }
     }
+    // Cross-window sync: Picker writes setActive → announces →
+    // main rebroadcasts → every window's store updates here. Dedup via
+    // current-id equality so our own echo is a no-op.
+    window.druz9.on<ActivePersonaChangedEvent>(eventChannels.activePersonaChanged, (ev) => {
+      const cur = get().active;
+      if (cur.id === ev.personaId) return;
+      const next = pickActive(get().list, ev.personaId);
+      set({ active: next });
+      try {
+        localStorage.setItem(STORAGE_KEY, next.id);
+      } catch {
+        /* storage unavailable — in-memory is enough for this session */
+      }
+    });
   },
 
   setActive: (id: string) => {
@@ -91,10 +122,14 @@ export const usePersonaStore = create<State>((set, get) => ({
     } catch {
       /* storage full / disabled — in-memory pick still works for the session */
     }
+    // Tell main to rebroadcast so other windows mirror the pick.
+    // Fire-and-forget — the echo will hit our listener but the id guard
+    // above short-circuits.
+    void window.druz9.ui.announcePersonaChanged(next.id);
   },
 
   reset: () => {
-    const def = get().list.find((p) => p.id === 'default') ?? InlineDefaultPersona;
+    const def = get().list.find((p) => p.id === 'default') ?? PlaceholderPersona;
     set({ active: def });
     try {
       localStorage.removeItem(STORAGE_KEY);

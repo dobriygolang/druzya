@@ -653,6 +653,15 @@ type SeasonProgress struct {
 	UpdatedAt pgtype.Timestamptz
 }
 
+type SeasonRewardClaim struct {
+	ID        pgtype.UUID
+	UserID    pgtype.UUID
+	SeasonID  pgtype.UUID
+	Kind      string
+	Tier      int32
+	ClaimedAt pgtype.Timestamptz
+}
+
 type SkillNode struct {
 	UserID     pgtype.UUID
 	NodeKey    string

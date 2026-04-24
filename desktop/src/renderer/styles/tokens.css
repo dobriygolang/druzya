@@ -101,6 +101,13 @@
   /* Blur for heavy-glass */
   --d9-glass-blur: blur(30px) saturate(1.4);
 
+  /* Global window-background alpha — one slider (Settings → Внешний вид →
+     Прозрачность окон) writes here through appearance store. Every window
+     reads it so transparency is consistent across compact / expanded /
+     settings / history / picker. Default 0.85 matches the store's slider
+     default of 85. */
+  --d9-window-alpha: 0.85;
+
   /* ── Legacy `--d-*` aliases (remove once migration is done) ────── */
   --d-bg-0: var(--d9-void);
   --d-bg-1: var(--d9-obsidian);

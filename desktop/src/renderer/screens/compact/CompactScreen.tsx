@@ -90,8 +90,12 @@ export function CompactScreen() {
   useEffect(() => { void personaBootstrap(); }, [personaBootstrap]);
 
   const quota = useQuotaStore((s) => s.quota);
-  const refreshQuota = useQuotaStore((s) => s.refresh);
-  useEffect(() => { void refreshQuota(); }, [refreshQuota]);
+  const bootstrapQuota = useQuotaStore((s) => s.bootstrap);
+  useEffect(() => {
+    let unsub: (() => void) | null = null;
+    void bootstrapQuota().then((u) => { unsub = u; });
+    return () => { if (unsub) unsub(); };
+  }, [bootstrapQuota]);
 
   const [input, setInput] = useState('');
   const [statusError, setStatusError] = useState<string | null>(null);
@@ -171,7 +175,15 @@ export function CompactScreen() {
       clearPending();
       setStatusError(null);
     } catch (err) {
-      setStatusError((err as Error).message.slice(0, 120));
+      // Errors from capture/analyze can be verbose ("Error: Screen
+      // Recording permission denied. Open System Settings → Privacy →
+      // Screen Recording and enable Electron…"). Compact is 460×92 —
+      // no room for multi-line. Route to the floating toast window;
+      // keep a short marker in the status row so the user sees
+      // something happened even if they missed the toast.
+      const full = (err as Error).message;
+      setStatusError('Ошибка — см. уведомление');
+      void window.druz9.toast.show(full, 'error');
       // eslint-disable-next-line no-console
       console.error('screenshot failed', err);
     }
@@ -255,7 +267,7 @@ export function CompactScreen() {
           height: '100%',
           borderRadius: 18,
           background:
-            'linear-gradient(180deg, oklch(0.16 0.04 278 / 0.72), oklch(0.12 0.035 278 / 0.82))',
+            'linear-gradient(180deg, oklch(0.16 0.04 278 / calc(var(--d9-window-alpha) * 0.85)), oklch(0.12 0.035 278 / var(--d9-window-alpha)))',
           backdropFilter: 'var(--d9-glass-blur)',
           WebkitBackdropFilter: 'var(--d9-glass-blur)' as unknown as string,
           boxShadow: 'var(--d9-shadow-win)',

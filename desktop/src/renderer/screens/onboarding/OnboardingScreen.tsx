@@ -133,7 +133,6 @@ function PermissionsStep({
   refresh: () => Promise<void>;
   onNext: () => void;
 }) {
-  const all = perms?.screenRecording === 'granted' && perms?.accessibility === 'granted';
   return (
     <div style={{ width: '100%', maxWidth: 520, display: 'flex', flexDirection: 'column', gap: 14 }}>
       <div style={{ textAlign: 'center', marginBottom: 12 }}>
@@ -143,10 +142,12 @@ function PermissionsStep({
         </p>
       </div>
 
-      {/* macOS quirk notice — screen recording status is cached until
-          the app process restarts. Users toggle the switch, come back,
-          and see "not granted" still. Explain + offer Restart button. */}
-      {perms?.screenRecording !== 'granted' && (
+      {/* macOS quirk: both Screen Recording and Accessibility statuses
+          are cached by the TCC subsystem for the lifetime of the process.
+          Users toggle the switch in System Settings, come back to Druz9,
+          and still see "not granted". We show a hint + Рестарт button on
+          any still-ungranted permission to make the fix obvious. */}
+      {(perms?.screenRecording !== 'granted' || perms?.accessibility !== 'granted') && (
         <div
           style={{
             padding: '10px 14px',
@@ -160,8 +161,8 @@ function PermissionsStep({
           }}
         >
           <b>Если переключатель уже включён, а доступа «нет»</b> — macOS кэширует
-          статус до рестарта процесса. Нажми «Рестарт» на строке «Запись экрана» после того как
-          включишь тоггл в Системных настройках.
+          статус до рестарта процесса. Включи тоггл в Системных настройках, затем нажми
+          «Рестарт» — приложение перезапустится и подтянет свежее состояние.
         </div>
       )}
 
@@ -192,8 +193,24 @@ function PermissionsStep({
         refresh={refresh}
       />
 
-      <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: 8 }}>
-        <Button variant="primary" onClick={onNext} disabled={!all}>
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          marginTop: 8,
+        }}
+      >
+        <span
+          style={{
+            fontSize: 11,
+            color: 'var(--d9-ink-ghost)',
+            letterSpacing: '-0.005em',
+          }}
+        >
+          Можно выдать позже — в Настройках.
+        </span>
+        <Button variant="primary" onClick={onNext}>
           Далее
         </Button>
       </div>
@@ -261,11 +278,13 @@ function PermissionRow({
         <StatusDot state="ready" size={8} />
       ) : (
         <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-          {kind === 'screen-recording' && (
+          {/* Показываем Рестарт для screen-recording и accessibility —
+              оба кэшируются TCC на время жизни процесса. */}
+          {(kind === 'screen-recording' || kind === 'accessibility') && (
             <Button
               size="sm"
               variant="ghost"
-              onClick={() => void window.druz9.app.quit().then(() => void 0)}
+              onClick={() => void window.druz9.app.quit()}
               title="Если разрешение уже дано — macOS требует рестарт процесса чтобы увидеть новое состояние"
             >
               Рестарт

@@ -37,10 +37,12 @@ import {
 import {
   broadcast,
   closeWindow,
+  hideToast,
   hideWindow,
   resizeWindow,
   setStealth,
   showPicker,
+  showToast,
   showWindow,
 } from '../windows/window-manager';
 import type { WindowOptions } from '../windows/window-manager';
@@ -271,6 +273,9 @@ export function registerHandlers(opts: RegisterOptions): void {
   // Cross-window model-pick sync. One renderer writes → main fans out
   // to every window so their zustand stores converge without each having
   // to read localStorage on every render.
+  ipcMain.handle(invokeChannels.activePersonaChanged, async (_evt, personaId: string) => {
+    broadcast(eventChannels.activePersonaChanged, { personaId });
+  });
   ipcMain.handle(invokeChannels.selectedModelChanged, async (_evt, modelId: string) => {
     broadcast(eventChannels.selectedModelChanged, { modelId });
   });
@@ -324,6 +329,15 @@ export function registerHandlers(opts: RegisterOptions): void {
   );
   ipcMain.handle(invokeChannels.windowsHidePicker, async () => {
     hideWindow('picker');
+  });
+  ipcMain.handle(
+    invokeChannels.toastShow,
+    async (_evt, msg: string, kind: 'error' | 'warn' | 'info') => {
+      showToast({ msg, kind }, windowOptions);
+    },
+  );
+  ipcMain.handle(invokeChannels.toastDismiss, async () => {
+    hideToast();
   });
 
   // ── Permissions ──

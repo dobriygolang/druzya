@@ -62,12 +62,15 @@ export function HistoryScreen() {
         height: '100%',
         display: 'flex',
         flexDirection: 'column',
-        background: 'var(--d-bg-1)',
-        border: '1px solid var(--d-line)',
-        borderRadius: 'var(--r-window)',
-        boxShadow: 'var(--s-window)',
+        background: 'oklch(0.14 0.035 280 / var(--d9-window-alpha))',
+        border: '0.5px solid var(--d9-hairline-b)',
+        borderRadius: 'var(--d9-r-xl)',
+        boxShadow: 'var(--d9-shadow-win)',
         overflow: 'hidden',
+        color: 'var(--d9-ink)',
+        fontFamily: 'var(--d9-font-sans)',
       }}
+      className="d9-root"
     >
       {/* Header */}
       <div

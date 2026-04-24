@@ -11,10 +11,12 @@ interface Props {
   title?: string;
   /** Show caret. Default true. Hide for read-only display contexts. */
   interactive?: boolean;
+  /** Whether the controlled dropdown is open — rotates the caret. */
+  open?: boolean;
   leading?: ReactNode;
 }
 
-export function ModelPill({ label, onClick, title, interactive = true, leading }: Props) {
+export function ModelPill({ label, onClick, title, interactive = true, open, leading }: Props) {
   return (
     <button
       type="button"
@@ -37,8 +39,15 @@ export function ModelPill({ label, onClick, title, interactive = true, leading }
         fontFamily: 'var(--d9-font-mono)',
         letterSpacing: '-0.01em',
         cursor: interactive ? 'pointer' : 'default',
+        transition: 'color 120ms var(--d9-ease)',
         WebkitAppRegion: 'no-drag',
       } as React.CSSProperties}
+      onMouseEnter={(e) => {
+        if (interactive) e.currentTarget.style.color = 'var(--d9-ink)';
+      }}
+      onMouseLeave={(e) => {
+        if (interactive) e.currentTarget.style.color = 'var(--d9-ink-dim)';
+      }}
     >
       {leading ?? (
         <span
@@ -57,7 +66,7 @@ export function ModelPill({ label, onClick, title, interactive = true, leading }
         textOverflow: 'ellipsis',
         whiteSpace: 'nowrap',
       }}>{label}</span>
-      {interactive && <Caret />}
+      {interactive && <Caret open={open} />}
     </button>
   );
 }

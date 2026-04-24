@@ -32,7 +32,8 @@ import { IconHistory, IconSend } from '../../components/icons';
 import { ProviderPicker } from '../../components/ProviderPicker';
 import { useConfig } from '../../hooks/use-config';
 import { exportConversationAsMarkdown } from '../../lib/export-markdown';
-import { useAppearanceStore, sliderToAlpha } from '../../stores/appearance';
+// Appearance slider now writes --d9-window-alpha globally via app.tsx —
+// we just consume that var below, no need to hook the store here.
 import { useConversationStore, type UIMessage } from '../../stores/conversation';
 import { usePersonaStore } from '../../stores/persona';
 import { useQuotaStore } from '../../stores/quota';
@@ -57,19 +58,12 @@ export function ExpandedScreen() {
   useEffect(() => { void personaBootstrap(); }, [personaBootstrap]);
 
   const quota = useQuotaStore((s) => s.quota);
-  const refreshQuota = useQuotaStore((s) => s.refresh);
-  useEffect(() => { void refreshQuota(); }, [refreshQuota]);
-
-  // Appearance — bootstrap once + re-subscribe if remounted. Alpha value
-  // drives the rgba scrim behind the glass.
-  const opacitySlider = useAppearanceStore((s) => s.expandedOpacity);
-  const appearanceBootstrap = useAppearanceStore((s) => s.bootstrap);
+  const bootstrapQuota = useQuotaStore((s) => s.bootstrap);
   useEffect(() => {
     let unsub: (() => void) | null = null;
-    void appearanceBootstrap().then((u) => { unsub = u; });
+    void bootstrapQuota().then((u) => { unsub = u; });
     return () => { if (unsub) unsub(); };
-  }, [appearanceBootstrap]);
-  const bgAlpha = sliderToAlpha(opacitySlider);
+  }, [bootstrapQuota]);
 
   const [draft, setDraft] = useState('');
   const [focused, setFocused] = useState(false);
@@ -177,7 +171,7 @@ export function ExpandedScreen() {
         // true` on the BrowserWindow (main/windows/window-manager.ts
         // 'expanded' case) lets desktop show through; alpha controlled
         // by Appearance slider. No OS vibrancy (Tahoe 26.x regressions).
-        background: `oklch(0.14 0.035 280 / ${bgAlpha})`,
+        background: 'oklch(0.14 0.035 280 / var(--d9-window-alpha))',
         border: '0.5px solid var(--d9-hairline-b)',
         borderRadius: 'var(--d9-r-xl)',
         boxShadow: 'var(--d9-shadow-win)',

@@ -1,9 +1,16 @@
-// BrandMark — gradient pill with the editorial "9" glyph. Accepts
-// a persona slug ("react", "sysdesign", "sre", "behav", "dsa") which
-// sets the gradient via the .d9-grad-* utility classes in tokens.css.
-// The `accent` fallback is used when the persona id is not one of the
-// known gradients (e.g. server-driven personas with a custom gradient
-// string in their `brand_gradient` column — we fall back to accent).
+// BrandMark — gradient pill with the "9" glyph. Glyph is drawn with
+// Manrope 800 (bold sans), matching the web favicon in
+// `frontend/public/favicon.svg`. Italic Instrument Serif was tried
+// earlier and rejected — reads as decorative vs. the rest of the
+// product type.
+//
+// Accepts:
+//   - `persona` id ("react" / "sysdesign" / "sre" / "behav" / "dsa")
+//     which maps to a `.d9-grad-*` utility class in tokens.css.
+//   - `background` — raw gradient string override (takes precedence;
+//     lets the server-driven Persona table push arbitrary gradients).
+//
+// When the slug is unknown, falls back to the violet-plasma accent.
 
 import type { CSSProperties } from 'react';
 
@@ -28,8 +35,7 @@ export function resolvePersonaGradient(slug: string | undefined): BrandPersona {
 
 interface BrandMarkProps {
   persona?: string;
-  /** Raw gradient string. Takes precedence over `persona` when provided
-   *  (lets the server-driven Persona table push arbitrary gradients). */
+  /** Raw gradient string. Takes precedence over `persona` when provided. */
   background?: string;
   size?: number;
   /** Show the "9" glyph. Default true. Pass false for the bare square. */
@@ -46,28 +52,30 @@ export function BrandMark({
 }: BrandMarkProps) {
   const resolved = resolvePersonaGradient(persona);
   const className = background ? undefined : `d9-grad-${resolved}`;
+  // Glyph scales with container; 54% feels balanced (roman digit has
+  // less optical weight than the italic serif ran before).
+  const fontSize = Math.round(size * 0.54);
   return (
     <div
       className={className}
       style={{
         width: size,
         height: size,
-        borderRadius: size * 0.32,
+        borderRadius: size * 0.28,
         background,
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
         boxShadow:
-          'inset 0 0.5px 0 rgba(255,255,255,0.3), ' +
-          'inset 0 -0.5px 0 rgba(0,0,0,0.15), ' +
+          'inset 0 0.5px 0 rgba(255,255,255,0.28), ' +
+          'inset 0 -0.5px 0 rgba(0,0,0,0.18), ' +
           '0 1px 2px rgba(0,0,0,0.35), ' +
           '0 0 14px -4px currentColor',
-        fontFamily: 'var(--d9-font-display)',
-        fontStyle: 'italic',
-        fontSize: size * 0.6,
-        fontWeight: 500,
+        fontFamily: 'var(--d9-font-sans)',
+        fontWeight: 800,
+        fontSize,
         lineHeight: 1,
-        letterSpacing: '-0.04em',
+        letterSpacing: '-0.02em',
         color: 'rgba(255,255,255,0.97)',
         textShadow: '0 0.5px 0 rgba(0,0,0,0.25)',
         userSelect: 'none',
@@ -75,7 +83,7 @@ export function BrandMark({
         ...style,
       }}
     >
-      {glyph && <span style={{ transform: 'translateY(1px)' }}>9</span>}
+      {glyph && <span style={{ transform: 'translateY(0.5px)' }}>9</span>}
     </div>
   );
 }
