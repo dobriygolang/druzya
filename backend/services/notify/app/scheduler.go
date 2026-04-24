@@ -9,18 +9,43 @@ import (
 	sharedDomain "druz9/shared/domain"
 )
 
+// SchedulerStateStore persists the last-fired bucket timestamp so API
+// restarts inside the target hour don't re-trigger the broadcast. Nil store
+// falls back to in-memory semantics (ok for tests, NOT ok for prod — каждый
+// рестарт в воскресенье 20:XX начнёт fanout заново всем weekly-subscribers).
+type SchedulerStateStore interface {
+	GetLastFired(ctx context.Context, key string) (time.Time, error)
+	SetLastFired(ctx context.Context, key string, t time.Time, ttl time.Duration) error
+}
+
 // WeeklyReportScheduler fires WeeklyReportDue events for each user with the
 // opt-in enabled, every Sunday at cfg.Hour local time. Implemented as a ticker
 // checking the target moment — simpler than pulling in a cron lib for a single
 // scheduled job.
+//
+// Idempotency: lastFired bucket persisted through Store. Если Store задан и
+// вернул bucket >= текущего часа-бакета — считаем что уже стреляли в этом
+// окне и пропускаем fire, даже если API только что рестартовал. Без этого
+// деплой в окно воскресенья 20:00-20:59 ронял повторный broadcast всем
+// пользователям (регрессия 2026-04).
 type WeeklyReportScheduler struct {
 	Prefs    domain.PreferencesRepo
 	Bus      sharedDomain.Bus
 	Log      *slog.Logger
-	Location *time.Location // target TZ (defaults to UTC)
-	Hour     int            // 0-23; default 20
-	Weekday  time.Weekday   // default time.Sunday
+	Store    SchedulerStateStore // nil → in-memory (только для тестов)
+	Location *time.Location      // target TZ (defaults to UTC)
+	Hour     int                 // 0-23; default 20
+	Weekday  time.Weekday        // default time.Sunday
 }
+
+// weeklyStoreKey — Redis-ключ для persist. Меняется только при breaking
+// change формата (миграцию делать через переименование ключа).
+const weeklyStoreKey = "notify:scheduler:weekly:last_fired"
+
+// weeklyStoreTTL — 8 дней. Дольше чем один week-interval, чтобы ключ не
+// исчез между недельными fire'ами, но достаточно короткий чтобы не
+// замусоривать Redis вечно при деактивации feature'а.
+const weeklyStoreTTL = 8 * 24 * time.Hour
 
 // Run blocks until ctx is cancelled. Ticker interval is 1 minute — good
 // enough granularity for a weekly job.
@@ -35,7 +60,20 @@ func (s *WeeklyReportScheduler) Run(ctx context.Context) {
 		s.Weekday = time.Sunday
 	}
 
+	// На старте загружаем lastFired из persistent-store, иначе при каждом
+	// рестарте API в час X попадаем в бранч fire. См. struct-комментарий.
 	var lastFired time.Time
+	if s.Store != nil {
+		if t, err := s.Store.GetLastFired(ctx, weeklyStoreKey); err == nil {
+			lastFired = t
+			s.Log.Info("notify.scheduler.weekly: restored lastFired from store",
+				slog.Time("last_fired", lastFired))
+		} else {
+			s.Log.Warn("notify.scheduler.weekly: store GetLastFired failed, starting cold",
+				slog.Any("err", err))
+		}
+	}
+
 	tick := time.NewTicker(time.Minute)
 	defer tick.Stop()
 
@@ -59,6 +97,18 @@ func (s *WeeklyReportScheduler) Run(ctx context.Context) {
 				continue
 			}
 			lastFired = bucket
+			// Persist ПЕРЕД fireOnce — если процесс упадёт во время fan-out'а
+			// и не дойдёт до конца, следующий запуск ВСЁ РАВНО не будет
+			// повторять (лучше потерять часть уведомлений, чем спамить всех
+			// дважды). Частичный fanout сам по себе идемпотентен на уровне
+			// отправки: Notifications_log + rate-limit dedup'ит дубли при
+			// ретрае в течение ~1 минуты.
+			if s.Store != nil {
+				if err := s.Store.SetLastFired(ctx, weeklyStoreKey, bucket, weeklyStoreTTL); err != nil {
+					s.Log.Warn("notify.scheduler.weekly: store SetLastFired failed",
+						slog.Any("err", err))
+				}
+			}
 			s.fireOnce(ctx, bucket)
 		}
 	}

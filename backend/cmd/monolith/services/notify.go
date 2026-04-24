@@ -78,8 +78,17 @@ func NewNotify(d Deps) (*NotifyModule, error) {
 		},
 		RateLimit: rl, Log: d.Log, PoolSize: 2,
 	}
+	// Persistent state-store для scheduler'а идемпотентности. Важно:
+	// присваиваем в interface-поле только если конкретный тип не nil,
+	// иначе Go typed-nil ловушка — scheduler получит non-nil interface
+	// с nil-pointer и панкнет на первом же вызове метода.
+	var schedStore notifyApp.SchedulerStateStore
+	if d.Redis != nil {
+		schedStore = notifyInfra.NewRedisSchedulerState(d.Redis)
+	}
 	sched := &notifyApp.WeeklyReportScheduler{
 		Prefs: pg, Bus: d.Bus, Log: d.Log,
+		Store:    schedStore,
 		Location: time.UTC, Hour: 20, Weekday: time.Sunday,
 	}
 
