@@ -162,6 +162,9 @@ func NewHone(d Deps) *Module {
 	if d.Redis != nil {
 		server = server.WithPlanLimiter(ratelimit.NewRedisFixedWindow(d.Redis))
 	}
+	// Pro-gate для премиум-RPC (GeneratePlan / Critique / Connections).
+	// nil-safe: subscription-таблица нет — все Pro, gate выключен.
+	server = server.WithTier(NewHoneTierAdapter(d.Pool))
 	// Per-procedure Prometheus metrics (Connect-слой) — ChiMiddleware дает
 	// только route-level агрегат, который для RPC мало полезен.
 	connectPath, connectHandler := druz9v1connect.NewHoneServiceHandler(

@@ -36,3 +36,10 @@ var ErrEmbeddingUnavailable = errors.New("hone: embedding unavailable")
 // standard-library errors возврат этого sentinel'а НЕ значит, что request
 // пришёл поломанным — валидация wire-формата делается в proto-слое.
 var ErrInvalidInput = errors.New("hone: invalid input")
+
+// ErrProRequired — пользователь аутентифицирован, но его subscription tier
+// ниже требуемого. Возвращается для premium endpoint'ов (GeneratePlan,
+// CritiqueWhiteboard, GetNoteConnections). Маппится в connect.CodePermissionDenied
+// (HTTP 403) с сообщением «upgrade to Pro» — клиент знает что показать
+// paywall, а не auth-error.
+var ErrProRequired = errors.New("hone: pro subscription required")

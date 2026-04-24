@@ -381,6 +381,8 @@ function errorHeadline(code: Code | null): string {
       return 'AI is resting — plan generator is offline.';
     case Code.ResourceExhausted:
       return 'Regenerations limited: try again in a few minutes.';
+    case Code.PermissionDenied:
+      return 'druz9 Pro required. Upgrade to unlock AI-generated plans.';
     default:
       return 'Could not load your plan right now.';
   }

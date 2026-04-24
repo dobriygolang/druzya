@@ -55,6 +55,10 @@ type HoneServer struct {
 	// pass through unlimited — the only cost is shared LLM-quota burn, which
 	// matters in production and not in dev.
 	PlanLimiter *ratelimit.RedisFixedWindow
+	// Tier nil-safe: когда nil (в dev или когда subscription-сервис не
+	// зависел ещё), premium-gate'ы пропускают всех — это сознательный
+	// fallback, не fake'им subscription-status.
+	Tier domain.TierReader
 }
 
 // NewHoneServer wires a HoneServer around the Handler.
@@ -67,6 +71,33 @@ func (s *HoneServer) WithPlanLimiter(l *ratelimit.RedisFixedWindow) *HoneServer 
 	return s
 }
 
+// WithTier — attach subscription tier reader для premium-gate'а.
+// nil-safe: не вызывать = все premium-RPC открыты.
+func (s *HoneServer) WithTier(t domain.TierReader) *HoneServer {
+	s.Tier = t
+	return s
+}
+
+// requirePro проверяет tier перед вызовом premium handler'а. Возвращает
+// nil если gate не вооружён (Tier == nil) или пользователь Pro.
+func (s *HoneServer) requirePro(ctx context.Context, uid uuid.UUID) error {
+	if s.Tier == nil {
+		return nil
+	}
+	ok, err := s.Tier.IsPro(ctx, uid)
+	if err != nil {
+		// Fail-open: транзиентная ошибка subscription-БД не должна
+		// ломать Pro-юзера. Логируется ниже в toConnectErr.
+		s.H.Log.Warn("hone.requirePro: tier check failed (fail-open)",
+			slog.Any("err", err), slog.String("user_id", uid.String()))
+		return nil
+	}
+	if !ok {
+		return domain.ErrProRequired
+	}
+	return nil
+}
+
 // ─── Plan ──────────────────────────────────────────────────────────────────
 
 // GenerateDailyPlan implements druz9.v1.HoneService/GenerateDailyPlan.
@@ -77,6 +108,9 @@ func (s *HoneServer) GenerateDailyPlan(
 	uid, err := requireUser(ctx)
 	if err != nil {
 		return nil, err
+	}
+	if gerr := s.requirePro(ctx, uid); gerr != nil {
+		return nil, fmt.Errorf("hone.GenerateDailyPlan: %w", s.toConnectErr(gerr))
 	}
 	if req.Msg.GetForce() && s.PlanLimiter != nil {
 		key := "rl:hone:plan:force:" + uid.String()
@@ -354,6 +388,9 @@ func (s *HoneServer) GetNoteConnections(
 	if err != nil {
 		return err
 	}
+	if gerr := s.requirePro(ctx, uid); gerr != nil {
+		return fmt.Errorf("hone.GetNoteConnections: %w", s.toConnectErr(gerr))
+	}
 	id, parseErr := uuid.Parse(req.Msg.GetNoteId())
 	if parseErr != nil {
 		return connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("invalid note_id: %w", parseErr))
@@ -542,6 +579,9 @@ func (s *HoneServer) CritiqueWhiteboard(
 	if err != nil {
 		return err
 	}
+	if gerr := s.requirePro(ctx, uid); gerr != nil {
+		return fmt.Errorf("hone.CritiqueWhiteboard: %w", s.toConnectErr(gerr))
+	}
 	id, parseErr := uuid.Parse(req.Msg.GetId())
 	if parseErr != nil {
 		return connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("invalid id: %w", parseErr))
@@ -579,6 +619,8 @@ func (s *HoneServer) toConnectErr(err error) error {
 		return connect.NewError(connect.CodeAborted, err)
 	case errors.Is(err, domain.ErrInvalidInput):
 		return connect.NewError(connect.CodeInvalidArgument, err)
+	case errors.Is(err, domain.ErrProRequired):
+		return connect.NewError(connect.CodePermissionDenied, err)
 	case errors.Is(err, domain.ErrLLMUnavailable), errors.Is(err, domain.ErrEmbeddingUnavailable):
 		s.H.Log.Warn("hone: AI subsystem unavailable", slog.Any("err", err))
 		return connect.NewError(connect.CodeUnavailable, err)

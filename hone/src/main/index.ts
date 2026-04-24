@@ -31,6 +31,7 @@ import { URL } from 'node:url';
 import { eventChannels, invokeChannels, type AuthSession } from '@shared/ipc';
 import { clearSession, loadSession, saveSession } from './keychain';
 import { loadPomodoro, savePomodoro } from './pomodoro_store';
+import { checkForUpdates, quitAndInstall, startPeriodicCheck, wireUpdater } from './updater';
 
 // Sentry: main-process handler. DSN приходит из env (HONE_SENTRY_DSN) в
 // prod-билде через electron-builder config; пустая DSN → no-op, что
@@ -223,9 +224,20 @@ app.whenReady().then(() => {
     }
   });
 
+  ipcMain.handle(invokeChannels.updaterCheck, async () => {
+    await checkForUpdates();
+  });
+  ipcMain.handle(invokeChannels.updaterInstall, async () => {
+    quitAndInstall();
+  });
+
   // ── Window ─────────────────────────────────────────────────────────────
   consumeColdStartURL();
   mainWindow = createMainWindow();
+
+  // Updater: wire events to renderer + kick periodic check.
+  wireUpdater(() => mainWindow);
+  startPeriodicCheck();
 
   // Доставка отложенного deep-link'а после первого render'а.
   mainWindow.webContents.once('did-finish-load', () => {

@@ -1,0 +1,178 @@
+{
+  "title": "druz9 — Hone",
+  "uid": "druz9-hone",
+  "schemaVersion": 39,
+  "version": 1,
+  "editable": true,
+  "tags": ["druz9", "hone"],
+  "refresh": "1m",
+  "time": { "from": "now-24h", "to": "now" },
+  "templating": {
+    "list": [
+      {
+        "name": "prom",
+        "type": "datasource",
+        "query": "prometheus",
+        "current": { "text": "Prometheus", "value": "Prometheus" }
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "type": "stat",
+      "title": "Plan regens / hour",
+      "description": "GenerateDailyPlan RPC rate, включает force=true после rate-limit'а.",
+      "datasource": { "type": "prometheus", "uid": "${prom}" },
+      "gridPos": { "x": 0, "y": 0, "w": 6, "h": 5 },
+      "targets": [
+        {
+          "expr": "sum(rate(druz9_connect_requests_total{procedure=~\".*HoneService/GenerateDailyPlan\"}[1h])) * 3600",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": { "defaults": { "unit": "short", "decimals": 0 } }
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "Focus sessions started (1h)",
+      "datasource": { "type": "prometheus", "uid": "${prom}" },
+      "gridPos": { "x": 6, "y": 0, "w": 6, "h": 5 },
+      "targets": [
+        {
+          "expr": "sum(increase(druz9_connect_requests_total{procedure=~\".*HoneService/StartFocusSession\",code=\"ok\"}[1h]))",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": { "defaults": { "unit": "short", "decimals": 0 } }
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "Notes created / 24h",
+      "datasource": { "type": "prometheus", "uid": "${prom}" },
+      "gridPos": { "x": 12, "y": 0, "w": 6, "h": 5 },
+      "targets": [
+        {
+          "expr": "sum(increase(druz9_connect_requests_total{procedure=~\".*HoneService/CreateNote\",code=\"ok\"}[24h]))",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": { "defaults": { "unit": "short" } }
+    },
+    {
+      "id": 4,
+      "type": "stat",
+      "title": "Standup notes / 24h",
+      "datasource": { "type": "prometheus", "uid": "${prom}" },
+      "gridPos": { "x": 18, "y": 0, "w": 6, "h": 5 },
+      "targets": [
+        {
+          "expr": "sum(increase(druz9_connect_requests_total{procedure=~\".*HoneService/RecordStandup\",code=\"ok\"}[24h]))",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": { "defaults": { "unit": "short" } }
+    },
+    {
+      "id": 10,
+      "type": "timeseries",
+      "title": "RPC latency (p99) per procedure",
+      "description": "SLO: p99 < 2s для unary, < 30s для critique/connections streams.",
+      "datasource": { "type": "prometheus", "uid": "${prom}" },
+      "gridPos": { "x": 0, "y": 5, "w": 24, "h": 8 },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.99, sum by (procedure, le) (rate(druz9_connect_request_duration_seconds_bucket{procedure=~\".*HoneService/.*\"}[5m])))",
+          "legendFormat": "{{procedure}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": { "defaults": { "unit": "s" } }
+    },
+    {
+      "id": 11,
+      "type": "timeseries",
+      "title": "RPC error rate per procedure",
+      "description": "Non-'ok' code ratio. Alert > 2% for 5m.",
+      "datasource": { "type": "prometheus", "uid": "${prom}" },
+      "gridPos": { "x": 0, "y": 13, "w": 24, "h": 8 },
+      "targets": [
+        {
+          "expr": "sum by (procedure) (rate(druz9_connect_requests_total{procedure=~\".*HoneService/.*\",code!=\"ok\"}[5m])) / sum by (procedure) (rate(druz9_connect_requests_total{procedure=~\".*HoneService/.*\"}[5m]))",
+          "legendFormat": "{{procedure}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": { "defaults": { "unit": "percentunit", "max": 1, "min": 0 } }
+    },
+    {
+      "id": 20,
+      "type": "timeseries",
+      "title": "LLM latency — plan synth + critique",
+      "datasource": { "type": "prometheus", "uid": "${prom}" },
+      "gridPos": { "x": 0, "y": 21, "w": 12, "h": 7 },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum by (type, le) (rate(druz9_llm_request_duration_seconds_bucket{type=~\"DailyPlanSynthesis|SysDesignCritique\"}[5m])))",
+          "legendFormat": "p95 {{type}}",
+          "refId": "A"
+        },
+        {
+          "expr": "histogram_quantile(0.5, sum by (type, le) (rate(druz9_llm_request_duration_seconds_bucket{type=~\"DailyPlanSynthesis|SysDesignCritique\"}[5m])))",
+          "legendFormat": "p50 {{type}}",
+          "refId": "B"
+        }
+      ],
+      "fieldConfig": { "defaults": { "unit": "s" } }
+    },
+    {
+      "id": 21,
+      "type": "timeseries",
+      "title": "LLM RUB spend — Hone (per 5m)",
+      "datasource": { "type": "prometheus", "uid": "${prom}" },
+      "gridPos": { "x": 12, "y": 21, "w": 12, "h": 7 },
+      "targets": [
+        {
+          "expr": "sum by (model) (rate(druz9_llm_cost_rub_total[5m])) * 300",
+          "legendFormat": "{{model}}",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": { "defaults": { "unit": "currencyRUB" } }
+    },
+    {
+      "id": 30,
+      "type": "timeseries",
+      "title": "Rate-limit hits — GenerateDailyPlan force=true",
+      "description": "429 ResourceExhausted per procedure. Ожидаем < 10/min — выше = bot или баг в клиенте.",
+      "datasource": { "type": "prometheus", "uid": "${prom}" },
+      "gridPos": { "x": 0, "y": 28, "w": 12, "h": 6 },
+      "targets": [
+        {
+          "expr": "sum(rate(druz9_connect_requests_total{procedure=~\".*HoneService/GenerateDailyPlan\",code=\"resource_exhausted\"}[5m]))",
+          "legendFormat": "429/sec",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": { "defaults": { "unit": "short" } }
+    },
+    {
+      "id": 31,
+      "type": "timeseries",
+      "title": "Unavailable rate (LLM offline)",
+      "description": "Code=Unavailable = llmchain floor-адаптер или Ollama недоступен.",
+      "datasource": { "type": "prometheus", "uid": "${prom}" },
+      "gridPos": { "x": 12, "y": 28, "w": 12, "h": 6 },
+      "targets": [
+        {
+          "expr": "sum(rate(druz9_connect_requests_total{procedure=~\".*HoneService/.*\",code=\"unavailable\"}[5m]))",
+          "legendFormat": "503/sec",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": { "defaults": { "unit": "short" } }
+    }
+  ]
+}

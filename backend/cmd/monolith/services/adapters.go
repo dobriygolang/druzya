@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	authApp "druz9/auth/app"
 	authDomain "druz9/auth/domain"
@@ -13,6 +14,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -170,3 +172,51 @@ func priorityForProgress(p int) string {
 		return "low"
 	}
 }
+
+// ─── honeTierAdapter — hone.domain.TierReader → subscription.GetTier ──────
+//
+// Читает из `subscriptions` таблицы напрямую через pgxpool. Почему не через
+// субсервис: hone-wiring строится до того как в graph'е появляется
+// subscription-модуль, а DAG'и нам пока не нужны. Запрос тот же что в
+// subscription.GetTier.Do — выполняется за ~2ms, не узкое место.
+
+type honeTierAdapter struct {
+	pool *pgxpool.Pool
+}
+
+// NewHoneTierAdapter — конструктор для monolith wiring'а.
+func NewHoneTierAdapter(pool *pgxpool.Pool) honeDomain.TierReader {
+	return &honeTierAdapter{pool: pool}
+}
+
+// IsPro возвращает true, когда tier == 'pro' И endpoint-период не истёк.
+// Отсутствие строки = free (не ошибка).
+func (a *honeTierAdapter) IsPro(ctx context.Context, userID uuid.UUID) (bool, error) {
+	const q = `
+SELECT tier,
+       status,
+       GREATEST(COALESCE(current_period_end, to_timestamp(0)),
+                COALESCE(grace_until,        to_timestamp(0))) AS valid_until
+FROM subscriptions
+WHERE user_id = $1`
+	var tier, status string
+	var validUntil pgtype.Timestamptz
+	err := a.pool.QueryRow(ctx, q, sharedpg.UUID(userID)).Scan(&tier, &status, &validUntil)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return false, nil
+		}
+		return false, fmt.Errorf("monolith.honeTierAdapter.IsPro: %w", err)
+	}
+	if tier != "pro" || status != "active" {
+		return false, nil
+	}
+	if validUntil.Valid && validUntil.Time.Before(timeNow()) {
+		return false, nil
+	}
+	return true, nil
+}
+
+// timeNow — индирекция для стабильных тестов, если позже понадобятся.
+// В проде равна time.Now().UTC().
+func timeNow() time.Time { return time.Now().UTC() }

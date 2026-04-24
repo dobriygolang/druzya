@@ -78,6 +78,19 @@ type DriftRow struct {
 	StoredDayExists bool
 }
 
+// ─── Subscription tier (cross-domain read-only reader) ─────────────────────
+
+// TierReader проверяет, активен ли у пользователя Pro-tier. Используется
+// транспортом hone'а для gate'инга premium-endpoint'ов (GeneratePlan,
+// CritiqueWhiteboard, GetNoteConnections).
+//
+// Реализация — adapter в monolith/services/adapters.go, который дёргает
+// subscription.GetTier и сравнивает с TierPro. Держим интерфейс в hone
+// domain'е, чтобы не тянуть subscription-пакет как прямую зависимость.
+type TierReader interface {
+	IsPro(ctx context.Context, userID uuid.UUID) (bool, error)
+}
+
 // ─── Resistance ────────────────────────────────────────────────────────────
 
 // ResistanceRepo — persist dismiss-event'ы для «chronic skip» детектора.

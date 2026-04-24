@@ -16,6 +16,7 @@ import { OnboardingModal } from './components/OnboardingModal';
 import { Palette, type PageId } from './components/Palette';
 import { Copilot } from './components/Copilot';
 import { StandupModal } from './components/StandupModal';
+import { UpdateToast } from './components/UpdateToast';
 import { HomePage } from './pages/Home';
 import { TodayPage, type StartFocusArgs } from './pages/Today';
 import { FocusPage } from './pages/Focus';
@@ -25,7 +26,7 @@ import { StatsPage } from './pages/Stats';
 import { useSessionStore } from './stores/session';
 
 const POMODORO_SECONDS = 25 * 60;
-const ONBOARDING_KEY = 'hone:onboarded:v1';
+const ONBOARDING_KEY = 'hone:onboarded:v2';
 
 export default function App() {
   const status = useSessionStore((s) => s.status);
@@ -329,6 +330,7 @@ export default function App() {
       {copilotOpen && <Copilot onClose={() => setCopilotOpen(false)} />}
       {standupOpen && <StandupModal onClose={() => setStandupOpen(false)} />}
       {onboardingOpen && <OnboardingModal onClose={dismissOnboarding} />}
+      <UpdateToast />
     </div>
   );
 }

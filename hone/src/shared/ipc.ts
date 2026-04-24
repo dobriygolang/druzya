@@ -12,11 +12,14 @@ export const invokeChannels = {
   pomodoroLoad: 'pomodoro:load',
   pomodoroSave: 'pomodoro:save',
   shellOpenExternal: 'shell:open-external',
+  updaterCheck: 'updater:check',
+  updaterInstall: 'updater:install',
 } as const;
 
 export const eventChannels = {
   deepLink: 'app:deep-link',
   authChanged: 'auth:changed',
+  updaterStatus: 'updater:status',
 } as const;
 
 /** Stable shape of the window.hone API exposed via contextBridge. */
@@ -37,6 +40,12 @@ export interface HoneAPI {
   };
   shell: {
     openExternal: (url: string) => Promise<void>;
+  };
+  updater: {
+    /** Kick manual update check. Idempotent — no-op if check in flight. */
+    check: () => Promise<void>;
+    /** Quit + install the already-downloaded update. */
+    install: () => Promise<void>;
   };
   /** Subscribe to a main→renderer push (returns an unsubscribe fn). */
   on: <K extends keyof typeof eventChannels>(
@@ -71,4 +80,16 @@ export interface EventPayload {
   // authChanged — main говорит renderer'у «сессия обновилась» (например
   // пришёл OAuth deep-link). Renderer должен hydrate'нуть store.
   authChanged: AuthSession | null;
+  // updaterStatus — auto-update state machine.
+  //   'idle'       — после старта / после install отказа
+  //   'checking'   — pulling latest-mac.yml
+  //   'available'  — версия X доступна, загружаем
+  //   'downloaded' — готово к перезапуску, renderer показывает toast
+  //   'error'      — с message'ом (feed 404, network, etc.)
+  updaterStatus:
+    | { kind: 'idle' }
+    | { kind: 'checking' }
+    | { kind: 'available'; version: string }
+    | { kind: 'downloaded'; version: string }
+    | { kind: 'error'; message: string };
 }

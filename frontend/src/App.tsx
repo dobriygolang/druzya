@@ -51,6 +51,11 @@ const CopilotLandingPage = lazy(() => import('./pages/CopilotLandingPage'))
 const CopilotReportPage = lazy(() =>
   import('./pages/CopilotReportPage').then((m) => ({ default: m.CopilotReportPage })),
 )
+// Phase 6 — public landing для Hone (desktop focus cockpit). Параллелен
+// /copilot; линкуется из welcome/footer. Публичный роут (без auth-gate'а).
+const HonePage = lazy(() => import('./pages/HonePage'))
+const LegalTermsPage = lazy(() => import('./pages/LegalTermsPage'))
+const LegalPrivacyPage = lazy(() => import('./pages/LegalPrivacyPage'))
 const LoginPage = lazy(() => import('./pages/LoginPage'))
 const AuthCallbackYandexPage = lazy(() => import('./pages/AuthCallbackYandexPage'))
 const OnboardingPage = lazy(() => import('./pages/OnboardingPage'))
@@ -160,6 +165,10 @@ export default function App() {
             The desktop's Summary modal "Открыть в браузере" button
             opens this URL. Backend reportURLTemplate points here. */}
         <Route path="/copilot/reports/:sessionId" element={<CopilotReportPage />} />
+        {/* Hone — public landing + legal pages (ToS, Privacy). */}
+        <Route path="/hone" element={<HonePage />} />
+        <Route path="/legal/terms" element={<LegalTermsPage />} />
+        <Route path="/legal/privacy" element={<LegalPrivacyPage />} />
         <Route path="/login" element={<LoginPage />} />
         <Route path="/auth/callback/yandex" element={<AuthCallbackYandexPage />} />
         <Route path="/onboarding" element={<OnboardingPage />} />
