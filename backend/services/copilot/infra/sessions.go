@@ -15,6 +15,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -134,11 +135,12 @@ func (r *Sessions) ListForUser(
 			break
 		}
 		s := domain.Session{
-			ID:        sharedpg.UUIDFrom(row.ID),
-			UserID:    sharedpg.UUIDFrom(row.UserID),
-			Kind:      domain.SessionKind(row.Kind),
-			StartedAt: row.StartedAt.Time,
-			BYOKOnly:  row.ByokOnly,
+			ID:          sharedpg.UUIDFrom(row.ID),
+			UserID:      sharedpg.UUIDFrom(row.UserID),
+			Kind:        domain.SessionKind(row.Kind),
+			StartedAt:   row.StartedAt.Time,
+			BYOKOnly:    row.ByokOnly,
+			DocumentIDs: uuidsFromPg(row.DocumentIds),
 		}
 		if row.FinishedAt.Valid {
 			t := row.FinishedAt.Time
@@ -164,6 +166,36 @@ func (r *Sessions) AttachConversation(ctx context.Context, conversationID, sessi
 		SessionID: sharedpg.UUID(sessionID),
 	}); err != nil {
 		return fmt.Errorf("copilot.Sessions.AttachConversation: %w", err)
+	}
+	return nil
+}
+
+func (r *Sessions) AttachDocument(ctx context.Context, sessionID, userID, docID uuid.UUID) error {
+	n, err := r.q.AttachDocumentToSession(ctx, copilotdb.AttachDocumentToSessionParams{
+		ID:      sharedpg.UUID(sessionID),
+		UserID:  sharedpg.UUID(userID),
+		Column3: sharedpg.UUID(docID),
+	})
+	if err != nil {
+		return fmt.Errorf("copilot.Sessions.AttachDocument: %w", err)
+	}
+	if n == 0 {
+		return fmt.Errorf("copilot.Sessions.AttachDocument: %w", domain.ErrNotFound)
+	}
+	return nil
+}
+
+func (r *Sessions) DetachDocument(ctx context.Context, sessionID, userID, docID uuid.UUID) error {
+	n, err := r.q.DetachDocumentFromSession(ctx, copilotdb.DetachDocumentFromSessionParams{
+		ID:      sharedpg.UUID(sessionID),
+		UserID:  sharedpg.UUID(userID),
+		Column3: sharedpg.UUID(docID),
+	})
+	if err != nil {
+		return fmt.Errorf("copilot.Sessions.DetachDocument: %w", err)
+	}
+	if n == 0 {
+		return fmt.Errorf("copilot.Sessions.DetachDocument: %w", domain.ErrNotFound)
 	}
 	return nil
 }
@@ -280,17 +312,32 @@ func (r *Reports) Fail(ctx context.Context, sessionID uuid.UUID, errMsg string) 
 
 func sessionFromRow(r copilotdb.CopilotSession) domain.Session {
 	s := domain.Session{
-		ID:        sharedpg.UUIDFrom(r.ID),
-		UserID:    sharedpg.UUIDFrom(r.UserID),
-		Kind:      domain.SessionKind(r.Kind),
-		StartedAt: r.StartedAt.Time,
-		BYOKOnly:  r.ByokOnly,
+		ID:          sharedpg.UUIDFrom(r.ID),
+		UserID:      sharedpg.UUIDFrom(r.UserID),
+		Kind:        domain.SessionKind(r.Kind),
+		StartedAt:   r.StartedAt.Time,
+		BYOKOnly:    r.ByokOnly,
+		DocumentIDs: uuidsFromPg(r.DocumentIds),
 	}
 	if r.FinishedAt.Valid {
 		t := r.FinishedAt.Time
 		s.FinishedAt = &t
 	}
 	return s
+}
+
+// uuidsFromPg converts sqlc's pgtype.UUID slice into plain uuid.UUID.
+// Empty/nil in → empty slice out (never nil) so caller doesn't need a
+// separate nil-check before ranging.
+func uuidsFromPg(in []pgtype.UUID) []uuid.UUID {
+	if len(in) == 0 {
+		return []uuid.UUID{}
+	}
+	out := make([]uuid.UUID, len(in))
+	for i, u := range in {
+		out[i] = sharedpg.UUIDFrom(u)
+	}
+	return out
 }
 
 func reportFromRow(r copilotdb.CopilotSessionReport) (domain.SessionReport, error) {

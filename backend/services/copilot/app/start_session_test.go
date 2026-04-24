@@ -41,6 +41,12 @@ func (f *fakeStartSessions) AttachConversation(context.Context, uuid.UUID, uuid.
 func (f *fakeStartSessions) ListConversations(context.Context, uuid.UUID) ([]domain.Conversation, error) {
 	panic("unexpected ListConversations")
 }
+func (f *fakeStartSessions) AttachDocument(context.Context, uuid.UUID, uuid.UUID, uuid.UUID) error {
+	panic("unexpected AttachDocument")
+}
+func (f *fakeStartSessions) DetachDocument(context.Context, uuid.UUID, uuid.UUID, uuid.UUID) error {
+	panic("unexpected DetachDocument")
+}
 
 // inMemoryLimiter — лимитер с фиксированным порогом и счётчиком на ключ.
 // 11-й вызов (при limit=10) возвращает ErrRateLimited.

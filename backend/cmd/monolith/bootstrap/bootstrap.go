@@ -146,8 +146,17 @@ func New(ctx context.Context, cfg *config.Config) (app *App, otelShutdown func()
 		services.NewAchievements(deps),
 		services.NewFriends(deps),
 		services.NewLobby(deps),
-		services.NewCopilot(deps),
 	}
+
+	// Documents module is wired first so its searcher adapter can be
+	// passed into copilot for RAG-context injection. When the module is
+	// disabled (OLLAMA_HOST unset) the searcher is nil and copilot's
+	// Analyze cleanly skips the RAG path.
+	documentsMod, docSearcher := services.NewDocuments(deps)
+	modules = append(modules,
+		documentsMod,
+		services.NewCopilot(deps, docSearcher),
+	)
 
 	registerSubscribers(bus, modules)
 

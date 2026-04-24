@@ -186,6 +186,11 @@ type SessionRepo interface {
 	// ListConversations returns all conversations the session owns.
 	// Used by the analyzer to assemble its input.
 	ListConversations(ctx context.Context, sessionID uuid.UUID) ([]Conversation, error)
+	// AttachDocument / DetachDocument mutate Session.DocumentIDs in
+	// place. Both are idempotent on the DB side (set-like array).
+	// Returns ErrNotFound when (sessionID, userID) doesn't match.
+	AttachDocument(ctx context.Context, sessionID, userID, docID uuid.UUID) error
+	DetachDocument(ctx context.Context, sessionID, userID, docID uuid.UUID) error
 }
 
 // SessionSummary adds the conversation count to a Session for the

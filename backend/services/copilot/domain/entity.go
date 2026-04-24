@@ -278,6 +278,13 @@ type Session struct {
 	// reach the server at all — the desktop runs its own local
 	// analysis instead.
 	BYOKOnly bool
+	// DocumentIDs — documents the user has attached to this session
+	// for RAG-context injection. Mutated via AttachDocument /
+	// DetachDocument on SessionRepo; kept set-like (no duplicates) at
+	// the DB layer. Stale ids (docs deleted while still referenced
+	// here) are tolerated — the searcher skips them via its own
+	// ownership check.
+	DocumentIDs []uuid.UUID
 }
 
 // IsFinished — helper for the "live session" partial unique index.

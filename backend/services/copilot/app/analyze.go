@@ -126,6 +126,17 @@ type Analyze struct {
 	// this handler are auto-attached to the user's live session (if any).
 	Sessions domain.SessionRepo
 
+	// DocSearcher is optional. When non-nil AND the user has a live
+	// session with attached documents, we pull the top-K relevant
+	// chunks per turn and inject them as an extra system message. Nil
+	// (no OLLAMA_HOST, no documents service) cleanly disables the path.
+	DocSearcher domain.DocumentSearcher
+
+	// RAGTopK caps how many chunks get injected per turn. Default 5.
+	// Higher values dilute the signal (more irrelevant context) and
+	// inflate the input token count.
+	RAGTopK int
+
 	// Compactor — опциональный фоновый суммаризатор. Если nil, sliding-
 	// window работает в режиме "только обрезка tail'а", без генерации
 	// running_summary. См. backend/shared/pkg/compaction.
@@ -183,8 +194,22 @@ func (uc *Analyze) Do(ctx context.Context, in AnalyzeInput) (<-chan StreamFrame,
 		return nil, fmt.Errorf("copilot.Analyze: %w: %s", domain.ErrModelNotAllowed, model)
 	}
 
-	// Resolve the conversation (new or existing).
-	var conv domain.Conversation
+	// Resolve the conversation (new or existing). We also look up the
+	// user's live session once here — it doubles as the auto-attach
+	// target for a freshly-created conversation AND as the source of
+	// attached document ids for the RAG injection below.
+	var (
+		conv         domain.Conversation
+		liveSession  domain.Session
+		haveLive     bool
+	)
+	if uc.Sessions != nil {
+		if live, lerr := uc.Sessions.GetLive(ctx, in.UserID); lerr == nil {
+			liveSession = live
+			haveLive = true
+		}
+	}
+
 	if in.ConversationID == uuid.Nil {
 		conv, err = uc.Conversations.Create(ctx, in.UserID, deriveTitle(in.PromptText), model)
 		if err != nil {
@@ -194,12 +219,10 @@ func (uc *Analyze) Do(ctx context.Context, in AnalyzeInput) (<-chan StreamFrame,
 		// best-effort: a failure here does NOT roll back the
 		// conversation create — the turn still succeeds, the session
 		// just misses one conversation.
-		if uc.Sessions != nil {
-			if live, lerr := uc.Sessions.GetLive(ctx, in.UserID); lerr == nil {
-				if aerr := uc.Sessions.AttachConversation(ctx, conv.ID, live.ID); aerr != nil && uc.Log != nil {
-					uc.Log.Warn("copilot.Analyze: attach to live session failed",
-						"err", aerr, "conv", conv.ID, "session", live.ID)
-				}
+		if haveLive {
+			if aerr := uc.Sessions.AttachConversation(ctx, conv.ID, liveSession.ID); aerr != nil && uc.Log != nil {
+				uc.Log.Warn("copilot.Analyze: attach to live session failed",
+					"err", aerr, "conv", conv.ID, "session", liveSession.ID)
 			}
 		}
 	} else {
@@ -246,7 +269,18 @@ func (uc *Analyze) Do(ctx context.Context, in AnalyzeInput) (<-chan StreamFrame,
 	// buildLLMMessages. OldTurns + NeedsCompaction пригодятся ПОСЛЕ stream'а,
 	// чтобы заказать фоновую пересборку summary.
 	window := compaction.BuildWindow(turnsFromMessages(prior), conv.RunningSummary, uc.compactionConfig())
-	llmMessages := buildLLMMessages(window.RunningSummary, turnsToMessages(window.Tail), in.PromptText, in.Attachments)
+
+	// RAG injection. We do this lazily — a searcher call is non-trivial
+	// (embed + similarity search). Conditions for triggering:
+	//   - a searcher is wired (OLLAMA_HOST set → documents module active);
+	//   - the user has a live session with at least one document;
+	//   - the prompt has a non-trivial query (≥ 3 non-space chars).
+	// The last one filters out image-only "what is this?"-style turns,
+	// where embedding an empty prompt yields a near-uniform vector and
+	// the top-K hits are effectively random.
+	docsContext := uc.buildDocsContext(ctx, haveLive, liveSession, in.PromptText)
+
+	llmMessages := buildLLMMessages(window.RunningSummary, docsContext, turnsToMessages(window.Tail), in.PromptText, in.Attachments)
 
 	// Open the LLM stream.
 	events, err := uc.LLM.Stream(ctx, domain.CompletionRequest{
@@ -465,17 +499,31 @@ func (uc *Analyze) priorMessages(ctx context.Context, conversationID, currentUse
 }
 
 // buildLLMMessages packs the system prompt + optional running-summary +
-// prior tail + current user turn (with images) into the provider-agnostic
-// shape. runningSummary — пустая строка у свежих диалогов; не-пустая
-// вставляется отдельным system-сообщением СРАЗУ после основного system-
-// промпта, чтобы LLM увидел конспект до конкретных turn'ов.
-func buildLLMMessages(runningSummary string, prior []domain.Message, currentText string, attachments []domain.AttachmentInput) []domain.LLMMessage {
-	out := make([]domain.LLMMessage, 0, len(prior)+3)
+// optional RAG docs context + prior tail + current user turn (with images)
+// into the provider-agnostic shape.
+//
+// Ordering rationale:
+//  1. systemPrompt — always first, sets the assistant's baseline behavior.
+//  2. runningSummary — если есть, compressed history (пост-компакции).
+//  3. docsContext — RAG hits from user's attached documents. Goes AFTER
+//     the summary so the assistant reads domain facts before replaying
+//     the conversational thread; this reduces the chance of the LLM
+//     latching onto an old summary fact that the new docs override.
+//  4. prior tail — raw recent turns.
+//  5. current user turn — with images.
+func buildLLMMessages(runningSummary, docsContext string, prior []domain.Message, currentText string, attachments []domain.AttachmentInput) []domain.LLMMessage {
+	out := make([]domain.LLMMessage, 0, len(prior)+4)
 	out = append(out, domain.LLMMessage{Role: enums.MessageRoleSystem, Content: systemPrompt})
 	if s := strings.TrimSpace(runningSummary); s != "" {
 		out = append(out, domain.LLMMessage{
 			Role:    enums.MessageRoleSystem,
 			Content: "Previous conversation summary:\n" + s,
+		})
+	}
+	if s := strings.TrimSpace(docsContext); s != "" {
+		out = append(out, domain.LLMMessage{
+			Role:    enums.MessageRoleSystem,
+			Content: s,
 		})
 	}
 	for _, m := range prior {
@@ -487,6 +535,51 @@ func buildLLMMessages(runningSummary string, prior []domain.Message, currentText
 		Images:  toLLMImages(attachments),
 	})
 	return out
+}
+
+// buildDocsContext runs the searcher and formats the hits into a single
+// system-message payload. Returns "" (no block at all) for any reason to
+// skip — missing searcher, no session, no docs, empty prompt, or a
+// transient search failure. We deliberately swallow search errors rather
+// than blocking the turn; RAG is a boost, not a gate.
+func (uc *Analyze) buildDocsContext(ctx context.Context, haveLive bool, session domain.Session, prompt string) string {
+	if uc.DocSearcher == nil || !haveLive || len(session.DocumentIDs) == 0 {
+		return ""
+	}
+	trimmed := strings.TrimSpace(prompt)
+	if len(trimmed) < 3 {
+		return ""
+	}
+	topK := uc.RAGTopK
+	if topK <= 0 {
+		topK = 5
+	}
+	hits, err := uc.DocSearcher.SearchForSession(ctx, session.UserID, session.DocumentIDs, trimmed, topK)
+	if err != nil {
+		if uc.Log != nil {
+			uc.Log.Warn("copilot.Analyze: RAG search failed — continuing without context",
+				"err", err, "user", session.UserID, "session", session.ID, "docs", len(session.DocumentIDs))
+		}
+		return ""
+	}
+	if len(hits) == 0 {
+		return ""
+	}
+
+	var b strings.Builder
+	b.WriteString("Relevant excerpts from the user's attached documents. Use them when they inform the answer; cite the source label in parentheses when you quote.\n\n")
+	for i, h := range hits {
+		if i > 0 {
+			b.WriteString("\n---\n")
+		}
+		if h.SourceLabel != "" {
+			b.WriteString("[")
+			b.WriteString(h.SourceLabel)
+			b.WriteString("]\n")
+		}
+		b.WriteString(h.Content)
+	}
+	return b.String()
 }
 
 // turnsFromMessages / turnsToMessages — конверсия между доменным Message

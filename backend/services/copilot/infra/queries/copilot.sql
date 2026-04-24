@@ -154,22 +154,41 @@ UPDATE copilot_quotas
 -- name: CreateCopilotSession :one
 -- A user may have at most one live (finished_at IS NULL) session; the
 -- unique partial index enforces this at the DB layer.
+-- document_ids defaults to '{}'; Attach/Detach queries mutate in-place.
 INSERT INTO copilot_sessions (user_id, kind)
 VALUES ($1, $2)
-RETURNING id, user_id, kind, started_at, finished_at, byok_only;
+RETURNING id, user_id, kind, started_at, finished_at, byok_only, document_ids;
 
 -- name: GetCopilotSession :one
-SELECT id, user_id, kind, started_at, finished_at, byok_only
+SELECT id, user_id, kind, started_at, finished_at, byok_only, document_ids
   FROM copilot_sessions
  WHERE id = $1;
 
 -- name: GetLiveCopilotSession :one
 -- Returns the user's currently-open session, if any. Used by the
--- Analyze use case to auto-attach turns.
-SELECT id, user_id, kind, started_at, finished_at, byok_only
+-- Analyze use case to auto-attach turns AND to pull document_ids for
+-- the RAG-context injection path.
+SELECT id, user_id, kind, started_at, finished_at, byok_only, document_ids
   FROM copilot_sessions
  WHERE user_id = $1
    AND finished_at IS NULL;
+
+-- name: AttachDocumentToSession :execrows
+-- Idempotent: unnest+DISTINCT keeps the array set-like. Returns 0 rows
+-- affected when (id, user_id) don't match — handler maps to 404 without
+-- disclosing foreign session existence.
+UPDATE copilot_sessions
+   SET document_ids = ARRAY(
+     SELECT DISTINCT x FROM unnest(array_append(document_ids, $3::UUID)) AS x
+   )
+ WHERE id = $1 AND user_id = $2;
+
+-- name: DetachDocumentFromSession :execrows
+-- array_remove is a no-op when the id isn't present, which matches the
+-- idempotency we want on the Attach side.
+UPDATE copilot_sessions
+   SET document_ids = array_remove(document_ids, $3::UUID)
+ WHERE id = $1 AND user_id = $2;
 
 -- name: EndCopilotSession :execrows
 UPDATE copilot_sessions
@@ -188,7 +207,7 @@ UPDATE copilot_sessions
 -- name: ListCopilotSessionsForUser :many
 -- Keyset pagination identical in shape to the conversation history query.
 -- Filter by kind is optional: pass empty string to return all kinds.
-SELECT s.id, s.user_id, s.kind, s.started_at, s.finished_at, s.byok_only,
+SELECT s.id, s.user_id, s.kind, s.started_at, s.finished_at, s.byok_only, s.document_ids,
        COALESCE(c.conv_count, 0)::INT AS conversation_count
   FROM copilot_sessions s
   LEFT JOIN (

@@ -23,7 +23,7 @@ import (
 //
 // Screenshot bytes still flow client → server → LLM → /dev/null. See
 // docs/copilot-architecture.md.
-func NewCopilot(d Deps) *Module {
+func NewCopilot(d Deps, docSearcher copilotDomain.DocumentSearcher) *Module {
 	conversations := copilotInfra.NewConversations(d.Pool)
 	messages := copilotInfra.NewMessages(d.Pool)
 	quotas := copilotInfra.NewQuotas(d.Pool)
@@ -67,6 +67,7 @@ func NewCopilot(d Deps) *Module {
 		LLM:           llm,
 		Config:        cfgProvider,
 		Sessions:      sessions, // auto-attach new turns to live session
+		DocSearcher:   docSearcher, // nil when documents module is disabled — RAG cleanly skipped
 		Compactor:     compactor,
 		CompactionCfg: compactionCfg,
 		Log:           d.Log,
@@ -122,6 +123,11 @@ func NewCopilot(d Deps) *Module {
 	connectPath, connectHandler := druz9v1connect.NewCopilotServiceHandler(server)
 	transcoder := mustTranscode("copilot", connectPath, connectHandler)
 
+	// Plain-REST handler for session↔document attach/detach. Sits
+	// alongside the Connect transcoder on the same module — mounted
+	// below in MountREST.
+	sessionDocs := &copilotPorts.SessionDocumentsHandler{Sessions: sessions, Log: d.Log}
+
 	return &Module{
 		ConnectPath:        connectPath,
 		ConnectHandler:     transcoder,
@@ -145,6 +151,10 @@ func NewCopilot(d Deps) *Module {
 			r.Post("/copilot/sessions/{sessionId}/end", transcoder.ServeHTTP)
 			r.Get("/copilot/sessions/{sessionId}/analysis", transcoder.ServeHTTP)
 			r.Get("/copilot/sessions", transcoder.ServeHTTP)
+
+			// Session ↔ documents attachment. Plain REST, not RPC —
+			// see ports/session_docs.go for rationale.
+			sessionDocs.Mount(r)
 		},
 		Background: []func(ctx context.Context){
 			// MUST go: App.Run calls each Background bg(rootCtx) inline,
