@@ -459,7 +459,7 @@ var (
 func newInviteToken() (string, error) {
 	var buf [16]byte
 	if _, err := rand.Read(buf[:]); err != nil {
-		return "", err
+		return "", fmt.Errorf("cohort.newInviteToken: %w", err)
 	}
 	// base64-url, no padding — keeps the link copy-paste friendly.
 	return base64.RawURLEncoding.EncodeToString(buf[:]), nil

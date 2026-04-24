@@ -11,6 +11,7 @@ require (
 	druz9/arena v0.0.0-00010101000000-000000000000
 	druz9/auth v0.0.0-00010101000000-000000000000
 	druz9/cohort v0.0.0-00010101000000-000000000000
+	druz9/cohort_announcement v0.0.0-00010101000000-000000000000
 	druz9/copilot v0.0.0-00010101000000-000000000000
 	druz9/daily v0.0.0-00010101000000-000000000000
 	druz9/editor v0.0.0-00010101000000-000000000000
@@ -18,7 +19,9 @@ require (
 	druz9/friends v0.0.0-00010101000000-000000000000
 	druz9/guild v0.0.0-00010101000000-000000000000
 	druz9/lobby v0.0.0-00010101000000-000000000000
+	druz9/mentor_session v0.0.0-00010101000000-000000000000
 	druz9/notify v0.0.0-00010101000000-000000000000
+	druz9/orgs v0.0.0-00010101000000-000000000000
 	druz9/podcast v0.0.0-00010101000000-000000000000
 	druz9/profile v0.0.0-00010101000000-000000000000
 	druz9/rating v0.0.0-00010101000000-000000000000
@@ -26,12 +29,13 @@ require (
 	druz9/season v0.0.0-00010101000000-000000000000
 	druz9/shared v0.0.0
 	druz9/slot v0.0.0-00010101000000-000000000000
+	druz9/tg_coach v0.0.0-00010101000000-000000000000
 	druz9/vacancies v0.0.0-00010101000000-000000000000
 	github.com/go-chi/chi/v5 v5.2.5
 	github.com/google/uuid v1.6.0
 	github.com/jackc/pgx/v5 v5.9.2
+	github.com/pressly/goose/v3 v3.19.2
 	github.com/redis/go-redis/v9 v9.6.1
-	golang.org/x/crypto v0.50.0
 )
 
 require (
@@ -57,7 +61,6 @@ require (
 	github.com/leodido/go-urn v1.4.0 // indirect
 	github.com/mfridman/interpolate v0.0.2 // indirect
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
-	github.com/pressly/goose/v3 v3.19.2 // indirect
 	github.com/prometheus/client_golang v1.20.5 // indirect
 	github.com/prometheus/client_model v0.6.1 // indirect
 	github.com/prometheus/common v0.55.0 // indirect
@@ -72,6 +75,7 @@ require (
 	go.opentelemetry.io/otel/trace v1.39.0 // indirect
 	go.opentelemetry.io/proto/otlp v1.3.1 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
+	golang.org/x/crypto v0.50.0 // indirect
 	golang.org/x/net v0.53.0 // indirect
 	golang.org/x/sync v0.20.0 // indirect
 	golang.org/x/sys v0.43.0 // indirect
@@ -127,3 +131,11 @@ replace druz9/copilot => ../../services/copilot
 replace druz9/lobby => ../../services/lobby
 
 replace druz9/review => ../../services/review
+
+replace druz9/cohort_announcement => ../../services/cohort_announcement
+
+replace druz9/mentor_session => ../../services/mentor_session
+
+replace druz9/orgs => ../../services/orgs
+
+replace druz9/tg_coach => ../../services/tg_coach

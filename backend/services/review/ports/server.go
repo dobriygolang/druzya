@@ -151,7 +151,10 @@ func directionFromProto(d pb.ReviewDirection) domain.Direction {
 	switch d {
 	case pb.ReviewDirection_REVIEW_DIRECTION_INTERVIEWER_TO_CANDIDATE:
 		return domain.DirInterviewerToCandidate
-	default: // includes UNSPECIFIED → default to candidate→interviewer for back-compat
+	case pb.ReviewDirection_REVIEW_DIRECTION_CANDIDATE_TO_INTERVIEWER,
+		pb.ReviewDirection_REVIEW_DIRECTION_UNSPECIFIED:
+		return domain.DirCandidateToInterviewer
+	default:
 		return domain.DirCandidateToInterviewer
 	}
 }

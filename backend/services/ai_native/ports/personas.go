@@ -22,14 +22,14 @@ import (
 // shared/personas.ts types (to be regenerated once the renderer moves
 // to this endpoint — see phase plan in session notes).
 type PersonaDTO struct {
-	ID             string `json:"id"`
-	Label          string `json:"label"`
-	Hint           string `json:"hint"`
-	IconEmoji      string `json:"icon_emoji"`
-	BrandGradient  string `json:"brand_gradient"`
-	SuggestedTask  string `json:"suggested_task,omitempty"`
-	SystemPrompt   string `json:"system_prompt"`
-	SortOrder      int    `json:"sort_order"`
+	ID            string `json:"id"`
+	Label         string `json:"label"`
+	Hint          string `json:"hint"`
+	IconEmoji     string `json:"icon_emoji"`
+	BrandGradient string `json:"brand_gradient"`
+	SuggestedTask string `json:"suggested_task,omitempty"`
+	SystemPrompt  string `json:"system_prompt"`
+	SortOrder     int    `json:"sort_order"`
 }
 
 // PersonasResponse wraps the catalogue so the JSON can grow later

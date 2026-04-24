@@ -14,15 +14,6 @@ import (
 	"github.com/google/uuid"
 )
 
-// CohortAnnouncementPosted — published when a fresh announcement is created
-// so notify-service can fan-out to every cohort member.
-type cohortAnnouncementPosted struct {
-	cohortID    uuid.UUID
-	authorID    uuid.UUID
-	announceID  uuid.UUID
-	bodyPreview string
-}
-
 // CreateAnnouncement — owner/coach only.
 type CreateAnnouncement struct {
 	Repo       domain.Repo
@@ -72,7 +63,6 @@ func (uc *CreateAnnouncement) Do(ctx context.Context, in CreateAnnouncementInput
 			AnnouncementID: out.ID,
 			BodyPreview:    truncatePreview(out.Body, 140),
 		})
-		_ = cohortAnnouncementPosted{} // silence unused-warning if helper expands later
 	}
 	return full, nil
 }

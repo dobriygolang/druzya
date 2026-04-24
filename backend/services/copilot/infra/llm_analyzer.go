@@ -130,8 +130,8 @@ func (a *LLMAnalyzer) Analyze(ctx context.Context, in domain.AnalyzerInput) (dom
 			} `json:"message"`
 		} `json:"choices"`
 	}
-	if err := json.NewDecoder(resp.Body).Decode(&parsed); err != nil {
-		return domain.AnalyzerResult{}, fmt.Errorf("copilot.LLMAnalyzer.decode: %w", err)
+	if decErr := json.NewDecoder(resp.Body).Decode(&parsed); decErr != nil {
+		return domain.AnalyzerResult{}, fmt.Errorf("copilot.LLMAnalyzer.decode: %w", decErr)
 	}
 	if len(parsed.Choices) == 0 {
 		return domain.AnalyzerResult{}, fmt.Errorf("copilot.LLMAnalyzer: empty choices")
@@ -226,18 +226,18 @@ func parseAnalyzerJSON(raw string) (domain.AnalyzerResult, error) {
 	}
 
 	var parsed struct {
-		Title           string                 `json:"title"`
-		OverallScore    int                    `json:"overall_score"`
-		SectionScores   map[string]int         `json:"section_scores"`
-		Weaknesses      []string               `json:"weaknesses"`
-		Recommendations []string               `json:"recommendations"`
-		ReportMarkdown  string                 `json:"report_markdown"`
-		TLDR            string                 `json:"tldr"`
-		KeyTopics       []string               `json:"key_topics"`
-		ActionItems     []domain.AnalysisItem  `json:"action_items"`
-		Terminology     []domain.AnalysisTerm  `json:"terminology"`
-		Decisions       []domain.AnalysisItem  `json:"decisions"`
-		OpenQuestions   []string               `json:"open_questions"`
+		Title           string                `json:"title"`
+		OverallScore    int                   `json:"overall_score"`
+		SectionScores   map[string]int        `json:"section_scores"`
+		Weaknesses      []string              `json:"weaknesses"`
+		Recommendations []string              `json:"recommendations"`
+		ReportMarkdown  string                `json:"report_markdown"`
+		TLDR            string                `json:"tldr"`
+		KeyTopics       []string              `json:"key_topics"`
+		ActionItems     []domain.AnalysisItem `json:"action_items"`
+		Terminology     []domain.AnalysisTerm `json:"terminology"`
+		Decisions       []domain.AnalysisItem `json:"decisions"`
+		OpenQuestions   []string              `json:"open_questions"`
 	}
 	if err := json.Unmarshal([]byte(cleaned), &parsed); err != nil {
 		return domain.AnalyzerResult{}, fmt.Errorf("copilot.parseAnalyzerJSON: %w", err)

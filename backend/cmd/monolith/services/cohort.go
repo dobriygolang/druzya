@@ -55,11 +55,11 @@ type NotifyCohortBridge struct {
 func (b NotifyCohortBridge) ListMemberIDs(ctx context.Context, cohortID string) ([]string, error) {
 	cid, err := uuid.Parse(cohortID)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("NotifyCohortBridge.ListMemberIDs: parse: %w", err)
 	}
 	rows, err := b.Cohorts.ListMembers(ctx, cid)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("NotifyCohortBridge.ListMemberIDs: %w", err)
 	}
 	out := make([]string, 0, len(rows))
 	for _, m := range rows {
@@ -71,11 +71,11 @@ func (b NotifyCohortBridge) ListMemberIDs(ctx context.Context, cohortID string) 
 func (b NotifyCohortBridge) GetOwnerID(ctx context.Context, cohortID string) (string, error) {
 	cid, err := uuid.Parse(cohortID)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("NotifyCohortBridge.GetOwnerID: parse: %w", err)
 	}
 	c, err := b.Cohorts.Get(ctx, cid)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("NotifyCohortBridge.GetOwnerID: %w", err)
 	}
 	return c.OwnerID.String(), nil
 }
@@ -83,11 +83,11 @@ func (b NotifyCohortBridge) GetOwnerID(ctx context.Context, cohortID string) (st
 func (b NotifyCohortBridge) GetCohortName(ctx context.Context, cohortID string) (string, error) {
 	cid, err := uuid.Parse(cohortID)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("NotifyCohortBridge.GetCohortName: parse: %w", err)
 	}
 	c, err := b.Cohorts.Get(ctx, cid)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("NotifyCohortBridge.GetCohortName: %w", err)
 	}
 	return c.Name, nil
 }
@@ -282,11 +282,11 @@ func (p *cohortPostgres) ListMembers(ctx context.Context, cohortID uuid.UUID) ([
 	out := make([]cohortDomain.CohortMember, 0, 8)
 	for rows.Next() {
 		var (
-			cid, uid                       pgtype.UUID
-			role                           string
-			joined                         time.Time
-			left                           pgtype.Timestamptz
-			username, displayName, avatar  string
+			cid, uid                      pgtype.UUID
+			role                          string
+			joined                        time.Time
+			left                          pgtype.Timestamptz
+			username, displayName, avatar string
 		)
 		if err := rows.Scan(&cid, &uid, &role, &joined, &left, &username, &displayName, &avatar); err != nil {
 			return nil, fmt.Errorf("cohort.Postgres.ListMembers: scan: %w", err)
@@ -622,10 +622,10 @@ SELECT m.user_id, m.username, m.display_name, d.d,
 	var current *cohortDomain.StreakHeatmapRow
 	for rows.Next() {
 		var (
-			uid                       pgtype.UUID
-			username, displayName     string
-			day                       time.Time
-			solved                    sql.NullBool
+			uid                   pgtype.UUID
+			username, displayName string
+			day                   time.Time
+			solved                sql.NullBool
 		)
 		if err := rows.Scan(&uid, &username, &displayName, &day, &solved); err != nil {
 			return nil, fmt.Errorf("cohort.Postgres.StreakHeatmap: scan: %w", err)
@@ -968,14 +968,14 @@ func (h *cohortHTTP) handleUpdate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var req updateCohortReq
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if decErr := json.NewDecoder(r.Body).Decode(&req); decErr != nil {
 		writeCohortErr(w, http.StatusBadRequest, "invalid body")
 		return
 	}
 	in := cohortApp.UpdateCohortInput{CohortID: cohortID, ActorID: uid, Name: req.Name}
 	if req.EndsAt != nil && *req.EndsAt != "" {
-		t, err := time.Parse(time.RFC3339, *req.EndsAt)
-		if err != nil {
+		t, perr := time.Parse(time.RFC3339, *req.EndsAt)
+		if perr != nil {
 			writeCohortErr(w, http.StatusBadRequest, "invalid ends_at")
 			return
 		}
@@ -1081,8 +1081,8 @@ func (h *cohortHTTP) handleSetMemberRole(w http.ResponseWriter, r *http.Request)
 // ── Phase-2 invite-token handlers (Task B) ────────────────────────────────
 
 type issueInviteReq struct {
-	MaxUses    int    `json:"max_uses"`    // 0 = unlimited
-	TTLSeconds int    `json:"ttl_seconds"` // 0 = never expires
+	MaxUses    int `json:"max_uses"`    // 0 = unlimited
+	TTLSeconds int `json:"ttl_seconds"` // 0 = never expires
 }
 
 type issueInviteResp struct {
@@ -1104,7 +1104,7 @@ func (h *cohortHTTP) handleIssueInvite(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var req issueInviteReq
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	if decErr := json.NewDecoder(r.Body).Decode(&req); decErr != nil {
 		writeCohortErr(w, http.StatusBadRequest, "invalid body")
 		return
 	}

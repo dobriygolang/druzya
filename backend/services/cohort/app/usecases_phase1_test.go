@@ -242,9 +242,6 @@ func TestListCohorts_DefaultsAndNonNil(t *testing.T) {
 	}
 }
 
-func (f *fakeRepo) StreakHeatmap(_ context.Context, _ uuid.UUID, days int) ([]domain.StreakHeatmapRow, error) {
-	if days <= 0 {
-		days = 14
-	}
+func (f *fakeRepo) StreakHeatmap(_ context.Context, _ uuid.UUID, _ int) ([]domain.StreakHeatmapRow, error) {
 	return []domain.StreakHeatmapRow{}, nil
 }

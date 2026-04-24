@@ -8,12 +8,13 @@ package services
 import (
 	"context"
 	"errors"
+	"fmt"
 
+	cohortDomain "druz9/cohort/domain"
 	announcementApp "druz9/cohort_announcement/app"
 	announcementDomain "druz9/cohort_announcement/domain"
 	announcementInfra "druz9/cohort_announcement/infra"
 	announcementPorts "druz9/cohort_announcement/ports"
-	cohortDomain "druz9/cohort/domain"
 	"druz9/shared/generated/pb/druz9/v1/druz9v1connect"
 
 	"github.com/go-chi/chi/v5"
@@ -32,7 +33,7 @@ func (b CohortMembershipBridge) LookupMembership(ctx context.Context, cohortID, 
 		if errors.Is(err, cohortDomain.ErrNotFound) {
 			return announcementDomain.RoleNotMember, nil
 		}
-		return announcementDomain.RoleNotMember, err
+		return announcementDomain.RoleNotMember, fmt.Errorf("CohortMembershipBridge: %w", err)
 	}
 	switch role {
 	case cohortDomain.RoleOwner:

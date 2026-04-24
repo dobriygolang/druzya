@@ -19,8 +19,27 @@ ALTER TABLE reviews ADD CONSTRAINT reviews_direction_valid
     CHECK (direction IN ('candidate_to_interviewer', 'interviewer_to_candidate'));
 
 -- Drop the booking_id-only PK so two rows per booking become legal,
--- replace with the composite (booking_id, direction).
-ALTER TABLE reviews DROP CONSTRAINT reviews_pkey;
+-- replace with the composite (booking_id, direction). The original PK
+-- was created as `slot_reviews_pkey` back in migration 00005 and
+-- Postgres does NOT auto-rename constraints when a table is renamed,
+-- so we look it up dynamically instead of hard-coding a name.
+-- +goose StatementEnd
+-- +goose StatementBegin
+DO $$
+DECLARE
+    pk_name text;
+BEGIN
+    SELECT conname INTO pk_name
+      FROM pg_constraint
+     WHERE conrelid = 'reviews'::regclass
+       AND contype  = 'p';
+    IF pk_name IS NOT NULL THEN
+        EXECUTE format('ALTER TABLE reviews DROP CONSTRAINT %I', pk_name);
+    END IF;
+END
+$$;
+-- +goose StatementEnd
+-- +goose StatementBegin
 ALTER TABLE reviews ADD PRIMARY KEY (booking_id, direction);
 
 -- The old (interviewer_id, created_at DESC) index served the public

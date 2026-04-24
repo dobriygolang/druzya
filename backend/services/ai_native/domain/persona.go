@@ -16,22 +16,22 @@ import (
 // than a special-case constant — keeps the wire contract uniform and
 // lets admins re-label the baseline if they want.
 type Persona struct {
-	ID             string
-	Label          string
-	Hint           string
-	IconEmoji      string
-	BrandGradient  string
+	ID            string
+	Label         string
+	Hint          string
+	IconEmoji     string
+	BrandGradient string
 	// SuggestedTask is advisory — matches llmchain.Task constants.
 	// Empty string means "let the caller choose". Kept as a free text
 	// field rather than a typed enum here because the domain layer
 	// shouldn't depend on the llmchain package; the desktop maps it
 	// when routing calls.
-	SuggestedTask  string
-	SystemPrompt   string
-	SortOrder      int
-	IsEnabled      bool
-	CreatedAt      time.Time
-	UpdatedAt      time.Time
+	SuggestedTask string
+	SystemPrompt  string
+	SortOrder     int
+	IsEnabled     bool
+	CreatedAt     time.Time
+	UpdatedAt     time.Time
 }
 
 // PersonaFilter narrows a List query. Zero value lists everything —
