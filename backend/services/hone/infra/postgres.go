@@ -9,6 +9,7 @@ package infra
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -520,25 +521,80 @@ func (n *Notes) Get(ctx context.Context, userID, noteID uuid.UUID) (domain.Note,
 	return out, nil
 }
 
-// List returns list-view rows, ordered by updated_at DESC.
+// notesListCursor — инкапсулирует якорь keyset-пагинации. Сериализуется в
+// base64(JSON), непрозрачный для клиента. (updated_at, id) — составной ключ;
+// id нужен чтобы развести записи с одинаковым updated_at при массовых
+// импортах или сек.-точностях TS.
+type notesListCursor struct {
+	UpdatedAt time.Time `json:"u"`
+	ID        string    `json:"i"`
+}
+
+func encodeNotesCursor(c notesListCursor) string {
+	raw, _ := json.Marshal(c)
+	return base64.RawURLEncoding.EncodeToString(raw)
+}
+
+func decodeNotesCursor(s string) (notesListCursor, error) {
+	if s == "" {
+		return notesListCursor{}, nil
+	}
+	raw, err := base64.RawURLEncoding.DecodeString(s)
+	if err != nil {
+		return notesListCursor{}, fmt.Errorf("decode cursor: %w", err)
+	}
+	var c notesListCursor
+	if err := json.Unmarshal(raw, &c); err != nil {
+		return notesListCursor{}, fmt.Errorf("unmarshal cursor: %w", err)
+	}
+	return c, nil
+}
+
+// List возвращает страницу заметок, отсортированных (updated_at DESC, id DESC).
+// Keyset-пагинация: next_cursor = якорь последней строки. Невалидный cursor
+// возвращает ошибку (не маскируется под пустую страницу, чтобы баг клиента
+// не стал «ничего нет»).
 //
-// STUB: cursor pagination uses updated_at as the anchor (base64'd). MVP
-// returns a page of `limit` rows; when corpus exceeds one page (rare in
-// v1 where users have ~10-50 notes) we'll switch to keyset pagination.
+// Пустая строка next_cursor означает конец выборки. Размер страницы: до limit.
+// Дополнительная строка «подглядывания» (limit+1) используется чтобы понять,
+// есть ли следующая страница, не делая второй запрос.
 func (n *Notes) List(ctx context.Context, userID uuid.UUID, limit int, cursor string) ([]domain.NoteSummary, string, error) {
-	_ = cursor // STUB: honour cursor in Phase 2.
-	rows, err := n.pool.Query(ctx,
-		`SELECT id, title, size_bytes, updated_at
-		   FROM hone_notes
-		  WHERE user_id=$1
-		  ORDER BY updated_at DESC
-		  LIMIT $2`,
-		sharedpg.UUID(userID), int32(limit),
-	)
+	c, err := decodeNotesCursor(cursor)
+	if err != nil {
+		return nil, "", fmt.Errorf("hone.Notes.List: %w", err)
+	}
+
+	const sqlBase = `SELECT id, title, size_bytes, updated_at
+	                   FROM hone_notes
+	                  WHERE user_id=$1`
+	// Peek limit+1: если вернулось больше limit — значит ещё есть страница.
+	peek := int32(limit) + 1
+
+	var rows pgx.Rows
+	if c.UpdatedAt.IsZero() {
+		rows, err = n.pool.Query(ctx,
+			sqlBase+`
+			  ORDER BY updated_at DESC, id DESC
+			  LIMIT $2`,
+			sharedpg.UUID(userID), peek,
+		)
+	} else {
+		cid, parseErr := uuid.Parse(c.ID)
+		if parseErr != nil {
+			return nil, "", fmt.Errorf("hone.Notes.List: cursor id: %w", parseErr)
+		}
+		rows, err = n.pool.Query(ctx,
+			sqlBase+` AND (updated_at, id) < ($2, $3)
+			  ORDER BY updated_at DESC, id DESC
+			  LIMIT $4`,
+			sharedpg.UUID(userID), c.UpdatedAt, sharedpg.UUID(cid), peek,
+		)
+	}
 	if err != nil {
 		return nil, "", fmt.Errorf("hone.Notes.List: %w", err)
 	}
 	defer rows.Close()
+
 	out := make([]domain.NoteSummary, 0, limit)
 	for rows.Next() {
 		var (
@@ -560,7 +616,19 @@ func (n *Notes) List(ctx context.Context, userID uuid.UUID, limit int, cursor st
 	if err := rows.Err(); err != nil {
 		return nil, "", fmt.Errorf("hone.Notes.List: rows: %w", err)
 	}
-	return out, "", nil
+
+	// Есть ли следующая страница? Peek-строка обрезается, её якорь не
+	// выдаём — возвращаем якорь последней строки текущей страницы.
+	var nextCursor string
+	if len(out) > limit {
+		out = out[:limit]
+		last := out[len(out)-1]
+		nextCursor = encodeNotesCursor(notesListCursor{
+			UpdatedAt: last.UpdatedAt,
+			ID:        last.ID.String(),
+		})
+	}
+	return out, nextCursor, nil
 }
 
 // Delete removes a note.
