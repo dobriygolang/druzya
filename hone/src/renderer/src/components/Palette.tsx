@@ -11,10 +11,14 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Kbd } from './primitives/Kbd';
 
 export type PageId = 'home' | 'today' | 'focus' | 'notes' | 'board' | 'stats';
+// PaletteAction — то, что палетка может попросить App'а сделать.
+// Помимо переключения page и copilot'а, добавили `standup` —
+// открывает модалку из 3 вопросов для daily-standup.
+export type PaletteAction = PageId | 'copilot' | 'standup';
 
 interface PaletteProps {
   onClose: () => void;
-  onOpen: (id: PageId | 'copilot') => void;
+  onOpen: (id: PaletteAction) => void;
 }
 
 interface PaletteItem {
@@ -36,6 +40,7 @@ export function Palette({ onClose, onOpen }: PaletteProps) {
       { id: 'notes', label: 'Notes', sc: 'N', run: () => onOpen('notes') },
       { id: 'board', label: 'Whiteboard', sc: 'D', run: () => onOpen('board') },
       { id: 'stats', label: 'Stats', sc: 'S', run: () => onOpen('stats') },
+      { id: 'standup', label: 'Daily standup', sc: '', run: () => onOpen('standup') },
       // "Open druz9.ru" is intentionally a no-op for now — in Phase 5b
       // we'll route through shell.openExternal via the preload bridge so
       // this hops the user's browser, not an in-app webview.
