@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"time"
 
@@ -27,7 +28,7 @@ type honeEmbedQueueAdapter struct{ q *honeInfra.RedisEmbedQueue }
 func (a *honeEmbedQueueAdapter) Dequeue(ctx context.Context) (honeApp.EmbedJobItem, error) {
 	job, err := a.q.Dequeue(ctx)
 	if err != nil {
-		return honeApp.EmbedJobItem{}, err
+		return honeApp.EmbedJobItem{}, fmt.Errorf("hone.embedQueueAdapter.Dequeue: %w", err)
 	}
 	return honeApp.EmbedJobItem{UserID: job.UserID, NoteID: job.NoteID, Text: job.Text}, nil
 }

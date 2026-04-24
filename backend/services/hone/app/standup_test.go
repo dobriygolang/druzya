@@ -27,12 +27,12 @@ func (f *fakeNotes) Create(_ context.Context, n domain.Note) (domain.Note, error
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	if f.createFn != nil {
-		n, err := f.createFn(n)
+		out, err := f.createFn(n)
 		if err != nil {
 			return domain.Note{}, err
 		}
-		f.created = append(f.created, n)
-		return n, nil
+		f.created = append(f.created, out)
+		return out, nil
 	}
 	n.ID = uuid.New()
 	n.CreatedAt = time.Now()

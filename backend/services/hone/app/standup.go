@@ -106,7 +106,7 @@ func (uc *RecordStandup) Do(ctx context.Context, in RecordStandupInput) (RecordS
 func (uc *RecordStandup) appendStandupItem(ctx context.Context, userID uuid.UUID, day time.Time, todayText string) (domain.Plan, error) {
 	p, err := uc.Plans.GetForDate(ctx, userID, day)
 	if err != nil {
-		return domain.Plan{}, err
+		return domain.Plan{}, fmt.Errorf("hone.RecordStandup.appendStandupItem: get plan: %w", err)
 	}
 	title := todayText
 	if len(title) > 60 {
@@ -124,7 +124,11 @@ func (uc *RecordStandup) appendStandupItem(ctx context.Context, userID uuid.UUID
 	// конкурент может тронуть план (напр. параллельный DismissPlanItem),
 	// и его изменения потеряются. Принимаем как limitation MVP — один
 	// пользователь редко standup'ит и dismiss'ит одновременно.
-	return uc.Plans.Upsert(ctx, p)
+	patched, err := uc.Plans.Upsert(ctx, p)
+	if err != nil {
+		return domain.Plan{}, fmt.Errorf("hone.RecordStandup.appendStandupItem: upsert: %w", err)
+	}
+	return patched, nil
 }
 
 func buildStandupBody(in RecordStandupInput) string {
