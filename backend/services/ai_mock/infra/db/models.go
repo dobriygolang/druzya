@@ -695,6 +695,16 @@ type Profile struct {
 	UpdatedAt        pgtype.Timestamptz
 }
 
+type ProviderLink struct {
+	UserID       pgtype.UUID
+	Provider     string
+	ExternalID   string
+	ExternalTier pgtype.Text
+	VerifiedAt   pgtype.Timestamptz
+	CreatedAt    pgtype.Timestamptz
+	UpdatedAt    pgtype.Timestamptz
+}
+
 type Rating struct {
 	UserID       pgtype.UUID
 	Section      string
