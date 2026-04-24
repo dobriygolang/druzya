@@ -116,7 +116,15 @@ func NewCopilot(d Deps) *Module {
 			r.Get("/copilot/sessions", transcoder.ServeHTTP)
 		},
 		Background: []func(ctx context.Context){
-			runAnalysisSubscriber(sessionEvents, runAnalysis, d.Log),
+			// MUST go: App.Run calls each Background bg(rootCtx) inline,
+			// so a blocking subscriber loop here would prevent the HTTP
+			// server from ever reaching ListenAndServe (the rest of the
+			// codebase's Background entries explicitly spawn — match that
+			// convention, otherwise /health/ready times out forever).
+			func(ctx context.Context) {
+				sub := runAnalysisSubscriber(sessionEvents, runAnalysis, d.Log)
+				go sub(ctx)
+			},
 		},
 		Shutdown: []func(ctx context.Context) error{
 			func(context.Context) error {
