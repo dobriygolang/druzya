@@ -78,9 +78,6 @@ type Config struct {
 		GroqAPIKey            string
 		CerebrasAPIKey        string
 		MistralAPIKey         string
-		SambaNovaAPIKey       string
-		CloudflareAIAccountID string
-		CloudflareAIToken     string
 		// DeepSeekAPIKey — платный provider для paid-lane (deepseek-chat
 		// V3 и deepseek-reasoner R1). Используется в virtual-chain'ах
 		// druz9/pro и druz9/reasoning. Пустая строка → driver не регится,
@@ -153,9 +150,6 @@ func Load() (Config, error) {
 	c.LLMChain.GroqAPIKey = env("GROQ_API_KEY", "")
 	c.LLMChain.CerebrasAPIKey = env("CEREBRAS_API_KEY", "")
 	c.LLMChain.MistralAPIKey = env("MISTRAL_API_KEY", "")
-	c.LLMChain.SambaNovaAPIKey = env("SAMBANOVA_API_KEY", "")
-	c.LLMChain.CloudflareAIAccountID = env("CLOUDFLARE_AI_ACCOUNT_ID", "")
-	c.LLMChain.CloudflareAIToken = env("CLOUDFLARE_AI_TOKEN", "")
 	c.LLMChain.DeepSeekAPIKey = env("DEEPSEEK_API_KEY", "")
 	c.Subscription.BoostyAccessToken = env("BOOSTY_ACCESS_TOKEN", "")
 	c.Subscription.BoostyBlogSlug = env("BOOSTY_BLOG_SLUG", "")

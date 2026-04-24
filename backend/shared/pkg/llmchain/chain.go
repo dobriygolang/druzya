@@ -60,15 +60,6 @@ var defaultTimeouts = map[Provider]time.Duration{
 	ProviderCerebras:   20 * time.Second,
 	ProviderMistral:    30 * time.Second,
 	ProviderOpenRouter: 45 * time.Second,
-	// SambaNova RDU hardware advertises ~580 tok/s on Llama-70B — even
-	// a full 70B reply fits comfortably within 20s. Tighter than
-	// Mistral because their p99 stays under Groq on ≥70B models.
-	ProviderSambaNova: 20 * time.Second,
-	// Cloudflare runs inference at the edge but the extra proxy hop
-	// adds measurable overhead vs. direct provider endpoints; 30s
-	// matches our Mistral budget, erring on the side of completion for
-	// the rare-but-valuable 70B free slot.
-	ProviderCloudflareAI: 30 * time.Second,
 	// Ollama — self-hosted CPU-only на VPS (8 ядер, ~25 tok/s на Qwen 3B
 	// Q4_K_M). Обычный cloud timeout (10-30s) для локали слишком жёсткий:
 	// ответ 300 токенов занимает ~12s + первый байт после холодного загруза
@@ -423,19 +414,10 @@ func providerFromModelID(id string) Provider {
 		case ProviderGroq,
 			ProviderCerebras,
 			ProviderMistral,
-			ProviderSambaNova,
 			ProviderOpenRouter,
-			ProviderCloudflareAI,
 			ProviderDeepSeek,
 			ProviderOllama:
 			return prefix
-		}
-		// Cloudflare canonical model ids start with "@cf/..." — "@cf" is
-		// the vendor-of-vendor token, not our prefix convention. Exact-
-		// match keeps us from accidentally routing OpenRouter ids with
-		// a stray "@" through Cloudflare.
-		if prefix == "@cf" {
-			return ProviderCloudflareAI
 		}
 	}
 	return ProviderOpenRouter

@@ -24,12 +24,9 @@ package llmchain
 //	Summarize        — самая дешёвая модель, фон для bg-summarizer.
 //
 // Default-карта включает ТОЛЬКО free-tier провайдеров (Groq, Cerebras,
-// Mistral La Plateforme, OpenRouter :free-lane). Платные провайдеры
-// (SambaNova — $5 trial-only, Cloudflare Workers AI — 10k neurons/day,
-// непрактично для prod scale) присутствуют в коде как опциональные
-// драйверы и активируются ТОЛЬКО если оператор явно задал ключи +
-// модель в ModelOverride либо добавил их в кастомный TaskModelMap.
-// См. driver_sambanova.go / driver_cloudflare.go.
+// Mistral La Plateforme, OpenRouter :free-lane) + Ollama как self-host
+// floor-fallback. Paid-провайдеры (DeepSeek) включаются только для
+// virtual-моделей druz9/pro и druz9/reasoning (см. tier.go).
 //
 // When a provider doesn't have a model for a task (e.g. Mistral-free
 // lacks an 8B instant option), the chain skips that provider for the
@@ -100,8 +97,8 @@ var DefaultTaskModelMap = TaskModelMap{
 	TaskCodeReview: {
 		// Reasoning-heavy submit review — the user just finished a
 		// mock, they can wait a few seconds for a thorough analysis.
-		// На free-tier DeepSeek-R1 нам недоступен (SambaNova paid) —
-		// используем Llama-70B, она тоже справляется с code review'ом.
+		// Llama-70B на free-tier справляется; DeepSeek-R1 идёт в
+		// druz9/reasoning virtual-chain для paid-юзеров.
 		ProviderCerebras:   "llama3.3-70b",
 		ProviderGroq:       "llama-3.3-70b-versatile",
 		ProviderMistral:    "mistral-large-latest",
@@ -111,9 +108,10 @@ var DefaultTaskModelMap = TaskModelMap{
 		ProviderOllama: "qwen2.5:7b-instruct-q4_K_M",
 	},
 	TaskSysDesignCritique: {
-		// Long-context architectural diagrams + spec. Qwen2.5-72B с 128k
-		// окном был бы идеален, но SambaNova paid. На free-tier Llama-70B
-		// (128k context у всех трёх провайдеров) — рабочий компромисс.
+		// Long-context architectural diagrams + spec. Llama-70B с 128k
+		// context у всех трёх провайдеров — достаточно для большинства
+		// архитектурных диаграмм в free-tier. Paid-юзеры получают
+		// длинный context через druz9/ultra (Claude Sonnet 4.5, 200k).
 		ProviderCerebras:   "llama3.3-70b",
 		ProviderGroq:       "llama-3.3-70b-versatile",
 		ProviderMistral:    "mistral-large-latest",

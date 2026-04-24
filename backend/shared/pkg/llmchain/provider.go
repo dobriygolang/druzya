@@ -58,12 +58,10 @@ import (
 type Provider string
 
 const (
-	ProviderGroq         Provider = "groq"
-	ProviderCerebras     Provider = "cerebras"
-	ProviderMistral      Provider = "mistral"
-	ProviderOpenRouter   Provider = "openrouter"
-	ProviderSambaNova    Provider = "sambanova"
-	ProviderCloudflareAI Provider = "cloudflare"
+	ProviderGroq       Provider = "groq"
+	ProviderCerebras   Provider = "cerebras"
+	ProviderMistral    Provider = "mistral"
+	ProviderOpenRouter Provider = "openrouter"
 	// ProviderDeepSeek — paid: api.deepseek.com. Используется в virtual-chain'ах
 	// druz9/pro и druz9/reasoning (см. tier.go). В DefaultTaskModelMap
 	// отсутствует — это exclusive для paid-tier'ов.

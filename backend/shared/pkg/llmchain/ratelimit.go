@@ -96,20 +96,17 @@ func (s *rateState) recordResponse(remaining int, resetAt time.Time) {
 
 func parseRateLimitHeaders(p Provider, h http.Header, now time.Time) (remaining int, resetAt time.Time) {
 	switch p {
-	case ProviderGroq, ProviderCerebras, ProviderSambaNova:
-		// SambaNova Cloud mirrors Groq's header shape (both derived
-		// from the OpenAI SDK spec): x-ratelimit-remaining-requests +
-		// x-ratelimit-reset-requests with a Go-style duration string.
+	case ProviderGroq, ProviderCerebras:
+		// Groq/Cerebras (оба OpenAI SDK-derived): x-ratelimit-remaining-
+		// requests + x-ratelimit-reset-requests (Go-style duration string).
 		return parseGroqLikeHeaders(h, now)
 	case ProviderOpenRouter:
 		return parseOpenRouterHeaders(h, now)
-	case ProviderMistral, ProviderCloudflareAI, ProviderOllama, ProviderDeepSeek:
+	case ProviderMistral, ProviderOllama, ProviderDeepSeek:
 		// Mistral free tier lacks documented rate-limit headers;
-		// Cloudflare Workers AI emits neuron-quota headers в своём
-		// неймспейсе (x-cloudflare-ai-quota-*) который мы не парсим;
 		// Ollama — self-hosted без rate-limit;
-		// DeepSeek — платный per-token, rate-limit'ы редко упираются при
-		// нашей нагрузке — reactive-only cooling достаточно.
+		// DeepSeek — платный per-token, rate-limit'ы редко упираются —
+		// reactive-only cooling достаточно.
 		return -1, time.Time{}
 	}
 	return -1, time.Time{}
