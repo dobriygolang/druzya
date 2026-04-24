@@ -161,6 +161,20 @@ func NewCohort(d Deps) (*Module, cohortDomain.Repo) {
 			r.Post("/cohort/{id}/graduate", h.handleGraduate)
 			r.Post("/cohort/{id}/transfer", h.handleTransferOwnership)
 		},
+		// Phase 6: og-meta stub at root. Serves a small HTML with
+		// og:title / og:description / og:image etc. for link-preview
+		// bots (Telegram, Slack, Twitter, Discord, Facebook). Mounted
+		// OUTSIDE /api/v1 and bearer — public by design.
+		//
+		// Deployment wiring: prod nginx/CDN should rewrite
+		// /c/{slug} → /og/c/{slug} when request UA matches common
+		// bot patterns, and otherwise pass through to the SPA. The
+		// same handler also renders an SVG card at /og/c/{slug}.svg
+		// for sites that prefer a static image endpoint.
+		MountRoot: func(r chi.Router) {
+			r.Get("/og/c/{slug}", h.handleOGHTML)
+			r.Get("/og/c/{slug}.svg", h.handleOGImage)
+		},
 	}, repo
 }
 
@@ -1341,6 +1355,141 @@ func (h *cohortHTTP) handleGraduate(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(cohortToDTO(out, 0))
+}
+
+// handleOGHTML serves a small HTML document with og:meta tags for
+// link-preview bots. Path: GET /og/c/{slug}. Falls through to 404 when
+// the slug is unknown — bots get a clear negative signal rather than an
+// empty preview.
+func (h *cohortHTTP) handleOGHTML(w http.ResponseWriter, r *http.Request) {
+	slug := chi.URLParam(r, "slug")
+	view, err := h.Get.Do(r.Context(), slug)
+	if err != nil {
+		writeCohortErr(w, http.StatusNotFound, "cohort not found")
+		return
+	}
+	days := int(time.Until(view.Cohort.EndsAt).Hours() / 24)
+	if days < 0 {
+		days = 0
+	}
+	cap := view.Cohort.Capacity
+	if cap <= 0 {
+		cap = cohortDomain.MaxMembersPhase1
+	}
+	statusLine := "закрыта"
+	switch view.Cohort.Status {
+	case cohortDomain.StatusActive:
+		if days > 0 {
+			statusLine = fmt.Sprintf("до конца %d дн.", days)
+		} else {
+			statusLine = "последний день"
+		}
+	case cohortDomain.StatusGraduated:
+		statusLine = "выпущена"
+	case cohortDomain.StatusCancelled:
+		statusLine = "расформирована"
+	}
+	title := fmt.Sprintf("%s · druz9 cohort", view.Cohort.Name)
+	description := fmt.Sprintf("%d/%d участников · %s", len(view.Members), cap, statusLine)
+	imageURL := fmt.Sprintf("/og/c/%s.svg", slug)
+	canonical := fmt.Sprintf("/c/%s", slug)
+
+	// Keep the body tiny — bots usually stop reading after <head>. We
+	// include a <meta refresh> so humans who paste this URL into a
+	// browser still land on the SPA.
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.Header().Set("Cache-Control", "public, max-age=120")
+	_, _ = fmt.Fprintf(w, `<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>%s</title>
+<meta name="description" content="%s">
+<meta property="og:type" content="website">
+<meta property="og:title" content="%s">
+<meta property="og:description" content="%s">
+<meta property="og:image" content="%s">
+<meta property="og:url" content="%s">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="canonical" href="%s">
+<meta http-equiv="refresh" content="0; url=%s">
+</head>
+<body>
+<p>Redirecting to <a href="%s">%s</a>…</p>
+</body>
+</html>`,
+		htmlEscape(title), htmlEscape(description),
+		htmlEscape(title), htmlEscape(description),
+		htmlEscape(imageURL), htmlEscape(canonical),
+		htmlEscape(canonical),
+		htmlEscape(canonical),
+		htmlEscape(canonical), htmlEscape(view.Cohort.Name),
+	)
+}
+
+// handleOGImage renders a brand-coloured SVG card with the cohort name
+// + members/capacity — used as og:image by handleOGHTML. Plain SVG
+// keeps us off the image-library treadmill; social scrapers accept it.
+func (h *cohortHTTP) handleOGImage(w http.ResponseWriter, r *http.Request) {
+	slug := chi.URLParam(r, "slug")
+	// strip the .svg suffix chi keeps on the param
+	slug = strings.TrimSuffix(slug, ".svg")
+	view, err := h.Get.Do(r.Context(), slug)
+	if err != nil {
+		writeCohortErr(w, http.StatusNotFound, "cohort not found")
+		return
+	}
+	cap := view.Cohort.Capacity
+	if cap <= 0 {
+		cap = cohortDomain.MaxMembersPhase1
+	}
+	status := "active"
+	if view.Cohort.Status == cohortDomain.StatusGraduated {
+		status = "graduated"
+	} else if view.Cohort.Status == cohortDomain.StatusCancelled {
+		status = "cancelled"
+	}
+	w.Header().Set("Content-Type", "image/svg+xml")
+	w.Header().Set("Cache-Control", "public, max-age=300")
+	_, _ = fmt.Fprintf(w, `<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0B0B0F"/>
+      <stop offset="1" stop-color="#1A1030"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#582CFF"/>
+      <stop offset="1" stop-color="#22D3EE"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="630" fill="url(#bg)"/>
+  <text x="80" y="140" font-family="system-ui,sans-serif" font-size="28" fill="#6B6B7A" font-weight="600">DRUZ9 · COHORT</text>
+  <text x="80" y="280" font-family="system-ui,sans-serif" font-size="88" fill="#F5F5F7" font-weight="800">%s</text>
+  <text x="80" y="380" font-family="system-ui,sans-serif" font-size="44" fill="url(#accent)" font-weight="700">%d / %d участников · %s</text>
+  <text x="80" y="540" font-family="system-ui,sans-serif" font-size="24" fill="#8A8A9B">druz9.online/c/%s</text>
+</svg>`,
+		xmlEscape(view.Cohort.Name), len(view.Members), cap, status, xmlEscape(slug),
+	)
+}
+
+// htmlEscape — tiny helper; we avoid pulling html/template just to
+// emit five attributes.
+func htmlEscape(s string) string {
+	s = strings.ReplaceAll(s, "&", "&amp;")
+	s = strings.ReplaceAll(s, "<", "&lt;")
+	s = strings.ReplaceAll(s, ">", "&gt;")
+	s = strings.ReplaceAll(s, `"`, "&quot;")
+	s = strings.ReplaceAll(s, "'", "&#39;")
+	return s
+}
+
+// xmlEscape — SVG needs stricter escaping than HTML attributes.
+func xmlEscape(s string) string {
+	s = strings.ReplaceAll(s, "&", "&amp;")
+	s = strings.ReplaceAll(s, "<", "&lt;")
+	s = strings.ReplaceAll(s, ">", "&gt;")
+	return s
 }
 
 // POST /cohort/{id}/transfer { "new_owner_id": "uuid" }

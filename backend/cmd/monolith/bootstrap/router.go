@@ -64,6 +64,15 @@ func buildHandler(d routerDeps) http.Handler {
 		}
 	})
 
+	// Root-level routes (og-meta for link-preview bots, etc.). Mounted
+	// OUTSIDE /api/v1 and outside the auth gate — handlers MUST treat
+	// every request as anonymous and public.
+	for _, m := range d.Modules {
+		if m != nil && m.MountRoot != nil {
+			m.MountRoot(r)
+		}
+	}
+
 	r.Route("/api/v1", func(api chi.Router) {
 		api.Get("/ping", func(w http.ResponseWriter, _ *http.Request) {
 			w.Header().Set("Content-Type", "application/json")

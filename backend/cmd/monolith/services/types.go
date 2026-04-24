@@ -63,6 +63,12 @@ type Module struct {
 	// domain has no sockets.
 	MountWS func(r chi.Router)
 
+	// MountRoot registers routes on the ROOT chi.Router, outside /api/v1
+	// and outside any auth gate. Use sparingly — currently only used by
+	// og-meta SEO routes (Phase 6: /c/{slug} og-stub for link-preview
+	// bots). nil when the domain has no root-level surface.
+	MountRoot func(r chi.Router)
+
 	// Subscribers wires cross-domain event handlers onto the bus. Called
 	// once during bootstrap.
 	Subscribers []func(bus *eventbus.InProcess)
