@@ -57,11 +57,20 @@ export function hardenWindow(win: BrowserWindow): void {
     event.preventDefault();
   });
 
-  // 4. Permission requests default-deny. We ask only for the perms
-  //    we explicitly need (microphone for voice input) via
-  //    systemPreferences directly.
-  wc.session.setPermissionRequestHandler((_contents, _permission, callback) => {
-    callback(false);
+  // 4. Permission requests — allow what the product actually needs,
+  //    deny everything else by default.
+  //    - `media` — navigator.mediaDevices.getUserMedia for voice input.
+  //    - `clipboard-read` — copy code blocks to Druz9's clipboard.
+  //    - `clipboard-sanitized-write` — same, write side.
+  //    Everything else (notifications, geolocation, midi, etc.) stays
+  //    denied since we don't use it.
+  const allowedPermissions = new Set([
+    'media',
+    'clipboard-read',
+    'clipboard-sanitized-write',
+  ]);
+  wc.session.setPermissionRequestHandler((_contents, permission, callback) => {
+    callback(allowedPermissions.has(permission));
   });
 }
 

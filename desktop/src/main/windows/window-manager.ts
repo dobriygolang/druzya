@@ -97,6 +97,17 @@ export function hideWindow(name: WindowName): void {
   if (w && !w.isDestroyed()) w.hide();
 }
 
+/**
+ * Fully tear down a window. Use this when the renderer's transient state
+ * (drag coords, event listeners) would poison the next invocation if
+ * reused — e.g. the area-overlay crosshair picker.
+ */
+export function closeWindow(name: WindowName): void {
+  const w = windows.get(name);
+  windows.delete(name);
+  if (w && !w.isDestroyed()) w.close();
+}
+
 export function getWindow(name: WindowName): BrowserWindow | undefined {
   const w = windows.get(name);
   return w && !w.isDestroyed() ? w : undefined;

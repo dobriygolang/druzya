@@ -34,7 +34,20 @@ export async function captureFullScreen(): Promise<CaptureResult> {
 export async function captureArea(rect: { x: number; y: number; width: number; height: number }): Promise<CaptureResult> {
   const full = await captureFullScreen();
   const fullImage = nativeImage.createFromDataURL(`data:${full.mimeType};base64,${full.dataBase64}`);
-  const cropped = fullImage.crop(rect);
+  // The overlay reports the rect in logical (CSS) pixels, but the full
+  // capture is requested at 2× for retina. Scale the crop to match the
+  // raw image space so the output frames exactly the user's selection.
+  const primary = screen.getPrimaryDisplay();
+  const imgSize = fullImage.getSize();
+  const sx = imgSize.width / primary.size.width;
+  const sy = imgSize.height / primary.size.height;
+  const scaled = {
+    x: Math.round(rect.x * sx),
+    y: Math.round(rect.y * sy),
+    width: Math.max(1, Math.round(rect.width * sx)),
+    height: Math.max(1, Math.round(rect.height * sy)),
+  };
+  const cropped = fullImage.crop(scaled);
   return toResult(cropped);
 }
 

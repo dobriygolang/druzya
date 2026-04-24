@@ -7,6 +7,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 
+import { eventChannels } from '@shared/ipc';
 import { BrandMark, IconCamera, IconChevronDown, IconClose, IconCopy, IconHistory, IconMinimize, IconSend } from '../../components/icons';
 import { IconButton, Kbd, StatusDot } from '../../components/primitives';
 import { ProviderPicker } from '../../components/ProviderPicker';
@@ -34,9 +35,15 @@ export function ExpandedScreen() {
   useEffect(() => {
     const unsubConv = bootstrap();
     const unsubSession = sessionBootstrap();
+    // Compact broadcasts this when the user clicks the model label —
+    // expanded is the right place for the 440×520 picker modal.
+    const unsubPicker = window.druz9.on(eventChannels.openProviderPicker, () => {
+      setPickerOpen(true);
+    });
     return () => {
       unsubConv();
       unsubSession();
+      unsubPicker();
     };
   }, [bootstrap, sessionBootstrap]);
 
@@ -218,10 +225,10 @@ export function ExpandedScreen() {
         </IconButton>
       </div>
 
-      {pickerOpen && config && (
+      {pickerOpen && (
         <ProviderPicker
-          models={config.models}
-          defaultModelId={config.defaultModelId}
+          models={config?.models ?? []}
+          defaultModelId={config?.defaultModelId ?? ''}
           onClose={() => setPickerOpen(false)}
         />
       )}
@@ -317,12 +324,39 @@ function MessageBubble({ m }: { m: UIMessage }) {
 }
 
 function ErrorCard({ code, message }: { code: string; message: string }) {
+  // A 401 Unauthenticated ends up in the transport bucket because the
+  // Connect error surfaces without a specific code string. Catch that
+  // via the message text; everything else keeps its human label.
+  const is401 =
+    code === 'transport' &&
+    /401|unauthenticated|unauthorized|no handler|not authenticated/i.test(message);
+
+  if (is401) {
+    return (
+      <div
+        style={{
+          padding: '8px 12px',
+          background: 'var(--d-accent-soft)',
+          border: '1px solid var(--d-line)',
+          borderRadius: 8,
+          color: 'var(--d-accent)',
+          fontSize: 12,
+        }}
+      >
+        <div style={{ fontWeight: 600 }}>Нужен вход</div>
+        <div style={{ opacity: 0.85, marginTop: 2 }}>
+          Открой Настройки → Общее → Войти и авторизуйся через Telegram.
+        </div>
+      </div>
+    );
+  }
+
   const label: Record<string, string> = {
     rate_limited: 'Лимит запросов исчерпан',
     model_unavailable: 'Модель недоступна на вашем плане',
     invalid_input: 'Неверный ввод',
     internal: 'Ошибка сервера',
-    transport: 'Потеряно соединение',
+    transport: 'Потеряно соединение с сервером',
   };
   return (
     <div

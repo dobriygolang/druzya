@@ -1,5 +1,6 @@
 {
   "name": "druz9-copilot",
+  "productName": "Druz9 Copilot",
   "version": "0.1.0",
   "description": "Druz9 Copilot — stealthy AI assistant for developers (macOS desktop)",
   "private": true,

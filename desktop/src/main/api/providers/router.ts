@@ -231,10 +231,29 @@ async function* routeServer(
     }
   } catch (err) {
     if ((err as { name?: string })?.name === 'AbortError') return;
+    // Surface the Connect code explicitly — the server's "copilot failure"
+    // generic message otherwise leaves us guessing. Full error object is
+    // also logged to main-process console so it shows up in dev logs.
+    const e = err as { code?: number; rawMessage?: string; message?: string };
+    // eslint-disable-next-line no-console
+    console.error('[copilot stream] connect error', {
+      code: e.code,
+      rawMessage: e.rawMessage,
+      message: e.message,
+      model: chosenModel,
+      hasConversationId: !!input.conversationId,
+    });
+    const prettyCode =
+      e.code === 16 ? 'unauthenticated'
+      : e.code === 14 ? 'unavailable'
+      : e.code === 8 ? 'rate_limited'
+      : e.code === 7 ? 'forbidden'
+      : e.code === 13 ? 'internal'
+      : 'transport';
     yield {
       type: 'error',
-      code: 'transport',
-      message: (err as Error).message ?? 'stream error',
+      code: prettyCode,
+      message: e.rawMessage || e.message || 'stream error',
       retryAfterSeconds: 0,
     };
   }

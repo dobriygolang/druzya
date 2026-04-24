@@ -31,8 +31,55 @@ func (p *StaticConfigProvider) Load(_ context.Context) (domain.DesktopConfig, er
 // dumb. Bump Rev on every change.
 func DefaultDesktopConfig() domain.DesktopConfig {
 	return domain.DesktopConfig{
-		Rev: 3,
+		Rev: 4,
 		Models: []domain.ProviderModel{
+			// ── Free tier — served via OpenRouter's zero-cost :free lane.
+			// These come first so the picker lists them at the top.
+			{
+				ID:                     "openai/gpt-oss-120b:free",
+				DisplayName:            "GPT-OSS 120B · free",
+				ProviderName:           "OpenRouter",
+				SpeedClass:             domain.ModelSpeedClassBalanced,
+				SupportsVision:         false,
+				SupportsReasoning:      true,
+				TypicalLatencyMs:       2600,
+				ContextWindowTokens:    131_072,
+				AvailableOnCurrentPlan: true,
+			},
+			{
+				ID:                     "qwen/qwen3-coder:free",
+				DisplayName:            "Qwen3 Coder · free",
+				ProviderName:           "OpenRouter",
+				SpeedClass:             domain.ModelSpeedClassFast,
+				SupportsVision:         false,
+				SupportsReasoning:      false,
+				TypicalLatencyMs:       1400,
+				ContextWindowTokens:    262_144,
+				AvailableOnCurrentPlan: true,
+			},
+			{
+				ID:                     "minimax/minimax-m2.5:free",
+				DisplayName:            "MiniMax M2.5 · free",
+				ProviderName:           "OpenRouter",
+				SpeedClass:             domain.ModelSpeedClassBalanced,
+				SupportsVision:         false,
+				SupportsReasoning:      false,
+				TypicalLatencyMs:       1800,
+				ContextWindowTokens:    200_000,
+				AvailableOnCurrentPlan: true,
+			},
+			{
+				ID:                     "liquid/lfm-2.5-1.2b-thinking:free",
+				DisplayName:            "Liquid LFM 1.2B Thinking · free",
+				ProviderName:           "OpenRouter",
+				SpeedClass:             domain.ModelSpeedClassReasoning,
+				SupportsVision:         false,
+				SupportsReasoning:      true,
+				TypicalLatencyMs:       1200,
+				ContextWindowTokens:    32_000,
+				AvailableOnCurrentPlan: true,
+			},
+			// ── Paid tier (OpenAI / Anthropic / Google / xAI proper).
 			{
 				ID:                     "openai/gpt-4o-mini",
 				DisplayName:            "GPT Fast",
@@ -42,7 +89,7 @@ func DefaultDesktopConfig() domain.DesktopConfig {
 				SupportsReasoning:      false,
 				TypicalLatencyMs:       1100,
 				ContextWindowTokens:    128_000,
-				AvailableOnCurrentPlan: true,
+				AvailableOnCurrentPlan: false,
 			},
 			{
 				ID:                     "openai/gpt-4o",
@@ -111,7 +158,7 @@ func DefaultDesktopConfig() domain.DesktopConfig {
 				AvailableOnCurrentPlan: false,
 			},
 		},
-		DefaultModelID: "openai/gpt-4o-mini",
+		DefaultModelID: "qwen/qwen3-coder:free",
 		DefaultHotkeys: []domain.HotkeyBinding{
 			{Action: domain.HotkeyActionScreenshotArea, Accelerator: "CommandOrControl+Shift+S"},
 			{Action: domain.HotkeyActionScreenshotFull, Accelerator: "CommandOrControl+Shift+A"},
@@ -133,7 +180,7 @@ func DefaultDesktopConfig() domain.DesktopConfig {
 				DisplayName:  "Free",
 				PriceLabel:   "Бесплатно",
 				Tagline:      "Для знакомства с продуктом",
-				Bullets:      []string{"20 запросов в день", "GPT Fast", "Только macOS"},
+				Bullets:      []string{"20 запросов в день", "Qwen3 Coder / GPT-OSS / MiniMax / Liquid (free)", "Только macOS"},
 				CTALabel:     "Текущий план",
 				SubscribeURL: "",
 			},

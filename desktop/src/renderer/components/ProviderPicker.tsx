@@ -16,6 +16,7 @@ import type { ProviderModel } from '@shared/types';
 
 import { IconCheck, IconKey, IconSparkles } from './icons';
 import { StatusDot } from './primitives';
+import { useAuthStore } from '../stores/auth';
 import { useSelectedModelStore } from '../stores/selected-model';
 
 type Family = 'openai' | 'anthropic' | 'google' | 'other';
@@ -39,6 +40,7 @@ export interface ProviderPickerProps {
 export function ProviderPicker({ models, defaultModelId, onClose }: ProviderPickerProps) {
   const selected = useSelectedModelStore((s) => s.modelId);
   const setSelected = useSelectedModelStore((s) => s.setModel);
+  const session = useAuthStore((s) => s.session);
   const [byok, setByok] = useState<ByokPresence>({ openai: false, anthropic: false });
   const [query, setQuery] = useState('');
 
@@ -141,7 +143,7 @@ export function ProviderPicker({ models, defaultModelId, onClose }: ProviderPick
         </div>
 
         <div style={{ flex: 1, overflowY: 'auto', padding: '8px 0' }}>
-          {grouped.length === 0 && models.length === 0 && (
+          {grouped.length === 0 && models.length === 0 && !session && (
             <div style={{ padding: 24, textAlign: 'center', color: 'var(--d-text-3)', fontSize: 12, lineHeight: 1.5 }}>
               <div style={{ fontSize: 13, color: 'var(--d-text)', marginBottom: 4 }}>
                 Сначала нужно войти
@@ -151,6 +153,18 @@ export function ProviderPicker({ models, defaultModelId, onClose }: ProviderPick
               или добавь свой OpenAI / Anthropic ключ
               <br />
               в Настройки → AI провайдеры.
+            </div>
+          )}
+          {grouped.length === 0 && models.length === 0 && session && (
+            <div style={{ padding: 24, textAlign: 'center', color: 'var(--d-text-3)', fontSize: 12, lineHeight: 1.5 }}>
+              <div style={{ fontSize: 13, color: 'var(--d-text)', marginBottom: 4 }}>
+                Каталог моделей не загрузился
+              </div>
+              Сервер недоступен или вернул ошибку.
+              <br />
+              Попробуй ещё раз через минуту,
+              <br />
+              либо добавь свой ключ в Настройки → AI провайдеры.
             </div>
           )}
           {grouped.length === 0 && models.length > 0 && (

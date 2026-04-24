@@ -66,8 +66,14 @@ export function stripFamily(modelId: string): string {
   return slash === -1 ? modelId : modelId.slice(slash + 1);
 }
 
-/** Infer family from a model id. Returns null for unknown prefixes. */
+/** Infer family from a model id. Returns null for unknown prefixes.
+ *
+ * Exception: OpenRouter's zero-cost lane uses namespaced ids with a `:free`
+ * suffix (e.g. "openai/gpt-oss-120b:free", "qwen/qwen3-coder:free") — these
+ * are OpenRouter-only and would 404 if sent to the real OpenAI/Anthropic
+ * APIs. Keep them on the server path by treating them as foreign. */
 export function familyOf(modelId: string): 'openai' | 'anthropic' | null {
+  if (modelId.endsWith(':free')) return null;
   if (modelId.startsWith('openai/')) return 'openai';
   if (modelId.startsWith('anthropic/')) return 'anthropic';
   return null;

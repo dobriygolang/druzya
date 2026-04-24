@@ -16,7 +16,6 @@ import { useEffect, useRef, useState } from 'react';
 
 import { BrandMark, IconCamera, IconChevronDown, IconClose, IconMinimize, IconSend, IconSettings } from '../../components/icons';
 import { IconButton, Kbd, StatusDot } from '../../components/primitives';
-import { ProviderPicker } from '../../components/ProviderPicker';
 import { VoiceButton } from '../../components/VoiceButton';
 import { useConfig } from '../../hooks/use-config';
 import { useHotkeyEvents } from '../../hooks/use-hotkey-events';
@@ -56,7 +55,9 @@ export function CompactScreen() {
   const [input, setInput] = useState('');
   const [status, setStatus] = useState<'idle' | 'ready' | 'thinking' | 'recording'>('ready');
   const [statusText, setStatusText] = useState('Готов');
-  const [pickerOpen, setPickerOpen] = useState(false);
+  // Model picker lives in expanded (compact is too small for the 440×520
+  // modal). Clicking the model label in compact opens expanded and
+  // signals via localStorage to pop the picker on mount.
   const [voiceToggleCount, setVoiceToggleCount] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -303,22 +304,36 @@ export function CompactScreen() {
           <IconButton title="Настройки" onClick={() => void window.druz9.windows.show('settings')}>
             <IconSettings size={15} />
           </IconButton>
-          <IconButton
+
+          {/* Window controls — visually separated from action icons by a
+              thin divider, so users don't confuse "hide compact" with
+              another feature button. */}
+          <div
+            style={{
+              width: 1,
+              height: 16,
+              background: 'var(--d-line)',
+              margin: '0 4px',
+              alignSelf: 'center',
+            }}
+          />
+          <WindowChromeButton
             title="Свернуть (⌘⇧D скроет/покажет)"
             onClick={() => void window.druz9.windows.hide('compact')}
           >
-            <IconMinimize size={15} />
-          </IconButton>
-          <IconButton
+            <IconMinimize size={13} />
+          </WindowChromeButton>
+          <WindowChromeButton
             title="Закрыть приложение"
+            danger
             onClick={() => {
               if (confirm('Закрыть Druz9 Copilot?\n\nПросто свернуть — ⌘⇧D или кнопка с чертой.')) {
                 void window.druz9.app.quit();
               }
             }}
           >
-            <IconClose size={15} />
-          </IconButton>
+            <IconClose size={13} />
+          </WindowChromeButton>
         </div>
       </div>
 
@@ -400,7 +415,7 @@ export function CompactScreen() {
           style={{ display: 'flex', alignItems: 'center', gap: 10, WebkitAppRegion: 'no-drag' } as React.CSSProperties}
         >
           <button
-            onClick={() => setPickerOpen(true)}
+            onClick={() => void window.druz9.ui.openProviderPicker()}
             title={config ? 'Выбрать модель' : 'Нужен вход — зайди через Настройки'}
             style={{
               display: 'inline-flex',
@@ -432,16 +447,6 @@ export function CompactScreen() {
         </div>
       </div>
 
-      {pickerOpen && (
-        <ProviderPicker
-          // When config is missing (user isn't logged in yet), render
-          // with an empty catalogue — the modal shows a "login first"
-          // hint via its own empty state.
-          models={config?.models ?? []}
-          defaultModelId={config?.defaultModelId ?? ''}
-          onClose={() => setPickerOpen(false)}
-        />
-      )}
     </div>
   );
 }
@@ -539,6 +544,54 @@ const smallChip: React.CSSProperties = {
   cursor: 'pointer',
   fontFamily: 'inherit',
 };
+
+// Tiny window-chrome button — smaller, flatter, and hover tints. Close
+// button uses `danger` to go red on hover so it reads like a real
+// close affordance, not just another icon.
+function WindowChromeButton({
+  title,
+  onClick,
+  children,
+  danger = false,
+}: {
+  title: string;
+  onClick: () => void;
+  children: React.ReactNode;
+  danger?: boolean;
+}) {
+  const hoverBg = danger ? 'rgba(255, 69, 58, 0.16)' : 'rgba(255,255,255,0.06)';
+  const hoverColor = danger ? 'var(--d-red)' : 'var(--d-text)';
+  return (
+    <button
+      title={title}
+      onClick={onClick}
+      style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        width: 22,
+        height: 22,
+        border: 'none',
+        background: 'transparent',
+        color: 'var(--d-text-3)',
+        borderRadius: 4,
+        cursor: 'pointer',
+        padding: 0,
+        transition: 'background-color 120ms ease, color 120ms ease',
+      }}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.background = hoverBg;
+        e.currentTarget.style.color = hoverColor;
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.background = 'transparent';
+        e.currentTarget.style.color = 'var(--d-text-3)';
+      }}
+    >
+      {children}
+    </button>
+  );
+}
 
 function modelLabel(id: string | undefined, cfg: ReturnType<typeof useConfig>['config']): string {
   if (!id || !cfg) return 'AI';

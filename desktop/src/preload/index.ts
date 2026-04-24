@@ -137,6 +137,10 @@ const api: Druz9API = {
   app: {
     quit: () => ipcRenderer.invoke(invokeChannels.appQuit) as Promise<void>,
   },
+  ui: {
+    openProviderPicker: () =>
+      ipcRenderer.invoke(invokeChannels.openProviderPicker) as Promise<void>,
+  },
   cursor: {
     state: () =>
       ipcRenderer.invoke(invokeChannels.cursorFreezeState) as Promise<CursorFreezeState>,

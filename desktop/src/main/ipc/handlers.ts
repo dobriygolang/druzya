@@ -49,6 +49,7 @@ import {
 } from '../permissions/macos';
 import {
   broadcast,
+  closeWindow,
   hideWindow,
   resizeWindow,
   setStealth,
@@ -228,7 +229,10 @@ export function registerHandlers(opts: RegisterOptions): void {
     },
   );
   ipcMain.on(invokeChannels.captureAreaCommit, async (_evt, rect: AreaRect) => {
-    hideWindow('area-overlay');
+    // Fully tear down the overlay window — reusing it leaves stale React
+    // state (last drag coords / lingering event listeners) that corrupts
+    // the next area capture.
+    closeWindow('area-overlay');
     if (!pendingArea) return;
     const p = pendingArea;
     pendingArea = null;
@@ -240,7 +244,7 @@ export function registerHandlers(opts: RegisterOptions): void {
     }
   });
   ipcMain.on(invokeChannels.captureAreaCancel, () => {
-    hideWindow('area-overlay');
+    closeWindow('area-overlay');
     if (!pendingArea) return;
     const p = pendingArea;
     pendingArea = null;
@@ -392,6 +396,17 @@ export function registerHandlers(opts: RegisterOptions): void {
   ipcMain.handle(invokeChannels.appQuit, async () => {
     // Give the analyzer subscriber a moment to drain; then quit.
     setTimeout(() => app.quit(), 50);
+  });
+
+  // ── UI hand-offs ──
+  // Compact window is too small for the picker modal; compact asks
+  // main to show expanded + tell it to pop the picker on arrival.
+  ipcMain.handle(invokeChannels.openProviderPicker, async () => {
+    showWindow('expanded', windowOptions);
+    // Give the expanded renderer a moment to register its event
+    // listener before we fire. Without this, the push can arrive
+    // before React has subscribed.
+    setTimeout(() => broadcast(eventChannels.openProviderPicker, null), 200);
   });
 
   // ── Cursor freeze ── (the "virtual cursor" UX)

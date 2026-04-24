@@ -71,6 +71,10 @@ export const invokeChannels = {
 
   appQuit: 'app:quit',
 
+  /** Renderer → main: ask to broadcast "open provider picker" to the
+   *  expanded window. Main handles showing the expanded window too. */
+  openProviderPicker: 'ui:open-provider-picker',
+
   cursorFreezeState: 'cursor:freeze-state',
   cursorFreezeToggle: 'cursor:freeze-toggle',
 
@@ -99,6 +103,10 @@ export const eventChannels = {
   cursorFreezeChanged: 'event:cursor-freeze-changed',
   sessionChanged: 'event:session-changed',
   sessionAnalysisReady: 'event:session-analysis-ready',
+  /** Compact → main → expanded: "open the provider picker on arrival".
+   *  Emitted by the little "choose model" button in compact since the
+   *  picker modal (440×520) doesn't fit inside the compact window. */
+  openProviderPicker: 'event:open-provider-picker',
   /** Main → renderer request for a serialized local transcript (BYOK
    *  path). Renderer answers via ipcRenderer.send on
    *  'session:local-transcript-response'. */
@@ -396,6 +404,12 @@ export interface Druz9API {
   app: {
     /** Quit the entire application. User-confirmed elsewhere. */
     quit: () => Promise<void>;
+  };
+
+  /** UI hand-offs between windows. */
+  ui: {
+    /** Ask the expanded window to open the model picker on arrival. */
+    openProviderPicker: () => Promise<void>;
   };
 
   /**

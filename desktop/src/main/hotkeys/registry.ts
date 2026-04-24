@@ -29,10 +29,26 @@ export function setHotkeyHandler(h: HotkeyHandler): void {
 export function applyBindings(bindings: HotkeyBinding[]): HotkeyBinding[] {
   globalShortcut.unregisterAll();
   current = [];
+  const failed: HotkeyBinding[] = [];
   for (const b of bindings) {
     if (!b.accelerator) continue;
     const ok = globalShortcut.register(b.accelerator, () => handler(b.action));
-    if (ok) current.push(b);
+    if (ok) {
+      current.push(b);
+    } else {
+      failed.push(b);
+    }
+  }
+  if (failed.length > 0) {
+    // eslint-disable-next-line no-console
+    console.warn(
+      '[hotkeys] Failed to register:',
+      failed.map((b) => `${b.action}=${b.accelerator}`).join(', '),
+      '\n  Common causes:',
+      '\n  1. Another app owns the chord (⌘⇧S by default is macOS Screenshot).',
+      '\n  2. Accessibility permission not granted (System Settings → Privacy → Accessibility).',
+      '\n  3. In dev mode, the parent process (Electron) needs the permission, not Druz9.app.',
+    );
   }
   return current;
 }

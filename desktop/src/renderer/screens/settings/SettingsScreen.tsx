@@ -21,7 +21,7 @@ import {
   type MasqueradePresetInfo,
   type UpdateStatus,
 } from '@shared/ipc';
-import type { ProviderModel } from '@shared/types';
+import type { HotkeyBinding, ProviderModel } from '@shared/types';
 import { ByokSection } from './ByokSection';
 
 type Tab = 'general' | 'hotkeys' | 'providers' | 'about';
@@ -332,7 +332,19 @@ function HotkeysTab() {
   const clearOverride = useHotkeyOverridesStore((s) => s.clear);
   const merge = useHotkeyOverridesStore((s) => s.merge);
 
-  const defaults = config?.defaultHotkeys ?? [];
+  // Local fallback that mirrors the bindings main/index.ts registers on
+  // startup — so the Settings list is populated and usable even before
+  // the user logs in (DesktopConfig.defaultHotkeys is server-supplied).
+  const LOCAL_DEFAULTS: HotkeyBinding[] = [
+    { action: 'screenshot_area', accelerator: 'CommandOrControl+Shift+S' },
+    { action: 'screenshot_full', accelerator: 'CommandOrControl+Shift+A' },
+    { action: 'voice_input', accelerator: 'CommandOrControl+Shift+V' },
+    { action: 'toggle_window', accelerator: 'CommandOrControl+Shift+D' },
+    { action: 'quick_prompt', accelerator: 'CommandOrControl+Shift+Q' },
+    { action: 'clear_conversation', accelerator: 'CommandOrControl+Shift+K' },
+    { action: 'cursor_freeze_toggle', accelerator: 'CommandOrControl+Shift+Y' },
+  ];
+  const defaults = config?.defaultHotkeys?.length ? config.defaultHotkeys : LOCAL_DEFAULTS;
 
   // Whenever defaults or overrides change, push the merged bindings to
   // main so the globalShortcut registry re-registers under the new
@@ -351,6 +363,7 @@ function HotkeysTab() {
     toggle_window: 'Показать / скрыть окно',
     quick_prompt: 'Быстрый вопрос',
     clear_conversation: 'Очистить диалог',
+    cursor_freeze_toggle: 'Заморозить курсор',
   };
 
   return (

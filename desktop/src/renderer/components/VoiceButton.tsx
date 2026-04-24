@@ -4,7 +4,7 @@
 //   transcribing — animated caret + "…"
 // Errors toast inline in the caller via `onError`.
 
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 
 import { useVoice } from '../hooks/use-voice';
 import { IconMic } from './icons';
@@ -26,9 +26,15 @@ export function VoiceButton({ onTranscript, onError, hotkeyToggle }: VoiceButton
     if (voice.state === 'error' && voice.error && onError) onError(voice.error);
   }, [voice.state, voice.error, onError]);
 
-  // Hotkey toggle — parent increments a counter on each fire; we react.
+  // Hotkey toggle — parent increments a counter on each fire. Track the
+  // last seen value in a ref so we only react when it actually changes.
+  // Using a ref (not didMount) survives StrictMode's effect double-invoke
+  // and any re-renders caused by other prop changes.
+  const lastToggleRef = useRef(hotkeyToggle);
   useEffect(() => {
     if (hotkeyToggle === undefined) return;
+    if (lastToggleRef.current === hotkeyToggle) return;
+    lastToggleRef.current = hotkeyToggle;
     if (voice.state === 'idle') void voice.start();
     else if (voice.state === 'recording') void voice.stop();
     // transcribing / error — ignore the hotkey

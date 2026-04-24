@@ -17,6 +17,17 @@ import { destroyTray, ensureTray } from './tray';
 import { wireAutoUpdate } from './updater';
 import { broadcast, showWindow } from './windows/window-manager';
 
+// Force the display name before anything else — Electron infers name
+// from the parent process in dev (e.g. "claude" when launched from the
+// Claude CLI), and that leaks into the macOS menu bar and About panel.
+app.setName('Druz9 Copilot');
+if (process.platform === 'darwin') {
+  app.setAboutPanelOptions({
+    applicationName: 'Druz9 Copilot',
+    applicationVersion: app.getVersion(),
+  });
+}
+
 // Enforce single instance — required for the deep-link handler to route
 // druz9:// callbacks into the already-running process.
 const gotLock = app.requestSingleInstanceLock();
@@ -91,11 +102,17 @@ app.whenReady().then(async () => {
   });
 
   // Boot the compact window. Hotkey bindings are applied from the
-  // DesktopConfig fetched by the renderer on startup; we register a
-  // minimal default here so the app is usable before config arrives.
+  // DesktopConfig fetched by the renderer once the user logs in;
+  // before that, we register the full local default set so screenshots
+  // / voice / cursor-freeze work even without a session.
   applyBindings([
     { action: 'screenshot_area', accelerator: 'CommandOrControl+Shift+S' },
+    { action: 'screenshot_full', accelerator: 'CommandOrControl+Shift+A' },
+    { action: 'voice_input', accelerator: 'CommandOrControl+Shift+V' },
     { action: 'toggle_window', accelerator: 'CommandOrControl+Shift+D' },
+    { action: 'quick_prompt', accelerator: 'CommandOrControl+Shift+Q' },
+    { action: 'clear_conversation', accelerator: 'CommandOrControl+Shift+K' },
+    { action: 'cursor_freeze_toggle', accelerator: 'CommandOrControl+Shift+Y' },
   ]);
 
   showWindow('compact', windowOptions);

@@ -61,12 +61,11 @@ export function ensureTray(deps: TrayDeps): void {
 
   const icon = buildTrayIcon(deps.resourcesPath);
   tray = new Tray(icon);
-  // Fallback visible label — until the monochrome template PNG is in
-  // resources/, the Tray would render as a blank zero-px gap in the
-  // menu bar. A 3-char title guarantees the tray is always findable.
-  if (icon.isEmpty()) {
-    tray.setTitle('D9');
-  }
+  // Always set a short textual marker alongside the icon — when the
+  // template PNG is missing (dev builds) the icon is empty, and even
+  // when present the text makes the Druz9 tray instantly findable
+  // among other menu-bar items.
+  tray.setTitle(icon.isEmpty() ? 'D9' : ' D9');
   tray.setToolTip('Druz9 Copilot');
 
   // Clicking the icon shows the compact window AND opens the menu —
