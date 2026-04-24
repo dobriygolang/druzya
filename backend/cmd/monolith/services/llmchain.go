@@ -1,6 +1,7 @@
 package services
 
 import (
+	"context"
 	"fmt"
 	"log/slog"
 	"strings"
@@ -9,6 +10,7 @@ import (
 	"druz9/shared/pkg/llmcache"
 	"druz9/shared/pkg/llmchain"
 
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/redis/go-redis/v9"
 )
 
@@ -35,6 +37,13 @@ import (
 // want direct access to *llmchain.Chain continue to work. The
 // cache-decorated entry point is BuildLLMChainWithCache below.
 func BuildLLMChain(cfg config.Config, log *slog.Logger) (*llmchain.Chain, error) {
+	return buildLLMChainWithRuntime(cfg, log, nil, nil)
+}
+
+// buildLLMChainWithRuntime — внутренняя версия с опциональным pool'ом для
+// runtime-config-source и ctx для остановки background refresh'а. Вызывается
+// из BuildLLMChainWithCache когда Pool/ctx доступны.
+func buildLLMChainWithRuntime(cfg config.Config, log *slog.Logger, pool *pgxpool.Pool, runtimeCtx context.Context) (*llmchain.Chain, error) {
 	drivers := map[llmchain.Provider]llmchain.Driver{}
 
 	if cfg.LLMChain.GroqAPIKey != "" {
@@ -84,10 +93,17 @@ func BuildLLMChain(cfg config.Config, log *slog.Logger) (*llmchain.Chain, error)
 	}
 
 	order := parseChainOrder(cfg.LLMChain.ChainOrder)
-	chain, err := llmchain.NewChain(drivers, llmchain.Options{
+	opts := llmchain.Options{
 		Order: order,
 		Log:   log,
-	})
+	}
+	// Runtime-reloadable config из БД — опционально. Без pool'а
+	// (например backfill-скрипты / тесты) chain работает на static defaults.
+	if pool != nil {
+		opts.RuntimeConfigSource = newLLMConfigSource(pool)
+		opts.RuntimeCtx = runtimeCtx
+	}
+	chain, err := llmchain.NewChain(drivers, opts)
 	if err != nil {
 		return nil, fmt.Errorf("llmchain: build chain: %w", err)
 	}
@@ -108,15 +124,15 @@ func BuildLLMChain(cfg config.Config, log *slog.Logger) (*llmchain.Chain, error)
 // NoopCache, CachingChain всё равно оборачивает Chain чтобы Deps.LLMChain
 // имел единый тип (llmchain.ChatClient) независимо от конфига. Lookup
 // превращается в мгновенный miss, Store — no-op.
-func BuildLLMChainWithCache(cfg config.Config, log *slog.Logger, rdb *redis.Client) (llmchain.ChatClient, func() error, error) {
-	raw, err := BuildLLMChain(cfg, log)
+func BuildLLMChainWithCache(cfg config.Config, log *slog.Logger, rdb *redis.Client, pool *pgxpool.Pool, runtimeCtx context.Context) (llmchain.ChatClient, *llmchain.Chain, func() error, error) {
+	raw, err := buildLLMChainWithRuntime(cfg, log, pool, runtimeCtx)
 	if err != nil {
-		return nil, func() error { return nil }, err
+		return nil, nil, func() error { return nil }, err
 	}
 	if raw == nil {
 		// Ни одного драйвера не зарегистрировано — сервисы видят nil и
 		// идут в свою disabled-ветку. Обёртка не нужна.
-		return nil, func() error { return nil }, nil
+		return nil, nil, func() error { return nil }, nil
 	}
 	var cache llmcache.Cache = llmcache.NoopCache{}
 	if cfg.LLMChain.OllamaHost != "" && rdb != nil {
@@ -129,7 +145,7 @@ func BuildLLMChainWithCache(cfg config.Config, log *slog.Logger, rdb *redis.Clie
 		log.Info("llmcache: semantic cache disabled (OLLAMA_HOST or Redis unavailable) — passthrough only")
 	}
 	cc := &llmcache.CachingChain{Chain: raw, Cache: cache, Log: log}
-	return cc, cache.Close, nil
+	return cc, raw, cache.Close, nil
 }
 
 // parseChainOrder turns "groq,cerebras,openrouter" into the typed slice.

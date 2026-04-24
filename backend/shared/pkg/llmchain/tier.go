@@ -80,8 +80,8 @@ const (
 	VirtualReasoning = "druz9/reasoning"
 )
 
-// virtualCandidate — одно звено фиктивного chain'а.
-type virtualCandidate struct {
+// VirtualCandidate — одно звено фиктивного chain'а.
+type VirtualCandidate struct {
 	Provider Provider
 	Model    string
 }
@@ -92,7 +92,7 @@ type virtualCandidate struct {
 // Актуальность моделей (2026-Q2) — меняй тут при обновлении pricing/lineup
 // у OpenRouter/DeepSeek. Не забудь синхронно обновить ModelRequiredTier
 // выше если модель переехала в другой tier.
-var virtualChains = map[string][]virtualCandidate{
+var virtualChains = map[string][]VirtualCandidate{
 	VirtualTurbo: {
 		// Дублирует логику task_map для TaskCopilotStream (free-chain),
 		// на случай если caller прислал druz9/turbo через ModelOverride.

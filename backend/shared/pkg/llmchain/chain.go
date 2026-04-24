@@ -24,7 +24,7 @@ import (
 // the one map load.
 type Chain struct {
 	drivers  map[Provider]Driver
-	order    []Provider // resolved priority (healthy providers, in order)
+	order    []Provider // resolved priority (healthy providers, in order) — static defaults
 	taskMap  TaskModelMap
 	state    sync.Map // key: provider+"/"+model → *rateState
 	latency  *latencyStore
@@ -34,6 +34,12 @@ type Chain struct {
 	// Default cooldowns applied when a provider returns a typed error
 	// without a header hint. Tunable for tests.
 	defaultCooldowns cooldownPolicy
+	// runtimeCfg — optional runtime-loaded overrides (from DB). Когда
+	// непустой snapshot активен — методы currentOrder/currentTaskMap/
+	// currentVirtualChains возвращают его значения; иначе падают на
+	// static defaults (order/taskMap/virtualChains). nil — runtime reload
+	// отключён (unit-tests / в startup до wire-up loader'а).
+	runtimeCfg *configLoader
 }
 
 // cooldownPolicy holds the baked-in durations for each error class.
@@ -92,6 +98,22 @@ type Options struct {
 
 	// Log is required (anti-fallback policy: no silent noop loggers).
 	Log *slog.Logger
+
+	// RuntimeConfigSource — опциональный источник данных для динамической
+	// конфигурации chain'а (порядок / task-map / virtual-chains из БД).
+	// nil → runtime reload отключён, chain работает только с hardcoded
+	// defaults. Когда задан — конструктор стартует background refresh
+	// goroutine через NewChain → context.
+	RuntimeConfigSource ConfigSource
+
+	// RuntimeRefreshInterval — как часто loader опрашивает источник.
+	// 0 → 30s default. Админ-PUT форсит reload вне тика.
+	RuntimeRefreshInterval time.Duration
+
+	// RuntimeCtx — контекст для background refresh goroutine. nil →
+	// background.Background(). Обычно wiring передаёт ctx приложения,
+	// чтобы graceful shutdown останавливал loader.
+	RuntimeCtx context.Context
 }
 
 // NewChain builds the orchestrator. Drivers with nil entries are
@@ -142,7 +164,7 @@ func NewChain(drivers map[Provider]Driver, opts Options) (*Chain, error) {
 		clock = time.Now
 	}
 
-	return &Chain{
+	c := &Chain{
 		drivers:          drivers,
 		order:            order,
 		taskMap:          taskMap,
@@ -151,7 +173,90 @@ func NewChain(drivers map[Provider]Driver, opts Options) (*Chain, error) {
 		clock:            clock,
 		timeouts:         timeouts,
 		defaultCooldowns: defaultPolicy,
-	}, nil
+	}
+
+	// Runtime config loader. Если оператор не прицепил ConfigSource — chain
+	// живёт на static defaults (как раньше). Иначе — стартуем background
+	// goroutine, читающую свежие снэпшоты из БД.
+	if opts.RuntimeConfigSource != nil {
+		loader := newConfigLoader(opts.RuntimeConfigSource, opts.RuntimeRefreshInterval, opts.Log)
+		c.runtimeCfg = loader
+		ctx := opts.RuntimeCtx
+		if ctx == nil {
+			ctx = context.Background()
+		}
+		go loader.run(ctx)
+	}
+	return c, nil
+}
+
+// RuntimeForceReload — форсит немедленную загрузку config'а из источника.
+// Используется admin-PUT handler'ом после успешной записи в БД, чтобы
+// изменения вступали в силу без ожидания 30s tick'а.
+func (c *Chain) RuntimeForceReload(ctx context.Context) {
+	if c.runtimeCfg != nil {
+		c.runtimeCfg.forceReload(ctx)
+	}
+}
+
+// currentOrder — вернёт runtime-заданный порядок если есть (непустой
+// ChainOrder в snapshot'е) либо static c.order. Сохраняет гарантию что
+// в результат попадают только registered-драйверы (фильтрация по
+// c.drivers).
+func (c *Chain) currentOrder() []Provider {
+	if c.runtimeCfg != nil {
+		if snap := c.runtimeCfg.snapshot(); snap != nil && len(snap.ChainOrder) > 0 {
+			out := make([]Provider, 0, len(snap.ChainOrder))
+			for _, p := range snap.ChainOrder {
+				if _, ok := c.drivers[p]; ok {
+					out = append(out, p)
+				}
+			}
+			if len(out) > 0 {
+				return out
+			}
+		}
+	}
+	return c.order
+}
+
+// currentTaskMap — runtime-заданный TaskModelMap или c.taskMap. Если
+// runtime-map неполный (нет нужного task'а) — дополняем static-default'ами
+// по недостающим ключам.
+func (c *Chain) currentTaskMap() TaskModelMap {
+	if c.runtimeCfg != nil {
+		if snap := c.runtimeCfg.snapshot(); snap != nil && len(snap.TaskMap) > 0 {
+			merged := c.taskMap.Clone()
+			for task, inner := range snap.TaskMap {
+				if len(inner) == 0 {
+					continue
+				}
+				merged[task] = inner
+			}
+			return merged
+		}
+	}
+	return c.taskMap
+}
+
+// currentVirtualChains — runtime-заданные виртуалки или static virtualChains
+// из tier.go. Ключи-override'ы заменяют defaults one-by-one.
+func (c *Chain) currentVirtualChains() map[string][]VirtualCandidate {
+	if c.runtimeCfg != nil {
+		if snap := c.runtimeCfg.snapshot(); snap != nil && len(snap.VirtualChains) > 0 {
+			merged := make(map[string][]VirtualCandidate, len(virtualChains))
+			for k, v := range virtualChains {
+				merged[k] = v
+			}
+			for k, v := range snap.VirtualChains {
+				if len(v) > 0 {
+					merged[k] = v
+				}
+			}
+			return merged
+		}
+	}
+	return virtualChains
 }
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -274,7 +379,9 @@ func (c *Chain) candidates(req Request) ([]candidate, error) {
 			return nil, fmt.Errorf("%w: %q needs %s, got %s",
 				ErrTierRequired, req.ModelOverride, required, effectiveTier(req.UserTier))
 		}
-		vChain, ok := virtualChains[req.ModelOverride]
+		// Предпочитаем runtime-chain (из БД) над hardcoded static. Админ
+		// меняет порядок провайдеров / состав цепочки через PUT /admin/llm/config.
+		vChain, ok := c.currentVirtualChains()[req.ModelOverride]
 		if !ok {
 			return nil, fmt.Errorf("%w: no chain for virtual %q", ErrNoProvider, req.ModelOverride)
 		}
@@ -298,9 +405,13 @@ func (c *Chain) candidates(req Request) ([]candidate, error) {
 	if req.Task == "" {
 		return nil, fmt.Errorf("%w: neither Task nor ModelOverride set", ErrBadRequest)
 	}
-	out := make([]candidate, 0, len(c.order))
-	for _, p := range c.order {
-		model := c.taskMap.ModelFor(req.Task, p)
+	// Runtime-config предпочитается static'у — админ может менять порядок
+	// и task-map через БД без рестарта (см. currentOrder/currentTaskMap).
+	order := c.currentOrder()
+	taskMap := c.currentTaskMap()
+	out := make([]candidate, 0, len(order))
+	for _, p := range order {
+		model := taskMap.ModelFor(req.Task, p)
 		if model == "" {
 			continue
 		}
@@ -428,7 +539,7 @@ func providerFromModelID(id string) Provider {
 // Элементы без зарегистрированного драйвера ТИХО скипаются — соответствует
 // семантике task-based candidates: если оператор не настроил key для
 // OpenRouter, pro-цепочка просто "сожмётся" до работающих звеньев.
-func (c *Chain) expandVirtualChain(vc []virtualCandidate) []candidate {
+func (c *Chain) expandVirtualChain(vc []VirtualCandidate) []candidate {
 	out := make([]candidate, 0, len(vc))
 	for _, v := range vc {
 		d, ok := c.drivers[v.Provider]

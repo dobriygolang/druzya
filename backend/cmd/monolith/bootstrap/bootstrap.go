@@ -91,7 +91,7 @@ func New(ctx context.Context, cfg *config.Config) (app *App, otelShutdown func()
 	// не фатально — BuildLLMChainWithCache возвращает nil ChatClient и
 	// downstream-сервисы деградируют в disabled-ветку. Cache-shutdown
 	// регистрируется ниже в registerInfraClosers через поле llmCacheClose.
-	llmChain, llmCacheClose, lcErr := services.BuildLLMChainWithCache(*cfg, log, rdb)
+	llmChain, llmRawChain, llmCacheClose, lcErr := services.BuildLLMChainWithCache(*cfg, log, rdb, pool, ctx)
 	if lcErr != nil {
 		pool.Close()
 		_ = rdb.Close()
@@ -169,6 +169,7 @@ func New(ctx context.Context, cfg *config.Config) (app *App, otelShutdown func()
 		services.NewHone(deps),
 		services.NewLobby(deps),
 		services.NewSubscription(deps),
+		services.NewLLMChainAdmin(deps, llmRawChain),
 	}
 
 	// Documents module is wired first so its searcher adapter can be
