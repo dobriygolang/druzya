@@ -25,6 +25,7 @@ import { WhiteboardPage } from './pages/Whiteboard';
 import { StatsPage } from './pages/Stats';
 import { PodcastsPage } from './pages/Podcasts';
 import { EditorPage } from './pages/Editor';
+import { SharedBoardsPage } from './pages/SharedBoards';
 import { useSessionStore } from './stores/session';
 
 const POMODORO_SECONDS = 25 * 60;
@@ -258,6 +259,7 @@ export default function App() {
       else if (k === 's') open('stats');
       else if (k === 'p') open('podcasts');
       else if (k === 'e') open('editor');
+      else if (k === 'b') open('shared_boards');
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
@@ -309,6 +311,7 @@ export default function App() {
       {page === 'stats' && <StatsPage />}
       {page === 'podcasts' && <PodcastsPage />}
       {page === 'editor' && <EditorPage />}
+      {page === 'shared_boards' && <SharedBoardsPage />}
 
       {!focusMode && (
         <Dock
