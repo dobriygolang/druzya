@@ -6,7 +6,6 @@ package app
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"log/slog"
 	"strings"
@@ -50,10 +49,6 @@ func (uc *BanUser) Do(ctx context.Context, in BanInput) (domain.AdminUserRow, er
 	in.Reason = reason
 	out, err := uc.Users.Ban(ctx, in)
 	if err != nil {
-		if errors.Is(err, domain.ErrUserNotFound) ||
-			errors.Is(err, domain.ErrAlreadyBanned) {
-			return domain.AdminUserRow{}, fmt.Errorf("admin.BanUser: %w", err)
-		}
 		return domain.AdminUserRow{}, fmt.Errorf("admin.BanUser: %w", err)
 	}
 	uc.bustCache(ctx)
@@ -74,9 +69,6 @@ func (uc *UnbanUser) Do(ctx context.Context, userID, by uuid.UUID) (domain.Admin
 	}
 	out, err := uc.Users.Unban(ctx, userID, by)
 	if err != nil {
-		if errors.Is(err, domain.ErrUserNotFound) || errors.Is(err, domain.ErrNotBanned) {
-			return domain.AdminUserRow{}, fmt.Errorf("admin.UnbanUser: %w", err)
-		}
 		return domain.AdminUserRow{}, fmt.Errorf("admin.UnbanUser: %w", err)
 	}
 	uc.bustCache(ctx)
