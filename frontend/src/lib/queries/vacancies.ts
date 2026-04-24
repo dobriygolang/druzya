@@ -125,6 +125,25 @@ export type Vacancy = {
   fetched_at: string
 }
 
+// VacancyDetails is the wire shape returned by GET /vacancies/{src}/{ext_id}
+// after Phase 4. It is a strict superset of Vacancy — every Vacancy field is
+// preserved verbatim; the new optional fields carry the rich detail-page
+// blocks (description HTML, bullet lists, source-specific extras).
+//
+// SourceOnly=true means the source has no public detail endpoint (currently
+// only Ozon — host blocked / no JSON API discoverable). Frontend renders a
+// CTA banner pointing at vacancy.url instead of empty rich sections.
+export type VacancyDetails = Vacancy & {
+  description_html?: string
+  requirements?: string[]
+  duties?: string[]
+  conditions?: string[]
+  our_team?: string
+  tech_stack?: string[]
+  source_only?: boolean
+  details_fetched_at: string
+}
+
 export type SavedVacancy = {
   id: number
   source: VacancySource
@@ -215,7 +234,7 @@ export function useFacetsQuery() {
 export function useVacancy(source: VacancySource | undefined, externalId: string | undefined) {
   return useQuery({
     queryKey: ['vacancies', 'one', source, externalId],
-    queryFn: () => api<Vacancy>(`/vacancies/${source}/${externalId}`),
+    queryFn: () => api<VacancyDetails>(`/vacancies/${source}/${externalId}`),
     enabled: !!source && !!externalId,
   })
 }

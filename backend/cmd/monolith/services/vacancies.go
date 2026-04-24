@@ -10,6 +10,7 @@ import (
 	vacInfra "druz9/vacancies/infra"
 	vacCache "druz9/vacancies/infra/cache"
 	vacParsers "druz9/vacancies/infra/parsers"
+	vacDetails "druz9/vacancies/infra/parsers/details"
 	vacPorts "druz9/vacancies/ports"
 
 	"github.com/go-chi/chi/v5"
@@ -60,9 +61,16 @@ func NewVacancies(d Deps) *Module {
 	}
 	cache := vacCache.New(cacheParsers, d.Log, vacCache.Options{})
 
+	// Phase 4: lazy detail-enrichment cache. Sits on top of the listing
+	// cache; populated on first detail-page open per (source, ext_id);
+	// stale-while-revalidate at 1h TTL; singleflight per key.
+	detailFetchers := vacDetails.RegisterAll(vacDetails.Config{Log: d.Log})
+	detailsCache := vacCache.NewDetails(cache, detailFetchers, d.Log, vacCache.DetailsOptions{})
+
 	analyze := &vacApp.AnalyzeURL{Parsers: parsers, Cache: cache, Extractor: extractor}
 	list := &vacApp.ListVacancies{Cache: cache}
 	get := &vacApp.GetVacancy{Cache: cache}
+	getDetails := &vacApp.GetVacancyDetails{Details: detailsCache}
 	facets := &vacApp.GetFacets{Cache: cache}
 	save := &vacApp.SaveVacancy{Repo: pgSaved, Cache: cache}
 	upd := &vacApp.UpdateSavedStatus{Repo: pgSaved}
@@ -71,7 +79,7 @@ func NewVacancies(d Deps) *Module {
 	getSaved := &vacApp.GetSaved{Repo: pgSaved, Cache: cache}
 
 	h := &vacPorts.Handler{
-		Analyze: analyze, List: list, Get: get, Facets: facets,
+		Analyze: analyze, List: list, Get: get, GetDetails: getDetails, Facets: facets,
 		Save: save, Update: upd, Remove: rem,
 		ListSaved: listSaved, GetSaved: getSaved,
 		Log: d.Log,

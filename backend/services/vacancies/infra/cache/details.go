@@ -187,7 +187,7 @@ func (c *DetailsCache) fetchAndStore(ctx context.Context, source domain.Source, 
 		return v, nil
 	})
 	if err != nil {
-		return domain.VacancyDetails{}, err
+		return domain.VacancyDetails{}, fmt.Errorf("vacancies.details.singleflight: %w", err)
 	}
 	return out.(domain.VacancyDetails), nil
 }

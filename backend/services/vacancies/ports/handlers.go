@@ -39,16 +39,17 @@ import (
 
 // Handler bundles the use-case pointers + logger.
 type Handler struct {
-	Analyze   *app.AnalyzeURL
-	List      *app.ListVacancies
-	Get       *app.GetVacancy
-	Facets    *app.GetFacets
-	Save      *app.SaveVacancy
-	Update    *app.UpdateSavedStatus
-	Remove    *app.RemoveSaved
-	ListSaved *app.ListSaved
-	GetSaved  *app.GetSaved
-	Log       *slog.Logger
+	Analyze    *app.AnalyzeURL
+	List       *app.ListVacancies
+	Get        *app.GetVacancy
+	GetDetails *app.GetVacancyDetails
+	Facets     *app.GetFacets
+	Save       *app.SaveVacancy
+	Update     *app.UpdateSavedStatus
+	Remove     *app.RemoveSaved
+	ListSaved  *app.ListSaved
+	GetSaved   *app.GetSaved
+	Log        *slog.Logger
 }
 
 // Mount registers every route on the given chi router. Caller is
@@ -104,6 +105,36 @@ func toVacancyDTO(v domain.Vacancy) vacancyDTO {
 		Description: v.Description, RawSkills: v.RawSkills, NormalizedSkills: v.NormalizedSkills,
 		Category: string(v.Category),
 		PostedAt: v.PostedAt, FetchedAt: v.FetchedAt,
+	}
+}
+
+// vacancyDetailsDTO is the wire shape for GET /vacancies/{source}/{external_id}.
+// It is a strict superset of vacancyDTO — the frontend that previously
+// consumed vacancyDTO can keep reading the same fields and ignore the
+// new optional rich blocks.
+type vacancyDetailsDTO struct {
+	vacancyDTO
+	DescriptionHTML  string    `json:"description_html,omitempty"`
+	Requirements     []string  `json:"requirements,omitempty"`
+	Duties           []string  `json:"duties,omitempty"`
+	Conditions       []string  `json:"conditions,omitempty"`
+	OurTeam          string    `json:"our_team,omitempty"`
+	TechStack        []string  `json:"tech_stack,omitempty"`
+	SourceOnly       bool      `json:"source_only,omitempty"`
+	DetailsFetchedAt time.Time `json:"details_fetched_at"`
+}
+
+func toVacancyDetailsDTO(d domain.VacancyDetails) vacancyDetailsDTO {
+	return vacancyDetailsDTO{
+		vacancyDTO:       toVacancyDTO(d.Vacancy),
+		DescriptionHTML:  d.DescriptionHTML,
+		Requirements:     d.Requirements,
+		Duties:           d.Duties,
+		Conditions:       d.Conditions,
+		OurTeam:          d.OurTeam,
+		TechStack:        d.TechStack,
+		SourceOnly:       d.SourceOnly,
+		DetailsFetchedAt: d.DetailsFetchedAt,
 	}
 }
 
@@ -257,7 +288,12 @@ func (h *Handler) handleGet(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	v, err := h.Get.Do(r.Context(), src, extID)
+	// Phase 4: detail endpoint returns the rich VacancyDetails (listing
+	// snapshot + per-source rich blocks). The cache layer handles
+	// stale-while-revalidate; on upstream failure we still get the
+	// listing snapshot back (anti-fallback: no fabricated content,
+	// just the shallow view degraded gracefully).
+	d, err := h.GetDetails.Do(r.Context(), src, extID)
 	if err != nil {
 		if errors.Is(err, domain.ErrNotFound) {
 			writeError(w, http.StatusNotFound, "not found")
@@ -267,7 +303,7 @@ func (h *Handler) handleGet(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, "get failed")
 		return
 	}
-	writeJSON(w, http.StatusOK, toVacancyDTO(v))
+	writeJSON(w, http.StatusOK, toVacancyDetailsDTO(d))
 }
 
 type saveReq struct {

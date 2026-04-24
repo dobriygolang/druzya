@@ -109,14 +109,86 @@ export default function VacancyDetailPage() {
       </div>
 
       <div className="grid grid-cols-1 gap-6 px-4 py-6 sm:px-8 lg:grid-cols-[1fr_320px] lg:px-20">
-        <Card padding="lg">
-          <h2 className="mb-3 font-display text-base font-semibold text-text-primary">
-            Описание
-          </h2>
-          <p className="whitespace-pre-line text-sm text-text-secondary">
-            {vac.description || 'Нет описания.'}
-          </p>
-        </Card>
+        <div className="flex flex-col gap-4">
+          {vac.source_only ? (
+            <Card padding="lg">
+              <h2 className="mb-2 font-display text-base font-semibold text-text-primary">
+                Описание недоступно через API
+              </h2>
+              <p className="text-sm text-text-secondary">
+                Источник {vac.source.toUpperCase()} не предоставляет полное описание
+                через публичный API. Полная информация доступна на сайте источника.
+              </p>
+              <a
+                href={vac.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-3 inline-flex items-center gap-1 text-sm text-accent hover:underline"
+              >
+                Открыть полное описание <ExternalLink className="h-3.5 w-3.5" />
+              </a>
+            </Card>
+          ) : (
+            <>
+              {(vac.description_html || vac.description) && (
+                <Card padding="lg">
+                  <h2 className="mb-3 font-display text-base font-semibold text-text-primary">
+                    Описание
+                  </h2>
+                  {vac.description_html ? (
+                    <div
+                      className="prose prose-sm max-w-none text-sm text-text-secondary [&_a]:text-accent [&_a]:hover:underline [&_h3]:mt-3 [&_h3]:font-display [&_h3]:text-sm [&_h3]:font-semibold [&_h3]:text-text-primary [&_li]:my-1 [&_p]:my-2 [&_ul]:list-disc [&_ul]:pl-5"
+                      // Sanitised server-side against an HTML tag allow-list.
+                      dangerouslySetInnerHTML={{ __html: vac.description_html }}
+                    />
+                  ) : (
+                    <p className="whitespace-pre-line text-sm text-text-secondary">
+                      {vac.description}
+                    </p>
+                  )}
+                </Card>
+              )}
+              {vac.duties && vac.duties.length > 0 && (
+                <DetailListCard title="Обязанности" items={vac.duties} />
+              )}
+              {vac.requirements && vac.requirements.length > 0 && (
+                <DetailListCard title="Требования" items={vac.requirements} />
+              )}
+              {vac.conditions && vac.conditions.length > 0 && (
+                <DetailListCard title="Условия" items={vac.conditions} />
+              )}
+              {vac.our_team && (
+                <Card padding="lg">
+                  <h2 className="mb-3 font-display text-base font-semibold text-text-primary">
+                    О команде
+                  </h2>
+                  <div
+                    className="prose prose-sm max-w-none text-sm text-text-secondary [&_p]:my-2"
+                    // Sanitised server-side against an HTML tag allow-list.
+                    dangerouslySetInnerHTML={{ __html: vac.our_team }}
+                  />
+                </Card>
+              )}
+              {vac.tech_stack && vac.tech_stack.length > 0 && (
+                <Card padding="lg">
+                  <h2 className="mb-3 font-display text-base font-semibold text-text-primary">
+                    Стек
+                  </h2>
+                  <div className="flex flex-wrap gap-1.5">
+                    {vac.tech_stack.map((s) => (
+                      <span
+                        key={s}
+                        className="rounded-full border border-border bg-surface-2 px-2 py-0.5 font-mono text-[11px] text-text-primary"
+                      >
+                        {s}
+                      </span>
+                    ))}
+                  </div>
+                </Card>
+              )}
+            </>
+          )}
+        </div>
         <div className="flex flex-col gap-4">
           <Card padding="lg">
             <h2 className="mb-3 font-display text-sm font-semibold text-text-primary">
@@ -158,6 +230,21 @@ export default function VacancyDetailPage() {
         <PrepDrawer onClose={() => setDrawerOpen(false)} missing={Array.from(missing)} />
       )}
     </AppShellV2>
+  )
+}
+
+function DetailListCard({ title, items }: { title: string; items: string[] }) {
+  return (
+    <Card padding="lg">
+      <h2 className="mb-3 font-display text-base font-semibold text-text-primary">
+        {title}
+      </h2>
+      <ul className="list-disc space-y-1.5 pl-5 text-sm text-text-secondary">
+        {items.map((it, i) => (
+          <li key={`${title}-${i}`}>{it}</li>
+        ))}
+      </ul>
+    </Card>
   )
 }
 

@@ -49,6 +49,28 @@ func (g *GetVacancy) Do(_ context.Context, source domain.Source, externalID stri
 	return v, nil
 }
 
+// DetailsReader is the lazy-detail-cache surface the GetVacancyDetails use
+// case needs. The concrete implementation is *infra/cache.DetailsCache.
+type DetailsReader interface {
+	Get(ctx context.Context, source domain.Source, externalID string) (domain.VacancyDetails, error)
+}
+
+// GetVacancyDetails is the use case behind the rich detail endpoint.
+// It returns VacancyDetails (listing snapshot + per-source rich blocks).
+type GetVacancyDetails struct {
+	Details DetailsReader
+}
+
+// Do reads the rich details, falling through to ErrNotFound when neither
+// the listing nor the detail endpoint has the key.
+func (g *GetVacancyDetails) Do(ctx context.Context, source domain.Source, externalID string) (domain.VacancyDetails, error) {
+	v, err := g.Details.Get(ctx, source, externalID)
+	if err != nil {
+		return domain.VacancyDetails{}, fmt.Errorf("vacancies.GetVacancyDetails: %w", err)
+	}
+	return v, nil
+}
+
 // GetFacets is the use case behind GET /vacancies/facets.
 type GetFacets struct {
 	Cache CacheReader
