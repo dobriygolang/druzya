@@ -62,10 +62,6 @@ type UserState struct {
 	MediumSolved int
 	// AnySolved — total решённых задач любых уровней.
 	AnySolved int
-
-	// CohortGraduatedCount — number of cohorts the user is in that have
-	// status='graduated'. Drives the cohort-graduated badge.
-	CohortGraduatedCount int
 }
 
 // Evaluator считает прогресс по каталогу и пишет в repo.
@@ -227,14 +223,6 @@ func scoreForCode(code string, st UserState) int {
 	case "guild-war-mvp":
 		// не агрегируется в snapshot — отдельный publisher.
 		return -1
-	case "cohort-graduated":
-		// 1 если пользователь состоит хотя бы в одной graduated-когорте.
-		// Ranged at clamp(1) — целимся на единичный unlock; повторные
-		// graduations обновляют only updated_at, не дают XP.
-		if st.CohortGraduatedCount > 0 {
-			return 1
-		}
-		return 0
 	}
 
 	// secret / hidden — only publishers, не от snapshot.

@@ -162,16 +162,6 @@ var catalogue = []Achievement{
 		Category: CategorySocial, Tier: TierLegendary,
 		RequirementsText: "MVP-флаг в Guild War.", RewardText: "+1500 XP · title MVP",
 		Target: 1},
-	// Cohorts (M-cohort-features) — graduating from a learning cohort
-	// flips status active→graduated, fires CohortGraduated event, which
-	// recalcs every member's progress; this rule lights up here.
-	{Code: "cohort-graduated", Title: "Cohort Graduate",
-		Description: "Закончить когорту до конца её срока.",
-		Category:    CategorySocial, Tier: TierRare,
-		RequirementsText: "Состоять в когорте на момент status='graduated'.",
-		RewardText:       "+400 XP · title Cohort Alumni",
-		Target:           1},
-
 	// ── Secret / hidden ────────────────────────────────────────────────────
 	{Code: "secret-night-grind", Title: "Insomniac", Description: "10 решений между 02:00 и 05:00.",
 		Category: CategorySecret, Tier: TierRare,

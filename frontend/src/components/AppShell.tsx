@@ -1,6 +1,6 @@
 import { ReactNode, useEffect, useRef, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { Bell, Menu, Search, X, Sun, Moon, Languages, User, LogOut, Settings, Users, HelpCircle, Shield, CalendarDays, Sparkles } from 'lucide-react'
+import { Bell, Menu, Search, X, Sun, Moon, Languages, User, LogOut, Settings, Users, HelpCircle, Shield, Sparkles } from 'lucide-react'
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
 import { MobileBottomNav } from './MobileBottomNav'
@@ -198,7 +198,6 @@ function UserMenu({ onClose }: { onClose: () => void }) {
   const items: { to: string; label: string; icon: typeof User; badge?: 'new' }[] = [
     { to: '/copilot', label: 'Copilot', icon: Sparkles, badge: 'new' },
     { to: '/profile', label: t('nav.profile'), icon: User },
-    { to: '/cohorts', label: t('nav.cohorts'), icon: CalendarDays },
     { to: '/settings', label: t('nav.settings'), icon: Settings },
     { to: '/friends', label: t('nav.friends'), icon: Users },
     { to: '/notifications', label: t('nav.notifications'), icon: Bell },

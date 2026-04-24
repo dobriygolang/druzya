@@ -13,8 +13,7 @@
     "slots": "Слоты",
     "settings": "Настройки",
     "notifications": "Уведомления",
-    "admin": "Админка",
-    "cohorts": "Когорты"
+    "admin": "Админка"
   },
   "buttons": {
     "find_opponent": "Найти соперника",

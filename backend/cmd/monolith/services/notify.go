@@ -31,7 +31,7 @@ type NotifyModule struct {
 	// notify depends on auth's RedisTelegramCodeRepo).
 	Bot *notifyInfra.TelegramBot
 	// Handlers is exposed so bootstrap can attach late-bound bridges
-	// (e.g. CohortMembersLookup) after their source modules wire.
+	// after their source modules wire.
 	Handlers *notifyApp.Handlers
 }
 
@@ -140,9 +140,6 @@ func NewNotify(d Deps) (*NotifyModule, error) {
 					b.Subscribe(sharedDomain.SkillDecayed{}.Topic(), handlers.OnSkillDecayed)
 					b.Subscribe(sharedDomain.UserRegistered{}.Topic(), handlers.OnUserRegistered)
 					b.Subscribe(sharedDomain.SlotBooked{}.Topic(), handlers.OnSlotBooked)
-					b.Subscribe(sharedDomain.CohortAnnouncementPosted{}.Topic(), handlers.OnCohortAnnouncementPosted)
-					b.Subscribe(sharedDomain.CohortMemberJoined{}.Topic(), handlers.OnCohortMemberJoined)
-					b.Subscribe(sharedDomain.CohortGraduated{}.Topic(), handlers.OnCohortGraduated)
 					b.Subscribe(notifyDomain.WeeklyReportDue{}.Topic(), handlers.OnWeeklyReportDue)
 
 					// In-app notifications feed (NotificationsPage).

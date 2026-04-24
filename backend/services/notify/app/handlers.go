@@ -8,44 +8,13 @@ import (
 	"druz9/notify/domain"
 	sharedDomain "druz9/shared/domain"
 	"druz9/shared/enums"
-
-	"github.com/google/uuid"
 )
-
-// parseUUID is a tolerant wrapper around uuid.Parse — wraps the lib's
-// error in our errFmt so call sites can switch on it cleanly.
-func parseUUID(s string) (uuid.UUID, error) {
-	id, err := uuid.Parse(s)
-	if err != nil {
-		return uuid.Nil, fmt.Errorf("invalid uuid %q: %w", s, err)
-	}
-	return id, nil
-}
-
-// CohortMembersLookup is a cross-service port the notify service uses to
-// fan-out cohort events (announcements, graduation) to every member +
-// resolve owner identity for join events. Implementation lives in the
-// monolith wiring (services/notify.go) and bridges into cohort.Repo.
-//
-// Notify never imports cohort/domain directly — keeps the bounded
-// context boundary clean.
-type CohortMembersLookup interface {
-	ListMemberIDs(ctx context.Context, cohortID Hex) ([]Hex, error)
-	GetOwnerID(ctx context.Context, cohortID Hex) (Hex, error)
-	GetCohortName(ctx context.Context, cohortID Hex) (string, error)
-}
-
-// Hex is the lazy alias notify uses to dodge a direct dep on
-// github.com/google/uuid in this port file (the bridge implementation
-// converts at the boundary). Use raw string serialisation.
-type Hex = string
 
 // Handlers groups the notify event handlers so wiring in main.go is compact.
 // Each method matches sharedDomain.Handler.
 type Handlers struct {
-	Send    *SendNotification
-	Cohorts CohortMembersLookup // nil-safe — handler short-circuits when missing
-	Log     *slog.Logger
+	Send *SendNotification
+	Log  *slog.Logger
 }
 
 // NewHandlers constructs a Handlers set.
@@ -268,108 +237,4 @@ func (h *Handlers) OnWeeklyReportDue(ctx context.Context, ev sharedDomain.Event)
 			"Summary": "Открой сайт, чтобы увидеть полный отчёт.",
 		},
 	})
-}
-
-// ── Cohort ────────────────────────────────────────────────────────────────
-
-// OnCohortAnnouncementPosted fans out a brief notification to every member
-// of the cohort when a new announcement lands. Best-effort — falls
-// through silently when CohortsLookup is missing or member list query
-// fails (the announcement itself already persisted; we don't fail it on
-// notify errors).
-func (h *Handlers) OnCohortAnnouncementPosted(ctx context.Context, ev sharedDomain.Event) error {
-	e, ok := ev.(sharedDomain.CohortAnnouncementPosted)
-	if !ok {
-		return fmt.Errorf("notify.OnCohortAnnouncementPosted: unexpected event %T", ev)
-	}
-	if h.Cohorts == nil {
-		return nil
-	}
-	cohortName, _ := h.Cohorts.GetCohortName(ctx, e.CohortID.String())
-	memberIDs, err := h.Cohorts.ListMemberIDs(ctx, e.CohortID.String())
-	if err != nil {
-		if h.Log != nil {
-			h.Log.WarnContext(ctx, "notify.OnCohortAnnouncementPosted: members lookup failed",
-				slog.Any("err", err), slog.String("cohort_id", e.CohortID.String()))
-		}
-		return nil
-	}
-	for _, uidStr := range memberIDs {
-		// Skip the author — they posted it, no need to ping themselves.
-		if uidStr == e.AuthorID.String() {
-			continue
-		}
-		uid, parseErr := parseUUID(uidStr)
-		if parseErr != nil {
-			continue
-		}
-		if err := h.Send.Do(ctx, SendInput{
-			UserID: uid,
-			Type:   enums.NotificationTypeCohortPost,
-			Payload: map[string]any{
-				"CohortName": cohortName,
-				"Preview":    e.BodyPreview,
-			},
-		}); err != nil && h.Log != nil {
-			h.Log.WarnContext(ctx, "notify.OnCohortAnnouncementPosted: send failed",
-				slog.Any("err", err), slog.String("user_id", uidStr))
-		}
-	}
-	return nil
-}
-
-// OnCohortMemberJoined notifies the cohort owner that a new member arrived.
-// The owner self-join (CreateCohort auto-adds them as RoleOwner) is
-// suppressed by checking JoinerID != OwnerID.
-func (h *Handlers) OnCohortMemberJoined(ctx context.Context, ev sharedDomain.Event) error {
-	e, ok := ev.(sharedDomain.CohortMemberJoined)
-	if !ok {
-		return fmt.Errorf("notify.OnCohortMemberJoined: unexpected event %T", ev)
-	}
-	if h.Cohorts == nil {
-		return nil
-	}
-	ownerStr, err := h.Cohorts.GetOwnerID(ctx, e.CohortID.String())
-	if err != nil || ownerStr == "" {
-		return nil
-	}
-	if ownerStr == e.UserID.String() {
-		return nil // owner self-add (CreateCohort)
-	}
-	cohortName, _ := h.Cohorts.GetCohortName(ctx, e.CohortID.String())
-	owner, err := parseUUID(ownerStr)
-	if err != nil {
-		return nil
-	}
-	return h.Send.Do(ctx, SendInput{
-		UserID: owner,
-		Type:   enums.NotificationTypeCohortJoin,
-		Payload: map[string]any{
-			"CohortName": cohortName,
-			"JoinerID":   e.UserID.String(),
-		},
-	})
-}
-
-// OnCohortGraduated notifies every member that the cohort wrapped up +
-// they earned the «Cohort Graduate» badge.
-func (h *Handlers) OnCohortGraduated(ctx context.Context, ev sharedDomain.Event) error {
-	e, ok := ev.(sharedDomain.CohortGraduated)
-	if !ok {
-		return fmt.Errorf("notify.OnCohortGraduated: unexpected event %T", ev)
-	}
-	for _, uid := range e.MemberIDs {
-		if err := h.Send.Do(ctx, SendInput{
-			UserID: uid,
-			Type:   enums.NotificationTypeCohortGraduate,
-			Payload: map[string]any{
-				"CohortName":  e.CohortName,
-				"GraduatedAt": e.GraduatedAt.Format("02.01.2006"),
-			},
-		}); err != nil && h.Log != nil {
-			h.Log.WarnContext(ctx, "notify.OnCohortGraduated: send failed",
-				slog.Any("err", err), slog.String("user_id", uid.String()))
-		}
-	}
-	return nil
 }

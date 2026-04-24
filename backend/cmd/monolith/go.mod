@@ -10,8 +10,6 @@ require (
 	druz9/ai_native v0.0.0-00010101000000-000000000000
 	druz9/arena v0.0.0-00010101000000-000000000000
 	druz9/auth v0.0.0-00010101000000-000000000000
-	druz9/cohort v0.0.0-00010101000000-000000000000
-	druz9/cohort_announcement v0.0.0-00010101000000-000000000000
 	druz9/copilot v0.0.0-00010101000000-000000000000
 	druz9/daily v0.0.0-00010101000000-000000000000
 	druz9/editor v0.0.0-00010101000000-000000000000
@@ -124,15 +122,11 @@ replace druz9/achievements => ../../services/achievements
 
 replace druz9/friends => ../../services/friends
 
-replace druz9/cohort => ../../services/cohort
-
 replace druz9/copilot => ../../services/copilot
 
 replace druz9/lobby => ../../services/lobby
 
 replace druz9/review => ../../services/review
-
-replace druz9/cohort_announcement => ../../services/cohort_announcement
 
 replace druz9/mentor_session => ../../services/mentor_session
 

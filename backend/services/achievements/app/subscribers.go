@@ -108,17 +108,3 @@ func (s *Subscribers) recalc(ctx context.Context, uid uuid.UUID) {
 			slog.Any("err", err), slog.Any("user_id", uid))
 	}
 }
-
-// OnCohortGraduated — когда когорта переходит в graduated, дёргаем
-// пересчёт по каждому участнику. Atlas-ачивки сами решат, давать ли
-// «Cohort Graduate» бейдж (см. cohort_graduated_v1 в каталоге ачивок).
-func (s *Subscribers) OnCohortGraduated(ctx context.Context, ev sharedDomain.Event) error {
-	e, ok := ev.(sharedDomain.CohortGraduated)
-	if !ok {
-		return nil
-	}
-	for _, uid := range e.MemberIDs {
-		s.recalc(ctx, uid)
-	}
-	return nil
-}

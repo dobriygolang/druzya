@@ -6,7 +6,6 @@
 //   - friend-request        → accept / decline inline (friendship_id payload)
 //   - coach-insight-ready   → open arrow (plan_id / insight_id payload)
 //   - system-alert          → warn icon + body, optional href
-//   - cohort-message        → cohort avatar + first line
 //
 // Color map per design _rules.md:
 //   - g-pc gradient (pink→cyan) for AI / coach insight (territory marker)
@@ -30,7 +29,6 @@ export type CardKind =
   | 'friend-request'
   | 'coach-insight-ready'
   | 'system-alert'
-  | 'cohort-message'
 
 export function kindFromType(t: string): CardKind {
   switch (t) {
@@ -45,8 +43,6 @@ export function kindFromType(t: string): CardKind {
     case 'coach_insight':
     case 'insight_ready':
       return 'coach-insight-ready'
-    case 'cohort_message':
-      return 'cohort-message'
     default:
       return 'system-alert'
   }
@@ -75,7 +71,6 @@ export type NotificationCardProps = {
   onDeclineMatch?: (matchID: string) => void
   onOpenInsight?: (id: string) => void
   onOpenAchievement?: (id: string) => void
-  onOpenCohort?: (id: string) => void
   onOpenSystem?: (href: string) => void
 }
 
@@ -159,14 +154,6 @@ function Glyph({ item, kind }: { item: NotificationItem; kind: CardKind }) {
         <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-accent/20">
           <Users className="h-4 w-4 text-accent-hover" />
         </span>
-      )
-    case 'cohort-message':
-      return (
-        <Avatar
-          size="lg"
-          gradient={mapGradient((item.payload?.cohort_slug as string | undefined) ?? item.title)}
-          initials={(item.title || 'C').slice(0, 1).toUpperCase()}
-        />
       )
   }
 }
@@ -266,18 +253,6 @@ function Footer({ item, kind, ...props }: NotificationCardProps & { kind: CardKi
           style={{ background: 'linear-gradient(90deg, rgb(244,114,182), rgb(34,211,238))', WebkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent' }}
         >
           Открыть инсайт <ArrowRight className="h-3 w-3 text-cyan" />
-        </button>
-      )
-    }
-    case 'cohort-message': {
-      const cid = (item.payload?.cohort_id as string | undefined) ?? ''
-      return (
-        <button
-          type="button"
-          onClick={() => props.onOpenCohort?.(cid)}
-          className="inline-flex items-center gap-1 pt-1 text-left text-xs font-semibold text-accent-hover hover:text-accent"
-        >
-          Открыть когорту <ArrowRight className="h-3 w-3" />
         </button>
       )
     }

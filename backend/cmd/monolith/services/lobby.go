@@ -22,7 +22,7 @@
 //     collisions and then returns ErrCodeExhausted (no silent re-keying).
 //   - StartLobby refuses to flip a lobby to 'live' without a real arena_match
 //     id from the MatchCreator — partial commits are explicitly rejected.
-//   - nil-loggers panic in cohort/app constructors; mirrored here in NewLobby.
+//   - nil-loggers panic in NewLobby — every dep is required.
 package services
 
 import (
@@ -51,9 +51,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-// isUniqueViolationErr — SQLSTATE 23505 sniff, local copy since the
-// cohort Postgres adapter (which used to own a package-level helper)
-// moved to cohort/infra in Phase 7.
+// isUniqueViolationErr — SQLSTATE 23505 sniff.
 func isUniqueViolationErr(err error) bool {
 	if err == nil {
 		return false

@@ -23,10 +23,8 @@ use (
 	./backend/services/orgs
 	./backend/services/mentor_session
 	./backend/services/tg_coach
-	./backend/services/cohort
 	./backend/services/copilot
 	./backend/services/lobby
-	./backend/services/cohort_announcement
 	./backend/services/review
 	./backend/shared
 )

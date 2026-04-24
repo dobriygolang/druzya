@@ -155,16 +155,12 @@ func restAuthGate(requireAuth func(http.Handler) http.Handler) func(http.Handler
 		// picker on /arena. Frontend needs it before sign-in to render the
 		// premium-tier upsell, so it stays outside the bearer gate.
 		"/api/v1/ai/models": {},
-		// /api/v1/cohort/list — public discovery; detail (/cohort/{slug})
-		// и /cohort/{id}/leaderboard — read-only, тоже без bearer'а
-		// (см. isPublic ниже для путей с префиксом /api/v1/cohort/).
-		"/api/v1/cohort/list": {},
 		// /api/v1/lobby/list — public discovery for /lobbies. Detail and
 		// code-lookup paths (/lobby/{id}, /lobby/code/{code}) are also
 		// public — see isPublic prefix check below.
 		"/api/v1/lobby/list": {},
 	}
-	isPublic := func(method, p string) bool {
+	isPublic := func(_, p string) bool {
 		if _, ok := publicPaths[p]; ok {
 			return true
 		}
@@ -188,39 +184,6 @@ func restAuthGate(requireAuth func(http.Handler) http.Handler) func(http.Handler
 			p != "/api/v1/vacancies/analyze" &&
 			!strings.HasSuffix(p, "/save") {
 			return true
-		}
-		// Cohort public surface is a strict whitelist, NOT a prefix with
-		// suffix exclusions — the blanket approach silently let /announcement,
-		// /invite, /disband, /graduate, /transfer, /role and PATCH /cohort/{id}
-		// bypass bearer auth, so authed-only handlers downstream answered
-		// every call with 401 and the frontend interpreted that as a
-		// session-expired redirect (fixed: /login?reason=expired on click).
-		//
-		// Allowed without bearer:
-		//   GET /api/v1/cohort/{slug}                 — detail page
-		//   GET /api/v1/cohort/{id}/leaderboard       — public ranks
-		//   GET /api/v1/cohort/{id}/streak            — kata heatmap
-		// Everything else (including /announcement*, PATCH /cohort/{id},
-		// /disband, /graduate, /transfer, /invite, /members/{id}/role,
-		// /join, /leave, POST /cohort) MUST go through requireAuth.
-		if strings.HasPrefix(p, "/api/v1/cohort/") {
-			// Only GETs can be public — PATCH /cohort/{id} (UpdateCohort)
-			// and POST writes must always hit requireAuth.
-			if method != http.MethodGet {
-				return false
-			}
-			tail := strings.TrimPrefix(p, "/api/v1/cohort/")
-			if tail == "" {
-				return false
-			}
-			// Single segment → GET /cohort/{slug}.
-			if !strings.Contains(tail, "/") {
-				return true
-			}
-			if strings.HasSuffix(p, "/leaderboard") || strings.HasSuffix(p, "/streak") {
-				return true
-			}
-			return false
 		}
 		// /api/v1/lobby/{id} (GET detail) and /api/v1/lobby/code/{code} —
 		// public read-only paths. POST /lobby itself plus mutation suffixes

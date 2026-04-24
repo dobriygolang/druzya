@@ -185,7 +185,6 @@ export function NotificationsDrawer({ open, onClose }: NotificationsDrawerProps)
                         onDeclineMatch={(mid) => navigateAndClose(`/arena/match/${mid}?decline=1`)}
                         onOpenInsight={() => navigateAndClose('/weekly')}
                         onOpenAchievement={() => navigateAndClose('/profile?tab=achievements')}
-                        onOpenCohort={(cid) => navigateAndClose(cid ? `/cohorts/${cid}` : '/cohorts')}
                         onOpenSystem={(href) => navigateAndClose(href)}
                       />
                     </li>

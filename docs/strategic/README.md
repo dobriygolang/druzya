@@ -9,7 +9,6 @@ with one scaffold migration and (where applicable) one bounded context.
 | B2B HR-tech           | [b2b-hrtech.md](./b2b-hrtech.md) | `00027_orgs.sql`                  | `backend/services/orgs/`              |
 | Mentor marketplace    | [mentor-marketplace.md](./mentor-marketplace.md) | `00028_mentor_profile.sql` | `backend/services/mentor_session/` |
 | Telegram AI coach     | [tg-coach.md](./tg-coach.md)     | `00029_tg_coach.sql`              | `backend/services/tg_coach/`          |
-| Cohorts               | [cohorts.md](./cohorts.md)       | `00030_cohorts.sql`               | `backend/services/cohort/`            |
 | Full i18n (kz/ua)     | [i18n.md](./i18n.md)             | (none — frontend only)            | `frontend/src/locales/{kz,ua}/`       |
 
 ## Conventions used by all five docs

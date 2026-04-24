@@ -13,8 +13,7 @@
     "slots": "Slots",
     "settings": "Settings",
     "notifications": "Notifications",
-    "admin": "Admin",
-    "cohorts": "Cohorts"
+    "admin": "Admin"
   },
   "buttons": {
     "find_opponent": "Find opponent",

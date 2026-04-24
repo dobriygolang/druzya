@@ -265,43 +265,6 @@ type SlotCancelled struct {
 func (SlotCancelled) Topic() string { return "slot.Cancelled" }
 
 // ─────────────────────────────────────────────────────────────────────────
-// Cohort
-// ─────────────────────────────────────────────────────────────────────────
-
-type CohortGraduated struct {
-	base
-	CohortID    uuid.UUID   `json:"cohort_id"`
-	CohortSlug  string      `json:"cohort_slug"`
-	CohortName  string      `json:"cohort_name"`
-	MemberIDs   []uuid.UUID `json:"member_ids"`
-	GraduatedAt time.Time   `json:"graduated_at"`
-}
-
-func (CohortGraduated) Topic() string { return "cohort.Graduated" }
-
-type CohortMemberJoined struct {
-	base
-	CohortID uuid.UUID `json:"cohort_id"`
-	UserID   uuid.UUID `json:"user_id"`
-	// Role at the moment of joining — typically RoleMember; CreateCohort
-	// auto-adds the owner with RoleOwner so subscribers can suppress
-	// self-notifications.
-	Role string `json:"role"`
-}
-
-func (CohortMemberJoined) Topic() string { return "cohort.MemberJoined" }
-
-type CohortAnnouncementPosted struct {
-	base
-	CohortID       uuid.UUID `json:"cohort_id"`
-	AuthorID       uuid.UUID `json:"author_id"`
-	AnnouncementID uuid.UUID `json:"announcement_id"`
-	BodyPreview    string    `json:"body_preview"`
-}
-
-func (CohortAnnouncementPosted) Topic() string { return "cohort.AnnouncementPosted" }
-
-// ─────────────────────────────────────────────────────────────────────────
 // Subscription
 // ─────────────────────────────────────────────────────────────────────────
 
