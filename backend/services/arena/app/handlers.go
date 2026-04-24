@@ -122,20 +122,31 @@ func (uc *HandleReadyCheckTimeout) Sweep(ctx context.Context, matchID uuid.UUID)
 		MatchID: matchID,
 		Reason:  "ready_check_timeout",
 	})
-	// Возвращаем подтвердивших в очередь с бонусом +5 ELO.
-	parts, _ := uc.Matches.ListParticipants(ctx, matchID)
-	eloByUser := map[uuid.UUID]int{}
-	for _, p := range parts {
-		eloByUser[p.UserID] = p.EloBefore
-	}
-	for _, u := range confirmed {
-		_ = uc.Queue.Enqueue(ctx, domain.QueueTicket{
-			UserID:     u,
-			Section:    m.Section,
-			Mode:       m.Mode,
-			Elo:        eloByUser[u] + 5,
-			EnqueuedAt: now,
-		})
+	// Возвращаем подтвердивших в очередь с бонусом +5 ELO. Если
+	// ListParticipants провалился — не можем восстановить EloBefore;
+	// логируем и пропускаем re-queue вместо тихого enqueue с ELO 0
+	// (это отравило бы matchmaking).
+	parts, listErr := uc.Matches.ListParticipants(ctx, matchID)
+	if listErr != nil {
+		uc.Log.WarnContext(ctx, "arena.HandleReadyCheckTimeout: ListParticipants",
+			slog.Any("err", listErr), slog.String("match_id", matchID.String()))
+	} else {
+		eloByUser := map[uuid.UUID]int{}
+		for _, p := range parts {
+			eloByUser[p.UserID] = p.EloBefore
+		}
+		for _, u := range confirmed {
+			if err := uc.Queue.Enqueue(ctx, domain.QueueTicket{
+				UserID:     u,
+				Section:    m.Section,
+				Mode:       m.Mode,
+				Elo:        eloByUser[u] + 5,
+				EnqueuedAt: now,
+			}); err != nil {
+				uc.Log.WarnContext(ctx, "arena.HandleReadyCheckTimeout: requeue",
+					slog.Any("err", err), slog.String("user_id", u.String()))
+			}
+		}
 	}
 	// Anticheat-сигнал на неподтвердивших. NOTE: bible требует
 	// AnticheatTabSwitch, если был зафиксирован WS-disconnect. Этот флаг
@@ -235,7 +246,13 @@ func (uc *SubmitCode) Do(ctx context.Context, in SubmitCodeInput) (SubmitCodeOut
 		v := now.Sub(*m.StartedAt).Milliseconds()
 		solveMs = &v
 	}
-	suspicion, _ := uc.Anticheat.GetSuspicion(ctx, in.MatchID, in.UserID)
+	suspicion, sErr := uc.Anticheat.GetSuspicion(ctx, in.MatchID, in.UserID)
+	if sErr != nil {
+		// Non-fatal: suspicion is metadata persisted alongside the result.
+		// Losing it shouldn't block the submission; log and fall back to 0.
+		uc.Log.WarnContext(ctx, "arena.SubmitCode: GetSuspicion", slog.Any("err", sErr))
+		suspicion = 0
+	}
 	part := domain.Participant{
 		MatchID:        in.MatchID,
 		UserID:         in.UserID,
@@ -357,6 +374,7 @@ func (uc *SubmitCode) maybeFinishDuo(
 type GetMatch struct {
 	Matches domain.MatchRepo
 	Tasks   domain.TaskRepo
+	Log     *slog.Logger
 }
 
 // MatchView — отрисованная view.
@@ -378,9 +396,16 @@ func (uc *GetMatch) Do(ctx context.Context, matchID uuid.UUID) (MatchView, error
 	}
 	v := MatchView{Match: m, Participants: parts}
 	if m.TaskID != uuid.Nil {
-		t, err := uc.Tasks.GetByID(ctx, m.TaskID)
-		if err == nil {
+		t, tErr := uc.Tasks.GetByID(ctx, m.TaskID)
+		if tErr == nil {
 			v.Task = &t
+		} else if uc.Log != nil {
+			// Task load is soft-fail: match view is still useful without it,
+			// but we must not eat the error silently. Log is nil-guarded
+			// because existing wiring may pass nil (unlike other use cases in
+			// this file) — callers that care should inject a logger.
+			uc.Log.WarnContext(ctx, "arena.GetMatch: Tasks.GetByID",
+				slog.Any("err", tErr), slog.String("task_id", m.TaskID.String()))
 		}
 	}
 	return v, nil
