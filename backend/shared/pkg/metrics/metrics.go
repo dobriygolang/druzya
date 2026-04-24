@@ -192,6 +192,18 @@ var VacanciesParserErrorsTotal = prometheus.NewCounterVec(
 	[]string{"source"},
 )
 
+// VacanciesCacheRefreshErrorsTotal counts per-source refresh failures in the
+// in-memory vacancies cache. Anti-fallback: a failure does NOT zero the
+// bucket; the prior fetch survives so one portal outage doesn't blank the
+// catalogue. Alert when one source's rate climbs.
+var VacanciesCacheRefreshErrorsTotal = prometheus.NewCounterVec(
+	prometheus.CounterOpts{
+		Name: "druz9_vacancies_cache_refresh_errors_total",
+		Help: "Per-source vacancies cache refresh failures. Prior bucket retained.",
+	},
+	[]string{"source"},
+)
+
 func init() {
 	Registry.MustRegister(
 		HTTPRequestsTotal, HTTPRequestDuration, HTTPErrorsTotal,
@@ -201,6 +213,7 @@ func init() {
 		MatchesStartedTotal, MatchesFinishedTotal,
 		MockSessionsTotal, QueueWaitSeconds, ActiveUsers,
 		CacheSetErrorsTotal, VacanciesParserErrorsTotal,
+		VacanciesCacheRefreshErrorsTotal,
 	)
 }
 

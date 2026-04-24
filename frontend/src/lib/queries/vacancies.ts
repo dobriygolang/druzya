@@ -1,8 +1,11 @@
 // Queries for the vacancies bounded context.
 //
-// Backend module: backend/services/vacancies/. The endpoints land under
-// /api/v1/vacancies/*. Public reads (analyze, list, get) work without bearer;
-// mutating endpoints (save / update status / delete) require auth.
+// Backend module: backend/services/vacancies/. Endpoints land under
+// /api/v1/vacancies/*.
+//
+// Phase 3: the parsed catalogue is an in-memory cache (no DB id). Identity
+// is the composite (source, external_id). Routes use that pair; the kanban
+// row still has a numeric id (saved_vacancies.id) for status updates.
 
 import {
   useMutation,
@@ -10,7 +13,7 @@ import {
   useQueryClient,
   keepPreviousData,
 } from '@tanstack/react-query'
-import { api, API_BASE, readAccessToken } from '../apiClient'
+import { api } from '../apiClient'
 
 // ─────────────────────────────────────────────────────────────────────────
 // Types
@@ -18,13 +21,11 @@ import { api, API_BASE, readAccessToken } from '../apiClient'
 
 // VacancySource keeps the full 12-entry union because the backend domain
 // retains all source codes (used by URL-detection in the analyze use case).
-// Only the 5 listed in VACANCY_SOURCES are actually scraped — the other 7
-// were stub parsers that always returned 0 vacancies and have been
-// unregistered (anti-fallback policy: no fake sources in the filter UI).
+// Only the 5 listed in VACANCY_SOURCES are actually scraped.
 export type VacancySource =
-  | 'hh'
   | 'yandex'
   | 'ozon'
+  | 'ozontech'
   | 'tinkoff'
   | 'vk'
   | 'sber'
@@ -36,14 +37,57 @@ export type VacancySource =
   | 'lamoda'
 
 // VACANCY_SOURCES is consumed by the filter sidebar — only the 5 sources
-// with working parsers belong here. Adding a new source requires a real
-// Parser implementation in backend/services/vacancies/infra/parsers/.
+// with verified parsers belong here.
 export const VACANCY_SOURCES: VacancySource[] = [
-  'hh',
   'yandex',
   'ozon',
-  'tinkoff',
   'vk',
+  'mts',
+  'wildberries',
+]
+
+export type VacancyCategory =
+  | 'backend'
+  | 'frontend'
+  | 'mobile'
+  | 'data'
+  | 'devops'
+  | 'qa'
+  | 'analytics'
+  | 'product'
+  | 'design'
+  | 'management'
+  | 'other'
+
+// CATEGORY_LABEL keeps the Russian names the sidebar renders.
+export const CATEGORY_LABEL: Record<VacancyCategory, string> = {
+  backend: 'Бэкенд',
+  frontend: 'Фронтенд',
+  mobile: 'Мобильная разработка',
+  data: 'Данные',
+  devops: 'DevOps',
+  qa: 'QA',
+  analytics: 'Аналитика',
+  product: 'Продакт',
+  design: 'Дизайн',
+  management: 'Менеджмент',
+  other: 'Прочее',
+}
+
+// VACANCY_CATEGORIES preserves the canonical iteration order (matches the
+// backend's domain.AllCategories so facet rows align 1:1).
+export const VACANCY_CATEGORIES: VacancyCategory[] = [
+  'backend',
+  'frontend',
+  'mobile',
+  'data',
+  'devops',
+  'qa',
+  'analytics',
+  'product',
+  'design',
+  'management',
+  'other',
 ]
 
 export type SavedStatus =
@@ -62,7 +106,6 @@ export const SAVED_STATUSES: SavedStatus[] = [
 ]
 
 export type Vacancy = {
-  id: number
   source: VacancySource
   external_id: string
   url: string
@@ -77,13 +120,15 @@ export type Vacancy = {
   description: string
   raw_skills: string[]
   normalized_skills: string[]
+  category: VacancyCategory
   posted_at?: string
   fetched_at: string
 }
 
 export type SavedVacancy = {
   id: number
-  vacancy_id: number
+  source: VacancySource
+  external_id: string
   status: SavedStatus
   notes?: string
   saved_at: string
@@ -112,11 +157,22 @@ export type ListResponse = {
 
 export type ListFilter = {
   sources?: VacancySource[]
+  companies?: string[]
+  categories?: VacancyCategory[]
   skills?: string[]
   salary_min?: number
   location?: string
   page?: number
   limit?: number
+}
+
+export type FacetEntry = { name: string; count: number }
+
+export type FacetsResponse = {
+  companies: FacetEntry[]
+  categories: FacetEntry[]
+  sources: FacetEntry[]
+  locations: FacetEntry[]
 }
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -126,6 +182,8 @@ export type ListFilter = {
 function buildListQuery(f: ListFilter): string {
   const sp = new URLSearchParams()
   if (f.sources?.length) sp.set('source', f.sources.join(','))
+  if (f.categories?.length) sp.set('category', f.categories.join(','))
+  if (f.companies?.length) sp.set('company', f.companies.join(','))
   if (f.skills?.length) sp.set('skills', f.skills.join(','))
   if (f.salary_min) sp.set('salary_min', String(f.salary_min))
   if (f.location) sp.set('location', f.location)
@@ -147,11 +205,18 @@ export function useVacanciesList(filter: ListFilter) {
   })
 }
 
-export function useVacancy(id: number | undefined) {
+export function useFacetsQuery() {
   return useQuery({
-    queryKey: ['vacancies', 'one', id],
-    queryFn: () => api<Vacancy>(`/vacancies/${id}`),
-    enabled: typeof id === 'number' && id > 0,
+    queryKey: ['vacancies', 'facets'],
+    queryFn: () => api<FacetsResponse>(`/vacancies/facets`),
+  })
+}
+
+export function useVacancy(source: VacancySource | undefined, externalId: string | undefined) {
+  return useQuery({
+    queryKey: ['vacancies', 'one', source, externalId],
+    queryFn: () => api<Vacancy>(`/vacancies/${source}/${externalId}`),
+    enabled: !!source && !!externalId,
   })
 }
 
@@ -179,8 +244,12 @@ export function useAnalyzeVacancy() {
 export function useSaveVacancy() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (input: { vacancyId: number; notes?: string }) =>
-      api<SavedVacancy>(`/vacancies/${input.vacancyId}/save`, {
+    mutationFn: (input: {
+      source: VacancySource
+      externalId: string
+      notes?: string
+    }) =>
+      api<SavedVacancy>(`/vacancies/${input.source}/${input.externalId}/save`, {
         method: 'POST',
         body: JSON.stringify({ notes: input.notes ?? '' }),
       }),
@@ -204,66 +273,6 @@ export function useUpdateSavedStatus() {
       }),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ['vacancies', 'saved'] })
-    },
-  })
-}
-
-// useTriggerVacancySync — POST /vacancies/sync. Backend ставит SyncJob.RunOnce
-// в фон и возвращает 202 {status: "started"|"already_running"|"throttled"}.
-// Используется в EmptyState для «обновить сейчас» и автоматически дёргается
-// один раз при первом пустом ответе useVacanciesList (см. VacanciesPage).
-//
-// Throttle: backend держит in-process cooldown 30s. На 429 фронт показывает
-// сколько секунд ждать (retry_after). Никаких авто-ретраев — пусть юзер
-// решает.
-export type TriggerSyncResponse = {
-  status: 'started' | 'already_running' | 'throttled'
-  retry_after?: number
-}
-
-// triggerVacancySync — separate fetch (NOT through api()) because the api()
-// wrapper throws on any non-2xx response, which prevented us from surfacing
-// the 429 throttled body as a structured TriggerSyncResponse. Now both 202
-// (started/already_running) and 429 (throttled) parse cleanly into the same
-// shape, and the frontend can render the countdown UI instead of dumping the
-// raw JSON error into the user's face.
-async function triggerVacancySync(): Promise<TriggerSyncResponse> {
-  const token = readAccessToken()
-  const headers: Record<string, string> = { 'Content-Type': 'application/json' }
-  if (token) headers['Authorization'] = `Bearer ${token}`
-  const res = await fetch(`${API_BASE}/vacancies/sync`, {
-    method: 'POST',
-    credentials: 'include',
-    headers,
-  })
-  // 202 (started/already_running) and 429 (throttled) both carry the JSON
-  // shape; only network errors / 5xx propagate as a real Error.
-  if (res.status === 202 || res.status === 429) {
-    const body = (await res.json().catch(() => ({}))) as Partial<TriggerSyncResponse>
-    if (body && typeof body.status === 'string') {
-      return body as TriggerSyncResponse
-    }
-    return res.status === 429
-      ? { status: 'throttled', retry_after: 30 }
-      : { status: 'started' }
-  }
-  const text = await res.text().catch(() => '')
-  throw new Error(`vacancies.sync: http ${res.status}: ${text}`)
-}
-
-export function useTriggerVacancySync() {
-  const qc = useQueryClient()
-  return useMutation({
-    mutationFn: triggerVacancySync,
-    onSuccess: (res) => {
-      if (res.status === 'started' || res.status === 'already_running') {
-        // Sync в фоне 5–10s. Refetch'ним каталог через 8s — обычно к этому
-        // времени уже есть первые HH-вакансии. Если ещё пусто — пользователь
-        // увидит «попробуй ещё раз» и нажмёт повторно.
-        setTimeout(() => {
-          void qc.invalidateQueries({ queryKey: ['vacancies', 'list'] })
-        }, 8000)
-      }
     },
   })
 }

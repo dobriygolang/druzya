@@ -1,13 +1,26 @@
 // Package ports — REST surface for the vacancies bounded context.
 //
-// All endpoints emit JSON; payloads use snake_case keys to match the rest of
-// the platform's REST contracts. Auth is enforced at the router level — the
-// public endpoints (analyze, list, get) are listed in publicPaths; the
-// per-user endpoints (saved/*) get the user_id from the bearer middleware.
+// All endpoints emit JSON; payloads use snake_case keys. Auth is enforced
+// at the router level — public reads (analyze, list, get, facets) work
+// without bearer; per-user endpoints (saved/*) get the user id from the
+// bearer middleware.
+//
+// Identity model (Phase 3): the parsed-postings catalogue lives in an
+// in-memory cache keyed on (source, external_id). There is no integer id
+// anymore. Routes use the composite key:
+//
+//	GET    /vacancies                                  list (cache)
+//	GET    /vacancies/facets                           live histograms
+//	GET    /vacancies/{source}/{external_id}           cache lookup
+//	POST   /vacancies/{source}/{external_id}/save      snapshot + upsert
+//	POST   /vacancies/analyze                          paste-the-link
+//	GET    /vacancies/saved                            kanban list
+//	GET    /vacancies/saved/{source}/{external_id}     snapshot + live diff
+//	PATCH  /vacancies/saved/{id}                       status / notes
+//	DELETE /vacancies/saved/{id}                       remove
 package ports
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -15,7 +28,6 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 
 	sharedMw "druz9/shared/pkg/middleware"
@@ -25,47 +37,32 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
-// SyncRunner — узкий интерфейс для триггера on-demand sync. Поддерживается
-// app.SyncJob (RunOnce). Объявлен в портах, чтобы не тащить app в обратную
-// сторону и упростить мок в тестах.
-type SyncRunner interface {
-	RunOnce(ctx context.Context)
-}
-
 // Handler bundles the use-case pointers + logger.
 type Handler struct {
 	Analyze   *app.AnalyzeURL
 	List      *app.ListVacancies
 	Get       *app.GetVacancy
+	Facets    *app.GetFacets
 	Save      *app.SaveVacancy
 	Update    *app.UpdateSavedStatus
 	Remove    *app.RemoveSaved
 	ListSaved *app.ListSaved
-	Sync      SyncRunner
+	GetSaved  *app.GetSaved
 	Log       *slog.Logger
-
-	// SyncCooldown — минимальный интервал между двумя on-demand триггерами
-	// /vacancies/sync. Защищает HH/Yandex/Ozon от шквала запросов с фронта,
-	// если пользователь будет долбить «Обновить сейчас». Default 30s — этого
-	// достаточно, чтобы первый sync успел закончиться.
-	SyncCooldown time.Duration
-
-	syncMu       sync.Mutex
-	syncRunning  bool
-	lastSyncedAt time.Time
 }
 
-// Mount registers every route on the given chi router. Caller is responsible
-// for the path prefix (we mount under /api/v1).
+// Mount registers every route on the given chi router. Caller is
+// responsible for the path prefix (we mount under /api/v1).
 func (h *Handler) Mount(r chi.Router) {
 	r.Post("/vacancies/analyze", h.handleAnalyze)
-	r.Post("/vacancies/sync", h.handleSync)
 	r.Get("/vacancies", h.handleList)
+	r.Get("/vacancies/facets", h.handleFacets)
 	r.Get("/vacancies/saved", h.handleListSaved)
-	r.Get("/vacancies/{id}", h.handleGet)
-	r.Post("/vacancies/{id}/save", h.handleSave)
+	r.Get("/vacancies/saved/{source}/{external_id}", h.handleGetSaved)
 	r.Patch("/vacancies/saved/{id}", h.handleUpdate)
 	r.Delete("/vacancies/saved/{id}", h.handleDelete)
+	r.Get("/vacancies/{source}/{external_id}", h.handleGet)
+	r.Post("/vacancies/{source}/{external_id}/save", h.handleSave)
 }
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -73,7 +70,6 @@ func (h *Handler) Mount(r chi.Router) {
 // ─────────────────────────────────────────────────────────────────────────
 
 type vacancyDTO struct {
-	ID               int64      `json:"id"`
 	Source           string     `json:"source"`
 	ExternalID       string     `json:"external_id"`
 	URL              string     `json:"url"`
@@ -88,6 +84,7 @@ type vacancyDTO struct {
 	Description      string     `json:"description"`
 	RawSkills        []string   `json:"raw_skills"`
 	NormalizedSkills []string   `json:"normalized_skills"`
+	Category         string     `json:"category"`
 	PostedAt         *time.Time `json:"posted_at,omitempty"`
 	FetchedAt        time.Time  `json:"fetched_at"`
 }
@@ -100,23 +97,34 @@ func toVacancyDTO(v domain.Vacancy) vacancyDTO {
 		v.NormalizedSkills = []string{}
 	}
 	return vacancyDTO{
-		ID: v.ID, Source: string(v.Source), ExternalID: v.ExternalID,
+		Source: string(v.Source), ExternalID: v.ExternalID,
 		URL: v.URL, Title: v.Title, Company: v.Company, Location: v.Location,
 		EmploymentType: v.EmploymentType, ExperienceLevel: v.ExperienceLevel,
 		SalaryMin: v.SalaryMin, SalaryMax: v.SalaryMax, Currency: v.Currency,
 		Description: v.Description, RawSkills: v.RawSkills, NormalizedSkills: v.NormalizedSkills,
+		Category: string(v.Category),
 		PostedAt: v.PostedAt, FetchedAt: v.FetchedAt,
 	}
 }
 
 type savedDTO struct {
-	ID        int64      `json:"id"`
-	VacancyID int64      `json:"vacancy_id"`
-	Status    string     `json:"status"`
-	Notes     string     `json:"notes,omitempty"`
-	SavedAt   time.Time  `json:"saved_at"`
-	UpdatedAt time.Time  `json:"updated_at"`
-	Vacancy   vacancyDTO `json:"vacancy"`
+	ID         int64      `json:"id"`
+	Source     string     `json:"source"`
+	ExternalID string     `json:"external_id"`
+	Status     string     `json:"status"`
+	Notes      string     `json:"notes,omitempty"`
+	SavedAt    time.Time  `json:"saved_at"`
+	UpdatedAt  time.Time  `json:"updated_at"`
+	Vacancy    vacancyDTO `json:"vacancy"`
+}
+
+func toSavedDTO(s domain.SavedVacancy) savedDTO {
+	return savedDTO{
+		ID: s.ID, Source: string(s.Source), ExternalID: s.ExternalID,
+		Status: string(s.Status), Notes: s.Notes,
+		SavedAt: s.SavedAt, UpdatedAt: s.UpdatedAt,
+		Vacancy: toVacancyDTO(s.Snapshot),
+	}
 }
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -171,7 +179,6 @@ func (h *Handler) handleList(w http.ResponseWriter, r *http.Request) {
 		Offset:    parseIntDefault(q.Get("offset"), 0),
 	}
 	if pageStr := q.Get("page"); pageStr != "" && q.Get("offset") == "" {
-		// Convenience: ?page=2 → offset = (page-1)*limit
 		page := parseIntDefault(pageStr, 1)
 		if page < 1 {
 			page = 1
@@ -190,6 +197,28 @@ func (h *Handler) handleList(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 			f.Sources = append(f.Sources, src)
+		}
+	}
+	if s := q.Get("category"); s != "" {
+		for _, x := range strings.Split(s, ",") {
+			x = strings.TrimSpace(x)
+			if x == "" {
+				continue
+			}
+			c := domain.Category(x)
+			if !domain.IsValidCategory(c) {
+				writeError(w, http.StatusBadRequest, "invalid category: "+x)
+				return
+			}
+			f.Categories = append(f.Categories, c)
+		}
+	}
+	if s := q.Get("company"); s != "" {
+		for _, x := range strings.Split(s, ",") {
+			x = strings.TrimSpace(x)
+			if x != "" {
+				f.Companies = append(f.Companies, x)
+			}
 		}
 	}
 	if s := q.Get("skills"); s != "" {
@@ -213,13 +242,22 @@ func (h *Handler) handleList(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, out)
 }
 
-func (h *Handler) handleGet(w http.ResponseWriter, r *http.Request) {
-	id, err := parseID(chi.URLParam(r, "id"))
+func (h *Handler) handleFacets(w http.ResponseWriter, r *http.Request) {
+	f, err := h.Facets.Do(r.Context())
 	if err != nil {
-		writeError(w, http.StatusBadRequest, err.Error())
+		h.logErr(r, "facets", err)
+		writeError(w, http.StatusInternalServerError, "facets failed")
 		return
 	}
-	v, err := h.Get.Do(r.Context(), id)
+	writeJSON(w, http.StatusOK, f)
+}
+
+func (h *Handler) handleGet(w http.ResponseWriter, r *http.Request) {
+	src, extID, ok := parseSourceExternal(w, r)
+	if !ok {
+		return
+	}
+	v, err := h.Get.Do(r.Context(), src, extID)
 	if err != nil {
 		if errors.Is(err, domain.ErrNotFound) {
 			writeError(w, http.StatusNotFound, "not found")
@@ -242,9 +280,8 @@ func (h *Handler) handleSave(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusUnauthorized, "unauthenticated")
 		return
 	}
-	id, err := parseID(chi.URLParam(r, "id"))
-	if err != nil {
-		writeError(w, http.StatusBadRequest, err.Error())
+	src, extID, ok := parseSourceExternal(w, r)
+	if !ok {
 		return
 	}
 	var req saveReq
@@ -254,13 +291,17 @@ func (h *Handler) handleSave(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	saved, err := h.Save.Do(r.Context(), uid, id, strings.TrimSpace(req.Notes))
+	saved, err := h.Save.Do(r.Context(), uid, src, extID, strings.TrimSpace(req.Notes))
 	if err != nil {
+		if errors.Is(err, domain.ErrNotFound) {
+			writeError(w, http.StatusNotFound, "vacancy not in cache")
+			return
+		}
 		h.logErr(r, "save", err)
 		writeError(w, http.StatusInternalServerError, "save failed")
 		return
 	}
-	writeJSON(w, http.StatusOK, savedToDTO(saved, domain.Vacancy{ID: id}))
+	writeJSON(w, http.StatusOK, toSavedDTO(saved))
 }
 
 type updateReq struct {
@@ -297,7 +338,7 @@ func (h *Handler) handleUpdate(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
-	writeJSON(w, http.StatusOK, savedToDTO(saved, domain.Vacancy{ID: saved.VacancyID}))
+	writeJSON(w, http.StatusOK, toSavedDTO(saved))
 }
 
 func (h *Handler) handleDelete(w http.ResponseWriter, r *http.Request) {
@@ -323,68 +364,6 @@ func (h *Handler) handleDelete(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
-// handleSync — POST /vacancies/sync. Триггерит SyncJob.RunOnce в горутине,
-// если ещё не идёт другой sync и прошло SyncCooldown с прошлого. Ответ всегда
-// 202 Accepted с {status: "started"|"already_running"|"throttled", retry_after}.
-//
-// Защита публичного эндпоинта — простой in-process mutex+timestamp:
-//
-//	для прода этого мало (несколько pod-ов = несколько окон), но для текущей
-//	single-binary monolith архитектуры достаточно. Когда монолит распилим, надо
-//	будет переехать на Redis SETNX с TTL.
-type syncResp struct {
-	Status     string `json:"status"`
-	RetryAfter int    `json:"retry_after,omitempty"` // seconds
-}
-
-func (h *Handler) handleSync(w http.ResponseWriter, r *http.Request) {
-	if h.Sync == nil {
-		writeError(w, http.StatusServiceUnavailable, "sync is not wired")
-		return
-	}
-	cooldown := h.SyncCooldown
-	if cooldown <= 0 {
-		cooldown = 30 * time.Second
-	}
-	h.syncMu.Lock()
-	if h.syncRunning {
-		h.syncMu.Unlock()
-		writeJSON(w, http.StatusAccepted, syncResp{Status: "already_running"})
-		return
-	}
-	if !h.lastSyncedAt.IsZero() && time.Since(h.lastSyncedAt) < cooldown {
-		retryAfter := int((cooldown - time.Since(h.lastSyncedAt)).Seconds())
-		if retryAfter < 1 {
-			retryAfter = 1
-		}
-		h.syncMu.Unlock()
-		w.Header().Set("Retry-After", strconv.Itoa(retryAfter))
-		writeJSON(w, http.StatusTooManyRequests, syncResp{Status: "throttled", RetryAfter: retryAfter})
-		return
-	}
-	h.syncRunning = true
-	h.syncMu.Unlock()
-
-	// Запускаем в фоне; используем background-context, потому что HTTP request
-	// контекст отменится сразу после возврата 202.
-	go func() {
-		defer func() {
-			h.syncMu.Lock()
-			h.syncRunning = false
-			h.lastSyncedAt = time.Now()
-			h.syncMu.Unlock()
-		}()
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
-		defer cancel()
-		if h.Log != nil {
-			h.Log.InfoContext(ctx, "vacancies.sync: on-demand triggered")
-		}
-		h.Sync.RunOnce(ctx)
-	}()
-
-	writeJSON(w, http.StatusAccepted, syncResp{Status: "started"})
-}
-
 func (h *Handler) handleListSaved(w http.ResponseWriter, r *http.Request) {
 	uid, ok := sharedMw.UserIDFromContext(r.Context())
 	if !ok {
@@ -399,21 +378,61 @@ func (h *Handler) handleListSaved(w http.ResponseWriter, r *http.Request) {
 	}
 	out := make([]savedDTO, 0, len(rows))
 	for _, row := range rows {
-		out = append(out, savedToDTO(row.Saved, row.Vacancy))
+		out = append(out, toSavedDTO(row))
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"items": out})
+}
+
+type savedDetailResp struct {
+	Saved savedDTO    `json:"saved"`
+	Live  *vacancyDTO `json:"live,omitempty"`
+}
+
+func (h *Handler) handleGetSaved(w http.ResponseWriter, r *http.Request) {
+	uid, ok := sharedMw.UserIDFromContext(r.Context())
+	if !ok {
+		writeError(w, http.StatusUnauthorized, "unauthenticated")
+		return
+	}
+	src, extID, ok := parseSourceExternal(w, r)
+	if !ok {
+		return
+	}
+	d, err := h.GetSaved.Do(r.Context(), uid, src, extID)
+	if err != nil {
+		if errors.Is(err, domain.ErrNotFound) {
+			writeError(w, http.StatusNotFound, "not found")
+			return
+		}
+		h.logErr(r, "get_saved", err)
+		writeError(w, http.StatusInternalServerError, "get_saved failed")
+		return
+	}
+	resp := savedDetailResp{Saved: toSavedDTO(d.Saved)}
+	if d.Live != nil {
+		dto := toVacancyDTO(*d.Live)
+		resp.Live = &dto
+	}
+	writeJSON(w, http.StatusOK, resp)
 }
 
 // ─────────────────────────────────────────────────────────────────────────
 // Helpers
 // ─────────────────────────────────────────────────────────────────────────
 
-func savedToDTO(s domain.SavedVacancy, v domain.Vacancy) savedDTO {
-	return savedDTO{
-		ID: s.ID, VacancyID: s.VacancyID, Status: string(s.Status), Notes: s.Notes,
-		SavedAt: s.SavedAt, UpdatedAt: s.UpdatedAt,
-		Vacancy: toVacancyDTO(v),
+func parseSourceExternal(w http.ResponseWriter, r *http.Request) (domain.Source, string, bool) {
+	srcStr := chi.URLParam(r, "source")
+	extID := chi.URLParam(r, "external_id")
+	if strings.TrimSpace(extID) == "" {
+		writeError(w, http.StatusBadRequest, "external_id required")
+		return "", "", false
 	}
+	src := domain.Source(srcStr)
+	if !domain.IsValidSource(src) {
+		writeError(w, http.StatusBadRequest, "invalid source: "+srcStr)
+		return "", "", false
+	}
+	return src, extID, true
 }
 
 func parseID(s string) (int64, error) {

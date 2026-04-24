@@ -9,14 +9,20 @@ import (
 	"druz9/vacancies/domain"
 )
 
-// AnalyzeURL is the use case behind POST /vacancies/analyze. The user pastes
-// a single vacancy link; we detect the source from the host, dispatch to that
-// source's SingleFetcher (if any), persist the result idempotently, then run
-// the skill extractor and compute the gap vs the caller's known skills.
+// AnalyzeURL is the use case behind POST /vacancies/analyze. The user
+// pastes a single vacancy link; we detect the source from the host,
+// dispatch to that source's SingleFetcher, route the result through the
+// cache (Upsert) so it's immediately addressable, run the optional skill
+// extractor, and compute the gap vs the caller's known skills.
 type AnalyzeURL struct {
 	Parsers   []domain.Parser
-	Repo      domain.VacancyRepo
+	Cache     CacheUpserter
 	Extractor domain.SkillExtractor
+}
+
+// CacheUpserter is the cache surface AnalyzeURL needs.
+type CacheUpserter interface {
+	Upsert(v domain.Vacancy)
 }
 
 // AnalyzeResult is what the handler returns.
@@ -48,18 +54,14 @@ func (a *AnalyzeURL) Do(ctx context.Context, rawURL string, userSkills []string)
 		return AnalyzeResult{}, fmt.Errorf("vacancies.AnalyzeURL: parser returned empty external_id")
 	}
 	if a.Extractor != nil {
-		skills, _ := a.Extractor.Extract(ctx, v.Description)
-		v.NormalizedSkills = domain.NormalizeSkills(append(append([]string{}, v.RawSkills...), skills...))
+		// Best-effort: extractor failure must not block the analyze response.
+		// Skill-gap with whatever we have is still useful.
+		if skills, exErr := a.Extractor.Extract(ctx, v.Description); exErr == nil {
+			v.NormalizedSkills = domain.NormalizeSkills(append(append([]string{}, v.RawSkills...), skills...))
+		}
 	}
-	id, err := a.Repo.UpsertByExternal(ctx, &v)
-	if err != nil {
-		return AnalyzeResult{}, fmt.Errorf("vacancies.AnalyzeURL.Upsert: %w", err)
-	}
-	v.ID = id
-	if len(v.NormalizedSkills) > 0 {
-		// Persist the freshly-merged skill list — the upsert preserved the
-		// pre-existing one on conflict.
-		_ = a.Repo.UpdateNormalizedSkills(ctx, id, v.NormalizedSkills)
+	if a.Cache != nil {
+		a.Cache.Upsert(v)
 	}
 	gap := domain.ComputeSkillGap(v.NormalizedSkills, userSkills)
 	return AnalyzeResult{Vacancy: v, Gap: gap}, nil
@@ -86,21 +88,20 @@ func DetectSource(rawURL string) (domain.Source, error) {
 	case strings.Contains(host, "yandex"):
 		return domain.SourceYandex, nil
 	// ozon.tech check must come before generic ozon — career.ozon.tech is
-	// Ozon Tech (the IT subsidiary) while job.ozon.ru is retail. They are
-	// distinct careers sites with different parser shapes.
+	// Ozon Tech (the IT subsidiary) while job.ozon.ru is retail.
 	case strings.Contains(host, "ozon.tech"):
 		return domain.SourceOzonTech, nil
 	case strings.Contains(host, "ozon"):
 		return domain.SourceOzon, nil
 	case strings.Contains(host, "tinkoff") || strings.Contains(host, "tbank"):
 		return domain.SourceTinkoff, nil
-	case strings.Contains(host, "vk.com") || strings.Contains(host, "vk.ru"):
+	case strings.Contains(host, "vk.com") || strings.Contains(host, "vk.ru") || strings.Contains(host, "vk.company"):
 		return domain.SourceVK, nil
 	case strings.Contains(host, "sber"):
 		return domain.SourceSber, nil
 	case strings.Contains(host, "avito"):
 		return domain.SourceAvito, nil
-	case strings.Contains(host, "wildberries") || strings.Contains(host, "wb.ru"):
+	case strings.Contains(host, "wildberries") || strings.Contains(host, "wb.ru") || strings.Contains(host, "rwb.ru"):
 		return domain.SourceWildberries, nil
 	case strings.Contains(host, "mts.ru"):
 		return domain.SourceMTS, nil

@@ -2,10 +2,13 @@ package services
 
 import (
 	"context"
+	"log/slog"
+	"time"
 
 	vacApp "druz9/vacancies/app"
 	vacDomain "druz9/vacancies/domain"
 	vacInfra "druz9/vacancies/infra"
+	vacCache "druz9/vacancies/infra/cache"
 	vacParsers "druz9/vacancies/infra/parsers"
 	vacPorts "druz9/vacancies/ports"
 
@@ -14,34 +17,31 @@ import (
 
 // NewVacancies wires the vacancies bounded context.
 //
-// Read-mostly module — heavy caching at the repo layer (ListByFilter 10m,
-// GetByID 1h) keeps the catalogue page snappy, and the OpenRouter extractor
-// is wrapped in a 7-day Redis cache so the hourly Sync re-billing the same
-// description is impossible.
+// Phase 3 model:
 //
-// Background = the SyncJob.Run loop. It crawls every registered Parser once
-// per hour, upserts the batch, then runs the LLM extractor on each row.
+//   - Parsed catalogue lives in a single in-process cache (vacInfra/cache).
+//     Refreshed every 15 min from each registered Parser in parallel; on
+//     per-source failure the prior bucket survives so one portal outage
+//     doesn't blank the catalogue.
+//   - Refresh-on-boot blocks server start until the first refresh completes
+//     (30s budget — fail-open with whatever returned).
+//   - Per-user kanban state lives in saved_vacancies as a snapshot row
+//     keyed on (user_id, source, external_id). The vacancy JSON is frozen
+//     into snapshot_json at save time so the kanban survives upstream
+//     deletions and renames.
+//
+// Anti-fallback policy: per-source refresh failure increments
+// vacancies_cache_refresh_errors_total{source} and emits a Warn log. No
+// silent zeroing; no fake data.
 func NewVacancies(d Deps) *Module {
-	pgVacs := vacInfra.NewPgVacancyRepo(d.Pool)
 	pgSaved := vacInfra.NewPgSavedRepo(d.Pool)
 
-	var vacRepo vacDomain.VacancyRepo = pgVacs
-	if d.Redis != nil {
-		kv := vacInfra.NewRedisKV(d.Redis)
-		vacRepo = vacInfra.NewCachedVacancyRepo(
-			pgVacs, kv,
-			vacInfra.DefaultListTTL, vacInfra.DefaultByIDTTL,
-			d.Log,
-		)
-	}
-
-	// Anti-fallback: if OPENROUTER_API_KEY is empty, do NOT register the
-	// extractor at all. SyncJob's nil-check skips extraction with a clear
-	// startup WARN below — far better than the old "silently return [] at
-	// request time" which left vacancies with no skills and nobody knew.
+	// Skill extractor: only registered when OPENROUTER_API_KEY is set. The
+	// AnalyzeURL flow's nil-check skips extraction with a clear startup WARN
+	// — far better than silently writing empty skill lists.
 	var extractor vacDomain.SkillExtractor
 	if d.Cfg.LLM.OpenRouterAPIKey == "" {
-		d.Log.Warn("vacancies: OPENROUTER_API_KEY not set — skill extraction disabled, sync runs without skill normalization")
+		d.Log.Warn("vacancies: OPENROUTER_API_KEY not set — analyze runs without skill normalization")
 	} else {
 		var kv vacInfra.KV
 		if d.Redis != nil {
@@ -52,33 +52,61 @@ func NewVacancies(d Deps) *Module {
 
 	parsers := vacParsers.RegisterAll(vacParsers.Config{Log: d.Log})
 
-	sync := &vacApp.SyncJob{
-		Parsers:   parsers,
-		Repo:      vacRepo,
-		Extractor: extractor,
-		Log:       d.Log,
+	// The cache speaks its own Parser interface (structurally satisfied by
+	// domain.Parser); convert without copying.
+	cacheParsers := make([]vacCache.Parser, 0, len(parsers))
+	for _, p := range parsers {
+		cacheParsers = append(cacheParsers, p)
 	}
-	analyze := &vacApp.AnalyzeURL{Parsers: parsers, Repo: vacRepo, Extractor: extractor}
-	list := &vacApp.ListVacancies{Repo: vacRepo}
-	get := &vacApp.GetVacancy{Repo: vacRepo}
-	save := &vacApp.SaveVacancy{Repo: pgSaved}
+	cache := vacCache.New(cacheParsers, d.Log, vacCache.Options{})
+
+	analyze := &vacApp.AnalyzeURL{Parsers: parsers, Cache: cache, Extractor: extractor}
+	list := &vacApp.ListVacancies{Cache: cache}
+	get := &vacApp.GetVacancy{Cache: cache}
+	facets := &vacApp.GetFacets{Cache: cache}
+	save := &vacApp.SaveVacancy{Repo: pgSaved, Cache: cache}
 	upd := &vacApp.UpdateSavedStatus{Repo: pgSaved}
 	rem := &vacApp.RemoveSaved{Repo: pgSaved}
 	listSaved := &vacApp.ListSaved{Repo: pgSaved}
+	getSaved := &vacApp.GetSaved{Repo: pgSaved, Cache: cache}
 
 	h := &vacPorts.Handler{
-		Analyze: analyze, List: list, Get: get,
-		Save: save, Update: upd, Remove: rem, ListSaved: listSaved,
-		Sync: sync,
-		Log:  d.Log,
+		Analyze: analyze, List: list, Get: get, Facets: facets,
+		Save: save, Update: upd, Remove: rem,
+		ListSaved: listSaved, GetSaved: getSaved,
+		Log: d.Log,
 	}
+
+	// Refresh-on-boot — block server start (with a 30s budget) so the first
+	// /vacancies/* request returns real data, not an empty page. This runs
+	// synchronously inside NewVacancies so it sits before the App's
+	// httpSrv.ListenAndServe in bootstrap.Run.
+	bootCtx, bootCancel := context.WithTimeout(context.Background(), vacCache.DefaultBootBudget)
+	defer bootCancel()
+	counts := cache.RefreshOnce(bootCtx)
+	logBootCounts(d.Log, counts)
 
 	return &Module{
 		MountREST: func(r chi.Router) {
 			h.Mount(r)
 		},
 		Background: []func(ctx context.Context){
-			func(ctx context.Context) { go sync.Run(ctx) },
+			func(ctx context.Context) { go cache.Run(ctx) },
 		},
 	}
+}
+
+func logBootCounts(log *slog.Logger, counts map[vacDomain.Source]int) {
+	if log == nil {
+		return
+	}
+	total := 0
+	for _, n := range counts {
+		total += n
+	}
+	attrs := []any{slog.Int("total", total), slog.Duration("budget", vacCache.DefaultBootBudget), slog.Time("at", time.Now())}
+	for s, n := range counts {
+		attrs = append(attrs, slog.Int(string(s), n))
+	}
+	log.Info("vacancies.cache: boot warm complete", attrs...)
 }

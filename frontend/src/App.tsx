@@ -222,7 +222,7 @@ export default function App() {
         <Route path="/status" element={<StatusPage />} />
         <Route path="/rating" element={<RatingPage />} />
         <Route path="/vacancies" element={<VacanciesPage />} />
-        <Route path="/vacancies/:id" element={<VacancyDetailPage />} />
+        <Route path="/vacancies/:source/:externalId" element={<VacancyDetailPage />} />
         <Route path="/applications" element={<ApplicationsPage />} />
         {/* Cohorts (Phase 1 MVP) — list at /cohorts, detail at /c/{slug}. */}
         <Route path="/cohorts" element={<CohortsPage />} />

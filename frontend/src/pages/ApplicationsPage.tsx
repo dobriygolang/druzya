@@ -79,7 +79,7 @@ export default function ApplicationsPage() {
                 {grouped[st].map((s) => (
                   <Card key={s.id} variant="elevated" padding="md">
                     <Link
-                      to={`/vacancies/${s.vacancy.id}`}
+                      to={`/vacancies/${s.vacancy.source}/${encodeURIComponent(s.vacancy.external_id)}`}
                       className="font-display text-sm font-bold text-text-primary hover:text-accent-hover"
                     >
                       {s.vacancy.title}

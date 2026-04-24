@@ -19,6 +19,22 @@ func (s *stubSingleFetcher) FetchOne(_ context.Context, _ string) (domain.Vacanc
 	return s.out, nil
 }
 
+type stubExtractor struct{ out []string }
+
+func (s *stubExtractor) Extract(_ context.Context, _ string) ([]string, error) {
+	return s.out, nil
+}
+
+type stubCacheUpserter struct {
+	upserts int
+	last    domain.Vacancy
+}
+
+func (s *stubCacheUpserter) Upsert(v domain.Vacancy) {
+	s.upserts++
+	s.last = v
+}
+
 func TestDetectSource(t *testing.T) {
 	t.Parallel()
 	cases := []struct {
@@ -27,11 +43,12 @@ func TestDetectSource(t *testing.T) {
 		err  bool
 	}{
 		{"https://yandex.ru/jobs/vacancies/x", domain.SourceYandex, false},
-		{"https://job.ozon.ru/vacancy/x/", domain.SourceOzon, false},
+		{"https://career.ozon.ru/vacancy/x/", domain.SourceOzon, false},
 		{"https://career.ozon.tech/vacancies/x", domain.SourceOzonTech, false},
 		{"https://www.tbank.ru/career/it/vacancy/x/", domain.SourceTinkoff, false},
-		{"https://careers.vk.com/jobs/x/", domain.SourceVK, false},
-		{"https://career.wb.ru/vacancy/x", domain.SourceWildberries, false},
+		{"https://team.vk.company/vacancy/x/", domain.SourceVK, false},
+		{"https://career.rwb.ru/vacancies/x", domain.SourceWildberries, false},
+		{"https://job.mts.ru/vacancies/x", domain.SourceMTS, false},
 		{"https://example.com", "", true},
 	}
 	for _, tc := range cases {
@@ -55,7 +72,7 @@ func TestDetectSource(t *testing.T) {
 
 func TestAnalyzeURL_HappyPath(t *testing.T) {
 	t.Parallel()
-	repo := newMemRepo()
+	cache := &stubCacheUpserter{}
 	ext := &stubExtractor{out: []string{"go", "kubernetes"}}
 	parser := &stubSingleFetcher{
 		src: domain.SourceYandex,
@@ -68,13 +85,13 @@ func TestAnalyzeURL_HappyPath(t *testing.T) {
 			RawSkills:   []string{"Go", "PostgreSQL"},
 		},
 	}
-	a := &AnalyzeURL{Parsers: []domain.Parser{parser}, Repo: repo, Extractor: ext}
+	a := &AnalyzeURL{Parsers: []domain.Parser{parser}, Cache: cache, Extractor: ext}
 	res, err := a.Do(context.Background(), "https://yandex.ru/jobs/vacancies/999", []string{"go", "redis"})
 	if err != nil {
 		t.Fatalf("Do: %v", err)
 	}
-	if res.Vacancy.ID == 0 {
-		t.Errorf("upsert did not assign id")
+	if cache.upserts != 1 {
+		t.Errorf("cache.Upsert calls = %d, want 1", cache.upserts)
 	}
 	if !contains(res.Vacancy.NormalizedSkills, "go") || !contains(res.Vacancy.NormalizedSkills, "kubernetes") || !contains(res.Vacancy.NormalizedSkills, "postgresql") {
 		t.Errorf("normalized skills: %v", res.Vacancy.NormalizedSkills)

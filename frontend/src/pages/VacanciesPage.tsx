@@ -1,15 +1,15 @@
 // /vacancies — каталог реальных вакансий с российских площадок
-// (HH, Yandex, Ozon, T-Bank, VK, Sber, Avito, …).
+// (Yandex, Ozon, VK, MTS, Wildberries).
 //
-// Источник правды — backend services/vacancies. Read-path public, save/track
-// требует логина (фронт показывает CTA "Войти, чтобы сохранить" если 401).
+// Источник правды — backend services/vacancies. Phase 3 модель:
 //
-// Структура:
-//   - Hero: заголовок, поле «вставь ссылку → /analyze».
-//   - Sidebar: фильтры (источник, скиллы, salary, location).
-//   - Grid: карточки с title/company/salary/skill diff vs profile.
+//   - Парсеры пишут в in-memory cache на бэкенде (тиком 15 минут).
+//   - Идентификация: композитный ключ (source, external_id), нет числового id.
+//   - Фасеты грузим отдельным /vacancies/facets-запросом и рендерим в виде
+//     чекбокс-секций: Компания, Направление, Источник.
+//   - Save требует логина; Snapshot вакансии замораживается на бэке в saved_vacancies.
 
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import {
   Search,
@@ -18,22 +18,23 @@ import {
   Wallet,
   Sparkles,
   Bookmark,
-  RefreshCw,
-  CheckCircle2,
-  Clock,
 } from 'lucide-react'
 import { AppShellV2 } from '../components/AppShell'
 import { Button } from '../components/Button'
 import { Card } from '../components/Card'
 import {
   useVacanciesList,
+  useFacetsQuery,
   useAnalyzeVacancy,
   useSaveVacancy,
-  useTriggerVacancySync,
   VACANCY_SOURCES,
+  VACANCY_CATEGORIES,
+  CATEGORY_LABEL,
   diffSkills,
   type Vacancy,
   type VacancySource,
+  type VacancyCategory,
+  type FacetEntry,
 } from '../lib/queries/vacancies'
 import { useProfileQuery } from '../lib/queries/profile'
 
@@ -45,15 +46,25 @@ function formatSalary(min?: number, max?: number, currency?: string): string {
   return `от ${fmt(min ?? max ?? 0)} ${cur}`
 }
 
+const SOURCE_LABEL: Record<VacancySource, string> = {
+  yandex: 'Yandex',
+  ozon: 'Ozon',
+  ozontech: 'Ozon Tech',
+  tinkoff: 'T-Bank',
+  vk: 'VK',
+  sber: 'Sber',
+  avito: 'Avito',
+  wildberries: 'WB',
+  mts: 'MTS',
+  kaspersky: 'Kaspersky',
+  jetbrains: 'JetBrains',
+  lamoda: 'Lamoda',
+}
+
 function SourceBadge({ source }: { source: VacancySource }) {
-  const labels: Record<VacancySource, string> = {
-    hh: 'HH', yandex: 'Yandex', ozon: 'Ozon', tinkoff: 'T-Bank', vk: 'VK',
-    sber: 'Sber', avito: 'Avito', wildberries: 'WB', mts: 'MTS',
-    kaspersky: 'Kaspersky', jetbrains: 'JetBrains', lamoda: 'Lamoda',
-  }
   return (
     <span className="rounded-full border border-border bg-surface-2 px-2 py-0.5 font-mono text-[10px] uppercase text-text-secondary">
-      {labels[source]}
+      {SOURCE_LABEL[source] ?? source}
     </span>
   )
 }
@@ -75,7 +86,7 @@ function VacancyCard({
 }: {
   v: Vacancy
   userSkills: string[]
-  onSave?: (id: number) => void
+  onSave?: (source: VacancySource, externalId: string) => void
 }) {
   const top = v.normalized_skills.slice(0, 5)
   const { matched, missing } = diffSkills(top, userSkills)
@@ -92,7 +103,7 @@ function VacancyCard({
             )}
           </div>
           <Link
-            to={`/vacancies/${v.id}`}
+            to={`/vacancies/${v.source}/${encodeURIComponent(v.external_id)}`}
             className="font-display text-base font-bold text-text-primary hover:text-accent-hover"
           >
             {v.title}
@@ -113,7 +124,7 @@ function VacancyCard({
             size="sm"
             variant="ghost"
             icon={<Bookmark className="h-4 w-4" />}
-            onClick={() => onSave(v.id)}
+            onClick={() => onSave(v.source, v.external_id)}
           >
             Сохранить
           </Button>
@@ -140,7 +151,84 @@ function VacancyCard({
   )
 }
 
+// CheckboxFacetSection — переиспользуемая секция сайдбара с чекбоксами и
+// counter-бейджами. Сворачивает список после 10 элементов с «Показать все».
+function CheckboxFacetSection<T extends string>({
+  title,
+  options,
+  selected,
+  onToggle,
+  labelOf,
+}: {
+  title: string
+  options: FacetEntry[]
+  selected: T[]
+  onToggle: (value: T) => void
+  labelOf?: (value: string) => string
+}) {
+  const [expanded, setExpanded] = useState(false)
+  if (options.length === 0) return null
+  const visible = expanded ? options : options.slice(0, 10)
+  const hidden = options.length - visible.length
+  return (
+    <div className="mb-4">
+      <div className="mb-2 text-xs uppercase text-text-muted">{title}</div>
+      <div className="flex flex-col gap-1.5">
+        {visible.map((o) => {
+          const checked = (selected as string[]).includes(o.name)
+          return (
+            <label
+              key={o.name}
+              className={`flex cursor-pointer items-center justify-between gap-2 rounded-md border px-2.5 py-1 text-xs transition-colors ${
+                checked
+                  ? 'border-accent bg-accent/15 text-text-primary'
+                  : 'border-border bg-surface-2 text-text-secondary hover:border-border-strong'
+              }`}
+            >
+              <span className="flex min-w-0 items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={checked}
+                  onChange={() => onToggle(o.name as T)}
+                  className="h-3.5 w-3.5 shrink-0 accent-accent"
+                />
+                <span className="truncate">{labelOf ? labelOf(o.name) : o.name}</span>
+              </span>
+              <span className="font-mono text-[10px] text-text-muted">{o.count}</span>
+            </label>
+          )
+        })}
+      </div>
+      {hidden > 0 && (
+        <button
+          type="button"
+          onClick={() => setExpanded(true)}
+          className="mt-2 text-[11px] text-accent-hover hover:underline"
+        >
+          Показать все ({options.length})
+        </button>
+      )}
+      {expanded && options.length > 10 && (
+        <button
+          type="button"
+          onClick={() => setExpanded(false)}
+          className="mt-2 text-[11px] text-text-muted hover:underline"
+        >
+          Свернуть
+        </button>
+      )}
+    </div>
+  )
+}
+
 function FilterSidebar({
+  facetsCompanies,
+  facetsCategories,
+  facetsSources,
+  companies,
+  setCompanies,
+  categories,
+  setCategories,
   sources,
   setSources,
   salaryMin,
@@ -148,6 +236,13 @@ function FilterSidebar({
   location,
   setLocation,
 }: {
+  facetsCompanies: FacetEntry[]
+  facetsCategories: FacetEntry[]
+  facetsSources: FacetEntry[]
+  companies: string[]
+  setCompanies: (xs: string[]) => void
+  categories: VacancyCategory[]
+  setCategories: (xs: VacancyCategory[]) => void
   sources: VacancySource[]
   setSources: (xs: VacancySource[]) => void
   salaryMin: number
@@ -155,34 +250,51 @@ function FilterSidebar({
   location: string
   setLocation: (s: string) => void
 }) {
-  const toggle = (s: VacancySource) => {
-    if (sources.includes(s)) setSources(sources.filter((x) => x !== s))
-    else setSources([...sources, s])
+  const toggle = <T extends string>(xs: T[], set: (n: T[]) => void, x: T) => {
+    if (xs.includes(x)) set(xs.filter((y) => y !== x))
+    else set([...xs, x])
   }
+
+  // Категории: рендерим в каноническом порядке VACANCY_CATEGORIES, чтобы UI
+  // не прыгал между обновлениями фасетов. Подмешиваем count из бэка.
+  const categoryFacetByName = new Map(facetsCategories.map((e) => [e.name, e.count]))
+  const orderedCategoryFacets: FacetEntry[] = VACANCY_CATEGORIES.map((c) => ({
+    name: c,
+    count: categoryFacetByName.get(c) ?? 0,
+  }))
+
+  // Источники: оставляем только те, что фактически есть в фасете И
+  // присутствуют в нашем frontend-allowlist.
+  const sourceFacetByName = new Map(facetsSources.map((e) => [e.name, e.count]))
+  const orderedSourceFacets: FacetEntry[] = VACANCY_SOURCES
+    .filter((s) => sourceFacetByName.has(s))
+    .map((s) => ({ name: s, count: sourceFacetByName.get(s) ?? 0 }))
+
   return (
     <Card variant="default" padding="md" className="self-start">
       <h3 className="mb-3 font-display text-sm font-semibold text-text-primary">
         Фильтры
       </h3>
-      <div className="mb-4">
-        <div className="mb-2 text-xs uppercase text-text-muted">Источники</div>
-        <div className="flex flex-wrap gap-1.5">
-          {VACANCY_SOURCES.map((s) => (
-            <button
-              key={s}
-              type="button"
-              onClick={() => toggle(s)}
-              className={`rounded-full border px-2.5 py-1 text-[11px] uppercase transition-colors ${
-                sources.includes(s)
-                  ? 'border-accent bg-accent/15 text-text-primary'
-                  : 'border-border bg-surface-2 text-text-secondary hover:border-border-strong'
-              }`}
-            >
-              {s}
-            </button>
-          ))}
-        </div>
-      </div>
+      <CheckboxFacetSection<string>
+        title="Компания"
+        options={facetsCompanies}
+        selected={companies}
+        onToggle={(x) => toggle(companies, setCompanies, x)}
+      />
+      <CheckboxFacetSection<VacancyCategory>
+        title="Направление"
+        options={orderedCategoryFacets}
+        selected={categories}
+        onToggle={(x) => toggle(categories, setCategories, x)}
+        labelOf={(name) => CATEGORY_LABEL[name as VacancyCategory] ?? name}
+      />
+      <CheckboxFacetSection<VacancySource>
+        title="Источник"
+        options={orderedSourceFacets}
+        selected={sources}
+        onToggle={(x) => toggle(sources, setSources, x)}
+        labelOf={(name) => SOURCE_LABEL[name as VacancySource] ?? name}
+      />
       <div className="mb-4">
         <label className="mb-1 block text-xs uppercase text-text-muted" htmlFor="salaryMin">
           Зарплата от, ₽
@@ -215,51 +327,32 @@ function FilterSidebar({
 
 export default function VacanciesPage() {
   const [sources, setSources] = useState<VacancySource[]>([])
+  const [companies, setCompanies] = useState<string[]>([])
+  const [categories, setCategories] = useState<VacancyCategory[]>([])
   const [salaryMin, setSalaryMin] = useState(0)
   const [location, setLocation] = useState('')
   const [page, setPage] = useState(1)
   const list = useVacanciesList({
-    sources,
+    sources: sources.length ? sources : undefined,
+    companies: companies.length ? companies : undefined,
+    categories: categories.length ? categories : undefined,
     salary_min: salaryMin || undefined,
     location: location || undefined,
     page,
     limit: 30,
   })
+  const facets = useFacetsQuery()
   const profile = useProfileQuery()
   const userSkills = useMemo(() => {
-    // Фронт пока не имеет нормализованного skill-set'а в profile API; берём
-    // skill_nodes названия (если будут) или пустой массив. До тех пор —
-    // gap-чипы будут все «жёлтые», но рендер не падает.
     type ProfileBundle = { skill_nodes?: { node_key?: string }[] }
     const b = (profile.data as unknown as ProfileBundle | undefined) ?? {}
     return (b.skill_nodes ?? []).map((n) => n.node_key ?? '').filter(Boolean)
   }, [profile.data])
   const navigate = useNavigate()
   const save = useSaveVacancy()
-  const sync = useTriggerVacancySync()
 
-  // Авто-триггер sync при первом пустом ответе. Защита от повторного дёргания
-  // в одной сессии — autoTriggeredRef. Без неё useEffect срабатывал бы каждый
-  // раз когда после refetch'а data снова пуста (а это всегда первые ~8s).
-  const autoTriggeredRef = useRef(false)
-  useEffect(() => {
-    if (
-      !autoTriggeredRef.current &&
-      !list.isLoading &&
-      !list.error &&
-      (list.data?.items.length ?? 0) === 0 &&
-      // Только если фильтры не выставлены — пользователь ничего не «отфильтровал».
-      sources.length === 0 &&
-      salaryMin === 0 &&
-      location === ''
-    ) {
-      autoTriggeredRef.current = true
-      sync.mutate()
-    }
-  }, [list.data, list.isLoading, list.error, sources, salaryMin, location, sync])
-
-  const handleSave = (id: number) => {
-    save.mutate({ vacancyId: id }, {
+  const handleSave = (source: VacancySource, externalId: string) => {
+    save.mutate({ source, externalId }, {
       onError: (err) => {
         if (err instanceof Error && err.message.includes('401')) {
           navigate('/welcome')
@@ -273,6 +366,13 @@ export default function VacanciesPage() {
       <Hero />
       <div className="grid grid-cols-1 gap-6 px-4 py-6 sm:px-8 lg:grid-cols-[280px_1fr] lg:px-20">
         <FilterSidebar
+          facetsCompanies={facets.data?.companies ?? []}
+          facetsCategories={facets.data?.categories ?? []}
+          facetsSources={facets.data?.sources ?? []}
+          companies={companies}
+          setCompanies={setCompanies}
+          categories={categories}
+          setCategories={setCategories}
           sources={sources}
           setSources={setSources}
           salaryMin={salaryMin}
@@ -286,13 +386,7 @@ export default function VacanciesPage() {
           ) : list.error ? (
             <ErrorState />
           ) : (list.data?.items.length ?? 0) === 0 ? (
-            <EmptyState
-              onRefresh={() => sync.mutate()}
-              syncing={sync.isPending}
-              status={sync.data?.status}
-              retryAfter={sync.data?.retry_after}
-              autoTriggered={autoTriggeredRef.current}
-            />
+            <EmptyState />
           ) : (
             <>
               <div className="text-xs uppercase text-text-muted">
@@ -301,7 +395,7 @@ export default function VacanciesPage() {
               <div className="grid gap-3 sm:grid-cols-2">
                 {list.data?.items.map((v) => (
                   <VacancyCard
-                    key={v.id}
+                    key={`${v.source}|${v.external_id}`}
                     v={v}
                     userSkills={userSkills}
                     onSave={handleSave}
@@ -322,14 +416,12 @@ export default function VacanciesPage() {
   )
 }
 
-// SUPPORTED_HOSTS — клиентская валидация ссылки, чтобы пользователь сразу
-// видел понятную ошибку, а не молчаливое «ничего не происходит». Список
-// синхронизирован с DetectSource в backend/services/vacancies/app/analyze.go.
+// SUPPORTED_HOSTS — клиентская валидация ссылки. Список синхронизирован с
+// DetectSource в backend/services/vacancies/app/analyze.go.
 const SUPPORTED_HOSTS = [
-  'hh.ru', 'hh.kz', 'headhunter.ru',
   'yandex', 'ozon', 'tinkoff', 'tbank',
-  'vk.com', 'vk.ru', 'sber', 'avito',
-  'wildberries', 'wb.ru', 'mts.ru',
+  'vk.com', 'vk.ru', 'vk.company', 'sber', 'avito',
+  'wildberries', 'wb.ru', 'rwb.ru', 'mts.ru',
   'kaspersky', 'jetbrains', 'lamoda',
 ]
 
@@ -345,8 +437,6 @@ function isSupportedVacancyURL(raw: string): boolean {
 
 function extractAnalyzeErrorMessage(err: unknown): string {
   if (!(err instanceof Error)) return 'Не удалось разобрать ссылку.'
-  // ApiError serializes как `api 400: {"error":{"message":"..."}}` — вытащим
-  // человекочитаемое сообщение, иначе вернём raw text без префикса.
   const msg = err.message || ''
   const jsonStart = msg.indexOf('{')
   if (jsonStart >= 0) {
@@ -376,7 +466,7 @@ function Hero() {
     }
     if (!isSupportedVacancyURL(trimmed)) {
       setClientError(
-        'Поддерживаются ссылки только с hh.ru, careers.yandex.ru, job.ozon.ru, tbank.ru, vk.com и других площадок из списка.',
+        'Поддерживаются ссылки только с careers.yandex.ru, career.ozon.ru, team.vk.company, job.mts.ru, career.rwb.ru.',
       )
       return
     }
@@ -384,7 +474,7 @@ function Hero() {
       { url: trimmed },
       {
         onSuccess: (res) => {
-          navigate(`/vacancies/${res.vacancy.id}`)
+          navigate(`/vacancies/${res.vacancy.source}/${encodeURIComponent(res.vacancy.external_id)}`)
         },
       },
     )
@@ -397,7 +487,7 @@ function Hero() {
           Вакансии для прокачки
         </h1>
         <p className="text-center text-sm text-white/80">
-          HH, Yandex, Ozon, T-Bank, VK… Один Ctrl+V — мы вытащим стек и
+          Yandex, Ozon, VK, MTS, Wildberries… Один Ctrl+V — мы вытащим стек и
           сравним с твоим профилем.
         </p>
         <form
@@ -411,7 +501,7 @@ function Hero() {
               setUrl(e.target.value)
               if (clientError) setClientError(null)
             }}
-            placeholder="Вставь ссылку на вакансию (hh.ru/yandex/ozon…)"
+            placeholder="Вставь ссылку на вакансию (yandex/ozon/vk/mts/wb…)"
             className="min-w-0 flex-1 bg-transparent text-sm text-text-primary placeholder:text-text-muted focus:outline-none"
             aria-invalid={errMsg ? true : undefined}
           />
@@ -473,86 +563,18 @@ function ListSkeleton() {
   )
 }
 
-function EmptyState({
-  onRefresh,
-  syncing,
-  status,
-  retryAfter,
-  autoTriggered,
-}: {
-  onRefresh: () => void
-  syncing: boolean
-  status?: 'started' | 'already_running' | 'throttled'
-  retryAfter?: number
-  autoTriggered: boolean
-}) {
-  // Три визуальных состояния empty:
-  //   1) Sync уже запущен (status==='started' | 'already_running' или syncing)
-  //      — показываем «загружаем последние вакансии, ~10s».
-  //   2) Sync затроттлен (status==='throttled') — показываем countdown.
-  //   3) Иначе — стандартный «ничего нет, обнови сейчас».
-  const inProgress =
-    syncing || status === 'started' || status === 'already_running'
-  const throttled = status === 'throttled'
+function EmptyState() {
   return (
     <Card padding="lg">
-      <div className="flex flex-col items-start gap-4">
-        {inProgress ? (
-          <>
-            <div className="flex items-center gap-2 text-sm text-text-primary">
-              <RefreshCw className="h-4 w-4 animate-spin text-accent-hover" />
-              Подтягиваем свежие вакансии с HH/Yandex/Ozon… обычно ~10 секунд.
-            </div>
-            <div className="text-xs text-text-muted">
-              Страница обновится сама. Если ничего не появилось — нажми кнопку
-              ниже ещё раз.
-            </div>
-            <Button
-              size="sm"
-              variant="ghost"
-              icon={<RefreshCw className="h-4 w-4" />}
-              loading={syncing}
-              onClick={onRefresh}
-            >
-              Обновить ещё раз
-            </Button>
-          </>
-        ) : throttled ? (
-          <>
-            <div className="flex items-center gap-2 text-sm text-warn">
-              <Clock className="h-4 w-4" />
-              Подожди {retryAfter ?? 30} сек — sync уже только что запускался.
-            </div>
-            <Button
-              size="sm"
-              variant="ghost"
-              icon={<RefreshCw className="h-4 w-4" />}
-              onClick={onRefresh}
-            >
-              Попробовать сейчас
-            </Button>
-          </>
-        ) : (
-          <>
-            <div className="flex items-center gap-2 text-sm text-text-primary">
-              {autoTriggered ? (
-                <CheckCircle2 className="h-4 w-4 text-success" />
-              ) : (
-                <Search className="h-4 w-4 text-text-muted" />
-              )}
-              {autoTriggered
-                ? 'Синхронизация прошла, но по фильтрам ничего не нашлось. Сбрось фильтры или повтори.'
-                : 'Ничего не найдено. Можно дёрнуть синхронизацию вручную или сбросить фильтры.'}
-            </div>
-            <Button
-              size="sm"
-              icon={<RefreshCw className="h-4 w-4" />}
-              onClick={onRefresh}
-            >
-              Обновить сейчас
-            </Button>
-          </>
-        )}
+      <div className="flex flex-col items-start gap-3">
+        <div className="flex items-center gap-2 text-sm text-text-primary">
+          <Search className="h-4 w-4 text-text-muted" />
+          По текущим фильтрам ничего не нашлось. Сбрось часть критериев.
+        </div>
+        <div className="text-xs text-text-muted">
+          Каталог обновляется на бэкенде каждые 15 минут — данные живут в кэше,
+          никаких ручных синхронизаций.
+        </div>
       </div>
     </Card>
   )

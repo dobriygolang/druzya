@@ -1,11 +1,7 @@
-// /vacancies/:id — детальный экран одной вакансии.
+// /vacancies/:source/:externalId — детальный экран одной вакансии.
 //
-// Layout:
-//   - Hero с title/company/source/salary.
-//   - Колонка "Требования" (description) + skill-gap visualisation.
-//   - CTA «Подготовиться» — открывает drawer с рекомендованными dailyKata
-//     для missing skills (v1 — заглушка, fields для интеграции с daily).
-//   - Sticky-CTA «Сохранить» / «Откликнулся».
+// Идентификация — композитный ключ (source, external_id), id больше нет.
+// Layout идентичен предыдущей версии.
 
 import { useMemo, useState } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
@@ -17,6 +13,7 @@ import {
   useVacancy,
   useSaveVacancy,
   diffSkills,
+  type VacancySource,
 } from '../lib/queries/vacancies'
 
 function formatSalary(min?: number, max?: number, currency?: string): string {
@@ -28,16 +25,14 @@ function formatSalary(min?: number, max?: number, currency?: string): string {
 }
 
 export default function VacancyDetailPage() {
-  const params = useParams<{ id: string }>()
-  const id = params.id ? Number(params.id) : undefined
-  const v = useVacancy(id)
+  const params = useParams<{ source: string; externalId: string }>()
+  const source = params.source as VacancySource | undefined
+  const externalId = params.externalId
+  const v = useVacancy(source, externalId)
   const save = useSaveVacancy()
   const navigate = useNavigate()
   const [drawerOpen, setDrawerOpen] = useState(false)
 
-  // Покажем skill-gap. userSkills для now пуст (см. VacanciesPage комментарий).
-  // Оба массива стабилизируем через useMemo, иначе deps useMemo ниже
-  // меняются на каждый рендер и хук бесполезен.
   const userSkills = useMemo<string[]>(() => [], [])
   const required = useMemo(() => v.data?.normalized_skills ?? [], [v.data?.normalized_skills])
   const { matched, missing } = useMemo(
@@ -63,7 +58,7 @@ export default function VacancyDetailPage() {
   const vac = v.data
 
   const onSave = () => {
-    save.mutate({ vacancyId: vac.id }, {
+    save.mutate({ source: vac.source, externalId: vac.external_id }, {
       onSuccess: () => navigate('/applications'),
       onError: (err) => {
         if (err instanceof Error && err.message.includes('401')) {

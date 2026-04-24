@@ -1,14 +1,14 @@
 // Package domain defines the vacancies bounded-context aggregate.
 //
-// We model two aggregates:
+// Phase 3 model:
 //
-//   - Vacancy — a parsed external posting (Yandex, Ozon, T-Bank, VK…).
-//     Owned by the parser pipeline; idempotent on (Source, ExternalID).
-//   - SavedVacancy — per-user kanban entry referring to a Vacancy.id.
-//
-// Both are intentionally plain structs with no behaviour — domain rules live
-// in service.go (skill normalisation, status transitions). The repos exposed
-// in repo.go are the only IO seam.
+//   - Vacancy   — a parsed external posting (Yandex, Ozon, VK, MTS, WB…).
+//     Lives only in an in-process cache (services/vacancies/infra/cache).
+//     Identity is the composite (Source, ExternalID); there is no DB id
+//     anymore.
+//   - SavedVacancy — per-user kanban entry. The Snapshot field embeds the
+//     Vacancy as it looked when the user clicked "Сохранить". Persisted in
+//     saved_vacancies as JSONB.
 package domain
 
 import (
@@ -18,21 +18,20 @@ import (
 	"github.com/google/uuid"
 )
 
-// ErrNotFound is the canonical sentinel for missing rows. Repos must return
-// a wrapped variant so handlers can map it to HTTP 404 cleanly.
+// ErrNotFound is the canonical sentinel for missing rows / cache misses.
+// Repos and the cache must return a wrapped variant so handlers can map it
+// to HTTP 404 cleanly.
 var ErrNotFound = errors.New("vacancies: not found")
 
 // ErrInvalidStatus signals the status transition is rejected by domain rules.
 var ErrInvalidStatus = errors.New("vacancies: invalid status")
 
-// Source enumerates the parsers we ship. Stored as TEXT in the DB; new sources
-// are added by registering a Parser implementation and listing the constant
-// here.
+// Source enumerates the parsers we ship.
 type Source string
 
 const (
 	SourceYandex Source = "yandex"
-	// SourceOzon is the retail-side careers site (job.ozon.ru).
+	// SourceOzon is the retail-side careers site (career.ozon.ru).
 	SourceOzon Source = "ozon"
 	// SourceOzonTech is the IT-subsidiary careers site (career.ozon.tech).
 	SourceOzonTech Source = "ozontech"
@@ -48,8 +47,7 @@ const (
 	SourceLamoda      Source = "lamoda"
 )
 
-// AllSources is used by validation in the list endpoint. Order matches the
-// frontend's filter sidebar default.
+// AllSources is used by validation in the list endpoint.
 var AllSources = []Source{
 	SourceYandex, SourceOzon, SourceOzonTech, SourceTinkoff, SourceVK,
 	SourceSber, SourceAvito, SourceWildberries, SourceMTS,
@@ -86,45 +84,79 @@ func IsValidStatus(s SavedStatus) bool {
 	return false
 }
 
-// Vacancy is the parsed posting. RawJSON is the verbatim source payload
-// stored for forensics + future re-parses without a network round-trip.
+// Category is the coarse "направление" enum used by the new sidebar facet.
+// Source-specific mappers in infra/cache/categorize.go derive it at parse
+// time. Anti-fallback: anything we can't classify confidently goes to
+// CategoryOther — never to a guessed bucket.
+type Category string
+
+const (
+	CategoryBackend    Category = "backend"
+	CategoryFrontend   Category = "frontend"
+	CategoryMobile     Category = "mobile"
+	CategoryData       Category = "data"
+	CategoryDevOps     Category = "devops"
+	CategoryQA         Category = "qa"
+	CategoryAnalytics  Category = "analytics"
+	CategoryProduct    Category = "product"
+	CategoryDesign     Category = "design"
+	CategoryManagement Category = "management"
+	CategoryOther      Category = "other"
+)
+
+// AllCategories is the canonical iteration order (used by facets).
+var AllCategories = []Category{
+	CategoryBackend, CategoryFrontend, CategoryMobile, CategoryData,
+	CategoryDevOps, CategoryQA, CategoryAnalytics, CategoryProduct,
+	CategoryDesign, CategoryManagement, CategoryOther,
+}
+
+// IsValidCategory is the allow-list check used by handlers.
+func IsValidCategory(c Category) bool {
+	for _, x := range AllCategories {
+		if x == c {
+			return true
+		}
+	}
+	return false
+}
+
+// Vacancy is the parsed posting. Identity is (Source, ExternalID) — there
+// is no DB id anymore; the cache is keyed on the composite.
 type Vacancy struct {
-	ID               int64
-	Source           Source
-	ExternalID       string
-	URL              string
-	Title            string
-	Company          string
-	Location         string
-	EmploymentType   string
-	ExperienceLevel  string
-	SalaryMin        int
-	SalaryMax        int
-	Currency         string
-	Description      string
-	RawSkills        []string
-	NormalizedSkills []string
-	PostedAt         *time.Time
-	FetchedAt        time.Time
-	RawJSON          []byte
+	Source           Source     `json:"source"`
+	ExternalID       string     `json:"external_id"`
+	URL              string     `json:"url"`
+	Title            string     `json:"title"`
+	Company          string     `json:"company,omitempty"`
+	Location         string     `json:"location,omitempty"`
+	EmploymentType   string     `json:"employment_type,omitempty"`
+	ExperienceLevel  string     `json:"experience_level,omitempty"`
+	SalaryMin        int        `json:"salary_min,omitempty"`
+	SalaryMax        int        `json:"salary_max,omitempty"`
+	Currency         string     `json:"currency,omitempty"`
+	Description      string     `json:"description"`
+	RawSkills        []string   `json:"raw_skills"`
+	NormalizedSkills []string   `json:"normalized_skills"`
+	Category         Category   `json:"category"`
+	PostedAt         *time.Time `json:"posted_at,omitempty"`
+	FetchedAt        time.Time  `json:"fetched_at"`
+	RawJSON          []byte     `json:"-"`
 }
 
-// SavedVacancy is the per-user kanban row. UserID matches auth.users.id (UUID).
+// SavedVacancy is the per-user kanban row. The Snapshot is what the kanban
+// renders — frozen at save-time so the saved entry survives upstream
+// deletions and renames.
 type SavedVacancy struct {
-	ID        int64
-	UserID    uuid.UUID
-	VacancyID int64
-	Status    SavedStatus
-	Notes     string
-	SavedAt   time.Time
-	UpdatedAt time.Time
-}
-
-// SavedWithVacancy is the eager-loaded join used by the kanban page so the
-// frontend doesn't N+1 by id.
-type SavedWithVacancy struct {
-	Saved   SavedVacancy
-	Vacancy Vacancy
+	ID         int64
+	UserID     uuid.UUID
+	Source     Source
+	ExternalID string
+	Status     SavedStatus
+	Notes      string
+	Snapshot   Vacancy
+	SavedAt    time.Time
+	UpdatedAt  time.Time
 }
 
 // SkillGap is the diff between a vacancy's required skills and what the
@@ -137,14 +169,17 @@ type SkillGap struct {
 }
 
 // ListFilter is the query DTO for the listing endpoint. All fields are
-// optional; the zero value lists every vacancy in fetched-at desc order.
+// optional; the zero value lists every cached vacancy in fetched-at desc
+// order. Multi-select fields are OR within a field, AND across fields.
 type ListFilter struct {
-	Sources   []Source // OR-combined; empty = any source
-	Skills    []string // ALL must be present in normalized_skills (AND, GIN)
-	SalaryMin int      // 0 = no floor
-	Location  string   // case-insensitive substring; "" = anywhere
-	Limit     int      // default 30, max 100
-	Offset    int
+	Sources    []Source
+	Companies  []string
+	Categories []Category
+	Skills     []string // ALL must be present in normalized_skills (AND)
+	SalaryMin  int
+	Location   string
+	Limit      int
+	Offset     int
 }
 
 // Page is the pagination envelope returned by ListByFilter.
@@ -153,4 +188,19 @@ type Page struct {
 	Total  int
 	Limit  int
 	Offset int
+}
+
+// FacetEntry is one row of a facet histogram.
+type FacetEntry struct {
+	Name  string `json:"name"`
+	Count int    `json:"count"`
+}
+
+// Facets bundles the four sidebar histograms. Computed live from the cache
+// on each request — cheap at ~5000 items × const-time aggregation.
+type Facets struct {
+	Companies  []FacetEntry `json:"companies"`
+	Categories []FacetEntry `json:"categories"`
+	Sources    []FacetEntry `json:"sources"`
+	Locations  []FacetEntry `json:"locations"`
 }
