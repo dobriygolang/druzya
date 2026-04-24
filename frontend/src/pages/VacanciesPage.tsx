@@ -90,64 +90,74 @@ function VacancyCard({
 }) {
   const top = v.normalized_skills.slice(0, 5)
   const { matched, missing } = diffSkills(top, userSkills)
+  // Whole-card link: clicking anywhere in the card navigates to detail.
+  // Nested interactives (Сохранить) call e.preventDefault() + stopPropagation()
+  // so the bookmark button doesn't also fire navigation. `group` enables
+  // group-hover on the title (colour shift on entire-card hover).
   return (
-    <Card variant="elevated" interactive padding="lg">
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex min-w-0 flex-col gap-1">
-          <div className="flex items-center gap-2">
-            <SourceBadge source={v.source} />
-            {v.experience_level && (
-              <span className="font-mono text-[10px] uppercase text-text-muted">
-                {v.experience_level}
-              </span>
+    <Link
+      to={`/vacancies/${v.source}/${encodeURIComponent(v.external_id)}`}
+      className="group block rounded-xl no-underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-bg"
+    >
+      <Card variant="elevated" interactive padding="lg">
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex min-w-0 flex-col gap-1">
+            <div className="flex items-center gap-2">
+              <SourceBadge source={v.source} />
+              {v.experience_level && (
+                <span className="font-mono text-[10px] uppercase text-text-muted">
+                  {v.experience_level}
+                </span>
+              )}
+            </div>
+            <span className="font-display text-base font-bold text-text-primary transition-colors group-hover:text-accent">
+              {v.title}
+            </span>
+            {v.company && (
+              <div className="flex items-center gap-1 text-xs text-text-secondary">
+                <Briefcase className="h-3 w-3" /> {v.company}
+              </div>
+            )}
+            {v.location && (
+              <div className="flex items-center gap-1 text-xs text-text-muted">
+                <MapPin className="h-3 w-3" /> {v.location}
+              </div>
             )}
           </div>
-          <Link
-            to={`/vacancies/${v.source}/${encodeURIComponent(v.external_id)}`}
-            className="font-display text-base font-bold text-text-primary hover:text-accent-hover"
-          >
-            {v.title}
-          </Link>
-          {v.company && (
-            <div className="flex items-center gap-1 text-xs text-text-secondary">
-              <Briefcase className="h-3 w-3" /> {v.company}
-            </div>
-          )}
-          {v.location && (
-            <div className="flex items-center gap-1 text-xs text-text-muted">
-              <MapPin className="h-3 w-3" /> {v.location}
-            </div>
+          {onSave && (
+            <Button
+              size="sm"
+              variant="ghost"
+              icon={<Bookmark className="h-4 w-4" />}
+              onClick={(e) => {
+                e.preventDefault()
+                e.stopPropagation()
+                onSave(v.source, v.external_id)
+              }}
+            >
+              Сохранить
+            </Button>
           )}
         </div>
-        {onSave && (
-          <Button
-            size="sm"
-            variant="ghost"
-            icon={<Bookmark className="h-4 w-4" />}
-            onClick={() => onSave(v.source, v.external_id)}
-          >
-            Сохранить
-          </Button>
+        {(v.salary_min || v.salary_max) && (
+          <div className="mt-3 flex items-center gap-1 text-sm text-success">
+            <Wallet className="h-4 w-4" />
+            {formatSalary(v.salary_min, v.salary_max, v.currency)}
+          </div>
         )}
-      </div>
-      {(v.salary_min || v.salary_max) && (
-        <div className="mt-3 flex items-center gap-1 text-sm text-success">
-          <Wallet className="h-4 w-4" />
-          {formatSalary(v.salary_min, v.salary_max, v.currency)}
-        </div>
-      )}
-      {top.length > 0 && (
-        <div className="mt-3 flex flex-wrap gap-1.5">
-          {top.map((s) => (
-            <SkillChip
-              key={s}
-              s={s}
-              state={matched.has(s.toLowerCase()) ? 'matched' : missing.has(s.toLowerCase()) ? 'gap' : 'extra'}
-            />
-          ))}
-        </div>
-      )}
-    </Card>
+        {top.length > 0 && (
+          <div className="mt-3 flex flex-wrap gap-1.5">
+            {top.map((s) => (
+              <SkillChip
+                key={s}
+                s={s}
+                state={matched.has(s.toLowerCase()) ? 'matched' : missing.has(s.toLowerCase()) ? 'gap' : 'extra'}
+              />
+            ))}
+          </div>
+        )}
+      </Card>
+    </Link>
   )
 }
 
