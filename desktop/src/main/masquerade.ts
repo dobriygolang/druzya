@@ -2,7 +2,7 @@
 // attention during screen-shares.
 //
 // What we can do at runtime (this module):
-//   1. Swap the Dock icon (`app.dock.setIcon`).
+//   1. Swap the Dock icon (`app.dock?.setIcon`).
 //   2. Override window titles — Settings / Onboarding become the chosen
 //      alias (Compact / Expanded are frameless, title is moot).
 //   3. Write the chosen alias to localStorage so preference survives
@@ -61,14 +61,14 @@ export function applyPreset(preset: MasqueradePreset, resourcesPath: string): vo
     if (p.iconFile) {
       try {
         const img = nativeImage.createFromPath(join(resourcesPath, 'masquerade', p.iconFile));
-        if (!img.isEmpty()) app.dock.setIcon(img);
+        if (!img.isEmpty()) app.dock?.setIcon(img);
       } catch {
         /* fall back to default icon silently */
       }
     } else {
       // Restore the default icon by passing an empty image — Electron
       // interprets that as "use bundle icon".
-      app.dock.setIcon(nativeImage.createEmpty());
+      app.dock?.setIcon(nativeImage.createEmpty());
     }
   }
 

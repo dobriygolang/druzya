@@ -451,14 +451,14 @@ function buildWindow(name: WindowName, opts: WindowOptions): BrowserWindow {
     case 'compact':
       return new BrowserWindow({
         ...base,
-        width: 460,
-        height: 92,
         frame: false,
         resizable: false,
         transparent: true,
         hasShadow: true,
         roundedCorners: true,
         skipTaskbar: true,
+        // width/height are emitted by topRightPosition() along with x/y
+        // so the placement and size stay in lockstep.
         ...topRightPosition(460, 92),
       });
     case 'expanded': {
@@ -482,8 +482,6 @@ function buildWindow(name: WindowName, opts: WindowOptions): BrowserWindow {
       // CSS side of this story.
       return new BrowserWindow({
         ...base,
-        width: 520,
-        height: 680,
         frame: false,
         resizable: true,
         transparent: true,
@@ -492,7 +490,8 @@ function buildWindow(name: WindowName, opts: WindowOptions): BrowserWindow {
         roundedCorners: true,
         skipTaskbar: true,
         // Ignored when loadedBounds overrides below — but still used as
-        // fallback if preferences fail to load.
+        // fallback if preferences fail to load. width/height come from
+        // topRightPosition() along with x/y.
         ...topRightPosition(520, 680, 120),
       });
     }
@@ -525,14 +524,13 @@ function buildWindow(name: WindowName, opts: WindowOptions): BrowserWindow {
     case 'history':
       return new BrowserWindow({
         ...base,
-        width: 560,
-        height: 720,
         frame: false,
         resizable: true,
         transparent: true,
         hasShadow: true,
         roundedCorners: true,
         skipTaskbar: true,
+        // width/height come from topRightPosition().
         ...topRightPosition(560, 720, 140),
       });
     case 'picker': {

@@ -4,10 +4,17 @@
 //
 // See docs/copilot-virtual-cursor.md for the full design.
 
-import { spawn, type ChildProcessWithoutNullStreams } from 'node:child_process';
+import { spawn, type ChildProcessByStdio } from 'node:child_process';
 import { existsSync } from 'node:fs';
+import type { Readable, Writable } from 'node:stream';
 
 type State = 'thawed' | 'frozen' | 'unavailable';
+
+// We spawn with stdio: ['pipe', 'pipe', 'inherit'] — stderr goes to our
+// own stderr (inherit), so the child's stderr handle is null. That makes
+// the return type ChildProcessByStdio<Writable, Readable, null>, not the
+// ChildProcessWithoutNullStreams you'd get with all-pipe stdio.
+type HelperProc = ChildProcessByStdio<Writable, Readable, null>;
 
 interface Bridge {
   ensureSpawned: (binPath: string) => void;
@@ -18,7 +25,7 @@ interface Bridge {
   shutdown: () => void;
 }
 
-let proc: ChildProcessWithoutNullStreams | null = null;
+let proc: HelperProc | null = null;
 let state: State = 'thawed';
 let ready = false;
 
@@ -32,10 +39,14 @@ function ensureSpawned(binPath: string): void {
     if (!proc && !existsSync(binPath)) state = 'unavailable';
     return;
   }
-  proc = spawn(binPath, [], { stdio: ['pipe', 'pipe', 'inherit'] });
-  proc.stdout.setEncoding('utf8');
+  // Keep a local reference so TS can narrow past the async callbacks —
+  // the module-scope `proc` could in theory be null'd by the 'exit'
+  // handler before a later line runs.
+  const p: HelperProc = spawn(binPath, [], { stdio: ['pipe', 'pipe', 'inherit'] });
+  proc = p;
+  p.stdout.setEncoding('utf8');
   let buffer = '';
-  proc.stdout.on('data', (chunk: string) => {
+  p.stdout.on('data', (chunk: string) => {
     buffer += chunk;
     let nl = buffer.indexOf('\n');
     while (nl !== -1) {
@@ -45,7 +56,7 @@ function ensureSpawned(binPath: string): void {
       handleHelperLine(line);
     }
   });
-  proc.on('exit', () => {
+  p.on('exit', () => {
     proc = null;
     ready = false;
     // If the helper dies while we thought we were frozen, the OS will

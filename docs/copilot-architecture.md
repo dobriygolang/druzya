@@ -676,18 +676,26 @@ All of the below has landed on `main`:
 - [ ] **Add `backend/services/copilot/infra/config/defaults.yaml`** — default
       `DesktopConfig` payload (model list, hotkeys, feature flags).
 
-### Phase 1 — Backend service skeleton
-- [ ] `copilot/domain/` — entity.go, repo.go, errors.go.
-- [ ] `copilot/infra/postgres.go` — Conversation / Message / Quota repos.
-- [ ] `copilot/infra/llm_openrouter.go` — copy from ai_native, adapt for
-      streaming and vision input (image-aware messages).
-- [ ] `copilot/app/` — 9 use cases (Analyze, Chat, ListHistory,
+### Phase 1 — Backend service skeleton (COMPLETE ✅)
+- [x] `copilot/domain/entity.go` + `domain/repo.go` — entities, repo
+      interfaces, LLMProvider streaming interface, ConfigProvider.
+- [x] `copilot/infra/postgres.go` — Conversations / Messages / Quotas
+      adapters with keyset-paginated history cursor codec.
+- [x] `copilot/infra/llm_openrouter.go` — streaming OpenAI-compatible client
+      with vision support (multimodal content parts) and retry/backoff.
+- [x] `copilot/infra/config.go` — `StaticConfigProvider` serving the default
+      DesktopConfig payload (models, hotkeys, paywall copy, flags).
+- [x] `copilot/app/` — 10 use cases: Analyze, Chat, ListHistory,
       GetConversation, DeleteConversation, ListProviders, GetQuota,
-      GetDesktopConfig, RateMessage).
-- [ ] `copilot/ports/server.go` + `ports/models.go` — proto↔domain
-      converters, Connect-RPC handler.
-- [ ] **Unit tests** for every use case with a fake LLM provider.
-- [ ] `copilot/WIRING.md` — integration checklist for monolith.
+      GetDesktopConfig, RateMessage (plus the shared streaming pump
+      between Analyze/Chat).
+- [x] `copilot/ports/server.go` + `ports/models.go` — full Connect-RPC
+      handler with streaming translation and proto↔domain converters.
+- [x] **12 unit tests pass** covering the happy path, quota exhaustion,
+      model-not-allowed, empty input, mid-stream provider errors,
+      ownership guards on every CRUD use case, config rev short-circuit.
+- [ ] `copilot/WIRING.md` — deferred to Phase 2 (written alongside the
+      monolith wiring that it documents).
 
 ### Phase 2 — Wire into monolith (COMPLETE ✅)
 - [x] `backend/cmd/monolith/services/copilot.go` — wiring module assembles
