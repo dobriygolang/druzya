@@ -199,9 +199,9 @@ func (uc *Analyze) Do(ctx context.Context, in AnalyzeInput) (<-chan StreamFrame,
 	// target for a freshly-created conversation AND as the source of
 	// attached document ids for the RAG injection below.
 	var (
-		conv         domain.Conversation
-		liveSession  domain.Session
-		haveLive     bool
+		conv        domain.Conversation
+		liveSession domain.Session
+		haveLive    bool
 	)
 	if uc.Sessions != nil {
 		if live, lerr := uc.Sessions.GetLive(ctx, in.UserID); lerr == nil {

@@ -66,7 +66,7 @@ func NewCopilot(d Deps, docSearcher copilotDomain.DocumentSearcher) *Module {
 		Quotas:        quotas,
 		LLM:           llm,
 		Config:        cfgProvider,
-		Sessions:      sessions, // auto-attach new turns to live session
+		Sessions:      sessions,    // auto-attach new turns to live session
 		DocSearcher:   docSearcher, // nil when documents module is disabled — RAG cleanly skipped
 		Compactor:     compactor,
 		CompactionCfg: compactionCfg,
