@@ -11,13 +11,14 @@ import (
 // plus a Bearer token are both required — one without the other is
 // always 401.
 //
-// Free tier as of 2026-Q1: 10k "neurons" / day per account (Cloudflare
-// bills in neurons rather than tokens; a neuron ≈ a single inference
-// unit — exact conversion depends on the model). The ceiling is tight
-// for bulk JSON extraction but uniquely generous for large models —
-// CF is the only free-tier provider we integrate that serves a 70B
-// Llama on edge hardware. We keep it in the chain as the "uncommon
-// but uniquely valuable" slot.
+// ⚠️  ВАЖНО: free-tier = 10k neurons/day per account. Для Llama-70B
+// один inference ~50-400 neurons, что даёт реально **50-200 запросов/день
+// суммарно на весь аккаунт** — для prod-scale с 10k MAU это копейки.
+// Практически CF Workers AI — **платный** для любого серьёзного
+// использования. Драйвер остаётся как **опциональное расширение**:
+// регистрируется только если оператор задал оба секрета (ACCOUNT_ID +
+// TOKEN) в env и готов платить за overage. В DefaultTaskModelMap CF НЕ
+// включён — чтобы не вводить операторов в заблуждение о "бесплатности".
 //
 // Model id format: Cloudflare uses `@cf/<vendor>/<model>` — the leading
 // "@cf/" is part of the id, not a prefix we strip. We deliberately do
