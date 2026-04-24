@@ -26,11 +26,7 @@ type ConfirmReady struct {
 
 // Do обрабатывает один вызов confirm.
 func (uc *ConfirmReady) Do(ctx context.Context, matchID, userID uuid.UUID) error {
-	clk := uc.Clock
-	if clk == nil {
-		clk = domain.RealClock{}
-	}
-	now := clk.Now()
+	now := uc.Clock.Now()
 
 	state, ok, err := uc.Ready.Get(ctx, matchID)
 	if err != nil {
@@ -83,11 +79,7 @@ type HandleReadyCheckTimeout struct {
 // подтвердившего с бонусом +5 ELO и поднимает anticheat-сигнал на
 // неподтвердившего.
 func (uc *HandleReadyCheckTimeout) Sweep(ctx context.Context, matchID uuid.UUID) error {
-	clk := uc.Clock
-	if clk == nil {
-		clk = domain.RealClock{}
-	}
-	now := clk.Now()
+	now := uc.Clock.Now()
 
 	state, ok, err := uc.Ready.Get(ctx, matchID)
 	if err != nil {

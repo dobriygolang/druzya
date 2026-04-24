@@ -63,7 +63,9 @@ func NewMatchmaker(
 	log *slog.Logger,
 ) *Matchmaker {
 	if clk == nil {
-		clk = domain.RealClock{}
+		// Clock — обязательная зависимость: wiring всегда передаёт RealClock,
+		// а тесты — фейковый Clock. nil означает ошибку сборки графа.
+		panic("arena.NewMatchmaker: clk is required")
 	}
 	sweeps := make([]SweepKey, 0, len(enums.AllSections())*5)
 	for _, s := range enums.AllSections() {
@@ -367,16 +369,12 @@ func (uc *FindMatch) Do(ctx context.Context, in EnqueueInput) (FindMatchOutput, 
 	if !in.Section.IsValid() || !in.Mode.IsValid() {
 		return FindMatchOutput{}, fmt.Errorf("arena.FindMatch: invalid section/mode")
 	}
-	clk := uc.Clock
-	if clk == nil {
-		clk = domain.RealClock{}
-	}
 	t := domain.QueueTicket{
 		UserID:     in.UserID,
 		Elo:        in.Elo,
 		Section:    in.Section,
 		Mode:       in.Mode,
-		EnqueuedAt: clk.Now(),
+		EnqueuedAt: uc.Clock.Now(),
 	}
 	if err := uc.Queue.Enqueue(ctx, t); err != nil && !errors.Is(err, domain.ErrAlreadyInQueue) {
 		return FindMatchOutput{}, fmt.Errorf("arena.FindMatch: %w", err)
