@@ -20,6 +20,7 @@ import (
 	"druz9/shared/pkg/config"
 	"druz9/shared/pkg/eventbus"
 	"druz9/shared/pkg/killswitch"
+	"druz9/shared/pkg/llmchain"
 	"druz9/shared/pkg/metrics"
 	"druz9/shared/pkg/quota"
 	subApp "druz9/subscription/app"
@@ -92,6 +93,7 @@ func New(ctx context.Context, cfg *config.Config) (app *App, otelShutdown func()
 	// downstream-сервисы деградируют в disabled-ветку. Cache-shutdown
 	// регистрируется ниже в registerInfraClosers через поле llmCacheClose.
 	llmChain, llmRawChain, llmCacheClose, lcErr := services.BuildLLMChainWithCache(*cfg, log, rdb, pool, ctx)
+
 	if lcErr != nil {
 		pool.Close()
 		_ = rdb.Close()
@@ -169,7 +171,7 @@ func New(ctx context.Context, cfg *config.Config) (app *App, otelShutdown func()
 		services.NewHone(deps),
 		services.NewLobby(deps),
 		services.NewSubscription(deps),
-		services.NewLLMChainAdmin(deps, llmRawChain),
+		services.NewLLMChainAdmin(deps, llmRawChain, llmRegisteredProviders(llmRawChain)),
 	}
 
 	// Documents module is wired first so its searcher adapter can be
@@ -308,4 +310,14 @@ func (a *App) Shutdown(ctx context.Context) error {
 		}
 	}
 	return errors.Join(errs...)
+}
+
+// llmRegisteredProviders — nil-safe wrapper над Chain.RegisteredProviders()
+// для передачи в services.NewLLMChainAdmin. Admin-UI использует это чтобы
+// live-preview знал какие звенья цепочки реально достижимы.
+func llmRegisteredProviders(chain *llmchain.Chain) []string {
+	if chain == nil {
+		return nil
+	}
+	return chain.RegisteredProviders()
 }

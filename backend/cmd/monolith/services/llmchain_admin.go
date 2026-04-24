@@ -24,13 +24,14 @@ import (
 // После успешного PUT — Chain.RuntimeForceReload() чтобы изменения вступили
 // в силу мгновенно, не ждя 30s ticker.
 type llmAdminHandler struct {
-	src   llmchain.ConfigSource
-	chain *llmchain.Chain // для force-reload после PUT
-	log   *slog.Logger
+	src                 llmchain.ConfigSource
+	chain               *llmchain.Chain // для force-reload после PUT
+	registeredProviders []string        // снимок провайдеров с настроенным ключом (для live-preview на фронте)
+	log                 *slog.Logger
 }
 
-func newLLMAdminHandler(src llmchain.ConfigSource, chain *llmchain.Chain, log *slog.Logger) *llmAdminHandler {
-	return &llmAdminHandler{src: src, chain: chain, log: log}
+func newLLMAdminHandler(src llmchain.ConfigSource, chain *llmchain.Chain, registered []string, log *slog.Logger) *llmAdminHandler {
+	return &llmAdminHandler{src: src, chain: chain, registeredProviders: registered, log: log}
 }
 
 // mount регистрирует оба endpoint'а в /api/v1/admin/llm/config.
@@ -193,14 +194,16 @@ var _ = context.Background
 
 // NewLLMChainAdmin — wiring Module для admin-ручек LLM chain'а.
 // chain может быть nil (когда ни один провайдер не настроен) → Module
-// просто не регистрирует REST-роуты, админка покажет 404 на /llm/config
-// (эквивалентно "сервис отключён").
-func NewLLMChainAdmin(d Deps, chain *llmchain.Chain) *Module {
+// просто не регистрирует REST-роуты, админка покажет 404 на /llm/config.
+//
+// registeredProviders — снимок провайдеров у которых есть ключ в env
+// (Chain.RegisteredProviders()). Нужен фронту для live-preview'а.
+func NewLLMChainAdmin(d Deps, chain *llmchain.Chain, registeredProviders []string) *Module {
 	if chain == nil {
 		return &Module{}
 	}
 	src := newLLMConfigSource(d.Pool)
-	h := newLLMAdminHandler(src, chain, d.Log)
+	h := newLLMAdminHandler(src, chain, registeredProviders, d.Log)
 	return &Module{
 		MountREST: func(r chi.Router) {
 			h.mount(r)

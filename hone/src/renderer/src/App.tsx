@@ -23,6 +23,7 @@ import { FocusPage } from './pages/Focus';
 import { NotesPage } from './pages/Notes';
 import { WhiteboardPage } from './pages/Whiteboard';
 import { StatsPage } from './pages/Stats';
+import { PodcastsPage } from './pages/Podcasts';
 import { useSessionStore } from './stores/session';
 
 const POMODORO_SECONDS = 25 * 60;
@@ -254,6 +255,7 @@ export default function App() {
       else if (k === 'n') open('notes');
       else if (k === 'd') open('board');
       else if (k === 's') open('stats');
+      else if (k === 'p') open('podcasts');
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
@@ -303,6 +305,7 @@ export default function App() {
       {page === 'notes' && <NotesPage />}
       {page === 'board' && <WhiteboardPage />}
       {page === 'stats' && <StatsPage />}
+      {page === 'podcasts' && <PodcastsPage />}
 
       {!focusMode && (
         <Dock

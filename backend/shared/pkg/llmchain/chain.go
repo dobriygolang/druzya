@@ -199,6 +199,21 @@ func (c *Chain) RuntimeForceReload(ctx context.Context) {
 	}
 }
 
+// RegisteredProviders возвращает имена всех зарегистрированных провайдеров
+// (те, у которых API-ключ был в env на момент NewChain). Нужно admin-UI
+// чтобы live-preview знал, какие звенья цепочки реально достижимы, а
+// какие будут silently скипнуты при expandVirtualChain.
+//
+// Порядок НЕ сортируется — отдаём как есть (map iteration). Фронт
+// сортирует сам если нужно.
+func (c *Chain) RegisteredProviders() []string {
+	out := make([]string, 0, len(c.drivers))
+	for p := range c.drivers {
+		out = append(out, string(p))
+	}
+	return out
+}
+
 // currentOrder — вернёт runtime-заданный порядок если есть (непустой
 // ChainOrder в snapshot'е) либо static c.order. Сохраняет гарантию что
 // в результат попадают только registered-драйверы (фильтрация по
