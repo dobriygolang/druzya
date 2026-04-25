@@ -44,6 +44,9 @@ type Recommendation struct {
 
 // DailyBrief is the synthesised morning brief.
 type DailyBrief struct {
+	// BriefID — UUID для AckRecommendation. Phase A briefs (без memory)
+	// имеют BriefID = uuid.Nil; client'у через proto придёт пустая строка.
+	BriefID         uuid.UUID
 	Headline        string
 	Narrative       string
 	Recommendations []Recommendation

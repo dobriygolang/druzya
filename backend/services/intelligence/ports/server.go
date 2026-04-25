@@ -28,12 +28,15 @@ var _ druz9v1connect.IntelligenceServiceHandler = (*IntelligenceServer)(nil)
 
 // IntelligenceServer adapts intelligence use cases to Connect.
 type IntelligenceServer struct {
-	H *app.Handler
+	H      *app.Handler
+	Memory *app.Memory // optional — Phase B
 }
 
-// NewIntelligenceServer wires a server around the Handler.
-func NewIntelligenceServer(h *app.Handler) *IntelligenceServer {
-	return &IntelligenceServer{H: h}
+// NewIntelligenceServer wires a server around the Handler. mem может
+// быть nil — тогда AckRecommendation / GetMemoryStats возвращают
+// Unavailable (memory layer ещё не зарегистрирован).
+func NewIntelligenceServer(h *app.Handler, mem *app.Memory) *IntelligenceServer {
+	return &IntelligenceServer{H: h, Memory: mem}
 }
 
 // GetDailyBrief implements druz9.v1.IntelligenceService/GetDailyBrief.
@@ -75,6 +78,59 @@ func (s *IntelligenceServer) AskNotes(
 	return connect.NewResponse(toAskAnswerProto(ans)), nil
 }
 
+// AckRecommendation implements brief feedback handler. Пишет
+// brief_followed / brief_dismissed episode для memory layer'а.
+func (s *IntelligenceServer) AckRecommendation(
+	ctx context.Context,
+	req *connect.Request[pb.AckRecommendationRequest],
+) (*connect.Response[pb.AckRecommendationResponse], error) {
+	uid, err := requireUser(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if s.Memory == nil {
+		return nil, connect.NewError(connect.CodeUnavailable,
+			errors.New("memory layer not configured"))
+	}
+	briefID, err := uuid.Parse(req.Msg.GetBriefId())
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument,
+			fmt.Errorf("brief_id: %w", err))
+	}
+	if err := s.Memory.AckRecommendation(ctx, uid, briefID, int(req.Msg.GetIndex()), req.Msg.GetFollowed()); err != nil {
+		return nil, fmt.Errorf("intelligence.AckRecommendation: %w", s.toConnectErr(err))
+	}
+	return connect.NewResponse(&pb.AckRecommendationResponse{Ok: true}), nil
+}
+
+// GetMemoryStats implements lightweight count for the trust indicator.
+func (s *IntelligenceServer) GetMemoryStats(
+	ctx context.Context,
+	_ *connect.Request[pb.GetMemoryStatsRequest],
+) (*connect.Response[pb.MemoryStats], error) {
+	uid, err := requireUser(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if s.Memory == nil {
+		// Не падаем — возвращаем нулевую статистику. UI покажет
+		// «LEARNING ABOUT YOU…».
+		return connect.NewResponse(&pb.MemoryStats{}), nil
+	}
+	stats, err := s.Memory.Episodes.Stats30d(ctx, uid)
+	if err != nil {
+		return nil, fmt.Errorf("intelligence.GetMemoryStats: %w", s.toConnectErr(err))
+	}
+	out := &pb.MemoryStats{
+		Total_30D: int32(stats.TotalLast30d),
+		ByKind:    make(map[string]int32, len(stats.ByKind)),
+	}
+	for k, v := range stats.ByKind {
+		out.ByKind[string(k)] = int32(v)
+	}
+	return connect.NewResponse(out), nil
+}
+
 // ─── helpers ──────────────────────────────────────────────────────────────
 
 func requireUser(ctx context.Context) (uuid.UUID, error) {
@@ -109,6 +165,7 @@ func toDailyBriefProto(b domain.DailyBrief) *pb.DailyBrief {
 		Headline:    b.Headline,
 		Narrative:   b.Narrative,
 		GeneratedAt: timestamppb.New(b.GeneratedAt.UTC()),
+		BriefId:     b.BriefID.String(),
 	}
 	for _, r := range b.Recommendations {
 		out.Recommendations = append(out.Recommendations, &pb.BriefRecommendation{

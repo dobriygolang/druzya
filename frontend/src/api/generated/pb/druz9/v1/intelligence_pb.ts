@@ -159,6 +159,14 @@ export class DailyBrief extends Message<DailyBrief> {
    */
   generatedAt?: Timestamp;
 
+  /**
+   * brief_id — UUID для AckRecommendation. Phase A briefs (без memory)
+   * отдают пустую строку.
+   *
+   * @generated from field: string brief_id = 5;
+   */
+  briefId = "";
+
   constructor(data?: PartialMessage<DailyBrief>) {
     super();
     proto3.util.initPartial(data, this);
@@ -171,6 +179,7 @@ export class DailyBrief extends Message<DailyBrief> {
     { no: 2, name: "narrative", kind: "scalar", T: 9 /* ScalarType.STRING */ },
     { no: 3, name: "recommendations", kind: "message", T: BriefRecommendation, repeated: true },
     { no: 4, name: "generated_at", kind: "message", T: Timestamp },
+    { no: 5, name: "brief_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): DailyBrief {
@@ -187,6 +196,173 @@ export class DailyBrief extends Message<DailyBrief> {
 
   static equals(a: DailyBrief | PlainMessage<DailyBrief> | undefined, b: DailyBrief | PlainMessage<DailyBrief> | undefined): boolean {
     return proto3.util.equals(DailyBrief, a, b);
+  }
+}
+
+/**
+ * AckRecommendation — юзер кликнул 👍 (followed=true) или 👎 (followed=false)
+ * на recommendation index'е в brief'е. Backend пишет brief_followed /
+ * brief_dismissed episode для будущих recall'ов.
+ *
+ * @generated from message druz9.v1.AckRecommendationRequest
+ */
+export class AckRecommendationRequest extends Message<AckRecommendationRequest> {
+  /**
+   * @generated from field: string brief_id = 1;
+   */
+  briefId = "";
+
+  /**
+   * @generated from field: int32 index = 2;
+   */
+  index = 0;
+
+  /**
+   * @generated from field: bool followed = 3;
+   */
+  followed = false;
+
+  constructor(data?: PartialMessage<AckRecommendationRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.AckRecommendationRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "brief_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "index", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 3, name: "followed", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): AckRecommendationRequest {
+    return new AckRecommendationRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): AckRecommendationRequest {
+    return new AckRecommendationRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): AckRecommendationRequest {
+    return new AckRecommendationRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: AckRecommendationRequest | PlainMessage<AckRecommendationRequest> | undefined, b: AckRecommendationRequest | PlainMessage<AckRecommendationRequest> | undefined): boolean {
+    return proto3.util.equals(AckRecommendationRequest, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.AckRecommendationResponse
+ */
+export class AckRecommendationResponse extends Message<AckRecommendationResponse> {
+  /**
+   * @generated from field: bool ok = 1;
+   */
+  ok = false;
+
+  constructor(data?: PartialMessage<AckRecommendationResponse>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.AckRecommendationResponse";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "ok", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): AckRecommendationResponse {
+    return new AckRecommendationResponse().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): AckRecommendationResponse {
+    return new AckRecommendationResponse().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): AckRecommendationResponse {
+    return new AckRecommendationResponse().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: AckRecommendationResponse | PlainMessage<AckRecommendationResponse> | undefined, b: AckRecommendationResponse | PlainMessage<AckRecommendationResponse> | undefined): boolean {
+    return proto3.util.equals(AckRecommendationResponse, a, b);
+  }
+}
+
+/**
+ * MemoryStats — лёгкий счётчик для DailyBriefPanel trust indicator
+ * («COACH KNOWS [N] EVENTS»). by_kind ключи — domain.EpisodeKind значения.
+ *
+ * @generated from message druz9.v1.MemoryStats
+ */
+export class MemoryStats extends Message<MemoryStats> {
+  /**
+   * @generated from field: int32 total_30d = 1;
+   */
+  total30d = 0;
+
+  /**
+   * @generated from field: map<string, int32> by_kind = 2;
+   */
+  byKind: { [key: string]: number } = {};
+
+  constructor(data?: PartialMessage<MemoryStats>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.MemoryStats";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "total_30d", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 2, name: "by_kind", kind: "map", K: 9 /* ScalarType.STRING */, V: {kind: "scalar", T: 5 /* ScalarType.INT32 */} },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): MemoryStats {
+    return new MemoryStats().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): MemoryStats {
+    return new MemoryStats().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): MemoryStats {
+    return new MemoryStats().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: MemoryStats | PlainMessage<MemoryStats> | undefined, b: MemoryStats | PlainMessage<MemoryStats> | undefined): boolean {
+    return proto3.util.equals(MemoryStats, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.GetMemoryStatsRequest
+ */
+export class GetMemoryStatsRequest extends Message<GetMemoryStatsRequest> {
+  constructor(data?: PartialMessage<GetMemoryStatsRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.GetMemoryStatsRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): GetMemoryStatsRequest {
+    return new GetMemoryStatsRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): GetMemoryStatsRequest {
+    return new GetMemoryStatsRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): GetMemoryStatsRequest {
+    return new GetMemoryStatsRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: GetMemoryStatsRequest | PlainMessage<GetMemoryStatsRequest> | undefined, b: GetMemoryStatsRequest | PlainMessage<GetMemoryStatsRequest> | undefined): boolean {
+    return proto3.util.equals(GetMemoryStatsRequest, a, b);
   }
 }
 

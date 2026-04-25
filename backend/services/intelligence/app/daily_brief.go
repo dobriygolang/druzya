@@ -32,6 +32,9 @@ type GetDailyBrief struct {
 	Synthesiser domain.BriefSynthesizer
 	Log         *slog.Logger
 	Now         func() time.Time
+	// Memory — optional. С ним brief получает «past coach interactions»
+	// в prompt и каждое generated brief пишется как brief_emitted episode.
+	Memory *Memory
 }
 
 // GetDailyBriefInput — параметры use case'а.

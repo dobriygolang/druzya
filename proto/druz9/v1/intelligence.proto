@@ -51,7 +51,28 @@ message DailyBrief {
   string narrative = 2;       // 2-3 sentences про шаблон последних 7 дней
   repeated BriefRecommendation recommendations = 3; // ровно 3
   google.protobuf.Timestamp generated_at = 4;
+  // brief_id — UUID для AckRecommendation. Phase A briefs (без memory)
+  // отдают пустую строку.
+  string brief_id = 5;
 }
+
+// AckRecommendation — юзер кликнул 👍 (followed=true) или 👎 (followed=false)
+// на recommendation index'е в brief'е. Backend пишет brief_followed /
+// brief_dismissed episode для будущих recall'ов.
+message AckRecommendationRequest {
+  string brief_id = 1;
+  int32 index = 2;
+  bool followed = 3;
+}
+message AckRecommendationResponse { bool ok = 1; }
+
+// MemoryStats — лёгкий счётчик для DailyBriefPanel trust indicator
+// («COACH KNOWS [N] EVENTS»). by_kind ключи — domain.EpisodeKind значения.
+message MemoryStats {
+  int32 total_30d = 1;
+  map<string, int32> by_kind = 2;
+}
+message GetMemoryStatsRequest {}
 
 message GetDailyBriefRequest {
   // force=true bypasses the 6h cache. Rate-limited 1/h per user.
@@ -87,5 +108,14 @@ service IntelligenceService {
       post: "/api/v1/intelligence/ask-notes"
       body: "*"
     };
+  }
+  rpc AckRecommendation(AckRecommendationRequest) returns (AckRecommendationResponse) {
+    option (google.api.http) = {
+      post: "/api/v1/intelligence/brief/ack"
+      body: "*"
+    };
+  }
+  rpc GetMemoryStats(GetMemoryStatsRequest) returns (MemoryStats) {
+    option (google.api.http) = { get: "/api/v1/intelligence/memory/stats" };
   }
 }

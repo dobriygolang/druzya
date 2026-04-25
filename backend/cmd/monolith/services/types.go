@@ -57,6 +57,12 @@ type Deps struct {
 	// Analyze/Suggest check before opening a stream and consume after
 	// Done. nil-safe.
 	TokenQuota *quota.DailyTokenQuota
+
+	// IntelligenceMemoryHook — optional. Set during bootstrap после
+	// services.NewIntelligence(...). Hone-handlers'ы дёргают его
+	// для записи side-effect episodes (reflection / standup / plan-events
+	// / note-create / focus-session-done). nil-safe.
+	IntelligenceMemoryHook IntelligenceMemoryHook
 }
 
 // Module is what every NewXxx returns: enough metadata for router.go to

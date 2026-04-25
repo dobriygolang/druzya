@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"strings"
 	"time"
 
 	intelApp "druz9/intelligence/app"
@@ -40,17 +41,23 @@ import (
 //
 // MVP gating: open to all signed-in users (no Pro-gate). Add a TierReader
 // dependency mirror of HoneServer.WithTier when the feature graduates.
-func NewIntelligence(d Deps) *Module {
-	briefs := intelInfra.NewDailyBriefs(d.Pool)
+// IntelligenceModule wraps the standard module with a publicly-readable
+// MemoryHook — hone/notify wirings tap into it to write side-effect
+// episodes (reflections / standups / plan-skip-or-complete / etc).
+type IntelligenceModule struct {
+	*Module
+	Memory *intelApp.Memory
+	Hook   IntelligenceMemoryHook
+}
 
-	// Reader adapters (raw SQL, monolith-local).
+func NewIntelligence(d Deps) IntelligenceModule {
+	briefs := intelInfra.NewDailyBriefs(d.Pool)
+	episodes := intelInfra.NewEpisodes(d.Pool)
+
 	focusR := &intelFocusReader{pool: d.Pool}
 	planR := &intelPlanReader{pool: d.Pool}
 	notesR := &intelNotesReader{pool: d.Pool}
 
-	// Embedder — same Ollama bge-small the hone service uses. We bypass
-	// hone's wrapper to avoid a cross-domain import; the underlying
-	// llmcache.OllamaEmbedder is shared infra.
 	embedder := newIntelEmbedder(d)
 
 	var (
@@ -67,6 +74,13 @@ func NewIntelligence(d Deps) *Module {
 		d.Log.Warn("intelligence: llmchain not configured — daily-brief / ask-notes will return 503")
 	}
 
+	memory := &intelApp.Memory{
+		Episodes: episodes,
+		Embed:    embedder,
+		Log:      d.Log,
+		Now:      d.Now,
+	}
+
 	h := intelApp.NewHandler(intelApp.Handler{
 		GetDailyBrief: &intelApp.GetDailyBrief{
 			Briefs:      briefs,
@@ -76,32 +90,138 @@ func NewIntelligence(d Deps) *Module {
 			Synthesiser: synth,
 			Log:         d.Log,
 			Now:         d.Now,
+			Memory:      memory,
 		},
 		AskNotes: &intelApp.AskNotes{
 			Notes:    notesR,
 			Embedder: embedder,
 			Answerer: answerer,
 			Log:      d.Log,
+			Memory:   memory,
 		},
 		Log: d.Log,
 	})
 
-	server := intelPorts.NewIntelligenceServer(h)
+	server := intelPorts.NewIntelligenceServer(h, memory)
 	connectPath, connectHandler := druz9v1connect.NewIntelligenceServiceHandler(
 		server,
 		connect.WithInterceptors(metrics.ConnectInterceptor()),
 	)
 	transcoder := mustTranscode("intelligence", connectPath, connectHandler)
 
-	return &Module{
-		ConnectPath:        connectPath,
-		ConnectHandler:     transcoder,
-		RequireConnectAuth: true,
-		MountREST: func(r chi.Router) {
-			r.Post("/intelligence/daily-brief", transcoder.ServeHTTP)
-			r.Post("/intelligence/ask-notes", transcoder.ServeHTTP)
-		},
+	// Embed worker — фон. Stop через app shutdown ctx (см. bootstrap).
+	worker := &intelApp.EmbedWorker{
+		Episodes: episodes,
+		Embed:    embedder,
+		Log:      d.Log,
 	}
+
+	return IntelligenceModule{
+		Module: &Module{
+			ConnectPath:        connectPath,
+			ConnectHandler:     transcoder,
+			RequireConnectAuth: true,
+			MountREST: func(r chi.Router) {
+				r.Post("/intelligence/daily-brief", transcoder.ServeHTTP)
+				r.Post("/intelligence/ask-notes", transcoder.ServeHTTP)
+				r.Post("/intelligence/brief/ack", transcoder.ServeHTTP)
+				r.Get("/intelligence/memory/stats", transcoder.ServeHTTP)
+			},
+			Background: []func(context.Context){
+				func(ctx context.Context) { go worker.Run(ctx) },
+			},
+		},
+		Memory: memory,
+		Hook:   newIntelligenceMemoryHook(memory, d.Log),
+	}
+}
+
+// IntelligenceMemoryHook — узкий interface для hone-wiring'а: вызывается
+// из hone-handlers'ов на ключевых side-effects (reflection / standup /
+// plan-skip-or-complete / note-create / focus-session-done). Передаём
+// через Deps в hone wiring; nil = no-op (safe для тестов / single-service
+// сборок).
+type IntelligenceMemoryHook interface {
+	OnReflectionAdded(ctx context.Context, userID uuid.UUID, reflection string, planItemID string, secondsFocused int)
+	OnStandupRecorded(ctx context.Context, userID uuid.UUID, yesterday, today, blockers string)
+	OnPlanSkipped(ctx context.Context, userID uuid.UUID, title, skillKey string)
+	OnPlanCompleted(ctx context.Context, userID uuid.UUID, title, skillKey string)
+	OnNoteCreated(ctx context.Context, userID uuid.UUID, noteID uuid.UUID, title, body200 string)
+	OnFocusSessionDone(ctx context.Context, userID uuid.UUID, pinnedTitle string, secondsFocused int, planItemID string, completedPomodoros int)
+}
+
+type memoryHook struct {
+	memory *intelApp.Memory
+	log    *slog.Logger
+}
+
+func newIntelligenceMemoryHook(m *intelApp.Memory, log *slog.Logger) IntelligenceMemoryHook {
+	return &memoryHook{memory: m, log: log}
+}
+
+func (h *memoryHook) OnReflectionAdded(ctx context.Context, uid uuid.UUID, reflection, planItemID string, sec int) {
+	if reflection == "" {
+		return
+	}
+	h.memory.AppendAsync(ctx, intelApp.AppendInput{
+		UserID: uid, Kind: intelDomain.EpisodeReflectionAdded, Summary: reflection,
+		Payload: map[string]any{"plan_item_id": planItemID, "seconds": sec},
+	})
+}
+func (h *memoryHook) OnStandupRecorded(ctx context.Context, uid uuid.UUID, y, t, b string) {
+	parts := []string{}
+	if y != "" {
+		parts = append(parts, "Yesterday: "+y)
+	}
+	if t != "" {
+		parts = append(parts, "Today: "+t)
+	}
+	if b != "" {
+		parts = append(parts, "Blockers: "+b)
+	}
+	if len(parts) == 0 {
+		return
+	}
+	summary := strings.Join(parts, " || ")
+	h.memory.AppendAsync(ctx, intelApp.AppendInput{
+		UserID: uid, Kind: intelDomain.EpisodeStandupRecorded, Summary: summary,
+		Payload: map[string]any{"yesterday": y, "today": t, "blockers": b},
+	})
+}
+func (h *memoryHook) OnPlanSkipped(ctx context.Context, uid uuid.UUID, title, skill string) {
+	h.memory.AppendAsync(ctx, intelApp.AppendInput{
+		UserID: uid, Kind: intelDomain.EpisodePlanSkipped, Summary: title,
+		Payload: map[string]any{"skill_key": skill},
+	})
+}
+func (h *memoryHook) OnPlanCompleted(ctx context.Context, uid uuid.UUID, title, skill string) {
+	h.memory.AppendAsync(ctx, intelApp.AppendInput{
+		UserID: uid, Kind: intelDomain.EpisodePlanCompleted, Summary: title,
+		Payload: map[string]any{"skill_key": skill},
+	})
+}
+func (h *memoryHook) OnNoteCreated(ctx context.Context, uid uuid.UUID, noteID uuid.UUID, title, body200 string) {
+	summary := title
+	if body200 != "" {
+		summary = title + ": " + body200
+	}
+	h.memory.AppendAsync(ctx, intelApp.AppendInput{
+		UserID: uid, Kind: intelDomain.EpisodeNoteCreated, Summary: summary,
+		Payload: map[string]any{"note_id": noteID.String()},
+	})
+}
+func (h *memoryHook) OnFocusSessionDone(ctx context.Context, uid uuid.UUID, pinned string, sec int, planItemID string, pomodoros int) {
+	if sec < 5*60 {
+		return // короче 5 минут — не «сессия», skip
+	}
+	summary := pinned
+	if summary == "" {
+		summary = "Focus block"
+	}
+	h.memory.AppendAsync(ctx, intelApp.AppendInput{
+		UserID: uid, Kind: intelDomain.EpisodeFocusSessionDone, Summary: summary,
+		Payload: map[string]any{"seconds": sec, "plan_item_id": planItemID, "pomodoros": pomodoros},
+	})
 }
 
 // ─── Reader adapters (raw SQL, no hone import) ────────────────────────────

@@ -26,10 +26,16 @@ export interface Recommendation {
 }
 
 export interface DailyBrief {
+  briefId: string;
   headline: string;
   narrative: string;
   recommendations: Recommendation[];
   generatedAt: Date | null;
+}
+
+export interface MemoryStats {
+  total30d: number;
+  byKind: Record<string, number>;
 }
 
 export interface Citation {
@@ -73,6 +79,7 @@ function unwrapKind(k: BriefRecommendationKind): RecommendationKind {
 export async function getDailyBrief(force = false): Promise<DailyBrief> {
   const resp = await client.getDailyBrief({ force });
   return {
+    briefId: resp.briefId,
     headline: resp.headline,
     narrative: resp.narrative,
     recommendations: resp.recommendations.map((r) => ({
@@ -83,6 +90,22 @@ export async function getDailyBrief(force = false): Promise<DailyBrief> {
     })),
     generatedAt: protoTs(resp.generatedAt as unknown as { seconds: bigint; nanos: number } | undefined),
   };
+}
+
+// ─── Memory feedback ────────────────────────────────────────────────────────
+
+export async function ackRecommendation(briefId: string, index: number, followed: boolean): Promise<void> {
+  if (!briefId) return; // Phase A briefs (без memory) — пропускаем
+  await client.ackRecommendation({ briefId, index, followed });
+}
+
+export async function getMemoryStats(): Promise<MemoryStats> {
+  const resp = await client.getMemoryStats({});
+  const byKind: Record<string, number> = {};
+  for (const [k, v] of Object.entries(resp.byKind ?? {})) {
+    byKind[k] = Number(v);
+  }
+  return { total30d: resp.total30d, byKind };
 }
 
 // ─── Ask Notes ──────────────────────────────────────────────────────────────

@@ -67,10 +67,25 @@ type BriefPromptInput struct {
 	CompletedRecent []CompletedPlanItem
 	Reflections     []Reflection
 	RecentNotes     []NoteHead
+	// PastEpisodes — Memory.Recall hits, передаются в prompt как
+	// «past coach interactions» — синтезайзер избегает повторов и
+	// корректирует тон под историю user-реакций.
+	PastEpisodes []Episode
 }
 
-// NoteAnswerer synthesises an answer from question + top-K notes. Real
-// impl uses TaskNoteQA; floor returns ErrLLMUnavailable.
+// AskNotesPromptInput — вход для NoteAnswerer (Phase B). Past Q&A
+// эпизоды дают модели контекст «юзер уже спрашивал X».
+type AskNotesPromptInput struct {
+	Question     string
+	ContextNotes []NoteEmbedding
+	PastEpisodes []Episode
+}
+
+// NoteAnswerer synthesises an answer from question + top-K notes + past Q&A
+// episodes. Real impl uses TaskNoteQA; floor returns ErrLLMUnavailable.
+//
+// Sig сохранена обратно-совместимой: первая версия принимала только
+// (question, ctxNotes). Новый параметр past — optional (nil = old behaviour).
 type NoteAnswerer interface {
-	Answer(ctx context.Context, question string, ctxNotes []NoteEmbedding) (string, error)
+	Answer(ctx context.Context, in AskNotesPromptInput) (string, error)
 }

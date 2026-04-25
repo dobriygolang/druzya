@@ -179,8 +179,11 @@ type DailyBrief struct {
 	Narrative       string                 `protobuf:"bytes,2,opt,name=narrative,proto3" json:"narrative,omitempty"`             // 2-3 sentences про шаблон последних 7 дней
 	Recommendations []*BriefRecommendation `protobuf:"bytes,3,rep,name=recommendations,proto3" json:"recommendations,omitempty"` // ровно 3
 	GeneratedAt     *timestamppb.Timestamp `protobuf:"bytes,4,opt,name=generated_at,json=generatedAt,proto3" json:"generated_at,omitempty"`
-	unknownFields   protoimpl.UnknownFields
-	sizeCache       protoimpl.SizeCache
+	// brief_id — UUID для AckRecommendation. Phase A briefs (без memory)
+	// отдают пустую строку.
+	BriefId       string `protobuf:"bytes,5,opt,name=brief_id,json=briefId,proto3" json:"brief_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *DailyBrief) Reset() {
@@ -241,6 +244,210 @@ func (x *DailyBrief) GetGeneratedAt() *timestamppb.Timestamp {
 	return nil
 }
 
+func (x *DailyBrief) GetBriefId() string {
+	if x != nil {
+		return x.BriefId
+	}
+	return ""
+}
+
+// AckRecommendation — юзер кликнул 👍 (followed=true) или 👎 (followed=false)
+// на recommendation index'е в brief'е. Backend пишет brief_followed /
+// brief_dismissed episode для будущих recall'ов.
+type AckRecommendationRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	BriefId       string                 `protobuf:"bytes,1,opt,name=brief_id,json=briefId,proto3" json:"brief_id,omitempty"`
+	Index         int32                  `protobuf:"varint,2,opt,name=index,proto3" json:"index,omitempty"`
+	Followed      bool                   `protobuf:"varint,3,opt,name=followed,proto3" json:"followed,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AckRecommendationRequest) Reset() {
+	*x = AckRecommendationRequest{}
+	mi := &file_druz9_v1_intelligence_proto_msgTypes[2]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AckRecommendationRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AckRecommendationRequest) ProtoMessage() {}
+
+func (x *AckRecommendationRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_intelligence_proto_msgTypes[2]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AckRecommendationRequest.ProtoReflect.Descriptor instead.
+func (*AckRecommendationRequest) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_intelligence_proto_rawDescGZIP(), []int{2}
+}
+
+func (x *AckRecommendationRequest) GetBriefId() string {
+	if x != nil {
+		return x.BriefId
+	}
+	return ""
+}
+
+func (x *AckRecommendationRequest) GetIndex() int32 {
+	if x != nil {
+		return x.Index
+	}
+	return 0
+}
+
+func (x *AckRecommendationRequest) GetFollowed() bool {
+	if x != nil {
+		return x.Followed
+	}
+	return false
+}
+
+type AckRecommendationResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Ok            bool                   `protobuf:"varint,1,opt,name=ok,proto3" json:"ok,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AckRecommendationResponse) Reset() {
+	*x = AckRecommendationResponse{}
+	mi := &file_druz9_v1_intelligence_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AckRecommendationResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AckRecommendationResponse) ProtoMessage() {}
+
+func (x *AckRecommendationResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_intelligence_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AckRecommendationResponse.ProtoReflect.Descriptor instead.
+func (*AckRecommendationResponse) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_intelligence_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *AckRecommendationResponse) GetOk() bool {
+	if x != nil {
+		return x.Ok
+	}
+	return false
+}
+
+// MemoryStats — лёгкий счётчик для DailyBriefPanel trust indicator
+// («COACH KNOWS [N] EVENTS»). by_kind ключи — domain.EpisodeKind значения.
+type MemoryStats struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Total_30D     int32                  `protobuf:"varint,1,opt,name=total_30d,json=total30d,proto3" json:"total_30d,omitempty"`
+	ByKind        map[string]int32       `protobuf:"bytes,2,rep,name=by_kind,json=byKind,proto3" json:"by_kind,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"varint,2,opt,name=value"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *MemoryStats) Reset() {
+	*x = MemoryStats{}
+	mi := &file_druz9_v1_intelligence_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *MemoryStats) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*MemoryStats) ProtoMessage() {}
+
+func (x *MemoryStats) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_intelligence_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use MemoryStats.ProtoReflect.Descriptor instead.
+func (*MemoryStats) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_intelligence_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *MemoryStats) GetTotal_30D() int32 {
+	if x != nil {
+		return x.Total_30D
+	}
+	return 0
+}
+
+func (x *MemoryStats) GetByKind() map[string]int32 {
+	if x != nil {
+		return x.ByKind
+	}
+	return nil
+}
+
+type GetMemoryStatsRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetMemoryStatsRequest) Reset() {
+	*x = GetMemoryStatsRequest{}
+	mi := &file_druz9_v1_intelligence_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetMemoryStatsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetMemoryStatsRequest) ProtoMessage() {}
+
+func (x *GetMemoryStatsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_intelligence_proto_msgTypes[5]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetMemoryStatsRequest.ProtoReflect.Descriptor instead.
+func (*GetMemoryStatsRequest) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_intelligence_proto_rawDescGZIP(), []int{5}
+}
+
 type GetDailyBriefRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// force=true bypasses the 6h cache. Rate-limited 1/h per user.
@@ -251,7 +458,7 @@ type GetDailyBriefRequest struct {
 
 func (x *GetDailyBriefRequest) Reset() {
 	*x = GetDailyBriefRequest{}
-	mi := &file_druz9_v1_intelligence_proto_msgTypes[2]
+	mi := &file_druz9_v1_intelligence_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -263,7 +470,7 @@ func (x *GetDailyBriefRequest) String() string {
 func (*GetDailyBriefRequest) ProtoMessage() {}
 
 func (x *GetDailyBriefRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_intelligence_proto_msgTypes[2]
+	mi := &file_druz9_v1_intelligence_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -276,7 +483,7 @@ func (x *GetDailyBriefRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetDailyBriefRequest.ProtoReflect.Descriptor instead.
 func (*GetDailyBriefRequest) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_intelligence_proto_rawDescGZIP(), []int{2}
+	return file_druz9_v1_intelligence_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *GetDailyBriefRequest) GetForce() bool {
@@ -298,7 +505,7 @@ type Citation struct {
 
 func (x *Citation) Reset() {
 	*x = Citation{}
-	mi := &file_druz9_v1_intelligence_proto_msgTypes[3]
+	mi := &file_druz9_v1_intelligence_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -310,7 +517,7 @@ func (x *Citation) String() string {
 func (*Citation) ProtoMessage() {}
 
 func (x *Citation) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_intelligence_proto_msgTypes[3]
+	mi := &file_druz9_v1_intelligence_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -323,7 +530,7 @@ func (x *Citation) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Citation.ProtoReflect.Descriptor instead.
 func (*Citation) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_intelligence_proto_rawDescGZIP(), []int{3}
+	return file_druz9_v1_intelligence_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *Citation) GetNoteId() string {
@@ -358,7 +565,7 @@ type AskAnswer struct {
 
 func (x *AskAnswer) Reset() {
 	*x = AskAnswer{}
-	mi := &file_druz9_v1_intelligence_proto_msgTypes[4]
+	mi := &file_druz9_v1_intelligence_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -370,7 +577,7 @@ func (x *AskAnswer) String() string {
 func (*AskAnswer) ProtoMessage() {}
 
 func (x *AskAnswer) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_intelligence_proto_msgTypes[4]
+	mi := &file_druz9_v1_intelligence_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -383,7 +590,7 @@ func (x *AskAnswer) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AskAnswer.ProtoReflect.Descriptor instead.
 func (*AskAnswer) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_intelligence_proto_rawDescGZIP(), []int{4}
+	return file_druz9_v1_intelligence_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *AskAnswer) GetAnswerMd() string {
@@ -409,7 +616,7 @@ type AskNotesRequest struct {
 
 func (x *AskNotesRequest) Reset() {
 	*x = AskNotesRequest{}
-	mi := &file_druz9_v1_intelligence_proto_msgTypes[5]
+	mi := &file_druz9_v1_intelligence_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -421,7 +628,7 @@ func (x *AskNotesRequest) String() string {
 func (*AskNotesRequest) ProtoMessage() {}
 
 func (x *AskNotesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_intelligence_proto_msgTypes[5]
+	mi := &file_druz9_v1_intelligence_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -434,7 +641,7 @@ func (x *AskNotesRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AskNotesRequest.ProtoReflect.Descriptor instead.
 func (*AskNotesRequest) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_intelligence_proto_rawDescGZIP(), []int{5}
+	return file_druz9_v1_intelligence_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *AskNotesRequest) GetQuestion() string {
@@ -453,13 +660,27 @@ const file_druz9_v1_intelligence_proto_rawDesc = "" +
 	"\x04kind\x18\x01 \x01(\x0e2!.druz9.v1.BriefRecommendationKindR\x04kind\x12\x14\n" +
 	"\x05title\x18\x02 \x01(\tR\x05title\x12\x1c\n" +
 	"\trationale\x18\x03 \x01(\tR\trationale\x12\x1b\n" +
-	"\ttarget_id\x18\x04 \x01(\tR\btargetId\"\xce\x01\n" +
+	"\ttarget_id\x18\x04 \x01(\tR\btargetId\"\xe9\x01\n" +
 	"\n" +
 	"DailyBrief\x12\x1a\n" +
 	"\bheadline\x18\x01 \x01(\tR\bheadline\x12\x1c\n" +
 	"\tnarrative\x18\x02 \x01(\tR\tnarrative\x12G\n" +
 	"\x0frecommendations\x18\x03 \x03(\v2\x1d.druz9.v1.BriefRecommendationR\x0frecommendations\x12=\n" +
-	"\fgenerated_at\x18\x04 \x01(\v2\x1a.google.protobuf.TimestampR\vgeneratedAt\",\n" +
+	"\fgenerated_at\x18\x04 \x01(\v2\x1a.google.protobuf.TimestampR\vgeneratedAt\x12\x19\n" +
+	"\bbrief_id\x18\x05 \x01(\tR\abriefId\"g\n" +
+	"\x18AckRecommendationRequest\x12\x19\n" +
+	"\bbrief_id\x18\x01 \x01(\tR\abriefId\x12\x14\n" +
+	"\x05index\x18\x02 \x01(\x05R\x05index\x12\x1a\n" +
+	"\bfollowed\x18\x03 \x01(\bR\bfollowed\"+\n" +
+	"\x19AckRecommendationResponse\x12\x0e\n" +
+	"\x02ok\x18\x01 \x01(\bR\x02ok\"\xa1\x01\n" +
+	"\vMemoryStats\x12\x1b\n" +
+	"\ttotal_30d\x18\x01 \x01(\x05R\btotal30d\x12:\n" +
+	"\aby_kind\x18\x02 \x03(\v2!.druz9.v1.MemoryStats.ByKindEntryR\x06byKind\x1a9\n" +
+	"\vByKindEntry\x12\x10\n" +
+	"\x03key\x18\x01 \x01(\tR\x03key\x12\x14\n" +
+	"\x05value\x18\x02 \x01(\x05R\x05value:\x028\x01\"\x17\n" +
+	"\x15GetMemoryStatsRequest\",\n" +
 	"\x14GetDailyBriefRequest\x12\x14\n" +
 	"\x05force\x18\x01 \x01(\bR\x05force\"S\n" +
 	"\bCitation\x12\x17\n" +
@@ -476,10 +697,12 @@ const file_druz9_v1_intelligence_proto_rawDesc = "" +
 	"#BRIEF_RECOMMENDATION_KIND_TINY_TASK\x10\x01\x12&\n" +
 	"\"BRIEF_RECOMMENDATION_KIND_SCHEDULE\x10\x02\x12)\n" +
 	"%BRIEF_RECOMMENDATION_KIND_REVIEW_NOTE\x10\x03\x12%\n" +
-	"!BRIEF_RECOMMENDATION_KIND_UNBLOCK\x10\x042\xf0\x01\n" +
+	"!BRIEF_RECOMMENDATION_KIND_UNBLOCK\x10\x042\xef\x03\n" +
 	"\x13IntelligenceService\x12r\n" +
 	"\rGetDailyBrief\x12\x1e.druz9.v1.GetDailyBriefRequest\x1a\x14.druz9.v1.DailyBrief\"+\x82\xd3\xe4\x93\x02%:\x01*\" /api/v1/intelligence/daily-brief\x12e\n" +
-	"\bAskNotes\x12\x19.druz9.v1.AskNotesRequest\x1a\x13.druz9.v1.AskAnswer\")\x82\xd3\xe4\x93\x02#:\x01*\"\x1e/api/v1/intelligence/ask-notesB\x8e\x01\n" +
+	"\bAskNotes\x12\x19.druz9.v1.AskNotesRequest\x1a\x13.druz9.v1.AskAnswer\")\x82\xd3\xe4\x93\x02#:\x01*\"\x1e/api/v1/intelligence/ask-notes\x12\x87\x01\n" +
+	"\x11AckRecommendation\x12\".druz9.v1.AckRecommendationRequest\x1a#.druz9.v1.AckRecommendationResponse\")\x82\xd3\xe4\x93\x02#:\x01*\"\x1e/api/v1/intelligence/brief/ack\x12s\n" +
+	"\x0eGetMemoryStats\x12\x1f.druz9.v1.GetMemoryStatsRequest\x1a\x15.druz9.v1.MemoryStats\")\x82\xd3\xe4\x93\x02#\x12!/api/v1/intelligence/memory/statsB\x8e\x01\n" +
 	"\fcom.druz9.v1B\x11IntelligenceProtoP\x01Z*druz9/shared/generated/pb/druz9/v1;druz9v1\xa2\x02\x03DXX\xaa\x02\bDruz9.V1\xca\x02\bDruz9\\V1\xe2\x02\x14Druz9\\V1\\GPBMetadata\xea\x02\tDruz9::V1b\x06proto3"
 
 var (
@@ -495,31 +718,41 @@ func file_druz9_v1_intelligence_proto_rawDescGZIP() []byte {
 }
 
 var file_druz9_v1_intelligence_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_druz9_v1_intelligence_proto_msgTypes = make([]protoimpl.MessageInfo, 6)
+var file_druz9_v1_intelligence_proto_msgTypes = make([]protoimpl.MessageInfo, 11)
 var file_druz9_v1_intelligence_proto_goTypes = []any{
-	(BriefRecommendationKind)(0),  // 0: druz9.v1.BriefRecommendationKind
-	(*BriefRecommendation)(nil),   // 1: druz9.v1.BriefRecommendation
-	(*DailyBrief)(nil),            // 2: druz9.v1.DailyBrief
-	(*GetDailyBriefRequest)(nil),  // 3: druz9.v1.GetDailyBriefRequest
-	(*Citation)(nil),              // 4: druz9.v1.Citation
-	(*AskAnswer)(nil),             // 5: druz9.v1.AskAnswer
-	(*AskNotesRequest)(nil),       // 6: druz9.v1.AskNotesRequest
-	(*timestamppb.Timestamp)(nil), // 7: google.protobuf.Timestamp
+	(BriefRecommendationKind)(0),      // 0: druz9.v1.BriefRecommendationKind
+	(*BriefRecommendation)(nil),       // 1: druz9.v1.BriefRecommendation
+	(*DailyBrief)(nil),                // 2: druz9.v1.DailyBrief
+	(*AckRecommendationRequest)(nil),  // 3: druz9.v1.AckRecommendationRequest
+	(*AckRecommendationResponse)(nil), // 4: druz9.v1.AckRecommendationResponse
+	(*MemoryStats)(nil),               // 5: druz9.v1.MemoryStats
+	(*GetMemoryStatsRequest)(nil),     // 6: druz9.v1.GetMemoryStatsRequest
+	(*GetDailyBriefRequest)(nil),      // 7: druz9.v1.GetDailyBriefRequest
+	(*Citation)(nil),                  // 8: druz9.v1.Citation
+	(*AskAnswer)(nil),                 // 9: druz9.v1.AskAnswer
+	(*AskNotesRequest)(nil),           // 10: druz9.v1.AskNotesRequest
+	nil,                               // 11: druz9.v1.MemoryStats.ByKindEntry
+	(*timestamppb.Timestamp)(nil),     // 12: google.protobuf.Timestamp
 }
 var file_druz9_v1_intelligence_proto_depIdxs = []int32{
-	0, // 0: druz9.v1.BriefRecommendation.kind:type_name -> druz9.v1.BriefRecommendationKind
-	1, // 1: druz9.v1.DailyBrief.recommendations:type_name -> druz9.v1.BriefRecommendation
-	7, // 2: druz9.v1.DailyBrief.generated_at:type_name -> google.protobuf.Timestamp
-	4, // 3: druz9.v1.AskAnswer.citations:type_name -> druz9.v1.Citation
-	3, // 4: druz9.v1.IntelligenceService.GetDailyBrief:input_type -> druz9.v1.GetDailyBriefRequest
-	6, // 5: druz9.v1.IntelligenceService.AskNotes:input_type -> druz9.v1.AskNotesRequest
-	2, // 6: druz9.v1.IntelligenceService.GetDailyBrief:output_type -> druz9.v1.DailyBrief
-	5, // 7: druz9.v1.IntelligenceService.AskNotes:output_type -> druz9.v1.AskAnswer
-	6, // [6:8] is the sub-list for method output_type
-	4, // [4:6] is the sub-list for method input_type
-	4, // [4:4] is the sub-list for extension type_name
-	4, // [4:4] is the sub-list for extension extendee
-	0, // [0:4] is the sub-list for field type_name
+	0,  // 0: druz9.v1.BriefRecommendation.kind:type_name -> druz9.v1.BriefRecommendationKind
+	1,  // 1: druz9.v1.DailyBrief.recommendations:type_name -> druz9.v1.BriefRecommendation
+	12, // 2: druz9.v1.DailyBrief.generated_at:type_name -> google.protobuf.Timestamp
+	11, // 3: druz9.v1.MemoryStats.by_kind:type_name -> druz9.v1.MemoryStats.ByKindEntry
+	8,  // 4: druz9.v1.AskAnswer.citations:type_name -> druz9.v1.Citation
+	7,  // 5: druz9.v1.IntelligenceService.GetDailyBrief:input_type -> druz9.v1.GetDailyBriefRequest
+	10, // 6: druz9.v1.IntelligenceService.AskNotes:input_type -> druz9.v1.AskNotesRequest
+	3,  // 7: druz9.v1.IntelligenceService.AckRecommendation:input_type -> druz9.v1.AckRecommendationRequest
+	6,  // 8: druz9.v1.IntelligenceService.GetMemoryStats:input_type -> druz9.v1.GetMemoryStatsRequest
+	2,  // 9: druz9.v1.IntelligenceService.GetDailyBrief:output_type -> druz9.v1.DailyBrief
+	9,  // 10: druz9.v1.IntelligenceService.AskNotes:output_type -> druz9.v1.AskAnswer
+	4,  // 11: druz9.v1.IntelligenceService.AckRecommendation:output_type -> druz9.v1.AckRecommendationResponse
+	5,  // 12: druz9.v1.IntelligenceService.GetMemoryStats:output_type -> druz9.v1.MemoryStats
+	9,  // [9:13] is the sub-list for method output_type
+	5,  // [5:9] is the sub-list for method input_type
+	5,  // [5:5] is the sub-list for extension type_name
+	5,  // [5:5] is the sub-list for extension extendee
+	0,  // [0:5] is the sub-list for field type_name
 }
 
 func init() { file_druz9_v1_intelligence_proto_init() }
@@ -533,7 +766,7 @@ func file_druz9_v1_intelligence_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_druz9_v1_intelligence_proto_rawDesc), len(file_druz9_v1_intelligence_proto_rawDesc)),
 			NumEnums:      1,
-			NumMessages:   6,
+			NumMessages:   11,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

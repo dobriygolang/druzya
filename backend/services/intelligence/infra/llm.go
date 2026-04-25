@@ -33,7 +33,7 @@ type NoLLMNoteAnswerer struct{}
 func NewNoLLMNoteAnswerer() *NoLLMNoteAnswerer { return &NoLLMNoteAnswerer{} }
 
 // Answer always returns ErrLLMUnavailable.
-func (*NoLLMNoteAnswerer) Answer(_ context.Context, _ string, _ []domain.NoteEmbedding) (string, error) {
+func (*NoLLMNoteAnswerer) Answer(_ context.Context, _ domain.AskNotesPromptInput) (string, error) {
 	return "", fmt.Errorf("intelligence.NoLLMNoteAnswerer.Answer: %w", domain.ErrLLMUnavailable)
 }
 
@@ -164,6 +164,15 @@ func buildBriefUserPrompt(in domain.BriefPromptInput) string {
 		for _, n := range in.RecentNotes {
 			fmt.Fprintf(&sb, "  - id=%q title=%q excerpt=%q\n",
 				n.NoteID.String(), n.Title, firstN(n.Excerpt, 200))
+		}
+	}
+	if len(in.PastEpisodes) > 0 {
+		sb.WriteString("\nPast coach interactions (most relevant — DO NOT repeat verbatim. If user dismissed, avoid same kind. If followed, continue direction):\n")
+		for _, ep := range in.PastEpisodes {
+			fmt.Fprintf(&sb, "  - [%s · %s] %q\n",
+				ep.OccurredAt.Format("2006-01-02"),
+				string(ep.Kind),
+				firstN(ep.Summary, 160))
 		}
 	}
 	return sb.String()
@@ -301,8 +310,8 @@ Question and notes follow.`
 
 // Answer assembles the prompt + calls the chain. Returns the markdown
 // answer; citations are parsed by the use case.
-func (a *LLMChainNoteAnswerer) Answer(ctx context.Context, question string, ctxNotes []domain.NoteEmbedding) (string, error) {
-	prompt := buildQAUserPrompt(question, ctxNotes)
+func (a *LLMChainNoteAnswerer) Answer(ctx context.Context, in domain.AskNotesPromptInput) (string, error) {
+	prompt := buildQAUserPrompt(in.Question, in.ContextNotes, in.PastEpisodes)
 
 	ctx, cancel := context.WithTimeout(ctx, a.timeout)
 	defer cancel()
@@ -338,7 +347,7 @@ func (a *LLMChainNoteAnswerer) Answer(ctx context.Context, question string, ctxN
 // well within 70B 32k limits even for a maxed-out 8-note top-K.
 const MaxBodyChars = 1500
 
-func buildQAUserPrompt(question string, ctxNotes []domain.NoteEmbedding) string {
+func buildQAUserPrompt(question string, ctxNotes []domain.NoteEmbedding, past []domain.Episode) string {
 	var sb strings.Builder
 	fmt.Fprintf(&sb, "Question: %s\n\nNotes:\n", strings.TrimSpace(question))
 	for i, n := range ctxNotes {
@@ -347,6 +356,12 @@ func buildQAUserPrompt(question string, ctxNotes []domain.NoteEmbedding) string 
 			body = body[:MaxBodyChars] + "…"
 		}
 		fmt.Fprintf(&sb, "\n[%d] %s\n%s\n", i+1, n.Title, body)
+	}
+	if len(past) > 0 {
+		sb.WriteString("\n\nPast questions/answers (for context — do not cite):\n")
+		for _, e := range past {
+			fmt.Fprintf(&sb, "- [%s] %s\n", e.OccurredAt.Format("2006-01-02"), e.Summary)
+		}
 	}
 	return sb.String()
 }

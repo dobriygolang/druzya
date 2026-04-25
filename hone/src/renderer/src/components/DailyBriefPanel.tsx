@@ -12,7 +12,13 @@
 // Hidden during running focus session — coach must not distract.
 import { useCallback, useEffect, useState } from 'react';
 
-import { getDailyBrief, type DailyBrief, type Recommendation } from '../api/intelligence';
+import {
+  getDailyBrief,
+  ackRecommendation,
+  getMemoryStats,
+  type DailyBrief,
+  type Recommendation,
+} from '../api/intelligence';
 
 const CACHE_PREFIX = 'hone:daily-brief:cache:';
 
@@ -58,6 +64,18 @@ export function DailyBriefPanel({ onAct }: DailyBriefPanelProps) {
   const [loading, setLoading] = useState(false);
   const [errored, setErrored] = useState(false);
   const [mounted, setMounted] = useState(false);
+  // Per-recommendation feedback state — индексы которые юзер уже ack'нул
+  // (followed | dismissed). Локальное; перерисовка панели на refresh
+  // сбрасывает (новый brief — новый набор индексов).
+  const [acked, setAcked] = useState<Record<number, 'follow' | 'dismiss'>>({});
+  // Memory stats trust indicator («COACH KNOWS [N] EVENTS»).
+  const [memStats, setMemStats] = useState<number | null>(null);
+
+  useEffect(() => {
+    void getMemoryStats()
+      .then((s) => setMemStats(s.total30d))
+      .catch(() => setMemStats(0)); // нулевая статистика → «LEARNING…»
+  }, []);
 
   // Trigger slide-in animation after a delay so canvas settles first.
   useEffect(() => {
@@ -87,8 +105,22 @@ export function DailyBriefPanel({ onAct }: DailyBriefPanelProps) {
   }, []);
 
   const refresh = useCallback(() => {
+    setAcked({}); // новый brief → fresh feedback state
     void load(true);
   }, [load]);
+
+  const handleAck = useCallback(
+    async (index: number, followed: boolean) => {
+      if (!brief?.briefId) return;
+      setAcked((prev) => ({ ...prev, [index]: followed ? 'follow' : 'dismiss' }));
+      try {
+        await ackRecommendation(brief.briefId, index, followed);
+      } catch {
+        /* silent — UI уже отметил, fallback не нужен */
+      }
+    },
+    [brief?.briefId],
+  );
 
   return (
     <div
@@ -114,6 +146,23 @@ export function DailyBriefPanel({ onAct }: DailyBriefPanelProps) {
         pointerEvents: 'auto',
       }}
     >
+      {/* Trust indicator */}
+      <div
+        className="mono"
+        style={{
+          fontSize: 9,
+          letterSpacing: '0.18em',
+          color: 'rgba(255,255,255,0.32)',
+          marginBottom: 6,
+        }}
+      >
+        {memStats === null
+          ? 'COACH'
+          : memStats === 0
+            ? 'COACH · LEARNING ABOUT YOU…'
+            : `COACH · KNOWS ${memStats} EVENTS`}
+      </div>
+
       {/* Top row: headline + refresh */}
       <div style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
         <div style={{ flex: 1, fontSize: 15, fontWeight: 500, lineHeight: 1.35 }}>
@@ -164,37 +213,113 @@ export function DailyBriefPanel({ onAct }: DailyBriefPanelProps) {
       {/* Recommendation chips */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
         {brief?.recommendations?.map((r, i) => (
-          <RecChip key={i} rec={r} onClick={() => onAct(r)} />
+          <RecChip
+            key={i}
+            rec={r}
+            ack={acked[i]}
+            onClick={() => {
+              onAct(r);
+              // Click на сам chip — implicit «follow» (юзер выполняет совет).
+              if (!acked[i]) void handleAck(i, true);
+            }}
+            onFollow={() => void handleAck(i, true)}
+            onDismiss={() => void handleAck(i, false)}
+          />
         )) ?? null}
       </div>
     </div>
   );
 }
 
-function RecChip({ rec, onClick }: { rec: Recommendation; onClick: () => void }) {
+function RecChip({
+  rec,
+  ack,
+  onClick,
+  onFollow,
+  onDismiss,
+}: {
+  rec: Recommendation;
+  ack?: 'follow' | 'dismiss';
+  onClick: () => void;
+  onFollow: () => void;
+  onDismiss: () => void;
+}) {
   const isAdvice = rec.kind === 'schedule';
+  const dimmed = ack === 'dismiss';
   return (
-    <button
-      onClick={isAdvice ? undefined : onClick}
-      title={rec.rationale}
+    <div
       style={{
-        textAlign: 'left',
-        background: 'rgba(255,255,255,0.04)',
-        border: '1px solid rgba(255,255,255,0.06)',
-        borderRadius: 8,
-        padding: '7px 10px',
-        color: 'rgba(255,255,255,0.85)',
-        fontFamily: 'ui-monospace, "SF Mono", Menlo, monospace',
-        fontSize: 12,
-        lineHeight: 1.35,
-        cursor: isAdvice ? 'default' : 'pointer',
         display: 'flex',
         alignItems: 'center',
-        gap: 8,
+        gap: 4,
+        background: ack === 'follow' ? 'rgba(255,255,255,0.06)' : 'rgba(255,255,255,0.04)',
+        border: '1px solid rgba(255,255,255,0.06)',
+        borderRadius: 8,
+        opacity: dimmed ? 0.4 : 1,
+        textDecoration: dimmed ? 'line-through' : 'none',
+        transition: 'opacity 220ms ease, background-color 180ms ease',
       }}
     >
-      <span style={{ opacity: 0.5, fontSize: 11, minWidth: 14 }}>{kindGlyph(rec.kind)}</span>
-      <span style={{ flex: 1 }}>{rec.title}</span>
+      <button
+        onClick={isAdvice ? undefined : onClick}
+        title={rec.rationale}
+        style={{
+          flex: 1,
+          textAlign: 'left',
+          background: 'transparent',
+          border: 'none',
+          padding: '7px 10px',
+          color: 'rgba(255,255,255,0.85)',
+          fontFamily: 'ui-monospace, "SF Mono", Menlo, monospace',
+          fontSize: 12,
+          lineHeight: 1.35,
+          cursor: isAdvice ? 'default' : 'pointer',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 8,
+        }}
+      >
+        <span style={{ opacity: 0.5, fontSize: 11, minWidth: 14 }}>{kindGlyph(rec.kind)}</span>
+        <span style={{ flex: 1 }}>{rec.title}</span>
+      </button>
+      {!ack && (
+        <div style={{ display: 'flex', gap: 2, paddingRight: 5 }}>
+          <FeedbackBtn label="👍" onClick={onFollow} title="Helpful — coach learns" />
+          <FeedbackBtn label="👎" onClick={onDismiss} title="Not for me — coach learns" />
+        </div>
+      )}
+    </div>
+  );
+}
+
+function FeedbackBtn({ label, onClick, title }: { label: string; onClick: () => void; title: string }) {
+  return (
+    <button
+      onClick={onClick}
+      title={title}
+      style={{
+        width: 22,
+        height: 22,
+        display: 'grid',
+        placeItems: 'center',
+        background: 'transparent',
+        border: 'none',
+        cursor: 'pointer',
+        fontSize: 12,
+        opacity: 0.55,
+        borderRadius: 5,
+        transition: 'opacity 150ms ease, background-color 150ms ease',
+      }}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.opacity = '1';
+        e.currentTarget.style.background = 'rgba(255,255,255,0.06)';
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.opacity = '0.55';
+        e.currentTarget.style.background = 'transparent';
+      }}
+    >
+      {label}
     </button>
   );
 }

@@ -30,6 +30,9 @@ type AskNotes struct {
 	Embedder domain.Embedder
 	Answerer domain.NoteAnswerer
 	Log      *slog.Logger
+	// Memory — optional Phase B retrofit: позволяет сослаться на past
+	// Q&A эпизоды и записать сам qa_query.
+	Memory *Memory
 }
 
 // AskNotesInput — параметры use case'а.
@@ -90,13 +93,44 @@ func (uc *AskNotes) Do(ctx context.Context, in AskNotesInput) (domain.AskAnswer,
 		contextNotes = append(contextNotes, r.n)
 	}
 
-	answer, err := uc.Answerer.Answer(ctx, q, contextNotes)
+	// Pull past Q&A episodes — Memory может быть nil (Phase A install
+	// без memory layer'а).
+	var past []domain.Episode
+	if uc.Memory != nil {
+		recall, mErr := uc.Memory.Recall(ctx, RecallParams{
+			UserID:        in.UserID,
+			Query:         q,
+			Kinds:         []domain.EpisodeKind{domain.EpisodeQAQuery, domain.EpisodeQAAnswered},
+			SinceDays:     60,
+			K:             4,
+			PerKindRecent: 0,
+		})
+		if mErr == nil {
+			past = recall
+		}
+	}
+	answer, err := uc.Answerer.Answer(ctx, domain.AskNotesPromptInput{
+		Question:     q,
+		ContextNotes: contextNotes,
+		PastEpisodes: past,
+	})
 	if err != nil {
 		return domain.AskAnswer{}, fmt.Errorf("intelligence.AskNotes.Do: answer: %w", err)
 	}
 
 	citations := parseCitations(answer, contextNotes)
-	return domain.AskAnswer{AnswerMD: answer, Citations: citations}, nil
+	res := domain.AskAnswer{AnswerMD: answer, Citations: citations}
+
+	// Async-write qa_query episode — coach запоминает что юзер спрашивал.
+	if uc.Memory != nil {
+		uc.Memory.AppendAsync(ctx, AppendInput{
+			UserID:  in.UserID,
+			Kind:    domain.EpisodeQAQuery,
+			Summary: q,
+			Payload: map[string]any{"citations": len(citations)},
+		})
+	}
+	return res, nil
 }
 
 // parseCitations walks the answer for [N] markers and resolves them to

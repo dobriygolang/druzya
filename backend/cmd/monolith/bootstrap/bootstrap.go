@@ -149,6 +149,10 @@ func New(ctx context.Context, cfg *config.Config) (app *App, otelShutdown func()
 	// Circles wired ahead of `modules` so Events can borrow its handlers
 	// for the CircleAuthority gate without a second instantiation.
 	circlesMod := services.NewCircles(deps)
+	// Intelligence wired ahead so its MemoryHook is available to Hone
+	// (Hone-handlers'ы вызывают Hook.OnReflectionAdded etc).
+	intelligenceMod := services.NewIntelligence(deps)
+	deps.IntelligenceMemoryHook = intelligenceMod.Hook
 
 	modules := []*services.Module{
 		&auth.Module,
@@ -172,7 +176,7 @@ func New(ctx context.Context, cfg *config.Config) (app *App, otelShutdown func()
 		services.NewAchievements(deps),
 		services.NewFriends(deps),
 		services.NewHone(deps),
-		services.NewIntelligence(deps),
+		intelligenceMod.Module,
 		services.NewWhiteboardRooms(deps),
 		circlesMod.Module,
 		services.NewEvents(deps, circlesMod),
