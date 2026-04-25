@@ -67,6 +67,11 @@ func NewDaily(d Deps) *Module {
 	streakCalendarUC := &dailyApp.GetStreakCalendar{Streaks: streaks, Katas: katas, Now: d.Now}
 	streakCalendarHandler := dailyPorts.NewStreakCalendarHandler(streakCalendarUC, d.Log)
 
+	// Solo-practice catalogue: GET /daily/tasks?section=&difficulty=
+	// returns the active task list so /practice on the SPA can let users
+	// browse + pick any kata instead of getting a single random one.
+	listTasksHandler := dailyPorts.NewListTasksHandler(tasksKatas, d.Log)
+
 	// /daily/run — dry-grade endpoint reused by the editor's "Run" button.
 	// Lives outside the Connect contract because the wire shape is UI-tailored
 	// (passed/total/output/time_ms) and adding a proto would force a regen for
@@ -93,6 +98,7 @@ func NewDaily(d Deps) *Module {
 			// using the proto-declared /daily/kata/submit path above.
 			r.Post("/daily/run", runHandler.ServeHTTP)
 			r.Get("/daily/streak", transcoder.ServeHTTP)
+			r.Get("/daily/tasks", listTasksHandler.ServeHTTP)
 			// Year-grid for KataStreakPage. See streak_calendar_handler.go.
 			r.Get("/kata/streak", streakCalendarHandler.ServeHTTP)
 		},

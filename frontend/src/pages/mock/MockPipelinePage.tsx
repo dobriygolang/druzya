@@ -67,9 +67,14 @@ export default function MockPipelinePage() {
   const pipeline = pipelineQ.data
   const currentStage = useMemo<PipelineStage | undefined>(() => {
     if (!pipeline) return undefined
+    // Defensive: backend SHOULD always send `stages`, but a wire-shape
+    // skew (legacy row, partial proto) used to crash this page with
+    // "Cannot read properties of undefined (reading 'find')" — fall back
+    // to an empty array and let the empty-state branch handle the UX.
+    const stages = pipeline.stages ?? []
     return (
-      pipeline.stages.find((s) => s.ordinal === pipeline.current_stage_idx) ??
-      pipeline.stages[pipeline.current_stage_idx]
+      stages.find((s) => s.ordinal === pipeline.current_stage_idx) ??
+      stages[pipeline.current_stage_idx]
     )
   }, [pipeline])
 
@@ -238,7 +243,7 @@ function StageProgressDots({ pipeline }: { pipeline: Pipeline }) {
   // Render in canonical kind-order so the row stays stable regardless of
   // server-side ordinal numbering oddities.
   const byKind = new Map<StageKind, PipelineStage>()
-  for (const s of pipeline.stages) byKind.set(s.stage_kind, s)
+  for (const s of pipeline.stages ?? []) byKind.set(s.stage_kind, s)
   return (
     <div className="flex items-center gap-1.5" aria-label="Прогресс этапов">
       {STAGE_ORDER_DISPLAY.map((kind) => {
@@ -290,7 +295,7 @@ function StagesSidebar({
   onCancel: () => void
   cancelling: boolean
 }) {
-  const sorted = [...pipeline.stages].sort((a, b) => a.ordinal - b.ordinal)
+  const sorted = [...(pipeline.stages ?? [])].sort((a, b) => a.ordinal - b.ordinal)
   return (
     <aside className="flex flex-col gap-2">
       <div className="font-mono text-[10px] uppercase tracking-wider text-text-secondary px-1">

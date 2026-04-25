@@ -90,7 +90,12 @@ func (h *Handlers) GetEvent(ctx context.Context, eventID, callerID uuid.UUID) (E
 
 func (h *Handlers) ListMyEvents(ctx context.Context, userID uuid.UUID, from, to time.Time) ([]domain.EventWithCircleName, error) {
 	if from.IsZero() {
-		from = h.Now().UTC()
+		// Default window starts 24h in the past so an event that the user
+		// just created with starts_at = "now" still appears in the list
+		// (the form sends a datetime-local string that round-trips through
+		// UTC and tends to land slightly behind the server clock — a strict
+		// `>= now()` filter dropped just-saved rows).
+		from = h.Now().UTC().Add(-24 * time.Hour)
 	}
 	if to.IsZero() {
 		to = from.Add(90 * 24 * time.Hour)

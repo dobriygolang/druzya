@@ -15,7 +15,6 @@ import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { AppShellV2 } from '../components/AppShell'
-import { ArenaSegmented } from '../components/ArenaSegmented'
 import { Button } from '../components/Button'
 import { Card } from '../components/Card'
 import { Avatar } from '../components/Avatar'
@@ -313,7 +312,7 @@ function AiPanel({
 }
 
 type Mode = {
-  key: 'solo_practice' | 'ranked_1v1' | 'casual_1v1' | 'ranked_2v2' | 'mock'
+  key: 'solo_practice' | 'daily_kata' | 'ranked_1v1' | 'casual_1v1' | 'ranked_2v2' | 'mock'
   name: string
   desc: string
   icon: ReactNode
@@ -334,10 +333,20 @@ const MODES: Mode[] = [
   {
     key: 'solo_practice',
     name: 'Solo Practice',
-    desc: 'Открой любую задачу из базы и реши в одиночку — без таймера, без рейтинга.',
+    desc: 'Список задач + категории. Выбери любую и реши в одиночку — без таймера, без рейтинга.',
     icon: <BookOpen className="h-7 w-7 text-text-primary" />,
     gradient: 'bg-text-primary/12',
     arenaMode: 'solo_1v1', // unused for solo card — handled by navigate.
+    requiresParty: false,
+    aiPowered: false,
+  },
+  {
+    key: 'daily_kata',
+    name: 'Daily Kata',
+    desc: 'Задача дня. Решил — стрик +1; пропустил — обнулилось. Без оппонента, без таймера.',
+    icon: <BookOpen className="h-7 w-7 text-text-primary" />,
+    gradient: 'bg-text-primary/10',
+    arenaMode: 'solo_1v1', // unused — handled by navigate to /arena/kata.
     requiresParty: false,
     aiPowered: false,
   },
@@ -625,8 +634,14 @@ export default function ArenaPage() {
       return
     }
     if (m.key === 'solo_practice') {
-      // Solo card opens the kata page — same surface as Daily, but the
-      // user picks any task from the base instead of running a queue.
+      // Solo card opens a list of tasks with category filter — user
+      // picks any kata and lands on /arena/kata/{slug}.
+      navigate('/practice')
+      return
+    }
+    if (m.key === 'daily_kata') {
+      // Daily card opens the day's kata directly (single random/pinned
+      // task — same flow as the old top-tab Daily Kata).
       navigate('/arena/kata')
       return
     }
@@ -654,10 +669,8 @@ export default function ArenaPage() {
 
   return (
     <AppShellV2>
-      {/* WAVE-13 — segmented "Поединки · Daily kata" tabs at the very top
-          of /arena. Switches between this page (modes) and /arena/kata
-          (today's daily problem, was /daily). */}
-      <ArenaSegmented active="modes" />
+      {/* Daily Kata top-tab dropped — invisible in practice; the same
+          flow lives as a dedicated mode card below. */}
       <div className="flex flex-col gap-6 px-4 py-6 sm:px-8 lg:px-20 lg:py-8">
         <HeaderRow partyMode={partyMode} onTogglePartyMode={setPartyMode} />
         <HeroQueue
