@@ -1,15 +1,16 @@
 // Podcasts — страница прослушивания подкастов из Codex'а.
 //
-// Лево — список каталога, право — плеер с аудио + description. Прогресс
-// пушим на бэк через throttled `UpdateProgress` (раз в 5 секунд + при
-// pause/seek/ended). Auto-complete флиппается бекендом когда осталось
-// <10 секунд.
+// Лево — resizable sidebar (drag-handle сохраняет ширину в localStorage).
+// Право — плеер с аудио + description + animated transport. Прогресс
+// пушим throttled UpdateProgress (раз в 5 сек + при pause/seek/ended).
+// Auto-complete флиппается бекендом когда осталось <10 сек.
 //
 // Audio URL'ы — MinIO presigned, TTL 45 мин. Если юзер слушает длинный
 // подкаст > 45 мин без скипа — рефетчим catalog (silent refresh).
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ConnectError, Code } from '@connectrpc/connect';
 
+import { Icon } from '../components/primitives/Icon';
 import {
   listPodcasts,
   updatePodcastProgress,
@@ -26,11 +27,13 @@ interface FetchState {
 
 const INITIAL: FetchState = { status: 'loading', items: [], error: null, errorCode: null };
 
-// Throttle — не чаще раз в 5 сек пушим прогресс. Паузе / seek / ended
-// обходят throttle и пушат сразу.
 const PROGRESS_THROTTLE_MS = 5000;
-// Presigned URL TTL (45 мин) — refresh'им catalog за 5 мин до.
 const CATALOG_STALE_MS = 40 * 60 * 1000;
+
+const SIDEBAR_KEY = 'hone:podcasts:sidebar-w';
+const SIDEBAR_MIN = 220;
+const SIDEBAR_MAX = 480;
+const SIDEBAR_DEFAULT = 320;
 
 function sectionLabel(s: Section): string {
   switch (s) {
@@ -56,11 +59,31 @@ function formatTime(sec: number): string {
   return `${m}:${String(s).padStart(2, '0')}`;
 }
 
+// Стабильно-весёлые empty-state'ы — выбираем по hash секции/времени,
+// чтобы не дёргалось на каждом render'е.
+const EMPTY_LINES = [
+  'Тут пробегал тушканчик. Унёс все эпизоды.',
+  'Студия пустая. Микрофон скучает.',
+  'Тишина — тоже подкаст. Самый длинный.',
+  'Кошка села на mute. Ничего не слышно.',
+  'Эпизоды ушли в отпуск. Без даты возвращения.',
+];
+function emptyLine(seed: number): string {
+  return EMPTY_LINES[Math.abs(seed) % EMPTY_LINES.length]!;
+}
+
 export function PodcastsPage() {
   const [state, setState] = useState<FetchState>(INITIAL);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [section, setSection] = useState<Section>(Section.UNSPECIFIED);
   const [fetchedAt, setFetchedAt] = useState(0);
+  const [sidebarW, setSidebarW] = useState<number>(() => {
+    if (typeof window === 'undefined') return SIDEBAR_DEFAULT;
+    const raw = window.localStorage.getItem(SIDEBAR_KEY);
+    const n = raw ? parseInt(raw, 10) : NaN;
+    if (!Number.isFinite(n)) return SIDEBAR_DEFAULT;
+    return Math.max(SIDEBAR_MIN, Math.min(SIDEBAR_MAX, n));
+  });
 
   const load = useCallback(async (s: Section) => {
     setState((prev) => ({ ...prev, status: 'loading' }));
@@ -88,15 +111,12 @@ export function PodcastsPage() {
     [state.items, selectedId],
   );
 
-  // Authom-select первый подкаст в списке после загрузки.
   useEffect(() => {
     if (!selectedId && state.items.length > 0) {
       setSelectedId(state.items[0]!.id);
     }
   }, [state.items, selectedId]);
 
-  // Stale-URL refresh: если catalog был загружен давно, при каждом
-  // select'е проверяем и рефетчим если > CATALOG_STALE_MS.
   useEffect(() => {
     if (!selected) return;
     if (Date.now() - fetchedAt > CATALOG_STALE_MS) {
@@ -104,23 +124,33 @@ export function PodcastsPage() {
     }
   }, [selected, fetchedAt, section, load]);
 
+  // Persist sidebar width.
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(SIDEBAR_KEY, String(sidebarW));
+    } catch {
+      /* ignore quota */
+    }
+  }, [sidebarW]);
+
   return (
     <div
-      className="fadein"
       style={{
         position: 'absolute',
         inset: 0,
         paddingTop: 80,
         paddingBottom: 120,
         display: 'grid',
-        gridTemplateColumns: '320px 1fr',
+        gridTemplateColumns: `${sidebarW}px 6px 1fr`,
       }}
     >
       <aside
+        className="slide-from-left"
         style={{
           borderRight: '1px solid rgba(255,255,255,0.06)',
           padding: '0 10px',
           overflowY: 'auto',
+          animationDuration: '320ms',
         }}
       >
         <SectionFilter value={section} onChange={setSection} />
@@ -132,84 +162,211 @@ export function PodcastsPage() {
             {state.errorCode === Code.Unauthenticated ? 'Sign in to listen' : 'Catalog offline'}
           </p>
         )}
-        {state.items.map((p) => {
-          const active = selectedId === p.id;
-          const ratio = p.durationSec > 0 ? p.progressSec / p.durationSec : 0;
-          return (
-            <button
-              key={p.id}
-              onClick={() => setSelectedId(p.id)}
-              style={{
-                display: 'block',
-                width: '100%',
-                textAlign: 'left',
-                padding: '12px 14px',
-                margin: '1px 0',
-                borderRadius: 7,
-                color: active ? 'var(--ink)' : 'var(--ink-60)',
-                background: active ? 'rgba(255,255,255,0.05)' : 'transparent',
-              }}
-            >
-              <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10 }}>
-                <span style={{ fontSize: 13.5, lineHeight: 1.3, flex: 1 }}>{p.title}</span>
-                {p.completed && (
-                  <span
-                    className="mono"
-                    style={{ fontSize: 9, letterSpacing: '.14em', color: 'var(--ink-40)' }}
-                  >
-                    ✓
-                  </span>
-                )}
-              </div>
-              <div
-                className="mono"
-                style={{
-                  marginTop: 6,
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 8,
-                  fontSize: 10,
-                  color: 'var(--ink-40)',
-                  letterSpacing: '.08em',
-                }}
-              >
-                <span>{sectionLabel(p.section)}</span>
-                <span>·</span>
-                <span>{formatTime(p.durationSec)}</span>
-              </div>
-              {ratio > 0 && !p.completed && (
-                <div
-                  style={{
-                    marginTop: 6,
-                    height: 2,
-                    background: 'rgba(255,255,255,0.06)',
-                    borderRadius: 1,
-                    overflow: 'hidden',
-                  }}
-                >
-                  <div
-                    style={{
-                      width: `${Math.min(100, ratio * 100)}%`,
-                      height: '100%',
-                      background: 'rgba(255,255,255,0.4)',
-                    }}
-                  />
-                </div>
-              )}
-            </button>
-          );
-        })}
+        {state.items.map((p, i) => (
+          <PodcastRow
+            key={p.id}
+            podcast={p}
+            active={selectedId === p.id}
+            onSelect={() => setSelectedId(p.id)}
+            stagger={i}
+          />
+        ))}
       </aside>
 
-      <section style={{ padding: '10px 56px', overflowY: 'auto' }}>
+      <ResizeHandle width={sidebarW} onChange={setSidebarW} />
+
+      <section
+        style={{
+          padding: '10px 56px',
+          overflowY: 'auto',
+          minWidth: 0,
+        }}
+      >
         {selected ? (
           <Player podcast={selected} />
-        ) : state.status === 'ok' && state.items.length === 0 ? (
-          <p style={{ color: 'var(--ink-40)', fontSize: 14 }}>
-            No podcasts in this section yet.
-          </p>
+        ) : state.status === 'ok' ? (
+          <EmptyState seed={section} />
         ) : null}
       </section>
+    </div>
+  );
+}
+
+function PodcastRow({
+  podcast,
+  active,
+  onSelect,
+  stagger,
+}: {
+  podcast: Podcast;
+  active: boolean;
+  onSelect: () => void;
+  stagger: number;
+}) {
+  const ratio = podcast.durationSec > 0 ? podcast.progressSec / podcast.durationSec : 0;
+  return (
+    <button
+      onClick={onSelect}
+      className="row slide-from-left"
+      style={{
+        display: 'block',
+        width: '100%',
+        textAlign: 'left',
+        padding: '12px 14px',
+        margin: '1px 0',
+        borderRadius: 7,
+        color: active ? 'var(--ink)' : 'var(--ink-60)',
+        background: active ? 'rgba(255,255,255,0.05)' : 'transparent',
+        border: 'none',
+        cursor: 'pointer',
+        animationDelay: `${Math.min(stagger * 30, 300)}ms`,
+        animationDuration: '280ms',
+      }}
+      onMouseEnter={(e) => {
+        if (!active) e.currentTarget.style.background = 'rgba(255,255,255,0.03)';
+      }}
+      onMouseLeave={(e) => {
+        if (!active) e.currentTarget.style.background = 'transparent';
+      }}
+    >
+      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10 }}>
+        <span style={{ fontSize: 13.5, lineHeight: 1.3, flex: 1 }}>{podcast.title}</span>
+        {podcast.completed && (
+          <span
+            className="mono"
+            style={{ fontSize: 9, letterSpacing: '.14em', color: 'var(--ink-40)' }}
+          >
+            ✓
+          </span>
+        )}
+      </div>
+      <div
+        className="mono"
+        style={{
+          marginTop: 6,
+          display: 'flex',
+          alignItems: 'center',
+          gap: 8,
+          fontSize: 10,
+          color: 'var(--ink-40)',
+          letterSpacing: '.08em',
+        }}
+      >
+        <span>{sectionLabel(podcast.section)}</span>
+        <span>·</span>
+        <span>{formatTime(podcast.durationSec)}</span>
+      </div>
+      {ratio > 0 && !podcast.completed && (
+        <div
+          style={{
+            marginTop: 6,
+            height: 2,
+            background: 'rgba(255,255,255,0.06)',
+            borderRadius: 1,
+            overflow: 'hidden',
+          }}
+        >
+          <div
+            style={{
+              width: `${Math.min(100, ratio * 100)}%`,
+              height: '100%',
+              background: 'rgba(255,255,255,0.4)',
+              transition: 'width var(--t-base)',
+            }}
+          />
+        </div>
+      )}
+    </button>
+  );
+}
+
+function ResizeHandle({
+  width,
+  onChange,
+}: {
+  width: number;
+  onChange: (w: number) => void;
+}) {
+  const [dragging, setDragging] = useState(false);
+  const startRef = useRef({ x: 0, w: 0 });
+
+  useEffect(() => {
+    if (!dragging) return;
+    const onMove = (e: MouseEvent) => {
+      const dx = e.clientX - startRef.current.x;
+      const next = Math.max(SIDEBAR_MIN, Math.min(SIDEBAR_MAX, startRef.current.w + dx));
+      onChange(next);
+    };
+    const onUp = () => setDragging(false);
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+    return () => {
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+    };
+  }, [dragging, onChange]);
+
+  return (
+    <div
+      onMouseDown={(e) => {
+        startRef.current = { x: e.clientX, w: width };
+        setDragging(true);
+      }}
+      style={{
+        position: 'relative',
+        cursor: 'col-resize',
+        userSelect: 'none',
+      }}
+    >
+      <div
+        style={{
+          position: 'absolute',
+          left: 2,
+          top: 0,
+          bottom: 0,
+          width: 2,
+          background: dragging ? 'rgba(255,255,255,0.18)' : 'transparent',
+          transition: 'background-color var(--t-fast)',
+        }}
+      />
+    </div>
+  );
+}
+
+function EmptyState({ seed }: { seed: number }) {
+  return (
+    <div
+      className="fadein"
+      style={{
+        height: '100%',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 12,
+      }}
+    >
+      <div
+        className="mono"
+        style={{
+          fontSize: 9.5,
+          letterSpacing: '.24em',
+          color: 'var(--ink-40)',
+        }}
+      >
+        EMPTY
+      </div>
+      <p
+        style={{
+          fontSize: 16,
+          color: 'var(--ink-60)',
+          textAlign: 'center',
+          maxWidth: 400,
+          lineHeight: 1.5,
+        }}
+      >
+        {emptyLine(seed)}
+      </p>
     </div>
   );
 }
@@ -244,7 +401,7 @@ function SectionFilter({
           <button
             key={it.id}
             onClick={() => onChange(it.id)}
-            className="focus-ring mono"
+            className="focus-ring mono row"
             style={{
               padding: '5px 10px',
               fontSize: 10,
@@ -252,6 +409,14 @@ function SectionFilter({
               borderRadius: 6,
               color: active ? 'var(--ink)' : 'var(--ink-40)',
               background: active ? 'rgba(255,255,255,0.06)' : 'transparent',
+              border: 'none',
+              cursor: 'pointer',
+            }}
+            onMouseEnter={(e) => {
+              if (!active) e.currentTarget.style.background = 'rgba(255,255,255,0.03)';
+            }}
+            onMouseLeave={(e) => {
+              if (!active) e.currentTarget.style.background = 'transparent';
             }}
           >
             {it.label.toUpperCase()}
@@ -270,13 +435,11 @@ function Player({ podcast }: { podcast: Podcast }) {
   const lastPushedAt = useRef(0);
   const seededRef = useRef<string | null>(null);
 
-  // Restore saved progress при смене подкаста.
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
     if (seededRef.current === podcast.id) return;
     seededRef.current = podcast.id;
-    // Небольшая задержка — ждём metadata для корректного currentTime.
     const onMeta = () => {
       if (audio.duration && Number.isFinite(audio.duration)) {
         setDuration(audio.duration);
@@ -299,9 +462,7 @@ function Player({ podcast }: { podcast: Podcast }) {
         podcastId: podcast.id,
         progressSec: Math.floor(sec),
         completed: forceCompleted,
-      }).catch(() => {
-        // не роняем UI — следующий push попробует снова
-      });
+      }).catch(() => {});
     },
     [podcast.id],
   );
@@ -335,7 +496,7 @@ function Player({ podcast }: { podcast: Podcast }) {
       try {
         await audio.play();
       } catch {
-        // пользователь не нажал — autoplay policy, игнорируем
+        /* autoplay policy */
       }
     } else {
       audio.pause();
@@ -349,7 +510,11 @@ function Player({ podcast }: { podcast: Podcast }) {
   };
 
   return (
-    <div>
+    <div
+      key={podcast.id}
+      className="fadein"
+      style={{ animationDuration: '320ms' }}
+    >
       <div
         className="mono"
         style={{ fontSize: 10, letterSpacing: '.22em', color: 'var(--ink-40)' }}
@@ -397,6 +562,7 @@ function Player({ podcast }: { podcast: Podcast }) {
         <Seekbar
           value={currentTime}
           max={duration || podcast.durationSec}
+          playing={playing}
           onChange={(v) => {
             const audio = audioRef.current;
             if (audio) {
@@ -413,7 +579,7 @@ function Player({ podcast }: { podcast: Podcast }) {
             fontSize: 10,
             letterSpacing: '.1em',
             color: 'var(--ink-40)',
-            marginTop: 6,
+            marginTop: 8,
           }}
         >
           <span>{formatTime(currentTime)}</span>
@@ -422,54 +588,117 @@ function Player({ podcast }: { podcast: Podcast }) {
 
         <div
           style={{
-            marginTop: 24,
+            marginTop: 28,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            gap: 18,
+            gap: 22,
           }}
         >
-          <TransportBtn label="-15s" onClick={() => skip(-15)} />
-          <button
-            onClick={() => void toggle()}
-            className="focus-ring"
-            style={{
-              width: 56,
-              height: 56,
-              borderRadius: 999,
-              background: '#fff',
-              color: '#000',
-              fontSize: 20,
-              fontWeight: 500,
-            }}
-          >
-            {playing ? '❚❚' : '▶'}
-          </button>
-          <TransportBtn label="+30s" onClick={() => skip(30)} />
+          <TransportBtn label="−15" onClick={() => skip(-15)} />
+          <PlayButton playing={playing} onClick={() => void toggle()} />
+          <TransportBtn label="+30" onClick={() => skip(30)} />
         </div>
       </div>
     </div>
   );
 }
 
+function PlayButton({ playing, onClick }: { playing: boolean; onClick: () => void }) {
+  const [hover, setHover] = useState(false);
+  return (
+    <button
+      onClick={onClick}
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+      className="focus-ring surface"
+      style={{
+        width: 64,
+        height: 64,
+        borderRadius: 999,
+        background: '#fff',
+        color: '#000',
+        display: 'grid',
+        placeItems: 'center',
+        border: 'none',
+        cursor: 'pointer',
+        boxShadow: hover
+          ? '0 12px 30px -8px rgba(255,255,255,0.25)'
+          : '0 6px 18px -6px rgba(255,255,255,0.15)',
+        transform: hover ? 'scale(1.04)' : 'scale(1)',
+      }}
+      onMouseDown={(e) => (e.currentTarget.style.transform = 'scale(0.96)')}
+      onMouseUp={(e) =>
+        (e.currentTarget.style.transform = hover ? 'scale(1.04)' : 'scale(1)')
+      }
+    >
+      <div
+        style={{
+          position: 'relative',
+          width: 18,
+          height: 18,
+        }}
+      >
+        <span
+          style={{
+            position: 'absolute',
+            inset: 0,
+            display: 'grid',
+            placeItems: 'center',
+            opacity: playing ? 0 : 1,
+            transform: playing ? 'scale(0.6) rotate(-30deg)' : 'scale(1) rotate(0)',
+            transition: 'opacity var(--t-fast), transform var(--t-base)',
+          }}
+        >
+          <Icon name="play" size={18} />
+        </span>
+        <span
+          style={{
+            position: 'absolute',
+            inset: 0,
+            display: 'grid',
+            placeItems: 'center',
+            opacity: playing ? 1 : 0,
+            transform: playing ? 'scale(1) rotate(0)' : 'scale(0.6) rotate(30deg)',
+            transition: 'opacity var(--t-fast), transform var(--t-base)',
+          }}
+        >
+          <Icon name="pause" size={18} />
+        </span>
+      </div>
+    </button>
+  );
+}
+
 function Seekbar({
   value,
   max,
+  playing,
   onChange,
 }: {
   value: number;
   max: number;
+  playing: boolean;
   onChange: (v: number) => void;
 }) {
   const ratio = max > 0 ? Math.min(1, value / max) : 0;
+  const [hover, setHover] = useState(false);
   return (
-    <div style={{ position: 'relative', height: 4 }}>
+    <div
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+      style={{
+        position: 'relative',
+        height: hover || playing ? 6 : 4,
+        transition: 'height var(--t-fast)',
+      }}
+    >
       <div
         style={{
           position: 'absolute',
           inset: 0,
           background: 'rgba(255,255,255,0.08)',
-          borderRadius: 2,
+          borderRadius: 3,
         }}
       />
       <div
@@ -480,8 +709,24 @@ function Seekbar({
           bottom: 0,
           width: `${ratio * 100}%`,
           background: 'var(--ink)',
-          borderRadius: 2,
+          borderRadius: 3,
           transition: 'width 120ms linear',
+        }}
+      />
+      {/* draggable thumb on hover */}
+      <div
+        style={{
+          position: 'absolute',
+          top: '50%',
+          left: `${ratio * 100}%`,
+          width: 12,
+          height: 12,
+          borderRadius: 999,
+          background: '#fff',
+          transform: `translate(-50%, -50%) scale(${hover ? 1 : 0})`,
+          opacity: hover ? 1 : 0,
+          transition: 'transform var(--t-fast), opacity var(--t-fast)',
+          pointerEvents: 'none',
         }}
       />
       <input
@@ -508,15 +753,29 @@ function TransportBtn({ label, onClick }: { label: string; onClick: () => void }
   return (
     <button
       onClick={onClick}
-      className="focus-ring mono"
+      className="focus-ring mono surface"
       style={{
-        padding: '8px 12px',
+        padding: '9px 14px',
         fontSize: 11,
         letterSpacing: '.14em',
         color: 'var(--ink-60)',
-        borderRadius: 8,
+        borderRadius: 999,
         background: 'transparent',
+        border: '1px solid rgba(255,255,255,0.06)',
+        cursor: 'pointer',
       }}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
+        e.currentTarget.style.color = 'var(--ink)';
+        e.currentTarget.style.transform = 'translateY(-1px)';
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.background = 'transparent';
+        e.currentTarget.style.color = 'var(--ink-60)';
+        e.currentTarget.style.transform = 'translateY(0)';
+      }}
+      onMouseDown={(e) => (e.currentTarget.style.transform = 'translateY(0) scale(0.96)')}
+      onMouseUp={(e) => (e.currentTarget.style.transform = 'translateY(-1px)')}
     >
       {label}
     </button>

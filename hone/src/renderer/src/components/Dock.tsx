@@ -263,34 +263,48 @@ interface VolumeBtnProps {
   onVol: (v: number) => void;
 }
 
-// VolumeBtn — кнопка + inline-slider справа. По дефолту slider свёрнут
-// (width:0, opacity:0), на hover/focus раскрывается до 96 px с
-// плавным width-transition. Док растёт в ширину вместе со slider'ом.
+// VolumeBtn — кнопка + slider, выезжающий справа за пределы dock-pill'а
+// без layout-shift'а. Slider в своём отдельном pill'е (та же эстетика
+// что у dock'а) absolute-positioned: левый край прижат к правому краю
+// volume-кнопки, разворачивается вправо за границу dock'а. Таймер и
+// остальные кнопки не дёргаются.
 function VolumeBtn({ vol, onVol }: VolumeBtnProps) {
   const [open, setOpen] = useState(false);
   return (
     <div
       onMouseEnter={() => setOpen(true)}
       onMouseLeave={() => setOpen(false)}
-      style={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: open ? 8 : 0,
-        transition: 'gap 220ms cubic-bezier(0.2, 0.7, 0.2, 1)',
-      }}
+      style={{ position: 'relative', display: 'flex', alignItems: 'center' }}
     >
       <DockBtn onClick={() => setOpen((o) => !o)} title="Volume">
         <Icon name="volume" size={12} />
       </DockBtn>
       <div
         style={{
-          width: open ? 96 : 0,
+          position: 'absolute',
+          // Сразу за правым краем volume-кнопки + 6 px gap. Pill сам
+          // расширяется вправо, dock-pill стоит на месте.
+          left: 'calc(100% + 6px)',
+          top: '50%',
+          transform: `translateY(-50%) translateX(${open ? '0' : '-6px'})`,
+          height: 30,
+          width: open ? 130 : 0,
           opacity: open ? 1 : 0,
-          overflow: 'hidden',
+          padding: open ? '0 14px' : '0',
           display: 'flex',
           alignItems: 'center',
+          background: 'rgba(10,10,10,0.78)',
+          border: open ? '1px solid rgba(255,255,255,0.07)' : '1px solid transparent',
+          borderRadius: 999,
+          backdropFilter: 'blur(20px)',
+          WebkitBackdropFilter: 'blur(20px)',
+          overflow: 'hidden',
           transition:
-            'width 220ms cubic-bezier(0.2, 0.7, 0.2, 1), opacity 220ms cubic-bezier(0.2, 0.7, 0.2, 1)',
+            'width 220ms cubic-bezier(0.2, 0.7, 0.2, 1),' +
+            'opacity 180ms cubic-bezier(0.2, 0.7, 0.2, 1),' +
+            'transform 220ms cubic-bezier(0.2, 0.7, 0.2, 1),' +
+            'border-color 180ms cubic-bezier(0.2, 0.7, 0.2, 1)',
+          pointerEvents: open ? 'auto' : 'none',
         }}
       >
         <input
