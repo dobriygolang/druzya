@@ -115,8 +115,11 @@ func (r *Pipelines) UpdateVerdict(ctx context.Context, id uuid.UUID, verdict dom
 	if totalScore != nil {
 		score = pgtype.Float4{Float32: *totalScore, Valid: true}
 	}
+	// Explicit ::mock_pipeline_verdict cast — pgx v5 sometimes infers $2 as
+	// text from the IN-list context and the server then rejects the assign
+	// to the enum column with "invalid input value", surfacing as 500.
 	tag, err := r.pool.Exec(ctx, `
-		UPDATE mock_pipelines SET verdict=$2, total_score=$3,
+		UPDATE mock_pipelines SET verdict=$2::mock_pipeline_verdict, total_score=$3,
 			finished_at = CASE WHEN $2 IN ('pass','fail','cancelled') THEN now() ELSE finished_at END
 		WHERE id=$1`,
 		sharedpg.UUID(id), string(verdict), score)

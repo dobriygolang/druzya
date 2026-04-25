@@ -118,10 +118,15 @@ func NewLLMJudge(chain llmchain.ChatClient, log *slog.Logger) *LLMJudge {
 
 // errorFallback — uniform "сорян, не получилось" output. The orchestrator
 // stores this on the attempt; the user can retry with the same payload.
+//
+// Verdict MUST be a terminal value, not 'pending' — the frontend uses
+// ai_verdict='pending' as the "judge is still working" signal and will
+// spin forever on it. We pick 'fail' so the row settles; the feedback
+// text tells the user it was an evaluation failure (not a real fail).
 func errorFallback() JudgeOutput {
 	return JudgeOutput{
 		Score:         0,
-		Verdict:       domain.AttemptVerdictPending,
+		Verdict:       domain.AttemptVerdictFail,
 		Feedback:      "Не удалось получить оценку, попробуй ещё раз",
 		MissingPoints: []string{},
 	}

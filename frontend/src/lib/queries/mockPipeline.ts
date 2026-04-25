@@ -187,9 +187,10 @@ export function useMockPipelineQuery(id: string | undefined) {
     refetchInterval: (query) => {
       const data = query.state.data as Pipeline | undefined
       if (!data) return false
-      const judging = data.stages.some((s) =>
-        s.attempts.some((a) => a.user_answer_md && a.ai_verdict === 'pending'),
-      )
+      const judging =
+        data.stages?.some((s) =>
+          s.attempts?.some((a) => a.user_answer_md && a.ai_verdict === 'pending'),
+        ) ?? false
       return judging ? 1500 : false
     },
   })

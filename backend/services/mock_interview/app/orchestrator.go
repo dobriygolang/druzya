@@ -802,8 +802,12 @@ func (o *Orchestrator) CancelPipeline(ctx context.Context, pipelineID, userID uu
 	if pipe.UserID != userID {
 		return fmt.Errorf("not owner: %w", domain.ErrNotFound)
 	}
+	// Idempotent: a second cancel from a stuck-spinner client must succeed
+	// silently rather than 409/500. Pipelines that already settled into a
+	// terminal verdict stay as-is — only an in_progress pipeline transitions
+	// to cancelled.
 	if pipe.Verdict != domain.PipelineInProgress {
-		return fmt.Errorf("pipeline not in_progress (verdict=%s): %w", pipe.Verdict, domain.ErrConflict)
+		return nil
 	}
 	if err := o.Pipelines.UpdateVerdict(ctx, pipelineID, domain.PipelineCancelled, nil); err != nil {
 		return fmt.Errorf("pipelines.UpdateVerdict: %w", err)
