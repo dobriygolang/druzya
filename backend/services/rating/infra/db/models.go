@@ -103,6 +103,19 @@ type CircleMember struct {
 	JoinedAt pgtype.Timestamptz
 }
 
+type CoachEpisode struct {
+	ID             pgtype.UUID
+	UserID         pgtype.UUID
+	Kind           string
+	Summary        string
+	Payload        []byte
+	Embedding      []float32
+	EmbeddingModel pgtype.Text
+	EmbeddedAt     pgtype.Timestamptz
+	OccurredAt     pgtype.Timestamptz
+	CreatedAt      pgtype.Timestamptz
+}
+
 type Cohort struct {
 	ID          pgtype.UUID
 	OwnerID     pgtype.UUID
