@@ -2,7 +2,10 @@ package services
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"log/slog"
+	"net/http"
 	"os"
 
 	profileApp "druz9/profile/app"
@@ -11,9 +14,12 @@ import (
 	sharedDomain "druz9/shared/domain"
 	"druz9/shared/generated/pb/druz9/v1/druz9v1connect"
 	"druz9/shared/pkg/eventbus"
+	sharedMw "druz9/shared/pkg/middleware"
+	sharedpg "druz9/shared/pkg/pg"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 // insightGeneratorAdapter bridges app.InsightGenerator → infra.InsightClient.
@@ -155,6 +161,12 @@ func NewProfile(d Deps) *Module {
 			r.Get("/profile/weekly/share/{token}", transcoder.ServeHTTP)
 			r.Get("/profile/{username}", transcoder.ServeHTTP)
 
+			// Account deletion (Danger zone). Chi-direct because the
+			// confirmation flow is bespoke and Connect-RPC adds nothing of
+			// value here — see deleteAccountHandler below for the contract
+			// (require_username body must equal the row's username).
+			r.Delete("/profile/me", deleteAccountHandler(d.Pool, d.Log))
+
 			// Admin Atlas CMS — chi-direct, JSON only.
 			r.Get("/admin/atlas/nodes", atlasAdmin.HandleListNodes)
 			r.Post("/admin/atlas/nodes", atlasAdmin.HandleCreateNode)
@@ -194,5 +206,68 @@ func NewProfile(d Deps) *Module {
 				})
 			},
 		},
+	}
+}
+
+// deleteAccountHandler — DELETE /api/v1/profile/me.
+//
+// Confirmation contract: the client MUST POST a JSON body
+// `{"confirm_username": "<username>"}` matching the user's actual
+// username. Mismatch → 400; bot/typo protection. Successful delete
+// removes the users row; ON DELETE CASCADE on every user-owned table
+// (notes, whiteboards, sessions, ...) cleans up the rest.
+//
+// Anti-fallback: any DB error surfaces as 500 — never a silent success
+// (we don't want a "deleted" response that didn't actually delete).
+func deleteAccountHandler(pool *pgxpool.Pool, log *slog.Logger) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		uid, ok := sharedMw.UserIDFromContext(r.Context())
+		if !ok {
+			http.Error(w, `{"error":{"code":"unauthenticated"}}`, http.StatusUnauthorized)
+			return
+		}
+		var body struct {
+			ConfirmUsername string `json:"confirm_username"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			http.Error(w, `{"error":{"code":"invalid_body"}}`, http.StatusBadRequest)
+			return
+		}
+		// Read current username for confirmation match. Single round-trip.
+		var actualUsername string
+		if err := pool.QueryRow(r.Context(),
+			`SELECT username FROM users WHERE id = $1`, sharedpg.UUID(uid)).
+			Scan(&actualUsername); err != nil {
+			if log != nil {
+				log.WarnContext(r.Context(), "profile.delete: lookup failed", slog.Any("err", err))
+			}
+			http.Error(w, `{"error":{"code":"not_found"}}`, http.StatusNotFound)
+			return
+		}
+		if body.ConfirmUsername != actualUsername {
+			http.Error(w, `{"error":{"code":"confirm_mismatch","message":"confirm_username must match your username"}}`,
+				http.StatusBadRequest)
+			return
+		}
+		// Hard-delete. Cascade handles the rest (see migrations
+		// REFERENCES users(id) ON DELETE CASCADE on every user-owned table).
+		tag, err := pool.Exec(r.Context(),
+			`DELETE FROM users WHERE id = $1`, sharedpg.UUID(uid))
+		if err != nil {
+			if log != nil {
+				log.ErrorContext(r.Context(), "profile.delete: exec failed", slog.Any("err", err))
+			}
+			http.Error(w, `{"error":{"code":"internal"}}`, http.StatusInternalServerError)
+			return
+		}
+		if tag.RowsAffected() == 0 {
+			http.Error(w, `{"error":{"code":"not_found"}}`, http.StatusNotFound)
+			return
+		}
+		if log != nil {
+			log.InfoContext(r.Context(), "profile.delete: account removed", slog.String("user_id", uid.String()))
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(map[string]bool{"ok": true})
 	}
 }

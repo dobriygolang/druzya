@@ -11,7 +11,6 @@ import {
   AlertTriangle,
   Code2,
   Copy,
-  MessageCircle,
   Send,
   Globe,
   Monitor,
@@ -29,6 +28,8 @@ import { AIModelRow, PremiumUpgradeHint } from '../components/AIModelRow'
 import { cn } from '../lib/cn'
 import { useProfileQuery } from '../lib/queries/profile'
 import { useAIModelsQuery } from '../lib/queries/ai'
+import { useNotificationPrefsQuery, useUpdatePrefs } from '../lib/queries/notifications'
+import { api } from '../lib/apiClient'
 import {
   useAIVacanciesModelQuery,
   useUpdateAIVacanciesModel,
@@ -213,48 +214,90 @@ function InfoRow({ label, children, last }: { label: string; children: React.Rea
   )
 }
 
-const INTEGRATIONS = [
-  { name: 'GitHub', icon: Code2, connected: true },
-  { name: 'Discord', icon: MessageCircle, connected: true },
-  { name: 'Telegram', icon: Send, connected: false },
-  { name: 'Yandex', icon: Globe, connected: false },
-] as const
-
+// IntegrationsCard — реальные карточки трёх внешних связок:
+//   - GitHub (placeholder-coming-soon — отдельный сервис делается)
+//   - Telegram (tg_user_link флоу — кнопка "Привязать" → /tg-link)
+//   - Yandex (OAuth — статус берём из oauth_accounts через профиль)
+// Других интеграций по продукт-решению нет.
 function IntegrationsCard() {
-  const { t } = useTranslation('settings')
+  const { data: profile } = useProfileQuery()
+  const oauthYandex = (profile as unknown as { oauth_providers?: string[] })?.oauth_providers?.includes('yandex') ?? false
+  const tgLinked = (profile as unknown as { tg_username?: string })?.tg_username
   return (
     <Card className="flex-col gap-4 p-6">
-      <h3 className="font-display text-lg font-bold text-text-primary">{t('integrations_title')}</h3>
+      <h3 className="font-display text-lg font-bold text-text-primary">Integrations</h3>
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        {INTEGRATIONS.map((i) => {
-          const Icon = i.icon
-          return (
-            <div
-              key={i.name}
-              className="flex items-center gap-3 rounded-lg border border-border bg-surface-1 p-4"
-            >
-              <span className="grid h-10 w-10 place-items-center rounded-lg bg-surface-2 text-text-primary">
-                <Icon className="h-5 w-5" />
-              </span>
-              <div className="flex flex-1 flex-col">
-                <span className="text-sm font-semibold text-text-primary">{i.name}</span>
-                <span
-                  className={cn(
-                    'font-mono text-[11px]',
-                    i.connected ? 'text-success' : 'text-text-muted',
-                  )}
-                >
-                  {i.connected ? t('connected') : t('not_connected')}
-                </span>
-              </div>
-              <Button variant="ghost" size="sm">
-                {i.connected ? t('manage') : t('connect')}
-              </Button>
-            </div>
-          )
-        })}
+        <IntegrationRow
+          icon={<Code2 className="h-5 w-5" />}
+          name="GitHub"
+          status="coming-soon"
+          description="AI читает профиль + репозитории и складывает рекомендации в Insights."
+          onAction={undefined}
+        />
+        <IntegrationRow
+          icon={<Send className="h-5 w-5" />}
+          name="Telegram"
+          status={tgLinked ? 'connected' : 'disconnected'}
+          description={tgLinked ? `Привязан как @${tgLinked}` : 'Привяжи аккаунт чтобы получать пинги в TG.'}
+          onAction={() => {
+            // Tg link flow lives at /settings (existing TgLinkBlock if any)
+            // или копипаст команды в @druz9_bot.
+            window.alert('Открой @druz9_bot в Telegram и пришли /start — после этого пинги придут на твой аккаунт.')
+          }}
+        />
+        <IntegrationRow
+          icon={<Globe className="h-5 w-5" />}
+          name="Yandex"
+          status={oauthYandex ? 'connected' : 'disconnected'}
+          description={oauthYandex ? 'OAuth-вход через Yandex активен.' : 'Привязка через OAuth — на странице логина.'}
+          onAction={undefined}
+        />
       </div>
     </Card>
+  )
+}
+
+function IntegrationRow({
+  icon,
+  name,
+  status,
+  description,
+  onAction,
+}: {
+  icon: React.ReactNode
+  name: string
+  status: 'connected' | 'disconnected' | 'coming-soon'
+  description: string
+  onAction?: () => void
+}) {
+  const statusLabel =
+    status === 'connected'
+      ? 'connected'
+      : status === 'coming-soon'
+        ? 'coming soon'
+        : 'not connected'
+  return (
+    <div className="flex items-start gap-3 rounded-lg border border-border bg-surface-1 p-4">
+      <span className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-surface-2 text-text-primary">
+        {icon}
+      </span>
+      <div className="flex min-w-0 flex-1 flex-col gap-1">
+        <div className="flex items-center justify-between gap-2">
+          <span className="text-sm font-semibold text-text-primary">{name}</span>
+          <span className="font-mono text-[11px] text-text-secondary">{statusLabel}</span>
+        </div>
+        <p className="text-[12px] text-text-secondary">{description}</p>
+        {onAction && status === 'disconnected' && (
+          <button
+            type="button"
+            onClick={onAction}
+            className="mt-1 self-start font-mono text-[11px] uppercase tracking-wider text-text-primary hover:underline"
+          >
+            привязать →
+          </button>
+        )}
+      </div>
+    </div>
   )
 }
 
@@ -350,59 +393,9 @@ function AppearanceCard() {
 
 // Dev-only: lets QA flip the simulated subscription tier so the voice gate
 // (premium-only TTS) can be exercised end-to-end against MSW. The handler
-// reads `localStorage['druz9_user_tier']` at request time.
-function DevTierCard() {
-  const initial = (() => {
-    try {
-      return localStorage.getItem('druz9_user_tier') ?? 'free'
-    } catch {
-      return 'free'
-    }
-  })()
-  const [tier, setTier] = useState(initial)
-  const tiers = ['free', 'premium', 'pro'] as const
-  const set = (t: 'free' | 'premium' | 'pro') => {
-    try {
-      localStorage.setItem('druz9_user_tier', t)
-    } catch {
-      /* noop */
-    }
-    setTier(t)
-    // Force a refetch of /profile/me so consumers see the new tier.
-    window.dispatchEvent(new Event('storage'))
-    window.location.reload()
-  }
-  return (
-    <Card className="flex-col gap-3 border-warn/40 p-6">
-      <div className="flex items-center justify-between">
-        <h3 className="font-display text-lg font-bold text-text-primary">Dev: switch tier</h3>
-        <span className="rounded-full bg-warn/20 px-2 py-0.5 font-mono text-[10px] font-bold text-warn">
-          DEV ONLY
-        </span>
-      </div>
-      <p className="text-[12px] text-text-muted">
-        Симулирует подписку. Premium включает proxy к Edge TTS — Free fallback'ит на браузерный голос.
-      </p>
-      <div className="flex gap-2">
-        {tiers.map((t) => (
-          <button
-            key={t}
-            type="button"
-            onClick={() => set(t)}
-            className={cn(
-              'flex-1 rounded-md border px-3 py-2 font-mono text-[11px] font-semibold uppercase transition-colors',
-              tier === t
-                ? 'border-text-primary bg-text-primary/15 text-text-primary'
-                : 'border-border bg-surface-1 text-text-secondary hover:bg-surface-2',
-            )}
-          >
-            {t}
-          </button>
-        ))}
-      </div>
-    </Card>
-  )
-}
+// Legacy DevTierCard removed — replaced by the real DevTierSwitchCard
+// inside BillingTab which calls POST /admin/subscriptions/set-tier.
+// Local-storage tier hack is a footgun (handlers don't read it).
 
 // AICoachCard — per-user picker for the OpenRouter model that generates the
 // weekly AI Coach narrative. Previously OPENROUTER_INSIGHT_MODEL was a single
@@ -626,21 +619,180 @@ export default function SettingsPage() {
         <div className="flex flex-col gap-6 lg:flex-row">
           <Sidebar active={active} setActive={setActive} />
           <div className="flex min-w-0 flex-1 flex-col gap-5">
-            <ProfileCard />
-            <AccountInfoCard />
-            {/* Wave-11: billing-secção (управление подпиской, история чеков,
-                cancel-flow). Sidebar nav-item «billing» уже подсвечивает её
-                как часть страницы — фактический tab-switch появится, когда
-                страница станет нативно tabbed (сейчас всё стэкается). */}
+            {/* Native tab switch — content swaps on `active` instead of
+                stacking everything (the previous version showed every
+                card on every tab regardless of which sidebar item was
+                selected, which felt static and broken). */}
+            {active === 'account' && (
+              <>
+                <ProfileCard />
+                <AccountInfoCard />
+              </>
+            )}
             {active === 'billing' && <BillingTab />}
-            <IntegrationsCard />
-            <AICoachCard />
-            <VacanciesModelCard />
-            <AppearanceCard />
-            <DevTierCard />
+            {active === 'integrations' && <IntegrationsCard />}
+            {active === 'notifications' && <NotificationsCard />}
+            {active === 'ai' && (
+              <>
+                <AICoachCard />
+                <VacanciesModelCard />
+              </>
+            )}
+            {active === 'privacy' && <PrivacyCard />}
+            {active === 'appearance' && <AppearanceCard />}
+            {active === 'danger' && <DangerCard />}
           </div>
         </div>
       </div>
     </AppShellV2>
+  )
+}
+
+// ─── Notifications ─────────────────────────────────────────────────────
+
+// NotificationsCard — channel toggles bound to backend notify prefs.
+// Backend keeps a `channel_enabled` map so we don't hardcode the set
+// here; we list every channel the server knows about.
+const KNOWN_CHANNELS: { key: string; label: string; description: string }[] = [
+  { key: 'match', label: 'Matches', description: 'Результаты матчей и приглашения.' },
+  { key: 'social', label: 'Circles', description: 'События и активность в кругах.' },
+  { key: 'system', label: 'System', description: 'Технические уведомления + maintenance.' },
+  { key: 'cohort', label: 'Cohort', description: 'Когортные сводки (legacy).' },
+  { key: 'wins', label: 'Wins', description: 'Стрики, ачивки, milestones.' },
+]
+
+function NotificationsCard() {
+  const q = useNotificationPrefsQuery()
+  const upd = useUpdatePrefs()
+  const enabled = q.data?.channel_enabled ?? {}
+  const onToggle = (key: string, next: boolean) => {
+    const merged = { ...enabled, [key]: next }
+    upd.mutate({ channel_enabled: merged })
+  }
+  return (
+    <Card className="flex-col gap-4 p-6">
+      <h3 className="font-display text-lg font-bold text-text-primary">Уведомления</h3>
+      <p className="text-[13px] text-text-secondary">
+        Включай и выключай каналы — переключатель сохраняется сразу.
+        Telegram-канал работает только когда есть привязанный аккаунт
+        (см. Integrations).
+      </p>
+      <div className="flex flex-col gap-2">
+        {KNOWN_CHANNELS.map((c) => {
+          const on = enabled[c.key] ?? true
+          return (
+            <label
+              key={c.key}
+              className="flex cursor-pointer items-center gap-3 rounded-lg border border-border bg-surface-1 p-3"
+            >
+              <input
+                type="checkbox"
+                checked={on}
+                onChange={(e) => onToggle(c.key, e.target.checked)}
+                className="h-4 w-4 accent-text-primary"
+              />
+              <div className="flex flex-1 flex-col">
+                <span className="text-[14px] font-semibold text-text-primary">{c.label}</span>
+                <span className="text-[12px] text-text-muted">{c.description}</span>
+              </div>
+            </label>
+          )
+        })}
+      </div>
+      {upd.isError && (
+        <p className="text-[12px] text-text-secondary">Не удалось сохранить — попробуй ещё раз.</p>
+      )}
+    </Card>
+  )
+}
+
+// ─── Privacy ───────────────────────────────────────────────────────────
+
+function PrivacyCard() {
+  return (
+    <Card className="flex-col gap-3 p-6">
+      <h3 className="font-display text-lg font-bold text-text-primary">Приватность</h3>
+      <p className="text-[13px] text-text-secondary">
+        Профиль виден только участникам твоих кругов и оппонентам в матчах.
+        Анонимные публичные ссылки на отчёты можно создавать вручную из{' '}
+        <Link to="/profile/weekly" className="underline">/profile/weekly</Link>.
+      </p>
+      <p className="text-[12px] text-text-muted">
+        Данные хранятся в РФ; кэш Redis очищается через 24 часа после
+        выхода. Полный экспорт + удаление — в&nbsp;<b>Опасной зоне</b>.
+      </p>
+    </Card>
+  )
+}
+
+// ─── Danger zone ───────────────────────────────────────────────────────
+
+function DangerCard() {
+  const profile = useProfileQuery()
+  const username = profile.data?.username ?? ''
+  const [confirm, setConfirm] = useState('')
+  const [submitting, setSubmitting] = useState(false)
+  const [err, setErr] = useState<string | null>(null)
+
+  async function handleDelete() {
+    setErr(null)
+    if (confirm.trim() !== username) {
+      setErr('Введи точно свой username для подтверждения.')
+      return
+    }
+    if (!window.confirm('Точно удалить аккаунт? Все данные будут стёрты безвозвратно.')) return
+    setSubmitting(true)
+    try {
+      await api<{ ok: boolean }>('/profile/me', {
+        method: 'DELETE',
+        body: JSON.stringify({ confirm_username: username }),
+      })
+      // Backend deleted the row; sessions become invalid. Force logout
+      // by clearing local tokens and bouncing to /welcome.
+      try {
+        localStorage.removeItem('access_token')
+        localStorage.removeItem('refresh_token')
+      } catch {
+        /* private mode */
+      }
+      window.location.href = '/welcome'
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : 'Не удалось удалить аккаунт.')
+      setSubmitting(false)
+    }
+  }
+
+  return (
+    <Card className="flex-col gap-4 p-6">
+      <h3 className="font-display text-lg font-bold text-text-primary">Опасная зона</h3>
+      <p className="text-[13px] text-text-secondary">
+        Удаление аккаунта необратимо. Уйдут заметки, прогресс, ачивки,
+        история матчей и подписки. Boosty-подписка останется на их
+        стороне — её надо отменить отдельно.
+      </p>
+      <div className="flex flex-col gap-2 rounded-lg border border-border bg-surface-1 p-3">
+        <span className="font-mono text-[11px] uppercase tracking-[0.16em] text-text-muted">
+          Чтобы подтвердить, введи свой username
+        </span>
+        <input
+          value={confirm}
+          onChange={(e) => setConfirm(e.target.value)}
+          placeholder={username || 'username'}
+          className="rounded-md border border-border bg-surface-2 px-3 py-2 font-mono text-[14px] text-text-primary"
+        />
+      </div>
+      {err && <p className="text-[12px] text-text-secondary">{err}</p>}
+      <button
+        type="button"
+        onClick={() => void handleDelete()}
+        disabled={submitting || !username || confirm.trim() !== username}
+        className={cn(
+          'self-start rounded-lg bg-danger px-4 py-2 font-sans text-[13px] font-semibold text-white',
+          'hover:bg-danger/90 disabled:cursor-not-allowed disabled:opacity-50',
+        )}
+      >
+        {submitting ? 'Удаляем…' : 'Удалить аккаунт'}
+      </button>
+    </Card>
   )
 }
