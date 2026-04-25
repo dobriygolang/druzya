@@ -404,6 +404,7 @@ type HoneNote struct {
 	ArchivedAt     pgtype.Timestamptz
 	PublishedAt    pgtype.Timestamptz
 	PublicSlug     pgtype.Text
+	Encrypted      bool
 }
 
 type HonePlanSkip struct {
@@ -997,6 +998,7 @@ type User struct {
 	StorageUsedBytes      int64
 	StorageTier           string
 	StorageRecomputedAt   pgtype.Timestamptz
+	VaultKdfSalt          []byte
 }
 
 type UserAchievement struct {
@@ -1069,4 +1071,13 @@ type WhiteboardRoomParticipant struct {
 	RoomID   pgtype.UUID
 	UserID   pgtype.UUID
 	JoinedAt pgtype.Timestamptz
+}
+
+type WhiteboardYjsUpdate struct {
+	Seq            int64
+	WhiteboardID   pgtype.UUID
+	UserID         pgtype.UUID
+	UpdateData     []byte
+	OriginDeviceID pgtype.UUID
+	CreatedAt      pgtype.Timestamptz
 }

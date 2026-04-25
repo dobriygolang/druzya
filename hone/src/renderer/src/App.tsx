@@ -169,6 +169,14 @@ export default function App() {
     });
   }, [status]);
 
+  // ── Vault auto-lock (Phase C-7) ─────────────────────────────────────────
+  // На logout (status flip away from signed_in) wipe in-memory vault key.
+  // Без этого encrypted notes остались бы readable до tab close.
+  useEffect(() => {
+    if (status === 'signed_in') return;
+    void import('./api/vault').then(({ lockVault }) => lockVault());
+  }, [status]);
+
   // ── Sync replication (Phase C-4) ────────────────────────────────────────
   // На login: full bootstrap pull → IndexedDB cache. После — polling каждые
   // 30s + immediate pull on window focus / online events. Errors silent

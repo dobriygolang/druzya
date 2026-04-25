@@ -642,13 +642,14 @@ func (n *Notes) Get(ctx context.Context, userID, noteID uuid.UUID) (domain.Note,
 		embeddedAt     pgtype.Timestamptz
 		createdAt      time.Time
 		updatedAt      time.Time
+		encrypted      bool
 	)
 	err := n.pool.QueryRow(ctx,
-		`SELECT title, body_md, size_bytes, embedding, embedding_model, embedded_at, created_at, updated_at
+		`SELECT title, body_md, size_bytes, embedding, embedding_model, embedded_at, created_at, updated_at, encrypted
 		   FROM hone_notes
 		  WHERE id=$1 AND user_id=$2`,
 		sharedpg.UUID(noteID), sharedpg.UUID(userID),
-	).Scan(&title, &bodyMD, &sizeBytes, &embedding, &embeddingModel, &embeddedAt, &createdAt, &updatedAt)
+	).Scan(&title, &bodyMD, &sizeBytes, &embedding, &embeddingModel, &embeddedAt, &createdAt, &updatedAt, &encrypted)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return domain.Note{}, domain.ErrNotFound
@@ -664,6 +665,7 @@ func (n *Notes) Get(ctx context.Context, userID, noteID uuid.UUID) (domain.Note,
 		Embedding: embedding,
 		CreatedAt: createdAt,
 		UpdatedAt: updatedAt,
+		Encrypted: encrypted,
 	}
 	if embeddingModel.Valid {
 		out.EmbeddingModel = embeddingModel.String
@@ -857,10 +859,15 @@ func (n *Notes) SetEmbedding(ctx context.Context, userID, noteID uuid.UUID, vec 
 // Snippet is the first 140 chars of body_md — enough context for the UI row
 // without dragging full bodies across the wire.
 func (n *Notes) WithEmbeddingsForUser(ctx context.Context, userID uuid.UUID) ([]domain.NoteEmbedding, error) {
+	// NOT encrypted — Phase C-7 E2E. Encrypted body_md = ciphertext;
+	// embedding на нём garbage. Embed worker сам не enqueue'ит для
+	// encrypted notes (см. notes.go EmbedFn skip), но defensive-фильтр
+	// здесь страхует на случай legacy embeddings от ранее plaintext
+	// заметки которая потом была encrypt'нута.
 	rows, err := n.pool.Query(ctx,
 		`SELECT id, title, LEFT(body_md, 140), embedding
 		   FROM hone_notes
-		  WHERE user_id=$1 AND embedding IS NOT NULL`,
+		  WHERE user_id=$1 AND embedding IS NOT NULL AND NOT encrypted`,
 		sharedpg.UUID(userID),
 	)
 	if err != nil {

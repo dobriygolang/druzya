@@ -193,6 +193,7 @@ func New(ctx context.Context, cfg *config.Config) (app *App, otelShutdown func()
 		storageMod,
 		syncMod,
 		services.NewYjsPersistence(deps),
+		services.NewVault(deps),
 		services.NewPublishing(deps),
 		services.NewLLMChainAdmin(deps, llmRawChain, llmRegisteredProviders(llmRawChain)),
 	}

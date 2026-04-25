@@ -26,6 +26,14 @@ import {
   type StorageQuota,
   type Device,
 } from '../api/storage';
+import {
+  initVault,
+  unlockVault,
+  lockVault,
+  isUnlocked,
+  subscribe as subscribeVault,
+  fetchSalt,
+} from '../api/vault';
 
 interface HoneSettings {
   pomodoroMinutes: number;
@@ -168,6 +176,14 @@ export function SettingsPage({ theme, onThemeChange }: SettingsPageProps) {
           hint="Devices that are currently signed in. Free tier supports 1 active device; Pro removes the limit."
         >
           <DevicesSection />
+        </Section>
+
+        {/* ── Private Vault ────────────────────────────────────── */}
+        <Section
+          title="PRIVATE VAULT"
+          hint="End-to-end encryption for sensitive notes. Server can't read encrypted notes — but coach memory, search, and publish-to-web won't work for them either. There is no password recovery."
+        >
+          <VaultSection />
         </Section>
 
         {/* ── Notifications ────────────────────────────────────── */}
@@ -689,5 +705,186 @@ function DeviceRow({ device, onRevoke }: { device: Device; onRevoke: () => void 
         {busy ? '…' : 'Revoke'}
       </button>
     </div>
+  );
+}
+
+// VaultSection — Private Vault status + setup / unlock / lock controls.
+// Three states:
+//   1. Not initialised: «Set up Vault» button → POST /vault/init + prompt
+//      password → unlockVault() → store key in memory.
+//   2. Initialised + locked: «Unlock» button → password prompt →
+//      unlockVault() (re-derive same key from same salt).
+//   3. Initialised + unlocked: «Lock now» button + status badge.
+function VaultSection() {
+  // 'unknown' пока не определили (initial fetchSalt), 'none' = не initialised,
+  // 'locked' = initialised но not unlocked, 'unlocked' = ready.
+  const [state, setState] = useState<'unknown' | 'none' | 'locked' | 'unlocked'>('unknown');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // Sync with vault module state on subscribe.
+  useEffect(() => {
+    const refresh = async () => {
+      if (isUnlocked()) {
+        setState('unlocked');
+        return;
+      }
+      try {
+        const salt = await fetchSalt();
+        setState(salt ? 'locked' : 'none');
+      } catch {
+        setState('locked'); // network blip — assume initialised
+      }
+    };
+    void refresh();
+    return subscribeVault((unlocked) => {
+      if (unlocked) setState('unlocked');
+      else void refresh();
+    });
+  }, []);
+
+  const onSetUp = async () => {
+    setError(null);
+    const pwd = window.prompt(
+      'Choose a Vault password (min 8 chars).\n\n' +
+        'WARNING: there is no recovery. If you forget this password,\n' +
+        'all encrypted notes are permanently lost.',
+    );
+    if (!pwd) return;
+    if (pwd.length < 8) {
+      setError('Password must be at least 8 characters');
+      return;
+    }
+    const confirm = window.prompt('Confirm password:');
+    if (confirm !== pwd) {
+      setError('Passwords do not match');
+      return;
+    }
+    setBusy(true);
+    try {
+      await initVault();
+      await unlockVault(pwd);
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const onUnlock = async () => {
+    setError(null);
+    const pwd = window.prompt('Vault password:');
+    if (!pwd) return;
+    setBusy(true);
+    try {
+      await unlockVault(pwd);
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const onLock = () => {
+    lockVault();
+  };
+
+  if (state === 'unknown') {
+    return <div style={{ fontSize: 13, color: 'var(--ink-40)' }}>Loading…</div>;
+  }
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+        <VaultStatusBadge state={state} />
+        {state === 'none' && (
+          <VaultButton onClick={onSetUp} disabled={busy} primary>
+            {busy ? 'Setting up…' : 'Set up Vault'}
+          </VaultButton>
+        )}
+        {state === 'locked' && (
+          <VaultButton onClick={onUnlock} disabled={busy} primary>
+            {busy ? 'Unlocking…' : 'Unlock'}
+          </VaultButton>
+        )}
+        {state === 'unlocked' && (
+          <VaultButton onClick={onLock} disabled={busy}>
+            Lock now
+          </VaultButton>
+        )}
+      </div>
+      {error ? (
+        <div style={{ fontSize: 12.5, color: '#ff6a6a' }}>{error}</div>
+      ) : (
+        <div style={{ fontSize: 12, color: 'var(--ink-40)', lineHeight: 1.55 }}>
+          {state === 'none' &&
+            'After setup you can mark individual notes as encrypted from the three-dots menu.'}
+          {state === 'locked' &&
+            'Vault is set up. Unlock to read or write encrypted notes; they are unreadable while locked.'}
+          {state === 'unlocked' &&
+            'Vault is unlocked for this session. Closing the app or signing out re-locks automatically.'}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function VaultStatusBadge({ state }: { state: 'none' | 'locked' | 'unlocked' }) {
+  const label = state === 'none' ? 'NOT SET UP' : state === 'locked' ? 'LOCKED' : 'UNLOCKED';
+  const color = state === 'unlocked' ? '#7fd49b' : state === 'locked' ? 'var(--ink-60)' : 'var(--ink-40)';
+  return (
+    <span
+      className="mono"
+      style={{
+        fontSize: 10,
+        letterSpacing: '0.18em',
+        padding: '4px 10px',
+        borderRadius: 999,
+        border: `1px solid ${color}`,
+        color,
+      }}
+    >
+      {label}
+    </span>
+  );
+}
+
+function VaultButton({
+  children,
+  onClick,
+  disabled,
+  primary = false,
+}: {
+  children: React.ReactNode;
+  onClick: () => void;
+  disabled?: boolean;
+  primary?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      className="focus-ring"
+      style={{
+        padding: '7px 14px',
+        fontSize: 12.5,
+        background: primary ? 'rgba(255,255,255,0.08)' : 'transparent',
+        border: '1px solid var(--ink-20)',
+        borderRadius: 8,
+        color: 'var(--ink-90)',
+        cursor: disabled ? 'default' : 'pointer',
+        opacity: disabled ? 0.5 : 1,
+        transition: 'background-color 160ms ease, opacity 160ms ease',
+      }}
+      onMouseEnter={(e) => {
+        if (!disabled) e.currentTarget.style.background = 'rgba(255,255,255,0.12)';
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.background = primary ? 'rgba(255,255,255,0.08)' : 'transparent';
+      }}
+    >
+      {children}
+    </button>
   );
 }

@@ -142,6 +142,13 @@ type Note struct {
 	EmbeddedAt     *time.Time
 	CreatedAt      time.Time
 	UpdatedAt      time.Time
+	// Encrypted (Phase C-7) — true означает, что BodyMD содержит
+	// base64(IV || ciphertext) от AES-256-GCM, key которого derived'ed
+	// клиентом из user password + users.vault_kdf_salt. Server при
+	// Encrypted=true ДОЛЖЕН пропускать LLM-features (embedding, RAG,
+	// publish-to-web) — иначе мы перенесём plaintext в embeddings БД,
+	// что ломает E2E threat model.
+	Encrypted bool
 }
 
 // NoteSummary is the list-view projection — no body, no embedding.

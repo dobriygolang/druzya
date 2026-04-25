@@ -84,18 +84,27 @@ func (h *publishingHandler) publish(w http.ResponseWriter, r *http.Request) {
 	var (
 		existingSlug *string
 		existingAt   *time.Time
+		encrypted    bool
 	)
 	err = h.pool.QueryRow(r.Context(),
-		`SELECT public_slug, published_at FROM hone_notes
+		`SELECT public_slug, published_at, encrypted FROM hone_notes
 		  WHERE id=$1 AND user_id=$2`,
 		noteID, uid,
-	).Scan(&existingSlug, &existingAt)
+	).Scan(&existingSlug, &existingAt, &encrypted)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			writePubJSONError(w, http.StatusNotFound, "not_found", "")
 			return
 		}
 		h.serverError(w, r, "publish.lookup", err, uid)
+		return
+	}
+	if encrypted {
+		// Phase C-7: encrypted note нельзя publish (server не имеет
+		// plaintext'а чтобы render'нуть HTML). UI должен disable
+		// «Publish to web» в three-dots для encrypted notes.
+		writePubJSONError(w, http.StatusConflict, "encrypted_cannot_publish",
+			"This note is encrypted (Private Vault). Decrypt before publishing.")
 		return
 	}
 	if existingSlug != nil && existingAt != nil {

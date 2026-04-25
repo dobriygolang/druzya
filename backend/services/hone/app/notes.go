@@ -50,9 +50,10 @@ func (uc *CreateNote) Do(ctx context.Context, in CreateNoteInput) (domain.Note, 
 	if err != nil {
 		return domain.Note{}, fmt.Errorf("hone.CreateNote.Do: %w", err)
 	}
-	if uc.EmbedFn != nil {
+	if uc.EmbedFn != nil && !created.Encrypted {
 		// Fire-and-forget; caller owns the queue/goroutine. The embed job
 		// is idempotent — re-running for the same note replaces the vector.
+		// Encrypted (Phase C-7) → skip: server can't see plaintext to embed.
 		go uc.EmbedFn(context.Background(), in.UserID, created.ID, created.Title+"\n\n"+created.BodyMD)
 	}
 	if uc.Memory != nil {
@@ -101,7 +102,8 @@ func (uc *UpdateNote) Do(ctx context.Context, in UpdateNoteInput) (domain.Note, 
 	if err != nil {
 		return domain.Note{}, fmt.Errorf("hone.UpdateNote.Do: %w", err)
 	}
-	if uc.EmbedFn != nil {
+	if uc.EmbedFn != nil && !updated.Encrypted {
+		// Encrypted (Phase C-7) → skip embed (см. CreateNote rationale).
 		go uc.EmbedFn(context.Background(), in.UserID, updated.ID, updated.Title+"\n\n"+updated.BodyMD)
 	}
 	return updated, nil
