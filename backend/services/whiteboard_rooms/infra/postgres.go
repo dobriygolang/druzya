@@ -55,19 +55,20 @@ func (r *Rooms) Create(ctx context.Context, in domain.Room) (domain.Room, error)
 // Get loads a room by id.
 func (r *Rooms) Get(ctx context.Context, id uuid.UUID) (domain.Room, error) {
 	var (
-		rowID     pgtype.UUID
-		ownerID   pgtype.UUID
-		title     string
-		snapshot  []byte
-		expiresAt time.Time
-		createdAt time.Time
-		updatedAt time.Time
+		rowID      pgtype.UUID
+		ownerID    pgtype.UUID
+		title      string
+		snapshot   []byte
+		visibility string
+		expiresAt  time.Time
+		createdAt  time.Time
+		updatedAt  time.Time
 	)
 	err := r.pool.QueryRow(ctx,
-		`SELECT id, owner_id, title, snapshot, expires_at, created_at, updated_at
+		`SELECT id, owner_id, title, snapshot, visibility, expires_at, created_at, updated_at
 		   FROM whiteboard_rooms WHERE id=$1`,
 		sharedpg.UUID(id),
-	).Scan(&rowID, &ownerID, &title, &snapshot, &expiresAt, &createdAt, &updatedAt)
+	).Scan(&rowID, &ownerID, &title, &snapshot, &visibility, &expiresAt, &createdAt, &updatedAt)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return domain.Room{}, domain.ErrNotFound
@@ -75,13 +76,14 @@ func (r *Rooms) Get(ctx context.Context, id uuid.UUID) (domain.Room, error) {
 		return domain.Room{}, fmt.Errorf("whiteboard_rooms.Rooms.Get: %w", err)
 	}
 	return domain.Room{
-		ID:        sharedpg.UUIDFrom(rowID),
-		OwnerID:   sharedpg.UUIDFrom(ownerID),
-		Title:     title,
-		Snapshot:  snapshot,
-		ExpiresAt: expiresAt,
-		CreatedAt: createdAt,
-		UpdatedAt: updatedAt,
+		ID:         sharedpg.UUIDFrom(rowID),
+		OwnerID:    sharedpg.UUIDFrom(ownerID),
+		Title:      title,
+		Snapshot:   snapshot,
+		Visibility: domain.Visibility(visibility),
+		ExpiresAt:  expiresAt,
+		CreatedAt:  createdAt,
+		UpdatedAt:  updatedAt,
 	}, nil
 }
 
@@ -89,7 +91,7 @@ func (r *Rooms) Get(ctx context.Context, id uuid.UUID) (domain.Room, error) {
 // ordered by updated_at DESC so the recently-active rooms float up.
 func (r *Rooms) ListByUser(ctx context.Context, userID uuid.UUID) ([]domain.Room, error) {
 	rows, err := r.pool.Query(ctx,
-		`SELECT r.id, r.owner_id, r.title, r.snapshot, r.expires_at, r.created_at, r.updated_at
+		`SELECT r.id, r.owner_id, r.title, r.snapshot, r.visibility, r.expires_at, r.created_at, r.updated_at
 		   FROM whiteboard_rooms r
 		   JOIN whiteboard_room_participants p ON p.room_id = r.id
 		  WHERE p.user_id = $1
@@ -104,25 +106,27 @@ func (r *Rooms) ListByUser(ctx context.Context, userID uuid.UUID) ([]domain.Room
 	var out []domain.Room
 	for rows.Next() {
 		var (
-			rowID     pgtype.UUID
-			ownerID   pgtype.UUID
-			title     string
-			snapshot  []byte
-			expiresAt time.Time
-			createdAt time.Time
-			updatedAt time.Time
+			rowID      pgtype.UUID
+			ownerID    pgtype.UUID
+			title      string
+			snapshot   []byte
+			visibility string
+			expiresAt  time.Time
+			createdAt  time.Time
+			updatedAt  time.Time
 		)
-		if err := rows.Scan(&rowID, &ownerID, &title, &snapshot, &expiresAt, &createdAt, &updatedAt); err != nil {
+		if err := rows.Scan(&rowID, &ownerID, &title, &snapshot, &visibility, &expiresAt, &createdAt, &updatedAt); err != nil {
 			return nil, fmt.Errorf("whiteboard_rooms.Rooms.ListByUser: scan: %w", err)
 		}
 		out = append(out, domain.Room{
-			ID:        sharedpg.UUIDFrom(rowID),
-			OwnerID:   sharedpg.UUIDFrom(ownerID),
-			Title:     title,
-			Snapshot:  snapshot,
-			ExpiresAt: expiresAt,
-			CreatedAt: createdAt,
-			UpdatedAt: updatedAt,
+			ID:         sharedpg.UUIDFrom(rowID),
+			OwnerID:    sharedpg.UUIDFrom(ownerID),
+			Title:      title,
+			Snapshot:   snapshot,
+			Visibility: domain.Visibility(visibility),
+			ExpiresAt:  expiresAt,
+			CreatedAt:  createdAt,
+			UpdatedAt:  updatedAt,
 		})
 	}
 	if err := rows.Err(); err != nil {
@@ -142,6 +146,22 @@ func (r *Rooms) UpdateSnapshot(ctx context.Context, id uuid.UUID, snapshot []byt
 	)
 	if err != nil {
 		return fmt.Errorf("whiteboard_rooms.Rooms.UpdateSnapshot: %w", err)
+	}
+	if tag.RowsAffected() == 0 {
+		return domain.ErrNotFound
+	}
+	return nil
+}
+
+// SetVisibility flips the visibility flag (private | shared). Owner-check
+// делает caller (use case в app/) — repo лишь записывает значение.
+func (r *Rooms) SetVisibility(ctx context.Context, id uuid.UUID, v domain.Visibility) error {
+	tag, err := r.pool.Exec(ctx,
+		`UPDATE whiteboard_rooms SET visibility=$2, updated_at=now() WHERE id=$1`,
+		sharedpg.UUID(id), string(v),
+	)
+	if err != nil {
+		return fmt.Errorf("whiteboard_rooms.Rooms.SetVisibility: %w", err)
 	}
 	if tag.RowsAffected() == 0 {
 		return domain.ErrNotFound

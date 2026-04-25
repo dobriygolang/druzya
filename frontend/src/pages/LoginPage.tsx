@@ -52,7 +52,7 @@ function sanitizeDesktopReturn(raw: string | null): string | null {
  * protocol-handler.
  *
  * Возвращает true когда redirect произошёл — callback'и тогда НЕ делают
- * обычный navigate('/sanctum').
+ * обычный navigate('/arena').
  */
 export function maybeRedirectToDesktop(tokens: {
   access_token: string
@@ -90,7 +90,7 @@ export default function LoginPage() {
   const { t } = useTranslation('welcome')
   const navigate = useNavigate()
   const [params] = useSearchParams()
-  const nextHref = params.get('next') ?? '/sanctum'
+  const nextHref = params.get('next') ?? '/arena'
   // ?reason=expired — выставляется apiClient'ом после неудачного refresh,
   // чтобы пользователь увидел осмысленное сообщение, а не «просто кинуло
   // на логин».

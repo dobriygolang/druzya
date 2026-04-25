@@ -454,35 +454,6 @@ type Incident struct {
 	CreatedAt        pgtype.Timestamptz
 }
 
-type InterviewAutopsy struct {
-	ID            pgtype.UUID
-	UserID        pgtype.UUID
-	CompanyID     pgtype.UUID
-	Section       string
-	Outcome       string
-	InterviewDate pgtype.Date
-	QuestionsRaw  pgtype.Text
-	AnswersRaw    pgtype.Text
-	Notes         pgtype.Text
-	Status        string
-	AnalysisJson  []byte
-	ShareSlug     pgtype.Text
-	CreatedAt     pgtype.Timestamptz
-}
-
-type InterviewCalendar struct {
-	ID            pgtype.UUID
-	UserID        pgtype.UUID
-	CompanyID     pgtype.UUID
-	Role          string
-	InterviewDate pgtype.Date
-	CurrentLevel  pgtype.Text
-	PlanJson      []byte
-	ReadinessPct  int32
-	CreatedAt     pgtype.Timestamptz
-	UpdatedAt     pgtype.Timestamptz
-}
-
 type InterviewerApplication struct {
 	ID           pgtype.UUID
 	UserID       pgtype.UUID
@@ -603,33 +574,6 @@ type MockSession struct {
 	StartedAt      pgtype.Timestamptz
 	FinishedAt     pgtype.Timestamptz
 	CreatedAt      pgtype.Timestamptz
-}
-
-type NativeProvenance struct {
-	ID                   pgtype.UUID
-	SessionID            pgtype.UUID
-	ParentID             pgtype.UUID
-	Kind                 string
-	Snippet              string
-	AiPrompt             pgtype.Text
-	HasHallucinationTrap bool
-	VerifiedAt           pgtype.Timestamptz
-	CreatedAt            pgtype.Timestamptz
-}
-
-type NativeSession struct {
-	ID                pgtype.UUID
-	UserID            pgtype.UUID
-	TaskID            pgtype.UUID
-	Section           string
-	Difficulty        string
-	LlmModel          pgtype.Text
-	ContextScore      int32
-	VerificationScore int32
-	JudgmentScore     int32
-	DeliveryScore     int32
-	StartedAt         pgtype.Timestamptz
-	FinishedAt        pgtype.Timestamptz
 }
 
 type NoteYjsUpdate struct {
@@ -828,34 +772,6 @@ type SavedVacancy struct {
 	Notes        pgtype.Text
 	SavedAt      pgtype.Timestamptz
 	UpdatedAt    pgtype.Timestamptz
-}
-
-type Season struct {
-	ID        pgtype.UUID
-	Name      string
-	Slug      string
-	Theme     pgtype.Text
-	StartsAt  pgtype.Timestamptz
-	EndsAt    pgtype.Timestamptz
-	IsCurrent bool
-}
-
-type SeasonProgress struct {
-	UserID    pgtype.UUID
-	SeasonID  pgtype.UUID
-	Points    int32
-	Tier      int32
-	IsPremium bool
-	UpdatedAt pgtype.Timestamptz
-}
-
-type SeasonRewardClaim struct {
-	ID        pgtype.UUID
-	UserID    pgtype.UUID
-	SeasonID  pgtype.UUID
-	Kind      string
-	Tier      int32
-	ClaimedAt pgtype.Timestamptz
 }
 
 type SkillNode struct {
@@ -1058,13 +974,14 @@ type WeeklyShareToken struct {
 }
 
 type WhiteboardRoom struct {
-	ID        pgtype.UUID
-	OwnerID   pgtype.UUID
-	Title     string
-	Snapshot  []byte
-	ExpiresAt pgtype.Timestamptz
-	CreatedAt pgtype.Timestamptz
-	UpdatedAt pgtype.Timestamptz
+	ID         pgtype.UUID
+	OwnerID    pgtype.UUID
+	Title      string
+	Snapshot   []byte
+	ExpiresAt  pgtype.Timestamptz
+	CreatedAt  pgtype.Timestamptz
+	UpdatedAt  pgtype.Timestamptz
+	Visibility string
 }
 
 type WhiteboardRoomParticipant struct {

@@ -38,15 +38,22 @@ export default {
       },
       borderRadius: { sm: '6px', md: '8px', lg: '12px', xl: '16px', '2xl': '20px' },
       boxShadow: {
-        glow: '0 6px 24px rgba(88,44,255,0.4)',
+        // Phase-1 unification: violet/pink/warn glows collapsed to neutral
+        // dark shadow. Only `glow-red` keeps a colored halo, reserved for
+        // critical/live signals (recording dots, danger CTAs).
+        glow: '0 6px 24px rgba(0,0,0,0.6)',
         card: '0 1px 3px rgba(0,0,0,0.5)',
-        'glow-pink': '0 6px 24px rgba(244,114,182,0.4)',
-        'glow-warn': '0 6px 24px rgba(251,191,36,0.4)',
+        'glow-pink': '0 6px 24px rgba(0,0,0,0.6)',
+        'glow-warn': '0 6px 24px rgba(0,0,0,0.6)',
+        'glow-red': '0 6px 24px rgba(255,59,48,0.4)',
       },
       fontFamily: {
+        // Phase-1 unification: collapse to the Hone duo (Inter + JetBrains Mono).
+        // Geist is dropped — having two display families makes web look like
+        // a different product than the desktop app.
         sans: ['Inter', 'system-ui', 'sans-serif'],
-        display: ['Geist', 'Inter', 'system-ui', 'sans-serif'],
-        mono: ['"Geist Mono"', '"JetBrains Mono"', 'ui-monospace', 'monospace'],
+        display: ['Inter', 'system-ui', 'sans-serif'],
+        mono: ['"JetBrains Mono"', 'ui-monospace', 'SF Mono', 'Menlo', 'monospace'],
       },
       fontSize: {
         h1: ['48px', { lineHeight: '1.1', letterSpacing: '-0.02em', fontWeight: '800' }],

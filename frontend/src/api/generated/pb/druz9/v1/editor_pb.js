@@ -432,3 +432,76 @@ export class GetReplayRequest extends Message {
         return proto3.util.equals(GetReplayRequest, a, b);
     }
 }
+
+/**
+ * RunCodeRequest — manually appended to match editor_pb.ts (see proto regen).
+ * Stale .js bug: regen produced fresh .ts but didn't update .js, breaking
+ * `client.runCode is not a function` at runtime в hone (Vite-resolves .js
+ * over .ts in some bundler configs).
+ *
+ * @generated from message druz9.v1.RunCodeRequest
+ */
+export class RunCodeRequest extends Message {
+    constructor(data) {
+        super();
+        this.roomId = "";
+        this.code = "";
+        this.language = Language.UNSPECIFIED;
+        proto3.util.initPartial(data, this);
+    }
+    static fromBinary(bytes, options) {
+        return new RunCodeRequest().fromBinary(bytes, options);
+    }
+    static fromJson(jsonValue, options) {
+        return new RunCodeRequest().fromJson(jsonValue, options);
+    }
+    static fromJsonString(jsonString, options) {
+        return new RunCodeRequest().fromJsonString(jsonString, options);
+    }
+    static equals(a, b) {
+        return proto3.util.equals(RunCodeRequest, a, b);
+    }
+}
+RunCodeRequest.runtime = proto3;
+RunCodeRequest.typeName = "druz9.v1.RunCodeRequest";
+RunCodeRequest.fields = proto3.util.newFieldList(() => [
+    { no: 1, name: "room_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "code", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 3, name: "language", kind: "enum", T: proto3.getEnumType(Language) },
+]);
+
+/**
+ * @generated from message druz9.v1.RunCodeResponse
+ */
+export class RunCodeResponse extends Message {
+    constructor(data) {
+        super();
+        this.stdout = "";
+        this.stderr = "";
+        this.exitCode = 0;
+        this.timeMs = 0;
+        this.status = "";
+        proto3.util.initPartial(data, this);
+    }
+    static fromBinary(bytes, options) {
+        return new RunCodeResponse().fromBinary(bytes, options);
+    }
+    static fromJson(jsonValue, options) {
+        return new RunCodeResponse().fromJson(jsonValue, options);
+    }
+    static fromJsonString(jsonString, options) {
+        return new RunCodeResponse().fromJsonString(jsonString, options);
+    }
+    static equals(a, b) {
+        return proto3.util.equals(RunCodeResponse, a, b);
+    }
+}
+RunCodeResponse.runtime = proto3;
+RunCodeResponse.typeName = "druz9.v1.RunCodeResponse";
+RunCodeResponse.fields = proto3.util.newFieldList(() => [
+    { no: 1, name: "stdout", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "stderr", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 3, name: "exit_code", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 4, name: "time_ms", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 5, name: "status", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+]);

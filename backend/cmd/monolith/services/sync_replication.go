@@ -55,8 +55,9 @@ const pullLimit = 500
 // что код большой, и pull/push — semantically отдельная concern от
 // device-management.
 type syncReplicationHandler struct {
-	pool *pgxpool.Pool
-	log  *slog.Logger
+	pool   *pgxpool.Pool
+	log    *slog.Logger
+	broker *SyncEventBroker // C-6.2 push notify
 }
 
 // ─── Pull ─────────────────────────────────────────────────────────────────
@@ -445,6 +446,9 @@ func (h *syncReplicationHandler) applyDelete(ctx context.Context, uid uuid.UUID,
 	}
 	if err := tx.Commit(ctx); err != nil {
 		return fmt.Errorf("commit: %w", err)
+	}
+	if h.broker != nil {
+		h.broker.PublishSyncChange(uid, op.Table, sharedMw.DeviceIDFromContext(ctx))
 	}
 	return nil
 }

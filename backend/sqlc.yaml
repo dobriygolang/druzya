@@ -106,20 +106,7 @@ sql:
         emit_exact_table_names: false
         emit_empty_slices: true
 
-  - engine: postgresql
-    name: "ai_native"
-    queries: "services/ai_native/infra/queries"
-    schema: "migrations"
-    gen:
-      go:
-        package: "ai_nativedb"
-        out: "services/ai_native/infra/db"
-        sql_package: "pgx/v5"
-        emit_interface: true
-        emit_prepared_queries: false
-        emit_exact_table_names: false
-        emit_empty_slices: true
-
+  # Phase-4 ADR-001 — `ai_native` service removed (NativeRoundPage flow gone).
   - engine: postgresql
     name: "cohort"
     queries: "services/cohort/infra/queries"
@@ -162,20 +149,7 @@ sql:
         emit_exact_table_names: false
         emit_empty_slices: true
 
-  - engine: postgresql
-    name: "season"
-    queries: "services/season/infra/queries"
-    schema: "migrations"
-    gen:
-      go:
-        package: "seasondb"
-        out: "services/season/infra/db"
-        sql_package: "pgx/v5"
-        emit_interface: true
-        emit_prepared_queries: false
-        emit_exact_table_names: false
-        emit_empty_slices: true
-
+  # Phase-4 ADR-001 — `season` service removed (incomplete season pass).
   - engine: postgresql
     name: "podcast"
     queries: "services/podcast/infra/queries"

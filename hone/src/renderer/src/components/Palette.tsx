@@ -14,11 +14,10 @@ export type PageId =
   | 'home'
   | 'today'
   | 'notes'
-  | 'board'
   | 'stats'
   | 'podcasts'
   | 'editor'
-  | 'shared_boards'
+  | 'shared_boards' // единый boards-флоу (private/public — кому отдан URL)
   | 'events'
   | 'settings';
 // PaletteAction — то, что палетка может попросить App'а сделать.
@@ -48,10 +47,9 @@ export function Palette({ onClose, onOpen }: PaletteProps) {
     () => [
       { id: 'today', label: 'Today', icon: 'sun', shortcut: ['T'], run: () => onOpen('today') },
       { id: 'notes', label: 'Notes', icon: 'note', shortcut: ['N'], run: () => onOpen('notes') },
-      // Boards собирает три collaboration-surfaces (private whiteboard,
-      // multiplayer Excalidraw, code rooms) под одним пунктом палитры.
-      // Click ведёт на Shared boards (multiplayer-default). Hotkey'и:
-      //   D — Whiteboard private, B — Shared boards, E — Code rooms.
+      // Boards = единый collaboration-surface (Excalidraw + Yjs + WS).
+      // Каждая комната private до момента шаринга URL. Code rooms — тот
+      // же концепт для кода. Hotkeys: D/B → Boards, E → Code rooms.
       {
         id: 'shared_boards',
         label: 'Boards · Code rooms',

@@ -8,7 +8,7 @@
 // @generated from file druz9/v1/editor.proto (package druz9.v1, syntax proto3)
 /* eslint-disable */
 // @ts-nocheck
-import { CreateInviteRequest, CreateRoomRequest, EditorRoom, FreezeRoomRequest, GetReplayRequest, GetRoomRequest, InviteLink, ReplayUrl } from "./editor_pb.js";
+import { CreateInviteRequest, CreateRoomRequest, EditorRoom, FreezeRoomRequest, GetReplayRequest, GetRoomRequest, InviteLink, ReplayUrl, RunCodeRequest, RunCodeResponse } from "./editor_pb.js";
 import { MethodKind } from "@bufbuild/protobuf";
 /**
  * @generated from service druz9.v1.EditorService
@@ -69,6 +69,17 @@ export const EditorService = {
             name: "GetReplay",
             I: GetReplayRequest,
             O: ReplayUrl,
+            kind: MethodKind.Unary,
+        },
+        /**
+         * RunCode executes the given source against a sandboxed Judge0 instance.
+         *
+         * @generated from rpc druz9.v1.EditorService.RunCode
+         */
+        runCode: {
+            name: "RunCode",
+            I: RunCodeRequest,
+            O: RunCodeResponse,
             kind: MethodKind.Unary,
         },
     }

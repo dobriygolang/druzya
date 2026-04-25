@@ -70,31 +70,3 @@ ON CONFLICT (user_id) DO UPDATE SET
   last_kata_date = EXCLUDED.last_kata_date,
   updated_at     = now();
 
--- name: GetActiveCalendar :one
-SELECT id, user_id, company_id, role, interview_date, current_level, readiness_pct, updated_at
-  FROM interview_calendars
- WHERE user_id = $1 AND interview_date >= $2
- ORDER BY interview_date ASC LIMIT 1;
-
--- name: UpsertCalendar :one
-INSERT INTO interview_calendars(user_id, company_id, role, interview_date, current_level)
-VALUES ($1, $2, $3, $4, $5)
-RETURNING id, user_id, company_id, role, interview_date, current_level, readiness_pct, updated_at;
-
--- name: CreateAutopsy :one
-INSERT INTO interview_autopsies(
-  user_id, company_id, section, outcome, interview_date,
-  questions_raw, answers_raw, notes, status, share_slug
-) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
-RETURNING id, user_id, company_id, section, outcome, interview_date,
-          questions_raw, answers_raw, notes, status, analysis_json, share_slug, created_at;
-
--- name: GetAutopsy :one
-SELECT id, user_id, company_id, section, outcome, interview_date,
-       questions_raw, answers_raw, notes, status, analysis_json, share_slug, created_at
-  FROM interview_autopsies WHERE id = $1;
-
--- name: MarkAutopsyReady :execrows
-UPDATE interview_autopsies
-   SET status = 'ready', analysis_json = $2::jsonb
- WHERE id = $1;

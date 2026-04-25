@@ -23,20 +23,19 @@ import {
 import { EditorState, Compartment } from '@codemirror/state';
 import { EditorView, keymap, lineNumbers } from '@codemirror/view';
 import { defaultKeymap, history, historyKeymap } from '@codemirror/commands';
-import { indentOnInput } from '@codemirror/language';
+import { indentOnInput, HighlightStyle, syntaxHighlighting } from '@codemirror/language';
+import { tags as t } from '@lezer/highlight';
 import { javascript } from '@codemirror/lang-javascript';
 import { python } from '@codemirror/lang-python';
 import { go } from '@codemirror/lang-go';
 import { oneDark } from '@codemirror/theme-one-dark';
 import { yCollab } from 'y-codemirror.next';
 
-import { BackBtn, GhostBtn, PrimaryBtn } from '../components/primitives/Buttons';
 import { useSessionStore } from '../stores/session';
 import { WEB_BASE_URL } from '../api/config';
 import {
   createRoom,
   getRoom,
-  createInvite,
   connectEditorWs,
   runCode,
   b64ToBytes,
@@ -44,15 +43,72 @@ import {
   Language,
   type EditorRoom,
   type EditorWsStatus,
-  type RoomType,
   type RunResult,
 } from '../api/editor';
-
-type Page = { kind: 'list' } | { kind: 'room'; roomId: string };
 
 interface EditorPageProps {
   initialRoomId?: string | null;
   onConsumeInitial?: () => void;
+}
+
+// honeCodeHighlight — кастомная HighlightStyle поверх oneDark. Цвета
+// близки к VSCode Dark+ / Goland Darcula:
+//   - keyword (func, var, return, if, for) — соломенный bold (Goland-style)
+//   - type (string, int, struct) — голубой
+//   - string — оранжево-tan (VSCode-orange)
+//   - comment — приглушённый зелёный
+//   - number — мягкий blue-green
+//   - function name — лимонно-жёлтый
+//   - builtin — фиолетовый
+const honeCodeHighlight = HighlightStyle.define([
+  { tag: [t.keyword, t.controlKeyword, t.operatorKeyword, t.modifier, t.definitionKeyword], color: '#c678dd', fontWeight: '600' },
+  { tag: [t.typeName, t.className, t.namespace], color: '#56b6c2' },
+  { tag: t.string, color: '#e5c07b' },
+  { tag: t.regexp, color: '#e06c75' },
+  { tag: t.number, color: '#d19a66' },
+  { tag: t.bool, color: '#d19a66' },
+  { tag: t.null, color: '#d19a66' },
+  { tag: t.literal, color: '#d19a66' },
+  { tag: t.comment, color: '#7f848e', fontStyle: 'italic' },
+  { tag: t.lineComment, color: '#7f848e', fontStyle: 'italic' },
+  { tag: t.blockComment, color: '#7f848e', fontStyle: 'italic' },
+  { tag: t.docComment, color: '#7f848e', fontStyle: 'italic' },
+  { tag: [t.function(t.variableName), t.function(t.propertyName)], color: '#61afef' },
+  { tag: [t.variableName, t.propertyName], color: '#e5e5e5' },
+  { tag: [t.standard(t.variableName), t.special(t.variableName)], color: '#c678dd' },
+  { tag: t.operator, color: '#abb2bf' },
+  { tag: t.punctuation, color: '#abb2bf' },
+  { tag: t.bracket, color: '#abb2bf' },
+  { tag: t.tagName, color: '#e06c75' },
+  { tag: t.attributeName, color: '#d19a66' },
+  { tag: t.invalid, color: '#ff6a6a' },
+]);
+
+// honeEditorTheme — override oneDark'овых elements: фон чисто чёрный,
+// gutter более приглушённый, scrollbar тонкий.
+function honeEditorTheme() {
+  return EditorView.theme(
+    {
+      '&': { height: '100%', fontSize: '13.5px', backgroundColor: '#000' },
+      '.cm-scroller': {
+        fontFamily: 'ui-monospace, "SF Mono", Menlo, monospace',
+        background: '#000',
+      },
+      '.cm-content': { padding: '14px 0', caretColor: '#fff' },
+      '.cm-gutters': {
+        background: '#000',
+        borderRight: '1px solid rgba(255,255,255,0.04)',
+        color: 'var(--ink-40)',
+      },
+      '.cm-activeLineGutter': { background: 'rgba(255,255,255,0.03)', color: 'var(--ink-60)' },
+      '.cm-activeLine': { background: 'rgba(255,255,255,0.02)' },
+      '.cm-cursor': { borderLeftColor: '#fff', borderLeftWidth: '1.5px' },
+      '.cm-selectionBackground, ::selection': { backgroundColor: 'rgba(255,255,255,0.16)' },
+      '&.cm-focused .cm-selectionBackground': { backgroundColor: 'rgba(255,255,255,0.2)' },
+      '&.cm-focused': { outline: 'none' },
+    },
+    { dark: true },
+  );
 }
 
 function langExt(lang: Language) {
@@ -84,29 +140,781 @@ function languageLabel(lang: Language): string {
   }
 }
 
+// templateForLanguage — стартовый шаблон, вставляется в ytext только
+// owner'ом если room ещё пустая. Минимальный «Hello, world» с правильным
+// синтаксисом + правильными импортами. Юзер сразу может ▶ RUN и увидеть
+// output, не разбираясь как стартовать с нуля.
+function templateForLanguage(lang: Language): string {
+  switch (lang) {
+    case Language.GO:
+      return `package main
+
+import "fmt"
+
+func main() {
+\tfmt.Println("Hello, Hone!")
+}
+`;
+    case Language.PYTHON:
+      return `def main() -> None:
+    print("Hello, Hone!")
+
+
+if __name__ == "__main__":
+    main()
+`;
+    case Language.JAVASCRIPT:
+      return `// Hello from Hone
+function main() {
+  console.log("Hello, Hone!");
+}
+
+main();
+`;
+    case Language.TYPESCRIPT:
+      return `// Hello from Hone
+function main(): void {
+  console.log("Hello, Hone!");
+}
+
+main();
+`;
+    default:
+      return '';
+  }
+}
+
 export function EditorPage({ initialRoomId, onConsumeInitial }: EditorPageProps = {}) {
-  const [page, setPage] = useState<Page>(
-    initialRoomId ? { kind: 'room', roomId: initialRoomId } : { kind: 'list' },
-  );
-  // Single-shot consume: после отрисовки room-view сообщаем родителю что
-  // initialRoomId израсходован, чтобы повторное переключение page не
-  // вернуло пользователя в ту же комнату принудительно.
+  const [selectedRoomId, setSelectedRoomId] = useState<string | null>(initialRoomId ?? null);
+  const [recent, setRecent] = useState<RecentEntry[]>(() => loadRecent());
+
+  // Sidebar resize.
+  const SIDEBAR_KEY = 'hone:code-rooms:sidebar-w';
+  const SIDEBAR_COLLAPSED_KEY = 'hone:code-rooms:sidebar-collapsed';
+  const SIDEBAR_MIN = 220;
+  const SIDEBAR_MAX = 460;
+  const SIDEBAR_DEFAULT = 280;
+  const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return false;
+    return window.localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === '1';
+  });
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(SIDEBAR_COLLAPSED_KEY, sidebarCollapsed ? '1' : '0');
+    } catch {
+      /* ignore */
+    }
+  }, [sidebarCollapsed]);
+  const [sidebarW, setSidebarW] = useState<number>(() => {
+    if (typeof window === 'undefined') return SIDEBAR_DEFAULT;
+    const raw = window.localStorage.getItem(SIDEBAR_KEY);
+    const n = raw ? parseInt(raw, 10) : NaN;
+    if (!Number.isFinite(n)) return SIDEBAR_DEFAULT;
+    return Math.max(SIDEBAR_MIN, Math.min(SIDEBAR_MAX, n));
+  });
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(SIDEBAR_KEY, String(sidebarW));
+    } catch {
+      /* ignore */
+    }
+  }, [sidebarW]);
+  const dragRef = useRef<{ x: number; w: number } | null>(null);
+  useEffect(() => {
+    const onMove = (e: MouseEvent) => {
+      if (!dragRef.current) return;
+      const dx = e.clientX - dragRef.current.x;
+      setSidebarW(Math.max(SIDEBAR_MIN, Math.min(SIDEBAR_MAX, dragRef.current.w + dx)));
+    };
+    const onUp = () => {
+      dragRef.current = null;
+    };
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+    return () => {
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+    };
+  }, []);
+
   useEffect(() => {
     if (initialRoomId && onConsumeInitial) onConsumeInitial();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  if (page.kind === 'list') {
-    return (
-      <RoomsList
-        onOpenRoom={(id) => {
-          rememberEditorRoom(id);
-          setPage({ kind: 'room', roomId: id });
+  const refreshRecent = () => setRecent(loadRecent());
+
+  return (
+    <div
+      className="fadein"
+      style={{
+        position: 'absolute',
+        inset: 0,
+        paddingTop: 80,
+        paddingBottom: 0,
+        display: 'grid',
+        gridTemplateColumns: sidebarCollapsed ? `0px 0px 1fr` : `${sidebarW}px 6px 1fr`,
+        transition: 'grid-template-columns 240ms ease',
+        animationDuration: '320ms',
+        background: '#000',
+      }}
+    >
+      {!sidebarCollapsed && (
+        <CodeRoomsSidebar
+          recent={recent}
+          selectedRoomId={selectedRoomId}
+          onOpen={(id) => {
+            rememberEditorRoom(id);
+            setSelectedRoomId(id);
+            refreshRecent();
+          }}
+          onCreated={(id) => {
+            rememberEditorRoom(id);
+            setSelectedRoomId(id);
+            refreshRecent();
+          }}
+          onForget={(id) => {
+            forgetEditorRoom(id);
+            refreshRecent();
+            setSelectedRoomId((cur) => (cur === id ? null : cur));
+          }}
+          onToggleCollapse={() => setSidebarCollapsed(true)}
+        />
+      )}
+
+      {!sidebarCollapsed && (
+        <ResizeHandleRoomList
+          onMouseDown={(e) => {
+            dragRef.current = { x: e.clientX, w: sidebarW };
+          }}
+        />
+      )}
+      {sidebarCollapsed && (
+        <EditorExpandSidebarButton onClick={() => setSidebarCollapsed(false)} />
+      )}
+
+      <section
+        style={{
+          position: 'relative',
+          minWidth: 0,
+          minHeight: 0,
+          background: '#000',
+          overflow: 'hidden',
+        }}
+      >
+        {selectedRoomId ? (
+          <RoomView
+            key={selectedRoomId}
+            roomId={selectedRoomId}
+            onBack={() => setSelectedRoomId(null)}
+          />
+        ) : (
+          <CodeRoomsEmptyState />
+        )}
+      </section>
+    </div>
+  );
+}
+
+// ─── Sidebar (replaces centered RoomsList landing) ────────────────────────
+
+function EditorExpandSidebarButton({ onClick }: { onClick: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      className="focus-ring fadein"
+      title="Show sidebar"
+      style={{
+        position: 'absolute',
+        top: 92,
+        left: 10,
+        width: 28,
+        height: 28,
+        borderRadius: 7,
+        background: 'rgba(20,20,22,0.78)',
+        backdropFilter: 'blur(16px)',
+        border: '1px solid rgba(255,255,255,0.08)',
+        cursor: 'pointer',
+        color: 'var(--ink-60)',
+        display: 'grid',
+        placeItems: 'center',
+        zIndex: 30,
+        animationDuration: '180ms',
+        transition: 'color 160ms ease, background-color 160ms ease',
+      }}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.color = 'var(--ink)';
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.color = 'var(--ink-60)';
+      }}
+    >
+      <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round">
+        <rect x="3" y="4" width="18" height="16" rx="2" />
+        <path d="M9 4v16" />
+        <path d="M12 10l2 2-2 2" />
+      </svg>
+    </button>
+  );
+}
+
+function CodeRoomsSidebar({
+  recent,
+  selectedRoomId,
+  onOpen,
+  onCreated,
+  onForget,
+  onToggleCollapse,
+}: {
+  recent: RecentEntry[];
+  selectedRoomId: string | null;
+  onOpen: (id: string) => void;
+  onCreated: (id: string) => void;
+  onForget: (id: string) => void;
+  onToggleCollapse: () => void;
+}) {
+  const [creating, setCreating] = useState(false);
+  const [joinId, setJoinId] = useState('');
+  const [error, setError] = useState<string | null>(null);
+
+  const handleCreate = async (lang: Language) => {
+    setCreating(true);
+    setError(null);
+    try {
+      const r = await createRoom({ type: 'practice', language: lang });
+      onCreated(r.id);
+    } catch (err: unknown) {
+      const ce = ConnectError.from(err);
+      setError(ce.rawMessage || ce.message);
+    } finally {
+      setCreating(false);
+    }
+  };
+
+  return (
+    <aside
+      className="slide-from-left"
+      style={{
+        animationDuration: '320ms',
+        borderRight: '1px solid rgba(255,255,255,0.06)',
+        padding: '0 8px',
+        overflowY: 'auto',
+      }}
+    >
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 14px 14px' }}>
+        <button
+          onClick={() => window.dispatchEvent(new CustomEvent('hone:nav-home'))}
+          className="focus-ring"
+          title="Back to Home"
+          style={{
+            background: 'transparent',
+            border: 'none',
+            padding: 4,
+            borderRadius: 6,
+            cursor: 'pointer',
+            color: 'var(--ink-60)',
+            display: 'inline-flex',
+            alignItems: 'center',
+            transition: 'color 180ms ease, background-color 180ms ease, transform 180ms ease',
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.color = 'var(--ink)';
+            e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
+            e.currentTarget.style.transform = 'translateX(-2px)';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.color = 'var(--ink-60)';
+            e.currentTarget.style.background = 'transparent';
+            e.currentTarget.style.transform = 'translateX(0)';
+          }}
+        >
+          <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round">
+            <path d="M15 18l-6-6 6-6" />
+          </svg>
+        </button>
+        <span
+          className="mono"
+          style={{
+            flex: 1,
+            fontSize: 10,
+            letterSpacing: '0.2em',
+            color: 'var(--ink-40)',
+            textTransform: 'uppercase',
+          }}
+        >
+          Code rooms · {recent.length}
+        </span>
+        <button
+          onClick={onToggleCollapse}
+          className="focus-ring"
+          title="Hide sidebar"
+          style={{
+            width: 26,
+            height: 26,
+            borderRadius: 7,
+            background: 'transparent',
+            border: 'none',
+            cursor: 'pointer',
+            color: 'var(--ink-60)',
+            display: 'grid',
+            placeItems: 'center',
+            transition: 'background-color 180ms ease, color 180ms ease',
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.background = 'rgba(255,255,255,0.07)';
+            e.currentTarget.style.color = 'var(--ink)';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = 'transparent';
+            e.currentTarget.style.color = 'var(--ink-60)';
+          }}
+        >
+          <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round">
+            <rect x="3" y="4" width="18" height="16" rx="2" />
+            <path d="M9 4v16" />
+            <path d="M14 10l-2 2 2 2" />
+          </svg>
+        </button>
+      </div>
+
+      <div className="mono" style={{ fontSize: 9, letterSpacing: '.18em', color: 'var(--ink-40)', padding: '4px 14px 6px' }}>
+        NEW ROOM
+      </div>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, padding: '0 12px 14px' }}>
+        {[
+          { lang: Language.GO, label: 'Go' },
+          { lang: Language.PYTHON, label: 'Py' },
+          { lang: Language.JAVASCRIPT, label: 'JS' },
+          { lang: Language.TYPESCRIPT, label: 'TS' },
+        ].map(({ lang, label }) => (
+          <button
+            key={label}
+            disabled={creating}
+            onClick={() => void handleCreate(lang)}
+            className="focus-ring"
+            style={{
+              padding: '6px 10px',
+              borderRadius: 7,
+              background: 'rgba(255,255,255,0.04)',
+              color: 'var(--ink-90)',
+              border: '1px solid rgba(255,255,255,0.08)',
+              fontSize: 12,
+              cursor: creating ? 'default' : 'pointer',
+              transition: 'background-color 140ms ease, color 140ms ease',
+            }}
+            onMouseEnter={(e) => {
+              if (creating) return;
+              e.currentTarget.style.background = 'rgba(255,255,255,0.08)';
+              e.currentTarget.style.color = 'var(--ink)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'rgba(255,255,255,0.04)';
+              e.currentTarget.style.color = 'var(--ink-90)';
+            }}
+          >
+            + {label}
+          </button>
+        ))}
+      </div>
+
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          const id = extractRoomId(joinId);
+          if (id) {
+            onOpen(id);
+            setJoinId('');
+          }
+        }}
+        style={{ padding: '0 14px 14px', display: 'flex', gap: 6 }}
+      >
+        <input
+          value={joinId}
+          onChange={(e) => setJoinId(e.target.value)}
+          placeholder="Join by ID or URL…"
+          style={{
+            flex: 1,
+            padding: '6px 10px',
+            fontSize: 12,
+            background: 'rgba(255,255,255,0.03)',
+            border: '1px solid rgba(255,255,255,0.08)',
+            borderRadius: 7,
+            color: 'var(--ink)',
+            outline: 'none',
+          }}
+        />
+      </form>
+
+      {recent.length > 0 && (
+        <>
+          <div className="mono" style={{ fontSize: 9, letterSpacing: '.18em', color: 'var(--ink-40)', padding: '4px 14px 6px' }}>
+            RECENT
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 1, padding: '0 2px 14px' }}>
+            {recent.map((r) => (
+              <CodeRoomRow
+                key={r.id}
+                entry={r}
+                active={selectedRoomId === r.id}
+                onOpen={onOpen}
+                onForget={onForget}
+              />
+            ))}
+          </div>
+        </>
+      )}
+
+      {error && (
+        <div
+          className="mono"
+          style={{ padding: '0 14px 12px', fontSize: 11, color: '#ff6a6a', letterSpacing: '.12em' }}
+        >
+          {error}
+        </div>
+      )}
+    </aside>
+  );
+}
+
+function CodeRoomRow({
+  entry,
+  active,
+  onOpen,
+  onForget,
+}: {
+  entry: RecentEntry;
+  active: boolean;
+  onOpen: (id: string) => void;
+  onForget: (id: string) => void;
+}) {
+  const [hover, setHover] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const rowRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    const onDocClick = (e: MouseEvent) => {
+      if (!rowRef.current?.contains(e.target as Node)) setMenuOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setMenuOpen(false);
+    };
+    window.addEventListener('mousedown', onDocClick);
+    window.addEventListener('keydown', onKey);
+    return () => {
+      window.removeEventListener('mousedown', onDocClick);
+      window.removeEventListener('keydown', onKey);
+    };
+  }, [menuOpen]);
+
+  const shareURL = `${WEB_BASE_URL}/editor/${entry.id}`;
+  const handleCopyURL = async () => {
+    try {
+      await navigator.clipboard.writeText(shareURL);
+      setCopied(true);
+      window.setTimeout(() => {
+        setCopied(false);
+        setMenuOpen(false);
+      }, 1200);
+    } catch {
+      /* ignore */
+    }
+  };
+  const handleOpenWeb = async () => {
+    const bridge = typeof window !== 'undefined' ? window.hone : undefined;
+    if (bridge) await bridge.shell.openExternal(shareURL);
+    else window.open(shareURL, '_blank');
+    setMenuOpen(false);
+  };
+
+  return (
+    <div
+      ref={rowRef}
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+      onClick={() => onOpen(entry.id)}
+      style={{
+        position: 'relative',
+        display: 'flex',
+        alignItems: 'center',
+        gap: 8,
+        padding: '8px 10px 8px 12px',
+        margin: '1px 0',
+        borderRadius: 7,
+        background: active
+          ? 'rgba(255,255,255,0.07)'
+          : hover
+            ? 'rgba(255,255,255,0.04)'
+            : 'transparent',
+        transition: 'background-color 160ms ease',
+        cursor: 'pointer',
+      }}
+    >
+      <CodeIcon />
+      <span
+        className="mono"
+        style={{
+          flex: 1,
+          fontSize: 11.5,
+          color: active ? 'var(--ink)' : 'var(--ink-60)',
+          letterSpacing: '0.04em',
+          whiteSpace: 'nowrap',
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+        }}
+      >
+        {entry.id.slice(0, 8)}…{entry.id.slice(-4)}
+      </span>
+      <span
+        style={{
+          fontSize: 10,
+          color: 'var(--ink-40)',
+          opacity: hover && !menuOpen ? 1 : 0,
+          transition: 'opacity 180ms ease',
+          flexShrink: 0,
+        }}
+      >
+        {timeAgo(entry.openedAt)}
+      </span>
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+          setMenuOpen((o) => !o);
+        }}
+        className="focus-ring"
+        title="More"
+        style={{
+          width: 22,
+          height: 22,
+          display: 'grid',
+          placeItems: 'center',
+          background: menuOpen ? 'rgba(255,255,255,0.08)' : 'transparent',
+          border: 'none',
+          cursor: 'pointer',
+          color: 'var(--ink-60)',
+          borderRadius: 5,
+          opacity: hover || menuOpen ? 1 : 0,
+          transition: 'opacity 180ms ease, background-color 160ms ease',
+          flexShrink: 0,
+        }}
+      >
+        <svg width={14} height={14} viewBox="0 0 24 24" fill="currentColor">
+          <circle cx="5" cy="12" r="1.6" />
+          <circle cx="12" cy="12" r="1.6" />
+          <circle cx="19" cy="12" r="1.6" />
+        </svg>
+      </button>
+      {menuOpen && (
+        <CodeRowDropdown
+          copied={copied}
+          onCopyURL={() => void handleCopyURL()}
+          onOpenWeb={() => void handleOpenWeb()}
+          onForget={() => {
+            setMenuOpen(false);
+            onForget(entry.id);
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
+function CodeRowDropdown({
+  copied,
+  onCopyURL,
+  onOpenWeb,
+  onForget,
+}: {
+  copied: boolean;
+  onCopyURL: () => void;
+  onOpenWeb: () => void;
+  onForget: () => void;
+}) {
+  return (
+    <div
+      className="fadein"
+      onClick={(e) => e.stopPropagation()}
+      style={{
+        position: 'absolute',
+        top: 'calc(100% - 4px)',
+        right: 8,
+        zIndex: 30,
+        minWidth: 200,
+        padding: 6,
+        borderRadius: 10,
+        background: 'rgba(20,20,22,0.96)',
+        backdropFilter: 'blur(18px)',
+        border: '1px solid rgba(255,255,255,0.08)',
+        boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
+        animationDuration: '140ms',
+      }}
+    >
+      <CodeMenuLabel>Sharing</CodeMenuLabel>
+      <CodeMenuItem
+        icon={<LinkSvg />}
+        label={copied ? '✓ Copied' : 'Copy URL'}
+        onClick={onCopyURL}
+      />
+      <CodeMenuItem icon={<ExternalSvg />} label="Open on web" onClick={onOpenWeb} />
+      <CodeMenuDivider />
+      <CodeMenuItem icon={<ForgetSvg />} label="Forget room" onClick={onForget} muted />
+    </div>
+  );
+}
+
+function CodeMenuLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <div
+      className="mono"
+      style={{
+        fontSize: 9,
+        letterSpacing: '0.18em',
+        textTransform: 'uppercase',
+        color: 'var(--ink-40)',
+        padding: '6px 10px 4px',
+      }}
+    >
+      {children}
+    </div>
+  );
+}
+function CodeMenuItem({
+  icon,
+  label,
+  onClick,
+  muted = false,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  onClick: () => void;
+  muted?: boolean;
+}) {
+  const [hover, setHover] = useState(false);
+  return (
+    <button
+      onClick={onClick}
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 10,
+        width: '100%',
+        padding: '8px 10px',
+        background: hover ? 'rgba(255,255,255,0.06)' : 'transparent',
+        border: 'none',
+        borderRadius: 6,
+        color: muted ? 'var(--ink-40)' : hover ? 'var(--ink)' : 'var(--ink-90)',
+        fontSize: 13,
+        cursor: 'pointer',
+        textAlign: 'left',
+        transition: 'background-color 140ms ease, color 140ms ease',
+      }}
+    >
+      <span style={{ display: 'inline-flex', color: 'inherit' }}>{icon}</span>
+      <span>{label}</span>
+    </button>
+  );
+}
+function CodeMenuDivider() {
+  return (
+    <div
+      style={{
+        margin: '4px 6px',
+        height: 1,
+        background: 'rgba(255,255,255,0.06)',
+      }}
+    />
+  );
+}
+function LinkSvg() {
+  return (
+    <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
+      <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+    </svg>
+  );
+}
+function ExternalSvg() {
+  return (
+    <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+      <path d="M15 3h6v6M10 14L21 3" />
+    </svg>
+  );
+}
+function ForgetSvg() {
+  return (
+    <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M6 6l12 12M18 6L6 18" />
+    </svg>
+  );
+}
+
+function CodeIcon() {
+  return (
+    <svg
+      width={14}
+      height={14}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.6}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      style={{ color: 'var(--ink-40)', flexShrink: 0 }}
+    >
+      <path d="M16 18l6-6-6-6M8 6l-6 6 6 6" />
+    </svg>
+  );
+}
+
+function ResizeHandleRoomList({ onMouseDown }: { onMouseDown: (e: React.MouseEvent) => void }) {
+  const [hover, setHover] = useState(false);
+  return (
+    <div
+      onMouseDown={onMouseDown}
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+      style={{ position: 'relative', cursor: 'col-resize', userSelect: 'none' }}
+    >
+      <div
+        style={{
+          position: 'absolute',
+          left: 2,
+          top: 0,
+          bottom: 0,
+          width: 2,
+          background: hover ? 'rgba(255,255,255,0.15)' : 'transparent',
+          transition: 'background-color 180ms ease',
         }}
       />
-    );
-  }
-  return <RoomView roomId={page.roomId} onBack={() => setPage({ kind: 'list' })} />;
+    </div>
+  );
+}
+
+function CodeRoomsEmptyState() {
+  return (
+    <div
+      style={{
+        position: 'absolute',
+        inset: 0,
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 16,
+      }}
+    >
+      <div className="mono" style={{ fontSize: 10, letterSpacing: '.24em', color: 'var(--ink-40)' }}>
+        CODE ROOMS
+      </div>
+      <p style={{ fontSize: 14, color: 'var(--ink-60)', margin: 0, textAlign: 'center', maxWidth: 360 }}>
+        Pick a recent room or create a new one. Same URL — share with anyone, real-time collab.
+      </p>
+    </div>
+  );
 }
 
 // ─── Recent rooms cache ────────────────────────────────────────────────────
@@ -161,265 +969,13 @@ function forgetEditorRoom(id: string) {
   }
 }
 
-// ─── Rooms list (landing) ──────────────────────────────────────────────────
-
-function RoomsList({ onOpenRoom }: { onOpenRoom: (id: string) => void }) {
-  const [joinId, setJoinId] = useState('');
-  const [creating, setCreating] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [recent, setRecent] = useState<RecentEntry[]>(() => loadRecent());
-
-  const handleCreate = async (type: RoomType, language: Language) => {
-    setCreating(true);
-    setError(null);
-    try {
-      const r = await createRoom({ type, language });
-      onOpenRoom(r.id);
-    } catch (err: unknown) {
-      const ce = ConnectError.from(err);
-      setError(ce.rawMessage || ce.message);
-    } finally {
-      setCreating(false);
-    }
-  };
-
-  const handleForget = (id: string) => {
-    forgetEditorRoom(id);
-    setRecent(loadRecent());
-  };
-
-  return (
-    <div
-      className="fadein"
-      style={{
-        position: 'absolute',
-        inset: 0,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-      }}
-    >
-      <div style={{ width: 560, maxWidth: '90%' }}>
-        <div
-          className="mono"
-          style={{ fontSize: 10, letterSpacing: '.24em', color: 'var(--ink-40)' }}
-        >
-          CODE ROOMS
-        </div>
-        <h1
-          style={{
-            margin: '14px 0 8px',
-            fontSize: 40,
-            fontWeight: 400,
-            letterSpacing: '-0.025em',
-            lineHeight: 1.05,
-          }}
-        >
-          Write together. Quietly.
-        </h1>
-        <p style={{ margin: '0 0 32px', fontSize: 14, color: 'var(--ink-60)', lineHeight: 1.6 }}>
-          Real-time collab. Ссылку можно открыть в браузере — состояние
-          консистентно.
-        </p>
-
-        <div
-          className="mono"
-          style={{ fontSize: 10, letterSpacing: '.18em', color: 'var(--ink-40)', marginBottom: 10 }}
-        >
-          NEW ROOM
-        </div>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 26 }}>
-          {[
-            { lang: Language.GO, label: 'Go', type: 'practice' as RoomType },
-            { lang: Language.PYTHON, label: 'Python', type: 'practice' as RoomType },
-            { lang: Language.JAVASCRIPT, label: 'JavaScript', type: 'practice' as RoomType },
-            { lang: Language.TYPESCRIPT, label: 'TypeScript', type: 'practice' as RoomType },
-          ].map(({ lang, label, type }) => (
-            <button
-              key={label}
-              disabled={creating}
-              onClick={() => void handleCreate(type, lang)}
-              className="focus-ring surface lift"
-              style={{
-                padding: '8px 16px',
-                borderRadius: 999,
-                background: 'rgba(255,255,255,0.05)',
-                color: 'var(--ink)',
-                border: '1px solid rgba(255,255,255,0.1)',
-                fontSize: 13,
-                cursor: 'pointer',
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.background = 'rgba(255,255,255,0.1)';
-                e.currentTarget.style.borderColor = 'rgba(255,255,255,0.2)';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
-                e.currentTarget.style.borderColor = 'rgba(255,255,255,0.1)';
-              }}
-            >
-              + {label}
-            </button>
-          ))}
-        </div>
-
-        <div
-          className="mono"
-          style={{ fontSize: 10, letterSpacing: '.18em', color: 'var(--ink-40)', marginBottom: 10 }}
-        >
-          JOIN BY ID
-        </div>
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            const id = joinId.trim();
-            if (id) onOpenRoom(id);
-          }}
-          style={{ display: 'flex', gap: 8 }}
-        >
-          <input
-            value={joinId}
-            onChange={(e) => setJoinId(e.target.value)}
-            placeholder="room-id или полный URL…"
-            style={{
-              flex: 1,
-              padding: '9px 12px',
-              borderRadius: 8,
-              background: 'rgba(255,255,255,0.03)',
-              border: '1px solid rgba(255,255,255,0.1)',
-              color: 'var(--ink)',
-              fontSize: 13,
-            }}
-          />
-          <button
-            type="submit"
-            className="focus-ring lift surface"
-            style={{
-              padding: '9px 18px',
-              borderRadius: 8,
-              background: '#fff',
-              color: '#000',
-              fontSize: 13,
-              fontWeight: 500,
-              border: 'none',
-              cursor: 'pointer',
-            }}
-          >
-            Join
-          </button>
-        </form>
-
-        {recent.length > 0 && (
-          <div style={{ marginTop: 28 }}>
-            <div
-              className="mono"
-              style={{
-                fontSize: 10,
-                letterSpacing: '.18em',
-                color: 'var(--ink-40)',
-                marginBottom: 10,
-              }}
-            >
-              RECENT
-            </div>
-            <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-              {recent.map((r, i) => (
-                <li
-                  key={r.id}
-                  className="row slide-from-bottom"
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    padding: '10px 12px',
-                    margin: '2px 0',
-                    background: 'rgba(255,255,255,0.03)',
-                    border: '1px solid rgba(255,255,255,0.05)',
-                    borderRadius: 8,
-                    animationDelay: `${Math.min(i * 30, 200)}ms`,
-                    animationDuration: '260ms',
-                  }}
-                >
-                  <button
-                    onClick={() => onOpenRoom(r.id)}
-                    className="mono"
-                    style={{
-                      flex: 1,
-                      textAlign: 'left',
-                      fontSize: 11,
-                      color: 'var(--ink-60)',
-                      letterSpacing: '0.04em',
-                      background: 'transparent',
-                      cursor: 'pointer',
-                      padding: 0,
-                    }}
-                    onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--ink)')}
-                    onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--ink-60)')}
-                    title="Open room"
-                  >
-                    › {r.id.slice(0, 8)}…{r.id.slice(-4)}
-                    <span
-                      style={{
-                        marginLeft: 12,
-                        fontSize: 10,
-                        color: 'var(--ink-40)',
-                        letterSpacing: '0.08em',
-                      }}
-                    >
-                      {timeAgo(r.openedAt)}
-                    </span>
-                  </button>
-                  <button
-                    onClick={() => handleForget(r.id)}
-                    className="mono"
-                    title="Forget"
-                    style={{
-                      padding: '3px 8px',
-                      fontSize: 9,
-                      letterSpacing: '0.14em',
-                      color: 'var(--ink-40)',
-                      background: 'transparent',
-                      border: '1px solid rgba(255,255,255,0.06)',
-                      borderRadius: 5,
-                      cursor: 'pointer',
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.color = 'var(--ink)';
-                      e.currentTarget.style.borderColor = 'rgba(255,255,255,0.2)';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.color = 'var(--ink-40)';
-                      e.currentTarget.style.borderColor = 'rgba(255,255,255,0.06)';
-                    }}
-                  >
-                    ×
-                  </button>
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
-
-        {error && (
-          <p
-            className="mono"
-            style={{ marginTop: 16, fontSize: 11, color: 'var(--ink-40)' }}
-          >
-            {error}
-          </p>
-        )}
-      </div>
-    </div>
-  );
-}
-
 // ─── Single room view ──────────────────────────────────────────────────────
 
-function RoomView({ roomId, onBack }: { roomId: string; onBack: () => void }) {
+function RoomView({ roomId }: { roomId: string; onBack?: () => void }) {
   const parsedId = useMemo(() => extractRoomId(roomId), [roomId]);
   const [room, setRoom] = useState<EditorRoom | null>(null);
   const [loadError, setLoadError] = useState<{ code: Code | null; msg: string } | null>(null);
   const [wsStatus, setWsStatus] = useState<EditorWsStatus>('connecting');
-  const [copied, setCopied] = useState(false);
   const [running, setRunning] = useState(false);
   const [runResult, setRunResult] = useState<RunResult | null>(null);
   const [runError, setRunError] = useState<string | null>(null);
@@ -522,6 +1078,18 @@ function RoomView({ roomId, onBack }: { roomId: string; onBack: () => void }) {
     sendRef.current = (update: Uint8Array) => {
       handle.send({ kind: 'op', data: { payload: bytesToB64(update) } });
     };
+
+    // Code preset seed: если юзер — owner и комната ещё пустая (после
+    // короткой паузы для snapshot-sync), вставляем стартовый шаблон по
+    // языку. Race-safe: только owner делает seed (другие участники не
+    // могут попасть в комнату до того как owner её создал, поэтому к
+    // моменту их WS-open ytext уже непустой).
+    const seedTimer = window.setTimeout(() => {
+      if (!myUserId || room.ownerId !== myUserId) return;
+      if (ytext.length > 0) return;
+      const template = templateForLanguage(room.language);
+      if (template) ytext.insert(0, template);
+    }, 800);
     sendAwarenessRef.current = (update: Uint8Array) => {
       // Backend ws.go ловит kind='presence', envelope.data — opaque, мы
       // кладём { update: base64 } и backend re-broadcast'ит как
@@ -540,15 +1108,12 @@ function RoomView({ roomId, onBack }: { roomId: string; onBack: () => void }) {
         indentOnInput(),
         keymap.of([...defaultKeymap, ...historyKeymap]),
         oneDark,
+        // Hone Goland/VSCode-like override поверх oneDark — больше
+        // контраста, привычные цвета для keywords/types/strings.
+        syntaxHighlighting(honeCodeHighlight),
         langCompartment.of(langExt(room.language)),
         yCollab(ytext, awareness),
-        EditorView.theme({
-          '&': { height: '100%', fontSize: '13px' },
-          '.cm-scroller': { fontFamily: 'var(--font-mono)' },
-          // y-codemirror.next дёргает .cm-ySelectionCaret / .cm-ySelection
-          // и вытаскивает цвет из awareness.user.color через CSS-переменные —
-          // никаких extra стилей не нужно, всё уже работает.
-        }),
+        honeEditorTheme(),
       ],
     });
     const mount = document.getElementById('hone-cm-mount');
@@ -568,10 +1133,36 @@ function RoomView({ roomId, onBack }: { roomId: string; onBack: () => void }) {
       wsCloseRef.current = null;
       sendRef.current = null;
       sendAwarenessRef.current = null;
+      window.clearTimeout(seedTimer);
     };
   }, [room, myUserId]);
 
-  const shareURL = `${WEB_BASE_URL}/editor/${parsedId}`;
+  // shareURL вычисляется в CodeRoomRow (sidebar) для Copy URL / Open on web —
+  // эти actions перенесены туда из top-bar.
+
+  // handleFormat — re-indent + trim trailing whitespace через CM6 transactions.
+  // Не настоящий gofmt/prettier (для них нужен server-side runner с
+  // соответствующими тулзами), но даёт юзеру чистый indent + удаляет
+  // trailing spaces. Реальный formatter — отдельный backend ticket
+  // (Judge0 умеет запускать произвольные команды; добавим
+  // /api/v1/editor/format endpoint в следующей итерации).
+  const handleFormat = () => {
+    const view = viewRef.current;
+    if (!view) return;
+    const { state } = view;
+    // Trim trailing whitespace per-line.
+    const changes: Array<{ from: number; to: number; insert: string }> = [];
+    for (let i = 1; i <= state.doc.lines; i++) {
+      const line = state.doc.line(i);
+      const trimmed = line.text.replace(/[ \t]+$/, '');
+      if (trimmed !== line.text) {
+        changes.push({ from: line.from, to: line.to, insert: trimmed });
+      }
+    }
+    if (changes.length > 0) {
+      view.dispatch({ changes });
+    }
+  };
 
   const handleRun = async () => {
     if (!room) return;
@@ -613,12 +1204,15 @@ function RoomView({ roomId, onBack }: { roomId: string; onBack: () => void }) {
     }
   };
 
-  // ⌘↵ / Ctrl+Enter hotkey.
+  // ⌘↵ / Ctrl+Enter — run. ⌘⇧F — format.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
         e.preventDefault();
         void handleRun();
+      } else if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key.toLowerCase() === 'f') {
+        e.preventDefault();
+        handleFormat();
       }
     };
     window.addEventListener('keydown', onKey);
@@ -627,33 +1221,9 @@ function RoomView({ roomId, onBack }: { roomId: string; onBack: () => void }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [room]);
 
-  const handleShare = async () => {
-    try {
-      await navigator.clipboard.writeText(shareURL);
-      setCopied(true);
-      window.setTimeout(() => setCopied(false), 2000);
-    } catch {
-      /* ignore — clipboard permission может быть denied */
-    }
-  };
-
-  const handleOpenWeb = async () => {
-    const bridge = typeof window !== 'undefined' ? window.hone : undefined;
-    if (bridge) await bridge.shell.openExternal(shareURL);
-    else window.open(shareURL, '_blank');
-  };
-
-  const handleInvite = async () => {
-    if (!room) return;
-    try {
-      const invite = await createInvite(room.id);
-      await navigator.clipboard.writeText(invite.url);
-      setCopied(true);
-      window.setTimeout(() => setCopied(false), 2000);
-    } catch {
-      /* ignore */
-    }
-  };
+  // handleShare / handleOpenWeb / handleInvite — переехали в three-dots
+  // меню sidebar row'а (см. CodeRoomRow ниже). Здесь top-bar только
+  // FORMAT + RUN.
 
   return (
     <div
@@ -663,60 +1233,126 @@ function RoomView({ roomId, onBack }: { roomId: string; onBack: () => void }) {
         inset: 0,
         paddingTop: 80,
         paddingBottom: 120,
-        display: 'grid',
-        gridTemplateRows: 'auto 1fr',
+        background: '#000',
       }}
     >
-      <header
+      {/* Минимальный glass-chip top-bar в стиле SharedBoards. Back-arrow
+          слева, метаданные капсулой, actions справа — все на blur-стекле,
+          ничего не диктует layout (position: absolute). */}
+      {/* Top: только FORMAT + RUN. BACK / INVITE / ? / Open on web /
+          COPY URL ушли — back через ESC или click sidebar; invite не
+          нужен (URL → достаточно); Open on web / COPY URL — в three-dots
+          меню sidebar row'а; ? удалён. */}
+      <div
         style={{
-          padding: '10px 24px 14px',
+          position: 'absolute',
+          top: 14,
+          right: 24,
           display: 'flex',
           alignItems: 'center',
-          gap: 12,
-          borderBottom: '1px solid rgba(255,255,255,0.06)',
+          gap: 6,
+          zIndex: 25,
         }}
       >
-        <BackBtn onClick={onBack} />
-        <div className="mono" style={{ fontSize: 11, color: 'var(--ink-60)' }}>
-          {loadError
-            ? `error: ${loadErrorLabel(loadError)}`
-            : room
-              ? `${languageLabel(room.language)} · ${room.participants.length} participant${room.participants.length === 1 ? '' : 's'}`
-              : 'loading…'}
-        </div>
-        {room && (
-          <span
-            className="mono"
-            style={{
-              fontSize: 10,
-              letterSpacing: '.18em',
-              color: wsStatus === 'open' ? 'var(--ink)' : 'var(--red)',
-            }}
-          >
-            · {wsStatus.toUpperCase()}
-          </span>
-        )}
-        <div style={{ flex: 1 }} />
         {room && (
           <>
-            <Participants list={room.participants} />
-            <GhostBtn onClick={() => void handleInvite()}>INVITE</GhostBtn>
-            <GhostBtn onClick={() => void handleShare()} active={copied}>
-              {copied ? '✓ COPIED' : 'COPY URL'}
-            </GhostBtn>
-            <PrimaryBtn
+            <button
+              onClick={handleFormat}
+              title="Format / re-indent (⌘⇧F)"
+              className="focus-ring mono"
+              style={{
+                padding: '7px 14px',
+                fontSize: 11,
+                letterSpacing: '.14em',
+                background: 'rgba(20,20,22,0.78)',
+                backdropFilter: 'blur(16px)',
+                border: '1px solid rgba(255,255,255,0.08)',
+                color: 'var(--ink-60)',
+                borderRadius: 999,
+                cursor: 'pointer',
+                transition: 'color 160ms ease',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.color = 'var(--ink)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.color = 'var(--ink-60)';
+              }}
+            >
+              {'{ } FORMAT'}
+            </button>
+            <button
               onClick={() => void handleRun()}
               disabled={running}
               title="Run code (⌘↵)"
+              className="focus-ring"
+              style={{
+                padding: '7px 14px',
+                fontSize: 12,
+                fontWeight: 500,
+                background: 'rgba(255,255,255,0.92)',
+                color: '#000',
+                border: 'none',
+                borderRadius: 999,
+                cursor: running ? 'default' : 'pointer',
+                opacity: running ? 0.6 : 1,
+              }}
             >
               {running ? '⏵ RUNNING…' : '▶ RUN'}
-            </PrimaryBtn>
-            <PrimaryBtn onClick={() => void handleOpenWeb()}>Open on web ↗</PrimaryBtn>
+            </button>
           </>
         )}
-      </header>
+      </div>
 
-      <div id="hone-cm-mount" style={{ overflow: 'auto', background: '#0a0a0a' }} />
+      {/* LIVE chip + participants — снизу-справа, как в Boards. */}
+      {room && !loadError && (
+        <div
+          className="mono"
+          style={{
+            position: 'absolute',
+            bottom: 14,
+            right: 24,
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 8,
+            padding: '5px 12px',
+            background: 'rgba(20,20,22,0.78)',
+            backdropFilter: 'blur(16px)',
+            border: '1px solid rgba(255,255,255,0.08)',
+            borderRadius: 999,
+            fontSize: 10,
+            color: 'var(--ink-60)',
+            letterSpacing: '.06em',
+            zIndex: 25,
+            pointerEvents: 'none',
+          }}
+        >
+          <span style={{ color: 'var(--ink-40)' }}>
+            {languageLabel(room.language)}
+          </span>
+          <span style={{ opacity: 0.4 }}>·</span>
+          <span>
+            {room.participants.length} participant
+            {room.participants.length === 1 ? '' : 's'}
+          </span>
+          <span style={{ opacity: 0.4 }}>·</span>
+          <span
+            style={{
+              color:
+                wsStatus === 'open'
+                  ? 'rgba(127,212,155,0.95)'
+                  : wsStatus === 'connecting'
+                    ? 'var(--ink-40)'
+                    : '#ff6a6a',
+              fontWeight: 500,
+            }}
+          >
+            {wsStatus === 'open' ? 'LIVE' : wsStatus.toUpperCase()}
+          </span>
+        </div>
+      )}
+
+      <div id="hone-cm-mount" style={{ position: 'absolute', inset: 0, paddingTop: 60, overflow: 'auto', background: '#000' }} />
 
       {panelOpen && (
         <RunOutputPanel
@@ -891,46 +1527,6 @@ function RunOutputPanel({
   );
 }
 
-function Participants({ list }: { list: EditorRoom['participants'] }) {
-  if (list.length === 0) return null;
-  return (
-    <div style={{ display: 'flex', gap: 4 }}>
-      {list.slice(0, 4).map((p) => (
-        <span
-          key={p.userId}
-          title={`${p.username} · ${p.role}`}
-          className="mono"
-          style={{
-            width: 28,
-            height: 28,
-            borderRadius: 999,
-            display: 'grid',
-            placeItems: 'center',
-            background: 'rgba(255,255,255,0.08)',
-            color: 'var(--ink)',
-            fontSize: 10,
-            letterSpacing: '.04em',
-            border: '1px solid rgba(255,255,255,0.1)',
-          }}
-        >
-          {(p.username || '?').slice(0, 2).toUpperCase()}
-        </span>
-      ))}
-      {list.length > 4 && (
-        <span
-          className="mono"
-          style={{ fontSize: 10, color: 'var(--ink-40)', alignSelf: 'center' }}
-        >
-          +{list.length - 4}
-        </span>
-      )}
-    </div>
-  );
-}
-
-// userColor — детерминированный HSL по hash(userId). Все участники
-// видят одного и того же юзера одним цветом. Saturation/lightness в
-// узком диапазоне, чтобы цвета смотрелись на dark canvas (oneDark).
 function userColor(seed: string): string {
   let h = 0;
   for (let i = 0; i < seed.length; i++) {

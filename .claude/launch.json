@@ -16,9 +16,9 @@
       "runtimeExecutable": "/bin/sh",
       "runtimeArgs": [
         "-c",
-        "cd /Users/sedorofeevd/Desktop/druzya/frontend && VITE_USE_MSW=true exec npm run dev -- --host"
+        "cd /Users/sedorofeevd/Desktop/druzya/frontend && VITE_USE_MSW=true exec npm run dev -- --host --port 5174 --strictPort"
       ],
-      "port": 5173
+      "port": 5174
     },
     {
       "name": "backend-native",

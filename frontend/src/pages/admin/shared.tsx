@@ -25,11 +25,11 @@ export function Sidebar({ tab, setTab, pendingReports }: { tab: Tab; setTab: (t:
   return (
     <aside className="flex w-full flex-col border-b border-border bg-surface-1 lg:w-60 lg:border-b-0 lg:border-r">
       <div className="flex items-center gap-2.5 border-b border-border px-5 py-4">
-        <span className="grid h-7 w-7 place-items-center rounded-md bg-gradient-to-br from-accent to-cyan font-display text-sm font-extrabold text-text-primary">
+        <span className="grid h-7 w-7 place-items-center rounded-md border border-border-strong bg-surface-2 font-display text-sm font-extrabold text-text-primary">
           9
         </span>
         <span className="font-display text-sm font-bold text-text-primary">druz9 ADMIN</span>
-        <span className="ml-auto rounded-full bg-surface-3 px-1.5 py-0.5 font-mono text-[9px] text-text-muted">
+        <span className="ml-auto rounded-full bg-surface-2 px-1.5 py-0.5 font-mono text-[9px] text-text-muted">
           v3.2
         </span>
       </div>
@@ -40,21 +40,31 @@ export function Sidebar({ tab, setTab, pendingReports }: { tab: Tab; setTab: (t:
             onClick={() => setTab(it.id)}
             className={`flex items-center justify-between rounded-md px-3 py-1.5 text-[13px] ${
               it.id === tab
-                ? 'border-l-2 border-accent bg-accent/10 text-text-primary'
+                ? 'border-l-2 border-text-primary bg-text-primary/5 text-text-primary'
                 : 'text-text-secondary hover:bg-surface-2'
             }`}
           >
             <span>{it.label}</span>
             {it.chip && (
-              <span className={`rounded-full px-1.5 py-0.5 font-mono text-[9px] font-semibold ${it.chipColor ?? 'bg-surface-3 text-text-secondary'}`}>
+              <span className={`rounded-full px-1.5 py-0.5 font-mono text-[9px] font-semibold ${it.chipColor ?? 'bg-surface-2 text-text-secondary'}`}>
                 {it.chip}
               </span>
             )}
           </button>
         ))}
+        {/* External admin sub-routes — interviewer-application moderation
+            queue lives at its own URL because it's a public page (admin
+            actions audited via backend), not a Tab here. */}
+        <Link
+          to="/admin/interviewers"
+          className="mt-2 flex items-center justify-between rounded-md px-3 py-1.5 text-[13px] text-text-secondary hover:bg-surface-2"
+        >
+          <span>Заявки в интервьюеры</span>
+          <span className="font-mono text-[9px] text-text-muted">↗</span>
+        </Link>
         <Link
           to="/status"
-          className="mt-1 flex items-center justify-between rounded-md px-3 py-1.5 text-[13px] text-text-secondary hover:bg-surface-2"
+          className="flex items-center justify-between rounded-md px-3 py-1.5 text-[13px] text-text-secondary hover:bg-surface-2"
         >
           <span>Public status</span>
           <span className="font-mono text-[9px] text-text-muted">↗</span>

@@ -41,7 +41,7 @@ export function SkillsCard() {
             </div>
             <div className="h-1.5 overflow-hidden rounded-full bg-black/30">
               <div
-                className="h-full rounded-full bg-gradient-to-r from-cyan to-accent"
+                className="h-full rounded-full bg-text-primary"
                 style={{ width: `${s.value}%` }}
               />
             </div>
@@ -81,20 +81,22 @@ export function AchievementsCard() {
             title={a.title}
             className={cn(
               'flex aspect-square flex-col items-center justify-center gap-1 rounded-lg p-2',
+              // Phase-4: tier rarity shown by border opacity, not hue —
+              // legendary = bright hairline, rare = mid, common = subtle.
               a.tier === 'legendary'
-                ? 'bg-gradient-to-br from-warn to-pink'
+                ? 'bg-surface-2 border border-text-primary'
                 : a.tier === 'rare'
-                  ? 'bg-gradient-to-br from-cyan to-accent'
-                  : 'bg-gradient-to-br from-surface-3 to-surface-2',
+                  ? 'bg-surface-2 border border-border-strong'
+                  : 'bg-surface-1 border border-border',
             )}
           >
-            <Trophy className="h-5 w-5 text-white" />
-            <span className="line-clamp-1 font-mono text-[10px] font-semibold text-white">{a.title}</span>
+            <Trophy className="h-5 w-5 text-text-primary" />
+            <span className="line-clamp-1 font-mono text-[10px] font-medium text-text-primary">{a.title}</span>
           </div>
         ))}
       </div>
       {unlocked.length > 6 && (
-        <Link to="/achievements" className="font-mono text-[11px] text-cyan hover:underline">
+        <Link to="/achievements" className="font-mono text-[11px] text-text-primary hover:underline">
           Все ачивки ›
         </Link>
       )}
@@ -117,17 +119,17 @@ export function CohortCard() {
   if (!cohort) {
     return (
       <Card className="flex-col gap-0 overflow-hidden p-0" interactive={false}>
-        <div className="flex flex-col gap-2 bg-gradient-to-br from-accent via-pink to-cyan p-5">
+        <div className="flex flex-col gap-2 border-b border-border bg-surface-2 p-5">
           <div className="flex items-center gap-2">
-            <Shield className="h-4 w-4 text-white" />
-            <span className="font-mono text-[11px] font-semibold tracking-[0.08em] text-white">{t('cohort_label')}</span>
+            <Shield className="h-4 w-4 text-text-primary" />
+            <span className="font-mono text-[11px] font-medium tracking-[0.08em] text-text-primary">{t('cohort_label')}</span>
           </div>
-          <h3 className="font-display text-xl font-extrabold text-white">Без когорты</h3>
-          <p className="text-xs text-white/85">Найди команду — рейтинги, войны, общие награды.</p>
+          <h3 className="font-display text-xl font-extrabold text-text-primary">Без circle</h3>
+          <p className="text-xs text-text-secondary">Найди команду — рейтинги, войны, общие награды.</p>
         </div>
         <div className="flex items-center justify-between p-4">
-          <Link to="/cohort" className="font-mono text-[12px] font-semibold text-cyan hover:underline">
-            Найти когорту ›
+          <Link to="/cohort" className="font-mono text-[12px] font-medium text-text-primary hover:underline">
+            Найти circle ›
           </Link>
         </div>
       </Card>
@@ -135,19 +137,19 @@ export function CohortCard() {
   }
   return (
     <Card className="flex-col gap-0 overflow-hidden p-0" interactive={false}>
-      <div className="flex flex-col gap-2 bg-gradient-to-br from-accent via-pink to-cyan p-5">
+      <div className="flex flex-col gap-2 border-b border-border bg-surface-2 p-5">
         <div className="flex items-center gap-2">
-          <Shield className="h-4 w-4 text-white" />
-          <span className="font-mono text-[11px] font-semibold tracking-[0.08em] text-white">{t('cohort_label')}</span>
+          <Shield className="h-4 w-4 text-text-primary" />
+          <span className="font-mono text-[11px] font-medium tracking-[0.08em] text-text-primary">{t('cohort_label')}</span>
         </div>
-        <h3 className="font-display text-xl font-extrabold text-white">{cohort.name}</h3>
-        <p className="text-xs text-white/85">
+        <h3 className="font-display text-xl font-extrabold text-text-primary">{cohort.name}</h3>
+        <p className="text-xs text-text-secondary">
           {(cohort.members?.length ?? 0)} участников · ELO {cohort.cohort_elo}
         </p>
       </div>
       <div className="flex items-center justify-between p-4">
-        <Link to="/cohort" className="font-mono text-[12px] font-semibold text-cyan hover:underline">
-          Открыть когорту ›
+        <Link to="/cohort" className="font-mono text-[12px] font-medium text-text-primary hover:underline">
+          Открыть circle ›
         </Link>
       </div>
     </Card>
@@ -213,7 +215,7 @@ export function Leaderboard() {
               key={s}
               className={cn(
                 'h-7 rounded px-3 text-[12px] font-semibold leading-7 transition-colors',
-                scope === s ? 'bg-accent text-text-primary' : 'text-text-secondary',
+                scope === s ? 'bg-text-primary text-bg' : 'text-text-secondary',
               )}
             >
               {t(`scopes.${s}`)}
@@ -234,7 +236,7 @@ export function Leaderboard() {
         {isError && (
           <div className="flex items-center justify-between px-5 py-3 text-[12px] text-danger">
             <span>{t('load_failed')}</span>
-            <button onClick={() => refetch()} className="font-mono text-[12px] text-accent hover:underline">
+            <button onClick={() => refetch()} className="font-mono text-[12px] text-text-primary hover:underline">
               {t('retry')}
             </button>
           </div>
@@ -261,7 +263,7 @@ export function Leaderboard() {
               </div>
               <span className="text-right font-mono text-[13px] font-semibold text-text-primary">{r.lp}</span>
               <span className="text-right font-mono text-[12px] text-text-secondary">{r.wl}</span>
-              <span className="text-right font-mono text-[12px] text-cyan">{r.wr}</span>
+              <span className="text-right font-mono text-[12px] text-text-secondary">{r.wr}</span>
               <span
                 className={cn(
                   'text-right font-mono text-[12px] font-semibold',

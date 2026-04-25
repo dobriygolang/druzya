@@ -21,15 +21,14 @@
 // Safe-area: paddingBottom uses env(safe-area-inset-bottom) so the bar
 // stays above the iPhone home indicator.
 
-import { Home, Swords, Map as MapIcon, User, Play, Loader2 } from 'lucide-react'
+import { Home, Map as MapIcon, User, Play, Loader2 } from 'lucide-react'
 import { NavLink, useLocation, useNavigate } from 'react-router-dom'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { cn } from '../lib/cn'
 
 const TABS = [
-  { to: '/sanctum', icon: Home, label: 'sanctum' },
-  { to: '/arena', icon: Swords, label: 'arena' },
+  { to: '/arena', icon: Home, label: 'home' },
   { to: '/atlas', icon: MapIcon, label: 'atlas' },
   { to: '/profile', icon: User, label: 'profile' },
 ] as const
@@ -124,19 +123,21 @@ export function MobileBottomNav({ showLabels = false, unreadCount = 0 }: MobileB
         />
       </div>
 
+      {/* Phase-2: dropped the redundant Sanctum tab. Layout is now
+          [home] [atlas] [FAB] [profile] across a 5-col grid (one column
+          left blank to keep the FAB visually centered). */}
       <div className="grid grid-cols-5 items-center pt-2 pb-1.5">
         {TABS.slice(0, 2).map((t) => (
           <Tab key={t.to} {...t} showLabels={showLabels} />
         ))}
-        {/* Centre column reserved for the FAB; we still render an empty
-            slot with the «match» label for grid alignment when labels are on. */}
+        {/* Centre column reserved for the FAB. */}
         <div aria-hidden="true" className={cn('flex justify-center', showLabels && 'pt-4')}>
           {showLabels && (
             <span className="font-mono text-[9px] uppercase tracking-wider text-text-muted">{t('mobileNav.match')}</span>
           )}
         </div>
-        <Tab {...TABS[2]} showLabels={showLabels} />
-        <Tab {...TABS[3]} showLabels={showLabels} badge={unreadCount} unreadAria={t('mobileNav.unread', { count: unreadCount })} />
+        <div aria-hidden="true" />
+        <Tab {...TABS[2]} showLabels={showLabels} badge={unreadCount} unreadAria={t('mobileNav.unread', { count: unreadCount })} />
       </div>
     </nav>
   )
@@ -160,7 +161,7 @@ function Tab({
   return (
     <NavLink
       to={to}
-      end={to === '/sanctum'}
+      end={to === '/arena'}
       onClick={() => {
         if ('vibrate' in navigator) {
           try {

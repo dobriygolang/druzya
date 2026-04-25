@@ -623,3 +623,83 @@ textarea {
   border-top: 1px solid rgba(255,255,255,0.08);
   margin: 20px 0;
 }
+
+/* ── tldraw chrome strip & Hone-palette overrides ─────────────────────────
+   hideUi={true} убирает toolbar/menu, но tldraw всё равно держит свои
+   focus-outline и watermark-кнопку. Эти rule'ы догоняют то, что hideUi
+   не гасит, и подгоняют canvas-bg под наш чёрный фон. */
+.hone-tldraw-mount .tl-container {
+  background: transparent !important;
+}
+.hone-tldraw-mount .tlui-debug-panel,
+.hone-tldraw-mount .tlui-watermark,
+.hone-tldraw-mount .tl-watermark_SEE-LICENSE {
+  display: none !important;
+}
+.hone-tldraw-mount .tl-canvas,
+.hone-tldraw-mount .tl-background {
+  background: #000 !important;
+}
+/* tldraw фокусирует canvas с ring'ом — у нас глобально no-ring style. */
+.hone-tldraw-mount :focus-visible {
+  outline: none !important;
+}
+
+/* ── Excalidraw chrome strip & Hone-palette overrides ─────────────────────
+   Excalidraw не имеет hideUi-флага, прячем default UI через CSS.
+   Library/sidebar — НЕ скрываем (юзер просил оставить пресеты Redis,
+   Postgres и т.д.). Hone toolbar открывает library через
+   excalidrawAPI.toggleSidebar({name:'library'}). */
+.hone-excalidraw-mount .excalidraw {
+  --color-canvas-background: #000;
+}
+.hone-excalidraw-mount .excalidraw .layer-ui__wrapper__top-right,
+.hone-excalidraw-mount .excalidraw .App-toolbar,
+.hone-excalidraw-mount .excalidraw .App-menu_top,
+.hone-excalidraw-mount .excalidraw .App-menu__left,
+.hone-excalidraw-mount .excalidraw .App-toolbar-content,
+.hone-excalidraw-mount .excalidraw .Island.App-menu__left,
+.hone-excalidraw-mount .excalidraw .ToolIcon__keybinding,
+.hone-excalidraw-mount .excalidraw .HintViewer,
+.hone-excalidraw-mount .excalidraw .help-icon,
+.hone-excalidraw-mount .excalidraw .scroll-back-to-content,
+.hone-excalidraw-mount .excalidraw .undo-redo-buttons,
+.hone-excalidraw-mount .excalidraw .zoom-actions,
+.hone-excalidraw-mount .excalidraw section[aria-labelledby="canvas-actions-title"],
+.hone-excalidraw-mount .excalidraw .layer-ui__wrapper__footer-left,
+.hone-excalidraw-mount .excalidraw .layer-ui__wrapper__footer-center,
+.hone-excalidraw-mount .excalidraw .layer-ui__wrapper__footer-right,
+.hone-excalidraw-mount .excalidraw .layer-ui__wrapper__footer,
+.hone-excalidraw-mount .excalidraw .Stats,
+.hone-excalidraw-mount .excalidraw .welcome-screen-center,
+.hone-excalidraw-mount .excalidraw .welcome-screen-decor,
+.hone-excalidraw-mount .excalidraw .ContextMenu__option__shortcut {
+  display: none !important;
+}
+/* Чистое чёрное полотно. !important чтобы перебить --color-canvas-background
+   custom property и любую default-bg от Excalidraw. */
+.hone-excalidraw-mount .excalidraw,
+.hone-excalidraw-mount .excalidraw .excalidraw-container,
+.hone-excalidraw-mount .excalidraw canvas {
+  background: #000 !important;
+}
+.hone-excalidraw-mount .excalidraw .Island {
+  box-shadow: none !important;
+}
+/* Library sidebar — оставляем функциональным, но подгоняем под Hone
+   палитру (тёмное стекло, никаких bright UI элементов). */
+.hone-excalidraw-mount .excalidraw .layer-ui__wrapper__sidebar {
+  background: rgba(20, 20, 22, 0.92) !important;
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  border-left: 1px solid rgba(255, 255, 255, 0.08);
+  color: var(--ink) !important;
+}
+.hone-excalidraw-mount .excalidraw .Sidebar__header,
+.hone-excalidraw-mount .excalidraw .library-menu-control-buttons,
+.hone-excalidraw-mount .excalidraw .library-menu-browse-button {
+  color: var(--ink-90) !important;
+}
+.hone-excalidraw-mount .excalidraw .library-menu-items-container__items {
+  background: transparent !important;
+}

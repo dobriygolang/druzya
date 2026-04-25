@@ -112,23 +112,29 @@ const Tab = React.forwardRef<HTMLButtonElement, TabProps>(
 
     const active = value === id;
 
+    // Phase-3: Hone-aligned tab styles. No violet accent, no glow.
+    // - pills: active = white text on subtle ink-tint surface (the
+    //   "press here" affordance), idle = secondary ink.
+    // - underline: active = ink underline (1px hairline, not 2px accent).
+    // - segmented: active = surface-2, idle = transparent. Track itself
+    //   is hairline-bordered so the segments read as one unit.
     const styles: Record<TabsVariant, string> = {
       pills: cn(
-        'px-3 h-9 rounded-md text-[13px] font-semibold transition-colors',
+        'px-3 h-9 rounded-full text-[13px] font-medium transition-colors',
         active
-          ? 'bg-accent text-text-primary shadow-glow'
-          : 'text-text-secondary hover:text-text-primary hover:bg-surface-2',
+          ? 'bg-text-primary/10 text-text-primary'
+          : 'text-text-secondary hover:text-text-primary hover:bg-text-primary/5',
       ),
       underline: cn(
-        'relative h-10 px-1 text-[14px] font-semibold transition-colors',
+        'relative h-10 px-1 text-[14px] font-medium transition-colors',
         active
-          ? 'text-text-primary after:absolute after:left-0 after:right-0 after:-bottom-px after:h-0.5 after:bg-accent'
+          ? 'text-text-primary after:absolute after:left-0 after:right-0 after:-bottom-px after:h-px after:bg-text-primary'
           : 'text-text-muted hover:text-text-primary',
       ),
       segmented: cn(
-        'px-3 h-8 rounded-md text-[13px] font-semibold transition-colors',
+        'px-3 h-8 rounded-md text-[13px] font-medium transition-colors',
         active
-          ? 'bg-surface-3 text-text-primary'
+          ? 'bg-surface-2 text-text-primary'
           : 'text-text-secondary hover:text-text-primary',
       ),
     };
@@ -144,7 +150,7 @@ const Tab = React.forwardRef<HTMLButtonElement, TabProps>(
         tabIndex={active ? 0 : -1}
         onClick={() => onChange(id)}
         className={cn(
-          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent rounded-md',
+          'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-text-primary/40 rounded-md',
           styles[variant],
           className,
         )}

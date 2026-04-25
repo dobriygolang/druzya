@@ -89,7 +89,7 @@ export default function AuthCallbackYandexPage() {
         ) {
           return
         }
-        navigate(isNewUser ? '/onboarding' : '/sanctum', { replace: true })
+        navigate(isNewUser ? '/onboarding' : '/arena', { replace: true })
       } catch (e) {
         if (cancelled) return
         const msg = e instanceof Error ? e.message : String(e)

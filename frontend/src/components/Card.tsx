@@ -7,18 +7,24 @@ import { cn } from '../lib/cn';
 // (truncate / break-words) пушит саму карточку шире, чем заданная ширина
 // родителя — отсюда вылезающие "контент не помещается в блок".
 // `overflow-hidden` сохраняет border-radius при overflow в auto-children.
+// Phase-3 ADR-001 — Hone-aligned card variants.
+//
+// Hone surfaces are flat: black bg + 1px hairline border. No gradient
+// `from-surface-3 to-surface-1` (the violet-tinted surface-3 is gone),
+// no `shadow-glow` (violet glow), no `ring-accent`. Selection/interactive
+// states show only via border opacity bump.
 const card = cva(['relative flex min-w-0 flex-col overflow-hidden text-text-primary'], {
   variants: {
     variant: {
-      default: 'bg-surface-1 border border-border rounded-xl shadow-card',
-      elevated: 'bg-surface-2 border border-border-strong rounded-xl shadow-card',
-      gradient:
-        'rounded-xl border border-border-strong bg-gradient-to-br from-surface-3 to-surface-1 shadow-card',
-      selected:
-        'bg-surface-2 border border-accent rounded-xl shadow-glow ring-1 ring-accent/40',
+      default: 'bg-surface-1 border border-border rounded-xl',
+      elevated: 'bg-surface-2 border border-border-strong rounded-xl',
+      // `gradient` was the violet→cyan brand surface; collapsed to a
+      // slightly lifted plain surface so existing callsites still work.
+      gradient: 'bg-surface-2 border border-border-strong rounded-xl',
+      selected: 'bg-surface-2 border border-text-primary rounded-xl',
     },
     interactive: {
-      true: 'transition-all duration-150 hover:border-border-strong hover:shadow-glow cursor-pointer',
+      true: 'transition-colors duration-150 hover:border-border-strong cursor-pointer',
       false: '',
     },
     padding: {

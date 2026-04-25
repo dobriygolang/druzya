@@ -75,7 +75,7 @@ var (
 // shutdown-coordination'у управлять ими общо (см. Module-level хуки в
 // будущем для compaction-cron'ов).
 func NewYjsPersistence(d Deps) *Module {
-	h := &yjsPersistenceHandler{pool: d.Pool, log: d.Log}
+	h := &yjsPersistenceHandler{pool: d.Pool, log: d.Log, broker: d.SyncEventBroker}
 	return &Module{
 		MountREST: func(r chi.Router) {
 			for _, k := range []yjsKind{yjsKindNotes, yjsKindWhiteboards} {
@@ -98,8 +98,9 @@ func NewYjsPersistence(d Deps) *Module {
 }
 
 type yjsPersistenceHandler struct {
-	pool *pgxpool.Pool
-	log  *slog.Logger
+	pool   *pgxpool.Pool
+	log    *slog.Logger
+	broker *SyncEventBroker // optional; nil = no realtime push
 }
 
 // ─── helpers ──────────────────────────────────────────────────────────────
@@ -209,6 +210,12 @@ func (h *yjsPersistenceHandler) appendOp(w http.ResponseWriter, r *http.Request,
 	).Scan(&resp.Seq, &resp.CreatedAt); err != nil {
 		h.serverError(w, r, "append.insert", err, uid)
 		return
+	}
+	// Phase C-6.2 — fan-out на other devices этого юзера. Origin device
+	// сам себе не получает (broker filter).
+	if h.broker != nil {
+		h.broker.PublishYjsAppend(uid, k.URLSlug, parentID.String(),
+			sharedMw.DeviceIDFromContext(r.Context()))
 	}
 	writePubJSON(w, http.StatusOK, resp)
 }
@@ -367,6 +374,10 @@ func (h *yjsPersistenceHandler) compactOp(w http.ResponseWriter, r *http.Request
 		return
 	}
 
+	if h.broker != nil {
+		h.broker.PublishYjsAppend(uid, k.URLSlug, parentID.String(),
+			sharedMw.DeviceIDFromContext(r.Context()))
+	}
 	writePubJSON(w, http.StatusOK, yjsCompactResponse{
 		Seq:     newSeq,
 		Removed: cmd.RowsAffected(),

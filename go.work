@@ -5,7 +5,6 @@ use (
 	./backend/services/achievements
 	./backend/services/admin
 	./backend/services/ai_mock
-	./backend/services/ai_native
 	./backend/services/arena
 	./backend/services/auth
 	./backend/services/circles
@@ -27,7 +26,6 @@ use (
 	./backend/services/profile
 	./backend/services/rating
 	./backend/services/review
-	./backend/services/season
 	./backend/services/slot
 	./backend/services/subscription
 	./backend/services/tg_coach

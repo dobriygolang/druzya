@@ -2,10 +2,16 @@ package services
 
 import (
 	"context"
+	"encoding/json"
+	"errors"
 	"fmt"
+	"log/slog"
+	"net/http"
 
 	"druz9/shared/generated/pb/druz9/v1/druz9v1connect"
+	sharedMw "druz9/shared/pkg/middleware"
 	whiteboardApp "druz9/whiteboard_rooms/app"
+	whiteboardDomain "druz9/whiteboard_rooms/domain"
 	whiteboardInfra "druz9/whiteboard_rooms/infra"
 	whiteboardPorts "druz9/whiteboard_rooms/ports"
 
@@ -55,6 +61,12 @@ func NewWhiteboardRooms(d Deps) *Module {
 			r.Get("/whiteboard/room", transcoder.ServeHTTP)
 			r.Get("/whiteboard/room/{room_id}", transcoder.ServeHTTP)
 			r.Delete("/whiteboard/room/{room_id}", transcoder.ServeHTTP)
+			// Visibility flip + read — отдельный REST endpoint без proto
+			// regen (proto-добавление поля Room.visibility — отдельный
+			// инкремент; пока экспозируем через JSON).
+			vis := &visibilityHandler{rooms: rooms, log: d.Log}
+			r.Get("/whiteboard/room/{room_id}/visibility", vis.get)
+			r.Post("/whiteboard/room/{room_id}/visibility", vis.set)
 		},
 		MountWS: func(ws chi.Router) {
 			ws.Get("/whiteboard/{roomId}", wsh.Handle)
@@ -63,4 +75,100 @@ func NewWhiteboardRooms(d Deps) *Module {
 			func(ctx context.Context) error { hub.CloseAll(); return nil },
 		},
 	}
+}
+
+// ─── Visibility REST handler ──────────────────────────────────────────────
+//
+// Минимальный REST поверх RoomRepo для чтения / переключения visibility.
+// Owner-check: caller user_id == room.OwnerID. Иначе 403. Этот handler
+// существует отдельно (а не как часть Connect-RPC сервиса) чтобы не
+// тащить proto-regen ради одного boolean-флага.
+
+type visibilityHandler struct {
+	rooms whiteboardDomain.RoomRepo
+	log   *slog.Logger
+}
+
+type visibilityResponse struct {
+	Visibility string `json:"visibility"`
+}
+
+type setVisibilityRequest struct {
+	Visibility string `json:"visibility"`
+}
+
+func (h *visibilityHandler) get(w http.ResponseWriter, r *http.Request) {
+	uid, ok := sharedMw.UserIDFromContext(r.Context())
+	if !ok {
+		http.Error(w, `{"error":{"code":"unauthenticated"}}`, http.StatusUnauthorized)
+		return
+	}
+	roomID, err := uuid.Parse(chi.URLParam(r, "room_id"))
+	if err != nil {
+		http.Error(w, `{"error":{"code":"bad_id"}}`, http.StatusBadRequest)
+		return
+	}
+	room, err := h.rooms.Get(r.Context(), roomID)
+	if err != nil {
+		if errors.Is(err, whiteboardDomain.ErrNotFound) {
+			http.Error(w, `{"error":{"code":"not_found"}}`, http.StatusNotFound)
+			return
+		}
+		h.log.ErrorContext(r.Context(), "visibility.get", slog.Any("err", err),
+			slog.String("user_id", uid.String()))
+		http.Error(w, `{"error":{"code":"internal"}}`, http.StatusInternalServerError)
+		return
+	}
+	// Read доступен любому участнику (а не только owner'у) — UI правильно
+	// показывает badge на чужих rooms тоже. Однако setVisibility — только
+	// owner. Здесь просто проверяем что юзер аутентифицирован.
+	_ = uid
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(visibilityResponse{Visibility: string(room.Visibility)})
+}
+
+func (h *visibilityHandler) set(w http.ResponseWriter, r *http.Request) {
+	uid, ok := sharedMw.UserIDFromContext(r.Context())
+	if !ok {
+		http.Error(w, `{"error":{"code":"unauthenticated"}}`, http.StatusUnauthorized)
+		return
+	}
+	roomID, err := uuid.Parse(chi.URLParam(r, "room_id"))
+	if err != nil {
+		http.Error(w, `{"error":{"code":"bad_id"}}`, http.StatusBadRequest)
+		return
+	}
+	var body setVisibilityRequest
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		http.Error(w, `{"error":{"code":"bad_body"}}`, http.StatusBadRequest)
+		return
+	}
+	v := whiteboardDomain.Visibility(body.Visibility)
+	if v != whiteboardDomain.VisibilityPrivate && v != whiteboardDomain.VisibilityShared {
+		http.Error(w, `{"error":{"code":"bad_visibility"}}`, http.StatusBadRequest)
+		return
+	}
+
+	room, err := h.rooms.Get(r.Context(), roomID)
+	if err != nil {
+		if errors.Is(err, whiteboardDomain.ErrNotFound) {
+			http.Error(w, `{"error":{"code":"not_found"}}`, http.StatusNotFound)
+			return
+		}
+		h.log.ErrorContext(r.Context(), "visibility.set: get", slog.Any("err", err))
+		http.Error(w, `{"error":{"code":"internal"}}`, http.StatusInternalServerError)
+		return
+	}
+	if room.OwnerID != uid {
+		http.Error(w, `{"error":{"code":"forbidden","message":"only owner can change visibility"}}`,
+			http.StatusForbidden)
+		return
+	}
+	if err := h.rooms.SetVisibility(r.Context(), roomID, v); err != nil {
+		h.log.ErrorContext(r.Context(), "visibility.set: write", slog.Any("err", err))
+		http.Error(w, `{"error":{"code":"internal"}}`, http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(visibilityResponse{Visibility: string(v)})
 }

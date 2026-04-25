@@ -349,7 +349,7 @@ function NodeShape({
           cy={y}
           r={r + 6}
           fill="none"
-          stroke="#22D3EE"
+          stroke="#FFFFFF"
           strokeWidth={selected ? 3 : 2}
           opacity={selected ? 0.9 : 0.55}
         />
@@ -618,7 +618,7 @@ function MiniMap({
           width={viewW}
           height={viewH}
           fill="none"
-          stroke="#22D3EE"
+          stroke="#FFFFFF"
           strokeWidth={6}
           opacity={0.8}
         />
@@ -721,15 +721,18 @@ export function GraphCanvas({
           preserveAspectRatio="xMidYMid meet"
         >
           <defs>
+            {/* Phase-4: backdrop and centerSigil gradients collapsed to
+                monochrome ink. Canvas reads as one material; node intensity
+                is the only "color" cue. */}
             <radialGradient id="atlasBg" cx="50%" cy="50%" r="50%">
-              <stop offset="0%" stopColor="#2D1B4D" stopOpacity="0.55" />
-              <stop offset="60%" stopColor="#14182B" stopOpacity="0.2" />
-              <stop offset="100%" stopColor="#0A0E1A" stopOpacity="0" />
+              <stop offset="0%" stopColor="#FFFFFF" stopOpacity="0.06" />
+              <stop offset="60%" stopColor="#FFFFFF" stopOpacity="0.02" />
+              <stop offset="100%" stopColor="#000000" stopOpacity="0" />
             </radialGradient>
             <radialGradient id="centerSigilGrad" cx="35%" cy="35%" r="75%">
-              <stop offset="0%" stopColor="#A78BFA" />
-              <stop offset="60%" stopColor="#7C5CFF" />
-              <stop offset="100%" stopColor="#22D3EE" />
+              <stop offset="0%" stopColor="#FFFFFF" />
+              <stop offset="60%" stopColor="#A6A6A6" />
+              <stop offset="100%" stopColor="#595959" />
             </radialGradient>
           </defs>
           <circle cx={CENTER} cy={CENTER} r={RADIUS_OUTER + 80} fill="url(#atlasBg)" />

@@ -51,19 +51,16 @@ func newTestDailyServer(_ *testing.T,
 	skills domain.SkillRepo,
 	katas domain.KataRepo,
 	streaks domain.StreakRepo,
-	cal domain.CalendarRepo,
 	now time.Time,
 	passed bool,
 ) *DailyServer {
 	log := silentLogger()
 	h := NewHandler(Handler{
-		GetKata:        &app.GetKata{Skills: skills, Tasks: tasks, Katas: katas, Now: fixedNow(now)},
-		GetKataBySlug:  &app.GetKataBySlug{Tasks: tasks},
-		SubmitKata:     &app.SubmitKata{Tasks: tasks, Katas: katas, Streaks: streaks, Judge: fakeJudge{passed: passed}, Bus: noopBus{}, Log: log, Now: fixedNow(now)},
-		GetStreak:      &app.GetStreak{Streaks: streaks, Katas: katas, Now: fixedNow(now)},
-		GetCalendar:    &app.GetCalendar{Cal: cal, Now: fixedNow(now)},
-		UpsertCalendar: &app.UpsertCalendar{Cal: cal, Now: fixedNow(now)},
-		Log:            log,
+		GetKata:       &app.GetKata{Skills: skills, Tasks: tasks, Katas: katas, Now: fixedNow(now)},
+		GetKataBySlug: &app.GetKataBySlug{Tasks: tasks},
+		SubmitKata:    &app.SubmitKata{Tasks: tasks, Katas: katas, Streaks: streaks, Judge: fakeJudge{passed: passed}, Bus: noopBus{}, Log: log, Now: fixedNow(now)},
+		GetStreak:     &app.GetStreak{Streaks: streaks, Katas: katas, Now: fixedNow(now)},
+		Log:           log,
 	})
 	return NewDailyServer(h)
 }
@@ -96,7 +93,7 @@ func TestDailyServer_GetKata_Happy(t *testing.T) {
 	katas.EXPECT().GetOrAssign(gomock.Any(), uid, today, task.ID, gomock.Any(), gomock.Any()).
 		Return(domain.Assignment{UserID: uid, KataDate: today, TaskID: task.ID}, true, nil)
 
-	srv := newTestDailyServer(t, tasks, skills, katas, nil, nil, now, true)
+	srv := newTestDailyServer(t, tasks, skills, katas, nil, now, true)
 	ctx := sharedMw.WithUserID(context.Background(), uid)
 	resp, err := srv.GetKata(ctx, connect.NewRequest(&pb.GetDailyKataRequest{}))
 	if err != nil {
@@ -115,7 +112,7 @@ func TestDailyServer_GetKata_Unauthenticated(t *testing.T) {
 	ctrl := gomock.NewController(t)
 	srv := newTestDailyServer(t,
 		mocks.NewMockTaskRepo(ctrl), mocks.NewMockSkillRepo(ctrl), mocks.NewMockKataRepo(ctrl),
-		nil, nil, time.Now().UTC(), true)
+		nil, time.Now().UTC(), true)
 	_, err := srv.GetKata(context.Background(), connect.NewRequest(&pb.GetDailyKataRequest{}))
 	var ce *connect.Error
 	if !errors.As(err, &ce) || ce.Code() != connect.CodeUnauthenticated {
@@ -135,7 +132,7 @@ func TestDailyServer_GetKata_NoTasks_Internal(t *testing.T) {
 	}, nil)
 	tasks.EXPECT().ListActiveBySectionDifficulty(gomock.Any(), gomock.Any(), gomock.Any()).
 		Return(nil, nil)
-	srv := newTestDailyServer(t, tasks, skills, katas, nil, nil, time.Now().UTC(), true)
+	srv := newTestDailyServer(t, tasks, skills, katas, nil, time.Now().UTC(), true)
 	ctx := sharedMw.WithUserID(context.Background(), uid)
 	_, err := srv.GetKata(ctx, connect.NewRequest(&pb.GetDailyKataRequest{}))
 	var ce *connect.Error
@@ -158,7 +155,7 @@ func TestDailyServer_GetStreak_Happy(t *testing.T) {
 		{Date: today, TaskID: uuid.New(), Passed: &pass},
 	}, nil)
 
-	srv := newTestDailyServer(t, nil, nil, katas, streaks, nil, now, true)
+	srv := newTestDailyServer(t, nil, nil, katas, streaks, now, true)
 	ctx := sharedMw.WithUserID(context.Background(), uid)
 	resp, err := srv.GetStreak(ctx, connect.NewRequest(&pb.GetStreakRequest{}))
 	if err != nil {
@@ -184,7 +181,7 @@ func TestDailyServer_GetStreak_NewUser(t *testing.T) {
 	streaks.EXPECT().Get(gomock.Any(), uid).Return(domain.StreakState{}, domain.ErrNotFound)
 	katas.EXPECT().HistoryLast30(gomock.Any(), uid, today).Return([]domain.HistoryEntry{}, nil)
 
-	srv := newTestDailyServer(t, nil, nil, katas, streaks, nil, now, true)
+	srv := newTestDailyServer(t, nil, nil, katas, streaks, now, true)
 	ctx := sharedMw.WithUserID(context.Background(), uid)
 	resp, err := srv.GetStreak(ctx, connect.NewRequest(&pb.GetStreakRequest{}))
 	if err != nil {
@@ -200,7 +197,7 @@ func TestDailyServer_GetStreak_NewUser(t *testing.T) {
 
 func TestDailyServer_SubmitKata_Unauthenticated(t *testing.T) {
 	t.Parallel()
-	srv := newTestDailyServer(t, nil, nil, nil, nil, nil, time.Now().UTC(), true)
+	srv := newTestDailyServer(t, nil, nil, nil, nil, time.Now().UTC(), true)
 	_, err := srv.SubmitKata(context.Background(),
 		connect.NewRequest(&pb.SubmitKataRequest{Code: "x", Language: pb.Language_LANGUAGE_GO}))
 	var ce *connect.Error
@@ -211,7 +208,7 @@ func TestDailyServer_SubmitKata_Unauthenticated(t *testing.T) {
 
 func TestDailyServer_SubmitKata_EmptyCode_InvalidArgument(t *testing.T) {
 	t.Parallel()
-	srv := newTestDailyServer(t, nil, nil, nil, nil, nil, time.Now().UTC(), true)
+	srv := newTestDailyServer(t, nil, nil, nil, nil, time.Now().UTC(), true)
 	ctx := sharedMw.WithUserID(context.Background(), uuid.New())
 	_, err := srv.SubmitKata(ctx,
 		connect.NewRequest(&pb.SubmitKataRequest{Code: "", Language: pb.Language_LANGUAGE_GO}))
@@ -239,7 +236,7 @@ func TestDailyServer_SubmitKata_Happy(t *testing.T) {
 	streaks.EXPECT().Get(gomock.Any(), uid).Return(domain.StreakState{}, nil)
 	streaks.EXPECT().Update(gomock.Any(), uid, gomock.Any()).Return(nil)
 
-	srv := newTestDailyServer(t, tasks, nil, katas, streaks, nil, now, true)
+	srv := newTestDailyServer(t, tasks, nil, katas, streaks, now, true)
 	ctx := sharedMw.WithUserID(context.Background(), uid)
 	resp, err := srv.SubmitKata(ctx,
 		connect.NewRequest(&pb.SubmitKataRequest{Code: "func main(){}", Language: pb.Language_LANGUAGE_GO}))
@@ -267,57 +264,13 @@ func TestDailyServer_SubmitKata_AlreadySubmitted(t *testing.T) {
 		{Date: today, TaskID: uuid.New(), Passed: &pass},
 	}, nil)
 
-	srv := newTestDailyServer(t, nil, nil, katas, streaks, nil, now, true)
+	srv := newTestDailyServer(t, nil, nil, katas, streaks, now, true)
 	ctx := sharedMw.WithUserID(context.Background(), uid)
 	_, err := srv.SubmitKata(ctx,
 		connect.NewRequest(&pb.SubmitKataRequest{Code: "x", Language: pb.Language_LANGUAGE_GO}))
 	var ce *connect.Error
 	if !errors.As(err, &ce) || ce.Code() != connect.CodeAlreadyExists {
 		t.Fatalf("expected AlreadyExists, got %v", err)
-	}
-}
-
-func TestDailyServer_GetCalendar_Happy(t *testing.T) {
-	t.Parallel()
-	ctrl := gomock.NewController(t)
-	cal := mocks.NewMockCalendarRepo(ctrl)
-	uid := uuid.New()
-	now := time.Date(2030, 6, 4, 12, 0, 0, 0, time.UTC)
-	today := now.Truncate(24 * time.Hour)
-	cal.EXPECT().GetActive(gomock.Any(), uid, today).Return(domain.InterviewCalendar{
-		ID:            uuid.New(),
-		UserID:        uid,
-		CompanyID:     uuid.New(),
-		Role:          "be",
-		InterviewDate: today.AddDate(0, 0, 14),
-	}, nil)
-
-	srv := newTestDailyServer(t, nil, nil, nil, nil, cal, now, true)
-	ctx := sharedMw.WithUserID(context.Background(), uid)
-	resp, err := srv.GetCalendar(ctx, connect.NewRequest(&pb.GetCalendarRequest{}))
-	if err != nil {
-		t.Fatalf("unexpected: %v", err)
-	}
-	if resp.Msg.GetRole() != "be" {
-		t.Fatalf("got %+v", resp.Msg)
-	}
-}
-
-func TestDailyServer_GetCalendar_NewUser_NotFound(t *testing.T) {
-	t.Parallel()
-	ctrl := gomock.NewController(t)
-	cal := mocks.NewMockCalendarRepo(ctrl)
-	uid := uuid.New()
-	now := time.Date(2030, 6, 4, 12, 0, 0, 0, time.UTC)
-	today := now.Truncate(24 * time.Hour)
-	cal.EXPECT().GetActive(gomock.Any(), uid, today).Return(domain.InterviewCalendar{}, domain.ErrNotFound)
-
-	srv := newTestDailyServer(t, nil, nil, nil, nil, cal, now, true)
-	ctx := sharedMw.WithUserID(context.Background(), uid)
-	_, err := srv.GetCalendar(ctx, connect.NewRequest(&pb.GetCalendarRequest{}))
-	var ce *connect.Error
-	if !errors.As(err, &ce) || ce.Code() != connect.CodeNotFound {
-		t.Fatalf("expected NotFound, got %v", err)
 	}
 }
 
@@ -331,7 +284,7 @@ func TestDailyServer_GetKataBySlug_Happy(t *testing.T) {
 	task := sampleTask()
 	tasks.EXPECT().GetBySlug(gomock.Any(), "two-sum").Return(task, nil)
 
-	srv := newTestDailyServer(t, tasks, nil, nil, nil, nil, time.Now().UTC(), true)
+	srv := newTestDailyServer(t, tasks, nil, nil, nil, time.Now().UTC(), true)
 	ctx := sharedMw.WithUserID(context.Background(), uid)
 	resp, err := srv.GetKataBySlug(ctx, connect.NewRequest(&pb.GetKataBySlugRequest{Slug: "two-sum"}))
 	if err != nil {
@@ -352,7 +305,7 @@ func TestDailyServer_GetKataBySlug_NotFound(t *testing.T) {
 	uid := uuid.New()
 	tasks.EXPECT().GetBySlug(gomock.Any(), "no-such").Return(domain.TaskPublic{}, domain.ErrNotFound)
 
-	srv := newTestDailyServer(t, tasks, nil, nil, nil, nil, time.Now().UTC(), true)
+	srv := newTestDailyServer(t, tasks, nil, nil, nil, time.Now().UTC(), true)
 	ctx := sharedMw.WithUserID(context.Background(), uid)
 	_, err := srv.GetKataBySlug(ctx, connect.NewRequest(&pb.GetKataBySlugRequest{Slug: "no-such"}))
 	var ce *connect.Error
@@ -363,7 +316,7 @@ func TestDailyServer_GetKataBySlug_NotFound(t *testing.T) {
 
 func TestDailyServer_GetKataBySlug_EmptySlug_InvalidArgument(t *testing.T) {
 	t.Parallel()
-	srv := newTestDailyServer(t, nil, nil, nil, nil, nil, time.Now().UTC(), true)
+	srv := newTestDailyServer(t, nil, nil, nil, nil, time.Now().UTC(), true)
 	ctx := sharedMw.WithUserID(context.Background(), uuid.New())
 	_, err := srv.GetKataBySlug(ctx, connect.NewRequest(&pb.GetKataBySlugRequest{Slug: ""}))
 	var ce *connect.Error
@@ -374,7 +327,7 @@ func TestDailyServer_GetKataBySlug_EmptySlug_InvalidArgument(t *testing.T) {
 
 func TestDailyServer_GetKataBySlug_Unauthenticated(t *testing.T) {
 	t.Parallel()
-	srv := newTestDailyServer(t, nil, nil, nil, nil, nil, time.Now().UTC(), true)
+	srv := newTestDailyServer(t, nil, nil, nil, nil, time.Now().UTC(), true)
 	_, err := srv.GetKataBySlug(context.Background(), connect.NewRequest(&pb.GetKataBySlugRequest{Slug: "two-sum"}))
 	var ce *connect.Error
 	if !errors.As(err, &ce) || ce.Code() != connect.CodeUnauthenticated {

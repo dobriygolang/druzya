@@ -42,7 +42,7 @@ export default function NotFoundPage() {
           {/* Прямая Link без вложенного <button> — иначе HTML невалидный (a > button)
               и getByRole('link') в Playwright не находит accessible name. */}
           <Link
-            to="/sanctum"
+            to="/arena"
             data-testid="back-home"
             className="inline-flex items-center gap-2 rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-text-primary shadow-glow transition hover:bg-accent-hover"
           >

@@ -12,16 +12,12 @@ import (
 // the composite-server level in cmd/monolith; this struct is used by
 // DailyServer (see ports/server.go) which implements apigen.ServerInterface.
 type Handler struct {
-	GetKata        *app.GetKata
-	GetKataBySlug  *app.GetKataBySlug
-	SubmitKata     *app.SubmitKata
-	GetStreak      *app.GetStreak
-	GetCalendar    *app.GetCalendar
-	UpsertCalendar *app.UpsertCalendar
-	CreateAutopsy  *app.CreateAutopsy
-	GetAutopsy     *app.GetAutopsy
-	Log            *slog.Logger
-	Validate       *validator.Validate
+	GetKata       *app.GetKata
+	GetKataBySlug *app.GetKataBySlug
+	SubmitKata    *app.SubmitKata
+	GetStreak     *app.GetStreak
+	Log           *slog.Logger
+	Validate      *validator.Validate
 }
 
 // NewHandler builds the Handler.

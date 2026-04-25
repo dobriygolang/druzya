@@ -99,7 +99,7 @@ export function AtlasListMode({
                       disabled={isLocked}
                       className={cn(
                         'flex w-full items-center gap-3 px-4 py-3 text-left transition-colors',
-                        isSelected && 'bg-accent/10',
+                        isSelected && 'bg-text-primary/5',
                         isLocked ? 'cursor-not-allowed' : 'hover:bg-surface-2',
                       )}
                       aria-current={isSelected ? 'true' : undefined}

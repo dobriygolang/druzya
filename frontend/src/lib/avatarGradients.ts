@@ -11,12 +11,17 @@
 // Order matches design-snapshots/_rules.md cheat-sheet (idx 0..4) so the
 // numbering in design discussions stays stable.
 
+// Phase-1: avatar gradients collapsed to a monochrome ink ramp. Visual
+// differentiation across users now comes from the bucket index (5 distinct
+// dark-grey-to-light-grey angles), not from hue. Bucket 2 keeps the Hone
+// red as the only saturated swatch so "active"/"recent" reads have a
+// subtle accent. See ADR-001 in conversation.
 export const AVATAR_GRADIENTS = [
-  'linear-gradient(135deg, #F472B6 0%, #582CFF 100%)', // 0 pink → accent
-  'linear-gradient(135deg, #22D3EE 0%, #582CFF 100%)', // 1 cyan → accent
-  'linear-gradient(135deg, #FBBF24 0%, #EF4444 100%)', // 2 warn → danger
-  'linear-gradient(135deg, #10B981 0%, #22D3EE 100%)', // 3 success → cyan
-  'linear-gradient(135deg, #FBBF24 0%, #F472B6 100%)', // 4 warn → pink
+  'linear-gradient(135deg, #1F1F1F 0%, #4A4A4A 100%)', // 0 deep ink
+  'linear-gradient(135deg, #262626 0%, #6B6B6B 100%)', // 1 mid ink
+  'linear-gradient(135deg, #2A2A2A 0%, #FF3B30 100%)', // 2 ink → red
+  'linear-gradient(135deg, #333333 0%, #7A7A7A 100%)', // 3 light ink
+  'linear-gradient(135deg, #1A1A1A 0%, #595959 100%)', // 4 deepest
 ] as const
 
 /**

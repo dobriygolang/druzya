@@ -29,19 +29,11 @@ func NewDaily(d Deps) *Module {
 		dailyInfra.DefaultStreakTTL,
 		d.Log,
 	)
-	// Phase 2 closing: wrap KataRepo (HistoryLast30) and CalendarRepo
-	// (GetActive) in read-through caches. tasksKatas exposes TaskRepo +
-	// SkillRepo + KataRepo from the same struct; the cache only intercepts
-	// the KataRepo surface — Skills and Tasks still go straight to PG.
+	// Phase 2 closing: wrap KataRepo (HistoryLast30) in a read-through cache.
+	// tasksKatas exposes TaskRepo + SkillRepo + KataRepo from the same struct;
+	// the cache only intercepts the KataRepo surface — Skills and Tasks still
+	// go straight to PG.
 	katas := dailyInfra.NewCachedKataRepo(tasksKatas, kv, dailyInfra.DefaultKataMinTTL, d.Log, d.Now)
-	calendars := dailyInfra.NewCachedCalendarRepo(
-		dailyInfra.NewCalendars(d.Pool),
-		kv,
-		dailyInfra.DefaultCalendarTTL,
-		d.Log,
-		d.Now,
-	)
-	autopsies := dailyInfra.NewAutopsies(d.Pool)
 	// Real-sandbox wiring: when JUDGE0_URL is configured (default points at
 	// the docker-compose `judge0-server` service) we construct the HTTP
 	// client + sandbox executor that loads test_cases per task and runs the
@@ -57,18 +49,13 @@ func NewDaily(d Deps) *Module {
 		d.Log.Warn("daily: JUDGE0_URL not set — /daily/run and /daily/kata/submit will return 503 (sandbox unavailable)")
 		judge = dailyInfra.NewNoSandboxJudge0()
 	}
-	analyser := &dailyApp.FakeAnalyser{Autopsies: autopsies, Log: d.Log}
 
 	h := dailyPorts.NewHandler(dailyPorts.Handler{
-		GetKata:        &dailyApp.GetKata{Skills: tasksKatas, Tasks: tasksKatas, Katas: katas, Now: d.Now},
-		GetKataBySlug:  &dailyApp.GetKataBySlug{Tasks: tasksKatas},
-		SubmitKata:     &dailyApp.SubmitKata{Tasks: tasksKatas, Katas: katas, Streaks: streaks, Judge: judge, Bus: d.Bus, Log: d.Log, Now: d.Now},
-		GetStreak:      &dailyApp.GetStreak{Streaks: streaks, Katas: katas, Now: d.Now},
-		GetCalendar:    &dailyApp.GetCalendar{Cal: calendars, Now: d.Now},
-		UpsertCalendar: &dailyApp.UpsertCalendar{Cal: calendars, Now: d.Now},
-		CreateAutopsy:  &dailyApp.CreateAutopsy{Autopsies: autopsies, Bus: d.Bus, Log: d.Log, Analyse: analyser},
-		GetAutopsy:     &dailyApp.GetAutopsy{Autopsies: autopsies},
-		Log:            d.Log,
+		GetKata:       &dailyApp.GetKata{Skills: tasksKatas, Tasks: tasksKatas, Katas: katas, Now: d.Now},
+		GetKataBySlug: &dailyApp.GetKataBySlug{Tasks: tasksKatas},
+		SubmitKata:    &dailyApp.SubmitKata{Tasks: tasksKatas, Katas: katas, Streaks: streaks, Judge: judge, Bus: d.Bus, Log: d.Log, Now: d.Now},
+		GetStreak:     &dailyApp.GetStreak{Streaks: streaks, Katas: katas, Now: d.Now},
+		Log:           d.Log,
 	})
 	server := dailyPorts.NewDailyServer(h)
 	onKataCompleted := &dailyApp.OnDailyKataCompleted{Bus: d.Bus, Log: d.Log}
@@ -106,10 +93,6 @@ func NewDaily(d Deps) *Module {
 			// using the proto-declared /daily/kata/submit path above.
 			r.Post("/daily/run", runHandler.ServeHTTP)
 			r.Get("/daily/streak", transcoder.ServeHTTP)
-			r.Get("/daily/calendar", transcoder.ServeHTTP)
-			r.Post("/daily/calendar", transcoder.ServeHTTP)
-			r.Post("/daily/autopsy", transcoder.ServeHTTP)
-			r.Get("/daily/autopsy/{autopsyId}", transcoder.ServeHTTP)
 			// Year-grid for KataStreakPage. See streak_calendar_handler.go.
 			r.Get("/kata/streak", streakCalendarHandler.ServeHTTP)
 		},

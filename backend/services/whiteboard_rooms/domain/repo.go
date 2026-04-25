@@ -25,6 +25,10 @@ type RoomRepo interface {
 	Get(ctx context.Context, id uuid.UUID) (Room, error)
 	ListByUser(ctx context.Context, userID uuid.UUID) ([]Room, error)
 	UpdateSnapshot(ctx context.Context, id uuid.UUID, snapshot []byte, expires time.Time) error
+	// SetVisibility flips visibility flag — частный case UpdateRoom который
+	// мы избегаем плодить целиком (только одно поле меняется). Owner-check
+	// делает caller (use case).
+	SetVisibility(ctx context.Context, id uuid.UUID, visibility Visibility) error
 	Delete(ctx context.Context, id uuid.UUID) error
 }
 

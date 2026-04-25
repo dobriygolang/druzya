@@ -4,12 +4,12 @@ import { Routes, Route, Navigate, useLocation, useParams } from 'react-router-do
 import RouteLoader from './components/RouteLoader'
 import { readAccessToken } from './lib/apiClient'
 
-// RootRedirect: посетитель без токена — на marketing /welcome, авторизованный
-// — сразу в /sanctum. Раньше "/" безусловно вёл на /sanctum, тот возвращал
-// 401, и apiClient кидал гостя на /login (минуя welcome) — пользователь
-// никогда не видел маркетинговый landing. См. user-bug 2026-04.
+// RootRedirect: гость → /welcome, авторизованный → /arena.
+// Phase-2 of ADR-001: SanctumPage (RPG-flavored home) удалён, web-home
+// теперь /arena per docs/ecosystem.md §3 ("druz9.online = арена + сайт").
+// Старый /sanctum маршрут ниже превращён в 301-redirect.
 function RootRedirect() {
-  return <Navigate to={readAccessToken() ? '/sanctum' : '/welcome'} replace />
+  return <Navigate to={readAccessToken() ? '/arena' : '/welcome'} replace />
 }
 
 // Legacy /v2/* URL'ы из старого дизайна — редиректим на чистый путь.
@@ -34,7 +34,6 @@ function DailyKataRedirect() {
   return <Navigate to={`/arena/kata/${slug ?? ''}`} replace />
 }
 
-const SanctumPage = lazy(() => import('./pages/SanctumPage'))
 const ArenaPage = lazy(() => import('./pages/ArenaPage'))
 const ArenaMatchPage = lazy(() => import('./pages/ArenaMatchPage'))
 const AtlasPage = lazy(() => import('./pages/AtlasPage'))
@@ -43,17 +42,9 @@ const ProfilePage = lazy(() => import('./pages/ProfilePage'))
 const DailyPage = lazy(() => import('./pages/DailyPage'))
 const SettingsPage = lazy(() => import('./pages/SettingsPage'))
 const WelcomePage = lazy(() => import('./pages/WelcomePage'))
-const WelcomeDemoPage = lazy(() => import('./pages/WelcomeDemoPage'))
-// Wave-13 — Druz9 Copilot landing (public, no auth gate). Promotes the
-// new macOS desktop product. Linked from /welcome via CopilotPromoBanner +
-// header nav "NEW" badge.
-const CopilotLandingPage = lazy(() => import('./pages/CopilotLandingPage'))
-const CopilotReportPage = lazy(() =>
-  import('./pages/CopilotReportPage').then((m) => ({ default: m.CopilotReportPage })),
-)
-// Phase 6 — public landing для Hone (desktop focus cockpit). Параллелен
-// /copilot; линкуется из welcome/footer. Публичный роут (без auth-gate'а).
-const HonePage = lazy(() => import('./pages/HonePage'))
+// Phase-4 ADR-001 — separate /copilot, /hone, /welcome/demo landings removed.
+// Cue and Hone are now promoted as sections inside /welcome instead of
+// duplicate landing pages. Demo overlay was an unused legacy step.
 const LegalTermsPage = lazy(() => import('./pages/LegalTermsPage'))
 const LegalPrivacyPage = lazy(() => import('./pages/LegalPrivacyPage'))
 const LoginPage = lazy(() => import('./pages/LoginPage'))
@@ -75,20 +66,14 @@ const MockReplayPage = lazy(() => import('./pages/MockReplayPage'))
 const MockCompanyPicker = lazy(() => import('./pages/mock/MockCompanyPicker'))
 const MockPipelinePage = lazy(() => import('./pages/mock/MockPipelinePage'))
 const MockPipelineDebrief = lazy(() => import('./pages/mock/MockPipelineDebrief'))
-const NativeRoundPage = lazy(() => import('./pages/NativeRoundPage'))
-const InterviewAutopsyPage = lazy(() => import('./pages/InterviewAutopsyPage'))
 const CohortPage = lazy(() => import('./pages/CohortPage'))
 const SlotsPage = lazy(() => import('./pages/SlotsPage'))
-const SeasonPage = lazy(() => import('./pages/SeasonPage'))
 const AchievementsPage = lazy(() => import('./pages/AchievementsPage'))
 const FriendsPage = lazy(() => import('./pages/FriendsPage'))
 const NotificationsPage = lazy(() => import('./pages/NotificationsPage'))
 const MatchEndPage = lazy(() => import('./pages/MatchEndPage'))
 const HelpPage = lazy(() => import('./pages/HelpPage'))
 const NotFoundPage = lazy(() => import('./pages/NotFoundPage'))
-const InterviewCalendarPage = lazy(() => import('./pages/InterviewCalendarPage'))
-const MatchHistoryPage = lazy(() => import('./pages/MatchHistoryPage'))
-const KataStreakPage = lazy(() => import('./pages/KataStreakPage'))
 const WeeklyReportPage = lazy(() => import('./pages/WeeklyReportPage'))
 // WeeklyShareView (Wave-10 P1) — dedicated public view (replaces the legacy
 // WeeklyReportSharePage which mirrored the authorized /weekly layout).
@@ -97,17 +82,12 @@ const Arena2v2Page = lazy(() => import('./pages/Arena2v2Page'))
 const SystemDesignInterviewPage = lazy(() => import('./pages/SystemDesignInterviewPage'))
 const CodeEditorPage = lazy(() => import('./pages/CodeEditorPage'))
 const SpectatorPage = lazy(() => import('./pages/SpectatorPage'))
-const CodeObituaryPage = lazy(() => import('./pages/CodeObituaryPage'))
-const GhostRunsPage = lazy(() => import('./pages/GhostRunsPage'))
-const NecromancyPage = lazy(() => import('./pages/NecromancyPage'))
 const WarRoomPage = lazy(() => import('./pages/WarRoomPage'))
 const VoiceMockPage = lazy(() => import('./pages/VoiceMockPage'))
-const StressMeterPage = lazy(() => import('./pages/StressMeterPage'))
 const AdminPage = lazy(() => import('./pages/AdminPage'))
 const AdminInterviewerApplicationsPage = lazy(() => import('./pages/AdminInterviewerApplicationsPage'))
 const InterviewerProfilePage = lazy(() => import('./pages/InterviewerProfilePage'))
 const StatusPage = lazy(() => import('./pages/StatusPage'))
-const RatingPage = lazy(() => import('./pages/RatingPage'))
 const VacanciesPage = lazy(() => import('./pages/VacanciesPage'))
 const VacancyDetailPage = lazy(() => import('./pages/VacancyDetailPage'))
 const ApplicationsPage = lazy(() => import('./pages/ApplicationsPage'))
@@ -141,7 +121,14 @@ export default function App() {
     <Suspense fallback={<RouteLoader />}>
       <Routes>
         <Route path="/" element={<RootRedirect />} />
-        <Route path="/sanctum" element={<SanctumPage />} />
+        {/* Phase-2 ADR-001 — RPG-flavored pages cut: Sanctum (home),
+            CodeObituary, Necromancy, GhostRuns, StressMeter. Routes
+            preserved as 301-redirects so external links don't 404. */}
+        <Route path="/sanctum" element={<Navigate to="/arena" replace />} />
+        <Route path="/obituary/:id" element={<Navigate to="/arena" replace />} />
+        <Route path="/practice/ghosts/:kataId" element={<Navigate to="/arena/kata" replace />} />
+        <Route path="/necromancy/:bountyId" element={<Navigate to="/arena" replace />} />
+        <Route path="/stress" element={<Navigate to="/arena" replace />} />
         <Route path="/arena" element={<ArenaPage />} />
         <Route path="/arena/match/:matchId" element={<ArenaMatchPage />} />
         {/* WAVE-13 IA refactor — /kata absorbed into /arena namespace.
@@ -164,15 +151,13 @@ export default function App() {
         <Route path="/daily/kata/:slug" element={<DailyKataRedirect />} />
         <Route path="/settings" element={<SettingsPage />} />
         <Route path="/welcome" element={<WelcomePage />} />
-        <Route path="/welcome/demo" element={<WelcomeDemoPage />} />
-        {/* Druz9 Copilot — public landing for the new macOS desktop product. */}
-        <Route path="/copilot" element={<CopilotLandingPage />} />
-        {/* Public read of a session's structured analysis (Phase 3).
-            The desktop's Summary modal "Открыть в браузере" button
-            opens this URL. Backend reportURLTemplate points here. */}
-        <Route path="/copilot/reports/:sessionId" element={<CopilotReportPage />} />
-        {/* Hone — public landing + legal pages (ToS, Privacy). */}
-        <Route path="/hone" element={<HonePage />} />
+        {/* Phase-4 ADR-001 — separate landing pages folded into /welcome.
+            Direct URLs preserved as redirects; the welcome page now has
+            sections for Cue (#cue) and Hone (#hone). */}
+        <Route path="/welcome/demo" element={<Navigate to="/welcome" replace />} />
+        <Route path="/copilot" element={<Navigate to="/welcome#cue" replace />} />
+        <Route path="/copilot/reports/:sessionId" element={<Navigate to="/welcome#cue" replace />} />
+        <Route path="/hone" element={<Navigate to="/welcome#hone" replace />} />
         <Route path="/legal/terms" element={<LegalTermsPage />} />
         <Route path="/legal/privacy" element={<LegalPrivacyPage />} />
         <Route path="/login" element={<LoginPage />} />
@@ -180,8 +165,8 @@ export default function App() {
         <Route path="/onboarding" element={<OnboardingPage />} />
         <Route path="/onboarding/done" element={<AllSetPage />} />
         {/* Wave-10 onboarding (design-review v3) — 4 step pages.
-            Step 5 (sanctum tour) is rendered as an overlay inside
-            SanctumPage when ?tour=1 is present, no dedicated route. */}
+            Phase-2 ADR-001: Sanctum tour overlay removed alongside
+            SanctumPage. /onboarding/done lands directly on /arena. */}
         <Route path="/onboarding/welcome" element={<OnbStep1 />} />
         <Route path="/onboarding/class" element={<OnbStep2 />} />
         <Route path="/onboarding/skill" element={<OnbStep3 />} />
@@ -196,21 +181,30 @@ export default function App() {
         <Route path="/mock/:sessionId" element={<MockSessionPage />} />
         <Route path="/mock/:sessionId/result" element={<MockResultPage />} />
         <Route path="/mock/:sessionId/replay" element={<MockReplayPage />} />
-        <Route path="/native/:sessionId" element={<NativeRoundPage />} />
-        <Route path="/autopsy/new" element={<InterviewAutopsyPage />} />
-        <Route path="/autopsy/:id" element={<InterviewAutopsyPage />} />
+        {/* Phase-4 ADR-001 — niche/unsurfaced routes deleted:
+            /native (legacy mock-round), /autopsy (post-mortem),
+            /season (incomplete season pass), /rating (dup of profile
+            leaderboard), /calendar (no entry point), /daily/streak
+            (now lives in Hone Stats). All redirect to /arena. */}
+        <Route path="/native/:sessionId" element={<Navigate to="/arena" replace />} />
+        <Route path="/autopsy/new" element={<Navigate to="/arena" replace />} />
+        <Route path="/autopsy/:id" element={<Navigate to="/arena" replace />} />
+        <Route path="/season" element={<Navigate to="/arena" replace />} />
+        <Route path="/rating" element={<Navigate to="/profile" replace />} />
+        <Route path="/calendar" element={<Navigate to="/arena" replace />} />
+        <Route path="/daily/streak" element={<Navigate to="/profile" replace />} />
         <Route path="/cohort" element={<CohortPage />} />
         <Route path="/cohort/:cohortId" element={<CohortPage />} />
         <Route path="/slots" element={<SlotsPage />} />
-        <Route path="/season" element={<SeasonPage />} />
         <Route path="/achievements" element={<AchievementsPage />} />
         <Route path="/friends" element={<FriendsPage />} />
         <Route path="/notifications" element={<NotificationsPage />} />
         <Route path="/match/:matchId/end" element={<MatchEndPage />} />
         <Route path="/help" element={<HelpPage />} />
-        <Route path="/calendar" element={<InterviewCalendarPage />} />
-        <Route path="/history" element={<MatchHistoryPage />} />
-        <Route path="/daily/streak" element={<KataStreakPage />} />
+        {/* Phase-4 ADR-001 — match history moved into profile (Matches
+            tab) with full filter + pagination UX. /history redirects to
+            keep external links alive. */}
+        <Route path="/history" element={<Navigate to="/profile" replace />} />
         {/*
           /weekly — primary route as advertised in nav. /report kept as alias
           for backward compatibility (старые шеры в ссылках, e2e-тесты).
@@ -228,17 +222,12 @@ export default function App() {
         <Route path="/sd-interview/:sessionId" element={<SystemDesignInterviewPage />} />
         <Route path="/playground" element={<CodeEditorPage />} />
         <Route path="/spectator/:matchId" element={<SpectatorPage />} />
-        <Route path="/obituary/:id" element={<CodeObituaryPage />} />
-        <Route path="/practice/ghosts/:kataId" element={<GhostRunsPage />} />
-        <Route path="/necromancy/:bountyId" element={<NecromancyPage />} />
         <Route path="/cohort/warroom/:incidentId" element={<WarRoomPage />} />
         <Route path="/voice-mock/:sessionId" element={<VoiceMockPage />} />
-        <Route path="/stress" element={<StressMeterPage />} />
         <Route path="/admin" element={<AdminPage />} />
         <Route path="/admin/interviewers" element={<AdminInterviewerApplicationsPage />} />
         <Route path="/interviewer/:userID" element={<InterviewerProfilePage />} />
         <Route path="/status" element={<StatusPage />} />
-        <Route path="/rating" element={<RatingPage />} />
         <Route path="/vacancies" element={<VacanciesPage />} />
         <Route path="/vacancies/:source/:externalId" element={<VacancyDetailPage />} />
         <Route path="/applications" element={<ApplicationsPage />} />

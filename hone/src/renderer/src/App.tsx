@@ -28,10 +28,11 @@ import { UpdateToast } from './components/UpdateToast';
 import { HomePage } from './pages/Home';
 import { TodayPage, type StartFocusArgs } from './pages/Today';
 import { NotesPage } from './pages/Notes';
-import { WhiteboardPage } from './pages/Whiteboard';
 import { StatsOverlay } from './components/StatsOverlay';
 import { PodcastsPage } from './pages/Podcasts';
-import { BoardsHub } from './pages/BoardsHub';
+import { SharedBoardsPage } from './pages/SharedBoards';
+import { EditorPage } from './pages/Editor';
+import { BoardsTabsChrome } from './components/BoardsTabsChrome';
 import { EventsPage } from './pages/Events';
 import { SettingsPage, readStoredTheme } from './pages/Settings';
 import { useSessionStore } from './stores/session';
@@ -209,11 +210,33 @@ export default function App() {
     window.addEventListener('focus', onFocus);
     window.addEventListener('online', onOnline);
 
+    // Phase C-6.2 — SSE push channel. На каждое событие от server'а
+    // триггерим immediate pull (мгновенный sync вместо 30s lag).
+    // EventSource auto-reconnects на disconnect.
+    let sseClose: (() => void) | null = null;
+    void import('./api/syncEvents').then(({ openSyncEventStream }) => {
+      if (stopped) return;
+      const stream = openSyncEventStream({
+        onEvent: (ev) => {
+          void runPull();
+          // Bridge для page-level компонентов (Notes, Whiteboards) —
+          // даём знать что данные изменились извне, чтобы они могли
+          // re-fetch свои listings без отдельного polling. Дешевле
+          // чем zustand-store reactivity для одного use-case'а.
+          window.dispatchEvent(
+            new CustomEvent('hone:sync-changed', { detail: ev }),
+          );
+        },
+      });
+      sseClose = stream.close;
+    });
+
     return () => {
       stopped = true;
       if (timer !== null) window.clearInterval(timer);
       window.removeEventListener('focus', onFocus);
       window.removeEventListener('online', onOnline);
+      if (sseClose) sseClose();
     };
   }, [status, userId]);
 
@@ -378,6 +401,14 @@ export default function App() {
 
   const goHome = () => setPage('home');
 
+  // Custom event для sidebar back-arrow в SharedBoards / Editor.
+  // window.history.back() в Electron renderer не работает — нет router.
+  useEffect(() => {
+    const onNavHome = () => setPage('home');
+    window.addEventListener('hone:nav-home', onNavHome);
+    return () => window.removeEventListener('hone:nav-home', onNavHome);
+  }, []);
+
   // ── Global keyboard ─────────────────────────────────────────────────────
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -434,7 +465,7 @@ export default function App() {
       const k = e.key.toLowerCase();
       if (k === 't') open('today');
       else if (k === 'n') open('notes');
-      else if (k === 'd') open('board');
+      else if (k === 'd') open('shared_boards'); // 'board' page удалена; D ведёт на shared_boards
       else if (k === 's') open('stats');
       else if (k === 'p') open('podcasts');
       else if (k === 'e') open('editor');
@@ -549,16 +580,30 @@ export default function App() {
           onConsumeInitial={() => setBriefTargetNoteId(null)}
         />
       )}
-      {page === 'board' && <WhiteboardPage />}
+      {/* page === 'board' removed — единый поток через shared_boards.
+          Private/public — это лишь вопрос с кем поделили URL комнаты. */}
       {/* Stats теперь overlay (см. statsOpen ниже). Старая StatsPage снята. */}
       {page === 'podcasts' && <PodcastsPage />}
-      {(page === 'editor' || page === 'shared_boards') && (
-        <BoardsHub
-          initialTab={page === 'editor' ? 'code' : 'boards'}
-          initialBoardRoomId={initialBoardRoom}
-          initialEditorRoomId={initialEditorRoom}
-          onConsumeBoardInitial={() => setInitialBoardRoom(null)}
-          onConsumeEditorInitial={() => setInitialEditorRoom(null)}
+      {/* Boards / Code rooms — два отдельных page'а. Tabs вынесены в
+          top chrome (BoardsTabsChrome ниже), сами страницы рендерятся
+          напрямую без BoardsHub-обёртки. Caller сам решает что
+          показывать; tabs перебрасывают через setPage. */}
+      {page === 'shared_boards' && (
+        <SharedBoardsPage
+          initialRoomId={initialBoardRoom}
+          onConsumeInitial={() => setInitialBoardRoom(null)}
+        />
+      )}
+      {page === 'editor' && (
+        <EditorPage
+          initialRoomId={initialEditorRoom}
+          onConsumeInitial={() => setInitialEditorRoom(null)}
+        />
+      )}
+      {(page === 'shared_boards' || page === 'editor') && (
+        <BoardsTabsChrome
+          current={page}
+          onChange={(t) => openImpl(t)}
         />
       )}
       {statsOpen && page === 'home' && <StatsOverlay onClose={() => setStatsOpen(false)} />}

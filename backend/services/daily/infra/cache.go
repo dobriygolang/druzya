@@ -14,17 +14,11 @@
 //     SubmitKata calls StreakRepo.Update on success, so cache freshness is
 //     sub-second on writes.
 //
-// Phase 2 closing: CachedKataRepo and CachedCalendarRepo extend the same
-// pattern. CachedKataRepo wraps HistoryLast30 (powers GetStreak history
-// rendering and SubmitKata's "already done today?" check) keyed by
-// (uid, today) with TTL until the next UTC midnight — so the cached row
-// auto-expires when the kata-day rolls over without manual cron. CachedCalendarRepo
-// wraps GetActive(uid, today) keyed by (uid, YYYY-MM) with a flat 60s TTL —
-// the active interview calendar is rarely-read but bursty around the
-// /daily/calendar page mount; the per-month bucket means UpsertCalendar
-// always invalidates the bucket the user is currently looking at.
-//
-// AutopsyRepo is still write-mostly so we leave it alone.
+// Phase 2 closing: CachedKataRepo extends the same pattern. CachedKataRepo
+// wraps HistoryLast30 (powers GetStreak history rendering and SubmitKata's
+// "already done today?" check) keyed by (uid, today) with TTL until the next
+// UTC midnight — so the cached row auto-expires when the kata-day rolls over
+// without manual cron.
 package infra
 
 import (
@@ -187,17 +181,9 @@ const DefaultKataMinTTL = 60 * time.Second
 // dateFmt is the canonical YYYY-MM-DD layout used in cache keys.
 const dateFmt = "2006-01-02"
 
-// monthFmt is YYYY-MM, used by the calendar key.
-const monthFmt = "2006-01"
-
 // keyKataHistory returns the per-user, per-day Redis key for HistoryLast30.
 func keyKataHistory(uid uuid.UUID, today time.Time) string {
 	return fmt.Sprintf("daily:%s:kata:%s:%s", CacheKeyVersion, uid.String(), today.UTC().Format(dateFmt))
-}
-
-// keyCalendar returns the per-user, per-month Redis key for GetActive.
-func keyCalendar(uid uuid.UUID, today time.Time) string {
-	return fmt.Sprintf("daily:%s:calendar:%s:%s", CacheKeyVersion, uid.String(), today.UTC().Format(monthFmt))
 }
 
 // timeUntilNextUTCMidnight returns the duration from now to 00:00 UTC of
@@ -360,113 +346,3 @@ func (c *CachedKataRepo) HistoryByYear(ctx context.Context, userID uuid.UUID, ye
 	return out, nil
 }
 
-// ── CalendarRepo cache ────────────────────────────────────────────────────
-
-// DefaultCalendarTTL is the per-key TTL for calendar cache entries.
-const DefaultCalendarTTL = 60 * time.Second
-
-// CachedCalendarRepo wraps domain.CalendarRepo. GetActive is read-through;
-// Upsert invalidates the bucket containing today (best-effort: the row's
-// interview_date may be in a different month, but the user is reading
-// today's bucket from the UI, so that's the bucket we bust).
-type CachedCalendarRepo struct {
-	delegate domain.CalendarRepo
-	kv       KV
-	ttl      time.Duration
-	log      *slog.Logger
-	sf       singleflight.Group
-	now      func() time.Time
-}
-
-// Compile-time: satisfies domain.CalendarRepo.
-var _ domain.CalendarRepo = (*CachedCalendarRepo)(nil)
-
-// NewCachedCalendarRepo wraps delegate. now defaults to time.Now if nil.
-// log is required (anti-fallback policy).
-func NewCachedCalendarRepo(delegate domain.CalendarRepo, kv KV, ttl time.Duration, log *slog.Logger, now func() time.Time) *CachedCalendarRepo {
-	if ttl <= 0 {
-		ttl = DefaultCalendarTTL
-	}
-	if log == nil {
-		panic("daily.infra.NewCachedCalendarRepo: logger is required (anti-fallback policy: no silent noop loggers)")
-	}
-	if now == nil {
-		now = time.Now
-	}
-	return &CachedCalendarRepo{delegate: delegate, kv: kv, ttl: ttl, log: log, now: now}
-}
-
-// calendarEnvelope is the wire-shape stored in Redis. We carry an explicit
-// "found" flag so that ErrNotFound can be cached as a negative result without
-// confusing it with a JSON unmarshalling failure.
-type calendarEnvelope struct {
-	Found    bool                     `json:"found"`
-	Calendar domain.InterviewCalendar `json:"calendar,omitempty"`
-}
-
-// GetActive is the cached path.
-func (c *CachedCalendarRepo) GetActive(ctx context.Context, userID uuid.UUID, today time.Time) (domain.InterviewCalendar, error) {
-	key := keyCalendar(userID, today)
-	if raw, err := c.kv.Get(ctx, key); err == nil {
-		var env calendarEnvelope
-		if jerr := json.Unmarshal([]byte(raw), &env); jerr == nil {
-			if !env.Found {
-				return domain.InterviewCalendar{}, domain.ErrNotFound
-			}
-			return env.Calendar, nil
-		}
-		c.log.Warn("daily.cache: corrupt calendar entry, refreshing", slog.String("key", key))
-	} else if !errors.Is(err, ErrCacheMiss) {
-		// Anti-fallback: real Redis failure propagates.
-		return domain.InterviewCalendar{}, fmt.Errorf("daily.cache.GetActive: redis: %w", err)
-	}
-	v, err, _ := c.sf.Do(key, func() (any, error) {
-		got, gerr := c.delegate.GetActive(ctx, userID, today)
-		if gerr != nil && !errors.Is(gerr, domain.ErrNotFound) {
-			return nil, fmt.Errorf("daily.cache.delegate.GetActive: %w", gerr)
-		}
-		// Возвращаем envelope; gerr (если ErrNotFound) пробрасываем через
-		// второй return-value sf-callback'а, чтобы внешний код мог отличить
-		// "нет календаря" от настоящих сбоев.
-		if gerr != nil {
-			return calendarEnvelope{Found: false, Calendar: got}, fmt.Errorf("daily.cache.delegate.GetActive: %w", gerr)
-		}
-		return calendarEnvelope{Found: true, Calendar: got}, nil
-	})
-	if err != nil && !errors.Is(err, domain.ErrNotFound) {
-		return domain.InterviewCalendar{}, fmt.Errorf("daily.cache.GetActive: %w", err)
-	}
-	env, ok := v.(calendarEnvelope)
-	if !ok {
-		return domain.InterviewCalendar{}, fmt.Errorf("daily.cache: singleflight returned %T", v)
-	}
-	if data, jerr := json.Marshal(env); jerr == nil {
-		if serr := c.kv.Set(ctx, key, data, c.ttl); serr != nil {
-			metrics.CacheSetErrorsTotal.WithLabelValues("daily_calendar").Inc()
-			c.log.Warn("daily.cache: redis Set failed",
-				slog.String("key", key), slog.Any("err", serr))
-		}
-	}
-	if !env.Found {
-		return domain.InterviewCalendar{}, domain.ErrNotFound
-	}
-	return env.Calendar, nil
-}
-
-// Upsert forwards then invalidates the user's calendar bucket for today.
-func (c *CachedCalendarRepo) Upsert(ctx context.Context, cal domain.InterviewCalendar) (domain.InterviewCalendar, error) {
-	out, err := c.delegate.Upsert(ctx, cal)
-	if err != nil {
-		return out, fmt.Errorf("daily.cache.Upsert: %w", err)
-	}
-	c.Invalidate(ctx, cal.UserID, c.now())
-	return out, nil
-}
-
-// Invalidate busts the calendar bucket containing the supplied "today".
-func (c *CachedCalendarRepo) Invalidate(ctx context.Context, userID uuid.UUID, today time.Time) {
-	if err := c.kv.Del(ctx, keyCalendar(userID, today)); err != nil {
-		c.log.Warn("daily.cache: redis Del calendar failed",
-			slog.Any("user_id", userID), slog.Any("err", err))
-	}
-}

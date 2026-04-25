@@ -794,7 +794,47 @@ function VaultSection() {
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+      {/* Большой объясняющий блок — что такое vault и зачем lock-icon
+          в Notes. Юзер не должен идти в документацию чтобы понять. */}
+      <div
+        style={{
+          display: 'flex',
+          gap: 14,
+          padding: '14px 16px',
+          borderRadius: 12,
+          background: 'rgba(255,255,255,0.03)',
+          border: '1px solid var(--ink-10)',
+        }}
+      >
+        <div
+          style={{
+            width: 36,
+            height: 36,
+            flexShrink: 0,
+            display: 'grid',
+            placeItems: 'center',
+            borderRadius: 10,
+            background: 'rgba(255,255,255,0.04)',
+            color: 'var(--ink-60)',
+          }}
+        >
+          <LockIcon size={18} />
+        </div>
+        <div style={{ flex: 1, fontSize: 13, color: 'var(--ink-90)', lineHeight: 1.55 }}>
+          <div style={{ marginBottom: 4, color: 'var(--ink)' }}>
+            How encryption works
+          </div>
+          <div style={{ color: 'var(--ink-60)' }}>
+            Once Vault is set up, every note in the sidebar gets a small{' '}
+            <LockGlyph /> icon next to its three-dots menu. Click it on a sensitive
+            note to encrypt the body before it reaches our servers. Encrypted notes
+            stay readable to you on any of your devices (when Vault is unlocked),
+            but invisible to coach AI, search, and publish-to-web.
+          </div>
+        </div>
+      </div>
+
       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
         <VaultStatusBadge state={state} />
         {state === 'none' && (
@@ -818,14 +858,53 @@ function VaultSection() {
       ) : (
         <div style={{ fontSize: 12, color: 'var(--ink-40)', lineHeight: 1.55 }}>
           {state === 'none' &&
-            'After setup you can mark individual notes as encrypted from the three-dots menu.'}
+            'After setup, lock icons appear next to each note in the sidebar.'}
           {state === 'locked' &&
-            'Vault is set up. Unlock to read or write encrypted notes; they are unreadable while locked.'}
+            'Vault is set up. Unlock with your password to read or encrypt notes.'}
           {state === 'unlocked' &&
-            'Vault is unlocked for this session. Closing the app or signing out re-locks automatically.'}
+            'Vault unlocked for this session. Auto-locks on close, sign-out, or app reload.'}
         </div>
       )}
     </div>
+  );
+}
+
+// LockIcon — компактный SVG-замочек в нашем стиле (stroke-only, 1.6 thin).
+// Используется и в explainer'е (большой 18px), и в three-dots Notes UI
+// (маленький 12px) — после wire-up в Notes.tsx.
+function LockIcon({ size = 14 }: { size?: number }) {
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.6}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <rect x="4" y="11" width="16" height="10" rx="2" />
+      <path d="M8 11V7a4 4 0 0 1 8 0v4" />
+    </svg>
+  );
+}
+
+// LockGlyph — inline-glyph для текста (нативный em-size). Используется
+// внутри предложения «click the [icon] to encrypt» чтобы юзер видел
+// именно тот icon что в Notes UI.
+function LockGlyph() {
+  return (
+    <span
+      style={{
+        display: 'inline-flex',
+        verticalAlign: 'middle',
+        margin: '0 2px',
+        color: 'var(--ink)',
+      }}
+    >
+      <LockIcon size={13} />
+    </span>
   );
 }
 

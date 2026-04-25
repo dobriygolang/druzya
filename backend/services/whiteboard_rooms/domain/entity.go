@@ -20,15 +20,25 @@ import (
 // implicitly whenever the hub flushes a snapshot (active room == relevant).
 const DefaultTTL = 24 * time.Hour
 
+// Visibility — Phase C-7+ flag. 'private' = только owner, 'shared' = любой
+// с URL может join'ить (legacy default до миграции 00036).
+type Visibility string
+
+const (
+	VisibilityPrivate Visibility = "private"
+	VisibilityShared  Visibility = "shared"
+)
+
 // Room is the persistent whiteboard_rooms row.
 type Room struct {
-	ID        uuid.UUID
-	OwnerID   uuid.UUID
-	Title     string
-	Snapshot  []byte
-	ExpiresAt time.Time
-	CreatedAt time.Time
-	UpdatedAt time.Time
+	ID         uuid.UUID
+	OwnerID    uuid.UUID
+	Title      string
+	Snapshot   []byte
+	Visibility Visibility
+	ExpiresAt  time.Time
+	CreatedAt  time.Time
+	UpdatedAt  time.Time
 }
 
 // Participant is one whiteboard_room_participants row.

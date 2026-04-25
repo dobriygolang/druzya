@@ -53,7 +53,7 @@ function bookingStateLabel(s: BookingState): string {
 
 function bookingStateColor(s: BookingState): string {
   switch (s) {
-    case 'upcoming': return 'bg-cyan/15 text-cyan'
+    case 'upcoming': return 'bg-text-primary/10 text-text-primary'
     case 'active': return 'bg-success/20 text-success'
     case 'completed': return 'bg-surface-3 text-text-muted'
     case 'cancelled': return 'bg-danger/15 text-danger'
@@ -102,7 +102,7 @@ function BookingCard({ b }: { b: MyBookingItem }) {
               href={b.meet_url}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex h-8 items-center gap-2 rounded-md bg-accent px-3 text-[12px] font-semibold text-text-primary shadow-glow hover:bg-accent/90"
+              className="inline-flex h-8 items-center gap-2 rounded-full bg-text-primary px-3 text-[12px] font-medium text-bg hover:bg-text-primary/90"
             >
               Подключиться
             </a>
@@ -147,7 +147,7 @@ export function BookingsPanel() {
       <Card className="flex-col items-start gap-3 p-5" interactive={false}>
         <p className="text-sm text-text-secondary">
           Нет броней. Запиши слот через{' '}
-          <Link to="/slots" className="text-cyan hover:underline">/slots →</Link>
+          <Link to="/slots" className="text-text-primary hover:underline">/slots →</Link>
         </p>
       </Card>
     )

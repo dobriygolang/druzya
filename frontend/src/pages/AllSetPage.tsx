@@ -141,19 +141,19 @@ export default function AllSetPage() {
 
         <div className="flex flex-wrap justify-center gap-3">
           <Link
-            to="/sanctum"
+            to="/arena"
             className="rounded-full border border-border bg-surface-1 px-4 py-2 text-[13px] font-medium text-text-secondary hover:border-border-strong hover:text-text-primary"
           >
             Daily kata
           </Link>
           <Link
-            to="/sanctum"
+            to="/arena"
             className="rounded-full border border-border bg-surface-1 px-4 py-2 text-[13px] font-medium text-text-secondary hover:border-border-strong hover:text-text-primary"
           >
             Изучить режимы
           </Link>
           <Link
-            to="/sanctum"
+            to="/arena"
             className="rounded-full border border-border bg-surface-1 px-4 py-2 text-[13px] font-medium text-text-secondary hover:border-border-strong hover:text-text-primary"
           >
             Найти друзей

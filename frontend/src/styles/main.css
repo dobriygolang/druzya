@@ -10,26 +10,36 @@
 
 @layer base {
   /* DARK theme (default). Values are space-separated RGB triplets, consumed via rgb(var(--x) / <alpha>) */
+  /* Phase-1 unification — single source of truth aligned with hone/src/renderer/src/styles/globals.css.
+     One palette across web (druz9.online) and Hone desktop:
+     - Pure black bg, white-with-opacity ink layers, two hairline weights.
+     - Single accent: #FF3B30 (Hone red). Cyan / pink / violet are aliased to white
+       so that legacy Tailwind classes (text-cyan, bg-pink/10, text-accent) still
+       compile but render as monochrome ink — visual unification without a 70-file
+       sweep. Page-by-page rebrand replaces those classes in Phase 4.
+     See ADR-001 + docs/ecosystem.md §2.1. */
   :root,
   .dark {
-    --color-bg: 0 0 0;               /* #000 — pure black per Hone palette */
+    --color-bg: 0 0 0;               /* #000 */
     --color-surface-1: 10 10 10;     /* #0A0A0A */
     --color-surface-2: 17 17 17;     /* #111111 */
-    --color-surface-3: 26 26 26;     /* #1A1A1A */
+    --color-surface-3: 17 17 17;     /* dropped #2D1B4D violet — collapse to surface-2 */
     --color-border: 26 26 26;        /* ~rgba(255,255,255,0.06) over black */
     --color-border-strong: 38 38 38; /* ~rgba(255,255,255,0.12) over black */
     --color-text-primary: 255 255 255;
     --color-text-secondary: 200 200 200;
     --color-text-muted: 140 140 140;
-    --color-accent: 88 44 255;       /* #582CFF — kept for legacy components */
-    --color-accent-hover: 109 67 255;/* #6D43FF */
+    /* Legacy tokens — collapsed to white. Keeps `text-accent`, `text-cyan`,
+       `text-pink` compiling without forcing a 70-file rewrite right now. */
+    --color-accent: 255 255 255;
+    --color-accent-hover: 230 230 230;
     --color-success: 16 185 129;
-    --color-danger: 255 59 48;       /* #FF3B30 — Hone red */
+    --color-danger: 255 59 48;       /* #FF3B30 — Hone red, the only accent */
     --color-warn: 251 191 36;
-    --color-cyan: 34 211 238;
-    --color-pink: 244 114 182;
+    --color-cyan: 255 255 255;
+    --color-pink: 255 255 255;
 
-    /* Hone-derived tokens — used by minimalist surfaces (Welcome landing). */
+    /* Hone-native tokens — preferred for any new surface. */
     --ink: 255 255 255;
     --ink-90: rgba(255,255,255,0.9);
     --ink-60: rgba(255,255,255,0.6);
@@ -41,22 +51,25 @@
   }
 
   .light {
-    --color-bg: 250 250 252;            /* near-white */
+    /* Light theme is no longer a primary target — Hone is dark-only and the
+       ecosystem signature is pure black. Tokens kept for any residual usage,
+       but cyan/pink/accent collapsed to ink for parity with .dark. */
+    --color-bg: 250 250 252;
     --color-surface-1: 255 255 255;
     --color-surface-2: 244 244 248;
-    --color-surface-3: 235 230 248;     /* faint violet tint */
+    --color-surface-3: 244 244 248;
     --color-border: 226 226 232;
     --color-border-strong: 200 200 210;
     --color-text-primary: 16 16 28;
     --color-text-secondary: 70 70 90;
     --color-text-muted: 120 120 140;
-    --color-accent: 88 44 255;
-    --color-accent-hover: 109 67 255;
+    --color-accent: 16 16 28;
+    --color-accent-hover: 40 40 60;
     --color-success: 16 150 105;
-    --color-danger: 220 50 50;
+    --color-danger: 255 59 48;
     --color-warn: 200 145 20;
-    --color-cyan: 14 170 200;
-    --color-pink: 230 90 160;
+    --color-cyan: 16 16 28;
+    --color-pink: 16 16 28;
   }
 
   html {
@@ -130,32 +143,98 @@
     height: 1px;
     background: linear-gradient(90deg, transparent, rgb(var(--color-border-strong)), transparent);
   }
-  /* g-pc — pink → cyan brand gradient text slice (share territory). */
-  .g-pc {
-    background: linear-gradient(90deg, rgb(var(--color-pink)) 0%, rgb(var(--color-cyan)) 100%);
-    -webkit-background-clip: text;
-    background-clip: text;
-    color: transparent;
+  /* g-pc / g-ac — legacy brand-gradient text slices (cyan/pink/violet).
+     Phase-1 collapses them to plain white. Removing the rules entirely
+     would break callsites; instead they render as flat ink and get
+     swept page-by-page in Phase 4. */
+  .g-pc, .g-ac {
+    background: none;
+    color: rgb(var(--color-text-primary));
   }
-  /* g-ac — accent → cyan (used by designer for hero numerals). */
-  .g-ac {
-    background: linear-gradient(90deg, rgb(var(--color-pink)) 0%, rgb(var(--color-accent)) 50%, rgb(var(--color-cyan)) 100%);
-    -webkit-background-clip: text;
-    background-clip: text;
-    color: transparent;
-  }
-  /* Hone-style helpers — minimalist landing (Welcome page). */
+
+  /* ─── Hone primitives — ported 1:1 from hone/src/renderer/src/styles/globals.css.
+     These are the only "decoration" classes the unified surface uses.
+     Same names everywhere so a snippet from Hone drops into web verbatim. */
   .mono {
     font-family: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
     font-feature-settings: "zero", "ss01";
   }
   .no-select { user-select: none; -webkit-user-select: none; }
+
+  /* hairlines — solid 1px borders at fixed opacity */
+  .hair    { border-color: var(--hair); }
+  .hair-b  { border-bottom: 1px solid var(--hair); }
+  .hair-t  { border-top: 1px solid var(--hair); }
+  .hair-l  { border-left: 1px solid var(--hair); }
+  .hair-r  { border-right: 1px solid var(--hair); }
+
+  /* meditative starfield — static, very quiet */
+  .starfield {
+    position: absolute; inset: 0; pointer-events: none;
+    background-image:
+      radial-gradient(1px 1px at 12% 22%, rgba(255,255,255,0.35), transparent 50%),
+      radial-gradient(1px 1px at 84% 18%, rgba(255,255,255,0.20), transparent 50%),
+      radial-gradient(1px 1px at 24% 78%, rgba(255,255,255,0.22), transparent 50%),
+      radial-gradient(1px 1px at 67% 62%, rgba(255,255,255,0.30), transparent 50%),
+      radial-gradient(1px 1px at 92% 86%, rgba(255,255,255,0.18), transparent 50%),
+      radial-gradient(1px 1px at 45% 12%, rgba(255,255,255,0.25), transparent 50%),
+      radial-gradient(1px 1px at 58% 48%, rgba(255,255,255,0.15), transparent 50%),
+      radial-gradient(1px 1px at  8% 58%, rgba(255,255,255,0.22), transparent 50%),
+      radial-gradient(1px 1px at 77% 34%, rgba(255,255,255,0.18), transparent 50%),
+      radial-gradient(1px 1px at 34% 44%, rgba(255,255,255,0.14), transparent 50%);
+  }
+  .wave-horizon {
+    position: absolute; left: 0; right: 0; height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.35), transparent);
+  }
+
+  /* small UI primitives */
+  .kbd {
+    display: inline-flex; align-items: center; justify-content: center;
+    min-width: 18px; height: 18px; padding: 0 5px;
+    border: 1px solid var(--hair-2); border-radius: 4px;
+    font-family: 'JetBrains Mono', monospace; font-size: 10px;
+    color: var(--ink-60); background: rgba(255,255,255,0.03); line-height: 1;
+  }
+  .kbd-lg { min-width: 22px; height: 22px; font-size: 11px; border-radius: 5px; }
+  .chip {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 3px 8px; border-radius: 999px;
+    border: 1px solid var(--hair); font-size: 11px; color: var(--ink-60);
+    background: rgba(255,255,255,0.02);
+  }
+  .glass {
+    background: rgba(10,10,10,0.72);
+    backdrop-filter: blur(28px) saturate(1.2);
+    -webkit-backdrop-filter: blur(28px) saturate(1.2);
+  }
+  .scrim {
+    background: rgba(0,0,0,0.62);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+  }
+  .win {
+    background: #000; border: 1px solid var(--hair); border-radius: 12px; overflow: hidden;
+    box-shadow:
+      0 0.5px 0 rgba(255,255,255,0.05) inset,
+      0 1px 1px rgba(0,0,0,0.6),
+      0 30px 80px -10px rgba(0,0,0,0.7);
+  }
+
+  /* animations */
   @keyframes redpulse {
     0%   { box-shadow: 0 0 0 0 rgba(255,59,48,.55); }
     70%  { box-shadow: 0 0 0 8px rgba(255,59,48,0); }
     100% { box-shadow: 0 0 0 0 rgba(255,59,48,0); }
   }
   .red-pulse { animation: redpulse 1.8s ease-out infinite; }
+  @keyframes breathe { 0%,100%{opacity:.7} 50%{opacity:1} }
+  .breathe { animation: breathe 2.4s ease-in-out infinite; }
+  @keyframes blink { 0%,49%{opacity:1} 50%,100%{opacity:0} }
+  .caret {
+    display: inline-block; width: .5em; height: 1em; background: rgb(var(--ink));
+    margin-left: 2px; vertical-align: -0.12em; animation: blink 1s steps(1) infinite;
+  }
   @keyframes hone-fadein {
     from { opacity: 0; transform: translateY(8px); }
     to   { opacity: 1; transform: translateY(0); }

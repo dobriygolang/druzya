@@ -34,7 +34,7 @@ function ProfileSkeleton() {
     <AppShellV2>
       <div
         className="px-4 py-6 sm:px-8 lg:px-10"
-        style={{ minHeight: 220, background: 'linear-gradient(135deg, #582CFF 0%, #F472B6 50%, #22D3EE 100%)' }}
+        style={{ minHeight: 220, background: '#0A0A0A' }}
         aria-busy="true"
         aria-label="loading profile"
       >
@@ -76,7 +76,7 @@ function ProfileNotFound({ username }: { username: string }) {
           {t('not_found_title')}
         </h2>
         <p className="max-w-md text-center text-sm text-text-secondary">@{username}</p>
-        <Link to="/sanctum">
+        <Link to="/arena">
           <Button variant="primary">{t('back_to_sanctum')}</Button>
         </Link>
       </div>

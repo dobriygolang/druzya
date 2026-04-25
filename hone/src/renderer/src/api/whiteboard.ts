@@ -81,6 +81,50 @@ export async function listMyWhiteboardRooms(): Promise<WhiteboardRoom[]> {
   return (resp.items ?? []).map((r) => unwrapRoom(r as never));
 }
 
+// ─── Visibility (private | shared) — Phase C-7+ ──────────────────────────
+//
+// Не Connect-RPC а REST: бэкенд экспонирует через
+// /api/v1/whiteboard/room/{id}/visibility (см. services/whiteboard_rooms.go).
+// Делается так чтобы не тащить proto-regen ради одного boolean-поля.
+
+export type WhiteboardVisibility = 'private' | 'shared';
+
+function visAuthHeaders(): Record<string, string> {
+  const token = useSessionStore.getState().accessToken ?? DEV_BEARER_TOKEN;
+  const h: Record<string, string> = { 'content-type': 'application/json' };
+  if (token) h.authorization = `Bearer ${token}`;
+  try {
+    const did = window.localStorage.getItem('hone:device-id');
+    if (did) h['x-device-id'] = did;
+  } catch {
+    /* ignore */
+  }
+  return h;
+}
+
+export async function getRoomVisibility(roomId: string): Promise<WhiteboardVisibility> {
+  const resp = await fetch(`${API_BASE_URL}/api/v1/whiteboard/room/${roomId}/visibility`, {
+    headers: visAuthHeaders(),
+  });
+  if (!resp.ok) throw new Error(`get visibility: ${resp.status}`);
+  const j = (await resp.json()) as { visibility: WhiteboardVisibility };
+  return j.visibility;
+}
+
+export async function setRoomVisibility(
+  roomId: string,
+  visibility: WhiteboardVisibility,
+): Promise<WhiteboardVisibility> {
+  const resp = await fetch(`${API_BASE_URL}/api/v1/whiteboard/room/${roomId}/visibility`, {
+    method: 'POST',
+    headers: visAuthHeaders(),
+    body: JSON.stringify({ visibility }),
+  });
+  if (!resp.ok) throw new Error(`set visibility: ${resp.status}`);
+  const j = (await resp.json()) as { visibility: WhiteboardVisibility };
+  return j.visibility;
+}
+
 export async function deleteWhiteboardRoom(roomId: string): Promise<boolean> {
   const resp = await client.deleteRoom({ roomId });
   return resp.deleted;

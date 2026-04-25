@@ -12,7 +12,11 @@
 
 import { useEffect, useRef } from 'react'
 
-const COLORS = ['#FBBF24', '#F472B6', '#22D3EE', '#10B981']
+// Phase-1: monochrome confetti — white particles + the single accent red.
+// Confetti itself is on the chopping block in Phase 3 (RPG-effect, doesn't
+// fit "quiet ecosystem"), but neutralizing the palette here first stops
+// the rainbow regression in the meantime.
+const COLORS = ['#FFFFFF', '#D9D9D9', '#FF3B30', '#8C8C8C']
 
 export type ConfettiBurstProps = {
   /** Set to true to fire a burst. Toggling false→true fires again. */

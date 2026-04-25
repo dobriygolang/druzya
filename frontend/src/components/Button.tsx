@@ -3,23 +3,29 @@ import { cva, type VariantProps } from 'class-variance-authority';
 import { motion, useReducedMotion } from 'framer-motion';
 import { cn } from '../lib/cn';
 
+// Phase-3 ADR-001 — Hone-aligned button variants.
+//
+// Primary CTA matches the hero buttons in design/hone/landing/landing.jsx:
+// flat white pill on black, no glow, no gradient. Ghost is hairline-bordered.
+// Danger uses Hone red. All three are pill-rounded — square corners read as
+// "form input", which we want only inside FormField.
 const button = cva(
   [
     'inline-flex items-center justify-center gap-2',
-    'font-sans font-semibold whitespace-nowrap select-none',
-    'transition-colors transition-shadow duration-150',
-    'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-bg',
+    'font-sans font-medium whitespace-nowrap select-none',
+    'transition-colors duration-150',
+    'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-text-primary/40 focus-visible:ring-offset-2 focus-visible:ring-offset-bg',
     'disabled:opacity-50 disabled:pointer-events-none',
   ],
   {
     variants: {
       variant: {
         primary:
-          'bg-accent text-text-primary hover:bg-accent-hover shadow-glow rounded-lg',
+          'bg-text-primary text-bg hover:bg-text-primary/90 rounded-full',
         ghost:
-          'bg-transparent text-text-secondary hover:bg-surface-2 hover:text-text-primary border border-border rounded-lg',
+          'bg-transparent text-text-primary hover:bg-text-primary/5 border border-border-strong rounded-full',
         danger:
-          'bg-danger text-text-primary hover:brightness-110 rounded-lg',
+          'bg-danger text-text-primary hover:brightness-110 rounded-full',
       },
       size: {
         sm: 'h-8 px-3 text-[13px]',

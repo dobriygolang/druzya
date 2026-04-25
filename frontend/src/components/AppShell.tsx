@@ -28,7 +28,6 @@ function useNavItems() {
     //   - /podcasts merged into /codex (вкладка внутри Codex).
     //   - /vacancies + /slots — promoted в top-nav (раньше прятались в user-menu).
     // Порядок зафиксирован в WAVE-13 spec: 7 элементов на 1920 desktop.
-    { to: '/sanctum', label: t('nav.sanctum') },
     { to: '/arena', label: t('nav.arena') },
     { to: '/atlas', label: t('nav.atlas') },
     { to: '/codex', label: t('nav.codex') },
@@ -40,7 +39,7 @@ function useNavItems() {
 
 function Logo() {
   return (
-    <Link to="/sanctum" className="flex items-center gap-2.5">
+    <Link to="/arena" className="flex items-center gap-2.5">
       <span className="grid h-8 w-8 shrink-0 place-items-center rounded-md bg-gradient-to-br from-accent to-cyan font-display text-lg font-extrabold text-text-primary">
         9
       </span>

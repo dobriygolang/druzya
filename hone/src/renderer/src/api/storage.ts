@@ -228,3 +228,23 @@ export async function getPublishStatus(noteId: string): Promise<PublishStatus> {
   if (!resp.ok) throw new Error(`publish status: ${resp.status}`);
   return (await resp.json()) as PublishStatus;
 }
+
+// ─── Bulk note meta (Phase C-7 follow-up) ─────────────────────────────────
+//
+// Возвращает per-note flags (encrypted, published) для всех active notes.
+// Используется sidebar'ом для отрисовки lock-icons без N+1 hover-запросов.
+
+export interface NoteMeta {
+  id: string;
+  encrypted: boolean;
+  published: boolean;
+}
+
+export async function getNotesMeta(): Promise<NoteMeta[]> {
+  const resp = await fetch(`${API_BASE_URL}/api/v1/notes/meta`, {
+    headers: authHeaders(),
+  });
+  if (!resp.ok) throw new Error(`notes meta: ${resp.status}`);
+  const j = (await resp.json()) as { notes: NoteMeta[] };
+  return j.notes ?? [];
+}

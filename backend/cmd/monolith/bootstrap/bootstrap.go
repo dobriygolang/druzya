@@ -156,6 +156,12 @@ func New(ctx context.Context, cfg *config.Config) (app *App, otelShutdown func()
 	storageMod, storageGate := services.NewStorage(deps)
 	deps.StorageGate = storageGate
 
+	// SyncEventBroker строится ПЕРВЫМ — sync.NewSync (push handler) и
+	// yjs_persistence.NewYjsPersistence захватывают его через deps; если
+	// nil на момент их конструирования, push notifications не сработают.
+	syncEventsMod, syncEventBroker := services.NewSyncEvents(deps)
+	deps.SyncEventBroker = syncEventBroker
+
 	syncMod, syncHeartbeat := services.NewSync(deps)
 	deps.SyncHeartbeat = syncHeartbeat
 
@@ -170,13 +176,16 @@ func New(ctx context.Context, cfg *config.Config) (app *App, otelShutdown func()
 		&rating.Module,
 		services.NewArena(deps, rating.Repo),
 		services.NewAIMock(deps),
-		services.NewAINative(deps),
+		// Phase-4 ADR-001 — `ai_native` removed (NativeRoundPage was a
+		// legacy mock-round flow with no UI entry point); `season` removed
+		// (incomplete season pass, no UI surface). Event publishers in
+		// rating/arena/daily/ai_mock keep firing but no subscriber listens
+		// — that's fine, the bus is fan-out-without-FK.
 		slotMod,
 		reviewMod,
 		services.NewCohort(deps),
 		&notify.Module,
 		services.NewEditor(deps),
-		services.NewSeason(deps),
 		services.NewPodcast(deps),
 		services.NewAdmin(deps),
 		services.NewFeed(deps),
@@ -192,6 +201,7 @@ func New(ctx context.Context, cfg *config.Config) (app *App, otelShutdown func()
 		services.NewSubscription(deps),
 		storageMod,
 		syncMod,
+		syncEventsMod,
 		services.NewYjsPersistence(deps),
 		services.NewVault(deps),
 		services.NewPublishing(deps),

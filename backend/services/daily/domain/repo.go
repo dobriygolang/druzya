@@ -99,19 +99,6 @@ type StreakState struct {
 	LastKataDate  *time.Time
 }
 
-// CalendarRepo persists interview_calendars.
-type CalendarRepo interface {
-	GetActive(ctx context.Context, userID uuid.UUID, today time.Time) (InterviewCalendar, error)
-	Upsert(ctx context.Context, c InterviewCalendar) (InterviewCalendar, error)
-}
-
-// AutopsyRepo persists interview_autopsies.
-type AutopsyRepo interface {
-	Create(ctx context.Context, a Autopsy) (Autopsy, error)
-	Get(ctx context.Context, id uuid.UUID) (Autopsy, error)
-	MarkReady(ctx context.Context, id uuid.UUID, analysisJSON []byte) error
-}
-
 // Judge0Client verifies code submissions. A concrete adapter either:
 //   - drives a real Judge0 container (POST /submissions?wait=true per test
 //     case, stdout equality vs expected_output); or

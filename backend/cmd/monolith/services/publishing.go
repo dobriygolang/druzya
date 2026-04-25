@@ -48,6 +48,12 @@ func NewPublishing(d Deps) *Module {
 			r.Post("/notes/{id}/publish", h.publish)
 			r.Post("/notes/{id}/unpublish", h.unpublish)
 			r.Get("/notes/{id}/publish-status", h.status)
+			// Bulk meta — фронт читает на mount списка чтобы рисовать
+			// lock-icons / publish-индикаторы в sidebar без N+1
+			// per-row hover-fetch'ей. Возвращает только flags, не body —
+			// для encrypted notes это безопасно (server'у разрешено
+			// видеть факт шифрования, не сам plaintext).
+			r.Get("/notes/meta", h.bulkMeta)
 		},
 		MountRoot: func(r chi.Router) {
 			r.Get("/p/{slug}", h.publicView)
@@ -228,6 +234,54 @@ func (h *publishingHandler) status(w http.ResponseWriter, r *http.Request) {
 		resp.Slug = *slugVal
 		resp.URL = publicURL(*slugVal)
 		resp.At = atVal
+	}
+	writePubJSON(w, http.StatusOK, resp)
+}
+
+// ─── Bulk meta ────────────────────────────────────────────────────────────
+
+type noteMeta struct {
+	ID        string `json:"id"`
+	Encrypted bool   `json:"encrypted"`
+	Published bool   `json:"published"`
+}
+
+type bulkMetaResponse struct {
+	Notes []noteMeta `json:"notes"`
+}
+
+// bulkMeta возвращает per-note flags для всех активных (не archived)
+// заметок юзера. archived из выдачи исключаем, потому что они не
+// показываются в sidebar — flag для них бесполезен и тратит bytes.
+func (h *publishingHandler) bulkMeta(w http.ResponseWriter, r *http.Request) {
+	uid, ok := sharedMw.UserIDFromContext(r.Context())
+	if !ok {
+		writePubJSONError(w, http.StatusUnauthorized, "unauthenticated", "")
+		return
+	}
+	rows, err := h.pool.Query(r.Context(),
+		`SELECT id, encrypted, (public_slug IS NOT NULL AND published_at IS NOT NULL) AS published
+		   FROM hone_notes
+		  WHERE user_id = $1 AND archived_at IS NULL`,
+		uid,
+	)
+	if err != nil {
+		h.serverError(w, r, "bulkMeta.query", err, uid)
+		return
+	}
+	defer rows.Close()
+	resp := bulkMetaResponse{Notes: make([]noteMeta, 0, 32)}
+	for rows.Next() {
+		var m noteMeta
+		if err := rows.Scan(&m.ID, &m.Encrypted, &m.Published); err != nil {
+			h.serverError(w, r, "bulkMeta.scan", err, uid)
+			return
+		}
+		resp.Notes = append(resp.Notes, m)
+	}
+	if err := rows.Err(); err != nil {
+		h.serverError(w, r, "bulkMeta.rows", err, uid)
+		return
 	}
 	writePubJSON(w, http.StatusOK, resp)
 }

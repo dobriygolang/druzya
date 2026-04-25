@@ -12,9 +12,6 @@ import (
 
 type Querier interface {
 	AssignDailyKata(ctx context.Context, arg AssignDailyKataParams) (AssignDailyKataRow, error)
-	CreateAutopsy(ctx context.Context, arg CreateAutopsyParams) (InterviewAutopsy, error)
-	GetActiveCalendar(ctx context.Context, arg GetActiveCalendarParams) (GetActiveCalendarRow, error)
-	GetAutopsy(ctx context.Context, id pgtype.UUID) (InterviewAutopsy, error)
 	GetDailyKata(ctx context.Context, arg GetDailyKataParams) (GetDailyKataRow, error)
 	GetStreak(ctx context.Context, userID pgtype.UUID) (GetStreakRow, error)
 	// Powers GET /api/v1/daily/kata/:slug — deep-link to a specific kata by its
@@ -34,9 +31,7 @@ type Querier interface {
 	// sargable (no EXTRACT in WHERE) — the existing
 	// idx_kata_history_user_date covers it.
 	ListKataHistoryByYear(ctx context.Context, arg ListKataHistoryByYearParams) ([]ListKataHistoryByYearRow, error)
-	MarkAutopsyReady(ctx context.Context, arg MarkAutopsyReadyParams) (int64, error)
 	MarkDailyKataSubmitted(ctx context.Context, arg MarkDailyKataSubmittedParams) (int64, error)
-	UpsertCalendar(ctx context.Context, arg UpsertCalendarParams) (UpsertCalendarRow, error)
 	UpsertStreak(ctx context.Context, arg UpsertStreakParams) error
 	WeakestSkillNode(ctx context.Context, userID pgtype.UUID) (WeakestSkillNodeRow, error)
 }

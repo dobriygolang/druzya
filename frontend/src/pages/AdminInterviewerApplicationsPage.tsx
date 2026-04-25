@@ -48,7 +48,7 @@ export default function AdminInterviewerApplicationsPage() {
   // Non-admin (or unauthenticated) — bounce home. The backend would 403
   // anyway; we save them the trip.
   if (!isAdmin && !isElevated) {
-    return <Navigate to="/sanctum" replace />
+    return <Navigate to="/arena" replace />
   }
   if (!isAdmin) {
     // Interviewers but not admins still can't moderate.

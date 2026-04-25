@@ -8,7 +8,6 @@ require (
 	druz9/achievements v0.0.0-00010101000000-000000000000
 	druz9/admin v0.0.0-00010101000000-000000000000
 	druz9/ai_mock v0.0.0-00010101000000-000000000000
-	druz9/ai_native v0.0.0-00010101000000-000000000000
 	druz9/arena v0.0.0-00010101000000-000000000000
 	druz9/auth v0.0.0-00010101000000-000000000000
 	druz9/cohort v0.0.0-00010101000000-000000000000
@@ -28,7 +27,6 @@ require (
 	druz9/profile v0.0.0-00010101000000-000000000000
 	druz9/rating v0.0.0-00010101000000-000000000000
 	druz9/review v0.0.0-00010101000000-000000000000
-	druz9/season v0.0.0-00010101000000-000000000000
 	druz9/shared v0.0.0
 	druz9/slot v0.0.0-00010101000000-000000000000
 	druz9/tg_coach v0.0.0-00010101000000-000000000000
@@ -120,13 +118,11 @@ replace druz9/feed => ../../services/feed
 
 replace druz9/cohort => ../../services/cohort
 
-replace druz9/ai_native => ../../services/ai_native
 
 replace druz9/slot => ../../services/slot
 
 replace druz9/editor => ../../services/editor
 
-replace druz9/season => ../../services/season
 
 replace druz9/podcast => ../../services/podcast
 

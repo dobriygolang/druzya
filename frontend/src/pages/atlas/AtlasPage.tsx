@@ -173,7 +173,7 @@ function AtlasV2Surface({
                 >
                   <span>←</span> {t('atlas.close')}
                 </button>
-                <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-accent-hover">
+                <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-text-primary">
                   ◆ atlas · full map
                 </span>
                 <span className="w-[68px]" aria-hidden />
@@ -241,7 +241,7 @@ function HeaderStrip({
             aria-pressed={viewMode === 'graph'}
             className={`rounded p-1.5 transition-colors ${
               viewMode === 'graph'
-                ? 'bg-accent/20 text-accent-hover'
+                ? 'bg-text-primary/10 text-text-primary'
                 : 'text-text-muted hover:text-text-secondary'
             }`}
           >
@@ -254,7 +254,7 @@ function HeaderStrip({
             aria-pressed={viewMode === 'list'}
             className={`rounded p-1.5 transition-colors ${
               viewMode === 'list'
-                ? 'bg-accent/20 text-accent-hover'
+                ? 'bg-text-primary/10 text-text-primary'
                 : 'text-text-muted hover:text-text-secondary'
             }`}
           >
@@ -282,8 +282,10 @@ function GraphSkeleton() {
       <div
         className="absolute inset-0 animate-pulse"
         style={{
-          background:
-            'radial-gradient(ellipse at center, #14182B 0%, #0A0E1A 60%, #05070F 100%)',
+          // Phase-4: removed violet-tinted radial backdrop. Atlas skeleton
+          // sits on a flat near-black with the Hone starfield class so empty
+          // state still feels alive without a colored gradient.
+          background: '#0A0A0A',
         }}
       />
       <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 font-mono text-xs text-text-muted">
@@ -297,7 +299,7 @@ function EmptyProgressCTA() {
   return (
     <div className="flex flex-1 items-center justify-center bg-bg p-8">
       <div className="flex max-w-lg flex-col items-center gap-5 text-center">
-        <span className="grid h-16 w-16 place-items-center rounded-full bg-accent/15 text-accent-hover">
+        <span className="grid h-16 w-16 place-items-center rounded-full bg-text-primary/10 text-text-primary">
           <Sparkles className="h-7 w-7" />
         </span>
         <div className="flex flex-col gap-2">

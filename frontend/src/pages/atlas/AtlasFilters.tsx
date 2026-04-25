@@ -34,7 +34,7 @@ export function AtlasFilters({
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Поиск по названию навыка…"
-            className="h-9 w-full rounded-md border border-border bg-bg pl-9 pr-3 text-sm text-text-primary placeholder:text-text-muted focus:border-accent focus:outline-none"
+            className="h-9 w-full rounded-md border border-border bg-bg pl-9 pr-3 text-sm text-text-primary placeholder:text-text-muted focus:border-text-primary focus:outline-none"
           />
         </div>
         {(query || category !== 'all' || status !== 'all') && (
@@ -98,7 +98,7 @@ function FilterChip({
       ? 'border-success/60 bg-success/15 text-success border'
       : tone === 'warn'
         ? 'border-warn/60 bg-warn/15 text-warn border'
-        : 'border-accent bg-accent/15 text-text-primary border'
+        : 'border-text-primary bg-text-primary/10 text-text-primary border'
   const inactiveCls =
     'border border-border bg-surface-2 text-text-secondary hover:border-border-strong'
   return (

@@ -23,29 +23,38 @@ const SIZE_TEXT: Record<AvatarSize, string> = {
   xl: 'text-2xl',
 };
 
+// Phase-1: avatar gradients collapsed to a monochrome ramp (varying ink
+// opacities over black). Names retained so callsites don't break; visual
+// differentiation comes from the index, not the hue.
 const GRADIENT_CSS: Record<AvatarGradient, string> = {
-  'violet-cyan': 'linear-gradient(135deg, #582CFF 0%, #22D3EE 100%)',
-  'pink-violet': 'linear-gradient(135deg, #F472B6 0%, #582CFF 100%)',
-  'cyan-violet': 'linear-gradient(135deg, #22D3EE 0%, #582CFF 100%)',
-  'pink-red': 'linear-gradient(135deg, #F472B6 0%, #EF4444 100%)',
-  'success-cyan': 'linear-gradient(135deg, #10B981 0%, #22D3EE 100%)',
-  gold: 'linear-gradient(135deg, #FBBF24 0%, #F472B6 100%)',
+  'violet-cyan':  'linear-gradient(135deg, #2A2A2A 0%, #595959 100%)',
+  'pink-violet':  'linear-gradient(135deg, #1F1F1F 0%, #4A4A4A 100%)',
+  'cyan-violet':  'linear-gradient(135deg, #333333 0%, #6B6B6B 100%)',
+  'pink-red':     'linear-gradient(135deg, #2A2A2A 0%, #FF3B30 100%)',
+  'success-cyan': 'linear-gradient(135deg, #262626 0%, #5C5C5C 100%)',
+  gold:           'linear-gradient(135deg, #3A3A3A 0%, #7A7A7A 100%)',
 };
 
+// Phase-3: presence colors collapsed to ink+success+red. "in-match" reads
+// as red (live signal, parallels the recording-pulse), "streaming" as plain
+// ink-60 (no separate hue — streaming is uncommon enough that a unique
+// color isn't worth the palette debt).
 const STATUS_COLOR: Record<AvatarStatus, string> = {
   online: 'bg-success',
   offline: 'bg-text-muted',
-  'in-match': 'bg-accent',
-  streaming: 'bg-pink',
+  'in-match': 'bg-danger',
+  streaming: 'bg-text-secondary',
 };
 
+// Tier rings — keep gold/silver/bronze metallic hex (they're heraldic, not
+// brand colors), drop cyan/accent for platinum/master in favor of ink.
 const TIER_RING: Record<AvatarTier, string> = {
   bronze: 'ring-[#CD7F32]',
   silver: 'ring-[#C0C0C0]',
   gold: 'ring-warn',
-  platinum: 'ring-cyan',
+  platinum: 'ring-text-secondary',
   diamond: 'ring-[#B9F2FF]',
-  master: 'ring-accent',
+  master: 'ring-text-primary',
 };
 
 export interface AvatarProps extends Omit<React.HTMLAttributes<HTMLDivElement>, 'children'> {

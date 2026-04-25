@@ -2,7 +2,6 @@ import i18n from 'i18next'
 import { initReactI18next } from 'react-i18next'
 
 import ruCommon from '../locales/ru/common.json'
-import ruSanctum from '../locales/ru/sanctum.json'
 import ruArena from '../locales/ru/arena.json'
 import ruProfile from '../locales/ru/profile.json'
 import ruDaily from '../locales/ru/daily.json'
@@ -15,7 +14,6 @@ import ruPages from '../locales/ru/pages.json'
 import ruWave10 from '../locales/ru/wave10.json'
 
 import enCommon from '../locales/en/common.json'
-import enSanctum from '../locales/en/sanctum.json'
 import enArena from '../locales/en/arena.json'
 import enProfile from '../locales/en/profile.json'
 import enDaily from '../locales/en/daily.json'
@@ -35,7 +33,6 @@ import enWave10 from '../locales/en/wave10.json'
 // WAVE-13 — Ukrainian (ua) locale removed by product decision; LANG_LIST
 // no longer surfaces it and the locales/ua/ directory has been deleted.
 import kzCommon from '../locales/kz/common.json'
-import kzSanctum from '../locales/kz/sanctum.json'
 import kzArena from '../locales/kz/arena.json'
 import kzProfile from '../locales/kz/profile.json'
 import kzDaily from '../locales/kz/daily.json'
@@ -53,7 +50,6 @@ export type Lang = 'ru' | 'en' | 'kz'
 
 export const NAMESPACES = [
   'common',
-  'sanctum',
   'arena',
   'profile',
   'daily',
@@ -69,7 +65,6 @@ export const NAMESPACES = [
 export const resources = {
   ru: {
     common: ruCommon,
-    sanctum: ruSanctum,
     arena: ruArena,
     profile: ruProfile,
     daily: ruDaily,
@@ -83,7 +78,6 @@ export const resources = {
   },
   en: {
     common: enCommon,
-    sanctum: enSanctum,
     arena: enArena,
     profile: enProfile,
     daily: enDaily,
@@ -97,7 +91,6 @@ export const resources = {
   },
   kz: {
     common: kzCommon,
-    sanctum: kzSanctum,
     arena: kzArena,
     profile: kzProfile,
     daily: kzDaily,

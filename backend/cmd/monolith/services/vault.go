@@ -55,7 +55,7 @@ const vaultSaltBytes = 16
 
 // NewVault wires the vault module.
 func NewVault(d Deps) *Module {
-	h := &vaultHandler{pool: d.Pool, log: d.Log}
+	h := &vaultHandler{pool: d.Pool, log: d.Log, broker: d.SyncEventBroker}
 	return &Module{
 		MountREST: func(r chi.Router) {
 			r.Post("/vault/init", h.initVault)
@@ -67,8 +67,9 @@ func NewVault(d Deps) *Module {
 }
 
 type vaultHandler struct {
-	pool *pgxpool.Pool
-	log  *slog.Logger
+	pool   *pgxpool.Pool
+	log    *slog.Logger
+	broker *SyncEventBroker
 }
 
 type vaultSaltResponse struct {
@@ -251,6 +252,9 @@ func (h *vaultHandler) encryptNote(w http.ResponseWriter, r *http.Request) {
 		h.serverError(w, r, "encrypt.commit", err, uid)
 		return
 	}
+	if h.broker != nil {
+		h.broker.PublishSyncChange(uid, "hone_notes", sharedMw.DeviceIDFromContext(r.Context()))
+	}
 	writePubJSON(w, http.StatusOK, map[string]bool{"ok": true})
 }
 
@@ -286,6 +290,9 @@ func (h *vaultHandler) decryptNote(w http.ResponseWriter, r *http.Request) {
 	if cmd.RowsAffected() == 0 {
 		writePubJSONError(w, http.StatusNotFound, "not_found", "")
 		return
+	}
+	if h.broker != nil {
+		h.broker.PublishSyncChange(uid, "hone_notes", sharedMw.DeviceIDFromContext(r.Context()))
 	}
 	// Embedding re-queue: client может дёрнуть UpdateNote вторым вызовом
 	// чтобы trigger'нуть EmbedFn — этот endpoint только flips флаг, не

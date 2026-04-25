@@ -78,6 +78,13 @@ type Deps struct {
 	// last_seen_at UPDATE. Подключается в router.go gated REST chain.
 	// nil-safe: при nil middleware превращается в passthrough.
 	SyncHeartbeat *SyncHeartbeat
+
+	// SyncEventBroker — Phase C-6.2 in-process pubsub для realtime SSE
+	// push. Write-handlers (yjs append, vault encrypt/decrypt, sync push)
+	// дёргают Publish*; SSE-subscriber'ы получают fan-out. nil-safe: при
+	// nil publish — no-op (callers проверяют). Built в bootstrap до
+	// модулей которые его используют.
+	SyncEventBroker *SyncEventBroker
 }
 
 // Module is what every NewXxx returns: enough metadata for router.go to

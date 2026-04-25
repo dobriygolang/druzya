@@ -45,7 +45,7 @@ export default function AdminPage() {
   // the apiClient throws ApiError with status 403.
   const dashErrStatus = (dashboard.error as { status?: number } | null)?.status
   if (dashErrStatus === 403) {
-    return <Navigate to="/sanctum" replace />
+    return <Navigate to="/arena" replace />
   }
 
   const pending = dashboard.data?.reports_pending ?? 0

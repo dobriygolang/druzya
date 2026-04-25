@@ -109,11 +109,14 @@ export function AtlasDrawer({
             <div className="h-2 overflow-hidden rounded-full bg-surface-2">
               <div
                 className={`h-full rounded-full ${
+                  // Phase-4: progress bar collapsed to monochrome — state
+                  // is shown by saturation/explicit colors only where it
+                  // genuinely conveys meaning (decaying = danger).
                   state === 'mastered'
-                    ? 'bg-gradient-to-r from-success to-cyan'
+                    ? 'bg-success'
                     : state === 'decaying'
-                      ? 'bg-gradient-to-r from-warn to-danger'
-                      : 'bg-gradient-to-r from-cyan to-accent'
+                      ? 'bg-danger'
+                      : 'bg-text-primary'
                 }`}
                 style={{ width: `${barWidth}%` }}
               />
@@ -171,7 +174,7 @@ export function AtlasDrawer({
           ) : (
             <div className="rounded-lg bg-surface-2 p-3 text-xs text-text-muted">
               Каталог ката для этой темы ещё не размечен — попробуй открыть{' '}
-              <Link to="/arena" className="text-accent hover:underline">
+              <Link to="/arena" className="text-text-primary hover:underline">
                 Арену с фильтром по теме
               </Link>
               .
@@ -213,7 +216,7 @@ function KataItem({ k }: { k: KataRef }) {
     <li>
       <Link
         to={`/arena/kata/${encodeURIComponent(k.id)}`}
-        className="flex items-center justify-between rounded-md border border-border bg-surface-2 px-3 py-2 text-sm text-text-primary transition-colors hover:border-accent"
+        className="flex items-center justify-between rounded-md border border-border bg-surface-2 px-3 py-2 text-sm text-text-primary transition-colors hover:border-border-strong"
       >
         <div className="flex min-w-0 flex-col">
           <span className="truncate">{k.title}</span>
@@ -248,7 +251,7 @@ function RelatedGroup({
             key={n.key}
             type="button"
             onClick={() => onClick(n.key)}
-            className="rounded-md border border-border bg-surface-2 px-2.5 py-1 text-xs text-text-primary hover:border-accent"
+            className="rounded-md border border-border bg-surface-2 px-2.5 py-1 text-xs text-text-primary hover:border-border-strong"
           >
             {n.title}
           </button>

@@ -23,7 +23,7 @@ function TopBar() {
           v3.2
         </span>
       </div>
-      <Link to="/sanctum">
+      <Link to="/arena">
         <Button variant="ghost" size="sm" icon={<ArrowLeft className="h-3.5 w-3.5" />}>
           На главную
         </Button>

@@ -36,8 +36,15 @@ func RequireAuth(issuer *app.TokenIssuer) func(http.Handler) http.Handler {
 func extractBearer(r *http.Request) string {
 	h := r.Header.Get("Authorization")
 	const prefix = "Bearer "
-	if !strings.HasPrefix(h, prefix) {
-		return ""
+	if strings.HasPrefix(h, prefix) {
+		return strings.TrimSpace(h[len(prefix):])
 	}
-	return strings.TrimSpace(h[len(prefix):])
+	// Fallback на ?token= query — для endpoint'ов где headers недоступны
+	// (EventSource API не позволяет custom headers по стандарту, поэтому
+	// /sync/events работает через query). На REST-эндпоинтах оба пути
+	// валидны; query-фоллбек безвреден если token-validation одна и та же.
+	if v := r.URL.Query().Get("token"); v != "" {
+		return v
+	}
+	return ""
 }

@@ -176,15 +176,6 @@ type DailyKataMissed struct {
 
 func (DailyKataMissed) Topic() string { return "daily.KataMissed" }
 
-type InterviewAutopsyCreated struct {
-	base
-	AutopsyID uuid.UUID `json:"autopsy_id"`
-	UserID    uuid.UUID `json:"user_id"`
-	CompanyID uuid.UUID `json:"company_id"`
-}
-
-func (InterviewAutopsyCreated) Topic() string { return "daily.AutopsyCreated" }
-
 // ─────────────────────────────────────────────────────────────────────────
 // Rating / Progression
 // ─────────────────────────────────────────────────────────────────────────

@@ -12,7 +12,6 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
-	"time"
 
 	"druz9/daily/app"
 	"druz9/daily/domain"
@@ -22,8 +21,6 @@ import (
 	sharedMw "druz9/shared/pkg/middleware"
 
 	"connectrpc.com/connect"
-	"github.com/google/uuid"
-	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 // Compile-time assertion — DailyServer satisfies the generated handler.
@@ -135,125 +132,6 @@ func (s *DailyServer) GetStreak(
 	return connect.NewResponse(toStreakInfoProto(info)), nil
 }
 
-// GetCalendar implements druz9.v1.DailyService/GetCalendar.
-func (s *DailyServer) GetCalendar(
-	ctx context.Context,
-	_ *connect.Request[pb.GetCalendarRequest],
-) (*connect.Response[pb.InterviewCalendar], error) {
-	uid, ok := sharedMw.UserIDFromContext(ctx)
-	if !ok {
-		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("unauthenticated"))
-	}
-	c, err := s.H.GetCalendar.Do(ctx, uid)
-	if err != nil {
-		if errors.Is(err, domain.ErrNotFound) {
-			return nil, connect.NewError(connect.CodeNotFound, err)
-		}
-		return nil, fmt.Errorf("daily.GetCalendar: %w", s.toConnectErr(err))
-	}
-	return connect.NewResponse(toCalendarProto(c)), nil
-}
-
-// UpsertCalendar implements druz9.v1.DailyService/UpsertCalendar.
-func (s *DailyServer) UpsertCalendar(
-	ctx context.Context,
-	req *connect.Request[pb.UpsertCalendarRequest],
-) (*connect.Response[pb.InterviewCalendar], error) {
-	uid, ok := sharedMw.UserIDFromContext(ctx)
-	if !ok {
-		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("unauthenticated"))
-	}
-	m := req.Msg
-	companyID, err := uuid.Parse(m.GetCompanyId())
-	if err != nil {
-		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("invalid company_id: %w", err))
-	}
-	interviewDate, err := time.Parse("2006-01-02", m.GetInterviewDate())
-	if err != nil {
-		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("invalid interview_date: %w", err))
-	}
-	c, err := s.H.UpsertCalendar.Do(ctx, app.UpsertCalendarInput{
-		UserID:        uid,
-		CompanyID:     companyID,
-		Role:          m.GetRole(),
-		InterviewDate: interviewDate,
-		CurrentLevel:  m.GetCurrentLevel(),
-	})
-	if err != nil {
-		return nil, fmt.Errorf("daily.UpsertCalendar: %w", s.toConnectErr(err))
-	}
-	return connect.NewResponse(toCalendarProto(c)), nil
-}
-
-// CreateAutopsy implements druz9.v1.DailyService/CreateAutopsy.
-func (s *DailyServer) CreateAutopsy(
-	ctx context.Context,
-	req *connect.Request[pb.CreateAutopsyRequest],
-) (*connect.Response[pb.InterviewAutopsy], error) {
-	uid, ok := sharedMw.UserIDFromContext(ctx)
-	if !ok {
-		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("unauthenticated"))
-	}
-	m := req.Msg
-	companyID, err := uuid.Parse(m.GetCompanyId())
-	if err != nil {
-		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("invalid company_id: %w", err))
-	}
-	section := sectionFromProto(m.GetSection())
-	if !section.IsValid() {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("invalid section"))
-	}
-	outcome := domain.AutopsyOutcome(m.GetOutcome())
-	if !outcome.IsValid() {
-		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("invalid outcome"))
-	}
-	var interviewDate *time.Time
-	if raw := m.GetInterviewDate(); raw != "" {
-		d, parseErr := time.Parse("2006-01-02", raw)
-		if parseErr != nil {
-			return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("invalid interview_date: %w", parseErr))
-		}
-		interviewDate = &d
-	}
-	a, err := s.H.CreateAutopsy.Do(ctx, app.CreateAutopsyInput{
-		UserID:        uid,
-		CompanyID:     companyID,
-		Section:       section,
-		Outcome:       outcome,
-		InterviewDate: interviewDate,
-		Questions:     m.GetQuestions(),
-		Answers:       m.GetAnswers(),
-		Notes:         m.GetNotes(),
-	})
-	if err != nil {
-		return nil, fmt.Errorf("daily.CreateAutopsy: %w", s.toConnectErr(err))
-	}
-	return connect.NewResponse(toAutopsyProto(a)), nil
-}
-
-// GetAutopsy implements druz9.v1.DailyService/GetAutopsy.
-func (s *DailyServer) GetAutopsy(
-	ctx context.Context,
-	req *connect.Request[pb.GetAutopsyRequest],
-) (*connect.Response[pb.InterviewAutopsy], error) {
-	uid, ok := sharedMw.UserIDFromContext(ctx)
-	if !ok {
-		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("unauthenticated"))
-	}
-	autopsyID, err := uuid.Parse(req.Msg.GetAutopsyId())
-	if err != nil {
-		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("invalid autopsy_id: %w", err))
-	}
-	a, err := s.H.GetAutopsy.Do(ctx, autopsyID)
-	if err != nil {
-		return nil, fmt.Errorf("daily.GetAutopsy: %w", s.toConnectErr(err))
-	}
-	if a.UserID != uid {
-		return nil, connect.NewError(connect.CodePermissionDenied, errors.New("not owner"))
-	}
-	return connect.NewResponse(toAutopsyProto(a)), nil
-}
-
 // ── error mapping ──────────────────────────────────────────────────────────
 
 func (s *DailyServer) toConnectErr(err error) error {
@@ -308,35 +186,6 @@ func toStreakInfoProto(s domain.StreakInfo) *pb.StreakInfo {
 			entry.Passed = *h
 		}
 		out.History = append(out.History, entry)
-	}
-	return out
-}
-
-func toCalendarProto(c domain.InterviewCalendar) *pb.InterviewCalendar {
-	out := &pb.InterviewCalendar{
-		Id:            c.ID.String(),
-		Role:          c.Role,
-		InterviewDate: c.InterviewDate.Format("2006-01-02"),
-		DaysLeft:      int32(c.DaysLeft),
-		ReadinessPct:  int32(c.ReadinessPct),
-	}
-	if c.CompanyID != (uuid.UUID{}) {
-		out.CompanyId = c.CompanyID.String()
-	}
-	return out
-}
-
-func toAutopsyProto(a domain.Autopsy) *pb.InterviewAutopsy {
-	out := &pb.InterviewAutopsy{
-		Id:      a.ID.String(),
-		Status:  string(a.Status),
-		Outcome: a.Outcome.String(),
-	}
-	if !a.CreatedAt.IsZero() {
-		out.CreatedAt = timestamppb.New(a.CreatedAt.UTC())
-	}
-	if a.ShareSlug != "" {
-		out.ShareUrl = "/autopsy/" + a.ShareSlug
 	}
 	return out
 }

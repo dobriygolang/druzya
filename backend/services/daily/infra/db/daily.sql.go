@@ -55,126 +55,6 @@ func (q *Queries) AssignDailyKata(ctx context.Context, arg AssignDailyKataParams
 	return i, err
 }
 
-const createAutopsy = `-- name: CreateAutopsy :one
-INSERT INTO interview_autopsies(
-  user_id, company_id, section, outcome, interview_date,
-  questions_raw, answers_raw, notes, status, share_slug
-) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
-RETURNING id, user_id, company_id, section, outcome, interview_date,
-          questions_raw, answers_raw, notes, status, analysis_json, share_slug, created_at
-`
-
-type CreateAutopsyParams struct {
-	UserID        pgtype.UUID
-	CompanyID     pgtype.UUID
-	Section       string
-	Outcome       string
-	InterviewDate pgtype.Date
-	QuestionsRaw  pgtype.Text
-	AnswersRaw    pgtype.Text
-	Notes         pgtype.Text
-	Status        string
-	ShareSlug     pgtype.Text
-}
-
-func (q *Queries) CreateAutopsy(ctx context.Context, arg CreateAutopsyParams) (InterviewAutopsy, error) {
-	row := q.db.QueryRow(ctx, createAutopsy,
-		arg.UserID,
-		arg.CompanyID,
-		arg.Section,
-		arg.Outcome,
-		arg.InterviewDate,
-		arg.QuestionsRaw,
-		arg.AnswersRaw,
-		arg.Notes,
-		arg.Status,
-		arg.ShareSlug,
-	)
-	var i InterviewAutopsy
-	err := row.Scan(
-		&i.ID,
-		&i.UserID,
-		&i.CompanyID,
-		&i.Section,
-		&i.Outcome,
-		&i.InterviewDate,
-		&i.QuestionsRaw,
-		&i.AnswersRaw,
-		&i.Notes,
-		&i.Status,
-		&i.AnalysisJson,
-		&i.ShareSlug,
-		&i.CreatedAt,
-	)
-	return i, err
-}
-
-const getActiveCalendar = `-- name: GetActiveCalendar :one
-SELECT id, user_id, company_id, role, interview_date, current_level, readiness_pct, updated_at
-  FROM interview_calendars
- WHERE user_id = $1 AND interview_date >= $2
- ORDER BY interview_date ASC LIMIT 1
-`
-
-type GetActiveCalendarParams struct {
-	UserID        pgtype.UUID
-	InterviewDate pgtype.Date
-}
-
-type GetActiveCalendarRow struct {
-	ID            pgtype.UUID
-	UserID        pgtype.UUID
-	CompanyID     pgtype.UUID
-	Role          string
-	InterviewDate pgtype.Date
-	CurrentLevel  pgtype.Text
-	ReadinessPct  int32
-	UpdatedAt     pgtype.Timestamptz
-}
-
-func (q *Queries) GetActiveCalendar(ctx context.Context, arg GetActiveCalendarParams) (GetActiveCalendarRow, error) {
-	row := q.db.QueryRow(ctx, getActiveCalendar, arg.UserID, arg.InterviewDate)
-	var i GetActiveCalendarRow
-	err := row.Scan(
-		&i.ID,
-		&i.UserID,
-		&i.CompanyID,
-		&i.Role,
-		&i.InterviewDate,
-		&i.CurrentLevel,
-		&i.ReadinessPct,
-		&i.UpdatedAt,
-	)
-	return i, err
-}
-
-const getAutopsy = `-- name: GetAutopsy :one
-SELECT id, user_id, company_id, section, outcome, interview_date,
-       questions_raw, answers_raw, notes, status, analysis_json, share_slug, created_at
-  FROM interview_autopsies WHERE id = $1
-`
-
-func (q *Queries) GetAutopsy(ctx context.Context, id pgtype.UUID) (InterviewAutopsy, error) {
-	row := q.db.QueryRow(ctx, getAutopsy, id)
-	var i InterviewAutopsy
-	err := row.Scan(
-		&i.ID,
-		&i.UserID,
-		&i.CompanyID,
-		&i.Section,
-		&i.Outcome,
-		&i.InterviewDate,
-		&i.QuestionsRaw,
-		&i.AnswersRaw,
-		&i.Notes,
-		&i.Status,
-		&i.AnalysisJson,
-		&i.ShareSlug,
-		&i.CreatedAt,
-	)
-	return i, err
-}
-
 const getDailyKata = `-- name: GetDailyKata :one
 SELECT task_id, is_cursed, is_weekly_boss, passed, freeze_used, submitted_at
   FROM daily_kata_history
@@ -451,25 +331,6 @@ func (q *Queries) ListKataHistoryByYear(ctx context.Context, arg ListKataHistory
 	return items, nil
 }
 
-const markAutopsyReady = `-- name: MarkAutopsyReady :execrows
-UPDATE interview_autopsies
-   SET status = 'ready', analysis_json = $2::jsonb
- WHERE id = $1
-`
-
-type MarkAutopsyReadyParams struct {
-	ID      pgtype.UUID
-	Column2 []byte
-}
-
-func (q *Queries) MarkAutopsyReady(ctx context.Context, arg MarkAutopsyReadyParams) (int64, error) {
-	result, err := q.db.Exec(ctx, markAutopsyReady, arg.ID, arg.Column2)
-	if err != nil {
-		return 0, err
-	}
-	return result.RowsAffected(), nil
-}
-
 const markDailyKataSubmitted = `-- name: MarkDailyKataSubmitted :execrows
 UPDATE daily_kata_history
    SET passed = $3, submitted_at = now()
@@ -488,53 +349,6 @@ func (q *Queries) MarkDailyKataSubmitted(ctx context.Context, arg MarkDailyKataS
 		return 0, err
 	}
 	return result.RowsAffected(), nil
-}
-
-const upsertCalendar = `-- name: UpsertCalendar :one
-INSERT INTO interview_calendars(user_id, company_id, role, interview_date, current_level)
-VALUES ($1, $2, $3, $4, $5)
-RETURNING id, user_id, company_id, role, interview_date, current_level, readiness_pct, updated_at
-`
-
-type UpsertCalendarParams struct {
-	UserID        pgtype.UUID
-	CompanyID     pgtype.UUID
-	Role          string
-	InterviewDate pgtype.Date
-	CurrentLevel  pgtype.Text
-}
-
-type UpsertCalendarRow struct {
-	ID            pgtype.UUID
-	UserID        pgtype.UUID
-	CompanyID     pgtype.UUID
-	Role          string
-	InterviewDate pgtype.Date
-	CurrentLevel  pgtype.Text
-	ReadinessPct  int32
-	UpdatedAt     pgtype.Timestamptz
-}
-
-func (q *Queries) UpsertCalendar(ctx context.Context, arg UpsertCalendarParams) (UpsertCalendarRow, error) {
-	row := q.db.QueryRow(ctx, upsertCalendar,
-		arg.UserID,
-		arg.CompanyID,
-		arg.Role,
-		arg.InterviewDate,
-		arg.CurrentLevel,
-	)
-	var i UpsertCalendarRow
-	err := row.Scan(
-		&i.ID,
-		&i.UserID,
-		&i.CompanyID,
-		&i.Role,
-		&i.InterviewDate,
-		&i.CurrentLevel,
-		&i.ReadinessPct,
-		&i.UpdatedAt,
-	)
-	return i, err
 }
 
 const upsertStreak = `-- name: UpsertStreak :exec

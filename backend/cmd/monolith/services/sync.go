@@ -43,7 +43,7 @@ import (
 func NewSync(d Deps) (*Module, *SyncHeartbeat) {
 	h := &syncHandler{pool: d.Pool, log: d.Log}
 	hb := newHeartbeat(d.Pool, d.Log)
-	repl := &syncReplicationHandler{pool: d.Pool, log: d.Log}
+	repl := &syncReplicationHandler{pool: d.Pool, log: d.Log, broker: d.SyncEventBroker}
 	gc := &tombstoneGC{
 		pool:      d.Pool,
 		log:       d.Log,
@@ -282,6 +282,11 @@ func (s *SyncHeartbeat) Middleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		uid, hasUser := sharedMw.UserIDFromContext(r.Context())
 		didStr := r.Header.Get("X-Device-ID")
+		if didStr == "" {
+			// Fallback на ?deviceId= query — для SSE / preview-ботов /
+			// прочих случаев когда custom-header передать нельзя.
+			didStr = r.URL.Query().Get("deviceId")
+		}
 		if didStr == "" || !hasUser {
 			next.ServeHTTP(w, r)
 			return

@@ -82,7 +82,7 @@ function HeaderRow({
           className={[
             'inline-flex items-center gap-2 rounded-lg px-3 py-1.5 font-mono text-[11px] font-semibold tracking-[0.08em] transition-colors',
             partyMode === 'solo'
-              ? 'bg-accent text-text-primary shadow-glow'
+              ? 'bg-text-primary text-bg'
               : 'text-text-muted hover:text-text-primary',
           ].join(' ')}
         >
@@ -97,7 +97,7 @@ function HeaderRow({
           className={[
             'inline-flex items-center gap-2 rounded-lg px-3 py-1.5 font-mono text-[11px] font-semibold tracking-[0.08em] transition-colors',
             partyMode === 'party'
-              ? 'bg-accent text-text-primary shadow-glow'
+              ? 'bg-text-primary text-bg'
               : 'text-text-muted hover:text-text-primary',
           ].join(' ')}
         >
@@ -132,9 +132,9 @@ function HeroQueue({
 }: HeroQueueProps) {
   const { t } = useTranslation('arena')
   return (
-    <div className="flex w-full flex-col items-start justify-between gap-4 rounded-xl border border-border-strong bg-gradient-to-br from-surface-2 to-surface-3 p-5 shadow-card sm:p-7 lg:flex-row lg:items-center">
+    <div className="flex w-full flex-col items-start justify-between gap-4 rounded-xl border border-border-strong bg-surface-2 p-5 sm:p-7 lg:flex-row lg:items-center">
       <div className="flex min-w-0 flex-col gap-3">
-        <span className="inline-flex w-fit items-center gap-1.5 rounded-full bg-accent/15 px-2.5 py-1 font-mono text-[11px] font-semibold tracking-[0.08em] text-accent-hover">
+        <span className="inline-flex w-fit items-center gap-1.5 rounded-full bg-text-primary/10 px-2.5 py-1 font-mono text-[11px] font-medium tracking-[0.08em] text-text-primary">
           <Swords className="h-3 w-3" /> {t('ranked_1v1_tag')}
         </span>
         <h2 className="font-display text-[28px] font-bold text-text-primary">
@@ -154,7 +154,7 @@ function HeroQueue({
               className={[
                 'rounded-full px-3 py-1 font-mono text-[11px] font-semibold uppercase tracking-wider transition-colors',
                 selectedSection === s
-                  ? 'bg-accent text-bg'
+                  ? 'bg-text-primary text-bg'
                   : 'border border-border bg-surface-1 text-text-secondary hover:bg-surface-2',
                 inQueue || isSubmitting ? 'cursor-not-allowed opacity-60' : '',
               ].join(' ')}
@@ -188,7 +188,7 @@ function HeroQueue({
             )
           }
           iconRight={<ArrowRight className="h-4 w-4" />}
-          className="px-6 py-3.5 text-sm shadow-glow"
+          className="px-6 py-3.5 text-sm"
           onClick={onFind}
           disabled={isSubmitting}
         >
@@ -223,7 +223,7 @@ function DynamicModelTile({
       className={[
         'flex h-full min-w-0 flex-col justify-between gap-2 rounded-lg border p-3.5 text-left transition-colors',
         selected
-          ? 'border-accent bg-accent/10 shadow-glow'
+          ? 'border-text-primary bg-text-primary/5'
           : locked
             ? 'cursor-not-allowed border-border bg-surface-1 opacity-60'
             : 'border-border bg-surface-1 hover:border-border-strong',
@@ -237,8 +237,8 @@ function DynamicModelTile({
           <span className="truncate font-mono text-[10px] text-text-muted">{m.provider}</span>
         </div>
         {selected ? (
-          <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-accent/30">
-            <Check className="h-3.5 w-3.5 text-accent-hover" />
+          <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-text-primary/15">
+            <Check className="h-3.5 w-3.5 text-text-primary" />
           </span>
         ) : (
           <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-surface-3">
@@ -295,7 +295,7 @@ function AiPanel({
       <div className="flex flex-col items-start justify-between gap-2 sm:flex-row sm:items-center">
         <div className="flex min-w-0 flex-col gap-1">
           <h3 className="flex items-center gap-2 font-display text-lg font-bold text-text-primary">
-            <Sparkles className="h-4 w-4 text-pink" />
+            <Sparkles className="h-4 w-4 text-text-secondary" />
             {t('ai_opponent_title')}
           </h3>
           <p className="text-xs text-text-secondary">
@@ -361,7 +361,9 @@ const MODES: Mode[] = [
     count: 412,
     time: '~12с',
     icon: <Swords className="h-7 w-7 text-text-primary" />,
-    gradient: 'from-accent to-pink',
+    // Phase-4: mode badges collapsed to monochrome ink-tints. Differentiation
+    // is by name + icon, not hue — same rule as Atlas clusters.
+    gradient: 'bg-text-primary/15',
     arenaMode: 'ranked',
     requiresParty: false,
     aiPowered: false,
@@ -373,7 +375,7 @@ const MODES: Mode[] = [
     count: 286,
     time: '~8с',
     icon: <Zap className="h-7 w-7 text-text-primary" />,
-    gradient: 'from-cyan to-accent',
+    gradient: 'bg-text-primary/10',
     arenaMode: 'solo_1v1',
     requiresParty: false,
     aiPowered: false,
@@ -385,7 +387,7 @@ const MODES: Mode[] = [
     count: 168,
     time: '~24с',
     icon: <Users className="h-7 w-7 text-text-primary" />,
-    gradient: 'from-pink to-warn',
+    gradient: 'bg-text-primary/12',
     arenaMode: 'duo_2v2',
     requiresParty: true,
     aiPowered: false,
@@ -397,7 +399,7 @@ const MODES: Mode[] = [
     count: 94,
     time: '~45с',
     icon: <Video className="h-7 w-7 text-text-primary" />,
-    gradient: 'from-success to-cyan',
+    gradient: 'bg-text-primary/8',
     arenaMode: 'hardcore',
     requiresParty: false,
     aiPowered: true,
@@ -409,7 +411,7 @@ const MODES: Mode[] = [
     count: '—',
     time: '—',
     icon: <FileCode className="h-7 w-7 text-text-primary" />,
-    gradient: 'from-cyan to-pink',
+    gradient: 'bg-text-primary/10',
     // arenaMode не используется — карточка ведёт на /pair (см. handleModeClick).
     arenaMode: 'ranked',
     requiresParty: false,
@@ -422,7 +424,7 @@ const MODES: Mode[] = [
     count: '—',
     time: '—',
     icon: <DoorOpen className="h-7 w-7 text-text-primary" />,
-    gradient: 'from-cyan to-success',
+    gradient: 'bg-text-primary/8',
     // arenaMode не используется — карточка ведёт на /lobbies (см. handleModeClick).
     arenaMode: 'ranked',
     requiresParty: false,
@@ -460,10 +462,10 @@ function ModeCard({
         onClick={onClick}
         disabled={isPending}
         aria-label={`${t('enter')} — ${m.name}`}
-        className="absolute inset-0 z-10 cursor-pointer rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-bg disabled:cursor-wait"
+        className="absolute inset-0 z-10 cursor-pointer rounded-xl focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-text-primary/40 focus-visible:ring-offset-2 focus-visible:ring-offset-bg disabled:cursor-wait"
       />
       <div
-        className={`grid h-16 w-16 place-items-center rounded-xl bg-gradient-to-br ${m.gradient} shadow-card`}
+        className={`grid h-16 w-16 place-items-center rounded-xl border border-border ${m.gradient}`}
       >
         {m.icon}
       </div>
@@ -482,7 +484,7 @@ function ModeCard({
             : `${m.count} · ${m.time}`}
         </span>
         {m.aiPowered && (
-          <span className="inline-flex items-center gap-1 rounded-full bg-pink/15 px-2 py-0.5 font-mono text-[10px] font-semibold text-pink">
+          <span className="inline-flex items-center gap-1 rounded-full bg-text-primary/8 px-2 py-0.5 font-mono text-[10px] font-medium text-text-secondary">
             <Bot className="h-3 w-3" />
             {modelName}
           </span>
@@ -541,7 +543,7 @@ function FriendsStrip({ onCreateParty }: { onCreateParty: () => void }) {
       <button
         type="button"
         onClick={onCreateParty}
-        className="inline-flex items-center gap-2 rounded-full border border-accent/40 bg-accent/10 px-4 py-2 font-sans text-[13px] font-semibold text-accent-hover hover:bg-accent/20"
+        className="inline-flex items-center gap-2 rounded-full border border-border-strong bg-text-primary/5 px-4 py-2 font-sans text-[13px] font-medium text-text-primary hover:bg-text-primary/10"
       >
         <Users className="h-3.5 w-3.5" />
         {t('create_party')}

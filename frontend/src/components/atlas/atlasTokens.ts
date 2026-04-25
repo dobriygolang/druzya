@@ -22,26 +22,29 @@ export type AtlasNodeState =
 
 export type AtlasEdgeKind = 'prereq' | 'suggested' | 'crosslink'
 
-// Colour-per-cluster — designer-allocated palette. Falls back to accent
-// for clusters not in this map (graceful degrade for new clusters added
-// in admin CMS before the palette is updated).
+// Phase-1: cluster colors collapsed to a monochrome ramp. Atlas now reads
+// as a single material with strength shown by node intensity, not hue.
+// Differentiation between clusters comes from layout + label, not color
+// — same rule as the rest of the unified palette (one accent: red).
+// If we later need cluster differentiation back, do it via 6 ink-tints
+// of slightly varying saturation rather than reintroducing rainbow.
 export const CLUSTER_COLOR: Record<string, string> = {
-  algorithms: '#582CFF', // accent
-  algo: '#582CFF',
-  data_structures: '#22D3EE', // cyan
-  ds: '#22D3EE',
-  system_design: '#F472B6', // pink
-  sysdes: '#F472B6',
-  go: '#10B981', // success
-  backend: '#10B981',
-  concurrency: '#FBBF24', // warn
-  sql: '#22D3EE',
-  behavioral: '#A78BFA',
+  algorithms:      '#FFFFFF',
+  algo:            '#FFFFFF',
+  data_structures: '#D9D9D9',
+  ds:              '#D9D9D9',
+  system_design:   '#B3B3B3',
+  sysdes:          '#B3B3B3',
+  go:              '#8C8C8C',
+  backend:         '#8C8C8C',
+  concurrency:     '#666666',
+  sql:             '#A6A6A6',
+  behavioral:      '#737373',
 }
 
 export function clusterColor(cluster: string | undefined): string {
-  if (!cluster) return '#582CFF'
-  return CLUSTER_COLOR[cluster] ?? '#582CFF'
+  if (!cluster) return '#FFFFFF'
+  return CLUSTER_COLOR[cluster] ?? '#FFFFFF'
 }
 
 // Node radius per kind. Hub is the visual anchor, keystones diamonds are

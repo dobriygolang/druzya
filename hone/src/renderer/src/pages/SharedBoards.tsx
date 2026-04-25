@@ -1,17 +1,21 @@
-// SharedBoards — multiplayer Excalidraw whiteboards (bible §9 Phase 6.5.4).
+// SharedBoards — multiplayer Excalidraw whiteboards в Hone-стиле.
 //
-// Архитектура: каждая room имеет Y.Doc на клиенте, sync'ится через
-// /ws/whiteboard/{id} (opaque relay). На клиенте Y.Map<'scene'> хранит
-// сериализованный elements-массив; локальный change → Y.Map.set →
-// автоматически распространяется через WS. Remote update → observe →
-// excalidrawAPI.updateScene.
+// Архитектура CRDT/WS (без изменений с прежней версии):
+//   - Y.Doc на клиенте, sync через /ws/whiteboard/{id} (opaque relay).
+//   - Y.Map<'scene'> хранит сериализованный elements-массив; локальный
+//     change → Y.Map.set → распространяется через WS. Remote update →
+//     observe → excalidrawAPI.updateScene.
 //
-// MVP-trade-off: scene хранится как один JSON-string в Y.Map. Это
-// last-writer-wins per change, не fine-grained CRDT. Достаточно для
-// типичного use-case (разные люди рисуют разные области canvas'а).
-// Per-element CRDT-merge (Y.Array<Y.Map>) — TODO Phase 7 если будут
-// жалобы на конфликты.
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+// UI (этот pass — full redesign):
+//   - Sidebar slева как Notes/Whiteboard pattern: list rooms + "+" create
+//     + three-dots delete + "Join by ID" в header'е.
+//   - Canvas full-bleed справа. Excalidraw default UI спрятан CSS'ом
+//     (см. globals.css ::hone-excalidraw-mount overrides).
+//   - Floating toolbar Hone-стиля внизу — наши SVG-иконки, glass-blur
+//     панель. Подключён к excalidrawAPI.setActiveTool.
+//   - Минимальный top-bar справа: «N participants · LIVE» + COPY URL +
+//     Open on web. Без жирных кнопок типа default Excalidraw.
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ConnectError, Code } from '@connectrpc/connect';
 import * as Y from 'yjs';
 import { Excalidraw } from '@excalidraw/excalidraw';
@@ -19,90 +23,144 @@ import type { ExcalidrawImperativeAPI } from '@excalidraw/excalidraw/types';
 import '@excalidraw/excalidraw/index.css';
 
 import { WEB_BASE_URL } from '../api/config';
+import { DraggableToolbar } from '../components/DraggableToolbar';
 import {
   createWhiteboardRoom,
   getWhiteboardRoom,
   listMyWhiteboardRooms,
   deleteWhiteboardRoom,
   connectWhiteboardWs,
+  getRoomVisibility,
+  setRoomVisibility,
   b64ToBytes,
   bytesToB64,
   type WhiteboardRoom,
   type WhiteboardWsStatus,
+  type WhiteboardVisibility,
 } from '../api/whiteboard';
-import { BackBtn, GhostBtn, PrimaryBtn } from '../components/primitives/Buttons';
-
-type Page = { kind: 'list' } | { kind: 'room'; roomId: string };
 
 interface SharedBoardsPageProps {
   initialRoomId?: string | null;
   onConsumeInitial?: () => void;
 }
 
-export function SharedBoardsPage({
-  initialRoomId,
-  onConsumeInitial,
-}: SharedBoardsPageProps = {}) {
-  const [page, setPage] = useState<Page>(
-    initialRoomId ? { kind: 'room', roomId: initialRoomId } : { kind: 'list' },
-  );
+const SIDEBAR_KEY = 'hone:shared-boards:sidebar-w';
+const SIDEBAR_COLLAPSED_KEY = 'hone:shared-boards:sidebar-collapsed';
+const SIDEBAR_MIN = 220;
+const SIDEBAR_MAX = 460;
+const SIDEBAR_DEFAULT = 280;
+
+interface ListState {
+  status: 'loading' | 'ok' | 'error';
+  rooms: WhiteboardRoom[];
+  error: string | null;
+}
+
+const INITIAL_LIST: ListState = { status: 'loading', rooms: [], error: null };
+
+export function SharedBoardsPage({ initialRoomId, onConsumeInitial }: SharedBoardsPageProps = {}) {
+  const [list, setList] = useState<ListState>(INITIAL_LIST);
+  const [selectedId, setSelectedId] = useState<string | null>(initialRoomId ?? null);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return false;
+    return window.localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === '1';
+  });
   useEffect(() => {
-    if (initialRoomId && onConsumeInitial) onConsumeInitial();
+    try {
+      window.localStorage.setItem(SIDEBAR_COLLAPSED_KEY, sidebarCollapsed ? '1' : '0');
+    } catch {
+      /* ignore */
+    }
+  }, [sidebarCollapsed]);
+
+  // Sidebar resize.
+  const [sidebarW, setSidebarW] = useState<number>(() => {
+    if (typeof window === 'undefined') return SIDEBAR_DEFAULT;
+    const raw = window.localStorage.getItem(SIDEBAR_KEY);
+    const n = raw ? parseInt(raw, 10) : NaN;
+    if (!Number.isFinite(n)) return SIDEBAR_DEFAULT;
+    return Math.max(SIDEBAR_MIN, Math.min(SIDEBAR_MAX, n));
+  });
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(SIDEBAR_KEY, String(sidebarW));
+    } catch {
+      /* ignore */
+    }
+  }, [sidebarW]);
+  const dragRef = useRef<{ x: number; w: number } | null>(null);
+  useEffect(() => {
+    const onMove = (e: MouseEvent) => {
+      if (!dragRef.current) return;
+      const dx = e.clientX - dragRef.current.x;
+      setSidebarW(Math.max(SIDEBAR_MIN, Math.min(SIDEBAR_MAX, dragRef.current.w + dx)));
+    };
+    const onUp = () => {
+      dragRef.current = null;
+    };
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+    return () => {
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+    };
+  }, []);
+
+  // Initial list fetch + auto-select first if нет initialRoomId.
+  useEffect(() => {
+    let cancelled = false;
+    const fetchList = () => {
+      void listMyWhiteboardRooms()
+        .then((rooms) => {
+          if (cancelled) return;
+          setList({ status: 'ok', rooms, error: null });
+          setSelectedId((cur) => cur ?? rooms[0]?.id ?? null);
+        })
+        .catch((err: unknown) => {
+          if (cancelled) return;
+          const ce = ConnectError.from(err);
+          setList((prev) =>
+            prev.status === 'ok' && prev.rooms.length > 0
+              ? prev
+              : { status: 'error', rooms: [], error: ce.rawMessage || ce.message },
+          );
+        });
+    };
+    fetchList();
+    if (onConsumeInitial && initialRoomId) onConsumeInitial();
+    return () => {
+      cancelled = true;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  if (page.kind === 'list') {
-    return <RoomsList onOpenRoom={(id) => setPage({ kind: 'room', roomId: id })} />;
-  }
-  return <RoomView roomId={page.roomId} onBack={() => setPage({ kind: 'list' })} />;
-}
-
-// ─── Rooms list ────────────────────────────────────────────────────────────
-
-function RoomsList({ onOpenRoom }: { onOpenRoom: (id: string) => void }) {
-  const [rooms, setRooms] = useState<WhiteboardRoom[] | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [creating, setCreating] = useState(false);
-  const [joinId, setJoinId] = useState('');
-
-  const reload = useCallback(async () => {
+  // ─── Handlers ──────────────────────────────────────────────────────────
+  const handleCreate = useCallback(async () => {
     try {
-      const list = await listMyWhiteboardRooms();
-      setRooms(list);
-      setError(null);
+      const r = await createWhiteboardRoom('Untitled board');
+      setList((prev) => ({ ...prev, status: 'ok', rooms: [r, ...prev.rooms], error: null }));
+      setSelectedId(r.id);
     } catch (err: unknown) {
       const ce = ConnectError.from(err);
-      setError(ce.rawMessage || ce.message);
+      setList((prev) => ({ ...prev, error: ce.rawMessage || ce.message }));
     }
   }, []);
 
-  useEffect(() => {
-    void reload();
-  }, [reload]);
-
-  const handleCreate = async () => {
-    setCreating(true);
-    setError(null);
-    try {
-      const r = await createWhiteboardRoom('Untitled board');
-      onOpenRoom(r.id);
-    } catch (err: unknown) {
-      const ce = ConnectError.from(err);
-      setError(ce.rawMessage || ce.message);
-    } finally {
-      setCreating(false);
-    }
-  };
-
-  const handleDelete = async (id: string) => {
+  const handleDelete = useCallback(async (id: string) => {
     try {
       await deleteWhiteboardRoom(id);
-      await reload();
+      setList((prev) => ({ ...prev, rooms: prev.rooms.filter((r) => r.id !== id) }));
+      setSelectedId((cur) => (cur === id ? null : cur));
     } catch (err: unknown) {
       const ce = ConnectError.from(err);
-      setError(ce.rawMessage || ce.message);
+      setList((prev) => ({ ...prev, error: ce.rawMessage || ce.message }));
     }
-  };
+  }, []);
+
+  const handleJoin = useCallback((idOrUrl: string) => {
+    const id = extractRoomId(idOrUrl);
+    if (id) setSelectedId(id);
+  }, []);
 
   return (
     <div
@@ -110,200 +168,570 @@ function RoomsList({ onOpenRoom }: { onOpenRoom: (id: string) => void }) {
       style={{
         position: 'absolute',
         inset: 0,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
+        paddingTop: 80,
+        paddingBottom: 0,
+        display: 'grid',
+        gridTemplateColumns: sidebarCollapsed ? `0px 0px 1fr` : `${sidebarW}px 6px 1fr`,
+        transition: 'grid-template-columns 240ms ease',
+        animationDuration: '320ms',
       }}
     >
-      <div style={{ width: 640, maxWidth: '90%' }}>
-        <div
-          className="mono"
-          style={{ fontSize: 10, letterSpacing: '.24em', color: 'var(--ink-40)' }}
-        >
-          SHARED BOARDS
-        </div>
-        <h1
-          style={{
-            margin: '14px 0 8px',
-            fontSize: 40,
-            fontWeight: 400,
-            letterSpacing: '-0.025em',
-            lineHeight: 1.05,
+      {!sidebarCollapsed && (
+        <Sidebar
+          list={list}
+          selectedId={selectedId}
+          onSelect={setSelectedId}
+          onCreate={handleCreate}
+          onDelete={handleDelete}
+          onJoin={handleJoin}
+          onToggleCollapse={() => setSidebarCollapsed(true)}
+        />
+      )}
+      {!sidebarCollapsed && (
+        <ResizeHandle
+          onMouseDown={(e) => {
+            dragRef.current = { x: e.clientX, w: sidebarW };
           }}
-        >
-          Draw together. Live.
-        </h1>
-        <p style={{ margin: '0 0 32px', fontSize: 14, color: 'var(--ink-60)', lineHeight: 1.6 }}>
-          Multiplayer Excalidraw. Один URL — поделись и оба видите canvas в real-time.
-        </p>
-
-        <div style={{ display: 'flex', gap: 8, marginBottom: 26 }}>
-          <button
-            onClick={() => void handleCreate()}
-            disabled={creating}
-            className="focus-ring"
-            style={{
-              padding: '9px 20px',
-              borderRadius: 999,
-              background: '#fff',
-              color: '#000',
-              fontSize: 13,
-              fontWeight: 500,
-            }}
-          >
-            {creating ? 'Creating…' : '+ New board'}
-          </button>
-          <button
-            onClick={() => void reload()}
-            className="focus-ring mono"
-            style={{
-              padding: '9px 14px',
-              fontSize: 11,
-              letterSpacing: '.14em',
-              color: 'var(--ink-60)',
-              borderRadius: 999,
-              border: '1px solid rgba(255,255,255,0.1)',
-              background: 'transparent',
-            }}
-          >
-            REFRESH
-          </button>
-        </div>
-
-        <div
-          className="mono"
-          style={{ fontSize: 10, letterSpacing: '.18em', color: 'var(--ink-40)', marginBottom: 10 }}
-        >
-          JOIN BY ID
-        </div>
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            const id = extractRoomId(joinId);
-            if (id) onOpenRoom(id);
-          }}
-          style={{ display: 'flex', gap: 8, marginBottom: 28 }}
-        >
-          <input
-            value={joinId}
-            onChange={(e) => setJoinId(e.target.value)}
-            placeholder="room-id или полный URL…"
-            style={{
-              flex: 1,
-              padding: '9px 12px',
-              borderRadius: 8,
-              background: 'rgba(255,255,255,0.03)',
-              border: '1px solid rgba(255,255,255,0.1)',
-              color: 'var(--ink)',
-              fontSize: 13,
-            }}
-          />
-          <button
-            type="submit"
-            className="focus-ring"
-            style={{
-              padding: '9px 18px',
-              borderRadius: 8,
-              background: 'rgba(255,255,255,0.06)',
-              color: 'var(--ink)',
-              fontSize: 13,
-              border: '1px solid rgba(255,255,255,0.1)',
-            }}
-          >
-            Join
-          </button>
-        </form>
-
-        {rooms === null ? (
-          <p className="mono" style={{ fontSize: 11, color: 'var(--ink-40)' }}>
-            LOADING…
-          </p>
-        ) : rooms.length === 0 ? (
-          <p style={{ fontSize: 13, color: 'var(--ink-40)' }}>
-            Пока ни одной board'ы. Создай новую сверху.
-          </p>
+        />
+      )}
+      {sidebarCollapsed && (
+        <ExpandSidebarButton onClick={() => setSidebarCollapsed(false)} />
+      )}
+      <section
+        style={{
+          position: 'relative',
+          minWidth: 0,
+          minHeight: 0,
+          background: '#000',
+        }}
+      >
+        {selectedId ? (
+          <RoomCanvas key={selectedId} roomId={selectedId} />
         ) : (
-          <div>
-            <div
-              className="mono"
-              style={{ fontSize: 10, letterSpacing: '.18em', color: 'var(--ink-40)', marginBottom: 10 }}
-            >
-              MY BOARDS
-            </div>
-            <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-              {rooms.map((r) => (
-                <li
-                  key={r.id}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    padding: '11px 14px',
-                    marginBottom: 6,
-                    background: 'rgba(255,255,255,0.03)',
-                    border: '1px solid rgba(255,255,255,0.06)',
-                    borderRadius: 8,
-                  }}
-                >
-                  <button
-                    onClick={() => onOpenRoom(r.id)}
-                    style={{
-                      flex: 1,
-                      textAlign: 'left',
-                      background: 'transparent',
-                      color: 'var(--ink)',
-                      fontSize: 13,
-                    }}
-                  >
-                    {r.title || 'Untitled board'}
-                    <span
-                      className="mono"
-                      style={{ marginLeft: 10, fontSize: 10, color: 'var(--ink-40)' }}
-                    >
-                      {r.participants.length} participant
-                      {r.participants.length === 1 ? '' : 's'}
-                    </span>
-                  </button>
-                  <button
-                    onClick={() => void handleDelete(r.id)}
-                    className="mono"
-                    title="Delete"
-                    style={{
-                      marginLeft: 8,
-                      padding: '4px 10px',
-                      fontSize: 10,
-                      letterSpacing: '.14em',
-                      color: 'var(--ink-40)',
-                      background: 'transparent',
-                      border: '1px solid rgba(255,255,255,0.08)',
-                      borderRadius: 6,
-                    }}
-                  >
-                    DELETE
-                  </button>
-                </li>
-              ))}
-            </ul>
-          </div>
+          <EmptyState onCreate={handleCreate} />
         )}
-
-        {error && (
-          <p className="mono" style={{ marginTop: 16, fontSize: 11, color: 'var(--ink-40)' }}>
-            {error}
-          </p>
-        )}
-      </div>
+      </section>
     </div>
   );
 }
 
-// ─── Single room view ──────────────────────────────────────────────────────
+// ─── Sidebar ───────────────────────────────────────────────────────────────
 
-function RoomView({ roomId, onBack }: { roomId: string; onBack: () => void }) {
+interface SidebarProps {
+  list: ListState;
+  selectedId: string | null;
+  onSelect: (id: string) => void;
+  onCreate: () => void;
+  onDelete: (id: string) => void;
+  onJoin: (idOrUrl: string) => void;
+  onToggleCollapse: () => void;
+}
+
+const Sidebar = memo(SidebarImpl);
+
+function SidebarImpl({ list, selectedId, onSelect, onCreate, onDelete, onJoin, onToggleCollapse }: SidebarProps) {
+  return (
+    <aside
+      className="slide-from-left"
+      style={{
+        animationDuration: '320ms',
+        borderRight: '1px solid rgba(255,255,255,0.06)',
+        padding: '0 8px',
+        overflowY: 'auto',
+      }}
+    >
+      <SidebarHeader
+        count={list.rooms.length}
+        status={list.status}
+        onCreate={onCreate}
+        onToggleCollapse={onToggleCollapse}
+      />
+      <JoinByIdInput onJoin={onJoin} />
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 1, padding: '0 2px' }}>
+        {list.rooms.map((r) => (
+          <RoomRow
+            key={r.id}
+            room={r}
+            active={selectedId === r.id}
+            onSelect={onSelect}
+            onDelete={onDelete}
+          />
+        ))}
+      </div>
+      {list.error && (
+        <div
+          className="mono"
+          style={{ padding: '12px 14px', fontSize: 11, color: '#ff6a6a', letterSpacing: '.12em' }}
+        >
+          {list.error}
+        </div>
+      )}
+    </aside>
+  );
+}
+
+function SidebarHeader({
+  count,
+  status,
+  onCreate,
+  onToggleCollapse,
+}: {
+  count: number;
+  status: ListState['status'];
+  onCreate: () => void;
+  onToggleCollapse: () => void;
+}) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 14px 14px' }}>
+      <button
+        onClick={() => window.dispatchEvent(new CustomEvent('hone:nav-home'))}
+        className="focus-ring"
+        title="Back to Home"
+        style={{
+          background: 'transparent',
+          border: 'none',
+          padding: 4,
+          borderRadius: 6,
+          cursor: 'pointer',
+          color: 'var(--ink-60)',
+          display: 'inline-flex',
+          alignItems: 'center',
+          transition: 'color 180ms ease, background-color 180ms ease, transform 180ms ease',
+        }}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.color = 'var(--ink)';
+          e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
+          e.currentTarget.style.transform = 'translateX(-2px)';
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.color = 'var(--ink-60)';
+          e.currentTarget.style.background = 'transparent';
+          e.currentTarget.style.transform = 'translateX(0)';
+        }}
+      >
+        <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round">
+          <path d="M15 18l-6-6 6-6" />
+        </svg>
+      </button>
+      <span
+        className="mono"
+        style={{
+          flex: 1,
+          fontSize: 10,
+          letterSpacing: '0.2em',
+          color: 'var(--ink-40)',
+          textTransform: 'uppercase',
+        }}
+      >
+        {status === 'loading' ? 'Loading' : status === 'error' ? 'Offline' : `Boards · ${count}`}
+      </span>
+      <CreateButton onClick={onCreate} />
+      <CollapseSidebarButton onClick={onToggleCollapse} />
+    </div>
+  );
+}
+
+function CollapseSidebarButton({ onClick }: { onClick: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      className="focus-ring"
+      title="Hide sidebar"
+      style={{
+        width: 26,
+        height: 26,
+        borderRadius: 7,
+        background: 'transparent',
+        border: 'none',
+        cursor: 'pointer',
+        color: 'var(--ink-60)',
+        display: 'grid',
+        placeItems: 'center',
+        transition: 'background-color 180ms ease, color 180ms ease',
+      }}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.background = 'rgba(255,255,255,0.07)';
+        e.currentTarget.style.color = 'var(--ink)';
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.background = 'transparent';
+        e.currentTarget.style.color = 'var(--ink-60)';
+      }}
+    >
+      <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round">
+        <rect x="3" y="4" width="18" height="16" rx="2" />
+        <path d="M9 4v16" />
+        <path d="M14 10l-2 2 2 2" />
+      </svg>
+    </button>
+  );
+}
+
+function ExpandSidebarButton({ onClick }: { onClick: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      className="focus-ring fadein"
+      title="Show sidebar"
+      style={{
+        position: 'absolute',
+        top: 92,
+        left: 10,
+        width: 28,
+        height: 28,
+        borderRadius: 7,
+        background: 'rgba(20,20,22,0.78)',
+        backdropFilter: 'blur(16px)',
+        border: '1px solid rgba(255,255,255,0.08)',
+        cursor: 'pointer',
+        color: 'var(--ink-60)',
+        display: 'grid',
+        placeItems: 'center',
+        zIndex: 30,
+        animationDuration: '180ms',
+        transition: 'color 160ms ease, background-color 160ms ease',
+      }}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.color = 'var(--ink)';
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.color = 'var(--ink-60)';
+      }}
+    >
+      <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round">
+        <rect x="3" y="4" width="18" height="16" rx="2" />
+        <path d="M9 4v16" />
+        <path d="M12 10l2 2-2 2" />
+      </svg>
+    </button>
+  );
+}
+
+function CreateButton({ onClick }: { onClick: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      className="focus-ring"
+      title="New board"
+      style={{
+        width: 26,
+        height: 26,
+        borderRadius: 7,
+        background: 'transparent',
+        border: 'none',
+        cursor: 'pointer',
+        color: 'var(--ink-60)',
+        display: 'grid',
+        placeItems: 'center',
+        transition: 'background-color 180ms ease, color 180ms ease, transform 180ms ease',
+      }}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.background = 'rgba(255,255,255,0.07)';
+        e.currentTarget.style.color = 'var(--ink)';
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.background = 'transparent';
+        e.currentTarget.style.color = 'var(--ink-60)';
+      }}
+    >
+      <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+        <path d="M12 5v14M5 12h14" />
+      </svg>
+    </button>
+  );
+}
+
+function JoinByIdInput({ onJoin }: { onJoin: (v: string) => void }) {
+  const [v, setV] = useState('');
+  return (
+    <form
+      onSubmit={(e) => {
+        e.preventDefault();
+        if (v.trim()) {
+          onJoin(v.trim());
+          setV('');
+        }
+      }}
+      style={{ padding: '0 14px 12px', display: 'flex', gap: 6 }}
+    >
+      <input
+        value={v}
+        onChange={(e) => setV(e.target.value)}
+        placeholder="Join by ID or URL…"
+        style={{
+          flex: 1,
+          padding: '6px 10px',
+          fontSize: 12,
+          background: 'rgba(255,255,255,0.03)',
+          border: '1px solid rgba(255,255,255,0.08)',
+          borderRadius: 7,
+          color: 'var(--ink)',
+          outline: 'none',
+        }}
+      />
+    </form>
+  );
+}
+
+// ─── RoomRow ──────────────────────────────────────────────────────────────
+
+const RoomRow = memo(RoomRowImpl, (prev, next) =>
+  prev.room === next.room &&
+  prev.active === next.active &&
+  prev.onSelect === next.onSelect &&
+  prev.onDelete === next.onDelete,
+);
+
+function RoomRowImpl({
+  room,
+  active,
+  onSelect,
+  onDelete,
+}: {
+  room: WhiteboardRoom;
+  active: boolean;
+  onSelect: (id: string) => void;
+  onDelete: (id: string) => void;
+}) {
+  const [hover, setHover] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [confirmDel, setConfirmDel] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const [visibility, setVisibility] = useState<WhiteboardVisibility | null>(null);
+  const [busy, setBusy] = useState(false);
+  const rowRef = useRef<HTMLDivElement>(null);
+
+  // Lazy-load visibility on first menu-open (cheap GET).
+  useEffect(() => {
+    if (!menuOpen || visibility !== null) return;
+    void getRoomVisibility(room.id)
+      .then((v) => setVisibility(v))
+      .catch(() => setVisibility('shared')); // network blip — assume default
+  }, [menuOpen, visibility, room.id]);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    const onDocClick = (e: MouseEvent) => {
+      if (!rowRef.current?.contains(e.target as Node)) setMenuOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setMenuOpen(false);
+    };
+    window.addEventListener('mousedown', onDocClick);
+    window.addEventListener('keydown', onKey);
+    return () => {
+      window.removeEventListener('mousedown', onDocClick);
+      window.removeEventListener('keydown', onKey);
+    };
+  }, [menuOpen]);
+
+  const shareURL = `${WEB_BASE_URL}/whiteboard/${room.id}`;
+  const handleCopyURL = async () => {
+    try {
+      await navigator.clipboard.writeText(shareURL);
+      setCopied(true);
+      window.setTimeout(() => {
+        setCopied(false);
+        setMenuOpen(false);
+      }, 1200);
+    } catch {
+      /* ignore */
+    }
+  };
+  const handleOpenWeb = async () => {
+    const bridge = typeof window !== 'undefined' ? window.hone : undefined;
+    if (bridge) await bridge.shell.openExternal(shareURL);
+    else window.open(shareURL, '_blank');
+    setMenuOpen(false);
+  };
+  const handleToggleVisibility = async () => {
+    if (visibility === null) return;
+    const next: WhiteboardVisibility = visibility === 'private' ? 'shared' : 'private';
+    setBusy(true);
+    try {
+      const v = await setRoomVisibility(room.id, next);
+      setVisibility(v);
+    } catch {
+      /* ignore — могла быть 403 если юзер не owner */
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const participants = room.participants.length;
+  return (
+    <div
+      ref={rowRef}
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => {
+        setHover(false);
+        if (!menuOpen) setConfirmDel(false);
+      }}
+      style={{
+        position: 'relative',
+        display: 'flex',
+        alignItems: 'center',
+        gap: 8,
+        padding: '8px 10px 8px 12px',
+        margin: '1px 0',
+        borderRadius: 7,
+        background: active
+          ? 'rgba(255,255,255,0.07)'
+          : hover
+            ? 'rgba(255,255,255,0.04)'
+            : 'transparent',
+        transition: 'background-color 160ms ease',
+        cursor: 'pointer',
+      }}
+      onClick={() => onSelect(room.id)}
+    >
+      <BoardIcon />
+      <span
+        style={{
+          flex: 1,
+          fontSize: 13.5,
+          color: active ? 'var(--ink)' : 'var(--ink-60)',
+          whiteSpace: 'nowrap',
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+          transition: 'color 160ms ease',
+        }}
+      >
+        {room.title || 'Untitled board'}
+      </span>
+      <span
+        className="mono"
+        style={{
+          fontSize: 10,
+          color: 'var(--ink-40)',
+          opacity: hover && !menuOpen ? 1 : 0,
+          transition: 'opacity 180ms ease',
+          pointerEvents: 'none',
+          flexShrink: 0,
+        }}
+      >
+        {participants}p
+      </span>
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+          setMenuOpen((o) => !o);
+        }}
+        className="focus-ring"
+        title="More"
+        style={{
+          width: 22,
+          height: 22,
+          display: 'grid',
+          placeItems: 'center',
+          background: menuOpen ? 'rgba(255,255,255,0.08)' : 'transparent',
+          border: 'none',
+          cursor: 'pointer',
+          color: 'var(--ink-60)',
+          borderRadius: 5,
+          opacity: hover || menuOpen ? 1 : 0,
+          transition: 'opacity 180ms ease, background-color 160ms ease',
+          flexShrink: 0,
+        }}
+      >
+        <svg width={14} height={14} viewBox="0 0 24 24" fill="currentColor">
+          <circle cx="5" cy="12" r="1.6" />
+          <circle cx="12" cy="12" r="1.6" />
+          <circle cx="19" cy="12" r="1.6" />
+        </svg>
+      </button>
+      {menuOpen && (
+        <div
+          className="fadein"
+          onClick={(e) => e.stopPropagation()}
+          style={{
+            position: 'absolute',
+            top: 'calc(100% - 4px)',
+            right: 8,
+            zIndex: 30,
+            minWidth: 220,
+            padding: 6,
+            borderRadius: 10,
+            background: 'rgba(20,20,22,0.96)',
+            backdropFilter: 'blur(18px)',
+            border: '1px solid rgba(255,255,255,0.08)',
+            boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
+            animationDuration: '140ms',
+          }}
+        >
+          <DropdownLabel>Visibility</DropdownLabel>
+          <DropdownItem
+            icon={visibility === 'private' ? <LockClosedIcon /> : <UnlockIcon />}
+            label={
+              visibility === null
+                ? 'Loading…'
+                : visibility === 'private'
+                  ? 'Private — make Shared'
+                  : 'Shared — make Private'
+            }
+            onClick={() => void handleToggleVisibility()}
+            disabled={busy || visibility === null}
+          />
+          <DropdownDivider />
+          <DropdownLabel>Sharing</DropdownLabel>
+          <DropdownItem
+            icon={<LinkIcon />}
+            label={copied ? '✓ Copied' : 'Copy URL'}
+            onClick={() => void handleCopyURL()}
+          />
+          <DropdownItem
+            icon={<ExternalIcon />}
+            label="Open on web"
+            onClick={() => void handleOpenWeb()}
+          />
+          <DropdownDivider />
+          <DropdownItem
+            icon={<TrashIcon />}
+            label={confirmDel ? 'Click again to confirm' : 'Delete board'}
+            danger
+            onClick={() => {
+              if (!confirmDel) {
+                setConfirmDel(true);
+                window.setTimeout(() => setConfirmDel(false), 2000);
+                return;
+              }
+              setMenuOpen(false);
+              onDelete(room.id);
+            }}
+          />
+        </div>
+      )}
+    </div>
+  );
+}
+
+function BoardIcon() {
+  return (
+    <svg
+      width={14}
+      height={14}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.6}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      style={{ color: 'var(--ink-40)', flexShrink: 0 }}
+    >
+      <rect x="3" y="3" width="18" height="18" rx="2" />
+      <path d="M9 9h6v6H9z" />
+    </svg>
+  );
+}
+
+// ─── RoomCanvas ───────────────────────────────────────────────────────────
+
+function RoomCanvas({ roomId }: { roomId: string }) {
   const parsedId = useMemo(() => extractRoomId(roomId), [roomId]);
   const [room, setRoom] = useState<WhiteboardRoom | null>(null);
   const [loadError, setLoadError] = useState<{ code: Code | null; msg: string } | null>(null);
   const [wsStatus, setWsStatus] = useState<WhiteboardWsStatus>('connecting');
-  const [copied, setCopied] = useState(false);
+  const [currentTool, setCurrentTool] = useState<string>('selection');
 
   const ydocRef = useRef<Y.Doc | null>(null);
   const apiRef = useRef<ExcalidrawImperativeAPI | null>(null);
@@ -316,6 +744,7 @@ function RoomView({ roomId, onBack }: { roomId: string; onBack: () => void }) {
   useEffect(() => {
     let cancelled = false;
     setLoadError(null);
+    setRoom(null);
     getWhiteboardRoom(parsedId)
       .then((r) => {
         if (cancelled) return;
@@ -331,22 +760,19 @@ function RoomView({ roomId, onBack }: { roomId: string; onBack: () => void }) {
     };
   }, [parsedId]);
 
-  // Yjs + WebSocket lifecycle.
+  // Yjs + WebSocket lifecycle (без изменений с прежней реализации).
   useEffect(() => {
     if (!room) return;
     const ydoc = new Y.Doc();
     ydocRef.current = ydoc;
     const yScene = ydoc.getMap<string>('scene');
 
-    // Y.Doc → WS: каждый local update сериализуется как binary diff и
-    // отправляется на сервер. origin === 'remote' блокирует echo.
     const onUpdate = (update: Uint8Array, origin: unknown) => {
       if (origin === 'remote') return;
       sendRef.current?.(update);
     };
     ydoc.on('update', onUpdate);
 
-    // WS → Y.Doc.
     const handle = connectWhiteboardWs({
       roomId: room.id,
       onStatus: setWsStatus,
@@ -364,7 +790,6 @@ function RoomView({ roomId, onBack }: { roomId: string; onBack: () => void }) {
       handle.send({ kind: 'update', data: { update: bytesToB64(update) } });
     };
 
-    // Y.Map → Excalidraw scene. Every set() → observe → updateScene.
     const onSceneChange = () => {
       const json = yScene.get('elements');
       if (!json || !apiRef.current) return;
@@ -373,10 +798,8 @@ function RoomView({ roomId, onBack }: { roomId: string; onBack: () => void }) {
         applyingRemoteRef.current = true;
         apiRef.current.updateScene({ elements });
       } catch {
-        /* ignore parse errors — peer pushed garbage */
+        /* ignore parse errors */
       } finally {
-        // Yield so onChange sees the flag set during the same tick when
-        // Excalidraw fires its own follow-up onChange.
         queueMicrotask(() => {
           applyingRemoteRef.current = false;
         });
@@ -396,126 +819,460 @@ function RoomView({ roomId, onBack }: { roomId: string; onBack: () => void }) {
     };
   }, [room]);
 
-  // Excalidraw → Y.Map. Debounced 80ms — purely cosmetic; Yjs already
-  // batches in-memory. Avoids fan-out spam during a 60-Hz drag.
-  const handleExcalidrawChange = useCallback(
-    (elements: readonly unknown[]) => {
-      if (applyingRemoteRef.current) return;
-      const ydoc = ydocRef.current;
-      if (!ydoc) return;
-      const yScene = ydoc.getMap<string>('scene');
-      if (debounceRef.current !== null) window.clearTimeout(debounceRef.current);
-      debounceRef.current = window.setTimeout(() => {
-        const json = JSON.stringify(elements);
-        if (yScene.get('elements') === json) return;
-        yScene.set('elements', json);
-      }, 80);
+  const handleExcalidrawChange = useCallback((elements: readonly unknown[]) => {
+    if (applyingRemoteRef.current) return;
+    const ydoc = ydocRef.current;
+    if (!ydoc) return;
+    const yScene = ydoc.getMap<string>('scene');
+    if (debounceRef.current !== null) window.clearTimeout(debounceRef.current);
+    debounceRef.current = window.setTimeout(() => {
+      const json = JSON.stringify(elements);
+      if (yScene.get('elements') === json) return;
+      yScene.set('elements', json);
+    }, 80);
+  }, []);
+
+  // Toolbar → setActiveTool. Excalidraw type union — список конкретных
+  // tool-name'ов.
+  const setTool = useCallback(
+    (tool:
+      | 'selection'
+      | 'rectangle'
+      | 'diamond'
+      | 'ellipse'
+      | 'arrow'
+      | 'line'
+      | 'freedraw'
+      | 'text'
+      | 'image'
+      | 'eraser'
+      | 'hand') => {
+      const api = apiRef.current;
+      if (!api) return;
+      api.setActiveTool({ type: tool });
+      setCurrentTool(tool);
     },
     [],
   );
 
-  const shareURL = `${WEB_BASE_URL}/whiteboard/${parsedId}`;
-  const handleShare = async () => {
-    try {
-      await navigator.clipboard.writeText(shareURL);
-      setCopied(true);
-      window.setTimeout(() => setCopied(false), 2000);
-    } catch {
-      /* ignore */
-    }
-  };
-  const handleOpenWeb = async () => {
-    const bridge = typeof window !== 'undefined' ? window.hone : undefined;
-    if (bridge) await bridge.shell.openExternal(shareURL);
-    else window.open(shareURL, '_blank');
-  };
+  // Copy URL / Open on web переехали в three-dots menu в RoomRow.
+  // RoomCanvas теперь только рендерит canvas + LIVE-chip; share-actions
+  // в sidebar где они по семантике уместны (per-room контроль).
+
+  if (loadError) {
+    return <CenterMessage text={loadErrorLabel(loadError)} />;
+  }
+  if (!room) {
+    return <CenterMessage text="LOADING BOARD…" />;
+  }
+
+  const participantsLabel =
+    room.participants.length === 1
+      ? '1 participant'
+      : `${room.participants.length} participants`;
 
   return (
-    <div
-      className="fadein"
-      style={{
-        position: 'absolute',
-        inset: 0,
-        paddingTop: 80,
-        paddingBottom: 32,
-        display: 'grid',
-        gridTemplateRows: 'auto 1fr',
-      }}
-    >
-      <header
+    <>
+      {/* Минимальный LIVE-chip в нижнем правом углу — единственная
+          info-плашка на канвасе. Все actions (copy / open / private /
+          delete) переехали в three-dots внутри row sidebar'а. */}
+      <div
+        className="mono"
         style={{
-          padding: '10px 24px 14px',
-          display: 'flex',
+          position: 'absolute',
+          bottom: 14,
+          right: 24,
+          display: 'inline-flex',
           alignItems: 'center',
-          gap: 12,
-          borderBottom: '1px solid rgba(255,255,255,0.06)',
+          gap: 8,
+          padding: '5px 12px',
+          background: 'rgba(20,20,22,0.78)',
+          backdropFilter: 'blur(16px)',
+          border: '1px solid rgba(255,255,255,0.08)',
+          borderRadius: 999,
+          fontSize: 10,
+          color: 'var(--ink-60)',
+          letterSpacing: '.06em',
+          zIndex: 25,
+          pointerEvents: 'none',
         }}
       >
-        <BackBtn onClick={onBack} />
-        <div className="mono" style={{ fontSize: 11, color: 'var(--ink-60)' }}>
-          {loadError
-            ? `error: ${loadErrorLabel(loadError)}`
-            : room
-              ? `${room.title || 'Untitled board'} · ${room.participants.length} participant${room.participants.length === 1 ? '' : 's'}`
-              : 'loading…'}
-        </div>
-        {room && (
-          <span
-            className="mono"
-            style={{
-              fontSize: 10,
-              letterSpacing: '.18em',
-              color: wsStatus === 'open' ? 'var(--ink)' : 'var(--red)',
-            }}
-          >
-            · {wsStatus.toUpperCase()}
-          </span>
-        )}
-        <div style={{ flex: 1 }} />
-        {room && (
-          <>
-            <GhostBtn onClick={() => void handleShare()} active={copied}>
-              {copied ? '✓ COPIED' : 'COPY URL'}
-            </GhostBtn>
-            <PrimaryBtn onClick={() => void handleOpenWeb()}>Open on web ↗</PrimaryBtn>
-          </>
-        )}
-      </header>
-
-      <div style={{ position: 'relative', overflow: 'hidden', background: '#0a0a0a' }}>
-        {room && !loadError && (
-          <Excalidraw
-            theme="dark"
-            excalidrawAPI={(api) => {
-              apiRef.current = api;
-            }}
-            onChange={handleExcalidrawChange}
-            UIOptions={{
-              canvasActions: { saveToActiveFile: false, loadScene: false, export: false },
-            }}
-          />
-        )}
-      </div>
-
-      {loadError && (
-        <div
-          className="mono"
+        <span style={{ color: 'var(--ink-40)' }}>{participantsLabel}</span>
+        <span style={{ opacity: 0.4 }}>·</span>
+        <span
           style={{
-            position: 'absolute',
-            inset: 0,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontSize: 12,
-            color: 'var(--ink-40)',
+            color:
+              wsStatus === 'open'
+                ? 'rgba(127,212,155,0.95)'
+                : wsStatus === 'connecting'
+                  ? 'var(--ink-40)'
+                  : '#ff6a6a',
+            fontWeight: 500,
           }}
         >
-          {loadErrorLabel(loadError)}
-        </div>
-      )}
+          {wsStatus === 'open' ? 'LIVE' : wsStatus.toUpperCase()}
+        </span>
+      </div>
+
+      <div className="hone-excalidraw-mount" style={{ position: 'absolute', inset: 0 }}>
+        <Excalidraw
+          theme="dark"
+          initialData={{
+            appState: {
+              viewBackgroundColor: '#000000',
+              theme: 'dark',
+              gridSize: null as unknown as number,
+            },
+          }}
+          excalidrawAPI={(api) => {
+            apiRef.current = api;
+          }}
+          onChange={handleExcalidrawChange}
+          UIOptions={{
+            canvasActions: { saveToActiveFile: false, loadScene: false, export: false },
+          }}
+        />
+      </div>
+
+      <FloatingToolbar
+        currentTool={currentTool}
+        onSelect={setTool}
+        onUploadImage={() => setTool('image')}
+        onToggleLibrary={() => {
+          // 1) Пробуем встроенный Excalidraw library sidebar. Если API не
+          //    отвечает (некоторые билды Excalidraw умалчивают toggleSidebar
+          //    при hidden default UI) — fallback на внешний браузер с
+          //    libraries.excalidraw.com где юзер скачивает .excalidrawlib.
+          const api = apiRef.current;
+          let opened = false;
+          try {
+            opened = !!api?.toggleSidebar({ name: 'library' });
+          } catch {
+            opened = false;
+          }
+          if (!opened) {
+            const url = 'https://libraries.excalidraw.com/';
+            const bridge = typeof window !== 'undefined' ? window.hone : undefined;
+            if (bridge) void bridge.shell.openExternal(url);
+            else window.open(url, '_blank');
+          }
+        }}
+      />
+    </>
+  );
+}
+
+// ─── Floating toolbar ──────────────────────────────────────────────────────
+
+interface ToolbarProps {
+  currentTool: string;
+  onSelect: (
+    tool:
+      | 'selection'
+      | 'rectangle'
+      | 'diamond'
+      | 'ellipse'
+      | 'arrow'
+      | 'line'
+      | 'freedraw'
+      | 'text'
+      | 'image'
+      | 'eraser'
+      | 'hand',
+  ) => void;
+  onUploadImage: () => void;
+  onToggleLibrary: () => void;
+}
+
+function FloatingToolbar({ currentTool, onSelect, onUploadImage, onToggleLibrary }: ToolbarProps) {
+  return (
+    <DraggableToolbar storageKey="hone:shared-boards:toolbar-pos">
+      <ToolBtn active={currentTool === 'hand'} onClick={() => onSelect('hand')} title="Hand (pan)">
+        <HandIcon />
+      </ToolBtn>
+      <ToolBtn active={currentTool === 'selection'} onClick={() => onSelect('selection')} title="Select">
+        <SelectIcon />
+      </ToolBtn>
+      <ToolSep />
+      <ToolBtn active={currentTool === 'rectangle'} onClick={() => onSelect('rectangle')} title="Rectangle">
+        <RectangleIcon />
+      </ToolBtn>
+      <ToolBtn active={currentTool === 'diamond'} onClick={() => onSelect('diamond')} title="Diamond">
+        <DiamondIcon />
+      </ToolBtn>
+      <ToolBtn active={currentTool === 'ellipse'} onClick={() => onSelect('ellipse')} title="Ellipse">
+        <EllipseIcon />
+      </ToolBtn>
+      <ToolBtn active={currentTool === 'arrow'} onClick={() => onSelect('arrow')} title="Arrow">
+        <ArrowIcon />
+      </ToolBtn>
+      <ToolBtn active={currentTool === 'line'} onClick={() => onSelect('line')} title="Line">
+        <LineIcon />
+      </ToolBtn>
+      <ToolBtn active={currentTool === 'freedraw'} onClick={() => onSelect('freedraw')} title="Pencil">
+        <PencilIcon />
+      </ToolBtn>
+      <ToolBtn active={currentTool === 'text'} onClick={() => onSelect('text')} title="Text">
+        <TextIcon />
+      </ToolBtn>
+      <ToolBtn active={currentTool === 'image'} onClick={onUploadImage} title="Image">
+        <ImageIcon />
+      </ToolBtn>
+      <ToolBtn active={currentTool === 'eraser'} onClick={() => onSelect('eraser')} title="Eraser">
+        <EraserIcon />
+      </ToolBtn>
+      <ToolSep />
+      <ToolBtn onClick={onToggleLibrary} title="Library (presets — Redis, Postgres, AWS, etc)">
+        <LibraryIcon />
+      </ToolBtn>
+    </DraggableToolbar>
+  );
+}
+
+function ToolBtn({
+  children,
+  active,
+  onClick,
+  title,
+}: {
+  children: React.ReactNode;
+  active?: boolean;
+  onClick: () => void;
+  title: string;
+}) {
+  const [hover, setHover] = useState(false);
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      title={title}
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+      className="focus-ring"
+      style={{
+        width: 32,
+        height: 32,
+        display: 'grid',
+        placeItems: 'center',
+        background: active
+          ? 'rgba(255,255,255,0.12)'
+          : hover
+            ? 'rgba(255,255,255,0.06)'
+            : 'transparent',
+        border: 'none',
+        cursor: 'pointer',
+        color: active ? 'var(--ink)' : hover ? 'var(--ink)' : 'var(--ink-60)',
+        borderRadius: 8,
+        transition: 'background-color 140ms ease, color 140ms ease',
+      }}
+    >
+      {children}
+    </button>
+  );
+}
+
+function ToolSep() {
+  return (
+    <span
+      aria-hidden
+      style={{
+        width: 1,
+        height: 18,
+        background: 'rgba(255,255,255,0.08)',
+        margin: '0 4px',
+      }}
+    />
+  );
+}
+
+const sharedIconProps = {
+  width: 16,
+  height: 16,
+  viewBox: '0 0 24 24',
+  fill: 'none',
+  stroke: 'currentColor',
+  strokeWidth: 1.6,
+  strokeLinecap: 'round' as const,
+  strokeLinejoin: 'round' as const,
+};
+function HandIcon() {
+  return (
+    <svg {...sharedIconProps}>
+      <path d="M9 11V5a1.5 1.5 0 0 1 3 0v6" />
+      <path d="M12 11V4a1.5 1.5 0 0 1 3 0v7" />
+      <path d="M15 11V6a1.5 1.5 0 0 1 3 0v9a6 6 0 0 1-6 6h-1.5a4.5 4.5 0 0 1-3.6-1.8L4.5 16a1.5 1.5 0 0 1 .3-2.1c.6-.4 1.4-.3 1.9.2L9 17V8a1.5 1.5 0 0 1 3 0" />
+    </svg>
+  );
+}
+function SelectIcon() {
+  return (
+    <svg {...sharedIconProps}>
+      <path d="M5 3l7 16 2.5-7L21 10z" />
+    </svg>
+  );
+}
+function RectangleIcon() {
+  return (
+    <svg {...sharedIconProps}>
+      <rect x="4" y="6" width="16" height="12" rx="1.5" />
+    </svg>
+  );
+}
+function DiamondIcon() {
+  return (
+    <svg {...sharedIconProps}>
+      <path d="M12 3l9 9-9 9-9-9z" />
+    </svg>
+  );
+}
+function EllipseIcon() {
+  return (
+    <svg {...sharedIconProps}>
+      <ellipse cx="12" cy="12" rx="9" ry="7" />
+    </svg>
+  );
+}
+function ArrowIcon() {
+  return (
+    <svg {...sharedIconProps}>
+      <path d="M5 12h14M13 6l6 6-6 6" />
+    </svg>
+  );
+}
+function LineIcon() {
+  return (
+    <svg {...sharedIconProps}>
+      <path d="M5 12h14" />
+    </svg>
+  );
+}
+function PencilIcon() {
+  return (
+    <svg {...sharedIconProps}>
+      <path d="M3 21l3-1 11.3-11.3a2 2 0 0 0 0-2.8l-1.2-1.2a2 2 0 0 0-2.8 0L2 16l1 5z" />
+    </svg>
+  );
+}
+function TextIcon() {
+  return (
+    <svg {...sharedIconProps}>
+      <path d="M5 5h14M12 5v14M9 19h6" />
+    </svg>
+  );
+}
+function ImageIcon() {
+  return (
+    <svg {...sharedIconProps}>
+      <rect x="3" y="4" width="18" height="16" rx="2" />
+      <circle cx="9" cy="10" r="1.5" />
+      <path d="M21 16l-5-5-9 9" />
+    </svg>
+  );
+}
+function EraserIcon() {
+  return (
+    <svg {...sharedIconProps}>
+      <path d="M19 14l-7 7H5l-2-2 11-11 7 7-2 2z" />
+      <path d="M14 9l5 5" />
+    </svg>
+  );
+}
+function LibraryIcon() {
+  return (
+    <svg {...sharedIconProps}>
+      <path d="M4 19V5a2 2 0 0 1 2-2h7v18H6a2 2 0 0 1-2-2z" />
+      <path d="M13 3h5a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-5" />
+      <path d="M8 7h2M8 11h2M16 7h1M16 11h1" />
+    </svg>
+  );
+}
+
+// ─── Misc chrome ──────────────────────────────────────────────────────────
+
+function ResizeHandle({ onMouseDown }: { onMouseDown: (e: React.MouseEvent) => void }) {
+  const [hover, setHover] = useState(false);
+  return (
+    <div
+      onMouseDown={onMouseDown}
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+      style={{ position: 'relative', cursor: 'col-resize', userSelect: 'none' }}
+    >
+      <div
+        style={{
+          position: 'absolute',
+          left: 2,
+          top: 0,
+          bottom: 0,
+          width: 2,
+          background: hover ? 'rgba(255,255,255,0.15)' : 'transparent',
+          transition: 'background-color 180ms ease',
+        }}
+      />
     </div>
   );
 }
+
+function CenterMessage({ text }: { text: string }) {
+  return (
+    <div
+      className="mono"
+      style={{
+        position: 'absolute',
+        inset: 0,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        fontSize: 11,
+        letterSpacing: '.2em',
+        color: 'var(--ink-40)',
+      }}
+    >
+      {text}
+    </div>
+  );
+}
+
+function EmptyState({ onCreate }: { onCreate: () => void }) {
+  return (
+    <div
+      style={{
+        position: 'absolute',
+        inset: 0,
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 16,
+      }}
+    >
+      <div className="mono" style={{ fontSize: 10, letterSpacing: '.24em', color: 'var(--ink-40)' }}>
+        SHARED BOARDS
+      </div>
+      <p style={{ fontSize: 14, color: 'var(--ink-60)', margin: 0 }}>
+        No board selected. Pick one or create a new one.
+      </p>
+      <button
+        onClick={onCreate}
+        className="focus-ring"
+        style={{
+          padding: '9px 18px',
+          fontSize: 13,
+          fontWeight: 500,
+          borderRadius: 999,
+          background: 'rgba(255,255,255,0.05)',
+          border: '1px solid rgba(255,255,255,0.1)',
+          color: 'var(--ink-90)',
+          cursor: 'pointer',
+        }}
+      >
+        + New board
+      </button>
+    </div>
+  );
+}
+
+// ─── Helpers ──────────────────────────────────────────────────────────────
 
 function extractRoomId(input: string): string {
   const trimmed = input.trim();
@@ -537,4 +1294,123 @@ function loadErrorLabel(err: { code: Code | null; msg: string }): string {
     default:
       return err.msg;
   }
+}
+
+// ─── Dropdown helpers ─────────────────────────────────────────────────────
+
+function DropdownLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <div
+      className="mono"
+      style={{
+        fontSize: 9,
+        letterSpacing: '0.18em',
+        textTransform: 'uppercase',
+        color: 'var(--ink-40)',
+        padding: '6px 10px 4px',
+      }}
+    >
+      {children}
+    </div>
+  );
+}
+
+function DropdownItem({
+  icon,
+  label,
+  onClick,
+  danger = false,
+  disabled = false,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  onClick: () => void;
+  danger?: boolean;
+  disabled?: boolean;
+}) {
+  const [hover, setHover] = useState(false);
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 10,
+        width: '100%',
+        padding: '8px 10px',
+        background: hover && !disabled
+          ? danger
+            ? 'rgba(255,80,80,0.10)'
+            : 'rgba(255,255,255,0.06)'
+          : 'transparent',
+        border: 'none',
+        borderRadius: 6,
+        color: danger ? '#ff6a6a' : disabled ? 'var(--ink-40)' : hover ? 'var(--ink)' : 'var(--ink-90)',
+        fontSize: 13,
+        cursor: disabled ? 'default' : 'pointer',
+        textAlign: 'left',
+        opacity: disabled ? 0.6 : 1,
+        transition: 'background-color 140ms ease, color 140ms ease',
+      }}
+    >
+      <span style={{ display: 'inline-flex', color: 'inherit' }}>{icon}</span>
+      <span>{label}</span>
+    </button>
+  );
+}
+
+function DropdownDivider() {
+  return (
+    <div
+      style={{
+        margin: '4px 6px',
+        height: 1,
+        background: 'rgba(255,255,255,0.06)',
+      }}
+    />
+  );
+}
+
+function LinkIcon() {
+  return (
+    <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
+      <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+    </svg>
+  );
+}
+function ExternalIcon() {
+  return (
+    <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
+      <path d="M15 3h6v6M10 14L21 3" />
+    </svg>
+  );
+}
+function LockClosedIcon() {
+  return (
+    <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round">
+      <rect x="4" y="11" width="16" height="10" rx="2" />
+      <path d="M8 11V7a4 4 0 0 1 8 0v4" />
+    </svg>
+  );
+}
+function UnlockIcon() {
+  return (
+    <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round">
+      <rect x="4" y="11" width="16" height="10" rx="2" />
+      <path d="M8 11V7a4 4 0 0 1 7.5-2" />
+    </svg>
+  );
+}
+function TrashIcon() {
+  return (
+    <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="3 6 5 6 21 6" />
+      <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+    </svg>
+  );
 }
