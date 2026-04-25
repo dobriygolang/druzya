@@ -159,7 +159,7 @@ ON CONFLICT DO NOTHING;
 
 -- ─── Yandex-specific HR overlay ──────────────────────────────────────────
 INSERT INTO company_questions (company_id, stage_kind, body, expected_answer_md, reference_criteria, sort_order)
-SELECT id, 'hr', body, expected_answer_md, reference_criteria::jsonb, sort_order
+SELECT companies.id, 'hr', v.body, v.expected_answer_md, v.reference_criteria::jsonb, v.sort_order
 FROM (VALUES
   ('Почему именно Yandex? Что тебе интересно конкретно у нас?',
    'Ищем подготовленность: знаешь продукты, видишь мэтч с твоим бэкграундом, конкретный продукт/команда привлекает а не просто "большая компания".',

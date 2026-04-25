@@ -42,14 +42,37 @@ import { attachNoteYjs, type NoteYjsHandle } from '../api/yjs';
 // globals.css для Hone-tuning'а).
 import '@milkdown/crepe/theme/common/reset.css';
 import '@milkdown/crepe/theme/common/prosemirror.css';
-import '@milkdown/crepe/theme/common/block-edit.css';
 import '@milkdown/crepe/theme/common/cursor.css';
 import '@milkdown/crepe/theme/common/list-item.css';
 import '@milkdown/crepe/theme/common/placeholder.css';
 import '@milkdown/crepe/theme/common/link-tooltip.css';
 import '@milkdown/crepe/theme/common/image-block.css';
-import '@milkdown/crepe/theme/common/code-mirror.css';
+import '@milkdown/crepe/theme/common/toolbar.css';
+import '@milkdown/crepe/theme/common/table.css';
 import '@milkdown/crepe/theme/frame-dark.css';
+
+// HONE_FEATURES — Hone-tuned subset of Crepe features.
+// Disabled (по запросу UX):
+//   - BlockEdit: убирает «+» add-block button, drag-handle (6 точек) и
+//     slash-menu modal'ку. Юзеру они мешали, перекрывали контент.
+//     Hover-affordance + slash-menu — заменяются стандартным markdown
+//     синтаксисом (# heading, > quote, - list, ``` code).
+//   - CodeMirror: отключает language-picker модалку для code-block'ов.
+//     Юзер может задать язык через ```go ... ``` markdown syntax (или
+//     просто ``` без языка для plain). Code rendering — fallback на
+//     стандартный pre/code Crepe styling.
+//   - Latex: убирает Σ-кнопку. Math notation редко нужна для obsidian-style
+//     заметок, а UI-affordance crowded sidebar.
+//
+// Keep: Cursor, ListItem (checkboxes), LinkTooltip (link tooltip
+// popup), ImageBlock, Table, Toolbar (floating selection toolbar
+// → bold / italic / link / code), Placeholder.
+const HONE_FEATURES = {
+  [Crepe.Feature.BlockEdit]: false,
+  [Crepe.Feature.CodeMirror]: false,
+  [Crepe.Feature.Latex]: false,
+  [Crepe.Feature.TopBar]: false,
+};
 
 interface MilkdownEditorProps {
   noteId: string;
@@ -87,6 +110,7 @@ export function MilkdownEditor({ noteId, seedBodyMD, placeholder = 'Write your t
       const crepe = new Crepe({
         root: containerRef.current,
         defaultValue: seedBodyMDRef.current,
+        features: HONE_FEATURES,
         featureConfigs: {
           [Crepe.Feature.Placeholder]: {
             text: placeholderRef.current,
@@ -126,6 +150,7 @@ export function MilkdownEditor({ noteId, seedBodyMD, placeholder = 'Write your t
 
     const crepe = new Crepe({
       root: containerRef.current,
+      features: HONE_FEATURES,
       featureConfigs: {
         [Crepe.Feature.Placeholder]: {
           text: placeholderRef.current,

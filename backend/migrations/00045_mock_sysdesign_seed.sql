@@ -74,7 +74,7 @@ ON CONFLICT DO NOTHING;
 
 -- task_questions для URL Shortener — interviewer follow-ups
 INSERT INTO task_questions (task_id, body, expected_answer_md, reference_criteria, sort_order)
-SELECT t.id, body, expected_answer_md, reference_criteria::jsonb, sort_order
+SELECT t.id, v.body, v.expected_answer_md, v.reference_criteria::jsonb, v.sort_order
 FROM (VALUES
   ('Как обработаешь "горячие" ссылки которые внезапно вирусные (1M RPS на одну ссылку)?',
    'Edge-cache + CDN. Если короткая ссылка вирусится — она автоматически попадёт в hot-set Redis и потом на CDN-уровень. Origin-сервер вообще не увидит трафик. Без CDN: pin-in-cache + circuit-breaker на DB чтобы lookup не лёг.',
@@ -164,7 +164,7 @@ VALUES (
 ON CONFLICT DO NOTHING;
 
 INSERT INTO task_questions (task_id, body, expected_answer_md, reference_criteria, sort_order)
-SELECT t.id, body, expected_answer_md, reference_criteria::jsonb, sort_order
+SELECT t.id, v.body, v.expected_answer_md, v.reference_criteria::jsonb, v.sort_order
 FROM (VALUES
   ('Что если FCM (push provider) лежит 30 минут? Какое поведение системы?',
    'Circuit breaker открывается → push queue копится в DLQ или паркуется в retry-queue с backoff. Опционально: fallback на in-app channel (если у юзера активная сессия). Critical notifications → SMS как fallback. Метрики: alert если push-success-rate < 95% за 5 мин.',
