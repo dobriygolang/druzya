@@ -61,6 +61,7 @@ export default function App() {
 
   const [remain, setRemain] = useState(POMODORO_SECONDS);
   const [running, setRunning] = useState(false);
+  const [mode, setMode] = useState<'countdown' | 'stopwatch'>('countdown');
   const [vol, setVol] = useState(40);
 
   const [pinnedTitle, setPinnedTitle] = useState<string | null>(null);
@@ -155,9 +156,12 @@ export default function App() {
   // ── Pomodoro tick + persist ─────────────────────────────────────────────
   useEffect(() => {
     if (!running) return;
-    const id = window.setInterval(() => setRemain((r) => Math.max(0, r - 1)), 1000);
+    const id = window.setInterval(
+      () => setRemain((r) => (mode === 'countdown' ? Math.max(0, r - 1) : r + 1)),
+      1000,
+    );
     return () => window.clearInterval(id);
-  }, [running]);
+  }, [running, mode]);
 
   // Сохраняем snapshot при значимых изменениях, не на каждом тике —
   // достаточно при start/stop и при изменении remain раз в 5 секунд.
@@ -208,9 +212,10 @@ export default function App() {
     [remain],
   );
 
-  // Auto-end когда таймер дотикивает — гасим session + поднимаем
-  // reflection prompt на Home.
+  // Auto-end когда countdown-таймер дотикивает до 0. Stopwatch (∞)
+  // автоматически НЕ финиширует — юзер сам Stop / Reset.
   useEffect(() => {
+    if (mode !== 'countdown') return;
     if (running && remain === 0) {
       setRunning(false);
       const id = sessionRef.current;
@@ -225,7 +230,28 @@ export default function App() {
       }
       setRemain(POMODORO_SECONDS);
     }
-  }, [remain, running, finishSession]);
+  }, [remain, running, mode, finishSession]);
+
+  const initialFor = useCallback(
+    (m: 'countdown' | 'stopwatch') => (m === 'countdown' ? POMODORO_SECONDS : 0),
+    [],
+  );
+
+  const resetTimer = useCallback(() => {
+    void finishSession();
+    setRunning(false);
+    setRemain(initialFor(mode));
+  }, [finishSession, initialFor, mode]);
+
+  const toggleMode = useCallback(() => {
+    void finishSession();
+    setRunning(false);
+    setMode((m) => {
+      const next = m === 'countdown' ? 'stopwatch' : 'countdown';
+      setRemain(initialFor(next));
+      return next;
+    });
+  }, [finishSession, initialFor]);
 
   const startFocus = useCallback((args?: StartFocusArgs) => {
     setPinnedPlanItemId(args?.planItemId ?? null);
@@ -426,15 +452,17 @@ export default function App() {
         running={running}
         onToggle={() => {
           if (running) {
-            // Пользователь поставил pause через Dock — таймер остановили,
-            // но session не финишируем (она ещё актуальна). Финиш только
-            // на auto-end или через явный stopFocus (Esc на Home).
+            // Pause: таймер остановили, session ещё активна (финиш только
+            // на auto-end / Reset / явный stopFocus с Home).
             setRunning(false);
           } else {
             setRunning(true);
           }
         }}
         remain={remain}
+        mode={mode}
+        onToggleMode={toggleMode}
+        onReset={resetTimer}
         vol={vol}
         onVol={setVol}
       />

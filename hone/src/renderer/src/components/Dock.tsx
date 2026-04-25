@@ -1,25 +1,42 @@
-// Dock — the persistent bottom timer pill. Visible on every page except
-// Focus (where the giant timer takes over). Holds four controls: menu
-// opener (⌘K), the mm:ss display with a live-pulse dot, play/pause, and
-// a volume sub-popover.
+// Dock — the persistent bottom timer pill. Visible on every page; HomePage
+// рисует свой большой mm:ss поверх когда running.
 //
-// The mm:ss is kept in the App-level store (not here) so the Focus page
-// can share the same ticker. Dock is a pure view — all mutations flow
-// back through its callbacks.
+// Режимы таймера:
+//   countdown — pomodoro 25:00 → 0 (default). Auto-end при 0 поднимает
+//               reflection prompt.
+//   stopwatch — ∞ от 00:00 вверх; никаких auto-end, юзер сам Stop.
+//
+// Hover на time-area открывает inline-controls: переключение mode +
+// reset (как у winter.so).
 import { useState, type ReactNode } from 'react';
 
 import { Icon } from './primitives/Icon';
+
+export type TimerMode = 'countdown' | 'stopwatch';
 
 interface DockProps {
   onMenu: () => void;
   running: boolean;
   onToggle: () => void;
-  remain: number; // seconds
+  remain: number; // seconds — для countdown «осталось», для stopwatch «прошло»
+  mode: TimerMode;
+  onToggleMode: () => void;
+  onReset: () => void;
   vol: number;
   onVol: (v: number) => void;
 }
 
-export function Dock({ onMenu, running, onToggle, remain, vol, onVol }: DockProps) {
+export function Dock({
+  onMenu,
+  running,
+  onToggle,
+  remain,
+  mode,
+  onToggleMode,
+  onReset,
+  vol,
+  onVol,
+}: DockProps) {
   const mm = String(Math.floor(remain / 60)).padStart(2, '0');
   const ss = String(remain % 60).padStart(2, '0');
   return (
@@ -39,6 +56,8 @@ export function Dock({ onMenu, running, onToggle, remain, vol, onVol }: DockProp
         backdropFilter: 'blur(18px)',
         WebkitBackdropFilter: 'blur(18px)',
         zIndex: 10,
+        // @ts-expect-error — Electron CSS
+        WebkitAppRegion: 'no-drag',
       }}
       className="no-select"
     >
@@ -46,7 +65,63 @@ export function Dock({ onMenu, running, onToggle, remain, vol, onVol }: DockProp
         <Icon name="menu" size={15} />
       </DockBtn>
       <Divider />
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '0 14px' }}>
+      <TimerArea
+        running={running}
+        mode={mode}
+        mm={mm}
+        ss={ss}
+        onToggleMode={onToggleMode}
+        onReset={onReset}
+      />
+      <Divider />
+      <DockBtn onClick={onToggle} title={running ? 'Pause' : 'Play'}>
+        <Icon name={running ? 'pause' : 'play'} size={13} />
+      </DockBtn>
+      <Divider />
+      <VolumeBtn vol={vol} onVol={onVol} />
+    </div>
+  );
+}
+
+interface TimerAreaProps {
+  running: boolean;
+  mode: TimerMode;
+  mm: string;
+  ss: string;
+  onToggleMode: () => void;
+  onReset: () => void;
+}
+
+function TimerArea({ running, mode, mm, ss, onToggleMode, onReset }: TimerAreaProps) {
+  const [hover, setHover] = useState(false);
+  return (
+    <div
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: hover ? 6 : 10,
+        padding: hover ? '0 6px' : '0 14px',
+        transition: 'gap 120ms ease, padding 120ms ease',
+      }}
+    >
+      {hover ? (
+        <>
+          <DockBtn onClick={onToggleMode} title={mode === 'countdown' ? 'Switch to ∞' : 'Switch to pomodoro'}>
+            <Icon name={mode === 'countdown' ? 'infinity' : 'circle'} size={13} />
+          </DockBtn>
+          <DockBtn onClick={onReset} title="Reset">
+            <Icon name="rewind" size={13} />
+          </DockBtn>
+        </>
+      ) : mode === 'stopwatch' ? (
+        // ∞ как dock-mode marker, маленький, серый
+        <span style={{ color: running ? 'var(--ink-90)' : 'var(--ink-40)', display: 'flex' }}>
+          <Icon name="infinity" size={14} />
+        </span>
+      ) : (
+        // обычный pomodoro: red-pulse точка как раньше
         <span
           style={{
             width: 6,
@@ -56,16 +131,19 @@ export function Dock({ onMenu, running, onToggle, remain, vol, onVol }: DockProp
           }}
           className={running ? 'red-pulse' : ''}
         />
-        <span className="mono" style={{ fontSize: 15, letterSpacing: '0.02em', color: 'var(--ink)' }}>
-          {mm}:{ss}
-        </span>
-      </div>
-      <Divider />
-      <DockBtn onClick={onToggle} title={running ? 'Pause' : 'Play'}>
-        <Icon name={running ? 'pause' : 'play'} size={13} />
-      </DockBtn>
-      <Divider />
-      <VolumeBtn vol={vol} onVol={onVol} />
+      )}
+      <span
+        className="mono"
+        style={{
+          fontSize: 15,
+          letterSpacing: '0.02em',
+          color: 'var(--ink)',
+          minWidth: 56,
+          textAlign: 'center',
+        }}
+      >
+        {mm}:{ss}
+      </span>
     </div>
   );
 }
@@ -83,13 +161,16 @@ function DockBtn({ children, onClick, title }: DockBtnProps) {
       title={title}
       className="focus-ring"
       style={{
-        width: 34,
-        height: 34,
+        width: 30,
+        height: 30,
         borderRadius: 999,
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
         color: 'var(--ink-90)',
+        background: 'transparent',
+        border: 'none',
+        cursor: 'pointer',
       }}
       onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(255,255,255,0.06)')}
       onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}

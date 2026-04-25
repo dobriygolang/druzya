@@ -21,7 +21,10 @@ export type IconName =
   | 'headphones'
   | 'bars'
   | 'standup'
-  | 'search';
+  | 'search'
+  | 'infinity'
+  | 'circle'
+  | 'rewind';
 
 interface IconProps {
   name: IconName;
@@ -142,6 +145,25 @@ export function Icon({ name, size = 14, stroke = 'currentColor' }: IconProps) {
         <svg {...p}>
           <circle cx="11" cy="11" r="6" />
           <path d="M20 20l-4-4" />
+        </svg>
+      );
+    case 'infinity':
+      return (
+        <svg {...p}>
+          <path d="M7 12c0-2.5 2-4 4-4s2.5 1.5 2.5 4-1 4-2.5 4-4-1.5-4-4zM17 12c0-2.5-2-4-4-4s-2.5 1.5-2.5 4 1 4 2.5 4 4-1.5 4-4z" />
+        </svg>
+      );
+    case 'circle':
+      return (
+        <svg {...p}>
+          <circle cx="12" cy="12" r="6" />
+        </svg>
+      );
+    case 'rewind':
+      return (
+        <svg {...p}>
+          <path d="M3 12a9 9 0 109-9" />
+          <path d="M3 4v6h6" />
         </svg>
       );
   }
