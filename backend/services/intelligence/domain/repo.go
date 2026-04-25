@@ -96,6 +96,22 @@ type DailyNoteReader interface {
 	RecentDailyNotes(ctx context.Context, userID uuid.UUID, n int) ([]DailyNoteHead, error)
 }
 
+// CalendarReader — upcoming interview_calendars rows. Coach использует
+// «у тебя Google interview через 3 дня — prep system_design», сильнейший
+// targeted signal.
+type CalendarReader interface {
+	UpcomingInterviews(ctx context.Context, userID uuid.UUID, withinDays int) ([]UpcomingInterview, error)
+}
+
+// MockMessagesReader — keyword frequency analysis над mock_messages
+// user-role контентом. Тривиальная term-frequency: lowercase + split по
+// non-letter, filter common stop-words, top-N. Reader сам решает window
+// (default 14 дней). Coach видит «top-keywords за 2 недели = [prefix-sum,
+// dp, segment-tree]» — это hot topics юзера.
+type MockMessagesReader interface {
+	TopKeywords(ctx context.Context, userID uuid.UUID, withinDays int, topN int) ([]MockKeywords, error)
+}
+
 // BriefSynthesizer generates the daily brief via TaskDailyBrief. Real impl
 // returns strict JSON parsed into the struct; floor returns ErrLLMUnavailable.
 type BriefSynthesizer interface {
@@ -139,6 +155,14 @@ type BriefPromptInput struct {
 
 	// DailyNotes — head'ы recent free-form daily notes. Mood / intent signal.
 	DailyNotes []DailyNoteHead
+
+	// UpcomingInterviews — собесы на ближайшие 30 дней. Самый
+	// действенный signal: «Google in 3 days → prep system_design».
+	UpcomingInterviews []UpcomingInterview
+
+	// MockKeywords — top hot topics из user-сообщений в mock-сессиях за
+	// 14 дней. Term-frequency analysis. Coach видит реальные topics.
+	MockKeywords []MockKeywords
 }
 
 // AskNotesPromptInput — вход для NoteAnswerer (Phase B). Past Q&A

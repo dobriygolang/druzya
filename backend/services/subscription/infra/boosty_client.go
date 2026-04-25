@@ -89,10 +89,14 @@ type BoostySubscriber struct {
 // (напр. /v2/creator/subscribers) — поменять здесь + update smoke-test.
 func (c *BoostyClient) ListSubscribers(ctx context.Context, limit int) ([]BoostySubscriber, error) {
 	if limit <= 0 {
-		limit = 100
+		limit = 30
 	}
-	if limit > 1000 {
-		limit = 1000
+	// Boosty API rejects limit > 30 with status 400 «invalid_param: limit».
+	// Раньше cap был 1000 (предположение из community-doc'а), но реальный
+	// upper-bound — 30. Если у блога больше 30 sub'ов, нужна пагинация —
+	// TODO когда понадобится; для MVP 30 достаточно.
+	if limit > 30 {
+		limit = 30
 	}
 	url := fmt.Sprintf("%s/v1/blog/%s/subscribers?limit=%d", c.baseURL, c.blogSlug, limit)
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)

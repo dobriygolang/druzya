@@ -1,8 +1,13 @@
 import { Link } from 'react-router-dom'
-import { ArrowRight, Brain, Flame, Map as MapIcon, Shield, Sparkles, Target, Trophy, TrendingUp } from 'lucide-react'
+import { ArrowRight, Brain, Flame, Map as MapIcon, RefreshCw, Shield, Sparkles, Target, Trophy, TrendingUp } from 'lucide-react'
 import { AppShellV2 } from '../components/AppShell'
 import { Card } from '../components/Card'
 import { useMockLeaderboardQuery } from '../lib/queries/mockPipeline'
+import {
+ useDailyBriefQuery,
+ useRegenerateDailyBriefMutation,
+ type RecommendationKind,
+} from '../lib/queries/intelligence'
 
 /**
  * InsightsPage — Wave 4 of ADR-001.
@@ -84,28 +89,96 @@ export default function InsightsPage() {
 /* ─── Widgets ─── */
 
 function WeeklyDigestCard() {
+ const briefQ = useDailyBriefQuery()
+ const regen = useRegenerateDailyBriefMutation()
+ const brief = briefQ.data
+ const loading = briefQ.isPending
+ const failed = briefQ.isError && !briefQ.data
+
  return (
  <Card className="flex-col gap-3 p-5" interactive={false}>
+ <div className="flex items-center justify-between gap-2">
  <div className="flex items-center gap-2">
  <Sparkles className="h-4 w-4 text-text-primary" />
  <span className="font-mono text-[11px] uppercase tracking-[0.16em] text-text-primary">
- Weekly digest
+ AI coach · today
  </span>
  </div>
+ <button
+ onClick={() => regen.mutate()}
+ disabled={regen.isPending}
+ title="Regenerate brief"
+ className="flex h-6 w-6 items-center justify-center rounded-md text-text-muted transition hover:bg-surface-2 hover:text-text-primary disabled:opacity-40"
+ >
+ <RefreshCw className={`h-3 w-3 ${regen.isPending ? 'animate-spin' : ''}`} />
+ </button>
+ </div>
+
+ {loading && (
+ <p className="text-[13px] leading-relaxed text-text-muted">
+ Loading brief…
+ </p>
+ )}
+
+ {failed && (
+ <>
  <h3 className="font-display text-lg font-bold leading-tight text-text-primary">
- Будет здесь — твоя неделя за 30 секунд.
+ Coach is offline.
  </h3>
  <p className="text-[13px] leading-relaxed text-text-secondary">
- Что сделал, где провалился, что важно сейчас. Сборка из arena-матчей,
- mock-сессий, focus-time и заметок. Источник —{' '}
- <span className="font-mono text-text-primary">services/intelligence</span>{' '}
- (RPC <span className="font-mono text-text-primary">GetWeeklyIntel</span>).
+ Daily brief недоступен — LLM chain не отвечает или у тебя ещё нет
+ данных. Попробуй позже.
  </p>
- <div className="mt-2 inline-flex w-fit items-center gap-2 rounded-full border border-border bg-surface-2 px-3 py-1 font-mono text-[10px] uppercase tracking-[0.16em] text-text-muted">
- ETA · Phase A
+ </>
+ )}
+
+ {brief && (
+ <>
+ <h3 className="font-display text-lg font-bold leading-tight text-text-primary">
+ {brief.headline}
+ </h3>
+ <p className="text-[13px] leading-relaxed text-text-secondary">
+ {brief.narrative}
+ </p>
+ {brief.recommendations && brief.recommendations.length > 0 && (
+ <ul className="mt-2 flex flex-col gap-2">
+ {brief.recommendations.slice(0, 3).map((r, i) => (
+ <li
+ key={i}
+ className="flex items-start gap-2 rounded-md border border-border bg-surface-2 p-2 text-[12px] text-text-secondary"
+ >
+ <span
+ className="mt-0.5 inline-flex shrink-0 rounded border border-border bg-surface-1 px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-[0.14em] text-text-muted"
+ >
+ {kindLabel(r.kind)}
+ </span>
+ <div className="flex flex-col gap-0.5">
+ <span className="font-medium text-text-primary">{r.title}</span>
+ <span className="text-[11px] leading-snug text-text-muted">
+ {r.rationale}
+ </span>
  </div>
+ </li>
+ ))}
+ </ul>
+ )}
+ </>
+ )}
  </Card>
  )
+}
+
+function kindLabel(k: RecommendationKind): string {
+ switch (k) {
+ case 'tiny_task': return 'TINY TASK'
+ case 'schedule': return 'SCHEDULE'
+ case 'review_note': return 'REVIEW NOTE'
+ case 'unblock': return 'UNBLOCK'
+ case 'practice_skill': return 'SKILL'
+ case 'drill_mock': return 'MOCK'
+ case 'drill_kata': return 'KATA'
+ default: return 'TIP'
+ }
 }
 
 function ReadinessForecastCard() {

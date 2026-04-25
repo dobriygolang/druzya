@@ -105,6 +105,22 @@ CORE RULES:
 
 8. If signals are SPARSE (new user, < 3 days of data) — say so explicitly in narrative and recommend onboarding actions: schedule first mock, generate a daily plan, do today's daily kata. Don't fabricate insight from nothing.
 
+9. UPCOMING INTERVIEWS overrides everything. If user has an interview scheduled in the next 7 days, AT LEAST 2 of 3 recommendations MUST address that interview's company role + sections. Use drill_mock with section as target_id.
+
+──────────────────────────────────────────────────────────────────────────
+FEW-SHOT EXAMPLES (good vs bad — match the good one's specificity):
+
+❌ BAD output (generic, useless):
+{"headline":"Keep up the good work!","narrative":"You've been making great progress. Stay consistent and continue practicing daily.","recommendations":[{"kind":"tiny_task","title":"Practice algorithms","rationale":"Algorithms are important.","target_id":""},{"kind":"schedule","title":"Block focus time","rationale":"Focus is key to growth.","target_id":""},{"kind":"tiny_task","title":"Review your notes","rationale":"Reviewing helps retention.","target_id":""}]}
+
+✅ GOOD output (specific signals, concrete actions):
+{"headline":"Google interview Friday — system_design gap.","narrative":"Last system_design mock 2 days ago scored 5/10, weak_topics=[capacity-estimation, sharding]. You have 3 days until Google L5 interview, readiness_pct=40. Today's queue is empty, you skipped 'review consistent-hashing' 4 times in 14 days.","recommendations":[{"kind":"drill_mock","title":"Run a system_design mock today, focus on capacity-estimation.","rationale":"Last mock scored 5/10 on this section, Google interview is in 3 days.","target_id":"system_design"},{"kind":"unblock","title":"Open consistent-hashing review and read just the first paragraph.","rationale":"Skipped 4 times in 14 days — chronic avoidance. Tiny first step breaks the wall.","target_id":"plan-item-abc-123"},{"kind":"practice_skill","title":"Solve one capacity-estimation back-of-envelope problem.","rationale":"Listed as weak_topic in last mock + relevant for sharding section of Google interview.","target_id":"capacity-estimation"}]}
+
+✅ GOOD output (user has hot keywords from mock messages):
+{"headline":"Three quiet days, prefix-sum still hot in mocks.","narrative":"0 focus minutes Mon-Wed despite 12-day kata streak. Your mock messages last 14 days mention prefix-sum 18 times and segment-tree 9 times. Last algorithms 1v1 in arena: lost in 12 minutes (elo -22).","recommendations":[{"kind":"drill_kata","title":"Today's daily kata — protect the streak.","rationale":"12-day streak, last_kata yesterday. Skipping today drops you to 0.","target_id":""},{"kind":"practice_skill","title":"Solve one segment-tree problem from your weak skills.","rationale":"Mentioned 9× in mocks, listed in skill_progress as 28/100.","target_id":"segment-tree"},{"kind":"schedule","title":"Block 90 min focus before lunch.","rationale":"3 days of zero focus — re-establish habit before deep loss.","target_id":""}]}
+
+──────────────────────────────────────────────────────────────────────────
+
 Return ONLY the JSON object. No prose, no code fences.`
 
 // Synthesise builds the prompt, calls the chain, parses JSON envelope.
@@ -150,6 +166,17 @@ func (s *LLMChainBriefSynthesiser) Synthesise(ctx context.Context, in domain.Bri
 func buildBriefUserPrompt(in domain.BriefPromptInput) string {
 	var sb strings.Builder
 	fmt.Fprintf(&sb, "Today: %s\n\n", in.Today.Format("2006-01-02 (Monday)"))
+
+	// ── UPCOMING INTERVIEWS (highest-priority signal) ─────────────────
+	if len(in.UpcomingInterviews) > 0 {
+		sb.WriteString("UPCOMING INTERVIEWS (override everything else if interview is within 7 days):\n")
+		for _, ui := range in.UpcomingInterviews {
+			fmt.Fprintf(&sb, "  - %s · role=%q level=%q · in %d days (date %s) · self-readiness=%d%%\n",
+				ui.CompanyName, ui.Role, ui.CurrentLevel,
+				ui.DaysFromNow, ui.InterviewDate.Format("2006-01-02"), ui.ReadinessPct)
+		}
+		sb.WriteString("\n")
+	}
 
 	// ── HONE FOCUS SIGNALS ────────────────────────────────────────────
 	sb.WriteString("Focus last 7 days (date / seconds_focused / pomodoros):\n")
@@ -226,6 +253,18 @@ func buildBriefUserPrompt(in domain.BriefPromptInput) string {
 				a.Section, a.Mode, a.Outcome, a.EloDelta, a.SolveTimeMs,
 				a.FinishedAt.Format("2006-01-02"))
 		}
+	}
+
+	// ── MOCK KEYWORDS (hot topics из user-content'а mock-сессий) ──────
+	if len(in.MockKeywords) > 0 {
+		sb.WriteString("\nTop keywords from mock-interview messages last 14 days (these are topics user actually discussed — strong signal for what's currently on their mind):\n  ")
+		for i, kw := range in.MockKeywords {
+			if i > 0 {
+				sb.WriteString(", ")
+			}
+			fmt.Fprintf(&sb, "%s(%d)", kw.Keyword, kw.Count)
+		}
+		sb.WriteString("\n")
 	}
 
 	// ── WEAK SKILLS (Skill Atlas) ─────────────────────────────────────

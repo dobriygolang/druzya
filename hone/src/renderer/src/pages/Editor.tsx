@@ -100,17 +100,62 @@ function honeEditorTheme() {
         background: '#000',
       },
       '.cm-content': { padding: '14px 0', caretColor: '#fff' },
+      // Gutter (line numbers) — pure black, no border, transparent active
+      // line. Mirror web frontend's editorThemeWeb (см.
+      // frontend/src/pages/EditorRoomSharePage.tsx) — host/guest должны
+      // выглядеть одинаково.
       '.cm-gutters': {
         background: '#000',
-        borderRight: '1px solid rgba(255,255,255,0.04)',
-        color: 'var(--ink-40)',
+        border: 'none',
+        color: 'rgba(255,255,255,0.25)',
       },
-      '.cm-activeLineGutter': { background: 'rgba(255,255,255,0.03)', color: 'var(--ink-60)' },
+      '.cm-activeLineGutter': { background: 'transparent', color: 'var(--ink-60)' },
       '.cm-activeLine': { background: 'rgba(255,255,255,0.02)' },
       '.cm-cursor': { borderLeftColor: '#fff', borderLeftWidth: '1.5px' },
       '.cm-selectionBackground, ::selection': { backgroundColor: 'rgba(255,255,255,0.16)' },
       '&.cm-focused .cm-selectionBackground': { backgroundColor: 'rgba(255,255,255,0.2)' },
       '&.cm-focused': { outline: 'none' },
+      // y-codemirror.next remote-cursor styles + name labels.
+      // Каретка пира — vertical line с цветом из awareness (inline style).
+      // Нашлёпка с именем — псевдо-element, рендерится только во время
+      // движения курсора (y-codemirror добавляет .cm-ySelectionInfo).
+      '.cm-ySelection': { backgroundColor: 'rgba(255,255,255,0.18)' },
+      '.cm-ySelectionCaret': {
+        position: 'relative',
+        borderLeft: '2px solid',
+        borderRight: '2px solid',
+        marginLeft: '-1px',
+        marginRight: '-1px',
+        boxSizing: 'border-box',
+        display: 'inline',
+      },
+      '.cm-ySelectionCaretDot': {
+        borderRadius: '50%',
+        position: 'absolute',
+        width: 6,
+        height: 6,
+        top: -3,
+        left: -3,
+        backgroundColor: 'inherit',
+        border: '1px solid #000',
+      },
+      '.cm-ySelectionInfo': {
+        position: 'absolute',
+        top: -1.4,
+        left: -1,
+        fontSize: 10,
+        fontFamily: 'ui-monospace, monospace',
+        fontWeight: 500,
+        lineHeight: 'normal',
+        userSelect: 'none',
+        color: '#000',
+        paddingLeft: 4,
+        paddingRight: 4,
+        zIndex: 101,
+        transform: 'translateY(-100%)',
+        backgroundColor: 'inherit',
+        whiteSpace: 'nowrap',
+      },
     },
     { dark: true },
   );
@@ -1202,6 +1247,10 @@ function RoomView({ roomId }: { roomId: string; onBack?: () => void }) {
   const [runError, setRunError] = useState<string | null>(null);
   const [outputTab, setOutputTab] = useState<'stdout' | 'stderr'>('stdout');
   const [panelOpen, setPanelOpen] = useState(false);
+  // livePeers — реальное число online-клиентов в комнате (через awareness).
+  // room.participants — это history (кто КОГДА-ЛИБО заходил), а UX'у нужно
+  // «сколько сейчас тут». awareness.states.size учитывает и self.
+  const [livePeers, setLivePeers] = useState(1);
 
   const ydocRef = useRef<Y.Doc | null>(null);
   const viewRef = useRef<EditorView | null>(null);
@@ -1277,6 +1326,14 @@ function RoomView({ roomId }: { roomId: string; onBack?: () => void }) {
       sendAwarenessRef.current?.(enc);
     };
     awareness.on('update', onAwareness);
+
+    // Track live peer count via awareness 'change' event. Fires when any
+    // participant joins/leaves or updates their state. Includes self.
+    const onAwarenessChange = () => {
+      setLivePeers(awareness.getStates().size);
+    };
+    awareness.on('change', onAwarenessChange);
+    setLivePeers(awareness.getStates().size); // initial
 
     // WebSocket.
     const handle = connectEditorWs({
@@ -1372,6 +1429,7 @@ function RoomView({ roomId }: { roomId: string; onBack?: () => void }) {
       view.destroy();
       viewRef.current = null;
       awareness.off('update', onAwareness);
+      awareness.off('change', onAwarenessChange);
       awareness.destroy();
       ydoc.off('update', onUpdate);
       window.clearTimeout(seedTimer);
@@ -1584,8 +1642,8 @@ function RoomView({ roomId }: { roomId: string; onBack?: () => void }) {
           </span>
           <span style={{ opacity: 0.4 }}>·</span>
           <span>
-            {room.participants.length} participant
-            {room.participants.length === 1 ? '' : 's'}
+            {livePeers} participant
+            {livePeers === 1 ? '' : 's'}
           </span>
           <span style={{ opacity: 0.4 }}>·</span>
           <span

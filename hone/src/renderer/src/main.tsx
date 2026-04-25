@@ -1,5 +1,9 @@
 import { createRoot } from 'react-dom/client';
-import { init as sentryInit } from '@sentry/electron/renderer';
+import {
+  init as sentryInit,
+  getDefaultIntegrations,
+  scopeToMainIntegration,
+} from '@sentry/electron/renderer';
 
 // React namespace is auto-injected via tsconfig "jsx": "react-jsx", so we
 // deliberately do NOT `import React` here (an unused import in strict
@@ -8,13 +12,20 @@ import App from './App';
 import './styles/globals.css';
 
 // Sentry-renderer — attach to main-process DSN via @sentry/electron IPC.
-// Если main не инициализирован (пустой HONE_SENTRY_DSN) — renderer init
-// тоже no-op'нет, т.к. SDK не видит main-side client. Безопасно.
+// scopeToMainIntegration отключаем потому что в Electron-renderer'е оно
+// триггерит fetch() на custom URL `sentry-ipc://scope/sentry_key`, а
+// Chromium не поддерживает custom-scheme fetch без registerSchemesAsPrivileged.
+// Без этой integration scope-updates на main не доходят (и breadcrumb-history
+// у crash'ей в renderer'е будет пустой), НО renderer перестаёт спамить
+// «Fetch API cannot load sentry-ipc://...» в console на каждый log/RECV.
+// Сами exception'ы в renderer'е всё равно поедут в main через preload IPC
+// bridge (из @sentry/electron preload script).
+const sentryOpts = { tracesSampleRate: 0 };
 sentryInit({
-  // renderer получает DSN через main; передавать здесь не надо.
-  // Ставим tracesSampleRate=0.1 для performance-traces (но пока не
-  // инструментируем).
-  tracesSampleRate: 0.1,
+  ...sentryOpts,
+  integrations: getDefaultIntegrations(sentryOpts).filter(
+    (i) => i.name !== scopeToMainIntegration().name,
+  ),
 });
 
 // Strict mode is deliberately OFF for the MVP. The ported design uses

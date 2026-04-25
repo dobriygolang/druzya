@@ -38,11 +38,24 @@ export function QuotaUsageBar({ resource, variant = 'compact' }: QuotaUsageBarPr
       ? '#ffaa55'
       : 'var(--ink-60)';
 
+  // Over-limit state: показываем «N · LIMIT 1» с явным индикатором что
+  // юзер за пределами free-tier'а. Раньше отображалось просто «2 / 1» —
+  // выглядело как UI bug. Это легитимный over-quota state (легаси rooms
+  // или enforce'мент пропускал какую-то ветку), и UX должен дать понять
+  // что upgrade нужен.
+  const overLimit = !isUnlimited && limit > 0 && used > limit;
+
   if (variant === 'compact') {
     return (
       <div
         className="mono"
-        title={isUnlimited ? `${LABELS[resource]}: ${used} (unlimited)` : `${LABELS[resource]}: ${used} / ${limit}`}
+        title={
+          isUnlimited
+            ? `${LABELS[resource]}: ${used} (unlimited)`
+            : overLimit
+              ? `${LABELS[resource]}: ${used} (over limit ${limit} — upgrade)`
+              : `${LABELS[resource]}: ${used} / ${limit}`
+        }
         style={{
           display: 'flex',
           alignItems: 'center',
@@ -56,7 +69,8 @@ export function QuotaUsageBar({ resource, variant = 'compact' }: QuotaUsageBarPr
       >
         <span>
           {used}
-          {!isUnlimited && <span style={{ opacity: 0.5 }}>{` / ${limit}`}</span>}
+          {!isUnlimited && !overLimit && <span style={{ opacity: 0.5 }}>{` / ${limit}`}</span>}
+          {overLimit && <span style={{ opacity: 0.7 }}>{` · OVER LIMIT ${limit}`}</span>}
         </span>
         {!isUnlimited && (
           <div
@@ -92,7 +106,8 @@ export function QuotaUsageBar({ resource, variant = 'compact' }: QuotaUsageBarPr
         <span>{LABELS[resource]}</span>
         <span className="mono" style={{ color }}>
           {used}
-          {!isUnlimited && <span style={{ opacity: 0.5 }}>{` / ${limit}`}</span>}
+          {!isUnlimited && !overLimit && <span style={{ opacity: 0.5 }}>{` / ${limit}`}</span>}
+          {overLimit && <span style={{ opacity: 0.7 }}>{` · over limit ${limit}`}</span>}
           {isUnlimited && <span style={{ opacity: 0.5 }}> (unlimited)</span>}
         </span>
       </div>

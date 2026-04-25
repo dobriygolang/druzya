@@ -610,12 +610,28 @@ function openWs(
   let timer: number | null = null
   let closed = false
 
+  // Debug logs включаются через `localStorage.setItem('hone:debug:ws', '1')`.
+  // Зеркалит формат app-логов в hone/.../whiteboard.ts чтобы можно было
+  // сравнивать оба клиента side-by-side.
+  const dbg = (() => {
+    try {
+      return window.localStorage.getItem('hone:debug:ws') === '1'
+    } catch {
+      return false
+    }
+  })()
+  const log = (...args: unknown[]) => {
+    if (dbg) console.log('[wb.ws]', ...args)
+  }
+
   const open = () => {
     opts.onStatus(attempts === 0 ? 'connecting' : 'reconnecting')
+    log('open attempt', { url, attempts })
     ws = new WebSocket(url)
     ws.binaryType = 'arraybuffer'
     ws.onopen = () => {
       attempts = 0
+      log('OPEN')
       opts.onStatus('open')
     }
     ws.onmessage = (ev) => {
@@ -625,12 +641,14 @@ function openWs(
             ? ev.data
             : new TextDecoder().decode(ev.data as ArrayBuffer)
         const env = JSON.parse(data) as WsEnvelope
+        log('RECV', env.kind, { bytes: data.length })
         opts.onEnvelope(env)
-      } catch {
-        /* malformed */
+      } catch (e) {
+        log('RECV malformed', e)
       }
     }
-    ws.onclose = () => {
+    ws.onclose = (ev) => {
+      log('CLOSE', { code: ev.code, reason: ev.reason, attempts })
       if (closed) return
       attempts += 1
       if (attempts > 5) {
@@ -640,15 +658,21 @@ function openWs(
       const backoff = Math.min(10_000, 500 * 2 ** attempts)
       timer = window.setTimeout(open, backoff)
     }
-    ws.onerror = () => {
+    ws.onerror = (e) => {
+      log('ERROR', e)
       /* close handler reconnects */
     }
   }
   open()
   return {
     send: (env) => {
-      if (!ws || ws.readyState !== WebSocket.OPEN) return false
-      ws.send(JSON.stringify(env))
+      if (!ws || ws.readyState !== WebSocket.OPEN) {
+        log('SEND drop (not open)', { kind: env.kind, readyState: ws?.readyState })
+        return false
+      }
+      const payload = JSON.stringify(env)
+      log('SEND', env.kind, { bytes: payload.length })
+      ws.send(payload)
       return true
     },
     close: () => {

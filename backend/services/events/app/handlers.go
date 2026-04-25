@@ -98,7 +98,12 @@ func (h *Handlers) ListMyEvents(ctx context.Context, userID uuid.UUID, from, to 
 		from = h.Now().UTC().Add(-24 * time.Hour)
 	}
 	if to.IsZero() {
-		to = from.Add(90 * 24 * time.Hour)
+		// Раньше было 90 дней — юзер создавал event на 6+ месяцев вперёд
+		// (запланированное собеседование, релиз, etc) и тот не попадал
+		// в дефолтное окно ListMyEvents → пустой список. Расширяем до 1 года.
+		// Если фронт нужно лимитировать (perf на больших списках) — пусть
+		// отправляет explicit `to`.
+		to = from.Add(365 * 24 * time.Hour)
 	}
 	out, err := h.Events.ListUpcomingByMember(ctx, userID, from, to)
 	if err != nil {

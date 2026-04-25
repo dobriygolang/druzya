@@ -69,6 +69,8 @@ func NewIntelligence(d Deps) IntelligenceModule {
 	queueR := &intelQueueReader{pool: d.Pool}
 	skillR := &intelSkillReader{pool: d.Pool}
 	dailyR := &intelDailyNoteReader{pool: d.Pool}
+	calR := &intelCalendarReader{pool: d.Pool}
+	mockMsgR := &intelMockMessagesReader{pool: d.Pool}
 
 	embedder := newIntelEmbedder(d)
 
@@ -104,12 +106,14 @@ func NewIntelligence(d Deps) IntelligenceModule {
 			Now:         d.Now,
 			Memory:      memory,
 			// Cross-product сигналы для smart Coach.
-			Mocks:      mockR,
-			Kata:       kataR,
-			Arena:      arenaR,
-			Queue:      queueR,
-			Skills:     skillR,
-			DailyNotes: dailyR,
+			Mocks:        mockR,
+			Kata:         kataR,
+			Arena:        arenaR,
+			Queue:        queueR,
+			Skills:       skillR,
+			DailyNotes:   dailyR,
+			Calendar:     calR,
+			MockMessages: mockMsgR,
 		},
 		AskNotes: &intelApp.AskNotes{
 			Notes:    notesR,
@@ -938,6 +942,149 @@ func (r *intelDailyNoteReader) RecentDailyNotes(ctx context.Context, userID uuid
 	}
 	if err := rows.Err(); err != nil {
 		return out, fmt.Errorf("intelligence reader rows: %w", err)
+	}
+	return out, nil
+}
+
+// ── intelCalendarReader: services/daily interview_calendars ──
+
+type intelCalendarReader struct{ pool *pgxpool.Pool }
+
+func (r *intelCalendarReader) UpcomingInterviews(ctx context.Context, userID uuid.UUID, withinDays int) ([]intelDomain.UpcomingInterview, error) {
+	if withinDays <= 0 || withinDays > 365 {
+		withinDays = 30
+	}
+	rows, err := r.pool.Query(ctx,
+		`SELECT COALESCE(c.name, '?'), ic.role, ic.interview_date,
+		        COALESCE(ic.current_level, ''), ic.readiness_pct
+		   FROM interview_calendars ic
+		   LEFT JOIN companies c ON c.id = ic.company_id
+		  WHERE ic.user_id=$1
+		    AND ic.interview_date >= CURRENT_DATE
+		    AND ic.interview_date <= CURRENT_DATE + $2::int
+		  ORDER BY ic.interview_date ASC`,
+		sharedpg.UUID(userID), withinDays,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("intelligence.intelCalendarReader: %w", err)
+	}
+	defer rows.Close()
+	out := make([]intelDomain.UpcomingInterview, 0)
+	today := time.Now().UTC().Truncate(24 * time.Hour)
+	for rows.Next() {
+		var ui intelDomain.UpcomingInterview
+		var pct int32
+		if err := rows.Scan(&ui.CompanyName, &ui.Role, &ui.InterviewDate, &ui.CurrentLevel, &pct); err != nil {
+			return nil, fmt.Errorf("intelligence.intelCalendarReader: scan: %w", err)
+		}
+		ui.ReadinessPct = int(pct)
+		ui.DaysFromNow = int(ui.InterviewDate.Sub(today).Hours() / 24)
+		out = append(out, ui)
+	}
+	if err := rows.Err(); err != nil {
+		return out, fmt.Errorf("intelligence.intelCalendarReader rows: %w", err)
+	}
+	return out, nil
+}
+
+// ── intelMockMessagesReader: keyword-frequency analysis ──
+//
+// Извлекает top-N keywords из user-content'а mock_messages за окно
+// withinDays. Алгоритм: split по non-letter, lowercase, отсекаем
+// stop-words + слова <3 символов, группируем по terms, top-N по count.
+//
+// Это не embeddings-based topic-model, но достаточно для prompt'а:
+// нужны hot topics юзера, не глубокий cluster analysis.
+
+type intelMockMessagesReader struct{ pool *pgxpool.Pool }
+
+// stop-words — английские + транслит ru common. Расширять по наблюдениям.
+var mockStopWords = map[string]struct{}{
+	"the": {}, "and": {}, "for": {}, "you": {}, "are": {}, "this": {}, "that": {},
+	"with": {}, "have": {}, "but": {}, "not": {}, "what": {}, "how": {}, "why": {},
+	"can": {}, "will": {}, "would": {}, "could": {}, "should": {}, "your": {},
+	"its": {}, "from": {}, "they": {}, "their": {}, "them": {}, "these": {},
+	"about": {}, "into": {}, "out": {}, "use": {}, "using": {}, "let": {},
+	"like": {}, "just": {}, "well": {}, "yes": {}, "okay": {}, "right": {},
+	"think": {}, "know": {}, "see": {}, "say": {}, "got": {}, "get": {},
+	"один": {}, "так": {}, "уже": {}, "что": {}, "как": {}, "это": {},
+	"для": {}, "или": {}, "его": {}, "вот": {}, "тут": {}, "там": {},
+	"мне": {}, "тебе": {}, "если": {}, "только": {}, "тоже": {}, "теперь": {},
+}
+
+func (r *intelMockMessagesReader) TopKeywords(ctx context.Context, userID uuid.UUID, withinDays, topN int) ([]intelDomain.MockKeywords, error) {
+	if withinDays <= 0 || withinDays > 60 {
+		withinDays = 14
+	}
+	if topN <= 0 || topN > 50 {
+		topN = 12
+	}
+	rows, err := r.pool.Query(ctx,
+		`SELECT m.content
+		   FROM mock_messages m
+		   JOIN mock_sessions s ON s.id = m.session_id
+		  WHERE s.user_id=$1
+		    AND m.role='user'
+		    AND m.created_at >= NOW() - $2::int * INTERVAL '1 day'
+		    AND length(m.content) <= 4096`,
+		sharedpg.UUID(userID), withinDays,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("intelligence.intelMockMessagesReader: %w", err)
+	}
+	defer rows.Close()
+	freq := map[string]int{}
+	for rows.Next() {
+		var content string
+		if err := rows.Scan(&content); err != nil {
+			return nil, fmt.Errorf("intelligence.intelMockMessagesReader: scan: %w", err)
+		}
+		// Tokenize: keep only letters (incl unicode), split everything else.
+		// strings.FieldsFunc с predicate isLetter — простой и robust.
+		tokens := strings.FieldsFunc(strings.ToLower(content), func(c rune) bool {
+			// Letters & digits keep, рестальное delim. Цифры тоже keep
+			// (3sum, dp, n+1 patterns).
+			return !((c >= 'a' && c <= 'z') ||
+				(c >= 'а' && c <= 'я') ||
+				(c >= '0' && c <= '9') ||
+				c == '-')
+		})
+		for _, t := range tokens {
+			if len(t) < 3 {
+				continue
+			}
+			if _, stop := mockStopWords[t]; stop {
+				continue
+			}
+			freq[t]++
+		}
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("intelligence.intelMockMessagesReader rows: %w", err)
+	}
+	// Sort by count DESC, take top-N.
+	type kv struct {
+		k string
+		c int
+	}
+	all := make([]kv, 0, len(freq))
+	for k, c := range freq {
+		if c < 2 {
+			continue // singleton noise — skip
+		}
+		all = append(all, kv{k, c})
+	}
+	// Selection sort top-N (small N, no need for full sort).
+	out := make([]intelDomain.MockKeywords, 0, topN)
+	for i := 0; i < topN && len(all) > 0; i++ {
+		best := 0
+		for j := range all {
+			if all[j].c > all[best].c {
+				best = j
+			}
+		}
+		out = append(out, intelDomain.MockKeywords{Keyword: all[best].k, Count: all[best].c})
+		all = append(all[:best], all[best+1:]...)
 	}
 	return out, nil
 }

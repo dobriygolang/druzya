@@ -41,12 +41,14 @@ type GetDailyBrief struct {
 	// Все шесть — opt-in. Если nil, соответствующая секция prompt'а
 	// просто не наполняется. Это позволяет частичный rollout: сначала
 	// поднимаем Mocks, потом добавляем Arena, и т.д.
-	Mocks      domain.MockReader
-	Kata       domain.KataReader
-	Arena      domain.ArenaReader
-	Queue      domain.QueueReader
-	Skills     domain.SkillReader
-	DailyNotes domain.DailyNoteReader
+	Mocks        domain.MockReader
+	Kata         domain.KataReader
+	Arena        domain.ArenaReader
+	Queue        domain.QueueReader
+	Skills       domain.SkillReader
+	DailyNotes   domain.DailyNoteReader
+	Calendar     domain.CalendarReader
+	MockMessages domain.MockMessagesReader
 }
 
 // GetDailyBriefInput — параметры use case'а.
@@ -166,22 +168,38 @@ func (uc *GetDailyBrief) Do(ctx context.Context, in GetDailyBriefInput) (domain.
 			dailyNotes = v
 		}
 	}
+	var (
+		upcoming []domain.UpcomingInterview
+		keywords []domain.MockKeywords
+	)
+	if uc.Calendar != nil {
+		if v, cErr := uc.Calendar.UpcomingInterviews(ctx, in.UserID, 30); cErr == nil {
+			upcoming = v
+		}
+	}
+	if uc.MockMessages != nil {
+		if v, kErr := uc.MockMessages.TopKeywords(ctx, in.UserID, 14, 12); kErr == nil {
+			keywords = v
+		}
+	}
 
 	brief, err := uc.Synthesiser.Synthesise(ctx, domain.BriefPromptInput{
-		UserID:          in.UserID,
-		Today:           today,
-		FocusDays:       focus,
-		SkippedRecent:   skipped,
-		CompletedRecent: completed,
-		Reflections:     refl,
-		RecentNotes:     recent,
-		Mocks:           mocks,
-		KataStreak:      kataStreak,
-		KataRecent:      kataRecent,
-		Arena:           arena,
-		Queue:           queue,
-		WeakSkills:      weakSkills,
-		DailyNotes:      dailyNotes,
+		UserID:             in.UserID,
+		Today:              today,
+		FocusDays:          focus,
+		SkippedRecent:      skipped,
+		CompletedRecent:    completed,
+		Reflections:        refl,
+		RecentNotes:        recent,
+		Mocks:              mocks,
+		KataStreak:         kataStreak,
+		KataRecent:         kataRecent,
+		Arena:              arena,
+		Queue:              queue,
+		WeakSkills:         weakSkills,
+		DailyNotes:         dailyNotes,
+		UpcomingInterviews: upcoming,
+		MockKeywords:       keywords,
 	})
 	if err != nil {
 		// Pass-through — пусть transport сам решит как 503-ить.

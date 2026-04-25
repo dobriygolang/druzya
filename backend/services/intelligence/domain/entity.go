@@ -197,3 +197,24 @@ type DailyNoteHead struct {
 	Day     time.Time
 	Excerpt string // first ~400 chars
 }
+
+// UpcomingInterview — interview_calendars row, строка для prompt'а.
+// Coach использует «Google interview Friday → prep system_design» — сильный
+// signal для targeted recommendations.
+type UpcomingInterview struct {
+	CompanyName   string
+	Role          string
+	InterviewDate time.Time
+	CurrentLevel  string // L4, Senior, etc — может быть пустым
+	ReadinessPct  int    // 0..100 — self-reported
+	DaysFromNow   int    // computed by reader: дней до собеса (отрицательное = прошло)
+}
+
+// MockKeywords — keyword frequency table из mock_messages user-content'а.
+// Извлекается reader'ом через простой term-frequency analysis (lowercase,
+// stop-words filter, top-N по count). Coach видит «user обсуждал prefix-sum
+// 12 раз за неделю — это его горячая тема, можно опираться».
+type MockKeywords struct {
+	Keyword string
+	Count   int
+}

@@ -78,7 +78,9 @@ func (uc *SyncBoosty) Do(ctx context.Context) (SyncResult, error) {
 	if uc.Source == nil {
 		return SyncResult{}, fmt.Errorf("subscription.SyncBoosty: source not configured")
 	}
-	subs, err := uc.Source.ListSubscribers(ctx, 1000)
+	// Boosty API hard-cap = 30. См. infra/boosty_client.go комментарий.
+	// MVP без пагинации: для пилотного блога 30 хватает.
+	subs, err := uc.Source.ListSubscribers(ctx, 30)
 	if err != nil {
 		return SyncResult{}, fmt.Errorf("subscription.SyncBoosty: list: %w", err)
 	}
