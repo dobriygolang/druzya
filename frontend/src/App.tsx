@@ -37,6 +37,7 @@ function DailyKataRedirect() {
 const ArenaPage = lazy(() => import('./pages/ArenaPage'))
 const ArenaMatchPage = lazy(() => import('./pages/ArenaMatchPage'))
 const AtlasPage = lazy(() => import('./pages/AtlasPage'))
+const InsightsPage = lazy(() => import('./pages/InsightsPage'))
 const CodexPage = lazy(() => import('./pages/CodexPage'))
 const ProfilePage = lazy(() => import('./pages/ProfilePage'))
 const DailyPage = lazy(() => import('./pages/DailyPage'))
@@ -136,6 +137,7 @@ export default function App() {
         <Route path="/arena/kata" element={<DailyPage />} />
         <Route path="/arena/kata/:slug" element={<DailyPage />} />
         <Route path="/atlas" element={<AtlasPage />} />
+        <Route path="/insights" element={<InsightsPage />} />
         <Route path="/codex" element={<CodexPage />} />
         <Route path="/profile" element={<ProfilePage />} />
         {/* WAVE-13 — /profile/weekly absorbs the standalone /weekly route as

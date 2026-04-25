@@ -1,24 +1,15 @@
 // CompanyCard — single tile in the /mock company picker grid. Renders
-// the company logo (or initials fallback), name, and the band of meta
-// chips (level + tier). Click → onSelect(company.id) — the parent
-// triggers the create-pipeline mutation and navigates to /mock/{id}.
-//
-// We deliberately do NOT show "X people interviewing now" counts here —
-// the backend doesn't expose it and inventing it would be a fallback.
+// the company logo (or initials fallback) + name + difficulty band.
+// Click → onSelect(company.id) — the parent triggers the create-pipeline
+// mutation and navigates to /mock/{id}.
 
 import { cn } from '../../lib/cn'
 import type { MockCompany } from '../../lib/queries/mockPipeline'
 
-const LEVEL_LABEL: Record<MockCompany['level'], string> = {
-  mid: 'Middle',
-  senior: 'Senior',
-  staff: 'Staff',
-}
-
-const TIER_TONE: Record<MockCompany['tier'], string> = {
-  tier1: 'border-border-strong bg-text-primary/10 text-text-secondary',
-  tier2: 'border-border-strong bg-text-primary/10 text-text-secondary',
-  tier3: 'border-border bg-surface-2 text-text-muted',
+const DIFFICULTY_LABEL: Record<string, string> = {
+  normal: 'Normal',
+  hard: 'Hard',
+  boss: 'Boss',
 }
 
 export type CompanyCardProps = {
@@ -28,7 +19,7 @@ export type CompanyCardProps = {
 }
 
 function Initials({ name }: { name: string }) {
-  const parts = name.split(/\s+/).filter(Boolean).slice(0, 2)
+  const parts = (name ?? '').split(/\s+/).filter(Boolean).slice(0, 2)
   const txt = parts.map((p) => p[0]?.toUpperCase() ?? '').join('')
   return (
     <div className="h-12 w-12 rounded-md bg-surface-2 border border-border flex items-center justify-center font-display font-bold text-text-secondary text-base">
@@ -38,6 +29,7 @@ function Initials({ name }: { name: string }) {
 }
 
 export function CompanyCard({ company, onSelect, loading }: CompanyCardProps) {
+  const sections = company.sections ?? []
   return (
     <button
       type="button"
@@ -64,27 +56,23 @@ export function CompanyCard({ company, onSelect, loading }: CompanyCardProps) {
           <div className="font-mono text-[10px] uppercase tracking-wider text-text-muted">{company.slug}</div>
         </div>
       </div>
-      <div className="flex items-center gap-1.5 flex-wrap">
-        <span
-          className={cn(
-            'inline-flex items-center rounded border px-2 py-0.5 text-[10px] font-mono uppercase tracking-wider',
-            TIER_TONE[company.tier],
+      {(company.difficulty || sections.length > 0) && (
+        <div className="flex items-center gap-1.5 flex-wrap">
+          {company.difficulty && (
+            <span className="inline-flex items-center rounded border border-border bg-surface-2 px-2 py-0.5 text-[10px] font-mono uppercase tracking-wider text-text-secondary">
+              {DIFFICULTY_LABEL[company.difficulty] ?? company.difficulty}
+            </span>
           )}
-        >
-          {company.tier}
-        </span>
-        <span className="inline-flex items-center rounded border border-border bg-surface-2 px-2 py-0.5 text-[10px] font-mono uppercase tracking-wider text-text-secondary">
-          {LEVEL_LABEL[company.level]}
-        </span>
-        {company.default_languages.slice(0, 2).map((lang) => (
-          <span
-            key={lang}
-            className="inline-flex items-center rounded border border-border bg-surface-2 px-2 py-0.5 text-[10px] font-mono uppercase tracking-wider text-text-muted"
-          >
-            {lang}
-          </span>
-        ))}
-      </div>
+          {sections.slice(0, 3).map((s) => (
+            <span
+              key={s}
+              className="inline-flex items-center rounded border border-border bg-surface-2 px-2 py-0.5 text-[10px] font-mono uppercase tracking-wider text-text-muted"
+            >
+              {s}
+            </span>
+          ))}
+        </div>
+      )}
     </button>
   )
 }

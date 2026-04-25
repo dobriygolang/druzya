@@ -9,8 +9,6 @@ import {
   X,
   Zap,
   Bot,
-  FileCode,
-  DoorOpen,
 } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
@@ -331,13 +329,7 @@ function AiPanel({
 }
 
 type Mode = {
-  key:
-    | 'ranked_1v1'
-    | 'casual_1v1'
-    | 'ranked_2v2'
-    | 'mock'
-    | 'pair_code'
-    | 'custom_lobby'
+  key: 'ranked_1v1' | 'casual_1v1' | 'ranked_2v2' | 'mock'
   name: string
   desc: string
   count: number | string
@@ -345,7 +337,7 @@ type Mode = {
   icon: ReactNode
   gradient: string
   /** Which arena queue to enqueue into. Ignored for non-queue modes
-   *  (mock, pair_code) which navigate instead of enqueue. */
+   *  (mock) which navigate instead of enqueue. */
   arenaMode: ArenaModeKey
   /** True if this card needs the user to be in Party mode (2v2). */
   requiresParty: boolean
@@ -353,13 +345,16 @@ type Mode = {
   aiPowered: boolean
 }
 
+// Live queue counts/ETA are not exposed by the matchmaking service yet — we
+// show "—" instead of fake hardcoded numbers (e.g. "286 в очереди · ~8с").
+// Once the queue stats endpoint ships, replace these with the live values.
 const MODES: Mode[] = [
   {
     key: 'ranked_1v1',
     name: 'Ranked 1v1',
     desc: 'Классика. Алгоритмы, рейтинг, LP.',
-    count: 412,
-    time: '~12с',
+    count: '—',
+    time: '—',
     icon: <Swords className="h-7 w-7 text-text-primary" />,
     // Phase-4: mode badges collapsed to monochrome ink-tints. Differentiation
     // is by name + icon, not hue — same rule as Atlas clusters.
@@ -372,8 +367,8 @@ const MODES: Mode[] = [
     key: 'casual_1v1',
     name: 'Casual 1v1',
     desc: 'Без рейтинга, для практики.',
-    count: 286,
-    time: '~8с',
+    count: '—',
+    time: '—',
     icon: <Zap className="h-7 w-7 text-text-primary" />,
     gradient: 'bg-text-primary/10',
     arenaMode: 'solo_1v1',
@@ -384,8 +379,8 @@ const MODES: Mode[] = [
     key: 'ranked_2v2',
     name: 'Ranked 2v2',
     desc: 'Командный режим, парный код.',
-    count: 168,
-    time: '~24с',
+    count: '—',
+    time: '—',
     icon: <Users className="h-7 w-7 text-text-primary" />,
     gradient: 'bg-text-primary/12',
     arenaMode: 'duo_2v2',
@@ -396,47 +391,22 @@ const MODES: Mode[] = [
     key: 'mock',
     name: 'Mock Interview',
     desc: 'Симуляция собеса с компанией, многоэтапный (screening → algo → sys-design → behavioral). AI-помощник опционально.',
-    count: 94,
-    time: '~45с',
+    count: '—',
+    time: '—',
     icon: <Video className="h-7 w-7 text-text-primary" />,
     gradient: 'bg-text-primary/8',
     arenaMode: 'hardcore',
     requiresParty: false,
     aiPowered: true,
   },
-  {
-    key: 'pair_code',
-    name: 'Pair Code',
-    desc: 'Совместный редактор кода — live-кодинг как yandex-code / code-interview.',
-    count: '—',
-    time: '—',
-    icon: <FileCode className="h-7 w-7 text-text-primary" />,
-    gradient: 'bg-text-primary/10',
-    // arenaMode не используется — карточка ведёт на /pair (см. handleModeClick).
-    arenaMode: 'ranked',
-    requiresParty: false,
-    aiPowered: false,
-  },
-  {
-    key: 'custom_lobby',
-    name: 'Custom Lobby',
-    desc: 'Создай приватную комнату, позови друзей по коду или ссылке.',
-    count: '—',
-    time: '—',
-    icon: <DoorOpen className="h-7 w-7 text-text-primary" />,
-    gradient: 'bg-text-primary/8',
-    // arenaMode не используется — карточка ведёт на /lobbies (см. handleModeClick).
-    arenaMode: 'ranked',
-    requiresParty: false,
-    aiPowered: false,
-  },
 ]
-// WAVE-11: Custom Lobby ВОССТАНОВЛЕН после Wave-4 удаления — теперь у фичи
-// есть реальный backend (services/lobby + 8 REST-endpoints в /api/v1/lobby/*),
-// 4-буквенные коды для приглашений и единая страница /lobby/{id} с
-// auto-redirect в /arena/match/{matchId} на старте. Practice vs AI остаётся
-// удалённым (Wave-4 bugfix): бот решал быстрее человека и матч не
-// синхронизировался с WS-хабом — Mock-interview покрывает AI-практику лучше.
+// pair_code + custom_lobby cards removed:
+//   - pair_code targeted /pair which was deleted (live-coding moved to Hone
+//     desktop, "E" hotkey).
+//   - custom_lobby targeted /lobbies which is a separate top-level surface;
+//     a dedicated card on Arena duplicated nav. Users get to lobbies via
+//     the full /lobbies page (linked from elsewhere) or restored later as a
+//     conscious entry point, not a 404 trap.
 
 function ModeCard({
   m,
@@ -450,6 +420,7 @@ function ModeCard({
   selectedModel: string
 }) {
   const { t } = useTranslation('arena')
+  const inQueue = useMatchmakingStore((s) => s.inQueue)
   const ai = useAIModelsQuery()
   const modelName = useMemo(
     () => ai.data?.items.find((mm) => mm.id === selectedModel)?.label ?? '—',
@@ -496,7 +467,7 @@ function ModeCard({
         ) : (
           <ArrowRight className="h-4 w-4" />
         )}
-        {t('enter')}
+        {inQueue ? 'Поиск идёт…' : t('enter')}
       </span>
     </Card>
   )
@@ -659,14 +630,6 @@ export default function ArenaPage() {
       navigate('/mock')
       return
     }
-    if (m.key === 'custom_lobby') {
-      navigate('/lobbies')
-      return
-    }
-    if (m.key === 'pair_code') {
-      navigate('/pair')
-      return
-    }
     if (m.requiresParty && partyMode !== 'party') {
       setPartyMode('party')
     }
@@ -726,7 +689,10 @@ export default function ArenaPage() {
               <ModeCard
                 key={m.key}
                 m={m}
-                isPending={pendingMode === m.key}
+                // While a search is running, every mode card disables — the
+                // matchmaking dock at the bottom owns the cancel/queue UX
+                // and re-enqueueing while still in queue silently no-ops.
+                isPending={pendingMode === m.key || inQueue}
                 selectedModel={neuralModel}
                 onClick={() => handleModeClick(m)}
               />

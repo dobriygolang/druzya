@@ -89,15 +89,24 @@ export type Pipeline = {
 // only consumer (PipelineStepper.tsx) deleted in F-5. Phase B/C/D contracts
 // are now the single source of truth.
 
+// MockCompany — wire shape mirrors backend companyDTO
+// (services/mock_interview/ports/dto.go). The earlier ad-hoc shape with
+// `level`/`tier`/`default_languages` was speculative — backend never
+// emitted those fields, which crashed the picker on prod with
+// `Cannot read properties of undefined (reading 'slice')`.
 export type MockCompany = {
   id: string
   slug: string
   name: string
-  logo_url: string | null
-  level: 'mid' | 'senior' | 'staff'
-  tier: 'tier1' | 'tier2' | 'tier3'
-  default_languages: string[]
-  default_section_focus: string | null
+  difficulty: string
+  min_level_required: number
+  sections: string[]
+  logo_url: string
+  description: string
+  active: boolean
+  sort_order: number
+  created_at: string
+  updated_at: string
 }
 
 const PIPELINE_FEATURE_ENABLED = true

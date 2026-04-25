@@ -123,7 +123,7 @@ export default function ReviewDialog({
           <button
             type="submit"
             disabled={create.isPending}
-            className="h-9 rounded-md bg-text-primary px-4 text-sm font-semibold text-text-primary hover:bg-text-primary/90 disabled:opacity-60"
+            className="h-9 rounded-md bg-text-primary px-4 text-sm font-semibold text-bg hover:bg-text-primary/90 disabled:opacity-60"
           >
             {create.isPending ? 'Отправляем…' : 'Опубликовать'}
           </button>

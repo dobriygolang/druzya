@@ -21,7 +21,6 @@ import { logoutCurrentSession } from '../lib/queries/auth'
 // Настройки, Выход) уехало в user-menu под аватаром, чтобы header не был
 // перегружен (раньше было 8 nav-items + 5 кнопок справа = 13 элементов).
 function useNavItems() {
-  const { t } = useTranslation('common')
   return [
     // WAVE-13 IA refactor:
     //   - /daily убран, kata теперь живёт как таб внутри /arena (см. ArenaPage).
@@ -33,13 +32,16 @@ function useNavItems() {
     //   weekly digest + readiness forecast, aggregates web/Hone/Cue) →
     //   Circles (community + events, replaces cohort) → Codex (articles)
     //   → Vacancies → Slots (mock-interview booking).
-    { to: '/arena', label: t('nav.arena') },
-    { to: '/atlas', label: t('nav.atlas') },
-    { to: '/insights', label: t('nav.insights') },
-    { to: '/circles', label: t('nav.circles') },
-    { to: '/codex', label: t('nav.codex') },
-    { to: '/vacancies', label: t('nav.vacancies') },
-    { to: '/slots', label: t('nav.slots') },
+    // Top-nav labels are hardcoded English brand-style names — they read as
+    // product surfaces ("Arena", "Atlas") regardless of the selected UI
+    // language, and mixing translated/untranslated entries felt off.
+    { to: '/arena', label: 'Arena' },
+    { to: '/atlas', label: 'Atlas' },
+    { to: '/insights', label: 'Insights' },
+    { to: '/circles', label: 'Circles' },
+    { to: '/codex', label: 'Codex' },
+    { to: '/vacancies', label: 'Vacancies' },
+    { to: '/slots', label: 'Slots' },
   ] as const
 }
 
