@@ -728,6 +728,18 @@ type HonePlanSkip struct {
 	DismissedAt pgtype.Timestamptz
 }
 
+type HoneQueueItem struct {
+	ID        pgtype.UUID
+	UserID    pgtype.UUID
+	Title     string
+	Source    string
+	Status    string
+	Date      pgtype.Date
+	SkillKey  pgtype.Text
+	CreatedAt pgtype.Timestamptz
+	UpdatedAt pgtype.Timestamptz
+}
+
 type HoneStreakDay struct {
 	UserID          pgtype.UUID
 	Day             pgtype.Date
@@ -918,6 +930,7 @@ type MockTask struct {
 	CreatedByAdminID         pgtype.UUID
 	CreatedAt                pgtype.Timestamptz
 	UpdatedAt                pgtype.Timestamptz
+	LlmModel                 pgtype.Text
 }
 
 type MockTaskTestCase struct {
