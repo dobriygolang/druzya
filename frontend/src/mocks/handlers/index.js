@@ -13,7 +13,6 @@ import { settingsHandlers } from './settings';
 import { slotHandlers } from './slot';
 import { reviewHandlers } from './review';
 import { notificationsHandlers } from './notifications';
-import { friendsHandlers } from './friends';
 import { helpHandlers } from './help';
 import { streakHandlers } from './streak';
 import { weeklyHandlers } from './weekly';
@@ -32,7 +31,6 @@ export const handlers = [
     ...slotHandlers,
     ...reviewHandlers,
     ...notificationsHandlers,
-    ...friendsHandlers,
     ...helpHandlers,
     ...streakHandlers,
     ...weeklyHandlers,

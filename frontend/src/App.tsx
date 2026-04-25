@@ -69,7 +69,6 @@ const MockPipelineDebrief = lazy(() => import('./pages/mock/MockPipelineDebrief'
 // Phase-4 ADR-001 Wave 1+2 — `cohort`, `achievements`, `warroom` removed.
 // Frontend pages deleted; routes redirect to /circles or /profile.
 const SlotsPage = lazy(() => import('./pages/SlotsPage'))
-const FriendsPage = lazy(() => import('./pages/FriendsPage'))
 const NotificationsPage = lazy(() => import('./pages/NotificationsPage'))
 const MatchEndPage = lazy(() => import('./pages/MatchEndPage'))
 const HelpPage = lazy(() => import('./pages/HelpPage'))
@@ -199,7 +198,8 @@ export default function App() {
         <Route path="/slots" element={<SlotsPage />} />
         {/* Phase-4 ADR-001 Wave 1 — Achievements removed (gamification cut). */}
         <Route path="/achievements" element={<Navigate to="/profile" replace />} />
-        <Route path="/friends" element={<FriendsPage />} />
+        {/* /friends removed — community lives in /circles. */}
+        <Route path="/friends" element={<Navigate to="/circles" replace />} />
         <Route path="/notifications" element={<NotificationsPage />} />
         <Route path="/match/:matchId/end" element={<MatchEndPage />} />
         <Route path="/help" element={<HelpPage />} />

@@ -1,5 +1,6 @@
 import {
   ArrowRight,
+  BookOpen,
   Check,
   Loader2,
   Sparkles,
@@ -44,7 +45,8 @@ import { useProfileQuery } from '../lib/queries/profile'
 
 type PartyMode = 'solo' | 'party'
 
-const SECTIONS: SectionKey[] = ['algorithms', 'sql', 'go', 'system_design', 'behavioral']
+// Section enum kept for type compat; arena queue is hardcoded to
+// `algorithms` until the other sections get a task pool.
 
 function HeaderRow({
   partyMode,
@@ -113,8 +115,6 @@ type HeroQueueProps = {
   waitSeconds: number
   isSubmitting: boolean
   errorMessage: string | null
-  selectedSection: SectionKey
-  onSelectSection: (s: SectionKey) => void
   onFind: () => void
   onCancel: () => void
 }
@@ -124,8 +124,6 @@ function HeroQueue({
   waitSeconds,
   isSubmitting,
   errorMessage,
-  selectedSection,
-  onSelectSection,
   onFind,
   onCancel,
 }: HeroQueueProps) {
@@ -143,25 +141,10 @@ function HeroQueue({
               })
             : t('ready_for_match')}
         </h2>
-        <div className="flex flex-wrap gap-1.5">
-          {SECTIONS.map((s) => (
-            <button
-              key={s}
-              type="button"
-              disabled={inQueue || isSubmitting}
-              onClick={() => onSelectSection(s)}
-              className={[
-                'rounded-full px-3 py-1 font-mono text-[11px] font-semibold uppercase tracking-wider transition-colors',
-                selectedSection === s
-                  ? 'bg-text-primary text-bg'
-                  : 'border border-border bg-surface-1 text-text-secondary hover:bg-surface-2',
-                inQueue || isSubmitting ? 'cursor-not-allowed opacity-60' : '',
-              ].join(' ')}
-            >
-              {s}
-            </button>
-          ))}
-        </div>
+        {/* Section selector removed: only `algorithms` is wired through the
+            matchmaker today. SQL / Go / SystemDesign / Behavioral queues
+            exist in the enum but have no task pool, so showing them as
+            choices was misleading — clicking would 503 or sit forever. */}
         {errorMessage && (
           <p className="font-mono text-xs text-danger">{errorMessage}</p>
         )}
@@ -330,7 +313,7 @@ function AiPanel({
 }
 
 type Mode = {
-  key: 'ranked_1v1' | 'casual_1v1' | 'ranked_2v2' | 'mock'
+  key: 'solo_practice' | 'ranked_1v1' | 'casual_1v1' | 'ranked_2v2' | 'mock'
   name: string
   desc: string
   icon: ReactNode
@@ -348,6 +331,16 @@ type Mode = {
 // show "—" instead of fake hardcoded numbers (e.g. "286 в очереди · ~8с").
 // Once the queue stats endpoint ships, replace these with the live values.
 const MODES: Mode[] = [
+  {
+    key: 'solo_practice',
+    name: 'Solo Practice',
+    desc: 'Открой любую задачу из базы и реши в одиночку — без таймера, без рейтинга.',
+    icon: <BookOpen className="h-7 w-7 text-text-primary" />,
+    gradient: 'bg-text-primary/12',
+    arenaMode: 'solo_1v1', // unused for solo card — handled by navigate.
+    requiresParty: false,
+    aiPowered: false,
+  },
   {
     key: 'ranked_1v1',
     name: 'Ranked 1v1',
@@ -525,7 +518,8 @@ export default function ArenaPage() {
   const navigate = useNavigate()
   const findMatch = useFindMatchMutation()
   const cancelSearch = useCancelSearchMutation()
-  const [section, setSection] = useState<SectionKey>('algorithms')
+  // Section is hardcoded — see comment on the deleted SECTIONS const above.
+  const section: SectionKey = 'algorithms'
   const [partyMode, setPartyMode] = useState<PartyMode>('solo')
   // Neural model id is now a free-form string (the backend's model id, e.g.
   // "openai/gpt-4o-mini"). Persisted to localStorage so the choice survives
@@ -630,6 +624,12 @@ export default function ArenaPage() {
       navigate('/mock')
       return
     }
+    if (m.key === 'solo_practice') {
+      // Solo card opens the kata page — same surface as Daily, but the
+      // user picks any task from the base instead of running a queue.
+      navigate('/arena/kata')
+      return
+    }
     if (m.requiresParty && partyMode !== 'party') {
       setPartyMode('party')
     }
@@ -665,8 +665,6 @@ export default function ArenaPage() {
           waitSeconds={waitSec}
           isSubmitting={findMatch.isPending || cancelSearch.isPending}
           errorMessage={visibleError}
-          selectedSection={section}
-          onSelectSection={setSection}
           onFind={handleFind}
           onCancel={handleCancel}
         />

@@ -101,7 +101,12 @@
   }
 
   body.v2 ::selection {
-    background: rgb(var(--color-accent));
+    /* Hone red — matches the brand accent. The CSS variable
+       --color-accent resolves to white in dark mode (used by other
+       surfaces), which made the previous rule render white-on-white
+       selections. We hardcode the brand red here so selection is
+       always visible regardless of palette toggling. */
+    background: #FF3B30;
     color: #FFFFFF;
   }
 

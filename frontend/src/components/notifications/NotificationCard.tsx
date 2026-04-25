@@ -18,15 +18,13 @@
 // minimal "system-alert"-style row instead of inventing an action. The
 // caller still sees the title/body so nothing is silently dropped.
 
-import { Check, X, Award, ArrowRight, AlertTriangle, Sparkles, Users, Swords } from 'lucide-react'
-import { Avatar, type AvatarGradient } from '../Avatar'
+import { Check, X, Award, ArrowRight, AlertTriangle, Sparkles, Swords } from 'lucide-react'
 import { cn } from '../../lib/cn'
 import type { NotificationItem } from '../../lib/queries/notifications'
 
 export type CardKind =
   | 'match-invite'
   | 'achievement-unlocked'
-  | 'friend-request'
   | 'coach-insight-ready'
   | 'system-alert'
 
@@ -37,8 +35,6 @@ export function kindFromType(t: string): CardKind {
       return 'match-invite'
     case 'achievement_unlocked':
       return 'achievement-unlocked'
-    case 'friend_request':
-      return 'friend-request'
     case 'plan_ready':
     case 'coach_insight':
     case 'insight_ready':
@@ -65,8 +61,6 @@ function relativeTime(iso: string, now: Date = new Date()): string {
 export type NotificationCardProps = {
   item: NotificationItem
   onMarkRead?: (id: number) => void
-  onAcceptFriend?: (friendshipID: number) => void
-  onDeclineFriend?: (friendshipID: number) => void
   onAcceptMatch?: (matchID: string) => void
   onDeclineMatch?: (matchID: string) => void
   onOpenInsight?: (id: string) => void
@@ -117,8 +111,7 @@ function UnreadDot({ unread }: { unread: boolean }) {
 // Glyph — left-side avatar/icon. Coach insights use the pink→cyan g-pc
 // territory marker; achievements use success; system-alert uses warn;
 // friend / cohort show a real avatar gradient via gradientForUser.
-function Glyph({ item, kind }: { item: NotificationItem; kind: CardKind }) {
-  const username = (item.payload?.username as string | undefined) ?? ''
+function Glyph({ kind }: { item: NotificationItem; kind: CardKind }) {
   switch (kind) {
     case 'coach-insight-ready':
       return (
@@ -147,26 +140,7 @@ function Glyph({ item, kind }: { item: NotificationItem; kind: CardKind }) {
           <Swords className="h-4 w-4 text-text-primary" />
         </span>
       )
-    case 'friend-request':
-      return username ? (
-        <Avatar size="lg" gradient={mapGradient(username)} initials={username.slice(0, 1).toUpperCase()} />
-      ) : (
-        <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-text-primary/20">
-          <Users className="h-4 w-4 text-text-primary" />
-        </span>
-      )
   }
-}
-
-// Deterministic preset pick per seed string — same shape as the canonical
-// gradientForUser() bucket logic (hash → mod N), but mapped onto the Avatar
-// preset names so we don't bypass the shared component's API.
-const PRESETS: AvatarGradient[] = ['pink-violet', 'cyan-violet', 'pink-red', 'success-cyan', 'gold']
-function mapGradient(seed: string): AvatarGradient {
-  if (!seed) return PRESETS[0]
-  let sum = 0
-  for (let i = 0; i < seed.length; i++) sum += seed.charCodeAt(i)
-  return PRESETS[sum % PRESETS.length]
 }
 
 function Header({ item }: { item: NotificationItem; kind: CardKind }) {
@@ -190,24 +164,6 @@ function Footer({ item, kind, ...props }: NotificationCardProps & { kind: CardKi
   // `item` is part of NotificationCardProps; we read it directly. The
   // remaining `props` carries action callbacks only.
   switch (kind) {
-    case 'friend-request': {
-      const fid = item.payload?.friendship_id as number | undefined
-      if (!fid) return null
-      return (
-        <div className="flex gap-2 pt-1">
-          <ActionBtn
-            tone="primary"
-            icon={<Check className="h-3 w-3" />}
-            onClick={() => props.onAcceptFriend?.(fid)}
-          >
-            Принять
-          </ActionBtn>
-          <ActionBtn tone="ghost" icon={<X className="h-3 w-3" />} onClick={() => props.onDeclineFriend?.(fid)}>
-            Отклонить
-          </ActionBtn>
-        </div>
-      )
-    }
     case 'match-invite': {
       const mid = item.payload?.match_id as string | undefined
       return (

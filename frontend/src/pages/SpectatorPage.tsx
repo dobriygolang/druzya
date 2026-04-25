@@ -259,7 +259,7 @@ function ReplayScrubber() {
   return (
     <div className="hidden h-24 flex-col gap-2 border-t border-border bg-surface-1 px-4 py-4 sm:px-8 lg:flex lg:px-20">
       <div className="flex items-center gap-3">
-        <button className="grid h-9 w-9 place-items-center rounded-full bg-text-primary text-text-primary hover:bg-text-primary-hover">
+        <button className="grid h-9 w-9 place-items-center rounded-full bg-text-primary text-bg hover:bg-text-primary-hover">
           <Play className="h-4 w-4" fill="currentColor" />
         </button>
         <span className="font-mono text-[12px] text-text-primary">
@@ -271,7 +271,7 @@ function ReplayScrubber() {
               key={s}
               className={[
                 'px-2.5 py-1 font-mono text-[11px] font-semibold',
-                s === '1x' ? 'bg-text-primary text-text-primary' : 'text-text-secondary hover:bg-surface-3',
+                s === '1x' ? 'bg-text-primary text-bg' : 'text-text-secondary hover:bg-surface-3',
               ].join(' ')}
             >
               {s}

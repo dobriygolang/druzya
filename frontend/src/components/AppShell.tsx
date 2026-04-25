@@ -1,6 +1,6 @@
 import { ReactNode, useEffect, useRef, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { Bell, Menu, Search, X, Sun, Moon, Languages, User, LogOut, Settings, Users, HelpCircle, Shield, Sparkles } from 'lucide-react'
+import { Bell, Menu, Search, X, Sun, Moon, Languages, User, LogOut, Settings, HelpCircle, Shield, Sparkles } from 'lucide-react'
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import { useTranslation } from 'react-i18next'
 import { MobileBottomNav } from './MobileBottomNav'
@@ -206,7 +206,6 @@ function UserMenu({ onClose }: { onClose: () => void }) {
     { to: '/copilot', label: 'Copilot', icon: Sparkles, badge: 'new' },
     { to: '/profile', label: t('nav.profile'), icon: User },
     { to: '/settings', label: t('nav.settings'), icon: Settings },
-    { to: '/friends', label: t('nav.friends'), icon: Users },
     { to: '/notifications', label: t('nav.notifications'), icon: Bell },
     { to: '/help', label: t('nav.help'), icon: HelpCircle },
     ...(isAdmin ? [{ to: '/admin', label: t('nav.admin'), icon: Shield }] : []),
@@ -350,7 +349,6 @@ function TopNav({ onOpenNotifications, unreadCount }: { onOpenNotifications: () 
               <div className="my-2 border-t border-border" />
               <NavItem to="/profile" label={t('nav.profile')} onClick={() => setMenuOpen(false)} />
               <NavItem to="/settings" label={t('nav.settings')} onClick={() => setMenuOpen(false)} />
-              <NavItem to="/friends" label={t('nav.friends')} onClick={() => setMenuOpen(false)} />
               <NavItem to="/notifications" label={t('nav.notifications')} onClick={() => setMenuOpen(false)} />
               <NavItem to="/help" label={t('nav.help')} onClick={() => setMenuOpen(false)} />
             </nav>

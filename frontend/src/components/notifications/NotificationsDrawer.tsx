@@ -29,7 +29,6 @@ import {
   type NotificationFilter,
   type NotificationItem,
 } from '../../lib/queries/notifications'
-import { useAcceptFriend, useDeclineFriend } from '../../lib/queries/friends'
 import { NotificationCard, kindFromType, type CardKind } from './NotificationCard'
 
 export type NotificationsDrawerProps = {
@@ -46,7 +45,6 @@ const CHIPS: { id: ChipKind; label: string }[] = [
   { id: 'match-invite', label: 'Match' },
   { id: 'achievement-unlocked', label: 'Achievement' },
   { id: 'coach-insight-ready', label: 'Coach' },
-  { id: 'friend-request', label: 'Friend' },
   { id: 'system-alert', label: 'System' },
 ]
 
@@ -63,8 +61,6 @@ export function NotificationsDrawer({ open, onClose }: NotificationsDrawerProps)
   const list = useNotificationsQuery(filter)
   const markRead = useMarkRead()
   const markAll = useMarkAllRead()
-  const acceptFriend = useAcceptFriend()
-  const declineFriend = useDeclineFriend()
 
   // Client-side compose: tab=mentions → keep items with payload.mention=true OR
   // type explicitly tagged "*_mention". Prevents lying about a backend
@@ -179,8 +175,6 @@ export function NotificationsDrawer({ open, onClose }: NotificationsDrawerProps)
                       <NotificationCard
                         item={n}
                         onMarkRead={(id) => markRead.mutate(id)}
-                        onAcceptFriend={(id) => acceptFriend.mutate(id)}
-                        onDeclineFriend={(id) => declineFriend.mutate(id)}
                         onAcceptMatch={(mid) => navigateAndClose(`/arena/match/${mid}`)}
                         onDeclineMatch={(mid) => navigateAndClose(`/arena/match/${mid}?decline=1`)}
                         onOpenInsight={() => navigateAndClose('/weekly')}

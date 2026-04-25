@@ -27,7 +27,6 @@ import {
   type NotificationItem,
   type NotificationFilter,
 } from '../lib/queries/notifications'
-import { useAcceptFriend, useDeclineFriend } from '../lib/queries/friends'
 
 function ErrorChip() {
   const { t } = useTranslation('pages')
@@ -47,10 +46,6 @@ function visualFor(n: NotificationItem): { icon: JSX.Element; bg: string } {
       return { icon: <Swords className="h-4 w-4 text-danger" />, bg: 'bg-danger/15' }
     case 'challenge':
       return { icon: <Swords className="h-4 w-4 text-text-primary" />, bg: 'bg-text-primary/15' }
-    case 'friend_request':
-      return { icon: <Users className="h-4 w-4 text-text-primary" />, bg: 'bg-text-primary/15' }
-    case 'friend_added':
-      return { icon: <Users className="h-4 w-4 text-success" />, bg: 'bg-success/15' }
     case 'achievement_unlocked':
       return { icon: <Award className="h-4 w-4 text-warn" />, bg: 'bg-warn/15' }
     case 'streak_at_risk':
@@ -105,21 +100,16 @@ const TAB_TO_FILTER: Record<Tab, NotificationFilter> = {
 function Row({
   n,
   onMarkRead,
-  onAcceptFriend,
-  onDeclineFriend,
   onOpenReplay,
   onOpenPlan,
 }: {
   n: NotificationItem
   onMarkRead: () => void
-  onAcceptFriend?: (friendshipID: number) => void
-  onDeclineFriend?: (friendshipID: number) => void
   onOpenReplay?: (matchID: string) => void
   onOpenPlan?: (planID: string) => void
 }) {
   const v = visualFor(n)
   const unread = n.read_at == null
-  const friendshipID = (n.payload?.friendship_id as number | undefined) ?? undefined
   const matchID = (n.payload?.match_id as string | undefined) ?? undefined
   const planID = (n.payload?.plan_id as string | undefined) ?? undefined
 
@@ -136,12 +126,6 @@ function Row({
           <span className="font-mono">{relativeTime(n.created_at)}</span>
         </div>
         {/* quick actions */}
-        {n.type === 'friend_request' && friendshipID != null && (
-          <div className="flex gap-2 pt-1">
-            <Button size="sm" variant="primary" onClick={() => onAcceptFriend?.(friendshipID)}>Принять</Button>
-            <Button size="sm" variant="ghost" onClick={() => onDeclineFriend?.(friendshipID)}>Отклонить</Button>
-          </div>
-        )}
         {(n.type === 'win' || n.type === 'loss') && matchID && (
           <button
             type="button"
@@ -276,8 +260,6 @@ export default function NotificationsPage() {
 
   const markRead = useMarkRead()
   const markAll = useMarkAllRead()
-  const acceptFriend = useAcceptFriend()
-  const declineFriend = useDeclineFriend()
 
   // Stabilise the items array reference: `list.data?.items ?? []` would
   // create a fresh `[]` on every render when data is undefined and break
@@ -309,8 +291,6 @@ export default function NotificationsPage() {
       key={n.id}
       n={n}
       onMarkRead={() => markRead.mutate(n.id)}
-      onAcceptFriend={(id) => acceptFriend.mutate(id)}
-      onDeclineFriend={(id) => declineFriend.mutate(id)}
       // ArenaMatchPage at /arena/match/:matchId reads `?replay=1` to enter
       // replay mode (see MatchEndPage). The bare /…/replay segment is not
       // a registered route — fall through to NotFoundPage in production.

@@ -204,7 +204,7 @@ function PeriodToggle({
         onClick={() => setPeriod('monthly')}
         className={cn(
           'rounded-full px-4 py-1.5 text-[13px] font-semibold transition-colors',
-          period === 'monthly' ? 'bg-text-primary text-text-primary' : 'text-text-secondary hover:text-text-primary',
+          period === 'monthly' ? 'bg-text-primary text-bg' : 'text-text-secondary hover:text-text-primary',
         )}
       >
         Помесячно
@@ -214,7 +214,7 @@ function PeriodToggle({
         onClick={() => setPeriod('annual')}
         className={cn(
           'flex items-center gap-2 rounded-full px-4 py-1.5 text-[13px] font-semibold transition-colors',
-          period === 'annual' ? 'bg-text-primary text-text-primary' : 'text-text-secondary hover:text-text-primary',
+          period === 'annual' ? 'bg-text-primary text-bg' : 'text-text-secondary hover:text-text-primary',
         )}
       >
         Годовая
@@ -283,7 +283,7 @@ function PlanCard({ plan, period }: { plan: PlanCardData; period: BillingPeriod 
           to={`/checkout?plan=${plan.tier}&period=${period}`}
           className={cn(
             'flex h-10 items-center justify-center rounded-lg px-4 text-[14px] font-semibold transition-colors',
-            'bg-text-primary text-text-primary hover:bg-text-primary-hover',
+            'bg-text-primary text-bg hover:bg-text-primary-hover',
           )}
         >
           {plan.cta}

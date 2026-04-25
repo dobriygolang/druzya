@@ -78,7 +78,7 @@ function Sidebar({ active, setActive }: { active: NavId; setActive: (id: NavId) 
             className={cn(
               'flex h-10 shrink-0 items-center gap-2.5 rounded-md px-3 text-[13px] font-semibold transition-colors',
               isActive
-                ? 'bg-text-primary text-text-primary'
+                ? 'bg-text-primary text-bg'
                 : isDanger
                   ? 'text-danger hover:bg-danger/10'
                   : 'text-text-secondary hover:bg-surface-3 hover:text-text-primary',
@@ -297,7 +297,7 @@ function AppearanceCard() {
                 )}
               >
                 {active && (
-                  <span className="absolute right-2 top-2 grid h-5 w-5 place-items-center rounded-full bg-text-primary text-text-primary">
+                  <span className="absolute right-2 top-2 grid h-5 w-5 place-items-center rounded-full bg-text-primary text-bg">
                     <Check className="h-3 w-3" strokeWidth={3} />
                   </span>
                 )}
@@ -335,7 +335,7 @@ function AppearanceCard() {
                   {l === 'ru' ? 'Русский' : 'English'}
                 </span>
                 {active && (
-                  <span className="grid h-5 w-5 place-items-center rounded-full bg-text-primary text-text-primary">
+                  <span className="grid h-5 w-5 place-items-center rounded-full bg-text-primary text-bg">
                     <Check className="h-3 w-3" strokeWidth={3} />
                   </span>
                 )}

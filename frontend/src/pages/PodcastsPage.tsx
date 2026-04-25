@@ -201,7 +201,7 @@ function AudioPlayer({ podcast, isActive, onActivate }: PlayerProps) {
         disabled={disabled}
         title={disabled ? 'Аудио недоступно' : 'Слушать'}
         aria-label="Слушать"
-        className="grid h-10 w-10 place-items-center rounded-full bg-text-primary text-text-primary transition hover:bg-text-primary-hover disabled:cursor-not-allowed disabled:bg-surface-2 disabled:text-text-muted"
+        className="grid h-10 w-10 place-items-center rounded-full bg-text-primary text-bg transition hover:bg-text-primary-hover disabled:cursor-not-allowed disabled:bg-surface-2 disabled:text-text-muted"
       >
         <Play className="h-4 w-4" />
       </button>
@@ -236,7 +236,7 @@ function AudioPlayer({ podcast, isActive, onActivate }: PlayerProps) {
           onClick={togglePlay}
           aria-label={playing ? 'Пауза' : 'Слушать'}
           title={playing ? 'Пауза' : 'Слушать'}
-          className="grid h-10 w-10 place-items-center rounded-full bg-text-primary text-text-primary transition hover:bg-text-primary-hover"
+          className="grid h-10 w-10 place-items-center rounded-full bg-text-primary text-bg transition hover:bg-text-primary-hover"
         >
           {playing ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
         </button>
