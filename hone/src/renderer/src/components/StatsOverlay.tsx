@@ -133,6 +133,20 @@ export function StatsOverlay({ onClose }: { onClose: () => void }) {
           </Card>
         </div>
 
+        {/* Focus balance — AI vs user share среди done items за 7 дней.
+            Скрываем если оба нуля (нет данных) — иначе пустой 0/100 frame. */}
+        {data?.queue && (data.queue.aiShare > 0 || data.queue.userShare > 0) && (
+          <div className="slide-from-right" style={{ animationDelay: '220ms' }}>
+            <Card>
+              <Label>Focus balance · 7 days</Label>
+              <BalanceBars
+                workShare={data.queue.userShare}
+                growthShare={data.queue.aiShare}
+              />
+            </Card>
+          </div>
+        )}
+
         {state.status === 'error' && state.errorCode === Code.Unauthenticated && (
           <div
             className="mono slide-from-right"
@@ -174,5 +188,59 @@ export function StatsOverlay({ onClose }: { onClose: () => void }) {
         ESC · CLOSE
       </button>
     </>
+  );
+}
+
+// ─── BalanceBars ────────────────────────────────────────────────────────────
+//
+// Две тонкие полоски progress-стиля: «Work tasks» (user-source items, ручные
+// — обычно работа/быт) и «Growth tasks» (AI-source items, спродуцированные
+// Skill-Atlas синтезом — обучение/skill-rotting).
+//
+// Логика «work vs growth» — наблюдательная: AI-генерация выпадает из
+// weak-nodes Skill Atlas, т.е. что юзеру стоит подкачать. User-add'ы — то,
+// что юзер сам считает важным сделать прямо сейчас (work). Кореляция
+// неточная, но достаточная для UX «сколько ты тренишь, сколько работаешь».
+
+function BalanceBars({ workShare, growthShare }: { workShare: number; growthShare: number }) {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 14, marginTop: 10 }}>
+      <BalanceRow label="Work tasks" share={workShare} />
+      <BalanceRow label="Growth tasks" share={growthShare} />
+    </div>
+  );
+}
+
+function BalanceRow({ label, share }: { label: string; share: number }) {
+  const pct = Math.round(Math.max(0, Math.min(1, share)) * 100);
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+        <span style={{ fontSize: 12, color: 'var(--ink-60)' }}>{label}</span>
+        <span className="mono" style={{ fontSize: 12, color: 'var(--ink-40)' }}>
+          {pct}%
+        </span>
+      </div>
+      <div
+        aria-hidden
+        style={{
+          height: 3,
+          borderRadius: 999,
+          background: 'rgba(255,255,255,0.06)',
+          position: 'relative',
+          overflow: 'hidden',
+        }}
+      >
+        <div
+          style={{
+            position: 'absolute',
+            inset: 0,
+            width: `${pct}%`,
+            background: 'rgba(255,255,255,0.35)',
+            transition: 'width 320ms ease',
+          }}
+        />
+      </div>
+    </div>
   );
 }

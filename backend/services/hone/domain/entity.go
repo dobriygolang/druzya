@@ -126,6 +126,72 @@ type Stats struct {
 	TotalFocusedSecs  int
 	Heatmap           []StreakDay // last 182 days (7x26) for Winter-style grid
 	LastSevenDays     []StreakDay // for the bar chart
+	Queue             QueueStats  // focus-queue counters (today + 7d AI/user share)
+}
+
+// ─── Focus Queue ──────────────────────────────────────────────────────────
+//
+// QueueItem — одна таска в дневной очереди. AI items материализуются из
+// PlanItem'ов после GeneratePlan; user items создаются вручную через
+// AddQueueItem. Status — TODO → IN_PROGRESS → DONE flow, причём только
+// один item per user может быть IN_PROGRESS одновременно (бизнес-правило
+// в app/queue.go UpdateItemStatus).
+
+type QueueItemSource string
+
+const (
+	QueueItemSourceAI   QueueItemSource = "ai"
+	QueueItemSourceUser QueueItemSource = "user"
+)
+
+func (s QueueItemSource) IsValid() bool {
+	switch s {
+	case QueueItemSourceAI, QueueItemSourceUser:
+		return true
+	}
+	return false
+}
+
+type QueueItemStatus string
+
+const (
+	QueueItemStatusTodo       QueueItemStatus = "todo"
+	QueueItemStatusInProgress QueueItemStatus = "in_progress"
+	QueueItemStatusDone       QueueItemStatus = "done"
+)
+
+func (s QueueItemStatus) IsValid() bool {
+	switch s {
+	case QueueItemStatusTodo, QueueItemStatusInProgress, QueueItemStatusDone:
+		return true
+	}
+	return false
+}
+
+type QueueItem struct {
+	ID        string
+	UserID    string
+	Title     string
+	Source    QueueItemSource
+	Status    QueueItemStatus
+	Date      time.Time
+	SkillKey  string // optional — пусто для user items
+	CreatedAt time.Time
+	UpdatedAt time.Time
+}
+
+// QueueStats — агрегаты для Stats endpoint'а.
+//
+//   - TodayTotal/TodayDone — счётчик для прогресс-бара «X из Y сделано».
+//   - AIShare/UserShare — за last 7 days по DONE items, доли (0.0..1.0).
+//     Сумма не обязательно = 1.0 если items имеют редкие source'ы (но
+//     с текущими двумя — всегда даёт 1.0). Используется в Stats для
+//     карточки «Focus balance · 7 days».
+type QueueStats struct {
+	TodayTotal int
+	TodayDone  int
+	AIShare    float32
+	UserShare  float32
 }
 
 // ─── Notes ─────────────────────────────────────────────────────────────────

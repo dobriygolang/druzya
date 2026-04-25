@@ -21,7 +21,7 @@
 /* eslint-disable */
 // @ts-nocheck
 
-import { CompletePlanItemRequest, Connection, CreateNoteRequest, CreateWhiteboardRequest, CritiquePacket, CritiqueWhiteboardRequest, DeleteNoteRequest, DeleteNoteResponse, DeleteWhiteboardRequest, DeleteWhiteboardResponse, DismissPlanItemRequest, EndFocusSessionRequest, FocusSession, GenerateDailyPlanRequest, GetDailyPlanRequest, GetNoteConnectionsRequest, GetNoteRequest, GetStatsRequest, GetWhiteboardRequest, ListNotesRequest, ListNotesResponse, ListWhiteboardsRequest, ListWhiteboardsResponse, Note, Plan, RecordStandupRequest, RecordStandupResponse, SaveCritiqueAsNoteRequest, StartFocusSessionRequest, Stats, UpdateNoteRequest, UpdateWhiteboardRequest, Whiteboard } from "./hone_pb.js";
+import { AddQueueItemRequest, CompletePlanItemRequest, Connection, CreateNoteRequest, CreateWhiteboardRequest, CritiquePacket, CritiqueWhiteboardRequest, DeleteNoteRequest, DeleteNoteResponse, DeleteQueueItemRequest, DeleteQueueItemResponse, DeleteWhiteboardRequest, DeleteWhiteboardResponse, DismissPlanItemRequest, EndFocusSessionRequest, FocusSession, GenerateDailyPlanRequest, GetDailyPlanRequest, GetNoteConnectionsRequest, GetNoteRequest, GetStatsRequest, GetWhiteboardRequest, ListNotesRequest, ListNotesResponse, ListQueueRequest, ListQueueResponse, ListWhiteboardsRequest, ListWhiteboardsResponse, Note, Plan, QueueItem, RecordStandupRequest, RecordStandupResponse, SaveCritiqueAsNoteRequest, StartFocusSessionRequest, Stats, UpdateNoteRequest, UpdateQueueItemStatusRequest, UpdateWhiteboardRequest, Whiteboard } from "./hone_pb.js";
 import { MethodKind } from "@bufbuild/protobuf";
 
 /**
@@ -95,6 +95,44 @@ export const HoneService = {
       name: "GetStats",
       I: GetStatsRequest,
       O: Stats,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * ─── Focus Queue ────────────────────────────────────────────────────
+     *
+     * @generated from rpc druz9.v1.HoneService.ListQueue
+     */
+    listQueue: {
+      name: "ListQueue",
+      I: ListQueueRequest,
+      O: ListQueueResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc druz9.v1.HoneService.AddQueueItem
+     */
+    addQueueItem: {
+      name: "AddQueueItem",
+      I: AddQueueItemRequest,
+      O: QueueItem,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc druz9.v1.HoneService.UpdateQueueItemStatus
+     */
+    updateQueueItemStatus: {
+      name: "UpdateQueueItemStatus",
+      I: UpdateQueueItemStatusRequest,
+      O: QueueItem,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc druz9.v1.HoneService.DeleteQueueItem
+     */
+    deleteQueueItem: {
+      name: "DeleteQueueItem",
+      I: DeleteQueueItemRequest,
+      O: DeleteQueueItemResponse,
       kind: MethodKind.Unary,
     },
     /**

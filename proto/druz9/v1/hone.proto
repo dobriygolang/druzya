@@ -132,7 +132,56 @@ message Stats {
   repeated FocusHeatmapDay heatmap = 4;
   // Last 7 days for the bar-chart on stats page.
   repeated FocusHeatmapDay last_seven_days = 5;
+  // Focus Queue rollup — today counter + 7d AI/user share.
+  QueueStats queue = 6;
 }
+
+// ─── Focus Queue ───────────────────────────────────────────────────────────
+
+message QueueItem {
+  string id = 1;
+  string title = 2;
+  // 'ai' | 'user'.
+  string source = 3;
+  // 'todo' | 'in_progress' | 'done'.
+  string status = 4;
+  // Skill key копируется из PlanItem для AI items, пустой для user items.
+  string skill_key = 5;
+  // YYYY-MM-DD.
+  string date = 6;
+}
+
+message QueueStats {
+  int32 today_total = 1;
+  int32 today_done = 2;
+  // 7d done items распределение по source (0..1, сумма == 1 если есть данные).
+  float ai_share = 3;
+  float user_share = 4;
+}
+
+message ListQueueRequest {
+  // ISO-8601 date, пустой = today.
+  string date = 1;
+}
+
+message ListQueueResponse {
+  repeated QueueItem items = 1;
+}
+
+message AddQueueItemRequest {
+  string title = 1;
+}
+
+message UpdateQueueItemStatusRequest {
+  string id = 1;
+  string status = 2;
+}
+
+message DeleteQueueItemRequest {
+  string id = 1;
+}
+
+message DeleteQueueItemResponse {}
 
 // ─── Notes ─────────────────────────────────────────────────────────────────
 
@@ -324,6 +373,29 @@ service HoneService {
   }
   rpc GetStats(GetStatsRequest) returns (Stats) {
     option (google.api.http) = {get: "/api/v1/hone/stats"};
+  }
+
+  // ─── Focus Queue ────────────────────────────────────────────────────
+  rpc ListQueue(ListQueueRequest) returns (ListQueueResponse) {
+    option (google.api.http) = {get: "/api/v1/hone/queue"};
+  }
+  rpc AddQueueItem(AddQueueItemRequest) returns (QueueItem) {
+    option (google.api.http) = {
+      post: "/api/v1/hone/queue/add"
+      body: "*"
+    };
+  }
+  rpc UpdateQueueItemStatus(UpdateQueueItemStatusRequest) returns (QueueItem) {
+    option (google.api.http) = {
+      post: "/api/v1/hone/queue/status"
+      body: "*"
+    };
+  }
+  rpc DeleteQueueItem(DeleteQueueItemRequest) returns (DeleteQueueItemResponse) {
+    option (google.api.http) = {
+      post: "/api/v1/hone/queue/delete"
+      body: "*"
+    };
   }
 
   // ─── Notes ──────────────────────────────────────────────────────────

@@ -285,6 +285,101 @@ func (s *HoneServer) GetStats(
 	return connect.NewResponse(toStatsProto(st)), nil
 }
 
+// ─── Focus Queue ───────────────────────────────────────────────────────────
+
+// ListQueue implements druz9.v1.HoneService/ListQueue.
+func (s *HoneServer) ListQueue(
+	ctx context.Context,
+	req *connect.Request[pb.ListQueueRequest],
+) (*connect.Response[pb.ListQueueResponse], error) {
+	uid, err := requireUser(ctx)
+	if err != nil {
+		return nil, err
+	}
+	var date time.Time
+	if raw := req.Msg.GetDate(); raw != "" {
+		t, parseErr := time.Parse("2006-01-02", raw)
+		if parseErr != nil {
+			return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("invalid date: %w", parseErr))
+		}
+		date = t
+	}
+	items, err := s.H.ListQueue.Do(ctx, uid, date)
+	if err != nil {
+		return nil, fmt.Errorf("hone.ListQueue: %w", s.toConnectErr(err))
+	}
+	out := &pb.ListQueueResponse{Items: make([]*pb.QueueItem, 0, len(items))}
+	for _, it := range items {
+		out.Items = append(out.Items, toQueueItemProto(it))
+	}
+	return connect.NewResponse(out), nil
+}
+
+// AddQueueItem implements druz9.v1.HoneService/AddQueueItem.
+func (s *HoneServer) AddQueueItem(
+	ctx context.Context,
+	req *connect.Request[pb.AddQueueItemRequest],
+) (*connect.Response[pb.QueueItem], error) {
+	uid, err := requireUser(ctx)
+	if err != nil {
+		return nil, err
+	}
+	item, err := s.H.AddUserItem.Do(ctx, app.AddUserItemInput{
+		UserID: uid,
+		Title:  req.Msg.GetTitle(),
+	})
+	if err != nil {
+		return nil, fmt.Errorf("hone.AddQueueItem: %w", s.toConnectErr(err))
+	}
+	return connect.NewResponse(toQueueItemProto(item)), nil
+}
+
+// UpdateQueueItemStatus implements druz9.v1.HoneService/UpdateQueueItemStatus.
+func (s *HoneServer) UpdateQueueItemStatus(
+	ctx context.Context,
+	req *connect.Request[pb.UpdateQueueItemStatusRequest],
+) (*connect.Response[pb.QueueItem], error) {
+	uid, err := requireUser(ctx)
+	if err != nil {
+		return nil, err
+	}
+	itemID, parseErr := uuid.Parse(req.Msg.GetId())
+	if parseErr != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("invalid id: %w", parseErr))
+	}
+	item, err := s.H.UpdateItemStatus.Do(ctx, app.UpdateItemStatusInput{
+		UserID: uid,
+		ItemID: itemID,
+		Status: domain.QueueItemStatus(req.Msg.GetStatus()),
+	})
+	if err != nil {
+		return nil, fmt.Errorf("hone.UpdateQueueItemStatus: %w", s.toConnectErr(err))
+	}
+	return connect.NewResponse(toQueueItemProto(item)), nil
+}
+
+// DeleteQueueItem implements druz9.v1.HoneService/DeleteQueueItem.
+func (s *HoneServer) DeleteQueueItem(
+	ctx context.Context,
+	req *connect.Request[pb.DeleteQueueItemRequest],
+) (*connect.Response[pb.DeleteQueueItemResponse], error) {
+	uid, err := requireUser(ctx)
+	if err != nil {
+		return nil, err
+	}
+	itemID, parseErr := uuid.Parse(req.Msg.GetId())
+	if parseErr != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("invalid id: %w", parseErr))
+	}
+	if err := s.H.DeleteItem.Do(ctx, app.DeleteItemInput{
+		UserID: uid,
+		ItemID: itemID,
+	}); err != nil {
+		return nil, fmt.Errorf("hone.DeleteQueueItem: %w", s.toConnectErr(err))
+	}
+	return connect.NewResponse(&pb.DeleteQueueItemResponse{}), nil
+}
+
 // ─── Notes ─────────────────────────────────────────────────────────────────
 
 // CreateNote implements druz9.v1.HoneService/CreateNote.
@@ -715,7 +810,24 @@ func toStatsProto(s domain.Stats) *pb.Stats {
 			Sessions: int32(d.SessionsCount),
 		})
 	}
+	out.Queue = &pb.QueueStats{
+		TodayTotal: int32(s.Queue.TodayTotal),
+		TodayDone:  int32(s.Queue.TodayDone),
+		AiShare:    s.Queue.AIShare,
+		UserShare:  s.Queue.UserShare,
+	}
 	return out
+}
+
+func toQueueItemProto(q domain.QueueItem) *pb.QueueItem {
+	return &pb.QueueItem{
+		Id:       q.ID,
+		Title:    q.Title,
+		Source:   string(q.Source),
+		Status:   string(q.Status),
+		SkillKey: q.SkillKey,
+		Date:     q.Date.Format("2006-01-02"),
+	}
 }
 
 func toNoteProto(n domain.Note) *pb.Note {

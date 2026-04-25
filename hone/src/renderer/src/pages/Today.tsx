@@ -1,29 +1,30 @@
-// Today — dnevnoi AI-plan, realniy backend RPC.
+// Today — Focus Queue: per-day actionable list с тремя секциями.
 //
-// Три состояния: loading / error / ok. Loading рендерит плейсхолдеры с
-// пустыми строками — layout не дёргается на resolve. Error — типизированные
-// сообщения для Unauthenticated (dev-token hatch не установлен) /
-// Unavailable (llmchain 503). Ok — реальные PlanItem'ы.
+// Архитектура:
+//   - Источник истины — backend /hone/queue (ListQueue RPC).
+//   - AI items материализуются автоматически после GeneratePlan на бэке
+//     (see services/hone/app/plan.go GeneratePlan.Do → SyncAIItems).
+//   - User items создаются через AddQueueItem (inline input под списком).
+//   - Status flow: TODO → IN_PROGRESS → DONE. Только один in_progress per
+//     user — enforced на бэке (atomic TX в repo.UpdateStatus).
 //
-// Каждый элемент рендерит три строки: title, subtitle (one-liner причина),
-// rationale (мотивирующий «closes your Graph gap progress=24»). Rationale
-// опускается когда пусто (review/custom item'ы не привязаны к skill atlas).
+// Optimistic UI: каждое state-изменение применяется к локальному списку
+// немедленно, на ошибку откатываем. Это держит ощущение мгновенности
+// даже при network blip'ах.
 //
-// Pickup-pattern для focus'а: click по Start → родительский onStartFocus
-// получает { planItemId, pinnedTitle } и отсылает App в focus-режим с
-// привязанной сессией. Dismiss/Complete — inline, через `patchItem`,
-// локальный refresh plan-state.
-import { useEffect, useState } from 'react';
+// Empty state: если queue пуст и plan пуст — кнопка «Generate plan» как
+// раньше. После генерации AI items появятся в queue автоматически.
+import { useCallback, useEffect, useState } from 'react';
 import { ConnectError, Code } from '@connectrpc/connect';
 
 import { Icon } from '../components/primitives/Icon';
 import {
-  getPlan,
   generatePlan,
-  dismissPlanItem,
-  completePlanItem,
-  type Plan,
-  type PlanItem,
+  listQueue,
+  addQueueItem,
+  updateQueueItemStatus,
+  deleteQueueItem,
+  type QueueItem,
 } from '../api/hone';
 
 export interface StartFocusArgs {
@@ -33,22 +34,21 @@ export interface StartFocusArgs {
 
 interface TodayPageProps {
   onStartFocus: (args?: StartFocusArgs) => void;
-  /** When non-null, the matching plan-item получает highlight + scroll. */
   highlightedItemId?: string | null;
   onConsumeHighlight?: () => void;
 }
 
 interface FetchState {
   status: 'loading' | 'ok' | 'error';
-  plan: Plan | null;
+  items: QueueItem[];
   error: string | null;
   errorCode: Code | null;
 }
 
-const INITIAL: FetchState = { status: 'loading', plan: null, error: null, errorCode: null };
+const INITIAL: FetchState = { status: 'loading', items: [], error: null, errorCode: null };
 
-// Человеко-читаемый хэдер «FRIDAY · APR 25» локально, без i18n-либы —
-// в v0 интерфейс на английском, дата стабильна в формате EN-US.
+const REFETCH_AFTER_MS = 5 * 60 * 1000; // 5 минут — refetch при возврате на страницу
+
 function formatHeader(d: Date): string {
   const days = ['SUNDAY', 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY'];
   const months = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
@@ -56,105 +56,122 @@ function formatHeader(d: Date): string {
 }
 
 export function TodayPage({ onStartFocus, highlightedItemId, onConsumeHighlight }: TodayPageProps) {
-  // Single-shot consume: clear highlight intent after the page sees it,
-  // чтобы re-render без brief-навигации не подсвечивал тот же item снова.
   useEffect(() => {
-    if (highlightedItemId && onConsumeHighlight) {
-      onConsumeHighlight();
-    }
+    if (highlightedItemId && onConsumeHighlight) onConsumeHighlight();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-  void highlightedItemId; // reserved for v1 visual highlight; MVP — pass-through
-  const [state, setState] = useState<FetchState>(INITIAL);
-  const [busy, setBusy] = useState<string | null>(null); // id того item'а, по которому идёт mutation
+  void highlightedItemId;
 
-  useEffect(() => {
-    let cancelled = false;
-    setState(INITIAL);
-    getPlan()
-      .then((plan) => {
-        if (cancelled) return;
-        setState({ status: 'ok', plan, error: null, errorCode: null });
-      })
-      .catch((err: unknown) => {
-        if (cancelled) return;
-        const ce = ConnectError.from(err);
-        // NotFound = плана ещё нет на сегодня. Рендерим "ok" с пустым
-        // items-массивом + кнопкой Generate — это нормальный empty-state.
-        if (ce.code === Code.NotFound) {
-          setState({
-            status: 'ok',
-            plan: { id: '', date: '', regeneratedAt: null, items: [] },
-            error: null,
-            errorCode: null,
-          });
-          return;
-        }
-        setState({
-          status: 'error',
-          plan: null,
-          error: ce.rawMessage || ce.message,
-          errorCode: ce.code,
-        });
+  const [state, setState] = useState<FetchState>(INITIAL);
+  const [generating, setGenerating] = useState(false);
+  const [adding, setAdding] = useState(false);
+  const [draftTitle, setDraftTitle] = useState('');
+  const [lastFetchedAt, setLastFetchedAt] = useState(0);
+
+  const refetch = useCallback(async () => {
+    try {
+      const items = await listQueue();
+      setState({ status: 'ok', items, error: null, errorCode: null });
+      setLastFetchedAt(Date.now());
+    } catch (err) {
+      const ce = ConnectError.from(err);
+      setState({
+        status: 'error',
+        items: [],
+        error: ce.rawMessage || ce.message,
+        errorCode: ce.code,
       });
-    return () => {
-      cancelled = true;
-    };
+    }
   }, []);
 
-  const handleGenerate = async (force: boolean) => {
-    setBusy('__generate');
+  useEffect(() => {
+    void refetch();
+  }, [refetch]);
+
+  // Refetch on tab/window focus, throttled by REFETCH_AFTER_MS — юзер мог
+  // отлучиться, а бэкенд тем временем регенерил plan / sync'нул AI items.
+  useEffect(() => {
+    const onFocus = () => {
+      if (Date.now() - lastFetchedAt > REFETCH_AFTER_MS) {
+        void refetch();
+      }
+    };
+    window.addEventListener('focus', onFocus);
+    return () => window.removeEventListener('focus', onFocus);
+  }, [lastFetchedAt, refetch]);
+
+  // Optimistic mutators: применяем к локальному списку немедленно, на
+  // ошибку откатываем через refetch (server — source of truth).
+  const handleStatusChange = async (item: QueueItem, newStatus: QueueItem['status']) => {
+    const before = state.items;
+    // Локальный snapshot: меняем target + если new=in_progress, сбрасываем
+    // peers (mirror'им бизнес-правило сервера для optimistic-UI).
+    setState((s) => ({
+      ...s,
+      items: s.items.map((it) => {
+        if (it.id === item.id) return { ...it, status: newStatus };
+        if (newStatus === 'in_progress' && it.status === 'in_progress') {
+          return { ...it, status: 'todo' };
+        }
+        return it;
+      }),
+    }));
     try {
-      const plan = await generatePlan(force);
-      setState({ status: 'ok', plan, error: null, errorCode: null });
-    } catch (err: unknown) {
+      await updateQueueItemStatus(item.id, newStatus);
+    } catch (err) {
+      // Rollback + reconcile с сервером.
+      setState((s) => ({ ...s, items: before }));
       const ce = ConnectError.from(err);
-      setState((prev) => ({
-        ...prev,
-        status: 'error',
-        error: ce.rawMessage || ce.message,
-        errorCode: ce.code,
-      }));
-    } finally {
-      setBusy(null);
+      setState((s) => ({ ...s, error: ce.rawMessage || ce.message, errorCode: ce.code }));
     }
   };
 
-  const handleDismiss = async (itemId: string) => {
-    setBusy(itemId);
+  const handleDelete = async (item: QueueItem) => {
+    const before = state.items;
+    setState((s) => ({ ...s, items: s.items.filter((it) => it.id !== item.id) }));
     try {
-      const plan = await dismissPlanItem(itemId);
-      setState((prev) => ({ ...prev, plan }));
-    } catch (err: unknown) {
-      const ce = ConnectError.from(err);
-      setState((prev) => ({
-        ...prev,
-        error: ce.rawMessage || ce.message,
-        errorCode: ce.code,
-      }));
-    } finally {
-      setBusy(null);
+      await deleteQueueItem(item.id);
+    } catch {
+      setState((s) => ({ ...s, items: before }));
     }
   };
 
-  const handleComplete = async (itemId: string) => {
-    setBusy(itemId);
+  const handleAdd = async () => {
+    const title = draftTitle.trim();
+    if (!title) {
+      setAdding(false);
+      setDraftTitle('');
+      return;
+    }
     try {
-      const plan = await completePlanItem(itemId);
-      setState((prev) => ({ ...prev, plan }));
-    } catch (err: unknown) {
+      const created = await addQueueItem(title);
+      setState((s) => ({ ...s, items: [...s.items, created] }));
+      setDraftTitle('');
+      setAdding(false);
+    } catch (err) {
       const ce = ConnectError.from(err);
-      setState((prev) => ({
-        ...prev,
-        error: ce.rawMessage || ce.message,
-        errorCode: ce.code,
-      }));
-    } finally {
-      setBusy(null);
+      setState((s) => ({ ...s, error: ce.rawMessage || ce.message, errorCode: ce.code }));
     }
   };
 
-  const items = state.plan?.items.filter((i) => !i.dismissed) ?? [];
+  const handleGenerate = async () => {
+    setGenerating(true);
+    try {
+      await generatePlan(true);
+      // Queue refetch — AI items now materialised на бэке.
+      await refetch();
+    } catch (err) {
+      const ce = ConnectError.from(err);
+      setState((s) => ({ ...s, error: ce.rawMessage || ce.message, errorCode: ce.code }));
+    } finally {
+      setGenerating(false);
+    }
+  };
+
+  const inProgress = state.items.filter((i) => i.status === 'in_progress');
+  const todo = state.items.filter((i) => i.status === 'todo');
+  const done = state.items.filter((i) => i.status === 'done');
+
   const header = formatHeader(new Date());
 
   return (
@@ -164,15 +181,15 @@ export function TodayPage({ onStartFocus, highlightedItemId, onConsumeHighlight 
         position: 'absolute',
         inset: 0,
         display: 'flex',
-        alignItems: 'center',
+        alignItems: 'flex-start',
         justifyContent: 'center',
+        paddingTop: 88,
+        paddingBottom: 80,
+        overflowY: 'auto',
       }}
     >
-      <div style={{ width: 620, maxWidth: '90%', padding: '0 16px' }}>
-        <div
-          className="mono"
-          style={{ fontSize: 10, letterSpacing: '0.24em', color: 'var(--ink-40)' }}
-        >
+      <div style={{ width: 640, maxWidth: '92%', padding: '0 16px' }}>
+        <div className="mono" style={{ fontSize: 10, letterSpacing: '0.24em', color: 'var(--ink-40)' }}>
           {header}
         </div>
         <h1
@@ -188,65 +205,152 @@ export function TodayPage({ onStartFocus, highlightedItemId, onConsumeHighlight 
         </h1>
 
         {state.status === 'loading' && (
-          <p style={{ marginTop: 48, fontSize: 14, color: 'var(--ink-40)' }}>
-            Gathering today’s plan…
-          </p>
+          <p style={{ marginTop: 48, fontSize: 14, color: 'var(--ink-40)' }}>Gathering today’s queue…</p>
         )}
 
         {state.status === 'error' && (
           <div style={{ marginTop: 48 }}>
             <p style={{ fontSize: 14, color: 'var(--ink-60)' }}>{errorHeadline(state.errorCode)}</p>
             {state.error && (
-              <p
-                className="mono"
-                style={{ marginTop: 8, fontSize: 11, color: 'var(--ink-40)' }}
-              >
+              <p className="mono" style={{ marginTop: 8, fontSize: 11, color: 'var(--ink-40)' }}>
                 {state.error}
               </p>
             )}
           </div>
         )}
 
-        {state.status === 'ok' && items.length === 0 && (
+        {state.status === 'ok' && state.items.length === 0 && !adding && (
           <div style={{ marginTop: 48 }}>
             <p style={{ fontSize: 14, color: 'var(--ink-60)' }}>
-              No plan yet for today. Generate one from your Skill Atlas.
+              Empty queue. Generate today’s plan or add a task manually.
             </p>
-            <button
-              onClick={() => handleGenerate(false)}
-              disabled={busy === '__generate'}
-              className="focus-ring"
-              style={{
-                marginTop: 16,
-                padding: '9px 18px',
-                borderRadius: 999,
-                background: busy === '__generate' ? 'rgba(255,255,255,0.08)' : '#fff',
-                color: busy === '__generate' ? 'var(--ink-60)' : '#000',
-                fontSize: 13,
-                fontWeight: 500,
-              }}
-            >
-              {busy === '__generate' ? 'Generating…' : 'Generate plan'}
-            </button>
+            <div style={{ marginTop: 16, display: 'flex', gap: 10 }}>
+              <button
+                onClick={handleGenerate}
+                disabled={generating}
+                className="focus-ring"
+                style={{
+                  padding: '9px 18px',
+                  borderRadius: 999,
+                  background: generating ? 'rgba(255,255,255,0.08)' : '#fff',
+                  color: generating ? 'var(--ink-60)' : '#000',
+                  fontSize: 13,
+                  fontWeight: 500,
+                  border: 'none',
+                  cursor: generating ? 'default' : 'pointer',
+                }}
+              >
+                {generating ? 'Generating…' : 'Generate plan'}
+              </button>
+              <button
+                onClick={() => setAdding(true)}
+                className="focus-ring"
+                style={{
+                  padding: '9px 14px',
+                  borderRadius: 999,
+                  background: 'transparent',
+                  border: '1px solid rgba(255,255,255,0.1)',
+                  color: 'var(--ink-60)',
+                  fontSize: 13,
+                  cursor: 'pointer',
+                }}
+              >
+                + Add task
+              </button>
+            </div>
           </div>
         )}
 
-        {state.status === 'ok' && items.length > 0 && (
-          <>
-            <ul style={{ listStyle: 'none', margin: '56px 0 0', padding: 0 }}>
-              {items.map((it) => (
-                <TodayRow
-                  key={it.id}
-                  item={it}
-                  busy={busy === it.id}
-                  onStart={() => onStartFocus({ planItemId: it.id, pinnedTitle: it.title })}
-                  onDismiss={() => handleDismiss(it.id)}
-                  onComplete={() => handleComplete(it.id)}
+        {state.status === 'ok' && state.items.length > 0 && (
+          <div style={{ marginTop: 48, display: 'flex', flexDirection: 'column', gap: 0 }}>
+            {inProgress.length > 0 && (
+              <>
+                <SectionList
+                  items={inProgress}
+                  onStatusChange={handleStatusChange}
+                  onDelete={handleDelete}
+                  onItemClick={(it) => onStartFocus({ planItemId: it.id, pinnedTitle: it.title })}
                 />
-              ))}
-            </ul>
+                <Divider />
+              </>
+            )}
+            {todo.length > 0 && (
+              <>
+                <SectionList
+                  items={todo}
+                  onStatusChange={handleStatusChange}
+                  onDelete={handleDelete}
+                />
+                {done.length > 0 && <Divider />}
+              </>
+            )}
+            {done.length > 0 && (
+              <SectionList
+                items={done}
+                onStatusChange={handleStatusChange}
+                onDelete={handleDelete}
+              />
+            )}
 
-            <div style={{ marginTop: 48, display: 'flex', gap: 10, alignItems: 'center' }}>
+            {/* Add-task affordance — inline input snake'ом под списком. */}
+            <div style={{ marginTop: 14 }}>
+              {adding ? (
+                <input
+                  type="text"
+                  autoFocus
+                  value={draftTitle}
+                  placeholder="What needs to be done?"
+                  onChange={(e) => setDraftTitle(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      void handleAdd();
+                    } else if (e.key === 'Escape') {
+                      e.preventDefault();
+                      setDraftTitle('');
+                      setAdding(false);
+                    }
+                  }}
+                  onBlur={() => {
+                    // Если пустой — schließen без save. С контентом — save.
+                    if (!draftTitle.trim()) {
+                      setAdding(false);
+                    } else {
+                      void handleAdd();
+                    }
+                  }}
+                  style={{
+                    width: '100%',
+                    padding: '8px 0',
+                    background: 'transparent',
+                    border: 'none',
+                    borderBottom: '1px solid rgba(255,255,255,0.08)',
+                    color: 'var(--ink)',
+                    fontSize: 14,
+                    outline: 'none',
+                  }}
+                />
+              ) : (
+                <button
+                  onClick={() => setAdding(true)}
+                  style={{
+                    background: 'transparent',
+                    border: 'none',
+                    color: 'var(--ink-40)',
+                    fontSize: 13,
+                    cursor: 'pointer',
+                    padding: '8px 0',
+                    transition: 'color 160ms ease',
+                  }}
+                  onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--ink-90)')}
+                  onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--ink-40)')}
+                >
+                  + Add task
+                </button>
+              )}
+            </div>
+
+            <div style={{ marginTop: 32, display: 'flex', gap: 10, alignItems: 'center' }}>
               <button
                 onClick={() => onStartFocus()}
                 className="focus-ring"
@@ -260,13 +364,15 @@ export function TodayPage({ onStartFocus, highlightedItemId, onConsumeHighlight 
                   color: '#000',
                   fontSize: 13,
                   fontWeight: 500,
+                  border: 'none',
+                  cursor: 'pointer',
                 }}
               >
                 Start focus <Icon name="arrow" size={12} />
               </button>
               <button
-                onClick={() => handleGenerate(true)}
-                disabled={busy === '__generate'}
+                onClick={handleGenerate}
+                disabled={generating}
                 className="focus-ring mono"
                 style={{
                   padding: '9px 14px',
@@ -276,126 +382,270 @@ export function TodayPage({ onStartFocus, highlightedItemId, onConsumeHighlight 
                   color: 'var(--ink-60)',
                   fontSize: 11,
                   letterSpacing: '.08em',
+                  cursor: generating ? 'default' : 'pointer',
                 }}
               >
-                {busy === '__generate' ? 'REGENERATING…' : '⟳ REGENERATE'}
+                {generating ? 'REGENERATING…' : '⟳ REGENERATE'}
               </button>
             </div>
-          </>
+          </div>
         )}
       </div>
     </div>
   );
 }
 
-interface TodayRowProps {
-  item: PlanItem;
-  busy: boolean;
-  onStart: () => void;
-  onDismiss: () => void;
-  onComplete: () => void;
+// ─── SectionList ─────────────────────────────────────────────────────────────
+
+function SectionList({
+  items,
+  onStatusChange,
+  onDelete,
+  onItemClick,
+}: {
+  items: QueueItem[];
+  onStatusChange: (item: QueueItem, newStatus: QueueItem['status']) => void | Promise<void>;
+  onDelete: (item: QueueItem) => void | Promise<void>;
+  onItemClick?: (item: QueueItem) => void;
+}) {
+  return (
+    <ul style={{ listStyle: 'none', margin: 0, padding: 0 }}>
+      {items.map((it) => (
+        <Row
+          key={it.id}
+          item={it}
+          onStatusChange={onStatusChange}
+          onDelete={onDelete}
+          onItemClick={onItemClick}
+        />
+      ))}
+    </ul>
+  );
 }
 
-function TodayRow({ item, busy, onStart, onDismiss, onComplete }: TodayRowProps) {
-  const faded = item.completed ? 0.4 : 1;
+function Divider() {
+  return (
+    <div
+      aria-hidden
+      style={{
+        height: 1,
+        background: 'rgba(255,255,255,0.06)',
+        margin: '14px 0',
+      }}
+    />
+  );
+}
+
+// ─── Row ─────────────────────────────────────────────────────────────────────
+
+function Row({
+  item,
+  onStatusChange,
+  onDelete,
+  onItemClick,
+}: {
+  item: QueueItem;
+  onStatusChange: (item: QueueItem, newStatus: QueueItem['status']) => void | Promise<void>;
+  onDelete: (item: QueueItem) => void | Promise<void>;
+  onItemClick?: (item: QueueItem) => void;
+}) {
+  const [hover, setHover] = useState(false);
+
+  const onCheckboxClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (item.status === 'todo') void onStatusChange(item, 'in_progress');
+    else if (item.status === 'in_progress') void onStatusChange(item, 'done');
+    else void onStatusChange(item, 'todo'); // done → todo (un-check)
+  };
+
+  const onRowClick = () => {
+    if (item.status === 'in_progress' && onItemClick) {
+      onItemClick(item);
+    }
+  };
+
+  const titleColor =
+    item.status === 'done' ? 'var(--ink-40)' : 'var(--ink-90)';
+
   return (
     <li
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+      onClick={onRowClick}
       style={{
-        padding: '26px 0',
-        opacity: busy ? 0.5 : faded,
-        transition: 'opacity 120ms linear',
-        borderBottom: '1px solid rgba(255,255,255,0.04)',
+        display: 'flex',
+        alignItems: 'center',
+        gap: 12,
+        padding: '8px 0',
+        cursor: item.status === 'in_progress' && onItemClick ? 'pointer' : 'default',
       }}
     >
-      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div
-            style={{
-              fontSize: 17,
-              color: 'var(--ink)',
-              letterSpacing: '-0.005em',
-              textDecoration: item.completed ? 'line-through' : 'none',
-            }}
-          >
-            {item.title}
-          </div>
-          {item.subtitle && (
-            <div style={{ fontSize: 13, color: 'var(--ink-40)', marginTop: 8 }}>
-              {item.subtitle}
-            </div>
-          )}
-          {item.rationale && (
-            <div
-              className="mono"
-              style={{
-                fontSize: 11,
-                color: 'var(--ink-40)',
-                marginTop: 6,
-                letterSpacing: '.01em',
-              }}
-            >
-              ✦ {item.rationale}
-            </div>
-          )}
-        </div>
-        <TodayRowActions
-          busy={busy}
-          completed={item.completed}
-          onStart={onStart}
-          onDismiss={onDismiss}
-          onComplete={onComplete}
-        />
-      </div>
+      <CheckboxAffordance status={item.status} onClick={onCheckboxClick} />
+      <span
+        style={{
+          flex: 1,
+          fontSize: 14,
+          color: titleColor,
+          textDecoration: item.status === 'done' ? 'line-through' : 'none',
+          textDecorationColor: 'rgba(255,255,255,0.15)',
+          transition: 'color 160ms ease',
+          // word-break чтобы длинные тайтлы не ломали layout.
+          wordBreak: 'break-word',
+        }}
+      >
+        {item.title}
+      </span>
+      {item.source === 'ai' && item.skillKey && <SkillTag skillKey={item.skillKey} />}
+      <DeleteButton visible={hover} onClick={(e) => { e.stopPropagation(); void onDelete(item); }} />
     </li>
   );
 }
 
-interface ActionsProps {
-  busy: boolean;
-  completed: boolean;
-  onStart: () => void;
-  onDismiss: () => void;
-  onComplete: () => void;
+// ─── CheckboxAffordance ─────────────────────────────────────────────────────
+//
+// Три варианта:
+//   - todo:        пустой [ ] checkbox с тонким border'ом
+//   - in_progress: → arrow в accent ink
+//   - done:        [✓] checkbox с заполнением + svg checkmark
+
+function CheckboxAffordance({
+  status,
+  onClick,
+}: {
+  status: QueueItem['status'];
+  onClick: (e: React.MouseEvent) => void;
+}) {
+  if (status === 'in_progress') {
+    return (
+      <button
+        onClick={onClick}
+        aria-label="Mark as done"
+        style={{
+          width: 16,
+          height: 16,
+          flexShrink: 0,
+          background: 'transparent',
+          border: 'none',
+          color: 'var(--ink)',
+          fontSize: 14,
+          cursor: 'pointer',
+          padding: 0,
+          display: 'grid',
+          placeItems: 'center',
+        }}
+      >
+        →
+      </button>
+    );
+  }
+  if (status === 'done') {
+    return (
+      <button
+        onClick={onClick}
+        aria-label="Mark as todo"
+        style={{
+          width: 16,
+          height: 16,
+          flexShrink: 0,
+          borderRadius: 3,
+          border: '1.5px solid rgba(255,255,255,0.1)',
+          background: 'rgba(255,255,255,0.06)',
+          cursor: 'pointer',
+          padding: 0,
+          display: 'grid',
+          placeItems: 'center',
+        }}
+      >
+        <svg width={10} height={10} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round" style={{ color: 'var(--ink-60)' }}>
+          <polyline points="20 6 9 17 4 12" />
+        </svg>
+      </button>
+    );
+  }
+  // todo
+  return (
+    <button
+      onClick={onClick}
+      aria-label="Start"
+      style={{
+        width: 16,
+        height: 16,
+        flexShrink: 0,
+        borderRadius: 3,
+        border: '1.5px solid rgba(255,255,255,0.15)',
+        background: 'transparent',
+        cursor: 'pointer',
+        padding: 0,
+        transition: 'border-color 160ms ease',
+      }}
+      onMouseEnter={(e) => (e.currentTarget.style.borderColor = 'rgba(255,255,255,0.4)')}
+      onMouseLeave={(e) => (e.currentTarget.style.borderColor = 'rgba(255,255,255,0.15)')}
+    />
+  );
 }
 
-function TodayRowActions({ busy, completed, onStart, onDismiss, onComplete }: ActionsProps) {
-  const btn = (label: string, handler: () => void, opacity = 0.6) => (
-    <button
-      onClick={handler}
-      disabled={busy}
-      className="focus-ring mono"
+function SkillTag({ skillKey }: { skillKey: string }) {
+  return (
+    <span
+      className="mono"
       style={{
-        padding: '5px 9px',
-        fontSize: 10,
-        letterSpacing: '.12em',
-        color: `rgba(255,255,255,${opacity})`,
-        borderRadius: 6,
-        background: 'transparent',
+        fontSize: 9,
+        letterSpacing: '0.14em',
+        textTransform: 'uppercase',
+        color: 'var(--ink-40)',
+        background: 'rgba(255,255,255,0.04)',
+        border: '1px solid rgba(255,255,255,0.06)',
+        borderRadius: 4,
+        padding: '2px 6px',
+        flexShrink: 0,
       }}
     >
-      {label}
-    </button>
-  );
-  return (
-    <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
-      {!completed && btn('FOCUS', onStart, 0.9)}
-      {!completed && btn('DONE', onComplete)}
-      {btn('SKIP', onDismiss)}
-    </div>
+      {skillKey}
+    </span>
   );
 }
+
+function DeleteButton({ visible, onClick }: { visible: boolean; onClick: (e: React.MouseEvent) => void }) {
+  return (
+    <button
+      onClick={onClick}
+      aria-label="Delete task"
+      style={{
+        width: 18,
+        height: 18,
+        flexShrink: 0,
+        background: 'transparent',
+        border: 'none',
+        color: 'var(--ink-40)',
+        cursor: 'pointer',
+        padding: 0,
+        opacity: visible ? 1 : 0,
+        transition: 'opacity 180ms ease, color 160ms ease',
+        display: 'grid',
+        placeItems: 'center',
+      }}
+      onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--ink-90)')}
+      onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--ink-40)')}
+    >
+      <svg width={12} height={12} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round">
+        <line x1="6" y1="6" x2="18" y2="18" />
+        <line x1="18" y1="6" x2="6" y2="18" />
+      </svg>
+    </button>
+  );
+}
+
+// ─── Errors ─────────────────────────────────────────────────────────────────
 
 function errorHeadline(code: Code | null): string {
   switch (code) {
     case Code.Unauthenticated:
-      return 'Sign in to see your plan.';
+      return 'Not signed in. Set HONE_DEV_TOKEN or sign in via the desktop dialog.';
     case Code.Unavailable:
-      return 'AI is resting — plan generator is offline.';
-    case Code.ResourceExhausted:
-      return 'Regenerations limited: try again in a few minutes.';
+      return 'Plan service is offline. The LLM chain is unreachable.';
     case Code.PermissionDenied:
-      return 'druz9 Seeker required. Upgrade to unlock AI-generated plans.';
+      return 'This action requires a Pro subscription.';
     default:
-      return 'Could not load your plan right now.';
+      return 'Could not load today’s queue.';
   }
 }

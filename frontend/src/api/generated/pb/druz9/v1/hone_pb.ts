@@ -667,6 +667,13 @@ export class Stats extends Message<Stats> {
    */
   lastSevenDays: FocusHeatmapDay[] = [];
 
+  /**
+   * Focus Queue rollup — today counter + 7d AI/user share.
+   *
+   * @generated from field: druz9.v1.QueueStats queue = 6;
+   */
+  queue?: QueueStats;
+
   constructor(data?: PartialMessage<Stats>) {
     super();
     proto3.util.initPartial(data, this);
@@ -680,6 +687,7 @@ export class Stats extends Message<Stats> {
     { no: 3, name: "total_focused_seconds", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
     { no: 4, name: "heatmap", kind: "message", T: FocusHeatmapDay, repeated: true },
     { no: 5, name: "last_seven_days", kind: "message", T: FocusHeatmapDay, repeated: true },
+    { no: 6, name: "queue", kind: "message", T: QueueStats },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): Stats {
@@ -696,6 +704,362 @@ export class Stats extends Message<Stats> {
 
   static equals(a: Stats | PlainMessage<Stats> | undefined, b: Stats | PlainMessage<Stats> | undefined): boolean {
     return proto3.util.equals(Stats, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.QueueItem
+ */
+export class QueueItem extends Message<QueueItem> {
+  /**
+   * @generated from field: string id = 1;
+   */
+  id = "";
+
+  /**
+   * @generated from field: string title = 2;
+   */
+  title = "";
+
+  /**
+   * 'ai' | 'user'.
+   *
+   * @generated from field: string source = 3;
+   */
+  source = "";
+
+  /**
+   * 'todo' | 'in_progress' | 'done'.
+   *
+   * @generated from field: string status = 4;
+   */
+  status = "";
+
+  /**
+   * Skill key копируется из PlanItem для AI items, пустой для user items.
+   *
+   * @generated from field: string skill_key = 5;
+   */
+  skillKey = "";
+
+  /**
+   * YYYY-MM-DD.
+   *
+   * @generated from field: string date = 6;
+   */
+  date = "";
+
+  constructor(data?: PartialMessage<QueueItem>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.QueueItem";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "title", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 3, name: "source", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 4, name: "status", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 5, name: "skill_key", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 6, name: "date", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): QueueItem {
+    return new QueueItem().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): QueueItem {
+    return new QueueItem().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): QueueItem {
+    return new QueueItem().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: QueueItem | PlainMessage<QueueItem> | undefined, b: QueueItem | PlainMessage<QueueItem> | undefined): boolean {
+    return proto3.util.equals(QueueItem, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.QueueStats
+ */
+export class QueueStats extends Message<QueueStats> {
+  /**
+   * @generated from field: int32 today_total = 1;
+   */
+  todayTotal = 0;
+
+  /**
+   * @generated from field: int32 today_done = 2;
+   */
+  todayDone = 0;
+
+  /**
+   * 7d done items распределение по source (0..1, сумма == 1 если есть данные).
+   *
+   * @generated from field: float ai_share = 3;
+   */
+  aiShare = 0;
+
+  /**
+   * @generated from field: float user_share = 4;
+   */
+  userShare = 0;
+
+  constructor(data?: PartialMessage<QueueStats>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.QueueStats";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "today_total", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 2, name: "today_done", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 3, name: "ai_share", kind: "scalar", T: 2 /* ScalarType.FLOAT */ },
+    { no: 4, name: "user_share", kind: "scalar", T: 2 /* ScalarType.FLOAT */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): QueueStats {
+    return new QueueStats().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): QueueStats {
+    return new QueueStats().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): QueueStats {
+    return new QueueStats().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: QueueStats | PlainMessage<QueueStats> | undefined, b: QueueStats | PlainMessage<QueueStats> | undefined): boolean {
+    return proto3.util.equals(QueueStats, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.ListQueueRequest
+ */
+export class ListQueueRequest extends Message<ListQueueRequest> {
+  /**
+   * ISO-8601 date, пустой = today.
+   *
+   * @generated from field: string date = 1;
+   */
+  date = "";
+
+  constructor(data?: PartialMessage<ListQueueRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.ListQueueRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "date", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ListQueueRequest {
+    return new ListQueueRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): ListQueueRequest {
+    return new ListQueueRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): ListQueueRequest {
+    return new ListQueueRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: ListQueueRequest | PlainMessage<ListQueueRequest> | undefined, b: ListQueueRequest | PlainMessage<ListQueueRequest> | undefined): boolean {
+    return proto3.util.equals(ListQueueRequest, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.ListQueueResponse
+ */
+export class ListQueueResponse extends Message<ListQueueResponse> {
+  /**
+   * @generated from field: repeated druz9.v1.QueueItem items = 1;
+   */
+  items: QueueItem[] = [];
+
+  constructor(data?: PartialMessage<ListQueueResponse>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.ListQueueResponse";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "items", kind: "message", T: QueueItem, repeated: true },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ListQueueResponse {
+    return new ListQueueResponse().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): ListQueueResponse {
+    return new ListQueueResponse().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): ListQueueResponse {
+    return new ListQueueResponse().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: ListQueueResponse | PlainMessage<ListQueueResponse> | undefined, b: ListQueueResponse | PlainMessage<ListQueueResponse> | undefined): boolean {
+    return proto3.util.equals(ListQueueResponse, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.AddQueueItemRequest
+ */
+export class AddQueueItemRequest extends Message<AddQueueItemRequest> {
+  /**
+   * @generated from field: string title = 1;
+   */
+  title = "";
+
+  constructor(data?: PartialMessage<AddQueueItemRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.AddQueueItemRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "title", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): AddQueueItemRequest {
+    return new AddQueueItemRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): AddQueueItemRequest {
+    return new AddQueueItemRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): AddQueueItemRequest {
+    return new AddQueueItemRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: AddQueueItemRequest | PlainMessage<AddQueueItemRequest> | undefined, b: AddQueueItemRequest | PlainMessage<AddQueueItemRequest> | undefined): boolean {
+    return proto3.util.equals(AddQueueItemRequest, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.UpdateQueueItemStatusRequest
+ */
+export class UpdateQueueItemStatusRequest extends Message<UpdateQueueItemStatusRequest> {
+  /**
+   * @generated from field: string id = 1;
+   */
+  id = "";
+
+  /**
+   * @generated from field: string status = 2;
+   */
+  status = "";
+
+  constructor(data?: PartialMessage<UpdateQueueItemStatusRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.UpdateQueueItemStatusRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "status", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): UpdateQueueItemStatusRequest {
+    return new UpdateQueueItemStatusRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): UpdateQueueItemStatusRequest {
+    return new UpdateQueueItemStatusRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): UpdateQueueItemStatusRequest {
+    return new UpdateQueueItemStatusRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: UpdateQueueItemStatusRequest | PlainMessage<UpdateQueueItemStatusRequest> | undefined, b: UpdateQueueItemStatusRequest | PlainMessage<UpdateQueueItemStatusRequest> | undefined): boolean {
+    return proto3.util.equals(UpdateQueueItemStatusRequest, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.DeleteQueueItemRequest
+ */
+export class DeleteQueueItemRequest extends Message<DeleteQueueItemRequest> {
+  /**
+   * @generated from field: string id = 1;
+   */
+  id = "";
+
+  constructor(data?: PartialMessage<DeleteQueueItemRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.DeleteQueueItemRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): DeleteQueueItemRequest {
+    return new DeleteQueueItemRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): DeleteQueueItemRequest {
+    return new DeleteQueueItemRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): DeleteQueueItemRequest {
+    return new DeleteQueueItemRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: DeleteQueueItemRequest | PlainMessage<DeleteQueueItemRequest> | undefined, b: DeleteQueueItemRequest | PlainMessage<DeleteQueueItemRequest> | undefined): boolean {
+    return proto3.util.equals(DeleteQueueItemRequest, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.DeleteQueueItemResponse
+ */
+export class DeleteQueueItemResponse extends Message<DeleteQueueItemResponse> {
+  constructor(data?: PartialMessage<DeleteQueueItemResponse>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.DeleteQueueItemResponse";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): DeleteQueueItemResponse {
+    return new DeleteQueueItemResponse().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): DeleteQueueItemResponse {
+    return new DeleteQueueItemResponse().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): DeleteQueueItemResponse {
+    return new DeleteQueueItemResponse().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: DeleteQueueItemResponse | PlainMessage<DeleteQueueItemResponse> | undefined, b: DeleteQueueItemResponse | PlainMessage<DeleteQueueItemResponse> | undefined): boolean {
+    return proto3.util.equals(DeleteQueueItemResponse, a, b);
   }
 }
 

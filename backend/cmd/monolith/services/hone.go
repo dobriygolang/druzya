@@ -55,6 +55,7 @@ func NewHone(d Deps) *Module {
 	notes := honeInfra.NewNotes(d.Pool)
 	whiteboards := honeInfra.NewWhiteboards(d.Pool)
 	resistance := honeInfra.NewResistance(d.Pool)
+	queue := honeInfra.NewQueue(d.Pool)
 
 	// LLM adapters — pick real vs floor per config.
 	var (
@@ -124,7 +125,7 @@ func NewHone(d Deps) *Module {
 
 	h := honeApp.NewHandler(honeApp.Handler{
 		// Plan
-		GeneratePlan:     &honeApp.GeneratePlan{Plans: plans, Skills: skills, Resistance: resistance, Synthesiser: synthesiser, Log: d.Log, Now: d.Now},
+		GeneratePlan:     &honeApp.GeneratePlan{Plans: plans, Skills: skills, Resistance: resistance, Synthesiser: synthesiser, Queue: queue, Log: d.Log, Now: d.Now},
 		GetPlan:          &honeApp.GetPlan{Plans: plans, Now: d.Now},
 		DismissPlanItem:  &honeApp.DismissPlanItem{Plans: plans, Resistance: resistance, Log: d.Log, Now: d.Now, Memory: d.IntelligenceMemoryHook},
 		CompletePlanItem: &honeApp.CompletePlanItem{Plans: plans, Now: d.Now, Memory: d.IntelligenceMemoryHook},
@@ -132,7 +133,13 @@ func NewHone(d Deps) *Module {
 		// Focus
 		StartFocus: &honeApp.StartFocus{Focus: focus, Log: d.Log, Now: d.Now},
 		EndFocus:   &honeApp.EndFocus{Focus: focus, Streaks: streaks, Notes: notes, EmbedFn: embedFn, Log: d.Log, Now: d.Now, Memory: d.IntelligenceMemoryHook},
-		GetStats:   &honeApp.GetStats{Streaks: streaks, Now: d.Now},
+		GetStats:   &honeApp.GetStats{Streaks: streaks, Queue: queue, Now: d.Now},
+
+		// Focus Queue
+		ListQueue:        &honeApp.ListQueue{Queue: queue, Now: d.Now},
+		AddUserItem:      &honeApp.AddUserItem{Queue: queue, Now: d.Now},
+		UpdateItemStatus: &honeApp.UpdateItemStatus{Queue: queue},
+		DeleteItem:       &honeApp.DeleteItem{Queue: queue},
 
 		// Notes
 		CreateNote:         &honeApp.CreateNote{Notes: notes, EmbedFn: embedFn, Log: d.Log, Now: d.Now, Memory: d.IntelligenceMemoryHook},

@@ -162,6 +162,10 @@ func (uc *EndFocus) Do(ctx context.Context, in EndFocusInput) (domain.FocusSessi
 type GetStats struct {
 	Streaks domain.StreakRepo
 	Now     func() time.Time
+	// Queue — nullable. Если задан, добавляет QueueStats в response для
+	// карточки «Focus balance · 7 days» на странице Stats. Без этого hook'а
+	// Stats.Queue остаётся zero-value и UI не рендерит карточку.
+	Queue domain.QueueRepo
 }
 
 // GetStatsInput — wire body.
@@ -199,11 +203,20 @@ func (uc *GetStats) Do(ctx context.Context, in GetStatsInput) (domain.Stats, err
 		}
 	}
 
-	return domain.Stats{
+	out := domain.Stats{
 		CurrentStreakDays: state.CurrentStreak,
 		LongestStreakDays: state.LongestStreak,
 		TotalFocusedSecs:  total,
 		Heatmap:           days,
 		LastSevenDays:     lastSeven,
-	}, nil
+	}
+	// Queue stats — best-effort. Failure non-fatal: Stats.Queue остаётся
+	// zero-value, UI просто не рендерит карточку.
+	if uc.Queue != nil {
+		qs := &GetQueueStats{Queue: uc.Queue}
+		if qStats, qerr := qs.Do(ctx, in.UserID); qerr == nil {
+			out.Queue = qStats
+		}
+	}
+	return out, nil
 }

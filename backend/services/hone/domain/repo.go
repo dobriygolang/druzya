@@ -204,3 +204,28 @@ type CritiqueStreamer interface {
 type PlanSynthesizer interface {
 	Synthesise(ctx context.Context, userID uuid.UUID, weakNodes []WeakNode, chronic []ChronicSkill, date time.Time) ([]PlanItem, error)
 }
+
+// ─── Focus Queue ──────────────────────────────────────────────────────────
+
+// QueueRepo persists hone_queue_items. Per-user, per-day list. UpdateStatus
+// инкапсулирует бизнес-правило «один in_progress на user одновременно» —
+// см. impl в infra/postgres.go (single transaction reset+update).
+type QueueRepo interface {
+	// ListByDate возвращает все items на дату, отсортированные:
+	// in_progress (top) → todo (by created_at) → done (bottom).
+	ListByDate(ctx context.Context, userID uuid.UUID, date time.Time) ([]QueueItem, error)
+	// Create вставляет новый item, возвращает hydrated row с id/created_at.
+	Create(ctx context.Context, item QueueItem) (QueueItem, error)
+	// UpdateStatus меняет status. Если new = in_progress, все остальные
+	// in_progress items этого user'а на сегодня сбрасываются в todo.
+	UpdateStatus(ctx context.Context, id, userID uuid.UUID, status QueueItemStatus) (QueueItem, error)
+	// Delete — owner-only hard delete.
+	Delete(ctx context.Context, id, userID uuid.UUID) error
+	// ExistsByTitleToday — для SyncAIItems-идемпотентности.
+	ExistsByTitleToday(ctx context.Context, userID uuid.UUID, title string) (bool, error)
+	// CountTodayByStatus — for QueueStats. Возвращает (total, done).
+	CountTodayByStatus(ctx context.Context, userID uuid.UUID) (total, done int, err error)
+	// GetAIShareLast7Days — доли AI/user среди DONE items за 7 дней (0..1).
+	// Если за 7 дней нет done items — возвращает (0, 0, nil).
+	GetAIShareLast7Days(ctx context.Context, userID uuid.UUID) (aiShare, userShare float32, err error)
+}

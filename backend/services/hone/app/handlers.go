@@ -51,6 +51,12 @@ type Handler struct {
 	CritiqueWhiteboard *CritiqueWhiteboard
 	SaveCritiqueAsNote *SaveCritiqueAsNote
 
+	// Focus Queue
+	ListQueue        *ListQueue
+	AddUserItem      *AddUserItem
+	UpdateItemStatus *UpdateItemStatus
+	DeleteItem       *DeleteItem
+
 	// Standup
 	RecordStandup *RecordStandup
 

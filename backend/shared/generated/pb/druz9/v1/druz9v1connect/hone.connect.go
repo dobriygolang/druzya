@@ -71,6 +71,17 @@ const (
 	HoneServiceEndFocusSessionProcedure = "/druz9.v1.HoneService/EndFocusSession"
 	// HoneServiceGetStatsProcedure is the fully-qualified name of the HoneService's GetStats RPC.
 	HoneServiceGetStatsProcedure = "/druz9.v1.HoneService/GetStats"
+	// HoneServiceListQueueProcedure is the fully-qualified name of the HoneService's ListQueue RPC.
+	HoneServiceListQueueProcedure = "/druz9.v1.HoneService/ListQueue"
+	// HoneServiceAddQueueItemProcedure is the fully-qualified name of the HoneService's AddQueueItem
+	// RPC.
+	HoneServiceAddQueueItemProcedure = "/druz9.v1.HoneService/AddQueueItem"
+	// HoneServiceUpdateQueueItemStatusProcedure is the fully-qualified name of the HoneService's
+	// UpdateQueueItemStatus RPC.
+	HoneServiceUpdateQueueItemStatusProcedure = "/druz9.v1.HoneService/UpdateQueueItemStatus"
+	// HoneServiceDeleteQueueItemProcedure is the fully-qualified name of the HoneService's
+	// DeleteQueueItem RPC.
+	HoneServiceDeleteQueueItemProcedure = "/druz9.v1.HoneService/DeleteQueueItem"
 	// HoneServiceCreateNoteProcedure is the fully-qualified name of the HoneService's CreateNote RPC.
 	HoneServiceCreateNoteProcedure = "/druz9.v1.HoneService/CreateNote"
 	// HoneServiceUpdateNoteProcedure is the fully-qualified name of the HoneService's UpdateNote RPC.
@@ -121,6 +132,11 @@ type HoneServiceClient interface {
 	StartFocusSession(context.Context, *connect.Request[v1.StartFocusSessionRequest]) (*connect.Response[v1.FocusSession], error)
 	EndFocusSession(context.Context, *connect.Request[v1.EndFocusSessionRequest]) (*connect.Response[v1.FocusSession], error)
 	GetStats(context.Context, *connect.Request[v1.GetStatsRequest]) (*connect.Response[v1.Stats], error)
+	// ─── Focus Queue ────────────────────────────────────────────────────
+	ListQueue(context.Context, *connect.Request[v1.ListQueueRequest]) (*connect.Response[v1.ListQueueResponse], error)
+	AddQueueItem(context.Context, *connect.Request[v1.AddQueueItemRequest]) (*connect.Response[v1.QueueItem], error)
+	UpdateQueueItemStatus(context.Context, *connect.Request[v1.UpdateQueueItemStatusRequest]) (*connect.Response[v1.QueueItem], error)
+	DeleteQueueItem(context.Context, *connect.Request[v1.DeleteQueueItemRequest]) (*connect.Response[v1.DeleteQueueItemResponse], error)
 	// ─── Notes ──────────────────────────────────────────────────────────
 	CreateNote(context.Context, *connect.Request[v1.CreateNoteRequest]) (*connect.Response[v1.Note], error)
 	UpdateNote(context.Context, *connect.Request[v1.UpdateNoteRequest]) (*connect.Response[v1.Note], error)
@@ -194,6 +210,30 @@ func NewHoneServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 			httpClient,
 			baseURL+HoneServiceGetStatsProcedure,
 			connect.WithSchema(honeServiceMethods.ByName("GetStats")),
+			connect.WithClientOptions(opts...),
+		),
+		listQueue: connect.NewClient[v1.ListQueueRequest, v1.ListQueueResponse](
+			httpClient,
+			baseURL+HoneServiceListQueueProcedure,
+			connect.WithSchema(honeServiceMethods.ByName("ListQueue")),
+			connect.WithClientOptions(opts...),
+		),
+		addQueueItem: connect.NewClient[v1.AddQueueItemRequest, v1.QueueItem](
+			httpClient,
+			baseURL+HoneServiceAddQueueItemProcedure,
+			connect.WithSchema(honeServiceMethods.ByName("AddQueueItem")),
+			connect.WithClientOptions(opts...),
+		),
+		updateQueueItemStatus: connect.NewClient[v1.UpdateQueueItemStatusRequest, v1.QueueItem](
+			httpClient,
+			baseURL+HoneServiceUpdateQueueItemStatusProcedure,
+			connect.WithSchema(honeServiceMethods.ByName("UpdateQueueItemStatus")),
+			connect.WithClientOptions(opts...),
+		),
+		deleteQueueItem: connect.NewClient[v1.DeleteQueueItemRequest, v1.DeleteQueueItemResponse](
+			httpClient,
+			baseURL+HoneServiceDeleteQueueItemProcedure,
+			connect.WithSchema(honeServiceMethods.ByName("DeleteQueueItem")),
 			connect.WithClientOptions(opts...),
 		),
 		createNote: connect.NewClient[v1.CreateNoteRequest, v1.Note](
@@ -285,27 +325,31 @@ func NewHoneServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 
 // honeServiceClient implements HoneServiceClient.
 type honeServiceClient struct {
-	generateDailyPlan  *connect.Client[v1.GenerateDailyPlanRequest, v1.Plan]
-	getDailyPlan       *connect.Client[v1.GetDailyPlanRequest, v1.Plan]
-	dismissPlanItem    *connect.Client[v1.DismissPlanItemRequest, v1.Plan]
-	completePlanItem   *connect.Client[v1.CompletePlanItemRequest, v1.Plan]
-	startFocusSession  *connect.Client[v1.StartFocusSessionRequest, v1.FocusSession]
-	endFocusSession    *connect.Client[v1.EndFocusSessionRequest, v1.FocusSession]
-	getStats           *connect.Client[v1.GetStatsRequest, v1.Stats]
-	createNote         *connect.Client[v1.CreateNoteRequest, v1.Note]
-	updateNote         *connect.Client[v1.UpdateNoteRequest, v1.Note]
-	getNote            *connect.Client[v1.GetNoteRequest, v1.Note]
-	listNotes          *connect.Client[v1.ListNotesRequest, v1.ListNotesResponse]
-	deleteNote         *connect.Client[v1.DeleteNoteRequest, v1.DeleteNoteResponse]
-	getNoteConnections *connect.Client[v1.GetNoteConnectionsRequest, v1.Connection]
-	createWhiteboard   *connect.Client[v1.CreateWhiteboardRequest, v1.Whiteboard]
-	updateWhiteboard   *connect.Client[v1.UpdateWhiteboardRequest, v1.Whiteboard]
-	getWhiteboard      *connect.Client[v1.GetWhiteboardRequest, v1.Whiteboard]
-	listWhiteboards    *connect.Client[v1.ListWhiteboardsRequest, v1.ListWhiteboardsResponse]
-	deleteWhiteboard   *connect.Client[v1.DeleteWhiteboardRequest, v1.DeleteWhiteboardResponse]
-	critiqueWhiteboard *connect.Client[v1.CritiqueWhiteboardRequest, v1.CritiquePacket]
-	saveCritiqueAsNote *connect.Client[v1.SaveCritiqueAsNoteRequest, v1.Note]
-	recordStandup      *connect.Client[v1.RecordStandupRequest, v1.RecordStandupResponse]
+	generateDailyPlan     *connect.Client[v1.GenerateDailyPlanRequest, v1.Plan]
+	getDailyPlan          *connect.Client[v1.GetDailyPlanRequest, v1.Plan]
+	dismissPlanItem       *connect.Client[v1.DismissPlanItemRequest, v1.Plan]
+	completePlanItem      *connect.Client[v1.CompletePlanItemRequest, v1.Plan]
+	startFocusSession     *connect.Client[v1.StartFocusSessionRequest, v1.FocusSession]
+	endFocusSession       *connect.Client[v1.EndFocusSessionRequest, v1.FocusSession]
+	getStats              *connect.Client[v1.GetStatsRequest, v1.Stats]
+	listQueue             *connect.Client[v1.ListQueueRequest, v1.ListQueueResponse]
+	addQueueItem          *connect.Client[v1.AddQueueItemRequest, v1.QueueItem]
+	updateQueueItemStatus *connect.Client[v1.UpdateQueueItemStatusRequest, v1.QueueItem]
+	deleteQueueItem       *connect.Client[v1.DeleteQueueItemRequest, v1.DeleteQueueItemResponse]
+	createNote            *connect.Client[v1.CreateNoteRequest, v1.Note]
+	updateNote            *connect.Client[v1.UpdateNoteRequest, v1.Note]
+	getNote               *connect.Client[v1.GetNoteRequest, v1.Note]
+	listNotes             *connect.Client[v1.ListNotesRequest, v1.ListNotesResponse]
+	deleteNote            *connect.Client[v1.DeleteNoteRequest, v1.DeleteNoteResponse]
+	getNoteConnections    *connect.Client[v1.GetNoteConnectionsRequest, v1.Connection]
+	createWhiteboard      *connect.Client[v1.CreateWhiteboardRequest, v1.Whiteboard]
+	updateWhiteboard      *connect.Client[v1.UpdateWhiteboardRequest, v1.Whiteboard]
+	getWhiteboard         *connect.Client[v1.GetWhiteboardRequest, v1.Whiteboard]
+	listWhiteboards       *connect.Client[v1.ListWhiteboardsRequest, v1.ListWhiteboardsResponse]
+	deleteWhiteboard      *connect.Client[v1.DeleteWhiteboardRequest, v1.DeleteWhiteboardResponse]
+	critiqueWhiteboard    *connect.Client[v1.CritiqueWhiteboardRequest, v1.CritiquePacket]
+	saveCritiqueAsNote    *connect.Client[v1.SaveCritiqueAsNoteRequest, v1.Note]
+	recordStandup         *connect.Client[v1.RecordStandupRequest, v1.RecordStandupResponse]
 }
 
 // GenerateDailyPlan calls druz9.v1.HoneService.GenerateDailyPlan.
@@ -341,6 +385,26 @@ func (c *honeServiceClient) EndFocusSession(ctx context.Context, req *connect.Re
 // GetStats calls druz9.v1.HoneService.GetStats.
 func (c *honeServiceClient) GetStats(ctx context.Context, req *connect.Request[v1.GetStatsRequest]) (*connect.Response[v1.Stats], error) {
 	return c.getStats.CallUnary(ctx, req)
+}
+
+// ListQueue calls druz9.v1.HoneService.ListQueue.
+func (c *honeServiceClient) ListQueue(ctx context.Context, req *connect.Request[v1.ListQueueRequest]) (*connect.Response[v1.ListQueueResponse], error) {
+	return c.listQueue.CallUnary(ctx, req)
+}
+
+// AddQueueItem calls druz9.v1.HoneService.AddQueueItem.
+func (c *honeServiceClient) AddQueueItem(ctx context.Context, req *connect.Request[v1.AddQueueItemRequest]) (*connect.Response[v1.QueueItem], error) {
+	return c.addQueueItem.CallUnary(ctx, req)
+}
+
+// UpdateQueueItemStatus calls druz9.v1.HoneService.UpdateQueueItemStatus.
+func (c *honeServiceClient) UpdateQueueItemStatus(ctx context.Context, req *connect.Request[v1.UpdateQueueItemStatusRequest]) (*connect.Response[v1.QueueItem], error) {
+	return c.updateQueueItemStatus.CallUnary(ctx, req)
+}
+
+// DeleteQueueItem calls druz9.v1.HoneService.DeleteQueueItem.
+func (c *honeServiceClient) DeleteQueueItem(ctx context.Context, req *connect.Request[v1.DeleteQueueItemRequest]) (*connect.Response[v1.DeleteQueueItemResponse], error) {
+	return c.deleteQueueItem.CallUnary(ctx, req)
 }
 
 // CreateNote calls druz9.v1.HoneService.CreateNote.
@@ -424,6 +488,11 @@ type HoneServiceHandler interface {
 	StartFocusSession(context.Context, *connect.Request[v1.StartFocusSessionRequest]) (*connect.Response[v1.FocusSession], error)
 	EndFocusSession(context.Context, *connect.Request[v1.EndFocusSessionRequest]) (*connect.Response[v1.FocusSession], error)
 	GetStats(context.Context, *connect.Request[v1.GetStatsRequest]) (*connect.Response[v1.Stats], error)
+	// ─── Focus Queue ────────────────────────────────────────────────────
+	ListQueue(context.Context, *connect.Request[v1.ListQueueRequest]) (*connect.Response[v1.ListQueueResponse], error)
+	AddQueueItem(context.Context, *connect.Request[v1.AddQueueItemRequest]) (*connect.Response[v1.QueueItem], error)
+	UpdateQueueItemStatus(context.Context, *connect.Request[v1.UpdateQueueItemStatusRequest]) (*connect.Response[v1.QueueItem], error)
+	DeleteQueueItem(context.Context, *connect.Request[v1.DeleteQueueItemRequest]) (*connect.Response[v1.DeleteQueueItemResponse], error)
 	// ─── Notes ──────────────────────────────────────────────────────────
 	CreateNote(context.Context, *connect.Request[v1.CreateNoteRequest]) (*connect.Response[v1.Note], error)
 	UpdateNote(context.Context, *connect.Request[v1.UpdateNoteRequest]) (*connect.Response[v1.Note], error)
@@ -493,6 +562,30 @@ func NewHoneServiceHandler(svc HoneServiceHandler, opts ...connect.HandlerOption
 		HoneServiceGetStatsProcedure,
 		svc.GetStats,
 		connect.WithSchema(honeServiceMethods.ByName("GetStats")),
+		connect.WithHandlerOptions(opts...),
+	)
+	honeServiceListQueueHandler := connect.NewUnaryHandler(
+		HoneServiceListQueueProcedure,
+		svc.ListQueue,
+		connect.WithSchema(honeServiceMethods.ByName("ListQueue")),
+		connect.WithHandlerOptions(opts...),
+	)
+	honeServiceAddQueueItemHandler := connect.NewUnaryHandler(
+		HoneServiceAddQueueItemProcedure,
+		svc.AddQueueItem,
+		connect.WithSchema(honeServiceMethods.ByName("AddQueueItem")),
+		connect.WithHandlerOptions(opts...),
+	)
+	honeServiceUpdateQueueItemStatusHandler := connect.NewUnaryHandler(
+		HoneServiceUpdateQueueItemStatusProcedure,
+		svc.UpdateQueueItemStatus,
+		connect.WithSchema(honeServiceMethods.ByName("UpdateQueueItemStatus")),
+		connect.WithHandlerOptions(opts...),
+	)
+	honeServiceDeleteQueueItemHandler := connect.NewUnaryHandler(
+		HoneServiceDeleteQueueItemProcedure,
+		svc.DeleteQueueItem,
+		connect.WithSchema(honeServiceMethods.ByName("DeleteQueueItem")),
 		connect.WithHandlerOptions(opts...),
 	)
 	honeServiceCreateNoteHandler := connect.NewUnaryHandler(
@@ -595,6 +688,14 @@ func NewHoneServiceHandler(svc HoneServiceHandler, opts ...connect.HandlerOption
 			honeServiceEndFocusSessionHandler.ServeHTTP(w, r)
 		case HoneServiceGetStatsProcedure:
 			honeServiceGetStatsHandler.ServeHTTP(w, r)
+		case HoneServiceListQueueProcedure:
+			honeServiceListQueueHandler.ServeHTTP(w, r)
+		case HoneServiceAddQueueItemProcedure:
+			honeServiceAddQueueItemHandler.ServeHTTP(w, r)
+		case HoneServiceUpdateQueueItemStatusProcedure:
+			honeServiceUpdateQueueItemStatusHandler.ServeHTTP(w, r)
+		case HoneServiceDeleteQueueItemProcedure:
+			honeServiceDeleteQueueItemHandler.ServeHTTP(w, r)
 		case HoneServiceCreateNoteProcedure:
 			honeServiceCreateNoteHandler.ServeHTTP(w, r)
 		case HoneServiceUpdateNoteProcedure:
@@ -658,6 +759,22 @@ func (UnimplementedHoneServiceHandler) EndFocusSession(context.Context, *connect
 
 func (UnimplementedHoneServiceHandler) GetStats(context.Context, *connect.Request[v1.GetStatsRequest]) (*connect.Response[v1.Stats], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.HoneService.GetStats is not implemented"))
+}
+
+func (UnimplementedHoneServiceHandler) ListQueue(context.Context, *connect.Request[v1.ListQueueRequest]) (*connect.Response[v1.ListQueueResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.HoneService.ListQueue is not implemented"))
+}
+
+func (UnimplementedHoneServiceHandler) AddQueueItem(context.Context, *connect.Request[v1.AddQueueItemRequest]) (*connect.Response[v1.QueueItem], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.HoneService.AddQueueItem is not implemented"))
+}
+
+func (UnimplementedHoneServiceHandler) UpdateQueueItemStatus(context.Context, *connect.Request[v1.UpdateQueueItemStatusRequest]) (*connect.Response[v1.QueueItem], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.HoneService.UpdateQueueItemStatus is not implemented"))
+}
+
+func (UnimplementedHoneServiceHandler) DeleteQueueItem(context.Context, *connect.Request[v1.DeleteQueueItemRequest]) (*connect.Response[v1.DeleteQueueItemResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.HoneService.DeleteQueueItem is not implemented"))
 }
 
 func (UnimplementedHoneServiceHandler) CreateNote(context.Context, *connect.Request[v1.CreateNoteRequest]) (*connect.Response[v1.Note], error) {

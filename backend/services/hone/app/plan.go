@@ -30,6 +30,10 @@ type GeneratePlan struct {
 	Synthesiser domain.PlanSynthesizer // nil when llmchain is nil
 	Log         *slog.Logger
 	Now         func() time.Time
+	// Queue — nullable. Если задан, после успешной генерации plan-items
+	// материализуются в hone_queue_items (source='ai') через SyncAIItems.
+	// Идемпотентно — повторная генерация не дублирует. Ошибки sync — non-fatal.
+	Queue domain.QueueRepo
 }
 
 // GeneratePlanInput holds the request parameters.
@@ -97,6 +101,17 @@ func (uc *GeneratePlan) Do(ctx context.Context, in GeneratePlanInput) (domain.Pl
 	saved, err := uc.Plans.Upsert(ctx, p)
 	if err != nil {
 		return domain.Plan{}, fmt.Errorf("hone.GeneratePlan.Do: upsert: %w", err)
+	}
+	// Materialise plan items в Focus Queue (source='ai'). Best-effort —
+	// если падает, plan уже сохранён, queue best-effort. Идемпотентно через
+	// ExistsByTitleToday внутри SyncAIItems.
+	if uc.Queue != nil {
+		sync := &SyncAIItems{Plans: uc.Plans, Queue: uc.Queue, Log: uc.Log, Now: uc.Now}
+		if syncErr := sync.Do(ctx, in.UserID); syncErr != nil && uc.Log != nil {
+			uc.Log.Warn("hone.GeneratePlan.Do: SyncAIItems failed",
+				slog.Any("err", syncErr),
+				slog.String("user_id", in.UserID.String()))
+		}
 	}
 	return saved, nil
 }

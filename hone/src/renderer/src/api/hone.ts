@@ -26,6 +26,16 @@ export interface HoneStats {
   totalFocusedSeconds: number;
   heatmap: FocusDay[];
   lastSevenDays: FocusDay[];
+  queue: QueueStats;
+}
+
+export interface QueueStats {
+  todayTotal: number;
+  todayDone: number;
+  // 0..1, доли сделанных за 7 дней по source. Сумма = 1 если есть данные,
+  // 0/0 если нет done items.
+  aiShare: number;
+  userShare: number;
 }
 
 // PlanItem — один ряд в дневном плане. rationale / skillKey — новые поля
@@ -251,7 +261,59 @@ export async function getStats(upToDate?: string): Promise<HoneStats> {
       seconds: d.seconds,
       sessions: d.sessions,
     })),
+    queue: resp.queue
+      ? {
+          todayTotal: resp.queue.todayTotal,
+          todayDone: resp.queue.todayDone,
+          aiShare: resp.queue.aiShare,
+          userShare: resp.queue.userShare,
+        }
+      : { todayTotal: 0, todayDone: 0, aiShare: 0, userShare: 0 },
   };
+}
+
+// ─── Focus Queue ────────────────────────────────────────────────────────────
+
+export type QueueItemStatus = 'todo' | 'in_progress' | 'done';
+export type QueueItemSource = 'ai' | 'user';
+
+export interface QueueItem {
+  id: string;
+  title: string;
+  source: QueueItemSource;
+  status: QueueItemStatus;
+  skillKey: string;
+  date: string;
+}
+
+function unwrapQueueItem(q: { id: string; title: string; source: string; status: string; skillKey: string; date: string }): QueueItem {
+  return {
+    id: q.id,
+    title: q.title,
+    source: (q.source === 'ai' ? 'ai' : 'user') as QueueItemSource,
+    status: (q.status === 'in_progress' || q.status === 'done' ? q.status : 'todo') as QueueItemStatus,
+    skillKey: q.skillKey ?? '',
+    date: q.date,
+  };
+}
+
+export async function listQueue(date?: string): Promise<QueueItem[]> {
+  const resp = await client.listQueue({ date: date ?? '' });
+  return resp.items.map(unwrapQueueItem);
+}
+
+export async function addQueueItem(title: string): Promise<QueueItem> {
+  const resp = await client.addQueueItem({ title });
+  return unwrapQueueItem(resp);
+}
+
+export async function updateQueueItemStatus(id: string, status: QueueItemStatus): Promise<QueueItem> {
+  const resp = await client.updateQueueItemStatus({ id, status });
+  return unwrapQueueItem(resp);
+}
+
+export async function deleteQueueItem(id: string): Promise<void> {
+  await client.deleteQueueItem({ id });
 }
 
 // ─── Plan ───────────────────────────────────────────────────────────────────
