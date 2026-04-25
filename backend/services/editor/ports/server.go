@@ -42,6 +42,7 @@ type EditorServer struct {
 	InviteUC *app.CreateInvite
 	FreezeUC *app.Freeze
 	ReplayUC *app.Replay
+	RunUC    *app.RunCode
 	WSBase   string // used to synthesise ws_url on the EditorRoom DTO
 	Log      *slog.Logger
 }
@@ -53,12 +54,13 @@ func NewEditorServer(
 	invite *app.CreateInvite,
 	freeze *app.Freeze,
 	replay *app.Replay,
+	run *app.RunCode,
 	wsBase string,
 	log *slog.Logger,
 ) *EditorServer {
 	return &EditorServer{
 		CreateUC: create, GetUC: get, InviteUC: invite,
-		FreezeUC: freeze, ReplayUC: replay,
+		FreezeUC: freeze, ReplayUC: replay, RunUC: run,
 		WSBase: wsBase, Log: log,
 	}
 }
@@ -190,6 +192,41 @@ func (s *EditorServer) GetReplay(
 	return connect.NewResponse(out), nil
 }
 
+// RunCode implements druz9.v1.EditorService/RunCode.
+func (s *EditorServer) RunCode(
+	ctx context.Context,
+	req *connect.Request[pb.RunCodeRequest],
+) (*connect.Response[pb.RunCodeResponse], error) {
+	uid, ok := sharedMw.UserIDFromContext(ctx)
+	if !ok {
+		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("unauthenticated"))
+	}
+	if s.RunUC == nil {
+		return nil, connect.NewError(connect.CodeUnavailable,
+			errors.New("sandbox is not configured — set JUDGE0_URL"))
+	}
+	roomID, err := uuid.Parse(req.Msg.GetRoomId())
+	if err != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("invalid room_id: %w", err))
+	}
+	res, err := s.RunUC.Do(ctx, app.RunCodeInput{
+		RoomID:   roomID,
+		CallerID: uid,
+		Code:     req.Msg.GetCode(),
+		Language: languageFromProtoEditor(req.Msg.GetLanguage()),
+	})
+	if err != nil {
+		return nil, s.toConnectErr(err)
+	}
+	return connect.NewResponse(&pb.RunCodeResponse{
+		Stdout:   res.Stdout,
+		Stderr:   res.Stderr,
+		ExitCode: res.ExitCode,
+		TimeMs:   res.TimeMs,
+		Status:   res.Status,
+	}), nil
+}
+
 // ── error mapping ─────────────────────────────────────────────────────────
 
 func (s *EditorServer) toConnectErr(err error) error {
@@ -201,6 +238,10 @@ func (s *EditorServer) toConnectErr(err error) error {
 	case errors.Is(err, domain.ErrInvalidInvite),
 		errors.Is(err, domain.ErrInvalidState):
 		return connect.NewError(connect.CodeInvalidArgument, err)
+	case errors.Is(err, domain.ErrSandboxUnavailable):
+		return connect.NewError(connect.CodeUnavailable, err)
+	case errors.Is(err, domain.ErrRateLimited):
+		return connect.NewError(connect.CodeResourceExhausted, err)
 	default:
 		if s.Log != nil {
 			s.Log.Error("editor: unexpected error", slog.Any("err", err))

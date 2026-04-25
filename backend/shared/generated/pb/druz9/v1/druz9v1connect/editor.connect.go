@@ -53,6 +53,8 @@ const (
 	EditorServiceFreezeRoomProcedure = "/druz9.v1.EditorService/FreezeRoom"
 	// EditorServiceGetReplayProcedure is the fully-qualified name of the EditorService's GetReplay RPC.
 	EditorServiceGetReplayProcedure = "/druz9.v1.EditorService/GetReplay"
+	// EditorServiceRunCodeProcedure is the fully-qualified name of the EditorService's RunCode RPC.
+	EditorServiceRunCodeProcedure = "/druz9.v1.EditorService/RunCode"
 )
 
 // EditorServiceClient is a client for the druz9.v1.EditorService service.
@@ -67,6 +69,10 @@ type EditorServiceClient interface {
 	FreezeRoom(context.Context, *connect.Request[v1.FreezeRoomRequest]) (*connect.Response[v1.EditorRoom], error)
 	// GetReplay returns a presigned object-storage URL for the replay JSONL.
 	GetReplay(context.Context, *connect.Request[v1.GetReplayRequest]) (*connect.Response[v1.ReplayUrl], error)
+	// RunCode executes the given source against a sandboxed Judge0 instance.
+	// Caller must be a participant of the room. Result is ephemeral — nothing
+	// is persisted on the server. Rate-limited per user.
+	RunCode(context.Context, *connect.Request[v1.RunCodeRequest]) (*connect.Response[v1.RunCodeResponse], error)
 }
 
 // NewEditorServiceClient constructs a client for the druz9.v1.EditorService service. By default, it
@@ -110,6 +116,12 @@ func NewEditorServiceClient(httpClient connect.HTTPClient, baseURL string, opts 
 			connect.WithSchema(editorServiceMethods.ByName("GetReplay")),
 			connect.WithClientOptions(opts...),
 		),
+		runCode: connect.NewClient[v1.RunCodeRequest, v1.RunCodeResponse](
+			httpClient,
+			baseURL+EditorServiceRunCodeProcedure,
+			connect.WithSchema(editorServiceMethods.ByName("RunCode")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -120,6 +132,7 @@ type editorServiceClient struct {
 	createInvite *connect.Client[v1.CreateInviteRequest, v1.InviteLink]
 	freezeRoom   *connect.Client[v1.FreezeRoomRequest, v1.EditorRoom]
 	getReplay    *connect.Client[v1.GetReplayRequest, v1.ReplayUrl]
+	runCode      *connect.Client[v1.RunCodeRequest, v1.RunCodeResponse]
 }
 
 // CreateRoom calls druz9.v1.EditorService.CreateRoom.
@@ -147,6 +160,11 @@ func (c *editorServiceClient) GetReplay(ctx context.Context, req *connect.Reques
 	return c.getReplay.CallUnary(ctx, req)
 }
 
+// RunCode calls druz9.v1.EditorService.RunCode.
+func (c *editorServiceClient) RunCode(ctx context.Context, req *connect.Request[v1.RunCodeRequest]) (*connect.Response[v1.RunCodeResponse], error) {
+	return c.runCode.CallUnary(ctx, req)
+}
+
 // EditorServiceHandler is an implementation of the druz9.v1.EditorService service.
 type EditorServiceHandler interface {
 	// CreateRoom creates a new collaborative editor room.
@@ -159,6 +177,10 @@ type EditorServiceHandler interface {
 	FreezeRoom(context.Context, *connect.Request[v1.FreezeRoomRequest]) (*connect.Response[v1.EditorRoom], error)
 	// GetReplay returns a presigned object-storage URL for the replay JSONL.
 	GetReplay(context.Context, *connect.Request[v1.GetReplayRequest]) (*connect.Response[v1.ReplayUrl], error)
+	// RunCode executes the given source against a sandboxed Judge0 instance.
+	// Caller must be a participant of the room. Result is ephemeral — nothing
+	// is persisted on the server. Rate-limited per user.
+	RunCode(context.Context, *connect.Request[v1.RunCodeRequest]) (*connect.Response[v1.RunCodeResponse], error)
 }
 
 // NewEditorServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -198,6 +220,12 @@ func NewEditorServiceHandler(svc EditorServiceHandler, opts ...connect.HandlerOp
 		connect.WithSchema(editorServiceMethods.ByName("GetReplay")),
 		connect.WithHandlerOptions(opts...),
 	)
+	editorServiceRunCodeHandler := connect.NewUnaryHandler(
+		EditorServiceRunCodeProcedure,
+		svc.RunCode,
+		connect.WithSchema(editorServiceMethods.ByName("RunCode")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/druz9.v1.EditorService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case EditorServiceCreateRoomProcedure:
@@ -210,6 +238,8 @@ func NewEditorServiceHandler(svc EditorServiceHandler, opts ...connect.HandlerOp
 			editorServiceFreezeRoomHandler.ServeHTTP(w, r)
 		case EditorServiceGetReplayProcedure:
 			editorServiceGetReplayHandler.ServeHTTP(w, r)
+		case EditorServiceRunCodeProcedure:
+			editorServiceRunCodeHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -237,4 +267,8 @@ func (UnimplementedEditorServiceHandler) FreezeRoom(context.Context, *connect.Re
 
 func (UnimplementedEditorServiceHandler) GetReplay(context.Context, *connect.Request[v1.GetReplayRequest]) (*connect.Response[v1.ReplayUrl], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.EditorService.GetReplay is not implemented"))
+}
+
+func (UnimplementedEditorServiceHandler) RunCode(context.Context, *connect.Request[v1.RunCodeRequest]) (*connect.Response[v1.RunCodeResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.EditorService.RunCode is not implemented"))
 }

@@ -10,7 +10,7 @@
 /* eslint-disable */
 // @ts-nocheck
 
-import { CreateInviteRequest, CreateRoomRequest, EditorRoom, FreezeRoomRequest, GetReplayRequest, GetRoomRequest, InviteLink, ReplayUrl } from "./editor_pb.js";
+import { CreateInviteRequest, CreateRoomRequest, EditorRoom, FreezeRoomRequest, GetReplayRequest, GetRoomRequest, InviteLink, ReplayUrl, RunCodeRequest, RunCodeResponse } from "./editor_pb.js";
 import { MethodKind } from "@bufbuild/protobuf";
 
 /**
@@ -72,6 +72,19 @@ export const EditorService = {
       name: "GetReplay",
       I: GetReplayRequest,
       O: ReplayUrl,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * RunCode executes the given source against a sandboxed Judge0 instance.
+     * Caller must be a participant of the room. Result is ephemeral — nothing
+     * is persisted on the server. Rate-limited per user.
+     *
+     * @generated from rpc druz9.v1.EditorService.RunCode
+     */
+    runCode: {
+      name: "RunCode",
+      I: RunCodeRequest,
+      O: RunCodeResponse,
       kind: MethodKind.Unary,
     },
   }

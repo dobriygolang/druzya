@@ -88,6 +88,26 @@ message GetReplayRequest {
   string room_id = 1;
 }
 
+// RunCodeRequest submits a one-shot code execution against a sandboxed
+// Judge0 backend. The editor domain does NOT persist runs — the bounded
+// context is "stateless run". Output is ephemeral on the client.
+message RunCodeRequest {
+  string room_id = 1;
+  string code = 2;
+  Language language = 3;
+}
+
+// RunCodeResponse is the one-shot execution result from Judge0.
+// exit_code / time_ms / status come straight from the underlying grader;
+// stdout / stderr are already base64-decoded on the server.
+message RunCodeResponse {
+  string stdout = 1;
+  string stderr = 2;
+  int32 exit_code = 3;
+  int32 time_ms = 4;
+  string status = 5;
+}
+
 service EditorService {
   // CreateRoom creates a new collaborative editor room.
   rpc CreateRoom(CreateRoomRequest) returns (EditorRoom) {
@@ -121,5 +141,15 @@ service EditorService {
   // GetReplay returns a presigned object-storage URL for the replay JSONL.
   rpc GetReplay(GetReplayRequest) returns (ReplayUrl) {
     option (google.api.http) = {get: "/api/v1/editor/room/{room_id}/replay"};
+  }
+
+  // RunCode executes the given source against a sandboxed Judge0 instance.
+  // Caller must be a participant of the room. Result is ephemeral — nothing
+  // is persisted on the server. Rate-limited per user.
+  rpc RunCode(RunCodeRequest) returns (RunCodeResponse) {
+    option (google.api.http) = {
+      post: "/api/v1/editor/room/{room_id}/run"
+      body: "*"
+    };
   }
 }

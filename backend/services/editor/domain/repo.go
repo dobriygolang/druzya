@@ -26,6 +26,32 @@ var ErrInvalidInvite = errors.New("editor: invalid invite token")
 // requested transition (e.g. write to an expired room).
 var ErrInvalidState = errors.New("editor: invalid state")
 
+// ErrSandboxUnavailable is returned when the Judge0 sandbox cannot be reached
+// or is not configured. The transport layer maps this to Connect's
+// CodeUnavailable (HTTP 503). Anti-fallback policy: we never fabricate a run
+// result when we could not actually execute.
+var ErrSandboxUnavailable = errors.New("editor: sandbox unavailable")
+
+// ErrRateLimited is returned when the per-user RunCode budget is exhausted.
+// The transport layer maps this to Connect's CodeResourceExhausted (HTTP 429).
+var ErrRateLimited = errors.New("editor: rate limited")
+
+// RunResult is the domain projection of a Judge0 /submissions response
+// mapped to what the UI wants to render under the editor.
+type RunResult struct {
+	Stdout   string
+	Stderr   string
+	ExitCode int32
+	TimeMs   int32
+	Status   string
+}
+
+// CodeRunner is the port for a sandboxed one-shot execution backend.
+// Implementations live in infra/ (Judge0, or a future stub).
+type CodeRunner interface {
+	Run(ctx context.Context, code string, language enums.Language) (RunResult, error)
+}
+
 // ─────────────────────────────────────────────────────────────────────────
 // Room persistence
 // ─────────────────────────────────────────────────────────────────────────

@@ -32,12 +32,14 @@ import {
   getRoom,
   createInvite,
   connectEditorWs,
+  runCode,
   b64ToBytes,
   bytesToB64,
   Language,
   type EditorRoom,
   type EditorWsStatus,
   type RoomType,
+  type RunResult,
 } from '../api/editor';
 
 type Page = { kind: 'list' } | { kind: 'room'; roomId: string };
@@ -412,11 +414,17 @@ function RoomView({ roomId, onBack }: { roomId: string; onBack: () => void }) {
   const [loadError, setLoadError] = useState<{ code: Code | null; msg: string } | null>(null);
   const [wsStatus, setWsStatus] = useState<EditorWsStatus>('connecting');
   const [copied, setCopied] = useState(false);
+  const [running, setRunning] = useState(false);
+  const [runResult, setRunResult] = useState<RunResult | null>(null);
+  const [runError, setRunError] = useState<string | null>(null);
+  const [outputTab, setOutputTab] = useState<'stdout' | 'stderr'>('stdout');
+  const [panelOpen, setPanelOpen] = useState(false);
 
   const ydocRef = useRef<Y.Doc | null>(null);
   const viewRef = useRef<EditorView | null>(null);
   const sendRef = useRef<((payload: Uint8Array) => void) | null>(null);
   const wsCloseRef = useRef<(() => void) | null>(null);
+  const runningRef = useRef(false);
 
   // Load room meta.
   useEffect(() => {
@@ -508,6 +516,60 @@ function RoomView({ roomId, onBack }: { roomId: string; onBack: () => void }) {
 
   const shareURL = `${WEB_BASE_URL}/editor/${parsedId}`;
 
+  const handleRun = async () => {
+    if (!room) return;
+    if (runningRef.current) return;
+    const view = viewRef.current;
+    if (!view) return;
+    const code = view.state.doc.toString();
+    runningRef.current = true;
+    setRunning(true);
+    setRunError(null);
+    setPanelOpen(true);
+    try {
+      const res = await runCode(room.id, code, room.language);
+      setRunResult(res);
+      // Auto-focus stderr when it has content and stdout doesn't.
+      if (res.stderr && !res.stdout) setOutputTab('stderr');
+      else setOutputTab('stdout');
+    } catch (err: unknown) {
+      const ce = ConnectError.from(err);
+      let label: string;
+      switch (ce.code) {
+        case Code.Unavailable:
+          label = 'Sandbox not configured.';
+          break;
+        case Code.ResourceExhausted:
+          label = 'Slow down — limit reached.';
+          break;
+        case Code.PermissionDenied:
+          label = 'You are not a participant.';
+          break;
+        default:
+          label = ce.rawMessage || ce.message;
+      }
+      setRunResult(null);
+      setRunError(label);
+    } finally {
+      runningRef.current = false;
+      setRunning(false);
+    }
+  };
+
+  // ⌘↵ / Ctrl+Enter hotkey.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+        e.preventDefault();
+        void handleRun();
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+    // handleRun closes over room/view refs — viewRef is a ref (stable), room is in state.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [room]);
+
   const handleShare = async () => {
     try {
       await navigator.clipboard.writeText(shareURL);
@@ -585,12 +647,30 @@ function RoomView({ roomId, onBack }: { roomId: string; onBack: () => void }) {
             <GhostBtn onClick={() => void handleShare()} active={copied}>
               {copied ? '✓ COPIED' : 'COPY URL'}
             </GhostBtn>
+            <PrimaryBtn
+              onClick={() => void handleRun()}
+              disabled={running}
+              title="Run code (⌘↵)"
+            >
+              {running ? '⏵ RUNNING…' : '▶ RUN'}
+            </PrimaryBtn>
             <PrimaryBtn onClick={() => void handleOpenWeb()}>Open on web ↗</PrimaryBtn>
           </>
         )}
       </header>
 
       <div id="hone-cm-mount" style={{ overflow: 'auto', background: '#0a0a0a' }} />
+
+      {panelOpen && (
+        <RunOutputPanel
+          running={running}
+          result={runResult}
+          error={runError}
+          activeTab={outputTab}
+          onTabChange={setOutputTab}
+          onClose={() => setPanelOpen(false)}
+        />
+      )}
 
       {loadError && (
         <div
@@ -608,6 +688,148 @@ function RoomView({ roomId, onBack }: { roomId: string; onBack: () => void }) {
           {loadErrorLabel(loadError)}
         </div>
       )}
+    </div>
+  );
+}
+
+// ─── Run output panel ──────────────────────────────────────────────────────
+//
+// Slides up from the bottom. Two tabs (stdout / stderr), a mono-font header
+// with exit code + time_ms, and a close button. Output is ephemeral — nothing
+// lives on the server. The panel hides when `onClose` is invoked.
+function RunOutputPanel({
+  running,
+  result,
+  error,
+  activeTab,
+  onTabChange,
+  onClose,
+}: {
+  running: boolean;
+  result: RunResult | null;
+  error: string | null;
+  activeTab: 'stdout' | 'stderr';
+  onTabChange: (t: 'stdout' | 'stderr') => void;
+  onClose: () => void;
+}) {
+  const hasStdout = !!result?.stdout;
+  const hasStderr = !!result?.stderr;
+  const body = activeTab === 'stdout' ? result?.stdout ?? '' : result?.stderr ?? '';
+
+  return (
+    <div
+      className="slide-from-bottom"
+      style={{
+        position: 'absolute',
+        left: 0,
+        right: 0,
+        bottom: 0,
+        height: 240,
+        background: '#0a0a0a',
+        borderTop: '1px solid rgba(255,255,255,0.08)',
+        display: 'grid',
+        gridTemplateRows: 'auto 1fr',
+        animationDuration: '220ms',
+      }}
+    >
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 8,
+          padding: '8px 16px',
+          borderBottom: '1px solid rgba(255,255,255,0.05)',
+        }}
+      >
+        <button
+          onClick={() => onTabChange('stdout')}
+          className="mono focus-ring"
+          style={{
+            padding: '4px 10px',
+            fontSize: 10,
+            letterSpacing: '.14em',
+            background: activeTab === 'stdout' ? 'rgba(255,255,255,0.08)' : 'transparent',
+            color: activeTab === 'stdout' ? 'var(--ink)' : 'var(--ink-60)',
+            border: '1px solid rgba(255,255,255,0.08)',
+            borderRadius: 5,
+            cursor: 'pointer',
+          }}
+        >
+          STDOUT
+        </button>
+        {(hasStderr || (!running && !!error)) && (
+          <button
+            onClick={() => onTabChange('stderr')}
+            className="mono focus-ring"
+            style={{
+              padding: '4px 10px',
+              fontSize: 10,
+              letterSpacing: '.14em',
+              background: activeTab === 'stderr' ? 'rgba(255,255,255,0.08)' : 'transparent',
+              color: activeTab === 'stderr' ? 'var(--red, #ff7070)' : 'var(--ink-60)',
+              border: '1px solid rgba(255,255,255,0.08)',
+              borderRadius: 5,
+              cursor: 'pointer',
+            }}
+          >
+            STDERR
+          </button>
+        )}
+        <div style={{ flex: 1 }} />
+        {running && (
+          <span
+            className="mono"
+            style={{ fontSize: 10, letterSpacing: '.16em', color: 'var(--ink-60)' }}
+          >
+            running…
+          </span>
+        )}
+        {!running && result && (
+          <span
+            className="mono"
+            style={{ fontSize: 10, letterSpacing: '.12em', color: 'var(--ink-60)' }}
+          >
+            exit {result.exitCode} · {result.timeMs}ms
+            {result.status ? ` · ${result.status.toLowerCase()}` : ''}
+          </span>
+        )}
+        <button
+          onClick={onClose}
+          className="mono focus-ring"
+          title="Hide output"
+          style={{
+            padding: '3px 9px',
+            fontSize: 10,
+            letterSpacing: '.14em',
+            background: 'transparent',
+            color: 'var(--ink-40)',
+            border: '1px solid rgba(255,255,255,0.06)',
+            borderRadius: 5,
+            cursor: 'pointer',
+          }}
+        >
+          ×
+        </button>
+      </div>
+      <pre
+        className="mono"
+        style={{
+          margin: 0,
+          padding: '12px 16px',
+          overflow: 'auto',
+          whiteSpace: 'pre-wrap',
+          fontSize: 12,
+          lineHeight: 1.55,
+          color: error
+            ? 'var(--red, #ff7070)'
+            : activeTab === 'stderr'
+              ? 'var(--red, #ff7070)'
+              : 'var(--ink)',
+        }}
+      >
+        {running && !result && !error ? '…' : null}
+        {error ?? (hasStdout || hasStderr ? body : !running ? '(no output)' : null)}
+      </pre>
     </div>
   );
 }

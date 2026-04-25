@@ -4,6 +4,7 @@ package middleware
 import (
 	"bufio"
 	"context"
+	"fmt"
 	"log/slog"
 	"net"
 	"net/http"
@@ -140,8 +141,13 @@ func (s *statusWriter) Flush() {
 // (gorilla/websocket) мог взять TCP-conn под контроль. Без этого все WS
 // endpoints возвращают «response does not implement http.Hijacker».
 func (s *statusWriter) Hijack() (net.Conn, *bufio.ReadWriter, error) {
-	if h, ok := s.ResponseWriter.(http.Hijacker); ok {
-		return h.Hijack()
+	h, ok := s.ResponseWriter.(http.Hijacker)
+	if !ok {
+		return nil, nil, http.ErrNotSupported
 	}
-	return nil, nil, http.ErrNotSupported
+	conn, rw, err := h.Hijack()
+	if err != nil {
+		return nil, nil, fmt.Errorf("middleware.statusWriter.Hijack: %w", err)
+	}
+	return conn, rw, nil
 }

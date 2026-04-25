@@ -530,3 +530,121 @@ export class GetReplayRequest extends Message<GetReplayRequest> {
   }
 }
 
+/**
+ * RunCodeRequest submits a one-shot code execution against a sandboxed
+ * Judge0 backend. The editor domain does NOT persist runs — the bounded
+ * context is "stateless run". Output is ephemeral on the client.
+ *
+ * @generated from message druz9.v1.RunCodeRequest
+ */
+export class RunCodeRequest extends Message<RunCodeRequest> {
+  /**
+   * @generated from field: string room_id = 1;
+   */
+  roomId = "";
+
+  /**
+   * @generated from field: string code = 2;
+   */
+  code = "";
+
+  /**
+   * @generated from field: druz9.v1.Language language = 3;
+   */
+  language = Language.UNSPECIFIED;
+
+  constructor(data?: PartialMessage<RunCodeRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.RunCodeRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "room_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "code", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 3, name: "language", kind: "enum", T: proto3.getEnumType(Language) },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): RunCodeRequest {
+    return new RunCodeRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): RunCodeRequest {
+    return new RunCodeRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): RunCodeRequest {
+    return new RunCodeRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: RunCodeRequest | PlainMessage<RunCodeRequest> | undefined, b: RunCodeRequest | PlainMessage<RunCodeRequest> | undefined): boolean {
+    return proto3.util.equals(RunCodeRequest, a, b);
+  }
+}
+
+/**
+ * RunCodeResponse is the one-shot execution result from Judge0.
+ * exit_code / time_ms / status come straight from the underlying grader;
+ * stdout / stderr are already base64-decoded on the server.
+ *
+ * @generated from message druz9.v1.RunCodeResponse
+ */
+export class RunCodeResponse extends Message<RunCodeResponse> {
+  /**
+   * @generated from field: string stdout = 1;
+   */
+  stdout = "";
+
+  /**
+   * @generated from field: string stderr = 2;
+   */
+  stderr = "";
+
+  /**
+   * @generated from field: int32 exit_code = 3;
+   */
+  exitCode = 0;
+
+  /**
+   * @generated from field: int32 time_ms = 4;
+   */
+  timeMs = 0;
+
+  /**
+   * @generated from field: string status = 5;
+   */
+  status = "";
+
+  constructor(data?: PartialMessage<RunCodeResponse>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.RunCodeResponse";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "stdout", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "stderr", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 3, name: "exit_code", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 4, name: "time_ms", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 5, name: "status", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): RunCodeResponse {
+    return new RunCodeResponse().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): RunCodeResponse {
+    return new RunCodeResponse().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): RunCodeResponse {
+    return new RunCodeResponse().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: RunCodeResponse | PlainMessage<RunCodeResponse> | undefined, b: RunCodeResponse | PlainMessage<RunCodeResponse> | undefined): boolean {
+    return proto3.util.equals(RunCodeResponse, a, b);
+  }
+}
+

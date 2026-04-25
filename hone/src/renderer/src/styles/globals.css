@@ -453,6 +453,106 @@ textarea {
   will-change: transform, opacity;
 }
 
+/* ─── Aurora theme ──────────────────────────────────────────────── */
+@keyframes aurora-drift {
+  0% { transform: translate3d(-30%, 0, 0) rotate(-12deg); }
+  50% { transform: translate3d(30%, 4%, 0) rotate(-12deg); }
+  100% { transform: translate3d(-30%, 0, 0) rotate(-12deg); }
+}
+@keyframes aurora-hue {
+  0% { filter: hue-rotate(0deg); }
+  100% { filter: hue-rotate(360deg); }
+}
+.aurora-stripe {
+  position: absolute;
+  left: -30%;
+  width: 160%;
+  height: 38%;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(80, 140, 220, 0.18) 25%,
+    rgba(180, 120, 220, 0.22) 50%,
+    rgba(80, 200, 180, 0.18) 75%,
+    transparent 100%
+  );
+  filter: blur(46px);
+  transform: rotate(-12deg);
+  animation: aurora-drift 22s ease-in-out infinite;
+  will-change: transform;
+}
+.aurora-stripe-2 {
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(120, 80, 200, 0.18) 30%,
+    rgba(60, 180, 220, 0.22) 60%,
+    transparent 100%
+  );
+}
+.aurora-stripe-3 {
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(200, 100, 160, 0.16) 25%,
+    rgba(100, 220, 180, 0.2) 70%,
+    transparent 100%
+  );
+}
+@keyframes aurora-shoot {
+  0% { transform: translate(-15vw, 0) rotate(-22deg); opacity: 0; }
+  6% { opacity: 1; }
+  20% { opacity: 0.4; }
+  30%, 100% { transform: translate(120vw, -22vh) rotate(-22deg); opacity: 0; }
+}
+.aurora-shoot {
+  position: absolute;
+  left: 0;
+  width: 120px;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.85), transparent);
+  animation: aurora-shoot 12s linear infinite;
+  filter: drop-shadow(0 0 4px rgba(255, 255, 255, 0.6));
+  will-change: transform, opacity;
+}
+
+/* ─── Grid Rain theme ───────────────────────────────────────────── */
+@keyframes rain-fall {
+  0% { transform: translateY(-110%); }
+  100% { transform: translateY(110vh); }
+}
+.rain-col {
+  position: absolute;
+  top: 0;
+  display: flex;
+  flex-direction: column;
+  font-size: 11px;
+  line-height: 1.15;
+  color: rgba(190, 240, 200, 0.55);
+  text-shadow: 0 0 6px rgba(120, 240, 160, 0.35);
+  will-change: transform;
+}
+
+/* ─── Particles theme ───────────────────────────────────────────── */
+@keyframes particles-breathe {
+  0%, 100% { opacity: 0.6; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.05); }
+}
+
+/* ─── Abyss theme ───────────────────────────────────────────────── */
+@keyframes abyss-rotate {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+@keyframes abyss-rotate-rev {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(-360deg); }
+}
+@keyframes abyss-breathe {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+}
+
 /* Smooth segmented swap — для dock'а где hover меняет content без layout-jump */
 .swap-fade > * {
   transition: opacity var(--t-fast);

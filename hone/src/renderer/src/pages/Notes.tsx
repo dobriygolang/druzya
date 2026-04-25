@@ -15,6 +15,7 @@ import { ConnectError, Code } from '@connectrpc/connect';
 
 import { Kbd } from '../components/primitives/Kbd';
 import { MarkdownView } from '../components/MarkdownView';
+import { RichMarkdownEditor } from '../components/RichMarkdownEditor';
 import {
   listNotes,
   getNote,
@@ -342,9 +343,25 @@ export function NotesPage() {
             No notes yet. Press <Kbd>⌘N</Kbd> to add the first one.
           </p>
         ) : !active ? (
-          <p style={{ color: 'var(--ink-40)', fontSize: 14 }}>{activeError ?? 'Loading note…'}</p>
+          <div
+            className="fadein"
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              height: '60%',
+              color: 'var(--ink-40)',
+              gap: 10,
+            }}
+          >
+            <p style={{ fontSize: 14, margin: 0 }}>
+              {activeError ?? 'Pick a note or hit'} <Kbd>⌘N</Kbd>
+            </p>
+          </div>
         ) : (
           <ActiveNoteEditor
+            key={active.id}
             title={draftTitle}
             body={draftBody}
             mode={mode}
@@ -500,7 +517,7 @@ function ActiveNoteEditor({
   confirmingDelete,
 }: ActiveEditorProps) {
   return (
-    <div>
+    <div className="fadein" style={{ animationDuration: '220ms' }}>
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 16 }}>
         <input
           value={title}
@@ -534,21 +551,13 @@ function ActiveNoteEditor({
         </div>
       </div>
       {mode === 'edit' ? (
-        <textarea
-          value={body}
-          onChange={(e) => onBodyChange(e.target.value)}
-          rows={20}
-          className="mono"
-          style={{
-            width: '100%',
-            marginTop: 26,
-            fontSize: 13,
-            lineHeight: 1.75,
-            color: 'var(--ink-90)',
-            background: 'transparent',
-            resize: 'none',
-          }}
-        />
+        <div style={{ marginTop: 26 }}>
+          <RichMarkdownEditor
+            value={body}
+            onChange={onBodyChange}
+            placeholder="Start writing — select text for formatting, ⌘B / ⌘I / ⌘K"
+          />
+        </div>
       ) : (
         <div style={{ marginTop: 26 }}>
           <MarkdownView source={body} />

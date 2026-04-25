@@ -2,6 +2,7 @@ package metrics
 
 import (
 	"bufio"
+	"fmt"
 	"net"
 	"net/http"
 	"strconv"
@@ -69,8 +70,13 @@ func (s *statusCapture) Flush() {
 // использует Hijacker при upgrade'е TCP-conn. Без этого все /ws/* endpoints
 // падают с «response does not implement http.Hijacker».
 func (s *statusCapture) Hijack() (net.Conn, *bufio.ReadWriter, error) {
-	if h, ok := s.ResponseWriter.(http.Hijacker); ok {
-		return h.Hijack()
+	h, ok := s.ResponseWriter.(http.Hijacker)
+	if !ok {
+		return nil, nil, http.ErrNotSupported
 	}
-	return nil, nil, http.ErrNotSupported
+	conn, rw, err := h.Hijack()
+	if err != nil {
+		return nil, nil, fmt.Errorf("metrics.statusCapture.Hijack: %w", err)
+	}
+	return conn, rw, nil
 }

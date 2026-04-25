@@ -645,6 +645,148 @@ func (x *GetReplayRequest) GetRoomId() string {
 	return ""
 }
 
+// RunCodeRequest submits a one-shot code execution against a sandboxed
+// Judge0 backend. The editor domain does NOT persist runs — the bounded
+// context is "stateless run". Output is ephemeral on the client.
+type RunCodeRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	RoomId        string                 `protobuf:"bytes,1,opt,name=room_id,json=roomId,proto3" json:"room_id,omitempty"`
+	Code          string                 `protobuf:"bytes,2,opt,name=code,proto3" json:"code,omitempty"`
+	Language      Language               `protobuf:"varint,3,opt,name=language,proto3,enum=druz9.v1.Language" json:"language,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RunCodeRequest) Reset() {
+	*x = RunCodeRequest{}
+	mi := &file_druz9_v1_editor_proto_msgTypes[10]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RunCodeRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RunCodeRequest) ProtoMessage() {}
+
+func (x *RunCodeRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_editor_proto_msgTypes[10]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RunCodeRequest.ProtoReflect.Descriptor instead.
+func (*RunCodeRequest) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_editor_proto_rawDescGZIP(), []int{10}
+}
+
+func (x *RunCodeRequest) GetRoomId() string {
+	if x != nil {
+		return x.RoomId
+	}
+	return ""
+}
+
+func (x *RunCodeRequest) GetCode() string {
+	if x != nil {
+		return x.Code
+	}
+	return ""
+}
+
+func (x *RunCodeRequest) GetLanguage() Language {
+	if x != nil {
+		return x.Language
+	}
+	return Language_LANGUAGE_UNSPECIFIED
+}
+
+// RunCodeResponse is the one-shot execution result from Judge0.
+// exit_code / time_ms / status come straight from the underlying grader;
+// stdout / stderr are already base64-decoded on the server.
+type RunCodeResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Stdout        string                 `protobuf:"bytes,1,opt,name=stdout,proto3" json:"stdout,omitempty"`
+	Stderr        string                 `protobuf:"bytes,2,opt,name=stderr,proto3" json:"stderr,omitempty"`
+	ExitCode      int32                  `protobuf:"varint,3,opt,name=exit_code,json=exitCode,proto3" json:"exit_code,omitempty"`
+	TimeMs        int32                  `protobuf:"varint,4,opt,name=time_ms,json=timeMs,proto3" json:"time_ms,omitempty"`
+	Status        string                 `protobuf:"bytes,5,opt,name=status,proto3" json:"status,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RunCodeResponse) Reset() {
+	*x = RunCodeResponse{}
+	mi := &file_druz9_v1_editor_proto_msgTypes[11]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RunCodeResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RunCodeResponse) ProtoMessage() {}
+
+func (x *RunCodeResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_editor_proto_msgTypes[11]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RunCodeResponse.ProtoReflect.Descriptor instead.
+func (*RunCodeResponse) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_editor_proto_rawDescGZIP(), []int{11}
+}
+
+func (x *RunCodeResponse) GetStdout() string {
+	if x != nil {
+		return x.Stdout
+	}
+	return ""
+}
+
+func (x *RunCodeResponse) GetStderr() string {
+	if x != nil {
+		return x.Stderr
+	}
+	return ""
+}
+
+func (x *RunCodeResponse) GetExitCode() int32 {
+	if x != nil {
+		return x.ExitCode
+	}
+	return 0
+}
+
+func (x *RunCodeResponse) GetTimeMs() int32 {
+	if x != nil {
+		return x.TimeMs
+	}
+	return 0
+}
+
+func (x *RunCodeResponse) GetStatus() string {
+	if x != nil {
+		return x.Status
+	}
+	return ""
+}
+
 var File_druz9_v1_editor_proto protoreflect.FileDescriptor
 
 const file_druz9_v1_editor_proto_rawDesc = "" +
@@ -696,7 +838,17 @@ const file_druz9_v1_editor_proto_rawDesc = "" +
 	"\aroom_id\x18\x01 \x01(\tR\x06roomId\x12\x16\n" +
 	"\x06frozen\x18\x02 \x01(\bR\x06frozen\"+\n" +
 	"\x10GetReplayRequest\x12\x17\n" +
-	"\aroom_id\x18\x01 \x01(\tR\x06roomId2\xa6\x04\n" +
+	"\aroom_id\x18\x01 \x01(\tR\x06roomId\"m\n" +
+	"\x0eRunCodeRequest\x12\x17\n" +
+	"\aroom_id\x18\x01 \x01(\tR\x06roomId\x12\x12\n" +
+	"\x04code\x18\x02 \x01(\tR\x04code\x12.\n" +
+	"\blanguage\x18\x03 \x01(\x0e2\x12.druz9.v1.LanguageR\blanguage\"\x8f\x01\n" +
+	"\x0fRunCodeResponse\x12\x16\n" +
+	"\x06stdout\x18\x01 \x01(\tR\x06stdout\x12\x16\n" +
+	"\x06stderr\x18\x02 \x01(\tR\x06stderr\x12\x1b\n" +
+	"\texit_code\x18\x03 \x01(\x05R\bexitCode\x12\x17\n" +
+	"\atime_ms\x18\x04 \x01(\x05R\x06timeMs\x12\x16\n" +
+	"\x06status\x18\x05 \x01(\tR\x06status2\x94\x05\n" +
 	"\rEditorService\x12_\n" +
 	"\n" +
 	"CreateRoom\x12\x1b.druz9.v1.CreateRoomRequest\x1a\x14.druz9.v1.EditorRoom\"\x1e\x82\xd3\xe4\x93\x02\x18:\x01*\"\x13/api/v1/editor/room\x12`\n" +
@@ -704,7 +856,8 @@ const file_druz9_v1_editor_proto_rawDesc = "" +
 	"\fCreateInvite\x12\x1d.druz9.v1.CreateInviteRequest\x1a\x14.druz9.v1.InviteLink\"/\x82\xd3\xe4\x93\x02):\x01*\"$/api/v1/editor/room/{room_id}/invite\x12p\n" +
 	"\n" +
 	"FreezeRoom\x12\x1b.druz9.v1.FreezeRoomRequest\x1a\x14.druz9.v1.EditorRoom\"/\x82\xd3\xe4\x93\x02):\x01*\"$/api/v1/editor/room/{room_id}/freeze\x12j\n" +
-	"\tGetReplay\x12\x1a.druz9.v1.GetReplayRequest\x1a\x13.druz9.v1.ReplayUrl\",\x82\xd3\xe4\x93\x02&\x12$/api/v1/editor/room/{room_id}/replayB\x88\x01\n" +
+	"\tGetReplay\x12\x1a.druz9.v1.GetReplayRequest\x1a\x13.druz9.v1.ReplayUrl\",\x82\xd3\xe4\x93\x02&\x12$/api/v1/editor/room/{room_id}/replay\x12l\n" +
+	"\aRunCode\x12\x18.druz9.v1.RunCodeRequest\x1a\x19.druz9.v1.RunCodeResponse\",\x82\xd3\xe4\x93\x02&:\x01*\"!/api/v1/editor/room/{room_id}/runB\x88\x01\n" +
 	"\fcom.druz9.v1B\vEditorProtoP\x01Z*druz9/shared/generated/pb/druz9/v1;druz9v1\xa2\x02\x03DXX\xaa\x02\bDruz9.V1\xca\x02\bDruz9\\V1\xe2\x02\x14Druz9\\V1\\GPBMetadata\xea\x02\tDruz9::V1b\x06proto3"
 
 var (
@@ -719,7 +872,7 @@ func file_druz9_v1_editor_proto_rawDescGZIP() []byte {
 	return file_druz9_v1_editor_proto_rawDescData
 }
 
-var file_druz9_v1_editor_proto_msgTypes = make([]protoimpl.MessageInfo, 10)
+var file_druz9_v1_editor_proto_msgTypes = make([]protoimpl.MessageInfo, 12)
 var file_druz9_v1_editor_proto_goTypes = []any{
 	(*EditorTaskPublic)(nil),      // 0: druz9.v1.EditorTaskPublic
 	(*EditorParticipant)(nil),     // 1: druz9.v1.EditorParticipant
@@ -731,38 +884,43 @@ var file_druz9_v1_editor_proto_goTypes = []any{
 	(*CreateInviteRequest)(nil),   // 7: druz9.v1.CreateInviteRequest
 	(*FreezeRoomRequest)(nil),     // 8: druz9.v1.FreezeRoomRequest
 	(*GetReplayRequest)(nil),      // 9: druz9.v1.GetReplayRequest
-	(Difficulty)(0),               // 10: druz9.v1.Difficulty
-	(Section)(0),                  // 11: druz9.v1.Section
-	(EditorRole)(0),               // 12: druz9.v1.EditorRole
-	(Language)(0),                 // 13: druz9.v1.Language
-	(*timestamppb.Timestamp)(nil), // 14: google.protobuf.Timestamp
+	(*RunCodeRequest)(nil),        // 10: druz9.v1.RunCodeRequest
+	(*RunCodeResponse)(nil),       // 11: druz9.v1.RunCodeResponse
+	(Difficulty)(0),               // 12: druz9.v1.Difficulty
+	(Section)(0),                  // 13: druz9.v1.Section
+	(EditorRole)(0),               // 14: druz9.v1.EditorRole
+	(Language)(0),                 // 15: druz9.v1.Language
+	(*timestamppb.Timestamp)(nil), // 16: google.protobuf.Timestamp
 }
 var file_druz9_v1_editor_proto_depIdxs = []int32{
-	10, // 0: druz9.v1.EditorTaskPublic.difficulty:type_name -> druz9.v1.Difficulty
-	11, // 1: druz9.v1.EditorTaskPublic.section:type_name -> druz9.v1.Section
-	12, // 2: druz9.v1.EditorParticipant.role:type_name -> druz9.v1.EditorRole
+	12, // 0: druz9.v1.EditorTaskPublic.difficulty:type_name -> druz9.v1.Difficulty
+	13, // 1: druz9.v1.EditorTaskPublic.section:type_name -> druz9.v1.Section
+	14, // 2: druz9.v1.EditorParticipant.role:type_name -> druz9.v1.EditorRole
 	0,  // 3: druz9.v1.EditorRoom.task:type_name -> druz9.v1.EditorTaskPublic
-	13, // 4: druz9.v1.EditorRoom.language:type_name -> druz9.v1.Language
+	15, // 4: druz9.v1.EditorRoom.language:type_name -> druz9.v1.Language
 	1,  // 5: druz9.v1.EditorRoom.participants:type_name -> druz9.v1.EditorParticipant
-	14, // 6: druz9.v1.EditorRoom.expires_at:type_name -> google.protobuf.Timestamp
-	14, // 7: druz9.v1.InviteLink.expires_at:type_name -> google.protobuf.Timestamp
-	14, // 8: druz9.v1.ReplayUrl.expires_at:type_name -> google.protobuf.Timestamp
-	13, // 9: druz9.v1.CreateRoomRequest.language:type_name -> druz9.v1.Language
-	5,  // 10: druz9.v1.EditorService.CreateRoom:input_type -> druz9.v1.CreateRoomRequest
-	6,  // 11: druz9.v1.EditorService.GetRoom:input_type -> druz9.v1.GetRoomRequest
-	7,  // 12: druz9.v1.EditorService.CreateInvite:input_type -> druz9.v1.CreateInviteRequest
-	8,  // 13: druz9.v1.EditorService.FreezeRoom:input_type -> druz9.v1.FreezeRoomRequest
-	9,  // 14: druz9.v1.EditorService.GetReplay:input_type -> druz9.v1.GetReplayRequest
-	2,  // 15: druz9.v1.EditorService.CreateRoom:output_type -> druz9.v1.EditorRoom
-	2,  // 16: druz9.v1.EditorService.GetRoom:output_type -> druz9.v1.EditorRoom
-	3,  // 17: druz9.v1.EditorService.CreateInvite:output_type -> druz9.v1.InviteLink
-	2,  // 18: druz9.v1.EditorService.FreezeRoom:output_type -> druz9.v1.EditorRoom
-	4,  // 19: druz9.v1.EditorService.GetReplay:output_type -> druz9.v1.ReplayUrl
-	15, // [15:20] is the sub-list for method output_type
-	10, // [10:15] is the sub-list for method input_type
-	10, // [10:10] is the sub-list for extension type_name
-	10, // [10:10] is the sub-list for extension extendee
-	0,  // [0:10] is the sub-list for field type_name
+	16, // 6: druz9.v1.EditorRoom.expires_at:type_name -> google.protobuf.Timestamp
+	16, // 7: druz9.v1.InviteLink.expires_at:type_name -> google.protobuf.Timestamp
+	16, // 8: druz9.v1.ReplayUrl.expires_at:type_name -> google.protobuf.Timestamp
+	15, // 9: druz9.v1.CreateRoomRequest.language:type_name -> druz9.v1.Language
+	15, // 10: druz9.v1.RunCodeRequest.language:type_name -> druz9.v1.Language
+	5,  // 11: druz9.v1.EditorService.CreateRoom:input_type -> druz9.v1.CreateRoomRequest
+	6,  // 12: druz9.v1.EditorService.GetRoom:input_type -> druz9.v1.GetRoomRequest
+	7,  // 13: druz9.v1.EditorService.CreateInvite:input_type -> druz9.v1.CreateInviteRequest
+	8,  // 14: druz9.v1.EditorService.FreezeRoom:input_type -> druz9.v1.FreezeRoomRequest
+	9,  // 15: druz9.v1.EditorService.GetReplay:input_type -> druz9.v1.GetReplayRequest
+	10, // 16: druz9.v1.EditorService.RunCode:input_type -> druz9.v1.RunCodeRequest
+	2,  // 17: druz9.v1.EditorService.CreateRoom:output_type -> druz9.v1.EditorRoom
+	2,  // 18: druz9.v1.EditorService.GetRoom:output_type -> druz9.v1.EditorRoom
+	3,  // 19: druz9.v1.EditorService.CreateInvite:output_type -> druz9.v1.InviteLink
+	2,  // 20: druz9.v1.EditorService.FreezeRoom:output_type -> druz9.v1.EditorRoom
+	4,  // 21: druz9.v1.EditorService.GetReplay:output_type -> druz9.v1.ReplayUrl
+	11, // 22: druz9.v1.EditorService.RunCode:output_type -> druz9.v1.RunCodeResponse
+	17, // [17:23] is the sub-list for method output_type
+	11, // [11:17] is the sub-list for method input_type
+	11, // [11:11] is the sub-list for extension type_name
+	11, // [11:11] is the sub-list for extension extendee
+	0,  // [0:11] is the sub-list for field type_name
 }
 
 func init() { file_druz9_v1_editor_proto_init() }
@@ -777,7 +935,7 @@ func file_druz9_v1_editor_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_druz9_v1_editor_proto_rawDesc), len(file_druz9_v1_editor_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   10,
+			NumMessages:   12,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

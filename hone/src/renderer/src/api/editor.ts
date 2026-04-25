@@ -116,6 +116,40 @@ export async function freezeRoom(roomId: string, frozen: boolean): Promise<Edito
   return unwrapRoom(resp as never);
 }
 
+// ─── RunCode ───────────────────────────────────────────────────────────────
+
+export interface RunResult {
+  stdout: string;
+  stderr: string;
+  exitCode: number;
+  timeMs: number;
+  status: string;
+}
+
+/**
+ * runCode — executes `code` against the sandboxed Judge0 backend bound to
+ * the room. Output is ephemeral (no server-side history). Caller must be
+ * a participant of the room. Errors bubble up as ConnectError — the UI
+ * maps:
+ *   - Code.Unavailable        → «Sandbox not configured»
+ *   - Code.ResourceExhausted  → «Slow down — limit reached»
+ *   - else                    → generic error
+ */
+export async function runCode(
+  roomId: string,
+  code: string,
+  language: Language,
+): Promise<RunResult> {
+  const resp = await client.runCode({ roomId, code, language });
+  return {
+    stdout: resp.stdout,
+    stderr: resp.stderr,
+    exitCode: resp.exitCode,
+    timeMs: resp.timeMs,
+    status: resp.status,
+  };
+}
+
 // ─── WebSocket helper ───────────────────────────────────────────────────────
 
 export interface EditorWsEnvelope {

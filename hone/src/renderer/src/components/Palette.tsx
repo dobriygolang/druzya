@@ -19,7 +19,8 @@ export type PageId =
   | 'podcasts'
   | 'editor'
   | 'shared_boards'
-  | 'events';
+  | 'events'
+  | 'settings';
 // PaletteAction — то, что палетка может попросить App'а сделать.
 // Помимо переключения page и copilot'а, добавили `standup` —
 // открывает модалку из 3 вопросов для daily-standup.
@@ -62,6 +63,7 @@ export function Palette({ onClose, onOpen }: PaletteProps) {
       { id: 'podcasts', label: 'Podcasts', icon: 'headphones', shortcut: ['P'], run: () => onOpen('podcasts') },
       { id: 'stats', label: 'Stats', icon: 'bars', shortcut: ['S'], run: () => onOpen('stats') },
       { id: 'standup', label: 'Daily standup', icon: 'standup', shortcut: [], run: () => onOpen('standup') },
+      { id: 'settings', label: 'Settings', icon: 'settings', shortcut: [','], run: () => onOpen('settings') },
     ],
     [onOpen],
   );

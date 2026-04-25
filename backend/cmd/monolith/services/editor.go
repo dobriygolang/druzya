@@ -3,9 +3,11 @@ package services
 import (
 	"context"
 	"os"
+	"strings"
 	"time"
 
 	editorApp "druz9/editor/app"
+	editorDomain "druz9/editor/domain"
 	editorInfra "druz9/editor/infra"
 	editorPorts "druz9/editor/ports"
 	"druz9/shared/generated/pb/druz9/v1/druz9v1connect"
@@ -51,8 +53,27 @@ func NewEditor(d Deps) *Module {
 		Uploader: replay,
 		Flush:    hub.FlushRoom,
 	}
+	// Judge0 wiring for RunCode. If JUDGE0_URL is empty we still construct
+	// the use case with a client whose BaseURL is "" — Run will surface
+	// ErrSandboxUnavailable → HTTP 503 with a helpful message, matching the
+	// anti-fallback policy used by the daily service.
+	var runner editorDomain.CodeRunner
+	if u := strings.TrimSpace(d.Cfg.Judge0.URL); u != "" {
+		runner = editorInfra.NewJudge0RunClient(u, d.Log)
+		d.Log.Info("editor: Judge0 RunCode wired", "url", u)
+	} else {
+		d.Log.Warn("editor: JUDGE0_URL not set — /editor/room/{id}/run will return 503 (sandbox unavailable)")
+		runner = editorInfra.NewJudge0RunClient("", d.Log)
+	}
+	runUC := &editorApp.RunCode{
+		Rooms:        rooms,
+		Participants: parts,
+		Runner:       runner,
+		Limiter:      editorApp.NewUserRateLimiter(10, time.Minute),
+		Now:          d.Now,
+	}
 	server := editorPorts.NewEditorServer(
-		create, get, invite, freeze, replayUC, "/ws/editor", d.Log,
+		create, get, invite, freeze, replayUC, runUC, "/ws/editor", d.Log,
 	)
 	wsh := editorPorts.NewWSHandler(hub, editorTokenVerifier{issuer: d.TokenIssuer}, rooms, parts, d.Log)
 
@@ -69,6 +90,7 @@ func NewEditor(d Deps) *Module {
 			r.Post("/editor/room/{roomId}/invite", transcoder.ServeHTTP)
 			r.Post("/editor/room/{roomId}/freeze", transcoder.ServeHTTP)
 			r.Get("/editor/room/{roomId}/replay", transcoder.ServeHTTP)
+			r.Post("/editor/room/{roomId}/run", transcoder.ServeHTTP)
 		},
 		MountWS: func(ws chi.Router) {
 			ws.Get("/editor/{roomId}", wsh.Handle)

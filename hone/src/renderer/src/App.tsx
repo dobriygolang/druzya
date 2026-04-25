@@ -14,7 +14,7 @@
 // чтобы streak-механика продолжала наполняться (bible §6 sync).
 import { useCallback, useEffect, useRef, useState } from 'react';
 
-import { CanvasBg, type CanvasMode } from './components/CanvasBg';
+import { CanvasBg, type CanvasMode, type ThemeId } from './components/CanvasBg';
 import { Wordmark, Versionmark } from './components/Chrome';
 import { TrafficLightsHover } from './components/TrafficLightsHover';
 import { Dock } from './components/Dock';
@@ -32,6 +32,7 @@ import { StatsOverlay } from './components/StatsOverlay';
 import { PodcastsPage } from './pages/Podcasts';
 import { BoardsHub } from './pages/BoardsHub';
 import { EventsPage } from './pages/Events';
+import { SettingsPage, readStoredTheme } from './pages/Settings';
 import { useSessionStore } from './stores/session';
 import { startFocusSession, endFocusSession } from './api/hone';
 
@@ -58,6 +59,10 @@ export default function App() {
   const [standupOpen, setStandupOpen] = useState(false);
   const [onboardingOpen, setOnboardingOpen] = useState(false);
   const [statsOpen, setStatsOpen] = useState(false);
+  // Theme — initial значение читаем из localStorage. Settings page пишет
+  // в тот же ключ + дёргает onThemeChange (нам), так что CanvasBg
+  // обновляется без full-reload.
+  const [theme, setTheme] = useState<ThemeId>(() => readStoredTheme());
 
   const [remain, setRemain] = useState(POMODORO_SECONDS);
   const [running, setRunning] = useState(false);
@@ -367,6 +372,7 @@ export default function App() {
       else if (k === 'e') open('editor');
       else if (k === 'b') open('shared_boards');
       else if (k === 'v') open('events');
+      else if (k === ',') open('settings');
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
@@ -384,7 +390,7 @@ export default function App() {
   if (status === 'guest') {
     return (
       <div style={{ position: 'fixed', inset: 0, background: '#000', overflow: 'hidden' }}>
-        <CanvasBg mode="full" />
+        <CanvasBg mode="full" theme={theme} />
         <LoginScreen />
       </div>
     );
@@ -392,7 +398,7 @@ export default function App() {
 
   return (
     <div style={{ position: 'fixed', inset: 0, background: '#000', overflow: 'hidden' }}>
-      <CanvasBg mode={canvasMode} />
+      <CanvasBg mode={canvasMode} theme={theme} />
 
       {/* Window-drag strip: невидимая полоса вдоль верха окна (32 px),
           через которую macOS позволяет таскать окно. TrafficLightsHover и
@@ -453,6 +459,9 @@ export default function App() {
         />
       )}
       {statsOpen && page === 'home' && <StatsOverlay onClose={() => setStatsOpen(false)} />}
+      {page === 'settings' && (
+        <SettingsPage theme={theme} onThemeChange={setTheme} />
+      )}
       {page === 'events' && (
         <EventsPage
           onJumpToEditor={(roomId) => {

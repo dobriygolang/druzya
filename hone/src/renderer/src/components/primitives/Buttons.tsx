@@ -77,13 +77,19 @@ export function GhostBtn({
 export function PrimaryBtn({
   onClick,
   children,
+  disabled,
+  title,
 }: {
   onClick: () => void;
   children: ReactNode;
+  disabled?: boolean;
+  title?: string;
 }) {
   return (
     <button
       onClick={onClick}
+      disabled={disabled}
+      title={title}
       className="focus-ring lift surface"
       style={{
         padding: '6px 14px',
@@ -93,10 +99,12 @@ export function PrimaryBtn({
         color: '#000',
         fontWeight: 500,
         border: 'none',
-        cursor: 'pointer',
+        cursor: disabled ? 'default' : 'pointer',
+        opacity: disabled ? 0.5 : 1,
         boxShadow: '0 4px 14px -6px rgba(255,255,255,0.18)',
       }}
       onMouseEnter={(e) => {
+        if (disabled) return;
         e.currentTarget.style.boxShadow = '0 8px 22px -6px rgba(255,255,255,0.28)';
       }}
       onMouseLeave={(e) => {
