@@ -11,7 +11,7 @@
 //   hover   → две круглые кнопки (toggle-mode + reset) ВМЕСТО time-area,
 //             вписанные в общий mini-pill. Время скрыто. Smooth fade
 //             через --t-fast.
-import { useState, type ReactNode } from 'react';
+import { useRef, useState, type ReactNode } from 'react';
 
 import { Icon } from './primitives/Icon';
 
@@ -270,35 +270,55 @@ interface VolumeBtnProps {
 // остальные кнопки не дёргаются.
 function VolumeBtn({ vol, onVol }: VolumeBtnProps) {
   const [open, setOpen] = useState(false);
+  const closeTimer = useRef<number | null>(null);
+
+  // hover-bridge: при mouseleave даём 180 ms на «транзит» через 14-px
+  // gap к slider'у. mouseenter на slider или btn'е cancel'ит таймер.
+  // Без этого slider схлопывается мгновенно когда курсор покидает btn.
+  const armClose = () => {
+    if (closeTimer.current !== null) window.clearTimeout(closeTimer.current);
+    closeTimer.current = window.setTimeout(() => setOpen(false), 180);
+  };
+  const cancelClose = () => {
+    if (closeTimer.current !== null) {
+      window.clearTimeout(closeTimer.current);
+      closeTimer.current = null;
+    }
+    setOpen(true);
+  };
+
   return (
     <div
-      onMouseEnter={() => setOpen(true)}
-      onMouseLeave={() => setOpen(false)}
+      onMouseLeave={armClose}
       style={{ position: 'relative', display: 'flex', alignItems: 'center' }}
     >
-      <DockBtn onClick={() => setOpen((o) => !o)} title="Volume">
-        <Icon name="volume" size={12} />
-      </DockBtn>
+      <div onMouseEnter={cancelClose}>
+        <DockBtn onClick={() => setOpen((o) => !o)} title="Volume">
+          <Icon name="volume" size={12} />
+        </DockBtn>
+      </div>
       <div
+        onMouseEnter={cancelClose}
         style={{
           position: 'absolute',
-          // Сразу за правым краем volume-кнопки + 6 px gap. Pill сам
-          // расширяется вправо, dock-pill стоит на месте.
-          left: 'calc(100% + 6px)',
+          // 14 px gap от правого края volume-кнопки — slider гарантированно
+          // не наезжает на остальной dock даже при transform-overshoot.
+          left: 'calc(100% + 14px)',
           top: '50%',
-          transform: `translateY(-50%) translateX(${open ? '0' : '-6px'})`,
+          transform: `translateY(-50%) translateX(${open ? '0' : '-8px'})`,
           height: 30,
-          width: open ? 130 : 0,
+          width: open ? 140 : 0,
           opacity: open ? 1 : 0,
           padding: open ? '0 14px' : '0',
           display: 'flex',
           alignItems: 'center',
-          background: 'rgba(10,10,10,0.78)',
+          background: 'rgba(10,10,10,0.85)',
           border: open ? '1px solid rgba(255,255,255,0.07)' : '1px solid transparent',
           borderRadius: 999,
           backdropFilter: 'blur(20px)',
           WebkitBackdropFilter: 'blur(20px)',
           overflow: 'hidden',
+          zIndex: 11,
           transition:
             'width 220ms cubic-bezier(0.2, 0.7, 0.2, 1),' +
             'opacity 180ms cubic-bezier(0.2, 0.7, 0.2, 1),' +

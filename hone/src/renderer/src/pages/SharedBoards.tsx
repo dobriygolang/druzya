@@ -18,7 +18,6 @@ import { Excalidraw } from '@excalidraw/excalidraw';
 import type { ExcalidrawImperativeAPI } from '@excalidraw/excalidraw/types';
 import '@excalidraw/excalidraw/index.css';
 
-import { WEB_BASE_URL } from '../api/config';
 import {
   createWhiteboardRoom,
   getWhiteboardRoom,
@@ -413,20 +412,17 @@ function RoomView({ roomId, onBack }: { roomId: string; onBack: () => void }) {
     [],
   );
 
-  const shareURL = `${WEB_BASE_URL}/whiteboard/${parsedId}`;
+  // Share — копирует room-id (не URL): web-route /whiteboard/{id} ещё
+  // не существует (404), пока что отдаём ID для join-by-id в Hone'е
+  // другого пользователя. URL-pattern вернётся когда web-роут поднимут.
   const handleShare = async () => {
     try {
-      await navigator.clipboard.writeText(shareURL);
+      await navigator.clipboard.writeText(parsedId);
       setCopied(true);
       window.setTimeout(() => setCopied(false), 2000);
     } catch {
       /* ignore */
     }
-  };
-  const handleOpenWeb = async () => {
-    const bridge = typeof window !== 'undefined' ? window.hone : undefined;
-    if (bridge) await bridge.shell.openExternal(shareURL);
-    else window.open(shareURL, '_blank');
   };
 
   return (
@@ -452,13 +448,24 @@ function RoomView({ roomId, onBack }: { roomId: string; onBack: () => void }) {
       >
         <button
           onClick={onBack}
-          className="focus-ring mono"
+          className="focus-ring mono row"
           style={{
             padding: '5px 10px',
             fontSize: 10,
             letterSpacing: '.12em',
             color: 'var(--ink-40)',
             borderRadius: 6,
+            background: 'transparent',
+            border: '1px solid rgba(255,255,255,0.06)',
+            cursor: 'pointer',
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.background = 'rgba(255,255,255,0.04)';
+            e.currentTarget.style.color = 'var(--ink)';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = 'transparent';
+            e.currentTarget.style.color = 'var(--ink-40)';
           }}
         >
           ← BACK
@@ -484,37 +491,23 @@ function RoomView({ roomId, onBack }: { roomId: string; onBack: () => void }) {
         )}
         <div style={{ flex: 1 }} />
         {room && (
-          <>
-            <button
-              onClick={() => void handleShare()}
-              className="focus-ring mono"
-              style={{
-                padding: '6px 12px',
-                fontSize: 10,
-                letterSpacing: '.14em',
-                color: copied ? 'var(--ink)' : 'var(--ink-60)',
-                border: '1px solid rgba(255,255,255,0.1)',
-                borderRadius: 999,
-                background: 'transparent',
-              }}
-            >
-              {copied ? '✓ COPIED' : 'COPY URL'}
-            </button>
-            <button
-              onClick={() => void handleOpenWeb()}
-              className="focus-ring"
-              style={{
-                padding: '6px 14px',
-                fontSize: 12,
-                borderRadius: 999,
-                background: '#fff',
-                color: '#000',
-                fontWeight: 500,
-              }}
-            >
-              Open on web ↗
-            </button>
-          </>
+          <button
+            onClick={() => void handleShare()}
+            className="focus-ring mono row"
+            style={{
+              padding: '6px 14px',
+              fontSize: 10,
+              letterSpacing: '.14em',
+              color: copied ? 'var(--ink)' : 'var(--ink-60)',
+              border: '1px solid rgba(255,255,255,0.1)',
+              borderRadius: 999,
+              background: copied ? 'rgba(255,255,255,0.06)' : 'transparent',
+              cursor: 'pointer',
+            }}
+            title="Copy room id — paste in another Hone via Join by ID"
+          >
+            {copied ? '✓ ROOM ID COPIED' : 'COPY ROOM ID'}
+          </button>
         )}
       </header>
 

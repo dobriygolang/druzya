@@ -72,6 +72,7 @@ export function EventsPage({ onJumpToEditor, onJumpToBoard }: EventsPageProps = 
       style={{
         position: 'absolute',
         inset: 0,
+        animationDuration: '320ms',
         paddingTop: 96,
         paddingBottom: 120,
         overflowY: 'auto',
@@ -122,7 +123,7 @@ export function EventsPage({ onJumpToEditor, onJumpToBoard }: EventsPageProps = 
 
         {state.status === 'ok' && state.events.length > 0 && (
           <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-            {state.events.map((ev) => (
+            {state.events.map((ev, i) => (
               <EventRow
                 key={ev.id}
                 ev={ev}
@@ -131,6 +132,7 @@ export function EventsPage({ onJumpToEditor, onJumpToBoard }: EventsPageProps = 
                 onRSVP={() => void handleRSVP(ev)}
                 onJumpToEditor={onJumpToEditor}
                 onJumpToBoard={onJumpToBoard}
+                stagger={i}
               />
             ))}
           </ul>
@@ -147,6 +149,7 @@ function EventRow({
   onRSVP,
   onJumpToEditor,
   onJumpToBoard,
+  stagger = 0,
 }: {
   ev: CalendarEvent;
   joined: boolean;
@@ -154,6 +157,7 @@ function EventRow({
   onRSVP: () => void;
   onJumpToEditor?: (roomId: string) => void;
   onJumpToBoard?: (roomId: string) => void;
+  stagger?: number;
 }) {
   const when = ev.startsAt
     ? ev.startsAt.toLocaleString(undefined, {
@@ -173,6 +177,8 @@ function EventRow({
         background: 'rgba(255,255,255,0.03)',
         border: '1px solid rgba(255,255,255,0.06)',
         borderRadius: 10,
+        animation: `slide-from-bottom 320ms cubic-bezier(0.2, 0.7, 0.2, 1) both`,
+        animationDelay: `${Math.min(stagger * 50, 400)}ms`,
       }}
     >
       <div

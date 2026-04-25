@@ -30,8 +30,7 @@ import { NotesPage } from './pages/Notes';
 import { WhiteboardPage } from './pages/Whiteboard';
 import { StatsOverlay } from './components/StatsOverlay';
 import { PodcastsPage } from './pages/Podcasts';
-import { EditorPage } from './pages/Editor';
-import { SharedBoardsPage } from './pages/SharedBoards';
+import { BoardsHub } from './pages/BoardsHub';
 import { EventsPage } from './pages/Events';
 import { useSessionStore } from './stores/session';
 import { startFocusSession, endFocusSession } from './api/hone';
@@ -444,19 +443,16 @@ export default function App() {
       {page === 'board' && <WhiteboardPage />}
       {/* Stats теперь overlay (см. statsOpen ниже). Старая StatsPage снята. */}
       {page === 'podcasts' && <PodcastsPage />}
-      {page === 'editor' && (
-        <EditorPage
-          initialRoomId={initialEditorRoom}
-          onConsumeInitial={() => setInitialEditorRoom(null)}
+      {(page === 'editor' || page === 'shared_boards') && (
+        <BoardsHub
+          initialTab={page === 'editor' ? 'code' : 'boards'}
+          initialBoardRoomId={initialBoardRoom}
+          initialEditorRoomId={initialEditorRoom}
+          onConsumeBoardInitial={() => setInitialBoardRoom(null)}
+          onConsumeEditorInitial={() => setInitialEditorRoom(null)}
         />
       )}
       {statsOpen && page === 'home' && <StatsOverlay onClose={() => setStatsOpen(false)} />}
-      {page === 'shared_boards' && (
-        <SharedBoardsPage
-          initialRoomId={initialBoardRoom}
-          onConsumeInitial={() => setInitialBoardRoom(null)}
-        />
-      )}
       {page === 'events' && (
         <EventsPage
           onJumpToEditor={(roomId) => {

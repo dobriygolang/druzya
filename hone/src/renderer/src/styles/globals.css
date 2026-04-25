@@ -374,6 +374,47 @@ textarea {
   pointer-events: auto;
 }
 
+/*
+ * Excalidraw — подгоняем дефолтную dark-палитру под Hone (чисто-чёрный
+ * фон, минимальные edge-tone'ы). Excalidraw exposes ~50 CSS-переменных;
+ * перебиваем только те что бросаются в глаза: top-toolbar/island,
+ * canvas background, цвет hover'а, и rounded radius (он у них 8 — у нас
+ * везде 7-10, выравниваем).
+ */
+.excalidraw {
+  --color-primary: #ffffff;
+  --color-primary-darker: rgba(255, 255, 255, 0.92);
+  --color-primary-darkest: rgba(255, 255, 255, 0.96);
+  --color-primary-light: rgba(255, 255, 255, 0.08);
+  --color-on-primary: #000000;
+  --island-bg-color: rgba(10, 10, 10, 0.78) !important;
+  --default-bg-color: #0a0a0a !important;
+  --button-hover-bg: rgba(255, 255, 255, 0.06);
+  --button-active-bg: rgba(255, 255, 255, 0.1);
+  --color-surface-mid: rgba(255, 255, 255, 0.04);
+  --color-surface-low: rgba(255, 255, 255, 0.02);
+  --color-text: rgba(255, 255, 255, 0.92);
+  --color-icon-white: rgba(255, 255, 255, 0.85);
+  --island-shadow: 0 1px 0 rgba(255, 255, 255, 0.04) inset,
+    0 6px 16px -8px rgba(0, 0, 0, 0.6);
+  --border-radius-md: 8px;
+  --border-radius-lg: 10px;
+  --space-factor: 0.25rem;
+}
+.excalidraw .App-toolbar {
+  border: 1px solid rgba(255, 255, 255, 0.07);
+}
+.excalidraw .App-menu_top__left,
+.excalidraw .App-menu__top {
+  /* Дополнительно убираем «коробочный» вид на верхних плашках */
+  background: transparent !important;
+}
+.excalidraw .Island {
+  border: 1px solid rgba(255, 255, 255, 0.07) !important;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+
 /* Smooth segmented swap — для dock'а где hover меняет content без layout-jump */
 .swap-fade > * {
   transition: opacity var(--t-fast);

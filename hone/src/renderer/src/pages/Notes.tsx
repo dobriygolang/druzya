@@ -38,6 +38,11 @@ const INITIAL_LIST: ListState = { status: 'loading', notes: [], error: null, err
 
 type EditorMode = 'edit' | 'preview';
 
+const SIDEBAR_KEY = 'hone:notes:sidebar-w';
+const SIDEBAR_MIN = 200;
+const SIDEBAR_MAX = 460;
+const SIDEBAR_DEFAULT = 280;
+
 export function NotesPage() {
   const [list, setList] = useState<ListState>(INITIAL_LIST);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -50,6 +55,39 @@ export function NotesPage() {
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [connectionsOpen, setConnectionsOpen] = useState(false);
   const saveTimer = useRef<number | null>(null);
+  const [sidebarW, setSidebarW] = useState<number>(() => {
+    if (typeof window === 'undefined') return SIDEBAR_DEFAULT;
+    const raw = window.localStorage.getItem(SIDEBAR_KEY);
+    const n = raw ? parseInt(raw, 10) : NaN;
+    if (!Number.isFinite(n)) return SIDEBAR_DEFAULT;
+    return Math.max(SIDEBAR_MIN, Math.min(SIDEBAR_MAX, n));
+  });
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(SIDEBAR_KEY, String(sidebarW));
+    } catch {
+      /* ignore */
+    }
+  }, [sidebarW]);
+  const dragRef = useRef<{ x: number; w: number } | null>(null);
+  useEffect(() => {
+    const onMove = (e: MouseEvent) => {
+      if (!dragRef.current) return;
+      const dx = e.clientX - dragRef.current.x;
+      setSidebarW(
+        Math.max(SIDEBAR_MIN, Math.min(SIDEBAR_MAX, dragRef.current.w + dx)),
+      );
+    };
+    const onUp = () => {
+      dragRef.current = null;
+    };
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+    return () => {
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+    };
+  }, []);
 
   // Initial list.
   useEffect(() => {
@@ -202,11 +240,14 @@ export function NotesPage() {
         paddingTop: 80,
         paddingBottom: 120,
         display: 'grid',
-        gridTemplateColumns: '280px 1fr',
+        gridTemplateColumns: `${sidebarW}px 6px 1fr`,
+        animationDuration: '320ms',
       }}
     >
       <aside
+        className="slide-from-left"
         style={{
+          animationDuration: '320ms',
           borderRight: '1px solid rgba(255,255,255,0.06)',
           padding: '0 10px',
           overflowY: 'auto',
@@ -268,7 +309,30 @@ export function NotesPage() {
         })}
       </aside>
 
-      <section style={{ padding: '10px 56px 0 56px', position: 'relative', overflowY: 'auto' }}>
+      <div
+        onMouseDown={(e) => {
+          dragRef.current = { x: e.clientX, w: sidebarW };
+        }}
+        style={{
+          position: 'relative',
+          cursor: 'col-resize',
+          userSelect: 'none',
+        }}
+      >
+        <div
+          style={{
+            position: 'absolute',
+            left: 2,
+            top: 0,
+            bottom: 0,
+            width: 2,
+            background: dragRef.current ? 'rgba(255,255,255,0.18)' : 'transparent',
+            transition: 'background-color var(--t-fast)',
+          }}
+        />
+      </div>
+
+      <section style={{ padding: '10px 56px 0 56px', position: 'relative', overflowY: 'auto', minWidth: 0 }}>
         {creating ? (
           <CreateNoteForm onCancel={() => setCreating(false)} onSubmit={handleCreate} />
         ) : list.status === 'error' ? (
