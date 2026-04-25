@@ -347,6 +347,22 @@ export default function App() {
     <div style={{ position: 'fixed', inset: 0, background: '#000', overflow: 'hidden' }}>
       <CanvasBg mode={canvasMode} />
 
+      {/* Window-drag strip: невидимая полоса вдоль верха окна (32 px),
+          через которую macOS позволяет таскать окно. TrafficLightsHover и
+          Versionmark лежат поверх и помечены no-drag, чтобы клики туда
+          работали штатно. */}
+      <div
+        style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          height: 32,
+          zIndex: 1,
+          // @ts-expect-error — нестандартное Electron-CSS-property
+          WebkitAppRegion: 'drag',
+        }}
+      />
       <TrafficLightsHover />
       <Wordmark />
       <Versionmark escHint={page !== 'home'} onEsc={goHome} />

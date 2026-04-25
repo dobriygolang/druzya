@@ -45,6 +45,8 @@ export function TrafficLightsHover() {
         width: 140,
         height: 56,
         zIndex: 5,
+        // @ts-expect-error — Electron CSS extension
+        WebkitAppRegion: 'no-drag',
       }}
     />
   );

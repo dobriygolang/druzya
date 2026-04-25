@@ -41,7 +41,15 @@ interface VersionmarkProps {
 export function Versionmark({ escHint, onEsc }: VersionmarkProps) {
   return (
     <div
-      style={{ position: 'absolute', top: 28, right: 32, zIndex: 10, textAlign: 'right' }}
+      style={{
+        position: 'absolute',
+        top: 28,
+        right: 32,
+        zIndex: 10,
+        textAlign: 'right',
+        // @ts-expect-error — Electron CSS extension
+        WebkitAppRegion: 'no-drag',
+      }}
       className="no-select"
     >
       {escHint ? (

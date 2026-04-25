@@ -8,7 +8,7 @@
 // right change is here, not at the call site.
 import { useEffect, useMemo, useRef, useState } from 'react';
 
-import { Kbd } from './primitives/Kbd';
+import { Icon, type IconName } from './primitives/Icon';
 
 export type PageId =
   | 'home'
@@ -33,7 +33,8 @@ interface PaletteProps {
 interface PaletteItem {
   id: string;
   label: string;
-  sc: string;
+  icon: IconName;
+  shortcut: string[]; // массив букв; рендерим каждую отдельным «чипом»
   run: () => void;
 }
 
@@ -44,18 +45,23 @@ export function Palette({ onClose, onOpen }: PaletteProps) {
 
   const items: PaletteItem[] = useMemo(
     () => [
-      { id: 'today', label: 'Today', sc: 'T', run: () => onOpen('today') },
-      { id: 'notes', label: 'Notes', sc: 'N', run: () => onOpen('notes') },
+      { id: 'today', label: 'Today', icon: 'sun', shortcut: ['T'], run: () => onOpen('today') },
+      { id: 'notes', label: 'Notes', icon: 'note', shortcut: ['N'], run: () => onOpen('notes') },
       // Boards собирает три collaboration-surfaces (private whiteboard,
       // multiplayer Excalidraw, code rooms) под одним пунктом палитры.
-      // Click ведёт на Shared boards (multiplayer — primary). Hotkeys
-      // остаются раздельными чтобы power-users не теряли скорость:
+      // Click ведёт на Shared boards (multiplayer-default). Hotkey'и:
       //   D — Whiteboard private, B — Shared boards, E — Code rooms.
-      { id: 'shared_boards', label: 'Boards · Code rooms', sc: 'D · B · E', run: () => onOpen('shared_boards') },
-      { id: 'events', label: 'Events', sc: 'V', run: () => onOpen('events') },
-      { id: 'podcasts', label: 'Podcasts', sc: 'P', run: () => onOpen('podcasts') },
-      { id: 'stats', label: 'Stats', sc: 'S', run: () => onOpen('stats') },
-      { id: 'standup', label: 'Daily standup', sc: '', run: () => onOpen('standup') },
+      {
+        id: 'shared_boards',
+        label: 'Boards · Code rooms',
+        icon: 'grid',
+        shortcut: ['D', 'B', 'E'],
+        run: () => onOpen('shared_boards'),
+      },
+      { id: 'events', label: 'Events', icon: 'calendar', shortcut: ['V'], run: () => onOpen('events') },
+      { id: 'podcasts', label: 'Podcasts', icon: 'headphones', shortcut: ['P'], run: () => onOpen('podcasts') },
+      { id: 'stats', label: 'Stats', icon: 'bars', shortcut: ['S'], run: () => onOpen('stats') },
+      { id: 'standup', label: 'Daily standup', icon: 'standup', shortcut: [], run: () => onOpen('standup') },
     ],
     [onOpen],
   );
@@ -99,39 +105,62 @@ export function Palette({ onClose, onOpen }: PaletteProps) {
         position: 'absolute',
         inset: 0,
         zIndex: 60,
-        background: 'rgba(0,0,0,0.8)',
-        backdropFilter: 'blur(12px)',
-        WebkitBackdropFilter: 'blur(12px)',
+        background: 'rgba(0,0,0,0.78)',
+        backdropFilter: 'blur(14px)',
+        WebkitBackdropFilter: 'blur(14px)',
         display: 'flex',
         justifyContent: 'center',
-        paddingTop: '14vh',
+        paddingTop: '12vh',
       }}
       onClick={onClose}
     >
       <div
         onClick={(e) => e.stopPropagation()}
         style={{
-          width: 520,
-          maxWidth: '90%',
+          width: 580,
+          maxWidth: '92%',
           height: 'fit-content',
-          background: 'rgba(8,8,8,0.92)',
-          border: '1px solid rgba(255,255,255,0.08)',
-          borderRadius: 14,
+          background: 'rgba(10,10,10,0.96)',
+          border: '1px solid rgba(255,255,255,0.07)',
+          borderRadius: 16,
           overflow: 'hidden',
-          boxShadow: '0 40px 100px -20px rgba(0,0,0,0.8)',
+          boxShadow: '0 50px 120px -20px rgba(0,0,0,0.85)',
         }}
       >
-        <div style={{ padding: '16px 18px', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+        {/* search input */}
+        <div
+          style={{
+            padding: '14px 16px',
+            display: 'grid',
+            gridTemplateColumns: 'auto 1fr auto',
+            gap: 12,
+            alignItems: 'center',
+            borderBottom: '1px solid rgba(255,255,255,0.05)',
+          }}
+        >
+          <span style={{ color: 'var(--ink-40)', display: 'flex' }}>
+            <Icon name="search" size={16} />
+          </span>
           <input
             ref={inputRef}
             value={q}
             onChange={(e) => setQ(e.target.value)}
             onKeyDown={onKey}
             placeholder="Type a command…"
-            style={{ width: '100%', fontSize: 15, color: 'var(--ink)' }}
+            style={{
+              width: '100%',
+              fontSize: 15,
+              color: 'var(--ink)',
+              background: 'transparent',
+              border: 'none',
+              outline: 'none',
+            }}
           />
+          <Chip>esc</Chip>
         </div>
-        <div style={{ padding: '8px 0' }}>
+
+        {/* items */}
+        <div style={{ padding: '6px 0' }}>
           {filtered.map((it, i) => {
             const active = i === idx;
             return (
@@ -145,20 +174,59 @@ export function Palette({ onClose, onOpen }: PaletteProps) {
                 style={{
                   width: '100%',
                   display: 'grid',
-                  gridTemplateColumns: '1fr auto',
-                  gap: 14,
+                  gridTemplateColumns: '44px 1fr auto',
+                  gap: 4,
                   alignItems: 'center',
-                  padding: '11px 18px',
-                  color: active ? 'var(--ink)' : 'var(--ink-60)',
-                  background: active ? 'rgba(255,255,255,0.04)' : 'transparent',
-                  fontSize: 14,
+                  padding: '12px 14px',
+                  background: active ? 'rgba(255,255,255,0.05)' : 'transparent',
+                  border: 'none',
+                  cursor: 'pointer',
+                  textAlign: 'left',
                 }}
               >
-                <span style={{ textAlign: 'left', display: 'inline-flex', alignItems: 'center', gap: 10 }}>
-                  <span style={{ color: 'var(--ink-40)', fontSize: 12 }}>›</span>
+                <span
+                  style={{
+                    width: 32,
+                    height: 32,
+                    display: 'grid',
+                    placeItems: 'center',
+                    borderRadius: 8,
+                    background: 'rgba(255,255,255,0.04)',
+                    color: active ? 'var(--ink)' : 'var(--ink-60)',
+                  }}
+                >
+                  <Icon name={it.icon} size={15} />
+                </span>
+                <span
+                  style={{
+                    fontSize: 14,
+                    fontWeight: 500,
+                    color: active ? 'var(--ink)' : 'var(--ink-90)',
+                  }}
+                >
                   {it.label}
                 </span>
-                <Kbd>{it.sc}</Kbd>
+                <span style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                  {it.shortcut.map((k, ki) => (
+                    <span
+                      key={ki}
+                      style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
+                    >
+                      {ki > 0 && (
+                        <span
+                          style={{
+                            color: 'var(--ink-40)',
+                            fontSize: 10,
+                            opacity: 0.6,
+                          }}
+                        >
+                          ·
+                        </span>
+                      )}
+                      <Chip>{k}</Chip>
+                    </span>
+                  ))}
+                </span>
               </button>
             );
           })}
@@ -168,29 +236,59 @@ export function Palette({ onClose, onOpen }: PaletteProps) {
             </div>
           )}
         </div>
+
+        {/* footer */}
         <div
           style={{
             display: 'flex',
             alignItems: 'center',
             gap: 14,
-            padding: '10px 18px',
-            borderTop: '1px solid rgba(255,255,255,0.06)',
+            padding: '12px 18px',
+            borderTop: '1px solid rgba(255,255,255,0.05)',
             fontSize: 11,
             color: 'var(--ink-40)',
           }}
         >
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-            <Kbd>↑</Kbd>
-            <Kbd>↓</Kbd> select
+            <Chip>↑</Chip>
+            <Chip>↓</Chip> select
           </span>
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-            <Kbd>↵</Kbd> open
+            <Chip>↵</Chip> open
           </span>
+          <span style={{ flex: 1 }} />
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-            <Kbd>esc</Kbd> close
+            <Chip>⌘</Chip>
+            <Chip>K</Chip>
           </span>
         </div>
       </div>
     </div>
+  );
+}
+
+// Chip — мини-кнопка в стиле macOS-keycap. Используется и как shortcut-метка,
+// и как footer-элементы. Заменяет старый Kbd: тут унифицированный размер +
+// rounded-square форма как в Winter / Linear.
+function Chip({ children }: { children: React.ReactNode }) {
+  return (
+    <span
+      className="mono"
+      style={{
+        display: 'inline-grid',
+        placeItems: 'center',
+        minWidth: 22,
+        height: 22,
+        padding: '0 6px',
+        fontSize: 10,
+        letterSpacing: '0.04em',
+        color: 'var(--ink-60)',
+        background: 'rgba(255,255,255,0.05)',
+        border: '1px solid rgba(255,255,255,0.08)',
+        borderRadius: 6,
+      }}
+    >
+      {children}
+    </span>
   );
 }
