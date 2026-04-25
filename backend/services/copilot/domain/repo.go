@@ -233,3 +233,26 @@ type ReportRepo interface {
 type Analyzer interface {
 	Analyze(ctx context.Context, in AnalyzerInput) (AnalyzerResult, error)
 }
+
+// ─────────────────────────────────────────────────────────────────────────
+// Mock-session block gate (Phase-4 ADR-001 Wave 3)
+// ─────────────────────────────────────────────────────────────────────────
+
+// ErrAIAssistBlocked is returned by Analyze/Chat when the caller is mid-mock
+// with ai_assist=FALSE. Maps to Connect PermissionDenied — the desktop client
+// has already been told to suppress the call via CheckBlock; this is the
+// defense-in-depth path for clients that did not poll.
+var ErrAIAssistBlocked = errors.New("copilot: ai-assist blocked by live mock session")
+
+// MockSessionGate is a narrow read-only window into ai_mock's mock_sessions
+// table. The copilot service deliberately reaches across the bounded-context
+// line here: blocking Cue while a strict-mode mock is live is a cross-cutting
+// integrity rule and lives more naturally on the consult path than as an
+// ai_mock-domain event broadcast.
+type MockSessionGate interface {
+	// HasActiveBlockingSession reports whether the user has a live
+	// mock_sessions row with ai_assist=FALSE. When blocked is true, the
+	// optional `until` is the soft expiry (e.g. session started_at + duration);
+	// zero time means "indeterminate, until the session is finished".
+	HasActiveBlockingSession(ctx context.Context, userID uuid.UUID) (blocked bool, until time.Time, err error)
+}

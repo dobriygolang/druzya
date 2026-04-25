@@ -15,16 +15,16 @@ export default function NotFoundPage() {
     <div className="min-h-screen bg-bg text-text-primary">
       <header className="flex h-[72px] items-center border-b border-border bg-bg px-4 sm:px-8">
         <Link to="/" className="flex items-center gap-2.5">
-          <span className="grid h-8 w-8 place-items-center rounded-md bg-gradient-to-br from-accent to-cyan font-display text-lg font-extrabold text-text-primary">9</span>
+          <span className="grid h-8 w-8 place-items-center rounded-md bg-surface-2 border border-border-strong font-display text-lg font-extrabold text-text-primary">9</span>
           <span className="font-display text-lg font-bold text-text-primary">druz9</span>
         </Link>
       </header>
 
       <main className="flex min-h-[calc(100vh-72px)] flex-col items-center justify-center gap-6 px-6 py-12 sm:px-10 sm:py-[60px]">
         <div className="font-mono text-6xl sm:text-7xl lg:text-[96px] leading-none font-extrabold text-text-primary">
-          <span className="text-accent">{'{ '}</span>
+          <span className="text-text-primary">{'{ '}</span>
           404
-          <span className="text-accent">{' }'}</span>
+          <span className="text-text-primary">{' }'}</span>
         </div>
         <h1 className="font-display text-2xl font-bold text-text-primary">{t('not_found.title')}</h1>
         <p className="max-w-md text-center font-sans text-sm text-text-secondary">
@@ -44,7 +44,7 @@ export default function NotFoundPage() {
           <Link
             to="/arena"
             data-testid="back-home"
-            className="inline-flex items-center gap-2 rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-text-primary shadow-glow transition hover:bg-accent-hover"
+            className="inline-flex items-center gap-2 rounded-lg bg-text-primary px-4 py-2 text-sm font-semibold text-text-primary transition hover:bg-text-primary-hover"
           >
             <Home className="h-4 w-4" />
             {t('not_found.home')}

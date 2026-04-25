@@ -25,13 +25,18 @@ interface Pos {
 const HANDLE_SIZE = 24;
 
 export function DraggableToolbar({ storageKey, defaultPos, children }: DraggableToolbarProps) {
+  // `dragged: false` → центрируем CSS-ом (`left: 50%`) относительно ROODителя
+  // секции (canvas-area), что автоматически следует за shrink/expand sidebar'а.
+  // Как только юзер дёрнул toolbar — переключаемся в pixel-fixed режим, тогда
+  // localStorage хранит абсолютные viewport-coords.
+  const [dragged, setDragged] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return false;
+    return window.localStorage.getItem(`${storageKey}:dragged`) === '1';
+  });
+
   const computeDefault = useCallback((): Pos => {
     if (defaultPos) return defaultPos;
     if (typeof window === 'undefined') return { x: 0, y: 0 };
-    // По умолчанию — центр-верх. Юзер просил toolbar над канвасом
-    // (не внизу, как Excalidraw default). Y=80 ставит его под top-chrome
-    // (HONE / ESC / tabs занимают первые ~50px). Точную ширину toolbar'а
-    // не знаем; через transformX(-50%) центрируем по `(viewport-w / 2)`.
     return { x: window.innerWidth / 2, y: 80 };
   }, [defaultPos]);
 
@@ -51,12 +56,20 @@ export function DraggableToolbar({ storageKey, defaultPos, children }: Draggable
 
   // Persist position.
   useEffect(() => {
+    if (!dragged) return;
     try {
       window.localStorage.setItem(storageKey, JSON.stringify(pos));
     } catch {
       /* ignore */
     }
-  }, [storageKey, pos]);
+  }, [storageKey, pos, dragged]);
+  useEffect(() => {
+    try {
+      window.localStorage.setItem(`${storageKey}:dragged`, dragged ? '1' : '0');
+    } catch {
+      /* ignore */
+    }
+  }, [storageKey, dragged]);
 
   // Clamp on viewport resize — toolbar не должен уезжать за края.
   useEffect(() => {
@@ -79,11 +92,28 @@ export function DraggableToolbar({ storageKey, defaultPos, children }: Draggable
   const onHandleDown = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
+    // pos хранится в координатах ОТНОСИТЕЛЬНО offsetParent (canvas section),
+    // потому что toolbar'у задан position:absolute. Это критично: когда
+    // sidebar collapses, section растягивается, но section-relative coords
+    // остаются валидны без пересчёта.
+    let origX = pos.x;
+    let origY = pos.y;
+    const toolbarEl = e.currentTarget.parentElement as HTMLElement | null;
+    const parent = toolbarEl?.offsetParent as HTMLElement | null;
+    if (!dragged && toolbarEl && parent) {
+      const tbRect = toolbarEl.getBoundingClientRect();
+      const parRect = parent.getBoundingClientRect();
+      // Центр toolbar'а в section-relative coords.
+      origX = tbRect.left - parRect.left + tbRect.width / 2;
+      origY = tbRect.top - parRect.top;
+      setDragged(true);
+      setPos({ x: origX, y: origY });
+    }
     dragRef.current = {
       startX: e.clientX,
       startY: e.clientY,
-      origX: pos.x,
-      origY: pos.y,
+      origX,
+      origY,
     };
     document.body.style.userSelect = 'none';
   };
@@ -94,9 +124,11 @@ export function DraggableToolbar({ storageKey, defaultPos, children }: Draggable
       if (!d) return;
       const dx = e.clientX - d.startX;
       const dy = e.clientY - d.startY;
+      // Clamp по viewport — щедрый bound, не используем parent.rect т.к.
+      // не хотим ограничивать движение если canvas-section рос/уменьшался.
       setPos({
-        x: Math.max(40, Math.min(d.origX + dx, window.innerWidth - 40)),
-        y: Math.max(40, Math.min(d.origY + dy, window.innerHeight - 40)),
+        x: Math.max(20, Math.min(d.origX + dx, window.innerWidth - 20)),
+        y: Math.max(20, Math.min(d.origY + dy, window.innerHeight - 60)),
       });
     };
     const onUp = () => {
@@ -112,6 +144,7 @@ export function DraggableToolbar({ storageKey, defaultPos, children }: Draggable
   }, []);
 
   const onHandleDoubleClick = () => {
+    setDragged(false);
     setPos(computeDefault());
   };
 
@@ -119,9 +152,13 @@ export function DraggableToolbar({ storageKey, defaultPos, children }: Draggable
     <div
       style={{
         position: 'absolute',
-        // x — центр toolbar'а (transformX -50% компенсирует), y — верхний край.
-        left: pos.x,
-        top: pos.y,
+        // X ВСЕГДА centered — `left: 50%` относительно nearest positioned
+        // ancestor (canvas section). Когда sidebar collapses/expands, секция
+        // меняется в ширине, и `50%` автоматически recompute'ится → toolbar
+        // плавно следует за центром canvas'а.
+        // Y can be dragged — после drag'а pos.y хранится в viewport-coord.
+        left: '50%',
+        top: dragged ? pos.y : 80,
         transform: 'translate(-50%, 0)',
         display: 'flex',
         alignItems: 'center',

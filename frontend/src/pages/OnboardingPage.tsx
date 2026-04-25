@@ -47,7 +47,7 @@ const ACCESS_TOKEN_KEY = 'druz9_access_token'
 function Logo() {
   return (
     <Link to="/welcome" className="flex items-center gap-2.5">
-      <span className="grid h-8 w-8 place-items-center rounded-md bg-gradient-to-br from-accent to-cyan font-display text-lg font-extrabold text-text-primary">
+      <span className="grid h-8 w-8 place-items-center rounded-md bg-surface-2 border border-border-strong font-display text-lg font-extrabold text-text-primary">
         9
       </span>
       <span className="font-display text-lg font-bold text-text-primary">druz9</span>
@@ -72,7 +72,7 @@ function StepIndicator({ current, allDone = false }: { current: StepNum; allDone
                   completed
                     ? 'bg-success text-bg'
                     : isCurrent
-                      ? 'bg-accent text-text-primary shadow-glow'
+                      ? 'bg-text-primary text-bg'
                       : 'border border-border-strong text-text-muted',
                 )}
                 style={{ width: 28, height: 28 }}
@@ -187,13 +187,13 @@ function Step2Stack({ onNext, onBack }: { onNext: () => void; onBack: () => void
                   className={cn(
                     'relative flex flex-col items-center justify-center gap-2 rounded-xl bg-surface-1 p-4 transition-all',
                     active
-                      ? 'border-2 border-accent shadow-glow'
+                      ? 'border-2 border-text-primary'
                       : 'border border-border hover:border-border-strong',
                   )}
                   style={{ height: 160 }}
                 >
                   {active && (
-                    <span className="absolute right-2 top-2 grid h-6 w-6 place-items-center rounded-full bg-accent text-text-primary shadow-glow">
+                    <span className="absolute right-2 top-2 grid h-6 w-6 place-items-center rounded-full bg-text-primary text-bg">
                       <Check className="h-3.5 w-3.5" strokeWidth={3} />
                     </span>
                   )}
@@ -226,7 +226,7 @@ function Step2Stack({ onNext, onBack }: { onNext: () => void; onBack: () => void
           variant="primary"
           iconRight={<ArrowRight className="h-5 w-5" />}
           onClick={onNext}
-          className="h-12 px-7 shadow-glow"
+          className="h-12 px-7"
         >
           {t('step2.next')}
         </Button>
@@ -250,7 +250,7 @@ function Step3Kata({ onNext, onBack }: { onNext: () => void; onBack: () => void 
     >
       {/* Left */}
       <div className="flex min-w-0 flex-col justify-center gap-5">
-        <span className="inline-flex w-fit items-center gap-1.5 rounded-full bg-cyan/15 px-2.5 py-1 font-mono text-[11px] font-semibold tracking-[0.08em] text-cyan">
+        <span className="inline-flex w-fit items-center gap-1.5 rounded-full bg-text-primary/10 px-2.5 py-1 font-mono text-[11px] font-semibold tracking-[0.08em] text-text-secondary">
           {t('step3.tag')}
         </span>
         <h1 className="font-display text-3xl font-extrabold text-text-primary sm:text-4xl lg:text-[40px]" style={{ lineHeight: 1.15 }}>
@@ -262,14 +262,14 @@ function Step3Kata({ onNext, onBack }: { onNext: () => void; onBack: () => void 
 
         <div className="flex flex-col gap-3 pt-2">
           <FeatureRow
-            icon={<MousePointerClick className="h-4 w-4 text-cyan" />}
-            iconBg="bg-cyan/15"
+            icon={<MousePointerClick className="h-4 w-4 text-text-secondary" />}
+            iconBg="bg-text-primary/10"
             title={t('step3.f1_title')}
             sub={t('step3.f1_sub')}
           />
           <FeatureRow
-            icon={<Play className="h-4 w-4 text-accent-hover" />}
-            iconBg="bg-accent/15"
+            icon={<Play className="h-4 w-4 text-text-primary" />}
+            iconBg="bg-text-primary/10"
             title={t('step3.f2_title')}
             sub={t('step3.f2_sub')}
           />
@@ -289,7 +289,7 @@ function Step3Kata({ onNext, onBack }: { onNext: () => void; onBack: () => void 
             variant="primary"
             iconRight={<ArrowRight className="h-5 w-5" />}
             onClick={onNext}
-            className="h-12 px-7 shadow-glow"
+            className="h-12 px-7"
           >
             {t('step3.go')}
           </Button>
@@ -297,12 +297,12 @@ function Step3Kata({ onNext, onBack }: { onNext: () => void; onBack: () => void 
       </div>
 
       {/* Right — mock Daily Kata preview */}
-      <div className="relative min-w-0 overflow-hidden rounded-2xl bg-surface-2">
+      <div className="relative min-w-0 overflow-hidden rounded-2xl bg-surface-2 border border-border-strong">
         <div
-          className="flex flex-col gap-2 px-6 py-5"
+          className="flex flex-col gap-2 px-6 py-5 border-b border-border-strong"
           style={{
             height: 120,
-            background: 'linear-gradient(135deg, #2D1B4D 0%, #582CFF 100%)',
+            background: '#0A0A0A',
           }}
         >
           <span className="inline-flex w-fit items-center gap-1.5 rounded-full bg-black/30 px-2.5 py-1 font-mono text-[11px] font-semibold tracking-[0.08em] text-warn">
@@ -342,7 +342,7 @@ function Step3Kata({ onNext, onBack }: { onNext: () => void; onBack: () => void 
             </button>
             <button
               id="mock-submit-btn"
-              className="rounded-md bg-accent px-3 py-1.5 text-[12px] font-semibold text-text-primary shadow-glow"
+              className="rounded-md bg-text-primary px-3 py-1.5 text-[12px] font-medium text-bg"
             >
               Submit
             </button>
@@ -351,15 +351,15 @@ function Step3Kata({ onNext, onBack }: { onNext: () => void; onBack: () => void 
 
         {/* Floating tooltip */}
         <div
-          className="absolute flex flex-col gap-1 rounded-lg border border-accent bg-accent/95 px-4 py-3 shadow-glow"
+          className="absolute flex flex-col gap-1 rounded-lg border border-border-strong bg-surface-2 px-4 py-3"
           style={{ bottom: 70, right: 24, maxWidth: 220 }}
         >
           <span className="font-display text-[13px] font-bold text-text-primary">
             {t('step3.tooltip_title')}
           </span>
-          <span className="text-[11px] text-white/85">{t('step3.tooltip_sub')}</span>
+          <span className="text-[11px] text-text-secondary">{t('step3.tooltip_sub')}</span>
           <span
-            className="absolute h-3 w-3 rotate-45 bg-accent"
+            className="absolute h-3 w-3 rotate-45 bg-surface-2 border-r border-b border-border-strong"
             style={{ bottom: -6, right: 32 }}
           />
         </div>
@@ -403,7 +403,7 @@ function CodeLine({ n, text, highlight }: { n: number; text: string; highlight?:
     <div
       className={cn(
         'flex gap-3 rounded px-1',
-        highlight ? 'bg-accent/20 text-text-primary' : 'text-text-secondary',
+        highlight ? 'bg-text-primary/10 text-text-primary' : 'text-text-secondary',
       )}
     >
       <span className="shrink-0 text-text-muted">{n}</span>
@@ -422,9 +422,9 @@ function Step4AISpar(_props: { onNext: () => void; onBack: () => void }) {
     <div className="flex flex-col">
       {/* Hero */}
       <div
-        className="flex flex-col items-start justify-between gap-6 px-4 py-8 sm:px-8 lg:h-[360px] lg:flex-row lg:items-center lg:gap-0 lg:px-20 lg:py-0"
+        className="flex flex-col items-start justify-between gap-6 px-4 py-8 sm:px-8 lg:h-[360px] lg:flex-row lg:items-center lg:gap-0 lg:px-20 lg:py-0 border-b border-border-strong"
         style={{
-          background: 'linear-gradient(135deg, #2D1B4D 0%, #F472B6 100%)',
+          background: '#0A0A0A',
         }}
       >
         <div className="flex min-w-0 flex-col gap-4 lg:w-[540px] lg:max-w-[540px]">
@@ -434,7 +434,7 @@ function Step4AISpar(_props: { onNext: () => void; onBack: () => void }) {
           <h1 className="font-display text-2xl font-extrabold text-text-primary sm:text-3xl lg:text-[36px]" style={{ lineHeight: 1.1 }}>
             {t('step4.title')}
           </h1>
-          <p className="text-[14px] leading-relaxed text-white/85">
+          <p className="text-[14px] leading-relaxed text-text-secondary">
             {t('step4.subtitle')}
           </p>
           <div className="flex flex-col gap-2 pt-1">
@@ -450,24 +450,24 @@ function Step4AISpar(_props: { onNext: () => void; onBack: () => void }) {
         >
           <div className="flex items-center gap-4">
             <div
-              className="grid place-items-center text-text-primary"
+              className="grid place-items-center text-text-primary border border-border-strong"
               style={{
                 width: 72,
                 height: 72,
                 borderRadius: 36,
-                background: 'linear-gradient(135deg, #F472B6 0%, #582CFF 100%)',
+                background: '#0A0A0A',
               }}
             >
               <span className="font-display text-2xl font-bold">Д</span>
             </div>
             <span className="font-display text-2xl font-extrabold text-text-primary">VS</span>
             <div
-              className="grid place-items-center text-text-primary"
+              className="grid place-items-center text-text-primary border border-border-strong"
               style={{
                 width: 72,
                 height: 72,
                 borderRadius: 36,
-                background: 'linear-gradient(135deg, #22D3EE 0%, #582CFF 100%)',
+                background: '#0A0A0A',
               }}
             >
               <Bot className="h-8 w-8" />
@@ -492,12 +492,12 @@ function Step4AISpar(_props: { onNext: () => void; onBack: () => void }) {
 
         <div className="grid w-full max-w-[900px] grid-cols-1 gap-4 sm:grid-cols-3">
           <BenefitCard
-            icon={<Sparkles className="h-5 w-5 text-accent-hover" />}
+            icon={<Sparkles className="h-5 w-5 text-text-primary" />}
             title={t('step4.b1_title')}
             sub={t('step4.b1_sub')}
           />
           <BenefitCard
-            icon={<Sparkles className="h-5 w-5 text-cyan" />}
+            icon={<Sparkles className="h-5 w-5 text-text-secondary" />}
             title={t('step4.b2_title')}
             sub={t('step4.b2_sub')}
           />
@@ -521,7 +521,7 @@ function Step4AISpar(_props: { onNext: () => void; onBack: () => void }) {
             variant="primary"
             iconRight={<ArrowRight className="h-5 w-5" />}
             onClick={() => navigate('/arena')}
-            className="h-14 px-8 text-[15px] shadow-glow"
+            className="h-14 px-8 text-[15px]"
           >
             {t('step4.begin_spar')}
           </Button>

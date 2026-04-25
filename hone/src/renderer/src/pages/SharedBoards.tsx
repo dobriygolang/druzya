@@ -18,8 +18,11 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ConnectError, Code } from '@connectrpc/connect';
 import * as Y from 'yjs';
-import { Excalidraw } from '@excalidraw/excalidraw';
+import { IndexeddbPersistence } from 'y-indexeddb';
+import { Awareness, encodeAwarenessUpdate, applyAwarenessUpdate } from 'y-protocols/awareness';
+import { Excalidraw, CaptureUpdateAction } from '@excalidraw/excalidraw';
 import type { ExcalidrawImperativeAPI } from '@excalidraw/excalidraw/types';
+import { useSessionStore } from '../stores/session';
 import '@excalidraw/excalidraw/index.css';
 
 import { WEB_BASE_URL } from '../api/config';
@@ -65,12 +68,30 @@ export function SharedBoardsPage({ initialRoomId, onConsumeInitial }: SharedBoar
     if (typeof window === 'undefined') return false;
     return window.localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === '1';
   });
+  const sidebarMountedRef = useRef(false);
   useEffect(() => {
     try {
       window.localStorage.setItem(SIDEBAR_COLLAPSED_KEY, sidebarCollapsed ? '1' : '0');
     } catch {
       /* ignore */
     }
+    // Skip на initial mount — иначе resize event сбивает Excalidraw'у его
+    // first-measurement через ResizeObserver, и canvas инициализируется с
+    // непредсказуемыми dimensions (отсюда был баг "элементы ставятся
+    // маленькими"). Дёргаем ресайз только на ПОЛЬЗОВАТЕЛЬСКОМ toggle.
+    if (!sidebarMountedRef.current) {
+      sidebarMountedRef.current = true;
+      return;
+    }
+    // Excalidraw подписан на window resize и сам refresh'ится — нам нужен
+    // только dispatch события. apiRef живёт в RoomCanvas (другой scope) и
+    // напрямую отсюда не доступен.
+    const t1 = window.setTimeout(() => window.dispatchEvent(new Event('resize')), 0);
+    const t2 = window.setTimeout(() => window.dispatchEvent(new Event('resize')), 80);
+    return () => {
+      window.clearTimeout(t1);
+      window.clearTimeout(t2);
+    };
   }, [sidebarCollapsed]);
 
   // Sidebar resize.
@@ -171,8 +192,11 @@ export function SharedBoardsPage({ initialRoomId, onConsumeInitial }: SharedBoar
         paddingTop: 80,
         paddingBottom: 0,
         display: 'grid',
-        gridTemplateColumns: sidebarCollapsed ? `0px 0px 1fr` : `${sidebarW}px 6px 1fr`,
-        transition: 'grid-template-columns 240ms ease',
+        // КРИТИЧНО: при collapsed — single-column grid, иначе section с
+        // одним in-flow child'ом auto-flow'ится в column 1 (0px wide) и
+        // схлопывается до нуля ширины. ExpandSidebarButton — position:
+        // absolute, в grid flow не участвует.
+        gridTemplateColumns: sidebarCollapsed ? `1fr` : `${sidebarW}px 6px 1fr`,
         animationDuration: '320ms',
       }}
     >
@@ -229,12 +253,62 @@ interface SidebarProps {
 
 const Sidebar = memo(SidebarImpl);
 
+/** Тихий footer в sidebar: говорит пользователю про auto-cleanup, чтобы
+ *  не думали что мы храним всё вечно. См. backend cron-GC по expires_at. */
+function RetentionHint({ label }: { label: string }) {
+  const [hover, setHover] = useState(false);
+  return (
+    <div
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+      title="Boards inactive for 30+ days are removed automatically. Activity (open/edit/share) resets the timer."
+      style={{
+        marginTop: 14,
+        padding: '10px 14px 14px',
+        borderTop: '1px solid rgba(255,255,255,0.04)',
+        display: 'flex',
+        alignItems: 'center',
+        gap: 6,
+        cursor: 'help',
+      }}
+    >
+      <svg
+        width={11}
+        height={11}
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth={1.6}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        style={{ color: hover ? 'var(--ink-60)' : 'var(--ink-40)', flexShrink: 0, transition: 'color 160ms ease' }}
+      >
+        <circle cx="12" cy="12" r="9" />
+        <polyline points="12 7 12 12 15 14" />
+      </svg>
+      <span
+        className="mono"
+        style={{
+          fontSize: 9,
+          letterSpacing: '0.16em',
+          textTransform: 'uppercase',
+          color: hover ? 'var(--ink-60)' : 'var(--ink-40)',
+          transition: 'color 160ms ease',
+        }}
+      >
+        {label}
+      </span>
+    </div>
+  );
+}
+
 function SidebarImpl({ list, selectedId, onSelect, onCreate, onDelete, onJoin, onToggleCollapse }: SidebarProps) {
   return (
     <aside
-      className="slide-from-left"
       style={{
-        animationDuration: '320ms',
+        // Без slide-from-left анимации: open и close — оба instant. Раньше
+        // была asymmetric: open анимирован, close — instant unmount, что
+        // визуально выглядело как «закрывается плавно, открывается резко».
         borderRight: '1px solid rgba(255,255,255,0.06)',
         padding: '0 8px',
         overflowY: 'auto',
@@ -258,6 +332,7 @@ function SidebarImpl({ list, selectedId, onSelect, onCreate, onDelete, onJoin, o
           />
         ))}
       </div>
+      <RetentionHint label="Auto-cleanup after 30d of inactivity" />
       {list.error && (
         <div
           className="mono"
@@ -732,6 +807,9 @@ function RoomCanvas({ roomId }: { roomId: string }) {
   const [loadError, setLoadError] = useState<{ code: Code | null; msg: string } | null>(null);
   const [wsStatus, setWsStatus] = useState<WhiteboardWsStatus>('connecting');
   const [currentTool, setCurrentTool] = useState<string>('selection');
+  const myUserId = useSessionStore((s) => s.userId);
+  const awarenessRef = useRef<Awareness | null>(null);
+  const sendAwarenessRef = useRef<((u: Uint8Array) => void) | null>(null);
 
   const ydocRef = useRef<Y.Doc | null>(null);
   const apiRef = useRef<ExcalidrawImperativeAPI | null>(null);
@@ -739,6 +817,10 @@ function RoomCanvas({ roomId }: { roomId: string }) {
   const wsCloseRef = useRef<(() => void) | null>(null);
   const applyingRemoteRef = useRef(false);
   const debounceRef = useRef<number | null>(null);
+  // Pending elements JSON, ещё не закоммиченный в yScene из-за debounce.
+  // На cleanup делаем sync-flush — иначе drawing'и в последние 80ms перед
+  // переключением board теряются (debounce таймер cancel'ится без выполнения).
+  const pendingElementsRef = useRef<string | null>(null);
 
   // Load room meta.
   useEffect(() => {
@@ -760,6 +842,15 @@ function RoomCanvas({ roomId }: { roomId: string }) {
     };
   }, [parsedId]);
 
+  // ─── Forced black canvas ─────────────────────────────────────────────
+  // Excalidraw's default `viewBackgroundColor` is `Z.white`. Even with
+  // `theme="dark"` and `initialData.appState.viewBackgroundColor: '#000'`,
+  // there's a race: API ready → first paint → Yjs `updateScene({elements})`
+  // → appState gets reset to defaults → canvas flashes white.
+  //
+  // Fix: pulse `updateScene({appState:{viewBackgroundColor:'#000'}})` at
+  // multiple intervals after mount. Cheap (no-op when already #000), and
+  // guarantees black regardless of Yjs/WS arrival timing.
   // Yjs + WebSocket lifecycle (без изменений с прежней реализации).
   useEffect(() => {
     if (!room) return;
@@ -767,11 +858,65 @@ function RoomCanvas({ roomId }: { roomId: string }) {
     ydocRef.current = ydoc;
     const yScene = ydoc.getMap<string>('scene');
 
+    const persistence = new IndexeddbPersistence(`hone:whiteboard:${room.id}`, ydoc);
+
+    // Awareness — присутствие других участников: имя, цвет, pointer, selection.
+    // Excalidraw нативно умеет рендерить cursors через appState.collaborators.
+    // Мы маппим Yjs awareness state'ы в их формат и фитим updateScene'ом.
+    const awareness = new Awareness(ydoc);
+    awarenessRef.current = awareness;
+    const me = room.participants.find((p) => p.userId === myUserId);
+    const myName = me?.username || (myUserId ?? '').slice(0, 6) || 'guest';
+    const myColor = userColor(myUserId ?? room.id);
+    awareness.setLocalStateField('user', { name: myName, color: myColor });
+
     const onUpdate = (update: Uint8Array, origin: unknown) => {
-      if (origin === 'remote') return;
+      if (origin === 'remote' || origin === persistence) return;
       sendRef.current?.(update);
     };
     ydoc.on('update', onUpdate);
+
+    const onAwarenessUpdate = (
+      diff: { added: number[]; updated: number[]; removed: number[] },
+      origin: unknown,
+    ) => {
+      if (origin === 'remote') return;
+      const changed = diff.added.concat(diff.updated, diff.removed);
+      if (changed.length === 0) return;
+      const enc = encodeAwarenessUpdate(awareness, changed);
+      sendAwarenessRef.current?.(enc);
+    };
+    awareness.on('update', onAwarenessUpdate);
+
+    // Маппим awareness в Excalidraw collaborators format (Map<id, {pointer,
+    // username, color, ...}>). Без этого их курсоры не рендерятся.
+    const onAwarenessChange = () => {
+      const api = apiRef.current;
+      if (!api) return;
+      const collabs = new Map<string, {
+        pointer?: { x: number; y: number; tool: 'pointer' | 'laser' };
+        username?: string;
+        color?: { background: string; stroke: string };
+      }>();
+      awareness.getStates().forEach((state, clientId) => {
+        if (clientId === awareness.clientID) return; // не показываем себя
+        const u = state.user as { name?: string; color?: string } | undefined;
+        const p = state.pointer as { x: number; y: number } | undefined;
+        if (!u) return;
+        collabs.set(String(clientId), {
+          username: u.name || 'guest',
+          color: { background: u.color || '#888', stroke: u.color || '#888' },
+          pointer: p ? { x: p.x, y: p.y, tool: 'pointer' } : undefined,
+        });
+      });
+      try {
+        api.updateScene({
+          collaborators: collabs as never,
+          captureUpdate: CaptureUpdateAction.NEVER,
+        });
+      } catch { /* ignore */ }
+    };
+    awareness.on('change', onAwarenessChange);
 
     const handle = connectWhiteboardWs({
       roomId: room.id,
@@ -782,12 +927,24 @@ function RoomCanvas({ roomId }: { roomId: string }) {
           if (data?.update) {
             Y.applyUpdate(ydoc, b64ToBytes(data.update), 'remote');
           }
+        } else if (env.kind === 'awareness') {
+          // Бэкенд может оборачивать в {user_id, data} или передавать как есть.
+          const data = env.data as { data?: { update?: string }; update?: string } | undefined;
+          const b64 = data?.data?.update ?? data?.update;
+          if (typeof b64 === 'string') {
+            try {
+              applyAwarenessUpdate(awareness, b64ToBytes(b64), 'remote');
+            } catch { /* malformed remote awareness — ignore */ }
+          }
         }
       },
     });
     wsCloseRef.current = handle.close;
     sendRef.current = (update: Uint8Array) => {
       handle.send({ kind: 'update', data: { update: bytesToB64(update) } });
+    };
+    sendAwarenessRef.current = (update: Uint8Array) => {
+      handle.send({ kind: 'awareness', data: { update: bytesToB64(update) } });
     };
 
     const onSceneChange = () => {
@@ -796,7 +953,13 @@ function RoomCanvas({ roomId }: { roomId: string }) {
       try {
         const elements = JSON.parse(json);
         applyingRemoteRef.current = true;
-        apiRef.current.updateScene({ elements });
+        // ТОЛЬКО elements — appState не трогаем, иначе Excalidraw
+        // может потерять files (для image elements), tool state и
+        // прочую клиентскую meta'у.
+        apiRef.current.updateScene({
+          elements,
+          captureUpdate: CaptureUpdateAction.NEVER,
+        });
       } catch {
         /* ignore parse errors */
       } finally {
@@ -808,29 +971,64 @@ function RoomCanvas({ roomId }: { roomId: string }) {
     yScene.observe(onSceneChange);
 
     return () => {
+      // КРИТИЧНО: flush pending change ДО закрытия WS / destroy ydoc.
+      // Иначе drawing'и в последние 80ms (между last onChange и сменой
+      // комнаты) теряются — yScene.set никогда не вызывается, update не
+      // улетает на сервер, доска при rejoin пустая.
+      if (debounceRef.current !== null) {
+        window.clearTimeout(debounceRef.current);
+        debounceRef.current = null;
+      }
+      const pending = pendingElementsRef.current;
+      pendingElementsRef.current = null;
+      if (pending !== null && yScene.get('elements') !== pending) {
+        // sync set → ydoc.on('update') fires sync → sendRef → ws.send
+        // (WS буфер успеет flush'нуться до .close() в стандартных browser
+        // WS implementations).
+        yScene.set('elements', pending);
+      }
       yScene.unobserve(onSceneChange);
       ydoc.off('update', onUpdate);
-      ydoc.destroy();
+      awareness.off('update', onAwarenessUpdate);
+      awareness.off('change', onAwarenessChange);
+      const closeHandle = wsCloseRef.current;
+      const destroyDoc = () => {
+        try { awareness.destroy(); } catch { /* ignore */ }
+        try { ydoc.destroy(); } catch { /* ignore */ }
+        try { void persistence.destroy(); } catch { /* ignore */ }
+      };
+      window.setTimeout(() => {
+        closeHandle?.();
+        destroyDoc();
+      }, 60);
       ydocRef.current = null;
-      wsCloseRef.current?.();
+      awarenessRef.current = null;
       wsCloseRef.current = null;
       sendRef.current = null;
-      if (debounceRef.current !== null) window.clearTimeout(debounceRef.current);
+      sendAwarenessRef.current = null;
     };
-  }, [room]);
+  }, [room, myUserId]);
 
-  const handleExcalidrawChange = useCallback((elements: readonly unknown[]) => {
-    if (applyingRemoteRef.current) return;
-    const ydoc = ydocRef.current;
-    if (!ydoc) return;
-    const yScene = ydoc.getMap<string>('scene');
-    if (debounceRef.current !== null) window.clearTimeout(debounceRef.current);
-    debounceRef.current = window.setTimeout(() => {
+  const handleExcalidrawChange = useCallback(
+    (elements: readonly unknown[]) => {
+      if (applyingRemoteRef.current) return;
+      const ydoc = ydocRef.current;
+      if (!ydoc) return;
+      const yScene = ydoc.getMap<string>('scene');
       const json = JSON.stringify(elements);
-      if (yScene.get('elements') === json) return;
-      yScene.set('elements', json);
-    }, 80);
-  }, []);
+      pendingElementsRef.current = json;
+      if (debounceRef.current !== null) window.clearTimeout(debounceRef.current);
+      debounceRef.current = window.setTimeout(() => {
+        if (yScene.get('elements') === json) {
+          pendingElementsRef.current = null;
+          return;
+        }
+        yScene.set('elements', json);
+        pendingElementsRef.current = null;
+      }, 80);
+    },
+    [],
+  );
 
   // Toolbar → setActiveTool. Excalidraw type union — список конкретных
   // tool-name'ов.
@@ -914,18 +1112,40 @@ function RoomCanvas({ roomId }: { roomId: string }) {
         </span>
       </div>
 
-      <div className="hone-excalidraw-mount" style={{ position: 'absolute', inset: 0 }}>
+      <div
+        className="hone-excalidraw-mount"
+        style={{ position: 'absolute', inset: 0 }}
+      >
         <Excalidraw
+          // theme="dark" — Excalidraw сам управляет dark-mode стайлингом
+          // элементов (тёмный фон canvas + светлые штрихи). Мы только
+          // глушим в globals.css его CSS-фильтр `invert(93%) hue-rotate`
+          // на canvas, который ломал color rendering в нашем тёмном
+          // chrome. И всё. Никаких pulse-override'ов viewBackgroundColor —
+          // они случайно стирали files/elements при rapid updateScene.
           theme="dark"
-          initialData={{
-            appState: {
-              viewBackgroundColor: '#000000',
-              theme: 'dark',
-              gridSize: null as unknown as number,
-            },
-          }}
           excalidrawAPI={(api) => {
             apiRef.current = api;
+            requestAnimationFrame(() => {
+              try { api.refresh(); } catch { /* ignore */ }
+            });
+            window.setTimeout(() => {
+              try { api.refresh(); } catch { /* ignore */ }
+            }, 100);
+            window.setTimeout(() => {
+              try { api.refresh(); } catch { /* ignore */ }
+            }, 500);
+          }}
+          onPointerUpdate={(payload) => {
+            // Стримим свой pointer в awareness каждый move. y-protocols
+            // throttle'ит 'change' event'ы (выпускает только при реальной
+            // diff'е), плюс мы шлём только awareness-payload — не Y.Doc
+            // updates, так что overhead минимальный.
+            const aw = awarenessRef.current;
+            if (!aw) return;
+            const p = payload?.pointer;
+            if (!p) return;
+            aw.setLocalStateField('pointer', { x: p.x, y: p.y });
           }}
           onChange={handleExcalidrawChange}
           UIOptions={{
@@ -938,24 +1158,37 @@ function RoomCanvas({ roomId }: { roomId: string }) {
         currentTool={currentTool}
         onSelect={setTool}
         onUploadImage={() => setTool('image')}
-        onToggleLibrary={() => {
-          // 1) Пробуем встроенный Excalidraw library sidebar. Если API не
-          //    отвечает (некоторые билды Excalidraw умалчивают toggleSidebar
-          //    при hidden default UI) — fallback на внешний браузер с
-          //    libraries.excalidraw.com где юзер скачивает .excalidrawlib.
+        onImportLibraryFile={() => {
           const api = apiRef.current;
-          let opened = false;
+          if (!api) return;
           try {
-            opened = !!api?.toggleSidebar({ name: 'library' });
-          } catch {
-            opened = false;
-          }
-          if (!opened) {
-            const url = 'https://libraries.excalidraw.com/';
-            const bridge = typeof window !== 'undefined' ? window.hone : undefined;
-            if (bridge) void bridge.shell.openExternal(url);
-            else window.open(url, '_blank');
-          }
+            api.toggleSidebar({ name: 'default', tab: 'library', force: true });
+          } catch { /* ignore */ }
+          const input = document.createElement('input');
+          input.type = 'file';
+          input.accept = '.excalidrawlib,application/json';
+          input.onchange = async () => {
+            const file = input.files?.[0];
+            if (!file) return;
+            try {
+              const text = await file.text();
+              const json = JSON.parse(text);
+              await api.updateLibrary({
+                libraryItems: json,
+                merge: true,
+                openLibraryMenu: true,
+              });
+            } catch (err) {
+              console.error('library import failed', err);
+            }
+          };
+          input.click();
+        }}
+        onBrowseLibraries={() => {
+          const url = 'https://libraries.excalidraw.com/';
+          const bridge = typeof window !== 'undefined' ? window.hone : undefined;
+          if (bridge) void bridge.shell.openExternal(url);
+          else window.open(url, '_blank');
         }}
       />
     </>
@@ -981,10 +1214,17 @@ interface ToolbarProps {
       | 'hand',
   ) => void;
   onUploadImage: () => void;
-  onToggleLibrary: () => void;
+  onImportLibraryFile: () => void;
+  onBrowseLibraries: () => void;
 }
 
-function FloatingToolbar({ currentTool, onSelect, onUploadImage, onToggleLibrary }: ToolbarProps) {
+function FloatingToolbar({
+  currentTool,
+  onSelect,
+  onUploadImage,
+  onImportLibraryFile,
+  onBrowseLibraries,
+}: ToolbarProps) {
   return (
     <DraggableToolbar storageKey="hone:shared-boards:toolbar-pos">
       <ToolBtn active={currentTool === 'hand'} onClick={() => onSelect('hand')} title="Hand (pan)">
@@ -1022,10 +1262,200 @@ function FloatingToolbar({ currentTool, onSelect, onUploadImage, onToggleLibrary
         <EraserIcon />
       </ToolBtn>
       <ToolSep />
-      <ToolBtn onClick={onToggleLibrary} title="Library (presets — Redis, Postgres, AWS, etc)">
-        <LibraryIcon />
-      </ToolBtn>
+      <LibraryButton
+        onImportFile={onImportLibraryFile}
+        onBrowse={onBrowseLibraries}
+      />
     </DraggableToolbar>
+  );
+}
+
+function LibraryButton({
+  onImportFile,
+  onBrowse,
+}: {
+  onImportFile: () => void;
+  onBrowse: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [hover, setHover] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  // Close on outside click / Esc.
+  useEffect(() => {
+    if (!open) return;
+    const onDocClick = (e: MouseEvent) => {
+      if (!ref.current?.contains(e.target as Node)) setOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setOpen(false);
+    };
+    window.addEventListener('mousedown', onDocClick);
+    window.addEventListener('keydown', onKey);
+    return () => {
+      window.removeEventListener('mousedown', onDocClick);
+      window.removeEventListener('keydown', onKey);
+    };
+  }, [open]);
+
+  return (
+    <div ref={ref} style={{ position: 'relative' }}>
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        onMouseEnter={() => setHover(true)}
+        onMouseLeave={() => setHover(false)}
+        title="Library presets"
+        className="focus-ring"
+        style={{
+          width: 32,
+          height: 32,
+          display: 'grid',
+          placeItems: 'center',
+          background: open
+            ? 'rgba(255,255,255,0.12)'
+            : hover
+              ? 'rgba(255,255,255,0.06)'
+              : 'transparent',
+          border: 'none',
+          cursor: 'pointer',
+          color: open || hover ? 'var(--ink)' : 'var(--ink-60)',
+          borderRadius: 8,
+          transition: 'background-color 140ms ease, color 140ms ease',
+        }}
+      >
+        <LibraryIcon />
+      </button>
+      {open && (
+        <div
+          className="fadein"
+          style={{
+            position: 'absolute',
+            top: 'calc(100% + 8px)',
+            right: 0,
+            minWidth: 240,
+            padding: 6,
+            borderRadius: 12,
+            background: 'rgba(20,20,22,0.96)',
+            backdropFilter: 'blur(18px)',
+            WebkitBackdropFilter: 'blur(18px)',
+            border: '1px solid rgba(255,255,255,0.08)',
+            boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
+            animationDuration: '140ms',
+            zIndex: 40,
+          }}
+        >
+          <PopoverLabel>Library</PopoverLabel>
+          <PopoverItem
+            icon={<UploadIcon />}
+            label="Import .excalidrawlib"
+            sub="Open file from disk"
+            onClick={() => {
+              setOpen(false);
+              onImportFile();
+            }}
+          />
+          <PopoverItem
+            icon={<ExternalIcon />}
+            label="Browse libraries"
+            sub="libraries.excalidraw.com"
+            onClick={() => {
+              setOpen(false);
+              onBrowse();
+            }}
+          />
+        </div>
+      )}
+    </div>
+  );
+}
+
+function PopoverLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <div
+      className="mono"
+      style={{
+        fontSize: 9,
+        letterSpacing: '0.18em',
+        textTransform: 'uppercase',
+        color: 'var(--ink-40)',
+        padding: '6px 10px 4px',
+      }}
+    >
+      {children}
+    </div>
+  );
+}
+
+function PopoverItem({
+  icon,
+  label,
+  sub,
+  onClick,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  sub?: string;
+  onClick: () => void;
+}) {
+  const [hover, setHover] = useState(false);
+  return (
+    <button
+      onClick={onClick}
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 12,
+        width: '100%',
+        padding: '9px 10px',
+        background: hover ? 'rgba(255,255,255,0.06)' : 'transparent',
+        border: 'none',
+        borderRadius: 8,
+        color: hover ? 'var(--ink)' : 'var(--ink-90)',
+        cursor: 'pointer',
+        textAlign: 'left',
+        transition: 'background-color 140ms ease, color 140ms ease',
+      }}
+    >
+      <span
+        style={{
+          display: 'inline-grid',
+          placeItems: 'center',
+          color: 'inherit',
+          flexShrink: 0,
+        }}
+      >
+        {icon}
+      </span>
+      <span style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
+        <span style={{ fontSize: 13, lineHeight: 1.2 }}>{label}</span>
+        {sub && (
+          <span
+            className="mono"
+            style={{
+              fontSize: 9,
+              letterSpacing: '0.12em',
+              color: 'var(--ink-40)',
+              marginTop: 2,
+            }}
+          >
+            {sub}
+          </span>
+        )}
+      </span>
+    </button>
+  );
+}
+
+function UploadIcon() {
+  return (
+    <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+      <polyline points="17 8 12 3 7 8" />
+      <line x1="12" y1="3" x2="12" y2="15" />
+    </svg>
   );
 }
 
@@ -1273,6 +1703,15 @@ function EmptyState({ onCreate }: { onCreate: () => void }) {
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────
+
+function userColor(seed: string): string {
+  let h = 0;
+  for (let i = 0; i < seed.length; i++) {
+    h = (h * 31 + seed.charCodeAt(i)) | 0;
+  }
+  const hue = Math.abs(h) % 360;
+  return `hsl(${hue}, 80%, 65%)`;
+}
 
 function extractRoomId(input: string): string {
   const trimmed = input.trim();

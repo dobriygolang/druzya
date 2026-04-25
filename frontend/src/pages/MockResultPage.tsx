@@ -80,15 +80,15 @@ function Header({
 
 function Hero({ overall }: { overall: number }) {
   return (
-    <div className="relative flex flex-col items-start justify-between gap-4 overflow-hidden border-b border-border bg-gradient-to-r from-surface-3 to-accent px-4 py-6 sm:px-6 lg:h-[200px] lg:flex-row lg:items-center lg:gap-0 lg:px-10 lg:py-0">
+    <div className="relative flex flex-col items-start justify-between gap-4 overflow-hidden border-b border-border-strong bg-surface-2 px-4 py-6 sm:px-6 lg:h-[200px] lg:flex-row lg:items-center lg:gap-0 lg:px-10 lg:py-0">
       <div className="flex flex-col gap-2">
-        <span className="inline-flex w-fit items-center gap-1.5 rounded-full bg-white/15 px-2.5 py-1 font-mono text-[11px] font-semibold tracking-[0.08em] text-text-primary">
+        <span className="inline-flex w-fit items-center gap-1.5 rounded-full bg-text-primary/10 px-2.5 py-1 font-mono text-[11px] font-semibold tracking-[0.08em] text-text-primary">
           <Sparkles className="h-3 w-3" /> AI MOCK · ЗАВЕРШЁН
         </span>
         <h1 className="font-display text-2xl sm:text-3xl lg:text-[36px] font-extrabold leading-[1.1] text-text-primary">
           Overall: {overall} / 100
         </h1>
-        <p className="text-[13px] text-white/80">Готовность к Senior Yandex Backend: {overall}%</p>
+        <p className="text-[13px] text-text-secondary">Готовность к Senior Yandex Backend: {overall}%</p>
       </div>
       <div className="flex flex-col items-end gap-2">
         <span
@@ -97,7 +97,7 @@ function Hero({ overall }: { overall: number }) {
         >
           STRONG MIDDLE
         </span>
-        <span className="font-mono text-[11px] text-white/70">verdict</span>
+        <span className="font-mono text-[11px] text-text-muted">verdict</span>
       </div>
     </div>
   )
@@ -163,7 +163,7 @@ function WeaknessesCard({ items }: { items: string[] }) {
 
 function RecsCard({ items }: { items: { p: string; text: string }[] }) {
   return (
-    <Card className="flex-col gap-3 border-accent/40 bg-gradient-to-br from-accent/40 to-pink/30 p-[22px]" interactive={false}>
+    <Card className="flex-col gap-3 border-border-strong bg-surface-2 p-[22px]" interactive={false}>
       <h3 className="font-display text-base font-bold text-text-primary">Рекомендации</h3>
       {items.map((it, i) => (
         <div key={i} className="flex items-start gap-2">
@@ -196,7 +196,7 @@ function StressTimelineCard() {
             key={i}
             className={[
               'flex-1 rounded-t',
-              h > 80 ? 'bg-danger' : h > 60 ? 'bg-warn' : 'bg-cyan/60',
+              h > 80 ? 'bg-danger' : h > 60 ? 'bg-warn' : 'bg-text-primary/40',
             ].join(' ')}
             style={{ height: `${h}%` }}
           />
@@ -226,7 +226,7 @@ function CompanyScoreCard() {
         <div key={r.c} className="flex items-center gap-3">
           <span className="w-16 text-[13px] text-text-secondary">{r.c}</span>
           <div className="flex h-1.5 flex-1 overflow-hidden rounded-full bg-black/30">
-            <div className="h-full bg-gradient-to-r from-cyan to-accent" style={{ width: `${r.v}%` }} />
+            <div className="h-full bg-text-primary" style={{ width: `${r.v}%` }} />
           </div>
           <span className="font-mono text-[12px] font-semibold text-text-primary">{r.v}%</span>
         </div>
@@ -360,7 +360,7 @@ export default function MockResultPage() {
       <div className="flex flex-col gap-6 px-4 py-6 sm:px-8 lg:px-20 lg:py-8">
         {isError && <ErrorChip />}
         {isProcessing && (
-          <div className="flex items-center gap-2 rounded-lg border border-cyan/40 bg-cyan/10 px-4 py-3 text-[13px] text-cyan">
+          <div className="flex items-center gap-2 rounded-lg border border-border-strong bg-text-primary/10 px-4 py-3 text-[13px] text-text-secondary">
             <Loader2 className="h-4 w-4 animate-spin" />
             AI ещё обрабатывает интервью — отчёт появится через 30–60 секунд.
           </div>

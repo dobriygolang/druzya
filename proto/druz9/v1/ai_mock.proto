@@ -55,6 +55,10 @@ message MockSession {
   google.protobuf.Timestamp finished_at = 9;
   repeated MockMessage last_messages = 10;
   MockStressProfile stress_profile = 11;
+  // ai_assist — true if the candidate opted into Cue copilot help for this
+  // session. When false, copilot.CheckBlock returns blocked=true while the
+  // session is live. Phase-4 ADR-001 (Wave 3) — migration 00040.
+  bool ai_assist = 12;
 }
 
 // CreateMockRequest mirrors OpenAPI CreateMockRequest.
@@ -67,6 +71,10 @@ message CreateMockRequest {
   string paired_user_id = 6;
   bool devils_advocate = 7;
   LLMModel llm_model = 8;
+  // ai_assist — caller opts into Cue copilot help for this mock. Default
+  // (false) is strict / "fair" mode and the desktop client must refuse to
+  // consult the LLM until the session ends.
+  bool ai_assist = 9;
 }
 
 // MockMessageRequest mirrors OpenAPI MockMessageRequest.

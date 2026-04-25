@@ -77,7 +77,7 @@ export function AIAssistantChat() {
       <header className="flex items-start justify-between gap-2">
         <div className="flex min-w-0 flex-col gap-0.5">
           <span className="flex items-center gap-1.5 font-display text-sm font-bold text-text-primary">
-            <Sparkles className="h-4 w-4 text-pink" />
+            <Sparkles className="h-4 w-4 text-text-secondary" />
             AI Помощник · {headlineModel}
           </span>
           <span className="font-mono text-[10px] text-text-muted">
@@ -120,7 +120,7 @@ export function AIAssistantChat() {
                   className={[
                     'rounded-md px-2.5 py-1.5 text-xs',
                     m.role === 'user'
-                      ? 'self-end bg-accent/15 text-text-primary'
+                      ? 'self-end bg-text-primary/15 text-text-primary'
                       : 'self-start bg-surface-2 text-text-secondary',
                   ].join(' ')}
                 >
@@ -135,13 +135,13 @@ export function AIAssistantChat() {
               value={draft}
               onChange={(e) => setDraft(e.target.value)}
               placeholder="Сообщение AI-помощнику…"
-              className="min-w-0 flex-1 rounded-md border border-border bg-surface-2 px-3 py-2 text-sm text-text-primary placeholder:text-text-muted focus:border-accent focus:outline-none"
+              className="min-w-0 flex-1 rounded-md border border-border bg-surface-2 px-3 py-2 text-sm text-text-primary placeholder:text-text-muted focus:border-text-primary focus:outline-none"
               aria-label="Сообщение AI-помощнику"
             />
             <button
               type="submit"
               disabled={!draft.trim()}
-              className="grid h-9 w-9 shrink-0 place-items-center rounded-md bg-accent text-bg disabled:opacity-50"
+              className="grid h-9 w-9 shrink-0 place-items-center rounded-md bg-text-primary text-bg disabled:opacity-50"
               aria-label="Отправить"
             >
               <Send className="h-4 w-4" />

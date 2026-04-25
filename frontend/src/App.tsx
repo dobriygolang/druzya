@@ -66,9 +66,9 @@ const MockReplayPage = lazy(() => import('./pages/MockReplayPage'))
 const MockCompanyPicker = lazy(() => import('./pages/mock/MockCompanyPicker'))
 const MockPipelinePage = lazy(() => import('./pages/mock/MockPipelinePage'))
 const MockPipelineDebrief = lazy(() => import('./pages/mock/MockPipelineDebrief'))
-const CohortPage = lazy(() => import('./pages/CohortPage'))
+// Phase-4 ADR-001 Wave 1+2 — `cohort`, `achievements`, `warroom` removed.
+// Frontend pages deleted; routes redirect to /circles or /profile.
 const SlotsPage = lazy(() => import('./pages/SlotsPage'))
-const AchievementsPage = lazy(() => import('./pages/AchievementsPage'))
 const FriendsPage = lazy(() => import('./pages/FriendsPage'))
 const NotificationsPage = lazy(() => import('./pages/NotificationsPage'))
 const MatchEndPage = lazy(() => import('./pages/MatchEndPage'))
@@ -82,7 +82,6 @@ const Arena2v2Page = lazy(() => import('./pages/Arena2v2Page'))
 const SystemDesignInterviewPage = lazy(() => import('./pages/SystemDesignInterviewPage'))
 const CodeEditorPage = lazy(() => import('./pages/CodeEditorPage'))
 const SpectatorPage = lazy(() => import('./pages/SpectatorPage'))
-const WarRoomPage = lazy(() => import('./pages/WarRoomPage'))
 const VoiceMockPage = lazy(() => import('./pages/VoiceMockPage'))
 const AdminPage = lazy(() => import('./pages/AdminPage'))
 const AdminInterviewerApplicationsPage = lazy(() => import('./pages/AdminInterviewerApplicationsPage'))
@@ -193,10 +192,12 @@ export default function App() {
         <Route path="/rating" element={<Navigate to="/profile" replace />} />
         <Route path="/calendar" element={<Navigate to="/arena" replace />} />
         <Route path="/daily/streak" element={<Navigate to="/profile" replace />} />
-        <Route path="/cohort" element={<CohortPage />} />
-        <Route path="/cohort/:cohortId" element={<CohortPage />} />
+        {/* Phase-4 ADR-001 Wave 2 — cohort merged into circles. */}
+        <Route path="/cohort" element={<Navigate to="/circles" replace />} />
+        <Route path="/cohort/:cohortId" element={<Navigate to="/circles" replace />} />
         <Route path="/slots" element={<SlotsPage />} />
-        <Route path="/achievements" element={<AchievementsPage />} />
+        {/* Phase-4 ADR-001 Wave 1 — Achievements removed (gamification cut). */}
+        <Route path="/achievements" element={<Navigate to="/profile" replace />} />
         <Route path="/friends" element={<FriendsPage />} />
         <Route path="/notifications" element={<NotificationsPage />} />
         <Route path="/match/:matchId/end" element={<MatchEndPage />} />
@@ -222,7 +223,8 @@ export default function App() {
         <Route path="/sd-interview/:sessionId" element={<SystemDesignInterviewPage />} />
         <Route path="/playground" element={<CodeEditorPage />} />
         <Route path="/spectator/:matchId" element={<SpectatorPage />} />
-        <Route path="/cohort/warroom/:incidentId" element={<WarRoomPage />} />
+        {/* Phase-4 ADR-001 Wave 2 — WarRoom removed alongside cohort. */}
+        <Route path="/cohort/warroom/:incidentId" element={<Navigate to="/circles" replace />} />
         <Route path="/voice-mock/:sessionId" element={<VoiceMockPage />} />
         <Route path="/admin" element={<AdminPage />} />
         <Route path="/admin/interviewers" element={<AdminInterviewerApplicationsPage />} />

@@ -11,7 +11,7 @@ import { cn } from '../lib/cn';
 //
 // Hone surfaces are flat: black bg + 1px hairline border. No gradient
 // `from-surface-3 to-surface-1` (the violet-tinted surface-3 is gone),
-// no `shadow-glow` (violet glow), no `ring-accent`. Selection/interactive
+// no `` (violet glow), no `ring-text-primary/40`. Selection/interactive
 // states show only via border opacity bump.
 const card = cva(['relative flex min-w-0 flex-col overflow-hidden text-text-primary'], {
   variants: {

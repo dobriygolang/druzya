@@ -94,7 +94,7 @@ export function MatchmakingDock() {
         'right-4 bottom-20 sm:bottom-4', // sit above MobileBottomNav (sm:hidden) and safe-area
         isError
           ? 'border-danger/40 bg-danger/10 hover:bg-danger/15'
-          : 'border-accent/40 bg-accent/15 hover:bg-accent/25',
+          : 'border-border-strong bg-text-primary/15 hover:bg-text-primary/25',
       )}
       style={{ marginBottom: 'env(safe-area-inset-bottom, 0px)' }}
     >
@@ -102,12 +102,12 @@ export function MatchmakingDock() {
         <AlertTriangle className="h-4 w-4 shrink-0 text-danger" />
       ) : (
         <span className="relative grid h-3.5 w-3.5 place-items-center">
-          <span className="absolute inset-0 animate-ping rounded-full bg-accent opacity-75" />
-          <Search className="relative h-3.5 w-3.5 text-accent-hover" />
+          <span className="absolute inset-0 animate-ping rounded-full bg-text-primary opacity-75" />
+          <Search className="relative h-3.5 w-3.5 text-text-primary" />
         </span>
       )}
       <span className="flex flex-col text-left">
-        <span className={cn('font-mono text-[10px] uppercase tracking-wider', isError ? 'text-danger' : 'text-accent-hover')}>
+        <span className={cn('font-mono text-[10px] uppercase tracking-wider', isError ? 'text-danger' : 'text-text-primary')}>
           {isError ? 'ошибка' : 'поиск соперника'}
         </span>
         <span className="font-display text-[13px] font-semibold text-text-primary">

@@ -78,7 +78,7 @@ function Sidebar({ active, setActive }: { active: NavId; setActive: (id: NavId) 
             className={cn(
               'flex h-10 shrink-0 items-center gap-2.5 rounded-md px-3 text-[13px] font-semibold transition-colors',
               isActive
-                ? 'bg-accent text-text-primary shadow-glow'
+                ? 'bg-text-primary text-text-primary'
                 : isDanger
                   ? 'text-danger hover:bg-danger/10'
                   : 'text-text-secondary hover:bg-surface-3 hover:text-text-primary',
@@ -123,7 +123,7 @@ function ProfileCard() {
           >
             {initial}
           </div>
-          <button className="font-mono text-[11px] font-semibold text-accent-hover hover:underline">
+          <button className="font-mono text-[11px] font-semibold text-text-primary hover:underline">
             {t('change')}
           </button>
         </div>
@@ -292,16 +292,16 @@ function AppearanceCard() {
                 className={cn(
                   'relative flex flex-col items-start gap-2 rounded-lg border p-4 text-left transition-all',
                   active
-                    ? 'border-accent bg-accent/10 shadow-glow'
+                    ? 'border-text-primary bg-text-primary/10'
                     : 'border-border bg-surface-1 hover:border-border-strong',
                 )}
               >
                 {active && (
-                  <span className="absolute right-2 top-2 grid h-5 w-5 place-items-center rounded-full bg-accent text-text-primary">
+                  <span className="absolute right-2 top-2 grid h-5 w-5 place-items-center rounded-full bg-text-primary text-text-primary">
                     <Check className="h-3 w-3" strokeWidth={3} />
                   </span>
                 )}
-                <Icon className="h-5 w-5 text-accent-hover" />
+                <Icon className="h-5 w-5 text-text-primary" />
                 <span className="text-[14px] font-bold text-text-primary">{o.label}</span>
                 <span className="font-mono text-[11px] text-text-muted">{o.desc}</span>
               </button>
@@ -326,16 +326,16 @@ function AppearanceCard() {
                 className={cn(
                   'flex items-center gap-3 rounded-lg border p-4 text-left transition-all',
                   active
-                    ? 'border-accent bg-accent/10'
+                    ? 'border-text-primary bg-text-primary/10'
                     : 'border-border bg-surface-1 hover:border-border-strong',
                 )}
               >
-                <Languages className="h-5 w-5 text-accent-hover" />
+                <Languages className="h-5 w-5 text-text-primary" />
                 <span className="flex-1 text-[14px] font-bold text-text-primary">
                   {l === 'ru' ? 'Русский' : 'English'}
                 </span>
                 {active && (
-                  <span className="grid h-5 w-5 place-items-center rounded-full bg-accent text-text-primary">
+                  <span className="grid h-5 w-5 place-items-center rounded-full bg-text-primary text-text-primary">
                     <Check className="h-3 w-3" strokeWidth={3} />
                   </span>
                 )}
@@ -392,7 +392,7 @@ function DevTierCard() {
             className={cn(
               'flex-1 rounded-md border px-3 py-2 font-mono text-[11px] font-semibold uppercase transition-colors',
               tier === t
-                ? 'border-accent bg-accent/15 text-accent-hover'
+                ? 'border-text-primary bg-text-primary/15 text-text-primary'
                 : 'border-border bg-surface-1 text-text-secondary hover:bg-surface-2',
             )}
           >

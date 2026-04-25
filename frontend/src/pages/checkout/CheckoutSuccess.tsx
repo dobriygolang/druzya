@@ -56,7 +56,7 @@ export default function CheckoutSuccess() {
 
         <Card className="w-full flex-col gap-4 p-6">
           <div className="flex items-center gap-2">
-            <Sparkles className="h-4 w-4 text-pink" />
+            <Sparkles className="h-4 w-4 text-text-secondary" />
             <h3 className="font-display text-lg font-bold text-text-primary">Что у тебя теперь есть</h3>
           </div>
           <ul className="flex flex-col gap-2.5">

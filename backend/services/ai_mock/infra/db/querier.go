@@ -16,6 +16,11 @@ type Querier interface {
 	// CRITICAL: solution_hint is ONLY selected by GetTaskWithHint — never by any
 	// query whose result is shown to the client.
 	CreateMockSession(ctx context.Context, arg CreateMockSessionParams) (MockSession, error)
+	// Phase-4 ADR-001 (Wave 3) — drives copilot.CheckBlock. Returns the user's
+	// live mock_sessions row when ai_assist=FALSE (strict mode). When the row
+	// exists, copilot.Analyze must refuse the LLM call. Cross-service read by
+	// design — copilot owns the gate logic but leans on ai_mock's table.
+	GetActiveBlockingMockSession(ctx context.Context, userID pgtype.UUID) (GetActiveBlockingMockSessionRow, error)
 	GetCompanyForMock(ctx context.Context, id pgtype.UUID) (GetCompanyForMockRow, error)
 	GetMockSession(ctx context.Context, id pgtype.UUID) (MockSession, error)
 	// Same caveat as PickTaskForSection — private to ai_mock's prompt builder.

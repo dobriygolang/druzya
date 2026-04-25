@@ -83,16 +83,6 @@ var rawTemplates = map[enums.NotificationType]map[string]string{
 		"ru": `🎯 Матч найден! {{.Section}}. Заходи быстрее — противник ждёт.`,
 		"en": `🎯 Match found! {{.Section}}. Hurry — your opponent is waiting.`,
 	},
-	// payload: {EnemyCohort:string, Days:int}
-	enums.NotificationTypeCohortWarStart: {
-		"ru": `🏰 Война началась против {{.EnemyCohort}}. {{.Days}} дней до конца.`,
-		"en": `🏰 War started against {{.EnemyCohort}}. {{.Days}} days remaining.`,
-	},
-	// payload: {Won:bool, Points:int}
-	enums.NotificationTypeCohortWarResult: {
-		"ru": `{{if .Won}}Victory! Ваша когорта заработала {{.Points}} очков.{{else}}Поражение. Очков: {{.Points}}. В следующий раз.{{end}}`,
-		"en": `{{if .Won}}Victory! Your cohort earned {{.Points}} points.{{else}}Defeat. Points: {{.Points}}. Better luck next time.{{end}}`,
-	},
 	// payload: {NodeKey:string, DaysInactive:int}
 	enums.NotificationTypeSkillDecay: {
 		"ru": `⚠ Skill «{{.NodeKey}}» начинает угасать — {{.DaysInactive}} дн без практики.`,
@@ -115,7 +105,6 @@ var rawTemplates = map[enums.NotificationType]map[string]string{
 	},
 }
 
-// SubscriptionActivatedTemplate, UserRegisteredTemplate and CohortWarResult
-// (losing variant) are reused via the {Won:bool} flag. Additional free-form
-// templates used by the bot command dispatcher (welcome message, etc.) live in
-// bot_text.go.
+// SubscriptionActivatedTemplate and UserRegisteredTemplate are reused via
+// the {Won:bool} flag. Additional free-form templates used by the bot command
+// dispatcher (welcome message, etc.) live in bot_text.go.

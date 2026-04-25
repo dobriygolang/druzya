@@ -2764,3 +2764,100 @@ export class RateCopilotMessageResponse extends Message<RateCopilotMessageRespon
   }
 }
 
+/**
+ * CheckBlockRequest — user_id is taken from the auth token; no body fields.
+ * Cue desktop calls this before every LLM consult. When blocked=true, Cue must
+ * show "help disabled" UI and skip the LLM call. The Analyze/Chat RPCs also
+ * enforce server-side as defense-in-depth.
+ *
+ * @generated from message druz9.v1.CheckBlockRequest
+ */
+export class CheckBlockRequest extends Message<CheckBlockRequest> {
+  constructor(data?: PartialMessage<CheckBlockRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.CheckBlockRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): CheckBlockRequest {
+    return new CheckBlockRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): CheckBlockRequest {
+    return new CheckBlockRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): CheckBlockRequest {
+    return new CheckBlockRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: CheckBlockRequest | PlainMessage<CheckBlockRequest> | undefined, b: CheckBlockRequest | PlainMessage<CheckBlockRequest> | undefined): boolean {
+    return proto3.util.equals(CheckBlockRequest, a, b);
+  }
+}
+
+/**
+ * CheckBlockResponse describes whether the caller is currently barred from
+ * consulting Cue. Phase-4 ADR-001 (Wave 3) — fed by an ai_mock session row
+ * where ai_assist=FALSE.
+ *
+ * @generated from message druz9.v1.CheckBlockResponse
+ */
+export class CheckBlockResponse extends Message<CheckBlockResponse> {
+  /**
+   * blocked is true while a strict-mode mock session is live.
+   *
+   * @generated from field: bool blocked = 1;
+   */
+  blocked = false;
+
+  /**
+   * reason is a stable machine-readable tag. Empty when blocked=false.
+   * Known values: "mock_no_assist".
+   *
+   * @generated from field: string reason = 2;
+   */
+  reason = "";
+
+  /**
+   * until is the soft expiry of the block (e.g. session's expected end).
+   * Zero / unset means "until the session is finished, indeterminate".
+   *
+   * @generated from field: google.protobuf.Timestamp until = 3;
+   */
+  until?: Timestamp;
+
+  constructor(data?: PartialMessage<CheckBlockResponse>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.CheckBlockResponse";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "blocked", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
+    { no: 2, name: "reason", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 3, name: "until", kind: "message", T: Timestamp },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): CheckBlockResponse {
+    return new CheckBlockResponse().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): CheckBlockResponse {
+    return new CheckBlockResponse().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): CheckBlockResponse {
+    return new CheckBlockResponse().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: CheckBlockResponse | PlainMessage<CheckBlockResponse> | undefined, b: CheckBlockResponse | PlainMessage<CheckBlockResponse> | undefined): boolean {
+    return proto3.util.equals(CheckBlockResponse, a, b);
+  }
+}
+

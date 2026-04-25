@@ -183,14 +183,14 @@ func New(ctx context.Context, cfg *config.Config) (app *App, otelShutdown func()
 		// — that's fine, the bus is fan-out-without-FK.
 		slotMod,
 		reviewMod,
-		services.NewCohort(deps),
+		// Phase-4 ADR-001 (Wave 2) — `cohort` removed (feature merged into circles).
 		&notify.Module,
 		services.NewEditor(deps),
 		services.NewPodcast(deps),
 		services.NewAdmin(deps),
 		services.NewFeed(deps),
 		services.NewVacancies(deps),
-		services.NewAchievements(deps),
+		// Phase-4 ADR-001 — `achievements` removed (gamification cut, no UI surface).
 		services.NewFriends(deps),
 		services.NewHone(deps),
 		intelligenceMod.Module,

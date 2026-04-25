@@ -100,7 +100,7 @@ function VacancyCard({
   return (
     <Link
       to={`/vacancies/${v.source}/${encodeURIComponent(v.external_id)}`}
-      className="group block rounded-xl no-underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-bg"
+      className="group block rounded-xl no-underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-text-primary/40 focus-visible:ring-offset-2 focus-visible:ring-offset-bg"
     >
       <Card variant="elevated" interactive padding="lg">
         <div className="flex items-start justify-between gap-3">
@@ -113,7 +113,7 @@ function VacancyCard({
                 </span>
               )}
             </div>
-            <span className="font-display text-base font-bold text-text-primary transition-colors group-hover:text-accent">
+            <span className="font-display text-base font-bold text-text-primary transition-colors group-hover:text-text-primary">
               {v.title}
             </span>
             {v.company && (
@@ -194,7 +194,7 @@ function CheckboxFacetSection<T extends string>({
               key={o.name}
               className={`flex cursor-pointer items-center justify-between gap-2 rounded-md border px-2.5 py-1 text-xs transition-colors ${
                 checked
-                  ? 'border-accent bg-accent/15 text-text-primary'
+                  ? 'border-text-primary bg-text-primary/15 text-text-primary'
                   : 'border-border bg-surface-2 text-text-secondary hover:border-border-strong'
               }`}
             >
@@ -216,7 +216,7 @@ function CheckboxFacetSection<T extends string>({
         <button
           type="button"
           onClick={() => setExpanded(true)}
-          className="mt-2 text-[11px] text-accent-hover hover:underline"
+          className="mt-2 text-[11px] text-text-primary hover:underline"
         >
           Показать все ({options.length})
         </button>
@@ -318,7 +318,7 @@ function FilterSidebar({
           value={salaryMin || ''}
           onChange={(e) => setSalaryMin(Number(e.target.value) || 0)}
           placeholder="0"
-          className="w-full rounded-md border border-border bg-bg px-3 py-2 text-sm text-text-primary placeholder:text-text-muted focus:border-accent focus:outline-none"
+          className="w-full rounded-md border border-border bg-bg px-3 py-2 text-sm text-text-primary placeholder:text-text-muted focus:border-text-primary focus:outline-none"
         />
       </div>
       <div>
@@ -331,7 +331,7 @@ function FilterSidebar({
           value={location}
           onChange={(e) => setLocation(e.target.value)}
           placeholder="Москва"
-          className="w-full rounded-md border border-border bg-bg px-3 py-2 text-sm text-text-primary placeholder:text-text-muted focus:border-accent focus:outline-none"
+          className="w-full rounded-md border border-border bg-bg px-3 py-2 text-sm text-text-primary placeholder:text-text-muted focus:border-text-primary focus:outline-none"
         />
       </div>
     </Card>
@@ -537,7 +537,7 @@ function Hero() {
           <span>·</span>
           <Link
             to="/settings"
-            className="font-semibold text-accent hover:underline"
+            className="font-semibold text-text-primary hover:underline"
           >
             Изменить в настройках →
           </Link>
@@ -655,7 +655,7 @@ function AnalyzeResultCard({ res, onReset }: { res: AnalyzeResponse; onReset: ()
       <div className="mt-3 flex items-center justify-between border-t border-border pt-3">
         <Link
           to={`/vacancies/${res.vacancy.source}/${encodeURIComponent(res.vacancy.external_id)}`}
-          className="text-xs font-semibold text-accent hover:underline"
+          className="text-xs font-semibold text-text-primary hover:underline"
         >
           Открыть вакансию →
         </Link>

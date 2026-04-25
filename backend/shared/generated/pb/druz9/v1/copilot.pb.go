@@ -3318,6 +3318,114 @@ func (*RateCopilotMessageResponse) Descriptor() ([]byte, []int) {
 	return file_druz9_v1_copilot_proto_rawDescGZIP(), []int{41}
 }
 
+// CheckBlockRequest — user_id is taken from the auth token; no body fields.
+// Cue desktop calls this before every LLM consult. When blocked=true, Cue must
+// show "help disabled" UI and skip the LLM call. The Analyze/Chat RPCs also
+// enforce server-side as defense-in-depth.
+type CheckBlockRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CheckBlockRequest) Reset() {
+	*x = CheckBlockRequest{}
+	mi := &file_druz9_v1_copilot_proto_msgTypes[42]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CheckBlockRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CheckBlockRequest) ProtoMessage() {}
+
+func (x *CheckBlockRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_copilot_proto_msgTypes[42]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CheckBlockRequest.ProtoReflect.Descriptor instead.
+func (*CheckBlockRequest) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_copilot_proto_rawDescGZIP(), []int{42}
+}
+
+// CheckBlockResponse describes whether the caller is currently barred from
+// consulting Cue. Phase-4 ADR-001 (Wave 3) — fed by an ai_mock session row
+// where ai_assist=FALSE.
+type CheckBlockResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// blocked is true while a strict-mode mock session is live.
+	Blocked bool `protobuf:"varint,1,opt,name=blocked,proto3" json:"blocked,omitempty"`
+	// reason is a stable machine-readable tag. Empty when blocked=false.
+	// Known values: "mock_no_assist".
+	Reason string `protobuf:"bytes,2,opt,name=reason,proto3" json:"reason,omitempty"`
+	// until is the soft expiry of the block (e.g. session's expected end).
+	// Zero / unset means "until the session is finished, indeterminate".
+	Until         *timestamppb.Timestamp `protobuf:"bytes,3,opt,name=until,proto3" json:"until,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CheckBlockResponse) Reset() {
+	*x = CheckBlockResponse{}
+	mi := &file_druz9_v1_copilot_proto_msgTypes[43]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CheckBlockResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CheckBlockResponse) ProtoMessage() {}
+
+func (x *CheckBlockResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_copilot_proto_msgTypes[43]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CheckBlockResponse.ProtoReflect.Descriptor instead.
+func (*CheckBlockResponse) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_copilot_proto_rawDescGZIP(), []int{43}
+}
+
+func (x *CheckBlockResponse) GetBlocked() bool {
+	if x != nil {
+		return x.Blocked
+	}
+	return false
+}
+
+func (x *CheckBlockResponse) GetReason() string {
+	if x != nil {
+		return x.Reason
+	}
+	return ""
+}
+
+func (x *CheckBlockResponse) GetUntil() *timestamppb.Timestamp {
+	if x != nil {
+		return x.Until
+	}
+	return nil
+}
+
 var File_druz9_v1_copilot_proto protoreflect.FileDescriptor
 
 const file_druz9_v1_copilot_proto_rawDesc = "" +
@@ -3560,7 +3668,12 @@ const file_druz9_v1_copilot_proto_rawDesc = "" +
 	"message_id\x18\x01 \x01(\tR\tmessageId\x12\x16\n" +
 	"\x06rating\x18\x02 \x01(\x05R\x06rating\x12\x18\n" +
 	"\acomment\x18\x03 \x01(\tR\acomment\"\x1c\n" +
-	"\x1aRateCopilotMessageResponse*\x96\x01\n" +
+	"\x1aRateCopilotMessageResponse\"\x13\n" +
+	"\x11CheckBlockRequest\"x\n" +
+	"\x12CheckBlockResponse\x12\x18\n" +
+	"\ablocked\x18\x01 \x01(\bR\ablocked\x12\x16\n" +
+	"\x06reason\x18\x02 \x01(\tR\x06reason\x120\n" +
+	"\x05until\x18\x03 \x01(\v2\x1a.google.protobuf.TimestampR\x05until*\x96\x01\n" +
 	"\x15CopilotAttachmentKind\x12'\n" +
 	"#COPILOT_ATTACHMENT_KIND_UNSPECIFIED\x10\x00\x12&\n" +
 	"\"COPILOT_ATTACHMENT_KIND_SCREENSHOT\x10\x01\x12,\n" +
@@ -3594,7 +3707,7 @@ const file_druz9_v1_copilot_proto_rawDesc = "" +
 	"\x1fCOPILOT_ANALYSIS_STATUS_PENDING\x10\x01\x12#\n" +
 	"\x1fCOPILOT_ANALYSIS_STATUS_RUNNING\x10\x02\x12!\n" +
 	"\x1dCOPILOT_ANALYSIS_STATUS_READY\x10\x03\x12\"\n" +
-	"\x1eCOPILOT_ANALYSIS_STATUS_FAILED\x10\x042\x96\r\n" +
+	"\x1eCOPILOT_ANALYSIS_STATUS_FAILED\x10\x042\x84\x0e\n" +
 	"\x0eCopilotService\x12a\n" +
 	"\aAnalyze\x12\x18.druz9.v1.AnalyzeRequest\x1a\x16.druz9.v1.AnalyzeEvent\"\"\x82\xd3\xe4\x93\x02\x1c:\x01*\"\x17/api/v1/copilot/analyze0\x01\x12u\n" +
 	"\x04Chat\x12\x15.druz9.v1.ChatRequest\x1a\x13.druz9.v1.ChatEvent\"?\x82\xd3\xe4\x93\x029:\x01*\"4/api/v1/copilot/conversations/{conversation_id}/chat0\x01\x12y\n" +
@@ -3609,7 +3722,9 @@ const file_druz9_v1_copilot_proto_rawDesc = "" +
 	"\n" +
 	"EndSession\x12\".druz9.v1.EndCopilotSessionRequest\x1a\x18.druz9.v1.CopilotSession\"4\x82\xd3\xe4\x93\x02.:\x01*\")/api/v1/copilot/sessions/{session_id}/end\x12\x9a\x01\n" +
 	"\x12GetSessionAnalysis\x12*.druz9.v1.GetCopilotSessionAnalysisRequest\x1a .druz9.v1.CopilotSessionAnalysis\"6\x82\xd3\xe4\x93\x020\x12./api/v1/copilot/sessions/{session_id}/analysis\x12}\n" +
-	"\fListSessions\x12$.druz9.v1.ListCopilotSessionsRequest\x1a%.druz9.v1.ListCopilotSessionsResponse\" \x82\xd3\xe4\x93\x02\x1a\x12\x18/api/v1/copilot/sessionsB\x89\x01\n" +
+	"\fListSessions\x12$.druz9.v1.ListCopilotSessionsRequest\x1a%.druz9.v1.ListCopilotSessionsResponse\" \x82\xd3\xe4\x93\x02\x1a\x12\x18/api/v1/copilot/sessions\x12l\n" +
+	"\n" +
+	"CheckBlock\x12\x1b.druz9.v1.CheckBlockRequest\x1a\x1c.druz9.v1.CheckBlockResponse\"#\x82\xd3\xe4\x93\x02\x1d\x12\x1b/api/v1/copilot/check-blockB\x89\x01\n" +
 	"\fcom.druz9.v1B\fCopilotProtoP\x01Z*druz9/shared/generated/pb/druz9/v1;druz9v1\xa2\x02\x03DXX\xaa\x02\bDruz9.V1\xca\x02\bDruz9\\V1\xe2\x02\x14Druz9\\V1\\GPBMetadata\xea\x02\tDruz9::V1b\x06proto3"
 
 var (
@@ -3625,7 +3740,7 @@ func file_druz9_v1_copilot_proto_rawDescGZIP() []byte {
 }
 
 var file_druz9_v1_copilot_proto_enumTypes = make([]protoimpl.EnumInfo, 6)
-var file_druz9_v1_copilot_proto_msgTypes = make([]protoimpl.MessageInfo, 43)
+var file_druz9_v1_copilot_proto_msgTypes = make([]protoimpl.MessageInfo, 45)
 var file_druz9_v1_copilot_proto_goTypes = []any{
 	(CopilotAttachmentKind)(0),                // 0: druz9.v1.CopilotAttachmentKind
 	(ClientOS)(0),                             // 1: druz9.v1.ClientOS
@@ -3675,22 +3790,24 @@ var file_druz9_v1_copilot_proto_goTypes = []any{
 	(*GetDesktopConfigRequest)(nil),           // 45: druz9.v1.GetDesktopConfigRequest
 	(*RateCopilotMessageRequest)(nil),         // 46: druz9.v1.RateCopilotMessageRequest
 	(*RateCopilotMessageResponse)(nil),        // 47: druz9.v1.RateCopilotMessageResponse
-	nil,                                       // 48: druz9.v1.CopilotSessionAnalysis.SectionScoresEntry
-	(*timestamppb.Timestamp)(nil),             // 49: google.protobuf.Timestamp
-	(MessageRole)(0),                          // 50: druz9.v1.MessageRole
-	(SubscriptionPlan)(0),                     // 51: druz9.v1.SubscriptionPlan
+	(*CheckBlockRequest)(nil),                 // 48: druz9.v1.CheckBlockRequest
+	(*CheckBlockResponse)(nil),                // 49: druz9.v1.CheckBlockResponse
+	nil,                                       // 50: druz9.v1.CopilotSessionAnalysis.SectionScoresEntry
+	(*timestamppb.Timestamp)(nil),             // 51: google.protobuf.Timestamp
+	(MessageRole)(0),                          // 52: druz9.v1.MessageRole
+	(SubscriptionPlan)(0),                     // 53: druz9.v1.SubscriptionPlan
 }
 var file_druz9_v1_copilot_proto_depIdxs = []int32{
-	49, // 0: druz9.v1.CopilotConversation.created_at:type_name -> google.protobuf.Timestamp
-	49, // 1: druz9.v1.CopilotConversation.updated_at:type_name -> google.protobuf.Timestamp
+	51, // 0: druz9.v1.CopilotConversation.created_at:type_name -> google.protobuf.Timestamp
+	51, // 1: druz9.v1.CopilotConversation.updated_at:type_name -> google.protobuf.Timestamp
 	4,  // 2: druz9.v1.CopilotSession.kind:type_name -> druz9.v1.CopilotSessionKind
-	49, // 3: druz9.v1.CopilotSession.started_at:type_name -> google.protobuf.Timestamp
-	49, // 4: druz9.v1.CopilotSession.finished_at:type_name -> google.protobuf.Timestamp
+	51, // 3: druz9.v1.CopilotSession.started_at:type_name -> google.protobuf.Timestamp
+	51, // 4: druz9.v1.CopilotSession.finished_at:type_name -> google.protobuf.Timestamp
 	5,  // 5: druz9.v1.CopilotSessionAnalysis.status:type_name -> druz9.v1.CopilotAnalysisStatus
-	48, // 6: druz9.v1.CopilotSessionAnalysis.section_scores:type_name -> druz9.v1.CopilotSessionAnalysis.SectionScoresEntry
+	50, // 6: druz9.v1.CopilotSessionAnalysis.section_scores:type_name -> druz9.v1.CopilotSessionAnalysis.SectionScoresEntry
 	8,  // 7: druz9.v1.CopilotSessionAnalysis.links:type_name -> druz9.v1.CopilotAnalysisLink
-	49, // 8: druz9.v1.CopilotSessionAnalysis.started_at:type_name -> google.protobuf.Timestamp
-	49, // 9: druz9.v1.CopilotSessionAnalysis.finished_at:type_name -> google.protobuf.Timestamp
+	51, // 8: druz9.v1.CopilotSessionAnalysis.started_at:type_name -> google.protobuf.Timestamp
+	51, // 9: druz9.v1.CopilotSessionAnalysis.finished_at:type_name -> google.protobuf.Timestamp
 	9,  // 10: druz9.v1.CopilotSessionAnalysis.action_items:type_name -> druz9.v1.CopilotAnalysisItem
 	10, // 11: druz9.v1.CopilotSessionAnalysis.terminology:type_name -> druz9.v1.CopilotAnalysisTerm
 	9,  // 12: druz9.v1.CopilotSessionAnalysis.decisions:type_name -> druz9.v1.CopilotAnalysisItem
@@ -3698,12 +3815,12 @@ var file_druz9_v1_copilot_proto_depIdxs = []int32{
 	4,  // 14: druz9.v1.StartCopilotSessionRequest.kind:type_name -> druz9.v1.CopilotSessionKind
 	4,  // 15: druz9.v1.ListCopilotSessionsRequest.kind:type_name -> druz9.v1.CopilotSessionKind
 	7,  // 16: druz9.v1.ListCopilotSessionsResponse.sessions:type_name -> druz9.v1.CopilotSession
-	50, // 17: druz9.v1.CopilotMessage.role:type_name -> druz9.v1.MessageRole
-	49, // 18: druz9.v1.CopilotMessage.created_at:type_name -> google.protobuf.Timestamp
+	52, // 17: druz9.v1.CopilotMessage.role:type_name -> druz9.v1.MessageRole
+	51, // 18: druz9.v1.CopilotMessage.created_at:type_name -> google.protobuf.Timestamp
 	6,  // 19: druz9.v1.CopilotConversationDetail.conversation:type_name -> druz9.v1.CopilotConversation
 	18, // 20: druz9.v1.CopilotConversationDetail.messages:type_name -> druz9.v1.CopilotMessage
-	51, // 21: druz9.v1.CopilotQuota.plan:type_name -> druz9.v1.SubscriptionPlan
-	49, // 22: druz9.v1.CopilotQuota.resets_at:type_name -> google.protobuf.Timestamp
+	53, // 21: druz9.v1.CopilotQuota.plan:type_name -> druz9.v1.SubscriptionPlan
+	51, // 22: druz9.v1.CopilotQuota.resets_at:type_name -> google.protobuf.Timestamp
 	3,  // 23: druz9.v1.CopilotProviderModel.speed_class:type_name -> druz9.v1.ModelSpeedClass
 	2,  // 24: druz9.v1.HotkeyBinding.action:type_name -> druz9.v1.HotkeyAction
 	21, // 25: druz9.v1.DesktopConfig.models:type_name -> druz9.v1.CopilotProviderModel
@@ -3729,37 +3846,40 @@ var file_druz9_v1_copilot_proto_depIdxs = []int32{
 	33, // 45: druz9.v1.ChatEvent.error:type_name -> druz9.v1.CopilotStreamError
 	6,  // 46: druz9.v1.ListCopilotHistoryResponse.conversations:type_name -> druz9.v1.CopilotConversation
 	21, // 47: druz9.v1.ListCopilotProvidersResponse.models:type_name -> druz9.v1.CopilotProviderModel
-	29, // 48: druz9.v1.CopilotService.Analyze:input_type -> druz9.v1.AnalyzeRequest
-	35, // 49: druz9.v1.CopilotService.Chat:input_type -> druz9.v1.ChatRequest
-	37, // 50: druz9.v1.CopilotService.ListHistory:input_type -> druz9.v1.ListCopilotHistoryRequest
-	39, // 51: druz9.v1.CopilotService.GetConversation:input_type -> druz9.v1.GetCopilotConversationRequest
-	40, // 52: druz9.v1.CopilotService.DeleteConversation:input_type -> druz9.v1.DeleteCopilotConversationRequest
-	42, // 53: druz9.v1.CopilotService.ListProviders:input_type -> druz9.v1.ListCopilotProvidersRequest
-	44, // 54: druz9.v1.CopilotService.GetQuota:input_type -> druz9.v1.GetCopilotQuotaRequest
-	45, // 55: druz9.v1.CopilotService.GetDesktopConfig:input_type -> druz9.v1.GetDesktopConfigRequest
-	46, // 56: druz9.v1.CopilotService.RateMessage:input_type -> druz9.v1.RateCopilotMessageRequest
-	13, // 57: druz9.v1.CopilotService.StartSession:input_type -> druz9.v1.StartCopilotSessionRequest
-	14, // 58: druz9.v1.CopilotService.EndSession:input_type -> druz9.v1.EndCopilotSessionRequest
-	15, // 59: druz9.v1.CopilotService.GetSessionAnalysis:input_type -> druz9.v1.GetCopilotSessionAnalysisRequest
-	16, // 60: druz9.v1.CopilotService.ListSessions:input_type -> druz9.v1.ListCopilotSessionsRequest
-	34, // 61: druz9.v1.CopilotService.Analyze:output_type -> druz9.v1.AnalyzeEvent
-	36, // 62: druz9.v1.CopilotService.Chat:output_type -> druz9.v1.ChatEvent
-	38, // 63: druz9.v1.CopilotService.ListHistory:output_type -> druz9.v1.ListCopilotHistoryResponse
-	19, // 64: druz9.v1.CopilotService.GetConversation:output_type -> druz9.v1.CopilotConversationDetail
-	41, // 65: druz9.v1.CopilotService.DeleteConversation:output_type -> druz9.v1.DeleteCopilotConversationResponse
-	43, // 66: druz9.v1.CopilotService.ListProviders:output_type -> druz9.v1.ListCopilotProvidersResponse
-	20, // 67: druz9.v1.CopilotService.GetQuota:output_type -> druz9.v1.CopilotQuota
-	26, // 68: druz9.v1.CopilotService.GetDesktopConfig:output_type -> druz9.v1.DesktopConfig
-	47, // 69: druz9.v1.CopilotService.RateMessage:output_type -> druz9.v1.RateCopilotMessageResponse
-	7,  // 70: druz9.v1.CopilotService.StartSession:output_type -> druz9.v1.CopilotSession
-	7,  // 71: druz9.v1.CopilotService.EndSession:output_type -> druz9.v1.CopilotSession
-	12, // 72: druz9.v1.CopilotService.GetSessionAnalysis:output_type -> druz9.v1.CopilotSessionAnalysis
-	17, // 73: druz9.v1.CopilotService.ListSessions:output_type -> druz9.v1.ListCopilotSessionsResponse
-	61, // [61:74] is the sub-list for method output_type
-	48, // [48:61] is the sub-list for method input_type
-	48, // [48:48] is the sub-list for extension type_name
-	48, // [48:48] is the sub-list for extension extendee
-	0,  // [0:48] is the sub-list for field type_name
+	51, // 48: druz9.v1.CheckBlockResponse.until:type_name -> google.protobuf.Timestamp
+	29, // 49: druz9.v1.CopilotService.Analyze:input_type -> druz9.v1.AnalyzeRequest
+	35, // 50: druz9.v1.CopilotService.Chat:input_type -> druz9.v1.ChatRequest
+	37, // 51: druz9.v1.CopilotService.ListHistory:input_type -> druz9.v1.ListCopilotHistoryRequest
+	39, // 52: druz9.v1.CopilotService.GetConversation:input_type -> druz9.v1.GetCopilotConversationRequest
+	40, // 53: druz9.v1.CopilotService.DeleteConversation:input_type -> druz9.v1.DeleteCopilotConversationRequest
+	42, // 54: druz9.v1.CopilotService.ListProviders:input_type -> druz9.v1.ListCopilotProvidersRequest
+	44, // 55: druz9.v1.CopilotService.GetQuota:input_type -> druz9.v1.GetCopilotQuotaRequest
+	45, // 56: druz9.v1.CopilotService.GetDesktopConfig:input_type -> druz9.v1.GetDesktopConfigRequest
+	46, // 57: druz9.v1.CopilotService.RateMessage:input_type -> druz9.v1.RateCopilotMessageRequest
+	13, // 58: druz9.v1.CopilotService.StartSession:input_type -> druz9.v1.StartCopilotSessionRequest
+	14, // 59: druz9.v1.CopilotService.EndSession:input_type -> druz9.v1.EndCopilotSessionRequest
+	15, // 60: druz9.v1.CopilotService.GetSessionAnalysis:input_type -> druz9.v1.GetCopilotSessionAnalysisRequest
+	16, // 61: druz9.v1.CopilotService.ListSessions:input_type -> druz9.v1.ListCopilotSessionsRequest
+	48, // 62: druz9.v1.CopilotService.CheckBlock:input_type -> druz9.v1.CheckBlockRequest
+	34, // 63: druz9.v1.CopilotService.Analyze:output_type -> druz9.v1.AnalyzeEvent
+	36, // 64: druz9.v1.CopilotService.Chat:output_type -> druz9.v1.ChatEvent
+	38, // 65: druz9.v1.CopilotService.ListHistory:output_type -> druz9.v1.ListCopilotHistoryResponse
+	19, // 66: druz9.v1.CopilotService.GetConversation:output_type -> druz9.v1.CopilotConversationDetail
+	41, // 67: druz9.v1.CopilotService.DeleteConversation:output_type -> druz9.v1.DeleteCopilotConversationResponse
+	43, // 68: druz9.v1.CopilotService.ListProviders:output_type -> druz9.v1.ListCopilotProvidersResponse
+	20, // 69: druz9.v1.CopilotService.GetQuota:output_type -> druz9.v1.CopilotQuota
+	26, // 70: druz9.v1.CopilotService.GetDesktopConfig:output_type -> druz9.v1.DesktopConfig
+	47, // 71: druz9.v1.CopilotService.RateMessage:output_type -> druz9.v1.RateCopilotMessageResponse
+	7,  // 72: druz9.v1.CopilotService.StartSession:output_type -> druz9.v1.CopilotSession
+	7,  // 73: druz9.v1.CopilotService.EndSession:output_type -> druz9.v1.CopilotSession
+	12, // 74: druz9.v1.CopilotService.GetSessionAnalysis:output_type -> druz9.v1.CopilotSessionAnalysis
+	17, // 75: druz9.v1.CopilotService.ListSessions:output_type -> druz9.v1.ListCopilotSessionsResponse
+	49, // 76: druz9.v1.CopilotService.CheckBlock:output_type -> druz9.v1.CheckBlockResponse
+	63, // [63:77] is the sub-list for method output_type
+	49, // [49:63] is the sub-list for method input_type
+	49, // [49:49] is the sub-list for extension type_name
+	49, // [49:49] is the sub-list for extension extendee
+	0,  // [0:49] is the sub-list for field type_name
 }
 
 func init() { file_druz9_v1_copilot_proto_init() }
@@ -3786,7 +3906,7 @@ func file_druz9_v1_copilot_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_druz9_v1_copilot_proto_rawDesc), len(file_druz9_v1_copilot_proto_rawDesc)),
 			NumEnums:      6,
-			NumMessages:   43,
+			NumMessages:   45,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

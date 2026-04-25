@@ -28,8 +28,8 @@ const STATUS_LABEL: Record<SavedStatus, string> = {
 
 const STATUS_COLOR: Record<SavedStatus, string> = {
   saved: 'border-border bg-surface-2',
-  applied: 'border-accent/40 bg-accent/10',
-  interviewing: 'border-cyan/40 bg-cyan/10',
+  applied: 'border-border-strong bg-text-primary/10',
+  interviewing: 'border-border-strong bg-text-primary/10',
   rejected: 'border-danger/40 bg-danger/10',
   offer: 'border-success/40 bg-success/10',
 }
@@ -80,7 +80,7 @@ export default function ApplicationsPage() {
                   <Card key={s.id} variant="elevated" padding="md">
                     <Link
                       to={`/vacancies/${s.vacancy.source}/${encodeURIComponent(s.vacancy.external_id)}`}
-                      className="font-display text-sm font-bold text-text-primary hover:text-accent-hover"
+                      className="font-display text-sm font-bold text-text-primary hover:text-text-primary"
                     >
                       {s.vacancy.title}
                     </Link>
@@ -105,7 +105,7 @@ export default function ApplicationsPage() {
                             notes: s.notes ?? '',
                           })
                         }
-                        className="flex-1 rounded-md border border-border bg-bg px-2 py-1 text-xs text-text-primary focus:border-accent focus:outline-none"
+                        className="flex-1 rounded-md border border-border bg-bg px-2 py-1 text-xs text-text-primary focus:border-text-primary focus:outline-none"
                       >
                         {SAVED_STATUSES.map((x) => (
                           <option key={x} value={x}>

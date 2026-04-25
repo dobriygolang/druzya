@@ -94,9 +94,6 @@ type ProfileRepo interface {
 	// ResolveShareToken находит активный токен; ErrNotFound если протух/нет.
 	// Также инкрементирует views_count атомарно.
 	ResolveShareToken(ctx context.Context, token string) (ShareResolution, error)
-
-	// ListAchievementsSince возвращает ачивки, разблокированные с since.
-	ListAchievementsSince(ctx context.Context, userID uuid.UUID, since time.Time) ([]AchievementBrief, error)
 }
 
 // Bundle is the joined shape of GET /profile/me.

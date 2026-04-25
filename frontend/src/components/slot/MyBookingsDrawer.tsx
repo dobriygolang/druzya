@@ -144,7 +144,7 @@ function TabButton({
       onClick={onClick}
       className={`rounded-full border px-3 py-1 text-[12px] ${
         active
-          ? 'border-accent bg-accent/15 text-accent-hover'
+          ? 'border-text-primary bg-text-primary/15 text-text-primary'
           : 'border-border bg-surface-2 text-text-secondary hover:border-border-strong hover:text-text-primary'
       }`}
     >
@@ -258,7 +258,7 @@ function RowHeader({ title, startsAt }: { title: string; startsAt: string }) {
   return (
     <div className="flex items-center justify-between gap-2">
       <span className="text-sm font-semibold text-text-primary">{title}</span>
-      <span className="font-mono text-[11px] text-cyan">{fmtTime(startsAt)}</span>
+      <span className="font-mono text-[11px] text-text-secondary">{fmtTime(startsAt)}</span>
     </div>
   )
 }

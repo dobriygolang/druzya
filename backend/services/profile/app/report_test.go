@@ -34,7 +34,6 @@ func TestGetReport_HappyPathPopulatesAggregates(t *testing.T) {
 	}, nil)
 	repo.EXPECT().ListWeeklyXPSince(gomock.Any(), uid, gomock.Any(), 4).Return([]int{2480, 1690, 2010, 1240}, nil)
 	repo.EXPECT().GetStreaks(gomock.Any(), uid).Return(7, 47, nil)
-	repo.EXPECT().ListAchievementsSince(gomock.Any(), uid, gomock.Any()).Return(nil, nil)
 
 	uc := &GetReport{Repo: repo}
 	v, err := uc.Do(context.Background(), uid, time.Now())
@@ -76,7 +75,6 @@ func TestGetReport_AggregateRepoErrorIsTolerant(t *testing.T) {
 	repo.EXPECT().ListMatchAggregatesSince(gomock.Any(), uid, gomock.Any()).Return(nil, errors.New("pg down"))
 	repo.EXPECT().ListWeeklyXPSince(gomock.Any(), uid, gomock.Any(), 4).Return([]int{0, 0, 0, 0}, nil)
 	repo.EXPECT().GetStreaks(gomock.Any(), uid).Return(0, 0, nil)
-	repo.EXPECT().ListAchievementsSince(gomock.Any(), uid, gomock.Any()).Return(nil, nil)
 
 	uc := &GetReport{Repo: repo}
 	v, err := uc.Do(context.Background(), uid, time.Now())
@@ -110,7 +108,6 @@ func TestGetReport_WeeklyXPErrorTolerated(t *testing.T) {
 	repo.EXPECT().ListMatchAggregatesSince(gomock.Any(), uid, gomock.Any()).Return(nil, nil)
 	repo.EXPECT().ListWeeklyXPSince(gomock.Any(), uid, gomock.Any(), 4).Return(nil, errors.New("ouch"))
 	repo.EXPECT().GetStreaks(gomock.Any(), uid).Return(0, 0, nil)
-	repo.EXPECT().ListAchievementsSince(gomock.Any(), uid, gomock.Any()).Return(nil, nil)
 
 	uc := &GetReport{Repo: repo}
 	v, err := uc.Do(context.Background(), uid, time.Now())
@@ -139,7 +136,6 @@ func TestGetReport_WindowIs7Days(t *testing.T) {
 	repo.EXPECT().ListMatchAggregatesSince(gomock.Any(), uid, gomock.Any()).Return(nil, nil)
 	repo.EXPECT().ListWeeklyXPSince(gomock.Any(), uid, gomock.Any(), 4).Return([]int{0, 0, 0, 0}, nil)
 	repo.EXPECT().GetStreaks(gomock.Any(), uid).Return(0, 0, nil)
-	repo.EXPECT().ListAchievementsSince(gomock.Any(), uid, gomock.Any()).Return(nil, nil)
 
 	uc := &GetReport{Repo: repo}
 	if _, err := uc.Do(context.Background(), uid, now); err != nil {
@@ -156,7 +152,6 @@ func TestGetReport_RecommendationFallback(t *testing.T) {
 	repo.EXPECT().ListMatchAggregatesSince(gomock.Any(), uid, gomock.Any()).Return(nil, nil)
 	repo.EXPECT().ListWeeklyXPSince(gomock.Any(), uid, gomock.Any(), 4).Return([]int{0, 0, 0, 0}, nil)
 	repo.EXPECT().GetStreaks(gomock.Any(), uid).Return(0, 0, nil)
-	repo.EXPECT().ListAchievementsSince(gomock.Any(), uid, gomock.Any()).Return(nil, nil)
 
 	uc := &GetReport{Repo: repo}
 	v, _ := uc.Do(context.Background(), uid, time.Now())
@@ -177,7 +172,6 @@ func TestGetReport_HeatmapDefaultsToZeros(t *testing.T) {
 	repo.EXPECT().ListMatchAggregatesSince(gomock.Any(), uid, gomock.Any()).Return(nil, nil)
 	repo.EXPECT().ListWeeklyXPSince(gomock.Any(), uid, gomock.Any(), 4).Return([]int{0, 0, 0, 0}, nil)
 	repo.EXPECT().GetStreaks(gomock.Any(), uid).Return(0, 0, nil)
-	repo.EXPECT().ListAchievementsSince(gomock.Any(), uid, gomock.Any()).Return(nil, nil)
 
 	uc := &GetReport{Repo: repo}
 	v, _ := uc.Do(context.Background(), uid, time.Now())
@@ -218,7 +212,6 @@ func TestGetReport_AIInsight_PopulatedWhenClientConfigured(t *testing.T) {
 	}, nil)
 	repo.EXPECT().ListWeeklyXPSince(gomock.Any(), uid, gomock.Any(), 4).Return([]int{1200, 0, 0, 0}, nil)
 	repo.EXPECT().GetStreaks(gomock.Any(), uid).Return(3, 9, nil)
-	repo.EXPECT().ListAchievementsSince(gomock.Any(), uid, gomock.Any()).Return(nil, nil)
 	// Per-user AI Coach model lookup (00032). Empty model ⇒ infra-default.
 	repo.EXPECT().GetSettings(gomock.Any(), uid).Return(domain.Settings{}, nil)
 
@@ -263,7 +256,6 @@ func TestGetReport_AIInsight_ErrorIsSwallowed(t *testing.T) {
 	repo.EXPECT().ListMatchAggregatesSince(gomock.Any(), uid, gomock.Any()).Return(nil, nil)
 	repo.EXPECT().ListWeeklyXPSince(gomock.Any(), uid, gomock.Any(), 4).Return([]int{0, 0, 0, 0}, nil)
 	repo.EXPECT().GetStreaks(gomock.Any(), uid).Return(0, 0, nil)
-	repo.EXPECT().ListAchievementsSince(gomock.Any(), uid, gomock.Any()).Return(nil, nil)
 	repo.EXPECT().GetSettings(gomock.Any(), uid).Return(domain.Settings{}, nil)
 
 	stub := &stubInsight{err: errors.New("openrouter offline")}
@@ -280,31 +272,6 @@ func TestGetReport_AIInsight_ErrorIsSwallowed(t *testing.T) {
 // FeaturedMetric — server picks the headline metric for the share card.
 // Three cases cover the full decision tree: achievement > streak > xp.
 
-func TestGetReport_FeaturedMetric_AchievementWins(t *testing.T) {
-	t.Parallel()
-	ctrl := gomock.NewController(t)
-	repo := mocks.NewMockProfileRepo(ctrl)
-	uid := uuid.New()
-	expectActivity(repo, uid)
-	repo.EXPECT().ListMatchAggregatesSince(gomock.Any(), uid, gomock.Any()).Return(nil, nil)
-	repo.EXPECT().ListWeeklyXPSince(gomock.Any(), uid, gomock.Any(), 4).Return([]int{0, 0, 0, 0}, nil)
-	// streak=14 — would normally pick "streak" — but the achievement
-	// short-circuits the rule.
-	repo.EXPECT().GetStreaks(gomock.Any(), uid).Return(14, 30, nil)
-	repo.EXPECT().ListAchievementsSince(gomock.Any(), uid, gomock.Any()).Return([]domain.AchievementBrief{
-		{Code: "first-podium", Title: "First podium"},
-	}, nil)
-
-	uc := &GetReport{Repo: repo}
-	v, err := uc.Do(context.Background(), uid, time.Now())
-	if err != nil {
-		t.Fatalf("unexpected: %v", err)
-	}
-	if v.FeaturedMetric != "achievement" {
-		t.Fatalf("expected featured=achievement, got %q", v.FeaturedMetric)
-	}
-}
-
 func TestGetReport_FeaturedMetric_StreakWhenNoAchievementAndStreakHigh(t *testing.T) {
 	t.Parallel()
 	ctrl := gomock.NewController(t)
@@ -314,7 +281,6 @@ func TestGetReport_FeaturedMetric_StreakWhenNoAchievementAndStreakHigh(t *testin
 	repo.EXPECT().ListMatchAggregatesSince(gomock.Any(), uid, gomock.Any()).Return(nil, nil)
 	repo.EXPECT().ListWeeklyXPSince(gomock.Any(), uid, gomock.Any(), 4).Return([]int{0, 0, 0, 0}, nil)
 	repo.EXPECT().GetStreaks(gomock.Any(), uid).Return(7, 12, nil)
-	repo.EXPECT().ListAchievementsSince(gomock.Any(), uid, gomock.Any()).Return(nil, nil)
 
 	uc := &GetReport{Repo: repo}
 	v, err := uc.Do(context.Background(), uid, time.Now())
@@ -336,7 +302,6 @@ func TestGetReport_FeaturedMetric_DefaultXP(t *testing.T) {
 	repo.EXPECT().ListWeeklyXPSince(gomock.Any(), uid, gomock.Any(), 4).Return([]int{0, 0, 0, 0}, nil)
 	// Streak below the 7-day threshold AND no new achievements ⇒ default xp.
 	repo.EXPECT().GetStreaks(gomock.Any(), uid).Return(3, 12, nil)
-	repo.EXPECT().ListAchievementsSince(gomock.Any(), uid, gomock.Any()).Return(nil, nil)
 
 	uc := &GetReport{Repo: repo}
 	v, err := uc.Do(context.Background(), uid, time.Now())
@@ -357,7 +322,6 @@ func TestGetReport_StreakErrorTolerated(t *testing.T) {
 	repo.EXPECT().ListMatchAggregatesSince(gomock.Any(), uid, gomock.Any()).Return(nil, nil)
 	repo.EXPECT().ListWeeklyXPSince(gomock.Any(), uid, gomock.Any(), 4).Return([]int{0, 0, 0, 0}, nil)
 	repo.EXPECT().GetStreaks(gomock.Any(), uid).Return(0, 0, errors.New("streak table missing"))
-	repo.EXPECT().ListAchievementsSince(gomock.Any(), uid, gomock.Any()).Return(nil, nil)
 
 	uc := &GetReport{Repo: repo}
 	v, err := uc.Do(context.Background(), uid, time.Now())

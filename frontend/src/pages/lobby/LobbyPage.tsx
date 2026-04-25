@@ -105,9 +105,9 @@ export default function LobbyPage() {
             {lobby.mode} · {lobby.section} · {lobby.difficulty}
           </div>
         </div>
-        <div className="flex flex-col items-start gap-1 rounded-lg border border-accent/40 bg-accent/10 px-4 py-2 sm:items-end">
-          <span className="text-xs uppercase tracking-wide text-accent">Код</span>
-          <span className="font-mono text-3xl font-extrabold tracking-[0.4em] text-accent">
+        <div className="flex flex-col items-start gap-1 rounded-lg border border-border-strong bg-text-primary/10 px-4 py-2 sm:items-end">
+          <span className="text-xs uppercase tracking-wide text-text-primary">Код</span>
+          <span className="font-mono text-3xl font-extrabold tracking-[0.4em] text-text-primary">
             {lobby.code}
           </span>
         </div>
@@ -162,7 +162,7 @@ export default function LobbyPage() {
             type="button"
             disabled={join.isPending}
             onClick={() => handleAction(() => join.mutateAsync(lobby.id), 'Не удалось войти')}
-            className="h-10 rounded-md bg-accent px-4 text-sm font-semibold text-text-primary disabled:opacity-60"
+            className="h-10 rounded-md bg-text-primary px-4 text-sm font-semibold text-text-primary disabled:opacity-60"
           >
             {join.isPending ? 'Входим…' : 'Войти'}
           </button>

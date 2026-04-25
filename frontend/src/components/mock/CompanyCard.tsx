@@ -16,8 +16,8 @@ const LEVEL_LABEL: Record<MockCompany['level'], string> = {
 }
 
 const TIER_TONE: Record<MockCompany['tier'], string> = {
-  tier1: 'border-pink/40 bg-pink/10 text-pink',
-  tier2: 'border-cyan/40 bg-cyan/10 text-cyan',
+  tier1: 'border-border-strong bg-text-primary/10 text-text-secondary',
+  tier2: 'border-border-strong bg-text-primary/10 text-text-secondary',
   tier3: 'border-border bg-surface-2 text-text-muted',
 }
 
@@ -45,7 +45,7 @@ export function CompanyCard({ company, onSelect, loading }: CompanyCardProps) {
       disabled={loading}
       className={cn(
         'group relative flex flex-col gap-3 rounded-lg border border-border bg-surface-1 p-4 text-left',
-        'transition-colors hover:border-accent/60 hover:bg-surface-2',
+        'transition-colors hover:border-border-strong hover:bg-surface-2',
         'disabled:opacity-60 disabled:cursor-wait',
       )}
     >

@@ -71,14 +71,6 @@ message ProfileSectionRating {
   bool decaying = 5;
 }
 
-// Achievement mirrors OpenAPI Achievement.
-message Achievement {
-  string key = 1;
-  string title = 2;
-  string description = 3;
-  google.protobuf.Timestamp earned_at = 4;
-}
-
 // SkillNode mirrors OpenAPI SkillNode.
 message SkillNode {
   string key = 1;
@@ -170,7 +162,8 @@ message ProfilePublic {
   string career_stage = 6;
   int32 global_power_score = 7;
   repeated ProfileSectionRating ratings = 8;
-  repeated Achievement achievements = 9;
+  reserved 9;
+  reserved "achievements";
   SkillAtlas atlas_preview = 10;
   // avatar_url из users.avatar_url. См. comment в ProfileFull.
   string avatar_url = 11;
@@ -250,16 +243,6 @@ message PercentileView {
   int32 in_global = 3;
 }
 
-// AchievementBrief — лёгкое представление ачивки, заработанной за неделю,
-// для блока «Что разблокировано». Полный объект Achievement не нужен —
-// фронт дотягивает описание из каталога по code, если потребуется.
-message AchievementBrief {
-  string code = 1;
-  string title = 2;
-  string unlocked_at = 3; // ISO-8601
-  string tier = 4;        // bronze|silver|gold|... — строка, без enum
-}
-
 // WeeklyReport mirrors OpenAPI WeeklyReport.
 message WeeklyReport {
   // week_start / week_end are ISO-8601 calendar dates (YYYY-MM-DD). OpenAPI
@@ -296,14 +279,13 @@ message WeeklyReport {
   PercentileView percentiles = 18;
   // ai_insight — текст от LLM-инсайта; пустая строка, если OpenRouter недоступен.
   string ai_insight = 19;
-  // achievements_this_week — ачивки, разблокированные в окне недели.
-  repeated AchievementBrief achievements_this_week = 20;
+  reserved 20;
+  reserved "achievements_this_week";
   // share_token — токен публичной ссылки; пустая строка, если ещё не выпускался.
   string share_token = 21;
   // featured_metric — server-picked headline metric for the share card.
-  // Values: "xp" | "streak" | "achievement" | "" (empty ⇒ client picks default).
-  // Server selects: "achievement" if any new achievement unlocked this week,
-  // else "streak" if streak_days >= 7, else "xp".
+  // Values: "xp" | "streak" | "" (empty ⇒ client picks default).
+  // Server selects: "streak" if streak_days >= 7, else "xp".
   string featured_metric = 22;
 }
 

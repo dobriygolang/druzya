@@ -30,6 +30,9 @@ func NewCopilot(d Deps, docSearcher copilotDomain.DocumentSearcher) *Module {
 	quotas := copilotInfra.NewQuotas(d.Pool)
 	sessions := copilotInfra.NewSessions(d.Pool)
 	reports := copilotInfra.NewReports(d.Pool)
+	// Phase-4 ADR-001 (Wave 3) — read-only gate into ai_mock.mock_sessions.
+	// Single canonical cross-service read: see infra/mock_gate.go.
+	mockGate := copilotInfra.NewMockSessionGate(d.Pool)
 	// LLM dispatch: prefer the multi-provider chain when boot registered
 	// at least one driver; fall back to direct-OpenRouter otherwise so
 	// dev environments without GROQ_API_KEY still work. The chain is a
@@ -71,6 +74,7 @@ func NewCopilot(d Deps, docSearcher copilotDomain.DocumentSearcher) *Module {
 		DocSearcher:   docSearcher, // nil when documents module is disabled — RAG cleanly skipped
 		KillSwitch:    d.KillSwitch,
 		TokenQuota:    d.TokenQuota,
+		MockGate:      mockGate,
 		Compactor:     compactor,
 		CompactionCfg: compactionCfg,
 		Log:           d.Log,
@@ -107,6 +111,7 @@ func NewCopilot(d Deps, docSearcher copilotDomain.DocumentSearcher) *Module {
 	}
 	getAnalysis := &copilotApp.GetSessionAnalysis{Sessions: sessions, Reports: reports}
 	listSessions := &copilotApp.ListSessions{Sessions: sessions}
+	checkBlock := &copilotApp.CheckBlock{Gate: mockGate}
 	runAnalysis := &copilotApp.RunAnalysis{
 		Sessions:     sessions,
 		Messages:     messages,
@@ -120,6 +125,7 @@ func NewCopilot(d Deps, docSearcher copilotDomain.DocumentSearcher) *Module {
 		analyze, chat, listHistory, getConv, deleteConv,
 		listProviders, getQuota, getConfig, rate,
 		startSession, endSession, getAnalysis, listSessions,
+		checkBlock,
 		d.Log,
 	)
 
@@ -169,6 +175,9 @@ func NewCopilot(d Deps, docSearcher copilotDomain.DocumentSearcher) *Module {
 			r.Post("/copilot/sessions/{sessionId}/end", transcoder.ServeHTTP)
 			r.Get("/copilot/sessions/{sessionId}/analysis", transcoder.ServeHTTP)
 			r.Get("/copilot/sessions", transcoder.ServeHTTP)
+
+			// CheckBlock — Cue desktop polls before each consult.
+			r.Get("/copilot/check-block", transcoder.ServeHTTP)
 
 			// Session ↔ documents attachment. Plain REST, not RPC —
 			// see ports/session_docs.go for rationale.

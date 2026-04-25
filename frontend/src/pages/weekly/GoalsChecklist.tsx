@@ -109,13 +109,13 @@ export function GoalsChecklist({ weekISO }: { weekISO: string }) {
             }}
             placeholder="Например: 5 LeetCode medium"
             maxLength={100}
-            className="flex-1 rounded-lg border border-border bg-surface-1 px-3 py-2 text-sm text-text-primary placeholder:text-text-muted focus:border-accent focus:outline-none"
+            className="flex-1 rounded-lg border border-border bg-surface-1 px-3 py-2 text-sm text-text-primary placeholder:text-text-muted focus:border-text-primary focus:outline-none"
           />
           <button
             type="button"
             onClick={add}
             disabled={!canAdd}
-            className="grid h-9 w-9 place-items-center rounded-lg bg-accent text-white disabled:cursor-not-allowed disabled:opacity-40"
+            className="grid h-9 w-9 place-items-center rounded-lg bg-text-primary text-bg disabled:cursor-not-allowed disabled:opacity-40"
             aria-label="Добавить цель"
           >
             <Plus className="h-4 w-4" />

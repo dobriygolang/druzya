@@ -8,12 +8,6 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-type Achievement struct {
-	UserID         pgtype.UUID
-	AchievementKey string
-	EarnedAt       pgtype.Timestamptz
-}
-
 type AiCredit struct {
 	UserID    pgtype.UUID
 	Balance   int32
@@ -114,40 +108,6 @@ type CoachEpisode struct {
 	EmbeddedAt     pgtype.Timestamptz
 	OccurredAt     pgtype.Timestamptz
 	CreatedAt      pgtype.Timestamptz
-}
-
-type Cohort struct {
-	ID          pgtype.UUID
-	OwnerID     pgtype.UUID
-	Name        string
-	Emblem      pgtype.Text
-	CohortElo   int32
-	Description pgtype.Text
-	Tier        pgtype.Text
-	IsPublic    bool
-	JoinPolicy  string
-	MaxMembers  int32
-	CreatedAt   pgtype.Timestamptz
-}
-
-type CohortMember struct {
-	CohortID        pgtype.UUID
-	UserID          pgtype.UUID
-	Role            string
-	AssignedSection pgtype.Text
-	JoinedAt        pgtype.Timestamptz
-}
-
-type CohortWar struct {
-	ID        pgtype.UUID
-	CohortAID pgtype.UUID
-	CohortBID pgtype.UUID
-	WeekStart pgtype.Date
-	WeekEnd   pgtype.Date
-	ScoresA   []byte
-	ScoresB   []byte
-	WinnerID  pgtype.UUID
-	CreatedAt pgtype.Timestamptz
 }
 
 type Company struct {
@@ -574,6 +534,7 @@ type MockSession struct {
 	StartedAt      pgtype.Timestamptz
 	FinishedAt     pgtype.Timestamptz
 	CreatedAt      pgtype.Timestamptz
+	AiAssist       bool
 }
 
 type NoteYjsUpdate struct {
@@ -915,16 +876,6 @@ type User struct {
 	StorageTier           string
 	StorageRecomputedAt   pgtype.Timestamptz
 	VaultKdfSalt          []byte
-}
-
-type UserAchievement struct {
-	ID         int64
-	UserID     pgtype.UUID
-	Code       string
-	Progress   int32
-	Target     int32
-	UnlockedAt pgtype.Timestamptz
-	UpdatedAt  pgtype.Timestamptz
 }
 
 type UserBan struct {

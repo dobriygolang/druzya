@@ -104,9 +104,9 @@ function InterviewerPanel() {
             <span className="font-mono text-[11px] text-success">● Слушает</span>
           </div>
         </div>
-        <Sparkles className="h-4 w-4 text-cyan" />
+        <Sparkles className="h-4 w-4 text-text-secondary" />
       </div>
-      <div className="flex flex-1 items-center justify-center rounded-lg bg-gradient-to-br from-surface-3 to-surface-2 border border-border-strong">
+      <div className="flex flex-1 items-center justify-center rounded-lg bg-surface-2 border border-border-strong">
         <div className="flex flex-col items-center gap-2">
           <Video className="h-10 w-10 text-text-muted" />
           <span className="font-mono text-[11px] text-text-muted">video stream</span>
@@ -119,7 +119,7 @@ function InterviewerPanel() {
 function QuestionPanel({ title, description }: { title: string; description: string }) {
   return (
     <Card className="flex-col gap-3 p-5" interactive={false}>
-      <span className="inline-flex w-fit items-center gap-1 rounded-full bg-cyan/15 px-2.5 py-1 font-mono text-[11px] font-semibold text-cyan">
+      <span className="inline-flex w-fit items-center gap-1 rounded-full bg-text-primary/10 px-2.5 py-1 font-mono text-[11px] font-semibold text-text-secondary">
         ВОПРОС
       </span>
       <h3 className="font-display text-lg font-bold text-text-primary break-words">{title}</h3>
@@ -145,7 +145,7 @@ function ControlsCard({
         danger
           ? 'border-danger/40 bg-danger/15 text-danger hover:bg-danger/25'
           : active
-            ? 'border-cyan/40 bg-cyan/15 text-cyan hover:bg-cyan/25'
+            ? 'border-border-strong bg-text-primary/10 text-text-primary hover:bg-text-primary/15'
             : 'border-border bg-surface-2 text-text-secondary hover:bg-surface-3 hover:text-text-primary',
       ].join(' ')}
     >
@@ -164,16 +164,16 @@ function ControlsCard({
 
 function StressCard({ stress }: { stress: Stress }) {
   const items: { label: string; value: number; color: string }[] = [
-    { label: 'Паузы', value: stress.pauses_score, color: 'bg-cyan' },
+    { label: 'Паузы', value: stress.pauses_score, color: 'bg-text-primary/60' },
     { label: 'Backspaces', value: stress.backspace_score, color: 'bg-warn' },
-    { label: 'Хаос', value: stress.chaos_score, color: 'bg-accent' },
+    { label: 'Хаос', value: stress.chaos_score, color: 'bg-text-primary' },
     { label: 'Paste-попытки', value: stress.paste_attempts, color: 'bg-danger' },
   ]
   return (
     <Card className="flex-col gap-3 p-5" interactive={false}>
       <div className="flex items-center justify-between">
         <h3 className="text-sm font-bold text-text-primary">Стресс-метрики</h3>
-        <Sparkles className="h-4 w-4 text-cyan" />
+        <Sparkles className="h-4 w-4 text-text-secondary" />
       </div>
       {items.map((m) => (
         <div key={m.label} className="flex flex-col gap-1">
@@ -210,7 +210,7 @@ function TranscriptCard({ messages, pending }: { messages: AIMessage[]; pending:
       <div className="flex max-h-[240px] flex-col gap-1.5 overflow-y-auto">
         {messages.slice(-30).map((m, i) => (
           <div key={i} className="text-[12px] break-words">
-            <span className={m.from === 'ai' ? 'text-cyan' : 'text-accent-hover'}>
+            <span className={m.from === 'ai' ? 'text-text-secondary' : 'text-text-primary'}>
               {m.from === 'ai' ? 'AI:' : 'Я:'}{' '}
             </span>
             <span className="text-text-secondary">{m.text}</span>
@@ -249,7 +249,7 @@ function MessageBox({
         className={[
           'grid h-9 w-9 shrink-0 place-items-center rounded-full border',
           micOn
-            ? 'border-cyan/40 bg-cyan/15 text-cyan'
+            ? 'border-border-strong bg-text-primary/10 text-text-primary'
             : 'border-border bg-surface-2 text-text-secondary hover:bg-surface-3',
         ].join(' ')}
         aria-label="toggle voice"
@@ -257,7 +257,7 @@ function MessageBox({
         <Mic className="h-4 w-4" />
       </button>
       <input
-        className="flex-1 rounded-md border border-border bg-surface-2 px-3 py-2 text-[13px] text-text-primary outline-none focus:border-accent"
+        className="flex-1 rounded-md border border-border bg-surface-2 px-3 py-2 text-[13px] text-text-primary outline-none focus:border-text-primary"
         placeholder="Ответьте интервьюеру…"
         value={value}
         onChange={(e) => onChange(e.target.value)}

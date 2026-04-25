@@ -45,14 +45,14 @@ export type CodexArticle = {
 const ic = (Comp: typeof Network, cls = 'h-4 w-4') => createElement(Comp, { className: cls })
 
 export const CODEX_CATEGORIES: CodexCategory[] = [
-  { slug: 'system_design', label: 'System Design', icon: ic(Network), color: 'text-cyan', bg: 'bg-cyan/15' },
-  { slug: 'backend', label: 'Backend', icon: ic(Database), color: 'text-accent-hover', bg: 'bg-accent/15' },
-  { slug: 'algorithms', label: 'Алгоритмы', icon: ic(Cpu), color: 'text-pink', bg: 'bg-pink/15' },
+  { slug: 'system_design', label: 'System Design', icon: ic(Network), color: 'text-text-secondary', bg: 'bg-text-primary/10' },
+  { slug: 'backend', label: 'Backend', icon: ic(Database), color: 'text-text-primary', bg: 'bg-text-primary/15' },
+  { slug: 'algorithms', label: 'Алгоритмы', icon: ic(Cpu), color: 'text-text-secondary', bg: 'bg-text-primary/10' },
   { slug: 'career', label: 'Карьера', icon: ic(Briefcase), color: 'text-warn', bg: 'bg-warn/15' },
   { slug: 'behavioral', label: 'Behavioral', icon: ic(MessageCircle), color: 'text-success', bg: 'bg-success/15' },
-  { slug: 'concurrency', label: 'Concurrency', icon: ic(GitBranch), color: 'text-cyan', bg: 'bg-cyan/15' },
-  { slug: 'data', label: 'Data / SQL', icon: ic(Layers), color: 'text-accent-hover', bg: 'bg-accent/15' },
-  { slug: 'security', label: 'Security', icon: ic(Lock), color: 'text-pink', bg: 'bg-pink/15' },
+  { slug: 'concurrency', label: 'Concurrency', icon: ic(GitBranch), color: 'text-text-secondary', bg: 'bg-text-primary/10' },
+  { slug: 'data', label: 'Data / SQL', icon: ic(Layers), color: 'text-text-primary', bg: 'bg-text-primary/15' },
+  { slug: 'security', label: 'Security', icon: ic(Lock), color: 'text-text-secondary', bg: 'bg-text-primary/10' },
 ]
 
 // Все ссылки — на стабильные публичные источники (Wikipedia, MDN, AWS docs,
@@ -282,4 +282,4 @@ export const CODEX_TOTAL = CODEX_ARTICLES.length
 
 // Иконка-заглушка для "пустых" мест UI, если нужно — экспортируем
 // здесь, чтобы импорт лежал в одном модуле.
-export const CODEX_HERO_ICON = createElement(Sparkles, { className: 'h-6 w-6 text-accent-hover' })
+export const CODEX_HERO_ICON = createElement(Sparkles, { className: 'h-6 w-6 text-text-primary' })

@@ -75,7 +75,7 @@ const TONE: Record<EmptyVariant, string> = {
   'first-time': 'text-text-muted',
   error: 'text-danger',
   loading: 'text-text-muted',
-  'coming-soon': 'text-pink',
+  'coming-soon': 'text-text-secondary',
   '404-not-found': 'text-warn',
   throttled: 'text-warn',
 }
@@ -111,7 +111,7 @@ function useDefaults(variant: EmptyVariant): {
 
 function CtaButton({ cta, primary, disabled }: { cta: EmptyCta; primary: boolean; disabled?: boolean }) {
   const cls = primary
-    ? 'rounded-md bg-accent hover:bg-accent/90 text-white font-semibold text-sm px-4 py-2 disabled:opacity-60 disabled:cursor-not-allowed'
+    ? 'rounded-md bg-text-primary hover:bg-text-primary/90 text-bg font-semibold text-sm px-4 py-2 disabled:opacity-60 disabled:cursor-not-allowed'
     : 'rounded-md border border-border bg-surface-1 text-text-secondary font-medium text-sm px-4 py-2 hover:bg-surface-2'
   if (cta.href) {
     return (

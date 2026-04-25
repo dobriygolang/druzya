@@ -126,7 +126,7 @@ export default function PairRoomPage() {
             ))}
           </select>
           {isFrozen && (
-            <span className="inline-flex items-center gap-1 rounded-full bg-cyan/15 px-2 py-0.5 font-mono text-[10px] font-semibold text-cyan">
+            <span className="inline-flex items-center gap-1 rounded-full bg-text-primary/10 px-2 py-0.5 font-mono text-[10px] font-semibold text-text-secondary">
               <Snowflake className="h-3 w-3" /> заморожено
             </span>
           )}
@@ -222,12 +222,12 @@ export default function PairRoomPage() {
                     }
                   }}
                   placeholder="Сообщение"
-                  className="flex-1 rounded border border-border bg-bg px-2 py-1 text-[12px] text-text-primary outline-none focus:border-accent"
+                  className="flex-1 rounded border border-border bg-bg px-2 py-1 text-[12px] text-text-primary outline-none focus:border-text-primary"
                 />
                 <button
                   type="button"
                   onClick={sendChat}
-                  className="rounded bg-accent px-2 py-1 text-text-primary hover:bg-accent/90"
+                  className="rounded bg-text-primary px-2 py-1 text-text-primary hover:bg-text-primary/90"
                   aria-label="Отправить"
                 >
                   <Send className="h-3.5 w-3.5" />

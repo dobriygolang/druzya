@@ -177,21 +177,6 @@ func (mr *MockProfileRepoMockRecorder) IssueShareToken(ctx, userID, weekISO any)
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IssueShareToken", reflect.TypeOf((*MockProfileRepo)(nil).IssueShareToken), ctx, userID, weekISO)
 }
 
-// ListAchievementsSince mocks base method.
-func (m *MockProfileRepo) ListAchievementsSince(ctx context.Context, userID uuid.UUID, since time.Time) ([]domain.AchievementBrief, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ListAchievementsSince", ctx, userID, since)
-	ret0, _ := ret[0].([]domain.AchievementBrief)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// ListAchievementsSince indicates an expected call of ListAchievementsSince.
-func (mr *MockProfileRepoMockRecorder) ListAchievementsSince(ctx, userID, since any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListAchievementsSince", reflect.TypeOf((*MockProfileRepo)(nil).ListAchievementsSince), ctx, userID, since)
-}
-
 // ListEloSnapshotsSince mocks base method.
 func (m *MockProfileRepo) ListEloSnapshotsSince(ctx context.Context, userID uuid.UUID, since time.Time) ([]domain.EloPoint, error) {
 	m.ctrl.T.Helper()

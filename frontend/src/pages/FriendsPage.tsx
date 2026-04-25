@@ -115,7 +115,7 @@ function SuggestionRow({ f, onAdd, busy }: { f: FriendDTO; onAdd: () => void; bu
         type="button"
         disabled={busy}
         onClick={onAdd}
-        className="text-xs font-semibold text-accent-hover hover:text-accent disabled:opacity-50"
+        className="text-xs font-semibold text-text-primary hover:text-text-primary disabled:opacity-50"
       >
         {t('friends.add')}
       </button>
@@ -190,7 +190,7 @@ function FindByCodeCard() {
           onKeyDown={(e) => {
             if (e.key === 'Enter') onSubmit()
           }}
-          className="h-9 flex-1 rounded-md border border-border bg-surface-2 px-3 font-mono text-[13px] text-text-primary placeholder:text-text-muted focus:border-accent focus:outline-none"
+          className="h-9 flex-1 rounded-md border border-border bg-surface-2 px-3 font-mono text-[13px] text-text-primary placeholder:text-text-muted focus:border-text-primary focus:outline-none"
           placeholder="DRUZ9-XXXX-XXX"
         />
         <Button size="sm" variant="primary" disabled={add.isPending} onClick={onSubmit}>
@@ -335,7 +335,7 @@ export default function FriendsPage() {
                 ) : incomingList.length === 0 ? (
                   <Card className="p-6 text-sm text-text-secondary">{t('friends.empty_requests', 'Заявок нет.')}</Card>
                 ) : (
-                  <Card className="flex-col gap-3 border-accent/40 p-5">
+                  <Card className="flex-col gap-3 border-border-strong p-5">
                     {incomingList.map((r) => (
                       <IncomingRow
                         key={r.user_id}
@@ -367,7 +367,7 @@ export default function FriendsPage() {
                           type="button"
                           onClick={() => unblock.mutate(b.user_id)}
                           disabled={unblock.isPending}
-                          className="text-xs font-semibold text-accent-hover hover:text-accent disabled:opacity-50"
+                          className="text-xs font-semibold text-text-primary hover:text-text-primary disabled:opacity-50"
                         >
                           {t('friends.unblock', 'Разблок')}
                         </button>
@@ -380,7 +380,7 @@ export default function FriendsPage() {
           </div>
 
           <div className="flex w-full flex-col gap-4 lg:w-[380px]">
-            <Card className="flex-col gap-3 border-accent/40 p-5">
+            <Card className="flex-col gap-3 border-border-strong p-5">
               <h3 className="font-display text-base font-bold text-text-primary">{t('friends.incoming')}</h3>
               {incoming.isLoading ? (
                 <div className="h-16 animate-pulse rounded bg-surface-2" />

@@ -45,7 +45,7 @@ export function PipelineStepper({ currentStage, stages = STAGE_ORDER, statuses }
                 className={cn(
                   'flex items-center gap-2 rounded-md px-3 py-2 border text-xs font-medium flex-1 transition-colors',
                   st === 'done' && 'border-success/40 bg-success/10 text-success',
-                  st === 'in_progress' && 'border-accent bg-accent/10 text-accent ring-2 ring-accent/30',
+                  st === 'in_progress' && 'border-text-primary bg-text-primary/10 text-text-primary ring-2 ring-text-primary/40/30',
                   st === 'pending' && 'border-border bg-surface-1 text-text-muted',
                   st === 'skipped' && 'border-border bg-surface-1 text-text-muted opacity-60 line-through',
                 )}
@@ -54,7 +54,7 @@ export function PipelineStepper({ currentStage, stages = STAGE_ORDER, statuses }
                   className={cn(
                     'inline-flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold',
                     st === 'done' && 'bg-success text-white',
-                    st === 'in_progress' && 'bg-accent text-white',
+                    st === 'in_progress' && 'bg-text-primary text-bg',
                     (st === 'pending' || st === 'skipped') && 'bg-surface-2 text-text-muted',
                   )}
                 >
@@ -68,7 +68,7 @@ export function PipelineStepper({ currentStage, stages = STAGE_ORDER, statuses }
         })}
       </div>
       <div className="sm:hidden text-sm font-medium text-text-secondary">
-        <span className="text-accent">{currentLabel}</span>
+        <span className="text-text-primary">{currentLabel}</span>
         <span className="text-text-muted ml-2 font-mono text-xs">
           {safeIdx + 1}/{total}
         </span>

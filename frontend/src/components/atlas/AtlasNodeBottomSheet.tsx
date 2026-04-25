@@ -125,7 +125,7 @@ export function AtlasNodeBottomSheet({
 
         <div className="flex items-start justify-between gap-3 px-4">
           <div className="min-w-0 flex-1">
-            <div className="font-mono text-[10px] uppercase tracking-[0.14em] text-cyan">
+            <div className="font-mono text-[10px] uppercase tracking-[0.14em] text-text-secondary">
               {node.cluster ?? node.section}
               {locked ? ' · lock' : progress >= 100 ? ' · mastered' : ' · в процессе'}
             </div>
@@ -152,7 +152,7 @@ export function AtlasNodeBottomSheet({
         <div className="mt-3 grid grid-cols-3 gap-2 px-4 font-mono text-[10px]">
           <div className="rounded-md border border-border bg-bg/40 p-2">
             <div className="text-text-muted">progress</div>
-            <div className="mt-0.5 font-display text-[13px] font-bold text-cyan">{progress}%</div>
+            <div className="mt-0.5 font-display text-[13px] font-bold text-text-secondary">{progress}%</div>
           </div>
           <div className="rounded-md border border-border bg-bg/40 p-2">
             <div className="text-text-muted">задач</div>
@@ -179,7 +179,7 @@ export function AtlasNodeBottomSheet({
             <div
               className={cn(
                 'h-full rounded-full transition-all duration-300',
-                progress >= 100 ? 'bg-success' : 'bg-cyan',
+                progress >= 100 ? 'bg-success' : 'bg-text-primary',
               )}
               style={{ width: `${progress}%` }}
             />
@@ -196,7 +196,7 @@ export function AtlasNodeBottomSheet({
               'flex-1 rounded-md py-2 font-display text-[12.5px] font-extrabold',
               locked
                 ? 'cursor-not-allowed bg-surface-2 text-text-muted'
-                : 'bg-cyan text-bg hover:bg-cyan/90',
+                : 'bg-text-primary text-bg hover:bg-text-primary/10',
             )}
           >
             {locked ? 'Заблокировано' : primaryActionLabel}

@@ -20,7 +20,7 @@ export function ComingSoon({ title, description, primaryCta, secondaryCta }: Com
     <div className="flex w-full items-center justify-center px-4 py-12 sm:px-8 lg:px-20">
       <div className="flex w-full max-w-[640px] flex-col items-center gap-5 rounded-2xl border border-border bg-surface-1 p-8 text-center">
         <div className="grid h-14 w-14 place-items-center rounded-full bg-gradient-to-br from-accent/30 to-pink/30">
-          <Sparkles className="h-6 w-6 text-accent-hover" />
+          <Sparkles className="h-6 w-6 text-text-primary" />
         </div>
         <h2 className="font-display text-2xl font-bold text-text-primary">{title}</h2>
         <p className="max-w-[480px] text-sm text-text-secondary">{description}</p>
@@ -30,7 +30,7 @@ export function ComingSoon({ title, description, primaryCta, secondaryCta }: Com
               <button
                 type="button"
                 onClick={primaryCta.onClick}
-                className="rounded-md bg-accent px-4 py-2 text-sm font-semibold text-text-primary shadow-glow hover:bg-accent/90"
+                className="rounded-md bg-text-primary px-4 py-2 text-sm font-semibold text-text-primary hover:bg-text-primary/90"
               >
                 {primaryCta.label}
               </button>

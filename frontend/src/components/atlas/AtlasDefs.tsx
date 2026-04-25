@@ -25,7 +25,7 @@ export const AtlasDefs = memo(function AtlasDefs() {
       {/* Hub core gradient — violet from centre, deep purple at rim */}
       <radialGradient id={DEFS_IDS.hubCore} cx="50%" cy="50%" r="50%">
         <stop offset="0%" stopColor="#E9D5FF" />
-        <stop offset="40%" stopColor="#A78BFA" />
+        <stop offset="40%" stopColor="#FFFFFF" />
         <stop offset="100%" stopColor="#3B0764" />
       </radialGradient>
 

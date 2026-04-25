@@ -20,15 +20,16 @@
 // own this; for now the heuristic is ELO-after / 100 differs from
 // ELO-before / 100).
 
-import { Trophy, Target, Sparkles, Flame, Zap, ChevronRight, Share2, Play } from 'lucide-react'
+// Phase-4 ADR-001: ConfettiBurst / XPRain / AchievementCascade removed.
+// Quiet-ecosystem rule — match-end shows the ELO delta and verdict; no
+// particle effects, no synthesised achievement cascade. EloRing + tier
+// label do the heavy lifting.
+import { Sparkles, Flame, ChevronRight, Share2, Play } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import type { MatchEndResponse } from '../../lib/queries/matches'
 import { Card } from '../../components/Card'
-import { ConfettiBurst } from '../../components/ConfettiBurst'
 import { EloRing } from '../../components/EloRing'
-import { XPRain } from '../../components/XPRain'
 import { SoundHook } from '../../components/SoundHook'
-import { AchievementCascade } from '../../components/AchievementToast'
 import { gradientStyleForUser } from '../../lib/avatarGradients'
 
 // ── shared chrome ────────────────────────────────────────────────────────
@@ -78,7 +79,7 @@ function ActionsRow({
         <button
           type="button"
           onClick={onPrimary}
-          className="inline-flex items-center gap-2 rounded-md bg-accent hover:bg-accent/90 px-5 py-2.5 text-sm font-semibold text-white shadow-glow"
+          className="inline-flex items-center gap-2 rounded-md bg-text-primary hover:bg-text-primary/90 px-5 py-2.5 text-sm font-semibold text-bg"
         >
           {primaryIcon}
           {primaryLabel}
@@ -131,38 +132,11 @@ export function WinPromote({ data, profile }: { data: MatchEndResponse; profile:
   const before = data.lp_total - data.lp_delta
   const band = tierBand(data.lp_total)
 
-  // Sample achievements — until backend ships per-match achievement diff,
-  // we synthesize from observable signals. Tier-up is guaranteed; speed
-  // bonus if time < 3 min; first-try bonus if tests passed without retry.
-  const achievements: Parameters<typeof AchievementCascade>[0]['items'] = [
-    {
-      rarity: 'tier',
-      title: data.tier ? `Promote → ${data.tier}` : 'Promote',
-      body: data.next_tier ? `до ${data.next_tier} осталось чуть-чуть` : 'новый ранг',
-      icon: <Trophy className="h-5 w-5" />,
-    },
-  ]
-  if (data.stats.time && /^[0-2]:/.test(data.stats.time)) {
-    achievements.push({
-      rarity: 'epic',
-      title: 'Speed demon',
-      body: `решил за ${data.stats.time}`,
-      icon: <Zap className="h-5 w-5" />,
-    })
-  }
-  if (data.stats.tests && /^\d+\/\d+$/.test(data.stats.tests)) {
-    achievements.push({
-      rarity: 'rare',
-      title: 'First-try',
-      body: `tests ${data.stats.tests} с первой попытки`,
-      icon: <Target className="h-5 w-5" />,
-    })
-  }
+  // Phase-4 ADR-001: synthesized achievement cascade removed alongside the
+  // Achievements feature.
 
   return (
     <div className="relative min-h-[760px] bg-bg">
-      {/* Confetti — fires once on mount */}
-      <ConfettiBurst trigger />
       {/* Sound cue — placeholder, fires once */}
       <SoundHook cue="tier-up" when />
 
@@ -170,7 +144,7 @@ export function WinPromote({ data, profile }: { data: MatchEndResponse; profile:
 
       <div className="px-4 py-8 sm:px-8 lg:px-20 lg:py-12 max-w-5xl mx-auto">
         {/* Hero band: gradient + tier-up reveal */}
-        <div className="rounded-2xl border border-warn/40 bg-gradient-to-br from-warn/15 via-accent/10 to-pink/10 p-6 sm:p-8 mb-6 text-center">
+        <div className="rounded-2xl border border-warn/40 bg-warn/10 p-6 sm:p-8 mb-6 text-center">
           <div className="font-mono text-[11px] uppercase tracking-[0.16em] text-warn mb-2">
             ⬆ promote
           </div>
@@ -194,14 +168,6 @@ export function WinPromote({ data, profile }: { data: MatchEndResponse; profile:
               </div>
             )}
           </div>
-        </div>
-
-        {/* Achievement cascade */}
-        <div className="mb-8">
-          <div className="font-mono text-[10px] uppercase tracking-[0.16em] text-text-muted mb-3 text-center">
-            unlocked
-          </div>
-          <AchievementCascade items={achievements} startDelay={1100} stagger={350} />
         </div>
 
         {/* Self avatar identity — pinned at bottom for "this happened to YOU" */}
@@ -240,7 +206,6 @@ export function WinNormal({ data, profile }: { data: MatchEndResponse; profile: 
 
   return (
     <div className="relative min-h-[760px] bg-bg">
-      <XPRain intensity={0.5} />
       <SoundHook cue="xp-tick" when interval={120} />
 
       <PageHeader matchId={data.id} back={() => navigate('/arena')} />
@@ -273,7 +238,7 @@ export function WinNormal({ data, profile }: { data: MatchEndResponse; profile: 
             </Card>
             <Card className="flex-col gap-1 p-4 text-center">
               <span className="font-mono text-[10px] uppercase text-text-muted">O(·)</span>
-              <span className="font-display text-2xl font-extrabold text-cyan">{data.stats.complexity}</span>
+              <span className="font-display text-2xl font-extrabold text-text-secondary">{data.stats.complexity}</span>
             </Card>
             <Card className="flex-col gap-1 p-4 text-center">
               <span className="font-mono text-[10px] uppercase text-text-muted">строк</span>
@@ -357,20 +322,20 @@ export function LossScreen({ data, profile }: { data: MatchEndResponse; profile:
         </div>
 
         {/* AI-coach insight — the emotional pivot from "loss" to "next" */}
-        <Card className="flex-col gap-3 border-pink/30 bg-pink/5 p-5 mb-6">
+        <Card className="flex-col gap-3 border-border-strong bg-text-primary/10 p-5 mb-6">
           <div className="flex items-center gap-2">
-            <Sparkles className="h-4 w-4 text-pink" />
-            <span className="font-mono text-[10px] uppercase tracking-[0.16em] text-pink">ai coach · быстрый разбор</span>
+            <Sparkles className="h-4 w-4 text-text-secondary" />
+            <span className="font-mono text-[10px] uppercase tracking-[0.16em] text-text-secondary">ai coach · быстрый разбор</span>
           </div>
           <p className="text-[14px] text-text-primary leading-relaxed">{insight}</p>
         </Card>
 
         {/* Streak preserved? Small dignity gesture */}
         {data.streak_bonus && (
-          <Card className="flex items-center gap-3 border-cyan/30 bg-cyan/5 p-4 mb-6">
-            <Flame className="h-5 w-5 text-cyan shrink-0" />
+          <Card className="flex items-center gap-3 border-border-strong bg-text-primary/10 p-4 mb-6">
+            <Flame className="h-5 w-5 text-text-secondary shrink-0" />
             <div className="text-[13px] text-text-secondary">
-              Streak сохранён: <strong className="text-cyan">{data.streak_bonus}</strong>
+              Streak сохранён: <strong className="text-text-secondary">{data.streak_bonus}</strong>
             </div>
           </Card>
         )}

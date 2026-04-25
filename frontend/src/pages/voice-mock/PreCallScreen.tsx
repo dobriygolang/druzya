@@ -189,7 +189,7 @@ export function PreCallScreen({ initial, onStart }: Props) {
                 className={
                   'flex flex-col items-center gap-3 rounded-xl border p-5 text-center transition-colors ' +
                   (active
-                    ? 'border-accent bg-accent/10'
+                    ? 'border-text-primary bg-text-primary/10'
                     : 'border-border bg-surface-1 hover:border-border-strong hover:bg-surface-2')
                 }
               >
@@ -219,7 +219,7 @@ export function PreCallScreen({ initial, onStart }: Props) {
                   className={
                     'flex items-center justify-between rounded-lg border px-4 py-3 text-left transition-colors ' +
                     (active
-                      ? 'border-accent bg-accent/10'
+                      ? 'border-text-primary bg-text-primary/10'
                       : 'border-border bg-surface-1 hover:border-border-strong hover:bg-surface-2')
                   }
                 >
@@ -230,7 +230,7 @@ export function PreCallScreen({ initial, onStart }: Props) {
                   <span
                     className={
                       'h-3 w-3 rounded-full border ' +
-                      (active ? 'border-accent bg-accent' : 'border-border-strong bg-transparent')
+                      (active ? 'border-text-primary bg-text-primary' : 'border-border-strong bg-transparent')
                     }
                   />
                 </button>
@@ -252,7 +252,7 @@ export function PreCallScreen({ initial, onStart }: Props) {
                   className={
                     'flex items-center justify-between rounded-lg border px-4 py-3 transition-colors ' +
                     (active
-                      ? 'border-accent bg-accent/10'
+                      ? 'border-text-primary bg-text-primary/10'
                       : 'border-border bg-surface-1 hover:border-border-strong hover:bg-surface-2')
                   }
                 >

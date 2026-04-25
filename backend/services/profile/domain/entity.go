@@ -151,14 +151,6 @@ type ShareResolution struct {
 	WeekISO string
 }
 
-// AchievementBrief — лёгкое представление ачивки для weekly-блока.
-type AchievementBrief struct {
-	Code       string
-	Title      string
-	UnlockedAt time.Time
-	Tier       string
-}
-
 // InterviewerApplication mirrors a row in `interviewer_applications`.
 // Status is one of ApplicationStatus*. `UserUsername`/`UserDisplayName`
 // are hydrated by ListInterviewerApplications for the admin queue;

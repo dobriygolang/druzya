@@ -29,21 +29,21 @@ function Hero({ kata, isError }: { kata: DailyKata | undefined; isError: boolean
   const section = kata?.task?.section ?? '—'
   return (
     <div
-      className="flex flex-col items-start justify-between gap-5 px-4 py-6 sm:px-8 lg:flex-row lg:items-center lg:gap-0 lg:px-10 lg:py-0"
+      className="flex flex-col items-start justify-between gap-5 px-4 py-6 sm:px-8 lg:flex-row lg:items-center lg:gap-0 lg:px-10 lg:py-0 border border-border-strong"
       style={{
         minHeight: 200,
-        background: 'linear-gradient(10deg, #F472B6 0%, #582CFF 100%)',
+        background: '#0A0A0A',
       }}
     >
       <div className="flex flex-col gap-3">
         <span className="inline-flex w-fit items-center gap-1.5 rounded-full bg-warn/90 px-3 py-1 font-mono text-[11px] font-bold tracking-[0.1em] text-bg">
           <Flame className="h-3 w-3" /> {t('day_of', { day })}
         </span>
-        <h1 className="font-display text-3xl font-extrabold leading-[1.05] text-white sm:text-4xl lg:text-[44px]">
+        <h1 className="font-display text-3xl font-extrabold leading-[1.05] text-text-primary sm:text-4xl lg:text-[44px]">
           {title}
         </h1>
         {isError && (
-          <span className="rounded-full bg-danger/30 px-2 py-0.5 font-mono text-[10px] font-semibold text-white">
+          <span className="rounded-full bg-danger/30 px-2 py-0.5 font-mono text-[10px] font-semibold text-text-primary">
             {t('load_failed')}
           </span>
         )}
@@ -53,11 +53,11 @@ function Hero({ kata, isError }: { kata: DailyKata | undefined; isError: boolean
         </div>
       </div>
       <div className="flex w-full flex-row items-center justify-between gap-2 lg:w-auto lg:flex-col lg:items-end">
-        <span className="font-mono text-[11px] uppercase tracking-[0.1em] text-white/80">{t('passed_today')}</span>
-        <span className="font-display text-[28px] font-extrabold text-white">
+        <span className="font-mono text-[11px] uppercase tracking-[0.1em] text-text-secondary">{t('passed_today')}</span>
+        <span className="font-display text-[28px] font-extrabold text-text-primary">
           {kata?.already_submitted ? '✓' : '—'}
         </span>
-        <span className="font-mono text-[13px] text-cyan">
+        <span className="font-mono text-[13px] text-text-secondary">
           {kata?.already_submitted ? 'ты сдал сегодня' : 'не сдано'}
         </span>
       </div>
@@ -67,7 +67,7 @@ function Hero({ kata, isError }: { kata: DailyKata | undefined; isError: boolean
 
 function MetaTag({ children }: { children: React.ReactNode }) {
   return (
-    <span className="rounded-md border border-white/30 bg-white/10 px-2 py-0.5 font-mono text-[11px] font-semibold text-white">
+    <span className="rounded-md border border-border-strong bg-text-primary/10 px-2 py-0.5 font-mono text-[11px] font-semibold text-text-primary">
       {children}
     </span>
   )
@@ -99,7 +99,7 @@ function DescriptionCard({ kata }: { kata: DailyKata | undefined }) {
               className={cn(
                 'relative h-11 shrink-0 px-3 text-[13px] font-semibold transition-colors',
                 active
-                  ? 'text-text-primary after:absolute after:inset-x-2 after:bottom-0 after:h-0.5 after:bg-accent'
+                  ? 'text-text-primary after:absolute after:inset-x-2 after:bottom-0 after:h-0.5 after:bg-text-primary'
                   : 'text-text-muted hover:text-text-primary',
               )}
             >
@@ -197,10 +197,10 @@ function Editor3({ kataID, initialCode }: { kataID: string; initialCode: string 
   return (
     <div className="flex min-h-[400px] min-w-0 flex-1 flex-col overflow-hidden rounded-xl bg-surface-1">
       <div className="flex min-w-0 flex-wrap items-center gap-2 overflow-x-auto border-b border-border px-3">
-        <div className="flex h-10 shrink-0 items-center gap-2 border-b-2 border-accent px-3 text-[13px] font-semibold text-text-primary">
+        <div className="flex h-10 shrink-0 items-center gap-2 border-b-2 border-text-primary px-3 text-[13px] font-semibold text-text-primary">
           solution.go
         </div>
-        <span className="shrink-0 rounded-md bg-cyan/15 px-2 py-0.5 font-mono text-[10px] font-bold text-cyan">GO</span>
+        <span className="shrink-0 rounded-md bg-text-primary/10 px-2 py-0.5 font-mono text-[10px] font-bold text-text-secondary">GO</span>
       </div>
       <div className="flex min-h-[280px] flex-1 overflow-hidden">
         <Editor
@@ -238,7 +238,6 @@ function Editor3({ kataID, initialCode }: { kataID: string; initialCode: string 
             variant="primary"
             icon={state.kind === 'submitting' ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
             size="sm"
-            className="shadow-glow"
             onClick={onSubmit}
             disabled={isBusy || disabled}
           >
@@ -348,7 +347,7 @@ function StreakCard() {
             key={i}
             className={cn(
               'aspect-square rounded-sm',
-              done ? 'bg-gradient-to-br from-warn to-pink' : 'bg-surface-1',
+              done ? 'bg-warn' : 'bg-surface-1',
             )}
           />
         ))}
@@ -374,7 +373,7 @@ function SlugNotFoundView({ slug }: { slug: string }) {
         <p className="font-mono text-[13px] text-text-muted">slug: {slug}</p>
         <Link
           to="/arena/kata"
-          className="mt-2 rounded-md bg-accent px-4 py-2 font-mono text-[12px] font-semibold text-bg hover:opacity-90"
+          className="mt-2 rounded-md bg-text-primary px-4 py-2 font-mono text-[12px] font-medium text-bg hover:opacity-90"
         >
           ← Вернуться к сегодняшней ка́те
         </Link>

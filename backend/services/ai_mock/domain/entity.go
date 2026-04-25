@@ -30,6 +30,11 @@ type Session struct {
 	PairedUserID   *uuid.UUID
 	LLMModel       enums.LLMModel
 	DevilsAdvocate bool
+	// AIAssist — when true, the user opted into Cue copilot help during this
+	// session ("AI-assist mode"). When false (default), the Cue desktop must
+	// block AI consults for the duration; see services/copilot CheckBlock.
+	// Phase-4 ADR-001 (Wave 3) — migration 00040.
+	AIAssist       bool
 	Stress         StressProfile
 	Report         []byte // ai_report JSONB — nil until report job finishes
 	ReplayURL      string

@@ -53,9 +53,9 @@ export function AIModelRow({ id, label, meta, tier, selected, locked, isVirtual,
       className={cn(
         'group flex w-full items-center gap-3 rounded-lg border px-4 py-3 text-left transition-colors',
         selected
-          ? 'border-accent bg-accent/10'
+          ? 'border-text-primary bg-text-primary/10'
           : 'border-border bg-bg/40 hover:border-border-strong',
-        isVirtual && !selected && 'border-accent/50 bg-accent/[0.04] hover:border-accent',
+        isVirtual && !selected && 'border-border-strong bg-text-primary/[0.04] hover:border-text-primary',
         locked && 'cursor-not-allowed hover:border-warn/40 hover:bg-warn/[0.04]',
       )}
       title={locked ? 'Доступно на Premium подписке' : undefined}
@@ -64,14 +64,14 @@ export function AIModelRow({ id, label, meta, tier, selected, locked, isVirtual,
       <span
         className={cn(
           'grid h-4 w-4 shrink-0 place-items-center rounded-full border-2',
-          selected ? 'border-accent' : 'border-border-strong',
+          selected ? 'border-text-primary' : 'border-border-strong',
           locked && 'border-border-strong opacity-40 group-hover:opacity-60',
         )}
       >
         {locked ? (
           <Lock className="h-2.5 w-2.5 text-text-muted" />
         ) : selected ? (
-          <span className="h-2 w-2 rounded-full bg-accent" />
+          <span className="h-2 w-2 rounded-full bg-text-primary" />
         ) : null}
       </span>
 
@@ -102,7 +102,7 @@ function RightChip({
   // state — the ⚡ badge is the whole point of the row.
   if (isVirtual) {
     return (
-      <span className="flex items-center gap-1 rounded-md bg-accent/20 px-2 py-0.5 font-mono text-[10px] font-bold uppercase text-accent">
+      <span className="flex items-center gap-1 rounded-md bg-text-primary/20 px-2 py-0.5 font-mono text-[10px] font-bold uppercase text-text-primary">
         <Zap className="h-3 w-3" strokeWidth={3} />
         турбо
       </span>
@@ -121,7 +121,7 @@ function RightChip({
     )
   }
   if (selected) {
-    return <Check className="h-4 w-4 text-accent" strokeWidth={3} />
+    return <Check className="h-4 w-4 text-text-primary" strokeWidth={3} />
   }
   return <span className="font-mono text-[10px] text-text-muted">free</span>
 }

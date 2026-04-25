@@ -209,7 +209,7 @@ export function NotificationsDrawer({ open, onClose }: NotificationsDrawerProps)
               <button
                 type="button"
                 onClick={() => navigateAndClose('/notifications')}
-                className="inline-flex items-center gap-1.5 rounded-md bg-accent px-3 py-1.5 text-[12px] font-semibold text-white hover:bg-accent-hover"
+                className="inline-flex items-center gap-1.5 rounded-md bg-text-primary px-3 py-1.5 text-[12px] font-semibold text-bg hover:bg-text-primary-hover"
               >
                 Открыть все <ArrowRight className="h-3.5 w-3.5" />
               </button>
@@ -289,7 +289,7 @@ function ChipButton({
       className={cn(
         'shrink-0 rounded-full border px-2.5 py-1 font-mono text-[10px] font-semibold uppercase tracking-wider transition-colors',
         active
-          ? 'border-accent bg-accent/15 text-accent-hover'
+          ? 'border-text-primary bg-text-primary/15 text-text-primary'
           : 'border-border bg-surface-2 text-text-muted hover:text-text-primary',
       )}
     >

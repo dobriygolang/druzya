@@ -1,13 +1,12 @@
 import { useState } from 'react'
-import { Trophy, Shield, Crown } from 'lucide-react'
+import { Shield, Crown } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { Link } from 'react-router-dom'
 import { Card } from '../../components/Card'
 import { Avatar } from '../../components/Avatar'
 import { cn } from '../../lib/cn'
 import { useRatingMeQuery, useLeaderboardQuery } from '../../lib/queries/rating'
-import { useAchievementsQuery, isUnlocked } from '../../lib/queries/achievements'
-import { useMyCohortQuery } from '../../lib/queries/cohort'
+import { useMyCirclesQuery } from '../../lib/queries/circles'
 import { SECTION_LABELS } from './viewModel'
 
 // SkillsCard renders the live section ratings only — no synthetic fallback.
@@ -52,62 +51,12 @@ export function SkillsCard() {
   )
 }
 
-// AchievementsCard renders ONLY achievements the user has actually unlocked.
-// Previously this was a hardcoded badge grid that mislead users into thinking
-// they had achievements they hadn't earned (production complaint #18).
-export function AchievementsCard() {
-  const { t } = useTranslation('profile')
-  const { data, isLoading, isError } = useAchievementsQuery()
-  const unlocked = (data ?? []).filter(isUnlocked)
-  return (
-    <Card className="flex-col gap-3 p-5">
-      <div className="flex items-center justify-between">
-        <h3 className="font-display text-base font-bold text-text-primary">{t('achievements_title')}</h3>
-        <span className="font-mono text-[11px] text-text-muted">
-          {unlocked.length} / {data?.length ?? 0}
-        </span>
-      </div>
-      {isLoading && <p className="font-mono text-[12px] text-text-muted">…</p>}
-      {isError && <p className="text-[12px] text-danger">Не удалось загрузить ачивки.</p>}
-      {!isLoading && !isError && unlocked.length === 0 && (
-        <p className="text-[12px] text-text-muted">
-          Пока ничего не разблокировано. Сыграй матч, реши задачу — первая ачивка близко.
-        </p>
-      )}
-      <div className="grid grid-cols-3 gap-2">
-        {unlocked.slice(0, 6).map((a) => (
-          <div
-            key={a.code}
-            title={a.title}
-            className={cn(
-              'flex aspect-square flex-col items-center justify-center gap-1 rounded-lg p-2',
-              // Phase-4: tier rarity shown by border opacity, not hue —
-              // legendary = bright hairline, rare = mid, common = subtle.
-              a.tier === 'legendary'
-                ? 'bg-surface-2 border border-text-primary'
-                : a.tier === 'rare'
-                  ? 'bg-surface-2 border border-border-strong'
-                  : 'bg-surface-1 border border-border',
-            )}
-          >
-            <Trophy className="h-5 w-5 text-text-primary" />
-            <span className="line-clamp-1 font-mono text-[10px] font-medium text-text-primary">{a.title}</span>
-          </div>
-        ))}
-      </div>
-      {unlocked.length > 6 && (
-        <Link to="/achievements" className="font-mono text-[11px] text-text-primary hover:underline">
-          Все ачивки ›
-        </Link>
-      )}
-    </Card>
-  )
-}
+// Phase-4 ADR-001: AchievementsCard removed (gamification cut).
 
-// CohortCard now reads useMyCohortQuery — shows real membership or empty state.
+// CohortCard renamed to CircleCard (Wave 2 — cohort merged into circles).
+// Shows membership count + most-recent circle name.
 export function CohortCard() {
-  const { t } = useTranslation('profile')
-  const { data: cohort, isLoading } = useMyCohortQuery()
+  const { data: circles, isLoading } = useMyCirclesQuery()
   if (isLoading) {
     return (
       <Card className="flex-col gap-2 p-5">
@@ -116,39 +65,42 @@ export function CohortCard() {
       </Card>
     )
   }
-  if (!cohort) {
+  const list = circles ?? []
+  if (list.length === 0) {
     return (
       <Card className="flex-col gap-0 overflow-hidden p-0" interactive={false}>
         <div className="flex flex-col gap-2 border-b border-border bg-surface-2 p-5">
           <div className="flex items-center gap-2">
             <Shield className="h-4 w-4 text-text-primary" />
-            <span className="font-mono text-[11px] font-medium tracking-[0.08em] text-text-primary">{t('cohort_label')}</span>
+            <span className="font-mono text-[11px] font-medium tracking-[0.08em] text-text-primary">CIRCLES</span>
           </div>
           <h3 className="font-display text-xl font-extrabold text-text-primary">Без circle</h3>
-          <p className="text-xs text-text-secondary">Найди команду — рейтинги, войны, общие награды.</p>
+          <p className="text-xs text-text-secondary">Найди community — общие ивенты, обсуждения, события.</p>
         </div>
         <div className="flex items-center justify-between p-4">
-          <Link to="/cohort" className="font-mono text-[12px] font-medium text-text-primary hover:underline">
+          <Link to="/circles" className="font-mono text-[12px] font-medium text-text-primary hover:underline">
             Найти circle ›
           </Link>
         </div>
       </Card>
     )
   }
+  const primary = list[0]
   return (
     <Card className="flex-col gap-0 overflow-hidden p-0" interactive={false}>
       <div className="flex flex-col gap-2 border-b border-border bg-surface-2 p-5">
         <div className="flex items-center gap-2">
           <Shield className="h-4 w-4 text-text-primary" />
-          <span className="font-mono text-[11px] font-medium tracking-[0.08em] text-text-primary">{t('cohort_label')}</span>
+          <span className="font-mono text-[11px] font-medium tracking-[0.08em] text-text-primary">CIRCLES</span>
         </div>
-        <h3 className="font-display text-xl font-extrabold text-text-primary">{cohort.name}</h3>
+        <h3 className="font-display text-xl font-extrabold text-text-primary">{primary.name}</h3>
         <p className="text-xs text-text-secondary">
-          {(cohort.members?.length ?? 0)} участников · ELO {cohort.cohort_elo}
+          {primary.members?.length ?? 0} участников
+          {list.length > 1 ? ` · и ещё ${list.length - 1}` : ''}
         </p>
       </div>
       <div className="flex items-center justify-between p-4">
-        <Link to="/cohort" className="font-mono text-[12px] font-medium text-text-primary hover:underline">
+        <Link to={`/circles/${primary.id}`} className="font-mono text-[12px] font-medium text-text-primary hover:underline">
           Открыть circle ›
         </Link>
       </div>

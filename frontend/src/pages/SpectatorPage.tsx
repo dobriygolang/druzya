@@ -33,7 +33,7 @@ function Banner({ viewers }: { viewers: number }) {
         <span className="font-mono text-[12px] text-text-primary">LIVE</span>
       </div>
       <div className="flex items-center gap-3">
-        <span className="inline-flex items-center gap-1.5 rounded-full bg-cyan/15 px-2.5 py-1 font-mono text-[11px] font-semibold text-cyan">
+        <span className="inline-flex items-center gap-1.5 rounded-full bg-text-primary/10 px-2.5 py-1 font-mono text-[11px] font-semibold text-text-secondary">
           <Eye className="h-3 w-3" /> {viewers} смотрят
         </span>
         <Button variant="ghost" size="sm" icon={<Scissors className="h-3.5 w-3.5 text-warn" />}>
@@ -79,7 +79,7 @@ function MatchHeader() {
     <div className="flex flex-col gap-3 border-b border-border bg-surface-1 px-4 py-3 sm:px-6 lg:h-24 lg:flex-row lg:items-center lg:justify-between lg:px-10 lg:py-0">
       <PlayerHeader nick="—" tier="—" stats="—" gradient="cyan-violet" />
       <div className="flex flex-col items-center gap-1.5">
-        <span className="font-mono text-[10px] tracking-[0.12em] text-accent-hover">LIVE</span>
+        <span className="font-mono text-[10px] tracking-[0.12em] text-text-primary">LIVE</span>
         <span className="font-display text-[28px] font-extrabold leading-none text-text-primary">
           —
         </span>
@@ -141,7 +141,7 @@ function Editor({
   return (
     <div className={`flex flex-1 flex-col overflow-hidden rounded-xl border-2 ${border} bg-surface-1`}>
       <div className="flex h-9 items-center gap-2 border-b border-border bg-bg px-3">
-        <FileCode className="h-3.5 w-3.5 text-accent-hover" />
+        <FileCode className="h-3.5 w-3.5 text-text-primary" />
         <span className="font-mono text-[12px] text-text-primary">{tab}</span>
         {typing && (
           <span className="ml-auto inline-flex items-center gap-1 font-mono text-[10px] text-success">
@@ -156,7 +156,7 @@ function Editor({
             <span
               key={i}
               className={
-                i === highlight ? 'text-accent-hover' : i === failLine ? 'text-danger' : ''
+                i === highlight ? 'text-text-primary' : i === failLine ? 'text-danger' : ''
               }
             >
               {i + 1}
@@ -169,7 +169,7 @@ function Editor({
               key={i}
               className={
                 i === highlight
-                  ? 'rounded-sm bg-accent/15 px-1 text-text-primary'
+                  ? 'rounded-sm bg-text-primary/15 px-1 text-text-primary'
                   : i === failLine
                     ? 'rounded-sm bg-danger/15 px-1 text-danger'
                     : ''
@@ -189,7 +189,7 @@ function ChatCard({ msgs, viewers }: { msgs: ChatMsg[]; viewers: number }) {
     <div className="flex h-[380px] flex-col gap-2 rounded-xl border border-border bg-surface-2 p-3">
       <div className="flex items-center justify-between">
         <h3 className="font-display text-[13px] font-bold text-text-primary">Чат стрима</h3>
-        <span className="rounded-full bg-cyan/15 px-2 py-0.5 font-mono text-[10px] font-semibold text-cyan">
+        <span className="rounded-full bg-text-primary/10 px-2 py-0.5 font-mono text-[10px] font-semibold text-text-secondary">
           {viewers}
         </span>
       </div>
@@ -242,7 +242,7 @@ function OtherMatchesCard() {
 
 function BetCard() {
   return (
-    <div className="flex flex-col gap-2.5 rounded-xl bg-gradient-to-br from-accent to-pink p-3.5 shadow-glow">
+    <div className="flex flex-col gap-2.5 rounded-xl bg-surface-2 border border-border-strong p-3.5">
       <div className="flex items-center justify-between">
         <span className="font-display text-[13px] font-bold text-text-primary">Bet 100 💎</span>
         <Gem className="h-4 w-4 text-warn" />
@@ -259,7 +259,7 @@ function ReplayScrubber() {
   return (
     <div className="hidden h-24 flex-col gap-2 border-t border-border bg-surface-1 px-4 py-4 sm:px-8 lg:flex lg:px-20">
       <div className="flex items-center gap-3">
-        <button className="grid h-9 w-9 place-items-center rounded-full bg-accent text-text-primary hover:bg-accent-hover">
+        <button className="grid h-9 w-9 place-items-center rounded-full bg-text-primary text-text-primary hover:bg-text-primary-hover">
           <Play className="h-4 w-4" fill="currentColor" />
         </button>
         <span className="font-mono text-[12px] text-text-primary">
@@ -271,7 +271,7 @@ function ReplayScrubber() {
               key={s}
               className={[
                 'px-2.5 py-1 font-mono text-[11px] font-semibold',
-                s === '1x' ? 'bg-accent text-text-primary' : 'text-text-secondary hover:bg-surface-3',
+                s === '1x' ? 'bg-text-primary text-text-primary' : 'text-text-secondary hover:bg-surface-3',
               ].join(' ')}
             >
               {s}
@@ -279,13 +279,13 @@ function ReplayScrubber() {
           ))}
         </div>
         <div className="relative ml-4 h-7 flex-1 overflow-hidden rounded-md bg-surface-2">
-          <div className="absolute inset-y-0 left-0 w-[72%] bg-gradient-to-r from-cyan to-accent" />
+          <div className="absolute inset-y-0 left-0 w-[72%] bg-text-primary" />
           <div className="absolute inset-y-0 left-[72%] h-full w-1 bg-text-primary" />
           {/* Markers */}
           {[
             { x: '12%', color: 'bg-warn' },
             { x: '28%', color: 'bg-danger' },
-            { x: '45%', color: 'bg-cyan' },
+            { x: '45%', color: 'bg-text-primary' },
             { x: '60%', color: 'border border-text-muted bg-transparent' },
             { x: '95%', color: 'bg-warn' },
           ].map((m, i) => (
@@ -350,8 +350,8 @@ export default function SpectatorPage() {
         <MatchHeader />
         <div className="flex flex-1 flex-col gap-4 overflow-auto px-4 py-4 sm:px-8 lg:flex-row lg:overflow-hidden lg:px-20">
           <div className="flex flex-1 flex-col gap-4 lg:flex-row">
-            <Editor border="border-cyan" tab="player_a.go" lines={codeA} highlight={highlightA} typing />
-            <Editor border="border-pink" tab="player_b.go" lines={codeB} failLine={failB} />
+            <Editor border="border-border-strong" tab="player_a.go" lines={codeA} highlight={highlightA} typing />
+            <Editor border="border-border-strong" tab="player_b.go" lines={codeB} failLine={failB} />
           </div>
           <div className="flex w-full flex-col gap-4 overflow-y-auto lg:w-[320px]">
             <ChatCard msgs={msgs} viewers={viewers} />

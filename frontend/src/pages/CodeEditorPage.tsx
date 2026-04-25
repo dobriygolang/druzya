@@ -26,7 +26,7 @@ function TopBar() {
   return (
     <div className="flex h-auto flex-wrap items-center justify-between gap-3 border-b border-border bg-bg px-4 py-2 sm:px-5 lg:h-14 lg:flex-nowrap lg:py-0">
       <div className="flex items-center gap-4">
-        <span className="grid h-7 w-7 place-items-center rounded-md bg-gradient-to-br from-accent to-cyan font-display text-sm font-extrabold text-text-primary">
+        <span className="grid h-7 w-7 place-items-center rounded-md bg-surface-2 border border-border-strong font-display text-sm font-extrabold text-text-primary">
           9
         </span>
         <div className="flex items-center gap-2 font-mono text-[12px] text-text-secondary">
@@ -73,11 +73,11 @@ function FileExplorer() {
       <div className="flex flex-1 flex-col gap-0.5 p-2 text-[12px]">
         <div className="flex items-center gap-1.5 px-1 py-1 text-text-secondary">
           <ChevronDown className="h-3 w-3" />
-          <Folder className="h-3.5 w-3.5 text-cyan" />
+          <Folder className="h-3.5 w-3.5 text-text-secondary" />
           <span className="font-mono">/playground</span>
         </div>
-        <div className="ml-4 flex items-center gap-1.5 rounded bg-accent/15 px-2 py-1 text-text-primary">
-          <FileCode className="h-3.5 w-3.5 text-accent-hover" />
+        <div className="ml-4 flex items-center gap-1.5 rounded bg-text-primary/15 px-2 py-1 text-text-primary">
+          <FileCode className="h-3.5 w-3.5 text-text-primary" />
           <span className="font-mono">main.go</span>
         </div>
         <div className="ml-4 flex items-center gap-1.5 px-2 py-1 text-text-secondary hover:bg-surface-2">
@@ -110,7 +110,7 @@ function FileExplorer() {
         <div className="flex flex-col gap-1">
           {['binary-search.go', 'dfs-template.go', 'dp-knapsack.go'].map((s) => (
             <div key={s} className="flex items-center gap-1.5 rounded px-2 py-1 text-[11px] text-text-secondary hover:bg-surface-2">
-              <Bookmark className="h-3 w-3 text-pink" />
+              <Bookmark className="h-3 w-3 text-text-secondary" />
               <span className="font-mono">{s}</span>
             </div>
           ))}
@@ -150,7 +150,7 @@ function Editor() {
     <div className="flex flex-1 flex-col bg-bg">
       <div className="flex h-10 items-center border-b border-border bg-surface-1">
         <div className="flex items-center gap-2 border-r border-border px-3 py-2">
-          <FileCode className="h-3.5 w-3.5 text-accent-hover" />
+          <FileCode className="h-3.5 w-3.5 text-text-primary" />
           <span className="font-mono text-[12px] text-text-primary">main.go</span>
         </div>
         <div className="flex items-center gap-2 border-r border-border px-3 py-2 text-text-muted">
@@ -163,7 +163,7 @@ function Editor() {
           <span className="font-mono text-[12px]">input.txt</span>
         </div>
         <div className="ml-auto flex items-center gap-3 px-3">
-          <span className="rounded-full bg-cyan/15 px-2 py-0.5 font-mono text-[10px] font-semibold text-cyan">
+          <span className="rounded-full bg-text-primary/10 px-2 py-0.5 font-mono text-[10px] font-semibold text-text-secondary">
             Go 1.22
           </span>
           <button className="text-text-muted hover:text-text-primary">
@@ -177,21 +177,21 @@ function Editor() {
       <div className="flex flex-1 overflow-hidden">
         <div className="flex w-14 flex-col items-end border-r border-border bg-surface-1 px-3 py-3 font-mono text-[12px] leading-[20px] text-text-muted">
           {CODE.map((_, i) => (
-            <span key={i} className={i === 13 ? 'text-accent-hover' : ''}>
+            <span key={i} className={i === 13 ? 'text-text-primary' : ''}>
               {i + 1}
             </span>
           ))}
         </div>
         <pre className="flex-1 overflow-auto px-4 py-3 font-mono text-[12px] leading-[20px] text-text-secondary">
           {CODE.map((line, i) => (
-            <div key={i} className={i === 13 ? 'rounded-sm bg-accent/15 px-1 text-text-primary' : ''}>
+            <div key={i} className={i === 13 ? 'rounded-sm bg-text-primary/15 px-1 text-text-primary' : ''}>
               {line || '\u00A0'}
             </div>
           ))}
         </pre>
       </div>
       <div className="flex h-12 items-center gap-3 border-t border-border bg-surface-2 px-4">
-        <Button variant="primary" size="sm" icon={<Play className="h-3.5 w-3.5" />} className="shadow-glow">
+        <Button variant="primary" size="sm" icon={<Play className="h-3.5 w-3.5" />} className="">
           Run
         </Button>
         <Button variant="ghost" size="sm" icon={<Bug className="h-3.5 w-3.5" />}>Debug</Button>
@@ -220,11 +220,11 @@ function Output() {
             className={[
               'flex items-center gap-1.5 px-3 py-2 font-mono text-[11px] font-semibold',
               i === 0
-                ? 'border-b-2 border-accent text-text-primary'
+                ? 'border-b-2 border-text-primary text-text-primary'
                 : 'text-text-muted hover:text-text-secondary',
             ].join(' ')}
           >
-            {i === 3 && <Sparkles className="h-3 w-3 text-pink" />}
+            {i === 3 && <Sparkles className="h-3 w-3 text-text-secondary" />}
             {t}
           </button>
         ))}
@@ -238,18 +238,18 @@ function Output() {
         <span className="text-success">✓ Executed in 12ms</span>
         <span className="h-2" />
         <span className="text-[10px] font-semibold tracking-[0.08em] text-text-muted">OUTPUT:</span>
-        <span className="font-display text-[28px] font-extrabold text-cyan">9</span>
-        <span className="w-fit rounded-full bg-cyan/15 px-2 py-0.5 text-[10px] text-cyan">
+        <span className="font-display text-[28px] font-extrabold text-text-secondary">9</span>
+        <span className="w-fit rounded-full bg-text-primary/10 px-2 py-0.5 text-[10px] text-text-secondary">
           int · ожидаемый результат
         </span>
         <div className="mt-auto flex flex-col gap-2 rounded-lg bg-gradient-to-br from-accent/20 to-pink/20 p-3">
           <div className="flex items-start gap-2">
-            <Sparkles className="h-3.5 w-3.5 shrink-0 text-pink" />
+            <Sparkles className="h-3.5 w-3.5 shrink-0 text-text-secondary" />
             <span className="text-[11px] text-text-primary">
               <span className="font-semibold">AI:</span> Можно ускорить через бинарный поиск — O(log n) вместо O(n log n).
             </span>
           </div>
-          <button className="self-start text-[11px] font-semibold text-accent-hover hover:underline">
+          <button className="self-start text-[11px] font-semibold text-text-primary hover:underline">
             Применить →
           </button>
         </div>

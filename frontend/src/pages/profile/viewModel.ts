@@ -58,6 +58,9 @@ export const SECTION_LABELS: Record<string, string> = {
   behavioral: 'Behavioral',
 }
 
-export const PROFILE_TABS_OWN = ['Overview', 'Matches', 'Achievements', 'Cohorts', 'Stats', 'Bookings'] as const
-export const PROFILE_TABS_PUBLIC = ['Overview', 'Matches', 'Achievements', 'Cohorts', 'Stats'] as const
+// Phase-4 ADR-001: Achievements tab removed (Wave 1 — gamification cut).
+// Cohorts → Circles renamed (Wave 2 — cohort merged into circles).
+// Stats moves to /insights as a top-level surface in a later wave.
+export const PROFILE_TABS_OWN = ['Overview', 'Matches', 'Circles', 'Stats', 'Bookings'] as const
+export const PROFILE_TABS_PUBLIC = ['Overview', 'Matches', 'Circles', 'Stats'] as const
 export type ProfileTab = (typeof PROFILE_TABS_OWN)[number]

@@ -103,7 +103,7 @@ export default function MockPipelineDebrief() {
           <button
             type="button"
             onClick={() => navigate('/mock')}
-            className="rounded-md bg-accent hover:bg-accent/90 text-white font-semibold text-sm px-4 py-2"
+            className="rounded-md bg-text-primary hover:bg-text-primary/90 text-bg font-medium text-sm px-4 py-2"
           >
             Запустить ещё
           </button>

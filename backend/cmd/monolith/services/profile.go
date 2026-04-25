@@ -31,7 +31,6 @@ func (a insightGeneratorAdapter) Generate(
 		HoursStudied:      p.HoursStudied,
 		Streak:            p.Streak,
 		WeakestSection:    p.WeakestSection,
-		AchievementsCount: p.AchievementsCount,
 		Model:             p.Model,
 	})
 	if err != nil {

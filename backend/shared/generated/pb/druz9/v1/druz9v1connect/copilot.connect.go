@@ -84,6 +84,9 @@ const (
 	// CopilotServiceListSessionsProcedure is the fully-qualified name of the CopilotService's
 	// ListSessions RPC.
 	CopilotServiceListSessionsProcedure = "/druz9.v1.CopilotService/ListSessions"
+	// CopilotServiceCheckBlockProcedure is the fully-qualified name of the CopilotService's CheckBlock
+	// RPC.
+	CopilotServiceCheckBlockProcedure = "/druz9.v1.CopilotService/CheckBlock"
 )
 
 // CopilotServiceClient is a client for the druz9.v1.CopilotService service.
@@ -126,6 +129,12 @@ type CopilotServiceClient interface {
 	GetSessionAnalysis(context.Context, *connect.Request[v1.GetCopilotSessionAnalysisRequest]) (*connect.Response[v1.CopilotSessionAnalysis], error)
 	// ListSessions — paginated history of sessions for the caller.
 	ListSessions(context.Context, *connect.Request[v1.ListCopilotSessionsRequest]) (*connect.Response[v1.ListCopilotSessionsResponse], error)
+	// CheckBlock — Cue desktop calls this before every LLM consult to find
+	// out whether the user is mid-mock with ai_assist=FALSE. When blocked is
+	// true, the desktop client MUST suppress the LLM call and surface a
+	// "help disabled" hint. The Analyze/Chat RPCs apply the same gate
+	// server-side as defense-in-depth (Connect PermissionDenied).
+	CheckBlock(context.Context, *connect.Request[v1.CheckBlockRequest]) (*connect.Response[v1.CheckBlockResponse], error)
 }
 
 // NewCopilotServiceClient constructs a client for the druz9.v1.CopilotService service. By default,
@@ -217,6 +226,12 @@ func NewCopilotServiceClient(httpClient connect.HTTPClient, baseURL string, opts
 			connect.WithSchema(copilotServiceMethods.ByName("ListSessions")),
 			connect.WithClientOptions(opts...),
 		),
+		checkBlock: connect.NewClient[v1.CheckBlockRequest, v1.CheckBlockResponse](
+			httpClient,
+			baseURL+CopilotServiceCheckBlockProcedure,
+			connect.WithSchema(copilotServiceMethods.ByName("CheckBlock")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -235,6 +250,7 @@ type copilotServiceClient struct {
 	endSession         *connect.Client[v1.EndCopilotSessionRequest, v1.CopilotSession]
 	getSessionAnalysis *connect.Client[v1.GetCopilotSessionAnalysisRequest, v1.CopilotSessionAnalysis]
 	listSessions       *connect.Client[v1.ListCopilotSessionsRequest, v1.ListCopilotSessionsResponse]
+	checkBlock         *connect.Client[v1.CheckBlockRequest, v1.CheckBlockResponse]
 }
 
 // Analyze calls druz9.v1.CopilotService.Analyze.
@@ -302,6 +318,11 @@ func (c *copilotServiceClient) ListSessions(ctx context.Context, req *connect.Re
 	return c.listSessions.CallUnary(ctx, req)
 }
 
+// CheckBlock calls druz9.v1.CopilotService.CheckBlock.
+func (c *copilotServiceClient) CheckBlock(ctx context.Context, req *connect.Request[v1.CheckBlockRequest]) (*connect.Response[v1.CheckBlockResponse], error) {
+	return c.checkBlock.CallUnary(ctx, req)
+}
+
 // CopilotServiceHandler is an implementation of the druz9.v1.CopilotService service.
 type CopilotServiceHandler interface {
 	// Analyze is the primary entry point: the user triggered a hotkey, took
@@ -342,6 +363,12 @@ type CopilotServiceHandler interface {
 	GetSessionAnalysis(context.Context, *connect.Request[v1.GetCopilotSessionAnalysisRequest]) (*connect.Response[v1.CopilotSessionAnalysis], error)
 	// ListSessions — paginated history of sessions for the caller.
 	ListSessions(context.Context, *connect.Request[v1.ListCopilotSessionsRequest]) (*connect.Response[v1.ListCopilotSessionsResponse], error)
+	// CheckBlock — Cue desktop calls this before every LLM consult to find
+	// out whether the user is mid-mock with ai_assist=FALSE. When blocked is
+	// true, the desktop client MUST suppress the LLM call and surface a
+	// "help disabled" hint. The Analyze/Chat RPCs apply the same gate
+	// server-side as defense-in-depth (Connect PermissionDenied).
+	CheckBlock(context.Context, *connect.Request[v1.CheckBlockRequest]) (*connect.Response[v1.CheckBlockResponse], error)
 }
 
 // NewCopilotServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -429,6 +456,12 @@ func NewCopilotServiceHandler(svc CopilotServiceHandler, opts ...connect.Handler
 		connect.WithSchema(copilotServiceMethods.ByName("ListSessions")),
 		connect.WithHandlerOptions(opts...),
 	)
+	copilotServiceCheckBlockHandler := connect.NewUnaryHandler(
+		CopilotServiceCheckBlockProcedure,
+		svc.CheckBlock,
+		connect.WithSchema(copilotServiceMethods.ByName("CheckBlock")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/druz9.v1.CopilotService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case CopilotServiceAnalyzeProcedure:
@@ -457,6 +490,8 @@ func NewCopilotServiceHandler(svc CopilotServiceHandler, opts ...connect.Handler
 			copilotServiceGetSessionAnalysisHandler.ServeHTTP(w, r)
 		case CopilotServiceListSessionsProcedure:
 			copilotServiceListSessionsHandler.ServeHTTP(w, r)
+		case CopilotServiceCheckBlockProcedure:
+			copilotServiceCheckBlockHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -516,4 +551,8 @@ func (UnimplementedCopilotServiceHandler) GetSessionAnalysis(context.Context, *c
 
 func (UnimplementedCopilotServiceHandler) ListSessions(context.Context, *connect.Request[v1.ListCopilotSessionsRequest]) (*connect.Response[v1.ListCopilotSessionsResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.CopilotService.ListSessions is not implemented"))
+}
+
+func (UnimplementedCopilotServiceHandler) CheckBlock(context.Context, *connect.Request[v1.CheckBlockRequest]) (*connect.Response[v1.CheckBlockResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.CopilotService.CheckBlock is not implemented"))
 }

@@ -47,7 +47,7 @@ function ProgressBar({ podcast }: { podcast: Podcast }) {
   return (
     <div className="h-1 w-full overflow-hidden rounded-full bg-surface-1">
       <div
-        className={podcast.completed ? 'h-full bg-success' : 'h-full bg-accent'}
+        className={podcast.completed ? 'h-full bg-success' : 'h-full bg-text-primary'}
         style={{ width: `${podcast.completed ? 100 : pct}%` }}
       />
     </div>
@@ -201,7 +201,7 @@ function AudioPlayer({ podcast, isActive, onActivate }: PlayerProps) {
         disabled={disabled}
         title={disabled ? 'Аудио недоступно' : 'Слушать'}
         aria-label="Слушать"
-        className="grid h-10 w-10 place-items-center rounded-full bg-accent text-text-primary transition hover:bg-accent-hover disabled:cursor-not-allowed disabled:bg-surface-2 disabled:text-text-muted"
+        className="grid h-10 w-10 place-items-center rounded-full bg-text-primary text-text-primary transition hover:bg-text-primary-hover disabled:cursor-not-allowed disabled:bg-surface-2 disabled:text-text-muted"
       >
         <Play className="h-4 w-4" />
       </button>
@@ -227,7 +227,7 @@ function AudioPlayer({ podcast, isActive, onActivate }: PlayerProps) {
           onClick={() => skip(-15)}
           aria-label="Назад 15 секунд"
           title="Назад 15 секунд"
-          className="grid h-8 w-8 place-items-center rounded-full border border-border bg-surface-1 text-text-secondary transition hover:border-accent/40 hover:text-text-primary"
+          className="grid h-8 w-8 place-items-center rounded-full border border-border bg-surface-1 text-text-secondary transition hover:border-border-strong hover:text-text-primary"
         >
           <RotateCcw className="h-3.5 w-3.5" />
         </button>
@@ -236,7 +236,7 @@ function AudioPlayer({ podcast, isActive, onActivate }: PlayerProps) {
           onClick={togglePlay}
           aria-label={playing ? 'Пауза' : 'Слушать'}
           title={playing ? 'Пауза' : 'Слушать'}
-          className="grid h-10 w-10 place-items-center rounded-full bg-accent text-text-primary transition hover:bg-accent-hover"
+          className="grid h-10 w-10 place-items-center rounded-full bg-text-primary text-text-primary transition hover:bg-text-primary-hover"
         >
           {playing ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
         </button>
@@ -245,7 +245,7 @@ function AudioPlayer({ podcast, isActive, onActivate }: PlayerProps) {
           onClick={() => skip(15)}
           aria-label="Вперёд 15 секунд"
           title="Вперёд 15 секунд"
-          className="grid h-8 w-8 place-items-center rounded-full border border-border bg-surface-1 text-text-secondary transition hover:border-accent/40 hover:text-text-primary"
+          className="grid h-8 w-8 place-items-center rounded-full border border-border bg-surface-1 text-text-secondary transition hover:border-border-strong hover:text-text-primary"
         >
           <RotateCw className="h-3.5 w-3.5" />
         </button>
@@ -262,7 +262,7 @@ function AudioPlayer({ podcast, isActive, onActivate }: PlayerProps) {
             onClick={() => setMuted((m) => !m)}
             aria-label={muted ? 'Включить звук' : 'Выключить звук'}
             title={muted ? 'Включить звук' : 'Выключить звук'}
-            className="grid h-8 w-8 place-items-center rounded-full border border-border bg-surface-1 text-text-secondary transition hover:border-accent/40 hover:text-text-primary"
+            className="grid h-8 w-8 place-items-center rounded-full border border-border bg-surface-1 text-text-secondary transition hover:border-border-strong hover:text-text-primary"
           >
             {muted || volume === 0 ? <VolumeX className="h-3.5 w-3.5" /> : <Volume2 className="h-3.5 w-3.5" />}
           </button>
@@ -302,11 +302,11 @@ function AudioPlayer({ podcast, isActive, onActivate }: PlayerProps) {
         className="group relative h-1.5 w-full cursor-pointer overflow-visible rounded-full bg-surface-1"
       >
         <div
-          className={podcast.completed ? 'h-full rounded-full bg-success' : 'h-full rounded-full bg-accent'}
+          className={podcast.completed ? 'h-full rounded-full bg-success' : 'h-full rounded-full bg-text-primary'}
           style={{ width: `${pct}%` }}
         />
         <div
-          className="pointer-events-none absolute top-1/2 h-3 w-3 -translate-y-1/2 -translate-x-1/2 rounded-full border-2 border-bg bg-accent opacity-0 transition group-hover:opacity-100"
+          className="pointer-events-none absolute top-1/2 h-3 w-3 -translate-y-1/2 -translate-x-1/2 rounded-full border-2 border-bg bg-text-primary opacity-0 transition group-hover:opacity-100"
           style={{ left: `${pct}%` }}
         />
       </div>
@@ -447,8 +447,8 @@ function CategoryFilter({
         onClick={() => onChange(null)}
         className={
           active === null
-            ? 'rounded-full border border-accent bg-accent/15 px-3 py-1 text-[12px] font-semibold text-accent-hover'
-            : 'rounded-full border border-border bg-surface-2 px-3 py-1 text-[12px] text-text-secondary hover:border-accent/40'
+            ? 'rounded-full border border-text-primary bg-text-primary/15 px-3 py-1 text-[12px] font-semibold text-text-primary'
+            : 'rounded-full border border-border bg-surface-2 px-3 py-1 text-[12px] text-text-secondary hover:border-border-strong'
         }
       >
         {t('podcasts.filter.all')}
@@ -460,8 +460,8 @@ function CategoryFilter({
           onClick={() => onChange(c.id)}
           className={
             active === c.id
-              ? 'rounded-full border border-accent bg-accent/15 px-3 py-1 text-[12px] font-semibold text-accent-hover'
-              : 'rounded-full border border-border bg-surface-2 px-3 py-1 text-[12px] text-text-secondary hover:border-accent/40'
+              ? 'rounded-full border border-text-primary bg-text-primary/15 px-3 py-1 text-[12px] font-semibold text-text-primary'
+              : 'rounded-full border border-border bg-surface-2 px-3 py-1 text-[12px] text-text-secondary hover:border-border-strong'
           }
           style={
             active === c.id
@@ -535,7 +535,7 @@ export default function PodcastsPage() {
             <button
               type="button"
               onClick={() => void refetch()}
-              className="rounded-md bg-accent px-3 py-1.5 text-sm font-semibold text-text-primary hover:bg-accent-hover"
+              className="rounded-md bg-text-primary px-3 py-1.5 text-sm font-semibold text-text-primary hover:bg-text-primary-hover"
             >
               {t('podcasts.retry')}
             </button>

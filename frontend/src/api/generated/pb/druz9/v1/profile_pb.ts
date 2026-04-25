@@ -339,63 +339,6 @@ export class ProfileSectionRating extends Message<ProfileSectionRating> {
 }
 
 /**
- * Achievement mirrors OpenAPI Achievement.
- *
- * @generated from message druz9.v1.Achievement
- */
-export class Achievement extends Message<Achievement> {
-  /**
-   * @generated from field: string key = 1;
-   */
-  key = "";
-
-  /**
-   * @generated from field: string title = 2;
-   */
-  title = "";
-
-  /**
-   * @generated from field: string description = 3;
-   */
-  description = "";
-
-  /**
-   * @generated from field: google.protobuf.Timestamp earned_at = 4;
-   */
-  earnedAt?: Timestamp;
-
-  constructor(data?: PartialMessage<Achievement>) {
-    super();
-    proto3.util.initPartial(data, this);
-  }
-
-  static readonly runtime: typeof proto3 = proto3;
-  static readonly typeName = "druz9.v1.Achievement";
-  static readonly fields: FieldList = proto3.util.newFieldList(() => [
-    { no: 1, name: "key", kind: "scalar", T: 9 /* ScalarType.STRING */ },
-    { no: 2, name: "title", kind: "scalar", T: 9 /* ScalarType.STRING */ },
-    { no: 3, name: "description", kind: "scalar", T: 9 /* ScalarType.STRING */ },
-    { no: 4, name: "earned_at", kind: "message", T: Timestamp },
-  ]);
-
-  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): Achievement {
-    return new Achievement().fromBinary(bytes, options);
-  }
-
-  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): Achievement {
-    return new Achievement().fromJson(jsonValue, options);
-  }
-
-  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): Achievement {
-    return new Achievement().fromJsonString(jsonString, options);
-  }
-
-  static equals(a: Achievement | PlainMessage<Achievement> | undefined, b: Achievement | PlainMessage<Achievement> | undefined): boolean {
-    return proto3.util.equals(Achievement, a, b);
-  }
-}
-
-/**
  * SkillNode mirrors OpenAPI SkillNode.
  *
  * @generated from message druz9.v1.SkillNode
@@ -786,11 +729,6 @@ export class ProfilePublic extends Message<ProfilePublic> {
   ratings: ProfileSectionRating[] = [];
 
   /**
-   * @generated from field: repeated druz9.v1.Achievement achievements = 9;
-   */
-  achievements: Achievement[] = [];
-
-  /**
    * @generated from field: druz9.v1.SkillAtlas atlas_preview = 10;
    */
   atlasPreview?: SkillAtlas;
@@ -818,7 +756,6 @@ export class ProfilePublic extends Message<ProfilePublic> {
     { no: 6, name: "career_stage", kind: "scalar", T: 9 /* ScalarType.STRING */ },
     { no: 7, name: "global_power_score", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
     { no: 8, name: "ratings", kind: "message", T: ProfileSectionRating, repeated: true },
-    { no: 9, name: "achievements", kind: "message", T: Achievement, repeated: true },
     { no: 10, name: "atlas_preview", kind: "message", T: SkillAtlas },
     { no: 11, name: "avatar_url", kind: "scalar", T: 9 /* ScalarType.STRING */ },
   ]);
@@ -1286,69 +1223,6 @@ export class PercentileView extends Message<PercentileView> {
 }
 
 /**
- * AchievementBrief — лёгкое представление ачивки, заработанной за неделю,
- * для блока «Что разблокировано». Полный объект Achievement не нужен —
- * фронт дотягивает описание из каталога по code, если потребуется.
- *
- * @generated from message druz9.v1.AchievementBrief
- */
-export class AchievementBrief extends Message<AchievementBrief> {
-  /**
-   * @generated from field: string code = 1;
-   */
-  code = "";
-
-  /**
-   * @generated from field: string title = 2;
-   */
-  title = "";
-
-  /**
-   * ISO-8601
-   *
-   * @generated from field: string unlocked_at = 3;
-   */
-  unlockedAt = "";
-
-  /**
-   * bronze|silver|gold|... — строка, без enum
-   *
-   * @generated from field: string tier = 4;
-   */
-  tier = "";
-
-  constructor(data?: PartialMessage<AchievementBrief>) {
-    super();
-    proto3.util.initPartial(data, this);
-  }
-
-  static readonly runtime: typeof proto3 = proto3;
-  static readonly typeName = "druz9.v1.AchievementBrief";
-  static readonly fields: FieldList = proto3.util.newFieldList(() => [
-    { no: 1, name: "code", kind: "scalar", T: 9 /* ScalarType.STRING */ },
-    { no: 2, name: "title", kind: "scalar", T: 9 /* ScalarType.STRING */ },
-    { no: 3, name: "unlocked_at", kind: "scalar", T: 9 /* ScalarType.STRING */ },
-    { no: 4, name: "tier", kind: "scalar", T: 9 /* ScalarType.STRING */ },
-  ]);
-
-  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): AchievementBrief {
-    return new AchievementBrief().fromBinary(bytes, options);
-  }
-
-  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): AchievementBrief {
-    return new AchievementBrief().fromJson(jsonValue, options);
-  }
-
-  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): AchievementBrief {
-    return new AchievementBrief().fromJsonString(jsonString, options);
-  }
-
-  static equals(a: AchievementBrief | PlainMessage<AchievementBrief> | undefined, b: AchievementBrief | PlainMessage<AchievementBrief> | undefined): boolean {
-    return proto3.util.equals(AchievementBrief, a, b);
-  }
-}
-
-/**
  * WeeklyReport mirrors OpenAPI WeeklyReport.
  *
  * @generated from message druz9.v1.WeeklyReport
@@ -1473,13 +1347,6 @@ export class WeeklyReport extends Message<WeeklyReport> {
   aiInsight = "";
 
   /**
-   * achievements_this_week — ачивки, разблокированные в окне недели.
-   *
-   * @generated from field: repeated druz9.v1.AchievementBrief achievements_this_week = 20;
-   */
-  achievementsThisWeek: AchievementBrief[] = [];
-
-  /**
    * share_token — токен публичной ссылки; пустая строка, если ещё не выпускался.
    *
    * @generated from field: string share_token = 21;
@@ -1488,9 +1355,8 @@ export class WeeklyReport extends Message<WeeklyReport> {
 
   /**
    * featured_metric — server-picked headline metric for the share card.
-   * Values: "xp" | "streak" | "achievement" | "" (empty ⇒ client picks default).
-   * Server selects: "achievement" if any new achievement unlocked this week,
-   * else "streak" if streak_days >= 7, else "xp".
+   * Values: "xp" | "streak" | "" (empty ⇒ client picks default).
+   * Server selects: "streak" if streak_days >= 7, else "xp".
    *
    * @generated from field: string featured_metric = 22;
    */
@@ -1523,7 +1389,6 @@ export class WeeklyReport extends Message<WeeklyReport> {
     { no: 17, name: "elo_series", kind: "message", T: EloPoint, repeated: true },
     { no: 18, name: "percentiles", kind: "message", T: PercentileView },
     { no: 19, name: "ai_insight", kind: "scalar", T: 9 /* ScalarType.STRING */ },
-    { no: 20, name: "achievements_this_week", kind: "message", T: AchievementBrief, repeated: true },
     { no: 21, name: "share_token", kind: "scalar", T: 9 /* ScalarType.STRING */ },
     { no: 22, name: "featured_metric", kind: "scalar", T: 9 /* ScalarType.STRING */ },
   ]);

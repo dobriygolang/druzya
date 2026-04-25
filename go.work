@@ -2,13 +2,11 @@ go 1.25.6
 
 use (
 	./backend/cmd/monolith
-	./backend/services/achievements
 	./backend/services/admin
 	./backend/services/ai_mock
 	./backend/services/arena
 	./backend/services/auth
 	./backend/services/circles
-	./backend/services/cohort
 	./backend/services/copilot
 	./backend/services/daily
 	./backend/services/documents

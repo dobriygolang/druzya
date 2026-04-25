@@ -142,7 +142,7 @@ export function InCallScreen({
       {/* Top bar */}
       <div className="flex items-center justify-between gap-3 border-b border-border/60 bg-bg/70 px-4 py-3 backdrop-blur sm:px-6">
         <div className="flex items-center gap-2.5">
-          <span className="h-2 w-2 animate-pulse rounded-full bg-cyan" />
+          <span className="h-2 w-2 animate-pulse rounded-full bg-text-primary" />
           <span className="font-mono text-[11px] font-semibold uppercase tracking-wider text-text-primary">
             VOICE · LIVE
           </span>
@@ -207,8 +207,8 @@ export function InCallScreen({
                 className={
                   'rounded-lg px-3 py-2 text-sm ' +
                   (m.who === 'ai'
-                    ? 'border border-pink/30 bg-pink/10 text-text-primary'
-                    : 'border border-cyan/30 bg-cyan/10 text-text-primary')
+                    ? 'border border-border-strong bg-text-primary/10 text-text-primary'
+                    : 'border border-border-strong bg-text-primary/10 text-text-primary')
                 }
               >
                 <div className="mb-0.5 font-mono text-[10px] uppercase tracking-wider text-text-muted">
@@ -223,7 +223,7 @@ export function InCallScreen({
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 0.7 }}
                 exit={{ opacity: 0 }}
-                className="rounded-lg border border-dashed border-cyan/40 px-3 py-2 text-sm italic text-text-secondary"
+                className="rounded-lg border border-dashed border-border-strong px-3 py-2 text-sm italic text-text-secondary"
               >
                 {session.transcript}
               </motion.div>
@@ -297,8 +297,8 @@ export function InCallScreen({
                     className={
                       'rounded-md px-3 py-2 text-[12px] ' +
                       (m.who === 'ai'
-                        ? 'bg-pink/10 text-text-primary'
-                        : 'bg-cyan/10 text-text-primary')
+                        ? 'bg-text-primary/10 text-text-primary'
+                        : 'bg-text-primary/10 text-text-primary')
                     }
                   >
                     <div className="mb-0.5 font-mono text-[10px] uppercase tracking-wider text-text-muted">

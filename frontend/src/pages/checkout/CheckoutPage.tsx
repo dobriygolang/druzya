@@ -169,12 +169,12 @@ export default function CheckoutPage() {
                       className={cn(
                         'flex h-20 flex-col items-center justify-center gap-1.5 rounded-lg border p-3 transition-colors',
                         active
-                          ? 'border-accent bg-accent/10'
+                          ? 'border-text-primary bg-text-primary/10'
                           : 'border-border bg-surface-1 hover:border-border-strong',
                       )}
                       aria-pressed={active}
                     >
-                      <Icon className={cn('h-5 w-5', active ? 'text-accent-hover' : 'text-text-secondary')} />
+                      <Icon className={cn('h-5 w-5', active ? 'text-text-primary' : 'text-text-secondary')} />
                       <span className="text-[12px] font-semibold text-text-primary">{m.label}</span>
                     </button>
                   )
@@ -195,7 +195,7 @@ export default function CheckoutPage() {
                   onBlur={onPromoBlur}
                   placeholder="STUDENT50"
                   className={cn(
-                    'h-10 rounded-lg border bg-surface-1 px-3 font-mono text-[13px] uppercase text-text-primary placeholder:text-text-muted/60 focus:outline-none focus:ring-2 focus:ring-accent',
+                    'h-10 rounded-lg border bg-surface-1 px-3 font-mono text-[13px] uppercase text-text-primary placeholder:text-text-muted/60 focus:outline-none focus:ring-2 focus:ring-text-primary/40',
                     promoStatus === 'invalid' && 'border-danger',
                     promoStatus === 'valid' && 'border-success',
                     promoStatus === 'idle' && 'border-border',
@@ -224,11 +224,11 @@ export default function CheckoutPage() {
                 />
                 <span>
                   Согласен с{' '}
-                  <a href="/legal/offer" className="text-accent-hover underline">
+                  <a href="/legal/offer" className="text-text-primary underline">
                     офертой
                   </a>{' '}
                   и{' '}
-                  <a href="/legal/privacy" className="text-accent-hover underline">
+                  <a href="/legal/privacy" className="text-text-primary underline">
                     политикой конфиденциальности
                   </a>
                   . Подписка продлевается автоматически — отменить можно в любой момент в /settings/billing.

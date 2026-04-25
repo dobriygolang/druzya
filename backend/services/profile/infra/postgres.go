@@ -7,7 +7,7 @@
 //   - postgres.go           — constructor, pool wiring, top-level bundle reads.
 //   - settings_repo.go      — GetSettings / UpdateSettings.
 //   - skill_nodes_repo.go   — UpsertSkillNode + ListSkillNodes.
-//   - achievements_repo.go  — ListAchievementsSince + percentiles.
+//   - percentiles_repo.go   — GetPercentiles.
 //   - streaks_repo.go       — GetStreaks + activity / weekly XP / elo / hourly.
 //   - share_tokens_repo.go  — IssueShareToken / ResolveShareToken.
 //

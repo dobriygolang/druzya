@@ -24,8 +24,6 @@ const (
 	NotificationTypeSlotReminder    NotificationType = "slot_reminder"
 	NotificationTypeMatchFound      NotificationType = "match_found"
 	NotificationTypeMatchResult     NotificationType = "match_result"
-	NotificationTypeCohortWarStart  NotificationType = "cohort_war_start"
-	NotificationTypeCohortWarResult NotificationType = "cohort_war_result"
 	NotificationTypeWeeklyReport    NotificationType = "weekly_report"
 	NotificationTypeSkillDecay      NotificationType = "skill_decay"
 	NotificationTypeSeasonEnding    NotificationType = "season_ending"
@@ -35,7 +33,6 @@ const (
 func (t NotificationType) IsValid() bool {
 	switch t {
 	case NotificationTypeSlotReminder, NotificationTypeMatchFound, NotificationTypeMatchResult,
-		NotificationTypeCohortWarStart, NotificationTypeCohortWarResult,
 		NotificationTypeWeeklyReport, NotificationTypeSkillDecay,
 		NotificationTypeSeasonEnding, NotificationTypeDailyKata:
 		return true

@@ -105,8 +105,8 @@ export function DebriefScreen({
       {topQuote && (
         <Card padding="lg" interactive={false} className="mb-5">
           <div className="flex items-center gap-2">
-            <Sparkles className="h-4 w-4 text-pink" />
-            <span className="font-mono text-[10px] uppercase tracking-wider text-pink">
+            <Sparkles className="h-4 w-4 text-text-secondary" />
+            <span className="font-mono text-[10px] uppercase tracking-wider text-text-secondary">
               лучший момент
             </span>
             <span className="ml-auto font-mono text-[11px] text-text-muted">
@@ -161,15 +161,15 @@ export function DebriefScreen({
           <ol className="flex flex-col gap-3">
             {recommendations.map((r, i) => (
               <li key={i} className="flex items-start gap-3">
-                <span className="mt-0.5 grid h-6 w-6 flex-shrink-0 place-items-center rounded-md bg-accent/15 font-mono text-[11px] font-bold text-accent">
+                <span className="mt-0.5 grid h-6 w-6 flex-shrink-0 place-items-center rounded-md bg-text-primary/15 font-mono text-[11px] font-bold text-text-primary">
                   {i + 1}
                 </span>
                 <span className="text-[13px] text-text-secondary">{r}</span>
               </li>
             ))}
           </ol>
-          <div className="mt-5 flex items-center gap-2 rounded-md bg-cyan/10 px-3 py-2">
-            <Lightbulb className="h-3.5 w-3.5 text-cyan" />
+          <div className="mt-5 flex items-center gap-2 rounded-md bg-text-primary/10 px-3 py-2">
+            <Lightbulb className="h-3.5 w-3.5 text-text-secondary" />
             <span className="text-[11px] text-text-secondary">
               Полный разбор по каждой реплике появится после расширения /voice/debrief.
             </span>

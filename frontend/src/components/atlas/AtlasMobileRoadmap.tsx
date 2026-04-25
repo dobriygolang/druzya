@@ -266,14 +266,14 @@ export function AtlasMobileRoadmap({
         <div className="flex flex-col gap-3">
           {/* Hub card */}
           <div
-            className="relative overflow-hidden rounded-2xl border border-accent/40 bg-gradient-to-br from-accent/15 via-accent/5 to-surface-1 p-4"
+            className="relative overflow-hidden rounded-2xl border border-border-strong bg-gradient-to-br from-accent/15 via-accent/5 to-surface-1 p-4"
             role="region"
             aria-label="Класс"
           >
-            <div className="absolute -right-12 -top-12 h-44 w-44 rounded-full bg-cyan/10 blur-3xl pointer-events-none" />
+            <div className="absolute -right-12 -top-12 h-44 w-44 rounded-full bg-text-primary/10 blur-3xl pointer-events-none" />
             <div className="relative">
               <div className="flex items-center justify-between">
-                <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-accent-hover">
+                <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-text-primary">
                   ◆ твой atlas
                 </span>
                 {userTier && (
@@ -294,14 +294,14 @@ export function AtlasMobileRoadmap({
                   done={masteredNodes}
                   total={Math.max(1, totalNodes)}
                   size={48}
-                  color="#A78BFA"
+                  color="#FFFFFF"
                 />
               </div>
               {onOpenFullMap && (
                 <button
                   type="button"
                   onClick={onOpenFullMap}
-                  className="mt-3 flex w-full items-center justify-center gap-2 rounded-md bg-accent px-3 py-2.5 font-display text-[13px] font-extrabold text-white hover:bg-accent-hover"
+                  className="mt-3 flex w-full items-center justify-center gap-2 rounded-md bg-text-primary px-3 py-2.5 font-display text-[13px] font-extrabold text-bg hover:bg-text-primary-hover"
                 >
                   <Maximize2 className="h-3.5 w-3.5" /> Полная карта
                 </button>
@@ -388,7 +388,7 @@ export function AtlasMobileRoadmap({
                             disabled={locked}
                             className={cn(
                               'flex w-full items-center gap-3 px-3 py-2.5 text-left transition-colors',
-                              isSelected && 'bg-accent/10',
+                              isSelected && 'bg-text-primary/10',
                               locked
                                 ? 'cursor-not-allowed'
                                 : 'hover:bg-surface-2',
@@ -443,13 +443,13 @@ export function AtlasMobileRoadmap({
         {onOpenFullMap && (
           <aside className="hidden md:flex md:flex-col md:rounded-xl md:border md:border-border md:bg-surface-1">
             <div className="flex items-center justify-between border-b border-border px-4 py-2.5">
-              <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-cyan">
+              <span className="font-mono text-[10px] uppercase tracking-[0.18em] text-text-secondary">
                 ◆ preview
               </span>
               <button
                 type="button"
                 onClick={onOpenFullMap}
-                className="flex items-center gap-1 font-mono text-[10px] uppercase tracking-[0.14em] text-cyan hover:text-cyan/80"
+                className="flex items-center gap-1 font-mono text-[10px] uppercase tracking-[0.14em] text-text-secondary hover:text-text-secondary/80"
               >
                 <Maximize2 className="h-3 w-3" /> fullscreen
               </button>

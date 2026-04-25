@@ -22,7 +22,6 @@ func payload() InsightPayload {
 		HoursStudied:      6.5,
 		Streak:            5,
 		WeakestSection:    "sql",
-		AchievementsCount: 2,
 	}
 }
 

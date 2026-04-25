@@ -26,7 +26,6 @@ const (
 	KindMatchLoss    = "match_loss"
 	KindKataDone     = "kata_done"
 	KindNodeUnlocked = "node_unlocked"
-	KindCohortWar    = "cohort_war"
 	KindLevelUp      = "level_up"
 )
 

@@ -108,12 +108,23 @@ export function NotesPage({ initialSelectedId, onConsumeInitial }: NotesPageProp
     if (typeof window === 'undefined') return false;
     return window.localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === '1';
   });
+  const sidebarMountedRef = useRef(false);
   useEffect(() => {
     try {
       window.localStorage.setItem(SIDEBAR_COLLAPSED_KEY, sidebarCollapsed ? '1' : '0');
     } catch {
       /* ignore */
     }
+    if (!sidebarMountedRef.current) {
+      sidebarMountedRef.current = true;
+      return;
+    }
+    const t1 = window.setTimeout(() => window.dispatchEvent(new Event('resize')), 0);
+    const t2 = window.setTimeout(() => window.dispatchEvent(new Event('resize')), 80);
+    return () => {
+      window.clearTimeout(t1);
+      window.clearTimeout(t2);
+    };
   }, [sidebarCollapsed]);
   const [sidebarW, setSidebarW] = useState<number>(() => {
     if (typeof window === 'undefined') return SIDEBAR_DEFAULT;
@@ -638,8 +649,11 @@ export function NotesPage({ initialSelectedId, onConsumeInitial }: NotesPageProp
         paddingTop: 80,
         paddingBottom: 80,
         display: 'grid',
-        gridTemplateColumns: sidebarCollapsed ? `0px 0px 1fr` : `${sidebarW}px 6px 1fr`,
-        transition: 'grid-template-columns 240ms ease',
+        // КРИТИЧНО: при collapsed — single-column grid, иначе Editor с
+        // одним in-flow child'ом auto-flow'ится в column 1 и схлопывается
+        // до нуля ширины (NotesExpandSidebarButton — position:absolute,
+        // в grid flow не участвует).
+        gridTemplateColumns: sidebarCollapsed ? `1fr` : `${sidebarW}px 6px 1fr`,
         animationDuration: '320ms',
       }}
     >
@@ -769,7 +783,7 @@ const Sidebar = memo(SidebarImpl);
 function SidebarImpl({ list, selectedId, metaMap, onSelect, onCreate, onDelete, onPublish, onUnpublish, onEncrypt, onToggleCollapse }: SidebarProps) {
   return (
     <aside
-      className="slide-from-left"
+      // slide-from-left анимация удалена для симметрии open/close.
       style={{
         animationDuration: '320ms',
         borderRight: '1px solid rgba(255,255,255,0.06)',
@@ -801,7 +815,55 @@ function SidebarImpl({ list, selectedId, metaMap, onSelect, onCreate, onDelete, 
           );
         })}
       </div>
+      <NotesRetentionHint />
     </aside>
+  );
+}
+
+function NotesRetentionHint() {
+  const [hover, setHover] = useState(false);
+  return (
+    <div
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+      title="Notes inactive for 90+ days are archived. Edits or opens reset the timer. Encrypted notes are never auto-deleted."
+      style={{
+        marginTop: 14,
+        padding: '10px 14px 14px',
+        borderTop: '1px solid rgba(255,255,255,0.04)',
+        display: 'flex',
+        alignItems: 'center',
+        gap: 6,
+        cursor: 'help',
+      }}
+    >
+      <svg
+        width={11}
+        height={11}
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth={1.6}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        style={{ color: hover ? 'var(--ink-60)' : 'var(--ink-40)', flexShrink: 0, transition: 'color 160ms ease' }}
+      >
+        <circle cx="12" cy="12" r="9" />
+        <polyline points="12 7 12 12 15 14" />
+      </svg>
+      <span
+        className="mono"
+        style={{
+          fontSize: 9,
+          letterSpacing: '0.16em',
+          textTransform: 'uppercase',
+          color: hover ? 'var(--ink-60)' : 'var(--ink-40)',
+          transition: 'color 160ms ease',
+        }}
+      >
+        Auto-archive after 90d
+      </span>
+    </div>
   );
 }
 

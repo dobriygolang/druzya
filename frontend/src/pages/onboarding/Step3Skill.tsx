@@ -64,7 +64,7 @@ export default function Step3Skill() {
           шаг 3 · первая нода atlas
         </div>
         <h2 className="font-display text-2xl font-bold mb-1.5">
-          С чего начнём качать <span className="text-accent-hover">Алгоритмы</span>?
+          С чего начнём качать <span className="text-text-primary">Алгоритмы</span>?
         </h2>
         <p className="text-[13px] text-text-secondary">
           Выбери одну core-ноду. Она станет активной точкой на Atlas.
@@ -82,20 +82,20 @@ export default function Step3Skill() {
               aria-pressed={sel}
               className={cn(
                 'text-left rounded-lg border p-4 transition-colors',
-                sel ? 'border-accent bg-accent/5' : 'border-border hover:border-border-strong',
+                sel ? 'border-text-primary bg-text-primary/5' : 'border-border hover:border-border-strong',
               )}
             >
               <div className="flex items-center justify-between mb-1.5">
                 <span
                   className={cn(
                     'font-mono text-[10px] uppercase tracking-wider',
-                    sel ? 'text-accent-hover' : 'text-text-muted',
+                    sel ? 'text-text-primary' : 'text-text-muted',
                   )}
                 >
                   core · entry
                 </span>
                 {sel && (
-                  <span className="grid h-3.5 w-3.5 place-items-center rounded-full bg-accent text-[8px] font-bold text-white">
+                  <span className="grid h-3.5 w-3.5 place-items-center rounded-full bg-text-primary text-[8px] font-bold text-bg">
                     ✓
                   </span>
                 )}
@@ -116,7 +116,7 @@ export default function Step3Skill() {
           type="button"
           onClick={() => picked && go(picked)}
           disabled={!picked || allocateFirstSkill.isPending}
-          className="rounded-md bg-accent hover:bg-accent/90 text-white font-semibold text-sm px-5 py-2.5 disabled:opacity-60 disabled:cursor-not-allowed"
+          className="rounded-md bg-text-primary hover:bg-text-primary/90 text-bg font-medium text-sm px-5 py-2.5 disabled:opacity-60 disabled:cursor-not-allowed"
         >
           Выбрать и далее →
         </button>

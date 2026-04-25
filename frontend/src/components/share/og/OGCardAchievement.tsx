@@ -16,14 +16,14 @@ const TIER_GRAD: Record<string, [string, string]> = {
   bronze: ['#D97706', '#92400E'],
   silver: ['#94A3B8', '#475569'],
   gold: ['#FBBF24', '#B45309'],
-  platinum: ['#22D3EE', '#0E7490'],
-  epic: ['#22D3EE', '#582CFF'],
-  legendary: ['#F472B6', '#582CFF'],
+  platinum: ['#FFFFFF', '#0E7490'],
+  epic: ['#FFFFFF', '#FFFFFF'],
+  legendary: ['#FF3B30', '#FFFFFF'],
 }
 
 function gradFor(tier?: string): [string, string] {
-  if (!tier) return ['#22D3EE', '#582CFF']
-  return TIER_GRAD[tier.toLowerCase()] ?? ['#22D3EE', '#582CFF']
+  if (!tier) return ['#FFFFFF', '#FFFFFF']
+  return TIER_GRAD[tier.toLowerCase()] ?? ['#FFFFFF', '#FFFFFF']
 }
 
 export function OGCardAchievement({

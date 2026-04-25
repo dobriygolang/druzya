@@ -121,7 +121,7 @@ function MatchHeader({
           {(mode || 'RANKED').toUpperCase()}
         </span>
         {opponentRunStatus && (
-          <span className="rounded-full bg-cyan/15 px-2 py-0.5 font-mono text-[10px] font-semibold text-cyan">
+          <span className="rounded-full bg-text-primary/10 px-2 py-0.5 font-mono text-[10px] font-semibold text-text-secondary">
             opponent: {opponentRunStatus}
           </span>
         )}
@@ -159,7 +159,7 @@ function TaskPanel({
         <span className="rounded-full bg-warn/15 px-2.5 py-1 font-mono text-[11px] font-semibold text-warn">
           {difficulty}
         </span>
-        <span className="rounded-full bg-cyan/15 px-2.5 py-1 font-mono text-[11px] font-semibold text-cyan">
+        <span className="rounded-full bg-text-primary/10 px-2.5 py-1 font-mono text-[11px] font-semibold text-text-secondary">
           {section}
         </span>
       </div>
@@ -237,13 +237,13 @@ function CodeEditor({
   return (
     <div className="flex min-w-0 flex-1 flex-col bg-surface-1">
       <div className="flex h-11 items-center gap-3 border-b border-border bg-bg px-4">
-        <div className="flex items-center gap-2 rounded-t-md border-b-2 border-accent px-2 py-2">
-          <FileCode className="h-3.5 w-3.5 text-accent-hover" />
+        <div className="flex items-center gap-2 rounded-t-md border-b-2 border-text-primary px-2 py-2">
+          <FileCode className="h-3.5 w-3.5 text-text-primary" />
           <span className="font-mono text-[12px] text-text-primary">
             solution.{language === 'javascript' ? 'js' : language === 'typescript' ? 'ts' : language === 'python' ? 'py' : language}
           </span>
         </div>
-        <span className="rounded-full bg-cyan/15 px-2 py-0.5 font-mono text-[10px] font-semibold uppercase text-cyan">
+        <span className="rounded-full bg-text-primary/10 px-2 py-0.5 font-mono text-[10px] font-semibold uppercase text-text-secondary">
           {language}
         </span>
         {resultLabel && (
@@ -288,7 +288,7 @@ function CodeEditor({
               <Upload className="h-3.5 w-3.5" />
             )
           }
-          className="shadow-glow"
+          className=""
           onClick={onSubmit}
           disabled={isSubmitting}
         >
@@ -308,8 +308,8 @@ function TestStatusIcon({ status }: { status: 'ok' | 'loading' | 'fail' | 'pendi
     )
   if (status === 'loading')
     return (
-      <span className="grid h-5 w-5 place-items-center rounded-full bg-cyan/20">
-        <Loader2 className="h-3 w-3 animate-spin text-cyan" />
+      <span className="grid h-5 w-5 place-items-center rounded-full bg-text-primary/10">
+        <Loader2 className="h-3 w-3 animate-spin text-text-secondary" />
       </span>
     )
   if (status === 'fail')
@@ -339,7 +339,7 @@ function TestList({
     <Card className="flex-col gap-2 p-4" interactive={false}>
       <div className="flex items-center justify-between pb-1">
         <h3 className="font-display text-sm font-bold text-text-primary">Примеры</h3>
-        <span className="font-mono text-[11px] text-cyan">opponent: {opponentTests}</span>
+        <span className="font-mono text-[11px] text-text-secondary">opponent: {opponentTests}</span>
       </div>
       {cases.length === 0 && (
         <span className="font-mono text-[11px] text-text-muted">

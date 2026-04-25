@@ -14,42 +14,6 @@ import (
 	"github.com/jackc/pgx/v5"
 )
 
-// ListAchievementsSince — все ачивки с unlocked_at >= since.
-// Title/tier на этом этапе берём из catalogue в коде (см. achievements
-// домен); здесь возвращаем только сырые значения из user_achievements,
-// title=code, tier="" — другие фазы дотянут метаданные.
-func (p *Postgres) ListAchievementsSince(ctx context.Context, userID uuid.UUID, since time.Time) ([]domain.AchievementBrief, error) {
-	const q = `
-		SELECT code, COALESCE(unlocked_at, now())
-		  FROM user_achievements
-		 WHERE user_id = $1
-		   AND unlocked_at IS NOT NULL
-		   AND unlocked_at >= $2
-		 ORDER BY unlocked_at DESC`
-	rows, err := p.pool.Query(ctx, q, sharedpg.UUID(userID), since)
-	if err != nil {
-		return nil, fmt.Errorf("profile.Postgres.ListAchievementsSince: %w", err)
-	}
-	defer rows.Close()
-	out := make([]domain.AchievementBrief, 0, 8)
-	for rows.Next() {
-		var code string
-		var unlocked time.Time
-		if err := rows.Scan(&code, &unlocked); err != nil {
-			return nil, fmt.Errorf("profile.Postgres.ListAchievementsSince: scan: %w", err)
-		}
-		out = append(out, domain.AchievementBrief{
-			Code:       code,
-			Title:      code,
-			UnlockedAt: unlocked,
-		})
-	}
-	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("profile.Postgres.ListAchievementsSince: rows: %w", err)
-	}
-	return out, nil
-}
-
 // GetPercentiles считает 3 перцентиля: in_tier (по elo-bucket'у),
 // in_friends (среди принятых дружб), in_global. Возвращает 0..100.
 //

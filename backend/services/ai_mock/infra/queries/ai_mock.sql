@@ -5,20 +5,34 @@
 -- name: CreateMockSession :one
 INSERT INTO mock_sessions (
     user_id, company_id, task_id, section, difficulty, status,
-    duration_min, voice_mode, paired_user_id, llm_model, started_at
-) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+    duration_min, voice_mode, paired_user_id, llm_model, started_at,
+    ai_assist
+) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
 RETURNING id, user_id, company_id, task_id, section, difficulty, status,
           duration_min, voice_mode, paired_user_id, llm_model,
           stress_profile, ai_report, replay_url, running_summary,
-          started_at, finished_at, created_at;
+          started_at, finished_at, created_at, ai_assist;
 
 -- name: GetMockSession :one
 SELECT id, user_id, company_id, task_id, section, difficulty, status,
        duration_min, voice_mode, paired_user_id, llm_model,
        stress_profile, ai_report, replay_url, running_summary,
-       started_at, finished_at, created_at
+       started_at, finished_at, created_at, ai_assist
   FROM mock_sessions
  WHERE id = $1;
+
+-- name: GetActiveBlockingMockSession :one
+-- Phase-4 ADR-001 (Wave 3) — drives copilot.CheckBlock. Returns the user's
+-- live mock_sessions row when ai_assist=FALSE (strict mode). When the row
+-- exists, copilot.Analyze must refuse the LLM call. Cross-service read by
+-- design — copilot owns the gate logic but leans on ai_mock's table.
+SELECT id, started_at
+  FROM mock_sessions
+ WHERE user_id = $1
+   AND ai_assist = FALSE
+   AND status NOT IN ('finished', 'abandoned')
+ ORDER BY created_at DESC
+ LIMIT 1;
 
 -- name: UpdateMockSessionRunningSummary :execrows
 -- Вызывается фоновым compaction.Worker после суммаризации старых turns.

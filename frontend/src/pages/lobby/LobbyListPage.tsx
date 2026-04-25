@@ -72,7 +72,7 @@ export default function LobbyListPage() {
           <button
             type="button"
             onClick={() => setCreateOpen(true)}
-            className="h-10 w-full rounded-md bg-accent text-sm font-semibold text-text-primary hover:bg-accent/90"
+            className="h-10 w-full rounded-md bg-text-primary text-sm font-semibold text-text-primary hover:bg-text-primary/90"
           >
             Создать лобби
           </button>
@@ -88,13 +88,13 @@ export default function LobbyListPage() {
               onChange={(e) => setCode(e.target.value.toUpperCase().slice(0, 4))}
               placeholder="ABCD"
               maxLength={4}
-              className="h-10 flex-1 rounded-md border border-border bg-surface-2 px-3 font-mono text-lg uppercase tracking-widest text-text-primary outline-none focus:border-accent"
+              className="h-10 flex-1 rounded-md border border-border bg-surface-2 px-3 font-mono text-lg uppercase tracking-widest text-text-primary outline-none focus:border-text-primary"
             />
             <button
               type="button"
               onClick={handleJoinByCode}
               disabled={code.length !== 4 || !codeLookup.data}
-              className="h-10 rounded-md bg-cyan px-4 text-sm font-semibold text-text-primary disabled:opacity-50"
+              className="h-10 rounded-md bg-text-primary px-4 text-sm font-semibold text-text-primary disabled:opacity-50"
             >
               Войти
             </button>
@@ -141,10 +141,10 @@ export default function LobbyListPage() {
           <Link
             key={l.id}
             to={`/lobby/${l.id}`}
-            className="block rounded-lg border border-border bg-surface-1 p-4 hover:border-accent"
+            className="block rounded-lg border border-border bg-surface-1 p-4 hover:border-text-primary"
           >
             <div className="mb-2 flex items-center justify-between">
-              <span className="font-mono text-lg font-bold tracking-widest text-accent">
+              <span className="font-mono text-lg font-bold tracking-widest text-text-primary">
                 {l.code}
               </span>
               <span className="rounded-md border border-border bg-surface-2 px-2 py-0.5 text-xs uppercase tracking-wide text-text-muted">
@@ -192,7 +192,7 @@ function FilterGroup({
           className={
             'h-8 rounded-md border px-3 text-xs ' +
             (value === o.value
-              ? 'border-accent bg-accent/15 font-semibold text-text-primary'
+              ? 'border-text-primary bg-text-primary/15 font-semibold text-text-primary'
               : 'border-border bg-surface-2 text-text-secondary hover:bg-surface-1')
           }
         >

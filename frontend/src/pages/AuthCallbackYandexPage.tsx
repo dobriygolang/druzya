@@ -117,7 +117,7 @@ export default function AuthCallbackYandexPage() {
           </>
         ) : (
           <>
-            <Loader2 className="h-8 w-8 animate-spin text-cyan" />
+            <Loader2 className="h-8 w-8 animate-spin text-text-secondary" />
             <p className="text-[14px] text-text-muted">Заходим в твой профиль…</p>
           </>
         )}

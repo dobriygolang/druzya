@@ -2,8 +2,9 @@
   "nav": {
     "sanctum": "Sanctum",
     "arena": "Arena",
-    "cohort": "Cohort",
     "atlas": "Atlas",
+    "insights": "Insights",
+    "circles": "Circles",
     "codex": "Codex",
     "friends": "Friends",
     "help": "Help",

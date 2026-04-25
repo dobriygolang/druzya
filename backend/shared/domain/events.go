@@ -229,26 +229,10 @@ type SkillDecayed struct {
 func (SkillDecayed) Topic() string { return "progress.SkillDecayed" }
 
 // ─────────────────────────────────────────────────────────────────────────
-// Cohort
+// Cohort — removed in Phase-4 ADR-001 Wave 2 (cohort feature merged into
+// circles). CohortWarStarted/CohortWarFinished events deleted along with
+// the cohort service.
 // ─────────────────────────────────────────────────────────────────────────
-
-type CohortWarStarted struct {
-	base
-	WarID   uuid.UUID `json:"war_id"`
-	CohortA uuid.UUID `json:"cohort_a"`
-	CohortB uuid.UUID `json:"cohort_b"`
-	EndsAt  time.Time `json:"ends_at"`
-}
-
-func (CohortWarStarted) Topic() string { return "cohort.WarStarted" }
-
-type CohortWarFinished struct {
-	base
-	WarID    uuid.UUID  `json:"war_id"`
-	WinnerID *uuid.UUID `json:"winner_id,omitempty"` // nil при ничьей
-}
-
-func (CohortWarFinished) Topic() string { return "cohort.WarFinished" }
 
 // ─────────────────────────────────────────────────────────────────────────
 // Slot / Human Mock

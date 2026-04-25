@@ -16,7 +16,7 @@ import (
 type UserNotification struct {
 	ID        int64
 	UserID    uuid.UUID
-	Channel   string // social|match|cohort|system|challenges|wins
+	Channel   string // social|match|system|challenges|wins
 	Type      string // короткий ID типа: challenge|win|friend_added|...
 	Title     string
 	Body      string

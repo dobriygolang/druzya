@@ -49,7 +49,7 @@ export default function PairLobbyPage() {
     <AppShellV2>
       <div className="mx-auto flex max-w-3xl flex-col gap-6 px-4 py-8 sm:px-8 lg:py-10">
         <header className="flex flex-col gap-2">
-          <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-cyan">
+          <span className="font-mono text-[10px] uppercase tracking-[0.12em] text-text-secondary">
             pair · live coding
           </span>
           <h1 className="font-display text-2xl font-extrabold text-text-primary">
@@ -64,7 +64,7 @@ export default function PairLobbyPage() {
 
         <section className="rounded-lg border border-border bg-surface-1 p-5">
           <div className="mb-3 flex items-center gap-2">
-            <Code2 className="h-4 w-4 text-accent-hover" />
+            <Code2 className="h-4 w-4 text-text-primary" />
             <h2 className="font-display text-[15px] font-bold text-text-primary">Создать комнату</h2>
           </div>
           <div className="flex flex-col gap-3">
@@ -75,7 +75,7 @@ export default function PairLobbyPage() {
               <input
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                className="rounded-md border border-border bg-bg px-3 py-2 font-mono text-[12px] text-text-primary outline-none focus:border-accent"
+                className="rounded-md border border-border bg-bg px-3 py-2 font-mono text-[12px] text-text-primary outline-none focus:border-text-primary"
                 maxLength={120}
               />
             </label>
@@ -86,7 +86,7 @@ export default function PairLobbyPage() {
               <select
                 value={language}
                 onChange={(e) => setLanguage(e.target.value)}
-                className="rounded-md border border-border bg-bg px-3 py-2 font-mono text-[12px] text-text-primary outline-none focus:border-accent"
+                className="rounded-md border border-border bg-bg px-3 py-2 font-mono text-[12px] text-text-primary outline-none focus:border-text-primary"
               >
                 {LANGS.map((l) => (
                   <option key={l.id} value={l.id}>
@@ -108,7 +108,7 @@ export default function PairLobbyPage() {
 
         <section className="rounded-lg border border-border bg-surface-1 p-5">
           <div className="mb-3 flex items-center gap-2">
-            <KeyRound className="h-4 w-4 text-pink" />
+            <KeyRound className="h-4 w-4 text-text-secondary" />
             <h2 className="font-display text-[15px] font-bold text-text-primary">Войти по приглашению</h2>
           </div>
           <div className="flex flex-col gap-3 sm:flex-row">
@@ -116,7 +116,7 @@ export default function PairLobbyPage() {
               value={token}
               onChange={(e) => setToken(e.target.value)}
               placeholder="Вставьте токен из ссылки"
-              className="flex-1 rounded-md border border-border bg-bg px-3 py-2 font-mono text-[12px] text-text-primary outline-none focus:border-accent"
+              className="flex-1 rounded-md border border-border bg-bg px-3 py-2 font-mono text-[12px] text-text-primary outline-none focus:border-text-primary"
             />
             <Button variant="ghost" onClick={handleJoin} disabled={!token.trim()}>
               Войти

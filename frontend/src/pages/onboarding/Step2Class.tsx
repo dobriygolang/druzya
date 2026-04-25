@@ -56,7 +56,7 @@ export default function Step2Class() {
               className={cn(
                 'text-left rounded-xl border p-4 transition-colors',
                 selected
-                  ? 'border-accent bg-accent/5 shadow-glow'
+                  ? 'border-text-primary bg-text-primary/5'
                   : 'border-border hover:border-border-strong',
               )}
             >
@@ -64,13 +64,13 @@ export default function Step2Class() {
                 <span
                   className={cn(
                     'font-mono text-[10px] uppercase tracking-wider',
-                    selected ? 'text-accent-hover' : 'text-text-muted',
+                    selected ? 'text-text-primary' : 'text-text-muted',
                   )}
                 >
                   {c.id}
                 </span>
                 {selected && (
-                  <span className="grid h-4 w-4 place-items-center rounded-full bg-accent text-[10px] font-bold text-white">
+                  <span className="grid h-4 w-4 place-items-center rounded-full bg-text-primary text-[10px] font-bold text-bg">
                     ✓
                   </span>
                 )}
@@ -94,13 +94,13 @@ export default function Step2Class() {
 
       <div className="flex items-center justify-between gap-4">
         <div className="text-[12px] text-text-secondary">
-          выбрано: <strong className="text-accent-hover font-mono">{picked}</strong> · 3 core-скилла в следующем шаге
+          выбрано: <strong className="text-text-primary font-mono">{picked}</strong> · 3 core-скилла в следующем шаге
         </div>
         <button
           type="button"
           onClick={next}
           disabled={setFocusClass.isPending}
-          className="rounded-md bg-accent hover:bg-accent/90 text-white font-semibold text-sm px-5 py-2.5 disabled:opacity-60 disabled:cursor-not-allowed"
+          className="rounded-md bg-text-primary hover:bg-text-primary/90 text-bg font-medium text-sm px-5 py-2.5 disabled:opacity-60 disabled:cursor-not-allowed"
         >
           Далее →
         </button>

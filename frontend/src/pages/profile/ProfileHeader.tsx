@@ -72,8 +72,7 @@ export function ProfileTabBar({ tab, setTab, isOwn }: { tab: ProfileTab; setTab:
   const tabKey: Record<ProfileTab, string> = {
     Overview: 'tabs.overview',
     Matches: 'tabs.matches',
-    Achievements: 'tabs.achievements',
-    Cohorts: 'tabs.cohorts',
+    Circles: 'tabs.circles',
     Stats: 'tabs.stats',
     Bookings: 'tabs.bookings',
   }

@@ -132,7 +132,7 @@ function FilterChip({
       onClick={onClick}
       className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[13px] ${
         active
-          ? 'border-accent bg-accent/15 text-accent-hover'
+          ? 'border-text-primary bg-text-primary/10 text-text-primary'
           : 'border-border bg-surface-2 text-text-secondary hover:border-border-strong hover:text-text-primary'
       }`}
     >
@@ -167,7 +167,7 @@ function SortMenu({ value, onChange }: { value: SlotSort; onChange: (s: SlotSort
                     setOpen(false)
                   }}
                   className={`flex w-full items-center rounded px-3 py-1.5 text-left text-[13px] hover:bg-surface-2 ${
-                    s.key === value ? 'text-accent-hover' : 'text-text-secondary'
+                    s.key === value ? 'text-text-primary' : 'text-text-secondary'
                   }`}
                 >
                   {s.label}
@@ -243,7 +243,7 @@ function SlotCard({ s, onBook, booking }: { s: Slot; onBook: () => void; booking
           <Link
             to={`/interviewer/${encodeURIComponent(s.interviewer.user_id)}`}
             state={{ username: s.interviewer.username }}
-            className="text-sm font-bold text-text-primary hover:text-accent-hover"
+            className="text-sm font-bold text-text-primary hover:text-text-secondary"
           >
             @{s.interviewer.username}
           </Link>
@@ -273,7 +273,7 @@ function SlotCard({ s, onBook, booking }: { s: Slot; onBook: () => void; booking
       </div>
       <div className="flex flex-col gap-1">
         <div className="flex items-center gap-1.5">
-          <Clock className="h-3.5 w-3.5 text-cyan" />
+          <Clock className="h-3.5 w-3.5 text-text-secondary" />
           <span className="text-sm font-semibold text-text-primary">{fmtTime(s.starts_at)}</span>
         </div>
         <span className="font-mono text-[11px] text-text-muted">{s.duration_min} мин</span>
@@ -378,15 +378,15 @@ function PromoCard({
         : 'Зарабатывай на mock-интервью — тариф устанавливаешь сам.'
   const showCta = !isInterviewer && appStatus !== 'pending'
   return (
-    <div className="flex flex-col gap-4 rounded-xl bg-gradient-to-br from-accent to-pink p-5 shadow-glow">
+    <div className="flex flex-col gap-4 rounded-xl bg-surface-2 border border-border-strong p-5">
       <h3 className="font-display text-lg font-bold text-text-primary">{title}</h3>
-      <p className="text-xs text-white/80">{body}</p>
+      <p className="text-xs text-text-secondary">{body}</p>
       {showCta && (
         <button
           type="button"
           onClick={onApply}
           disabled={promoting}
-          className="inline-flex items-center justify-center rounded-md bg-white/20 px-3.5 py-2 text-xs font-semibold text-text-primary hover:bg-white/30 disabled:opacity-60"
+          className="inline-flex items-center justify-center rounded-md bg-text-primary text-bg px-3.5 py-2 text-xs font-medium hover:bg-text-primary/90 disabled:opacity-60"
         >
           {promoting ? 'Отправляем…' : appStatus === 'rejected' ? 'Подать ещё раз' : 'Подать заявку'}
         </button>
@@ -398,7 +398,7 @@ function PromoCard({
 // FreeModeNotice — payments are stubbed in M1; show this until M4 lands.
 function FreeModeNotice() {
   return (
-    <div className="rounded-md border border-cyan/30 bg-cyan/5 px-3 py-2 text-xs text-cyan">
+    <div className="rounded-md border border-border-strong bg-text-primary/5 px-3 py-2 text-xs text-text-secondary">
       Оплата в разработке — все слоты сейчас бесплатные. Цены показываем для прозрачности будущего тарифа.
     </div>
   )
@@ -413,7 +413,7 @@ function BookedSidebar({ booked, onOpen }: { booked: Slot[]; onOpen: () => void 
         <button
           type="button"
           onClick={onOpen}
-          className="text-[11px] font-semibold text-accent hover:text-accent-hover"
+          className="text-[11px] font-semibold text-text-primary hover:text-text-secondary"
         >
           Мои слоты →
         </button>
@@ -427,7 +427,7 @@ function BookedSidebar({ booked, onOpen }: { booked: Slot[]; onOpen: () => void 
               initials={s.interviewer.username?.[0]?.toUpperCase() ?? '?'}
             />
             <span className="text-sm font-semibold text-text-primary">@{s.interviewer.username}</span>
-            <span className="ml-auto font-mono text-[11px] text-cyan">{fmtTime(s.starts_at)}</span>
+            <span className="ml-auto font-mono text-[11px] text-text-secondary">{fmtTime(s.starts_at)}</span>
           </div>
           <span className="font-mono text-[11px] text-text-muted">
             {humanizeSection(s.section)} · {s.duration_min} мин

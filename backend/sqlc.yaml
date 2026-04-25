@@ -107,19 +107,7 @@ sql:
         emit_empty_slices: true
 
   # Phase-4 ADR-001 — `ai_native` service removed (NativeRoundPage flow gone).
-  - engine: postgresql
-    name: "cohort"
-    queries: "services/cohort/infra/queries"
-    schema: "migrations"
-    gen:
-      go:
-        package: "cohortdb"
-        out: "services/cohort/infra/db"
-        sql_package: "pgx/v5"
-        emit_interface: true
-        emit_prepared_queries: false
-        emit_exact_table_names: false
-        emit_empty_slices: true
+  # Phase-4 ADR-001 (Wave 2) — `cohort` service removed (merged into circles).
 
   - engine: postgresql
     name: "slot"

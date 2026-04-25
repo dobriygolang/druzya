@@ -47,11 +47,11 @@ export type HelpContact = {
 const ic = (Comp: typeof Rocket, cls = 'h-5 w-5') => createElement(Comp, { className: cls })
 
 export const HELP_CATEGORIES: HelpCategory[] = [
-  { slug: 'start', icon: ic(Rocket), color: 'text-cyan', bg: 'bg-cyan/15', label: 'Старт', count: 8 },
-  { slug: 'arena', icon: ic(Swords), color: 'text-accent-hover', bg: 'bg-accent/15', label: 'Арена и матчи', count: 14 },
-  { slug: 'cohort', icon: ic(Shield), color: 'text-pink', bg: 'bg-pink/15', label: 'Когорты', count: 11 },
+  { slug: 'start', icon: ic(Rocket), color: 'text-text-secondary', bg: 'bg-text-primary/10', label: 'Старт', count: 8 },
+  { slug: 'arena', icon: ic(Swords), color: 'text-text-primary', bg: 'bg-text-primary/15', label: 'Арена и матчи', count: 14 },
+  { slug: 'cohort', icon: ic(Shield), color: 'text-text-secondary', bg: 'bg-text-primary/10', label: 'Когорты', count: 11 },
   { slug: 'premium', icon: ic(Crown), color: 'text-warn', bg: 'bg-warn/15', label: 'Premium', count: 6 },
-  { slug: 'ai', icon: ic(Sparkles), color: 'text-pink', bg: 'bg-pink/15', label: 'AI-собеседование', count: 9 },
+  { slug: 'ai', icon: ic(Sparkles), color: 'text-text-secondary', bg: 'bg-text-primary/10', label: 'AI-собеседование', count: 9 },
   { slug: 'security', icon: ic(Lock), color: 'text-success', bg: 'bg-success/15', label: 'Безопасность', count: 5 },
 ]
 

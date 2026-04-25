@@ -16,9 +16,9 @@ export function ShareCoachQuote({ text }: { text: string }) {
   const lead = trimmed.split('\n\n')[0].slice(0, 240)
 
   return (
-    <section className="relative flex flex-col gap-4 overflow-hidden rounded-2xl border border-pink/30 bg-gradient-to-br from-accent/15 via-surface-2 to-pink/10 p-6 sm:p-8">
+    <section className="relative flex flex-col gap-4 overflow-hidden rounded-2xl border border-border-strong bg-gradient-to-br from-accent/15 via-surface-2 to-pink/10 p-6 sm:p-8">
       <div className="flex items-center gap-2">
-        <Brain className="h-4 w-4 text-pink" />
+        <Brain className="h-4 w-4 text-text-secondary" />
         <span className="font-mono text-[10px] uppercase tracking-[0.14em] bg-gradient-to-r from-pink to-cyan bg-clip-text text-transparent">
           AI Coach · недельный разбор
         </span>

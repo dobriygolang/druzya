@@ -71,7 +71,7 @@ export default function MockCompanyPicker() {
     <AppShellV2>
       <div className="flex flex-col gap-6 px-4 py-6 sm:px-8 lg:px-20 lg:py-8">
         <header className="flex flex-col gap-1">
-          <div className="font-mono text-[10px] uppercase tracking-wider text-pink">Mock Interview</div>
+          <div className="font-mono text-[10px] uppercase tracking-wider text-text-secondary">Mock Interview</div>
           <h1 className="font-display text-2xl sm:text-3xl font-bold text-text-primary">
             Выбери компанию для собеса
           </h1>
@@ -99,7 +99,7 @@ export default function MockCompanyPicker() {
             onSelect={() => persistAiAssist(true)}
             title="AI-помощник разрешён"
             body="Справа во время алго / sys-design / behavioral будет чат с нейрокой — можно спрашивать подсказки."
-            icon={<Bot className="h-4 w-4 text-pink" />}
+            icon={<Bot className="h-4 w-4 text-text-secondary" />}
           />
         </fieldset>
 
@@ -178,14 +178,14 @@ function AiAssistOption({
       className={[
         'flex items-start gap-3 rounded-lg border p-3 text-left transition-colors',
         checked
-          ? 'border-accent bg-accent/10'
+          ? 'border-text-primary bg-text-primary/10'
           : 'border-border bg-surface-2 hover:border-border-strong',
       ].join(' ')}
     >
       <span
         className={[
           'mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-full border',
-          checked ? 'border-accent bg-accent text-bg' : 'border-border bg-surface-1',
+          checked ? 'border-text-primary bg-text-primary text-bg' : 'border-border bg-surface-1',
         ].join(' ')}
         aria-hidden
       >

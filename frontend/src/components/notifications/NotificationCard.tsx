@@ -88,7 +88,7 @@ export function NotificationCard(props: NotificationCardProps) {
       onMouseEnter={handleAreaClick}
       className={cn(
         'group flex items-start gap-3 px-4 py-3 transition-colors',
-        unread ? 'bg-accent/5' : 'bg-transparent',
+        unread ? 'bg-text-primary/5' : 'bg-transparent',
         'hover:bg-surface-2',
       )}
     >
@@ -108,7 +108,7 @@ function UnreadDot({ unread }: { unread: boolean }) {
       aria-hidden="true"
       className={cn(
         'mt-2 h-1.5 w-1.5 shrink-0 rounded-full',
-        unread ? 'bg-accent' : 'bg-transparent',
+        unread ? 'bg-text-primary' : 'bg-transparent',
       )}
     />
   )
@@ -143,16 +143,16 @@ function Glyph({ item, kind }: { item: NotificationItem; kind: CardKind }) {
       )
     case 'match-invite':
       return (
-        <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-accent/20">
-          <Swords className="h-4 w-4 text-accent-hover" />
+        <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-text-primary/20">
+          <Swords className="h-4 w-4 text-text-primary" />
         </span>
       )
     case 'friend-request':
       return username ? (
         <Avatar size="lg" gradient={mapGradient(username)} initials={username.slice(0, 1).toUpperCase()} />
       ) : (
-        <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-accent/20">
-          <Users className="h-4 w-4 text-accent-hover" />
+        <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-text-primary/20">
+          <Users className="h-4 w-4 text-text-primary" />
         </span>
       )
   }
@@ -252,7 +252,7 @@ function Footer({ item, kind, ...props }: NotificationCardProps & { kind: CardKi
           className="inline-flex items-center gap-1 pt-1 text-left text-xs font-semibold hover:brightness-110"
           style={{ background: 'linear-gradient(90deg, rgb(244,114,182), rgb(34,211,238))', WebkitBackgroundClip: 'text', backgroundClip: 'text', color: 'transparent' }}
         >
-          Открыть инсайт <ArrowRight className="h-3 w-3 text-cyan" />
+          Открыть инсайт <ArrowRight className="h-3 w-3 text-text-secondary" />
         </button>
       )
     }
@@ -293,7 +293,7 @@ function ActionBtn({
       className={cn(
         'inline-flex h-7 items-center gap-1 rounded-md px-2.5 text-[12px] font-semibold transition-colors disabled:opacity-50',
         tone === 'primary'
-          ? 'bg-accent text-white hover:bg-accent-hover'
+          ? 'bg-text-primary text-bg hover:bg-text-primary-hover'
           : 'border border-border bg-surface-2 text-text-secondary hover:text-text-primary',
       )}
     >

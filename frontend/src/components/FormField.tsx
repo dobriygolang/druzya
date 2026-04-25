@@ -44,13 +44,13 @@ export function FormField(props: FormFieldProps) {
         <textarea
           rows={props.rows ?? 3}
           className={cn(
-            'resize-none rounded-md border border-border bg-bg/40 px-3 py-2 text-[13px] text-text-primary outline-none focus:border-accent transition-colors',
+            'resize-none rounded-md border border-border bg-bg/40 px-3 py-2 text-[13px] text-text-primary outline-none focus:border-text-primary transition-colors',
             mono && 'font-mono',
           )}
           {...stripCustom(props)}
         />
       ) : (
-        <div className="flex items-center rounded-md border border-border bg-bg/40 focus-within:border-accent transition-colors">
+        <div className="flex items-center rounded-md border border-border bg-bg/40 focus-within:border-text-primary transition-colors">
           {prefix && (
             <span className="border-r border-border px-2.5 py-2 font-mono text-[13px] text-text-muted">
               {prefix}

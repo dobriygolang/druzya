@@ -80,6 +80,7 @@ func (s *MockServer) CreateSession(
 		DurationMin:    int(m.GetDurationMin()),
 		VoiceMode:      m.GetVoiceMode(),
 		DevilsAdvocate: m.GetDevilsAdvocate(),
+		AIAssist:       m.GetAiAssist(),
 	}
 	if pu := m.GetPairedUserId(); pu != "" {
 		pid, parseErr := uuid.Parse(pu)
@@ -263,6 +264,7 @@ func toMockSessionProto(s domain.Session, task domain.TaskPublic, msgs []domain.
 		Section:     sectionToProtoMock(s.Section),
 		Difficulty:  difficultyToProtoMock(s.Difficulty),
 		DurationMin: int32(s.DurationMin),
+		AiAssist:    s.AIAssist,
 	}
 	if s.CompanyID != uuid.Nil {
 		out.CompanyId = s.CompanyID.String()

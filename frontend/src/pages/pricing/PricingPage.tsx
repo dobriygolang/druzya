@@ -152,7 +152,7 @@ export default function PricingPage() {
     <div className="min-h-screen bg-bg text-text-primary">
       <header className="sticky top-0 z-40 flex h-[64px] items-center border-b border-border bg-bg px-4 sm:px-6 lg:h-[72px] lg:px-8">
         <Link to="/welcome" className="flex items-center gap-2.5">
-          <span className="grid h-8 w-8 shrink-0 place-items-center rounded-md bg-gradient-to-br from-accent to-cyan font-display text-lg font-extrabold text-text-primary">
+          <span className="grid h-8 w-8 shrink-0 place-items-center rounded-md bg-surface-2 border border-border-strong font-display text-lg font-extrabold text-text-primary">
             9
           </span>
           <span className="font-display text-lg font-bold text-text-primary">druz9</span>
@@ -177,7 +177,7 @@ function Header({ period, setPeriod }: { period: BillingPeriod; setPeriod: (p: B
       </span>
       <h1 className="font-display text-3xl font-bold leading-[1.1] text-text-primary lg:text-[40px]">
         Один план — одна{' '}
-        <span className="bg-gradient-to-r from-accent to-cyan bg-clip-text text-transparent">
+        <span className="bg-surface-2 border border-border-strong bg-clip-text text-transparent">
           цель
         </span>
       </h1>
@@ -204,7 +204,7 @@ function PeriodToggle({
         onClick={() => setPeriod('monthly')}
         className={cn(
           'rounded-full px-4 py-1.5 text-[13px] font-semibold transition-colors',
-          period === 'monthly' ? 'bg-accent text-text-primary' : 'text-text-secondary hover:text-text-primary',
+          period === 'monthly' ? 'bg-text-primary text-text-primary' : 'text-text-secondary hover:text-text-primary',
         )}
       >
         Помесячно
@@ -214,7 +214,7 @@ function PeriodToggle({
         onClick={() => setPeriod('annual')}
         className={cn(
           'flex items-center gap-2 rounded-full px-4 py-1.5 text-[13px] font-semibold transition-colors',
-          period === 'annual' ? 'bg-accent text-text-primary' : 'text-text-secondary hover:text-text-primary',
+          period === 'annual' ? 'bg-text-primary text-text-primary' : 'text-text-secondary hover:text-text-primary',
         )}
       >
         Годовая
@@ -244,7 +244,7 @@ function PlanCard({ plan, period }: { plan: PlanCardData; period: BillingPeriod 
       className={cn(
         'flex-col gap-5 p-6',
         emphasis === 'warn' && 'border-warn/40 bg-gradient-to-br from-warn/10 to-transparent',
-        emphasis === 'warn-pink' && 'border-warn/50 bg-gradient-to-br from-warn/15 via-pink/5 to-transparent shadow-glow',
+        emphasis === 'warn-pink' && 'border-warn/50 bg-gradient-to-br from-warn/15 via-pink/5 to-transparent',
       )}
     >
       <div className="flex items-start justify-between">
@@ -253,7 +253,7 @@ function PlanCard({ plan, period }: { plan: PlanCardData; period: BillingPeriod 
           <span className="text-[12px] text-text-secondary">{plan.tagline}</span>
         </div>
         {emphasis === 'warn-pink' && (
-          <span className="rounded-md bg-pink/20 px-2 py-0.5 font-mono text-[10px] font-bold uppercase text-pink">
+          <span className="rounded-md bg-text-primary/10 px-2 py-0.5 font-mono text-[10px] font-bold uppercase text-text-secondary">
             популярный
           </span>
         )}
@@ -283,7 +283,7 @@ function PlanCard({ plan, period }: { plan: PlanCardData; period: BillingPeriod 
           to={`/checkout?plan=${plan.tier}&period=${period}`}
           className={cn(
             'flex h-10 items-center justify-center rounded-lg px-4 text-[14px] font-semibold transition-colors',
-            'bg-accent text-text-primary hover:bg-accent-hover shadow-glow',
+            'bg-text-primary text-text-primary hover:bg-text-primary-hover',
           )}
         >
           {plan.cta}
@@ -321,7 +321,7 @@ function ComparisonTable() {
           <div>Возможность</div>
           <div className="text-center">Free</div>
           <div className="text-center text-warn">Premium</div>
-          <div className="text-center text-pink">Pro</div>
+          <div className="text-center text-text-secondary">Pro</div>
         </div>
         {FEATURES.map((row, i) => (
           <div

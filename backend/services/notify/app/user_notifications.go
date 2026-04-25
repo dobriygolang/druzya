@@ -213,25 +213,6 @@ type friendRequestPayloader interface {
 	FriendshipID() int64
 }
 
-// OnCohortWarStarted — cohort channel.
-func (h *FeedHandlers) OnCohortWarStarted(ctx context.Context, ev sharedDomain.Event) error {
-	e, ok := ev.(sharedDomain.CohortWarStarted)
-	if !ok {
-		return nil
-	}
-	// Без cohort_members-репо мы не знаем, кому слать. Скорее всего вырастет
-	// отдельный publisher в cohort-домене. На этот этап — лог-тейпинг.
-	h.Log.InfoContext(ctx, "notify.feed.OnCohortWarStarted: no member-fanout yet",
-		slog.String("war_id", e.WarID.String()))
-	return nil
-}
-
-// OnCohortWarFinished — то же.
-func (h *FeedHandlers) OnCohortWarFinished(ctx context.Context, ev sharedDomain.Event) error {
-	_, _ = ev.(sharedDomain.CohortWarFinished)
-	return nil
-}
-
 // OnDailyKataMissed — system channel: streak under attack.
 func (h *FeedHandlers) OnDailyKataMissed(ctx context.Context, ev sharedDomain.Event) error {
 	e, ok := ev.(sharedDomain.DailyKataMissed)

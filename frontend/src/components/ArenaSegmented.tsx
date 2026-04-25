@@ -28,7 +28,7 @@ export function ArenaSegmented({ active }: { active: ArenaSegment }) {
             className={cn(
               'relative flex h-full items-center px-4 text-sm font-semibold transition-colors',
               isActive
-                ? 'text-text-primary after:absolute after:inset-x-3 after:bottom-0 after:h-0.5 after:bg-accent'
+                ? 'text-text-primary after:absolute after:inset-x-3 after:bottom-0 after:h-0.5 after:bg-text-primary'
                 : 'text-text-secondary hover:text-text-primary',
             )}
           >

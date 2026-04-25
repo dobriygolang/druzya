@@ -50,7 +50,7 @@ export function LiveWaveform({ bars = 64, meIntensity, aiIntensity, height = 96 
           return (
             <span
               key={`me-${i}`}
-              className="w-[3px] rounded-t-sm bg-cyan"
+              className="w-[3px] rounded-t-sm bg-text-primary"
               style={{ height: `${v * half}px`, opacity: 0.55 + (meIntensity || 0) * 0.45 }}
             />
           )
@@ -64,7 +64,7 @@ export function LiveWaveform({ bars = 64, meIntensity, aiIntensity, height = 96 
           return (
             <span
               key={`ai-${i}`}
-              className="w-[3px] rounded-b-sm bg-pink"
+              className="w-[3px] rounded-b-sm bg-text-primary"
               style={{ height: `${v * half}px`, opacity: 0.55 + (aiIntensity || 0) * 0.45 }}
             />
           )

@@ -152,6 +152,12 @@ type Analyze struct {
 	// Nil-safe.
 	TokenQuota *tokenquota.DailyTokenQuota
 
+	// MockGate — server-side defense-in-depth for the "no Cue while a
+	// strict mock is live" rule (Phase-4 ADR-001 Wave 3). The desktop
+	// client also polls CheckBlock; this is the backstop for clients
+	// that didn't. Nil-safe (no enforcement when unset, e.g. tests).
+	MockGate domain.MockSessionGate
+
 	// RAGTopK caps how many chunks get injected per turn. Default 5.
 	// Higher values dilute the signal (more irrelevant context) and
 	// inflate the input token count.
@@ -185,6 +191,20 @@ type AnalyzeInput struct {
 func (uc *Analyze) Do(ctx context.Context, in AnalyzeInput) (<-chan StreamFrame, error) {
 	if uc.KillSwitch != nil && uc.KillSwitch.IsOn(ctx, killswitch.FeatureCopilotAnalyze) {
 		return nil, fmt.Errorf("copilot.Analyze: %w: temporarily disabled by operator", domain.ErrServiceUnavailable)
+	}
+	// Mock-session gate — defense-in-depth for the desktop's CheckBlock
+	// poll. If the user is mid-mock with ai_assist=FALSE, refuse the
+	// LLM call before we open a provider connection.
+	if uc.MockGate != nil {
+		if blocked, _, err := uc.MockGate.HasActiveBlockingSession(ctx, in.UserID); err != nil {
+			if uc.Log != nil {
+				uc.Log.Warn("copilot.Analyze: mock-gate check failed", "err", err, "user", in.UserID)
+			}
+			// Fail-open on gate errors — better to serve a consult than to
+			// black-hole the desktop because the gate read flapped.
+		} else if blocked {
+			return nil, fmt.Errorf("copilot.Analyze: %w", domain.ErrAIAssistBlocked)
+		}
 	}
 	// Daily token cap — check BEFORE we open a stream. A user who
 	// already blew past today's budget shouldn't even get the

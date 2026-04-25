@@ -317,7 +317,7 @@ function SupportForm() {
     : null
 
   return (
-    <Card className="flex-col gap-3 border-accent/40 bg-gradient-to-br from-accent to-pink p-5 shadow-glow">
+    <Card className="flex-col gap-3 border-border-strong bg-surface-2 border border-border-strong p-5">
       <div className="flex items-center gap-2">
         <span className="h-2 w-2 rounded-full bg-success ring-2 ring-success/30" />
         <span className="font-mono text-[11px] font-semibold tracking-[0.08em] text-text-primary">

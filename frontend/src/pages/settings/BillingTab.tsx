@@ -212,7 +212,7 @@ function CancelModal({
                   className={cn(
                     'flex items-center gap-3 rounded-lg border px-3 py-2.5 text-[13px] transition-colors',
                     reason === r
-                      ? 'border-accent bg-accent/10 text-text-primary'
+                      ? 'border-text-primary bg-text-primary/10 text-text-primary'
                       : 'border-border bg-surface-1 text-text-secondary hover:border-border-strong',
                   )}
                 >
@@ -232,7 +232,7 @@ function CancelModal({
               onChange={(e) => setFeedback(e.target.value)}
               rows={3}
               placeholder="Что бы помогло остаться? (необязательно)"
-              className="rounded-lg border border-border bg-surface-1 px-3 py-2 text-[13px] text-text-primary placeholder:text-text-muted/60 focus:outline-none focus:ring-2 focus:ring-accent"
+              className="rounded-lg border border-border bg-surface-1 px-3 py-2 text-[13px] text-text-primary placeholder:text-text-muted/60 focus:outline-none focus:ring-2 focus:ring-text-primary/40"
             />
             <div className="flex gap-2">
               <Button variant="ghost" size="md" onClick={onClose} className="flex-1">

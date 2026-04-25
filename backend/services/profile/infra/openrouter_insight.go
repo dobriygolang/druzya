@@ -55,7 +55,6 @@ type InsightPayload struct {
 	HoursStudied      float64        // derived from Activity.TimeMinutes / 60
 	Streak            int            // current streak in days
 	WeakestSection    string         // section name (lower-case slug); "" if none
-	AchievementsCount int            // unlocked this week
 
 	// Model — per-call OpenRouter model override (e.g. "openai/gpt-4o-mini").
 	// Empty → use the client's default. Caller (app/report.go) reads the
@@ -263,7 +262,6 @@ func renderUserPrompt(p InsightPayload) string {
 		weakest = "(none)"
 	}
 	fmt.Fprintf(&sb, "  - Weakest section: %s\n", weakest)
-	fmt.Fprintf(&sb, "  - Achievements unlocked: %d\n", p.AchievementsCount)
 	return sb.String()
 }
 

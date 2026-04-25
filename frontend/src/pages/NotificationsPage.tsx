@@ -46,29 +46,29 @@ function visualFor(n: NotificationItem): { icon: JSX.Element; bg: string } {
     case 'loss':
       return { icon: <Swords className="h-4 w-4 text-danger" />, bg: 'bg-danger/15' }
     case 'challenge':
-      return { icon: <Swords className="h-4 w-4 text-accent-hover" />, bg: 'bg-accent/15' }
+      return { icon: <Swords className="h-4 w-4 text-text-primary" />, bg: 'bg-text-primary/15' }
     case 'friend_request':
-      return { icon: <Users className="h-4 w-4 text-accent-hover" />, bg: 'bg-accent/15' }
+      return { icon: <Users className="h-4 w-4 text-text-primary" />, bg: 'bg-text-primary/15' }
     case 'friend_added':
       return { icon: <Users className="h-4 w-4 text-success" />, bg: 'bg-success/15' }
     case 'achievement_unlocked':
       return { icon: <Award className="h-4 w-4 text-warn" />, bg: 'bg-warn/15' }
     case 'streak_at_risk':
-      return { icon: <Bell className="h-4 w-4 text-pink" />, bg: 'bg-pink/15' }
+      return { icon: <Bell className="h-4 w-4 text-text-secondary" />, bg: 'bg-text-primary/10' }
     case 'cohort_war_started':
     case 'cohort_war_ended':
-      return { icon: <Shield className="h-4 w-4 text-cyan" />, bg: 'bg-cyan/15' }
+      return { icon: <Shield className="h-4 w-4 text-text-secondary" />, bg: 'bg-text-primary/10' }
     case 'plan_ready':
-      return { icon: <Sparkles className="h-4 w-4 text-pink" />, bg: 'bg-pink/15' }
+      return { icon: <Sparkles className="h-4 w-4 text-text-secondary" />, bg: 'bg-text-primary/10' }
     default:
       // Channel-fallback.
       switch (n.channel) {
         case 'wins':
           return { icon: <Trophy className="h-4 w-4 text-warn" />, bg: 'bg-warn/15' }
         case 'social':
-          return { icon: <Users className="h-4 w-4 text-accent-hover" />, bg: 'bg-accent/15' }
+          return { icon: <Users className="h-4 w-4 text-text-primary" />, bg: 'bg-text-primary/15' }
         case 'cohort':
-          return { icon: <Shield className="h-4 w-4 text-cyan" />, bg: 'bg-cyan/15' }
+          return { icon: <Shield className="h-4 w-4 text-text-secondary" />, bg: 'bg-text-primary/10' }
         case 'system':
           return { icon: <Server className="h-4 w-4 text-text-secondary" />, bg: 'bg-surface-3' }
         default:
@@ -125,7 +125,7 @@ function Row({
 
   return (
     <div className="group flex items-start gap-3 px-[14px] py-3" onMouseEnter={() => unread && onMarkRead()}>
-      <span className={`mt-2 h-1.5 w-1.5 shrink-0 rounded-full ${unread ? 'bg-accent' : 'bg-transparent'}`} />
+      <span className={`mt-2 h-1.5 w-1.5 shrink-0 rounded-full ${unread ? 'bg-text-primary' : 'bg-transparent'}`} />
       <span className={`grid h-10 w-10 shrink-0 place-items-center rounded-full ${v.bg}`}>{v.icon}</span>
       <div className="flex flex-1 flex-col gap-1">
         <div className="text-sm text-text-primary">
@@ -145,7 +145,7 @@ function Row({
         {(n.type === 'win' || n.type === 'loss') && matchID && (
           <button
             type="button"
-            className="pt-1 text-left text-xs font-semibold text-accent-hover hover:text-accent"
+            className="pt-1 text-left text-xs font-semibold text-text-primary hover:text-text-primary"
             onClick={() => onOpenReplay?.(matchID)}
           >
             Посмотреть replay →
@@ -154,7 +154,7 @@ function Row({
         {n.type === 'plan_ready' && planID && (
           <button
             type="button"
-            className="pt-1 text-left text-xs font-semibold text-accent-hover hover:text-accent"
+            className="pt-1 text-left text-xs font-semibold text-text-primary hover:text-text-primary"
             onClick={() => onOpenPlan?.(planID)}
           >
             Открыть план →
@@ -225,7 +225,7 @@ function SettingsPanel() {
             <button
               key={opt.l}
               onClick={() => setSilence(opt.h)}
-              className="rounded-md border border-border bg-surface-2 px-3 py-1 text-[12px] text-text-secondary hover:border-accent hover:text-text-primary"
+              className="rounded-md border border-border bg-surface-2 px-3 py-1 text-[12px] text-text-secondary hover:border-text-primary hover:text-text-primary"
             >
               {opt.l}
             </button>
@@ -255,7 +255,7 @@ function SettingsPanel() {
               className="flex items-center justify-between rounded-md px-1 py-1.5 hover:bg-surface-2"
             >
               <span className="flex items-center gap-2 text-[13px] text-text-secondary">{c.icon} {c.label}</span>
-              <span className={`flex h-5 w-9 items-center rounded-full px-0.5 ${on ? 'bg-accent justify-end' : 'bg-surface-3 justify-start'}`}>
+              <span className={`flex h-5 w-9 items-center rounded-full px-0.5 ${on ? 'bg-text-primary justify-end' : 'bg-surface-3 justify-start'}`}>
                 <span className="h-4 w-4 rounded-full bg-text-primary" />
               </span>
             </button>

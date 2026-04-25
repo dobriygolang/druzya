@@ -28,19 +28,25 @@ function useNavItems() {
     //   - /podcasts merged into /codex (вкладка внутри Codex).
     //   - /vacancies + /slots — promoted в top-nav (раньше прятались в user-menu).
     // Порядок зафиксирован в WAVE-13 spec: 7 элементов на 1920 desktop.
+    // Phase-4 ADR-001 hierarchy:
+    //   Arena (active play) → Atlas (skill map) → Insights (Wave 4 —
+    //   weekly digest + readiness forecast, aggregates web/Hone/Cue) →
+    //   Circles (community + events, replaces cohort) → Codex (articles)
+    //   → Vacancies → Slots (mock-interview booking).
     { to: '/arena', label: t('nav.arena') },
     { to: '/atlas', label: t('nav.atlas') },
+    { to: '/insights', label: t('nav.insights') },
+    { to: '/circles', label: t('nav.circles') },
     { to: '/codex', label: t('nav.codex') },
     { to: '/vacancies', label: t('nav.vacancies') },
     { to: '/slots', label: t('nav.slots') },
-    { to: '/cohort', label: t('nav.cohort') },
   ] as const
 }
 
 function Logo() {
   return (
     <Link to="/arena" className="flex items-center gap-2.5">
-      <span className="grid h-8 w-8 shrink-0 place-items-center rounded-md bg-gradient-to-br from-accent to-cyan font-display text-lg font-extrabold text-text-primary">
+      <span className="grid h-8 w-8 shrink-0 place-items-center rounded-md bg-surface-2 border border-border-strong font-display text-lg font-extrabold text-text-primary">
         9
       </span>
       <span className="font-display text-lg font-bold text-text-primary">druz9</span>
@@ -300,7 +306,7 @@ function TopNav({ onOpenNotifications, unreadCount }: { onOpenNotifications: () 
           <button
             type="button"
             onClick={() => setUserMenuOpen((v) => !v)}
-            className="grid h-9 w-9 place-items-center rounded-full transition hover:ring-2 hover:ring-accent/40"
+            className="grid h-9 w-9 place-items-center rounded-full transition hover:ring-2 hover:ring-text-primary/40/40"
             aria-label="User menu"
             aria-expanded={userMenuOpen}
           >

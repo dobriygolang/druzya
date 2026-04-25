@@ -146,7 +146,7 @@ export default function CreateSlotDialog({ open, onClose, onCreated }: Props) {
                 onClick={() => setDifficulty(d.value)}
                 className={`flex-1 rounded-md border px-3 py-1.5 text-xs ${
                   difficulty === d.value
-                    ? 'border-accent bg-accent/15 text-accent-hover'
+                    ? 'border-text-primary bg-text-primary/15 text-text-primary'
                     : 'border-border bg-surface-2 text-text-secondary hover:border-border-strong'
                 }`}
               >
@@ -165,7 +165,7 @@ export default function CreateSlotDialog({ open, onClose, onCreated }: Props) {
                 onClick={() => setLanguage(l.value)}
                 className={`flex-1 rounded-md border px-3 py-1.5 text-xs ${
                   language === l.value
-                    ? 'border-accent bg-accent/15 text-accent-hover'
+                    ? 'border-text-primary bg-text-primary/15 text-text-primary'
                     : 'border-border bg-surface-2 text-text-secondary hover:border-border-strong'
                 }`}
               >
@@ -217,7 +217,7 @@ export default function CreateSlotDialog({ open, onClose, onCreated }: Props) {
           <button
             type="submit"
             disabled={create.isPending}
-            className="h-9 rounded-md bg-accent px-4 text-sm font-semibold text-text-primary hover:bg-accent/90 disabled:opacity-60"
+            className="h-9 rounded-md bg-text-primary px-4 text-sm font-semibold text-text-primary hover:bg-text-primary/90 disabled:opacity-60"
           >
             {create.isPending ? 'Создаём…' : 'Создать'}
           </button>

@@ -26,6 +26,7 @@ import (
 
 	"connectrpc.com/connect"
 	"github.com/google/uuid"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 // Compile-time assertion — CopilotServer satisfies the generated handler.
@@ -53,6 +54,9 @@ type CopilotServer struct {
 	GetSessionAnalysisUC *app.GetSessionAnalysis
 	ListSessionsUC       *app.ListSessions
 
+	// CheckBlock (Phase-4 ADR-001 Wave 3).
+	CheckBlockUC *app.CheckBlock
+
 	Log *slog.Logger
 }
 
@@ -73,6 +77,7 @@ func NewCopilotServer(
 	endSession *app.EndSession,
 	getAnalysis *app.GetSessionAnalysis,
 	listSessions *app.ListSessions,
+	checkBlock *app.CheckBlock,
 	log *slog.Logger,
 ) *CopilotServer {
 	return &CopilotServer{
@@ -89,8 +94,38 @@ func NewCopilotServer(
 		EndSessionUC:         endSession,
 		GetSessionAnalysisUC: getAnalysis,
 		ListSessionsUC:       listSessions,
+		CheckBlockUC:         checkBlock,
 		Log:                  log,
 	}
+}
+
+// CheckBlock — GET /api/v1/copilot/check-block. Returns blocked=true while
+// the caller has a live mock-session with ai_assist=FALSE.
+func (s *CopilotServer) CheckBlock(
+	ctx context.Context,
+	_ *connect.Request[pb.CheckBlockRequest],
+) (*connect.Response[pb.CheckBlockResponse], error) {
+	uid, ok := sharedMw.UserIDFromContext(ctx)
+	if !ok {
+		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("unauthenticated"))
+	}
+	if s.CheckBlockUC == nil {
+		// Gate not wired (e.g. tests, partial bring-up). Treat as
+		// "not blocked" — the consult path stays open.
+		return connect.NewResponse(&pb.CheckBlockResponse{}), nil
+	}
+	out, err := s.CheckBlockUC.Do(ctx, app.CheckBlockInput{UserID: uid})
+	if err != nil {
+		return nil, s.toConnectErr(err)
+	}
+	resp := &pb.CheckBlockResponse{
+		Blocked: out.Blocked,
+		Reason:  out.Reason,
+	}
+	if !out.Until.IsZero() {
+		resp.Until = timestamppb.New(out.Until.UTC())
+	}
+	return connect.NewResponse(resp), nil
 }
 
 // ── Streaming handlers ───────────────────────────────────────────────────
@@ -551,6 +586,10 @@ func (s *CopilotServer) toConnectErr(err error) error {
 		// симметрично ErrQuotaExceeded (ops-метрики различают их по тексту).
 		return connect.NewError(connect.CodeResourceExhausted, err)
 	case errors.Is(err, domain.ErrModelNotAllowed):
+		return connect.NewError(connect.CodePermissionDenied, err)
+	case errors.Is(err, domain.ErrAIAssistBlocked):
+		// Phase-4 ADR-001 (Wave 3) — strict mock-session blocks Cue.
+		// Desktop client should poll CheckBlock to avoid hitting this.
 		return connect.NewError(connect.CodePermissionDenied, err)
 	default:
 		if s.Log != nil {

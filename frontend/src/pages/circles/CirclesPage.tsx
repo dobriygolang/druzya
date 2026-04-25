@@ -82,7 +82,7 @@ export default function CirclesPage() {
             <button
               type="submit"
               disabled={creating || !form.name.trim()}
-              className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-accent px-4 text-[13px] font-semibold text-bg disabled:opacity-50"
+              className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-text-primary px-4 text-[13px] font-semibold text-bg disabled:opacity-50"
             >
               <Plus className="h-4 w-4" />
               {creating ? 'Creating…' : 'Create'}
@@ -110,7 +110,7 @@ export default function CirclesPage() {
             {circles.map((c) => (
               <li
                 key={c.id}
-                className="rounded-lg border border-border bg-surface-1 p-4 transition-colors hover:border-accent/40"
+                className="rounded-lg border border-border bg-surface-1 p-4 transition-colors hover:border-border-strong"
               >
                 <Link to={`/circles/${c.id}`} className="block">
                   <div className="flex items-start justify-between gap-4">

@@ -1,9 +1,9 @@
 # Cue — Project Bible
 
 > Stealth AI-наушник поверх ОС. **Отдельное приложение** в экосистеме druz9 (Hone — кокпит, Cue — наушник).
-> Версия 3.0 · apr 2026 · бренд Druz9 Copilot → Cue, выход из "subsystem of Hone" в standalone product
+> Версия 3.1 · apr 2026 · ADR-001 Phase-4 Wave 3 — добавлен **mock-block protocol**: Cue блокируется во время strict mock-сессий (`ai_assist=false`). См §«Mock-block protocol» ниже + [ecosystem.md §10](./ecosystem.md).
 >
-> См [ecosystem.md](./ecosystem.md) для позиционирования vs Hone и druz9.ru.
+> См [ecosystem.md](./ecosystem.md) для позиционирования vs Hone и druz9.online.
 >
 > Имя файла (`stealth-bible.md`) сохранено чтобы не ломать git-историю и существующие ссылки. Директория `desktop/` тоже пока так называется (см ecosystem §6).
 
@@ -365,8 +365,51 @@ SENTRY_DSN=
 
 ---
 
-## 14. Changelog
+## 14. Mock-block protocol (новое в 3.1, ADR-001 Wave 3)
 
+**Зачем.** druz9.online теперь умеет создавать mock-сессии в двух режимах: `ai_assist=true` (подсказки разрешены) и `ai_assist=false` (классический собес — только ты, задачи, таймер). Если Cue будет шептать ответы во время strict-режима — fairness watermark и Insights-аналитика теряют смысл. Cue должен сам отказывать.
+
+**Как это работает (двухслойно).**
+
+1. **`copilot.CheckBlock` RPC** — Cue вызывает на:
+   - старте процесса
+   - `app.activate` (фокус)
+   - 30s ticker в idle
+   - перед каждой попыткой LLM-консульта
+   - после получения 403 от `Answer` (см ниже)
+
+   Endpoint: `GET /api/v1/copilot/check-block`. Запрос пуст (`user_id` достаётся из bearer). Ответ:
+   ```protobuf
+   message CheckBlockResponse {
+     bool blocked = 1;
+     string reason = 2;             // 'mock_no_assist' | ''
+     google.protobuf.Timestamp until = 3;  // optional, zero когда indeterminate
+   }
+   ```
+
+2. **`copilot.Answer` server-side enforcement** — defense-in-depth. Даже если Cue проигнорирует CheckBlock или клиент будет модифицирован, сервер сам проверяет block перед LLM-вызовом и возвращает `connect.CodePermissionDenied`. Bypass на уровне сервиса невозможен.
+
+**UI поведение когда `blocked=true`.**
+- Hotkey ⌘⇧Space показывает заглушку: «Сессия запрещает помощь. Доступно через {until}» (или «до конца сессии» если `until` пустой).
+- LLM-консульт не делается.
+- Любые in-flight стримы (audio capture, transcription pipeline) сворачиваются.
+- При получении 403 от Answer — refetch CheckBlock сразу, не ждать ticker (covers race window).
+
+**Reason codes.**
+- `mock_no_assist` — единственный пока. Future: можно добавить `proctored_session`, `recording_in_progress` etc.
+
+**Что Cue НЕ делает в strict-режиме.**
+- Не отвечает на вопросы.
+- Не предлагает auto-suggest pill.
+- Не делает screen-capture (зачем, если не отвечать). Это сохраняет batterz и даёт пользователю чёткий сигнал «Cue замолк, ты сам».
+
+**Доступность fairness watermark в Insights.** Backend хранит `ai_assist` на сессии; web Insights-страница (см [ecosystem.md §12](./ecosystem.md)) показывает delta между «честно» и «с AI» как объективную метрику готовности.
+
+---
+
+## 15. Changelog
+
+- **3.1** (apr 2026) — ADR-001 Wave 3: добавлен mock-block protocol. `CheckBlock` RPC + serverside enforcement в `Answer`. Backend: `services/copilot/infra/mock_gate.go` + `app/check_block.go`. UI-impl на стороне Cue desktop — отдельный спринт (этот доку обновили заранее под backend-готовность).
 - **3.0** (apr 2026) — Cue выделен из «subsystem of Hone» в standalone продукт. Brand rename Druz9 Copilot → Cue в package.json. Обновлены §1, §12, добавлен §13 о связях с Hone. Технические секции (audio/security/runbook) остались без изменений — код не менялся.
 - **2.0** (apr 2026) — расширение под этапы 1/3/5: audio capture macOS, VAD, auto-triggers, documents RAG, security hardening (SSRF + killswitch + quota + prompt injection)
 - **1.0** (apr 2026) — initial stealth-only

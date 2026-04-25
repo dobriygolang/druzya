@@ -40,7 +40,7 @@ export function OnboardingLayout({
     <div className="min-h-screen bg-bg text-text-primary">
       <header className="flex items-center justify-between px-6 py-4 border-b border-border">
         <div className="flex items-center gap-2.5">
-          <span className="grid h-7 w-7 place-items-center rounded-md bg-gradient-to-br from-accent to-cyan font-display text-sm font-extrabold text-white">
+          <span className="grid h-7 w-7 place-items-center rounded-md bg-surface-2 border border-border-strong font-display text-sm font-extrabold text-text-primary">
             9
           </span>
           <span className="font-display text-sm font-bold">druz9</span>
@@ -63,7 +63,7 @@ export function OnboardingLayout({
               key={i}
               className={cn(
                 'h-1.5 w-8 rounded-full transition-colors',
-                i < step ? 'bg-accent' : 'bg-surface-3',
+                i < step ? 'bg-text-primary' : 'bg-surface-3',
               )}
               aria-hidden="true"
             />

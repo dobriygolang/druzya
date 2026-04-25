@@ -137,7 +137,7 @@ function UserRow({
       </td>
       <td className="px-3 py-3 font-mono text-[12px] text-text-secondary">{user.email || '—'}</td>
       <td className="px-3 py-3">
-        <span className="rounded-full bg-cyan/15 px-2 py-0.5 font-mono text-[10px] font-semibold text-cyan">
+        <span className="rounded-full bg-text-primary/10 px-2 py-0.5 font-mono text-[10px] font-semibold text-text-secondary">
           {user.role}
         </span>
       </td>

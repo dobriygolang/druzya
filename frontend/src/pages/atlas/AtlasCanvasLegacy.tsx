@@ -271,8 +271,8 @@ export const STATE_FILL: Record<NodeState, string> = {
 }
 const STATE_STROKE: Record<NodeState, string> = {
   locked: '#2A2F45',
-  available: '#A78BFA',
-  in_progress: '#A78BFA',
+  available: '#FFFFFF',
+  in_progress: '#FFFFFF',
   mastered: '#16A34A',
   decaying: '#F59E0B',
 }
@@ -284,9 +284,9 @@ export function stateBadgeClass(state: NodeState): string {
     case 'decaying':
       return 'bg-warn/15 text-warn'
     case 'in_progress':
-      return 'bg-accent/15 text-accent-hover'
+      return 'bg-text-primary/15 text-text-primary'
     case 'available':
-      return 'bg-cyan/15 text-cyan'
+      return 'bg-text-primary/10 text-text-secondary'
     default:
       return 'bg-surface-2 text-text-muted'
   }
@@ -365,7 +365,7 @@ function NodeShape({
             <animate attributeName="r" from={r + 8} to={r + 26} dur="2.4s" repeatCount="indefinite" />
             <animate attributeName="opacity" from="0.6" to="0" dur="2.4s" repeatCount="indefinite" />
           </circle>
-          <circle cx={x} cy={y} r={r} fill="url(#centerSigilGrad)" stroke="#A78BFA" strokeWidth={2.5} />
+          <circle cx={x} cy={y} r={r} fill="url(#centerSigilGrad)" stroke="#FFFFFF" strokeWidth={2.5} />
           <text
             x={x}
             y={y}
@@ -381,7 +381,7 @@ function NodeShape({
         </g>
       )}
       {arc && (
-        <path d={arc} fill="none" stroke="#A78BFA" strokeWidth={4} strokeLinecap="round" />
+        <path d={arc} fill="none" stroke="#FFFFFF" strokeWidth={4} strokeLinecap="round" />
       )}
       {state === 'mastered' && (
         <g transform={`translate(${x - 7}, ${y - 7})`}>
@@ -440,7 +440,7 @@ function ConnectionLine({
   state: EdgeState
 }) {
   const stroke =
-    state === 'solid' ? '#7C5CFF' : state === 'dashed' ? '#A78BFA' : '#2A2F45'
+    state === 'solid' ? '#7C5CFF' : state === 'dashed' ? '#FFFFFF' : '#2A2F45'
   const dash = state === 'dashed' ? '6 6' : undefined
   const opacity = state === 'faded' ? 0.35 : 0.85
   const width = state === 'solid' ? 2.5 : 1.5
@@ -526,7 +526,7 @@ function HoverTooltip({
                 ? 'bg-success'
                 : state === 'decaying'
                   ? 'bg-warn'
-                  : 'bg-accent'
+                  : 'bg-text-primary'
             }`}
             style={{ width: `${barWidth}%` }}
           />
@@ -596,7 +596,7 @@ function MiniMap({
     <button
       type="button"
       onClick={onRecenter}
-      className="absolute bottom-4 right-4 z-20 rounded-md border border-border bg-surface-1/90 p-1.5 backdrop-blur transition-colors hover:border-accent"
+      className="absolute bottom-4 right-4 z-20 rounded-md border border-border bg-surface-1/90 p-1.5 backdrop-blur transition-colors hover:border-text-primary"
       aria-label="Свернуть к центру"
       title="Свернуть к центру"
     >
@@ -869,8 +869,8 @@ export function GraphCanvas({
 export function LegendStrip() {
   return (
     <div className="flex h-14 items-center gap-4 overflow-x-auto border-t border-border bg-surface-1 px-4 sm:gap-6 sm:px-8 lg:px-20">
-      <LegendDot fill="#7C5CFF" stroke="#A78BFA" label="Доступен" />
-      <LegendDot fill="#0A0E1A" stroke="#A78BFA" label="В процессе" arc />
+      <LegendDot fill="#7C5CFF" stroke="#FFFFFF" label="Доступен" />
+      <LegendDot fill="#0A0E1A" stroke="#FFFFFF" label="В процессе" arc />
       <LegendDot fill="#22C55E" stroke="#16A34A" label="Освоен" check />
       <LegendDot fill="#0A0E1A" stroke="#F59E0B" label="Затухает" pulse />
       <LegendDot fill="#1F2434" stroke="#2A2F45" label="Закрыт" lock />
@@ -902,7 +902,7 @@ function LegendDot({
           <circle cx={10} cy={10} r={9} fill="none" stroke={stroke} strokeWidth={1.5} opacity={0.5} />
         )}
         <circle cx={10} cy={10} r={7} fill={fill} stroke={stroke} strokeWidth={1.5} />
-        {arc && <path d="M10 4 A 6 6 0 0 1 16 10" fill="none" stroke="#A78BFA" strokeWidth={2} strokeLinecap="round" />}
+        {arc && <path d="M10 4 A 6 6 0 0 1 16 10" fill="none" stroke="#FFFFFF" strokeWidth={2} strokeLinecap="round" />}
         {check && (
           <path
             d="M6 10l3 3 5-6"

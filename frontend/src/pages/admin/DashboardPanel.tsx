@@ -33,8 +33,8 @@ export function DashboardPanel() {
       <section>
         <h2 className="mb-2 font-display text-sm font-bold text-text-secondary">Сейчас идут</h2>
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
-          <StatCard label="Mock-сессий" value={fmt(data.active_mock_sessions)} color="text-cyan" />
-          <StatCard label="Активных матчей" value={fmt(data.active_arena_matches)} color="text-cyan" />
+          <StatCard label="Mock-сессий" value={fmt(data.active_mock_sessions)} color="text-text-secondary" />
+          <StatCard label="Активных матчей" value={fmt(data.active_arena_matches)} color="text-text-secondary" />
           <StatCard label="Anti-cheat сигналов 24ч" value={fmt(data.anticheat_signals_24h)} color={data.anticheat_signals_24h > 0 ? 'text-warn' : 'text-text-muted'} />
         </div>
       </section>

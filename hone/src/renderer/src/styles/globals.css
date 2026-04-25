@@ -652,6 +652,15 @@ textarea {
    excalidrawAPI.toggleSidebar({name:'library'}). */
 .hone-excalidraw-mount .excalidraw {
   --color-canvas-background: #000;
+  /* Excalidraw'ский dark theme = их `--theme-filter` = invert(93%) hue-rotate(180deg).
+     Применяется к canvas, инвертирует цвета. Их default 93% даёт серый bg
+     (#111 примерно), а юзер хочет чистый #000 чтобы соответствовать Hone palette.
+     Перебиваем на invert(100%): white(255) → 0 = pure black. Hue-rotate(180)
+     не трогает grayscale, но крутит цвета (синий ↔ оранжевый и т.д.) — это
+     intended behavior Excalidraw'а, оставляем. Результат: чёрный bg + светлые
+     элементы (которые Excalidraw рисует как тёмные, после invert становятся
+     светлыми). */
+  --theme-filter: invert(100%) hue-rotate(180deg) !important;
 }
 .hone-excalidraw-mount .excalidraw .layer-ui__wrapper__top-right,
 .hone-excalidraw-mount .excalidraw .App-toolbar,
@@ -676,13 +685,11 @@ textarea {
 .hone-excalidraw-mount .excalidraw .ContextMenu__option__shortcut {
   display: none !important;
 }
-/* Чистое чёрное полотно. !important чтобы перебить --color-canvas-background
-   custom property и любую default-bg от Excalidraw. */
-.hone-excalidraw-mount .excalidraw,
-.hone-excalidraw-mount .excalidraw .excalidraw-container,
-.hone-excalidraw-mount .excalidraw canvas {
-  background: #000 !important;
-}
+/* Excalidraw'ская dark-mode логика: он рисует элементы как в light-теме
+   (тёмные на белом), а сверху накладывает CSS-filter `invert(93%) hue-rotate(180deg)`
+   на canvas, который делает результат тёмным с светлыми элементами. Это их
+   ИНТЕНДЕД механизм — мы его НЕ трогаем. Раньше я его глушил — отсюда и
+   получался white-канвас. Возвращаем как есть. */
 .hone-excalidraw-mount .excalidraw .Island {
   box-shadow: none !important;
 }

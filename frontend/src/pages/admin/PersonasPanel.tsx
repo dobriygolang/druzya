@@ -116,7 +116,7 @@ export function PersonasPanel() {
                         disabled={busy}
                         className={`rounded-md px-2 py-0.5 font-mono text-[10px] ${
                           p.is_enabled
-                            ? 'bg-accent/20 text-accent'
+                            ? 'bg-text-primary/20 text-text-primary'
                             : 'bg-surface-3 text-text-muted'
                         }`}
                       >
@@ -131,7 +131,7 @@ export function PersonasPanel() {
                         <button
                           type="button"
                           onClick={() => setEditing(p)}
-                          className="text-[11px] text-accent hover:underline"
+                          className="text-[11px] text-text-primary hover:underline"
                         >
                           edit
                         </button>

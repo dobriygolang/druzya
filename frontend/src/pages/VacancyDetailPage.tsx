@@ -48,7 +48,7 @@ export default function VacancyDetailPage() {
       <AppShellV2>
         <div className="p-8">
           <div className="text-sm text-danger">Вакансия не найдена.</div>
-          <Link to="/vacancies" className="mt-3 inline-block text-sm text-accent hover:underline">
+          <Link to="/vacancies" className="mt-3 inline-block text-sm text-text-primary hover:underline">
             ← К каталогу
           </Link>
         </div>
@@ -123,7 +123,7 @@ export default function VacancyDetailPage() {
                 href={vac.url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="mt-3 inline-flex items-center gap-1 text-sm text-accent hover:underline"
+                className="mt-3 inline-flex items-center gap-1 text-sm text-text-primary hover:underline"
               >
                 Открыть полное описание <ExternalLink className="h-3.5 w-3.5" />
               </a>
@@ -137,7 +137,7 @@ export default function VacancyDetailPage() {
                   </h2>
                   {vac.description_html ? (
                     <div
-                      className="prose prose-sm max-w-none text-sm text-text-secondary [&_a]:text-accent [&_a]:hover:underline [&_h3]:mt-3 [&_h3]:font-display [&_h3]:text-sm [&_h3]:font-semibold [&_h3]:text-text-primary [&_li]:my-1 [&_p]:my-2 [&_ul]:list-disc [&_ul]:pl-5"
+                      className="prose prose-sm max-w-none text-sm text-text-secondary [&_a]:text-text-primary [&_a]:hover:underline [&_h3]:mt-3 [&_h3]:font-display [&_h3]:text-sm [&_h3]:font-semibold [&_h3]:text-text-primary [&_li]:my-1 [&_p]:my-2 [&_ul]:list-disc [&_ul]:pl-5"
                       // Sanitised server-side against an HTML tag allow-list.
                       dangerouslySetInnerHTML={{ __html: vac.description_html }}
                     />
@@ -300,7 +300,7 @@ function PrepDrawer({ onClose, missing }: { onClose: () => void; missing: string
                       className="flex items-center justify-between rounded-md border border-border bg-surface-2 px-3 py-2 text-sm text-text-primary hover:border-border-strong"
                     >
                       <span className="font-mono">{s}</span>
-                      <span className="text-xs text-accent-hover">Ката →</span>
+                      <span className="text-xs text-text-primary">Ката →</span>
                     </Link>
                   </li>
                 ))}

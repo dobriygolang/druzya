@@ -180,8 +180,8 @@ const TONE: Record<NonNullable<MiniProps['tone']>, string> = {
   default: 'text-text-primary',
   success: 'text-success',
   warn: 'text-warn',
-  cyan: 'text-cyan',
-  pink: 'text-pink',
+  cyan: 'text-text-secondary',
+  pink: 'text-text-secondary',
   danger: 'text-danger',
 }
 
@@ -249,9 +249,9 @@ export function BottomStrip({
         ))}
       </div>
       {showCta && (
-        <span className="inline-flex items-center gap-2.5 rounded-md border border-accent/60 bg-accent/15 px-4 py-2.5">
+        <span className="inline-flex items-center gap-2.5 rounded-md border border-border-strong bg-text-primary/15 px-4 py-2.5">
           <span className="font-display font-semibold text-white text-[13px]">Хочу так же</span>
-          <span className="font-mono text-cyan text-[13px]">→</span>
+          <span className="font-mono text-text-secondary text-[13px]">→</span>
         </span>
       )}
     </div>

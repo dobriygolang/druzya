@@ -151,7 +151,7 @@ export default function CircleDetailPage() {
                     >
                       {m.username || m.user_id.slice(0, 6)}
                       {m.role === 'admin' && (
-                        <span className="text-[10px] font-mono uppercase text-accent">admin</span>
+                        <span className="text-[10px] font-mono uppercase text-text-primary">admin</span>
                       )}
                     </span>
                   ))}
@@ -166,7 +166,7 @@ export default function CircleDetailPage() {
                 </div>
                 <button
                   onClick={() => setShowForm((s) => !s)}
-                  className="text-[12px] font-medium text-accent transition-colors hover:underline"
+                  className="text-[12px] font-medium text-text-primary transition-colors hover:underline"
                 >
                   {showForm ? 'Cancel' : '+ New event'}
                 </button>
@@ -252,7 +252,7 @@ export default function CircleDetailPage() {
                     <button
                       type="submit"
                       disabled={submitting || !form.title.trim() || !form.starts_at}
-                      className="rounded-lg bg-accent px-4 py-2 text-[13px] font-semibold text-bg disabled:opacity-50"
+                      className="rounded-lg bg-text-primary px-4 py-2 text-[13px] font-semibold text-bg disabled:opacity-50"
                     >
                       {submitting ? 'Saving…' : 'Create event'}
                     </button>

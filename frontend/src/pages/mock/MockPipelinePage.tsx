@@ -187,7 +187,7 @@ export default function MockPipelinePage() {
     <AppShellV2>
       <div className="flex flex-col gap-6 px-4 py-6 sm:px-8 lg:px-20 lg:py-8">
         <header className="flex flex-col gap-1">
-          <div className="font-mono text-[10px] uppercase tracking-wider text-pink">
+          <div className="font-mono text-[10px] uppercase tracking-wider text-text-secondary">
             Mock Pipeline · {pipeline.data.id.slice(0, 8)}
           </div>
           <h1 className="font-display text-2xl sm:text-3xl font-bold text-text-primary">
@@ -240,7 +240,7 @@ export default function MockPipelinePage() {
               type="button"
               onClick={onComplete}
               disabled={completeStage.isPending || finish.isPending || currentStage.status === 'pending'}
-              className="rounded-md bg-accent hover:bg-accent/90 text-white font-semibold text-sm px-4 py-2 disabled:opacity-60 disabled:cursor-not-allowed"
+              className="rounded-md bg-text-primary hover:bg-text-primary/90 text-bg font-medium text-sm px-4 py-2 disabled:opacity-60 disabled:cursor-not-allowed"
             >
               {allDone ? 'Завершить пайплайн' : 'Сдать секцию →'}
             </button>

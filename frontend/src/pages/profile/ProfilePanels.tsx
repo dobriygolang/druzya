@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react'
-import { Trophy, Shield } from 'lucide-react'
+import { Shield } from 'lucide-react'
 import { Link, useNavigate } from 'react-router-dom'
 import { Button } from '../../components/Button'
 import { Card } from '../../components/Card'
@@ -7,11 +7,9 @@ import { Avatar } from '../../components/Avatar'
 import { cn } from '../../lib/cn'
 import { type Profile } from '../../lib/queries/profile'
 import { useRatingMeQuery } from '../../lib/queries/rating'
-import { useAchievementsQuery, isUnlocked } from '../../lib/queries/achievements'
 import { useArenaHistoryQuery } from '../../lib/queries/matches'
-import { useMyCohortQuery } from '../../lib/queries/cohort'
+import { useMyCirclesQuery } from '../../lib/queries/circles'
 import { humanizeSection } from '../../lib/labels'
-import { fmtDate } from './dateHelpers'
 
 // Phase-4 ADR-001: standalone /history page deleted; its filters +
 // pagination + full UX moved here so all match history lives inside the
@@ -253,69 +251,11 @@ export function MatchesPanel() {
   )
 }
 
-export function AchievementsPanel() {
-  const { data, isLoading, isError, refetch } = useAchievementsQuery()
-  const unlocked = (data ?? []).filter(isUnlocked)
-  if (isLoading) {
-    return (
-      <Card className="flex-col gap-2 p-5" interactive={false}>
-        <div className="h-4 w-1/3 animate-pulse rounded bg-surface-3" />
-      </Card>
-    )
-  }
-  if (isError) {
-    return (
-      <Card className="flex-col items-start gap-3 p-5" interactive={false}>
-        <p className="text-sm text-danger">Не удалось загрузить ачивки.</p>
-        <Button size="sm" onClick={() => refetch()}>Повторить</Button>
-      </Card>
-    )
-  }
-  if (unlocked.length === 0) {
-    return (
-      <Card className="flex-col gap-2 p-5" interactive={false}>
-        <p className="text-sm text-text-secondary">
-          Ещё ничего не разблокировано. Открой <Link className="text-text-primary hover:underline" to="/achievements">все ачивки</Link>, чтобы увидеть условия получения.
-        </p>
-      </Card>
-    )
-  }
-  return (
-    <Card className="flex-col gap-3 p-5" interactive={false}>
-      <div className="flex items-center justify-between">
-        <h3 className="font-display text-base font-bold text-text-primary">Разблокированные ачивки</h3>
-        <Link to="/achievements" className="font-mono text-[11px] text-text-primary hover:underline">Все ›</Link>
-      </div>
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4">
-        {unlocked.map((a) => (
-          <div
-            key={a.code}
-            className={cn(
-              'flex flex-col gap-2 rounded-lg p-3',
-              a.tier === 'legendary'
-                ? 'bg-surface-2 border border-text-primary'
-                : a.tier === 'rare'
-                  ? 'bg-surface-2 border border-border-strong'
-                  : 'bg-surface-2 border border-border',
-            )}
-          >
-            <Trophy className="h-5 w-5 text-text-primary" />
-            <span className="font-display text-[13px] font-bold text-text-primary">{a.title}</span>
-            <span className="line-clamp-2 font-mono text-[10px] text-text-secondary">{a.description}</span>
-            {a.unlocked_at && (
-              <span className="font-mono text-[10px] text-text-muted">
-                {fmtDate(a.unlocked_at)}
-              </span>
-            )}
-          </div>
-        ))}
-      </div>
-    </Card>
-  )
-}
+// Phase-4 ADR-001: AchievementsPanel removed (gamification cut, Wave 1).
 
-export function CohortsPanel() {
-  const { data: cohort, isLoading, isError, refetch } = useMyCohortQuery()
+// CohortsPanel renamed to CirclesPanel (Wave 2 — cohort merged into circles).
+export function CirclesPanel() {
+  const { data: circles, isLoading, isError, refetch } = useMyCirclesQuery()
   if (isLoading) {
     return (
       <Card className="flex-col gap-2 p-5" interactive={false}>
@@ -326,34 +266,39 @@ export function CohortsPanel() {
   if (isError) {
     return (
       <Card className="flex-col items-start gap-3 p-5" interactive={false}>
-        <p className="text-sm text-danger">Не удалось загрузить circle.</p>
+        <p className="text-sm text-danger">Не удалось загрузить circles.</p>
         <Button size="sm" onClick={() => refetch()}>Повторить</Button>
       </Card>
     )
   }
-  if (!cohort) {
+  const list = circles ?? []
+  if (list.length === 0) {
     return (
       <Card className="flex-col items-start gap-3 p-5" interactive={false}>
-        <p className="text-sm text-text-secondary">Ты пока без circle.</p>
-        <Link to="/cohort"><Button size="sm">Найти circle</Button></Link>
+        <p className="text-sm text-text-secondary">Ты пока ни в одном circle.</p>
+        <Link to="/circles"><Button size="sm">Найти circle</Button></Link>
       </Card>
     )
   }
   return (
-    <Card className="flex-col gap-3 p-5" interactive={false}>
-      <div className="flex items-center gap-3">
-        <Shield className="h-6 w-6 text-text-primary" />
-        <div className="flex flex-col">
-          <h3 className="font-display text-lg font-bold text-text-primary">{cohort.name}</h3>
-          <span className="font-mono text-[11px] text-text-muted">
-            {(cohort.members?.length ?? 0)} участников · ELO {cohort.cohort_elo}
-          </span>
-        </div>
-      </div>
-      <Link to="/cohort" className="font-mono text-[12px] text-text-primary hover:underline">
-        Открыть страницу circle ›
-      </Link>
-    </Card>
+    <div className="flex flex-col gap-3">
+      {list.map((c) => (
+        <Card key={c.id} className="flex-col gap-3 p-5" interactive={false}>
+          <div className="flex items-center gap-3">
+            <Shield className="h-6 w-6 text-text-primary" />
+            <div className="flex flex-col">
+              <h3 className="font-display text-lg font-bold text-text-primary">{c.name}</h3>
+              <span className="font-mono text-[11px] text-text-muted">
+                {c.members?.length ?? 0} участников
+              </span>
+            </div>
+          </div>
+          <Link to={`/circles/${c.id}`} className="font-mono text-[12px] text-text-primary hover:underline">
+            Открыть страницу circle ›
+          </Link>
+        </Card>
+      ))}
+    </div>
   )
 }
 

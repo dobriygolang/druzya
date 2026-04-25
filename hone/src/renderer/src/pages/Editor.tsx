@@ -15,6 +15,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ConnectError, Code } from '@connectrpc/connect';
 import * as Y from 'yjs';
+import { IndexeddbPersistence } from 'y-indexeddb';
 import {
   Awareness,
   applyAwarenessUpdate,
@@ -198,12 +199,23 @@ export function EditorPage({ initialRoomId, onConsumeInitial }: EditorPageProps 
     if (typeof window === 'undefined') return false;
     return window.localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === '1';
   });
+  const sidebarMountedRef = useRef(false);
   useEffect(() => {
     try {
       window.localStorage.setItem(SIDEBAR_COLLAPSED_KEY, sidebarCollapsed ? '1' : '0');
     } catch {
       /* ignore */
     }
+    if (!sidebarMountedRef.current) {
+      sidebarMountedRef.current = true;
+      return;
+    }
+    const t1 = window.setTimeout(() => window.dispatchEvent(new Event('resize')), 0);
+    const t2 = window.setTimeout(() => window.dispatchEvent(new Event('resize')), 80);
+    return () => {
+      window.clearTimeout(t1);
+      window.clearTimeout(t2);
+    };
   }, [sidebarCollapsed]);
   const [sidebarW, setSidebarW] = useState<number>(() => {
     if (typeof window === 'undefined') return SIDEBAR_DEFAULT;
@@ -253,8 +265,11 @@ export function EditorPage({ initialRoomId, onConsumeInitial }: EditorPageProps 
         paddingTop: 80,
         paddingBottom: 0,
         display: 'grid',
-        gridTemplateColumns: sidebarCollapsed ? `0px 0px 1fr` : `${sidebarW}px 6px 1fr`,
-        transition: 'grid-template-columns 240ms ease',
+        // КРИТИЧНО: при collapsed — single-column grid, иначе section с
+        // одним in-flow child'ом auto-flow'ится в column 1 и схлопывается
+        // до нуля ширины (EditorExpandSidebarButton — position:absolute,
+        // в grid flow не участвует).
+        gridTemplateColumns: sidebarCollapsed ? `1fr` : `${sidebarW}px 6px 1fr`,
         animationDuration: '320ms',
         background: '#000',
       }}
@@ -382,6 +397,7 @@ function CodeRoomsSidebar({
     setError(null);
     try {
       const r = await createRoom({ type: 'practice', language: lang });
+      FRESHLY_CREATED.add(r.id);
       onCreated(r.id);
     } catch (err: unknown) {
       const ce = ConnectError.from(err);
@@ -393,7 +409,7 @@ function CodeRoomsSidebar({
 
   return (
     <aside
-      className="slide-from-left"
+      // slide-from-left анимация удалена для симметрии open/close.
       style={{
         animationDuration: '320ms',
         borderRight: '1px solid rgba(255,255,255,0.06)',
@@ -572,7 +588,55 @@ function CodeRoomsSidebar({
           {error}
         </div>
       )}
+      <CodeRoomsRetentionHint />
     </aside>
+  );
+}
+
+function CodeRoomsRetentionHint() {
+  const [hover, setHover] = useState(false);
+  return (
+    <div
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+      title="Code rooms expire 7 days after last activity. Replays are kept for 30 days, then purged."
+      style={{
+        marginTop: 14,
+        padding: '10px 14px 14px',
+        borderTop: '1px solid rgba(255,255,255,0.04)',
+        display: 'flex',
+        alignItems: 'center',
+        gap: 6,
+        cursor: 'help',
+      }}
+    >
+      <svg
+        width={11}
+        height={11}
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth={1.6}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        style={{ color: hover ? 'var(--ink-60)' : 'var(--ink-40)', flexShrink: 0, transition: 'color 160ms ease' }}
+      >
+        <circle cx="12" cy="12" r="9" />
+        <polyline points="12 7 12 12 15 14" />
+      </svg>
+      <span
+        className="mono"
+        style={{
+          fontSize: 9,
+          letterSpacing: '0.16em',
+          textTransform: 'uppercase',
+          color: hover ? 'var(--ink-60)' : 'var(--ink-40)',
+          transition: 'color 160ms ease',
+        }}
+      >
+        Auto-cleanup after 7d idle
+      </span>
+    </div>
   );
 }
 
@@ -948,10 +1012,22 @@ function loadRecent(): RecentEntry[] {
   }
 }
 
+// Session-scoped set of room IDs we just created locally. Used by RoomView
+// to insert language template synchronously (без 250ms WS-snapshot delay).
+// Безопасно: ownership одной комнаты на одного клиента, set чистится после
+// первого использования.
+const FRESHLY_CREATED: Set<string> = new Set();
+
 function rememberEditorRoom(id: string, language?: number) {
   if (typeof window === 'undefined') return;
   try {
-    const cur = loadRecent().filter((e) => e.id !== id);
+    const cur = loadRecent();
+    const existing = cur.findIndex((e) => e.id === id);
+    if (existing !== -1) {
+      // Уже в списке — НЕ переставляем в начало, оставляем порядок как был.
+      // Юзер просил: какие открывал недавно, в том порядке и пусть лежат.
+      return;
+    }
     cur.unshift({ id, language, openedAt: Date.now() });
     window.localStorage.setItem(RECENT_KEY, JSON.stringify(cur.slice(0, RECENT_MAX)));
   } catch {
@@ -1017,6 +1093,13 @@ function RoomView({ roomId }: { roomId: string; onBack?: () => void }) {
     ydocRef.current = ydoc;
     const ytext = ydoc.getText('code');
 
+    // Local-first persistence: y-indexeddb сохраняет код в IndexedDB
+    // браузера. При offline'е, app crash'е, или backend down — данные не
+    // теряются. На rejoin (даже без бэка) код восстанавливается из локального
+    // storage. WS reconnect'ится → Yjs CRDT merge'ит local + remote updates
+    // автоматически, без конфликтов.
+    const persistence = new IndexeddbPersistence(`hone:editor:${room.id}`, ydoc);
+
     // Awareness — track карет/selection других участников. Бэкенд relay'ит
     // payload через 'presence' envelope (см. editor/ports/ws.go InPresence).
     const awareness = new Awareness(ydoc);
@@ -1029,7 +1112,9 @@ function RoomView({ roomId }: { roomId: string; onBack?: () => void }) {
 
     // Local Y.Doc updates → push.
     const onUpdate = (update: Uint8Array, origin: unknown) => {
-      if (origin === 'remote') return;
+      // Игнорируем updates от 'remote' (WS) и от persistence (IndexedDB
+      // restore on mount) — иначе зацикливание.
+      if (origin === 'remote' || origin === persistence) return;
       sendRef.current?.(update);
     };
     ydoc.on('update', onUpdate);
@@ -1079,17 +1164,34 @@ function RoomView({ roomId }: { roomId: string; onBack?: () => void }) {
       handle.send({ kind: 'op', data: { payload: bytesToB64(update) } });
     };
 
-    // Code preset seed: если юзер — owner и комната ещё пустая (после
-    // короткой паузы для snapshot-sync), вставляем стартовый шаблон по
-    // языку. Race-safe: только owner делает seed (другие участники не
-    // могут попасть в комнату до того как owner её создал, поэтому к
-    // моменту их WS-open ytext уже непустой).
+    // Code preset seed: для свежесозданных комнат (FRESHLY_CREATED set)
+    // вставляем шаблон СИНХРОННО — никакого WS-snapshot round-trip'а ждать
+    // не нужно, потому что комната заведомо пустая (мы только что её
+    // создали). Шаблон полностью клиентский (templateForLanguage), хранится
+    // в bundle'е приложения — на бэке нет никакого "preset storage".
+    //
+    // Для НЕсвежих комнат (open recent / join by URL) seed НЕ делаем — иначе
+    // могли бы клобберить существующий код после snapshot-sync.
     const seedTimer = window.setTimeout(() => {
+      if (!FRESHLY_CREATED.has(room.id)) return;
       if (!myUserId || room.ownerId !== myUserId) return;
-      if (ytext.length > 0) return;
+      if (ytext.length > 0) {
+        // Уже что-то есть (snapshot прилетел быстрее, или React StrictMode
+        // double-mount уже засеял на первом проходе) — не делаем seed второй
+        // раз. Удаляем флаг чтобы будущий «open recent» не триггерил.
+        FRESHLY_CREATED.delete(room.id);
+        return;
+      }
       const template = templateForLanguage(room.language);
-      if (template) ytext.insert(0, template);
-    }, 800);
+      if (template) {
+        ytext.insert(0, template);
+        // Удаляем ТОЛЬКО ПОСЛЕ успешного insert. В dev-mode StrictMode
+        // useEffect срабатывает дважды (mount → cleanup → mount). Если бы
+        // удаляли в начале, то после cleanup ydoc'а второй mount получает
+        // пустой ytext + пустой set → без шаблона.
+        FRESHLY_CREATED.delete(room.id);
+      }
+    }, 0);
     sendAwarenessRef.current = (update: Uint8Array) => {
       // Backend ws.go ловит kind='presence', envelope.data — opaque, мы
       // кладём { update: base64 } и backend re-broadcast'ит как
@@ -1127,13 +1229,18 @@ function RoomView({ roomId }: { roomId: string; onBack?: () => void }) {
       awareness.off('update', onAwareness);
       awareness.destroy();
       ydoc.off('update', onUpdate);
-      ydoc.destroy();
+      window.clearTimeout(seedTimer);
+      // WS close с задержкой 60ms чтобы send-buffer ушёл на сервер ДО close.
+      const closeHandle = wsCloseRef.current;
+      window.setTimeout(() => {
+        try { closeHandle?.(); } catch { /* ignore */ }
+        try { ydoc.destroy(); } catch { /* ignore */ }
+        try { void persistence.destroy(); } catch { /* ignore */ }
+      }, 60);
       ydocRef.current = null;
-      wsCloseRef.current?.();
       wsCloseRef.current = null;
       sendRef.current = null;
       sendAwarenessRef.current = null;
-      window.clearTimeout(seedTimer);
     };
   }, [room, myUserId]);
 

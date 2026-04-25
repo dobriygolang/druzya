@@ -52,7 +52,7 @@ export default function Step4Task() {
       <div className="grid grid-cols-1 md:grid-cols-12 gap-3 mb-5">
         <aside className="md:col-span-5 rounded-xl border border-border bg-bg p-4">
           <div className="flex items-center justify-between mb-3">
-            <span className="rounded bg-accent/15 px-1.5 py-0.5 font-mono text-[10px] font-semibold uppercase tracking-wider text-accent-hover">
+            <span className="rounded bg-text-primary/10 px-1.5 py-0.5 font-mono text-[10px] font-semibold uppercase tracking-wider text-text-primary">
               {SANDBOX_PROBLEM.tag}
             </span>
             <span className="font-mono text-[10px] uppercase tracking-wider text-text-muted">sandbox</span>
@@ -89,7 +89,7 @@ export default function Step4Task() {
         <button
           type="button"
           onClick={runAndGo}
-          className="rounded-md bg-accent hover:bg-accent/90 text-white font-semibold text-sm px-5 py-2.5"
+          className="rounded-md bg-text-primary hover:bg-text-primary/90 text-bg font-medium text-sm px-5 py-2.5"
         >
           Запустить и далее →
         </button>

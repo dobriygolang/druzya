@@ -30,7 +30,6 @@ func (s *Subscriber) Register(bus sharedDomain.Bus) {
 	bus.Subscribe(sharedDomain.MatchCompleted{}.Topic(), s.onMatchCompleted)
 	bus.Subscribe(sharedDomain.DailyKataCompleted{}.Topic(), s.onKataCompleted)
 	bus.Subscribe(sharedDomain.SkillNodeUnlocked{}.Topic(), s.onNodeUnlocked)
-	bus.Subscribe(sharedDomain.CohortWarStarted{}.Topic(), s.onCohortWarStarted)
 	bus.Subscribe(sharedDomain.LevelUp{}.Topic(), s.onLevelUp)
 }
 
@@ -78,19 +77,6 @@ func (s *Subscriber) onNodeUnlocked(_ context.Context, e sharedDomain.Event) err
 	s.Out.Broadcast(feeddomain.FeedEvent{
 		Kind: feeddomain.KindNodeUnlocked,
 		Text: fmt.Sprintf("◈ %s unlocked %q (%s)", feeddomain.Handle(ev.UserID), ev.NodeKey, sectionLabel(ev.Section)),
-		At:   time.Now().UTC(),
-	})
-	return nil
-}
-
-func (s *Subscriber) onCohortWarStarted(_ context.Context, e sharedDomain.Event) error {
-	ev, ok := e.(sharedDomain.CohortWarStarted)
-	if !ok {
-		return fmt.Errorf("feed.onGuildWarStarted: unexpected event %T", e)
-	}
-	s.Out.Broadcast(feeddomain.FeedEvent{
-		Kind: feeddomain.KindCohortWar,
-		Text: fmt.Sprintf("⚔ A cohort war has begun (ends %s)", ev.EndsAt.UTC().Format(time.RFC1123)),
 		At:   time.Now().UTC(),
 	})
 	return nil

@@ -30,7 +30,7 @@ function ErrorChip() {
 
 function PendingChip() {
   return (
-    <span className="inline-flex items-center gap-1 rounded-full bg-cyan/15 px-2 py-0.5 font-mono text-[10px] font-semibold text-cyan">
+    <span className="inline-flex items-center gap-1 rounded-full bg-text-primary/10 px-2 py-0.5 font-mono text-[10px] font-semibold text-text-secondary">
       <Loader2 className="h-3 w-3 animate-spin" /> ждём напарника
     </span>
   )
@@ -65,7 +65,7 @@ function TeamPlayer({
         ? 'bg-warn/20 text-warn'
         : chipTone === 'danger'
           ? 'bg-danger/20 text-danger'
-          : 'bg-cyan/20 text-cyan'
+          : 'bg-text-primary/10 text-text-secondary'
   return (
     <div
       className={[
@@ -171,7 +171,7 @@ function MatchHeader({
     <div className="flex flex-col gap-3 border-b border-border bg-surface-1 px-4 py-3 sm:px-6 lg:h-[100px] lg:flex-row lg:items-center lg:justify-between lg:px-10 lg:py-0">
       <div className="flex items-center gap-2">{renderTeam(myTeam, 'left')}</div>
       <div className="flex flex-col items-center gap-1">
-        <span className="font-mono text-[11px] font-semibold tracking-[0.12em] text-accent-hover">
+        <span className="font-mono text-[11px] font-semibold tracking-[0.12em] text-text-primary">
           RANKED 2V2
         </span>
         <span className="font-display text-3xl font-extrabold leading-none text-text-primary lg:text-[36px]">
@@ -234,7 +234,7 @@ function AssignmentStrip({
   return (
     <div className="flex items-start justify-between gap-4">
       <div className="flex flex-col gap-1.5">
-        <span className="font-mono text-[11px] font-semibold tracking-[0.08em] text-cyan">{label}</span>
+        <span className="font-mono text-[11px] font-semibold tracking-[0.08em] text-text-secondary">{label}</span>
         <h3 className="font-display text-[17px] font-bold text-text-primary">{title}</h3>
         <div className="flex flex-wrap gap-1.5">
           {tags.map((t, i) => (
@@ -242,10 +242,10 @@ function AssignmentStrip({
               key={t}
               className={
                 i === 0
-                  ? 'rounded-full bg-pink/15 px-2 py-0.5 font-mono text-[10px] font-semibold text-pink'
+                  ? 'rounded-full bg-text-primary/10 px-2 py-0.5 font-mono text-[10px] font-semibold text-text-secondary'
                   : i === 1
-                    ? 'rounded-full bg-cyan/15 px-2 py-0.5 font-mono text-[10px] font-semibold text-cyan'
-                    : 'rounded-full bg-accent/15 px-2 py-0.5 font-mono text-[10px] font-semibold text-accent-hover'
+                    ? 'rounded-full bg-text-primary/10 px-2 py-0.5 font-mono text-[10px] font-semibold text-text-secondary'
+                    : 'rounded-full bg-text-primary/15 px-2 py-0.5 font-mono text-[10px] font-semibold text-text-primary'
               }
             >
               {t}
@@ -269,7 +269,7 @@ function MiniEditor({ tabName, lines, highlight }: { tabName: string; lines: str
   return (
     <div className="flex flex-col overflow-hidden rounded-lg bg-surface-1">
       <div className="flex h-9 items-center gap-2 border-b border-border bg-bg px-3">
-        <FileCode className="h-3.5 w-3.5 text-accent-hover" />
+        <FileCode className="h-3.5 w-3.5 text-text-primary" />
         <span className="font-mono text-[11px] text-text-primary">{tabName}</span>
       </div>
       <div className="flex overflow-hidden">
@@ -282,7 +282,7 @@ function MiniEditor({ tabName, lines, highlight }: { tabName: string; lines: str
           {lines.map((line, i) => (
             <div
               key={i}
-              className={i === highlight ? 'rounded-sm bg-accent/15 px-1 text-text-primary' : ''}
+              className={i === highlight ? 'rounded-sm bg-text-primary/15 px-1 text-text-primary' : ''}
             >
               {line || '\u00A0'}
             </div>
@@ -353,8 +353,8 @@ function BottomBar({
   return (
     <div className="flex flex-col gap-4 border-t border-border bg-surface-1 px-4 py-3 sm:px-6 lg:h-20 lg:flex-row lg:items-center lg:justify-between lg:px-8">
       <div className="flex items-center gap-3">
-        <span className="grid h-9 w-9 place-items-center rounded-full bg-cyan/15">
-          <MessageCircle className="h-4 w-4 text-cyan" />
+        <span className="grid h-9 w-9 place-items-center rounded-full bg-text-primary/10">
+          <MessageCircle className="h-4 w-4 text-text-secondary" />
         </span>
         <div className="flex flex-col gap-0.5">
           <span className="text-[13px] text-text-primary">
@@ -471,7 +471,7 @@ export default function Arena2v2Page() {
         />
         <div className="flex flex-1 flex-col gap-4 overflow-auto px-4 py-4 sm:px-6 lg:flex-row lg:overflow-hidden lg:px-8">
           <Pane
-            borderColor="border-cyan"
+            borderColor="border-border-strong"
             label="ЗАДАЧА · ВЫ"
             title={taskATitle}
             tags={[match?.task?.difficulty ?? 'Medium', match?.task?.section ?? 'Algorithms']}

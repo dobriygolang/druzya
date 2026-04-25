@@ -523,11 +523,3 @@ func (c *CachedRepo) ResolveShareToken(ctx context.Context, token string) (domai
 	return r, nil
 }
 
-// ListAchievementsSince — uncached pass-through.
-func (c *CachedRepo) ListAchievementsSince(ctx context.Context, userID uuid.UUID, since time.Time) ([]domain.AchievementBrief, error) {
-	xs, err := c.delegate.ListAchievementsSince(ctx, userID, since)
-	if err != nil {
-		return xs, fmt.Errorf("profile.cache.ListAchievementsSince: %w", err)
-	}
-	return xs, nil
-}

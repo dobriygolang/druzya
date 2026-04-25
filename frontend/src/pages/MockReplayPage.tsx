@@ -32,7 +32,7 @@ function Header() {
         <span className="font-display text-sm font-bold text-text-primary">
           Replay · LRU Cache · 28 апр
         </span>
-        <span className="rounded-full bg-cyan/15 px-2 py-0.5 font-mono text-[10px] font-semibold text-cyan">
+        <span className="rounded-full bg-success/15 px-2 py-0.5 font-mono text-[10px] font-semibold text-success">
           PASSED
         </span>
       </div>
@@ -75,9 +75,9 @@ function CodePlayback({ frameLabel }: { frameLabel: string }) {
     '    }',
   ]
   const annotations: Record<number, { color: string; text: string }> = {
-    4: { color: 'bg-cyan/20 text-cyan', text: '>> 0:08' },
+    4: { color: 'bg-text-primary/10 text-text-secondary', text: '>> 0:08' },
     7: { color: 'bg-warn/20 text-warn', text: 'paused 28s' },
-    13: { color: 'bg-accent/20 text-accent-hover', text: 'return' },
+    13: { color: 'bg-text-primary/10 text-text-primary', text: 'return' },
   }
   return (
     <div className="flex min-w-0 flex-1 flex-col">
@@ -91,7 +91,7 @@ function CodePlayback({ frameLabel }: { frameLabel: string }) {
       <div className="flex flex-1 overflow-auto bg-surface-1">
         <div className="flex flex-col items-end px-3 py-3 font-mono text-[12px] text-text-muted select-none">
           {lines.map((_, i) => (
-            <span key={i} className={i === 11 ? 'text-accent-hover font-semibold' : ''}>
+            <span key={i} className={i === 11 ? 'text-text-primary font-semibold' : ''}>
               {i + 1}
             </span>
           ))}
@@ -106,13 +106,13 @@ function CodePlayback({ frameLabel }: { frameLabel: string }) {
                 <pre
                   className={[
                     'whitespace-pre',
-                    isCursor ? 'bg-accent/15 text-text-primary -mx-2 px-2 rounded' : '',
+                    isCursor ? 'bg-text-primary/10 text-text-primary -mx-2 px-2 rounded' : '',
                     isStrike ? 'line-through text-danger' : '',
                   ].join(' ')}
                 >
                   {line || ' '}
                 </pre>
-                {isCursor && <span className="inline-block h-4 w-0.5 animate-pulse bg-cyan" />}
+                {isCursor && <span className="inline-block h-4 w-0.5 animate-pulse bg-text-primary" />}
                 {a && (
                   <span className={`rounded px-1.5 py-0.5 font-mono text-[10px] font-bold ${a.color}`}>
                     {a.text}
@@ -134,12 +134,12 @@ function CodePlayback({ frameLabel }: { frameLabel: string }) {
 
 function EventsSidebar({ events }: { events: ReplayEvent[] }) {
   const colorMap: Record<string, string> = {
-    cyan: 'bg-cyan',
+    cyan: 'bg-text-primary/60',
     warn: 'bg-warn',
-    accent: 'bg-accent',
+    accent: 'bg-text-primary',
     danger: 'bg-danger',
     success: 'bg-success',
-    pink: 'bg-pink',
+    pink: 'bg-text-primary/60',
   }
   return (
     <div className="flex w-full flex-col bg-surface-2 border-t border-border lg:w-[360px] lg:border-l lg:border-t-0">
@@ -161,7 +161,7 @@ function EventsSidebar({ events }: { events: ReplayEvent[] }) {
       <div className="flex flex-1 flex-col gap-3 overflow-auto p-4">
         {events.map((e, i) => (
           <div key={i} className="flex items-start gap-3 rounded-lg bg-surface-1 p-3">
-            <span className={`mt-1.5 h-2 w-2 rounded-full ${colorMap[e.color] ?? 'bg-cyan'}`} />
+            <span className={`mt-1.5 h-2 w-2 rounded-full ${colorMap[e.color] ?? 'bg-text-primary/60'}`} />
             <div className="flex flex-1 flex-col">
               <span className="text-[13px] font-semibold text-text-primary">{e.label}</span>
               <span className="font-mono text-[11px] text-text-muted">{e.sub}</span>
@@ -176,17 +176,17 @@ function EventsSidebar({ events }: { events: ReplayEvent[] }) {
 
 function Scrubber() {
   const markers = [
-    { left: '8%', color: 'bg-cyan' },
+    { left: '8%', color: 'bg-text-primary/60' },
     { left: '18%', color: 'bg-warn' },
     { left: '36%', color: 'bg-success' },
     { left: '52%', color: 'bg-danger' },
-    { left: '68%', color: 'bg-accent' },
+    { left: '68%', color: 'bg-text-primary' },
     { left: '88%', color: 'bg-warn', star: true },
   ]
   return (
     <div className="flex h-auto flex-col gap-3 border-t border-border bg-surface-1 px-4 py-4 sm:px-6 lg:h-[130px]">
       <div className="flex flex-wrap items-center gap-3 sm:gap-4">
-        <button className="grid h-10 w-10 place-items-center rounded-full bg-accent text-text-primary shadow-glow hover:bg-accent-hover">
+        <button className="grid h-10 w-10 place-items-center rounded-full bg-text-primary text-bg hover:bg-text-primary/90">
           <Play className="h-4 w-4" />
         </button>
         <span className="font-mono text-[13px] text-text-primary">
@@ -198,7 +198,7 @@ function Scrubber() {
               key={s}
               className={[
                 'rounded px-2.5 py-1 font-mono text-[11px] font-semibold',
-                s === '1x' ? 'bg-accent text-text-primary' : 'text-text-secondary',
+                s === '1x' ? 'bg-text-primary text-bg' : 'text-text-secondary',
               ].join(' ')}
             >
               {s}
@@ -222,7 +222,7 @@ function Scrubber() {
       </div>
       <div className="relative">
         <div className="relative h-8 overflow-hidden rounded-full bg-black/40">
-          <div className="absolute inset-y-0 left-0 w-[40%] bg-gradient-to-r from-accent to-accent-hover" />
+          <div className="absolute inset-y-0 left-0 w-[40%] bg-text-primary" />
           <div className="absolute inset-y-0 left-[40%] w-0.5 bg-text-primary" />
           {markers.map((m, i) => (
             <div

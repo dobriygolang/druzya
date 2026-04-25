@@ -1,7 +1,7 @@
 # Hone — Project Bible
 
 > Minimal dark desktop focus cockpit + consumption-surface экосистемы druz9.
-> Версия 0.5 · apr 2026 · **Phase 6.5 closed** — multiplayer Excalidraw + Circles/Events + auth-fix.
+> Версия 0.6 · apr 2026 · **Phase 6.5 closed** — multiplayer Excalidraw + Circles/Events + auth-fix. **ADR-001 Phase-4** — web переведён в Hone-эстетику; теперь это один visual language. См [ecosystem.md](./ecosystem.md) §9.
 
 Hone — один из трёх продуктов экосистемы druz9. См [ecosystem.md](./ecosystem.md) и [cue-bible.md](./cue-bible.md).
 

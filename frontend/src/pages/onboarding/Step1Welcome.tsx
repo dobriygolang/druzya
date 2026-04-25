@@ -30,7 +30,7 @@ export default function Step1Welcome() {
           onboarding · 1 из 5
         </div>
         <h1 className="font-display text-3xl lg:text-[40px] font-bold leading-[1.05] mb-4">
-          <span className="bg-gradient-to-r from-accent to-cyan bg-clip-text text-transparent">druz9</span>
+          <span className="text-text-primary">druz9</span>
           {' — инструмент готовиться к собесам Big-Tech'}
         </h1>
         <p className="text-text-secondary text-[15px] leading-relaxed max-w-[520px] mx-auto mb-8">
@@ -48,7 +48,7 @@ export default function Step1Welcome() {
           <button
             type="button"
             onClick={next}
-            className="rounded-md bg-accent hover:bg-accent/90 text-white font-semibold text-sm px-5 py-2.5"
+            className="rounded-md bg-text-primary hover:bg-text-primary/90 text-bg font-medium text-sm px-5 py-2.5"
           >
             Начать →
           </button>

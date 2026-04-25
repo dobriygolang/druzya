@@ -73,7 +73,7 @@ export function LLMChainPanel() {
       <header className="flex flex-col gap-2 rounded-lg border border-border bg-surface-1 p-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h2 className="flex items-center gap-2 font-display text-sm font-bold text-text-primary">
-            <Zap className="h-4 w-4 text-accent" />
+            <Zap className="h-4 w-4 text-text-primary" />
             Runtime LLM Chain
           </h2>
           <p className="mt-1 font-mono text-[11px] text-text-muted">
@@ -211,7 +211,7 @@ function ChainOrderSection({
             <button
               key={p}
               onClick={() => add(p)}
-              className="flex items-center gap-1 rounded-md border border-border bg-surface-2 px-2 py-1 font-mono text-xs text-text-secondary hover:border-accent hover:text-accent"
+              className="flex items-center gap-1 rounded-md border border-border bg-surface-2 px-2 py-1 font-mono text-xs text-text-secondary hover:border-text-primary hover:text-text-primary"
             >
               <Plus className="h-3 w-3" /> {p}
             </button>
@@ -280,7 +280,7 @@ function TaskMapSection({
                         onChange={(e) => setCell(task, p, e.target.value)}
                         placeholder="—"
                         list={`models-${p}`}
-                        className="w-full rounded border border-border bg-surface-2 px-2 py-1 font-mono text-[11px] text-text-primary placeholder:text-text-muted/50 focus:border-accent focus:outline-none"
+                        className="w-full rounded border border-border bg-surface-2 px-2 py-1 font-mono text-[11px] text-text-primary placeholder:text-text-muted/50 focus:border-text-primary focus:outline-none"
                       />
                       <ProviderModelDatalist provider={p} />
                     </td>
@@ -340,7 +340,7 @@ function VirtualChainsSection({
               onClick={() => setPreviewTier(t)}
               className={`rounded-md px-2 py-1 font-mono text-[11px] ${
                 previewTier === t
-                  ? 'bg-accent/20 text-accent'
+                  ? 'bg-text-primary/20 text-text-primary'
                   : 'bg-surface-2 text-text-muted hover:bg-surface-3'
               }`}
             >
@@ -416,8 +416,8 @@ function VirtualChainCard({
             virtReq === 'free'
               ? 'bg-surface-3 text-text-muted'
               : virtReq === 'seeker'
-                ? 'bg-cyan/15 text-cyan'
-                : 'bg-accent/15 text-accent'
+                ? 'bg-text-primary/10 text-text-secondary'
+                : 'bg-text-primary/15 text-text-primary'
           }`}>
             min: {virtReq}
           </span>
@@ -461,7 +461,7 @@ function VirtualChainCard({
                 <select
                   value={step.provider}
                   onChange={(e) => updateStep(i, { provider: e.target.value })}
-                  className="rounded border border-border bg-surface-2 px-2 py-1 font-mono text-[11px] text-text-primary focus:border-accent focus:outline-none"
+                  className="rounded border border-border bg-surface-2 px-2 py-1 font-mono text-[11px] text-text-primary focus:border-text-primary focus:outline-none"
                 >
                   {KNOWN_PROVIDERS.map((p) => (
                     <option key={p} value={p}>
@@ -474,7 +474,7 @@ function VirtualChainCard({
                   onChange={(e) => updateStep(i, { model: e.target.value })}
                   placeholder="model_id"
                   list={`models-${step.provider}`}
-                  className="flex-1 rounded border border-border bg-surface-2 px-2 py-1 font-mono text-[11px] text-text-primary placeholder:text-text-muted/50 focus:border-accent focus:outline-none"
+                  className="flex-1 rounded border border-border bg-surface-2 px-2 py-1 font-mono text-[11px] text-text-primary placeholder:text-text-muted/50 focus:border-text-primary focus:outline-none"
                 />
                 <ProviderModelDatalist provider={step.provider} />
                 {step.providerMissing && (

@@ -106,7 +106,7 @@ export function MicLevelMeter({ bars = 24, onState, autoStart = true }: Props) {
         return (
           <span
             key={i}
-            className="w-[6px] rounded-sm bg-cyan transition-[height] duration-75"
+            className="w-[6px] rounded-sm bg-text-primary transition-[height] duration-75"
             style={{ height: `${h}px`, opacity }}
           />
         )

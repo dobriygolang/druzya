@@ -266,6 +266,15 @@ export class MockSession extends Message<MockSession> {
    */
   stressProfile?: MockStressProfile;
 
+  /**
+   * ai_assist — true if the candidate opted into Cue copilot help for this
+   * session. When false, copilot.CheckBlock returns blocked=true while the
+   * session is live. Phase-4 ADR-001 (Wave 3) — migration 00040.
+   *
+   * @generated from field: bool ai_assist = 12;
+   */
+  aiAssist = false;
+
   constructor(data?: PartialMessage<MockSession>) {
     super();
     proto3.util.initPartial(data, this);
@@ -285,6 +294,7 @@ export class MockSession extends Message<MockSession> {
     { no: 9, name: "finished_at", kind: "message", T: Timestamp },
     { no: 10, name: "last_messages", kind: "message", T: MockMessage, repeated: true },
     { no: 11, name: "stress_profile", kind: "message", T: MockStressProfile },
+    { no: 12, name: "ai_assist", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): MockSession {
@@ -350,6 +360,15 @@ export class CreateMockRequest extends Message<CreateMockRequest> {
    */
   llmModel = LLMModel.LLM_MODEL_UNSPECIFIED;
 
+  /**
+   * ai_assist — caller opts into Cue copilot help for this mock. Default
+   * (false) is strict / "fair" mode and the desktop client must refuse to
+   * consult the LLM until the session ends.
+   *
+   * @generated from field: bool ai_assist = 9;
+   */
+  aiAssist = false;
+
   constructor(data?: PartialMessage<CreateMockRequest>) {
     super();
     proto3.util.initPartial(data, this);
@@ -366,6 +385,7 @@ export class CreateMockRequest extends Message<CreateMockRequest> {
     { no: 6, name: "paired_user_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
     { no: 7, name: "devils_advocate", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
     { no: 8, name: "llm_model", kind: "enum", T: proto3.getEnumType(LLMModel) },
+    { no: 9, name: "ai_assist", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): CreateMockRequest {

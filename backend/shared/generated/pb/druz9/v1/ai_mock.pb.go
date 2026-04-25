@@ -277,6 +277,10 @@ type MockSession struct {
 	FinishedAt    *timestamppb.Timestamp `protobuf:"bytes,9,opt,name=finished_at,json=finishedAt,proto3" json:"finished_at,omitempty"`
 	LastMessages  []*MockMessage         `protobuf:"bytes,10,rep,name=last_messages,json=lastMessages,proto3" json:"last_messages,omitempty"`
 	StressProfile *MockStressProfile     `protobuf:"bytes,11,opt,name=stress_profile,json=stressProfile,proto3" json:"stress_profile,omitempty"`
+	// ai_assist — true if the candidate opted into Cue copilot help for this
+	// session. When false, copilot.CheckBlock returns blocked=true while the
+	// session is live. Phase-4 ADR-001 (Wave 3) — migration 00040.
+	AiAssist      bool `protobuf:"varint,12,opt,name=ai_assist,json=aiAssist,proto3" json:"ai_assist,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -388,6 +392,13 @@ func (x *MockSession) GetStressProfile() *MockStressProfile {
 	return nil
 }
 
+func (x *MockSession) GetAiAssist() bool {
+	if x != nil {
+		return x.AiAssist
+	}
+	return false
+}
+
 // CreateMockRequest mirrors OpenAPI CreateMockRequest.
 type CreateMockRequest struct {
 	state          protoimpl.MessageState `protogen:"open.v1"`
@@ -399,8 +410,12 @@ type CreateMockRequest struct {
 	PairedUserId   string                 `protobuf:"bytes,6,opt,name=paired_user_id,json=pairedUserId,proto3" json:"paired_user_id,omitempty"`
 	DevilsAdvocate bool                   `protobuf:"varint,7,opt,name=devils_advocate,json=devilsAdvocate,proto3" json:"devils_advocate,omitempty"`
 	LlmModel       LLMModel               `protobuf:"varint,8,opt,name=llm_model,json=llmModel,proto3,enum=druz9.v1.LLMModel" json:"llm_model,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	// ai_assist — caller opts into Cue copilot help for this mock. Default
+	// (false) is strict / "fair" mode and the desktop client must refuse to
+	// consult the LLM until the session ends.
+	AiAssist      bool `protobuf:"varint,9,opt,name=ai_assist,json=aiAssist,proto3" json:"ai_assist,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *CreateMockRequest) Reset() {
@@ -487,6 +502,13 @@ func (x *CreateMockRequest) GetLlmModel() LLMModel {
 		return x.LlmModel
 	}
 	return LLMModel_LLM_MODEL_UNSPECIFIED
+}
+
+func (x *CreateMockRequest) GetAiAssist() bool {
+	if x != nil {
+		return x.AiAssist
+	}
+	return false
 }
 
 // MockMessageRequest mirrors OpenAPI MockMessageRequest.
@@ -1191,7 +1213,7 @@ const file_druz9_v1_ai_mock_proto_rawDesc = "" +
 	"\vtokens_used\x18\x04 \x01(\x05R\n" +
 	"tokensUsed\x129\n" +
 	"\n" +
-	"created_at\x18\x05 \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\"\x96\x04\n" +
+	"created_at\x18\x05 \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\"\xb3\x04\n" +
 	"\vMockSession\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12,\n" +
 	"\x06status\x18\x02 \x01(\x0e2\x14.druz9.v1.MockStatusR\x06status\x12\x1d\n" +
@@ -1209,7 +1231,8 @@ const file_druz9_v1_ai_mock_proto_rawDesc = "" +
 	"finishedAt\x12:\n" +
 	"\rlast_messages\x18\n" +
 	" \x03(\v2\x15.druz9.v1.MockMessageR\flastMessages\x12B\n" +
-	"\x0estress_profile\x18\v \x01(\v2\x1b.druz9.v1.MockStressProfileR\rstressProfile\"\xd7\x02\n" +
+	"\x0estress_profile\x18\v \x01(\v2\x1b.druz9.v1.MockStressProfileR\rstressProfile\x12\x1b\n" +
+	"\tai_assist\x18\f \x01(\bR\baiAssist\"\xf4\x02\n" +
 	"\x11CreateMockRequest\x12\x1d\n" +
 	"\n" +
 	"company_id\x18\x01 \x01(\tR\tcompanyId\x12+\n" +
@@ -1222,7 +1245,8 @@ const file_druz9_v1_ai_mock_proto_rawDesc = "" +
 	"voice_mode\x18\x05 \x01(\bR\tvoiceMode\x12$\n" +
 	"\x0epaired_user_id\x18\x06 \x01(\tR\fpairedUserId\x12'\n" +
 	"\x0fdevils_advocate\x18\a \x01(\bR\x0edevilsAdvocate\x12/\n" +
-	"\tllm_model\x18\b \x01(\x0e2\x12.druz9.v1.LLMModelR\bllmModel\"\x9d\x01\n" +
+	"\tllm_model\x18\b \x01(\x0e2\x12.druz9.v1.LLMModelR\bllmModel\x12\x1b\n" +
+	"\tai_assist\x18\t \x01(\bR\baiAssist\"\x9d\x01\n" +
 	"\x12MockMessageRequest\x12\x1d\n" +
 	"\n" +
 	"session_id\x18\x01 \x01(\tR\tsessionId\x12\x18\n" +

@@ -13,14 +13,12 @@ import { useRatingMeQuery } from '../../lib/queries/rating'
 import { ApiError } from '../../lib/apiClient'
 import { Hero, ProfileTabBar } from './ProfileHeader'
 import {
-  AchievementsCard,
   CohortCard,
   Leaderboard,
   SkillsCard,
 } from './ProfileOverview'
 import {
-  AchievementsPanel,
-  CohortsPanel,
+  CirclesPanel,
   MatchesPanel,
   StatsPanel,
 } from './ProfilePanels'
@@ -123,7 +121,6 @@ export default function ProfilePage() {
           <div className="flex flex-col gap-6 lg:flex-row">
             <div className="flex w-full shrink-0 flex-col gap-5 lg:w-[380px]">
               <SkillsCard />
-              {isOwn && <AchievementsCard />}
               <CohortCard />
             </div>
             <div className="flex min-w-0 flex-1 flex-col">
@@ -132,8 +129,7 @@ export default function ProfilePage() {
           </div>
         )}
         {tab === 'Matches' && <MatchesPanel />}
-        {tab === 'Achievements' && <AchievementsPanel />}
-        {tab === 'Cohorts' && <CohortsPanel />}
+        {tab === 'Circles' && <CirclesPanel />}
         {tab === 'Stats' && <StatsPanel ownProfile={isOwn ? (ownQuery.data as Profile | undefined) : undefined} />}
         {tab === 'Bookings' && isOwn && <BookingsPanel />}
       </div>

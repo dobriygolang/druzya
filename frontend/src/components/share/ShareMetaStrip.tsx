@@ -17,8 +17,8 @@ const TONE: Record<NonNullable<ShareMetaTile['tone']>, string> = {
   success: 'text-success',
   warn: 'text-warn',
   danger: 'text-danger',
-  cyan: 'text-cyan',
-  pink: 'text-pink',
+  cyan: 'text-text-secondary',
+  pink: 'text-text-secondary',
 }
 
 export function ShareMetaStrip({ tiles }: { tiles: ShareMetaTile[] }) {

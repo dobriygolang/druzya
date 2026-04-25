@@ -91,10 +91,10 @@ export function AiInsight({ text }: { text: string }) {
     ? text.split('\n\n').slice(0, 2)
     : [text]
   return (
-    <section className="flex flex-col gap-3 rounded-2xl border border-accent-hover bg-gradient-to-br from-accent/15 to-pink/10 p-5 sm:p-7">
+    <section className="flex flex-col gap-3 rounded-2xl border border-text-primary-hover bg-gradient-to-br from-accent/15 to-pink/10 p-5 sm:p-7">
       <div className="flex flex-col gap-1">
         <div className="flex items-center gap-2">
-          <Brain className="h-5 w-5 text-pink" />
+          <Brain className="h-5 w-5 text-text-secondary" />
           <h3 className="font-display text-lg font-bold text-text-primary">AI insight недели</h3>
         </div>
         <p className="font-mono text-[10px] uppercase tracking-wide text-text-muted">
@@ -118,8 +118,8 @@ const TIER_STYLES: Record<string, string> = {
   bronze: 'bg-warn/15 text-warn border-warn/30',
   silver: 'bg-text-muted/15 text-text-secondary border-text-muted/30',
   gold: 'bg-warn/20 text-warn border-warn/50',
-  platinum: 'bg-cyan/15 text-cyan border-cyan/30',
-  diamond: 'bg-pink/15 text-pink border-pink/30',
+  platinum: 'bg-text-primary/10 text-text-secondary border-border-strong',
+  diamond: 'bg-text-primary/10 text-text-secondary border-border-strong',
 }
 
 function AchievementCard({ a }: { a: AchievementBrief }) {

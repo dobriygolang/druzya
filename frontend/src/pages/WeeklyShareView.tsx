@@ -130,7 +130,7 @@ function WebChrome({
           height: 900,
           borderRadius: '50%',
           background:
-            'radial-gradient(circle, rgba(244,114,182,0.12) 0%, rgba(34,211,238,0.06) 40%, transparent 70%)',
+            'radial-gradient(circle, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0.03) 40%, transparent 70%)',
         }}
       />
       <div
@@ -142,7 +142,7 @@ function WebChrome({
           height: 700,
           borderRadius: '50%',
           background:
-            'radial-gradient(circle, rgba(88,44,255,0.10) 0%, transparent 60%)',
+            'radial-gradient(circle, rgba(255,255,255,0.04) 0%, transparent 60%)',
         }}
       />
 
@@ -153,7 +153,7 @@ function WebChrome({
             <span className="font-display text-[15px] sm:text-[17px] font-bold tracking-tight">
               druz9
             </span>
-            <span className="ml-2 hidden sm:inline-block rounded-full bg-cyan/15 border border-cyan/30 px-2.5 py-0.5 font-mono text-[9px] uppercase tracking-[0.16em] text-cyan">
+            <span className="ml-2 hidden sm:inline-block rounded-full bg-text-primary/10 border border-border-strong px-2.5 py-0.5 font-mono text-[9px] uppercase tracking-[0.16em] text-text-secondary">
               ● public share
             </span>
           </Link>
@@ -189,7 +189,7 @@ function WebChrome({
             <div className="lg:col-span-7 flex lg:justify-end">
               <Link
                 to="/onboarding/welcome"
-                className="inline-flex items-center gap-3 rounded-md border border-accent/60 bg-accent/15 hover:bg-accent/25 transition px-5 py-3"
+                className="inline-flex items-center gap-3 rounded-md border border-border-strong bg-text-primary/10 hover:bg-text-primary/15 transition px-5 py-3"
               >
                 <div>
                   <div className="font-display font-semibold text-[14px]">Хочу так же →</div>
@@ -237,13 +237,13 @@ function WebMini({
     tone === 'success'
       ? 'text-success'
       : tone === 'cyan'
-        ? 'text-cyan'
+        ? 'text-text-secondary'
         : tone === 'warn'
           ? 'text-warn'
           : tone === 'danger'
             ? 'text-danger'
             : tone === 'pink'
-              ? 'text-pink'
+              ? 'text-text-secondary'
               : 'text-text-primary'
   return (
     <div className="pr-4 border-r border-border last:border-r-0">
@@ -455,8 +455,8 @@ function WebHeroAchievement({
         : tier === 'bronze'
           ? ['#D97706', '#92400E']
           : tier === 'legendary'
-            ? ['#F472B6', '#582CFF']
-            : ['#22D3EE', '#582CFF']
+            ? ['#FFFFFF', '#A6A6A6']
+            : ['#FFFFFF', '#595959']
   const xp = report.metrics.xp_earned ?? 0
   const ratingDelta = report.metrics.rating_change ?? 0
   const matches = report.metrics.matches_won ?? 0
@@ -481,7 +481,7 @@ function WebHeroAchievement({
             style={{
               inset: 36,
               background: `linear-gradient(135deg, ${grad[0]} 0%, ${grad[1]} 100%)`,
-              boxShadow: '0 32px 80px -16px rgba(88,44,255,0.5)',
+              boxShadow: '0 32px 80px -16px rgba(0,0,0,0.5)',
             }}
           >
             <span className="font-display font-extrabold text-white" style={{ fontSize: 100, lineHeight: 1 }}>

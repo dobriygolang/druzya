@@ -489,6 +489,26 @@ message RateCopilotMessageRequest {
 
 message RateCopilotMessageResponse {}
 
+// CheckBlockRequest — user_id is taken from the auth token; no body fields.
+// Cue desktop calls this before every LLM consult. When blocked=true, Cue must
+// show "help disabled" UI and skip the LLM call. The Analyze/Chat RPCs also
+// enforce server-side as defense-in-depth.
+message CheckBlockRequest {}
+
+// CheckBlockResponse describes whether the caller is currently barred from
+// consulting Cue. Phase-4 ADR-001 (Wave 3) — fed by an ai_mock session row
+// where ai_assist=FALSE.
+message CheckBlockResponse {
+  // blocked is true while a strict-mode mock session is live.
+  bool blocked = 1;
+  // reason is a stable machine-readable tag. Empty when blocked=false.
+  // Known values: "mock_no_assist".
+  string reason = 2;
+  // until is the soft expiry of the block (e.g. session's expected end).
+  // Zero / unset means "until the session is finished, indeterminate".
+  google.protobuf.Timestamp until = 3;
+}
+
 // ============================================================================
 //  Service
 // ============================================================================
@@ -588,5 +608,14 @@ service CopilotService {
   // ListSessions — paginated history of sessions for the caller.
   rpc ListSessions(ListCopilotSessionsRequest) returns (ListCopilotSessionsResponse) {
     option (google.api.http) = {get: "/api/v1/copilot/sessions"};
+  }
+
+  // CheckBlock — Cue desktop calls this before every LLM consult to find
+  // out whether the user is mid-mock with ai_assist=FALSE. When blocked is
+  // true, the desktop client MUST suppress the LLM call and surface a
+  // "help disabled" hint. The Analyze/Chat RPCs apply the same gate
+  // server-side as defense-in-depth (Connect PermissionDenied).
+  rpc CheckBlock(CheckBlockRequest) returns (CheckBlockResponse) {
+    option (google.api.http) = {get: "/api/v1/copilot/check-block"};
   }
 }

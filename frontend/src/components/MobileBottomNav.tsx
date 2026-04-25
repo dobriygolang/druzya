@@ -175,7 +175,7 @@ function Tab({
         cn(
           'relative flex flex-col items-center gap-0.5 py-1 select-none transition-transform duration-[120ms]',
           'active:scale-[0.92]',
-          isActive ? 'text-accent-hover' : 'text-text-muted',
+          isActive ? 'text-text-primary' : 'text-text-muted',
         )
       }
     >
@@ -209,7 +209,7 @@ function Tab({
             <span
               className={cn(
                 'h-1 w-1 rounded-full',
-                isActive ? 'bg-accent-hover' : 'bg-transparent',
+                isActive ? 'bg-text-primary-hover' : 'bg-transparent',
               )}
               aria-hidden="true"
             />
@@ -246,7 +246,7 @@ function FabButton({
         'active:scale-[0.93]',
         mm
           ? 'bg-gradient-to-br from-cyan to-accent shadow-[0_10px_30px_rgba(34,211,238,0.45),0_0_0_4px_rgb(var(--color-bg))]'
-          : 'bg-gradient-to-br from-accent to-pink shadow-[0_10px_30px_rgba(88,44,255,0.5),0_0_0_4px_rgb(var(--color-bg))]',
+          : 'bg-surface-2 border border-border-strong shadow-[0_10px_30px_rgba(88,44,255,0.5),0_0_0_4px_rgb(var(--color-bg))]',
       )}
     >
       {mm ? (

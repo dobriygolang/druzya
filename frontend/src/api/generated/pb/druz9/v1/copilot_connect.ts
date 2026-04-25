@@ -18,7 +18,7 @@
 /* eslint-disable */
 // @ts-nocheck
 
-import { AnalyzeEvent, AnalyzeRequest, ChatEvent, ChatRequest, CopilotConversationDetail, CopilotQuota, CopilotSession, CopilotSessionAnalysis, DeleteCopilotConversationRequest, DeleteCopilotConversationResponse, DesktopConfig, EndCopilotSessionRequest, GetCopilotConversationRequest, GetCopilotQuotaRequest, GetCopilotSessionAnalysisRequest, GetDesktopConfigRequest, ListCopilotHistoryRequest, ListCopilotHistoryResponse, ListCopilotProvidersRequest, ListCopilotProvidersResponse, ListCopilotSessionsRequest, ListCopilotSessionsResponse, RateCopilotMessageRequest, RateCopilotMessageResponse, StartCopilotSessionRequest } from "./copilot_pb.js";
+import { AnalyzeEvent, AnalyzeRequest, ChatEvent, ChatRequest, CheckBlockRequest, CheckBlockResponse, CopilotConversationDetail, CopilotQuota, CopilotSession, CopilotSessionAnalysis, DeleteCopilotConversationRequest, DeleteCopilotConversationResponse, DesktopConfig, EndCopilotSessionRequest, GetCopilotConversationRequest, GetCopilotQuotaRequest, GetCopilotSessionAnalysisRequest, GetDesktopConfigRequest, ListCopilotHistoryRequest, ListCopilotHistoryResponse, ListCopilotProvidersRequest, ListCopilotProvidersResponse, ListCopilotSessionsRequest, ListCopilotSessionsResponse, RateCopilotMessageRequest, RateCopilotMessageResponse, StartCopilotSessionRequest } from "./copilot_pb.js";
 import { MethodKind } from "@bufbuild/protobuf";
 
 /**
@@ -180,6 +180,21 @@ export const CopilotService = {
       name: "ListSessions",
       I: ListCopilotSessionsRequest,
       O: ListCopilotSessionsResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * CheckBlock — Cue desktop calls this before every LLM consult to find
+     * out whether the user is mid-mock with ai_assist=FALSE. When blocked is
+     * true, the desktop client MUST suppress the LLM call and surface a
+     * "help disabled" hint. The Analyze/Chat RPCs apply the same gate
+     * server-side as defense-in-depth (Connect PermissionDenied).
+     *
+     * @generated from rpc druz9.v1.CopilotService.CheckBlock
+     */
+    checkBlock: {
+      name: "CheckBlock",
+      I: CheckBlockRequest,
+      O: CheckBlockResponse,
       kind: MethodKind.Unary,
     },
   }

@@ -82,7 +82,7 @@ export function AIModelsPanel() {
                       <span
                         className={`rounded-full px-2 py-0.5 font-mono text-[10px] ${
                           m.tier === 'premium'
-                            ? 'bg-accent/20 text-accent'
+                            ? 'bg-text-primary/20 text-text-primary'
                             : 'bg-surface-3 text-text-secondary'
                         }`}
                       >

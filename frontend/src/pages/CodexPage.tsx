@@ -25,10 +25,10 @@ function Hero() {
     <section
       className="flex flex-col items-start justify-center gap-3 px-4 py-8 sm:px-8 lg:px-20"
       style={{
-        background: 'linear-gradient(180deg, #2D1B4D 0%, #0A0A0F 100%)',
+        background: 'linear-gradient(180deg, #0A0A0A 0%, #0A0A0F 100%)',
       }}
     >
-      <span className="inline-flex items-center gap-1.5 rounded-full bg-pink/15 px-2.5 py-1 font-mono text-[11px] font-semibold tracking-[0.08em] text-pink">
+      <span className="inline-flex items-center gap-1.5 rounded-full bg-text-primary/10 px-2.5 py-1 font-mono text-[11px] font-semibold tracking-[0.08em] text-text-secondary">
         CODEX · БИБЛИОТЕКА ЗНАНИЙ
       </span>
       <h1 className="font-display text-3xl font-bold leading-[1.1] text-text-primary lg:text-[36px]">

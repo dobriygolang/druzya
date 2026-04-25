@@ -136,14 +136,14 @@ export default function MatchEndPage() {
 
       <div className="flex flex-col gap-6 px-4 py-8 sm:px-8 lg:px-8" style={{ paddingTop: 80 }}>
         <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-          <StatCard label={t('match_end.stats_time')} value={stats.time} color="text-cyan" />
+          <StatCard label={t('match_end.stats_time')} value={stats.time} color="text-text-secondary" />
           <StatCard label={t('match_end.stats_tests')} value={stats.tests} color="text-success" />
-          <StatCard label={t('match_end.stats_complexity')} value={stats.complexity} color="text-accent-hover" />
+          <StatCard label={t('match_end.stats_complexity')} value={stats.complexity} color="text-text-primary" />
           <StatCard label={t('match_end.stats_lines')} value={stats.lines} color="text-warn" />
         </div>
 
         <div className="flex flex-col gap-4 lg:flex-row">
-          <Card className="flex-1 flex-col gap-4 p-6 bg-gradient-to-br from-accent to-pink border-accent/40 shadow-glow">
+          <Card className="flex-1 flex-col gap-4 p-6 bg-surface-2 border border-border-strong border-border-strong">
             <div className="flex items-center justify-between">
               <span className="font-display text-2xl font-extrabold text-text-primary">+ {xp.total} XP</span>
               <Sparkles className="h-5 w-5 text-text-primary" />
@@ -188,7 +188,7 @@ export default function MatchEndPage() {
               </span>
             </div>
             <div className="h-2 overflow-hidden rounded-full bg-black/30">
-              <div className="h-full rounded-full bg-gradient-to-r from-cyan to-accent" style={{ width: `${Math.min(100, Math.max(0, lpTotal % 100))}%` }} />
+              <div className="h-full rounded-full bg-text-primary" style={{ width: `${Math.min(100, Math.max(0, lpTotal % 100))}%` }} />
             </div>
             <div className="flex justify-between text-[11px] text-text-muted">
               <span>{tier}</span>
@@ -224,7 +224,7 @@ export default function MatchEndPage() {
           </Button>
           <Button variant="ghost" icon={<Share2 className="h-4 w-4" />}>{t('match_end.share')}</Button>
           <button
-            className="ml-auto text-sm font-semibold text-accent-hover hover:text-accent"
+            className="ml-auto text-sm font-semibold text-text-primary hover:text-text-primary"
             onClick={() => navigate('/arena')}
           >
             {t('match_end.next_match')} <ArrowRight className="inline h-4 w-4" />

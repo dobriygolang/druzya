@@ -165,31 +165,6 @@ func (h *Handlers) OnMatchCompleted(ctx context.Context, ev sharedDomain.Event) 
 	return nil
 }
 
-// ── Cohort ────────────────────────────────────────────────────────────────
-
-// OnCohortWarStarted broadcasts to every member (STUB: needs cohort roster,
-// which we don't have locally). Currently no-ops — the cohort domain should
-// iterate members and publish per-user events in a future iteration.
-func (h *Handlers) OnCohortWarStarted(ctx context.Context, ev sharedDomain.Event) error {
-	_, ok := ev.(sharedDomain.CohortWarStarted)
-	if !ok {
-		return fmt.Errorf("notify.OnCohortWarStarted: unexpected event %T", ev)
-	}
-	// STUB: we need a CohortRoster read-through to fan out. Flag for follow-up.
-	h.Log.InfoContext(ctx, "notify.OnCohortWarStarted: noop (needs roster)")
-	return nil
-}
-
-// OnCohortWarFinished same STUB caveat as above.
-func (h *Handlers) OnCohortWarFinished(ctx context.Context, ev sharedDomain.Event) error {
-	_, ok := ev.(sharedDomain.CohortWarFinished)
-	if !ok {
-		return fmt.Errorf("notify.OnCohortWarFinished: unexpected event %T", ev)
-	}
-	h.Log.InfoContext(ctx, "notify.OnCohortWarFinished: noop (needs roster)")
-	return nil
-}
-
 // ── Subscription / Auth / Skill ───────────────────────────────────────────
 
 // OnSubscriptionActivated confirms the Premium upgrade.

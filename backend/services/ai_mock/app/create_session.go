@@ -40,6 +40,9 @@ type CreateSessionInput struct {
 	PairedUserID   *uuid.UUID
 	DevilsAdvocate bool
 	PreferredModel enums.LLMModel // empty if no preference
+	// AIAssist — caller opted into Cue copilot help during the session.
+	// Default false drives copilot.CheckBlock to return blocked=true.
+	AIAssist bool
 }
 
 // Do executes the use case and returns the persisted session.
@@ -86,6 +89,7 @@ func (uc *CreateSession) Do(ctx context.Context, in CreateSessionInput) (domain.
 		PairedUserID:   in.PairedUserID,
 		LLMModel:       model,
 		DevilsAdvocate: in.DevilsAdvocate,
+		AIAssist:       in.AIAssist,
 		StartedAt:      &now,
 	}
 	created, err := uc.Sessions.Create(ctx, s)

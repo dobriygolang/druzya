@@ -5,12 +5,10 @@ go 1.25.0
 require (
 	connectrpc.com/connect v1.19.2
 	connectrpc.com/vanguard v0.3.0
-	druz9/achievements v0.0.0-00010101000000-000000000000
 	druz9/admin v0.0.0-00010101000000-000000000000
 	druz9/ai_mock v0.0.0-00010101000000-000000000000
 	druz9/arena v0.0.0-00010101000000-000000000000
 	druz9/auth v0.0.0-00010101000000-000000000000
-	druz9/cohort v0.0.0-00010101000000-000000000000
 	druz9/copilot v0.0.0-00010101000000-000000000000
 	druz9/daily v0.0.0-00010101000000-000000000000
 	druz9/documents v0.0.0-00010101000000-000000000000
@@ -39,7 +37,7 @@ require (
 	github.com/redis/go-redis/v9 v9.6.1
 )
 
-require github.com/gomarkdown/markdown v0.0.0-20260417124207-7d523f7318df // indirect
+require github.com/gomarkdown/markdown v0.0.0-20260417124207-7d523f7318df
 
 require (
 	druz9/circles v0.0.0
@@ -116,21 +114,15 @@ replace druz9/notify => ../../services/notify
 
 replace druz9/feed => ../../services/feed
 
-replace druz9/cohort => ../../services/cohort
-
-
 replace druz9/slot => ../../services/slot
 
 replace druz9/editor => ../../services/editor
-
 
 replace druz9/podcast => ../../services/podcast
 
 replace druz9/admin => ../../services/admin
 
 replace druz9/vacancies => ../../services/vacancies
-
-replace druz9/achievements => ../../services/achievements
 
 replace druz9/friends => ../../services/friends
 

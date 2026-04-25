@@ -11,8 +11,8 @@ export function HourlyHeatmap({ data }: { data: number[] }) {
 
   // 5 уровней: 0, 25%, 50%, 75%, 100% от max (percentile-ish bucketing).
   // CSS-классы вместо SVG-fill — так Tailwind сам тянет --color-accent
-  // через bg-accent/N с alpha-каналом.
-  const LEVELS = ['bg-surface-1', 'bg-accent/20', 'bg-accent/40', 'bg-accent/70', 'bg-accent-hover']
+  // через bg-text-primary/N с alpha-каналом.
+  const LEVELS = ['bg-surface-1', 'bg-text-primary/20', 'bg-text-primary/40', 'bg-text-primary/70', 'bg-text-primary-hover']
   function levelOf(v: number): number {
     if (v <= 0 || max <= 0) return 0
     const p = v / max

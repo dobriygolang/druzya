@@ -8,11 +8,11 @@ import { OnboardingTopBar } from './OnboardingPage'
 function Confetti() {
   const pieces = [
     { top: -20, left: -40, color: '#FBBF24', rot: 12 },
-    { top: 30, left: -70, color: '#F472B6', rot: -18 },
-    { top: 140, left: -50, color: '#22D3EE', rot: 30 },
-    { top: -10, left: 180, color: '#582CFF', rot: -10 },
+    { top: 30, left: -70, color: '#FFFFFF', rot: -18 },
+    { top: 140, left: -50, color: '#FFFFFF', rot: 30 },
+    { top: -10, left: 180, color: '#FF3B30', rot: -10 },
     { top: 60, left: 200, color: '#FBBF24', rot: 22 },
-    { top: 150, left: 180, color: '#F472B6', rot: -25 },
+    { top: 150, left: 180, color: '#FFFFFF', rot: -25 },
   ]
   return (
     <>
@@ -73,16 +73,16 @@ export default function AllSetPage() {
         <div className="relative">
           <Confetti />
           <div
-            className="grid place-items-center text-text-primary"
+            className="grid place-items-center text-text-primary border border-success/40"
             style={{
               width: 160,
               height: 160,
               borderRadius: 80,
-              background: 'linear-gradient(135deg, #10B981 0%, #22D3EE 100%)',
+              background: '#10B981',
               boxShadow: '0 8px 40px rgba(16,185,129,0.5)',
             }}
           >
-            <Check className="h-20 w-20 text-white" strokeWidth={3} />
+            <Check className="h-20 w-20 text-bg" strokeWidth={3} />
           </div>
         </div>
 
@@ -101,30 +101,30 @@ export default function AllSetPage() {
             sub="Достижение разблокировано"
           />
           <RewardCard
-            icon={<Zap className="h-6 w-6 text-cyan" />}
-            iconBg="bg-cyan/15"
+            icon={<Zap className="h-6 w-6 text-text-secondary" />}
+            iconBg="bg-text-primary/10"
             title="+500 XP"
             sub="Бонус за онбординг"
           />
           <RewardCard
-            icon={<Unlock className="h-6 w-6 text-accent-hover" />}
-            iconBg="bg-accent/15"
+            icon={<Unlock className="h-6 w-6 text-text-primary" />}
+            iconBg="bg-text-primary/10"
             title="Ranked unlock"
             sub="Доступ к 1v1-аренам"
           />
         </div>
 
         <div
-          className="flex w-full max-w-[700px] flex-col items-start justify-between gap-4 rounded-2xl p-5 sm:flex-row sm:items-center sm:p-7"
+          className="flex w-full max-w-[700px] flex-col items-start justify-between gap-4 rounded-2xl p-5 sm:flex-row sm:items-center sm:p-7 border border-border-strong"
           style={{
-            background: 'linear-gradient(135deg, #2D1B4D 0%, #582CFF 100%)',
+            background: '#0A0A0A',
           }}
         >
           <div className="flex flex-col gap-1">
             <span className="font-display text-[22px] font-bold text-text-primary">
               Найди первого соперника
             </span>
-            <span className="text-[13px] text-white/80">
+            <span className="text-[13px] text-text-secondary">
               Очередь подбирает противника твоего уровня — обычно 30 секунд
             </span>
           </div>

@@ -94,7 +94,7 @@ function AdminInner() {
               onClick={() => setTab(t.key)}
               className={`rounded-full border px-3.5 py-1.5 text-[13px] ${
                 t.key === tab
-                  ? 'border-accent bg-accent/15 text-accent-hover'
+                  ? 'border-text-primary bg-text-primary/15 text-text-primary'
                   : 'border-border bg-surface-2 text-text-secondary hover:border-border-strong hover:text-text-primary'
               }`}
             >

@@ -197,7 +197,7 @@ export function PodcastsPanel() {
             <div className="md:col-span-2">
               <div className="h-2 w-full overflow-hidden rounded-full bg-surface-2">
                 <div
-                  className="h-full bg-accent transition-[width] duration-100"
+                  className="h-full bg-text-primary transition-[width] duration-100"
                   style={{ width: `${Math.round(progress * 100)}%` }}
                 />
               </div>

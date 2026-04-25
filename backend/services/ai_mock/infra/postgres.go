@@ -50,6 +50,7 @@ func (s *Sessions) Create(ctx context.Context, in domain.Session) (domain.Sessio
 		DurationMin: int32(in.DurationMin),
 		VoiceMode:   in.VoiceMode,
 		LlmModel:    pgText(in.LLMModel.String()),
+		AiAssist:    in.AIAssist,
 	}
 	if in.PairedUserID != nil {
 		params.PairedUserID = sharedpg.UUID(*in.PairedUserID)
@@ -313,6 +314,7 @@ func sessionFromRow(r ai_mockdb.MockSession) (domain.Session, error) {
 		Status:      status,
 		DurationMin: int(r.DurationMin),
 		VoiceMode:   r.VoiceMode,
+		AIAssist:    r.AiAssist,
 		CreatedAt:   r.CreatedAt.Time,
 		Report:      r.AiReport,
 	}

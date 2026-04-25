@@ -15,7 +15,7 @@ function TopBar() {
   return (
     <div className="flex h-auto items-center justify-between gap-3 border-b border-border bg-surface-1 px-4 py-3 sm:px-7 lg:h-14 lg:py-0">
       <div className="flex items-center gap-2.5">
-        <span className="grid h-7 w-7 place-items-center rounded-md bg-gradient-to-br from-accent to-cyan font-display text-sm font-extrabold text-text-primary">
+        <span className="grid h-7 w-7 place-items-center rounded-md bg-surface-2 border border-border-strong font-display text-sm font-extrabold text-text-primary">
           9
         </span>
         <span className="font-display text-base font-bold text-text-primary">druz9 status</span>
@@ -78,7 +78,7 @@ function heroConfigForStatus(s: string) {
     default:
       return {
         bg: 'bg-danger/20',
-        ring: '#EF4444',
+        ring: '#FF3B30',
         text: 'text-danger',
         title: 'Перебои в работе',
         icon: <AlertCircle className="h-14 w-14 text-danger" strokeWidth={3} />,
@@ -216,7 +216,7 @@ function severityChip(sev: string): string {
       return 'bg-warn/15 text-warn'
     case 'minor':
     default:
-      return 'bg-cyan/15 text-cyan'
+      return 'bg-text-primary/10 text-text-secondary'
   }
 }
 

@@ -139,8 +139,6 @@ bus.Subscribe(sharedDomain.DailyKataCompleted{}.Topic(), notifyH.OnDailyKataComp
 bus.Subscribe(sharedDomain.DailyKataMissed{}.Topic(),    notifyH.OnDailyKataMissed)
 bus.Subscribe(sharedDomain.MatchStarted{}.Topic(),       notifyH.OnMatchStarted)
 bus.Subscribe(sharedDomain.MatchCompleted{}.Topic(),     notifyH.OnMatchCompleted)
-bus.Subscribe(sharedDomain.CohortWarStarted{}.Topic(),    notifyH.OnCohortWarStarted)
-bus.Subscribe(sharedDomain.CohortWarFinished{}.Topic(),   notifyH.OnCohortWarFinished)
 bus.Subscribe(sharedDomain.SubscriptionActivated{}.Topic(), notifyH.OnSubscriptionActivated)
 bus.Subscribe(sharedDomain.SkillDecayed{}.Topic(),       notifyH.OnSkillDecayed)
 bus.Subscribe(sharedDomain.UserRegistered{}.Topic(),     notifyH.OnUserRegistered)

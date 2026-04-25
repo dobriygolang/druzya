@@ -167,3 +167,23 @@ export async function deleteEvent(id: string): Promise<void> {
     method: 'DELETE',
   })
 }
+
+// Phase-4 ADR-001 Wave 2 — react-query hooks for the profile rewrite
+// (CohortCard / CohortsPanel → circles-backed equivalents).
+import { useQuery } from '@tanstack/react-query'
+
+export function useMyCirclesQuery() {
+  return useQuery({
+    queryKey: ['circles', 'my'],
+    queryFn: listMyCircles,
+    staleTime: 60_000,
+  })
+}
+
+export function useMyEventsQuery() {
+  return useQuery({
+    queryKey: ['events', 'my'],
+    queryFn: listMyEvents,
+    staleTime: 60_000,
+  })
+}

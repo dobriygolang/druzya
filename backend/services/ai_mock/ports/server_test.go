@@ -155,6 +155,46 @@ func TestServer_CreateSession_Happy(t *testing.T) {
 	}
 }
 
+// TestServer_CreateSession_AIAssistRoundTrip pins the Phase-4 ADR-001 (Wave 3)
+// wire: ai_assist set on the proto request must reach the persisted Session
+// AND surface back on the proto response. Drives copilot.CheckBlock.
+func TestServer_CreateSession_AIAssistRoundTrip(t *testing.T) {
+	t.Parallel()
+	ctrl := gomock.NewController(t)
+	uid, cid, tid, sid := uuid.New(), uuid.New(), uuid.New(), uuid.New()
+
+	sessions := mocks.NewMockSessionRepo(ctrl)
+	tasks := mocks.NewMockTaskRepo(ctrl)
+	users := mocks.NewMockUserRepo(ctrl)
+	companies := mocks.NewMockCompanyRepo(ctrl)
+
+	users.EXPECT().Get(gomock.Any(), uid).Return(domain.UserContext{ID: uid, Subscription: enums.SubscriptionPlanFree}, nil)
+	companies.EXPECT().Get(gomock.Any(), cid).Return(domain.CompanyContext{ID: cid, Name: "Yandex", Level: "senior"}, nil)
+	tasks.EXPECT().PickForSession(gomock.Any(), gomock.Any(), gomock.Any()).Return(domain.TaskWithHint{ID: tid, Slug: "lru", Title: "LRU"}, nil)
+	sessions.EXPECT().Create(gomock.Any(), gomock.Any()).DoAndReturn(func(_ context.Context, s domain.Session) (domain.Session, error) {
+		if !s.AIAssist {
+			t.Fatalf("AIAssist did not reach repo.Create — got %v", s.AIAssist)
+		}
+		s.ID = sid
+		return s, nil
+	})
+
+	srv := buildServer(t, sessions, nil, tasks, users, companies, nil)
+	resp, err := srv.CreateSession(authedCtx(uid), connect.NewRequest(&pb.CreateMockRequest{
+		CompanyId:   cid.String(),
+		Section:     pb.Section_SECTION_ALGORITHMS,
+		Difficulty:  pb.Difficulty_DIFFICULTY_MEDIUM,
+		DurationMin: 45,
+		AiAssist:    true,
+	}))
+	if err != nil {
+		t.Fatalf("CreateSession: %v", err)
+	}
+	if !resp.Msg.GetAiAssist() {
+		t.Fatalf("response ai_assist = false, want true")
+	}
+}
+
 // ── GetSession ────────────────────────────────────────────────────────────
 
 func TestServer_GetSession_NotFound(t *testing.T) {
