@@ -13,6 +13,7 @@ export type Tab =
   | 'llm_chain'
   | 'personas'
   | 'atlas'
+  | 'arena_tasks'
   | 'mock_companies'
   | 'mock_tasks'
   | 'mock_questions'
@@ -34,6 +35,7 @@ export function Sidebar({ tab, setTab, pendingReports }: { tab: Tab; setTab: (t:
     { id: 'ai_models', label: 'AI Modельки' },
     { id: 'llm_chain', label: 'LLM Chain ⚡' },
     { id: 'personas', label: 'Персоны' },
+    { id: 'arena_tasks', label: 'Arena · задачи' },
     { id: 'mock_companies', label: 'Mock · компании' },
     { id: 'mock_tasks', label: 'Mock · задачи' },
     { id: 'mock_questions', label: 'Mock · вопросы' },

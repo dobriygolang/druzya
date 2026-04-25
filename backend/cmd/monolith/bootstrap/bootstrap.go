@@ -177,6 +177,9 @@ func New(ctx context.Context, cfg *config.Config) (app *App, otelShutdown func()
 		services.NewArena(deps, rating.Repo),
 		services.NewAIMock(deps),
 		services.NewAIModels(deps),
+		// Admin CRUD over the canonical `tasks` table (Arena 1v1/2v2 +
+		// Daily Kata pool). Backend for the Arena Tasks tab in /admin.
+		services.NewAdminArenaTasks(deps),
 		// VPS retention sweep — see cleanup_crons.go header for tables/
 		// policies. Pure background, no REST surface.
 		services.NewCleanupCrons(deps),

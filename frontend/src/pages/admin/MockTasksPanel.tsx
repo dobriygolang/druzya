@@ -6,7 +6,7 @@
 // Questions. The "+ New task" button opens a minimal modal (just stage,
 // language, difficulty, title); rest is filled on the detail page.
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Button } from '../../components/Button'
 import { FormField } from '../../components/FormField'
 import { ErrorBox, PanelSkeleton } from './shared'
@@ -304,6 +304,7 @@ function CreateTaskModal({
 
 function TaskDetailEditor({ taskId }: { taskId: string }) {
   const taskQ = useTaskQuery(taskId)
+  const create = useCreateTaskMutation()
   const [tab, setTab] = useState<EditorTab>('body')
 
   if (taskQ.isPending) return <PanelSkeleton rows={5} />
@@ -311,11 +312,44 @@ function TaskDetailEditor({ taskId }: { taskId: string }) {
 
   const task = taskQ.data
 
+  // Clone — duplicate task with "+ clone" suffix in title. Useful for
+  // seeding series of similar tasks (e.g. 5 hash-map variants).
+  const onClone = async () => {
+    try {
+      await create.mutateAsync({
+        stage_kind: task.stage_kind,
+        language: task.language,
+        difficulty: task.difficulty,
+        title: `${task.title} · clone`,
+        body_md: task.body_md ?? '',
+        sample_io_md: task.sample_io_md ?? '',
+        reference_criteria: task.reference_criteria ?? undefined,
+        reference_solution_md: task.reference_solution_md ?? '',
+        functional_requirements_md: task.functional_requirements_md ?? '',
+        time_limit_min: task.time_limit_min ?? undefined,
+        ai_strictness_profile_id: task.ai_strictness_profile_id ?? undefined,
+        llm_model: task.llm_model ?? '',
+      })
+    } catch {
+      /* surfaced via mutation state */
+    }
+  }
+
   return (
     <div className="flex flex-col gap-4 rounded-lg border border-border bg-surface-1 p-4">
-      <div className="flex items-center justify-between">
-        <h3 className="font-display text-sm font-bold text-text-primary truncate">{task.title}</h3>
-        <span className="font-mono text-[10px] text-text-muted">{task.id}</span>
+      <div className="flex items-center justify-between gap-2">
+        <h3 className="truncate font-display text-sm font-bold text-text-primary">{task.title}</h3>
+        <div className="flex shrink-0 items-center gap-2">
+          <button
+            type="button"
+            onClick={() => void onClone()}
+            disabled={create.isPending}
+            className="rounded-md border border-border bg-surface-2 px-2 py-1 font-mono text-[10px] uppercase text-text-secondary hover:text-text-primary disabled:opacity-60"
+          >
+            {create.isPending ? 'cloning…' : 'clone'}
+          </button>
+          <span className="font-mono text-[10px] text-text-muted">{task.id}</span>
+        </div>
       </div>
 
       <div className="flex gap-1.5 border-b border-border">
@@ -359,8 +393,7 @@ function BodyTab({ task }: { task: MockTask }) {
   const [llmModel, setLlmModel] = useState(task.llm_model ?? '')
   const [err, setErr] = useState<string | null>(null)
 
-  async function submit(e: React.FormEvent) {
-    e.preventDefault()
+  async function doSave() {
     setErr(null)
     try {
       await update.mutateAsync({
@@ -382,6 +415,23 @@ function BodyTab({ task }: { task: MockTask }) {
       setErr(mockAdminErrorMessage(e))
     }
   }
+  async function submit(e: React.FormEvent) {
+    e.preventDefault()
+    await doSave()
+  }
+  // Cmd+S / Ctrl+S — save on hotkey. Doubles seeding speed when typing
+  // body markdown without reaching for the Save button.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 's') {
+        e.preventDefault()
+        void doSave()
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [title, stage, language, difficulty, bodyMd, sampleIo, funcReq, timeLimit, strictnessId, llmModel])
 
   return (
     <form onSubmit={submit} className="flex flex-col gap-3">
@@ -884,28 +934,82 @@ function TestCaseRow({
 
 // ── bulk import dialog ────────────────────────────────────────────────
 
+// BulkImportDialog — dry-run-first JSON paste. Two-step UX:
+//   1. Paste → click "Validate" → parser builds preview list with
+//      per-row errors. Nothing hits backend.
+//   2. Click "Import" only enabled when preview has at least one valid
+//      row. Backend runs best-effort (per-row errors come back too).
 export function BulkImportDialog({ onClose }: { onClose: () => void }) {
   const mut = useBulkImportTasksMutation()
   const [text, setText] = useState('')
+  const [preview, setPreview] = useState<{ index: number; title: string; valid: boolean; reason?: string }[] | null>(null)
+  const [parsed, setParsed] = useState<BulkTaskImportItem[] | null>(null)
   const [results, setResults] = useState<{ index: number; task_id?: string; error?: string; test_cases_added: number }[] | null>(null)
   const [err, setErr] = useState<string | null>(null)
 
-  async function run() {
+  // Esc to close — same shortcut as elsewhere in the admin.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [onClose])
+
+  function validateRow(item: unknown, idx: number): { ok: true; row: BulkTaskImportItem; preview: { index: number; title: string; valid: true } } | { ok: false; preview: { index: number; title: string; valid: false; reason: string } } {
+    if (typeof item !== 'object' || item === null) {
+      return { ok: false, preview: { index: idx, title: '(not an object)', valid: false, reason: 'item must be an object' } }
+    }
+    const it = item as Partial<BulkTaskImportItem>
+    const title = (it.title ?? '').toString()
+    if (!title.trim()) {
+      return { ok: false, preview: { index: idx, title: '(no title)', valid: false, reason: 'title is required' } }
+    }
+    if (!it.stage_kind) {
+      return { ok: false, preview: { index: idx, title, valid: false, reason: 'stage_kind is required' } }
+    }
+    if (!it.language) {
+      return { ok: false, preview: { index: idx, title, valid: false, reason: 'language is required' } }
+    }
+    if (typeof it.difficulty !== 'number') {
+      return { ok: false, preview: { index: idx, title, valid: false, reason: 'difficulty must be a number 1..5' } }
+    }
+    return { ok: true, row: it as BulkTaskImportItem, preview: { index: idx, title, valid: true } }
+  }
+
+  function validate() {
     setErr(null)
     setResults(null)
-    let parsed: BulkTaskImportItem[]
+    let raw: unknown
     try {
-      const raw = JSON.parse(text)
-      // Accept either an array directly or { tasks: [...] } envelope.
-      parsed = Array.isArray(raw) ? raw : (raw.tasks ?? [])
+      raw = JSON.parse(text)
     } catch (e) {
       setErr('Invalid JSON: ' + (e instanceof Error ? e.message : String(e)))
+      setPreview(null)
+      setParsed(null)
       return
     }
-    if (!Array.isArray(parsed) || parsed.length === 0) {
-      setErr('Expected a non-empty array of tasks')
+    const arr = Array.isArray(raw) ? raw : (raw as { tasks?: unknown[] }).tasks
+    if (!Array.isArray(arr) || arr.length === 0) {
+      setErr('Expected a non-empty array of tasks (or {tasks: [...]} envelope)')
+      setPreview(null)
+      setParsed(null)
       return
     }
+    const previews: { index: number; title: string; valid: boolean; reason?: string }[] = []
+    const okRows: BulkTaskImportItem[] = []
+    arr.forEach((item, idx) => {
+      const v = validateRow(item, idx)
+      previews.push(v.preview)
+      if (v.ok) okRows.push(v.row)
+    })
+    setPreview(previews)
+    setParsed(okRows)
+  }
+
+  async function runImport() {
+    if (!parsed || parsed.length === 0) return
+    setErr(null)
     try {
       const out = await mut.mutateAsync(parsed)
       setResults(out.results)
@@ -913,6 +1017,9 @@ export function BulkImportDialog({ onClose }: { onClose: () => void }) {
       setErr(mockAdminErrorMessage(e))
     }
   }
+
+  const totalRows = preview?.length ?? 0
+  const validRows = preview?.filter((p) => p.valid).length ?? 0
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4" onClick={onClose}>
@@ -927,27 +1034,55 @@ export function BulkImportDialog({ onClose }: { onClose: () => void }) {
             onClick={onClose}
             className="font-mono text-[11px] text-text-muted hover:text-text-primary"
           >
-            close
+            esc
           </button>
         </div>
         <p className="font-mono text-[11px] text-text-muted">
           Paste a JSON array (or {'{'} tasks: [...] {'}'} envelope) of task objects.
           Each item may carry an inline <code>test_cases</code> array.
+          Click <b>Validate</b> first — nothing hits backend until preview is clean.
         </p>
         <textarea
           value={text}
-          onChange={(e) => setText(e.currentTarget.value)}
-          rows={14}
+          onChange={(e) => {
+            setText(e.currentTarget.value)
+            setPreview(null) // dirty input invalidates preview
+            setParsed(null)
+            setResults(null)
+          }}
+          rows={12}
           placeholder='[{"stage_kind":"algo","language":"python","difficulty":1,"title":"Two Sum","body_md":"...","active":true,"test_cases":[{"input":"2,7\n9","expected_output":"0 1"}]}]'
           className="w-full rounded-md border border-border bg-bg/40 p-2 font-mono text-[12px] text-text-primary"
         />
         {err && <div className="text-[12px] text-danger">{err}</div>}
+
+        {preview && (
+          <div className="rounded-md border border-border bg-surface-2 p-3 font-mono text-[11px]">
+            <div className="mb-2 flex items-baseline justify-between text-text-secondary">
+              <span>
+                Preview: {validRows} valid / {totalRows} total
+              </span>
+              {validRows < totalRows && (
+                <span className="text-text-muted">{totalRows - validRows} с ошибками</span>
+              )}
+            </div>
+            <ul className="flex max-h-40 flex-col gap-1 overflow-y-auto">
+              {preview.map((p) => (
+                <li key={p.index} className={p.valid ? 'text-text-secondary' : 'text-danger'}>
+                  #{p.index} {p.valid ? '✓' : '✗'} {p.title}
+                  {p.reason && <span className="ml-1 text-text-muted">— {p.reason}</span>}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
         {results && (
           <div className="rounded-md border border-border bg-surface-2 p-3 font-mono text-[11px]">
             <div className="mb-2 text-text-secondary">
               Imported {results.filter((r) => r.task_id).length} / {results.length}.
             </div>
-            <ul className="flex max-h-48 flex-col gap-1 overflow-y-auto">
+            <ul className="flex max-h-40 flex-col gap-1 overflow-y-auto">
               {results.map((r) => (
                 <li key={r.index} className="text-text-muted">
                   #{r.index}{' '}
@@ -963,6 +1098,7 @@ export function BulkImportDialog({ onClose }: { onClose: () => void }) {
             </ul>
           </div>
         )}
+
         <div className="flex justify-end gap-2">
           <button
             type="button"
@@ -971,8 +1107,21 @@ export function BulkImportDialog({ onClose }: { onClose: () => void }) {
           >
             close
           </button>
-          <Button size="sm" onClick={() => void run()} loading={mut.isPending}>
-            Import
+          <button
+            type="button"
+            onClick={validate}
+            disabled={!text.trim()}
+            className="rounded-md border border-border bg-surface-2 px-3 py-1.5 font-mono text-[11px] text-text-primary hover:bg-surface-3 disabled:opacity-50"
+          >
+            Validate
+          </button>
+          <Button
+            size="sm"
+            onClick={() => void runImport()}
+            loading={mut.isPending}
+            disabled={!parsed || parsed.length === 0}
+          >
+            Import {validRows > 0 ? `(${validRows})` : ''}
           </Button>
         </div>
       </div>

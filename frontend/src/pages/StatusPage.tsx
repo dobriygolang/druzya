@@ -256,23 +256,9 @@ function MetricsCard({ uptime90d, incidentCount }: { uptime90d: string; incident
   )
 }
 
-function SubscribeCard() {
-  return (
-    <div className="flex-1 rounded-2xl bg-surface-2 p-6">
-      <h3 className="font-display text-base font-bold text-text-primary">Подписаться на обновления</h3>
-      <p className="mt-1 text-xs text-text-secondary">Письмо при каждом инциденте и его resolve.</p>
-      <div className="mt-4 flex gap-2">
-        <input
-          className="flex-1 rounded-md border border-border bg-surface-1 px-3 py-2 font-mono text-xs text-text-primary placeholder:text-text-muted"
-          placeholder="you@example.com"
-        />
-        <Button variant="primary" size="sm">
-          Подписаться
-        </Button>
-      </div>
-    </div>
-  )
-}
+// SubscribeCard removed — there was no /status/subscribe backend
+// endpoint, the form was a dead placeholder. Re-add when an
+// incident-notify worker exists.
 
 export default function StatusPage() {
   const { data, isPending, error } = useStatusPageQuery()
@@ -311,10 +297,10 @@ export default function StatusPage() {
       <div className="flex flex-col gap-5 px-4 pb-6 sm:px-8 lg:px-20 lg:pb-7">
         <ServicesList services={data.services ?? []} />
         <IncidentsCard incidents={data.incidents ?? []} />
-        <div className="flex flex-col gap-4 lg:flex-row lg:gap-5">
-          <SubscribeCard />
-          <MetricsCard uptime90d={data.uptime90d} incidentCount={(data.incidents ?? []).length} />
-        </div>
+        {/* SubscribeCard убран — поле email + кнопка не были привязаны к
+            бэку (нет /status/subscribe endpoint), это была пустышка.
+            Когда появится notify-of-incident worker — вернём. */}
+        <MetricsCard uptime90d={data.uptime90d} incidentCount={(data.incidents ?? []).length} />
       </div>
     </div>
   )

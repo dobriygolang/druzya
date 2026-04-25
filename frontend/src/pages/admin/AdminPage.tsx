@@ -23,6 +23,7 @@ import { AtlasPanel } from './AtlasPanel'
 import { AIModelsPanel } from './AIModelsPanel'
 import { LLMChainPanel } from './LLMChainPanel'
 import { PersonasPanel } from './PersonasPanel'
+import { ArenaTasksPanel } from './ArenaTasksPanel'
 import { MockCompaniesPanel } from './MockCompaniesPanel'
 import { MockTasksPanel } from './MockTasksPanel'
 import { MockQuestionsPanel } from './MockQuestionsPanel'
@@ -78,7 +79,9 @@ export default function AdminPage() {
                           ? 'Персоны'
                           : tab === 'llm_chain'
                             ? 'LLM Chain'
-                            : tab === 'mock_companies'
+                            : tab === 'arena_tasks'
+                              ? 'Arena · задачи'
+                              : tab === 'mock_companies'
                               ? 'Mock · компании'
                               : tab === 'mock_tasks'
                                 ? 'Mock · задачи'
@@ -101,6 +104,7 @@ export default function AdminPage() {
         {tab === 'ai_models' && <AIModelsPanel />}
         {tab === 'llm_chain' && <LLMChainPanel />}
         {tab === 'personas' && <PersonasPanel />}
+        {tab === 'arena_tasks' && <ArenaTasksPanel />}
         {tab === 'mock_companies' && <MockCompaniesPanel />}
         {tab === 'mock_tasks' && <MockTasksPanel />}
         {tab === 'mock_questions' && <MockQuestionsPanel />}
