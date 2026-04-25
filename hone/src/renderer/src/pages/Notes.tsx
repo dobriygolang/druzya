@@ -1756,7 +1756,10 @@ function Editor({ list, active, activeError, draftTitle, draftBody, encrypted, s
       onMouseLeave={() => setHover(false)}
       style={{
         position: 'relative',
-        padding: '24px 80px 24px 80px',
+        // Левый padding ужат с 80→48 (~40% reduction по запросу). Right
+        // оставлен 80 — нужен запас под right-side three-dots / connections
+        // affordance'ы. Vertical 24 без изменений.
+        padding: '24px 80px 24px 48px',
         overflowY: 'auto',
         minWidth: 0,
       }}

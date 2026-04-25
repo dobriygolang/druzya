@@ -76,10 +76,17 @@ const HONE_FEATURES = {
 
 // Empty slash-menu config: все группы null чтобы при случайном открытии
 // menu было пустым (но даже в таком виде CSS прячет popup полностью).
+//
+// blockHandle.getOffset: уменьшен с дефолта 16 до 4 — handle сидит ближе к
+// тексту. Меньше «dead zone» между handle'ом и edge'ом editor'а, drag-and-
+// drop работает корректно когда юзер ведёт курсор едва-едва влево.
 const EMPTY_BLOCK_EDIT_CONFIG = {
   textGroup: null,
   listGroup: null,
   advancedGroup: null,
+  blockHandle: {
+    getOffset: () => 4,
+  },
 };
 
 interface MilkdownEditorProps {
@@ -110,6 +117,51 @@ export function MilkdownEditor({ noteId, seedBodyMD, placeholder = 'Write your t
   useEffect(() => {
     if (!containerRef.current) return;
     let destroyed = false;
+
+    // ── Drag-clientX-clamp ─────────────────────────────────────────────
+    //
+    // Block-handle (6 точек) сидит в LEFT-offset колонне ВНЕ ProseMirror
+    // hit-area. Когда юзер тянет блок hold'я handle, mouse.clientX < view.dom.left.
+    // prosemirror-drop-indicator вызывает view.posAtCoords({left: mouse.x, top:
+    // mouse.y}) — при clientX вне editor'а возвращает null или fallback'ит на
+    // конец документа → drop-line визуально показывается «очень далеко снизу».
+    //
+    // Fix: capture-phase listener на containerRef. При dragover, если clientX
+    // меньше editor.left — preventDefault + dispatchEvent с патченным clientX
+    // сразу в view.dom. Drop-indicator pick'ает корректные coords, drop-line
+    // отрисовывается рядом с курсором.
+    //
+    // dispatchEvent создаёт НОВЫЙ DragEvent с теми же dataTransfer/types — это
+    // безопасно (мы не меняем drop-payload). Reads only `clientX/clientY`.
+    const installDragClamp = () => {
+      const root = containerRef.current;
+      if (!root) return () => undefined;
+      const onDragOver = (e: DragEvent) => {
+        const pmDom = root.querySelector('.ProseMirror');
+        if (!pmDom) return;
+        const rect = (pmDom as HTMLElement).getBoundingClientRect();
+        // Если уже внутри editor — ничего не делаем.
+        if (e.clientX >= rect.left && e.clientX <= rect.right) return;
+        // Snap внутрь — небольшой отступ от левого края.
+        const clamped = Math.min(Math.max(e.clientX, rect.left + 8), rect.right - 8);
+        // Создаём synthetic event с patched clientX и пропускаем default
+        // (наш переотправ его сделает за нас). Stop propagation'нём оригинал
+        // чтобы prosemirror не получил его дважды.
+        e.stopPropagation();
+        e.preventDefault();
+        const synthetic = new DragEvent('dragover', {
+          bubbles: true,
+          cancelable: true,
+          clientX: clamped,
+          clientY: e.clientY,
+          dataTransfer: e.dataTransfer ?? undefined,
+        });
+        pmDom.dispatchEvent(synthetic);
+      };
+      root.addEventListener('dragover', onDragOver, true);
+      return () => root.removeEventListener('dragover', onDragOver, true);
+    };
+    const removeDragClamp = installDragClamp();
 
     // DIAG: логируем геометрию block-handle при mouseenter для отладки
     // drag bug'а. Удалить после fix'а. Включается через
@@ -180,6 +232,7 @@ export function MilkdownEditor({ noteId, seedBodyMD, placeholder = 'Write your t
 
       return () => {
         destroyed = true;
+        removeDragClamp();
         void crepe.destroy().catch(() => {
           /* ignore */
         });
@@ -240,6 +293,7 @@ export function MilkdownEditor({ noteId, seedBodyMD, placeholder = 'Write your t
 
     return () => {
       destroyed = true;
+      removeDragClamp();
       try {
         // Disconnect collab BEFORE destroying editor — release Y.Doc
         // listeners cleanly.

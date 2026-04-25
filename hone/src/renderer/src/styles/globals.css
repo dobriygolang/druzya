@@ -793,6 +793,15 @@ textarea {
   display: none !important;
 }
 
+/* Drop-indicator (полоска показывающая куда блок переместится при drag) —
+   акцентный цвет + чуть толще чем дефолт чтобы было сразу видно куда упадёт. */
+.hone-milkdown-mount .milkdown .milkdown-drop-indicator {
+  background-color: var(--ink) !important;
+  height: 2px !important;
+  border-radius: 1px;
+  opacity: 0.85;
+}
+
 /* Selection toolbar (B / I / S / <> / link) — компактные иконки.
    Дефолт Crepe: 32×32 кнопка, svg 24×24, margin 6px → ~44px на item ×
    6 items = ~280px-широкий popup. Юзер: «гигантская модалка». Ужимаем

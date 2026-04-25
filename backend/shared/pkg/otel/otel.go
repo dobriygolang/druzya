@@ -1,8 +1,14 @@
 // Package otel wires OpenTelemetry traces for druz9 services.
 //
-// Один InitTracer() на бинарь, экспорт OTLP/HTTP. По умолчанию шлёт в
-// локальный jaeger:4318, но в проде целится в Grafana Cloud Tempo через
-// OTEL_EXPORTER_OTLP_ENDPOINT + OTEL_EXPORTER_OTLP_HEADERS (Basic auth).
+// Один InitTracer() на бинарь, экспорт OTLP/HTTP. Целится в Grafana Cloud
+// Tempo через OTEL_EXPORTER_OTLP_ENDPOINT + OTEL_EXPORTER_OTLP_HEADERS
+// (Basic auth).
+//
+// Если OTEL_EXPORTER_OTLP_ENDPOINT не задан — InitTracer становится no-op
+// (никаких exporter'ов, никаких background-batch goroutine'ов, никаких
+// «dial tcp: lookup jaeger: no such host» в логах). Раньше fallback'ился
+// на локальный `jaeger:4318` который существовал только в dev-обсервабилити-
+// compose, в prod без него спам warning'ами шёл каждые 5 секунд.
 //
 // Конфиг через стандартные OTEL env vars:
 //
@@ -33,19 +39,21 @@ import (
 	"go.opentelemetry.io/otel/trace"
 )
 
-// DefaultEndpoint is used when OTEL_EXPORTER_OTLP_ENDPOINT is unset.
-// Bare host:port — otlptracehttp will append /v1/traces.
-const DefaultEndpoint = "jaeger:4318"
-
 // InitTracer initialises the global tracer provider with an OTLP/HTTP
 // exporter. Endpoint и опциональные headers берутся из OTEL_EXPORTER_OTLP_*.
+//
+// Если OTEL_EXPORTER_OTLP_ENDPOINT не задан → no-op (возвращает пустой
+// shutdown без error). Сделано чтобы prod без сконфигурированного Grafana
+// Cloud env'а не спамил «dial tcp: lookup jaeger» каждые 5 секунд.
 //
 // Возвращает shutdown — defer'ить из main(), чтобы SIGTERM не потерял
 // последние spans.
 func InitTracer(serviceName, version string) (func(), error) {
 	endpoint := os.Getenv("OTEL_EXPORTER_OTLP_ENDPOINT")
 	if endpoint == "" {
-		endpoint = "http://" + DefaultEndpoint
+		// No-op: tracing отключён. NoopTracerProvider — дефолт у otel SDK,
+		// явно ставить не нужно. Возвращаем пустой shutdown.
+		return func() {}, nil
 	}
 
 	host := endpoint
