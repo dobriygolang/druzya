@@ -85,9 +85,10 @@ export default function CircleDetailPage() {
     }
   }
 
+  const [showAdvanced, setShowAdvanced] = useState(false)
   const onLeave = async () => {
     if (!circleId) return
-    if (!confirm('Покинуть circle?')) return
+    if (!confirm('Leave this circle?')) return
     try {
       await leaveCircle(circleId)
       // Cannot navigate from here without router import — redirect via location.
@@ -108,7 +109,7 @@ export default function CircleDetailPage() {
         </Link>
 
         {error && (
-          <div className="mb-6 rounded-lg border border-red-500/40 bg-red-500/10 px-4 py-3 text-[13px] text-red-300">
+          <div className="mb-6 rounded-lg border border-border bg-surface-2 px-4 py-2.5 text-[13px] text-text-secondary">
             {error}
           </div>
         )}
@@ -131,7 +132,7 @@ export default function CircleDetailPage() {
                 </span>
                 <button
                   onClick={() => void onLeave()}
-                  className="text-text-muted transition-colors hover:text-red-300"
+                  className="text-text-muted transition-colors hover:text-text-primary"
                 >
                   Leave
                 </button>
@@ -213,41 +214,52 @@ export default function CircleDetailPage() {
                       />
                     </label>
                   </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <label className="text-[12px] text-text-muted">
-                      Editor room id (опционально)
-                      <input
-                        value={form.editor_room_id}
-                        onChange={(e) => setForm({ ...form, editor_room_id: e.target.value })}
-                        placeholder="UUID из Hone Editor"
-                        className="mt-1 w-full rounded-md border border-border bg-bg px-2 py-1.5 text-[12px] text-text-primary"
-                      />
-                    </label>
-                    <label className="text-[12px] text-text-muted">
-                      Whiteboard room id (опционально)
-                      <input
-                        value={form.whiteboard_room_id}
-                        onChange={(e) =>
-                          setForm({ ...form, whiteboard_room_id: e.target.value })
-                        }
-                        placeholder="UUID из Hone Boards"
-                        className="mt-1 w-full rounded-md border border-border bg-bg px-2 py-1.5 text-[12px] text-text-primary"
-                      />
-                    </label>
-                  </div>
-                  <label className="block text-[12px] text-text-muted">
-                    Recurrence
-                    <select
-                      value={form.recurrence}
-                      onChange={(e) =>
-                        setForm({ ...form, recurrence: e.target.value as EventRecurrence })
-                      }
-                      className="mt-1 w-full rounded-md border border-border bg-bg px-2 py-1.5 text-[13px] text-text-primary"
-                    >
-                      <option value="none">One-off</option>
-                      <option value="weekly_friday">Weekly · Friday</option>
-                    </select>
-                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setShowAdvanced((v) => !v)}
+                    className="font-mono text-[11px] uppercase tracking-wider text-text-muted hover:text-text-primary"
+                  >
+                    {showAdvanced ? 'Hide advanced' : 'Advanced ▾'}
+                  </button>
+                  {showAdvanced && (
+                    <div className="space-y-3 border-t border-border pt-3">
+                      <div className="grid grid-cols-2 gap-3">
+                        <label className="text-[12px] text-text-muted">
+                          Editor room id (optional)
+                          <input
+                            value={form.editor_room_id}
+                            onChange={(e) => setForm({ ...form, editor_room_id: e.target.value })}
+                            placeholder="UUID from Hone Editor"
+                            className="mt-1 w-full rounded-md border border-border bg-bg px-2 py-1.5 text-[12px] text-text-primary"
+                          />
+                        </label>
+                        <label className="text-[12px] text-text-muted">
+                          Whiteboard room id (optional)
+                          <input
+                            value={form.whiteboard_room_id}
+                            onChange={(e) =>
+                              setForm({ ...form, whiteboard_room_id: e.target.value })
+                            }
+                            placeholder="UUID from Hone Boards"
+                            className="mt-1 w-full rounded-md border border-border bg-bg px-2 py-1.5 text-[12px] text-text-primary"
+                          />
+                        </label>
+                      </div>
+                      <label className="block text-[12px] text-text-muted">
+                        Recurrence
+                        <select
+                          value={form.recurrence}
+                          onChange={(e) =>
+                            setForm({ ...form, recurrence: e.target.value as EventRecurrence })
+                          }
+                          className="mt-1 w-full rounded-md border border-border bg-bg px-2 py-1.5 text-[13px] text-text-primary"
+                        >
+                          <option value="none">One-off</option>
+                          <option value="weekly_friday">Weekly · Friday</option>
+                        </select>
+                      </label>
+                    </div>
+                  )}
                   <div className="flex justify-end">
                     <button
                       type="submit"

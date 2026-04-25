@@ -116,6 +116,21 @@ func (mr *MockCircleRepoMockRecorder) ListByMember(ctx, userID any) *gomock.Call
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListByMember", reflect.TypeOf((*MockCircleRepo)(nil).ListByMember), ctx, userID)
 }
 
+// ListDiscover mocks base method.
+func (m *MockCircleRepo) ListDiscover(ctx context.Context, userID uuid.UUID, limit int) ([]domain.CircleWithCount, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ListDiscover", ctx, userID, limit)
+	ret0, _ := ret[0].([]domain.CircleWithCount)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ListDiscover indicates an expected call of ListDiscover.
+func (mr *MockCircleRepoMockRecorder) ListDiscover(ctx, userID, limit any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListDiscover", reflect.TypeOf((*MockCircleRepo)(nil).ListDiscover), ctx, userID, limit)
+}
+
 // MockMemberRepo is a mock of MemberRepo interface.
 type MockMemberRepo struct {
 	ctrl     *gomock.Controller

@@ -21,6 +21,7 @@ import { Avatar } from '../components/Avatar'
 import type { ReactNode } from 'react'
 import { useRatingMeQuery, useLeaderboardQuery } from '../lib/queries/rating'
 import {
+  useArenaQueueStatsQuery,
   useCancelSearchMutation,
   useFindMatchMutation,
   type ArenaModeKey,
@@ -332,8 +333,6 @@ type Mode = {
   key: 'ranked_1v1' | 'casual_1v1' | 'ranked_2v2' | 'mock'
   name: string
   desc: string
-  count: number | string
-  time: string
   icon: ReactNode
   gradient: string
   /** Which arena queue to enqueue into. Ignored for non-queue modes
@@ -353,8 +352,6 @@ const MODES: Mode[] = [
     key: 'ranked_1v1',
     name: 'Ranked 1v1',
     desc: 'Классика. Алгоритмы, рейтинг, LP.',
-    count: '—',
-    time: '—',
     icon: <Swords className="h-7 w-7 text-text-primary" />,
     // Phase-4: mode badges collapsed to monochrome ink-tints. Differentiation
     // is by name + icon, not hue — same rule as Atlas clusters.
@@ -367,8 +364,6 @@ const MODES: Mode[] = [
     key: 'casual_1v1',
     name: 'Casual 1v1',
     desc: 'Без рейтинга, для практики.',
-    count: '—',
-    time: '—',
     icon: <Zap className="h-7 w-7 text-text-primary" />,
     gradient: 'bg-text-primary/10',
     arenaMode: 'solo_1v1',
@@ -379,8 +374,6 @@ const MODES: Mode[] = [
     key: 'ranked_2v2',
     name: 'Ranked 2v2',
     desc: 'Командный режим, парный код.',
-    count: '—',
-    time: '—',
     icon: <Users className="h-7 w-7 text-text-primary" />,
     gradient: 'bg-text-primary/12',
     arenaMode: 'duo_2v2',
@@ -391,8 +384,6 @@ const MODES: Mode[] = [
     key: 'mock',
     name: 'Mock Interview',
     desc: 'Симуляция собеса с компанией, многоэтапный (screening → algo → sys-design → behavioral). AI-помощник опционально.',
-    count: '—',
-    time: '—',
     icon: <Video className="h-7 w-7 text-text-primary" />,
     gradient: 'bg-text-primary/8',
     arenaMode: 'hardcore',
@@ -413,11 +404,15 @@ function ModeCard({
   onClick,
   isPending,
   selectedModel,
+  liveWaiting,
 }: {
   m: Mode
   onClick: () => void
   isPending: boolean
   selectedModel: string
+  // Live waiting count from /arena/queue-stats. undefined ⇒ stats not yet
+  // loaded or errored — fall back to "—".
+  liveWaiting: number | undefined
 }) {
   const { t } = useTranslation('arena')
   const inQueue = useMatchmakingStore((s) => s.inQueue)
@@ -450,9 +445,11 @@ function ModeCard({
           <span className="relative inline-flex h-2 w-2 rounded-full bg-success" />
         </span>
         <span className="font-mono text-[11px] text-text-muted">
-          {typeof m.count === 'number'
-            ? t('in_queue', { count: m.count, time: m.time })
-            : `${m.count} · ${m.time}`}
+          {liveWaiting === undefined
+            ? '—'
+            : liveWaiting === 0
+              ? 'никого в очереди'
+              : `${liveWaiting} в очереди`}
         </span>
         {m.aiPowered && (
           <span className="inline-flex items-center gap-1 rounded-full bg-text-primary/8 px-2 py-0.5 font-mono text-[10px] font-medium text-text-secondary">
@@ -555,6 +552,9 @@ export default function ArenaPage() {
   const storeError = useMatchmakingStore((s) => s.error)
   const startQueue = useMatchmakingStore((s) => s.start)
   const resetQueue = useMatchmakingStore((s) => s.reset)
+  // Live queue counts. Polled every 10s; on error we keep `byMode` empty
+  // so cards render "—" until the next refresh succeeds.
+  const queueStats = useArenaQueueStatsQuery()
   const [errorMsg, setErrorMsg] = useState<string | null>(null)
   const [pendingMode, setPendingMode] = useState<string | null>(null)
 
@@ -694,6 +694,7 @@ export default function ArenaPage() {
                 // and re-enqueueing while still in queue silently no-ops.
                 isPending={pendingMode === m.key || inQueue}
                 selectedModel={neuralModel}
+                liveWaiting={queueStats.data?.by_mode?.[m.arenaMode]}
                 onClick={() => handleModeClick(m)}
               />
             ))}

@@ -312,6 +312,21 @@ func (mr *MockQueueRepoMockRecorder) Position(ctx, userID, section, mode any) *g
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Position", reflect.TypeOf((*MockQueueRepo)(nil).Position), ctx, userID, section, mode)
 }
 
+// Waiting mocks base method.
+func (m *MockQueueRepo) Waiting(ctx context.Context, section enums.Section, mode enums.ArenaMode) (int, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Waiting", ctx, section, mode)
+	ret0, _ := ret[0].(int)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// Waiting indicates an expected call of Waiting.
+func (mr *MockQueueRepoMockRecorder) Waiting(ctx, section, mode any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Waiting", reflect.TypeOf((*MockQueueRepo)(nil).Waiting), ctx, section, mode)
+}
+
 // ReleaseLock mocks base method.
 func (m *MockQueueRepo) ReleaseLock(ctx context.Context, userID uuid.UUID) error {
 	m.ctrl.T.Helper()

@@ -78,6 +78,23 @@ export async function listMyCircles(): Promise<Circle[]> {
   return r.items ?? []
 }
 
+// DiscoverCircle — wire shape for /circles/discover. Lighter than `Circle`:
+// no member array, just an aggregated count (the discover list never
+// renders member chips).
+export interface DiscoverCircle {
+  id: string
+  name: string
+  description: string
+  owner_id: string
+  member_count: number
+  created_at: string
+}
+
+export async function listDiscoverCircles(): Promise<DiscoverCircle[]> {
+  const r = await api<{ items: DiscoverCircle[] }>('/circles/discover')
+  return r.items ?? []
+}
+
 export async function getCircle(id: string): Promise<Circle> {
   return api<Circle>(`/circles/${encodeURIComponent(id)}`)
 }
@@ -185,5 +202,13 @@ export function useMyEventsQuery() {
     queryKey: ['events', 'my'],
     queryFn: listMyEvents,
     staleTime: 60_000,
+  })
+}
+
+export function useDiscoverCirclesQuery() {
+  return useQuery({
+    queryKey: ['circles', 'discover'],
+    queryFn: listDiscoverCircles,
+    staleTime: 30_000,
   })
 }

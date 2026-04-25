@@ -45,6 +45,13 @@ type MemberWithUsername struct {
 	Username string
 }
 
+// CircleWithCount — discover-list row: circle metadata plus member-count
+// pre-aggregated so the UI doesn't fan out one CountMembers call per row.
+type CircleWithCount struct {
+	Circle
+	MemberCount int
+}
+
 // Domain errors.
 var (
 	ErrNotFound  = errors.New("circles: not found")

@@ -165,6 +165,40 @@ export function useArenaMatchQuery(id: string | undefined) {
   })
 }
 
+// ── Live queue stats ─────────────────────────────────────────────────────
+//
+// `GET /api/v1/arena/queue-stats` returns ZCard-derived counts per
+// (mode × section). The /arena landing card UI only needs the per-mode
+// aggregate, so we expose `byMode` directly.
+//
+// Polling cadence (10s) matches the backend QueueStatsCache TTL — clients
+// don't see fresher data than the cache anyway, and the matchmaker tick
+// is on a similar order so jitter is fine.
+
+export type QueueStatsRow = {
+  mode: ArenaModeKey
+  section: SectionKey
+  waiting: number
+}
+
+export type QueueStatsResponse = {
+  items: QueueStatsRow[]
+  // Sum across sections per mode. Empty modes are still listed (waiting=0)
+  // so the UI can switch from "—" to "0 в очереди" deterministically.
+  by_mode: Record<ArenaModeKey, number>
+  generated_at: number
+}
+
+export function useArenaQueueStatsQuery() {
+  return useQuery({
+    queryKey: ['arena', 'queue-stats'],
+    queryFn: () => api<QueueStatsResponse>('/arena/queue-stats'),
+    staleTime: 8_000,
+    refetchInterval: 10_000,
+    retry: false,
+  })
+}
+
 export type FindMatchInput = {
   section: SectionKey
   mode: ArenaModeKey

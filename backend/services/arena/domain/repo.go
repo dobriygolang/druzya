@@ -123,6 +123,11 @@ type QueueRepo interface {
 	// Position возвращает 1-based позицию пользователя в очереди (по ELO,
 	// тай-брейк по enqueued_at). Ноль означает отсутствие.
 	Position(ctx context.Context, userID uuid.UUID, section enums.Section, mode enums.ArenaMode) (int, error)
+
+	// Waiting возвращает количество ожидающих тикетов в очереди (section, mode).
+	// Дешёвый O(1) ZCard — используется лендинг-страницей /arena чтобы показать
+	// "X в очереди" живыми числами вместо хардкода.
+	Waiting(ctx context.Context, section enums.Section, mode enums.ArenaMode) (int, error)
 }
 
 // ReadyCheckRepo отслеживает состояние ready-check по каждому матчу.

@@ -90,6 +90,16 @@ func (h *Handlers) ListMyCircles(ctx context.Context, userID uuid.UUID) ([]domai
 	return out, nil
 }
 
+// ListDiscover returns circles the caller can join (i.e. is not yet in).
+// Used by the /circles "Discover" tab. limit clamped 1..100 inside repo.
+func (h *Handlers) ListDiscover(ctx context.Context, userID uuid.UUID, limit int) ([]domain.CircleWithCount, error) {
+	out, err := h.Circles.ListDiscover(ctx, userID, limit)
+	if err != nil {
+		return nil, fmt.Errorf("circles.ListDiscover: %w", err)
+	}
+	return out, nil
+}
+
 func (h *Handlers) JoinCircle(ctx context.Context, circleID, userID uuid.UUID) error {
 	if _, err := h.Circles.Get(ctx, circleID); err != nil {
 		return fmt.Errorf("circles.Get: %w", err)

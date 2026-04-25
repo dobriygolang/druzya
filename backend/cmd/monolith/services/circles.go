@@ -47,6 +47,7 @@ func NewCircles(d Deps) CirclesModule {
 	members := circlesInfra.NewMembers(d.Pool)
 	handlers := circlesApp.NewHandlers(circles, members)
 	server := circlesPorts.NewCirclesServer(handlers, d.Log)
+	discover := circlesPorts.NewDiscoverHandler(handlers, d.Log)
 
 	connectPath, connectHandler := druz9v1connect.NewCirclesServiceHandler(server)
 	transcoder := mustTranscode("circles", connectPath, connectHandler)
@@ -58,6 +59,10 @@ func NewCircles(d Deps) CirclesModule {
 			RequireConnectAuth: true,
 			MountREST: func(r chi.Router) {
 				r.Post("/circles", transcoder.ServeHTTP)
+				// /circles/discover MUST be registered BEFORE /circles/{circle_id}
+				// — chi matches in declaration order and "discover" would
+				// otherwise be eaten by the {circle_id} pattern.
+				r.Get("/circles/discover", discover.ServeHTTP)
 				r.Get("/circles", transcoder.ServeHTTP)
 				r.Get("/circles/{circle_id}", transcoder.ServeHTTP)
 				r.Delete("/circles/{circle_id}", transcoder.ServeHTTP)

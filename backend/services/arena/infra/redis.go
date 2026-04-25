@@ -142,6 +142,18 @@ func (r *Redis) Snapshot(ctx context.Context, section enums.Section, mode enums.
 	return out, nil
 }
 
+// Waiting возвращает длину очереди (section, mode) одним ZCard.
+func (r *Redis) Waiting(ctx context.Context, section enums.Section, mode enums.ArenaMode) (int, error) {
+	if !section.IsValid() || !mode.IsValid() {
+		return 0, fmt.Errorf("arena.redis.Waiting: invalid section/mode")
+	}
+	n, err := r.rdb.ZCard(ctx, queueKey(section, mode)).Result()
+	if err != nil {
+		return 0, fmt.Errorf("arena.redis.Waiting: zcard: %w", err)
+	}
+	return int(n), nil
+}
+
 // AcquireLock пытается SETNX arena:lock:{user_id}.
 func (r *Redis) AcquireLock(ctx context.Context, userID uuid.UUID, ttl time.Duration) (bool, error) {
 	ok, err := r.rdb.SetNX(ctx, fmt.Sprintf("arena:lock:%s", userID), "1", ttl).Result()

@@ -117,6 +117,58 @@ func (r *Circles) ListByMember(ctx context.Context, userID uuid.UUID) ([]domain.
 	return out, nil
 }
 
+// ListDiscover returns circles the caller is NOT in, newest first, with
+// member counts pre-aggregated. Single query, LEFT JOIN aggregate so adding
+// thousands of circles stays cheap.
+func (r *Circles) ListDiscover(ctx context.Context, userID uuid.UUID, limit int) ([]domain.CircleWithCount, error) {
+	if limit <= 0 || limit > 100 {
+		limit = 30
+	}
+	rows, err := r.pool.Query(ctx, `
+		SELECT c.id, c.name, c.description, c.owner_id, c.created_at, c.updated_at,
+		       COALESCE((SELECT COUNT(*) FROM circle_members cm WHERE cm.circle_id = c.id), 0)::int AS member_count
+		  FROM circles c
+		 WHERE NOT EXISTS (
+		     SELECT 1 FROM circle_members m
+		      WHERE m.circle_id = c.id AND m.user_id = $1
+		 )
+		 ORDER BY c.created_at DESC
+		 LIMIT $2`,
+		sharedpg.UUID(userID), limit,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("circles.Circles.ListDiscover: %w", err)
+	}
+	defer rows.Close()
+	var out []domain.CircleWithCount
+	for rows.Next() {
+		var (
+			rowID, ownerID       pgtype.UUID
+			name, desc           string
+			createdAt, updatedAt time.Time
+			memberCount          int
+		)
+		if err := rows.Scan(&rowID, &name, &desc, &ownerID, &createdAt, &updatedAt, &memberCount); err != nil {
+			return nil, fmt.Errorf("circles.Circles.ListDiscover scan: %w", err)
+		}
+		out = append(out, domain.CircleWithCount{
+			Circle: domain.Circle{
+				ID:          sharedpg.UUIDFrom(rowID),
+				Name:        name,
+				Description: desc,
+				OwnerID:     sharedpg.UUIDFrom(ownerID),
+				CreatedAt:   createdAt,
+				UpdatedAt:   updatedAt,
+			},
+			MemberCount: memberCount,
+		})
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("circles.Circles.ListDiscover rows: %w", err)
+	}
+	return out, nil
+}
+
 func (r *Circles) Delete(ctx context.Context, id uuid.UUID) error {
 	tag, err := r.pool.Exec(ctx, `DELETE FROM circles WHERE id=$1`, sharedpg.UUID(id))
 	if err != nil {

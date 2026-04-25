@@ -113,6 +113,11 @@ func NewArena(d Deps, ratingRepo *ratingInfra.Postgres) *Module {
 	// /arena/match/:id as soon as it returns 200. Chi-direct (no proto).
 	currentMatch := arenaPorts.NewCurrentMatchHandler(pg, d.Log)
 
+	// Queue-stats polling endpoint — /arena landing page polls every 10s to
+	// show live "X в очереди" numbers per mode card. Chi-direct (no proto)
+	// for the same reason as current_match: tiny shape, fast iteration.
+	queueStats := arenaPorts.NewQueueStatsHandler(rdb, d.Log)
+
 	connectPath, connectHandler := druz9v1connect.NewArenaServiceHandler(server)
 	transcoder := mustTranscode("arena", connectPath, connectHandler)
 
@@ -132,6 +137,7 @@ func NewArena(d Deps, ratingRepo *ratingInfra.Postgres) *Module {
 			// — chi matches routes in declaration order and "current" would
 			// otherwise be eaten by the {matchId} pattern.
 			r.Get("/arena/match/current", currentMatch.ServeHTTP)
+			r.Get("/arena/queue-stats", queueStats.ServeHTTP)
 			r.Get("/arena/match/{matchId}", transcoder.ServeHTTP)
 			r.Post("/arena/match/{matchId}/confirm", transcoder.ServeHTTP)
 			r.Post("/arena/match/{matchId}/submit", transcoder.ServeHTTP)
