@@ -59,7 +59,9 @@ func NewSync(d Deps) (*Module, *SyncHeartbeat) {
 			r.Post("/sync/push", repl.push)
 		},
 		Background: []func(ctx context.Context){
-			func(ctx context.Context) { gc.Run(ctx) },
+			// `go` обязателен — bootstrap зовёт Background синхронно
+			// (см. App.Run). gc.Run блокирует на ticker-loop'е.
+			func(ctx context.Context) { go gc.Run(ctx) },
 		},
 	}, hb
 }

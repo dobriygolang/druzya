@@ -86,7 +86,10 @@ func NewStorage(d Deps) (*Module, *StorageGate) {
 			r.Post("/storage/archive/note/{id}/restore", h.restoreNote)
 		},
 		Background: []func(ctx context.Context){
-			func(ctx context.Context) { rec.Run(ctx) },
+			// `go` обязателен — bootstrap зовёт каждую Background-функцию
+			// синхронно (см. App.Run в bootstrap.go). rec.Run блокирует
+			// forever на ticker-loop'е; без `go` весь bootstrap зависает.
+			func(ctx context.Context) { go rec.Run(ctx) },
 		},
 	}
 	return mod, gate
