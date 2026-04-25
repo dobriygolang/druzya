@@ -631,6 +631,15 @@ type NativeSession struct {
 	FinishedAt        pgtype.Timestamptz
 }
 
+type NoteYjsUpdate struct {
+	Seq            int64
+	NoteID         pgtype.UUID
+	UserID         pgtype.UUID
+	UpdateData     []byte
+	OriginDeviceID pgtype.UUID
+	CreatedAt      pgtype.Timestamptz
+}
+
 type NotificationPref struct {
 	UserID         pgtype.UUID
 	ChannelEnabled []byte
