@@ -38,11 +38,16 @@ const (
 // NewCleanupCrons wires the sweep module. Pure background — no REST/
 // Connect surface. Single ticker loops every cleanupCronInterval and
 // runs each sweep in sequence under its own bounded context.
+//
+// Bootstrap runs each Background entry SYNCHRONOUSLY before starting
+// the HTTP listener (see App.Run), so the entry MUST return quickly.
+// We spawn the actual loop on a goroutine that the rootCtx will cancel
+// at shutdown.
 func NewCleanupCrons(d Deps) *Module {
 	return &Module{
 		Background: []func(ctx context.Context){
 			func(ctx context.Context) {
-				runCleanupCron(ctx, d.Pool, d.Log)
+				go runCleanupCron(ctx, d.Pool, d.Log)
 			},
 		},
 	}
