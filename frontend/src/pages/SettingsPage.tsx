@@ -9,7 +9,6 @@ import {
   Shield,
   Palette,
   AlertTriangle,
-  Code2,
   Copy,
   Send,
   Globe,
@@ -214,11 +213,13 @@ function InfoRow({ label, children, last }: { label: string; children: React.Rea
   )
 }
 
-// IntegrationsCard — реальные карточки трёх внешних связок:
-//   - GitHub (placeholder-coming-soon — отдельный сервис делается)
-//   - Telegram (tg_user_link флоу — кнопка "Привязать" → /tg-link)
+// IntegrationsCard — две реальных внешних связки:
+//   - Telegram (tg_user_link флоу — копипаст команды в @druz9_bot)
 //   - Yandex (OAuth — статус берём из oauth_accounts через профиль)
-// Других интеграций по продукт-решению нет.
+//
+// GitHub намеренно убран: backend-инфраструктуры под него нет (OAuth /
+// API client / scheduled scan / prompt pipeline — всё нужно строить с
+// нуля, ~600-800 LOC + отдельный сервис). Возвращём, когда будет.
 function IntegrationsCard() {
   const { data: profile } = useProfileQuery()
   const oauthYandex = (profile as unknown as { oauth_providers?: string[] })?.oauth_providers?.includes('yandex') ?? false
@@ -228,20 +229,11 @@ function IntegrationsCard() {
       <h3 className="font-display text-lg font-bold text-text-primary">Integrations</h3>
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <IntegrationRow
-          icon={<Code2 className="h-5 w-5" />}
-          name="GitHub"
-          status="coming-soon"
-          description="AI читает профиль + репозитории и складывает рекомендации в Insights."
-          onAction={undefined}
-        />
-        <IntegrationRow
           icon={<Send className="h-5 w-5" />}
           name="Telegram"
           status={tgLinked ? 'connected' : 'disconnected'}
           description={tgLinked ? `Привязан как @${tgLinked}` : 'Привяжи аккаунт чтобы получать пинги в TG.'}
           onAction={() => {
-            // Tg link flow lives at /settings (existing TgLinkBlock if any)
-            // или копипаст команды в @druz9_bot.
             window.alert('Открой @druz9_bot в Telegram и пришли /start — после этого пинги придут на твой аккаунт.')
           }}
         />
