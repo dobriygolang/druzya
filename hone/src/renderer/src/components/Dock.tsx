@@ -98,8 +98,13 @@ interface TimerAreaProps {
 // TimerArea — узкий swap-контейнер с фиксированной шириной чтобы при
 // hover-смене контента dock не «дёргался» (layout shift). Время и
 // hover-кнопки cross-fade'ятся через position: absolute.
+// Барабан-эффект: viewport фиксирован 30 px высотой, внутренний reel
+// (60 px) держит две «полоски» — time и controls. Hover скроллит reel
+// вниз на 30 px, time уезжает за нижний край viewport, controls
+// приезжают сверху. Транзишн на transform = плавный «оборот барабана».
 function TimerArea({ running, mode, mm, ss, onToggleMode, onReset }: TimerAreaProps) {
   const [hover, setHover] = useState(false);
+  const ROW = 30;
   return (
     <div
       onMouseEnter={() => setHover(true)}
@@ -107,94 +112,92 @@ function TimerArea({ running, mode, mm, ss, onToggleMode, onReset }: TimerAreaPr
       style={{
         position: 'relative',
         width: 128,
-        height: 30,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
+        height: ROW,
+        overflow: 'hidden',
       }}
     >
-      {/* default: mode-marker + mm:ss */}
       <div
         style={{
-          position: 'absolute',
-          inset: 0,
           display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          gap: 7,
-          opacity: hover ? 0 : 1,
-          transition: 'opacity var(--t-fast)',
-          pointerEvents: hover ? 'none' : 'auto',
+          flexDirection: 'column',
+          // Reel начинается сдвинутым вверх на ROW (controls скрыты сверху,
+          // time видна). На hover сдвигаем вниз на ROW — controls
+          // въезжают, time уезжает.
+          transform: `translateY(${hover ? 0 : -ROW}px)`,
+          transition: 'transform 280ms cubic-bezier(0.2, 0.7, 0.2, 1)',
         }}
       >
-        {mode === 'stopwatch' ? (
-          <span
-            style={{
-              color: running ? 'var(--ink-90)' : 'var(--ink-40)',
-              display: 'flex',
-              transition: 'color var(--t-fast)',
-            }}
-          >
-            <Icon name="infinity" size={13} />
-          </span>
-        ) : (
-          <span
-            style={{
-              width: 9,
-              height: 9,
-              borderRadius: 99,
-              border: '1px solid var(--ink-40)',
-              background: running ? 'var(--red)' : 'transparent',
-              borderColor: running ? 'var(--red)' : 'var(--ink-40)',
-              transition:
-                'background-color var(--t-fast), border-color var(--t-fast)',
-            }}
-            className={running ? 'red-pulse' : ''}
-          />
-        )}
-        <span
-          className="mono"
+        {/* Row 0: hover controls (изначально скрыты сверху) */}
+        <div
           style={{
-            fontSize: 14,
-            letterSpacing: '0.04em',
-            color: 'var(--ink)',
+            height: ROW,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-around',
+            background: 'rgba(255,255,255,0.06)',
+            borderRadius: 999,
+            margin: '0 9%',
+            padding: '0 4px',
+            pointerEvents: hover ? 'auto' : 'none',
           }}
         >
-          {mm}:{ss}
-        </span>
-      </div>
+          <DockBtn
+            onClick={onToggleMode}
+            title={mode === 'countdown' ? 'Switch to ∞' : 'Switch to pomodoro'}
+            small
+          >
+            <Icon name={mode === 'countdown' ? 'infinity' : 'circle'} size={13} />
+          </DockBtn>
+          <DockBtn onClick={onReset} title="Reset" small>
+            <Icon name="rewind" size={13} />
+          </DockBtn>
+        </div>
 
-      {/* hover: широкий pill с двумя кнопками, занимает ~85% ширины
-           TimerArea — как в winter.so reference */}
-      <div
-        style={{
-          position: 'absolute',
-          top: 0,
-          bottom: 0,
-          left: '7%',
-          right: '7%',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-around',
-          background: 'rgba(255,255,255,0.06)',
-          borderRadius: 999,
-          padding: '0 8px',
-          opacity: hover ? 1 : 0,
-          transform: hover ? 'scale(1)' : 'scale(0.96)',
-          transition: 'opacity var(--t-fast), transform var(--t-fast)',
-          pointerEvents: hover ? 'auto' : 'none',
-        }}
-      >
-        <DockBtn
-          onClick={onToggleMode}
-          title={mode === 'countdown' ? 'Switch to ∞' : 'Switch to pomodoro'}
-          small
+        {/* Row 1: mode-marker + mm:ss (default visible) */}
+        <div
+          style={{
+            height: ROW,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 7,
+          }}
         >
-          <Icon name={mode === 'countdown' ? 'infinity' : 'circle'} size={13} />
-        </DockBtn>
-        <DockBtn onClick={onReset} title="Reset" small>
-          <Icon name="rewind" size={13} />
-        </DockBtn>
+          {mode === 'stopwatch' ? (
+            <span
+              style={{
+                color: running ? 'var(--ink-90)' : 'var(--ink-40)',
+                display: 'flex',
+                transition: 'color var(--t-fast)',
+              }}
+            >
+              <Icon name="infinity" size={13} />
+            </span>
+          ) : (
+            <span
+              style={{
+                width: 9,
+                height: 9,
+                borderRadius: 99,
+                background: running ? 'var(--red)' : 'transparent',
+                border: `1px solid ${running ? 'var(--red)' : 'var(--ink-40)'}`,
+                transition:
+                  'background-color var(--t-fast), border-color var(--t-fast)',
+              }}
+              className={running ? 'red-pulse' : ''}
+            />
+          )}
+          <span
+            className="mono"
+            style={{
+              fontSize: 14,
+              letterSpacing: '0.04em',
+              color: 'var(--ink)',
+            }}
+          >
+            {mm}:{ss}
+          </span>
+        </div>
       </div>
     </div>
   );
@@ -260,38 +263,51 @@ interface VolumeBtnProps {
   onVol: (v: number) => void;
 }
 
+// VolumeBtn — кнопка + inline-slider справа. По дефолту slider свёрнут
+// (width:0, opacity:0), на hover/focus раскрывается до 96 px с
+// плавным width-transition. Док растёт в ширину вместе со slider'ом.
 function VolumeBtn({ vol, onVol }: VolumeBtnProps) {
   const [open, setOpen] = useState(false);
   return (
-    <div style={{ position: 'relative' }}>
+    <div
+      onMouseEnter={() => setOpen(true)}
+      onMouseLeave={() => setOpen(false)}
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: open ? 8 : 0,
+        transition: 'gap 220ms cubic-bezier(0.2, 0.7, 0.2, 1)',
+      }}
+    >
       <DockBtn onClick={() => setOpen((o) => !o)} title="Volume">
         <Icon name="volume" size={12} />
       </DockBtn>
-      {open && (
-        <div
-          onMouseLeave={() => setOpen(false)}
-          className="scale-pop"
+      <div
+        style={{
+          width: open ? 96 : 0,
+          opacity: open ? 1 : 0,
+          overflow: 'hidden',
+          display: 'flex',
+          alignItems: 'center',
+          transition:
+            'width 220ms cubic-bezier(0.2, 0.7, 0.2, 1), opacity 220ms cubic-bezier(0.2, 0.7, 0.2, 1)',
+        }}
+      >
+        <input
+          type="range"
+          min="0"
+          max="100"
+          value={vol}
+          onChange={(e) => onVol(parseInt(e.target.value))}
+          tabIndex={open ? 0 : -1}
           style={{
-            position: 'absolute',
-            bottom: 42,
-            right: -6,
-            padding: '10px 12px',
-            borderRadius: 10,
-            background: 'rgba(10,10,10,0.92)',
-            border: '1px solid rgba(255,255,255,0.08)',
-            backdropFilter: 'blur(20px)',
+            width: '100%',
+            height: 4,
+            accentColor: '#fff',
+            cursor: 'pointer',
           }}
-        >
-          <input
-            type="range"
-            min="0"
-            max="100"
-            value={vol}
-            onChange={(e) => onVol(parseInt(e.target.value))}
-            style={{ width: 110, accentColor: '#fff' }}
-          />
-        </div>
-      )}
+        />
+      </div>
     </div>
   );
 }

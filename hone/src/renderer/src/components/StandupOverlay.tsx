@@ -13,17 +13,29 @@ interface StandupOverlayProps {
   onClose: () => void;
 }
 
+const CLOSE_DURATION_MS = 260;
+
 export function StandupOverlay({ onClose }: StandupOverlayProps) {
   const [yesterday, setYesterday] = useState('');
   const [today, setToday] = useState('');
   const [blockers, setBlockers] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [closing, setClosing] = useState(false);
   const yRef = useRef<HTMLTextAreaElement>(null!);
 
   useEffect(() => {
     yRef.current?.focus();
   }, []);
+
+  // Smooth close: запускаем slide-out анимацию, через 260 ms даём
+  // App'у unmount'ить overlay. Без этого CANCEL/Save выглядели как
+  // jump-cut.
+  const close = () => {
+    if (closing) return;
+    setClosing(true);
+    window.setTimeout(onClose, CLOSE_DURATION_MS);
+  };
 
   const canSubmit =
     !submitting && (yesterday.trim() !== '' || today.trim() !== '' || blockers.trim() !== '');
@@ -38,7 +50,7 @@ export function StandupOverlay({ onClose }: StandupOverlayProps) {
         today: today.trim(),
         blockers: blockers.trim(),
       });
-      onClose();
+      close();
     } catch (err: unknown) {
       const ce = ConnectError.from(err);
       setError(ce.rawMessage || ce.message);
@@ -54,25 +66,21 @@ export function StandupOverlay({ onClose }: StandupOverlayProps) {
   };
 
   return (
-    <div
-      className="slide-from-bottom"
-      style={{
-        position: 'absolute',
-        left: '50%',
-        bottom: 110,
-        transform: 'translateX(-50%)',
-        width: 460,
-        maxWidth: '92%',
-        padding: '20px 22px 18px',
-        background: 'rgba(10,10,10,0.92)',
-        border: '1px solid rgba(255,255,255,0.08)',
-        borderRadius: 14,
-        backdropFilter: 'blur(20px)',
-        WebkitBackdropFilter: 'blur(20px)',
-        boxShadow: '0 30px 80px -20px rgba(0,0,0,0.7)',
-        zIndex: 14,
-      }}
-    >
+    <div className="overlay-center">
+      <div
+        className={closing ? 'slide-out-to-bottom' : 'slide-from-bottom'}
+        style={{
+          width: 460,
+          maxWidth: '92%',
+          padding: '20px 22px 18px',
+          background: 'rgba(10,10,10,0.92)',
+          border: '1px solid rgba(255,255,255,0.08)',
+          borderRadius: 14,
+          backdropFilter: 'blur(20px)',
+          WebkitBackdropFilter: 'blur(20px)',
+          boxShadow: '0 30px 80px -20px rgba(0,0,0,0.7)',
+        }}
+      >
       <div
         className="mono"
         style={{ fontSize: 9.5, letterSpacing: '.22em', color: 'var(--ink-40)' }}
@@ -129,8 +137,8 @@ export function StandupOverlay({ onClose }: StandupOverlayProps) {
         </span>
         <div style={{ display: 'flex', gap: 8 }}>
           <button
-            onClick={onClose}
-            disabled={submitting}
+            onClick={close}
+            disabled={submitting || closing}
             className="focus-ring mono surface"
             style={{
               padding: '6px 12px',
@@ -165,6 +173,7 @@ export function StandupOverlay({ onClose }: StandupOverlayProps) {
             {submitting ? 'Saving…' : 'Save standup'}
           </button>
         </div>
+      </div>
       </div>
     </div>
   );
