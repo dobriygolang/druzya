@@ -46,18 +46,16 @@ export function Palette({ onClose, onOpen }: PaletteProps) {
     () => [
       { id: 'today', label: 'Today', sc: 'T', run: () => onOpen('today') },
       { id: 'notes', label: 'Notes', sc: 'N', run: () => onOpen('notes') },
-      { id: 'board', label: 'Whiteboard', sc: 'D', run: () => onOpen('board') },
-      { id: 'stats', label: 'Stats', sc: 'S', run: () => onOpen('stats') },
-      { id: 'podcasts', label: 'Podcasts', sc: 'P', run: () => onOpen('podcasts') },
-      { id: 'editor', label: 'Code rooms', sc: 'E', run: () => onOpen('editor') },
-      { id: 'shared_boards', label: 'Shared boards', sc: 'B', run: () => onOpen('shared_boards') },
+      // Boards собирает три collaboration-surfaces (private whiteboard,
+      // multiplayer Excalidraw, code rooms) под одним пунктом палитры.
+      // Click ведёт на Shared boards (multiplayer — primary). Hotkeys
+      // остаются раздельными чтобы power-users не теряли скорость:
+      //   D — Whiteboard private, B — Shared boards, E — Code rooms.
+      { id: 'shared_boards', label: 'Boards · Code rooms', sc: 'D · B · E', run: () => onOpen('shared_boards') },
       { id: 'events', label: 'Events', sc: 'V', run: () => onOpen('events') },
+      { id: 'podcasts', label: 'Podcasts', sc: 'P', run: () => onOpen('podcasts') },
+      { id: 'stats', label: 'Stats', sc: 'S', run: () => onOpen('stats') },
       { id: 'standup', label: 'Daily standup', sc: '', run: () => onOpen('standup') },
-      // "Open druz9.ru" is intentionally a no-op for now — in Phase 5b
-      // we'll route through shell.openExternal via the preload bridge so
-      // this hops the user's browser, not an in-app webview.
-      { id: 'druz9', label: 'Open druz9.ru', sc: '⌘O', run: () => undefined },
-      { id: 'ai', label: 'Ask AI', sc: '⌘⇧␣', run: () => onOpen('copilot') },
     ],
     [onOpen],
   );

@@ -47,6 +47,10 @@ const api: HoneAPI = {
     check: () => ipcRenderer.invoke(invokeChannels.updaterCheck) as Promise<void>,
     install: () => ipcRenderer.invoke(invokeChannels.updaterInstall) as Promise<void>,
   },
+  window: {
+    setTrafficLights: (visible: boolean) =>
+      ipcRenderer.invoke(invokeChannels.trafficLightsShow, visible) as Promise<void>,
+  },
   on: (channel, listener) => {
     const wire = eventChannels[channel];
     const handler = (_event: Electron.IpcRendererEvent, payload: unknown) => {

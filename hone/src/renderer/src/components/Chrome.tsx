@@ -1,11 +1,13 @@
 // Chrome — persistent corner widgets.
 //
 //   Wordmark  — HONE top-left, always.
-//   Versionmark — top-right: either the "1010 / v.0.0.1" pair on home, or
-//                 an ESC hint back to home on any sub-page. The two are
-//                 the same slot because the corner should never visually
-//                 shift when the user navigates.
+//   Versionmark — top-right: либо «druz9.online» на home (link, открывает
+//                 web в системном браузере), либо ESC-hint назад на home
+//                 на саб-страницах. Один и тот же слот: угол не должен
+//                 визуально дёргаться при переходах.
 import { Kbd } from './primitives/Kbd';
+
+const WEB_HOST = 'druz9.online';
 
 export function Wordmark() {
   return (
@@ -60,25 +62,23 @@ export function Versionmark({ escHint, onEsc }: VersionmarkProps) {
           <Kbd>esc</Kbd> HOME
         </button>
       ) : (
-        <>
-          <div
-            className="mono"
-            style={{
-              fontSize: 10,
-              color: 'var(--ink-40)',
-              letterSpacing: '0.26em',
-              lineHeight: 1,
-            }}
-          >
-            1010
-          </div>
-          <div
-            className="mono"
-            style={{ fontSize: 10, color: 'var(--ink-40)', letterSpacing: '0.14em', marginTop: 6 }}
-          >
-            v.0.0.1
-          </div>
-        </>
+        <button
+          onClick={() => {
+            void window.hone?.shell.openExternal(`https://${WEB_HOST}`);
+          }}
+          className="mono focus-ring"
+          style={{
+            fontSize: 10,
+            color: 'var(--ink-40)',
+            letterSpacing: '0.18em',
+            background: 'transparent',
+            padding: 0,
+          }}
+          onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--ink-90)')}
+          onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--ink-40)')}
+        >
+          {WEB_HOST}
+        </button>
       )}
     </div>
   );

@@ -16,6 +16,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { CanvasBg, type CanvasMode } from './components/CanvasBg';
 import { Wordmark, Versionmark } from './components/Chrome';
+import { TrafficLightsHover } from './components/TrafficLightsHover';
 import { Dock } from './components/Dock';
 import { LoginScreen } from './components/LoginScreen';
 import { OnboardingModal } from './components/OnboardingModal';
@@ -346,6 +347,7 @@ export default function App() {
     <div style={{ position: 'fixed', inset: 0, background: '#000', overflow: 'hidden' }}>
       <CanvasBg mode={canvasMode} />
 
+      <TrafficLightsHover />
       <Wordmark />
       <Versionmark escHint={page !== 'home'} onEsc={goHome} />
 

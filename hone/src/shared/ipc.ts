@@ -16,6 +16,7 @@ export const invokeChannels = {
   shellOpenExternal: 'shell:open-external',
   updaterCheck: 'updater:check',
   updaterInstall: 'updater:install',
+  trafficLightsShow: 'window:traffic-lights-show',
 } as const;
 
 export const eventChannels = {
@@ -62,6 +63,14 @@ export interface HoneAPI {
     check: () => Promise<void>;
     /** Quit + install the already-downloaded update. */
     install: () => Promise<void>;
+  };
+  window: {
+    /**
+     * Toggle macOS traffic-light buttons (close / minimise / zoom). Renderer
+     * shows them only on hover into a top-left zone, чтобы canvas оставался
+     * визуально чистым по дефолту.
+     */
+    setTrafficLights: (visible: boolean) => Promise<void>;
   };
   /** Subscribe to a main→renderer push (returns an unsubscribe fn). */
   on: <K extends keyof typeof eventChannels>(

@@ -112,6 +112,12 @@ function createMainWindow(): BrowserWindow {
       sandbox: true,
     },
   });
+  // Traffic lights скрываем по дефолту — renderer-side hover-zone
+  // (см. components/TrafficLightsHover.tsx) шлёт IPC `setTrafficLights(true)`
+  // при наведении на левый верхний угол.
+  if (process.platform === 'darwin') {
+    win.setWindowButtonVisibility(false);
+  }
 
   win.once('ready-to-show', () => win.show());
 
@@ -308,6 +314,11 @@ app.whenReady().then(() => {
   });
   ipcMain.handle(invokeChannels.updaterInstall, async () => {
     quitAndInstall();
+  });
+
+  ipcMain.handle(invokeChannels.trafficLightsShow, async (_e, visible: boolean) => {
+    if (process.platform !== 'darwin' || !mainWindow || mainWindow.isDestroyed()) return;
+    mainWindow.setWindowButtonVisibility(Boolean(visible));
   });
 
   // ── Window ─────────────────────────────────────────────────────────────
