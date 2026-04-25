@@ -15,10 +15,13 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-// wsRateLimit is the per-connection inbound-msg budget. Editor is
-// chatter-heavy (Yjs deltas, cursor bursts on paste) so we give it more
-// headroom than arena/mock — 40 msg/sec per connection.
-const wsRateLimit = 40
+// wsRateLimit is the per-connection inbound-msg budget. Editor — Yjs
+// deltas + cursor bursts на paste/auto-format/multi-line edits. CodeMirror
+// при typing easily эмитит >40 events/sec (insert + cursor + selection).
+// 40 был слишком жёстким → silent-drop real-time updates → "reconnecting"
+// у клиента из-за того что server-side snapshot не успевает settle.
+// 200 даёт запас и совместим с Excalidraw frame-rate (mirror whiteboard'а).
+const wsRateLimit = 200
 
 // wsPingInterval is the server-initiated keepalive.
 const wsPingInterval = 30 * time.Second

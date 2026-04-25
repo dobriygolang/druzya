@@ -896,7 +896,7 @@ function CodeRowDropdown({
       />
       <CodeMenuItem icon={<ExternalSvg />} label="Open on web" onClick={onOpenWeb} />
       <CodeMenuDivider />
-      <CodeMenuItem icon={<ForgetSvg />} label="Forget room" onClick={onForget} muted />
+      <CodeMenuItem icon={<ForgetSvg />} label="Delete room" onClick={onForget} muted />
     </div>
   );
 }
@@ -1157,12 +1157,37 @@ function rememberEditorRoom(id: string, language?: number) {
 
 function forgetEditorRoom(id: string) {
   if (typeof window === 'undefined') return;
+  // Local list очищаем СРАЗУ — UX не должен ждать сети.
   try {
     const next = loadRecent().filter((e) => e.id !== id);
     window.localStorage.setItem(RECENT_KEY, JSON.stringify(next));
   } catch {
     /* ignore */
   }
+  // Server-side hard-delete. Backend DELETE /api/v1/editor/room/{id} был
+  // добавлен (cmd/monolith/services/editor.go editorDeleteHandler).
+  // 404 = уже не существует / не owner — игнорируем (UX-эквивалент успеха).
+  void (async () => {
+    try {
+      const { API_BASE_URL, DEV_BEARER_TOKEN } = await import('../api/config');
+      const { useSessionStore } = await import('../stores/session');
+      const token = useSessionStore.getState().accessToken ?? DEV_BEARER_TOKEN;
+      const headers: Record<string, string> = {};
+      if (token) headers.authorization = `Bearer ${token}`;
+      try {
+        const did = window.localStorage.getItem('hone:device-id');
+        if (did) headers['x-device-id'] = did;
+      } catch {
+        /* ignore */
+      }
+      await fetch(`${API_BASE_URL}/api/v1/editor/room/${encodeURIComponent(id)}`, {
+        method: 'DELETE',
+        headers,
+      });
+    } catch {
+      /* network blip — server-side row останется до TTL-cron'а */
+    }
+  })();
 }
 
 // ─── Single room view ──────────────────────────────────────────────────────

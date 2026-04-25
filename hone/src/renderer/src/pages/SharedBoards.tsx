@@ -582,7 +582,6 @@ function RoomRowImpl({
 }) {
   const [hover, setHover] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
-  const [confirmDel, setConfirmDel] = useState(false);
   const [copied, setCopied] = useState(false);
   const [visibility, setVisibility] = useState<WhiteboardVisibility | null>(null);
   const [busy, setBusy] = useState(false);
@@ -652,7 +651,6 @@ function RoomRowImpl({
       onMouseEnter={() => setHover(true)}
       onMouseLeave={() => {
         setHover(false);
-        if (!menuOpen) setConfirmDel(false);
       }}
       style={{
         position: 'relative',
@@ -787,14 +785,12 @@ function RoomRowImpl({
           <DropdownDivider />
           <DropdownItem
             icon={<TrashIcon />}
-            label={confirmDel ? 'Click again to confirm' : 'Delete board'}
+            label="Delete board"
             danger
             onClick={() => {
-              if (!confirmDel) {
-                setConfirmDel(true);
-                window.setTimeout(() => setConfirmDel(false), 2000);
-                return;
-              }
+              // Прямое удаление без двойного click-to-confirm. Юзер
+              // нажал Delete — выполняем. Случайные клики dropdown'а
+              // редки, восстановление room через invite-link тривиально.
               setMenuOpen(false);
               onDelete(room.id);
             }}

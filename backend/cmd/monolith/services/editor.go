@@ -118,6 +118,12 @@ func NewEditor(d Deps) *Module {
 			ev := &editorVisibilityHandler{rooms: rooms, log: d.Log}
 			r.Get("/editor/room/{roomId}/visibility", ev.get)
 			r.Post("/editor/room/{roomId}/visibility", ev.set)
+			// DeleteRoom — REST shortcut. Editor domain pока не имеет
+			// DeleteRoom RPC в proto (whiteboard_rooms имеет), и регенерация
+			// proto + clients тяжёлый change. Inline SQL handler покрывает
+			// UX-кейс «owner хочет удалить комнату» без proto-изменений.
+			edh := &editorDeleteHandler{pool: d.Pool, log: d.Log}
+			r.Delete("/editor/room/{roomId}", edh.handle)
 		},
 		MountPublicREST: func(r chi.Router) {
 			egj := &editorGuestJoinHandler{
@@ -144,6 +150,46 @@ func NewEditor(d Deps) *Module {
 			func(ctx context.Context) error { hub.CloseAll(); return nil },
 		},
 	}
+}
+
+// ─── Editor delete REST handler ───────────────────────────────────────────
+//
+// Inline SQL handler — DELETE /api/v1/editor/room/{id}. Owner-only. Каскад
+// удаляет участников через FK ON DELETE CASCADE (см. migrations). WS hub
+// при следующем broadcast'е увидит «room not found» и закроет коннекты.
+
+type editorDeleteHandler struct {
+	pool *pgxpool.Pool
+	log  *slog.Logger
+}
+
+func (h *editorDeleteHandler) handle(w http.ResponseWriter, r *http.Request) {
+	uid, ok := sharedMw.UserIDFromContext(r.Context())
+	if !ok {
+		http.Error(w, `{"error":{"code":"unauthenticated"}}`, http.StatusUnauthorized)
+		return
+	}
+	roomID, err := uuid.Parse(chi.URLParam(r, "roomId"))
+	if err != nil {
+		http.Error(w, `{"error":{"code":"bad_id"}}`, http.StatusBadRequest)
+		return
+	}
+	tag, err := h.pool.Exec(r.Context(),
+		`DELETE FROM editor_rooms WHERE id = $1 AND owner_id = $2`,
+		roomID, uid,
+	)
+	if err != nil {
+		h.log.ErrorContext(r.Context(), "editor.delete: exec", slog.Any("err", err))
+		http.Error(w, `{"error":{"code":"internal"}}`, http.StatusInternalServerError)
+		return
+	}
+	if tag.RowsAffected() == 0 {
+		// Либо не owner, либо room уже не существует. Возвращаем 404 без
+		// различения — не утечка инфы про чужие комнаты.
+		http.Error(w, `{"error":{"code":"not_found"}}`, http.StatusNotFound)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
 }
 
 // ─── Editor visibility REST handler ───────────────────────────────────────

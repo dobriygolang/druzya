@@ -1242,7 +1242,6 @@ const NoteRow = memo(NoteRowImpl, (prev, next) => {
 function NoteRowImpl({ note, active, encrypted, onSelect, onDelete, onPublish, onUnpublish, onEncrypt, onSyncToCloud }: NoteRowProps) {
   const [hover, setHover] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
-  const [confirmDel, setConfirmDel] = useState(false);
   const [pubStatus, setPubStatus] = useState<PublishStatus | null>(null);
   const rowRef = useRef<HTMLDivElement>(null);
 
@@ -1289,7 +1288,6 @@ function NoteRowImpl({ note, active, encrypted, onSelect, onDelete, onPublish, o
       onMouseEnter={() => setHover(true)}
       onMouseLeave={() => {
         setHover(false);
-        if (!menuOpen) setConfirmDel(false);
       }}
       style={{
         position: 'relative',
@@ -1496,15 +1494,10 @@ function NoteRowImpl({ note, active, encrypted, onSelect, onDelete, onPublish, o
             setPubStatus({ published: false });
           }}
           onDelete={() => {
-            if (!confirmDel) {
-              setConfirmDel(true);
-              window.setTimeout(() => setConfirmDel(false), 2000);
-              return;
-            }
+            // Прямое удаление без двойного confirm — юзер просил.
             setMenuOpen(false);
             onDelete(note.id);
           }}
-          confirmingDelete={confirmDel}
         />
       )}
     </div>
@@ -1537,10 +1530,9 @@ interface RowDropdownProps {
   onPublish: () => void;
   onUnpublish: () => void;
   onDelete: () => void;
-  confirmingDelete: boolean;
 }
 
-function RowDropdown({ isLocal, published, onSyncToCloud, onPublish, onUnpublish, onDelete, confirmingDelete }: RowDropdownProps) {
+function RowDropdown({ isLocal, published, onSyncToCloud, onPublish, onUnpublish, onDelete }: RowDropdownProps) {
   return (
     <div
       className="fadein"
@@ -1591,7 +1583,7 @@ function RowDropdown({ isLocal, published, onSyncToCloud, onPublish, onUnpublish
       )}
       <DropdownItem
         icon={<TrashIcon />}
-        label={confirmingDelete ? 'Click again to confirm' : 'Delete Note'}
+        label="Delete Note"
         onClick={onDelete}
         danger
       />

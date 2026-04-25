@@ -29,7 +29,13 @@ import (
 )
 
 const (
-	wsRateLimit       = 40
+	// wsRateLimit — per-connection inbound msg/sec. Excalidraw на активном
+	// drawing'е emit'ит 60-120+ events/sec (mouse-move на каждый pixel).
+	// Старый лимит 40 → silent-drop'ались real-time updates → host видит
+	// guest'а, guest НЕ видит host'а (или наоборот) + после refresh всё
+	// пропадает (snapshot не успел persist'нуться). Поднимаем до 200 с
+	// запасом — нагрузка всё равно ограничена per-conn (одна вкладка).
+	wsRateLimit       = 200
 	wsPingInterval    = 30 * time.Second
 	wsReadDeadline    = 120 * time.Second
 	wsMaxMessageBytes = 1 << 20 // 1 MiB — Excalidraw diffs are small, full snapshots fit.
