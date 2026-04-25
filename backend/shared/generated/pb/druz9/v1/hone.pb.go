@@ -2646,6 +2646,98 @@ func (x *RecordStandupResponse) GetPlan() *Plan {
 	return nil
 }
 
+// GetTodayStandup — снапшот для морнинг-баннера в Today page.
+//   - recorded: уже сохранён ли standup на сегодня (frontend скрывает баннер).
+//   - yesterday_done: title'ы DONE-items из Focus Queue за вчера —
+//     auto-prefill для секции «Yesterday you finished».
+type GetTodayStandupRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetTodayStandupRequest) Reset() {
+	*x = GetTodayStandupRequest{}
+	mi := &file_druz9_v1_hone_proto_msgTypes[45]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetTodayStandupRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetTodayStandupRequest) ProtoMessage() {}
+
+func (x *GetTodayStandupRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_hone_proto_msgTypes[45]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetTodayStandupRequest.ProtoReflect.Descriptor instead.
+func (*GetTodayStandupRequest) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_hone_proto_rawDescGZIP(), []int{45}
+}
+
+type GetTodayStandupResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Recorded      bool                   `protobuf:"varint,1,opt,name=recorded,proto3" json:"recorded,omitempty"`
+	YesterdayDone []string               `protobuf:"bytes,2,rep,name=yesterday_done,json=yesterdayDone,proto3" json:"yesterday_done,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetTodayStandupResponse) Reset() {
+	*x = GetTodayStandupResponse{}
+	mi := &file_druz9_v1_hone_proto_msgTypes[46]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetTodayStandupResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetTodayStandupResponse) ProtoMessage() {}
+
+func (x *GetTodayStandupResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_hone_proto_msgTypes[46]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetTodayStandupResponse.ProtoReflect.Descriptor instead.
+func (*GetTodayStandupResponse) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_hone_proto_rawDescGZIP(), []int{46}
+}
+
+func (x *GetTodayStandupResponse) GetRecorded() bool {
+	if x != nil {
+		return x.Recorded
+	}
+	return false
+}
+
+func (x *GetTodayStandupResponse) GetYesterdayDone() []string {
+	if x != nil {
+		return x.YesterdayDone
+	}
+	return nil
+}
+
 var File_druz9_v1_hone_proto protoreflect.FileDescriptor
 
 const file_druz9_v1_hone_proto_rawDesc = "" +
@@ -2840,7 +2932,11 @@ const file_druz9_v1_hone_proto_rawDesc = "" +
 	"\bblockers\x18\x03 \x01(\tR\bblockers\"_\n" +
 	"\x15RecordStandupResponse\x12\"\n" +
 	"\x04note\x18\x01 \x01(\v2\x0e.druz9.v1.NoteR\x04note\x12\"\n" +
-	"\x04plan\x18\x02 \x01(\v2\x0e.druz9.v1.PlanR\x04plan2\x85\x15\n" +
+	"\x04plan\x18\x02 \x01(\v2\x0e.druz9.v1.PlanR\x04plan\"\x18\n" +
+	"\x16GetTodayStandupRequest\"\\\n" +
+	"\x17GetTodayStandupResponse\x12\x1a\n" +
+	"\brecorded\x18\x01 \x01(\bR\brecorded\x12%\n" +
+	"\x0eyesterday_done\x18\x02 \x03(\tR\ryesterdayDone2\x81\x16\n" +
 	"\vHoneService\x12n\n" +
 	"\x11GenerateDailyPlan\x12\".druz9.v1.GenerateDailyPlanRequest\x1a\x0e.druz9.v1.Plan\"%\x82\xd3\xe4\x93\x02\x1f:\x01*\"\x1a/api/v1/hone/plan/generate\x12X\n" +
 	"\fGetDailyPlan\x12\x1d.druz9.v1.GetDailyPlanRequest\x1a\x0e.druz9.v1.Plan\"\x19\x82\xd3\xe4\x93\x02\x13\x12\x11/api/v1/hone/plan\x12i\n" +
@@ -2869,7 +2965,8 @@ const file_druz9_v1_hone_proto_rawDesc = "" +
 	"\x10DeleteWhiteboard\x12!.druz9.v1.DeleteWhiteboardRequest\x1a\".druz9.v1.DeleteWhiteboardResponse\"*\x82\xd3\xe4\x93\x02$:\x01*\"\x1f/api/v1/hone/whiteboards/delete\x12U\n" +
 	"\x12CritiqueWhiteboard\x12#.druz9.v1.CritiqueWhiteboardRequest\x1a\x18.druz9.v1.CritiquePacket0\x01\x12|\n" +
 	"\x12SaveCritiqueAsNote\x12#.druz9.v1.SaveCritiqueAsNoteRequest\x1a\x0e.druz9.v1.Note\"1\x82\xd3\xe4\x93\x02+:\x01*\"&/api/v1/hone/whiteboards/critique/save\x12q\n" +
-	"\rRecordStandup\x12\x1e.druz9.v1.RecordStandupRequest\x1a\x1f.druz9.v1.RecordStandupResponse\"\x1f\x82\xd3\xe4\x93\x02\x19:\x01*\"\x14/api/v1/hone/standupB\x86\x01\n" +
+	"\rRecordStandup\x12\x1e.druz9.v1.RecordStandupRequest\x1a\x1f.druz9.v1.RecordStandupResponse\"\x1f\x82\xd3\xe4\x93\x02\x19:\x01*\"\x14/api/v1/hone/standup\x12z\n" +
+	"\x0fGetTodayStandup\x12 .druz9.v1.GetTodayStandupRequest\x1a!.druz9.v1.GetTodayStandupResponse\"\"\x82\xd3\xe4\x93\x02\x1c\x12\x1a/api/v1/hone/standup/todayB\x86\x01\n" +
 	"\fcom.druz9.v1B\tHoneProtoP\x01Z*druz9/shared/generated/pb/druz9/v1;druz9v1\xa2\x02\x03DXX\xaa\x02\bDruz9.V1\xca\x02\bDruz9\\V1\xe2\x02\x14Druz9\\V1\\GPBMetadata\xea\x02\tDruz9::V1b\x06proto3"
 
 var (
@@ -2884,7 +2981,7 @@ func file_druz9_v1_hone_proto_rawDescGZIP() []byte {
 	return file_druz9_v1_hone_proto_rawDescData
 }
 
-var file_druz9_v1_hone_proto_msgTypes = make([]protoimpl.MessageInfo, 45)
+var file_druz9_v1_hone_proto_msgTypes = make([]protoimpl.MessageInfo, 47)
 var file_druz9_v1_hone_proto_goTypes = []any{
 	(*PlanItem)(nil),                     // 0: druz9.v1.PlanItem
 	(*Plan)(nil),                         // 1: druz9.v1.Plan
@@ -2931,24 +3028,26 @@ var file_druz9_v1_hone_proto_goTypes = []any{
 	(*CritiquePacket)(nil),               // 42: druz9.v1.CritiquePacket
 	(*RecordStandupRequest)(nil),         // 43: druz9.v1.RecordStandupRequest
 	(*RecordStandupResponse)(nil),        // 44: druz9.v1.RecordStandupResponse
-	(*timestamppb.Timestamp)(nil),        // 45: google.protobuf.Timestamp
+	(*GetTodayStandupRequest)(nil),       // 45: druz9.v1.GetTodayStandupRequest
+	(*GetTodayStandupResponse)(nil),      // 46: druz9.v1.GetTodayStandupResponse
+	(*timestamppb.Timestamp)(nil),        // 47: google.protobuf.Timestamp
 }
 var file_druz9_v1_hone_proto_depIdxs = []int32{
-	45, // 0: druz9.v1.Plan.regenerated_at:type_name -> google.protobuf.Timestamp
+	47, // 0: druz9.v1.Plan.regenerated_at:type_name -> google.protobuf.Timestamp
 	0,  // 1: druz9.v1.Plan.items:type_name -> druz9.v1.PlanItem
-	45, // 2: druz9.v1.FocusSession.started_at:type_name -> google.protobuf.Timestamp
-	45, // 3: druz9.v1.FocusSession.ended_at:type_name -> google.protobuf.Timestamp
+	47, // 2: druz9.v1.FocusSession.started_at:type_name -> google.protobuf.Timestamp
+	47, // 3: druz9.v1.FocusSession.ended_at:type_name -> google.protobuf.Timestamp
 	10, // 4: druz9.v1.Stats.heatmap:type_name -> druz9.v1.FocusHeatmapDay
 	10, // 5: druz9.v1.Stats.last_seven_days:type_name -> druz9.v1.FocusHeatmapDay
 	13, // 6: druz9.v1.Stats.queue:type_name -> druz9.v1.QueueStats
 	12, // 7: druz9.v1.ListQueueResponse.items:type_name -> druz9.v1.QueueItem
-	45, // 8: druz9.v1.Note.created_at:type_name -> google.protobuf.Timestamp
-	45, // 9: druz9.v1.Note.updated_at:type_name -> google.protobuf.Timestamp
-	45, // 10: druz9.v1.NoteSummary.updated_at:type_name -> google.protobuf.Timestamp
+	47, // 8: druz9.v1.Note.created_at:type_name -> google.protobuf.Timestamp
+	47, // 9: druz9.v1.Note.updated_at:type_name -> google.protobuf.Timestamp
+	47, // 10: druz9.v1.NoteSummary.updated_at:type_name -> google.protobuf.Timestamp
 	21, // 11: druz9.v1.ListNotesResponse.notes:type_name -> druz9.v1.NoteSummary
-	45, // 12: druz9.v1.Whiteboard.created_at:type_name -> google.protobuf.Timestamp
-	45, // 13: druz9.v1.Whiteboard.updated_at:type_name -> google.protobuf.Timestamp
-	45, // 14: druz9.v1.WhiteboardSummary.updated_at:type_name -> google.protobuf.Timestamp
+	47, // 12: druz9.v1.Whiteboard.created_at:type_name -> google.protobuf.Timestamp
+	47, // 13: druz9.v1.Whiteboard.updated_at:type_name -> google.protobuf.Timestamp
+	47, // 14: druz9.v1.WhiteboardSummary.updated_at:type_name -> google.protobuf.Timestamp
 	32, // 15: druz9.v1.ListWhiteboardsResponse.whiteboards:type_name -> druz9.v1.WhiteboardSummary
 	20, // 16: druz9.v1.RecordStandupResponse.note:type_name -> druz9.v1.Note
 	1,  // 17: druz9.v1.RecordStandupResponse.plan:type_name -> druz9.v1.Plan
@@ -2977,33 +3076,35 @@ var file_druz9_v1_hone_proto_depIdxs = []int32{
 	40, // 40: druz9.v1.HoneService.CritiqueWhiteboard:input_type -> druz9.v1.CritiqueWhiteboardRequest
 	41, // 41: druz9.v1.HoneService.SaveCritiqueAsNote:input_type -> druz9.v1.SaveCritiqueAsNoteRequest
 	43, // 42: druz9.v1.HoneService.RecordStandup:input_type -> druz9.v1.RecordStandupRequest
-	1,  // 43: druz9.v1.HoneService.GenerateDailyPlan:output_type -> druz9.v1.Plan
-	1,  // 44: druz9.v1.HoneService.GetDailyPlan:output_type -> druz9.v1.Plan
-	1,  // 45: druz9.v1.HoneService.DismissPlanItem:output_type -> druz9.v1.Plan
-	1,  // 46: druz9.v1.HoneService.CompletePlanItem:output_type -> druz9.v1.Plan
-	6,  // 47: druz9.v1.HoneService.StartFocusSession:output_type -> druz9.v1.FocusSession
-	6,  // 48: druz9.v1.HoneService.EndFocusSession:output_type -> druz9.v1.FocusSession
-	11, // 49: druz9.v1.HoneService.GetStats:output_type -> druz9.v1.Stats
-	15, // 50: druz9.v1.HoneService.ListQueue:output_type -> druz9.v1.ListQueueResponse
-	12, // 51: druz9.v1.HoneService.AddQueueItem:output_type -> druz9.v1.QueueItem
-	12, // 52: druz9.v1.HoneService.UpdateQueueItemStatus:output_type -> druz9.v1.QueueItem
-	19, // 53: druz9.v1.HoneService.DeleteQueueItem:output_type -> druz9.v1.DeleteQueueItemResponse
-	20, // 54: druz9.v1.HoneService.CreateNote:output_type -> druz9.v1.Note
-	20, // 55: druz9.v1.HoneService.UpdateNote:output_type -> druz9.v1.Note
-	20, // 56: druz9.v1.HoneService.GetNote:output_type -> druz9.v1.Note
-	26, // 57: druz9.v1.HoneService.ListNotes:output_type -> druz9.v1.ListNotesResponse
-	28, // 58: druz9.v1.HoneService.DeleteNote:output_type -> druz9.v1.DeleteNoteResponse
-	29, // 59: druz9.v1.HoneService.GetNoteConnections:output_type -> druz9.v1.Connection
-	31, // 60: druz9.v1.HoneService.CreateWhiteboard:output_type -> druz9.v1.Whiteboard
-	31, // 61: druz9.v1.HoneService.UpdateWhiteboard:output_type -> druz9.v1.Whiteboard
-	31, // 62: druz9.v1.HoneService.GetWhiteboard:output_type -> druz9.v1.Whiteboard
-	37, // 63: druz9.v1.HoneService.ListWhiteboards:output_type -> druz9.v1.ListWhiteboardsResponse
-	39, // 64: druz9.v1.HoneService.DeleteWhiteboard:output_type -> druz9.v1.DeleteWhiteboardResponse
-	42, // 65: druz9.v1.HoneService.CritiqueWhiteboard:output_type -> druz9.v1.CritiquePacket
-	20, // 66: druz9.v1.HoneService.SaveCritiqueAsNote:output_type -> druz9.v1.Note
-	44, // 67: druz9.v1.HoneService.RecordStandup:output_type -> druz9.v1.RecordStandupResponse
-	43, // [43:68] is the sub-list for method output_type
-	18, // [18:43] is the sub-list for method input_type
+	45, // 43: druz9.v1.HoneService.GetTodayStandup:input_type -> druz9.v1.GetTodayStandupRequest
+	1,  // 44: druz9.v1.HoneService.GenerateDailyPlan:output_type -> druz9.v1.Plan
+	1,  // 45: druz9.v1.HoneService.GetDailyPlan:output_type -> druz9.v1.Plan
+	1,  // 46: druz9.v1.HoneService.DismissPlanItem:output_type -> druz9.v1.Plan
+	1,  // 47: druz9.v1.HoneService.CompletePlanItem:output_type -> druz9.v1.Plan
+	6,  // 48: druz9.v1.HoneService.StartFocusSession:output_type -> druz9.v1.FocusSession
+	6,  // 49: druz9.v1.HoneService.EndFocusSession:output_type -> druz9.v1.FocusSession
+	11, // 50: druz9.v1.HoneService.GetStats:output_type -> druz9.v1.Stats
+	15, // 51: druz9.v1.HoneService.ListQueue:output_type -> druz9.v1.ListQueueResponse
+	12, // 52: druz9.v1.HoneService.AddQueueItem:output_type -> druz9.v1.QueueItem
+	12, // 53: druz9.v1.HoneService.UpdateQueueItemStatus:output_type -> druz9.v1.QueueItem
+	19, // 54: druz9.v1.HoneService.DeleteQueueItem:output_type -> druz9.v1.DeleteQueueItemResponse
+	20, // 55: druz9.v1.HoneService.CreateNote:output_type -> druz9.v1.Note
+	20, // 56: druz9.v1.HoneService.UpdateNote:output_type -> druz9.v1.Note
+	20, // 57: druz9.v1.HoneService.GetNote:output_type -> druz9.v1.Note
+	26, // 58: druz9.v1.HoneService.ListNotes:output_type -> druz9.v1.ListNotesResponse
+	28, // 59: druz9.v1.HoneService.DeleteNote:output_type -> druz9.v1.DeleteNoteResponse
+	29, // 60: druz9.v1.HoneService.GetNoteConnections:output_type -> druz9.v1.Connection
+	31, // 61: druz9.v1.HoneService.CreateWhiteboard:output_type -> druz9.v1.Whiteboard
+	31, // 62: druz9.v1.HoneService.UpdateWhiteboard:output_type -> druz9.v1.Whiteboard
+	31, // 63: druz9.v1.HoneService.GetWhiteboard:output_type -> druz9.v1.Whiteboard
+	37, // 64: druz9.v1.HoneService.ListWhiteboards:output_type -> druz9.v1.ListWhiteboardsResponse
+	39, // 65: druz9.v1.HoneService.DeleteWhiteboard:output_type -> druz9.v1.DeleteWhiteboardResponse
+	42, // 66: druz9.v1.HoneService.CritiqueWhiteboard:output_type -> druz9.v1.CritiquePacket
+	20, // 67: druz9.v1.HoneService.SaveCritiqueAsNote:output_type -> druz9.v1.Note
+	44, // 68: druz9.v1.HoneService.RecordStandup:output_type -> druz9.v1.RecordStandupResponse
+	46, // 69: druz9.v1.HoneService.GetTodayStandup:output_type -> druz9.v1.GetTodayStandupResponse
+	44, // [44:70] is the sub-list for method output_type
+	18, // [18:44] is the sub-list for method input_type
 	18, // [18:18] is the sub-list for extension type_name
 	18, // [18:18] is the sub-list for extension extendee
 	0,  // [0:18] is the sub-list for field type_name
@@ -3020,7 +3121,7 @@ func file_druz9_v1_hone_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_druz9_v1_hone_proto_rawDesc), len(file_druz9_v1_hone_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   45,
+			NumMessages:   47,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

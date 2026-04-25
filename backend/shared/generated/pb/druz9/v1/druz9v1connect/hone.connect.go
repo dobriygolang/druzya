@@ -119,6 +119,9 @@ const (
 	// HoneServiceRecordStandupProcedure is the fully-qualified name of the HoneService's RecordStandup
 	// RPC.
 	HoneServiceRecordStandupProcedure = "/druz9.v1.HoneService/RecordStandup"
+	// HoneServiceGetTodayStandupProcedure is the fully-qualified name of the HoneService's
+	// GetTodayStandup RPC.
+	HoneServiceGetTodayStandupProcedure = "/druz9.v1.HoneService/GetTodayStandup"
 )
 
 // HoneServiceClient is a client for the druz9.v1.HoneService service.
@@ -157,6 +160,7 @@ type HoneServiceClient interface {
 	SaveCritiqueAsNote(context.Context, *connect.Request[v1.SaveCritiqueAsNoteRequest]) (*connect.Response[v1.Note], error)
 	// ─── Standup ────────────────────────────────────────────────────────
 	RecordStandup(context.Context, *connect.Request[v1.RecordStandupRequest]) (*connect.Response[v1.RecordStandupResponse], error)
+	GetTodayStandup(context.Context, *connect.Request[v1.GetTodayStandupRequest]) (*connect.Response[v1.GetTodayStandupResponse], error)
 }
 
 // NewHoneServiceClient constructs a client for the druz9.v1.HoneService service. By default, it
@@ -320,6 +324,12 @@ func NewHoneServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 			connect.WithSchema(honeServiceMethods.ByName("RecordStandup")),
 			connect.WithClientOptions(opts...),
 		),
+		getTodayStandup: connect.NewClient[v1.GetTodayStandupRequest, v1.GetTodayStandupResponse](
+			httpClient,
+			baseURL+HoneServiceGetTodayStandupProcedure,
+			connect.WithSchema(honeServiceMethods.ByName("GetTodayStandup")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -350,6 +360,7 @@ type honeServiceClient struct {
 	critiqueWhiteboard    *connect.Client[v1.CritiqueWhiteboardRequest, v1.CritiquePacket]
 	saveCritiqueAsNote    *connect.Client[v1.SaveCritiqueAsNoteRequest, v1.Note]
 	recordStandup         *connect.Client[v1.RecordStandupRequest, v1.RecordStandupResponse]
+	getTodayStandup       *connect.Client[v1.GetTodayStandupRequest, v1.GetTodayStandupResponse]
 }
 
 // GenerateDailyPlan calls druz9.v1.HoneService.GenerateDailyPlan.
@@ -477,6 +488,11 @@ func (c *honeServiceClient) RecordStandup(ctx context.Context, req *connect.Requ
 	return c.recordStandup.CallUnary(ctx, req)
 }
 
+// GetTodayStandup calls druz9.v1.HoneService.GetTodayStandup.
+func (c *honeServiceClient) GetTodayStandup(ctx context.Context, req *connect.Request[v1.GetTodayStandupRequest]) (*connect.Response[v1.GetTodayStandupResponse], error) {
+	return c.getTodayStandup.CallUnary(ctx, req)
+}
+
 // HoneServiceHandler is an implementation of the druz9.v1.HoneService service.
 type HoneServiceHandler interface {
 	// ─── Plan ───────────────────────────────────────────────────────────
@@ -513,6 +529,7 @@ type HoneServiceHandler interface {
 	SaveCritiqueAsNote(context.Context, *connect.Request[v1.SaveCritiqueAsNoteRequest]) (*connect.Response[v1.Note], error)
 	// ─── Standup ────────────────────────────────────────────────────────
 	RecordStandup(context.Context, *connect.Request[v1.RecordStandupRequest]) (*connect.Response[v1.RecordStandupResponse], error)
+	GetTodayStandup(context.Context, *connect.Request[v1.GetTodayStandupRequest]) (*connect.Response[v1.GetTodayStandupResponse], error)
 }
 
 // NewHoneServiceHandler builds an HTTP handler from the service implementation. It returns the path
@@ -672,6 +689,12 @@ func NewHoneServiceHandler(svc HoneServiceHandler, opts ...connect.HandlerOption
 		connect.WithSchema(honeServiceMethods.ByName("RecordStandup")),
 		connect.WithHandlerOptions(opts...),
 	)
+	honeServiceGetTodayStandupHandler := connect.NewUnaryHandler(
+		HoneServiceGetTodayStandupProcedure,
+		svc.GetTodayStandup,
+		connect.WithSchema(honeServiceMethods.ByName("GetTodayStandup")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/druz9.v1.HoneService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case HoneServiceGenerateDailyPlanProcedure:
@@ -724,6 +747,8 @@ func NewHoneServiceHandler(svc HoneServiceHandler, opts ...connect.HandlerOption
 			honeServiceSaveCritiqueAsNoteHandler.ServeHTTP(w, r)
 		case HoneServiceRecordStandupProcedure:
 			honeServiceRecordStandupHandler.ServeHTTP(w, r)
+		case HoneServiceGetTodayStandupProcedure:
+			honeServiceGetTodayStandupHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -831,4 +856,8 @@ func (UnimplementedHoneServiceHandler) SaveCritiqueAsNote(context.Context, *conn
 
 func (UnimplementedHoneServiceHandler) RecordStandup(context.Context, *connect.Request[v1.RecordStandupRequest]) (*connect.Response[v1.RecordStandupResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.HoneService.RecordStandup is not implemented"))
+}
+
+func (UnimplementedHoneServiceHandler) GetTodayStandup(context.Context, *connect.Request[v1.GetTodayStandupRequest]) (*connect.Response[v1.GetTodayStandupResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.HoneService.GetTodayStandup is not implemented"))
 }

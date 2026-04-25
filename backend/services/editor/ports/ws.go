@@ -204,6 +204,14 @@ func (h *Hub) Broadcast(roomID uuid.UUID, kind string, data any) {
 	for _, c := range targets {
 		c.enqueue(env)
 	}
+	// DEBUG: «отправили op'ы peer'ам?». Если targets=1 (только sender),
+	// guest не получит ничего. Грепай: `editor.ws.broadcast`.
+	if h.Log != nil && len(targets) > 1 {
+		h.Log.Debug("editor.ws.broadcast",
+			slog.String("room", roomID.String()),
+			slog.String("kind", kind),
+			slog.Int("targets", len(targets)))
+	}
 }
 
 // BroadcastFreeze satisfies app.FreezeNotifier — fan out a freeze toggle.

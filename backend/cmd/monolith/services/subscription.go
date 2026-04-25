@@ -187,7 +187,11 @@ type subscriptionUsageAdapter struct {
 }
 
 func (a *subscriptionUsageAdapter) CountSyncedNotes(ctx context.Context, userID uuid.UUID) (int, error) {
-	const q = `SELECT count(*) FROM notes WHERE user_id = $1`
+	// hone_notes — actual table name (см. migrations/00014_hone_notes.sql).
+	// Раньше тут было ошибочное `notes` → каждый /quota request падал
+	// «relation \"notes\" does not exist». Free-tier фильтр (archived_at
+	// IS NULL) отсекает архивные ноты — они не считаются за quota.
+	const q = `SELECT count(*) FROM hone_notes WHERE user_id = $1 AND archived_at IS NULL`
 	var n int
 	if err := a.pool.QueryRow(ctx, q, sharedpg.UUID(userID)).Scan(&n); err != nil {
 		return 0, fmt.Errorf("subscription: count synced notes: %w", err)

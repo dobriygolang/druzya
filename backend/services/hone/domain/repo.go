@@ -134,6 +134,11 @@ type NoteRepo interface {
 	// in-memory cosine scan during GetNoteConnections. Returns minimal
 	// projection (id, title, embedding) to keep payload small.
 	WithEmbeddingsForUser(ctx context.Context, userID uuid.UUID) ([]NoteEmbedding, error)
+	// ExistsByTitleForUser — точный match по title, archived игнорятся
+	// (рассматриваем archived note как «не существует» для дедупа standup'а).
+	// Используется TodayStandup чтобы понять «уже записал standup сегодня?»
+	// — note title = "Standup YYYY-MM-DD".
+	ExistsByTitleForUser(ctx context.Context, userID uuid.UUID, title string) (bool, error)
 }
 
 // NoteEmbedding is the minimal projection used by the cosine scanner.

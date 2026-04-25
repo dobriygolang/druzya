@@ -114,6 +114,23 @@ func (h *WSHandler) Handle(w http.ResponseWriter, r *http.Request) {
 	h.Hub.register(roomID, c)
 	go c.writeLoop()
 
+	// DEBUG: лог connect — даёт понять «зашёл ли guest вообще» и сколько
+	// peers сейчас в комнате. Грепай в проде: `wb.ws.connect`.
+	h.Hub.mu.RLock()
+	rh := h.Hub.rooms[roomID]
+	h.Hub.mu.RUnlock()
+	peers := 0
+	if rh != nil {
+		rh.mu.RLock()
+		peers = len(rh.clients)
+		rh.mu.RUnlock()
+	}
+	h.Log.Info("wb.ws.connect",
+		slog.String("room", roomID.String()),
+		slog.String("user", uid.String()),
+		slog.Int("peers_after", peers),
+		slog.String("visibility", string(room.Visibility)))
+
 	// Hydrate the new client before entering the read loop: prefer the in-
 	// memory lastFullSnapshot (most recent edit still warm in the hub),
 	// fall back to the Postgres blob for cold rooms.

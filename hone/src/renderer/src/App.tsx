@@ -23,7 +23,8 @@ import { OnboardingModal } from './components/OnboardingModal';
 import { Palette, type PageId, type PaletteAction } from './components/Palette';
 import { Copilot } from './components/Copilot';
 import { DailyBriefPanel } from './components/DailyBriefPanel';
-import { StandupOverlay } from './components/StandupOverlay';
+// StandupOverlay удалён — standup переехал в morning banner на Today page
+// (см. components/TodayStandupBanner.tsx).
 import { UpdateToast } from './components/UpdateToast';
 import { HomePage } from './pages/Home';
 import { TodayPage, type StartFocusArgs } from './pages/Today';
@@ -62,7 +63,6 @@ export default function App() {
   const [page, setPage] = useState<PageId>('home');
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [copilotOpen, setCopilotOpen] = useState(false);
-  const [standupOpen, setStandupOpen] = useState(false);
   const [onboardingOpen, setOnboardingOpen] = useState(false);
   const [statsOpen, setStatsOpen] = useState(false);
   // Theme — initial значение читаем из localStorage. Settings page пишет
@@ -380,16 +380,18 @@ export default function App() {
         return;
       }
       if (id === 'stats') {
-        // Stats и Standup — оба overlay'и поверх Home, mutually exclusive.
+        // Stats overlay поверх Home.
         setPage('home');
-        setStandupOpen(false);
         setStatsOpen(true);
         return;
       }
       if (id === 'standup') {
-        setPage('home');
+        // Standup переехал из overlay в morning banner на Today page
+        // (см. TodayStandupBanner.tsx). Палитра теперь просто открывает
+        // Today — banner сам решит показываться или нет (после morning
+        // window или если уже записан → не появится).
+        setPage('today');
         setStatsOpen(false);
-        setStandupOpen(true);
         return;
       }
       if (args) {
@@ -399,7 +401,6 @@ export default function App() {
         return;
       }
       setStatsOpen(false);
-      setStandupOpen(false);
       setPage(id);
     },
     [startFocus],
@@ -444,10 +445,6 @@ export default function App() {
           dismissOnboarding();
           return;
         }
-        if (standupOpen) {
-          setStandupOpen(false);
-          return;
-        }
         if (copilotOpen) {
           setCopilotOpen(false);
           return;
@@ -466,8 +463,8 @@ export default function App() {
         }
         return;
       }
-      // standupOpen — overlay, не модалка-blocker. Hotkey-nav должна
-       // работать; openImpl сам закроет overlay при переключении.
+      // Hotkey-nav должна работать через overlays — openImpl сам
+      // закроет stats overlay при переключении.
       if (isText || paletteOpen || onboardingOpen) return;
 
       const k = e.key.toLowerCase();
@@ -484,7 +481,7 @@ export default function App() {
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [paletteOpen, copilotOpen, standupOpen, onboardingOpen, page]);
+  }, [paletteOpen, copilotOpen, onboardingOpen, page]);
 
   const canvasMode: CanvasMode = page === 'home' || page === 'stats' ? 'full' : 'quiet';
 
@@ -670,9 +667,6 @@ export default function App() {
         <Palette onClose={() => setPaletteOpen(false)} onOpen={(id) => open(id)} />
       )}
       {copilotOpen && <Copilot onClose={() => setCopilotOpen(false)} />}
-      {standupOpen && page === 'home' && (
-        <StandupOverlay onClose={() => setStandupOpen(false)} />
-      )}
       {onboardingOpen && <OnboardingModal onClose={dismissOnboarding} />}
       <UpdateToast />
       <UpgradePrompt />

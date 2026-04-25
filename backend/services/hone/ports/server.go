@@ -687,6 +687,25 @@ func (s *HoneServer) RecordStandup(
 	return connect.NewResponse(resp), nil
 }
 
+// GetTodayStandup implements druz9.v1.HoneService/GetTodayStandup.
+func (s *HoneServer) GetTodayStandup(
+	ctx context.Context,
+	_ *connect.Request[pb.GetTodayStandupRequest],
+) (*connect.Response[pb.GetTodayStandupResponse], error) {
+	uid, err := requireUser(ctx)
+	if err != nil {
+		return nil, err
+	}
+	out, err := s.H.GetTodayStandup.Do(ctx, uid)
+	if err != nil {
+		return nil, fmt.Errorf("hone.GetTodayStandup: %w", s.toConnectErr(err))
+	}
+	return connect.NewResponse(&pb.GetTodayStandupResponse{
+		Recorded:      out.Recorded,
+		YesterdayDone: out.YesterdayDone,
+	}), nil
+}
+
 // CritiqueWhiteboard implements druz9.v1.HoneService/CritiqueWhiteboard (server-streaming).
 func (s *HoneServer) CritiqueWhiteboard(
 	ctx context.Context,

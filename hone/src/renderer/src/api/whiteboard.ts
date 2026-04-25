@@ -164,24 +164,42 @@ export function connectWhiteboardWs(opts: WhiteboardWsOptions): WhiteboardWsHand
   let timer: number | null = null;
   let closed = false;
 
+  // DEBUG-логи под `hone:debug:ws` localStorage flag. Включается через
+  // DevTools console: localStorage.setItem('hone:debug:ws', '1'). Помогает
+  // юзеру самому debug'ить realtime sync без bothered'а на backend deploy.
+  const dbg = (() => {
+    try {
+      return window.localStorage.getItem('hone:debug:ws') === '1';
+    } catch {
+      return false;
+    }
+  })();
+  const log = (...args: unknown[]) => {
+    if (dbg) console.log('[wb.ws]', ...args);
+  };
+
   const open = () => {
     opts.onStatus(attempts === 0 ? 'connecting' : 'reconnecting');
+    log('open attempt', { url, attempts });
     ws = new WebSocket(url);
     ws.binaryType = 'arraybuffer';
     ws.onopen = () => {
       attempts = 0;
+      log('OPEN');
       opts.onStatus('open');
     };
     ws.onmessage = (ev) => {
       try {
         const data = typeof ev.data === 'string' ? ev.data : new TextDecoder().decode(ev.data as ArrayBuffer);
         const env = JSON.parse(data) as WhiteboardWsEnvelope;
+        log('RECV', env.kind, { bytes: data.length });
         opts.onEnvelope(env);
       } catch {
         /* malformed frame — backend always sends JSON */
       }
     };
-    ws.onclose = () => {
+    ws.onclose = (ev) => {
+      log('CLOSE', { code: ev.code, reason: ev.reason, attempts });
       if (closed) {
         opts.onStatus('closed');
         return;
@@ -194,7 +212,8 @@ export function connectWhiteboardWs(opts: WhiteboardWsOptions): WhiteboardWsHand
       const backoff = Math.min(10_000, 500 * 2 ** attempts);
       timer = window.setTimeout(open, backoff);
     };
-    ws.onerror = () => {
+    ws.onerror = (e) => {
+      log('ERROR', e);
       /* closure handler reconnects */
     };
   };
@@ -203,8 +222,13 @@ export function connectWhiteboardWs(opts: WhiteboardWsOptions): WhiteboardWsHand
 
   return {
     send: (env) => {
-      if (!ws || ws.readyState !== WebSocket.OPEN) return false;
-      ws.send(JSON.stringify(env));
+      if (!ws || ws.readyState !== WebSocket.OPEN) {
+        log('SEND drop (not open)', { kind: env.kind, readyState: ws?.readyState });
+        return false;
+      }
+      const payload = JSON.stringify(env);
+      log('SEND', env.kind, { bytes: payload.length });
+      ws.send(payload);
       return true;
     },
     close: () => {

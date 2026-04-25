@@ -21,8 +21,9 @@ export type PageId =
   | 'events'
   | 'settings';
 // PaletteAction — то, что палетка может попросить App'а сделать.
-// Помимо переключения page и copilot'а, добавили `standup` —
-// открывает модалку из 3 вопросов для daily-standup.
+// `standup` — переходит на Today page (banner там сам решит показываться
+// или нет, см. TodayStandupBanner). Раньше был отдельный overlay,
+// теперь интегрирован morning-flow в Today.
 export type PaletteAction = PageId | 'copilot' | 'standup';
 
 interface PaletteProps {
@@ -60,6 +61,9 @@ export function Palette({ onClose, onOpen }: PaletteProps) {
       { id: 'events', label: 'Events', icon: 'calendar', shortcut: ['V'], run: () => onOpen('events') },
       { id: 'podcasts', label: 'Podcasts', icon: 'headphones', shortcut: ['P'], run: () => onOpen('podcasts') },
       { id: 'stats', label: 'Stats', icon: 'bars', shortcut: ['S'], run: () => onOpen('stats') },
+      // Daily standup теперь morning banner на Today page. Команда
+      // оставлена в палетке — для тех кто привык её искать; ведёт на
+      // Today, где banner появится при условии morning-window.
       { id: 'standup', label: 'Daily standup', icon: 'standup', shortcut: [], run: () => onOpen('standup') },
       { id: 'settings', label: 'Settings', icon: 'settings', shortcut: [','], run: () => onOpen('settings') },
     ],

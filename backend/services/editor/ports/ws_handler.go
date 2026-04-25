@@ -122,6 +122,26 @@ func (h *WSHandler) Handle(w http.ResponseWriter, r *http.Request) {
 	}
 
 	c := newWSConn(ws, roomID, uid, role, h.Log)
+
+	// DEBUG: эквивалент wb.ws.connect для editor-комнат. Грепай:
+	// `editor.ws.connect`. Покажет role, peers_after, visibility — если
+	// host получает role=viewer, его ops будут drop'ваться (line 405-413
+	// в ws.go), что выглядит как «host видит, guest не видит».
+	h.Hub.mu.RLock()
+	rh := h.Hub.rooms[roomID]
+	h.Hub.mu.RUnlock()
+	peers := 0
+	if rh != nil {
+		rh.mu.RLock()
+		peers = len(rh.clients)
+		rh.mu.RUnlock()
+	}
+	h.Log.Info("editor.ws.connect",
+		slog.String("room", roomID.String()),
+		slog.String("user", uid.String()),
+		slog.String("role", string(role)),
+		slog.Int("peers_after", peers+1), // +1 потому что register идёт после
+		slog.String("visibility", string(room.Visibility)))
 	h.Hub.register(roomID, c)
 	go c.writeLoop()
 	h.Hub.readLoop(r.Context(), c)

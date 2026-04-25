@@ -60,6 +60,10 @@ func (f *fakeNotes) WithEmbeddingsForUser(context.Context, uuid.UUID) ([]domain.
 	return nil, nil
 }
 
+func (f *fakeNotes) ExistsByTitleForUser(context.Context, uuid.UUID, string) (bool, error) {
+	return false, nil
+}
+
 type standupFakePlans struct {
 	plan     domain.Plan
 	getErr   error

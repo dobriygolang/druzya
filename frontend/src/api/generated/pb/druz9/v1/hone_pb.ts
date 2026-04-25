@@ -2240,3 +2240,82 @@ export class RecordStandupResponse extends Message<RecordStandupResponse> {
   }
 }
 
+/**
+ * GetTodayStandup — снапшот для морнинг-баннера в Today page.
+ *   - recorded: уже сохранён ли standup на сегодня (frontend скрывает баннер).
+ *   - yesterday_done: title'ы DONE-items из Focus Queue за вчера —
+ *     auto-prefill для секции «Yesterday you finished».
+ *
+ * @generated from message druz9.v1.GetTodayStandupRequest
+ */
+export class GetTodayStandupRequest extends Message<GetTodayStandupRequest> {
+  constructor(data?: PartialMessage<GetTodayStandupRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.GetTodayStandupRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): GetTodayStandupRequest {
+    return new GetTodayStandupRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): GetTodayStandupRequest {
+    return new GetTodayStandupRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): GetTodayStandupRequest {
+    return new GetTodayStandupRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: GetTodayStandupRequest | PlainMessage<GetTodayStandupRequest> | undefined, b: GetTodayStandupRequest | PlainMessage<GetTodayStandupRequest> | undefined): boolean {
+    return proto3.util.equals(GetTodayStandupRequest, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.GetTodayStandupResponse
+ */
+export class GetTodayStandupResponse extends Message<GetTodayStandupResponse> {
+  /**
+   * @generated from field: bool recorded = 1;
+   */
+  recorded = false;
+
+  /**
+   * @generated from field: repeated string yesterday_done = 2;
+   */
+  yesterdayDone: string[] = [];
+
+  constructor(data?: PartialMessage<GetTodayStandupResponse>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.GetTodayStandupResponse";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "recorded", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
+    { no: 2, name: "yesterday_done", kind: "scalar", T: 9 /* ScalarType.STRING */, repeated: true },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): GetTodayStandupResponse {
+    return new GetTodayStandupResponse().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): GetTodayStandupResponse {
+    return new GetTodayStandupResponse().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): GetTodayStandupResponse {
+    return new GetTodayStandupResponse().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: GetTodayStandupResponse | PlainMessage<GetTodayStandupResponse> | undefined, b: GetTodayStandupResponse | PlainMessage<GetTodayStandupResponse> | undefined): boolean {
+    return proto3.util.equals(GetTodayStandupResponse, a, b);
+  }
+}
+

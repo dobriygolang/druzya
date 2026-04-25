@@ -169,3 +169,57 @@ func newStandupItemID() string {
 	// секунды на standup практически невозможна (1 standup/день/юзер).
 	return fmt.Sprintf("standup-%d", time.Now().UnixNano()%1_000_000_000)
 }
+
+// ─── GetTodayStandup ──────────────────────────────────────────────────────
+//
+// Отдаёт состояние «сегодняшнего» утреннего standup-баннера в Today page:
+//
+//   - Recorded — true если на сегодня уже записан standup (в Notes есть
+//     запись с title="Standup YYYY-MM-DD"). Frontend скрывает баннер.
+//   - YesterdayDone — title'ы DONE-items из Focus Queue за вчера. Frontend
+//     показывает их как auto-prefill под «Yesterday you finished».
+//
+// Не возвращает данные о today's plan / blockers — это юзер вводит сам.
+// Yesterday-done полностью derivable, поэтому сервер их собирает.
+
+type GetTodayStandup struct {
+	Notes domain.NoteRepo
+	Queue domain.QueueRepo
+	Now   func() time.Time
+}
+
+type GetTodayStandupOutput struct {
+	Recorded      bool
+	YesterdayDone []string
+}
+
+func (uc *GetTodayStandup) Do(ctx context.Context, userID uuid.UUID) (GetTodayStandupOutput, error) {
+	now := uc.Now().UTC()
+	today := now.Truncate(24 * time.Hour)
+	yesterday := today.AddDate(0, 0, -1)
+
+	out := GetTodayStandupOutput{}
+
+	if uc.Notes != nil {
+		exists, err := uc.Notes.ExistsByTitleForUser(ctx, userID, "Standup "+today.Format("2006-01-02"))
+		if err != nil {
+			return GetTodayStandupOutput{}, fmt.Errorf("hone.GetTodayStandup.Do: notes lookup: %w", err)
+		}
+		out.Recorded = exists
+	}
+
+	if uc.Queue != nil {
+		items, err := uc.Queue.ListByDate(ctx, userID, yesterday)
+		if err != nil {
+			// Yesterday-done — nice-to-have, не валим endpoint.
+			return out, nil //nolint:nilerr
+		}
+		for _, it := range items {
+			if it.Status == domain.QueueItemStatusDone {
+				out.YesterdayDone = append(out.YesterdayDone, it.Title)
+			}
+		}
+	}
+
+	return out, nil
+}

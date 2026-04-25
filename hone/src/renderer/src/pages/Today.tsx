@@ -18,6 +18,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { ConnectError, Code } from '@connectrpc/connect';
 
 import { Icon } from '../components/primitives/Icon';
+import { TodayStandupBanner } from '../components/TodayStandupBanner';
 import {
   generatePlan,
   listQueue,
@@ -189,6 +190,10 @@ export function TodayPage({ onStartFocus, highlightedItemId, onConsumeHighlight 
       }}
     >
       <div style={{ width: 640, maxWidth: '92%', padding: '0 16px' }}>
+        {/* Morning standup — collapsed/expanded banner. Self-gating:
+            компонент сам решает показываться или нет (morning-window +
+            server.recorded check). Нулевой DOM если условия не выполнены. */}
+        <TodayStandupBanner />
         <div className="mono" style={{ fontSize: 10, letterSpacing: '0.24em', color: 'var(--ink-40)' }}>
           {header}
         </div>

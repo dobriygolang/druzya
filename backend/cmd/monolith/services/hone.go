@@ -159,7 +159,8 @@ func NewHone(d Deps) *Module {
 		SaveCritiqueAsNote: &honeApp.SaveCritiqueAsNote{Boards: whiteboards, Notes: notes, EmbedFn: embedFn, Log: d.Log, Now: d.Now},
 
 		// Standup
-		RecordStandup: &honeApp.RecordStandup{Notes: notes, Plans: plans, EmbedFn: embedFn, Log: d.Log, Now: d.Now, Memory: d.IntelligenceMemoryHook},
+		RecordStandup:   &honeApp.RecordStandup{Notes: notes, Plans: plans, EmbedFn: embedFn, Log: d.Log, Now: d.Now, Memory: d.IntelligenceMemoryHook},
+		GetTodayStandup: &honeApp.GetTodayStandup{Notes: notes, Queue: queue, Now: d.Now},
 
 		Log: d.Log,
 		Now: d.Now,

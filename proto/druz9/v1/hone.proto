@@ -468,6 +468,9 @@ service HoneService {
       body: "*"
     };
   }
+  rpc GetTodayStandup(GetTodayStandupRequest) returns (GetTodayStandupResponse) {
+    option (google.api.http) = {get: "/api/v1/hone/standup/today"};
+  }
 }
 
 // ─── Standup ───────────────────────────────────────────────────────────────
@@ -488,4 +491,15 @@ message RecordStandupRequest {
 message RecordStandupResponse {
   Note note = 1;
   Plan plan = 2;                    // обновлённый сегодняшний план
+}
+
+// GetTodayStandup — снапшот для морнинг-баннера в Today page.
+//   - recorded: уже сохранён ли standup на сегодня (frontend скрывает баннер).
+//   - yesterday_done: title'ы DONE-items из Focus Queue за вчера —
+//     auto-prefill для секции «Yesterday you finished».
+message GetTodayStandupRequest {}
+
+message GetTodayStandupResponse {
+  bool recorded = 1;
+  repeated string yesterday_done = 2;
 }

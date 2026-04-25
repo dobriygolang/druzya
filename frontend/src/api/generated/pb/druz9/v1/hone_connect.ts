@@ -21,7 +21,7 @@
 /* eslint-disable */
 // @ts-nocheck
 
-import { AddQueueItemRequest, CompletePlanItemRequest, Connection, CreateNoteRequest, CreateWhiteboardRequest, CritiquePacket, CritiqueWhiteboardRequest, DeleteNoteRequest, DeleteNoteResponse, DeleteQueueItemRequest, DeleteQueueItemResponse, DeleteWhiteboardRequest, DeleteWhiteboardResponse, DismissPlanItemRequest, EndFocusSessionRequest, FocusSession, GenerateDailyPlanRequest, GetDailyPlanRequest, GetNoteConnectionsRequest, GetNoteRequest, GetStatsRequest, GetWhiteboardRequest, ListNotesRequest, ListNotesResponse, ListQueueRequest, ListQueueResponse, ListWhiteboardsRequest, ListWhiteboardsResponse, Note, Plan, QueueItem, RecordStandupRequest, RecordStandupResponse, SaveCritiqueAsNoteRequest, StartFocusSessionRequest, Stats, UpdateNoteRequest, UpdateQueueItemStatusRequest, UpdateWhiteboardRequest, Whiteboard } from "./hone_pb.js";
+import { AddQueueItemRequest, CompletePlanItemRequest, Connection, CreateNoteRequest, CreateWhiteboardRequest, CritiquePacket, CritiqueWhiteboardRequest, DeleteNoteRequest, DeleteNoteResponse, DeleteQueueItemRequest, DeleteQueueItemResponse, DeleteWhiteboardRequest, DeleteWhiteboardResponse, DismissPlanItemRequest, EndFocusSessionRequest, FocusSession, GenerateDailyPlanRequest, GetDailyPlanRequest, GetNoteConnectionsRequest, GetNoteRequest, GetStatsRequest, GetTodayStandupRequest, GetTodayStandupResponse, GetWhiteboardRequest, ListNotesRequest, ListNotesResponse, ListQueueRequest, ListQueueResponse, ListWhiteboardsRequest, ListWhiteboardsResponse, Note, Plan, QueueItem, RecordStandupRequest, RecordStandupResponse, SaveCritiqueAsNoteRequest, StartFocusSessionRequest, Stats, UpdateNoteRequest, UpdateQueueItemStatusRequest, UpdateWhiteboardRequest, Whiteboard } from "./hone_pb.js";
 import { MethodKind } from "@bufbuild/protobuf";
 
 /**
@@ -270,6 +270,15 @@ export const HoneService = {
       name: "RecordStandup",
       I: RecordStandupRequest,
       O: RecordStandupResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc druz9.v1.HoneService.GetTodayStandup
+     */
+    getTodayStandup: {
+      name: "GetTodayStandup",
+      I: GetTodayStandupRequest,
+      O: GetTodayStandupResponse,
       kind: MethodKind.Unary,
     },
   }

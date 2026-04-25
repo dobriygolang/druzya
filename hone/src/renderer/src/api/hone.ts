@@ -529,3 +529,19 @@ export async function recordStandup(args: {
     plan: resp.plan ? unwrapPlan(resp.plan as unknown as ProtoPlan) : null,
   };
 }
+
+export interface TodayStandupSnapshot {
+  recorded: boolean;
+  yesterdayDone: string[];
+}
+
+// getTodayStandup — снапшот для morning standup banner на Today page.
+// Возвращает {recorded, yesterdayDone}: recorded=true → баннер скрыт,
+// yesterdayDone — done items вчерашней Focus Queue для prefill'а.
+export async function getTodayStandup(): Promise<TodayStandupSnapshot> {
+  const resp = await client.getTodayStandup({});
+  return {
+    recorded: resp.recorded,
+    yesterdayDone: resp.yesterdayDone ?? [],
+  };
+}

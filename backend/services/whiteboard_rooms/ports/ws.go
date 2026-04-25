@@ -149,9 +149,22 @@ func (h *Hub) broadcast(roomID uuid.UUID, msg []byte, skip *wsConn) {
 			targets = append(targets, c)
 		}
 	}
+	totalClients := len(rh.clients)
 	rh.mu.RUnlock()
 	for _, c := range targets {
 		c.enqueue(msg)
+	}
+	// DEBUG: «отправил ли мы что-то peer'ам?». Если targets=0 — это
+	// смоking gun: либо guest не зарегистрирован в hub'е, либо они
+	// в разных roomHub-инстансах (разный roomID parsing).
+	if h.Log != nil && totalClients > 1 {
+		// Молчим если в комнате 1 человек (норма — broadcast no-op).
+		// Логируем только когда есть peers и мы что-то им шлём.
+		h.Log.Debug("wb.ws.broadcast",
+			slog.String("room", roomID.String()),
+			slog.Int("targets", len(targets)),
+			slog.Int("total_clients", totalClients),
+			slog.Int("msg_bytes", len(msg)))
 	}
 }
 

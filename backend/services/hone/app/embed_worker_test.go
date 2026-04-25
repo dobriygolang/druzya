@@ -99,6 +99,10 @@ func (r *fakeNotesRepo) WithEmbeddingsForUser(context.Context, uuid.UUID) ([]dom
 	return nil, errors.New("unused")
 }
 
+func (r *fakeNotesRepo) ExistsByTitleForUser(context.Context, uuid.UUID, string) (bool, error) {
+	return false, nil
+}
+
 // ─── tests ─────────────────────────────────────────────────────────────────
 
 func TestEmbedWorker_ProcessesJob(t *testing.T) {

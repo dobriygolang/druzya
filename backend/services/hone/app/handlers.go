@@ -58,7 +58,8 @@ type Handler struct {
 	DeleteItem       *DeleteItem
 
 	// Standup
-	RecordStandup *RecordStandup
+	RecordStandup   *RecordStandup
+	GetTodayStandup *GetTodayStandup
 
 	Log *slog.Logger
 	Now func() time.Time

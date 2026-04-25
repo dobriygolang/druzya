@@ -820,6 +820,24 @@ func (n *Notes) Delete(ctx context.Context, userID, noteID uuid.UUID) error {
 	return nil
 }
 
+// ExistsByTitleForUser — точный match по title, archived'ы игнорируются.
+// Используется TodayStandup endpoint для проверки «уже записал standup
+// на сегодня?» (note title формируется как "Standup YYYY-MM-DD").
+func (n *Notes) ExistsByTitleForUser(ctx context.Context, userID uuid.UUID, title string) (bool, error) {
+	var exists bool
+	err := n.pool.QueryRow(ctx,
+		`SELECT EXISTS (
+		   SELECT 1 FROM hone_notes
+		    WHERE user_id=$1 AND title=$2 AND archived_at IS NULL
+		 )`,
+		sharedpg.UUID(userID), title,
+	).Scan(&exists)
+	if err != nil {
+		return false, fmt.Errorf("hone.Notes.ExistsByTitleForUser: %w", err)
+	}
+	return exists, nil
+}
+
 // SetArchived помечает заметку как archived (или восстанавливает).
 // archived_at = now() / NULL — Phase C-2 архив.
 func (n *Notes) SetArchived(ctx context.Context, userID, noteID uuid.UUID, archived bool) error {
