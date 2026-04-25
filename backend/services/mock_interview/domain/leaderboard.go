@@ -23,3 +23,16 @@ type LeaderboardEntry struct {
 type LeaderboardRepo interface {
 	Top(ctx context.Context, companyID *uuid.UUID, limit int) ([]LeaderboardEntry, error)
 }
+
+// FairnessWatermark — typed enum of values returned in the
+// `fairness_watermark` field of the leaderboard envelope. The frontend
+// pins this to a literal-union of the same shape; bumping a value here
+// requires a corresponding frontend type bump.
+type FairnessWatermark string
+
+const (
+	// FairnessAIAssistOffOnly — the leaderboard rows reflect only
+	// pipelines run with ai_assist=false. This is currently the only
+	// supported watermark.
+	FairnessAIAssistOffOnly FairnessWatermark = "ai_assist_off_only"
+)

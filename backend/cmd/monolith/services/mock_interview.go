@@ -29,7 +29,19 @@ func NewMockInterview(d Deps) *Module {
 	pipelines := miInfra.NewPipelines(d.Pool)
 	pipelineStages := miInfra.NewPipelineStages(d.Pool)
 	attempts := miInfra.NewPipelineAttempts(d.Pool)
-	leaderboard := miInfra.NewLeaderboard(d.Pool)
+	// Leaderboard reads are cached for 60s — see infra/cache.go for the
+	// rationale (full-scan aggregate that would stall the connection pool
+	// under peak load on a 12 GB-RAM box).
+	rawLeaderboard := miInfra.NewLeaderboard(d.Pool)
+	var leaderboard miDomain.LeaderboardRepo = rawLeaderboard
+	if d.Redis != nil {
+		leaderboard = miInfra.NewCachedLeaderboardRepo(
+			rawLeaderboard,
+			miInfra.NewRedisKV(d.Redis),
+			miInfra.DefaultLeaderboardTTL,
+			d.Log,
+		)
+	}
 
 	handlers := miApp.NewHandlers(
 		companies, strictness, tasks, questions, companyStages,

@@ -23,6 +23,7 @@ import (
 	"time"
 
 	"druz9/mock_interview/domain"
+	"druz9/shared/enums"
 
 	"github.com/google/uuid"
 )
@@ -468,7 +469,7 @@ func (o *Orchestrator) SubmitAnswer(ctx context.Context, attemptID uuid.UUID, us
 		o.Sandbox != nil && o.Sandbox.Available() &&
 		withQ.Attempt.TaskID != nil && o.Tasks != nil {
 		if task, terr := o.Tasks.Get(ctx, *withQ.Attempt.TaskID); terr == nil {
-			res, sErr := o.Sandbox.Submit(ctx, userAnswer, string(task.Language), task.ID)
+			res, sErr := o.Sandbox.Submit(ctx, userAnswer, enums.Language(task.Language), task.ID)
 			if sErr != nil {
 				if !errors.Is(sErr, domain.ErrSandboxUnavailable) && o.Log != nil {
 					o.Log.WarnContext(ctx, "mock_interview.orch: sandbox submit failed; using LLM-only verdict",

@@ -1111,6 +1111,6 @@ func (s *Server) publicLeaderboard(w http.ResponseWriter, r *http.Request) {
 	}
 	writeJSON(w, http.StatusOK, map[string]any{
 		"items":              out,
-		"fairness_watermark": "ai_assist_off_only",
+		"fairness_watermark": domain.FairnessAIAssistOffOnly,
 	})
 }

@@ -177,6 +177,9 @@ func New(ctx context.Context, cfg *config.Config) (app *App, otelShutdown func()
 		services.NewArena(deps, rating.Repo),
 		services.NewAIMock(deps),
 		services.NewAIModels(deps),
+		// VPS retention sweep — see cleanup_crons.go header for tables/
+		// policies. Pure background, no REST surface.
+		services.NewCleanupCrons(deps),
 		// Phase-4 ADR-001 — `ai_native` removed (NativeRoundPage was a
 		// legacy mock-round flow with no UI entry point); `season` removed
 		// (incomplete season pass, no UI surface). Event publishers in

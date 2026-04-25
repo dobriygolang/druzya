@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 
+	"druz9/shared/enums"
+
 	"github.com/google/uuid"
 )
 
@@ -44,5 +46,5 @@ type SandboxResult struct {
 // caller can degrade gracefully.
 type SandboxExecutor interface {
 	Available() bool
-	Submit(ctx context.Context, code, language string, taskID uuid.UUID) (SandboxResult, error)
+	Submit(ctx context.Context, code string, language enums.Language, taskID uuid.UUID) (SandboxResult, error)
 }

@@ -57,6 +57,18 @@ func NewTracedPool(ctx context.Context, dsn string) (*pgxpool.Pool, error) {
 		return nil, fmt.Errorf("otel.NewTracedPool: parse dsn: %w", err)
 	}
 	cfg.ConnConfig.Tracer = &queryTracer{tracer: otel.Tracer("druz9/pgx")}
+	// Explicit pool sizing — the pgx default of 4..max(4, cpu*2) is too
+	// small for a monolith hosting 6+ services on a 12 GB-RAM box where
+	// Judge0 wait=true sandbox calls and N+1 read paths can each hold a
+	// connection for 75s+. 30 max is comfortable on Postgres
+	// (max_connections=200 default) and prevents starvation during the
+	// hot moments. MinConns=4 keeps a warm pool for steady traffic.
+	if cfg.MaxConns < 30 {
+		cfg.MaxConns = 30
+	}
+	if cfg.MinConns < 4 {
+		cfg.MinConns = 4
+	}
 	pool, err := pgxpool.NewWithConfig(ctx, cfg)
 	if err != nil {
 		return nil, fmt.Errorf("otel.NewTracedPool: create pool: %w", err)

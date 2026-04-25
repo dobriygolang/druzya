@@ -21,7 +21,10 @@ import (
 	"strings"
 	"time"
 
+	"golang.org/x/sync/errgroup"
+
 	"druz9/mock_interview/domain"
+	"druz9/shared/enums"
 
 	"github.com/google/uuid"
 )
@@ -57,18 +60,25 @@ func NewJudge0Sandbox(baseURL string, cases domain.MockTaskTestCaseRepo, log *sl
 // Available — true iff a base URL is set.
 func (s *Judge0Sandbox) Available() bool { return s != nil && s.BaseURL != "" }
 
-// languageID resolves the mock_tasks.language enum to a Judge0 language id.
-// Stock Judge0 v1.13.1 ids; SQL is unsupported (Judge0 has no SQL runtime).
-func languageID(lang string) (int, bool) {
-	switch strings.ToLower(strings.TrimSpace(lang)) {
-	case "go":
+// languageID resolves the shared Language enum to a Judge0 language id.
+// Stock Judge0 v1.13.1 ids; SQL is unsupported (Judge0 has no SQL runtime,
+// see services/daily/infra/judge0_client.go for the historical context).
+//
+// Why not a free string: keeps mock_interview's sandbox path consistent
+// with daily's, and means a typo in `mock_tasks.language` raises at the
+// enum boundary rather than silently returning ok=false.
+func languageID(lang enums.Language) (int, bool) {
+	switch lang {
+	case enums.LanguageGo:
 		return 60, true // Go 1.13.5
-	case "python":
+	case enums.LanguagePython:
 		return 71, true // Python 3.8.1
-	case "javascript":
+	case enums.LanguageJavaScript:
 		return 63, true // Node.js 12.14.0
-	case "typescript":
+	case enums.LanguageTypeScript:
 		return 74, true // TypeScript 3.7.4
+	case enums.LanguageSQL:
+		return 0, false
 	default:
 		return 0, false
 	}
@@ -90,7 +100,7 @@ type j0Resp struct {
 
 // Submit runs the user's code against every test case for the task. Returns
 // ErrSandboxUnavailable on transport-level failure or unsupported language.
-func (s *Judge0Sandbox) Submit(ctx context.Context, code, language string, taskID uuid.UUID) (domain.SandboxResult, error) {
+func (s *Judge0Sandbox) Submit(ctx context.Context, code string, language enums.Language, taskID uuid.UUID) (domain.SandboxResult, error) {
 	if !s.Available() {
 		return domain.SandboxResult{}, fmt.Errorf("mock_interview.Judge0Sandbox.Submit: %w", domain.ErrSandboxUnavailable)
 	}
@@ -109,15 +119,42 @@ func (s *Judge0Sandbox) Submit(ctx context.Context, code, language string, taskI
 		return domain.SandboxResult{}, fmt.Errorf("mock_interview.Judge0Sandbox.Submit: %w: no test cases for task %s", domain.ErrSandboxUnavailable, taskID)
 	}
 	total := len(cases)
-	passed := 0
-	for _, tc := range cases {
-		ok, runErr := s.runOne(ctx, code, tc.Input, tc.Expected, langID)
-		if runErr != nil {
-			s.Log.WarnContext(ctx, "mock_interview.Judge0Sandbox: run failed",
-				slog.String("task_id", taskID.String()), slog.Any("err", runErr))
-			return domain.SandboxResult{Total: total, PassedCount: passed},
-				fmt.Errorf("mock_interview.Judge0Sandbox.Submit: %w: %s", domain.ErrSandboxUnavailable, runErr.Error())
+	// Run cases in parallel with a small concurrency cap. Sequential
+	// `wait=true` calls were monopolising one DB pool conn for ~75s on a
+	// 5-case task (see backend perf audit). Cap at 3 — Judge0 is happy
+	// with a few concurrent requests, and we don't want to flood the
+	// shared docker container with 50 simultaneous compiles either.
+	const maxConcurrent = 3
+	g, gctx := errgroup.WithContext(ctx)
+	g.SetLimit(maxConcurrent)
+	results := make([]bool, total)
+	for i, tc := range cases {
+		i, tc := i, tc
+		g.Go(func() error {
+			ok, runErr := s.runOne(gctx, code, tc.Input, tc.Expected, langID)
+			if runErr != nil {
+				return runErr
+			}
+			results[i] = ok
+			return nil
+		})
+	}
+	if err := g.Wait(); err != nil {
+		s.Log.WarnContext(ctx, "mock_interview.Judge0Sandbox: run failed",
+			slog.String("task_id", taskID.String()), slog.Any("err", err))
+		// Count successes that completed before the first failure so the
+		// caller can show partial progress in the slog stream.
+		passed := 0
+		for _, ok := range results {
+			if ok {
+				passed++
+			}
 		}
+		return domain.SandboxResult{Total: total, PassedCount: passed},
+			fmt.Errorf("mock_interview.Judge0Sandbox.Submit: %w: %s", domain.ErrSandboxUnavailable, err.Error())
+	}
+	passed := 0
+	for _, ok := range results {
 		if ok {
 			passed++
 		}
@@ -196,7 +233,7 @@ func NewUnconfiguredSandbox() *UnconfiguredSandbox { return &UnconfiguredSandbox
 func (UnconfiguredSandbox) Available() bool { return false }
 
 // Submit always returns ErrSandboxUnavailable.
-func (UnconfiguredSandbox) Submit(_ context.Context, _, _ string, _ uuid.UUID) (domain.SandboxResult, error) {
+func (UnconfiguredSandbox) Submit(_ context.Context, _ string, _ enums.Language, _ uuid.UUID) (domain.SandboxResult, error) {
 	return domain.SandboxResult{}, fmt.Errorf("mock_interview.sandbox.unconfigured: %w", domain.ErrSandboxUnavailable)
 }
 
