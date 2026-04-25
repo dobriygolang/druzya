@@ -28,7 +28,7 @@ import { HomePage } from './pages/Home';
 import { TodayPage, type StartFocusArgs } from './pages/Today';
 import { NotesPage } from './pages/Notes';
 import { WhiteboardPage } from './pages/Whiteboard';
-import { StatsPage } from './pages/Stats';
+import { StatsOverlay } from './components/StatsOverlay';
 import { PodcastsPage } from './pages/Podcasts';
 import { EditorPage } from './pages/Editor';
 import { SharedBoardsPage } from './pages/SharedBoards';
@@ -58,6 +58,7 @@ export default function App() {
   const [copilotOpen, setCopilotOpen] = useState(false);
   const [standupOpen, setStandupOpen] = useState(false);
   const [onboardingOpen, setOnboardingOpen] = useState(false);
+  const [statsOpen, setStatsOpen] = useState(false);
 
   const [remain, setRemain] = useState(POMODORO_SECONDS);
   const [running, setRunning] = useState(false);
@@ -275,12 +276,19 @@ export default function App() {
         setCopilotOpen(true);
         return;
       }
+      if (id === 'stats') {
+        // Stats не отдельная страница — overlay из widget'ов поверх Home.
+        setPage('home');
+        setStatsOpen(true);
+        return;
+      }
       if (args) {
         // Today/Plan нажал «Start focus» — ставим pinned-task и переходим
         // на Home с запущенным таймером.
         startFocus(args);
         return;
       }
+      setStatsOpen(false);
       setPage(id);
     },
     [startFocus],
@@ -327,6 +335,10 @@ export default function App() {
         }
         if (paletteOpen) {
           setPaletteOpen(false);
+          return;
+        }
+        if (statsOpen) {
+          setStatsOpen(false);
           return;
         }
         if (page !== 'home') {
@@ -420,7 +432,7 @@ export default function App() {
       {page === 'today' && <TodayPage onStartFocus={startFocus} />}
       {page === 'notes' && <NotesPage />}
       {page === 'board' && <WhiteboardPage />}
-      {page === 'stats' && <StatsPage />}
+      {/* Stats теперь overlay (см. statsOpen ниже). Старая StatsPage снята. */}
       {page === 'podcasts' && <PodcastsPage />}
       {page === 'editor' && (
         <EditorPage
@@ -428,6 +440,7 @@ export default function App() {
           onConsumeInitial={() => setInitialEditorRoom(null)}
         />
       )}
+      {statsOpen && page === 'home' && <StatsOverlay onClose={() => setStatsOpen(false)} />}
       {page === 'shared_boards' && (
         <SharedBoardsPage
           initialRoomId={initialBoardRoom}

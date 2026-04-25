@@ -51,8 +51,8 @@ export function Dock({
         transform: 'translateX(-50%)',
         display: 'flex',
         alignItems: 'center',
-        gap: 2,
-        padding: 5,
+        gap: 4,
+        padding: '6px 10px',
         borderRadius: 999,
         background: 'rgba(10,10,10,0.78)',
         border: '1px solid rgba(255,255,255,0.07)',
@@ -106,8 +106,8 @@ function TimerArea({ running, mode, mm, ss, onToggleMode, onReset }: TimerAreaPr
       onMouseLeave={() => setHover(false)}
       style={{
         position: 'relative',
-        width: 96,
-        height: 28,
+        width: 150,
+        height: 30,
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
@@ -164,41 +164,37 @@ function TimerArea({ running, mode, mm, ss, onToggleMode, onReset }: TimerAreaPr
         </span>
       </div>
 
-      {/* hover: pill с двумя кнопками */}
+      {/* hover: широкий pill с двумя кнопками, занимает ~85% ширины
+           TimerArea — как в winter.so reference */}
       <div
         style={{
           position: 'absolute',
-          inset: 0,
+          top: 0,
+          bottom: 0,
+          left: '7%',
+          right: '7%',
           display: 'flex',
           alignItems: 'center',
-          justifyContent: 'center',
-          gap: 0,
+          justifyContent: 'space-around',
+          background: 'rgba(255,255,255,0.06)',
+          borderRadius: 999,
+          padding: '0 8px',
           opacity: hover ? 1 : 0,
-          transition: 'opacity var(--t-fast)',
+          transform: hover ? 'scale(1)' : 'scale(0.96)',
+          transition: 'opacity var(--t-fast), transform var(--t-fast)',
           pointerEvents: hover ? 'auto' : 'none',
         }}
       >
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            background: 'rgba(255,255,255,0.05)',
-            borderRadius: 999,
-            padding: 2,
-            gap: 0,
-          }}
+        <DockBtn
+          onClick={onToggleMode}
+          title={mode === 'countdown' ? 'Switch to ∞' : 'Switch to pomodoro'}
+          small
         >
-          <DockBtn
-            onClick={onToggleMode}
-            title={mode === 'countdown' ? 'Switch to ∞' : 'Switch to pomodoro'}
-            small
-          >
-            <Icon name={mode === 'countdown' ? 'infinity' : 'circle'} size={12} />
-          </DockBtn>
-          <DockBtn onClick={onReset} title="Reset" small>
-            <Icon name="rewind" size={12} />
-          </DockBtn>
-        </div>
+          <Icon name={mode === 'countdown' ? 'infinity' : 'circle'} size={13} />
+        </DockBtn>
+        <DockBtn onClick={onReset} title="Reset" small>
+          <Icon name="rewind" size={13} />
+        </DockBtn>
       </div>
     </div>
   );
