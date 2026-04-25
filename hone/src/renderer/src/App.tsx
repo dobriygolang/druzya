@@ -155,6 +155,20 @@ export default function App() {
     setOnboardingOpen(true);
   }, [status]);
 
+  // ── Device bootstrap (Phase C-3.1) ──────────────────────────────────────
+  // Регистрируем устройство при первом успешном логине. Errors глотаем —
+  // sync feature просто не активируется до следующего запуска. Free-tier
+  // 1-device limit (DeviceLimitError) НЕ блокирует app, юзер увидит
+  // «Replace device» в Settings → Devices.
+  useEffect(() => {
+    if (status !== 'signed_in') return;
+    void import('./api/device').then(({ ensureDevice }) => {
+      void ensureDevice({ appVersion: '0.0.1' }).catch(() => {
+        /* limit / network — silent; повторим на следующем запуске */
+      });
+    });
+  }, [status]);
+
   const dismissOnboarding = () => {
     setOnboardingOpen(false);
     try {

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"net/http"
 	"time"
 
 	honeApp "druz9/hone/app"
@@ -178,6 +179,19 @@ func NewHone(d Deps) *Module {
 		ConnectHandler:     transcoder,
 		RequireConnectAuth: true,
 		MountREST: func(r chi.Router) {
+			// quotaWrap — оборачивает write-handler в storage gate
+			// (если он есть). Read'ы и delete'ы — без gate'а: delete
+			// освобождает место, блокировать его при quota_exceeded
+			// — это софт-локаут юзера. Plan/focus тоже не gate'аем:
+			// сами по себе они почти не пишут (focus_session.delta
+			// — байты, а не килобайты).
+			quotaWrap := func(h http.HandlerFunc) http.HandlerFunc {
+				if d.StorageGate == nil {
+					return h
+				}
+				return d.StorageGate.Middleware(h).ServeHTTP
+			}
+
 			// Plan
 			r.Post("/hone/plan/generate", transcoder.ServeHTTP)
 			r.Get("/hone/plan", transcoder.ServeHTTP)
@@ -187,15 +201,15 @@ func NewHone(d Deps) *Module {
 			r.Post("/hone/focus/start", transcoder.ServeHTTP)
 			r.Post("/hone/focus/end", transcoder.ServeHTTP)
 			r.Get("/hone/stats", transcoder.ServeHTTP)
-			// Notes
-			r.Post("/hone/notes", transcoder.ServeHTTP)
-			r.Post("/hone/notes/update", transcoder.ServeHTTP)
+			// Notes — write-routes за quota gate'ом
+			r.Post("/hone/notes", quotaWrap(transcoder.ServeHTTP))
+			r.Post("/hone/notes/update", quotaWrap(transcoder.ServeHTTP))
 			r.Get("/hone/notes", transcoder.ServeHTTP)
 			r.Get("/hone/notes/{id}", transcoder.ServeHTTP)
 			r.Post("/hone/notes/delete", transcoder.ServeHTTP)
-			// Whiteboards
-			r.Post("/hone/whiteboards", transcoder.ServeHTTP)
-			r.Post("/hone/whiteboards/update", transcoder.ServeHTTP)
+			// Whiteboards — write-routes за quota gate'ом
+			r.Post("/hone/whiteboards", quotaWrap(transcoder.ServeHTTP))
+			r.Post("/hone/whiteboards/update", quotaWrap(transcoder.ServeHTTP))
 			r.Get("/hone/whiteboards", transcoder.ServeHTTP)
 			r.Get("/hone/whiteboards/{id}", transcoder.ServeHTTP)
 			r.Post("/hone/whiteboards/delete", transcoder.ServeHTTP)

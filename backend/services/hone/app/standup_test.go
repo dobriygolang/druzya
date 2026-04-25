@@ -50,6 +50,9 @@ func (f *fakeNotes) List(context.Context, uuid.UUID, int, string) ([]domain.Note
 	return nil, "", nil
 }
 func (f *fakeNotes) Delete(context.Context, uuid.UUID, uuid.UUID) error { return nil }
+func (f *fakeNotes) SetArchived(context.Context, uuid.UUID, uuid.UUID, bool) error {
+	return nil
+}
 func (f *fakeNotes) SetEmbedding(context.Context, uuid.UUID, uuid.UUID, []float32, string, time.Time) error {
 	return nil
 }

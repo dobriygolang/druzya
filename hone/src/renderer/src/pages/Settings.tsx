@@ -20,7 +20,11 @@ import {
   getStorageQuota,
   formatBytes,
   tierLabel,
+  archiveOldestNotes,
+  listDevices,
+  revokeDevice,
   type StorageQuota,
+  type Device,
 } from '../api/storage';
 
 interface HoneSettings {
@@ -156,6 +160,14 @@ export function SettingsPage({ theme, onThemeChange }: SettingsPageProps) {
           hint="How much of your tier you've used. Free tier is single-device; Pro syncs across devices."
         >
           <StorageSection />
+        </Section>
+
+        {/* ── Devices ──────────────────────────────────────────── */}
+        <Section
+          title="DEVICES"
+          hint="Devices that are currently signed in. Free tier supports 1 active device; Pro removes the limit."
+        >
+          <DevicesSection />
         </Section>
 
         {/* ── Notifications ────────────────────────────────────── */}
@@ -420,9 +432,12 @@ function ShortcutRow({ keys, label }: { keys: string[]; label: string }) {
 function StorageSection() {
   const [data, setData] = useState<StorageQuota | null>(null);
   const [errored, setErrored] = useState(false);
+  const [tick, setTick] = useState(0);
 
   useEffect(() => {
     let live = true;
+    setData(null);
+    setErrored(false);
     void getStorageQuota()
       .then((q) => {
         if (live) setData(q);
@@ -433,7 +448,7 @@ function StorageSection() {
     return () => {
       live = false;
     };
-  }, []);
+  }, [tick]);
 
   if (errored) {
     return (
@@ -498,6 +513,9 @@ function StorageSection() {
           }}
         />
       </div>
+      {/* Archive control — особенно полезно при overSoft. Не блокируем при
+          ниже-cap'е: юзер может профилактически чистить старое. */}
+      <ArchiveControl onDone={() => setTick((t) => t + 1)} />
       {data.tier === 'free' && (
         <div
           style={{
@@ -518,6 +536,158 @@ function StorageSection() {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+// ArchiveControl — единственная кнопка «Archive 10 oldest notes».
+// Без подтверждения: archive ≠ delete (recoverable), и UX-друже­люб­нее
+// сразу выполнить. Если юзер кликнул случайно — open Notes → восстановить.
+function ArchiveControl({ onDone }: { onDone: () => void }) {
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState<string | null>(null);
+
+  const onClick = async () => {
+    setBusy(true);
+    setMsg(null);
+    try {
+      const n = await archiveOldestNotes(10);
+      setMsg(n === 0 ? 'No active notes to archive.' : `Archived ${n} note${n === 1 ? '' : 's'}.`);
+      onDone();
+    } catch {
+      setMsg('Archive failed — try again.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div style={{ marginTop: 14, display: 'flex', alignItems: 'center', gap: 12 }}>
+      <button
+        type="button"
+        onClick={onClick}
+        disabled={busy}
+        className="focus-ring"
+        style={{
+          padding: '6px 12px',
+          fontSize: 12.5,
+          background: 'transparent',
+          border: '1px solid var(--ink-20)',
+          borderRadius: 8,
+          color: 'var(--ink-90)',
+          cursor: busy ? 'default' : 'pointer',
+          opacity: busy ? 0.5 : 1,
+          transition: 'opacity 150ms ease, background-color 150ms ease',
+        }}
+      >
+        {busy ? 'Archiving…' : 'Archive 10 oldest notes'}
+      </button>
+      {msg ? <span style={{ fontSize: 12, color: 'var(--ink-60)' }}>{msg}</span> : null}
+    </div>
+  );
+}
+
+// DevicesSection — list active devices + revoke. Регистрация текущего
+// устройства происходит автоматически в App-bootstrap'е (см. отдельную
+// задачу — пока здесь только просмотр + revoke).
+function DevicesSection() {
+  const [devices, setDevices] = useState<Device[] | null>(null);
+  const [errored, setErrored] = useState(false);
+  const [tick, setTick] = useState(0);
+
+  useEffect(() => {
+    let live = true;
+    setDevices(null);
+    setErrored(false);
+    void listDevices()
+      .then((d) => {
+        if (live) setDevices(d);
+      })
+      .catch(() => {
+        if (live) setErrored(true);
+      });
+    return () => {
+      live = false;
+    };
+  }, [tick]);
+
+  if (errored) {
+    return (
+      <div style={{ fontSize: 13, color: 'var(--ink-60)' }}>
+        Device list unavailable right now.
+      </div>
+    );
+  }
+  if (!devices) {
+    return <div style={{ fontSize: 13, color: 'var(--ink-40)' }}>Loading…</div>;
+  }
+  if (devices.length === 0) {
+    return (
+      <div style={{ fontSize: 13, color: 'var(--ink-60)' }}>
+        No devices registered yet.
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+      {devices.map((d) => (
+        <DeviceRow key={d.id} device={d} onRevoke={() => setTick((t) => t + 1)} />
+      ))}
+    </div>
+  );
+}
+
+function DeviceRow({ device, onRevoke }: { device: Device; onRevoke: () => void }) {
+  const [busy, setBusy] = useState(false);
+  const onClick = async () => {
+    setBusy(true);
+    try {
+      await revokeDevice(device.id);
+      onRevoke();
+    } catch {
+      setBusy(false);
+    }
+  };
+  const seen = new Date(device.lastSeenAt);
+  return (
+    <div
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 12,
+        padding: '10px 12px',
+        borderRadius: 10,
+        border: '1px solid var(--ink-10)',
+        background: 'var(--surface)',
+      }}
+    >
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontSize: 13, color: 'var(--ink-90)' }}>{device.name}</div>
+        <div className="mono" style={{ fontSize: 11, color: 'var(--ink-40)', marginTop: 2 }}>
+          {device.platform.toUpperCase()}
+          {device.appVersion ? ` · v${device.appVersion}` : ''}
+          {' · last seen '}
+          {Number.isFinite(seen.getTime()) ? seen.toLocaleString() : '—'}
+        </div>
+      </div>
+      <button
+        type="button"
+        onClick={onClick}
+        disabled={busy}
+        className="focus-ring"
+        style={{
+          padding: '5px 10px',
+          fontSize: 12,
+          background: 'transparent',
+          border: '1px solid var(--ink-20)',
+          borderRadius: 6,
+          color: 'var(--ink-60)',
+          cursor: busy ? 'default' : 'pointer',
+        }}
+      >
+        {busy ? '…' : 'Revoke'}
+      </button>
     </div>
   );
 }

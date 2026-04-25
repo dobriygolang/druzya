@@ -41,6 +41,9 @@ type routerDeps struct {
 	ResolveTier func(ctx context.Context, userID uuid.UUID) string
 	Notify      *services.NotifyModule
 	Modules     []*services.Module // every Module in mount order, including auth's
+	// SyncHeartbeat — Phase C-3.1 middleware. Применяется ПОСЛЕ auth-gate'а
+	// в /api/v1 chain'е и в Connect-mux'е (через wrap auth + tier).
+	SyncHeartbeat *services.SyncHeartbeat
 }
 
 func buildHandler(d routerDeps) http.Handler {
@@ -96,6 +99,9 @@ func buildHandler(d routerDeps) http.Handler {
 		api.Group(func(gated chi.Router) {
 			gated.Use(restAuthGate(d.RequireAuth))
 			gated.Use(tierEnrichment(d.ResolveTier))
+			if d.SyncHeartbeat != nil {
+				gated.Use(d.SyncHeartbeat.Middleware)
+			}
 			for _, m := range d.Modules {
 				if m != nil && m.MountREST != nil {
 					m.MountREST(gated)
@@ -113,7 +119,11 @@ func buildHandler(d routerDeps) http.Handler {
 			continue
 		}
 		if m.RequireConnectAuth {
-			connectMux.Handle(m.ConnectPath, d.RequireAuth(tierEnrichment(d.ResolveTier)(m.ConnectHandler)))
+			h := m.ConnectHandler
+			if d.SyncHeartbeat != nil {
+				h = d.SyncHeartbeat.Middleware(h)
+			}
+			connectMux.Handle(m.ConnectPath, d.RequireAuth(tierEnrichment(d.ResolveTier)(h)))
 		} else {
 			connectMux.Handle(m.ConnectPath, m.ConnectHandler)
 		}

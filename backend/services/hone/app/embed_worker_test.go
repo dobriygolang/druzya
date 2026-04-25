@@ -92,6 +92,9 @@ func (r *fakeNotesRepo) List(context.Context, uuid.UUID, int, string) ([]domain.
 func (r *fakeNotesRepo) Delete(context.Context, uuid.UUID, uuid.UUID) error {
 	return errors.New("unused")
 }
+func (r *fakeNotesRepo) SetArchived(context.Context, uuid.UUID, uuid.UUID, bool) error {
+	return errors.New("unused")
+}
 func (r *fakeNotesRepo) WithEmbeddingsForUser(context.Context, uuid.UUID) ([]domain.NoteEmbedding, error) {
 	return nil, errors.New("unused")
 }

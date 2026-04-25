@@ -242,6 +242,17 @@ type DailyStreak struct {
 	UpdatedAt     pgtype.Timestamptz
 }
 
+type Device struct {
+	ID         pgtype.UUID
+	UserID     pgtype.UUID
+	Name       string
+	Platform   string
+	AppVersion string
+	LastSeenAt pgtype.Timestamptz
+	RevokedAt  pgtype.Timestamptz
+	CreatedAt  pgtype.Timestamptz
+}
+
 type DocChunk struct {
 	ID         pgtype.UUID
 	DocID      pgtype.UUID
@@ -390,6 +401,9 @@ type HoneNote struct {
 	EmbeddedAt     pgtype.Timestamptz
 	CreatedAt      pgtype.Timestamptz
 	UpdatedAt      pgtype.Timestamptz
+	ArchivedAt     pgtype.Timestamptz
+	PublishedAt    pgtype.Timestamptz
+	PublicSlug     pgtype.Text
 }
 
 type HonePlanSkip struct {
@@ -418,13 +432,14 @@ type HoneStreakState struct {
 }
 
 type HoneWhiteboard struct {
-	ID        pgtype.UUID
-	UserID    pgtype.UUID
-	Title     string
-	StateJson []byte
-	Version   int32
-	CreatedAt pgtype.Timestamptz
-	UpdatedAt pgtype.Timestamptz
+	ID         pgtype.UUID
+	UserID     pgtype.UUID
+	Title      string
+	StateJson  []byte
+	Version    int32
+	CreatedAt  pgtype.Timestamptz
+	UpdatedAt  pgtype.Timestamptz
+	ArchivedAt pgtype.Timestamptz
 }
 
 type Incident struct {
@@ -960,6 +975,10 @@ type User struct {
 	FocusClass            string
 	CreatedAt             pgtype.Timestamptz
 	UpdatedAt             pgtype.Timestamptz
+	StorageQuotaBytes     int64
+	StorageUsedBytes      int64
+	StorageTier           string
+	StorageRecomputedAt   pgtype.Timestamptz
 }
 
 type UserAchievement struct {

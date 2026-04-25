@@ -50,3 +50,181 @@ export function tierLabel(tier: StorageTier): string {
       return 'Free';
   }
 }
+
+// ─── Archive ──────────────────────────────────────────────────────────────
+
+function authHeaders(): Record<string, string> {
+  const token = useSessionStore.getState().accessToken ?? DEV_BEARER_TOKEN;
+  const h: Record<string, string> = {};
+  if (token) h.authorization = `Bearer ${token}`;
+  // X-Device-ID — Phase C-3.1. Читаем напрямую из localStorage чтобы
+  // избежать циклической зависимости (device.ts импортирует
+  // registerDevice/DeviceLimitError отсюда).
+  try {
+    const did = window.localStorage.getItem('hone:device-id');
+    if (did) h['x-device-id'] = did;
+  } catch {
+    /* private mode — skip */
+  }
+  return h;
+}
+
+/** Archives the N oldest active notes. Returns count actually archived. */
+export async function archiveOldestNotes(count = 10): Promise<number> {
+  const resp = await fetch(`${API_BASE_URL}/api/v1/storage/archive/notes/oldest`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', ...authHeaders() },
+    body: JSON.stringify({ count }),
+  });
+  if (!resp.ok) throw new Error(`archive oldest: ${resp.status}`);
+  const j = (await resp.json()) as { archived: number };
+  return Number(j.archived ?? 0);
+}
+
+export async function archiveNote(id: string): Promise<void> {
+  const resp = await fetch(`${API_BASE_URL}/api/v1/storage/archive/note/${id}`, {
+    method: 'POST',
+    headers: authHeaders(),
+  });
+  if (!resp.ok) throw new Error(`archive note: ${resp.status}`);
+}
+
+export async function restoreNote(id: string): Promise<void> {
+  const resp = await fetch(`${API_BASE_URL}/api/v1/storage/archive/note/${id}/restore`, {
+    method: 'POST',
+    headers: authHeaders(),
+  });
+  if (!resp.ok) throw new Error(`restore note: ${resp.status}`);
+}
+
+// ─── Quota error detection ────────────────────────────────────────────────
+//
+// Backend возвращает 413 Payload Too Large с body
+// {error:{code:"quota_exceeded", usedBytes, quotaBytes, tier}}.
+// Connect-RPC оборачивает HTTP-ошибки в ConnectError с code=resource_exhausted —
+// проверяем оба варианта (REST путь и Connect путь).
+
+export interface QuotaExceeded {
+  usedBytes: number;
+  quotaBytes: number;
+  tier: StorageTier;
+}
+
+export function isQuotaExceeded(err: unknown): QuotaExceeded | null {
+  if (!err) return null;
+  const e = err as { code?: string; rawMessage?: string; message?: string };
+  // Connect error → code "resource_exhausted" обычно мапится сюда
+  if (e.code === 'resource_exhausted' || e.code === 'quota_exceeded') {
+    return parseQuotaPayload(e.rawMessage ?? e.message ?? '');
+  }
+  // Fetch path: error message содержит «413»
+  if ((e.message ?? '').includes('413')) {
+    return { usedBytes: 0, quotaBytes: 0, tier: 'free' };
+  }
+  return null;
+}
+
+function parseQuotaPayload(raw: string): QuotaExceeded | null {
+  try {
+    const parsed = JSON.parse(raw) as { usedBytes?: number; quotaBytes?: number; tier?: string };
+    return {
+      usedBytes: Number(parsed.usedBytes ?? 0),
+      quotaBytes: Number(parsed.quotaBytes ?? 0),
+      tier: (parsed.tier as StorageTier) || 'free',
+    };
+  } catch {
+    return { usedBytes: 0, quotaBytes: 0, tier: 'free' };
+  }
+}
+
+// ─── Devices (sync foundation) ────────────────────────────────────────────
+
+export type DevicePlatform = 'mac' | 'ios' | 'android' | 'web' | 'linux' | 'windows';
+
+export interface Device {
+  id: string;
+  name: string;
+  platform: DevicePlatform;
+  appVersion: string;
+  lastSeenAt: string;
+  createdAt: string;
+}
+
+export async function registerDevice(input: {
+  name: string;
+  platform: DevicePlatform;
+  appVersion: string;
+}): Promise<Device> {
+  const resp = await fetch(`${API_BASE_URL}/api/v1/sync/devices`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', ...authHeaders() },
+    body: JSON.stringify(input),
+  });
+  if (resp.status === 409) {
+    const body = await resp.json().catch(() => ({}));
+    const msg = body?.error?.message ?? 'Device limit reached';
+    throw new DeviceLimitError(msg);
+  }
+  if (!resp.ok) throw new Error(`register device: ${resp.status}`);
+  return (await resp.json()) as Device;
+}
+
+export async function listDevices(): Promise<Device[]> {
+  const resp = await fetch(`${API_BASE_URL}/api/v1/sync/devices`, {
+    headers: authHeaders(),
+  });
+  if (!resp.ok) throw new Error(`list devices: ${resp.status}`);
+  const j = (await resp.json()) as { devices: Device[] };
+  return j.devices ?? [];
+}
+
+export async function revokeDevice(id: string): Promise<void> {
+  const resp = await fetch(`${API_BASE_URL}/api/v1/sync/devices/${id}/revoke`, {
+    method: 'POST',
+    headers: authHeaders(),
+  });
+  if (!resp.ok) throw new Error(`revoke device: ${resp.status}`);
+}
+
+/** Thrown when Free-tier hits 1-device cap. UI catches and shows upgrade. */
+export class DeviceLimitError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'DeviceLimitError';
+  }
+}
+
+// ─── Publish to web (Phase C-4) ───────────────────────────────────────────
+
+export interface PublishStatus {
+  published: boolean;
+  slug?: string;
+  url?: string;
+  publishedAt?: string;
+}
+
+export async function publishNote(noteId: string): Promise<PublishStatus> {
+  const resp = await fetch(`${API_BASE_URL}/api/v1/notes/${noteId}/publish`, {
+    method: 'POST',
+    headers: authHeaders(),
+  });
+  if (!resp.ok) throw new Error(`publish: ${resp.status}`);
+  const j = (await resp.json()) as { slug: string; url: string; publishedAt: string };
+  return { published: true, slug: j.slug, url: j.url, publishedAt: j.publishedAt };
+}
+
+export async function unpublishNote(noteId: string): Promise<void> {
+  const resp = await fetch(`${API_BASE_URL}/api/v1/notes/${noteId}/unpublish`, {
+    method: 'POST',
+    headers: authHeaders(),
+  });
+  if (!resp.ok) throw new Error(`unpublish: ${resp.status}`);
+}
+
+export async function getPublishStatus(noteId: string): Promise<PublishStatus> {
+  const resp = await fetch(`${API_BASE_URL}/api/v1/notes/${noteId}/publish-status`, {
+    headers: authHeaders(),
+  });
+  if (!resp.ok) throw new Error(`publish status: ${resp.status}`);
+  return (await resp.json()) as PublishStatus;
+}

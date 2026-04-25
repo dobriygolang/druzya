@@ -151,6 +151,14 @@ func New(ctx context.Context, cfg *config.Config) (app *App, otelShutdown func()
 	circlesMod := services.NewCircles(deps)
 	// Intelligence wired ahead so its MemoryHook is available to Hone
 	// (Hone-handlers'ы вызывают Hook.OnReflectionAdded etc).
+	// Storage gate должен быть построен ДО Hone — Hone оборачивает свои
+	// write-routes этим gate'ом, чтобы возвращать 413 при quota_exceeded.
+	storageMod, storageGate := services.NewStorage(deps)
+	deps.StorageGate = storageGate
+
+	syncMod, syncHeartbeat := services.NewSync(deps)
+	deps.SyncHeartbeat = syncHeartbeat
+
 	intelligenceMod := services.NewIntelligence(deps)
 	deps.IntelligenceMemoryHook = intelligenceMod.Hook
 
@@ -182,7 +190,9 @@ func New(ctx context.Context, cfg *config.Config) (app *App, otelShutdown func()
 		services.NewEvents(deps, circlesMod),
 		services.NewLobby(deps),
 		services.NewSubscription(deps),
-		services.NewStorage(deps),
+		storageMod,
+		syncMod,
+		services.NewPublishing(deps),
 		services.NewLLMChainAdmin(deps, llmRawChain, llmRegisteredProviders(llmRawChain)),
 	}
 
@@ -217,10 +227,11 @@ func New(ctx context.Context, cfg *config.Config) (app *App, otelShutdown func()
 
 	handler := buildHandler(routerDeps{
 		Log: log, Pool: pool, Redis: rdb,
-		RequireAuth: auth.RequireAuth,
-		ResolveTier: resolveTier,
-		Notify:      notify,
-		Modules:     modules,
+		RequireAuth:   auth.RequireAuth,
+		ResolveTier:   resolveTier,
+		Notify:        notify,
+		Modules:       modules,
+		SyncHeartbeat: syncHeartbeat,
 	})
 
 	httpSrv := &http.Server{

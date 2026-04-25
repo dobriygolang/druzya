@@ -716,9 +716,12 @@ func (n *Notes) List(ctx context.Context, userID uuid.UUID, limit int, cursor st
 		return nil, "", fmt.Errorf("hone.Notes.List: %w", err)
 	}
 
+	// archived_at IS NULL — Phase C-2: archived notes скрываются из
+	// основного списка. Recover через GET-by-id (всегда работает) либо
+	// через будущий «View archived» режим.
 	const sqlBase = `SELECT id, title, size_bytes, updated_at
 	                   FROM hone_notes
-	                  WHERE user_id=$1`
+	                  WHERE user_id=$1 AND archived_at IS NULL`
 	// Peek limit+1: если вернулось больше limit — значит ещё есть страница.
 	peek := int32(limit) + 1
 
@@ -791,6 +794,27 @@ func (n *Notes) Delete(ctx context.Context, userID, noteID uuid.UUID) error {
 	)
 	if err != nil {
 		return fmt.Errorf("hone.Notes.Delete: %w", err)
+	}
+	if cmd.RowsAffected() == 0 {
+		return domain.ErrNotFound
+	}
+	return nil
+}
+
+// SetArchived помечает заметку как archived (или восстанавливает).
+// archived_at = now() / NULL — Phase C-2 архив.
+func (n *Notes) SetArchived(ctx context.Context, userID, noteID uuid.UUID, archived bool) error {
+	var stmt string
+	if archived {
+		stmt = `UPDATE hone_notes SET archived_at=now(), updated_at=now()
+		         WHERE id=$1 AND user_id=$2`
+	} else {
+		stmt = `UPDATE hone_notes SET archived_at=NULL, updated_at=now()
+		         WHERE id=$1 AND user_id=$2`
+	}
+	cmd, err := n.pool.Exec(ctx, stmt, sharedpg.UUID(noteID), sharedpg.UUID(userID))
+	if err != nil {
+		return fmt.Errorf("hone.Notes.SetArchived: %w", err)
 	}
 	if cmd.RowsAffected() == 0 {
 		return domain.ErrNotFound
@@ -952,9 +976,10 @@ func (w *Whiteboards) Get(ctx context.Context, userID, wbID uuid.UUID) (domain.W
 // List returns summaries, newest updated first.
 func (w *Whiteboards) List(ctx context.Context, userID uuid.UUID) ([]domain.WhiteboardSummary, error) {
 	rows, err := w.pool.Query(ctx,
+		// archived_at IS NULL — Phase C-2 (см. Notes.List).
 		`SELECT id, title, updated_at
 		   FROM hone_whiteboards
-		  WHERE user_id=$1
+		  WHERE user_id=$1 AND archived_at IS NULL
 		  ORDER BY updated_at DESC`,
 		sharedpg.UUID(userID),
 	)
@@ -992,6 +1017,26 @@ func (w *Whiteboards) Delete(ctx context.Context, userID, wbID uuid.UUID) error 
 	)
 	if err != nil {
 		return fmt.Errorf("hone.Whiteboards.Delete: %w", err)
+	}
+	if cmd.RowsAffected() == 0 {
+		return domain.ErrNotFound
+	}
+	return nil
+}
+
+// SetArchived — Phase C-2 архив. См. Notes.SetArchived.
+func (w *Whiteboards) SetArchived(ctx context.Context, userID, wbID uuid.UUID, archived bool) error {
+	var stmt string
+	if archived {
+		stmt = `UPDATE hone_whiteboards SET archived_at=now(), updated_at=now()
+		         WHERE id=$1 AND user_id=$2`
+	} else {
+		stmt = `UPDATE hone_whiteboards SET archived_at=NULL, updated_at=now()
+		         WHERE id=$1 AND user_id=$2`
+	}
+	cmd, err := w.pool.Exec(ctx, stmt, sharedpg.UUID(wbID), sharedpg.UUID(userID))
+	if err != nil {
+		return fmt.Errorf("hone.Whiteboards.SetArchived: %w", err)
 	}
 	if cmd.RowsAffected() == 0 {
 		return domain.ErrNotFound

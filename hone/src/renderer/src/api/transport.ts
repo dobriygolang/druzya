@@ -11,10 +11,11 @@
 //      completes. Empty until then → unauthenticated calls → the backend
 //      returns Unauthenticated which the renderer surfaces as "log in".
 import { createConnectTransport } from '@connectrpc/connect-web';
-import type { Interceptor } from '@connectrpc/connect';
+import { ConnectError, Code, type Interceptor } from '@connectrpc/connect';
 
 import { API_BASE_URL, DEV_BEARER_TOKEN } from './config';
 import { useSessionStore } from '../stores/session';
+import { getDeviceId, clearDeviceId } from './device';
 
 // Auth interceptor. Reads the token lazily on each call so a post-login
 // rotation is picked up without rebuilding the transport.
@@ -23,8 +24,34 @@ const authInterceptor: Interceptor = (next) => async (req) => {
   if (token) {
     req.header.set('authorization', `Bearer ${token}`);
   }
-  return await next(req);
+  // X-Device-ID — Phase C-3.1 sync foundation. Backend пишет heartbeat
+  // и проверяет revocation. Когда device-id ещё не зарегистрирован
+  // (первый запуск до ensureDevice) — header просто отсутствует,
+  // backend трактует как «legacy без sync» и пропускает.
+  const deviceId = getDeviceId();
+  if (deviceId) {
+    req.header.set('x-device-id', deviceId);
+  }
+  try {
+    return await next(req);
+  } catch (err) {
+    // device_revoked — backend signal'ит что наш device disabled с
+    // другого устройства. Wipe local state и отправляем юзера в логин.
+    handleRevocation(err);
+    throw err;
+  }
 };
+
+function handleRevocation(err: unknown): void {
+  if (!(err instanceof ConnectError)) return;
+  if (err.code !== Code.Unauthenticated) return;
+  const raw = err.rawMessage ?? '';
+  if (!raw.includes('device_revoked')) return;
+  // Wipe local secrets — auth token + device id. Session-store reset
+  // вернёт юзера на LoginScreen (App.tsx подписан на accessToken).
+  clearDeviceId();
+  void useSessionStore.getState().clear();
+}
 
 export const transport = createConnectTransport({
   baseUrl: API_BASE_URL,

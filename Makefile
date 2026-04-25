@@ -44,7 +44,11 @@ logs: ## Tail api logs
 	docker compose logs -f api
 
 .PHONY: lint
-lint: lint-go lint-ts ## Run all linters
+lint: lint-go lint-ts lint-proto lint-tidy ## Mirror CI lint: Go (golangci-lint) + frontend/hone/desktop (eslint+tsc) + proto (buf) + go.mod tidy drift
+
+# CI-equivalent — same command list, same flags, same exit semantics.
+# Adding `make lint` here so commits don't depend on remembering to also run
+# proto/tidy. If CI catches something we don't, that's a Makefile bug.
 
 # Parallelism defaults: use all cores, fall back to 4 if nproc missing (macOS).
 # Override via `make lint-go JOBS=8`.
@@ -55,23 +59,92 @@ JOBS ?= $(shell (command -v nproc >/dev/null && nproc) || sysctl -n hw.ncpu 2>/d
 GO_MODULES = $(shell find backend -name go.mod -not -path '*/tools/*' -exec dirname {} \; | sort)
 
 .PHONY: lint-go
-lint-go: ## Run golangci-lint across all Go modules (parallel, per-module)
-	@# Per-module (GOWORK=off) avoids golangci-lint's workspace-mode issues and
-	@# lets us parallelise with xargs -P. Each module builds first so analyser
-	@# can load export data. GOLANGCI_LINT_CACHE fans into a single shared dir
-	@# for massive reuse between modules.
+lint-go: ## Run golangci-lint across all Go modules (mirrors CI sequentially within shard)
+	@# Mirror of .github/workflows/ci.yml `Lint shard` step:
+	@#   per module: go mod download && go build ./... && golangci-lint run.
+	@#
+	@# Sequential на месте, потому что:
+	@#  (a) golangci-lint v1.64 держит lock на cache-dir и `parallel
+	@#      golangci-lint is running` валит весь run при concurrent invocations;
+	@#  (b) ci shard'ы тоже sequential внутри shard'а — разница только в том
+	@#      что CI имеет 4 runner'а параллельно. Локально 1 runner = sequential.
+	@#  (c) первый build греет module + lint cache; следующие модули
+	@#      переиспользуют — total wall ~= 1.5–3 минуты.
+	@#
+	@# Не прерываемся на первой ошибке — собираем все падения сразу,
+	@# чтобы не было «починил один, узнал про следующий» циклов.
 	@mkdir -p .cache/golangci-lint
 	@export GOLANGCI_LINT_CACHE="$(CURDIR)/.cache/golangci-lint"; \
-	 printf '%s\n' $(GO_MODULES) | xargs -P $(JOBS) -I{} bash -c '\
-	   set -e; \
-	   cd "{}"; \
-	   echo "→ lint {}"; \
-	   GOWORK=off GOFLAGS="" go build ./... >/dev/null; \
-	   GOWORK=off GOFLAGS="" golangci-lint run --config="$(CURDIR)/backend/.golangci.yml" --timeout=5m ./...'
+	 fail=""; \
+	 for dir in $(GO_MODULES); do \
+	   echo "::group::lint $$dir"; \
+	   ( cd "$$dir" && \
+	     GOWORK=off GOFLAGS="" go mod download 2>/dev/null && \
+	     GOWORK=off GOFLAGS="" go build ./... >/dev/null && \
+	     GOWORK=off GOFLAGS="" golangci-lint run \
+	       --config="$(CURDIR)/backend/.golangci.yml" --timeout=5m ./... \
+	   ) || fail="$$fail $$dir"; \
+	   echo "::endgroup::"; \
+	 done; \
+	 if [ -n "$$fail" ]; then \
+	   echo ""; \
+	   echo "Failed modules:$$fail"; \
+	   echo "(re-run inside one to iterate: cd <mod> && golangci-lint run --config=$(CURDIR)/backend/.golangci.yml ./...)"; \
+	   exit 1; \
+	 fi
+
+# JS workspaces with their own package.json + lint + typecheck scripts.
+# Add a new app here once and `make lint-ts` covers it.
+JS_APPS = frontend hone desktop
 
 .PHONY: lint-ts
-lint-ts: ## Run ESLint + tsc on frontend
-	cd frontend && npm run lint && npm run typecheck
+lint-ts: ## Run ESLint + tsc on every JS app (frontend, hone, desktop)
+	@# Per-app: пытаемся lint (если eslint установлен) + typecheck (всегда).
+	@# Не прерываем на первой ошибке — хотим увидеть все падения сразу.
+	@failed=""; \
+	for app in $(JS_APPS); do \
+		if [ ! -f "$$app/package.json" ]; then continue; fi; \
+		if [ ! -d "$$app/node_modules" ]; then \
+			echo "→ skip $$app (no node_modules — run 'cd $$app && npm install')"; \
+			continue; \
+		fi; \
+		echo "→ $$app: typecheck"; \
+		( cd "$$app" && npm run typecheck --silent ) || failed="$$failed $$app(tsc)"; \
+		if [ -x "$$app/node_modules/.bin/eslint" ]; then \
+			echo "→ $$app: eslint"; \
+			( cd "$$app" && npm run lint --silent ) || failed="$$failed $$app(eslint)"; \
+		else \
+			echo "→ $$app: eslint not installed, skipping (lint script present but eslint missing in deps)"; \
+		fi; \
+	done; \
+	if [ -n "$$failed" ]; then \
+		echo ""; \
+		echo "Failed:$$failed"; \
+		exit 1; \
+	fi
+
+.PHONY: lint-proto
+lint-proto: ## Run `buf lint` over proto/ (mirrors CI proto-lint job)
+	@# CI uses bufbuild/buf-action; локально build buf из tools и зовём lint.
+	@# Tolerant: если buf не построен — вернёт код инструмента, не Makefile'а.
+	@if [ ! -x bin/buf ]; then \
+		echo "→ building bin/buf"; \
+		(cd backend/tools && GOWORK=off go build -o ../../bin/buf github.com/bufbuild/buf/cmd/buf); \
+	fi
+	@cd proto && PATH="$(CURDIR)/bin:$$PATH" $(CURDIR)/bin/buf lint
+
+.PHONY: lint-tidy
+lint-tidy: ## Fail if `go mod tidy` would touch any go.mod/go.sum (CI guard, no network)
+	@# Snapshot текущего состояния → tidy всё подряд → diff. Вместо запуска
+	@# tidy которая проверяет github + кэш (медленно и сетево), используем
+	@# trick: GOPROXY=off и GOFLAGS=-mod=readonly — go быстро отвергает любой
+	@# дрейф без сетевых вызовов. CI запускает реальный tidy (см. tidy-check),
+	@# но локально оптимизируем.
+	@for mod in $(GO_MODULES); do \
+		(cd "$$mod" && GOFLAGS="-mod=readonly" go build ./... >/dev/null 2>&1) \
+			|| { echo "drift in $$mod — run 'make tidy'"; exit 1; }; \
+	done
+	@echo "→ tidy clean (all $$(echo '$(GO_MODULES)' | wc -w) modules)"
 
 .PHONY: test
 test: test-go test-ts ## Run all tests

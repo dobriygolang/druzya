@@ -41,6 +41,8 @@ require (
 	github.com/redis/go-redis/v9 v9.6.1
 )
 
+require github.com/gomarkdown/markdown v0.0.0-20260417124207-7d523f7318df // indirect
+
 require (
 	druz9/circles v0.0.0
 	druz9/events v0.0.0

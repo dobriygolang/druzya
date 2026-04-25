@@ -66,6 +66,18 @@ type Deps struct {
 	// (узкий interface, hone-domain'ный) — monolith Adapter имплементирует.
 	// nil-safe: hone-use-cases checkают перед вызовом.
 	IntelligenceMemoryHook honeDomain.MemoryHook
+
+	// StorageGate — Phase C quota guard. Hone оборачивает свои
+	// write-routes (notes/whiteboards POST'ы) этим middleware'ом, чтобы
+	// возвращать 413 quota_exceeded при превышении тарифа. nil-safe:
+	// при отсутствии gate'а write'ы пропускаются без проверки. Built в
+	// bootstrap'е до NewHone.
+	StorageGate *StorageGate
+
+	// SyncHeartbeat — Phase C-3.1 device-revocation gate + throttled
+	// last_seen_at UPDATE. Подключается в router.go gated REST chain.
+	// nil-safe: при nil middleware превращается в passthrough.
+	SyncHeartbeat *SyncHeartbeat
 }
 
 // Module is what every NewXxx returns: enough metadata for router.go to

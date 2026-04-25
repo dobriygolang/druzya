@@ -123,6 +123,10 @@ type NoteRepo interface {
 	Get(ctx context.Context, userID, noteID uuid.UUID) (Note, error)
 	List(ctx context.Context, userID uuid.UUID, limit int, cursor string) ([]NoteSummary, string, error)
 	Delete(ctx context.Context, userID, noteID uuid.UUID) error
+	// SetArchived устанавливает archived_at = (now() | NULL) для
+	// (userID, noteID). Phase C-2: archived заметки скрываются из
+	// list-выборки, но всё ещё recoverable через Get-by-id.
+	SetArchived(ctx context.Context, userID, noteID uuid.UUID, archived bool) error
 	// SetEmbedding replaces the embedding vector + metadata. Called from
 	// the async embedding worker after Update.
 	SetEmbedding(ctx context.Context, userID, noteID uuid.UUID, vec []float32, model string, at time.Time) error
@@ -157,6 +161,8 @@ type WhiteboardRepo interface {
 	Get(ctx context.Context, userID, wbID uuid.UUID) (Whiteboard, error)
 	List(ctx context.Context, userID uuid.UUID) ([]WhiteboardSummary, error)
 	Delete(ctx context.Context, userID, wbID uuid.UUID) error
+	// SetArchived — см. NoteRepo.SetArchived.
+	SetArchived(ctx context.Context, userID, wbID uuid.UUID, archived bool) error
 }
 
 // ─── Cross-domain readers (adapter-owned interfaces) ───────────────────────
