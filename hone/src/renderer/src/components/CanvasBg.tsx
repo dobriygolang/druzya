@@ -46,6 +46,11 @@ const WAVES = [
   'M-50,790 C 320,770 640,820 960,800 S 1420,770 1700,790',
 ];
 
+// Подложка-сетка — едва видна, добавляет «координатной» текстуры
+// (winter.so style). Шаг 64 px → ~0.06 opacity → не отвлекает, но даёт
+// чувство «бумаги в клетку» / «терминал».
+const GRID_STEP_PX = 64;
+
 export type CanvasMode = 'full' | 'quiet' | 'void';
 
 interface CanvasBgProps {
@@ -73,14 +78,26 @@ export function CanvasBg({ mode = 'full' }: CanvasBgProps) {
 
   return (
     <div style={{ position: 'absolute', inset: 0, overflow: 'hidden', pointerEvents: 'none' }}>
+      {showWaves && (
+        <div
+          style={{
+            position: 'absolute',
+            inset: 0,
+            backgroundImage:
+              `linear-gradient(rgba(255,255,255,0.035) 1px, transparent 1px),` +
+              `linear-gradient(90deg, rgba(255,255,255,0.035) 1px, transparent 1px)`,
+            backgroundSize: `${GRID_STEP_PX}px ${GRID_STEP_PX}px`,
+          }}
+        />
+      )}
       <svg width="100%" height="100%" style={{ position: 'absolute', inset: 0 }}>
         {STARS.map((s, i) => (
           <circle
             key={i}
             cx={`${s.x}%`}
             cy={`${s.y}%`}
-            r={s.r}
-            fill={`rgba(255,255,255,${s.o * starOp})`}
+            r={s.r * 1.4}
+            fill={`rgba(255,255,255,${Math.min(1, s.o * 1.7) * starOp})`}
           />
         ))}
       </svg>
@@ -97,7 +114,7 @@ export function CanvasBg({ mode = 'full' }: CanvasBgProps) {
               key={i}
               d={d}
               fill="none"
-              stroke={`rgba(255,255,255,${0.08 + (i % 3) * 0.008})`}
+              stroke={`rgba(255,255,255,${0.18 + (i % 3) * 0.02})`}
               strokeWidth="1"
             />
           ))}
@@ -107,43 +124,43 @@ export function CanvasBg({ mode = 'full' }: CanvasBgProps) {
         <div
           style={{
             position: 'absolute',
-            left: '22%',
-            top: '48%',
-            width: 220,
-            height: 220,
+            left: '50%',
+            top: '50%',
+            width: 280,
+            height: 280,
             transform: 'translate(-50%,-50%)',
-            opacity: 0.15,
+            opacity: 0.42,
           }}
         >
           <svg
-            width="220"
-            height="220"
-            viewBox="-110 -110 220 220"
+            width="280"
+            height="280"
+            viewBox="-140 -140 280 280"
             style={{ transform: `rotate(${tick}deg)` }}
           >
             <rect
-              x={-70}
-              y={-70}
-              width={140}
-              height={140}
+              x={-90}
+              y={-90}
+              width={180}
+              height={180}
               fill="none"
-              stroke="rgba(255,255,255,0.9)"
+              stroke="rgba(255,255,255,0.95)"
               strokeWidth="1"
             />
           </svg>
           <svg
-            width="220"
-            height="220"
-            viewBox="-110 -110 220 220"
-            style={{ position: 'absolute', inset: 0, transform: `rotate(${tick + 10}deg)` }}
+            width="280"
+            height="280"
+            viewBox="-140 -140 280 280"
+            style={{ position: 'absolute', inset: 0, transform: `rotate(${tick + 22}deg)` }}
           >
             <rect
-              x={-70}
-              y={-70}
-              width={140}
-              height={140}
+              x={-90}
+              y={-90}
+              width={180}
+              height={180}
               fill="none"
-              stroke="rgba(255,255,255,0.9)"
+              stroke="rgba(255,255,255,0.95)"
               strokeWidth="1"
             />
           </svg>
