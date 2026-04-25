@@ -196,17 +196,17 @@ func (h *adminArenaTasksHandler) get(w http.ResponseWriter, r *http.Request) {
 }
 
 type arenaTaskUpsertBody struct {
-	Slug          string  `json:"slug"`
-	TitleRU       string  `json:"title_ru"`
-	TitleEN       string  `json:"title_en"`
-	DescriptionRU string  `json:"description_ru"`
-	DescriptionEN string  `json:"description_en"`
-	Difficulty    string  `json:"difficulty"`
-	Section       string  `json:"section"`
-	TimeLimitSec  int     `json:"time_limit_sec"`
-	MemoryLimitMB int     `json:"memory_limit_mb"`
-	SolutionHint  string  `json:"solution_hint"`
-	IsActive      *bool   `json:"is_active"`
+	Slug          string `json:"slug"`
+	TitleRU       string `json:"title_ru"`
+	TitleEN       string `json:"title_en"`
+	DescriptionRU string `json:"description_ru"`
+	DescriptionEN string `json:"description_en"`
+	Difficulty    string `json:"difficulty"`
+	Section       string `json:"section"`
+	TimeLimitSec  int    `json:"time_limit_sec"`
+	MemoryLimitMB int    `json:"memory_limit_mb"`
+	SolutionHint  string `json:"solution_hint"`
+	IsActive      *bool  `json:"is_active"`
 }
 
 func (b *arenaTaskUpsertBody) validate() error {
@@ -279,12 +279,12 @@ func (h *adminArenaTasksHandler) update(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 	var body arenaTaskUpsertBody
-	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+	if derr := json.NewDecoder(r.Body).Decode(&body); derr != nil {
 		http.Error(w, `{"error":"invalid body"}`, http.StatusBadRequest)
 		return
 	}
-	if err := body.validate(); err != nil {
-		http.Error(w, fmt.Sprintf(`{"error":"%s"}`, err.Error()), http.StatusBadRequest)
+	if verr := body.validate(); verr != nil {
+		http.Error(w, fmt.Sprintf(`{"error":"%s"}`, verr.Error()), http.StatusBadRequest)
 		return
 	}
 	active := true
@@ -328,7 +328,7 @@ func (h *adminArenaTasksHandler) toggleActive(w http.ResponseWriter, r *http.Req
 	var body struct {
 		Active bool `json:"active"`
 	}
-	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+	if derr := json.NewDecoder(r.Body).Decode(&body); derr != nil {
 		http.Error(w, `{"error":"invalid body"}`, http.StatusBadRequest)
 		return
 	}

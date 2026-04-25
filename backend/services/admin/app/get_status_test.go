@@ -30,6 +30,9 @@ func (f *fakeIncidents) Recent(_ context.Context, _ int) ([]domain.StatusInciden
 func (f *fakeIncidents) DowntimeSeconds(_ context.Context, _ time.Duration, _ time.Time) (int64, error) {
 	return f.downtime, f.err
 }
+func (f *fakeIncidents) DailyBuckets(_ context.Context, _ string, _ int, _ time.Time) ([]domain.StatusDayBucket, error) {
+	return nil, f.err
+}
 
 func TestGetStatus_Do_OperationalAggregation(t *testing.T) {
 	t.Parallel()
