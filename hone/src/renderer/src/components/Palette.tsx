@@ -110,7 +110,7 @@ export function Palette({ onClose, onOpen }: PaletteProps) {
         WebkitBackdropFilter: 'blur(10px)',
         display: 'flex',
         justifyContent: 'center',
-        paddingTop: '14vh',
+        alignItems: 'center',
       }}
       onClick={onClose}
     >

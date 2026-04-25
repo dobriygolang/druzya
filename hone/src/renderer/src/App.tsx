@@ -20,9 +20,9 @@ import { TrafficLightsHover } from './components/TrafficLightsHover';
 import { Dock } from './components/Dock';
 import { LoginScreen } from './components/LoginScreen';
 import { OnboardingModal } from './components/OnboardingModal';
-import { Palette, type PageId } from './components/Palette';
+import { Palette, type PageId, type PaletteAction } from './components/Palette';
 import { Copilot } from './components/Copilot';
-import { StandupModal } from './components/StandupModal';
+import { StandupOverlay } from './components/StandupOverlay';
 import { UpdateToast } from './components/UpdateToast';
 import { HomePage } from './pages/Home';
 import { TodayPage, type StartFocusArgs } from './pages/Today';
@@ -271,15 +271,22 @@ export default function App() {
   }, [running, finishSession]);
 
   const openImpl = useCallback(
-    (id: PageId | 'copilot', args?: StartFocusArgs) => {
+    (id: PaletteAction, args?: StartFocusArgs) => {
       if (id === 'copilot') {
         setCopilotOpen(true);
         return;
       }
       if (id === 'stats') {
-        // Stats не отдельная страница — overlay из widget'ов поверх Home.
+        // Stats и Standup — оба overlay'и поверх Home, mutually exclusive.
         setPage('home');
+        setStandupOpen(false);
         setStatsOpen(true);
+        return;
+      }
+      if (id === 'standup') {
+        setPage('home');
+        setStatsOpen(false);
+        setStandupOpen(true);
         return;
       }
       if (args) {
@@ -289,6 +296,7 @@ export default function App() {
         return;
       }
       setStatsOpen(false);
+      setStandupOpen(false);
       setPage(id);
     },
     [startFocus],
@@ -347,7 +355,9 @@ export default function App() {
         }
         return;
       }
-      if (isText || paletteOpen || standupOpen || onboardingOpen) return;
+      // standupOpen — overlay, не модалка-blocker. Hotkey-nav должна
+       // работать; openImpl сам закроет overlay при переключении.
+      if (isText || paletteOpen || onboardingOpen) return;
 
       const k = e.key.toLowerCase();
       if (k === 't') open('today');
@@ -481,19 +491,12 @@ export default function App() {
       />
 
       {paletteOpen && (
-        <Palette
-          onClose={() => setPaletteOpen(false)}
-          onOpen={(id) => {
-            if (id === 'standup') {
-              setStandupOpen(true);
-              return;
-            }
-            open(id);
-          }}
-        />
+        <Palette onClose={() => setPaletteOpen(false)} onOpen={(id) => open(id)} />
       )}
       {copilotOpen && <Copilot onClose={() => setCopilotOpen(false)} />}
-      {standupOpen && <StandupModal onClose={() => setStandupOpen(false)} />}
+      {standupOpen && page === 'home' && (
+        <StandupOverlay onClose={() => setStandupOpen(false)} />
+      )}
       {onboardingOpen && <OnboardingModal onClose={dismissOnboarding} />}
       <UpdateToast />
     </div>

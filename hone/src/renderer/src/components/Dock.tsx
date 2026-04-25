@@ -106,7 +106,7 @@ function TimerArea({ running, mode, mm, ss, onToggleMode, onReset }: TimerAreaPr
       onMouseLeave={() => setHover(false)}
       style={{
         position: 'relative',
-        width: 150,
+        width: 128,
         height: 30,
         display: 'flex',
         alignItems: 'center',
