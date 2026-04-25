@@ -169,6 +169,46 @@ export default function App() {
     });
   }, [status]);
 
+  // ── Sync replication (Phase C-4) ────────────────────────────────────────
+  // На login: full bootstrap pull → IndexedDB cache. После — polling каждые
+  // 30s + immediate pull on window focus / online events. Errors silent
+  // (sync — best-effort, не должен ломать app). При 401 device_revoked
+  // sync.ts internally trigger'ит session.clear() — see api/sync.ts.
+  const userId = useSessionStore((s) => s.userId);
+  useEffect(() => {
+    if (status !== 'signed_in' || !userId) return;
+    let stopped = false;
+    let timer: number | null = null;
+
+    const runPull = async () => {
+      if (stopped) return;
+      try {
+        const { pullUntilCaughtUp, getStoredCursor, setStoredCursor } = await import('./api/sync');
+        const { applyPullResponse } = await import('./api/localCache');
+        const resp = await pullUntilCaughtUp(getStoredCursor());
+        await applyPullResponse(userId, resp);
+        setStoredCursor(resp.cursor);
+      } catch {
+        /* silent retry on next tick */
+      }
+    };
+
+    void runPull(); // initial
+    timer = window.setInterval(() => void runPull(), 30_000);
+
+    const onFocus = () => void runPull();
+    const onOnline = () => void runPull();
+    window.addEventListener('focus', onFocus);
+    window.addEventListener('online', onOnline);
+
+    return () => {
+      stopped = true;
+      if (timer !== null) window.clearInterval(timer);
+      window.removeEventListener('focus', onFocus);
+      window.removeEventListener('online', onOnline);
+    };
+  }, [status, userId]);
+
   const dismissOnboarding = () => {
     setOnboardingOpen(false);
     try {

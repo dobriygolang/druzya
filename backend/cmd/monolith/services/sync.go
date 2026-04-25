@@ -34,14 +34,32 @@ import (
 
 // NewSync wires the sync foundation module + exposes the heartbeat
 // middleware (consumed by router.go via Deps.SyncHeartbeat).
+//
+// Phase C-4 расширил модуль до полного sync-протокола:
+//   - device CRUD (C-3)
+//   - heartbeat middleware (C-3.1)
+//   - replication pull/push (C-4)
+//   - tombstone GC cron (C-4)
 func NewSync(d Deps) (*Module, *SyncHeartbeat) {
 	h := &syncHandler{pool: d.Pool, log: d.Log}
 	hb := newHeartbeat(d.Pool, d.Log)
+	repl := &syncReplicationHandler{pool: d.Pool, log: d.Log}
+	gc := &tombstoneGC{
+		pool:      d.Pool,
+		log:       d.Log,
+		interval:  24 * time.Hour, // daily
+		retention: 90 * 24 * time.Hour,
+	}
 	return &Module{
 		MountREST: func(r chi.Router) {
 			r.Post("/sync/devices", h.register)
 			r.Get("/sync/devices", h.list)
 			r.Post("/sync/devices/{id}/revoke", h.revoke)
+			r.Post("/sync/pull", repl.pull)
+			r.Post("/sync/push", repl.push)
+		},
+		Background: []func(ctx context.Context){
+			func(ctx context.Context) { gc.Run(ctx) },
 		},
 	}, hb
 }
@@ -313,6 +331,11 @@ func (s *SyncHeartbeat) Middleware(next http.Handler) http.Handler {
 			go s.touchAsync(did)
 		}
 
+		// Кладём device-id в context — downstream'ные handler'ы
+		// (Hone Delete, etc) читают его и записывают в sync_tombstones
+		// с origin_device_id. Это позволяет pull endpoint'у не возвращать
+		// устройству его же tombstone'ы.
+		r = r.WithContext(sharedMw.WithDeviceID(r.Context(), did))
 		next.ServeHTTP(w, r)
 	})
 }

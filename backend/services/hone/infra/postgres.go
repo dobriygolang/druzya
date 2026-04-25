@@ -16,7 +16,9 @@ import (
 	"time"
 
 	"druz9/hone/domain"
+	sharedMw "druz9/shared/pkg/middleware"
 	sharedpg "druz9/shared/pkg/pg"
+	"druz9/shared/pkg/synctomb"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -786,17 +788,32 @@ func (n *Notes) List(ctx context.Context, userID uuid.UUID, limit int, cursor st
 	return out, nextCursor, nil
 }
 
-// Delete removes a note.
+// Delete removes a note. Phase C-4: атомарно с DELETE пишет
+// sync_tombstone — pull-endpoint потом вернёт это удаление другим
+// устройствам юзера.
 func (n *Notes) Delete(ctx context.Context, userID, noteID uuid.UUID) error {
-	cmd, err := n.pool.Exec(ctx,
+	tx, err := n.pool.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("hone.Notes.Delete: begin: %w", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
+	cmd, err := tx.Exec(ctx,
 		`DELETE FROM hone_notes WHERE id=$1 AND user_id=$2`,
 		sharedpg.UUID(noteID), sharedpg.UUID(userID),
 	)
 	if err != nil {
-		return fmt.Errorf("hone.Notes.Delete: %w", err)
+		return fmt.Errorf("hone.Notes.Delete: exec: %w", err)
 	}
 	if cmd.RowsAffected() == 0 {
 		return domain.ErrNotFound
+	}
+	if err := synctomb.Write(ctx, tx, synctomb.TableHoneNotes,
+		userID, noteID, sharedMw.DeviceIDFromContext(ctx)); err != nil {
+		return fmt.Errorf("hone.Notes.Delete: tombstone: %w", err)
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return fmt.Errorf("hone.Notes.Delete: commit: %w", err)
 	}
 	return nil
 }
@@ -1010,16 +1027,31 @@ func (w *Whiteboards) List(ctx context.Context, userID uuid.UUID) ([]domain.Whit
 }
 
 // Delete removes a board.
+// Delete removes a whiteboard. Phase C-4: атомарно с DELETE пишет
+// sync_tombstone (см. Notes.Delete для rationale).
 func (w *Whiteboards) Delete(ctx context.Context, userID, wbID uuid.UUID) error {
-	cmd, err := w.pool.Exec(ctx,
+	tx, err := w.pool.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("hone.Whiteboards.Delete: begin: %w", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
+	cmd, err := tx.Exec(ctx,
 		`DELETE FROM hone_whiteboards WHERE id=$1 AND user_id=$2`,
 		sharedpg.UUID(wbID), sharedpg.UUID(userID),
 	)
 	if err != nil {
-		return fmt.Errorf("hone.Whiteboards.Delete: %w", err)
+		return fmt.Errorf("hone.Whiteboards.Delete: exec: %w", err)
 	}
 	if cmd.RowsAffected() == 0 {
 		return domain.ErrNotFound
+	}
+	if err := synctomb.Write(ctx, tx, synctomb.TableHoneWhiteboards,
+		userID, wbID, sharedMw.DeviceIDFromContext(ctx)); err != nil {
+		return fmt.Errorf("hone.Whiteboards.Delete: tombstone: %w", err)
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return fmt.Errorf("hone.Whiteboards.Delete: commit: %w", err)
 	}
 	return nil
 }

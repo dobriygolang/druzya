@@ -47,9 +47,21 @@ function handleRevocation(err: unknown): void {
   if (err.code !== Code.Unauthenticated) return;
   const raw = err.rawMessage ?? '';
   if (!raw.includes('device_revoked')) return;
-  // Wipe local secrets — auth token + device id. Session-store reset
-  // вернёт юзера на LoginScreen (App.tsx подписан на accessToken).
+  // Wipe local secrets — auth token + device id + sync cursor + IndexedDB
+  // cache (privacy: revoke = data wipe). Session-store clear вернёт юзера
+  // на LoginScreen (App.tsx подписан на accessToken).
   clearDeviceId();
+  // Best-effort cache wipe + cursor clear. Lazy-import чтобы не тащить
+  // IndexedDB/cursor код в hot transport path при каждом запуске.
+  const userId = useSessionStore.getState().userId;
+  void Promise.all([
+    import('./sync').then(({ clearStoredCursor }) => clearStoredCursor()),
+    userId
+      ? import('./localCache').then(({ wipeCache }) => wipeCache(userId))
+      : Promise.resolve(),
+  ]).catch(() => {
+    /* best-effort */
+  });
   void useSessionStore.getState().clear();
 }
 

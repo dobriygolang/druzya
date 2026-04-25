@@ -9,7 +9,7 @@ import (
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
-	semconv "go.opentelemetry.io/otel/semconv/v1.26.0"
+	semconv "go.opentelemetry.io/otel/semconv/v1.37.0"
 	"go.opentelemetry.io/otel/trace"
 )
 
@@ -26,7 +26,7 @@ func (t *queryTracer) TraceQueryStart(ctx context.Context, _ *pgx.Conn, data pgx
 	ctx, span := t.tracer.Start(ctx, "pgx.query",
 		trace.WithSpanKind(trace.SpanKindClient),
 		trace.WithAttributes(
-			semconv.DBSystemPostgreSQL,
+			semconv.DBSystemNamePostgreSQL,
 			attribute.String("db.statement", truncate(data.SQL, 1024)),
 		),
 	)

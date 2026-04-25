@@ -898,6 +898,15 @@ type SupportTicket struct {
 	ResolvedAt   pgtype.Timestamptz
 }
 
+type SyncTombstone struct {
+	ID             int64
+	UserID         pgtype.UUID
+	TableName      string
+	RowID          pgtype.UUID
+	DeletedAt      pgtype.Timestamptz
+	OriginDeviceID pgtype.UUID
+}
+
 type Task struct {
 	ID            pgtype.UUID
 	Slug          string

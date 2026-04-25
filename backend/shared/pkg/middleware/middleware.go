@@ -20,6 +20,7 @@ const (
 	ctxKeyUserID    ctxKey = "user_id"
 	ctxKeyUserRole  ctxKey = "user_role"
 	ctxKeyUserTier  ctxKey = "user_tier"
+	ctxKeyDeviceID  ctxKey = "device_id"
 )
 
 // RequestID генерирует или прокидывает X-Request-ID.
@@ -115,6 +116,20 @@ func UserTierFromContext(ctx context.Context) string {
 // подписки (см. cmd/monolith/bootstrap/router.go) после auth middleware.
 func WithUserTier(ctx context.Context, tier string) context.Context {
 	return context.WithValue(ctx, ctxKeyUserTier, tier)
+}
+
+// DeviceIDFromContext извлекает device-id положенный sync.Heartbeat
+// middleware'ом (Phase C-4). Возвращает uuid.Nil если header отсутствовал
+// (legacy client без sync-bootstrap'а или серверный код).
+func DeviceIDFromContext(ctx context.Context) uuid.UUID {
+	v, _ := ctx.Value(ctxKeyDeviceID).(uuid.UUID)
+	return v
+}
+
+// WithDeviceID кладёт device-id в контекст. Используется sync.Heartbeat
+// после успешной revocation-проверки.
+func WithDeviceID(ctx context.Context, did uuid.UUID) context.Context {
+	return context.WithValue(ctx, ctxKeyDeviceID, did)
 }
 
 type statusWriter struct {

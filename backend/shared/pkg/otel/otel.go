@@ -25,7 +25,11 @@ import (
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/sdk/resource"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
-	semconv "go.opentelemetry.io/otel/semconv/v1.26.0"
+	// SDK 1.39 detector'ы (Process / Host / FromEnv) hard-baked на schema
+	// v1.37.0 — раньше у нас был v1.26.0, и `resource.New` падал с
+	// «conflicting Schema URL: 1.26.0 vs 1.37.0». Унифицируем на v1.37.0
+	// чтобы merge с автодетектами не конфликтовал.
+	semconv "go.opentelemetry.io/otel/semconv/v1.37.0"
 	"go.opentelemetry.io/otel/trace"
 )
 
@@ -79,10 +83,8 @@ func InitTracer(serviceName, version string) (func(), error) {
 		return nil, fmt.Errorf("otel: create otlp http exporter: %w", err)
 	}
 
-	// resource.Default() в новых версиях SDK (1.37+) использует SchemaURL
-	// v1.37.0, а наш semconv импорт pin'нут на v1.26.0 — merge падает с
-	// "conflicting Schema URL". Используем resource.New с явным SchemaURL
-	// и детекторами; они merge'атся правильно относительно заданной схемы.
+	// Все детекторы и наш semconv pin теперь на v1.37.0 (см. import block) —
+	// merge'и не конфликтуют, host/process/SDK атрибуты доезжают до Tempo.
 	ctxRes, cancelRes := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancelRes()
 	res, err := resource.New(ctxRes,
@@ -90,7 +92,7 @@ func InitTracer(serviceName, version string) (func(), error) {
 		resource.WithAttributes(
 			semconv.ServiceName(serviceName),
 			semconv.ServiceVersion(version),
-			semconv.DeploymentEnvironment(os.Getenv("APP_ENV")),
+			semconv.DeploymentEnvironmentName(os.Getenv("APP_ENV")),
 		),
 		resource.WithFromEnv(),      // OTEL_RESOURCE_ATTRIBUTES
 		resource.WithProcess(),      // process.{pid, executable, ...}
