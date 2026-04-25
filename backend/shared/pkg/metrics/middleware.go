@@ -1,6 +1,8 @@
 package metrics
 
 import (
+	"bufio"
+	"net"
 	"net/http"
 	"strconv"
 	"time"
@@ -61,4 +63,14 @@ func (s *statusCapture) Flush() {
 	if f, ok := s.ResponseWriter.(http.Flusher); ok {
 		f.Flush()
 	}
+}
+
+// Hijack пробрасывает в нижележащий ResponseWriter — gorilla/websocket
+// использует Hijacker при upgrade'е TCP-conn. Без этого все /ws/* endpoints
+// падают с «response does not implement http.Hijacker».
+func (s *statusCapture) Hijack() (net.Conn, *bufio.ReadWriter, error) {
+	if h, ok := s.ResponseWriter.(http.Hijacker); ok {
+		return h.Hijack()
+	}
+	return nil, nil, http.ErrNotSupported
 }

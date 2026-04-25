@@ -2,8 +2,10 @@
 package middleware
 
 import (
+	"bufio"
 	"context"
 	"log/slog"
+	"net"
 	"net/http"
 	"time"
 
@@ -132,4 +134,14 @@ func (s *statusWriter) Flush() {
 	if f, ok := s.ResponseWriter.(http.Flusher); ok {
 		f.Flush()
 	}
+}
+
+// Hijack пробрасывает в нижележащий ResponseWriter, чтобы WebSocket upgrade
+// (gorilla/websocket) мог взять TCP-conn под контроль. Без этого все WS
+// endpoints возвращают «response does not implement http.Hijacker».
+func (s *statusWriter) Hijack() (net.Conn, *bufio.ReadWriter, error) {
+	if h, ok := s.ResponseWriter.(http.Hijacker); ok {
+		return h.Hijack()
+	}
+	return nil, nil, http.ErrNotSupported
 }
