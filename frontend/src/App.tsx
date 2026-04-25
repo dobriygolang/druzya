@@ -111,7 +111,6 @@ const RatingPage = lazy(() => import('./pages/RatingPage'))
 const VacanciesPage = lazy(() => import('./pages/VacanciesPage'))
 const VacancyDetailPage = lazy(() => import('./pages/VacancyDetailPage'))
 const ApplicationsPage = lazy(() => import('./pages/ApplicationsPage'))
-const PodcastsPage = lazy(() => import('./pages/PodcastsPage'))
 // Wave-11 — premium subscription flow (5 screens). /pricing is public; the
 // other three live behind whatever auth-state /sanctum reaches them with —
 // the routes themselves don't gate, AppShell + apiClient do.
@@ -119,10 +118,16 @@ const PricingPage = lazy(() => import('./pages/pricing/PricingPage'))
 const CheckoutPage = lazy(() => import('./pages/checkout/CheckoutPage'))
 const CheckoutSuccess = lazy(() => import('./pages/checkout/CheckoutSuccess'))
 const CheckoutFailure = lazy(() => import('./pages/checkout/CheckoutFailure'))
-// Wave-11 — pair-coding (collaborative editor, бекенд: services/editor).
-const PairLobbyPage = lazy(() => import('./pages/pair/PairLobbyPage'))
-const PairRoomPage = lazy(() => import('./pages/pair/PairRoomPage'))
-const PairInvitePage = lazy(() => import('./pages/pair/PairInvitePage'))
+// Pair-coding (collaborative editor) переехал в Hone (bible §2.1 DNA-revision).
+// Web-routes /pair удалены — primary surface теперь desktop, shareable URL
+// приведёт сюда лендинг «Open in Hone». TODO: добавить hone-handoff page
+// если понадобится поделиться ссылкой web-юзеру без Hone'а.
+
+// Circles — community-layer (bible §9 Phase 6.5.3). UI создания circle +
+// events (Book Club Fridays) — единственное web-creation-место для этой
+// поверхности; Hone только показывает + RSVP.
+const CirclesPage = lazy(() => import('./pages/circles/CirclesPage'))
+const CircleDetailPage = lazy(() => import('./pages/circles/CircleDetailPage'))
 // WAVE-11 — Custom Lobby restored. Backend: services/lobby + 8 REST endpoints
 // at /api/v1/lobby/*. /lobbies = public list + create + join-by-code; /lobby/:id
 // = single-room view that polls and auto-redirects to /arena/match/:matchId
@@ -217,7 +222,7 @@ export default function App() {
             bearer'а и показывает 404 при истёкшем токене. */}
         <Route path="/weekly/share/:token" element={<WeeklyShareView />} />
         <Route path="/report" element={<Navigate to="/weekly" replace />} />
-        <Route path="/podcasts" element={<PodcastsPage />} />
+        {/* /podcasts moved to Hone (P hotkey, bible §2.1). */}
         <Route path="/arena/2v2/:matchId" element={<Arena2v2Page />} />
         <Route path="/sd-interview/:sessionId" element={<SystemDesignInterviewPage />} />
         <Route path="/playground" element={<CodeEditorPage />} />
@@ -242,11 +247,9 @@ export default function App() {
         <Route path="/checkout" element={<CheckoutPage />} />
         <Route path="/checkout/success" element={<CheckoutSuccess />} />
         <Route path="/checkout/failure" element={<CheckoutFailure />} />
-        {/* Wave-11 pair-coding (collaborative editor). /pair — лобби,
-            /pair/:roomId — комната, /pair/invite/:token — приём приглашения. */}
-        <Route path="/pair" element={<PairLobbyPage />} />
-        <Route path="/pair/invite/:token" element={<PairInvitePage />} />
-        <Route path="/pair/:roomId" element={<PairRoomPage />} />
+        {/* /pair moved to Hone (E hotkey, bible §2.1). */}
+        <Route path="/circles" element={<CirclesPage />} />
+        <Route path="/circles/:circleId" element={<CircleDetailPage />} />
         {/* WAVE-11 Custom Lobby — restored. /lobbies = public list +
             create + join-by-code; /lobby/:id = single-room with auto-redirect
             to /arena/match/{match_id} when owner clicks Start. */}
