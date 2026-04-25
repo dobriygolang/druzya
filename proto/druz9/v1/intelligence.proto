@@ -1,0 +1,91 @@
+// intelligence.proto — Connect-RPC contract for the AI-coach layer that
+// turns Hone into a personal coach. Two RPCs:
+//
+//   GetDailyBrief — synthesised "morning brief" derived from focus stats,
+//                   skipped/completed plan items, recent reflections and
+//                   recently-touched notes. Cached 6h per (user, date);
+//                   force=true bypasses cache (rate-limited 1/h).
+//
+//   AskNotes      — RAG over the user's notes corpus. Embed question →
+//                   cosine top-8 → LLM answer with [N] citations parsed
+//                   into structured payload.
+//
+// Bounded context: this service READS from hone_* tables via reader
+// adapters (focus, plan, notes) and WRITES only to its own
+// hone_daily_briefs table. It must never mutate hone domain tables.
+syntax = "proto3";
+package druz9.v1;
+
+import "google/api/annotations.proto";
+import "google/protobuf/timestamp.proto";
+
+option go_package = "druz9/shared/generated/pb/druz9/v1;druz9v1";
+
+// RecommendationKind classifies what a recommendation chip does on click.
+//   TINY_TASK    — a small, concrete action; client typically pins as
+//                  Focus session title.
+//   SCHEDULE     — advice about timing; client shows tooltip only.
+//   REVIEW_NOTE  — opens Notes with target_id = note_id.
+//   UNBLOCK      — opens Today with target_id = plan_item_id highlighted.
+enum RecommendationKind {
+  RECOMMENDATION_KIND_UNSPECIFIED = 0;
+  RECOMMENDATION_KIND_TINY_TASK = 1;
+  RECOMMENDATION_KIND_SCHEDULE = 2;
+  RECOMMENDATION_KIND_REVIEW_NOTE = 3;
+  RECOMMENDATION_KIND_UNBLOCK = 4;
+}
+
+// Recommendation — one actionable suggestion in DailyBrief.
+message Recommendation {
+  RecommendationKind kind = 1;
+  string title = 2;
+  string rationale = 3;
+  // target_id is optional; carries note_id for REVIEW_NOTE,
+  // plan_item_id for UNBLOCK, empty for SCHEDULE / TINY_TASK.
+  string target_id = 4;
+}
+
+// DailyBrief — the synthesised morning brief.
+message DailyBrief {
+  string headline = 1;        // 1 sentence
+  string narrative = 2;       // 2-3 sentences про шаблон последних 7 дней
+  repeated Recommendation recommendations = 3; // ровно 3
+  google.protobuf.Timestamp generated_at = 4;
+}
+
+message GetDailyBriefRequest {
+  // force=true bypasses the 6h cache. Rate-limited 1/h per user.
+  bool force = 1;
+}
+
+// Citation — one note referenced by [N] in AskAnswer.answer_md.
+message Citation {
+  string note_id = 1;
+  string title = 2;
+  string snippet = 3;  // first ~140 chars of body, for hover preview
+}
+
+// AskAnswer — the LLM response + structured citations.
+message AskAnswer {
+  string answer_md = 1;
+  repeated Citation citations = 2;
+}
+
+message AskNotesRequest {
+  string question = 1;
+}
+
+service IntelligenceService {
+  rpc GetDailyBrief(GetDailyBriefRequest) returns (DailyBrief) {
+    option (google.api.http) = {
+      post: "/api/v1/intelligence/daily-brief"
+      body: "*"
+    };
+  }
+  rpc AskNotes(AskNotesRequest) returns (AskAnswer) {
+    option (google.api.http) = {
+      post: "/api/v1/intelligence/ask-notes"
+      body: "*"
+    };
+  }
+}
