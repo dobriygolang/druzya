@@ -137,6 +137,18 @@ function Tab({
         border: 'none',
         cursor: 'pointer',
       }}
+      onMouseEnter={(e) => {
+        if (!active) {
+          e.currentTarget.style.background = 'rgba(255,255,255,0.04)';
+          e.currentTarget.style.color = 'var(--ink)';
+        }
+      }}
+      onMouseLeave={(e) => {
+        if (!active) {
+          e.currentTarget.style.background = 'transparent';
+          e.currentTarget.style.color = 'var(--ink-60)';
+        }
+      }}
     >
       {children}
       <span

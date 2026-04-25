@@ -30,6 +30,7 @@ import {
   type WhiteboardRoom,
   type WhiteboardWsStatus,
 } from '../api/whiteboard';
+import { BackBtn, GhostBtn, PrimaryBtn } from '../components/primitives/Buttons';
 
 type Page = { kind: 'list' } | { kind: 'room'; roomId: string };
 
@@ -450,30 +451,7 @@ function RoomView({ roomId, onBack }: { roomId: string; onBack: () => void }) {
           borderBottom: '1px solid rgba(255,255,255,0.06)',
         }}
       >
-        <button
-          onClick={onBack}
-          className="focus-ring mono row"
-          style={{
-            padding: '5px 10px',
-            fontSize: 10,
-            letterSpacing: '.12em',
-            color: 'var(--ink-40)',
-            borderRadius: 6,
-            background: 'transparent',
-            border: '1px solid rgba(255,255,255,0.06)',
-            cursor: 'pointer',
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.background = 'rgba(255,255,255,0.04)';
-            e.currentTarget.style.color = 'var(--ink)';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.background = 'transparent';
-            e.currentTarget.style.color = 'var(--ink-40)';
-          }}
-        >
-          ← BACK
-        </button>
+        <BackBtn onClick={onBack} />
         <div className="mono" style={{ fontSize: 11, color: 'var(--ink-60)' }}>
           {loadError
             ? `error: ${loadErrorLabel(loadError)}`
@@ -496,38 +474,10 @@ function RoomView({ roomId, onBack }: { roomId: string; onBack: () => void }) {
         <div style={{ flex: 1 }} />
         {room && (
           <>
-            <button
-              onClick={() => void handleShare()}
-              className="focus-ring mono row"
-              style={{
-                padding: '6px 14px',
-                fontSize: 10,
-                letterSpacing: '.14em',
-                color: copied ? 'var(--ink)' : 'var(--ink-60)',
-                border: '1px solid rgba(255,255,255,0.1)',
-                borderRadius: 999,
-                background: copied ? 'rgba(255,255,255,0.06)' : 'transparent',
-                cursor: 'pointer',
-              }}
-            >
+            <GhostBtn onClick={() => void handleShare()} active={copied}>
               {copied ? '✓ COPIED' : 'COPY URL'}
-            </button>
-            <button
-              onClick={() => void handleOpenWeb()}
-              className="focus-ring lift surface"
-              style={{
-                padding: '6px 14px',
-                fontSize: 12,
-                borderRadius: 999,
-                background: '#fff',
-                color: '#000',
-                fontWeight: 500,
-                border: 'none',
-                cursor: 'pointer',
-              }}
-            >
-              Open on web ↗
-            </button>
+            </GhostBtn>
+            <PrimaryBtn onClick={() => void handleOpenWeb()}>Open on web ↗</PrimaryBtn>
           </>
         )}
       </header>

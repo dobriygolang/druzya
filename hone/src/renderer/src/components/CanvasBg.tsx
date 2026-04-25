@@ -13,7 +13,7 @@
 // Quiet-mode: только звёзды, opacity 0.35.
 // Void-mode: ничего (Focus раньше; теперь в Hone Focus снят, но void
 // оставлен для совместимости / будущих full-blank страниц).
-import { useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 const GRID_STEP_PX = 64;
 
@@ -34,15 +34,30 @@ interface CanvasBgProps {
 }
 
 export function CanvasBg({ mode = 'full' }: CanvasBgProps) {
-  // Детерминированный pseudo-random — звёзды не дёргаются между mount'ами
-  // когда CanvasBg перерендеривается (а это происходит на каждой смене
-  // page'а через canvasMode). useMemo + seeded RNG даёт стабильность.
   const stars = useMemo(() => makeStars(32, 1337), []);
+
+  // Slow rotation tick для двух центральных квадратов. Останавливаем в
+  // quiet/void чтобы не тратить frame'ы.
+  const [tick, setTick] = useState(0);
+  useEffect(() => {
+    if (mode !== 'full') return;
+    let raf = 0;
+    let last = performance.now();
+    const loop = (now: number) => {
+      // 0.0042 deg/ms ≈ один оборот за ~4 минуты — медитативно.
+      setTick((t) => t + (now - last) * 0.0042);
+      last = now;
+      raf = requestAnimationFrame(loop);
+    };
+    raf = requestAnimationFrame(loop);
+    return () => cancelAnimationFrame(raf);
+  }, [mode]);
 
   if (mode === 'void') return null;
 
   const starOpMul = mode === 'full' ? 1 : 0.35;
   const showWaves = mode === 'full';
+  const showSquares = mode === 'full';
 
   return (
     <div style={{ position: 'absolute', inset: 0, overflow: 'hidden', pointerEvents: 'none' }}>
@@ -109,6 +124,54 @@ export function CanvasBg({ mode = 'full' }: CanvasBgProps) {
             </svg>
           </div>
         ))}
+
+      {/* Two slow-rotating squares — медитативный фокальный элемент в центре */}
+      {showSquares && (
+        <div
+          style={{
+            position: 'absolute',
+            left: '50%',
+            top: '50%',
+            width: 280,
+            height: 280,
+            transform: 'translate(-50%,-50%)',
+            opacity: 0.32,
+          }}
+        >
+          <svg
+            width="280"
+            height="280"
+            viewBox="-140 -140 280 280"
+            style={{ transform: `rotate(${tick}deg)` }}
+          >
+            <rect
+              x={-90}
+              y={-90}
+              width={180}
+              height={180}
+              fill="none"
+              stroke="rgba(255,255,255,0.85)"
+              strokeWidth="1"
+            />
+          </svg>
+          <svg
+            width="280"
+            height="280"
+            viewBox="-140 -140 280 280"
+            style={{ position: 'absolute', inset: 0, transform: `rotate(${tick + 22}deg)` }}
+          >
+            <rect
+              x={-90}
+              y={-90}
+              width={180}
+              height={180}
+              fill="none"
+              stroke="rgba(255,255,255,0.85)"
+              strokeWidth="1"
+            />
+          </svg>
+        </div>
+      )}
     </div>
   );
 }
