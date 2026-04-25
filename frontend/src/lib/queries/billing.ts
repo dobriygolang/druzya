@@ -223,3 +223,74 @@ export const PRICE_TABLE: Record<BillingPlanTier, { monthly: number; annual: num
   premium: { monthly: 390, annual: Math.round(390 * 12 * 0.8) },
   pro: { monthly: 890, annual: Math.round(890 * 12 * 0.8) },
 }
+
+// ── REAL subscription hooks ──────────────────────────────────────────────
+//
+// Below are the hooks bound to actual backend endpoints (vs the stub
+// `useCurrentPlanQuery` above). Used by the /settings/billing tab on
+// prod. Eventually these replace the stubs entirely.
+
+import { api } from '../apiClient'
+
+export type SubscriptionTier = 'free' | 'seeker' | 'ascendant'
+
+export type QuotaSnapshot = {
+  tier: SubscriptionTier
+  policy: {
+    synced_notes: number
+    active_shared_boards: number
+    active_shared_rooms: number
+    shared_ttl_seconds: number
+    ai_monthly: number
+  }
+  usage: {
+    synced_notes: number
+    active_shared_boards: number
+    active_shared_rooms: number
+    ai_this_month: number
+  }
+}
+
+// Read tier + policy + usage in one call. Polled lightly because tier
+// only changes on Boosty-sync (every 30 min) or admin set-tier.
+export function useSubscriptionQuotaQuery() {
+  return useQuery({
+    queryKey: ['subscription', 'quota'],
+    queryFn: () => api<QuotaSnapshot>('/subscription/quota'),
+    staleTime: 60_000,
+    retry: false,
+  })
+}
+
+// Bind a Boosty username to the caller's account. Backend matches
+// boosty subs against users via this row in the next sync tick.
+export function useLinkBoostyMutation() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (boosty_username: string) =>
+      api<{ ok: boolean }>('/subscription/boosty/link', {
+        method: 'POST',
+        body: JSON.stringify({ boosty_username }),
+      }),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['subscription', 'quota'] })
+    },
+  })
+}
+
+// Admin-only dev shortcut: flip own (or another user's) tier without
+// running the full Boosty round-trip. Caller must have role=admin.
+export function useDevSetTierMutation() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ tier, user_id }: { tier: SubscriptionTier; user_id?: string }) =>
+      api<{ ok: boolean; tier: string }>('/admin/subscriptions/set-tier', {
+        method: 'POST',
+        body: JSON.stringify({ tier, user_id }),
+      }),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['subscription', 'quota'] })
+      void qc.invalidateQueries({ queryKey: ['profile'] })
+    },
+  })
+}

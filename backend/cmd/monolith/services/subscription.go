@@ -88,6 +88,12 @@ func NewSubscription(d Deps) *Module {
 			// usage. Используется frontend'ом для UI badges (10/10 published)
 			// и upgrade-prompts при достижении лимита.
 			r.Get("/subscription/quota", quotaHandler.handle)
+			// Admin-facing dev tier switch — small REST wrapper around the
+			// Connect AdminSetTier RPC so the /settings page can flip tier
+			// without pulling in the full druz9v1 Connect client just for
+			// one button.
+			devTierHandler := &devTierSwitchHandler{uc: setTierUC, log: d.Log}
+			r.Post("/admin/subscriptions/set-tier", devTierHandler.handle)
 		},
 		Background: []func(ctx context.Context){
 			// Cron MarkExpired: раз в час. Первый tick сразу после старта —
@@ -292,6 +298,69 @@ func (h *quotaRestHandler) handle(w http.ResponseWriter, r *http.Request) {
 			AIThisMonth:        snap.Usage.AIThisMonth,
 		},
 	})
+}
+
+// ─── Dev tier switch ──────────────────────────────────────────────────────
+//
+// Tiny REST wrapper over SetTierUC for the /settings dev-only "switch
+// tier" button. Connect's AdminSetTier RPC is the canonical entrypoint;
+// this handler exists purely so the frontend doflesn't need a Connect
+// client just for one admin call.
+
+type devTierSwitchHandler struct {
+	uc  *subApp.SetTier
+	log *slog.Logger
+}
+
+func (h *devTierSwitchHandler) handle(w http.ResponseWriter, r *http.Request) {
+	uid, ok := sharedMw.UserIDFromContext(r.Context())
+	if !ok {
+		http.Error(w, `{"error":{"code":"unauthenticated"}}`, http.StatusUnauthorized)
+		return
+	}
+	role, _ := sharedMw.UserRoleFromContext(r.Context())
+	if role != "admin" {
+		http.Error(w, `{"error":{"code":"forbidden"}}`, http.StatusForbidden)
+		return
+	}
+	var body struct {
+		// UserID — optional; defaults to caller (admin flips own tier in dev).
+		UserID string `json:"user_id"`
+		Tier   string `json:"tier"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		http.Error(w, `{"error":{"code":"invalid_body"}}`, http.StatusBadRequest)
+		return
+	}
+	target := uid
+	if body.UserID != "" {
+		parsed, err := uuid.Parse(body.UserID)
+		if err != nil {
+			http.Error(w, `{"error":{"code":"invalid_user_id"}}`, http.StatusBadRequest)
+			return
+		}
+		target = parsed
+	}
+	tier := subDomain.Tier(body.Tier)
+	if !tier.IsValid() {
+		http.Error(w, `{"error":{"code":"invalid_tier"}}`, http.StatusBadRequest)
+		return
+	}
+	in := subApp.SetTierInput{
+		UserID:   target,
+		Tier:     tier,
+		Provider: subDomain.ProviderAdmin,
+		Reason:   "dev tier switch via /settings",
+	}
+	if err := h.uc.Do(r.Context(), in); err != nil {
+		if h.log != nil {
+			h.log.WarnContext(r.Context(), "subscription.dev-tier-switch", "err", err)
+		}
+		http.Error(w, `{"error":{"code":"internal"}}`, http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(map[string]any{"ok": true, "tier": body.Tier})
 }
 
 func dtoFromPolicy(p subDomain.QuotaPolicy) quotaPolicyDTO {

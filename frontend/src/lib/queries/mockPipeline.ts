@@ -227,18 +227,30 @@ export function useCreateMockPipelineMutation() {
   })
 }
 
+// useStartNextStageMutation — POST /mock/pipelines/{id}/start-next-stage.
+//
+// Backend returns one StageWithAttempts (the just-flipped stage), NOT a
+// full Pipeline. Don't try to splice that into the pipeline cache —
+// the shapes don't match and the previous version overwrote the cached
+// pipeline with a single-stage payload, which made `pipeline.verdict`
+// undefined and triggered a navigate to /debrief (the white-screen
+// crash users saw right after picking a company).
+//
+// Cleanest path: invalidate so the pipeline query refetches a fresh
+// PipelineFull, which already includes the materialised attempts for
+// the new stage.
 export function useStartNextStageMutation(pipelineId: string | undefined) {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: async () => {
       if (!pipelineId) throw new Error('pipeline_id_required')
-      return api<Pipeline>(`/mock/pipelines/${pipelineId}/start-next-stage`, {
+      return api<unknown>(`/mock/pipelines/${pipelineId}/start-next-stage`, {
         method: 'POST',
         body: '{}',
       })
     },
-    onSuccess: (data) => {
-      qc.setQueryData(mockPipelineKeys.pipeline(pipelineId), data)
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: mockPipelineKeys.pipeline(pipelineId) })
     },
   })
 }

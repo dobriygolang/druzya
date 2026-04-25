@@ -369,8 +369,13 @@ function StageLoadingSkeleton({ kind }: { kind: StageKind }) {
 function StageChat({ stage, pipelineId }: { stage: PipelineStage; pipelineId: string }) {
   const finishStage = useFinishStageMutation(pipelineId)
 
-  const allJudged = stage.attempts.every((a) => a.ai_verdict !== 'pending')
-  const noAttempts = stage.attempts.length === 0
+  // Defensive: backend always returns an array, but a wire-shape skew
+  // (e.g. cache overwritten by a sibling mutation that returns a partial
+  // payload) used to crash this branch with "Cannot read properties of
+  // undefined (reading 'every')".
+  const attempts = stage.attempts ?? []
+  const allJudged = attempts.every((a) => a.ai_verdict !== 'pending')
+  const noAttempts = attempts.length === 0
 
   if (noAttempts) {
     const isCodeLike = stage.stage_kind === 'algo' || stage.stage_kind === 'coding'
@@ -394,13 +399,13 @@ function StageChat({ stage, pipelineId }: { stage: PipelineStage; pipelineId: st
 
   return (
     <div className="flex flex-col gap-4">
-      {stage.attempts.map((a, idx) => (
+      {attempts.map((a, idx) => (
         <QuestionCard
           key={a.id}
           attempt={a}
           pipelineId={pipelineId}
           ordinal={idx + 1}
-          attempts={stage.attempts}
+          attempts={attempts}
         />
       ))}
       <div className="flex items-center justify-end gap-3 pt-2">
