@@ -40,7 +40,7 @@ type LoadState =
   | { kind: 'not-found' }
   | { kind: 'expired' }
   | { kind: 'error'; message: string }
-  | { kind: 'ready'; room: RoomMeta; guestToken?: string }
+  | { kind: 'ready'; room: RoomMeta; guestToken?: string; myUserId?: string }
 
 // ─── Page ─────────────────────────────────────────────────────────────────
 
@@ -104,7 +104,12 @@ export default function EditorRoomSharePage() {
             username: p.username ?? 'guest',
           })),
         }
-        setState({ kind: 'ready', room, guestToken })
+        // Определяем CURRENT user — JWT содержит claim "sub" с user UUID.
+        // Без этого awareness писал имя owner'а себе (см. RoomEditorImpl
+        // ниже — `me = participants.find(p => p.userId === room.ownerId)`),
+        // и все коннект'ящиеся гости подписывались как owner.
+        const myUserId = decodeJwtSub(useToken)
+        setState({ kind: 'ready', room, guestToken, myUserId })
       } catch (e) {
         setState({ kind: 'error', message: (e as Error).message })
       }
@@ -164,14 +169,33 @@ export default function EditorRoomSharePage() {
   if (state.kind === 'expired') return <CenterMessage text="ROOM EXPIRED" />
   if (state.kind === 'error') return <CenterMessage text="ERROR" sub={state.message} />
 
-  return <RoomEditor room={state.room} guestToken={state.guestToken} />
+  return <RoomEditor room={state.room} guestToken={state.guestToken} myUserId={state.myUserId} />
 }
 
 // ─── RoomEditor — full multiplayer CodeMirror ────────────────────────────
 
 const RoomEditor = memo(RoomEditorImpl)
 
-function RoomEditorImpl({ room, guestToken }: { room: RoomMeta; guestToken?: string }) {
+// decodeJwtSub — base64url decode middle JWT part, extract `sub` claim.
+// Используется чтобы определить current user_id без отдельного /me запроса.
+// Не валидирует подпись — это OK для чисто визуальной идентификации
+// (auth-критичные операции всё равно проверяются на бэке).
+function decodeJwtSub(token: string | null): string | undefined {
+  if (!token) return undefined
+  try {
+    const parts = token.split('.')
+    if (parts.length < 2) return undefined
+    const payload = parts[1]!
+    // base64url → base64 (replace `-` with `+`, `_` with `/`, pad with `=`)
+    const b64 = payload.replace(/-/g, '+').replace(/_/g, '/').padEnd(Math.ceil(payload.length / 4) * 4, '=')
+    const json = JSON.parse(atob(b64)) as { sub?: string }
+    return typeof json.sub === 'string' ? json.sub : undefined
+  } catch {
+    return undefined
+  }
+}
+
+function RoomEditorImpl({ room, guestToken, myUserId }: { room: RoomMeta; guestToken?: string; myUserId?: string }) {
   const [wsStatus, setWsStatus] = useState<'connecting' | 'open' | 'reconnecting' | 'failed'>(
     'connecting',
   )
@@ -187,10 +211,13 @@ function RoomEditorImpl({ room, guestToken }: { room: RoomMeta; guestToken?: str
     const ytext = ydoc.getText('code')
 
     const awareness = new Awareness(ydoc)
-    const me = room.participants.find((p) => p.userId === room.ownerId)
+    // КРИТИЧНО: ищем СЕБЯ по myUserId (decoded из JWT), не по ownerId.
+    // Раньше тут был `p.userId === room.ownerId` → у всех гостей name
+    // оказывался username'ом owner'а ("dobriygolang") вместо собственного.
+    const me = myUserId ? room.participants.find((p) => p.userId === myUserId) : undefined
     awareness.setLocalStateField('user', {
       name: me?.username || 'guest',
-      color: userColor(room.ownerId || room.id),
+      color: userColor(myUserId || room.id),
     })
 
     const onYUpdate = (update: Uint8Array, origin: unknown) => {

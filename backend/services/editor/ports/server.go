@@ -125,7 +125,14 @@ func (s *EditorServer) GetRoom(
 	if err != nil {
 		return nil, s.toConnectErr(err)
 	}
-	if !isParticipant(uid, res.Room.OwnerID, res.Participants) {
+	// Visibility=shared → любой залогиненный юзер может получить room info.
+	// Это и есть смысл shared link'ов: гость кликает URL, web/editor page
+	// делает GetRoom чтобы показать room metadata + initial state. Без этой
+	// проверки guest получает 403 раньше чем guest-join'ится → UX сломан
+	// (юзер видит «private room» хотя owner поменял на shared).
+	// Visibility=private → только участники (как раньше).
+	if res.Room.Visibility != domain.VisibilityShared &&
+		!isParticipant(uid, res.Room.OwnerID, res.Participants) {
 		return nil, connect.NewError(connect.CodePermissionDenied, domain.ErrForbidden)
 	}
 	return connect.NewResponse(s.toEditorRoomProto(res.Room, res.Participants, res.Task)), nil

@@ -24,7 +24,7 @@
 // renderer решает что делать (или ignore).
 
 import { app, BrowserWindow, ipcMain, shell } from 'electron';
-import { init as sentryInit } from '@sentry/electron/main';
+import { init as sentryInit, IPCMode } from '@sentry/electron/main';
 import { join } from 'node:path';
 import { URL } from 'node:url';
 
@@ -57,6 +57,12 @@ if (sentryDSN) {
     // Sampling: 100% crashes main-process'а (их мало, каждый важен),
     // 10% renderer'а — ограничено инициализацией в renderer/index.tsx.
     tracesSampleRate: 0,
+    // IPC mode = Classic заставляет renderer общаться с main через preload
+    // ipcRenderer, а не через custom `sentry-ipc://` protocol scheme. Default
+    // (Both) fallback'ит на protocol если preload не сконфигурирован, и
+    // тогда CSP/Chromium ругается «URL scheme sentry-ipc not supported».
+    // Classic избегает scheme registration целиком — нативный IPC bus.
+    ipcMode: IPCMode.Classic,
   });
 }
 

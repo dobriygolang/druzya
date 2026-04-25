@@ -42,7 +42,7 @@ type LoadState =
   | { kind: 'not-found' }
   | { kind: 'expired' }
   | { kind: 'error'; message: string }
-  | { kind: 'ready'; room: RoomMeta; guestToken?: string }
+  | { kind: 'ready'; room: RoomMeta; guestToken?: string; myUserId?: string }
 
 // ─── Page component ───────────────────────────────────────────────────────
 
@@ -107,7 +107,11 @@ export default function WhiteboardSharePage() {
             username: p.username ?? 'guest',
           })),
         }
-        setState({ kind: 'ready', room, guestToken })
+        // Decode current user_id from JWT — иначе awareness писал owner'а
+        // как self для всех гостей (см. RoomEditor `me = participants.find(
+        // p => p.userId === room.ownerId)`).
+        const myUserId = decodeJwtSub(useToken)
+        setState({ kind: 'ready', room, guestToken, myUserId })
       } catch (e) {
         setState({ kind: 'error', message: (e as Error).message })
       }
@@ -166,7 +170,7 @@ export default function WhiteboardSharePage() {
   if (state.kind === 'expired') return <CenterMessage text="BOARD EXPIRED" />
   if (state.kind === 'error') return <CenterMessage text="ERROR" sub={state.message} />
 
-  return <RoomCanvas room={state.room} guestToken={state.guestToken} />
+  return <RoomCanvas room={state.room} guestToken={state.guestToken} myUserId={state.myUserId} />
 }
 
 // ─── Guest prompt — name + join button ───────────────────────────────────
@@ -297,7 +301,24 @@ function GuestPrompt({
 
 const RoomCanvas = memo(RoomCanvasImpl)
 
-function RoomCanvasImpl({ room, guestToken }: { room: RoomMeta; guestToken?: string }) {
+// decodeJwtSub — извлекает `sub` claim (user UUID) из JWT без верификации
+// подписи. Auth-критичные операции всё равно проверяются на бэке —
+// здесь нужно только для UI-идентификации current user'а.
+function decodeJwtSub(token: string | null): string | undefined {
+  if (!token) return undefined
+  try {
+    const parts = token.split('.')
+    if (parts.length < 2) return undefined
+    const payload = parts[1]!
+    const b64 = payload.replace(/-/g, '+').replace(/_/g, '/').padEnd(Math.ceil(payload.length / 4) * 4, '=')
+    const json = JSON.parse(atob(b64)) as { sub?: string }
+    return typeof json.sub === 'string' ? json.sub : undefined
+  } catch {
+    return undefined
+  }
+}
+
+function RoomCanvasImpl({ room, guestToken, myUserId }: { room: RoomMeta; guestToken?: string; myUserId?: string }) {
   const [wsStatus, setWsStatus] = useState<'connecting' | 'open' | 'reconnecting' | 'failed'>(
     'connecting',
   )
@@ -318,10 +339,12 @@ function RoomCanvasImpl({ room, guestToken }: { room: RoomMeta; guestToken?: str
 
     const awareness = new Awareness(ydoc)
     awarenessRef.current = awareness
-    const me = room.participants.find((p) => p.userId === room.ownerId)
+    // КРИТИЧНО: ищем СЕБЯ по myUserId (decoded из JWT), не по ownerId.
+    // Раньше у всех гостей name был = owner'у → одинаковые имена на canvas.
+    const me = myUserId ? room.participants.find((p) => p.userId === myUserId) : undefined
     awareness.setLocalStateField('user', {
       name: me?.username || 'guest',
-      color: userColor(room.ownerId || room.id),
+      color: userColor(myUserId || room.id),
     })
 
     const onYUpdate = (update: Uint8Array, origin: unknown) => {

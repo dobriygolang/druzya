@@ -83,11 +83,14 @@ type pullResponse struct {
 // allTables — таблицы которые мы синкаем в Phase C-4. notes/whiteboards
 // здесь как LWW — это temporary до C-6 когда их заменит Yjs sync. Сейчас
 // возвращаем поля как есть.
+// Таблица называется hone_daily_plans (см. migrations/00013_hone_focus.sql),
+// раньше тут было ошибочное "hone_plans" → 500 на каждый pull. Cursor
+// column = regenerated_at (когда AI-синтез последний раз перегенерил план).
 var allTables = []string{
 	"hone_notes",
 	"hone_whiteboards",
 	"hone_focus_sessions",
-	"hone_plans",
+	"hone_daily_plans",
 	"coach_episodes",
 }
 
@@ -103,7 +106,7 @@ var pullColumns = map[string]string{
 	// stopwatch. Фикс предыдущего bug'а где /api/v1/sync/pull возвращал 500
 	// «column does not exist» каждый раз когда клиент тянул focus_sessions.
 	"hone_focus_sessions": "id, started_at, ended_at, mode, pomodoros_completed, seconds_focused, plan_item_id, pinned_title",
-	"hone_plans":          "user_id, day, items, generated_at",
+	"hone_daily_plans":    "id, plan_date, items, regenerated_at, created_at, updated_at",
 	"coach_episodes":      "id, kind, summary, payload, occurred_at, created_at",
 }
 
@@ -114,7 +117,7 @@ var pullCursorColumn = map[string]string{
 	"hone_notes":          "updated_at",
 	"hone_whiteboards":    "updated_at",
 	"hone_focus_sessions": "started_at", // append-only by start
-	"hone_plans":          "generated_at",
+	"hone_daily_plans":    "regenerated_at",
 	"coach_episodes":      "created_at",
 }
 
@@ -469,7 +472,7 @@ func (h *syncReplicationHandler) applyUpsert(ctx context.Context, uid uuid.UUID,
 		// до C-6 (Yjs persistence). Возвращаем skip без error чтобы
 		// клиент не паниковал — это корректное поведение.
 		return false, nil
-	case "hone_focus_sessions", "hone_plans", "coach_episodes":
+	case "hone_focus_sessions", "hone_daily_plans", "coach_episodes":
 		// Server-authoritative — клиент НЕ может писать сюда напрямую
 		// (только server cron'ы / handlers). Skip без error.
 		return false, nil

@@ -98,14 +98,15 @@ func runFreeTierShareDowngradeWhiteboard(ctx context.Context, pool *pgxpool.Pool
 
 func downgradeOnceWhiteboard(ctx context.Context, pool *pgxpool.Pool, log *slog.Logger) {
 	// Free-tier owners with expired shared whiteboards → flip private.
-	// JOIN against subscriptions: tier = free OR no row OR expired.
+	// JOIN against subscriptions: plan = free OR no row OR expired.
+	// Column называется `plan` (не `tier`) — см. migrations/00008_social_ops.sql.
 	const q = `
 		UPDATE whiteboard_rooms wr
 		   SET visibility = 'private'
 		 WHERE wr.visibility = 'shared'
 		   AND wr.expires_at < now()
 		   AND COALESCE((
-			   SELECT s.tier FROM subscriptions s WHERE s.user_id = wr.owner_id
+			   SELECT s.plan FROM subscriptions s WHERE s.user_id = wr.owner_id
 		   ), 'free') = 'free'`
 	tag, err := pool.Exec(ctx, q)
 	if err != nil {
@@ -141,7 +142,7 @@ func downgradeOnceEditor(ctx context.Context, pool *pgxpool.Pool, log *slog.Logg
 		 WHERE er.visibility = 'shared'
 		   AND er.expires_at < now()
 		   AND COALESCE((
-			   SELECT s.tier FROM subscriptions s WHERE s.user_id = er.owner_id
+			   SELECT s.plan FROM subscriptions s WHERE s.user_id = er.owner_id
 		   ), 'free') = 'free'`
 	tag, err := pool.Exec(ctx, q)
 	if err != nil {
