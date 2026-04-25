@@ -105,41 +105,42 @@ export function Palette({ onClose, onOpen }: PaletteProps) {
         position: 'absolute',
         inset: 0,
         zIndex: 60,
-        background: 'rgba(0,0,0,0.78)',
-        backdropFilter: 'blur(14px)',
-        WebkitBackdropFilter: 'blur(14px)',
+        background: 'rgba(0,0,0,0.62)',
+        backdropFilter: 'blur(10px)',
+        WebkitBackdropFilter: 'blur(10px)',
         display: 'flex',
         justifyContent: 'center',
-        paddingTop: '12vh',
+        paddingTop: '14vh',
       }}
       onClick={onClose}
     >
       <div
         onClick={(e) => e.stopPropagation()}
+        className="scale-pop"
         style={{
-          width: 580,
+          width: 480,
           maxWidth: '92%',
           height: 'fit-content',
-          background: 'rgba(10,10,10,0.96)',
+          background: 'rgba(12,12,12,0.96)',
           border: '1px solid rgba(255,255,255,0.07)',
-          borderRadius: 16,
+          borderRadius: 14,
           overflow: 'hidden',
-          boxShadow: '0 50px 120px -20px rgba(0,0,0,0.85)',
+          boxShadow: '0 40px 100px -20px rgba(0,0,0,0.85)',
         }}
       >
         {/* search input */}
         <div
           style={{
-            padding: '14px 16px',
+            padding: '11px 14px',
             display: 'grid',
             gridTemplateColumns: 'auto 1fr auto',
-            gap: 12,
+            gap: 10,
             alignItems: 'center',
             borderBottom: '1px solid rgba(255,255,255,0.05)',
           }}
         >
           <span style={{ color: 'var(--ink-40)', display: 'flex' }}>
-            <Icon name="search" size={16} />
+            <Icon name="search" size={14} />
           </span>
           <input
             ref={inputRef}
@@ -149,7 +150,7 @@ export function Palette({ onClose, onOpen }: PaletteProps) {
             placeholder="Type a command…"
             style={{
               width: '100%',
-              fontSize: 15,
+              fontSize: 13.5,
               color: 'var(--ink)',
               background: 'transparent',
               border: 'none',
@@ -160,7 +161,7 @@ export function Palette({ onClose, onOpen }: PaletteProps) {
         </div>
 
         {/* items */}
-        <div style={{ padding: '6px 0' }}>
+        <div style={{ padding: '4px 0' }}>
           {filtered.map((it, i) => {
             const active = i === idx;
             return (
@@ -171,13 +172,14 @@ export function Palette({ onClose, onOpen }: PaletteProps) {
                   it.run();
                   onClose();
                 }}
+                className="row"
                 style={{
                   width: '100%',
                   display: 'grid',
-                  gridTemplateColumns: '44px 1fr auto',
+                  gridTemplateColumns: '34px 1fr auto',
                   gap: 4,
                   alignItems: 'center',
-                  padding: '12px 14px',
+                  padding: '7px 12px',
                   background: active ? 'rgba(255,255,255,0.05)' : 'transparent',
                   border: 'none',
                   cursor: 'pointer',
@@ -186,37 +188,39 @@ export function Palette({ onClose, onOpen }: PaletteProps) {
               >
                 <span
                   style={{
-                    width: 32,
-                    height: 32,
+                    width: 26,
+                    height: 26,
                     display: 'grid',
                     placeItems: 'center',
-                    borderRadius: 8,
+                    borderRadius: 6,
                     background: 'rgba(255,255,255,0.04)',
                     color: active ? 'var(--ink)' : 'var(--ink-60)',
+                    transition: 'color var(--t-fast), background-color var(--t-fast)',
                   }}
                 >
-                  <Icon name={it.icon} size={15} />
+                  <Icon name={it.icon} size={13} />
                 </span>
                 <span
                   style={{
-                    fontSize: 14,
+                    fontSize: 13,
                     fontWeight: 500,
                     color: active ? 'var(--ink)' : 'var(--ink-90)',
+                    transition: 'color var(--t-fast)',
                   }}
                 >
                   {it.label}
                 </span>
-                <span style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                <span style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
                   {it.shortcut.map((k, ki) => (
                     <span
                       key={ki}
-                      style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}
+                      style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}
                     >
                       {ki > 0 && (
                         <span
                           style={{
                             color: 'var(--ink-40)',
-                            fontSize: 10,
+                            fontSize: 9,
                             opacity: 0.6,
                           }}
                         >
@@ -231,7 +235,7 @@ export function Palette({ onClose, onOpen }: PaletteProps) {
             );
           })}
           {filtered.length === 0 && (
-            <div style={{ padding: '22px 18px', color: 'var(--ink-40)', fontSize: 13 }}>
+            <div style={{ padding: '18px 16px', color: 'var(--ink-40)', fontSize: 12 }}>
               No matches.
             </div>
           )}
@@ -242,22 +246,22 @@ export function Palette({ onClose, onOpen }: PaletteProps) {
           style={{
             display: 'flex',
             alignItems: 'center',
-            gap: 14,
-            padding: '12px 18px',
+            gap: 12,
+            padding: '9px 14px',
             borderTop: '1px solid rgba(255,255,255,0.05)',
-            fontSize: 11,
+            fontSize: 10,
             color: 'var(--ink-40)',
           }}
         >
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
             <Chip>↑</Chip>
             <Chip>↓</Chip> select
           </span>
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
             <Chip>↵</Chip> open
           </span>
           <span style={{ flex: 1 }} />
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
             <Chip>⌘</Chip>
             <Chip>K</Chip>
           </span>
@@ -267,8 +271,7 @@ export function Palette({ onClose, onOpen }: PaletteProps) {
   );
 }
 
-// Chip — мини-кнопка в стиле macOS-keycap. Используется и как shortcut-метка,
-// и как footer-элементы. Заменяет старый Kbd: тут унифицированный размер +
+// Chip — мини-кнопка в стиле macOS-keycap. Унифицированный размер +
 // rounded-square форма как в Winter / Linear.
 function Chip({ children }: { children: React.ReactNode }) {
   return (
@@ -277,15 +280,15 @@ function Chip({ children }: { children: React.ReactNode }) {
       style={{
         display: 'inline-grid',
         placeItems: 'center',
-        minWidth: 22,
-        height: 22,
-        padding: '0 6px',
-        fontSize: 10,
+        minWidth: 18,
+        height: 18,
+        padding: '0 5px',
+        fontSize: 9.5,
         letterSpacing: '0.04em',
         color: 'var(--ink-60)',
-        background: 'rgba(255,255,255,0.05)',
+        background: 'rgba(255,255,255,0.04)',
         border: '1px solid rgba(255,255,255,0.08)',
-        borderRadius: 6,
+        borderRadius: 5,
       }}
     >
       {children}

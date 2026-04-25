@@ -6,8 +6,11 @@
 //               reflection prompt.
 //   stopwatch — ∞ от 00:00 вверх; никаких auto-end, юзер сам Stop.
 //
-// Hover на time-area открывает inline-controls: переключение mode +
-// reset (как у winter.so).
+// Hover на time-area:
+//   default → mode-marker (⊙ или ∞) + mm:ss
+//   hover   → две круглые кнопки (toggle-mode + reset) ВМЕСТО time-area,
+//             вписанные в общий mini-pill. Время скрыто. Smooth fade
+//             через --t-fast.
 import { useState, type ReactNode } from 'react';
 
 import { Icon } from './primitives/Icon';
@@ -18,7 +21,7 @@ interface DockProps {
   onMenu: () => void;
   running: boolean;
   onToggle: () => void;
-  remain: number; // seconds — для countdown «осталось», для stopwatch «прошло»
+  remain: number;
   mode: TimerMode;
   onToggleMode: () => void;
   onReset: () => void;
@@ -48,21 +51,21 @@ export function Dock({
         transform: 'translateX(-50%)',
         display: 'flex',
         alignItems: 'center',
-        gap: 4,
-        padding: 6,
+        gap: 2,
+        padding: 5,
         borderRadius: 999,
-        background: 'rgba(10,10,10,0.72)',
-        border: '1px solid rgba(255,255,255,0.08)',
-        backdropFilter: 'blur(18px)',
-        WebkitBackdropFilter: 'blur(18px)',
+        background: 'rgba(10,10,10,0.78)',
+        border: '1px solid rgba(255,255,255,0.07)',
+        backdropFilter: 'blur(20px)',
+        WebkitBackdropFilter: 'blur(20px)',
         zIndex: 10,
-        // @ts-expect-error — Electron CSS
+        // @ts-expect-error — Electron CSS extension
         WebkitAppRegion: 'no-drag',
       }}
       className="no-select"
     >
       <DockBtn onClick={onMenu} title="Menu (⌘K)">
-        <Icon name="menu" size={15} />
+        <Icon name="menu" size={14} />
       </DockBtn>
       <Divider />
       <TimerArea
@@ -75,7 +78,7 @@ export function Dock({
       />
       <Divider />
       <DockBtn onClick={onToggle} title={running ? 'Pause' : 'Play'}>
-        <Icon name={running ? 'pause' : 'play'} size={13} />
+        <Icon name={running ? 'pause' : 'play'} size={12} />
       </DockBtn>
       <Divider />
       <VolumeBtn vol={vol} onVol={onVol} />
@@ -92,6 +95,9 @@ interface TimerAreaProps {
   onReset: () => void;
 }
 
+// TimerArea — узкий swap-контейнер с фиксированной шириной чтобы при
+// hover-смене контента dock не «дёргался» (layout shift). Время и
+// hover-кнопки cross-fade'ятся через position: absolute.
 function TimerArea({ running, mode, mm, ss, onToggleMode, onReset }: TimerAreaProps) {
   const [hover, setHover] = useState(false);
   return (
@@ -99,51 +105,101 @@ function TimerArea({ running, mode, mm, ss, onToggleMode, onReset }: TimerAreaPr
       onMouseEnter={() => setHover(true)}
       onMouseLeave={() => setHover(false)}
       style={{
+        position: 'relative',
+        width: 96,
+        height: 28,
         display: 'flex',
         alignItems: 'center',
-        gap: hover ? 6 : 10,
-        padding: hover ? '0 6px' : '0 14px',
-        transition: 'gap 120ms ease, padding 120ms ease',
+        justifyContent: 'center',
       }}
     >
-      {hover ? (
-        <>
-          <DockBtn onClick={onToggleMode} title={mode === 'countdown' ? 'Switch to ∞' : 'Switch to pomodoro'}>
-            <Icon name={mode === 'countdown' ? 'infinity' : 'circle'} size={13} />
-          </DockBtn>
-          <DockBtn onClick={onReset} title="Reset">
-            <Icon name="rewind" size={13} />
-          </DockBtn>
-        </>
-      ) : mode === 'stopwatch' ? (
-        // ∞ как dock-mode marker, маленький, серый
-        <span style={{ color: running ? 'var(--ink-90)' : 'var(--ink-40)', display: 'flex' }}>
-          <Icon name="infinity" size={14} />
-        </span>
-      ) : (
-        // обычный pomodoro: red-pulse точка как раньше
-        <span
-          style={{
-            width: 6,
-            height: 6,
-            borderRadius: 99,
-            background: running ? 'var(--red)' : 'rgba(255,255,255,0.35)',
-          }}
-          className={running ? 'red-pulse' : ''}
-        />
-      )}
-      <span
-        className="mono"
+      {/* default: mode-marker + mm:ss */}
+      <div
         style={{
-          fontSize: 15,
-          letterSpacing: '0.02em',
-          color: 'var(--ink)',
-          minWidth: 56,
-          textAlign: 'center',
+          position: 'absolute',
+          inset: 0,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: 7,
+          opacity: hover ? 0 : 1,
+          transition: 'opacity var(--t-fast)',
+          pointerEvents: hover ? 'none' : 'auto',
         }}
       >
-        {mm}:{ss}
-      </span>
+        {mode === 'stopwatch' ? (
+          <span
+            style={{
+              color: running ? 'var(--ink-90)' : 'var(--ink-40)',
+              display: 'flex',
+              transition: 'color var(--t-fast)',
+            }}
+          >
+            <Icon name="infinity" size={13} />
+          </span>
+        ) : (
+          <span
+            style={{
+              width: 9,
+              height: 9,
+              borderRadius: 99,
+              border: '1px solid var(--ink-40)',
+              background: running ? 'var(--red)' : 'transparent',
+              borderColor: running ? 'var(--red)' : 'var(--ink-40)',
+              transition:
+                'background-color var(--t-fast), border-color var(--t-fast)',
+            }}
+            className={running ? 'red-pulse' : ''}
+          />
+        )}
+        <span
+          className="mono"
+          style={{
+            fontSize: 14,
+            letterSpacing: '0.04em',
+            color: 'var(--ink)',
+          }}
+        >
+          {mm}:{ss}
+        </span>
+      </div>
+
+      {/* hover: pill с двумя кнопками */}
+      <div
+        style={{
+          position: 'absolute',
+          inset: 0,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: 0,
+          opacity: hover ? 1 : 0,
+          transition: 'opacity var(--t-fast)',
+          pointerEvents: hover ? 'auto' : 'none',
+        }}
+      >
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            background: 'rgba(255,255,255,0.05)',
+            borderRadius: 999,
+            padding: 2,
+            gap: 0,
+          }}
+        >
+          <DockBtn
+            onClick={onToggleMode}
+            title={mode === 'countdown' ? 'Switch to ∞' : 'Switch to pomodoro'}
+            small
+          >
+            <Icon name={mode === 'countdown' ? 'infinity' : 'circle'} size={12} />
+          </DockBtn>
+          <DockBtn onClick={onReset} title="Reset" small>
+            <Icon name="rewind" size={12} />
+          </DockBtn>
+        </div>
+      </div>
     </div>
   );
 }
@@ -152,28 +208,38 @@ interface DockBtnProps {
   children: ReactNode;
   onClick?: () => void;
   title?: string;
+  small?: boolean;
 }
 
-function DockBtn({ children, onClick, title }: DockBtnProps) {
+function DockBtn({ children, onClick, title, small = false }: DockBtnProps) {
+  const size = small ? 24 : 28;
   return (
     <button
       onClick={onClick}
       title={title}
-      className="focus-ring"
+      className="focus-ring surface"
       style={{
-        width: 30,
-        height: 30,
+        width: size,
+        height: size,
         borderRadius: 999,
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        color: 'var(--ink-90)',
+        color: 'var(--ink-60)',
         background: 'transparent',
         border: 'none',
         cursor: 'pointer',
       }}
-      onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(255,255,255,0.06)')}
-      onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.background = 'rgba(255,255,255,0.08)';
+        e.currentTarget.style.color = 'var(--ink)';
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.background = 'transparent';
+        e.currentTarget.style.color = 'var(--ink-60)';
+      }}
+      onMouseDown={(e) => (e.currentTarget.style.transform = 'scale(0.94)')}
+      onMouseUp={(e) => (e.currentTarget.style.transform = 'scale(1)')}
     >
       {children}
     </button>
@@ -181,7 +247,16 @@ function DockBtn({ children, onClick, title }: DockBtnProps) {
 }
 
 function Divider() {
-  return <span style={{ width: 1, height: 18, background: 'rgba(255,255,255,0.08)' }} />;
+  return (
+    <span
+      style={{
+        width: 1,
+        height: 14,
+        background: 'rgba(255,255,255,0.08)',
+        margin: '0 2px',
+      }}
+    />
+  );
 }
 
 interface VolumeBtnProps {
@@ -194,20 +269,21 @@ function VolumeBtn({ vol, onVol }: VolumeBtnProps) {
   return (
     <div style={{ position: 'relative' }}>
       <DockBtn onClick={() => setOpen((o) => !o)} title="Volume">
-        <Icon name="volume" size={13} />
+        <Icon name="volume" size={12} />
       </DockBtn>
       {open && (
         <div
           onMouseLeave={() => setOpen(false)}
+          className="scale-pop"
           style={{
             position: 'absolute',
-            bottom: 46,
+            bottom: 42,
             right: -6,
             padding: '10px 12px',
             borderRadius: 10,
-            background: 'rgba(10,10,10,0.9)',
+            background: 'rgba(10,10,10,0.92)',
             border: '1px solid rgba(255,255,255,0.08)',
-            backdropFilter: 'blur(18px)',
+            backdropFilter: 'blur(20px)',
           }}
         >
           <input
