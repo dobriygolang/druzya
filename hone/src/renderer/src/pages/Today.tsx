@@ -33,6 +33,9 @@ export interface StartFocusArgs {
 
 interface TodayPageProps {
   onStartFocus: (args?: StartFocusArgs) => void;
+  /** When non-null, the matching plan-item получает highlight + scroll. */
+  highlightedItemId?: string | null;
+  onConsumeHighlight?: () => void;
 }
 
 interface FetchState {
@@ -52,7 +55,16 @@ function formatHeader(d: Date): string {
   return `${days[d.getDay()]} · ${months[d.getMonth()]} ${d.getDate()}`;
 }
 
-export function TodayPage({ onStartFocus }: TodayPageProps) {
+export function TodayPage({ onStartFocus, highlightedItemId, onConsumeHighlight }: TodayPageProps) {
+  // Single-shot consume: clear highlight intent after the page sees it,
+  // чтобы re-render без brief-навигации не подсвечивал тот же item снова.
+  useEffect(() => {
+    if (highlightedItemId && onConsumeHighlight) {
+      onConsumeHighlight();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  void highlightedItemId; // reserved for v1 visual highlight; MVP — pass-through
   const [state, setState] = useState<FetchState>(INITIAL);
   const [busy, setBusy] = useState<string | null>(null); // id того item'а, по которому идёт mutation
 

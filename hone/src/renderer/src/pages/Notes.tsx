@@ -13,6 +13,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ConnectError, Code } from '@connectrpc/connect';
 
+import { AskNotesModal } from '../components/AskNotesModal';
 import { Kbd } from '../components/primitives/Kbd';
 import { MarkdownView } from '../components/MarkdownView';
 import { RichMarkdownEditor } from '../components/RichMarkdownEditor';
@@ -44,9 +45,20 @@ const SIDEBAR_MIN = 200;
 const SIDEBAR_MAX = 460;
 const SIDEBAR_DEFAULT = 280;
 
-export function NotesPage() {
+export interface NotesPageProps {
+  /**
+   * Когда DailyBriefPanel жмёт review_note chip, App кладёт сюда note_id.
+   * Notes на mount подхватит и установит selectedId, затем дёрнет
+   * onConsumeInitial чтобы не повторять при следующем re-render.
+   */
+  initialSelectedId?: string | null;
+  onConsumeInitial?: () => void;
+}
+
+export function NotesPage({ initialSelectedId, onConsumeInitial }: NotesPageProps = {}) {
   const [list, setList] = useState<ListState>(INITIAL_LIST);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(initialSelectedId ?? null);
+  const [askOpen, setAskOpen] = useState(false);
   const [active, setActive] = useState<Note | null>(null);
   const [activeError, setActiveError] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
@@ -180,10 +192,26 @@ export function NotesPage() {
     };
   }, [draftTitle, draftBody, active, persistDraft]);
 
+  // Single-shot consume initialSelectedId on mount.
+  useEffect(() => {
+    if (initialSelectedId) {
+      setSelectedId(initialSelectedId);
+      onConsumeInitial?.();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // ⌘J global hotkey (когда мы на notes-странице) — toggle connections.
+  // ⌘⇧L — open AskNotes RAG modal.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'j') {
+      const mod = e.metaKey || e.ctrlKey;
+      if (mod && e.shiftKey && e.key.toLowerCase() === 'l') {
+        e.preventDefault();
+        setAskOpen(true);
+        return;
+      }
+      if (mod && !e.shiftKey && e.key.toLowerCase() === 'j') {
         e.preventDefault();
         if (!active) return;
         setConnectionsOpen((o) => !o);
@@ -410,6 +438,12 @@ export function NotesPage() {
             setSelectedId(id);
             setConnectionsOpen(false);
           }}
+        />
+      )}
+      {askOpen && (
+        <AskNotesModal
+          onClose={() => setAskOpen(false)}
+          onOpenNote={(noteId) => setSelectedId(noteId)}
         />
       )}
     </div>

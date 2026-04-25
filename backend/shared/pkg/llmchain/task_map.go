@@ -145,6 +145,26 @@ var DefaultTaskModelMap = TaskModelMap{
 		ProviderOpenRouter: "openai/gpt-oss-120b:free",
 		ProviderOllama:     "qwen2.5:3b-instruct-q4_K_M",
 	},
+	TaskDailyBrief: {
+		// AI-coach утренний бриф: strict JSON + 1-3 sentences narrative
+		// + 3 recommendation'а. Кеш 6h, регенерация редкая — quality-первая.
+		// 70B на всех cloud-провайдерах; Ollama 3B — floor-fallback.
+		ProviderGroq:       "llama-3.3-70b-versatile",
+		ProviderCerebras:   "llama3.3-70b",
+		ProviderMistral:    "mistral-large-latest",
+		ProviderOpenRouter: "openai/gpt-oss-120b:free",
+		ProviderOllama:     "qwen2.5:3b-instruct-q4_K_M",
+	},
+	TaskNoteQA: {
+		// RAG-ответ на вопрос по нотам: длинный context (title+body 8 нот)
+		// + reasoning + markdown-вывод с [N]-цитациями. 70B-класс.
+		// Latency не критична (юзер готов подождать 2-3s после Enter).
+		ProviderGroq:       "llama-3.3-70b-versatile",
+		ProviderCerebras:   "llama3.3-70b",
+		ProviderMistral:    "mistral-large-latest",
+		ProviderOpenRouter: "openai/gpt-oss-120b:free",
+		ProviderOllama:     "qwen2.5:7b-instruct-q4_K_M",
+	},
 }
 
 // Clone returns a deep copy so callers can mutate without affecting

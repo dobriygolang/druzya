@@ -119,6 +119,16 @@ const (
 	// Reasoning-heavy (нужно взвесить приоритеты), но НЕ streaming — клиент
 	// ждёт целого JSON-ответа и рендерит карточки атомарно. 70B-класс.
 	TaskDailyPlanSynthesis Task = "daily_plan_synthesis"
+	// TaskDailyBrief — синтез утреннего брифа AI-coach слоя. Вход:
+	// focus-stats 7d + skipped/completed plan-item'ы + последние reflection'ы
+	// + top-5 нот по recency. Выход: strict JSON {headline, narrative,
+	// recommendations[3]}. Reasoning + JSON — 70B-класс. Кэшируется на 6h
+	// в hone_daily_briefs, force=true — rate-limited 1/h.
+	TaskDailyBrief Task = "daily_brief"
+	// TaskNoteQA — RAG над корпусом нот. Вход: вопрос юзера + top-8
+	// embedded-нот (title + body). Выход: markdown ответ с [N]-цитациями.
+	// Text mode (не JSON). 70B для глубины reasoning'а.
+	TaskNoteQA Task = "note_qa"
 )
 
 // Role mirrors OpenAI chat roles. Kept as a string (not an enum) because

@@ -334,6 +334,14 @@ type Friendship struct {
 	AcceptedAt  pgtype.Timestamptz
 }
 
+type HoneDailyBrief struct {
+	ID          pgtype.UUID
+	UserID      pgtype.UUID
+	BriefDate   pgtype.Date
+	Payload     []byte
+	GeneratedAt pgtype.Timestamptz
+}
+
 type HoneDailyPlan struct {
 	ID            pgtype.UUID
 	UserID        pgtype.UUID

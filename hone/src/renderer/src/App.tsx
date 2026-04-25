@@ -22,6 +22,7 @@ import { LoginScreen } from './components/LoginScreen';
 import { OnboardingModal } from './components/OnboardingModal';
 import { Palette, type PageId, type PaletteAction } from './components/Palette';
 import { Copilot } from './components/Copilot';
+import { DailyBriefPanel } from './components/DailyBriefPanel';
 import { StandupOverlay } from './components/StandupOverlay';
 import { UpdateToast } from './components/UpdateToast';
 import { HomePage } from './pages/Home';
@@ -77,6 +78,11 @@ export default function App() {
   // Single-shot — после consume сбрасываем в null.
   const [initialEditorRoom, setInitialEditorRoom] = useState<string | null>(null);
   const [initialBoardRoom, setInitialBoardRoom] = useState<string | null>(null);
+  // Brief-driven navigation hooks: when DailyBriefPanel'е жмут review_note
+  // или unblock chip, кладём target_id сюда; целевая страница подхватывает
+  // на mount и сбрасывает back to null. Single-shot semantics.
+  const [briefTargetNoteId, setBriefTargetNoteId] = useState<string | null>(null);
+  const [briefTargetPlanItemId, setBriefTargetPlanItemId] = useState<string | null>(null);
   // Sentinel для backend session — null значит "не идёт". Создаётся при
   // первом переходе в running, гасится в finishSession.
   const sessionRef = useRef<string | null>(null);
@@ -420,6 +426,30 @@ export default function App() {
       <Wordmark />
       <Versionmark escHint={page !== 'home'} onEsc={goHome} />
 
+      {/* Daily Brief panel — bottom-left on Home, hidden during running focus.
+          AI-coach слой: показывается даже когда focus ≠ active, но не отвлекает
+          юзера во время сессии. */}
+      {page === 'home' && !running && (
+        <DailyBriefPanel
+          onAct={(rec) => {
+            if (rec.kind === 'tiny_task') {
+              startFocus({ pinnedTitle: rec.title });
+              return;
+            }
+            if (rec.kind === 'review_note' && rec.targetId) {
+              setBriefTargetNoteId(rec.targetId);
+              setPage('notes');
+              return;
+            }
+            if (rec.kind === 'unblock' && rec.targetId) {
+              setBriefTargetPlanItemId(rec.targetId);
+              setPage('today');
+              return;
+            }
+            // schedule — tooltip-only (advice). Title ↻ rationale shown via title attr.
+          }}
+        />
+      )}
       {page === 'home' && (
         <HomePage
           running={running}
@@ -444,8 +474,19 @@ export default function App() {
           onDismissReflection={() => setReflectionPrompt(null)}
         />
       )}
-      {page === 'today' && <TodayPage onStartFocus={startFocus} />}
-      {page === 'notes' && <NotesPage />}
+      {page === 'today' && (
+        <TodayPage
+          onStartFocus={startFocus}
+          highlightedItemId={briefTargetPlanItemId}
+          onConsumeHighlight={() => setBriefTargetPlanItemId(null)}
+        />
+      )}
+      {page === 'notes' && (
+        <NotesPage
+          initialSelectedId={briefTargetNoteId}
+          onConsumeInitial={() => setBriefTargetNoteId(null)}
+        />
+      )}
       {page === 'board' && <WhiteboardPage />}
       {/* Stats теперь overlay (см. statsOpen ниже). Старая StatsPage снята. */}
       {page === 'podcasts' && <PodcastsPage />}

@@ -21,23 +21,23 @@ import "google/protobuf/timestamp.proto";
 
 option go_package = "druz9/shared/generated/pb/druz9/v1;druz9v1";
 
-// RecommendationKind classifies what a recommendation chip does on click.
+// BriefRecommendationKind classifies what a recommendation chip does on click.
 //   TINY_TASK    — a small, concrete action; client typically pins as
 //                  Focus session title.
 //   SCHEDULE     — advice about timing; client shows tooltip only.
 //   REVIEW_NOTE  — opens Notes with target_id = note_id.
 //   UNBLOCK      — opens Today with target_id = plan_item_id highlighted.
-enum RecommendationKind {
-  RECOMMENDATION_KIND_UNSPECIFIED = 0;
-  RECOMMENDATION_KIND_TINY_TASK = 1;
-  RECOMMENDATION_KIND_SCHEDULE = 2;
-  RECOMMENDATION_KIND_REVIEW_NOTE = 3;
-  RECOMMENDATION_KIND_UNBLOCK = 4;
+enum BriefRecommendationKind {
+  BRIEF_RECOMMENDATION_KIND_UNSPECIFIED = 0;
+  BRIEF_RECOMMENDATION_KIND_TINY_TASK = 1;
+  BRIEF_RECOMMENDATION_KIND_SCHEDULE = 2;
+  BRIEF_RECOMMENDATION_KIND_REVIEW_NOTE = 3;
+  BRIEF_RECOMMENDATION_KIND_UNBLOCK = 4;
 }
 
-// Recommendation — one actionable suggestion in DailyBrief.
-message Recommendation {
-  RecommendationKind kind = 1;
+// BriefRecommendation — one actionable suggestion in DailyBrief.
+message BriefRecommendation {
+  BriefRecommendationKind kind = 1;
   string title = 2;
   string rationale = 3;
   // target_id is optional; carries note_id for REVIEW_NOTE,
@@ -49,7 +49,7 @@ message Recommendation {
 message DailyBrief {
   string headline = 1;        // 1 sentence
   string narrative = 2;       // 2-3 sentences про шаблон последних 7 дней
-  repeated Recommendation recommendations = 3; // ровно 3
+  repeated BriefRecommendation recommendations = 3; // ровно 3
   google.protobuf.Timestamp generated_at = 4;
 }
 
