@@ -12,6 +12,10 @@
 // Префикс /v1/traces SDK добавит сам (otlptracehttp использует UrlPath="/v1/traces").
 package otel
 
+// SDK 1.39 detector'ы (Process / Host / FromEnv) hard-baked на schema
+// v1.37.0 — раньше у нас был v1.26.0, и resource.New падал с
+// «conflicting Schema URL: 1.26.0 vs 1.37.0». Поэтому импорт semconv
+// pin'нут на v1.37.0 — см. также middleware.go и pgx.go.
 import (
 	"context"
 	"fmt"
@@ -25,10 +29,6 @@ import (
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/sdk/resource"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
-	// SDK 1.39 detector'ы (Process / Host / FromEnv) hard-baked на schema
-	// v1.37.0 — раньше у нас был v1.26.0, и `resource.New` падал с
-	// «conflicting Schema URL: 1.26.0 vs 1.37.0». Унифицируем на v1.37.0
-	// чтобы merge с автодетектами не конфликтовал.
 	semconv "go.opentelemetry.io/otel/semconv/v1.37.0"
 	"go.opentelemetry.io/otel/trace"
 )

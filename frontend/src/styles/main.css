@@ -2,7 +2,7 @@
    New pages live in /src/v2/ and use Tailwind classes from /tailwind.config.ts.
    Legacy RPG pages still use /styles/tokens.css unchanged. */
 
-@import url('https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700;800&family=Geist+Mono:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700;800&family=Geist+Mono:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@300;400;500;600&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -12,22 +12,32 @@
   /* DARK theme (default). Values are space-separated RGB triplets, consumed via rgb(var(--x) / <alpha>) */
   :root,
   .dark {
-    --color-bg: 10 10 15;            /* #0A0A0F */
-    --color-surface-1: 20 20 37;     /* #141425 */
-    --color-surface-2: 26 26 46;     /* #1A1A2E */
-    --color-surface-3: 45 27 77;     /* #2D1B4D */
-    --color-border: 34 34 51;        /* #222233 */
-    --color-border-strong: 42 42 63; /* #2A2A3F */
+    --color-bg: 0 0 0;               /* #000 — pure black per Hone palette */
+    --color-surface-1: 10 10 10;     /* #0A0A0A */
+    --color-surface-2: 17 17 17;     /* #111111 */
+    --color-surface-3: 26 26 26;     /* #1A1A1A */
+    --color-border: 26 26 26;        /* ~rgba(255,255,255,0.06) over black */
+    --color-border-strong: 38 38 38; /* ~rgba(255,255,255,0.12) over black */
     --color-text-primary: 255 255 255;
-    --color-text-secondary: 192 192 192;
-    --color-text-muted: 138 138 158;
-    --color-accent: 88 44 255;       /* #582CFF */
+    --color-text-secondary: 200 200 200;
+    --color-text-muted: 140 140 140;
+    --color-accent: 88 44 255;       /* #582CFF — kept for legacy components */
     --color-accent-hover: 109 67 255;/* #6D43FF */
     --color-success: 16 185 129;
-    --color-danger: 239 68 68;
+    --color-danger: 255 59 48;       /* #FF3B30 — Hone red */
     --color-warn: 251 191 36;
     --color-cyan: 34 211 238;
     --color-pink: 244 114 182;
+
+    /* Hone-derived tokens — used by minimalist surfaces (Welcome landing). */
+    --ink: 255 255 255;
+    --ink-90: rgba(255,255,255,0.9);
+    --ink-60: rgba(255,255,255,0.6);
+    --ink-40: rgba(255,255,255,0.4);
+    --ink-20: rgba(255,255,255,0.2);
+    --hair: rgba(255,255,255,0.06);
+    --hair-2: rgba(255,255,255,0.12);
+    --red: #FF3B30;
   }
 
   .light {
@@ -134,6 +144,24 @@
     background-clip: text;
     color: transparent;
   }
+  /* Hone-style helpers — minimalist landing (Welcome page). */
+  .mono {
+    font-family: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+    font-feature-settings: "zero", "ss01";
+  }
+  .no-select { user-select: none; -webkit-user-select: none; }
+  @keyframes redpulse {
+    0%   { box-shadow: 0 0 0 0 rgba(255,59,48,.55); }
+    70%  { box-shadow: 0 0 0 8px rgba(255,59,48,0); }
+    100% { box-shadow: 0 0 0 0 rgba(255,59,48,0); }
+  }
+  .red-pulse { animation: redpulse 1.8s ease-out infinite; }
+  @keyframes hone-fadein {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  .hone-fadein { animation: hone-fadein 600ms cubic-bezier(.2,.7,.2,1) both; }
+
   /* Used by ShareScreenshotMode to suppress chrome around the 1200x630 stage. */
   body.share-screenshot-mode {
     overflow: hidden !important;
