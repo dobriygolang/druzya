@@ -51,6 +51,7 @@ func NewPodcast(d Deps) *Module {
 	if d.Cfg.MinIO.AccessKey != "" && d.Cfg.MinIO.SecretKey != "" && d.Cfg.MinIO.Endpoint != "" {
 		minioStore := podcastInfra.NewMinIOPodcastStore(
 			d.Cfg.MinIO.Endpoint,
+			d.Cfg.MinIO.PublicEndpoint,
 			d.Cfg.MinIO.AccessKey,
 			d.Cfg.MinIO.SecretKey,
 			minioBucketPodcasts(),

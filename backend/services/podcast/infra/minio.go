@@ -33,31 +33,37 @@ import (
 // MinIOPodcastStore implements domain.PodcastObjectStore against an
 // S3-compatible endpoint (MinIO in production).
 type MinIOPodcastStore struct {
-	Endpoint  string // "minio:9000" or "https://storage.druz9.online"
-	AccessKey string
-	SecretKey string
-	Bucket    string
-	Region    string
-	UseSSL    bool
-	HTTP      *http.Client
-	now       func() time.Time
+	Endpoint string // internal: "minio:9000" — для PUT/HEAD/DELETE
+	// PublicEndpoint — host который пишется в presigned URL, отдаваемый
+	// клиенту. Если пусто — Endpoint (dev/single-host). В прод обычно
+	// "https://druz9.online" (nginx /minio/* → minio:9000) или
+	// "https://storage.druz9.online".
+	PublicEndpoint string
+	AccessKey      string
+	SecretKey      string
+	Bucket         string
+	Region         string
+	UseSSL         bool
+	HTTP           *http.Client
+	now            func() time.Time
 }
 
 // NewMinIOPodcastStore wires a real store. bucket defaults to "podcasts"
-// when empty.
-func NewMinIOPodcastStore(endpoint, accessKey, secretKey, bucket string, useSSL bool) *MinIOPodcastStore {
+// when empty. publicEndpoint опциональный — fallback'ится на endpoint.
+func NewMinIOPodcastStore(endpoint, publicEndpoint, accessKey, secretKey, bucket string, useSSL bool) *MinIOPodcastStore {
 	if bucket == "" {
 		bucket = "podcasts"
 	}
 	return &MinIOPodcastStore{
-		Endpoint:  endpoint,
-		AccessKey: accessKey,
-		SecretKey: secretKey,
-		Bucket:    bucket,
-		Region:    "us-east-1",
-		UseSSL:    useSSL,
-		HTTP:      &http.Client{Timeout: 60 * time.Second},
-		now:       time.Now,
+		Endpoint:       endpoint,
+		PublicEndpoint: publicEndpoint,
+		AccessKey:      accessKey,
+		SecretKey:      secretKey,
+		Bucket:         bucket,
+		Region:         "us-east-1",
+		UseSSL:         useSSL,
+		HTTP:           &http.Client{Timeout: 60 * time.Second},
+		now:            time.Now,
 	}
 }
 
@@ -201,7 +207,10 @@ func (s *MinIOPodcastStore) PresignGet(ctx context.Context, objectKey string, tt
 		expirySec = 7 * 24 * 3600
 	}
 
-	parsed, err := url.Parse(s.objectURL(objectKey))
+	// Public URL: signature считается ОТ ТОГО же host'а который попадёт в
+	// финальный URL — иначе клиентская проверка SignedHeaders не сойдётся
+	// (мы подписываем `host:` header). Для этого используем publicObjectURL.
+	parsed, err := url.Parse(s.publicObjectURL(objectKey))
 	if err != nil {
 		return "", fmt.Errorf("podcast.minio.PresignGet: parse: %w", err)
 	}
@@ -276,13 +285,30 @@ func (s *MinIOPodcastStore) objectURL(objectKey string) string {
 	return s.baseURL() + "/" + s.Bucket + "/" + objectKey
 }
 
+// publicObjectURL отдаёт URL с PublicEndpoint (если задан) — для
+// signed-URL'ов отдаваемых клиенту. Без public — fallback на internal
+// (dev / single-host).
+func (s *MinIOPodcastStore) publicObjectURL(objectKey string) string {
+	return s.publicBaseURL() + "/" + s.Bucket + "/" + objectKey
+}
+
 func (s *MinIOPodcastStore) baseURL() string {
-	ep := s.Endpoint
+	return formatEndpoint(s.Endpoint, s.UseSSL)
+}
+
+func (s *MinIOPodcastStore) publicBaseURL() string {
+	if s.PublicEndpoint != "" {
+		return formatEndpoint(s.PublicEndpoint, s.UseSSL)
+	}
+	return s.baseURL()
+}
+
+func formatEndpoint(ep string, useSSL bool) string {
 	if strings.HasPrefix(ep, "http://") || strings.HasPrefix(ep, "https://") {
 		return strings.TrimRight(ep, "/")
 	}
 	scheme := "http"
-	if s.UseSSL {
+	if useSSL {
 		scheme = "https"
 	}
 	return scheme + "://" + ep

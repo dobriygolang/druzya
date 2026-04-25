@@ -13,6 +13,7 @@
 package app
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"io"
@@ -138,7 +139,24 @@ func (s *CMSService) CreatePodcast(ctx context.Context, in CreatePodcastInput) (
 		}
 	}
 	objectKey := buildObjectKey(in.AudioFilename)
-	if _, err := s.Store.PutAudio(ctx, objectKey, in.AudioBody, in.AudioLength, in.AudioContentType); err != nil {
+	// Если duration не передан — пробуем вытащить из mp3-frame'ов. Для
+	// этого читаем тело в буфер один раз; PutAudio тоже буферизует —
+	// двойной alloc, но podcast'ы небольшие (≤200 MB) и юзер благодарит
+	// за «не указывайте duration вручную». Не-mp3 → возвращается 0,
+	// падаем обратно на user-provided.
+	durationSec := in.DurationSec
+	body := in.AudioBody
+	if durationSec == 0 {
+		buf, rerr := io.ReadAll(in.AudioBody)
+		if rerr != nil {
+			return domain.CMSPodcast{}, fmt.Errorf("podcast.app.CreatePodcast: read audio: %w", rerr)
+		}
+		if extracted := extractMP3Duration(buf); extracted > 0 {
+			durationSec = extracted
+		}
+		body = bytes.NewReader(buf)
+	}
+	if _, err := s.Store.PutAudio(ctx, objectKey, body, in.AudioLength, in.AudioContentType); err != nil {
 		return domain.CMSPodcast{}, fmt.Errorf("podcast.app.CreatePodcast: %w", err)
 	}
 	row, err := s.Repo.CreateCMS(ctx, domain.CMSPodcastUpsert{
@@ -148,7 +166,7 @@ func (s *CMSService) CreatePodcast(ctx context.Context, in CreatePodcastInput) (
 		Host:        in.Host,
 		CategoryID:  in.CategoryID,
 		EpisodeNum:  in.EpisodeNum,
-		DurationSec: in.DurationSec,
+		DurationSec: durationSec,
 		AudioKey:    objectKey,
 		CoverURL:    in.CoverURL,
 		IsPublished: in.IsPublished,

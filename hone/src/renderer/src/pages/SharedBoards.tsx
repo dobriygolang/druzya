@@ -18,6 +18,7 @@ import { Excalidraw } from '@excalidraw/excalidraw';
 import type { ExcalidrawImperativeAPI } from '@excalidraw/excalidraw/types';
 import '@excalidraw/excalidraw/index.css';
 
+import { WEB_BASE_URL } from '../api/config';
 import {
   createWhiteboardRoom,
   getWhiteboardRoom,
@@ -412,17 +413,20 @@ function RoomView({ roomId, onBack }: { roomId: string; onBack: () => void }) {
     [],
   );
 
-  // Share — копирует room-id (не URL): web-route /whiteboard/{id} ещё
-  // не существует (404), пока что отдаём ID для join-by-id в Hone'е
-  // другого пользователя. URL-pattern вернётся когда web-роут поднимут.
+  const shareURL = `${WEB_BASE_URL}/whiteboard/${parsedId}`;
   const handleShare = async () => {
     try {
-      await navigator.clipboard.writeText(parsedId);
+      await navigator.clipboard.writeText(shareURL);
       setCopied(true);
       window.setTimeout(() => setCopied(false), 2000);
     } catch {
       /* ignore */
     }
+  };
+  const handleOpenWeb = async () => {
+    const bridge = typeof window !== 'undefined' ? window.hone : undefined;
+    if (bridge) await bridge.shell.openExternal(shareURL);
+    else window.open(shareURL, '_blank');
   };
 
   return (
@@ -491,23 +495,40 @@ function RoomView({ roomId, onBack }: { roomId: string; onBack: () => void }) {
         )}
         <div style={{ flex: 1 }} />
         {room && (
-          <button
-            onClick={() => void handleShare()}
-            className="focus-ring mono row"
-            style={{
-              padding: '6px 14px',
-              fontSize: 10,
-              letterSpacing: '.14em',
-              color: copied ? 'var(--ink)' : 'var(--ink-60)',
-              border: '1px solid rgba(255,255,255,0.1)',
-              borderRadius: 999,
-              background: copied ? 'rgba(255,255,255,0.06)' : 'transparent',
-              cursor: 'pointer',
-            }}
-            title="Copy room id — paste in another Hone via Join by ID"
-          >
-            {copied ? '✓ ROOM ID COPIED' : 'COPY ROOM ID'}
-          </button>
+          <>
+            <button
+              onClick={() => void handleShare()}
+              className="focus-ring mono row"
+              style={{
+                padding: '6px 14px',
+                fontSize: 10,
+                letterSpacing: '.14em',
+                color: copied ? 'var(--ink)' : 'var(--ink-60)',
+                border: '1px solid rgba(255,255,255,0.1)',
+                borderRadius: 999,
+                background: copied ? 'rgba(255,255,255,0.06)' : 'transparent',
+                cursor: 'pointer',
+              }}
+            >
+              {copied ? '✓ COPIED' : 'COPY URL'}
+            </button>
+            <button
+              onClick={() => void handleOpenWeb()}
+              className="focus-ring lift surface"
+              style={{
+                padding: '6px 14px',
+                fontSize: 12,
+                borderRadius: 999,
+                background: '#fff',
+                color: '#000',
+                fontWeight: 500,
+                border: 'none',
+                cursor: 'pointer',
+              }}
+            >
+              Open on web ↗
+            </button>
+          </>
         )}
       </header>
 

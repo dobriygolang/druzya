@@ -21,6 +21,13 @@ type Config struct {
 		AccessKey string
 		SecretKey string
 		UseSSL    bool
+		// PublicEndpoint — host который попадает в presigned URL, отдаваемый
+		// клиенту (web/desktop). Endpoint обычно internal Docker hostname
+		// (`minio:9000`), который браузер не разрезолвит. PublicEndpoint
+		// должен быть public-reachable: `https://druz9.online` (если nginx
+		// проксирует /minio/...) или прямой `https://storage.druz9.online`.
+		// Если пусто — fallback на Endpoint (dev / single-host setup).
+		PublicEndpoint string
 	}
 
 	ClickHouse struct {
@@ -121,6 +128,7 @@ func Load() (Config, error) {
 	c.MinIO.AccessKey = env("MINIO_ACCESS_KEY", "")
 	c.MinIO.SecretKey = env("MINIO_SECRET_KEY", "")
 	c.MinIO.UseSSL = envBool("MINIO_USE_SSL", false)
+	c.MinIO.PublicEndpoint = env("MINIO_PUBLIC_ENDPOINT", "")
 
 	c.ClickHouse.Addr = env("CLICKHOUSE_ADDR", "clickhouse:9000")
 	c.ClickHouse.Database = env("CLICKHOUSE_DB", "druz9")

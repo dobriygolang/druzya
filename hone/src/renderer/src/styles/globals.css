@@ -415,6 +415,44 @@ textarea {
   -webkit-backdrop-filter: blur(20px);
 }
 
+/* ─── Canvas-bg motion: crossing waves + floating stars ──────────────── */
+
+@keyframes wave-drift {
+  0% { transform: translate3d(-3%, 0, 0); }
+  50% { transform: translate3d(3%, 0, 0); }
+  100% { transform: translate3d(-3%, 0, 0); }
+}
+
+@keyframes wave-tilt {
+  0% { transform: translate3d(0, 0, 0) rotate(-0.6deg); }
+  50% { transform: translate3d(2%, 0, 0) rotate(0.6deg); }
+  100% { transform: translate3d(0, 0, 0) rotate(-0.6deg); }
+}
+
+@keyframes star-float {
+  0% { transform: translate3d(0, 0, 0); }
+  50% { transform: translate3d(var(--star-dx, 6px), var(--star-dy, -4px), 0); }
+  100% { transform: translate3d(0, 0, 0); }
+}
+
+@keyframes star-twinkle {
+  0%, 100% { opacity: var(--star-base, 0.5); }
+  50% { opacity: calc(var(--star-base, 0.5) + 0.25); }
+}
+
+.wave-layer {
+  position: absolute;
+  inset: -10% -10%;
+  will-change: transform;
+}
+
+.star {
+  position: absolute;
+  border-radius: 50%;
+  background: #fff;
+  will-change: transform, opacity;
+}
+
 /* Smooth segmented swap — для dock'а где hover меняет content без layout-jump */
 .swap-fade > * {
   transition: opacity var(--t-fast);
