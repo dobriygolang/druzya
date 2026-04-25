@@ -74,4 +74,15 @@ type IncidentRepo interface {
 	// overlap the window. Open incidents (ended_at IS NULL) are clamped to
 	// `now`.
 	DowntimeSeconds(ctx context.Context, window time.Duration, now time.Time) (int64, error)
+	// DailyBuckets returns a per-day status series (oldest → newest) of
+	// length `days`, derived from the incidents log. If `slug` is empty the
+	// page-wide worst status is reported; otherwise only incidents whose
+	// affected_services contains `slug` are considered.
+	DailyBuckets(ctx context.Context, slug string, days int, now time.Time) ([]StatusDayBucket, error)
+}
+
+// StatusDayBucket is one day of the per-service spark history.
+type StatusDayBucket struct {
+	Day    time.Time     // UTC start-of-day
+	Status StatusOverall // ok if no incident touched the day
 }

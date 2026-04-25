@@ -9,7 +9,13 @@
 import { Link } from 'react-router-dom'
 import { Check, ArrowLeft, AlertTriangle, AlertCircle } from 'lucide-react'
 import { Button } from '../components/Button'
-import { useStatusPageQuery, type StatusServiceState, type StatusIncident } from '../lib/queries/status'
+import {
+  useStatusHistoriesQuery,
+  useStatusPageQuery,
+  type StatusHistoryDay,
+  type StatusIncident,
+  type StatusServiceState,
+} from '../lib/queries/status'
 
 function TopBar() {
   return (
@@ -87,11 +93,12 @@ function heroConfigForStatus(s: string) {
 }
 
 function ServicesList({ services }: { services: StatusServiceState[] }) {
-  // We render a fixed number of "history bars" per service: 30 dummy bars
-  // because we don't yet expose a per-day history series. Bars all show as
-  // ok unless the current state is degraded/down — in which case the most
-  // recent ~5 bars flip color, matching the visual mockup. When the
-  // backend grows a real bucketed history this is the place to plug it in.
+  // Real per-day spark bars: GET /status/history?service=<slug>&days=30
+  // returns one bucket per UTC day, derived from the incidents log.
+  // Today's bucket is appended live from the current probe state so a
+  // fresh outage shows up before the next day rolls over.
+  const slugs = services.map((s) => s.slug || s.name).filter(Boolean)
+  const histories = useStatusHistoriesQuery(slugs, 30)
   return (
     <div className="overflow-hidden rounded-2xl bg-surface-2">
       <div className="flex items-center justify-between border-b border-border px-6 py-4">
@@ -105,8 +112,9 @@ function ServicesList({ services }: { services: StatusServiceState[] }) {
           Нет данных о сервисах
         </div>
       )}
-      {services.map((s) => {
-        const bars = buildSparkBars(s.status)
+      {services.map((s, idx) => {
+        const hist = histories[idx]?.data?.buckets
+        const bars = buildSparkBars(s.status, hist)
         return (
           <div
             key={s.slug || s.name}
@@ -151,16 +159,35 @@ function ServicesList({ services }: { services: StatusServiceState[] }) {
   )
 }
 
-function buildSparkBars(status: string): Array<'ok' | 'degraded' | 'down'> {
+function buildSparkBars(
+  current: string,
+  history?: StatusHistoryDay[],
+): Array<'ok' | 'degraded' | 'down'> {
+  const map = (s: string): 'ok' | 'degraded' | 'down' =>
+    s === 'down' ? 'down' : s === 'degraded' ? 'degraded' : 'ok'
   const total = 30
-  const out: Array<'ok' | 'degraded' | 'down'> = []
-  for (let i = 0; i < total; i++) out.push('ok')
-  if (status === 'degraded') {
-    for (let i = total - 5; i < total; i++) out[i] = 'degraded'
-  } else if (status === 'down') {
-    for (let i = total - 3; i < total; i++) out[i] = 'down'
+  // Fallback when history hasn't loaded yet — render all-ok with a hint
+  // of the current live state on the trailing bars so the row isn't flat
+  // during the first paint.
+  if (!history || history.length === 0) {
+    const out: Array<'ok' | 'degraded' | 'down'> = []
+    for (let i = 0; i < total; i++) out.push('ok')
+    if (current === 'degraded') {
+      for (let i = total - 3; i < total; i++) out[i] = 'degraded'
+    } else if (current === 'down') {
+      for (let i = total - 2; i < total; i++) out[i] = 'down'
+    }
+    return out
   }
-  return out
+  const tail = history.slice(-total).map((b) => map(b.status))
+  // Pad the head with 'ok' if the server returned fewer than total days.
+  while (tail.length < total) tail.unshift('ok')
+  // Overlay the live current status onto today's bucket so a degradation
+  // detected by Probe but not yet logged as an incident still surfaces.
+  const liveRank = current === 'down' ? 3 : current === 'degraded' ? 2 : 1
+  const lastRank = tail[total - 1] === 'down' ? 3 : tail[total - 1] === 'degraded' ? 2 : 1
+  if (liveRank > lastRank) tail[total - 1] = map(current)
+  return tail
 }
 
 function IncidentsCard({ incidents }: { incidents: StatusIncident[] }) {

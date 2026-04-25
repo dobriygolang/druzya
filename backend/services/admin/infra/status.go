@@ -111,6 +111,94 @@ func (i *Incidents) DowntimeSeconds(ctx context.Context, window time.Duration, n
 	return seconds, nil
 }
 
+// DailyBuckets builds a per-day status series for the last `days` days,
+// derived from incidents that overlap each day. When `slug` is empty the
+// page-wide worst status per day is returned; otherwise only incidents
+// whose affected_services contains `slug` are considered.
+//
+// Severity → status: critical → down, major/minor → degraded, no
+// incident → operational.
+func (i *Incidents) DailyBuckets(ctx context.Context, slug string, days int, now time.Time) ([]domain.StatusDayBucket, error) {
+	if days <= 0 {
+		days = 30
+	}
+	if days > 90 {
+		days = 90
+	}
+	end := now.UTC()
+	rows, err := i.pool.Query(ctx, `
+		WITH days AS (
+		  SELECT generate_series(
+		    date_trunc('day', $2::timestamptz) - (($3::int - 1) || ' day')::interval,
+		    date_trunc('day', $2::timestamptz),
+		    interval '1 day'
+		  )::timestamptz AS day_start
+		)
+		SELECT
+		  d.day_start,
+		  COALESCE(MAX(
+		    CASE LOWER(COALESCE(i.severity, ''))
+		      WHEN 'critical' THEN 3
+		      WHEN 'major'    THEN 2
+		      WHEN 'minor'    THEN 2
+		      ELSE 1
+		    END
+		  ), 1) AS rank
+		FROM days d
+		LEFT JOIN incidents i
+		  ON i.started_at < d.day_start + interval '1 day'
+		 AND COALESCE(i.ended_at, $2::timestamptz) > d.day_start
+		 AND ($1::text = '' OR $1 = ANY(i.affected_services))
+		GROUP BY d.day_start
+		ORDER BY d.day_start ASC`, slug, end, days)
+	if err != nil {
+		if isMissingRelation(err) {
+			return emptyBuckets(end, days), nil
+		}
+		return nil, fmt.Errorf("admin.Incidents.DailyBuckets: %w", err)
+	}
+	defer rows.Close()
+
+	out := make([]domain.StatusDayBucket, 0, days)
+	for rows.Next() {
+		var (
+			day  pgtype.Timestamptz
+			rank int
+		)
+		if err := rows.Scan(&day, &rank); err != nil {
+			return nil, fmt.Errorf("admin.Incidents.DailyBuckets: scan: %w", err)
+		}
+		out = append(out, domain.StatusDayBucket{
+			Day:    day.Time.UTC(),
+			Status: rankToStatus(rank),
+		})
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("admin.Incidents.DailyBuckets: rows.Err: %w", err)
+	}
+	return out, nil
+}
+
+func rankToStatus(r int) domain.StatusOverall {
+	switch r {
+	case 3:
+		return domain.StatusDown
+	case 2:
+		return domain.StatusDegraded
+	default:
+		return domain.StatusOperational
+	}
+}
+
+func emptyBuckets(end time.Time, days int) []domain.StatusDayBucket {
+	out := make([]domain.StatusDayBucket, 0, days)
+	day := time.Date(end.Year(), end.Month(), end.Day(), 0, 0, 0, 0, time.UTC).Add(-time.Duration(days-1) * 24 * time.Hour)
+	for k := 0; k < days; k++ {
+		out = append(out, domain.StatusDayBucket{Day: day.Add(time.Duration(k) * 24 * time.Hour), Status: domain.StatusOperational})
+	}
+	return out
+}
+
 // Compile-time assertion.
 var _ domain.IncidentRepo = (*Incidents)(nil)
 

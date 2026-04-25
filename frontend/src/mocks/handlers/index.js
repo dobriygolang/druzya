@@ -19,6 +19,7 @@ import { weeklyHandlers } from './weekly';
 import { matchesHandlers } from './matches';
 import { sysdesignHandlers } from './sysdesign';
 import { voiceHandlers } from './voice';
+import { statusHandlers } from './status';
 export const handlers = [
     ...authHandlers,
     ...profileHandlers,
@@ -37,4 +38,5 @@ export const handlers = [
     ...matchesHandlers,
     ...sysdesignHandlers,
     ...voiceHandlers,
+    ...statusHandlers,
 ];

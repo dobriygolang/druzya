@@ -180,6 +180,8 @@ func New(ctx context.Context, cfg *config.Config) (app *App, otelShutdown func()
 		// Admin CRUD over the canonical `tasks` table (Arena 1v1/2v2 +
 		// Daily Kata pool). Backend for the Arena Tasks tab in /admin.
 		services.NewAdminArenaTasks(deps),
+		// Public per-day status history → spark bars on /status.
+		services.NewStatusHistory(deps),
 		// VPS retention sweep — see cleanup_crons.go header for tables/
 		// policies. Pure background, no REST surface.
 		services.NewCleanupCrons(deps),
