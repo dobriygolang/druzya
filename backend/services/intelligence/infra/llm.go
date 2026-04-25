@@ -58,29 +58,52 @@ func NewLLMChainBriefSynthesiser(chain llmchain.ChatClient, log *slog.Logger) *L
 	return &LLMChainBriefSynthesiser{chain: chain, log: log, timeout: 30 * time.Second}
 }
 
-const briefSystemPrompt = `You are the morning AI-coach for Hone, a desktop focus cockpit for programmers.
+const briefSystemPrompt = `You are the AI-coach for druz9 — a unified product covering Hone (desktop focus cockpit), AI mock interviews, and competitive Arena (algorithms / SQL / system design / behavioral).
 
-Given the user's recent activity (focus stats last 7 days, plan items they skipped or completed, EndFocusSession reflections, top recently-touched notes), produce a personal morning brief.
+You see the FULL CROSS-PRODUCT picture of one user: focus sessions, daily kata streak, mock interview scores by section, arena win/loss/elo trends, today's task queue, free-form daily notes, recent file activity, weakest skills from the Skill Atlas. Your job: spot the actual bottleneck and tell the user what to do TODAY — concretely.
 
 Output EXACTLY this JSON shape, nothing else:
 {"headline":"...","narrative":"...","recommendations":[
-  {"kind":"tiny_task|schedule|review_note|unblock","title":"...","rationale":"...","target_id":"..."},
+  {"kind":"tiny_task|schedule|review_note|unblock|practice_skill|drill_mock|drill_kata","title":"...","rationale":"...","target_id":"..."},
   {"kind":"...","title":"...","rationale":"...","target_id":"..."},
   {"kind":"...","title":"...","rationale":"...","target_id":"..."}
 ]}
 
-Rules:
-- "headline": ONE short sentence (≤8 words). Capture the dominant pattern of the last 7 days. Examples: "Strong morning, then quiet.", "Three days of solid System Design work.", "You're avoiding databases again.".
-- "narrative": 2-3 sentences. Describe the pattern. Reference SPECIFIC numbers ("4 of 7 days >30 min focus") or SPECIFIC skipped/completed item titles. No platitudes, no encouragement, no "great job!". Be a coach, not a cheerleader.
-- "recommendations": EXACTLY 3 items. Each has:
-    - "kind": one of "tiny_task" | "schedule" | "review_note" | "unblock".
-    - "title": ONE short imperative sentence (≤10 words). What the user should do.
-    - "rationale": ONE sentence explaining why, citing the specific signal.
-    - "target_id": optional. For "review_note", this MUST be the note_id of one of the provided recent notes. For "unblock", this MUST be the item_id of one of the skipped plan items. Empty for "tiny_task" and "schedule".
-- Diversity: don't return three of the same kind. Aim for at least 2 distinct kinds across the 3 recommendations.
-- Anti-fluff: NEVER recommend "take a break" / "drink water" / "celebrate progress". Always tie to a concrete user signal.
-- "review_note" picks the note most relevant to the user's recent skips/reflections.
-- "unblock" addresses the most-frequently-skipped plan item by breaking it into a smaller first step.
+CORE RULES:
+
+1. NEVER use generic verbs. FORBIDDEN: "practice algorithms", "do system design", "work on databases", "review your notes", "be consistent", "keep going". These are useless. If you write one of these, you have failed.
+
+2. ALWAYS cite a SPECIFIC signal in rationale. Examples of good rationales:
+   - "Last system_design mock 3 days ago scored 5/10 — capacity-estimation called out as weak."
+   - "Lost 2 of 3 algorithms 1v1 matches this week, all under 8 minutes — pattern-recognition gap."
+   - "You skipped 'review prefix-sum' 4 times in 14 days — chronic avoidance."
+   - "Kata streak broke yesterday after 7 days, last cursed kata you missed was 2 days ago."
+   - "Today's queue: 0/4 done, 1 in_progress for 2h — task too big or stuck."
+   - "Daily note from yesterday mentions 'stuck on dynamic-programming' — addressing that today."
+
+3. SPECIFICITY HIERARCHY (use the most specific available):
+   a) If user has mock results with weak_topics → recommend mock with those weak_topics OR open a kata for that topic
+   b) If user has skill_progress data → recommend lowest-progress skill explicitly by skill_key
+   c) If user has skipped plan items → break the most-skipped one into a 5-min first step (kind: "unblock")
+   d) If user has fresh recent notes → "review_note" the most relevant one by note_id
+   Otherwise — if no specific signal → tiny task tied to today's queue
+
+4. RECOMMENDATION KINDS:
+   - "tiny_task": 5-15 min concrete action. target_id empty. Used when chronic avoidance is detected.
+   - "schedule": time-block in the day. target_id empty. Used when user has data but no plan structure today.
+   - "review_note": open a specific note. target_id = note_id (must match one of provided notes).
+   - "unblock": split a stuck task. target_id = item_id of the skipped plan item.
+   - "practice_skill": targeted skill drill. target_id = skill_key from WeakSkills/mocks.weak_topics.
+   - "drill_mock": schedule a mock interview. target_id = section name (algorithms|sql|go|system_design|behavioral).
+   - "drill_kata": tackle today's daily kata or a cursed one. target_id empty.
+
+5. NARRATIVE: 2-3 sentences. ALWAYS reference real numbers from the data: "4 of 7 days >30 min focus", "lost 3 in a row in arena", "kata streak: 12 days", "2 mocks this week, both system_design, scores 6 and 7". No platitudes. No "great job".
+
+6. HEADLINE: ONE short sentence (≤8 words). Capture the DOMINANT cross-product pattern. Examples: "System Design holding back; algorithms solid.", "12-day kata streak, but no deep focus.", "Three quiet days after Saturday burst.".
+
+7. ANTI-FLUFF: forbidden words/phrases — "take a break", "drink water", "celebrate", "you can do it", "don't forget to rest", "stay consistent", "keep up the good work". The user pays you to be honest, not nice.
+
+8. If signals are SPARSE (new user, < 3 days of data) — say so explicitly in narrative and recommend onboarding actions: schedule first mock, generate a daily plan, do today's daily kata. Don't fabricate insight from nothing.
 
 Return ONLY the JSON object. No prose, no code fences.`
 
@@ -128,6 +151,7 @@ func buildBriefUserPrompt(in domain.BriefPromptInput) string {
 	var sb strings.Builder
 	fmt.Fprintf(&sb, "Today: %s\n\n", in.Today.Format("2006-01-02 (Monday)"))
 
+	// ── HONE FOCUS SIGNALS ────────────────────────────────────────────
 	sb.WriteString("Focus last 7 days (date / seconds_focused / pomodoros):\n")
 	if len(in.FocusDays) == 0 {
 		sb.WriteString("  (no focus sessions on record)\n")
@@ -138,8 +162,84 @@ func buildBriefUserPrompt(in domain.BriefPromptInput) string {
 		}
 	}
 
+	// ── TODAY'S QUEUE (Hone Focus Queue) ──────────────────────────────
+	if in.Queue.Total > 0 {
+		fmt.Fprintf(&sb, "\nToday's task queue (total=%d, done=%d, in_progress=%d, todo=%d, ai_sourced=%d, user_sourced=%d):\n",
+			in.Queue.Total, in.Queue.Done, in.Queue.InProgress, in.Queue.Todo,
+			in.Queue.AISourced, in.Queue.UserSourced)
+		for _, line := range in.Queue.Items {
+			fmt.Fprintf(&sb, "  - [%s] (%s) skill=%q %q\n",
+				line.Status, line.Source, line.SkillKey, line.Title)
+		}
+	} else {
+		sb.WriteString("\nToday's task queue: empty (user hasn't generated plan or added tasks yet).\n")
+	}
+
+	// ── MOCK INTERVIEWS ────────────────────────────────────────────────
+	if len(in.Mocks) > 0 {
+		sb.WriteString("\nLast finished AI mock-interview sessions (most recent first; cite specific weak_topics in rationale; for drill_mock recommendations use section as target_id):\n")
+		for _, m := range in.Mocks {
+			weak := strings.Join(m.WeakTopics, ", ")
+			if weak == "" {
+				weak = "(no weak_topics in report)"
+			}
+			fmt.Fprintf(&sb, "  - %s · %s · score=%d/10 · weak=[%s] · %d min · finished %s\n",
+				m.Section, m.Difficulty, m.Score, weak, m.DurationMin,
+				m.FinishedAt.Format("2006-01-02"))
+		}
+	} else {
+		sb.WriteString("\nMock interviews: none in record. (Suggest scheduling one if user has skill weakness signals.)\n")
+	}
+
+	// ── KATA STREAK + RECENT ──────────────────────────────────────────
+	if in.KataStreak.Current > 0 || in.KataStreak.Longest > 0 {
+		fmt.Fprintf(&sb, "\nDaily kata streak: current=%d days, longest=%d days",
+			in.KataStreak.Current, in.KataStreak.Longest)
+		if in.KataStreak.LastKataDate != nil {
+			fmt.Fprintf(&sb, ", last_kata=%s", in.KataStreak.LastKataDate.Format("2006-01-02"))
+		}
+		sb.WriteString("\n")
+	}
+	if len(in.KataRecent) > 0 {
+		sb.WriteString("Recent kata attempts (passed marks streak-eligible):\n")
+		for _, k := range in.KataRecent {
+			tag := "passed"
+			if !k.Passed {
+				tag = "missed"
+			}
+			extra := ""
+			if k.IsCursed {
+				extra += " · cursed"
+			}
+			if k.IsWeeklyBoss {
+				extra += " · weekly_boss"
+			}
+			fmt.Fprintf(&sb, "  - %s · %s%s\n", k.KataDate.Format("2006-01-02"), tag, extra)
+		}
+	}
+
+	// ── ARENA MATCHES ─────────────────────────────────────────────────
+	if len(in.Arena) > 0 {
+		sb.WriteString("\nRecent arena matches (most recent first; outcome + elo delta + section signal frustration/growth):\n")
+		for _, a := range in.Arena {
+			fmt.Fprintf(&sb, "  - %s · %s · %s · elo_delta=%+d · solve=%dms · %s\n",
+				a.Section, a.Mode, a.Outcome, a.EloDelta, a.SolveTimeMs,
+				a.FinishedAt.Format("2006-01-02"))
+		}
+	}
+
+	// ── WEAK SKILLS (Skill Atlas) ─────────────────────────────────────
+	if len(in.WeakSkills) > 0 {
+		sb.WriteString("\nWeakest skills (top-5, cite skill_key as target_id for practice_skill recommendations):\n")
+		for _, w := range in.WeakSkills {
+			fmt.Fprintf(&sb, "  - skill_key=%q title=%q progress=%d/100\n",
+				w.SkillKey, w.Title, w.Progress)
+		}
+	}
+
+	// ── PLAN ITEMS ─────────────────────────────────────────────────────
 	if len(in.SkippedRecent) > 0 {
-		sb.WriteString("\nSkipped plan items (last 14 days, item_id may be quoted as target_id for an \"unblock\" recommendation):\n")
+		sb.WriteString("\nSkipped plan items (last 14 days, use item_id as target_id for \"unblock\"):\n")
 		for _, s := range in.SkippedRecent {
 			fmt.Fprintf(&sb, "  - id=%q skill=%q title=%q on %s\n",
 				s.ItemID, s.SkillKey, s.Title, s.PlanDate.Format("2006-01-02"))
@@ -152,6 +252,15 @@ func buildBriefUserPrompt(in domain.BriefPromptInput) string {
 				c.SkillKey, c.Title, c.PlanDate.Format("2006-01-02"))
 		}
 	}
+
+	// ── REFLECTIONS + DAILY NOTES (free-form intent) ──────────────────
+	if len(in.DailyNotes) > 0 {
+		sb.WriteString("\nRecent daily notes (free-form journal — read for intent / mood / topics user is thinking about):\n")
+		for _, n := range in.DailyNotes {
+			fmt.Fprintf(&sb, "  - [%s] %q\n",
+				n.Day.Format("2006-01-02"), firstN(n.Excerpt, 240))
+		}
+	}
 	if len(in.Reflections) > 0 {
 		sb.WriteString("\nRecent reflection lines (from EndFocusSession):\n")
 		for _, r := range in.Reflections {
@@ -160,14 +269,16 @@ func buildBriefUserPrompt(in domain.BriefPromptInput) string {
 		}
 	}
 	if len(in.RecentNotes) > 0 {
-		sb.WriteString("\nTop recent notes (note_id may be quoted as target_id for a \"review_note\" recommendation):\n")
+		sb.WriteString("\nTop recent notes (note_id quotable as target_id for \"review_note\"):\n")
 		for _, n := range in.RecentNotes {
 			fmt.Fprintf(&sb, "  - id=%q title=%q excerpt=%q\n",
 				n.NoteID.String(), n.Title, firstN(n.Excerpt, 200))
 		}
 	}
+
+	// ── COACH MEMORY (past interactions) ──────────────────────────────
 	if len(in.PastEpisodes) > 0 {
-		sb.WriteString("\nPast coach interactions (most relevant — DO NOT repeat verbatim. If user dismissed, avoid same kind. If followed, continue direction):\n")
+		sb.WriteString("\nPast coach interactions (DO NOT repeat verbatim. If user dismissed, avoid same kind. If followed, continue direction):\n")
 		for _, ep := range in.PastEpisodes {
 			fmt.Fprintf(&sb, "  - [%s · %s] %q\n",
 				ep.OccurredAt.Format("2006-01-02"),

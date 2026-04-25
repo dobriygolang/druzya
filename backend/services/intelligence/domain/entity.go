@@ -118,3 +118,82 @@ type NoteEmbedding struct {
 	Snippet   string // short snippet for citation hover
 	Embedding []float32
 }
+
+// ─── Cross-product signals для Coach prompt'а ─────────────────────────────
+//
+// MockSessionSummary — сессия AI mock-interview'а (services/ai_mock).
+// Score / weak topics парсятся из ai_report JSONB поля `score` (0..10)
+// и `weak_topics` (string[]). Если ai_report пусто или формат другой —
+// reader возвращает дефолты, чтобы Coach всё равно видел факт сессии.
+type MockSessionSummary struct {
+	SessionID   uuid.UUID
+	Section     string    // 'algorithms' | 'sql' | 'go' | 'system_design' | 'behavioral'
+	Difficulty  string    // 'easy' | 'medium' | 'hard'
+	Status      string    // 'finished' | 'abandoned' | 'in_progress'
+	Score       int       // 0..10, 0 если score не заполнен
+	WeakTopics  []string  // парсится из ai_report.weak_topics или пусто
+	FinishedAt  time.Time // zero если не finished
+	DurationMin int
+}
+
+// KataAttempt — одна daily kata запись из daily_kata_history.
+// passed bool nullable в DB → true/false — finished, nil — submitted_at IS NULL.
+type KataAttempt struct {
+	KataDate     time.Time
+	Passed       bool // false если ещё не сабмитили или не прошли
+	IsCursed     bool
+	IsWeeklyBoss bool
+	SubmittedAt  *time.Time
+}
+
+// KataStreak — current/longest streak из daily_streaks.
+type KataStreak struct {
+	Current      int
+	Longest      int
+	LastKataDate *time.Time
+}
+
+// ArenaMatchSummary — одна arena сессия для user'а. winning_team mapping
+// в won/lost/draw делается reader'ом (по сравнению participant.team).
+type ArenaMatchSummary struct {
+	MatchID     uuid.UUID
+	Section     string
+	Mode        string // 'solo_1v1' / 'duo_2v2' / 'ranked' / 'hardcore' / 'cursed'
+	Outcome     string // 'won' / 'lost' / 'draw' / 'abandoned'
+	EloDelta    int    // (elo_after - elo_before) для user'а
+	SolveTimeMs int64
+	FinishedAt  time.Time
+}
+
+// QueueSnapshot — статус focus-queue на сегодня.
+type QueueSnapshot struct {
+	Total       int
+	Done        int
+	InProgress  int
+	Todo        int
+	AISourced   int // сколько из total — AI-generated
+	UserSourced int // сколько — user-added
+	Items       []QueueLine
+}
+
+// QueueLine — одна строка today queue для prompt'а (compact projection).
+type QueueLine struct {
+	Title    string
+	Status   string // 'todo' / 'in_progress' / 'done'
+	Source   string // 'ai' / 'user'
+	SkillKey string
+}
+
+// SkillWeak — слабый skill из Skill Atlas (mirror hone.WeakNode).
+type SkillWeak struct {
+	SkillKey string
+	Title    string
+	Progress int // 0..100
+}
+
+// DailyNoteHead — head of yesterday's/today's free-form daily note (если
+// юзер писал в Today.Daily). Это не reflection, это intent/journal-style.
+type DailyNoteHead struct {
+	Day     time.Time
+	Excerpt string // first ~400 chars
+}

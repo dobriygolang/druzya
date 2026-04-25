@@ -35,6 +35,18 @@ type GetDailyBrief struct {
 	// Memory — optional. С ним brief получает «past coach interactions»
 	// в prompt и каждое generated brief пишется как brief_emitted episode.
 	Memory *Memory
+
+	// ── Cross-product readers (все nullable) ──
+	//
+	// Все шесть — opt-in. Если nil, соответствующая секция prompt'а
+	// просто не наполняется. Это позволяет частичный rollout: сначала
+	// поднимаем Mocks, потом добавляем Arena, и т.д.
+	Mocks      domain.MockReader
+	Kata       domain.KataReader
+	Arena      domain.ArenaReader
+	Queue      domain.QueueReader
+	Skills     domain.SkillReader
+	DailyNotes domain.DailyNoteReader
 }
 
 // GetDailyBriefInput — параметры use case'а.
@@ -106,6 +118,55 @@ func (uc *GetDailyBrief) Do(ctx context.Context, in GetDailyBriefInput) (domain.
 		return domain.DailyBrief{}, fmt.Errorf("intelligence.GetDailyBrief.Do: recent notes: %w", err)
 	}
 
+	// Cross-product сигналы — best-effort. Любой reader-error игнорируем
+	// и шлём пустой массив: лучше brief без mock-секции чем 503 на весь
+	// Coach.
+	var (
+		mocks      []domain.MockSessionSummary
+		kataStreak domain.KataStreak
+		kataRecent []domain.KataAttempt
+		arena      []domain.ArenaMatchSummary
+		queue      domain.QueueSnapshot
+		weakSkills []domain.SkillWeak
+		dailyNotes []domain.DailyNoteHead
+	)
+	if uc.Mocks != nil {
+		if v, mErr := uc.Mocks.LastNFinished(ctx, in.UserID, 5); mErr == nil {
+			mocks = v
+		} else if uc.Log != nil {
+			uc.Log.Warn("intelligence.GetDailyBrief: mocks reader failed",
+				slog.Any("err", mErr))
+		}
+	}
+	if uc.Kata != nil {
+		if v, kErr := uc.Kata.GetStreak(ctx, in.UserID); kErr == nil {
+			kataStreak = v
+		}
+		if v, kErr := uc.Kata.LastNAttempts(ctx, in.UserID, 7); kErr == nil {
+			kataRecent = v
+		}
+	}
+	if uc.Arena != nil {
+		if v, aErr := uc.Arena.LastNMatches(ctx, in.UserID, 5); aErr == nil {
+			arena = v
+		}
+	}
+	if uc.Queue != nil {
+		if v, qErr := uc.Queue.TodaySnapshot(ctx, in.UserID); qErr == nil {
+			queue = v
+		}
+	}
+	if uc.Skills != nil {
+		if v, sErr := uc.Skills.WeakestN(ctx, in.UserID, 5); sErr == nil {
+			weakSkills = v
+		}
+	}
+	if uc.DailyNotes != nil {
+		if v, dErr := uc.DailyNotes.RecentDailyNotes(ctx, in.UserID, 3); dErr == nil {
+			dailyNotes = v
+		}
+	}
+
 	brief, err := uc.Synthesiser.Synthesise(ctx, domain.BriefPromptInput{
 		UserID:          in.UserID,
 		Today:           today,
@@ -114,6 +175,13 @@ func (uc *GetDailyBrief) Do(ctx context.Context, in GetDailyBriefInput) (domain.
 		CompletedRecent: completed,
 		Reflections:     refl,
 		RecentNotes:     recent,
+		Mocks:           mocks,
+		KataStreak:      kataStreak,
+		KataRecent:      kataRecent,
+		Arena:           arena,
+		Queue:           queue,
+		WeakSkills:      weakSkills,
+		DailyNotes:      dailyNotes,
 	})
 	if err != nil {
 		// Pass-through — пусть transport сам решит как 503-ить.

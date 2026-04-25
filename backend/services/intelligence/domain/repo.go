@@ -52,6 +52,50 @@ type Embedder interface {
 	Embed(ctx context.Context, text string) ([]float32, string, error)
 }
 
+// ─── Cross-product readers ────────────────────────────────────────────────
+//
+// Coach service объединяет три продукта (Hone focus + druz9 mock-interview +
+// druz9 arena/codex) — эти reader'ы пробрасывают в prompt сигналы из
+// смежных доменов. Все adapter'ы — raw SQL в cmd/monolith/services/intelligence.go,
+// чтобы intelligence-domain не импортировал чужие infra-пакеты.
+
+// MockReader — последние finished mock-interview сессии. Coach использует
+// score / weak_topics для personalized recommendations: «last system_design
+// scored 6/10, weak on capacity-estimation — practice that today».
+type MockReader interface {
+	LastNFinished(ctx context.Context, userID uuid.UUID, n int) ([]MockSessionSummary, error)
+}
+
+// KataReader — daily kata streak + recent attempts. Сигнал «consistency».
+type KataReader interface {
+	GetStreak(ctx context.Context, userID uuid.UUID) (KataStreak, error)
+	LastNAttempts(ctx context.Context, userID uuid.UUID, n int) ([]KataAttempt, error)
+}
+
+// ArenaReader — recent arena matches с outcome + elo delta. Coach видит
+// «lost 3 algorithms 1v1 in a row, drop intensity, switch to katas».
+type ArenaReader interface {
+	LastNMatches(ctx context.Context, userID uuid.UUID, n int) ([]ArenaMatchSummary, error)
+}
+
+// QueueReader — снапшот сегодняшней Focus Queue. Coach видит «1/5 done,
+// you're behind — focus on first item».
+type QueueReader interface {
+	TodaySnapshot(ctx context.Context, userID uuid.UUID) (QueueSnapshot, error)
+}
+
+// SkillReader — top-N weak skills из Skill Atlas. Coach предлагает решать
+// конкретный weakest skill, а не абстрактные «practice algorithms».
+type SkillReader interface {
+	WeakestN(ctx context.Context, userID uuid.UUID, n int) ([]SkillWeak, error)
+}
+
+// DailyNoteReader — recent free-form daily notes (юзер пишет в Today). Это
+// signal of intent/mood/topics. Last 3 days хватит для контекста.
+type DailyNoteReader interface {
+	RecentDailyNotes(ctx context.Context, userID uuid.UUID, n int) ([]DailyNoteHead, error)
+}
+
 // BriefSynthesizer generates the daily brief via TaskDailyBrief. Real impl
 // returns strict JSON parsed into the struct; floor returns ErrLLMUnavailable.
 type BriefSynthesizer interface {
@@ -71,6 +115,30 @@ type BriefPromptInput struct {
 	// «past coach interactions» — синтезайзер избегает повторов и
 	// корректирует тон под историю user-реакций.
 	PastEpisodes []Episode
+
+	// ── Cross-product сигналы (могут быть пустыми если reader не wired) ──
+
+	// Mocks — последние finished mock-interview сессии. Score + weak_topics
+	// дают specific recommendations вместо generic «do system design».
+	Mocks []MockSessionSummary
+
+	// KataStreak / KataRecent — daily kata consistency (current_streak)
+	// + последние passed/failed attempts.
+	KataStreak KataStreak
+	KataRecent []KataAttempt
+
+	// Arena — последние arena-matches: section, outcome, elo delta. Coach
+	// видит losing-streak, frustration patterns.
+	Arena []ArenaMatchSummary
+
+	// Queue — снапшот today queue. «You're 1/5 done на сегодня».
+	Queue QueueSnapshot
+
+	// WeakSkills — top-5 weakest skills. Самый прямой сигнал «что качать».
+	WeakSkills []SkillWeak
+
+	// DailyNotes — head'ы recent free-form daily notes. Mood / intent signal.
+	DailyNotes []DailyNoteHead
 }
 
 // AskNotesPromptInput — вход для NoteAnswerer (Phase B). Past Q&A

@@ -245,7 +245,9 @@ func TestEndFocus_UsesCustomQualifyingSecondsWhenSet(t *testing.T) {
 		Now:               fixedNow,
 		QualifyingSeconds: 42,
 	}
-	_, _ = uc.Do(context.Background(), EndFocusInput{UserID: uuid.New(), SessionID: uuid.New()})
+	// SecondsFocused>=60 чтобы пройти через insta-stop фильтр в EndFocus.Do.
+	// Сессии короче минуты не вызывают ApplyFocusSession (см. focus.go).
+	_, _ = uc.Do(context.Background(), EndFocusInput{UserID: uuid.New(), SessionID: uuid.New(), SecondsFocused: 60})
 	if streak.applyCalls[0].threshold != 42 {
 		t.Fatalf("threshold = %d, want 42", streak.applyCalls[0].threshold)
 	}

@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"net/http"
 	"strings"
+	"time"
 
 	"druz9/editor/domain"
 	"druz9/shared/enums"
@@ -74,21 +75,7 @@ func (h *WSHandler) Handle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Participant gate — the caller must already be in the room. Owner is
-	// auto-seeded on create; invitees are added when they accept the HMAC
-	// link (HTTP endpoint wiring; out of scope for this PR).
-	role, err := h.Participants.GetRole(r.Context(), roomID, uid)
-	if err != nil {
-		if errors.Is(err, domain.ErrNotFound) {
-			http.Error(w, "not a participant", http.StatusForbidden)
-			return
-		}
-		http.Error(w, "internal", http.StatusInternalServerError)
-		return
-	}
-	// Also bail early if the room is missing (participant was deleted first).
-	// Room state itself is consulted on each op via Hub.RoomResolver; here we
-	// only care that the row exists right now.
+	// Get room first — нужен для visibility check + auto-join logic.
 	room, roomErr := h.Rooms.Get(r.Context(), roomID)
 	if roomErr != nil {
 		if errors.Is(roomErr, domain.ErrNotFound) {
@@ -99,12 +86,52 @@ func (h *WSHandler) Handle(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "internal", http.StatusInternalServerError)
 		return
 	}
-	// Visibility=private gate: только owner может join'иться. Existing
-	// participants (которых owner раньше invited когда было shared) пропускаем —
-	// participant-check выше их уже валидировал.
+
+	// Visibility=private gate: только owner. Existing participants
+	// (которых owner раньше invited когда было shared, потом flipped private)
+	// пропускаем через participant-check ниже.
 	if room.Visibility == domain.VisibilityPrivate && uid != room.OwnerID {
-		http.Error(w, "private room: not authorized", http.StatusForbidden)
-		return
+		// Если уже participant — пропускаем. Иначе 403.
+		if _, gerr := h.Participants.GetRole(r.Context(), roomID, uid); errors.Is(gerr, domain.ErrNotFound) {
+			http.Error(w, "private room: not authorized", http.StatusForbidden)
+			return
+		}
+	}
+
+	// Participant gate с auto-join для shared rooms. Раньше WS требовал
+	// существующую participant-row для всех — гость пытался коннектиться
+	// и получал 403 «not a participant». Mirror'им whiteboard auto-join:
+	// для shared visibility, любой залогиненный юзер при первом WS-connect
+	// добавляется как participant (role=participant, не viewer — может
+	// edit'ить). У owner'а role=owner всегда (DB-инвариант).
+	role, err := h.Participants.GetRole(r.Context(), roomID, uid)
+	if err != nil {
+		if !errors.Is(err, domain.ErrNotFound) {
+			http.Error(w, "internal", http.StatusInternalServerError)
+			return
+		}
+		// Not yet a participant. Если shared → auto-add. Если private →
+		// уже отбили выше (только owner-bypass).
+		if room.Visibility != domain.VisibilityShared {
+			http.Error(w, "not a participant", http.StatusForbidden)
+			return
+		}
+		_, addErr := h.Participants.Add(r.Context(), domain.Participant{
+			RoomID:   roomID,
+			UserID:   uid,
+			Role:     enums.EditorRoleParticipant,
+			JoinedAt: time.Now().UTC(),
+		})
+		if addErr != nil {
+			h.Log.Warn("editor.ws: auto-join failed", slog.Any("err", addErr))
+			http.Error(w, "internal", http.StatusInternalServerError)
+			return
+		}
+		role = enums.EditorRoleParticipant
+		h.Log.Info("editor.ws.auto_join",
+			slog.String("room", roomID.String()),
+			slog.String("user", uid.String()),
+			slog.String("visibility", string(room.Visibility)))
 	}
 
 	ws, err := h.Upgrader.Upgrade(w, r, nil)

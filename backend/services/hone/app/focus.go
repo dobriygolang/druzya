@@ -104,11 +104,15 @@ func (uc *EndFocus) Do(ctx context.Context, in EndFocusInput) (domain.FocusSessi
 	// simplicity — drift window is one focus session and gets corrected
 	// on the next End call. Migrate to single-TX via FocusRepo.EndWithStreak
 	// if reconciliation noise shows up in logs.
+	//
+	// Skip insta-stop сессии (<60s) чтобы юзеры которые тестируют таймер
+	// или случайно нажимают Start не получали ложные «10 sessions today».
+	// Real focus = минимум минута. Streak/coach-stats остаются чистыми.
 	day := now.Truncate(24 * time.Hour)
-	if _, err := uc.Streaks.ApplyFocusSession(ctx, in.UserID, day, in.SecondsFocused, 1, threshold); err != nil {
-		// Don't fail the client — the session is ended and stored. Log so
-		// the streak reconciliation job (background) can pick up the miss.
-		uc.Log.Error("hone.EndFocus.Do: streak apply failed", slog.Any("err", err), slog.String("session_id", in.SessionID.String()))
+	if in.SecondsFocused >= 60 {
+		if _, err := uc.Streaks.ApplyFocusSession(ctx, in.UserID, day, in.SecondsFocused, 1, threshold); err != nil {
+			uc.Log.Error("hone.EndFocus.Do: streak apply failed", slog.Any("err", err), slog.String("session_id", in.SessionID.String()))
+		}
 	}
 
 	// Coach memory: hook'ы fire-and-forget. Caller-context может уже
