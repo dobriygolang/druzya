@@ -305,12 +305,16 @@ func (s *Streaks) ApplyFocusSession(ctx context.Context, userID uuid.UUID, day t
 	// 2. Upsert day row, return post-update flag.
 	var nowQualifying bool
 	err = tx.QueryRow(ctx,
+		// Casts on $3 / $5 — без них pgx упирается в «inconsistent types
+		// deduced for parameter $3» (тот же параметр используется и как
+		// integer column-value в INSERT, и как операнд сравнения, что путает
+		// type-inference). Явный ::int снимает неоднозначность.
 		`INSERT INTO hone_streak_days (user_id, day, focused_seconds, sessions_count, qualifies_streak)
-		 VALUES ($1, $2, $3, $4, $3 >= $5)
+		 VALUES ($1, $2, $3::int, $4::int, $3::int >= $5::int)
 		 ON CONFLICT (user_id, day) DO UPDATE
 		   SET focused_seconds = hone_streak_days.focused_seconds + EXCLUDED.focused_seconds,
 		       sessions_count  = hone_streak_days.sessions_count  + EXCLUDED.sessions_count,
-		       qualifies_streak = (hone_streak_days.focused_seconds + EXCLUDED.focused_seconds) >= $5,
+		       qualifies_streak = (hone_streak_days.focused_seconds + EXCLUDED.focused_seconds) >= $5::int,
 		       updated_at = now()
 		 RETURNING qualifies_streak`,
 		sharedpg.UUID(userID),
@@ -492,8 +496,9 @@ func (s *Streaks) RecomputeDay(ctx context.Context, userID uuid.UUID, day time.T
 
 	var nowQualifying bool
 	err = tx.QueryRow(ctx,
+		// См. ApplyFocusSession — те же каст'ы для type-inference.
 		`INSERT INTO hone_streak_days (user_id, day, focused_seconds, sessions_count, qualifies_streak)
-		 VALUES ($1, $2, $3, $4, $3 >= $5)
+		 VALUES ($1, $2, $3::int, $4::int, $3::int >= $5::int)
 		 ON CONFLICT (user_id, day) DO UPDATE
 		   SET focused_seconds = EXCLUDED.focused_seconds,
 		       sessions_count  = EXCLUDED.sessions_count,

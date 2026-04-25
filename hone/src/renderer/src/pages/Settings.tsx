@@ -16,6 +16,12 @@
 import { useEffect, useState } from 'react';
 
 import { CanvasBg, type ThemeId, THEME_IDS } from '../components/CanvasBg';
+import {
+  getStorageQuota,
+  formatBytes,
+  tierLabel,
+  type StorageQuota,
+} from '../api/storage';
 
 interface HoneSettings {
   pomodoroMinutes: number;
@@ -142,6 +148,14 @@ export function SettingsPage({ theme, onThemeChange }: SettingsPageProps) {
         {/* ── Audio ────────────────────────────────────────────── */}
         <Section title="AUDIO" hint="Default volume when ambient sound starts.">
           <Slider min={0} max={100} step={5} value={settings.defaultVolume} onChange={setVol} unit="%" />
+        </Section>
+
+        {/* ── Storage ──────────────────────────────────────────── */}
+        <Section
+          title="STORAGE"
+          hint="How much of your tier you've used. Free tier is single-device; Pro syncs across devices."
+        >
+          <StorageSection />
         </Section>
 
         {/* ── Notifications ────────────────────────────────────── */}
@@ -395,6 +409,115 @@ function ShortcutRow({ keys, label }: { keys: string[]; label: string }) {
         ))}
       </span>
       <span style={{ fontSize: 12.5, color: 'var(--ink-60)' }}>{label}</span>
+    </div>
+  );
+}
+
+// StorageSection — usage-bar plus tier badge. Один fetch на mount;
+// данные с бэкенда отстают до часа (cron — см. backend services/storage.go),
+// поэтому realtime refresh не имеет смысла. Если backend упал или юзер
+// не залогинен — показываем neutral placeholder, не фейлим страницу.
+function StorageSection() {
+  const [data, setData] = useState<StorageQuota | null>(null);
+  const [errored, setErrored] = useState(false);
+
+  useEffect(() => {
+    let live = true;
+    void getStorageQuota()
+      .then((q) => {
+        if (live) setData(q);
+      })
+      .catch(() => {
+        if (live) setErrored(true);
+      });
+    return () => {
+      live = false;
+    };
+  }, []);
+
+  if (errored) {
+    return (
+      <div style={{ fontSize: 13, color: 'var(--ink-60)' }}>
+        Storage usage unavailable right now.
+      </div>
+    );
+  }
+  if (!data) {
+    return (
+      <div style={{ fontSize: 13, color: 'var(--ink-40)' }}>Loading…</div>
+    );
+  }
+
+  const pct = data.quotaBytes > 0 ? Math.min(100, (data.usedBytes / data.quotaBytes) * 100) : 0;
+  const overSoft = pct >= 80;
+
+  return (
+    <div>
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'baseline',
+          justifyContent: 'space-between',
+          marginBottom: 8,
+        }}
+      >
+        <span style={{ fontSize: 13, color: 'var(--ink-90)' }}>
+          {formatBytes(data.usedBytes)}{' '}
+          <span style={{ color: 'var(--ink-40)' }}>
+            / {formatBytes(data.quotaBytes)}
+          </span>
+        </span>
+        <span
+          className="mono"
+          style={{
+            fontSize: 10,
+            letterSpacing: '0.18em',
+            padding: '3px 8px',
+            borderRadius: 999,
+            border: '1px solid var(--ink-20)',
+            color: 'var(--ink-60)',
+          }}
+        >
+          {tierLabel(data.tier).toUpperCase()}
+        </span>
+      </div>
+      <div
+        style={{
+          height: 6,
+          borderRadius: 3,
+          background: 'var(--ink-10)',
+          overflow: 'hidden',
+        }}
+      >
+        <div
+          style={{
+            width: `${pct}%`,
+            height: '100%',
+            background: overSoft ? 'rgba(255,140,90,0.85)' : 'var(--ink-90)',
+            transition: 'width 240ms ease, background-color 180ms ease',
+          }}
+        />
+      </div>
+      {data.tier === 'free' && (
+        <div
+          style={{
+            marginTop: 14,
+            padding: '12px 14px',
+            borderRadius: 10,
+            border: '1px solid var(--ink-10)',
+            background: 'var(--surface)',
+          }}
+        >
+          <div style={{ fontSize: 13, color: 'var(--ink-90)', marginBottom: 4 }}>
+            Sync across devices · Pro
+          </div>
+          <div style={{ fontSize: 12, color: 'var(--ink-60)', lineHeight: 1.45 }}>
+            Free tier keeps data on this device only. Upgrade to sync notes,
+            whiteboards and coach memory between desktop and other devices —
+            10&nbsp;GB on Pro, 100&nbsp;GB on Pro+.
+          </div>
+        </div>
+      )}
     </div>
   );
 }

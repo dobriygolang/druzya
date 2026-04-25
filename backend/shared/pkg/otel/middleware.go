@@ -1,6 +1,9 @@
 package otel
 
 import (
+	"bufio"
+	"fmt"
+	"net"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
@@ -81,4 +84,19 @@ func (s *statusRecorder) Flush() {
 	if f, ok := s.ResponseWriter.(http.Flusher); ok {
 		f.Flush()
 	}
+}
+
+// Hijack пробрасывает в нижележащий ResponseWriter — gorilla/websocket
+// использует Hijacker при upgrade'е TCP-conn. Без этого все /ws/* endpoints
+// падают с «response does not implement http.Hijacker».
+func (s *statusRecorder) Hijack() (net.Conn, *bufio.ReadWriter, error) {
+	h, ok := s.ResponseWriter.(http.Hijacker)
+	if !ok {
+		return nil, nil, http.ErrNotSupported
+	}
+	conn, rw, err := h.Hijack()
+	if err != nil {
+		return nil, nil, fmt.Errorf("otel.statusRecorder.Hijack: %w", err)
+	}
+	return conn, rw, nil
 }

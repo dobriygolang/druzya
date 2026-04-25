@@ -182,6 +182,7 @@ func New(ctx context.Context, cfg *config.Config) (app *App, otelShutdown func()
 		services.NewEvents(deps, circlesMod),
 		services.NewLobby(deps),
 		services.NewSubscription(deps),
+		services.NewStorage(deps),
 		services.NewLLMChainAdmin(deps, llmRawChain, llmRegisteredProviders(llmRawChain)),
 	}
 
