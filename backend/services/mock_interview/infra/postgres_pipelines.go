@@ -318,7 +318,7 @@ func NewPipelineAttempts(pool *pgxpool.Pool) *PipelineAttempts { return &Pipelin
 
 const attemptCols = `id, pipeline_stage_id, kind, task_id, task_question_id, default_question_id, company_question_id,
 	COALESCE(user_answer_md,''), COALESCE(user_voice_url,''), COALESCE(user_excalidraw_image_url,''),
-	COALESCE(user_context_md,''), ai_score, ai_verdict, COALESCE(ai_feedback_md,''),
+	user_excalidraw_scene_json, COALESCE(user_context_md,''), ai_score, ai_verdict, COALESCE(ai_feedback_md,''),
 	ai_water_score, ai_missing_points, ai_judged_at, created_at`
 
 func scanAttempt(row pgx.Row) (domain.PipelineAttempt, error) {
@@ -327,6 +327,7 @@ func scanAttempt(row pgx.Row) (domain.PipelineAttempt, error) {
 		kind                                                         string
 		taskID, taskQID, defQID, coQID                               pgtype.UUID
 		userAnswer, userVoice, userExcalidraw, userContext, feedback string
+		sceneJSON                                                    []byte
 		aiScore, aiWater                                             pgtype.Float4
 		aiVerdict                                                    string
 		missing                                                      []byte
@@ -334,7 +335,7 @@ func scanAttempt(row pgx.Row) (domain.PipelineAttempt, error) {
 		createdAt                                                    time.Time
 	)
 	if err := row.Scan(&id, &pipelineStageID, &kind, &taskID, &taskQID, &defQID, &coQID,
-		&userAnswer, &userVoice, &userExcalidraw, &userContext, &aiScore, &aiVerdict,
+		&userAnswer, &userVoice, &userExcalidraw, &sceneJSON, &userContext, &aiScore, &aiVerdict,
 		&feedback, &aiWater, &missing, &judgedAt, &createdAt); err != nil {
 		return domain.PipelineAttempt{}, fmt.Errorf("row.Scan pipeline_attempts: %w", err)
 	}
@@ -343,17 +344,18 @@ func scanAttempt(row pgx.Row) (domain.PipelineAttempt, error) {
 		return domain.PipelineAttempt{}, err
 	}
 	out := domain.PipelineAttempt{
-		ID:                     sharedpg.UUIDFrom(id),
-		PipelineStageID:        sharedpg.UUIDFrom(pipelineStageID),
-		Kind:                   domain.AttemptKind(kind),
-		UserAnswerMD:           userAnswer,
-		UserVoiceURL:           userVoice,
-		UserExcalidrawImageURL: userExcalidraw,
-		UserContextMD:          userContext,
-		AIVerdict:              domain.AttemptVerdict(aiVerdict),
-		AIFeedbackMD:           feedback,
-		AIMissingPoints:        missingList,
-		CreatedAt:              createdAt,
+		ID:                      sharedpg.UUIDFrom(id),
+		PipelineStageID:         sharedpg.UUIDFrom(pipelineStageID),
+		Kind:                    domain.AttemptKind(kind),
+		UserAnswerMD:            userAnswer,
+		UserVoiceURL:            userVoice,
+		UserExcalidrawImageURL:  userExcalidraw,
+		UserExcalidrawSceneJSON: sceneJSON,
+		UserContextMD:           userContext,
+		AIVerdict:               domain.AttemptVerdict(aiVerdict),
+		AIFeedbackMD:            feedback,
+		AIMissingPoints:         missingList,
+		CreatedAt:               createdAt,
 	}
 	if taskID.Valid {
 		v := sharedpg.UUIDFrom(taskID)
@@ -485,18 +487,28 @@ func (r *PipelineAttempts) UpdateJudgeResult(ctx context.Context, id uuid.UUID, 
 	return nil
 }
 
-// UpdateCanvasResult — Phase D.1 atomic writeback for sysdesign canvas
-// attempts. Persists user-provided image url + context + answer body and
+// UpdateCanvasResult — F-3 v2 atomic writeback for sysdesign canvas
+// attempts. Persists the Excalidraw scene blob + context + answer body and
 // the judge's score/verdict/feedback/missing_points in a single UPDATE.
 // ai_water_score is forced to 0 (not applicable to diagrams).
+//
+// scene_json is jsonb; an empty/nil byte slice means "no scene captured"
+// and stays NULL. Callers who passed in legacy data URLs are no longer
+// supported — only scene JSON.
 func (r *PipelineAttempts) UpdateCanvasResult(ctx context.Context, id uuid.UUID, in domain.CanvasResultUpdate) error {
 	missing, err := marshalStringList(in.MissingPoints)
 	if err != nil {
 		return fmt.Errorf("mock_interview.PipelineAttempts.UpdateCanvasResult marshal: %w", err)
 	}
+	var scene any
+	if len(in.SceneJSON) > 0 {
+		scene = in.SceneJSON
+	} else {
+		scene = nil
+	}
 	tag, err := r.pool.Exec(ctx, `
 		UPDATE pipeline_attempts SET
-			user_excalidraw_image_url = NULLIF($2, ''),
+			user_excalidraw_scene_json = $2::jsonb,
 			user_context_md = NULLIF($3, ''),
 			user_answer_md = NULLIF($4, ''),
 			ai_score = $5,
@@ -506,7 +518,7 @@ func (r *PipelineAttempts) UpdateCanvasResult(ctx context.Context, id uuid.UUID,
 			ai_missing_points = $8,
 			ai_judged_at = now()
 		WHERE id=$1`,
-		sharedpg.UUID(id), in.ImageDataURL, in.ContextMD, in.UserAnswerMD,
+		sharedpg.UUID(id), scene, in.ContextMD, in.UserAnswerMD,
 		pgtype.Float4{Float32: in.Score, Valid: true},
 		string(in.Verdict), in.Feedback, missing)
 	if err != nil {

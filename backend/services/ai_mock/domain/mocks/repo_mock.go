@@ -73,17 +73,17 @@ func (mr *MockSessionRepoMockRecorder) Get(ctx, id any) *gomock.Call {
 }
 
 // UpdateReport mocks base method.
-func (m *MockSessionRepo) UpdateReport(ctx context.Context, id uuid.UUID, reportJSON []byte, replayURL string) error {
+func (m *MockSessionRepo) UpdateReport(ctx context.Context, id uuid.UUID, reportJSON []byte) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "UpdateReport", ctx, id, reportJSON, replayURL)
+	ret := m.ctrl.Call(m, "UpdateReport", ctx, id, reportJSON)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // UpdateReport indicates an expected call of UpdateReport.
-func (mr *MockSessionRepoMockRecorder) UpdateReport(ctx, id, reportJSON, replayURL any) *gomock.Call {
+func (mr *MockSessionRepoMockRecorder) UpdateReport(ctx, id, reportJSON any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateReport", reflect.TypeOf((*MockSessionRepo)(nil).UpdateReport), ctx, id, reportJSON, replayURL)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateReport", reflect.TypeOf((*MockSessionRepo)(nil).UpdateReport), ctx, id, reportJSON)
 }
 
 // UpdateStatus mocks base method.
@@ -367,45 +367,6 @@ func (m *MockLLMProvider) Stream(ctx context.Context, req domain.CompletionReque
 func (mr *MockLLMProviderMockRecorder) Stream(ctx, req any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Stream", reflect.TypeOf((*MockLLMProvider)(nil).Stream), ctx, req)
-}
-
-// MockReplayUploader is a mock of ReplayUploader interface.
-type MockReplayUploader struct {
-	ctrl     *gomock.Controller
-	recorder *MockReplayUploaderMockRecorder
-	isgomock struct{}
-}
-
-// MockReplayUploaderMockRecorder is the mock recorder for MockReplayUploader.
-type MockReplayUploaderMockRecorder struct {
-	mock *MockReplayUploader
-}
-
-// NewMockReplayUploader creates a new mock instance.
-func NewMockReplayUploader(ctrl *gomock.Controller) *MockReplayUploader {
-	mock := &MockReplayUploader{ctrl: ctrl}
-	mock.recorder = &MockReplayUploaderMockRecorder{mock}
-	return mock
-}
-
-// EXPECT returns an object that allows the caller to indicate expected use.
-func (m *MockReplayUploader) EXPECT() *MockReplayUploaderMockRecorder {
-	return m.recorder
-}
-
-// Upload mocks base method.
-func (m *MockReplayUploader) Upload(ctx context.Context, sessionID uuid.UUID, payload []byte) (string, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Upload", ctx, sessionID, payload)
-	ret0, _ := ret[0].(string)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// Upload indicates an expected call of Upload.
-func (mr *MockReplayUploaderMockRecorder) Upload(ctx, sessionID, payload any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Upload", reflect.TypeOf((*MockReplayUploader)(nil).Upload), ctx, sessionID, payload)
 }
 
 // MockRateLimiter is a mock of RateLimiter interface.

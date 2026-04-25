@@ -759,6 +759,93 @@ textarea {
   color: var(--ink);
   font-size: 15px;
   line-height: 1.7;
+  /* Caret-color: frame-dark по дефолту делает caret transparent на нашем
+     palette'е → курсор не виден. Принудительно ставим ink-цвет. */
+  caret-color: var(--ink);
+}
+
+/* Block-handle (6 точек drag) — оставляем, «+» add-button прячем.
+   Component renders два .operation-item — first-child = «+», second = drag.
+   Plus убираем CSS-transition lag (Crepe ставит 0.2s все-property).
+
+   КРИТИЧНО: используем width:0 + visibility:hidden (НЕ display:none).
+   Crepe позиционирует .milkdown-block-handle относительно текста через
+   absolute coords, рассчитанные на ширину обоих .operation-item. С
+   display:none второй child уезжает на position'у первого → drag-target
+   оказывается left of реальной 6-dot icon, юзер должен «искать» drag-zone.
+   width:0 + overflow:hidden убирает «+» из layout, drag сидит ровно
+   там где пользователь видит точки. */
+.hone-milkdown-mount .milkdown .milkdown-block-handle {
+  transition: opacity 80ms ease;
+}
+.hone-milkdown-mount .milkdown .milkdown-block-handle .operation-item:first-child {
+  width: 0 !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  overflow: hidden;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+/* Slash-menu модалка — скрыта полностью. Markdown syntax (# / > / -)
+   остаётся как primary способ создания блоков. */
+.hone-milkdown-mount .milkdown .milkdown-slash-menu {
+  display: none !important;
+}
+
+/* Selection toolbar (B / I / S / <> / link) — компактные иконки.
+   Дефолт Crepe: 32×32 кнопка, svg 24×24, margin 6px → ~44px на item ×
+   6 items = ~280px-широкий popup. Юзер: «гигантская модалка». Ужимаем
+   до Notion-стиля: 22×22 кнопка, svg 14×14, margin 2px → ~26px на item. */
+.hone-milkdown-mount .milkdown .milkdown-toolbar {
+  border-radius: 6px !important;
+}
+.hone-milkdown-mount .milkdown .milkdown-toolbar .toolbar-item {
+  width: 24px !important;
+  height: 24px !important;
+  margin: 3px !important;
+  padding: 3px !important;
+  border-radius: 3px !important;
+}
+.hone-milkdown-mount .milkdown .milkdown-toolbar .toolbar-item svg {
+  width: 14px !important;
+  height: 14px !important;
+}
+.hone-milkdown-mount .milkdown .milkdown-toolbar .divider {
+  height: 14px !important;
+  margin: 5px 2px !important;
+}
+
+/* Link tooltip preview / edit — тоже из 24×24 + svg 24×24 в дефолте.
+   Сжимаем агрессивно. */
+.hone-milkdown-mount .milkdown .milkdown-link-edit,
+.hone-milkdown-mount .milkdown .milkdown-link-preview {
+  z-index: 100;
+  font-size: 11px !important;
+  padding: 4px 6px !important;
+  border-radius: 6px !important;
+  max-width: 320px;
+  gap: 4px !important;
+  transition: opacity 100ms ease;
+}
+.hone-milkdown-mount .milkdown .milkdown-link-preview a,
+.hone-milkdown-mount .milkdown .milkdown-link-edit input {
+  font-size: 11px !important;
+  padding: 2px 4px !important;
+}
+.hone-milkdown-mount .milkdown .milkdown-link-preview button,
+.hone-milkdown-mount .milkdown .milkdown-link-edit button,
+.hone-milkdown-mount .milkdown .milkdown-link-preview .link-icon,
+.hone-milkdown-mount .milkdown .milkdown-link-edit .link-icon {
+  width: 18px !important;
+  height: 18px !important;
+  padding: 0 !important;
+  margin: 0 !important;
+}
+.hone-milkdown-mount .milkdown .milkdown-link-preview svg,
+.hone-milkdown-mount .milkdown .milkdown-link-edit svg {
+  width: 12px !important;
+  height: 12px !important;
 }
 /* Inline code: subtle bg + monospace, не bright red. */
 .hone-milkdown-mount .milkdown .ProseMirror code {

@@ -60,7 +60,6 @@ const OnbStep3 = lazy(() => import('./pages/onboarding/Step3Skill'))
 const OnbStep4 = lazy(() => import('./pages/onboarding/Step4Task'))
 const MockSessionPage = lazy(() => import('./pages/MockSessionPage'))
 const MockResultPage = lazy(() => import('./pages/MockResultPage'))
-const MockReplayPage = lazy(() => import('./pages/MockReplayPage'))
 // Wave-11: multi-stage mock interview pipeline (company picker →
 // screening → go+sql → algo → sys_design → behavioral → debrief).
 const MockCompanyPicker = lazy(() => import('./pages/mock/MockCompanyPicker'))
@@ -180,7 +179,6 @@ export default function App() {
         <Route path="/mock/pipeline/:pipelineId/debrief" element={<MockPipelineDebrief />} />
         <Route path="/mock/:sessionId" element={<MockSessionPage />} />
         <Route path="/mock/:sessionId/result" element={<MockResultPage />} />
-        <Route path="/mock/:sessionId/replay" element={<MockReplayPage />} />
         {/* Phase-4 ADR-001 — niche/unsurfaced routes deleted:
             /native (legacy mock-round), /autopsy (post-mortem),
             /season (incomplete season pass), /rating (dup of profile

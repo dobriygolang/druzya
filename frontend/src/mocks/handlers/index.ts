@@ -19,7 +19,6 @@ import { streakHandlers } from './streak'
 import { weeklyHandlers } from './weekly'
 import { matchesHandlers } from './matches'
 import { sysdesignHandlers } from './sysdesign'
-import { replayHandlers } from './replay'
 import { voiceHandlers } from './voice'
 
 export const handlers = [
@@ -40,6 +39,5 @@ export const handlers = [
   ...weeklyHandlers,
   ...matchesHandlers,
   ...sysdesignHandlers,
-  ...replayHandlers,
   ...voiceHandlers,
 ]

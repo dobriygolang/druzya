@@ -125,7 +125,7 @@ func (f *fakeAttempts) UpdateCanvasResult(_ context.Context, id uuid.UUID, in do
 	if !ok {
 		return domain.ErrNotFound
 	}
-	a.UserExcalidrawImageURL = in.ImageDataURL
+	a.UserExcalidrawSceneJSON = in.SceneJSON
 	a.UserContextMD = in.ContextMD
 	a.UserAnswerMD = in.UserAnswerMD
 	score := in.Score
@@ -769,9 +769,11 @@ func TestSubmitCanvas_RoutesToVisionJudge_StoresResult(t *testing.T) {
 	}
 	o.Judge = cj
 
+	scene := []byte(`{"elements":[],"files":{}}`)
 	out, err := o.SubmitCanvas(context.Background(), SubmitCanvasInput{
 		AttemptID: attID, UserID: owner,
 		ImageDataURL:    tinyPNGDataURL,
+		SceneJSON:       scene,
 		ContextMD:       "Cassandra потому что write-heavy",
 		NonFunctionalMD: "p99 < 100ms",
 	})
@@ -784,8 +786,8 @@ func TestSubmitCanvas_RoutesToVisionJudge_StoresResult(t *testing.T) {
 	if out.AIVerdict != domain.AttemptVerdictPass {
 		t.Errorf("verdict=%s, want pass", out.AIVerdict)
 	}
-	if out.UserExcalidrawImageURL != tinyPNGDataURL {
-		t.Errorf("image url not persisted")
+	if string(out.UserExcalidrawSceneJSON) != string(scene) {
+		t.Errorf("scene JSON not persisted: got %q", string(out.UserExcalidrawSceneJSON))
 	}
 	if out.UserContextMD == "" {
 		t.Errorf("context_md not persisted")

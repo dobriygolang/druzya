@@ -1,11 +1,7 @@
 package services
 
 import (
-	"context"
-	"log/slog"
-	"os"
 	"strings"
-	"time"
 
 	miApp "druz9/mock_interview/app"
 	miDomain "druz9/mock_interview/domain"
@@ -46,30 +42,6 @@ func NewMockInterview(d Deps) *Module {
 	// Phase B orchestrator + LLM judge.
 	judge := miApp.NewLLMJudge(d.LLMChain, d.Log)
 
-	// F-3: out-of-band canvas image storage. When MinIO creds are wired we
-	// construct the real store + ensure the bucket on boot; otherwise we
-	// pass the explicit unconfigured fallback so SubmitCanvas degrades to
-	// inline-data-url storage rather than crashing.
-	var canvas miDomain.CanvasStore = miInfra.NewUnconfiguredCanvasStore()
-	if d.Cfg.MinIO.AccessKey != "" && d.Cfg.MinIO.SecretKey != "" && d.Cfg.MinIO.Endpoint != "" {
-		miStore := miInfra.NewMinIOCanvasStore(
-			d.Cfg.MinIO.Endpoint,
-			d.Cfg.MinIO.PublicEndpoint,
-			d.Cfg.MinIO.AccessKey,
-			d.Cfg.MinIO.SecretKey,
-			minioBucketMockCanvas(),
-			d.Cfg.MinIO.UseSSL,
-		)
-		bootCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-		if err := miStore.EnsureBucket(bootCtx); err != nil {
-			d.Log.Warn("mock_interview: minio EnsureBucket failed; manual `mc mb` may be required",
-				slog.String("bucket", minioBucketMockCanvas()),
-				slog.Any("err", err))
-		}
-		cancel()
-		canvas = miStore
-	}
-
 	// F-2: code-execution sandbox for task_solve attempts. JUDGE0_URL points
 	// at the docker-compose `judge0-server`; when unset we wire the explicit
 	// unconfigured fallback so the orchestrator transparently uses LLM-only
@@ -92,26 +64,16 @@ func NewMockInterview(d Deps) *Module {
 		CompanyStages:  companyStages,
 		Strictness:     handlers, // *Handlers implements ResolveStrictness
 		Judge:          judge,
-		Canvas:         canvas,
 		Sandbox:        sandbox,
 		Now:            d.Now,
 		Log:            d.Log,
 	}
 
-	server := miPorts.NewServer(handlers, orch, canvas, d.Log)
+	server := miPorts.NewServer(handlers, orch, d.Log)
 
 	return &Module{
 		MountREST: func(r chi.Router) {
 			server.Mount(r)
 		},
 	}
-}
-
-// minioBucketMockCanvas reads MINIO_BUCKET_MOCK_CANVAS, default "mock-canvas".
-// Domain-local — we don't bloat shared/pkg/config for every bucket name.
-func minioBucketMockCanvas() string {
-	if v := os.Getenv("MINIO_BUCKET_MOCK_CANVAS"); v != "" {
-		return v
-	}
-	return "mock-canvas"
 }

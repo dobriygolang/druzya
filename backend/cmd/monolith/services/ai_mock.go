@@ -40,20 +40,6 @@ func NewAIMock(d Deps) *Module {
 	users := aimockInfra.NewUsers(d.Pool)
 	llm := aimockInfra.NewOpenRouter(d.Cfg.LLM.OpenRouterAPIKey)
 
-	// Use the real MinIO uploader iff the operator wired credentials in.
-	// Empty creds (e.g. local dev without docker-compose minio) fall back
-	// to the stub so the report worker still produces something useful.
-	var replay aimockDomain.ReplayUploader
-	if d.Cfg.MinIO.AccessKey != "" && d.Cfg.MinIO.SecretKey != "" && d.Cfg.MinIO.Endpoint != "" {
-		replay = aimockInfra.NewMinIOReplayUploader(
-			d.Cfg.MinIO.Endpoint,
-			d.Cfg.MinIO.AccessKey,
-			d.Cfg.MinIO.SecretKey,
-			d.Cfg.MinIO.UseSSL,
-		)
-	} else {
-		replay = aimockInfra.NewStubReplayUploader(d.Cfg.MinIO.Endpoint)
-	}
 	limiter := aimockInfra.NewRedisLimiter(d.Redis)
 	hub := aimockPorts.NewHub(d.Log)
 
@@ -62,7 +48,6 @@ func NewAIMock(d Deps) *Module {
 	reportWorker.Messages = messages
 	reportWorker.Tasks = tasks
 	reportWorker.LLM = llm
-	reportWorker.Replay = replay
 
 	createSession := &aimockApp.CreateSession{
 		Sessions: sessions, Tasks: tasks, Users: users, Companies: companies,

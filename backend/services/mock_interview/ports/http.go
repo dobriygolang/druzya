@@ -825,9 +825,7 @@ func (s *Server) publicGetPipeline(w http.ResponseWriter, r *http.Request) {
 			writeErr(w, http.StatusNotFound, "not found")
 			return
 		}
-		dto := toPipelineFullDTO(full)
-		s.presignPipelineFull(r.Context(), &dto)
-		writeJSON(w, http.StatusOK, dto)
+		writeJSON(w, http.StatusOK, toPipelineFullDTO(full))
 		return
 	}
 	out, err := s.H.GetPipeline(r.Context(), id)
@@ -882,9 +880,7 @@ func (s *Server) publicStartNextStage(w http.ResponseWriter, r *http.Request) {
 		s.errToHTTP(w, r, err, "publicStartNextStage")
 		return
 	}
-	dto := toStageWithAttemptsDTO(out)
-	s.presignStageWithAttempts(r.Context(), &dto)
-	writeJSON(w, http.StatusOK, dto)
+	writeJSON(w, http.StatusOK, toStageWithAttemptsDTO(out))
 }
 
 func (s *Server) publicCancelPipeline(w http.ResponseWriter, r *http.Request) {
@@ -950,9 +946,7 @@ func (s *Server) publicSubmitAnswer(w http.ResponseWriter, r *http.Request) {
 		s.errToHTTP(w, r, err, "publicSubmitAnswer")
 		return
 	}
-	dto := toPipelineAttemptDTO(out, "", "", nil)
-	dto.UserExcalidrawImageURL = s.rewriteCanvasURL(r.Context(), dto.UserExcalidrawImageURL)
-	writeJSON(w, http.StatusOK, dto)
+	writeJSON(w, http.StatusOK, toPipelineAttemptDTO(out, "", "", nil))
 }
 
 // maxCanvasBase64Bytes — 5 MB cap on the decoded payload. base64 inflates
@@ -1008,6 +1002,7 @@ func (s *Server) publicSubmitCanvas(w http.ResponseWriter, r *http.Request) {
 		AttemptID:       attemptID,
 		UserID:          uid,
 		ImageDataURL:    in.ImageDataURL,
+		SceneJSON:       []byte(in.SceneJSON),
 		ContextMD:       in.ContextMD,
 		NonFunctionalMD: in.NonFunctionalMD,
 	})
@@ -1015,9 +1010,7 @@ func (s *Server) publicSubmitCanvas(w http.ResponseWriter, r *http.Request) {
 		s.errToHTTP(w, r, err, "publicSubmitCanvas")
 		return
 	}
-	dto := toPipelineAttemptDTO(out, "", "", nil)
-	dto.UserExcalidrawImageURL = s.rewriteCanvasURL(r.Context(), dto.UserExcalidrawImageURL)
-	writeJSON(w, http.StatusOK, dto)
+	writeJSON(w, http.StatusOK, toPipelineAttemptDTO(out, "", "", nil))
 }
 
 func (s *Server) publicFinishStage(w http.ResponseWriter, r *http.Request) {

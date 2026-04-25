@@ -120,110 +120,150 @@ export function SettingsPage({ theme, onThemeChange }: SettingsPageProps) {
           Preferences
         </h1>
 
-        {/* ── Theme selector ───────────────────────────────────── */}
-        <Section title="BACKGROUND THEME" hint="Choose the ambient motion that lives behind your work.">
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))',
-              gap: 14,
-            }}
+        {/* ════════════════════════════════════════════════════════
+            APPEARANCE — что окружает работу. Theme = ambient bg motion. */}
+        <SectionGroup title="Appearance">
+          <Section title="BACKGROUND THEME" hint="Ambient motion behind your work.">
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))',
+                gap: 14,
+              }}
+            >
+              {THEME_IDS.map((id) => (
+                <ThemeCard
+                  key={id}
+                  id={id}
+                  active={theme === id}
+                  onPick={() => {
+                    onThemeChange(id);
+                    try {
+                      window.localStorage.setItem(THEME_KEY, id);
+                    } catch {
+                      /* ignore */
+                    }
+                  }}
+                />
+              ))}
+            </div>
+          </Section>
+        </SectionGroup>
+
+        {/* ════════════════════════════════════════════════════════
+            FOCUS — настройки фокус-сессии: длительность + аудио. */}
+        <SectionGroup title="Focus">
+          <Section title="POMODORO" hint="Default focus session length.">
+            <Slider
+              min={5}
+              max={90}
+              step={5}
+              value={settings.pomodoroMinutes}
+              onChange={setPomo}
+              unit="min"
+            />
+          </Section>
+          <Section title="AUDIO" hint="Default ambient sound volume.">
+            <Slider min={0} max={100} step={5} value={settings.defaultVolume} onChange={setVol} unit="%" />
+          </Section>
+          <Section title="NOTIFICATIONS" hint="System notification when a session ends.">
+            <Toggle value={settings.notifications} onChange={setNotif} label={settings.notifications ? 'On' : 'Off'} />
+          </Section>
+        </SectionGroup>
+
+        {/* ════════════════════════════════════════════════════════
+            ACCOUNT — tier-quota, storage, devices. Всё что про лимиты
+            аккаунта и cross-device синхронизацию. */}
+        <SectionGroup title="Account">
+          <Section
+            title="USAGE"
+            hint="Where you stand against your tier limits."
           >
-            {THEME_IDS.map((id) => (
-              <ThemeCard
-                key={id}
-                id={id}
-                active={theme === id}
-                onPick={() => {
-                  onThemeChange(id);
-                  try {
-                    window.localStorage.setItem(THEME_KEY, id);
-                  } catch {
-                    /* ignore */
-                  }
-                }}
-              />
-            ))}
-          </div>
-        </Section>
+            <SubscriptionUsageSection />
+          </Section>
+          <Section
+            title="STORAGE"
+            hint="Live notes & whiteboards (archived items don't count)."
+          >
+            <StorageSection />
+          </Section>
+          <Section
+            title="DEVICES"
+            hint="Active sign-ins. Free tier: 1 device. Seeker+: unlimited."
+          >
+            <DevicesSection />
+          </Section>
+        </SectionGroup>
 
-        {/* ── Pomodoro ──────────────────────────────────────────── */}
-        <Section title="POMODORO" hint="Default session length for the focus timer.">
-          <Slider
-            min={5}
-            max={90}
-            step={5}
-            value={settings.pomodoroMinutes}
-            onChange={setPomo}
-            unit="min"
-          />
-        </Section>
+        {/* ════════════════════════════════════════════════════════
+            PRIVACY — vault E2E. Отдельной группой потому что есть
+            уникальный «no recovery» tradeoff и стоит выделить. */}
+        <SectionGroup title="Privacy">
+          <Section
+            title="PRIVATE VAULT"
+            hint="End-to-end encryption for sensitive notes. Server can't read them — but coach memory, search, and publish-to-web won't work for encrypted notes. No password recovery."
+          >
+            <VaultSection />
+          </Section>
+        </SectionGroup>
 
-        {/* ── Audio ────────────────────────────────────────────── */}
-        <Section title="AUDIO" hint="Default volume when ambient sound starts.">
-          <Slider min={0} max={100} step={5} value={settings.defaultVolume} onChange={setVol} unit="%" />
-        </Section>
-
-        {/* ── Subscription quotas ──────────────────────────────── */}
-        <Section
-          title="USAGE"
-          hint="How close you are to your tier limits. Cross-device sync, shared boards, code-rooms."
-        >
-          <SubscriptionUsageSection />
-        </Section>
-
-        {/* ── Storage ──────────────────────────────────────────── */}
-        <Section
-          title="STORAGE"
-          hint="How much of your tier you've used. Free tier is single-device; Seeker syncs across devices."
-        >
-          <StorageSection />
-        </Section>
-
-        {/* ── Devices ──────────────────────────────────────────── */}
-        <Section
-          title="DEVICES"
-          hint="Devices that are currently signed in. Free tier supports 1 active device; Seeker removes the limit."
-        >
-          <DevicesSection />
-        </Section>
-
-        {/* ── Private Vault ────────────────────────────────────── */}
-        <Section
-          title="PRIVATE VAULT"
-          hint="End-to-end encryption for sensitive notes. Server can't read encrypted notes — but coach memory, search, and publish-to-web won't work for them either. There is no password recovery."
-        >
-          <VaultSection />
-        </Section>
-
-        {/* ── Notifications ────────────────────────────────────── */}
-        <Section title="NOTIFICATIONS" hint="System notifications when a session ends.">
-          <Toggle value={settings.notifications} onChange={setNotif} label={settings.notifications ? 'On' : 'Off'} />
-        </Section>
-
-        {/* ── Shortcuts ────────────────────────────────────────── */}
-        <Section title="KEYBOARD SHORTCUTS" hint="Press from any non-text surface.">
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px 24px' }}>
-            <ShortcutRow keys={['⌘', 'K']} label="Open command palette" />
-            <ShortcutRow keys={['⌘', '⇧', 'Space']} label="Open Copilot" />
-            <ShortcutRow keys={['T']} label="Today" />
-            <ShortcutRow keys={['N']} label="Notes" />
-            <ShortcutRow keys={['D']} label="Whiteboard" />
-            <ShortcutRow keys={['B']} label="Shared boards" />
-            <ShortcutRow keys={['E']} label="Code rooms" />
-            <ShortcutRow keys={['V']} label="Events" />
-            <ShortcutRow keys={['P']} label="Podcasts" />
-            <ShortcutRow keys={['S']} label="Stats" />
-            <ShortcutRow keys={[',']} label="Settings" />
-            <ShortcutRow keys={['Esc']} label="Back / dismiss" />
-          </div>
-        </Section>
+        {/* ════════════════════════════════════════════════════════
+            SYSTEM — клавиатурные ярлыки. Reference, не настройка. */}
+        <SectionGroup title="System">
+          <Section title="KEYBOARD SHORTCUTS" hint="Press from any non-text surface.">
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px 24px' }}>
+              <ShortcutRow keys={['⌘', 'K']} label="Open command palette" />
+              <ShortcutRow keys={['⌘', '⇧', 'Space']} label="Open Copilot" />
+              <ShortcutRow keys={['T']} label="Today" />
+              <ShortcutRow keys={['N']} label="Notes" />
+              <ShortcutRow keys={['D']} label="Whiteboard" />
+              <ShortcutRow keys={['B']} label="Shared boards" />
+              <ShortcutRow keys={['E']} label="Code rooms" />
+              <ShortcutRow keys={['V']} label="Events" />
+              <ShortcutRow keys={['P']} label="Podcasts" />
+              <ShortcutRow keys={['S']} label="Stats" />
+              <ShortcutRow keys={[',']} label="Settings" />
+              <ShortcutRow keys={['Esc']} label="Back / dismiss" />
+            </div>
+          </Section>
+        </SectionGroup>
       </div>
     </div>
   );
 }
 
 // ─── Subcomponents ─────────────────────────────────────────────────────
+
+// SectionGroup — крупный раздел Settings, объединяет логически связанные
+// Section'ы (Appearance / Focus / Account / Privacy / System). Visual
+// hierarchy: title крупным шрифтом + тонкая разделительная линия + отступ.
+function SectionGroup({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div style={{ margin: '0 0 56px' }}>
+      <h2
+        style={{
+          fontSize: 22,
+          fontWeight: 600,
+          letterSpacing: '-0.01em',
+          color: 'var(--ink)',
+          margin: '0 0 4px',
+        }}
+      >
+        {title}
+      </h2>
+      <div
+        aria-hidden
+        style={{
+          height: 1,
+          background: 'rgba(255,255,255,0.08)',
+          margin: '0 0 28px',
+        }}
+      />
+      {children}
+    </div>
+  );
+}
+
 function SectionHead({ label }: { label: string }) {
   return (
     <div className="mono" style={{ fontSize: 10, letterSpacing: '.24em', color: 'var(--ink-40)' }}>
@@ -755,6 +795,13 @@ function VaultSection() {
   const [state, setState] = useState<'unknown' | 'none' | 'locked' | 'unlocked'>('unknown');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Inline password inputs. window.prompt() в Electron renderer ВОЗВРАЩАЕТ
+  // NULL без показа диалога (Chromium блокирует prompt по дефолту в Electron),
+  // поэтому раньше клик Unlock молча ничего не делал. Используем inline form.
+  const [pwd1, setPwd1] = useState('');
+  const [pwd2, setPwd2] = useState('');
+  const [showSetupForm, setShowSetupForm] = useState(false);
+  const [showUnlockForm, setShowUnlockForm] = useState(false);
 
   // Sync with vault module state on subscribe.
   useEffect(() => {
@@ -777,27 +824,43 @@ function VaultSection() {
     });
   }, []);
 
+  // persistPassphraseSilently — сохраняем passphrase в OS keychain через
+  // preload bridge. Безопасный no-op если safeStorage недоступен (Linux
+  // без gnome-keyring) — юзер просто введёт passphrase следующий раз.
+  const persistPassphraseSilently = async (pass: string) => {
+    const bridge = typeof window !== 'undefined' ? window.hone : undefined;
+    if (!bridge?.vault) return;
+    try {
+      await bridge.vault.passSave(pass);
+    } catch {
+      /* ignore */
+    }
+  };
+
+  const resetForms = () => {
+    setPwd1('');
+    setPwd2('');
+    setShowSetupForm(false);
+    setShowUnlockForm(false);
+    setError(null);
+  };
+
   const onSetUp = async () => {
     setError(null);
-    const pwd = window.prompt(
-      'Choose a Vault password (min 8 chars).\n\n' +
-        'WARNING: there is no recovery. If you forget this password,\n' +
-        'all encrypted notes are permanently lost.',
-    );
-    if (!pwd) return;
-    if (pwd.length < 8) {
+    if (pwd1.length < 8) {
       setError('Password must be at least 8 characters');
       return;
     }
-    const confirm = window.prompt('Confirm password:');
-    if (confirm !== pwd) {
+    if (pwd1 !== pwd2) {
       setError('Passwords do not match');
       return;
     }
     setBusy(true);
     try {
       await initVault();
-      await unlockVault(pwd);
+      await unlockVault(pwd1);
+      await persistPassphraseSilently(pwd1);
+      resetForms();
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -807,13 +870,20 @@ function VaultSection() {
 
   const onUnlock = async () => {
     setError(null);
-    const pwd = window.prompt('Vault password:');
-    if (!pwd) return;
+    if (!pwd1) {
+      setError('Enter your Vault password');
+      return;
+    }
     setBusy(true);
     try {
-      await unlockVault(pwd);
+      await unlockVault(pwd1);
+      // КРИТИЧНО: persist в Keychain ПОСЛЕ unlock — иначе следующий restart
+      // снова попросит password (раньше Settings-flow не сохранял; только
+      // VaultUnlockGate-flow сохранял).
+      await persistPassphraseSilently(pwd1);
+      resetForms();
     } catch (e) {
-      setError((e as Error).message);
+      setError(`Wrong password or vault corrupted: ${(e as Error).message}`);
     } finally {
       setBusy(false);
     }
@@ -821,6 +891,15 @@ function VaultSection() {
 
   const onLock = () => {
     lockVault();
+    // Очищаем сохранённый passphrase из keychain — иначе при следующем
+    // launch'е VaultUnlockGate auto-unlock'нет и юзер не сможет «оставаться
+    // locked». Юзер явно сказал Lock — уважаем намерение.
+    const bridge = typeof window !== 'undefined' ? window.hone : undefined;
+    if (bridge?.vault) {
+      void bridge.vault.passClear().catch(() => {
+        /* ignore */
+      });
+    }
   };
 
   if (state === 'unknown') {
@@ -871,14 +950,14 @@ function VaultSection() {
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
         <VaultStatusBadge state={state} />
-        {state === 'none' && (
-          <VaultButton onClick={onSetUp} disabled={busy} primary>
-            {busy ? 'Setting up…' : 'Set up Vault'}
+        {state === 'none' && !showSetupForm && (
+          <VaultButton onClick={() => setShowSetupForm(true)} disabled={busy} primary>
+            Set up Vault
           </VaultButton>
         )}
-        {state === 'locked' && (
-          <VaultButton onClick={onUnlock} disabled={busy} primary>
-            {busy ? 'Unlocking…' : 'Unlock'}
+        {state === 'locked' && !showUnlockForm && (
+          <VaultButton onClick={() => setShowUnlockForm(true)} disabled={busy} primary>
+            Unlock
           </VaultButton>
         )}
         {state === 'unlocked' && (
@@ -887,6 +966,33 @@ function VaultSection() {
           </VaultButton>
         )}
       </div>
+
+      {/* Inline setup form — replaces window.prompt (broken in Electron).
+          Two password fields: confirm + visible/hidden via type=password. */}
+      {state === 'none' && showSetupForm && (
+        <VaultPasswordForm
+          mode="setup"
+          pwd1={pwd1}
+          pwd2={pwd2}
+          onPwd1Change={setPwd1}
+          onPwd2Change={setPwd2}
+          onSubmit={onSetUp}
+          onCancel={resetForms}
+          busy={busy}
+        />
+      )}
+      {state === 'locked' && showUnlockForm && (
+        <VaultPasswordForm
+          mode="unlock"
+          pwd1={pwd1}
+          pwd2=""
+          onPwd1Change={setPwd1}
+          onPwd2Change={() => undefined}
+          onSubmit={onUnlock}
+          onCancel={resetForms}
+          busy={busy}
+        />
+      )}
       {error ? (
         <div style={{ fontSize: 12.5, color: '#ff6a6a' }}>{error}</div>
       ) : (
@@ -939,6 +1045,97 @@ function LockGlyph() {
     >
       <LockIcon size={13} />
     </span>
+  );
+}
+
+// VaultPasswordForm — inline replacement для window.prompt() который
+// в Electron renderer не работает (Chromium блокирует JS-prompt). Mode:
+// 'setup' рендерит два поля + warning, 'unlock' — одно поле.
+function VaultPasswordForm({
+  mode,
+  pwd1,
+  pwd2,
+  onPwd1Change,
+  onPwd2Change,
+  onSubmit,
+  onCancel,
+  busy,
+}: {
+  mode: 'setup' | 'unlock';
+  pwd1: string;
+  pwd2: string;
+  onPwd1Change: (v: string) => void;
+  onPwd2Change: (v: string) => void;
+  onSubmit: () => void;
+  onCancel: () => void;
+  busy: boolean;
+}) {
+  return (
+    <form
+      onSubmit={(e) => {
+        e.preventDefault();
+        onSubmit();
+      }}
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 10,
+        padding: 14,
+        borderRadius: 10,
+        background: 'rgba(255,255,255,0.02)',
+        border: '1px solid var(--ink-10)',
+      }}
+    >
+      {mode === 'setup' && (
+        <div style={{ fontSize: 12, color: 'var(--ink-60)', lineHeight: 1.55, marginBottom: 4 }}>
+          Choose a Vault password (min 8 chars). <strong style={{ color: '#ff9e7a' }}>No recovery</strong>{' '}
+          — if you forget it, all encrypted notes are permanently lost.
+        </div>
+      )}
+      <input
+        type="password"
+        value={pwd1}
+        onChange={(e) => onPwd1Change(e.target.value)}
+        placeholder={mode === 'setup' ? 'New password' : 'Vault password'}
+        autoFocus
+        autoComplete={mode === 'setup' ? 'new-password' : 'current-password'}
+        style={{
+          padding: '8px 12px',
+          fontSize: 13,
+          borderRadius: 8,
+          border: '1px solid var(--ink-10)',
+          background: 'rgba(255,255,255,0.03)',
+          color: 'var(--ink)',
+          outline: 'none',
+        }}
+      />
+      {mode === 'setup' && (
+        <input
+          type="password"
+          value={pwd2}
+          onChange={(e) => onPwd2Change(e.target.value)}
+          placeholder="Confirm password"
+          autoComplete="new-password"
+          style={{
+            padding: '8px 12px',
+            fontSize: 13,
+            borderRadius: 8,
+            border: '1px solid var(--ink-10)',
+            background: 'rgba(255,255,255,0.03)',
+            color: 'var(--ink)',
+            outline: 'none',
+          }}
+        />
+      )}
+      <div style={{ display: 'flex', gap: 8, marginTop: 4 }}>
+        <VaultButton onClick={onSubmit} disabled={busy} primary>
+          {busy ? '…' : mode === 'setup' ? 'Set up' : 'Unlock'}
+        </VaultButton>
+        <VaultButton onClick={onCancel} disabled={busy}>
+          Cancel
+        </VaultButton>
+      </div>
+    </form>
   );
 }
 

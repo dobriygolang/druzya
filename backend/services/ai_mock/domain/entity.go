@@ -34,10 +34,9 @@ type Session struct {
 	// session ("AI-assist mode"). When false (default), the Cue desktop must
 	// block AI consults for the duration; see services/copilot CheckBlock.
 	// Phase-4 ADR-001 (Wave 3) — migration 00040.
-	AIAssist  bool
-	Stress    StressProfile
-	Report    []byte // ai_report JSONB — nil until report job finishes
-	ReplayURL string
+	AIAssist bool
+	Stress   StressProfile
+	Report   []byte // ai_report JSONB — nil until report job finishes
 	// RunningSummary — фоновый конспект старых mock_messages, поддерживаемый
 	// compaction.Worker. Пустая строка у свежих сессий.
 	RunningSummary string
@@ -162,7 +161,6 @@ type ReportDraft struct {
 	Weaknesses      []string
 	Recommendations []ReportRecommendation
 	StressAnalysis  string
-	ReplayURL       string
 }
 
 // ReportSections is the four-axis scorecard.

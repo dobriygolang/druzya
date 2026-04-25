@@ -40,6 +40,7 @@ import { EventsPage } from './pages/Events';
 import { SettingsPage, readStoredTheme } from './pages/Settings';
 import { useSessionStore } from './stores/session';
 import { startFocusSession, endFocusSession } from './api/hone';
+import { notify } from './api/notifications';
 
 const POMODORO_SECONDS = 25 * 60;
 const ONBOARDING_KEY = 'hone:onboarded:v2';
@@ -320,6 +321,10 @@ export default function App() {
       const id = sessionRef.current;
       const seconds = POMODORO_SECONDS;
       void finishSession();
+      // OS-native notification — юзер мог уйти от экрана, нужна звуковая
+      // подсказка что pomodoro закончилось. notify() сам проверяет
+      // settings.notifications + permission, no-op'ит если отключено.
+      void notify('Focus session complete', 'Pomodoro finished — take a break.');
       if (id) {
         setReflectionPrompt({
           sessionId: id,

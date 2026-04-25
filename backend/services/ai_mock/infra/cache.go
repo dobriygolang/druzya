@@ -193,8 +193,8 @@ func (c *CachedSessionRepo) UpdateStress(ctx context.Context, id uuid.UUID, prof
 
 // UpdateReport forwards then invalidates BOTH the session key (because
 // s.Report changes) and the report cache (because the parsed report changes).
-func (c *CachedSessionRepo) UpdateReport(ctx context.Context, id uuid.UUID, reportJSON []byte, replayURL string) error {
-	if err := c.delegate.UpdateReport(ctx, id, reportJSON, replayURL); err != nil {
+func (c *CachedSessionRepo) UpdateReport(ctx context.Context, id uuid.UUID, reportJSON []byte) error {
+	if err := c.delegate.UpdateReport(ctx, id, reportJSON); err != nil {
 		return fmt.Errorf("mock.cache.Sessions.UpdateReport: %w", err)
 	}
 	c.Invalidate(ctx, id)
@@ -247,12 +247,11 @@ func (c *CachedSessionRepo) writeSession(ctx context.Context, s domain.Session) 
 // ── report cache ──────────────────────────────────────────────────────────
 
 // CachedReport is the on-wire shape we cache for /session/:id/report. We
-// cache the parsed draft + replay URL together so the read path skips the
-// per-request json.Unmarshal in the GetReport use case.
+// cache the parsed draft so the read path skips the per-request
+// json.Unmarshal in the GetReport use case.
 type CachedReport struct {
-	Status    string             `json:"status"`
-	Report    domain.ReportDraft `json:"report"`
-	ReplayURL string             `json:"replay_url"`
+	Status string             `json:"status"`
+	Report domain.ReportDraft `json:"report"`
 }
 
 // ReportCache is a tiny helper around the same KV. It does NOT wrap any repo

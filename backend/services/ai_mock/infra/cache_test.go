@@ -317,7 +317,7 @@ func TestCachedSessionRepo_UpdateReportInvalidatesBothKeys(t *testing.T) {
 
 	// Warm both caches so we can verify they both go away.
 	mock.EXPECT().Get(gomock.Any(), sid).Return(sampleSession(uid, sid), nil).Times(1)
-	mock.EXPECT().UpdateReport(gomock.Any(), sid, gomock.Any(), gomock.Any()).Return(nil).Times(1)
+	mock.EXPECT().UpdateReport(gomock.Any(), sid, gomock.Any()).Return(nil).Times(1)
 
 	kv := newMemKV()
 	repo := NewCachedSessionRepo(mock, kv, time.Minute, testLog())
@@ -330,7 +330,7 @@ func TestCachedSessionRepo_UpdateReportInvalidatesBothKeys(t *testing.T) {
 	if !kv.has(keyReport(sid)) {
 		t.Fatal("report key should be present after Store")
 	}
-	if err := repo.UpdateReport(context.Background(), sid, []byte(`{}`), "url"); err != nil {
+	if err := repo.UpdateReport(context.Background(), sid, []byte(`{}`)); err != nil {
 		t.Fatalf("UpdateReport: %v", err)
 	}
 	if kv.has(keySession(sid)) {

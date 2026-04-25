@@ -1,6 +1,7 @@
 package ports
 
 import (
+	"encoding/json"
 	"fmt"
 	"time"
 
@@ -297,14 +298,19 @@ func toPipelineDTO(p app.PipelineWithStages) pipelineDTO {
 	return d
 }
 
-// submitCanvasRequest — Phase D.1 sysdesign-canvas submission payload.
-// image_data_url must be a "data:image/png;base64,…" or
-// "data:image/jpeg;base64,…" url; the handler enforces shape + 5MB size
+// submitCanvasRequest — sysdesign-canvas submission payload.
+//
+// image_data_url is a data:image/{png,jpeg};base64,… url consumed once by
+// the vision judge and discarded. scene_json is the Excalidraw scene blob
+// (elements + files) which we persist as jsonb so the frontend can re-
+// render it in viewMode without round-tripping through MinIO. The handler
+// enforces image_data_url shape + 5MB size and a 5MB cap on scene_json
 // before invoking the orchestrator.
 type submitCanvasRequest struct {
-	ImageDataURL    string `json:"image_data_url"`
-	ContextMD       string `json:"context_md"`
-	NonFunctionalMD string `json:"non_functional_md"`
+	ImageDataURL    string          `json:"image_data_url"`
+	SceneJSON       json.RawMessage `json:"scene_json"`
+	ContextMD       string          `json:"context_md"`
+	NonFunctionalMD string          `json:"non_functional_md"`
 }
 
 // pipelineAttemptDTO — JSON shape of a single attempt (with the resolved
@@ -318,15 +324,16 @@ type pipelineAttemptDTO struct {
 	UserAnswerMD      string               `json:"user_answer_md"`
 	// User-provided sysdesign-canvas extras (Phase D.1). Empty for non-canvas
 	// attempts; emitted always for symmetry.
-	UserContextMD          string     `json:"user_context_md"`
-	UserExcalidrawImageURL string     `json:"user_excalidraw_image_url"`
-	AIScore                *float32   `json:"ai_score"`
-	AIVerdict              string     `json:"ai_verdict"`
-	AIWaterScore           *float32   `json:"ai_water_score"`
-	AIFeedbackMD           string     `json:"ai_feedback_md"`
-	AIMissingPoints        []string   `json:"ai_missing_points"`
-	AIJudgedAt             *time.Time `json:"ai_judged_at"`
-	CreatedAt              time.Time  `json:"created_at"`
+	UserContextMD           string          `json:"user_context_md"`
+	UserExcalidrawImageURL  string          `json:"user_excalidraw_image_url"`
+	UserExcalidrawSceneJSON json.RawMessage `json:"user_excalidraw_scene_json,omitempty"`
+	AIScore                 *float32        `json:"ai_score"`
+	AIVerdict               string          `json:"ai_verdict"`
+	AIWaterScore            *float32        `json:"ai_water_score"`
+	AIFeedbackMD            string          `json:"ai_feedback_md"`
+	AIMissingPoints         []string        `json:"ai_missing_points"`
+	AIJudgedAt              *time.Time      `json:"ai_judged_at"`
+	CreatedAt               time.Time       `json:"created_at"`
 	// Phase D.2: surface task fields when the attempt is rooted on a
 	// mock_tasks row. nil/omitted otherwise so the frontend can branch.
 	TaskFunctionalRequirementsMD *string `json:"task_functional_requirements_md,omitempty"`
@@ -350,6 +357,9 @@ func toPipelineAttemptDTO(a domain.PipelineAttempt, qBody, qExpected string, rc 
 		AIMissingPoints: missing,
 		AIJudgedAt:      a.AIJudgedAt,
 		CreatedAt:       a.CreatedAt,
+	}
+	if len(a.UserExcalidrawSceneJSON) > 0 {
+		d.UserExcalidrawSceneJSON = json.RawMessage(a.UserExcalidrawSceneJSON)
 	}
 	if rc != nil {
 		d.ReferenceCriteria = toRCDTO(*rc)

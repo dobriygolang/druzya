@@ -59,7 +59,7 @@ INSERT INTO mock_sessions (
 ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
 RETURNING id, user_id, company_id, task_id, section, difficulty, status,
           duration_min, voice_mode, paired_user_id, llm_model,
-          stress_profile, ai_report, replay_url, running_summary,
+          stress_profile, ai_report, running_summary,
           started_at, finished_at, created_at, ai_assist
 `
 
@@ -111,7 +111,6 @@ func (q *Queries) CreateMockSession(ctx context.Context, arg CreateMockSessionPa
 		&i.LlmModel,
 		&i.StressProfile,
 		&i.AiReport,
-		&i.ReplayUrl,
 		&i.RunningSummary,
 		&i.StartedAt,
 		&i.FinishedAt,
@@ -173,7 +172,7 @@ func (q *Queries) GetCompanyForMock(ctx context.Context, id pgtype.UUID) (GetCom
 const getMockSession = `-- name: GetMockSession :one
 SELECT id, user_id, company_id, task_id, section, difficulty, status,
        duration_min, voice_mode, paired_user_id, llm_model,
-       stress_profile, ai_report, replay_url, running_summary,
+       stress_profile, ai_report, running_summary,
        started_at, finished_at, created_at, ai_assist
   FROM mock_sessions
  WHERE id = $1
@@ -196,7 +195,6 @@ func (q *Queries) GetMockSession(ctx context.Context, id pgtype.UUID) (MockSessi
 		&i.LlmModel,
 		&i.StressProfile,
 		&i.AiReport,
-		&i.ReplayUrl,
 		&i.RunningSummary,
 		&i.StartedAt,
 		&i.FinishedAt,
@@ -372,19 +370,17 @@ func (q *Queries) PickTaskForSection(ctx context.Context, arg PickTaskForSection
 
 const updateMockSessionReport = `-- name: UpdateMockSessionReport :execrows
 UPDATE mock_sessions
-   SET ai_report  = $2::jsonb,
-       replay_url = NULLIF($3::text, '')
+   SET ai_report = $2::jsonb
  WHERE id = $1
 `
 
 type UpdateMockSessionReportParams struct {
 	ID      pgtype.UUID
 	Column2 []byte
-	Column3 string
 }
 
 func (q *Queries) UpdateMockSessionReport(ctx context.Context, arg UpdateMockSessionReportParams) (int64, error) {
-	result, err := q.db.Exec(ctx, updateMockSessionReport, arg.ID, arg.Column2, arg.Column3)
+	result, err := q.db.Exec(ctx, updateMockSessionReport, arg.ID, arg.Column2)
 	if err != nil {
 		return 0, err
 	}

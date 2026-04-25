@@ -43,6 +43,7 @@ import { attachNoteYjs, type NoteYjsHandle } from '../api/yjs';
 import '@milkdown/crepe/theme/common/reset.css';
 import '@milkdown/crepe/theme/common/prosemirror.css';
 import '@milkdown/crepe/theme/common/cursor.css';
+import '@milkdown/crepe/theme/common/block-edit.css';
 import '@milkdown/crepe/theme/common/list-item.css';
 import '@milkdown/crepe/theme/common/placeholder.css';
 import '@milkdown/crepe/theme/common/link-tooltip.css';
@@ -53,25 +54,32 @@ import '@milkdown/crepe/theme/frame-dark.css';
 
 // HONE_FEATURES — Hone-tuned subset of Crepe features.
 // Disabled (по запросу UX):
-//   - BlockEdit: убирает «+» add-block button, drag-handle (6 точек) и
-//     slash-menu modal'ку. Юзеру они мешали, перекрывали контент.
-//     Hover-affordance + slash-menu — заменяются стандартным markdown
-//     синтаксисом (# heading, > quote, - list, ``` code).
-//   - CodeMirror: отключает language-picker модалку для code-block'ов.
-//     Юзер может задать язык через ```go ... ``` markdown syntax (или
-//     просто ``` без языка для plain). Code rendering — fallback на
-//     стандартный pre/code Crepe styling.
-//   - Latex: убирает Σ-кнопку. Math notation редко нужна для obsidian-style
-//     заметок, а UI-affordance crowded sidebar.
+//   - Latex: Σ-кнопку убираем — math notation редко нужна для obsidian-style.
+//   - TopBar: лишняя панель.
 //
-// Keep: Cursor, ListItem (checkboxes), LinkTooltip (link tooltip
-// popup), ImageBlock, Table, Toolbar (floating selection toolbar
-// → bold / italic / link / code), Placeholder.
+// BlockEdit оставляем, НО:
+//   - «+» add-button скрыт через CSS (.operation-item:first-child visibility)
+//   - Slash-menu модалка скрыта через CSS (.milkdown-slash-menu)
+//   - Остаётся только 6-точек drag-handle для перетаскивания строк
+//
+// CodeMirror отключён — никаких модалок и chrome поверх code-block'ов.
+// Юзер задаёт язык через markdown fence ```go ... ```, рендерится
+// плоско <pre><code>.
+//
+// Keep: Cursor, ListItem (checkboxes), LinkTooltip, ImageBlock, Table,
+// Toolbar (floating selection toolbar — bold/italic/link/code), Placeholder.
 const HONE_FEATURES = {
-  [Crepe.Feature.BlockEdit]: false,
   [Crepe.Feature.CodeMirror]: false,
   [Crepe.Feature.Latex]: false,
   [Crepe.Feature.TopBar]: false,
+};
+
+// Empty slash-menu config: все группы null чтобы при случайном открытии
+// menu было пустым (но даже в таком виде CSS прячет popup полностью).
+const EMPTY_BLOCK_EDIT_CONFIG = {
+  textGroup: null,
+  listGroup: null,
+  advancedGroup: null,
 };
 
 interface MilkdownEditorProps {
@@ -103,6 +111,44 @@ export function MilkdownEditor({ noteId, seedBodyMD, placeholder = 'Write your t
     if (!containerRef.current) return;
     let destroyed = false;
 
+    // DIAG: логируем геометрию block-handle при mouseenter для отладки
+    // drag bug'а. Удалить после fix'а. Включается через
+    // window.localStorage.setItem('hone:debug:milkdown', '1').
+    const debugDrag = (() => {
+      try {
+        return window.localStorage.getItem('hone:debug:milkdown') === '1';
+      } catch {
+        return false;
+      }
+    })();
+    let dragDiagAttached = false;
+    const attachDragDiag = () => {
+      if (!debugDrag || dragDiagAttached) return;
+      const root = containerRef.current;
+      if (!root) return;
+      dragDiagAttached = true;
+      root.addEventListener('mousedown', (e) => {
+        const target = e.target as HTMLElement | null;
+        if (!target) return;
+        const handle = target.closest('.milkdown-block-handle');
+        if (!handle) return;
+        const opItem = target.closest('.operation-item');
+        const handleRect = (handle as HTMLElement).getBoundingClientRect();
+        const opRect = opItem ? (opItem as HTMLElement).getBoundingClientRect() : null;
+        // eslint-disable-next-line no-console
+        console.log('[Hone milkdown drag-handle mousedown]', {
+          targetTag: target.tagName,
+          targetClasses: target.className,
+          mouseClient: { x: e.clientX, y: e.clientY },
+          handleRect: { left: handleRect.left, top: handleRect.top, width: handleRect.width, height: handleRect.height },
+          operationItemRect: opRect,
+          isFirstChild: opItem
+            ? Array.from(opItem.parentElement?.children ?? []).indexOf(opItem) === 0
+            : null,
+        });
+      }, true); // capture phase — увидим до того как Crepe-handler stopPropagation'нёт
+    };
+
     // localOnly path: ни Yjs, ни backend sync — Crepe stand-alone editor
     // с initial markdown через `defaultValue`. onTextChange прокидывает
     // изменения наружу для persist в IndexedDB localNotes store.
@@ -116,6 +162,7 @@ export function MilkdownEditor({ noteId, seedBodyMD, placeholder = 'Write your t
             text: placeholderRef.current,
             mode: 'block',
           },
+          [Crepe.Feature.BlockEdit]: EMPTY_BLOCK_EDIT_CONFIG,
         },
       });
       crepeRef.current = crepe;
@@ -129,7 +176,7 @@ export function MilkdownEditor({ noteId, seedBodyMD, placeholder = 'Write your t
         })
         .use(listener);
 
-      void crepe.create();
+      void crepe.create().then(() => attachDragDiag());
 
       return () => {
         destroyed = true;
@@ -173,6 +220,7 @@ export function MilkdownEditor({ noteId, seedBodyMD, placeholder = 'Write your t
 
     void crepe.create().then(async () => {
       if (destroyed) return;
+      attachDragDiag();
       // Wire collab AFTER editor created. CollabService binds Y.Doc+
       // XmlFragment, applies seed-template if fragment is empty, then
       // connects (start syncing).

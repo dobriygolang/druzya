@@ -10,13 +10,13 @@ INSERT INTO mock_sessions (
 ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
 RETURNING id, user_id, company_id, task_id, section, difficulty, status,
           duration_min, voice_mode, paired_user_id, llm_model,
-          stress_profile, ai_report, replay_url, running_summary,
+          stress_profile, ai_report, running_summary,
           started_at, finished_at, created_at, ai_assist;
 
 -- name: GetMockSession :one
 SELECT id, user_id, company_id, task_id, section, difficulty, status,
        duration_min, voice_mode, paired_user_id, llm_model,
-       stress_profile, ai_report, replay_url, running_summary,
+       stress_profile, ai_report, running_summary,
        started_at, finished_at, created_at, ai_assist
   FROM mock_sessions
  WHERE id = $1;
@@ -55,8 +55,7 @@ UPDATE mock_sessions
 
 -- name: UpdateMockSessionReport :execrows
 UPDATE mock_sessions
-   SET ai_report  = $2::jsonb,
-       replay_url = NULLIF($3::text, '')
+   SET ai_report = $2::jsonb
  WHERE id = $1;
 
 -- name: AppendMockMessage :one

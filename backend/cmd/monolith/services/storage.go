@@ -344,6 +344,14 @@ func (r *storageRecomputer) Run(ctx context.Context) {
 // не точный physical size (нет учёта TOAST overhead, JSONB compression),
 // но достаточно для UX usage-bar'а.
 //
+// Архивированные ноты/whiteboards (`archived_at IS NOT NULL`) — НЕ считаем.
+// Раньше считались (см. 00029_storage_archive.sql «archived items занимают
+// место»), но юзеры жаловались что usage bar показывает «754 B / 1 GB»
+// для пустого аккаунта — потому что 200-500-байтный Excalidraw-default-
+// state у архивных whiteboard'ов раздувал sum. Сейчас семантика usage =
+// «то что тебе видно». Чтобы освободить storage, юзер «Delete forever»
+// (hard delete, ниже) — это уже не считается.
+//
 // CTE-форма выбрана из-за того, что hone_whiteboards и coach_episodes
 // могут быть большими — JOIN агрегатов в едином UPDATE… FROM
 // эффективнее последовательных passes.
@@ -358,11 +366,13 @@ WITH usage AS (
     LEFT JOIN (
         SELECT user_id, SUM(size_bytes)::bigint AS bytes
         FROM hone_notes
+        WHERE archived_at IS NULL
         GROUP BY user_id
     ) n ON n.user_id = u.id
     LEFT JOIN (
         SELECT user_id, SUM(octet_length(state_json::text))::bigint AS bytes
         FROM hone_whiteboards
+        WHERE archived_at IS NULL
         GROUP BY user_id
     ) wb ON wb.user_id = u.id
     LEFT JOIN (

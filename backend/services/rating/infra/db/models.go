@@ -894,7 +894,6 @@ type MockSession struct {
 	LlmModel       pgtype.Text
 	StressProfile  []byte
 	AiReport       []byte
-	ReplayUrl      pgtype.Text
 	RunningSummary string
 	StartedAt      pgtype.Timestamptz
 	FinishedAt     pgtype.Timestamptz
@@ -1032,24 +1031,25 @@ type Persona struct {
 }
 
 type PipelineAttempt struct {
-	ID                     pgtype.UUID
-	PipelineStageID        pgtype.UUID
-	Kind                   PipelineAttemptKind
-	TaskID                 pgtype.UUID
-	TaskQuestionID         pgtype.UUID
-	DefaultQuestionID      pgtype.UUID
-	CompanyQuestionID      pgtype.UUID
-	UserAnswerMd           pgtype.Text
-	UserVoiceUrl           pgtype.Text
-	UserExcalidrawImageUrl pgtype.Text
-	UserContextMd          pgtype.Text
-	AiScore                pgtype.Float4
-	AiVerdict              PipelineAttemptVerdict
-	AiFeedbackMd           pgtype.Text
-	AiWaterScore           pgtype.Float4
-	AiMissingPoints        []byte
-	AiJudgedAt             pgtype.Timestamptz
-	CreatedAt              pgtype.Timestamptz
+	ID                      pgtype.UUID
+	PipelineStageID         pgtype.UUID
+	Kind                    PipelineAttemptKind
+	TaskID                  pgtype.UUID
+	TaskQuestionID          pgtype.UUID
+	DefaultQuestionID       pgtype.UUID
+	CompanyQuestionID       pgtype.UUID
+	UserAnswerMd            pgtype.Text
+	UserVoiceUrl            pgtype.Text
+	UserExcalidrawImageUrl  pgtype.Text
+	UserContextMd           pgtype.Text
+	AiScore                 pgtype.Float4
+	AiVerdict               PipelineAttemptVerdict
+	AiFeedbackMd            pgtype.Text
+	AiWaterScore            pgtype.Float4
+	AiMissingPoints         []byte
+	AiJudgedAt              pgtype.Timestamptz
+	CreatedAt               pgtype.Timestamptz
+	UserExcalidrawSceneJson []byte
 }
 
 type PipelineStage struct {

@@ -433,8 +433,7 @@ func TestServer_GetReport_Ready(t *testing.T) {
 	// unmarshal — so we replicate the write-side shape here.
 	sessions.EXPECT().Get(gomock.Any(), sid).Return(domain.Session{
 		ID: sid, UserID: uid, Status: enums.MockStatusFinished,
-		Report:    []byte(`{"OverallScore": 84, "Sections": {"ProblemSolving": {"Score": 90, "Comment": "ok"}}}`),
-		ReplayURL: "https://replays.example/foo.json",
+		Report: []byte(`{"OverallScore": 84, "Sections": {"ProblemSolving": {"Score": 90, "Comment": "ok"}}}`),
 	}, nil)
 
 	srv := buildServer(t, sessions, nil, nil, nil, nil, nil)
@@ -447,9 +446,6 @@ func TestServer_GetReport_Ready(t *testing.T) {
 	}
 	if resp.Msg.GetOverallScore() != 84 {
 		t.Fatalf("overall_score = %d", resp.Msg.GetOverallScore())
-	}
-	if resp.Msg.GetReplayUrl() == "" {
-		t.Fatalf("replay_url should be propagated")
 	}
 }
 

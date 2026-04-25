@@ -66,10 +66,12 @@ export function SysDesignCanvas({
       return
     }
     try {
+      const elements = api.getSceneElements()
+      const files = api.getFiles()
       const { exportToBlob } = await import('@excalidraw/excalidraw')
       const blob = await exportToBlob({
-        elements: api.getSceneElements(),
-        files: api.getFiles(),
+        elements,
+        files,
         mimeType: 'image/png',
         appState: { exportBackground: true, exportPadding: 20 },
       })
@@ -78,9 +80,13 @@ export function SysDesignCanvas({
         setClientErr('Диаграмма слишком большая, упрости (≤5 МБ).')
         return
       }
+      // Scene JSON is the persistent record — backend stores it, frontend
+      // re-renders it in viewMode on review. The PNG is consumed once by
+      // the vision judge and then discarded server-side.
       submit.mutate({
         attemptId: attempt.id,
         imageDataURL: dataURL,
+        sceneJSON: { elements, files },
         contextMD: contextMD.trim(),
         nonFunctionalMD: nonFunctionalMD.trim(),
       })
@@ -135,7 +141,39 @@ export function SysDesignCanvas({
               />
             </Suspense>
           </div>
+        ) : attempt.user_excalidraw_scene_json ? (
+          <div className="flex flex-col gap-2">
+            <div className="font-mono text-[10px] uppercase tracking-wider text-text-secondary">
+              Что сдал
+            </div>
+            <div className="relative h-[400px] lg:h-[600px] overflow-hidden rounded-lg border border-border bg-black">
+              <Suspense
+                fallback={
+                  <div className="absolute inset-0 flex items-center justify-center text-text-secondary">
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    <span className="text-sm">Загрузка диаграммы…</span>
+                  </div>
+                }
+              >
+                <SysDesignCanvasInner
+                  viewModeEnabled
+                  // Scene JSON shape is opaque to TypeScript here (we type it
+                  // as unknown[] in the query layer to avoid pulling Excalidraw
+                  // types into the data layer). Cast at the boundary —
+                  // Excalidraw validates the payload at runtime.
+                  initialData={
+                    {
+                      elements: attempt.user_excalidraw_scene_json.elements ?? [],
+                      files: attempt.user_excalidraw_scene_json.files ?? {},
+                    } as never
+                  }
+                />
+              </Suspense>
+            </div>
+          </div>
         ) : attempt.user_excalidraw_image_url ? (
+          // Legacy rows written before F-3 v2: we still have a data URL but
+          // no scene blob — fall back to <img>. New rows always have scene.
           <Card variant="default" padding="sm" className="overflow-hidden">
             <div className="font-mono text-[10px] uppercase tracking-wider text-text-secondary mb-2">
               Что сдал

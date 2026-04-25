@@ -153,22 +153,23 @@ type PipelineStage struct {
 
 // PipelineAttempt — one task-solve / question-answer event under a stage.
 type PipelineAttempt struct {
-	ID                     uuid.UUID
-	PipelineStageID        uuid.UUID
-	Kind                   AttemptKind
-	TaskID                 *uuid.UUID
-	TaskQuestionID         *uuid.UUID
-	DefaultQuestionID      *uuid.UUID
-	CompanyQuestionID      *uuid.UUID
-	UserAnswerMD           string
-	UserVoiceURL           string
-	UserExcalidrawImageURL string
-	UserContextMD          string
-	AIScore                *float32
-	AIVerdict              AttemptVerdict
-	AIFeedbackMD           string
-	AIWaterScore           *float32
-	AIMissingPoints        []string
-	AIJudgedAt             *time.Time
-	CreatedAt              time.Time
+	ID                      uuid.UUID
+	PipelineStageID         uuid.UUID
+	Kind                    AttemptKind
+	TaskID                  *uuid.UUID
+	TaskQuestionID          *uuid.UUID
+	DefaultQuestionID       *uuid.UUID
+	CompanyQuestionID       *uuid.UUID
+	UserAnswerMD            string
+	UserVoiceURL            string
+	UserExcalidrawImageURL  string // legacy: pre-F-3 v2 inline data URL
+	UserExcalidrawSceneJSON []byte // F-3 v2: Excalidraw scene blob (jsonb)
+	UserContextMD           string
+	AIScore                 *float32
+	AIVerdict               AttemptVerdict
+	AIFeedbackMD            string
+	AIWaterScore            *float32
+	AIMissingPoints         []string
+	AIJudgedAt              *time.Time
+	CreatedAt               time.Time
 }

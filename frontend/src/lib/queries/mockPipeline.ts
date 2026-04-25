@@ -38,7 +38,15 @@ export type PipelineAttempt = {
   // Phase D.1: user-provided sysdesign-canvas extras. Empty for non-canvas
   // attempts; backend always emits them.
   user_context_md?: string | null
+  // Legacy: pre-F-3 v2 inline data URL. Empty/null on new rows.
   user_excalidraw_image_url?: string | null
+  // F-3 v2: Excalidraw scene blob (elements + files). Frontend re-renders
+  // it in viewMode when the user revisits the attempt. Shape mirrors the
+  // result of `excalidrawAPI.getSceneElements()` + `getFiles()`.
+  user_excalidraw_scene_json?: {
+    elements?: readonly unknown[]
+    files?: Record<string, unknown>
+  } | null
   ai_score: number | null
   ai_verdict: AttemptVerdict
   ai_water_score: number | null
@@ -241,21 +249,27 @@ export function useSubmitAnswerMutation(pipelineId: string | undefined) {
   })
 }
 
-// Phase D.2 — sysdesign-canvas submit. Posts the rendered PNG (data URL) +
-// non-functional reqs + free-form context. Backend orchestrator calls the
-// vision judge and writes the result back atomically. We invalidate the
-// pipeline query so the polling refetch picks up the verdict.
+// F-3 v2 — sysdesign-canvas submit. Posts:
+//   - image_data_url: rendered PNG, consumed once by the vision judge and
+//     discarded server-side (NOT stored).
+//   - scene_json:     Excalidraw scene blob, persisted as jsonb so the
+//     post-submit review path re-renders the diagram from source instead
+//     of fetching a presigned PNG.
+// We invalidate the pipeline query so the polling refetch picks up the
+// verdict.
 export function useSubmitCanvasMutation(pipelineId: string | undefined) {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: async ({
       attemptId,
       imageDataURL,
+      sceneJSON,
       contextMD,
       nonFunctionalMD,
     }: {
       attemptId: string
       imageDataURL: string
+      sceneJSON: { elements: readonly unknown[]; files: Record<string, unknown> }
       contextMD: string
       nonFunctionalMD: string
     }) =>
@@ -263,6 +277,7 @@ export function useSubmitCanvasMutation(pipelineId: string | undefined) {
         method: 'POST',
         body: JSON.stringify({
           image_data_url: imageDataURL,
+          scene_json: sceneJSON,
           context_md: contextMD,
           non_functional_md: nonFunctionalMD,
         }),

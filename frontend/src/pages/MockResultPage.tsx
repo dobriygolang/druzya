@@ -1,7 +1,6 @@
 // MockResultPage — post-interview AI report.
 // Wires:
 //   - GET /mock/session/:id/report  via useMockReportQuery (polled until ready)
-//   - "Replay интервью" → /mock/:id/replay
 //   - "Слушать разбор" → POST /voice/tts (premium-only; 402 → upsell modal)
 //
 // Cards that don't yet have a backing endpoint (StressTimelineCard,
@@ -14,7 +13,6 @@ import {
   Download,
   Loader2,
   Plus,
-  RotateCcw,
   Sparkles,
   Volume2,
   X,
@@ -35,13 +33,11 @@ function ErrorChip() {
 
 function Header({
   onBack,
-  onReplay,
   onListen,
   listening,
   premiumGated,
 }: {
   onBack: () => void
-  onReplay: () => void
   onListen: () => void
   listening: boolean
   premiumGated: boolean
@@ -69,9 +65,6 @@ function Header({
           title={premiumGated ? 'Премиум-голос — для подписчиков' : 'Озвучить разбор'}
         >
           Слушать разбор
-        </Button>
-        <Button variant="primary" size="sm" icon={<RotateCcw className="h-4 w-4" />} onClick={onReplay}>
-          Replay интервью
         </Button>
       </div>
     </div>
@@ -351,7 +344,6 @@ export default function MockResultPage() {
     <AppShellV2>
       <Header
         onBack={() => navigate(-1)}
-        onReplay={() => sessionId && navigate(`/mock/${sessionId}/replay`)}
         onListen={onListen}
         listening={listening}
         premiumGated={premiumGated}

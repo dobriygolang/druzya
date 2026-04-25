@@ -234,7 +234,7 @@ func (s *MockServer) GetReport(
 			Sections:     &pb.MockReportSections{},
 		}), nil
 	}
-	return connect.NewResponse(toMockReportProto(sessionID, res.Report, res.ReplayURL)), nil
+	return connect.NewResponse(toMockReportProto(sessionID, res.Report)), nil
 }
 
 // ── error mapping ─────────────────────────────────────────────────────────
@@ -317,16 +317,11 @@ func toMockTaskProto(t domain.TaskPublic) *pb.MockTaskPublic {
 	}
 }
 
-func toMockReportProto(sessionID uuid.UUID, d domain.ReportDraft, replayURL string) *pb.MockReport {
+func toMockReportProto(sessionID uuid.UUID, d domain.ReportDraft) *pb.MockReport {
 	out := &pb.MockReport{
 		SessionId:    sessionID.String(),
 		Status:       "ready",
 		OverallScore: int32(d.OverallScore),
-	}
-	if replayURL != "" {
-		out.ReplayUrl = replayURL
-	} else if d.ReplayURL != "" {
-		out.ReplayUrl = d.ReplayURL
 	}
 	out.Sections = &pb.MockReportSections{
 		ProblemSolving: scoredSectionToProto(d.Sections.ProblemSolving),

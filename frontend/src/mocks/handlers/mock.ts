@@ -71,7 +71,6 @@ export const mockHandlers = [
         { title: 'Пройди 3 медиум задачи на hash map', action: { kind: 'solve_task' } },
       ],
       stress_analysis: 'На follow-up растёт стресс — тренируй защиту решения.',
-      replay_url: null,
     }),
   ),
 ]

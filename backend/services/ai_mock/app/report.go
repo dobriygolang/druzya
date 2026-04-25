@@ -33,7 +33,6 @@ type GetReportResult struct {
 	Status    ReportStatus
 	SessionID uuid.UUID
 	Report    domain.ReportDraft
-	ReplayURL string
 }
 
 // Do loads the session, returns the parsed report if ready.
@@ -56,7 +55,6 @@ func (uc *GetReport) Do(ctx context.Context, userID, sessionID uuid.UUID) (GetRe
 		Status:    ReportStatusReady,
 		SessionID: sessionID,
 		Report:    draft,
-		ReplayURL: s.ReplayURL,
 	}, nil
 }
 

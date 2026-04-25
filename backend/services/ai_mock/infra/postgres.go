@@ -112,12 +112,11 @@ func (s *Sessions) UpdateStress(ctx context.Context, id uuid.UUID, profile domai
 	return nil
 }
 
-// UpdateReport writes the ai_report blob + replay_url.
-func (s *Sessions) UpdateReport(ctx context.Context, id uuid.UUID, reportJSON []byte, replayURL string) error {
+// UpdateReport writes the ai_report blob.
+func (s *Sessions) UpdateReport(ctx context.Context, id uuid.UUID, reportJSON []byte) error {
 	affected, err := s.q.UpdateMockSessionReport(ctx, ai_mockdb.UpdateMockSessionReportParams{
 		ID:      sharedpg.UUID(id),
 		Column2: reportJSON,
-		Column3: replayURL,
 	})
 	if err != nil {
 		return fmt.Errorf("mock.Sessions.UpdateReport: %w", err)
@@ -324,9 +323,6 @@ func sessionFromRow(r ai_mockdb.MockSession) (domain.Session, error) {
 	}
 	if r.LlmModel.Valid {
 		out.LLMModel = enums.LLMModel(r.LlmModel.String)
-	}
-	if r.ReplayUrl.Valid {
-		out.ReplayURL = r.ReplayUrl.String
 	}
 	if r.StartedAt.Valid {
 		t := r.StartedAt.Time

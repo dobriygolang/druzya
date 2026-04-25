@@ -7,14 +7,24 @@
 
 import { useEffect } from 'react'
 import { Excalidraw } from '@excalidraw/excalidraw'
-import type { ExcalidrawImperativeAPI } from '@excalidraw/excalidraw/types'
+import type { ExcalidrawImperativeAPI, ExcalidrawInitialDataState } from '@excalidraw/excalidraw/types'
 import '@excalidraw/excalidraw/index.css'
 
 export type SysDesignCanvasInnerProps = {
-  onAPI: (api: ExcalidrawImperativeAPI) => void
+  onAPI?: (api: ExcalidrawImperativeAPI) => void
+  // When set the canvas is rendered read-only with the given scene as initial
+  // data — used in the post-submit review path so the user sees their saved
+  // diagram without re-uploading. Pass elements/files exactly as returned by
+  // the live editor's `getSceneElements()` / `getFiles()`.
+  initialData?: ExcalidrawInitialDataState | null
+  viewModeEnabled?: boolean
 }
 
-export default function SysDesignCanvasInner({ onAPI }: SysDesignCanvasInnerProps) {
+export default function SysDesignCanvasInner({
+  onAPI,
+  initialData,
+  viewModeEnabled,
+}: SysDesignCanvasInnerProps) {
   // Inject the dark-mode + filter overrides once per mount. Same selector
   // namespace as the standalone whiteboard page so styles compose cleanly
   // when both routes coexist in dev.
@@ -44,8 +54,10 @@ export default function SysDesignCanvasInner({ onAPI }: SysDesignCanvasInnerProp
     >
       <Excalidraw
         theme="dark"
+        viewModeEnabled={viewModeEnabled}
+        initialData={initialData ?? undefined}
         excalidrawAPI={(api) => {
-          onAPI(api)
+          onAPI?.(api)
           requestAnimationFrame(() => {
             try {
               api.refresh()

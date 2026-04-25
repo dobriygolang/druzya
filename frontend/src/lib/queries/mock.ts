@@ -57,7 +57,6 @@ export type MockReport = {
   weaknesses: string[]
   recommendations: { title: string; description?: string; action: { kind: string; params?: Record<string, string> } }[]
   stress_analysis: string
-  replay_url: string | null
 }
 
 export type CreateMockInput = {

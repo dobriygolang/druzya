@@ -132,8 +132,13 @@ type PipelineAttemptRepo interface {
 // CanvasResultUpdate — payload for PipelineAttemptRepo.UpdateCanvasResult.
 // Sysdesign judge ставит water_score=0 (не применимо к диаграммам), верdict
 // рассчитан в app-слое.
+//
+// SceneJSON is the raw Excalidraw scene blob (elements + files) which the
+// frontend re-renders in viewMode when the user revisits the attempt. It
+// supersedes the legacy ImageDataURL (kept for back-compat with rows
+// written before F-3 v2 — new submissions leave that column NULL).
 type CanvasResultUpdate struct {
-	ImageDataURL  string
+	SceneJSON     []byte
 	ContextMD     string
 	UserAnswerMD  string // composed: "## Non-functional requirements\n\n{NonFunctionalMD}"
 	Score         float32

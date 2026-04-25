@@ -95,9 +95,14 @@ var allTables = []string{
 // (защита от случайного раскрытия sensitive колонок типа embedding'ов
 // которые должны оставаться сервер-side только).
 var pullColumns = map[string]string{
-	"hone_notes":          "id, title, body_md, size_bytes, archived_at, published_at, public_slug, created_at, updated_at",
-	"hone_whiteboards":    "id, title, state_json, version, archived_at, created_at, updated_at",
-	"hone_focus_sessions": "id, started_at, ended_at, planned_duration_seconds, actual_duration_seconds, plan_item_id, pinned_title",
+	"hone_notes":       "id, title, body_md, size_bytes, archived_at, published_at, public_slug, created_at, updated_at",
+	"hone_whiteboards": "id, title, state_json, version, archived_at, created_at, updated_at",
+	// hone_focus_sessions schema (см. migrations/00013_hone_focus.sql):
+	// нет planned_duration_seconds / actual_duration_seconds. Реальная факт-
+	// длительность хранится в seconds_focused, mode различает pomodoro vs
+	// stopwatch. Фикс предыдущего bug'а где /api/v1/sync/pull возвращал 500
+	// «column does not exist» каждый раз когда клиент тянул focus_sessions.
+	"hone_focus_sessions": "id, started_at, ended_at, mode, pomodoros_completed, seconds_focused, plan_item_id, pinned_title",
 	"hone_plans":          "user_id, day, items, generated_at",
 	"coach_episodes":      "id, kind, summary, payload, occurred_at, created_at",
 }

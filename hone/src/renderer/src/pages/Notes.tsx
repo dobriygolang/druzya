@@ -1082,9 +1082,15 @@ function SidebarHeader({
       }}
     >
       <button
-        onClick={() => window.history.back()}
+        onClick={() => {
+          // SPA-навигация Hone — нет браузерной истории. App.tsx слушает
+          // 'hone:nav-home' event и делает setPage('home'). Раньше тут был
+          // window.history.back() который в Electron renderer no-op'ит
+          // (single-page app). Теперь явно отправляем nav-home event.
+          window.dispatchEvent(new Event('hone:nav-home'));
+        }}
         className="focus-ring"
-        title="Back"
+        title="Back to Home"
         style={{
           background: 'transparent',
           border: 'none',

@@ -27,12 +27,6 @@ import (
 	"github.com/google/uuid"
 )
 
-// canvasS3Prefix marks rows whose user_excalidraw_image_url is an object key
-// in the MinIO bucket rather than an inline data URL. Read paths transform
-// these into freshly presigned GET URLs; legacy rows (data URLs) pass through
-// unchanged.
-const canvasS3Prefix = "s3://"
-
 // StrictnessResolver is the seam used by the orchestrator to snapshot the
 // effective profile per stage. *Handlers (this package) implements it via
 // ResolveStrictness; we keep it as an interface so Orchestrator tests can
@@ -54,11 +48,6 @@ type Orchestrator struct {
 	CompanyStages  domain.CompanyStageRepo
 	Strictness     StrictnessResolver
 	Judge          JudgeClient
-	// Canvas stores the rendered Excalidraw PNG out-of-band (MinIO) and
-	// returns presigned URLs on read. May be nil — when so (or when
-	// .Available() is false) we degrade to inline base64 storage in the
-	// pipeline_attempts row, the legacy pre-F-3 behavior.
-	Canvas domain.CanvasStore
 	// Sandbox runs task_solve attempts through Judge0. May be nil — when so
 	// (or when .Available() is false / language unsupported / no test cases)
 	// we fall back to the LLM code-review judge.
@@ -513,13 +502,19 @@ func (o *Orchestrator) SubmitAnswer(ctx context.Context, attemptID uuid.UUID, us
 // ── SubmitCanvas (Phase D.1) ────────────────────────────────────────────
 
 // SubmitCanvasInput — payload for the sysdesign canvas submission.
-// ImageDataURL must be a data:image/{png,jpeg};base64,… url; the orchestrator
-// validates shape via judge.decodeDataURL. UserID is used solely for the
-// pipeline-ownership check (caller already authenticated).
+//
+// ImageDataURL must be a data:image/{png,jpeg};base64,… url; it is consumed
+// once by the vision judge and discarded. The persistent record of the
+// drawing is SceneJSON (Excalidraw scene + files), which the frontend re-
+// renders in viewMode when the user reviews the attempt.
+//
+// UserID is used solely for the pipeline-ownership check (caller already
+// authenticated).
 type SubmitCanvasInput struct {
 	AttemptID       uuid.UUID
 	UserID          uuid.UUID
 	ImageDataURL    string
+	SceneJSON       []byte // raw Excalidraw scene blob; persisted as jsonb
 	ContextMD       string
 	NonFunctionalMD string
 }
@@ -603,30 +598,12 @@ func (o *Orchestrator) SubmitCanvas(ctx context.Context, in SubmitCanvasInput) (
 		userAnswerMD = "## Non-functional requirements\n\n" + in.NonFunctionalMD
 	}
 
-	// F-3: persist the rendered PNG out-of-band when MinIO is wired. Falls
-	// back to the legacy inline data URL on any failure so the feature stays
-	// usable when the canvas store is misconfigured / unreachable.
-	storedImageURL := in.ImageDataURL
-	if o.Canvas != nil && o.Canvas.Available() {
-		png, mime, decErr := decodeDataURL(in.ImageDataURL)
-		if decErr != nil {
-			if o.Log != nil {
-				o.Log.WarnContext(ctx, "mock_interview.orch: canvas decode — keeping inline data URL", slog.Any("err", decErr))
-			}
-		} else {
-			objectKey := "sysdesign/" + in.AttemptID.String() + canvasExt(mime)
-			if upErr := o.Canvas.PutPNG(ctx, objectKey, png, mime); upErr != nil {
-				if o.Log != nil {
-					o.Log.WarnContext(ctx, "mock_interview.orch: canvas upload — keeping inline data URL", slog.Any("err", upErr))
-				}
-			} else {
-				storedImageURL = canvasS3Prefix + objectKey
-			}
-		}
-	}
-
+	// F-3 v2: PNG was consumed by the vision judge above and is now thrown
+	// away. The Excalidraw scene blob is the persistent record — frontend
+	// re-renders it in viewMode when the user revisits the attempt. Image
+	// URL column stays empty for new rows; legacy rows keep their data URL.
 	if uerr := o.Attempts.UpdateCanvasResult(ctx, in.AttemptID, domain.CanvasResultUpdate{
-		ImageDataURL:  storedImageURL,
+		SceneJSON:     in.SceneJSON,
 		ContextMD:     in.ContextMD,
 		UserAnswerMD:  userAnswerMD,
 		Score:         float32(jOut.Score),
@@ -642,15 +619,6 @@ func (o *Orchestrator) SubmitCanvas(ctx context.Context, in SubmitCanvasInput) (
 		return domain.PipelineAttempt{}, fmt.Errorf("attempts.Get post-update: %w", err)
 	}
 	return updated, nil
-}
-
-// canvasExt maps a decoded image mime type to a file extension. Used when
-// composing object keys for the canvas store.
-func canvasExt(mime string) string {
-	if mime == "image/jpeg" {
-		return ".jpg"
-	}
-	return ".png"
 }
 
 // ── FinishStage ─────────────────────────────────────────────────────────

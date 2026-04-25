@@ -29,7 +29,7 @@ type SessionRepo interface {
 	Get(ctx context.Context, id uuid.UUID) (Session, error)
 	UpdateStatus(ctx context.Context, id uuid.UUID, status string, finishedAt bool) error
 	UpdateStress(ctx context.Context, id uuid.UUID, profile StressProfile) error
-	UpdateReport(ctx context.Context, id uuid.UUID, reportJSON []byte, replayURL string) error
+	UpdateReport(ctx context.Context, id uuid.UUID, reportJSON []byte) error
 }
 
 // MessageRepo persists mock_messages rows.
@@ -110,12 +110,6 @@ type LLMProvider interface {
 // ─────────────────────────────────────────────────────────────────────────
 // Ancillary
 // ─────────────────────────────────────────────────────────────────────────
-
-// ReplayUploader uploads a serialized session replay to object storage and
-// returns a presigned URL. STUB for MVP — see infra/replay.go.
-type ReplayUploader interface {
-	Upload(ctx context.Context, sessionID uuid.UUID, payload []byte) (presignedURL string, err error)
-}
 
 // RateLimiter is a minimal token-bucket abstraction used for per-session LLM
 // calls (bible: 10 msg/min per session).
