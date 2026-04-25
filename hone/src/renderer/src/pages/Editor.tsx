@@ -139,22 +139,28 @@ function honeEditorTheme() {
         backgroundColor: 'inherit',
         border: '1px solid #000',
       },
+      // Override y-codemirror default: их встроенный CSS делает opacity:0
+      // и показывает label только на hover/movement. Юзер просил «всегда
+      // видно». !important перебивает их inline-injected styles (порядок
+      // загрузки CSS не гарантирован).
       '.cm-ySelectionInfo': {
         position: 'absolute',
         top: -1.4,
         left: -1,
-        fontSize: 10,
+        fontSize: '10px',
         fontFamily: 'ui-monospace, monospace',
         fontWeight: 500,
         lineHeight: 'normal',
         userSelect: 'none',
         color: '#000',
-        paddingLeft: 4,
-        paddingRight: 4,
+        paddingLeft: '4px',
+        paddingRight: '4px',
         zIndex: 101,
         transform: 'translateY(-100%)',
         backgroundColor: 'inherit',
         whiteSpace: 'nowrap',
+        opacity: '1 !important',
+        transition: 'none !important',
       },
     },
     { dark: true },
@@ -190,49 +196,10 @@ function languageLabel(lang: Language): string {
   }
 }
 
-// templateForLanguage — стартовый шаблон, вставляется в ytext только
-// owner'ом если room ещё пустая. Минимальный «Hello, world» с правильным
-// синтаксисом + правильными импортами. Юзер сразу может ▶ RUN и увидеть
-// output, не разбираясь как стартовать с нуля.
-function templateForLanguage(lang: Language): string {
-  switch (lang) {
-    case Language.GO:
-      return `package main
-
-import "fmt"
-
-func main() {
-\tfmt.Println("Hello, Hone!")
-}
-`;
-    case Language.PYTHON:
-      return `def main() -> None:
-    print("Hello, Hone!")
-
-
-if __name__ == "__main__":
-    main()
-`;
-    case Language.JAVASCRIPT:
-      return `// Hello from Hone
-function main() {
-  console.log("Hello, Hone!");
-}
-
-main();
-`;
-    case Language.TYPESCRIPT:
-      return `// Hello from Hone
-function main(): void {
-  console.log("Hello, Hone!");
-}
-
-main();
-`;
-    default:
-      return '';
-  }
-}
+// Note: seed-template был удалён по просьбе юзера — свежие комнаты теперь
+// открываются с пустым ytext, юзер пишет с нуля. Раньше тут была функция
+// templateForLanguage(), и FRESHLY_CREATED set'ом помечалась только что
+// созданная комната чтобы owner вставил «Hello, Hone!» через ytext.insert.
 
 export function EditorPage({ initialRoomId, onConsumeInitial }: EditorPageProps = {}) {
   const [selectedRoomId, setSelectedRoomId] = useState<string | null>(initialRoomId ?? null);
@@ -446,7 +413,6 @@ function CodeRoomsSidebar({
     setError(null);
     try {
       const r = await createRoom({ type: 'practice', language: lang });
-      FRESHLY_CREATED.add(r.id);
       onCreated(r.id);
     } catch (err: unknown) {
       const ce = ConnectError.from(err);
@@ -1177,12 +1143,6 @@ function loadRecent(): RecentEntry[] {
   }
 }
 
-// Session-scoped set of room IDs we just created locally. Used by RoomView
-// to insert language template synchronously (без 250ms WS-snapshot delay).
-// Безопасно: ownership одной комнаты на одного клиента, set чистится после
-// первого использования.
-const FRESHLY_CREATED: Set<string> = new Set();
-
 function rememberEditorRoom(id: string, language?: number) {
   if (typeof window === 'undefined') return;
   try {
@@ -1366,34 +1326,6 @@ function RoomView({ roomId }: { roomId: string; onBack?: () => void }) {
       handle.send({ kind: 'op', data: { payload: bytesToB64(update) } });
     };
 
-    // Code preset seed: для свежесозданных комнат (FRESHLY_CREATED set)
-    // вставляем шаблон СИНХРОННО — никакого WS-snapshot round-trip'а ждать
-    // не нужно, потому что комната заведомо пустая (мы только что её
-    // создали). Шаблон полностью клиентский (templateForLanguage), хранится
-    // в bundle'е приложения — на бэке нет никакого "preset storage".
-    //
-    // Для НЕсвежих комнат (open recent / join by URL) seed НЕ делаем — иначе
-    // могли бы клобберить существующий код после snapshot-sync.
-    const seedTimer = window.setTimeout(() => {
-      if (!FRESHLY_CREATED.has(room.id)) return;
-      if (!myUserId || room.ownerId !== myUserId) return;
-      if (ytext.length > 0) {
-        // Уже что-то есть (snapshot прилетел быстрее, или React StrictMode
-        // double-mount уже засеял на первом проходе) — не делаем seed второй
-        // раз. Удаляем флаг чтобы будущий «open recent» не триггерил.
-        FRESHLY_CREATED.delete(room.id);
-        return;
-      }
-      const template = templateForLanguage(room.language);
-      if (template) {
-        ytext.insert(0, template);
-        // Удаляем ТОЛЬКО ПОСЛЕ успешного insert. В dev-mode StrictMode
-        // useEffect срабатывает дважды (mount → cleanup → mount). Если бы
-        // удаляли в начале, то после cleanup ydoc'а второй mount получает
-        // пустой ytext + пустой set → без шаблона.
-        FRESHLY_CREATED.delete(room.id);
-      }
-    }, 0);
     sendAwarenessRef.current = (update: Uint8Array) => {
       // Backend ws.go ловит kind='presence', envelope.data — opaque, мы
       // кладём { update: base64 } и backend re-broadcast'ит как
@@ -1432,7 +1364,6 @@ function RoomView({ roomId }: { roomId: string; onBack?: () => void }) {
       awareness.off('change', onAwarenessChange);
       awareness.destroy();
       ydoc.off('update', onUpdate);
-      window.clearTimeout(seedTimer);
       // WS close с задержкой 60ms чтобы send-buffer ушёл на сервер ДО close.
       const closeHandle = wsCloseRef.current;
       window.setTimeout(() => {

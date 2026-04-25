@@ -511,6 +511,31 @@ function RoomCanvasImpl({ room, guestToken, myUserId }: { room: RoomMeta; guestT
           theme="dark"
           excalidrawAPI={(api) => {
             apiRef.current = api
+            // КРИТИЧНО: WS snapshot часто приезжает РАНЬШЕ чем Excalidraw
+            // успевает смонтироваться и вызвать этот callback. Тогда
+            // yScene.observe срабатывает с apiRef.current === null и
+            // сцена теряется (host рисовал ДО прихода guest'а — guest
+            // никогда не увидит). Replay yScene → Excalidraw здесь.
+            const ydoc = ydocRef.current
+            if (ydoc) {
+              const yScene = ydoc.getMap<string>('scene')
+              const json = yScene.get('elements')
+              if (json) {
+                try {
+                  const elements = JSON.parse(json)
+                  applyingRemoteRef.current = true
+                  api.updateScene({
+                    elements,
+                    captureUpdate: CaptureUpdateAction.NEVER,
+                  })
+                  queueMicrotask(() => {
+                    applyingRemoteRef.current = false
+                  })
+                } catch {
+                  /* ignore parse */
+                }
+              }
+            }
             requestAnimationFrame(() => {
               try {
                 api.refresh()
