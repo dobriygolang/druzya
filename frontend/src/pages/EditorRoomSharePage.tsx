@@ -195,6 +195,14 @@ function decodeJwtSub(token: string | null): string | undefined {
   }
 }
 
+interface RunResult {
+  stdout: string
+  stderr: string
+  exitCode: number
+  timeMs: number
+  status: string
+}
+
 function RoomEditorImpl({ room, guestToken, myUserId }: { room: RoomMeta; guestToken?: string; myUserId?: string }) {
   const [wsStatus, setWsStatus] = useState<'connecting' | 'open' | 'reconnecting' | 'failed'>(
     'connecting',
@@ -204,6 +212,14 @@ function RoomEditorImpl({ room, guestToken, myUserId }: { room: RoomMeta; guestT
   const sendRef = useRef<((u: Uint8Array) => void) | null>(null)
   const sendAwarenessRef = useRef<((u: Uint8Array) => void) | null>(null)
   const wsCloseRef = useRef<(() => void) | null>(null)
+
+  // Run / Format / output panel state. Mirror hone Editor.tsx.
+  const [running, setRunning] = useState(false)
+  const runningRef = useRef(false)
+  const [runResult, setRunResult] = useState<RunResult | null>(null)
+  const [runError, setRunError] = useState<string | null>(null)
+  const [panelOpen, setPanelOpen] = useState(false)
+  const [outputTab, setOutputTab] = useState<'stdout' | 'stderr'>('stdout')
 
   useEffect(() => {
     const ydoc = new Y.Doc()
@@ -335,6 +351,117 @@ function RoomEditorImpl({ room, guestToken, myUserId }: { room: RoomMeta; guestT
     }
   }, [room, guestToken])
 
+  // handleFormat — re-indent / strip trailing whitespace через CM6 transactions.
+  // Не настоящий gofmt/prettier, но даёт юзеру чистый indent + удаляет
+  // trailing spaces. Mirror hone Editor.tsx.
+  const handleFormat = useCallback(() => {
+    const view = viewRef.current
+    if (!view) return
+    const { state } = view
+    const changes: Array<{ from: number; to: number; insert: string }> = []
+    for (let i = 1; i <= state.doc.lines; i++) {
+      const line = state.doc.line(i)
+      const trimmed = line.text.replace(/[ \t]+$/, '')
+      if (trimmed !== line.text) {
+        changes.push({ from: line.from, to: line.to, insert: trimmed })
+      }
+    }
+    if (changes.length > 0) view.dispatch({ changes })
+  }, [])
+
+  // handleRun — POST /api/v1/editor/room/{id}/run (см. proto editor.proto).
+  // Auth через access_token (или guest-token). Backend проверяет
+  // participant'ом ли user'а; иначе 403/401.
+  const handleRun = useCallback(async () => {
+    if (runningRef.current) return
+    const view = viewRef.current
+    if (!view) return
+    const code = view.state.doc.toString()
+    runningRef.current = true
+    setRunning(true)
+    setRunError(null)
+    setPanelOpen(true)
+    try {
+      const token = guestToken ?? readAccessToken() ?? ''
+      const langMap: Record<string, number> = {
+        // mirror druz9.v1.Language enum (1=GO, 2=PYTHON, 3=JS, 4=TS).
+        go: 1,
+        python: 2,
+        javascript: 3,
+        typescript: 4,
+      }
+      const langInt = langMap[room.language] ?? 0
+      const resp = await fetch(`${API_BASE}/editor/room/${encodeURIComponent(room.id)}/run`, {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ code, language: langInt }),
+      })
+      if (resp.status === 503) {
+        setRunResult(null)
+        setRunError('Sandbox not configured.')
+        return
+      }
+      if (resp.status === 429) {
+        setRunResult(null)
+        setRunError('Slow down — limit reached.')
+        return
+      }
+      if (resp.status === 403) {
+        setRunResult(null)
+        setRunError('You are not a participant.')
+        return
+      }
+      if (!resp.ok) {
+        setRunResult(null)
+        setRunError(`HTTP ${resp.status}`)
+        return
+      }
+      const j = (await resp.json()) as {
+        stdout?: string
+        stderr?: string
+        exitCode?: number
+        exit_code?: number
+        timeMs?: number
+        time_ms?: number
+        status?: string
+      }
+      const r: RunResult = {
+        stdout: j.stdout ?? '',
+        stderr: j.stderr ?? '',
+        exitCode: j.exitCode ?? j.exit_code ?? 0,
+        timeMs: j.timeMs ?? j.time_ms ?? 0,
+        status: j.status ?? '',
+      }
+      setRunResult(r)
+      if (r.stderr && !r.stdout) setOutputTab('stderr')
+      else setOutputTab('stdout')
+    } catch (e) {
+      setRunResult(null)
+      setRunError((e as Error).message)
+    } finally {
+      runningRef.current = false
+      setRunning(false)
+    }
+  }, [room.id, room.language, guestToken])
+
+  // ⌘↵ / Ctrl+Enter — run. ⌘⇧F — format.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+        e.preventDefault()
+        void handleRun()
+      } else if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key.toLowerCase() === 'f') {
+        e.preventDefault()
+        handleFormat()
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [handleRun, handleFormat])
+
   return (
     <div style={{ position: 'fixed', inset: 0, background: '#000', color: '#fff' }}>
       <div
@@ -343,9 +470,158 @@ function RoomEditorImpl({ room, guestToken, myUserId }: { room: RoomMeta; guestT
           position: 'absolute',
           inset: 0,
           paddingTop: 0,
+          paddingBottom: panelOpen ? 220 : 0,
           fontFamily: '"JetBrains Mono", monospace',
+          transition: 'padding-bottom 200ms ease',
         }}
       />
+
+      {/* Top-right: FORMAT + RUN — mirror hone Editor.tsx. */}
+      <div
+        style={{
+          position: 'fixed',
+          top: 14,
+          right: 24,
+          display: 'flex',
+          alignItems: 'center',
+          gap: 6,
+          zIndex: 25,
+        }}
+      >
+        <button
+          onClick={handleFormat}
+          title="Format / re-indent (⌘⇧F)"
+          style={{
+            padding: '7px 14px',
+            fontSize: 11,
+            letterSpacing: '0.14em',
+            background: 'rgba(20,20,22,0.78)',
+            backdropFilter: 'blur(16px)',
+            border: '1px solid rgba(255,255,255,0.08)',
+            color: 'rgba(255,255,255,0.6)',
+            borderRadius: 999,
+            cursor: 'pointer',
+            fontFamily: '"JetBrains Mono", monospace',
+            transition: 'color 160ms ease',
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.color = '#fff'
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.color = 'rgba(255,255,255,0.6)'
+          }}
+        >
+          {'{ } FORMAT'}
+        </button>
+        <button
+          onClick={() => void handleRun()}
+          disabled={running}
+          title="Run code (⌘↵)"
+          style={{
+            padding: '7px 14px',
+            fontSize: 12,
+            fontWeight: 500,
+            background: 'rgba(255,255,255,0.92)',
+            color: '#000',
+            border: 'none',
+            borderRadius: 999,
+            cursor: running ? 'default' : 'pointer',
+            opacity: running ? 0.6 : 1,
+          }}
+        >
+          {running ? '⏵ RUNNING…' : '▶ RUN'}
+        </button>
+      </div>
+
+      {/* Output panel — снизу. */}
+      {panelOpen && (
+        <div
+          style={{
+            position: 'fixed',
+            bottom: 0,
+            left: 0,
+            right: 0,
+            height: 220,
+            background: 'rgba(15,15,17,0.96)',
+            backdropFilter: 'blur(20px)',
+            borderTop: '1px solid rgba(255,255,255,0.08)',
+            zIndex: 24,
+            display: 'flex',
+            flexDirection: 'column',
+            fontFamily: '"JetBrains Mono", monospace',
+          }}
+        >
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              padding: '10px 16px',
+              borderBottom: '1px solid rgba(255,255,255,0.06)',
+            }}
+          >
+            <div style={{ display: 'flex', gap: 14 }}>
+              {(['stdout', 'stderr'] as const).map((tab) => (
+                <button
+                  key={tab}
+                  onClick={() => setOutputTab(tab)}
+                  style={{
+                    background: 'transparent',
+                    border: 'none',
+                    color: outputTab === tab ? '#fff' : 'rgba(255,255,255,0.4)',
+                    cursor: 'pointer',
+                    fontSize: 10,
+                    letterSpacing: '0.18em',
+                    padding: 0,
+                  }}
+                >
+                  {tab.toUpperCase()}
+                </button>
+              ))}
+              {runResult && (
+                <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: 10, letterSpacing: '0.12em' }}>
+                  EXIT {runResult.exitCode} · {runResult.timeMs}ms
+                </span>
+              )}
+            </div>
+            <button
+              onClick={() => setPanelOpen(false)}
+              style={{
+                background: 'transparent',
+                border: 'none',
+                color: 'rgba(255,255,255,0.4)',
+                cursor: 'pointer',
+                fontSize: 14,
+                lineHeight: 1,
+              }}
+              title="Close output"
+            >
+              ×
+            </button>
+          </div>
+          <pre
+            style={{
+              flex: 1,
+              margin: 0,
+              padding: '12px 16px',
+              overflow: 'auto',
+              fontSize: 12,
+              color: outputTab === 'stderr' ? '#ff8c8c' : '#d6d6d6',
+              whiteSpace: 'pre-wrap',
+            }}
+          >
+            {runError
+              ? runError
+              : running && !runResult
+                ? '…'
+                : runResult
+                  ? outputTab === 'stdout'
+                    ? runResult.stdout || '(no stdout)'
+                    : runResult.stderr || '(no stderr)'
+                  : ''}
+          </pre>
+        </div>
+      )}
       <div
         style={{
           position: 'fixed',
@@ -426,22 +702,27 @@ function editorThemeWeb() {
         backgroundColor: 'inherit',
         border: '1px solid #000',
       },
+      // y-codemirror'овский встроенный CSS делает opacity:0 + fade →
+      // label виден только на hover/movement. !important перебивает,
+      // mirror hone Editor.tsx honeEditorTheme.
       '.cm-ySelectionInfo': {
         position: 'absolute',
         top: -1.4,
         left: -1,
-        fontSize: 10,
+        fontSize: '10px',
         fontFamily: 'ui-monospace, monospace',
         fontWeight: 500,
         lineHeight: 'normal',
         userSelect: 'none',
         color: '#000',
-        paddingLeft: 4,
-        paddingRight: 4,
+        paddingLeft: '4px',
+        paddingRight: '4px',
         zIndex: 101,
         transform: 'translateY(-100%)',
         backgroundColor: 'inherit',
         whiteSpace: 'nowrap',
+        opacity: '1 !important',
+        transition: 'none !important',
       },
     },
     { dark: true },

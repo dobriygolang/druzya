@@ -22,7 +22,7 @@ import {
   applyAwarenessUpdate,
   encodeAwarenessUpdate,
 } from 'y-protocols/awareness';
-import { EditorState, Compartment } from '@codemirror/state';
+import { EditorState, Compartment, Prec } from '@codemirror/state';
 import { EditorView, keymap, lineNumbers } from '@codemirror/view';
 import { defaultKeymap, history, historyKeymap } from '@codemirror/commands';
 import { indentOnInput, HighlightStyle, syntaxHighlighting } from '@codemirror/language';
@@ -1349,7 +1349,14 @@ function RoomView({ roomId }: { roomId: string; onBack?: () => void }) {
         syntaxHighlighting(honeCodeHighlight),
         langCompartment.of(langExt(room.language)),
         yCollab(ytext, awareness),
-        honeEditorTheme(),
+        // Prec.highest: oneDarkTheme регистрирует свой `.cm-gutters` с
+        // background чуть-чуть светлее чем чисто чёрный (#282c34) — наш
+        // override без Prec.highest терялся в порядке merge'а из-за того
+        // что oneDark Bundle внутри использует тот же facet с равной
+        // priority, и фактический "победитель" определялся implementation
+        // detail'ом CM6 facet-сортировки. Web frontend (editorThemeWeb)
+        // не использует oneDark вообще → у него gutter был корректным.
+        Prec.highest(honeEditorTheme()),
       ],
     });
     const mount = document.getElementById('hone-cm-mount');

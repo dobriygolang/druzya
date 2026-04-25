@@ -83,7 +83,7 @@ func NewWhiteboardRooms(d Deps) *Module {
 			// Visibility flip + read — отдельный REST endpoint без proto
 			// regen (proto-добавление поля Room.visibility — отдельный
 			// инкремент; пока экспозируем через JSON).
-			vis := &visibilityHandler{rooms: rooms, log: d.Log}
+			vis := &visibilityHandler{rooms: rooms, log: d.Log, quotaCheck: createCheck}
 			r.Get("/whiteboard/room/{room_id}/visibility", vis.get)
 			r.Post("/whiteboard/room/{room_id}/visibility", vis.set)
 		},
@@ -193,6 +193,9 @@ func gcEphemeralUsersOnce(ctx context.Context, pool *pgxpool.Pool, log *slog.Log
 type visibilityHandler struct {
 	rooms whiteboardDomain.RoomRepo
 	log   *slog.Logger
+	// quotaCheck — flip private→shared эквивалентен createRoom для quota
+	// purposes. nil-safe (если subscription module не loaded).
+	quotaCheck func(ctx context.Context, userID uuid.UUID) error
 }
 
 type visibilityResponse struct {
@@ -269,6 +272,20 @@ func (h *visibilityHandler) set(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, `{"error":{"code":"forbidden","message":"only owner can change visibility"}}`,
 			http.StatusForbidden)
 		return
+	}
+	// Quota: private→shared эквивалентен новой shared-room'ы. Иначе юзер
+	// мог бы обойти limit создавая private (без чека) + flip'ая shared'ом.
+	if v == whiteboardDomain.VisibilityShared && room.Visibility != whiteboardDomain.VisibilityShared {
+		if h.quotaCheck != nil {
+			if qerr := h.quotaCheck(r.Context(), uid); qerr != nil {
+				if errors.Is(qerr, ErrQuotaExceeded) {
+					http.Error(w, `{"error":{"code":"quota_exceeded","message":"shared boards limit reached on your tier"}}`,
+						http.StatusPaymentRequired)
+					return
+				}
+				h.log.WarnContext(r.Context(), "visibility.set: quota check", slog.Any("err", qerr))
+			}
+		}
 	}
 	if err := h.rooms.SetVisibility(r.Context(), roomID, v); err != nil {
 		h.log.ErrorContext(r.Context(), "visibility.set: write", slog.Any("err", err))

@@ -115,7 +115,7 @@ func NewEditor(d Deps) *Module {
 			r.Get("/editor/room/{roomId}/replay", transcoder.ServeHTTP)
 			r.Post("/editor/room/{roomId}/run", transcoder.ServeHTTP)
 			// Visibility flip + read — mirror whiteboard. Owner-only set.
-			ev := &editorVisibilityHandler{rooms: rooms, log: d.Log}
+			ev := &editorVisibilityHandler{rooms: rooms, log: d.Log, quotaCheck: editorCreateCheck}
 			r.Get("/editor/room/{roomId}/visibility", ev.get)
 			r.Post("/editor/room/{roomId}/visibility", ev.set)
 			// DeleteRoom — REST shortcut. Editor domain pока не имеет
@@ -199,6 +199,11 @@ func (h *editorDeleteHandler) handle(w http.ResponseWriter, r *http.Request) {
 type editorVisibilityHandler struct {
 	rooms editorDomain.RoomRepo
 	log   *slog.Logger
+	// quotaCheck — calls EnforceCreate с editorDomainQuotaField. nil-safe
+	// (если subscription module не loaded → permissive). Mirror того же
+	// closure'а который CreateRoom использует, чтобы flip private→shared
+	// эквивалентно «созданию shared room'ы» с точки зрения quota.
+	quotaCheck func(ctx context.Context, userID uuid.UUID) error
 }
 
 type editorVisibilityResponse struct {
@@ -272,6 +277,22 @@ func (h *editorVisibilityHandler) set(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, `{"error":{"code":"forbidden","message":"only owner can change visibility"}}`,
 			http.StatusForbidden)
 		return
+	}
+	// Quota: flip private→shared эквивалентен созданию shared-room'ы. Иначе
+	// юзер мог бы обойти лимит создавая комнату как private (без чека) и
+	// flip'ая её shared'ом потом. shared→private / shared→shared / etc —
+	// quota не проверяем.
+	if v == editorDomain.VisibilityShared && room.Visibility != editorDomain.VisibilityShared {
+		if h.quotaCheck != nil {
+			if qerr := h.quotaCheck(r.Context(), uid); qerr != nil {
+				if errors.Is(qerr, ErrQuotaExceeded) {
+					http.Error(w, `{"error":{"code":"quota_exceeded","message":"shared rooms limit reached on your tier"}}`,
+						http.StatusPaymentRequired)
+					return
+				}
+				h.log.WarnContext(r.Context(), "editor.visibility.set: quota check", slog.Any("err", qerr))
+			}
+		}
 	}
 	if err := h.rooms.SetVisibility(r.Context(), roomID, v); err != nil {
 		h.log.ErrorContext(r.Context(), "editor.visibility.set: write", slog.Any("err", err))
