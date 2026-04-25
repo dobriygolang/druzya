@@ -49,12 +49,12 @@ const DefaultInsightCacheTTL = 24 * time.Hour
 // InsightPayload is the structured snapshot we feed the LLM. Build it in the
 // app layer from the already-aggregated ReportView fields.
 type InsightPayload struct {
-	WeekISO           string         // e.g. "2026-W17"
-	EloDelta          int            // sum of ELO changes for the week
-	WinRateBySection  map[string]int // section name → win-rate %
-	HoursStudied      float64        // derived from Activity.TimeMinutes / 60
-	Streak            int            // current streak in days
-	WeakestSection    string         // section name (lower-case slug); "" if none
+	WeekISO          string         // e.g. "2026-W17"
+	EloDelta         int            // sum of ELO changes for the week
+	WinRateBySection map[string]int // section name → win-rate %
+	HoursStudied     float64        // derived from Activity.TimeMinutes / 60
+	Streak           int            // current streak in days
+	WeakestSection   string         // section name (lower-case slug); "" if none
 
 	// Model — per-call OpenRouter model override (e.g. "openai/gpt-4o-mini").
 	// Empty → use the client's default. Caller (app/report.go) reads the

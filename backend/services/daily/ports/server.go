@@ -192,25 +192,9 @@ func toStreakInfoProto(s domain.StreakInfo) *pb.StreakInfo {
 
 // ── enum adapters ──────────────────────────────────────────────────────────
 
-func sectionFromProto(s pb.Section) enums.Section {
-	switch s {
-	case pb.Section_SECTION_ALGORITHMS:
-		return enums.SectionAlgorithms
-	case pb.Section_SECTION_SQL:
-		return enums.SectionSQL
-	case pb.Section_SECTION_GO:
-		return enums.SectionGo
-	case pb.Section_SECTION_SYSTEM_DESIGN:
-		return enums.SectionSystemDesign
-	case pb.Section_SECTION_BEHAVIORAL:
-		return enums.SectionBehavioral
-	case pb.Section_SECTION_UNSPECIFIED:
-		return ""
-	default:
-		return ""
-	}
-}
-
+// Phase-4 ADR-001: sectionFromProto removed alongside CreateAutopsy /
+// UpsertCalendar handlers — no remaining reader of section input from
+// the wire. sectionToProto stays for streak/kata response shaping.
 func sectionToProto(s enums.Section) pb.Section {
 	switch s {
 	case enums.SectionAlgorithms:

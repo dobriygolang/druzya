@@ -522,4 +522,3 @@ func (c *CachedRepo) ResolveShareToken(ctx context.Context, token string) (domai
 	}
 	return r, nil
 }
-

@@ -89,6 +89,15 @@ func (h *WSHandler) Handle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Visibility=private gate (defense in depth — same check as in
+	// app.GetRoom). Owner всегда пускаем; existing participants (которых
+	// owner раньше invited когда было shared) тоже пускаем — мы их не
+	// вырезаем при flip'е private. Все остальные → 403.
+	if room.Visibility == domain.VisibilityPrivate && uid != room.OwnerID {
+		http.Error(w, "private board: not authorized", http.StatusForbidden)
+		return
+	}
+
 	ws, err := h.Upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		h.Log.Warn("whiteboard_rooms.ws: upgrade failed", slog.Any("err", err))

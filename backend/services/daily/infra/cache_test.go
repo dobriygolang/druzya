@@ -486,4 +486,3 @@ func TestCachedKataRepo_DefaultsApplied(t *testing.T) {
 		t.Fatal("default clock not applied")
 	}
 }
-

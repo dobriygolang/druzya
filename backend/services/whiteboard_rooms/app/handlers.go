@@ -67,7 +67,23 @@ func (h *Handlers) GetRoom(ctx context.Context, roomID, callerID uuid.UUID) (Roo
 	if h.Now().UTC().After(room.ExpiresAt) {
 		return RoomWithParticipants{}, domain.ErrExpired
 	}
-	// Auto-join: share-link UX — первый заход === приглашение.
+	// Visibility=private gate: только owner может join'иться. Иначе любой со
+	// ссылкой автоматически становится participant'ом ниже (auto-join по
+	// share-link UX). При private — share-link отключён.
+	if room.Visibility == domain.VisibilityPrivate && callerID != room.OwnerID {
+		// Если caller уже participant (был invited когда было shared, потом
+		// owner flipped private) — не вырезаем его, но guest'ам/новичкам
+		// возвращаем 403.
+		alreadyMember, existsErr := h.Participants.Exists(ctx, roomID, callerID)
+		if existsErr != nil {
+			return RoomWithParticipants{}, fmt.Errorf("participants.Exists: %w", existsErr)
+		}
+		if !alreadyMember {
+			return RoomWithParticipants{}, domain.ErrForbidden
+		}
+	}
+	// Auto-join: share-link UX — первый заход === приглашение (только для
+	// shared visibility, см. private gate выше).
 	exists, err := h.Participants.Exists(ctx, roomID, callerID)
 	if err != nil {
 		return RoomWithParticipants{}, fmt.Errorf("participants.Exists: %w", err)

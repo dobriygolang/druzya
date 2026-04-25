@@ -96,6 +96,17 @@ func buildHandler(d routerDeps) http.Handler {
 		// TODO (openapi): add to shared/openapi.yaml so codegen owns the route.
 		api.Post("/notify/telegram/webhook", d.Notify.WebhookHandler.HandlerFunc())
 
+		// Public REST routes — мountятся ВНЕ auth-gate'а. Каждый handler
+		// делает свою авторизацию (e.g. guest-join проверяет visibility=
+		// private перед выдачей token'а). Используется только для guest-
+		// join endpoint'ов whiteboard / code-room — где у клиента ещё нет
+		// токена и его нужно получить.
+		for _, m := range d.Modules {
+			if m != nil && m.MountPublicREST != nil {
+				m.MountPublicREST(api)
+			}
+		}
+
 		api.Group(func(gated chi.Router) {
 			gated.Use(restAuthGate(d.RequireAuth))
 			gated.Use(tierEnrichment(d.ResolveTier))

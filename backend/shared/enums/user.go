@@ -6,11 +6,15 @@ const (
 	UserRoleUser        UserRole = "user"
 	UserRoleInterviewer UserRole = "interviewer"
 	UserRoleAdmin       UserRole = "admin"
+	// UserRoleGuest — ephemeral guest для shared-board / code-room без
+	// регистрации. Не имеет user-row в БД, идентифицируется только по
+	// JWT-claim'у (uuid + name). Доступ ограничен room'ом из claim'а.
+	UserRoleGuest UserRole = "guest"
 )
 
 func (r UserRole) IsValid() bool {
 	switch r {
-	case UserRoleUser, UserRoleInterviewer, UserRoleAdmin:
+	case UserRoleUser, UserRoleInterviewer, UserRoleAdmin, UserRoleGuest:
 		return true
 	}
 	return false

@@ -25,13 +25,13 @@ func (a insightGeneratorAdapter) Generate(
 	ctx context.Context, uid uuid.UUID, p profileApp.InsightPayload,
 ) (string, error) {
 	out, err := a.c.Generate(ctx, uid, profileInfra.InsightPayload{
-		WeekISO:           p.WeekISO,
-		EloDelta:          p.EloDelta,
-		WinRateBySection:  p.WinRateBySection,
-		HoursStudied:      p.HoursStudied,
-		Streak:            p.Streak,
-		WeakestSection:    p.WeakestSection,
-		Model:             p.Model,
+		WeekISO:          p.WeekISO,
+		EloDelta:         p.EloDelta,
+		WinRateBySection: p.WinRateBySection,
+		HoursStudied:     p.HoursStudied,
+		Streak:           p.Streak,
+		WeakestSection:   p.WeakestSection,
+		Model:            p.Model,
 	})
 	if err != nil {
 		return "", fmt.Errorf("profile.insightAdapter: %w", err)

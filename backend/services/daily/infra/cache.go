@@ -345,4 +345,3 @@ func (c *CachedKataRepo) HistoryByYear(ctx context.Context, userID uuid.UUID, ye
 	}
 	return out, nil
 }
-

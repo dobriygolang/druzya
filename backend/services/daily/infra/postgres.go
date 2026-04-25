@@ -329,12 +329,8 @@ func (*NoSandboxJudge0) Submit(_ context.Context, _ string, _ string, _ domain.T
 
 // ── helpers ────────────────────────────────────────────────────────────────
 
-func pgText(t pgtype.Text) string {
-	if !t.Valid {
-		return ""
-	}
-	return t.String
-}
+// Phase-4 ADR-001: pgText helper removed — only autopsy/calendar code
+// read pgtype.Text rows; streak/kata paths use scan-into-string-pointer.
 
 // sectionFromNodeKey maps catalogue keys → sections. STUB: share catalogue via
 // admin CMS once that service exists; same table of truth as profile/app/atlas.go.

@@ -105,6 +105,12 @@ type Module struct {
 	// /api/v1 sub-router. nil when the domain has no REST surface.
 	MountREST func(r chi.Router)
 
+	// MountPublicREST mounts routes on /api/v1 BUT outside the auth gate.
+	// Use sparingly — currently only for guest-join endpoints (whiteboards /
+	// code-rooms) where no token exists yet. The handler MUST do its own
+	// authorization (e.g. visibility=private check).
+	MountPublicREST func(r chi.Router)
+
 	// MountWS registers WebSocket routes on the /ws sub-router. nil when the
 	// domain has no sockets.
 	MountWS func(r chi.Router)

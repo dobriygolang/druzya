@@ -21,13 +21,13 @@ func (c NotificationChannel) String() string { return string(c) }
 type NotificationType string
 
 const (
-	NotificationTypeSlotReminder    NotificationType = "slot_reminder"
-	NotificationTypeMatchFound      NotificationType = "match_found"
-	NotificationTypeMatchResult     NotificationType = "match_result"
-	NotificationTypeWeeklyReport    NotificationType = "weekly_report"
-	NotificationTypeSkillDecay      NotificationType = "skill_decay"
-	NotificationTypeSeasonEnding    NotificationType = "season_ending"
-	NotificationTypeDailyKata       NotificationType = "daily_kata"
+	NotificationTypeSlotReminder NotificationType = "slot_reminder"
+	NotificationTypeMatchFound   NotificationType = "match_found"
+	NotificationTypeMatchResult  NotificationType = "match_result"
+	NotificationTypeWeeklyReport NotificationType = "weekly_report"
+	NotificationTypeSkillDecay   NotificationType = "skill_decay"
+	NotificationTypeSeasonEnding NotificationType = "season_ending"
+	NotificationTypeDailyKata    NotificationType = "daily_kata"
 )
 
 func (t NotificationType) IsValid() bool {

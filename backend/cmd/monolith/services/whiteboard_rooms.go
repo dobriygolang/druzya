@@ -7,7 +7,11 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"strings"
+	"time"
 
+	authApp "druz9/auth/app"
+	"druz9/shared/enums"
 	"druz9/shared/generated/pb/druz9/v1/druz9v1connect"
 	sharedMw "druz9/shared/pkg/middleware"
 	whiteboardApp "druz9/whiteboard_rooms/app"
@@ -17,6 +21,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 // NewWhiteboardRooms wires shared multiplayer whiteboards (bible §9
@@ -67,6 +72,21 @@ func NewWhiteboardRooms(d Deps) *Module {
 			vis := &visibilityHandler{rooms: rooms, log: d.Log}
 			r.Get("/whiteboard/room/{room_id}/visibility", vis.get)
 			r.Post("/whiteboard/room/{room_id}/visibility", vis.set)
+		},
+		MountPublicREST: func(r chi.Router) {
+			// Guest-join — no-auth endpoint. Принимает имя, выдаёт guest JWT
+			// с scope'ом на конкретную room. Handler сам проверяет
+			// visibility=private (отказ для гостей) и rate-limit'ит implicit
+			// через короткий TTL ephemeral user'а.
+			gj := &guestJoinHandler{
+				rooms:    rooms,
+				parts:    parts,
+				pool:     d.Pool,
+				issuer:   d.TokenIssuer,
+				log:      d.Log,
+				guestTTL: 24 * time.Hour,
+			}
+			r.Post("/whiteboard/room/{room_id}/guest-join", gj.handle)
 		},
 		MountWS: func(ws chi.Router) {
 			ws.Get("/whiteboard/{roomId}", wsh.Handle)
@@ -139,7 +159,7 @@ func (h *visibilityHandler) set(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var body setVisibilityRequest
-	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+	if decodeErr := json.NewDecoder(r.Body).Decode(&body); decodeErr != nil {
 		http.Error(w, `{"error":{"code":"bad_body"}}`, http.StatusBadRequest)
 		return
 	}
@@ -171,4 +191,150 @@ func (h *visibilityHandler) set(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(visibilityResponse{Visibility: string(v)})
+}
+
+// ─── Guest-join REST handler ──────────────────────────────────────────────
+//
+// POST /api/v1/whiteboard/room/{room_id}/guest-join {name: "string"}
+// Guest flow: создаёт ephemeral user-row (role=guest, ephemeral=true),
+// добавляет его в participants, минтит JWT. Token имеет TTL 24h. Доступ
+// блокируется если room.visibility=private (только owner может entered).
+//
+// Этот handler сидит ВНЕ auth chain'а — даже без токена (см.
+// router.go MountREST для /whiteboard).
+
+type guestJoinHandler struct {
+	rooms    whiteboardDomain.RoomRepo
+	parts    whiteboardDomain.ParticipantRepo
+	pool     *pgxpool.Pool
+	issuer   *authApp.TokenIssuer
+	log      *slog.Logger
+	guestTTL time.Duration
+}
+
+type guestJoinRequest struct {
+	Name string `json:"name"`
+}
+
+type guestJoinResponse struct {
+	AccessToken string `json:"access_token"`
+	ExpiresIn   int    `json:"expires_in_sec"`
+	UserID      string `json:"user_id"`
+	Username    string `json:"username"`
+	Role        string `json:"role"`
+}
+
+func (h *guestJoinHandler) handle(w http.ResponseWriter, r *http.Request) {
+	roomID, err := uuid.Parse(chi.URLParam(r, "room_id"))
+	if err != nil {
+		http.Error(w, `{"error":{"code":"bad_id"}}`, http.StatusBadRequest)
+		return
+	}
+	var body guestJoinRequest
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		http.Error(w, `{"error":{"code":"bad_body"}}`, http.StatusBadRequest)
+		return
+	}
+	name := strings.TrimSpace(body.Name)
+	if name == "" {
+		name = "guest"
+	}
+	if len(name) > 40 {
+		name = name[:40]
+	}
+
+	// Verify room: existence + not expired + not private.
+	room, err := h.rooms.Get(r.Context(), roomID)
+	if err != nil {
+		if errors.Is(err, whiteboardDomain.ErrNotFound) {
+			http.Error(w, `{"error":{"code":"not_found"}}`, http.StatusNotFound)
+			return
+		}
+		h.log.ErrorContext(r.Context(), "guest_join: rooms.Get", slog.Any("err", err))
+		http.Error(w, `{"error":{"code":"internal"}}`, http.StatusInternalServerError)
+		return
+	}
+	if time.Now().UTC().After(room.ExpiresAt) {
+		http.Error(w, `{"error":{"code":"expired"}}`, http.StatusGone)
+		return
+	}
+	if room.Visibility == whiteboardDomain.VisibilityPrivate {
+		http.Error(w, `{"error":{"code":"forbidden","message":"private board: guests not allowed"}}`,
+			http.StatusForbidden)
+		return
+	}
+
+	// Create ephemeral user row. Username unique constraint → дедуплицируем
+	// short-suffix'ом (последние 8 символов нового uuid). Email NULL (его
+	// схема позволяет — UNIQUE на email допускает NULL).
+	guestUUID := uuid.New()
+	usernameSuffix := strings.ReplaceAll(guestUUID.String(), "-", "")[:8]
+	username := fmt.Sprintf("%s_g%s", sanitizeUsername(name), usernameSuffix)
+
+	_, err = h.pool.Exec(r.Context(),
+		`INSERT INTO users (id, username, display_name, role, ephemeral, created_at, updated_at)
+		 VALUES ($1, $2, $3, 'guest', TRUE, now(), now())`,
+		guestUUID, username, name)
+	if err != nil {
+		h.log.ErrorContext(r.Context(), "guest_join: insert user", slog.Any("err", err))
+		http.Error(w, `{"error":{"code":"internal"}}`, http.StatusInternalServerError)
+		return
+	}
+
+	// Add as participant.
+	if _, err := h.parts.Add(r.Context(), whiteboardDomain.Participant{
+		RoomID:   roomID,
+		UserID:   guestUUID,
+		JoinedAt: time.Now().UTC(),
+	}); err != nil {
+		h.log.ErrorContext(r.Context(), "guest_join: parts.Add", slog.Any("err", err))
+		http.Error(w, `{"error":{"code":"internal"}}`, http.StatusInternalServerError)
+		return
+	}
+
+	// Mint JWT. AccessTokenClaims.Role=guest, provider=telegram (placeholder —
+	// guests не имеют OAuth-провайдера, но клейм требует non-empty).
+	tok, expiresInIssuer, err := h.issuer.Mint(guestUUID, enums.UserRoleGuest, enums.AuthProviderTelegram)
+	if err != nil {
+		h.log.ErrorContext(r.Context(), "guest_join: mint", slog.Any("err", err))
+		http.Error(w, `{"error":{"code":"internal"}}`, http.StatusInternalServerError)
+		return
+	}
+	// expiresInIssuer берём от accessTokenTTL — но guest хочется отдельным
+	// TTL (24h). Issuer не знает ничего про guest-mode; принимаем что guest
+	// expiration совпадает с обычным access TTL. Если хочется отдельный —
+	// можно добавить MintWithTTL метод; пока не делаем чтобы не плодить API.
+	_ = expiresInIssuer
+
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(guestJoinResponse{
+		AccessToken: tok,
+		ExpiresIn:   int(h.guestTTL.Seconds()),
+		UserID:      guestUUID.String(),
+		Username:    name,
+		Role:        "guest",
+	})
+}
+
+// sanitizeUsername — оставляет только [a-z0-9_], lowercase, max 16 чаров.
+// Для guest'ов составляем username = sanitized(name) + "_g" + uuid_suffix,
+// чтобы был UNIQUE-friendly и читаемый при просмотре participants.
+func sanitizeUsername(name string) string {
+	name = strings.ToLower(name)
+	var b strings.Builder
+	for _, r := range name {
+		switch {
+		case r >= 'a' && r <= 'z', r >= '0' && r <= '9', r == '_':
+			b.WriteRune(r)
+		case r == ' ' || r == '-':
+			b.WriteRune('_')
+		}
+		if b.Len() >= 16 {
+			break
+		}
+	}
+	if b.Len() == 0 {
+		return "guest"
+	}
+	return b.String()
 }

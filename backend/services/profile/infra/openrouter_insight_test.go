@@ -16,12 +16,12 @@ import (
 // test.
 func payload() InsightPayload {
 	return InsightPayload{
-		WeekISO:           "2026-W17",
-		EloDelta:          42,
-		WinRateBySection:  map[string]int{"algorithms": 80, "sql": 50},
-		HoursStudied:      6.5,
-		Streak:            5,
-		WeakestSection:    "sql",
+		WeekISO:          "2026-W17",
+		EloDelta:         42,
+		WinRateBySection: map[string]int{"algorithms": 80, "sql": 50},
+		HoursStudied:     6.5,
+		Streak:           5,
+		WeakestSection:   "sql",
 	}
 }
 

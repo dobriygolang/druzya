@@ -60,12 +60,12 @@ func PickFeaturedMetric(streakDays int) string {
 // InsightPayload mirrors infra.InsightPayload but lives in the app layer to
 // avoid an app→infra import. The wirer adapts the two structs.
 type InsightPayload struct {
-	WeekISO           string
-	EloDelta          int
-	WinRateBySection  map[string]int
-	HoursStudied      float64
-	Streak            int
-	WeakestSection    string
+	WeekISO          string
+	EloDelta         int
+	WinRateBySection map[string]int
+	HoursStudied     float64
+	Streak           int
+	WeakestSection   string
 
 	// Model — per-call OpenRouter model id override taken from the user's
 	// settings (users.ai_insight_model). Empty string ⇒ infra falls back to
@@ -223,12 +223,12 @@ func buildInsightPayload(v ReportView, weekEnd time.Time, model string) InsightP
 	}
 	year, week := weekEnd.ISOWeek()
 	return InsightPayload{
-		WeekISO:           fmt.Sprintf("%04d-W%02d", year, week),
-		EloDelta:          v.Metrics.RatingChange,
-		WinRateBySection:  winRates,
-		HoursStudied:      float64(v.Metrics.TimeMinutes) / 60.0,
-		Streak:            v.StreakDays,
-		WeakestSection:    weakest,
-		Model:             model,
+		WeekISO:          fmt.Sprintf("%04d-W%02d", year, week),
+		EloDelta:         v.Metrics.RatingChange,
+		WinRateBySection: winRates,
+		HoursStudied:     float64(v.Metrics.TimeMinutes) / 60.0,
+		Streak:           v.StreakDays,
+		WeakestSection:   weakest,
+		Model:            model,
 	}
 }
