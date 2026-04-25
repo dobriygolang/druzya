@@ -211,7 +211,7 @@ export default function LoginPage() {
     <div className="min-h-screen bg-bg text-text-primary">
       <header className="flex h-[72px] items-center justify-between border-b border-border bg-bg px-4 sm:px-8 lg:px-20">
         <Link to="/welcome" className="flex items-center gap-2.5">
-          <span className="grid h-8 w-8 place-items-center rounded-md bg-gradient-to-br from-accent to-cyan font-display text-lg font-extrabold text-text-primary">
+          <span className="grid h-8 w-8 place-items-center rounded-md bg-text-primary font-display text-lg font-extrabold text-bg">
             9
           </span>
           <span className="font-display text-lg font-bold text-text-primary">druz9</span>
@@ -247,7 +247,7 @@ export default function LoginPage() {
               type="button"
               onClick={handleTelegramClick}
               disabled={tgStarting || tgPolling}
-              className="flex h-12 w-full items-center justify-center gap-2 rounded-lg border border-cyan/40 bg-cyan/15 text-[15px] font-semibold text-text-primary transition-colors hover:bg-cyan/25 disabled:cursor-wait disabled:opacity-60"
+              className="flex h-12 w-full items-center justify-center gap-2 rounded-lg border border-border-strong bg-text-primary/10 text-[15px] font-semibold text-text-primary transition-colors hover:bg-text-primary/20 disabled:cursor-wait disabled:opacity-60"
             >
               {tgStarting ? (
                 <Loader2 className="h-5 w-5 animate-spin" />
@@ -264,7 +264,7 @@ export default function LoginPage() {
             {yandexHref ? (
               <a
                 href={yandexHref}
-                className="flex h-12 w-full items-center justify-center gap-2 rounded-lg border border-pink/40 bg-pink/15 text-[15px] font-semibold text-text-primary transition-colors hover:bg-pink/25"
+                className="flex h-12 w-full items-center justify-center gap-2 rounded-lg border border-border-strong bg-text-primary/10 text-[15px] font-semibold text-text-primary transition-colors hover:bg-text-primary/20"
               >
                 Войти через Yandex
                 <ArrowRight className="h-5 w-5" />
@@ -352,7 +352,7 @@ function TelegramCodeModal({
           href={deepLink}
           target="_blank"
           rel="noopener noreferrer"
-          className="mt-4 flex h-12 w-full items-center justify-center gap-2 rounded-lg border border-cyan/40 bg-cyan/15 text-[14px] font-semibold text-text-primary transition-colors hover:bg-cyan/25"
+          className="mt-4 flex h-12 w-full items-center justify-center gap-2 rounded-lg border border-border-strong bg-text-primary/10 text-[14px] font-semibold text-text-primary transition-colors hover:bg-text-primary/20"
         >
           <ExternalLink className="h-4 w-4" />
           Открыть Telegram
@@ -361,7 +361,7 @@ function TelegramCodeModal({
         <div className="mt-4 flex items-center gap-2 text-[12px] text-text-muted">
           {polling ? (
             <>
-              <Loader2 className="h-4 w-4 animate-spin text-cyan" />
+              <Loader2 className="h-4 w-4 animate-spin text-text-secondary" />
               Ждём подтверждения…
             </>
           ) : (

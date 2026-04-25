@@ -303,6 +303,11 @@ func userRoleToProto(r enums.UserRole) pb.UserRole {
 		return pb.UserRole_USER_ROLE_INTERVIEWER
 	case enums.UserRoleAdmin:
 		return pb.UserRole_USER_ROLE_ADMIN
+	case enums.UserRoleGuest:
+		// Proto enum doesn't yet model guests (ephemeral whiteboard/code-room
+		// participants). Until proto-regen adds USER_ROLE_GUEST, fall through
+		// to UNSPECIFIED so wire stays valid.
+		return pb.UserRole_USER_ROLE_UNSPECIFIED
 	default:
 		return pb.UserRole_USER_ROLE_UNSPECIFIED
 	}

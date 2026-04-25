@@ -31,7 +31,8 @@ func NewRooms(pool *pgxpool.Pool) *Rooms {
 	return &Rooms{pool: pool, q: editordb.New(pool)}
 }
 
-// Create inserts a new room.
+// Create inserts a new room. Visibility defaults to 'shared' (см. миграцию
+// 00042) — здесь явно не передаём, БД сама проставит DEFAULT.
 func (r *Rooms) Create(ctx context.Context, in domain.Room) (domain.Room, error) {
 	params := editordb.CreateRoomParams{
 		OwnerID:   sharedpg.UUID(in.OwnerID),
@@ -47,7 +48,7 @@ func (r *Rooms) Create(ctx context.Context, in domain.Room) (domain.Room, error)
 	if err != nil {
 		return domain.Room{}, fmt.Errorf("editor.Rooms.Create: %w", err)
 	}
-	return roomFromRow(row), nil
+	return roomFromCreateRow(row), nil
 }
 
 // Get loads a room by id.
@@ -59,7 +60,27 @@ func (r *Rooms) Get(ctx context.Context, id uuid.UUID) (domain.Room, error) {
 		}
 		return domain.Room{}, fmt.Errorf("editor.Rooms.Get: %w", err)
 	}
-	return roomFromRow(row), nil
+	return roomFromGetRow(row), nil
+}
+
+// SetVisibility flips visibility на editor_rooms row. Owner-check делается
+// на уровне handler'а (не здесь); этот метод чисто write. Sqlc-generated
+// query SetRoomVisibility (см. queries/editor.sql).
+func (r *Rooms) SetVisibility(ctx context.Context, id uuid.UUID, v domain.Visibility) error {
+	if !v.IsValid() {
+		return fmt.Errorf("editor.Rooms.SetVisibility: invalid visibility %q", v)
+	}
+	affected, err := r.q.SetRoomVisibility(ctx, editordb.SetRoomVisibilityParams{
+		ID:         sharedpg.UUID(id),
+		Visibility: string(v),
+	})
+	if err != nil {
+		return fmt.Errorf("editor.Rooms.SetVisibility: %w", err)
+	}
+	if affected == 0 {
+		return fmt.Errorf("editor.Rooms.SetVisibility: %w", domain.ErrNotFound)
+	}
+	return nil
 }
 
 // UpdateFreeze sets is_frozen.
@@ -74,7 +95,7 @@ func (r *Rooms) UpdateFreeze(ctx context.Context, id uuid.UUID, frozen bool) (do
 		}
 		return domain.Room{}, fmt.Errorf("editor.Rooms.UpdateFreeze: %w", err)
 	}
-	return roomFromRow(row), nil
+	return roomFromUpdateFreezeRow(row), nil
 }
 
 // ExtendExpires bumps the room's expires_at timestamp.
@@ -154,21 +175,49 @@ func (p *Participants) GetRole(ctx context.Context, roomID, userID uuid.UUID) (e
 // Conversion helpers
 // ─────────────────────────────────────────────────────────────────────────
 
-func roomFromRow(r editordb.EditorRoom) domain.Room {
-	out := domain.Room{
-		ID:        sharedpg.UUIDFrom(r.ID),
-		OwnerID:   sharedpg.UUIDFrom(r.OwnerID),
-		Type:      domain.RoomType(r.Type),
-		Language:  enums.Language(r.Language),
-		IsFrozen:  r.IsFrozen,
-		ExpiresAt: r.ExpiresAt.Time,
-		CreatedAt: r.CreatedAt.Time,
+// Sqlc генерирует отдельные Row-типы для каждого RETURNING-варианта
+// (CreateRoomRow, GetRoomRow, UpdateRoomFreezeRow), даже если набор колонок
+// совпадает. Чтобы не дублировать assembly-логику — выносим в один buildRoom
+// helper, принимающий уже распакованные fields.
+
+func buildRoom(
+	id, ownerID, taskID pgtype.UUID,
+	roomType, language, visibility string,
+	isFrozen bool,
+	expiresAt, createdAt pgtype.Timestamptz,
+) domain.Room {
+	vis := domain.Visibility(visibility)
+	if vis == "" {
+		// pre-migration rows + race-windows safety: default к shared.
+		vis = domain.VisibilityShared
 	}
-	if r.TaskID.Valid {
-		t := sharedpg.UUIDFrom(r.TaskID)
+	out := domain.Room{
+		ID:         sharedpg.UUIDFrom(id),
+		OwnerID:    sharedpg.UUIDFrom(ownerID),
+		Type:       domain.RoomType(roomType),
+		Language:   enums.Language(language),
+		IsFrozen:   isFrozen,
+		Visibility: vis,
+		ExpiresAt:  expiresAt.Time,
+		CreatedAt:  createdAt.Time,
+	}
+	if taskID.Valid {
+		t := sharedpg.UUIDFrom(taskID)
 		out.TaskID = &t
 	}
 	return out
+}
+
+func roomFromCreateRow(r editordb.CreateRoomRow) domain.Room {
+	return buildRoom(r.ID, r.OwnerID, r.TaskID, r.Type, r.Language, r.Visibility, r.IsFrozen, r.ExpiresAt, r.CreatedAt)
+}
+
+func roomFromGetRow(r editordb.GetRoomRow) domain.Room {
+	return buildRoom(r.ID, r.OwnerID, r.TaskID, r.Type, r.Language, r.Visibility, r.IsFrozen, r.ExpiresAt, r.CreatedAt)
+}
+
+func roomFromUpdateFreezeRow(r editordb.UpdateRoomFreezeRow) domain.Room {
+	return buildRoom(r.ID, r.OwnerID, r.TaskID, r.Type, r.Language, r.Visibility, r.IsFrozen, r.ExpiresAt, r.CreatedAt)
 }
 
 func participantFromRow(r editordb.EditorParticipant) domain.Participant {

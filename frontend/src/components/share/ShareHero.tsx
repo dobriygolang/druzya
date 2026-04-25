@@ -37,8 +37,8 @@ export function ShareHero(props: ShareHeroProps) {
     const xp = props.xpEarned ?? 0
     const delta = fmtDelta(xp, props.prevXpEarned ?? 0)
     return (
-      <HeroFrame eyebrow="Заработано XP" gradient="from-pink to-cyan">
-        <span className="font-display text-[88px] sm:text-[120px] lg:text-[160px] font-extrabold leading-none bg-gradient-to-r from-pink to-cyan bg-clip-text text-transparent">
+      <HeroFrame eyebrow="Заработано XP">
+        <span className="font-display text-[88px] sm:text-[120px] lg:text-[160px] font-extrabold leading-none text-text-primary">
           {xp.toLocaleString('ru-RU')}
         </span>
         <span className="font-mono text-sm text-text-secondary">
@@ -52,7 +52,7 @@ export function ShareHero(props: ShareHeroProps) {
     const best = props.bestStreak ?? 0
     const isPB = cur > 0 && cur >= best
     return (
-      <HeroFrame eyebrow="Стрик" gradient="from-warn to-pink">
+      <HeroFrame eyebrow="Стрик">
         <span className="font-display text-[88px] sm:text-[120px] lg:text-[160px] font-extrabold leading-none text-text-primary">
           {cur}
           <span className="ml-2 text-warn">🔥</span>
@@ -67,7 +67,7 @@ export function ShareHero(props: ShareHeroProps) {
   const title = (props.achievementTitle ?? '').trim()
   const tier = (props.achievementTier ?? '').toUpperCase()
   return (
-    <HeroFrame eyebrow="Ачивка недели" gradient="from-pink to-cyan">
+    <HeroFrame eyebrow="Ачивка недели">
       {title ? (
         <>
           <span className="font-display text-3xl sm:text-5xl lg:text-6xl font-extrabold leading-tight text-text-primary text-center max-w-[18ch]">
@@ -88,18 +88,14 @@ export function ShareHero(props: ShareHeroProps) {
 
 function HeroFrame({
   eyebrow,
-  gradient,
   children,
 }: {
   eyebrow: string
-  gradient: string
   children: React.ReactNode
 }) {
   return (
-    <section className="flex flex-col items-center gap-4 rounded-2xl bg-surface-2 p-6 sm:p-10 lg:p-14">
-      <span
-        className={`font-mono text-[11px] uppercase tracking-[0.16em] bg-gradient-to-r ${gradient} bg-clip-text text-transparent`}
-      >
+    <section className="flex flex-col items-center gap-4 rounded-2xl border border-border-strong bg-surface-2 p-6 sm:p-10 lg:p-14">
+      <span className="font-mono text-[11px] uppercase tracking-[0.16em] text-text-secondary">
         {eyebrow}
       </span>
       {children}

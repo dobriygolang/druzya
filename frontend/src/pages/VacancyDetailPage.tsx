@@ -70,15 +70,15 @@ export default function VacancyDetailPage() {
 
   return (
     <AppShellV2>
-      <div className="bg-gradient-to-br from-surface-3 to-accent">
+      <div className="bg-surface-3 border-b border-border-strong">
         <div className="px-4 py-8 sm:px-8 lg:px-20">
-          <Link to="/vacancies" className="text-xs text-white/70 hover:text-white">
+          <Link to="/vacancies" className="text-xs text-text-secondary hover:text-text-primary">
             ← К каталогу вакансий
           </Link>
           <h1 className="mt-2 font-display text-3xl font-extrabold text-text-primary sm:text-4xl">
             {vac.title}
           </h1>
-          <div className="mt-2 flex flex-wrap items-center gap-3 text-sm text-white/85">
+          <div className="mt-2 flex flex-wrap items-center gap-3 text-sm text-text-secondary">
             {vac.company && <span>{vac.company}</span>}
             {vac.location && <span>· {vac.location}</span>}
             {vac.experience_level && <span>· {vac.experience_level}</span>}

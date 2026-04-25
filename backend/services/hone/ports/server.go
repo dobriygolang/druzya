@@ -59,6 +59,10 @@ type HoneServer struct {
 	// зависел ещё), premium-gate'ы пропускают всех — это сознательный
 	// fallback, не fake'им subscription-status.
 	Tier domain.TierReader
+	// CheckCreateNoteQuota — Phase 2 hook для quota enforcement. Free
+	// tier'ы лимитятся по synced_notes (10 by default). Wired в monolith
+	// services/hone.go через subscription Deps. nil-safe: passthrough.
+	CheckCreateNoteQuota func(ctx context.Context, userID uuid.UUID) error
 }
 
 // NewHoneServer wires a HoneServer around the Handler.
@@ -75,6 +79,15 @@ func (s *HoneServer) WithPlanLimiter(l *ratelimit.RedisFixedWindow) *HoneServer 
 // nil-safe: не вызывать = все premium-RPC открыты.
 func (s *HoneServer) WithTier(t domain.TierReader) *HoneServer {
 	s.Tier = t
+	return s
+}
+
+// WithCreateNoteQuotaCheck — wire quota-check pre-CreateNote. См. Phase 2
+// архитектуру в cmd/monolith/services/quota_enforce.go.
+func (s *HoneServer) WithCreateNoteQuotaCheck(
+	check func(ctx context.Context, userID uuid.UUID) error,
+) *HoneServer {
+	s.CheckCreateNoteQuota = check
 	return s
 }
 
@@ -282,6 +295,16 @@ func (s *HoneServer) CreateNote(
 	uid, err := requireUser(ctx)
 	if err != nil {
 		return nil, err
+	}
+	// Phase 2 quota enforcement: free-tier юзеры могут синкать только N
+	// notes на backend (default 10). Locally хранить unlimited через
+	// IndexedDB — frontend gate'ит REST-вызов и пишет local-only.
+	// Backend defensive gate здесь — на случай если frontend bypassed
+	// (CLI / curl / другой client).
+	if s.CheckCreateNoteQuota != nil {
+		if qerr := s.CheckCreateNoteQuota(ctx, uid); qerr != nil {
+			return nil, connect.NewError(connect.CodeResourceExhausted, qerr)
+		}
 	}
 	n, err := s.H.CreateNote.Do(ctx, app.CreateNoteInput{
 		UserID: uid,

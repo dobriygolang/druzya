@@ -17,7 +17,7 @@
 //   - WS envelope kinds: 'snapshot', 'update', 'awareness', 'ping'/'pong'.
 
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useParams } from 'react-router-dom'
 import * as Y from 'yjs'
 import { Awareness, encodeAwarenessUpdate, applyAwarenessUpdate } from 'y-protocols/awareness'
 import { Excalidraw, CaptureUpdateAction } from '@excalidraw/excalidraw'
@@ -297,7 +297,7 @@ function GuestPrompt({
 
 const RoomCanvas = memo(RoomCanvasImpl)
 
-function RoomCanvasImpl({ room }: { room: RoomMeta }) {
+function RoomCanvasImpl({ room, guestToken }: { room: RoomMeta; guestToken?: string }) {
   const [wsStatus, setWsStatus] = useState<'connecting' | 'open' | 'reconnecting' | 'failed'>(
     'connecting',
   )
@@ -391,7 +391,9 @@ function RoomCanvasImpl({ room }: { room: RoomMeta }) {
     }
     yScene.observe(onSceneChange)
 
-    const token = readAccessToken() ?? ''
+    // Guest-token (если есть) приоритетен, потому что на этой странице
+    // юзер мог войти как guest, не имея access_token в localStorage.
+    const token = guestToken ?? readAccessToken() ?? ''
     const wsBase = computeWsBase()
     const url = `${wsBase}/ws/whiteboard/${encodeURIComponent(room.id)}?token=${encodeURIComponent(token)}`
     const handle = openWs(url, {

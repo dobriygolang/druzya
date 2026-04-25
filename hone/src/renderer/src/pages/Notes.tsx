@@ -24,7 +24,8 @@ import { ConnectError, Code } from '@connectrpc/connect';
 import { AskNotesModal } from '../components/AskNotesModal';
 import { Kbd } from '../components/primitives/Kbd';
 import { RichMarkdownEditor } from '../components/RichMarkdownEditor';
-import { MarkdownEditor } from '../components/MarkdownEditor';
+import { MilkdownEditor } from '../components/MilkdownEditor';
+import { QuotaUsageBar } from '../components/QuotaUsageBar';
 import {
   listNotes,
   getNote,
@@ -46,6 +47,16 @@ import {
 } from '../api/storage';
 import { getRow } from '../api/localCache';
 import { useSessionStore } from '../stores/session';
+import { useQuotaStore } from '../stores/quota';
+import {
+  createLocalNote,
+  listLocalNotes,
+  getLocalNote,
+  updateLocalNote,
+  deleteLocalNote,
+  isLocalNoteId,
+  type LocalNote,
+} from '../api/localNotes';
 
 interface ListState {
   status: 'loading' | 'ok' | 'error';
@@ -167,24 +178,43 @@ export function NotesPage({ initialSelectedId, onConsumeInitial }: NotesPageProp
 
     const fetchList = () => {
       if (cancelled) return;
-      void listNotes()
-        .then((res) => {
+      // Local-only notes (free-tier и ниже) — параллельно с network list'ом
+      // тянем из IndexedDB. local: id префикс однозначно отличает их от
+      // cloud-нот, sidebar отрисует одним списком (sorted by updatedAt).
+      const localPromise = listLocalNotes().catch((): LocalNote[] => []);
+
+      void Promise.all([listNotes(), localPromise])
+        .then(([res, locals]) => {
           if (cancelled) return;
+          const localRows: NoteSummary[] = locals.map((n) => ({
+            id: n.id,
+            title: n.title,
+            updatedAt: new Date(n.updatedAt),
+            sizeBytes: new Blob([n.bodyMd]).size,
+          }));
           setList((prev) => {
             // Сохраняем temp:id rows которые ещё не на сервере (optimistic
-            // create в полёте). Иначе server-list заменит наш fake row
-            // и юзер увидит её исчезновение пока POST не вернётся.
+            // create в полёте).
             const temps = prev.notes.filter((n) => n.id.startsWith('temp:'));
+            const merged = [...temps, ...localRows, ...res.notes];
+            // Stable sort: local + cloud по updatedAt desc, temps всегда top.
+            const tempSet = new Set(temps.map((t) => t.id));
+            merged.sort((a, b) => {
+              if (tempSet.has(a.id) && !tempSet.has(b.id)) return -1;
+              if (!tempSet.has(a.id) && tempSet.has(b.id)) return 1;
+              const at = a.updatedAt?.getTime() ?? 0;
+              const bt = b.updatedAt?.getTime() ?? 0;
+              return at > bt ? -1 : 1;
+            });
             return {
               status: 'ok',
-              notes: [...temps, ...res.notes],
+              notes: merged,
               error: null,
               errorCode: null,
             };
           });
-          if (res.notes.length > 0) {
-            setSelectedId((cur) => cur ?? res.notes[0]?.id ?? null);
-          }
+          const firstId = localRows[0]?.id ?? res.notes[0]?.id ?? null;
+          if (firstId) setSelectedId((cur) => cur ?? firstId);
         })
         .catch((err: unknown) => {
           if (cancelled) return;
@@ -250,6 +280,29 @@ export function NotesPage({ initialSelectedId, onConsumeInitial }: NotesPageProp
     // экрана). Network refresh всё равно выполнится через SSE event
     // или 30s polling.
     if (activeRef.current?.id === selectedId) return;
+
+    // Local-only note: читаем из IndexedDB, никаких network calls.
+    if (isLocalNoteId(selectedId)) {
+      let cancelledLocal = false;
+      void getLocalNote(selectedId).then((ln) => {
+        if (cancelledLocal || !ln) return;
+        if (selectedIdRef.current !== selectedId) return;
+        const note: Note = {
+          id: ln.id,
+          title: ln.title,
+          bodyMd: ln.bodyMd,
+          sizeBytes: new Blob([ln.bodyMd]).size,
+          createdAt: new Date(ln.createdAt),
+          updatedAt: new Date(ln.updatedAt),
+        } as Note;
+        setActive(note);
+        setDraftTitle(note.title);
+        setDraftBody(note.bodyMd);
+      });
+      return () => {
+        cancelledLocal = true;
+      };
+    }
 
     let cancelled = false;
     setActiveError(null);
@@ -338,6 +391,33 @@ export function NotesPage({ initialSelectedId, onConsumeInitial }: NotesPageProp
     // successful POST).
     if (activeId.startsWith('temp:')) return;
     if (lastSavedRef.current.title === title && lastSavedRef.current.body === body) return;
+
+    // Local-only note → persist в IndexedDB вместо REST. Никакого
+    // encrypt-path: vault не применим к local-only (E2E смысла нет —
+    // данные не покидают устройство; OS-level encryption уже даёт
+    // baseline защиту).
+    if (isLocalNoteId(activeId)) {
+      setSaveStatus('saving');
+      try {
+        const updated = await updateLocalNote(activeId, { title, bodyMd: body });
+        lastSavedRef.current = { title, body };
+        if (updated) {
+          setList((prev) => ({
+            ...prev,
+            notes: prev.notes.map((row) =>
+              row.id === activeId
+                ? { ...row, title: updated.title, updatedAt: new Date(updated.updatedAt), sizeBytes: new Blob([updated.bodyMd]).size }
+                : row,
+            ),
+          }));
+        }
+        setSaveStatus('saved');
+        window.setTimeout(() => setSaveStatus((cur) => (cur === 'saved' ? 'idle' : cur)), 1200);
+      } catch {
+        setSaveStatus('idle');
+      }
+      return;
+    }
 
     setSaveStatus('saving');
 
@@ -476,6 +556,36 @@ export function NotesPage({ initialSelectedId, onConsumeInitial }: NotesPageProp
   const handleCreate = useCallback(async () => {
     void flushNow(); // не await: pending save поедет фоном
 
+    // Free-tier: создаём local-only заметку (никогда не идёт на бэкенд).
+    // Юзер всё равно может отдельно "Sync to cloud" если quota позволит.
+    const tier = useQuotaStore.getState().tier;
+    if (tier === 'free') {
+      try {
+        const ln = await createLocalNote('Untitled', '');
+        const row: NoteSummary = {
+          id: ln.id,
+          title: ln.title,
+          updatedAt: new Date(ln.updatedAt),
+          sizeBytes: 0,
+        };
+        setList((prev) => ({ ...prev, notes: [row, ...prev.notes] }));
+        setSelectedId(ln.id);
+        setActive({
+          id: ln.id,
+          title: ln.title,
+          bodyMd: '',
+          sizeBytes: 0,
+          createdAt: new Date(ln.createdAt),
+          updatedAt: new Date(ln.updatedAt),
+        } as Note);
+        setDraftTitle(ln.title);
+        setDraftBody('');
+      } catch (err) {
+        setActiveError(err instanceof Error ? err.message : String(err));
+      }
+      return;
+    }
+
     const tempId = `temp:${crypto.randomUUID()}`;
     const now = new Date();
     const tempNote: NoteSummary = {
@@ -515,13 +625,48 @@ export function NotesPage({ initialSelectedId, onConsumeInitial }: NotesPageProp
       setSelectedId((cur) => (cur === tempId ? n.id : cur));
       // Active note: подменяем id, draft уже совпадает.
       setActive((cur) => (cur && cur.id === tempId ? { ...cur, id: n.id } : cur));
+
+      // Default-encrypt: если vault unlocked'ed (а он по дефолту unlocked
+      // через VaultUnlockGate), сразу encrypt'аем свежесозданную note.
+      // Body=пустой, но мы прокинем через `encryptNote` чтобы server
+      // взвёл encrypted=true flag — следующий save будет encrypted-path.
+      // Если vault locked (race-window, юзер lock'нул прямо сейчас) —
+      // оставляем plaintext, юзер может вручную encrypt'нуть позже из
+      // 3-точек.
+      try {
+        const { isUnlocked, encryptNote: encryptApi } = await import('../api/vault');
+        if (isUnlocked()) {
+          await encryptApi(n.id, '');
+          setMetaMap((prev) => {
+            const next = new Map(prev);
+            const cur = next.get(n.id);
+            next.set(n.id, {
+              id: n.id,
+              published: cur?.published ?? false,
+              encrypted: true,
+            });
+            return next;
+          });
+        }
+      } catch {
+        /* encrypt-fail — note всё равно создалась, просто без E2E */
+      }
     } catch (err: unknown) {
       const ce = ConnectError.from(err);
       // Откатываем: удалить temp-row и сбросить selection.
       setList((prev) => ({ ...prev, notes: prev.notes.filter((r) => r.id !== tempId) }));
       setSelectedId((cur) => (cur === tempId ? null : cur));
       setActive((cur) => (cur && cur.id === tempId ? null : cur));
-      setActiveError(ce.rawMessage || ce.message);
+      // Quota-exhausted (Connect ResourceExhausted = HTTP 429 в connect-go
+      // mapping; Code value 8) → показываем UpgradePrompt вместо обычной
+      // ошибки. Refresh quota чтобы UI отображал свежий count.
+      if (ce.code === Code.ResourceExhausted) {
+        const { useQuotaStore, quotaExceededMessage } = await import('../stores/quota');
+        useQuotaStore.getState().showUpgradePrompt(quotaExceededMessage('note'));
+        void useQuotaStore.getState().refresh();
+      } else {
+        setActiveError(ce.rawMessage || ce.message);
+      }
     }
   }, [flushNow]);
 
@@ -541,7 +686,11 @@ export function NotesPage({ initialSelectedId, onConsumeInitial }: NotesPageProp
   // меняется на каждый list.notes update и memo перерисовывает все rows.
   const handleDelete = useCallback(async (id: string) => {
     try {
-      await deleteNote(id);
+      if (isLocalNoteId(id)) {
+        await deleteLocalNote(id);
+      } else {
+        await deleteNote(id);
+      }
       setList((prev) => ({ ...prev, notes: prev.notes.filter((n) => n.id !== id) }));
       // Используем functional setSelectedId с inspection через setList
       // чтобы избежать stale closure'а на selectedId. Closure'нем через
@@ -562,6 +711,45 @@ export function NotesPage({ initialSelectedId, onConsumeInitial }: NotesPageProp
       setActiveError(ce.rawMessage || ce.message);
     }
   }, []);
+
+  // Sync local note → cloud. Создаёт server row через CreateNote (с
+   // текущим title+body), затем удаляет local copy и пере-select'ает на
+   // новый server id. На quota-exhausted показываем upgrade prompt и
+   // оставляем local copy intact.
+  const handleSyncToCloud = useCallback(async (id: string) => {
+    if (!isLocalNoteId(id)) return;
+    try {
+      await flushNow(); // ensure latest content в local store
+      const ln = await getLocalNote(id);
+      if (!ln) return;
+      const created = await createNote(ln.title, ln.bodyMd);
+      // Удаляем local после успешного create.
+      await deleteLocalNote(id);
+      setList((prev) => ({
+        ...prev,
+        notes: prev.notes.map((row) =>
+          row.id === id
+            ? { id: created.id, title: created.title, updatedAt: created.updatedAt, sizeBytes: created.sizeBytes }
+            : row,
+        ),
+      }));
+      setSelectedId((cur) => (cur === id ? created.id : cur));
+      setActive((cur) => (cur && cur.id === id ? created : cur));
+      setToast('Synced to cloud');
+      window.setTimeout(() => setToast(null), 2400);
+      void useQuotaStore.getState().refresh();
+    } catch (err) {
+      const ce = ConnectError.from(err);
+      if (ce.code === Code.ResourceExhausted) {
+        const { quotaExceededMessage } = await import('../stores/quota');
+        useQuotaStore.getState().showUpgradePrompt(quotaExceededMessage('note'));
+        void useQuotaStore.getState().refresh();
+      } else {
+        setToast('Sync failed');
+        window.setTimeout(() => setToast(null), 2400);
+      }
+    }
+  }, [flushNow]);
 
   const handlePublish = useCallback(async (id: string) => {
     try {
@@ -668,6 +856,7 @@ export function NotesPage({ initialSelectedId, onConsumeInitial }: NotesPageProp
           onPublish={handlePublish}
           onUnpublish={handleUnpublish}
           onEncrypt={handleEncrypt}
+          onSyncToCloud={handleSyncToCloud}
           onToggleCollapse={handleSidebarCollapse}
         />
       )}
@@ -730,6 +919,7 @@ interface SidebarProps {
   onPublish: (id: string) => void;
   onEncrypt: (id: string) => void;
   onUnpublish: (id: string) => void;
+  onSyncToCloud: (id: string) => void;
   onToggleCollapse: () => void;
 }
 
@@ -780,7 +970,7 @@ function NotesExpandSidebarButton({ onClick }: { onClick: () => void }) {
 // handleUnpublish, handleEncrypt — все useCallback с устойчивыми deps.
 const Sidebar = memo(SidebarImpl);
 
-function SidebarImpl({ list, selectedId, metaMap, onSelect, onCreate, onDelete, onPublish, onUnpublish, onEncrypt, onToggleCollapse }: SidebarProps) {
+function SidebarImpl({ list, selectedId, metaMap, onSelect, onCreate, onDelete, onPublish, onUnpublish, onEncrypt, onSyncToCloud, onToggleCollapse }: SidebarProps) {
   return (
     <aside
       // slide-from-left анимация удалена для симметрии open/close.
@@ -811,9 +1001,13 @@ function SidebarImpl({ list, selectedId, metaMap, onSelect, onCreate, onDelete, 
               onPublish={onPublish}
               onUnpublish={onUnpublish}
               onEncrypt={onEncrypt}
+              onSyncToCloud={onSyncToCloud}
             />
           );
         })}
+      </div>
+      <div style={{ padding: '4px 6px' }}>
+        <QuotaUsageBar resource="synced_notes" />
       </div>
       <NotesRetentionHint />
     </aside>
@@ -1018,6 +1212,7 @@ interface NoteRowProps {
   onPublish: (id: string) => void;
   onUnpublish: (id: string) => void;
   onEncrypt: (id: string) => void;
+  onSyncToCloud: (id: string) => void;
 }
 
 // NoteRow memoized — на 30+ заметках без memo каждый keystroke в editor
@@ -1033,20 +1228,23 @@ const NoteRow = memo(NoteRowImpl, (prev, next) => {
     prev.onDelete === next.onDelete &&
     prev.onPublish === next.onPublish &&
     prev.onUnpublish === next.onUnpublish &&
-    prev.onEncrypt === next.onEncrypt
+    prev.onEncrypt === next.onEncrypt &&
+    prev.onSyncToCloud === next.onSyncToCloud
   );
 });
 
-function NoteRowImpl({ note, active, encrypted, onSelect, onDelete, onPublish, onUnpublish, onEncrypt }: NoteRowProps) {
+function NoteRowImpl({ note, active, encrypted, onSelect, onDelete, onPublish, onUnpublish, onEncrypt, onSyncToCloud }: NoteRowProps) {
   const [hover, setHover] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [confirmDel, setConfirmDel] = useState(false);
   const [pubStatus, setPubStatus] = useState<PublishStatus | null>(null);
   const rowRef = useRef<HTMLDivElement>(null);
 
+  const isLocal = isLocalNoteId(note.id);
   // Lazy-load publish status on first hover (cheap idempotent fetch).
+  // Local notes никогда не на бэкенде → skip.
   useEffect(() => {
-    if (!hover || pubStatus) return;
+    if (isLocal || !hover || pubStatus) return;
     let live = true;
     void getPublishStatus(note.id)
       .then((s) => {
@@ -1058,7 +1256,7 @@ function NoteRowImpl({ note, active, encrypted, onSelect, onDelete, onPublish, o
     return () => {
       live = false;
     };
-  }, [hover, pubStatus, note.id]);
+  }, [hover, pubStatus, note.id, isLocal]);
 
   // Close menu on outside click / Esc.
   useEffect(() => {
@@ -1141,7 +1339,27 @@ function NoteRowImpl({ note, active, encrypted, onSelect, onDelete, onPublish, o
             - encrypted=false → outline lock, fade-on-hover, клик →
               encrypt flow (prompt password если vault locked).
          */}
-      {encrypted ? (
+      {isLocal ? (
+        // Local-only — показываем «device» badge вместо lock'а. Encrypt
+        // flow не применим (vault — для cloud-нот, у local плейн в IDB).
+        <span
+          title="Local-only (this device)"
+          style={{
+            width: 22,
+            height: 22,
+            display: 'grid',
+            placeItems: 'center',
+            color: 'var(--ink-40)',
+            flexShrink: 0,
+            pointerEvents: 'none',
+          }}
+        >
+          <svg width={13} height={13} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round">
+            <rect x="4" y="4" width="16" height="12" rx="2" />
+            <path d="M8 20h8M12 16v4" />
+          </svg>
+        </span>
+      ) : encrypted ? (
         <span
           title="Encrypted — open to decrypt"
           style={{
@@ -1256,7 +1474,12 @@ function NoteRowImpl({ note, active, encrypted, onSelect, onDelete, onPublish, o
 
       {menuOpen && (
         <RowDropdown
+          isLocal={isLocal}
           published={!!pubStatus?.published}
+          onSyncToCloud={() => {
+            setMenuOpen(false);
+            onSyncToCloud(note.id);
+          }}
           onPublish={() => {
             setMenuOpen(false);
             onPublish(note.id);
@@ -1302,14 +1525,16 @@ function NoteIcon() {
 }
 
 interface RowDropdownProps {
+  isLocal: boolean;
   published: boolean;
+  onSyncToCloud: () => void;
   onPublish: () => void;
   onUnpublish: () => void;
   onDelete: () => void;
   confirmingDelete: boolean;
 }
 
-function RowDropdown({ published, onPublish, onUnpublish, onDelete, confirmingDelete }: RowDropdownProps) {
+function RowDropdown({ isLocal, published, onSyncToCloud, onPublish, onUnpublish, onDelete, confirmingDelete }: RowDropdownProps) {
   return (
     <div
       className="fadein"
@@ -1330,20 +1555,34 @@ function RowDropdown({ published, onPublish, onUnpublish, onDelete, confirmingDe
         animationDuration: '140ms',
       }}
     >
-      <DropdownLabel>Publishing</DropdownLabel>
-      <DropdownItem
-        icon={<LinkIcon />}
-        label={published ? 'Copy public link' : 'Publish to web'}
-        onClick={onPublish}
-      />
-      {published && (
-        <DropdownItem
-          icon={<UnlinkIcon />}
-          label="Unpublish"
-          onClick={onUnpublish}
-        />
+      {isLocal ? (
+        <>
+          <DropdownLabel>Sync</DropdownLabel>
+          <DropdownItem
+            icon={<LinkIcon />}
+            label="Sync to cloud"
+            onClick={onSyncToCloud}
+          />
+          <DropdownDivider />
+        </>
+      ) : (
+        <>
+          <DropdownLabel>Publishing</DropdownLabel>
+          <DropdownItem
+            icon={<LinkIcon />}
+            label={published ? 'Copy public link' : 'Publish to web'}
+            onClick={onPublish}
+          />
+          {published && (
+            <DropdownItem
+              icon={<UnlinkIcon />}
+              label="Unpublish"
+              onClick={onUnpublish}
+            />
+          )}
+          <DropdownDivider />
+        </>
       )}
-      <DropdownDivider />
       <DropdownItem
         icon={<TrashIcon />}
         label={confirmingDelete ? 'Click again to confirm' : 'Delete Note'}
@@ -1467,8 +1706,52 @@ interface EditorProps {
   onCreate: () => void;
 }
 
+const EDITOR_WIDTH_KEY = 'hone:notes:editor-width';
+const EDITOR_WIDTH_DEFAULT = 760;
+const EDITOR_WIDTH_MIN = 500;
+
 function Editor({ list, active, activeError, draftTitle, draftBody, encrypted, saveStatus, onTitleChange, onBodyChange, onCreate }: EditorProps) {
   const [hover, setHover] = useState(false);
+  // Editor max-width — drag-resizable, persisted в localStorage. Range
+  // [500 .. (window.innerWidth - 80)] (clamp в onMove). Hand-rolled drag
+  // (mouse-down → window:mousemove/up listeners) — mirror of sidebar
+  // ResizeHandle для consistency.
+  const [editorWidth, setEditorWidth] = useState<number>(() => {
+    if (typeof window === 'undefined') return EDITOR_WIDTH_DEFAULT;
+    const raw = window.localStorage.getItem(EDITOR_WIDTH_KEY);
+    const n = raw ? parseInt(raw, 10) : NaN;
+    if (!Number.isFinite(n)) return EDITOR_WIDTH_DEFAULT;
+    return Math.max(EDITOR_WIDTH_MIN, n);
+  });
+  const widthDragRef = useRef<{ startX: number; startW: number } | null>(null);
+  useEffect(() => {
+    const onMove = (e: MouseEvent) => {
+      const d = widthDragRef.current;
+      if (!d) return;
+      const dx = e.clientX - d.startX;
+      const next = Math.max(
+        EDITOR_WIDTH_MIN,
+        Math.min(d.startW + dx * 2, window.innerWidth - 80),
+      );
+      setEditorWidth(next);
+    };
+    const onUp = () => {
+      if (widthDragRef.current === null) return;
+      widthDragRef.current = null;
+      document.body.style.userSelect = '';
+      try {
+        window.localStorage.setItem(EDITOR_WIDTH_KEY, String(editorWidth));
+      } catch {
+        /* ignore quota */
+      }
+    };
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+    return () => {
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+    };
+  }, [editorWidth]);
   return (
     <section
       onMouseEnter={() => setHover(true)}
@@ -1493,6 +1776,7 @@ function Editor({ list, active, activeError, draftTitle, draftBody, encrypted, s
           title={draftTitle}
           onTitleChange={onTitleChange}
           onBodyChange={onBodyChange}
+          editorWidth={editorWidth}
         />
       ) : (
         <ActiveEditor
@@ -1502,8 +1786,40 @@ function Editor({ list, active, activeError, draftTitle, draftBody, encrypted, s
           body={draftBody}
           onTitleChange={onTitleChange}
           onBodyChange={onBodyChange}
+          editorWidth={editorWidth}
         />
       )}
+
+      {/* Right-edge drag handle. Visible only on hover, как sidebar
+       *  ResizeHandle. Clamp positioning сам внутри handler'а. */}
+      <div
+        onMouseDown={(e) => {
+          widthDragRef.current = { startX: e.clientX, startW: editorWidth };
+          document.body.style.userSelect = 'none';
+        }}
+        style={{
+          position: 'absolute',
+          top: 0,
+          bottom: 0,
+          right: 0,
+          width: 8,
+          cursor: 'col-resize',
+          userSelect: 'none',
+          opacity: hover ? 1 : 0,
+          transition: 'opacity 200ms ease',
+        }}
+      >
+        <span
+          style={{
+            position: 'absolute',
+            top: 0,
+            bottom: 0,
+            left: 3,
+            width: 2,
+            background: 'rgba(255,255,255,0.15)',
+          }}
+        />
+      </div>
 
       {/* Bottom-right indicators */}
       {active && (
@@ -1552,6 +1868,7 @@ function ActiveEditor({
   body,
   onTitleChange,
   onBodyChange,
+  editorWidth,
 }: {
   noteId: string;
   title: string;
@@ -1565,9 +1882,12 @@ function ActiveEditor({
   // Parent держит draftBody → debounced flushNow материализует
   // body_md на сервере через UpdateNote (для embedding/RAG/publish).
   onBodyChange: (v: string) => void;
+  /** Drag-resizable editor max-width — controlled parent'ом (Editor),
+   *  persisted в localStorage. */
+  editorWidth: number;
 }) {
   return (
-    <div className="fadein" style={{ animationDuration: '180ms', maxWidth: 760, margin: '0 auto' }}>
+    <div className="fadein" style={{ animationDuration: '180ms', maxWidth: editorWidth, margin: '0 auto' }}>
       <input
         value={title}
         onChange={(e) => onTitleChange(e.target.value)}
@@ -1590,18 +1910,19 @@ function ActiveEditor({
           // Optimistic create в полёте — yjs endpoints 404'нут на
           // несуществующий note_id. Используем legacy textarea на этот
           // короткий период (handleCreate подменит id на real → key
-          // re-mount → MarkdownEditor поднимется).
+          // re-mount → MilkdownEditor поднимется).
           <RichMarkdownEditor
             value={body}
             onChange={onBodyChange}
             placeholder="Write your thoughts…"
           />
         ) : (
-          <MarkdownEditor
+          <MilkdownEditor
             noteId={noteId}
             seedBodyMD={body}
             placeholder="Write your thoughts…"
             onTextChange={onBodyChange}
+            localOnly={isLocalNoteId(noteId)}
           />
         )}
       </div>
@@ -1890,11 +2211,13 @@ function EncryptedEditorView({
   title,
   onTitleChange,
   onBodyChange,
+  editorWidth,
 }: {
   ciphertextBase64: string;
   title: string;
   onTitleChange: (v: string) => void;
   onBodyChange: (v: string) => void;
+  editorWidth: number;
 }) {
   const [unlocked, setUnlocked] = useState(false);
   const [plaintext, setPlaintext] = useState<string | null>(null);
@@ -1921,9 +2244,20 @@ function EncryptedEditorView({
 
   // Decrypt при unlock'е или при смене ciphertext'а (e.g. SSE pull
   // подтянул свежее значение от другого девайса).
+  //
+  // Empty/short ciphertext = fresh note (auto-encrypt'нул backend на
+  // create, но client'ский active.bodyMd ещё не подхватил ciphertext) или
+  // legacy untouched note. В этом случае treat'аем как empty plaintext —
+  // юзер начинает с пустого редактора. Save-path всё равно re-encrypt'ит.
   useEffect(() => {
     if (!unlocked) {
       setPlaintext(null);
+      return;
+    }
+    if (!ciphertextBase64 || ciphertextBase64.length < 20) {
+      // Fresh / empty encrypted note: skip decrypt, render empty editor.
+      setPlaintext('');
+      onBodyChange('');
       return;
     }
     let cancelled = false;
@@ -1954,7 +2288,7 @@ function EncryptedEditorView({
       <div
         className="fadein"
         style={{
-          maxWidth: 760,
+          maxWidth: editorWidth,
           margin: '0 auto',
           paddingTop: 60,
           display: 'flex',
@@ -2065,7 +2399,7 @@ function EncryptedEditorView({
     // unlocked, но decrypt ещё в полёте (или упал)
     return (
       <div
-        style={{ maxWidth: 760, margin: '0 auto', paddingTop: 100, color: 'var(--ink-40)', fontSize: 13 }}
+        style={{ maxWidth: editorWidth, margin: '0 auto', paddingTop: 100, color: 'var(--ink-40)', fontSize: 13 }}
       >
         {error ?? 'Decrypting…'}
       </div>
@@ -2074,7 +2408,7 @@ function EncryptedEditorView({
 
   // unlocked + decrypted → обычный editor поверх plaintext'а
   return (
-    <div className="fadein" style={{ animationDuration: '180ms', maxWidth: 760, margin: '0 auto' }}>
+    <div className="fadein" style={{ animationDuration: '180ms', maxWidth: editorWidth, margin: '0 auto' }}>
       <input
         value={title}
         onChange={(e) => onTitleChange(e.target.value)}

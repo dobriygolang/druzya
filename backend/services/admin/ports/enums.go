@@ -74,34 +74,6 @@ func difficultyFromProtoAdmin(d pb.Difficulty) enums.Difficulty {
 	}
 }
 
-func dungeonTierToProto(t enums.DungeonTier) pb.DungeonTier {
-	switch t {
-	case enums.DungeonTierNormal:
-		return pb.DungeonTier_DUNGEON_TIER_NORMAL
-	case enums.DungeonTierHard:
-		return pb.DungeonTier_DUNGEON_TIER_HARD
-	case enums.DungeonTierBoss:
-		return pb.DungeonTier_DUNGEON_TIER_BOSS
-	default:
-		return pb.DungeonTier_DUNGEON_TIER_UNSPECIFIED
-	}
-}
-
-func dungeonTierFromProto(t pb.DungeonTier) enums.DungeonTier {
-	switch t {
-	case pb.DungeonTier_DUNGEON_TIER_UNSPECIFIED:
-		return ""
-	case pb.DungeonTier_DUNGEON_TIER_NORMAL:
-		return enums.DungeonTierNormal
-	case pb.DungeonTier_DUNGEON_TIER_HARD:
-		return enums.DungeonTierHard
-	case pb.DungeonTier_DUNGEON_TIER_BOSS:
-		return enums.DungeonTierBoss
-	default:
-		return ""
-	}
-}
-
 func severityToProto(s enums.SeverityLevel) pb.SeverityLevel {
 	switch s {
 	case enums.SeverityLow:

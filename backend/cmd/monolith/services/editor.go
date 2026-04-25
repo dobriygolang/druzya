@@ -2,17 +2,28 @@ package services
 
 import (
 	"context"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"log/slog"
+	"net/http"
 	"os"
 	"strings"
 	"time"
 
+	authApp "druz9/auth/app"
 	editorApp "druz9/editor/app"
 	editorDomain "druz9/editor/domain"
 	editorInfra "druz9/editor/infra"
 	editorPorts "druz9/editor/ports"
+	"druz9/shared/enums"
 	"druz9/shared/generated/pb/druz9/v1/druz9v1connect"
+	sharedMw "druz9/shared/pkg/middleware"
+	subDomain "druz9/subscription/domain"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 // NewEditor wires the collaborative-code editor (bible §3.1): rooms, role
@@ -72,8 +83,20 @@ func NewEditor(d Deps) *Module {
 		Limiter:      editorApp.NewUserRateLimiter(10, time.Minute),
 		Now:          d.Now,
 	}
+	// Phase 2 quota check для CreateRoom: free-tier лимит на active shared
+	// rooms. nil-safe (см. EnforceCreate semantics).
+	editorCreateCheck := func(ctx context.Context, userID uuid.UUID) error {
+		return EnforceCreate(ctx, d, userID,
+			editorDomainQuotaField,
+			func(ctx context.Context, uid uuid.UUID) (int, error) {
+				if d.QuotaUsageReader == nil {
+					return 0, nil
+				}
+				return d.QuotaUsageReader.CountActiveSharedRooms(ctx, uid)
+			})
+	}
 	server := editorPorts.NewEditorServer(
-		create, get, invite, freeze, replayUC, runUC, "/ws/editor", d.Log,
+		create, get, invite, freeze, replayUC, runUC, "/ws/editor", d.Log, editorCreateCheck,
 	)
 	wsh := editorPorts.NewWSHandler(hub, editorTokenVerifier{issuer: d.TokenIssuer}, rooms, parts, d.Log)
 
@@ -91,12 +114,242 @@ func NewEditor(d Deps) *Module {
 			r.Post("/editor/room/{roomId}/freeze", transcoder.ServeHTTP)
 			r.Get("/editor/room/{roomId}/replay", transcoder.ServeHTTP)
 			r.Post("/editor/room/{roomId}/run", transcoder.ServeHTTP)
+			// Visibility flip + read — mirror whiteboard. Owner-only set.
+			ev := &editorVisibilityHandler{rooms: rooms, log: d.Log}
+			r.Get("/editor/room/{roomId}/visibility", ev.get)
+			r.Post("/editor/room/{roomId}/visibility", ev.set)
+		},
+		MountPublicREST: func(r chi.Router) {
+			egj := &editorGuestJoinHandler{
+				rooms:    rooms,
+				parts:    parts,
+				pool:     d.Pool,
+				issuer:   d.TokenIssuer,
+				log:      d.Log,
+				guestTTL: 24 * time.Hour,
+			}
+			r.Post("/editor/room/{roomId}/guest-join", egj.handle)
 		},
 		MountWS: func(ws chi.Router) {
 			ws.Get("/editor/{roomId}", wsh.Handle)
+		},
+		Background: []func(ctx context.Context){
+			// Phase 4 — auto-downgrade free-tier shared code-rooms после TTL.
+			// Mirror'ит whiteboard cron из quota_enforce.go.
+			func(ctx context.Context) {
+				go runFreeTierShareDowngradeEditor(ctx, d.Pool, d.Log)
+			},
 		},
 		Shutdown: []func(ctx context.Context) error{
 			func(ctx context.Context) error { hub.CloseAll(); return nil },
 		},
 	}
+}
+
+// ─── Editor visibility REST handler ───────────────────────────────────────
+//
+// Mirror whiteboard's visibilityHandler — get/set, owner-only set.
+
+type editorVisibilityHandler struct {
+	rooms editorDomain.RoomRepo
+	log   *slog.Logger
+}
+
+type editorVisibilityResponse struct {
+	Visibility string `json:"visibility"`
+}
+
+type editorSetVisibilityRequest struct {
+	Visibility string `json:"visibility"`
+}
+
+func (h *editorVisibilityHandler) get(w http.ResponseWriter, r *http.Request) {
+	if _, ok := sharedMw.UserIDFromContext(r.Context()); !ok {
+		http.Error(w, `{"error":{"code":"unauthenticated"}}`, http.StatusUnauthorized)
+		return
+	}
+	roomID, err := uuid.Parse(chi.URLParam(r, "roomId"))
+	if err != nil {
+		http.Error(w, `{"error":{"code":"bad_id"}}`, http.StatusBadRequest)
+		return
+	}
+	room, err := h.rooms.Get(r.Context(), roomID)
+	if err != nil {
+		if errors.Is(err, editorDomain.ErrNotFound) {
+			http.Error(w, `{"error":{"code":"not_found"}}`, http.StatusNotFound)
+			return
+		}
+		h.log.ErrorContext(r.Context(), "editor.visibility.get", slog.Any("err", err))
+		http.Error(w, `{"error":{"code":"internal"}}`, http.StatusInternalServerError)
+		return
+	}
+	v := room.Visibility
+	if v == "" {
+		v = editorDomain.VisibilityShared
+	}
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(editorVisibilityResponse{Visibility: string(v)})
+}
+
+func (h *editorVisibilityHandler) set(w http.ResponseWriter, r *http.Request) {
+	uid, ok := sharedMw.UserIDFromContext(r.Context())
+	if !ok {
+		http.Error(w, `{"error":{"code":"unauthenticated"}}`, http.StatusUnauthorized)
+		return
+	}
+	roomID, err := uuid.Parse(chi.URLParam(r, "roomId"))
+	if err != nil {
+		http.Error(w, `{"error":{"code":"bad_id"}}`, http.StatusBadRequest)
+		return
+	}
+	var body editorSetVisibilityRequest
+	if decodeErr := json.NewDecoder(r.Body).Decode(&body); decodeErr != nil {
+		http.Error(w, `{"error":{"code":"bad_body"}}`, http.StatusBadRequest)
+		return
+	}
+	v := editorDomain.Visibility(body.Visibility)
+	if !v.IsValid() {
+		http.Error(w, `{"error":{"code":"bad_visibility"}}`, http.StatusBadRequest)
+		return
+	}
+	room, err := h.rooms.Get(r.Context(), roomID)
+	if err != nil {
+		if errors.Is(err, editorDomain.ErrNotFound) {
+			http.Error(w, `{"error":{"code":"not_found"}}`, http.StatusNotFound)
+			return
+		}
+		h.log.ErrorContext(r.Context(), "editor.visibility.set: get", slog.Any("err", err))
+		http.Error(w, `{"error":{"code":"internal"}}`, http.StatusInternalServerError)
+		return
+	}
+	if room.OwnerID != uid {
+		http.Error(w, `{"error":{"code":"forbidden","message":"only owner can change visibility"}}`,
+			http.StatusForbidden)
+		return
+	}
+	if err := h.rooms.SetVisibility(r.Context(), roomID, v); err != nil {
+		h.log.ErrorContext(r.Context(), "editor.visibility.set: write", slog.Any("err", err))
+		http.Error(w, `{"error":{"code":"internal"}}`, http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(editorVisibilityResponse{Visibility: string(v)})
+}
+
+// ─── Editor guest-join REST handler ───────────────────────────────────────
+//
+// Mirror whiteboard guestJoinHandler. Создаёт ephemeral user-row + adds as
+// participant + mints JWT. visibility=private → 403.
+
+type editorGuestJoinHandler struct {
+	rooms    editorDomain.RoomRepo
+	parts    editorDomain.ParticipantRepo
+	pool     *pgxpool.Pool
+	issuer   *authApp.TokenIssuer
+	log      *slog.Logger
+	guestTTL time.Duration
+}
+
+type editorGuestJoinRequest struct {
+	Name string `json:"name"`
+}
+
+type editorGuestJoinResponse struct {
+	AccessToken string `json:"access_token"`
+	ExpiresIn   int    `json:"expires_in_sec"`
+	UserID      string `json:"user_id"`
+	Username    string `json:"username"`
+	Role        string `json:"role"`
+}
+
+func (h *editorGuestJoinHandler) handle(w http.ResponseWriter, r *http.Request) {
+	roomID, err := uuid.Parse(chi.URLParam(r, "roomId"))
+	if err != nil {
+		http.Error(w, `{"error":{"code":"bad_id"}}`, http.StatusBadRequest)
+		return
+	}
+	var body editorGuestJoinRequest
+	if decodeErr := json.NewDecoder(r.Body).Decode(&body); decodeErr != nil {
+		http.Error(w, `{"error":{"code":"bad_body"}}`, http.StatusBadRequest)
+		return
+	}
+	name := strings.TrimSpace(body.Name)
+	if name == "" {
+		name = "guest"
+	}
+	if len(name) > 40 {
+		name = name[:40]
+	}
+
+	room, err := h.rooms.Get(r.Context(), roomID)
+	if err != nil {
+		if errors.Is(err, editorDomain.ErrNotFound) {
+			http.Error(w, `{"error":{"code":"not_found"}}`, http.StatusNotFound)
+			return
+		}
+		h.log.ErrorContext(r.Context(), "editor.guest_join: rooms.Get", slog.Any("err", err))
+		http.Error(w, `{"error":{"code":"internal"}}`, http.StatusInternalServerError)
+		return
+	}
+	if time.Now().UTC().After(room.ExpiresAt) {
+		http.Error(w, `{"error":{"code":"expired"}}`, http.StatusGone)
+		return
+	}
+	if room.Visibility == editorDomain.VisibilityPrivate {
+		http.Error(w, `{"error":{"code":"forbidden","message":"private room: guests not allowed"}}`,
+			http.StatusForbidden)
+		return
+	}
+
+	guestUUID := uuid.New()
+	usernameSuffix := strings.ReplaceAll(guestUUID.String(), "-", "")[:8]
+	username := fmt.Sprintf("%s_g%s", sanitizeUsername(name), usernameSuffix)
+
+	if _, insertErr := h.pool.Exec(r.Context(),
+		`INSERT INTO users (id, username, display_name, role, ephemeral, created_at, updated_at)
+		 VALUES ($1, $2, $3, 'guest', TRUE, now(), now())`,
+		guestUUID, username, name,
+	); insertErr != nil {
+		h.log.ErrorContext(r.Context(), "editor.guest_join: insert user", slog.Any("err", insertErr))
+		http.Error(w, `{"error":{"code":"internal"}}`, http.StatusInternalServerError)
+		return
+	}
+
+	if _, addErr := h.parts.Add(r.Context(), editorDomain.Participant{
+		RoomID:   roomID,
+		UserID:   guestUUID,
+		Role:     enums.EditorRoleViewer,
+		JoinedAt: time.Now().UTC(),
+	}); addErr != nil {
+		h.log.ErrorContext(r.Context(), "editor.guest_join: parts.Add", slog.Any("err", addErr))
+		http.Error(w, `{"error":{"code":"internal"}}`, http.StatusInternalServerError)
+		return
+	}
+
+	// Scope-bound guest JWT — токен валиден только для этой code-room.
+	// WS handler матчит Scope claim против URL room_id (editor:<id>).
+	scope := fmt.Sprintf("editor:%s", roomID.String())
+	tok, expiresIn, err := h.issuer.MintScoped(
+		guestUUID, enums.UserRoleGuest, enums.AuthProviderTelegram, scope, h.guestTTL,
+	)
+	if err != nil {
+		h.log.ErrorContext(r.Context(), "editor.guest_join: mint", slog.Any("err", err))
+		http.Error(w, `{"error":{"code":"internal"}}`, http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(editorGuestJoinResponse{
+		AccessToken: tok,
+		ExpiresIn:   expiresIn,
+		UserID:      guestUUID.String(),
+		Username:    name,
+		Role:        "guest",
+	})
+}
+
+// editorDomainQuotaField — accessor для domain.QuotaPolicy.ActiveSharedRooms.
+// См. whiteboardDomainQuotaField для аналогичного pattern'а в whiteboard_rooms.go.
+func editorDomainQuotaField(p subDomain.QuotaPolicy) int {
+	return p.ActiveSharedRooms
 }

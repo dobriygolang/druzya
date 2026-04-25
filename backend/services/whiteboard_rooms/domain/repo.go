@@ -40,6 +40,15 @@ type ParticipantRepo interface {
 }
 
 // TokenVerifier validates a JWT at the WS handshake (mirrors editor).
+//
+// VerifyScoped дополнительно проверяет JWT scope claim:
+//   - если token's Scope пустой → unrestricted (обычный access-token), accept
+//   - если non-empty → должен в точности равняться expectedScope, иначе reject
+//
+// Используется для guest-токенов: scope = "whiteboard:<roomID>" минтится при
+// guest-join, на WS upgrade'е сверяется с URL room_id. Cross-room replay
+// (guest token room A → попытка подключиться к room B) → 403.
 type TokenVerifier interface {
 	Verify(raw string) (uuid.UUID, error)
+	VerifyScoped(raw string, expectedScope string) (uuid.UUID, error)
 }

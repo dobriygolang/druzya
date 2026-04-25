@@ -710,3 +710,154 @@ textarea {
 .hone-excalidraw-mount .excalidraw .library-menu-items-container__items {
   background: transparent !important;
 }
+
+/* ── WYSIWYG live-preview classes for MarkdownEditor (CodeMirror 6) ─────
+   Used by `wysiwygDecorations()` ViewPlugin (см. components/MarkdownEditor.tsx).
+   Поведение: когда курсор НЕ на строке с heading/blockquote-маркером, маркер
+   скрывается, а контент строки рендерится в нужном стиле. На строке с курсором
+   маркеры показываются dimmed (`cm-md-syntax-dim`) — чтобы можно было
+   редактировать. */
+.cm-md-hidden { display: none; }
+.cm-md-syntax-dim { color: var(--ink-40); }
+/* cm-heading-1/2/3 line-classes удалены — heading typography через
+   notionLikeHighlight HighlightStyle (token-based fontSize), один источник
+   sizing. Конфликт между line-class и token-class ломал CM6 moveVertically
+   measurement → arrow nav пропускала heading levels. */
+
+/* ── Milkdown / Crepe overrides (Hone winter palette) ──────────────────
+   Crepe ships frame-dark theme с CSS-переменными на .milkdown selector.
+   Перебиваем под наш чёрный фон + ink-tokens. Только цвета — typography
+   (heading sizes) и spacing оставляем дефолтные Crepe (хорошие defaults). */
+.hone-milkdown-mount .milkdown {
+  --crepe-color-background: transparent;
+  --crepe-color-on-background: var(--ink);
+  --crepe-color-surface: rgba(255, 255, 255, 0.02);
+  --crepe-color-surface-low: rgba(255, 255, 255, 0.04);
+  --crepe-color-on-surface: var(--ink);
+  --crepe-color-on-surface-variant: var(--ink-60);
+  --crepe-color-outline: rgba(255, 255, 255, 0.12);
+  --crepe-color-primary: var(--ink);
+  --crepe-color-secondary: rgba(255, 255, 255, 0.08);
+  --crepe-color-on-secondary: var(--ink);
+  --crepe-color-inverse: rgba(255, 255, 255, 0.05);
+  --crepe-color-on-inverse: var(--ink);
+  --crepe-color-inline-code: var(--ink);
+  --crepe-color-error: #ff6a6a;
+  --crepe-color-hover: rgba(255, 255, 255, 0.06);
+  --crepe-color-selected: rgba(255, 255, 255, 0.1);
+  --crepe-color-inline-area: rgba(255, 255, 255, 0.08);
+  --crepe-font-default: 'Inter', system-ui, -apple-system, sans-serif;
+  --crepe-font-code: var(--font-mono, 'JetBrains Mono', monospace);
+  /* Title font — overridden чтобы не было serif (frame-dark uses Noto Serif). */
+  --crepe-font-title: 'Inter', system-ui, sans-serif;
+}
+/* Editor content area — full width внутри note panel. */
+.hone-milkdown-mount .milkdown .ProseMirror {
+  min-height: 280px;
+  padding: 0;
+  outline: none;
+  color: var(--ink);
+  font-size: 15px;
+  line-height: 1.7;
+}
+/* Inline code: subtle bg + monospace, не bright red. */
+.hone-milkdown-mount .milkdown .ProseMirror code {
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 3px;
+  padding: 1px 4px;
+  font-family: var(--font-mono, monospace);
+  font-size: 0.92em;
+  color: var(--ink);
+}
+.hone-milkdown-mount .milkdown .ProseMirror h1 {
+  font-size: 32px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  margin: 24px 0 8px;
+  line-height: 1.2;
+}
+.hone-milkdown-mount .milkdown .ProseMirror h2 {
+  font-size: 24px;
+  font-weight: 600;
+  letter-spacing: -0.015em;
+  margin: 18px 0 6px;
+  line-height: 1.25;
+}
+.hone-milkdown-mount .milkdown .ProseMirror h3 {
+  font-size: 19px;
+  font-weight: 600;
+  margin: 14px 0 4px;
+  line-height: 1.3;
+}
+.hone-milkdown-mount .milkdown .ProseMirror blockquote {
+  border-left: 2px solid rgba(255, 255, 255, 0.15);
+  padding-left: 14px;
+  color: var(--ink-60);
+  margin: 12px 0;
+}
+.hone-milkdown-mount .milkdown .ProseMirror hr {
+  border: none;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  margin: 18px 0;
+}
+.hone-milkdown-mount .milkdown .ProseMirror a {
+  color: var(--ink);
+  text-decoration: underline;
+  text-decoration-color: rgba(255, 255, 255, 0.25);
+}
+.hone-milkdown-mount .milkdown .ProseMirror a:hover {
+  text-decoration-color: rgba(255, 255, 255, 0.6);
+}
+/* Code block (multi-line fenced ``` блок) — фон + monospace, без bright bg. */
+.hone-milkdown-mount .milkdown .ProseMirror pre {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 8px;
+  padding: 12px 14px;
+  margin: 12px 0;
+  font-family: var(--font-mono, monospace);
+  font-size: 13px;
+  line-height: 1.6;
+  overflow-x: auto;
+}
+.hone-milkdown-mount .milkdown .ProseMirror pre code {
+  background: transparent;
+  padding: 0;
+  font-size: 13px;
+  color: var(--ink-90);
+}
+/* List items + checkboxes — winter style. */
+.hone-milkdown-mount .milkdown .ProseMirror ul,
+.hone-milkdown-mount .milkdown .ProseMirror ol {
+  padding-left: 24px;
+  margin: 8px 0;
+}
+.hone-milkdown-mount .milkdown .ProseMirror li {
+  margin: 4px 0;
+}
+/* Placeholder italic ink-40 (frame-dark default чуть ярче — приглушаем). */
+.hone-milkdown-mount .milkdown .ProseMirror .placeholder {
+  color: var(--ink-40);
+  font-style: italic;
+}
+.cm-blockquote { border-left: 2px solid rgba(255,255,255,0.15); padding-left: 12px; color: var(--ink-60); }
+/* HR — line decoration, не replace widget. Caret свободно входит на --- строку,
+   visual rendering: faded text + bottom-border под строкой как visual divider. */
+.cm-hr-line {
+  border-bottom: 1px solid rgba(255,255,255,0.1);
+  padding-bottom: 6px;
+  margin-bottom: 6px;
+  color: var(--ink-40);
+}
+/* Inline marker hide/dim — применяется через Mark Decoration на конкретных
+   диапазонах символов `**`, `*`, `` ` ``. */
+.cm-md-marker { color: var(--ink-40); }
+.cm-md-bold-text { font-weight: 600; }
+.cm-md-italic-text { font-style: italic; }
+.cm-md-code-text {
+  font-family: var(--font-mono, monospace);
+  background: rgba(255,255,255,0.06);
+  border-radius: 3px;
+  padding: 1px 4px;
+  font-size: 0.95em;
+}

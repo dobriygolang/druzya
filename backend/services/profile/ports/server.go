@@ -417,6 +417,11 @@ func userRoleToProto(r enums.UserRole) pb.UserRole {
 		return pb.UserRole_USER_ROLE_INTERVIEWER
 	case enums.UserRoleAdmin:
 		return pb.UserRole_USER_ROLE_ADMIN
+	case enums.UserRoleGuest:
+		// Guests don't have public profiles surfaced via this endpoint;
+		// returning UNSPECIFIED is correct (proto-regen for GUEST is a
+		// future increment).
+		return pb.UserRole_USER_ROLE_UNSPECIFIED
 	default:
 		return pb.UserRole_USER_ROLE_UNSPECIFIED
 	}

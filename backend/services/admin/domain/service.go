@@ -92,8 +92,11 @@ func ValidateTestCases(cases []TestCase) error {
 // Company validation
 // ─────────────────────────────────────────────────────────────────────────
 
-// ValidateCompanyUpsert checks the POST /admin/companies payload. slug must
-// be URL-safe, name non-empty and difficulty one of the DungeonTier values.
+// ValidateCompanyUpsert checks the POST /admin/companies payload. После
+// перехода companies на mock-interview shape (см. 00043) валидируем slug
+// (URL-safe), name (non-empty), description (length cap), logo_url
+// (sane http/s prefix). difficulty/min_level_required отброшены — теперь
+// сложность принадлежит mock_tasks, не компании.
 func ValidateCompanyUpsert(in CompanyUpsert) error {
 	if !isValidSlug(in.Slug) {
 		return fmt.Errorf("%w: slug %q must be ascii lowercase, digits or '-'", ErrInvalidInput, in.Slug)
@@ -101,11 +104,12 @@ func ValidateCompanyUpsert(in CompanyUpsert) error {
 	if strings.TrimSpace(in.Name) == "" {
 		return fmt.Errorf("%w: name is required", ErrInvalidInput)
 	}
-	if !in.Difficulty.IsValid() {
-		return fmt.Errorf("%w: invalid difficulty %q", ErrInvalidInput, in.Difficulty)
+	if len(in.Description) > 2000 {
+		return fmt.Errorf("%w: description must be <= 2000 chars", ErrInvalidInput)
 	}
-	if in.MinLevelRequired < 0 {
-		return fmt.Errorf("%w: min_level_required must be non-negative", ErrInvalidInput)
+	if l := strings.TrimSpace(in.LogoURL); l != "" &&
+		!strings.HasPrefix(l, "http://") && !strings.HasPrefix(l, "https://") {
+		return fmt.Errorf("%w: logo_url must start with http:// or https://", ErrInvalidInput)
 	}
 	return nil
 }

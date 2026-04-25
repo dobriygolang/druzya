@@ -51,6 +51,14 @@ const api: HoneAPI = {
     setTrafficLights: (visible: boolean) =>
       ipcRenderer.invoke(invokeChannels.trafficLightsShow, visible) as Promise<void>,
   },
+  vault: {
+    passLoad: () =>
+      ipcRenderer.invoke(invokeChannels.vaultPassLoad) as Promise<string | null>,
+    passSave: (passphrase: string) =>
+      ipcRenderer.invoke(invokeChannels.vaultPassSave, passphrase) as Promise<void>,
+    passClear: () =>
+      ipcRenderer.invoke(invokeChannels.vaultPassClear) as Promise<void>,
+  },
   on: (channel, listener) => {
     const wire = eventChannels[channel];
     const handler = (_event: Electron.IpcRendererEvent, payload: unknown) => {

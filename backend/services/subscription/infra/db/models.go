@@ -5,13 +5,338 @@
 package subscriptiondb
 
 import (
+	"database/sql/driver"
+	"fmt"
+
 	"github.com/jackc/pgx/v5/pgtype"
 )
+
+type MockPipelineVerdict string
+
+const (
+	MockPipelineVerdictInProgress MockPipelineVerdict = "in_progress"
+	MockPipelineVerdictPass       MockPipelineVerdict = "pass"
+	MockPipelineVerdictFail       MockPipelineVerdict = "fail"
+	MockPipelineVerdictCancelled  MockPipelineVerdict = "cancelled"
+)
+
+func (e *MockPipelineVerdict) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = MockPipelineVerdict(s)
+	case string:
+		*e = MockPipelineVerdict(s)
+	default:
+		return fmt.Errorf("unsupported scan type for MockPipelineVerdict: %T", src)
+	}
+	return nil
+}
+
+type NullMockPipelineVerdict struct {
+	MockPipelineVerdict MockPipelineVerdict
+	Valid               bool // Valid is true if MockPipelineVerdict is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullMockPipelineVerdict) Scan(value interface{}) error {
+	if value == nil {
+		ns.MockPipelineVerdict, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.MockPipelineVerdict.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullMockPipelineVerdict) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.MockPipelineVerdict), nil
+}
+
+type MockStageKind string
+
+const (
+	MockStageKindHr         MockStageKind = "hr"
+	MockStageKindAlgo       MockStageKind = "algo"
+	MockStageKindCoding     MockStageKind = "coding"
+	MockStageKindSysdesign  MockStageKind = "sysdesign"
+	MockStageKindBehavioral MockStageKind = "behavioral"
+)
+
+func (e *MockStageKind) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = MockStageKind(s)
+	case string:
+		*e = MockStageKind(s)
+	default:
+		return fmt.Errorf("unsupported scan type for MockStageKind: %T", src)
+	}
+	return nil
+}
+
+type NullMockStageKind struct {
+	MockStageKind MockStageKind
+	Valid         bool // Valid is true if MockStageKind is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullMockStageKind) Scan(value interface{}) error {
+	if value == nil {
+		ns.MockStageKind, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.MockStageKind.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullMockStageKind) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.MockStageKind), nil
+}
+
+type MockTaskLanguage string
+
+const (
+	MockTaskLanguageGo     MockTaskLanguage = "go"
+	MockTaskLanguagePython MockTaskLanguage = "python"
+	MockTaskLanguageSql    MockTaskLanguage = "sql"
+	MockTaskLanguageAny    MockTaskLanguage = "any"
+)
+
+func (e *MockTaskLanguage) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = MockTaskLanguage(s)
+	case string:
+		*e = MockTaskLanguage(s)
+	default:
+		return fmt.Errorf("unsupported scan type for MockTaskLanguage: %T", src)
+	}
+	return nil
+}
+
+type NullMockTaskLanguage struct {
+	MockTaskLanguage MockTaskLanguage
+	Valid            bool // Valid is true if MockTaskLanguage is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullMockTaskLanguage) Scan(value interface{}) error {
+	if value == nil {
+		ns.MockTaskLanguage, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.MockTaskLanguage.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullMockTaskLanguage) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.MockTaskLanguage), nil
+}
+
+type PipelineAttemptKind string
+
+const (
+	PipelineAttemptKindTaskSolve       PipelineAttemptKind = "task_solve"
+	PipelineAttemptKindQuestionAnswer  PipelineAttemptKind = "question_answer"
+	PipelineAttemptKindSysdesignCanvas PipelineAttemptKind = "sysdesign_canvas"
+	PipelineAttemptKindVoiceAnswer     PipelineAttemptKind = "voice_answer"
+)
+
+func (e *PipelineAttemptKind) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = PipelineAttemptKind(s)
+	case string:
+		*e = PipelineAttemptKind(s)
+	default:
+		return fmt.Errorf("unsupported scan type for PipelineAttemptKind: %T", src)
+	}
+	return nil
+}
+
+type NullPipelineAttemptKind struct {
+	PipelineAttemptKind PipelineAttemptKind
+	Valid               bool // Valid is true if PipelineAttemptKind is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullPipelineAttemptKind) Scan(value interface{}) error {
+	if value == nil {
+		ns.PipelineAttemptKind, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.PipelineAttemptKind.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullPipelineAttemptKind) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.PipelineAttemptKind), nil
+}
+
+type PipelineAttemptVerdict string
+
+const (
+	PipelineAttemptVerdictPass       PipelineAttemptVerdict = "pass"
+	PipelineAttemptVerdictFail       PipelineAttemptVerdict = "fail"
+	PipelineAttemptVerdictBorderline PipelineAttemptVerdict = "borderline"
+	PipelineAttemptVerdictPending    PipelineAttemptVerdict = "pending"
+)
+
+func (e *PipelineAttemptVerdict) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = PipelineAttemptVerdict(s)
+	case string:
+		*e = PipelineAttemptVerdict(s)
+	default:
+		return fmt.Errorf("unsupported scan type for PipelineAttemptVerdict: %T", src)
+	}
+	return nil
+}
+
+type NullPipelineAttemptVerdict struct {
+	PipelineAttemptVerdict PipelineAttemptVerdict
+	Valid                  bool // Valid is true if PipelineAttemptVerdict is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullPipelineAttemptVerdict) Scan(value interface{}) error {
+	if value == nil {
+		ns.PipelineAttemptVerdict, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.PipelineAttemptVerdict.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullPipelineAttemptVerdict) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.PipelineAttemptVerdict), nil
+}
+
+type PipelineStageStatus string
+
+const (
+	PipelineStageStatusPending    PipelineStageStatus = "pending"
+	PipelineStageStatusInProgress PipelineStageStatus = "in_progress"
+	PipelineStageStatusFinished   PipelineStageStatus = "finished"
+	PipelineStageStatusSkipped    PipelineStageStatus = "skipped"
+)
+
+func (e *PipelineStageStatus) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = PipelineStageStatus(s)
+	case string:
+		*e = PipelineStageStatus(s)
+	default:
+		return fmt.Errorf("unsupported scan type for PipelineStageStatus: %T", src)
+	}
+	return nil
+}
+
+type NullPipelineStageStatus struct {
+	PipelineStageStatus PipelineStageStatus
+	Valid               bool // Valid is true if PipelineStageStatus is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullPipelineStageStatus) Scan(value interface{}) error {
+	if value == nil {
+		ns.PipelineStageStatus, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.PipelineStageStatus.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullPipelineStageStatus) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.PipelineStageStatus), nil
+}
+
+type PipelineStageVerdict string
+
+const (
+	PipelineStageVerdictPass       PipelineStageVerdict = "pass"
+	PipelineStageVerdictFail       PipelineStageVerdict = "fail"
+	PipelineStageVerdictBorderline PipelineStageVerdict = "borderline"
+)
+
+func (e *PipelineStageVerdict) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = PipelineStageVerdict(s)
+	case string:
+		*e = PipelineStageVerdict(s)
+	default:
+		return fmt.Errorf("unsupported scan type for PipelineStageVerdict: %T", src)
+	}
+	return nil
+}
+
+type NullPipelineStageVerdict struct {
+	PipelineStageVerdict PipelineStageVerdict
+	Valid                bool // Valid is true if PipelineStageVerdict is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullPipelineStageVerdict) Scan(value interface{}) error {
+	if value == nil {
+		ns.PipelineStageVerdict, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.PipelineStageVerdict.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullPipelineStageVerdict) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.PipelineStageVerdict), nil
+}
 
 type AiCredit struct {
 	UserID    pgtype.UUID
 	Balance   int32
 	UpdatedAt pgtype.Timestamptz
+}
+
+type AiStrictnessProfile struct {
+	ID                   pgtype.UUID
+	Slug                 string
+	Name                 string
+	OffTopicPenalty      float32
+	MustMentionPenalty   float32
+	HallucinationPenalty float32
+	BiasTowardFail       bool
+	CustomPromptTemplate pgtype.Text
+	Active               bool
+	CreatedAt            pgtype.Timestamptz
+	UpdatedAt            pgtype.Timestamptz
 }
 
 type AnticheatSignal struct {
@@ -118,6 +443,33 @@ type Company struct {
 	MinLevelRequired int32
 	Sections         []string
 	CreatedAt        pgtype.Timestamptz
+	LogoUrl          pgtype.Text
+	Description      string
+	Active           bool
+	SortOrder        int32
+	UpdatedAt        pgtype.Timestamptz
+}
+
+type CompanyQuestion struct {
+	ID                pgtype.UUID
+	CompanyID         pgtype.UUID
+	StageKind         MockStageKind
+	Body              string
+	ExpectedAnswerMd  string
+	ReferenceCriteria []byte
+	Active            bool
+	SortOrder         int32
+	CreatedAt         pgtype.Timestamptz
+}
+
+type CompanyStage struct {
+	CompanyID             pgtype.UUID
+	StageKind             MockStageKind
+	Ordinal               int16
+	Optional              bool
+	LanguagePool          []MockTaskLanguage
+	TaskPoolIds           []pgtype.UUID
+	AiStrictnessProfileID pgtype.UUID
 }
 
 type CopilotConversation struct {
@@ -256,14 +608,15 @@ type EditorParticipant struct {
 }
 
 type EditorRoom struct {
-	ID        pgtype.UUID
-	OwnerID   pgtype.UUID
-	Type      string
-	TaskID    pgtype.UUID
-	Language  string
-	IsFrozen  bool
-	ExpiresAt pgtype.Timestamptz
-	CreatedAt pgtype.Timestamptz
+	ID         pgtype.UUID
+	OwnerID    pgtype.UUID
+	Type       string
+	TaskID     pgtype.UUID
+	Language   string
+	IsFrozen   bool
+	ExpiresAt  pgtype.Timestamptz
+	CreatedAt  pgtype.Timestamptz
+	Visibility string
 }
 
 type EloSnapshotsDaily struct {
@@ -515,6 +868,18 @@ type MockMessage struct {
 	CreatedAt      pgtype.Timestamptz
 }
 
+type MockPipeline struct {
+	ID              pgtype.UUID
+	UserID          pgtype.UUID
+	CompanyID       pgtype.UUID
+	AiAssist        bool
+	CurrentStageIdx int16
+	Verdict         MockPipelineVerdict
+	TotalScore      pgtype.Float4
+	StartedAt       pgtype.Timestamptz
+	FinishedAt      pgtype.Timestamptz
+}
+
 type MockSession struct {
 	ID             pgtype.UUID
 	UserID         pgtype.UUID
@@ -535,6 +900,35 @@ type MockSession struct {
 	FinishedAt     pgtype.Timestamptz
 	CreatedAt      pgtype.Timestamptz
 	AiAssist       bool
+}
+
+type MockTask struct {
+	ID                       pgtype.UUID
+	StageKind                MockStageKind
+	Language                 MockTaskLanguage
+	Difficulty               int16
+	Title                    string
+	BodyMd                   string
+	SampleIoMd               string
+	ReferenceCriteria        []byte
+	ReferenceSolutionMd      string
+	FunctionalRequirementsMd string
+	TimeLimitMin             int32
+	AiStrictnessProfileID    pgtype.UUID
+	Active                   bool
+	CreatedByAdminID         pgtype.UUID
+	CreatedAt                pgtype.Timestamptz
+	UpdatedAt                pgtype.Timestamptz
+}
+
+type MockTaskTestCase struct {
+	ID             pgtype.UUID
+	TaskID         pgtype.UUID
+	Input          string
+	ExpectedOutput string
+	IsHidden       bool
+	Ordinal        int32
+	CreatedAt      pgtype.Timestamptz
 }
 
 type NoteYjsUpdate struct {
@@ -635,6 +1029,41 @@ type Persona struct {
 	IsEnabled     bool
 	CreatedAt     pgtype.Timestamptz
 	UpdatedAt     pgtype.Timestamptz
+}
+
+type PipelineAttempt struct {
+	ID                     pgtype.UUID
+	PipelineStageID        pgtype.UUID
+	Kind                   PipelineAttemptKind
+	TaskID                 pgtype.UUID
+	TaskQuestionID         pgtype.UUID
+	DefaultQuestionID      pgtype.UUID
+	CompanyQuestionID      pgtype.UUID
+	UserAnswerMd           pgtype.Text
+	UserVoiceUrl           pgtype.Text
+	UserExcalidrawImageUrl pgtype.Text
+	UserContextMd          pgtype.Text
+	AiScore                pgtype.Float4
+	AiVerdict              PipelineAttemptVerdict
+	AiFeedbackMd           pgtype.Text
+	AiWaterScore           pgtype.Float4
+	AiMissingPoints        []byte
+	AiJudgedAt             pgtype.Timestamptz
+	CreatedAt              pgtype.Timestamptz
+}
+
+type PipelineStage struct {
+	ID                    pgtype.UUID
+	PipelineID            pgtype.UUID
+	StageKind             MockStageKind
+	Ordinal               int16
+	Status                PipelineStageStatus
+	Score                 pgtype.Float4
+	Verdict               NullPipelineStageVerdict
+	AiFeedbackMd          pgtype.Text
+	AiStrictnessProfileID pgtype.UUID
+	StartedAt             pgtype.Timestamptz
+	FinishedAt            pgtype.Timestamptz
 }
 
 type Podcast struct {
@@ -758,6 +1187,17 @@ type Slot struct {
 	MeetUrl       pgtype.Text
 }
 
+type StageDefaultQuestion struct {
+	ID                pgtype.UUID
+	StageKind         MockStageKind
+	Body              string
+	ExpectedAnswerMd  string
+	ReferenceCriteria []byte
+	Active            bool
+	SortOrder         int32
+	CreatedAt         pgtype.Timestamptz
+}
+
 type Subscription struct {
 	UserID           pgtype.UUID
 	Plan             string
@@ -811,6 +1251,16 @@ type Task struct {
 	AvgRating     pgtype.Numeric
 	CreatedAt     pgtype.Timestamptz
 	UpdatedAt     pgtype.Timestamptz
+}
+
+type TaskQuestion struct {
+	ID                pgtype.UUID
+	TaskID            pgtype.UUID
+	Body              string
+	ExpectedAnswerMd  string
+	ReferenceCriteria []byte
+	SortOrder         int32
+	CreatedAt         pgtype.Timestamptz
 }
 
 type TaskRating struct {
@@ -876,6 +1326,7 @@ type User struct {
 	StorageTier           string
 	StorageRecomputedAt   pgtype.Timestamptz
 	VaultKdfSalt          []byte
+	Ephemeral             bool
 }
 
 type UserBan struct {

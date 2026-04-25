@@ -17,6 +17,7 @@ import (
 	"druz9/shared/pkg/killswitch"
 	"druz9/shared/pkg/llmchain"
 	"druz9/shared/pkg/quota"
+	subApp "druz9/subscription/app"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -85,6 +86,14 @@ type Deps struct {
 	// nil publish — no-op (callers проверяют). Built в bootstrap до
 	// модулей которые его используют.
 	SyncEventBroker *SyncEventBroker
+
+	// Quota wiring — populated by NewSubscription и потребляется enforce-
+	// middleware'ами в whiteboard / editor / notes. Все three nil-safe:
+	// при nil enforcement бесшумно skip'ается (не блокируем юзеров если
+	// subscription-сервис не loaded — feature-degradation).
+	QuotaResolver    *subApp.PolicyResolver
+	QuotaTierGetter  *subApp.GetTier
+	QuotaUsageReader subApp.UsageReader
 }
 
 // Module is what every NewXxx returns: enough metadata for router.go to

@@ -217,6 +217,21 @@ func (mr *MockBookingRepoMockRecorder) ListByCandidate(ctx, candidateID any) *go
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListByCandidate", reflect.TypeOf((*MockBookingRepo)(nil).ListByCandidate), ctx, candidateID)
 }
 
+// ListHostedByInterviewer mocks base method.
+func (m *MockBookingRepo) ListHostedByInterviewer(ctx context.Context, interviewerID uuid.UUID) ([]domain.HostedBooking, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ListHostedByInterviewer", ctx, interviewerID)
+	ret0, _ := ret[0].([]domain.HostedBooking)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ListHostedByInterviewer indicates an expected call of ListHostedByInterviewer.
+func (mr *MockBookingRepoMockRecorder) ListHostedByInterviewer(ctx, interviewerID any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListHostedByInterviewer", reflect.TypeOf((*MockBookingRepo)(nil).ListHostedByInterviewer), ctx, interviewerID)
+}
+
 // MockReviewRepo is a mock of ReviewRepo interface.
 type MockReviewRepo struct {
 	ctrl     *gomock.Controller
@@ -333,17 +348,4 @@ func (m *MockMeetRoomProvider) GenerateMeetURL(ctx context.Context, slotID uuid.
 func (mr *MockMeetRoomProviderMockRecorder) GenerateMeetURL(ctx, slotID any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GenerateMeetURL", reflect.TypeOf((*MockMeetRoomProvider)(nil).GenerateMeetURL), ctx, slotID)
-}
-
-// ListHostedByInterviewer mocks base method on BookingRepo.
-func (m *MockBookingRepo) ListHostedByInterviewer(ctx context.Context, interviewerID uuid.UUID) ([]domain.HostedBooking, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ListHostedByInterviewer", ctx, interviewerID)
-	ret0, _ := ret[0].([]domain.HostedBooking)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-func (mr *MockBookingRepoMockRecorder) ListHostedByInterviewer(ctx, interviewerID any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListHostedByInterviewer", reflect.TypeOf((*MockBookingRepo)(nil).ListHostedByInterviewer), ctx, interviewerID)
 }

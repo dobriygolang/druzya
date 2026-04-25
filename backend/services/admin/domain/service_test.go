@@ -2,6 +2,7 @@ package domain
 
 import (
 	"errors"
+	"strings"
 	"testing"
 
 	"druz9/shared/enums"
@@ -171,10 +172,11 @@ func TestValidateTestCases_FloorsEnforced(t *testing.T) {
 func TestValidateCompanyUpsert_HappyPath(t *testing.T) {
 	t.Parallel()
 	in := CompanyUpsert{
-		Slug:             "yandex",
-		Name:             "Yandex",
-		Difficulty:       enums.DungeonTierHard,
-		MinLevelRequired: 5,
+		Slug:        "yandex",
+		Name:        "Yandex",
+		Description: "Тех-собес: алгоритмы + sql + go.",
+		LogoURL:     "https://cdn.druz9.online/logos/yandex.png",
+		Active:      true,
 	}
 	if err := ValidateCompanyUpsert(in); err != nil {
 		t.Fatalf("happy path must pass, got %v", err)
@@ -183,11 +185,13 @@ func TestValidateCompanyUpsert_HappyPath(t *testing.T) {
 
 func TestValidateCompanyUpsert_BadInputs(t *testing.T) {
 	t.Parallel()
+	longDesc := strings.Repeat("x", 2001)
 	bad := []CompanyUpsert{
-		{Slug: "", Name: "Y", Difficulty: enums.DungeonTierNormal},
-		{Slug: "yandex", Name: "   ", Difficulty: enums.DungeonTierNormal},
-		{Slug: "yandex", Name: "Y", Difficulty: enums.DungeonTier("gold")},
-		{Slug: "yandex", Name: "Y", Difficulty: enums.DungeonTierNormal, MinLevelRequired: -1},
+		{Slug: "", Name: "Y"},                                            // empty slug
+		{Slug: "Yandex!", Name: "Y"},                                     // bad slug chars
+		{Slug: "yandex", Name: "   "},                                    // whitespace name
+		{Slug: "yandex", Name: "Y", Description: longDesc},               // description over cap
+		{Slug: "yandex", Name: "Y", LogoURL: "ftp://yandex.ru/logo.png"}, // bad logo scheme
 	}
 	for i, in := range bad {
 		if err := ValidateCompanyUpsert(in); !errors.Is(err, ErrInvalidInput) {

@@ -49,12 +49,12 @@ export default function HelpPage() {
   return (
     <AppShellV2>
       {/* Hero с поиском */}
-      <div className="relative h-auto overflow-hidden bg-gradient-to-br from-surface-3 to-accent lg:h-[240px]">
+      <div className="relative h-auto overflow-hidden bg-surface-3 border-b border-border-strong lg:h-[240px]">
         <div className="flex h-full flex-col items-center justify-center gap-4 px-4 py-8 sm:px-8 lg:py-0">
           <h1 className="font-display text-3xl font-extrabold text-text-primary sm:text-4xl lg:text-[36px]">
             Чем помочь?
           </h1>
-          <p className="text-center text-sm text-white/80">
+          <p className="text-center text-sm text-text-secondary">
             Поиск по {HELP_TOTAL_ARTICLES} статьям, чат с поддержкой и контакты
           </p>
           <div className="flex h-12 w-full max-w-[720px] items-center gap-3 rounded-xl border border-white/20 bg-bg/60 px-4 backdrop-blur">
@@ -286,7 +286,7 @@ function SupportForm() {
   // Success state — показываем подтверждение, кнопку "новое обращение".
   if (mutation.isSuccess) {
     return (
-      <Card className="flex-col gap-3 border-success/40 bg-gradient-to-br from-success/15 to-cyan/15 p-5">
+      <Card className="flex-col gap-3 border-success/40 bg-success/10 p-5">
         <div className="flex items-center gap-2 text-success">
           <CheckCircle2 className="h-5 w-5" />
           <span className="font-display text-base font-bold">Заявка отправлена</span>

@@ -51,12 +51,12 @@ export default function ApplicationsPage() {
 
   return (
     <AppShellV2>
-      <div className="bg-gradient-to-br from-surface-3 to-accent">
+      <div className="bg-surface-3 border-b border-border-strong">
         <div className="px-4 py-8 sm:px-8 lg:px-20">
           <h1 className="font-display text-3xl font-extrabold text-text-primary sm:text-4xl">
             Мои отклики
           </h1>
-          <p className="mt-2 text-sm text-white/85">
+          <p className="mt-2 text-sm text-text-secondary">
             Воронка подготовки: что сохранил → куда откликнулся → где сейчас собес.
           </p>
         </div>

@@ -242,7 +242,7 @@ function Output() {
         <span className="w-fit rounded-full bg-text-primary/10 px-2 py-0.5 text-[10px] text-text-secondary">
           int · ожидаемый результат
         </span>
-        <div className="mt-auto flex flex-col gap-2 rounded-lg bg-gradient-to-br from-accent/20 to-pink/20 p-3">
+        <div className="mt-auto flex flex-col gap-2 rounded-lg border border-border-strong bg-surface-2 p-3">
           <div className="flex items-start gap-2">
             <Sparkles className="h-3.5 w-3.5 shrink-0 text-text-secondary" />
             <span className="text-[11px] text-text-primary">

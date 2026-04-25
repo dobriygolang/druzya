@@ -1,0 +1,335 @@
+// SysDesignCanvas — Phase D.2 sysdesign-canvas attempt surface.
+//
+// Layout (lg+): 3-column grid
+//   [Task brief] · [Excalidraw canvas] · [Reqs + Context + Submit]
+// Narrow viewports collapse to a single column.
+//
+// Lifecycle:
+//   - Pre-submit (attempt.user_answer_md == null): editable canvas + textareas.
+//   - Post-submit (judge has run, user_answer_md set): read-only — saved
+//     image + saved non-funct + context + verdict panel.
+//
+// Single-user. NO Yjs collab. Theme overrides mirror WhiteboardSharePage.
+
+import { lazy, Suspense, useRef, useState } from 'react'
+import { AlertCircle, CheckCircle2, Loader2, XCircle } from 'lucide-react'
+import { Button } from '../../components/Button'
+import { Card } from '../../components/Card'
+import {
+  useSubmitCanvasMutation,
+  type PipelineAttempt,
+} from '../../lib/queries/mockPipeline'
+import type { ExcalidrawImperativeAPI } from '@excalidraw/excalidraw/types'
+
+const SysDesignCanvasInner = lazy(() => import('./_lazy/SysDesignCanvasInner'))
+
+const MAX_CHARS = 4000
+// ~5MB after base64 inflation. Backend hard-caps at 5MB decoded; this client
+// guard avoids the round-trip for obviously-too-big diagrams.
+const MAX_DATA_URL_BYTES = 7_000_000
+
+const NON_FUNCT_PLACEHOLDER =
+  '100 RPS на запись, p99 < 200ms на чтение, write-heavy,\n' +
+  'eventually consistent reads OK, 3 региона, 99.9% uptime…'
+const CONTEXT_PLACEHOLDER =
+  'Cassandra потому что write-heavy + eventual consistency OK;\n' +
+  'Redis cache для горячих ключей; ws для realtime feed;\n' +
+  'CDN перед статикой…'
+
+export function SysDesignCanvas({
+  attempt,
+  pipelineId,
+}: {
+  attempt: PipelineAttempt
+  pipelineId: string
+}) {
+  const submit = useSubmitCanvasMutation(pipelineId)
+  const apiRef = useRef<ExcalidrawImperativeAPI | null>(null)
+  const [nonFunctionalMD, setNonFunctionalMD] = useState('')
+  const [contextMD, setContextMD] = useState('')
+  const [clientErr, setClientErr] = useState<string | null>(null)
+
+  // Once user_answer_md is set, the orchestrator has accepted the canvas
+  // and either is judging or has judged. Switch to read-only view.
+  const isSubmitted = !!attempt.user_answer_md
+  const isJudging = isSubmitted && attempt.ai_verdict === 'pending'
+  const isJudged = isSubmitted && attempt.ai_verdict !== 'pending'
+
+  const briefTitle = (attempt.question_body ?? '').split('\n\n')[0] || 'Задача'
+  const briefBody = (attempt.question_body ?? '').split('\n\n').slice(1).join('\n\n')
+
+  const handleSubmit = async () => {
+    setClientErr(null)
+    const api = apiRef.current
+    if (!api) {
+      setClientErr('Канвас ещё не загрузился, попробуй ещё раз.')
+      return
+    }
+    try {
+      const { exportToBlob } = await import('@excalidraw/excalidraw')
+      const blob = await exportToBlob({
+        elements: api.getSceneElements(),
+        files: api.getFiles(),
+        mimeType: 'image/png',
+        appState: { exportBackground: true, exportPadding: 20 },
+      })
+      const dataURL = await blobToDataURL(blob)
+      if (dataURL.length > MAX_DATA_URL_BYTES) {
+        setClientErr('Диаграмма слишком большая, упрости (≤5 МБ).')
+        return
+      }
+      submit.mutate({
+        attemptId: attempt.id,
+        imageDataURL: dataURL,
+        contextMD: contextMD.trim(),
+        nonFunctionalMD: nonFunctionalMD.trim(),
+      })
+    } catch (err) {
+      setClientErr(err instanceof Error ? err.message : String(err))
+    }
+  }
+
+  return (
+    <div className="grid grid-cols-1 lg:grid-cols-[minmax(240px,30%)_1fr_minmax(280px,28%)] gap-4">
+      {/* ── Brief column ────────────────────────────────────── */}
+      <Card variant="default" padding="md" className="lg:sticky lg:top-4 lg:self-start flex flex-col gap-3">
+        <div className="font-mono text-[10px] uppercase tracking-wider text-text-secondary">
+          Задача
+        </div>
+        <h3 className="font-display text-base font-bold text-text-primary whitespace-pre-wrap">
+          {briefTitle}
+        </h3>
+        {briefBody && (
+          <div className="whitespace-pre-wrap font-mono text-xs leading-relaxed text-text-primary">
+            {briefBody}
+          </div>
+        )}
+        {attempt.task_functional_requirements_md ? (
+          <div className="mt-1 rounded-md border border-border bg-surface-1 p-3">
+            <div className="font-mono text-[10px] uppercase tracking-wider text-text-secondary mb-1">
+              Функциональные требования
+            </div>
+            <div className="whitespace-pre-wrap font-mono text-xs text-text-primary">
+              {attempt.task_functional_requirements_md}
+            </div>
+          </div>
+        ) : null}
+      </Card>
+
+      {/* ── Canvas column ───────────────────────────────────── */}
+      <div className="flex flex-col gap-2 min-w-0">
+        {!isSubmitted ? (
+          <div className="relative h-[400px] lg:h-[600px] overflow-hidden rounded-lg border border-border-strong bg-black">
+            <Suspense
+              fallback={
+                <div className="absolute inset-0 flex items-center justify-center text-text-secondary">
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  <span className="text-sm">Загрузка канваса…</span>
+                </div>
+              }
+            >
+              <SysDesignCanvasInner
+                onAPI={(api) => {
+                  apiRef.current = api
+                }}
+              />
+            </Suspense>
+          </div>
+        ) : attempt.user_excalidraw_image_url ? (
+          <Card variant="default" padding="sm" className="overflow-hidden">
+            <div className="font-mono text-[10px] uppercase tracking-wider text-text-secondary mb-2">
+              Что сдал
+            </div>
+            <img
+              src={attempt.user_excalidraw_image_url}
+              alt="Submitted system design diagram"
+              className="w-full h-auto rounded-md border border-border bg-black"
+            />
+          </Card>
+        ) : (
+          <Card variant="default" padding="md" className="text-sm text-text-secondary">
+            Диаграмма не сохранена.
+          </Card>
+        )}
+        <div className="font-mono text-[10px] text-text-secondary px-1">
+          PNG, dark theme · экспорт автоматически при отправке
+        </div>
+      </div>
+
+      {/* ── Reqs + Context column ──────────────────────────── */}
+      <div className="flex flex-col gap-3 min-w-0">
+        {!isSubmitted ? (
+          <>
+            <CharField
+              label="Нефункциональные требования"
+              value={nonFunctionalMD}
+              onChange={setNonFunctionalMD}
+              placeholder={NON_FUNCT_PLACEHOLDER}
+              disabled={submit.isPending}
+            />
+            <CharField
+              label="Пояснения / контекст"
+              value={contextMD}
+              onChange={setContextMD}
+              placeholder={CONTEXT_PLACEHOLDER}
+              disabled={submit.isPending}
+            />
+            {clientErr && (
+              <div className="flex items-center gap-2 rounded-lg border border-danger bg-danger/10 px-3 py-2 text-sm text-danger">
+                <AlertCircle className="h-4 w-4 shrink-0" />
+                <span>{clientErr}</span>
+              </div>
+            )}
+            <div className="flex items-center justify-end gap-2">
+              <Button
+                variant="primary"
+                size="md"
+                onClick={handleSubmit}
+                disabled={submit.isPending}
+                loading={submit.isPending}
+              >
+                Отправить решение
+              </Button>
+            </div>
+          </>
+        ) : (
+          <>
+            {nonFunctionalMD || attempt.user_answer_md ? (
+              <Card variant="default" padding="md" className="flex flex-col gap-1">
+                <div className="font-mono text-[10px] uppercase tracking-wider text-text-secondary">
+                  Нефункциональные (что сдал)
+                </div>
+                <div className="whitespace-pre-wrap font-mono text-xs text-text-primary">
+                  {attempt.user_answer_md ?? '—'}
+                </div>
+              </Card>
+            ) : null}
+            {attempt.user_context_md ? (
+              <Card variant="default" padding="md" className="flex flex-col gap-1">
+                <div className="font-mono text-[10px] uppercase tracking-wider text-text-secondary">
+                  Контекст (что сдал)
+                </div>
+                <div className="whitespace-pre-wrap font-mono text-xs text-text-primary">
+                  {attempt.user_context_md}
+                </div>
+              </Card>
+            ) : null}
+
+            {isJudging && (
+              <div className="flex items-center gap-2 rounded-lg border border-border-strong bg-surface-2 p-3">
+                <Loader2 className="h-4 w-4 animate-spin text-text-secondary" />
+                <span className="text-sm text-text-secondary">AI оценивает диаграмму…</span>
+              </div>
+            )}
+
+            {isJudged && <CanvasVerdictPanel attempt={attempt} />}
+          </>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// ── helpers ─────────────────────────────────────────────────────────────
+
+function blobToDataURL(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const fr = new FileReader()
+    fr.onload = () => {
+      const v = fr.result
+      if (typeof v === 'string') resolve(v)
+      else reject(new Error('FileReader.readAsDataURL did not return a string'))
+    }
+    fr.onerror = () => reject(fr.error ?? new Error('FileReader error'))
+    fr.readAsDataURL(blob)
+  })
+}
+
+function CharField({
+  label,
+  value,
+  onChange,
+  placeholder,
+  disabled,
+}: {
+  label: string
+  value: string
+  onChange: (v: string) => void
+  placeholder: string
+  disabled: boolean
+}) {
+  const overflow = value.length > MAX_CHARS
+  return (
+    <div className="flex flex-col gap-1">
+      <label className="font-mono text-[10px] uppercase tracking-wider text-text-secondary">
+        {label}
+      </label>
+      <textarea
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        disabled={disabled}
+        rows={6}
+        placeholder={placeholder}
+        className="w-full resize-y rounded-lg border border-border-strong bg-surface-1 p-3 font-mono text-xs whitespace-pre-wrap text-text-primary placeholder:text-text-secondary focus:outline-none focus:ring-1 focus:ring-text-primary/40"
+      />
+      <div
+        className={[
+          'self-end font-mono text-[10px]',
+          overflow ? 'text-danger' : 'text-text-secondary',
+        ].join(' ')}
+      >
+        {value.length} / {MAX_CHARS}
+      </div>
+    </div>
+  )
+}
+
+// ── verdict panel — kept local so SysDesignCanvas is self-contained.
+// Mirrors VerdictPanel in MockPipelinePage but tightened to a column.
+function CanvasVerdictPanel({ attempt }: { attempt: PipelineAttempt }) {
+  const v = attempt.ai_verdict
+  const score = attempt.ai_score ?? 0
+  const cls =
+    v === 'pass'
+      ? 'border-success bg-success/10 text-success'
+      : v === 'fail'
+        ? 'border-danger bg-danger/10 text-danger'
+        : v === 'borderline'
+          ? 'border-warn bg-warn/10 text-warn'
+          : 'border-border bg-surface-1 text-text-secondary'
+  const label =
+    v === 'pass' ? 'PASS' : v === 'fail' ? 'FAIL' : v === 'borderline' ? 'BORDERLINE' : v
+  const Icon = v === 'pass' ? CheckCircle2 : v === 'fail' ? XCircle : AlertCircle
+
+  return (
+    <div className="flex flex-col gap-2">
+      <div className={['flex items-center gap-2 rounded-lg border px-3 py-2', cls].join(' ')}>
+        <Icon className="h-4 w-4" />
+        <span className="font-display text-sm font-bold uppercase">{label}</span>
+        <span className="font-mono text-sm">· {score}/100</span>
+      </div>
+      {attempt.ai_feedback_md && (
+        <Card variant="default" padding="md" className="font-sans">
+          <div className="font-mono text-[10px] uppercase tracking-wider text-text-secondary mb-1">
+            Feedback
+          </div>
+          <div className="text-sm text-text-primary whitespace-pre-wrap">
+            {attempt.ai_feedback_md}
+          </div>
+        </Card>
+      )}
+      {attempt.ai_missing_points.length > 0 && (
+        <div className="rounded-lg border border-border bg-surface-1 p-3">
+          <div className="font-mono text-[10px] uppercase tracking-wider text-text-secondary mb-1">
+            Что упустил
+          </div>
+          <ul className="list-disc list-inside text-sm text-text-secondary space-y-0.5">
+            {attempt.ai_missing_points.map((m, i) => (
+              <li key={i}>{m}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </div>
+  )
+}

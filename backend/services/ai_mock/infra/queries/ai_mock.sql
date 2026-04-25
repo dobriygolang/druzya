@@ -95,7 +95,11 @@ SELECT id, slug, title_ru, description_ru, difficulty, section, solution_hint
  WHERE id = $1;
 
 -- name: GetCompanyForMock :one
-SELECT id, name, difficulty
+-- companies перешёл на mock-interview shape (см. 00043). difficulty —
+-- больше не колонка companies; для mock-flow'а сложность берётся с уровня
+-- mock_tasks / pipeline_stages. Возвращаем basic identity (id+name)
+-- + slug чтобы caller мог отрисовать logo по slug'у через статику.
+SELECT id, slug, name
   FROM companies
  WHERE id = $1;
 

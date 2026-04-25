@@ -195,3 +195,56 @@ func (mr *MockRateLimiterMockRecorder) Allow(ctx, key, limit, window any) *gomoc
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Allow", reflect.TypeOf((*MockRateLimiter)(nil).Allow), ctx, key, limit, window)
 }
+
+// MockOAuthStateStore is a mock of OAuthStateStore interface.
+type MockOAuthStateStore struct {
+	ctrl     *gomock.Controller
+	recorder *MockOAuthStateStoreMockRecorder
+	isgomock struct{}
+}
+
+// MockOAuthStateStoreMockRecorder is the mock recorder for MockOAuthStateStore.
+type MockOAuthStateStoreMockRecorder struct {
+	mock *MockOAuthStateStore
+}
+
+// NewMockOAuthStateStore creates a new mock instance.
+func NewMockOAuthStateStore(ctrl *gomock.Controller) *MockOAuthStateStore {
+	mock := &MockOAuthStateStore{ctrl: ctrl}
+	mock.recorder = &MockOAuthStateStoreMockRecorder{mock}
+	return mock
+}
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockOAuthStateStore) EXPECT() *MockOAuthStateStoreMockRecorder {
+	return m.recorder
+}
+
+// ConsumeState mocks base method.
+func (m *MockOAuthStateStore) ConsumeState(ctx context.Context, state string) (string, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ConsumeState", ctx, state)
+	ret0, _ := ret[0].(string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ConsumeState indicates an expected call of ConsumeState.
+func (mr *MockOAuthStateStoreMockRecorder) ConsumeState(ctx, state any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ConsumeState", reflect.TypeOf((*MockOAuthStateStore)(nil).ConsumeState), ctx, state)
+}
+
+// SaveState mocks base method.
+func (m *MockOAuthStateStore) SaveState(ctx context.Context, state, codeVerifier string, ttl time.Duration) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SaveState", ctx, state, codeVerifier, ttl)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// SaveState indicates an expected call of SaveState.
+func (mr *MockOAuthStateStoreMockRecorder) SaveState(ctx, state, codeVerifier, ttl any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SaveState", reflect.TypeOf((*MockOAuthStateStore)(nil).SaveState), ctx, state, codeVerifier, ttl)
+}

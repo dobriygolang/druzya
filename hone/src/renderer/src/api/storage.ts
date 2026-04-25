@@ -7,7 +7,11 @@
 import { API_BASE_URL, DEV_BEARER_TOKEN } from './config';
 import { useSessionStore } from '../stores/session';
 
-export type StorageTier = 'free' | 'pro' | 'pro_plus';
+// StorageTier унифицирован с subscription.Tier (`free` | `seeker` | `ascended`).
+// Старые значения 'pro' / 'pro_plus' deprecated — backend mapping добавлен в
+// services/storage для backward compat но fronted принимает обе формы и
+// нормализует.
+export type StorageTier = 'free' | 'seeker' | 'ascended' | 'pro' | 'pro_plus';
 
 export interface StorageQuota {
   usedBytes: number;
@@ -28,8 +32,17 @@ export async function getStorageQuota(): Promise<StorageQuota> {
   return {
     usedBytes: Number(j.usedBytes ?? 0),
     quotaBytes: Number(j.quotaBytes ?? 0),
-    tier: (j.tier as StorageTier) || 'free',
+    tier: normalizeTier(j.tier),
   };
+}
+
+// normalizeTier — backward compat: legacy `pro`/`pro_plus` → `seeker`/`ascended`.
+function normalizeTier(t: unknown): StorageTier {
+  if (typeof t !== 'string') return 'free';
+  if (t === 'pro') return 'seeker';
+  if (t === 'pro_plus') return 'ascended';
+  if (t === 'free' || t === 'seeker' || t === 'ascended') return t;
+  return 'free';
 }
 
 // formatBytes — компактный «1.4 GB / 1 GB» формат для usage-bar'а.
@@ -42,10 +55,12 @@ export function formatBytes(b: number): string {
 
 export function tierLabel(tier: StorageTier): string {
   switch (tier) {
-    case 'pro':
-      return 'Pro';
-    case 'pro_plus':
-      return 'Pro+';
+    case 'seeker':
+    case 'pro': // legacy alias
+      return 'Seeker';
+    case 'ascended':
+    case 'pro_plus': // legacy alias
+      return 'Ascended';
     default:
       return 'Free';
   }

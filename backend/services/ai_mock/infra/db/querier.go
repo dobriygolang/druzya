@@ -21,6 +21,10 @@ type Querier interface {
 	// exists, copilot.Analyze must refuse the LLM call. Cross-service read by
 	// design — copilot owns the gate logic but leans on ai_mock's table.
 	GetActiveBlockingMockSession(ctx context.Context, userID pgtype.UUID) (GetActiveBlockingMockSessionRow, error)
+	// companies перешёл на mock-interview shape (см. 00043). difficulty —
+	// больше не колонка companies; для mock-flow'а сложность берётся с уровня
+	// mock_tasks / pipeline_stages. Возвращаем basic identity (id+name)
+	// + slug чтобы caller мог отрисовать logo по slug'у через статику.
 	GetCompanyForMock(ctx context.Context, id pgtype.UUID) (GetCompanyForMockRow, error)
 	GetMockSession(ctx context.Context, id pgtype.UUID) (MockSession, error)
 	// Same caveat as PickTaskForSection — private to ai_mock's prompt builder.

@@ -102,22 +102,27 @@ SELECT id, task_id, question_ru, question_en, answer_hint, order_num
 -- ─────────────────────────────────────────────────────────────────────────
 
 -- name: ListCompanies :many
-SELECT id, slug, name, difficulty, min_level_required, sections, created_at
+-- companies теперь живут под mock-interview pipeline shape
+-- (logo_url/description/active/sort_order — см. 00043). Старая
+-- difficulty/min_level_required/sections больше не существует, в отличие
+-- от arena-фазы. Sort by sort_order чтобы куратор управлял порядком на
+-- mock-interview витрине.
+SELECT id, slug, name, logo_url, description, active, sort_order, created_at
   FROM companies
- ORDER BY name ASC;
+ ORDER BY sort_order ASC, name ASC;
 
 -- name: UpsertCompany :one
--- ON CONFLICT on slug: the curator is editing an existing company by its
--- URL-safe slug. min_level_required / name / difficulty may be refreshed;
--- sections are not touched here (managed through a separate admin flow —
--- STUB: the current openapi does not expose a sections field on CompanyUpsert).
-INSERT INTO companies (slug, name, difficulty, min_level_required)
-VALUES ($1, $2, $3, $4)
+-- Curator edit-by-slug flow. Туннель такой же простой как раньше — name +
+-- logo_url + description + active. sort_order/created_at управляются БД.
+INSERT INTO companies (slug, name, logo_url, description, active)
+VALUES ($1, $2, $3, $4, $5)
 ON CONFLICT (slug) DO UPDATE
-    SET name               = EXCLUDED.name,
-        difficulty         = EXCLUDED.difficulty,
-        min_level_required = EXCLUDED.min_level_required
-RETURNING id, slug, name, difficulty, min_level_required, sections, created_at;
+    SET name        = EXCLUDED.name,
+        logo_url    = EXCLUDED.logo_url,
+        description = EXCLUDED.description,
+        active      = EXCLUDED.active,
+        updated_at  = now()
+RETURNING id, slug, name, logo_url, description, active, sort_order, created_at;
 
 -- ─────────────────────────────────────────────────────────────────────────
 -- Dynamic config

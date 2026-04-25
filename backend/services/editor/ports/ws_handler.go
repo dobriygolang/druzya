@@ -64,7 +64,11 @@ func (h *WSHandler) Handle(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "missing token", http.StatusUnauthorized)
 		return
 	}
-	uid, err := h.Verifier.Verify(token)
+	// Scope-aware verify: guest-токены минтятся с Scope="editor:<roomID>"
+	// (см. cmd/monolith/services/editor.go editorGuestJoinHandler). Обычные
+	// user-токены — Scope="" → VerifyScoped принимает любой room.
+	expectedScope := "editor:" + roomID.String()
+	uid, err := h.Verifier.VerifyScoped(token, expectedScope)
 	if err != nil {
 		http.Error(w, "invalid token", http.StatusUnauthorized)
 		return
@@ -85,13 +89,21 @@ func (h *WSHandler) Handle(w http.ResponseWriter, r *http.Request) {
 	// Also bail early if the room is missing (participant was deleted first).
 	// Room state itself is consulted on each op via Hub.RoomResolver; here we
 	// only care that the row exists right now.
-	if _, roomErr := h.Rooms.Get(r.Context(), roomID); roomErr != nil {
+	room, roomErr := h.Rooms.Get(r.Context(), roomID)
+	if roomErr != nil {
 		if errors.Is(roomErr, domain.ErrNotFound) {
 			http.Error(w, "room not found", http.StatusNotFound)
 			return
 		}
 		h.Log.Warn("editor.ws: rooms.Get", slog.Any("err", roomErr))
 		http.Error(w, "internal", http.StatusInternalServerError)
+		return
+	}
+	// Visibility=private gate: только owner может join'иться. Existing
+	// participants (которых owner раньше invited когда было shared) пропускаем —
+	// participant-check выше их уже валидировал.
+	if room.Visibility == domain.VisibilityPrivate && uid != room.OwnerID {
+		http.Error(w, "private room: not authorized", http.StatusForbidden)
 		return
 	}
 

@@ -4,7 +4,20 @@
 import { Link } from 'react-router-dom'
 import { Avatar } from '../../components/Avatar'
 
-export type Tab = 'dashboard' | 'users' | 'reports' | 'podcasts' | 'ai_models' | 'llm_chain' | 'personas' | 'atlas'
+export type Tab =
+  | 'dashboard'
+  | 'users'
+  | 'reports'
+  | 'podcasts'
+  | 'ai_models'
+  | 'llm_chain'
+  | 'personas'
+  | 'atlas'
+  | 'mock_companies'
+  | 'mock_tasks'
+  | 'mock_questions'
+  | 'mock_strictness'
+  | 'quotas'
 
 export function Sidebar({ tab, setTab, pendingReports }: { tab: Tab; setTab: (t: Tab) => void; pendingReports: number }) {
   const items: Array<{ id: Tab; label: string; chip?: string; chipColor?: string }> = [
@@ -21,6 +34,11 @@ export function Sidebar({ tab, setTab, pendingReports }: { tab: Tab; setTab: (t:
     { id: 'ai_models', label: 'AI Modельки' },
     { id: 'llm_chain', label: 'LLM Chain ⚡' },
     { id: 'personas', label: 'Персоны' },
+    { id: 'mock_companies', label: 'Mock · компании' },
+    { id: 'mock_tasks', label: 'Mock · задачи' },
+    { id: 'mock_questions', label: 'Mock · вопросы' },
+    { id: 'mock_strictness', label: 'Mock · строгость AI' },
+    { id: 'quotas', label: 'Subscription · квоты' },
   ]
   return (
     <aside className="flex w-full flex-col border-b border-border bg-surface-1 lg:w-60 lg:border-b-0 lg:border-r">

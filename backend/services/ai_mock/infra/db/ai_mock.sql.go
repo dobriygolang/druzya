@@ -148,21 +148,25 @@ func (q *Queries) GetActiveBlockingMockSession(ctx context.Context, userID pgtyp
 }
 
 const getCompanyForMock = `-- name: GetCompanyForMock :one
-SELECT id, name, difficulty
+SELECT id, slug, name
   FROM companies
  WHERE id = $1
 `
 
 type GetCompanyForMockRow struct {
-	ID         pgtype.UUID
-	Name       string
-	Difficulty string
+	ID   pgtype.UUID
+	Slug string
+	Name string
 }
 
+// companies перешёл на mock-interview shape (см. 00043). difficulty —
+// больше не колонка companies; для mock-flow'а сложность берётся с уровня
+// mock_tasks / pipeline_stages. Возвращаем basic identity (id+name)
+// + slug чтобы caller мог отрисовать logo по slug'у через статику.
 func (q *Queries) GetCompanyForMock(ctx context.Context, id pgtype.UUID) (GetCompanyForMockRow, error) {
 	row := q.db.QueryRow(ctx, getCompanyForMock, id)
 	var i GetCompanyForMockRow
-	err := row.Scan(&i.ID, &i.Name, &i.Difficulty)
+	err := row.Scan(&i.ID, &i.Slug, &i.Name)
 	return i, err
 }
 

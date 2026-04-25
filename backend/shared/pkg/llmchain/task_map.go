@@ -155,6 +155,31 @@ var DefaultTaskModelMap = TaskModelMap{
 		ProviderOpenRouter: "openai/gpt-oss-120b:free",
 		ProviderOllama:     "qwen2.5:3b-instruct-q4_K_M",
 	},
+	TaskVision: {
+		// Vision-only task. Turbo-chain (Groq llama-3.3-70b / Cerebras
+		// llama3.3-70b / Mistral large) — все text-only, supportsVision=false
+		// на драйверном уровне. Single working free-tier vision-capable
+		// модель в :free-каталоге OpenRouter — Qwen2.5-VL 72B. Это лучшая
+		// open-source vision-модель сейчас (2026-Q2): отлично читает
+		// диаграммы, схемы, рукописный текст; принимает image_url
+		// content-blocks per OpenAI-spec. Free через OpenRouter, ~30k tokens
+		// daily limit per IP — достаточно для mock-interview (1 sysdesign
+		// аттемпт = ~3k tokens с изображением).
+		//
+		// Альтернативы если qwen-2.5-vl падает:
+		//   "mistralai/mistral-small-3.2-24b-instruct:free" — Mistral Small
+		//      с vision, free через OpenRouter, 24B параметров. Ниже
+		//      качество на технических диаграммах.
+		//   "meta-llama/llama-3.2-11b-vision-instruct:free" — самый малый
+		//      free vision-LLM, быстрый, но слабее распознаёт компоненты
+		//      на architecture-диаграммах.
+		//
+		// Premium-уровни (через VirtualUltra ModelOverride):
+		//   Claude Sonnet 4.5 — best-in-class на технических диаграммах,
+		//      tier=ascendant.
+		//   GPT-4o / GPT-4.1 — fallback в Ultra chain, тоже vision-capable.
+		ProviderOpenRouter: "qwen/qwen-2.5-vl-72b-instruct:free",
+	},
 	TaskNoteQA: {
 		// RAG-ответ на вопрос по нотам: длинный context (title+body 8 нот)
 		// + reasoning + markdown-вывод с [N]-цитациями. 70B-класс.

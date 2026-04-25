@@ -36,6 +36,7 @@ import {
   type TelegramStart,
 } from '@shared/ipc';
 import { clearSession, loadSession, saveSession } from './keychain';
+import { clearVaultPassphrase, loadVaultPassphrase, saveVaultPassphrase } from './vaultKeychain';
 import { loadPomodoro, savePomodoro } from './pomodoro_store';
 import { checkForUpdates, quitAndInstall, startPeriodicCheck, wireUpdater } from './updater';
 
@@ -223,9 +224,23 @@ app.whenReady().then(() => {
 
   ipcMain.handle(invokeChannels.authLogout, async () => {
     await clearSession();
+    // Logout всегда чистит и vault — иначе следующий юзер на этом
+    // ноуте получит unlock'ed vault предыдущего юзера.
+    await clearVaultPassphrase();
     if (mainWindow && !mainWindow.isDestroyed()) {
       mainWindow.webContents.send(eventChannels.authChanged, null);
     }
+  });
+
+  // Vault passphrase persistence — see vaultKeychain.ts.
+  ipcMain.handle(invokeChannels.vaultPassLoad, async () => {
+    return await loadVaultPassphrase();
+  });
+  ipcMain.handle(invokeChannels.vaultPassSave, async (_e, passphrase: string) => {
+    await saveVaultPassphrase(passphrase);
+  });
+  ipcMain.handle(invokeChannels.vaultPassClear, async () => {
+    await clearVaultPassphrase();
   });
 
   // Telegram code-flow IPC. Direct fetch to the backend — no /login web hop,

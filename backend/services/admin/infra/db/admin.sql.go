@@ -334,30 +334,47 @@ func (q *Queries) ListAnticheatSignalsBase(ctx context.Context, limit int32) ([]
 
 const listCompanies = `-- name: ListCompanies :many
 
-SELECT id, slug, name, difficulty, min_level_required, sections, created_at
+SELECT id, slug, name, logo_url, description, active, sort_order, created_at
   FROM companies
- ORDER BY name ASC
+ ORDER BY sort_order ASC, name ASC
 `
+
+type ListCompaniesRow struct {
+	ID          pgtype.UUID
+	Slug        string
+	Name        string
+	LogoUrl     pgtype.Text
+	Description string
+	Active      bool
+	SortOrder   int32
+	CreatedAt   pgtype.Timestamptz
+}
 
 // ─────────────────────────────────────────────────────────────────────────
 // Companies
 // ─────────────────────────────────────────────────────────────────────────
-func (q *Queries) ListCompanies(ctx context.Context) ([]Company, error) {
+// companies теперь живут под mock-interview pipeline shape
+// (logo_url/description/active/sort_order — см. 00043). Старая
+// difficulty/min_level_required/sections больше не существует, в отличие
+// от arena-фазы. Sort by sort_order чтобы куратор управлял порядком на
+// mock-interview витрине.
+func (q *Queries) ListCompanies(ctx context.Context) ([]ListCompaniesRow, error) {
 	rows, err := q.db.Query(ctx, listCompanies)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	items := []Company{}
+	items := []ListCompaniesRow{}
 	for rows.Next() {
-		var i Company
+		var i ListCompaniesRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.Slug,
 			&i.Name,
-			&i.Difficulty,
-			&i.MinLevelRequired,
-			&i.Sections,
+			&i.LogoUrl,
+			&i.Description,
+			&i.Active,
+			&i.SortOrder,
 			&i.CreatedAt,
 		); err != nil {
 			return nil, err
@@ -595,41 +612,55 @@ func (q *Queries) UpdateTask(ctx context.Context, arg UpdateTaskParams) (UpdateT
 }
 
 const upsertCompany = `-- name: UpsertCompany :one
-INSERT INTO companies (slug, name, difficulty, min_level_required)
-VALUES ($1, $2, $3, $4)
+INSERT INTO companies (slug, name, logo_url, description, active)
+VALUES ($1, $2, $3, $4, $5)
 ON CONFLICT (slug) DO UPDATE
-    SET name               = EXCLUDED.name,
-        difficulty         = EXCLUDED.difficulty,
-        min_level_required = EXCLUDED.min_level_required
-RETURNING id, slug, name, difficulty, min_level_required, sections, created_at
+    SET name        = EXCLUDED.name,
+        logo_url    = EXCLUDED.logo_url,
+        description = EXCLUDED.description,
+        active      = EXCLUDED.active,
+        updated_at  = now()
+RETURNING id, slug, name, logo_url, description, active, sort_order, created_at
 `
 
 type UpsertCompanyParams struct {
-	Slug             string
-	Name             string
-	Difficulty       string
-	MinLevelRequired int32
+	Slug        string
+	Name        string
+	LogoUrl     pgtype.Text
+	Description string
+	Active      bool
 }
 
-// ON CONFLICT on slug: the curator is editing an existing company by its
-// URL-safe slug. min_level_required / name / difficulty may be refreshed;
-// sections are not touched here (managed through a separate admin flow —
-// STUB: the current openapi does not expose a sections field on CompanyUpsert).
-func (q *Queries) UpsertCompany(ctx context.Context, arg UpsertCompanyParams) (Company, error) {
+type UpsertCompanyRow struct {
+	ID          pgtype.UUID
+	Slug        string
+	Name        string
+	LogoUrl     pgtype.Text
+	Description string
+	Active      bool
+	SortOrder   int32
+	CreatedAt   pgtype.Timestamptz
+}
+
+// Curator edit-by-slug flow. Туннель такой же простой как раньше — name +
+// logo_url + description + active. sort_order/created_at управляются БД.
+func (q *Queries) UpsertCompany(ctx context.Context, arg UpsertCompanyParams) (UpsertCompanyRow, error) {
 	row := q.db.QueryRow(ctx, upsertCompany,
 		arg.Slug,
 		arg.Name,
-		arg.Difficulty,
-		arg.MinLevelRequired,
+		arg.LogoUrl,
+		arg.Description,
+		arg.Active,
 	)
-	var i Company
+	var i UpsertCompanyRow
 	err := row.Scan(
 		&i.ID,
 		&i.Slug,
 		&i.Name,
-		&i.Difficulty,
-		&i.MinLevelRequired,
-		&i.Sections,
+		&i.LogoUrl,
+		&i.Description,
+		&i.Active,
+		&i.SortOrder,
 		&i.CreatedAt,
 	)
 	return i, err

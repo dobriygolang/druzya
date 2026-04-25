@@ -19,6 +19,7 @@ require (
 	druz9/intelligence v0.0.0-00010101000000-000000000000
 	druz9/lobby v0.0.0-00010101000000-000000000000
 	druz9/mentor_session v0.0.0-00010101000000-000000000000
+	druz9/mock_interview v0.0.0-00010101000000-000000000000
 	druz9/notify v0.0.0-00010101000000-000000000000
 	druz9/orgs v0.0.0-00010101000000-000000000000
 	druz9/podcast v0.0.0-00010101000000-000000000000
@@ -151,5 +152,7 @@ replace druz9/subscription => ../../services/subscription
 replace druz9/whiteboard_rooms => ../../services/whiteboard_rooms
 
 replace druz9/circles => ../../services/circles
+
+replace druz9/mock_interview => ../../services/mock_interview
 
 replace druz9/events => ../../services/events

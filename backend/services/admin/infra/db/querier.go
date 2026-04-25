@@ -40,7 +40,12 @@ type Querier interface {
 	// ─────────────────────────────────────────────────────────────────────────
 	// Companies
 	// ─────────────────────────────────────────────────────────────────────────
-	ListCompanies(ctx context.Context) ([]Company, error)
+	// companies теперь живут под mock-interview pipeline shape
+	// (logo_url/description/active/sort_order — см. 00043). Старая
+	// difficulty/min_level_required/sections больше не существует, в отличие
+	// от arena-фазы. Sort by sort_order чтобы куратор управлял порядком на
+	// mock-interview витрине.
+	ListCompanies(ctx context.Context) ([]ListCompaniesRow, error)
 	// ─────────────────────────────────────────────────────────────────────────
 	// Dynamic config
 	// ─────────────────────────────────────────────────────────────────────────
@@ -51,11 +56,9 @@ type Querier interface {
 	// Version is bumped monotonically on every UPDATE so downstream caches
 	// (editor task cache / ai-mock prompt cache) can detect a task edit.
 	UpdateTask(ctx context.Context, arg UpdateTaskParams) (UpdateTaskRow, error)
-	// ON CONFLICT on slug: the curator is editing an existing company by its
-	// URL-safe slug. min_level_required / name / difficulty may be refreshed;
-	// sections are not touched here (managed through a separate admin flow —
-	// STUB: the current openapi does not expose a sections field on CompanyUpsert).
-	UpsertCompany(ctx context.Context, arg UpsertCompanyParams) (Company, error)
+	// Curator edit-by-slug flow. Туннель такой же простой как раньше — name +
+	// logo_url + description + active. sort_order/created_at управляются БД.
+	UpsertCompany(ctx context.Context, arg UpsertCompanyParams) (UpsertCompanyRow, error)
 	UpsertDynamicConfig(ctx context.Context, arg UpsertDynamicConfigParams) (DynamicConfig, error)
 	UpsertTaskTemplate(ctx context.Context, arg UpsertTaskTemplateParams) error
 }

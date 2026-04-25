@@ -394,7 +394,7 @@ function errorHeadline(code: Code | null): string {
     case Code.ResourceExhausted:
       return 'Regenerations limited: try again in a few minutes.';
     case Code.PermissionDenied:
-      return 'druz9 Pro required. Upgrade to unlock AI-generated plans.';
+      return 'druz9 Seeker required. Upgrade to unlock AI-generated plans.';
     default:
       return 'Could not load your plan right now.';
   }

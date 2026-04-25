@@ -20,6 +20,45 @@ import (
 	gomock "go.uber.org/mock/gomock"
 )
 
+// MockCodeRunner is a mock of CodeRunner interface.
+type MockCodeRunner struct {
+	ctrl     *gomock.Controller
+	recorder *MockCodeRunnerMockRecorder
+	isgomock struct{}
+}
+
+// MockCodeRunnerMockRecorder is the mock recorder for MockCodeRunner.
+type MockCodeRunnerMockRecorder struct {
+	mock *MockCodeRunner
+}
+
+// NewMockCodeRunner creates a new mock instance.
+func NewMockCodeRunner(ctrl *gomock.Controller) *MockCodeRunner {
+	mock := &MockCodeRunner{ctrl: ctrl}
+	mock.recorder = &MockCodeRunnerMockRecorder{mock}
+	return mock
+}
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockCodeRunner) EXPECT() *MockCodeRunnerMockRecorder {
+	return m.recorder
+}
+
+// Run mocks base method.
+func (m *MockCodeRunner) Run(ctx context.Context, code string, language enums.Language) (domain.RunResult, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Run", ctx, code, language)
+	ret0, _ := ret[0].(domain.RunResult)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// Run indicates an expected call of Run.
+func (mr *MockCodeRunnerMockRecorder) Run(ctx, code, language any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Run", reflect.TypeOf((*MockCodeRunner)(nil).Run), ctx, code, language)
+}
+
 // MockRoomRepo is a mock of RoomRepo interface.
 type MockRoomRepo struct {
 	ctrl     *gomock.Controller
@@ -86,6 +125,20 @@ func (m *MockRoomRepo) Get(ctx context.Context, id uuid.UUID) (domain.Room, erro
 func (mr *MockRoomRepoMockRecorder) Get(ctx, id any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Get", reflect.TypeOf((*MockRoomRepo)(nil).Get), ctx, id)
+}
+
+// SetVisibility mocks base method.
+func (m *MockRoomRepo) SetVisibility(ctx context.Context, id uuid.UUID, v domain.Visibility) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SetVisibility", ctx, id, v)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// SetVisibility indicates an expected call of SetVisibility.
+func (mr *MockRoomRepoMockRecorder) SetVisibility(ctx, id, v any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetVisibility", reflect.TypeOf((*MockRoomRepo)(nil).SetVisibility), ctx, id, v)
 }
 
 // UpdateFreeze mocks base method.
@@ -288,4 +341,19 @@ func (m *MockTokenVerifier) Verify(raw string) (uuid.UUID, error) {
 func (mr *MockTokenVerifierMockRecorder) Verify(raw any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Verify", reflect.TypeOf((*MockTokenVerifier)(nil).Verify), raw)
+}
+
+// VerifyScoped mocks base method.
+func (m *MockTokenVerifier) VerifyScoped(raw, expectedScope string) (uuid.UUID, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "VerifyScoped", raw, expectedScope)
+	ret0, _ := ret[0].(uuid.UUID)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// VerifyScoped indicates an expected call of VerifyScoped.
+func (mr *MockTokenVerifierMockRecorder) VerifyScoped(raw, expectedScope any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "VerifyScoped", reflect.TypeOf((*MockTokenVerifier)(nil).VerifyScoped), raw, expectedScope)
 }

@@ -17,10 +17,19 @@ import (
 )
 
 // AccessTokenClaims is the payload of our short-lived access JWT.
+//
+// `Scope` ограничивает токен конкретной resource'ой. Используется для guest
+// токенов — чтобы guest-JWT, выданный для room A, не мог использоваться
+// для room B. Empty Scope = unrestricted (стандартный access token).
+//
+// Формат Scope: "<kind>:<id>", например "whiteboard:550e8400-..." или
+// "editor:550e8400-...". Validation делается на уровне resource'ного
+// handler'а — он сравнивает Scope с тем, что в URL/контексте.
 type AccessTokenClaims struct {
 	UserID   uuid.UUID      `json:"sub_uid"`
 	Role     enums.UserRole `json:"role"`
 	Provider string         `json:"prv,omitempty"`
+	Scope    string         `json:"scp,omitempty"`
 	jwt.RegisteredClaims
 }
 
@@ -62,6 +71,42 @@ func (t *TokenIssuer) Mint(userID uuid.UUID, role enums.UserRole, provider enums
 		return "", 0, fmt.Errorf("auth.TokenIssuer.Mint: sign: %w", err)
 	}
 	return signed, int(t.accessTTL.Seconds()), nil
+}
+
+// MintScoped produces a signed access token, ограниченный по resource scope
+// и с custom TTL. Используется для guest-токенов: scope = "whiteboard:<id>"
+// или "editor:<id>", TTL обычно короткий (24h). Validation scope'а — на
+// resource handler'е (он матчит JWT.Scope против URL room_id).
+func (t *TokenIssuer) MintScoped(
+	userID uuid.UUID,
+	role enums.UserRole,
+	provider enums.AuthProvider,
+	scope string,
+	ttl time.Duration,
+) (string, int, error) {
+	now := time.Now().UTC()
+	if ttl <= 0 {
+		ttl = t.accessTTL
+	}
+	claims := AccessTokenClaims{
+		UserID:   userID,
+		Role:     role,
+		Provider: provider.String(),
+		Scope:    scope,
+		RegisteredClaims: jwt.RegisteredClaims{
+			Issuer:    t.issuer,
+			Subject:   userID.String(),
+			IssuedAt:  jwt.NewNumericDate(now),
+			ExpiresAt: jwt.NewNumericDate(now.Add(ttl)),
+			ID:        uuid.NewString(),
+		},
+	}
+	tok := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	signed, err := tok.SignedString(t.secret)
+	if err != nil {
+		return "", 0, fmt.Errorf("auth.TokenIssuer.MintScoped: sign: %w", err)
+	}
+	return signed, int(ttl.Seconds()), nil
 }
 
 // Parse validates a signed access JWT and returns the claims.

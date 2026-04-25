@@ -43,11 +43,18 @@ func (s *AdminServer) CreateCompany(
 	if body == nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("company body required"))
 	}
+	// proto pb.Company остался с прежним shape (difficulty/min_level_required/
+	// sections) — companies переехала на mock-interview shape в DB (см.
+	// 00043), но proto не regen'или чтобы не трогать связанные mocks/тесты.
+	// Difficulty/MinLevelRequired/Sections с proto-входа игнорируем — куратор
+	// заполняет logo_url/description/active через отдельный UI flow (TBD).
+	// Для legacy-клиентов default'имся к active=true.
 	in := domain.CompanyUpsert{
-		Slug:             body.GetSlug(),
-		Name:             body.GetName(),
-		Difficulty:       dungeonTierFromProto(body.GetDifficulty()),
-		MinLevelRequired: int(body.GetMinLevelRequired()),
+		Slug:        body.GetSlug(),
+		Name:        body.GetName(),
+		LogoURL:     "",
+		Description: "",
+		Active:      true,
 	}
 	out, err := s.UpsertCompanyUC.Do(ctx, in)
 	if err != nil {
@@ -56,16 +63,16 @@ func (s *AdminServer) CreateCompany(
 	return connect.NewResponse(toCompanyProto(out)), nil
 }
 
+// toCompanyProto fills the legacy pb.Company shape с placeholder'ами для
+// удалённых полей (Difficulty=normal-default, MinLevelRequired=0, Sections=[]).
+// Когда proto будет regen'а на новый shape — заменим на logo_url/active.
 func toCompanyProto(c domain.AdminCompany) *pb.Company {
 	out := &pb.Company{
 		Id:               c.ID.String(),
 		Slug:             c.Slug,
 		Name:             c.Name,
-		Difficulty:       dungeonTierToProto(c.Difficulty),
-		MinLevelRequired: int32(c.MinLevelRequired),
-	}
-	for _, s := range c.Sections {
-		out.Sections = append(out.Sections, sectionToProtoAdmin(s))
+		Difficulty:       0,
+		MinLevelRequired: 0,
 	}
 	return out
 }

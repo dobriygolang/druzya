@@ -16,6 +16,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { ConnectError, Code } from '@connectrpc/connect';
 import * as Y from 'yjs';
 import { IndexeddbPersistence } from 'y-indexeddb';
+import { QuotaUsageBar } from '../components/QuotaUsageBar';
 import {
   Awareness,
   applyAwarenessUpdate,
@@ -41,10 +42,13 @@ import {
   runCode,
   b64ToBytes,
   bytesToB64,
+  getEditorRoomVisibility,
+  setEditorRoomVisibility,
   Language,
   type EditorRoom,
   type EditorWsStatus,
   type RunResult,
+  type EditorVisibility,
 } from '../api/editor';
 
 interface EditorPageProps {
@@ -401,7 +405,14 @@ function CodeRoomsSidebar({
       onCreated(r.id);
     } catch (err: unknown) {
       const ce = ConnectError.from(err);
-      setError(ce.rawMessage || ce.message);
+      // Phase 2 quota: free-tier лимит на active shared rooms.
+      if (ce.code === Code.ResourceExhausted) {
+        const { useQuotaStore, quotaExceededMessage } = await import('../stores/quota');
+        useQuotaStore.getState().showUpgradePrompt(quotaExceededMessage('room'));
+        void useQuotaStore.getState().refresh();
+      } else {
+        setError(ce.rawMessage || ce.message);
+      }
     } finally {
       setCreating(false);
     }
@@ -588,6 +599,9 @@ function CodeRoomsSidebar({
           {error}
         </div>
       )}
+      <div style={{ padding: '4px 6px' }}>
+        <QuotaUsageBar resource="active_shared_rooms" />
+      </div>
       <CodeRoomsRetentionHint />
     </aside>
   );
@@ -654,7 +668,31 @@ function CodeRoomRow({
   const [hover, setHover] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [visibility, setVisibility] = useState<EditorVisibility | null>(null);
+  const [visBusy, setVisBusy] = useState(false);
   const rowRef = useRef<HTMLDivElement>(null);
+
+  // Lazy-load visibility on first menu-open (cheap GET, idempotent).
+  useEffect(() => {
+    if (!menuOpen || visibility !== null) return;
+    void getEditorRoomVisibility(entry.id)
+      .then((v) => setVisibility(v))
+      .catch(() => setVisibility('shared')); // network blip — assume default
+  }, [menuOpen, visibility, entry.id]);
+
+  const handleToggleVisibility = async () => {
+    if (visibility === null) return;
+    const next: EditorVisibility = visibility === 'private' ? 'shared' : 'private';
+    setVisBusy(true);
+    try {
+      const v = await setEditorRoomVisibility(entry.id, next);
+      setVisibility(v);
+    } catch {
+      /* ignore — могла быть 403 если юзер не owner */
+    } finally {
+      setVisBusy(false);
+    }
+  };
 
   useEffect(() => {
     if (!menuOpen) return;
@@ -772,6 +810,9 @@ function CodeRoomRow({
       {menuOpen && (
         <CodeRowDropdown
           copied={copied}
+          visibility={visibility}
+          visBusy={visBusy}
+          onToggleVisibility={() => void handleToggleVisibility()}
           onCopyURL={() => void handleCopyURL()}
           onOpenWeb={() => void handleOpenWeb()}
           onForget={() => {
@@ -786,11 +827,17 @@ function CodeRoomRow({
 
 function CodeRowDropdown({
   copied,
+  visibility,
+  visBusy,
+  onToggleVisibility,
   onCopyURL,
   onOpenWeb,
   onForget,
 }: {
   copied: boolean;
+  visibility: EditorVisibility | null;
+  visBusy: boolean;
+  onToggleVisibility: () => void;
   onCopyURL: () => void;
   onOpenWeb: () => void;
   onForget: () => void;
@@ -804,7 +851,7 @@ function CodeRowDropdown({
         top: 'calc(100% - 4px)',
         right: 8,
         zIndex: 30,
-        minWidth: 200,
+        minWidth: 220,
         padding: 6,
         borderRadius: 10,
         background: 'rgba(20,20,22,0.96)',
@@ -814,6 +861,33 @@ function CodeRowDropdown({
         animationDuration: '140ms',
       }}
     >
+      <CodeMenuLabel>Visibility</CodeMenuLabel>
+      <CodeMenuItem
+        icon={visibility === 'private' ? <LockClosedSvg /> : <UnlockSvg />}
+        label={
+          visibility === null
+            ? 'Loading…'
+            : visibility === 'private'
+              ? 'Private — make Shared'
+              : 'Shared — make Private'
+        }
+        onClick={onToggleVisibility}
+        disabled={visBusy || visibility === null}
+      />
+      <div
+        className="mono"
+        style={{
+          fontSize: 9,
+          letterSpacing: '0.12em',
+          color: 'var(--ink-40)',
+          padding: '2px 10px 6px',
+          lineHeight: 1.5,
+        }}
+      >
+        Note: code is stored unencrypted on the server (real-time collab
+        requires shared keys; not E2E yet). Don&apos;t paste secrets here.
+      </div>
+      <CodeMenuDivider />
       <CodeMenuLabel>Sharing</CodeMenuLabel>
       <CodeMenuItem
         icon={<LinkSvg />}
@@ -824,6 +898,42 @@ function CodeRowDropdown({
       <CodeMenuDivider />
       <CodeMenuItem icon={<ForgetSvg />} label="Forget room" onClick={onForget} muted />
     </div>
+  );
+}
+
+function LockClosedSvg() {
+  return (
+    <svg
+      width={14}
+      height={14}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.6}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <rect x="4" y="11" width="16" height="10" rx="2" />
+      <path d="M8 11V7a4 4 0 0 1 8 0v4" />
+    </svg>
+  );
+}
+
+function UnlockSvg() {
+  return (
+    <svg
+      width={14}
+      height={14}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.6}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <rect x="4" y="11" width="16" height="10" rx="2" />
+      <path d="M8 11V7a4 4 0 0 1 7.5-2" />
+    </svg>
   );
 }
 
@@ -848,16 +958,19 @@ function CodeMenuItem({
   label,
   onClick,
   muted = false,
+  disabled = false,
 }: {
   icon: React.ReactNode;
   label: string;
   onClick: () => void;
   muted?: boolean;
+  disabled?: boolean;
 }) {
   const [hover, setHover] = useState(false);
   return (
     <button
       onClick={onClick}
+      disabled={disabled}
       onMouseEnter={() => setHover(true)}
       onMouseLeave={() => setHover(false)}
       style={{
@@ -866,13 +979,20 @@ function CodeMenuItem({
         gap: 10,
         width: '100%',
         padding: '8px 10px',
-        background: hover ? 'rgba(255,255,255,0.06)' : 'transparent',
+        background: hover && !disabled ? 'rgba(255,255,255,0.06)' : 'transparent',
         border: 'none',
         borderRadius: 6,
-        color: muted ? 'var(--ink-40)' : hover ? 'var(--ink)' : 'var(--ink-90)',
+        color: disabled
+          ? 'var(--ink-40)'
+          : muted
+            ? 'var(--ink-40)'
+            : hover
+              ? 'var(--ink)'
+              : 'var(--ink-90)',
         fontSize: 13,
-        cursor: 'pointer',
+        cursor: disabled ? 'default' : 'pointer',
         textAlign: 'left',
+        opacity: disabled ? 0.6 : 1,
         transition: 'background-color 140ms ease, color 140ms ease',
       }}
     >

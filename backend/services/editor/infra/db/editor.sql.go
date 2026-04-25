@@ -41,7 +41,7 @@ const createRoom = `-- name: CreateRoom :one
 INSERT INTO editor_rooms (
     owner_id, type, task_id, language, is_frozen, expires_at
 ) VALUES ($1, $2, $3, $4, $5, $6)
-RETURNING id, owner_id, type, task_id, language, is_frozen, expires_at, created_at
+RETURNING id, owner_id, type, task_id, language, is_frozen, visibility, expires_at, created_at
 `
 
 type CreateRoomParams struct {
@@ -53,6 +53,18 @@ type CreateRoomParams struct {
 	ExpiresAt pgtype.Timestamptz
 }
 
+type CreateRoomRow struct {
+	ID         pgtype.UUID
+	OwnerID    pgtype.UUID
+	Type       string
+	TaskID     pgtype.UUID
+	Language   string
+	IsFrozen   bool
+	Visibility string
+	ExpiresAt  pgtype.Timestamptz
+	CreatedAt  pgtype.Timestamptz
+}
+
 // Queries consumed by sqlc for the editor domain. Mirrors the hand-rolled
 // adapter in infra/postgres.go.
 //
@@ -60,7 +72,7 @@ type CreateRoomParams struct {
 // projection built elsewhere (e.g. /daily, /arena) is used when the caller
 // wants task details attached to the room. Keeping tasks out of this file
 // entirely avoids any risk of hint leakage from here.
-func (q *Queries) CreateRoom(ctx context.Context, arg CreateRoomParams) (EditorRoom, error) {
+func (q *Queries) CreateRoom(ctx context.Context, arg CreateRoomParams) (CreateRoomRow, error) {
 	row := q.db.QueryRow(ctx, createRoom,
 		arg.OwnerID,
 		arg.Type,
@@ -69,7 +81,7 @@ func (q *Queries) CreateRoom(ctx context.Context, arg CreateRoomParams) (EditorR
 		arg.IsFrozen,
 		arg.ExpiresAt,
 	)
-	var i EditorRoom
+	var i CreateRoomRow
 	err := row.Scan(
 		&i.ID,
 		&i.OwnerID,
@@ -77,6 +89,7 @@ func (q *Queries) CreateRoom(ctx context.Context, arg CreateRoomParams) (EditorR
 		&i.TaskID,
 		&i.Language,
 		&i.IsFrozen,
+		&i.Visibility,
 		&i.ExpiresAt,
 		&i.CreatedAt,
 	)
@@ -121,14 +134,26 @@ func (q *Queries) GetParticipantRole(ctx context.Context, arg GetParticipantRole
 }
 
 const getRoom = `-- name: GetRoom :one
-SELECT id, owner_id, type, task_id, language, is_frozen, expires_at, created_at
+SELECT id, owner_id, type, task_id, language, is_frozen, visibility, expires_at, created_at
   FROM editor_rooms
  WHERE id = $1
 `
 
-func (q *Queries) GetRoom(ctx context.Context, id pgtype.UUID) (EditorRoom, error) {
+type GetRoomRow struct {
+	ID         pgtype.UUID
+	OwnerID    pgtype.UUID
+	Type       string
+	TaskID     pgtype.UUID
+	Language   string
+	IsFrozen   bool
+	Visibility string
+	ExpiresAt  pgtype.Timestamptz
+	CreatedAt  pgtype.Timestamptz
+}
+
+func (q *Queries) GetRoom(ctx context.Context, id pgtype.UUID) (GetRoomRow, error) {
 	row := q.db.QueryRow(ctx, getRoom, id)
-	var i EditorRoom
+	var i GetRoomRow
 	err := row.Scan(
 		&i.ID,
 		&i.OwnerID,
@@ -136,6 +161,7 @@ func (q *Queries) GetRoom(ctx context.Context, id pgtype.UUID) (EditorRoom, erro
 		&i.TaskID,
 		&i.Language,
 		&i.IsFrozen,
+		&i.Visibility,
 		&i.ExpiresAt,
 		&i.CreatedAt,
 	)
@@ -174,11 +200,30 @@ func (q *Queries) ListParticipants(ctx context.Context, roomID pgtype.UUID) ([]E
 	return items, nil
 }
 
+const setRoomVisibility = `-- name: SetRoomVisibility :execrows
+UPDATE editor_rooms
+   SET visibility = $2
+ WHERE id = $1
+`
+
+type SetRoomVisibilityParams struct {
+	ID         pgtype.UUID
+	Visibility string
+}
+
+func (q *Queries) SetRoomVisibility(ctx context.Context, arg SetRoomVisibilityParams) (int64, error) {
+	result, err := q.db.Exec(ctx, setRoomVisibility, arg.ID, arg.Visibility)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const updateRoomFreeze = `-- name: UpdateRoomFreeze :one
 UPDATE editor_rooms
    SET is_frozen = $2
  WHERE id = $1
- RETURNING id, owner_id, type, task_id, language, is_frozen, expires_at, created_at
+ RETURNING id, owner_id, type, task_id, language, is_frozen, visibility, expires_at, created_at
 `
 
 type UpdateRoomFreezeParams struct {
@@ -186,9 +231,21 @@ type UpdateRoomFreezeParams struct {
 	IsFrozen bool
 }
 
-func (q *Queries) UpdateRoomFreeze(ctx context.Context, arg UpdateRoomFreezeParams) (EditorRoom, error) {
+type UpdateRoomFreezeRow struct {
+	ID         pgtype.UUID
+	OwnerID    pgtype.UUID
+	Type       string
+	TaskID     pgtype.UUID
+	Language   string
+	IsFrozen   bool
+	Visibility string
+	ExpiresAt  pgtype.Timestamptz
+	CreatedAt  pgtype.Timestamptz
+}
+
+func (q *Queries) UpdateRoomFreeze(ctx context.Context, arg UpdateRoomFreezeParams) (UpdateRoomFreezeRow, error) {
 	row := q.db.QueryRow(ctx, updateRoomFreeze, arg.ID, arg.IsFrozen)
-	var i EditorRoom
+	var i UpdateRoomFreezeRow
 	err := row.Scan(
 		&i.ID,
 		&i.OwnerID,
@@ -196,6 +253,7 @@ func (q *Queries) UpdateRoomFreeze(ctx context.Context, arg UpdateRoomFreezePara
 		&i.TaskID,
 		&i.Language,
 		&i.IsFrozen,
+		&i.Visibility,
 		&i.ExpiresAt,
 		&i.CreatedAt,
 	)

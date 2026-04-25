@@ -23,6 +23,11 @@ import { AtlasPanel } from './AtlasPanel'
 import { AIModelsPanel } from './AIModelsPanel'
 import { LLMChainPanel } from './LLMChainPanel'
 import { PersonasPanel } from './PersonasPanel'
+import { MockCompaniesPanel } from './MockCompaniesPanel'
+import { MockTasksPanel } from './MockTasksPanel'
+import { MockQuestionsPanel } from './MockQuestionsPanel'
+import { MockStrictnessPanel } from './MockStrictnessPanel'
+import { QuotasPanel } from './QuotasPanel'
 
 export default function AdminPage() {
   const profile = useProfileQuery()
@@ -73,7 +78,17 @@ export default function AdminPage() {
                           ? 'Персоны'
                           : tab === 'llm_chain'
                             ? 'LLM Chain'
-                            : 'AI Modельки'}
+                            : tab === 'mock_companies'
+                              ? 'Mock · компании'
+                              : tab === 'mock_tasks'
+                                ? 'Mock · задачи'
+                                : tab === 'mock_questions'
+                                  ? 'Mock · вопросы'
+                                  : tab === 'mock_strictness'
+                                    ? 'Mock · строгость AI'
+                                    : tab === 'quotas'
+                                      ? 'Subscription · квоты'
+                                      : 'AI Modельки'}
             </h1>
             <span className="font-mono text-[11px] text-text-muted">Операционная панель druz9</span>
           </div>
@@ -86,6 +101,11 @@ export default function AdminPage() {
         {tab === 'ai_models' && <AIModelsPanel />}
         {tab === 'llm_chain' && <LLMChainPanel />}
         {tab === 'personas' && <PersonasPanel />}
+        {tab === 'mock_companies' && <MockCompaniesPanel />}
+        {tab === 'mock_tasks' && <MockTasksPanel />}
+        {tab === 'mock_questions' && <MockQuestionsPanel />}
+        {tab === 'mock_strictness' && <MockStrictnessPanel />}
+        {tab === 'quotas' && <QuotasPanel />}
       </main>
     </div>
   )

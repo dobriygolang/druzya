@@ -111,22 +111,29 @@ type TaskPage struct {
 // ─────────────────────────────────────────────────────────────────────────
 
 // AdminCompany mirrors the companies row (curator projection).
+//
+// Schema sync: companies переехала на mock-interview shape (см. 00043) —
+// difficulty/min_level_required/sections больше не существуют. Заменены
+// на logo_url/description/active/sort_order. Старые поля удалены вместе с
+// 00003's CREATE TABLE companies (см. примечание в 00003_content.sql).
 type AdminCompany struct {
-	ID               uuid.UUID
-	Slug             string
-	Name             string
-	Difficulty       enums.DungeonTier
-	MinLevelRequired int
-	Sections         []enums.Section
-	CreatedAt        time.Time
+	ID          uuid.UUID
+	Slug        string
+	Name        string
+	LogoURL     string
+	Description string
+	Active      bool
+	SortOrder   int
+	CreatedAt   time.Time
 }
 
 // CompanyUpsert is the curator-supplied payload for POST /admin/companies.
 type CompanyUpsert struct {
-	Slug             string
-	Name             string
-	Difficulty       enums.DungeonTier
-	MinLevelRequired int
+	Slug        string
+	Name        string
+	LogoURL     string
+	Description string
+	Active      bool
 }
 
 // ─────────────────────────────────────────────────────────────────────────

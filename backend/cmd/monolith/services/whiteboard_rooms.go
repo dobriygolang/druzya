@@ -14,6 +14,7 @@ import (
 	"druz9/shared/enums"
 	"druz9/shared/generated/pb/druz9/v1/druz9v1connect"
 	sharedMw "druz9/shared/pkg/middleware"
+	subDomain "druz9/subscription/domain"
 	whiteboardApp "druz9/whiteboard_rooms/app"
 	whiteboardDomain "druz9/whiteboard_rooms/domain"
 	whiteboardInfra "druz9/whiteboard_rooms/infra"
@@ -52,7 +53,20 @@ func NewWhiteboardRooms(d Deps) *Module {
 		}
 		return fmt.Sprintf("%s://%s/ws/whiteboard/%s", scheme, host, id.String())
 	}
-	server := whiteboardPorts.NewWhiteboardRoomsServer(handlers, wsURL, d.Log)
+	// Phase 2: closure для enforce quota'ы перед CreateRoom. nil-safe — при
+	// missing QuotaResolver / Usage / TierGetter (subscription not loaded)
+	// passthrough'ит без блокировок.
+	createCheck := func(ctx context.Context, userID uuid.UUID) error {
+		return EnforceCreate(ctx, d, userID,
+			whiteboardDomainQuotaField,
+			func(ctx context.Context, uid uuid.UUID) (int, error) {
+				if d.QuotaUsageReader == nil {
+					return 0, nil
+				}
+				return d.QuotaUsageReader.CountActiveSharedBoards(ctx, uid)
+			})
+	}
+	server := whiteboardPorts.NewWhiteboardRoomsServer(handlers, wsURL, d.Log, createCheck)
 
 	connectPath, connectHandler := druz9v1connect.NewWhiteboardRoomsServiceHandler(server)
 	transcoder := mustTranscode("whiteboard_rooms", connectPath, connectHandler)
@@ -91,9 +105,81 @@ func NewWhiteboardRooms(d Deps) *Module {
 		MountWS: func(ws chi.Router) {
 			ws.Get("/whiteboard/{roomId}", wsh.Handle)
 		},
+		Background: []func(ctx context.Context){
+			// Cron-GC orphan guest user-row'ов. Guest создаётся через
+			// guest-join (ephemeral=true), participants link его к одной
+			// конкретной room. Когда room удаляется или expires + cleanup'ится,
+			// participant cascade-удаляется (FK ON DELETE CASCADE), но user-row
+			// остаётся orphaned. Этот GC чистит таких — раз в час WHERE
+			// ephemeral=true AND нет ссылок ни в whiteboard_room_participants,
+			// ни в editor_participants.
+			func(ctx context.Context) {
+				go runEphemeralUsersGC(ctx, d.Pool, d.Log, time.Hour)
+			},
+			// Phase 4 — auto-downgrade free-tier shared boards после TTL.
+			// Раз в час: shared rooms принадлежащие free-tier owner'ам с
+			// expired expires_at → flip visibility='private'. Реализация
+			// в quota_enforce.go.
+			func(ctx context.Context) {
+				go runFreeTierShareDowngradeWhiteboard(ctx, d.Pool, d.Log)
+			},
+		},
 		Shutdown: []func(ctx context.Context) error{
 			func(ctx context.Context) error { hub.CloseAll(); return nil },
 		},
+	}
+}
+
+// runEphemeralUsersGC периодически удаляет ephemeral users (role='guest',
+// ephemeral=true), на которых уже не ссылается ни одна participants table.
+// Idempotent — DELETE с пустым result-set'ом просто no-op'ит.
+//
+// Защита от race: используем NOT EXISTS вместо NOT IN — корректно при
+// concurrent INSERT'ах в participants. Также включён LIMIT через CTE чтобы
+// один проход не гасил тысячи записей и не вешал репликацию.
+func runEphemeralUsersGC(ctx context.Context, pool *pgxpool.Pool, log *slog.Logger, interval time.Duration) {
+	tick := time.NewTicker(interval)
+	defer tick.Stop()
+	// Первый прогон через 5 минут после старта (даём приложению прогреться).
+	first := time.NewTimer(5 * time.Minute)
+	defer first.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-first.C:
+			gcEphemeralUsersOnce(ctx, pool, log)
+		case <-tick.C:
+			gcEphemeralUsersOnce(ctx, pool, log)
+		}
+	}
+}
+
+func gcEphemeralUsersOnce(ctx context.Context, pool *pgxpool.Pool, log *slog.Logger) {
+	const q = `
+		WITH orphans AS (
+			SELECT u.id
+			FROM users u
+			WHERE u.ephemeral = TRUE
+			  AND u.role = 'guest'
+			  AND NOT EXISTS (
+				  SELECT 1 FROM whiteboard_room_participants wp
+				  WHERE wp.user_id = u.id
+			  )
+			  AND NOT EXISTS (
+				  SELECT 1 FROM editor_participants ep
+				  WHERE ep.user_id = u.id
+			  )
+			LIMIT 500
+		)
+		DELETE FROM users WHERE id IN (SELECT id FROM orphans)`
+	tag, err := pool.Exec(ctx, q)
+	if err != nil {
+		log.WarnContext(ctx, "ephemeral_users_gc: delete failed", slog.Any("err", err))
+		return
+	}
+	if n := tag.RowsAffected(); n > 0 {
+		log.InfoContext(ctx, "ephemeral_users_gc: removed orphans", slog.Int64("count", n))
 	}
 }
 
@@ -231,7 +317,7 @@ func (h *guestJoinHandler) handle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var body guestJoinRequest
-	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+	if decodeErr := json.NewDecoder(r.Body).Decode(&body); decodeErr != nil {
 		http.Error(w, `{"error":{"code":"bad_body"}}`, http.StatusBadRequest)
 		return
 	}
@@ -282,34 +368,33 @@ func (h *guestJoinHandler) handle(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Add as participant.
-	if _, err := h.parts.Add(r.Context(), whiteboardDomain.Participant{
+	if _, addErr := h.parts.Add(r.Context(), whiteboardDomain.Participant{
 		RoomID:   roomID,
 		UserID:   guestUUID,
 		JoinedAt: time.Now().UTC(),
-	}); err != nil {
-		h.log.ErrorContext(r.Context(), "guest_join: parts.Add", slog.Any("err", err))
+	}); addErr != nil {
+		h.log.ErrorContext(r.Context(), "guest_join: parts.Add", slog.Any("err", addErr))
 		http.Error(w, `{"error":{"code":"internal"}}`, http.StatusInternalServerError)
 		return
 	}
 
-	// Mint JWT. AccessTokenClaims.Role=guest, provider=telegram (placeholder —
-	// guests не имеют OAuth-провайдера, но клейм требует non-empty).
-	tok, expiresInIssuer, err := h.issuer.Mint(guestUUID, enums.UserRoleGuest, enums.AuthProviderTelegram)
+	// Mint scoped JWT — Scope привязывает токен к конкретной room. WS handler
+	// на upgrade'е проверит что Scope матчит room_id из URL; если злоумышленник
+	// возьмёт guest-token room A и попробует подключиться к room B — 403.
+	scope := fmt.Sprintf("whiteboard:%s", roomID.String())
+	tok, expiresIn, err := h.issuer.MintScoped(
+		guestUUID, enums.UserRoleGuest, enums.AuthProviderTelegram, scope, h.guestTTL,
+	)
 	if err != nil {
 		h.log.ErrorContext(r.Context(), "guest_join: mint", slog.Any("err", err))
 		http.Error(w, `{"error":{"code":"internal"}}`, http.StatusInternalServerError)
 		return
 	}
-	// expiresInIssuer берём от accessTokenTTL — но guest хочется отдельным
-	// TTL (24h). Issuer не знает ничего про guest-mode; принимаем что guest
-	// expiration совпадает с обычным access TTL. Если хочется отдельный —
-	// можно добавить MintWithTTL метод; пока не делаем чтобы не плодить API.
-	_ = expiresInIssuer
 
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(guestJoinResponse{
 		AccessToken: tok,
-		ExpiresIn:   int(h.guestTTL.Seconds()),
+		ExpiresIn:   expiresIn,
 		UserID:      guestUUID.String(),
 		Username:    name,
 		Role:        "guest",
@@ -337,4 +422,11 @@ func sanitizeUsername(name string) string {
 		return "guest"
 	}
 	return b.String()
+}
+
+// whiteboardDomainQuotaField — accessor для domain.QuotaPolicy.ActiveSharedBoards.
+// Вынесен top-level чтобы closure в createCheck оставался простым (избегаем
+// import цикла between services package and subscription/domain в quota_enforce.go).
+func whiteboardDomainQuotaField(p subDomain.QuotaPolicy) int {
+	return p.ActiveSharedBoards
 }

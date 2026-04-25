@@ -108,6 +108,7 @@ const CheckoutFailure = lazy(() => import('./pages/checkout/CheckoutFailure'))
 const CirclesPage = lazy(() => import('./pages/circles/CirclesPage'))
 const CircleDetailPage = lazy(() => import('./pages/circles/CircleDetailPage'))
 const WhiteboardSharePage = lazy(() => import('./pages/WhiteboardSharePage'))
+const EditorRoomSharePage = lazy(() => import('./pages/EditorRoomSharePage'))
 // WAVE-11 — Custom Lobby restored. Backend: services/lobby + 8 REST endpoints
 // at /api/v1/lobby/*. /lobbies = public list + create + join-by-code; /lobby/:id
 // = single-room view that polls and auto-redirects to /arena/match/:matchId
@@ -243,6 +244,7 @@ export default function App() {
         <Route path="/circles" element={<CirclesPage />} />
         <Route path="/circles/:circleId" element={<CircleDetailPage />} />
         <Route path="/whiteboard/:roomId" element={<WhiteboardSharePage />} />
+        <Route path="/editor/:roomId" element={<EditorRoomSharePage />} />
         {/* WAVE-11 Custom Lobby — restored. /lobbies = public list +
             create + join-by-code; /lobby/:id = single-room with auto-redirect
             to /arena/match/{match_id} when owner clicks Start. */}

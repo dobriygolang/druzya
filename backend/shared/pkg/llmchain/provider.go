@@ -129,6 +129,16 @@ const (
 	// embedded-нот (title + body). Выход: markdown ответ с [N]-цитациями.
 	// Text mode (не JSON). 70B для глубины reasoning'а.
 	TaskNoteQA Task = "note_qa"
+	// TaskVision — multimodal требует vision-capable модели. Используется
+	// mock-interview sysdesign-judge'ем для оценки excalidraw-диаграмм.
+	// Free-tier: qwen/qwen-2.5-vl-72b-instruct:free через OpenRouter — лучшая
+	// open-source vision-модель в :free-каталоге сейчас (2026-Q2). Turbo-chain
+	// (Groq/Cerebras/Mistral llama-3.x) text-only на драйверном уровне.
+	// Drivers без supportsVision возвращают ErrModelNotSupported и chain
+	// переходит дальше. Premium-уровни — claude-sonnet-4.5 / gpt-4o через
+	// VirtualUltra ModelOverride. См task_map.go::TaskVision для актуального
+	// списка alternatives.
+	TaskVision Task = "vision"
 )
 
 // Role mirrors OpenAI chat roles. Kept as a string (not an enum) because

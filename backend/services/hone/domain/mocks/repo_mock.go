@@ -256,6 +256,45 @@ func (mr *MockStreakRepoMockRecorder) RecomputeDay(ctx, userID, day, secondsAbs,
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RecomputeDay", reflect.TypeOf((*MockStreakRepo)(nil).RecomputeDay), ctx, userID, day, secondsAbs, sessionsAbs, qualifyingThreshold)
 }
 
+// MockTierReader is a mock of TierReader interface.
+type MockTierReader struct {
+	ctrl     *gomock.Controller
+	recorder *MockTierReaderMockRecorder
+	isgomock struct{}
+}
+
+// MockTierReaderMockRecorder is the mock recorder for MockTierReader.
+type MockTierReaderMockRecorder struct {
+	mock *MockTierReader
+}
+
+// NewMockTierReader creates a new mock instance.
+func NewMockTierReader(ctrl *gomock.Controller) *MockTierReader {
+	mock := &MockTierReader{ctrl: ctrl}
+	mock.recorder = &MockTierReaderMockRecorder{mock}
+	return mock
+}
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockTierReader) EXPECT() *MockTierReaderMockRecorder {
+	return m.recorder
+}
+
+// IsPro mocks base method.
+func (m *MockTierReader) IsPro(ctx context.Context, userID uuid.UUID) (bool, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "IsPro", ctx, userID)
+	ret0, _ := ret[0].(bool)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// IsPro indicates an expected call of IsPro.
+func (mr *MockTierReaderMockRecorder) IsPro(ctx, userID any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "IsPro", reflect.TypeOf((*MockTierReader)(nil).IsPro), ctx, userID)
+}
+
 // MockResistanceRepo is a mock of ResistanceRepo interface.
 type MockResistanceRepo struct {
 	ctrl     *gomock.Controller
@@ -391,6 +430,20 @@ func (m *MockNoteRepo) List(ctx context.Context, userID uuid.UUID, limit int, cu
 func (mr *MockNoteRepoMockRecorder) List(ctx, userID, limit, cursor any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "List", reflect.TypeOf((*MockNoteRepo)(nil).List), ctx, userID, limit, cursor)
+}
+
+// SetArchived mocks base method.
+func (m *MockNoteRepo) SetArchived(ctx context.Context, userID, noteID uuid.UUID, archived bool) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SetArchived", ctx, userID, noteID, archived)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// SetArchived indicates an expected call of SetArchived.
+func (mr *MockNoteRepoMockRecorder) SetArchived(ctx, userID, noteID, archived any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetArchived", reflect.TypeOf((*MockNoteRepo)(nil).SetArchived), ctx, userID, noteID, archived)
 }
 
 // SetEmbedding mocks base method.
@@ -558,6 +611,20 @@ func (m *MockWhiteboardRepo) List(ctx context.Context, userID uuid.UUID) ([]doma
 func (mr *MockWhiteboardRepoMockRecorder) List(ctx, userID any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "List", reflect.TypeOf((*MockWhiteboardRepo)(nil).List), ctx, userID)
+}
+
+// SetArchived mocks base method.
+func (m *MockWhiteboardRepo) SetArchived(ctx context.Context, userID, wbID uuid.UUID, archived bool) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SetArchived", ctx, userID, wbID, archived)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// SetArchived indicates an expected call of SetArchived.
+func (mr *MockWhiteboardRepoMockRecorder) SetArchived(ctx, userID, wbID, archived any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetArchived", reflect.TypeOf((*MockWhiteboardRepo)(nil).SetArchived), ctx, userID, wbID, archived)
 }
 
 // Update mocks base method.

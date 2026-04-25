@@ -91,7 +91,7 @@ export function AiInsight({ text }: { text: string }) {
     ? text.split('\n\n').slice(0, 2)
     : [text]
   return (
-    <section className="flex flex-col gap-3 rounded-2xl border border-text-primary-hover bg-gradient-to-br from-accent/15 to-pink/10 p-5 sm:p-7">
+    <section className="flex flex-col gap-3 rounded-2xl border border-border-strong bg-surface-2 p-5 sm:p-7">
       <div className="flex flex-col gap-1">
         <div className="flex items-center gap-2">
           <Brain className="h-5 w-5 text-text-secondary" />

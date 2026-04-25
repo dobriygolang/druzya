@@ -32,19 +32,24 @@ import (
 // Compile-time assertion — EditorServer satisfies the generated handler.
 var _ druz9v1connect.EditorServiceHandler = (*EditorServer)(nil)
 
+// CreateQuotaChecker — pre-create hook для quota enforcement (см.
+// whiteboard_rooms/ports/server.go комментарий). Optional, nil-safe.
+type CreateQuotaChecker func(ctx context.Context, userID uuid.UUID) error
+
 // EditorServer adapts editor use cases to Connect.
 //
 // Field names use the UC suffix to avoid collision with the generated method
 // names (CreateRoom / GetRoom / CreateInvite / FreezeRoom / GetReplay).
 type EditorServer struct {
-	CreateUC *app.CreateRoom
-	GetUC    *app.GetRoom
-	InviteUC *app.CreateInvite
-	FreezeUC *app.Freeze
-	ReplayUC *app.Replay
-	RunUC    *app.RunCode
-	WSBase   string // used to synthesise ws_url on the EditorRoom DTO
-	Log      *slog.Logger
+	CreateUC         *app.CreateRoom
+	GetUC            *app.GetRoom
+	InviteUC         *app.CreateInvite
+	FreezeUC         *app.Freeze
+	ReplayUC         *app.Replay
+	RunUC            *app.RunCode
+	WSBase           string // used to synthesise ws_url on the EditorRoom DTO
+	Log              *slog.Logger
+	CheckCreateQuota CreateQuotaChecker
 }
 
 // NewEditorServer wires the Connect adapter.
@@ -57,11 +62,12 @@ func NewEditorServer(
 	run *app.RunCode,
 	wsBase string,
 	log *slog.Logger,
+	check CreateQuotaChecker,
 ) *EditorServer {
 	return &EditorServer{
 		CreateUC: create, GetUC: get, InviteUC: invite,
 		FreezeUC: freeze, ReplayUC: replay, RunUC: run,
-		WSBase: wsBase, Log: log,
+		WSBase: wsBase, Log: log, CheckCreateQuota: check,
 	}
 }
 
@@ -73,6 +79,12 @@ func (s *EditorServer) CreateRoom(
 	uid, ok := sharedMw.UserIDFromContext(ctx)
 	if !ok {
 		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("unauthenticated"))
+	}
+	// Phase 2 quota enforcement: free-tier active_shared_rooms cap.
+	if s.CheckCreateQuota != nil {
+		if err := s.CheckCreateQuota(ctx, uid); err != nil {
+			return nil, connect.NewError(connect.CodeResourceExhausted, err)
+		}
 	}
 	m := req.Msg
 	in := app.CreateRoomInput{

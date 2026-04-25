@@ -90,7 +90,7 @@ export function DebriefScreen({
           <div className="font-mono text-[11px] uppercase tracking-wider text-text-muted">debrief</div>
           <h1 className="mt-1 font-display text-3xl font-bold leading-[1.1] text-text-primary lg:text-[40px]">
             Разбор{' '}
-            <span className="bg-gradient-to-r from-pink to-cyan bg-clip-text text-transparent">интервью</span>
+            <span className="text-text-primary">интервью</span>
           </h1>
           <p className="mt-2 text-sm text-text-secondary">
             {fmtTs(elapsedSec)} разговора · {myMsgs.length} реплик

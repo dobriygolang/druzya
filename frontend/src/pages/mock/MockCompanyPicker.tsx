@@ -11,7 +11,7 @@
 //
 // Wave-12 UX consolidation: the AI-assist toggle replaces the separate
 // "AI-allowed Interview" arena card. Both flows are the same multi-stage
-// mock; the toggle just gates a right-side AIAssistantChat in the cockpit.
+// mock; the toggle is persisted on the pipeline row.
 //
 // Anti-fallback:
 //   - Companies fetched live via useMockCompaniesQuery. No hardcoded list.

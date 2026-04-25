@@ -209,7 +209,7 @@ function Tab({
             <span
               className={cn(
                 'h-1 w-1 rounded-full',
-                isActive ? 'bg-text-primary-hover' : 'bg-transparent',
+                isActive ? 'bg-text-primary' : 'bg-transparent',
               )}
               aria-hidden="true"
             />
@@ -245,17 +245,17 @@ function FabButton({
         'shadow-[0_0_0_4px_rgb(var(--color-bg))]',
         'active:scale-[0.93]',
         mm
-          ? 'bg-gradient-to-br from-cyan to-accent shadow-[0_10px_30px_rgba(34,211,238,0.45),0_0_0_4px_rgb(var(--color-bg))]'
-          : 'bg-surface-2 border border-border-strong shadow-[0_10px_30px_rgba(88,44,255,0.5),0_0_0_4px_rgb(var(--color-bg))]',
+          ? 'bg-text-primary shadow-[0_0_0_4px_rgb(var(--color-bg))]'
+          : 'bg-surface-2 border border-border-strong shadow-[0_0_0_4px_rgb(var(--color-bg))]',
       )}
     >
       {mm ? (
         <span className="relative grid place-items-center">
-          <Loader2 className="absolute h-10 w-10 animate-spin text-white/90" strokeWidth={2} />
-          <span className="relative font-mono text-[10px] font-bold tabular-nums text-white">{mmss}</span>
+          <Loader2 className="absolute h-10 w-10 animate-spin text-bg/90" strokeWidth={2} />
+          <span className="relative font-mono text-[10px] font-bold tabular-nums text-bg">{mmss}</span>
         </span>
       ) : (
-        <Play className="h-7 w-7 fill-white text-white" />
+        <Play className="h-7 w-7 fill-text-primary text-text-primary" />
       )}
     </button>
   )

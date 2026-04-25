@@ -17,6 +17,13 @@ export const invokeChannels = {
   updaterCheck: 'updater:check',
   updaterInstall: 'updater:install',
   trafficLightsShow: 'window:traffic-lights-show',
+  // Vault passphrase persistence через OS keychain (Electron safeStorage).
+  // Хранит wrapping key для derivedKey'а вault'а: однажды unlock'енный
+  // passphrase шифруется TouchID/DPAPI и читается на следующем запуске
+  // → vault unlock silently. Logout / explicit lock → clear.
+  vaultPassLoad: 'vault:pass-load',
+  vaultPassSave: 'vault:pass-save',
+  vaultPassClear: 'vault:pass-clear',
 } as const;
 
 export const eventChannels = {
@@ -71,6 +78,14 @@ export interface HoneAPI {
      * визуально чистым по дефолту.
      */
     setTrafficLights: (visible: boolean) => Promise<void>;
+  };
+  vault: {
+    /** Read OS-encrypted vault passphrase (returns null if not saved). */
+    passLoad: () => Promise<string | null>;
+    /** Persist passphrase wrapped via OS safeStorage (TouchID / DPAPI). */
+    passSave: (passphrase: string) => Promise<void>;
+    /** Forget saved passphrase — next launch will require manual unlock. */
+    passClear: () => Promise<void>;
   };
   /** Subscribe to a main→renderer push (returns an unsubscribe fn). */
   on: <K extends keyof typeof eventChannels>(

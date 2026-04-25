@@ -62,6 +62,7 @@ type RoomRepo interface {
 	Get(ctx context.Context, id uuid.UUID) (Room, error)
 	UpdateFreeze(ctx context.Context, id uuid.UUID, frozen bool) (Room, error)
 	ExtendExpires(ctx context.Context, id uuid.UUID, newExpires time.Time) error
+	SetVisibility(ctx context.Context, id uuid.UUID, v Visibility) error
 }
 
 // ParticipantRepo persists editor_participants rows.
@@ -104,6 +105,14 @@ type ReplayUploader interface {
 // ─────────────────────────────────────────────────────────────────────────
 
 // TokenVerifier validates a JWT at the WS handshake.
+//
+// VerifyScoped дополнительно проверяет JWT scope claim:
+//   - если token's Scope пустой → unrestricted, accept
+//   - если non-empty → должен равняться expectedScope, иначе reject
+//
+// Используется для guest-токенов: scope = "editor:<roomID>" минтится при
+// guest-join, на WS upgrade'е сверяется с URL room_id.
 type TokenVerifier interface {
 	Verify(raw string) (uuid.UUID, error)
+	VerifyScoped(raw string, expectedScope string) (uuid.UUID, error)
 }

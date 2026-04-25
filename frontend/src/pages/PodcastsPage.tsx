@@ -362,7 +362,7 @@ function PodcastCard({
             <p className="line-clamp-2 text-[13px] text-text-secondary">{podcast.description}</p>
           )}
         </div>
-        <div className="grid h-12 w-12 shrink-0 place-items-center rounded-md bg-gradient-to-br from-pink to-accent">
+        <div className="grid h-12 w-12 shrink-0 place-items-center rounded-md bg-surface-2 border border-border-strong">
           <Headphones className="h-5 w-5 text-text-primary" />
         </div>
       </div>
@@ -395,8 +395,8 @@ function HeroFeatured({
   if (!podcast) return null
   const cat = categoryLabel(podcast)
   return (
-    <Card variant="elevated" padding="lg" className="flex flex-col gap-4 bg-gradient-to-br from-accent/15 via-surface-1 to-pink/10 lg:flex-row lg:items-center">
-      <div className="grid h-20 w-20 shrink-0 place-items-center rounded-2xl bg-gradient-to-br from-pink to-accent">
+    <Card variant="elevated" padding="lg" className="flex flex-col gap-4 lg:flex-row lg:items-center">
+      <div className="grid h-20 w-20 shrink-0 place-items-center rounded-2xl bg-surface-2 border border-border-strong">
         <Headphones className="h-8 w-8 text-text-primary" />
       </div>
       <div className="flex min-w-0 flex-1 flex-col gap-2">

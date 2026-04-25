@@ -58,7 +58,13 @@ func (h *WSHandler) Handle(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "missing token", http.StatusUnauthorized)
 		return
 	}
-	uid, err := h.Verifier.Verify(token)
+	// Scope-aware verify: guest-токены минтятся с Scope="whiteboard:<roomID>"
+	// (см. cmd/monolith/services/whiteboard_rooms.go guestJoinHandler.handle).
+	// Для обычных user-токенов Scope пустой → VerifyScoped пропускает (см.
+	// parseSubjectScoped в adapters.go). Cross-room replay guest-token'а ловим
+	// здесь — token room A → mismatch → 401.
+	expectedScope := "whiteboard:" + roomID.String()
+	uid, err := h.Verifier.VerifyScoped(token, expectedScope)
 	if err != nil {
 		http.Error(w, "invalid token", http.StatusUnauthorized)
 		return

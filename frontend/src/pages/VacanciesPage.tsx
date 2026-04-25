@@ -494,12 +494,12 @@ function Hero() {
     setUrl('')
   }
   return (
-    <div className="relative overflow-hidden bg-gradient-to-br from-surface-3 to-accent">
+    <div className="relative overflow-hidden bg-surface-3 border-b border-border-strong">
       <div className="flex flex-col items-center justify-center gap-4 px-4 py-8 sm:px-8">
         <h1 className="font-display text-3xl font-extrabold text-text-primary sm:text-4xl">
           Вакансии для прокачки
         </h1>
-        <p className="text-center text-sm text-white/80">
+        <p className="text-center text-sm text-text-secondary">
           Yandex, Ozon, VK, MTS, Wildberries… Один Ctrl+V — мы вытащим стек и
           сравним с твоим профилем.
         </p>

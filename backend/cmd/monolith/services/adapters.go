@@ -44,11 +44,19 @@ func (a editorTokenVerifier) Verify(raw string) (uuid.UUID, error) {
 	return parseSubject(a.issuer, raw)
 }
 
+func (a editorTokenVerifier) VerifyScoped(raw, expectedScope string) (uuid.UUID, error) {
+	return parseSubjectScoped(a.issuer, raw, expectedScope)
+}
+
 // whiteboardTokenVerifier satisfies druz9/whiteboard_rooms/domain.TokenVerifier.
 type whiteboardTokenVerifier struct{ issuer *authApp.TokenIssuer }
 
 func (a whiteboardTokenVerifier) Verify(raw string) (uuid.UUID, error) {
 	return parseSubject(a.issuer, raw)
+}
+
+func (a whiteboardTokenVerifier) VerifyScoped(raw, expectedScope string) (uuid.UUID, error) {
+	return parseSubjectScoped(a.issuer, raw, expectedScope)
 }
 
 func parseSubject(issuer *authApp.TokenIssuer, raw string) (uuid.UUID, error) {
@@ -59,6 +67,28 @@ func parseSubject(issuer *authApp.TokenIssuer, raw string) (uuid.UUID, error) {
 	uid, err := uuid.Parse(claims.Subject)
 	if err != nil {
 		return uuid.Nil, fmt.Errorf("parse subject uuid: %w", err)
+	}
+	return uid, nil
+}
+
+// parseSubjectScoped — как parseSubject, но плюс проверяет JWT.Scope claim.
+// Empty Scope в токене → unrestricted (обычный user-token), accept всё.
+// Non-empty Scope → должен ТОЧНО совпасть с expectedScope, иначе reject.
+//
+// expectedScope формируется на стороне resource-handler'а как
+// "<kind>:<resource_id>", например "editor:550e8400-..." или
+// "whiteboard:550e8400-...". См. MintScoped в auth/app/tokens.go.
+func parseSubjectScoped(issuer *authApp.TokenIssuer, raw, expectedScope string) (uuid.UUID, error) {
+	claims, err := issuer.Parse(raw)
+	if err != nil {
+		return uuid.Nil, fmt.Errorf("parse access token: %w", err)
+	}
+	uid, err := uuid.Parse(claims.Subject)
+	if err != nil {
+		return uuid.Nil, fmt.Errorf("parse subject uuid: %w", err)
+	}
+	if claims.Scope != "" && claims.Scope != expectedScope {
+		return uuid.Nil, fmt.Errorf("token scope mismatch: have %q, want %q", claims.Scope, expectedScope)
 	}
 	return uid, nil
 }

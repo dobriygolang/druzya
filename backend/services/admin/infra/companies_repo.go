@@ -6,7 +6,6 @@ import (
 
 	"druz9/admin/domain"
 	admindb "druz9/admin/infra/db"
-	"druz9/shared/enums"
 
 	sharedpg "druz9/shared/pkg/pg"
 
@@ -14,7 +13,10 @@ import (
 )
 
 // ─────────────────────────────────────────────────────────────────────────
-// Companies
+// Companies — schema перешла на mock-interview shape (см. 00043).
+// difficulty/min_level_required/sections удалены; logo_url/description/
+// active/sort_order — новые. SELECT/UPSERT queries теперь используют новые
+// поля, см. services/admin/infra/queries/admin.sql.
 // ─────────────────────────────────────────────────────────────────────────
 
 // Companies is the persistence adapter for the companies table.
@@ -27,7 +29,7 @@ func NewCompanies(pool *pgxpool.Pool) *Companies {
 	return &Companies{q: admindb.New(pool)}
 }
 
-// List returns every company, ordered by name.
+// List returns every company, ordered by sort_order then name.
 func (c *Companies) List(ctx context.Context) ([]domain.AdminCompany, error) {
 	rows, err := c.q.ListCompanies(ctx)
 	if err != nil {
@@ -35,37 +37,57 @@ func (c *Companies) List(ctx context.Context) ([]domain.AdminCompany, error) {
 	}
 	out := make([]domain.AdminCompany, 0, len(rows))
 	for _, r := range rows {
-		out = append(out, companyFromRow(r))
+		out = append(out, companyFromListRow(r))
 	}
 	return out, nil
 }
 
 // Upsert creates or refreshes a company row keyed by slug.
 func (c *Companies) Upsert(ctx context.Context, in domain.CompanyUpsert) (domain.AdminCompany, error) {
+	logo := pgText(in.LogoURL)
 	row, err := c.q.UpsertCompany(ctx, admindb.UpsertCompanyParams{
-		Slug:             in.Slug,
-		Name:             in.Name,
-		Difficulty:       string(in.Difficulty),
-		MinLevelRequired: int32(in.MinLevelRequired),
+		Slug:        in.Slug,
+		Name:        in.Name,
+		LogoUrl:     logo,
+		Description: in.Description,
+		Active:      in.Active,
 	})
 	if err != nil {
 		return domain.AdminCompany{}, fmt.Errorf("admin.Companies.Upsert: %w", mapUniqueErr(err))
 	}
-	return companyFromRow(row), nil
+	return companyFromUpsertRow(row), nil
 }
 
-func companyFromRow(r admindb.Company) domain.AdminCompany {
-	sections := make([]enums.Section, 0, len(r.Sections))
-	for _, s := range r.Sections {
-		sections = append(sections, enums.Section(s))
+func companyFromListRow(r admindb.ListCompaniesRow) domain.AdminCompany {
+	logo := ""
+	if r.LogoUrl.Valid {
+		logo = r.LogoUrl.String
 	}
 	return domain.AdminCompany{
-		ID:               sharedpg.UUIDFrom(r.ID),
-		Slug:             r.Slug,
-		Name:             r.Name,
-		Difficulty:       enums.DungeonTier(r.Difficulty),
-		MinLevelRequired: int(r.MinLevelRequired),
-		Sections:         sections,
-		CreatedAt:        r.CreatedAt.Time,
+		ID:          sharedpg.UUIDFrom(r.ID),
+		Slug:        r.Slug,
+		Name:        r.Name,
+		LogoURL:     logo,
+		Description: r.Description,
+		Active:      r.Active,
+		SortOrder:   int(r.SortOrder),
+		CreatedAt:   r.CreatedAt.Time,
+	}
+}
+
+func companyFromUpsertRow(r admindb.UpsertCompanyRow) domain.AdminCompany {
+	logo := ""
+	if r.LogoUrl.Valid {
+		logo = r.LogoUrl.String
+	}
+	return domain.AdminCompany{
+		ID:          sharedpg.UUIDFrom(r.ID),
+		Slug:        r.Slug,
+		Name:        r.Name,
+		LogoURL:     logo,
+		Description: r.Description,
+		Active:      r.Active,
+		SortOrder:   int(r.SortOrder),
+		CreatedAt:   r.CreatedAt.Time,
 	}
 }

@@ -10,15 +10,55 @@
 // Никаких ProseMirror/TipTap — pure textarea + handlers. Toolbar
 // позиционируется через невидимый mirror-div (классический трюк для
 // получения координат caret-а в textarea).
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 
-import { Icon, type IconName } from './primitives/Icon';
+import { type IconName } from './primitives/Icon';
+import { SlashMenu, type EditorAPI } from './SlashMenu';
+import { FloatingToolbar, type ToolbarOp } from './FloatingToolbar';
 
 interface RichMarkdownEditorProps {
   value: string;
   onChange: (next: string) => void;
   placeholder?: string;
 }
+
+// Todo — одна `- [ ]` или `- [x]` позиция в textarea + её координаты для
+// absolute overlay'а. checkboxStart — позиция `[` в исходном value (нужно
+// для toggle dispatch'а).
+interface Todo {
+  checkboxStart: number;
+  checked: boolean;
+  top: number;
+  left: number;
+}
+
+// Fence — open ``` line + позиция language-token внутри неё для inline-pill
+// overlay'а. contentFrom/contentTo — границы content body для copy.
+interface Fence {
+  fenceLineFrom: number; // позиция самого ```
+  langStart: number; // позиция первого char языка после ```
+  langEnd: number;
+  language: string;
+  contentFrom: number;
+  contentTo: number;
+  top: number;
+  left: number;
+}
+
+const RICHMD_CODE_LANGUAGES = [
+  'javascript',
+  'typescript',
+  'python',
+  'go',
+  'rust',
+  'sql',
+  'bash',
+  'json',
+  'yaml',
+  'html',
+  'css',
+  'markdown',
+];
 
 interface ToolbarPos {
   top: number;
@@ -216,6 +256,22 @@ export function RichMarkdownEditor({ value, onChange, placeholder }: RichMarkdow
   const taRef = useRef<HTMLTextAreaElement>(null);
   const [toolbar, setToolbar] = useState<ToolbarPos | null>(null);
   const [hasSelection, setHasSelection] = useState(false);
+  // Slash menu state — координаты в viewport для absolute popup'а, query —
+  // текст после `/` (для фильтра), slashStart — позиция `/` в textarea (нужна
+  // чтобы при выборе команды стереть `/query` перед вставкой блока).
+  const [slash, setSlash] = useState<{ x: number; y: number; query: string; slashStart: number } | null>(null);
+  // Floating bubble toolbar state — DOMRect выделения (для portal-positioning'а).
+  const [bubbleRect, setBubbleRect] = useState<DOMRect | null>(null);
+  // Checkbox overlays — список positions `- [ ]` / `- [x]` строк.
+  // Координаты absolute-relative к textarea, рендерим overlay <div> поверх.
+  // Click → модифицируем value (toggle `[ ]` ↔ `[x]`).
+  const [todos, setTodos] = useState<Todo[]>([]);
+  // Fence overlays — list ``` open-fence lines с пилюлей выбора языка +
+  // copy-button. Параллельная checkbox-логика, отдельный list чтобы re-render
+  // не зависел от todos.
+  const [fences, setFences] = useState<Fence[]>([]);
+  // Открытый fence-dropdown: либо null, либо anchor-fence + position.
+  const [langDropdown, setLangDropdown] = useState<{ fenceIdx: number } | null>(null);
 
   // Recompute toolbar on selection change.
   const updateToolbar = useCallback(() => {
@@ -237,16 +293,6 @@ export function RichMarkdownEditor({ value, onChange, placeholder }: RichMarkdow
     });
   }, []);
 
-  useEffect(() => {
-    const onSel = () => updateToolbar();
-    document.addEventListener('selectionchange', onSel);
-    return () => document.removeEventListener('selectionchange', onSel);
-  }, [updateToolbar]);
-
-  useLayoutEffect(() => {
-    updateToolbar();
-  }, [value, updateToolbar]);
-
   // Apply a toolbar action.
   const apply = useCallback(
     (btn: ToolbarBtn) => {
@@ -265,6 +311,347 @@ export function RichMarkdownEditor({ value, onChange, placeholder }: RichMarkdow
     },
     [onChange, updateToolbar],
   );
+
+  // ─── Slash menu ───────────────────────────────────────────────────────
+  //
+  // Trigger: пользователь набирает `/` в начале строки или после whitespace.
+  // Меню следует за caret'ом, query — chars после `/` до cursor'а. При
+  // удалении `/` (backspace) или whitespace в query — закрываем.
+
+  const updateSlash = useCallback(() => {
+    const ta = taRef.current;
+    if (!ta) return;
+    if (document.activeElement !== ta) {
+      setSlash(null);
+      return;
+    }
+    const { selectionStart, selectionEnd, value: v } = ta;
+    if (selectionStart !== selectionEnd) {
+      setSlash(null);
+      return;
+    }
+    // Идём назад от caret'а в поисках `/` — но останавливаемся на whitespace
+    // или начале строки. Если по пути встретили newline — `/` будет после
+    // newline → начало строки, валидный trigger.
+    let i = selectionStart - 1;
+    while (i >= 0) {
+      const ch = v.charAt(i);
+      if (ch === '/') break;
+      if (ch === '\n' || ch === ' ' || ch === '\t') {
+        // `/` не нашли до whitespace — не trigger.
+        setSlash(null);
+        return;
+      }
+      i -= 1;
+    }
+    if (i < 0) {
+      setSlash(null);
+      return;
+    }
+    // `/` должен быть в начале строки или после whitespace.
+    const before = i === 0 ? '\n' : v.charAt(i - 1);
+    if (before !== '\n' && before !== ' ' && before !== '\t') {
+      setSlash(null);
+      return;
+    }
+    const query = v.slice(i + 1, selectionStart);
+    // Multi-line query — закрыть.
+    if (query.includes('\n')) {
+      setSlash(null);
+      return;
+    }
+    const coords = getCaretCoords(ta, selectionStart);
+    // Меню под caret'ом, на ~8px ниже.
+    setSlash({
+      x: coords.left,
+      y: coords.top + 22,
+      query,
+      slashStart: i,
+    });
+  }, []);
+
+  // EditorAPI for slash-menu — вставляет блок, удаляя `/query` и вставляя
+  // нужный prefix. Вызывается после onBeforeAction (см. integrator
+  // contract в SlashMenu.tsx).
+  const slashEditorAPI: EditorAPI = useMemo(() => {
+    const replaceSlashWith = (insert: string, cursorOffset?: number) => {
+      const ta = taRef.current;
+      if (!ta || !slash) return;
+      const { selectionStart } = ta;
+      const before = ta.value.slice(0, slash.slashStart);
+      const after = ta.value.slice(selectionStart);
+      const newValue = before + insert + after;
+      onChange(newValue);
+      const newCaret =
+        cursorOffset !== undefined ? slash.slashStart + cursorOffset : slash.slashStart + insert.length;
+      requestAnimationFrame(() => {
+        ta.focus();
+        ta.setSelectionRange(newCaret, newCaret);
+      });
+    };
+    return {
+      insertBlock: (prefix) => replaceSlashWith(prefix),
+      insertCodeBlock: () => {
+        const block = '```javascript\n\n```\n';
+        // Курсор между fence-строками: after "```javascript\n".
+        replaceSlashWith(block, '```javascript\n'.length);
+      },
+      insertToggle: () => {
+        const block = '<details>\n<summary>Title</summary>\n\nContent\n</details>\n';
+        // Курсор внутри Title (для редактирования заголовка).
+        replaceSlashWith(block, '<details>\n<summary>'.length);
+      },
+      insertCallout: () => {
+        replaceSlashWith('> **Note:** ');
+      },
+    };
+  }, [slash, onChange]);
+
+  // ─── Floating bubble toolbar ──────────────────────────────────────────
+  //
+  // Использует window.getSelection — ну, для textarea selection там пусто.
+  // Считаем rect через mirror-div: получаем coords начала и конца selection,
+  // строим прямоугольник.
+
+  const updateBubble = useCallback(() => {
+    const ta = taRef.current;
+    if (!ta || document.activeElement !== ta) {
+      setBubbleRect(null);
+      return;
+    }
+    const { selectionStart: s, selectionEnd: e } = ta;
+    if (s === e) {
+      setBubbleRect(null);
+      return;
+    }
+    // Проверяем что выделение не внутри code-fence строк (` ``` `).
+    const lineStart = ta.value.lastIndexOf('\n', s - 1) + 1;
+    const lineEnd = ta.value.indexOf('\n', s);
+    const lineText = ta.value.slice(lineStart, lineEnd === -1 ? ta.value.length : lineEnd);
+    if (lineText.trimStart().startsWith('```')) {
+      setBubbleRect(null);
+      return;
+    }
+    const startCoords = getCaretCoords(ta, s);
+    const endCoords = getCaretCoords(ta, e);
+    // Прямоугольник: x от min(left), width — расстояние, y — top startа,
+    // height — line-height. Это не точный rect многострочного выделения, но
+    // достаточный для центрирования toolbar'а.
+    const left = Math.min(startCoords.left, endCoords.left);
+    const width = Math.abs(endCoords.left - startCoords.left) || 80;
+    const top = Math.min(startCoords.top, endCoords.top);
+    const height = (endCoords.top - startCoords.top) + 22;
+    const rect = new DOMRect(left, top, width, height);
+    setBubbleRect(rect);
+  }, []);
+
+  // Active ops для bubble toolbar — детектируем wrapping вокруг selection'а.
+  const activeOps: Set<ToolbarOp> = useMemo(() => {
+    const out = new Set<ToolbarOp>();
+    const ta = taRef.current;
+    if (!ta || !bubbleRect) return out;
+    const { selectionStart: s, selectionEnd: e, value: v } = ta;
+    if (s === e) return out;
+    // Bold: text before s ends with **, after e starts with **.
+    if (v.slice(Math.max(0, s - 2), s) === '**' && v.slice(e, e + 2) === '**') out.add('bold');
+    if (
+      (v.slice(Math.max(0, s - 1), s) === '_' && v.slice(e, e + 1) === '_') ||
+      (v.slice(Math.max(0, s - 1), s) === '*' &&
+        v.slice(e, e + 1) === '*' &&
+        v.slice(Math.max(0, s - 2), s) !== '**')
+    ) {
+      out.add('italic');
+    }
+    if (v.slice(Math.max(0, s - 2), s) === '~~' && v.slice(e, e + 2) === '~~') out.add('strike');
+    if (
+      v.slice(Math.max(0, s - 1), s) === '`' &&
+      v.slice(e, e + 1) === '`' &&
+      v.slice(Math.max(0, s - 3), s) !== '```'
+    ) {
+      out.add('inlineCode');
+    }
+    // Heading: line starts with # / ##.
+    const lineStart = v.lastIndexOf('\n', s - 1) + 1;
+    const linePrefix = v.slice(lineStart, lineStart + 4);
+    if (linePrefix.startsWith('# ')) out.add('h1');
+    else if (linePrefix.startsWith('## ')) out.add('h2');
+    return out;
+  }, [bubbleRect]);
+
+  // Bubble-toolbar op handler — wrap/unwrap selection.
+  const onBubbleOp = useCallback(
+    (op: Exclude<ToolbarOp, 'link'>) => {
+      const ta = taRef.current;
+      if (!ta) return;
+      runBubbleOp(ta, op, activeOps, onChange);
+      requestAnimationFrame(() => {
+        updateBubble();
+      });
+    },
+    [activeOps, onChange, updateBubble],
+  );
+
+  // ─── Checkbox overlay ────────────────────────────────────────────────
+  //
+  // Сканируем value на `- [ ]` / `- [x]` строки, для каждой считаем coords
+  // через getCaretCoords. Overlay div поверх textarea (с pointer-events:
+  // auto только на самих чекбоксах) отрисовывает кликабельные input'ы.
+  const recomputeTodos = useCallback(() => {
+    const ta = taRef.current;
+    if (!ta) {
+      setTodos([]);
+      return;
+    }
+    const v = ta.value;
+    const out: Todo[] = [];
+    // Match `[ ]` or `[x]` после `-` / `*` + spaces в начале строки.
+    const re = /(^|\n)([ \t]*[-*][ \t]+)\[([ xX])\]/g;
+    let m: RegExpExecArray | null;
+    while ((m = re.exec(v)) !== null) {
+      const lineStart = m.index + (m[1] === '\n' ? 1 : 0);
+      const checkboxStart = lineStart + m[2]!.length;
+      const coords = getCaretCoords(ta, checkboxStart);
+      out.push({
+        checkboxStart,
+        checked: m[3] !== ' ',
+        top: coords.top,
+        left: coords.left,
+      });
+    }
+    setTodos(out);
+  }, []);
+
+  // ─── Fence overlay ───────────────────────────────────────────────────
+  //
+  // Сканируем value на пары ```...``` строк, для каждой open-fence считаем
+  // координаты + body range (для copy-button'а).
+  const recomputeFences = useCallback(() => {
+    const ta = taRef.current;
+    if (!ta) {
+      setFences([]);
+      return;
+    }
+    const v = ta.value;
+    const lines = v.split('\n');
+    const out: Fence[] = [];
+    let openIdx = -1;
+    let openLang = '';
+    let openCharPos = 0;
+    let openLangStart = 0;
+    let openLangEnd = 0;
+    let charPos = 0;
+    for (let i = 0; i < lines.length; i++) {
+      const ln = lines[i] ?? '';
+      const m = /^```(\S*)/.exec(ln);
+      if (m) {
+        if (openIdx === -1) {
+          openIdx = i;
+          openLang = m[1] ?? '';
+          openCharPos = charPos;
+          openLangStart = charPos + 3;
+          openLangEnd = openLangStart + openLang.length;
+        } else {
+          // Close fence: сохраняем pair.
+          const contentFrom =
+            openCharPos + ('```' + openLang).length + 1; // +1 for \n after open-line
+          const contentTo = charPos - 1; // \n перед close-line — оставляем за content'ом
+          const coords = getCaretCoords(ta, openCharPos);
+          out.push({
+            fenceLineFrom: openCharPos,
+            langStart: openLangStart,
+            langEnd: openLangEnd,
+            language: openLang,
+            contentFrom,
+            contentTo: Math.max(contentFrom, contentTo),
+            top: coords.top,
+            left: coords.left,
+          });
+          openIdx = -1;
+        }
+      }
+      charPos += ln.length + 1; // +1 for \n
+    }
+    setFences(out);
+  }, []);
+
+  const setFenceLanguage = useCallback(
+    (fence: Fence, newLang: string) => {
+      const ta = taRef.current;
+      if (!ta) return;
+      const v = ta.value;
+      const newValue = v.slice(0, fence.langStart) + newLang + v.slice(fence.langEnd);
+      onChange(newValue);
+      requestAnimationFrame(() => {
+        recomputeFences();
+      });
+    },
+    [onChange, recomputeFences],
+  );
+
+  const copyFenceBody = useCallback((fence: Fence) => {
+    const ta = taRef.current;
+    if (!ta) return;
+    const body = ta.value.slice(fence.contentFrom, fence.contentTo);
+    void navigator.clipboard.writeText(body);
+  }, []);
+
+  const toggleTodo = useCallback(
+    (todo: Todo) => {
+      const ta = taRef.current;
+      if (!ta) return;
+      // Заменяем единственный символ внутри `[X]` (positions
+      // checkboxStart+1 .. checkboxStart+2).
+      const v = ta.value;
+      const charPos = todo.checkboxStart + 1;
+      const newChar = todo.checked ? ' ' : 'x';
+      const newValue = v.slice(0, charPos) + newChar + v.slice(charPos + 1);
+      onChange(newValue);
+      // Не двигаем caret — toggle бесшумный.
+      requestAnimationFrame(() => {
+        recomputeTodos();
+      });
+    },
+    [onChange, recomputeTodos],
+  );
+
+  const onBubbleLink = useCallback(
+    (url: string) => {
+      const ta = taRef.current;
+      if (!ta) return;
+      const { selectionStart: s, selectionEnd: e, value: v } = ta;
+      const sel = v.slice(s, e) || 'link';
+      const insert = `[${sel}](${url})`;
+      const newValue = v.slice(0, s) + insert + v.slice(e);
+      onChange(newValue);
+      requestAnimationFrame(() => {
+        ta.focus();
+        ta.setSelectionRange(s + insert.length, s + insert.length);
+      });
+    },
+    [onChange],
+  );
+
+  // Selection-change effects — placed AFTER all updateXxx callbacks declared
+  // (иначе TS2448: used-before-declaration). Wraps three updaters: legacy
+  // toolbar (still rendered conditionally below), bubble FloatingToolbar,
+  // и slash-menu trigger detection.
+  useEffect(() => {
+    const onSel = () => {
+      updateToolbar();
+      updateBubble();
+      updateSlash();
+    };
+    document.addEventListener('selectionchange', onSel);
+    return () => document.removeEventListener('selectionchange', onSel);
+  }, [updateToolbar, updateBubble, updateSlash]);
+
+  useLayoutEffect(() => {
+    updateToolbar();
+    updateBubble();
+    updateSlash();
+    recomputeTodos();
+    recomputeFences();
+  }, [value, updateToolbar, updateBubble, updateSlash, recomputeTodos, recomputeFences]);
 
   // ──────────────────────────────────────────────────────────────────
   // Keyboard handler
@@ -488,71 +875,341 @@ export function RichMarkdownEditor({ value, onChange, placeholder }: RichMarkdow
             'background-color var(--t-fast), border-color var(--t-fast), box-shadow var(--t-fast)',
         }}
       />
-      {hasSelection && toolbar && (
+      {/* Checkbox overlays — absolute-positioned поверх `[ ]`/`[x]` glyph'ов
+       *  в textarea. pointer-events:none на контейнере чтобы клики через
+       *  overlay уходили в textarea (caret положительный flow); pointer-events:
+       *  auto на самих input'ах. mousedown.preventDefault — не отбираем focus. */}
+      {todos.length > 0 && (
         <div
-          className="scale-pop"
+          aria-hidden
           style={{
             position: 'absolute',
-            top: toolbar.top,
-            left: toolbar.left,
-            zIndex: 30,
-            display: 'flex',
-            alignItems: 'center',
-            gap: 2,
-            padding: '4px 6px',
-            background: 'rgba(14,14,14,0.96)',
-            border: '1px solid rgba(255,255,255,0.08)',
-            borderRadius: 8,
-            backdropFilter: 'blur(20px)',
-            boxShadow: '0 6px 24px -8px rgba(0,0,0,0.7)',
-            animationDuration: '180ms',
+            inset: 0,
+            pointerEvents: 'none',
+            overflow: 'hidden',
           }}
-          onMouseDown={(e) => e.preventDefault() /* keep textarea selection */}
         >
-          {groups.map((g, gi) => (
-            <span key={gi} style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-              {gi > 0 && (
-                <span
-                  style={{
-                    width: 1,
-                    height: 16,
-                    background: 'rgba(255,255,255,0.08)',
-                    margin: '0 4px',
+          {todos.map((t) => (
+            <input
+              key={t.checkboxStart}
+              type="checkbox"
+              checked={t.checked}
+              onMouseDown={(e) => e.preventDefault()}
+              onChange={() => toggleTodo(t)}
+              style={{
+                position: 'absolute',
+                top: t.top + 4,
+                left: t.left,
+                width: 14,
+                height: 14,
+                margin: 0,
+                borderRadius: 3,
+                border: '1.5px solid rgba(255,255,255,0.2)',
+                background: 'transparent',
+                cursor: 'pointer',
+                accentColor: t.checked ? 'var(--ink)' : 'var(--ink-60)',
+                pointerEvents: 'auto',
+              }}
+            />
+          ))}
+        </div>
+      )}
+      {/* Fence pill+copy overlays — позиционируем над `` ``` `` строкой,
+       *  справа от fence-маркера. pointer-events:auto на самих кнопках. */}
+      {fences.length > 0 && (
+        <div
+          aria-hidden
+          style={{
+            position: 'absolute',
+            inset: 0,
+            pointerEvents: 'none',
+            overflow: 'hidden',
+          }}
+        >
+          {fences.map((f, idx) => (
+            <span
+              key={f.fenceLineFrom}
+              style={{
+                position: 'absolute',
+                top: f.top + 2,
+                left: f.left + 36,
+                display: 'inline-flex',
+                gap: 4,
+                alignItems: 'center',
+                pointerEvents: 'auto',
+              }}
+            >
+              <button
+                type="button"
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() =>
+                  setLangDropdown(langDropdown?.fenceIdx === idx ? null : { fenceIdx: idx })
+                }
+                style={{
+                  fontSize: 10,
+                  fontFamily: 'var(--font-mono, monospace)',
+                  letterSpacing: '0.08em',
+                  color: 'var(--ink-40)',
+                  background: 'rgba(255,255,255,0.04)',
+                  border: '1px solid rgba(255,255,255,0.06)',
+                  borderRadius: 4,
+                  padding: '2px 6px',
+                  cursor: 'pointer',
+                  transition: 'color 140ms ease',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.color = 'var(--ink-60)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.color = 'var(--ink-40)';
+                }}
+              >
+                {f.language || 'plain'} ▾
+              </button>
+              <CopyFenceBtn onClick={() => copyFenceBody(f)} />
+              {langDropdown?.fenceIdx === idx && (
+                <FenceLangDropdown
+                  current={f.language}
+                  onPick={(lang) => {
+                    setFenceLanguage(f, lang);
+                    setLangDropdown(null);
                   }}
+                  onClose={() => setLangDropdown(null)}
                 />
               )}
-              {g.map((btn) => (
-                <button
-                  key={btn.icon}
-                  title={btn.title}
-                  onClick={() => apply(btn)}
-                  className="row"
-                  style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    width: 26,
-                    height: 26,
-                    borderRadius: 5,
-                    color: 'var(--ink-60)',
-                    cursor: 'pointer',
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.background = 'rgba(255,255,255,0.06)';
-                    e.currentTarget.style.color = 'var(--ink)';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.background = 'transparent';
-                    e.currentTarget.style.color = 'var(--ink-60)';
-                  }}
-                >
-                  <Icon name={btn.icon} size={14} />
-                </button>
-              ))}
             </span>
           ))}
         </div>
       )}
+      {/* Новый bubble FloatingToolbar — заменяет inline-toolbar выше.
+       *  Старый toolbar/groups state остался для обратной совместимости с
+       *  legacy hover-effects, но рендер выключен (см. условие false ниже).
+       *  Если в будущем bubble-toolbar решат откатить — поменять на
+       *  hasSelection && toolbar. */}
+      {/* eslint-disable-next-line @typescript-eslint/no-unused-expressions */}
+      {false && hasSelection && toolbar && groups.length > 0 ? null : null}
+      <FloatingToolbar
+        rect={bubbleRect}
+        activeOps={activeOps}
+        onOp={onBubbleOp}
+        onLink={onBubbleLink}
+        onDismiss={() => setBubbleRect(null)}
+      />
+      {slash && (
+        <SlashMenu
+          x={slash.x}
+          y={slash.y}
+          query={slash.query}
+          editor={slashEditorAPI}
+          onClose={() => setSlash(null)}
+        />
+      )}
+    </div>
+  );
+}
+
+// ─── Bubble-toolbar wrap helpers ──────────────────────────────────────────
+//
+// Inline и block ops, применяемые к textarea. Toggle-семантика: если
+// активный wrap уже стоит — снимаем (unwrap), иначе оборачиваем.
+
+function runBubbleOp(
+  ta: HTMLTextAreaElement,
+  op: Exclude<ToolbarOp, 'link'>,
+  active: ReadonlySet<ToolbarOp>,
+  onChange: (next: string) => void,
+): void {
+  const { selectionStart: s, selectionEnd: e, value: v } = ta;
+  // Inline: B / I / S / inlineCode.
+  if (op === 'bold') return wrapToggle(ta, '**', active.has('bold'), onChange);
+  if (op === 'italic') return wrapToggle(ta, '*', active.has('italic'), onChange);
+  if (op === 'strike') return wrapToggle(ta, '~~', active.has('strike'), onChange);
+  if (op === 'inlineCode') return wrapToggle(ta, '`', active.has('inlineCode'), onChange);
+  if (op === 'codeBlock') {
+    const sel = v.slice(s, e);
+    const insert = '```\n' + sel + '\n```';
+    const newValue = v.slice(0, s) + insert + v.slice(e);
+    onChange(newValue);
+    requestAnimationFrame(() => {
+      ta.focus();
+      ta.setSelectionRange(s + 4, s + 4 + sel.length);
+    });
+    return;
+  }
+  // H1 / H2 — prefix к началу строки. Если уже стоит — снимаем.
+  if (op === 'h1' || op === 'h2') {
+    const prefix = op === 'h1' ? '# ' : '## ';
+    const lineStart = v.lastIndexOf('\n', s - 1) + 1;
+    const line = v.slice(lineStart, v.indexOf('\n', s) === -1 ? v.length : v.indexOf('\n', s));
+    let newLine: string;
+    let cursorShift: number;
+    if (line.startsWith(prefix)) {
+      newLine = line.slice(prefix.length);
+      cursorShift = -prefix.length;
+    } else {
+      // Снимаем любой другой heading prefix чтобы не дублировать.
+      const stripped = line.replace(/^#{1,6}\s+/, '');
+      newLine = prefix + stripped;
+      cursorShift = newLine.length - line.length;
+    }
+    const newValue =
+      v.slice(0, lineStart) + newLine + v.slice(lineStart + line.length);
+    onChange(newValue);
+    requestAnimationFrame(() => {
+      ta.focus();
+      ta.setSelectionRange(s + cursorShift, e + cursorShift);
+    });
+  }
+}
+
+function wrapToggle(
+  ta: HTMLTextAreaElement,
+  marker: string,
+  isActive: boolean,
+  onChange: (next: string) => void,
+): void {
+  const { selectionStart: s, selectionEnd: e, value: v } = ta;
+  const sel = v.slice(s, e);
+  if (isActive) {
+    // Unwrap: убираем marker до и после selection (они снаружи).
+    const newValue =
+      v.slice(0, Math.max(0, s - marker.length)) +
+      sel +
+      v.slice(e + marker.length);
+    onChange(newValue);
+    requestAnimationFrame(() => {
+      ta.focus();
+      ta.setSelectionRange(s - marker.length, e - marker.length);
+    });
+  } else {
+    const insert = marker + sel + marker;
+    const newValue = v.slice(0, s) + insert + v.slice(e);
+    onChange(newValue);
+    requestAnimationFrame(() => {
+      ta.focus();
+      ta.setSelectionRange(s + marker.length, e + marker.length);
+    });
+  }
+}
+
+// ─── Fence pill helpers ───────────────────────────────────────────────────
+
+function CopyFenceBtn({ onClick }: { onClick: () => void }) {
+  const [copied, setCopied] = useState(false);
+  return (
+    <button
+      type="button"
+      title="Copy code"
+      onMouseDown={(e) => e.preventDefault()}
+      onClick={() => {
+        onClick();
+        setCopied(true);
+        window.setTimeout(() => setCopied(false), 1200);
+      }}
+      style={{
+        fontSize: 10,
+        fontFamily: 'var(--font-mono, monospace)',
+        letterSpacing: '0.08em',
+        color: 'var(--ink-40)',
+        background: 'transparent',
+        border: 'none',
+        padding: '2px 4px',
+        cursor: 'pointer',
+        opacity: 0.6,
+        transition: 'opacity 140ms ease, color 140ms ease',
+      }}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.opacity = '1';
+        e.currentTarget.style.color = 'var(--ink-60)';
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.opacity = '0.6';
+        e.currentTarget.style.color = 'var(--ink-40)';
+      }}
+    >
+      {copied ? '✓' : 'copy'}
+    </button>
+  );
+}
+
+function FenceLangDropdown({
+  current,
+  onPick,
+  onClose,
+}: {
+  current: string;
+  onPick: (lang: string) => void;
+  onClose: () => void;
+}) {
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const onMd = (e: MouseEvent) => {
+      if (!ref.current?.contains(e.target as Node)) onClose();
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('mousedown', onMd);
+    window.addEventListener('keydown', onKey);
+    return () => {
+      window.removeEventListener('mousedown', onMd);
+      window.removeEventListener('keydown', onKey);
+    };
+  }, [onClose]);
+  return (
+    <div
+      ref={ref}
+      onMouseDown={(e) => e.preventDefault()}
+      style={{
+        position: 'absolute',
+        top: 22,
+        left: 0,
+        zIndex: 60,
+        background: 'rgba(20,20,22,0.96)',
+        backdropFilter: 'blur(18px)',
+        WebkitBackdropFilter: 'blur(18px)',
+        border: '1px solid rgba(255,255,255,0.08)',
+        boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
+        borderRadius: 10,
+        padding: 6,
+        minWidth: 160,
+        maxHeight: 280,
+        overflowY: 'auto',
+      }}
+    >
+      {RICHMD_CODE_LANGUAGES.map((lang) => (
+        <button
+          key={lang}
+          type="button"
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={() => onPick(lang)}
+          style={{
+            display: 'block',
+            width: '100%',
+            padding: '6px 10px',
+            border: 'none',
+            borderRadius: 6,
+            background: 'transparent',
+            color: lang === current ? 'var(--ink)' : 'var(--ink-90)',
+            fontSize: 12,
+            fontFamily: 'var(--font-mono, monospace)',
+            letterSpacing: '0.04em',
+            textAlign: 'left',
+            cursor: 'pointer',
+            transition: 'background-color 140ms ease',
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.background = 'rgba(255,255,255,0.06)';
+            e.currentTarget.style.color = 'var(--ink)';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = 'transparent';
+            e.currentTarget.style.color = lang === current ? 'var(--ink)' : 'var(--ink-90)';
+          }}
+        >
+          {lang}
+        </button>
+      ))}
     </div>
   );
 }

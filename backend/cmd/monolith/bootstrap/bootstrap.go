@@ -196,6 +196,7 @@ func New(ctx context.Context, cfg *config.Config) (app *App, otelShutdown func()
 		intelligenceMod.Module,
 		services.NewWhiteboardRooms(deps),
 		circlesMod.Module,
+		services.NewMockInterview(deps),
 		services.NewEvents(deps, circlesMod),
 		services.NewLobby(deps),
 		services.NewSubscription(deps),

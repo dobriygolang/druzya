@@ -10,10 +10,10 @@
 INSERT INTO editor_rooms (
     owner_id, type, task_id, language, is_frozen, expires_at
 ) VALUES ($1, $2, $3, $4, $5, $6)
-RETURNING id, owner_id, type, task_id, language, is_frozen, expires_at, created_at;
+RETURNING id, owner_id, type, task_id, language, is_frozen, visibility, expires_at, created_at;
 
 -- name: GetRoom :one
-SELECT id, owner_id, type, task_id, language, is_frozen, expires_at, created_at
+SELECT id, owner_id, type, task_id, language, is_frozen, visibility, expires_at, created_at
   FROM editor_rooms
  WHERE id = $1;
 
@@ -21,11 +21,16 @@ SELECT id, owner_id, type, task_id, language, is_frozen, expires_at, created_at
 UPDATE editor_rooms
    SET is_frozen = $2
  WHERE id = $1
- RETURNING id, owner_id, type, task_id, language, is_frozen, expires_at, created_at;
+ RETURNING id, owner_id, type, task_id, language, is_frozen, visibility, expires_at, created_at;
 
 -- name: ExtendRoomExpires :execrows
 UPDATE editor_rooms
    SET expires_at = $2
+ WHERE id = $1;
+
+-- name: SetRoomVisibility :execrows
+UPDATE editor_rooms
+   SET visibility = $2
  WHERE id = $1;
 
 -- name: AddParticipant :one

@@ -147,7 +147,7 @@ export default function CheckoutPage() {
           </span>
           <h1 className="font-display text-3xl font-bold leading-[1.1] text-text-primary lg:text-[40px]">
             Подключение{' '}
-            <span className="bg-gradient-to-r from-warn to-pink bg-clip-text text-transparent">
+            <span className="text-text-primary">
               {plan === 'pro' ? 'Pro' : 'Premium'}
             </span>
           </h1>

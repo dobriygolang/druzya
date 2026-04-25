@@ -19,6 +19,7 @@ import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ConnectError, Code } from '@connectrpc/connect';
 import * as Y from 'yjs';
 import { IndexeddbPersistence } from 'y-indexeddb';
+import { QuotaUsageBar } from '../components/QuotaUsageBar';
 import { Awareness, encodeAwarenessUpdate, applyAwarenessUpdate } from 'y-protocols/awareness';
 import { Excalidraw, CaptureUpdateAction } from '@excalidraw/excalidraw';
 import type { ExcalidrawImperativeAPI } from '@excalidraw/excalidraw/types';
@@ -163,7 +164,15 @@ export function SharedBoardsPage({ initialRoomId, onConsumeInitial }: SharedBoar
       setSelectedId(r.id);
     } catch (err: unknown) {
       const ce = ConnectError.from(err);
-      setList((prev) => ({ ...prev, error: ce.rawMessage || ce.message }));
+      // Free-tier quota: 1 active shared board. Backend возвращает
+      // ResourceExhausted (Code 8) → показываем UpgradePrompt.
+      if (ce.code === Code.ResourceExhausted) {
+        const { useQuotaStore, quotaExceededMessage } = await import('../stores/quota');
+        useQuotaStore.getState().showUpgradePrompt(quotaExceededMessage('board'));
+        void useQuotaStore.getState().refresh();
+      } else {
+        setList((prev) => ({ ...prev, error: ce.rawMessage || ce.message }));
+      }
     }
   }, []);
 
@@ -331,6 +340,9 @@ function SidebarImpl({ list, selectedId, onSelect, onCreate, onDelete, onJoin, o
             onDelete={onDelete}
           />
         ))}
+      </div>
+      <div style={{ padding: '4px 6px' }}>
+        <QuotaUsageBar resource="active_shared_boards" />
       </div>
       <RetentionHint label="Auto-cleanup after 30d of inactivity" />
       {list.error && (
@@ -747,6 +759,19 @@ function RoomRowImpl({
             onClick={() => void handleToggleVisibility()}
             disabled={busy || visibility === null}
           />
+          <div
+            className="mono"
+            style={{
+              fontSize: 9,
+              letterSpacing: '0.12em',
+              color: 'var(--ink-40)',
+              padding: '2px 10px 6px',
+              lineHeight: 1.5,
+            }}
+          >
+            Note: board content is stored unencrypted on the server (real-time
+            collab requires shared keys; not E2E yet). Don&apos;t paste secrets here.
+          </div>
           <DropdownDivider />
           <DropdownLabel>Sharing</DropdownLabel>
           <DropdownItem
@@ -1159,11 +1184,21 @@ function RoomCanvas({ roomId }: { roomId: string }) {
         onSelect={setTool}
         onUploadImage={() => setTool('image')}
         onImportLibraryFile={() => {
+          // Local-only import: file picker → JSON.parse → updateLibrary.
+          // Library хранится Excalidraw'ом в IndexedDB браузера (см.
+          // их `excalidrawLibrary` key). НИЧЕГО не уходит на бэкенд —
+          // шаблоны для drag-and-drop'а живут только в этом конкретном
+          // app instance, что соответствует требованию «import должен быть
+          // в локалке, не storage'ить мусор на беке».
           const api = apiRef.current;
           if (!api) return;
+          // Открываем sidebar заранее: после updateLibrary юзер сразу видит
+          // импортированные шаблоны без лишних кликов.
           try {
             api.toggleSidebar({ name: 'default', tab: 'library', force: true });
-          } catch { /* ignore */ }
+          } catch {
+            /* ignore */
+          }
           const input = document.createElement('input');
           input.type = 'file';
           input.accept = '.excalidrawlib,application/json';
@@ -1171,12 +1206,27 @@ function RoomCanvas({ roomId }: { roomId: string }) {
             const file = input.files?.[0];
             if (!file) return;
             try {
-              const text = await file.text();
-              const json = JSON.parse(text);
+              // Передаём File напрямую (он Blob): Excalidraw'ская
+              // updateLibrary принимает LibraryItemsSource = ... | Blob,
+              // парсит .excalidrawlib v1/v2 формат сам. Прямая передача
+              // надёжнее чем самим JSON.parse + нормализация — мы не
+              // знаем будущих изменений их формата.
+              //
+              // prompt: false — иначе Excalidraw показывает свой confirm-
+              // dialog ("Do you want to import this library?"), который
+              // наш CSS override прячет в `welcome-screen-decor` и т.п.
+              // Юзер выбрал файл — это уже implicit-confirm.
+              //
+              // defaultStatus: 'unpublished' — items помечаются как
+              // локальные drafts. Library хранится Excalidraw'ом в
+              // IndexedDB браузера (key = excalidrawLibrary). НИЧЕГО не
+              // уходит на бэкенд.
               await api.updateLibrary({
-                libraryItems: json,
+                libraryItems: file,
                 merge: true,
+                prompt: false,
                 openLibraryMenu: true,
+                defaultStatus: 'unpublished',
               });
             } catch (err) {
               console.error('library import failed', err);

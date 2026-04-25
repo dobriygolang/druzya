@@ -244,7 +244,7 @@ function PlanCard({ plan, period }: { plan: PlanCardData; period: BillingPeriod 
       className={cn(
         'flex-col gap-5 p-6',
         emphasis === 'warn' && 'border-warn/40 bg-gradient-to-br from-warn/10 to-transparent',
-        emphasis === 'warn-pink' && 'border-warn/50 bg-gradient-to-br from-warn/15 via-pink/5 to-transparent',
+        emphasis === 'warn-pink' && 'border-warn/50 bg-gradient-to-br from-warn/15 to-transparent',
       )}
     >
       <div className="flex items-start justify-between">

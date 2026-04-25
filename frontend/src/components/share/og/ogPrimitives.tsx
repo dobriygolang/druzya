@@ -60,12 +60,12 @@ export function Eyebrow({ children }: { children: ReactNode }) {
 export function LogoMark({ size = 28 }: { size?: number }) {
   return (
     <span
-      className="grid place-items-center font-display font-extrabold text-white"
+      className="grid place-items-center font-display font-extrabold text-bg"
       style={{
         width: size,
         height: size,
         borderRadius: Math.round(size / 4),
-        background: 'linear-gradient(135deg, rgb(var(--color-pink)), rgb(var(--color-cyan)))',
+        background: '#FFFFFF',
         fontSize: Math.round(size * 0.55),
         lineHeight: 1,
       }}
@@ -86,11 +86,11 @@ export function Avatar({
 }) {
   return (
     <span
-      className="grid place-items-center rounded-full font-display font-bold text-white"
+      className="grid place-items-center rounded-full font-display font-bold text-bg"
       style={{
         width: size,
         height: size,
-        background: 'linear-gradient(135deg, rgb(var(--color-pink)), rgb(var(--color-accent)))',
+        background: '#FFFFFF',
         fontSize: Math.round(size * 0.45),
       }}
     >

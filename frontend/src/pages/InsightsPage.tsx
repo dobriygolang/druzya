@@ -1,7 +1,8 @@
 import { Link } from 'react-router-dom'
-import { ArrowRight, Brain, Flame, Map as MapIcon, Sparkles, Target, TrendingUp } from 'lucide-react'
+import { ArrowRight, Brain, Flame, Map as MapIcon, Shield, Sparkles, Target, Trophy, TrendingUp } from 'lucide-react'
 import { AppShellV2 } from '../components/AppShell'
 import { Card } from '../components/Card'
+import { useMockLeaderboardQuery } from '../lib/queries/mockPipeline'
 
 /**
  * InsightsPage — Wave 4 of ADR-001.
@@ -63,6 +64,11 @@ export default function InsightsPage() {
  </Link>
  </div>
  <AtlasPreviewCard />
+ </section>
+
+ {/* Mock leaderboard — fairness-watermarked, real data. */}
+ <section className="flex flex-col gap-3">
+ <LeaderboardCard />
  </section>
 
  {/* Bottom row — secondary context */}
@@ -240,6 +246,67 @@ function CrossSurfaceCard() {
  <div className="mt-2 inline-flex w-fit items-center gap-2 rounded-full border border-border bg-surface-2 px-3 py-1 font-mono text-[10px] uppercase tracking-[0.16em] text-text-muted">
  ETA · Phase C
  </div>
+ </Card>
+ )
+}
+
+function LeaderboardCard() {
+ const { data, isLoading, error } = useMockLeaderboardQuery({ limit: 10 })
+ const items = data?.items ?? []
+ return (
+ <Card className="flex-col gap-4 p-5" interactive={false}>
+ <div className="flex items-start justify-between gap-3">
+ <div className="flex items-center gap-2">
+ <Trophy className="h-4 w-4 text-text-primary" />
+ <span className="font-mono text-[11px] uppercase tracking-[0.16em] text-text-primary">
+ Mock leaderboard · Top 10
+ </span>
+ </div>
+ <span
+  className="inline-flex items-center gap-1.5 rounded-full border border-border bg-surface-2 px-2.5 py-1 font-mono text-[10px] uppercase tracking-[0.12em] text-text-muted"
+  title="Учитываются только пайплайны, пройденные с выключенным AI-ассистом."
+ >
+ <Shield className="h-3 w-3" />
+ fair · ai-off only
+ </span>
+ </div>
+ {isLoading && (
+ <p className="text-[13px] text-text-muted">Загрузка…</p>
+ )}
+ {error && !isLoading && (
+ <p className="text-[13px] text-text-muted">
+ Лидерборд временно недоступен.
+ </p>
+ )}
+ {!isLoading && !error && items.length === 0 && (
+ <p className="text-[13px] text-text-secondary">
+ Пока ни одного завершённого мок-собеса в честном режиме. Будь первым —
+ запусти пайплайн с выключенным AI-ассистом.
+ </p>
+ )}
+ {items.length > 0 && (
+ <ol className="flex flex-col gap-1">
+ {items.map((e) => (
+ <li
+  key={e.user_id}
+  className="grid grid-cols-[2rem_1fr_auto_auto] items-center gap-3 rounded-lg border border-border bg-surface-2 px-3 py-2"
+ >
+ <span className="font-mono text-[11px] tabular-nums text-text-muted">
+ #{e.rank}
+ </span>
+ <span className="truncate font-sans text-[13px] font-medium text-text-primary">
+ {e.display_name}
+ </span>
+ <span className="font-mono text-[11px] text-text-muted">
+ {e.pipelines_passed}/{e.pipelines_finished} pass
+ </span>
+ <span className="font-display text-sm font-bold tabular-nums text-text-primary">
+ {e.avg_score.toFixed(1)}
+ </span>
+ </li>
+ ))}
+ </ol>
+ )}
  </Card>
  )
 }

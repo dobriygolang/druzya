@@ -43,14 +43,34 @@ func (t RoomType) String() string { return string(t) }
 
 // Room is the persistent editor_rooms row.
 type Room struct {
-	ID        uuid.UUID
-	OwnerID   uuid.UUID
-	Type      RoomType
-	TaskID    *uuid.UUID
-	Language  enums.Language
-	IsFrozen  bool
-	ExpiresAt time.Time
-	CreatedAt time.Time
+	ID         uuid.UUID
+	OwnerID    uuid.UUID
+	Type       RoomType
+	TaskID     *uuid.UUID
+	Language   enums.Language
+	IsFrozen   bool
+	Visibility Visibility
+	ExpiresAt  time.Time
+	CreatedAt  time.Time
+}
+
+// Visibility — кто может входить в комнату по share-link.
+//   - "shared" (default): любой со ссылкой; auto-add as participant.
+//   - "private": только owner; гостям и новичкам 403.
+type Visibility string
+
+const (
+	VisibilityShared  Visibility = "shared"
+	VisibilityPrivate Visibility = "private"
+)
+
+// IsValid — для CHECK constraint валидации в handler'ах.
+func (v Visibility) IsValid() bool {
+	switch v {
+	case VisibilityShared, VisibilityPrivate:
+		return true
+	}
+	return false
 }
 
 // Participant is one editor_participants row.

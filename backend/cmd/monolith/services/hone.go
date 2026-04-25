@@ -14,6 +14,7 @@ import (
 	"druz9/shared/generated/pb/druz9/v1/druz9v1connect"
 	"druz9/shared/pkg/metrics"
 	"druz9/shared/pkg/ratelimit"
+	subDomain "druz9/subscription/domain"
 
 	"connectrpc.com/connect"
 	"github.com/go-chi/chi/v5"
@@ -166,6 +167,18 @@ func NewHone(d Deps) *Module {
 	// Pro-gate для премиум-RPC (GeneratePlan / Critique / Connections).
 	// nil-safe: subscription-таблица нет — все Pro, gate выключен.
 	server = server.WithTier(NewHoneTierAdapter(d.Pool))
+	// Phase 2 quota enforcement: free-tier лимит на synced_notes (default 10).
+	// nil-safe (см. EnforceCreate). Closure inline'на, чтобы захватить Deps.
+	server = server.WithCreateNoteQuotaCheck(func(ctx context.Context, uid uuid.UUID) error {
+		return EnforceCreate(ctx, d, uid,
+			honeNotesQuotaField,
+			func(ctx context.Context, u uuid.UUID) (int, error) {
+				if d.QuotaUsageReader == nil {
+					return 0, nil
+				}
+				return d.QuotaUsageReader.CountSyncedNotes(ctx, u)
+			})
+	})
 	// Per-procedure Prometheus metrics (Connect-слой) — ChiMiddleware дает
 	// только route-level агрегат, который для RPC мало полезен.
 	connectPath, connectHandler := druz9v1connect.NewHoneServiceHandler(
@@ -269,4 +282,9 @@ func makeHoneEmbedJob(
 				slog.String("note_id", noteID.String()))
 		}
 	}
+}
+
+// honeNotesQuotaField — accessor для domain.QuotaPolicy.SyncedNotes.
+func honeNotesQuotaField(p subDomain.QuotaPolicy) int {
+	return p.SyncedNotes
 }

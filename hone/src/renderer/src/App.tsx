@@ -28,6 +28,9 @@ import { UpdateToast } from './components/UpdateToast';
 import { HomePage } from './pages/Home';
 import { TodayPage, type StartFocusArgs } from './pages/Today';
 import { NotesPage } from './pages/Notes';
+import { VaultUnlockGate } from './components/VaultUnlockGate';
+import { UpgradePrompt } from './components/UpgradePrompt';
+import { useQuotaStore } from './stores/quota';
 import { StatsOverlay } from './components/StatsOverlay';
 import { PodcastsPage } from './pages/Podcasts';
 import { SharedBoardsPage } from './pages/SharedBoards';
@@ -480,6 +483,19 @@ export default function App() {
 
   const canvasMode: CanvasMode = page === 'home' || page === 'stats' ? 'full' : 'quiet';
 
+  // Quota refresh после auth-bootstrap'а. Subscription-сервис может быть
+  // не loaded на бэке — store корректно дегейзит на defaults без ошибки.
+  useEffect(() => {
+    if (status !== 'signed_in') return;
+    void useQuotaStore.getState().refresh();
+    // Refresh раз в час чтобы поймать tier-update'ы (admin set / Boosty
+    // sync). Cheap (1 GET, JSON).
+    const id = window.setInterval(() => {
+      void useQuotaStore.getState().refresh();
+    }, 60 * 60 * 1000);
+    return () => window.clearInterval(id);
+  }, [status]);
+
   // Pre-bootstrap: чёрный экран без UI шевеления (длится <100ms обычно).
   if (status === 'unknown') {
     return <div style={{ position: 'fixed', inset: 0, background: '#000' }} />;
@@ -575,10 +591,12 @@ export default function App() {
         />
       )}
       {page === 'notes' && (
-        <NotesPage
-          initialSelectedId={briefTargetNoteId}
-          onConsumeInitial={() => setBriefTargetNoteId(null)}
-        />
+        <VaultUnlockGate>
+          <NotesPage
+            initialSelectedId={briefTargetNoteId}
+            onConsumeInitial={() => setBriefTargetNoteId(null)}
+          />
+        </VaultUnlockGate>
       )}
       {/* page === 'board' removed — единый поток через shared_boards.
           Private/public — это лишь вопрос с кем поделили URL комнаты. */}
@@ -652,6 +670,7 @@ export default function App() {
       )}
       {onboardingOpen && <OnboardingModal onClose={dismissOnboarding} />}
       <UpdateToast />
+      <UpgradePrompt />
     </div>
   );
 }

@@ -26,18 +26,31 @@ import (
 // Compile-time assertion — server must satisfy the generated handler.
 var _ druz9v1connect.WhiteboardRoomsServiceHandler = (*WhiteboardRoomsServer)(nil)
 
+// CreateQuotaChecker — pre-create hook чтобы enforce'ить quota из
+// subscription домена. Возвращает non-nil error если юзер превысил лимит
+// (caller mapит в connect.CodeResourceExhausted = HTTP 402-ish). Если
+// nil — quota infrastructure не loaded, permissive.
+type CreateQuotaChecker func(ctx context.Context, userID uuid.UUID) error
+
 // WhiteboardRoomsServer adapts use cases to Connect-RPC.
 type WhiteboardRoomsServer struct {
-	H     *app.Handlers
-	WSURL func(roomID uuid.UUID) string
-	Log   *slog.Logger
+	H                *app.Handlers
+	WSURL            func(roomID uuid.UUID) string
+	Log              *slog.Logger
+	CheckCreateQuota CreateQuotaChecker // nil = permissive
 }
 
 // NewWhiteboardRoomsServer wires a server. `wsURL` produces the WebSocket
 // URL the client opens after the REST join — depends on the deployment
 // (wss://druz9.online/ws/whiteboard/{id}) so it's injected from monolith.
-func NewWhiteboardRoomsServer(h *app.Handlers, wsURL func(uuid.UUID) string, log *slog.Logger) *WhiteboardRoomsServer {
-	return &WhiteboardRoomsServer{H: h, WSURL: wsURL, Log: log}
+// CheckCreateQuota — optional, nil-safe (см. type-doc).
+func NewWhiteboardRoomsServer(
+	h *app.Handlers,
+	wsURL func(uuid.UUID) string,
+	log *slog.Logger,
+	check CreateQuotaChecker,
+) *WhiteboardRoomsServer {
+	return &WhiteboardRoomsServer{H: h, WSURL: wsURL, Log: log, CheckCreateQuota: check}
 }
 
 // CreateRoom implements WhiteboardRoomsService/CreateRoom.
@@ -48,6 +61,16 @@ func (s *WhiteboardRoomsServer) CreateRoom(
 	uid, ok := sharedMw.UserIDFromContext(ctx)
 	if !ok {
 		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("unauthenticated"))
+	}
+	// Phase 2 quota enforcement: free-tier юзеры лимитятся по
+	// active_shared_boards. Note: на free создавать private board OK
+	// (хранится локально клиентом), а вот shared (visibility='shared') —
+	// counts toward quota. Создаваемая room по дефолту 'shared' →
+	// проверяем перед create.
+	if s.CheckCreateQuota != nil {
+		if err := s.CheckCreateQuota(ctx, uid); err != nil {
+			return nil, connect.NewError(connect.CodeResourceExhausted, err)
+		}
 	}
 	room, err := s.H.CreateRoom(ctx, uid, req.Msg.GetTitle())
 	if err != nil {

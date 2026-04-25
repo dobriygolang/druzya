@@ -116,6 +116,50 @@ export async function freezeRoom(roomId: string, frozen: boolean): Promise<Edito
   return unwrapRoom(resp as never);
 }
 
+// ─── Visibility (private | shared) ─────────────────────────────────────────
+//
+// Не Connect-RPC а REST: бэкенд экспонирует через
+// /api/v1/editor/room/{roomId}/visibility (см. services/editor.go).
+// Mirror'ит whiteboard'овский паттерн.
+
+export type EditorVisibility = 'private' | 'shared';
+
+function visAuthHeaders(): Record<string, string> {
+  const token = useSessionStore.getState().accessToken ?? DEV_BEARER_TOKEN;
+  const h: Record<string, string> = { 'content-type': 'application/json' };
+  if (token) h.authorization = `Bearer ${token}`;
+  try {
+    const did = window.localStorage.getItem('hone:device-id');
+    if (did) h['x-device-id'] = did;
+  } catch {
+    /* ignore */
+  }
+  return h;
+}
+
+export async function getEditorRoomVisibility(roomId: string): Promise<EditorVisibility> {
+  const resp = await fetch(`${API_BASE_URL}/api/v1/editor/room/${roomId}/visibility`, {
+    headers: visAuthHeaders(),
+  });
+  if (!resp.ok) throw new Error(`get visibility: ${resp.status}`);
+  const j = (await resp.json()) as { visibility: EditorVisibility };
+  return j.visibility;
+}
+
+export async function setEditorRoomVisibility(
+  roomId: string,
+  visibility: EditorVisibility,
+): Promise<EditorVisibility> {
+  const resp = await fetch(`${API_BASE_URL}/api/v1/editor/room/${roomId}/visibility`, {
+    method: 'POST',
+    headers: visAuthHeaders(),
+    body: JSON.stringify({ visibility }),
+  });
+  if (!resp.ok) throw new Error(`set visibility: ${resp.status}`);
+  const j = (await resp.json()) as { visibility: EditorVisibility };
+  return j.visibility;
+}
+
 // ─── RunCode ───────────────────────────────────────────────────────────────
 
 export interface RunResult {

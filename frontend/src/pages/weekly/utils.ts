@@ -18,14 +18,14 @@ export const SECTION_NAMES: Record<string, string> = {
 // Не trust-усь на CSS-переменные внутри SVG-stroke (там через
 // currentColor лишний геморрой), берём явные hex.
 export const SECTION_COLORS: Record<string, string> = {
-  algorithms: '#a78bfa',
-  sql: '#22d3ee',
-  go: '#34d399',
-  system_design: '#fb7185',
-  behavioral: '#fbbf24',
-  graphs: '#f472b6',
+  algorithms: '#FFFFFF',
+  sql: '#D4D4D4',
+  go: '#A3A3A3',
+  system_design: '#8A8A8A',
+  behavioral: '#FBBF24',
+  graphs: '#6B6B6B',
 }
-export const FALLBACK_COLOR = '#94a3b8'
+export const FALLBACK_COLOR = '#525252'
 
 export function sectionLabel(s: string): string {
   return SECTION_NAMES[s] ?? s.charAt(0).toUpperCase() + s.slice(1)

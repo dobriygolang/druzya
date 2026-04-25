@@ -1,0 +1,141 @@
+// QuotaUsageBar — компактный «3 / 10» индикатор с прогресс-полоской.
+//
+// Используется:
+//   - Sidebar в Notes / SharedBoards / CodeRooms (variant="compact")
+//   - Settings → Subscription (variant="full" с подписью)
+//
+// Визуально: тонкая полоска под цифрой usage. На 80%+ — accent цвет,
+// на 100% — danger. -1 в quota = unlimited (не отображаем bar, только «3»).
+import { useQuotaStore, type QuotaPolicy, type QuotaUsage } from '../stores/quota';
+
+export type QuotaResource = 'synced_notes' | 'active_shared_boards' | 'active_shared_rooms' | 'ai_this_month';
+
+const LABELS: Record<QuotaResource, string> = {
+  synced_notes: 'Synced notes',
+  active_shared_boards: 'Shared boards',
+  active_shared_rooms: 'Shared rooms',
+  ai_this_month: 'AI calls this month',
+};
+
+interface QuotaUsageBarProps {
+  resource: QuotaResource;
+  variant?: 'compact' | 'full';
+}
+
+export function QuotaUsageBar({ resource, variant = 'compact' }: QuotaUsageBarProps) {
+  const policy = useQuotaStore((s) => s.policy);
+  const usage = useQuotaStore((s) => s.usage);
+
+  const used = readUsage(usage, resource);
+  const limit = readPolicyLimit(policy, resource);
+  const isUnlimited = limit < 0;
+  const pct = isUnlimited ? 0 : limit === 0 ? 0 : Math.min(100, (used / limit) * 100);
+
+  const color =
+    pct >= 100
+      ? '#ff6a6a'
+      : pct >= 80
+      ? '#ffaa55'
+      : 'var(--ink-60)';
+
+  if (variant === 'compact') {
+    return (
+      <div
+        className="mono"
+        title={isUnlimited ? `${LABELS[resource]}: ${used} (unlimited)` : `${LABELS[resource]}: ${used} / ${limit}`}
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 6,
+          padding: '4px 8px',
+          fontSize: 9,
+          letterSpacing: '0.16em',
+          textTransform: 'uppercase',
+          color: color,
+        }}
+      >
+        <span>
+          {used}
+          {!isUnlimited && <span style={{ opacity: 0.5 }}>{` / ${limit}`}</span>}
+        </span>
+        {!isUnlimited && (
+          <div
+            aria-hidden
+            style={{
+              flex: 1,
+              height: 2,
+              borderRadius: 1,
+              background: 'rgba(255,255,255,0.06)',
+              position: 'relative',
+              overflow: 'hidden',
+            }}
+          >
+            <div
+              style={{
+                position: 'absolute',
+                inset: 0,
+                width: `${pct}%`,
+                background: color,
+                transition: 'width 220ms ease, background-color 220ms ease',
+              }}
+            />
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // full variant
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 6, padding: '8px 0' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: 'var(--ink-90)' }}>
+        <span>{LABELS[resource]}</span>
+        <span className="mono" style={{ color }}>
+          {used}
+          {!isUnlimited && <span style={{ opacity: 0.5 }}>{` / ${limit}`}</span>}
+          {isUnlimited && <span style={{ opacity: 0.5 }}> (unlimited)</span>}
+        </span>
+      </div>
+      {!isUnlimited && (
+        <div
+          aria-hidden
+          style={{
+            height: 4,
+            borderRadius: 2,
+            background: 'rgba(255,255,255,0.06)',
+            position: 'relative',
+            overflow: 'hidden',
+          }}
+        >
+          <div
+            style={{
+              position: 'absolute',
+              inset: 0,
+              width: `${pct}%`,
+              background: color,
+              transition: 'width 220ms ease, background-color 220ms ease',
+            }}
+          />
+        </div>
+      )}
+    </div>
+  );
+}
+
+function readUsage(u: QuotaUsage, r: QuotaResource): number {
+  switch (r) {
+    case 'synced_notes': return u.synced_notes;
+    case 'active_shared_boards': return u.active_shared_boards;
+    case 'active_shared_rooms': return u.active_shared_rooms;
+    case 'ai_this_month': return u.ai_this_month;
+  }
+}
+
+function readPolicyLimit(p: QuotaPolicy, r: QuotaResource): number {
+  switch (r) {
+    case 'synced_notes': return p.synced_notes;
+    case 'active_shared_boards': return p.active_shared_boards;
+    case 'active_shared_rooms': return p.active_shared_rooms;
+    case 'ai_this_month': return p.ai_monthly;
+  }
+}

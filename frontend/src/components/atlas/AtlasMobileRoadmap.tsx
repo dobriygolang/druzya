@@ -266,7 +266,7 @@ export function AtlasMobileRoadmap({
         <div className="flex flex-col gap-3">
           {/* Hub card */}
           <div
-            className="relative overflow-hidden rounded-2xl border border-border-strong bg-gradient-to-br from-accent/15 via-accent/5 to-surface-1 p-4"
+            className="relative overflow-hidden rounded-2xl border border-border-strong bg-surface-2 p-4"
             role="region"
             aria-label="Класс"
           >

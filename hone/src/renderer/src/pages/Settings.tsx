@@ -16,6 +16,8 @@
 import { useEffect, useState } from 'react';
 
 import { CanvasBg, type ThemeId, THEME_IDS } from '../components/CanvasBg';
+import { QuotaUsageBar } from '../components/QuotaUsageBar';
+import { useQuotaStore } from '../stores/quota';
 import {
   getStorageQuota,
   formatBytes,
@@ -162,10 +164,18 @@ export function SettingsPage({ theme, onThemeChange }: SettingsPageProps) {
           <Slider min={0} max={100} step={5} value={settings.defaultVolume} onChange={setVol} unit="%" />
         </Section>
 
+        {/* ── Subscription quotas ──────────────────────────────── */}
+        <Section
+          title="USAGE"
+          hint="How close you are to your tier limits. Cross-device sync, shared boards, code-rooms."
+        >
+          <SubscriptionUsageSection />
+        </Section>
+
         {/* ── Storage ──────────────────────────────────────────── */}
         <Section
           title="STORAGE"
-          hint="How much of your tier you've used. Free tier is single-device; Pro syncs across devices."
+          hint="How much of your tier you've used. Free tier is single-device; Seeker syncs across devices."
         >
           <StorageSection />
         </Section>
@@ -173,7 +183,7 @@ export function SettingsPage({ theme, onThemeChange }: SettingsPageProps) {
         {/* ── Devices ──────────────────────────────────────────── */}
         <Section
           title="DEVICES"
-          hint="Devices that are currently signed in. Free tier supports 1 active device; Pro removes the limit."
+          hint="Devices that are currently signed in. Free tier supports 1 active device; Seeker removes the limit."
         >
           <DevicesSection />
         </Section>
@@ -441,6 +451,30 @@ function ShortcutRow({ keys, label }: { keys: string[]; label: string }) {
   );
 }
 
+// SubscriptionUsageSection — bars для всех subscription resource'ов
+// (synced notes, shared boards, shared rooms, AI calls). Источник —
+// useQuotaStore (refresh'ится из App.tsx hourly + on signin). Free-tier
+// показывает «10 / 10», Seeker «100 / 100», Ascended «∞» (unlimited).
+function SubscriptionUsageSection() {
+  const tier = useQuotaStore((s) => s.tier);
+  const refresh = useQuotaStore((s) => s.refresh);
+  useEffect(() => {
+    void refresh();
+  }, [refresh]);
+  const tierLabel = tier === 'ascended' ? 'Ascended' : tier === 'seeker' ? 'Seeker' : 'Free';
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+      <div className="mono" style={{ fontSize: 10, letterSpacing: '0.2em', color: 'var(--ink-60)', marginBottom: 6 }}>
+        TIER: {tierLabel.toUpperCase()}
+      </div>
+      <QuotaUsageBar resource="synced_notes" variant="full" />
+      <QuotaUsageBar resource="active_shared_boards" variant="full" />
+      <QuotaUsageBar resource="active_shared_rooms" variant="full" />
+      <QuotaUsageBar resource="ai_this_month" variant="full" />
+    </div>
+  );
+}
+
 // StorageSection — usage-bar plus tier badge. Один fetch на mount;
 // данные с бэкенда отстают до часа (cron — см. backend services/storage.go),
 // поэтому realtime refresh не имеет смысла. Если backend упал или юзер
@@ -543,12 +577,12 @@ function StorageSection() {
           }}
         >
           <div style={{ fontSize: 13, color: 'var(--ink-90)', marginBottom: 4 }}>
-            Sync across devices · Pro
+            Sync across devices · Seeker
           </div>
           <div style={{ fontSize: 12, color: 'var(--ink-60)', lineHeight: 1.45 }}>
             Free tier keeps data on this device only. Upgrade to sync notes,
             whiteboards and coach memory between desktop and other devices —
-            10&nbsp;GB on Pro, 100&nbsp;GB on Pro+.
+            10&nbsp;GB on Seeker, 100&nbsp;GB on Ascended.
           </div>
         </div>
       )}

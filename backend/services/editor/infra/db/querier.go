@@ -19,12 +19,13 @@ type Querier interface {
 	// projection built elsewhere (e.g. /daily, /arena) is used when the caller
 	// wants task details attached to the room. Keeping tasks out of this file
 	// entirely avoids any risk of hint leakage from here.
-	CreateRoom(ctx context.Context, arg CreateRoomParams) (EditorRoom, error)
+	CreateRoom(ctx context.Context, arg CreateRoomParams) (CreateRoomRow, error)
 	ExtendRoomExpires(ctx context.Context, arg ExtendRoomExpiresParams) (int64, error)
 	GetParticipantRole(ctx context.Context, arg GetParticipantRoleParams) (string, error)
-	GetRoom(ctx context.Context, id pgtype.UUID) (EditorRoom, error)
+	GetRoom(ctx context.Context, id pgtype.UUID) (GetRoomRow, error)
 	ListParticipants(ctx context.Context, roomID pgtype.UUID) ([]EditorParticipant, error)
-	UpdateRoomFreeze(ctx context.Context, arg UpdateRoomFreezeParams) (EditorRoom, error)
+	SetRoomVisibility(ctx context.Context, arg SetRoomVisibilityParams) (int64, error)
+	UpdateRoomFreeze(ctx context.Context, arg UpdateRoomFreezeParams) (UpdateRoomFreezeRow, error)
 }
 
 var _ Querier = (*Queries)(nil)
