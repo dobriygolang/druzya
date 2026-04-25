@@ -45,6 +45,11 @@ type routerDeps struct {
 
 func buildHandler(d routerDeps) http.Handler {
 	r := chi.NewRouter()
+	// CORS должен быть ПЕРЕД RequireAuth — иначе preflight OPTIONS летит
+	// в auth-middleware и возвращает 401, browser блокирует следующий
+	// запрос с «Failed to fetch». См. cors.go для whitelist'а.
+	cors := corsMiddleware()
+	r.Use(cors)
 	r.Use(mw.RequestID)
 	// Tracer must come BEFORE the request logger so the logger's trace_id
 	// attr (added by logger.traceHandler) sees an active span.
@@ -121,7 +126,11 @@ func buildHandler(d routerDeps) http.Handler {
 		}
 	}
 
-	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+	// CORS должен оборачивать ОБА — и chi-rooted REST, и connectMux. На
+	// chi мы уже навесили r.Use(cors), но connectMux идёт мимо chi, поэтому
+	// applies CORS ещё раз снаружи. Header'ы идемпотентны — повторная
+	// установка одного и того же значения безопасна.
+	dispatcher := http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		for _, p := range prefixes {
 			if strings.HasPrefix(req.URL.Path, p) {
 				connectMux.ServeHTTP(w, req)
@@ -130,6 +139,7 @@ func buildHandler(d routerDeps) http.Handler {
 		}
 		r.ServeHTTP(w, req)
 	})
+	return cors(dispatcher)
 }
 
 // restAuthGate is the per-request bearer-auth middleware applied to every
