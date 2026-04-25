@@ -60,4 +60,74 @@ func (r *MockTaskTestCases) ListForTask(ctx context.Context, taskID uuid.UUID) (
 	return out, nil
 }
 
+// Create inserts a single test case. ID is server-generated when zero.
+func (r *MockTaskTestCases) Create(ctx context.Context, tc domain.MockTaskTestCase) (domain.MockTaskTestCase, error) {
+	if tc.ID == uuid.Nil {
+		tc.ID = uuid.New()
+	}
+	row := r.pool.QueryRow(ctx, `
+		INSERT INTO mock_task_test_cases (id, task_id, input, expected_output, is_hidden, ordinal)
+		VALUES ($1,$2,$3,$4,$5,$6)
+		RETURNING id, task_id, input, expected_output, is_hidden, ordinal`,
+		sharedpg.UUID(tc.ID), sharedpg.UUID(tc.TaskID),
+		tc.Input, tc.Expected, tc.IsHidden, tc.Ordinal)
+	out, err := scanTestCase(row)
+	if err != nil {
+		return domain.MockTaskTestCase{}, fmt.Errorf("mock_interview.MockTaskTestCases.Create: %w", err)
+	}
+	return out, nil
+}
+
+// Update overwrites everything except (id, task_id, created_at).
+func (r *MockTaskTestCases) Update(ctx context.Context, tc domain.MockTaskTestCase) (domain.MockTaskTestCase, error) {
+	row := r.pool.QueryRow(ctx, `
+		UPDATE mock_task_test_cases
+		   SET input=$2, expected_output=$3, is_hidden=$4, ordinal=$5
+		 WHERE id=$1
+		RETURNING id, task_id, input, expected_output, is_hidden, ordinal`,
+		sharedpg.UUID(tc.ID), tc.Input, tc.Expected, tc.IsHidden, tc.Ordinal)
+	out, err := scanTestCase(row)
+	if err != nil {
+		return domain.MockTaskTestCase{}, fmt.Errorf("mock_interview.MockTaskTestCases.Update: %w", err)
+	}
+	return out, nil
+}
+
+// Delete removes a single test case. ErrNotFound when no row matches.
+func (r *MockTaskTestCases) Delete(ctx context.Context, id uuid.UUID) error {
+	tag, err := r.pool.Exec(ctx,
+		`DELETE FROM mock_task_test_cases WHERE id=$1`, sharedpg.UUID(id))
+	if err != nil {
+		return fmt.Errorf("mock_interview.MockTaskTestCases.Delete: %w", err)
+	}
+	if tag.RowsAffected() == 0 {
+		return domain.ErrNotFound
+	}
+	return nil
+}
+
+// scanTestCase — shared scan helper, deliberately matches the columns
+// returned by Create / Update so a callsite swap stays trivial.
+func scanTestCase(row interface {
+	Scan(...any) error
+}) (domain.MockTaskTestCase, error) {
+	var (
+		id, tid    pgtype.UUID
+		input, exp string
+		hidden     bool
+		ordinal    int32
+	)
+	if err := row.Scan(&id, &tid, &input, &exp, &hidden, &ordinal); err != nil {
+		return domain.MockTaskTestCase{}, fmt.Errorf("row.Scan mock_task_test_cases: %w", err)
+	}
+	return domain.MockTaskTestCase{
+		ID:       sharedpg.UUIDFrom(id),
+		TaskID:   sharedpg.UUIDFrom(tid),
+		Input:    input,
+		Expected: exp,
+		IsHidden: hidden,
+		Ordinal:  int(ordinal),
+	}, nil
+}
+
 var _ domain.MockTaskTestCaseRepo = (*MockTaskTestCases)(nil)

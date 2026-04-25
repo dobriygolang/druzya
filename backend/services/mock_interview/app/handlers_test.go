@@ -327,6 +327,19 @@ func (fakeLeaderboardRepo) Top(context.Context, *uuid.UUID, int) ([]domain.Leade
 	return nil, nil
 }
 
+type fakeTestCaseRepo struct{}
+
+func (fakeTestCaseRepo) ListForTask(context.Context, uuid.UUID) ([]domain.MockTaskTestCase, error) {
+	return nil, nil
+}
+func (fakeTestCaseRepo) Create(_ context.Context, tc domain.MockTaskTestCase) (domain.MockTaskTestCase, error) {
+	return tc, nil
+}
+func (fakeTestCaseRepo) Update(_ context.Context, tc domain.MockTaskTestCase) (domain.MockTaskTestCase, error) {
+	return tc, nil
+}
+func (fakeTestCaseRepo) Delete(context.Context, uuid.UUID) error { return nil }
+
 func newTestHandlers() (*Handlers, *fakeCompanyStageRepo, *fakePipelineStageRepo, *fakeStrictnessRepo, *fakeTaskRepo) {
 	cs := &fakeCompanyStageRepo{}
 	ps := &fakePipelineStageRepo{}
@@ -335,7 +348,7 @@ func newTestHandlers() (*Handlers, *fakeCompanyStageRepo, *fakePipelineStageRepo
 	h := NewHandlers(
 		&fakeCompanyRepo{}, st, tk, &fakeQuestionRepo{},
 		cs, &fakePipelineRepo{}, ps, &fakeAttemptRepo{},
-		&fakeLeaderboardRepo{},
+		&fakeLeaderboardRepo{}, &fakeTestCaseRepo{},
 	)
 	h.Now = func() time.Time { return time.Date(2026, 4, 1, 0, 0, 0, 0, time.UTC) }
 	return h, cs, ps, st, tk

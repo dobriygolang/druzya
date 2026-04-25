@@ -26,6 +26,7 @@ type Handlers struct {
 	PipelineStages domain.PipelineStageRepo
 	Attempts       domain.PipelineAttemptRepo
 	Leaderboard    domain.LeaderboardRepo
+	TestCases      domain.MockTaskTestCaseRepo
 	Now            func() time.Time
 }
 
@@ -39,12 +40,14 @@ func NewHandlers(
 	pipelineStages domain.PipelineStageRepo,
 	attempts domain.PipelineAttemptRepo,
 	leaderboard domain.LeaderboardRepo,
+	testCases domain.MockTaskTestCaseRepo,
 ) *Handlers {
 	return &Handlers{
 		Companies: companies, Strictness: strictness, Tasks: tasks,
 		Questions: questions, CompanyStages: companyStages,
 		Pipelines: pipelines, PipelineStages: pipelineStages, Attempts: attempts,
 		Leaderboard: leaderboard,
+		TestCases:   testCases,
 		Now:         time.Now,
 	}
 }

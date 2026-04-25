@@ -101,6 +101,7 @@ type taskDTO struct {
 	FunctionalRequirementsMD string               `json:"functional_requirements_md"`
 	TimeLimitMin             int                  `json:"time_limit_min"`
 	AIStrictnessProfileID    *string              `json:"ai_strictness_profile_id"`
+	LLMModel                 string               `json:"llm_model"`
 	Active                   bool                 `json:"active"`
 	CreatedAt                time.Time            `json:"created_at"`
 	UpdatedAt                time.Time            `json:"updated_at"`
@@ -113,7 +114,7 @@ func toTaskDTO(t domain.MockTask) taskDTO {
 		SampleIOMD: t.SampleIOMD, ReferenceCriteria: toRCDTO(t.ReferenceCriteria),
 		ReferenceSolutionMD:      t.ReferenceSolutionMD,
 		FunctionalRequirementsMD: t.FunctionalRequirementsMD,
-		TimeLimitMin:             t.TimeLimitMin, Active: t.Active,
+		TimeLimitMin:             t.TimeLimitMin, LLMModel: t.LLMModel, Active: t.Active,
 		CreatedAt: t.CreatedAt, UpdatedAt: t.UpdatedAt,
 	}
 	if t.AIStrictnessProfileID != nil {
@@ -443,6 +444,24 @@ func toPipelineSummaryDTO(p domain.MockPipeline) pipelineDTO {
 		d.CompanyID = &v
 	}
 	return d
+}
+
+// testCaseDTO — admin wire shape for `mock_task_test_cases` rows.
+type testCaseDTO struct {
+	ID       string `json:"id"`
+	TaskID   string `json:"task_id"`
+	Input    string `json:"input"`
+	Expected string `json:"expected_output"`
+	IsHidden bool   `json:"is_hidden"`
+	Ordinal  int    `json:"ordinal"`
+}
+
+func toTestCaseDTO(tc domain.MockTaskTestCase) testCaseDTO {
+	return testCaseDTO{
+		ID: tc.ID.String(), TaskID: tc.TaskID.String(),
+		Input: tc.Input, Expected: tc.Expected,
+		IsHidden: tc.IsHidden, Ordinal: tc.Ordinal,
+	}
 }
 
 // leaderboardEntryDTO — wire shape for GET /mock/leaderboard items.

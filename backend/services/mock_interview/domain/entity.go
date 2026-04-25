@@ -68,10 +68,15 @@ type MockTask struct {
 	FunctionalRequirementsMD string
 	TimeLimitMin             int
 	AIStrictnessProfileID    *uuid.UUID
-	Active                   bool
-	CreatedByAdminID         *uuid.UUID
-	CreatedAt                time.Time
-	UpdatedAt                time.Time
+	// LLMModel — per-task override matching llm_models.model_id. Empty
+	// means inherit from strictness profile / global default. Validated
+	// on write only at the catalogue layer; the chain treats unknown
+	// ids as "fall through".
+	LLMModel         string
+	Active           bool
+	CreatedByAdminID *uuid.UUID
+	CreatedAt        time.Time
+	UpdatedAt        time.Time
 }
 
 // TaskQuestion — interviewer follow-up tied to a single task.

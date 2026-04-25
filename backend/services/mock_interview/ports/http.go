@@ -87,6 +87,15 @@ func (s *Server) Mount(r chi.Router) {
 	r.Patch("/admin/mock/task-questions/{id}", s.adminUpdateTaskQuestion)
 	r.Delete("/admin/mock/task-questions/{id}", s.adminDeleteTaskQuestion)
 
+	// Admin: task test-cases (Judge0 grading rows)
+	r.Get("/admin/mock/tasks/{id}/test-cases", s.adminListTestCases)
+	r.Post("/admin/mock/tasks/{id}/test-cases", s.adminCreateTestCase)
+	r.Patch("/admin/mock/test-cases/{id}", s.adminUpdateTestCase)
+	r.Delete("/admin/mock/test-cases/{id}", s.adminDeleteTestCase)
+
+	// Admin: bulk task import (JSON-paste flow on the admin tasks panel)
+	r.Post("/admin/mock/tasks/bulk-import", s.adminBulkImportTasks)
+
 	// Admin: default questions
 	r.Get("/admin/mock/default-questions", s.adminListDefaultQuestions)
 	r.Post("/admin/mock/default-questions", s.adminCreateDefaultQuestion)
@@ -363,6 +372,7 @@ func taskFromDTO(in taskDTO, id uuid.UUID) (domain.MockTask, error) {
 		ReferenceSolutionMD:      in.ReferenceSolutionMD,
 		FunctionalRequirementsMD: in.FunctionalRequirementsMD,
 		TimeLimitMin:             in.TimeLimitMin,
+		LLMModel:                 in.LLMModel,
 		Active:                   in.Active,
 	}
 	if in.AIStrictnessProfileID != nil && *in.AIStrictnessProfileID != "" {
@@ -1113,4 +1123,127 @@ func (s *Server) publicLeaderboard(w http.ResponseWriter, r *http.Request) {
 		"items":              out,
 		"fairness_watermark": domain.FairnessAIAssistOffOnly,
 	})
+}
+
+// ── admin: test-cases CRUD ─────────────────────────────────────────────
+
+func (s *Server) adminListTestCases(w http.ResponseWriter, r *http.Request) {
+	if _, ok := s.requireAdmin(w, r); !ok {
+		return
+	}
+	taskID, err := parseUUIDParam(r, "id")
+	if err != nil {
+		writeErr(w, http.StatusBadRequest, "invalid id")
+		return
+	}
+	out, err := s.H.ListTestCases(r.Context(), taskID)
+	if err != nil {
+		s.errToHTTP(w, r, err, "adminListTestCases")
+		return
+	}
+	items := make([]testCaseDTO, 0, len(out))
+	for _, tc := range out {
+		items = append(items, toTestCaseDTO(tc))
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"items": items})
+}
+
+func (s *Server) adminCreateTestCase(w http.ResponseWriter, r *http.Request) {
+	if _, ok := s.requireAdmin(w, r); !ok {
+		return
+	}
+	taskID, err := parseUUIDParam(r, "id")
+	if err != nil {
+		writeErr(w, http.StatusBadRequest, "invalid id")
+		return
+	}
+	var in testCaseDTO
+	if derr := decode(r, &in); derr != nil {
+		writeErr(w, http.StatusBadRequest, derr.Error())
+		return
+	}
+	out, err := s.H.CreateTestCase(r.Context(), domain.MockTaskTestCase{
+		TaskID:   taskID,
+		Input:    in.Input,
+		Expected: in.Expected,
+		IsHidden: in.IsHidden,
+		Ordinal:  in.Ordinal,
+	})
+	if err != nil {
+		s.errToHTTP(w, r, err, "adminCreateTestCase")
+		return
+	}
+	writeJSON(w, http.StatusCreated, toTestCaseDTO(out))
+}
+
+func (s *Server) adminUpdateTestCase(w http.ResponseWriter, r *http.Request) {
+	if _, ok := s.requireAdmin(w, r); !ok {
+		return
+	}
+	id, err := parseUUIDParam(r, "id")
+	if err != nil {
+		writeErr(w, http.StatusBadRequest, "invalid id")
+		return
+	}
+	var in testCaseDTO
+	if derr := decode(r, &in); derr != nil {
+		writeErr(w, http.StatusBadRequest, derr.Error())
+		return
+	}
+	out, err := s.H.UpdateTestCase(r.Context(), domain.MockTaskTestCase{
+		ID:       id,
+		Input:    in.Input,
+		Expected: in.Expected,
+		IsHidden: in.IsHidden,
+		Ordinal:  in.Ordinal,
+	})
+	if err != nil {
+		s.errToHTTP(w, r, err, "adminUpdateTestCase")
+		return
+	}
+	writeJSON(w, http.StatusOK, toTestCaseDTO(out))
+}
+
+func (s *Server) adminDeleteTestCase(w http.ResponseWriter, r *http.Request) {
+	if _, ok := s.requireAdmin(w, r); !ok {
+		return
+	}
+	id, err := parseUUIDParam(r, "id")
+	if err != nil {
+		writeErr(w, http.StatusBadRequest, "invalid id")
+		return
+	}
+	if err := s.H.DeleteTestCase(r.Context(), id); err != nil {
+		s.errToHTTP(w, r, err, "adminDeleteTestCase")
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]bool{"ok": true})
+}
+
+// ── admin: bulk task import ────────────────────────────────────────────
+
+func (s *Server) adminBulkImportTasks(w http.ResponseWriter, r *http.Request) {
+	uid, ok := s.requireAdmin(w, r)
+	if !ok {
+		return
+	}
+	var in app.BulkTaskImport
+	if err := decode(r, &in); err != nil {
+		writeErr(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	if len(in.Tasks) == 0 {
+		writeErr(w, http.StatusBadRequest, "tasks: empty")
+		return
+	}
+	if len(in.Tasks) > 200 {
+		writeErr(w, http.StatusBadRequest, "tasks: max 200 per batch")
+		return
+	}
+	results, err := s.H.BulkImportTasks(r.Context(), in, &uid)
+	if err != nil {
+		s.errToHTTP(w, r, err, "adminBulkImportTasks")
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"results": results})
 }

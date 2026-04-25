@@ -22,7 +22,7 @@ func NewTasks(pool *pgxpool.Pool) *Tasks { return &Tasks{pool: pool} }
 const taskCols = `id, stage_kind, language, difficulty, title, body_md,
 	sample_io_md, reference_criteria, reference_solution_md,
 	functional_requirements_md, time_limit_min, ai_strictness_profile_id,
-	active, created_by_admin_id, created_at, updated_at`
+	COALESCE(llm_model, ''), active, created_by_admin_id, created_at, updated_at`
 
 func (r *Tasks) scanRow(row pgx.Row) (domain.MockTask, error) {
 	var (
@@ -30,13 +30,14 @@ func (r *Tasks) scanRow(row pgx.Row) (domain.MockTask, error) {
 		stageKind, language                 string
 		difficulty                          int16
 		title, body, sample, refSol, funcRq string
+		llmModel                            string
 		refCrit                             []byte
 		timeLimit                           int
 		active                              bool
 		createdAt, updatedAt                time.Time
 	)
 	err := row.Scan(&id, &stageKind, &language, &difficulty, &title, &body,
-		&sample, &refCrit, &refSol, &funcRq, &timeLimit, &profID,
+		&sample, &refCrit, &refSol, &funcRq, &timeLimit, &profID, &llmModel,
 		&active, &adminID, &createdAt, &updatedAt)
 	if err != nil {
 		return domain.MockTask{}, fmt.Errorf("row.Scan mock_tasks: %w", err)
@@ -57,6 +58,7 @@ func (r *Tasks) scanRow(row pgx.Row) (domain.MockTask, error) {
 		ReferenceSolutionMD:      refSol,
 		FunctionalRequirementsMD: funcRq,
 		TimeLimitMin:             timeLimit,
+		LLMModel:                 llmModel,
 		Active:                   active,
 		CreatedAt:                createdAt,
 		UpdatedAt:                updatedAt,
@@ -129,13 +131,13 @@ func (r *Tasks) Create(ctx context.Context, t domain.MockTask) (domain.MockTask,
 		INSERT INTO mock_tasks (id, stage_kind, language, difficulty, title, body_md,
 			sample_io_md, reference_criteria, reference_solution_md,
 			functional_requirements_md, time_limit_min, ai_strictness_profile_id,
-			active, created_by_admin_id)
-		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
+			llm_model, active, created_by_admin_id)
+		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,NULLIF($13,''),$14,$15)
 		RETURNING `+taskCols,
 		sharedpg.UUID(t.ID), string(t.StageKind), string(t.Language), t.Difficulty,
 		t.Title, t.BodyMD, t.SampleIOMD, rcBytes, t.ReferenceSolutionMD,
 		t.FunctionalRequirementsMD, t.TimeLimitMin,
-		nullableUUID(t.AIStrictnessProfileID), t.Active,
+		nullableUUID(t.AIStrictnessProfileID), t.LLMModel, t.Active,
 		nullableUUID(t.CreatedByAdminID))
 	out, err := r.scanRow(row)
 	if err != nil {
@@ -154,13 +156,14 @@ func (r *Tasks) Update(ctx context.Context, t domain.MockTask) (domain.MockTask,
 			stage_kind=$2, language=$3, difficulty=$4, title=$5, body_md=$6,
 			sample_io_md=$7, reference_criteria=$8, reference_solution_md=$9,
 			functional_requirements_md=$10, time_limit_min=$11,
-			ai_strictness_profile_id=$12, active=$13, updated_at=now()
+			ai_strictness_profile_id=$12, llm_model=NULLIF($13,''),
+			active=$14, updated_at=now()
 		WHERE id=$1
 		RETURNING `+taskCols,
 		sharedpg.UUID(t.ID), string(t.StageKind), string(t.Language), t.Difficulty,
 		t.Title, t.BodyMD, t.SampleIOMD, rcBytes, t.ReferenceSolutionMD,
 		t.FunctionalRequirementsMD, t.TimeLimitMin,
-		nullableUUID(t.AIStrictnessProfileID), t.Active)
+		nullableUUID(t.AIStrictnessProfileID), t.LLMModel, t.Active)
 	out, err := r.scanRow(row)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {

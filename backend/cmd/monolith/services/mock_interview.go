@@ -43,9 +43,11 @@ func NewMockInterview(d Deps) *Module {
 		)
 	}
 
+	mockTestCases := miInfra.NewMockTaskTestCases(d.Pool)
+
 	handlers := miApp.NewHandlers(
 		companies, strictness, tasks, questions, companyStages,
-		pipelines, pipelineStages, attempts, leaderboard,
+		pipelines, pipelineStages, attempts, leaderboard, mockTestCases,
 	)
 	if d.Now != nil {
 		handlers.Now = d.Now
@@ -57,8 +59,9 @@ func NewMockInterview(d Deps) *Module {
 	// F-2: code-execution sandbox for task_solve attempts. JUDGE0_URL points
 	// at the docker-compose `judge0-server`; when unset we wire the explicit
 	// unconfigured fallback so the orchestrator transparently uses LLM-only
-	// judging (anti-fallback policy: no silent fake-pass).
-	mockTestCases := miInfra.NewMockTaskTestCases(d.Pool)
+	// judging (anti-fallback policy: no silent fake-pass). We reuse
+	// mockTestCases declared above for both the admin CRUD wiring and the
+	// sandbox loader.
 	var sandbox miDomain.SandboxExecutor = miInfra.NewUnconfiguredSandbox()
 	if u := strings.TrimSpace(d.Cfg.Judge0.URL); u != "" {
 		sandbox = miInfra.NewJudge0Sandbox(u, mockTestCases, d.Log)

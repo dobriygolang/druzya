@@ -25,9 +25,14 @@ type MockTaskTestCase struct {
 	Ordinal  int
 }
 
-// MockTaskTestCaseRepo persists `mock_task_test_cases`.
+// MockTaskTestCaseRepo persists `mock_task_test_cases`. The admin
+// surface uses Create/Update/Delete; the orchestrator only needs
+// ListForTask. Both share the same row shape.
 type MockTaskTestCaseRepo interface {
 	ListForTask(ctx context.Context, taskID uuid.UUID) ([]MockTaskTestCase, error)
+	Create(ctx context.Context, tc MockTaskTestCase) (MockTaskTestCase, error)
+	Update(ctx context.Context, tc MockTaskTestCase) (MockTaskTestCase, error)
+	Delete(ctx context.Context, id uuid.UUID) error
 }
 
 // SandboxResult — outcome of running every test case for one task_solve

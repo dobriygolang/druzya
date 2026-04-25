@@ -33,9 +33,14 @@
        `text-pink` compiling without forcing a 70-file rewrite right now. */
     --color-accent: 255 255 255;
     --color-accent-hover: 230 230 230;
-    --color-success: 16 185 129;
+    /* Hone aesthetic collapse — no semantic colors on dark surfaces.
+       Success → white ink (positive things read white). Warn → muted
+       grey (text-secondary). Danger stays Hone red — the SINGLE accent
+       allowed by the design language. Two-letter callsites keep
+       compiling thanks to this redirect, no per-file refactor. */
+    --color-success: 255 255 255;
     --color-danger: 255 59 48;       /* #FF3B30 — Hone red, the only accent */
-    --color-warn: 251 191 36;
+    --color-warn: 200 200 200;
     --color-cyan: 255 255 255;
     --color-pink: 255 255 255;
 

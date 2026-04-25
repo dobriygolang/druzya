@@ -13,24 +13,32 @@ import { ErrorBox, PanelSkeleton } from './shared'
 import { ReferenceCriteriaEditor } from './ReferenceCriteriaEditor'
 import {
   mockAdminErrorMessage,
+  useBulkImportTasksMutation,
   useCreateTaskMutation,
   useCreateTaskQuestionMutation,
+  useCreateTestCaseMutation,
   useDeleteTaskQuestionMutation,
+  useDeleteTestCaseMutation,
   useStrictnessQuery,
   useTaskQuery,
   useTasksQuery,
+  useTestCasesQuery,
   useUpdateTaskMutation,
   useUpdateTaskQuestionMutation,
+  useUpdateTestCaseMutation,
+  type BulkTaskImportItem,
   type MockTask,
   type ReferenceCriteria,
   type StageKind,
   type TaskLanguage,
   type TaskQuestion,
+  type TestCase,
 } from '../../lib/queries/mockAdmin'
+import { useAIModelsQuery } from '../../lib/queries/ai'
 
 const STAGE_KINDS: StageKind[] = ['hr', 'algo', 'coding', 'sysdesign', 'behavioral']
 const LANGS: TaskLanguage[] = ['go', 'python', 'sql', 'any']
-type EditorTab = 'body' | 'reference' | 'questions'
+type EditorTab = 'body' | 'reference' | 'questions' | 'tests'
 
 export function MockTasksPanel() {
   const [stage, setStage] = useState<StageKind | undefined>(undefined)
@@ -38,6 +46,7 @@ export function MockTasksPanel() {
   const [activeOnly, setActiveOnly] = useState(true)
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [creating, setCreating] = useState(false)
+  const [bulkOpen, setBulkOpen] = useState(false)
 
   const list = useTasksQuery({
     stage,
@@ -48,11 +57,20 @@ export function MockTasksPanel() {
   return (
     <div className="flex flex-col gap-4 px-4 py-5 sm:px-7 lg:flex-row">
       <aside className="flex w-full flex-col gap-3 lg:w-80">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between gap-2">
           <h2 className="font-display text-sm font-bold text-text-primary">Задачи</h2>
-          <Button size="sm" onClick={() => setCreating(true)}>
-            + New task
-          </Button>
+          <div className="flex gap-1.5">
+            <button
+              type="button"
+              onClick={() => setBulkOpen(true)}
+              className="rounded-md border border-border bg-surface-1 px-2 py-1 font-mono text-[10px] uppercase text-text-secondary hover:text-text-primary"
+            >
+              bulk
+            </button>
+            <Button size="sm" onClick={() => setCreating(true)}>
+              + New task
+            </Button>
+          </div>
         </div>
 
         <div className="flex flex-col gap-2 rounded-md border border-border bg-surface-1 p-3">
@@ -115,6 +133,7 @@ export function MockTasksPanel() {
       </aside>
 
       <main className="flex-1">
+        {bulkOpen && <BulkImportDialog onClose={() => setBulkOpen(false)} />}
         {creating && <CreateTaskModal onClose={() => setCreating(false)} onCreated={(id) => { setSelectedId(id); setCreating(false) }} />}
         {selectedId ? (
           <TaskDetailEditor key={selectedId} taskId={selectedId} />
@@ -300,7 +319,7 @@ function TaskDetailEditor({ taskId }: { taskId: string }) {
       </div>
 
       <div className="flex gap-1.5 border-b border-border">
-        {(['body', 'reference', 'questions'] as EditorTab[]).map((t) => (
+        {(['body', 'reference', 'questions', 'tests'] as EditorTab[]).map((t) => (
           <button
             key={t}
             type="button"
@@ -319,6 +338,7 @@ function TaskDetailEditor({ taskId }: { taskId: string }) {
       {tab === 'body' && <BodyTab task={task} />}
       {tab === 'reference' && <ReferenceTab task={task} />}
       {tab === 'questions' && <QuestionsTab task={task} />}
+      {tab === 'tests' && <TestsTab task={task} />}
     </div>
   )
 }
@@ -326,6 +346,7 @@ function TaskDetailEditor({ taskId }: { taskId: string }) {
 function BodyTab({ task }: { task: MockTask }) {
   const update = useUpdateTaskMutation()
   const strictness = useStrictnessQuery()
+  const aiModels = useAIModelsQuery('mock')
   const [title, setTitle] = useState(task.title)
   const [stage, setStage] = useState<StageKind>(task.stage_kind)
   const [language, setLanguage] = useState<TaskLanguage>(task.language)
@@ -335,6 +356,7 @@ function BodyTab({ task }: { task: MockTask }) {
   const [funcReq, setFuncReq] = useState(task.functional_requirements_md ?? '')
   const [timeLimit, setTimeLimit] = useState(task.time_limit_min ? String(task.time_limit_min) : '')
   const [strictnessId, setStrictnessId] = useState(task.ai_strictness_profile_id ?? '')
+  const [llmModel, setLlmModel] = useState(task.llm_model ?? '')
   const [err, setErr] = useState<string | null>(null)
 
   async function submit(e: React.FormEvent) {
@@ -353,6 +375,7 @@ function BodyTab({ task }: { task: MockTask }) {
           functional_requirements_md: stage === 'sysdesign' ? funcReq : undefined,
           time_limit_min: timeLimit ? Number(timeLimit) : undefined,
           ai_strictness_profile_id: strictnessId || undefined,
+          llm_model: llmModel || '',
         },
       })
     } catch (e) {
@@ -400,7 +423,7 @@ function BodyTab({ task }: { task: MockTask }) {
         <MarkdownArea label="functional_requirements_md" value={funcReq} onChange={setFuncReq} minRows={6} />
       )}
 
-      <div className="grid gap-3 sm:grid-cols-2">
+      <div className="grid gap-3 sm:grid-cols-3">
         <FormField
           label="time_limit_min"
           type="number"
@@ -417,6 +440,21 @@ function BodyTab({ task }: { task: MockTask }) {
             <option value="">— default —</option>
             {(strictness.data ?? []).map((p) => (
               <option key={p.id} value={p.id}>{p.name}</option>
+            ))}
+          </select>
+        </label>
+        <label className="flex flex-col gap-1">
+          <span className="font-mono text-[10px] uppercase tracking-[0.1em] text-text-muted">llm_model</span>
+          <select
+            value={llmModel}
+            onChange={(e) => setLlmModel(e.target.value)}
+            className="rounded-md border border-border bg-bg/40 px-2 py-1.5 text-[13px] text-text-primary"
+          >
+            <option value="">— inherit —</option>
+            {(aiModels.data?.items ?? []).map((m) => (
+              <option key={m.id} value={m.id}>
+                {m.label} {m.tier === 'premium' ? '★' : ''}
+              </option>
             ))}
           </select>
         </label>
@@ -644,6 +682,300 @@ function MarkdownArea({
         style={{ minHeight: minRows >= 12 ? 300 : undefined }}
       />
       <div className="self-end font-mono text-[9px] text-text-muted">{chars} chars</div>
+    </div>
+  )
+}
+
+// ── tests tab ──────────────────────────────────────────────────────────
+
+function TestsTab({ task }: { task: MockTask }) {
+  const list = useTestCasesQuery(task.id)
+  const create = useCreateTestCaseMutation(task.id)
+  const update = useUpdateTestCaseMutation(task.id)
+  const del = useDeleteTestCaseMutation(task.id)
+  const [draft, setDraft] = useState<{ input: string; expected: string; hidden: boolean }>(
+    { input: '', expected: '', hidden: false },
+  )
+  const [err, setErr] = useState<string | null>(null)
+
+  const cases = list.data ?? []
+
+  async function add() {
+    setErr(null)
+    if (!draft.input.trim() || !draft.expected.trim()) {
+      setErr('input and expected_output are required')
+      return
+    }
+    try {
+      await create.mutateAsync({
+        input: draft.input,
+        expected_output: draft.expected,
+        is_hidden: draft.hidden,
+        ordinal: cases.length,
+      })
+      setDraft({ input: '', expected: '', hidden: false })
+    } catch (e) {
+      setErr(mockAdminErrorMessage(e))
+    }
+  }
+
+  return (
+    <div className="flex flex-col gap-3">
+      <p className="text-[11px] text-text-muted">
+        Test cases for the Judge0 sandbox. Each row is one stdin/stdout
+        pair — task is judged as pass when every visible case matches
+        exactly (after trim). `is_hidden` rows still count toward the
+        verdict but are not shown in the candidate's failure summary.
+      </p>
+
+      {list.isPending && <PanelSkeleton rows={2} />}
+      {list.error && <ErrorBox message={mockAdminErrorMessage(list.error)} />}
+
+      {cases.length > 0 && (
+        <ul className="flex flex-col gap-2">
+          {cases.map((tc) => (
+            <TestCaseRow
+              key={tc.id}
+              tc={tc}
+              onSave={(body) => update.mutateAsync({ id: tc.id, body })}
+              onDelete={() => del.mutateAsync(tc.id)}
+            />
+          ))}
+        </ul>
+      )}
+
+      <div className="flex flex-col gap-2 rounded-md border border-border bg-surface-1 p-3">
+        <div className="font-mono text-[10px] uppercase tracking-[0.1em] text-text-muted">
+          Add case
+        </div>
+        <textarea
+          value={draft.input}
+          placeholder="stdin"
+          rows={3}
+          onChange={(e) => setDraft({ ...draft, input: e.currentTarget.value })}
+          className="rounded-md border border-border bg-bg/40 p-2 font-mono text-[12px] text-text-primary"
+        />
+        <textarea
+          value={draft.expected}
+          placeholder="expected stdout"
+          rows={2}
+          onChange={(e) => setDraft({ ...draft, expected: e.currentTarget.value })}
+          className="rounded-md border border-border bg-bg/40 p-2 font-mono text-[12px] text-text-primary"
+        />
+        <label className="flex items-center gap-2">
+          <input
+            type="checkbox"
+            checked={draft.hidden}
+            onChange={(e) => setDraft({ ...draft, hidden: e.currentTarget.checked })}
+          />
+          <span className="font-mono text-[11px] text-text-secondary">is_hidden</span>
+        </label>
+        {err && <div className="text-[12px] text-danger">{err}</div>}
+        <div className="flex justify-end">
+          <Button size="sm" onClick={() => void add()} loading={create.isPending}>
+            + Add case
+          </Button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function TestCaseRow({
+  tc,
+  onSave,
+  onDelete,
+}: {
+  tc: TestCase
+  onSave: (body: { input: string; expected_output: string; is_hidden: boolean; ordinal: number }) => Promise<unknown>
+  onDelete: () => Promise<unknown>
+}) {
+  const [editing, setEditing] = useState(false)
+  const [input, setInput] = useState(tc.input)
+  const [expected, setExpected] = useState(tc.expected_output)
+  const [hidden, setHidden] = useState(tc.is_hidden)
+
+  if (!editing) {
+    return (
+      <li className="flex items-start gap-3 rounded-md border border-border bg-surface-1 p-3">
+        <span className="font-mono text-[10px] text-text-muted">#{tc.ordinal}</span>
+        <div className="flex-1 min-w-0">
+          <pre className="overflow-x-auto whitespace-pre-wrap break-words font-mono text-[11px] text-text-primary">
+            {tc.input}
+          </pre>
+          <div className="my-1 font-mono text-[9px] uppercase text-text-muted">→</div>
+          <pre className="overflow-x-auto whitespace-pre-wrap break-words font-mono text-[11px] text-text-secondary">
+            {tc.expected_output}
+          </pre>
+          {tc.is_hidden && (
+            <span className="mt-1 inline-block rounded border border-border bg-surface-2 px-1.5 py-0.5 font-mono text-[9px] uppercase text-text-muted">
+              hidden
+            </span>
+          )}
+        </div>
+        <div className="flex flex-col gap-1">
+          <button
+            type="button"
+            onClick={() => setEditing(true)}
+            className="rounded-md border border-border bg-surface-2 px-2 py-0.5 font-mono text-[10px] text-text-secondary hover:text-text-primary"
+          >
+            edit
+          </button>
+          <button
+            type="button"
+            onClick={() => void onDelete()}
+            className="rounded-md border border-border bg-surface-2 px-2 py-0.5 font-mono text-[10px] text-text-secondary hover:text-danger"
+          >
+            del
+          </button>
+        </div>
+      </li>
+    )
+  }
+
+  return (
+    <li className="flex flex-col gap-2 rounded-md border border-border bg-surface-1 p-3">
+      <textarea
+        value={input}
+        rows={3}
+        onChange={(e) => setInput(e.currentTarget.value)}
+        className="rounded-md border border-border bg-bg/40 p-2 font-mono text-[12px] text-text-primary"
+      />
+      <textarea
+        value={expected}
+        rows={2}
+        onChange={(e) => setExpected(e.currentTarget.value)}
+        className="rounded-md border border-border bg-bg/40 p-2 font-mono text-[12px] text-text-primary"
+      />
+      <label className="flex items-center gap-2">
+        <input
+          type="checkbox"
+          checked={hidden}
+          onChange={(e) => setHidden(e.currentTarget.checked)}
+        />
+        <span className="font-mono text-[11px] text-text-secondary">is_hidden</span>
+      </label>
+      <div className="flex justify-end gap-2">
+        <button
+          type="button"
+          onClick={() => setEditing(false)}
+          className="rounded-md border border-border bg-surface-2 px-2 py-1 font-mono text-[10px] text-text-secondary"
+        >
+          cancel
+        </button>
+        <Button
+          size="sm"
+          onClick={async () => {
+            await onSave({
+              input,
+              expected_output: expected,
+              is_hidden: hidden,
+              ordinal: tc.ordinal,
+            })
+            setEditing(false)
+          }}
+        >
+          save
+        </Button>
+      </div>
+    </li>
+  )
+}
+
+// ── bulk import dialog ────────────────────────────────────────────────
+
+export function BulkImportDialog({ onClose }: { onClose: () => void }) {
+  const mut = useBulkImportTasksMutation()
+  const [text, setText] = useState('')
+  const [results, setResults] = useState<{ index: number; task_id?: string; error?: string; test_cases_added: number }[] | null>(null)
+  const [err, setErr] = useState<string | null>(null)
+
+  async function run() {
+    setErr(null)
+    setResults(null)
+    let parsed: BulkTaskImportItem[]
+    try {
+      const raw = JSON.parse(text)
+      // Accept either an array directly or { tasks: [...] } envelope.
+      parsed = Array.isArray(raw) ? raw : (raw.tasks ?? [])
+    } catch (e) {
+      setErr('Invalid JSON: ' + (e instanceof Error ? e.message : String(e)))
+      return
+    }
+    if (!Array.isArray(parsed) || parsed.length === 0) {
+      setErr('Expected a non-empty array of tasks')
+      return
+    }
+    try {
+      const out = await mut.mutateAsync(parsed)
+      setResults(out.results)
+    } catch (e) {
+      setErr(mockAdminErrorMessage(e))
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4" onClick={onClose}>
+      <div
+        className="flex max-h-[90vh] w-full max-w-2xl flex-col gap-3 overflow-y-auto rounded-lg border border-border-strong bg-surface-1 p-5"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between">
+          <h3 className="font-display text-base font-bold text-text-primary">Bulk import tasks</h3>
+          <button
+            type="button"
+            onClick={onClose}
+            className="font-mono text-[11px] text-text-muted hover:text-text-primary"
+          >
+            close
+          </button>
+        </div>
+        <p className="font-mono text-[11px] text-text-muted">
+          Paste a JSON array (or {'{'} tasks: [...] {'}'} envelope) of task objects.
+          Each item may carry an inline <code>test_cases</code> array.
+        </p>
+        <textarea
+          value={text}
+          onChange={(e) => setText(e.currentTarget.value)}
+          rows={14}
+          placeholder='[{"stage_kind":"algo","language":"python","difficulty":1,"title":"Two Sum","body_md":"...","active":true,"test_cases":[{"input":"2,7\n9","expected_output":"0 1"}]}]'
+          className="w-full rounded-md border border-border bg-bg/40 p-2 font-mono text-[12px] text-text-primary"
+        />
+        {err && <div className="text-[12px] text-danger">{err}</div>}
+        {results && (
+          <div className="rounded-md border border-border bg-surface-2 p-3 font-mono text-[11px]">
+            <div className="mb-2 text-text-secondary">
+              Imported {results.filter((r) => r.task_id).length} / {results.length}.
+            </div>
+            <ul className="flex max-h-48 flex-col gap-1 overflow-y-auto">
+              {results.map((r) => (
+                <li key={r.index} className="text-text-muted">
+                  #{r.index}{' '}
+                  {r.task_id ? (
+                    <span className="text-text-secondary">
+                      ✓ {r.task_id.slice(0, 8)} · {r.test_cases_added} cases
+                    </span>
+                  ) : (
+                    <span className="text-danger">✗ {r.error}</span>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+        <div className="flex justify-end gap-2">
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-md border border-border bg-surface-2 px-3 py-1.5 font-mono text-[11px] text-text-secondary"
+          >
+            close
+          </button>
+          <Button size="sm" onClick={() => void run()} loading={mut.isPending}>
+            Import
+          </Button>
+        </div>
+      </div>
     </div>
   )
 }

@@ -196,6 +196,9 @@ export type MockTask = {
   functional_requirements_md?: string | null
   time_limit_min?: number | null
   ai_strictness_profile_id?: string | null
+  // Per-task LLM-model override matching llm_models.model_id. Empty
+  // string ⇢ inherit from strictness profile / global default.
+  llm_model?: string
   active?: boolean
   questions?: TaskQuestion[]
 }
@@ -212,6 +215,7 @@ export type TaskCreateBody = {
   functional_requirements_md?: string
   time_limit_min?: number
   ai_strictness_profile_id?: string
+  llm_model?: string
 }
 
 export type TaskPatchBody = Partial<TaskCreateBody & { active: boolean }>
@@ -517,4 +521,123 @@ export function mockAdminErrorMessage(err: unknown): string {
   if (status === 404) return 'Не найдено.'
   if (status && status >= 500) return 'Сервер ответил ошибкой. Попробуй ещё раз.'
   return 'Не удалось выполнить запрос.'
+}
+
+// ── test cases (Judge0 grading rows) ─────────────────────────────────────
+
+export type TestCase = {
+  id: string
+  task_id: string
+  input: string
+  expected_output: string
+  is_hidden: boolean
+  ordinal: number
+}
+
+export type TestCaseUpsertBody = {
+  input: string
+  expected_output: string
+  is_hidden?: boolean
+  ordinal?: number
+}
+
+const KEY_TEST_CASES = ['mock-admin', 'test-cases'] as const
+
+export function useTestCasesQuery(taskId: string | undefined) {
+  return useQuery({
+    queryKey: [...KEY_TEST_CASES, taskId],
+    queryFn: async () =>
+      unwrap(
+        await api<ListResp<TestCase>>(
+          `/admin/mock/tasks/${encodeURIComponent(taskId!)}/test-cases`,
+        ),
+      ),
+    enabled: !!taskId,
+    staleTime: 30_000,
+  })
+}
+
+export function useCreateTestCaseMutation(taskId: string | undefined) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (body: TestCaseUpsertBody) =>
+      api<TestCase>(`/admin/mock/tasks/${encodeURIComponent(taskId!)}/test-cases`, {
+        method: 'POST',
+        body: JSON.stringify(body),
+      }),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: [...KEY_TEST_CASES, taskId] })
+    },
+  })
+}
+
+export function useUpdateTestCaseMutation(taskId: string | undefined) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, body }: { id: string; body: TestCaseUpsertBody }) =>
+      api<TestCase>(`/admin/mock/test-cases/${encodeURIComponent(id)}`, {
+        method: 'PATCH',
+        body: JSON.stringify(body),
+      }),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: [...KEY_TEST_CASES, taskId] })
+    },
+  })
+}
+
+export function useDeleteTestCaseMutation(taskId: string | undefined) {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) =>
+      api<{ ok: boolean }>(`/admin/mock/test-cases/${encodeURIComponent(id)}`, {
+        method: 'DELETE',
+      }),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: [...KEY_TEST_CASES, taskId] })
+    },
+  })
+}
+
+// ── bulk import ──────────────────────────────────────────────────────────
+
+export type BulkTaskImportItem = {
+  stage_kind: StageKind
+  language: TaskLanguage
+  difficulty: number
+  title: string
+  body_md?: string
+  sample_io_md?: string
+  reference_criteria?: ReferenceCriteria
+  reference_solution_md?: string
+  functional_requirements_md?: string
+  time_limit_min?: number
+  llm_model?: string
+  active?: boolean
+  test_cases?: Array<{
+    input: string
+    expected_output: string
+    is_hidden?: boolean
+    ordinal?: number
+  }>
+}
+
+export type BulkImportResult = {
+  index: number
+  task_id?: string
+  test_cases_added: number
+  error?: string
+}
+
+export function useBulkImportTasksMutation() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (tasks: BulkTaskImportItem[]) =>
+      api<{ results: BulkImportResult[] }>('/admin/mock/tasks/bulk-import', {
+        method: 'POST',
+        body: JSON.stringify({ tasks }),
+      }),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: KEY_TASKS })
+    },
+  })
 }
