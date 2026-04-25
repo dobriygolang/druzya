@@ -15,6 +15,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ConnectError, Code } from '@connectrpc/connect';
 import * as Y from 'yjs';
+import {
+  Awareness,
+  applyAwarenessUpdate,
+  encodeAwarenessUpdate,
+} from 'y-protocols/awareness';
 import { EditorState, Compartment } from '@codemirror/state';
 import { EditorView, keymap, lineNumbers } from '@codemirror/view';
 import { defaultKeymap, history, historyKeymap } from '@codemirror/commands';
@@ -26,6 +31,7 @@ import { oneDark } from '@codemirror/theme-one-dark';
 import { yCollab } from 'y-codemirror.next';
 
 import { BackBtn, GhostBtn, PrimaryBtn } from '../components/primitives/Buttons';
+import { useSessionStore } from '../stores/session';
 import { WEB_BASE_URL } from '../api/config';
 import {
   createRoom,
@@ -423,8 +429,11 @@ function RoomView({ roomId, onBack }: { roomId: string; onBack: () => void }) {
   const ydocRef = useRef<Y.Doc | null>(null);
   const viewRef = useRef<EditorView | null>(null);
   const sendRef = useRef<((payload: Uint8Array) => void) | null>(null);
+  const sendAwarenessRef = useRef<((payload: Uint8Array) => void) | null>(null);
   const wsCloseRef = useRef<(() => void) | null>(null);
   const runningRef = useRef(false);
+
+  const myUserId = useSessionStore((s) => s.userId);
 
   // Load room meta.
   useEffect(() => {
@@ -445,20 +454,43 @@ function RoomView({ roomId, onBack }: { roomId: string; onBack: () => void }) {
     };
   }, [parsedId]);
 
-  // Init Y.Doc + WebSocket + CodeMirror.
+  // Init Y.Doc + WebSocket + CodeMirror + Awareness.
   useEffect(() => {
     if (!room) return;
     const ydoc = new Y.Doc();
     ydocRef.current = ydoc;
     const ytext = ydoc.getText('code');
 
-    // Local change → push update to server.
+    // Awareness — track карет/selection других участников. Бэкенд relay'ит
+    // payload через 'presence' envelope (см. editor/ports/ws.go InPresence).
+    const awareness = new Awareness(ydoc);
+    // Берём короткое имя из participants (сами себя), плюс детерминированный
+    // цвет от userId — каждый юзер видит соседей одним и тем же цветом.
+    const me = room.participants.find((p) => p.userId === myUserId);
+    const myName = me?.username || (myUserId ?? '').slice(0, 6) || 'guest';
+    const myColor = userColor(myUserId ?? room.id);
+    awareness.setLocalStateField('user', { name: myName, color: myColor });
+
+    // Local Y.Doc updates → push.
     const onUpdate = (update: Uint8Array, origin: unknown) => {
-      // Не ретранслируем apply'и от сервера (origin === 'remote').
       if (origin === 'remote') return;
       sendRef.current?.(update);
     };
     ydoc.on('update', onUpdate);
+
+    // Local awareness changes → push в presence-канал. Throttle уже даёт
+    // y-protocols (выпускает change-event только когда state реально меняется).
+    const onAwareness = (
+      diff: { added: number[]; updated: number[]; removed: number[] },
+      origin: unknown,
+    ) => {
+      if (origin === 'remote') return;
+      const changedClients = diff.added.concat(diff.updated, diff.removed);
+      if (changedClients.length === 0) return;
+      const enc = encodeAwarenessUpdate(awareness, changedClients);
+      sendAwarenessRef.current?.(enc);
+    };
+    awareness.on('update', onAwareness);
 
     // WebSocket.
     const handle = connectEditorWs({
@@ -471,6 +503,18 @@ function RoomView({ roomId, onBack }: { roomId: string; onBack: () => void }) {
             const bytes = b64ToBytes(data.payload);
             Y.applyUpdate(ydoc, bytes, 'remote');
           }
+        } else if (env.kind === 'presence') {
+          // Бэкенд envelope.data — это `env.Data` rawJSON наш payload, но
+          // backend заворачивает в `{user_id, data}`. Берём data как есть.
+          const data = env.data as { data?: { update?: string }; update?: string } | undefined;
+          const b64 = data?.data?.update ?? data?.update;
+          if (typeof b64 === 'string') {
+            try {
+              applyAwarenessUpdate(awareness, b64ToBytes(b64), 'remote');
+            } catch {
+              /* malformed remote awareness — ignore */
+            }
+          }
         }
       },
     });
@@ -478,8 +522,15 @@ function RoomView({ roomId, onBack }: { roomId: string; onBack: () => void }) {
     sendRef.current = (update: Uint8Array) => {
       handle.send({ kind: 'op', data: { payload: bytesToB64(update) } });
     };
+    sendAwarenessRef.current = (update: Uint8Array) => {
+      // Backend ws.go ловит kind='presence', envelope.data — opaque, мы
+      // кладём { update: base64 } и backend re-broadcast'ит как
+      // { user_id, data } (см. editor/ports/ws.go InPresence handling).
+      handle.send({ kind: 'presence', data: { update: bytesToB64(update) } });
+    };
 
-    // CodeMirror setup.
+    // CodeMirror setup. yCollab(ytext, awareness) — теперь рисует чужие
+    // карет/selection с цветом из awareness state.
     const langCompartment = new Compartment();
     const state = EditorState.create({
       doc: ytext.toString(),
@@ -490,10 +541,13 @@ function RoomView({ roomId, onBack }: { roomId: string; onBack: () => void }) {
         keymap.of([...defaultKeymap, ...historyKeymap]),
         oneDark,
         langCompartment.of(langExt(room.language)),
-        yCollab(ytext, null),
+        yCollab(ytext, awareness),
         EditorView.theme({
           '&': { height: '100%', fontSize: '13px' },
           '.cm-scroller': { fontFamily: 'var(--font-mono)' },
+          // y-codemirror.next дёргает .cm-ySelectionCaret / .cm-ySelection
+          // и вытаскивает цвет из awareness.user.color через CSS-переменные —
+          // никаких extra стилей не нужно, всё уже работает.
         }),
       ],
     });
@@ -505,14 +559,17 @@ function RoomView({ roomId, onBack }: { roomId: string; onBack: () => void }) {
     return () => {
       view.destroy();
       viewRef.current = null;
+      awareness.off('update', onAwareness);
+      awareness.destroy();
       ydoc.off('update', onUpdate);
       ydoc.destroy();
       ydocRef.current = null;
       wsCloseRef.current?.();
       wsCloseRef.current = null;
       sendRef.current = null;
+      sendAwarenessRef.current = null;
     };
-  }, [room]);
+  }, [room, myUserId]);
 
   const shareURL = `${WEB_BASE_URL}/editor/${parsedId}`;
 
@@ -869,6 +926,18 @@ function Participants({ list }: { list: EditorRoom['participants'] }) {
       )}
     </div>
   );
+}
+
+// userColor — детерминированный HSL по hash(userId). Все участники
+// видят одного и того же юзера одним цветом. Saturation/lightness в
+// узком диапазоне, чтобы цвета смотрелись на dark canvas (oneDark).
+function userColor(seed: string): string {
+  let h = 0;
+  for (let i = 0; i < seed.length; i++) {
+    h = (h * 31 + seed.charCodeAt(i)) | 0;
+  }
+  const hue = Math.abs(h) % 360;
+  return `hsl(${hue}, 80%, 65%)`;
 }
 
 function timeAgo(ts: number): string {
