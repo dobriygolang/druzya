@@ -22,7 +22,12 @@ interface State {
 
 const INITIAL: State = { status: 'loading', events: [], error: null, errorCode: null };
 
-export function EventsPage() {
+interface EventsPageProps {
+  onJumpToEditor?: (roomId: string) => void;
+  onJumpToBoard?: (roomId: string) => void;
+}
+
+export function EventsPage({ onJumpToEditor, onJumpToBoard }: EventsPageProps = {}) {
   const [state, setState] = useState<State>(INITIAL);
   const userId = useSessionStore((s) => s.userId);
   const [busyId, setBusyId] = useState<string | null>(null);
@@ -124,6 +129,8 @@ export function EventsPage() {
                 joined={ev.participants.some((p) => p.userId === userId)}
                 busy={busyId === ev.id}
                 onRSVP={() => void handleRSVP(ev)}
+                onJumpToEditor={onJumpToEditor}
+                onJumpToBoard={onJumpToBoard}
               />
             ))}
           </ul>
@@ -138,11 +145,15 @@ function EventRow({
   joined,
   busy,
   onRSVP,
+  onJumpToEditor,
+  onJumpToBoard,
 }: {
   ev: CalendarEvent;
   joined: boolean;
   busy: boolean;
   onRSVP: () => void;
+  onJumpToEditor?: (roomId: string) => void;
+  onJumpToBoard?: (roomId: string) => void;
 }) {
   const when = ev.startsAt
     ? ev.startsAt.toLocaleString(undefined, {
@@ -153,14 +164,6 @@ function EventRow({
         minute: '2-digit',
       })
     : 'TBD';
-
-  const copyRoomId = async (id: string) => {
-    try {
-      await navigator.clipboard.writeText(id);
-    } catch {
-      /* ignore */
-    }
-  };
 
   return (
     <li
@@ -229,38 +232,36 @@ function EventRow({
         <div style={{ marginTop: 12, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           {ev.editorRoomId && (
             <button
-              onClick={() => void copyRoomId(ev.editorRoomId)}
-              className="mono"
-              title={`Copy editor room id: ${ev.editorRoomId}`}
+              onClick={() => onJumpToEditor?.(ev.editorRoomId)}
+              className="focus-ring mono"
               style={{
-                padding: '4px 10px',
+                padding: '5px 12px',
                 fontSize: 10,
                 letterSpacing: '.14em',
-                color: 'var(--ink-60)',
-                background: 'transparent',
-                border: '1px solid rgba(255,255,255,0.08)',
-                borderRadius: 6,
+                color: 'var(--ink)',
+                background: 'rgba(255,255,255,0.06)',
+                border: '1px solid rgba(255,255,255,0.12)',
+                borderRadius: 999,
               }}
             >
-              + EDITOR ROOM (E → JOIN BY ID)
+              JOIN EDITOR ROOM →
             </button>
           )}
           {ev.whiteboardRoomId && (
             <button
-              onClick={() => void copyRoomId(ev.whiteboardRoomId)}
-              className="mono"
-              title={`Copy whiteboard room id: ${ev.whiteboardRoomId}`}
+              onClick={() => onJumpToBoard?.(ev.whiteboardRoomId)}
+              className="focus-ring mono"
               style={{
-                padding: '4px 10px',
+                padding: '5px 12px',
                 fontSize: 10,
                 letterSpacing: '.14em',
-                color: 'var(--ink-60)',
-                background: 'transparent',
-                border: '1px solid rgba(255,255,255,0.08)',
-                borderRadius: 6,
+                color: 'var(--ink)',
+                background: 'rgba(255,255,255,0.06)',
+                border: '1px solid rgba(255,255,255,0.12)',
+                borderRadius: 999,
               }}
             >
-              + BOARD (B → JOIN BY ID)
+              JOIN BOARD →
             </button>
           )}
         </div>

@@ -41,6 +41,11 @@ import {
 
 type Page = { kind: 'list' } | { kind: 'room'; roomId: string };
 
+interface EditorPageProps {
+  initialRoomId?: string | null;
+  onConsumeInitial?: () => void;
+}
+
 function langExt(lang: Language) {
   switch (lang) {
     case Language.GO:
@@ -70,8 +75,17 @@ function languageLabel(lang: Language): string {
   }
 }
 
-export function EditorPage() {
-  const [page, setPage] = useState<Page>({ kind: 'list' });
+export function EditorPage({ initialRoomId, onConsumeInitial }: EditorPageProps = {}) {
+  const [page, setPage] = useState<Page>(
+    initialRoomId ? { kind: 'room', roomId: initialRoomId } : { kind: 'list' },
+  );
+  // Single-shot consume: после отрисовки room-view сообщаем родителю что
+  // initialRoomId израсходован, чтобы повторное переключение page не
+  // вернуло пользователя в ту же комнату принудительно.
+  useEffect(() => {
+    if (initialRoomId && onConsumeInitial) onConsumeInitial();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   if (page.kind === 'list') {
     return <RoomsList onOpenRoom={(id) => setPage({ kind: 'room', roomId: id })} />;

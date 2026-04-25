@@ -33,8 +33,23 @@ import {
 
 type Page = { kind: 'list' } | { kind: 'room'; roomId: string };
 
-export function SharedBoardsPage() {
-  const [page, setPage] = useState<Page>({ kind: 'list' });
+interface SharedBoardsPageProps {
+  initialRoomId?: string | null;
+  onConsumeInitial?: () => void;
+}
+
+export function SharedBoardsPage({
+  initialRoomId,
+  onConsumeInitial,
+}: SharedBoardsPageProps = {}) {
+  const [page, setPage] = useState<Page>(
+    initialRoomId ? { kind: 'room', roomId: initialRoomId } : { kind: 'list' },
+  );
+  useEffect(() => {
+    if (initialRoomId && onConsumeInitial) onConsumeInitial();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   if (page.kind === 'list') {
     return <RoomsList onOpenRoom={(id) => setPage({ kind: 'room', roomId: id })} />;
   }

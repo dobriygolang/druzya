@@ -6,6 +6,12 @@
 //   - pomodoro snapshot восстанавливается из main-process store, новые
 //     значения пушатся в save с rate-limit'ом 1 раз/сек
 //   - guest → LoginScreen, иначе обычные страницы
+//
+// Focus refactor (apr 2026, bible §3): standalone FocusPage снят;
+// pomodoro-таймер теперь живёт в Dock (тихо) + HomePage (subtle pinned-
+// task + post-finish reflection). Backend StartFocusSession /
+// EndFocusSession теперь оркестрируется отсюда, не из удалённой страницы,
+// чтобы streak-механика продолжала наполняться (bible §6 sync).
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { CanvasBg, type CanvasMode } from './components/CanvasBg';
@@ -19,7 +25,6 @@ import { StandupModal } from './components/StandupModal';
 import { UpdateToast } from './components/UpdateToast';
 import { HomePage } from './pages/Home';
 import { TodayPage, type StartFocusArgs } from './pages/Today';
-import { FocusPage } from './pages/Focus';
 import { NotesPage } from './pages/Notes';
 import { WhiteboardPage } from './pages/Whiteboard';
 import { StatsPage } from './pages/Stats';
@@ -28,9 +33,18 @@ import { EditorPage } from './pages/Editor';
 import { SharedBoardsPage } from './pages/SharedBoards';
 import { EventsPage } from './pages/Events';
 import { useSessionStore } from './stores/session';
+import { startFocusSession, endFocusSession } from './api/hone';
 
 const POMODORO_SECONDS = 25 * 60;
 const ONBOARDING_KEY = 'hone:onboarded:v2';
+
+// ReflectionPrompt — что показывает Home после завершения сессии. Не
+// модалка-блокер (как было в FocusPage), просто inline-инпут в углу.
+interface ReflectionPrompt {
+  sessionId: string;
+  secondsFocused: number;
+  pomodorosCompleted: number;
+}
 
 export default function App() {
   const status = useSessionStore((s) => s.status);
@@ -48,9 +62,18 @@ export default function App() {
   const [running, setRunning] = useState(false);
   const [vol, setVol] = useState(40);
 
-  const [focusArgs, setFocusArgs] = useState<StartFocusArgs | null>(null);
-  const [stopRequested, setStopRequested] = useState(false);
-  const [focusBump, setFocusBump] = useState(0);
+  const [pinnedTitle, setPinnedTitle] = useState<string | null>(null);
+  const [pinnedPlanItemId, setPinnedPlanItemId] = useState<string | null>(null);
+  // initialRoomId: при переходе из Events на event со ссылкой на комнату
+  // App ставит сюда room-id; целевая страница (editor / shared_boards)
+  // подхватывает это на mount и сразу открывает комнату вместо list.
+  // Single-shot — после consume сбрасываем в null.
+  const [initialEditorRoom, setInitialEditorRoom] = useState<string | null>(null);
+  const [initialBoardRoom, setInitialBoardRoom] = useState<string | null>(null);
+  // Sentinel для backend session — null значит "не идёт". Создаётся при
+  // первом переходе в running, гасится в finishSession.
+  const sessionRef = useRef<string | null>(null);
+  const [reflectionPrompt, setReflectionPrompt] = useState<ReflectionPrompt | null>(null);
 
   // ── Bootstrap: session + pomodoro snapshot + IPC subscribers ────────────
   useEffect(() => {
@@ -89,15 +112,15 @@ export default function App() {
       }
     });
 
-    // deepLink push: focus/start, etc.
+    // deepLink push: druz9://focus?task=...&title=... — ставит pinned-task
+    // и стартует таймер сразу (поведение совместимое со старым FocusPage).
     const offDeep = bridge.on('deepLink', ({ url }) => {
       try {
         const u = new URL(url);
         if (u.host === 'focus') {
-          // druz9://focus?task=<id>&title=<urlenc>
           const planItemId = u.searchParams.get('task') ?? undefined;
-          const pinnedTitle = u.searchParams.get('title') ?? undefined;
-          openImpl('focus', { planItemId, pinnedTitle });
+          const pinned = u.searchParams.get('title') ?? undefined;
+          startFocus({ planItemId, pinnedTitle: pinned });
         }
       } catch {
         /* ignore malformed */
@@ -147,51 +170,98 @@ export default function App() {
     void bridge.pomodoro.save({ remainSec: remain, running, savedAt: now });
   }, [remain, running]);
 
+  // ── Focus session backend integration ─────────────────────────────────
+  // Start session при первом переходе running false→true. Errors глотаем —
+  // streak-наполнение «best-effort», не должно ломать таймер.
   useEffect(() => {
-    if (page === 'focus' && remain === 0 && running) {
-      setRunning(false);
-      setStopRequested(true);
-    }
-  }, [page, remain, running]);
+    if (!running || sessionRef.current) return;
+    const planItemId = pinnedPlanItemId ?? undefined;
+    const pinned = pinnedTitle ?? undefined;
+    startFocusSession({ planItemId, pinnedTitle: pinned, mode: 'pomodoro' })
+      .then((s) => {
+        sessionRef.current = s.id;
+      })
+      .catch(() => {
+        /* silent — Dock-таймер не должен показывать ошибку */
+      });
+  }, [running, pinnedPlanItemId, pinnedTitle]);
 
-  const openImpl = useCallback((id: PageId | 'copilot', args?: StartFocusArgs) => {
-    if (id === 'copilot') {
-      setCopilotOpen(true);
-      return;
-    }
-    if (id === 'focus') {
-      setFocusArgs(args ?? null);
-      setStopRequested(false);
-      setFocusBump((b) => b + 1);
+  const finishSession = useCallback(
+    async (reflection: string = '') => {
+      const id = sessionRef.current;
+      if (!id) return;
+      const secondsFocused = Math.max(0, POMODORO_SECONDS - remain);
+      const pomodorosCompleted = remain === 0 ? 1 : 0;
+      sessionRef.current = null;
+      try {
+        await endFocusSession({
+          sessionId: id,
+          pomodorosCompleted,
+          secondsFocused,
+          reflection: reflection.trim(),
+        });
+      } catch {
+        /* silent — сессия уже была живой, бэкенд авто-закроет по timeout */
+      }
+    },
+    [remain],
+  );
+
+  // Auto-end когда таймер дотикивает — гасим session + поднимаем
+  // reflection prompt на Home.
+  useEffect(() => {
+    if (running && remain === 0) {
+      setRunning(false);
+      const id = sessionRef.current;
+      const seconds = POMODORO_SECONDS;
+      void finishSession();
+      if (id) {
+        setReflectionPrompt({
+          sessionId: id,
+          secondsFocused: seconds,
+          pomodorosCompleted: 1,
+        });
+      }
       setRemain(POMODORO_SECONDS);
-      setRunning(true);
     }
-    setPage(id);
+  }, [remain, running, finishSession]);
+
+  const startFocus = useCallback((args?: StartFocusArgs) => {
+    setPinnedPlanItemId(args?.planItemId ?? null);
+    setPinnedTitle(args?.pinnedTitle ?? null);
+    setReflectionPrompt(null);
+    setRemain(POMODORO_SECONDS);
+    setRunning(true);
+    setPage('home');
   }, []);
+
+  const stopFocus = useCallback(() => {
+    if (!running && !sessionRef.current) return;
+    setRunning(false);
+    void finishSession();
+    setRemain(POMODORO_SECONDS);
+  }, [running, finishSession]);
+
+  const openImpl = useCallback(
+    (id: PageId | 'copilot', args?: StartFocusArgs) => {
+      if (id === 'copilot') {
+        setCopilotOpen(true);
+        return;
+      }
+      if (args) {
+        // Today/Plan нажал «Start focus» — ставим pinned-task и переходим
+        // на Home с запущенным таймером.
+        startFocus(args);
+        return;
+      }
+      setPage(id);
+    },
+    [startFocus],
+  );
 
   const open = openImpl;
 
-  const goHome = () => {
-    if (page === 'focus') {
-      setRunning(false);
-      setRemain(POMODORO_SECONDS);
-      setStopRequested(false);
-      setFocusArgs(null);
-    }
-    setPage('home');
-  };
-
-  const handleFocusEnd = useCallback(() => {
-    setRunning(false);
-    setRemain(POMODORO_SECONDS);
-    setStopRequested(false);
-    setFocusArgs(null);
-    setPage('home');
-  }, []);
-
-  const handleStopTick = useCallback(() => {
-    setRunning(false);
-  }, []);
+  const goHome = () => setPage('home');
 
   // ── Global keyboard ─────────────────────────────────────────────────────
   useEffect(() => {
@@ -240,21 +310,8 @@ export default function App() {
       }
       if (isText || paletteOpen || standupOpen || onboardingOpen) return;
 
-      if (page === 'focus') {
-        if (e.code === 'Space') {
-          e.preventDefault();
-          setRunning((r) => !r);
-          return;
-        }
-        if (e.key.toLowerCase() === 's') {
-          setStopRequested(true);
-          return;
-        }
-      }
-
       const k = e.key.toLowerCase();
       if (k === 't') open('today');
-      else if (k === 'f') open('focus');
       else if (k === 'n') open('notes');
       else if (k === 'd') open('board');
       else if (k === 's') open('stats');
@@ -268,9 +325,7 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [paletteOpen, copilotOpen, standupOpen, onboardingOpen, page]);
 
-  const focusMode = page === 'focus';
-  const canvasMode: CanvasMode =
-    page === 'home' || page === 'stats' ? 'full' : focusMode ? 'void' : 'quiet';
+  const canvasMode: CanvasMode = page === 'home' || page === 'stats' ? 'full' : 'quiet';
 
   // Pre-bootstrap: чёрный экран без UI шевеления (длится <100ms обычно).
   if (status === 'unknown') {
@@ -291,41 +346,80 @@ export default function App() {
     <div style={{ position: 'fixed', inset: 0, background: '#000', overflow: 'hidden' }}>
       <CanvasBg mode={canvasMode} />
 
-      {!focusMode && <Wordmark />}
-      {!focusMode && <Versionmark escHint={page !== 'home'} onEsc={goHome} />}
+      <Wordmark />
+      <Versionmark escHint={page !== 'home'} onEsc={goHome} />
 
-      {page === 'home' && <HomePage />}
-      {page === 'today' && <TodayPage onStartFocus={(args) => open('focus', args)} />}
-      {page === 'focus' && (
-        <FocusPage
-          key={focusBump}
+      {page === 'home' && (
+        <HomePage
+          running={running}
           remain={remain}
-          pomodoroSeconds={POMODORO_SECONDS}
-          planItemId={focusArgs?.planItemId}
-          pinnedTitle={focusArgs?.pinnedTitle}
-          onEnd={handleFocusEnd}
-          onStopTick={handleStopTick}
-          stopRequested={stopRequested}
+          pinnedTitle={pinnedTitle}
+          reflectionPrompt={reflectionPrompt}
+          onStop={stopFocus}
+          onSubmitReflection={async (text) => {
+            const id = reflectionPrompt?.sessionId;
+            if (!id) return;
+            // Reflection приходит ПОСЛЕ finishSession (backend уже закрыл
+            // сессию автоматически по auto-end). Re-call endFocusSession
+            // не имеет смысла — она idempotent на session_id, но
+            // EndFocusSession в hone-bible ждёт активную сессию.
+            // Вместо повторного end делаем noop: reflection просто
+            // dismiss'ится и в Today bible предложит юзеру записать.
+            // Фактическое сохранение reflection — отдельная RPC future
+            // task; для MVP просто прячем prompt.
+            void text;
+            setReflectionPrompt(null);
+          }}
+          onDismissReflection={() => setReflectionPrompt(null)}
         />
       )}
+      {page === 'today' && <TodayPage onStartFocus={startFocus} />}
       {page === 'notes' && <NotesPage />}
       {page === 'board' && <WhiteboardPage />}
       {page === 'stats' && <StatsPage />}
       {page === 'podcasts' && <PodcastsPage />}
-      {page === 'editor' && <EditorPage />}
-      {page === 'shared_boards' && <SharedBoardsPage />}
-      {page === 'events' && <EventsPage />}
-
-      {!focusMode && (
-        <Dock
-          onMenu={() => setPaletteOpen(true)}
-          running={running}
-          onToggle={() => setRunning((r) => !r)}
-          remain={remain}
-          vol={vol}
-          onVol={setVol}
+      {page === 'editor' && (
+        <EditorPage
+          initialRoomId={initialEditorRoom}
+          onConsumeInitial={() => setInitialEditorRoom(null)}
         />
       )}
+      {page === 'shared_boards' && (
+        <SharedBoardsPage
+          initialRoomId={initialBoardRoom}
+          onConsumeInitial={() => setInitialBoardRoom(null)}
+        />
+      )}
+      {page === 'events' && (
+        <EventsPage
+          onJumpToEditor={(roomId) => {
+            setInitialEditorRoom(roomId);
+            setPage('editor');
+          }}
+          onJumpToBoard={(roomId) => {
+            setInitialBoardRoom(roomId);
+            setPage('shared_boards');
+          }}
+        />
+      )}
+
+      <Dock
+        onMenu={() => setPaletteOpen(true)}
+        running={running}
+        onToggle={() => {
+          if (running) {
+            // Пользователь поставил pause через Dock — таймер остановили,
+            // но session не финишируем (она ещё актуальна). Финиш только
+            // на auto-end или через явный stopFocus (Esc на Home).
+            setRunning(false);
+          } else {
+            setRunning(true);
+          }
+        }}
+        remain={remain}
+        vol={vol}
+        onVol={setVol}
+      />
 
       {paletteOpen && (
         <Palette

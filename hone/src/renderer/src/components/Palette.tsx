@@ -13,7 +13,6 @@ import { Kbd } from './primitives/Kbd';
 export type PageId =
   | 'home'
   | 'today'
-  | 'focus'
   | 'notes'
   | 'board'
   | 'stats'
@@ -46,7 +45,6 @@ export function Palette({ onClose, onOpen }: PaletteProps) {
   const items: PaletteItem[] = useMemo(
     () => [
       { id: 'today', label: 'Today', sc: 'T', run: () => onOpen('today') },
-      { id: 'focus', label: 'Focus', sc: 'F', run: () => onOpen('focus') },
       { id: 'notes', label: 'Notes', sc: 'N', run: () => onOpen('notes') },
       { id: 'board', label: 'Whiteboard', sc: 'D', run: () => onOpen('board') },
       { id: 'stats', label: 'Stats', sc: 'S', run: () => onOpen('stats') },
