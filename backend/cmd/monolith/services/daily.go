@@ -76,7 +76,12 @@ func NewDaily(d Deps) *Module {
 	// Lives outside the Connect contract because the wire shape is UI-tailored
 	// (passed/total/output/time_ms) and adding a proto would force a regen for
 	// a single endpoint. See ports/run_handler.go for the rationale.
-	runHandler := dailyPorts.NewRunHandler(judge, d.Log, d.Now)
+	// Pass the same TaskRepo (tasksKatas) so the handler can resolve
+	// kata_id → TaskPublic before dispatching to Judge0. Without this the
+	// handler used to call Submit with an empty TaskPublic{} which the
+	// executor rejected as ErrSandboxUnavailable — every /daily/run was
+	// 503 on prod (see commit message for trace).
+	runHandler := dailyPorts.NewRunHandler(judge, tasksKatas, d.Log, d.Now)
 
 	connectPath, connectHandler := druz9v1connect.NewDailyServiceHandler(server)
 	transcoder := mustTranscode("daily", connectPath, connectHandler)

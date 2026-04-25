@@ -31,27 +31,36 @@ import (
 	"druz9/daily/domain"
 	"druz9/shared/enums"
 	sharedMw "druz9/shared/pkg/middleware"
+
+	"github.com/google/uuid"
 )
 
 // RunHandler — http.Handler для POST /api/v1/daily/run.
 //
-// Holds the Judge0Client directly because there's no persistence and no
-// streak side-effect; the request flow is fully synchronous.
+// Holds the Judge0Client + a TaskRepo for resolving kata_id → TaskPublic
+// (the executor needs the task to load its test cases).
 type RunHandler struct {
 	Judge domain.Judge0Client
+	Tasks domain.TaskRepo
 	Log   *slog.Logger
 	Now   func() time.Time
 }
 
 // NewRunHandler builds the handler. log is required (anti-fallback policy).
-func NewRunHandler(j domain.Judge0Client, log *slog.Logger, now func() time.Time) *RunHandler {
+// tasks is required — without it Submit gets an empty TaskPublic and
+// always returns ErrSandboxUnavailable (the prod bug this struct fix
+// addresses: kata_id arrived from frontend but the handler dropped it).
+func NewRunHandler(j domain.Judge0Client, tasks domain.TaskRepo, log *slog.Logger, now func() time.Time) *RunHandler {
 	if log == nil {
 		panic("daily.ports.NewRunHandler: log is required (anti-fallback policy: no silent slog.Default fallback)")
+	}
+	if tasks == nil {
+		panic("daily.ports.NewRunHandler: tasks repo is required to resolve kata_id")
 	}
 	if now == nil {
 		now = time.Now
 	}
-	return &RunHandler{Judge: j, Log: log, Now: now}
+	return &RunHandler{Judge: j, Tasks: tasks, Log: log, Now: now}
 }
 
 // runRequest mirrors the JSON body the frontend sends.
@@ -88,14 +97,33 @@ func (h *RunHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		writeJSONError(w, http.StatusBadRequest, "code is required")
 		return
 	}
+	if strings.TrimSpace(req.KataID) == "" {
+		writeJSONError(w, http.StatusBadRequest, "kata_id is required")
+		return
+	}
 	lang := enums.Language(req.Language)
 	if !lang.IsValid() {
 		writeJSONError(w, http.StatusBadRequest, "invalid language")
 		return
 	}
+	taskID, err := uuid.Parse(req.KataID)
+	if err != nil {
+		writeJSONError(w, http.StatusBadRequest, "invalid kata_id")
+		return
+	}
+	task, err := h.Tasks.GetByID(r.Context(), taskID)
+	if err != nil {
+		if errors.Is(err, domain.ErrNotFound) {
+			writeJSONError(w, http.StatusNotFound, "kata not found")
+			return
+		}
+		h.Log.ErrorContext(r.Context(), "daily.Run: load task", slog.Any("err", err))
+		writeJSONError(w, http.StatusInternalServerError, "internal")
+		return
+	}
 
 	start := h.Now()
-	passed, total, ok, err := h.runWithTimeout(r.Context(), req.Code, lang.String())
+	passed, total, ok, err := h.runWithTimeout(r.Context(), req.Code, lang.String(), task)
 	elapsed := h.Now().Sub(start)
 	if err != nil {
 		if errors.Is(err, domain.ErrSandboxUnavailable) {
@@ -122,10 +150,10 @@ func (h *RunHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 // runWithTimeout caps the sandboxed run at 30s — anything longer is almost
 // certainly an infinite loop in user code (the FakeJudge0 returns instantly,
 // but a real sandbox needs the bound).
-func (h *RunHandler) runWithTimeout(ctx context.Context, code, lang string) (bool, int, int, error) {
+func (h *RunHandler) runWithTimeout(ctx context.Context, code, lang string, task domain.TaskPublic) (bool, int, int, error) {
 	runCtx, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
-	passed, total, ok, err := h.Judge.Submit(runCtx, code, lang, domain.TaskPublic{})
+	passed, total, ok, err := h.Judge.Submit(runCtx, code, lang, task)
 	if err != nil {
 		if errors.Is(err, context.DeadlineExceeded) {
 			return false, 0, 0, fmt.Errorf("daily.Run: timeout: %w", err)
