@@ -136,7 +136,7 @@ func (c *CachedLeaderboardRepo) Top(ctx context.Context, companyID *uuid.UUID, l
 	}
 	rows, err := c.delegate.Top(ctx, companyID, limit)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("mock_interview.cache.Leaderboard.Top: %w", err)
 	}
 	if c.kv != nil {
 		blob, merr := json.Marshal(rows)

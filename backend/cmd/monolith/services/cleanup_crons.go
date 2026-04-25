@@ -28,9 +28,9 @@ import (
 
 // Retention windows.
 const (
-	yjsUpdatesRetention     = 90 * 24 * time.Hour       // 90 days
-	copilotMessagesRetent   = 365 * 24 * time.Hour      // 1 year
-	pipelineAttemptsRetent  = 2 * 365 * 24 * time.Hour  // 2 years
+	yjsUpdatesRetention     = 90 * 24 * time.Hour      // 90 days
+	copilotMessagesRetent   = 365 * 24 * time.Hour     // 1 year
+	pipelineAttemptsRetent  = 2 * 365 * 24 * time.Hour // 2 years
 	cleanupCronInterval     = 1 * time.Hour
 	cleanupSweepTimeoutEach = 30 * time.Second
 )
