@@ -283,43 +283,62 @@ function RecChip({
         <span style={{ flex: 1 }}>{rec.title}</span>
       </button>
       {!ack && (
-        <div style={{ display: 'flex', gap: 2, paddingRight: 5 }}>
-          <FeedbackBtn label="👍" onClick={onFollow} title="Helpful — coach learns" />
-          <FeedbackBtn label="👎" onClick={onDismiss} title="Not for me — coach learns" />
+        <div style={{ display: 'flex', gap: 1, paddingRight: 4 }}>
+          <FeedbackBtn glyph="check" onClick={onFollow} title="Helpful — coach learns" />
+          <FeedbackBtn glyph="x" onClick={onDismiss} title="Not for me — coach learns" />
         </div>
       )}
     </div>
   );
 }
 
-function FeedbackBtn({ label, onClick, title }: { label: string; onClick: () => void; title: string }) {
+function FeedbackBtn({
+  glyph,
+  onClick,
+  title,
+}: {
+  glyph: 'check' | 'x';
+  onClick: () => void;
+  title: string;
+}) {
   return (
     <button
       onClick={onClick}
       title={title}
+      className="focus-ring"
       style={{
-        width: 22,
-        height: 22,
+        width: 20,
+        height: 20,
         display: 'grid',
         placeItems: 'center',
         background: 'transparent',
         border: 'none',
         cursor: 'pointer',
-        fontSize: 12,
-        opacity: 0.55,
-        borderRadius: 5,
-        transition: 'opacity 150ms ease, background-color 150ms ease',
+        opacity: 0.4,
+        borderRadius: 4,
+        transition: 'opacity 150ms ease, background-color 150ms ease, color 150ms ease',
+        color: 'rgba(255,255,255,0.85)',
+        padding: 0,
       }}
       onMouseEnter={(e) => {
         e.currentTarget.style.opacity = '1';
         e.currentTarget.style.background = 'rgba(255,255,255,0.06)';
       }}
       onMouseLeave={(e) => {
-        e.currentTarget.style.opacity = '0.55';
+        e.currentTarget.style.opacity = '0.4';
         e.currentTarget.style.background = 'transparent';
       }}
     >
-      {label}
+      <svg width={11} height={11} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round">
+        {glyph === 'check' ? (
+          // Тот же check-stroke как в Icon primitive (M5 13l4 4L19 7).
+          // strokeWidth 1.6 — между обычным Icon (1.4) и acк-action (2),
+          // достаточно «солидно» чтобы читалось 11×11 px.
+          <path d="M5 13l4 4L19 7" />
+        ) : (
+          <path d="M6 6l12 12M18 6L6 18" />
+        )}
+      </svg>
     </button>
   );
 }

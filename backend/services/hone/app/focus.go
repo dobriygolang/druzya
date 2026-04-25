@@ -70,6 +70,8 @@ type EndFocus struct {
 	Log               *slog.Logger
 	Now               func() time.Time
 	QualifyingSeconds int // defaults to MinQualifyingFocusSeconds
+	// Memory — optional Phase B-2 hook в Coach memory. nil = no-op.
+	Memory domain.MemoryHook
 }
 
 // EndFocusInput — wire body.
@@ -107,6 +109,17 @@ func (uc *EndFocus) Do(ctx context.Context, in EndFocusInput) (domain.FocusSessi
 		// Don't fail the client — the session is ended and stored. Log so
 		// the streak reconciliation job (background) can pick up the miss.
 		uc.Log.Error("hone.EndFocus.Do: streak apply failed", slog.Any("err", err), slog.String("session_id", in.SessionID.String()))
+	}
+
+	// Coach memory: hook'ы fire-and-forget. Caller-context может уже
+	// закрыться — implementation использует BG-ctx внутри.
+	if uc.Memory != nil {
+		uc.Memory.OnFocusSessionDone(ctx, in.UserID, ended.PinnedTitle,
+			in.SecondsFocused, ended.PlanItemID, in.PomodorosCompleted, now)
+		if in.Reflection != "" {
+			uc.Memory.OnReflectionAdded(ctx, in.UserID, in.Reflection,
+				ended.PlanItemID, in.SecondsFocused, now)
+		}
 	}
 
 	// Reflection — auto-note «что сделал за эту сессию». Опциональный

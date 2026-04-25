@@ -133,6 +133,8 @@ type DismissPlanItem struct {
 	Resistance domain.ResistanceRepo // nullable
 	Log        *slog.Logger
 	Now        func() time.Time
+	// Memory — optional Phase B-2 hook в Coach memory. nil = no-op.
+	Memory domain.MemoryHook
 }
 
 // DismissPlanItemInput — request body.
@@ -164,6 +166,14 @@ func (uc *DismissPlanItem) Do(ctx context.Context, in DismissPlanItemInput) (dom
 			}
 		}
 	}
+	if uc.Memory != nil {
+		for _, it := range p.Items {
+			if it.ID == in.ItemID {
+				uc.Memory.OnPlanSkipped(ctx, in.UserID, it.Title, it.SkillKey, today)
+				break
+			}
+		}
+	}
 	return p, nil
 }
 
@@ -175,6 +185,8 @@ func (uc *DismissPlanItem) Do(ctx context.Context, in DismissPlanItemInput) (dom
 type CompletePlanItem struct {
 	Plans domain.PlanRepo
 	Now   func() time.Time
+	// Memory — optional Phase B-2 hook в Coach memory. nil = no-op.
+	Memory domain.MemoryHook
 }
 
 // CompletePlanItemInput — request body.
@@ -189,6 +201,14 @@ func (uc *CompletePlanItem) Do(ctx context.Context, in CompletePlanItemInput) (d
 	p, err := uc.Plans.PatchItem(ctx, in.UserID, today, in.ItemID, false, true)
 	if err != nil {
 		return domain.Plan{}, fmt.Errorf("hone.CompletePlanItem.Do: %w", err)
+	}
+	if uc.Memory != nil {
+		for _, it := range p.Items {
+			if it.ID == in.ItemID {
+				uc.Memory.OnPlanCompleted(ctx, in.UserID, it.Title, it.SkillKey, today)
+				break
+			}
+		}
 	}
 	return p, nil
 }

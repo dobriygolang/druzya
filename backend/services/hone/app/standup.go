@@ -37,6 +37,8 @@ type RecordStandup struct {
 	EmbedFn func(ctx context.Context, userID, noteID uuid.UUID, text string)
 	Log     *slog.Logger
 	Now     func() time.Time
+	// Memory — optional Phase B-2 hook в Coach memory. nil = no-op.
+	Memory domain.MemoryHook
 }
 
 // RecordStandupInput — wire body.
@@ -77,6 +79,10 @@ func (uc *RecordStandup) Do(ctx context.Context, in RecordStandupInput) (RecordS
 	}
 	if uc.EmbedFn != nil {
 		go uc.EmbedFn(context.Background(), in.UserID, created.ID, created.Title+"\n\n"+created.BodyMD)
+	}
+
+	if uc.Memory != nil {
+		uc.Memory.OnStandupRecorded(ctx, in.UserID, in.Yesterday, in.Today, in.Blockers, now)
 	}
 
 	out := RecordStandupOutput{Note: created}

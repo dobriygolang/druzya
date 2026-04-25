@@ -124,16 +124,16 @@ func NewHone(d Deps) *Module {
 		// Plan
 		GeneratePlan:     &honeApp.GeneratePlan{Plans: plans, Skills: skills, Resistance: resistance, Synthesiser: synthesiser, Log: d.Log, Now: d.Now},
 		GetPlan:          &honeApp.GetPlan{Plans: plans, Now: d.Now},
-		DismissPlanItem:  &honeApp.DismissPlanItem{Plans: plans, Resistance: resistance, Log: d.Log, Now: d.Now},
-		CompletePlanItem: &honeApp.CompletePlanItem{Plans: plans, Now: d.Now},
+		DismissPlanItem:  &honeApp.DismissPlanItem{Plans: plans, Resistance: resistance, Log: d.Log, Now: d.Now, Memory: d.IntelligenceMemoryHook},
+		CompletePlanItem: &honeApp.CompletePlanItem{Plans: plans, Now: d.Now, Memory: d.IntelligenceMemoryHook},
 
 		// Focus
 		StartFocus: &honeApp.StartFocus{Focus: focus, Log: d.Log, Now: d.Now},
-		EndFocus:   &honeApp.EndFocus{Focus: focus, Streaks: streaks, Notes: notes, EmbedFn: embedFn, Log: d.Log, Now: d.Now},
+		EndFocus:   &honeApp.EndFocus{Focus: focus, Streaks: streaks, Notes: notes, EmbedFn: embedFn, Log: d.Log, Now: d.Now, Memory: d.IntelligenceMemoryHook},
 		GetStats:   &honeApp.GetStats{Streaks: streaks, Now: d.Now},
 
 		// Notes
-		CreateNote:         &honeApp.CreateNote{Notes: notes, EmbedFn: embedFn, Log: d.Log, Now: d.Now},
+		CreateNote:         &honeApp.CreateNote{Notes: notes, EmbedFn: embedFn, Log: d.Log, Now: d.Now, Memory: d.IntelligenceMemoryHook},
 		UpdateNote:         &honeApp.UpdateNote{Notes: notes, EmbedFn: embedFn, Log: d.Log, Now: d.Now},
 		GetNote:            &honeApp.GetNote{Notes: notes},
 		ListNotes:          &honeApp.ListNotes{Notes: notes},
@@ -150,7 +150,7 @@ func NewHone(d Deps) *Module {
 		SaveCritiqueAsNote: &honeApp.SaveCritiqueAsNote{Boards: whiteboards, Notes: notes, EmbedFn: embedFn, Log: d.Log, Now: d.Now},
 
 		// Standup
-		RecordStandup: &honeApp.RecordStandup{Notes: notes, Plans: plans, EmbedFn: embedFn, Log: d.Log, Now: d.Now},
+		RecordStandup: &honeApp.RecordStandup{Notes: notes, Plans: plans, EmbedFn: embedFn, Log: d.Log, Now: d.Now, Memory: d.IntelligenceMemoryHook},
 
 		Log: d.Log,
 		Now: d.Now,

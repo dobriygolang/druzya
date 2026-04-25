@@ -24,6 +24,8 @@ type CreateNote struct {
 	EmbedFn func(ctx context.Context, userID, noteID uuid.UUID, text string) // async
 	Log     *slog.Logger
 	Now     func() time.Time
+	// Memory — optional Phase B-2 hook в Coach memory. nil = no-op.
+	Memory domain.MemoryHook
 }
 
 // CreateNoteInput — wire body.
@@ -52,6 +54,13 @@ func (uc *CreateNote) Do(ctx context.Context, in CreateNoteInput) (domain.Note, 
 		// Fire-and-forget; caller owns the queue/goroutine. The embed job
 		// is idempotent — re-running for the same note replaces the vector.
 		go uc.EmbedFn(context.Background(), in.UserID, created.ID, created.Title+"\n\n"+created.BodyMD)
+	}
+	if uc.Memory != nil {
+		body200 := created.BodyMD
+		if len(body200) > 200 {
+			body200 = body200[:200]
+		}
+		uc.Memory.OnNoteCreated(ctx, in.UserID, created.ID, created.Title, body200, now)
 	}
 	return created, nil
 }

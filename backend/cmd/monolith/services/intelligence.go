@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	honeDomain "druz9/hone/domain"
 	intelApp "druz9/intelligence/app"
 	intelDomain "druz9/intelligence/domain"
 	intelInfra "druz9/intelligence/infra"
@@ -42,12 +43,13 @@ import (
 // MVP gating: open to all signed-in users (no Pro-gate). Add a TierReader
 // dependency mirror of HoneServer.WithTier when the feature graduates.
 // IntelligenceModule wraps the standard module with a publicly-readable
-// MemoryHook — hone/notify wirings tap into it to write side-effect
-// episodes (reflections / standups / plan-skip-or-complete / etc).
+// MemoryHook — hone wiring taps into it to write side-effect episodes
+// (reflections / standups / plan-skip-or-complete / note-create /
+// focus-session-done).
 type IntelligenceModule struct {
 	*Module
 	Memory *intelApp.Memory
-	Hook   IntelligenceMemoryHook
+	Hook   honeDomain.MemoryHook
 }
 
 func NewIntelligence(d Deps) IntelligenceModule {
@@ -136,39 +138,29 @@ func NewIntelligence(d Deps) IntelligenceModule {
 	}
 }
 
-// IntelligenceMemoryHook — узкий interface для hone-wiring'а: вызывается
-// из hone-handlers'ов на ключевых side-effects (reflection / standup /
-// plan-skip-or-complete / note-create / focus-session-done). Передаём
-// через Deps в hone wiring; nil = no-op (safe для тестов / single-service
-// сборок).
-type IntelligenceMemoryHook interface {
-	OnReflectionAdded(ctx context.Context, userID uuid.UUID, reflection string, planItemID string, secondsFocused int)
-	OnStandupRecorded(ctx context.Context, userID uuid.UUID, yesterday, today, blockers string)
-	OnPlanSkipped(ctx context.Context, userID uuid.UUID, title, skillKey string)
-	OnPlanCompleted(ctx context.Context, userID uuid.UUID, title, skillKey string)
-	OnNoteCreated(ctx context.Context, userID uuid.UUID, noteID uuid.UUID, title, body200 string)
-	OnFocusSessionDone(ctx context.Context, userID uuid.UUID, pinnedTitle string, secondsFocused int, planItemID string, completedPomodoros int)
-}
-
+// memoryHook implements hone/domain.MemoryHook — узкий side-effect channel
+// в Coach memory. Hone use cases дёргают (опционально через nil-check).
+// Имплементация = thin shim over intelApp.Memory.AppendAsync.
 type memoryHook struct {
 	memory *intelApp.Memory
 	log    *slog.Logger
 }
 
-func newIntelligenceMemoryHook(m *intelApp.Memory, log *slog.Logger) IntelligenceMemoryHook {
+func newIntelligenceMemoryHook(m *intelApp.Memory, log *slog.Logger) honeDomain.MemoryHook {
 	return &memoryHook{memory: m, log: log}
 }
 
-func (h *memoryHook) OnReflectionAdded(ctx context.Context, uid uuid.UUID, reflection, planItemID string, sec int) {
+func (h *memoryHook) OnReflectionAdded(ctx context.Context, uid uuid.UUID, reflection, planItemID string, sec int, occ time.Time) {
 	if reflection == "" {
 		return
 	}
 	h.memory.AppendAsync(ctx, intelApp.AppendInput{
 		UserID: uid, Kind: intelDomain.EpisodeReflectionAdded, Summary: reflection,
-		Payload: map[string]any{"plan_item_id": planItemID, "seconds": sec},
+		Payload:    map[string]any{"plan_item_id": planItemID, "seconds": sec},
+		OccurredAt: occ,
 	})
 }
-func (h *memoryHook) OnStandupRecorded(ctx context.Context, uid uuid.UUID, y, t, b string) {
+func (h *memoryHook) OnStandupRecorded(ctx context.Context, uid uuid.UUID, y, t, b string, occ time.Time) {
 	parts := []string{}
 	if y != "" {
 		parts = append(parts, "Yesterday: "+y)
@@ -185,32 +177,36 @@ func (h *memoryHook) OnStandupRecorded(ctx context.Context, uid uuid.UUID, y, t,
 	summary := strings.Join(parts, " || ")
 	h.memory.AppendAsync(ctx, intelApp.AppendInput{
 		UserID: uid, Kind: intelDomain.EpisodeStandupRecorded, Summary: summary,
-		Payload: map[string]any{"yesterday": y, "today": t, "blockers": b},
+		Payload:    map[string]any{"yesterday": y, "today": t, "blockers": b},
+		OccurredAt: occ,
 	})
 }
-func (h *memoryHook) OnPlanSkipped(ctx context.Context, uid uuid.UUID, title, skill string) {
+func (h *memoryHook) OnPlanSkipped(ctx context.Context, uid uuid.UUID, title, skill string, occ time.Time) {
 	h.memory.AppendAsync(ctx, intelApp.AppendInput{
 		UserID: uid, Kind: intelDomain.EpisodePlanSkipped, Summary: title,
-		Payload: map[string]any{"skill_key": skill},
+		Payload:    map[string]any{"skill_key": skill},
+		OccurredAt: occ,
 	})
 }
-func (h *memoryHook) OnPlanCompleted(ctx context.Context, uid uuid.UUID, title, skill string) {
+func (h *memoryHook) OnPlanCompleted(ctx context.Context, uid uuid.UUID, title, skill string, occ time.Time) {
 	h.memory.AppendAsync(ctx, intelApp.AppendInput{
 		UserID: uid, Kind: intelDomain.EpisodePlanCompleted, Summary: title,
-		Payload: map[string]any{"skill_key": skill},
+		Payload:    map[string]any{"skill_key": skill},
+		OccurredAt: occ,
 	})
 }
-func (h *memoryHook) OnNoteCreated(ctx context.Context, uid uuid.UUID, noteID uuid.UUID, title, body200 string) {
+func (h *memoryHook) OnNoteCreated(ctx context.Context, uid uuid.UUID, noteID uuid.UUID, title, body200 string, occ time.Time) {
 	summary := title
 	if body200 != "" {
 		summary = title + ": " + body200
 	}
 	h.memory.AppendAsync(ctx, intelApp.AppendInput{
 		UserID: uid, Kind: intelDomain.EpisodeNoteCreated, Summary: summary,
-		Payload: map[string]any{"note_id": noteID.String()},
+		Payload:    map[string]any{"note_id": noteID.String()},
+		OccurredAt: occ,
 	})
 }
-func (h *memoryHook) OnFocusSessionDone(ctx context.Context, uid uuid.UUID, pinned string, sec int, planItemID string, pomodoros int) {
+func (h *memoryHook) OnFocusSessionDone(ctx context.Context, uid uuid.UUID, pinned string, sec int, planItemID string, pomodoros int, occ time.Time) {
 	if sec < 5*60 {
 		return // короче 5 минут — не «сессия», skip
 	}
@@ -220,9 +216,13 @@ func (h *memoryHook) OnFocusSessionDone(ctx context.Context, uid uuid.UUID, pinn
 	}
 	h.memory.AppendAsync(ctx, intelApp.AppendInput{
 		UserID: uid, Kind: intelDomain.EpisodeFocusSessionDone, Summary: summary,
-		Payload: map[string]any{"seconds": sec, "plan_item_id": planItemID, "pomodoros": pomodoros},
+		Payload:    map[string]any{"seconds": sec, "plan_item_id": planItemID, "pomodoros": pomodoros},
+		OccurredAt: occ,
 	})
 }
+
+// Compile-time guard.
+var _ honeDomain.MemoryHook = (*memoryHook)(nil)
 
 // ─── Reader adapters (raw SQL, no hone import) ────────────────────────────
 

@@ -11,6 +11,7 @@ import (
 	"time"
 
 	authApp "druz9/auth/app"
+	honeDomain "druz9/hone/domain"
 	"druz9/shared/pkg/config"
 	"druz9/shared/pkg/eventbus"
 	"druz9/shared/pkg/killswitch"
@@ -61,8 +62,10 @@ type Deps struct {
 	// IntelligenceMemoryHook — optional. Set during bootstrap после
 	// services.NewIntelligence(...). Hone-handlers'ы дёргают его
 	// для записи side-effect episodes (reflection / standup / plan-events
-	// / note-create / focus-session-done). nil-safe.
-	IntelligenceMemoryHook IntelligenceMemoryHook
+	// / note-create / focus-session-done). Тип = hone/domain.MemoryHook
+	// (узкий interface, hone-domain'ный) — monolith Adapter имплементирует.
+	// nil-safe: hone-use-cases checkают перед вызовом.
+	IntelligenceMemoryHook honeDomain.MemoryHook
 }
 
 // Module is what every NewXxx returns: enough metadata for router.go to
