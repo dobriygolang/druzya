@@ -32,6 +32,10 @@ const (
 	// orchestrator on every FinishPipeline, so the AI Coach can reason
 	// across weeks ("две недели назад sysdesign 32, сегодня 71 — рост").
 	EpisodeMockPipelineFinished EpisodeKind = "mock_pipeline_finished"
+	// EpisodeCodexArticleOpened — written when a user opens a Codex
+	// article. Daily Brief uses these to spot reading patterns
+	// ("regularly opening sysdesign content → suggest a sysdesign mock").
+	EpisodeCodexArticleOpened EpisodeKind = "codex_article_opened"
 )
 
 // IsValid powers exhaustive switches and runtime guards.
@@ -42,7 +46,7 @@ func (k EpisodeKind) IsValid() bool {
 		EpisodeReflectionAdded, EpisodeStandupRecorded,
 		EpisodePlanSkipped, EpisodePlanCompleted,
 		EpisodeNoteCreated, EpisodeFocusSessionDone,
-		EpisodeMockPipelineFinished:
+		EpisodeMockPipelineFinished, EpisodeCodexArticleOpened:
 		return true
 	}
 	return false

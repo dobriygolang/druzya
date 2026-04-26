@@ -12,6 +12,7 @@ import (
 
 	authApp "druz9/auth/app"
 	honeDomain "druz9/hone/domain"
+	intelApp "druz9/intelligence/app"
 	miDomain "druz9/mock_interview/domain"
 	"druz9/shared/pkg/config"
 	"druz9/shared/pkg/eventbus"
@@ -76,6 +77,12 @@ type Deps struct {
 	// 32, сегодня 71 — рост"). nil-safe: orchestrator guards every
 	// call. Set in bootstrap right after NewIntelligence.
 	IntelligenceMockMemoryHook miDomain.MemoryHook
+
+	// IntelligenceMemory — direct access to the Coach episode store.
+	// Used by chi-direct services (codex /open) that aren't bounded
+	// contexts of their own and don't need a typed hook interface.
+	// nil-safe; consumers guard.
+	IntelligenceMemory *intelApp.Memory
 
 	// StorageGate — Phase C quota guard. Hone оборачивает свои
 	// write-routes (notes/whiteboards POST'ы) этим middleware'ом, чтобы

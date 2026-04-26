@@ -5,25 +5,20 @@ import { useState } from 'react'
 import { Button } from '../../components/Button'
 import { ErrorBox, PanelSkeleton } from './shared'
 import {
+  useAdminCodexCategoriesQuery,
   useAdminCodexQuery,
   useCreateCodexArticleMutation,
+  useCreateCodexCategoryMutation,
   useDeleteCodexArticleMutation,
+  useDeleteCodexCategoryMutation,
   useToggleCodexActiveMutation,
   useUpdateCodexArticleMutation,
+  useUpdateCodexCategoryMutation,
   type CodexArticle,
   type CodexArticleUpsertBody,
+  type CodexCategory,
+  type CodexCategoryUpsertBody,
 } from '../../lib/queries/codex'
-
-const CATEGORIES = [
-  'system_design',
-  'backend',
-  'algorithms',
-  'career',
-  'behavioral',
-  'concurrency',
-  'data',
-  'security',
-] as const
 
 function blankBody(): CodexArticleUpsertBody {
   return {
@@ -55,11 +50,15 @@ function articleToBody(a: CodexArticle): CodexArticleUpsertBody {
 
 export function CodexPanel() {
   const list = useAdminCodexQuery()
+  const cats = useAdminCodexCategoriesQuery()
   const [creating, setCreating] = useState(false)
+  const [showCategoriesEditor, setShowCategoriesEditor] = useState(false)
 
-  if (list.isPending) return <PanelSkeleton rows={6} />
+  if (list.isPending || cats.isPending) return <PanelSkeleton rows={6} />
   if (list.error) return <ErrorBox message="Не удалось загрузить codex" />
   const articles = list.data ?? []
+  const categories = cats.data ?? []
+  const categorySlugs = categories.map((c) => c.slug)
 
   // Группируем по категории — admin обычно правит одну рубрику зараз.
   const byCat = new Map<string, CodexArticle[]>()
@@ -75,15 +74,28 @@ export function CodexPanel() {
         <div>
           <h2 className="font-display text-sm font-bold text-text-primary">Codex · статьи</h2>
           <p className="font-mono text-[10px] text-text-muted">
-            {articles.length} в БД · публичный read через /api/v1/codex/articles
+            {articles.length} статей · {categories.length} категорий · открытия пишутся в Coach memory
           </p>
         </div>
-        <Button size="sm" onClick={() => setCreating((v) => !v)}>
-          {creating ? 'Cancel' : '+ Новая статья'}
-        </Button>
+        <div className="flex gap-2">
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() => setShowCategoriesEditor((v) => !v)}
+          >
+            {showCategoriesEditor ? 'Скрыть категории' : 'Категории'}
+          </Button>
+          <Button size="sm" onClick={() => setCreating((v) => !v)}>
+            {creating ? 'Cancel' : '+ Новая статья'}
+          </Button>
+        </div>
       </div>
 
-      {creating && <CreateForm onClose={() => setCreating(false)} />}
+      {showCategoriesEditor && (
+        <CategoriesEditor categories={categories} />
+      )}
+
+      {creating && <CreateForm onClose={() => setCreating(false)} categories={categorySlugs} />}
 
       {[...byCat.entries()]
         .sort(([a], [b]) => a.localeCompare(b))
@@ -96,7 +108,7 @@ export function CodexPanel() {
               {rows
                 .sort((a, b) => a.sort_order - b.sort_order)
                 .map((a) => (
-                  <ArticleRow key={a.id} a={a} />
+                  <ArticleRow key={a.id} a={a} categories={categorySlugs} />
                 ))}
             </ul>
           </section>
@@ -105,8 +117,11 @@ export function CodexPanel() {
   )
 }
 
-function CreateForm({ onClose }: { onClose: () => void }) {
-  const [body, setBody] = useState<CodexArticleUpsertBody>(blankBody())
+function CreateForm({ onClose, categories }: { onClose: () => void; categories: string[] }) {
+  const [body, setBody] = useState<CodexArticleUpsertBody>(() => ({
+    ...blankBody(),
+    category: categories[0] ?? 'system_design',
+  }))
   const create = useCreateCodexArticleMutation()
   const [err, setErr] = useState<string | null>(null)
   const submit = async (e: React.FormEvent) => {
@@ -125,7 +140,7 @@ function CreateForm({ onClose }: { onClose: () => void }) {
       onSubmit={submit}
       className="flex flex-col gap-2 rounded-lg border border-text-primary/30 bg-text-primary/[0.03] p-4"
     >
-      <Fields body={body} setBody={setBody} />
+      <Fields body={body} setBody={setBody} categories={categories} />
       {err && <div className="text-[12px] text-danger">{err}</div>}
       <div className="flex justify-end gap-2">
         <Button type="button" variant="ghost" size="sm" onClick={onClose}>
@@ -139,7 +154,7 @@ function CreateForm({ onClose }: { onClose: () => void }) {
   )
 }
 
-function ArticleRow({ a }: { a: CodexArticle }) {
+function ArticleRow({ a, categories }: { a: CodexArticle; categories: string[] }) {
   const [editing, setEditing] = useState(false)
   const [body, setBody] = useState<CodexArticleUpsertBody>(articleToBody(a))
   const update = useUpdateCodexArticleMutation()
@@ -205,7 +220,7 @@ function ArticleRow({ a }: { a: CodexArticle }) {
   return (
     <li className="rounded-md border border-text-primary/30 bg-text-primary/[0.03] p-3">
       <form onSubmit={save} className="flex flex-col gap-2">
-        <Fields body={body} setBody={setBody} />
+        <Fields body={body} setBody={setBody} categories={categories} />
         {err && <div className="text-[12px] text-danger">{err}</div>}
         <div className="flex justify-end gap-2">
           <Button type="button" variant="ghost" size="sm" onClick={() => setEditing(false)}>
@@ -223,9 +238,11 @@ function ArticleRow({ a }: { a: CodexArticle }) {
 function Fields({
   body,
   setBody,
+  categories,
 }: {
   body: CodexArticleUpsertBody
   setBody: (next: CodexArticleUpsertBody) => void
+  categories: string[]
 }) {
   const set = <K extends keyof CodexArticleUpsertBody>(k: K, v: CodexArticleUpsertBody[K]) =>
     setBody({ ...body, [k]: v })
@@ -249,7 +266,7 @@ function Fields({
           onChange={(e) => set('category', e.target.value)}
           className="rounded-md border border-border bg-bg/40 px-2 py-1.5 text-[12px] text-text-primary"
         >
-          {CATEGORIES.map((c) => (
+          {categories.map((c) => (
             <option key={c} value={c}>
               {c}
             </option>
@@ -306,5 +323,160 @@ function NumField({
         className="rounded-md border border-border bg-bg/40 px-2 py-1.5 text-[12px] text-text-primary"
       />
     </label>
+  )
+}
+
+// CategoriesEditor — inline manager для codex_categories. Compact:
+// строка-на-категорию, edit-в-месте, добавление через одну форму.
+function CategoriesEditor({ categories }: { categories: CodexCategory[] }) {
+  const [creating, setCreating] = useState(false)
+  return (
+    <section className="rounded-lg border border-text-primary/30 bg-text-primary/[0.03] p-3">
+      <div className="mb-2 flex items-center justify-between">
+        <h3 className="font-mono text-[11px] uppercase tracking-wider text-text-secondary">
+          Категории · {categories.length}
+        </h3>
+        <Button size="sm" variant="ghost" onClick={() => setCreating((v) => !v)}>
+          {creating ? 'Cancel' : '+ Добавить'}
+        </Button>
+      </div>
+      {creating && <CategoryCreateForm onClose={() => setCreating(false)} />}
+      <ul className="flex flex-col gap-1.5">
+        {categories
+          .slice()
+          .sort((a, b) => a.sort_order - b.sort_order)
+          .map((c) => (
+            <CategoryRow key={c.slug} c={c} />
+          ))}
+      </ul>
+    </section>
+  )
+}
+
+function CategoryCreateForm({ onClose }: { onClose: () => void }) {
+  const create = useCreateCodexCategoryMutation()
+  const [body, setBody] = useState<CodexCategoryUpsertBody>({
+    slug: '',
+    label: '',
+    description: '',
+    sort_order: 0,
+    active: true,
+  })
+  const [err, setErr] = useState<string | null>(null)
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setErr(null)
+    try {
+      await create.mutateAsync(body)
+      onClose()
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : String(e))
+    }
+  }
+  return (
+    <form onSubmit={submit} className="mb-3 flex flex-col gap-2 rounded-md border border-border bg-surface-2 p-3">
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+        <Field label="slug — kebab-case (data, system_design)" v={body.slug} onChange={(v) => setBody({ ...body, slug: v })} />
+        <Field label="label — заголовок для UI" v={body.label} onChange={(v) => setBody({ ...body, label: v })} />
+        <Field label="description" v={body.description} onChange={(v) => setBody({ ...body, description: v })} className="col-span-1 sm:col-span-2" />
+        <NumField label="sort_order" v={body.sort_order} onChange={(v) => setBody({ ...body, sort_order: v })} />
+      </div>
+      {err && <div className="text-[12px] text-danger">{err}</div>}
+      <div className="flex justify-end gap-2">
+        <Button type="button" variant="ghost" size="sm" onClick={onClose}>
+          Cancel
+        </Button>
+        <Button type="submit" size="sm" loading={create.isPending}>
+          Создать
+        </Button>
+      </div>
+    </form>
+  )
+}
+
+function CategoryRow({ c }: { c: CodexCategory }) {
+  const update = useUpdateCodexCategoryMutation()
+  const del = useDeleteCodexCategoryMutation()
+  const [editing, setEditing] = useState(false)
+  const [draft, setDraft] = useState<CodexCategoryUpsertBody>(c)
+  const [err, setErr] = useState<string | null>(null)
+  const save = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setErr(null)
+    try {
+      await update.mutateAsync({ slug: c.slug, body: draft })
+      setEditing(false)
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : String(e))
+    }
+  }
+  if (!editing) {
+    return (
+      <li className="flex items-center justify-between gap-2 rounded-md border border-border bg-surface-2 px-3 py-2">
+        <div className="min-w-0 flex-1">
+          <div className="flex items-baseline gap-2">
+            <span className="font-mono text-[10px] text-text-muted">{c.slug}</span>
+            <span className="truncate text-[13px] font-semibold text-text-primary">{c.label}</span>
+            {!c.active && (
+              <span className="rounded-full bg-warn/15 px-1.5 py-0.5 font-mono text-[9px] uppercase text-warn">
+                hidden
+              </span>
+            )}
+          </div>
+          {c.description && (
+            <div className="truncate text-[11px] text-text-secondary">{c.description}</div>
+          )}
+        </div>
+        <div className="flex shrink-0 gap-1">
+          <button
+            type="button"
+            onClick={() => setEditing(true)}
+            className="rounded border border-border px-2 py-0.5 font-mono text-[10px] text-text-secondary hover:text-text-primary"
+          >
+            edit
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              if (confirm(`Удалить категорию «${c.label}»?\n\nЕсли в ней есть статьи — сервер не разрешит.`)) {
+                del.mutate(c.slug)
+              }
+            }}
+            className="rounded border border-danger/40 px-2 py-0.5 font-mono text-[10px] text-danger hover:bg-danger/10"
+          >
+            ✕
+          </button>
+        </div>
+      </li>
+    )
+  }
+  return (
+    <li className="rounded-md border border-text-primary/40 bg-text-primary/[0.03] p-3">
+      <form onSubmit={save} className="flex flex-col gap-2">
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+          <div className="font-mono text-[11px] text-text-muted sm:col-span-2">slug: {c.slug} (read-only)</div>
+          <Field label="label" v={draft.label} onChange={(v) => setDraft({ ...draft, label: v })} />
+          <Field label="description" v={draft.description} onChange={(v) => setDraft({ ...draft, description: v })} />
+          <NumField label="sort_order" v={draft.sort_order} onChange={(v) => setDraft({ ...draft, sort_order: v })} />
+          <label className="flex items-end gap-2">
+            <input
+              type="checkbox"
+              checked={draft.active}
+              onChange={(e) => setDraft({ ...draft, active: e.target.checked })}
+            />
+            <span className="font-mono text-[11px] text-text-secondary">active</span>
+          </label>
+        </div>
+        {err && <div className="text-[12px] text-danger">{err}</div>}
+        <div className="flex justify-end gap-2">
+          <Button type="button" variant="ghost" size="sm" onClick={() => setEditing(false)}>
+            Cancel
+          </Button>
+          <Button type="submit" size="sm" loading={update.isPending}>
+            Сохранить
+          </Button>
+        </div>
+      </form>
+    </li>
   )
 }

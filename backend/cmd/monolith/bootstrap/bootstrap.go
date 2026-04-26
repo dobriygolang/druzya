@@ -119,6 +119,16 @@ func New(ctx context.Context, cfg *config.Config) (app *App, otelShutdown func()
 		TokenQuota: quota.New(rdb, dailyCap),
 	}
 
+	// КРИТИЧНО: Subscription quota deps wire'ятся ПЕРВЫМИ — иначе модули
+	// (Hone/Editor/Whiteboard) initialised with by-value `deps` захватят
+	// nil-фы в своих closures (`d.QuotaResolver`, `d.QuotaTierGetter`,
+	// `d.QuotaUsageReader`), и каждый EnforceCreate fall-through'нет в
+	// permissive ветку. Юзер сможет создавать notes/rooms/boards
+	// бесконечно, OVER LIMIT UI cosmetic only. Pass via &deps чтобы
+	// модификации QuotaResolver/etc были видны всем последующим NewX(deps)
+	// вызовам (deps уже изменён, копии в NewX будут содержать valid pointers).
+	services.WireSubscriptionQuota(&deps)
+
 	// Auth must come first — its TokenIssuer + RequireAuth feed every
 	// other module that needs WS auth or a connect mount behind bearer.
 	auth, aerr := services.NewAuth(deps, os.Getenv("ENCRYPTION_KEY"))
@@ -168,6 +178,7 @@ func New(ctx context.Context, cfg *config.Config) (app *App, otelShutdown func()
 	intelligenceMod := services.NewIntelligence(deps)
 	deps.IntelligenceMemoryHook = intelligenceMod.Hook
 	deps.IntelligenceMockMemoryHook = intelligenceMod.MockHook
+	deps.IntelligenceMemory = intelligenceMod.Memory
 
 	modules := []*services.Module{
 		&auth.Module,
@@ -187,6 +198,10 @@ func New(ctx context.Context, cfg *config.Config) (app *App, otelShutdown func()
 		services.NewMockInsights(deps),
 		// Codex catalogue (public read + admin CRUD over codex_articles).
 		services.NewCodex(deps),
+		// Admin write surface for `llm_models` (public read = ai_models.go).
+		services.NewAdminAIModels(deps),
+		// Personas — public catalogue + admin CRUD (Copilot expert mode).
+		services.NewAdminPersonas(deps),
 		// VPS retention sweep — see cleanup_crons.go header for tables/
 		// policies. Pure background, no REST surface.
 		services.NewCleanupCrons(deps),

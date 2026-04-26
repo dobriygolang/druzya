@@ -33,6 +33,31 @@ import (
 //     tier выставляется только через admin-endpoint (как в M1-M2).
 //   - Background cron MarkExpired (раз в час).
 //   - Background sync Boosty (раз в 30 мин, если credentials есть).
+//
+// WireSubscriptionQuota — pre-wire'ит QuotaResolver / TierGetter / UsageReader
+// в *Deps ДО того как другие модули (Hone / Editor / Whiteboard) захватят
+// замыкания над `Deps`. Раньше это делалось внутри `NewSubscription(d Deps)`,
+// но `Deps` передавался by-value → модификации `d.QuotaResolver = ...`
+// влияли только на subscription'ову локальную копию, а Hone/Editor/Whiteboard
+// уже были инициализированы РАНЬШЕ с `nil` в этих полях → их закрытия
+// возвращали nil → EnforceCreate'ы fall-through'или в permissive ветку
+// (`return nil // permissive`) → юзер мог создавать notes/rooms/boards
+// бесконечно за пределы лимита. Cosmetic UI ("OVER LIMIT") работал, гейты
+// — нет. Сейчас это вызывается из bootstrap'а ПЕРВЫМ, через pointer на
+// shared deps, так что все последующие NewX(deps) видят правильные не-nil
+// поля.
+func WireSubscriptionQuota(d *Deps) {
+	pg := subInfra.NewPostgres(d.Pool)
+	clk := subDomain.RealClock{}
+	getTierUC := subApp.NewGetTier(pg, clk)
+	usageReader := &subscriptionUsageAdapter{pool: d.Pool}
+	configReader := &subscriptionConfigAdapter{pool: d.Pool}
+	policyResolver := subApp.NewPolicyResolver(configReader)
+	d.QuotaResolver = policyResolver
+	d.QuotaTierGetter = getTierUC
+	d.QuotaUsageReader = usageReader
+}
+
 func NewSubscription(d Deps) *Module {
 	pg := subInfra.NewPostgres(d.Pool)
 	linkRepo := subInfra.NewLinkPostgres(d.Pool)
@@ -46,9 +71,11 @@ func NewSubscription(d Deps) *Module {
 	policyResolver := subApp.NewPolicyResolver(configReader)
 	getQuotaUC := subApp.NewGetQuota(getTierUC, usageReader, policyResolver)
 	quotaHandler := &quotaRestHandler{uc: getQuotaUC, log: d.Log}
-	// Expose resolver via Deps так, что enforce-middleware'ы в других
-	// модулях могут читать policy без дублирования логики. См. monolith
-	// services/types.go (added).
+	// NB: эти три присваивания модифицируют ЛОКАЛЬНУЮ копию `d` —
+	// никакого эффекта на другие модули (см. WireSubscriptionQuota
+	// выше про by-value bug). Оставляем для idempotency: если кто-то
+	// в будущем добавит usage внутри THIS модуля закрытие будет
+	// корректным.
 	d.QuotaResolver = policyResolver
 	d.QuotaTierGetter = getTierUC
 	d.QuotaUsageReader = usageReader

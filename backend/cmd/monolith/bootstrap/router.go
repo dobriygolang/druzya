@@ -205,7 +205,11 @@ func restAuthGate(requireAuth func(http.Handler) http.Handler) func(http.Handler
 		// /api/v1/codex/articles — public Codex catalogue. Static-feeling
 		// content (Wikipedia / RFC / docs links), визитная карточка проекта
 		// — должен открываться до логина.
-		"/api/v1/codex/articles": {},
+		"/api/v1/codex/articles":   {},
+		"/api/v1/codex/categories": {},
+		// Persona catalogue used by /copilot before sign-in (public hero
+		// shows persona picker even for anonymous visitors).
+		"/api/v1/personas": {},
 		// /api/v1/lobby/list — public discovery for /lobbies. Detail and
 		// code-lookup paths (/lobby/{id}, /lobby/code/{code}) are also
 		// public — see isPublic prefix check below.

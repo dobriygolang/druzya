@@ -33,11 +33,23 @@ export type CodexArticleUpsertBody = {
   active?: boolean | null
 }
 
+export type CodexCategory = {
+  slug: string
+  label: string
+  description: string
+  sort_order: number
+  active: boolean
+}
+
+export type CodexCategoryUpsertBody = Omit<CodexCategory, never>
+
 const STALE_MS = 5 * 60_000
 
 export const codexKeys = {
   publicList: () => ['codex', 'public'] as const,
   adminList: () => ['codex', 'admin'] as const,
+  categoriesPublic: () => ['codex', 'categories', 'public'] as const,
+  categoriesAdmin: () => ['codex', 'categories', 'admin'] as const,
 }
 
 export function useCodexArticlesQuery() {
@@ -118,4 +130,81 @@ export function useDeleteCodexArticleMutation() {
       void qc.invalidateQueries({ queryKey: ['codex'] })
     },
   })
+}
+
+// ── Categories ───────────────────────────────────────────────────────
+
+export function useCodexCategoriesQuery() {
+  return useQuery({
+    queryKey: codexKeys.categoriesPublic(),
+    queryFn: async () => {
+      const r = await api<{ items: CodexCategory[] }>('/codex/categories')
+      return r.items ?? []
+    },
+    staleTime: STALE_MS,
+  })
+}
+
+export function useAdminCodexCategoriesQuery() {
+  return useQuery({
+    queryKey: codexKeys.categoriesAdmin(),
+    queryFn: async () => {
+      const r = await api<{ items: CodexCategory[] }>('/admin/codex/categories')
+      return r.items ?? []
+    },
+    staleTime: 30_000,
+  })
+}
+
+export function useCreateCodexCategoryMutation() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (body: CodexCategoryUpsertBody) =>
+      api<CodexCategory>('/admin/codex/categories', {
+        method: 'POST',
+        body: JSON.stringify(body),
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['codex', 'categories'] })
+    },
+  })
+}
+
+export function useUpdateCodexCategoryMutation() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ slug, body }: { slug: string; body: CodexCategoryUpsertBody }) =>
+      api<CodexCategory>(`/admin/codex/categories/${encodeURIComponent(slug)}`, {
+        method: 'PATCH',
+        body: JSON.stringify(body),
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['codex', 'categories'] })
+    },
+  })
+}
+
+export function useDeleteCodexCategoryMutation() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (slug: string) =>
+      api<void>(`/admin/codex/categories/${encodeURIComponent(slug)}`, {
+        method: 'DELETE',
+      }),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['codex', 'categories'] })
+    },
+  })
+}
+
+// ── Coach signal ─────────────────────────────────────────────────────
+
+// Best-effort fire-and-forget: opens the external article + pings the
+// backend so a `codex_article_opened` episode lands in Coach memory.
+export function pingCodexArticleOpened(id: string): void {
+  void api(`/codex/articles/${encodeURIComponent(id)}/open`, {
+    method: 'POST',
+  }).catch(() => {})
 }

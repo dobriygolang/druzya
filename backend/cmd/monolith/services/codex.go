@@ -1,13 +1,15 @@
 // codex.go — chi-direct CRUD over the `codex_articles` table.
 //
 // Public surface:
-//   GET /api/v1/codex/articles            (open — codex caching tier)
+//
+//	GET /api/v1/codex/articles            (open — codex caching tier)
 //
 // Admin surface (requires role=admin in JWT):
-//   POST   /api/v1/admin/codex/articles
-//   PATCH  /api/v1/admin/codex/articles/{id}
-//   DELETE /api/v1/admin/codex/articles/{id}
-//   POST   /api/v1/admin/codex/articles/{id}/active
+//
+//	POST   /api/v1/admin/codex/articles
+//	PATCH  /api/v1/admin/codex/articles/{id}
+//	DELETE /api/v1/admin/codex/articles/{id}
+//	POST   /api/v1/admin/codex/articles/{id}/active
 //
 // Categories stay hardcoded on the frontend (icon + colour are
 // presentation, not data); this module owns articles only.
@@ -19,7 +21,11 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"time"
 
+	intelApp "druz9/intelligence/app"
+	intelDomain "druz9/intelligence/domain"
+	sharedMw "druz9/shared/pkg/middleware"
 	sharedpg "druz9/shared/pkg/pg"
 
 	"github.com/go-chi/chi/v5"
@@ -27,6 +33,14 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
+
+type codexCategoryDTO struct {
+	Slug        string `json:"slug"`
+	Label       string `json:"label"`
+	Description string `json:"description"`
+	SortOrder   int    `json:"sort_order"`
+	Active      bool   `json:"active"`
+}
 
 type codexArticleDTO struct {
 	ID          string `json:"id"`
@@ -44,27 +58,41 @@ type codexArticleDTO struct {
 const codexArticleCols = `id::text, slug, title, description, category, href, source, read_min, sort_order, active`
 
 // NewCodex wires both the public read and the admin CRUD routes.
+// `memory` is optional — when non-nil we write a `codex_article_opened`
+// episode each time the user POSTs /codex/articles/{id}/open. Coach
+// uses these episodes to spot reading patterns ("часто читаешь sysdesign
+// → попробуй mock с этим этапом").
 func NewCodex(d Deps) *Module {
-	h := &codexHandler{pool: d.Pool, log: d.Log}
+	h := &codexHandler{pool: d.Pool, log: d.Log, memory: d.IntelligenceMemory}
 	return &Module{
 		MountPublicREST: func(r chi.Router) {
 			// Anonymous-readable: codex is content for unauthenticated visitors too.
 			r.Get("/codex/articles", h.listPublic)
+			r.Get("/codex/categories", h.listCategoriesPublic)
 		},
 		MountREST: func(r chi.Router) {
+			// Open-article tap (auth'd users only — no point storing
+			// anonymous reads in Coach memory).
+			r.Post("/codex/articles/{id}/open", h.openArticle)
 			// Admin CRUD lives behind the gated /api/v1.
 			r.Get("/admin/codex/articles", h.listAdmin)
 			r.Post("/admin/codex/articles", h.create)
 			r.Patch("/admin/codex/articles/{id}", h.update)
 			r.Delete("/admin/codex/articles/{id}", h.delete)
 			r.Post("/admin/codex/articles/{id}/active", h.toggleActive)
+			// Categories admin CRUD (presentation lookup-table; small).
+			r.Get("/admin/codex/categories", h.listCategoriesAdmin)
+			r.Post("/admin/codex/categories", h.createCategory)
+			r.Patch("/admin/codex/categories/{slug}", h.updateCategory)
+			r.Delete("/admin/codex/categories/{slug}", h.deleteCategory)
 		},
 	}
 }
 
 type codexHandler struct {
-	pool *pgxpool.Pool
-	log  *slog.Logger
+	pool   *pgxpool.Pool
+	log    *slog.Logger
+	memory *intelApp.Memory
 }
 
 func (h *codexHandler) listPublic(w http.ResponseWriter, r *http.Request) {
@@ -280,4 +308,191 @@ func (h *codexHandler) fail(w http.ResponseWriter, r *http.Request, err error, o
 		h.log.ErrorContext(r.Context(), "codex: "+op+" failed", slog.Any("err", err))
 	}
 	http.Error(w, `{"error":"internal"}`, http.StatusInternalServerError)
+}
+
+// ── Categories ───────────────────────────────────────────────────────
+
+const codexCategoryCols = `slug, label, description, sort_order, active`
+
+func (h *codexHandler) listCategoriesPublic(w http.ResponseWriter, r *http.Request) {
+	rows, err := h.pool.Query(r.Context(),
+		`SELECT `+codexCategoryCols+` FROM codex_categories WHERE active = true ORDER BY sort_order ASC`)
+	if err != nil {
+		h.fail(w, r, err, "list_categories_public")
+		return
+	}
+	defer rows.Close()
+	out := make([]codexCategoryDTO, 0, 8)
+	for rows.Next() {
+		var c codexCategoryDTO
+		if scanErr := rows.Scan(&c.Slug, &c.Label, &c.Description, &c.SortOrder, &c.Active); scanErr != nil {
+			continue
+		}
+		out = append(out, c)
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Cache-Control", "public, max-age=600")
+	_ = json.NewEncoder(w).Encode(map[string]any{"items": out})
+}
+
+func (h *codexHandler) listCategoriesAdmin(w http.ResponseWriter, r *http.Request) {
+	if _, err := requireAdminInline(r); err != nil {
+		http.Error(w, fmt.Sprintf(`{"error":"%s"}`, err.Error()), statusForAuthErr(err))
+		return
+	}
+	rows, err := h.pool.Query(r.Context(),
+		`SELECT `+codexCategoryCols+` FROM codex_categories ORDER BY sort_order ASC`)
+	if err != nil {
+		h.fail(w, r, err, "list_categories_admin")
+		return
+	}
+	defer rows.Close()
+	out := make([]codexCategoryDTO, 0, 8)
+	for rows.Next() {
+		var c codexCategoryDTO
+		if scanErr := rows.Scan(&c.Slug, &c.Label, &c.Description, &c.SortOrder, &c.Active); scanErr != nil {
+			continue
+		}
+		out = append(out, c)
+	}
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(map[string]any{"items": out})
+}
+
+func (h *codexHandler) createCategory(w http.ResponseWriter, r *http.Request) {
+	if _, err := requireAdminInline(r); err != nil {
+		http.Error(w, fmt.Sprintf(`{"error":"%s"}`, err.Error()), statusForAuthErr(err))
+		return
+	}
+	var body codexCategoryDTO
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		http.Error(w, `{"error":"invalid body"}`, http.StatusBadRequest)
+		return
+	}
+	if body.Slug == "" || body.Label == "" {
+		http.Error(w, `{"error":"slug and label are required"}`, http.StatusBadRequest)
+		return
+	}
+	_, err := h.pool.Exec(r.Context(), `
+		INSERT INTO codex_categories (slug, label, description, sort_order, active)
+		VALUES ($1, $2, $3, $4, $5)`,
+		body.Slug, body.Label, body.Description, body.SortOrder, body.Active)
+	if err != nil {
+		h.fail(w, r, err, "create_category")
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	_ = json.NewEncoder(w).Encode(body)
+}
+
+func (h *codexHandler) updateCategory(w http.ResponseWriter, r *http.Request) {
+	if _, err := requireAdminInline(r); err != nil {
+		http.Error(w, fmt.Sprintf(`{"error":"%s"}`, err.Error()), statusForAuthErr(err))
+		return
+	}
+	slug := chi.URLParam(r, "slug")
+	if slug == "" {
+		http.Error(w, `{"error":"slug required"}`, http.StatusBadRequest)
+		return
+	}
+	var body codexCategoryDTO
+	if dErr := json.NewDecoder(r.Body).Decode(&body); dErr != nil {
+		http.Error(w, `{"error":"invalid body"}`, http.StatusBadRequest)
+		return
+	}
+	tag, err := h.pool.Exec(r.Context(), `
+		UPDATE codex_categories SET
+		  label = $2, description = $3, sort_order = $4, active = $5,
+		  updated_at = now()
+		WHERE slug = $1`,
+		slug, body.Label, body.Description, body.SortOrder, body.Active)
+	if err != nil {
+		h.fail(w, r, err, "update_category")
+		return
+	}
+	if tag.RowsAffected() == 0 {
+		http.Error(w, `{"error":"not found"}`, http.StatusNotFound)
+		return
+	}
+	body.Slug = slug
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(body)
+}
+
+func (h *codexHandler) deleteCategory(w http.ResponseWriter, r *http.Request) {
+	if _, err := requireAdminInline(r); err != nil {
+		http.Error(w, fmt.Sprintf(`{"error":"%s"}`, err.Error()), statusForAuthErr(err))
+		return
+	}
+	slug := chi.URLParam(r, "slug")
+	// Refuse if any article still uses this category — admin must reassign first.
+	var count int
+	if err := h.pool.QueryRow(r.Context(),
+		`SELECT COUNT(*) FROM codex_articles WHERE category = $1`, slug).Scan(&count); err == nil && count > 0 {
+		http.Error(w, fmt.Sprintf(`{"error":"%d articles still use this category — reassign first"}`, count),
+			http.StatusConflict)
+		return
+	}
+	tag, err := h.pool.Exec(r.Context(),
+		`DELETE FROM codex_categories WHERE slug = $1`, slug)
+	if err != nil {
+		h.fail(w, r, err, "delete_category")
+		return
+	}
+	if tag.RowsAffected() == 0 {
+		http.Error(w, `{"error":"not found"}`, http.StatusNotFound)
+		return
+	}
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// ── Open-article episode ─────────────────────────────────────────────
+
+// openArticle is the Coach memory tap. Frontend POSTs here right after
+// opening an external link so we can write a `codex_article_opened`
+// episode and the Daily Coach narrative can spot reading patterns
+// ("ты часто читаешь sysdesign — пора попробовать mock этого этапа").
+func (h *codexHandler) openArticle(w http.ResponseWriter, r *http.Request) {
+	uid, ok := sharedMw.UserIDFromContext(r.Context())
+	if !ok {
+		http.Error(w, `{"error":"unauthenticated"}`, http.StatusUnauthorized)
+		return
+	}
+	id, err := uuid.Parse(chi.URLParam(r, "id"))
+	if err != nil {
+		http.Error(w, `{"error":"invalid id"}`, http.StatusBadRequest)
+		return
+	}
+	var meta struct {
+		Slug     string `json:"slug"`
+		Title    string `json:"title"`
+		Category string `json:"category"`
+	}
+	if err := h.pool.QueryRow(r.Context(),
+		`SELECT slug, title, category FROM codex_articles WHERE id = $1 AND active = true`,
+		sharedpg.UUID(id)).Scan(&meta.Slug, &meta.Title, &meta.Category); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			http.Error(w, `{"error":"not found"}`, http.StatusNotFound)
+			return
+		}
+		h.fail(w, r, err, "open_article_lookup")
+		return
+	}
+	if h.memory != nil {
+		h.memory.AppendAsync(r.Context(), intelApp.AppendInput{
+			UserID:  uid,
+			Kind:    intelDomain.EpisodeCodexArticleOpened,
+			Summary: fmt.Sprintf("opened: %s (%s)", meta.Title, meta.Category),
+			Payload: map[string]any{
+				"article_id": id.String(),
+				"slug":       meta.Slug,
+				"category":   meta.Category,
+				"title":      meta.Title,
+			},
+			OccurredAt: time.Now().UTC(),
+		})
+	}
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(map[string]bool{"ok": true})
 }

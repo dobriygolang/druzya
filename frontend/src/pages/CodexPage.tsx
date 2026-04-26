@@ -17,7 +17,11 @@ import {
   codexCategoriesWithCounts,
   type CodexArticle as StaticCodexArticle,
 } from '../content/codex'
-import { useCodexArticlesQuery, type CodexArticle as DBCodexArticle } from '../lib/queries/codex'
+import {
+  pingCodexArticleOpened,
+  useCodexArticlesQuery,
+  type CodexArticle as DBCodexArticle,
+} from '../lib/queries/codex'
 
 // Унифицированный тип для рендера: фронтовый StaticCodexArticle (id,
 // read_min, href, source) совпадает с DBCodexArticle по форме после
@@ -111,12 +115,19 @@ function SearchBox({ value, onChange }: { value: string; onChange: (v: string) =
 }
 
 function ArticleCard({ a }: { a: CodexArticle }) {
+  // Coach memory tap: when the user opens an article, ping the backend
+  // so the Daily Brief can later say "ты регулярно читаешь sysdesign —
+  // попробуй mock этого этапа". Best-effort; failure doesn't prevent
+  // the link from opening.
   return (
     <a
       href={a.href}
       target="_blank"
       rel="noopener noreferrer"
       className="block"
+      onClick={() => {
+        if ('id' in a && typeof a.id === 'string' && a.id) pingCodexArticleOpened(a.id)
+      }}
     >
       <Card interactive className="flex-col gap-2 p-5">
         <div className="flex items-center justify-between">

@@ -34,10 +34,9 @@ export function Sidebar({ tab, setTab, pendingReports }: { tab: Tab; setTab: (t:
     { id: 'podcasts', label: 'Подкасты' },
     { id: 'codex', label: 'Codex · статьи' },
     { id: 'atlas', label: 'Atlas CMS' },
-    // ai_models + personas скрыты — backend admin CRUD ещё не написан
-    // (только публичные read-only `/ai/models`). Когда появится —
-    // вернуть в сайдбар; UI-компоненты лежат в репе.
+    { id: 'ai_models', label: 'AI Modельки' },
     { id: 'llm_chain', label: 'LLM Chain ⚡' },
+    { id: 'personas', label: 'Персоны' },
     { id: 'arena_tasks', label: 'Arena · задачи' },
     { id: 'mock_companies', label: 'Mock · компании' },
     { id: 'mock_tasks', label: 'Mock · задачи' },

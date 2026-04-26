@@ -263,7 +263,15 @@ func (h *mockInsightsHandler) resolveSummary(ctx context.Context, userID string,
 		}
 	}
 	if h.chain == nil {
-		return ""
+		// No LLMChain configured — synthesise a deterministic summary from
+		// the same data so the user still sees a useful paragraph instead
+		// of an empty card. Cached too, so we don't re-template on every
+		// request (cheap but avoids inconsistencies on stage rebalancing).
+		s := templateSummary(data)
+		if s != "" && h.rdb != nil {
+			_ = h.rdb.Set(ctx, cacheKey, s, insightsSummaryTTL).Err()
+		}
+		return s
 	}
 	prompt := buildInsightsSummaryPrompt(data)
 	llmCtx, cancel := context.WithTimeout(ctx, insightsSummaryTimeout)
@@ -295,6 +303,81 @@ func (h *mockInsightsHandler) resolveSummary(ctx context.Context, userID string,
 		_ = h.rdb.Set(ctx, cacheKey, summary, insightsSummaryTTL).Err()
 	}
 	return summary
+}
+
+// templateSummary — детерминистический fallback когда LLMChain не
+// настроен. Считаем сильнейший / слабейший этапы, тренд по последним 3
+// vs первым 3, топ pattern. Текст по-русски, без LLM.
+func templateSummary(d insightsOverviewResp) string {
+	if d.TotalSessions30d == 0 {
+		return ""
+	}
+	parts := []string{}
+	parts = append(parts, fmt.Sprintf("За 30 дней — %d сессий, pass-rate %d%%.",
+		d.TotalSessions30d, d.PipelinePassRate30))
+
+	if len(d.StagePerformance) > 0 {
+		var best, worst stagePerformanceRow
+		bestRate, worstRate := -1, 101
+		for _, s := range d.StagePerformance {
+			if s.Total < 2 {
+				continue
+			}
+			if s.PassRate > bestRate {
+				best, bestRate = s, s.PassRate
+			}
+			if s.PassRate < worstRate {
+				worst, worstRate = s, s.PassRate
+			}
+		}
+		if best.StageKind != "" && worst.StageKind != "" && best.StageKind != worst.StageKind {
+			parts = append(parts,
+				fmt.Sprintf("Сильнее всего идёт %s (%d%%), труднее всего — %s (%d%%).",
+					best.StageKind, best.PassRate, worst.StageKind, worst.PassRate))
+		}
+	}
+
+	if len(d.ScoreTrajectory) >= 4 {
+		head := d.ScoreTrajectory[:len(d.ScoreTrajectory)/2]
+		tail := d.ScoreTrajectory[len(d.ScoreTrajectory)/2:]
+		var headSum, tailSum float64
+		for _, p := range head {
+			headSum += p.Score
+		}
+		for _, p := range tail {
+			tailSum += p.Score
+		}
+		delta := tailSum/float64(len(tail)) - headSum/float64(len(head))
+		switch {
+		case delta > 5:
+			parts = append(parts, fmt.Sprintf("Score растёт: +%.0f к среднему за вторую половину окна.", delta))
+		case delta < -5:
+			parts = append(parts, fmt.Sprintf("Score просел: %.0f vs первая половина окна.", delta))
+		}
+	}
+
+	if len(d.RecurringPatterns) > 0 && d.RecurringPatterns[0].Count >= 3 {
+		parts = append(parts, fmt.Sprintf("Чаще всего упускаешь «%s» (×%d).",
+			d.RecurringPatterns[0].Point, d.RecurringPatterns[0].Count))
+	}
+
+	// Концовка — всегда конкретный next-step.
+	switch {
+	case len(d.StagePerformance) > 0:
+		var weakest stagePerformanceRow
+		worstRate := 101
+		for _, s := range d.StagePerformance {
+			if s.Total >= 2 && s.PassRate < worstRate {
+				weakest, worstRate = s, s.PassRate
+			}
+		}
+		if weakest.StageKind != "" {
+			parts = append(parts, fmt.Sprintf("На этой неделе — один mock с фокусом на %s.", weakest.StageKind))
+		}
+	default:
+		parts = append(parts, "Запусти 1-2 mock'а на этой неделе, чтобы цифры стабилизировались.")
+	}
+	return strings.Join(parts, " ")
 }
 
 const insightsSummarySystemPrompt = `You are a calm, motivating coach for a software-interview-prep tool.
