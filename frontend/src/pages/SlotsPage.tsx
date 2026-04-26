@@ -52,12 +52,15 @@ const SORTS: { key: SlotSort; label: string }[] = [
 
 const GRADIENTS: AvatarGradient[] = ['violet-cyan', 'pink-violet', 'cyan-violet', 'success-cyan']
 
-function pickGradient(seed: string): AvatarGradient {
+function pickGradient(seed: string | undefined | null): AvatarGradient {
+  // Defensive: if upstream wire shape changes (camelCase vs snake_case),
+  // we don't want a crash in render — just fall back to a stable gradient.
   let hash = 0
-  for (let i = 0; i < seed.length; i++) {
-    hash = (hash * 31 + seed.charCodeAt(i)) >>> 0
+  const s = seed ?? ''
+  for (let i = 0; i < s.length; i++) {
+    hash = (hash * 31 + s.charCodeAt(i)) >>> 0
   }
-  return GRADIENTS[hash % GRADIENTS.length]
+  return GRADIENTS[hash % GRADIENTS.length]!
 }
 
 function fmtPrice(rub: number): string {

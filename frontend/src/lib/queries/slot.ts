@@ -57,11 +57,36 @@ export type SlotFilter = {
 // vanguard returns the SlotList wrapper as a top-level array on the REST wire.
 type SlotListWire = SlotWire[] | { items: SlotWire[] }
 
-// Wire-level slot — enum fields arrive as proto strings. We normalize on read.
-type SlotWire = Omit<Slot, 'section' | 'difficulty' | 'status'> & {
+// Wire-level slot — proto/vanguard эмитит camelCase + enum как proto-строки.
+// Принимаем оба варианта (camelCase + snake_case) чтобы один и тот же
+// нормализатор работал и для chi-direct ручек (snake_case), и для proto-
+// transcode'нутых (camelCase). Без этого падает с undefined.length —
+// см. pickGradient(s.interviewer.user_id) в SlotsPage.
+type SlotWire = {
+  id: string
+  starts_at?: string
+  startsAt?: string
+  duration_min?: number
+  durationMin?: number
   section: string
   difficulty?: string
+  language: string
+  price_rub?: number
+  priceRub?: number
+  meet_url?: string
+  meetUrl?: string
   status: string
+  interviewer:
+    | {
+        user_id?: string
+        userId?: string
+        username: string
+        avg_rating?: number
+        avgRating?: number
+        reviews_count?: number
+        reviewsCount?: number
+      }
+    | undefined
 }
 
 const SECTION_PROTO: Record<SlotSection, string> = {
@@ -119,16 +144,25 @@ export function normalizeSlot(w: SlotWire): Slot {
   const section = SECTION_FROM_WIRE[w.section]
   const status = STATUS_FROM_WIRE[w.status] ?? 'available'
   if (!section) {
-    // Unknown enum from a future proto bump — surface a typed value rather
-    // than letting the UI render the proto literal.
     throw new Error(`unknown slot section from wire: ${w.section}`)
   }
   const difficulty = w.difficulty ? DIFFICULTY_FROM_WIRE[w.difficulty] : undefined
+  const wi = w.interviewer ?? { username: '' }
   return {
-    ...w,
+    id: w.id,
+    starts_at: w.starts_at ?? w.startsAt ?? '',
+    duration_min: w.duration_min ?? w.durationMin ?? 0,
     section,
     difficulty,
+    language: w.language,
+    price_rub: w.price_rub ?? w.priceRub ?? 0,
     status,
+    interviewer: {
+      user_id: wi.user_id ?? wi.userId ?? '',
+      username: wi.username ?? '',
+      avg_rating: wi.avg_rating ?? wi.avgRating,
+      reviews_count: wi.reviews_count ?? wi.reviewsCount,
+    },
   }
 }
 
