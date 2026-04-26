@@ -904,6 +904,121 @@ function BoardIcon() {
 
 // ─── RoomCanvas ───────────────────────────────────────────────────────────
 
+// ─── Per-element CRDT helpers (mirror frontend/.../WhiteboardSharePage.tsx) ──
+//
+// Хранение по-элементно через Y.Map<elementId, jsonString>:
+//   - getElementsMap   — top-level Y.Map. ydoc.getMap deterministic, race-free.
+//   - migrateLegacyElements — one-shot перенос legacy 'scene'.['elements'].
+//   - projectElements — Y.Map → Element[]; sorted by Excalidraw FractionalIndex.
+//   - reconcileElements — Element[] → Y.Map; diff'ит, batched в одну transact.
+//
+// Origin LOCAL_RECONCILE_ORIGIN ставится на наши локальные мутации, чтобы
+// observer мог отличить «свой» write от приходящего по WS / IDB.
+
+const LOCAL_RECONCILE_ORIGIN = 'local-reconcile';
+
+interface SceneElement {
+  id: string;
+  index?: string | null;
+  [k: string]: unknown;
+}
+
+function getElementsMap(ydoc: Y.Doc): Y.Map<string> {
+  return ydoc.getMap<string>('elements_v2');
+}
+
+function migrateLegacyElements(ydoc: Y.Doc): void {
+  const yElements = getElementsMap(ydoc);
+  if (yElements.size > 0) return;
+  const legacy = ydoc.getMap<string>('scene').get('elements');
+  if (typeof legacy !== 'string' || legacy.length === 0) return;
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(legacy);
+  } catch {
+    return;
+  }
+  if (!Array.isArray(parsed)) return;
+  ydoc.transact(() => {
+    for (const el of parsed as SceneElement[]) {
+      if (el && typeof el.id === 'string') {
+        yElements.set(el.id, JSON.stringify(el));
+      }
+    }
+  }, LOCAL_RECONCILE_ORIGIN);
+}
+
+function projectElements(ydoc: Y.Doc): SceneElement[] {
+  const yElements = getElementsMap(ydoc);
+  const out: SceneElement[] = [];
+  if (yElements.size > 0) {
+    yElements.forEach((json) => {
+      try {
+        out.push(JSON.parse(json) as SceneElement);
+      } catch {
+        /* skip corrupt entry */
+      }
+    });
+  } else {
+    const legacy = ydoc.getMap<string>('scene').get('elements');
+    if (typeof legacy === 'string' && legacy.length > 0) {
+      try {
+        const parsed = JSON.parse(legacy);
+        if (Array.isArray(parsed)) return parsed as SceneElement[];
+      } catch {
+        /* ignore */
+      }
+    }
+  }
+  out.sort((a, b) => {
+    const ai = (a.index ?? '') as string;
+    const bi = (b.index ?? '') as string;
+    return ai < bi ? -1 : ai > bi ? 1 : 0;
+  });
+  return out;
+}
+
+function hashElements(elements: readonly SceneElement[]): string {
+  const parts: string[] = [];
+  for (const el of elements) {
+    parts.push(
+      String(el.id),
+      ':',
+      String((el as { version?: number }).version ?? ''),
+      '.',
+      String((el as { versionNonce?: number }).versionNonce ?? ''),
+      '|',
+    );
+  }
+  return parts.join('');
+}
+
+function reconcileElements(ydoc: Y.Doc, elements: readonly SceneElement[]): boolean {
+  const yElements = getElementsMap(ydoc);
+  let changed = false;
+  ydoc.transact(() => {
+    const incoming = new Set<string>();
+    for (const el of elements) {
+      if (!el || typeof el.id !== 'string') continue;
+      incoming.add(el.id);
+      const json = JSON.stringify(el);
+      if (yElements.get(el.id) !== json) {
+        yElements.set(el.id, json);
+        changed = true;
+      }
+    }
+    const toDelete: string[] = [];
+    yElements.forEach((_v, id) => {
+      if (!incoming.has(id)) toDelete.push(id);
+    });
+    for (const id of toDelete) {
+      yElements.delete(id);
+      changed = true;
+    }
+  }, LOCAL_RECONCILE_ORIGIN);
+  return changed;
+}
+
 function RoomCanvas({ roomId }: { roomId: string }) {
   const parsedId = useMemo(() => extractRoomId(roomId), [roomId]);
   const [room, setRoom] = useState<WhiteboardRoom | null>(null);
@@ -931,10 +1046,13 @@ function RoomCanvas({ roomId }: { roomId: string }) {
   // new ref каждый раз). Без guard'а side-effects (refresh / replay) повторяются
   // на каждое re-render'е main компонента (e.g. при WS status change).
   const apiBoundRef = useRef(false);
-  // Pending elements JSON, ещё не закоммиченный в yScene из-за debounce.
-  // На cleanup делаем sync-flush — иначе drawing'и в последние 80ms перед
-  // переключением board теряются (debounce таймер cancel'ится без выполнения).
-  const pendingElementsRef = useRef<string | null>(null);
+  // Cheap version-hash последнего проектированного/реконсилированного
+  // элемент-set'а. Используется чтобы:
+  //  - skip холостых onChange'ей (Excalidraw фаерит на любые appState
+  //    мутации, в т.ч. чужие cursor-движения через onAwarenessChange);
+  //  - подавить echo: после updateScene Excalidraw сразу вызывает onChange
+  //    с теми же elements; reconcile под нашим origin'ом породил бы CRDT-race.
+  const lastReconciledHashRef = useRef<string | null>(null);
 
   // Load room meta.
   useEffect(() => {
@@ -981,9 +1099,15 @@ function RoomCanvas({ roomId }: { roomId: string }) {
     if (!room) return;
     const ydoc = new Y.Doc();
     ydocRef.current = ydoc;
-    const yScene = ydoc.getMap<string>('scene');
+    const yElements = getElementsMap(ydoc);
+    const yScene = ydoc.getMap<string>('scene'); // legacy, для observer'а fallback'а
 
     const persistence = new IndexeddbPersistence(`hone:whiteboard:${room.id}`, ydoc);
+    persistence.whenSynced
+      .then(() => migrateLegacyElements(ydoc))
+      .catch(() => {
+        /* ignore */
+      });
 
     // Awareness — присутствие других участников: имя, цвет, pointer, selection.
     // Excalidraw нативно умеет рендерить cursors через appState.collaborators.
@@ -1051,6 +1175,10 @@ function RoomCanvas({ roomId }: { roomId: string }) {
           const data = env.data as { update?: string };
           if (data?.update) {
             Y.applyUpdate(ydoc, b64ToBytes(data.update), 'remote');
+            // Old rooms могут прислать snapshot с legacy 'scene'.['elements'].
+            // Триггерим one-shot миграцию здесь, independent от
+            // persistence.whenSynced (тот мог отработать до прихода snapshot'а).
+            if (env.kind === 'snapshot') migrateLegacyElements(ydoc);
           }
         } else if (env.kind === 'awareness') {
           // Бэкенд может оборачивать в {user_id, data} или передавать как есть.
@@ -1072,62 +1200,54 @@ function RoomCanvas({ roomId }: { roomId: string }) {
       handle.send({ kind: 'awareness', data: { update: bytesToB64(update) } });
     };
 
-    const onSceneChange = (
-      _event: Y.YMapEvent<string>,
-      transaction: Y.Transaction,
-    ) => {
-      // Origin filter: persistence-restore (y-indexeddb) И local-write оба
-      // триггерят observer. Local-write — Excalidraw уже показывает наш state.
-      // Persistence-restore — может содержать СТАРЫЙ state с меньшим bounding
-      // box → updateScene shrinks viewport (юзер рисует → внезапно canvas
-      // ужимается). Принимаем ТОЛЬКО transactions с origin === 'remote' —
-      // т.е. WS-applied updates от других peer'ов или server snapshot'а.
-      if (transaction.origin !== 'remote') return;
-      const json = yScene.get('elements');
-      if (!json || !apiRef.current) return;
-      // Local pending-edit guard: даже remote'ом не overwrite'им если у нас
-      // есть unsent local edit — после flush'а CRDT merge сам разрулит.
-      if (pendingElementsRef.current !== null) {
-        return;
-      }
+    // Per-id observer + legacy fallback observer. См. mirror в
+    // frontend/src/pages/WhiteboardSharePage.tsx — поведение одинаковое.
+    const projectAndApply = () => {
+      const api = apiRef.current;
+      if (!api) return;
+      const elements = projectElements(ydoc);
+      const hash = hashElements(elements);
+      if (hash === lastReconciledHashRef.current) return;
+      applyingRemoteRef.current = true;
       try {
-        const elements = JSON.parse(json);
-        applyingRemoteRef.current = true;
-        // ТОЛЬКО elements — appState не трогаем, иначе Excalidraw
-        // может потерять files (для image elements), tool state и
-        // прочую клиентскую meta'у.
-        apiRef.current.updateScene({
-          elements,
+        api.updateScene({
+          elements: elements as never,
           captureUpdate: CaptureUpdateAction.NEVER,
         });
-      } catch {
-        /* ignore parse errors */
+        lastReconciledHashRef.current = hash;
       } finally {
         queueMicrotask(() => {
           applyingRemoteRef.current = false;
         });
       }
     };
-    yScene.observe(onSceneChange);
+    const onElementsChange = (
+      _event: Y.YMapEvent<string>,
+      transaction: Y.Transaction,
+    ) => {
+      if (transaction.origin === LOCAL_RECONCILE_ORIGIN) return;
+      projectAndApply();
+    };
+    yElements.observe(onElementsChange);
+    // Legacy fallback observer — пока встречаются клиенты, пишущие в
+    // 'scene'.['elements'] (старые web/hone до этого рефактора).
+    const onLegacySceneChange = (
+      _event: Y.YMapEvent<string>,
+      transaction: Y.Transaction,
+    ) => {
+      if (transaction.origin === LOCAL_RECONCILE_ORIGIN) return;
+      if (yElements.size > 0) return; // v2 — single source of truth.
+      projectAndApply();
+    };
+    yScene.observe(onLegacySceneChange);
 
     return () => {
-      // КРИТИЧНО: flush pending change ДО закрытия WS / destroy ydoc.
-      // Иначе drawing'и в последние 80ms (между last onChange и сменой
-      // комнаты) теряются — yScene.set никогда не вызывается, update не
-      // улетает на сервер, доска при rejoin пустая.
       if (debounceRef.current !== null) {
         window.clearTimeout(debounceRef.current);
         debounceRef.current = null;
       }
-      const pending = pendingElementsRef.current;
-      pendingElementsRef.current = null;
-      if (pending !== null && yScene.get('elements') !== pending) {
-        // sync set → ydoc.on('update') fires sync → sendRef → ws.send
-        // (WS буфер успеет flush'нуться до .close() в стандартных browser
-        // WS implementations).
-        yScene.set('elements', pending);
-      }
-      yScene.unobserve(onSceneChange);
+      yElements.unobserve(onElementsChange);
+      yScene.unobserve(onLegacySceneChange);
       ydoc.off('update', onUpdate);
       awareness.off('update', onAwarenessUpdate);
       awareness.off('change', onAwarenessChange);
@@ -1154,18 +1274,21 @@ function RoomCanvas({ roomId }: { roomId: string }) {
       if (applyingRemoteRef.current) return;
       const ydoc = ydocRef.current;
       if (!ydoc) return;
-      const yScene = ydoc.getMap<string>('scene');
-      const json = JSON.stringify(elements);
-      pendingElementsRef.current = json;
-      if (debounceRef.current !== null) window.clearTimeout(debounceRef.current);
+      const els = elements as readonly SceneElement[];
+      const hash = hashElements(els);
+      if (hash === lastReconciledHashRef.current) return;
+      lastReconciledHashRef.current = hash;
+      // Coalesce одного тика в один reconcile (≤1 frame latency).
+      // Debounce НЕ ресетится по последующим вызовам — первый планирует,
+      // остальные просто оставляют hash актуальным.
+      if (debounceRef.current !== null) return;
+      const snapshot = els;
       debounceRef.current = window.setTimeout(() => {
-        if (yScene.get('elements') === json) {
-          pendingElementsRef.current = null;
-          return;
-        }
-        yScene.set('elements', json);
-        pendingElementsRef.current = null;
-      }, 80);
+        debounceRef.current = null;
+        const ydocNow = ydocRef.current;
+        if (!ydocNow) return;
+        reconcileElements(ydocNow, snapshot);
+      }, 0);
     },
     [],
   );

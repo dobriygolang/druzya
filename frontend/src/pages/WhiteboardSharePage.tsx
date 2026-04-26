@@ -10,8 +10,14 @@
 //     получают 403 (см. backend ws_handler + app.GetRoom).
 //
 // Архитектура sync (mirrors hone/SharedBoards.tsx):
-//   - Y.Doc + Y.Map<'scene'>['elements'] хранит JSON-stringified Excalidraw
-//     elements. Local change → Y.Map.set → ws-update relay.
+//   - Y.Doc + Y.Map<elementId, json>('elements_v2') — ПЕР-ЭЛЕМЕНТ CRDT.
+//     Один Excalidraw element = одна запись в Y.Map. Concurrent edits
+//     на РАЗНЫЕ элементы не конфликтуют. Concurrent edits на ОДИН id
+//     резолвятся LWW per-element (приемлемо — теряется правка одного
+//     объекта, не вся сцена).
+//   - Legacy `Y.Map<'scene'>['elements'] = full-json-string` мигрируется
+//     на лету при первом коннекте (см. migrateLegacyElements). После
+//     миграции старый ключ не трогаем.
 //   - Awareness (y-protocols) для cursors других участников →
 //     Excalidraw appState.collaborators map.
 //   - WS envelope kinds: 'snapshot', 'update', 'awareness', 'ping'/'pong'.
@@ -44,6 +50,129 @@ type LoadState =
   | { kind: 'expired' }
   | { kind: 'error'; message: string }
   | { kind: 'ready'; room: RoomMeta; guestToken?: string; myUserId?: string; myDisplayName?: string }
+
+// ─── Per-element CRDT helpers ────────────────────────────────────────────
+//
+// Хранение по-элементно через Y.Map<elementId, jsonString>:
+//   - getElementsMap   — top-level Y.Map. ydoc.getMap deterministic, race-free.
+//   - migrateLegacyElements — one-shot перенос legacy 'scene'.['elements'].
+//   - projectElements — Y.Map → Element[]; sorted by Excalidraw FractionalIndex.
+//   - reconcileElements — Element[] → Y.Map; diff'ит, batched в одну transact.
+//
+// Origin LOCAL_RECONCILE_ORIGIN ставится на наши локальные мутации, чтобы
+// observer мог отличить «свой» write от приходящего по WS / IDB.
+
+const LOCAL_RECONCILE_ORIGIN = 'local-reconcile'
+
+interface SceneElement {
+  id: string
+  index?: string | null
+  [k: string]: unknown
+}
+
+function getElementsMap(ydoc: Y.Doc): Y.Map<string> {
+  return ydoc.getMap<string>('elements_v2')
+}
+
+function migrateLegacyElements(ydoc: Y.Doc): void {
+  const yElements = getElementsMap(ydoc)
+  if (yElements.size > 0) return
+  const legacy = ydoc.getMap<string>('scene').get('elements')
+  if (typeof legacy !== 'string' || legacy.length === 0) return
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(legacy)
+  } catch {
+    return
+  }
+  if (!Array.isArray(parsed)) return
+  ydoc.transact(() => {
+    for (const el of parsed as SceneElement[]) {
+      if (el && typeof el.id === 'string') {
+        yElements.set(el.id, JSON.stringify(el))
+      }
+    }
+  }, LOCAL_RECONCILE_ORIGIN)
+}
+
+function projectElements(ydoc: Y.Doc): SceneElement[] {
+  const yElements = getElementsMap(ydoc)
+  const out: SceneElement[] = []
+  if (yElements.size > 0) {
+    yElements.forEach((json) => {
+      try {
+        out.push(JSON.parse(json) as SceneElement)
+      } catch {
+        /* skip corrupt entry */
+      }
+    })
+  } else {
+    // Legacy fallback: snapshot из старого клиента, который ещё пишет
+    // в 'scene'.'elements'. Читаем, чтобы не показать пустой холст.
+    const legacy = ydoc.getMap<string>('scene').get('elements')
+    if (typeof legacy === 'string' && legacy.length > 0) {
+      try {
+        const parsed = JSON.parse(legacy)
+        if (Array.isArray(parsed)) return parsed as SceneElement[]
+      } catch {
+        /* ignore */
+      }
+    }
+  }
+  // Excalidraw use FractionalIndex (string) for z-order; lex-sort works.
+  out.sort((a, b) => {
+    const ai = (a.index ?? '') as string
+    const bi = (b.index ?? '') as string
+    return ai < bi ? -1 : ai > bi ? 1 : 0
+  })
+  return out
+}
+
+// Cheap stable hash of the projected element list — used to skip noop
+// echo'ы (Excalidraw гонит onChange на любые appState changes; мы не
+// хотим re-reconcile если содержание не изменилось).
+function hashElements(elements: readonly SceneElement[]): string {
+  // Small but distinguishing: id+version+versionNonce per element.
+  // Excalidraw bumps version on any field change.
+  const parts: string[] = []
+  for (const el of elements) {
+    parts.push(
+      String(el.id),
+      ':',
+      String((el as { version?: number }).version ?? ''),
+      '.',
+      String((el as { versionNonce?: number }).versionNonce ?? ''),
+      '|',
+    )
+  }
+  return parts.join('')
+}
+
+function reconcileElements(ydoc: Y.Doc, elements: readonly SceneElement[]): boolean {
+  const yElements = getElementsMap(ydoc)
+  let changed = false
+  ydoc.transact(() => {
+    const incoming = new Set<string>()
+    for (const el of elements) {
+      if (!el || typeof el.id !== 'string') continue
+      incoming.add(el.id)
+      const json = JSON.stringify(el)
+      if (yElements.get(el.id) !== json) {
+        yElements.set(el.id, json)
+        changed = true
+      }
+    }
+    const toDelete: string[] = []
+    yElements.forEach((_v, id) => {
+      if (!incoming.has(id)) toDelete.push(id)
+    })
+    for (const id of toDelete) {
+      yElements.delete(id)
+      changed = true
+    }
+  }, LOCAL_RECONCILE_ORIGIN)
+  return changed
+}
 
 // ─── Page component ───────────────────────────────────────────────────────
 
@@ -347,8 +476,7 @@ function RoomCanvasImpl({ room, guestToken, myUserId, myDisplayName }: { room: R
   const awarenessRef = useRef<Awareness | null>(null)
   const applyingRemoteRef = useRef(false)
   const debounceRef = useRef<number | null>(null)
-  const pendingElementsRef = useRef<string | null>(null)
-  const lastSentJsonRef = useRef<string | null>(null)
+  const lastReconciledHashRef = useRef<string | null>(null)
   // Excalidraw зовёт `excalidrawAPI` callback на каждом render'е если
   // reference inline-arrow меняется. Ref-based "fired-once" guard
   // предотвращает re-replay yScene → updateScene → wipe-just-drawn-shape.
@@ -357,7 +485,7 @@ function RoomCanvasImpl({ room, guestToken, myUserId, myDisplayName }: { room: R
   useEffect(() => {
     const ydoc = new Y.Doc()
     ydocRef.current = ydoc
-    const yScene = ydoc.getMap<string>('scene')
+    const yElements = getElementsMap(ydoc)
 
     // Local-first persistence: y-indexeddb сохраняет Y.Doc локально в
     // IndexedDB. При offline'е, app crash'е, или backend down — данные не
@@ -365,6 +493,14 @@ function RoomCanvasImpl({ room, guestToken, myUserId, myDisplayName }: { room: R
     // local storage. WS reconnect → Yjs CRDT merge'ит local + remote
     // updates автоматически без конфликтов. Mirror hone SharedBoards.
     const persistence = new IndexeddbPersistence(`druz9:whiteboard:${room.id}`, ydoc)
+    // После того как persistence донакатил локальные данные — мигрируем
+    // legacy 'scene'.['elements'] в per-id. Это one-shot: если v2 уже
+    // populated (от server snapshot или прошлой миграции) — no-op.
+    persistence.whenSynced
+      .then(() => migrateLegacyElements(ydoc))
+      .catch(() => {
+        /* persistence load failed — ignore, fresh start */
+      })
 
     const awareness = new Awareness(ydoc)
     awarenessRef.current = awareness
@@ -429,41 +565,61 @@ function RoomCanvasImpl({ room, guestToken, myUserId, myDisplayName }: { room: R
     }
     awareness.on('change', onAwChange)
 
-    const onSceneChange = (
-      _event: Y.YMapEvent<string>,
-      transaction: Y.Transaction,
-    ) => {
-      // Origin filter: persistence-restore (y-indexeddb) и local-write оба
-      // триггерят observer. Local-write — мы получаем uptodate snapshot,
-      // не нужно re-render'ить (Excalidraw уже показывает то что юзер нарисовал).
-      // Persistence-restore — IDB load из прошлой сессии. Может содержать
-      // СТАРЫЙ state'ом меньшим bounding box → updateScene shrinks viewport.
-      // Принимаем ТОЛЬКО transactions с origin === 'remote' (т.е. WS-applied
-      // updates от других peer'ов / server snapshot'а).
-      if (transaction.origin !== 'remote') return
-      const json = yScene.get('elements')
-      if (!json || !apiRef.current) return
-      // Local pending-edit guard: даже remote-update'ом не overwrite'им если
-      // у нас есть unsent local edit — после flush'а CRDT merge сам разрулит.
-      if (pendingElementsRef.current !== null) {
-        return
-      }
+    // Observer на per-id Y.Map. Срабатывает на любые add/update/delete
+    // от любого источника — отличаем по transaction.origin:
+    //   - LOCAL_RECONCILE_ORIGIN — наш собственный reconcile, Excalidraw уже
+    //     показывает эти elements, ре-рендер не нужен.
+    //   - persistence — IDB-restore. Контент мог быть устаревшим (например,
+    //     до миграции legacy ещё не выполнен), но по содержанию правильный
+    //     для отображения; всё равно проектируем.
+    //   - undefined / 'remote' / 'snapshot' — приехало с WS, нужно обновить
+    //     Excalidraw.
+    const projectAndApply = () => {
+      const api = apiRef.current
+      if (!api) return
+      const elements = projectElements(ydoc)
+      const hash = hashElements(elements)
+      if (hash === lastReconciledHashRef.current) return
+      applyingRemoteRef.current = true
       try {
-        const elements = JSON.parse(json)
-        applyingRemoteRef.current = true
-        apiRef.current.updateScene({
-          elements,
+        api.updateScene({
+          elements: elements as never,
           captureUpdate: CaptureUpdateAction.NEVER,
         })
-      } catch {
-        /* ignore parse */
+        // Синхронизируем hash, чтобы echo onChange (Excalidraw фаерит
+        // onChange после updateScene даже при идентичном содержимом)
+        // не запустил re-reconcile под нашим clientID. Без этого был
+        // observed «откат у гостя»: эхо от creator'а перезаписывало
+        // гостёвый element с более высоким clock.
+        lastReconciledHashRef.current = hash
       } finally {
         queueMicrotask(() => {
           applyingRemoteRef.current = false
         })
       }
     }
-    yScene.observe(onSceneChange)
+    const onElementsChange = (
+      _event: Y.YMapEvent<string>,
+      transaction: Y.Transaction,
+    ) => {
+      if (transaction.origin === LOCAL_RECONCILE_ORIGIN) return
+      projectAndApply()
+    }
+    yElements.observe(onElementsChange)
+    // Legacy-fallback observer: пока есть клиенты (hone) пишущие в старый
+    // 'scene'.['elements'] ключ, нужно читать оттуда тоже. Удалим observer
+    // когда все клиенты будут на v2.
+    const yScene = ydoc.getMap<string>('scene')
+    const onLegacySceneChange = (
+      _event: Y.YMapEvent<string>,
+      transaction: Y.Transaction,
+    ) => {
+      if (transaction.origin === LOCAL_RECONCILE_ORIGIN) return
+      // Если v2 уже непустая — игнорируем legacy (single source of truth).
+      if (yElements.size > 0) return
+      projectAndApply()
+    }
+    yScene.observe(onLegacySceneChange)
 
     // Guest-token (если есть) приоритетен, потому что на этой странице
     // юзер мог войти как guest, не имея access_token в localStorage.
@@ -477,6 +633,11 @@ function RoomCanvasImpl({ room, guestToken, myUserId, myDisplayName }: { room: R
           const data = env.data as { update?: string }
           if (data?.update) {
             Y.applyUpdate(ydoc, b64ToBytes(data.update), 'remote')
+            // На snapshot от сервера старые комнаты могут прислать только
+            // legacy 'scene'.'elements'. Триггерим миграцию здесь тоже —
+            // independent от persistence.whenSynced (тот мог уже отработать
+            // до прихода snapshot'а).
+            if (env.kind === 'snapshot') migrateLegacyElements(ydoc)
           }
         } else if (env.kind === 'awareness') {
           const data = env.data as
@@ -506,12 +667,8 @@ function RoomCanvasImpl({ room, guestToken, myUserId, myDisplayName }: { room: R
         window.clearTimeout(debounceRef.current)
         debounceRef.current = null
       }
-      const pending = pendingElementsRef.current
-      pendingElementsRef.current = null
-      if (pending !== null && yScene.get('elements') !== pending) {
-        yScene.set('elements', pending)
-      }
-      yScene.unobserve(onSceneChange)
+      yElements.unobserve(onElementsChange)
+      yScene.unobserve(onLegacySceneChange)
       ydoc.off('update', onYUpdate)
       awareness.off('update', onAwUpdate)
       awareness.off('change', onAwChange)
@@ -546,37 +703,28 @@ function RoomCanvasImpl({ room, guestToken, myUserId, myDisplayName }: { room: R
     if (applyingRemoteRef.current) return
     const ydoc = ydocRef.current
     if (!ydoc) return
-    const yScene = ydoc.getMap<string>('scene')
-    const json = JSON.stringify(elements)
-    // Skip-if-unchanged. Excalidraw фаерит onChange не только на изменения
-    // elements, но и на любые мутации appState — selection, hover, и
-    // (важно) collaborators map, который мы апдейтим в onAwChange при
-    // каждом cursor-tick'е соседа. Без этого guard'а handleChange бы
-    // вызывался ~60 раз/сек просто пока кто-то рядом двигает мышью —
-    // ресет любого trailing-debounce'а в бесконечность. Это и был root
-    // cause «нарисовал объект → пропал»: SEND update НИКОГДА не уходил
-    // пока соседи активны, сервер не сохранял, на reconnect объект
-    // исчезал. (Регрессия пришла с 5ecf243 — origin-фильтр на onSceneChange
-    // + pending-edit guard убрали единственный путь, который маскировал
-    // отсутствующий SEND.)
-    if (json === lastSentJsonRef.current) return
-    lastSentJsonRef.current = json
-    pendingElementsRef.current = json
+    // Skip-if-unchanged через cheap version-hash. Excalidraw bumps
+    // version+versionNonce on каждое реальное изменение element'а;
+    // appState-only мутации (selection, hover, collaborators) их не
+    // трогают. Без guard'а каждое движение чужого курсора фаерило бы
+    // reconcile под нашим origin'ом → лишний WS-трафик и шанс CRDT-rece.
+    const els = elements as readonly SceneElement[]
+    const hash = hashElements(els)
+    if (hash === lastReconciledHashRef.current) return
+    lastReconciledHashRef.current = hash
 
-    // Coalesce one task → один yScene.set. setTimeout(0) даёт ≤1 frame
-    // latency и схлопывает несколько онChange'ей одного тика в один
-    // SEND. Debounce БОЛЬШЕ НЕ resetится по последующим вызовам —
-    // первый вызов в окне планирует flush, остальные просто обновляют
-    // pending. Это гарантирует что SEND уходит в next tick независимо
-    // от частоты onChange.
+    // Coalesce one task — несколько onChange'ей одного тика схлопываем
+    // в один reconcile (≤1 frame latency). Debounce НЕ ресетится по
+    // последующим вызовам: первый планирует, остальные просто оставляют
+    // hash актуальным. handler'у важна последняя версия elements в момент
+    // запуска — берём её из ref'а Excalidraw'а через closure.
     if (debounceRef.current !== null) return
+    const snapshot = els
     debounceRef.current = window.setTimeout(() => {
       debounceRef.current = null
-      const pending = pendingElementsRef.current
-      pendingElementsRef.current = null
-      if (pending == null) return
-      if (yScene.get('elements') === pending) return
-      yScene.set('elements', pending)
+      const ydocNow = ydocRef.current
+      if (!ydocNow) return
+      reconcileElements(ydocNow, snapshot)
     }, 0)
   }, [])
 
@@ -604,22 +752,23 @@ function RoomCanvasImpl({ room, guestToken, myUserId, myDisplayName }: { room: R
             // раз — на самом первом mount'е API.
             const ydoc = ydocRef.current
             if (ydoc) {
-              const yScene = ydoc.getMap<string>('scene')
-              const json = yScene.get('elements')
-              if (json) {
-                try {
-                  const elements = JSON.parse(json)
-                  applyingRemoteRef.current = true
-                  api.updateScene({
-                    elements,
-                    captureUpdate: CaptureUpdateAction.NEVER,
-                  })
-                  queueMicrotask(() => {
-                    applyingRemoteRef.current = false
-                  })
-                } catch {
-                  /* ignore parse */
-                }
+              // Если snapshot ещё не пришёл — миграция no-op. Если пришёл
+              // legacy snapshot — переносим в v2. Затем проектируем v2 в
+              // Excalidraw. Hash сразу же сохраняем, чтобы первый «холостой»
+              // onChange (Excalidraw фаерит после updateScene) не запустил
+              // reconcile под нашим clientID и не устроил CRDT-эхо у автора.
+              migrateLegacyElements(ydoc)
+              const elements = projectElements(ydoc)
+              if (elements.length > 0) {
+                applyingRemoteRef.current = true
+                api.updateScene({
+                  elements: elements as never,
+                  captureUpdate: CaptureUpdateAction.NEVER,
+                })
+                lastReconciledHashRef.current = hashElements(elements)
+                queueMicrotask(() => {
+                  applyingRemoteRef.current = false
+                })
               }
             }
             requestAnimationFrame(() => {
