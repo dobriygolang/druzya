@@ -99,7 +99,7 @@ export default function AdminPage() {
             <span className="font-mono text-[11px] text-text-muted">Операционная панель druz9</span>
           </div>
         </div>
-        {tab === 'dashboard' && <DashboardPanel />}
+        {tab === 'dashboard' && <DashboardPanel setTab={setTab} />}
         {tab === 'users' && <UsersPanel />}
         {tab === 'reports' && <ReportsPanel />}
         {tab === 'podcasts' && <PodcastsPanel />}

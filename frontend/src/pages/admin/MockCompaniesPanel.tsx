@@ -16,6 +16,7 @@ import {
   useCompanyQuestionsQuery,
   useCompanyStagesQuery,
   useCreateCompanyMutation,
+  useCreateCompanyQuestionMutation,
   useDefaultQuestionsQuery,
   usePutCompanyStagesMutation,
   useStrictnessQuery,
@@ -241,7 +242,154 @@ function CompanyDetail({ company }: { company: Company }) {
 
       <CompanyStagesEditor companyId={company.id} />
       <CandidatePreview companyId={company.id} />
+      <CompanyQuestionsInline companyId={company.id} />
     </div>
+  )
+}
+
+// CompanyQuestionsInline — embeds the company-specific question pool
+// management RIGHT under the stages editor, so admin doesn't have to
+// switch to "Mock · вопросы" tab + filter by company.
+function CompanyQuestionsInline({ companyId }: { companyId: string }) {
+  const list = useCompanyQuestionsQuery(companyId)
+  const create = useCreateCompanyQuestionMutation()
+  const [stageFilter, setStageFilter] = useState<StageKind | 'all'>('all')
+  const [draftStage, setDraftStage] = useState<StageKind>('hr')
+  const [draftBody, setDraftBody] = useState('')
+  const [draftExpected, setDraftExpected] = useState('')
+  const [err, setErr] = useState<string | null>(null)
+
+  const allQuestions = list.data ?? []
+  const filtered =
+    stageFilter === 'all'
+      ? allQuestions
+      : allQuestions.filter((q) => q.stage_kind === stageFilter)
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setErr(null)
+    if (!draftBody.trim()) return
+    try {
+      await create.mutateAsync({
+        companyId,
+        body: {
+          stage_kind: draftStage,
+          body: draftBody.trim(),
+          expected_answer_md: draftExpected.trim() || undefined,
+        },
+      })
+      setDraftBody('')
+      setDraftExpected('')
+    } catch (e) {
+      setErr(mockAdminErrorMessage(e))
+    }
+  }
+
+  return (
+    <section className="rounded-lg border border-border bg-surface-1 p-4">
+      <div className="mb-3 flex items-center justify-between">
+        <div>
+          <h3 className="font-display text-sm font-bold text-text-primary">
+            Вопросы компании
+          </h3>
+          <p className="font-mono text-[10px] text-text-muted">
+            HR / behavioral пулы — пайплайн берёт из них N случайных по limits выше.
+          </p>
+        </div>
+        <select
+          value={stageFilter}
+          onChange={(e) => setStageFilter(e.target.value as StageKind | 'all')}
+          className="rounded-md border border-border bg-surface-2 px-2 py-1 text-[11px] text-text-primary"
+        >
+          <option value="all">все этапы ({allQuestions.length})</option>
+          {STAGE_KINDS.map((s) => {
+            const n = allQuestions.filter((q) => q.stage_kind === s).length
+            return (
+              <option key={s} value={s}>
+                {s} ({n})
+              </option>
+            )
+          })}
+        </select>
+      </div>
+
+      {list.isPending ? (
+        <p className="font-mono text-[11px] text-text-muted">Загрузка…</p>
+      ) : filtered.length === 0 ? (
+        <div className="rounded-md border border-dashed border-border bg-surface-2 px-3 py-4 text-center font-mono text-[11px] text-text-muted">
+          Нет вопросов в выбранном этапе. Добавь первый ниже.
+        </div>
+      ) : (
+        <ul className="mb-3 flex flex-col gap-1.5">
+          {filtered.map((q) => (
+            <li
+              key={q.id}
+              className="flex items-start justify-between gap-3 rounded-md border border-border bg-surface-2 p-2.5"
+            >
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2">
+                  <span className="rounded-full bg-bg/40 px-1.5 py-0.5 font-mono text-[9px] uppercase text-text-muted">
+                    {q.stage_kind}
+                  </span>
+                  {'active' in q && (q as { active?: boolean }).active === false && (
+                    <span className="rounded-full bg-warn/15 px-1.5 py-0.5 font-mono text-[9px] uppercase text-warn">
+                      hidden
+                    </span>
+                  )}
+                </div>
+                <p className="mt-1 line-clamp-2 text-[12px] text-text-primary">{q.body}</p>
+                {q.expected_answer_md && (
+                  <p className="mt-1 line-clamp-1 font-mono text-[10px] text-text-muted">
+                    expected: {q.expected_answer_md}
+                  </p>
+                )}
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      <form
+        onSubmit={submit}
+        className="flex flex-col gap-2 rounded-md border border-text-primary/30 bg-text-primary/[0.03] p-3"
+      >
+        <div className="font-mono text-[10px] uppercase tracking-wider text-text-muted">
+          + добавить вопрос для этой компании
+        </div>
+        <div className="flex flex-col gap-2 sm:flex-row">
+          <select
+            value={draftStage}
+            onChange={(e) => setDraftStage(e.target.value as StageKind)}
+            className="rounded-md border border-border bg-bg/40 px-2 py-1.5 text-[12px] text-text-primary sm:w-32"
+          >
+            {STAGE_KINDS.map((s) => (
+              <option key={s} value={s}>
+                {s}
+              </option>
+            ))}
+          </select>
+          <input
+            value={draftBody}
+            onChange={(e) => setDraftBody(e.target.value)}
+            placeholder="Текст вопроса"
+            className="flex-1 rounded-md border border-border bg-bg/40 px-2 py-1.5 text-[12px] text-text-primary"
+          />
+        </div>
+        <textarea
+          value={draftExpected}
+          onChange={(e) => setDraftExpected(e.target.value)}
+          rows={2}
+          placeholder="Образец ответа (для AI-судьи) — можно оставить пустым"
+          className="rounded-md border border-border bg-bg/40 px-2 py-1.5 font-mono text-[11px] text-text-primary"
+        />
+        {err && <div className="text-[12px] text-danger">{err}</div>}
+        <div className="flex justify-end">
+          <Button type="submit" size="sm" loading={create.isPending}>
+            Добавить
+          </Button>
+        </div>
+      </form>
+    </section>
   )
 }
 
