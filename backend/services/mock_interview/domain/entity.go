@@ -125,6 +125,12 @@ type CompanyStage struct {
 	LanguagePool          []TaskLanguage
 	TaskPoolIDs           []uuid.UUID
 	AIStrictnessProfileID *uuid.UUID
+	// Per-stage question sampling caps. nil = take everything (legacy);
+	// 0 = skip the source; N>0 = `ORDER BY random() LIMIT N` at
+	// materialise-time. Only meaningful for question_answer stages
+	// (HR / behavioral); ignored for task_solve.
+	DefaultQuestionLimit *int
+	CompanyQuestionLimit *int
 }
 
 // MockPipeline — one user attempt. Phase A creates the row + skeleton;

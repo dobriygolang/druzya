@@ -429,6 +429,29 @@ function CompanyStagesEditor({ companyId }: { companyId: string }) {
                     </div>
                   </div>
                 )}
+
+                {(s.stage_kind === 'hr' || s.stage_kind === 'behavioral') && (
+                  <div className="flex flex-col gap-2 sm:col-span-2">
+                    <span className="font-mono text-[9px] uppercase tracking-[0.1em] text-text-muted">
+                      Question sampling
+                    </span>
+                    <div className="grid grid-cols-2 gap-2">
+                      <PoolLimitInput
+                        label="default pool"
+                        value={s.default_question_limit ?? null}
+                        onChange={(v) => setStage(i, { default_question_limit: v })}
+                      />
+                      <PoolLimitInput
+                        label="company pool"
+                        value={s.company_question_limit ?? null}
+                        onChange={(v) => setStage(i, { company_question_limit: v })}
+                      />
+                    </div>
+                    <p className="font-mono text-[10px] text-text-muted">
+                      пусто = взять все · 0 = пропустить · N = случайных N
+                    </p>
+                  </div>
+                )}
               </div>
 
               <button
@@ -449,4 +472,39 @@ function CompanyStagesEditor({ companyId }: { companyId: string }) {
 
 function sortStages(s: CompanyStageConfig[]): CompanyStageConfig[] {
   return [...s].sort((a, b) => a.ordinal - b.ordinal)
+}
+
+// PoolLimitInput — number-or-null input. Empty string serialises to
+// `null` (= "take all"); explicit 0 keeps the source disabled.
+function PoolLimitInput({
+  label,
+  value,
+  onChange,
+}: {
+  label: string
+  value: number | null
+  onChange: (v: number | null) => void
+}) {
+  return (
+    <label className="flex flex-col gap-1">
+      <span className="font-mono text-[9px] uppercase tracking-[0.1em] text-text-muted">
+        {label}
+      </span>
+      <input
+        type="number"
+        min={0}
+        max={50}
+        placeholder="all"
+        value={value ?? ''}
+        onChange={(e) => {
+          const raw = e.target.value
+          if (raw === '') return onChange(null)
+          const n = Number(raw)
+          if (!Number.isFinite(n)) return
+          onChange(Math.max(0, Math.min(50, Math.round(n))))
+        }}
+        className="rounded-md border border-border bg-bg/40 px-2 py-1.5 font-mono text-[12px] text-text-primary"
+      />
+    </label>
+  )
 }

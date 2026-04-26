@@ -329,26 +329,76 @@ func (o *Orchestrator) materialiseSysDesignAttempts(ctx context.Context, stage d
 	return out, nil
 }
 
+// resolveQuestionLimits looks up the company_stages row for this
+// (companyID, stageKind) pair and returns the configured sampling
+// caps. Either return value may be nil ("take all"). Random-mode
+// pipelines (companyID nil) always return (nil, nil).
+func (o *Orchestrator) resolveQuestionLimits(ctx context.Context, stageKind domain.StageKind, companyID *uuid.UUID) (*int, *int) {
+	if companyID == nil || *companyID == uuid.Nil || o.CompanyStages == nil {
+		return nil, nil
+	}
+	cfgs, err := o.CompanyStages.GetForCompany(ctx, *companyID)
+	if err != nil {
+		return nil, nil
+	}
+	for _, c := range cfgs {
+		if c.StageKind == stageKind {
+			return c.DefaultQuestionLimit, c.CompanyQuestionLimit
+		}
+	}
+	return nil, nil
+}
+
 // materialiseQuestionAttempts inserts one pipeline_attempt per default +
 // company question for stages that don't carry tasks (HR, behavioral).
 // Random mode (companyID nil) uses defaults only.
+//
+// Sampling: if the company_stages row has non-NULL default/company
+// question_limit, the SQL `ORDER BY random() LIMIT N` form is used so a
+// candidate doesn't have to answer all 200 seeded questions per session.
+// NULL limit (or no company_stages row at all) preserves legacy "take
+// every active row" behaviour.
 func (o *Orchestrator) materialiseQuestionAttempts(ctx context.Context, stageID uuid.UUID, stageKind domain.StageKind, companyID *uuid.UUID) ([]AttemptView, error) {
-	defaults, err := o.Questions.ListDefaultQuestions(ctx, stageKind, true)
+	// Resolve sampling caps from company_stages. Caller-provided companyID
+	// may be nil (random mode) — defaults to "no caps" then.
+	defaultLimit, companyLimit := o.resolveQuestionLimits(ctx, stageKind, companyID)
+
+	var defaults []domain.DefaultQuestion
+	var err error
+	switch {
+	case defaultLimit != nil && *defaultLimit == 0:
+		// Admin opted out of defaults entirely for this stage.
+		defaults = nil
+	case defaultLimit != nil && *defaultLimit > 0:
+		defaults, err = o.Questions.SampleDefaultQuestions(ctx, stageKind, *defaultLimit)
+	default:
+		defaults, err = o.Questions.ListDefaultQuestions(ctx, stageKind, true)
+	}
 	if err != nil {
-		return nil, fmt.Errorf("questions.ListDefaultQuestions: %w", err)
+		return nil, fmt.Errorf("questions.defaults: %w", err)
 	}
 
 	var companyQs []domain.CompanyQuestion
 	if companyID != nil && *companyID != uuid.Nil {
-		all, err := o.Questions.ListCompanyQuestions(ctx, *companyID, stageKind)
-		if err != nil {
-			return nil, fmt.Errorf("questions.ListCompanyQuestions: %w", err)
-		}
-		// Active only — repo returns all rows; filter here so the policy is
-		// in one place.
-		for _, q := range all {
-			if q.Active {
-				companyQs = append(companyQs, q)
+		switch {
+		case companyLimit != nil && *companyLimit == 0:
+			companyQs = nil
+		case companyLimit != nil && *companyLimit > 0:
+			companyQs, err = o.Questions.SampleCompanyQuestions(ctx, *companyID, stageKind, *companyLimit)
+			if err != nil {
+				return nil, fmt.Errorf("questions.SampleCompanyQuestions: %w", err)
+			}
+		default:
+			all, err := o.Questions.ListCompanyQuestions(ctx, *companyID, stageKind)
+			if err != nil {
+				return nil, fmt.Errorf("questions.ListCompanyQuestions: %w", err)
+			}
+			// Active only — list returns all rows; filter here so the policy is
+			// in one place.
+			for _, q := range all {
+				if q.Active {
+					companyQs = append(companyQs, q)
+				}
 			}
 		}
 	}

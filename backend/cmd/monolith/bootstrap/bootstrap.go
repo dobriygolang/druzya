@@ -182,6 +182,8 @@ func New(ctx context.Context, cfg *config.Config) (app *App, otelShutdown func()
 		services.NewAdminArenaTasks(deps),
 		// Public per-day status history → spark bars on /status.
 		services.NewStatusHistory(deps),
+		// Per-user mock-interview insights aggregator → /insights live cards.
+		services.NewMockInsights(deps),
 		// VPS retention sweep — see cleanup_crons.go header for tables/
 		// policies. Pure background, no REST surface.
 		services.NewCleanupCrons(deps),

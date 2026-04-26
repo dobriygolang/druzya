@@ -61,12 +61,18 @@ type QuestionRepo interface {
 
 	// Stage default pool.
 	ListDefaultQuestions(ctx context.Context, stage StageKind, onlyActive bool) ([]DefaultQuestion, error)
+	// SampleDefaultQuestions returns up to `limit` randomly-ordered active
+	// default questions for the stage. limit<=0 falls through to ListDefault
+	// with onlyActive=true.
+	SampleDefaultQuestions(ctx context.Context, stage StageKind, limit int) ([]DefaultQuestion, error)
 	CreateDefaultQuestion(ctx context.Context, q DefaultQuestion) (DefaultQuestion, error)
 	UpdateDefaultQuestion(ctx context.Context, q DefaultQuestion) (DefaultQuestion, error)
 	DeleteDefaultQuestion(ctx context.Context, id uuid.UUID) error
 
 	// Per-company overlay.
 	ListCompanyQuestions(ctx context.Context, companyID uuid.UUID, stage StageKind) ([]CompanyQuestion, error)
+	// SampleCompanyQuestions: same as Sample for defaults, but per company.
+	SampleCompanyQuestions(ctx context.Context, companyID uuid.UUID, stage StageKind, limit int) ([]CompanyQuestion, error)
 	CreateCompanyQuestion(ctx context.Context, q CompanyQuestion) (CompanyQuestion, error)
 	UpdateCompanyQuestion(ctx context.Context, q CompanyQuestion) (CompanyQuestion, error)
 	DeleteCompanyQuestion(ctx context.Context, id uuid.UUID) error

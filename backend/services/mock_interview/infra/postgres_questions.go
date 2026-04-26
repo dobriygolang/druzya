@@ -183,6 +183,36 @@ func (r *Questions) ListDefaultQuestions(ctx context.Context, stage domain.Stage
 	return out, nil
 }
 
+// SampleDefaultQuestions returns up to `limit` randomly-ordered active
+// rows. limit<=0 short-circuits to ListDefaultQuestions(stage, true).
+func (r *Questions) SampleDefaultQuestions(ctx context.Context, stage domain.StageKind, limit int) ([]domain.DefaultQuestion, error) {
+	if limit <= 0 {
+		return r.ListDefaultQuestions(ctx, stage, true)
+	}
+	rows, err := r.pool.Query(ctx, `
+		SELECT `+defaultQCols+`
+		  FROM stage_default_questions
+		 WHERE stage_kind=$1 AND active = true
+		 ORDER BY random()
+		 LIMIT $2`, string(stage), limit)
+	if err != nil {
+		return nil, fmt.Errorf("mock_interview.Questions.SampleDefaultQuestions: %w", err)
+	}
+	defer rows.Close()
+	var out []domain.DefaultQuestion
+	for rows.Next() {
+		dq, err := r.scanDefaultQ(rows)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, dq)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("rows.Err default_questions.sample: %w", err)
+	}
+	return out, nil
+}
+
 func (r *Questions) CreateDefaultQuestion(ctx context.Context, q domain.DefaultQuestion) (domain.DefaultQuestion, error) {
 	rcBytes, err := marshalReferenceCriteria(q.ReferenceCriteria)
 	if err != nil {
@@ -290,6 +320,35 @@ func (r *Questions) ListCompanyQuestions(ctx context.Context, companyID uuid.UUI
 	}
 	if err := rows.Err(); err != nil {
 		return nil, fmt.Errorf("rows.Err company_questions.list: %w", err)
+	}
+	return out, nil
+}
+
+// SampleCompanyQuestions: per-company variant of SampleDefaultQuestions.
+func (r *Questions) SampleCompanyQuestions(ctx context.Context, companyID uuid.UUID, stage domain.StageKind, limit int) ([]domain.CompanyQuestion, error) {
+	if limit <= 0 {
+		return r.ListCompanyQuestions(ctx, companyID, stage)
+	}
+	rows, err := r.pool.Query(ctx, `
+		SELECT `+companyQCols+`
+		  FROM company_questions
+		 WHERE company_id=$1 AND stage_kind=$2 AND active = true
+		 ORDER BY random()
+		 LIMIT $3`, sharedpg.UUID(companyID), string(stage), limit)
+	if err != nil {
+		return nil, fmt.Errorf("mock_interview.Questions.SampleCompanyQuestions: %w", err)
+	}
+	defer rows.Close()
+	var out []domain.CompanyQuestion
+	for rows.Next() {
+		cq, err := r.scanCompanyQ(rows)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, cq)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("rows.Err company_questions.sample: %w", err)
 	}
 	return out, nil
 }

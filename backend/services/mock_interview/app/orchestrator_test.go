@@ -49,6 +49,26 @@ func (f *orchFakeQuestionRepo) UpdateDefaultQuestion(_ context.Context, q domain
 	return q, nil
 }
 func (f *orchFakeQuestionRepo) DeleteDefaultQuestion(context.Context, uuid.UUID) error { return nil }
+func (f *orchFakeQuestionRepo) SampleDefaultQuestions(ctx context.Context, stage domain.StageKind, limit int) ([]domain.DefaultQuestion, error) {
+	all, err := f.ListDefaultQuestions(ctx, stage, true)
+	if err != nil {
+		return nil, err
+	}
+	if limit <= 0 || limit >= len(all) {
+		return all, nil
+	}
+	return all[:limit], nil
+}
+func (f *orchFakeQuestionRepo) SampleCompanyQuestions(ctx context.Context, companyID uuid.UUID, stage domain.StageKind, limit int) ([]domain.CompanyQuestion, error) {
+	all, err := f.ListCompanyQuestions(ctx, companyID, stage)
+	if err != nil {
+		return nil, err
+	}
+	if limit <= 0 || limit >= len(all) {
+		return all, nil
+	}
+	return all[:limit], nil
+}
 func (f *orchFakeQuestionRepo) ListCompanyQuestions(_ context.Context, _ uuid.UUID, stage domain.StageKind) ([]domain.CompanyQuestion, error) {
 	out := []domain.CompanyQuestion{}
 	for _, c := range f.company {

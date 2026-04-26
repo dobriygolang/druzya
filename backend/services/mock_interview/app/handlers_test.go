@@ -211,7 +211,13 @@ func (f *fakeQuestionRepo) UpdateDefaultQuestion(_ context.Context, q domain.Def
 	return q, nil
 }
 func (f *fakeQuestionRepo) DeleteDefaultQuestion(context.Context, uuid.UUID) error { return nil }
+func (f *fakeQuestionRepo) SampleDefaultQuestions(context.Context, domain.StageKind, int) ([]domain.DefaultQuestion, error) {
+	return nil, nil
+}
 func (f *fakeQuestionRepo) ListCompanyQuestions(context.Context, uuid.UUID, domain.StageKind) ([]domain.CompanyQuestion, error) {
+	return nil, nil
+}
+func (f *fakeQuestionRepo) SampleCompanyQuestions(context.Context, uuid.UUID, domain.StageKind, int) ([]domain.CompanyQuestion, error) {
 	return nil, nil
 }
 func (f *fakeQuestionRepo) CreateCompanyQuestion(_ context.Context, q domain.CompanyQuestion) (domain.CompanyQuestion, error) {

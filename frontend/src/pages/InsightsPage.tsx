@@ -1,62 +1,96 @@
 import type * as React from 'react'
 import { Link } from 'react-router-dom'
-import { ArrowRight, Brain, Flame, Map as MapIcon, Shield, Sparkles, Target, Trophy, TrendingUp } from 'lucide-react'
+import { ArrowRight, Compass, Map as MapIcon, Shield, Sparkles, Target, TrendingUp, Trophy } from 'lucide-react'
 import { AppShellV2 } from '../components/AppShell'
 import { Card } from '../components/Card'
 import { useMockLeaderboardQuery } from '../lib/queries/mockPipeline'
 import { useAtlasQuery } from '../lib/queries/profile'
+import {
+ useMockInsightsOverviewQuery,
+ type RecurringPattern,
+ type ScoreTrajectoryPoint,
+ type StagePerformance,
+} from '../lib/queries/mockInsights'
 import {
  useDailyBriefQuery,
  type RecommendationKind,
 } from '../lib/queries/intelligence'
 
 /**
- * InsightsPage — Wave 4 of ADR-001.
+ * InsightsPage — live analytics surface.
  *
- * Aggregated analytics surface across the three druz9 surfaces (web /
- * Hone / Cue). The killer feature per docs/ecosystem.md: a single
- * narrative of the user's growth — what they solved, what they focused
- * on, what mock-interview signals say about readiness — fed by the
- * `services/intelligence` module which subscribes to all the relevant
- * cross-surface events.
+ * Three real cards driven by `useMockInsightsOverviewQuery`:
+ *   - StagePerformance  — pass rate per stage_kind (30d)
+ *   - PatternsCard      — top recurring missing_points (30d)
+ *   - ScoreTrajectory   — sparkline of last 10 finished pipelines
  *
- * Status: skeleton. Widgets show placeholder copy until the intelligence
- * service exposes the corresponding RPCs (`GetWeeklyIntel`,
- * `GetReadinessForecast`, `GetAtlasUpdate`). The IA — top-nav slot
- * between Atlas and Circles — is the load-bearing piece this page
- * delivers; data flows in incrementally as backend ships.
- *
- * Atlas is intentionally linked from here as a sub-view — Skill Atlas
- * fits inside the "what to learn next" intelligence narrative, not as
- * its own standalone destination.
+ * Plus the existing live blocks (Atlas mini, Daily Coach brief,
+ * Leaderboard). Tone is intentionally calm and motivational: "patterns
+ * to sharpen", not "where you're weak".
  */
 export default function InsightsPage() {
+ const overviewQ = useMockInsightsOverviewQuery()
+ const overview = overviewQ.data
  return (
  <AppShellV2>
  <div className="flex flex-col gap-8 px-4 py-6 sm:px-8 lg:px-20 lg:py-10">
- <header className="flex flex-col gap-2">
+ <header className="flex flex-col gap-3">
  <span className="font-mono text-[10px] uppercase tracking-[0.28em] text-text-muted">
- Wave 4 · skeleton
+ last 30 days
  </span>
+ <div className="flex flex-col gap-1.5 lg:flex-row lg:items-end lg:justify-between lg:gap-4">
  <h1 className="font-display text-3xl font-bold leading-tight text-text-primary lg:text-4xl">
  Insights
  </h1>
+ {overview && overview.total_sessions_30d > 0 && (
+ <div className="flex items-center gap-4 font-mono text-[12px] text-text-secondary">
+ <span>
+ <span className="font-display text-base font-bold text-text-primary">
+ {overview.total_sessions_30d}
+ </span>{' '}
+ mock sessions
+ </span>
+ <span>
+ <span className="font-display text-base font-bold text-text-primary">
+ {overview.pipeline_pass_rate_30d}%
+ </span>{' '}
+ pipeline pass rate
+ </span>
+ </div>
+ )}
+ </div>
  <p className="max-w-2xl text-sm leading-relaxed text-text-secondary">
- Что говорит твоя статистика — по матчам, mock-сессиям, фокус-времени и
- заметкам. Сводный отчёт за неделю, прогноз готовности к собесу и точки
- роста на Skill Atlas. Данные приходят из всех трёх поверхностей druz9
- (web · Hone · Cue) и обновляются автоматически.
+ What your last month of practice tells us — stage performance, recurring
+ themes worth sharpening, and your score trajectory. All counts are
+ user-scoped and refresh after every finished mock session.
  </p>
  </header>
 
- {/* Top row — three primary intel widgets */}
+ {/* Top row — three live intel widgets */}
  <section className="grid grid-cols-1 gap-4 lg:grid-cols-3">
  <WeeklyDigestCard />
- <ReadinessForecastCard />
- <FocusTrendCard />
+ <StagePerformanceCard
+ rows={overview?.stage_performance ?? []}
+ loading={overviewQ.isPending}
+ errored={overviewQ.isError}
+ />
+ <ScoreTrajectoryCard
+ series={overview?.score_trajectory ?? []}
+ loading={overviewQ.isPending}
+ errored={overviewQ.isError}
+ />
  </section>
 
- {/* Atlas — the "what to learn next" view, framed as a sub-section */}
+ {/* Patterns to sharpen — wider card, important block */}
+ <section>
+ <PatternsCard
+ patterns={overview?.recurring_patterns ?? []}
+ loading={overviewQ.isPending}
+ errored={overviewQ.isError}
+ />
+ </section>
+
+ {/* Atlas — "what to learn next" sub-section */}
  <section className="flex flex-col gap-3">
  <div className="flex items-baseline justify-between gap-2">
  <h2 className="font-display text-xl font-bold text-text-primary">
@@ -66,7 +100,7 @@ export default function InsightsPage() {
  to="/atlas"
  className="inline-flex items-center gap-1.5 font-mono text-[12px] text-text-primary hover:underline"
  >
- Открыть полностью <ArrowRight className="h-3.5 w-3.5" />
+ Open full view <ArrowRight className="h-3.5 w-3.5" />
  </Link>
  </div>
  <AtlasPreviewCard />
@@ -75,12 +109,6 @@ export default function InsightsPage() {
  {/* Mock leaderboard — fairness-watermarked, real data. */}
  <section className="flex flex-col gap-3">
  <LeaderboardCard />
- </section>
-
- {/* Bottom row — secondary context */}
- <section className="grid grid-cols-1 gap-4 lg:grid-cols-2">
- <MockSignalsCard />
- <CrossSurfaceCard />
  </section>
  </div>
  </AppShellV2>
@@ -210,49 +238,229 @@ function kindLabel(k: RecommendationKind): string {
  }
 }
 
-function ReadinessForecastCard() {
+// ── Stage performance ────────────────────────────────────────────────
+//
+// Bar list per stage_kind with pass rate (0-100%). Empty / loading /
+// error states render distinct copy so the user knows whether to wait
+// or do something. Tone: report findings, no judgement.
+function StagePerformanceCard({
+ rows,
+ loading,
+ errored,
+}: {
+ rows: StagePerformance[]
+ loading: boolean
+ errored: boolean
+}) {
+ const stageLabel: Record<string, string> = {
+  hr: 'HR',
+  algorithms: 'Algorithms',
+  algo: 'Algorithms',
+  coding: 'Coding',
+  sysdesign: 'System design',
+  sys_design: 'System design',
+  behavioral: 'Behavioral',
+ }
+ const sorted = [...rows].sort((a, b) => b.total - a.total)
  return (
  <Card className="flex-col gap-3 p-5" interactive={false}>
  <div className="flex items-center gap-2">
  <Target className="h-4 w-4 text-text-primary" />
  <span className="font-mono text-[11px] uppercase tracking-[0.16em] text-text-primary">
- Readiness forecast
+ Performance by stage
  </span>
  </div>
- <h3 className="font-display text-lg font-bold leading-tight text-text-primary">
- Готовность к собесу — прогноз.
+ <h3 className="font-display text-base font-bold leading-tight text-text-primary">
+ Where the signal is strongest — and where there's room.
  </h3>
- <p className="text-[13px] leading-relaxed text-text-secondary">
- Bayesian-классификатор поверх mock-сессий («честный» режим) даст оценку:
- готов / нужно ещё N недель / какие пробелы критичны. RPC{' '}
- <span className="font-mono text-text-primary">GetReadinessForecast</span>.
+ {loading && <p className="text-[13px] text-text-muted">Loading…</p>}
+ {errored && !loading && (
+ <p className="text-[13px] text-text-muted">Couldn't load — try later.</p>
+ )}
+ {!loading && !errored && sorted.length === 0 && (
+ <p className="text-[13px] text-text-secondary">
+ No finished stages yet. Run a mock pipeline and the breakdown shows up here.
  </p>
- <div className="mt-2 inline-flex w-fit items-center gap-2 rounded-full border border-border bg-surface-2 px-3 py-1 font-mono text-[10px] uppercase tracking-[0.16em] text-text-muted">
- ETA · Phase C
+ )}
+ {sorted.length > 0 && (
+ <ul className="flex flex-col gap-2.5">
+ {sorted.map((s) => (
+ <li key={s.stage_kind} className="flex flex-col gap-1">
+ <div className="flex items-baseline justify-between gap-3 font-mono text-[11px]">
+ <span className="text-text-primary">
+ {stageLabel[s.stage_kind] ?? s.stage_kind}
+ </span>
+ <span className="text-text-muted">
+ {s.passed}/{s.total} ·{' '}
+ <span className="text-text-primary">{s.pass_rate}%</span>
+ </span>
  </div>
+ <div className="h-1.5 overflow-hidden rounded-full bg-surface-2">
+ <div
+  className="h-full bg-text-primary"
+  style={{ width: `${Math.max(2, s.pass_rate)}%` }}
+ />
+ </div>
+ </li>
+ ))}
+ </ul>
+ )}
  </Card>
  )
 }
 
-function FocusTrendCard() {
+// ── Score trajectory ─────────────────────────────────────────────────
+//
+// Sparkline of total_score across last N finished pipelines. Returned
+// oldest→newest so we can render left-to-right without sorting again.
+function ScoreTrajectoryCard({
+ series,
+ loading,
+ errored,
+}: {
+ series: ScoreTrajectoryPoint[]
+ loading: boolean
+ errored: boolean
+}) {
+ const last = series[series.length - 1]
+ const first = series[0]
+ const trend =
+  series.length >= 2 && first && last
+   ? Math.round(last.score - first.score)
+   : 0
+ const trendLabel =
+  series.length < 2
+   ? null
+   : trend > 0
+    ? `+${trend} vs first`
+    : trend < 0
+     ? `${trend} vs first`
+     : 'flat vs first'
  return (
  <Card className="flex-col gap-3 p-5" interactive={false}>
  <div className="flex items-center gap-2">
- <Flame className="h-4 w-4 text-text-primary" />
+ <TrendingUp className="h-4 w-4 text-text-primary" />
  <span className="font-mono text-[11px] uppercase tracking-[0.16em] text-text-primary">
- Focus trend · 7d
+ Score trajectory
  </span>
  </div>
- <h3 className="font-display text-lg font-bold leading-tight text-text-primary">
- Фокус-время + стрик за 7 дней.
+ <h3 className="font-display text-base font-bold leading-tight text-text-primary">
+ {series.length > 0
+  ? `Last ${series.length} session${series.length === 1 ? '' : 's'}`
+  : 'Last 10 sessions'}
  </h3>
- <p className="text-[13px] leading-relaxed text-text-secondary">
- Heatmap из Hone (focus-sessions + plan adherence). Сейчас живёт в
- Profile · Stats; в Phase B переедет сюда финальной формой.
+ {loading && <p className="text-[13px] text-text-muted">Loading…</p>}
+ {errored && !loading && (
+ <p className="text-[13px] text-text-muted">Couldn't load — try later.</p>
+ )}
+ {!loading && !errored && series.length === 0 && (
+ <p className="text-[13px] text-text-secondary">
+ Once you finish a couple of pipelines, the score curve appears here.
  </p>
- <div className="mt-2 inline-flex w-fit items-center gap-2 rounded-full border border-border bg-surface-2 px-3 py-1 font-mono text-[10px] uppercase tracking-[0.16em] text-text-muted">
- ETA · Phase B
+ )}
+ {series.length > 0 && (
+ <div className="flex flex-col gap-2">
+ <Sparkline points={series} />
+ <div className="flex items-baseline justify-between gap-2 font-mono text-[11px] text-text-muted">
+ <span>
+ latest{' '}
+ <span className="font-display text-base font-bold tabular-nums text-text-primary">
+ {Math.round(last?.score ?? 0)}
+ </span>
+ </span>
+ {trendLabel && <span>{trendLabel}</span>}
  </div>
+ </div>
+ )}
+ </Card>
+ )
+}
+
+function Sparkline({ points }: { points: ScoreTrajectoryPoint[] }) {
+ if (points.length === 0) return null
+ const w = 240
+ const h = 56
+ const pad = 4
+ const xs = points.map((_, i) =>
+  points.length === 1
+   ? w / 2
+   : pad + (i * (w - 2 * pad)) / (points.length - 1),
+ )
+ const ys = points.map(
+  (p) => h - pad - ((p.score / 100) * (h - 2 * pad)),
+ )
+ const d = xs.map((x, i) => `${i === 0 ? 'M' : 'L'}${x.toFixed(1)},${ys[i].toFixed(1)}`).join(' ')
+ const lastX = xs[xs.length - 1]
+ const lastY = ys[ys.length - 1]
+ return (
+ <svg viewBox={`0 0 ${w} ${h}`} className="h-14 w-full">
+ <path d={d} fill="none" stroke="currentColor" strokeWidth={1.5} className="text-text-primary" />
+ {points.map((p, i) => (
+ <circle
+  key={i}
+  cx={xs[i]}
+  cy={ys[i]}
+  r={1.6}
+  className={p.verdict === 'pass' ? 'fill-success' : 'fill-danger'}
+ />
+ ))}
+ <circle cx={lastX} cy={lastY} r={3} className="fill-text-primary" />
+ </svg>
+ )
+}
+
+// ── Patterns to sharpen ──────────────────────────────────────────────
+//
+// Top recurring missing_points across attempts. Carefully worded:
+// "patterns to sharpen", not "what you fail at". Counts make it
+// concrete without being shaming.
+function PatternsCard({
+ patterns,
+ loading,
+ errored,
+}: {
+ patterns: RecurringPattern[]
+ loading: boolean
+ errored: boolean
+}) {
+ return (
+ <Card className="flex-col gap-3 p-5" interactive={false}>
+ <div className="flex items-center gap-2">
+ <Compass className="h-4 w-4 text-text-primary" />
+ <span className="font-mono text-[11px] uppercase tracking-[0.16em] text-text-primary">
+ Patterns to sharpen
+ </span>
+ </div>
+ <h3 className="font-display text-base font-bold leading-tight text-text-primary">
+ Themes that came up most across your last sessions.
+ </h3>
+ {loading && <p className="text-[13px] text-text-muted">Loading…</p>}
+ {errored && !loading && (
+ <p className="text-[13px] text-text-muted">Couldn't load — try later.</p>
+ )}
+ {!loading && !errored && patterns.length === 0 && (
+ <p className="text-[13px] text-text-secondary">
+ No recurring themes yet — finish a few mocks and the AI judges'
+ missing-points cluster shows up here.
+ </p>
+ )}
+ {patterns.length > 0 && (
+ <ul className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+ {patterns.map((p, i) => (
+ <li
+  key={p.point + i}
+  className="flex items-center justify-between gap-3 rounded-lg border border-border bg-surface-2 px-3 py-2"
+ >
+ <span className="truncate text-[13px] text-text-primary first-letter:uppercase">
+ {p.point}
+ </span>
+ <span className="shrink-0 rounded-full bg-bg/40 px-2 py-0.5 font-mono text-[10px] tabular-nums text-text-muted">
+ ×{p.count}
+ </span>
+ </li>
+ ))}
+ </ul>
+ )}
  </Card>
  )
 }
@@ -310,55 +518,6 @@ function AtlasMiniStat({ label, value }: { label: string; value: string }) {
  </span>
  <span className="font-display text-lg font-bold text-text-primary">{value}</span>
  </div>
- )
-}
-
-function MockSignalsCard() {
- return (
- <Card className="flex-col gap-3 p-5" interactive={false}>
- <div className="flex items-center gap-2">
- <Brain className="h-4 w-4 text-text-primary" />
- <span className="font-mono text-[11px] uppercase tracking-[0.16em] text-text-primary">
- Mock signals
- </span>
- </div>
- <h3 className="font-display text-base font-bold leading-tight text-text-primary">
- Сравнение «честно» vs «с AI».
- </h3>
- <p className="text-[13px] leading-relaxed text-text-secondary">
- Mock-сессии теперь несут флаг{' '}
- <span className="font-mono text-text-primary">ai_assist</span> (Wave 3).
- Виджет покажет твой результат в обоих режимах и delta — насколько помогает
- AI. Это объективная метрика «готовности», когда выключаешь подсказки.
- </p>
- <div className="mt-2 inline-flex w-fit items-center gap-2 rounded-full border border-border bg-surface-2 px-3 py-1 font-mono text-[10px] uppercase tracking-[0.16em] text-text-muted">
- ETA · Phase A
- </div>
- </Card>
- )
-}
-
-function CrossSurfaceCard() {
- return (
- <Card className="flex-col gap-3 p-5" interactive={false}>
- <div className="flex items-center gap-2">
- <TrendingUp className="h-4 w-4 text-text-primary" />
- <span className="font-mono text-[11px] uppercase tracking-[0.16em] text-text-primary">
- Cross-surface aggregation
- </span>
- </div>
- <h3 className="font-display text-base font-bold leading-tight text-text-primary">
- Web + Hone + Cue — одно событие.
- </h3>
- <p className="text-[13px] leading-relaxed text-text-secondary">
- Все три поверхности шлют события в общую шину: матчи и kata из web, focus
- и заметки из Hone, частые «застревания» из Cue. Intelligence-сервис
- склеивает их в единый таймлайн и кормит все остальные виджеты.
- </p>
- <div className="mt-2 inline-flex w-fit items-center gap-2 rounded-full border border-border bg-surface-2 px-3 py-1 font-mono text-[10px] uppercase tracking-[0.16em] text-text-muted">
- ETA · Phase C
- </div>
- </Card>
  )
 }
 

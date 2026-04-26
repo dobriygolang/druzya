@@ -481,6 +481,10 @@ export type CompanyStageConfig = {
   language_pool: TaskLanguage[]
   task_pool_ids: string[]
   ai_strictness_profile_id?: string | null
+  // Question sampling caps for HR / behavioral. null = take all
+  // (legacy default), 0 = skip the source, N>0 = sample N at random.
+  default_question_limit?: number | null
+  company_question_limit?: number | null
 }
 
 export function useCompanyStagesQuery(companyId: string | null) {

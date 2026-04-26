@@ -189,6 +189,11 @@ type companyStageDTO struct {
 	LanguagePool          []string `json:"language_pool"`
 	TaskPoolIDs           []string `json:"task_pool_ids"`
 	AIStrictnessProfileID *string  `json:"ai_strictness_profile_id"`
+	// Question sampling caps (HR / behavioral). null = take all
+	// (legacy default), 0 = skip the source, N > 0 = sample N at random
+	// when the stage materialises.
+	DefaultQuestionLimit *int `json:"default_question_limit,omitempty"`
+	CompanyQuestionLimit *int `json:"company_question_limit,omitempty"`
 }
 
 func toCompanyStageDTO(s domain.CompanyStage) companyStageDTO {
@@ -203,6 +208,8 @@ func toCompanyStageDTO(s domain.CompanyStage) companyStageDTO {
 	d := companyStageDTO{
 		StageKind: string(s.StageKind), Ordinal: s.Ordinal, Optional: s.Optional,
 		LanguagePool: langs, TaskPoolIDs: taskIDs,
+		DefaultQuestionLimit: s.DefaultQuestionLimit,
+		CompanyQuestionLimit: s.CompanyQuestionLimit,
 	}
 	if s.AIStrictnessProfileID != nil {
 		v := s.AIStrictnessProfileID.String()
@@ -235,6 +242,8 @@ func fromCompanyStageDTO(companyID uuid.UUID, d companyStageDTO) (domain.Company
 		}
 		out.AIStrictnessProfileID = &id
 	}
+	out.DefaultQuestionLimit = d.DefaultQuestionLimit
+	out.CompanyQuestionLimit = d.CompanyQuestionLimit
 	return out, nil
 }
 

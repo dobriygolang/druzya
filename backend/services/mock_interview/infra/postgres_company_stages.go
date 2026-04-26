@@ -17,7 +17,7 @@ type CompanyStages struct{ pool *pgxpool.Pool }
 
 func NewCompanyStages(pool *pgxpool.Pool) *CompanyStages { return &CompanyStages{pool: pool} }
 
-const companyStageCols = `company_id, stage_kind, ordinal, optional, language_pool, task_pool_ids, ai_strictness_profile_id`
+const companyStageCols = `company_id, stage_kind, ordinal, optional, language_pool, task_pool_ids, ai_strictness_profile_id, default_question_limit, company_question_limit`
 
 func scanCompanyStage(row pgx.Row) (domain.CompanyStage, error) {
 	var (
@@ -27,8 +27,10 @@ func scanCompanyStage(row pgx.Row) (domain.CompanyStage, error) {
 		optional          bool
 		langPool          []string
 		taskPool          []pgtype.UUID
+		defaultLimit      pgtype.Int4
+		companyLimit      pgtype.Int4
 	)
-	if err := row.Scan(&companyID, &stageKind, &ordinal, &optional, &langPool, &taskPool, &profID); err != nil {
+	if err := row.Scan(&companyID, &stageKind, &ordinal, &optional, &langPool, &taskPool, &profID, &defaultLimit, &companyLimit); err != nil {
 		return domain.CompanyStage{}, fmt.Errorf("row.Scan company_stages: %w", err)
 	}
 	out := domain.CompanyStage{
@@ -49,7 +51,23 @@ func scanCompanyStage(row pgx.Row) (domain.CompanyStage, error) {
 		v := sharedpg.UUIDFrom(profID)
 		out.AIStrictnessProfileID = &v
 	}
+	if defaultLimit.Valid {
+		v := int(defaultLimit.Int32)
+		out.DefaultQuestionLimit = &v
+	}
+	if companyLimit.Valid {
+		v := int(companyLimit.Int32)
+		out.CompanyQuestionLimit = &v
+	}
 	return out, nil
+}
+
+// nullableInt unwraps an *int into pgtype.Int4 for inserts/updates.
+func nullableInt(v *int) pgtype.Int4 {
+	if v == nil {
+		return pgtype.Int4{}
+	}
+	return pgtype.Int4{Int32: int32(*v), Valid: true}
 }
 
 func (r *CompanyStages) GetForCompany(ctx context.Context, companyID uuid.UUID) ([]domain.CompanyStage, error) {
@@ -84,16 +102,19 @@ func (r *CompanyStages) Upsert(ctx context.Context, s domain.CompanyStage) error
 		taskPool = append(taskPool, sharedpg.UUID(t))
 	}
 	_, err := r.pool.Exec(ctx, `
-		INSERT INTO company_stages (company_id, stage_kind, ordinal, optional, language_pool, task_pool_ids, ai_strictness_profile_id)
-		VALUES ($1,$2,$3,$4,$5::mock_task_language[],$6,$7)
+		INSERT INTO company_stages (company_id, stage_kind, ordinal, optional, language_pool, task_pool_ids, ai_strictness_profile_id, default_question_limit, company_question_limit)
+		VALUES ($1,$2,$3,$4,$5::mock_task_language[],$6,$7,$8,$9)
 		ON CONFLICT (company_id, stage_kind) DO UPDATE SET
 			ordinal=EXCLUDED.ordinal,
 			optional=EXCLUDED.optional,
 			language_pool=EXCLUDED.language_pool,
 			task_pool_ids=EXCLUDED.task_pool_ids,
-			ai_strictness_profile_id=EXCLUDED.ai_strictness_profile_id`,
+			ai_strictness_profile_id=EXCLUDED.ai_strictness_profile_id,
+			default_question_limit=EXCLUDED.default_question_limit,
+			company_question_limit=EXCLUDED.company_question_limit`,
 		sharedpg.UUID(s.CompanyID), string(s.StageKind), s.Ordinal, s.Optional,
-		langPool, taskPool, nullableUUID(s.AIStrictnessProfileID))
+		langPool, taskPool, nullableUUID(s.AIStrictnessProfileID),
+		nullableInt(s.DefaultQuestionLimit), nullableInt(s.CompanyQuestionLimit))
 	if err != nil {
 		return fmt.Errorf("mock_interview.CompanyStages.Upsert: %w", err)
 	}
@@ -133,10 +154,11 @@ func (r *CompanyStages) ReplaceAll(ctx context.Context, companyID uuid.UUID, sta
 			taskPool = append(taskPool, sharedpg.UUID(t))
 		}
 		if _, err := tx.Exec(ctx, `
-			INSERT INTO company_stages (company_id, stage_kind, ordinal, optional, language_pool, task_pool_ids, ai_strictness_profile_id)
-			VALUES ($1,$2,$3,$4,$5::mock_task_language[],$6,$7)`,
+			INSERT INTO company_stages (company_id, stage_kind, ordinal, optional, language_pool, task_pool_ids, ai_strictness_profile_id, default_question_limit, company_question_limit)
+			VALUES ($1,$2,$3,$4,$5::mock_task_language[],$6,$7,$8,$9)`,
 			sharedpg.UUID(s.CompanyID), string(s.StageKind), s.Ordinal, s.Optional,
-			langPool, taskPool, nullableUUID(s.AIStrictnessProfileID)); err != nil {
+			langPool, taskPool, nullableUUID(s.AIStrictnessProfileID),
+			nullableInt(s.DefaultQuestionLimit), nullableInt(s.CompanyQuestionLimit)); err != nil {
 			return fmt.Errorf("mock_interview.CompanyStages.ReplaceAll insert: %w", err)
 		}
 	}
