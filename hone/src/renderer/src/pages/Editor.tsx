@@ -24,7 +24,7 @@ import {
 } from 'y-protocols/awareness';
 import { EditorState, Compartment, Prec } from '@codemirror/state';
 import { EditorView, keymap, lineNumbers } from '@codemirror/view';
-import { defaultKeymap, history, historyKeymap } from '@codemirror/commands';
+import { defaultKeymap, history, historyKeymap, indentWithTab } from '@codemirror/commands';
 import { indentOnInput, HighlightStyle, syntaxHighlighting } from '@codemirror/language';
 import { tags as t } from '@lezer/highlight';
 import { javascript } from '@codemirror/lang-javascript';
@@ -35,6 +35,7 @@ import { yCollab } from 'y-codemirror.next';
 
 import { useSessionStore } from '../stores/session';
 import { WEB_BASE_URL } from '../api/config';
+import { PendingRoomsSection } from '../components/PendingRoomsSection';
 import {
   createRoom,
   getRoom,
@@ -249,6 +250,15 @@ export function EditorPage({ initialRoomId, onConsumeInitial }: EditorPageProps 
       window.clearTimeout(t2);
     };
   }, [sidebarCollapsed]);
+
+  // Global ⌘S toggle — App.tsx dispatches `hone:toggle-sidebar` event;
+  // мы реагируем только когда страница активна (mounted EditorPage'а
+  // достаточно — она mount'ится только когда `page === 'editor'`).
+  useEffect(() => {
+    const onToggle = () => setSidebarCollapsed((c) => !c);
+    window.addEventListener('hone:toggle-sidebar', onToggle as EventListener);
+    return () => window.removeEventListener('hone:toggle-sidebar', onToggle as EventListener);
+  }, []);
   const [sidebarW, setSidebarW] = useState<number>(() => {
     if (typeof window === 'undefined') return SIDEBAR_DEFAULT;
     const raw = window.localStorage.getItem(SIDEBAR_KEY);
@@ -287,6 +297,16 @@ export function EditorPage({ initialRoomId, onConsumeInitial }: EditorPageProps 
   }, []);
 
   const refreshRecent = () => setRecent(loadRecent());
+
+  // Listen `hone:recent-refresh` от outbox post-drain hook'а — после того
+  // как offline create-room прошёл drain (server вернул real ID), мы
+  // append'или его в localStorage, нужно re-render'нуть sidebar чтобы room
+  // появилась в RECENT с актуальным ID.
+  useEffect(() => {
+    const onRefresh = () => refreshRecent();
+    window.addEventListener('hone:recent-refresh', onRefresh as EventListener);
+    return () => window.removeEventListener('hone:recent-refresh', onRefresh as EventListener);
+  }, []);
 
   return (
     <div
@@ -427,6 +447,25 @@ function CodeRoomsSidebar({
   const handleCreate = async (lang: Language) => {
     setCreating(true);
     setError(null);
+    // Offline path: navigator.onLine=false → выполнить через outbox.
+    // Online path: try createRoom RPC, на network-error fallback в outbox.
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      try {
+        const { enqueue } = await import('../offline/outbox');
+        const clientId = crypto.randomUUID();
+        await enqueue('editor.create_room', {
+          clientId,
+          type: 'practice',
+          language: lang,
+        });
+        // UX feedback — пока drain не отработал, room появится в sidebar
+        // когда онлайн вернётся. Сейчас просто closing creator state.
+        setError("You're offline · room queued, will create when reconnected");
+      } finally {
+        setCreating(false);
+      }
+      return;
+    }
     try {
       const r = await createRoom({ type: 'practice', language: lang });
       onCreated(r.id);
@@ -437,9 +476,26 @@ function CodeRoomsSidebar({
         const { useQuotaStore, quotaExceededMessage } = await import('../stores/quota');
         useQuotaStore.getState().showUpgradePrompt(quotaExceededMessage('room'));
         void useQuotaStore.getState().refresh();
-      } else {
-        setError(ce.rawMessage || ce.message);
+        return;
       }
+      // Network error (Code.Unavailable / unknown) — fallback в outbox чтобы
+      // op не потерялась. Юзер увидит pending-badge в OfflineBanner'е.
+      const isNetwork =
+        ce.code === Code.Unavailable ||
+        ce.code === Code.DeadlineExceeded ||
+        /fetch failed|network|ECONN/i.test(ce.rawMessage || ce.message);
+      if (isNetwork) {
+        const { enqueue } = await import('../offline/outbox');
+        const clientId = crypto.randomUUID();
+        await enqueue('editor.create_room', {
+          clientId,
+          type: 'practice',
+          language: lang,
+        });
+        setError('Network error · room queued for retry');
+        return;
+      }
+      setError(ce.rawMessage || ce.message);
     } finally {
       setCreating(false);
     }
@@ -599,6 +655,7 @@ function CodeRoomsSidebar({
         />
       </form>
 
+      <PendingRoomsSection kind="editor.create_room" label="PENDING" />
       {recent.length > 0 && (
         <>
           <div className="mono" style={{ fontSize: 9, letterSpacing: '.18em', color: 'var(--ink-40)', padding: '4px 14px 6px' }}>
@@ -711,11 +768,29 @@ function CodeRoomRow({
     if (visibility === null) return;
     const next: EditorVisibility = visibility === 'private' ? 'shared' : 'private';
     setVisBusy(true);
+    // Optimistic UI: меняем visibility сразу. Если RPC fail'нет → enqueue
+    // в outbox; сетевой retry'нет позже. На revert не катимся — UX choice
+    // «лучше показать конечное состояние; если backend reject'нет (e.g.
+    // quota) cron auto-downgrade'нет в private обратно».
+    setVisibility(next);
     try {
+      if (typeof navigator !== 'undefined' && !navigator.onLine) {
+        const { enqueue } = await import('../offline/outbox');
+        await enqueue('editor.set_visibility', { roomId: entry.id, visibility: next });
+        return;
+      }
       const v = await setEditorRoomVisibility(entry.id, next);
       setVisibility(v);
-    } catch {
-      /* ignore — могла быть 403 если юзер не owner */
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      const isNetwork = /fetch failed|network|ECONN|TypeError/i.test(msg);
+      if (isNetwork) {
+        const { enqueue } = await import('../offline/outbox');
+        await enqueue('editor.set_visibility', { roomId: entry.id, visibility: next });
+        return;
+      }
+      // 403 / 404 / etc — revert UI к предыдущему значению.
+      setVisibility(visibility);
     } finally {
       setVisBusy(false);
     }
@@ -1403,7 +1478,12 @@ function RoomView({ roomId }: { roomId: string; onBack?: () => void }) {
         lineNumbers(),
         history(),
         indentOnInput(),
-        keymap.of([...defaultKeymap, ...historyKeymap]),
+        // КРИТИЧНО: indentWithTab ПЕРЕД defaultKeymap'ом — иначе Tab
+        // забирается defaultKeymap'ом для focus-navigation (юзер видел
+        // что Tab переключал фокус на sidebar). Теперь Tab вставляет
+        // 2-space indent внутри editor'а, Esc-Tab всё ещё работает для
+        // a11y-escape на focus chain.
+        keymap.of([indentWithTab, ...defaultKeymap, ...historyKeymap]),
         oneDark,
         // Hone Goland/VSCode-like override поверх oneDark — больше
         // контраста, привычные цвета для keywords/types/strings.
@@ -1457,27 +1537,103 @@ function RoomView({ roomId }: { roomId: string; onBack?: () => void }) {
   // shareURL вычисляется в CodeRoomRow (sidebar) для Copy URL / Open on web —
   // эти actions перенесены туда из top-bar.
 
-  // handleFormat — re-indent + trim trailing whitespace через CM6 transactions.
-  // Не настоящий gofmt/prettier (для них нужен server-side runner с
-  // соответствующими тулзами), но даёт юзеру чистый indent + удаляет
-  // trailing spaces. Реальный formatter — отдельный backend ticket
-  // (Judge0 умеет запускать произвольные команды; добавим
-  // /api/v1/editor/format endpoint в следующей итерации).
-  const handleFormat = () => {
-    const view = viewRef.current;
-    if (!view) return;
+  // fallbackTrim — smart client-side formatter для языков, на которые
+  // backend `go/format` не подходит (Python/JS/TS). Делает то что юзер
+  // ожидает от "format" button'ы:
+  //   1. Trim trailing whitespace в каждой line
+  //   2. Collapse 3+ consecutive blank lines в 1 blank
+  //   3. Ensure final newline (POSIX convention)
+  //   4. Normalize tabs → spaces (2 для JS/TS, 4 для Python)
+  // Это не настоящий black/prettier (для них нужен sandbox / binary), но
+  // хотя бы реально что-то делает кроме «ничего».
+  const fallbackTrim = (view: EditorView) => {
     const { state } = view;
-    // Trim trailing whitespace per-line.
-    const changes: Array<{ from: number; to: number; insert: string }> = [];
-    for (let i = 1; i <= state.doc.lines; i++) {
-      const line = state.doc.line(i);
-      const trimmed = line.text.replace(/[ \t]+$/, '');
-      if (trimmed !== line.text) {
-        changes.push({ from: line.from, to: line.to, insert: trimmed });
+    const lang = room?.language;
+    const indentSpaces = lang === Language.PYTHON ? 4 : 2;
+    const original = state.doc.toString();
+    let lines = original.split('\n').map((l) => l.replace(/[ \t]+$/, ''));
+    // Tab→space normalization. Простая замена ВСЕХ tab'ов на indentSpaces.
+    // Это упрощение: для mixed-indent кода может сломать align, но 95%
+    // случаев = pure-tab или pure-space, и это улучшение в обоих.
+    lines = lines.map((l) => l.replace(/\t/g, ' '.repeat(indentSpaces)));
+    // Collapse 3+ blank lines.
+    const collapsed: string[] = [];
+    let blankRun = 0;
+    for (const l of lines) {
+      if (l.trim() === '') {
+        blankRun += 1;
+        if (blankRun <= 1) collapsed.push(l);
+      } else {
+        blankRun = 0;
+        collapsed.push(l);
       }
     }
-    if (changes.length > 0) {
-      view.dispatch({ changes });
+    // Final newline — drop trailing blanks, add ровно один \n в конце.
+    while (collapsed.length > 0 && collapsed[collapsed.length - 1] === '') {
+      collapsed.pop();
+    }
+    const next = collapsed.join('\n') + '\n';
+    if (next !== original) {
+      view.dispatch({ changes: { from: 0, to: state.doc.length, insert: next } });
+    }
+  };
+
+  // handleFormat — реальный gofmt через backend (POST /api/v1/editor/room/{id}/format).
+  // Backend использует go/format std-lib (то же что gofmt CLI). Для не-Go
+  // языков сейчас silent no-op (Python/JS/TS требуют binary'и в runtime'е,
+  // отдельный ticket). Раньше тут был только trim-trailing-whitespace —
+  // юзер хотел real formatter, теперь честный.
+  const handleFormat = async () => {
+    if (!room) return;
+    const view = viewRef.current;
+    if (!view) return;
+    const code = view.state.doc.toString();
+    if (!code) return;
+    const { API_BASE_URL, DEV_BEARER_TOKEN } = await import('../api/config');
+    const { useSessionStore } = await import('../stores/session');
+    const token = useSessionStore.getState().accessToken ?? DEV_BEARER_TOKEN;
+    const langName = (() => {
+      switch (room.language) {
+        case Language.GO: return 'go';
+        case Language.PYTHON: return 'python';
+        case Language.JAVASCRIPT: return 'javascript';
+        case Language.TYPESCRIPT: return 'typescript';
+        default: return '';
+      }
+    })();
+    try {
+      const resp = await fetch(
+        `${API_BASE_URL}/api/v1/editor/room/${encodeURIComponent(room.id)}/format`,
+        {
+          method: 'POST',
+          headers: {
+            'content-type': 'application/json',
+            ...(token ? { authorization: `Bearer ${token}` } : {}),
+          },
+          body: JSON.stringify({ code, language: langName }),
+        },
+      );
+      if (!resp.ok) {
+        // Fall back to local trim-trailing-whitespace если сервер не отвечает.
+        fallbackTrim(view);
+        return;
+      }
+      const j = (await resp.json()) as { code?: string; changed?: boolean; error?: string };
+      if (j.error) {
+        // Syntax error → не молчим, fall back на trim чтобы хоть что-то
+        // улучшилось. Real toast'а тут нет (Editor doesn't have toast slot),
+        // но trim сработает безопасно.
+        fallbackTrim(view);
+        return;
+      }
+      if (typeof j.code === 'string' && j.code !== code) {
+        // Replace всё содержимое CM6 — простая dispatch transaction.
+        view.dispatch({
+          changes: { from: 0, to: view.state.doc.length, insert: j.code },
+        });
+      }
+    } catch {
+      fallbackTrim(view);
     }
   };
 
@@ -1529,7 +1685,7 @@ function RoomView({ roomId }: { roomId: string; onBack?: () => void }) {
         void handleRun();
       } else if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key.toLowerCase() === 'f') {
         e.preventDefault();
-        handleFormat();
+        void handleFormat();
       }
     };
     window.addEventListener('keydown', onKey);
@@ -1574,7 +1730,7 @@ function RoomView({ roomId }: { roomId: string; onBack?: () => void }) {
         {room && (
           <>
             <button
-              onClick={handleFormat}
+              onClick={() => void handleFormat()}
               title="Format / re-indent (⌘⇧F)"
               className="focus-ring mono"
               style={{
@@ -1724,7 +1880,17 @@ function RunOutputPanel({
 }) {
   const hasStdout = !!result?.stdout;
   const hasStderr = !!result?.stderr;
-  const body = activeTab === 'stdout' ? result?.stdout ?? '' : result?.stderr ?? '';
+  // Judge0 «Internal Error» / «Exec Format Error» — sandbox упал не наш код.
+  // Показываем диагностику чтобы юзер не думал что компилится не его файл.
+  const judgeFailed = result?.status
+    ? (() => {
+        const s = result.status.toLowerCase();
+        return s.includes('internal error') || s.includes('exec format');
+      })()
+    : false;
+  const body = judgeFailed
+    ? `Sandbox returned status: "${result?.status}".\n\nThis usually means Judge0 itself failed (host cgroup / isolate sandbox config) — not your code.\nServer-side fixes:\n  • Boot host with cgroup v1 (Judge0 1.13.x doesn't support cgroup v2 — set GRUB systemd.unified_cgroup_hierarchy=0)\n  • Confirm both judge0-server и judge0-workers run with privileged: true\n  • Check docker logs infra-judge0-workers-1 для ENOSPC / isolate errors`
+    : activeTab === 'stdout' ? result?.stdout ?? '' : result?.stderr ?? '';
 
   return (
     <div

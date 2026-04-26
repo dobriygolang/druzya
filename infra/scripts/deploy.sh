@@ -55,6 +55,23 @@ $COMPOSE up -d postgres redis minio clickhouse
 # чтобы editor service не словил ECONNREFUSED при первом probe-запросе. Если
 # Judge0 не поднялся — деплой не валим, остальное должно уехать (editor вернёт
 # честный 503).
+# Judge0 1.13.1 ТРЕБУЕТ cgroup v1 (limitation upstream'а — поддержка cgroup v2
+# только в Judge0 v6+ branch'е). Современные Linux дистры (Ubuntu 22.04+,
+# Debian 12+, Fedora 31+) defaulтятся в cgroup v2 → Judge0 возвращает
+# `status: Internal Error` на каждом submission'е. Здоровый healthcheck
+# (/system_info) вводит в заблуждение — Rails жив, но isolate sandbox
+# не работает.
+#
+# Проверяем и явно warn'аем чтобы юзер не тратил часы на дебаг кода.
+if [ -e /sys/fs/cgroup/cgroup.controllers ] && [ ! -e /sys/fs/cgroup/cpuacct ]; then
+    log "❌ HOST USES cgroup v2 — Judge0 1.13.1 will return 'Internal Error' for every submission!"
+    log "   FIX: edit /etc/default/grub:"
+    log "        GRUB_CMDLINE_LINUX_DEFAULT=\"\${GRUB_CMDLINE_LINUX_DEFAULT} systemd.unified_cgroup_hierarchy=0\""
+    log "   Then: sudo update-grub && sudo reboot"
+    log "   Verification after reboot: mount | grep cgroup (must show cgroup1 mounts)"
+    log "   Continuing deploy anyway — Judge0 sandbox will be broken until host is fixed."
+fi
+
 log "starting Judge0 stack (db, redis, server, workers)"
 $COMPOSE up -d judge0-db judge0-redis || log "WARN: judge0 db/redis failed to start"
 $COMPOSE up -d judge0-server judge0-workers || log "WARN: judge0 server/workers failed to start"

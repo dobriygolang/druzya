@@ -83,7 +83,11 @@ export function TodayStandupBanner() {
       .then((snap) => {
         if (cancelled) return;
         if (snap.recorded) {
-          setState({ ...INITIAL, kind: 'hidden' });
+          // Раньше тут было `kind: 'hidden'` → юзер записал standup и
+          // banner ИСЧЕЗАЛ. Юзер просил наоборот: оставить summary-card
+          // с подтверждением. Используем kind='submitted' но без auto-
+          // unmount'а (см. ниже onSave + render).
+          setState({ ...INITIAL, kind: 'submitted', yesterdayDone: snap.yesterdayDone });
           return;
         }
         setState({
@@ -127,9 +131,12 @@ export function TodayStandupBanner() {
         today: '', // backend allows empty if остальные поля непустые
         blockers: state.blockers.trim(),
       });
+      // No auto-unmount — юзер просил оставлять подтверждение видимым.
+      // Раньше через 2 сек банер пропадал, юзер не видел что записалось
+      // (особенно blockers). Теперь summary-card живёт до next-day refresh
+      // или page-reload (на reload mount-probe видит recorded=true и снова
+      // показывает submitted-state).
       setState({ ...state, kind: 'submitted', busy: false });
-      // Auto-unmount через 2 сек.
-      window.setTimeout(() => setState({ ...state, kind: 'hidden' }), 2000);
     } catch (e) {
       setState({ ...state, busy: false, error: (e as Error).message });
     }
@@ -143,16 +150,46 @@ export function TodayStandupBanner() {
           margin: '0 0 24px',
           padding: '14px 18px',
           borderRadius: 10,
-          background: 'rgba(255,255,255,0.03)',
-          border: '1px solid rgba(255,255,255,0.06)',
+          background: 'rgba(127,212,155,0.05)', // subtle green tint — confirmation
+          border: '1px solid rgba(127,212,155,0.18)',
           fontSize: 13,
           color: 'var(--ink-60)',
+          display: 'flex',
+          alignItems: 'flex-start',
+          gap: 14,
         }}
       >
-        <span className="mono" style={{ fontSize: 11, letterSpacing: '0.18em', color: 'var(--ink-40)', marginRight: 10 }}>
-          ✓ SAVED
+        <span
+          className="mono"
+          style={{
+            fontSize: 11,
+            letterSpacing: '0.18em',
+            color: 'rgba(127,212,155,0.95)',
+            flexShrink: 0,
+            marginTop: 2,
+          }}
+        >
+          ✓ DONE
         </span>
-        Standup recorded. Have a focused day.
+        <div style={{ flex: 1 }}>
+          <div style={{ color: 'var(--ink-90)', fontWeight: 500, marginBottom: 4 }}>
+            Morning standup recorded
+          </div>
+          {state.yesterdayDone.length > 0 && (
+            <div style={{ fontSize: 12, color: 'var(--ink-40)' }}>
+              Yesterday: {state.yesterdayDone.length} task
+              {state.yesterdayDone.length === 1 ? '' : 's'} finished
+            </div>
+          )}
+          {state.blockers.trim() !== '' && (
+            <div style={{ fontSize: 12, color: 'var(--ink-40)', marginTop: 2 }}>
+              Blockers: {state.blockers.trim()}
+            </div>
+          )}
+          <div style={{ fontSize: 11, color: 'var(--ink-40)', marginTop: 6 }}>
+            Banner reappears tomorrow morning. Have a focused day.
+          </div>
+        </div>
       </div>
     );
   }

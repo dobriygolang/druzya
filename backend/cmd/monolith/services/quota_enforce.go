@@ -80,7 +80,10 @@ func EnforceCreate(
 // Run: каждый час, начиная через 5 мин после старта (warmup).
 
 func runFreeTierShareDowngradeWhiteboard(ctx context.Context, pool *pgxpool.Pool, log *slog.Logger) {
-	first := time.NewTimer(5 * time.Minute)
+	// Initial run — 30 секунд после старта (раньше 5 мин). Юзер сейчас
+	// видит "OVER LIMIT" и хочет немедленный fix; ждать 5 мин — плохой UX.
+	// 30s достаточно чтобы DB pool нагрелся и migration completed.
+	first := time.NewTimer(30 * time.Second)
 	defer first.Stop()
 	tick := time.NewTicker(time.Hour)
 	defer tick.Stop()
@@ -149,7 +152,10 @@ func downgradeOnceWhiteboard(ctx context.Context, pool *pgxpool.Pool, log *slog.
 }
 
 func runFreeTierShareDowngradeEditor(ctx context.Context, pool *pgxpool.Pool, log *slog.Logger) {
-	first := time.NewTimer(5 * time.Minute)
+	// Initial run — 30 секунд после старта (раньше 5 мин). Юзер сейчас
+	// видит "OVER LIMIT" и хочет немедленный fix; ждать 5 мин — плохой UX.
+	// 30s достаточно чтобы DB pool нагрелся и migration completed.
+	first := time.NewTimer(30 * time.Second)
 	defer first.Stop()
 	tick := time.NewTicker(time.Hour)
 	defer tick.Stop()
@@ -209,6 +215,62 @@ func downgradeOnceEditor(ctx context.Context, pool *pgxpool.Pool, log *slog.Logg
 	}
 	if n := tag2.RowsAffected(); n > 0 {
 		log.InfoContext(ctx, "free_tier_overflow_downgrade.editor", "demoted", n)
+	}
+}
+
+// ─── Notes overflow auto-archive ──────────────────────────────────────────
+//
+// Free-tier лимит на synced notes = 10 (см. domain.PolicyDefaults). Юзеры
+// иногда оказываются НАД лимитом (legacy-creates до wire'инга quota check'а,
+// race-condition'ы при concurrent syncs, etc). Decorator на CreateNote
+// блочит NEW creates но не auto-cleanup'ит existing.
+//
+// Этот cron archived'ит OLDEST notes beyond limit (по updated_at ASC).
+// SetArchived = soft-delete: notes остаются в DB, доступны через Get но
+// не показываются в list, не считаются для quota. Юзер может un-archive
+// через UI / API когда apgrad'нется.
+
+func runFreeTierNotesOverflowArchive(ctx context.Context, pool *pgxpool.Pool, log *slog.Logger) {
+	first := time.NewTimer(45 * time.Second)
+	defer first.Stop()
+	tick := time.NewTicker(time.Hour)
+	defer tick.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-first.C:
+			archiveOnceNotes(ctx, pool, log)
+		case <-tick.C:
+			archiveOnceNotes(ctx, pool, log)
+		}
+	}
+}
+
+func archiveOnceNotes(ctx context.Context, pool *pgxpool.Pool, log *slog.Logger) {
+	// Free-tier лимит = 10 (захардкожено: domain.PolicyDefaults). Если
+	// поменяется — обновить и здесь. Берём активные notes per-owner,
+	// ранжируем по updated_at DESC, archive'им rn>10.
+	const q = `
+		WITH ranked AS (
+		  SELECT n.id,
+				 ROW_NUMBER() OVER (PARTITION BY n.user_id ORDER BY n.updated_at DESC) AS rn
+			FROM hone_notes n
+		   WHERE n.archived_at IS NULL
+			 AND COALESCE((
+				 SELECT s.plan FROM subscriptions s WHERE s.user_id = n.user_id
+			 ), 'free') = 'free'
+		)
+		UPDATE hone_notes
+		   SET archived_at = now()
+		 WHERE id IN (SELECT id FROM ranked WHERE rn > 10)`
+	tag, err := pool.Exec(ctx, q)
+	if err != nil {
+		log.WarnContext(ctx, "free_tier_overflow_archive.notes", "err", err)
+		return
+	}
+	if n := tag.RowsAffected(); n > 0 {
+		log.InfoContext(ctx, "free_tier_overflow_archive.notes", "archived", n)
 	}
 }
 

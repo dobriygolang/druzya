@@ -56,34 +56,12 @@ export function HomePage({
         </div>
       )}
 
-      {running && (
-        <div
-          className="fadein"
-          style={{
-            position: 'absolute',
-            inset: 0,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            pointerEvents: 'none',
-          }}
-        >
-          <div
-            className="mono"
-            style={{
-              fontSize: 'clamp(96px, 14vw, 180px)',
-              fontWeight: 200,
-              letterSpacing: '-0.04em',
-              color: 'var(--ink-90)',
-              lineHeight: 1,
-            }}
-          >
-            {mm}
-            <span style={{ color: 'var(--ink-40)' }}>:</span>
-            {ss}
-          </div>
-        </div>
-      )}
+      {/* Большой mm:ss таймер на главном canvas удалён по просьбе юзера —
+          выглядел агрессивно. Время продолжает идти в Dock'е (внизу
+          страницы), pinned-task label выше остаётся. Юзер сам видит
+          оставшееся время в нижней части. */}
+      {/* Suppress unused-var warning for mm/ss when timer not rendered. */}
+      {false && running && <span>{mm}:{ss}</span>}
 
       {running && (
         <button

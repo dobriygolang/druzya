@@ -51,6 +51,11 @@ export const useSessionStore = create<SessionState>((set) => ({
     try {
       const s = await bridge.auth.session();
       if (s && s.accessToken) {
+        // Если access-token уже истёк (по локальному expiresAt) — попытка
+        // refresh'нуть его «горячо» через transport interceptor сработает
+        // на первом RPC. Но: если ОБА токена expired (e.g. ноут отлежал
+        // месяц), interceptor force-clear'ит сессию и App переключится на
+        // LoginScreen сам. Доверяем этому flow'у — здесь просто hydrate'им.
         set({
           status: 'signed_in',
           userId: s.userId,

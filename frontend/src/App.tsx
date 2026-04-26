@@ -2,6 +2,7 @@ import { lazy, Suspense } from 'react'
 import { Routes, Route, Navigate, useLocation, useParams } from 'react-router-dom'
 
 import RouteLoader from './components/RouteLoader'
+import { OfflineBanner } from './components/OfflineBanner'
 import { readAccessToken } from './lib/apiClient'
 
 // RootRedirect: гость → /welcome, авторизованный → /arena.
@@ -120,6 +121,7 @@ const LobbyPage = lazy(() => import('./pages/lobby/LobbyPage'))
 export default function App() {
   return (
     <Suspense fallback={<RouteLoader />}>
+      <OfflineBanner />
       <Routes>
         <Route path="/" element={<RootRedirect />} />
         {/* Phase-2 ADR-001 — RPG-flavored pages cut: Sanctum (home),

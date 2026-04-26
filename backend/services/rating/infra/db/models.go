@@ -435,6 +435,31 @@ type CoachEpisode struct {
 	CreatedAt      pgtype.Timestamptz
 }
 
+type CodexArticle struct {
+	ID          pgtype.UUID
+	Slug        string
+	Title       string
+	Description string
+	Category    string
+	Href        string
+	Source      string
+	ReadMin     int32
+	SortOrder   int32
+	Active      bool
+	CreatedAt   pgtype.Timestamptz
+	UpdatedAt   pgtype.Timestamptz
+}
+
+type CodexCategory struct {
+	Slug        string
+	Label       string
+	Description string
+	SortOrder   int32
+	Active      bool
+	CreatedAt   pgtype.Timestamptz
+	UpdatedAt   pgtype.Timestamptz
+}
+
 type Company struct {
 	ID               pgtype.UUID
 	Slug             string
@@ -470,6 +495,10 @@ type CompanyStage struct {
 	LanguagePool          []MockTaskLanguage
 	TaskPoolIds           []pgtype.UUID
 	AiStrictnessProfileID pgtype.UUID
+	// Cap on stage_default_questions sampled per attempt. NULL = take all, 0 = skip.
+	DefaultQuestionLimit pgtype.Int4
+	// Cap on company_questions sampled per attempt. NULL = take all, 0 = skip.
+	CompanyQuestionLimit pgtype.Int4
 }
 
 type CopilotConversation struct {
@@ -1339,7 +1368,6 @@ type User struct {
 	StorageTier           string
 	StorageRecomputedAt   pgtype.Timestamptz
 	VaultKdfSalt          []byte
-	Ephemeral             bool
 }
 
 type UserBan struct {

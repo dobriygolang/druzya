@@ -28,6 +28,20 @@ sentryInit({
   ),
 });
 
+// Belt-and-suspenders: некоторые Sentry-electron internal'ы всё равно
+// вызывают fetch('sentry-ipc://...') (например, transport probe'ы),
+// которые Chromium блочит и спамит «URL scheme not supported» на каждый
+// frame'е. Patch'им window.fetch так, чтобы sentry-ipc:// возвращал
+// «успешный» empty response — Sentry не fail'ится, console тих.
+const _origFetch = window.fetch.bind(window);
+window.fetch = ((input: RequestInfo | URL, init?: RequestInit) => {
+  const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
+  if (url && url.startsWith('sentry-ipc://')) {
+    return Promise.resolve(new Response('', { status: 200 }));
+  }
+  return _origFetch(input, init);
+}) as typeof window.fetch;
+
 // Strict mode is deliberately OFF for the MVP. The ported design uses
 // requestAnimationFrame-driven state in <CanvasBg> which double-fires
 // under StrictMode's intentional development remount, causing visual

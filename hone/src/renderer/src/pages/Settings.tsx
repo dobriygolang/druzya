@@ -18,6 +18,7 @@ import { useEffect, useState } from 'react';
 import { CanvasBg, type ThemeId, THEME_IDS } from '../components/CanvasBg';
 import { QuotaUsageBar } from '../components/QuotaUsageBar';
 import { useQuotaStore } from '../stores/quota';
+import { useSessionStore } from '../stores/session';
 import {
   getStorageQuota,
   formatBytes,
@@ -41,6 +42,11 @@ interface HoneSettings {
   pomodoroMinutes: number;
   defaultVolume: number;
   notifications: boolean;
+  // Ambient cosmic music — looping background track. ON by default;
+  // юзер тoggle'ит здесь. Volume управляется тем же Dock slider'ом
+  // (vol / 100 → audio.volume), поскольку ambient & podcast делят
+  // одно audio bus.
+  ambientMusic: boolean;
 }
 
 const SETTINGS_KEY = 'hone:settings';
@@ -50,6 +56,7 @@ const DEFAULTS: HoneSettings = {
   pomodoroMinutes: 25,
   defaultVolume: 40,
   notifications: true,
+  ambientMusic: true,
 };
 
 export function readStoredTheme(): ThemeId {
@@ -73,6 +80,7 @@ function readSettings(): HoneSettings {
       pomodoroMinutes: clampInt(parsed?.pomodoroMinutes, 5, 90, DEFAULTS.pomodoroMinutes),
       defaultVolume: clampInt(parsed?.defaultVolume, 0, 100, DEFAULTS.defaultVolume),
       notifications: typeof parsed?.notifications === 'boolean' ? parsed.notifications : DEFAULTS.notifications,
+      ambientMusic: typeof parsed?.ambientMusic === 'boolean' ? parsed.ambientMusic : DEFAULTS.ambientMusic,
     };
   } catch {
     return DEFAULTS;
@@ -103,6 +111,17 @@ export function SettingsPage({ theme, onThemeChange }: SettingsPageProps) {
   const setPomo = (n: number) => setSettings((s) => ({ ...s, pomodoroMinutes: n }));
   const setVol = (n: number) => setSettings((s) => ({ ...s, defaultVolume: n }));
   const setNotif = (b: boolean) => setSettings((s) => ({ ...s, notifications: b }));
+  const setAmbient = (b: boolean) => setSettings((s) => ({ ...s, ambientMusic: b }));
+
+  // Sync ambient toggle с audio bus'ом — start/stop loop track когда юзер
+  // flip'ает switch. Lazy import чтобы bundle ambient-bus только при
+  // открытии Settings.
+  useEffect(() => {
+    void import('../audio/ambient-music').then((m) => {
+      if (settings.ambientMusic) m.startAmbient();
+      else m.stopAmbient();
+    });
+  }, [settings.ambientMusic]);
 
   return (
     <div
@@ -169,6 +188,16 @@ export function SettingsPage({ theme, onThemeChange }: SettingsPageProps) {
           <Section title="NOTIFICATIONS" hint="System notification when a session ends.">
             <Toggle value={settings.notifications} onChange={setNotif} label={settings.notifications ? 'On' : 'Off'} />
           </Section>
+          <Section
+            title="AMBIENT COSMIC MUSIC"
+            hint="Looping space-themed background track. Volume controlled by the Dock slider — same bus as podcasts."
+          >
+            <Toggle
+              value={settings.ambientMusic}
+              onChange={setAmbient}
+              label={settings.ambientMusic ? 'On' : 'Off'}
+            />
+          </Section>
         </SectionGroup>
 
         {/* ════════════════════════════════════════════════════════
@@ -193,6 +222,12 @@ export function SettingsPage({ theme, onThemeChange }: SettingsPageProps) {
           >
             <DevicesSection />
           </Section>
+          <Section
+            title="SIGN OUT"
+            hint="Wipe local session token. Notes / boards / today data stays on device until you log back in."
+          >
+            <SignOutSection />
+          </Section>
         </SectionGroup>
 
         {/* ════════════════════════════════════════════════════════
@@ -213,17 +248,18 @@ export function SettingsPage({ theme, onThemeChange }: SettingsPageProps) {
           <Section title="KEYBOARD SHORTCUTS" hint="Press from any non-text surface.">
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px 24px' }}>
               <ShortcutRow keys={['⌘', 'K']} label="Open command palette" />
-              <ShortcutRow keys={['⌘', '⇧', 'Space']} label="Open Copilot" />
+              <ShortcutRow keys={['⌘', 'S']} label="Toggle sidebar" />
               <ShortcutRow keys={['T']} label="Today" />
               <ShortcutRow keys={['N']} label="Notes" />
-              <ShortcutRow keys={['D']} label="Whiteboard" />
               <ShortcutRow keys={['B']} label="Shared boards" />
-              <ShortcutRow keys={['E']} label="Code rooms" />
-              <ShortcutRow keys={['V']} label="Events" />
+              <ShortcutRow keys={['C']} label="Code rooms" />
+              <ShortcutRow keys={['E']} label="Events" />
               <ShortcutRow keys={['P']} label="Podcasts" />
               <ShortcutRow keys={['S']} label="Stats" />
               <ShortcutRow keys={[',']} label="Settings" />
               <ShortcutRow keys={['Esc']} label="Back / dismiss" />
+              <ShortcutRow keys={['↤', '2-finger']} label="Swipe left → Stats" />
+              <ShortcutRow keys={['↦', '2-finger']} label="Swipe right → Close" />
             </div>
           </Section>
         </SectionGroup>
@@ -385,6 +421,8 @@ function labelFor(id: ThemeId): string {
       return 'Particles';
     case 'abyss':
       return 'Abyss';
+    case 'cosmic':
+      return 'Cosmic';
   }
 }
 
@@ -680,6 +718,62 @@ function ArchiveControl({ onDone }: { onDone: () => void }) {
 // DevicesSection — list active devices + revoke. Регистрация текущего
 // устройства происходит автоматически в App-bootstrap'е (см. отдельную
 // задачу — пока здесь только просмотр + revoke).
+// SignOutSection — кнопка выхода. Wipe'ает access/refresh tokens из
+// keychain'а и in-memory store'а. Local IndexedDB (notes, ydoc) НЕ
+// трогаем — юзер может logout'ниться и снова login'ниться, его данные
+// останутся доступны (и снова отсинкаются с server'ом). Это явный
+// контракт: log out = forget who I am, не «wipe my data».
+function SignOutSection() {
+  const userId = useSessionStore((s) => s.userId);
+  const status = useSessionStore((s) => s.status);
+  const clear = useSessionStore((s) => s.clear);
+  const [busy, setBusy] = useState(false);
+
+  if (status !== 'signed_in') {
+    return (
+      <div style={{ fontSize: 13, color: 'var(--ink-60)' }}>
+        You're signed out. Open the login screen to sign back in.
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+      <div className="mono" style={{ fontSize: 11, color: 'var(--ink-40)', letterSpacing: '0.06em' }}>
+        Signed in as {userId ? `${userId.slice(0, 8)}…${userId.slice(-4)}` : 'unknown'}
+      </div>
+      <button
+        onClick={async () => {
+          if (busy) return;
+          setBusy(true);
+          try {
+            await clear();
+            // App.tsx subscribed на status; SignedOut → LoginScreen
+            // отрисуется автоматом, manual reload не нужен.
+          } finally {
+            setBusy(false);
+          }
+        }}
+        disabled={busy}
+        style={{
+          alignSelf: 'flex-start',
+          padding: '8px 18px',
+          fontSize: 12.5,
+          fontWeight: 500,
+          color: '#fff',
+          background: busy ? 'rgba(255,106,106,0.4)' : '#ff6a6a',
+          border: 'none',
+          borderRadius: 8,
+          cursor: busy ? 'default' : 'pointer',
+          transition: 'background-color 160ms ease',
+        }}
+      >
+        {busy ? 'Signing out…' : 'Sign out'}
+      </button>
+    </div>
+  );
+}
+
 function DevicesSection() {
   const [devices, setDevices] = useState<Device[] | null>(null);
   const [errored, setErrored] = useState(false);

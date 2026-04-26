@@ -31,7 +31,8 @@ type GateState =
   | { kind: 'loading' }
   | { kind: 'unlocked' }
   | { kind: 'needs-init' } // server salt пустой, нужен first-time setup
-  | { kind: 'needs-unlock' }; // salt есть, нужен ввод passphrase
+  | { kind: 'needs-unlock' } // salt есть, нужен ввод passphrase
+  | { kind: 'failed'; message: string }; // probe не получился — offline / 401 / 500
 
 export function VaultUnlockGate({ children }: VaultUnlockGateProps) {
   const [state, setState] = useState<GateState>({ kind: 'loading' });
@@ -81,7 +82,13 @@ export function VaultUnlockGate({ children }: VaultUnlockGateProps) {
         if (!cancelled) setState({ kind: 'needs-unlock' });
       } catch (e) {
         if (cancelled) return;
-        setError((e as Error).message);
+        // Probe failed — раньше state застревал в 'loading' навсегда
+        // (юзер видел «Loading vault…» бесконечно). Скорее всего offline
+        // или 401 (refresh не помог). Переходим в failed-состояние с
+        // понятным сообщением + кнопкой retry.
+        const msg = (e as Error).message || 'Failed to reach vault server';
+        setError(msg);
+        setState({ kind: 'failed', message: msg });
       }
     })();
     return () => {
@@ -103,6 +110,128 @@ export function VaultUnlockGate({ children }: VaultUnlockGateProps) {
   }
   if (state.kind === 'unlocked') {
     return <>{children}</>;
+  }
+  if (state.kind === 'failed') {
+    return (
+      <div
+        style={{
+          position: 'absolute',
+          inset: 0,
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: 14,
+          padding: 32,
+        }}
+      >
+        <div
+          className="mono"
+          style={{
+            fontSize: 10,
+            letterSpacing: '0.2em',
+            color: '#ff6a6a',
+            textTransform: 'uppercase',
+          }}
+        >
+          Vault · offline
+        </div>
+        <h1
+          style={{
+            margin: 0,
+            fontSize: 22,
+            fontWeight: 500,
+            letterSpacing: '-0.02em',
+            color: 'var(--ink)',
+            textAlign: 'center',
+          }}
+        >
+          Can't reach vault server
+        </h1>
+        <p
+          style={{
+            margin: 0,
+            fontSize: 13,
+            color: 'var(--ink-60)',
+            maxWidth: 420,
+            textAlign: 'center',
+            lineHeight: 1.6,
+          }}
+        >
+          Notes encrypted on this device cannot be unlocked while the vault
+          metadata server is unreachable. Check your internet connection
+          and retry.
+        </p>
+        <p
+          className="mono"
+          style={{
+            margin: 0,
+            fontSize: 10,
+            color: 'var(--ink-40)',
+            letterSpacing: '0.06em',
+            maxWidth: 420,
+            textAlign: 'center',
+            wordBreak: 'break-all',
+          }}
+        >
+          {state.message}
+        </p>
+        <button
+          onClick={() => {
+            setError(null);
+            setState({ kind: 'loading' });
+            // Re-trigger probe via state-bump → useEffect re-mount won't
+            // re-run без deps change'а. Простой workaround: window.location
+            // reload не нужен — лучше явно re-call'нуть. Поскольку effect
+            // зависит от [], re-run возможно только через unmount-mount
+            // или ручной trigger. Делаем via external state bump:
+            void (async () => {
+              try {
+                if (isUnlocked()) {
+                  setState({ kind: 'unlocked' });
+                  return;
+                }
+                const salt = await fetchSalt();
+                if (salt === null) {
+                  setState({ kind: 'needs-init' });
+                  return;
+                }
+                const bridge = typeof window !== 'undefined' ? window.hone : undefined;
+                if (bridge?.vault) {
+                  try {
+                    const saved = await bridge.vault.passLoad();
+                    if (saved) {
+                      await unlockVault(saved);
+                      setState({ kind: 'unlocked' });
+                      return;
+                    }
+                  } catch {
+                    /* ignore */
+                  }
+                }
+                setState({ kind: 'needs-unlock' });
+              } catch (e) {
+                const m = (e as Error).message || 'Still unreachable';
+                setState({ kind: 'failed', message: m });
+              }
+            })();
+          }}
+          style={{
+            marginTop: 6,
+            padding: '10px 22px',
+            borderRadius: 999,
+            background: '#fff',
+            color: '#000',
+            border: 'none',
+            cursor: 'pointer',
+            fontSize: 13,
+            fontWeight: 500,
+          }}
+        >
+          Retry
+        </button>
+      </div>
+    );
   }
 
   // persistPassphraseSilently — сохраняет в OS keychain через preload bridge.

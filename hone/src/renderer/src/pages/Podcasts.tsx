@@ -12,6 +12,14 @@ import { ConnectError, Code } from '@connectrpc/connect';
 
 import { Icon } from '../components/primitives/Icon';
 import {
+  loadAndPlay,
+  pause,
+  resume,
+  skip as skipAudio,
+  setPlaybackRate,
+  usePodcastAudio,
+} from '../audio/podcast-audio';
+import {
   listPodcasts,
   updatePodcastProgress,
   Section,
@@ -428,85 +436,70 @@ function SectionFilter({
 }
 
 function Player({ podcast }: { podcast: Podcast }) {
-  const audioRef = useRef<HTMLAudioElement>(null);
-  const [currentTime, setCurrentTime] = useState(podcast.progressSec);
-  const [duration, setDuration] = useState(podcast.durationSec);
-  const [playing, setPlaying] = useState(false);
+  // Singleton audio bus — element живёт в document.body (см.
+  // audio/podcast-audio.ts). Подкаст продолжает играть когда юзер
+  // переходит на другую вкладку (Player unmounts но audio остаётся).
+  const audioState = usePodcastAudio();
   const lastPushedAt = useRef(0);
   const seededRef = useRef<string | null>(null);
 
-  useEffect(() => {
-    const audio = audioRef.current;
-    if (!audio) return;
-    if (seededRef.current === podcast.id) return;
-    seededRef.current = podcast.id;
-    const onMeta = () => {
-      if (audio.duration && Number.isFinite(audio.duration)) {
-        setDuration(audio.duration);
-      }
-      if (podcast.progressSec > 0 && !podcast.completed) {
-        audio.currentTime = podcast.progressSec;
-        setCurrentTime(podcast.progressSec);
-      }
-      audio.removeEventListener('loadedmetadata', onMeta);
-    };
-    audio.addEventListener('loadedmetadata', onMeta);
-  }, [podcast.id, podcast.progressSec, podcast.completed]);
+  // Локальные derived поля. Если сейчас играет ИМЕННО этот podcast —
+  // берём live state'ом, иначе показываем заглушку с persisted progress.
+  const isActive = audioState.podcastId === podcast.id;
+  const currentTime = isActive ? audioState.currentTime : podcast.progressSec;
+  const duration = isActive
+    ? audioState.duration || podcast.durationSec
+    : podcast.durationSec;
+  const playing = isActive && audioState.playing;
+  const playbackRate = audioState.playbackRate;
 
-  const pushProgress = useCallback(
-    (sec: number, forceCompleted?: boolean) => {
-      const now = Date.now();
-      if (!forceCompleted && now - lastPushedAt.current < PROGRESS_THROTTLE_MS) return;
-      lastPushedAt.current = now;
+  // Push progress backend'у throttled. Подписываемся на live state'ом.
+  useEffect(() => {
+    if (!isActive) return;
+    if (seededRef.current !== podcast.id) {
+      seededRef.current = podcast.id;
+      lastPushedAt.current = 0;
+    }
+    const now = Date.now();
+    if (now - lastPushedAt.current < PROGRESS_THROTTLE_MS) return;
+    lastPushedAt.current = now;
+    void updatePodcastProgress({
+      podcastId: podcast.id,
+      progressSec: Math.floor(audioState.currentTime),
+    }).catch(() => {});
+  }, [isActive, audioState.currentTime, podcast.id]);
+
+  // На завершение — отдельный flag + push completed=true.
+  useEffect(() => {
+    if (!isActive) return;
+    if (audioState.duration > 0 && audioState.currentTime >= audioState.duration - 0.5) {
       void updatePodcastProgress({
         podcastId: podcast.id,
-        progressSec: Math.floor(sec),
-        completed: forceCompleted,
+        progressSec: Math.floor(audioState.duration),
+        completed: true,
       }).catch(() => {});
-    },
-    [podcast.id],
-  );
-
-  const onTimeUpdate = () => {
-    const audio = audioRef.current;
-    if (!audio) return;
-    setCurrentTime(audio.currentTime);
-    pushProgress(audio.currentTime);
-  };
-
-  const onPlay = () => setPlaying(true);
-  const onPauseEvt = () => {
-    setPlaying(false);
-    const audio = audioRef.current;
-    if (audio) pushProgress(audio.currentTime);
-  };
-  const onEnded = () => {
-    setPlaying(false);
-    pushProgress(duration, true);
-  };
-  const onSeeked = () => {
-    const audio = audioRef.current;
-    if (audio) pushProgress(audio.currentTime);
-  };
+    }
+  }, [isActive, audioState.currentTime, audioState.duration, podcast.id]);
 
   const toggle = async () => {
-    const audio = audioRef.current;
-    if (!audio) return;
-    if (audio.paused) {
-      try {
-        await audio.play();
-      } catch {
-        /* autoplay policy */
-      }
+    if (isActive) {
+      if (playing) pause();
+      else await resume();
     } else {
-      audio.pause();
+      // Switch на новый podcast: load + play. На прошлый push'ним финальный
+      // progress (audio bus сам пошлёт pause-event'ом).
+      await loadAndPlay({
+        id: podcast.id,
+        audioUrl: podcast.audioUrl,
+        title: podcast.title,
+        initialProgressSec: podcast.completed ? 0 : podcast.progressSec,
+      });
     }
   };
 
   const skip = (deltaSec: number) => {
-    const audio = audioRef.current;
-    if (!audio) return;
-    audio.currentTime = Math.max(0, Math.min(duration, audio.currentTime + deltaSec));
+    if (!isActive) return;
+    skipAudio(deltaSec);
   };
 
   return (
@@ -546,17 +539,9 @@ function Player({ podcast }: { podcast: Podcast }) {
         </p>
       )}
 
-      <audio
-        ref={audioRef}
-        src={podcast.audioUrl}
-        onTimeUpdate={onTimeUpdate}
-        onPlay={onPlay}
-        onPause={onPauseEvt}
-        onEnded={onEnded}
-        onSeeked={onSeeked}
-        preload="metadata"
-        style={{ display: 'none' }}
-      />
+      {/* Audio element живёт в document.body через singleton audio bus —
+          не рендерим <audio> здесь. Это обеспечивает background play
+          (юзер ушёл на другую страницу — audio не остановился). */}
 
       <div style={{ maxWidth: 640 }}>
         <Seekbar
@@ -564,10 +549,8 @@ function Player({ podcast }: { podcast: Podcast }) {
           max={duration || podcast.durationSec}
           playing={playing}
           onChange={(v) => {
-            const audio = audioRef.current;
-            if (audio) {
-              audio.currentTime = v;
-              setCurrentTime(v);
+            if (isActive) {
+              skipAudio(v - currentTime);
             }
           }}
         />
@@ -599,6 +582,61 @@ function Player({ podcast }: { podcast: Podcast }) {
           <PlayButton playing={playing} onClick={() => void toggle()} />
           <TransportBtn label="+30" onClick={() => skip(30)} />
         </div>
+
+        {/* Playback rate selector — 6 chips. Persists в localStorage
+            через audio bus (см. audio/podcast-audio.ts). Active rate
+            подсвечен. */}
+        <div
+          style={{
+            marginTop: 22,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 6,
+          }}
+        >
+          {[0.75, 1, 1.25, 1.5, 1.75, 2].map((r) => (
+            <button
+              key={r}
+              onClick={() => setPlaybackRate(r)}
+              className="mono focus-ring"
+              style={{
+                padding: '5px 10px',
+                fontSize: 10,
+                letterSpacing: '0.08em',
+                background:
+                  playbackRate === r
+                    ? 'rgba(255,255,255,0.16)'
+                    : 'rgba(255,255,255,0.04)',
+                border: '1px solid rgba(255,255,255,0.08)',
+                color: playbackRate === r ? 'var(--ink)' : 'var(--ink-60)',
+                borderRadius: 999,
+                cursor: 'pointer',
+                transition: 'all 140ms ease',
+              }}
+            >
+              {r}x
+            </button>
+          ))}
+        </div>
+
+        {audioState.error && isActive && (
+          <div
+            className="mono"
+            style={{
+              marginTop: 16,
+              padding: '8px 12px',
+              fontSize: 11,
+              color: '#ff8c8c',
+              background: 'rgba(255,106,106,0.05)',
+              border: '1px solid rgba(255,106,106,0.18)',
+              borderRadius: 6,
+              textAlign: 'center',
+            }}
+          >
+            {audioState.error}
+          </div>
+        )}
       </div>
     </div>
   );

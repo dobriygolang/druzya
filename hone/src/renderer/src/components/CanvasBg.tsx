@@ -26,9 +26,9 @@ const WAVES = [
 ];
 
 export type CanvasMode = 'full' | 'quiet' | 'void';
-export type ThemeId = 'winter' | 'aurora' | 'grid-rain' | 'particles' | 'abyss';
+export type ThemeId = 'winter' | 'aurora' | 'grid-rain' | 'particles' | 'abyss' | 'cosmic';
 
-export const THEME_IDS: ThemeId[] = ['winter', 'aurora', 'grid-rain', 'particles', 'abyss'];
+export const THEME_IDS: ThemeId[] = ['winter', 'aurora', 'grid-rain', 'particles', 'abyss', 'cosmic'];
 
 interface CanvasBgProps {
   mode?: CanvasMode;
@@ -46,10 +46,176 @@ export function CanvasBg({ mode = 'full', theme = 'winter' }: CanvasBgProps) {
       return <ParticlesBg mode={mode} />;
     case 'abyss':
       return <AbyssBg mode={mode} />;
+    case 'cosmic':
+      return <CosmicBg mode={mode} />;
     case 'winter':
     default:
       return <WinterBg mode={mode} />;
   }
+}
+
+// ─── Cosmic — parallax space scene ──────────────────────────────────────
+//
+// Manga-styled space ambience: глубокий starfield в 3 layers (different
+// drift speeds), огромная planet-disc в нижнем центре, asteroids
+// вокруг неё в slow rotation. Mouse-tracking parallax: cursor движется
+// → layers shift'ятся пропорционально (closer planets — больше offset).
+// Ambient mood — не агрессивно, не distracting.
+function CosmicBg({ mode }: { mode: CanvasMode }) {
+  const stars1 = useMemo(() => makeStars(120, 7777), []); // far layer
+  const stars2 = useMemo(() => makeStars(50, 8888), []); // mid layer
+  const stars3 = useMemo(() => makeStars(20, 9999), []); // near layer (brighter)
+  const [mx, setMx] = useState(0);
+  const [my, setMy] = useState(0);
+  // Mouse-tracking — normalized -0.5..0.5 от viewport center.
+  useEffect(() => {
+    if (mode !== 'full') return;
+    const onMove = (e: MouseEvent) => {
+      setMx(e.clientX / window.innerWidth - 0.5);
+      setMy(e.clientY / window.innerHeight - 0.5);
+    };
+    window.addEventListener('mousemove', onMove);
+    return () => window.removeEventListener('mousemove', onMove);
+  }, [mode]);
+
+  // Slow drift (idle motion when mouse не двигается).
+  const [tick, setTick] = useState(0);
+  useEffect(() => {
+    if (mode !== 'full') return;
+    let raf = 0;
+    let last = performance.now();
+    const loop = (now: number) => {
+      setTick((t) => t + (now - last) * 0.0001);
+      last = now;
+      raf = requestAnimationFrame(loop);
+    };
+    raf = requestAnimationFrame(loop);
+    return () => cancelAnimationFrame(raf);
+  }, [mode]);
+
+  // Parallax depth multipliers: far layer drifts мало, near layer много.
+  const px1 = mx * 8; // far stars
+  const py1 = my * 8;
+  const px2 = mx * 18;
+  const py2 = my * 18;
+  const px3 = mx * 32;
+  const py3 = my * 32;
+  const planetX = mx * 14;
+  const planetY = my * 14;
+
+  return (
+    <div
+      style={{
+        position: 'absolute',
+        inset: 0,
+        overflow: 'hidden',
+        pointerEvents: 'none',
+        // Pure black backdrop — раньше был фиолетовый haze. Юзер просил
+        // чисто чёрный космос, чтобы starfield сильнее контрастил и
+        // соответствовал общему дарк-эстетике Hone'а.
+        background: '#000',
+      }}
+    >
+      {/* Star layer 1 — far. Smaller dim stars + slow drift. */}
+      <div
+        style={{
+          position: 'absolute',
+          inset: 0,
+          transform: `translate(${px1}px, ${py1}px)`,
+          transition: 'transform 600ms cubic-bezier(0.2,0.7,0.2,1)',
+        }}
+      >
+        {stars1.map((s, i) => (
+          <span
+            key={i}
+            style={{
+              position: 'absolute',
+              left: `${s.x}%`,
+              top: `${s.y}%`,
+              width: s.size * 0.6,
+              height: s.size * 0.6,
+              borderRadius: '50%',
+              background: 'rgba(255,255,255,0.55)',
+              opacity: 0.3 + Math.sin(tick * 6 + i) * 0.15,
+              boxShadow: '0 0 2px rgba(255,255,255,0.4)',
+            }}
+          />
+        ))}
+      </div>
+      {/* Star layer 2 — mid. */}
+      <div
+        style={{
+          position: 'absolute',
+          inset: 0,
+          transform: `translate(${px2}px, ${py2}px)`,
+          transition: 'transform 500ms cubic-bezier(0.2,0.7,0.2,1)',
+        }}
+      >
+        {stars2.map((s, i) => (
+          <span
+            key={i}
+            style={{
+              position: 'absolute',
+              left: `${s.x}%`,
+              top: `${s.y}%`,
+              width: s.size,
+              height: s.size,
+              borderRadius: '50%',
+              background: 'rgba(220,230,255,0.85)',
+              opacity: 0.5 + Math.sin(tick * 8 + i * 0.7) * 0.25,
+              boxShadow: '0 0 4px rgba(180,200,255,0.6)',
+            }}
+          />
+        ))}
+      </div>
+      {/* Star layer 3 — near. Brightest, biggest, fastest parallax. */}
+      <div
+        style={{
+          position: 'absolute',
+          inset: 0,
+          transform: `translate(${px3}px, ${py3}px)`,
+          transition: 'transform 400ms cubic-bezier(0.2,0.7,0.2,1)',
+        }}
+      >
+        {stars3.map((s, i) => (
+          <span
+            key={i}
+            style={{
+              position: 'absolute',
+              left: `${s.x}%`,
+              top: `${s.y}%`,
+              width: s.size * 1.6,
+              height: s.size * 1.6,
+              borderRadius: '50%',
+              background: 'rgba(255,255,255,0.95)',
+              opacity: 0.7 + Math.sin(tick * 12 + i * 1.3) * 0.25,
+              boxShadow: '0 0 8px rgba(255,255,255,0.85)',
+            }}
+          />
+        ))}
+      </div>
+      {/* Planet — большая полупрозрачная disc нижним-центром. Inset
+          gradient симулирует sphere illumination. Atmosphere ring снаружи. */}
+      {mode === 'full' && (
+        <div
+          style={{
+            position: 'absolute',
+            left: `calc(50% + ${planetX}px)`,
+            bottom: `calc(-30% + ${planetY * 0.5}px)`,
+            transform: 'translateX(-50%)',
+            width: 'min(90vmin, 1200px)',
+            height: 'min(90vmin, 1200px)',
+            borderRadius: '50%',
+            background:
+              'radial-gradient(circle at 35% 30%, rgba(120,90,180,0.32) 0%, rgba(60,40,110,0.22) 35%, rgba(20,10,40,0.10) 65%, transparent 100%)',
+            boxShadow:
+              'inset -50px -80px 120px rgba(0,0,0,0.55), 0 0 80px rgba(80,60,140,0.18)',
+            transition: 'left 700ms cubic-bezier(0.2,0.7,0.2,1), bottom 700ms cubic-bezier(0.2,0.7,0.2,1)',
+          }}
+        />
+      )}
+    </div>
+  );
 }
 
 // ─── Winter (default, original) ─────────────────────────────────────────

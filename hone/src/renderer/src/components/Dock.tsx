@@ -111,7 +111,9 @@ function TimerArea({ running, mode, mm, ss, onToggleMode, onReset }: TimerAreaPr
       onMouseLeave={() => setHover(false)}
       style={{
         position: 'relative',
-        width: 128,
+        // Width ужал с 128 → 96. Контент (∞/dot + mm:ss + gap=7) занимает
+        // ~80px; больше места дёргало dock в шире чем нужно.
+        width: 96,
         height: ROW,
         overflow: 'hidden',
       }}
@@ -127,13 +129,17 @@ function TimerArea({ running, mode, mm, ss, onToggleMode, onReset }: TimerAreaPr
           transition: 'transform 280ms cubic-bezier(0.2, 0.7, 0.2, 1)',
         }}
       >
-        {/* Row 0: hover controls (изначально скрыты сверху) */}
+        {/* Row 0: hover controls (изначально скрыты сверху). Иконки чуть
+            крупнее (15→17) и compact gap (раньше distributed space-around
+            растягивал их по краям, теперь center+gap=10 кучкует ближе друг
+            к другу — как одно visual unit). */}
         <div
           style={{
             height: ROW,
             display: 'flex',
             alignItems: 'center',
-            justifyContent: 'space-around',
+            justifyContent: 'center',
+            gap: 10,
             background: 'rgba(255,255,255,0.06)',
             borderRadius: 999,
             margin: '0 9%',
@@ -146,10 +152,10 @@ function TimerArea({ running, mode, mm, ss, onToggleMode, onReset }: TimerAreaPr
             title={mode === 'countdown' ? 'Switch to ∞' : 'Switch to pomodoro'}
             small
           >
-            <Icon name={mode === 'countdown' ? 'infinity' : 'circle'} size={13} />
+            <Icon name={mode === 'countdown' ? 'infinity' : 'circle'} size={15} />
           </DockBtn>
           <DockBtn onClick={onReset} title="Reset" small>
-            <Icon name="rewind" size={13} />
+            <Icon name="rewind" size={15} />
           </DockBtn>
         </div>
 
@@ -163,6 +169,11 @@ function TimerArea({ running, mode, mm, ss, onToggleMode, onReset }: TimerAreaPr
             gap: 7,
           }}
         >
+          {/* Mode indicator: ∞ для stopwatch, dot для countdown.
+              Dot — нейтральный (без красного pulse'а): pure outline когда
+              not running, filled white-60 когда running. Раньше был
+              «var(--red)» + animation red-pulse — юзер просил убрать только
+              краснотy и мигание, но не сам индикатор. */}
           {mode === 'stopwatch' ? (
             <span
               style={{
@@ -179,12 +190,11 @@ function TimerArea({ running, mode, mm, ss, onToggleMode, onReset }: TimerAreaPr
                 width: 9,
                 height: 9,
                 borderRadius: 99,
-                background: running ? 'var(--red)' : 'transparent',
-                border: `1px solid ${running ? 'var(--red)' : 'var(--ink-40)'}`,
+                background: running ? 'rgba(255,255,255,0.55)' : 'transparent',
+                border: `1px solid ${running ? 'rgba(255,255,255,0.55)' : 'var(--ink-40)'}`,
                 transition:
                   'background-color var(--t-fast), border-color var(--t-fast)',
               }}
-              className={running ? 'red-pulse' : ''}
             />
           )}
           <span
@@ -270,6 +280,10 @@ interface VolumeBtnProps {
 // остальные кнопки не дёргаются.
 function VolumeBtn({ vol, onVol }: VolumeBtnProps) {
   const [open, setOpen] = useState(false);
+  // preMuteVolRef хранит уровень громкости ПЕРЕД mute'ом — чтобы
+  // un-mute click восстанавливал именно его, а не дефолтный 40%. Если
+  // юзер был на 65%, кликнул mute → 0; кликнул unmute → обратно 65%.
+  const preMuteVolRef = useRef<number>(vol > 0 ? vol : 40);
   const closeTimer = useRef<number | null>(null);
 
   // hover-bridge: при mouseleave даём 180 ms на «транзит» через 14-px
@@ -287,14 +301,62 @@ function VolumeBtn({ vol, onVol }: VolumeBtnProps) {
     setOpen(true);
   };
 
+  // Click handler: toggle mute ↔ unmute. Раньше click открывал слайдер,
+  // юзер ожидал mute-toggle (как в YouTube/Spotify/macOS). Теперь:
+  //   - vol > 0 → save current, set to 0 (mute), икон меняется на strike.
+  //   - vol === 0 → restore preMuteVolRef.current, иконка возвращается.
+  // Slider открывается hover'ом (как раньше), не click'ом.
+  const handleClick = () => {
+    if (vol > 0) {
+      preMuteVolRef.current = vol;
+      onVol(0);
+    } else {
+      onVol(preMuteVolRef.current > 0 ? preMuteVolRef.current : 40);
+    }
+  };
+
   return (
     <div
       onMouseLeave={armClose}
       style={{ position: 'relative', display: 'flex', alignItems: 'center' }}
     >
       <div onMouseEnter={cancelClose}>
-        <DockBtn onClick={() => setOpen((o) => !o)} title="Volume">
-          <Icon name="volume" size={12} />
+        <DockBtn
+          onClick={handleClick}
+          title={vol === 0 ? 'Click to unmute' : `Volume ${vol}% · click to mute`}
+        >
+          {/* Mute indicator: когда vol=0, иконка меняет цвет на dimmed +
+              рисуется diagonal strike-through через absolute-positioned
+              span. Раньше юзер не видел разницы между «50%» и «mute»,
+              путался почему звука нет. */}
+          <span
+            style={{
+              position: 'relative',
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              opacity: vol === 0 ? 0.5 : 1,
+              transition: 'opacity 180ms ease',
+            }}
+          >
+            <Icon name="volume" size={12} />
+            {vol === 0 && (
+              <span
+                aria-hidden
+                style={{
+                  position: 'absolute',
+                  inset: 0,
+                  display: 'block',
+                  pointerEvents: 'none',
+                  // Diagonal strike — линия из top-right в bottom-left,
+                  // 1.5px белая через linear-gradient на 14px box'е.
+                  background:
+                    'linear-gradient(45deg, transparent 45%, #ff6a6a 45%, #ff6a6a 55%, transparent 55%)',
+                  borderRadius: 2,
+                }}
+              />
+            )}
+          </span>
         </DockBtn>
       </div>
       <div

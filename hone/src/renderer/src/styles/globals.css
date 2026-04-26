@@ -957,3 +957,17 @@ textarea {
   padding: 1px 4px;
   font-size: 0.95em;
 }
+
+/* pulse — used by PendingRoomsSection dot indicator. Soft fade в обе стороны
+ * чтобы юзер видел «что-то в процессе» без агрессивного blink'а. */
+@keyframes pulse {
+  0%, 100% { opacity: 0.45; }
+  50% { opacity: 1; }
+}
+
+/* colonBlink — двоеточие в Dock-таймере мягко мигает каждую секунду
+ * (vintage flip-clock vibe). Не агрессивный pulse — only opacity diff. */
+@keyframes colonBlink {
+  0%, 100% { opacity: 0.85; }
+  50%      { opacity: 0.3; }
+}

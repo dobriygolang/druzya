@@ -285,6 +285,21 @@ services:
     networks: [judge-net]
     restart: always
 
+  # ⚠️  Judge0 1.13.1 ТРЕБУЕТ cgroup v1 на хосте. На современных Linux
+  # (Ubuntu 22.04+ / Debian 12+) default = cgroup v2 → Judge0 возвращает
+  # `status: "Internal Error"` на КАЖДОМ submission'е (sandbox isolate
+  # не инициализируется). Healthcheck `/system_info` при этом отдаёт 200 —
+  # Rails жив, но workers не могут спавнить isolate-боксы. Симптом:
+  # `POST /editor/.../run → 200 {status:"Internal Error",stdout:"",stderr:""}`.
+  #
+  # ФИКС НА ХОСТЕ:
+  #   sudo sed -i 's/^GRUB_CMDLINE_LINUX_DEFAULT="\(.*\)"$/GRUB_CMDLINE_LINUX_DEFAULT="\1 systemd.unified_cgroup_hierarchy=0"/' /etc/default/grub
+  #   sudo update-grub && sudo reboot
+  # После reboot'а: mount | grep cgroup → должны быть `cgroup` (v1) mounts,
+  # не только `cgroup2`.
+  #
+  # Альтернатива (без reboot'а): обновить Judge0 до v6+ когда у нас будет
+  # время на migration. v1.13 vs v6 имеют разные API/schema → не drop-in.
   judge0-server:
     image: judge0/judge0:1.13.1
     environment:

@@ -26,6 +26,7 @@ import { DailyBriefPanel } from './components/DailyBriefPanel';
 // StandupOverlay удалён — standup переехал в morning banner на Today page
 // (см. components/TodayStandupBanner.tsx).
 import { UpdateToast } from './components/UpdateToast';
+import { OfflineBanner } from './components/OfflineBanner';
 import { HomePage } from './pages/Home';
 import { TodayPage, type StartFocusArgs } from './pages/Today';
 import { NotesPage } from './pages/Notes';
@@ -75,6 +76,23 @@ export default function App() {
   const [mode, setMode] = useState<'countdown' | 'stopwatch'>('countdown');
   const [vol, setVol] = useState(40);
 
+  // Volume slider в Dock'е управляет ОБОИМИ — podcast playback'ом и
+  // ambient cosmic music'ой. Один Dock-slider → один volume для всех
+  // audio bus'ов. Раньше vol был чисто-визуальный, подкаст играл full.
+  useEffect(() => {
+    void import('./audio/podcast-audio').then((m) => m.setVolume(vol / 100));
+    // Ambient громче 50% не даём — он SFX background, не main content.
+    // 50% Dock → 0.25 ambient; даёт подкастам/таймеру audio space'ом.
+    void import('./audio/ambient-music').then((m) => m.setAmbientVolume((vol / 100) * 0.5));
+  }, [vol]);
+
+  // Bootstrap ambient music на app-start если юзер ранее включил (default ON).
+  // Autoplay policy блочит на первом mount'е — ambient-music сам ставит
+  // one-shot click listener для starting на первом user-interaction'е.
+  useEffect(() => {
+    void import('./audio/ambient-music').then((m) => m.bootstrapAmbient());
+  }, []);
+
   const [pinnedTitle, setPinnedTitle] = useState<string | null>(null);
   const [pinnedPlanItemId, setPinnedPlanItemId] = useState<string | null>(null);
   // initialRoomId: при переходе из Events на event со ссылкой на комнату
@@ -96,6 +114,12 @@ export default function App() {
   // ── Bootstrap: session + pomodoro snapshot + IPC subscribers ────────────
   useEffect(() => {
     void bootstrap();
+    // Offline outbox: register executors + auto-drain online listener.
+    // Idempotent — повторный вызов no-op. Должно быть ДО первого использования
+    // outbox enqueue'а (поэтому здесь, в bootstrap'е, не lazy).
+    void import('./offline/wire').then((m) => m.wireOutboxExecutors());
+    void import('./offline/ydoc-migrate').then((m) => m.installYDocMigrationHook());
+    void import('./offline/outbox').then((m) => m.installOutboxAutoDrain());
     const bridge = typeof window !== 'undefined' ? window.hone : undefined;
     if (!bridge) return;
 
@@ -385,15 +409,8 @@ export default function App() {
         setStatsOpen(true);
         return;
       }
-      if (id === 'standup') {
-        // Standup переехал из overlay в morning banner на Today page
-        // (см. TodayStandupBanner.tsx). Палитра теперь просто открывает
-        // Today — banner сам решит показываться или нет (после morning
-        // window или если уже записан → не появится).
-        setPage('today');
-        setStatsOpen(false);
-        return;
-      }
+      // 'standup' palette command удалён — banner был раньше на Today page,
+      // юзер просил убрать и оттуда, и из общих переходов.
       if (args) {
         // Today/Plan нажал «Start focus» — ставим pinned-task и переходим
         // на Home с запущенным таймером.
@@ -434,11 +451,24 @@ export default function App() {
         setPaletteOpen((p) => !p);
         return;
       }
-      if (isMod && e.shiftKey && e.code === 'Space') {
-        e.preventDefault();
-        setCopilotOpen((c) => !c);
-        return;
+      // ⌘S — global sidebar toggle. Каждая страница (Notes / Editor /
+      // SharedBoards) слушает `hone:toggle-sidebar` window event и сворачивает
+      // свою sidebar'у. Раньше юзер должен был кликать collapse-arrow.
+      if (isMod && e.key.toLowerCase() === 's' && !e.shiftKey) {
+        // Не вызываем preventDefault для НЕ-text контекста — но в text input
+        // ⌘S обычно reserved для browser save. Мы фильтруем isText выше во
+        // внешнем path letter-shortcuts'е, тут же ⌘S ловится до этого фильтра.
+        // Для безопасности фильтруем сами.
+        if (!isText) {
+          e.preventDefault();
+          window.dispatchEvent(new CustomEvent('hone:toggle-sidebar'));
+          return;
+        }
       }
+      // Copilot ⌘⇧Space hotkey удалён по просьбе юзера — Copilot UI не
+      // используется. Оставляем сам компонент в дереве (см. ниже), но
+      // глобального hotkey нет; openImpl(`copilot`) из Palette всё ещё
+      // работает если кто-то его дёрнет, но в палитре action тоже скрыт.
 
       if (e.key === 'Escape') {
         if (onboardingOpen) {
@@ -467,21 +497,93 @@ export default function App() {
       // закроет stats overlay при переключении.
       if (isText || paletteOpen || onboardingOpen) return;
 
-      const k = e.key.toLowerCase();
-      if (k === 't') open('today');
-      else if (k === 'n') open('notes');
-      else if (k === 'd') open('shared_boards'); // 'board' page удалена; D ведёт на shared_boards
-      else if (k === 's') open('stats');
-      else if (k === 'p') open('podcasts');
-      else if (k === 'e') open('editor');
-      else if (k === 'b') open('shared_boards');
-      else if (k === 'v') open('events');
-      else if (k === ',') open('settings');
+      // КРИТИЧНО: на страницах с canvas-input'ом (boards, editor) plain
+      // letter-shortcuts conflict'ят с инструментами Excalidraw (S = laser
+      // pointer, R = rectangle, etc) и с CodeMirror typing. Раньше юзер
+      // на boards нажимал «s» (думая что laser tool) → открывался Stats
+      // overlay поверх доски. Теперь plain-letter shortcuts на этих
+      // страницах disabled — юзер пользуется ⌘K palette для навигации.
+      if (page === 'shared_boards' || page === 'editor') return;
+
+      // КРИТИЧНО: skip ALL letter-navigation когда любой modifier нажат.
+      // Раньше юзер давил ⌘C в DevTools console чтобы скопировать error
+      // — App'ов handler ловил `e.code='KeyC'` → `open('editor')` →
+      // copy не срабатывал (browser default уже отменён или React batch
+      // забрал focus). Letter-shortcuts ТОЛЬКО для plain-key presses
+      // (no Cmd/Ctrl/Alt). ⌘K/⌘S обработаны ВЫШЕ; всё остальное —
+      // browser default (copy, paste, etc).
+      if (isMod || e.altKey) return;
+
+      // Используем `e.code` (физический keycode) вместо `e.key` (зависит от
+      // layout'а). Это нужно потому что юзер на русской раскладке давит
+      // physical-key 'B' получит `e.key='и'` — и наш switch не сработает.
+      // С `e.code='KeyB'` shortcut срабатывает на ОБОИХ layouts identically.
+      // Comma — `e.code='Comma'` тоже layout-independent.
+      const code = e.code;
+      if (code === 'KeyT') open('today');
+      else if (code === 'KeyN') open('notes');
+      else if (code === 'KeyB') open('shared_boards');
+      else if (code === 'KeyC') open('editor'); // code rooms
+      else if (code === 'KeyE') open('events');
+      else if (code === 'KeyS') open('stats');
+      else if (code === 'KeyP') open('podcasts');
+      else if (code === 'Comma') open('settings');
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [paletteOpen, copilotOpen, onboardingOpen, page]);
+
+  // ── Trackpad horizontal swipe — Mac-style 2-finger gesture ─────────────
+  // 2-finger swipe ВЛЕВО (deltaX > 0, content scroll'ит вправо) → открыть
+  // Stats overlay. Swipe ВПРАВО (deltaX < 0) — закрыть Stats / вернуться.
+  // Mac trackpad шлёт wheel-event'ы с `deltaX` как continuous flow, не
+  // discrete как mouse-wheel — так что нужна threshold'ная аккумуляция в
+  // rolling window'е, иначе один micro-swipe запустит overlay.
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    let accDx = 0; // accumulator
+    let lastEvtAt = 0;
+    let cooldownUntil = 0;
+    const THRESHOLD = 140; // px — после которого fire'им action
+    const RESET_GAP_MS = 300; // если паузу >300ms — сбрасываем accumulator
+    const COOLDOWN_MS = 700; // после fire — игнорируем дальнейшие deltas
+    const onWheel = (e: WheelEvent) => {
+      const now = Date.now();
+      if (now < cooldownUntil) return;
+      // Игнорируем vertical-doмinant'ы (классический mouse-wheel scroll
+      // вверх-вниз) — нам нужен только горизонтальный pure swipe.
+      if (Math.abs(e.deltaY) > Math.abs(e.deltaX) * 1.5) return;
+      // Mouse-wheel'ы обычно дают deltaMode=DOM_DELTA_LINE (1), trackpad —
+      // DOM_DELTA_PIXEL (0). Reject не-pixel input — это явно mouse, не
+      // trackpad swipe.
+      if (e.deltaMode !== 0) return;
+      // Пауза → reset accumulator.
+      if (now - lastEvtAt > RESET_GAP_MS) accDx = 0;
+      lastEvtAt = now;
+      accDx += e.deltaX;
+      if (accDx > THRESHOLD) {
+        // Swipe LEFT (content скроллится вправо, finger пошёл влево) →
+        // открываем Stats.
+        if (!statsOpen) {
+          setStatsOpen(true);
+        }
+        accDx = 0;
+        cooldownUntil = now + COOLDOWN_MS;
+      } else if (accDx < -THRESHOLD) {
+        // Swipe RIGHT — закрываем Stats если открыт; иначе no-op (пока).
+        if (statsOpen) {
+          setStatsOpen(false);
+        }
+        accDx = 0;
+        cooldownUntil = now + COOLDOWN_MS;
+      }
+    };
+    // passive=true — мы не e.preventDefault'им (хотим чтобы scroll тоже
+    // работал normally на других элементах).
+    window.addEventListener('wheel', onWheel, { passive: true });
+    return () => window.removeEventListener('wheel', onWheel);
+  }, [statsOpen]);
 
   const canvasMode: CanvasMode = page === 'home' || page === 'stats' ? 'full' : 'quiet';
 
@@ -669,6 +771,7 @@ export default function App() {
       {copilotOpen && <Copilot onClose={() => setCopilotOpen(false)} />}
       {onboardingOpen && <OnboardingModal onClose={dismissOnboarding} />}
       <UpdateToast />
+      <OfflineBanner />
       <UpgradePrompt />
     </div>
   );

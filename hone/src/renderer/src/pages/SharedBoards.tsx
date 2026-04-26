@@ -28,6 +28,7 @@ import '@excalidraw/excalidraw/index.css';
 
 import { WEB_BASE_URL } from '../api/config';
 import { DraggableToolbar } from '../components/DraggableToolbar';
+import { PendingRoomsSection } from '../components/PendingRoomsSection';
 import {
   createWhiteboardRoom,
   getWhiteboardRoom,
@@ -95,6 +96,13 @@ export function SharedBoardsPage({ initialRoomId, onConsumeInitial }: SharedBoar
     };
   }, [sidebarCollapsed]);
 
+  // Global ⌘S toggle — listen `hone:toggle-sidebar` event from App.tsx.
+  useEffect(() => {
+    const onToggle = () => setSidebarCollapsed((c) => !c);
+    window.addEventListener('hone:toggle-sidebar', onToggle as EventListener);
+    return () => window.removeEventListener('hone:toggle-sidebar', onToggle as EventListener);
+  }, []);
+
   // Sidebar resize.
   const [sidebarW, setSidebarW] = useState<number>(() => {
     if (typeof window === 'undefined') return SIDEBAR_DEFAULT;
@@ -129,6 +137,9 @@ export function SharedBoardsPage({ initialRoomId, onConsumeInitial }: SharedBoar
   }, []);
 
   // Initial list fetch + auto-select first if нет initialRoomId.
+  // Также listen `hone:recent-refresh` event от outbox post-drain hook'а —
+  // когда offline create-board прошёл drain (server вернул реальный ID),
+  // нам нужно refetch'нуть list чтобы новая доска появилась в sidebar'е.
   useEffect(() => {
     let cancelled = false;
     const fetchList = () => {
@@ -150,14 +161,32 @@ export function SharedBoardsPage({ initialRoomId, onConsumeInitial }: SharedBoar
     };
     fetchList();
     if (onConsumeInitial && initialRoomId) onConsumeInitial();
+    const onRecentRefresh = () => fetchList();
+    window.addEventListener('hone:recent-refresh', onRecentRefresh as EventListener);
     return () => {
       cancelled = true;
+      window.removeEventListener('hone:recent-refresh', onRecentRefresh as EventListener);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // ─── Handlers ──────────────────────────────────────────────────────────
   const handleCreate = useCallback(async () => {
+    // Offline path: queue в outbox, drain при reconnect'е.
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      const { enqueue } = await import('../offline/outbox');
+      const clientId = crypto.randomUUID();
+      await enqueue('whiteboard.create_room', {
+        clientId,
+        type: 'practice',
+        language: 0,
+      });
+      setList((prev) => ({
+        ...prev,
+        error: "You're offline · board queued, will create when reconnected",
+      }));
+      return;
+    }
     try {
       const r = await createWhiteboardRoom('Untitled board');
       setList((prev) => ({ ...prev, status: 'ok', rooms: [r, ...prev.rooms], error: null }));
@@ -170,19 +199,52 @@ export function SharedBoardsPage({ initialRoomId, onConsumeInitial }: SharedBoar
         const { useQuotaStore, quotaExceededMessage } = await import('../stores/quota');
         useQuotaStore.getState().showUpgradePrompt(quotaExceededMessage('board'));
         void useQuotaStore.getState().refresh();
-      } else {
-        setList((prev) => ({ ...prev, error: ce.rawMessage || ce.message }));
+        return;
       }
+      // Network error fallback → outbox.
+      const isNetwork =
+        ce.code === Code.Unavailable ||
+        ce.code === Code.DeadlineExceeded ||
+        /fetch failed|network|ECONN/i.test(ce.rawMessage || ce.message);
+      if (isNetwork) {
+        const { enqueue } = await import('../offline/outbox');
+        const clientId = crypto.randomUUID();
+        await enqueue('whiteboard.create_room', {
+          clientId,
+          type: 'practice',
+          language: 0,
+        });
+        setList((prev) => ({ ...prev, error: 'Network error · board queued for retry' }));
+        return;
+      }
+      setList((prev) => ({ ...prev, error: ce.rawMessage || ce.message }));
     }
   }, []);
 
   const handleDelete = useCallback(async (id: string) => {
+    // Optimistic remove из UI — юзер не должен ждать сети.
+    setList((prev) => ({ ...prev, rooms: prev.rooms.filter((r) => r.id !== id) }));
+    setSelectedId((cur) => (cur === id ? null : cur));
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      const { enqueue } = await import('../offline/outbox');
+      await enqueue('whiteboard.delete_room', { roomId: id });
+      return;
+    }
     try {
       await deleteWhiteboardRoom(id);
-      setList((prev) => ({ ...prev, rooms: prev.rooms.filter((r) => r.id !== id) }));
-      setSelectedId((cur) => (cur === id ? null : cur));
     } catch (err: unknown) {
       const ce = ConnectError.from(err);
+      const isNetwork =
+        ce.code === Code.Unavailable ||
+        /fetch failed|network|ECONN/i.test(ce.rawMessage || ce.message);
+      if (isNetwork) {
+        const { enqueue } = await import('../offline/outbox');
+        await enqueue('whiteboard.delete_room', { roomId: id });
+        return;
+      }
+      // Real backend error (403 / 500 etc) — show, but UI уже обновлён.
+      // Юзер увидит room обратно при следующем re-fetch'е list'а если
+      // delete не прошёл legitimately.
       setList((prev) => ({ ...prev, error: ce.rawMessage || ce.message }));
     }
   }, []);
@@ -330,6 +392,7 @@ function SidebarImpl({ list, selectedId, onSelect, onCreate, onDelete, onJoin, o
         onToggleCollapse={onToggleCollapse}
       />
       <JoinByIdInput onJoin={onJoin} />
+      <PendingRoomsSection kind="whiteboard.create_room" label="PENDING" />
       <div style={{ display: 'flex', flexDirection: 'column', gap: 1, padding: '0 2px' }}>
         {list.rooms.map((r) => (
           <RoomRow
@@ -634,11 +697,23 @@ function RoomRowImpl({
     if (visibility === null) return;
     const next: WhiteboardVisibility = visibility === 'private' ? 'shared' : 'private';
     setBusy(true);
+    setVisibility(next); // optimistic
     try {
+      if (typeof navigator !== 'undefined' && !navigator.onLine) {
+        const { enqueue } = await import('../offline/outbox');
+        await enqueue('whiteboard.set_visibility', { roomId: room.id, visibility: next });
+        return;
+      }
       const v = await setRoomVisibility(room.id, next);
       setVisibility(v);
-    } catch {
-      /* ignore — могла быть 403 если юзер не owner */
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      if (/fetch failed|network|ECONN|TypeError/i.test(msg)) {
+        const { enqueue } = await import('../offline/outbox');
+        await enqueue('whiteboard.set_visibility', { roomId: room.id, visibility: next });
+        return;
+      }
+      setVisibility(visibility); // revert on real error (403 etc)
     } finally {
       setBusy(false);
     }
@@ -828,6 +903,13 @@ function RoomCanvas({ roomId }: { roomId: string }) {
   const [loadError, setLoadError] = useState<{ code: Code | null; msg: string } | null>(null);
   const [wsStatus, setWsStatus] = useState<WhiteboardWsStatus>('connecting');
   const [currentTool, setCurrentTool] = useState<string>('selection');
+  // Visibility chip top-right: explicit «Share» / «Private» indicator +
+  // toggle. Раньше юзер не понимал в какой момент board становится shared
+  // — visibility flip был спрятан в three-dots menu sidebar'а. Теперь
+  // explicit button в углу canvas-area + toast после toggle.
+  const [visibility, setVisibility] = useState<WhiteboardVisibility | null>(null);
+  const [visBusy, setVisBusy] = useState(false);
+  const [visToast, setVisToast] = useState<string | null>(null);
   const myUserId = useSessionStore((s) => s.userId);
   const awarenessRef = useRef<Awareness | null>(null);
   const sendAwarenessRef = useRef<((u: Uint8Array) => void) | null>(null);
@@ -838,6 +920,10 @@ function RoomCanvas({ roomId }: { roomId: string }) {
   const wsCloseRef = useRef<(() => void) | null>(null);
   const applyingRemoteRef = useRef(false);
   const debounceRef = useRef<number | null>(null);
+  // Excalidraw `excalidrawAPI` callback fires per-render (inline-arrow →
+  // new ref каждый раз). Без guard'а side-effects (refresh / replay) повторяются
+  // на каждое re-render'е main компонента (e.g. при WS status change).
+  const apiBoundRef = useRef(false);
   // Pending elements JSON, ещё не закоммиченный в yScene из-за debounce.
   // На cleanup делаем sync-flush — иначе drawing'и в последние 80ms перед
   // переключением board теряются (debounce таймер cancel'ится без выполнения).
@@ -848,6 +934,7 @@ function RoomCanvas({ roomId }: { roomId: string }) {
     let cancelled = false;
     setLoadError(null);
     setRoom(null);
+    setVisibility(null);
     getWhiteboardRoom(parsedId)
       .then((r) => {
         if (cancelled) return;
@@ -857,6 +944,16 @@ function RoomCanvas({ roomId }: { roomId: string }) {
         if (cancelled) return;
         const ce = ConnectError.from(err);
         setLoadError({ code: ce.code, msg: ce.rawMessage || ce.message });
+      });
+    // Параллельно загружаем visibility — отдельный REST endpoint
+    // (не часть getWhiteboardRoom payload'а исторически). Pre-fill для
+    // top-right chip'а сразу, без hover-trigger'а.
+    void getRoomVisibility(parsedId)
+      .then((v) => {
+        if (!cancelled) setVisibility(v);
+      })
+      .catch(() => {
+        if (!cancelled) setVisibility('shared'); // network blip → assume default
       });
     return () => {
       cancelled = true;
@@ -968,9 +1065,24 @@ function RoomCanvas({ roomId }: { roomId: string }) {
       handle.send({ kind: 'awareness', data: { update: bytesToB64(update) } });
     };
 
-    const onSceneChange = () => {
+    const onSceneChange = (
+      _event: Y.YMapEvent<string>,
+      transaction: Y.Transaction,
+    ) => {
+      // Origin filter: persistence-restore (y-indexeddb) И local-write оба
+      // триггерят observer. Local-write — Excalidraw уже показывает наш state.
+      // Persistence-restore — может содержать СТАРЫЙ state с меньшим bounding
+      // box → updateScene shrinks viewport (юзер рисует → внезапно canvas
+      // ужимается). Принимаем ТОЛЬКО transactions с origin === 'remote' —
+      // т.е. WS-applied updates от других peer'ов или server snapshot'а.
+      if (transaction.origin !== 'remote') return;
       const json = yScene.get('elements');
       if (!json || !apiRef.current) return;
+      // Local pending-edit guard: даже remote'ом не overwrite'им если у нас
+      // есть unsent local edit — после flush'а CRDT merge сам разрулит.
+      if (pendingElementsRef.current !== null) {
+        return;
+      }
       try {
         const elements = JSON.parse(json);
         applyingRemoteRef.current = true;
@@ -1085,6 +1197,45 @@ function RoomCanvas({ roomId }: { roomId: string }) {
     return <CenterMessage text="LOADING BOARD…" />;
   }
 
+  // Share toggle — phyzical Share / Private chip top-right. Раньше
+  // visibility-flip жил в three-dots menu sidebar'а, юзер не понимал
+  // «как сделать shared». Теперь explicit chip + Copy URL inline.
+  const handleToggleShare = async () => {
+    if (visibility === null || visBusy) return;
+    const next: WhiteboardVisibility = visibility === 'shared' ? 'private' : 'shared';
+    setVisBusy(true);
+    setVisibility(next); // optimistic
+    try {
+      const v = await setRoomVisibility(room.id, next);
+      setVisibility(v);
+      setVisToast(v === 'shared' ? 'Public · share the URL' : 'Now private');
+      window.setTimeout(() => setVisToast(null), 2400);
+    } catch (err) {
+      setVisibility(visibility); // revert on error
+      const msg = err instanceof Error ? err.message : String(err);
+      if (/quota|exhausted|limit/i.test(msg)) {
+        const { useQuotaStore, quotaExceededMessage } = await import('../stores/quota');
+        useQuotaStore.getState().showUpgradePrompt(quotaExceededMessage('board'));
+      } else {
+        setVisToast('Could not change visibility');
+        window.setTimeout(() => setVisToast(null), 2400);
+      }
+    } finally {
+      setVisBusy(false);
+    }
+  };
+  const handleCopyShareURL = async () => {
+    const url = `${WEB_BASE_URL}/whiteboard/${room.id}`;
+    try {
+      await navigator.clipboard.writeText(url);
+      setVisToast('URL copied');
+      window.setTimeout(() => setVisToast(null), 1800);
+    } catch {
+      setVisToast('Could not copy');
+      window.setTimeout(() => setVisToast(null), 1800);
+    }
+  };
+
   const participantsLabel =
     room.participants.length === 1
       ? '1 participant'
@@ -1092,6 +1243,110 @@ function RoomCanvas({ roomId }: { roomId: string }) {
 
   return (
     <>
+      {/* SHARE / PRIVATE chip — top-right. Click toggles visibility +
+          shows toast. Если public — рядом «Copy URL». Раньше Share был
+          скрыт в three-dots sidebar'а, юзер не понимал как сделать board
+          shared. Теперь explicit prominent control. */}
+      <div
+        style={{
+          position: 'absolute',
+          top: 14,
+          right: 24,
+          display: 'flex',
+          alignItems: 'center',
+          gap: 6,
+          zIndex: 26,
+        }}
+      >
+        <button
+          onClick={() => void handleToggleShare()}
+          disabled={visBusy || visibility === null}
+          title={visibility === 'shared' ? 'Public — click to make private' : 'Private — click to share'}
+          className="mono focus-ring"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 6,
+            padding: '7px 14px',
+            fontSize: 11,
+            letterSpacing: '0.14em',
+            background:
+              visibility === 'shared'
+                ? 'rgba(127,212,155,0.10)'
+                : 'rgba(20,20,22,0.78)',
+            backdropFilter: 'blur(16px)',
+            border:
+              visibility === 'shared'
+                ? '1px solid rgba(127,212,155,0.30)'
+                : '1px solid rgba(255,255,255,0.08)',
+            color:
+              visibility === 'shared'
+                ? 'rgba(127,212,155,0.95)'
+                : 'var(--ink-60)',
+            borderRadius: 999,
+            cursor: visBusy || visibility === null ? 'default' : 'pointer',
+            opacity: visBusy ? 0.6 : 1,
+            transition: 'all 180ms ease',
+          }}
+        >
+          <span aria-hidden style={{ fontSize: 12, lineHeight: 1 }}>
+            {visibility === 'shared' ? '🌐' : '🔒'}
+          </span>
+          {visibility === 'shared' ? 'PUBLIC' : visibility === 'private' ? 'PRIVATE' : 'LOADING'}
+        </button>
+        {visibility === 'shared' && (
+          <button
+            onClick={() => void handleCopyShareURL()}
+            title="Copy share URL"
+            className="mono focus-ring"
+            style={{
+              padding: '7px 12px',
+              fontSize: 11,
+              letterSpacing: '0.14em',
+              background: 'rgba(20,20,22,0.78)',
+              backdropFilter: 'blur(16px)',
+              border: '1px solid rgba(255,255,255,0.08)',
+              color: 'var(--ink-60)',
+              borderRadius: 999,
+              cursor: 'pointer',
+              transition: 'color 160ms ease',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.color = 'var(--ink)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.color = 'var(--ink-60)';
+            }}
+          >
+            COPY URL
+          </button>
+        )}
+      </div>
+
+      {visToast && (
+        <div
+          className="mono fadein"
+          style={{
+            position: 'absolute',
+            top: 56,
+            right: 24,
+            padding: '6px 12px',
+            background: 'rgba(20,20,22,0.92)',
+            backdropFilter: 'blur(14px)',
+            border: '1px solid rgba(255,255,255,0.08)',
+            borderRadius: 8,
+            fontSize: 11,
+            letterSpacing: '0.06em',
+            color: 'var(--ink)',
+            zIndex: 26,
+            animationDuration: '180ms',
+            pointerEvents: 'none',
+          }}
+        >
+          {visToast}
+        </div>
+      )}
+
       {/* Минимальный LIVE-chip в нижнем правом углу — единственная
           info-плашка на канвасе. Все actions (copy / open / private /
           delete) переехали в three-dots внутри row sidebar'а. */}
@@ -1146,6 +1401,16 @@ function RoomCanvas({ roomId }: { roomId: string }) {
           // они случайно стирали files/elements при rapid updateScene.
           theme="dark"
           excalidrawAPI={(api) => {
+            // FIRED-ONCE guard: Excalidraw зовёт этот callback на каждом
+            // re-render'е (inline arrow → новая ref). Multiple `api.refresh()`
+            // были безопасны, но при ЛЮБЫХ side-effects (типа replay yScene
+            // как было в web версии) фактически были бы wipe-bug. Защищаемся
+            // raз и навсегда — apiBoundRef живёт в closure useEffect'а.
+            if (apiBoundRef.current) {
+              apiRef.current = api;
+              return;
+            }
+            apiBoundRef.current = true;
             apiRef.current = api;
             requestAnimationFrame(() => {
               try { api.refresh(); } catch { /* ignore */ }
@@ -1178,6 +1443,24 @@ function RoomCanvas({ roomId }: { roomId: string }) {
       <FloatingToolbar
         currentTool={currentTool}
         onSelect={setTool}
+        onColor={(color) => {
+          // Sets stroke color для следующего создаваемого element'а +
+          // обновляет currently selected'ам если есть. Excalidraw читает
+          // appState.currentItemStrokeColor для new elements; для уже
+          // selected элементов мы НЕ touchаем — Excalidraw сам обновит
+          // stroke через свой right-side panel когда юзер выберет цвет
+          // там. Наш color picker здесь — для «next-shape default».
+          const api = apiRef.current;
+          if (!api) return;
+          try {
+            api.updateScene({
+              appState: { currentItemStrokeColor: color },
+              captureUpdate: CaptureUpdateAction.NEVER,
+            });
+          } catch {
+            /* ignore */
+          }
+        }}
         onUploadImage={() => setTool('image')}
         onImportLibraryFile={() => {
           // Local-only import: file picker → JSON.parse → updateLibrary.
@@ -1259,18 +1542,35 @@ interface ToolbarProps {
       | 'eraser'
       | 'hand',
   ) => void;
+  onColor: (hex: string) => void;
   onUploadImage: () => void;
   onImportLibraryFile: () => void;
   onBrowseLibraries: () => void;
 }
 
+// Excalidraw default palette — стандартные 6 цветов из их UI'а + white. На
+// dark canvas (наш inverted-dark mode) эти RAW значения отображаются как
+// инвертированные (см. globals.css `--theme-filter` фильтр), что делает
+// «#1971c2» → light-blue, «#000000» → white, и т.п. Это match'ит на ваш
+// существующий Excalidraw look — палитра их же, не свою рисуем.
+const TOOLBAR_COLORS: ReadonlyArray<{ hex: string; label: string }> = [
+  { hex: '#1e1e1e', label: 'Black' },
+  { hex: '#e03131', label: 'Red' },
+  { hex: '#2f9e44', label: 'Green' },
+  { hex: '#1971c2', label: 'Blue' },
+  { hex: '#f08c00', label: 'Orange' },
+  { hex: '#9c36b5', label: 'Purple' },
+];
+
 function FloatingToolbar({
   currentTool,
   onSelect,
+  onColor,
   onUploadImage,
   onImportLibraryFile,
   onBrowseLibraries,
 }: ToolbarProps) {
+  const [activeColor, setActiveColor] = useState<string>(TOOLBAR_COLORS[0]!.hex);
   return (
     <DraggableToolbar storageKey="hone:shared-boards:toolbar-pos">
       <ToolBtn active={currentTool === 'hand'} onClick={() => onSelect('hand')} title="Hand (pan)">
@@ -1308,11 +1608,127 @@ function FloatingToolbar({
         <EraserIcon />
       </ToolBtn>
       <ToolSep />
+      {/* Color picker — single button + слайд-out popover с 6 swatches.
+          Раньше все 6 рядом блоками — toolbar выглядел перегруженным.
+          Теперь one current-color circle, click → expand swatch row
+          с smooth transition. */}
+      <ColorPicker active={activeColor} colors={TOOLBAR_COLORS} onPick={(hex) => {
+        setActiveColor(hex);
+        onColor(hex);
+      }} />
+      <ToolSep />
       <LibraryButton
         onImportFile={onImportLibraryFile}
         onBrowse={onBrowseLibraries}
       />
     </DraggableToolbar>
+  );
+}
+
+// ─── ColorPicker (collapsible popover) ────────────────────────────────────
+//
+// Single-button compact pattern: button показывает active color как circle.
+// Hover/click expand'ит inline-flex row swatches справа на 200ms cubic-
+// bezier. Без external library — pure CSS transition + state.
+function ColorPicker({
+  active,
+  colors,
+  onPick,
+}: {
+  active: string;
+  colors: ReadonlyArray<{ hex: string; label: string }>;
+  onPick: (hex: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const closeTimer = useRef<number | null>(null);
+  const armClose = () => {
+    if (closeTimer.current !== null) window.clearTimeout(closeTimer.current);
+    closeTimer.current = window.setTimeout(() => setOpen(false), 220);
+  };
+  const cancelClose = () => {
+    if (closeTimer.current !== null) {
+      window.clearTimeout(closeTimer.current);
+      closeTimer.current = null;
+    }
+    setOpen(true);
+  };
+  return (
+    <div
+      onMouseLeave={armClose}
+      onMouseEnter={cancelClose}
+      style={{ display: 'flex', alignItems: 'center', gap: 4 }}
+    >
+      <button
+        onClick={() => setOpen((o) => !o)}
+        title="Color"
+        className="focus-ring"
+        style={{
+          width: 22,
+          height: 22,
+          padding: 0,
+          background: active,
+          border: '2px solid rgba(255,255,255,0.55)',
+          borderRadius: '50%',
+          cursor: 'pointer',
+          boxShadow: open
+            ? '0 0 0 2px rgba(255,255,255,0.18)'
+            : '0 0 0 0 rgba(255,255,255,0)',
+          transition: 'box-shadow 200ms ease, transform 180ms ease',
+          transform: open ? 'scale(1.05)' : 'scale(1)',
+        }}
+      />
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 3,
+          width: open ? colors.length * 24 + 4 : 0,
+          opacity: open ? 1 : 0,
+          overflow: 'hidden',
+          transform: open ? 'translateX(0)' : 'translateX(-6px)',
+          transition:
+            'width 240ms cubic-bezier(0.2,0.7,0.2,1),' +
+            'opacity 200ms cubic-bezier(0.2,0.7,0.2,1),' +
+            'transform 240ms cubic-bezier(0.2,0.7,0.2,1)',
+          pointerEvents: open ? 'auto' : 'none',
+        }}
+      >
+        {colors.map((c, i) => (
+          <button
+            key={c.hex}
+            onClick={() => {
+              onPick(c.hex);
+            }}
+            title={c.label}
+            tabIndex={open ? 0 : -1}
+            style={{
+              width: 21,
+              height: 21,
+              padding: 0,
+              flexShrink: 0,
+              background: c.hex,
+              border:
+                active === c.hex
+                  ? '2px solid rgba(255,255,255,0.95)'
+                  : '1px solid rgba(255,255,255,0.18)',
+              borderRadius: 4,
+              cursor: 'pointer',
+              // Stagger fade-in: каждый swatch на 30ms позже соседнего —
+              // эффект «появления полки слева направо».
+              transitionDelay: open ? `${i * 30}ms` : '0ms',
+              transition:
+                'border-color 140ms ease, transform 140ms ease',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.transform = 'scale(1.12)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.transform = 'scale(1)';
+            }}
+          />
+        ))}
+      </div>
+    </div>
   );
 }
 

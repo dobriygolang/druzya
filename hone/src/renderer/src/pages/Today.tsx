@@ -10,8 +10,12 @@
 //      on my mind», quick-jots, intent. Это не задачи — это размышления.
 //   5. Tasks       — Focus Queue, three sections без больших дивайдеров.
 //      Inline + Add task внизу. Hover-delete, click checkbox для transitions.
-//   6. AI nudges   — слот под Coach (даём место чтобы туда позже нейронка
-//      писала specific советы по узким местам, см. TODO ниже).
+//   6. AI nudges   — слот под Coach.
+//
+// NOTE: Standup banner был НА Today всегда — он самораскрывается утром и
+// прячется когда юзер записал stand-up на сегодня. Из общих палетки/tabs
+// мы команду удалили (нет смысла навигироваться отдельно), но на Today
+// сам компонент остался: он часть «утреннего блока».
 //
 // Никаких pop-up кнопок «Generate plan / Regenerate». Plan генерится
 // автоматически утром (cron) или по явному запросу через Palette
@@ -303,7 +307,8 @@ export function TodayPage({ onStartFocus, highlightedItemId, onConsumeHighlight 
           Today
         </h1>
 
-        {/* Standup banner — self-gating, нулевой DOM если нет условий. */}
+        {/* Morning standup — self-gating: показывается только утром и если
+            stand-up за сегодня ещё не записан. После записи свернётся в null. */}
         <TodayStandupBanner />
 
         {/* Morning intent — free-form note, autosaves debounced. */}

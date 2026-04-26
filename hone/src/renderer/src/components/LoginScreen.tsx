@@ -14,8 +14,15 @@ import { useEffect, useRef, useState } from 'react';
 
 import type { TelegramStart } from '@shared/ipc';
 import { Wordmark } from './Chrome';
+import { useSessionStore } from '../stores/session';
 
 const POLL_INTERVAL_MS = 2000;
+// Max time юзер может ждать в `awaiting` перед тем как мы скажем «бот не
+// отвечает». Раньше polling шёл indefinitely → юзер тыкал в бота, бот
+// почему-то не fill'ил code (webhook misconfig / token revoked / etc),
+// и приложение молча polling'ало вечно. Теперь через 2 минуты — явное
+// «Bot didn't respond» с retry button'ом.
+const POLL_TIMEOUT_MS = 120_000;
 
 type Phase =
   | { kind: 'idle' }
@@ -27,6 +34,7 @@ type Phase =
 export function LoginScreen() {
   const [phase, setPhase] = useState<Phase>({ kind: 'idle' });
   const pollTimer = useRef<number | null>(null);
+  const pollEpochRef = useRef(0);
   const cancelledRef = useRef(false);
 
   useEffect(() => {
@@ -57,17 +65,51 @@ export function LoginScreen() {
   };
 
   const pollLoop = (code: string) => {
+    // Kill any in-flight ticks от прошлых attempt'ов. Если юзер кликнул
+    // Sign In дважды быстро (или React StrictMode double-mount'нул), могла
+    // получиться race: tick-A polls для code-A, tick-B polls для code-B,
+    // оба переписывают pollTimer.current, в итоге один из них продолжает
+    // тикать с stale code'ом и никогда не получит 'ok'.
+    if (pollTimer.current !== null) {
+      window.clearTimeout(pollTimer.current);
+      pollTimer.current = null;
+    }
+    // Per-call cancel-token — если pollLoop вызвался ещё раз с новым code'ом,
+    // старый цикл проверит свой токен и завершится.
+    const myEpoch = ++pollEpochRef.current;
+    const startedAt = Date.now();
     const tick = async () => {
       const bridge = window.hone;
       if (!bridge || cancelledRef.current) return;
+      // Stale tick — другой pollLoop запущен после нас.
+      if (myEpoch !== pollEpochRef.current) return;
+      // Hard timeout — bot не отвечает уже 2 минуты, не tease'им юзера.
+      if (Date.now() - startedAt > POLL_TIMEOUT_MS) {
+        setPhase({
+          kind: 'error',
+          message:
+            "Bot didn't respond within 2 min. Likely the bot webhook isn't registered on the server, or the bot didn't receive your /start message. Try again, and if it still fails, contact admin.",
+        });
+        return;
+      }
       const result = await bridge.auth.tgPoll(code);
       if (cancelledRef.current) return;
       switch (result.kind) {
         case 'ok':
-          // Main already saved + broadcast authChanged. App.tsx listener
-          // will hydrate the store; nothing else to do here besides
-          // freezing the UI on a confirmation flash so the user sees a
-          // happy state before the screen swaps.
+          // Direct hydrate — НЕ полагаемся на authChanged IPC event'у. Был
+          // bug: backend возвращал 200, main сохранял session, broadcast'ил
+          // authChanged, но renderer'овский listener почему-то не срабатывал
+          // (race с unmount/remount?), юзер застревал в "Waiting for
+          // confirmation…" хотя по логам всё успешно. Hydrate напрямую из
+          // result.session — failsafe, не зависит от IPC bus'а.
+          if (result.session && result.session.accessToken) {
+            useSessionStore.getState().hydrate({
+              userId: result.session.userId,
+              accessToken: result.session.accessToken,
+              refreshToken: result.session.refreshToken ?? undefined,
+              expiresAt: result.session.expiresAt,
+            });
+          }
           setPhase({ kind: 'idle' });
           return;
         case 'pending':

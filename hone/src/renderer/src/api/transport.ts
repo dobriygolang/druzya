@@ -20,10 +20,12 @@ import { getDeviceId, clearDeviceId } from './device';
 // Auth interceptor. Reads the token lazily on each call so a post-login
 // rotation is picked up without rebuilding the transport.
 const authInterceptor: Interceptor = (next) => async (req) => {
-  const token = useSessionStore.getState().accessToken ?? DEV_BEARER_TOKEN;
-  if (token) {
-    req.header.set('authorization', `Bearer ${token}`);
-  }
+  const apply = () => {
+    const token = useSessionStore.getState().accessToken ?? DEV_BEARER_TOKEN;
+    if (token) req.header.set('authorization', `Bearer ${token}`);
+    else req.header.delete('authorization');
+  };
+  apply();
   // X-Device-ID — Phase C-3.1 sync foundation. Backend пишет heartbeat
   // и проверяет revocation. Когда device-id ещё не зарегистрирован
   // (первый запуск до ensureDevice) — header просто отсутствует,
@@ -38,9 +40,97 @@ const authInterceptor: Interceptor = (next) => async (req) => {
     // device_revoked — backend signal'ит что наш device disabled с
     // другого устройства. Wipe local state и отправляем юзера в логин.
     handleRevocation(err);
+    // Auto-refresh on 401 — раньше: токен истёк → юзер видит «Sign in to
+    // join the room» хотя у нас лежит валидный refresh_token. Теперь
+    // ловим Unauthenticated, пытаемся обменять refresh→access, applies
+    // новый token к req.header и retry'им один раз. Если refresh fails →
+    // КРИТИЧНО force-clear сессию, чтобы App.tsx переключился на LoginScreen.
+    // Раньше юзер застревал в `signed_in` с битым access+refresh токеном —
+    // status === 'signed_in', но каждый RPC возвращает 401, login screen
+    // не показывается. Теперь чистим, и App автоматом → LoginScreen.
+    if (err instanceof ConnectError && err.code === Code.Unauthenticated) {
+      const ok = await tryRefreshOnce();
+      if (ok) {
+        apply();
+        return await next(req);
+      }
+      // Refresh не получился (нет refresh_token / refresh expired / 401 from
+      // refresh endpoint). Только если у нас БЫЛ access-token — иначе мы
+      // и так ещё не залогинены, и clear бессмыслен.
+      const hadToken = !!useSessionStore.getState().accessToken;
+      if (hadToken) {
+        void useSessionStore.getState().clear();
+      }
+    }
     throw err;
   }
 };
+
+// Single in-flight refresh promise — concurrent 401's from parallel RPCs
+// делают только один call к /Refresh. Resolve'ится true если access-token
+// обновился, false если refresh не получился (нет refresh_token, server
+// 401, network error).
+let refreshInFlight: Promise<boolean> | null = null;
+
+async function tryRefreshOnce(): Promise<boolean> {
+  if (refreshInFlight) return refreshInFlight;
+  refreshInFlight = (async () => {
+    const refresh = useSessionStore.getState().refreshToken;
+    if (!refresh) return false;
+    try {
+      const resp = await fetch(`${API_BASE_URL}/druz9.v1.AuthService/Refresh`, {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+          'x-refresh-token': refresh,
+        },
+        body: '{}',
+      });
+      if (!resp.ok) return false;
+      const j = (await resp.json()) as {
+        accessToken?: string;
+        access_token?: string;
+        expiresIn?: number;
+        expires_in?: number;
+        user?: { id?: string };
+      };
+      const newAccess = j.accessToken ?? j.access_token;
+      if (!newAccess) return false;
+      const expiresIn = j.expiresIn ?? j.expires_in ?? 0;
+      const newRefresh = resp.headers.get('x-refresh-token') ?? refresh;
+      const userId = j.user?.id ?? useSessionStore.getState().userId ?? '';
+      useSessionStore.getState().hydrate({
+        userId,
+        accessToken: newAccess,
+        refreshToken: newRefresh,
+        expiresAt: expiresIn ? Date.now() + expiresIn * 1000 : 0,
+      });
+      // Persist в keychain если bridge есть — иначе на следующий старт
+      // всё ещё подсунем старый expired token.
+      const bridge = typeof window !== 'undefined' ? window.hone : undefined;
+      if (bridge?.auth?.persist) {
+        try {
+          await bridge.auth.persist({
+            userId,
+            accessToken: newAccess,
+            refreshToken: newRefresh,
+            expiresAt: expiresIn ? Date.now() + expiresIn * 1000 : 0,
+          });
+        } catch {
+          /* ignore — best-effort */
+        }
+      }
+      return true;
+    } catch {
+      return false;
+    }
+  })();
+  try {
+    return await refreshInFlight;
+  } finally {
+    refreshInFlight = null;
+  }
+}
 
 function handleRevocation(err: unknown): void {
   if (!(err instanceof ConnectError)) return;

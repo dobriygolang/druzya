@@ -137,6 +137,13 @@ export function NotesPage({ initialSelectedId, onConsumeInitial }: NotesPageProp
       window.clearTimeout(t2);
     };
   }, [sidebarCollapsed]);
+
+  // Global ⌘S toggle — listen `hone:toggle-sidebar` event from App.tsx.
+  useEffect(() => {
+    const onToggle = () => setSidebarCollapsed((c) => !c);
+    window.addEventListener('hone:toggle-sidebar', onToggle as EventListener);
+    return () => window.removeEventListener('hone:toggle-sidebar', onToggle as EventListener);
+  }, []);
   const [sidebarW, setSidebarW] = useState<number>(() => {
     if (typeof window === 'undefined') return SIDEBAR_DEFAULT;
     const raw = window.localStorage.getItem(SIDEBAR_KEY);
@@ -692,17 +699,19 @@ export function NotesPage({ initialSelectedId, onConsumeInitial }: NotesPageProp
         await deleteNote(id);
       }
       setList((prev) => ({ ...prev, notes: prev.notes.filter((n) => n.id !== id) }));
+      // Quota counter: server-side count изменился, sidebar quota-bar
+      // (`SYNCED N / OVER LIMIT M`) должен decrement'нуться. Раньше юзер
+      // удалял notes, а счётчик оставался прежним до hourly auto-refresh.
+      // Trigger immediate re-fetch.
+      if (!isLocalNoteId(id)) {
+        const { useQuotaStore } = await import('../stores/quota');
+        void useQuotaStore.getState().refresh();
+      }
       // Используем functional setSelectedId с inspection через setList
       // чтобы избежать stale closure'а на selectedId. Closure'нем через
       // отдельный set: если deleted == текущий, выбрать первый оставшийся.
       setSelectedId((cur) => {
         if (cur !== id) return cur;
-        // Выбираем next через свежий list (после filter уже применён) —
-        // но setSelectedId имеет prev-only signature. Достаём актуальный
-        // notes снова через setList с identity-функцией и captured ref.
-        // Trick: nested setList возвращает свежее состояние synchronously
-        // в React 18+ (microtask boundary), но безопаснее обратиться к
-        // listRef обновляемой через каждый setList.
         const next = listRef.current.notes.find((n) => n.id !== id);
         return next?.id ?? null;
       });
@@ -718,6 +727,14 @@ export function NotesPage({ initialSelectedId, onConsumeInitial }: NotesPageProp
    // оставляем local copy intact.
   const handleSyncToCloud = useCallback(async (id: string) => {
     if (!isLocalNoteId(id)) return;
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      // Offline-guard: без internet'а sync обречён на network error.
+      // Раньше юзер кликал, видел «Sync failed» через 30s timeout — теперь
+      // моментальный feedback что мы offline.
+      setToast("You're offline · sync paused");
+      window.setTimeout(() => setToast(null), 2400);
+      return;
+    }
     try {
       await flushNow(); // ensure latest content в local store
       const ln = await getLocalNote(id);
@@ -1246,22 +1263,24 @@ function NoteRowImpl({ note, active, encrypted, onSelect, onDelete, onPublish, o
   const rowRef = useRef<HTMLDivElement>(null);
 
   const isLocal = isLocalNoteId(note.id);
-  // Lazy-load publish status on first hover (cheap idempotent fetch).
-  // Local notes никогда не на бэкенде → skip.
+  // Eager-load publish status on mount (not on hover как раньше). Lock-
+  // icon в row отображает publish-state — должен быть правильным сразу,
+  // а не только после первого hover'а. fetch идёмpotent + cached server-
+  // side, дёшево.
   useEffect(() => {
-    if (isLocal || !hover || pubStatus) return;
+    if (isLocal || pubStatus) return;
     let live = true;
     void getPublishStatus(note.id)
       .then((s) => {
         if (live) setPubStatus(s);
       })
       .catch(() => {
-        /* silent */
+        /* silent — network blip → assume not published, lock-icon red */
       });
     return () => {
       live = false;
     };
-  }, [hover, pubStatus, note.id, isLocal]);
+  }, [pubStatus, note.id, isLocal]);
 
   // Close menu on outside click / Esc.
   useEffect(() => {
@@ -1363,79 +1382,101 @@ function NoteRowImpl({ note, active, encrypted, onSelect, onDelete, onPublish, o
             <path d="M8 20h8M12 16v4" />
           </svg>
         </span>
-      ) : encrypted ? (
-        <span
-          title="Encrypted — open to decrypt"
-          style={{
-            width: 22,
-            height: 22,
-            display: 'grid',
-            placeItems: 'center',
-            color: 'var(--ink-60)',
-            flexShrink: 0,
-            pointerEvents: 'none', // открытие через row.onClick
-          }}
-        >
-          <svg
-            width={13}
-            height={13}
-            viewBox="0 0 24 24"
-            fill="currentColor"
-            stroke="currentColor"
-            strokeWidth={1.6}
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <rect x="4" y="11" width="16" height="10" rx="2" />
-            <path d="M8 11V7a4 4 0 0 1 8 0v4" fill="none" />
-          </svg>
-        </span>
       ) : (
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            onEncrypt(note.id);
-          }}
-          className="focus-ring"
-          title="Encrypt this note (requires Vault password)"
-          style={{
-            width: 22,
-            height: 22,
-            display: 'grid',
-            placeItems: 'center',
-            background: 'transparent',
-            border: 'none',
-            cursor: 'pointer',
-            color: 'var(--ink-60)',
-            borderRadius: 5,
-            opacity: hover || menuOpen ? 1 : 0,
-            transition:
-              'opacity 180ms ease, background-color 160ms ease, color 160ms ease',
-            flexShrink: 0,
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.color = 'var(--ink)';
-            e.currentTarget.style.background = 'rgba(255,255,255,0.06)';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.color = 'var(--ink-60)';
-            e.currentTarget.style.background = 'transparent';
-          }}
-        >
-          <svg
-            width={13}
-            height={13}
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth={1.6}
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <rect x="4" y="11" width="16" height="10" rx="2" />
-            <path d="M8 11V7a4 4 0 0 1 8 0v4" />
-          </svg>
-        </button>
+        // Lock-icon = publish state.
+        //   🔒 red    = private (не опубликована)  → click → publish
+        //   🔓 green  = public  (опубликована)     → click → unpublish
+        //
+        // Раньше lock = encryption-state (encrypted vs plaintext) — юзер не
+        // понимал, click locked'а ничего не делал (pointerEvents:none). Сейчас
+        // lock зеркалит publish state'ом, что более intuitive: «закрыто =
+        // приватно, открыто = в интернете». Encryption переехало в dropdown
+        // (см. RowDropdown «Encrypt note» item).
+        //
+        // Animation: shackle path морфит open↔closed на 220ms. Цвет тоже
+        // плавно меняется через color transition.
+        (() => {
+          const isPublic = !!pubStatus?.published;
+          const lockColor = isPublic
+            ? 'rgba(127,212,155,0.95)' // green — public
+            : 'rgba(255,106,106,0.95)'; // red — private
+          const lockBg = isPublic
+            ? 'rgba(127,212,155,0.10)'
+            : 'rgba(255,106,106,0.08)';
+          const lockBorder = isPublic
+            ? 'rgba(127,212,155,0.30)'
+            : 'rgba(255,106,106,0.22)';
+          return (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                if (isPublic) {
+                  onUnpublish(note.id);
+                  setPubStatus({ published: false });
+                } else {
+                  onPublish(note.id);
+                  // Optimistic flip — handlePublish сам toast'нёт результат.
+                  setPubStatus({ published: true });
+                }
+              }}
+              className="focus-ring"
+              title={isPublic ? 'Public on web — click to unpublish' : 'Private — click to publish to web'}
+              style={{
+                display: 'grid',
+                placeItems: 'center',
+                width: 22,
+                height: 22,
+                background: lockBg,
+                border: `1px solid ${lockBorder}`,
+                borderRadius: 5,
+                cursor: 'pointer',
+                color: lockColor,
+                flexShrink: 0,
+                transition:
+                  'background-color 220ms ease, border-color 220ms ease, color 220ms ease, transform 180ms ease',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.transform = 'scale(1.08)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.transform = 'scale(1)';
+              }}
+            >
+              <svg
+                width={12}
+                height={12}
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth={1.8}
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <rect x="4" y="11" width="16" height="10" rx="2" />
+                {/* Animated shackle: closed (M8 11 V7 a4 4 0 0 1 8 0 v4) vs
+                    open (shackle вправо). Реализовали через condional path
+                    + CSS transition — браузер интерполирует morph между двумя
+                    discrete path'ами как opacity-fade поскольку SVG path data
+                    не animatable без SMIL. Простое решение: 2 layered paths,
+                    кросс-fade opacity. */}
+                <path
+                  d="M8 11V7a4 4 0 0 1 8 0v4"
+                  style={{
+                    opacity: isPublic ? 0 : 1,
+                    transition: 'opacity 220ms ease',
+                  }}
+                />
+                <path
+                  d="M8 11V7a4 4 0 0 1 7-2"
+                  style={{
+                    opacity: isPublic ? 1 : 0,
+                    transition: 'opacity 220ms ease',
+                  }}
+                />
+              </svg>
+            </button>
+          );
+        })()
       )}
 
       {/* Three-dots — также fade-in при hover */}
@@ -1480,6 +1521,11 @@ function NoteRowImpl({ note, active, encrypted, onSelect, onDelete, onPublish, o
         <RowDropdown
           isLocal={isLocal}
           published={!!pubStatus?.published}
+          encrypted={encrypted}
+          onEncrypt={() => {
+            setMenuOpen(false);
+            onEncrypt(note.id);
+          }}
           onSyncToCloud={() => {
             setMenuOpen(false);
             onSyncToCloud(note.id);
@@ -1487,6 +1533,12 @@ function NoteRowImpl({ note, active, encrypted, onSelect, onDelete, onPublish, o
           onPublish={() => {
             setMenuOpen(false);
             onPublish(note.id);
+            // Optimistic update: после publish меню должно сразу показывать
+            // «Unpublish». Раньше pubStatus был stale до next-hover refetch'а
+            // → юзер не видел unpublish-кнопки и не понимал как отозвать
+            // публикацию. Setting pubStatus={published:true} на parent click
+            // → drop-down ре-рендерится с unpublish item'ом сразу.
+            setPubStatus({ published: true });
           }}
           onUnpublish={() => {
             setMenuOpen(false);
@@ -1526,13 +1578,15 @@ function NoteIcon() {
 interface RowDropdownProps {
   isLocal: boolean;
   published: boolean;
+  encrypted: boolean;
   onSyncToCloud: () => void;
   onPublish: () => void;
   onUnpublish: () => void;
+  onEncrypt: () => void;
   onDelete: () => void;
 }
 
-function RowDropdown({ isLocal, published, onSyncToCloud, onPublish, onUnpublish, onDelete }: RowDropdownProps) {
+function RowDropdown({ isLocal, published, encrypted, onSyncToCloud, onPublish, onUnpublish, onEncrypt, onDelete }: RowDropdownProps) {
   return (
     <div
       className="fadein"
@@ -1579,6 +1633,32 @@ function RowDropdown({ isLocal, published, onSyncToCloud, onPublish, onUnpublish
             />
           )}
           <DropdownDivider />
+          {/* Encrypt menu item — переехал из row-icon'а сюда. Lock-icon в row
+              теперь зеркалит publish-state (red/green), encryption — это
+              отдельная concept (E2E vault), её action скрыли в menu. */}
+          {!encrypted && (
+            <>
+              <DropdownLabel>Privacy</DropdownLabel>
+              <DropdownItem
+                icon={<EncryptIcon />}
+                label="Encrypt note (Vault)"
+                onClick={onEncrypt}
+              />
+              <DropdownDivider />
+            </>
+          )}
+          {encrypted && (
+            <>
+              <DropdownLabel>Privacy</DropdownLabel>
+              <DropdownItem
+                icon={<EncryptIcon />}
+                label="Encrypted (E2E)"
+                disabled
+                onClick={() => {}}
+              />
+              <DropdownDivider />
+            </>
+          )}
         </>
       )}
       <DropdownItem
@@ -1613,37 +1693,72 @@ function DropdownItem({
   label,
   onClick,
   danger = false,
+  disabled = false,
 }: {
   icon: React.ReactNode;
   label: string;
   onClick: () => void;
   danger?: boolean;
+  disabled?: boolean;
 }) {
   const [hover, setHover] = useState(false);
   return (
     <button
-      onClick={onClick}
-      onMouseEnter={() => setHover(true)}
+      onClick={disabled ? undefined : onClick}
+      onMouseEnter={() => !disabled && setHover(true)}
       onMouseLeave={() => setHover(false)}
+      disabled={disabled}
       style={{
         display: 'flex',
         alignItems: 'center',
         gap: 10,
         width: '100%',
         padding: '8px 10px',
-        background: hover ? (danger ? 'rgba(255,80,80,0.10)' : 'rgba(255,255,255,0.06)') : 'transparent',
+        background: disabled
+          ? 'transparent'
+          : hover
+            ? danger
+              ? 'rgba(255,80,80,0.10)'
+              : 'rgba(255,255,255,0.06)'
+            : 'transparent',
         border: 'none',
         borderRadius: 6,
-        color: danger ? '#ff6a6a' : hover ? 'var(--ink)' : 'var(--ink-90)',
+        color: disabled
+          ? 'var(--ink-40)'
+          : danger
+            ? '#ff6a6a'
+            : hover
+              ? 'var(--ink)'
+              : 'var(--ink-90)',
         fontSize: 13,
-        cursor: 'pointer',
+        cursor: disabled ? 'default' : 'pointer',
         textAlign: 'left',
+        opacity: disabled ? 0.6 : 1,
         transition: 'background-color 140ms ease, color 140ms ease',
       }}
     >
       <span style={{ display: 'inline-flex', color: 'inherit' }}>{icon}</span>
       <span>{label}</span>
     </button>
+  );
+}
+
+function EncryptIcon() {
+  return (
+    <svg
+      width={14}
+      height={14}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={1.6}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <rect x="4" y="11" width="16" height="10" rx="2" />
+      <path d="M8 11V7a4 4 0 0 1 8 0v4" />
+      <circle cx="12" cy="16" r="1" fill="currentColor" />
+    </svg>
   );
 }
 

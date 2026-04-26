@@ -52,7 +52,22 @@ func NewHone(d Deps) *Module {
 	plans := honeInfra.NewPlans(d.Pool)
 	focus := honeInfra.NewFocus(d.Pool)
 	streaks := honeInfra.NewStreaks(d.Pool)
-	notes := honeInfra.NewNotes(d.Pool)
+	// Quota-aware NoteRepo: gate срабатывает на ВСЕХ путях создания notes —
+	// CreateNote RPC, RecordStandup, EndFocusSession reflection, whiteboard
+	// snapshot export. Раньше check был только в HoneServer.CreateNote, и
+	// юзеры обходили его через standup/focus/whiteboard и накапливали >limit
+	// (юзер видел "SYNCED 13 / OVER LIMIT 10" в UI).
+	noteQuotaCheck := func(ctx context.Context, uid uuid.UUID) error {
+		return EnforceCreate(ctx, d, uid,
+			honeNotesQuotaField,
+			func(ctx context.Context, u uuid.UUID) (int, error) {
+				if d.QuotaUsageReader == nil {
+					return 0, nil
+				}
+				return d.QuotaUsageReader.CountSyncedNotes(ctx, u)
+			})
+	}
+	notes := honeInfra.NewQuotaAwareNoteRepo(honeInfra.NewNotes(d.Pool), noteQuotaCheck)
 	whiteboards := honeInfra.NewWhiteboards(d.Pool)
 	resistance := honeInfra.NewResistance(d.Pool)
 	queue := honeInfra.NewQueue(d.Pool)
@@ -254,6 +269,14 @@ func NewHone(d Deps) *Module {
 	}
 	mod.Background = append(mod.Background, func(ctx context.Context) { go reconciler.Run(ctx) })
 
+	// Notes overflow auto-archive — free-tier юзеры могли набрать > limit
+	// notes до wire'инга quota gate'а (или race'ом). Cron archived'ит
+	// oldest-by-updated_at beyond лимита (10 для free) каждый час.
+	// Юзер видит «SYNCED 10 / 10» вместо «12 / OVER LIMIT 10».
+	mod.Background = append(mod.Background, func(ctx context.Context) {
+		go runFreeTierNotesOverflowArchive(ctx, d.Pool, d.Log)
+	})
+
 	return mod
 }
 
@@ -266,7 +289,7 @@ func NewHone(d Deps) *Module {
 // outlive it. Errors are logged, not returned (no surface to return to).
 func makeHoneEmbedJob(
 	embedder honeDomain.Embedder,
-	notes *honeInfra.Notes,
+	notes honeDomain.NoteRepo,
 	log *slog.Logger,
 ) func(ctx context.Context, userID, noteID uuid.UUID, text string) {
 	return func(ctx context.Context, userID, noteID uuid.UUID, text string) {
