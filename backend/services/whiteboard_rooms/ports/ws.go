@@ -336,7 +336,14 @@ func (h *Hub) readLoop(ctx context.Context, c *wsConn) {
 					h.scheduleFlush(c.roomID)
 				}
 			}
-			h.broadcast(c.roomID, data, c)
+			// 'snapshot' от клиента — full Y.Doc state, шлётся раз в ~1s
+			// активности и при close. Live-peer'ам он не нужен (они уже
+			// собирают state из 'update'-дельт), и дублирующий broadcast
+			// удваивает bandwidth для крупных бордов. Поэтому broadcast
+			// только 'update'-дельт.
+			if env.Kind == "update" {
+				h.broadcast(c.roomID, data, c)
+			}
 		default:
 			// forward-compat
 		}

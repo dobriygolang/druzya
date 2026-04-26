@@ -1035,6 +1035,14 @@ function RoomCanvas({ roomId }: { roomId: string }) {
   const myUserId = useSessionStore((s) => s.userId);
   const awarenessRef = useRef<Awareness | null>(null);
   const sendAwarenessRef = useRef<((u: Uint8Array) => void) | null>(null);
+  // sendSnapshotRef — отправка ПОЛНОГО Y.Doc state (encodeStateAsUpdate) как
+  // 'snapshot'-envelope. Server'ный hub хранит lastFullSnapshot = последний
+  // принятый blob; делает delta'у которой клиент шлёт через onUpdate
+  // self-incomplete (просто инкремент). Без full-snapshot'а late-joiner
+  // получал ТОЛЬКО последнюю дельту и не видел изменений сделанных пиром
+  // до момента собственного re-open'а. Mirror в frontend WhiteboardSharePage.
+  const sendSnapshotRef = useRef<(() => void) | null>(null);
+  const snapshotTimerRef = useRef<number | null>(null);
 
   const ydocRef = useRef<Y.Doc | null>(null);
   const apiRef = useRef<ExcalidrawImperativeAPI | null>(null);
@@ -1195,10 +1203,29 @@ function RoomCanvas({ roomId }: { roomId: string }) {
     wsCloseRef.current = handle.close;
     sendRef.current = (update: Uint8Array) => {
       handle.send({ kind: 'update', data: { update: bytesToB64(update) } });
+      // Schedule full-snapshot 1s after last edit. См. mirror в
+      // frontend/.../WhiteboardSharePage.tsx — без этого late-joiner
+      // получает только последнюю delta'у вместо full state.
+      if (snapshotTimerRef.current !== null) {
+        window.clearTimeout(snapshotTimerRef.current);
+      }
+      snapshotTimerRef.current = window.setTimeout(() => {
+        snapshotTimerRef.current = null;
+        sendSnapshotRef.current?.();
+      }, 1000);
     };
     sendAwarenessRef.current = (update: Uint8Array) => {
       handle.send({ kind: 'awareness', data: { update: bytesToB64(update) } });
     };
+    sendSnapshotRef.current = () => {
+      const doc = ydocRef.current;
+      if (!doc) return;
+      const full = Y.encodeStateAsUpdate(doc);
+      handle.send({ kind: 'snapshot', data: { update: bytesToB64(full) } });
+    };
+    // Initial snapshot push — после первого Yjs sync (IDB + WS-snapshot)
+    // обновляем server hub'у hydrate-blob.
+    window.setTimeout(() => sendSnapshotRef.current?.(), 200);
 
     // Per-id observer + legacy fallback observer. См. mirror в
     // frontend/src/pages/WhiteboardSharePage.tsx — поведение одинаковое.
@@ -1246,6 +1273,16 @@ function RoomCanvas({ roomId }: { roomId: string }) {
         window.clearTimeout(debounceRef.current);
         debounceRef.current = null;
       }
+      // Final synchronous snapshot перед close (см. mirror).
+      if (snapshotTimerRef.current !== null) {
+        window.clearTimeout(snapshotTimerRef.current);
+        snapshotTimerRef.current = null;
+      }
+      try {
+        sendSnapshotRef.current?.();
+      } catch {
+        /* ignore */
+      }
       yElements.unobserve(onElementsChange);
       yScene.unobserve(onLegacySceneChange);
       ydoc.off('update', onUpdate);
@@ -1266,6 +1303,7 @@ function RoomCanvas({ roomId }: { roomId: string }) {
       wsCloseRef.current = null;
       sendRef.current = null;
       sendAwarenessRef.current = null;
+      sendSnapshotRef.current = null;
     };
   }, [room, myUserId]);
 

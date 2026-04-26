@@ -472,6 +472,14 @@ function RoomCanvasImpl({ room, guestToken, myUserId, myDisplayName }: { room: R
   const apiRef = useRef<ExcalidrawImperativeAPI | null>(null)
   const sendRef = useRef<((u: Uint8Array) => void) | null>(null)
   const sendAwarenessRef = useRef<((u: Uint8Array) => void) | null>(null)
+  // sendSnapshotRef — отправка ПОЛНОГО Y.Doc state (encodeStateAsUpdate) как
+  // 'snapshot'-envelope. Server'ный hub хранит lastFullSnapshot = последний
+  // принятый blob; делает delta'у которой клиент шлёт через onYUpdate
+  // self-incomplete (это просто инкремент). Без full-snapshot'а late-joiner
+  // получал ТОЛЬКО последнюю дельту → не видел изменений, сделанных
+  // соседом до момента собственного re-open'а.
+  const sendSnapshotRef = useRef<(() => void) | null>(null)
+  const snapshotTimerRef = useRef<number | null>(null)
   const wsCloseRef = useRef<(() => void) | null>(null)
   const awarenessRef = useRef<Awareness | null>(null)
   const applyingRemoteRef = useRef(false)
@@ -657,15 +665,52 @@ function RoomCanvasImpl({ room, guestToken, myUserId, myDisplayName }: { room: R
     wsCloseRef.current = handle.close
     sendRef.current = (update) => {
       handle.send({ kind: 'update', data: { update: bytesToB64(update) } })
+      // Schedule full-snapshot send 1s after the last edit. Дельты которые
+      // мы шлём через 'update' инкрементальные — server hub'у недостаточно
+      // их одних чтобы отдать full state late-joiner'у. Поэтому раз в
+      // секунду активности шлём encodeStateAsUpdate(ydoc) как 'snapshot'.
+      // Сервер хранит последний 'snapshot' blob → late-joiner получает
+      // настоящий full state, а не последний инкремент.
+      if (snapshotTimerRef.current !== null) {
+        window.clearTimeout(snapshotTimerRef.current)
+      }
+      snapshotTimerRef.current = window.setTimeout(() => {
+        snapshotTimerRef.current = null
+        sendSnapshotRef.current?.()
+      }, 1000)
     }
     sendAwarenessRef.current = (update) => {
       handle.send({ kind: 'awareness', data: { update: bytesToB64(update) } })
     }
+    sendSnapshotRef.current = () => {
+      const doc = ydocRef.current
+      if (!doc) return
+      const full = Y.encodeStateAsUpdate(doc)
+      handle.send({ kind: 'snapshot', data: { update: bytesToB64(full) } })
+    }
+    // Initial snapshot push: после первого Yjs sync (IDB + WS-snapshot
+    // applied) шлём full state, чтобы server hub немедленно имел
+    // корректный hydrate-blob — даже если этот клиент больше ничего не
+    // нарисует. Без задержки в 200мс рискуем послать pre-merge state.
+    window.setTimeout(() => sendSnapshotRef.current?.(), 200)
 
     return () => {
       if (debounceRef.current !== null) {
         window.clearTimeout(debounceRef.current)
         debounceRef.current = null
+      }
+      // Final synchronous snapshot перед close: гарантирует что server'ный
+      // lastFullSnapshot отражает наше окончательное состояние. Без этого
+      // последний draw мог уйти как delta, а snapshot-blob остался
+      // устаревший (если debounce не успел).
+      if (snapshotTimerRef.current !== null) {
+        window.clearTimeout(snapshotTimerRef.current)
+        snapshotTimerRef.current = null
+      }
+      try {
+        sendSnapshotRef.current?.()
+      } catch {
+        /* ignore */
       }
       yElements.unobserve(onElementsChange)
       yScene.unobserve(onLegacySceneChange)
@@ -696,6 +741,7 @@ function RoomCanvasImpl({ room, guestToken, myUserId, myDisplayName }: { room: R
       wsCloseRef.current = null
       sendRef.current = null
       sendAwarenessRef.current = null
+      sendSnapshotRef.current = null
     }
   }, [room])
 
