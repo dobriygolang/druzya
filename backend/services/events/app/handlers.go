@@ -37,10 +37,13 @@ func (h *Handlers) CreateEvent(ctx context.Context, callerID uuid.UUID, in domai
 	if !in.Recurrence.Valid() {
 		in.Recurrence = domain.RecurrenceNone
 	}
-	// Authority gate — only circle admins create events.
-	ok, err := h.Circles.IsAdmin(ctx, in.CircleID, callerID)
+	// Authority gate — любой member circle'а может создавать events.
+	// Раньше был IsAdmin-only, но это overkill для community-фичи (Book
+	// Club Fridays, mock-сессии, etc.). Запрет на левых/не-членов
+	// circle'а оставляем — они не должны спамить чужие feed'ы.
+	ok, err := h.Circles.IsMember(ctx, in.CircleID, callerID)
 	if err != nil {
-		return EventDetails{}, fmt.Errorf("circles.IsAdmin: %w", err)
+		return EventDetails{}, fmt.Errorf("circles.IsMember: %w", err)
 	}
 	if !ok {
 		return EventDetails{}, domain.ErrForbidden
