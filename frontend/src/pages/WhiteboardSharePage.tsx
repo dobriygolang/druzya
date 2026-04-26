@@ -19,6 +19,7 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import * as Y from 'yjs'
+import { IndexeddbPersistence } from 'y-indexeddb'
 import { Awareness, encodeAwarenessUpdate, applyAwarenessUpdate } from 'y-protocols/awareness'
 import { Excalidraw, CaptureUpdateAction } from '@excalidraw/excalidraw'
 import type { ExcalidrawImperativeAPI } from '@excalidraw/excalidraw/types'
@@ -42,7 +43,7 @@ type LoadState =
   | { kind: 'not-found' }
   | { kind: 'expired' }
   | { kind: 'error'; message: string }
-  | { kind: 'ready'; room: RoomMeta; guestToken?: string; myUserId?: string }
+  | { kind: 'ready'; room: RoomMeta; guestToken?: string; myUserId?: string; myDisplayName?: string }
 
 // ─── Page component ───────────────────────────────────────────────────────
 
@@ -111,7 +112,8 @@ export default function WhiteboardSharePage() {
         // как self для всех гостей (см. RoomEditor `me = participants.find(
         // p => p.userId === room.ownerId)`).
         const myUserId = decodeJwtSub(useToken)
-        setState({ kind: 'ready', room, guestToken, myUserId })
+        const myDisplayName = decodeJwtClaim(useToken, 'dn')
+        setState({ kind: 'ready', room, guestToken, myUserId, myDisplayName })
       } catch (e) {
         setState({ kind: 'error', message: (e as Error).message })
       }
@@ -170,7 +172,14 @@ export default function WhiteboardSharePage() {
   if (state.kind === 'expired') return <CenterMessage text="BOARD EXPIRED" />
   if (state.kind === 'error') return <CenterMessage text="ERROR" sub={state.message} />
 
-  return <RoomCanvas room={state.room} guestToken={state.guestToken} myUserId={state.myUserId} />
+  return (
+    <RoomCanvas
+      room={state.room}
+      guestToken={state.guestToken}
+      myUserId={state.myUserId}
+      myDisplayName={state.myDisplayName}
+    />
+  )
 }
 
 // ─── Guest prompt — name + join button ───────────────────────────────────
@@ -305,20 +314,28 @@ const RoomCanvas = memo(RoomCanvasImpl)
 // подписи. Auth-критичные операции всё равно проверяются на бэке —
 // здесь нужно только для UI-идентификации current user'а.
 function decodeJwtSub(token: string | null): string | undefined {
+  return decodeJwtClaim(token, 'sub')
+}
+
+// decodeJwtClaim — generic body parser. Used for `sub` (user-id) and
+// `dn` (guest display name, set in Wave-15 since guests no longer have
+// a users-row). No signature check — purely visual identification.
+function decodeJwtClaim(token: string | null, claim: string): string | undefined {
   if (!token) return undefined
   try {
     const parts = token.split('.')
     if (parts.length < 2) return undefined
     const payload = parts[1]!
     const b64 = payload.replace(/-/g, '+').replace(/_/g, '/').padEnd(Math.ceil(payload.length / 4) * 4, '=')
-    const json = JSON.parse(atob(b64)) as { sub?: string }
-    return typeof json.sub === 'string' ? json.sub : undefined
+    const json = JSON.parse(atob(b64)) as Record<string, unknown>
+    const v = json[claim]
+    return typeof v === 'string' ? v : undefined
   } catch {
     return undefined
   }
 }
 
-function RoomCanvasImpl({ room, guestToken, myUserId }: { room: RoomMeta; guestToken?: string; myUserId?: string }) {
+function RoomCanvasImpl({ room, guestToken, myUserId, myDisplayName }: { room: RoomMeta; guestToken?: string; myUserId?: string; myDisplayName?: string }) {
   const [wsStatus, setWsStatus] = useState<'connecting' | 'open' | 'reconnecting' | 'failed'>(
     'connecting',
   )
@@ -331,24 +348,41 @@ function RoomCanvasImpl({ room, guestToken, myUserId }: { room: RoomMeta; guestT
   const applyingRemoteRef = useRef(false)
   const debounceRef = useRef<number | null>(null)
   const pendingElementsRef = useRef<string | null>(null)
+  // Excalidraw зовёт `excalidrawAPI` callback на каждом render'е если
+  // reference inline-arrow меняется. Ref-based "fired-once" guard
+  // предотвращает re-replay yScene → updateScene → wipe-just-drawn-shape.
+  const apiBoundRef = useRef(false)
 
   useEffect(() => {
     const ydoc = new Y.Doc()
     ydocRef.current = ydoc
     const yScene = ydoc.getMap<string>('scene')
 
+    // Local-first persistence: y-indexeddb сохраняет Y.Doc локально в
+    // IndexedDB. При offline'е, app crash'е, или backend down — данные не
+    // теряются. На rejoin (даже без бэка) borda восстанавливается из
+    // local storage. WS reconnect → Yjs CRDT merge'ит local + remote
+    // updates автоматически без конфликтов. Mirror hone SharedBoards.
+    const persistence = new IndexeddbPersistence(`druz9:whiteboard:${room.id}`, ydoc)
+
     const awareness = new Awareness(ydoc)
     awarenessRef.current = awareness
     // КРИТИЧНО: ищем СЕБЯ по myUserId (decoded из JWT), не по ownerId.
     // Раньше у всех гостей name был = owner'у → одинаковые имена на canvas.
     const me = myUserId ? room.participants.find((p) => p.userId === myUserId) : undefined
+    // Wave-15: гости больше не лежат в participants — имя берётся из
+    // dn claim'а JWT (см. MintScopedWithDisplayName на бэке). Fallback'и:
+    // participants.username (зарегистрированный) → dn (гость) → 'guest'.
     awareness.setLocalStateField('user', {
-      name: me?.username || 'guest',
+      name: me?.username || myDisplayName || 'guest',
       color: userColor(myUserId || room.id),
     })
 
     const onYUpdate = (update: Uint8Array, origin: unknown) => {
-      if (origin === 'remote') return
+      // Игнорируем updates от 'remote' (WS) и от persistence (IndexedDB
+      // restore on mount) — иначе зацикливание + кладём persistence-state
+      // на сервер при каждом mount'е.
+      if (origin === 'remote' || origin === persistence) return
       sendRef.current?.(update)
     }
     ydoc.on('update', onYUpdate)
@@ -394,9 +428,25 @@ function RoomCanvasImpl({ room, guestToken, myUserId }: { room: RoomMeta; guestT
     }
     awareness.on('change', onAwChange)
 
-    const onSceneChange = () => {
+    const onSceneChange = (
+      _event: Y.YMapEvent<string>,
+      transaction: Y.Transaction,
+    ) => {
+      // Origin filter: persistence-restore (y-indexeddb) и local-write оба
+      // триггерят observer. Local-write — мы получаем uptodate snapshot,
+      // не нужно re-render'ить (Excalidraw уже показывает то что юзер нарисовал).
+      // Persistence-restore — IDB load из прошлой сессии. Может содержать
+      // СТАРЫЙ state'ом меньшим bounding box → updateScene shrinks viewport.
+      // Принимаем ТОЛЬКО transactions с origin === 'remote' (т.е. WS-applied
+      // updates от других peer'ов / server snapshot'а).
+      if (transaction.origin !== 'remote') return
       const json = yScene.get('elements')
       if (!json || !apiRef.current) return
+      // Local pending-edit guard: даже remote-update'ом не overwrite'им если
+      // у нас есть unsent local edit — после flush'а CRDT merge сам разрулит.
+      if (pendingElementsRef.current !== null) {
+        return
+      }
       try {
         const elements = JSON.parse(json)
         applyingRemoteRef.current = true
@@ -477,6 +527,11 @@ function RoomCanvasImpl({ room, guestToken, myUserId }: { room: RoomMeta; guestT
         } catch {
           /* ignore */
         }
+        try {
+          void persistence.destroy()
+        } catch {
+          /* ignore */
+        }
       }, 60)
       ydocRef.current = null
       awarenessRef.current = null
@@ -511,11 +566,21 @@ function RoomCanvasImpl({ room, guestToken, myUserId }: { room: RoomMeta; guestT
           theme="dark"
           excalidrawAPI={(api) => {
             apiRef.current = api
+            // FIRED-ONCE guard: Excalidraw зовёт этот callback на каждом
+            // re-render'е (inline arrow → новая ref). Без guard'а каждый
+            // render replay'ит yScene → updateScene'ом WIPE'ает только что
+            // нарисованный block (debounce ещё не expired, yScene содержит
+            // старое состояние) → viewport auto-fit'ится на меньший
+            // bounding box → юзер видит INSTANT shrink сразу как кликнул
+            // на холст. Это был тот самый «zoom-shrink crit bug».
+            if (apiBoundRef.current) return
+            apiBoundRef.current = true
             // КРИТИЧНО: WS snapshot часто приезжает РАНЬШЕ чем Excalidraw
             // успевает смонтироваться и вызвать этот callback. Тогда
             // yScene.observe срабатывает с apiRef.current === null и
             // сцена теряется (host рисовал ДО прихода guest'а — guest
-            // никогда не увидит). Replay yScene → Excalidraw здесь.
+            // никогда не увидит). Replay yScene → Excalidraw здесь, ОДИН
+            // раз — на самом первом mount'е API.
             const ydoc = ydocRef.current
             if (ydoc) {
               const yScene = ydoc.getMap<string>('scene')

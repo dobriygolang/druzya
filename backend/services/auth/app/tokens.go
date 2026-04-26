@@ -30,6 +30,10 @@ type AccessTokenClaims struct {
 	Role     enums.UserRole `json:"role"`
 	Provider string         `json:"prv,omitempty"`
 	Scope    string         `json:"scp,omitempty"`
+	// DisplayName — used by guest tokens (which carry a transient UUID
+	// not backed by users.id) to convey the chosen cursor label end-to-
+	// end without a DB row. Empty for normal authenticated users.
+	DisplayName string `json:"dn,omitempty"`
 	jwt.RegisteredClaims
 }
 
@@ -105,6 +109,43 @@ func (t *TokenIssuer) MintScoped(
 	signed, err := tok.SignedString(t.secret)
 	if err != nil {
 		return "", 0, fmt.Errorf("auth.TokenIssuer.MintScoped: sign: %w", err)
+	}
+	return signed, int(ttl.Seconds()), nil
+}
+
+// MintScopedWithDisplayName is MintScoped + a transient display-name
+// claim. Used exclusively for guest share-link tokens — the candidate
+// types a name on join, we want it propagated to WS cursor labels and
+// audit logs without persisting a users-row.
+func (t *TokenIssuer) MintScopedWithDisplayName(
+	userID uuid.UUID,
+	role enums.UserRole,
+	provider enums.AuthProvider,
+	scope, displayName string,
+	ttl time.Duration,
+) (string, int, error) {
+	now := time.Now().UTC()
+	if ttl <= 0 {
+		ttl = t.accessTTL
+	}
+	claims := AccessTokenClaims{
+		UserID:      userID,
+		Role:        role,
+		Provider:    provider.String(),
+		Scope:       scope,
+		DisplayName: displayName,
+		RegisteredClaims: jwt.RegisteredClaims{
+			Issuer:    t.issuer,
+			Subject:   userID.String(),
+			IssuedAt:  jwt.NewNumericDate(now),
+			ExpiresAt: jwt.NewNumericDate(now.Add(ttl)),
+			ID:        uuid.NewString(),
+		},
+	}
+	tok := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	signed, err := tok.SignedString(t.secret)
+	if err != nil {
+		return "", 0, fmt.Errorf("auth.TokenIssuer.MintScopedWithDisplayName: sign: %w", err)
 	}
 	return signed, int(ttl.Seconds()), nil
 }

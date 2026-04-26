@@ -22,7 +22,6 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 // NewWhiteboardRooms wires shared multiplayer whiteboards (bible §9
@@ -94,8 +93,6 @@ func NewWhiteboardRooms(d Deps) *Module {
 			// через короткий TTL ephemeral user'а.
 			gj := &guestJoinHandler{
 				rooms:    rooms,
-				parts:    parts,
-				pool:     d.Pool,
 				issuer:   d.TokenIssuer,
 				log:      d.Log,
 				guestTTL: 24 * time.Hour,
@@ -106,16 +103,11 @@ func NewWhiteboardRooms(d Deps) *Module {
 			ws.Get("/whiteboard/{roomId}", wsh.Handle)
 		},
 		Background: []func(ctx context.Context){
-			// Cron-GC orphan guest user-row'ов. Guest создаётся через
-			// guest-join (ephemeral=true), participants link его к одной
-			// конкретной room. Когда room удаляется или expires + cleanup'ится,
-			// participant cascade-удаляется (FK ON DELETE CASCADE), но user-row
-			// остаётся orphaned. Этот GC чистит таких — раз в час WHERE
-			// ephemeral=true AND нет ссылок ни в whiteboard_room_participants,
-			// ни в editor_participants.
-			func(ctx context.Context) {
-				go runEphemeralUsersGC(ctx, d.Pool, d.Log, time.Hour)
-			},
+			// Wave-15: ephemeral guest user GC removed — guests are now
+			// fully session-only (no INSERT into users), so there's
+			// nothing to clean up. The migration that ran with this
+			// commit also dropped any historic ephemeral=true rows.
+
 			// Phase 4 — auto-downgrade free-tier shared boards после TTL.
 			// Раз в час: shared rooms принадлежащие free-tier owner'ам с
 			// expired expires_at → flip visibility='private'. Реализация
@@ -127,59 +119,6 @@ func NewWhiteboardRooms(d Deps) *Module {
 		Shutdown: []func(ctx context.Context) error{
 			func(ctx context.Context) error { hub.CloseAll(); return nil },
 		},
-	}
-}
-
-// runEphemeralUsersGC периодически удаляет ephemeral users (role='guest',
-// ephemeral=true), на которых уже не ссылается ни одна participants table.
-// Idempotent — DELETE с пустым result-set'ом просто no-op'ит.
-//
-// Защита от race: используем NOT EXISTS вместо NOT IN — корректно при
-// concurrent INSERT'ах в participants. Также включён LIMIT через CTE чтобы
-// один проход не гасил тысячи записей и не вешал репликацию.
-func runEphemeralUsersGC(ctx context.Context, pool *pgxpool.Pool, log *slog.Logger, interval time.Duration) {
-	tick := time.NewTicker(interval)
-	defer tick.Stop()
-	// Первый прогон через 5 минут после старта (даём приложению прогреться).
-	first := time.NewTimer(5 * time.Minute)
-	defer first.Stop()
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		case <-first.C:
-			gcEphemeralUsersOnce(ctx, pool, log)
-		case <-tick.C:
-			gcEphemeralUsersOnce(ctx, pool, log)
-		}
-	}
-}
-
-func gcEphemeralUsersOnce(ctx context.Context, pool *pgxpool.Pool, log *slog.Logger) {
-	const q = `
-		WITH orphans AS (
-			SELECT u.id
-			FROM users u
-			WHERE u.ephemeral = TRUE
-			  AND u.role = 'guest'
-			  AND NOT EXISTS (
-				  SELECT 1 FROM whiteboard_room_participants wp
-				  WHERE wp.user_id = u.id
-			  )
-			  AND NOT EXISTS (
-				  SELECT 1 FROM editor_participants ep
-				  WHERE ep.user_id = u.id
-			  )
-			LIMIT 500
-		)
-		DELETE FROM users WHERE id IN (SELECT id FROM orphans)`
-	tag, err := pool.Exec(ctx, q)
-	if err != nil {
-		log.WarnContext(ctx, "ephemeral_users_gc: delete failed", slog.Any("err", err))
-		return
-	}
-	if n := tag.RowsAffected(); n > 0 {
-		log.InfoContext(ctx, "ephemeral_users_gc: removed orphans", slog.Int64("count", n))
 	}
 }
 
@@ -308,8 +247,6 @@ func (h *visibilityHandler) set(w http.ResponseWriter, r *http.Request) {
 
 type guestJoinHandler struct {
 	rooms    whiteboardDomain.RoomRepo
-	parts    whiteboardDomain.ParticipantRepo
-	pool     *pgxpool.Pool
 	issuer   *authApp.TokenIssuer
 	log      *slog.Logger
 	guestTTL time.Duration
@@ -367,40 +304,22 @@ func (h *guestJoinHandler) handle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Create ephemeral user row. Username unique constraint → дедуплицируем
-	// short-suffix'ом (последние 8 символов нового uuid). Email NULL (его
-	// схема позволяет — UNIQUE на email допускает NULL).
+	// Session-only guest: no user-row INSERT, no participants row. The
+	// guest's identity lives ENTIRELY inside the JWT (random UUID + the
+	// chosen display name in the `display_name` claim). WS handler trusts
+	// the JWT scope check to gate room access; cursor labels come from
+	// the client-side awareness state seeded with the JWT's display name.
+	// FK to users.id is therefore never exercised for guests.
 	guestUUID := uuid.New()
-	usernameSuffix := strings.ReplaceAll(guestUUID.String(), "-", "")[:8]
-	username := fmt.Sprintf("%s_g%s", sanitizeUsername(name), usernameSuffix)
-
-	_, err = h.pool.Exec(r.Context(),
-		`INSERT INTO users (id, username, display_name, role, ephemeral, created_at, updated_at)
-		 VALUES ($1, $2, $3, 'guest', TRUE, now(), now())`,
-		guestUUID, username, name)
-	if err != nil {
-		h.log.ErrorContext(r.Context(), "guest_join: insert user", slog.Any("err", err))
-		http.Error(w, `{"error":{"code":"internal"}}`, http.StatusInternalServerError)
-		return
-	}
-
-	// Add as participant.
-	if _, addErr := h.parts.Add(r.Context(), whiteboardDomain.Participant{
-		RoomID:   roomID,
-		UserID:   guestUUID,
-		JoinedAt: time.Now().UTC(),
-	}); addErr != nil {
-		h.log.ErrorContext(r.Context(), "guest_join: parts.Add", slog.Any("err", addErr))
-		http.Error(w, `{"error":{"code":"internal"}}`, http.StatusInternalServerError)
-		return
-	}
 
 	// Mint scoped JWT — Scope привязывает токен к конкретной room. WS handler
 	// на upgrade'е проверит что Scope матчит room_id из URL; если злоумышленник
 	// возьмёт guest-token room A и попробует подключиться к room B — 403.
+	// `name` сохраняется в DisplayName-claim'е, фронт читает его для
+	// awareness-cursor'а.
 	scope := fmt.Sprintf("whiteboard:%s", roomID.String())
-	tok, expiresIn, err := h.issuer.MintScoped(
-		guestUUID, enums.UserRoleGuest, enums.AuthProviderTelegram, scope, h.guestTTL,
+	tok, expiresIn, err := h.issuer.MintScopedWithDisplayName(
+		guestUUID, enums.UserRoleGuest, enums.AuthProviderTelegram, scope, name, h.guestTTL,
 	)
 	if err != nil {
 		h.log.ErrorContext(r.Context(), "guest_join: mint", slog.Any("err", err))
@@ -416,29 +335,6 @@ func (h *guestJoinHandler) handle(w http.ResponseWriter, r *http.Request) {
 		Username:    name,
 		Role:        "guest",
 	})
-}
-
-// sanitizeUsername — оставляет только [a-z0-9_], lowercase, max 16 чаров.
-// Для guest'ов составляем username = sanitized(name) + "_g" + uuid_suffix,
-// чтобы был UNIQUE-friendly и читаемый при просмотре participants.
-func sanitizeUsername(name string) string {
-	name = strings.ToLower(name)
-	var b strings.Builder
-	for _, r := range name {
-		switch {
-		case r >= 'a' && r <= 'z', r >= '0' && r <= '9', r == '_':
-			b.WriteRune(r)
-		case r == ' ' || r == '-':
-			b.WriteRune('_')
-		}
-		if b.Len() >= 16 {
-			break
-		}
-	}
-	if b.Len() == 0 {
-		return "guest"
-	}
-	return b.String()
 }
 
 // whiteboardDomainQuotaField — accessor для domain.QuotaPolicy.ActiveSharedBoards.

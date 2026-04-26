@@ -51,4 +51,8 @@ type ParticipantRepo interface {
 type TokenVerifier interface {
 	Verify(raw string) (uuid.UUID, error)
 	VerifyScoped(raw string, expectedScope string) (uuid.UUID, error)
+	// VerifyScopedFull additionally returns the JWT role + display-name
+	// claim. WS handler uses these to skip the participants-row auto-
+	// join for guests (their UUID is transient — would FK-fail).
+	VerifyScopedFull(raw string, expectedScope string) (uid uuid.UUID, role string, displayName string, err error)
 }

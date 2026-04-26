@@ -11,14 +11,17 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import * as Y from 'yjs'
+import { IndexeddbPersistence } from 'y-indexeddb'
 import { Awareness, encodeAwarenessUpdate, applyAwarenessUpdate } from 'y-protocols/awareness'
 import { yCollab } from 'y-codemirror.next'
 import { EditorState, Compartment } from '@codemirror/state'
 import { EditorView, lineNumbers, keymap } from '@codemirror/view'
-import { defaultKeymap, history, historyKeymap } from '@codemirror/commands'
+import { defaultKeymap, history, historyKeymap, indentWithTab } from '@codemirror/commands'
 import { go } from '@codemirror/lang-go'
 import { python } from '@codemirror/lang-python'
 import { javascript } from '@codemirror/lang-javascript'
+import { HighlightStyle, syntaxHighlighting, indentOnInput } from '@codemirror/language'
+import { tags as t } from '@lezer/highlight'
 
 import { API_BASE, readAccessToken } from '../lib/apiClient'
 
@@ -40,7 +43,7 @@ type LoadState =
   | { kind: 'not-found' }
   | { kind: 'expired' }
   | { kind: 'error'; message: string }
-  | { kind: 'ready'; room: RoomMeta; guestToken?: string; myUserId?: string }
+  | { kind: 'ready'; room: RoomMeta; guestToken?: string; myUserId?: string; myDisplayName?: string }
 
 // ─── Page ─────────────────────────────────────────────────────────────────
 
@@ -51,7 +54,7 @@ export default function EditorRoomSharePage() {
 
   useEffect(() => {
     const prev = document.body.style.backgroundColor
-    document.body.style.backgroundColor = '#000'
+    document.body.style.backgroundColor = '#1e1e1e'
     return () => {
       document.body.style.backgroundColor = prev
     }
@@ -109,7 +112,8 @@ export default function EditorRoomSharePage() {
         // ниже — `me = participants.find(p => p.userId === room.ownerId)`),
         // и все коннект'ящиеся гости подписывались как owner.
         const myUserId = decodeJwtSub(useToken)
-        setState({ kind: 'ready', room, guestToken, myUserId })
+        const myDisplayName = decodeJwtClaim(useToken, 'dn')
+        setState({ kind: 'ready', room, guestToken, myUserId, myDisplayName })
       } catch (e) {
         setState({ kind: 'error', message: (e as Error).message })
       }
@@ -169,7 +173,14 @@ export default function EditorRoomSharePage() {
   if (state.kind === 'expired') return <CenterMessage text="ROOM EXPIRED" />
   if (state.kind === 'error') return <CenterMessage text="ERROR" sub={state.message} />
 
-  return <RoomEditor room={state.room} guestToken={state.guestToken} myUserId={state.myUserId} />
+  return (
+    <RoomEditor
+      room={state.room}
+      guestToken={state.guestToken}
+      myUserId={state.myUserId}
+      myDisplayName={state.myDisplayName}
+    />
+  )
 }
 
 // ─── RoomEditor — full multiplayer CodeMirror ────────────────────────────
@@ -181,15 +192,22 @@ const RoomEditor = memo(RoomEditorImpl)
 // Не валидирует подпись — это OK для чисто визуальной идентификации
 // (auth-критичные операции всё равно проверяются на бэке).
 function decodeJwtSub(token: string | null): string | undefined {
+  return decodeJwtClaim(token, 'sub')
+}
+
+// decodeJwtClaim — generic JWT body parser. Used by both `sub` (user-id)
+// and `dn` (guest display name) reads. No signature check — OK for the
+// purely visual cursor label; auth-critical ops still verify server-side.
+function decodeJwtClaim(token: string | null, claim: string): string | undefined {
   if (!token) return undefined
   try {
     const parts = token.split('.')
     if (parts.length < 2) return undefined
     const payload = parts[1]!
-    // base64url → base64 (replace `-` with `+`, `_` with `/`, pad with `=`)
     const b64 = payload.replace(/-/g, '+').replace(/_/g, '/').padEnd(Math.ceil(payload.length / 4) * 4, '=')
-    const json = JSON.parse(atob(b64)) as { sub?: string }
-    return typeof json.sub === 'string' ? json.sub : undefined
+    const json = JSON.parse(atob(b64)) as Record<string, unknown>
+    const v = json[claim]
+    return typeof v === 'string' ? v : undefined
   } catch {
     return undefined
   }
@@ -203,7 +221,16 @@ interface RunResult {
   status: string
 }
 
-function RoomEditorImpl({ room, guestToken, myUserId }: { room: RoomMeta; guestToken?: string; myUserId?: string }) {
+// Judge0 status descriptions, которые означают что sandbox сам упал (не наш
+// код). Показываем юзеру отдельным сообщением, иначе panel пустой и юзер
+// думает что проблема в его коде. Полный список — Judge0 docs status_id 6+.
+function isJudgeError(status: string): boolean {
+  if (!status) return false
+  const s = status.toLowerCase()
+  return s.includes('internal error') || s.includes('exec format') || s === 'undefined'
+}
+
+function RoomEditorImpl({ room, guestToken, myUserId, myDisplayName }: { room: RoomMeta; guestToken?: string; myUserId?: string; myDisplayName?: string }) {
   const [wsStatus, setWsStatus] = useState<'connecting' | 'open' | 'reconnecting' | 'failed'>(
     'connecting',
   )
@@ -227,13 +254,21 @@ function RoomEditorImpl({ room, guestToken, myUserId }: { room: RoomMeta; guestT
     ydocRef.current = ydoc
     const ytext = ydoc.getText('code')
 
+    // Local-first: y-indexeddb сохраняет код локально. Offline-edits
+    // переживают reload + reconnect; при rejoin'е CRDT merge сам разрулит
+    // local + remote updates. Mirror hone Editor.tsx.
+    const persistence = new IndexeddbPersistence(`druz9:editor:${room.id}`, ydoc)
+
     const awareness = new Awareness(ydoc)
     // КРИТИЧНО: ищем СЕБЯ по myUserId (decoded из JWT), не по ownerId.
     // Раньше тут был `p.userId === room.ownerId` → у всех гостей name
     // оказывался username'ом owner'а ("dobriygolang") вместо собственного.
     const me = myUserId ? room.participants.find((p) => p.userId === myUserId) : undefined
+    // Wave-15: гости больше не лежат в participants — имя берётся из
+    // dn claim'а JWT (см. MintScopedWithDisplayName на бэке). Fallback'и:
+    // participants.username (зарегистрированный юзер) → dn (гость) → 'guest'.
     awareness.setLocalStateField('user', {
-      name: me?.username || 'guest',
+      name: me?.username || myDisplayName || 'guest',
       color: userColor(myUserId || room.id),
     })
 
@@ -257,7 +292,9 @@ function RoomEditorImpl({ room, guestToken, myUserId }: { room: RoomMeta; guestT
     }
 
     const onYUpdate = (update: Uint8Array, origin: unknown) => {
-      if (origin === 'remote') return
+      // 'remote' — WS apply; persistence — IndexedDB restore on mount.
+      // Игнорируем оба чтобы не зацикливать.
+      if (origin === 'remote' || origin === persistence) return
       sendRef.current?.(update)
       scheduleSnapshot()
     }
@@ -333,8 +370,16 @@ function RoomEditorImpl({ room, guestToken, myUserId }: { room: RoomMeta; guestT
       extensions: [
         lineNumbers(),
         history(),
-        keymap.of([...defaultKeymap, ...historyKeymap]),
+        indentOnInput(),
+        // indentWithTab ПЕРЕД defaultKeymap'ом — иначе Tab focus-trap'ится
+        // на сайдбар (browser default behavior + CM defaultKeymap не имеет
+        // tab→indent). Mirror hone Editor.tsx.
+        keymap.of([indentWithTab, ...defaultKeymap, ...historyKeymap]),
         langCompartment.of(langExt),
+        // Syntax highlighting — VSCode Dark+ palette. Раньше web-editor рендерил
+        // голый текст без подсветки (не было ни theme'ы, ни HighlightStyle —
+        // только кастомная editorThemeWeb которая красит каретку и фон).
+        syntaxHighlighting(vscodeDarkHighlight),
         yCollab(ytext, awareness),
         editorThemeWeb(),
       ],
@@ -372,6 +417,11 @@ function RoomEditorImpl({ room, guestToken, myUserId }: { room: RoomMeta; guestT
         } catch {
           /* ignore */
         }
+        try {
+          void persistence.destroy()
+        } catch {
+          /* ignore */
+        }
       }, 60)
       ydocRef.current = null
       wsCloseRef.current = null
@@ -381,23 +431,73 @@ function RoomEditorImpl({ room, guestToken, myUserId }: { room: RoomMeta; guestT
     }
   }, [room, guestToken])
 
-  // handleFormat — re-indent / strip trailing whitespace через CM6 transactions.
-  // Не настоящий gofmt/prettier, но даёт юзеру чистый indent + удаляет
-  // trailing spaces. Mirror hone Editor.tsx.
-  const handleFormat = useCallback(() => {
+  // handleFormat — реальный gofmt через backend (POST /editor/room/{id}/format).
+  // Backend использует go/format std-lib для Go. Fallback — local trim
+  // trailing whitespace когда сервер недоступен / не Go.
+  const handleFormat = useCallback(async () => {
     const view = viewRef.current
     if (!view) return
-    const { state } = view
-    const changes: Array<{ from: number; to: number; insert: string }> = []
-    for (let i = 1; i <= state.doc.lines; i++) {
-      const line = state.doc.line(i)
-      const trimmed = line.text.replace(/[ \t]+$/, '')
-      if (trimmed !== line.text) {
-        changes.push({ from: line.from, to: line.to, insert: trimmed })
+    const code = view.state.doc.toString()
+    if (!code) return
+    // Smart client-side reformatter — для языков, на которые backend
+    // `go/format` не подходит (Python/JS/TS) делает то же что hone version:
+    // trim trailing, collapse 3+ blank lines в 1, tab→space normalize,
+    // ensure final newline. Не настоящий black/prettier, но реально
+    // что-то делает кроме «ничего».
+    const fallbackTrim = () => {
+      const { state } = view
+      const indentSpaces = room.language === 'python' ? 4 : 2
+      const original = state.doc.toString()
+      let lines = original.split('\n').map((l) => l.replace(/[ \t]+$/, ''))
+      lines = lines.map((l) => l.replace(/\t/g, ' '.repeat(indentSpaces)))
+      const collapsed: string[] = []
+      let blankRun = 0
+      for (const l of lines) {
+        if (l.trim() === '') {
+          blankRun += 1
+          if (blankRun <= 1) collapsed.push(l)
+        } else {
+          blankRun = 0
+          collapsed.push(l)
+        }
+      }
+      while (collapsed.length > 0 && collapsed[collapsed.length - 1] === '') {
+        collapsed.pop()
+      }
+      const next = collapsed.join('\n') + '\n'
+      if (next !== original) {
+        view.dispatch({ changes: { from: 0, to: state.doc.length, insert: next } })
       }
     }
-    if (changes.length > 0) view.dispatch({ changes })
-  }, [])
+    try {
+      const token = guestToken ?? readAccessToken() ?? ''
+      const resp = await fetch(
+        `${API_BASE}/editor/room/${encodeURIComponent(room.id)}/format`,
+        {
+          method: 'POST',
+          headers: {
+            'content-type': 'application/json',
+            ...(token ? { authorization: `Bearer ${token}` } : {}),
+          },
+          body: JSON.stringify({ code, language: room.language }),
+        },
+      )
+      if (!resp.ok) {
+        fallbackTrim()
+        return
+      }
+      const j = (await resp.json()) as { code?: string; error?: string }
+      if (j.error || typeof j.code !== 'string') {
+        fallbackTrim()
+        return
+      }
+      if (j.code !== code) {
+        view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: j.code } })
+      }
+    } catch {
+      fallbackTrim()
+    }
+  }, [room.id, room.language, guestToken])
 
   // handleRun — POST /api/v1/editor/room/{id}/run (см. proto editor.proto).
   // Auth через access_token (или guest-token). Backend проверяет
@@ -487,7 +587,7 @@ function RoomEditorImpl({ room, guestToken, myUserId }: { room: RoomMeta; guestT
         void handleRun()
       } else if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key.toLowerCase() === 'f') {
         e.preventDefault()
-        handleFormat()
+        void handleFormat()
       }
     }
     window.addEventListener('keydown', onKey)
@@ -495,7 +595,7 @@ function RoomEditorImpl({ room, guestToken, myUserId }: { room: RoomMeta; guestT
   }, [handleRun, handleFormat])
 
   return (
-    <div style={{ position: 'fixed', inset: 0, background: '#000', color: '#fff' }}>
+    <div style={{ position: 'fixed', inset: 0, background: '#1e1e1e', color: '#d4d4d4' }}>
       <div
         id="cm-mount-web"
         style={{
@@ -521,7 +621,7 @@ function RoomEditorImpl({ room, guestToken, myUserId }: { room: RoomMeta; guestT
         }}
       >
         <button
-          onClick={handleFormat}
+          onClick={() => void handleFormat()}
           title="Format / re-indent (⌘⇧F)"
           style={{
             padding: '7px 14px',
@@ -611,8 +711,16 @@ function RoomEditorImpl({ room, guestToken, myUserId }: { room: RoomMeta; guestT
                 </button>
               ))}
               {runResult && (
-                <span style={{ color: 'rgba(255,255,255,0.4)', fontSize: 10, letterSpacing: '0.12em' }}>
-                  EXIT {runResult.exitCode} · {runResult.timeMs}ms
+                <span
+                  style={{
+                    color: isJudgeError(runResult.status) ? '#ff8c8c' : 'rgba(255,255,255,0.4)',
+                    fontSize: 10,
+                    letterSpacing: '0.12em',
+                  }}
+                >
+                  {isJudgeError(runResult.status)
+                    ? `JUDGE0 · ${runResult.status.toUpperCase()}`
+                    : `EXIT ${runResult.exitCode} · ${runResult.timeMs}ms`}
                 </span>
               )}
             </div>
@@ -647,9 +755,11 @@ function RoomEditorImpl({ room, guestToken, myUserId }: { room: RoomMeta; guestT
               : running && !runResult
                 ? '…'
                 : runResult
-                  ? outputTab === 'stdout'
-                    ? runResult.stdout || '(no stdout)'
-                    : runResult.stderr || '(no stderr)'
+                  ? isJudgeError(runResult.status)
+                    ? `Sandbox returned status: "${runResult.status}".\n\nThis usually means Judge0 itself failed (host cgroup config, isolate sandbox not initialised, or workers down). Common fix on the server side:\n  • Ensure both judge0-server and judge0-workers run with privileged: true\n  • Boot host with cgroup v1 (Judge0 1.13.x doesn't support cgroup v2 — set GRUB \`systemd.unified_cgroup_hierarchy=0\`)\n  • Check \`docker logs infra-judge0-workers-1\` for ENOSPC / isolate errors\n\nThis is not your code — the sandbox didn't even attempt to compile it.`
+                    : outputTab === 'stdout'
+                      ? runResult.stdout || '(no stdout)'
+                      : runResult.stderr || '(no stderr)'
                   : ''}
           </pre>
         </div>
@@ -693,25 +803,54 @@ function RoomEditorImpl({ room, guestToken, myUserId }: { room: RoomMeta; guestT
 }
 
 // Hone-style чёрный CM theme — light-grey текст, прозрачный фон над body #000.
+// vscodeDarkHighlight — упрощённая VSCode Dark+ palette. Pure-token rules:
+// keywords, types, strings, numbers, comments, functions. Не пытаемся
+// match'ить полный VSCode (там 100+ scope'ов), берём 10 наиболее заметных
+// которые покрывают 95% типичного code-view.
+const vscodeDarkHighlight = HighlightStyle.define([
+  { tag: t.keyword, color: '#569cd6', fontWeight: '500' }, // if/for/return — VS blue
+  { tag: [t.controlKeyword, t.moduleKeyword], color: '#c586c0' }, // import/from — VS purple
+  { tag: [t.string, t.special(t.string)], color: '#ce9178' }, // strings — VS orange
+  { tag: t.number, color: '#b5cea8' }, // numbers — VS light-green
+  { tag: t.bool, color: '#569cd6' }, // true/false — VS blue
+  { tag: t.null, color: '#569cd6' },
+  { tag: t.comment, color: '#6a9955', fontStyle: 'italic' }, // comments — VS green
+  { tag: [t.function(t.variableName), t.function(t.propertyName)], color: '#dcdcaa' }, // fn names — VS yellow
+  { tag: [t.typeName, t.className], color: '#4ec9b0' }, // types — VS teal
+  { tag: t.variableName, color: '#9cdcfe' }, // identifiers — VS cyan
+  { tag: t.propertyName, color: '#9cdcfe' },
+  { tag: [t.operator, t.punctuation], color: '#d4d4d4' }, // operators — VS light-grey
+  { tag: t.bracket, color: '#d4d4d4' },
+  { tag: t.tagName, color: '#569cd6' },
+  { tag: t.attributeName, color: '#9cdcfe' },
+  { tag: t.regexp, color: '#d16969' }, // regex — VS red
+  { tag: t.escape, color: '#d7ba7d' },
+])
+
 function editorThemeWeb() {
   return EditorView.theme(
     {
       '&': {
         height: '100vh',
-        backgroundColor: '#000',
-        color: '#e5e5e5',
-        fontSize: '13px',
+        // VSCode Dark+ background: #1e1e1e. Не #000 — pure-black слишком
+        // контрастен для долгого чтения, тёмно-серый меньше нагружает глаза.
+        backgroundColor: '#1e1e1e',
+        color: '#d4d4d4',
+        // Font-size 14 → лучше читаемость (юзер просил ↑). Раньше было 13.
+        fontSize: '14px',
+        fontFamily: '"JetBrains Mono", "SF Mono", Menlo, monospace',
       },
-      '.cm-content': { caretColor: '#fff', padding: '20px 24px' },
+      '.cm-content': { caretColor: '#aeafad', padding: '20px 24px' },
       '.cm-gutters': {
-        backgroundColor: '#000',
-        color: 'rgba(255,255,255,0.25)',
+        backgroundColor: '#1e1e1e',
+        color: '#858585',
         border: 'none',
       },
-      '.cm-activeLine': { backgroundColor: 'rgba(255,255,255,0.03)' },
-      '.cm-activeLineGutter': { backgroundColor: 'transparent' },
-      '.cm-cursor': { borderLeftColor: '#fff' },
-      '.cm-selectionBackground, ::selection': { backgroundColor: 'rgba(255,255,255,0.15)' },
+      // Active line подсветка — VS Code-like серый блик.
+      '.cm-activeLine': { backgroundColor: 'rgba(255,255,255,0.04)' },
+      '.cm-activeLineGutter': { backgroundColor: 'transparent', color: '#c6c6c6' },
+      '.cm-cursor': { borderLeftColor: '#aeafad', borderLeftWidth: '1.5px' },
+      '.cm-selectionBackground, ::selection': { backgroundColor: '#264f78' }, // VS selection blue
       // y-codemirror.next remote-cursor styles. Должны зеркалить hone/Editor.tsx
       // honeEditorTheme. Иначе у host vs guest разные visual experience.
       '.cm-ySelection': { backgroundColor: 'rgba(255,255,255,0.18)' },

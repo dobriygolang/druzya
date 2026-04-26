@@ -48,6 +48,10 @@ func (a editorTokenVerifier) VerifyScoped(raw, expectedScope string) (uuid.UUID,
 	return parseSubjectScoped(a.issuer, raw, expectedScope)
 }
 
+func (a editorTokenVerifier) VerifyScopedFull(raw, expectedScope string) (uuid.UUID, string, string, error) {
+	return parseSubjectScopedFull(a.issuer, raw, expectedScope)
+}
+
 // whiteboardTokenVerifier satisfies druz9/whiteboard_rooms/domain.TokenVerifier.
 type whiteboardTokenVerifier struct{ issuer *authApp.TokenIssuer }
 
@@ -57,6 +61,10 @@ func (a whiteboardTokenVerifier) Verify(raw string) (uuid.UUID, error) {
 
 func (a whiteboardTokenVerifier) VerifyScoped(raw, expectedScope string) (uuid.UUID, error) {
 	return parseSubjectScoped(a.issuer, raw, expectedScope)
+}
+
+func (a whiteboardTokenVerifier) VerifyScopedFull(raw, expectedScope string) (uuid.UUID, string, string, error) {
+	return parseSubjectScopedFull(a.issuer, raw, expectedScope)
 }
 
 func parseSubject(issuer *authApp.TokenIssuer, raw string) (uuid.UUID, error) {
@@ -91,6 +99,25 @@ func parseSubjectScoped(issuer *authApp.TokenIssuer, raw, expectedScope string) 
 		return uuid.Nil, fmt.Errorf("token scope mismatch: have %q, want %q", claims.Scope, expectedScope)
 	}
 	return uid, nil
+}
+
+// parseSubjectScopedFull — extended parseSubjectScoped that also returns
+// the role + display-name claims. Used by WS handlers to skip the
+// participants-row auto-join for guest tokens (their UUID is transient
+// and never gets a row in users — would FK-fail on insert).
+func parseSubjectScopedFull(issuer *authApp.TokenIssuer, raw, expectedScope string) (uuid.UUID, string, string, error) {
+	claims, err := issuer.Parse(raw)
+	if err != nil {
+		return uuid.Nil, "", "", fmt.Errorf("parse access token: %w", err)
+	}
+	uid, err := uuid.Parse(claims.Subject)
+	if err != nil {
+		return uuid.Nil, "", "", fmt.Errorf("parse subject uuid: %w", err)
+	}
+	if claims.Scope != "" && claims.Scope != expectedScope {
+		return uuid.Nil, "", "", fmt.Errorf("token scope mismatch: have %q, want %q", claims.Scope, expectedScope)
+	}
+	return uid, string(claims.Role), claims.DisplayName, nil
 }
 
 // telegramCodeFillerAdapter bridges notify.domain.CodeFiller (the bot's

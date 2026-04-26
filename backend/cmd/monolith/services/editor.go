@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"go/format"
 	"log/slog"
 	"net/http"
 	"os"
@@ -124,6 +125,11 @@ func NewEditor(d Deps) *Module {
 			// UX-кейс «owner хочет удалить комнату» без proto-изменений.
 			edh := &editorDeleteHandler{pool: d.Pool, log: d.Log}
 			r.Delete("/editor/room/{roomId}", edh.handle)
+			// Format — реальный gofmt через go/format std-lib. Inline-handler,
+			// не RPC: для format'а не нужны participant-checks (это idempotent
+			// transformation), не нужен sandbox, не нужен rate-limit.
+			fh := &editorFormatHandler{log: d.Log}
+			r.Post("/editor/room/{roomId}/format", fh.handle)
 		},
 		MountPublicREST: func(r chi.Router) {
 			egj := &editorGuestJoinHandler{
@@ -368,36 +374,16 @@ func (h *editorGuestJoinHandler) handle(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
+	// Wave-15: guest is fully session-only — no INSERT into users, no
+	// participants row. Identity = transient UUID + chosen display name
+	// carried inside the JWT (`dn` claim). WS handler trusts the JWT
+	// scope check; cursor labels come from the client-side awareness
+	// state seeded with `dn`.
 	guestUUID := uuid.New()
-	usernameSuffix := strings.ReplaceAll(guestUUID.String(), "-", "")[:8]
-	username := fmt.Sprintf("%s_g%s", sanitizeUsername(name), usernameSuffix)
 
-	if _, insertErr := h.pool.Exec(r.Context(),
-		`INSERT INTO users (id, username, display_name, role, ephemeral, created_at, updated_at)
-		 VALUES ($1, $2, $3, 'guest', TRUE, now(), now())`,
-		guestUUID, username, name,
-	); insertErr != nil {
-		h.log.ErrorContext(r.Context(), "editor.guest_join: insert user", slog.Any("err", insertErr))
-		http.Error(w, `{"error":{"code":"internal"}}`, http.StatusInternalServerError)
-		return
-	}
-
-	if _, addErr := h.parts.Add(r.Context(), editorDomain.Participant{
-		RoomID:   roomID,
-		UserID:   guestUUID,
-		Role:     enums.EditorRoleViewer,
-		JoinedAt: time.Now().UTC(),
-	}); addErr != nil {
-		h.log.ErrorContext(r.Context(), "editor.guest_join: parts.Add", slog.Any("err", addErr))
-		http.Error(w, `{"error":{"code":"internal"}}`, http.StatusInternalServerError)
-		return
-	}
-
-	// Scope-bound guest JWT — токен валиден только для этой code-room.
-	// WS handler матчит Scope claim против URL room_id (editor:<id>).
 	scope := fmt.Sprintf("editor:%s", roomID.String())
-	tok, expiresIn, err := h.issuer.MintScoped(
-		guestUUID, enums.UserRoleGuest, enums.AuthProviderTelegram, scope, h.guestTTL,
+	tok, expiresIn, err := h.issuer.MintScopedWithDisplayName(
+		guestUUID, enums.UserRoleGuest, enums.AuthProviderTelegram, scope, name, h.guestTTL,
 	)
 	if err != nil {
 		h.log.ErrorContext(r.Context(), "editor.guest_join: mint", slog.Any("err", err))
@@ -419,4 +405,77 @@ func (h *editorGuestJoinHandler) handle(w http.ResponseWriter, r *http.Request) 
 // См. whiteboardDomainQuotaField для аналогичного pattern'а в whiteboard_rooms.go.
 func editorDomainQuotaField(p subDomain.QuotaPolicy) int {
 	return p.ActiveSharedRooms
+}
+
+// ─── Format handler (real gofmt) ─────────────────────────────────────────
+//
+// POST /api/v1/editor/room/{roomId}/format  body: {code, language}
+// → 200 {code: <formatted>, changed: bool, language: "go"|"python"|...}
+//
+// Только Go формат сейчас (go/format stdlib — то же что gofmt CLI). Python
+// требует black/yapf binary в runtime (не gotcha — добавим в Phase 2 через
+// /usr/bin/python3 -m black). JS/TS — prettier требует node + npm bundle,
+// тоже отдельный ticket. Для go/python/js/ts если formatter недоступен —
+// отдаём 200 с changed=false, original code, без error'а: UX «format не
+// получился» = silent no-op, а не red toast.
+type editorFormatHandler struct {
+	log *slog.Logger
+}
+
+type editorFormatRequest struct {
+	Code     string `json:"code"`
+	Language string `json:"language"`
+}
+
+type editorFormatResponse struct {
+	Code     string `json:"code"`
+	Changed  bool   `json:"changed"`
+	Language string `json:"language"`
+	Error    string `json:"error,omitempty"`
+}
+
+func (h *editorFormatHandler) handle(w http.ResponseWriter, r *http.Request) {
+	uid, ok := sharedMw.UserIDFromContext(r.Context())
+	if !ok {
+		http.Error(w, `{"error":{"code":"unauthenticated"}}`, http.StatusUnauthorized)
+		return
+	}
+	_ = uid // format non-destructive; participant-check не нужен, любой залогиненный.
+
+	var body editorFormatRequest
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		http.Error(w, `{"error":{"code":"bad_body"}}`, http.StatusBadRequest)
+		return
+	}
+	if body.Code == "" {
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(editorFormatResponse{Code: "", Changed: false, Language: body.Language})
+		return
+	}
+	lang := strings.ToLower(strings.TrimSpace(body.Language))
+	resp := editorFormatResponse{Code: body.Code, Language: lang}
+	switch lang {
+	case "go", "language_go", "1":
+		formatted, err := format.Source([]byte(body.Code))
+		if err != nil {
+			// Syntax error → возвращаем оригинал + error. UI покажет toast
+			// «format failed: <syntax err>», юзер чинит код, повторяет.
+			resp.Error = err.Error()
+		} else {
+			s := string(formatted)
+			resp.Changed = s != body.Code
+			resp.Code = s
+		}
+	case "python", "language_python", "2",
+		"javascript", "language_javascript", "3",
+		"typescript", "language_typescript", "4":
+		// Не реализовано — formatter binary'и не bundled. Отдаём original
+		// code без error'а; frontend показывает «format unsupported for
+		// this language» если хочет, или silent no-op.
+		resp.Error = "formatter not available for this language"
+	default:
+		resp.Error = "unknown language"
+	}
+	w.Header().Set("Content-Type", "application/json")
+	_ = json.NewEncoder(w).Encode(resp)
 }

@@ -111,7 +111,7 @@ func Idempotency(rdb *redis.Client) func(http.Handler) http.Handler {
 			raw, err := rdb.Get(ctx, redisKey).Bytes()
 			if err == nil && len(raw) > 0 {
 				var cr cachedResponse
-				if err := json.Unmarshal(raw, &cr); err == nil {
+				if jErr := json.Unmarshal(raw, &cr); jErr == nil {
 					// Validate request matches cached.
 					reqHash := hashReq(r.Method, r.URL.Path, bodyBytes)
 					if cr.ReqHash != "" && cr.ReqHash != reqHash {

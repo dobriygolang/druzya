@@ -64,25 +64,12 @@ func (h *WSHandler) Handle(w http.ResponseWriter, r *http.Request) {
 	// parseSubjectScoped в adapters.go). Cross-room replay guest-token'а ловим
 	// здесь — token room A → mismatch → 401.
 	expectedScope := "whiteboard:" + roomID.String()
-	uid, err := h.Verifier.VerifyScoped(token, expectedScope)
+	uid, jwtRole, _, err := h.Verifier.VerifyScopedFull(token, expectedScope)
 	if err != nil {
 		http.Error(w, "invalid token", http.StatusUnauthorized)
 		return
 	}
-
-	// Participant gate — share-link UX: owner is seeded at create, guest is
-	// seeded on first GET /whiteboard/room/{id} (see app.GetRoom). If the
-	// client jumped straight to WS without the REST join, reject.
-	ok, err := h.Participants.Exists(r.Context(), roomID, uid)
-	if err != nil {
-		h.Log.Warn("whiteboard_rooms.ws: Participants.Exists", slog.Any("err", err))
-		http.Error(w, "internal", http.StatusInternalServerError)
-		return
-	}
-	if !ok {
-		http.Error(w, "not a participant", http.StatusForbidden)
-		return
-	}
+	isGuest := jwtRole == "guest"
 
 	room, err := h.Rooms.Get(r.Context(), roomID)
 	if err != nil {
@@ -95,13 +82,30 @@ func (h *WSHandler) Handle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Visibility=private gate (defense in depth — same check as in
-	// app.GetRoom). Owner всегда пускаем; existing participants (которых
-	// owner раньше invited когда было shared) тоже пускаем — мы их не
-	// вырезаем при flip'е private. Все остальные → 403.
-	if room.Visibility == domain.VisibilityPrivate && uid != room.OwnerID {
-		http.Error(w, "private board: not authorized", http.StatusForbidden)
-		return
+	if isGuest {
+		// Wave-15: гость не имеет participant-row; идентичность —
+		// transient UUID в JWT. Visibility-проверка единственная защита
+		// от cross-room replay (guest-scope уже сверили).
+		if room.Visibility != domain.VisibilityShared {
+			http.Error(w, "private board: guests not allowed", http.StatusForbidden)
+			return
+		}
+	} else {
+		// Participant gate — share-link UX: owner is seeded at create.
+		ok, pErr := h.Participants.Exists(r.Context(), roomID, uid)
+		if pErr != nil {
+			h.Log.Warn("whiteboard_rooms.ws: Participants.Exists", slog.Any("err", pErr))
+			http.Error(w, "internal", http.StatusInternalServerError)
+			return
+		}
+		if !ok {
+			http.Error(w, "not a participant", http.StatusForbidden)
+			return
+		}
+		if room.Visibility == domain.VisibilityPrivate && uid != room.OwnerID {
+			http.Error(w, "private board: not authorized", http.StatusForbidden)
+			return
+		}
 	}
 
 	ws, err := h.Upgrader.Upgrade(w, r, nil)
