@@ -207,6 +207,22 @@ function AtlasV2Surface({
 }
 
 // ── HeaderStrip / GraphSkeleton / EmptyProgressCTA / LegendStrip
+// formatUpdatedAge — relative-time label for the atlas "обновлено N мин"
+// hint. React Query gives us a wall-clock timestamp on the data; we only
+// need a coarse human label here, no live ticking.
+function formatUpdatedAge(ts: number): string | null {
+  if (!ts) return null
+  const sec = Math.max(0, Math.round((Date.now() - ts) / 1000))
+  if (sec < 10) return 'только что'
+  if (sec < 60) return `${sec} сек назад`
+  const min = Math.floor(sec / 60)
+  if (min < 60) return `${min} мин назад`
+  const hr = Math.floor(min / 60)
+  if (hr < 24) return `${hr} ч назад`
+  const day = Math.floor(hr / 24)
+  return `${day} д назад`
+}
+
 function HeaderStrip({
   unlocked,
   total,
@@ -214,6 +230,8 @@ function HeaderStrip({
   onRetry,
   viewMode,
   onViewModeChange,
+  updatedAt,
+  isFetching,
 }: {
   unlocked: number
   total: number
@@ -221,7 +239,10 @@ function HeaderStrip({
   onRetry: () => void
   viewMode: 'graph' | 'list'
   onViewModeChange: (v: 'graph' | 'list') => void
+  updatedAt: number
+  isFetching: boolean
 }) {
+  const ageLabel = formatUpdatedAge(updatedAt)
   return (
     <div className="flex flex-col items-start gap-4 border-b border-border bg-surface-1 px-4 py-4 sm:px-8 lg:flex-row lg:items-center lg:justify-between lg:px-20 lg:py-6">
       <div className="flex flex-col gap-1">
@@ -233,6 +254,21 @@ function HeaderStrip({
         </p>
       </div>
       <div className="flex items-center gap-2">
+        {ageLabel && (
+          <span className="hidden font-mono text-[10px] uppercase tracking-wider text-text-muted sm:inline">
+            обновлено {ageLabel}
+          </span>
+        )}
+        <Button
+          variant="ghost"
+          size="sm"
+          icon={<RotateCcw className={`h-3.5 w-3.5 ${isFetching ? 'animate-spin' : ''}`} />}
+          onClick={onRetry}
+          aria-label="Обновить атлас"
+          title="Обновить атлас"
+        >
+          Refresh
+        </Button>
         <div className="flex items-center gap-0.5 rounded-md border border-border bg-bg p-0.5">
           <button
             type="button"
@@ -261,16 +297,6 @@ function HeaderStrip({
             <List className="h-3.5 w-3.5" />
           </button>
         </div>
-        {isError && (
-          <Button
-            variant="ghost"
-            size="sm"
-            icon={<RotateCcw className="h-3.5 w-3.5" />}
-            onClick={onRetry}
-          >
-            Повторить
-          </Button>
-        )}
       </div>
     </div>
   )
@@ -324,7 +350,7 @@ function EmptyProgressCTA() {
 
 // ── AtlasPage — оркестратор. Мостит filter bar → highlight set → drawer.
 export default function AtlasPage() {
-  const { data: atlas, isError, isLoading, refetch } = useAtlasQuery()
+  const { data: atlas, isError, isLoading, refetch, dataUpdatedAt, isFetching } = useAtlasQuery()
   const total = atlas?.nodes.length ?? 0
   const unlocked = atlas?.nodes.filter((n) => n.unlocked).length ?? 0
 
@@ -365,6 +391,8 @@ export default function AtlasPage() {
           onRetry={() => void refetch()}
           viewMode={viewMode}
           onViewModeChange={setViewMode}
+          updatedAt={dataUpdatedAt}
+          isFetching={isFetching}
         />
         {showV2Toggle && (
           <div className="flex justify-end px-4 pt-2">
