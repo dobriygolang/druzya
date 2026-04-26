@@ -13,8 +13,10 @@ import { ErrorBox, PanelSkeleton } from './shared'
 import {
   mockAdminErrorMessage,
   useCompaniesQuery,
+  useCompanyQuestionsQuery,
   useCompanyStagesQuery,
   useCreateCompanyMutation,
+  useDefaultQuestionsQuery,
   usePutCompanyStagesMutation,
   useStrictnessQuery,
   useToggleCompanyActiveMutation,
@@ -238,6 +240,7 @@ function CompanyDetail({ company }: { company: Company }) {
       </form>
 
       <CompanyStagesEditor companyId={company.id} />
+      <CandidatePreview companyId={company.id} />
     </div>
   )
 }
@@ -525,4 +528,110 @@ function PoolLimitInput({
       />
     </label>
   )
+}
+
+// CandidatePreview — read-only "what the candidate will see" view for
+// the currently-selected company. Aggregates stages config + question
+// pool counts so the admin sees the actual flow without spawning a
+// pipeline. Closes the «у каждой компании 0 задач» confusion: this
+// shows e.g. "5 default HR + 3 random of 47 company questions".
+function CandidatePreview({ companyId }: { companyId: string }) {
+  const stagesQ = useCompanyStagesQuery(companyId)
+  const companyQs = useCompanyQuestionsQuery(companyId)
+  const defaultQs = useDefaultQuestionsQuery() // all stages, single fetch
+  if (stagesQ.isPending) return null
+  if (stagesQ.error) return null
+  const stages = [...(stagesQ.data ?? [])].sort((a, b) => a.ordinal - b.ordinal)
+  if (stages.length === 0) return null
+
+  const stageLabel: Record<StageKind, string> = {
+    hr: 'HR / screening',
+    algo: 'Algorithms',
+    coding: 'Coding',
+    sysdesign: 'System design',
+    behavioral: 'Behavioral',
+  }
+
+  return (
+    <section className="rounded-lg border border-text-primary/30 bg-text-primary/[0.03] p-4">
+      <div className="mb-3 flex items-baseline justify-between">
+        <h3 className="font-display text-sm font-bold text-text-primary">
+          Что увидит кандидат
+        </h3>
+        <span className="font-mono text-[10px] uppercase tracking-wider text-text-muted">
+          live preview · по текущей конфигурации
+        </span>
+      </div>
+      <ol className="flex flex-col gap-2">
+        {stages.map((s, i) => {
+          const desc = describeStage(s, defaultQs.data ?? [], companyQs.data ?? [])
+          return (
+            <li
+              key={s.stage_kind}
+              className="flex items-start gap-3 rounded-md border border-border bg-surface-2 p-3"
+            >
+              <span className="mt-0.5 grid h-6 w-6 shrink-0 place-items-center rounded-full bg-text-primary/10 font-display text-xs font-bold text-text-primary">
+                {i + 1}
+              </span>
+              <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+                <div className="flex items-baseline gap-2">
+                  <span className="font-display text-sm font-bold text-text-primary">
+                    {stageLabel[s.stage_kind]}
+                  </span>
+                  {s.optional && (
+                    <span className="rounded-full border border-border bg-bg/40 px-1.5 font-mono text-[9px] uppercase tracking-wider text-text-muted">
+                      optional
+                    </span>
+                  )}
+                </div>
+                <span className="font-mono text-[11px] text-text-secondary">{desc}</span>
+              </div>
+            </li>
+          )
+        })}
+      </ol>
+      <p className="mt-3 font-mono text-[10px] text-text-muted">
+        Считается из текущих лимитов на этапах + активных вопросов в пуле. Меняй конфиг выше — превью пересчитается.
+      </p>
+    </section>
+  )
+}
+
+// describeStage builds one human-readable line for the candidate
+// preview. Branches on stage_kind because HR/behavioral pull from
+// question pools while algo/coding/sysdesign pull from task pools.
+function describeStage(
+  s: CompanyStageConfig,
+  defaults: { stage_kind: StageKind; active?: boolean }[],
+  companyQs: { stage_kind: StageKind; active?: boolean }[],
+): string {
+  if (s.stage_kind === 'hr' || s.stage_kind === 'behavioral') {
+    // `active` is optional in the local type — undefined means "treat
+    // as active" (server is source of truth and excludes inactive
+    // before sending). Counts here are upper bounds for the preview.
+    const defaultActive = defaults.filter(
+      (q) => q.stage_kind === s.stage_kind && q.active !== false,
+    ).length
+    const companyActive = companyQs.filter(
+      (q) => q.stage_kind === s.stage_kind && q.active !== false,
+    ).length
+    const dPart = describePoolDraw(defaultActive, s.default_question_limit ?? null, 'default')
+    const cPart = describePoolDraw(companyActive, s.company_question_limit ?? null, 'company')
+    const parts = [dPart, cPart].filter(Boolean)
+    if (parts.length === 0) return 'нет вопросов в пулах — этап будет пуст'
+    return parts.join(' + ')
+  }
+  // task_solve stages: picker takes 1 random task per stage.
+  if (s.task_pool_ids.length === 0) {
+    return '1 случайная задача из ВСЕХ активных mock_tasks этого этапа (pool пуст)'
+  }
+  return `1 случайная задача из ${s.task_pool_ids.length} в пуле компании`
+}
+
+function describePoolDraw(active: number, limit: number | null, label: string): string {
+  if (active === 0) return ''
+  if (limit === null) return `все ${active} ${label}-вопросов`
+  if (limit === 0) return ''
+  if (limit >= active) return `все ${active} ${label}-вопросов`
+  return `${limit} случайных из ${active} ${label}-вопросов`
 }
