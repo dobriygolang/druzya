@@ -12,6 +12,7 @@ import (
 
 	authApp "druz9/auth/app"
 	honeDomain "druz9/hone/domain"
+	miDomain "druz9/mock_interview/domain"
 	"druz9/shared/pkg/config"
 	"druz9/shared/pkg/eventbus"
 	"druz9/shared/pkg/killswitch"
@@ -67,6 +68,14 @@ type Deps struct {
 	// (узкий interface, hone-domain'ный) — monolith Adapter имплементирует.
 	// nil-safe: hone-use-cases checkают перед вызовом.
 	IntelligenceMemoryHook honeDomain.MemoryHook
+
+	// IntelligenceMockMemoryHook — same idea as IntelligenceMemoryHook
+	// but for the mock_interview bounded context. FinishPipeline writes
+	// a `mock_pipeline_finished` episode through this hook so future
+	// Daily Briefs can reference past sessions ("неделю назад sysdesign
+	// 32, сегодня 71 — рост"). nil-safe: orchestrator guards every
+	// call. Set in bootstrap right after NewIntelligence.
+	IntelligenceMockMemoryHook miDomain.MemoryHook
 
 	// StorageGate — Phase C quota guard. Hone оборачивает свои
 	// write-routes (notes/whiteboards POST'ы) этим middleware'ом, чтобы

@@ -23,6 +23,7 @@ export type RecurringPattern = {
 }
 
 export type ScoreTrajectoryPoint = {
+  pipeline_id: string
   finished_at: string // RFC3339
   score: number // 0..100
   verdict: string // 'pass' | 'fail'

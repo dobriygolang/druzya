@@ -28,6 +28,10 @@ const (
 	EpisodePlanCompleted    EpisodeKind = "plan_completed"
 	EpisodeNoteCreated      EpisodeKind = "note_created"
 	EpisodeFocusSessionDone EpisodeKind = "focus_session_done"
+	// EpisodeMockPipelineFinished is written by the mock_interview
+	// orchestrator on every FinishPipeline, so the AI Coach can reason
+	// across weeks ("две недели назад sysdesign 32, сегодня 71 — рост").
+	EpisodeMockPipelineFinished EpisodeKind = "mock_pipeline_finished"
 )
 
 // IsValid powers exhaustive switches and runtime guards.
@@ -37,7 +41,8 @@ func (k EpisodeKind) IsValid() bool {
 		EpisodeQAQuery, EpisodeQAAnswered,
 		EpisodeReflectionAdded, EpisodeStandupRecorded,
 		EpisodePlanSkipped, EpisodePlanCompleted,
-		EpisodeNoteCreated, EpisodeFocusSessionDone:
+		EpisodeNoteCreated, EpisodeFocusSessionDone,
+		EpisodeMockPipelineFinished:
 		return true
 	}
 	return false

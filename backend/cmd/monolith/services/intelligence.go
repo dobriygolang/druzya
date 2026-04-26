@@ -15,6 +15,7 @@ import (
 	intelDomain "druz9/intelligence/domain"
 	intelInfra "druz9/intelligence/infra"
 	intelPorts "druz9/intelligence/ports"
+	miDomain "druz9/mock_interview/domain"
 	"druz9/shared/generated/pb/druz9/v1/druz9v1connect"
 	"druz9/shared/pkg/llmcache"
 	"druz9/shared/pkg/metrics"
@@ -50,8 +51,9 @@ import (
 // focus-session-done).
 type IntelligenceModule struct {
 	*Module
-	Memory *intelApp.Memory
-	Hook   honeDomain.MemoryHook
+	Memory   *intelApp.Memory
+	Hook     honeDomain.MemoryHook
+	MockHook miDomain.MemoryHook
 }
 
 func NewIntelligence(d Deps) IntelligenceModule {
@@ -163,10 +165,64 @@ func NewIntelligence(d Deps) IntelligenceModule {
 				func(ctx context.Context) { go worker.Run(ctx) },
 			},
 		},
-		Memory: memory,
-		Hook:   newIntelligenceMemoryHook(memory, d.Log),
+		Memory:   memory,
+		Hook:     newIntelligenceMemoryHook(memory, d.Log),
+		MockHook: newMockMemoryHook(memory, d.Log),
 	}
 }
+
+// newMockMemoryHook builds the adapter that mock_interview's
+// orchestrator uses to write `mock_pipeline_finished` episodes. Same
+// pattern as newIntelligenceMemoryHook for hone — the mock_interview
+// service stays decoupled from intelligence/domain and only knows the
+// narrow miDomain.MemoryHook interface.
+func newMockMemoryHook(m *intelApp.Memory, log *slog.Logger) miDomain.MemoryHook {
+	return &mockMemoryHook{memory: m, log: log}
+}
+
+type mockMemoryHook struct {
+	memory *intelApp.Memory
+	log    *slog.Logger
+}
+
+func (h *mockMemoryHook) OnPipelineFinished(
+	ctx context.Context,
+	userID uuid.UUID,
+	pipelineID uuid.UUID,
+	verdict miDomain.PipelineVerdict,
+	totalScore *float32,
+	stages []miDomain.PipelineStage,
+	occurredAt time.Time,
+) {
+	parts := []string{fmt.Sprintf("verdict=%s", string(verdict))}
+	if totalScore != nil {
+		parts = append(parts, fmt.Sprintf("total_score=%.0f", *totalScore))
+	}
+	stagesPayload := make([]map[string]any, 0, len(stages))
+	for _, s := range stages {
+		row := map[string]any{"stage_kind": string(s.StageKind)}
+		if s.Verdict != nil {
+			row["verdict"] = string(*s.Verdict)
+		}
+		if s.Score != nil {
+			row["score"] = *s.Score
+		}
+		stagesPayload = append(stagesPayload, row)
+	}
+	summary := strings.Join(parts, " · ")
+	h.memory.AppendAsync(ctx, intelApp.AppendInput{
+		UserID:  userID,
+		Kind:    intelDomain.EpisodeMockPipelineFinished,
+		Summary: summary,
+		Payload: map[string]any{
+			"pipeline_id": pipelineID.String(),
+			"stages":      stagesPayload,
+		},
+		OccurredAt: occurredAt,
+	})
+}
+
+var _ miDomain.MemoryHook = (*mockMemoryHook)(nil)
 
 // memoryHook implements hone/domain.MemoryHook — узкий side-effect channel
 // в Coach memory. Hone use cases дёргают (опционально через nil-check).

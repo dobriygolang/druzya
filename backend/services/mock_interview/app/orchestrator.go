@@ -57,8 +57,13 @@ type Orchestrator struct {
 	// autosave (frontend writes here only when the browser localStorage
 	// quota is exhausted). May be nil — handlers tolerate that with a 503.
 	CanvasDrafts domain.CanvasDraftStore
-	Now          func() time.Time
-	Log          *slog.Logger
+	// Memory is an optional tap into the Coach episode store. nil-safe.
+	// FinishPipeline emits a `mock_pipeline_finished` episode so future
+	// Daily Briefs reference past sessions ("неделю назад sysdesign 32,
+	// сегодня 71 — рост"). Failures don't block the user's submit.
+	Memory domain.MemoryHook
+	Now    func() time.Time
+	Log    *slog.Logger
 }
 
 func (o *Orchestrator) now() time.Time {
@@ -849,6 +854,12 @@ func (o *Orchestrator) FinishPipeline(ctx context.Context, pipelineID uuid.UUID)
 	// the run is over, restoring half-drawn diagrams next time would only
 	// confuse the user.
 	o.sweepCanvasDraftsForPipeline(ctx, stages)
+
+	// Coach memory: write a `mock_pipeline_finished` episode so future
+	// Daily Briefs can reference this session. Best-effort, never blocks.
+	if o.Memory != nil {
+		o.Memory.OnPipelineFinished(ctx, pipe.UserID, pipelineID, verdict, totalScore, stages, t)
+	}
 
 	// TODO: publish leaderboard event with ai_assist=pipeline.AIAssist watermark
 	return pipe, nil

@@ -83,8 +83,13 @@ func NewMockInterview(d Deps) *Module {
 		// Redis fallback for the sysdesign canvas autosave. Frontend uses
 		// localStorage as primary; this only fires on quota exhaustion.
 		CanvasDrafts: miInfra.NewRedisCanvasDrafts(d.Redis),
-		Now:          d.Now,
-		Log:          d.Log,
+		// Coach memory tap — emits a `mock_pipeline_finished` episode on
+		// every FinishPipeline so future Daily Briefs reference past
+		// sessions. nil-safe; bootstrap sets it when intelligence is
+		// wired (always, in current setup).
+		Memory: d.IntelligenceMockMemoryHook,
+		Now:    d.Now,
+		Log:    d.Log,
 	}
 
 	server := miPorts.NewServer(handlers, orch, d.Log)

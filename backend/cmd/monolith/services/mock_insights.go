@@ -55,6 +55,7 @@ type recurringPatternRow struct {
 }
 
 type scoreTrajectoryRow struct {
+	PipelineID string  `json:"pipeline_id"` // for the click→debrief drill-down
 	FinishedAt string  `json:"finished_at"` // RFC3339
 	Score      float64 `json:"score"`       // 0..100
 	Verdict    string  `json:"verdict"`
@@ -183,7 +184,7 @@ func (h *mockInsightsHandler) overview(w http.ResponseWriter, r *http.Request) {
 	//    for direct sparkline rendering.
 	scoreRows, err := h.pool.Query(ctx, `
 		WITH last_n AS (
-		  SELECT finished_at, total_score, verdict
+		  SELECT id, finished_at, total_score, verdict
 		    FROM mock_pipelines
 		   WHERE user_id = $1
 		     AND finished_at IS NOT NULL
@@ -192,7 +193,7 @@ func (h *mockInsightsHandler) overview(w http.ResponseWriter, r *http.Request) {
 		   ORDER BY finished_at DESC
 		   LIMIT $2
 		)
-		SELECT finished_at, total_score, verdict
+		SELECT id::text, finished_at, total_score, verdict
 		  FROM last_n
 		 ORDER BY finished_at ASC`,
 		sharedpg.UUID(uid), insightsScoreLimit)
@@ -201,11 +202,12 @@ func (h *mockInsightsHandler) overview(w http.ResponseWriter, r *http.Request) {
 	} else {
 		for scoreRows.Next() {
 			var (
+				pipelineID string
 				finishedAt pgtype.Timestamptz
 				score      float32
 				verdict    string
 			)
-			if scanErr := scoreRows.Scan(&finishedAt, &score, &verdict); scanErr != nil {
+			if scanErr := scoreRows.Scan(&pipelineID, &finishedAt, &score, &verdict); scanErr != nil {
 				continue
 			}
 			ts := ""
@@ -213,7 +215,7 @@ func (h *mockInsightsHandler) overview(w http.ResponseWriter, r *http.Request) {
 				ts = finishedAt.Time.UTC().Format(time.RFC3339)
 			}
 			out.ScoreTrajectory = append(out.ScoreTrajectory, scoreTrajectoryRow{
-				FinishedAt: ts, Score: float64(score), Verdict: verdict,
+				PipelineID: pipelineID, FinishedAt: ts, Score: float64(score), Verdict: verdict,
 			})
 		}
 		scoreRows.Close()

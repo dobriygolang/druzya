@@ -1,5 +1,5 @@
 import type * as React from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { ArrowRight, Compass, Map as MapIcon, Shield, Sparkles, Target, TrendingUp, Trophy } from 'lucide-react'
 import { AppShellV2 } from '../components/AppShell'
 import { Card } from '../components/Card'
@@ -405,6 +405,7 @@ function ScoreTrajectoryCard({
 }
 
 function Sparkline({ points }: { points: ScoreTrajectoryPoint[] }) {
+ const navigate = useNavigate()
  if (points.length === 0) return null
  const w = 240
  const h = 56
@@ -420,19 +421,34 @@ function Sparkline({ points }: { points: ScoreTrajectoryPoint[] }) {
  const d = xs.map((x, i) => `${i === 0 ? 'M' : 'L'}${x.toFixed(1)},${ys[i].toFixed(1)}`).join(' ')
  const lastX = xs[xs.length - 1]
  const lastY = ys[ys.length - 1]
+ const drillTo = (id: string) => {
+  if (id) navigate(`/mock/pipeline/${id}/debrief`)
+ }
  return (
  <svg viewBox={`0 0 ${w} ${h}`} className="h-14 w-full">
  <path d={d} fill="none" stroke="currentColor" strokeWidth={1.5} className="text-text-primary" />
  {points.map((p, i) => (
- <circle
-  key={i}
-  cx={xs[i]}
-  cy={ys[i]}
-  r={1.6}
-  className={p.verdict === 'pass' ? 'fill-success' : 'fill-danger'}
- />
+ <g key={i}>
+  {/* Bigger transparent hit-area on top of the visible 1.6r dot — */}
+  {/* the user's mouse target stays comfortable. */}
+  <circle
+   cx={xs[i]}
+   cy={ys[i]}
+   r={8}
+   className="cursor-pointer fill-transparent"
+   onClick={() => drillTo(p.pipeline_id)}
+  >
+   <title>{`${Math.round(p.score)}/100 · ${p.verdict.toUpperCase()} · ${new Date(p.finished_at).toLocaleDateString()} — click for debrief`}</title>
+  </circle>
+  <circle
+   cx={xs[i]}
+   cy={ys[i]}
+   r={1.6}
+   className={`pointer-events-none ${p.verdict === 'pass' ? 'fill-success' : 'fill-danger'}`}
+  />
+ </g>
  ))}
- <circle cx={lastX} cy={lastY} r={3} className="fill-text-primary" />
+ <circle cx={lastX} cy={lastY} r={3} className="pointer-events-none fill-text-primary" />
  </svg>
  )
 }

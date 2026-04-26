@@ -167,6 +167,7 @@ func New(ctx context.Context, cfg *config.Config) (app *App, otelShutdown func()
 
 	intelligenceMod := services.NewIntelligence(deps)
 	deps.IntelligenceMemoryHook = intelligenceMod.Hook
+	deps.IntelligenceMockMemoryHook = intelligenceMod.MockHook
 
 	modules := []*services.Module{
 		&auth.Module,
