@@ -252,10 +252,23 @@ export function PodcastsPanel() {
             <Button
               type="submit"
               size="sm"
-              disabled={createMut.isPending}
+              // Block submit until the local <audio> probe finishes
+              // populating durationSec — иначе бэк-fallback на ffprobe
+              // отработает, но юзер увидит пустую длительность в карточке
+              // пока не reload'нёт страницу.
+              disabled={createMut.isPending || !!audio && !durationSec}
               icon={<Upload className="h-3.5 w-3.5" />}
+              title={
+                audio && !durationSec
+                  ? 'Подожди пока длительность извлечётся из файла'
+                  : undefined
+              }
             >
-              {createMut.isPending ? 'Загружаем…' : 'Загрузить'}
+              {createMut.isPending
+                ? 'Загружаем…'
+                : audio && !durationSec
+                  ? 'Читаю длительность…'
+                  : 'Загрузить'}
             </Button>
           </div>
         </form>

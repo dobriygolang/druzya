@@ -33,7 +33,7 @@ import { Card } from '../components/Card'
 import {
   usePodcastsQuery,
   usePodcastCategoriesQuery,
-  updatePodcastProgress,
+  useUpdatePodcastProgressMutation,
   formatDuration,
   formatPublished,
   type Podcast,
@@ -74,6 +74,7 @@ function AudioPlayer({ podcast, isActive, onActivate }: PlayerProps) {
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const seekRef = useRef<HTMLDivElement | null>(null)
   const lastSyncRef = useRef<number>(0)
+  const progressMut = useUpdatePodcastProgressMutation()
   const [playing, setPlaying] = useState(false)
   const [currentTime, setCurrentTime] = useState(podcast.progress_sec || 0)
   const [duration, setDuration] = useState(podcast.duration_sec || 0)
@@ -108,11 +109,9 @@ function AudioPlayer({ podcast, isActive, onActivate }: PlayerProps) {
     const now = Date.now()
     if (now - lastSyncRef.current < 10_000) return
     lastSyncRef.current = now
-    void updatePodcastProgress({
+    progressMut.mutate({
       podcastId: podcast.id,
       progressSec: el.currentTime,
-    }).catch(() => {
-      /* network blip — следующий tick попробует снова */
     })
   }
 
@@ -123,11 +122,11 @@ function AudioPlayer({ podcast, isActive, onActivate }: PlayerProps) {
   }
 
   function handleEnded() {
-    void updatePodcastProgress({
+    progressMut.mutate({
       podcastId: podcast.id,
       progressSec: podcast.duration_sec,
       completed: true,
-    }).catch(() => {})
+    })
     setPlaying(false)
   }
 

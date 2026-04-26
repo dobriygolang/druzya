@@ -279,8 +279,50 @@ export function useDeletePodcastMutation() {
 
 /**
  * PUT /api/v1/podcast/{id}/progress — отправляем listened seconds.
- * Не попадает в TanStack-cache; вызывается императивно из аудио-плеера на throttle.
+ * Throttled из аудио-плеера каждые 10s.
+ *
+ * Хук версия патчит React-query cache на success — без этого при
+ * возврате на страницу в течение gcTime (5мин) видишь stale
+ * progress_sec=0, а seek в плеере не делается. Раньше функция была
+ * императивной и никак не сообщала кэшу о новом значении.
  */
+export function useUpdatePodcastProgressMutation() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (input: { podcastId: string; progressSec: number; completed?: boolean }) => {
+      const body: Record<string, unknown> = {
+        progress_sec: Math.max(0, Math.floor(input.progressSec)),
+      }
+      if (input.completed) body.completed = true
+      await api(`/podcast/${encodeURIComponent(input.podcastId)}/progress`, {
+        method: 'PUT',
+        body: JSON.stringify(body),
+      })
+      return { input }
+    },
+    onSuccess: ({ input }) => {
+      const sec = Math.max(0, Math.floor(input.progressSec))
+      // Patch the single-podcast cache so the next mount of the
+      // player seeks to the right offset without a full refetch.
+      qc.setQueryData<Podcast>(['podcasts', 'one', input.podcastId], (prev) =>
+        prev ? { ...prev, progress_sec: sec, ...(input.completed ? { completed: true } : {}) } : prev,
+      )
+      // Patch the list caches too — same rule.
+      qc.setQueriesData<Podcast[]>({ queryKey: ['podcasts', 'catalog'] }, (prev) =>
+        prev
+          ? prev.map((p) =>
+              p.id === input.podcastId
+                ? { ...p, progress_sec: sec, ...(input.completed ? { completed: true } : {}) }
+                : p,
+            )
+          : prev,
+      )
+    },
+  })
+}
+
+/** Императивный fallback для legacy call sites. Новый код должен брать
+ * useUpdatePodcastProgressMutation чтобы кэш чинился. */
 export async function updatePodcastProgress(input: {
   podcastId: string
   progressSec: number
