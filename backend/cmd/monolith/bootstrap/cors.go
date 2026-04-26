@@ -57,7 +57,7 @@ func corsMiddleware() func(http.Handler) http.Handler {
 				if r.Method == http.MethodOptions {
 					reqHeaders := r.Header.Get("Access-Control-Request-Headers")
 					if reqHeaders == "" {
-						reqHeaders = "authorization, content-type, connect-protocol-version, connect-timeout-ms, x-refresh-token, x-user-agent"
+						reqHeaders = "authorization, content-type, connect-protocol-version, connect-timeout-ms, x-refresh-token, x-user-agent, x-device-id, idempotency-key"
 					}
 					h.Set("Access-Control-Allow-Headers", reqHeaders)
 					h.Set("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS")

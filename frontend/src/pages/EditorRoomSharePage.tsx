@@ -241,6 +241,25 @@ function RoomEditorImpl({ room, guestToken, myUserId, myDisplayName }: { room: R
   const sendSnapshotRef = useRef<((u: Uint8Array) => void) | null>(null)
   const wsCloseRef = useRef<(() => void) | null>(null)
 
+  // Theme picker — 4 переключаемых темы (зеркалит hone/Editor.tsx). Hot-swap
+  // через themeCompartment.reconfigure(...). Persist в localStorage.
+  const themeCompartmentRef = useRef<Compartment | null>(null)
+  const [themeName, setThemeName] = useState<EditorThemeName>(() => {
+    const saved = window.localStorage.getItem('druz9:web-editor:theme')
+    if (saved && (EDITOR_THEME_ORDER as string[]).includes(saved)) {
+      return saved as EditorThemeName
+    }
+    return 'vscode' // web default — VSCode (раньше vscodeDarkHighlight только)
+  })
+  const cycleTheme = useCallback(() => {
+    setThemeName((cur) => {
+      const idx = EDITOR_THEME_ORDER.indexOf(cur)
+      const next = EDITOR_THEME_ORDER[(idx + 1) % EDITOR_THEME_ORDER.length]!
+      try { window.localStorage.setItem('druz9:web-editor:theme', next) } catch { /* ignore */ }
+      return next
+    })
+  }, [])
+
   // Run / Format / output panel state. Mirror hone Editor.tsx.
   const [running, setRunning] = useState(false)
   const runningRef = useRef(false)
@@ -364,6 +383,9 @@ function RoomEditorImpl({ room, guestToken, myUserId, myDisplayName }: { room: R
       }
     })()
     const langCompartment = new Compartment()
+    const themeCompartment = new Compartment()
+    themeCompartmentRef.current = themeCompartment
+    const initialBundle = EDITOR_THEMES[themeName]
 
     const cmState = EditorState.create({
       doc: ytext.toString(),
@@ -376,12 +398,14 @@ function RoomEditorImpl({ room, guestToken, myUserId, myDisplayName }: { room: R
         // tab→indent). Mirror hone Editor.tsx.
         keymap.of([indentWithTab, ...defaultKeymap, ...historyKeymap]),
         langCompartment.of(langExt),
-        // Syntax highlighting — VSCode Dark+ palette. Раньше web-editor рендерил
-        // голый текст без подсветки (не было ни theme'ы, ни HighlightStyle —
-        // только кастомная editorThemeWeb которая красит каретку и фон).
-        syntaxHighlighting(vscodeDarkHighlight),
+        // Theme compartment — 4 темы (BLACK / VSCODE / YANDEX / CODE-IV).
+        // Hot-swap'аются через themeCompartment.reconfigure(...) при click'е
+        // на theme-button в top-bar'е.
+        themeCompartment.of([
+          syntaxHighlighting(initialBundle.highlight),
+          initialBundle.theme,
+        ]),
         yCollab(ytext, awareness),
-        editorThemeWeb(),
       ],
     })
     const mount = document.getElementById('cm-mount-web')
@@ -594,8 +618,31 @@ function RoomEditorImpl({ room, guestToken, myUserId, myDisplayName }: { room: R
     return () => window.removeEventListener('keydown', onKey)
   }, [handleRun, handleFormat])
 
+  // Theme reconfigure — hot-swap'аем theme bundle через Compartment.
+  // Не пересоздаём view → cursor/selection/yCollab/scroll сохраняются.
+  useEffect(() => {
+    const view = viewRef.current
+    const compartment = themeCompartmentRef.current
+    if (!view || !compartment) return
+    const bundle = EDITOR_THEMES[themeName]
+    view.dispatch({
+      effects: compartment.reconfigure([
+        syntaxHighlighting(bundle.highlight),
+        bundle.theme,
+      ]),
+    })
+  }, [themeName])
+
+  // Root bg/fg синхронны с активной темой — иначе при переключении на
+  // YANDEX (light) edge-зоны вне CodeMirror'а оставались тёмными.
+  const themeRootBg =
+    themeName === 'yandex-code' ? '#ffffff'
+    : themeName === 'black' ? '#000'
+    : themeName === 'code-interview' ? '#181820'
+    : '#1e1e1e'
+  const themeRootFg = themeName === 'yandex-code' ? '#080808' : '#d4d4d4'
   return (
-    <div style={{ position: 'fixed', inset: 0, background: '#1e1e1e', color: '#d4d4d4' }}>
+    <div style={{ position: 'fixed', inset: 0, background: themeRootBg, color: themeRootFg }}>
       <div
         id="cm-mount-web"
         style={{
@@ -620,6 +667,31 @@ function RoomEditorImpl({ room, guestToken, myUserId, myDisplayName }: { room: R
           zIndex: 25,
         }}
       >
+        <button
+          onClick={cycleTheme}
+          title={`Theme: ${EDITOR_THEME_LABEL[themeName]} — click to cycle`}
+          style={{
+            padding: '7px 12px',
+            fontSize: 11,
+            letterSpacing: '0.14em',
+            background: 'rgba(20,20,22,0.78)',
+            backdropFilter: 'blur(16px)',
+            border: '1px solid rgba(255,255,255,0.08)',
+            color: 'rgba(255,255,255,0.6)',
+            borderRadius: 999,
+            cursor: 'pointer',
+            fontFamily: '"JetBrains Mono", monospace',
+            transition: 'color 160ms ease',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 6,
+          }}
+          onMouseEnter={(e) => { e.currentTarget.style.color = '#fff' }}
+          onMouseLeave={(e) => { e.currentTarget.style.color = 'rgba(255,255,255,0.6)' }}
+        >
+          <span aria-hidden style={{ fontSize: 11 }}>◐</span>
+          {EDITOR_THEME_LABEL[themeName]}
+        </button>
         <button
           onClick={() => void handleFormat()}
           title="Format / re-indent (⌘⇧F)"
@@ -802,12 +874,190 @@ function RoomEditorImpl({ room, guestToken, myUserId, myDisplayName }: { room: R
   )
 }
 
-// Hone-style чёрный CM theme — light-grey текст, прозрачный фон над body #000.
-// vscodeDarkHighlight — упрощённая VSCode Dark+ palette. Pure-token rules:
-// keywords, types, strings, numbers, comments, functions. Не пытаемся
-// match'ить полный VSCode (там 100+ scope'ов), берём 10 наиболее заметных
-// которые покрывают 95% типичного code-view.
-const vscodeDarkHighlight = HighlightStyle.define([
+// ─── Editor themes (4 переключаемых, mirror hone/Editor.tsx) ─────────────
+//
+// black / vscode / yandex-code / code-interview. Кнопка-cycle в top-bar
+// циклирует через них; выбор persist'ится в localStorage. Hot-swap через
+// CodeMirror Compartment без re-create EditorView'а.
+type EditorThemeName = 'black' | 'vscode' | 'yandex-code' | 'code-interview'
+const EDITOR_THEME_ORDER: EditorThemeName[] = ['black', 'vscode', 'yandex-code', 'code-interview']
+const EDITOR_THEME_LABEL: Record<EditorThemeName, string> = {
+  'black': 'BLACK',
+  'vscode': 'VSCODE',
+  'yandex-code': 'YANDEX',
+  'code-interview': 'CODE-IV',
+}
+interface EditorThemeBundle {
+  highlight: HighlightStyle
+  theme: ReturnType<typeof EditorView.theme>
+}
+function makeEditorTheme(opts: {
+  bg: string; fg: string; caret: string; selection: string;
+  gutter: string; gutterFg: string; activeLine: string; dark: boolean
+}) {
+  return EditorView.theme(
+    {
+      '&': {
+        height: '100vh',
+        backgroundColor: opts.bg,
+        color: opts.fg,
+        fontSize: '14px',
+        fontFamily: '"JetBrains Mono", "SF Mono", Menlo, monospace',
+      },
+      '.cm-content': { caretColor: opts.caret, padding: '20px 24px', color: opts.fg },
+      '.cm-gutters': { backgroundColor: opts.gutter, color: opts.gutterFg, border: 'none' },
+      '.cm-activeLine': { backgroundColor: opts.activeLine },
+      '.cm-activeLineGutter': { backgroundColor: 'transparent', color: opts.fg },
+      '.cm-cursor': { borderLeftColor: opts.caret, borderLeftWidth: '1.5px' },
+      '.cm-selectionBackground, ::selection': { backgroundColor: opts.selection },
+      '.cm-ySelection': { backgroundColor: opts.selection },
+      '.cm-ySelectionCaret': {
+        position: 'relative',
+        borderLeft: '2px solid', borderRight: '2px solid',
+        marginLeft: '-1px', marginRight: '-1px',
+        boxSizing: 'border-box', display: 'inline',
+      },
+      '.cm-ySelectionCaretDot': {
+        borderRadius: '50%',
+        position: 'absolute', width: 6, height: 6, top: -3, left: -3,
+        backgroundColor: 'inherit', border: `1px solid ${opts.bg}`,
+      },
+      '.cm-ySelectionInfo': {
+        position: 'absolute', top: -1.4, left: -1,
+        fontSize: '10px', fontFamily: 'ui-monospace, monospace',
+        fontWeight: 500, lineHeight: 'normal', userSelect: 'none',
+        color: opts.dark ? '#000' : '#fff',
+        paddingLeft: '4px', paddingRight: '4px', zIndex: 101,
+        transform: 'translateY(-100%)', backgroundColor: 'inherit',
+        whiteSpace: 'nowrap',
+        opacity: '1 !important', transition: 'none !important',
+      },
+    },
+    { dark: opts.dark },
+  )
+}
+const EDITOR_THEMES: Record<EditorThemeName, EditorThemeBundle> = {
+  black: {
+    highlight: HighlightStyle.define([
+      { tag: [t.keyword, t.controlKeyword, t.operatorKeyword, t.modifier, t.definitionKeyword], color: '#c678dd', fontWeight: '600' },
+      { tag: [t.typeName, t.className, t.namespace], color: '#56b6c2' },
+      { tag: t.string, color: '#e5c07b' },
+      { tag: t.regexp, color: '#e06c75' },
+      { tag: t.number, color: '#d19a66' },
+      { tag: t.bool, color: '#d19a66' },
+      { tag: t.null, color: '#d19a66' },
+      { tag: t.literal, color: '#d19a66' },
+      { tag: t.comment, color: '#7f848e', fontStyle: 'italic' },
+      { tag: t.lineComment, color: '#7f848e', fontStyle: 'italic' },
+      { tag: t.blockComment, color: '#7f848e', fontStyle: 'italic' },
+      { tag: t.docComment, color: '#7f848e', fontStyle: 'italic' },
+      { tag: [t.function(t.variableName), t.function(t.propertyName)], color: '#61afef' },
+      { tag: [t.variableName, t.propertyName], color: '#e5e5e5' },
+      { tag: t.operator, color: '#abb2bf' },
+      { tag: t.punctuation, color: '#abb2bf' },
+      { tag: t.bracket, color: '#abb2bf' },
+      { tag: t.tagName, color: '#e06c75' },
+      { tag: t.attributeName, color: '#d19a66' },
+      { tag: t.invalid, color: '#ff6a6a' },
+    ]),
+    theme: makeEditorTheme({
+      bg: '#000', fg: '#e5e5e5', caret: '#fff',
+      selection: 'rgba(255,255,255,0.18)',
+      gutter: '#000', gutterFg: 'rgba(255,255,255,0.25)',
+      activeLine: 'rgba(255,255,255,0.02)', dark: true,
+    }),
+  },
+  vscode: {
+    highlight: HighlightStyle.define([
+      { tag: t.keyword, color: '#569cd6', fontWeight: '500' },
+      { tag: [t.controlKeyword, t.moduleKeyword], color: '#c586c0' },
+      { tag: [t.string, t.special(t.string)], color: '#ce9178' },
+      { tag: t.number, color: '#b5cea8' },
+      { tag: t.bool, color: '#569cd6' },
+      { tag: t.null, color: '#569cd6' },
+      { tag: t.comment, color: '#6a9955', fontStyle: 'italic' },
+      { tag: [t.function(t.variableName), t.function(t.propertyName)], color: '#dcdcaa' },
+      { tag: [t.typeName, t.className], color: '#4ec9b0' },
+      { tag: t.variableName, color: '#9cdcfe' },
+      { tag: t.propertyName, color: '#9cdcfe' },
+      { tag: [t.operator, t.punctuation], color: '#d4d4d4' },
+      { tag: t.bracket, color: '#d4d4d4' },
+      { tag: t.tagName, color: '#569cd6' },
+      { tag: t.attributeName, color: '#9cdcfe' },
+      { tag: t.regexp, color: '#d16969' },
+      { tag: t.escape, color: '#d7ba7d' },
+    ]),
+    theme: makeEditorTheme({
+      bg: '#1e1e1e', fg: '#d4d4d4', caret: '#aeafad',
+      selection: '#264f78',
+      gutter: '#1e1e1e', gutterFg: '#858585',
+      activeLine: 'rgba(255,255,255,0.04)', dark: true,
+    }),
+  },
+  'yandex-code': {
+    highlight: HighlightStyle.define([
+      { tag: [t.keyword, t.controlKeyword, t.operatorKeyword, t.modifier, t.definitionKeyword], color: '#0033b3', fontWeight: '600' },
+      { tag: [t.typeName, t.className, t.namespace], color: '#00627a' },
+      { tag: t.string, color: '#067d17' },
+      { tag: t.regexp, color: '#067d17' },
+      { tag: t.number, color: '#1750eb' },
+      { tag: t.bool, color: '#0033b3' },
+      { tag: t.null, color: '#0033b3' },
+      { tag: t.literal, color: '#1750eb' },
+      { tag: t.comment, color: '#8c8c8c', fontStyle: 'italic' },
+      { tag: t.lineComment, color: '#8c8c8c', fontStyle: 'italic' },
+      { tag: t.blockComment, color: '#8c8c8c', fontStyle: 'italic' },
+      { tag: [t.function(t.variableName), t.function(t.propertyName)], color: '#00627a' },
+      { tag: [t.variableName, t.propertyName], color: '#080808' },
+      { tag: t.operator, color: '#080808' },
+      { tag: t.punctuation, color: '#080808' },
+      { tag: t.bracket, color: '#080808' },
+      { tag: t.tagName, color: '#0033b3' },
+      { tag: t.attributeName, color: '#871094' },
+      { tag: t.invalid, color: '#ff0000' },
+    ]),
+    theme: makeEditorTheme({
+      bg: '#ffffff', fg: '#080808', caret: '#080808',
+      selection: '#a6d2ff',
+      gutter: '#f5f5f5', gutterFg: '#999999',
+      activeLine: '#fcfaff', dark: false,
+    }),
+  },
+  'code-interview': {
+    highlight: HighlightStyle.define([
+      { tag: [t.keyword, t.controlKeyword, t.operatorKeyword, t.modifier, t.definitionKeyword], color: '#ff79c6' },
+      { tag: [t.typeName, t.className, t.namespace], color: '#8be9fd' },
+      { tag: t.string, color: '#f1fa8c' },
+      { tag: t.regexp, color: '#ff5555' },
+      { tag: t.number, color: '#bd93f9' },
+      { tag: t.bool, color: '#bd93f9' },
+      { tag: t.null, color: '#bd93f9' },
+      { tag: t.literal, color: '#bd93f9' },
+      { tag: t.comment, color: '#6272a4', fontStyle: 'italic' },
+      { tag: t.lineComment, color: '#6272a4', fontStyle: 'italic' },
+      { tag: t.blockComment, color: '#6272a4', fontStyle: 'italic' },
+      { tag: [t.function(t.variableName), t.function(t.propertyName)], color: '#50fa7b' },
+      { tag: [t.variableName, t.propertyName], color: '#f8f8f2' },
+      { tag: t.operator, color: '#ff79c6' },
+      { tag: t.punctuation, color: '#f8f8f2' },
+      { tag: t.bracket, color: '#f8f8f2' },
+      { tag: t.tagName, color: '#ff79c6' },
+      { tag: t.attributeName, color: '#50fa7b' },
+      { tag: t.invalid, color: '#ff5555' },
+    ]),
+    theme: makeEditorTheme({
+      bg: '#181820', fg: '#f8f8f2', caret: '#f8f8f2',
+      selection: 'rgba(189,147,249,0.30)',
+      gutter: '#181820', gutterFg: '#6272a4',
+      activeLine: 'rgba(255,255,255,0.03)', dark: true,
+    }),
+  },
+}
+
+// Legacy block — оставлен на случай если найдётся внешний импорт (vite
+// tree-shake'ает unused exports). Не используется в Editor'е, новый код
+// использует EDITOR_THEMES.
+const _legacyVscodeDarkHighlight = HighlightStyle.define([
   { tag: t.keyword, color: '#569cd6', fontWeight: '500' }, // if/for/return — VS blue
   { tag: [t.controlKeyword, t.moduleKeyword], color: '#c586c0' }, // import/from — VS purple
   { tag: [t.string, t.special(t.string)], color: '#ce9178' }, // strings — VS orange
@@ -827,7 +1077,8 @@ const vscodeDarkHighlight = HighlightStyle.define([
   { tag: t.escape, color: '#d7ba7d' },
 ])
 
-function editorThemeWeb() {
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+function _legacyEditorThemeWeb() {
   return EditorView.theme(
     {
       '&': {
@@ -899,6 +1150,8 @@ function editorThemeWeb() {
     { dark: true },
   )
 }
+void _legacyVscodeDarkHighlight
+void _legacyEditorThemeWeb
 
 // ─── GuestPrompt ──────────────────────────────────────────────────────────
 

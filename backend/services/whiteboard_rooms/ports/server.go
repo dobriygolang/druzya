@@ -92,7 +92,8 @@ func (s *WhiteboardRoomsServer) GetRoom(
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("invalid room_id: %w", err))
 	}
-	full, err := s.H.GetRoom(ctx, roomID, uid)
+	role, _ := sharedMw.UserRoleFromContext(ctx)
+	full, err := s.H.GetRoomWithOpts(ctx, roomID, uid, app.GetRoomOpts{CallerRole: role})
 	if err != nil {
 		return nil, s.toConnectErr(err)
 	}

@@ -59,7 +59,23 @@ type RoomWithParticipants struct {
 	Participants []domain.ParticipantWithUsername
 }
 
+// GetRoomOpts — caller-side context. callerRole='guest' пропускает
+// auto-join (Wave-15: guest user_id transient, FK на users(id) сломал бы
+// participants.Add). Прочие role'ы — registered users — auto-join'ятся
+// как раньше.
+type GetRoomOpts struct {
+	CallerRole string
+}
+
+// GetRoom — backwards-compatible signature. Использует пустой opts
+// (registered user behaviour). Новые call-site'ы должны звать
+// GetRoomWithOpts с явной ролью.
 func (h *Handlers) GetRoom(ctx context.Context, roomID, callerID uuid.UUID) (RoomWithParticipants, error) {
+	return h.GetRoomWithOpts(ctx, roomID, callerID, GetRoomOpts{})
+}
+
+// GetRoomWithOpts — основная реализация.
+func (h *Handlers) GetRoomWithOpts(ctx context.Context, roomID, callerID uuid.UUID, opts GetRoomOpts) (RoomWithParticipants, error) {
 	room, err := h.Rooms.Get(ctx, roomID)
 	if err != nil {
 		return RoomWithParticipants{}, fmt.Errorf("rooms.Get: %w", err)
@@ -84,17 +100,25 @@ func (h *Handlers) GetRoom(ctx context.Context, roomID, callerID uuid.UUID) (Roo
 	}
 	// Auto-join: share-link UX — первый заход === приглашение (только для
 	// shared visibility, см. private gate выше).
-	exists, err := h.Participants.Exists(ctx, roomID, callerID)
-	if err != nil {
-		return RoomWithParticipants{}, fmt.Errorf("participants.Exists: %w", err)
-	}
-	if !exists {
-		if _, addErr := h.Participants.Add(ctx, domain.Participant{
-			RoomID:   roomID,
-			UserID:   callerID,
-			JoinedAt: h.Now().UTC(),
-		}); addErr != nil {
-			return RoomWithParticipants{}, fmt.Errorf("participants.Add: %w", addErr)
+	//
+	// SKIP для guest'ов (Wave-15): guest user_id — transient UUID не из
+	// users table; participants.user_id ссылается на users(id) с FK,
+	// INSERT падает на FK violation. Гости получают view-only доступ
+	// БЕЗ записи в participants — их presence отслеживается через
+	// awareness в WS, а не через DB-table.
+	if opts.CallerRole != "guest" {
+		exists, exErr := h.Participants.Exists(ctx, roomID, callerID)
+		if exErr != nil {
+			return RoomWithParticipants{}, fmt.Errorf("participants.Exists: %w", exErr)
+		}
+		if !exists {
+			if _, addErr := h.Participants.Add(ctx, domain.Participant{
+				RoomID:   roomID,
+				UserID:   callerID,
+				JoinedAt: h.Now().UTC(),
+			}); addErr != nil {
+				return RoomWithParticipants{}, fmt.Errorf("participants.Add: %w", addErr)
+			}
 		}
 	}
 	parts, err := h.Participants.List(ctx, roomID)

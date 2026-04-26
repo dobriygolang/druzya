@@ -260,7 +260,12 @@ export function SharedBoardsPage({ initialRoomId, onConsumeInitial }: SharedBoar
       style={{
         position: 'absolute',
         inset: 0,
-        paddingTop: 80,
+        // paddingTop был 80px — резерв под top-chrome'у (BoardsTabsChrome,
+        // wordmark). Юзер просил убрать «чёрный header» чтобы canvas
+        // тянулся до самого верха окна. Top-chrome объекты лежат поверх
+        // canvas'а как floating pills (BoardsTabsChrome — backdrop-blur),
+        // им фон уже не нужен. +80px полезной площади для доски.
+        paddingTop: 0,
         paddingBottom: 0,
         display: 'grid',
         // КРИТИЧНО: при collapsed — single-column grid, иначе section с
@@ -377,11 +382,13 @@ function SidebarImpl({ list, selectedId, onSelect, onCreate, onDelete, onJoin, o
   return (
     <aside
       style={{
-        // Без slide-from-left анимации: open и close — оба instant. Раньше
-        // была asymmetric: open анимирован, close — instant unmount, что
-        // визуально выглядело как «закрывается плавно, открывается резко».
+        // padding: 80 px сверху — резерв под Wordmark'ом / BoardsTabsChrome.
+        // Раньше резерв был на root'е (paddingTop:80 на grid-контейнере),
+        // что обрезало canvas-section'у верх. Теперь sidebar просто
+        // отступает сверху, а canvas тянется до y=0 → доска получила
+        // +80px полезной высоты.
         borderRight: '1px solid rgba(255,255,255,0.06)',
-        padding: '0 8px',
+        padding: '80px 8px 0',
         overflowY: 'auto',
       }}
     >
@@ -1241,23 +1248,18 @@ function RoomCanvas({ roomId }: { roomId: string }) {
       ? '1 participant'
       : `${room.participants.length} participants`;
 
+  // SHARE / COPY URL chips раньше торчали в правом верхнем углу самого
+  // канваса — юзер просил убрать, чтобы доска не дробилась лишними
+  // chip'ами. Visibility-toggle и copy-URL остаются доступны через
+  // three-dots menu в Sidebar row'е (RoomRow → Copy URL / Make private),
+  // плюс при первой публикации показывается visToast.
+  void handleToggleShare;
+  void handleCopyShareURL;
+
   return (
     <>
-      {/* SHARE / PRIVATE chip — top-right. Click toggles visibility +
-          shows toast. Если public — рядом «Copy URL». Раньше Share был
-          скрыт в three-dots sidebar'а, юзер не понимал как сделать board
-          shared. Теперь explicit prominent control. */}
-      <div
-        style={{
-          position: 'absolute',
-          top: 14,
-          right: 24,
-          display: 'flex',
-          alignItems: 'center',
-          gap: 6,
-          zIndex: 26,
-        }}
-      >
+      {false && (
+      <div style={{ display: 'none' }}>
         <button
           onClick={() => void handleToggleShare()}
           disabled={visBusy || visibility === null}
@@ -1322,6 +1324,7 @@ function RoomCanvas({ roomId }: { roomId: string }) {
           </button>
         )}
       </div>
+      )}
 
       {visToast && (
         <div
