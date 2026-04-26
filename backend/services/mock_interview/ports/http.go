@@ -128,6 +128,9 @@ func (s *Server) Mount(r chi.Router) {
 	r.Get("/mock/attempts/{id}/canvas-draft", s.publicGetCanvasDraft)
 	r.Put("/mock/attempts/{id}/canvas-draft", s.publicSaveCanvasDraft)
 	r.Delete("/mock/attempts/{id}/canvas-draft", s.publicDeleteCanvasDraft)
+	// Lightweight read used by the standalone /mock/canvas/{id} tab to
+	// detect "this attempt was already submitted, canvas is dead".
+	r.Get("/mock/attempts/{id}/finalised", s.publicAttemptFinalised)
 	r.Post("/mock/stages/{id}/finish", s.publicFinishStage)
 
 	// Public: leaderboard (fairness-watermarked: only ai_assist=false counted).
@@ -1359,4 +1362,45 @@ func (s *Server) publicDeleteCanvasDraft(w http.ResponseWriter, r *http.Request)
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]bool{"ok": true})
+}
+
+// publicAttemptFinalised reports whether an attempt is closed (verdict
+// settled). Used by /mock/canvas/{id} fullscreen tab on mount: if true
+// the tab shows "уже отправлено" instead of an editable canvas. Owner
+// check is enforced — non-owners get 404 without leaking existence.
+func (s *Server) publicAttemptFinalised(w http.ResponseWriter, r *http.Request) {
+	uid, ok := s.requireUser(w, r)
+	if !ok {
+		return
+	}
+	attemptID, err := parseUUIDParam(r, "id")
+	if err != nil {
+		writeErr(w, http.StatusBadRequest, "invalid id")
+		return
+	}
+	att, err := s.H.Attempts.Get(r.Context(), attemptID)
+	if err != nil {
+		s.errToHTTP(w, r, err, "publicAttemptFinalised")
+		return
+	}
+	stage, err := s.H.PipelineStages.Get(r.Context(), att.PipelineStageID)
+	if err != nil {
+		s.errToHTTP(w, r, err, "publicAttemptFinalised stage")
+		return
+	}
+	pipe, err := s.H.Pipelines.Get(r.Context(), stage.PipelineID)
+	if err != nil {
+		s.errToHTTP(w, r, err, "publicAttemptFinalised pipe")
+		return
+	}
+	if pipe.UserID != uid {
+		writeErr(w, http.StatusNotFound, "not found")
+		return
+	}
+	finalised := att.AIVerdict != domain.AttemptVerdictPending
+	writeJSON(w, http.StatusOK, map[string]any{
+		"finalised": finalised,
+		"verdict":   string(att.AIVerdict),
+		"kind":      string(att.Kind),
+	})
 }

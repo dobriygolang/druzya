@@ -141,6 +141,23 @@ export function clearCanvasDraftsForAttempts(attemptIds: string[]): void {
   for (const id of attemptIds) clearCanvasDraft(id)
 }
 
+// sweepAllCanvasDrafts wipes EVERY draft in localStorage regardless of
+// TTL. Called from logoutCurrentSession so a fresh user on the same
+// browser can't see stale "восстановлено" prompts that point at attempts
+// they don't own (the server would 403 anyway, but the UI is noisy).
+export function sweepAllCanvasDrafts(): void {
+  try {
+    const toDelete: string[] = []
+    for (let i = 0; i < window.localStorage.length; i++) {
+      const k = window.localStorage.key(i)
+      if (k && k.startsWith(KEY_PREFIX)) toDelete.push(k)
+    }
+    for (const k of toDelete) window.localStorage.removeItem(k)
+  } catch {
+    /* noop */
+  }
+}
+
 // ── BroadcastChannel ──────────────────────────────────────────────────
 
 export type CanvasMessage =
@@ -157,22 +174,53 @@ export function openCanvasChannel(attemptId: string): {
   close: () => void
 } {
   const name = CHANNEL_PREFIX + attemptId
-  const ch = typeof BroadcastChannel !== 'undefined' ? new BroadcastChannel(name) : null
+  const hasBC = typeof BroadcastChannel !== 'undefined'
+  const ch = hasBC ? new BroadcastChannel(name) : null
+  // Storage-event fallback for environments where BroadcastChannel is
+  // disabled (e.g. Safari Private Mode). The 'storage' event fires on
+  // OTHER tabs of the same origin whenever localStorage changes — we
+  // piggy-back the message into a sentinel key, then delete it. Only
+  // wired when BC is unavailable to avoid double-handling.
+  const fallbackKey = 'druz9.mock.canvas.bus.' + attemptId
   return {
     post: (msg) => {
       if (ch) {
         try {
           ch.postMessage(msg)
+          return
         } catch {
           /* ignore — closed or DataCloneError */
         }
       }
+      if (!hasBC) {
+        try {
+          // Tag with a nonce so identical successive messages still
+          // trigger a 'storage' event in peer tabs.
+          const wrapped = JSON.stringify({ nonce: Date.now() + ':' + Math.random(), msg })
+          window.localStorage.setItem(fallbackKey, wrapped)
+          window.localStorage.removeItem(fallbackKey)
+        } catch {
+          /* quota / unavailable — drop */
+        }
+      }
     },
     subscribe: (handler) => {
-      if (!ch) return () => {}
-      const onMessage = (e: MessageEvent<CanvasMessage>) => handler(e.data)
-      ch.addEventListener('message', onMessage)
-      return () => ch.removeEventListener('message', onMessage)
+      if (ch) {
+        const onMessage = (e: MessageEvent<CanvasMessage>) => handler(e.data)
+        ch.addEventListener('message', onMessage)
+        return () => ch.removeEventListener('message', onMessage)
+      }
+      const onStorage = (e: StorageEvent) => {
+        if (e.key !== fallbackKey || !e.newValue) return
+        try {
+          const wrapped = JSON.parse(e.newValue) as { nonce: string; msg: CanvasMessage }
+          if (wrapped?.msg) handler(wrapped.msg)
+        } catch {
+          /* ignore corrupt payload */
+        }
+      }
+      window.addEventListener('storage', onStorage)
+      return () => window.removeEventListener('storage', onStorage)
     },
     close: () => {
       if (ch) {

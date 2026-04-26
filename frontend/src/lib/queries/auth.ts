@@ -131,4 +131,14 @@ export async function logoutCurrentSession(): Promise<void> {
     /* network failure: still clear local state below */
   }
   clearTokens()
+  // Wipe ALL canvas drafts so a different user logging in on the same
+  // browser doesn't see stale "восстановлено N мин назад" prompts on
+  // attempts they don't own. Imported lazily so the auth bundle keeps
+  // its narrow surface area.
+  try {
+    const { sweepAllCanvasDrafts } = await import('../canvasDraft')
+    sweepAllCanvasDrafts()
+  } catch {
+    /* canvasDraft unavailable — non-critical */
+  }
 }

@@ -164,8 +164,11 @@ func TestLLMJudge_ParseFailure_FallsBackToError(t *testing.T) {
 	if err != nil {
 		t.Fatalf("JudgeAnswer should not propagate: got err=%v", err)
 	}
-	if out.Verdict != domain.AttemptVerdictPending {
-		t.Errorf("verdict=%s, want pending (fallback)", out.Verdict)
+	// errorFallback() returns 'fail' (not 'pending') so the row settles
+	// terminally — the frontend reads ai_verdict='pending' as "judge
+	// still working" and would spin forever otherwise.
+	if out.Verdict != domain.AttemptVerdictFail {
+		t.Errorf("verdict=%s, want fail (terminal fallback)", out.Verdict)
 	}
 	if out.Score != 0 {
 		t.Errorf("score=%v, want 0", out.Score)
@@ -424,8 +427,8 @@ func TestLLMJudge_Canvas_BadDataURL_FallsBackToError(t *testing.T) {
 	if err != nil {
 		t.Fatalf("should not propagate err: %v", err)
 	}
-	if out.Verdict != domain.AttemptVerdictPending {
-		t.Errorf("verdict=%s, want pending (fallback)", out.Verdict)
+	if out.Verdict != domain.AttemptVerdictFail {
+		t.Errorf("verdict=%s, want fail (terminal fallback)", out.Verdict)
 	}
 }
 

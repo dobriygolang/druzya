@@ -23,8 +23,9 @@
 import { lazy, Suspense, useEffect, useRef, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { CheckCircle2, Loader2 } from 'lucide-react'
+import { api } from '../../lib/apiClient'
 import { useCanvasDraft } from '../../lib/useCanvasDraft'
-import type { ExcalidrawImperativeAPI } from '@excalidraw/excalidraw/types'
+import type { ExcalidrawImperativeAPI, BinaryFileData } from '@excalidraw/excalidraw/types'
 
 const SysDesignCanvasInner = lazy(() => import('./_lazy/SysDesignCanvasInner'))
 
@@ -33,33 +34,72 @@ export default function MockCanvasFullscreen() {
   const { state, update, onSubmittedFromMain } = useCanvasDraft(attemptId, 'fullscreen')
   const apiRef = useRef<ExcalidrawImperativeAPI | null>(null)
   const [submittedAt, setSubmittedAt] = useState<number | null>(null)
+  const [closeBlocked, setCloseBlocked] = useState(false)
+  const [finalised, setFinalised] = useState<boolean | null>(null)
+  const restoredAppliedRef = useRef(false)
 
-  // When the main tab broadcasts 'submitted', flip into a goodbye
-  // state and close after 3s.
+  // Guard: if the attempt is already submitted (verdict settled), block
+  // the editable canvas — the user would otherwise draw into a dead row
+  // with no way to submit. Best-effort fetch; on error we let the canvas
+  // render (degraded mode is "appears editable" — the same as today).
+  useEffect(() => {
+    if (!attemptId) return
+    let cancelled = false
+    void (async () => {
+      try {
+        const r = await api<{ finalised: boolean }>(`/mock/attempts/${attemptId}/finalised`)
+        if (!cancelled) setFinalised(Boolean(r.finalised))
+      } catch {
+        if (!cancelled) setFinalised(false)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [attemptId])
+
+  // When the main tab broadcasts 'submitted', flip into a goodbye state
+  // and try to close after 3s. window.close() only works when this tab
+  // was opened via window.open from the main tab — if the user pasted
+  // the URL directly the call is denied silently. We detect that and
+  // surface a "Можно закрыть вкладку" hint instead.
   useEffect(() => {
     return onSubmittedFromMain(() => {
       setSubmittedAt(Date.now())
       window.setTimeout(() => {
         try {
           window.close()
+          // If close didn't actually take effect, show the manual hint.
+          window.setTimeout(() => {
+            if (!window.closed) setCloseBlocked(true)
+          }, 200)
         } catch {
-          /* ignore — popup-blocked or top-level navigation */
+          setCloseBlocked(true)
         }
       }, 3000)
     })
   }, [onSubmittedFromMain])
 
-  // When the OTHER tab edits, push the new scene into Excalidraw. We
-  // rely on `restored` for the very first paint, then `remote` for live
-  // syncs from the main tab (rare — usually edits flow this → main).
+  // Apply scene + files from a peer broadcast OR the async-loaded
+  // restored draft. updateScene only handles geometry; image files
+  // travel through addFiles separately.
   useEffect(() => {
-    if (!state.remote) return
-    const api = apiRef.current
-    if (!api) return
-    api.updateScene({
-      elements: state.remote.sceneJSON.elements as never,
-    })
-  }, [state.remote])
+    const ex = apiRef.current
+    if (!ex) return
+    const remote = state.remote ?? state.restored
+    if (!remote) return
+    // The restored draft seeds initialData on first mount — only apply
+    // it via updateScene if the canvas was already rendered with empty
+    // state (Redis fallback path arrives ms AFTER mount).
+    if (remote === state.restored && restoredAppliedRef.current) return
+    if (remote === state.restored) restoredAppliedRef.current = true
+    ex.updateScene({ elements: remote.sceneJSON.elements as never })
+    const files = remote.sceneJSON.files
+    if (files && typeof files === 'object') {
+      const arr = Object.values(files) as BinaryFileData[]
+      if (arr.length > 0) ex.addFiles(arr)
+    }
+  }, [state.remote, state.restored])
 
   const initialData = state.restored
     ? ({
@@ -72,6 +112,19 @@ export default function MockCanvasFullscreen() {
     return (
       <div className="flex min-h-screen items-center justify-center bg-bg text-text-muted">
         Не указан attempt id.
+      </div>
+    )
+  }
+
+  if (finalised === true) {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-bg text-text-primary">
+        <CheckCircle2 className="h-16 w-16 text-success" />
+        <h1 className="font-display text-2xl font-extrabold">Этап уже отправлен</h1>
+        <p className="max-w-sm text-center text-sm text-text-secondary">
+          Эта попытка закрыта. Можешь закрыть вкладку — результат смотри
+          на основной странице собеса.
+        </p>
       </div>
     )
   }
@@ -89,9 +142,13 @@ export default function MockCanvasFullscreen() {
           </span>
         </div>
         <div className="flex items-center gap-3 font-mono text-[11px] text-text-muted">
-          {state.quotaExceeded ? (
+          {state.serverDraftFailed ? (
+            <span className="rounded-md border border-danger/50 bg-danger/10 px-2 py-0.5 text-danger">
+              ⚠ автосейв выкл — жми Submit
+            </span>
+          ) : state.quotaExceeded ? (
             <span className="rounded-md border border-warn/50 bg-warn/10 px-2 py-0.5 text-warn">
-              ⚠ автосейв выкл — мало места
+              ⚠ локалка переполнена — пишем на сервер
             </span>
           ) : (
             <span className="text-text-secondary">автосейв · 24ч</span>
@@ -138,7 +195,9 @@ export default function MockCanvasFullscreen() {
               <CheckCircle2 className="h-10 w-10" />
               <span className="font-display text-lg font-bold">Отправлено</span>
               <span className="font-mono text-xs text-text-secondary">
-                Закрываю вкладку…
+                {closeBlocked
+                  ? 'Можно закрыть вкладку (✕ или Cmd/Ctrl+W)'
+                  : 'Закрываю вкладку…'}
               </span>
             </div>
           </div>

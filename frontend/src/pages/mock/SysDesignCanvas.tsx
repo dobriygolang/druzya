@@ -20,7 +20,7 @@ import {
   type PipelineAttempt,
 } from '../../lib/queries/mockPipeline'
 import { useCanvasDraft } from '../../lib/useCanvasDraft'
-import type { ExcalidrawImperativeAPI } from '@excalidraw/excalidraw/types'
+import type { BinaryFileData, ExcalidrawImperativeAPI } from '@excalidraw/excalidraw/types'
 
 const SysDesignCanvasInner = lazy(() => import('./_lazy/SysDesignCanvasInner'))
 
@@ -69,13 +69,20 @@ export function SysDesignCanvas({
     setRestoreBanner({ ageMin: Math.floor((Date.now() - draft.restored.updatedAt) / 60_000) })
   }, [draft.restored])
 
-  // Live updates from the standalone tab — push the new scene into
-  // Excalidraw without overwriting NFR/Context (those are typed here).
+  // Live updates from the standalone tab — push the new scene + file
+  // blobs into Excalidraw. updateScene only updates geometry; image
+  // files (Excalidraw's library / paste-image) need a separate
+  // addFiles call or they'd render as empty placeholders.
   useEffect(() => {
     if (!draft.remote) return
     const api = apiRef.current
     if (!api) return
     api.updateScene({ elements: draft.remote.sceneJSON.elements as never })
+    const files = draft.remote.sceneJSON.files
+    if (files && typeof files === 'object') {
+      const arr = Object.values(files) as BinaryFileData[]
+      if (arr.length > 0) api.addFiles(arr)
+    }
   }, [draft.remote])
 
   // Latest scene we've seen — captured from Excalidraw onChange so that
@@ -181,11 +188,16 @@ export function SysDesignCanvas({
         {!isSubmitted && (
           <div className="flex flex-wrap items-center justify-between gap-2 px-1">
             <div className="flex flex-wrap items-center gap-2 font-mono text-[10px] text-text-secondary">
-              <span>автосейв · 24ч</span>
-              {draft.quotaExceeded && (
+              {draft.serverDraftFailed ? (
+                <span className="rounded-md border border-danger/50 bg-danger/10 px-2 py-0.5 text-danger">
+                  ⚠ автосейв полностью выкл — жми Submit
+                </span>
+              ) : draft.quotaExceeded ? (
                 <span className="rounded-md border border-warn/50 bg-warn/10 px-2 py-0.5 text-warn">
                   локалка переполнена → пишем на сервер
                 </span>
+              ) : (
+                <span>автосейв · 24ч</span>
               )}
               {draft.fullscreenAlive && (
                 <span className="rounded-md border border-success/50 bg-success/10 px-2 py-0.5 text-success">

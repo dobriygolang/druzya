@@ -34,9 +34,13 @@ export type CanvasDraftState = {
   // live cross-tab sync without going through localStorage.
   remote: CanvasDraft | null
   // True when localStorage refused our write even after a stale-sweep.
-  // UI surfaces this as a non-blocking warning; Submit still works
-  // (in-memory state is unaffected).
+  // UI surfaces this as a non-blocking warning; the hook will retry on
+  // the Redis server fallback.
   quotaExceeded: boolean
+  // True when the Redis fallback PUT also failed AFTER localStorage was
+  // exhausted. UI flips from "пишем на сервер" to a stronger "автосейв
+  // полностью выкл — жми Submit" warning.
+  serverDraftFailed: boolean
   // Main-tab only: true if the fullscreen tab pinged within the last
   // PEER_TIMEOUT_MS. Drives the "доска открыта" hint.
   fullscreenAlive: boolean
@@ -55,6 +59,7 @@ export function useCanvasDraft(
     restored: loadCanvasDraft(attemptId),
     remote: null,
     quotaExceeded: false,
+    serverDraftFailed: false,
     fullscreenAlive: false,
   }))
 
@@ -174,25 +179,37 @@ export function useCanvasDraft(
       if (debounceRef.current !== null) window.clearTimeout(debounceRef.current)
       debounceRef.current = window.setTimeout(() => {
         const result = saveCanvasDraft(attemptId, draft)
-        if (result === 'quota') {
-          // Quota exhausted → fall back to Redis. Best-effort, errors
-          // are swallowed (autosave is non-critical, Submit is the real
-          // safety net). Mark the quota flag so the UI shows a reduced-
-          // protection hint instead of a full "выкл" warning.
-          void api(`/mock/attempts/${attemptId}/canvas-draft`, {
-            method: 'PUT',
-            body: JSON.stringify({
-              scene_json: draft.sceneJSON,
-              non_functional_md: draft.nonFunctionalMD,
-              context_md: draft.contextMD,
-            }),
-            headers: { 'Content-Type': 'application/json' },
-          }).catch(() => {})
+        const quota = result === 'quota'
+        // Always reflect the localStorage outcome in state so the UI
+        // can switch its banner text. Reset serverDraftFailed when we
+        // managed to write locally — that's our safety net working.
+        if (!quota) {
+          setState((s) =>
+            s.quotaExceeded || s.serverDraftFailed
+              ? { ...s, quotaExceeded: false, serverDraftFailed: false }
+              : s,
+          )
+          return
         }
-        setState((s) => {
-          const quota = result === 'quota'
-          return s.quotaExceeded === quota ? s : { ...s, quotaExceeded: quota }
+        // Quota exhausted → fall back to Redis. Track success/failure
+        // so the UI shows an honest "пишем на сервер" vs "автосейв
+        // полностью выкл" message.
+        setState((s) => (s.quotaExceeded ? s : { ...s, quotaExceeded: true }))
+        api(`/mock/attempts/${attemptId}/canvas-draft`, {
+          method: 'PUT',
+          body: JSON.stringify({
+            scene_json: draft.sceneJSON,
+            non_functional_md: draft.nonFunctionalMD,
+            context_md: draft.contextMD,
+          }),
+          headers: { 'Content-Type': 'application/json' },
         })
+          .then(() => {
+            setState((s) => (s.serverDraftFailed ? { ...s, serverDraftFailed: false } : s))
+          })
+          .catch(() => {
+            setState((s) => (s.serverDraftFailed ? s : { ...s, serverDraftFailed: true }))
+          })
       }, SAVE_DEBOUNCE_MS)
       // Broadcast immediately — peer tab shouldn't wait for the debounce.
       channelRef.current?.post({
