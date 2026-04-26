@@ -158,27 +158,32 @@ var DefaultTaskModelMap = TaskModelMap{
 	TaskVision: {
 		// Vision-only task. Turbo-chain (Groq llama-3.3-70b / Cerebras
 		// llama3.3-70b / Mistral large) — все text-only, supportsVision=false
-		// на драйверном уровне. Single working free-tier vision-capable
-		// модель в :free-каталоге OpenRouter — Qwen2.5-VL 72B. Это лучшая
-		// open-source vision-модель сейчас (2026-Q2): отлично читает
-		// диаграммы, схемы, рукописный текст; принимает image_url
-		// content-blocks per OpenAI-spec. Free через OpenRouter, ~30k tokens
-		// daily limit per IP — достаточно для mock-interview (1 sysdesign
-		// аттемпт = ~3k tokens с изображением).
+		// на драйверном уровне.
 		//
-		// Альтернативы если qwen-2.5-vl падает:
-		//   "mistralai/mistral-small-3.2-24b-instruct:free" — Mistral Small
-		//      с vision, free через OpenRouter, 24B параметров. Ниже
-		//      качество на технических диаграммах.
-		//   "meta-llama/llama-3.2-11b-vision-instruct:free" — самый малый
-		//      free vision-LLM, быстрый, но слабее распознаёт компоненты
-		//      на architecture-диаграммах.
+		// 2026-04-26: переехали с qwen/qwen-2.5-vl-72b-instruct:free →
+		// google/gemma-3-27b-it:free. OpenRouter retired qwen-2.5-vl из
+		// free-каталога (404 «No endpoints found»). Gemma 3 27B — текущая
+		// лучшая бесплатная vision-модель в OpenRouter (131K context, март
+		// 2026, vision + text), хорошо читает скриншоты UI и диаграммы.
+		//
+		// Если Gemma 3 тоже выпилят — актуальные альтернативы (apr 2026):
+		//   "google/gemma-3-12b-it:free"        — 12B, легче, быстрее.
+		//   "google/gemma-3-4b-it:free"         — 4B, минимальное качество.
+		//   "google/gemma-4-26b-a4b-it:free"    — 26B, 262K context.
+		//   "google/gemma-4-31b-it:free"        — 31B, 262K context.
+		//   "nvidia/nemotron-nano-12b-v2-vl:free" — NVIDIA 12B vision.
+		// Все принимают image_url content-blocks per OpenAI-spec.
+		// Free-tier limit: 20 req/min, 200 req/day per OpenRouter API key.
+		//
+		// Hot-swap без redeploy: админ может поменять модель через
+		// `PUT /admin/llm/config` (см. shared/pkg/llmchain/runtime_config.go),
+		// этот static-map — только default fallback.
 		//
 		// Premium-уровни (через VirtualUltra ModelOverride):
 		//   Claude Sonnet 4.5 — best-in-class на технических диаграммах,
 		//      tier=ascendant.
 		//   GPT-4o / GPT-4.1 — fallback в Ultra chain, тоже vision-capable.
-		ProviderOpenRouter: "qwen/qwen-2.5-vl-72b-instruct:free",
+		ProviderOpenRouter: "google/gemma-3-27b-it:free",
 	},
 	TaskNoteQA: {
 		// RAG-ответ на вопрос по нотам: длинный context (title+body 8 нот)
