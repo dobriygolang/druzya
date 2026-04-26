@@ -407,7 +407,7 @@ func (c *Chain) ChatStream(ctx context.Context, req Request) (<-chan StreamEvent
 		failures = append(failures,
 			slog.Group(string(a.Provider),
 				slog.String("model", a.Model),
-				slog.Int("status", int(a.Status)),
+				slog.Int("status", a.Status),
 				slog.String("err", errString(a.Err))))
 	}
 	c.log.ErrorContext(ctx, "llmchain.ChatStream: all candidates failed",
