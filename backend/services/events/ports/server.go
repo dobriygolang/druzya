@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"time"
 
 	"druz9/events/app"
 	"druz9/events/domain"
@@ -97,7 +98,19 @@ func (s *EventsServer) ListMyEvents(
 	if !ok {
 		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("unauthenticated"))
 	}
-	events, err := s.H.ListMyEvents(ctx, uid, req.Msg.GetFrom().AsTime(), req.Msg.GetTo().AsTime())
+	// proto3 timestamps: if the field is unset, GetFrom() returns nil and
+	// AsTime() returns Unix epoch (1970-01-01) — not Go's zero time. We
+	// must turn the nil case into time.Time{} so the handler can apply
+	// its default window; otherwise the SQL filters on `[1970, 1970]`
+	// and the response is always empty.
+	var fromT, toT time.Time
+	if ts := req.Msg.GetFrom(); ts != nil {
+		fromT = ts.AsTime()
+	}
+	if ts := req.Msg.GetTo(); ts != nil {
+		toT = ts.AsTime()
+	}
+	events, err := s.H.ListMyEvents(ctx, uid, fromT, toT)
 	if err != nil {
 		return nil, s.toErr(err)
 	}

@@ -349,10 +349,83 @@ export function usePublicProfileQuery(username: string | undefined) {
   })
 }
 
+// normalizeAtlas — vanguard transcoder отдаёт proto-JSON в camelCase
+// (recommendedKata / solvedCount / totalCount / lastSolvedAt / posX / posY /
+// posSet / centerNode), а компоненты атласа читают snake_case. Без этой
+// нормализации drawer выдаёт «каталог не размечен» для каждой ноды,
+// потому что `node.recommended_kata` вечно undefined. Фикс симметричен
+// тому, что мы делаем для slots/dashboard: терпим обе формы на чтении.
+function normalizeAtlas(raw: unknown): Atlas {
+  const r = (raw ?? {}) as Record<string, unknown>
+  const rawNodes = (r.nodes as unknown[]) ?? []
+  const rawEdges = (r.edges as unknown[]) ?? []
+  const pickKata = (k: unknown): KataRef => {
+    const x = (k ?? {}) as Record<string, unknown>
+    return {
+      id: String(x.id ?? ''),
+      title: String(x.title ?? ''),
+      difficulty: String(x.difficulty ?? ''),
+      estimated_minutes:
+        (x.estimated_minutes as number | undefined) ??
+        (x.estimatedMinutes as number | undefined),
+    }
+  }
+  const nodes: AtlasNode[] = rawNodes.map((n) => {
+    const x = (n ?? {}) as Record<string, unknown>
+    const kataRaw =
+      (x.recommended_kata as unknown[] | undefined) ??
+      (x.recommendedKata as unknown[] | undefined) ??
+      []
+    return {
+      key: String(x.key ?? ''),
+      title: String(x.title ?? ''),
+      section: String(x.section ?? ''),
+      kind: String(x.kind ?? ''),
+      progress: Number(x.progress ?? 0),
+      unlocked: Boolean(x.unlocked),
+      decaying: Boolean(x.decaying),
+      description: String(x.description ?? ''),
+      solved_count:
+        (x.solved_count as number | undefined) ??
+        (x.solvedCount as number | undefined),
+      total_count:
+        (x.total_count as number | undefined) ??
+        (x.totalCount as number | undefined),
+      last_solved_at:
+        (x.last_solved_at as string | undefined) ??
+        (x.lastSolvedAt as string | undefined),
+      recommended_kata: kataRaw.map(pickKata),
+      cluster: (x.cluster as string | undefined) ?? undefined,
+      pos_x: (x.pos_x as number | undefined) ?? (x.posX as number | undefined),
+      pos_y: (x.pos_y as number | undefined) ?? (x.posY as number | undefined),
+      pos_set:
+        (x.pos_set as boolean | undefined) ??
+        (x.posSet as boolean | undefined),
+      reachable: x.reachable as boolean | undefined,
+    }
+  })
+  const edges: AtlasEdge[] = rawEdges.map((e) => {
+    const x = (e ?? {}) as Record<string, unknown>
+    return {
+      from: String(x.from ?? ''),
+      to: String(x.to ?? ''),
+      kind: (x.kind as string | undefined) ?? undefined,
+    }
+  })
+  return {
+    center_node:
+      (r.center_node as string | undefined) ??
+      (r.centerNode as string | undefined) ??
+      '',
+    nodes,
+    edges,
+  }
+}
+
 export function useAtlasQuery() {
   return useQuery({
     queryKey: profileQueryKeys.meAtlas(),
-    queryFn: () => api<Atlas>('/profile/me/atlas'),
+    queryFn: async () => normalizeAtlas(await api<unknown>('/profile/me/atlas')),
     staleTime: PROFILE_STALE_MS,
     gcTime: PROFILE_GC_MS,
   })

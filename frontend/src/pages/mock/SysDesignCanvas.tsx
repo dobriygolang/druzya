@@ -69,6 +69,13 @@ export function SysDesignCanvas({
     setRestoreBanner({ ageMin: Math.floor((Date.now() - draft.restored.updatedAt) / 60_000) })
   }, [draft.restored])
 
+  // applyingRemoteRef gates the onChange echo: when updateScene runs
+  // off a peer broadcast Excalidraw fires onChange afterwards, which
+  // would re-broadcast the (older) scene back and overwrite the peer's
+  // in-progress drag with a stale 2×2 echo. The flag tells onChange
+  // to skip pushDraft for that one tick.
+  const applyingRemoteRef = useRef(false)
+
   // Live updates from the standalone tab — push the new scene + file
   // blobs into Excalidraw. updateScene only updates geometry; image
   // files (Excalidraw's library / paste-image) need a separate
@@ -77,12 +84,16 @@ export function SysDesignCanvas({
     if (!draft.remote) return
     const api = apiRef.current
     if (!api) return
+    applyingRemoteRef.current = true
     api.updateScene({ elements: draft.remote.sceneJSON.elements as never })
     const files = draft.remote.sceneJSON.files
     if (files && typeof files === 'object') {
       const arr = Object.values(files) as BinaryFileData[]
       if (arr.length > 0) api.addFiles(arr)
     }
+    window.setTimeout(() => {
+      applyingRemoteRef.current = false
+    }, 0)
   }, [draft.remote])
 
   // Latest scene we've seen — captured from Excalidraw onChange so that
@@ -282,6 +293,7 @@ export function SysDesignCanvas({
                     elements: elements as unknown[],
                     files: (files ?? {}) as Record<string, unknown>,
                   }
+                  if (applyingRemoteRef.current) return
                   pushDraft()
                 }}
               />

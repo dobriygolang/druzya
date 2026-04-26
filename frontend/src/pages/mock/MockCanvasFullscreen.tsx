@@ -80,6 +80,15 @@ export default function MockCanvasFullscreen() {
     })
   }, [onSubmittedFromMain])
 
+  // applyingRemoteRef gates the onChange echo: when we mutate the canvas
+  // via updateScene from a remote/restored payload, Excalidraw fires
+  // onChange afterwards. Without this gate the main↔fullscreen pair
+  // forms a loop — the receiver re-broadcasts the just-applied scene
+  // back to the sender, which during an active drag clobbers the
+  // user's grown rectangle with a stale 2×2 echo. Hence the visible
+  // «всё сжимается до минимума».
+  const applyingRemoteRef = useRef(false)
+
   // Apply scene + files from a peer broadcast OR the async-loaded
   // restored draft. updateScene only handles geometry; image files
   // travel through addFiles separately.
@@ -93,12 +102,18 @@ export default function MockCanvasFullscreen() {
     // state (Redis fallback path arrives ms AFTER mount).
     if (remote === state.restored && restoredAppliedRef.current) return
     if (remote === state.restored) restoredAppliedRef.current = true
+    applyingRemoteRef.current = true
     ex.updateScene({ elements: remote.sceneJSON.elements as never })
     const files = remote.sceneJSON.files
     if (files && typeof files === 'object') {
       const arr = Object.values(files) as BinaryFileData[]
       if (arr.length > 0) ex.addFiles(arr)
     }
+    // Clear on the next tick — Excalidraw fires onChange synchronously
+    // OR within a microtask depending on version. A macrotask covers both.
+    window.setTimeout(() => {
+      applyingRemoteRef.current = false
+    }, 0)
   }, [state.remote, state.restored])
 
   const initialData = state.restored
@@ -174,6 +189,7 @@ export default function MockCanvasFullscreen() {
             }}
             initialData={initialData}
             onChange={(elements, _appState, files) => {
+              if (applyingRemoteRef.current) return
               update({
                 sceneJSON: {
                   elements: elements as unknown[],
