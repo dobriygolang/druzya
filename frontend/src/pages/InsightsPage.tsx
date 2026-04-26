@@ -1,12 +1,12 @@
 import type * as React from 'react'
 import { Link } from 'react-router-dom'
-import { ArrowRight, Brain, Flame, Map as MapIcon, RefreshCw, Shield, Sparkles, Target, Trophy, TrendingUp } from 'lucide-react'
+import { ArrowRight, Brain, Flame, Map as MapIcon, Shield, Sparkles, Target, Trophy, TrendingUp } from 'lucide-react'
 import { AppShellV2 } from '../components/AppShell'
 import { Card } from '../components/Card'
 import { useMockLeaderboardQuery } from '../lib/queries/mockPipeline'
+import { useAtlasQuery } from '../lib/queries/profile'
 import {
  useDailyBriefQuery,
- useRegenerateDailyBriefMutation,
  type RecommendationKind,
 } from '../lib/queries/intelligence'
 
@@ -91,28 +91,17 @@ export default function InsightsPage() {
 
 function WeeklyDigestCard() {
  const briefQ = useDailyBriefQuery()
- const regen = useRegenerateDailyBriefMutation()
  const brief = briefQ.data
  const loading = briefQ.isPending
  const failed = briefQ.isError && !briefQ.data
 
  return (
  <Card className="flex-col gap-3 p-5" interactive={false}>
- <div className="flex items-center justify-between gap-2">
  <div className="flex items-center gap-2">
  <Sparkles className="h-4 w-4 text-text-primary" />
  <span className="font-mono text-[11px] uppercase tracking-[0.16em] text-text-primary">
  AI coach · today
  </span>
- </div>
- <button
- onClick={() => regen.mutate()}
- disabled={regen.isPending}
- title="Regenerate brief"
- className="flex h-6 w-6 items-center justify-center rounded-md text-text-muted transition hover:bg-surface-2 hover:text-text-primary disabled:opacity-40"
- >
- <RefreshCw className={`h-3 w-3 ${regen.isPending ? 'animate-spin' : ''}`} />
- </button>
  </div>
 
  {loading && (
@@ -269,6 +258,18 @@ function FocusTrendCard() {
 }
 
 function AtlasPreviewCard() {
+ const atlasQ = useAtlasQuery()
+ const nodes = atlasQ.data?.nodes ?? []
+ // Stat semantics:
+ //  - Узлов  = всего нод в атласе
+ //  - Освоено = unlocked && !decaying (полная mastery, без распада)
+ //  - В работе = есть прогресс, но ещё не unlocked (учим)
+ //  - Декай  = unlocked-then-decaying (надо подтянуть)
+ const total = nodes.length
+ const mastered = nodes.filter((n) => n.unlocked && !n.decaying).length
+ const inProgress = nodes.filter((n) => !n.unlocked && (n.progress ?? 0) > 0).length
+ const decaying = nodes.filter((n) => n.decaying).length
+ const fmt = (v: number) => (atlasQ.isPending ? '…' : atlasQ.isError ? '—' : String(v))
  return (
  <Card className="flex-col gap-4 p-6" interactive={false}>
  <div className="flex items-start justify-between gap-4">
@@ -276,14 +277,12 @@ function AtlasPreviewCard() {
  <div className="flex items-center gap-2">
  <MapIcon className="h-4 w-4 text-text-primary" />
  <span className="font-mono text-[11px] uppercase tracking-[0.16em] text-text-primary">
- Atlas auto-update
+ Atlas
  </span>
  </div>
  <p className="text-[13px] leading-relaxed text-text-secondary">
- Decay/mastery узлов будут обновляться автоматически на основе матчей,
- kata-solves и mock-сигналов. Сейчас атлас статичен — карта-снимок
- показывает текущее состояние навыков. RPC{' '}
- <span className="font-mono text-text-primary">GetAtlasUpdate</span>.
+ Снимок навыков: что освоено, что учишь, что начинает разваливаться.
+ Обновляется после mock-собесов, kata-solves и матчей.
  </p>
  </div>
  <Link
@@ -294,10 +293,10 @@ function AtlasPreviewCard() {
  </Link>
  </div>
  <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
- <AtlasMiniStat label="Узлов" value="—" />
- <AtlasMiniStat label="Освоено" value="—" />
- <AtlasMiniStat label="В работе" value="—" />
- <AtlasMiniStat label="Декай" value="—" />
+ <AtlasMiniStat label="Узлов" value={fmt(total)} />
+ <AtlasMiniStat label="Освоено" value={fmt(mastered)} />
+ <AtlasMiniStat label="В работе" value={fmt(inProgress)} />
+ <AtlasMiniStat label="Декай" value={fmt(decaying)} />
  </div>
  </Card>
  )

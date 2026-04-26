@@ -122,6 +122,20 @@ export function SysDesignCanvas({
     try {
       const elements = api.getSceneElements()
       const files = api.getFiles()
+      // Guard: a click in Excalidraw without a drag produces an element
+      // with width=0/height=0 — invisible to the user but present in the
+      // scene. Exporting such a scene yields a blank PNG that the vision
+      // judge can't read, and the user sees an opaque "Не удалось
+      // получить оценку" failure. Refuse the submit early with a hint.
+      const visible = elements.filter(
+        (e) => !e.isDeleted && (e.width ?? 0) > 1 && (e.height ?? 0) > 1,
+      )
+      if (visible.length === 0) {
+        setClientErr(
+          'Нечего оценивать — нарисуй хотя бы одну фигуру с размером (тяни мышью, не просто клик).',
+        )
+        return
+      }
       const { exportToBlob } = await import('@excalidraw/excalidraw')
       const blob = await exportToBlob({
         elements,

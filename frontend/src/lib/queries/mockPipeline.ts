@@ -321,6 +321,14 @@ export function useFinishStageMutation(pipelineId: string | undefined) {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: mockPipelineKeys.pipeline(pipelineId) })
+      // FinishStage may transition the pipeline to a terminal verdict
+      // (FinishPipeline runs server-side when all stages are done) →
+      // user's atlas progress / weekly report / daily brief all become
+      // stale. Invalidate them so the next mount of /atlas, /insights,
+      // and /profile sees the fresh state without a manual refresh.
+      qc.invalidateQueries({ queryKey: ['profile', 'me', 'atlas'] })
+      qc.invalidateQueries({ queryKey: ['profile', 'me', 'report'] })
+      qc.invalidateQueries({ queryKey: ['intelligence', 'daily-brief'] })
     },
   })
 }

@@ -113,14 +113,26 @@ func (r *Events) Get(ctx context.Context, id uuid.UUID) (domain.EventWithCircleN
 }
 
 func (r *Events) ListUpcomingByMember(ctx context.Context, userID uuid.UUID, from, to time.Time) ([]domain.EventWithCircleName, error) {
+	// User-visible events =
+	//   (events of circles where user is a member)
+	// ∪ (events the user explicitly participates in)
+	// ∪ (events the user authored — covers the case where the creator
+	//    isn't yet a circle_member but obviously should see their own
+	//    event in the list).
+	// Without the participants/created_by branch a freshly-created event
+	// could disappear from the creator's list and the response would
+	// look like "{}", which is exactly what users reported.
 	rows, err := r.pool.Query(ctx,
-		`SELECT e.id, e.circle_id, e.title, e.description, e.starts_at, e.duration_min,
-		        e.editor_room_id, e.whiteboard_room_id, e.recurrence_rule,
-		        e.created_by, e.created_at, COALESCE(c.name, '')
+		`SELECT DISTINCT e.id, e.circle_id, e.title, e.description, e.starts_at,
+		        e.duration_min, e.editor_room_id, e.whiteboard_room_id,
+		        e.recurrence_rule, e.created_by, e.created_at, COALESCE(c.name, '')
 		   FROM events e
-		   JOIN circle_members m ON m.circle_id = e.circle_id
 		   LEFT JOIN circles c ON c.id = e.circle_id
-		  WHERE m.user_id = $1
+		   LEFT JOIN circle_members m
+		     ON m.circle_id = e.circle_id AND m.user_id = $1
+		   LEFT JOIN event_participants p
+		     ON p.event_id = e.id AND p.user_id = $1
+		  WHERE (m.user_id IS NOT NULL OR p.user_id IS NOT NULL OR e.created_by = $1)
 		    AND e.starts_at >= $2
 		    AND e.starts_at <= $3
 		  ORDER BY e.starts_at ASC
