@@ -11,14 +11,15 @@
 //
 // Single-user. NO Yjs collab. Theme overrides mirror WhiteboardSharePage.
 
-import { lazy, Suspense, useRef, useState } from 'react'
-import { AlertCircle, CheckCircle2, Loader2, XCircle } from 'lucide-react'
+import { lazy, Suspense, useEffect, useRef, useState } from 'react'
+import { AlertCircle, CheckCircle2, ExternalLink, Loader2, XCircle } from 'lucide-react'
 import { Button } from '../../components/Button'
 import { Card } from '../../components/Card'
 import {
   useSubmitCanvasMutation,
   type PipelineAttempt,
 } from '../../lib/queries/mockPipeline'
+import { useCanvasDraft } from '../../lib/useCanvasDraft'
 import type { ExcalidrawImperativeAPI } from '@excalidraw/excalidraw/types'
 
 const SysDesignCanvasInner = lazy(() => import('./_lazy/SysDesignCanvasInner'))
@@ -48,6 +49,52 @@ export function SysDesignCanvas({
   const [nonFunctionalMD, setNonFunctionalMD] = useState('')
   const [contextMD, setContextMD] = useState('')
   const [clientErr, setClientErr] = useState<string | null>(null)
+
+  // Autosave + cross-tab sync. The hook seeds `restored` from
+  // localStorage on mount (or the Redis fallback if localStorage is
+  // empty); we apply it once below to the canvas + form.
+  const { state: draft, update: updateDraft, notifySubmitted } = useCanvasDraft(
+    attempt.id,
+    'main',
+  )
+  const restoredAppliedRef = useRef(false)
+  const [restoreBanner, setRestoreBanner] = useState<{ ageMin: number } | null>(null)
+  useEffect(() => {
+    if (restoredAppliedRef.current) return
+    if (!draft.restored) return
+    restoredAppliedRef.current = true
+    if (draft.restored.nonFunctionalMD) setNonFunctionalMD(draft.restored.nonFunctionalMD)
+    if (draft.restored.contextMD) setContextMD(draft.restored.contextMD)
+    // Excalidraw scene is restored via initialData (see SysDesignCanvasInner).
+    setRestoreBanner({ ageMin: Math.floor((Date.now() - draft.restored.updatedAt) / 60_000) })
+  }, [draft.restored])
+
+  // Live updates from the standalone tab — push the new scene into
+  // Excalidraw without overwriting NFR/Context (those are typed here).
+  useEffect(() => {
+    if (!draft.remote) return
+    const api = apiRef.current
+    if (!api) return
+    api.updateScene({ elements: draft.remote.sceneJSON.elements as never })
+  }, [draft.remote])
+
+  // Latest scene we've seen — captured from Excalidraw onChange so that
+  // when the user types into NFR / Context textareas we can broadcast a
+  // complete draft (scene + text) without round-tripping through API.
+  const sceneRef = useRef<{ elements: unknown[]; files: Record<string, unknown> }>({
+    elements: [],
+    files: {},
+  })
+
+  // Compose a fresh updateDraft call from current React state + the
+  // latest scene snapshot. Hook handles debounce + Redis fallback.
+  const pushDraft = (override?: { nfr?: string; ctx?: string }) => {
+    updateDraft({
+      sceneJSON: { elements: sceneRef.current.elements, files: sceneRef.current.files },
+      nonFunctionalMD: override?.nfr ?? nonFunctionalMD,
+      contextMD: override?.ctx ?? contextMD,
+    })
+  }
 
   // Once user_answer_md is set, the orchestrator has accepted the canvas
   // and either is judging or has judged. Switch to read-only view.
@@ -83,13 +130,20 @@ export function SysDesignCanvas({
       // Scene JSON is the persistent record — backend stores it, frontend
       // re-renders it in viewMode on review. The PNG is consumed once by
       // the vision judge and then discarded server-side.
-      submit.mutate({
-        attemptId: attempt.id,
-        imageDataURL: dataURL,
-        sceneJSON: { elements, files },
-        contextMD: contextMD.trim(),
-        nonFunctionalMD: nonFunctionalMD.trim(),
-      })
+      submit.mutate(
+        {
+          attemptId: attempt.id,
+          imageDataURL: dataURL,
+          sceneJSON: { elements, files },
+          contextMD: contextMD.trim(),
+          nonFunctionalMD: nonFunctionalMD.trim(),
+        },
+        {
+          // On success: clear localStorage + Redis draft, broadcast
+          // 'submitted' so the fullscreen tab (if open) auto-closes.
+          onSuccess: () => notifySubmitted(),
+        },
+      )
     } catch (err) {
       setClientErr(err instanceof Error ? err.message : String(err))
     }
@@ -124,6 +178,57 @@ export function SysDesignCanvas({
 
       {/* ── Canvas column ───────────────────────────────────── */}
       <div className="flex flex-col gap-2 min-w-0">
+        {!isSubmitted && (
+          <div className="flex flex-wrap items-center justify-between gap-2 px-1">
+            <div className="flex flex-wrap items-center gap-2 font-mono text-[10px] text-text-secondary">
+              <span>автосейв · 24ч</span>
+              {draft.quotaExceeded && (
+                <span className="rounded-md border border-warn/50 bg-warn/10 px-2 py-0.5 text-warn">
+                  локалка переполнена → пишем на сервер
+                </span>
+              )}
+              {draft.fullscreenAlive && (
+                <span className="rounded-md border border-success/50 bg-success/10 px-2 py-0.5 text-success">
+                  доска открыта в новой вкладке
+                </span>
+              )}
+            </div>
+            <button
+              type="button"
+              onClick={() => window.open(`/mock/canvas/${attempt.id}`, '_blank', 'noopener')}
+              className="flex items-center gap-1.5 rounded-md border border-border-strong bg-surface-1 px-2.5 py-1 font-mono text-[10px] uppercase tracking-wider text-text-primary hover:bg-surface-2"
+            >
+              <ExternalLink className="h-3 w-3" />
+              На весь экран
+            </button>
+          </div>
+        )}
+        {restoreBanner && !isSubmitted && (
+          <div className="flex items-center justify-between gap-2 rounded-md border border-border bg-surface-1 px-3 py-2 text-xs">
+            <span className="text-text-secondary">
+              Восстановлено{' '}
+              {restoreBanner.ageMin <= 0
+                ? 'только что'
+                : restoreBanner.ageMin < 60
+                  ? `${restoreBanner.ageMin} мин назад`
+                  : `${Math.round(restoreBanner.ageMin / 60)} ч назад`}
+            </span>
+            <button
+              type="button"
+              onClick={() => setRestoreBanner(null)}
+              className="font-mono text-[10px] uppercase tracking-wider text-text-muted hover:text-text-primary"
+            >
+              скрыть
+            </button>
+          </div>
+        )}
+        {!isSubmitted && draft.fullscreenAlive && (
+          <div className="rounded-md border border-border-strong bg-surface-2 px-3 py-2 text-xs text-text-secondary">
+            Закончил рисовать в новой вкладке? Жми{' '}
+            <span className="font-mono text-text-primary">Submit</span> здесь —
+            диаграмма подтянется автоматически.
+          </div>
+        )}
         {!isSubmitted ? (
           <div className="relative h-[400px] lg:h-[600px] overflow-hidden rounded-lg border border-border-strong bg-black">
             <Suspense
@@ -137,6 +242,21 @@ export function SysDesignCanvas({
               <SysDesignCanvasInner
                 onAPI={(api) => {
                   apiRef.current = api
+                }}
+                initialData={
+                  draft.restored
+                    ? ({
+                        elements: draft.restored.sceneJSON.elements ?? [],
+                        files: draft.restored.sceneJSON.files ?? {},
+                      } as never)
+                    : null
+                }
+                onChange={(elements, _appState, files) => {
+                  sceneRef.current = {
+                    elements: elements as unknown[],
+                    files: (files ?? {}) as Record<string, unknown>,
+                  }
+                  pushDraft()
                 }}
               />
             </Suspense>
@@ -201,14 +321,20 @@ export function SysDesignCanvas({
             <CharField
               label="Нефункциональные требования"
               value={nonFunctionalMD}
-              onChange={setNonFunctionalMD}
+              onChange={(v) => {
+                setNonFunctionalMD(v)
+                pushDraft({ nfr: v })
+              }}
               placeholder={NON_FUNCT_PLACEHOLDER}
               disabled={submit.isPending}
             />
             <CharField
               label="Пояснения / контекст"
               value={contextMD}
-              onChange={setContextMD}
+              onChange={(v) => {
+                setContextMD(v)
+                pushDraft({ ctx: v })
+              }}
               placeholder={CONTEXT_PLACEHOLDER}
               disabled={submit.isPending}
             />

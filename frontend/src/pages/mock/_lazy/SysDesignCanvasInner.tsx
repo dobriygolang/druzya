@@ -7,7 +7,13 @@
 
 import { useEffect } from 'react'
 import { Excalidraw } from '@excalidraw/excalidraw'
-import type { ExcalidrawImperativeAPI, ExcalidrawInitialDataState } from '@excalidraw/excalidraw/types'
+import type {
+  AppState,
+  BinaryFiles,
+  ExcalidrawImperativeAPI,
+  ExcalidrawInitialDataState,
+} from '@excalidraw/excalidraw/types'
+import type { OrderedExcalidrawElement } from '@excalidraw/excalidraw/element/types'
 import '@excalidraw/excalidraw/index.css'
 
 export type SysDesignCanvasInnerProps = {
@@ -18,12 +24,20 @@ export type SysDesignCanvasInnerProps = {
   // the live editor's `getSceneElements()` / `getFiles()`.
   initialData?: ExcalidrawInitialDataState | null
   viewModeEnabled?: boolean
+  // Fires on every scene mutation. Used by the autosave hook
+  // (useCanvasDraft) — debouncing happens inside the hook, NOT here.
+  onChange?: (
+    elements: readonly OrderedExcalidrawElement[],
+    appState: AppState,
+    files: BinaryFiles,
+  ) => void
 }
 
 export default function SysDesignCanvasInner({
   onAPI,
   initialData,
   viewModeEnabled,
+  onChange,
 }: SysDesignCanvasInnerProps) {
   // Inject the dark-mode + filter overrides once per mount. Same selector
   // namespace as the standalone whiteboard page so styles compose cleanly
@@ -55,6 +69,7 @@ export default function SysDesignCanvasInner({
       <Excalidraw
         theme="dark"
         viewModeEnabled={viewModeEnabled}
+        onChange={onChange}
         initialData={initialData ?? undefined}
         excalidrawAPI={(api) => {
           onAPI?.(api)

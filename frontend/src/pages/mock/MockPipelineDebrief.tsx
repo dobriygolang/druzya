@@ -10,13 +10,14 @@
 //   4. CTAs: "Попробовать ещё раз" (re-creates pipeline with same company
 //      + ai_assist) / "В Insights" (/insights).
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Navigate, useNavigate, useParams } from 'react-router-dom'
 import { ArrowLeft, CheckCircle2, ChevronDown, ChevronRight, XCircle } from 'lucide-react'
 import { AppShellV2 } from '../../components/AppShell'
 import { Button } from '../../components/Button'
 import { Card } from '../../components/Card'
 import { EmptyState } from '../../components/EmptyState'
+import { clearCanvasDraftsForAttempts } from '../../lib/canvasDraft'
 import {
   isComingSoonError,
   STAGE_LABEL,
@@ -33,6 +34,18 @@ export default function MockPipelineDebrief() {
   const pipelineQ = useMockPipelineQuery(pipelineId)
   const companiesQ = useMockCompaniesQuery()
   const create = useCreateMockPipelineMutation()
+
+  // Pipeline is over → drop the localStorage drafts for every sysdesign
+  // attempt (server-side drafts are already wiped by FinishPipeline /
+  // CancelPipeline; this purges the client-side mirror).
+  useEffect(() => {
+    if (!pipelineQ.data) return
+    const ids: string[] = []
+    for (const s of pipelineQ.data.stages ?? []) {
+      for (const a of s.attempts ?? []) ids.push(a.id)
+    }
+    if (ids.length > 0) clearCanvasDraftsForAttempts(ids)
+  }, [pipelineQ.data])
 
   if (pipelineQ.isLoading) {
     return (

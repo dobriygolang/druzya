@@ -80,8 +80,11 @@ func NewMockInterview(d Deps) *Module {
 		Strictness:     handlers, // *Handlers implements ResolveStrictness
 		Judge:          judge,
 		Sandbox:        sandbox,
-		Now:            d.Now,
-		Log:            d.Log,
+		// Redis fallback for the sysdesign canvas autosave. Frontend uses
+		// localStorage as primary; this only fires on quota exhaustion.
+		CanvasDrafts: miInfra.NewRedisCanvasDrafts(d.Redis),
+		Now:          d.Now,
+		Log:          d.Log,
 	}
 
 	server := miPorts.NewServer(handlers, orch, d.Log)

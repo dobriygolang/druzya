@@ -123,6 +123,11 @@ func (s *Server) Mount(r chi.Router) {
 	r.Post("/mock/pipelines/{id}/cancel", s.publicCancelPipeline)
 	r.Post("/mock/attempts/{id}/submit", s.publicSubmitAnswer)
 	r.Post("/mock/attempts/{id}/submit-canvas", s.publicSubmitCanvas)
+	// Redis-fallback canvas autosave — frontend writes here only when
+	// the browser's localStorage quota is exhausted.
+	r.Get("/mock/attempts/{id}/canvas-draft", s.publicGetCanvasDraft)
+	r.Put("/mock/attempts/{id}/canvas-draft", s.publicSaveCanvasDraft)
+	r.Delete("/mock/attempts/{id}/canvas-draft", s.publicDeleteCanvasDraft)
 	r.Post("/mock/stages/{id}/finish", s.publicFinishStage)
 
 	// Public: leaderboard (fairness-watermarked: only ai_assist=false counted).
@@ -1246,4 +1251,112 @@ func (s *Server) adminBulkImportTasks(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"results": results})
+}
+
+// ── canvas drafts (Redis fallback) ──────────────────────────────────────
+
+type canvasDraftBody struct {
+	// Raw Excalidraw scene blob serialised as a JSON object. We pass it
+	// through as []byte so the bytes-on-the-wire match what the frontend
+	// re-renders verbatim later.
+	SceneJSON       json.RawMessage `json:"scene_json"`
+	NonFunctionalMD string          `json:"non_functional_md"`
+	ContextMD       string          `json:"context_md"`
+}
+
+type canvasDraftDTO struct {
+	SceneJSON       json.RawMessage `json:"scene_json"`
+	NonFunctionalMD string          `json:"non_functional_md"`
+	ContextMD       string          `json:"context_md"`
+	UpdatedAt       string          `json:"updated_at"`
+}
+
+func (s *Server) publicSaveCanvasDraft(w http.ResponseWriter, r *http.Request) {
+	uid, ok := s.requireUser(w, r)
+	if !ok {
+		return
+	}
+	if s.Orch == nil {
+		writeErr(w, http.StatusServiceUnavailable, "orchestrator not configured")
+		return
+	}
+	attemptID, err := parseUUIDParam(r, "id")
+	if err != nil {
+		writeErr(w, http.StatusBadRequest, "invalid id")
+		return
+	}
+	var body canvasDraftBody
+	if err := decode(r, &body); err != nil {
+		writeErr(w, http.StatusBadRequest, "invalid body")
+		return
+	}
+	if len(body.SceneJSON) == 0 {
+		writeErr(w, http.StatusBadRequest, "scene_json required")
+		return
+	}
+	if err := s.Orch.SaveCanvasDraft(r.Context(), app.SaveCanvasDraftInput{
+		AttemptID:       attemptID,
+		UserID:          uid,
+		SceneJSON:       []byte(body.SceneJSON),
+		NonFunctionalMD: body.NonFunctionalMD,
+		ContextMD:       body.ContextMD,
+	}); err != nil {
+		// Validation error from the size cap → 413 (more accurate than the
+		// default 400 from errToHTTP).
+		if errors.Is(err, domain.ErrValidation) {
+			writeErr(w, http.StatusRequestEntityTooLarge, "draft too large")
+			return
+		}
+		s.errToHTTP(w, r, err, "publicSaveCanvasDraft")
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]bool{"ok": true})
+}
+
+func (s *Server) publicGetCanvasDraft(w http.ResponseWriter, r *http.Request) {
+	uid, ok := s.requireUser(w, r)
+	if !ok {
+		return
+	}
+	if s.Orch == nil {
+		writeErr(w, http.StatusServiceUnavailable, "orchestrator not configured")
+		return
+	}
+	attemptID, err := parseUUIDParam(r, "id")
+	if err != nil {
+		writeErr(w, http.StatusBadRequest, "invalid id")
+		return
+	}
+	d, err := s.Orch.GetCanvasDraft(r.Context(), attemptID, uid)
+	if err != nil {
+		s.errToHTTP(w, r, err, "publicGetCanvasDraft")
+		return
+	}
+	writeJSON(w, http.StatusOK, canvasDraftDTO{
+		SceneJSON:       json.RawMessage(d.SceneJSON),
+		NonFunctionalMD: d.NonFunctionalMD,
+		ContextMD:       d.ContextMD,
+		UpdatedAt:       d.UpdatedAt.UTC().Format("2006-01-02T15:04:05Z"),
+	})
+}
+
+func (s *Server) publicDeleteCanvasDraft(w http.ResponseWriter, r *http.Request) {
+	uid, ok := s.requireUser(w, r)
+	if !ok {
+		return
+	}
+	if s.Orch == nil {
+		writeErr(w, http.StatusServiceUnavailable, "orchestrator not configured")
+		return
+	}
+	attemptID, err := parseUUIDParam(r, "id")
+	if err != nil {
+		writeErr(w, http.StatusBadRequest, "invalid id")
+		return
+	}
+	if err := s.Orch.DeleteCanvasDraft(r.Context(), attemptID, uid); err != nil {
+		s.errToHTTP(w, r, err, "publicDeleteCanvasDraft")
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]bool{"ok": true})
 }

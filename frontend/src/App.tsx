@@ -67,6 +67,7 @@ const MockResultPage = lazy(() => import('./pages/MockResultPage'))
 const MockCompanyPicker = lazy(() => import('./pages/mock/MockCompanyPicker'))
 const MockPipelinePage = lazy(() => import('./pages/mock/MockPipelinePage'))
 const MockPipelineDebrief = lazy(() => import('./pages/mock/MockPipelineDebrief'))
+const MockCanvasFullscreen = lazy(() => import('./pages/mock/MockCanvasFullscreen'))
 // Phase-4 ADR-001 Wave 1+2 — `cohort`, `achievements`, `warroom` removed.
 // Frontend pages deleted; routes redirect to /circles or /profile.
 const SlotsPage = lazy(() => import('./pages/SlotsPage'))
@@ -180,6 +181,10 @@ export default function App() {
         <Route path="/mock" element={<MockCompanyPicker />} />
         <Route path="/mock/pipeline/:pipelineId" element={<MockPipelinePage />} />
         <Route path="/mock/pipeline/:pipelineId/debrief" element={<MockPipelineDebrief />} />
+        {/* Standalone "большая доска" tab — opened via window.open from
+            SysDesignCanvas. Pure Excalidraw + autosave; submit lives on
+            the main /mock/pipeline tab. */}
+        <Route path="/mock/canvas/:attemptId" element={<MockCanvasFullscreen />} />
         <Route path="/mock/:sessionId" element={<MockSessionPage />} />
         <Route path="/mock/:sessionId/result" element={<MockResultPage />} />
         {/* Phase-4 ADR-001 — niche/unsurfaced routes deleted:

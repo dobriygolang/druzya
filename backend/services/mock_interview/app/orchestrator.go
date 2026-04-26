@@ -53,8 +53,12 @@ type Orchestrator struct {
 	// (or when .Available() is false / language unsupported / no test cases)
 	// we fall back to the LLM code-review judge.
 	Sandbox domain.SandboxExecutor
-	Now     func() time.Time
-	Log     *slog.Logger
+	// CanvasDrafts is the optional Redis fallback for the sysdesign canvas
+	// autosave (frontend writes here only when the browser localStorage
+	// quota is exhausted). May be nil — handlers tolerate that with a 503.
+	CanvasDrafts domain.CanvasDraftStore
+	Now          func() time.Time
+	Log          *slog.Logger
 }
 
 func (o *Orchestrator) now() time.Time {
@@ -614,6 +618,10 @@ func (o *Orchestrator) SubmitCanvas(ctx context.Context, in SubmitCanvasInput) (
 	}); uerr != nil {
 		return domain.PipelineAttempt{}, fmt.Errorf("attempts.UpdateCanvasResult: %w", uerr)
 	}
+	// Submit succeeded → the localStorage draft is also being cleared
+	// client-side, but we drop the Redis fallback row eagerly so a stale
+	// "restore" prompt never shows up on the next visit.
+	o.deleteCanvasDraftBestEffort(ctx, in.AttemptID)
 
 	updated, err := o.Attempts.Get(ctx, in.AttemptID)
 	if err != nil {
@@ -787,8 +795,47 @@ func (o *Orchestrator) FinishPipeline(ctx context.Context, pipelineID uuid.UUID)
 	t := o.now()
 	pipe.FinishedAt = &t
 
+	// Sweep canvas drafts for every sysdesign attempt of this pipeline —
+	// the run is over, restoring half-drawn diagrams next time would only
+	// confuse the user.
+	o.sweepCanvasDraftsForPipeline(ctx, stages)
+
 	// TODO: publish leaderboard event with ai_assist=pipeline.AIAssist watermark
 	return pipe, nil
+}
+
+// sweepCanvasDraftsForPipeline walks every sysdesign attempt under
+// `stages` and DELs its draft from the Redis fallback. Best-effort —
+// failures are logged, never propagated.
+func (o *Orchestrator) sweepCanvasDraftsForPipeline(ctx context.Context, stages []domain.PipelineStage) {
+	if o.CanvasDrafts == nil {
+		return
+	}
+	for _, s := range stages {
+		atts, err := o.Attempts.ListByStage(ctx, s.ID)
+		if err != nil {
+			continue
+		}
+		for _, a := range atts {
+			if a.Kind != domain.AttemptSysDesignCanvas {
+				continue
+			}
+			o.deleteCanvasDraftBestEffort(ctx, a.ID)
+		}
+	}
+}
+
+// deleteCanvasDraftBestEffort drops a single draft, logging but not
+// returning errors. Callers use this from happy-path code where a stuck
+// draft is preferable to a failed Submit.
+func (o *Orchestrator) deleteCanvasDraftBestEffort(ctx context.Context, attemptID uuid.UUID) {
+	if o.CanvasDrafts == nil {
+		return
+	}
+	if err := o.CanvasDrafts.Delete(ctx, attemptID); err != nil && o.Log != nil {
+		o.Log.WarnContext(ctx, "mock_interview.orch: canvas draft delete failed",
+			slog.Any("err", err), slog.String("attempt_id", attemptID.String()))
+	}
 }
 
 // ── CancelPipeline ──────────────────────────────────────────────────────
@@ -811,6 +858,11 @@ func (o *Orchestrator) CancelPipeline(ctx context.Context, pipelineID, userID uu
 	}
 	if err := o.Pipelines.UpdateVerdict(ctx, pipelineID, domain.PipelineCancelled, nil); err != nil {
 		return fmt.Errorf("pipelines.UpdateVerdict: %w", err)
+	}
+	// Cancelled run is over → wipe sysdesign drafts. Best-effort, not
+	// part of the cancel atomicity contract.
+	if stages, sErr := o.PipelineStages.ListByPipeline(ctx, pipelineID); sErr == nil {
+		o.sweepCanvasDraftsForPipeline(ctx, stages)
 	}
 	return nil
 }
