@@ -167,6 +167,11 @@ export function useDailySubmitMutation() {
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: ['daily', 'kata'] })
       void qc.invalidateQueries({ queryKey: ['daily', 'streak'] })
+      // Atlas + Insights aggregate kata-solves into node progress and
+      // pass-rate trajectories — refresh both so /atlas and /insights
+      // reflect this submission without a manual reload.
+      void qc.invalidateQueries({ queryKey: ['profile', 'me', 'atlas'] })
+      void qc.invalidateQueries({ queryKey: ['mock', 'insights', 'overview'] })
     },
   })
 }

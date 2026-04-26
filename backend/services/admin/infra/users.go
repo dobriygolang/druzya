@@ -86,6 +86,11 @@ func (r *Users) List(ctx context.Context, f domain.UserListFilter) (domain.UserP
 		// no filter
 	}
 
+	// Always exclude guest accounts. Guests are ephemeral identities for
+	// pair-coding / whiteboard share-links and never see human content;
+	// the admin user list is for moderation of registered users only.
+	clauses = append(clauses, "u.role != 'guest'")
+
 	where := ""
 	if len(clauses) > 0 {
 		where = " WHERE " + strings.Join(clauses, " AND ")

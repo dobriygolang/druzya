@@ -303,6 +303,11 @@ export function useSubmitCodeMutation() {
       }),
     onSuccess: (_d, input) => {
       void qc.invalidateQueries({ queryKey: ['arena', 'match', input.matchId] })
+      // Atlas + Insights aggregate arena matches into per-skill
+      // progress / decay. Refresh both so /atlas and /insights reflect
+      // the submission without a manual reload.
+      void qc.invalidateQueries({ queryKey: ['profile', 'me', 'atlas'] })
+      void qc.invalidateQueries({ queryKey: ['mock', 'insights', 'overview'] })
     },
   })
 }

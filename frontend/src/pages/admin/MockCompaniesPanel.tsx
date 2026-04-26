@@ -344,6 +344,24 @@ function CompanyStagesEditor({ companyId }: { companyId: string }) {
                   ↓
                 </button>
                 <span className="ml-1 font-mono text-[10px] text-text-muted">#{i}</span>
+                {(s.stage_kind === 'algo' ||
+                  s.stage_kind === 'coding' ||
+                  s.stage_kind === 'sysdesign') && (
+                  <span
+                    className={`ml-1 rounded-full border px-2 py-0.5 font-mono text-[9px] uppercase ${
+                      s.task_pool_ids.length === 0
+                        ? 'border-warn/50 bg-warn/10 text-warn'
+                        : 'border-border bg-surface-2 text-text-muted'
+                    }`}
+                    title={
+                      s.task_pool_ids.length === 0
+                        ? 'Пул пуст — picker возьмёт случайную задачу из ВСЕХ активных mock_tasks для этого этапа.'
+                        : `${s.task_pool_ids.length} задач в пуле — picker выберет одну случайную.`
+                    }
+                  >
+                    {s.task_pool_ids.length === 0 ? 'pool: any' : `${s.task_pool_ids.length} tasks`}
+                  </span>
+                )}
               </div>
 
               <div className="grid flex-1 gap-2 sm:grid-cols-2">

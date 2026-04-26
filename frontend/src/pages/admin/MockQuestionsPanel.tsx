@@ -48,6 +48,7 @@ function DefaultQuestionsSection() {
   const create = useCreateDefaultQuestionMutation()
   const [newStage, setNewStage] = useState<StageKind>('hr')
   const [newBody, setNewBody] = useState('')
+  const [newExpected, setNewExpected] = useState('')
   const [err, setErr] = useState<string | null>(null)
 
   async function add(e: React.FormEvent) {
@@ -55,8 +56,13 @@ function DefaultQuestionsSection() {
     setErr(null)
     if (!newBody.trim()) return
     try {
-      await create.mutateAsync({ stage_kind: newStage, body: newBody.trim() })
+      await create.mutateAsync({
+        stage_kind: newStage,
+        body: newBody.trim(),
+        expected_answer_md: newExpected.trim() || undefined,
+      })
       setNewBody('')
+      setNewExpected('')
     } catch (e) {
       setErr(mockAdminErrorMessage(e))
     }
@@ -147,9 +153,21 @@ function DefaultQuestionsSection() {
             </select>
           </label>
           <div className="flex-1">
-            <FormField label="body" value={newBody} onChange={(e) => setNewBody(e.currentTarget.value)} />
+            <FormField label="body — текст вопроса" value={newBody} onChange={(e) => setNewBody(e.currentTarget.value)} />
           </div>
         </div>
+        <label className="flex flex-col gap-1">
+          <span className="font-mono text-[9px] uppercase tracking-[0.1em] text-text-muted">
+            expected_answer_md — образец ответа (для AI-судьи)
+          </span>
+          <textarea
+            value={newExpected}
+            onChange={(e) => setNewExpected(e.target.value)}
+            rows={3}
+            placeholder="Краткий «как правильно» — судья сравнивает с ним. Можно оставить пустым."
+            className="rounded-md border border-border bg-bg/40 px-2 py-1.5 font-mono text-[12px] text-text-primary"
+          />
+        </label>
         {err && <div className="text-[12px] text-danger">{err}</div>}
         <div className="flex justify-end">
           <Button type="submit" size="sm" loading={create.isPending}>Добавить</Button>
@@ -254,6 +272,7 @@ function CompanyQuestionsSection() {
   const create = useCreateCompanyQuestionMutation()
   const [newStage, setNewStage] = useState<StageKind>('hr')
   const [newBody, setNewBody] = useState('')
+  const [newExpected, setNewExpected] = useState('')
   const [err, setErr] = useState<string | null>(null)
 
   async function add(e: React.FormEvent) {
@@ -263,9 +282,14 @@ function CompanyQuestionsSection() {
     try {
       await create.mutateAsync({
         companyId,
-        body: { stage_kind: newStage, body: newBody.trim() },
+        body: {
+          stage_kind: newStage,
+          body: newBody.trim(),
+          expected_answer_md: newExpected.trim() || undefined,
+        },
       })
       setNewBody('')
+      setNewExpected('')
     } catch (e) {
       setErr(mockAdminErrorMessage(e))
     }
@@ -347,9 +371,21 @@ function CompanyQuestionsSection() {
                 </select>
               </label>
               <div className="flex-1">
-                <FormField label="body" value={newBody} onChange={(e) => setNewBody(e.currentTarget.value)} />
+                <FormField label="body — текст вопроса" value={newBody} onChange={(e) => setNewBody(e.currentTarget.value)} />
               </div>
             </div>
+            <label className="flex flex-col gap-1">
+              <span className="font-mono text-[9px] uppercase tracking-[0.1em] text-text-muted">
+                expected_answer_md — образец ответа (для AI-судьи)
+              </span>
+              <textarea
+                value={newExpected}
+                onChange={(e) => setNewExpected(e.target.value)}
+                rows={3}
+                placeholder="Краткий «как правильно» — судья сравнивает с ним. Можно оставить пустым."
+                className="rounded-md border border-border bg-bg/40 px-2 py-1.5 font-mono text-[12px] text-text-primary"
+              />
+            </label>
             {err && <div className="text-[12px] text-danger">{err}</div>}
             <div className="flex justify-end">
               <Button type="submit" size="sm" loading={create.isPending}>Добавить</Button>

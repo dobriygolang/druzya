@@ -35,6 +35,9 @@ export type MockInsightsOverview = {
   score_trajectory: ScoreTrajectoryPoint[]
   total_sessions_30d: number
   pipeline_pass_rate_30d: number // 0..100
+  // Single-paragraph LLM-synthesised narrative built from the data
+  // above. Empty when LLMChain unavailable or no 30d activity.
+  summary?: string
 }
 
 const STALE_MS = 60_000

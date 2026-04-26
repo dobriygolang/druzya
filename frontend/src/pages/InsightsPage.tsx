@@ -66,6 +66,12 @@ export default function InsightsPage() {
  </p>
  </header>
 
+ {/* AI Coach narrative — single paragraph synthesised from the data
+     below. Hero of the page when there's anything to talk about. */}
+ {overview?.summary && (
+ <CoachSummaryCard summary={overview.summary} />
+ )}
+
  {/* Top row — three live intel widgets */}
  <section className="grid grid-cols-1 gap-4 lg:grid-cols-3">
  <WeeklyDigestCard />
@@ -236,6 +242,28 @@ function kindLabel(k: RecommendationKind): string {
  case 'drill_kata': return 'KATA'
  default: return 'TIP'
  }
+}
+
+// ── AI Coach summary ─────────────────────────────────────────────────
+// Single-paragraph narrative synthesised by the backend from the same
+// data the cards below show. Server-side cache 30 min, so every page
+// mount within that window reads it instantly. Tone is set in the
+// system prompt: factual + supportive + ends with a concrete next step.
+function CoachSummaryCard({ summary }: { summary: string }) {
+ return (
+ <Card
+  className="flex-col gap-3 border-text-primary/30 bg-gradient-to-br from-text-primary/[0.04] to-transparent p-6"
+  interactive={false}
+ >
+ <div className="flex items-center gap-2">
+ <Sparkles className="h-4 w-4 text-text-primary" />
+ <span className="font-mono text-[11px] uppercase tracking-[0.16em] text-text-primary">
+ AI Coach · this month
+ </span>
+ </div>
+ <p className="text-[14px] leading-relaxed text-text-primary">{summary}</p>
+ </Card>
+ )
 }
 
 // ── Stage performance ────────────────────────────────────────────────

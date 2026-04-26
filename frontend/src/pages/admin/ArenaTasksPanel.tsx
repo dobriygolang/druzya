@@ -242,10 +242,10 @@ function CreateModal({
           className="flex flex-col gap-3"
         >
           <FormField
-            label="slug"
+            label="slug — URL-сегмент задачи"
             value={slug}
             onChange={(e) => setSlug(e.currentTarget.value)}
-            placeholder="two-sum"
+            placeholder="two-sum (попадёт в /arena/kata/two-sum)"
           />
           <FormField
             label="title"
@@ -363,7 +363,11 @@ function Editor({ taskId }: { taskId: string }) {
         <span className="font-mono text-[10px] text-text-muted">{t.id}</span>
       </div>
 
-      <FormField label="slug" value={t.slug} onChange={(e) => setT({ ...t, slug: e.currentTarget.value })} />
+      <FormField
+        label="slug — URL-сегмент (/arena/kata/{slug})"
+        value={t.slug}
+        onChange={(e) => setT({ ...t, slug: e.currentTarget.value })}
+      />
       <div className="grid grid-cols-2 gap-3">
         <FormField label="title_ru" value={t.title_ru} onChange={(e) => setT({ ...t, title_ru: e.currentTarget.value })} />
         <FormField label="title_en" value={t.title_en} onChange={(e) => setT({ ...t, title_en: e.currentTarget.value })} />
@@ -417,7 +421,7 @@ function Editor({ taskId }: { taskId: string }) {
         rows={10}
       />
       <MarkdownArea
-        label="solution_hint (private)"
+        label="solution_hint — заметка для админов, юзеру не показывается, AI-судья не видит"
         value={t.solution_hint}
         onChange={(v) => setT({ ...t, solution_hint: v })}
         rows={4}

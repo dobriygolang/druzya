@@ -16,19 +16,24 @@
 package services
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
+	"druz9/shared/pkg/llmchain"
 	sharedMw "druz9/shared/pkg/middleware"
 	sharedpg "druz9/shared/pkg/pg"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/redis/go-redis/v9"
 )
 
 const (
@@ -62,11 +67,20 @@ type insightsOverviewResp struct {
 	ScoreTrajectory    []scoreTrajectoryRow  `json:"score_trajectory"`
 	TotalSessions30d   int                   `json:"total_sessions_30d"`
 	PipelinePassRate30 int                   `json:"pipeline_pass_rate_30d"` // 0..100
+	// Summary — single-paragraph LLM-generated narrative built from the
+	// three aggregations above. Empty when LLMChain is unavailable or
+	// when the user has no 30d activity to talk about.
+	Summary string `json:"summary,omitempty"`
 }
 
 // NewMockInsights wires the public chi-direct insights endpoint.
 func NewMockInsights(d Deps) *Module {
-	h := &mockInsightsHandler{pool: d.Pool, log: d.Log}
+	h := &mockInsightsHandler{
+		pool:  d.Pool,
+		log:   d.Log,
+		chain: d.LLMChain,
+		rdb:   d.Redis,
+	}
 	return &Module{
 		MountREST: func(r chi.Router) {
 			r.Get("/mock/insights/overview", h.overview)
@@ -75,8 +89,10 @@ func NewMockInsights(d Deps) *Module {
 }
 
 type mockInsightsHandler struct {
-	pool *pgxpool.Pool
-	log  *slog.Logger
+	pool  *pgxpool.Pool
+	log   *slog.Logger
+	chain llmchain.ChatClient
+	rdb   *redis.Client
 }
 
 func (h *mockInsightsHandler) overview(w http.ResponseWriter, r *http.Request) {
@@ -221,9 +237,95 @@ func (h *mockInsightsHandler) overview(w http.ResponseWriter, r *http.Request) {
 		h.fail(r, hErr, "headline")
 	}
 
+	// 5. AI summary — one short paragraph synthesised from the data
+	//    above. Cached 30min in Redis per user (key: mock:insights:
+	//    summary:{uid}) so we don't burn the LLM chain on every page
+	//    refresh. Skipped when there's no activity to talk about.
+	if out.TotalSessions30d > 0 {
+		out.Summary = h.resolveSummary(ctx, uid.String(), out)
+	}
+
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Cache-Control", "private, max-age=60")
 	_ = json.NewEncoder(w).Encode(out)
+}
+
+const insightsSummaryTTL = 30 * time.Minute
+const insightsSummaryTimeout = 8 * time.Second
+
+func (h *mockInsightsHandler) resolveSummary(ctx context.Context, userID string, data insightsOverviewResp) string {
+	cacheKey := "mock:insights:summary:" + userID
+	if h.rdb != nil {
+		if cached, err := h.rdb.Get(ctx, cacheKey).Result(); err == nil && cached != "" {
+			return cached
+		}
+	}
+	if h.chain == nil {
+		return ""
+	}
+	prompt := buildInsightsSummaryPrompt(data)
+	llmCtx, cancel := context.WithTimeout(ctx, insightsSummaryTimeout)
+	defer cancel()
+	resp, err := h.chain.Chat(llmCtx, llmchain.Request{
+		Task:        llmchain.TaskInsightProse,
+		Temperature: 0.4,
+		MaxTokens:   220,
+		Messages: []llmchain.Message{
+			{Role: llmchain.RoleSystem, Content: insightsSummarySystemPrompt},
+			{Role: llmchain.RoleUser, Content: prompt},
+		},
+	})
+	if err != nil {
+		if h.log != nil {
+			h.log.WarnContext(ctx, "mock.insights: summary chain failed", slog.Any("err", err))
+		}
+		return ""
+	}
+	summary := strings.TrimSpace(resp.Content)
+	if summary == "" {
+		return ""
+	}
+	// Hard cap — defensive against models that ignore MaxTokens.
+	if len(summary) > 800 {
+		summary = summary[:800] + "…"
+	}
+	if h.rdb != nil {
+		_ = h.rdb.Set(ctx, cacheKey, summary, insightsSummaryTTL).Err()
+	}
+	return summary
+}
+
+const insightsSummarySystemPrompt = `You are a calm, motivating coach for a software-interview-prep tool.
+Given JSON stats of one candidate's last 30 days of practice, write ONE
+short English paragraph (3–5 sentences). Tone: factual + supportive,
+never shaming. Always end with one concrete next-step suggestion (e.g.
+"try 2 system-design mocks this week" or "review your last fail's
+feedback"). Do not output bullet points, headings, or JSON — just prose.`
+
+func buildInsightsSummaryPrompt(d insightsOverviewResp) string {
+	var b strings.Builder
+	fmt.Fprintf(&b, "Window: last %d days\n", d.WindowDays)
+	fmt.Fprintf(&b, "Total sessions: %d\nPipeline pass rate: %d%%\n", d.TotalSessions30d, d.PipelinePassRate30)
+	if len(d.StagePerformance) > 0 {
+		b.WriteString("\nStage performance (stage_kind / passed-of-total / pass-rate %):\n")
+		for _, s := range d.StagePerformance {
+			fmt.Fprintf(&b, "- %s: %d/%d (%d%%)\n", s.StageKind, s.Passed, s.Total, s.PassRate)
+		}
+	}
+	if len(d.RecurringPatterns) > 0 {
+		b.WriteString("\nRecurring missing-points across attempts (label × count):\n")
+		for _, p := range d.RecurringPatterns {
+			fmt.Fprintf(&b, "- %s × %d\n", p.Point, p.Count)
+		}
+	}
+	if len(d.ScoreTrajectory) > 0 {
+		b.WriteString("\nScore trajectory (oldest → newest, /100):\n")
+		for _, s := range d.ScoreTrajectory {
+			fmt.Fprintf(&b, "- %0.1f (%s)\n", s.Score, s.Verdict)
+		}
+	}
+	b.WriteString("\nWrite the paragraph now.")
+	return b.String()
 }
 
 // fail logs aggregation failures without surfacing partial errors to

@@ -151,13 +151,14 @@ export function PodcastsPanel() {
             />
           </label>
           <label className="flex flex-col gap-1">
-            <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">Длительность (сек)</span>
+            <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">
+              Длительность (auto)
+            </span>
             <input
               value={durationSec}
-              onChange={(e) => setDurationSec(e.target.value)}
-              type="number"
-              min="0"
-              className="h-9 rounded-md border border-border bg-surface-2 px-3 text-sm text-text-primary"
+              readOnly
+              placeholder="загрузи файл — длительность подставится сама"
+              className="h-9 rounded-md border border-border bg-surface-2 px-3 text-sm text-text-muted"
             />
           </label>
           <label className="flex flex-col gap-1">
@@ -183,7 +184,34 @@ export function PodcastsPanel() {
             <input
               type="file"
               accept="audio/*"
-              onChange={(e) => setAudio(e.target.files?.[0] ?? null)}
+              onChange={(e) => {
+                const f = e.target.files?.[0] ?? null
+                setAudio(f)
+                if (!f) {
+                  setDurationSec('')
+                  return
+                }
+                // Decode locally so the admin doesn't have to type the
+                // duration. URL.createObjectURL → <audio> → loadedmetadata
+                // gives us file.duration with no upload round-trip.
+                const url = URL.createObjectURL(f)
+                const probe = document.createElement('audio')
+                probe.preload = 'metadata'
+                probe.src = url
+                const cleanup = () => URL.revokeObjectURL(url)
+                probe.addEventListener(
+                  'loadedmetadata',
+                  () => {
+                    const d = probe.duration
+                    if (Number.isFinite(d) && d > 0) {
+                      setDurationSec(String(Math.round(d)))
+                    }
+                    cleanup()
+                  },
+                  { once: true },
+                )
+                probe.addEventListener('error', cleanup, { once: true })
+              }}
               required
               className="text-sm text-text-secondary"
             />

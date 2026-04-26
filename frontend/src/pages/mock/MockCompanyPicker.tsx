@@ -81,6 +81,9 @@ export default function MockCompanyPicker() {
           </p>
         </header>
 
+        <FirstRunSteps />
+
+
         <fieldset
           className="flex flex-col gap-2 rounded-xl border border-border bg-surface-1 p-4"
           aria-label="Режим AI-помощника"
@@ -199,5 +202,76 @@ function AiAssistOption({
         <span className="text-xs text-text-secondary">{body}</span>
       </div>
     </button>
+  )
+}
+
+// FirstRunSteps — 3-card explainer for first-time users. Dismissable;
+// the dismissed flag lives in localStorage so we don't re-shame
+// returning users with onboarding noise.
+const FIRST_RUN_KEY = 'druz9.mock.first-run-dismissed'
+
+function FirstRunSteps() {
+  const [dismissed, setDismissed] = useState<boolean>(() => {
+    try {
+      return typeof window !== 'undefined' && window.localStorage.getItem(FIRST_RUN_KEY) === '1'
+    } catch {
+      return false
+    }
+  })
+  if (dismissed) return null
+  const dismiss = () => {
+    setDismissed(true)
+    try {
+      window.localStorage.setItem(FIRST_RUN_KEY, '1')
+    } catch {
+      /* ignore */
+    }
+  }
+  const steps: Array<{ n: string; title: string; body: string }> = [
+    {
+      n: '1',
+      title: 'Pick a company',
+      body: 'Каждая компания — свой набор этапов и стиль вопросов. На рандоме — общий пул.',
+    },
+    {
+      n: '2',
+      title: '5 stages back-to-back',
+      body: 'HR → algo → coding → system design → behavioral. На каждом — таймер и AI-судья.',
+    },
+    {
+      n: '3',
+      title: 'AI report at the end',
+      body: 'Pass/fail по каждому этапу + что упустил. Появится в /insights через секунду.',
+    },
+  ]
+  return (
+    <div className="rounded-xl border border-border bg-surface-1 p-4">
+      <div className="mb-3 flex items-center justify-between">
+        <span className="font-mono text-[10px] uppercase tracking-wider text-text-muted">
+          Как это работает
+        </span>
+        <button
+          type="button"
+          onClick={dismiss}
+          className="font-mono text-[10px] uppercase tracking-wider text-text-muted hover:text-text-primary"
+        >
+          Скрыть
+        </button>
+      </div>
+      <ol className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+        {steps.map((s) => (
+          <li
+            key={s.n}
+            className="flex flex-col gap-1.5 rounded-lg border border-border bg-surface-2 p-3"
+          >
+            <span className="grid h-7 w-7 place-items-center rounded-full bg-text-primary/10 font-display text-sm font-bold text-text-primary">
+              {s.n}
+            </span>
+            <span className="font-display text-sm font-bold text-text-primary">{s.title}</span>
+            <span className="text-xs text-text-secondary">{s.body}</span>
+          </li>
+        ))}
+      </ol>
+    </div>
   )
 }
