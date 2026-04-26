@@ -420,13 +420,27 @@ func (c *Chain) candidates(req Request) ([]candidate, error) {
 	if req.Task == "" {
 		return nil, fmt.Errorf("%w: neither Task nor ModelOverride set", ErrBadRequest)
 	}
+	// Vision auto-routing: если в request'е есть images, а оригинальный
+	// task'овый chain — text-only (TaskCopilotStream → Llama 70B, Qwen
+	// coder, etc.), переключаемся на TaskVision (vision-capable
+	// провайдеры). Без этого скриншот, отправленный copilot'у, цеплял
+	// первый провайдер из text-chain'а, тот падал с ErrModelNotSupported,
+	// chain дальше пробежал по всем text-провайдерам подряд (тоже text)
+	// и итог был AllProvidersUnavailableError → у юзера «copilot failure».
+	// Vision-models (qwen-2.5-vl) одинаково хорошо обрабатывают
+	// чисто-текстовые сообщения, так что переключение безопасно даже если
+	// promo image вдруг не нужен модели.
+	effectiveTask := req.Task
+	if effectiveTask != TaskVision && hasImages(req.Messages) {
+		effectiveTask = TaskVision
+	}
 	// Runtime-config предпочитается static'у — админ может менять порядок
 	// и task-map через БД без рестарта (см. currentOrder/currentTaskMap).
 	order := c.currentOrder()
 	taskMap := c.currentTaskMap()
 	out := make([]candidate, 0, len(order))
 	for _, p := range order {
-		model := taskMap.ModelFor(req.Task, p)
+		model := taskMap.ModelFor(effectiveTask, p)
 		if model == "" {
 			continue
 		}
@@ -443,7 +457,7 @@ func (c *Chain) candidates(req Request) ([]candidate, error) {
 		out = append(out, candidate{provider: p, model: model, driver: d})
 	}
 	if len(out) == 0 {
-		return nil, fmt.Errorf("%w: no candidates for task %q", ErrNoProvider, req.Task)
+		return nil, fmt.Errorf("%w: no candidates for task %q", ErrNoProvider, effectiveTask)
 	}
 	// Passive latency reorder: when multiple candidates have enough
 	// samples (≥ minSamplesForReorder each), promote the one with the

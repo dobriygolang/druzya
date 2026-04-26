@@ -2,7 +2,7 @@
 // auto-trigger LLM call. Same bearer-from-keychain pattern as the
 // other REST clients in main/api/.
 
-import { loadSession } from '../auth/keychain';
+import { getValidSession } from '../auth/refresh';
 import type { RuntimeConfig } from '../config/bootstrap';
 
 export interface SuggestionInput {
@@ -31,7 +31,7 @@ export function createSuggestionClient(cfg: RuntimeConfig): SuggestionClient {
 
   return {
     request: async (input) => {
-      const s = await loadSession();
+      const s = await getValidSession({ apiBaseURL: cfg.apiBaseURL });
       const headers: Record<string, string> = { 'Content-Type': 'application/json' };
       if (s) headers.Authorization = `Bearer ${s.accessToken}`;
 

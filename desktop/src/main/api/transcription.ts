@@ -3,7 +3,7 @@
 // main assembles multipart/form-data here and POSTs to the backend
 // with the user's bearer from keychain.
 
-import { loadSession } from '../auth/keychain';
+import { getValidSession } from '../auth/refresh';
 import type { RuntimeConfig } from '../config/bootstrap';
 
 export interface TranscribeInput {
@@ -32,7 +32,7 @@ export function createTranscriptionClient(cfg: RuntimeConfig): TranscriptionClie
 
   return {
     transcribe: async (input) => {
-      const s = await loadSession();
+      const s = await getValidSession({ apiBaseURL: cfg.apiBaseURL });
       const headers: Record<string, string> = {};
       if (s) headers.Authorization = `Bearer ${s.accessToken}`;
 

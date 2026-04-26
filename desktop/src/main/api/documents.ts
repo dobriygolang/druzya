@@ -6,7 +6,7 @@
 // multipart yet). The file bytes travel renderer → main (buffer) →
 // base64 here. ≤10MB raw, per the server-side documents.MaxUploadBytes.
 
-import { loadSession } from '../auth/keychain';
+import { getValidSession } from '../auth/refresh';
 import type { RuntimeConfig } from '../config/bootstrap';
 
 export interface DocumentDTO {
@@ -61,7 +61,7 @@ export function createDocumentsClient(cfg: RuntimeConfig): DocumentsClient {
   const url = (p: string) => `${cfg.apiBaseURL.replace(/\/+$/, '')}${p}`;
 
   const authHeaders = async (contentType = 'application/json'): Promise<Record<string, string>> => {
-    const s = await loadSession();
+    const s = await getValidSession({ apiBaseURL: cfg.apiBaseURL });
     const h: Record<string, string> = { 'Content-Type': contentType };
     if (s) h.Authorization = `Bearer ${s.accessToken}`;
     return h;

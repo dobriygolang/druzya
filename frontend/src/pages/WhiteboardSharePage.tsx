@@ -712,6 +712,19 @@ function RoomCanvasImpl({ room, guestToken, myUserId, myDisplayName }: { room: R
       } catch {
         /* ignore */
       }
+      // КРИТИЧНО: сбросить local awareness state ДО снятия слушателя
+      // 'update' и ДО закрытия WS. setLocalState(null) эмитит «removal»
+      // через awareness.on('update', cb) → cb шлёт по WS → у пиров
+      // соответствующий clientID убирается из collaborators map. Без
+      // этого они видят stale-курсор бывшего клиента до Awareness-таймаута
+      // (~30с в y-protocols), а после реоткрытия мы получаем НОВЫЙ
+      // clientID — и у пиров на холсте появляются ДВА курсора одного
+      // юзера до таймаута старого.
+      try {
+        awareness.setLocalState(null)
+      } catch {
+        /* ignore */
+      }
       yElements.unobserve(onElementsChange)
       yScene.unobserve(onLegacySceneChange)
       ydoc.off('update', onYUpdate)

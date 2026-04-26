@@ -1283,6 +1283,17 @@ function RoomCanvas({ roomId }: { roomId: string }) {
       } catch {
         /* ignore */
       }
+      // КРИТИЧНО: сбросить local awareness state ДО снятия слушателя и ДО
+      // close WS. setLocalState(null) эмитит «removal»-update, который
+      // успевает уйти пиром через onAwarenessUpdate → sendAwarenessRef.
+      // Без этого после реоткрытия у пира на холсте остаётся старый
+      // курсор бывшего clientID до Awareness-таймаута (~30с) — рядом с
+      // новым курсором того же юзера. (Mirror в frontend WhiteboardSharePage.)
+      try {
+        awareness.setLocalState(null);
+      } catch {
+        /* ignore */
+      }
       yElements.unobserve(onElementsChange);
       yScene.unobserve(onLegacySceneChange);
       ydoc.off('update', onUpdate);

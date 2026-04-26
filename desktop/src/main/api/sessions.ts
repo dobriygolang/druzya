@@ -12,7 +12,7 @@
 // itself is BYOK-locally-computed.
 
 import type { RuntimeConfig } from '../config/bootstrap';
-import { loadSession } from '../auth/keychain';
+import { getValidSession } from '../auth/refresh';
 import type { Session, SessionAnalysis, SessionKind } from '@shared/types';
 
 export interface SessionsClient {
@@ -31,7 +31,7 @@ export function createSessionsClient(cfg: RuntimeConfig): SessionsClient {
   const url = (p: string) => `${cfg.apiBaseURL.replace(/\/+$/, '')}${p}`;
 
   const authHeaders = async (): Promise<Record<string, string>> => {
-    const s = await loadSession();
+    const s = await getValidSession({ apiBaseURL: cfg.apiBaseURL });
     const h: Record<string, string> = { 'Content-Type': 'application/json' };
     if (s) h.Authorization = `Bearer ${s.accessToken}`;
     return h;

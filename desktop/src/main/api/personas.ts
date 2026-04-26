@@ -8,7 +8,7 @@
 // (persona with id='default' — always seeded in migration 00051).
 
 import type { RuntimeConfig } from '../config/bootstrap';
-import { loadSession } from '../auth/keychain';
+import { getValidSession } from '../auth/refresh';
 
 export interface PersonaDTO {
   id: string;
@@ -30,7 +30,7 @@ export function createPersonasClient(cfg: RuntimeConfig): PersonasClient {
 
   return {
     list: async () => {
-      const session = await loadSession();
+      const session = await getValidSession({ apiBaseURL: cfg.apiBaseURL });
       const headers: Record<string, string> = { 'Content-Type': 'application/json' };
       if (session) headers.Authorization = `Bearer ${session.accessToken}`;
       const resp = await fetch(url, { method: 'GET', headers });

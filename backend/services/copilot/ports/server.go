@@ -17,6 +17,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"strings"
 
 	"druz9/copilot/app"
 	"druz9/copilot/domain"
@@ -587,6 +588,12 @@ func (s *CopilotServer) toConnectErr(err error) error {
 		return connect.NewError(connect.CodeResourceExhausted, err)
 	case errors.Is(err, domain.ErrModelNotAllowed):
 		return connect.NewError(connect.CodePermissionDenied, err)
+	case errors.Is(err, domain.ErrServiceUnavailable):
+		// Killswitch / dependency down. Симметрично с RPC-стрим
+		// payload'ом (см. classifyStreamError'-> "service_unavailable").
+		// Без явного маппинга падало в default → у клиента было «copilot
+		// failure» вместо «попробуй позже».
+		return connect.NewError(connect.CodeUnavailable, err)
 	case errors.Is(err, domain.ErrAIAssistBlocked):
 		// Phase-4 ADR-001 (Wave 3) — strict mock-session blocks Cue.
 		// Desktop client should poll CheckBlock to avoid hitting this.
@@ -595,6 +602,22 @@ func (s *CopilotServer) toConnectErr(err error) error {
 		if s.Log != nil {
 			s.Log.Error("copilot: unexpected error", slog.Any("err", err))
 		}
-		return connect.NewError(connect.CodeInternal, errors.New("copilot failure"))
+		// Surface a SAFE summary (not full err.Error() — that may leak
+		// stack-traces, internal paths, etc.). Расскажем хотя бы что это
+		// upstream-failure если совпадает по text-pattern: "open stream"
+		// / "llm" / "provider" — иначе общий «copilot failure».
+		// Клиент логирует rawMessage и конкретный код Connect — этого
+		// хватит для диагностики на продe (см. desktop router.ts).
+		msg := "copilot failure"
+		low := strings.ToLower(err.Error())
+		switch {
+		case strings.Contains(low, "open stream") || strings.Contains(low, "llm") || strings.Contains(low, "provider"):
+			msg = "llm provider unavailable"
+		case strings.Contains(low, "context") && strings.Contains(low, "deadline"):
+			msg = "request timed out"
+		case strings.Contains(low, "image") || strings.Contains(low, "attachment"):
+			msg = "attachment processing failed"
+		}
+		return connect.NewError(connect.CodeInternal, errors.New(msg))
 	}
 }
