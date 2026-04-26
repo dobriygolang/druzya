@@ -27,6 +27,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"strings"
@@ -201,7 +202,11 @@ func (c *capturingWriter) Write(p []byte) (int, error) {
 		c.WriteHeader(http.StatusOK)
 	}
 	c.buf.Write(p)
-	return c.ResponseWriter.Write(p)
+	n, err := c.ResponseWriter.Write(p)
+	if err != nil {
+		return n, fmt.Errorf("idempotency: response write: %w", err)
+	}
+	return n, nil
 }
 
 func sha256hex(b []byte) string {
