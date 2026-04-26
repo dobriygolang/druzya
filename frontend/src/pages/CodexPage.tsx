@@ -6,7 +6,8 @@
 // плеером; то и другое снято, потому что подкастов как продукта пока нет.
 // Когда заведём собственный CMS или blog — заменить импорт CODEX_ARTICLES
 // на useQuery (см. content/codex.ts header).
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { ArrowUpRight, Search } from 'lucide-react'
 import { AppShellV2 } from '../components/AppShell'
 import { KnowledgeHubTabs } from '../components/KnowledgeHubTabs'
@@ -125,8 +126,26 @@ function ArticleCard({ a }: { a: CodexArticle }) {
 }
 
 export default function CodexPage() {
-  const [category, setCategory] = useState<string>(ALL)
+  // Coach links to /codex?topic=<slug> для конкретной категории. Парсим
+  // initial state из URL чтобы открытие из brief'а сразу filter'ило.
+  const [searchParams, setSearchParams] = useSearchParams()
+  const initialTopic = searchParams.get('topic') || ALL
+  const [category, setCategory] = useState<string>(initialTopic)
   const [q, setQ] = useState<string>('')
+
+  useEffect(() => {
+    // Sync URL ↔ state в обе стороны: external nav (Coach link) → setCategory;
+    // user click filter → URL.
+    const fromURL = searchParams.get('topic') || ALL
+    if (fromURL !== category) setCategory(fromURL)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams])
+
+  const handleCategoryChange = (slug: string) => {
+    setCategory(slug)
+    if (slug === ALL) setSearchParams({}, { replace: true })
+    else setSearchParams({ topic: slug }, { replace: true })
+  }
 
   const norm = q.trim().toLowerCase()
   const visible = CODEX_ARTICLES.filter((a) => {
@@ -144,7 +163,7 @@ export default function CodexPage() {
           under a single header entry. */}
       <KnowledgeHubTabs active="articles" />
       <Hero />
-      <CategoryFilters active={category} onChange={setCategory} />
+      <CategoryFilters active={category} onChange={handleCategoryChange} />
       <div className="px-4 pb-4 sm:px-8 lg:px-20">
         <SearchBox value={q} onChange={setQ} />
       </div>

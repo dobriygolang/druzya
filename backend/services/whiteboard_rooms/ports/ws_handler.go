@@ -125,7 +125,7 @@ func (h *WSHandler) Handle(w http.ResponseWriter, r *http.Request) {
 		peers = len(rh.clients)
 		rh.mu.RUnlock()
 	}
-	h.Log.Info("wb.ws.connect",
+	h.Log.Debug("wb.ws.connect",
 		slog.String("room", roomID.String()),
 		slog.String("user", uid.String()),
 		slog.Int("peers_after", peers),

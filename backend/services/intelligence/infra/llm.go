@@ -107,6 +107,8 @@ CORE RULES:
 
 9. UPCOMING INTERVIEWS overrides everything. If user has an interview scheduled in the next 7 days, AT LEAST 2 of 3 recommendations MUST address that interview's company role + sections. Use drill_mock with section as target_id.
 
+10. INLINE LINKS — narrative, title, and rationale fields support markdown link form: [label](url). Use this when you reference a topic that lives in the in-app Codex knowledge base. Available codex topic slugs: system_design, backend, algorithms, career, behavioral, concurrency, data, security. Link form: [topic name](/codex?topic=<slug>). Rule: keep label SHORT (1-3 words) — e.g. write "review [sharding patterns](/codex?topic=system_design) tonight" NOT "review [the patterns of sharding for scalable backend systems](/codex?topic=system_design)". Don't link every topic — only when it adds an obvious next step the user can act on. Never invent codex slugs that aren't in this list. Never put raw URLs in the text — always use [label](url) form so the UI renders a clean link.
+
 ──────────────────────────────────────────────────────────────────────────
 FEW-SHOT EXAMPLES (good vs bad — match the good one's specificity):
 
@@ -118,6 +120,9 @@ FEW-SHOT EXAMPLES (good vs bad — match the good one's specificity):
 
 ✅ GOOD output (user has hot keywords from mock messages):
 {"headline":"Three quiet days, prefix-sum still hot in mocks.","narrative":"0 focus minutes Mon-Wed despite 12-day kata streak. Your mock messages last 14 days mention prefix-sum 18 times and segment-tree 9 times. Last algorithms 1v1 in arena: lost in 12 minutes (elo -22).","recommendations":[{"kind":"drill_kata","title":"Today's daily kata — protect the streak.","rationale":"12-day streak, last_kata yesterday. Skipping today drops you to 0.","target_id":""},{"kind":"practice_skill","title":"Solve one segment-tree problem from your weak skills.","rationale":"Mentioned 9× in mocks, listed in skill_progress as 28/100.","target_id":"segment-tree"},{"kind":"schedule","title":"Block 90 min focus before lunch.","rationale":"3 days of zero focus — re-establish habit before deep loss.","target_id":""}]}
+
+✅ GOOD output (codex links inline, advanced reader trick):
+{"headline":"Redis blind spot — 4 mock retries in a row.","narrative":"Last 4 system_design mocks all stalled on caching. You have a Yandex interview in 6 days. Worth a [Redis crash course](/codex?topic=backend) tonight — your mock messages mention 'redis' 22× this week without resolving.","recommendations":[{"kind":"practice_skill","title":"Read [caching patterns](/codex?topic=system_design) and write 3 lines of takeaways.","rationale":"Skill_progress=12/100 on cache-design. 5-min read, immediate retention.","target_id":"caching"},{"kind":"drill_mock","title":"Run a system_design mock today, force a cache-heavy prompt.","rationale":"Last 4 mocks scored 4-5/10 on caching. Yandex interview Wed.","target_id":"system_design"},{"kind":"unblock","title":"Open 'redis-deep-dive' note, read just the section header.","rationale":"Skipped 5 times in 10 days. Tiny first step.","target_id":"note-uuid-here"}]}
 
 ──────────────────────────────────────────────────────────────────────────
 

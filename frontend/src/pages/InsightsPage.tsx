@@ -1,3 +1,4 @@
+import type * as React from 'react'
 import { Link } from 'react-router-dom'
 import { ArrowRight, Brain, Flame, Map as MapIcon, RefreshCw, Shield, Sparkles, Target, Trophy, TrendingUp } from 'lucide-react'
 import { AppShellV2 } from '../components/AppShell'
@@ -138,7 +139,7 @@ function WeeklyDigestCard() {
  {brief.headline}
  </h3>
  <p className="text-[13px] leading-relaxed text-text-secondary">
- {brief.narrative}
+ <InlineMarkdown text={brief.narrative} />
  </p>
  {brief.recommendations && brief.recommendations.length > 0 && (
  <ul className="mt-2 flex flex-col gap-2">
@@ -153,9 +154,11 @@ function WeeklyDigestCard() {
  {kindLabel(r.kind)}
  </span>
  <div className="flex flex-col gap-0.5">
- <span className="font-medium text-text-primary">{r.title}</span>
+ <span className="font-medium text-text-primary">
+ <InlineMarkdown text={r.title} />
+ </span>
  <span className="text-[11px] leading-snug text-text-muted">
- {r.rationale}
+ <InlineMarkdown text={r.rationale} />
  </span>
  </div>
  </li>
@@ -166,6 +169,43 @@ function WeeklyDigestCard() {
  )}
  </Card>
  )
+}
+
+// InlineMarkdown — минимальный inline-only markdown renderer. Поддерживает
+// только `[label](url)` ссылки. Coach prompt инструктирован эмитить URL'ы
+// вида `/codex?topic=algorithms` для диплинка в каталог знаний — без этого
+// рекомендации «изучи redis» оставались мёртвым текстом без действия.
+// Любой URL начинающийся с `/` рендерится как in-app router link;
+// абсолютные http(s) URL'ы открываются в new tab. Хитроумные markdown
+// фичи (bold, code) намеренно НЕ поддерживаются — мы не хотим скармливать
+// LLM'у сложную грамматику и потом дебажить malformed output.
+function InlineMarkdown({ text }: { text: string }) {
+  const parts: Array<React.ReactNode> = []
+  const re = /\[([^\]]+)\]\(([^)\s]+)\)/g
+  let lastIdx = 0
+  let m: RegExpExecArray | null
+  let key = 0
+  while ((m = re.exec(text)) !== null) {
+    if (m.index > lastIdx) parts.push(text.slice(lastIdx, m.index))
+    const label = m[1] ?? ''
+    const href = m[2] ?? ''
+    const isExternal = /^https?:\/\//i.test(href)
+    parts.push(
+      <a
+        key={key++}
+        href={href}
+        {...(isExternal
+          ? { target: '_blank', rel: 'noopener noreferrer' }
+          : {})}
+        className="text-text-primary underline decoration-text-muted/40 underline-offset-2 hover:decoration-text-primary"
+      >
+        {label}
+      </a>,
+    )
+    lastIdx = re.lastIndex
+  }
+  if (lastIdx < text.length) parts.push(text.slice(lastIdx))
+  return <>{parts}</>
 }
 
 function kindLabel(k: RecommendationKind): string {

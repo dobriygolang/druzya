@@ -17,6 +17,17 @@ const LABELS: Record<QuotaResource, string> = {
   ai_this_month: 'AI calls this month',
 };
 
+// Compact-mode prefix — короткий лейбл рядом с цифрой, чтоб юзер понимал
+// что quota меряет ТОЛЬКО SHARED rooms/boards, а не все. Раньше показывалось
+// «2 OVER LIMIT 1» рядом с sidebar в котором 6 комнат — выглядело как баг,
+// хотя 4 из 6 были private (не считались в quota).
+const COMPACT_PREFIX: Record<QuotaResource, string> = {
+  synced_notes: 'SYNCED',
+  active_shared_boards: 'SHARED',
+  active_shared_rooms: 'SHARED',
+  ai_this_month: 'AI',
+};
+
 interface QuotaUsageBarProps {
   resource: QuotaResource;
   variant?: 'compact' | 'full';
@@ -68,6 +79,7 @@ export function QuotaUsageBar({ resource, variant = 'compact' }: QuotaUsageBarPr
         }}
       >
         <span>
+          <span style={{ opacity: 0.45, marginRight: 6 }}>{COMPACT_PREFIX[resource]}</span>
           {used}
           {!isUnlimited && !overLimit && <span style={{ opacity: 0.5 }}>{` / ${limit}`}</span>}
           {overLimit && <span style={{ opacity: 0.7 }}>{` · OVER LIMIT ${limit}`}</span>}

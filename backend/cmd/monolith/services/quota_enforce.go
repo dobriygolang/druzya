@@ -116,6 +116,36 @@ func downgradeOnceWhiteboard(ctx context.Context, pool *pgxpool.Pool, log *slog.
 	if n := tag.RowsAffected(); n > 0 {
 		log.InfoContext(ctx, "free_tier_downgrade.whiteboard", "demoted", n)
 	}
+
+	// Quota-overflow downgrade: free-tier юзеры могли набрать > policy limit
+	// shared rooms из-за legacy багов (раньше visibility flip private→shared
+	// шёл без quota check, и раньше /subscription/quota 500'ил из-за `notes`
+	// vs `hone_notes` table-name бага → EnforceCreate падал в permissive).
+	// Free tier policy лимит = 1 active shared board (см. domain.PolicyDefaults).
+	// Оставляем самую недавнюю, остальные демотируем в private. Owner всё
+	// ещё видит её в своём списке (просто гости теряют доступ).
+	const overflowQ = `
+		WITH ranked AS (
+		  SELECT wr.id,
+				 ROW_NUMBER() OVER (PARTITION BY wr.owner_id ORDER BY wr.created_at DESC) AS rn
+			FROM whiteboard_rooms wr
+		   WHERE wr.visibility = 'shared'
+			 AND wr.expires_at > now()
+			 AND COALESCE((
+				 SELECT s.plan FROM subscriptions s WHERE s.user_id = wr.owner_id
+			 ), 'free') = 'free'
+		)
+		UPDATE whiteboard_rooms
+		   SET visibility = 'private'
+		 WHERE id IN (SELECT id FROM ranked WHERE rn > 1)`
+	tag2, err := pool.Exec(ctx, overflowQ)
+	if err != nil {
+		log.WarnContext(ctx, "free_tier_overflow_downgrade.whiteboard", "err", err)
+		return
+	}
+	if n := tag2.RowsAffected(); n > 0 {
+		log.InfoContext(ctx, "free_tier_overflow_downgrade.whiteboard", "demoted", n)
+	}
 }
 
 func runFreeTierShareDowngradeEditor(ctx context.Context, pool *pgxpool.Pool, log *slog.Logger) {
@@ -151,6 +181,34 @@ func downgradeOnceEditor(ctx context.Context, pool *pgxpool.Pool, log *slog.Logg
 	}
 	if n := tag.RowsAffected(); n > 0 {
 		log.InfoContext(ctx, "free_tier_downgrade.editor", "demoted", n)
+	}
+
+	// Quota-overflow: free-tier лимит = 1 active shared editor room. Юзеры
+	// у которых > 1 — последствие legacy bug'ов (visibility flip без чека,
+	// /quota 500'ил → permissive). Оставляем самую недавнюю, остальные
+	// демотируем. Owner remains an owner — кнопка «sharing» в UI снова
+	// доступна для re-flip когда он один достанется (или upgrade'а tier'а).
+	const overflowQ = `
+		WITH ranked AS (
+		  SELECT er.id,
+				 ROW_NUMBER() OVER (PARTITION BY er.owner_id ORDER BY er.created_at DESC) AS rn
+			FROM editor_rooms er
+		   WHERE er.visibility = 'shared'
+			 AND er.expires_at > now()
+			 AND COALESCE((
+				 SELECT s.plan FROM subscriptions s WHERE s.user_id = er.owner_id
+			 ), 'free') = 'free'
+		)
+		UPDATE editor_rooms
+		   SET visibility = 'private'
+		 WHERE id IN (SELECT id FROM ranked WHERE rn > 1)`
+	tag2, err := pool.Exec(ctx, overflowQ)
+	if err != nil {
+		log.WarnContext(ctx, "free_tier_overflow_downgrade.editor", "err", err)
+		return
+	}
+	if n := tag2.RowsAffected(); n > 0 {
+		log.InfoContext(ctx, "free_tier_overflow_downgrade.editor", "demoted", n)
 	}
 }
 

@@ -1,6 +1,7 @@
 package ports
 
 import (
+	"encoding/json"
 	"errors"
 	"log/slog"
 	"net/http"
@@ -150,27 +151,27 @@ func (h *WSHandler) Handle(w http.ResponseWriter, r *http.Request) {
 
 	c := newWSConn(ws, roomID, uid, role, h.Log)
 
-	// DEBUG: эквивалент wb.ws.connect для editor-комнат. Грепай:
-	// `editor.ws.connect`. Покажет role, peers_after, visibility — если
-	// host получает role=viewer, его ops будут drop'ваться (line 405-413
-	// в ws.go), что выглядит как «host видит, guest не видит».
-	h.Hub.mu.RLock()
-	rh := h.Hub.rooms[roomID]
-	h.Hub.mu.RUnlock()
-	peers := 0
-	if rh != nil {
-		rh.mu.RLock()
-		peers = len(rh.clients)
-		rh.mu.RUnlock()
-	}
-	h.Log.Info("editor.ws.connect",
+	h.Log.Debug("editor.ws.connect",
 		slog.String("room", roomID.String()),
 		slog.String("user", uid.String()),
 		slog.String("role", string(role)),
-		slog.Int("peers_after", peers+1), // +1 потому что register идёт после
 		slog.String("visibility", string(room.Visibility)))
 	h.Hub.register(roomID, c)
 	go c.writeLoop()
+
+	// Hydration: новый клиент получает текущий full Y.Doc state до того как
+	// войти в read-loop. Иначе guest на refresh видит пустой ytext (editor
+	// был чисто-relay до этого фикса). Mirror whiteboard ws_handler.go
+	// pickHydrationBlob pattern. Клиенты периодически шлют kind="snapshot"
+	// с Y.encodeStateAsUpdate(ydoc); сервер хранит latest и отдаёт здесь.
+	if snap := h.Hub.SnapshotOf(roomID); len(snap) > 0 {
+		// []byte → base64 в JSON автоматом (Go стандарт). Клиент видит
+		// { kind: "snapshot", data: { payload: "<base64>" } }.
+		payload, _ := json.Marshal(opPayload{Payload: snap})
+		env, _ := json.Marshal(Envelope{Kind: KindSnapshot, Data: payload})
+		c.enqueue(env)
+	}
+
 	h.Hub.readLoop(r.Context(), c)
 }
 

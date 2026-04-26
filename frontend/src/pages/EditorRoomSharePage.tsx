@@ -211,6 +211,7 @@ function RoomEditorImpl({ room, guestToken, myUserId }: { room: RoomMeta; guestT
   const viewRef = useRef<EditorView | null>(null)
   const sendRef = useRef<((u: Uint8Array) => void) | null>(null)
   const sendAwarenessRef = useRef<((u: Uint8Array) => void) | null>(null)
+  const sendSnapshotRef = useRef<((u: Uint8Array) => void) | null>(null)
   const wsCloseRef = useRef<(() => void) | null>(null)
 
   // Run / Format / output panel state. Mirror hone Editor.tsx.
@@ -236,9 +237,29 @@ function RoomEditorImpl({ room, guestToken, myUserId }: { room: RoomMeta; guestT
       color: userColor(myUserId || room.id),
     })
 
+    // Snapshot scheduler — 1.5s после последнего edit'а шлём
+    // Y.encodeStateAsUpdate(ydoc) серверу. Сервер хранит latest blob и
+    // hydrate'ит новых join'ов. Без этого guest на refresh видел пустой
+    // ytext (editor был чисто-relay).
+    let snapshotTimer: number | null = null
+    const sendFullSnapshot = () => {
+      const sender = sendSnapshotRef.current
+      if (!sender) return
+      const full = Y.encodeStateAsUpdate(ydoc)
+      if (full.byteLength > 0) sender(full)
+    }
+    const scheduleSnapshot = () => {
+      if (snapshotTimer !== null) window.clearTimeout(snapshotTimer)
+      snapshotTimer = window.setTimeout(() => {
+        snapshotTimer = null
+        sendFullSnapshot()
+      }, 1500)
+    }
+
     const onYUpdate = (update: Uint8Array, origin: unknown) => {
       if (origin === 'remote') return
       sendRef.current?.(update)
+      scheduleSnapshot()
     }
     ydoc.on('update', onYUpdate)
 
@@ -287,6 +308,9 @@ function RoomEditorImpl({ room, guestToken, myUserId }: { room: RoomMeta; guestT
     sendAwarenessRef.current = (update) => {
       handle.send({ kind: 'presence', data: { update: bytesToB64(update) } })
     }
+    sendSnapshotRef.current = (full) => {
+      handle.send({ kind: 'snapshot', data: { payload: bytesToB64(full) } })
+    }
 
     // CodeMirror.
     const langExt = (() => {
@@ -324,6 +348,11 @@ function RoomEditorImpl({ room, guestToken, myUserId }: { room: RoomMeta; guestT
     return () => {
       viewRef.current?.destroy()
       viewRef.current = null
+      if (snapshotTimer !== null) {
+        window.clearTimeout(snapshotTimer)
+        snapshotTimer = null
+      }
+      try { sendFullSnapshot() } catch { /* ignore */ }
       ydoc.off('update', onYUpdate)
       awareness.off('update', onAwUpdate)
       const closeHandle = wsCloseRef.current
@@ -348,6 +377,7 @@ function RoomEditorImpl({ room, guestToken, myUserId }: { room: RoomMeta; guestT
       wsCloseRef.current = null
       sendRef.current = null
       sendAwarenessRef.current = null
+      sendSnapshotRef.current = null
     }
   }, [room, guestToken])
 
@@ -383,21 +413,23 @@ function RoomEditorImpl({ room, guestToken, myUserId }: { room: RoomMeta; guestT
     setPanelOpen(true)
     try {
       const token = guestToken ?? readAccessToken() ?? ''
-      const langMap: Record<string, number> = {
-        // mirror druz9.v1.Language enum (1=GO, 2=PYTHON, 3=JS, 4=TS).
-        go: 1,
-        python: 2,
-        javascript: 3,
-        typescript: 4,
+      // Vanguard transcoder принимает enum либо как int, либо как имя.
+      // Используем имя — это canonical proto3 JSON form, безопаснее против
+      // version skew между прото и transcoder'ом.
+      const langName: Record<string, string> = {
+        go: 'LANGUAGE_GO',
+        python: 'LANGUAGE_PYTHON',
+        javascript: 'LANGUAGE_JAVASCRIPT',
+        typescript: 'LANGUAGE_TYPESCRIPT',
       }
-      const langInt = langMap[room.language] ?? 0
+      const lang = langName[room.language] ?? 'LANGUAGE_UNSPECIFIED'
       const resp = await fetch(`${API_BASE}/editor/room/${encodeURIComponent(room.id)}/run`, {
         method: 'POST',
         headers: {
           'content-type': 'application/json',
           authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ code, language: langInt }),
+        body: JSON.stringify({ code, language: lang }),
       })
       if (resp.status === 503) {
         setRunResult(null)

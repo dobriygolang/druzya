@@ -38,6 +38,7 @@ const replayBufferCap = 10_000
 // Outbound message kinds (server → client). See bible §5 / openapi x-websocket.
 const (
 	KindOp                = "op"
+	KindSnapshot          = "snapshot"
 	KindCursor            = "cursor"
 	KindFreeze            = "freeze"
 	KindRoleChange        = "role_change"
@@ -50,6 +51,7 @@ const (
 // Inbound message kinds (client → server).
 const (
 	InOp       = "op"
+	InSnapshot = "snapshot"
 	InCursor   = "cursor"
 	InPresence = "presence"
 	InPing     = "ping"
@@ -113,6 +115,12 @@ type roomHub struct {
 	buffer  []bufferedEntry
 	bufHead int // next write index
 	bufLen  int // 0..replayBufferCap
+	// lastSnapshot is the most recent full Y.Doc state blob received from
+	// any client (kind="snapshot"). Sent verbatim to new joiners в качестве
+	// hydration. Без этого guest на refresh получает пустой ytext —
+	// editor was relay-only до этого фикса. Mirror whiteboard ws.go
+	// roomHub.lastFullSnapshot pattern.
+	lastSnapshot []byte
 }
 
 // bufferedEntry is an op or cursor in the rolling replay buffer.
@@ -204,10 +212,8 @@ func (h *Hub) Broadcast(roomID uuid.UUID, kind string, data any) {
 	for _, c := range targets {
 		c.enqueue(env)
 	}
-	// DEBUG → INFO temp: «отправили op'ы peer'ам?». Если targets=1 (только
-	// sender), guest не получит ничего. Грепай: `editor.ws.broadcast`.
 	if h.Log != nil && len(targets) > 1 {
-		h.Log.Info("editor.ws.broadcast",
+		h.Log.Debug("editor.ws.broadcast",
 			slog.String("room", roomID.String()),
 			slog.String("kind", kind),
 			slog.Int("targets", len(targets)))
@@ -476,10 +482,52 @@ func (h *Hub) readLoop(ctx context.Context, c *wsConn) {
 				"data":    env.Data,
 			})
 
+		case InSnapshot:
+			// Full Y.Doc state from client. Не broadcast'им — это
+			// идемпотентная hydration-replay для новых join'ов. Просто
+			// сохраняем как latest. Role-gate: только участники, кто может
+			// edit, могут перезаписать снапшот (защита от viewer'ов
+			// клобберящих state).
+			role := c.currentRole()
+			if !role.CanEdit() {
+				continue
+			}
+			var p opPayload
+			if err := json.Unmarshal(env.Data, &p); err != nil {
+				continue
+			}
+			if len(p.Payload) == 0 {
+				continue
+			}
+			rh := h.room(c.roomID)
+			rh.mu.Lock()
+			rh.lastSnapshot = p.Payload
+			rh.mu.Unlock()
+
 		default:
 			// Unknown kinds are ignored — forward-compat.
 		}
 	}
+}
+
+// SnapshotOf returns the most recent full Y.Doc state seen for the room,
+// or nil if none yet. Called by ws_handler before readLoop to hydrate
+// new clients.
+func (h *Hub) SnapshotOf(roomID uuid.UUID) []byte {
+	h.mu.RLock()
+	rh := h.rooms[roomID]
+	h.mu.RUnlock()
+	if rh == nil {
+		return nil
+	}
+	rh.mu.RLock()
+	defer rh.mu.RUnlock()
+	if len(rh.lastSnapshot) == 0 {
+		return nil
+	}
+	out := make([]byte, len(rh.lastSnapshot))
+	copy(out, rh.lastSnapshot)
+	return out
 }
 
 func mustEnvelope(kind string, data any) []byte {

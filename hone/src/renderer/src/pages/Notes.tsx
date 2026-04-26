@@ -2011,7 +2011,11 @@ function Toast({ text }: { text: string }) {
       className="fadein"
       style={{
         position: 'fixed',
-        bottom: 32,
+        // Поднимаем над Dock'ом (Dock у нас bottom: 36, ~36px высотой =
+        // занимает 36..72). Раньше Toast был на bottom: 32 → перекрывался
+        // с Dock'ом, юзер не видел уведомление "Synced to cloud" —
+        // прятался за timer-капсулой.
+        bottom: 96,
         left: '50%',
         transform: 'translateX(-50%)',
         zIndex: 80,

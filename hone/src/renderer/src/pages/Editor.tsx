@@ -181,6 +181,22 @@ function langExt(lang: Language) {
   }
 }
 
+// languageShortLabel — компактный 2-3 char label для sidebar pill'ы.
+function languageShortLabel(lang: Language): string {
+  switch (lang) {
+    case Language.GO:
+      return 'GO';
+    case Language.PYTHON:
+      return 'PY';
+    case Language.JAVASCRIPT:
+      return 'JS';
+    case Language.TYPESCRIPT:
+      return 'TS';
+    default:
+      return '—';
+  }
+}
+
 function languageLabel(lang: Language): string {
   switch (lang) {
     case Language.GO:
@@ -779,6 +795,23 @@ function CodeRoomRow({
       >
         {entry.id.slice(0, 8)}…{entry.id.slice(-4)}
       </span>
+      {typeof entry.language === 'number' && entry.language > 0 && (
+        <span
+          className="mono"
+          style={{
+            fontSize: 9,
+            letterSpacing: '0.16em',
+            padding: '2px 6px',
+            borderRadius: 4,
+            background: 'rgba(255,255,255,0.04)',
+            color: 'var(--ink-60)',
+            flexShrink: 0,
+          }}
+          title={languageLabel(entry.language)}
+        >
+          {languageShortLabel(entry.language)}
+        </span>
+      )}
       <span
         style={{
           fontSize: 10,
@@ -1216,6 +1249,7 @@ function RoomView({ roomId }: { roomId: string; onBack?: () => void }) {
   const viewRef = useRef<EditorView | null>(null);
   const sendRef = useRef<((payload: Uint8Array) => void) | null>(null);
   const sendAwarenessRef = useRef<((payload: Uint8Array) => void) | null>(null);
+  const sendSnapshotRef = useRef<((payload: Uint8Array) => void) | null>(null);
   const wsCloseRef = useRef<(() => void) | null>(null);
   const runningRef = useRef(false);
 
@@ -1229,6 +1263,9 @@ function RoomView({ roomId }: { roomId: string; onBack?: () => void }) {
       .then((r) => {
         if (cancelled) return;
         setRoom(r);
+        // Backfill language в RecentEntry чтобы sidebar показывал язык
+        // даже у комнат, открытых до того как мы стали трекать language.
+        rememberEditorRoom(r.id, r.language as number);
       })
       .catch((err: unknown) => {
         if (cancelled) return;
@@ -1264,12 +1301,32 @@ function RoomView({ roomId }: { roomId: string; onBack?: () => void }) {
     const myColor = userColor(myUserId ?? room.id);
     awareness.setLocalStateField('user', { name: myName, color: myColor });
 
-    // Local Y.Doc updates → push.
+    // Snapshot scheduler — 1.5s после последнего edit'а шлём
+    // Y.encodeStateAsUpdate(ydoc) на сервер. Сервер хранит latest blob и
+    // отдаёт его новым WS-join'ам как hydration. Без этого guest на refresh
+    // получал пустой ytext (editor был чисто-relay до этого фикса).
+    let snapshotTimer: number | null = null;
+    const sendFullSnapshot = () => {
+      const sender = sendSnapshotRef.current;
+      if (!sender) return;
+      const full = Y.encodeStateAsUpdate(ydoc);
+      if (full.byteLength > 0) sender(full);
+    };
+    const scheduleSnapshot = () => {
+      if (snapshotTimer !== null) window.clearTimeout(snapshotTimer);
+      snapshotTimer = window.setTimeout(() => {
+        snapshotTimer = null;
+        sendFullSnapshot();
+      }, 1500);
+    };
+
+    // Local Y.Doc updates → push delta + schedule snapshot resend.
     const onUpdate = (update: Uint8Array, origin: unknown) => {
       // Игнорируем updates от 'remote' (WS) и от persistence (IndexedDB
       // restore on mount) — иначе зацикливание.
       if (origin === 'remote' || origin === persistence) return;
       sendRef.current?.(update);
+      scheduleSnapshot();
     };
     ydoc.on('update', onUpdate);
 
@@ -1332,6 +1389,10 @@ function RoomView({ roomId }: { roomId: string; onBack?: () => void }) {
       // { user_id, data } (см. editor/ports/ws.go InPresence handling).
       handle.send({ kind: 'presence', data: { update: bytesToB64(update) } });
     };
+    sendSnapshotRef.current = (full: Uint8Array) => {
+      // Full Y.Doc state — server stores latest и hydrate'ит новых join'ов.
+      handle.send({ kind: 'snapshot', data: { payload: bytesToB64(full) } });
+    };
 
     // CodeMirror setup. yCollab(ytext, awareness) — теперь рисует чужие
     // карет/selection с цветом из awareness state.
@@ -1371,6 +1432,13 @@ function RoomView({ roomId }: { roomId: string; onBack?: () => void }) {
       awareness.off('change', onAwarenessChange);
       awareness.destroy();
       ydoc.off('update', onUpdate);
+      if (snapshotTimer !== null) {
+        window.clearTimeout(snapshotTimer);
+        snapshotTimer = null;
+      }
+      // Final snapshot flush на cleanup — чтобы guest на refresh не потерял
+      // последние секунды перед закрытием host'ом WS'а.
+      try { sendFullSnapshot(); } catch { /* ignore */ }
       // WS close с задержкой 60ms чтобы send-buffer ушёл на сервер ДО close.
       const closeHandle = wsCloseRef.current;
       window.setTimeout(() => {
@@ -1382,6 +1450,7 @@ function RoomView({ roomId }: { roomId: string; onBack?: () => void }) {
       wsCloseRef.current = null;
       sendRef.current = null;
       sendAwarenessRef.current = null;
+      sendSnapshotRef.current = null;
     };
   }, [room, myUserId]);
 

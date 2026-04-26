@@ -154,12 +154,8 @@ func (h *Hub) broadcast(roomID uuid.UUID, msg []byte, skip *wsConn) {
 	for _, c := range targets {
 		c.enqueue(msg)
 	}
-	// DEBUG → INFO temporarily: «отправили ли мы что-то peer'ам?». Если
-	// totalClients > 1 но targets == 0 — кто-то застрял в hub'е под
-	// другим roomID (race / wrong parse). После того как realtime устаканится,
-	// можно вернуть на Debug. Грепай в проде: `wb.ws.broadcast`.
 	if h.Log != nil && totalClients > 1 {
-		h.Log.Info("wb.ws.broadcast",
+		h.Log.Debug("wb.ws.broadcast",
 			slog.String("room", roomID.String()),
 			slog.Int("targets", len(targets)),
 			slog.Int("total_clients", totalClients),
