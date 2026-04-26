@@ -6,8 +6,13 @@ import "context"
 // Free tier limits on launch day: 30 RPM / 14.4k RPD per model, plenty
 // for our mixed workload.
 //
-// Vision: Groq Llama models are text-only today; leave supportsVision
-// false so the chain routes image calls to a vision-capable provider.
+// Vision: с релизом Llama 4 (early 2025) у Groq появились multimodal
+// модели — `meta-llama/llama-4-scout-17b-16e-instruct` и `llama-4-maverick`
+// принимают image_url content-blocks по OpenAI-spec. supportsVision=true
+// чтобы chain мог гнать через Groq image-запросы. Если в task_map
+// для конкретной задачи указана НЕ vision-модель Groq — driver вернёт
+// ErrModelNotSupported и chain пойдёт дальше (ровно для этого
+// hasImages-guard в driver_openai.go и есть).
 // JSON mode: Groq supports response_format:"json_object" on all models.
 const GroqEndpoint = "https://api.groq.com/openai/v1/chat/completions"
 
@@ -18,7 +23,13 @@ const GroqEndpoint = "https://api.groq.com/openai/v1/chat/completions"
 func NewGroqDriver(apiKey string) Driver {
 	d := newOpenAIDriver(ProviderGroq, apiKey, GroqEndpoint)
 	d.supportsJSONMode = true
-	d.supportsVision = false
+	// Vision-capable: Llama 4 Scout / Maverick через Groq принимают
+	// image_url content-blocks. Если task_map для конкретной задачи
+	// указывает text-only Groq-модель (llama-3.3-70b и т.д.) — driver
+	// вернёт ErrModelNotSupported только если в request'е ЕСТЬ images
+	// (см. driver_openai.go::Chat/ChatStream hasImages-guard). Для
+	// текстовых запросов всё работает как раньше.
+	d.supportsVision = true
 	return &groqDriver{openAIDriver: d}
 }
 

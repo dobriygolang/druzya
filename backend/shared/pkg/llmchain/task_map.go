@@ -156,33 +156,36 @@ var DefaultTaskModelMap = TaskModelMap{
 		ProviderOllama:     "qwen2.5:3b-instruct-q4_K_M",
 	},
 	TaskVision: {
-		// Vision-only task. Turbo-chain (Groq llama-3.3-70b / Cerebras
-		// llama3.3-70b / Mistral large) — все text-only, supportsVision=false
-		// на драйверном уровне.
+		// Vision task — multi-provider chain, как и все остальные task'и.
+		// Раньше тут был ОДИН провайдер (OpenRouter), и при 429 на free-tier
+		// весь vision-функционал лежал. Теперь добавили Groq (Llama 4 Scout
+		// нативно multimodal с 2025) — у него отдельный rate-limit pool.
 		//
-		// 2026-04-26: переехали с qwen/qwen-2.5-vl-72b-instruct:free →
-		// google/gemma-3-27b-it:free. OpenRouter retired qwen-2.5-vl из
-		// free-каталога (404 «No endpoints found»). Gemma 3 27B — текущая
-		// лучшая бесплатная vision-модель в OpenRouter (131K context, март
-		// 2026, vision + text), хорошо читает скриншоты UI и диаграммы.
+		// Порядок (соответствует LLM_CHAIN_ORDER по умолчанию):
+		//   1. Groq llama-4-scout — primary, paid tier $0.11/M в input.
+		//      Vision-нативный, fast (Groq's hardware-accelerated inference).
+		//   2. OpenRouter google/gemma-3-27b-it:free — fallback, бесплатно
+		//      но 200 req/day per IP. Если Groq упал/down — отрабатывает.
 		//
-		// Если Gemma 3 тоже выпилят — актуальные альтернативы (apr 2026):
-		//   "google/gemma-3-12b-it:free"        — 12B, легче, быстрее.
-		//   "google/gemma-3-4b-it:free"         — 4B, минимальное качество.
-		//   "google/gemma-4-26b-a4b-it:free"    — 26B, 262K context.
-		//   "google/gemma-4-31b-it:free"        — 31B, 262K context.
+		// Hot-swap без redeploy: админ может поменять модели через
+		// `/admin → LLM Chain → Task Map → vision`. Static-map — только
+		// cold-start fallback.
+		//
+		// Free OpenRouter-альтернативы если Gemma 3 тоже выпилят:
+		//   "google/gemma-3-12b-it:free"          — 12B, быстрее.
+		//   "google/gemma-4-26b-a4b-it:free"      — 26B, 262K context.
 		//   "nvidia/nemotron-nano-12b-v2-vl:free" — NVIDIA 12B vision.
-		// Все принимают image_url content-blocks per OpenAI-spec.
-		// Free-tier limit: 20 req/min, 200 req/day per OpenRouter API key.
 		//
-		// Hot-swap без redeploy: админ может поменять модель через
-		// `PUT /admin/llm/config` (см. shared/pkg/llmchain/runtime_config.go),
-		// этот static-map — только default fallback.
+		// Premium через VirtualUltra ModelOverride:
+		//   Claude Sonnet 4.5 — best-in-class на UI/диаграммах, tier=ascendant.
+		//   GPT-4o / GPT-4.1 — fallback в Ultra chain.
 		//
-		// Premium-уровни (через VirtualUltra ModelOverride):
-		//   Claude Sonnet 4.5 — best-in-class на технических диаграммах,
-		//      tier=ascendant.
-		//   GPT-4o / GPT-4.1 — fallback в Ultra chain, тоже vision-capable.
+		// Cerebras / Mistral / DeepSeek сюда не добавляем: первые два
+		// text-only на 2026-04, DeepSeek вижн не релизил (V3/R1 text-only).
+		// Ollama — теоретически self-hosted vision (llava / qwen2-vl /
+		// gemma3:vision) подойдёт, но конкретный model-id зависит от того
+		// что админ поднял у себя — пусть выставляет через UI.
+		ProviderGroq:       "meta-llama/llama-4-scout-17b-16e-instruct",
 		ProviderOpenRouter: "google/gemma-3-27b-it:free",
 	},
 	TaskNoteQA: {

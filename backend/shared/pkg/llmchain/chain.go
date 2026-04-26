@@ -317,7 +317,7 @@ func (c *Chain) Chat(ctx context.Context, req Request) (Response, error) {
 			return Response{}, fmt.Errorf("llmchain.Chat: %w", cerr)
 		}
 	}
-	return Response{}, &AllProvidersUnavailableError{Task: req.Task, Attempts: attempts}
+	return Response{}, &AllProvidersUnavailableError{Task: effectiveTaskFor(req), Attempts: attempts}
 }
 
 // ChatStream is the streaming path. Fallback is attempted ONLY on
@@ -327,6 +327,14 @@ func (c *Chain) Chat(ctx context.Context, req Request) (Response, error) {
 func (c *Chain) ChatStream(ctx context.Context, req Request) (<-chan StreamEvent, error) {
 	candidates, err := c.candidates(req)
 	if err != nil {
+		// Конфигурационная или tier-ошибка — кандидаты вообще не построились.
+		// Лог на Warn с подробностями: оператор сразу видит что сломалось
+		// (no providers configured / unknown virtual / tier-mismatch).
+		c.log.WarnContext(ctx, "llmchain.ChatStream: no candidates",
+			slog.String("task", string(req.Task)),
+			slog.String("model_override", req.ModelOverride),
+			slog.Bool("has_images", hasImages(req.Messages)),
+			slog.Any("err", err))
 		return nil, err
 	}
 	attempts := make([]AttemptError, 0, len(candidates))
@@ -337,6 +345,11 @@ func (c *Chain) ChatStream(ctx context.Context, req Request) (<-chan StreamEvent
 				Err: fmt.Errorf("cooled: %s", reason),
 			})
 			incFallback(cand.provider, "cooled")
+			c.log.InfoContext(ctx, "llmchain.ChatStream: candidate cooled, skipping",
+				slog.String("task", string(req.Task)),
+				slog.String("provider", string(cand.provider)),
+				slog.String("model", cand.model),
+				slog.String("reason", reason))
 			continue
 		}
 		// Unlike Chat, ChatStream must keep the context alive for the
@@ -355,6 +368,12 @@ func (c *Chain) ChatStream(ctx context.Context, req Request) (<-chan StreamEvent
 			c.recordSuccess(cand.provider, cand.model, nil)
 			c.latency.Record(cand.provider, cand.model, req.Task, dur)
 			observeCall(cand.provider, string(req.Task), "stream_started", dur)
+			c.log.InfoContext(ctx, "llmchain.ChatStream: stream started",
+				slog.String("task", string(req.Task)),
+				slog.String("provider", string(cand.provider)),
+				slog.String("model", cand.model),
+				slog.Bool("has_images", hasImages(req.Messages)),
+				slog.Duration("ttfb", dur))
 			return ch, nil
 		}
 		dur := c.clock().Sub(start)
@@ -363,11 +382,58 @@ func (c *Chain) ChatStream(ctx context.Context, req Request) (<-chan StreamEvent
 			Status: statusOf(cerr), Err: cerr, Duration: dur,
 		})
 		observeCall(cand.provider, string(req.Task), classLabel(cerr), dur)
+		// Per-attempt failure лог. Включает classLabel (rate_limited /
+		// model_not_supported / provider_down / etc) — это категория, по
+		// которой можно грепать и алертить. err.Error() — полный текст
+		// апстримового ответа (для OpenRouter это включает «No endpoints
+		// found for ...» — сразу видно что модель умерла из их каталога).
+		c.log.WarnContext(ctx, "llmchain.ChatStream: candidate failed",
+			slog.String("task", string(req.Task)),
+			slog.String("provider", string(cand.provider)),
+			slog.String("model", cand.model),
+			slog.String("class", classLabel(cerr)),
+			slog.Duration("dur", dur),
+			slog.Any("err", cerr))
 		if decision := c.handleError(cand.provider, cand.model, cerr); decision == decisionFatal {
 			return nil, fmt.Errorf("llmchain.ChatStream: %w", cerr)
 		}
 	}
+	// Все провайдеры пройдены, ни один не дал стрим. Финальный summary-лог
+	// с агрегацией по providers — с ним один grep даёт картину «почему
+	// vision сегодня лежит». Без этого админу приходилось бы листать
+	// per-attempt warnings в общем потоке.
+	failures := make([]any, 0, len(attempts)*5)
+	for _, a := range attempts {
+		failures = append(failures,
+			slog.Group(string(a.Provider),
+				slog.String("model", a.Model),
+				slog.Int("status", int(a.Status)),
+				slog.String("err", errString(a.Err))))
+	}
+	c.log.ErrorContext(ctx, "llmchain.ChatStream: all candidates failed",
+		slog.String("task", string(req.Task)),
+		slog.Int("attempts", len(attempts)),
+		slog.Group("by_provider", failures...))
 	return nil, &AllProvidersUnavailableError{Task: req.Task, Attempts: attempts}
+}
+
+// errString — nil-safe Error().
+func errString(err error) string {
+	if err == nil {
+		return ""
+	}
+	return err.Error()
+}
+
+// effectiveTaskFor — какой task на самом деле гнать через chain. Если
+// в request'е есть images, а task не TaskVision — переключаемся.
+// Делается в одном месте чтобы и candidates(), и error-construction
+// (AllProvidersUnavailableError.Task) видели одинаковую истину.
+func effectiveTaskFor(req Request) Task {
+	if req.Task != TaskVision && hasImages(req.Messages) {
+		return TaskVision
+	}
+	return req.Task
 }
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -430,9 +496,11 @@ func (c *Chain) candidates(req Request) ([]candidate, error) {
 	// Vision-models (qwen-2.5-vl) одинаково хорошо обрабатывают
 	// чисто-текстовые сообщения, так что переключение безопасно даже если
 	// promo image вдруг не нужен модели.
-	effectiveTask := req.Task
-	if effectiveTask != TaskVision && hasImages(req.Messages) {
-		effectiveTask = TaskVision
+	effectiveTask := effectiveTaskFor(req)
+	if effectiveTask != req.Task {
+		c.log.Info("llmchain.candidates: switching to vision task",
+			slog.String("requested", string(req.Task)),
+			slog.String("effective", string(effectiveTask)))
 	}
 	// Runtime-config предпочитается static'у — админ может менять порядок
 	// и task-map через БД без рестарта (см. currentOrder/currentTaskMap).

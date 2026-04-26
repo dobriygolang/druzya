@@ -1,11 +1,19 @@
-// Main-process bridge to the CursorHelper Swift binary. Not wired up
-// in the current build — the scaffold is here so when we finish the
-// virtual-cursor feature, the glue code is obvious.
+// Main-process bridge to the CursorHelper Swift binary
+// (CGAssociateMouseAndMouseCursorPosition + CGWarpMouseCursorPosition).
 //
-// See docs/copilot-virtual-cursor.md for the full design.
+// Wired automatically — `bootstrap()` ниже спавнит helper при старте
+// приложения и подключает freeze/thaw к жизненному циклу area-overlay
+// окна, чтобы viewer'ы при demo-share не видели реальный курсор пока
+// юзер draws screenshot rect внутри stealth-overlay'я.
+//
+// Resolution mirrors capture/audio-mac.ts: packaged app — extraResources;
+// dev — relative to out/main; hot-run — project root.
+//
+// See docs/copilot-virtual-cursor.md for the original design.
 
 import { spawn, type ChildProcessByStdio } from 'node:child_process';
 import { existsSync } from 'node:fs';
+import { join } from 'node:path';
 import type { Readable, Writable } from 'node:stream';
 
 type State = 'thawed' | 'frozen' | 'unavailable';
@@ -113,6 +121,41 @@ function shutdown(): void {
   setTimeout(() => {
     proc?.kill('SIGTERM');
   }, 200);
+}
+
+/**
+ * resolveBinaryPath — copy paste from capture/audio-mac.ts. Same
+ * resolution rules: packaged extraResources, dev out/main, hot-run cwd.
+ */
+function resolveBinaryPath(): string | null {
+  const candidates = [
+    join(process.resourcesPath ?? '', 'native', 'CursorHelper'),
+    join(__dirname, '..', '..', 'resources', 'native', 'CursorHelper'),
+    join(process.cwd(), 'resources', 'native', 'CursorHelper'),
+  ];
+  for (const p of candidates) {
+    if (p && existsSync(p)) return p;
+  }
+  return null;
+}
+
+/**
+ * bootstrap — call once on app `whenReady`. Resolves the helper binary,
+ * spawns it, and prints a one-liner about whether the feature is live.
+ * Subsequent freeze/thaw calls are no-ops if bootstrap couldn't find
+ * the binary (state stays 'unavailable').
+ */
+export function bootstrap(): void {
+  const bin = resolveBinaryPath();
+  if (!bin) {
+    state = 'unavailable';
+    // eslint-disable-next-line no-console
+    console.warn(
+      '[cursor] CursorHelper binary not found — area-screenshot cursor will be visible to viewers. Run `npm run build:native-mac`.',
+    );
+    return;
+  }
+  ensureSpawned(bin);
 }
 
 export const cursorBridge: Bridge = {

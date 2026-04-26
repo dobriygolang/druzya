@@ -38,6 +38,7 @@ export const invokeChannels = {
   windowsShow: 'windows:show',
   windowsHide: 'windows:hide',
   windowsToggleStealth: 'windows:toggle-stealth',
+  windowsGetStealth: 'windows:get-stealth',
   windowsResize: 'windows:resize',
   /** Open the floating picker (persona or model) anchored to compact. */
   windowsShowPicker: 'windows:show-picker',
@@ -135,6 +136,11 @@ export const eventChannels = {
   appearanceChanged: 'event:appearance-changed',
   updateStatus: 'event:update-status',
   cursorFreezeChanged: 'event:cursor-freeze-changed',
+  /** Main → area-overlay renderer: virtual cursor seed at overlay open
+   *  time. While we hold the system cursor frozen via CursorHelper,
+   *  pointermove clientX/Y stays stuck — the renderer must integrate
+   *  movementX/Y on top of this seed. */
+  areaInitialCursor: 'event:area-initial-cursor',
   sessionChanged: 'event:session-changed',
   sessionAnalysisReady: 'event:session-analysis-ready',
   /** macOS system-audio capture pipeline pushes here. Carries either
@@ -509,6 +515,8 @@ export interface Druz9API {
     commitArea: (rect: AreaRect) => void;
     /** Overlay window → main: cancel. */
     cancelArea: () => void;
+    /** Subscribe to seed cursor position. Returns unsubscriber. */
+    onAreaInitialCursor: (cb: (pt: { x: number; y: number }) => void) => () => void;
   };
   analyze: {
     start: (input: AnalyzeInput) => Promise<AnalyzeHandle>;
@@ -524,6 +532,10 @@ export interface Druz9API {
     show: (name: WindowName) => Promise<void>;
     hide: (name: WindowName) => Promise<void>;
     toggleStealth: (on: boolean) => Promise<void>;
+    /** Read the persisted stealth state — used by Settings UI on mount
+     *  so the toggle reflects reality (otherwise React useState defaulted
+     *  to true even when user had stealth off). */
+    getStealth: () => Promise<boolean>;
     /** Animated resize of a floating window; width/height in CSS pixels. */
     resize: (name: WindowName, width: number, height: number) => Promise<void>;
     /** Open the picker as a separate floating window anchored under

@@ -65,6 +65,15 @@ const api: Druz9API = {
       ipcRenderer.invoke(invokeChannels.captureScreenshotFull) as Promise<CaptureResult>,
     commitArea: (rect: AreaRect) => ipcRenderer.send(invokeChannels.captureAreaCommit, rect),
     cancelArea: () => ipcRenderer.send(invokeChannels.captureAreaCancel),
+    /** Subscribe to the seed cursor position pushed when overlay opens.
+     *  Renderer must integrate movementX/Y on top of this seed because
+     *  the system cursor is frozen via CursorHelper — clientX/Y stays
+     *  stuck at the parked location for the lifetime of the overlay. */
+    onAreaInitialCursor: (cb: (pt: { x: number; y: number }) => void) => {
+      const handler = (_e: unknown, pt: { x: number; y: number }) => cb(pt);
+      ipcRenderer.on(eventChannels.areaInitialCursor, handler);
+      return () => ipcRenderer.off(eventChannels.areaInitialCursor, handler);
+    },
   },
   analyze: {
     start: (input: AnalyzeInput) =>
@@ -85,6 +94,8 @@ const api: Druz9API = {
     hide: (name: WindowName) => ipcRenderer.invoke(invokeChannels.windowsHide, name) as Promise<void>,
     toggleStealth: (on: boolean) =>
       ipcRenderer.invoke(invokeChannels.windowsToggleStealth, on) as Promise<void>,
+    getStealth: () =>
+      ipcRenderer.invoke(invokeChannels.windowsGetStealth) as Promise<boolean>,
     resize: (name: WindowName, width: number, height: number) =>
       ipcRenderer.invoke(invokeChannels.windowsResize, name, width, height) as Promise<void>,
     showPicker: (kind: PickerKind) =>

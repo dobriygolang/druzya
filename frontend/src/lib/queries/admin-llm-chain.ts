@@ -71,6 +71,10 @@ export const VIRTUAL_IDS = [
   'druz9/reasoning',
 ] as const
 
+// Синхронизируется с backend `shared/pkg/llmchain/provider.go` (Task
+// constants). При добавлении новой Task'и на бэке — обязательно
+// добавить сюда, иначе админ-таблица её не покажет и hot-swap модели
+// (без redeploy'а) для этой задачи не будет работать.
 export const KNOWN_TASKS = [
   'vacancies_json',
   'insight_prose',
@@ -80,6 +84,10 @@ export const KNOWN_TASKS = [
   'code_review',
   'sysdesign_critique',
   'summarize',
+  'daily_plan_synthesis',
+  'daily_brief',
+  'note_qa',
+  'vision',
 ] as const
 
 // ─── Provider model catalogues ─────────────────────────────────────────────

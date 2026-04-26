@@ -1,15 +1,27 @@
-// Area-picker crosshair overlay.
+// Area-picker crosshair overlay — Variant A (CGAssociate freeze).
 //
-// Fills the primary display. Pointer-down begins a rect, pointer-up
-// commits. Escape or right-click cancels. The entire surface is outside
-// the selected rect is dimmed (so the chosen area pops). This is the
-// same interaction pattern users know from macOS ⌘⇧4.
+// Системный курсор «заморожен» через CursorHelper (Swift, CGAssociate(0)),
+// поэтому viewer'ы при demo-share видят неподвижный курсор там же где он
+// был ДО открытия overlay'я. Это и был главный pain-point: раньше viewer
+// видел реальный drag прямоугольника.
 //
-// Runs in the special 'area-overlay' window. All geometry is reported in
-// CSS pixels within this window's coordinate space — which equals the
-// primary display's logical pixels because the window matches its bounds.
+// Внутри overlay'я (stealth, не captured) рисуем СВОЙ виртуальный курсор
+// + рамку выделения. Viewer ничего из этого не видит (overlay скрыт
+// NSWindowSharingNone). Юзер видит и драгует как обычно.
+//
+// Координация:
+//   1. На mount подписываемся на `onAreaInitialCursor` — main шлёт
+//      seed-position системного курсора (тот, на котором его заморозили).
+//   2. event.movementX/Y приходят от Chromium даже когда системный курсор
+//      детачнут (читается NSEvent.deltaX/Y напрямую). Интегрируем в
+//      virtualPos += movement.
+//   3. Real pointer-events (mousedown/up) фаерятся под frozen-cursor'ом —
+//      используем их КАК TRIGGER'ы для begin/end-drag, но координаты
+//      берём из virtualPos (event.clientX/Y устаревшие).
+//   4. Esc / right-click cancel; Enter — альтернатива mouseup на случай
+//      если юзер хочет завершить выбор клавиатурой.
 
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { Kbd } from '../../components/d9';
 
@@ -22,51 +34,85 @@ interface Rect {
 
 type Drag =
   | { kind: 'idle' }
-  | { kind: 'dragging'; startX: number; startY: number; curX: number; curY: number };
+  | { kind: 'dragging'; startX: number; startY: number };
 
 export function AreaOverlayScreen() {
+  // Virtual cursor position в логических pixels viewport'а.
+  // Initial value (0, 0) сразу заменится на seed из main.
+  const [virtual, setVirtual] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
+  // Window'у нужны абсолютные screen-coords для seed'а — конвертируем
+  // в виртуальные client-coords один раз в onAreaInitialCursor.
+  const windowScreenOriginRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
   const [drag, setDrag] = useState<Drag>({ kind: 'idle' });
   const rootRef = useRef<HTMLDivElement>(null);
 
+  // Seed virtual cursor at overlay open. Main передаёт ABSOLUTE screen
+  // coords, мы конвертируем в viewport client coords (overlay = primary
+  // display fullscreen → window.screenX/Y дают origin окна).
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') window.druz9.capture.cancelArea();
-    };
-    window.addEventListener('keydown', onKey);
-    // Grab focus so Escape works immediately.
-    rootRef.current?.focus();
-    return () => window.removeEventListener('keydown', onKey);
+    const off = window.druz9.capture.onAreaInitialCursor((pt) => {
+      windowScreenOriginRef.current = { x: window.screenX, y: window.screenY };
+      setVirtual({
+        x: Math.max(0, pt.x - window.screenX),
+        y: Math.max(0, pt.y - window.screenY),
+      });
+    });
+    return off;
   }, []);
 
-  const onPointerDown = (e: React.PointerEvent) => {
-    if (e.button === 2) {
-      window.druz9.capture.cancelArea();
-      return;
-    }
-    setDrag({ kind: 'dragging', startX: e.clientX, startY: e.clientY, curX: e.clientX, curY: e.clientY });
-  };
-  const onPointerMove = (e: React.PointerEvent) => {
+  // Esc / Enter в одном listener'е. Enter — альтернатива «mouseup»
+  // когда юзер хочет завершить selection клавиатурой (handy если
+  // freeze-cursor работает не идеально и pointer-events flaky).
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        window.druz9.capture.cancelArea();
+        return;
+      }
+      if (e.key === 'Enter' && drag.kind === 'dragging') {
+        commitFromState(drag, virtual);
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    rootRef.current?.focus();
+    return () => window.removeEventListener('keydown', onKey);
+  }, [drag, virtual]);
+
+  // Pointer-move: при freeze cursor'е clientX/Y стоит, но movementX/Y
+  // приходит из NSEvent.deltaX/Y — интегрируем поверх virtual.
+  const onPointerMove = useCallback((e: React.PointerEvent) => {
+    setVirtual((cur) => {
+      const nx = clamp(cur.x + e.movementX, 0, window.innerWidth);
+      const ny = clamp(cur.y + e.movementY, 0, window.innerHeight);
+      return { x: nx, y: ny };
+    });
+  }, []);
+
+  const onPointerDown = useCallback(
+    (e: React.PointerEvent) => {
+      if (e.button === 2) {
+        window.druz9.capture.cancelArea();
+        return;
+      }
+      // Click pos из события не используем — он stale из-за frozen
+      // cursor'а. Берём текущий virtual.
+      setDrag({ kind: 'dragging', startX: virtual.x, startY: virtual.y });
+    },
+    [virtual],
+  );
+
+  const onPointerUp = useCallback(() => {
     if (drag.kind !== 'dragging') return;
-    setDrag({ ...drag, curX: e.clientX, curY: e.clientY });
-  };
-  const onPointerUp = () => {
-    if (drag.kind !== 'dragging') return;
-    const rect = normalize(drag);
-    if (rect.width < 4 || rect.height < 4) {
-      window.druz9.capture.cancelArea();
-      return;
-    }
-    // Scale to device pixels — the screenshot helper expects display-space rects
-    // in logical pixels too, so no conversion needed here. If a 2x HiDPI issue
-    // appears, move the scaling into main/capture/screenshot.ts.
-    window.druz9.capture.commitArea(rect);
-  };
+    commitFromState(drag, virtual);
+  }, [drag, virtual]);
+
   const onContextMenu = (e: React.MouseEvent) => {
     e.preventDefault();
     window.druz9.capture.cancelArea();
   };
 
-  const rect = drag.kind === 'dragging' ? normalize(drag) : null;
+  const rect =
+    drag.kind === 'dragging' ? normalize(drag.startX, drag.startY, virtual.x, virtual.y) : null;
 
   return (
     <div
@@ -80,13 +126,18 @@ export function AreaOverlayScreen() {
       style={{
         position: 'fixed',
         inset: 0,
-        cursor: 'crosshair',
+        // cursor: 'none' прячет системный курсор пока pointer внутри
+        // overlay'я. Это второй слой защиты помимо CGAssociate'а — даже
+        // если CursorHelper binary не нашёлся (state=unavailable), CSS
+        // hide уберёт курсор хотя бы для viewer'ов чьи захватчики
+        // экрана уважают macOS' [NSCursor hide].
+        cursor: 'none',
         background: 'transparent',
         outline: 'none',
         userSelect: 'none',
       }}
     >
-      {/* Dimmed backdrop — design/windows.jsx AreaOverlay scrim */}
+      {/* Dimmed backdrop */}
       <div
         style={{
           position: 'absolute',
@@ -107,7 +158,7 @@ export function AreaOverlayScreen() {
         }}
       />
 
-      {/* Selection outline + corner handles */}
+      {/* Selection outline */}
       {rect && (
         <div
           style={{
@@ -138,7 +189,7 @@ export function AreaOverlayScreen() {
             />
           ))}
 
-          {/* Size readout above selection */}
+          {/* Size readout */}
           <span
             style={{
               position: 'absolute',
@@ -159,7 +210,12 @@ export function AreaOverlayScreen() {
         </div>
       )}
 
-      {/* Hint bar — design/windows.jsx AreaOverlay bottom pill */}
+      {/* Virtual cursor — наш собственный crosshair sprite. Рисуется
+          поверх backdrop'а, под выделением (pointer-events: none так
+          что не перехватывает наши же mouse-events). */}
+      <VirtualCursor x={virtual.x} y={virtual.y} />
+
+      {/* Hint bar */}
       <div
         style={{
           position: 'absolute',
@@ -207,10 +263,85 @@ export function AreaOverlayScreen() {
   );
 }
 
-function normalize(d: { startX: number; startY: number; curX: number; curY: number }): Rect {
-  const x = Math.min(d.startX, d.curX);
-  const y = Math.min(d.startY, d.curY);
-  const width = Math.abs(d.curX - d.startX);
-  const height = Math.abs(d.curY - d.startY);
+function commitFromState(drag: Drag, virtual: { x: number; y: number }): void {
+  if (drag.kind !== 'dragging') return;
+  const rect = normalize(drag.startX, drag.startY, virtual.x, virtual.y);
+  if (rect.width < 4 || rect.height < 4) {
+    window.druz9.capture.cancelArea();
+    return;
+  }
+  window.druz9.capture.commitArea(rect);
+}
+
+function clamp(v: number, lo: number, hi: number): number {
+  return v < lo ? lo : v > hi ? hi : v;
+}
+
+function normalize(x1: number, y1: number, x2: number, y2: number): Rect {
+  const x = Math.min(x1, x2);
+  const y = Math.min(y1, y2);
+  const width = Math.abs(x2 - x1);
+  const height = Math.abs(y2 - y1);
   return { x: Math.round(x), y: Math.round(y), width: Math.round(width), height: Math.round(height) };
+}
+
+/**
+ * Crosshair-style cursor sprite. Стилизован под d9 / accent — viewer
+ * никогда не увидит (overlay stealth), это чисто визуальная подсказка
+ * юзеру где сейчас «виртуальный» курсор.
+ */
+function VirtualCursor({ x, y }: { x: number; y: number }) {
+  const SIZE = 22;
+  const HALF = SIZE / 2;
+  return (
+    <div
+      style={{
+        position: 'absolute',
+        left: x - HALF,
+        top: y - HALF,
+        width: SIZE,
+        height: SIZE,
+        pointerEvents: 'none',
+        zIndex: 10,
+      }}
+    >
+      {/* Horizontal line */}
+      <div
+        style={{
+          position: 'absolute',
+          left: 0,
+          top: HALF - 0.5,
+          width: SIZE,
+          height: 1,
+          background: 'var(--d9-accent-hi)',
+          boxShadow: '0 0 4px var(--d9-accent-glow)',
+        }}
+      />
+      {/* Vertical line */}
+      <div
+        style={{
+          position: 'absolute',
+          left: HALF - 0.5,
+          top: 0,
+          width: 1,
+          height: SIZE,
+          background: 'var(--d9-accent-hi)',
+          boxShadow: '0 0 4px var(--d9-accent-glow)',
+        }}
+      />
+      {/* Center dot */}
+      <div
+        style={{
+          position: 'absolute',
+          left: HALF - 2,
+          top: HALF - 2,
+          width: 4,
+          height: 4,
+          borderRadius: '50%',
+          background: 'var(--d9-ink)',
+          border: '1px solid var(--d9-accent-hi)',
+        }}
+      />
+    </div>
+  );
 }

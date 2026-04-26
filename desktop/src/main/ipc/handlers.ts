@@ -1,7 +1,7 @@
 // All IPC invoke handlers live here. Channel names come from @shared/ipc
 // so main and renderer share a single source of truth.
 
-import { app, ipcMain, shell } from 'electron';
+import { app, ipcMain, screen, shell } from 'electron';
 import { z } from 'zod';
 
 import {
@@ -50,6 +50,7 @@ import { createSessionManager, type SessionManager } from '../sessions/manager';
 import { applyPreset, getCurrent, listPresets } from '../masquerade';
 import { checkNow, getStatus, installNow } from '../updater';
 import { captureArea, captureFullScreen } from '../capture/screenshot';
+import { cursorBridge } from '../cursor/freeze-bridge';
 import { applyBindings, listBindings } from '../hotkeys/registry';
 import {
   checkPermissions,
@@ -59,6 +60,7 @@ import {
 import {
   broadcast,
   closeWindow,
+  getStealth,
   hideToast,
   hideWindow,
   resizeWindow,
@@ -262,7 +264,31 @@ export function registerHandlers(opts: RegisterOptions): void {
       }
       return new Promise<CaptureResult | null>((resolve, reject) => {
         pendingArea = { resolve, reject };
-        showWindow('area-overlay', windowOptions);
+        // Snapshot ABSOLUTE cursor position before showing overlay —
+        // одно это значение даёт renderer'у seed для virtual cursor'а
+        // (после freeze() системный курсор не двигается, и renderer
+        // должен интегрировать movementX/Y поверх seed'а).
+        const seed = screen.getCursorScreenPoint();
+        const overlay = showWindow('area-overlay', windowOptions);
+        // Включаем freeze ПОСЛЕ показа overlay — иначе короткий
+        // window между «открыли overlay» и «freeze» позволяет viewer'у
+        // увидеть рывок реального курсора.
+        // Helper sometimes lazy-spawns; call freeze unconditionally —
+        // bridge no-op'ит если binary недоступен.
+        cursorBridge.freeze();
+        // Seed renderer ASAP, но after webContents готов получать события.
+        // did-finish-load — момент когда renderer point-listenerит наш push.
+        const sendSeed = () => {
+          overlay.webContents.send(eventChannels.areaInitialCursor, {
+            x: seed.x,
+            y: seed.y,
+          });
+        };
+        if (overlay.webContents.isLoading()) {
+          overlay.webContents.once('did-finish-load', sendSeed);
+        } else {
+          sendSeed();
+        }
       });
     },
   );
@@ -271,6 +297,7 @@ export function registerHandlers(opts: RegisterOptions): void {
     // state (last drag coords / lingering event listeners) that corrupts
     // the next area capture.
     closeWindow('area-overlay');
+    cursorBridge.thaw();
     if (!pendingArea) return;
     const p = pendingArea;
     pendingArea = null;
@@ -278,6 +305,7 @@ export function registerHandlers(opts: RegisterOptions): void {
   });
   ipcMain.on(invokeChannels.captureAreaCancel, () => {
     closeWindow('area-overlay');
+    cursorBridge.thaw();
     if (!pendingArea) return;
     const p = pendingArea;
     pendingArea = null;
@@ -352,6 +380,7 @@ export function registerHandlers(opts: RegisterOptions): void {
   handleIn(invokeChannels.windowsToggleStealth, z.boolean(), async (on) => {
     setStealth(on);
   });
+  ipcMain.handle(invokeChannels.windowsGetStealth, () => getStealth());
   handleInTuple(
     invokeChannels.windowsResize,
     z.tuple([windowNameSchema, resizeSchema.shape.width, resizeSchema.shape.height]),

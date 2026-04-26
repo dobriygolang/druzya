@@ -321,7 +321,16 @@ function PlanRow({ quota }: { quota: ReturnType<typeof useQuotaStore.getState>['
  * Stealth off: можно заскринить для отладки / чтобы прислать разработчику.
  */
 function StealthRow() {
+  // Прежде useState(true) показывал «ON» при каждом открытии Settings,
+  // даже если юзер до этого выключил stealth. После toggle OFF + reopen
+  // settings UI снова рисовал ON, и юзер видел рассинхрон. Тянем
+  // персистентное значение из main process на mount.
   const [on, setOn] = useState(true);
+  useEffect(() => {
+    void window.druz9.windows.getStealth().then(setOn).catch(() => {
+      /* leave default true if IPC fails */
+    });
+  }, []);
   return (
     <Row
       title="Stealth при демонстрации экрана"

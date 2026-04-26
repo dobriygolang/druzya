@@ -121,6 +121,14 @@ app.whenReady().then(async () => {
     },
   });
 
+  // Spawn CursorHelper Swift binary (CGAssociateMouseAndMouseCursorPosition
+   // wrapper). Used by area-screenshot flow to freeze the system cursor
+   // so viewer'ы при demo-share не видят как мы драгаем прямоугольник
+   // выделения. Если бинарь не найден — фича silently disabled, остальное
+   // приложение работает.
+  const { bootstrap: cursorBootstrap } = await import('./cursor/freeze-bridge');
+  cursorBootstrap();
+
   ensureTray({ resourcesPath, windowOptions });
 
   // Telegram login is pull-based (POST /auth/telegram/poll) — no deep
@@ -195,4 +203,9 @@ app.on('will-quit', async () => {
   destroyTray();
   const { shutdown: cursorShutdown } = await import('./cursor/freeze-js');
   cursorShutdown();
+  // Бинарный Swift helper тоже надо корректно потушить — он сам делает
+  // thaw в atexit, но give it a clean SIGTERM чтобы не оставить cursor
+  // detached если процесс убили.
+  const { cursorBridge } = await import('./cursor/freeze-bridge');
+  cursorBridge.shutdown();
 });

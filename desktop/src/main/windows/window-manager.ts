@@ -17,6 +17,28 @@ import { hardenWindow } from './hardening';
 
 const windows = new Map<WindowName, BrowserWindow>();
 
+// Set of window names which респектят stealth-toggle. Match createWindow's
+// stealth-protection list (stealthDefault below). Если добавишь сюда новое
+// имя — `setStealth()` начнёт его flippать; если убудет — окно станет
+// permanently либо visible, либо invisible вне зависимости от toggle.
+const STEALTHED_WINDOWS: ReadonlySet<WindowName> = new Set([
+  'compact',
+  'expanded',
+  'history',
+  'picker',
+  'area-overlay',
+]);
+
+// Persisted stealth state. `true` (default) = окна спрятаны от capture'а.
+// Toggle через settings обновляет это значение, и следующее окно (lazy
+// rebuild после close) подхватит правильное состояние из стартовой
+// конфигурации.
+let stealthEnabled = true;
+
+export function getStealth(): boolean {
+  return stealthEnabled;
+}
+
 export interface WindowOptions {
   preloadPath: string;
   rendererURL: string; // dev server URL or file://.../renderer/index.html
@@ -130,7 +152,9 @@ export function showWindow(name: WindowName, opts: WindowOptions): BrowserWindow
   if (name === 'compact' || name === 'expanded' || name === 'history') {
     // setContentProtection on macOS uses NSWindowSharingNone: viewers of
     // a screen share see the desktop background where this window is.
-    win.setContentProtection(true);
+    // Используем persisted флаг (по умолчанию true) — иначе reopen окна
+    // после toggle OFF снова бы делал его invisible.
+    win.setContentProtection(stealthEnabled);
     // Sit above fullscreen apps (IDE, browser) without stealing focus.
     win.setAlwaysOnTop(true, 'floating', 1);
     win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
@@ -139,7 +163,7 @@ export function showWindow(name: WindowName, opts: WindowOptions): BrowserWindow
   if (name === 'picker') {
     // Picker rides above compact — same stealth treatment, one level
     // higher so it sits on top of the compact's floating layer.
-    win.setContentProtection(true);
+    win.setContentProtection(stealthEnabled);
     win.setAlwaysOnTop(true, 'floating', 2);
     win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
     // Auto-hide on blur so clicking anywhere outside dismisses the
@@ -155,7 +179,7 @@ export function showWindow(name: WindowName, opts: WindowOptions): BrowserWindow
   // appear on the viewer's screen. The OS-level cursor still does (that
   // is the Phase 6 virtual-cursor feature), but the selection UI is ours.
   if (name === 'area-overlay') {
-    win.setContentProtection(true);
+    win.setContentProtection(stealthEnabled);
     win.setAlwaysOnTop(true, 'screen-saver', 2);
     win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
   }
@@ -426,10 +450,27 @@ export function hideToast(): void {
 
 /** Toggle stealth on all floating windows (used by settings tab). */
 export function setStealth(on: boolean): void {
+  // Persist для последующих createWindow вызовов (compact/expanded
+  // могут быть destroyed при close — пересоздание должно подхватить).
+  stealthEnabled = on;
   for (const [name, w] of windows.entries()) {
     if (w.isDestroyed()) continue;
-    if (name === 'compact' || name === 'expanded') {
-      w.setContentProtection(on);
+    if (!STEALTHED_WINDOWS.has(name)) continue;
+    w.setContentProtection(on);
+    // macOS quirk: для transparent + frameless + alwaysOnTop окон
+    // (compact, picker, area-overlay) NSWindow.sharingType иногда
+    // кэшируется ScreenCaptureKit'ом и не подхватывает переключение
+    // без re-render'а. Force-reapply через micro-toggle opacity:
+    // OS видит изменение surface'а и перечитывает sharingType.
+    // Без этого юзер выключал stealth, а compact оставался скрытым
+    // в Zoom/QuickTime до полного reopen приложения.
+    if (!w.isVisible()) continue;
+    const prev = w.getOpacity();
+    try {
+      w.setOpacity(prev === 0 ? 0 : Math.max(0.01, prev - 0.01));
+      w.setOpacity(prev || 1);
+    } catch {
+      /* ignore — non-darwin or destroyed mid-call */
     }
   }
 }
