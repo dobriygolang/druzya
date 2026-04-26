@@ -609,15 +609,32 @@ func (s *CopilotServer) toConnectErr(err error) error {
 		// Клиент логирует rawMessage и конкретный код Connect — этого
 		// хватит для диагностики на продe (см. desktop router.ts).
 		msg := "copilot failure"
+		code := connect.CodeInternal
 		low := strings.ToLower(err.Error())
 		switch {
+		// «no candidates for task vision» / «no chain for virtual» — это
+		// конфигурационный pain point: задеплоен бэк без OPENROUTER_API_KEY,
+		// или task-map в БД ссылается на провайдера которого мы не
+		// инстанциировали. Не временная ошибка, retry не поможет — но
+		// клиенту показываем CodeUnavailable чтобы не выглядело как наш
+		// собственный crash.
+		case strings.Contains(low, "no candidates for task"):
+			msg = "vision provider not configured (check OPENROUTER_API_KEY)"
+			code = connect.CodeUnavailable
+		// «all providers unavailable» — каждый кандидат упал. Скорее всего
+		// rate-limit / 5xx у апстрима. Транзиентно — клиенту имеет смысл
+		// retry'ить с backoff'ом.
+		case strings.Contains(low, "all providers unavailable") || strings.Contains(low, "providers unavailable"):
+			msg = "all llm providers failed (rate-limit или 5xx upstream)"
+			code = connect.CodeUnavailable
 		case strings.Contains(low, "open stream") || strings.Contains(low, "llm") || strings.Contains(low, "provider"):
 			msg = "llm provider unavailable"
+			code = connect.CodeUnavailable
 		case strings.Contains(low, "context") && strings.Contains(low, "deadline"):
 			msg = "request timed out"
 		case strings.Contains(low, "image") || strings.Contains(low, "attachment"):
 			msg = "attachment processing failed"
 		}
-		return connect.NewError(connect.CodeInternal, errors.New(msg))
+		return connect.NewError(code, errors.New(msg))
 	}
 }
