@@ -182,7 +182,7 @@ Build a `gen -> map (N goroutines) -> reduce` pipeline. `gen` emits ints, `map` 
 
 ## Что проверяется
 - мат-модель token bucket
-- защита состояния mutex'ом
+- защита состояния mutex''ом
 - корректная работа `Wait` с `context.Context`.',
 '## Task
 Implement `RateLimiter` with `Allow() bool` and `Wait(ctx) error`. Params: `rate` tokens/sec, `burst` max bucket size. No external deps.

@@ -348,6 +348,7 @@ function RoomCanvasImpl({ room, guestToken, myUserId, myDisplayName }: { room: R
   const applyingRemoteRef = useRef(false)
   const debounceRef = useRef<number | null>(null)
   const pendingElementsRef = useRef<string | null>(null)
+  const lastSentJsonRef = useRef<string | null>(null)
   // Excalidraw зовёт `excalidrawAPI` callback на каждом render'е если
   // reference inline-arrow меняется. Ref-based "fired-once" guard
   // предотвращает re-replay yScene → updateScene → wipe-just-drawn-shape.
@@ -547,16 +548,36 @@ function RoomCanvasImpl({ room, guestToken, myUserId, myDisplayName }: { room: R
     if (!ydoc) return
     const yScene = ydoc.getMap<string>('scene')
     const json = JSON.stringify(elements)
+    // Skip-if-unchanged. Excalidraw фаерит onChange не только на изменения
+    // elements, но и на любые мутации appState — selection, hover, и
+    // (важно) collaborators map, который мы апдейтим в onAwChange при
+    // каждом cursor-tick'е соседа. Без этого guard'а handleChange бы
+    // вызывался ~60 раз/сек просто пока кто-то рядом двигает мышью —
+    // ресет любого trailing-debounce'а в бесконечность. Это и был root
+    // cause «нарисовал объект → пропал»: SEND update НИКОГДА не уходил
+    // пока соседи активны, сервер не сохранял, на reconnect объект
+    // исчезал. (Регрессия пришла с 5ecf243 — origin-фильтр на onSceneChange
+    // + pending-edit guard убрали единственный путь, который маскировал
+    // отсутствующий SEND.)
+    if (json === lastSentJsonRef.current) return
+    lastSentJsonRef.current = json
     pendingElementsRef.current = json
-    if (debounceRef.current !== null) window.clearTimeout(debounceRef.current)
+
+    // Coalesce one task → один yScene.set. setTimeout(0) даёт ≤1 frame
+    // latency и схлопывает несколько онChange'ей одного тика в один
+    // SEND. Debounce БОЛЬШЕ НЕ resetится по последующим вызовам —
+    // первый вызов в окне планирует flush, остальные просто обновляют
+    // pending. Это гарантирует что SEND уходит в next tick независимо
+    // от частоты onChange.
+    if (debounceRef.current !== null) return
     debounceRef.current = window.setTimeout(() => {
-      if (yScene.get('elements') === json) {
-        pendingElementsRef.current = null
-        return
-      }
-      yScene.set('elements', json)
+      debounceRef.current = null
+      const pending = pendingElementsRef.current
       pendingElementsRef.current = null
-    }, 80)
+      if (pending == null) return
+      if (yScene.get('elements') === pending) return
+      yScene.set('elements', pending)
+    }, 0)
   }, [])
 
   return (
