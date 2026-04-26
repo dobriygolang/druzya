@@ -1,14 +1,18 @@
 package services
 
 import (
+	"context"
+	"fmt"
 	"strings"
 
 	miApp "druz9/mock_interview/app"
 	miDomain "druz9/mock_interview/domain"
 	miInfra "druz9/mock_interview/infra"
 	miPorts "druz9/mock_interview/ports"
+	profileInfra "druz9/profile/infra"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/google/uuid"
 )
 
 // NewMockInterview wires the Phase A admin CRUD + Phase B orchestrator
@@ -88,6 +92,11 @@ func NewMockInterview(d Deps) *Module {
 		// sessions. nil-safe; bootstrap sets it when intelligence is
 		// wired (always, in current setup).
 		Memory: d.IntelligenceMockMemoryHook,
+		// Atlas bump — translates each finished stage's score into the
+		// matching atlas node's `progress` (см.
+		// orchestrator.bumpAtlasFromStages). Уж лучше иметь движение по
+		// атласу, чем «прошёл мок — а атлас не изменился».
+		Skills: mockSkillsAdapter{repo: profileInfra.NewPostgres(d.Pool)},
 		Now:    d.Now,
 		Log:    d.Log,
 	}
@@ -99,4 +108,20 @@ func NewMockInterview(d Deps) *Module {
 			server.Mount(r)
 		},
 	}
+}
+
+// mockSkillsAdapter satisfies miDomain.SkillNodeWriter via profile's
+// existing Postgres repo. Lives here (cross-context wiring) so neither
+// bounded context имеет узнавать другой через import.
+type mockSkillsAdapter struct {
+	repo *profileInfra.Postgres
+}
+
+var _ miDomain.SkillNodeWriter = mockSkillsAdapter{}
+
+func (a mockSkillsAdapter) UpsertSkillNode(ctx context.Context, userID uuid.UUID, nodeKey string, progress int) error {
+	if _, err := a.repo.UpsertSkillNode(ctx, userID, nodeKey, progress); err != nil {
+		return fmt.Errorf("mock_interview.skills_adapter: %w", err)
+	}
+	return nil
 }

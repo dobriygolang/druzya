@@ -62,6 +62,12 @@ type Orchestrator struct {
 	// Daily Briefs reference past sessions ("неделю назад sysdesign 32,
 	// сегодня 71 — рост"). Failures don't block the user's submit.
 	Memory domain.MemoryHook
+	// Skills is the optional atlas-progress writer. nil-safe.
+	// FinishPipeline maps each stage's verdict+score to the matching
+	// atlas node_key and upserts progress (UpsertSkillNode uses GREATEST
+	// → no regression). Without this nothing on the user's atlas moves
+	// when they finish a mock.
+	Skills domain.SkillNodeWriter
 	Now    func() time.Time
 	Log    *slog.Logger
 }
@@ -861,8 +867,62 @@ func (o *Orchestrator) FinishPipeline(ctx context.Context, pipelineID uuid.UUID)
 		o.Memory.OnPipelineFinished(ctx, pipe.UserID, pipelineID, verdict, totalScore, stages, t)
 	}
 
+	// Atlas progress: stage.score → skill_nodes.progress for the node
+	// that backs that stage. UpsertSkillNode уже делает GREATEST, поэтому
+	// fail-stage не уронит прежний прогресс — только pass / borderline
+	// его двигают вверх. Best-effort: ошибка не валит FinishPipeline.
+	o.bumpAtlasFromStages(ctx, pipe.UserID, stages)
+
 	// TODO: publish leaderboard event with ai_assist=pipeline.AIAssist watermark
 	return pipe, nil
+}
+
+// stageToAtlasNode — primary atlas node_key per stage_kind. Maps
+// directly to the seeded atlas catalogue (см. migration 00002):
+//   - algo       → algo_basics  (массивы, хеш-таблицы, two-pointers)
+//   - coding     → go_concurrency (главный коридор coding-практики)
+//   - sysdesign  → sd_basics
+//   - behavioral → beh_star
+//   - hr         — пропускается (HR не «навык»)
+var stageToAtlasNode = map[domain.StageKind]string{
+	domain.StageAlgo:       "algo_basics",
+	domain.StageCoding:     "go_concurrency",
+	domain.StageSysDesign:  "sd_basics",
+	domain.StageBehavioral: "beh_star",
+}
+
+// bumpAtlasFromStages пробегает по финальным stages и upsert'ит
+// прогресс по тем, для которых известен node_key. Без Skills (nil)
+// — no-op. Failures логируем и идём дальше: атлас — side-effect, не
+// часть атомарного finish-pipeline.
+func (o *Orchestrator) bumpAtlasFromStages(ctx context.Context, userID uuid.UUID, stages []domain.PipelineStage) {
+	if o.Skills == nil {
+		return
+	}
+	for _, s := range stages {
+		nodeKey, ok := stageToAtlasNode[s.StageKind]
+		if !ok {
+			continue
+		}
+		if s.Score == nil {
+			continue
+		}
+		progress := int(*s.Score)
+		if progress < 0 {
+			progress = 0
+		}
+		if progress > 100 {
+			progress = 100
+		}
+		if err := o.Skills.UpsertSkillNode(ctx, userID, nodeKey, progress); err != nil {
+			if o.Log != nil {
+				o.Log.WarnContext(ctx, "mock_interview.orch: atlas bump failed",
+					slog.Any("err", err),
+					slog.String("node_key", nodeKey),
+					slog.String("stage", string(s.StageKind)))
+			}
+		}
+	}
 }
 
 // sweepCanvasDraftsForPipeline walks every sysdesign attempt under
