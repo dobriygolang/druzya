@@ -131,13 +131,89 @@ export async function deleteCircle(id: string): Promise<void> {
 
 // ── Events ─────────────────────────────────────────────────────────────────
 
+// Wire-shape для events — vanguard transcoder отдаёт proto-JSON в camelCase
+// (`circleId`, `startsAt`, `durationMin`, ...), а наш UI везде читает
+// snake_case. Без нормализатора `events.filter(e => e.circle_id === ...)`
+// фильтрует в пустоту, и календарь выглядит «всегда пустым» даже если
+// бэк вернул items. Тот же подход уже применён к slots
+// (см. queries/slot.ts normalizeSlot, commit 21b7704).
+type EventParticipantWire = {
+  user_id?: string
+  userId?: string
+  username?: string
+  joined_at?: string
+  joinedAt?: string
+}
+
+type CalendarEventWire = {
+  id: string
+  circle_id?: string
+  circleId?: string
+  circle_name?: string
+  circleName?: string
+  title?: string
+  description?: string
+  starts_at?: string
+  startsAt?: string
+  duration_min?: number
+  durationMin?: number
+  editor_room_id?: string
+  editorRoomId?: string
+  whiteboard_room_id?: string
+  whiteboardRoomId?: string
+  recurrence?: string
+  created_by?: string
+  createdBy?: string
+  created_at?: string
+  createdAt?: string
+  participants?: EventParticipantWire[]
+}
+
+type EventListWire = { items?: CalendarEventWire[] }
+
+// proto enum → frontend enum. По-умолчанию protojson эмитит ИМЯ enum'а
+// (`EVENT_RECURRENCE_WEEKLY_FRIDAY`); если когда-нибудь включат
+// UseEnumNumbers / lowercase-aliasing, fallback'ы тоже ловятся.
+function normalizeRecurrence(r: string | undefined): EventRecurrence {
+  if (!r) return 'none'
+  if (r === 'weekly_friday' || r === 'EVENT_RECURRENCE_WEEKLY_FRIDAY') return 'weekly_friday'
+  return 'none'
+}
+
+function normalizeParticipant(p: EventParticipantWire): EventParticipant {
+  return {
+    user_id: p.user_id ?? p.userId ?? '',
+    username: p.username ?? '',
+    joined_at: p.joined_at ?? p.joinedAt ?? '',
+  }
+}
+
+export function normalizeEvent(w: CalendarEventWire): CalendarEvent {
+  return {
+    id: w.id,
+    circle_id: w.circle_id ?? w.circleId ?? '',
+    circle_name: w.circle_name ?? w.circleName ?? '',
+    title: w.title ?? '',
+    description: w.description ?? '',
+    starts_at: w.starts_at ?? w.startsAt ?? '',
+    duration_min: w.duration_min ?? w.durationMin ?? 0,
+    editor_room_id: w.editor_room_id ?? w.editorRoomId ?? '',
+    whiteboard_room_id: w.whiteboard_room_id ?? w.whiteboardRoomId ?? '',
+    recurrence: normalizeRecurrence(w.recurrence),
+    created_by: w.created_by ?? w.createdBy ?? '',
+    created_at: w.created_at ?? w.createdAt ?? '',
+    participants: w.participants?.map(normalizeParticipant),
+  }
+}
+
 export async function listMyEvents(): Promise<CalendarEvent[]> {
-  const r = await api<EventList>('/events')
-  return r.items ?? []
+  const r = await api<EventListWire>('/events')
+  return (r.items ?? []).map(normalizeEvent)
 }
 
 export async function getEvent(id: string): Promise<CalendarEvent> {
-  return api<CalendarEvent>(`/events/${encodeURIComponent(id)}`)
+  const w = await api<CalendarEventWire>(`/events/${encodeURIComponent(id)}`)
+  return normalizeEvent(w)
 }
 
 export async function createEvent(input: {
@@ -150,7 +226,7 @@ export async function createEvent(input: {
   whiteboard_room_id?: string
   recurrence?: EventRecurrence
 }): Promise<CalendarEvent> {
-  return api<CalendarEvent>('/events', {
+  const w = await api<CalendarEventWire>('/events', {
     method: 'POST',
     body: JSON.stringify({
       circle_id: input.circle_id,
@@ -163,13 +239,15 @@ export async function createEvent(input: {
       recurrence: input.recurrence ?? 'none',
     }),
   })
+  return normalizeEvent(w)
 }
 
 export async function joinEvent(id: string): Promise<CalendarEvent> {
-  return api<CalendarEvent>(`/events/${encodeURIComponent(id)}/join`, {
+  const w = await api<CalendarEventWire>(`/events/${encodeURIComponent(id)}/join`, {
     method: 'POST',
     body: '{}',
   })
+  return normalizeEvent(w)
 }
 
 export async function leaveEvent(id: string): Promise<void> {

@@ -328,73 +328,80 @@ var catalogueEdges = []AtlasEdge{
 	{From: "algo_graphs", To: "sd_basics", Kind: "crosslink"},
 }
 
-// recommendedKataByNode — статический «топ-5» ката для каждой темы. ID'ы
-// ведут на реальные slug'и в daily-каталоге (соответствуют /daily/kata/:id).
-// При последующей интеграции с daily-сервисом заменим на live-фильтрацию
-// «непрешённые / по сложности».
+// recommendedKataByNode — статический «топ-5» ката для каждой темы.
+// ID'ы — реальные tasks.slug из миграций 00003 (algorithms/sql/system_design
+// + 3 go) и 00058 (расширение go + system_design). Drawer ведёт на
+// /arena/kata/{slug}, который ходит в GET /api/v1/daily/kata/{slug} —
+// если slug фейковый, фронт ловит 404. Любое изменение здесь должно
+// синхронизироваться с tasks-сидами или задача вылетит с 404.
+//
+// beh_star намеренно опущен: behavioral в Arena не сидится (это
+// формат mock-pipeline questions, не tasks). Drawer в этом случае
+// показывает «каталог не размечен» — лучше честное «нет», чем 404.
 var recommendedKataByNode = map[string][]KataRef{
+	"class_core": {
+		{ID: "two-sum-transactions", Title: "Две суммы транзакций — твой первый ката", Difficulty: "easy", EstimatedMinutes: 10},
+	},
 	"algo_basics": {
-		{ID: "two-sum", Title: "Two Sum", Difficulty: "easy", EstimatedMinutes: 10},
-		{ID: "valid-anagram", Title: "Valid Anagram", Difficulty: "easy", EstimatedMinutes: 8},
-		{ID: "group-anagrams", Title: "Group Anagrams", Difficulty: "medium", EstimatedMinutes: 15},
-		{ID: "longest-substring", Title: "Longest Substring Without Repeating", Difficulty: "medium", EstimatedMinutes: 18},
-		{ID: "product-of-array-except-self", Title: "Product of Array Except Self", Difficulty: "medium", EstimatedMinutes: 20},
+		{ID: "two-sum-transactions", Title: "Две суммы транзакций", Difficulty: "easy", EstimatedMinutes: 10},
+		{ID: "contains-duplicate-uid", Title: "Дубликаты user_id", Difficulty: "easy", EstimatedMinutes: 8},
+		{ID: "valid-palindrome-slug", Title: "Палиндромный slug", Difficulty: "easy", EstimatedMinutes: 10},
+		{ID: "group-anagram-tags", Title: "Группировка анаграмм-тегов", Difficulty: "medium", EstimatedMinutes: 15},
+		{ID: "longest-unique-stream", Title: "Самая длинная уникальная подстрока", Difficulty: "medium", EstimatedMinutes: 18},
 	},
 	"algo_graphs": {
-		{ID: "number-of-islands", Title: "Number of Islands", Difficulty: "medium", EstimatedMinutes: 18},
-		{ID: "course-schedule", Title: "Course Schedule (топосорт)", Difficulty: "medium", EstimatedMinutes: 22},
-		{ID: "shortest-path-binary", Title: "Shortest Path in Binary Matrix", Difficulty: "medium", EstimatedMinutes: 20},
-		{ID: "network-delay-time", Title: "Network Delay Time (Дейкстра)", Difficulty: "medium", EstimatedMinutes: 25},
-		{ID: "word-ladder", Title: "Word Ladder (BFS)", Difficulty: "hard", EstimatedMinutes: 35},
+		{ID: "count-region-islands", Title: "Подсчёт островов регионов", Difficulty: "medium", EstimatedMinutes: 18},
+		{ID: "codeword-in-grid", Title: "Поиск кодового слова в сетке", Difficulty: "medium", EstimatedMinutes: 20},
+		{ID: "word-ladder-docs", Title: "Словесная лестница (BFS)", Difficulty: "hard", EstimatedMinutes: 35},
+		{ID: "n-queens-cluster", Title: "N ферзей на кластере", Difficulty: "hard", EstimatedMinutes: 30},
 	},
 	"algo_dp": {
-		{ID: "climbing-stairs", Title: "Climbing Stairs", Difficulty: "easy", EstimatedMinutes: 10},
-		{ID: "house-robber", Title: "House Robber", Difficulty: "medium", EstimatedMinutes: 15},
-		{ID: "longest-common-subsequence", Title: "Longest Common Subsequence", Difficulty: "medium", EstimatedMinutes: 20},
-		{ID: "edit-distance", Title: "Edit Distance", Difficulty: "hard", EstimatedMinutes: 30},
-		{ID: "burst-balloons", Title: "Burst Balloons", Difficulty: "hard", EstimatedMinutes: 40},
+		{ID: "climbing-rating-ladder", Title: "Подъём по рейтинговой лестнице", Difficulty: "easy", EstimatedMinutes: 10},
+		{ID: "max-subarray-revenue", Title: "Максимальный подотрезок выручки", Difficulty: "easy", EstimatedMinutes: 12},
+		{ID: "change-for-coin-drop", Title: "Размен монет дропа", Difficulty: "medium", EstimatedMinutes: 20},
+		{ID: "unique-paths-grid-release", Title: "Уникальные пути по сетке релизов", Difficulty: "medium", EstimatedMinutes: 18},
+		{ID: "jump-game-matchmaker", Title: "Прыжки матчмейкера", Difficulty: "medium", EstimatedMinutes: 20},
 	},
 	"sql_basics": {
-		{ID: "second-highest-salary", Title: "Second Highest Salary", Difficulty: "easy", EstimatedMinutes: 8},
-		{ID: "duplicate-emails", Title: "Find Duplicate Emails", Difficulty: "easy", EstimatedMinutes: 6},
-		{ID: "department-top-three", Title: "Department Top Three Salaries", Difficulty: "medium", EstimatedMinutes: 18},
-		{ID: "trips-and-users", Title: "Trips and Users", Difficulty: "medium", EstimatedMinutes: 20},
-		{ID: "human-traffic-stadium", Title: "Human Traffic of Stadium", Difficulty: "hard", EstimatedMinutes: 30},
+		{ID: "sql-second-highest-salary", Title: "Вторая по величине зарплата", Difficulty: "easy", EstimatedMinutes: 8},
+		{ID: "sql-total-revenue-by-month", Title: "Выручка по месяцам", Difficulty: "easy", EstimatedMinutes: 10},
+		{ID: "sql-top-5-users-by-spend", Title: "Топ-5 покупателей", Difficulty: "easy", EstimatedMinutes: 10},
+		{ID: "sql-inner-vs-left-join", Title: "INNER vs LEFT JOIN: сироты", Difficulty: "easy", EstimatedMinutes: 12},
+		{ID: "sql-day-over-day-diff", Title: "Разница день к дню", Difficulty: "medium", EstimatedMinutes: 15},
 	},
 	"sql_perf": {
-		{ID: "explain-slow-query", Title: "EXPLAIN slow query", Difficulty: "medium", EstimatedMinutes: 15},
-		{ID: "design-index-orders", Title: "Design index for orders.created_at", Difficulty: "medium", EstimatedMinutes: 20},
-		{ID: "denormalize-feed", Title: "Денормализуй feed для read-heavy", Difficulty: "hard", EstimatedMinutes: 35},
+		{ID: "sql-window-moving-avg", Title: "Скользящее среднее 7 дней", Difficulty: "medium", EstimatedMinutes: 15},
+		{ID: "sql-rank-per-group", Title: "Ранжирование внутри группы", Difficulty: "medium", EstimatedMinutes: 15},
+		{ID: "sql-percentile-latency", Title: "Перцентиль задержки", Difficulty: "medium", EstimatedMinutes: 18},
+		{ID: "sql-pivot-by-month", Title: "PIVOT по месяцам", Difficulty: "medium", EstimatedMinutes: 18},
+		{ID: "sql-recursive-hierarchy", Title: "Рекурсивная иерархия", Difficulty: "hard", EstimatedMinutes: 25},
 	},
 	"go_idioms": {
-		{ID: "errors-wrap", Title: "errors.Is / errors.As / fmt.Errorf %w", Difficulty: "easy", EstimatedMinutes: 10},
-		{ID: "interface-segregation", Title: "Принцип I из SOLID на Go", Difficulty: "medium", EstimatedMinutes: 15},
-		{ID: "generics-constraint", Title: "Generic Set[T comparable]", Difficulty: "medium", EstimatedMinutes: 18},
-		{ID: "ctx-cancellation", Title: "context.Cancel и cleanup", Difficulty: "medium", EstimatedMinutes: 20},
+		{ID: "go-defer-order", Title: "Порядок выполнения defer", Difficulty: "easy", EstimatedMinutes: 8},
+		{ID: "go-error-wrapping", Title: "Обёртка ошибок (errors.Is/As)", Difficulty: "easy", EstimatedMinutes: 10},
+		{ID: "go-zero-values", Title: "Zero values и nil maps", Difficulty: "easy", EstimatedMinutes: 8},
+		{ID: "go-slice-aliasing", Title: "Алиасинг слайсов", Difficulty: "easy", EstimatedMinutes: 10},
+		{ID: "go-mutex-vs-syncmap", Title: "Mutex vs sync.Map", Difficulty: "medium", EstimatedMinutes: 18},
 	},
 	"go_concurrency": {
-		{ID: "rate-limiter", Title: "Token-bucket Rate Limiter", Difficulty: "medium", EstimatedMinutes: 20},
-		{ID: "worker-pool", Title: "Worker Pool на каналах", Difficulty: "medium", EstimatedMinutes: 25},
-		{ID: "fan-out-fan-in", Title: "Fan-Out / Fan-In", Difficulty: "medium", EstimatedMinutes: 22},
-		{ID: "errgroup-cancel", Title: "errgroup с отменой по первой ошибке", Difficulty: "hard", EstimatedMinutes: 30},
-		{ID: "deadlock-detect", Title: "Найди и почини дедлок", Difficulty: "hard", EstimatedMinutes: 35},
+		{ID: "go-rate-limiter-token", Title: "Token-bucket rate limiter", Difficulty: "medium", EstimatedMinutes: 20},
+		{ID: "go-worker-pool", Title: "Worker pool с graceful shutdown", Difficulty: "medium", EstimatedMinutes: 22},
+		{ID: "go-pipeline-fanin", Title: "Fan-Out / Fan-In пайплайн", Difficulty: "medium", EstimatedMinutes: 20},
+		{ID: "go-singleflight", Title: "Дедупликация через singleflight", Difficulty: "medium", EstimatedMinutes: 22},
+		{ID: "go-deadlock-channels", Title: "Deadlock на двух каналах", Difficulty: "hard", EstimatedMinutes: 30},
 	},
 	"sd_basics": {
-		{ID: "url-shortener", Title: "URL Shortener (bit.ly)", Difficulty: "medium", EstimatedMinutes: 30},
-		{ID: "cache-invalidation", Title: "Стратегии инвалидации кеша", Difficulty: "medium", EstimatedMinutes: 25},
-		{ID: "queue-vs-bus", Title: "Очередь vs шина: когда что", Difficulty: "medium", EstimatedMinutes: 20},
+		{ID: "sd-key-value-cache", Title: "Дизайн in-memory кэша", Difficulty: "easy", EstimatedMinutes: 25},
+		{ID: "sd-pastebin", Title: "Дизайн pastebin", Difficulty: "easy", EstimatedMinutes: 30},
+		{ID: "sd-news-feed-mvp", Title: "MVP ленты новостей", Difficulty: "easy", EstimatedMinutes: 30},
+		{ID: "sd-url-shortener", Title: "URL Shortener (bit.ly)", Difficulty: "hard", EstimatedMinutes: 35},
+		{ID: "sd-rate-limiter", Title: "Rate Limiter", Difficulty: "hard", EstimatedMinutes: 35},
 	},
 	"sd_scale": {
-		{ID: "design-twitter", Title: "Design Twitter timeline", Difficulty: "hard", EstimatedMinutes: 60},
-		{ID: "design-uber", Title: "Design Uber dispatch", Difficulty: "hard", EstimatedMinutes: 60},
-		{ID: "consistency-tradeoffs", Title: "Strong vs Eventual: trade-offs", Difficulty: "hard", EstimatedMinutes: 40},
-	},
-	"beh_star": {
-		{ID: "tell-me-conflict", Title: "«Расскажи о конфликте» по STAR", Difficulty: "easy", EstimatedMinutes: 12},
-		{ID: "biggest-failure", Title: "«Самая большая ошибка» по STAR", Difficulty: "medium", EstimatedMinutes: 15},
-		{ID: "leading-without-authority", Title: "«Лидер без авторитета»", Difficulty: "medium", EstimatedMinutes: 18},
-	},
-	"class_core": {
-		{ID: "two-sum", Title: "Two Sum — твой первый ката", Difficulty: "easy", EstimatedMinutes: 10},
+		{ID: "sd-job-queue", Title: "Распределённая очередь задач", Difficulty: "medium", EstimatedMinutes: 40},
+		{ID: "sd-image-cdn", Title: "CDN для изображений", Difficulty: "medium", EstimatedMinutes: 40},
+		{ID: "sd-search-typeahead", Title: "Search typeahead", Difficulty: "medium", EstimatedMinutes: 35},
+		{ID: "sd-chat-app", Title: "1-1 чат realtime", Difficulty: "hard", EstimatedMinutes: 45},
+		{ID: "sd-payment-system", Title: "Платёжная система", Difficulty: "hard", EstimatedMinutes: 50},
 	},
 }

@@ -91,8 +91,18 @@ func (h *Handlers) GetEvent(ctx context.Context, eventID, callerID uuid.UUID) (E
 	return EventDetails{Event: full, Participants: parts}, nil
 }
 
+// unsetTime — true if the caller didn't provide the timestamp. Covers two
+// proto-layer encodings of "missing": Go zero (no field on wire) and the
+// Unix epoch (vanguard transcoder sometimes builds a zeroed
+// timestamppb.Timestamp{} when the REST query param is absent — its
+// AsTime() is 1970-01-01, not Go zero, so IsZero() alone wasn't enough
+// and the SQL filter was [1970, 1970] → empty list).
+func unsetTime(t time.Time) bool {
+	return t.IsZero() || t.Unix() <= 0
+}
+
 func (h *Handlers) ListMyEvents(ctx context.Context, userID uuid.UUID, from, to time.Time) ([]domain.EventWithCircleName, error) {
-	if from.IsZero() {
+	if unsetTime(from) {
 		// Default window starts 24h in the past so an event that the user
 		// just created with starts_at = "now" still appears in the list
 		// (the form sends a datetime-local string that round-trips through
@@ -100,7 +110,7 @@ func (h *Handlers) ListMyEvents(ctx context.Context, userID uuid.UUID, from, to 
 		// `>= now()` filter dropped just-saved rows).
 		from = h.Now().UTC().Add(-24 * time.Hour)
 	}
-	if to.IsZero() {
+	if unsetTime(to) {
 		// Раньше было 90 дней — юзер создавал event на 6+ месяцев вперёд
 		// (запланированное собеседование, релиз, etc) и тот не попадал
 		// в дефолтное окно ListMyEvents → пустой список. Расширяем до 1 года.
