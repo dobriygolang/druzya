@@ -19,6 +19,7 @@ import { DashboardPanel } from './DashboardPanel'
 import { UsersPanel } from './UsersPanel'
 import { ReportsPanel } from './ReportsPanel'
 import { PodcastsPanel } from './PodcastsPanel'
+import { CodexPanel } from './CodexPanel'
 import { AtlasPanel } from './AtlasPanel'
 import { AIModelsPanel } from './AIModelsPanel'
 import { LLMChainPanel } from './LLMChainPanel'
@@ -73,6 +74,8 @@ export default function AdminPage() {
                     ? 'Reports'
                     : tab === 'podcasts'
                       ? 'Подкасты'
+                      : tab === 'codex'
+                        ? 'Codex · статьи'
                       : tab === 'atlas'
                         ? 'Atlas CMS'
                         : tab === 'personas'
@@ -100,6 +103,7 @@ export default function AdminPage() {
         {tab === 'users' && <UsersPanel />}
         {tab === 'reports' && <ReportsPanel />}
         {tab === 'podcasts' && <PodcastsPanel />}
+        {tab === 'codex' && <CodexPanel />}
         {tab === 'atlas' && <AtlasPanel />}
         {tab === 'ai_models' && <AIModelsPanel />}
         {tab === 'llm_chain' && <LLMChainPanel />}

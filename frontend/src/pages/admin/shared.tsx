@@ -8,6 +8,7 @@ export type Tab =
   | 'dashboard'
   | 'users'
   | 'reports'
+  | 'codex'
   | 'podcasts'
   | 'ai_models'
   | 'llm_chain'
@@ -31,6 +32,7 @@ export function Sidebar({ tab, setTab, pendingReports }: { tab: Tab; setTab: (t:
       chipColor: 'bg-danger/20 text-danger',
     },
     { id: 'podcasts', label: 'Подкасты' },
+    { id: 'codex', label: 'Codex · статьи' },
     { id: 'atlas', label: 'Atlas CMS' },
     // ai_models + personas скрыты — backend admin CRUD ещё не написан
     // (только публичные read-only `/ai/models`). Когда появится —

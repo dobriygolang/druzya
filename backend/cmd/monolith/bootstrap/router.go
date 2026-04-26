@@ -113,6 +113,13 @@ func buildHandler(d routerDeps) http.Handler {
 			if d.SyncHeartbeat != nil {
 				gated.Use(d.SyncHeartbeat.Middleware)
 			}
+			// Idempotency middleware — passthrough если Idempotency-Key header
+			// не передан, иначе dedup'ит write-RPC на 24h. Wired GLOBALLY на
+			// gated routes: outbox-replay'ы (offline mode flush) шлют header
+			// → bezopasно double-fire'ятся без duplicate effect'ов на
+			// CreateRoom / SetVisibility / Delete и т.п. Безопасно для всех
+			// existing handlers — header опциональный, отсутствие = no-op.
+			gated.Use(mw.Idempotency(d.Redis))
 			for _, m := range d.Modules {
 				if m != nil && m.MountREST != nil {
 					m.MountREST(gated)
@@ -195,6 +202,10 @@ func restAuthGate(requireAuth func(http.Handler) http.Handler) func(http.Handler
 		// picker on /arena. Frontend needs it before sign-in to render the
 		// premium-tier upsell, so it stays outside the bearer gate.
 		"/api/v1/ai/models": {},
+		// /api/v1/codex/articles — public Codex catalogue. Static-feeling
+		// content (Wikipedia / RFC / docs links), визитная карточка проекта
+		// — должен открываться до логина.
+		"/api/v1/codex/articles": {},
 		// /api/v1/lobby/list — public discovery for /lobbies. Detail and
 		// code-lookup paths (/lobby/{id}, /lobby/code/{code}) are also
 		// public — see isPublic prefix check below.

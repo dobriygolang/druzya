@@ -6,22 +6,27 @@
 // плеером; то и другое снято, потому что подкастов как продукта пока нет.
 // Когда заведём собственный CMS или blog — заменить импорт CODEX_ARTICLES
 // на useQuery (см. content/codex.ts header).
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { ArrowUpRight, Search } from 'lucide-react'
 import { AppShellV2 } from '../components/AppShell'
 import { KnowledgeHubTabs } from '../components/KnowledgeHubTabs'
 import { Card } from '../components/Card'
 import {
-  CODEX_ARTICLES,
-  CODEX_TOTAL,
+  CODEX_ARTICLES as CODEX_FALLBACK,
   codexCategoriesWithCounts,
-  type CodexArticle,
+  type CodexArticle as StaticCodexArticle,
 } from '../content/codex'
+import { useCodexArticlesQuery, type CodexArticle as DBCodexArticle } from '../lib/queries/codex'
+
+// Унифицированный тип для рендера: фронтовый StaticCodexArticle (id,
+// read_min, href, source) совпадает с DBCodexArticle по форме после
+// нормализации, поэтому компоненты ниже работают с обоими.
+type CodexArticle = StaticCodexArticle | DBCodexArticle
 
 const ALL = 'all' as const
 
-function Hero() {
+function Hero({ total }: { total: number }) {
   return (
     <section
       className="flex flex-col items-start justify-center gap-3 px-4 py-8 sm:px-8 lg:px-20"
@@ -36,7 +41,7 @@ function Hero() {
         Что почитать к собесу
       </h1>
       <p className="max-w-[640px] text-[15px] text-text-secondary">
-        {CODEX_TOTAL} статей и референсов про System Design, алгоритмы, SQL,
+        {total} статей и референсов про System Design, алгоритмы, SQL,
         Go и поведенческие интервью. Все ссылки — на стабильные публичные
         источники: Wikipedia, MDN, RFC, официальные доки.
       </p>
@@ -47,11 +52,19 @@ function Hero() {
 function CategoryFilters({
   active,
   onChange,
+  total,
+  countsByCat,
 }: {
   active: string
   onChange: (slug: string) => void
+  total: number
+  countsByCat: Map<string, number>
 }) {
-  const cats = codexCategoriesWithCounts()
+  const cats = codexCategoriesWithCounts().map((c) => ({
+    ...c,
+    count: countsByCat.get(c.slug) ?? 0,
+  }))
+  void total
   return (
     <div className="flex flex-wrap items-center gap-2 px-4 py-5 sm:px-8 lg:px-20">
       <button
@@ -63,7 +76,7 @@ function CategoryFilters({
             : 'inline-flex items-center gap-1.5 rounded-full border border-border bg-bg px-3.5 py-1.5 text-[13px] text-text-secondary hover:border-border-strong hover:text-text-primary'
         }
       >
-        Все <span className="font-mono text-[11px] text-text-muted">{CODEX_TOTAL}</span>
+        Все <span className="font-mono text-[11px] text-text-muted">{total}</span>
       </button>
       {cats.map((c) => (
         <button
@@ -147,8 +160,16 @@ export default function CodexPage() {
     else setSearchParams({ topic: slug }, { replace: true })
   }
 
+  // Backend → fallback to compiled-in seed when API hasn't responded
+  // yet OR returned an error (offline/dev-without-MSW). The static set
+  // is the same 22 entries that seeded the DB so the UX degrades to
+  // "looks identical" rather than "broken".
+  const articlesQ = useCodexArticlesQuery()
+  const articles: CodexArticle[] = articlesQ.data && articlesQ.data.length > 0
+    ? articlesQ.data
+    : CODEX_FALLBACK
   const norm = q.trim().toLowerCase()
-  const visible = CODEX_ARTICLES.filter((a) => {
+  const visible = articles.filter((a) => {
     if (category !== ALL && a.category !== category) return false
     if (norm.length === 0) return true
     return (
@@ -156,14 +177,24 @@ export default function CodexPage() {
       a.description.toLowerCase().includes(norm)
     )
   })
+  const countsByCat = useMemo(() => {
+    const m = new Map<string, number>()
+    for (const a of articles) m.set(a.category, (m.get(a.category) ?? 0) + 1)
+    return m
+  }, [articles])
 
   return (
     <AppShellV2>
       {/* WAVE-13 — shared "Статьи · Подкасты" tabs unify Codex + Podcasts
           under a single header entry. */}
       <KnowledgeHubTabs active="articles" />
-      <Hero />
-      <CategoryFilters active={category} onChange={handleCategoryChange} />
+      <Hero total={articles.length} />
+      <CategoryFilters
+        active={category}
+        onChange={handleCategoryChange}
+        total={articles.length}
+        countsByCat={countsByCat}
+      />
       <div className="px-4 pb-4 sm:px-8 lg:px-20">
         <SearchBox value={q} onChange={setQ} />
       </div>

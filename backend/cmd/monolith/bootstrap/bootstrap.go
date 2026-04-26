@@ -185,6 +185,8 @@ func New(ctx context.Context, cfg *config.Config) (app *App, otelShutdown func()
 		services.NewStatusHistory(deps),
 		// Per-user mock-interview insights aggregator → /insights live cards.
 		services.NewMockInsights(deps),
+		// Codex catalogue (public read + admin CRUD over codex_articles).
+		services.NewCodex(deps),
 		// VPS retention sweep — see cleanup_crons.go header for tables/
 		// policies. Pure background, no REST surface.
 		services.NewCleanupCrons(deps),
