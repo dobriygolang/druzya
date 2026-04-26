@@ -40,12 +40,15 @@ func (o *Orchestrator) SaveCanvasDraft(ctx context.Context, in SaveCanvasDraftIn
 	if err := o.assertCanvasDraftOwnership(ctx, in.AttemptID, in.UserID, false); err != nil {
 		return err
 	}
-	return o.CanvasDrafts.Save(ctx, in.AttemptID, domain.CanvasDraft{
+	if err := o.CanvasDrafts.Save(ctx, in.AttemptID, domain.CanvasDraft{
 		SceneJSON:       in.SceneJSON,
 		NonFunctionalMD: in.NonFunctionalMD,
 		ContextMD:       in.ContextMD,
 		UpdatedAt:       o.now(),
-	})
+	}); err != nil {
+		return fmt.Errorf("canvasDrafts.Save: %w", err)
+	}
+	return nil
 }
 
 // GetCanvasDraft reads back the latest draft for an attempt. Returns
@@ -58,7 +61,11 @@ func (o *Orchestrator) GetCanvasDraft(ctx context.Context, attemptID, userID uui
 	if err := o.assertCanvasDraftOwnership(ctx, attemptID, userID, true); err != nil {
 		return domain.CanvasDraft{}, err
 	}
-	return o.CanvasDrafts.Get(ctx, attemptID)
+	d, err := o.CanvasDrafts.Get(ctx, attemptID)
+	if err != nil {
+		return domain.CanvasDraft{}, fmt.Errorf("canvasDrafts.Get: %w", err)
+	}
+	return d, nil
 }
 
 // DeleteCanvasDraft is the explicit user-driven wipe (e.g. "I'm
@@ -71,7 +78,10 @@ func (o *Orchestrator) DeleteCanvasDraft(ctx context.Context, attemptID, userID 
 	if err := o.assertCanvasDraftOwnership(ctx, attemptID, userID, true); err != nil {
 		return err
 	}
-	return o.CanvasDrafts.Delete(ctx, attemptID)
+	if err := o.CanvasDrafts.Delete(ctx, attemptID); err != nil {
+		return fmt.Errorf("canvasDrafts.Delete: %w", err)
+	}
+	return nil
 }
 
 // assertCanvasDraftOwnership verifies the attempt is a sysdesign-canvas
