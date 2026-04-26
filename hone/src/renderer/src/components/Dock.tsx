@@ -51,8 +51,8 @@ export function Dock({
         transform: 'translateX(-50%)',
         display: 'flex',
         alignItems: 'center',
-        gap: 4,
-        padding: '6px 10px',
+        gap: 6,
+        padding: '6px 14px',
         borderRadius: 999,
         background: 'rgba(10,10,10,0.78)',
         border: '1px solid rgba(255,255,255,0.07)',
@@ -320,6 +320,50 @@ function VolumeBtn({ vol, onVol }: VolumeBtnProps) {
       onMouseLeave={armClose}
       style={{ position: 'relative', display: 'flex', alignItems: 'center' }}
     >
+      {/* Custom track + thumb для volume slider'а. Дефолтный accentColor
+          даёт ярко-белую полосу с толстым thumb'ом — юзер хотел тонкую
+          едва-видную полоску (rgba 12%) и компактный белый thumb. */}
+      <style>{`
+        input.hone-vol-slider {
+          -webkit-appearance: none;
+          appearance: none;
+          background: transparent;
+          height: 8px;
+          margin: 0;
+          padding: 0;
+        }
+        input.hone-vol-slider:focus { outline: none; }
+        input.hone-vol-slider::-webkit-slider-runnable-track {
+          height: 2px;
+          background: rgba(255,255,255,0.14);
+          border-radius: 999px;
+        }
+        input.hone-vol-slider::-moz-range-track {
+          height: 2px;
+          background: rgba(255,255,255,0.14);
+          border-radius: 999px;
+          border: none;
+        }
+        input.hone-vol-slider::-webkit-slider-thumb {
+          -webkit-appearance: none;
+          appearance: none;
+          width: 8px;
+          height: 8px;
+          border-radius: 50%;
+          background: #fff;
+          border: none;
+          margin-top: -3px;
+          cursor: pointer;
+        }
+        input.hone-vol-slider::-moz-range-thumb {
+          width: 8px;
+          height: 8px;
+          border-radius: 50%;
+          background: #fff;
+          border: none;
+          cursor: pointer;
+        }
+      `}</style>
       <div onMouseEnter={cancelClose}>
         <DockBtn
           onClick={handleClick}
@@ -368,18 +412,15 @@ function VolumeBtn({ vol, onVol }: VolumeBtnProps) {
           left: 'calc(100% + 14px)',
           top: '50%',
           transform: `translateY(-50%) translateX(${open ? '0' : '-8px'})`,
-          height: 30,
-          width: open ? 140 : 0,
+          height: 20,
+          width: open ? 64 : 0,
           opacity: open ? 1 : 0,
-          padding: open ? '0 14px' : '0',
+          padding: open ? '0 6px' : '0',
           display: 'flex',
           alignItems: 'center',
-          background: 'rgba(10,10,10,0.85)',
-          border: open ? '1px solid rgba(255,255,255,0.07)' : '1px solid transparent',
-          borderRadius: 999,
-          backdropFilter: 'blur(20px)',
-          WebkitBackdropFilter: 'blur(20px)',
-          overflow: 'hidden',
+          background: 'transparent',
+          border: 'none',
+          overflow: 'visible',
           zIndex: 11,
           transition:
             'width 220ms cubic-bezier(0.2, 0.7, 0.2, 1),' +
@@ -396,10 +437,9 @@ function VolumeBtn({ vol, onVol }: VolumeBtnProps) {
           value={vol}
           onChange={(e) => onVol(parseInt(e.target.value))}
           tabIndex={open ? 0 : -1}
+          className="hone-vol-slider"
           style={{
             width: '100%',
-            height: 4,
-            accentColor: '#fff',
             cursor: 'pointer',
           }}
         />
