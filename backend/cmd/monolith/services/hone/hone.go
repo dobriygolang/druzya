@@ -73,6 +73,7 @@ func NewHone(d monolithServices.Deps) *monolithServices.Module {
 	whiteboards := honeInfra.NewWhiteboards(d.Pool)
 	resistance := honeInfra.NewResistance(d.Pool)
 	queue := honeInfra.NewQueue(d.Pool)
+	cueSessions := honeInfra.NewCueSessions(d.Pool)
 
 	// LLM adapters — pick real vs floor per config.
 	var (
@@ -184,6 +185,14 @@ func NewHone(d monolithServices.Deps) *monolithServices.Module {
 		// Standup
 		RecordStandup:   &honeApp.RecordStandup{Notes: notes, Plans: plans, EmbedFn: embedFn, Log: d.Log, Now: d.Now, Memory: d.IntelligenceMemoryHook},
 		GetTodayStandup: &honeApp.GetTodayStandup{Notes: notes, Queue: queue, Now: d.Now},
+
+		// Cue Sessions
+		ImportCueSession:         &honeApp.ImportCueSession{Repo: cueSessions, Log: d.Log, Now: d.Now},
+		ListCueSessions:          &honeApp.ListCueSessions{Repo: cueSessions},
+		GetCueSession:            &honeApp.GetCueSession{Repo: cueSessions},
+		UpdateCueSession:         &honeApp.UpdateCueSession{Repo: cueSessions},
+		DeleteCueSession:         &honeApp.DeleteCueSession{Repo: cueSessions},
+		SendCueSessionToTelegram: &honeApp.SendCueSessionToTelegram{Repo: cueSessions, Sender: d.HoneNotificationSender, Log: d.Log},
 
 		Log: d.Log,
 		Now: d.Now,

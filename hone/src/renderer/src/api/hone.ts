@@ -600,3 +600,93 @@ export async function getTodayStandup(): Promise<TodayStandupSnapshot> {
     yesterdayDone: resp.yesterdayDone ?? [],
   };
 }
+
+// ─── Cue Sessions ───────────────────────────────────────────────────────────
+//
+// Cue sessions — это импорты из desktop-приложения Cue (отдельный pseudo-
+// folder в Hone). Идемпотентны по file_path. См. backend/services/hone/app/
+// cue_sessions.go.
+
+export interface CueSession {
+  id: string;
+  filePath: string;
+  title: string;
+  bodyMd: string;
+  rawAnalysisJson: string;
+  startedAt: Date | null;
+  importedAt: Date | null;
+  updatedAt: Date | null;
+}
+
+type ProtoCueSession = {
+  id: string;
+  filePath: string;
+  title: string;
+  bodyMd: string;
+  rawAnalysisJson: string;
+  startedAt?: { seconds: bigint; nanos: number };
+  importedAt?: { seconds: bigint; nanos: number };
+  updatedAt?: { seconds: bigint; nanos: number };
+};
+
+function unwrapCueSession(s: ProtoCueSession): CueSession {
+  return {
+    id: s.id,
+    filePath: s.filePath,
+    title: s.title,
+    bodyMd: s.bodyMd,
+    rawAnalysisJson: s.rawAnalysisJson,
+    startedAt: protoTs(s.startedAt),
+    importedAt: protoTs(s.importedAt),
+    updatedAt: protoTs(s.updatedAt),
+  };
+}
+
+export async function importCueSession(args: {
+  filePath: string;
+  title: string;
+  bodyMd: string;
+  rawAnalysisJson: string;
+  startedAt?: Date | null;
+}): Promise<CueSession> {
+  const startedAt = args.startedAt
+    ? { seconds: BigInt(Math.floor(args.startedAt.getTime() / 1000)), nanos: 0 }
+    : undefined;
+  const resp = await client.importCueSession({
+    filePath: args.filePath,
+    title: args.title,
+    bodyMd: args.bodyMd,
+    rawAnalysisJson: args.rawAnalysisJson,
+    startedAt,
+  } as never);
+  return unwrapCueSession(resp as unknown as ProtoCueSession);
+}
+
+export async function listCueSessions(): Promise<CueSession[]> {
+  const resp = await client.listCueSessions({});
+  return (resp.sessions ?? []).map((s) => unwrapCueSession(s as unknown as ProtoCueSession));
+}
+
+export async function getCueSession(id: string): Promise<CueSession> {
+  const resp = await client.getCueSession({ id });
+  return unwrapCueSession(resp as unknown as ProtoCueSession);
+}
+
+export async function updateCueSession(id: string, bodyMd: string): Promise<CueSession> {
+  const resp = await client.updateCueSession({ id, bodyMd });
+  return unwrapCueSession(resp as unknown as ProtoCueSession);
+}
+
+export async function deleteCueSession(id: string): Promise<void> {
+  await client.deleteCueSession({ id });
+}
+
+export interface SendCueSessionToTelegramResult {
+  ok: boolean;
+  message: string;
+}
+
+export async function sendCueSessionToTelegram(id: string): Promise<SendCueSessionToTelegramResult> {
+  const resp = await client.sendCueSessionToTelegram({ id });
+  return { ok: resp.ok, message: resp.message };
+}

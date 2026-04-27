@@ -168,6 +168,12 @@ func New(ctx context.Context, cfg *config.Config) (app *App, otelShutdown func()
 	// Cross-domain wiring: the bot's /start <code> handler talks to the
 	// auth code repo via a thin adapter (see services/adapters.go).
 	notify.Bot.SetCodeFiller(services.NewTelegramCodeFillerAdapter(auth.TelegramCodes))
+	// Hone → notify TG follow-up. Set BEFORE honeServices.NewHone(deps)
+	// runs (NewHone reads deps.HoneNotificationSender by value into the
+	// SendCueSessionToTelegram use case). nil-safe: при пустом TG-токене
+	// notify.Bot живой но без api → adapter всё равно сконструируется,
+	// фактический Send вернёт error и Hone отдаст 5xx.
+	deps.HoneNotificationSender = services.NewHoneNotificationAdapter(notify.Bot, notify.Prefs)
 
 	statsMod := adminServices.NewStats(deps)
 

@@ -67,6 +67,14 @@ type Handler struct {
 	RecordStandup   *RecordStandup
 	GetTodayStandup *GetTodayStandup
 
+	// Cue Sessions (pseudo-folder для импортов из Cue desktop'а)
+	ImportCueSession         *ImportCueSession
+	ListCueSessions          *ListCueSessions
+	GetCueSession            *GetCueSession
+	UpdateCueSession         *UpdateCueSession
+	DeleteCueSession         *DeleteCueSession
+	SendCueSessionToTelegram *SendCueSessionToTelegram
+
 	Log *slog.Logger
 	Now func() time.Time
 }

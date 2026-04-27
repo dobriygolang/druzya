@@ -39,10 +39,15 @@ import {
   createFolder,
   deleteFolder,
   getNoteConnectionsStream,
+  importCueSession,
+  listCueSessions,
+  getCueSession,
+  deleteCueSession,
   type Note,
   type NoteConnection,
   type NoteSummary,
   type Folder,
+  type CueSession,
 } from '../api/hone';
 import {
   publishNote,
@@ -62,6 +67,7 @@ import {
   updateLocalNote,
   deleteLocalNote,
   isLocalNoteId,
+  promoteToCloud,
   type LocalNote,
 } from '../api/localNotes';
 
@@ -103,6 +109,13 @@ export function NotesPage({ initialSelectedId, onConsumeInitial, initialCueNote,
   const selectedIdRef = useRef<string | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(initialSelectedId ?? null);
   const [activeCueNote, setActiveCueNote] = useState<{ filePath: string; analysis: CueSessionAnalysis } | null>(initialCueNote ?? null);
+  // activeCueSessionId — ID из backend hone_cue_sessions для текущей открытой
+  // Cue-карточки. Передаётся в CueMeetingNotes для Follow-up TG. Set после
+  // успешного importCueSession RPC или при клике на row в sidebar.
+  const [activeCueSessionId, setActiveCueSessionId] = useState<string | null>(null);
+  // cueSessions — список из backend (отдельная sidebar-секция). Source of
+  // truth — backend; локальный cueImportMap больше не используется.
+  const [cueSessions, setCueSessions] = useState<CueSession[]>([]);
   const [folders, setFolders] = useState<Folder[]>([]);
   // 'all' оставлен в типе для backwards-совместимости с handlers,
   // но default теперь null (tree-режим, root). User не должен видеть
@@ -195,6 +208,21 @@ export function NotesPage({ initialSelectedId, onConsumeInitial, initialCueNote,
   useEffect(() => {
     listFolders().then(setFolders).catch(() => {});
   }, []);
+
+  // Load cue sessions once on mount + refresh after import. Backend —
+  // single source of truth (старый localStorage cueImportMap deprecated).
+  const refreshCueSessions = useCallback(async () => {
+    try {
+      const list = await listCueSessions();
+      setCueSessions(list);
+    } catch {
+      // Silent: cue sessions — feature, не блокируем notes-page если RPC
+      // недоступен (offline/auth gate). Юзер увидит пустую секцию.
+    }
+  }, []);
+  useEffect(() => {
+    void refreshCueSessions();
+  }, [refreshCueSessions]);
 
   // Initial list fetch + reactive refetch on SSE-bridged events.
   // hone:sync-changed диспатчит App.tsx когда server push приходит —
@@ -544,13 +572,9 @@ export function NotesPage({ initialSelectedId, onConsumeInitial, initialCueNote,
   }, []);
 
   // When a Cue note arrives via deep link (page already mounted), открыть
-  // её немедленно. Idempotency через filePath:
-  //   1. localStorage хранит карту filePath → localNoteId.
-  //   2. На повторный deep-link с тем же файлом — переключаемся на
-  //      existing local note БЕЗ перезатирания body (юзер мог отредактить
-  //      в Hone после импорта; Cue-source-of-truth не перебивает edits).
-  //   3. На новый filePath — createLocalNote, добавить в карту, поставить
-  //      row в list.
+  // её немедленно. Backend идемпотентен по file_path (UNIQUE constraint),
+  // поэтому повторный deep-link просто получит существующую row без
+  // дубля и без перезатирания body_md (юзерские edits сохраняются).
   useEffect(() => {
     if (!initialCueNote) return;
     setActiveCueNote(initialCueNote);
@@ -559,37 +583,25 @@ export function NotesPage({ initialSelectedId, onConsumeInitial, initialCueNote,
     onConsumeCueNote?.();
     const { filePath, analysis } = initialCueNote;
     const title = analysis.title || 'Meeting notes';
-    const existingId = readCueImportMap()[filePath];
-    if (existingId) {
-      // Verify local note ещё существует (юзер мог удалить).
-      void getLocalNote(existingId).then((ln) => {
-        if (ln) {
-          // Note есть — переключаемся, не дублируем.
-          setSelectedId(existingId);
-          return;
-        }
-        // Note удалена → пересоздаём + перезаписываем mapping.
-        void createCueLocalNote(filePath, title, analysis);
-      });
-      return;
-    }
-    void createCueLocalNote(filePath, title, analysis);
 
-    function createCueLocalNote(fp: string, t: string, a: CueSessionAnalysis) {
-      return createLocalNote(t, buildCueMarkdown(a))
-        .then((ln) => {
-          const row: NoteSummary = {
-            id: ln.id,
-            title: ln.title,
-            updatedAt: new Date(ln.updatedAt),
-            sizeBytes: new Blob([ln.bodyMd]).size,
-            folderId: null,
-          };
-          setList((prev) => ({ ...prev, notes: [row, ...prev.notes] }));
-          writeCueImportMapping(fp, ln.id);
-        })
-        .catch(() => undefined);
-    }
+    void importCueSession({
+      filePath,
+      title,
+      bodyMd: buildCueMarkdown(analysis),
+      rawAnalysisJson: JSON.stringify(analysis),
+      startedAt: analysis.startedAt ? new Date(analysis.startedAt) : null,
+    })
+      .then((s) => {
+        setActiveCueSessionId(s.id);
+        // Refresh list — pushed entry либо уже есть (idempotent), либо
+        // новая. Cheap: 1 RPC, единицы записей.
+        void refreshCueSessions();
+      })
+      .catch((err) => {
+        console.error('importCueSession failed', err);
+        setToast('Failed to import Cue session');
+        window.setTimeout(() => setToast(null), 2400);
+      });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialCueNote]);
 
@@ -844,7 +856,16 @@ export function NotesPage({ initialSelectedId, onConsumeInitial, initialCueNote,
   const handlePublish = useCallback(async (id: string) => {
     try {
       await flushNow(); // публикуем именно последнюю версию
-      const status = await publishNote(id);
+      let effectiveId = id;
+      if (isLocalNoteId(id)) {
+        effectiveId = await promoteToCloud(id);
+        setList((prev) => ({
+          ...prev,
+          notes: prev.notes.map((n) => (n.id === id ? { ...n, id: effectiveId } : n)),
+        }));
+        setSelectedId((cur) => (cur === id ? effectiveId : cur));
+      }
+      const status = await publishNote(effectiveId);
       if (status.url) {
         try {
           await navigator.clipboard.writeText(status.url);
@@ -899,13 +920,22 @@ export function NotesPage({ initialSelectedId, onConsumeInitial, initialCueNote,
       // (не selected) — flushNow на ней noop, getNote() ниже подтянет
       // server-truth.
       await flushNow();
-      const note = await getNote(id);
+      let effectiveId = id;
+      if (isLocalNoteId(id)) {
+        effectiveId = await promoteToCloud(id);
+        setList((prev) => ({
+          ...prev,
+          notes: prev.notes.map((n) => (n.id === id ? { ...n, id: effectiveId } : n)),
+        }));
+        setSelectedId((cur) => (cur === id ? effectiveId : cur));
+      }
+      const note = await getNote(effectiveId);
       if (note.bodyMd === undefined) {
         setToast('Could not load note body');
         window.setTimeout(() => setToast(null), 2400);
         return;
       }
-      await encryptApi(id, note.bodyMd);
+      await encryptApi(effectiveId, note.bodyMd);
       setToast('Note encrypted');
       window.setTimeout(() => setToast(null), 2200);
     } catch (e) {
@@ -915,6 +945,58 @@ export function NotesPage({ initialSelectedId, onConsumeInitial, initialCueNote,
   }, [flushNow]);
 
   const handleSidebarCollapse = useCallback(() => setSidebarCollapsed(true), []);
+
+  // Открыть persistent Cue session из sidebar'а: fetch backend row →
+  // parse rawAnalysisJson → recreate analysis для CueMeetingNotes. Если
+  // raw_analysis пуст (старый импорт до raw-сохранения) — синтезируем
+  // минимальный analysis из title/body чтобы UI не упал.
+  const handleSelectCueSession = useCallback(async (id: string) => {
+    try {
+      const s = await getCueSession(id);
+      let analysis: CueSessionAnalysis;
+      try {
+        analysis = JSON.parse(s.rawAnalysisJson) as CueSessionAnalysis;
+      } catch {
+        analysis = {
+          sessionId: s.id,
+          title: s.title || 'Meeting notes',
+          tldr: '',
+          startedAt: s.startedAt ? s.startedAt.toISOString() : '',
+          finishedAt: '',
+          keyTopics: [],
+          actionItems: [],
+          terminology: [],
+          decisions: [],
+          openQuestions: [],
+          reportMarkdown: s.bodyMd,
+          overallScore: 0,
+          usage: null,
+        };
+      }
+      setActiveCueNote({ filePath: s.filePath, analysis });
+      setActiveCueSessionId(s.id);
+      setSelectedId(null);
+      setActive(null);
+    } catch (err) {
+      console.error('getCueSession failed', err);
+      setToast('Failed to load Cue session');
+      window.setTimeout(() => setToast(null), 2400);
+    }
+  }, []);
+
+  const handleDeleteCueSession = useCallback(async (id: string) => {
+    try {
+      await deleteCueSession(id);
+      setCueSessions((prev) => prev.filter((s) => s.id !== id));
+      if (activeCueSessionId === id) {
+        setActiveCueNote(null);
+        setActiveCueSessionId(null);
+      }
+    } catch {
+      setToast('Failed to delete Cue session');
+      window.setTimeout(() => setToast(null), 2400);
+    }
+  }, [activeCueSessionId]);
 
   const handleCreateFolder = useCallback(async (name: string, parentId?: string | null) => {
     try {
@@ -943,15 +1025,38 @@ export function NotesPage({ initialSelectedId, onConsumeInitial, initialCueNote,
 
   const handleMoveNote = useCallback(async (noteId: string, folderId: string | null) => {
     try {
-      await moveNote(noteId, folderId);
+      // Auto-promote local→cloud перед moveNote: backend парсит id как
+      // UUID, `local:<uuid>` (42 char) фейлит с 400. Promote делает
+      // CreateNote, заменяет id, удаляет local-копию.
+      let effectiveId = noteId;
+      if (isLocalNoteId(noteId)) {
+        try {
+          effectiveId = await promoteToCloud(noteId);
+          // После promote'а локальный list-row держит старый local id —
+          // меняем на cloud id (folderId выставится через moveNote ниже).
+          setList((prev) => ({
+            ...prev,
+            notes: prev.notes.map((n) => (n.id === noteId ? { ...n, id: effectiveId } : n)),
+          }));
+          if (selectedId === noteId) setSelectedId(effectiveId);
+        } catch (err) {
+          console.error('promoteToCloud failed', err);
+          setToast('Не удалось перенести заметку в облако');
+          window.setTimeout(() => setToast(null), 2400);
+          return;
+        }
+      }
+      await moveNote(effectiveId, folderId);
       setList((prev) => ({
         ...prev,
-        notes: prev.notes.map((n) => (n.id === noteId ? { ...n, folderId } : n)),
+        notes: prev.notes.map((n) => (n.id === effectiveId ? { ...n, folderId } : n)),
       }));
-    } catch {
-      // silent — not blocking
+    } catch (err) {
+      console.error('moveNote failed', err);
+      setToast('Не удалось переместить заметку');
+      window.setTimeout(() => setToast(null), 2400);
     }
-  }, []);
+  }, [selectedId]);
 
   // ─── Render ─────────────────────────────────────────────────────────────
 
@@ -977,14 +1082,13 @@ export function NotesPage({ initialSelectedId, onConsumeInitial, initialCueNote,
           list={list}
           selectedId={selectedId}
           metaMap={metaMap}
-          activeCueNote={activeCueNote}
-          onSelectCueNote={(note) => {
-            setActiveCueNote(note);
-            setSelectedId(null);
-            setActive(null);
-          }}
+          activeCueSessionId={activeCueSessionId}
+          cueSessions={cueSessions}
+          onSelectCueSession={handleSelectCueSession}
+          onDeleteCueSession={handleDeleteCueSession}
           onSelect={(id) => {
             setActiveCueNote(null);
+            setActiveCueSessionId(null);
             onSelectNote(id);
           }}
           folders={folders}
@@ -1018,6 +1122,7 @@ export function NotesPage({ initialSelectedId, onConsumeInitial, initialCueNote,
         <CueMeetingNotes
           analysis={activeCueNote.analysis}
           filePath={activeCueNote.filePath}
+          sessionId={activeCueSessionId}
         />
       ) : (
         <Editor
@@ -1063,7 +1168,8 @@ interface SidebarProps {
   list: ListState;
   selectedId: string | null;
   metaMap: Map<string, NoteMeta>;
-  activeCueNote: { filePath: string; analysis: CueSessionAnalysis } | null;
+  activeCueSessionId: string | null;
+  cueSessions: CueSession[];
   folders: Folder[];
   selectedFolder: string | null | 'all';
   onSelectFolder: (id: string | null | 'all') => void;
@@ -1071,7 +1177,8 @@ interface SidebarProps {
   onDeleteFolder: (id: string) => void;
   onMoveNote: (noteId: string, folderId: string | null) => void;
   onSelect: (id: string) => void;
-  onSelectCueNote: (note: { filePath: string; analysis: CueSessionAnalysis }) => void;
+  onSelectCueSession: (id: string) => void;
+  onDeleteCueSession: (id: string) => void;
   onCreate: () => void;
   onDelete: (id: string) => void;
   onPublish: (id: string) => void;
@@ -1128,30 +1235,9 @@ function NotesExpandSidebarButton({ onClick }: { onClick: () => void }) {
 // handleUnpublish, handleEncrypt — все useCallback с устойчивыми deps.
 const Sidebar = memo(SidebarImpl);
 
-// CUE_IMPORT_MAP_KEY — filePath → localNoteId mapping. Один Cue-файл
-// импортируется в одну заметку, повторное открытие через deep-link
-// переключается на существующую (без перезатирания edits юзера в Hone).
-const CUE_IMPORT_MAP_KEY = 'hone:notes:cue-imports:v1';
-
-function readCueImportMap(): Record<string, string> {
-  try {
-    const raw = window.localStorage.getItem(CUE_IMPORT_MAP_KEY);
-    if (!raw) return {};
-    return JSON.parse(raw) as Record<string, string>;
-  } catch {
-    return {};
-  }
-}
-
-function writeCueImportMapping(filePath: string, localNoteId: string): void {
-  try {
-    const map = readCueImportMap();
-    map[filePath] = localNoteId;
-    window.localStorage.setItem(CUE_IMPORT_MAP_KEY, JSON.stringify(map));
-  } catch {
-    /* quota — не критично, max что повторный импорт создаст дубликат */
-  }
-}
+// (Cue-import idempotency теперь — backend-side, см. UNIQUE(user_id,
+// file_path) в hone_cue_sessions. Старый localStorage cueImportMap
+// удалён — backend single source of truth.)
 
 // EXPANDED_FOLDERS_KEY — set of expanded folder IDs, persisted в
 // localStorage. Notion/Obsidian повторно открываются с тем же tree-state'ом.
@@ -1176,7 +1262,7 @@ function writeExpandedFolders(s: Set<string>): void {
   }
 }
 
-function SidebarImpl({ list, selectedId, metaMap, activeCueNote, folders, selectedFolder, onSelectFolder, onCreateFolder, onDeleteFolder, onMoveNote, onSelect, onSelectCueNote, onCreate, onDelete, onPublish, onUnpublish, onEncrypt, onSyncToCloud, onToggleCollapse }: SidebarProps) {
+function SidebarImpl({ list, selectedId, metaMap, activeCueSessionId, cueSessions, folders, selectedFolder, onSelectFolder, onCreateFolder, onDeleteFolder, onMoveNote, onSelect, onSelectCueSession, onDeleteCueSession, onCreate, onDelete, onPublish, onUnpublish, onEncrypt, onSyncToCloud, onToggleCollapse }: SidebarProps) {
   const [newFolderName, setNewFolderName] = useState('');
   const [creatingFolder, setCreatingFolder] = useState<{ parentId: string | null } | null>(null);
   const [folderInputRef] = useState(() => ({ current: null as HTMLInputElement | null }));
@@ -1261,11 +1347,13 @@ function SidebarImpl({ list, selectedId, metaMap, activeCueNote, folders, select
         onToggleCollapse={onToggleCollapse}
       />
 
-      {/* Cue Sessions — populated when the user opens a note from Cue desktop */}
-      {activeCueNote && (
-        <div style={{ marginBottom: 8 }}>
+      {/* Cue Sessions — backend-driven отдельная секция выше Folders.
+          Без drag-target / без "+" / без "move-to". Каждая row — title +
+          дата + (на hover) delete-точка. */}
+      {cueSessions.length > 0 && (
+        <div style={{ marginBottom: 10 }}>
           <div style={{
-            padding: '6px 6px 4px',
+            padding: '4px 14px 2px',
             fontSize: 9.5,
             fontWeight: 600,
             letterSpacing: '0.10em',
@@ -1274,33 +1362,15 @@ function SidebarImpl({ list, selectedId, metaMap, activeCueNote, folders, select
           }}>
             Cue Sessions
           </div>
-          <button
-            onClick={() => onSelectCueNote(activeCueNote)}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 8,
-              width: '100%',
-              padding: '6px 8px',
-              borderRadius: 6,
-              background: 'rgba(79,195,247,0.08)',
-              border: '1px solid rgba(79,195,247,0.18)',
-              color: 'var(--ink-90)',
-              fontSize: 12.5,
-              cursor: 'pointer',
-              textAlign: 'left',
-              transition: 'background 120ms',
-            }}
-            onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(79,195,247,0.14)')}
-            onMouseLeave={(e) => (e.currentTarget.style.background = 'rgba(79,195,247,0.08)')}
-          >
-            <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="rgba(79,195,247,0.9)" strokeWidth="1.3" strokeLinejoin="round">
-              <path d="M6 1L10.33 3.5V8.5L6 11L1.67 8.5V3.5L6 1Z" />
-            </svg>
-            <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-              {activeCueNote.analysis.title || 'Cue meeting'}
-            </span>
-          </button>
+          {cueSessions.map((s) => (
+            <CueSessionRow
+              key={s.id}
+              session={s}
+              active={s.id === activeCueSessionId}
+              onSelect={() => onSelectCueSession(s.id)}
+              onDelete={() => onDeleteCueSession(s.id)}
+            />
+          ))}
           <div style={{ height: 1, background: 'rgba(255,255,255,0.06)', margin: '8px 0' }} />
         </div>
       )}
@@ -1490,6 +1560,95 @@ function SidebarImpl({ list, selectedId, metaMap, activeCueNote, folders, select
       <NotesRetentionHint />
     </aside>
   );
+}
+
+// CueSessionRow — компактная sidebar row для backend-driven Cue session'а.
+// Не drop-target, не draggable (Cue sessions — read-only система). Hover
+// показывает delete-точку — full delete без подтверждения, потому что
+// session — лог встречи, его дубликат всегда можно ре-импортировать
+// заново через `druz9://notes/import`.
+function CueSessionRow({
+  session, active, onSelect, onDelete,
+}: {
+  session: CueSession;
+  active: boolean;
+  onSelect: () => void;
+  onDelete: () => void;
+}) {
+  const [hover, setHover] = useState(false);
+  const dt = session.startedAt ?? session.importedAt;
+  const dateStr = dt ? formatCueRowDate(dt) : '';
+  return (
+    <div
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+      onClick={onSelect}
+      style={{
+        position: 'relative',
+        display: 'flex',
+        alignItems: 'center',
+        gap: 8,
+        padding: '6px 8px',
+        margin: '0 6px',
+        borderRadius: 6,
+        cursor: 'pointer',
+        background: active ? 'rgba(79,195,247,0.14)' : (hover ? 'rgba(255,255,255,0.04)' : 'transparent'),
+        border: active ? '1px solid rgba(79,195,247,0.22)' : '1px solid transparent',
+        transition: 'background 120ms, border-color 120ms',
+      }}
+    >
+      <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="rgba(79,195,247,0.9)" strokeWidth="1.3" strokeLinejoin="round">
+        <path d="M6 1L10.33 3.5V8.5L6 11L1.67 8.5V3.5L6 1Z" />
+      </svg>
+      <span
+        style={{
+          flex: 1,
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+          whiteSpace: 'nowrap',
+          fontSize: 12.5,
+          color: 'var(--ink-90)',
+        }}
+      >
+        {session.title || 'Cue meeting'}
+      </span>
+      {dateStr && (
+        <span style={{ fontSize: 10.5, color: 'var(--ink-40)' }}>{dateStr}</span>
+      )}
+      {hover && (
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            if (window.confirm('Delete this Cue session?')) onDelete();
+          }}
+          title="Delete session"
+          style={{
+            background: 'transparent',
+            border: 'none',
+            color: 'var(--ink-40)',
+            cursor: 'pointer',
+            padding: '0 2px',
+            fontSize: 14,
+            lineHeight: 1,
+          }}
+        >
+          ×
+        </button>
+      )}
+    </div>
+  );
+}
+
+function formatCueRowDate(d: Date): string {
+  const now = new Date();
+  const diffMs = now.getTime() - d.getTime();
+  const diffDays = Math.floor(diffMs / 86_400_000);
+  if (diffDays === 0) return 'today';
+  if (diffDays === 1) return 'yesterday';
+  if (diffDays < 7) return `${diffDays}d`;
+  const day = String(d.getDate()).padStart(2, '0');
+  const mo = String(d.getMonth() + 1).padStart(2, '0');
+  return `${day}.${mo}`;
 }
 
 function NotesRetentionHint() {

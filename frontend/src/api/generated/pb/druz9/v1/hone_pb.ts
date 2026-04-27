@@ -2466,6 +2466,460 @@ export class CritiquePacket extends Message<CritiquePacket> {
 }
 
 /**
+ * CueSession — одна импортированная встреча из Cue desktop'а.
+ *
+ * @generated from message druz9.v1.CueSession
+ */
+export class CueSession extends Message<CueSession> {
+  /**
+   * @generated from field: string id = 1;
+   */
+  id = "";
+
+  /**
+   * абсолютный путь файла в Cue
+   *
+   * @generated from field: string file_path = 2;
+   */
+  filePath = "";
+
+  /**
+   * @generated from field: string title = 3;
+   */
+  title = "";
+
+  /**
+   * юзерский слой поверх raw_analysis
+   *
+   * @generated from field: string body_md = 4;
+   */
+  bodyMd = "";
+
+  /**
+   * оригинальный JSON-экспорт от Cue
+   *
+   * @generated from field: string raw_analysis_json = 5;
+   */
+  rawAnalysisJson = "";
+
+  /**
+   * @generated from field: google.protobuf.Timestamp started_at = 6;
+   */
+  startedAt?: Timestamp;
+
+  /**
+   * @generated from field: google.protobuf.Timestamp imported_at = 7;
+   */
+  importedAt?: Timestamp;
+
+  /**
+   * @generated from field: google.protobuf.Timestamp updated_at = 8;
+   */
+  updatedAt?: Timestamp;
+
+  constructor(data?: PartialMessage<CueSession>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.CueSession";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "file_path", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 3, name: "title", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 4, name: "body_md", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 5, name: "raw_analysis_json", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 6, name: "started_at", kind: "message", T: Timestamp },
+    { no: 7, name: "imported_at", kind: "message", T: Timestamp },
+    { no: 8, name: "updated_at", kind: "message", T: Timestamp },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): CueSession {
+    return new CueSession().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): CueSession {
+    return new CueSession().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): CueSession {
+    return new CueSession().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: CueSession | PlainMessage<CueSession> | undefined, b: CueSession | PlainMessage<CueSession> | undefined): boolean {
+    return proto3.util.equals(CueSession, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.ImportCueSessionRequest
+ */
+export class ImportCueSessionRequest extends Message<ImportCueSessionRequest> {
+  /**
+   * @generated from field: string file_path = 1;
+   */
+  filePath = "";
+
+  /**
+   * @generated from field: string title = 2;
+   */
+  title = "";
+
+  /**
+   * raw_analysis_json — JSON-сериализованный CueSessionAnalysis объект.
+   * Backend не парсит его сам, просто хранит как есть.
+   *
+   * @generated from field: string raw_analysis_json = 3;
+   */
+  rawAnalysisJson = "";
+
+  /**
+   * первичный markdown render для seed
+   *
+   * @generated from field: string body_md = 4;
+   */
+  bodyMd = "";
+
+  /**
+   * @generated from field: google.protobuf.Timestamp started_at = 5;
+   */
+  startedAt?: Timestamp;
+
+  constructor(data?: PartialMessage<ImportCueSessionRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.ImportCueSessionRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "file_path", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "title", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 3, name: "raw_analysis_json", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 4, name: "body_md", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 5, name: "started_at", kind: "message", T: Timestamp },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ImportCueSessionRequest {
+    return new ImportCueSessionRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): ImportCueSessionRequest {
+    return new ImportCueSessionRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): ImportCueSessionRequest {
+    return new ImportCueSessionRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: ImportCueSessionRequest | PlainMessage<ImportCueSessionRequest> | undefined, b: ImportCueSessionRequest | PlainMessage<ImportCueSessionRequest> | undefined): boolean {
+    return proto3.util.equals(ImportCueSessionRequest, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.ListCueSessionsRequest
+ */
+export class ListCueSessionsRequest extends Message<ListCueSessionsRequest> {
+  constructor(data?: PartialMessage<ListCueSessionsRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.ListCueSessionsRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ListCueSessionsRequest {
+    return new ListCueSessionsRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): ListCueSessionsRequest {
+    return new ListCueSessionsRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): ListCueSessionsRequest {
+    return new ListCueSessionsRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: ListCueSessionsRequest | PlainMessage<ListCueSessionsRequest> | undefined, b: ListCueSessionsRequest | PlainMessage<ListCueSessionsRequest> | undefined): boolean {
+    return proto3.util.equals(ListCueSessionsRequest, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.ListCueSessionsResponse
+ */
+export class ListCueSessionsResponse extends Message<ListCueSessionsResponse> {
+  /**
+   * @generated from field: repeated druz9.v1.CueSession sessions = 1;
+   */
+  sessions: CueSession[] = [];
+
+  constructor(data?: PartialMessage<ListCueSessionsResponse>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.ListCueSessionsResponse";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "sessions", kind: "message", T: CueSession, repeated: true },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ListCueSessionsResponse {
+    return new ListCueSessionsResponse().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): ListCueSessionsResponse {
+    return new ListCueSessionsResponse().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): ListCueSessionsResponse {
+    return new ListCueSessionsResponse().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: ListCueSessionsResponse | PlainMessage<ListCueSessionsResponse> | undefined, b: ListCueSessionsResponse | PlainMessage<ListCueSessionsResponse> | undefined): boolean {
+    return proto3.util.equals(ListCueSessionsResponse, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.GetCueSessionRequest
+ */
+export class GetCueSessionRequest extends Message<GetCueSessionRequest> {
+  /**
+   * @generated from field: string id = 1;
+   */
+  id = "";
+
+  constructor(data?: PartialMessage<GetCueSessionRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.GetCueSessionRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): GetCueSessionRequest {
+    return new GetCueSessionRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): GetCueSessionRequest {
+    return new GetCueSessionRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): GetCueSessionRequest {
+    return new GetCueSessionRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: GetCueSessionRequest | PlainMessage<GetCueSessionRequest> | undefined, b: GetCueSessionRequest | PlainMessage<GetCueSessionRequest> | undefined): boolean {
+    return proto3.util.equals(GetCueSessionRequest, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.UpdateCueSessionRequest
+ */
+export class UpdateCueSessionRequest extends Message<UpdateCueSessionRequest> {
+  /**
+   * @generated from field: string id = 1;
+   */
+  id = "";
+
+  /**
+   * @generated from field: string body_md = 2;
+   */
+  bodyMd = "";
+
+  constructor(data?: PartialMessage<UpdateCueSessionRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.UpdateCueSessionRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "body_md", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): UpdateCueSessionRequest {
+    return new UpdateCueSessionRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): UpdateCueSessionRequest {
+    return new UpdateCueSessionRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): UpdateCueSessionRequest {
+    return new UpdateCueSessionRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: UpdateCueSessionRequest | PlainMessage<UpdateCueSessionRequest> | undefined, b: UpdateCueSessionRequest | PlainMessage<UpdateCueSessionRequest> | undefined): boolean {
+    return proto3.util.equals(UpdateCueSessionRequest, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.DeleteCueSessionRequest
+ */
+export class DeleteCueSessionRequest extends Message<DeleteCueSessionRequest> {
+  /**
+   * @generated from field: string id = 1;
+   */
+  id = "";
+
+  constructor(data?: PartialMessage<DeleteCueSessionRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.DeleteCueSessionRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): DeleteCueSessionRequest {
+    return new DeleteCueSessionRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): DeleteCueSessionRequest {
+    return new DeleteCueSessionRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): DeleteCueSessionRequest {
+    return new DeleteCueSessionRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: DeleteCueSessionRequest | PlainMessage<DeleteCueSessionRequest> | undefined, b: DeleteCueSessionRequest | PlainMessage<DeleteCueSessionRequest> | undefined): boolean {
+    return proto3.util.equals(DeleteCueSessionRequest, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.DeleteCueSessionResponse
+ */
+export class DeleteCueSessionResponse extends Message<DeleteCueSessionResponse> {
+  constructor(data?: PartialMessage<DeleteCueSessionResponse>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.DeleteCueSessionResponse";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): DeleteCueSessionResponse {
+    return new DeleteCueSessionResponse().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): DeleteCueSessionResponse {
+    return new DeleteCueSessionResponse().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): DeleteCueSessionResponse {
+    return new DeleteCueSessionResponse().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: DeleteCueSessionResponse | PlainMessage<DeleteCueSessionResponse> | undefined, b: DeleteCueSessionResponse | PlainMessage<DeleteCueSessionResponse> | undefined): boolean {
+    return proto3.util.equals(DeleteCueSessionResponse, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.SendCueSessionToTelegramRequest
+ */
+export class SendCueSessionToTelegramRequest extends Message<SendCueSessionToTelegramRequest> {
+  /**
+   * @generated from field: string id = 1;
+   */
+  id = "";
+
+  constructor(data?: PartialMessage<SendCueSessionToTelegramRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.SendCueSessionToTelegramRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): SendCueSessionToTelegramRequest {
+    return new SendCueSessionToTelegramRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): SendCueSessionToTelegramRequest {
+    return new SendCueSessionToTelegramRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): SendCueSessionToTelegramRequest {
+    return new SendCueSessionToTelegramRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: SendCueSessionToTelegramRequest | PlainMessage<SendCueSessionToTelegramRequest> | undefined, b: SendCueSessionToTelegramRequest | PlainMessage<SendCueSessionToTelegramRequest> | undefined): boolean {
+    return proto3.util.equals(SendCueSessionToTelegramRequest, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.SendCueSessionToTelegramResponse
+ */
+export class SendCueSessionToTelegramResponse extends Message<SendCueSessionToTelegramResponse> {
+  /**
+   * Информативный flag — если у юзера не linked TG, бэкенд возвращает ok=false
+   * и UI показывает «Link TG to receive».
+   *
+   * @generated from field: bool ok = 1;
+   */
+  ok = false;
+
+  /**
+   * human-readable status
+   *
+   * @generated from field: string message = 2;
+   */
+  message = "";
+
+  constructor(data?: PartialMessage<SendCueSessionToTelegramResponse>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.SendCueSessionToTelegramResponse";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "ok", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
+    { no: 2, name: "message", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): SendCueSessionToTelegramResponse {
+    return new SendCueSessionToTelegramResponse().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): SendCueSessionToTelegramResponse {
+    return new SendCueSessionToTelegramResponse().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): SendCueSessionToTelegramResponse {
+    return new SendCueSessionToTelegramResponse().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: SendCueSessionToTelegramResponse | PlainMessage<SendCueSessionToTelegramResponse> | undefined, b: SendCueSessionToTelegramResponse | PlainMessage<SendCueSessionToTelegramResponse> | undefined): boolean {
+    return proto3.util.equals(SendCueSessionToTelegramResponse, a, b);
+  }
+}
+
+/**
  * Три вопроса классического dev standup'а. Бекенд:
  *   1. Создаёт заметку с заголовком «Standup YYYY-MM-DD» и body в формате
  *      «## Yesterday / ## Today / ## Blockers».

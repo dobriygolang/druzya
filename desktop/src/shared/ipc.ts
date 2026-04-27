@@ -192,6 +192,10 @@ export const eventChannels = {
    *  absolute file path so the renderer can offer "Open in Hone" /
    *  "Show in Finder" without an extra IPC round-trip. */
   notesReady: 'event:notes-ready',
+  /** Hone-companion deep-link arrived: druz9://cue/open?file=<abs-path>.
+   *  Renderer subscribes to navigate to that session in the local
+   *  sessions list. Payload: { filePath: string }. */
+  cueOpenSession: 'cue:openSession',
 } as const;
 
 export interface PickerStateEvent {

@@ -137,9 +137,13 @@ app.whenReady().then(async () => {
 
   ensureTray({ resourcesPath, windowOptions });
 
-  // Telegram login is pull-based (POST /auth/telegram/poll) — no deep
-  // link callback needed. registerDeepLinks is a no-op shim today; kept
-  // for future non-auth deep links (share URLs, etc.).
+  // Register druz9:// protocol scheme + open-url / second-instance
+  // listeners. Used by Hone-companion: when the user clicks "Start Cue"
+  // on a meeting note, Hone fires `druz9://cue/open?file=<path>` and we
+  // surface it to renderer via 'cue:openSession' channel. Pass the
+  // compact window (created by showWindow below) — but here we pass null
+  // because window isn't yet created; updated later from window-manager.
+  // (The handler queues the URL via `pendingUrl` until renderer asks.)
   registerDeepLinks(null);
 
   setHotkeyHandler(async (action) => {
@@ -216,6 +220,12 @@ app.whenReady().then(async () => {
 
   showWindow('compact', windowOptions);
   preloadWindow('picker', windowOptions);
+
+  // Re-bind deep-links to the actual compact window now that it exists.
+  // First call (above, with null) registered the protocol scheme and
+  // listeners; this second call swaps in the real BrowserWindow so
+  // warm-app dispatch can forward URLs to the renderer.
+  registerDeepLinks(getWindow('compact') ?? null);
 });
 
 app.on('window-all-closed', () => {

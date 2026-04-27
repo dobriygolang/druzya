@@ -822,6 +822,131 @@ func (s *HoneServer) GetTodayStandup(
 	}), nil
 }
 
+// ── Cue Sessions ──────────────────────────────────────────────────────────
+
+func (s *HoneServer) ImportCueSession(
+	ctx context.Context,
+	req *connect.Request[pb.ImportCueSessionRequest],
+) (*connect.Response[pb.CueSession], error) {
+	uid, err := requireUser(ctx)
+	if err != nil {
+		return nil, err
+	}
+	in := app.ImportCueSessionInput{
+		UserID:          uid,
+		FilePath:        req.Msg.GetFilePath(),
+		Title:           req.Msg.GetTitle(),
+		BodyMD:          req.Msg.GetBodyMd(),
+		RawAnalysisJSON: req.Msg.GetRawAnalysisJson(),
+	}
+	if started := req.Msg.GetStartedAt(); started != nil {
+		t := started.AsTime()
+		in.StartedAt = &t
+	}
+	out, err := s.H.ImportCueSession.Do(ctx, in)
+	if err != nil {
+		return nil, fmt.Errorf("hone.ImportCueSession: %w", s.toConnectErr(err))
+	}
+	return connect.NewResponse(toCueSessionProto(out)), nil
+}
+
+func (s *HoneServer) ListCueSessions(
+	ctx context.Context,
+	_ *connect.Request[pb.ListCueSessionsRequest],
+) (*connect.Response[pb.ListCueSessionsResponse], error) {
+	uid, err := requireUser(ctx)
+	if err != nil {
+		return nil, err
+	}
+	rows, err := s.H.ListCueSessions.Do(ctx, uid)
+	if err != nil {
+		return nil, fmt.Errorf("hone.ListCueSessions: %w", s.toConnectErr(err))
+	}
+	resp := &pb.ListCueSessionsResponse{Sessions: make([]*pb.CueSession, 0, len(rows))}
+	for _, r := range rows {
+		resp.Sessions = append(resp.Sessions, toCueSessionProto(r))
+	}
+	return connect.NewResponse(resp), nil
+}
+
+func (s *HoneServer) GetCueSession(
+	ctx context.Context,
+	req *connect.Request[pb.GetCueSessionRequest],
+) (*connect.Response[pb.CueSession], error) {
+	uid, err := requireUser(ctx)
+	if err != nil {
+		return nil, err
+	}
+	id, parseErr := uuid.Parse(req.Msg.GetId())
+	if parseErr != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("invalid id: %w", parseErr))
+	}
+	out, err := s.H.GetCueSession.Do(ctx, uid, id)
+	if err != nil {
+		return nil, fmt.Errorf("hone.GetCueSession: %w", s.toConnectErr(err))
+	}
+	return connect.NewResponse(toCueSessionProto(out)), nil
+}
+
+func (s *HoneServer) UpdateCueSession(
+	ctx context.Context,
+	req *connect.Request[pb.UpdateCueSessionRequest],
+) (*connect.Response[pb.CueSession], error) {
+	uid, err := requireUser(ctx)
+	if err != nil {
+		return nil, err
+	}
+	id, parseErr := uuid.Parse(req.Msg.GetId())
+	if parseErr != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("invalid id: %w", parseErr))
+	}
+	out, err := s.H.UpdateCueSession.Do(ctx, uid, id, req.Msg.GetBodyMd())
+	if err != nil {
+		return nil, fmt.Errorf("hone.UpdateCueSession: %w", s.toConnectErr(err))
+	}
+	return connect.NewResponse(toCueSessionProto(out)), nil
+}
+
+func (s *HoneServer) DeleteCueSession(
+	ctx context.Context,
+	req *connect.Request[pb.DeleteCueSessionRequest],
+) (*connect.Response[pb.DeleteCueSessionResponse], error) {
+	uid, err := requireUser(ctx)
+	if err != nil {
+		return nil, err
+	}
+	id, parseErr := uuid.Parse(req.Msg.GetId())
+	if parseErr != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("invalid id: %w", parseErr))
+	}
+	if err := s.H.DeleteCueSession.Do(ctx, uid, id); err != nil {
+		return nil, fmt.Errorf("hone.DeleteCueSession: %w", s.toConnectErr(err))
+	}
+	return connect.NewResponse(&pb.DeleteCueSessionResponse{}), nil
+}
+
+func (s *HoneServer) SendCueSessionToTelegram(
+	ctx context.Context,
+	req *connect.Request[pb.SendCueSessionToTelegramRequest],
+) (*connect.Response[pb.SendCueSessionToTelegramResponse], error) {
+	uid, err := requireUser(ctx)
+	if err != nil {
+		return nil, err
+	}
+	id, parseErr := uuid.Parse(req.Msg.GetId())
+	if parseErr != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("invalid id: %w", parseErr))
+	}
+	out, err := s.H.SendCueSessionToTelegram.Do(ctx, uid, id)
+	if err != nil {
+		return nil, fmt.Errorf("hone.SendCueSessionToTelegram: %w", s.toConnectErr(err))
+	}
+	return connect.NewResponse(&pb.SendCueSessionToTelegramResponse{
+		Ok:      out.OK,
+		Message: out.Message,
+	}), nil
+}
+
 // CritiqueWhiteboard implements druz9.v1.HoneService/CritiqueWhiteboard (server-streaming).
 func (s *HoneServer) CritiqueWhiteboard(
 	ctx context.Context,
@@ -1005,6 +1130,22 @@ func toFolderProto(f domain.Folder) *pb.Folder {
 	if f.ParentID != nil {
 		s := f.ParentID.String()
 		out.ParentId = &s
+	}
+	return out
+}
+
+func toCueSessionProto(s domain.CueSession) *pb.CueSession {
+	out := &pb.CueSession{
+		Id:              s.ID.String(),
+		FilePath:        s.FilePath,
+		Title:           s.Title,
+		BodyMd:          s.BodyMD,
+		RawAnalysisJson: s.RawAnalysisJSON,
+		ImportedAt:      timestamppb.New(s.ImportedAt.UTC()),
+		UpdatedAt:       timestamppb.New(s.UpdatedAt.UTC()),
+	}
+	if s.StartedAt != nil {
+		out.StartedAt = timestamppb.New(s.StartedAt.UTC())
 	}
 	return out
 }

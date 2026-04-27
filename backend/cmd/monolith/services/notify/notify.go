@@ -34,6 +34,10 @@ type NotifyModule struct {
 	// Handlers is exposed so bootstrap can attach late-bound bridges
 	// after their source modules wire.
 	Handlers *notifyApp.Handlers
+	// Prefs — exposed so cross-domain adapters (e.g. hone Cue follow-up TG)
+	// can resolve telegram_chat_id without going through the full notify
+	// pipeline. Read-only consumers; the bot itself owns writes.
+	Prefs notifyDomain.PreferencesRepo
 }
 
 // NewNotify wires notifications: prefs CRUD, the multi-channel sender,
@@ -126,6 +130,7 @@ func NewNotify(d monolithServices.Deps) (*NotifyModule, error) {
 		RegisterWebhook: tg.RegisterWebhook,
 		Bot:             tg,
 		Handlers:        handlers,
+		Prefs:           pg,
 		Module: monolithServices.Module{
 			ConnectPath:        connectPath,
 			ConnectHandler:     transcoder,

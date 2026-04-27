@@ -298,3 +298,22 @@ type CritiquePacket struct {
 	Delta   string
 	Done    bool
 }
+
+// ─── Cue Sessions ──────────────────────────────────────────────────────────
+
+// CueSession — одна импортированная встреча из Cue desktop'а. Не пересекается
+// с обычными Note'ами: отдельная таблица, нет folder_id, нет drag-target.
+//
+// BodyMD — юзерский слой поверх raw_analysis. Idempotent re-import не
+// перезаписывает body, только raw_analysis (свежий transcript из Cue).
+type CueSession struct {
+	ID              uuid.UUID
+	UserID          uuid.UUID
+	FilePath        string
+	Title           string
+	BodyMD          string
+	RawAnalysisJSON string // JSON string from Cue, opaque
+	StartedAt       *time.Time
+	ImportedAt      time.Time
+	UpdatedAt       time.Time
+}

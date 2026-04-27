@@ -17,6 +17,11 @@ import type { CueSessionAnalysis, CueAnalysisItem, CueAnalysisTerm } from '@shar
 interface Props {
   analysis: CueSessionAnalysis;
   filePath: string;
+  // sessionId — id из backend hone_cue_sessions. Если задан — кнопка
+  // «Follow-up TG» зовёт sendCueSessionToTelegram(sessionId). null, когда
+  // карточка открыта на свежем deep-link'е до того как Import RPC отдал
+  // объект (короткое окно — UI просто disabled).
+  sessionId?: string | null;
 }
 
 type Tab = 'summary' | 'transcript' | 'usage';
@@ -41,12 +46,52 @@ function renderInlineMarkdown(text: string): React.ReactNode[] {
   return out;
 }
 
-export function CueMeetingNotes({ analysis, filePath: _filePath }: Props) {
+export function CueMeetingNotes({ analysis, filePath, sessionId }: Props) {
   const [tab, setTab] = useState<Tab>('summary');
   const [persona, setPersona] = useState('General');
   const [askDraft, setAskDraft] = useState('');
   const [shareOpen, setShareOpen] = useState(false);
+  const [tgBusy, setTgBusy] = useState(false);
+  const [tgToast, setTgToast] = useState<string | null>(null);
   const askRef = useRef<HTMLInputElement>(null);
+
+  // Start Cue: открывает Cue desktop'а на этой же сессии. Fallback на
+  // веб-копилот если Cue не установлен (deeplink registration упадёт
+  // silently → useradata: страница откроется в default browser).
+  const handleStartCue = () => {
+    const url = filePath
+      ? `druz9://cue/open?file=${encodeURIComponent(filePath)}`
+      : 'https://druz9.online/copilot';
+    void window.hone?.shell.openExternal(url).catch(() => {
+      // Если protocol handler не зарегистрирован — открываем web-fallback.
+      void window.hone?.shell.openExternal('https://druz9.online/copilot');
+    });
+  };
+
+  // Follow-up TG: отправляет markdown-сводку в личный TG чат через
+  // sendCueSessionToTelegram RPC. Реакция:
+  //   - sessionId null  → toast «session not synced yet»
+  //   - ok=false        → toast = backend message (например «telegram not linked»)
+  //   - ok=true         → toast «Sent to Telegram»
+  const handleFollowupTG = async () => {
+    if (!sessionId) {
+      setTgToast('Session not synced yet');
+      window.setTimeout(() => setTgToast(null), 2400);
+      return;
+    }
+    if (tgBusy) return;
+    setTgBusy(true);
+    try {
+      const { sendCueSessionToTelegram } = await import('../api/hone');
+      const r = await sendCueSessionToTelegram(sessionId);
+      setTgToast(r.ok ? 'Sent to Telegram' : (r.message || 'Telegram not linked'));
+    } catch (e) {
+      setTgToast(`Send failed: ${(e as Error).message}`);
+    } finally {
+      setTgBusy(false);
+      window.setTimeout(() => setTgToast(null), 2800);
+    }
+  };
 
   const dateStr = formatDate(analysis.startedAt);
 
@@ -126,6 +171,8 @@ export function CueMeetingNotes({ analysis, filePath: _filePath }: Props) {
             <span>Search or ask anything…</span>
           </div>
           <button
+            onClick={handleStartCue}
+            title="Open this session in Cue desktop"
             style={{
               padding: '6px 14px',
               borderRadius: 8,
@@ -160,6 +207,9 @@ export function CueMeetingNotes({ analysis, filePath: _filePath }: Props) {
           }}
         >
           <button
+            onClick={handleFollowupTG}
+            disabled={tgBusy}
+            title={sessionId ? 'Send markdown summary to your Telegram' : 'Sync session first'}
             style={{
               position: 'relative',
               display: 'flex',
@@ -171,11 +221,12 @@ export function CueMeetingNotes({ analysis, filePath: _filePath }: Props) {
               background: '#ffffff',
               color: '#1f2233',
               fontSize: 12.5,
-              cursor: 'pointer',
+              cursor: tgBusy ? 'progress' : 'pointer',
+              opacity: tgBusy ? 0.6 : 1,
             }}
           >
-            <MailIcon />
-            Follow-up email
+            <TelegramIcon />
+            {tgBusy ? 'Sending…' : 'Follow-up TG'}
             <span
               style={{
                 position: 'absolute',
@@ -188,6 +239,25 @@ export function CueMeetingNotes({ analysis, filePath: _filePath }: Props) {
               }}
             />
           </button>
+          {tgToast && (
+            <span
+              style={{
+                position: 'absolute',
+                top: -28,
+                right: 32,
+                background: '#0d0d0d',
+                color: '#fff',
+                padding: '4px 10px',
+                borderRadius: 6,
+                fontSize: 11.5,
+                whiteSpace: 'nowrap',
+                pointerEvents: 'none',
+                zIndex: 50,
+              }}
+            >
+              {tgToast}
+            </span>
+          )}
           <div style={{ position: 'relative' }}>
             <button
               onClick={() => setShareOpen((v) => !v)}
@@ -752,11 +822,13 @@ function SearchIcon() {
   );
 }
 
-function MailIcon() {
+function TelegramIcon() {
+  // Простой paper-plane silhouette — узнаваемо как TG glyph без ставки
+  // на реальный лого (избегаем trademark вопросов).
   return (
     <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
-      <rect x="3" y="5" width="18" height="14" rx="2" />
-      <path d="M3 7l9 6 9-6" />
+      <path d="M21 4L3 11l7 3 3 7 8-17z" />
+      <path d="M10 14l4-4" />
     </svg>
   );
 }

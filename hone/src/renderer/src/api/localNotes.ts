@@ -129,6 +129,30 @@ export async function deleteLocalNote(id: string): Promise<void> {
   await tx('readwrite', (s) => s.delete(id));
 }
 
+// promoteToCloud — конвертирует local-only заметку в cloud-note.
+// Use case: юзер пытается выполнить операцию которая требует backend
+// (move в папку, publish, encrypt). Local id `local:<uuid>` 42 char и
+// не парсится backend'ом как UUID → 400. Промоут делает CreateNote,
+// получает новый cloud uuid, удаляет local запись.
+//
+// Если id уже не local — возвращается as-is. Caller должен заменить
+// у себя noteId/selectedId на возвращённый cloudId.
+//
+// NB: импорт createNote из api/hone.ts через ленивый dynamic import
+// чтобы не плодить циклические зависимости (hone.ts импортит
+// transport, transport — config, etc).
+export async function promoteToCloud(localId: string): Promise<string> {
+  if (!isLocalNoteId(localId)) return localId;
+  const local = await getLocalNote(localId);
+  if (!local) {
+    throw new Error(`promoteToCloud: local note not found: ${localId}`);
+  }
+  const { createNote } = await import('./hone');
+  const cloud = await createNote(local.title, local.bodyMd, null);
+  await deleteLocalNote(localId);
+  return cloud.id;
+}
+
 export async function countLocalNotes(): Promise<number> {
   const db = await openDB();
   return new Promise<number>((resolve, reject) => {

@@ -132,6 +132,24 @@ const (
 	// HoneServiceGetTodayStandupProcedure is the fully-qualified name of the HoneService's
 	// GetTodayStandup RPC.
 	HoneServiceGetTodayStandupProcedure = "/druz9.v1.HoneService/GetTodayStandup"
+	// HoneServiceImportCueSessionProcedure is the fully-qualified name of the HoneService's
+	// ImportCueSession RPC.
+	HoneServiceImportCueSessionProcedure = "/druz9.v1.HoneService/ImportCueSession"
+	// HoneServiceListCueSessionsProcedure is the fully-qualified name of the HoneService's
+	// ListCueSessions RPC.
+	HoneServiceListCueSessionsProcedure = "/druz9.v1.HoneService/ListCueSessions"
+	// HoneServiceGetCueSessionProcedure is the fully-qualified name of the HoneService's GetCueSession
+	// RPC.
+	HoneServiceGetCueSessionProcedure = "/druz9.v1.HoneService/GetCueSession"
+	// HoneServiceUpdateCueSessionProcedure is the fully-qualified name of the HoneService's
+	// UpdateCueSession RPC.
+	HoneServiceUpdateCueSessionProcedure = "/druz9.v1.HoneService/UpdateCueSession"
+	// HoneServiceDeleteCueSessionProcedure is the fully-qualified name of the HoneService's
+	// DeleteCueSession RPC.
+	HoneServiceDeleteCueSessionProcedure = "/druz9.v1.HoneService/DeleteCueSession"
+	// HoneServiceSendCueSessionToTelegramProcedure is the fully-qualified name of the HoneService's
+	// SendCueSessionToTelegram RPC.
+	HoneServiceSendCueSessionToTelegramProcedure = "/druz9.v1.HoneService/SendCueSessionToTelegram"
 )
 
 // HoneServiceClient is a client for the druz9.v1.HoneService service.
@@ -176,6 +194,16 @@ type HoneServiceClient interface {
 	// ─── Standup ────────────────────────────────────────────────────────
 	RecordStandup(context.Context, *connect.Request[v1.RecordStandupRequest]) (*connect.Response[v1.RecordStandupResponse], error)
 	GetTodayStandup(context.Context, *connect.Request[v1.GetTodayStandupRequest]) (*connect.Response[v1.GetTodayStandupResponse], error)
+	// ─── Cue Sessions ───────────────────────────────────────────────────
+	// Pseudo-folder для импортов из Cue desktop. Не пересекается с обычными
+	// notes/folders. Idempotent по file_path: повторный ImportCueSession не
+	// дублирует сессию, и НЕ перезаписывает body_md если юзер его правил.
+	ImportCueSession(context.Context, *connect.Request[v1.ImportCueSessionRequest]) (*connect.Response[v1.CueSession], error)
+	ListCueSessions(context.Context, *connect.Request[v1.ListCueSessionsRequest]) (*connect.Response[v1.ListCueSessionsResponse], error)
+	GetCueSession(context.Context, *connect.Request[v1.GetCueSessionRequest]) (*connect.Response[v1.CueSession], error)
+	UpdateCueSession(context.Context, *connect.Request[v1.UpdateCueSessionRequest]) (*connect.Response[v1.CueSession], error)
+	DeleteCueSession(context.Context, *connect.Request[v1.DeleteCueSessionRequest]) (*connect.Response[v1.DeleteCueSessionResponse], error)
+	SendCueSessionToTelegram(context.Context, *connect.Request[v1.SendCueSessionToTelegramRequest]) (*connect.Response[v1.SendCueSessionToTelegramResponse], error)
 }
 
 // NewHoneServiceClient constructs a client for the druz9.v1.HoneService service. By default, it
@@ -369,41 +397,83 @@ func NewHoneServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 			connect.WithSchema(honeServiceMethods.ByName("GetTodayStandup")),
 			connect.WithClientOptions(opts...),
 		),
+		importCueSession: connect.NewClient[v1.ImportCueSessionRequest, v1.CueSession](
+			httpClient,
+			baseURL+HoneServiceImportCueSessionProcedure,
+			connect.WithSchema(honeServiceMethods.ByName("ImportCueSession")),
+			connect.WithClientOptions(opts...),
+		),
+		listCueSessions: connect.NewClient[v1.ListCueSessionsRequest, v1.ListCueSessionsResponse](
+			httpClient,
+			baseURL+HoneServiceListCueSessionsProcedure,
+			connect.WithSchema(honeServiceMethods.ByName("ListCueSessions")),
+			connect.WithClientOptions(opts...),
+		),
+		getCueSession: connect.NewClient[v1.GetCueSessionRequest, v1.CueSession](
+			httpClient,
+			baseURL+HoneServiceGetCueSessionProcedure,
+			connect.WithSchema(honeServiceMethods.ByName("GetCueSession")),
+			connect.WithClientOptions(opts...),
+		),
+		updateCueSession: connect.NewClient[v1.UpdateCueSessionRequest, v1.CueSession](
+			httpClient,
+			baseURL+HoneServiceUpdateCueSessionProcedure,
+			connect.WithSchema(honeServiceMethods.ByName("UpdateCueSession")),
+			connect.WithClientOptions(opts...),
+		),
+		deleteCueSession: connect.NewClient[v1.DeleteCueSessionRequest, v1.DeleteCueSessionResponse](
+			httpClient,
+			baseURL+HoneServiceDeleteCueSessionProcedure,
+			connect.WithSchema(honeServiceMethods.ByName("DeleteCueSession")),
+			connect.WithClientOptions(opts...),
+		),
+		sendCueSessionToTelegram: connect.NewClient[v1.SendCueSessionToTelegramRequest, v1.SendCueSessionToTelegramResponse](
+			httpClient,
+			baseURL+HoneServiceSendCueSessionToTelegramProcedure,
+			connect.WithSchema(honeServiceMethods.ByName("SendCueSessionToTelegram")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
 // honeServiceClient implements HoneServiceClient.
 type honeServiceClient struct {
-	generateDailyPlan     *connect.Client[v1.GenerateDailyPlanRequest, v1.Plan]
-	getDailyPlan          *connect.Client[v1.GetDailyPlanRequest, v1.Plan]
-	dismissPlanItem       *connect.Client[v1.DismissPlanItemRequest, v1.Plan]
-	completePlanItem      *connect.Client[v1.CompletePlanItemRequest, v1.Plan]
-	startFocusSession     *connect.Client[v1.StartFocusSessionRequest, v1.FocusSession]
-	endFocusSession       *connect.Client[v1.EndFocusSessionRequest, v1.FocusSession]
-	getStats              *connect.Client[v1.GetStatsRequest, v1.Stats]
-	listQueue             *connect.Client[v1.ListQueueRequest, v1.ListQueueResponse]
-	addQueueItem          *connect.Client[v1.AddQueueItemRequest, v1.QueueItem]
-	updateQueueItemStatus *connect.Client[v1.UpdateQueueItemStatusRequest, v1.QueueItem]
-	deleteQueueItem       *connect.Client[v1.DeleteQueueItemRequest, v1.DeleteQueueItemResponse]
-	createNote            *connect.Client[v1.CreateNoteRequest, v1.Note]
-	updateNote            *connect.Client[v1.UpdateNoteRequest, v1.Note]
-	getNote               *connect.Client[v1.GetNoteRequest, v1.Note]
-	listNotes             *connect.Client[v1.ListNotesRequest, v1.ListNotesResponse]
-	deleteNote            *connect.Client[v1.DeleteNoteRequest, v1.DeleteNoteResponse]
-	moveNote              *connect.Client[v1.MoveNoteRequest, v1.Note]
-	getNoteConnections    *connect.Client[v1.GetNoteConnectionsRequest, v1.Connection]
-	createFolder          *connect.Client[v1.CreateFolderRequest, v1.Folder]
-	listFolders           *connect.Client[v1.ListFoldersRequest, v1.ListFoldersResponse]
-	deleteFolder          *connect.Client[v1.DeleteFolderRequest, v1.DeleteFolderResponse]
-	createWhiteboard      *connect.Client[v1.CreateWhiteboardRequest, v1.Whiteboard]
-	updateWhiteboard      *connect.Client[v1.UpdateWhiteboardRequest, v1.Whiteboard]
-	getWhiteboard         *connect.Client[v1.GetWhiteboardRequest, v1.Whiteboard]
-	listWhiteboards       *connect.Client[v1.ListWhiteboardsRequest, v1.ListWhiteboardsResponse]
-	deleteWhiteboard      *connect.Client[v1.DeleteWhiteboardRequest, v1.DeleteWhiteboardResponse]
-	critiqueWhiteboard    *connect.Client[v1.CritiqueWhiteboardRequest, v1.CritiquePacket]
-	saveCritiqueAsNote    *connect.Client[v1.SaveCritiqueAsNoteRequest, v1.Note]
-	recordStandup         *connect.Client[v1.RecordStandupRequest, v1.RecordStandupResponse]
-	getTodayStandup       *connect.Client[v1.GetTodayStandupRequest, v1.GetTodayStandupResponse]
+	generateDailyPlan        *connect.Client[v1.GenerateDailyPlanRequest, v1.Plan]
+	getDailyPlan             *connect.Client[v1.GetDailyPlanRequest, v1.Plan]
+	dismissPlanItem          *connect.Client[v1.DismissPlanItemRequest, v1.Plan]
+	completePlanItem         *connect.Client[v1.CompletePlanItemRequest, v1.Plan]
+	startFocusSession        *connect.Client[v1.StartFocusSessionRequest, v1.FocusSession]
+	endFocusSession          *connect.Client[v1.EndFocusSessionRequest, v1.FocusSession]
+	getStats                 *connect.Client[v1.GetStatsRequest, v1.Stats]
+	listQueue                *connect.Client[v1.ListQueueRequest, v1.ListQueueResponse]
+	addQueueItem             *connect.Client[v1.AddQueueItemRequest, v1.QueueItem]
+	updateQueueItemStatus    *connect.Client[v1.UpdateQueueItemStatusRequest, v1.QueueItem]
+	deleteQueueItem          *connect.Client[v1.DeleteQueueItemRequest, v1.DeleteQueueItemResponse]
+	createNote               *connect.Client[v1.CreateNoteRequest, v1.Note]
+	updateNote               *connect.Client[v1.UpdateNoteRequest, v1.Note]
+	getNote                  *connect.Client[v1.GetNoteRequest, v1.Note]
+	listNotes                *connect.Client[v1.ListNotesRequest, v1.ListNotesResponse]
+	deleteNote               *connect.Client[v1.DeleteNoteRequest, v1.DeleteNoteResponse]
+	moveNote                 *connect.Client[v1.MoveNoteRequest, v1.Note]
+	getNoteConnections       *connect.Client[v1.GetNoteConnectionsRequest, v1.Connection]
+	createFolder             *connect.Client[v1.CreateFolderRequest, v1.Folder]
+	listFolders              *connect.Client[v1.ListFoldersRequest, v1.ListFoldersResponse]
+	deleteFolder             *connect.Client[v1.DeleteFolderRequest, v1.DeleteFolderResponse]
+	createWhiteboard         *connect.Client[v1.CreateWhiteboardRequest, v1.Whiteboard]
+	updateWhiteboard         *connect.Client[v1.UpdateWhiteboardRequest, v1.Whiteboard]
+	getWhiteboard            *connect.Client[v1.GetWhiteboardRequest, v1.Whiteboard]
+	listWhiteboards          *connect.Client[v1.ListWhiteboardsRequest, v1.ListWhiteboardsResponse]
+	deleteWhiteboard         *connect.Client[v1.DeleteWhiteboardRequest, v1.DeleteWhiteboardResponse]
+	critiqueWhiteboard       *connect.Client[v1.CritiqueWhiteboardRequest, v1.CritiquePacket]
+	saveCritiqueAsNote       *connect.Client[v1.SaveCritiqueAsNoteRequest, v1.Note]
+	recordStandup            *connect.Client[v1.RecordStandupRequest, v1.RecordStandupResponse]
+	getTodayStandup          *connect.Client[v1.GetTodayStandupRequest, v1.GetTodayStandupResponse]
+	importCueSession         *connect.Client[v1.ImportCueSessionRequest, v1.CueSession]
+	listCueSessions          *connect.Client[v1.ListCueSessionsRequest, v1.ListCueSessionsResponse]
+	getCueSession            *connect.Client[v1.GetCueSessionRequest, v1.CueSession]
+	updateCueSession         *connect.Client[v1.UpdateCueSessionRequest, v1.CueSession]
+	deleteCueSession         *connect.Client[v1.DeleteCueSessionRequest, v1.DeleteCueSessionResponse]
+	sendCueSessionToTelegram *connect.Client[v1.SendCueSessionToTelegramRequest, v1.SendCueSessionToTelegramResponse]
 }
 
 // GenerateDailyPlan calls druz9.v1.HoneService.GenerateDailyPlan.
@@ -556,6 +626,36 @@ func (c *honeServiceClient) GetTodayStandup(ctx context.Context, req *connect.Re
 	return c.getTodayStandup.CallUnary(ctx, req)
 }
 
+// ImportCueSession calls druz9.v1.HoneService.ImportCueSession.
+func (c *honeServiceClient) ImportCueSession(ctx context.Context, req *connect.Request[v1.ImportCueSessionRequest]) (*connect.Response[v1.CueSession], error) {
+	return c.importCueSession.CallUnary(ctx, req)
+}
+
+// ListCueSessions calls druz9.v1.HoneService.ListCueSessions.
+func (c *honeServiceClient) ListCueSessions(ctx context.Context, req *connect.Request[v1.ListCueSessionsRequest]) (*connect.Response[v1.ListCueSessionsResponse], error) {
+	return c.listCueSessions.CallUnary(ctx, req)
+}
+
+// GetCueSession calls druz9.v1.HoneService.GetCueSession.
+func (c *honeServiceClient) GetCueSession(ctx context.Context, req *connect.Request[v1.GetCueSessionRequest]) (*connect.Response[v1.CueSession], error) {
+	return c.getCueSession.CallUnary(ctx, req)
+}
+
+// UpdateCueSession calls druz9.v1.HoneService.UpdateCueSession.
+func (c *honeServiceClient) UpdateCueSession(ctx context.Context, req *connect.Request[v1.UpdateCueSessionRequest]) (*connect.Response[v1.CueSession], error) {
+	return c.updateCueSession.CallUnary(ctx, req)
+}
+
+// DeleteCueSession calls druz9.v1.HoneService.DeleteCueSession.
+func (c *honeServiceClient) DeleteCueSession(ctx context.Context, req *connect.Request[v1.DeleteCueSessionRequest]) (*connect.Response[v1.DeleteCueSessionResponse], error) {
+	return c.deleteCueSession.CallUnary(ctx, req)
+}
+
+// SendCueSessionToTelegram calls druz9.v1.HoneService.SendCueSessionToTelegram.
+func (c *honeServiceClient) SendCueSessionToTelegram(ctx context.Context, req *connect.Request[v1.SendCueSessionToTelegramRequest]) (*connect.Response[v1.SendCueSessionToTelegramResponse], error) {
+	return c.sendCueSessionToTelegram.CallUnary(ctx, req)
+}
+
 // HoneServiceHandler is an implementation of the druz9.v1.HoneService service.
 type HoneServiceHandler interface {
 	// ─── Plan ───────────────────────────────────────────────────────────
@@ -598,6 +698,16 @@ type HoneServiceHandler interface {
 	// ─── Standup ────────────────────────────────────────────────────────
 	RecordStandup(context.Context, *connect.Request[v1.RecordStandupRequest]) (*connect.Response[v1.RecordStandupResponse], error)
 	GetTodayStandup(context.Context, *connect.Request[v1.GetTodayStandupRequest]) (*connect.Response[v1.GetTodayStandupResponse], error)
+	// ─── Cue Sessions ───────────────────────────────────────────────────
+	// Pseudo-folder для импортов из Cue desktop. Не пересекается с обычными
+	// notes/folders. Idempotent по file_path: повторный ImportCueSession не
+	// дублирует сессию, и НЕ перезаписывает body_md если юзер его правил.
+	ImportCueSession(context.Context, *connect.Request[v1.ImportCueSessionRequest]) (*connect.Response[v1.CueSession], error)
+	ListCueSessions(context.Context, *connect.Request[v1.ListCueSessionsRequest]) (*connect.Response[v1.ListCueSessionsResponse], error)
+	GetCueSession(context.Context, *connect.Request[v1.GetCueSessionRequest]) (*connect.Response[v1.CueSession], error)
+	UpdateCueSession(context.Context, *connect.Request[v1.UpdateCueSessionRequest]) (*connect.Response[v1.CueSession], error)
+	DeleteCueSession(context.Context, *connect.Request[v1.DeleteCueSessionRequest]) (*connect.Response[v1.DeleteCueSessionResponse], error)
+	SendCueSessionToTelegram(context.Context, *connect.Request[v1.SendCueSessionToTelegramRequest]) (*connect.Response[v1.SendCueSessionToTelegramResponse], error)
 }
 
 // NewHoneServiceHandler builds an HTTP handler from the service implementation. It returns the path
@@ -787,6 +897,42 @@ func NewHoneServiceHandler(svc HoneServiceHandler, opts ...connect.HandlerOption
 		connect.WithSchema(honeServiceMethods.ByName("GetTodayStandup")),
 		connect.WithHandlerOptions(opts...),
 	)
+	honeServiceImportCueSessionHandler := connect.NewUnaryHandler(
+		HoneServiceImportCueSessionProcedure,
+		svc.ImportCueSession,
+		connect.WithSchema(honeServiceMethods.ByName("ImportCueSession")),
+		connect.WithHandlerOptions(opts...),
+	)
+	honeServiceListCueSessionsHandler := connect.NewUnaryHandler(
+		HoneServiceListCueSessionsProcedure,
+		svc.ListCueSessions,
+		connect.WithSchema(honeServiceMethods.ByName("ListCueSessions")),
+		connect.WithHandlerOptions(opts...),
+	)
+	honeServiceGetCueSessionHandler := connect.NewUnaryHandler(
+		HoneServiceGetCueSessionProcedure,
+		svc.GetCueSession,
+		connect.WithSchema(honeServiceMethods.ByName("GetCueSession")),
+		connect.WithHandlerOptions(opts...),
+	)
+	honeServiceUpdateCueSessionHandler := connect.NewUnaryHandler(
+		HoneServiceUpdateCueSessionProcedure,
+		svc.UpdateCueSession,
+		connect.WithSchema(honeServiceMethods.ByName("UpdateCueSession")),
+		connect.WithHandlerOptions(opts...),
+	)
+	honeServiceDeleteCueSessionHandler := connect.NewUnaryHandler(
+		HoneServiceDeleteCueSessionProcedure,
+		svc.DeleteCueSession,
+		connect.WithSchema(honeServiceMethods.ByName("DeleteCueSession")),
+		connect.WithHandlerOptions(opts...),
+	)
+	honeServiceSendCueSessionToTelegramHandler := connect.NewUnaryHandler(
+		HoneServiceSendCueSessionToTelegramProcedure,
+		svc.SendCueSessionToTelegram,
+		connect.WithSchema(honeServiceMethods.ByName("SendCueSessionToTelegram")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/druz9.v1.HoneService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case HoneServiceGenerateDailyPlanProcedure:
@@ -849,6 +995,18 @@ func NewHoneServiceHandler(svc HoneServiceHandler, opts ...connect.HandlerOption
 			honeServiceRecordStandupHandler.ServeHTTP(w, r)
 		case HoneServiceGetTodayStandupProcedure:
 			honeServiceGetTodayStandupHandler.ServeHTTP(w, r)
+		case HoneServiceImportCueSessionProcedure:
+			honeServiceImportCueSessionHandler.ServeHTTP(w, r)
+		case HoneServiceListCueSessionsProcedure:
+			honeServiceListCueSessionsHandler.ServeHTTP(w, r)
+		case HoneServiceGetCueSessionProcedure:
+			honeServiceGetCueSessionHandler.ServeHTTP(w, r)
+		case HoneServiceUpdateCueSessionProcedure:
+			honeServiceUpdateCueSessionHandler.ServeHTTP(w, r)
+		case HoneServiceDeleteCueSessionProcedure:
+			honeServiceDeleteCueSessionHandler.ServeHTTP(w, r)
+		case HoneServiceSendCueSessionToTelegramProcedure:
+			honeServiceSendCueSessionToTelegramHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -976,4 +1134,28 @@ func (UnimplementedHoneServiceHandler) RecordStandup(context.Context, *connect.R
 
 func (UnimplementedHoneServiceHandler) GetTodayStandup(context.Context, *connect.Request[v1.GetTodayStandupRequest]) (*connect.Response[v1.GetTodayStandupResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.HoneService.GetTodayStandup is not implemented"))
+}
+
+func (UnimplementedHoneServiceHandler) ImportCueSession(context.Context, *connect.Request[v1.ImportCueSessionRequest]) (*connect.Response[v1.CueSession], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.HoneService.ImportCueSession is not implemented"))
+}
+
+func (UnimplementedHoneServiceHandler) ListCueSessions(context.Context, *connect.Request[v1.ListCueSessionsRequest]) (*connect.Response[v1.ListCueSessionsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.HoneService.ListCueSessions is not implemented"))
+}
+
+func (UnimplementedHoneServiceHandler) GetCueSession(context.Context, *connect.Request[v1.GetCueSessionRequest]) (*connect.Response[v1.CueSession], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.HoneService.GetCueSession is not implemented"))
+}
+
+func (UnimplementedHoneServiceHandler) UpdateCueSession(context.Context, *connect.Request[v1.UpdateCueSessionRequest]) (*connect.Response[v1.CueSession], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.HoneService.UpdateCueSession is not implemented"))
+}
+
+func (UnimplementedHoneServiceHandler) DeleteCueSession(context.Context, *connect.Request[v1.DeleteCueSessionRequest]) (*connect.Response[v1.DeleteCueSessionResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.HoneService.DeleteCueSession is not implemented"))
+}
+
+func (UnimplementedHoneServiceHandler) SendCueSessionToTelegram(context.Context, *connect.Request[v1.SendCueSessionToTelegramRequest]) (*connect.Response[v1.SendCueSessionToTelegramResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.HoneService.SendCueSessionToTelegram is not implemented"))
 }

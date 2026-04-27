@@ -62,6 +62,12 @@ type Deps struct {
 	// Done. nil-safe.
 	TokenQuota *quota.DailyTokenQuota
 
+	// HoneNotificationSender — optional. Set during bootstrap after notify
+	// service wires. Used by hone.SendCueSessionToTelegram to push markdown
+	// to user's Telegram chat. nil = TG follow-up disabled (UI shows
+	// "telegram not linked").
+	HoneNotificationSender honeDomain.NotificationSender
+
 	// IntelligenceMemoryHook — optional. Set during bootstrap после
 	// services.NewIntelligence(...). Hone-handlers'ы дёргают его
 	// для записи side-effect episodes (reflection / standup / plan-events

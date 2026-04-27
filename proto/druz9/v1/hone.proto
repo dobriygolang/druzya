@@ -535,6 +535,97 @@ service HoneService {
   rpc GetTodayStandup(GetTodayStandupRequest) returns (GetTodayStandupResponse) {
     option (google.api.http) = {get: "/api/v1/hone/standup/today"};
   }
+
+  // ─── Cue Sessions ───────────────────────────────────────────────────
+  // Pseudo-folder для импортов из Cue desktop. Не пересекается с обычными
+  // notes/folders. Idempotent по file_path: повторный ImportCueSession не
+  // дублирует сессию, и НЕ перезаписывает body_md если юзер его правил.
+  rpc ImportCueSession(ImportCueSessionRequest) returns (CueSession) {
+    option (google.api.http) = {
+      post: "/api/v1/hone/cue/import"
+      body: "*"
+    };
+  }
+  rpc ListCueSessions(ListCueSessionsRequest) returns (ListCueSessionsResponse) {
+    option (google.api.http) = {get: "/api/v1/hone/cue"};
+  }
+  rpc GetCueSession(GetCueSessionRequest) returns (CueSession) {
+    option (google.api.http) = {get: "/api/v1/hone/cue/{id}"};
+  }
+  rpc UpdateCueSession(UpdateCueSessionRequest) returns (CueSession) {
+    option (google.api.http) = {
+      post: "/api/v1/hone/cue/update"
+      body: "*"
+    };
+  }
+  rpc DeleteCueSession(DeleteCueSessionRequest) returns (DeleteCueSessionResponse) {
+    option (google.api.http) = {
+      post: "/api/v1/hone/cue/delete"
+      body: "*"
+    };
+  }
+  rpc SendCueSessionToTelegram(SendCueSessionToTelegramRequest) returns (SendCueSessionToTelegramResponse) {
+    option (google.api.http) = {
+      post: "/api/v1/hone/cue/{id}/telegram"
+      body: "*"
+    };
+  }
+}
+
+// ─── Cue Sessions ──────────────────────────────────────────────────────────
+
+// CueSession — одна импортированная встреча из Cue desktop'а.
+message CueSession {
+  string id = 1;
+  string file_path = 2;             // абсолютный путь файла в Cue
+  string title = 3;
+  string body_md = 4;               // юзерский слой поверх raw_analysis
+  string raw_analysis_json = 5;     // оригинальный JSON-экспорт от Cue
+  google.protobuf.Timestamp started_at = 6;
+  google.protobuf.Timestamp imported_at = 7;
+  google.protobuf.Timestamp updated_at = 8;
+}
+
+message ImportCueSessionRequest {
+  string file_path = 1;
+  string title = 2;
+  // raw_analysis_json — JSON-сериализованный CueSessionAnalysis объект.
+  // Backend не парсит его сам, просто хранит как есть.
+  string raw_analysis_json = 3;
+  string body_md = 4;               // первичный markdown render для seed
+  google.protobuf.Timestamp started_at = 5;
+}
+
+message ListCueSessionsRequest {}
+
+message ListCueSessionsResponse {
+  repeated CueSession sessions = 1;
+}
+
+message GetCueSessionRequest {
+  string id = 1;
+}
+
+message UpdateCueSessionRequest {
+  string id = 1;
+  string body_md = 2;
+}
+
+message DeleteCueSessionRequest {
+  string id = 1;
+}
+
+message DeleteCueSessionResponse {}
+
+message SendCueSessionToTelegramRequest {
+  string id = 1;
+}
+
+message SendCueSessionToTelegramResponse {
+  // Информативный flag — если у юзера не linked TG, бэкенд возвращает ok=false
+  // и UI показывает «Link TG to receive».
+  bool ok = 1;
+  string message = 2;               // human-readable status
 }
 
 // ─── Standup ───────────────────────────────────────────────────────────────

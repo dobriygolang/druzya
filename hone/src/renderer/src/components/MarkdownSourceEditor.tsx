@@ -150,6 +150,94 @@ const fencedCodeBackdrop: Extension = ViewPlugin.fromClass(
   },
 );
 
+// liveMarkupReveal — Obsidian Live Preview style. Прячет markdown-маркеры
+// (#, **, ``, ~~, >, -/+/*-list, code-fence ```) на всех строках кроме
+// той где сейчас курсор. Эффект: при чтении заметка выглядит как готовый
+// рендер, при редактировании активная строка показывает raw-маркеры.
+//
+// Реализация:
+//   - Идём по syntaxTree visible-ranges.
+//   - На каждый «mark» node (HeaderMark, EmphasisMark, etc) проверяем
+//     попадает ли его линия в активную (cursor-line) или вложен ли он в
+//     fenced-block чьи строки содержат курсор.
+//   - Если non-active — вешаем декорацию `cm-hidden-markup` (CSS:
+//     display:none).
+//
+// Tradeoff: декорации перерасчитываются на selectionSet (чтобы курсор
+// движение мгновенно показывало/скрывало маркеры). На больших заметках
+// это noticable; ограничиваем visibleRanges'ом — невидимые строки не
+// сканируются.
+const MARK_NODE_NAMES = new Set([
+  'HeaderMark',
+  'EmphasisMark',
+  'StrikethroughMark',
+  'CodeMark',
+  'QuoteMark',
+  'ListMark',
+  'LinkMark',
+  'URL',
+]);
+
+const liveMarkupReveal: Extension = ViewPlugin.fromClass(
+  class {
+    decorations: DecorationSet;
+
+    constructor(view: EditorView) {
+      this.decorations = this.build(view);
+    }
+
+    update(update: ViewUpdate) {
+      if (update.docChanged || update.viewportChanged || update.selectionSet) {
+        this.decorations = this.build(update.view);
+      }
+    }
+
+    private build(view: EditorView): DecorationSet {
+      const builder = new RangeSetBuilder<Decoration>();
+      const sel = view.state.selection.main;
+      const cursorLine = view.state.doc.lineAt(sel.head).number;
+      // Дополнительно — если курсор внутри FencedCode, то ВЕСЬ блок
+      // считается «активным» (fence-маркеры не прячем). Запоминаем
+      // диапазоны fenced-блоков, содержащих курсор.
+      const activeFencedRanges: Array<[number, number]> = [];
+      for (const { from, to } of view.visibleRanges) {
+        syntaxTree(view.state).iterate({
+          from,
+          to,
+          enter: (node) => {
+            if (node.name !== 'FencedCode') return;
+            if (sel.head >= node.from && sel.head <= node.to) {
+              activeFencedRanges.push([node.from, node.to]);
+            }
+          },
+        });
+      }
+      const headInActiveFence = (pos: number) =>
+        activeFencedRanges.some(([a, b]) => pos >= a && pos <= b);
+
+      for (const { from, to } of view.visibleRanges) {
+        syntaxTree(view.state).iterate({
+          from,
+          to,
+          enter: (node) => {
+            if (!MARK_NODE_NAMES.has(node.name)) return;
+            const lineNum = view.state.doc.lineAt(node.from).number;
+            // Не прячем маркеры на курсорной строке.
+            if (lineNum === cursorLine) return;
+            // Не прячем fence-маркеры если курсор внутри блока.
+            if (headInActiveFence(node.from)) return;
+            builder.add(node.from, node.to, Decoration.mark({ class: 'cm-hidden-markup' }));
+          },
+        });
+      }
+      return builder.finish();
+    }
+  },
+  {
+    decorations: (v) => v.decorations,
+  },
+);
+
 const baseTheme = EditorView.theme(
   {
     '&': {
@@ -213,6 +301,14 @@ const baseTheme = EditorView.theme(
       // получают monospace-tag styling. Не переопределяем bg для строк
       // внутри fenced (они уже c bg от .cm-fenced-*).
     },
+    // ── Live Preview reveal ────────────────────────────────────────────────
+    // liveMarkupReveal ViewPlugin вешает этот класс на ranges с markdown-
+    // маркерами (#, **, etc) которые НЕ на курсорной строке. Скрываем
+    // полностью — Obsidian-style. Курсор обратно на строку → класс
+    // снимается (плагин пересобирает декорации на selectionSet).
+    '.cm-hidden-markup': {
+      display: 'none',
+    },
   },
   { dark: true },
 );
@@ -241,6 +337,7 @@ export function MarkdownSourceEditor({
       markdown({ base: markdownLanguage, codeLanguages: lezerLanguages, addKeymap: true }),
       syntaxHighlighting(honeMarkdownHighlight),
       fencedCodeBackdrop,
+      liveMarkupReveal,
       keymap.of([...defaultKeymap, ...historyKeymap]),
       ...(collab ? [collab] : []),
       EditorView.lineWrapping,

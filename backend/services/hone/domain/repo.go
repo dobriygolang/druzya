@@ -253,3 +253,33 @@ type QueueRepo interface {
 	// Если за 7 дней нет done items — возвращает (0, 0, nil).
 	GetAIShareLast7Days(ctx context.Context, userID uuid.UUID) (aiShare, userShare float32, err error)
 }
+
+// ─── Cue Sessions ──────────────────────────────────────────────────────────
+
+// CueSessionRepo владеет hone_cue_sessions. Idempotent по (user_id, file_path):
+// повторный Import не дублирует, обновляет raw_analysis но НЕ перезаписывает
+// body_md (юзерские правки сохраняются).
+type CueSessionRepo interface {
+	// Import создаёт или обновляет сессию по (user_id, file_path).
+	// На update'е перезаписывает title + raw_analysis + started_at, но
+	// body_md и id остаются прежними. Возвращает hydrated row.
+	// initialBodyMD заполняет body_md ТОЛЬКО при первом импорте.
+	Import(ctx context.Context, s CueSession, initialBodyMD string) (CueSession, error)
+	List(ctx context.Context, userID uuid.UUID) ([]CueSession, error)
+	Get(ctx context.Context, userID, id uuid.UUID) (CueSession, error)
+	UpdateBody(ctx context.Context, userID, id uuid.UUID, bodyMD string) (CueSession, error)
+	Delete(ctx context.Context, userID, id uuid.UUID) error
+}
+
+// NotificationSender — cross-domain интерфейс для отправки follow-up
+// сообщений в Telegram (или другой канал). Реализация живёт в monolith
+// adapter'е и проксирует в notify.SendNotification.Do.
+//
+// Hone не зависит от notify-сервиса напрямую — этот интерфейс инвертирует
+// зависимость.
+type NotificationSender interface {
+	// SendCueFollowup шлёт markdown-текст в Telegram-чат юзера. Если у
+	// юзера не linked TG, возвращает (ok=false, message="not linked"),
+	// без error'а — это user-facing статус, не infra-failure.
+	SendCueFollowup(ctx context.Context, userID uuid.UUID, title, bodyMD string) (ok bool, message string, err error)
+}

@@ -10,6 +10,7 @@ import (
 	authDomain "druz9/auth/domain"
 	honeDomain "druz9/hone/domain"
 	notifyDomain "druz9/notify/domain"
+	notifyInfra "druz9/notify/infra"
 	sharedpg "druz9/shared/pkg/pg"
 
 	"github.com/google/uuid"
@@ -275,3 +276,69 @@ WHERE user_id = $1`
 // timeNow — индирекция для стабильных тестов, если позже понадобятся.
 // В проде равна time.Now().UTC().
 func timeNow() time.Time { return time.Now().UTC() }
+
+// ─── Hone → notify Telegram bot shim (Cue follow-up) ───────────────────────
+//
+// honeNotificationAdapter реализует hone.domain.NotificationSender. Исполь-
+// зуется для одной фичи: SendCueSessionToTelegram — push markdown-сводки
+// meeting'а из Hone-приложения в личный TG чат юзера.
+//
+// Почему не через notifyApp.SendNotification.Do (полный pipeline):
+//   - SendNotification требует cuekey'нутый NotificationType + готовый
+//     Template — а тут body динамический (юзерский markdown). Переуплотнять
+//     pipeline ради одного call'а не стоит.
+//   - Для feature-degradation (юзер не linked TG) хотим вернуть user-facing
+//     message ("telegram not linked"), а не молчаливый skip как у Send.Do.
+//
+// Резолвит chat_id через PreferencesRepo (то же место куда писал /start
+// <code>). Если chat_id пуст → ok=false, message="telegram not linked".
+// Send-ошибки (network/429/etc) bubbl'ят как err — caller вернёт 5xx.
+type honeNotificationAdapter struct {
+	bot   *notifyInfra.TelegramBot
+	prefs notifyDomain.PreferencesRepo
+}
+
+// NewHoneNotificationAdapter — конструктор для monolith bootstrap.
+// nil-safe: при nil bot или prefs возвращает nil — Hone treat'ит это
+// как «TG follow-up disabled» (см. types.go HoneNotificationSender doc).
+func NewHoneNotificationAdapter(bot *notifyInfra.TelegramBot, prefs notifyDomain.PreferencesRepo) honeDomain.NotificationSender {
+	if bot == nil || prefs == nil {
+		return nil
+	}
+	return &honeNotificationAdapter{bot: bot, prefs: prefs}
+}
+
+// SendCueFollowup отправляет markdown-сводку meeting'а в личный TG чат
+// юзера. Возвращает (ok=true, "") при успехе, (ok=false, message) если
+// юзер не linked, (false, "", err) на инфраструктурной ошибке.
+func (a *honeNotificationAdapter) SendCueFollowup(ctx context.Context, userID uuid.UUID, title, bodyMD string) (bool, string, error) {
+	pref, err := a.prefs.Get(ctx, userID)
+	if err != nil {
+		if errors.Is(err, notifyDomain.ErrNotFound) {
+			return false, "telegram not linked", nil
+		}
+		return false, "", fmt.Errorf("monolith.honeNotificationAdapter: prefs: %w", err)
+	}
+	if pref.TelegramChatID == "" {
+		return false, "telegram not linked", nil
+	}
+	// Собираем text. ParseMode пустой → plain text (markdown-маркеры
+	// будут видны как литералы, что для meeting-нот'а с короткими отрывками
+	// читаемо). MarkdownV2 требует escape всего special-set'а — не стоит
+	// сейчас усложнять, пользователю нужен content, не форматирование.
+	text := title
+	if text == "" {
+		text = "Meeting notes"
+	}
+	if bodyMD != "" {
+		text = text + "\n\n" + bodyMD
+	}
+	tpl := notifyDomain.Template{Text: text}
+	if err := a.bot.Send(ctx, userID, pref.TelegramChatID, tpl); err != nil {
+		if errors.Is(err, notifyDomain.ErrNoTarget) {
+			return false, "telegram not linked", nil
+		}
+		return false, "", fmt.Errorf("monolith.honeNotificationAdapter: send: %w", err)
+	}
+	return true, "", nil
+}

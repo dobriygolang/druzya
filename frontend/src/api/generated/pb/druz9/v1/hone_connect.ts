@@ -21,7 +21,7 @@
 /* eslint-disable */
 // @ts-nocheck
 
-import { AddQueueItemRequest, CompletePlanItemRequest, Connection, CreateFolderRequest, CreateNoteRequest, CreateWhiteboardRequest, CritiquePacket, CritiqueWhiteboardRequest, DeleteFolderRequest, DeleteFolderResponse, DeleteNoteRequest, DeleteNoteResponse, DeleteQueueItemRequest, DeleteQueueItemResponse, DeleteWhiteboardRequest, DeleteWhiteboardResponse, DismissPlanItemRequest, EndFocusSessionRequest, FocusSession, Folder, GenerateDailyPlanRequest, GetDailyPlanRequest, GetNoteConnectionsRequest, GetNoteRequest, GetStatsRequest, GetTodayStandupRequest, GetTodayStandupResponse, GetWhiteboardRequest, ListFoldersRequest, ListFoldersResponse, ListNotesRequest, ListNotesResponse, ListQueueRequest, ListQueueResponse, ListWhiteboardsRequest, ListWhiteboardsResponse, MoveNoteRequest, Note, Plan, QueueItem, RecordStandupRequest, RecordStandupResponse, SaveCritiqueAsNoteRequest, StartFocusSessionRequest, Stats, UpdateNoteRequest, UpdateQueueItemStatusRequest, UpdateWhiteboardRequest, Whiteboard } from "./hone_pb.js";
+import { AddQueueItemRequest, CompletePlanItemRequest, Connection, CreateFolderRequest, CreateNoteRequest, CreateWhiteboardRequest, CritiquePacket, CritiqueWhiteboardRequest, CueSession, DeleteCueSessionRequest, DeleteCueSessionResponse, DeleteFolderRequest, DeleteFolderResponse, DeleteNoteRequest, DeleteNoteResponse, DeleteQueueItemRequest, DeleteQueueItemResponse, DeleteWhiteboardRequest, DeleteWhiteboardResponse, DismissPlanItemRequest, EndFocusSessionRequest, FocusSession, Folder, GenerateDailyPlanRequest, GetCueSessionRequest, GetDailyPlanRequest, GetNoteConnectionsRequest, GetNoteRequest, GetStatsRequest, GetTodayStandupRequest, GetTodayStandupResponse, GetWhiteboardRequest, ImportCueSessionRequest, ListCueSessionsRequest, ListCueSessionsResponse, ListFoldersRequest, ListFoldersResponse, ListNotesRequest, ListNotesResponse, ListQueueRequest, ListQueueResponse, ListWhiteboardsRequest, ListWhiteboardsResponse, MoveNoteRequest, Note, Plan, QueueItem, RecordStandupRequest, RecordStandupResponse, SaveCritiqueAsNoteRequest, SendCueSessionToTelegramRequest, SendCueSessionToTelegramResponse, StartFocusSessionRequest, Stats, UpdateCueSessionRequest, UpdateNoteRequest, UpdateQueueItemStatusRequest, UpdateWhiteboardRequest, Whiteboard } from "./hone_pb.js";
 import { MethodKind } from "@bufbuild/protobuf";
 
 /**
@@ -317,6 +317,65 @@ export const HoneService = {
       name: "GetTodayStandup",
       I: GetTodayStandupRequest,
       O: GetTodayStandupResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * ─── Cue Sessions ───────────────────────────────────────────────────
+     * Pseudo-folder для импортов из Cue desktop. Не пересекается с обычными
+     * notes/folders. Idempotent по file_path: повторный ImportCueSession не
+     * дублирует сессию, и НЕ перезаписывает body_md если юзер его правил.
+     *
+     * @generated from rpc druz9.v1.HoneService.ImportCueSession
+     */
+    importCueSession: {
+      name: "ImportCueSession",
+      I: ImportCueSessionRequest,
+      O: CueSession,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc druz9.v1.HoneService.ListCueSessions
+     */
+    listCueSessions: {
+      name: "ListCueSessions",
+      I: ListCueSessionsRequest,
+      O: ListCueSessionsResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc druz9.v1.HoneService.GetCueSession
+     */
+    getCueSession: {
+      name: "GetCueSession",
+      I: GetCueSessionRequest,
+      O: CueSession,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc druz9.v1.HoneService.UpdateCueSession
+     */
+    updateCueSession: {
+      name: "UpdateCueSession",
+      I: UpdateCueSessionRequest,
+      O: CueSession,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc druz9.v1.HoneService.DeleteCueSession
+     */
+    deleteCueSession: {
+      name: "DeleteCueSession",
+      I: DeleteCueSessionRequest,
+      O: DeleteCueSessionResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc druz9.v1.HoneService.SendCueSessionToTelegram
+     */
+    sendCueSessionToTelegram: {
+      name: "SendCueSessionToTelegram",
+      I: SendCueSessionToTelegramRequest,
+      O: SendCueSessionToTelegramResponse,
       kind: MethodKind.Unary,
     },
   }
