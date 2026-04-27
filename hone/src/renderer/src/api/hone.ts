@@ -243,6 +243,13 @@ type ProtoNote = {
   folderId?: string;
 };
 
+// nonEmpty — proto3 не различает «не задано» и «пустая строка». Backend
+// возвращает folderId=""/parentId="" для root-level item'ов; нам нужен
+// null чтобы Map<string|null, …> и string === null comparisons работали.
+function nonEmpty(s: string | undefined | null): string | null {
+  return s && s.length > 0 ? s : null;
+}
+
 function unwrapNote(n: ProtoNote): Note {
   return {
     id: n.id,
@@ -251,7 +258,7 @@ function unwrapNote(n: ProtoNote): Note {
     createdAt: protoTs(n.createdAt),
     updatedAt: protoTs(n.updatedAt),
     sizeBytes: n.sizeBytes,
-    folderId: n.folderId ?? null,
+    folderId: nonEmpty(n.folderId),
   };
 }
 
@@ -397,7 +404,7 @@ export async function listNotes(args: { limit?: number; cursor?: string; folderI
       title: n.title,
       updatedAt: protoTs(n.updatedAt),
       sizeBytes: n.sizeBytes,
-      folderId: (n as unknown as { folderId?: string }).folderId ?? null,
+      folderId: nonEmpty((n as unknown as { folderId?: string }).folderId),
     })),
     nextCursor: resp.nextCursor,
   };
@@ -434,7 +441,7 @@ export async function listFolders(): Promise<Folder[]> {
   return resp.folders.map((f) => ({
     id: f.id,
     name: f.name,
-    parentId: (f as unknown as { parentId?: string }).parentId ?? null,
+    parentId: nonEmpty((f as unknown as { parentId?: string }).parentId),
     createdAt: protoTs(f.createdAt),
     updatedAt: protoTs(f.updatedAt),
   }));
@@ -446,7 +453,7 @@ export async function createFolder(name: string, parentId?: string | null): Prom
   return {
     id: f.id,
     name: f.name,
-    parentId: f.parentId ?? null,
+    parentId: nonEmpty(f.parentId),
     createdAt: protoTs(f.createdAt),
     updatedAt: protoTs(f.updatedAt),
   };

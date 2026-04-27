@@ -26,7 +26,7 @@ import { ConnectError, Code } from '@connectrpc/connect';
 import { AskNotesModal } from '../components/AskNotesModal';
 import { Kbd } from '../components/primitives/Kbd';
 import { RichMarkdownEditor } from '../components/RichMarkdownEditor';
-import { MilkdownEditor } from '../components/MilkdownEditor';
+import { MarkdownSourceEditor } from '../components/MarkdownSourceEditor';
 import { QuotaUsageBar } from '../components/QuotaUsageBar';
 import {
   listNotes,
@@ -1381,12 +1381,15 @@ function SidebarImpl({ list, selectedId, metaMap, activeCueNote, folders, select
             </form>
           )}
 
-          {/* All Notes row */}
+          {/* All Notes — flat-режим. Drop'аем заметку сюда → переезд в
+              root (folderId=null). */}
           <FolderRow
             label="All Notes"
             count={list.notes.length}
             active={selectedFolder === 'all'}
             onClick={() => onSelectFolder('all')}
+            onDropNote={onMoveNote}
+            folderId={null}
           />
 
           {/* Obsidian-style unified tree: каждая папка expandable, при
@@ -1768,6 +1771,8 @@ function FolderTreeBranch({
               onClick={() => onSelectFolder(f.id)}
               onDelete={() => onDeleteFolder(f.id)}
               onCreateChild={() => onCreateChild(f.id)}
+              onDropNote={onMoveNote}
+              folderId={f.id}
             />
             {inlineCreateUnderId === f.id && inlineCreate}
             {isExpanded && (
@@ -1887,6 +1892,14 @@ function NoteTreeRow({
   return (
     <div
       ref={rowRef}
+      draggable
+      onDragStart={(e) => {
+        // Кладём id в две формы: typed mime для FolderRow drop-handler'а
+        // и text/plain как fallback (некоторые platform'ы блочат custom mime).
+        e.dataTransfer.setData('application/x-hone-note-id', note.id);
+        e.dataTransfer.setData('text/plain', note.id);
+        e.dataTransfer.effectAllowed = 'move';
+      }}
       onMouseEnter={() => setHover(true)}
       onMouseLeave={() => setHover(false)}
       onClick={() => onSelect(note.id)}
@@ -2028,6 +2041,8 @@ function FolderRow({
   onClick,
   onDelete,
   onCreateChild,
+  onDropNote,
+  folderId,
 }: {
   label: string;
   count: number;
@@ -2039,16 +2054,51 @@ function FolderRow({
   onClick: () => void;
   onDelete?: () => void;
   onCreateChild?: () => void;
+  /** Drop-handler: вызывается когда юзер тащит note сюда. */
+  onDropNote?: (noteId: string, folderId: string | null) => void;
+  /** Folder ID для drop. null = «Unfiled» / root-level. undefined = строка-
+   *  не-folder (e.g. «All Notes»), drop отключён. */
+  folderId?: string | null;
 }) {
   const [hover, setHover] = useState(false);
+  const [dragOver, setDragOver] = useState(false);
+  const dropEnabled = onDropNote !== undefined && folderId !== undefined;
   // Indent — Notion-style: 14px на каждый уровень (caret-area). На level=0
   // отступ задаётся padding в SidebarImpl, иначе тут добавляем 14*level.
   const indent = level * 14;
+  const bg = dragOver
+    ? 'rgba(255,255,255,0.14)'
+    : active
+      ? 'rgba(255,255,255,0.08)'
+      : hover
+        ? 'rgba(255,255,255,0.04)'
+        : 'transparent';
   return (
     <div
       onMouseEnter={() => setHover(true)}
       onMouseLeave={() => setHover(false)}
       onClick={onClick}
+      onDragOver={(e) => {
+        if (!dropEnabled) return;
+        // dataTransfer.types в onDragOver — единственный legal способ
+        // понять «я могу принять этот drop». Note row кладёт type
+        // 'application/x-hone-note-id'.
+        if (!e.dataTransfer.types.includes('application/x-hone-note-id')) return;
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'move';
+        if (!dragOver) setDragOver(true);
+      }}
+      onDragLeave={() => {
+        if (dragOver) setDragOver(false);
+      }}
+      onDrop={(e) => {
+        if (!dropEnabled) return;
+        const noteId = e.dataTransfer.getData('application/x-hone-note-id');
+        if (!noteId) return;
+        e.preventDefault();
+        setDragOver(false);
+        onDropNote(noteId, folderId);
+      }}
       style={{
         display: 'flex',
         alignItems: 'center',
@@ -2057,8 +2107,9 @@ function FolderRow({
         borderRadius: 6,
         margin: '1px 4px',
         cursor: 'pointer',
-        background: active ? 'rgba(255,255,255,0.08)' : hover ? 'rgba(255,255,255,0.04)' : 'transparent',
-        transition: 'background 140ms ease',
+        background: bg,
+        outline: dragOver ? '1px solid rgba(255,255,255,0.3)' : 'none',
+        transition: 'background 140ms ease, outline-color 140ms ease',
       }}
     >
       {/* Caret или placeholder. Когда expandable — chevron click'ом
@@ -3049,14 +3100,14 @@ function ActiveEditor({
           // Optimistic create в полёте — yjs endpoints 404'нут на
           // несуществующий note_id. Используем legacy textarea на этот
           // короткий период (handleCreate подменит id на real → key
-          // re-mount → MilkdownEditor поднимется).
+          // re-mount → MarkdownSourceEditor поднимется).
           <RichMarkdownEditor
             value={body}
             onChange={onBodyChange}
             placeholder="Write your thoughts…"
           />
         ) : (
-          <MilkdownEditor
+          <MarkdownSourceEditor
             noteId={noteId}
             seedBodyMD={body}
             placeholder="Write your thoughts…"

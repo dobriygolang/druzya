@@ -1055,3 +1055,31 @@ textarea {
   0%, 100% { opacity: 0.85; }
   50%      { opacity: 0.3; }
 }
+
+/* ── MarkdownSourceEditor (CodeMirror 6 source-mode) ──────────────────────
+ * Замена Milkdown'а — Obsidian-style: markdown маркеры (# / ** / >) видны
+ * как обычный текст, стилизуются HighlightStyle'ом в TS-компоненте.
+ * Здесь только: empty-state placeholder + минимальные CM-overrides. */
+.hone-md-source-mount {
+  position: relative;
+}
+.hone-md-source-mount[data-empty='true']::before {
+  content: attr(data-placeholder);
+  position: absolute;
+  top: 6px;
+  left: 0;
+  font-size: 15px;
+  color: rgba(255, 255, 255, 0.32);
+  pointer-events: none;
+  font-family: 'Inter', -apple-system, system-ui, sans-serif;
+  letter-spacing: -0.005em;
+}
+.hone-md-source-mount .cm-editor {
+  background: transparent;
+}
+.hone-md-source-mount .cm-editor.cm-focused {
+  outline: none;
+}
+.hone-md-source-mount .cm-gutters {
+  display: none;
+}
