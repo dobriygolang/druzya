@@ -19,6 +19,7 @@
 *.out
 vendor/
 backend/cmd/monolith/monolith
+hone/monolith
 # Когда вырежем сервисы из монолита — добавляй явные строки сюда:
 # backend/cmd/<svc>/<svc>  — конкретный бинарник.
 # Старое правило `backend/cmd/*/[a-z]*` было слишком широким — оно молча

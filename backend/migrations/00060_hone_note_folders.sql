@@ -3,6 +3,8 @@
 -- Folders are user-private, optionally nested via parent_id (self-referential FK).
 -- hone_notes gets a nullable folder_id FK.
 
+-- +goose Up
+
 -- ── Folder table ────────────────────────────────────────────────────────────
 
 CREATE TABLE IF NOT EXISTS hone_note_folders (
@@ -24,3 +26,10 @@ ALTER TABLE hone_notes
 
 CREATE INDEX IF NOT EXISTS idx_hone_notes_folder ON hone_notes(folder_id)
     WHERE folder_id IS NOT NULL;
+
+-- +goose Down
+
+DROP INDEX IF EXISTS idx_hone_notes_folder;
+ALTER TABLE hone_notes DROP COLUMN IF EXISTS folder_id;
+DROP INDEX IF EXISTS idx_hone_note_folders_user;
+DROP TABLE IF EXISTS hone_note_folders;
