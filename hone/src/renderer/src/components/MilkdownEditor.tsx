@@ -31,6 +31,7 @@
 
 import { useEffect, useRef } from 'react';
 import { Crepe } from '@milkdown/crepe';
+import { editorViewCtx } from '@milkdown/core';
 import { collab, collabServiceCtx } from '@milkdown/plugin-collab';
 import { listener, listenerCtx } from '@milkdown/kit/plugin/listener';
 
@@ -217,16 +218,56 @@ export function MilkdownEditor({ noteId, seedBodyMD, placeholder = 'Write your t
         })
         .use(listener);
 
-      void crepe.create().then(() => attachDragDiag());
+      let removeLocalHeadingShortcuts = () => undefined as void;
+      void crepe.create().then(() => {
+        attachDragDiag();
+        removeLocalHeadingShortcuts = installLocalHeadingShortcuts(crepe);
+      });
 
       return () => {
         destroyed = true;
         removeDragClamp();
+        removeLocalHeadingShortcuts();
         void crepe.destroy().catch(() => {
           /* ignore */
         });
         crepeRef.current = null;
       };
+    }
+
+    // installLocalHeadingShortcuts — closure'нём локальную копию для
+    // localOnly-path'а (тот же подход что в Yjs-path'е ниже).
+    function installLocalHeadingShortcuts(crepeInst: Crepe) {
+      const root = containerRef.current;
+      if (!root) return () => undefined as void;
+      const onKey = (e: KeyboardEvent) => {
+        if (!(e.metaKey && e.altKey)) return;
+        const key = e.key;
+        let level: number | null = null;
+        if (key === '1') level = 1;
+        else if (key === '2') level = 2;
+        else if (key === '3') level = 3;
+        else if (key === '0') level = 0;
+        else return;
+        e.preventDefault();
+        try {
+          crepeInst.editor.action((ctx) => {
+            const view = ctx.get(editorViewCtx);
+            if (!view) return;
+            const { state } = view;
+            const { from, to } = state.selection;
+            const target =
+              level === 0 ? state.schema.nodes.paragraph : state.schema.nodes.heading;
+            const attrs = level === 0 ? undefined : { level };
+            const tr = state.tr.setBlockType(from, to, target, attrs);
+            view.dispatch(tr);
+          });
+        } catch {
+          /* silent */
+        }
+      };
+      root.addEventListener('keydown', onKey);
+      return () => root.removeEventListener('keydown', onKey);
     }
 
     // Yjs Y.Doc через существующий sync engine. CollabService bind'ится
@@ -261,29 +302,64 @@ export function MilkdownEditor({ noteId, seedBodyMD, placeholder = 'Write your t
       .use(listener)
       .use(collab);
 
+    // Heading-level keyboard shortcuts (Notion-style): Cmd+Alt+1/2/3 →
+    // turn-into Heading{1,2,3}; Cmd+Alt+0 → Paragraph. Crepe не имеет
+    // turn-into popup на drag-handle, единственный путь — slash-menu или
+    // эти shortcut'ы. Listener висит на containerRef (не window), чтобы
+    // не перехватывать ввод когда другая часть UI имеет focus.
+    const installHeadingShortcuts = () => {
+      const root = containerRef.current;
+      if (!root) return () => undefined;
+      const onKey = (e: KeyboardEvent) => {
+        if (!(e.metaKey && e.altKey)) return;
+        const key = e.key;
+        let level: number | null = null;
+        if (key === '1') level = 1;
+        else if (key === '2') level = 2;
+        else if (key === '3') level = 3;
+        else if (key === '0') level = 0;
+        else return;
+        e.preventDefault();
+        try {
+          crepe.editor.action((ctx) => {
+            const view = ctx.get(editorViewCtx);
+            if (!view) return;
+            const { state } = view;
+            const { from, to } = state.selection;
+            const target =
+              level === 0 ? state.schema.nodes.paragraph : state.schema.nodes.heading;
+            const attrs = level === 0 ? undefined : { level };
+            const tr = state.tr.setBlockType(from, to, target, attrs);
+            view.dispatch(tr);
+          });
+        } catch {
+          /* silent — schema может не иметь heading в редких случаях */
+        }
+      };
+      root.addEventListener('keydown', onKey);
+      return () => root.removeEventListener('keydown', onKey);
+    };
+    let removeHeadingShortcuts = () => undefined as void;
+
     void crepe.create().then(async () => {
       if (destroyed) return;
       attachDragDiag();
-      // Wire collab AFTER editor created. CollabService binds Y.Doc+
-      // XmlFragment, applies seed-template if fragment is empty, then
-      // connects (start syncing).
+      // Wire collab AFTER editor created.
       crepe.editor.action((ctx) => {
         const collabService = ctx.get(collabServiceCtx);
         collabService
           .bindDoc(handle.ydoc)
           .bindXmlFragment(xmlFragment)
-          // applyTemplate — fills the editor with seedBodyMD ONLY if Y.Doc
-          // fragment is empty (predicate condition checked internally).
-          // Existing notes uploaded with content through prior session —
-          // template skipped, content preserved.
           .applyTemplate(seedBodyMDRef.current)
           .connect();
       });
+      removeHeadingShortcuts = installHeadingShortcuts();
     });
 
     return () => {
       destroyed = true;
       removeDragClamp();
+      removeHeadingShortcuts();
       try {
         // Disconnect collab BEFORE destroying editor — release Y.Doc
         // listeners cleanly.
