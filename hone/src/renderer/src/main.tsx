@@ -1,9 +1,4 @@
 import { createRoot } from 'react-dom/client';
-import {
-  init as sentryInit,
-  getDefaultIntegrations,
-  scopeToMainIntegration,
-} from '@sentry/electron/renderer';
 
 // React namespace is auto-injected via tsconfig "jsx": "react-jsx", so we
 // deliberately do NOT `import React` here (an unused import in strict
@@ -11,36 +6,31 @@ import {
 import App from './App';
 import './styles/globals.css';
 
-// Sentry-renderer — attach to main-process DSN via @sentry/electron IPC.
-// scopeToMainIntegration отключаем потому что в Electron-renderer'е оно
-// триггерит fetch() на custom URL `sentry-ipc://scope/sentry_key`, а
-// Chromium не поддерживает custom-scheme fetch без registerSchemesAsPrivileged.
-// Без этой integration scope-updates на main не доходят (и breadcrumb-history
-// у crash'ей в renderer'е будет пустой), НО renderer перестаёт спамить
-// «Fetch API cannot load sentry-ipc://...» в console на каждый log/RECV.
-// Сами exception'ы в renderer'е всё равно поедут в main через preload IPC
-// bridge (из @sentry/electron preload script).
-const sentryOpts = { tracesSampleRate: 0 };
-sentryInit({
-  ...sentryOpts,
-  integrations: getDefaultIntegrations(sentryOpts).filter(
-    (i) => i.name !== scopeToMainIntegration().name,
-  ),
-});
-
-// Belt-and-suspenders: некоторые Sentry-electron internal'ы всё равно
-// вызывают fetch('sentry-ipc://...') (например, transport probe'ы),
-// которые Chromium блочит и спамит «URL scheme not supported» на каждый
-// frame'е. Patch'им window.fetch так, чтобы sentry-ipc:// возвращал
-// «успешный» empty response — Sentry не fail'ится, console тих.
-const _origFetch = window.fetch.bind(window);
-window.fetch = ((input: RequestInfo | URL, init?: RequestInit) => {
-  const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
-  if (url && url.startsWith('sentry-ipc://')) {
-    return Promise.resolve(new Response('', { status: 200 }));
-  }
-  return _origFetch(input, init);
-}) as typeof window.fetch;
+// Sentry — gate'им по `VITE_HONE_SENTRY_DSN` (build-time env). На dev/тесте
+// этот флаг пустой → @sentry/electron/renderer вообще не загружается, и
+// sentry-ipc:// fetch-spam в console не появляется. На prod-build CI
+// выставляет переменную, IPC bridge до main-process'а активируется.
+const SENTRY_DSN_BUILD_FLAG =
+  ((import.meta.env.VITE_HONE_SENTRY_DSN as string | undefined) ?? '').trim();
+if (SENTRY_DSN_BUILD_FLAG) {
+  // Динамический import чтобы не тащить @sentry/electron/renderer в bundle
+  // dev-сборки. В prod чанк всё равно создаётся — flag постоянный.
+  void import('@sentry/electron/renderer').then(
+    ({ init, getDefaultIntegrations, scopeToMainIntegration }) => {
+      const opts = { tracesSampleRate: 0 };
+      init({
+        ...opts,
+        // scopeToMain удаляем — он зовёт fetch('sentry-ipc://scope/…'),
+        // Chromium не поддерживает custom-scheme fetch без privileged-
+        // scheme registration. Renderer-side breadcrumbs не сольются в
+        // main scope, но sами exception'ы пойдут через preload IPC.
+        integrations: getDefaultIntegrations(opts).filter(
+          (i) => i.name !== scopeToMainIntegration().name,
+        ),
+      });
+    },
+  );
+}
 
 // Strict mode is deliberately OFF for the MVP. The ported design uses
 // requestAnimationFrame-driven state in <CanvasBg> which double-fires

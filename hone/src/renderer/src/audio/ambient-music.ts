@@ -16,9 +16,18 @@
 // short loop (5-15 min) — element.loop=true сам зацикливает без перерыва.
 
 const PERSIST_KEY = 'hone:ambient:enabled';
-// Default URL — собрать из public-domain ambient (kevinmacleod / freesound
-// CC0). Поменяй через `localStorage['hone:ambient-url']` если нужно.
-const DEFAULT_AMBIENT_URL = 'https://cdn.druz9.online/ambient/cosmic-loop.mp3';
+// Default URL — relative path к bundled-asset'у. Файл живёт в
+// `src/renderer/public/ambient/cosmic-loop.mp3` (любой mp3, который юзер
+// кладёт в эту папку — Vite кладёт public/ как static в build).
+//
+// Если файла нет — <audio>.onerror silent-fail'ит, мы не падаем. URL
+// override'ится через `localStorage['hone:ambient-url']` если юзер хочет
+// внешний CDN или другой track.
+//
+// Hone bundles space-ambient track который не отвлекает (Interstellar /
+// Дontlookup-style). Для свежей сборки положи .mp3 сам — bundle copy'нет
+// автоматически в out/renderer/ambient/.
+const DEFAULT_AMBIENT_URL = './ambient/cosmic-loop.mp3';
 
 let audioEl: HTMLAudioElement | null = null;
 let started = false;
@@ -32,17 +41,32 @@ function readUrl(): string {
   }
 }
 
-function ensureAudio(): HTMLAudioElement {
+function ensureAudio(): HTMLAudioElement | null {
   if (audioEl) return audioEl;
-  if (typeof document === 'undefined') {
-    throw new Error('ambient-music: SSR not supported');
-  }
+  if (typeof document === 'undefined') return null;
+  const url = readUrl();
+  if (!url) return null; // Нет настроенного URL → audio-element не создаём.
   const el = document.createElement('audio');
-  el.src = readUrl();
+  el.src = url;
   el.loop = true;
   el.preload = 'auto';
-  el.crossOrigin = 'anonymous';
+  // crossOrigin не ставим для локальных asset'ов (./ambient/...). Браузер
+  // сам резолвит как same-origin; CORS-attribute триггерит preflight для
+  // некоторых file://-схем что ломает load.
   el.style.display = 'none';
+  // onerror — silent fail: если файл .mp3 не положен в public/ambient/,
+  // мы не спамим консоль, просто отключаем ambient до явного toggle'а.
+  el.addEventListener('error', () => {
+    try {
+      window.localStorage.setItem(PERSIST_KEY, '0');
+    } catch {
+      /* private mode */
+    }
+    if (audioEl) {
+      audioEl.remove();
+      audioEl = null;
+    }
+  });
   // Volume управляется отдельно от podcast-audio — оба слушают Dock slider
   // через App.tsx useEffect (см. там). Initial: half-of-podcast чтобы
   // ambient не overpowered podcast voice'ы при их одновременной игре.
@@ -60,6 +84,7 @@ export async function startAmbient(): Promise<void> {
     /* private mode */
   }
   const el = ensureAudio();
+  if (!el) return; // URL не настроен — silent no-op.
   // Browser autoplay policy: первый play() требует user gesture. Если
   // вызывается из onClick toggle'а в Settings — сработает. На app-start
   // bootstrap auto-restore через `bootstrapAmbient` ниже не сработает
@@ -108,7 +133,10 @@ export function setAmbientVolume(v: number): void {
  */
 export function bootstrapAmbient(): void {
   if (typeof window === 'undefined') return;
-  let enabled = true; // default ON
+  // Default OFF: тянуть unconfigured URL у каждого нового юзера = шум в
+  // консоли + лишний запрос. Юзер сам toggle'ит из Settings когда
+  // ambient-CDN будет настроен.
+  let enabled = false;
   try {
     const raw = window.localStorage.getItem(PERSIST_KEY);
     if (raw !== null) enabled = raw === '1';
@@ -120,12 +148,12 @@ export function bootstrapAmbient(): void {
 }
 
 export function isAmbientEnabled(): boolean {
-  if (typeof window === 'undefined') return true;
+  if (typeof window === 'undefined') return false;
   try {
     const raw = window.localStorage.getItem(PERSIST_KEY);
-    if (raw === null) return true; // default ON
+    if (raw === null) return false;
     return raw === '1';
   } catch {
-    return true;
+    return false;
   }
 }

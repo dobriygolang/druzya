@@ -18,7 +18,7 @@
 //     three-dots. Все transitions через --t-fast (180ms).
 //
 // ⌘J connections panel и ⌘⇧L AskNotes — оставлены без изменений.
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { CueSessionAnalysis } from '@shared/ipc';
 import { CueMeetingNotes, buildCueMarkdown } from '../components/CueMeetingNotes';
 import { ConnectError, Code } from '@connectrpc/connect';
@@ -540,27 +540,52 @@ export function NotesPage({ initialSelectedId, onConsumeInitial, initialCueNote,
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // When a new Cue note arrives via deep link (page already mounted),
-  // open it immediately, deselect any regular note, and auto-save to
-  // IndexedDB so the "Sync to Cloud" button works as normal.
+  // When a Cue note arrives via deep link (page already mounted), открыть
+  // её немедленно. Idempotency через filePath:
+  //   1. localStorage хранит карту filePath → localNoteId.
+  //   2. На повторный deep-link с тем же файлом — переключаемся на
+  //      existing local note БЕЗ перезатирания body (юзер мог отредактить
+  //      в Hone после импорта; Cue-source-of-truth не перебивает edits).
+  //   3. На новый filePath — createLocalNote, добавить в карту, поставить
+  //      row в list.
   useEffect(() => {
-    if (initialCueNote) {
-      setActiveCueNote(initialCueNote);
-      setSelectedId(null);
-      setActive(null);
-      onConsumeCueNote?.();
-      const { analysis } = initialCueNote;
-      const title = analysis.title || 'Meeting notes';
-      createLocalNote(title, buildCueMarkdown(analysis)).then((ln) => {
-        const row: NoteSummary = {
-          id: ln.id,
-          title: ln.title,
-          updatedAt: new Date(ln.updatedAt),
-          sizeBytes: new Blob([ln.bodyMd]).size,
-          folderId: null,
-        };
-        setList((prev) => ({ ...prev, notes: [row, ...prev.notes] }));
-      }).catch(() => {});
+    if (!initialCueNote) return;
+    setActiveCueNote(initialCueNote);
+    setSelectedId(null);
+    setActive(null);
+    onConsumeCueNote?.();
+    const { filePath, analysis } = initialCueNote;
+    const title = analysis.title || 'Meeting notes';
+    const existingId = readCueImportMap()[filePath];
+    if (existingId) {
+      // Verify local note ещё существует (юзер мог удалить).
+      void getLocalNote(existingId).then((ln) => {
+        if (ln) {
+          // Note есть — переключаемся, не дублируем.
+          setSelectedId(existingId);
+          return;
+        }
+        // Note удалена → пересоздаём + перезаписываем mapping.
+        void createCueLocalNote(filePath, title, analysis);
+      });
+      return;
+    }
+    void createCueLocalNote(filePath, title, analysis);
+
+    function createCueLocalNote(fp: string, t: string, a: CueSessionAnalysis) {
+      return createLocalNote(t, buildCueMarkdown(a))
+        .then((ln) => {
+          const row: NoteSummary = {
+            id: ln.id,
+            title: ln.title,
+            updatedAt: new Date(ln.updatedAt),
+            sizeBytes: new Blob([ln.bodyMd]).size,
+            folderId: null,
+          };
+          setList((prev) => ({ ...prev, notes: [row, ...prev.notes] }));
+          writeCueImportMapping(fp, ln.id);
+        })
+        .catch(() => undefined);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialCueNote]);
@@ -1100,10 +1125,97 @@ function NotesExpandSidebarButton({ onClick }: { onClick: () => void }) {
 // handleUnpublish, handleEncrypt — все useCallback с устойчивыми deps.
 const Sidebar = memo(SidebarImpl);
 
+// CUE_IMPORT_MAP_KEY — filePath → localNoteId mapping. Один Cue-файл
+// импортируется в одну заметку, повторное открытие через deep-link
+// переключается на существующую (без перезатирания edits юзера в Hone).
+const CUE_IMPORT_MAP_KEY = 'hone:notes:cue-imports:v1';
+
+function readCueImportMap(): Record<string, string> {
+  try {
+    const raw = window.localStorage.getItem(CUE_IMPORT_MAP_KEY);
+    if (!raw) return {};
+    return JSON.parse(raw) as Record<string, string>;
+  } catch {
+    return {};
+  }
+}
+
+function writeCueImportMapping(filePath: string, localNoteId: string): void {
+  try {
+    const map = readCueImportMap();
+    map[filePath] = localNoteId;
+    window.localStorage.setItem(CUE_IMPORT_MAP_KEY, JSON.stringify(map));
+  } catch {
+    /* quota — не критично, max что повторный импорт создаст дубликат */
+  }
+}
+
+// EXPANDED_FOLDERS_KEY — set of expanded folder IDs, persisted в
+// localStorage. Notion/Obsidian повторно открываются с тем же tree-state'ом.
+const EXPANDED_FOLDERS_KEY = 'hone:notes:expanded-folders';
+
+function readExpandedFolders(): Set<string> {
+  try {
+    const raw = window.localStorage.getItem(EXPANDED_FOLDERS_KEY);
+    if (!raw) return new Set();
+    const arr = JSON.parse(raw) as string[];
+    return new Set(arr);
+  } catch {
+    return new Set();
+  }
+}
+
+function writeExpandedFolders(s: Set<string>): void {
+  try {
+    window.localStorage.setItem(EXPANDED_FOLDERS_KEY, JSON.stringify(Array.from(s)));
+  } catch {
+    /* ignore quota */
+  }
+}
+
 function SidebarImpl({ list, selectedId, metaMap, activeCueNote, folders, selectedFolder, onSelectFolder, onCreateFolder, onDeleteFolder, onMoveNote, onSelect, onSelectCueNote, onCreate, onDelete, onPublish, onUnpublish, onEncrypt, onSyncToCloud, onToggleCollapse }: SidebarProps) {
   const [newFolderName, setNewFolderName] = useState('');
-  const [creatingFolder, setCreatingFolder] = useState(false);
+  const [creatingFolder, setCreatingFolder] = useState<{ parentId: string | null } | null>(null);
   const [folderInputRef] = useState(() => ({ current: null as HTMLInputElement | null }));
+  const [expanded, setExpanded] = useState<Set<string>>(() => readExpandedFolders());
+
+  const toggleExpanded = useCallback((id: string) => {
+    setExpanded((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      writeExpandedFolders(next);
+      return next;
+    });
+  }, []);
+
+  // childrenByParent — карта «parent_id → folder[]». null parent = корневые
+  // папки. Один проход по списку.
+  const childrenByParent = useMemo(() => {
+    const m = new Map<string | null, Folder[]>();
+    for (const f of folders) {
+      const k = f.parentId ?? null;
+      const arr = m.get(k) ?? [];
+      arr.push(f);
+      m.set(k, arr);
+    }
+    // Stable sort by name внутри каждой группы — UX consistency.
+    for (const arr of m.values()) {
+      arr.sort((a, b) => a.name.localeCompare(b.name));
+    }
+    return m;
+  }, [folders]);
+
+  // notesCount(folderId) — direct-children заметки только. Notion-style:
+  // не агрегируем рекурсивно (отвлекает от иерархии).
+  const notesCountByFolder = useMemo(() => {
+    const m = new Map<string | null, number>();
+    for (const n of list.notes) {
+      const k = n.folderId ?? null;
+      m.set(k, (m.get(k) ?? 0) + 1);
+    }
+    return m;
+  }, [list.notes]);
 
   const visibleNotes = useMemo(() => {
     if (selectedFolder === 'all') return list.notes;
@@ -1190,7 +1302,7 @@ function SidebarImpl({ list, selectedId, metaMap, activeCueNote, folders, select
             </span>
             <button
               onClick={() => {
-                setCreatingFolder(true);
+                setCreatingFolder({ parentId: null });
                 window.setTimeout(() => folderInputRef.current?.focus(), 40);
               }}
               title="New folder"
@@ -1215,14 +1327,14 @@ function SidebarImpl({ list, selectedId, metaMap, activeCueNote, folders, select
             </button>
           </div>
 
-          {creatingFolder && (
+          {creatingFolder && creatingFolder.parentId === null && (
             <form
               onSubmit={(e) => {
                 e.preventDefault();
                 const name = newFolderName.trim();
-                if (name) { onCreateFolder(name); }
+                if (name) { onCreateFolder(name, null); }
                 setNewFolderName('');
-                setCreatingFolder(false);
+                setCreatingFolder(null);
               }}
               style={{ padding: '2px 10px 4px' }}
             >
@@ -1230,8 +1342,8 @@ function SidebarImpl({ list, selectedId, metaMap, activeCueNote, folders, select
                 ref={(el) => { folderInputRef.current = el; }}
                 value={newFolderName}
                 onChange={(e) => setNewFolderName(e.target.value)}
-                onBlur={() => { setCreatingFolder(false); setNewFolderName(''); }}
-                onKeyDown={(e) => { if (e.key === 'Escape') { setCreatingFolder(false); setNewFolderName(''); } }}
+                onBlur={() => { setCreatingFolder(null); setNewFolderName(''); }}
+                onKeyDown={(e) => { if (e.key === 'Escape') { setCreatingFolder(null); setNewFolderName(''); } }}
                 placeholder="Folder name…"
                 style={{
                   width: '100%',
@@ -1256,21 +1368,68 @@ function SidebarImpl({ list, selectedId, metaMap, activeCueNote, folders, select
             onClick={() => onSelectFolder('all')}
           />
 
-          {folders.map((f) => (
-            <FolderRow
-              key={f.id}
-              label={f.name}
-              count={list.notes.filter((n) => n.folderId === f.id).length}
-              active={selectedFolder === f.id}
-              onClick={() => onSelectFolder(f.id)}
-              onDelete={() => onDeleteFolder(f.id)}
-            />
-          ))}
+          {/* Recursive folder tree. Корень = parentId=null;
+              children лежат в childrenByParent[id]. Hover'ом на любую
+              папку показывается «+» для создания subfolder'а. */}
+          <FolderTreeBranch
+            parentId={null}
+            level={0}
+            childrenByParent={childrenByParent}
+            notesCountByFolder={notesCountByFolder}
+            expanded={expanded}
+            selectedFolder={selectedFolder}
+            onSelectFolder={onSelectFolder}
+            onToggleExpand={toggleExpanded}
+            onDeleteFolder={onDeleteFolder}
+            onCreateChild={(pid) => {
+              setCreatingFolder({ parentId: pid });
+              window.setTimeout(() => folderInputRef.current?.focus(), 40);
+              if (pid && !expanded.has(pid)) toggleExpanded(pid);
+            }}
+            inlineCreate={
+              creatingFolder && creatingFolder.parentId !== null
+                ? (
+                  <form
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      const name = newFolderName.trim();
+                      const parentId = creatingFolder.parentId;
+                      if (name) onCreateFolder(name, parentId);
+                      setNewFolderName('');
+                      setCreatingFolder(null);
+                    }}
+                    style={{ padding: '2px 10px 4px' }}
+                  >
+                    <input
+                      ref={(el) => { folderInputRef.current = el; }}
+                      value={newFolderName}
+                      onChange={(e) => setNewFolderName(e.target.value)}
+                      onBlur={() => { setCreatingFolder(null); setNewFolderName(''); }}
+                      onKeyDown={(e) => { if (e.key === 'Escape') { setCreatingFolder(null); setNewFolderName(''); } }}
+                      placeholder="Subfolder…"
+                      style={{
+                        width: '100%',
+                        height: 24,
+                        padding: '0 8px',
+                        borderRadius: 6,
+                        background: 'rgba(255,255,255,0.06)',
+                        border: '1px solid rgba(255,255,255,0.12)',
+                        color: 'var(--ink)',
+                        fontSize: 12,
+                        outline: 'none',
+                      }}
+                    />
+                  </form>
+                )
+                : null
+            }
+            inlineCreateUnderId={creatingFolder?.parentId ?? null}
+          />
 
           {/* Unfiled */}
           <FolderRow
             label="Unfiled"
-            count={list.notes.filter((n) => !n.folderId).length}
+            count={notesCountByFolder.get(null) ?? 0}
             active={selectedFolder === null}
             onClick={() => onSelectFolder(null)}
           />
@@ -1497,20 +1656,109 @@ function CreateButton({ onClick }: { onClick: () => void }) {
 
 // ─── FolderRow ─────────────────────────────────────────────────────────────
 
+// FolderTreeBranch — рекурсивно рендерит папки уровня parentId. Для каждой
+// папки: FolderRow + (если expanded) дочерняя ветка. Inline subfolder-form
+// вставляется ровно под parent'ом, в котором юзер клацнул «+». Tree-state
+// (expanded set) живёт в SidebarImpl, передаётся вниз; toggleExpand
+// контроллирует свёртку/раскрытие.
+function FolderTreeBranch({
+  parentId,
+  level,
+  childrenByParent,
+  notesCountByFolder,
+  expanded,
+  selectedFolder,
+  onSelectFolder,
+  onToggleExpand,
+  onDeleteFolder,
+  onCreateChild,
+  inlineCreate,
+  inlineCreateUnderId,
+}: {
+  parentId: string | null;
+  level: number;
+  childrenByParent: Map<string | null, Folder[]>;
+  notesCountByFolder: Map<string | null, number>;
+  expanded: Set<string>;
+  selectedFolder: string | 'all' | null;
+  onSelectFolder: (id: string | 'all' | null) => void;
+  onToggleExpand: (id: string) => void;
+  onDeleteFolder: (id: string) => void;
+  onCreateChild: (parentId: string | null) => void;
+  inlineCreate: React.ReactNode;
+  inlineCreateUnderId: string | null;
+}) {
+  const items = childrenByParent.get(parentId) ?? [];
+  return (
+    <>
+      {items.map((f) => {
+        const hasChildren = (childrenByParent.get(f.id)?.length ?? 0) > 0;
+        const isExpanded = expanded.has(f.id);
+        return (
+          <React.Fragment key={f.id}>
+            <FolderRow
+              label={f.name}
+              count={notesCountByFolder.get(f.id) ?? 0}
+              active={selectedFolder === f.id}
+              level={level}
+              expandable={hasChildren}
+              expanded={isExpanded}
+              onToggleExpand={() => onToggleExpand(f.id)}
+              onClick={() => onSelectFolder(f.id)}
+              onDelete={() => onDeleteFolder(f.id)}
+              onCreateChild={() => onCreateChild(f.id)}
+            />
+            {inlineCreateUnderId === f.id && inlineCreate}
+            {isExpanded && hasChildren && (
+              <FolderTreeBranch
+                parentId={f.id}
+                level={level + 1}
+                childrenByParent={childrenByParent}
+                notesCountByFolder={notesCountByFolder}
+                expanded={expanded}
+                selectedFolder={selectedFolder}
+                onSelectFolder={onSelectFolder}
+                onToggleExpand={onToggleExpand}
+                onDeleteFolder={onDeleteFolder}
+                onCreateChild={onCreateChild}
+                inlineCreate={inlineCreate}
+                inlineCreateUnderId={inlineCreateUnderId}
+              />
+            )}
+          </React.Fragment>
+        );
+      })}
+    </>
+  );
+}
+
 function FolderRow({
   label,
   count,
   active,
+  level = 0,
+  expandable = false,
+  expanded = false,
+  onToggleExpand,
   onClick,
   onDelete,
+  onCreateChild,
 }: {
   label: string;
   count: number;
   active: boolean;
+  level?: number;
+  expandable?: boolean;
+  expanded?: boolean;
+  onToggleExpand?: () => void;
   onClick: () => void;
   onDelete?: () => void;
+  onCreateChild?: () => void;
 }) {
   const [hover, setHover] = useState(false);
+  // Indent — Notion-style: 14px на каждый уровень (caret-area). На level=0
+  // отступ задаётся padding в SidebarImpl, иначе тут добавляем 14*level.
+  const indent = level * 14;
   return (
     <div
       onMouseEnter={() => setHover(true)}
@@ -1519,8 +1767,8 @@ function FolderRow({
       style={{
         display: 'flex',
         alignItems: 'center',
-        gap: 6,
-        padding: '4px 14px',
+        gap: 4,
+        padding: `4px 8px 4px ${14 + indent}px`,
         borderRadius: 6,
         margin: '1px 4px',
         cursor: 'pointer',
@@ -1528,6 +1776,34 @@ function FolderRow({
         transition: 'background 140ms ease',
       }}
     >
+      {/* Caret или placeholder. Когда expandable — chevron click'ом
+          раскрывает/складывает; когда нет — пустое место чтобы все ряды
+          выровнялись. */}
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+          if (expandable && onToggleExpand) onToggleExpand();
+        }}
+        style={{
+          width: 14,
+          height: 14,
+          padding: 0,
+          background: 'transparent',
+          border: 'none',
+          cursor: expandable ? 'pointer' : 'default',
+          color: 'var(--ink-40)',
+          display: 'grid',
+          placeItems: 'center',
+          flexShrink: 0,
+          transition: 'transform 140ms ease, color 140ms ease',
+          transform: expanded ? 'rotate(90deg)' : 'rotate(0deg)',
+          opacity: expandable ? 1 : 0,
+        }}
+      >
+        <svg width={9} height={9} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round">
+          <path d="M9 6l6 6-6 6" />
+        </svg>
+      </button>
       <FolderIcon color={active ? 'var(--ink-60)' : 'var(--ink-40)'} />
       <span style={{
         flex: 1,
@@ -1540,9 +1816,34 @@ function FolderRow({
       }}>
         {label}
       </span>
-      <span style={{ fontSize: 10.5, color: 'var(--ink-40)', fontVariantNumeric: 'tabular-nums' }}>
+      <span style={{ fontSize: 10.5, color: 'var(--ink-40)', fontVariantNumeric: 'tabular-nums', marginRight: 4 }}>
         {count}
       </span>
+      {onCreateChild && hover && (
+        <button
+          onClick={(e) => { e.stopPropagation(); onCreateChild(); }}
+          title="New subfolder"
+          style={{
+            width: 16,
+            height: 16,
+            borderRadius: 3,
+            background: 'transparent',
+            border: 'none',
+            cursor: 'pointer',
+            color: 'var(--ink-40)',
+            display: 'grid',
+            placeItems: 'center',
+            padding: 0,
+            transition: 'color 140ms ease',
+          }}
+          onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--ink)')}
+          onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--ink-40)')}
+        >
+          <svg width={11} height={11} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round">
+            <path d="M12 5v14M5 12h14" />
+          </svg>
+        </button>
+      )}
       {onDelete && hover && (
         <button
           onClick={(e) => { e.stopPropagation(); onDelete(); }}
@@ -2196,8 +2497,11 @@ interface EditorProps {
 }
 
 const EDITOR_WIDTH_KEY = 'hone:notes:editor-width';
-const EDITOR_WIDTH_DEFAULT = 900;
-const EDITOR_WIDTH_MIN = 500;
+// Notion/Obsidian-style: широкая колонка по дефолту, юзер сам режет
+// resize-handle'ом если хочет уже. 1100px ~ Notion default text-column на
+// laptop-screen'е.
+const EDITOR_WIDTH_DEFAULT = 1100;
+const EDITOR_WIDTH_MIN = 560;
 
 function Editor({ list, active, activeError, draftTitle, draftBody, encrypted, saveStatus, folders, onTitleChange, onBodyChange, onCreate }: EditorProps) {
   const [hover, setHover] = useState(false);
@@ -2247,7 +2551,11 @@ function Editor({ list, active, activeError, draftTitle, draftBody, encrypted, s
       onMouseLeave={() => setHover(false)}
       style={{
         position: 'relative',
-        padding: '48px 80px 24px 80px',
+        // Notion-style: вертикальный воздух щедрый, горизонтальные паддинги
+        // умеренные (32px) — текстовая колонка центрируется через max-width
+        // на ActiveEditor. Раньше было 80px с двух сторон + max-width 900 →
+        // на 1920-экране контент жался к центру слишком плотно.
+        padding: '56px 32px 24px 32px',
         overflowY: 'auto',
         minWidth: 0,
       }}

@@ -787,10 +787,73 @@ textarea {
   pointer-events: none;
 }
 
-/* Slash-menu модалка — скрыта полностью. Markdown syntax (# / > / -)
-   остаётся как primary способ создания блоков. */
+/* Slash-menu (slash «/» в начале строки → popup со списком блоков:
+   heading, list, todo, code, quote, table, image, divider). Стиль —
+   Notion/Obsidian: тёмный popup, тонкая граница, hover/selected подсветка. */
 .hone-milkdown-mount .milkdown .milkdown-slash-menu {
-  display: none !important;
+  background: rgba(18, 18, 18, 0.98) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  border-radius: 10px !important;
+  box-shadow:
+    0 18px 48px -12px rgba(0, 0, 0, 0.85),
+    0 2px 6px rgba(0, 0, 0, 0.4) !important;
+  padding: 6px !important;
+  min-width: 280px !important;
+  max-height: 360px !important;
+  overflow-y: auto !important;
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+.hone-milkdown-mount .milkdown .milkdown-slash-menu .menu-groups,
+.hone-milkdown-mount .milkdown .milkdown-slash-menu ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.hone-milkdown-mount .milkdown .milkdown-slash-menu .menu-group-title,
+.hone-milkdown-mount .milkdown .milkdown-slash-menu .group-title {
+  padding: 8px 10px 4px !important;
+  font-family: var(--font-mono, 'JetBrains Mono', monospace) !important;
+  font-size: 10px !important;
+  letter-spacing: 0.18em !important;
+  color: rgba(255, 255, 255, 0.4) !important;
+  text-transform: uppercase !important;
+}
+.hone-milkdown-mount .milkdown .milkdown-slash-menu .menu-item,
+.hone-milkdown-mount .milkdown .milkdown-slash-menu li {
+  display: flex !important;
+  align-items: center !important;
+  gap: 10px !important;
+  padding: 8px 10px !important;
+  border-radius: 6px !important;
+  font-size: 13px !important;
+  color: rgba(255, 255, 255, 0.85) !important;
+  cursor: pointer !important;
+  transition: background-color 80ms ease;
+}
+.hone-milkdown-mount .milkdown .milkdown-slash-menu .menu-item:hover,
+.hone-milkdown-mount .milkdown .milkdown-slash-menu .menu-item.hover,
+.hone-milkdown-mount .milkdown .milkdown-slash-menu .menu-item[aria-selected='true'],
+.hone-milkdown-mount .milkdown .milkdown-slash-menu li:hover,
+.hone-milkdown-mount .milkdown .milkdown-slash-menu li.hover,
+.hone-milkdown-mount .milkdown .milkdown-slash-menu li[aria-selected='true'] {
+  background: rgba(255, 255, 255, 0.08) !important;
+  color: var(--ink) !important;
+}
+.hone-milkdown-mount .milkdown .milkdown-slash-menu .menu-item .icon,
+.hone-milkdown-mount .milkdown .milkdown-slash-menu .menu-item svg {
+  width: 16px !important;
+  height: 16px !important;
+  flex-shrink: 0;
+  opacity: 0.75;
+}
+.hone-milkdown-mount .milkdown .milkdown-slash-menu .menu-item .label {
+  flex: 1;
+}
+.hone-milkdown-mount .milkdown .milkdown-slash-menu .menu-item .hint,
+.hone-milkdown-mount .milkdown .milkdown-slash-menu .menu-item .desc {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.4);
 }
 
 /* Drop-indicator (полоска показывающая куда блок переместится при drag) —
@@ -802,19 +865,37 @@ textarea {
   opacity: 0.85;
 }
 
-/* Selection toolbar (B / I / S / <> / link) — компактные иконки.
-   Дефолт Crepe: 32×32 кнопка, svg 24×24, margin 6px → ~44px на item ×
-   6 items = ~280px-широкий popup. Юзер: «гигантская модалка». Ужимаем
-   до Notion-стиля: 22×22 кнопка, svg 14×14, margin 2px → ~26px на item. */
+/* Selection toolbar (B / I / S / <> / link) — компактный popup, видимый
+   на чёрном фоне. Crepe-дефолт сёрфейс был rgba(255,255,255,0.02) —
+   практически чёрный на чёрном, почти не видно. Поднимаем до 14% +
+   границу + drop-shadow → toolbar читается, не отвлекает. */
 .hone-milkdown-mount .milkdown .milkdown-toolbar {
-  border-radius: 6px !important;
+  background: rgba(20, 20, 20, 0.96) !important;
+  border: 1px solid rgba(255, 255, 255, 0.14) !important;
+  border-radius: 8px !important;
+  box-shadow:
+    0 14px 36px -10px rgba(0, 0, 0, 0.85),
+    0 0 0 1px rgba(255, 255, 255, 0.04) inset !important;
+  padding: 3px !important;
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
 }
 .hone-milkdown-mount .milkdown .milkdown-toolbar .toolbar-item {
-  width: 24px !important;
-  height: 24px !important;
-  margin: 3px !important;
-  padding: 3px !important;
-  border-radius: 3px !important;
+  width: 26px !important;
+  height: 26px !important;
+  margin: 1px !important;
+  padding: 4px !important;
+  border-radius: 5px !important;
+  color: rgba(255, 255, 255, 0.78) !important;
+  transition: background-color 80ms ease, color 80ms ease;
+}
+.hone-milkdown-mount .milkdown .milkdown-toolbar .toolbar-item:hover {
+  background: rgba(255, 255, 255, 0.1) !important;
+  color: var(--ink) !important;
+}
+.hone-milkdown-mount .milkdown .milkdown-toolbar .toolbar-item.active {
+  background: rgba(255, 255, 255, 0.16) !important;
+  color: var(--ink) !important;
 }
 .hone-milkdown-mount .milkdown .milkdown-toolbar .toolbar-item svg {
   width: 14px !important;
@@ -822,7 +903,8 @@ textarea {
 }
 .hone-milkdown-mount .milkdown .milkdown-toolbar .divider {
   height: 14px !important;
-  margin: 5px 2px !important;
+  margin: 6px 3px !important;
+  background: rgba(255, 255, 255, 0.14) !important;
 }
 
 /* Link tooltip preview / edit — тоже из 24×24 + svg 24×24 в дефолте.

@@ -56,34 +56,23 @@ import '@milkdown/crepe/theme/frame-dark.css';
 // Disabled (по запросу UX):
 //   - Latex: Σ-кнопку убираем — math notation редко нужна для obsidian-style.
 //   - TopBar: лишняя панель.
+//   - CodeMirror: никаких модалок и chrome поверх code-block'ов. Юзер
+//     задаёт язык через markdown fence ```go … ```, рендерится плоско.
 //
-// BlockEdit оставляем, НО:
-//   - «+» add-button скрыт через CSS (.operation-item:first-child visibility)
-//   - Slash-menu модалка скрыта через CSS (.milkdown-slash-menu)
-//   - Остаётся только 6-точек drag-handle для перетаскивания строк
-//
-// CodeMirror отключён — никаких модалок и chrome поверх code-block'ов.
-// Юзер задаёт язык через markdown fence ```go ... ```, рендерится
-// плоско <pre><code>.
-//
-// Keep: Cursor, ListItem (checkboxes), LinkTooltip, ImageBlock, Table,
-// Toolbar (floating selection toolbar — bold/italic/link/code), Placeholder.
+// Включено: BlockEdit (slash menu + drag handle), Toolbar (floating
+// selection: bold/italic/link/code), ListItem (checkboxes), LinkTooltip,
+// ImageBlock, Table, Placeholder. Notion/Obsidian-style flow.
 const HONE_FEATURES = {
   [Crepe.Feature.CodeMirror]: false,
   [Crepe.Feature.Latex]: false,
   [Crepe.Feature.TopBar]: false,
 };
 
-// Empty slash-menu config: все группы null чтобы при случайном открытии
-// menu было пустым (но даже в таком виде CSS прячет popup полностью).
-//
 // blockHandle.getOffset: уменьшен с дефолта 16 до 4 — handle сидит ближе к
-// тексту. Меньше «dead zone» между handle'ом и edge'ом editor'а, drag-and-
-// drop работает корректно когда юзер ведёт курсор едва-едва влево.
-const EMPTY_BLOCK_EDIT_CONFIG = {
-  textGroup: null,
-  listGroup: null,
-  advancedGroup: null,
+// тексту, меньше «dead zone». Дефолтные textGroup / listGroup /
+// advancedGroup оставляем как есть — Crepe ships полный набор Notion-style
+// commands (/heading, /list, /todo, /code, /table, /quote, /image, /divider).
+const BLOCK_EDIT_CONFIG = {
   blockHandle: {
     getOffset: () => 4,
   },
@@ -214,7 +203,7 @@ export function MilkdownEditor({ noteId, seedBodyMD, placeholder = 'Write your t
             text: placeholderRef.current,
             mode: 'block',
           },
-          [Crepe.Feature.BlockEdit]: EMPTY_BLOCK_EDIT_CONFIG,
+          [Crepe.Feature.BlockEdit]: BLOCK_EDIT_CONFIG,
         },
       });
       crepeRef.current = crepe;
@@ -256,6 +245,7 @@ export function MilkdownEditor({ noteId, seedBodyMD, placeholder = 'Write your t
           text: placeholderRef.current,
           mode: 'block',
         },
+        [Crepe.Feature.BlockEdit]: BLOCK_EDIT_CONFIG,
       },
     });
     crepeRef.current = crepe;
