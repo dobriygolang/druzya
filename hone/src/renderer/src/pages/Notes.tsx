@@ -1281,9 +1281,9 @@ function SidebarImpl({ list, selectedId, metaMap, activeCueNote, folders, select
         </div>
       )}
 
-      {/* Folder tree */}
-      {folders.length > 0 && (
-        <div style={{ marginBottom: 4 }}>
+      {/* Folder tree — рендерится ВСЕГДА (даже если folders=0), иначе
+          юзер не видит «+ folder» кнопку и не может создать первую. */}
+      <div style={{ marginBottom: 4 }}>
           <div style={{
             padding: '4px 14px 2px',
             display: 'flex',
@@ -1435,8 +1435,7 @@ function SidebarImpl({ list, selectedId, metaMap, activeCueNote, folders, select
           />
 
           <div style={{ height: 1, background: 'rgba(255,255,255,0.05)', margin: '6px 10px 4px' }} />
-        </div>
-      )}
+      </div>
 
       {/* Notes list (filtered by selected folder) */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 1, padding: '0 2px' }}>
@@ -2497,11 +2496,20 @@ interface EditorProps {
 }
 
 const EDITOR_WIDTH_KEY = 'hone:notes:editor-width';
-// Notion/Obsidian-style: широкая колонка по дефолту, юзер сам режет
-// resize-handle'ом если хочет уже. 1100px ~ Notion default text-column на
-// laptop-screen'е.
-const EDITOR_WIDTH_DEFAULT = 1100;
+// Адаптивный default: 75% viewport'а, но не больше 1600 (на 4K-экранах
+// контент не уезжает в полосу размером с альбом). Compact / Comfortable /
+// Wide preset'ы доступны через WIDTH_PRESETS — пользователь толкает их в
+// editor-header.
+function defaultEditorWidth(): number {
+  if (typeof window === 'undefined') return 1200;
+  return Math.max(560, Math.min(1600, Math.floor(window.innerWidth * 0.75)));
+}
 const EDITOR_WIDTH_MIN = 560;
+const WIDTH_PRESETS: { id: 'compact' | 'comfortable' | 'wide'; label: string; value: number }[] = [
+  { id: 'compact', label: 'Compact', value: 880 },
+  { id: 'comfortable', label: 'Comfort', value: 1200 },
+  { id: 'wide', label: 'Wide', value: 1600 },
+];
 
 function Editor({ list, active, activeError, draftTitle, draftBody, encrypted, saveStatus, folders, onTitleChange, onBodyChange, onCreate }: EditorProps) {
   const [hover, setHover] = useState(false);
@@ -2510,12 +2518,21 @@ function Editor({ list, active, activeError, draftTitle, draftBody, encrypted, s
   // (mouse-down → window:mousemove/up listeners) — mirror of sidebar
   // ResizeHandle для consistency.
   const [editorWidth, setEditorWidth] = useState<number>(() => {
-    if (typeof window === 'undefined') return EDITOR_WIDTH_DEFAULT;
+    if (typeof window === 'undefined') return 1200;
     const raw = window.localStorage.getItem(EDITOR_WIDTH_KEY);
     const n = raw ? parseInt(raw, 10) : NaN;
-    if (!Number.isFinite(n)) return EDITOR_WIDTH_DEFAULT;
+    if (!Number.isFinite(n)) return defaultEditorWidth();
     return Math.max(EDITOR_WIDTH_MIN, n);
   });
+
+  const setWidthPreset = (v: number) => {
+    setEditorWidth(v);
+    try {
+      window.localStorage.setItem(EDITOR_WIDTH_KEY, String(v));
+    } catch {
+      /* quota */
+    }
+  };
   const widthDragRef = useRef<{ startX: number; startW: number } | null>(null);
   useEffect(() => {
     const onMove = (e: MouseEvent) => {
@@ -2632,11 +2649,39 @@ function Editor({ list, active, activeError, draftTitle, draftBody, encrypted, s
             color: 'var(--ink-40)',
             display: 'flex',
             alignItems: 'center',
-            gap: 18,
+            gap: 14,
             opacity: hover ? 1 : 0.4,
             transition: 'opacity 220ms ease',
           }}
         >
+          <div style={{ display: 'flex', gap: 4 }}>
+            {WIDTH_PRESETS.map((p) => {
+              const isActive = Math.abs(editorWidth - p.value) < 8;
+              return (
+                <button
+                  key={p.id}
+                  onClick={() => setWidthPreset(p.value)}
+                  className="focus-ring"
+                  style={{
+                    padding: '3px 8px',
+                    fontSize: 9.5,
+                    letterSpacing: '0.14em',
+                    textTransform: 'uppercase',
+                    color: isActive ? 'var(--ink)' : 'var(--ink-40)',
+                    background: isActive
+                      ? 'rgba(255,255,255,0.08)'
+                      : 'transparent',
+                    border: '1px solid rgba(255,255,255,0.06)',
+                    borderRadius: 4,
+                    cursor: 'pointer',
+                    transition: 'background 140ms ease, color 140ms ease',
+                  }}
+                >
+                  {p.label}
+                </button>
+              );
+            })}
+          </div>
           <SaveStatusIndicator status={saveStatus} />
           <span>{formatTime(active.updatedAt)}</span>
         </div>

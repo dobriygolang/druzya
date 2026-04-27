@@ -764,27 +764,23 @@ textarea {
   caret-color: var(--ink);
 }
 
-/* Block-handle (6 точек drag) — оставляем, «+» add-button прячем.
-   Component renders два .operation-item — first-child = «+», second = drag.
-   Plus убираем CSS-transition lag (Crepe ставит 0.2s все-property).
-
-   КРИТИЧНО: используем width:0 + visibility:hidden (НЕ display:none).
-   Crepe позиционирует .milkdown-block-handle относительно текста через
-   absolute coords, рассчитанные на ширину обоих .operation-item. С
-   display:none второй child уезжает на position'у первого → drag-target
-   оказывается left of реальной 6-dot icon, юзер должен «искать» drag-zone.
-   width:0 + overflow:hidden убирает «+» из layout, drag сидит ровно
-   там где пользователь видит точки. */
+/* Block-handle (6 точек слева от блока) — обе кнопки видимы, как в Notion:
+   плюс «+» создаёт новый блок ниже, drag-handle открывает popover (Turn
+   into / Delete / Duplicate). «+» был отключён через width:0 в предыдущей
+   итерации — пришлось вернуть, потому что без него юзер не мог сменить
+   уровень heading'а (Turn into → H2/H3 из drag-popup'а тоже работает,
+   но «+» сильнее обнаруживается). */
 .hone-milkdown-mount .milkdown .milkdown-block-handle {
   transition: opacity 80ms ease;
 }
-.hone-milkdown-mount .milkdown .milkdown-block-handle .operation-item:first-child {
-  width: 0 !important;
-  padding: 0 !important;
-  margin: 0 !important;
-  overflow: hidden;
-  visibility: hidden;
-  pointer-events: none;
+.hone-milkdown-mount .milkdown .milkdown-block-handle .operation-item {
+  color: rgba(255, 255, 255, 0.4) !important;
+  transition: color 120ms ease, background-color 120ms ease;
+  border-radius: 4px;
+}
+.hone-milkdown-mount .milkdown .milkdown-block-handle .operation-item:hover {
+  color: var(--ink) !important;
+  background: rgba(255, 255, 255, 0.06) !important;
 }
 
 /* Slash-menu (slash «/» в начале строки → popup со списком блоков:
