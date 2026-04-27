@@ -13,10 +13,10 @@
 //
 // localOnly: пропускаем Y.Doc, держим content в state и onChange обратно.
 import { useEffect, useRef } from 'react';
-import { EditorState } from '@codemirror/state';
-import { EditorView, keymap, highlightActiveLine } from '@codemirror/view';
+import { EditorState, RangeSetBuilder, type Extension } from '@codemirror/state';
+import { EditorView, keymap, highlightActiveLine, Decoration, ViewPlugin, type DecorationSet, type ViewUpdate } from '@codemirror/view';
 import { defaultKeymap, history, historyKeymap } from '@codemirror/commands';
-import { syntaxHighlighting, defaultHighlightStyle, HighlightStyle } from '@codemirror/language';
+import { syntaxHighlighting, HighlightStyle, syntaxTree } from '@codemirror/language';
 import { markdown, markdownLanguage } from '@codemirror/lang-markdown';
 import { languages as lezerLanguages } from '@codemirror/language-data';
 import { tags as t } from '@lezer/highlight';
@@ -35,37 +35,120 @@ interface MarkdownSourceEditorProps {
   localOnly?: boolean;
 }
 
-// Hone-tuned highlight: heading'и крупные, маркеры (# / ** / etc.) приглушены.
-// Стиль приближен к Obsidian Live Preview — markdown syntax видна, но не
-// мешает чтению.
+// Hone-tuned highlight: heading'и крупные, маркеры приглушены, КОД получает
+// богатую палитру (Tokyo-Night-ish) для подсветки внутри fenced блоков.
 const honeMarkdownHighlight = HighlightStyle.define([
-  // Heading text — большой font + bold. h1 самый крупный, h2/h3 поменьше.
+  // ── Headings ─────────────────────────────────────────────────────────────
   { tag: t.heading1, fontSize: '28px', fontWeight: '700', lineHeight: '1.25', color: 'var(--ink)' },
   { tag: t.heading2, fontSize: '22px', fontWeight: '700', lineHeight: '1.3', color: 'var(--ink)' },
   { tag: t.heading3, fontSize: '18px', fontWeight: '600', lineHeight: '1.35', color: 'var(--ink)' },
   { tag: t.heading4, fontSize: '16px', fontWeight: '600', color: 'var(--ink)' },
   { tag: t.heading5, fontSize: '14.5px', fontWeight: '600', color: 'var(--ink)' },
   { tag: t.heading6, fontSize: '14px', fontWeight: '600', color: 'var(--ink-90)' },
-  // Bold/italic/strikethrough — обычный inline emphasis.
+  // ── Inline emphasis ─────────────────────────────────────────────────────
   { tag: t.strong, fontWeight: '700' },
   { tag: t.emphasis, fontStyle: 'italic' },
   { tag: t.strikethrough, textDecoration: 'line-through' },
-  // Markdown markers (# / ** / _ / >) — приглушённые, не отвлекают.
+  // ── Markdown markers (# / ``` / > / **) ─────────────────────────────────
   { tag: t.processingInstruction, color: 'rgba(255,255,255,0.32)' },
   { tag: t.contentSeparator, color: 'rgba(255,255,255,0.32)' },
-  // Links + code — обычный + mono.
+  // ── Links ───────────────────────────────────────────────────────────────
   { tag: t.link, color: '#7fb3ff', textDecoration: 'underline' },
   { tag: t.url, color: 'rgba(255,255,255,0.4)' },
+  // ── Inline + fenced monospace по умолчанию ──────────────────────────────
   {
     tag: t.monospace,
     fontFamily: 'var(--font-mono, "JetBrains Mono", monospace)',
-    fontSize: '13px',
-    color: 'var(--ink)',
+    fontSize: '13.5px',
+    color: '#d4d4d4',
   },
-  // Inline + block code — bg slightly lighter.
   { tag: t.quote, color: 'rgba(255,255,255,0.65)', fontStyle: 'italic' },
   { tag: t.list, color: 'var(--ink)' },
+
+  // ── Code syntax (для языков внутри fenced ```) ──────────────────────────
+  // Tokyo-Night-вдохновлённая палитра — pink keywords, cyan funcs,
+  // green strings, orange numbers. Хорошо читается на чёрном фоне Hone.
+  { tag: t.keyword, color: '#ff7b9c' },
+  { tag: t.controlKeyword, color: '#ff7b9c' },
+  { tag: t.operatorKeyword, color: '#ff7b9c' },
+  { tag: t.modifier, color: '#ff7b9c' },
+  { tag: [t.string, t.special(t.string)], color: '#9ece6a' },
+  { tag: t.character, color: '#9ece6a' },
+  { tag: [t.number, t.bool, t.null], color: '#ff9e64' },
+  { tag: [t.atom, t.special(t.variableName)], color: '#ff9e64' },
+  { tag: t.comment, color: '#5c6370', fontStyle: 'italic' },
+  { tag: t.lineComment, color: '#5c6370', fontStyle: 'italic' },
+  { tag: t.blockComment, color: '#5c6370', fontStyle: 'italic' },
+  { tag: t.docComment, color: '#5c6370', fontStyle: 'italic' },
+  { tag: t.function(t.variableName), color: '#7aa2f7' },
+  { tag: t.function(t.propertyName), color: '#7aa2f7' },
+  { tag: t.variableName, color: '#c0caf5' },
+  { tag: t.propertyName, color: '#7dcfff' },
+  { tag: t.typeName, color: '#bb9af7' },
+  { tag: t.className, color: '#bb9af7' },
+  { tag: t.namespace, color: '#bb9af7' },
+  { tag: t.operator, color: '#89ddff' },
+  { tag: t.punctuation, color: '#89ddff' },
+  { tag: t.bracket, color: '#89ddff' },
+  { tag: t.regexp, color: '#9ece6a' },
+  { tag: t.escape, color: '#ff9e64' },
+  { tag: t.tagName, color: '#f7768e' },
+  { tag: t.attributeName, color: '#7dcfff' },
+  { tag: t.attributeValue, color: '#9ece6a' },
+  { tag: t.invalid, color: '#f7768e', textDecoration: 'underline wavy' },
 ]);
+
+// fencedCodeBlockBackdrop — ViewPlugin что обходит syntaxTree, находит
+// FencedCode nodes и вешает line-class «cm-fenced-code» на каждую строку
+// внутри. CSS даёт серый фон + rounded углы первой/последней строке.
+//
+// Использует RangeSetBuilder — добавляем декорации в порядке возрастания
+// from/to. Visible-range ограничение чтобы не сканировать весь документ
+// на больших заметках.
+const fencedCodeBackdrop: Extension = ViewPlugin.fromClass(
+  class {
+    decorations: DecorationSet;
+
+    constructor(view: EditorView) {
+      this.decorations = this.build(view);
+    }
+
+    update(update: ViewUpdate) {
+      if (update.docChanged || update.viewportChanged) {
+        this.decorations = this.build(update.view);
+      }
+    }
+
+    private build(view: EditorView): DecorationSet {
+      const builder = new RangeSetBuilder<Decoration>();
+      // Маркируем линии в FencedCode разными декорациями: первая (с ```lang)
+      // получает «top» класс, средние — «mid», последняя — «bottom». Это
+      // даёт CSS возможность скруглить только внешние углы.
+      for (const { from, to } of view.visibleRanges) {
+        syntaxTree(view.state).iterate({
+          from,
+          to,
+          enter: (node) => {
+            if (node.name !== 'FencedCode') return;
+            const startLine = view.state.doc.lineAt(node.from);
+            const endLine = view.state.doc.lineAt(node.to);
+            for (let n = startLine.number; n <= endLine.number; n++) {
+              const line = view.state.doc.line(n);
+              let cls = 'cm-fenced-mid';
+              if (n === startLine.number) cls = 'cm-fenced-top';
+              else if (n === endLine.number) cls = 'cm-fenced-bottom';
+              builder.add(line.from, line.from, Decoration.line({ class: cls }));
+            }
+          },
+        });
+      }
+      return builder.finish();
+    }
+  },
+  {
+    decorations: (v) => v.decorations,
+  },
+);
 
 const baseTheme = EditorView.theme(
   {
@@ -102,16 +185,33 @@ const baseTheme = EditorView.theme(
     '&.cm-focused .cm-selectionBackground, &.cm-focused ::selection': {
       backgroundColor: 'rgba(255,255,255,0.22) !important',
     },
-    // Inline code background.
-    '.cm-line .tok-monospace': {
-      backgroundColor: 'rgba(255,255,255,0.06)',
-      borderRadius: '3px',
-      padding: '0 4px',
+    // ── Fenced code block backdrop ─────────────────────────────────────────
+    // Каждая строка внутри ```...``` получает класс через ViewPlugin'е
+    // выше. Все три класса (top/mid/bottom) — общий бекграунд + mono font;
+    // top/bottom добавляют скруглённые внешние углы.
+    '.cm-fenced-top, .cm-fenced-mid, .cm-fenced-bottom': {
+      backgroundColor: 'rgba(255,255,255,0.04)',
+      paddingLeft: '14px',
+      paddingRight: '14px',
+      fontFamily: 'var(--font-mono, "JetBrains Mono", monospace)',
     },
-    // Block-quote left bar.
-    '.cm-line:has([data-tag="quote"])': {
-      borderLeft: '2px solid rgba(255,255,255,0.16)',
-      paddingLeft: '12px',
+    '.cm-fenced-top': {
+      paddingTop: '8px',
+      borderTopLeftRadius: '8px',
+      borderTopRightRadius: '8px',
+      marginTop: '6px',
+    },
+    '.cm-fenced-bottom': {
+      paddingBottom: '8px',
+      borderBottomLeftRadius: '8px',
+      borderBottomRightRadius: '8px',
+      marginBottom: '6px',
+    },
+    // Inline code пилюлей.
+    '.cm-line .ͼ1, .cm-line .tok-monospace': {
+      // Inline code mb работает кашно — таргетим напрямую <span>'ы которые
+      // получают monospace-tag styling. Не переопределяем bg для строк
+      // внутри fenced (они уже c bg от .cm-fenced-*).
     },
   },
   { dark: true },
@@ -130,39 +230,34 @@ export function MarkdownSourceEditor({
   const onTextChangeRef = useRef(onTextChange);
   onTextChangeRef.current = onTextChange;
 
-  // Suppress placeholder-static-text via simple decoration: when content
-  // empty, рендерим CSS pseudo-element с placeholder-текстом. CodeMirror'у
-  // dedicated placeholder-extension есть, но он переопределяет gutter'ы —
-  // mvp обходимся CSS.
-  // Отдельный CSS-класс `is-empty` ставим через listener.
-
   useEffect(() => {
     if (!containerRef.current) return;
     let destroyed = false;
 
-    // Local-only path: standalone CM, no Yjs.
+    const sharedExtensions = (collab: Extension | null): Extension[] => [
+      baseTheme,
+      history(),
+      highlightActiveLine(),
+      markdown({ base: markdownLanguage, codeLanguages: lezerLanguages, addKeymap: true }),
+      syntaxHighlighting(honeMarkdownHighlight),
+      fencedCodeBackdrop,
+      keymap.of([...defaultKeymap, ...historyKeymap]),
+      ...(collab ? [collab] : []),
+      EditorView.lineWrapping,
+      EditorView.updateListener.of((upd) => {
+        if (!upd.docChanged || destroyed) return;
+        onTextChangeRef.current?.(upd.state.doc.toString());
+      }),
+    ];
+
     if (localOnly) {
       const state = EditorState.create({
         doc: seedBodyMD,
-        extensions: [
-          baseTheme,
-          history(),
-          highlightActiveLine(),
-          markdown({ base: markdownLanguage, codeLanguages: lezerLanguages, addKeymap: true }),
-          syntaxHighlighting(honeMarkdownHighlight),
-          syntaxHighlighting(defaultHighlightStyle, { fallback: true }),
-          keymap.of([...defaultKeymap, ...historyKeymap]),
-          EditorView.lineWrapping,
-          EditorView.updateListener.of((upd) => {
-            if (!upd.docChanged || destroyed) return;
-            onTextChangeRef.current?.(upd.state.doc.toString());
-          }),
-        ],
+        extensions: sharedExtensions(null),
       });
       const view = new EditorView({ state, parent: containerRef.current });
       viewRef.current = view;
       togglePlaceholder(containerRef.current, view, placeholder);
-
       return () => {
         destroyed = true;
         view.destroy();
@@ -174,8 +269,6 @@ export function MarkdownSourceEditor({
     const handle = attachNoteYjs(noteId, seedBodyMD);
     handleRef.current = handle;
     const ytext = handle.ydoc.getText('body');
-    // Initial seed: если document пустой, первый клиент льёт seedBodyMD.
-    // Параллельные клиенты возьмут его через Yjs delta (после connect).
     if (ytext.length === 0 && seedBodyMD.length > 0) {
       handle.ydoc.transact(() => {
         ytext.insert(0, seedBodyMD);
@@ -184,21 +277,7 @@ export function MarkdownSourceEditor({
 
     const state = EditorState.create({
       doc: ytext.toString(),
-      extensions: [
-        baseTheme,
-        history(),
-        highlightActiveLine(),
-        markdown({ base: markdownLanguage, codeLanguages: lezerLanguages, addKeymap: true }),
-        syntaxHighlighting(honeMarkdownHighlight),
-        syntaxHighlighting(defaultHighlightStyle, { fallback: true }),
-        keymap.of([...defaultKeymap, ...historyKeymap]),
-        yCollab(ytext, null),
-        EditorView.lineWrapping,
-        EditorView.updateListener.of((upd) => {
-          if (!upd.docChanged || destroyed) return;
-          onTextChangeRef.current?.(upd.state.doc.toString());
-        }),
-      ],
+      extensions: sharedExtensions(yCollab(ytext, null)),
     });
     const view = new EditorView({ state, parent: containerRef.current });
     viewRef.current = view;
@@ -223,9 +302,6 @@ export function MarkdownSourceEditor({
   );
 }
 
-// togglePlaceholder — простой CSS-хак: ставим data-empty="true" на root
-// когда документ пустой, CSS показывает placeholder-pseudo. Update'ится
-// через CM listener.
 function togglePlaceholder(root: HTMLElement, view: EditorView, placeholder: string) {
   const setEmpty = () => {
     const empty = view.state.doc.length === 0;
@@ -234,13 +310,8 @@ function togglePlaceholder(root: HTMLElement, view: EditorView, placeholder: str
   };
   setEmpty();
   view.dom.addEventListener('input', setEmpty);
-  // CM tracks doc changes via updateListener — but we only render-update,
-  // not state-listen here. Simple poll on 250ms keeps it correct without
-  // extra plugin wiring.
   const id = window.setInterval(setEmpty, 250);
   view.dom.addEventListener('blur', () => window.clearInterval(id));
 }
 
-// Re-export Y namespace for callers если когда-нибудь понадобится отладка
-// напрямую — текущий MilkdownEditor его экспонировал, поддерживаем API.
 export { Y };
