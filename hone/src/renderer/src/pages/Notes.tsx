@@ -104,7 +104,10 @@ export function NotesPage({ initialSelectedId, onConsumeInitial, initialCueNote,
   const [selectedId, setSelectedId] = useState<string | null>(initialSelectedId ?? null);
   const [activeCueNote, setActiveCueNote] = useState<{ filePath: string; analysis: CueSessionAnalysis } | null>(initialCueNote ?? null);
   const [folders, setFolders] = useState<Folder[]>([]);
-  const [selectedFolder, setSelectedFolder] = useState<string | null | 'all'>('all');
+  // 'all' оставлен в типе для backwards-совместимости с handlers,
+  // но default теперь null (tree-режим, root). User не должен видеть
+  // pseudo-folder «All Notes» поверх настоящих папок.
+  const [selectedFolder, setSelectedFolder] = useState<string | null | 'all'>(null);
   const [askOpen, setAskOpen] = useState(false);
   const [active, setActive] = useState<Note | null>(null);
   // Keep refs in lockstep with state for async-callback access.
@@ -1237,11 +1240,11 @@ function SidebarImpl({ list, selectedId, metaMap, activeCueNote, folders, select
     return m;
   }, [notesByFolder]);
 
-  // visibleNotes — used ONLY когда selectedFolder='all' (flat-mode для
-  // быстрого обзора всего корпуса). В обычном режиме (selectedFolder !=
-  // 'all') рендерим tree, заметки сидят внутри папок как children.
-  const visibleNotes = useMemo(() => list.notes, [list.notes]);
+  // showFlatList = selectedFolder='all' — flat-режим для быстрого обзора.
+  // В flat-mode tree скрыто, рендерится плоский notes-list. В tree-mode
+  // (selectedFolder=null или конкретная папка) показываем дерево.
   const showFlatList = selectedFolder === 'all';
+  const visibleNotes = useMemo(() => list.notes, [list.notes]);
   return (
     <aside
       // slide-from-left анимация удалена для симметрии open/close.
@@ -1381,25 +1384,10 @@ function SidebarImpl({ list, selectedId, metaMap, activeCueNote, folders, select
             </form>
           )}
 
-          {/* All Notes — flat-режим. Drop'аем заметку сюда → переезд в
-              root (folderId=null). */}
-          <FolderRow
-            label="All Notes"
-            count={list.notes.length}
-            active={selectedFolder === 'all'}
-            onClick={() => onSelectFolder('all')}
-            onDropNote={onMoveNote}
-            folderId={null}
-          />
-
           {/* Obsidian-style unified tree: каждая папка expandable, при
               expanded показывает свои subfolders + notes (folderId=this).
               Корневые loose-notes (folderId=null) рендерятся ниже tree
-              как «inbox»-зона — т.е. видны всегда без раскрытия Unfiled.
-
-              Флэт-вариант для быстрого обзора активируется через клик на
-              «All Notes» (selectedFolder='all') — тогда дерево скрывается,
-              рендерится flat-список ниже. */}
+              как «inbox»-зона — т.е. видны всегда без раскрытия Unfiled. */}
           {!showFlatList && (
             <FolderTreeBranch
               parentId={null}

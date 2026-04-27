@@ -18,6 +18,7 @@ import { EditorView, keymap, highlightActiveLine } from '@codemirror/view';
 import { defaultKeymap, history, historyKeymap } from '@codemirror/commands';
 import { syntaxHighlighting, defaultHighlightStyle, HighlightStyle } from '@codemirror/language';
 import { markdown, markdownLanguage } from '@codemirror/lang-markdown';
+import { languages as lezerLanguages } from '@codemirror/language-data';
 import { tags as t } from '@lezer/highlight';
 import { yCollab } from 'y-codemirror.next';
 import * as Y from 'yjs';
@@ -147,7 +148,7 @@ export function MarkdownSourceEditor({
           baseTheme,
           history(),
           highlightActiveLine(),
-          markdown({ base: markdownLanguage, codeLanguages: [], addKeymap: true }),
+          markdown({ base: markdownLanguage, codeLanguages: lezerLanguages, addKeymap: true }),
           syntaxHighlighting(honeMarkdownHighlight),
           syntaxHighlighting(defaultHighlightStyle, { fallback: true }),
           keymap.of([...defaultKeymap, ...historyKeymap]),
@@ -187,7 +188,7 @@ export function MarkdownSourceEditor({
         baseTheme,
         history(),
         highlightActiveLine(),
-        markdown({ base: markdownLanguage, codeLanguages: [], addKeymap: true }),
+        markdown({ base: markdownLanguage, codeLanguages: lezerLanguages, addKeymap: true }),
         syntaxHighlighting(honeMarkdownHighlight),
         syntaxHighlighting(defaultHighlightStyle, { fallback: true }),
         keymap.of([...defaultKeymap, ...historyKeymap]),
