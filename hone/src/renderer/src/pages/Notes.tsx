@@ -1206,21 +1206,42 @@ function SidebarImpl({ list, selectedId, metaMap, activeCueNote, folders, select
     return m;
   }, [folders]);
 
-  // notesCount(folderId) — direct-children заметки только. Notion-style:
-  // не агрегируем рекурсивно (отвлекает от иерархии).
-  const notesCountByFolder = useMemo(() => {
-    const m = new Map<string | null, number>();
+  // notesByFolder — карта «folder_id → notes[]» (folder_id=null для root-
+  // level loose заметок). Полный объект заметок, не только count — в
+  // Obsidian-tree рендерим заметки как children своей папки внутри
+  // FolderTreeBranch'а.
+  const notesByFolder = useMemo(() => {
+    const m = new Map<string | null, NoteSummary[]>();
     for (const n of list.notes) {
       const k = n.folderId ?? null;
-      m.set(k, (m.get(k) ?? 0) + 1);
+      const arr = m.get(k) ?? [];
+      arr.push(n);
+      m.set(k, arr);
+    }
+    // Stable sort: newest updatedAt first (как было в flat-list).
+    for (const arr of m.values()) {
+      arr.sort((a, b) => {
+        const ta = a.updatedAt instanceof Date ? a.updatedAt.getTime() : 0;
+        const tb = b.updatedAt instanceof Date ? b.updatedAt.getTime() : 0;
+        return tb - ta;
+      });
     }
     return m;
   }, [list.notes]);
 
-  const visibleNotes = useMemo(() => {
-    if (selectedFolder === 'all') return list.notes;
-    return list.notes.filter((n) => n.folderId === (selectedFolder ?? null));
-  }, [list.notes, selectedFolder]);
+  const notesCountByFolder = useMemo(() => {
+    const m = new Map<string | null, number>();
+    for (const [k, arr] of notesByFolder) {
+      m.set(k, arr.length);
+    }
+    return m;
+  }, [notesByFolder]);
+
+  // visibleNotes — used ONLY когда selectedFolder='all' (flat-mode для
+  // быстрого обзора всего корпуса). В обычном режиме (selectedFolder !=
+  // 'all') рендерим tree, заметки сидят внутри папок как children.
+  const visibleNotes = useMemo(() => list.notes, [list.notes]);
+  const showFlatList = selectedFolder === 'all';
   return (
     <aside
       // slide-from-left анимация удалена для симметрии open/close.
@@ -1368,97 +1389,110 @@ function SidebarImpl({ list, selectedId, metaMap, activeCueNote, folders, select
             onClick={() => onSelectFolder('all')}
           />
 
-          {/* Recursive folder tree. Корень = parentId=null;
-              children лежат в childrenByParent[id]. Hover'ом на любую
-              папку показывается «+» для создания subfolder'а. */}
-          <FolderTreeBranch
-            parentId={null}
-            level={0}
-            childrenByParent={childrenByParent}
-            notesCountByFolder={notesCountByFolder}
-            expanded={expanded}
-            selectedFolder={selectedFolder}
-            onSelectFolder={onSelectFolder}
-            onToggleExpand={toggleExpanded}
-            onDeleteFolder={onDeleteFolder}
-            onCreateChild={(pid) => {
-              setCreatingFolder({ parentId: pid });
-              window.setTimeout(() => folderInputRef.current?.focus(), 40);
-              if (pid && !expanded.has(pid)) toggleExpanded(pid);
-            }}
-            inlineCreate={
-              creatingFolder && creatingFolder.parentId !== null
-                ? (
-                  <form
-                    onSubmit={(e) => {
-                      e.preventDefault();
-                      const name = newFolderName.trim();
-                      const parentId = creatingFolder.parentId;
-                      if (name) onCreateFolder(name, parentId);
-                      setNewFolderName('');
-                      setCreatingFolder(null);
-                    }}
-                    style={{ padding: '2px 10px 4px' }}
-                  >
-                    <input
-                      ref={(el) => { folderInputRef.current = el; }}
-                      value={newFolderName}
-                      onChange={(e) => setNewFolderName(e.target.value)}
-                      onBlur={() => { setCreatingFolder(null); setNewFolderName(''); }}
-                      onKeyDown={(e) => { if (e.key === 'Escape') { setCreatingFolder(null); setNewFolderName(''); } }}
-                      placeholder="Subfolder…"
-                      style={{
-                        width: '100%',
-                        height: 24,
-                        padding: '0 8px',
-                        borderRadius: 6,
-                        background: 'rgba(255,255,255,0.06)',
-                        border: '1px solid rgba(255,255,255,0.12)',
-                        color: 'var(--ink)',
-                        fontSize: 12,
-                        outline: 'none',
-                      }}
-                    />
-                  </form>
-                )
-                : null
-            }
-            inlineCreateUnderId={creatingFolder?.parentId ?? null}
-          />
+          {/* Obsidian-style unified tree: каждая папка expandable, при
+              expanded показывает свои subfolders + notes (folderId=this).
+              Корневые loose-notes (folderId=null) рендерятся ниже tree
+              как «inbox»-зона — т.е. видны всегда без раскрытия Unfiled.
 
-          {/* Unfiled */}
-          <FolderRow
-            label="Unfiled"
-            count={notesCountByFolder.get(null) ?? 0}
-            active={selectedFolder === null}
-            onClick={() => onSelectFolder(null)}
-          />
+              Флэт-вариант для быстрого обзора активируется через клик на
+              «All Notes» (selectedFolder='all') — тогда дерево скрывается,
+              рендерится flat-список ниже. */}
+          {!showFlatList && (
+            <FolderTreeBranch
+              parentId={null}
+              level={0}
+              childrenByParent={childrenByParent}
+              notesByFolder={notesByFolder}
+              notesCountByFolder={notesCountByFolder}
+              expanded={expanded}
+              selectedFolder={selectedFolder}
+              selectedNoteId={selectedId}
+              metaMap={metaMap}
+              folders={folders}
+              onSelectFolder={onSelectFolder}
+              onToggleExpand={toggleExpanded}
+              onDeleteFolder={onDeleteFolder}
+              onSelectNote={onSelect}
+              onDeleteNote={onDelete}
+              onPublishNote={onPublish}
+              onUnpublishNote={onUnpublish}
+              onEncryptNote={onEncrypt}
+              onSyncToCloudNote={onSyncToCloud}
+              onMoveNote={onMoveNote}
+              onCreateChild={(pid) => {
+                setCreatingFolder({ parentId: pid });
+                window.setTimeout(() => folderInputRef.current?.focus(), 40);
+                if (pid && !expanded.has(pid)) toggleExpanded(pid);
+              }}
+              inlineCreate={
+                creatingFolder && creatingFolder.parentId !== null
+                  ? (
+                    <form
+                      onSubmit={(e) => {
+                        e.preventDefault();
+                        const name = newFolderName.trim();
+                        const parentId = creatingFolder.parentId;
+                        if (name) onCreateFolder(name, parentId);
+                        setNewFolderName('');
+                        setCreatingFolder(null);
+                      }}
+                      style={{ padding: '2px 10px 4px' }}
+                    >
+                      <input
+                        ref={(el) => { folderInputRef.current = el; }}
+                        value={newFolderName}
+                        onChange={(e) => setNewFolderName(e.target.value)}
+                        onBlur={() => { setCreatingFolder(null); setNewFolderName(''); }}
+                        onKeyDown={(e) => { if (e.key === 'Escape') { setCreatingFolder(null); setNewFolderName(''); } }}
+                        placeholder="Subfolder…"
+                        style={{
+                          width: '100%',
+                          height: 24,
+                          padding: '0 8px',
+                          borderRadius: 6,
+                          background: 'rgba(255,255,255,0.06)',
+                          border: '1px solid rgba(255,255,255,0.12)',
+                          color: 'var(--ink)',
+                          fontSize: 12,
+                          outline: 'none',
+                        }}
+                      />
+                    </form>
+                  )
+                  : null
+              }
+              inlineCreateUnderId={creatingFolder?.parentId ?? null}
+            />
+          )}
 
           <div style={{ height: 1, background: 'rgba(255,255,255,0.05)', margin: '6px 10px 4px' }} />
       </div>
 
-      {/* Notes list (filtered by selected folder) */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 1, padding: '0 2px' }}>
-        {visibleNotes.map((n) => {
-          const meta = metaMap.get(n.id);
-          return (
-            <NoteRow
-              key={n.id}
-              note={n}
-              active={selectedId === n.id}
-              encrypted={meta?.encrypted ?? false}
-              folders={folders}
-              onSelect={onSelect}
-              onDelete={onDelete}
-              onPublish={onPublish}
-              onUnpublish={onUnpublish}
-              onEncrypt={onEncrypt}
-              onSyncToCloud={onSyncToCloud}
-              onMove={onMoveNote}
-            />
-          );
-        })}
-      </div>
+      {/* Flat-list mode (selectedFolder='all') — все заметки одним списком
+          без иерархии. Удобно для глобального поиска. */}
+      {showFlatList && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 1, padding: '0 2px' }}>
+          {visibleNotes.map((n) => {
+            const meta = metaMap.get(n.id);
+            return (
+              <NoteRow
+                key={n.id}
+                note={n}
+                active={selectedId === n.id}
+                encrypted={meta?.encrypted ?? false}
+                folders={folders}
+                onSelect={onSelect}
+                onDelete={onDelete}
+                onPublish={onPublish}
+                onUnpublish={onUnpublish}
+                onEncrypt={onEncrypt}
+                onSyncToCloud={onSyncToCloud}
+                onMove={onMoveNote}
+              />
+            );
+          })}
+        </div>
+      )}
       <div style={{ padding: '4px 6px' }}>
         <QuotaUsageBar resource="synced_notes" />
       </div>
@@ -1655,43 +1689,71 @@ function CreateButton({ onClick }: { onClick: () => void }) {
 
 // ─── FolderRow ─────────────────────────────────────────────────────────────
 
-// FolderTreeBranch — рекурсивно рендерит папки уровня parentId. Для каждой
-// папки: FolderRow + (если expanded) дочерняя ветка. Inline subfolder-form
-// вставляется ровно под parent'ом, в котором юзер клацнул «+». Tree-state
-// (expanded set) живёт в SidebarImpl, передаётся вниз; toggleExpand
-// контроллирует свёртку/раскрытие.
+// FolderTreeBranch — рекурсивно рендерит папки + заметки уровня parentId
+// (Obsidian-style). Папка expandable, заметки — листья. Каждая папка при
+// expanded раскрывает себя в children-ветку рекурсивно.
+//
+// При parentId=null рендерим root-уровень: subfolders + loose notes
+// (folderId=null) — последние видны всегда без раскрытия. На вложенном
+// уровне: заметки видны только когда parent expanded (потому что branch
+// рендерится только из expanded блока в самой себе).
 function FolderTreeBranch({
   parentId,
   level,
   childrenByParent,
+  notesByFolder,
   notesCountByFolder,
   expanded,
   selectedFolder,
+  selectedNoteId,
+  metaMap,
+  folders,
   onSelectFolder,
   onToggleExpand,
   onDeleteFolder,
   onCreateChild,
+  onSelectNote,
+  onDeleteNote,
+  onPublishNote,
+  onUnpublishNote,
+  onEncryptNote,
+  onSyncToCloudNote,
+  onMoveNote,
   inlineCreate,
   inlineCreateUnderId,
 }: {
   parentId: string | null;
   level: number;
   childrenByParent: Map<string | null, Folder[]>;
+  notesByFolder: Map<string | null, NoteSummary[]>;
   notesCountByFolder: Map<string | null, number>;
   expanded: Set<string>;
   selectedFolder: string | 'all' | null;
+  selectedNoteId: string | null;
+  metaMap: Map<string, NoteMeta>;
+  folders: Folder[];
   onSelectFolder: (id: string | 'all' | null) => void;
   onToggleExpand: (id: string) => void;
   onDeleteFolder: (id: string) => void;
   onCreateChild: (parentId: string | null) => void;
+  onSelectNote: (id: string) => void;
+  onDeleteNote: (id: string) => void;
+  onPublishNote: (id: string) => void;
+  onUnpublishNote: (id: string) => void;
+  onEncryptNote: (id: string) => void;
+  onSyncToCloudNote: (id: string) => void;
+  onMoveNote: (noteId: string, folderId: string | null) => void;
   inlineCreate: React.ReactNode;
   inlineCreateUnderId: string | null;
 }) {
-  const items = childrenByParent.get(parentId) ?? [];
+  const subfolders = childrenByParent.get(parentId) ?? [];
+  const notesAtLevel = notesByFolder.get(parentId) ?? [];
   return (
     <>
-      {items.map((f) => {
-        const hasChildren = (childrenByParent.get(f.id)?.length ?? 0) > 0;
+      {subfolders.map((f) => {
+        const hasSubfolders = (childrenByParent.get(f.id)?.length ?? 0) > 0;
+        const hasNotes = (notesByFolder.get(f.id)?.length ?? 0) > 0;
+        const isExpandable = hasSubfolders || hasNotes;
         const isExpanded = expanded.has(f.id);
         return (
           <React.Fragment key={f.id}>
@@ -1700,7 +1762,7 @@ function FolderTreeBranch({
               count={notesCountByFolder.get(f.id) ?? 0}
               active={selectedFolder === f.id}
               level={level}
-              expandable={hasChildren}
+              expandable={isExpandable}
               expanded={isExpanded}
               onToggleExpand={() => onToggleExpand(f.id)}
               onClick={() => onSelectFolder(f.id)}
@@ -1708,23 +1770,61 @@ function FolderTreeBranch({
               onCreateChild={() => onCreateChild(f.id)}
             />
             {inlineCreateUnderId === f.id && inlineCreate}
-            {isExpanded && hasChildren && (
+            {isExpanded && (
               <FolderTreeBranch
                 parentId={f.id}
                 level={level + 1}
                 childrenByParent={childrenByParent}
+                notesByFolder={notesByFolder}
                 notesCountByFolder={notesCountByFolder}
                 expanded={expanded}
                 selectedFolder={selectedFolder}
+                selectedNoteId={selectedNoteId}
+                metaMap={metaMap}
+                folders={folders}
                 onSelectFolder={onSelectFolder}
                 onToggleExpand={onToggleExpand}
                 onDeleteFolder={onDeleteFolder}
                 onCreateChild={onCreateChild}
+                onSelectNote={onSelectNote}
+                onDeleteNote={onDeleteNote}
+                onPublishNote={onPublishNote}
+                onUnpublishNote={onUnpublishNote}
+                onEncryptNote={onEncryptNote}
+                onSyncToCloudNote={onSyncToCloudNote}
+                onMoveNote={onMoveNote}
                 inlineCreate={inlineCreate}
                 inlineCreateUnderId={inlineCreateUnderId}
               />
             )}
           </React.Fragment>
+        );
+      })}
+      {/* Заметки текущего уровня. Indent на (level + 1) — на один
+          больше, чем у parent-папки, как в Obsidian. На root-уровне
+          (parentId=null) индент 0 + small left padding для visual
+          alignment с папками. */}
+      {notesAtLevel.map((n) => {
+        const meta = metaMap.get(n.id);
+        return (
+          <div
+            key={n.id}
+            style={{ paddingLeft: parentId === null ? 0 : (level + 1) * 14 }}
+          >
+            <NoteRow
+              note={n}
+              active={selectedNoteId === n.id}
+              encrypted={meta?.encrypted ?? false}
+              folders={folders}
+              onSelect={onSelectNote}
+              onDelete={onDeleteNote}
+              onPublish={onPublishNote}
+              onUnpublish={onUnpublishNote}
+              onEncrypt={onEncryptNote}
+              onSyncToCloud={onSyncToCloudNote}
+              onMove={onMoveNote}
+            />
+          </div>
         );
       })}
     </>

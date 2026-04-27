@@ -68,13 +68,13 @@ const HONE_FEATURES = {
   [Crepe.Feature.TopBar]: false,
 };
 
-// blockHandle.getOffset: уменьшен с дефолта 16 до 4 — handle сидит ближе к
-// тексту, меньше «dead zone». Дефолтные textGroup / listGroup /
-// advancedGroup оставляем как есть — Crepe ships полный набор Notion-style
-// commands (/heading, /list, /todo, /code, /table, /quote, /image, /divider).
+// blockHandle.getOffset: 0 — handle прижат к самому тексту блока,
+// gutter-зона минимальна. Notion использует ~24px offset, мы — 0
+// потому что наш sidebar уже даёт визуальный gutter, дополнительный
+// padding только заставляет юзера тянуть курсор далеко.
 const BLOCK_EDIT_CONFIG = {
   blockHandle: {
-    getOffset: () => 4,
+    getOffset: () => 0,
   },
 };
 
