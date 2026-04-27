@@ -5,7 +5,6 @@ import (
 	"net/http"
 
 	adminApp "druz9/admin/app"
-	"druz9/admin/domain"
 	adminInfra "druz9/admin/infra"
 	adminPorts "druz9/admin/ports"
 	monolithServices "druz9/cmd/monolith/services"
@@ -65,7 +64,10 @@ func NewAdmin(d monolithServices.Deps) *monolithServices.Module {
 	// CMS surface. Adding it as a chi-direct handler avoids a proto regen and
 	// keeps the admin-gated /admin/companies surface untouched (curators still
 	// hit the proto endpoint to mutate).
-	ch := &companiesPublicHandler{repo: companies, log: d.Log}
+	ch := &companiesPublicHandler{
+		listCompanies: &adminApp.ListCompanies{Companies: companies},
+		log:           d.Log,
+	}
 
 	return &monolithServices.Module{
 		ConnectPath:        connectPath,
@@ -99,11 +101,12 @@ func NewAdmin(d monolithServices.Deps) *monolithServices.Module {
 }
 
 // companiesPublicHandler exposes a non-admin read-only view over the
-// admin.CompanyRepo. The shape is intentionally minimal (id + name + slug)
-// so it stays usable as a picker option without leaking admin metadata.
+// admin ListCompanies use case. The shape is intentionally minimal
+// (id + name + slug) so it stays usable as a picker option without
+// leaking admin metadata.
 type companiesPublicHandler struct {
-	repo domain.CompanyRepo
-	log  *slog.Logger
+	listCompanies *adminApp.ListCompanies
+	log           *slog.Logger
 }
 
 type companyOptionDTO struct {
@@ -117,7 +120,7 @@ type companiesResponse struct {
 }
 
 func (h *companiesPublicHandler) list(w http.ResponseWriter, r *http.Request) {
-	rows, err := h.repo.List(r.Context())
+	rows, err := h.listCompanies.Do(r.Context())
 	if err != nil {
 		h.log.ErrorContext(r.Context(), "companies.list", slog.Any("err", err))
 		http.Error(w, "internal", http.StatusInternalServerError)

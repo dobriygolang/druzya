@@ -14,6 +14,8 @@ import (
 
 	authApp "druz9/auth/app"
 	monolithServices "druz9/cmd/monolith/services"
+	authServices "druz9/cmd/monolith/services/auth"
+	subscriptionServices "druz9/cmd/monolith/services/subscription"
 	editorApp "druz9/editor/app"
 	editorDomain "druz9/editor/domain"
 	editorInfra "druz9/editor/infra"
@@ -25,7 +27,6 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 // NewEditor wires the collaborative-code editor (bible §3.1): rooms, role
@@ -88,7 +89,7 @@ func NewEditor(d monolithServices.Deps) *monolithServices.Module {
 	// Phase 2 quota check для CreateRoom: free-tier лимит на active shared
 	// rooms. nil-safe (см. EnforceCreate semantics).
 	editorCreateCheck := func(ctx context.Context, userID uuid.UUID) error {
-		return monolithServices.EnforceCreate(ctx, d, userID,
+		return subscriptionServices.EnforceCreate(ctx, d, userID,
 			editorDomainQuotaField,
 			func(ctx context.Context, uid uuid.UUID) (int, error) {
 				if d.QuotaUsageReader == nil {
@@ -100,7 +101,7 @@ func NewEditor(d monolithServices.Deps) *monolithServices.Module {
 	server := editorPorts.NewEditorServer(
 		create, get, invite, freeze, replayUC, runUC, "/ws/editor", d.Log, editorCreateCheck,
 	)
-	wsh := editorPorts.NewWSHandler(hub, monolithServices.EditorTokenVerifier{Issuer: d.TokenIssuer}, rooms, parts, d.Log)
+	wsh := editorPorts.NewWSHandler(hub, authServices.EditorTokenVerifier{Issuer: d.TokenIssuer}, rooms, parts, d.Log)
 
 	connectPath, connectHandler := druz9v1connect.NewEditorServiceHandler(server)
 	transcoder := monolithServices.MustTranscode("editor", connectPath, connectHandler)
@@ -124,7 +125,10 @@ func NewEditor(d monolithServices.Deps) *monolithServices.Module {
 			// DeleteRoom RPC в proto (whiteboard_rooms имеет), и регенерация
 			// proto + clients тяжёлый change. Inline SQL handler покрывает
 			// UX-кейс «owner хочет удалить комнату» без proto-изменений.
-			edh := &editorDeleteHandler{pool: d.Pool, log: d.Log}
+			edh := &editorDeleteHandler{
+				uc:  &editorApp.DeleteRoom{Rooms: rooms},
+				log: d.Log,
+			}
 			r.Delete("/editor/room/{roomId}", edh.handle)
 			// Format — реальный gofmt через go/format std-lib. Inline-handler,
 			// не RPC: для format'а не нужны participant-checks (это idempotent
@@ -136,7 +140,6 @@ func NewEditor(d monolithServices.Deps) *monolithServices.Module {
 			egj := &editorGuestJoinHandler{
 				rooms:    rooms,
 				parts:    parts,
-				pool:     d.Pool,
 				issuer:   d.TokenIssuer,
 				log:      d.Log,
 				guestTTL: 24 * time.Hour,
@@ -150,7 +153,7 @@ func NewEditor(d monolithServices.Deps) *monolithServices.Module {
 			// Phase 4 — auto-downgrade free-tier shared code-rooms после TTL.
 			// Mirror'ит whiteboard cron из quota_enforce.go.
 			func(ctx context.Context) {
-				go monolithServices.RunFreeTierShareDowngradeEditor(ctx, d.Pool, d.Log)
+				go subscriptionServices.RunFreeTierShareDowngradeEditor(ctx, d.Pool, d.Log)
 			},
 		},
 		Shutdown: []func(ctx context.Context) error{
@@ -161,13 +164,12 @@ func NewEditor(d monolithServices.Deps) *monolithServices.Module {
 
 // ─── Editor delete REST handler ───────────────────────────────────────────
 //
-// Inline SQL handler — DELETE /api/v1/editor/room/{id}. Owner-only. Каскад
-// удаляет участников через FK ON DELETE CASCADE (см. migrations). WS hub
-// при следующем broadcast'е увидит «room not found» и закроет коннекты.
-
+// DELETE /api/v1/editor/room/{id}. Owner-only. Каскад удаляет участников
+// через FK ON DELETE CASCADE (см. migrations). WS hub при следующем
+// broadcast'е увидит «room not found» и закроет коннекты.
 type editorDeleteHandler struct {
-	pool *pgxpool.Pool
-	log  *slog.Logger
+	uc  *editorApp.DeleteRoom
+	log *slog.Logger
 }
 
 func (h *editorDeleteHandler) handle(w http.ResponseWriter, r *http.Request) {
@@ -181,19 +183,15 @@ func (h *editorDeleteHandler) handle(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, `{"error":{"code":"bad_id"}}`, http.StatusBadRequest)
 		return
 	}
-	tag, err := h.pool.Exec(r.Context(),
-		`DELETE FROM editor_rooms WHERE id = $1 AND owner_id = $2`,
-		roomID, uid,
-	)
-	if err != nil {
+	if err := h.uc.Run(r.Context(), roomID, uid); err != nil {
+		if errors.Is(err, editorDomain.ErrNotFound) {
+			// Либо не owner, либо room уже не существует. Возвращаем 404 без
+			// различения — не утечка инфы про чужие комнаты.
+			http.Error(w, `{"error":{"code":"not_found"}}`, http.StatusNotFound)
+			return
+		}
 		h.log.ErrorContext(r.Context(), "editor.delete: exec", slog.Any("err", err))
 		http.Error(w, `{"error":{"code":"internal"}}`, http.StatusInternalServerError)
-		return
-	}
-	if tag.RowsAffected() == 0 {
-		// Либо не owner, либо room уже не существует. Возвращаем 404 без
-		// различения — не утечка инфы про чужие комнаты.
-		http.Error(w, `{"error":{"code":"not_found"}}`, http.StatusNotFound)
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
@@ -292,7 +290,7 @@ func (h *editorVisibilityHandler) set(w http.ResponseWriter, r *http.Request) {
 	if v == editorDomain.VisibilityShared && room.Visibility != editorDomain.VisibilityShared {
 		if h.quotaCheck != nil {
 			if qerr := h.quotaCheck(r.Context(), uid); qerr != nil {
-				if errors.Is(qerr, monolithServices.ErrQuotaExceeded) {
+				if errors.Is(qerr, subscriptionServices.ErrQuotaExceeded) {
 					http.Error(w, `{"error":{"code":"quota_exceeded","message":"shared rooms limit reached on your tier"}}`,
 						http.StatusPaymentRequired)
 					return
@@ -318,7 +316,6 @@ func (h *editorVisibilityHandler) set(w http.ResponseWriter, r *http.Request) {
 type editorGuestJoinHandler struct {
 	rooms    editorDomain.RoomRepo
 	parts    editorDomain.ParticipantRepo
-	pool     *pgxpool.Pool
 	issuer   *authApp.TokenIssuer
 	log      *slog.Logger
 	guestTTL time.Duration

@@ -12,6 +12,8 @@ import (
 
 	authApp "druz9/auth/app"
 	monolithServices "druz9/cmd/monolith/services"
+	authServices "druz9/cmd/monolith/services/auth"
+	subscriptionServices "druz9/cmd/monolith/services/subscription"
 	"druz9/shared/enums"
 	"druz9/shared/generated/pb/druz9/v1/druz9v1connect"
 	sharedMw "druz9/shared/pkg/middleware"
@@ -35,7 +37,7 @@ func NewWhiteboardRooms(d monolithServices.Deps) *monolithServices.Module {
 
 	hub := whiteboardPorts.NewHub(d.Log, rooms, handlers)
 	wsh := whiteboardPorts.NewWSHandler(
-		hub, monolithServices.WhiteboardTokenVerifier{Issuer: d.TokenIssuer},
+		hub, authServices.WhiteboardTokenVerifier{Issuer: d.TokenIssuer},
 		rooms, parts, d.Log,
 	)
 
@@ -57,7 +59,7 @@ func NewWhiteboardRooms(d monolithServices.Deps) *monolithServices.Module {
 	// missing QuotaResolver / Usage / TierGetter (subscription not loaded)
 	// passthrough'ит без блокировок.
 	createCheck := func(ctx context.Context, userID uuid.UUID) error {
-		return monolithServices.EnforceCreate(ctx, d, userID,
+		return subscriptionServices.EnforceCreate(ctx, d, userID,
 			whiteboardDomainQuotaField,
 			func(ctx context.Context, uid uuid.UUID) (int, error) {
 				if d.QuotaUsageReader == nil {
@@ -114,7 +116,7 @@ func NewWhiteboardRooms(d monolithServices.Deps) *monolithServices.Module {
 			// expired expires_at → flip visibility='private'. Реализация
 			// в quota_enforce.go.
 			func(ctx context.Context) {
-				go monolithServices.RunFreeTierShareDowngradeWhiteboard(ctx, d.Pool, d.Log)
+				go subscriptionServices.RunFreeTierShareDowngradeWhiteboard(ctx, d.Pool, d.Log)
 			},
 		},
 		Shutdown: []func(ctx context.Context) error{
@@ -218,7 +220,7 @@ func (h *visibilityHandler) set(w http.ResponseWriter, r *http.Request) {
 	if v == whiteboardDomain.VisibilityShared && room.Visibility != whiteboardDomain.VisibilityShared {
 		if h.quotaCheck != nil {
 			if qerr := h.quotaCheck(r.Context(), uid); qerr != nil {
-				if errors.Is(qerr, monolithServices.ErrQuotaExceeded) {
+				if errors.Is(qerr, subscriptionServices.ErrQuotaExceeded) {
 					http.Error(w, `{"error":{"code":"quota_exceeded","message":"shared boards limit reached on your tier"}}`,
 						http.StatusPaymentRequired)
 					return

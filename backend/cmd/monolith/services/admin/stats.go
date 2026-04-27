@@ -1,18 +1,4 @@
 // Package services — stats wiring.
-//
-// Provides three small public REST endpoints used by the marketing /
-// onboarding pages on the frontend:
-//
-//	GET /api/v1/stats/public          — platform headline counters
-//	GET /api/v1/languages             — supported language picker (with
-//	                                    deterministic synthetic player counts)
-//	GET /api/v1/onboarding/preview-kata — fixed "Two Sum" preview used in the
-//	                                    onboarding step 3 mock
-//
-// All three are public (bypass bearer auth — see router.go) and own no
-// proto schema; they're plain chi handlers. The Module attaches via
-// MountREST and is registered in bootstrap.go alongside the proto-driven
-// modules.
 package admin
 
 import (
@@ -20,17 +6,23 @@ import (
 	"log/slog"
 	"net/http"
 
+	adminApp "druz9/admin/app"
+	adminInfra "druz9/admin/infra"
 	monolithServices "druz9/cmd/monolith/services"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-// NewStats builds the stats Module. It needs the shared pgx pool to count
-// users; everything else is hard-coded synthetic data (per the task — the
-// architectural wiring matters more than the data source right now).
+// NewStats builds the stats Module. The PublicStats use case wraps the
+// admin domain Stats repo; everything else is hard-coded synthetic data
+// (per the task — the architectural wiring matters more than the data
+// source right now).
 func NewStats(d monolithServices.Deps) *monolithServices.Module {
-	h := &statsHandler{pool: d.Pool, log: d.Log}
+	repo := adminInfra.NewStats(d.Pool, d.Log)
+	h := &statsHandler{
+		publicStatsUC: &adminApp.PublicStats{Stats: repo},
+		log:           d.Log,
+	}
 	return &monolithServices.Module{
 		MountREST: func(r chi.Router) {
 			r.Get("/stats/public", h.publicStats)
@@ -41,8 +33,8 @@ func NewStats(d monolithServices.Deps) *monolithServices.Module {
 }
 
 type statsHandler struct {
-	pool *pgxpool.Pool
-	log  *slog.Logger
+	publicStatsUC *adminApp.PublicStats
+	log           *slog.Logger
 }
 
 // ── /api/v1/stats/public ──────────────────────────────────────────────────
@@ -54,44 +46,17 @@ type publicStatsResponse struct {
 }
 
 func (h *statsHandler) publicStats(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
-	resp := publicStatsResponse{}
-
-	// users
-	if h.pool != nil {
-		var n int
-		row := h.pool.QueryRow(ctx, `SELECT count(*)::int FROM users`)
-		if err := row.Scan(&n); err != nil {
-			h.log.WarnContext(ctx, "stats.publicStats: count users", slog.Any("err", err))
-		} else {
-			resp.UsersCount = n
-		}
-
-		// active today: users updated in last 24h (cheap proxy until we add
-		// a sessions/activity table)
-		var active int
-		row = h.pool.QueryRow(ctx,
-			`SELECT count(*)::int FROM users WHERE updated_at >= now() - interval '24 hours'`)
-		if err := row.Scan(&active); err != nil {
-			h.log.WarnContext(ctx, "stats.publicStats: count active", slog.Any("err", err))
-		} else {
-			resp.ActiveToday = active
-		}
-
-		// matches total — arena_matches if it exists; absorb any error to
-		// keep the endpoint resilient (table may be absent in fresh
-		// environments).
-		var matches int
-		row = h.pool.QueryRow(ctx, `SELECT count(*)::int FROM arena_matches`)
-		if err := row.Scan(&matches); err != nil {
-			// table missing or other error — leave zero, do not fail the
-			// whole response.
-			resp.MatchesTotal = 0
-		} else {
-			resp.MatchesTotal = matches
+	out, err := h.publicStatsUC.Do(r.Context())
+	if err != nil {
+		if h.log != nil {
+			h.log.WarnContext(r.Context(), "stats.publicStats", slog.Any("err", err))
 		}
 	}
-
+	resp := publicStatsResponse{
+		UsersCount:   out.UsersCount,
+		ActiveToday:  out.ActiveToday,
+		MatchesTotal: out.MatchesTotal,
+	}
 	writeJSON(w, http.StatusOK, resp)
 }
 

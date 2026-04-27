@@ -1,31 +1,19 @@
 // ai_models.go — chi-direct `/ai/models` catalogue endpoint.
-//
-// Background: the original ai_native service that owned this route was
-// removed (see comment in bootstrap.go around the deleted import). The
-// frontend (Arena AI-opponent picker, Settings AI-pref panel, mock-
-// interview model badge) still consumes `GET /api/v1/ai/models`. We rebuilt
-// it as a slim public read-through over `llm_models` rather than reviving
-// the full ai_native CRUD surface — that surface is still admin-served
-// elsewhere if/when needed.
-//
-// Public read (whitelisted in router.go publicPaths) so unauthenticated
-// pages can render the upsell banner. The actual LLM call gate lives in
-// llmchain.TierCovers — this endpoint is purely the catalogue contract.
-
 package admin
 
 import (
-	"context"
 	"encoding/json"
-	"fmt"
+	"errors"
 	"log/slog"
 	"net/http"
 	"strings"
 
+	adminApp "druz9/admin/app"
+	adminDomain "druz9/admin/domain"
+	adminInfra "druz9/admin/infra"
 	monolithServices "druz9/cmd/monolith/services"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 // aiModel — wire shape for the public catalogue. Must stay in sync with
@@ -44,21 +32,14 @@ type aiModelsResponse struct {
 	Items     []aiModel `json:"items"`
 }
 
-// allowedUseSurfaces — `?use=...` filter values. The DB columns mirror
-// these names. Anything else returns 400.
-var allowedUseSurfaces = map[string]string{
-	"arena":     "use_for_arena",
-	"insight":   "use_for_insight",
-	"mock":      "use_for_mock",
-	"vacancies": "use_for_vacancies",
-}
-
 // NewAIModels wires the /ai/models module. No auth gate (public read);
 // the parent router whitelists `/api/v1/ai/models`.
 func NewAIModels(d monolithServices.Deps) *monolithServices.Module {
+	repo := adminInfra.NewAIModels(d.Pool)
+	uc := &adminApp.ListPublicAIModels{Models: repo}
 	return &monolithServices.Module{
 		MountREST: func(r chi.Router) {
-			r.Get("/ai/models", aiModelsHandler(d.Pool, d.Log))
+			r.Get("/ai/models", aiModelsHandler(uc, d.Log))
 		},
 	}
 }
@@ -66,84 +47,48 @@ func NewAIModels(d monolithServices.Deps) *monolithServices.Module {
 // aiModelsHandler builds the http.HandlerFunc. Single SELECT against
 // llm_models, no caching (5min staleTime on the client side is enough; the
 // catalogue rarely changes and the row count is tiny — currently 6).
-func aiModelsHandler(pool *pgxpool.Pool, log *slog.Logger) http.HandlerFunc {
+func aiModelsHandler(uc *adminApp.ListPublicAIModels, log *slog.Logger) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
 			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 			return
 		}
 
-		var useFilter string
+		var surface string
 		if v := strings.TrimSpace(r.URL.Query().Get("use")); v != "" {
-			col, ok := allowedUseSurfaces[v]
-			if !ok {
+			surface = v
+		}
+
+		items, err := uc.Do(r.Context(), adminDomain.PublicAIModelFilter{Surface: surface})
+		if err != nil {
+			if errors.Is(err, adminDomain.ErrInvalidInput) {
 				http.Error(w, "invalid use", http.StatusBadRequest)
 				return
 			}
-			useFilter = col
-		}
-
-		const baseQuery = `
-			SELECT model_id, label, provider, tier, COALESCE(is_virtual, FALSE)
-			  FROM llm_models
-			 WHERE is_enabled = TRUE`
-		query := baseQuery
-		if useFilter != "" {
-			// Column name is whitelisted via allowedUseSurfaces so direct
-			// interpolation is safe — never reachable from user input.
-			query += fmt.Sprintf(" AND %s = TRUE", useFilter)
-		}
-		query += " ORDER BY sort_order ASC, model_id ASC LIMIT 50"
-
-		rows, err := pool.Query(r.Context(), query)
-		if err != nil {
 			if log != nil {
 				log.ErrorContext(r.Context(), "ai_models: query failed", slog.Any("err", err))
 			}
 			http.Error(w, "internal", http.StatusInternalServerError)
 			return
 		}
-		defer rows.Close()
 
-		items := make([]aiModel, 0, 16)
-		for rows.Next() {
-			var (
-				modelID, label, provider, tier string
-				isVirtual                      bool
-			)
-			if err := rows.Scan(&modelID, &label, &provider, &tier, &isVirtual); err != nil {
-				if log != nil {
-					log.ErrorContext(r.Context(), "ai_models: scan failed", slog.Any("err", err))
-				}
-				http.Error(w, "internal", http.StatusInternalServerError)
-				return
-			}
-			items = append(items, aiModel{
-				ID:        modelID,
-				Label:     label,
-				Provider:  provider,
-				Tier:      tier,
-				Available: true,
-				IsVirtual: isVirtual,
+		out := make([]aiModel, 0, len(items))
+		for _, it := range items {
+			out = append(out, aiModel{
+				ID:        it.ID,
+				Label:     it.Label,
+				Provider:  it.Provider,
+				Tier:      it.Tier,
+				Available: it.Available,
+				IsVirtual: it.IsVirtual,
 			})
-		}
-		if err := rows.Err(); err != nil {
-			if log != nil {
-				log.ErrorContext(r.Context(), "ai_models: rows err", slog.Any("err", err))
-			}
-			http.Error(w, "internal", http.StatusInternalServerError)
-			return
 		}
 
 		w.Header().Set("Content-Type", "application/json")
 		w.Header().Set("Cache-Control", "max-age=300")
 		_ = json.NewEncoder(w).Encode(aiModelsResponse{
-			Available: len(items) > 0,
-			Items:     items,
+			Available: len(out) > 0,
+			Items:     out,
 		})
 	}
 }
-
-// _ keeps the context import used when log helpers are added later — the
-// build will trim it if unused so this is a no-op today.
-var _ = context.Background

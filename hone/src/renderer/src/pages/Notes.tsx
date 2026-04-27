@@ -717,6 +717,10 @@ export function NotesPage({ initialSelectedId, onConsumeInitial, initialCueNote,
       setSelectedId((cur) => (cur === tempId ? n.id : cur));
       // Active note: подменяем id, draft уже совпадает.
       setActive((cur) => (cur && cur.id === tempId ? { ...cur, id: n.id } : cur));
+      // Quota counter: SYNCED N/M в sidebar должен +1. Без этого
+      // юзер видит «0 / 10» сколько бы заметок ни создал, до hourly
+      // auto-refresh.
+      void useQuotaStore.getState().refresh();
 
       // Default-encrypt: если vault unlocked'ed (а он по дефолту unlocked
       // через VaultUnlockGate), сразу encrypt'аем свежесозданную note.
@@ -864,6 +868,7 @@ export function NotesPage({ initialSelectedId, onConsumeInitial, initialCueNote,
           notes: prev.notes.map((n) => (n.id === id ? { ...n, id: effectiveId } : n)),
         }));
         setSelectedId((cur) => (cur === id ? effectiveId : cur));
+        void useQuotaStore.getState().refresh();
       }
       const status = await publishNote(effectiveId);
       if (status.url) {
@@ -928,6 +933,7 @@ export function NotesPage({ initialSelectedId, onConsumeInitial, initialCueNote,
           notes: prev.notes.map((n) => (n.id === id ? { ...n, id: effectiveId } : n)),
         }));
         setSelectedId((cur) => (cur === id ? effectiveId : cur));
+        void useQuotaStore.getState().refresh();
       }
       const note = await getNote(effectiveId);
       if (note.bodyMd === undefined) {
@@ -1039,6 +1045,8 @@ export function NotesPage({ initialSelectedId, onConsumeInitial, initialCueNote,
             notes: prev.notes.map((n) => (n.id === noteId ? { ...n, id: effectiveId } : n)),
           }));
           if (selectedId === noteId) setSelectedId(effectiveId);
+          // promote = createNote → SYNCED counter +1.
+          void useQuotaStore.getState().refresh();
         } catch (err) {
           console.error('promoteToCloud failed', err);
           setToast('Не удалось перенести заметку в облако');
@@ -1280,10 +1288,18 @@ function SidebarImpl({ list, selectedId, metaMap, activeCueSessionId, cueSession
 
   // childrenByParent — карта «parent_id → folder[]». null parent = корневые
   // папки. Один проход по списку.
+  //
+  // Resilience: если у папки parent_id указывает на несуществующую папку
+  // (orphan — может случиться при race'е delete или старом backend'е без
+  // re-parent'а в DeleteFolder), её всё равно показываем — promote'им в
+  // root. Без этого юзер видит «папка пропала» после удаления родителя
+  // и думает, что content потерян.
   const childrenByParent = useMemo(() => {
     const m = new Map<string | null, Folder[]>();
+    const idSet = new Set(folders.map((f) => f.id));
     for (const f of folders) {
-      const k = f.parentId ?? null;
+      const rawParent = f.parentId ?? null;
+      const k = rawParent !== null && !idSet.has(rawParent) ? null : rawParent;
       const arr = m.get(k) ?? [];
       arr.push(f);
       m.set(k, arr);
@@ -1347,22 +1363,37 @@ function SidebarImpl({ list, selectedId, metaMap, activeCueSessionId, cueSession
         onToggleCollapse={onToggleCollapse}
       />
 
-      {/* Cue Sessions — backend-driven отдельная секция выше Folders.
-          Без drag-target / без "+" / без "move-to". Каждая row — title +
-          дата + (на hover) delete-точка. */}
-      {cueSessions.length > 0 && (
-        <div style={{ marginBottom: 10 }}>
-          <div style={{
-            padding: '4px 14px 2px',
-            fontSize: 9.5,
-            fontWeight: 600,
-            letterSpacing: '0.10em',
-            textTransform: 'uppercase',
-            color: 'var(--ink-40)',
+      {/* Cue Sessions — backend-driven системная секция, ВСЕГДА видима.
+          Не drop-target / не draggable / без "+". Empty-state — hint
+          куда смотреть когда юзер сделает первую запись в Cue desktop'е.
+          Намеренно сделана не folder'ом в hone_folders, а отдельной
+          системной таблицей: юзер не сможет случайно удалить «папку
+          куда складываются записи». */}
+      <div style={{ marginBottom: 10 }}>
+        <div style={{
+          padding: '4px 14px 2px',
+          fontSize: 9.5,
+          fontWeight: 600,
+          letterSpacing: '0.10em',
+          textTransform: 'uppercase',
+          color: 'var(--ink-40)',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 6,
+        }}>
+          <span>Cue Sessions</span>
+          <span style={{
+            fontSize: 9,
+            fontWeight: 500,
+            letterSpacing: 0,
+            textTransform: 'none',
+            color: 'var(--ink-30)',
           }}>
-            Cue Sessions
-          </div>
-          {cueSessions.map((s) => (
+            ({cueSessions.length})
+          </span>
+        </div>
+        {cueSessions.length > 0 ? (
+          cueSessions.map((s) => (
             <CueSessionRow
               key={s.id}
               session={s}
@@ -1370,10 +1401,23 @@ function SidebarImpl({ list, selectedId, metaMap, activeCueSessionId, cueSession
               onSelect={() => onSelectCueSession(s.id)}
               onDelete={() => onDeleteCueSession(s.id)}
             />
-          ))}
-          <div style={{ height: 1, background: 'rgba(255,255,255,0.06)', margin: '8px 0' }} />
-        </div>
-      )}
+          ))
+        ) : (
+          <div style={{
+            margin: '4px 8px 6px',
+            padding: '10px 12px',
+            border: '1px dashed rgba(255,255,255,0.10)',
+            borderRadius: 8,
+            fontSize: 11.5,
+            lineHeight: 1.45,
+            color: 'var(--ink-40)',
+          }}>
+            Записи из Cue появятся здесь.<br/>
+            Сделай запись → Save analysis → Open in Hone.
+          </div>
+        )}
+        <div style={{ height: 1, background: 'rgba(255,255,255,0.06)', margin: '8px 0' }} />
+      </div>
 
       {/* Folder tree — рендерится ВСЕГДА (даже если folders=0), иначе
           юзер не видит «+ folder» кнопку и не может создать первую. */}

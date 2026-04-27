@@ -86,6 +86,10 @@ export const invokeChannels = {
 
   notesShowInFolder: 'notes:show-in-folder',
   notesOpenInHone: 'notes:open-in-hone',
+  /** Renderer → main: snapshot current chat (title + messages) → JSON
+   *  file → fire druz9://notes/import. Hone backend импортит как Cue
+   *  session с body_md из markdown'а ассистент-ответов + user-prompt'ов. */
+  notesSaveChatToHone: 'notes:save-chat-to-hone',
 
   appQuit: 'app:quit',
 
@@ -197,6 +201,20 @@ export const eventChannels = {
    *  sessions list. Payload: { filePath: string }. */
   cueOpenSession: 'cue:openSession',
 } as const;
+
+// SaveChatInput — payload для notes:save-chat-to-hone. Renderer (chat
+// window) собирает сообщения, main process пишет JSON и шлёт в Hone.
+export interface SaveChatInput {
+  /** Заголовок будущей заметки. Если пустой — автогенерится из первого
+   *  user prompt'а («First 60 chars…»). */
+  title: string;
+  /** Сообщения в порядке от старого к новому. Markdown сохраняется
+   *  as-is (ассистент-ответы уже markdown). */
+  messages: Array<{
+    role: 'user' | 'assistant';
+    content: string;
+  }>;
+}
 
 export interface PickerStateEvent {
   /** Which picker is open. null when no picker is visible. */
@@ -657,6 +675,14 @@ export interface Druz9API {
     showInFolder: (filePath: string) => Promise<void>;
     /** Open Hone with a deep-link pointing at the notes file. */
     openInHone: (filePath: string) => Promise<void>;
+    /**
+     * Snapshot a chat conversation → JSON file → fire deep-link так же
+     * как session-analysis flow. Hone импортит в Cue Sessions section.
+     * Synthesises a CueSessionAnalysis-like envelope: messages идут в
+     * reportMarkdown, остальные поля — empty arrays + рассчитываемый
+     * sessionId. Returns saved file path.
+     */
+    saveChatToHone: (input: SaveChatInput) => Promise<{ filePath: string }>;
   };
 
   app: {

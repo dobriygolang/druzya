@@ -98,6 +98,20 @@ func (mr *MockRoomRepoMockRecorder) Create(ctx, r any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Create", reflect.TypeOf((*MockRoomRepo)(nil).Create), ctx, r)
 }
 
+// DeleteOwned mocks base method.
+func (m *MockRoomRepo) DeleteOwned(ctx context.Context, id, ownerID uuid.UUID) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DeleteOwned", ctx, id, ownerID)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// DeleteOwned indicates an expected call of DeleteOwned.
+func (mr *MockRoomRepoMockRecorder) DeleteOwned(ctx, id, ownerID any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteOwned", reflect.TypeOf((*MockRoomRepo)(nil).DeleteOwned), ctx, id, ownerID)
+}
+
 // ExtendExpires mocks base method.
 func (m *MockRoomRepo) ExtendExpires(ctx context.Context, id uuid.UUID, newExpires time.Time) error {
 	m.ctrl.T.Helper()

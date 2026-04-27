@@ -22,6 +22,7 @@ import (
 	subApp "druz9/subscription/app"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/redis/go-redis/v9"
 )
@@ -94,20 +95,25 @@ type Deps struct {
 	// write-routes (notes/whiteboards POST'ы) этим middleware'ом, чтобы
 	// возвращать 413 quota_exceeded при превышении тарифа. nil-safe:
 	// при отсутствии gate'а write'ы пропускаются без проверки. Built в
-	// bootstrap'е до NewHone.
-	StorageGate *StorageGate
+	// bootstrap'е до NewHone. Interface — конкретный тип живёт в
+	// services/storage package (был вынесен туда, чтобы избежать
+	// circular import services/types.go ↔ services/storage).
+	StorageGate StorageGate
 
 	// SyncHeartbeat — Phase C-3.1 device-revocation gate + throttled
 	// last_seen_at UPDATE. Подключается в router.go gated REST chain.
 	// nil-safe: при nil middleware превращается в passthrough.
-	SyncHeartbeat *SyncHeartbeat
+	// Interface — конкретный тип (*sync.Heartbeat) живёт в
+	// services/sync (вынесен туда, чтобы избежать cycle через Deps).
+	SyncHeartbeat SyncHeartbeatGate
 
 	// SyncEventBroker — Phase C-6.2 in-process pubsub для realtime SSE
 	// push. Write-handlers (yjs append, vault encrypt/decrypt, sync push)
 	// дёргают Publish*; SSE-subscriber'ы получают fan-out. nil-safe: при
 	// nil publish — no-op (callers проверяют). Built в bootstrap до
-	// модулей которые его используют.
-	SyncEventBroker *SyncEventBroker
+	// модулей которые его используют. Interface — конкретный тип
+	// (*sync.Broker) живёт в services/sync.
+	SyncEventBroker SyncBroker
 
 	// Quota wiring — populated by NewSubscription и потребляется enforce-
 	// middleware'ами в whiteboard / editor / notes. Все three nil-safe:
@@ -116,6 +122,31 @@ type Deps struct {
 	QuotaResolver    *subApp.PolicyResolver
 	QuotaTierGetter  *subApp.GetTier
 	QuotaUsageReader subApp.UsageReader
+}
+
+// StorageGate is the cross-domain interface Hone (and any future writer)
+// uses to wrap write-routes with the quota guard. Конкретный тип
+// (*storage.StorageGate) живёт в `cmd/monolith/services/storage` —
+// объявлен здесь как interface, чтобы services/types.go не импортировал
+// services/storage (тот импортирует services для Deps/Module → cycle).
+type StorageGate interface {
+	Middleware(h http.Handler) http.Handler
+}
+
+// SyncBroker — interface that Deps.SyncEventBroker exposes to consumers
+// (hone vault/yjs use-cases via honeDomain.SyncEventPublisher). Конкретный
+// тип (*sync.Broker) живёт в `cmd/monolith/services/sync` — narrow
+// interface here предотвращает cycle services/types.go ↔ services/sync.
+type SyncBroker interface {
+	PublishYjsAppend(userID uuid.UUID, entityKind, parentID string, originDeviceID uuid.UUID)
+	PublishSyncChange(userID uuid.UUID, table string, originDeviceID uuid.UUID)
+}
+
+// SyncHeartbeatGate — interface that Deps.SyncHeartbeat exposes to
+// router.go for middleware chaining. Конкретный тип (*sync.Heartbeat)
+// живёт в `cmd/monolith/services/sync`.
+type SyncHeartbeatGate interface {
+	Middleware(next http.Handler) http.Handler
 }
 
 // Module is what every NewXxx returns: enough metadata for router.go to

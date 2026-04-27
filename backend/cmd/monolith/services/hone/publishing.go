@@ -1,23 +1,8 @@
 // Package services — Phase C-4 «Publish to web» для hone_notes.
-//
-// Owns:
-//   - POST /api/v1/notes/{id}/publish        — owner toggles to public
-//   - POST /api/v1/notes/{id}/unpublish      — owner toggles back to private
-//   - GET  /api/v1/notes/{id}/publish-status — owner fetches current state
-//   - GET  /p/{slug}                         — public HTML view (root mount,
-//     no auth)
-//
-// Markdown→HTML render: github.com/gomarkdown/markdown с CommonExtensions.
-// HTML passthrough OFF — вредный markdown'ом подсунутый <script> escape'нут.
-//
-// /p/{slug} — самодостаточный HTML с inline CSS, OG meta, strict CSP.
-// Без JS, без внешних CDN.
 package hone
 
 import (
 	"context"
-	"crypto/rand"
-	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -29,42 +14,60 @@ import (
 	"time"
 
 	monolithServices "druz9/cmd/monolith/services"
+	honeApp "druz9/hone/app"
+	honeDomain "druz9/hone/domain"
 	sharedMw "druz9/shared/pkg/middleware"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
 
 	"github.com/gomarkdown/markdown"
 	mdhtml "github.com/gomarkdown/markdown/html"
 	"github.com/gomarkdown/markdown/parser"
 )
 
+// PublishingDeps — что нужно handler'у. Заполняется в bootstrap'е.
+type PublishingDeps struct {
+	Publish   *honeApp.PublishNote
+	Unpublish *honeApp.UnpublishNote
+	Status    *honeApp.PublishStatus
+	BulkMeta  *honeApp.BulkNotesMeta
+	Public    *honeApp.PublicView
+	Log       *slog.Logger
+}
+
 // NewPublishing wires the publish-to-web module.
-func NewPublishing(d monolithServices.Deps) *monolithServices.Module {
-	h := &publishingHandler{pool: d.Pool, log: d.Log}
+func NewPublishing(deps PublishingDeps) *monolithServices.Module {
+	h := &publishingHandler{
+		publish:   deps.Publish,
+		unpublish: deps.Unpublish,
+		status:    deps.Status,
+		bulkMeta:  deps.BulkMeta,
+		public:    deps.Public,
+		log:       deps.Log,
+	}
 	return &monolithServices.Module{
 		MountREST: func(r chi.Router) {
-			r.Post("/notes/{id}/publish", h.publish)
-			r.Post("/notes/{id}/unpublish", h.unpublish)
-			r.Get("/notes/{id}/publish-status", h.status)
+			r.Post("/notes/{id}/publish", h.publishHTTP)
+			r.Post("/notes/{id}/unpublish", h.unpublishHTTP)
+			r.Get("/notes/{id}/publish-status", h.statusHTTP)
 			// Bulk meta — фронт читает на mount списка чтобы рисовать
-			// lock-icons / publish-индикаторы в sidebar без N+1
-			// per-row hover-fetch'ей. Возвращает только flags, не body —
-			// для encrypted notes это безопасно (server'у разрешено
-			// видеть факт шифрования, не сам plaintext).
-			r.Get("/notes/meta", h.bulkMeta)
+			// lock-icons / publish-индикаторы в sidebar без N+1.
+			r.Get("/notes/meta", h.bulkMetaHTTP)
 		},
 		MountRoot: func(r chi.Router) {
-			r.Get("/p/{slug}", h.publicView)
+			r.Get("/p/{slug}", h.publicViewHTTP)
 		},
 	}
 }
 
 type publishingHandler struct {
-	pool *pgxpool.Pool
-	log  *slog.Logger
+	publish   *honeApp.PublishNote
+	unpublish *honeApp.UnpublishNote
+	status    *honeApp.PublishStatus
+	bulkMeta  *honeApp.BulkNotesMeta
+	public    *honeApp.PublicView
+	log       *slog.Logger
 }
 
 // ─── Owner-only operations ────────────────────────────────────────────────
@@ -75,7 +78,7 @@ type publishResponse struct {
 	PublishedAt time.Time `json:"publishedAt"`
 }
 
-func (h *publishingHandler) publish(w http.ResponseWriter, r *http.Request) {
+func (h *publishingHandler) publishHTTP(w http.ResponseWriter, r *http.Request) {
 	uid, ok := sharedMw.UserIDFromContext(r.Context())
 	if !ok {
 		writePubJSONError(w, http.StatusUnauthorized, "unauthenticated", "")
@@ -87,86 +90,27 @@ func (h *publishingHandler) publish(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Idempotent: если уже опубликовано — отдаём существующий slug.
-	var (
-		existingSlug *string
-		existingAt   *time.Time
-		encrypted    bool
-	)
-	err = h.pool.QueryRow(r.Context(),
-		`SELECT public_slug, published_at, encrypted FROM hone_notes
-		  WHERE id=$1 AND user_id=$2`,
-		noteID, uid,
-	).Scan(&existingSlug, &existingAt, &encrypted)
+	out, err := h.publish.Do(r.Context(), honeApp.PublishNoteInput{UserID: uid, NoteID: noteID})
 	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
+		switch {
+		case errors.Is(err, honeDomain.ErrNotFound):
 			writePubJSONError(w, http.StatusNotFound, "not_found", "")
-			return
+		case errors.Is(err, honeDomain.ErrEncryptedCannotPublish):
+			writePubJSONError(w, http.StatusConflict, "encrypted_cannot_publish",
+				"This note is encrypted (Private Vault). Decrypt before publishing.")
+		default:
+			h.serverError(w, r, "publish", err, uid)
 		}
-		h.serverError(w, r, "publish.lookup", err, uid)
-		return
-	}
-	if encrypted {
-		// Phase C-7: encrypted note нельзя publish (server не имеет
-		// plaintext'а чтобы render'нуть HTML). UI должен disable
-		// «Publish to web» в three-dots для encrypted notes.
-		writePubJSONError(w, http.StatusConflict, "encrypted_cannot_publish",
-			"This note is encrypted (Private Vault). Decrypt before publishing.")
-		return
-	}
-	if existingSlug != nil && existingAt != nil {
-		writePubJSON(w, http.StatusOK, publishResponse{
-			Slug:        *existingSlug,
-			URL:         publicURL(*existingSlug),
-			PublishedAt: *existingAt,
-		})
-		return
-	}
-
-	// Generate fresh slug — 12 hex chars (48 bits ≈ 280 trillion).
-	// Retry-loop on UNIQUE collision (всё равно должно быть исчезающе
-	// редко — production-grade defensive).
-	var (
-		newSlug string
-		newAt   time.Time
-	)
-	const maxAttempts = 5
-	for attempt := 0; attempt < maxAttempts; attempt++ {
-		candidate, gerr := generateSlug()
-		if gerr != nil {
-			h.serverError(w, r, "publish.slug-gen", gerr, uid)
-			return
-		}
-		err = h.pool.QueryRow(r.Context(),
-			`UPDATE hone_notes
-			    SET public_slug = $3, published_at = now()
-			  WHERE id = $1 AND user_id = $2
-			RETURNING public_slug, published_at`,
-			noteID, uid, candidate,
-		).Scan(&newSlug, &newAt)
-		if err == nil {
-			break
-		}
-		// Unique-violation = SQLSTATE 23505. Try again with new slug.
-		if strings.Contains(err.Error(), "23505") {
-			continue
-		}
-		h.serverError(w, r, "publish.update", err, uid)
-		return
-	}
-	if newSlug == "" {
-		h.serverError(w, r, "publish.slug-collision-exhausted",
-			fmt.Errorf("%d attempts failed", maxAttempts), uid)
 		return
 	}
 	writePubJSON(w, http.StatusOK, publishResponse{
-		Slug:        newSlug,
-		URL:         publicURL(newSlug),
-		PublishedAt: newAt,
+		Slug:        out.Slug,
+		URL:         publicURL(out.Slug),
+		PublishedAt: out.PublishedAt,
 	})
 }
 
-func (h *publishingHandler) unpublish(w http.ResponseWriter, r *http.Request) {
+func (h *publishingHandler) unpublishHTTP(w http.ResponseWriter, r *http.Request) {
 	uid, ok := sharedMw.UserIDFromContext(r.Context())
 	if !ok {
 		writePubJSONError(w, http.StatusUnauthorized, "unauthenticated", "")
@@ -177,18 +121,12 @@ func (h *publishingHandler) unpublish(w http.ResponseWriter, r *http.Request) {
 		writePubJSONError(w, http.StatusBadRequest, "bad_id", "")
 		return
 	}
-	cmd, err := h.pool.Exec(r.Context(),
-		`UPDATE hone_notes
-		    SET public_slug = NULL, published_at = NULL
-		  WHERE id = $1 AND user_id = $2`,
-		noteID, uid,
-	)
-	if err != nil {
+	if err := h.unpublish.Do(r.Context(), honeApp.UnpublishNoteInput{UserID: uid, NoteID: noteID}); err != nil {
+		if errors.Is(err, honeDomain.ErrNotFound) {
+			writePubJSONError(w, http.StatusNotFound, "not_found", "")
+			return
+		}
 		h.serverError(w, r, "unpublish", err, uid)
-		return
-	}
-	if cmd.RowsAffected() == 0 {
-		writePubJSONError(w, http.StatusNotFound, "not_found", "")
 		return
 	}
 	writePubJSON(w, http.StatusOK, map[string]bool{"ok": true})
@@ -201,7 +139,7 @@ type publishStatusResponse struct {
 	At        *time.Time `json:"publishedAt,omitempty"`
 }
 
-func (h *publishingHandler) status(w http.ResponseWriter, r *http.Request) {
+func (h *publishingHandler) statusHTTP(w http.ResponseWriter, r *http.Request) {
 	uid, ok := sharedMw.UserIDFromContext(r.Context())
 	if !ok {
 		writePubJSONError(w, http.StatusUnauthorized, "unauthenticated", "")
@@ -212,29 +150,20 @@ func (h *publishingHandler) status(w http.ResponseWriter, r *http.Request) {
 		writePubJSONError(w, http.StatusBadRequest, "bad_id", "")
 		return
 	}
-	var (
-		slugVal *string
-		atVal   *time.Time
-	)
-	err = h.pool.QueryRow(r.Context(),
-		`SELECT public_slug, published_at FROM hone_notes
-		  WHERE id=$1 AND user_id=$2`,
-		noteID, uid,
-	).Scan(&slugVal, &atVal)
+	out, err := h.status.Do(r.Context(), honeApp.PublishStatusInput{UserID: uid, NoteID: noteID})
 	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
+		if errors.Is(err, honeDomain.ErrNotFound) {
 			writePubJSONError(w, http.StatusNotFound, "not_found", "")
 			return
 		}
 		h.serverError(w, r, "status", err, uid)
 		return
 	}
-	resp := publishStatusResponse{}
-	if slugVal != nil && atVal != nil {
-		resp.Published = true
-		resp.Slug = *slugVal
-		resp.URL = publicURL(*slugVal)
-		resp.At = atVal
+	resp := publishStatusResponse{Published: out.Published}
+	if out.Published {
+		resp.Slug = out.Slug
+		resp.URL = publicURL(out.Slug)
+		resp.At = out.At
 	}
 	writePubJSON(w, http.StatusOK, resp)
 }
@@ -251,63 +180,35 @@ type bulkMetaResponse struct {
 	Notes []noteMeta `json:"notes"`
 }
 
-// bulkMeta возвращает per-note flags для всех активных (не archived)
-// заметок юзера. archived из выдачи исключаем, потому что они не
-// показываются в sidebar — flag для них бесполезен и тратит bytes.
-func (h *publishingHandler) bulkMeta(w http.ResponseWriter, r *http.Request) {
+func (h *publishingHandler) bulkMetaHTTP(w http.ResponseWriter, r *http.Request) {
 	uid, ok := sharedMw.UserIDFromContext(r.Context())
 	if !ok {
 		writePubJSONError(w, http.StatusUnauthorized, "unauthenticated", "")
 		return
 	}
-	rows, err := h.pool.Query(r.Context(),
-		`SELECT id, encrypted, (public_slug IS NOT NULL AND published_at IS NOT NULL) AS published
-		   FROM hone_notes
-		  WHERE user_id = $1 AND archived_at IS NULL`,
-		uid,
-	)
+	out, err := h.bulkMeta.Do(r.Context(), honeApp.BulkNotesMetaInput{UserID: uid})
 	if err != nil {
-		h.serverError(w, r, "bulkMeta.query", err, uid)
+		h.serverError(w, r, "bulkMeta", err, uid)
 		return
 	}
-	defer rows.Close()
-	resp := bulkMetaResponse{Notes: make([]noteMeta, 0, 32)}
-	for rows.Next() {
-		var m noteMeta
-		if err := rows.Scan(&m.ID, &m.Encrypted, &m.Published); err != nil {
-			h.serverError(w, r, "bulkMeta.scan", err, uid)
-			return
-		}
-		resp.Notes = append(resp.Notes, m)
-	}
-	if err := rows.Err(); err != nil {
-		h.serverError(w, r, "bulkMeta.rows", err, uid)
-		return
+	resp := bulkMetaResponse{Notes: make([]noteMeta, 0, len(out.Notes))}
+	for _, m := range out.Notes {
+		resp.Notes = append(resp.Notes, noteMeta{ID: m.ID, Encrypted: m.Encrypted, Published: m.Published})
 	}
 	writePubJSON(w, http.StatusOK, resp)
 }
 
 // ─── Public view ──────────────────────────────────────────────────────────
 
-func (h *publishingHandler) publicView(w http.ResponseWriter, r *http.Request) {
+func (h *publishingHandler) publicViewHTTP(w http.ResponseWriter, r *http.Request) {
 	slug := chi.URLParam(r, "slug")
 	if slug == "" {
 		http.NotFound(w, r)
 		return
 	}
-	var (
-		title     string
-		bodyMD    string
-		updatedAt time.Time
-	)
-	err := h.pool.QueryRow(r.Context(),
-		`SELECT title, body_md, updated_at FROM hone_notes
-		  WHERE public_slug = $1 AND published_at IS NOT NULL
-		    AND archived_at IS NULL`,
-		slug,
-	).Scan(&title, &bodyMD, &updatedAt)
+	out, err := h.public.Do(r.Context(), honeApp.PublicViewInput{Slug: slug})
 	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
+		if errors.Is(err, honeDomain.ErrNotFound) {
 			renderNotFound(w)
 			return
 		}
@@ -317,9 +218,9 @@ func (h *publishingHandler) publicView(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// 5-минутный edge-cache: бот-краулеры, refresh, share-preview не
-	// дёргают БД на каждый hit. Свежий body после edit'а появится
-	// максимум через 5 минут на public странице.
+	// 5-минутный edge-cache: бот-краулеры, refresh, share-preview не дёргают
+	// БД на каждый hit. Свежий body после edit'а появится максимум через 5
+	// минут на public странице.
 	w.Header().Set("Cache-Control", "public, max-age=300")
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.Header().Set("X-Content-Type-Options", "nosniff")
@@ -327,19 +228,10 @@ func (h *publishingHandler) publicView(w http.ResponseWriter, r *http.Request) {
 	// никаких внешних ресурсов кроме картинок (data: + https:).
 	w.Header().Set("Content-Security-Policy",
 		"default-src 'none'; style-src 'unsafe-inline'; img-src data: https:; base-uri 'none';")
-	_, _ = w.Write([]byte(renderPublicHTML(title, bodyMD, updatedAt)))
+	_, _ = w.Write([]byte(renderPublicHTML(out.Title, out.BodyMD, out.UpdatedAt)))
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────
-
-// generateSlug — 12 hex chars (48 bits) crypto/rand.
-func generateSlug() (string, error) {
-	var b [6]byte
-	if _, err := rand.Read(b[:]); err != nil {
-		return "", fmt.Errorf("publishing.generateSlug: %w", err)
-	}
-	return hex.EncodeToString(b[:]), nil
-}
 
 // publicURL — абсолютный URL для public-страницы. DRUZ9_PUBLIC_URL
 // env override'ит default (для dev-хоста).

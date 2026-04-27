@@ -10,6 +10,7 @@ import (
 	"mime/multipart"
 	"net/http"
 	"net/textproto"
+	"os"
 	"time"
 
 	"druz9/transcription/domain"
@@ -26,10 +27,17 @@ import (
 //	  prompt=<bias>      (optional)
 //	  response_format=json
 //
-// We use whisper-large-v3-turbo because it's the fastest model on Groq
-// (>150x real-time on their hardware) while matching medium-quality
-// English+Russian output. Cost per minute is included in the shared
-// GROQ free-tier that llmchain already uses.
+// Model selection rationale:
+//   - whisper-large-v3 (non-turbo) — лучшая бесплатная транскрипция
+//     для русского языка в 2025-26: на mixed-lang meeting'ах турбо-
+//     версия часто пропускает technical terms / имена собственные.
+//     Latency на Groq всё равно ~10-20x real-time, для 1-3s chunk'ов
+//     это +200-400ms — невидимо на типичном meeting flow.
+//   - Можно override через GROQ_TRANSCRIPTION_MODEL env (например
+//     обратно на whisper-large-v3-turbo если хочется быстрее, или
+//     'distil-whisper-large-v3-en' для чисто английского).
+//
+// Cost per minute остаётся включённым в shared GROQ free-tier.
 type GroqProvider struct {
 	APIKey  string
 	BaseURL string
@@ -41,10 +49,16 @@ type GroqProvider struct {
 // Timeout is 60s — long enough for a 10min audio clip, short enough
 // that a stuck connection doesn't hold the request handler forever.
 func NewGroqProvider(apiKey string) *GroqProvider {
+	model := os.Getenv("GROQ_TRANSCRIPTION_MODEL")
+	if model == "" {
+		// Default — non-turbo для лучшего качества на russian.
+		// Outliers (cleancare english) могут override'нуть env'ом.
+		model = "whisper-large-v3"
+	}
 	return &GroqProvider{
 		APIKey:  apiKey,
 		BaseURL: "https://api.groq.com/openai/v1",
-		Model:   "whisper-large-v3-turbo",
+		Model:   model,
 		client:  &http.Client{Timeout: 60 * time.Second},
 	}
 }

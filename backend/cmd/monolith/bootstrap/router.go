@@ -44,7 +44,7 @@ type routerDeps struct {
 	Modules     []*services.Module // every Module in mount order, including auth's
 	// SyncHeartbeat — Phase C-3.1 middleware. Применяется ПОСЛЕ auth-gate'а
 	// в /api/v1 chain'е и в Connect-mux'е (через wrap auth + tier).
-	SyncHeartbeat *services.SyncHeartbeat
+	SyncHeartbeat services.SyncHeartbeatGate
 }
 
 func buildHandler(d routerDeps) http.Handler {

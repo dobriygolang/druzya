@@ -540,6 +540,71 @@ export function registerHandlers(opts: RegisterOptions): void {
     await shell.openExternal(`druz9://notes/import?path=${encoded}`);
   });
 
+  // notes:save-chat-to-hone — snapshot chat → CueSessionAnalysis-shaped
+  // JSON → fire deeplink. Hone backend импортит row в hone_cue_sessions
+  // (UNIQUE по file_path → повторный snapshot перезаписывает row но НЕ
+  // body_md если юзер уже редактировал). Файл живёт в userData/notes
+  // рядом с meeting-сессиями — единый bucket, одна точка ремонта.
+  handleIn(
+    invokeChannels.notesSaveChatToHone,
+    z.object({
+      title: z.string(),
+      messages: z.array(z.object({
+        role: z.enum(['user', 'assistant']),
+        content: z.string(),
+      })),
+    }),
+    async (input) => {
+      const { mkdir, writeFile } = await import('node:fs/promises');
+      const { join } = await import('node:path');
+      const dir = join(app.getPath('userData'), 'notes');
+      await mkdir(dir, { recursive: true });
+
+      const dateStr = new Date().toISOString().slice(0, 10);
+      const ts = Date.now().toString(36);
+      const filename = `chat_${dateStr}_${ts}.json`;
+      const filePath = join(dir, filename);
+
+      const titleFallback = input.title.trim() ||
+        (input.messages.find((m) => m.role === 'user')?.content || 'Chat')
+          .replace(/\s+/g, ' ').slice(0, 60);
+
+      const md = input.messages
+        .map((m) => {
+          const heading = m.role === 'user' ? '### You' : '### Assistant';
+          return `${heading}\n\n${m.content}`;
+        })
+        .join('\n\n---\n\n');
+
+      // Envelope shape mirrors SessionAnalysis (см. @shared/types) чтобы
+      // Hone-renderer'у не пришлось ветвиться. Большинство полей пусты —
+      // chat не имеет structured action items / decisions.
+      const envelope = {
+        sessionId: `chat-${ts}`,
+        title: titleFallback,
+        tldr: '',
+        startedAt: new Date().toISOString(),
+        finishedAt: new Date().toISOString(),
+        keyTopics: [],
+        actionItems: [],
+        terminology: [],
+        decisions: [],
+        openQuestions: [],
+        reportMarkdown: md,
+        overallScore: 0,
+        usage: null,
+        // discriminator для будущего bucket'а — Hone может разделять
+        // chat'ы и meeting'и в UI, если захочет.
+        kind: 'chat',
+      };
+      await writeFile(filePath, JSON.stringify(envelope, null, 2), 'utf-8');
+
+      const encoded = Buffer.from(filePath).toString('base64');
+      await shell.openExternal(`druz9://notes/import?path=${encoded}`);
+      return { filePath };
+    },
+  );
+
   // ── App lifecycle ──
   ipcMain.handle(invokeChannels.appQuit, async () => {
     // Give the analyzer subscriber a moment to drain; then quit.

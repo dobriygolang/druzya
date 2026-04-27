@@ -700,6 +700,18 @@ type Friendship struct {
 	AcceptedAt  pgtype.Timestamptz
 }
 
+type HoneCueSession struct {
+	ID              pgtype.UUID
+	UserID          pgtype.UUID
+	FilePath        string
+	Title           string
+	BodyMd          string
+	RawAnalysisJson []byte
+	StartedAt       pgtype.Timestamptz
+	ImportedAt      pgtype.Timestamptz
+	UpdatedAt       pgtype.Timestamptz
+}
+
 type HoneDailyBrief struct {
 	ID          pgtype.UUID
 	UserID      pgtype.UUID

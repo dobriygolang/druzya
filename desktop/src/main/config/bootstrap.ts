@@ -18,7 +18,15 @@ export interface RuntimeConfig {
 }
 
 export function loadRuntimeConfig(): RuntimeConfig {
-  const isDev = process.env.NODE_ENV !== 'production' && !process.env.ELECTRON_IS_PACKAGED;
+  // app.isPackaged — single source of truth: true в production .app-сборке,
+  // false под `electron-vite dev`. Старая проверка через NODE_ENV+
+  // ELECTRON_IS_PACKAGED ломалась в prod (Electron не выставляет ни одну из
+  // этих переменных автоматически → isDev резолвился в TRUE → tray-icon
+  // ресолвился в app.asar/resources вместо Contents/Resources).
+  // require('electron') для совместимости с CJS bundle main-процесса.
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { app } = require('electron') as typeof import('electron');
+  const isDev = !app.isPackaged;
   return {
     apiBaseURL:
       process.env.DRUZ9_API_BASE_URL ||

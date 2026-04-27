@@ -63,6 +63,10 @@ type RoomRepo interface {
 	UpdateFreeze(ctx context.Context, id uuid.UUID, frozen bool) (Room, error)
 	ExtendExpires(ctx context.Context, id uuid.UUID, newExpires time.Time) error
 	SetVisibility(ctx context.Context, id uuid.UUID, v Visibility) error
+	// DeleteOwned removes the room iff owner_id matches. Returns ErrNotFound
+	// when no row was deleted (either non-owner or unknown id) — callers MUST
+	// NOT distinguish these to avoid leaking room existence to non-owners.
+	DeleteOwned(ctx context.Context, id, ownerID uuid.UUID) error
 }
 
 // ParticipantRepo persists editor_participants rows.

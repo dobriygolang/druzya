@@ -6,11 +6,6 @@
 //	recurring_patterns  — top recurring missing_points across attempts
 //	score_trajectory    — total_score series for last N finished pipelines
 //
-// Direct SQL against pipeline_stages / pipeline_attempts / mock_pipelines
-// — no new proto, no new domain wiring. The intelligence service stays
-// focused on LLM-synthesised content; this is plain numeric aggregation
-// that doesn't need a BoundedContext of its own.
-//
 // All three queries are scoped to the caller's user_id. Empty result
 // sets render as "no data yet" cards on the frontend, never as errors.
 package ai_mock
@@ -22,18 +17,16 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
-	"strconv"
 	"strings"
 	"time"
 
+	aimockApp "druz9/ai_mock/app"
+	aimockInfra "druz9/ai_mock/infra"
 	monolithServices "druz9/cmd/monolith/services"
 	"druz9/shared/pkg/llmchain"
 	sharedMw "druz9/shared/pkg/middleware"
-	sharedpg "druz9/shared/pkg/pg"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/jackc/pgx/v5/pgtype"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/redis/go-redis/v9"
 )
 
@@ -77,11 +70,24 @@ type insightsOverviewResp struct {
 
 // NewMockInsights wires the public chi-direct insights endpoint.
 func NewMockInsights(d monolithServices.Deps) *monolithServices.Module {
+	repo := aimockInfra.NewInsights(d.Pool)
 	h := &mockInsightsHandler{
-		pool:  d.Pool,
 		log:   d.Log,
 		chain: d.LLMChain,
 		rdb:   d.Redis,
+	}
+	h.uc = &aimockApp.InsightsOverview{
+		Repo: repo,
+		OnPartialErr: func(ctx context.Context, op string, err error) {
+			if h.log == nil {
+				return
+			}
+			if errors.Is(err, http.ErrAbortHandler) {
+				return
+			}
+			h.log.WarnContext(ctx, "mock.insights: query failed",
+				slog.String("op", op), slog.Any("err", err))
+		},
 	}
 	return &monolithServices.Module{
 		MountREST: func(r chi.Router) {
@@ -91,7 +97,7 @@ func NewMockInsights(d monolithServices.Deps) *monolithServices.Module {
 }
 
 type mockInsightsHandler struct {
-	pool  *pgxpool.Pool
+	uc    *aimockApp.InsightsOverview
 	log   *slog.Logger
 	chain llmchain.ChatClient
 	rdb   *redis.Client
@@ -105,145 +111,48 @@ func (h *mockInsightsHandler) overview(w http.ResponseWriter, r *http.Request) {
 	}
 
 	ctx := r.Context()
+	res, _ := h.uc.Run(ctx, aimockApp.InsightsOverviewInput{
+		UserID:     uid,
+		WindowDays: insightsWindowDays,
+		ScoreLimit: insightsScoreLimit,
+		TopMissing: insightsTopMissing,
+	})
+
 	out := insightsOverviewResp{
-		WindowDays:        insightsWindowDays,
-		StagePerformance:  []stagePerformanceRow{},
-		RecurringPatterns: []recurringPatternRow{},
-		ScoreTrajectory:   []scoreTrajectoryRow{},
+		WindowDays:         insightsWindowDays,
+		StagePerformance:   make([]stagePerformanceRow, 0, len(res.StagePerformance)),
+		RecurringPatterns:  make([]recurringPatternRow, 0, len(res.RecurringPatterns)),
+		ScoreTrajectory:    make([]scoreTrajectoryRow, 0, len(res.ScoreTrajectory)),
+		TotalSessions30d:   res.Headline.TotalSessions,
+		PipelinePassRate30: res.Headline.PassRatePct,
 	}
-
-	// 1. Per-stage pass rate over the trailing 30-day window. We count
-	//    finished pipeline_stages owned by the caller and group by
-	//    stage_kind; pass = stage.verdict='pass'. Stages that ended in
-	//    'fail'/'borderline' or never finished are counted in `total`
-	//    but not in `passed`.
-	stageRows, err := h.pool.Query(ctx, `
-		SELECT s.stage_kind,
-		       COUNT(*) AS total,
-		       COUNT(*) FILTER (WHERE s.verdict = 'pass') AS passed
-		  FROM pipeline_stages s
-		  JOIN mock_pipelines p ON p.id = s.pipeline_id
-		 WHERE p.user_id = $1
-		   AND s.finished_at IS NOT NULL
-		   AND s.finished_at >= now() - ($2 || ' days')::interval
-		 GROUP BY s.stage_kind
-		 ORDER BY total DESC, s.stage_kind ASC`, sharedpg.UUID(uid), strconv.Itoa(insightsWindowDays))
-	if err != nil {
-		h.fail(r, err, "stage_performance")
-	} else {
-		for stageRows.Next() {
-			var row stagePerformanceRow
-			if scanErr := stageRows.Scan(&row.StageKind, &row.Total, &row.Passed); scanErr != nil {
-				continue
-			}
-			if row.Total > 0 {
-				row.PassRate = int(float64(row.Passed) / float64(row.Total) * 100.0)
-			}
-			out.StagePerformance = append(out.StagePerformance, row)
+	for _, sp := range res.StagePerformance {
+		row := stagePerformanceRow{StageKind: sp.StageKind, Total: sp.Total, Passed: sp.Passed}
+		if sp.Total > 0 {
+			row.PassRate = int(float64(sp.Passed) / float64(sp.Total) * 100.0)
 		}
-		stageRows.Close()
+		out.StagePerformance = append(out.StagePerformance, row)
 	}
-
-	// 2. Recurring patterns — top N missing_points across the user's
-	//    attempts in the window. ai_missing_points is a jsonb array of
-	//    short labels (e.g. "rate limiting", "consistency model"). We
-	//    unnest with jsonb_array_elements_text and group case-insensitively.
-	patternRows, err := h.pool.Query(ctx, `
-		SELECT lower(trim(point)) AS norm, COUNT(*) AS c
-		  FROM pipeline_attempts a
-		  JOIN pipeline_stages s ON s.id = a.pipeline_stage_id
-		  JOIN mock_pipelines p ON p.id = s.pipeline_id,
-		       LATERAL jsonb_array_elements_text(
-		         CASE jsonb_typeof(a.ai_missing_points)
-		           WHEN 'array' THEN a.ai_missing_points
-		           ELSE '[]'::jsonb
-		         END
-		       ) AS point
-		 WHERE p.user_id = $1
-		   AND a.ai_judged_at IS NOT NULL
-		   AND a.ai_judged_at >= now() - ($2 || ' days')::interval
-		   AND length(trim(point)) > 1
-		 GROUP BY norm
-		 ORDER BY c DESC
-		 LIMIT $3`,
-		sharedpg.UUID(uid), strconv.Itoa(insightsWindowDays), insightsTopMissing)
-	if err != nil {
-		h.fail(r, err, "recurring_patterns")
-	} else {
-		for patternRows.Next() {
-			var row recurringPatternRow
-			if scanErr := patternRows.Scan(&row.Point, &row.Count); scanErr != nil {
-				continue
-			}
-			out.RecurringPatterns = append(out.RecurringPatterns, row)
+	for _, rp := range res.RecurringPatterns {
+		out.RecurringPatterns = append(out.RecurringPatterns, recurringPatternRow{Point: rp.Point, Count: rp.Count})
+	}
+	for _, st := range res.ScoreTrajectory {
+		ts := ""
+		if !st.FinishedAt.IsZero() {
+			ts = st.FinishedAt.UTC().Format(time.RFC3339)
 		}
-		patternRows.Close()
+		out.ScoreTrajectory = append(out.ScoreTrajectory, scoreTrajectoryRow{
+			PipelineID: st.PipelineID.String(),
+			FinishedAt: ts,
+			Score:      st.Score,
+			Verdict:    st.Verdict,
+		})
 	}
 
-	// 3. Score trajectory — last N finished pipelines (any verdict
-	//    counts as finished except cancelled). Returned oldest→newest
-	//    for direct sparkline rendering.
-	scoreRows, err := h.pool.Query(ctx, `
-		WITH last_n AS (
-		  SELECT id, finished_at, total_score, verdict
-		    FROM mock_pipelines
-		   WHERE user_id = $1
-		     AND finished_at IS NOT NULL
-		     AND verdict IN ('pass','fail')
-		     AND total_score IS NOT NULL
-		   ORDER BY finished_at DESC
-		   LIMIT $2
-		)
-		SELECT id::text, finished_at, total_score, verdict
-		  FROM last_n
-		 ORDER BY finished_at ASC`,
-		sharedpg.UUID(uid), insightsScoreLimit)
-	if err != nil {
-		h.fail(r, err, "score_trajectory")
-	} else {
-		for scoreRows.Next() {
-			var (
-				pipelineID string
-				finishedAt pgtype.Timestamptz
-				score      float32
-				verdict    string
-			)
-			if scanErr := scoreRows.Scan(&pipelineID, &finishedAt, &score, &verdict); scanErr != nil {
-				continue
-			}
-			ts := ""
-			if finishedAt.Valid {
-				ts = finishedAt.Time.UTC().Format(time.RFC3339)
-			}
-			out.ScoreTrajectory = append(out.ScoreTrajectory, scoreTrajectoryRow{
-				PipelineID: pipelineID, FinishedAt: ts, Score: float64(score), Verdict: verdict,
-			})
-		}
-		scoreRows.Close()
-	}
-
-	// 4. Headline aggregates: total finished sessions + pipeline pass
-	//    rate over the same 30d window. Cheap, useful for the page hero.
-	if hErr := h.pool.QueryRow(ctx, `
-		SELECT COUNT(*),
-		       COALESCE(
-		         (COUNT(*) FILTER (WHERE verdict='pass'))::float
-		         / NULLIF(COUNT(*),0) * 100, 0
-		       )::int
-		  FROM mock_pipelines
-		 WHERE user_id = $1
-		   AND finished_at IS NOT NULL
-		   AND verdict IN ('pass','fail')
-		   AND finished_at >= now() - ($2 || ' days')::interval`,
-		sharedpg.UUID(uid), strconv.Itoa(insightsWindowDays),
-	).Scan(&out.TotalSessions30d, &out.PipelinePassRate30); hErr != nil {
-		h.fail(r, hErr, "headline")
-	}
-
-	// 5. AI summary — one short paragraph synthesised from the data
-	//    above. Cached 30min in Redis per user (key: mock:insights:
-	//    summary:{uid}) so we don't burn the LLM chain on every page
-	//    refresh. Skipped when there's no activity to talk about.
+	// AI summary — one short paragraph synthesised from the data
+	// above. Cached 30min in Redis per user (key: mock:insights:
+	// summary:{uid}) so we don't burn the LLM chain on every page
+	// refresh. Skipped when there's no activity to talk about.
 	if out.TotalSessions30d > 0 {
 		out.Summary = h.resolveSummary(ctx, uid.String(), out)
 	}
@@ -412,17 +321,4 @@ func buildInsightsSummaryPrompt(d insightsOverviewResp) string {
 	}
 	b.WriteString("\nWrite the paragraph now.")
 	return b.String()
-}
-
-// fail logs aggregation failures without surfacing partial errors to
-// the user. The handler always returns 200 with whatever blocks did
-// succeed — better UX than a single bad sub-query nuking the page.
-func (h *mockInsightsHandler) fail(r *http.Request, err error, op string) {
-	if h.log == nil {
-		return
-	}
-	if errors.Is(err, http.ErrAbortHandler) {
-		return
-	}
-	h.log.WarnContext(r.Context(), "mock.insights: query failed", slog.String("op", op), slog.Any("err", err))
 }

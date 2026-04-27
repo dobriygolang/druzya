@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"log/slog"
 	"net/http"
 	"time"
@@ -12,7 +11,6 @@ import (
 	monolithServices "druz9/cmd/monolith/services"
 	"druz9/shared/generated/pb/druz9/v1/druz9v1connect"
 	sharedMw "druz9/shared/pkg/middleware"
-	sharedpg "druz9/shared/pkg/pg"
 	subApp "druz9/subscription/app"
 	subDomain "druz9/subscription/domain"
 	subInfra "druz9/subscription/infra"
@@ -20,7 +18,6 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 // NewSubscription wires the centralised subscription-domain.
@@ -51,8 +48,8 @@ func WireSubscriptionQuota(d *monolithServices.Deps) {
 	pg := subInfra.NewPostgres(d.Pool)
 	clk := subDomain.RealClock{}
 	getTierUC := subApp.NewGetTier(pg, clk)
-	usageReader := &subscriptionUsageAdapter{pool: d.Pool}
-	configReader := &subscriptionConfigAdapter{pool: d.Pool}
+	usageReader := subInfra.NewQuotaUsageRepo(d.Pool)
+	configReader := subInfra.NewDynConfigRepo(d.Pool)
 	policyResolver := subApp.NewPolicyResolver(configReader)
 	d.QuotaResolver = policyResolver
 	d.QuotaTierGetter = getTierUC
@@ -67,8 +64,8 @@ func NewSubscription(d monolithServices.Deps) *monolithServices.Module {
 	getTierUC := subApp.NewGetTier(pg, clk)
 	setTierUC := subApp.NewSetTier(pg, clk, d.Log)
 	linkBoostyUC := subApp.NewLinkBoosty(linkRepo, clk, d.Log)
-	usageReader := &subscriptionUsageAdapter{pool: d.Pool}
-	configReader := &subscriptionConfigAdapter{pool: d.Pool}
+	usageReader := subInfra.NewQuotaUsageRepo(d.Pool)
+	configReader := subInfra.NewDynConfigRepo(d.Pool)
 	policyResolver := subApp.NewPolicyResolver(configReader)
 	getQuotaUC := subApp.NewGetQuota(getTierUC, usageReader, policyResolver)
 	quotaHandler := &quotaRestHandler{uc: getQuotaUC, log: d.Log}
@@ -198,74 +195,7 @@ func runBoostySync(ctx context.Context, uc *subApp.SyncBoosty, log *slog.Logger)
 	}
 }
 
-// ─── Quota usage adapter ──────────────────────────────────────────────────
-//
-// subscriptionUsageAdapter implements `subApp.UsageReader` через прямые pgx
-// queries в notes / whiteboard_rooms / editor_rooms таблицы. Чтобы
-// subscription-domain не импортировал чужие infra-пакеты — все queries
-// raw SQL. Это intentional cross-domain seam (та же логика что
-// honeSkillAtlasAdapter в adapters.go).
-//
-// Counting strategy:
-//   - SyncedNotes: notes принадлежащие user'у которые НЕ ephemeral
-//     (Phase 5 free-tier flow: free user'овые notes хранятся в IndexedDB
-//     and НЕ создают строку в notes table; create-flow гейтится middleware).
-//     Pre-Phase-5 plaintext notes считаются как "synced".
-//   - ActiveSharedBoards/Rooms: ownership=user_id AND visibility='shared'
-//     AND not expired.
-//   - AIThisMonth: пока stub'аем 0 — ai-usage log infrastructure не
-//     развёрнута (см. ai_mock service). После того как добавим — заменить.
-
-type subscriptionUsageAdapter struct {
-	pool *pgxpool.Pool
-}
-
-func (a *subscriptionUsageAdapter) CountSyncedNotes(ctx context.Context, userID uuid.UUID) (int, error) {
-	// hone_notes — actual table name (см. migrations/00014_hone_notes.sql).
-	// Раньше тут было ошибочное `notes` → каждый /quota request падал
-	// «relation \"notes\" does not exist». Free-tier фильтр (archived_at
-	// IS NULL) отсекает архивные ноты — они не считаются за quota.
-	const q = `SELECT count(*) FROM hone_notes WHERE user_id = $1 AND archived_at IS NULL`
-	var n int
-	if err := a.pool.QueryRow(ctx, q, sharedpg.UUID(userID)).Scan(&n); err != nil {
-		return 0, fmt.Errorf("subscription: count synced notes: %w", err)
-	}
-	return n, nil
-}
-
-func (a *subscriptionUsageAdapter) CountActiveSharedBoards(ctx context.Context, userID uuid.UUID) (int, error) {
-	const q = `SELECT count(*) FROM whiteboard_rooms
-	            WHERE owner_id = $1
-	              AND visibility = 'shared'
-	              AND expires_at > now()`
-	var n int
-	if err := a.pool.QueryRow(ctx, q, sharedpg.UUID(userID)).Scan(&n); err != nil {
-		return 0, fmt.Errorf("subscription: count active shared boards: %w", err)
-	}
-	return n, nil
-}
-
-func (a *subscriptionUsageAdapter) CountActiveSharedRooms(ctx context.Context, userID uuid.UUID) (int, error) {
-	const q = `SELECT count(*) FROM editor_rooms
-	            WHERE owner_id = $1
-	              AND visibility = 'shared'
-	              AND expires_at > now()`
-	var n int
-	if err := a.pool.QueryRow(ctx, q, sharedpg.UUID(userID)).Scan(&n); err != nil {
-		return 0, fmt.Errorf("subscription: count active shared rooms: %w", err)
-	}
-	return n, nil
-}
-
-func (a *subscriptionUsageAdapter) CountAIThisMonth(_ context.Context, _ uuid.UUID) (int, error) {
-	// AI usage log не развёрнут (см. design comment выше). Возвращаем 0
-	// чтобы quota check не блокировал AI calls на Phase 1. Заменить когда
-	// ai_usage_log table появится.
-	return 0, nil
-}
-
 // ─── Quota REST handler ───────────────────────────────────────────────────
-
 type quotaRestHandler struct {
 	uc  *subApp.GetQuota
 	log *slog.Logger
@@ -399,24 +329,4 @@ func dtoFromPolicy(p subDomain.QuotaPolicy) quotaPolicyDTO {
 		SharedTTLSeconds:   int64(p.SharedTTL / time.Second),
 		AIMonthly:          p.AIMonthly,
 	}
-}
-
-// ─── Dynamic config adapter ───────────────────────────────────────────────
-//
-// Реализует subApp.ConfigReader через прямой SELECT в `dynamic_config`.
-// Cross-domain seam (subscription не импортирует admin-domain).
-type subscriptionConfigAdapter struct {
-	pool *pgxpool.Pool
-}
-
-func (a *subscriptionConfigAdapter) GetConfig(ctx context.Context, key string) (string, error) {
-	const q = `SELECT value FROM dynamic_config WHERE key = $1`
-	var raw string
-	err := a.pool.QueryRow(ctx, q, key).Scan(&raw)
-	if err != nil {
-		// Row missing → empty string + nil error. Resolver fallback'ает на
-		// hardcoded defaults в этом случае.
-		return "", nil
-	}
-	return raw, nil
 }

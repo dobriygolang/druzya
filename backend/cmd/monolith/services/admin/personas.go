@@ -1,9 +1,4 @@
 // admin_personas.go — chi-direct admin CRUD over `personas`.
-//
-// Public list lives elsewhere (services/personas.go-style read-through);
-// this owns the admin write side. Frontend lives at
-// frontend/src/pages/admin/PersonasPanel.tsx and was previously hidden
-// because the backend admin endpoints didn't exist.
 package admin
 
 import (
@@ -13,11 +8,13 @@ import (
 	"log/slog"
 	"net/http"
 
+	adminApp "druz9/admin/app"
+	adminDomain "druz9/admin/domain"
+	adminInfra "druz9/admin/infra"
 	monolithServices "druz9/cmd/monolith/services"
+	authServices "druz9/cmd/monolith/services/auth"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type adminPersonaDTO struct {
@@ -34,76 +31,79 @@ type adminPersonaDTO struct {
 	UpdatedAt     string `json:"updated_at"`
 }
 
-const adminPersonaCols = `
-	id, label, hint, icon_emoji, brand_gradient, suggested_task, system_prompt,
-	sort_order, is_enabled,
-	to_char(created_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"'),
-	to_char(updated_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"')`
+func dtoFromPersona(p adminDomain.Persona) adminPersonaDTO {
+	return adminPersonaDTO{
+		ID: p.ID, Label: p.Label, Hint: p.Hint, IconEmoji: p.IconEmoji,
+		BrandGradient: p.BrandGradient, SuggestedTask: p.SuggestedTask,
+		SystemPrompt: p.SystemPrompt, SortOrder: p.SortOrder, IsEnabled: p.IsEnabled,
+		CreatedAt: p.CreatedAt, UpdatedAt: p.UpdatedAt,
+	}
+}
 
-// NewAdminPersonas wires the admin write surface for personas.
+// NewPersonas wires the admin write surface for personas.
 func NewPersonas(d monolithServices.Deps) *monolithServices.Module {
-	h := &adminPersonasHandler{pool: d.Pool, log: d.Log}
+	repo := adminInfra.NewPersonas(d.Pool)
+	h := &adminPersonasHandler{
+		list:   &adminApp.ListPersonas{Personas: repo},
+		create: &adminApp.CreatePersona{Personas: repo},
+		update: &adminApp.UpdatePersona{Personas: repo},
+		toggle: &adminApp.TogglePersona{Personas: repo},
+		delete: &adminApp.DeletePersona{Personas: repo},
+		log:    d.Log,
+	}
 	return &monolithServices.Module{
 		MountPublicREST: func(r chi.Router) {
 			// Public read — copilot UI consumes it before admin features
 			// are reachable.
-			r.Get("/personas", h.listPublic)
+			r.Get("/personas", h.handleListPublic)
 		},
 		MountREST: func(r chi.Router) {
-			r.Get("/admin/personas", h.list)
-			r.Post("/admin/personas", h.create)
-			r.Patch("/admin/personas/{id}", h.update)
-			r.Patch("/admin/personas/{id}/toggle", h.toggle)
-			r.Delete("/admin/personas/{id}", h.delete)
+			r.Get("/admin/personas", h.handleList)
+			r.Post("/admin/personas", h.handleCreate)
+			r.Patch("/admin/personas/{id}", h.handleUpdate)
+			r.Patch("/admin/personas/{id}/toggle", h.handleToggle)
+			r.Delete("/admin/personas/{id}", h.handleDelete)
 		},
 	}
 }
 
 type adminPersonasHandler struct {
-	pool *pgxpool.Pool
-	log  *slog.Logger
+	list   *adminApp.ListPersonas
+	create *adminApp.CreatePersona
+	update *adminApp.UpdatePersona
+	toggle *adminApp.TogglePersona
+	delete *adminApp.DeletePersona
+	log    *slog.Logger
 }
 
-func (h *adminPersonasHandler) listPublic(w http.ResponseWriter, r *http.Request) {
-	rows, err := h.pool.Query(r.Context(),
-		`SELECT `+adminPersonaCols+` FROM personas WHERE is_enabled = TRUE ORDER BY sort_order ASC, id ASC`)
+func (h *adminPersonasHandler) handleListPublic(w http.ResponseWriter, r *http.Request) {
+	rows, err := h.list.Do(r.Context(), true)
 	if err != nil {
 		h.fail(w, r, err, "list_public")
 		return
 	}
-	defer rows.Close()
-	out := make([]adminPersonaDTO, 0, 8)
-	for rows.Next() {
-		row, err := scanAdminPersona(rows)
-		if err != nil {
-			continue
-		}
-		out = append(out, row)
+	out := make([]adminPersonaDTO, 0, len(rows))
+	for _, row := range rows {
+		out = append(out, dtoFromPersona(row))
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Cache-Control", "public, max-age=300")
 	_ = json.NewEncoder(w).Encode(map[string]any{"items": out})
 }
 
-func (h *adminPersonasHandler) list(w http.ResponseWriter, r *http.Request) {
-	if _, err := monolithServices.RequireAdminInline(r); err != nil {
-		http.Error(w, fmt.Sprintf(`{"error":"%s"}`, err.Error()), monolithServices.StatusForAuthErr(err))
+func (h *adminPersonasHandler) handleList(w http.ResponseWriter, r *http.Request) {
+	if _, err := authServices.RequireAdminInline(r); err != nil {
+		http.Error(w, fmt.Sprintf(`{"error":"%s"}`, err.Error()), authServices.StatusForAuthErr(err))
 		return
 	}
-	rows, err := h.pool.Query(r.Context(),
-		`SELECT `+adminPersonaCols+` FROM personas ORDER BY sort_order ASC, id ASC`)
+	rows, err := h.list.Do(r.Context(), false)
 	if err != nil {
 		h.fail(w, r, err, "list")
 		return
 	}
-	defer rows.Close()
-	out := make([]adminPersonaDTO, 0, 8)
-	for rows.Next() {
-		row, err := scanAdminPersona(rows)
-		if err != nil {
-			continue
-		}
-		out = append(out, row)
+	out := make([]adminPersonaDTO, 0, len(rows))
+	for _, row := range rows {
+		out = append(out, dtoFromPersona(row))
 	}
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(map[string]any{"items": out})
@@ -121,9 +121,17 @@ type adminPersonaUpsertBody struct {
 	IsEnabled     *bool  `json:"is_enabled,omitempty"`
 }
 
-func (h *adminPersonasHandler) create(w http.ResponseWriter, r *http.Request) {
-	if _, err := monolithServices.RequireAdminInline(r); err != nil {
-		http.Error(w, fmt.Sprintf(`{"error":"%s"}`, err.Error()), monolithServices.StatusForAuthErr(err))
+func (b adminPersonaUpsertBody) toUpsert() adminDomain.PersonaUpsert {
+	return adminDomain.PersonaUpsert{
+		ID: b.ID, Label: b.Label, Hint: b.Hint, IconEmoji: b.IconEmoji,
+		BrandGradient: b.BrandGradient, SuggestedTask: b.SuggestedTask,
+		SystemPrompt: b.SystemPrompt, SortOrder: b.SortOrder, IsEnabled: b.IsEnabled,
+	}
+}
+
+func (h *adminPersonasHandler) handleCreate(w http.ResponseWriter, r *http.Request) {
+	if _, err := authServices.RequireAdminInline(r); err != nil {
+		http.Error(w, fmt.Sprintf(`{"error":"%s"}`, err.Error()), authServices.StatusForAuthErr(err))
 		return
 	}
 	var body adminPersonaUpsertBody
@@ -131,39 +139,23 @@ func (h *adminPersonasHandler) create(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, `{"error":"invalid body"}`, http.StatusBadRequest)
 		return
 	}
-	if body.ID == "" || body.Label == "" {
-		http.Error(w, `{"error":"id and label required"}`, http.StatusBadRequest)
-		return
-	}
-	enabled := true
-	if body.IsEnabled != nil {
-		enabled = *body.IsEnabled
-	}
-	sort := 100
-	if body.SortOrder != nil {
-		sort = *body.SortOrder
-	}
-	row := h.pool.QueryRow(r.Context(), `
-		INSERT INTO personas (
-			id, label, hint, icon_emoji, brand_gradient, suggested_task, system_prompt,
-			sort_order, is_enabled
-		) VALUES ($1,$2,$3,COALESCE(NULLIF($4,''), '💬'),$5,$6,$7,$8,$9)
-		RETURNING `+adminPersonaCols,
-		body.ID, body.Label, body.Hint, body.IconEmoji, body.BrandGradient,
-		body.SuggestedTask, body.SystemPrompt, sort, enabled)
-	out, err := scanAdminPersona(row)
+	out, err := h.create.Do(r.Context(), body.toUpsert())
 	if err != nil {
+		if errors.Is(err, adminDomain.ErrInvalidInput) {
+			http.Error(w, `{"error":"id and label required"}`, http.StatusBadRequest)
+			return
+		}
 		h.fail(w, r, err, "create")
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
-	_ = json.NewEncoder(w).Encode(out)
+	_ = json.NewEncoder(w).Encode(dtoFromPersona(out))
 }
 
-func (h *adminPersonasHandler) update(w http.ResponseWriter, r *http.Request) {
-	if _, err := monolithServices.RequireAdminInline(r); err != nil {
-		http.Error(w, fmt.Sprintf(`{"error":"%s"}`, err.Error()), monolithServices.StatusForAuthErr(err))
+func (h *adminPersonasHandler) handleUpdate(w http.ResponseWriter, r *http.Request) {
+	if _, err := authServices.RequireAdminInline(r); err != nil {
+		http.Error(w, fmt.Sprintf(`{"error":"%s"}`, err.Error()), authServices.StatusForAuthErr(err))
 		return
 	}
 	id := chi.URLParam(r, "id")
@@ -176,47 +168,32 @@ func (h *adminPersonasHandler) update(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, `{"error":"invalid body"}`, http.StatusBadRequest)
 		return
 	}
-	row := h.pool.QueryRow(r.Context(), `
-		UPDATE personas SET
-		  label = COALESCE(NULLIF($2,''), label),
-		  hint = COALESCE(NULLIF($3,''), hint),
-		  icon_emoji = COALESCE(NULLIF($4,''), icon_emoji),
-		  brand_gradient = COALESCE(NULLIF($5,''), brand_gradient),
-		  suggested_task = COALESCE(NULLIF($6,''), suggested_task),
-		  system_prompt = COALESCE(NULLIF($7,''), system_prompt),
-		  sort_order = COALESCE($8, sort_order),
-		  is_enabled = COALESCE($9, is_enabled),
-		  updated_at = now()
-		WHERE id = $1
-		RETURNING `+adminPersonaCols,
-		id, body.Label, body.Hint, body.IconEmoji, body.BrandGradient,
-		body.SuggestedTask, body.SystemPrompt, body.SortOrder, body.IsEnabled)
-	out, err := scanAdminPersona(row)
+	out, err := h.update.Do(r.Context(), id, body.toUpsert())
 	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
+		if errors.Is(err, adminDomain.ErrNotFound) {
 			http.Error(w, `{"error":"not found"}`, http.StatusNotFound)
+			return
+		}
+		if errors.Is(err, adminDomain.ErrInvalidInput) {
+			http.Error(w, `{"error":"id required"}`, http.StatusBadRequest)
 			return
 		}
 		h.fail(w, r, err, "update")
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(out)
+	_ = json.NewEncoder(w).Encode(dtoFromPersona(out))
 }
 
-func (h *adminPersonasHandler) toggle(w http.ResponseWriter, r *http.Request) {
-	if _, err := monolithServices.RequireAdminInline(r); err != nil {
-		http.Error(w, fmt.Sprintf(`{"error":"%s"}`, err.Error()), monolithServices.StatusForAuthErr(err))
+func (h *adminPersonasHandler) handleToggle(w http.ResponseWriter, r *http.Request) {
+	if _, err := authServices.RequireAdminInline(r); err != nil {
+		http.Error(w, fmt.Sprintf(`{"error":"%s"}`, err.Error()), authServices.StatusForAuthErr(err))
 		return
 	}
 	id := chi.URLParam(r, "id")
-	row := h.pool.QueryRow(r.Context(), `
-		UPDATE personas SET is_enabled = NOT is_enabled, updated_at = now()
-		WHERE id = $1
-		RETURNING `+adminPersonaCols, id)
-	out, err := scanAdminPersona(row)
+	out, err := h.toggle.Do(r.Context(), id)
 	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
+		if errors.Is(err, adminDomain.ErrNotFound) {
 			http.Error(w, `{"error":"not found"}`, http.StatusNotFound)
 			return
 		}
@@ -224,38 +201,24 @@ func (h *adminPersonasHandler) toggle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(out)
+	_ = json.NewEncoder(w).Encode(dtoFromPersona(out))
 }
 
-func (h *adminPersonasHandler) delete(w http.ResponseWriter, r *http.Request) {
-	if _, err := monolithServices.RequireAdminInline(r); err != nil {
-		http.Error(w, fmt.Sprintf(`{"error":"%s"}`, err.Error()), monolithServices.StatusForAuthErr(err))
+func (h *adminPersonasHandler) handleDelete(w http.ResponseWriter, r *http.Request) {
+	if _, err := authServices.RequireAdminInline(r); err != nil {
+		http.Error(w, fmt.Sprintf(`{"error":"%s"}`, err.Error()), authServices.StatusForAuthErr(err))
 		return
 	}
 	id := chi.URLParam(r, "id")
-	tag, err := h.pool.Exec(r.Context(), `DELETE FROM personas WHERE id = $1`, id)
-	if err != nil {
+	if err := h.delete.Do(r.Context(), id); err != nil {
+		if errors.Is(err, adminDomain.ErrNotFound) {
+			http.Error(w, `{"error":"not found"}`, http.StatusNotFound)
+			return
+		}
 		h.fail(w, r, err, "delete")
 		return
 	}
-	if tag.RowsAffected() == 0 {
-		http.Error(w, `{"error":"not found"}`, http.StatusNotFound)
-		return
-	}
 	w.WriteHeader(http.StatusNoContent)
-}
-
-func scanAdminPersona(row pgx.Row) (adminPersonaDTO, error) {
-	var d adminPersonaDTO
-	err := row.Scan(
-		&d.ID, &d.Label, &d.Hint, &d.IconEmoji, &d.BrandGradient,
-		&d.SuggestedTask, &d.SystemPrompt, &d.SortOrder, &d.IsEnabled,
-		&d.CreatedAt, &d.UpdatedAt,
-	)
-	if err != nil {
-		return d, fmt.Errorf("scan persona: %w", err)
-	}
-	return d, nil
 }
 
 func (h *adminPersonasHandler) fail(w http.ResponseWriter, r *http.Request, err error, op string) {

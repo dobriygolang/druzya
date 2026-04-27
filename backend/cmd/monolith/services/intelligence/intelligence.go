@@ -52,22 +52,22 @@ func New(d monolithServices.Deps) IntelligenceModule {
 	)
 	episodes := intelInfra.NewEpisodes(d.Pool)
 
-	focusR := &intelFocusReader{pool: d.Pool}
-	planR := &intelPlanReader{pool: d.Pool}
-	notesR := &intelNotesReader{pool: d.Pool}
+	focusR := intelInfra.NewFocusReader(d.Pool)
+	planR := intelInfra.NewPlanReader(d.Pool)
+	notesR := intelInfra.NewNotesReader(d.Pool)
 	// Cross-product readers — все опциональные. Coach prompt получает
 	// сигналы и из Hone, и из druz9 (mocks/arena/kata) и из user'ского
 	// Today (queue, daily notes). См. domain/repo.go BriefPromptInput
-	// и services/intelligence.go cross-product readers ниже.
-	mockR := &intelMockReader{pool: d.Pool}
-	kataR := &intelKataReader{pool: d.Pool}
-	arenaR := &intelArenaReader{pool: d.Pool}
-	queueR := &intelQueueReader{pool: d.Pool}
-	skillR := &intelSkillReader{pool: d.Pool}
-	dailyR := &intelDailyNoteReader{pool: d.Pool}
-	calR := &intelCalendarReader{pool: d.Pool}
-	mockMsgR := &intelMockMessagesReader{pool: d.Pool}
-	codexR := &intelCodexReader{pool: d.Pool}
+	// и services/intelligence/infra/cross_readers.go.
+	mockR := intelInfra.NewMockReader(d.Pool)
+	kataR := intelInfra.NewKataReader(d.Pool)
+	arenaR := intelInfra.NewArenaReader(d.Pool)
+	queueR := intelInfra.NewQueueReader(d.Pool)
+	skillR := intelInfra.NewSkillReader(d.Pool)
+	dailyR := intelInfra.NewDailyNoteReader(d.Pool)
+	calR := intelInfra.NewCalendarReader(d.Pool)
+	mockMsgR := intelInfra.NewMockMessagesReader(d.Pool)
+	codexR := intelInfra.NewCodexReader(d.Pool)
 
 	embedder := newIntelEmbedder(d)
 

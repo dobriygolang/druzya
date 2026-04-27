@@ -99,11 +99,28 @@ if (process.platform === 'darwin') {
     applicationName: 'Hone',
     applicationVersion: app.getVersion(),
   });
+  // Dock icon в dev-mode. В prod-сборке Electron сам подхватит .icns
+  // через electron-builder mac.icon, в dev — Electron-default'ный
+  // generic logo торчит в Dock пока ты не выставишь явно. setIcon на
+  // dock — стандартный workaround.
+  // app.dock?.setIcon — проверяем наличие, чтобы не упасть на не-darwin
+  // (linter не знает что мы под if process.platform === 'darwin').
+  try {
+    const iconPath = app.isPackaged
+      ? join(process.resourcesPath, 'icon.png')
+      : join(__dirname, '../../resources/icon.png');
+    app.dock?.setIcon(iconPath);
+  } catch {
+    // icon.png отсутствует — fallback на Electron default; не блокируем boot.
+  }
 }
 
 let mainWindow: BrowserWindow | null = null;
 
 function createMainWindow(): BrowserWindow {
+  const iconPath = app.isPackaged
+    ? join(process.resourcesPath, 'icon.png')
+    : join(__dirname, '../../resources/icon.png');
   const win = new BrowserWindow({
     width: 1280,
     height: 840,
@@ -113,6 +130,7 @@ function createMainWindow(): BrowserWindow {
     titleBarStyle: 'hiddenInset',
     trafficLightPosition: { x: 20, y: 20 },
     show: false,
+    icon: iconPath,
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
       contextIsolation: true,

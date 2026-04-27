@@ -16,6 +16,17 @@ extraResources:
   - from: resources/native
     to: native
     filter: ["**/*"]
+  # Runtime-loaded assets (tray icons). Хранятся в Contents/Resources/
+  # resources/ — main/index.ts резолвит их через
+  # `join(process.resourcesPath, 'resources')` (см. строку с
+  # resourcesPath = ... process.resourcesPath, 'resources').
+  # Без этой записи Tray.setImage падает в prod c «icon is missing or
+  # invalid» — а сам tray-иконку не создаёт, и в OS-меню Cue не видно.
+  - from: resources
+    to: resources
+    filter:
+      - "trayTemplate.png"
+      - "trayTemplate@2x.png"
 mac:
   icon: resources/icon.icns
   category: public.app-category.developer-tools

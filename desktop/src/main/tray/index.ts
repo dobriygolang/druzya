@@ -30,11 +30,26 @@ export interface TrayDeps {
 export function ensureTray(deps: TrayDeps): void {
   if (tray) return;
 
-  const icon = buildTrayIcon(deps.resourcesPath);
+  // Resilience: если иконка не нашлась (битый билд / руками удалена), не
+  // падаем — fallback на встроенную (1×1 transparent NativeImage). Без
+  // этого throw в buildTrayIcon ронял ensureTray ДО Tray() и юзер вообще
+  // не видел приложение в menu bar (только background process).
+  let icon: Electron.NativeImage;
+  try {
+    icon = buildTrayIcon(deps.resourcesPath);
+  } catch (err) {
+    console.warn('[tray] buildTrayIcon failed, using empty fallback:', err);
+    icon = nativeImage.createEmpty();
+  }
   tray = new Tray(icon);
-  // Icon-only tray item. Text makes the app too visible in screen share
-  // chrome and diverges from the prototype menubar treatment.
-  tray.setTitle('');
+  // Если icon — empty, у тебя будет «текстовый» tray; чтобы он был хоть
+  // как-то виден — выставляем title literal'ом. Когда нормальная иконка
+  // есть — title пустой (см. ниже).
+  if (icon.isEmpty()) {
+    tray.setTitle('Cue');
+  } else {
+    tray.setTitle('');
+  }
   tray.setToolTip('Cue');
 
   tray.on('click', () => toggleTrayPopup(deps));

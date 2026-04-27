@@ -167,15 +167,21 @@ const fencedCodeBackdrop: Extension = ViewPlugin.fromClass(
 // движение мгновенно показывало/скрывало маркеры). На больших заметках
 // это noticable; ограничиваем visibleRanges'ом — невидимые строки не
 // сканируются.
+// MARK_NODE_NAMES — какие markdown-маркеры скрываем на нон-курсорной
+// строке. Намеренно НЕ включаем:
+//   - ListMark (`*`, `-`, `+`) — без виджета-замены строка теряет
+//     визуальный bullet, юзер видит просто отступ. Live Preview в
+//     Obsidian заменяет литерал на нативный «•», но это требует
+//     отдельного widget-flow; пока safer оставлять `*` видимым.
+//   - LinkMark / URL — `[text](https://…)` коллапсировал бы в пустоту,
+//     ломая ссылки. Ссылочный sugar — задача отдельного link-decoration
+//     плагина (TODO), не текущего scope.
 const MARK_NODE_NAMES = new Set([
   'HeaderMark',
   'EmphasisMark',
   'StrikethroughMark',
   'CodeMark',
   'QuoteMark',
-  'ListMark',
-  'LinkMark',
-  'URL',
 ]);
 
 const liveMarkupReveal: Extension = ViewPlugin.fromClass(
@@ -308,6 +314,14 @@ const baseTheme = EditorView.theme(
     // снимается (плагин пересобирает декорации на selectionSet).
     '.cm-hidden-markup': {
       display: 'none',
+    },
+    // Visual-only nudge для list rows: bold-ить ListMark (`*`/`-`/`+`)
+    // чтобы он явнее читался как bullet даже в source-mode. Хороший
+    // компромисс между «строгий source» и «нативный bullet glyph» —
+    // курсор-движение не дёргает layout.
+    '.tok-list': {
+      color: 'var(--ink-60)',
+      fontWeight: 500,
     },
   },
   { dark: true },

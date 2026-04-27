@@ -4,6 +4,7 @@ go 1.25.0
 
 require (
 	connectrpc.com/connect v1.19.2
+	druz9/lobby v0.0.0
 	druz9/shared v0.0.0
 	github.com/google/uuid v1.6.0
 	github.com/jackc/pgx/v5 v5.9.2
@@ -24,3 +25,5 @@ require (
 )
 
 replace druz9/shared => ../../shared
+
+replace druz9/lobby => ../lobby

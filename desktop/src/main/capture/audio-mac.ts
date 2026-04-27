@@ -148,8 +148,19 @@ export function createAudioCapture(
         audio: new Uint8Array(wav.buffer, wav.byteOffset, wav.byteLength),
         mime: 'audio/wav',
         filename: `chunk-${seq}.wav`,
-        language: '',
-        prompt: '',
+        // Hint Whisper языком явно — без подсказки на 1-2 секундных
+        // chunk'ах модель ловит "Russian с английским акцентом" и
+        // подставляет рандомные слова. cfg.defaultLocale выставляется
+        // через DRUZ9_DEFAULT_LOCALE (default 'ru'); юзер-override
+        // приедет когда сделаем Settings → Voice locale.
+        language: cfg.defaultLocale || 'ru',
+        // Prompt — bias к domain-vocab. Whisper использует первые ~224
+        // токена prompt'а как "вы только что слышали это" контекст.
+        // Обозначаем что речь — meeting, технический разговор; помогает
+        // не превращать «Druz9» в «другие», «копилот» в «копилку», etc.
+        prompt: cfg.defaultLocale === 'en'
+          ? 'Live meeting transcript. Technical discussion: software, AI, code.'
+          : 'Запись встречи: технический разговор о софте, AI, коде, druzya, druz9, copilot, Hone, Cue.',
       });
       chunkSeq += 1;
       if (result.text.trim()) {

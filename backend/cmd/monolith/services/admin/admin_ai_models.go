@@ -1,10 +1,4 @@
 // admin_ai_models.go — chi-direct admin CRUD over `llm_models`.
-//
-// The public `/api/v1/ai/models` (services/ai_models.go) is a thin
-// read-through; this file owns the admin write side: list-with-disabled
-// rows, create / patch / toggle / delete. Frontend lives at
-// frontend/src/pages/admin/AIModelsPanel.tsx and was previously
-// hidden because the backend admin endpoints didn't exist.
 package admin
 
 import (
@@ -14,12 +8,13 @@ import (
 	"log/slog"
 	"net/http"
 
+	adminApp "druz9/admin/app"
+	adminDomain "druz9/admin/domain"
+	adminInfra "druz9/admin/infra"
 	monolithServices "druz9/cmd/monolith/services"
-	sharedpg "druz9/shared/pkg/pg"
+	authServices "druz9/cmd/monolith/services/auth"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type adminLLMModelDTO struct {
@@ -40,53 +35,63 @@ type adminLLMModelDTO struct {
 	UpdatedAt         string   `json:"updated_at"`
 }
 
-const adminLLMModelCols = `
-	id, model_id, label, provider, tier, is_enabled,
-	context_window, cost_per_1k_input_usd, cost_per_1k_output_usd,
-	use_for_arena, use_for_insight, use_for_mock, sort_order,
-	to_char(created_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"'),
-	to_char(updated_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"')`
+func dtoFromAIModel(m adminDomain.AIModel) adminLLMModelDTO {
+	return adminLLMModelDTO{
+		ID: m.ID, ModelID: m.ModelID, Label: m.Label, Provider: m.Provider,
+		Tier: m.Tier, IsEnabled: m.IsEnabled,
+		ContextWindow: m.ContextWindow, CostPerKInputUSD: m.CostPerKInputUSD,
+		CostPerKOutputUSD: m.CostPerKOutputUSD,
+		UseForArena:       m.UseForArena, UseForInsight: m.UseForInsight, UseForMock: m.UseForMock,
+		SortOrder: m.SortOrder, CreatedAt: m.CreatedAt, UpdatedAt: m.UpdatedAt,
+	}
+}
 
 // NewAdminAIModels wires the admin write surface for the LLM model
 // catalogue. Returns a Module so it slots into the standard bootstrap
 // loop.
 func NewAdminAIModels(d monolithServices.Deps) *monolithServices.Module {
-	h := &adminAIModelsHandler{pool: d.Pool, log: d.Log}
+	repo := adminInfra.NewAIModels(d.Pool)
+	h := &adminAIModelsHandler{
+		list:   &adminApp.ListAIModels{Models: repo},
+		create: &adminApp.CreateAIModel{Models: repo},
+		update: &adminApp.UpdateAIModel{Models: repo},
+		toggle: &adminApp.ToggleAIModel{Models: repo},
+		delete: &adminApp.DeleteAIModel{Models: repo},
+		log:    d.Log,
+	}
 	return &monolithServices.Module{
 		MountREST: func(r chi.Router) {
-			r.Get("/admin/ai/models", h.list)
-			r.Post("/admin/ai/models", h.create)
-			r.Patch("/admin/ai/models/{model_id}", h.update)
-			r.Patch("/admin/ai/models/{model_id}/toggle", h.toggle)
-			r.Delete("/admin/ai/models/{model_id}", h.delete)
+			r.Get("/admin/ai/models", h.handleList)
+			r.Post("/admin/ai/models", h.handleCreate)
+			r.Patch("/admin/ai/models/{model_id}", h.handleUpdate)
+			r.Patch("/admin/ai/models/{model_id}/toggle", h.handleToggle)
+			r.Delete("/admin/ai/models/{model_id}", h.handleDelete)
 		},
 	}
 }
 
 type adminAIModelsHandler struct {
-	pool *pgxpool.Pool
-	log  *slog.Logger
+	list   *adminApp.ListAIModels
+	create *adminApp.CreateAIModel
+	update *adminApp.UpdateAIModel
+	toggle *adminApp.ToggleAIModel
+	delete *adminApp.DeleteAIModel
+	log    *slog.Logger
 }
 
-func (h *adminAIModelsHandler) list(w http.ResponseWriter, r *http.Request) {
-	if _, err := monolithServices.RequireAdminInline(r); err != nil {
-		http.Error(w, fmt.Sprintf(`{"error":"%s"}`, err.Error()), monolithServices.StatusForAuthErr(err))
+func (h *adminAIModelsHandler) handleList(w http.ResponseWriter, r *http.Request) {
+	if _, err := authServices.RequireAdminInline(r); err != nil {
+		http.Error(w, fmt.Sprintf(`{"error":"%s"}`, err.Error()), authServices.StatusForAuthErr(err))
 		return
 	}
-	rows, err := h.pool.Query(r.Context(),
-		`SELECT `+adminLLMModelCols+` FROM llm_models ORDER BY sort_order ASC, model_id ASC`)
+	rows, err := h.list.Do(r.Context())
 	if err != nil {
 		h.fail(w, r, err, "list")
 		return
 	}
-	defer rows.Close()
-	out := make([]adminLLMModelDTO, 0, 16)
-	for rows.Next() {
-		row, err := scanAdminLLMModel(rows)
-		if err != nil {
-			continue
-		}
-		out = append(out, row)
+	out := make([]adminLLMModelDTO, 0, len(rows))
+	for _, row := range rows {
+		out = append(out, dtoFromAIModel(row))
 	}
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(map[string]any{"items": out})
@@ -107,9 +112,23 @@ type adminLLMModelUpsertBody struct {
 	SortOrder         *int     `json:"sort_order,omitempty"`
 }
 
-func (h *adminAIModelsHandler) create(w http.ResponseWriter, r *http.Request) {
-	if _, err := monolithServices.RequireAdminInline(r); err != nil {
-		http.Error(w, fmt.Sprintf(`{"error":"%s"}`, err.Error()), monolithServices.StatusForAuthErr(err))
+func (b adminLLMModelUpsertBody) toUpsert() adminDomain.AIModelUpsert {
+	return adminDomain.AIModelUpsert{
+		ModelID: b.ModelID, Label: b.Label, Provider: b.Provider, Tier: b.Tier,
+		IsEnabled:         b.IsEnabled,
+		ContextWindow:     b.ContextWindow,
+		CostPerKInputUSD:  b.CostPerKInputUSD,
+		CostPerKOutputUSD: b.CostPerKOutputUSD,
+		UseForArena:       b.UseForArena,
+		UseForInsight:     b.UseForInsight,
+		UseForMock:        b.UseForMock,
+		SortOrder:         b.SortOrder,
+	}
+}
+
+func (h *adminAIModelsHandler) handleCreate(w http.ResponseWriter, r *http.Request) {
+	if _, err := authServices.RequireAdminInline(r); err != nil {
+		http.Error(w, fmt.Sprintf(`{"error":"%s"}`, err.Error()), authServices.StatusForAuthErr(err))
 		return
 	}
 	var body adminLLMModelUpsertBody
@@ -117,54 +136,23 @@ func (h *adminAIModelsHandler) create(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, `{"error":"invalid body"}`, http.StatusBadRequest)
 		return
 	}
-	if body.ModelID == "" || body.Label == "" || body.Provider == "" {
-		http.Error(w, `{"error":"model_id, label, provider required"}`, http.StatusBadRequest)
-		return
-	}
-	if body.Tier != "free" && body.Tier != "premium" {
-		body.Tier = "free"
-	}
-	enabled := true
-	if body.IsEnabled != nil {
-		enabled = *body.IsEnabled
-	}
-	useArena, useInsight, useMock := true, true, true
-	if body.UseForArena != nil {
-		useArena = *body.UseForArena
-	}
-	if body.UseForInsight != nil {
-		useInsight = *body.UseForInsight
-	}
-	if body.UseForMock != nil {
-		useMock = *body.UseForMock
-	}
-	sortOrder := 0
-	if body.SortOrder != nil {
-		sortOrder = *body.SortOrder
-	}
-	row := h.pool.QueryRow(r.Context(), `
-		INSERT INTO llm_models (
-			model_id, label, provider, tier, is_enabled,
-			context_window, cost_per_1k_input_usd, cost_per_1k_output_usd,
-			use_for_arena, use_for_insight, use_for_mock, sort_order
-		) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
-		RETURNING `+adminLLMModelCols,
-		body.ModelID, body.Label, body.Provider, body.Tier, enabled,
-		body.ContextWindow, body.CostPerKInputUSD, body.CostPerKOutputUSD,
-		useArena, useInsight, useMock, sortOrder)
-	out, err := scanAdminLLMModel(row)
+	out, err := h.create.Do(r.Context(), body.toUpsert())
 	if err != nil {
+		if errors.Is(err, adminDomain.ErrInvalidInput) {
+			http.Error(w, `{"error":"model_id, label, provider required"}`, http.StatusBadRequest)
+			return
+		}
 		h.fail(w, r, err, "create")
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
-	_ = json.NewEncoder(w).Encode(out)
+	_ = json.NewEncoder(w).Encode(dtoFromAIModel(out))
 }
 
-func (h *adminAIModelsHandler) update(w http.ResponseWriter, r *http.Request) {
-	if _, err := monolithServices.RequireAdminInline(r); err != nil {
-		http.Error(w, fmt.Sprintf(`{"error":"%s"}`, err.Error()), monolithServices.StatusForAuthErr(err))
+func (h *adminAIModelsHandler) handleUpdate(w http.ResponseWriter, r *http.Request) {
+	if _, err := authServices.RequireAdminInline(r); err != nil {
+		http.Error(w, fmt.Sprintf(`{"error":"%s"}`, err.Error()), authServices.StatusForAuthErr(err))
 		return
 	}
 	modelID := chi.URLParam(r, "model_id")
@@ -177,51 +165,32 @@ func (h *adminAIModelsHandler) update(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, `{"error":"invalid body"}`, http.StatusBadRequest)
 		return
 	}
-	row := h.pool.QueryRow(r.Context(), `
-		UPDATE llm_models SET
-		  label = COALESCE(NULLIF($2,''), label),
-		  provider = COALESCE(NULLIF($3,''), provider),
-		  tier = COALESCE(NULLIF($4,''), tier),
-		  is_enabled = COALESCE($5, is_enabled),
-		  context_window = COALESCE($6, context_window),
-		  cost_per_1k_input_usd = COALESCE($7, cost_per_1k_input_usd),
-		  cost_per_1k_output_usd = COALESCE($8, cost_per_1k_output_usd),
-		  use_for_arena = COALESCE($9, use_for_arena),
-		  use_for_insight = COALESCE($10, use_for_insight),
-		  use_for_mock = COALESCE($11, use_for_mock),
-		  sort_order = COALESCE($12, sort_order),
-		  updated_at = now()
-		WHERE model_id = $1
-		RETURNING `+adminLLMModelCols,
-		modelID, body.Label, body.Provider, body.Tier, body.IsEnabled,
-		body.ContextWindow, body.CostPerKInputUSD, body.CostPerKOutputUSD,
-		body.UseForArena, body.UseForInsight, body.UseForMock, body.SortOrder)
-	out, err := scanAdminLLMModel(row)
+	out, err := h.update.Do(r.Context(), modelID, body.toUpsert())
 	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
+		if errors.Is(err, adminDomain.ErrNotFound) {
 			http.Error(w, `{"error":"not found"}`, http.StatusNotFound)
+			return
+		}
+		if errors.Is(err, adminDomain.ErrInvalidInput) {
+			http.Error(w, `{"error":"model_id required"}`, http.StatusBadRequest)
 			return
 		}
 		h.fail(w, r, err, "update")
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(out)
+	_ = json.NewEncoder(w).Encode(dtoFromAIModel(out))
 }
 
-func (h *adminAIModelsHandler) toggle(w http.ResponseWriter, r *http.Request) {
-	if _, err := monolithServices.RequireAdminInline(r); err != nil {
-		http.Error(w, fmt.Sprintf(`{"error":"%s"}`, err.Error()), monolithServices.StatusForAuthErr(err))
+func (h *adminAIModelsHandler) handleToggle(w http.ResponseWriter, r *http.Request) {
+	if _, err := authServices.RequireAdminInline(r); err != nil {
+		http.Error(w, fmt.Sprintf(`{"error":"%s"}`, err.Error()), authServices.StatusForAuthErr(err))
 		return
 	}
 	modelID := chi.URLParam(r, "model_id")
-	row := h.pool.QueryRow(r.Context(), `
-		UPDATE llm_models SET is_enabled = NOT is_enabled, updated_at = now()
-		WHERE model_id = $1
-		RETURNING `+adminLLMModelCols, modelID)
-	out, err := scanAdminLLMModel(row)
+	out, err := h.toggle.Do(r.Context(), modelID)
 	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
+		if errors.Is(err, adminDomain.ErrNotFound) {
 			http.Error(w, `{"error":"not found"}`, http.StatusNotFound)
 			return
 		}
@@ -229,39 +198,24 @@ func (h *adminAIModelsHandler) toggle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(out)
+	_ = json.NewEncoder(w).Encode(dtoFromAIModel(out))
 }
 
-func (h *adminAIModelsHandler) delete(w http.ResponseWriter, r *http.Request) {
-	if _, err := monolithServices.RequireAdminInline(r); err != nil {
-		http.Error(w, fmt.Sprintf(`{"error":"%s"}`, err.Error()), monolithServices.StatusForAuthErr(err))
+func (h *adminAIModelsHandler) handleDelete(w http.ResponseWriter, r *http.Request) {
+	if _, err := authServices.RequireAdminInline(r); err != nil {
+		http.Error(w, fmt.Sprintf(`{"error":"%s"}`, err.Error()), authServices.StatusForAuthErr(err))
 		return
 	}
 	modelID := chi.URLParam(r, "model_id")
-	tag, err := h.pool.Exec(r.Context(), `DELETE FROM llm_models WHERE model_id = $1`, modelID)
-	if err != nil {
+	if err := h.delete.Do(r.Context(), modelID); err != nil {
+		if errors.Is(err, adminDomain.ErrNotFound) {
+			http.Error(w, `{"error":"not found"}`, http.StatusNotFound)
+			return
+		}
 		h.fail(w, r, err, "delete")
 		return
 	}
-	if tag.RowsAffected() == 0 {
-		http.Error(w, `{"error":"not found"}`, http.StatusNotFound)
-		return
-	}
 	w.WriteHeader(http.StatusNoContent)
-}
-
-func scanAdminLLMModel(row pgx.Row) (adminLLMModelDTO, error) {
-	var d adminLLMModelDTO
-	err := row.Scan(
-		&d.ID, &d.ModelID, &d.Label, &d.Provider, &d.Tier, &d.IsEnabled,
-		&d.ContextWindow, &d.CostPerKInputUSD, &d.CostPerKOutputUSD,
-		&d.UseForArena, &d.UseForInsight, &d.UseForMock, &d.SortOrder,
-		&d.CreatedAt, &d.UpdatedAt,
-	)
-	if err != nil {
-		return d, fmt.Errorf("scan llm_model: %w", err)
-	}
-	return d, nil
 }
 
 func (h *adminAIModelsHandler) fail(w http.ResponseWriter, r *http.Request, err error, op string) {
@@ -270,6 +224,3 @@ func (h *adminAIModelsHandler) fail(w http.ResponseWriter, r *http.Request, err 
 	}
 	http.Error(w, `{"error":"internal"}`, http.StatusInternalServerError)
 }
-
-// _ keeps sharedpg referenced for future scoped queries.
-var _ = sharedpg.UUID

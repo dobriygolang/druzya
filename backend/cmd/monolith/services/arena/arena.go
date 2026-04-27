@@ -11,9 +11,8 @@ import (
 	arenaInfra "druz9/arena/infra"
 	arenaPorts "druz9/arena/ports"
 	monolithServices "druz9/cmd/monolith/services"
-	ratingInfra "druz9/rating/infra"
+	authServices "druz9/cmd/monolith/services/auth"
 	sharedDomain "druz9/shared/domain"
-	"druz9/shared/enums"
 	"druz9/shared/generated/pb/druz9/v1/druz9v1connect"
 	"druz9/shared/pkg/eventbus"
 
@@ -26,14 +25,16 @@ import (
 // goroutine is registered via Background; its stop closure runs in
 // Shutdown so the parent ctx propagates cleanly.
 //
-// rating's Postgres repo is required so arena can read each player's
-// per-section ELO without importing rating's app layer.
-func NewArena(d monolithServices.Deps, ratingRepo *ratingInfra.Postgres) *monolithServices.Module {
+// `eloFn` is the per-section ELO lookup port (constructed in bootstrap from
+// rating's repo). Passing the function instead of rating's concrete repo
+// keeps arena free of any rating-package import — pre-condition for a
+// future microservice extraction.
+func NewArena(d monolithServices.Deps, eloFn arenaPorts.UserEloFunc) *monolithServices.Module {
 	pg := arenaInfra.NewPostgres(d.Pool)
 	rdb := arenaInfra.NewRedis(d.Redis)
 	judge0 := arenaInfra.NewFakeJudge0()
 	clock := arenaDomain.RealClock{}
-	verifier := monolithServices.ArenaTokenVerifier{Issuer: d.TokenIssuer}
+	verifier := authServices.ArenaTokenVerifier{Issuer: d.TokenIssuer}
 	allowedOrigins := strings.Split(os.Getenv("WS_ALLOWED_ORIGINS"), ",")
 	hub := arenaPorts.NewHub(d.Log, verifier, allowedOrigins)
 
@@ -80,22 +81,6 @@ func NewArena(d monolithServices.Deps, ratingRepo *ratingInfra.Postgres) *monoli
 		_ = tab.Apply(ctx, matchID, userID)
 	}
 
-	eloFn := arenaPorts.UserEloFunc(func(ctx any, userID uuid.UUID, section enums.Section) int {
-		c, _ := ctx.(context.Context)
-		if c == nil {
-			c = context.Background()
-		}
-		list, err := ratingRepo.List(c, userID)
-		if err != nil {
-			return arenaDomain.InitialELO
-		}
-		for _, r := range list {
-			if r.Section == section {
-				return r.Elo
-			}
-		}
-		return arenaDomain.InitialELO
-	})
 	server := arenaPorts.NewArenaServer(
 		find, cancelUC, confirm, submit, get, getHistory, timeouts, eloFn, d.Log,
 	)

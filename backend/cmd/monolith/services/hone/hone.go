@@ -8,6 +8,7 @@ import (
 	"time"
 
 	monolithServices "druz9/cmd/monolith/services"
+	subscriptionServices "druz9/cmd/monolith/services/subscription"
 	honeApp "druz9/hone/app"
 	honeDomain "druz9/hone/domain"
 	honeInfra "druz9/hone/infra"
@@ -60,7 +61,7 @@ func NewHone(d monolithServices.Deps) *monolithServices.Module {
 	// юзеры обходили его через standup/focus/whiteboard и накапливали >limit
 	// (юзер видел "SYNCED 13 / OVER LIMIT 10" в UI).
 	noteQuotaCheck := func(ctx context.Context, uid uuid.UUID) error {
-		return monolithServices.EnforceCreate(ctx, d, uid,
+		return subscriptionServices.EnforceCreate(ctx, d, uid,
 			honeNotesQuotaField,
 			func(ctx context.Context, u uuid.UUID) (int, error) {
 				if d.QuotaUsageReader == nil {
@@ -104,7 +105,7 @@ func NewHone(d monolithServices.Deps) *monolithServices.Module {
 
 	// Cross-domain shim: weakest skill nodes from profile's tables. Lives
 	// in adapters.go to keep boundaries clean (hone never imports profile).
-	skills := monolithServices.NewHoneSkillAtlasAdapter(d.Pool)
+	skills := NewHoneSkillAtlasAdapter(d.Pool)
 
 	// Embedding job: CreateNote/UpdateNote enqueue job в Redis List, background
 	// EmbedWorker дрейнит очередь и персистит вектора. Redis-less окружение
@@ -206,11 +207,11 @@ func NewHone(d monolithServices.Deps) *monolithServices.Module {
 	}
 	// Pro-gate для премиум-RPC (GeneratePlan / Critique / Connections).
 	// nil-safe: subscription-таблица нет — все Pro, gate выключен.
-	server = server.WithTier(monolithServices.NewHoneTierAdapter(d.Pool))
+	server = server.WithTier(NewHoneTierAdapter(d.Pool))
 	// Phase 2 quota enforcement: free-tier лимит на synced_notes (default 10).
 	// nil-safe (см. EnforceCreate). Closure inline'на, чтобы захватить Deps.
 	server = server.WithCreateNoteQuotaCheck(func(ctx context.Context, uid uuid.UUID) error {
-		return monolithServices.EnforceCreate(ctx, d, uid,
+		return subscriptionServices.EnforceCreate(ctx, d, uid,
 			honeNotesQuotaField,
 			func(ctx context.Context, u uuid.UUID) (int, error) {
 				if d.QuotaUsageReader == nil {
@@ -296,7 +297,7 @@ func NewHone(d monolithServices.Deps) *monolithServices.Module {
 	// oldest-by-updated_at beyond лимита (10 для free) каждый час.
 	// Юзер видит «SYNCED 10 / 10» вместо «12 / OVER LIMIT 10».
 	mod.Background = append(mod.Background, func(ctx context.Context) {
-		go monolithServices.RunFreeTierNotesOverflowArchive(ctx, d.Pool, d.Log)
+		go subscriptionServices.RunFreeTierNotesOverflowArchive(ctx, d.Pool, d.Log)
 	})
 
 	return mod

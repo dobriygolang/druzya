@@ -16,6 +16,8 @@ import (
 	"os"
 	"time"
 
+	arenaDomain "druz9/arena/domain"
+	arenaPorts "druz9/arena/ports"
 	"druz9/cmd/monolith/services"
 	adminServices "druz9/cmd/monolith/services/admin"
 	aiMockServices "druz9/cmd/monolith/services/ai_mock"
@@ -34,8 +36,14 @@ import (
 	ratingServices "druz9/cmd/monolith/services/rating"
 	reviewServices "druz9/cmd/monolith/services/review"
 	slotServices "druz9/cmd/monolith/services/slot"
+	storageServices "druz9/cmd/monolith/services/storage"
 	subscriptionServices "druz9/cmd/monolith/services/subscription"
+	syncServices "druz9/cmd/monolith/services/sync"
 	whiteboardRoomsServices "druz9/cmd/monolith/services/whiteboard_rooms"
+	honeApp "druz9/hone/app"
+	honeInfra "druz9/hone/infra"
+	ratingInfra "druz9/rating/infra"
+	"druz9/shared/enums"
 	"druz9/shared/pkg/config"
 	"druz9/shared/pkg/eventbus"
 	"druz9/shared/pkg/killswitch"
@@ -167,13 +175,13 @@ func New(ctx context.Context, cfg *config.Config) (app *App, otelShutdown func()
 	}
 	// Cross-domain wiring: the bot's /start <code> handler talks to the
 	// auth code repo via a thin adapter (see services/adapters.go).
-	notify.Bot.SetCodeFiller(services.NewTelegramCodeFillerAdapter(auth.TelegramCodes))
+	notify.Bot.SetCodeFiller(notifyServices.NewTelegramCodeFillerAdapter(auth.TelegramCodes))
 	// Hone → notify TG follow-up. Set BEFORE honeServices.NewHone(deps)
 	// runs (NewHone reads deps.HoneNotificationSender by value into the
 	// SendCueSessionToTelegram use case). nil-safe: при пустом TG-токене
 	// notify.Bot живой но без api → adapter всё равно сконструируется,
 	// фактический Send вернёт error и Hone отдаст 5xx.
-	deps.HoneNotificationSender = services.NewHoneNotificationAdapter(notify.Bot, notify.Prefs)
+	deps.HoneNotificationSender = honeServices.NewHoneNotificationAdapter(notify.Bot, notify.Prefs)
 
 	statsMod := adminServices.NewStats(deps)
 
@@ -188,16 +196,16 @@ func New(ctx context.Context, cfg *config.Config) (app *App, otelShutdown func()
 	// (Hone-handlers'ы вызывают Hook.OnReflectionAdded etc).
 	// Storage gate должен быть построен ДО Hone — Hone оборачивает свои
 	// write-routes этим gate'ом, чтобы возвращать 413 при quota_exceeded.
-	storageMod, storageGate := services.NewStorage(deps)
+	storageMod, storageGate := storageServices.NewStorage(deps)
 	deps.StorageGate = storageGate
 
 	// SyncEventBroker строится ПЕРВЫМ — sync.NewSync (push handler) и
 	// yjs_persistence.NewYjsPersistence захватывают его через deps; если
 	// nil на момент их конструирования, push notifications не сработают.
-	syncEventsMod, syncEventBroker := services.NewSyncEvents(deps)
+	syncEventsMod, syncEventBroker := syncServices.NewSyncEvents(deps)
 	deps.SyncEventBroker = syncEventBroker
 
-	syncMod, syncHeartbeat := services.NewSync(deps)
+	syncMod, syncHeartbeat := syncServices.NewSync(deps)
 	deps.SyncHeartbeat = syncHeartbeat
 
 	intelligenceMod := intelligenceService.New(deps)
@@ -211,7 +219,7 @@ func New(ctx context.Context, cfg *config.Config) (app *App, otelShutdown func()
 		profileServices.NewProfile(deps),
 		dailyServices.NewDaily(deps),
 		&rating.Module,
-		arenaServices.NewArena(deps, rating.Repo),
+		arenaServices.NewArena(deps, buildArenaEloFunc(rating.Repo)),
 		aiMockServices.NewAIMock(deps),
 		adminServices.NewAIModels(deps),
 		// Admin CRUD over the canonical `tasks` table (Arena 1v1/2v2 +
@@ -257,9 +265,9 @@ func New(ctx context.Context, cfg *config.Config) (app *App, otelShutdown func()
 		storageMod,
 		syncMod,
 		syncEventsMod,
-		honeServices.NewYjsPersistence(deps),
-		honeServices.NewVault(deps),
-		honeServices.NewPublishing(deps),
+		honeServices.NewYjsPersistence(buildHoneYjsDeps(deps)),
+		honeServices.NewVault(buildHoneVaultDeps(deps)),
+		honeServices.NewPublishing(buildHonePublishingDeps(deps)),
 		adminServices.NewLLMChainAdmin(deps, llmRawChain, llmRegisteredProviders(llmRawChain)),
 	}
 
@@ -410,4 +418,65 @@ func llmRegisteredProviders(chain *llmchain.Chain) []string {
 		return nil
 	}
 	return chain.RegisteredProviders()
+}
+
+// ── Hone wiring helpers (Phase: repo-leak refactor) ─────────────────────
+// Конструируют typed Deps для трёх hone-модулей. Repo+Publisher строятся
+// из общих deps.Pool / deps.SyncEventBroker; SyncEventBroker реализует
+// honeDomain.SyncEventPublisher (PublishYjsAppend/PublishSyncChange).
+
+func buildHonePublishingDeps(d services.Deps) honeServices.PublishingDeps {
+	repo := honeInfra.NewPublishRepo(d.Pool, d.Log)
+	return honeServices.PublishingDeps{
+		Publish:   &honeApp.PublishNote{Repo: repo, Log: d.Log},
+		Unpublish: &honeApp.UnpublishNote{Repo: repo, Log: d.Log},
+		Status:    &honeApp.PublishStatus{Repo: repo, Log: d.Log},
+		BulkMeta:  &honeApp.BulkNotesMeta{Repo: repo, Log: d.Log},
+		Public:    &honeApp.PublicView{Repo: repo, Log: d.Log},
+		Log:       d.Log,
+	}
+}
+
+func buildHoneVaultDeps(d services.Deps) honeServices.VaultDeps {
+	repo := honeInfra.NewVaultRepo(d.Pool, d.Log)
+	return honeServices.VaultDeps{
+		Init:    &honeApp.VaultInit{Repo: repo, Log: d.Log},
+		GetSalt: &honeApp.VaultGetSalt{Repo: repo, Log: d.Log},
+		Encrypt: &honeApp.VaultEncryptNote{Repo: repo, Publisher: d.SyncEventBroker, Log: d.Log},
+		Decrypt: &honeApp.VaultDecryptNote{Repo: repo, Publisher: d.SyncEventBroker, Log: d.Log},
+		Log:     d.Log,
+	}
+}
+
+func buildHoneYjsDeps(d services.Deps) honeServices.YjsPersistenceDeps {
+	repo := honeInfra.NewYjsRepo(d.Pool, d.Log)
+	return honeServices.YjsPersistenceDeps{
+		Append:  &honeApp.YjsAppend{Repo: repo, Publisher: d.SyncEventBroker, Log: d.Log},
+		Updates: &honeApp.YjsPullUpdates{Repo: repo, Log: d.Log},
+		Compact: &honeApp.YjsCompact{Repo: repo, Publisher: d.SyncEventBroker, Log: d.Log},
+		Log:     d.Log,
+	}
+}
+
+// ── Arena ELO lookup wiring ───────────────────────────────────────────────
+// Bridges rating's per-user ratings list to arena's UserEloFunc port. Lives
+// in bootstrap (not arena/) so arena no longer imports druz9/rating —
+// pre-condition for extracting arena into a separate process later.
+func buildArenaEloFunc(repo *ratingInfra.Postgres) arenaPorts.UserEloFunc {
+	return func(ctx any, userID uuid.UUID, section enums.Section) int {
+		c, _ := ctx.(context.Context)
+		if c == nil {
+			c = context.Background()
+		}
+		list, err := repo.List(c, userID)
+		if err != nil {
+			return arenaDomain.InitialELO
+		}
+		for _, r := range list {
+			if r.Section == section {
+				return r.Elo
+			}
+		}
+		return arenaDomain.InitialELO
+	}
 }

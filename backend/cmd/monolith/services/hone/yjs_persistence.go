@@ -1,16 +1,4 @@
 // Package services — Phase C-6 generic Yjs CRDT persistence.
-//
-// Один handler-каркас обслуживает /sync/yjs/{kind}/{id}/{append|updates|compact}
-// для нескольких kind'ов (notes, whiteboards, ...). Каждый kind отличается
-// только тремя параметрами: parent table (`hone_notes`), updates table
-// (`note_yjs_updates`) и FK column в updates table (`note_id`).
-//
-// Без generic'а получалось 380 строк дублей на каждый новый kind. С
-// generic — 50 строк wiring per kind.
-//
-// Server семантика та же что в yjs_notes.go header'е: dumb storage,
-// CRDT logic — на клиенте, защита через ownership-JOIN, body limits 1
-// MiB / 5 MiB compact / 500 updates per page.
 package hone
 
 import (
@@ -25,58 +13,60 @@ import (
 	"time"
 
 	monolithServices "druz9/cmd/monolith/services"
+	honeApp "druz9/hone/app"
+	honeDomain "druz9/hone/domain"
 	sharedMw "druz9/shared/pkg/middleware"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-const (
-	yjsAppendMaxBytes  = 1 << 20 // 1 MiB
-	yjsCompactMaxBytes = 5 << 20 // 5 MiB
-	yjsUpdatesPerPage  = 500
-)
-
-// yjsKind описывает per-domain параметры. Только эти 4 поля меняются
-// между notes/whiteboards/etc.
+// yjsKind — per-domain параметры HTTP уровня (URL slug + chi param). SQL-
+// параметры (parent/updates/FK) живут в honeDomain.YjsKind.
 type yjsKind struct {
-	// Path slug в URL: /sync/yjs/{slug}/{id}/...
-	URLSlug string
-	// chi URL param name для id заметки/доски ("noteId", "wbId").
-	URLParam string
-	// Parent table where ownership is recorded (hone_notes, hone_whiteboards).
-	ParentTable string
-	// Updates table — где писать append'ы (note_yjs_updates, ...).
-	UpdatesTable string
-	// FK column в updates table указывающая на parent (note_id, whiteboard_id).
-	ForeignKey string
+	URLSlug    string
+	URLParam   string
+	DomainKind honeDomain.YjsKind
 }
 
 var (
 	yjsKindNotes = yjsKind{
-		URLSlug:      "notes",
-		URLParam:     "noteId",
-		ParentTable:  "hone_notes",
-		UpdatesTable: "note_yjs_updates",
-		ForeignKey:   "note_id",
+		URLSlug:  "notes",
+		URLParam: "noteId",
+		DomainKind: honeDomain.YjsKind{
+			ParentTable:  "hone_notes",
+			UpdatesTable: "note_yjs_updates",
+			ForeignKey:   "note_id",
+		},
 	}
 	yjsKindWhiteboards = yjsKind{
-		URLSlug:      "whiteboards",
-		URLParam:     "wbId",
-		ParentTable:  "hone_whiteboards",
-		UpdatesTable: "whiteboard_yjs_updates",
-		ForeignKey:   "whiteboard_id",
+		URLSlug:  "whiteboards",
+		URLParam: "wbId",
+		DomainKind: honeDomain.YjsKind{
+			ParentTable:  "hone_whiteboards",
+			UpdatesTable: "whiteboard_yjs_updates",
+			ForeignKey:   "whiteboard_id",
+		},
 	}
 )
 
-// NewYjsPersistence wires both notes and whiteboards Yjs endpoints in one
-// module. Это единая точка для всех CRDT-таблиц — позволяет модулю
-// shutdown-coordination'у управлять ими общо (см. Module-level хуки в
-// будущем для compaction-cron'ов).
-func NewYjsPersistence(d monolithServices.Deps) *monolithServices.Module {
-	h := &yjsPersistenceHandler{pool: d.Pool, log: d.Log, broker: d.SyncEventBroker}
+// YjsPersistenceDeps — что нужно handler'у. Заполняется в bootstrap'е.
+type YjsPersistenceDeps struct {
+	Append  *honeApp.YjsAppend
+	Updates *honeApp.YjsPullUpdates
+	Compact *honeApp.YjsCompact
+	Log     *slog.Logger
+}
+
+// NewYjsPersistence wires both notes и whiteboards Yjs endpoints в один
+// модуль.
+func NewYjsPersistence(deps YjsPersistenceDeps) *monolithServices.Module {
+	h := &yjsPersistenceHandler{
+		appendUC:  deps.Append,
+		updatesUC: deps.Updates,
+		compactUC: deps.Compact,
+		log:       deps.Log,
+	}
 	return &monolithServices.Module{
 		MountREST: func(r chi.Router) {
 			for _, k := range []yjsKind{yjsKindNotes, yjsKindWhiteboards} {
@@ -99,27 +89,13 @@ func NewYjsPersistence(d monolithServices.Deps) *monolithServices.Module {
 }
 
 type yjsPersistenceHandler struct {
-	pool   *pgxpool.Pool
-	log    *slog.Logger
-	broker *monolithServices.SyncEventBroker // optional; nil = no realtime push
+	appendUC  *honeApp.YjsAppend
+	updatesUC *honeApp.YjsPullUpdates
+	compactUC *honeApp.YjsCompact
+	log       *slog.Logger
 }
 
 // ─── helpers ──────────────────────────────────────────────────────────────
-
-// ownsParent — true если (userID, parentID) указывают на существующую
-// строку в parent-таблице. Возвращает (exists, err).
-func (h *yjsPersistenceHandler) ownsParent(ctx context.Context, k yjsKind, userID, parentID uuid.UUID) (bool, error) {
-	var dummy int
-	q := fmt.Sprintf(`SELECT 1 FROM %s WHERE id=$1 AND user_id=$2`, k.ParentTable)
-	err := h.pool.QueryRow(ctx, q, parentID, userID).Scan(&dummy)
-	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return false, nil
-		}
-		return false, fmt.Errorf("yjs.ownsParent(%s): %w", k.ParentTable, err)
-	}
-	return true, nil
-}
 
 func (h *yjsPersistenceHandler) parseParentID(w http.ResponseWriter, r *http.Request, k yjsKind) (uuid.UUID, bool) {
 	id, err := uuid.Parse(chi.URLParam(r, k.URLParam))
@@ -139,9 +115,9 @@ func (h *yjsPersistenceHandler) authedUser(w http.ResponseWriter, r *http.Reques
 	return uid, true
 }
 
-// guarded — combines auth + parent-ownership check. Returns (uid, parentID,
-// proceed). Caller bails when proceed=false (response уже отправлен).
-func (h *yjsPersistenceHandler) guarded(w http.ResponseWriter, r *http.Request, k yjsKind, where string) (uuid.UUID, uuid.UUID, bool) {
+// guarded — combines auth + parent-ownership-via-use-case (внутри Do).
+// Возвращает (uid, parentID, proceed). Caller bails when proceed=false.
+func (h *yjsPersistenceHandler) guarded(w http.ResponseWriter, r *http.Request, k yjsKind) (uuid.UUID, uuid.UUID, bool) {
 	uid, ok := h.authedUser(w, r)
 	if !ok {
 		return uuid.Nil, uuid.Nil, false
@@ -150,24 +126,7 @@ func (h *yjsPersistenceHandler) guarded(w http.ResponseWriter, r *http.Request, 
 	if !ok {
 		return uuid.Nil, uuid.Nil, false
 	}
-	exists, err := h.ownsParent(r.Context(), k, uid, parentID)
-	if err != nil {
-		h.serverError(w, r, where+".owns", err, uid)
-		return uuid.Nil, uuid.Nil, false
-	}
-	if !exists {
-		monolithServices.WritePubJSONError(w, http.StatusNotFound, "not_found", "")
-		return uuid.Nil, uuid.Nil, false
-	}
 	return uid, parentID, true
-}
-
-func deviceArg(ctx context.Context) any {
-	d := sharedMw.DeviceIDFromContext(ctx)
-	if d == uuid.Nil {
-		return nil
-	}
-	return d
 }
 
 // ─── append ───────────────────────────────────────────────────────────────
@@ -178,47 +137,33 @@ type yjsAppendResponse struct {
 }
 
 func (h *yjsPersistenceHandler) appendOp(w http.ResponseWriter, r *http.Request, k yjsKind) {
-	uid, parentID, ok := h.guarded(w, r, k, "append")
+	uid, parentID, ok := h.guarded(w, r, k)
 	if !ok {
 		return
 	}
 
-	body, err := io.ReadAll(io.LimitReader(r.Body, yjsAppendMaxBytes+1))
+	body, err := io.ReadAll(io.LimitReader(r.Body, honeApp.YjsAppendMaxBytes+1))
 	if err != nil {
 		h.serverError(w, r, "append.read", err, uid)
 		return
 	}
-	if len(body) > yjsAppendMaxBytes {
-		monolithServices.WritePubJSONError(w, http.StatusRequestEntityTooLarge, "update_too_large",
-			fmt.Sprintf("max %d bytes per update", yjsAppendMaxBytes))
-		return
-	}
-	if len(body) == 0 {
-		monolithServices.WritePubJSONError(w, http.StatusBadRequest, "empty_body", "")
-		return
-	}
 
-	q := fmt.Sprintf(
-		`INSERT INTO %s (%s, user_id, update_data, origin_device_id)
-		 VALUES ($1, $2, $3, $4)
-		 RETURNING seq, created_at`,
-		k.UpdatesTable, k.ForeignKey,
-	)
-
-	var resp yjsAppendResponse
-	if err := h.pool.QueryRow(r.Context(), q,
-		parentID, uid, body, deviceArg(r.Context()),
-	).Scan(&resp.Seq, &resp.CreatedAt); err != nil {
-		h.serverError(w, r, "append.insert", err, uid)
+	res, err := h.appendUC.Do(r.Context(), honeApp.YjsAppendInput{
+		Kind:           k.DomainKind,
+		KindSlug:       k.URLSlug,
+		UserID:         uid,
+		ParentID:       parentID,
+		Data:           body,
+		OriginDeviceID: sharedMw.DeviceIDFromContext(r.Context()),
+	})
+	if err != nil {
+		h.handleYjsErr(w, r, "append", err, uid, honeApp.YjsAppendMaxBytes, "update_too_large", "max %d bytes per update")
 		return
 	}
-	// Phase C-6.2 — fan-out на other devices этого юзера. Origin device
-	// сам себе не получает (broker filter).
-	if h.broker != nil {
-		h.broker.PublishYjsAppend(uid, k.URLSlug, parentID.String(),
-			sharedMw.DeviceIDFromContext(r.Context()))
-	}
-	monolithServices.WritePubJSON(w, http.StatusOK, resp)
+	monolithServices.WritePubJSON(w, http.StatusOK, yjsAppendResponse{
+		Seq:       res.Seq,
+		CreatedAt: res.CreatedAt,
+	})
 }
 
 // ─── updates ──────────────────────────────────────────────────────────────
@@ -237,7 +182,7 @@ type yjsUpdatesResponse struct {
 }
 
 func (h *yjsPersistenceHandler) updatesOp(w http.ResponseWriter, r *http.Request, k yjsKind) {
-	uid, parentID, ok := h.guarded(w, r, k, "updates")
+	uid, parentID, ok := h.guarded(w, r, k)
 	if !ok {
 		return
 	}
@@ -252,61 +197,37 @@ func (h *yjsPersistenceHandler) updatesOp(w http.ResponseWriter, r *http.Request
 		since = s
 	}
 
-	// Defense-in-depth: фильтр и по parent-id и по user_id. Parent уже
-	// проверен через ownsParent, но user_id-filter гарантирует что даже
-	// если кто-то в будущем кейс ownership проверки ослабит — чужие
-	// updates не утекут.
-	q := fmt.Sprintf(
-		`SELECT seq, update_data, origin_device_id, created_at
-		   FROM %s
-		  WHERE %s=$1 AND user_id=$2 AND seq > $3
-		  ORDER BY seq ASC
-		  LIMIT $4`,
-		k.UpdatesTable, k.ForeignKey,
-	)
-
-	rows, err := h.pool.Query(r.Context(), q, parentID, uid, since, yjsUpdatesPerPage+1)
+	out, err := h.updatesUC.Do(r.Context(), honeApp.YjsPullUpdatesInput{
+		Kind:     k.DomainKind,
+		UserID:   uid,
+		ParentID: parentID,
+		Since:    since,
+	})
 	if err != nil {
-		h.serverError(w, r, "updates.query", err, uid)
-		return
-	}
-	defer rows.Close()
-
-	resp := yjsUpdatesResponse{Updates: make([]yjsUpdateRow, 0, yjsUpdatesPerPage)}
-	for rows.Next() {
-		var (
-			seq      int64
-			data     []byte
-			origin   *uuid.UUID
-			createAt time.Time
-		)
-		if err := rows.Scan(&seq, &data, &origin, &createAt); err != nil {
-			h.serverError(w, r, "updates.scan", err, uid)
+		if errors.Is(err, honeApp.ErrYjsParentNotFound) {
+			monolithServices.WritePubJSONError(w, http.StatusNotFound, "not_found", "")
 			return
 		}
+		h.serverError(w, r, "updates", err, uid)
+		return
+	}
+
+	resp := yjsUpdatesResponse{
+		Updates:   make([]yjsUpdateRow, 0, len(out.Updates)),
+		LatestSeq: out.LatestSeq,
+		Truncated: out.Truncated,
+	}
+	for _, u := range out.Updates {
 		row := yjsUpdateRow{
-			Seq:       seq,
-			DataB64:   base64.StdEncoding.EncodeToString(data),
-			CreatedAt: createAt,
+			Seq:       u.Seq,
+			DataB64:   base64.StdEncoding.EncodeToString(u.Data),
+			CreatedAt: u.CreatedAt,
 		}
-		if origin != nil {
-			s := origin.String()
+		if u.OriginDeviceID != nil {
+			s := u.OriginDeviceID.String()
 			row.OriginDeviceID = &s
 		}
 		resp.Updates = append(resp.Updates, row)
-		if seq > resp.LatestSeq {
-			resp.LatestSeq = seq
-		}
-	}
-	if err := rows.Err(); err != nil {
-		h.serverError(w, r, "updates.rows", err, uid)
-		return
-	}
-
-	if len(resp.Updates) > yjsUpdatesPerPage {
-		resp.Updates = resp.Updates[:yjsUpdatesPerPage]
-		resp.Truncated = true
-		resp.LatestSeq = resp.Updates[len(resp.Updates)-1].Seq
 	}
 	monolithServices.WritePubJSON(w, http.StatusOK, resp)
 }
@@ -319,70 +240,49 @@ type yjsCompactResponse struct {
 }
 
 func (h *yjsPersistenceHandler) compactOp(w http.ResponseWriter, r *http.Request, k yjsKind) {
-	uid, parentID, ok := h.guarded(w, r, k, "compact")
+	uid, parentID, ok := h.guarded(w, r, k)
 	if !ok {
 		return
 	}
 
-	body, err := io.ReadAll(io.LimitReader(r.Body, yjsCompactMaxBytes+1))
+	body, err := io.ReadAll(io.LimitReader(r.Body, honeApp.YjsCompactMaxBytes+1))
 	if err != nil {
 		h.serverError(w, r, "compact.read", err, uid)
 		return
 	}
-	if len(body) > yjsCompactMaxBytes {
-		monolithServices.WritePubJSONError(w, http.StatusRequestEntityTooLarge, "compact_too_large",
-			fmt.Sprintf("max %d bytes per compact", yjsCompactMaxBytes))
-		return
-	}
-	if len(body) == 0 {
-		monolithServices.WritePubJSONError(w, http.StatusBadRequest, "empty_body", "")
-		return
-	}
 
-	tx, err := h.pool.Begin(r.Context())
+	res, err := h.compactUC.Do(r.Context(), honeApp.YjsCompactInput{
+		Kind:           k.DomainKind,
+		KindSlug:       k.URLSlug,
+		UserID:         uid,
+		ParentID:       parentID,
+		MergedData:     body,
+		OriginDeviceID: sharedMw.DeviceIDFromContext(r.Context()),
+	})
 	if err != nil {
-		h.serverError(w, r, "compact.begin", err, uid)
+		h.handleYjsErr(w, r, "compact", err, uid, honeApp.YjsCompactMaxBytes, "compact_too_large", "max %d bytes per compact")
 		return
-	}
-	defer func() { _ = tx.Rollback(r.Context()) }()
-
-	insertQ := fmt.Sprintf(
-		`INSERT INTO %s (%s, user_id, update_data, origin_device_id)
-		 VALUES ($1, $2, $3, $4)
-		 RETURNING seq`,
-		k.UpdatesTable, k.ForeignKey,
-	)
-	var newSeq int64
-	if qErr := tx.QueryRow(r.Context(), insertQ,
-		parentID, uid, body, deviceArg(r.Context()),
-	).Scan(&newSeq); qErr != nil {
-		h.serverError(w, r, "compact.insert", qErr, uid)
-		return
-	}
-
-	deleteQ := fmt.Sprintf(
-		`DELETE FROM %s WHERE %s=$1 AND user_id=$2 AND seq < $3`,
-		k.UpdatesTable, k.ForeignKey,
-	)
-	cmd, err := tx.Exec(r.Context(), deleteQ, parentID, uid, newSeq)
-	if err != nil {
-		h.serverError(w, r, "compact.delete", err, uid)
-		return
-	}
-
-	if err := tx.Commit(r.Context()); err != nil {
-		h.serverError(w, r, "compact.commit", err, uid)
-		return
-	}
-
-	if h.broker != nil {
-		h.broker.PublishYjsAppend(uid, k.URLSlug, parentID.String(),
-			sharedMw.DeviceIDFromContext(r.Context()))
 	}
 	monolithServices.WritePubJSON(w, http.StatusOK, yjsCompactResponse{
-		Seq:     newSeq,
-		Removed: cmd.RowsAffected(),
+		Seq:     res.Seq,
+		Removed: res.Removed,
 	})
+}
+
+// handleYjsErr — общий error-routing для append/compact (одинаковые
+// validation-sentinels).
+func (h *yjsPersistenceHandler) handleYjsErr(w http.ResponseWriter, r *http.Request, where string, err error, uid uuid.UUID, maxBytes int, tooLargeCode, tooLargeMsg string) {
+	switch {
+	case errors.Is(err, honeApp.ErrYjsBodyTooLarge):
+		monolithServices.WritePubJSONError(w, http.StatusRequestEntityTooLarge, tooLargeCode,
+			fmt.Sprintf(tooLargeMsg, maxBytes))
+	case errors.Is(err, honeApp.ErrYjsEmptyBody):
+		monolithServices.WritePubJSONError(w, http.StatusBadRequest, "empty_body", "")
+	case errors.Is(err, honeApp.ErrYjsParentNotFound):
+		monolithServices.WritePubJSONError(w, http.StatusNotFound, "not_found", "")
+	default:
+		h.serverError(w, r, where, err, uid)
+	}
 }
 
 func (h *yjsPersistenceHandler) serverError(w http.ResponseWriter, r *http.Request, where string, err error, uid uuid.UUID) {

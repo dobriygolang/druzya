@@ -162,6 +162,70 @@ export function ExpandedScreen() {
     });
   };
 
+  // Auto-send-on-silence: после VAD-tail (3s без новых chunk'ов) пушим
+  // accumulated transcript в чат + clear store. Юзер хочет hands-free
+  // flow: говорит → пауза → ответ модели → говорит → ...
+  //
+  // Flow:
+  //   1. Когда recording=true и chunks меняются — reset 3s timeout.
+  //   2. Если timeout срабатывает И есть текст И не streaming — splice
+  //      + send + clear.
+  //   3. Если streaming идёт — НЕ отправляем (модель ещё отвечает на
+  //      предыдущее), просто оставляем chunks в буфере; следующий tick
+  //      попробует снова. Это даёт юзеру естественный turn-taking
+  //      ритм: «говорю — пауза — модель отвечает — снова говорю».
+  const audioChunks = useAudioCaptureStore((s) => s.chunks);
+  const audioFullText = useAudioCaptureStore((s) => s.fullText);
+  const audioClear = useAudioCaptureStore((s) => s.clear);
+  const audioState = useAudioCaptureStore((s) => s.state);
+  const autoSendTimerRef = useRef<number | null>(null);
+  const SILENCE_AUTOSEND_MS = 3000;
+
+  useEffect(() => {
+    if (autoSendTimerRef.current !== null) {
+      window.clearTimeout(autoSendTimerRef.current);
+      autoSendTimerRef.current = null;
+    }
+    const recording = audioState === 'running';
+    if (!recording || audioChunks.length === 0 || streaming) return;
+
+    autoSendTimerRef.current = window.setTimeout(() => {
+      const text = audioFullText().trim();
+      if (!text) return;
+      // Re-check streaming в момент срабатывания: гонка между
+      // useEffect cleanup'ом и setTimeout closure'ом возможна, если
+      // streaming flip'нулся true прямо перед firing'ом. Проверяем
+      // через store напрямую.
+      if (useConversationStore.getState().streaming) return;
+
+      audioClear();
+      // Если у юзера в draft был text — приплюсуем (очень редкий
+      // случай, но сохраняем).
+      const joined = draft.trim() ? `${draft.trim()} ${text}` : text;
+      setDraft('');
+      const ipc = conversationId ? window.druz9.analyze.chat : window.druz9.analyze.start;
+      void ipc({
+        conversationId,
+        promptText: joined,
+        model: selectedModel || config?.defaultModelId || '',
+        attachments: [],
+        triggerAction: 'voice_input',
+        focusedAppHint: '',
+      }).catch(() => {
+        // Network blip / quota — не падаем, просто оставляем chunks
+        // которые мы уже cleared'нули. Юзер увидит что ответ не пришёл
+        // и заговорит снова.
+      });
+    }, SILENCE_AUTOSEND_MS);
+
+    return () => {
+      if (autoSendTimerRef.current !== null) {
+        window.clearTimeout(autoSendTimerRef.current);
+        autoSendTimerRef.current = null;
+      }
+    };
+  }, [audioChunks, audioState, streaming, draft, conversationId, selectedModel, config?.defaultModelId, audioFullText, audioClear]);
+
   useHotkeyEvents((action) => {
     if (action !== 'instant_assist') return;
     if (draft.trim()) {
@@ -249,6 +313,27 @@ export function ExpandedScreen() {
             >
               SUMMARY
             </button>
+          )}
+          {messages.length > 0 && (
+            <IconButton
+              title="Сохранить чат как заметку в Hone"
+              onClick={() => {
+                void (async () => {
+                  try {
+                    await window.druz9.notes.saveChatToHone({
+                      title: '',
+                      messages: messages
+                        .filter((m) => !m.pending && m.content.trim().length > 0)
+                        .map((m) => ({ role: m.role, content: m.content })),
+                    });
+                  } catch {
+                    // Hone не установлен / OS блокировал deeplink — silent.
+                  }
+                })();
+              }}
+            >
+              <SaveToHoneIcon />
+            </IconButton>
           )}
           <IconButton title="История" onClick={() => void window.druz9.windows.show('history')}>
             <IconHistory size={14} />
@@ -1577,5 +1662,17 @@ function ChatKbd({ children }: { children: React.ReactNode }) {
     }}>
       {children}
     </span>
+  );
+}
+
+// SaveToHoneIcon — outlined notebook glyph (соответствует HoneIcon в
+// SummaryModal, оставлен inline чтобы не плодить barrel-export'ы).
+function SaveToHoneIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M4 5a2 2 0 0 1 2-2h11a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z" />
+      <path d="M4 8h2M4 12h2M4 16h2" />
+      <path d="M11 9l4 4M15 9l-4 4" />
+    </svg>
   );
 }

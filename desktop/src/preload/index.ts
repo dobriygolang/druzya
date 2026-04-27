@@ -33,6 +33,7 @@ import {
   type TelegramLoginStart,
   type UpdateStatus,
   type PickerKind,
+  type SaveChatInput,
   type WindowName,
 } from '@shared/ipc';
 import type { HotkeyBinding, Quota, Session, SessionAnalysis, SessionKind } from '@shared/types';
@@ -168,6 +169,8 @@ const api: Druz9API = {
       ipcRenderer.invoke(invokeChannels.notesShowInFolder, filePath) as Promise<void>,
     openInHone: (filePath: string) =>
       ipcRenderer.invoke(invokeChannels.notesOpenInHone, filePath) as Promise<void>,
+    saveChatToHone: (input: SaveChatInput) =>
+      ipcRenderer.invoke(invokeChannels.notesSaveChatToHone, input) as Promise<{ filePath: string }>,
   },
   app: {
     quit: () => ipcRenderer.invoke(invokeChannels.appQuit) as Promise<void>,

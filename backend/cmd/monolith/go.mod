@@ -17,7 +17,7 @@ require (
 	druz9/friends v0.0.0-00010101000000-000000000000
 	druz9/hone v0.0.0-00010101000000-000000000000
 	druz9/intelligence v0.0.0-00010101000000-000000000000
-	druz9/lobby v0.0.0-00010101000000-000000000000
+	druz9/lobby v0.0.0
 	druz9/mentor_session v0.0.0-00010101000000-000000000000
 	druz9/mock_interview v0.0.0-00010101000000-000000000000
 	druz9/notify v0.0.0-00010101000000-000000000000
@@ -43,7 +43,9 @@ require github.com/gomarkdown/markdown v0.0.0-20260417124207-7d523f7318df
 require (
 	druz9/circles v0.0.0
 	druz9/events v0.0.0
+	druz9/storage v0.0.0
 	druz9/subscription v0.0.0
+	druz9/sync v0.0.0
 	druz9/whiteboard_rooms v0.0.0
 	github.com/andybalholm/cascadia v1.3.3 // indirect
 	github.com/araddon/dateparse v0.0.0-20210429162001-6b43995a97de // indirect
@@ -156,3 +158,7 @@ replace druz9/circles => ../../services/circles
 replace druz9/mock_interview => ../../services/mock_interview
 
 replace druz9/events => ../../services/events
+
+replace druz9/sync => ../../services/sync
+
+replace druz9/storage => ../../services/storage

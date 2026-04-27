@@ -10,6 +10,8 @@
 // Not a singleton — one instance per main process, owned by
 // registerHandlers. The renderer talks to it exclusively via IPC.
 
+import { shell } from 'electron';
+
 import { eventChannels } from '@shared/ipc';
 import type { Session, SessionAnalysis, SessionKind } from '@shared/types';
 
@@ -58,7 +60,22 @@ export function createSessionManager(deps: ManagerDeps): SessionManager {
           broadcast(eventChannels.sessionAnalysisReady, analysis);
           if (analysis.status === 'ready') {
             saveNotes(analysis)
-              .then((saved) => broadcast(eventChannels.notesReady, saved))
+              .then((saved) => {
+                broadcast(eventChannels.notesReady, saved);
+                // Auto-import в Hone сразу после save: пользователю не
+                // нужно жать кнопку «Открыть в Hone» — заметка сразу
+                // появляется в Cue Sessions section. Hone backend
+                // idempotent по file_path (UNIQUE constraint), поэтому
+                // повторное открытие модалки + клик на ту же кнопку не
+                // создаёт дубликат. shell.openExternal — best-effort:
+                // если Hone не установлен → silent fail (юзер всё равно
+                // увидит SummaryModal с кнопкой как fallback).
+                const encoded = Buffer.from(saved.filePath).toString('base64');
+                void shell.openExternal(`druz9://notes/import?path=${encoded}`).catch(() => {
+                  // Silent — пользователь увидит SummaryModal-кнопку
+                  // как явный fallback.
+                });
+              })
               .catch(() => { /* non-critical — notes saving failure is silent */ });
           }
           return;

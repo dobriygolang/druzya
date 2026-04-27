@@ -9,6 +9,7 @@ import (
 	aimockInfra "druz9/ai_mock/infra"
 	aimockPorts "druz9/ai_mock/ports"
 	monolithServices "druz9/cmd/monolith/services"
+	authServices "druz9/cmd/monolith/services/auth"
 	"druz9/shared/enums"
 	"druz9/shared/generated/pb/druz9/v1/druz9v1connect"
 
@@ -89,7 +90,7 @@ func NewAIMock(d monolithServices.Deps) *monolithServices.Module {
 	report := &aimockApp.GetReport{Sessions: sessions}
 
 	server := aimockPorts.NewMockServer(createSession, getSession, sendMessage, stress, finish, report, d.Log)
-	ws := aimockPorts.NewWSHandler(hub, monolithServices.MockTokenVerifier{Issuer: d.TokenIssuer}, sessions, messages, sendMessage, stress, d.Log)
+	ws := aimockPorts.NewWSHandler(hub, authServices.MockTokenVerifier{Issuer: d.TokenIssuer}, sessions, messages, sendMessage, stress, d.Log)
 
 	// Voice TTS handler. Uses the real Edge TTS WS proxy (10s timeout).
 	// The tier/turn deps are nil for now — the handler treats nil tier as

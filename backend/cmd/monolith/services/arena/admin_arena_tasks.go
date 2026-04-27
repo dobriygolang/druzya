@@ -5,11 +5,9 @@
 //
 // `mock_tasks` (00043) has its own admin path — these are different
 // pools and stay separate by design.
-
 package arena
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -17,13 +15,14 @@ import (
 	"net/http"
 	"strconv"
 
+	arenaApp "druz9/arena/app"
+	arenaDomain "druz9/arena/domain"
+	arenaInfra "druz9/arena/infra"
 	monolithServices "druz9/cmd/monolith/services"
-	sharedpg "druz9/shared/pkg/pg"
+	authServices "druz9/cmd/monolith/services/auth"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 // arenaTaskDTO mirrors the wire shape used by /admin/arena/tasks.
@@ -44,22 +43,38 @@ type arenaTaskDTO struct {
 	AvgRating     float64 `json:"avg_rating"`
 }
 
-func validateArenaSection(s string) bool {
-	switch s {
-	case "algorithms", "sql", "go", "system_design", "behavioral":
-		return true
+func dtoFromAdminTask(t arenaDomain.AdminTask) arenaTaskDTO {
+	return arenaTaskDTO{
+		ID:            t.ID.String(),
+		Slug:          t.Slug,
+		TitleRU:       t.TitleRU,
+		TitleEN:       t.TitleEN,
+		DescriptionRU: t.DescriptionRU,
+		DescriptionEN: t.DescriptionEN,
+		Difficulty:    t.Difficulty,
+		Section:       t.Section,
+		TimeLimitSec:  t.TimeLimitSec,
+		MemoryLimitMB: t.MemoryLimitMB,
+		SolutionHint:  t.SolutionHint,
+		Version:       t.Version,
+		IsActive:      t.IsActive,
+		AvgRating:     t.AvgRating,
 	}
-	return false
-}
-
-func validateArenaDifficulty(d string) bool {
-	return d == "easy" || d == "medium" || d == "hard"
 }
 
 // NewAdminArenaTasks wires the admin tasks REST surface. Returns a
 // Module so it slots into the standard bootstrap loop.
 func NewAdminArenaTasks(d monolithServices.Deps) *monolithServices.Module {
-	h := &adminArenaTasksHandler{pool: d.Pool, log: d.Log}
+	repo := arenaInfra.NewAdminTasks(d.Pool)
+	h := &adminArenaTasksHandler{
+		listUC:   &arenaApp.ListAdminTasks{Repo: repo},
+		getUC:    &arenaApp.GetAdminTask{Repo: repo},
+		createUC: &arenaApp.CreateAdminTask{Repo: repo},
+		updateUC: &arenaApp.UpdateAdminTask{Repo: repo},
+		toggleUC: &arenaApp.ToggleAdminTaskActive{Repo: repo},
+		deleteUC: &arenaApp.DeleteAdminTask{Repo: repo},
+		log:      d.Log,
+	}
 	return &monolithServices.Module{
 		MountREST: func(r chi.Router) {
 			r.Get("/admin/arena/tasks", h.list)
@@ -73,93 +88,53 @@ func NewAdminArenaTasks(d monolithServices.Deps) *monolithServices.Module {
 }
 
 type adminArenaTasksHandler struct {
-	pool *pgxpool.Pool
-	log  *slog.Logger
-}
-
-const arenaTaskCols = `id, slug, title_ru, title_en, description_ru, description_en,
-	difficulty, section, time_limit_sec, memory_limit_mb,
-	COALESCE(solution_hint,''), version, is_active, COALESCE(avg_rating,0)`
-
-func (h *adminArenaTasksHandler) scan(row pgx.Row) (arenaTaskDTO, error) {
-	var d arenaTaskDTO
-	var idUUID uuid.UUID
-	err := row.Scan(&idUUID, &d.Slug, &d.TitleRU, &d.TitleEN,
-		&d.DescriptionRU, &d.DescriptionEN, &d.Difficulty, &d.Section,
-		&d.TimeLimitSec, &d.MemoryLimitMB, &d.SolutionHint,
-		&d.Version, &d.IsActive, &d.AvgRating)
-	if err != nil {
-		return arenaTaskDTO{}, fmt.Errorf("scan arena task: %w", err)
-	}
-	d.ID = idUUID.String()
-	return d, nil
+	listUC   *arenaApp.ListAdminTasks
+	getUC    *arenaApp.GetAdminTask
+	createUC *arenaApp.CreateAdminTask
+	updateUC *arenaApp.UpdateAdminTask
+	toggleUC *arenaApp.ToggleAdminTaskActive
+	deleteUC *arenaApp.DeleteAdminTask
+	log      *slog.Logger
 }
 
 func (h *adminArenaTasksHandler) list(w http.ResponseWriter, r *http.Request) {
-	if _, err := monolithServices.RequireAdminInline(r); err != nil {
-		http.Error(w, fmt.Sprintf(`{"error":"%s"}`, err.Error()), monolithServices.StatusForAuthErr(err))
+	if _, err := authServices.RequireAdminInline(r); err != nil {
+		http.Error(w, fmt.Sprintf(`{"error":"%s"}`, err.Error()), authServices.StatusForAuthErr(err))
 		return
 	}
 	q := r.URL.Query()
-	section := q.Get("section")
-	difficulty := q.Get("difficulty")
-	onlyActive := q.Get("active") == "true"
-	limit := 200
+	f := arenaDomain.AdminTaskListFilter{
+		Section:    q.Get("section"),
+		Difficulty: q.Get("difficulty"),
+		OnlyActive: q.Get("active") == "true",
+		Limit:      200,
+	}
 	if v := q.Get("limit"); v != "" {
 		if n, err := strconv.Atoi(v); err == nil && n > 0 && n <= 500 {
-			limit = n
+			f.Limit = n
 		}
 	}
-	args := []any{}
-	idx := 1
-	sql := `SELECT ` + arenaTaskCols + ` FROM tasks WHERE 1=1`
-	if section != "" {
-		if !validateArenaSection(section) {
-			http.Error(w, `{"error":"invalid section"}`, http.StatusBadRequest)
-			return
-		}
-		sql += fmt.Sprintf(" AND section = $%d", idx)
-		args = append(args, section)
-		idx++
-	}
-	if difficulty != "" {
-		if !validateArenaDifficulty(difficulty) {
-			http.Error(w, `{"error":"invalid difficulty"}`, http.StatusBadRequest)
-			return
-		}
-		sql += fmt.Sprintf(" AND difficulty = $%d", idx)
-		args = append(args, difficulty)
-		idx++
-	}
-	if onlyActive {
-		sql += " AND is_active = TRUE"
-	}
-	sql += fmt.Sprintf(" ORDER BY created_at DESC LIMIT $%d", idx)
-	args = append(args, limit)
-	rows, err := h.pool.Query(r.Context(), sql, args...)
+	out, err := h.listUC.Run(r.Context(), f)
 	if err != nil {
+		if errors.Is(err, arenaDomain.ErrAdminTaskInvalid) {
+			http.Error(w, fmt.Sprintf(`{"error":"%s"}`, err.Error()), http.StatusBadRequest)
+			return
+		}
 		h.log.ErrorContext(r.Context(), "admin.arena_tasks.list", slog.Any("err", err))
 		http.Error(w, `{"error":"internal"}`, http.StatusInternalServerError)
 		return
 	}
-	defer rows.Close()
-	out := make([]arenaTaskDTO, 0)
-	for rows.Next() {
-		t, err := h.scan(rows)
-		if err != nil {
-			h.log.ErrorContext(r.Context(), "admin.arena_tasks.scan", slog.Any("err", err))
-			http.Error(w, `{"error":"internal"}`, http.StatusInternalServerError)
-			return
-		}
-		out = append(out, t)
+	dtos := make([]arenaTaskDTO, 0, len(out))
+	for _, t := range out {
+		dtos = append(dtos, dtoFromAdminTask(t))
 	}
 	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(map[string]any{"items": out})
+	_ = json.NewEncoder(w).Encode(map[string]any{"items": dtos})
 }
 
 func (h *adminArenaTasksHandler) get(w http.ResponseWriter, r *http.Request) {
-	if _, err := monolithServices.RequireAdminInline(r); err != nil {
-		http.Error(w, fmt.Sprintf(`{"error":"%s"}`, err.Error()), monolithServices.StatusForAuthErr(err))
+	if _, err := authServices.RequireAdminInline(r); err != nil {
+		http.Error(w, fmt.Sprintf(`{"error":"%s"}`, err.Error()), authServices.StatusForAuthErr(err))
 		return
 	}
 	id, err := uuid.Parse(chi.URLParam(r, "id"))
@@ -167,11 +142,9 @@ func (h *adminArenaTasksHandler) get(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, `{"error":"invalid id"}`, http.StatusBadRequest)
 		return
 	}
-	row := h.pool.QueryRow(r.Context(),
-		`SELECT `+arenaTaskCols+` FROM tasks WHERE id = $1`, sharedpg.UUID(id))
-	t, err := h.scan(row)
+	t, err := h.getUC.Run(r.Context(), id)
 	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
+		if errors.Is(err, arenaDomain.ErrNotFound) {
 			http.Error(w, `{"error":"not found"}`, http.StatusNotFound)
 			return
 		}
@@ -180,7 +153,7 @@ func (h *adminArenaTasksHandler) get(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(t)
+	_ = json.NewEncoder(w).Encode(dtoFromAdminTask(t))
 }
 
 type arenaTaskUpsertBody struct {
@@ -197,25 +170,29 @@ type arenaTaskUpsertBody struct {
 	IsActive      *bool  `json:"is_active"`
 }
 
-func (b *arenaTaskUpsertBody) validate() error {
-	if b.Slug == "" {
-		return errors.New("slug is required")
+func (b arenaTaskUpsertBody) toDomain() arenaDomain.AdminTaskUpsert {
+	active := true
+	if b.IsActive != nil {
+		active = *b.IsActive
 	}
-	if b.TitleRU == "" || b.TitleEN == "" {
-		return errors.New("title_ru and title_en are required")
+	return arenaDomain.AdminTaskUpsert{
+		Slug:          b.Slug,
+		TitleRU:       b.TitleRU,
+		TitleEN:       b.TitleEN,
+		DescriptionRU: b.DescriptionRU,
+		DescriptionEN: b.DescriptionEN,
+		Difficulty:    b.Difficulty,
+		Section:       b.Section,
+		TimeLimitSec:  b.TimeLimitSec,
+		MemoryLimitMB: b.MemoryLimitMB,
+		SolutionHint:  b.SolutionHint,
+		IsActive:      active,
 	}
-	if !validateArenaDifficulty(b.Difficulty) {
-		return errors.New("difficulty must be easy|medium|hard")
-	}
-	if !validateArenaSection(b.Section) {
-		return errors.New("section invalid")
-	}
-	return nil
 }
 
 func (h *adminArenaTasksHandler) create(w http.ResponseWriter, r *http.Request) {
-	if _, err := monolithServices.RequireAdminInline(r); err != nil {
-		http.Error(w, fmt.Sprintf(`{"error":"%s"}`, err.Error()), monolithServices.StatusForAuthErr(err))
+	if _, err := authServices.RequireAdminInline(r); err != nil {
+		http.Error(w, fmt.Sprintf(`{"error":"%s"}`, err.Error()), authServices.StatusForAuthErr(err))
 		return
 	}
 	var body arenaTaskUpsertBody
@@ -223,42 +200,24 @@ func (h *adminArenaTasksHandler) create(w http.ResponseWriter, r *http.Request) 
 		http.Error(w, `{"error":"invalid body"}`, http.StatusBadRequest)
 		return
 	}
-	if err := body.validate(); err != nil {
-		http.Error(w, fmt.Sprintf(`{"error":"%s"}`, err.Error()), http.StatusBadRequest)
-		return
-	}
-	if body.TimeLimitSec <= 0 {
-		body.TimeLimitSec = 60
-	}
-	if body.MemoryLimitMB <= 0 {
-		body.MemoryLimitMB = 256
-	}
-	active := true
-	if body.IsActive != nil {
-		active = *body.IsActive
-	}
-	row := h.pool.QueryRow(r.Context(), `
-		INSERT INTO tasks (slug, title_ru, title_en, description_ru, description_en,
-			difficulty, section, time_limit_sec, memory_limit_mb, solution_hint, is_active)
-		VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,NULLIF($10,''),$11)
-		RETURNING `+arenaTaskCols,
-		body.Slug, body.TitleRU, body.TitleEN, body.DescriptionRU, body.DescriptionEN,
-		body.Difficulty, body.Section, body.TimeLimitSec, body.MemoryLimitMB,
-		body.SolutionHint, active)
-	t, err := h.scan(row)
+	t, err := h.createUC.Run(r.Context(), body.toDomain())
 	if err != nil {
+		if errors.Is(err, arenaDomain.ErrAdminTaskInvalid) {
+			http.Error(w, fmt.Sprintf(`{"error":"%s"}`, err.Error()), http.StatusBadRequest)
+			return
+		}
 		h.log.ErrorContext(r.Context(), "admin.arena_tasks.create", slog.Any("err", err))
 		http.Error(w, `{"error":"internal"}`, http.StatusInternalServerError)
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
-	_ = json.NewEncoder(w).Encode(t)
+	_ = json.NewEncoder(w).Encode(dtoFromAdminTask(t))
 }
 
 func (h *adminArenaTasksHandler) update(w http.ResponseWriter, r *http.Request) {
-	if _, err := monolithServices.RequireAdminInline(r); err != nil {
-		http.Error(w, fmt.Sprintf(`{"error":"%s"}`, err.Error()), monolithServices.StatusForAuthErr(err))
+	if _, err := authServices.RequireAdminInline(r); err != nil {
+		http.Error(w, fmt.Sprintf(`{"error":"%s"}`, err.Error()), authServices.StatusForAuthErr(err))
 		return
 	}
 	id, err := uuid.Parse(chi.URLParam(r, "id"))
@@ -271,27 +230,13 @@ func (h *adminArenaTasksHandler) update(w http.ResponseWriter, r *http.Request) 
 		http.Error(w, `{"error":"invalid body"}`, http.StatusBadRequest)
 		return
 	}
-	if verr := body.validate(); verr != nil {
-		http.Error(w, fmt.Sprintf(`{"error":"%s"}`, verr.Error()), http.StatusBadRequest)
-		return
-	}
-	active := true
-	if body.IsActive != nil {
-		active = *body.IsActive
-	}
-	row := h.pool.QueryRow(r.Context(), `
-		UPDATE tasks SET
-			slug=$2, title_ru=$3, title_en=$4, description_ru=$5, description_en=$6,
-			difficulty=$7, section=$8, time_limit_sec=$9, memory_limit_mb=$10,
-			solution_hint=NULLIF($11,''), is_active=$12, updated_at=now()
-		WHERE id = $1
-		RETURNING `+arenaTaskCols,
-		sharedpg.UUID(id), body.Slug, body.TitleRU, body.TitleEN,
-		body.DescriptionRU, body.DescriptionEN, body.Difficulty, body.Section,
-		body.TimeLimitSec, body.MemoryLimitMB, body.SolutionHint, active)
-	t, err := h.scan(row)
+	t, err := h.updateUC.Run(r.Context(), id, body.toDomain())
 	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
+		if errors.Is(err, arenaDomain.ErrAdminTaskInvalid) {
+			http.Error(w, fmt.Sprintf(`{"error":"%s"}`, err.Error()), http.StatusBadRequest)
+			return
+		}
+		if errors.Is(err, arenaDomain.ErrNotFound) {
 			http.Error(w, `{"error":"not found"}`, http.StatusNotFound)
 			return
 		}
@@ -300,12 +245,12 @@ func (h *adminArenaTasksHandler) update(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(t)
+	_ = json.NewEncoder(w).Encode(dtoFromAdminTask(t))
 }
 
 func (h *adminArenaTasksHandler) toggleActive(w http.ResponseWriter, r *http.Request) {
-	if _, err := monolithServices.RequireAdminInline(r); err != nil {
-		http.Error(w, fmt.Sprintf(`{"error":"%s"}`, err.Error()), monolithServices.StatusForAuthErr(err))
+	if _, err := authServices.RequireAdminInline(r); err != nil {
+		http.Error(w, fmt.Sprintf(`{"error":"%s"}`, err.Error()), authServices.StatusForAuthErr(err))
 		return
 	}
 	id, err := uuid.Parse(chi.URLParam(r, "id"))
@@ -320,16 +265,13 @@ func (h *adminArenaTasksHandler) toggleActive(w http.ResponseWriter, r *http.Req
 		http.Error(w, `{"error":"invalid body"}`, http.StatusBadRequest)
 		return
 	}
-	tag, err := h.pool.Exec(r.Context(),
-		`UPDATE tasks SET is_active = $2, updated_at = now() WHERE id = $1`,
-		sharedpg.UUID(id), body.Active)
-	if err != nil {
+	if err := h.toggleUC.Run(r.Context(), id, body.Active); err != nil {
+		if errors.Is(err, arenaDomain.ErrNotFound) {
+			http.Error(w, `{"error":"not found"}`, http.StatusNotFound)
+			return
+		}
 		h.log.ErrorContext(r.Context(), "admin.arena_tasks.active", slog.Any("err", err))
 		http.Error(w, `{"error":"internal"}`, http.StatusInternalServerError)
-		return
-	}
-	if tag.RowsAffected() == 0 {
-		http.Error(w, `{"error":"not found"}`, http.StatusNotFound)
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
@@ -337,8 +279,8 @@ func (h *adminArenaTasksHandler) toggleActive(w http.ResponseWriter, r *http.Req
 }
 
 func (h *adminArenaTasksHandler) delete(w http.ResponseWriter, r *http.Request) {
-	if _, err := monolithServices.RequireAdminInline(r); err != nil {
-		http.Error(w, fmt.Sprintf(`{"error":"%s"}`, err.Error()), monolithServices.StatusForAuthErr(err))
+	if _, err := authServices.RequireAdminInline(r); err != nil {
+		http.Error(w, fmt.Sprintf(`{"error":"%s"}`, err.Error()), authServices.StatusForAuthErr(err))
 		return
 	}
 	id, err := uuid.Parse(chi.URLParam(r, "id"))
@@ -346,19 +288,16 @@ func (h *adminArenaTasksHandler) delete(w http.ResponseWriter, r *http.Request) 
 		http.Error(w, `{"error":"invalid id"}`, http.StatusBadRequest)
 		return
 	}
-	tag, err := h.pool.Exec(r.Context(), `DELETE FROM tasks WHERE id = $1`, sharedpg.UUID(id))
-	if err != nil {
+	if err := h.deleteUC.Run(r.Context(), id); err != nil {
+		if errors.Is(err, arenaDomain.ErrNotFound) {
+			http.Error(w, `{"error":"not found"}`, http.StatusNotFound)
+			return
+		}
 		// FK violation when match_history references — surface as 409.
 		h.log.ErrorContext(r.Context(), "admin.arena_tasks.delete", slog.Any("err", err))
 		http.Error(w, `{"error":"cannot delete (referenced by match history)"}`, http.StatusConflict)
 		return
 	}
-	if tag.RowsAffected() == 0 {
-		http.Error(w, `{"error":"not found"}`, http.StatusNotFound)
-		return
-	}
 	w.Header().Set("Content-Type", "application/json")
 	_ = json.NewEncoder(w).Encode(map[string]bool{"ok": true})
 }
-
-var _ = context.Background

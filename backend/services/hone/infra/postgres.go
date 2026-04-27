@@ -1054,6 +1054,19 @@ func (f *Folders) Delete(ctx context.Context, userID, folderID uuid.UUID, moveNo
 		if err != nil {
 			return fmt.Errorf("hone.Folders.Delete: move notes: %w", err)
 		}
+		// Re-parent дочерних папок в root (parent_id=NULL). Без этого
+		// дети остаются orphan'ами с висячим parent_id → frontend
+		// FolderTreeBranch их не находит при обходе с root и они
+		// перестают отображаться. Поведение «folder + всё внутри
+		// уезжает в root» симметрично notes-flow выше.
+		_, err = tx.Exec(ctx,
+			`UPDATE hone_note_folders SET parent_id=NULL, updated_at=now()
+			  WHERE parent_id=$1 AND user_id=$2`,
+			sharedpg.UUID(folderID), sharedpg.UUID(userID),
+		)
+		if err != nil {
+			return fmt.Errorf("hone.Folders.Delete: reparent children: %w", err)
+		}
 	} else {
 		var count int
 		if scanErr := tx.QueryRow(ctx,
