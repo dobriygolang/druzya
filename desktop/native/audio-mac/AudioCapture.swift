@@ -25,6 +25,7 @@
 import Foundation
 import AVFoundation
 import ScreenCaptureKit
+import Speech
 
 // MARK: - PCM output with inline VAD
 
@@ -53,11 +54,21 @@ final class AudioCaptureOutput: NSObject, SCStreamOutput {
     private var silentSamples = 0
     private var samplesSinceBoundary = 0
     private var isSpeaking = false
+    // speechTranscriber — optional. Если non-nil, mono-Float32 буферы
+    // дополнительно скармливаются в SFSpeechRecognizer. PCM16 тогда
+    // эмитим только если apple-engine fallback'нулся (in this build —
+    // не эмитим, TS сторона решает).
+    private var speechTranscriber: AnyObject? // SpeechTranscriber but type-erased для @available
 
     init(sink: @escaping (Data) -> Void, onBoundary: @escaping () -> Void) {
         self.sink = sink
         self.onBoundary = onBoundary
         super.init()
+    }
+
+    @available(macOS 10.15, *)
+    func setSpeechTranscriber(_ t: SpeechTranscriber?) {
+        self.speechTranscriber = t
     }
 
     func stream(_ stream: SCStream,
@@ -67,13 +78,27 @@ final class AudioCaptureOutput: NSObject, SCStreamOutput {
         guard sampleBuffer.isValid, CMSampleBufferDataIsReady(sampleBuffer) else { return }
 
         // sampleBufferToPCM16Mono returns (PCM16 bytes, RMS of the
-        // buffer). We use the RMS for the VAD decision; PCM passes
-        // through unchanged.
-        guard let (pcm, rms) = sampleBufferToPCM16Mono(sampleBuffer) else {
+        // buffer, Float32 mono samples). PCM16 для PCM-pipeline'а,
+        // Float32 для SFSpeechRecognizer'а (которому нужен AVAudio
+        // PCMBuffer non-interleaved Float32).
+        guard let (pcm, rms, monoFloat) = sampleBufferToPCM16Mono(sampleBuffer) else {
             FileHandle.standardError.write("WARN: failed to convert sample buffer\n".data(using: .utf8)!)
             return
         }
         let frameCount = pcm.count / 2
+
+        // Если apple-engine engaged — кормим SFSpeechRecognizer ВСЕГДА
+        // (apple's engine сам делает свой VAD; нашему Whisper-VAD'у
+        // здесь не нужно вмешиваться).
+        if #available(macOS 10.15, *) {
+            if let st = speechTranscriber as? SpeechTranscriber {
+                monoFloat.withUnsafeBufferPointer { ptr in
+                    if let base = ptr.baseAddress {
+                        st.feed(monoFloat32: base, frameCount: frameCount)
+                    }
+                }
+            }
+        }
 
         if rms > vadRMSThreshold {
             // Speech. Flush any pending silence hold, write PCM.
@@ -112,7 +137,7 @@ final class AudioCaptureOutput: NSObject, SCStreamOutput {
 /// if needed, then encode as Int16 LE. Returns the PCM bytes plus the
 /// per-buffer RMS (root mean square of the mono Float32 samples) so
 /// the caller can make a VAD decision without a second pass.
-private func sampleBufferToPCM16Mono(_ sb: CMSampleBuffer) -> (Data, Float)? {
+private func sampleBufferToPCM16Mono(_ sb: CMSampleBuffer) -> (Data, Float, [Float])? {
     guard let fmtDesc = CMSampleBufferGetFormatDescription(sb),
           let asbd = CMAudioFormatDescriptionGetStreamBasicDescription(fmtDesc)?.pointee else {
         return nil
@@ -189,7 +214,145 @@ private func sampleBufferToPCM16Mono(_ sb: CMSampleBuffer) -> (Data, Float)? {
         }
     }
     let rms = sqrt(sumSq / Float(max(frameCount, 1)))
-    return (out, rms)
+    return (out, rms, mono)
+}
+
+// MARK: - On-device speech transcriber (SFSpeechRecognizer)
+//
+// Engine alternative to backend Whisper. When activated, PCM samples
+// идут в SFSpeechRecognizer (Apple's on-device engine, ru-RU locale,
+// `requiresOnDeviceRecognition = true`). Результаты — partial и final —
+// эмитятся на stderr как `TRANSCRIPT: <seq> <ms> <isFinal> <text>`.
+//
+// Преимущества vs cloud Whisper:
+//   - Free, без API key и без квот.
+//   - On-device → нет network latency, нет приватности риска.
+//   - Apple's engine не страдает Whisper-hallucinations
+//     («Субтитры делал DimaTorzok» и проч.) — обучен на отдельных
+//     корпусах диктовки, не на YouTube.
+//   - Streaming: partial results сразу, final при VAD-tail'е.
+//
+// Trade-offs:
+//   - macOS 10.15+ требуется (мы и так на 13.0+).
+//   - Требует TCC permission `Speech Recognition` (NSSpeechRecognitionUsageDescription
+//     ключ в Info.plist app'а; для отдельного binary'я наследуется от
+//     parent'а — Cue.app).
+//   - Качество русского на коротких фразах сравнимо с whisper-large,
+//     лучше на технических терминах (Apple обновляет ru-RU модель
+//     через систему).
+//
+// API note: SFSpeechRecognitionTask живёт между приёмами audio buffer'ов;
+// re-create его каждый раз при `start()` чтобы не нести state из
+// предыдущих сессий.
+@available(macOS 10.15, *)
+final class SpeechTranscriber: @unchecked Sendable {
+    private let recognizer: SFSpeechRecognizer?
+    private var request: SFSpeechAudioBufferRecognitionRequest?
+    private var task: SFSpeechRecognitionTask?
+    private var seq: Int = 0
+    private let startTime: Date = Date()
+    // Last emitted text — чтобы не плевать одной и той же partial-фразой
+    // 30 раз в секунду при streaming partial results. Эмитим только когда
+    // text реально изменился.
+    private var lastEmittedText: String = ""
+
+    init(localeIdentifier: String = "ru-RU") {
+        let locale = Locale(identifier: localeIdentifier)
+        self.recognizer = SFSpeechRecognizer(locale: locale)
+    }
+
+    /// True если SFSpeechRecognizer доступен для (локали + on-device).
+    /// false → caller должен fall back на PCM-pipeline.
+    var isAvailable: Bool {
+        guard let r = recognizer else { return false }
+        return r.isAvailable
+    }
+
+    /// Authorize once. Вернёт текущий статус если уже spent.
+    static func requestAuthorization(completion: @escaping (SFSpeechRecognizerAuthorizationStatus) -> Void) {
+        SFSpeechRecognizer.requestAuthorization { status in
+            DispatchQueue.main.async { completion(status) }
+        }
+    }
+
+    /// Начать новый recognition request. Re-вызов после stop() OK.
+    func start() throws {
+        guard let recognizer = recognizer else {
+            throw CaptureError("SFSpeechRecognizer не сконструирован (locale unsupported?)")
+        }
+        guard recognizer.isAvailable else {
+            throw CaptureError("SFSpeechRecognizer недоступен (нужен ru-RU language pack или intl. соединение)")
+        }
+
+        let req = SFSpeechAudioBufferRecognitionRequest()
+        req.shouldReportPartialResults = true
+        // Пытаемся включить on-device. На macOS 13+ это бесплатно/без сети.
+        // Если on-device не поддерживается для locale (rare; ru-RU
+        // поддерживается с macOS 13) — fallback на server-side path
+        // Apple'а (тоже бесплатно, но требует internet).
+        if #available(macOS 13, *) {
+            if recognizer.supportsOnDeviceRecognition {
+                req.requiresOnDeviceRecognition = true
+            } else {
+                log("INFO", "on-device speech recognition не поддерживается для locale; using server-side")
+            }
+        }
+
+        seq += 1
+        lastEmittedText = ""
+
+        task = recognizer.recognitionTask(with: req) { [weak self] result, error in
+            guard let self = self else { return }
+            if let error = error as NSError? {
+                // Apple's API: 1110 = "No speech detected", 216 / 203 = various
+                // engine errors; не считаем эти fatal'ы, просто логируем.
+                if error.domain == "kAFAssistantErrorDomain" && (error.code == 1110 || error.code == 1101) {
+                    return
+                }
+                log("WARN", "SFSpeechRecognition error: \(error.localizedDescription) (code=\(error.code))")
+                return
+            }
+            guard let result = result else { return }
+            let text = result.bestTranscription.formattedString
+            if text == self.lastEmittedText { return }
+            self.lastEmittedText = text
+            let ms = Int(Date().timeIntervalSince(self.startTime) * 1000)
+            let final = result.isFinal ? "1" : "0"
+            // TRANSCRIPT: <seq> <ms-since-start> <is-final> <text...>
+            // text может содержать любые символы — caller расщепляет
+            // первые 3 поля по space, остаток — text. \n завершает запись.
+            let line = "TRANSCRIPT: \(self.seq) \(ms) \(final) \(text)\n"
+            FileHandle.standardError.write(line.data(using: .utf8)!)
+        }
+        self.request = req
+    }
+
+    /// Накормить request свежим Float32 mono чанком. format ОЖИДАЕТСЯ
+    /// 16kHz mono (а не нативный SCStream'овский 44.1k stereo) — caller
+    /// уже передал downmix, тот же `mono` массив что используется для PCM16.
+    func feed(monoFloat32 samples: UnsafePointer<Float>, frameCount: Int) {
+        guard let req = request else { return }
+        let format = AVAudioFormat(commonFormat: .pcmFormatFloat32,
+                                   sampleRate: 16_000,
+                                   channels: 1,
+                                   interleaved: false)
+        guard let format = format else { return }
+        guard let buffer = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: AVAudioFrameCount(frameCount)) else {
+            return
+        }
+        buffer.frameLength = AVAudioFrameCount(frameCount)
+        guard let channels = buffer.floatChannelData else { return }
+        memcpy(channels[0], samples, frameCount * MemoryLayout<Float>.size)
+        req.append(buffer)
+    }
+
+    func stop() {
+        request?.endAudio()
+        task?.finish()
+        task?.cancel()
+        request = nil
+        task = nil
+    }
 }
 
 // MARK: - Capture controller
@@ -197,10 +360,11 @@ private func sampleBufferToPCM16Mono(_ sb: CMSampleBuffer) -> (Data, Float)? {
 actor CaptureController {
     private var stream: SCStream?
     private var output: AudioCaptureOutput?
+    private var speechTranscriber: AnyObject?
     private let sampleQueue = DispatchQueue(label: "druz9.audio-capture.samples",
                                             qos: .userInitiated)
 
-    func start() async throws {
+    func start(useAppleSpeech: Bool = false) async throws {
         if stream != nil { return } // idempotent
 
         // Pick any display as the SCStream anchor. capturesAudio=true
@@ -240,6 +404,35 @@ actor CaptureController {
                 // the same way as log() output.
                 FileHandle.standardError.write("BOUNDARY\n".data(using: .utf8)!)
             })
+        // Apple-speech mode: создаём SpeechTranscriber и сажаем в output.
+        // Authorization запрашиваем синхронно через semaphore (одноразовая
+        // операция); если юзер отказал — fall through на PCM-pipeline.
+        if useAppleSpeech, #available(macOS 10.15, *) {
+            let auth = await waitSpeechAuth()
+            switch auth {
+            case .authorized:
+                let st = SpeechTranscriber(localeIdentifier: "ru-RU")
+                if st.isAvailable {
+                    do {
+                        try st.start()
+                        output.setSpeechTranscriber(st)
+                        self.speechTranscriber = st
+                        log("INFO", "apple speech engine engaged (ru-RU, on-device preferred)")
+                    } catch {
+                        log("WARN", "apple speech start failed: \(error); falling back to PCM pipeline")
+                    }
+                } else {
+                    log("WARN", "apple speech recognizer недоступен (нет ru-RU language pack?); falling back")
+                }
+            case .denied, .restricted:
+                log("WARN", "speech recognition permission denied; falling back to PCM pipeline")
+            case .notDetermined:
+                log("WARN", "speech recognition auth остался notDetermined; falling back")
+            @unknown default:
+                log("WARN", "speech recognition auth unknown; falling back")
+            }
+        }
+
         let s = SCStream(filter: filter, configuration: cfg, delegate: nil)
         try s.addStreamOutput(output, type: .audio, sampleHandlerQueue: sampleQueue)
         try await s.startCapture()
@@ -249,6 +442,15 @@ actor CaptureController {
         log("INFO", "capture started (16kHz mono PCM16)")
     }
 
+    @available(macOS 10.15, *)
+    private func waitSpeechAuth() async -> SFSpeechRecognizerAuthorizationStatus {
+        await withCheckedContinuation { (cont: CheckedContinuation<SFSpeechRecognizerAuthorizationStatus, Never>) in
+            SpeechTranscriber.requestAuthorization { status in
+                cont.resume(returning: status)
+            }
+        }
+    }
+
     func stop() async {
         guard let s = stream else { return }
         do {
@@ -256,6 +458,13 @@ actor CaptureController {
         } catch {
             log("WARN", "stop error: \(error)")
         }
+        // Stop speech transcriber и detach его от output.
+        if #available(macOS 10.15, *) {
+            if let st = speechTranscriber as? SpeechTranscriber {
+                st.stop()
+            }
+        }
+        speechTranscriber = nil
         stream = nil
         output = nil
         log("INFO", "capture stopped")
@@ -320,9 +529,21 @@ struct Entry {
                     .trimmingCharacters(in: .whitespaces) ?? ""
                 switch cmd {
                 case "start":
-                    do { try await controller.start() }
+                    // Legacy mode: PCM-only pipeline (Whisper round-trip
+                    // через backend). Используется если apple speech
+                    // недоступен / TS-side явно выбрал.
+                    do { try await controller.start(useAppleSpeech: false) }
                     catch {
                         log("ERROR", "start failed: \(error)")
+                    }
+                case "start-apple":
+                    // Preferred mode: on-device Apple speech recognition.
+                    // PCM продолжает течь на stdout (для compatibility +
+                    // local recording), но реальная transcription идёт
+                    // через TRANSCRIPT: stderr-lines.
+                    do { try await controller.start(useAppleSpeech: true) }
+                    catch {
+                        log("ERROR", "start-apple failed: \(error)")
                     }
                 case "stop":
                     await controller.stop()

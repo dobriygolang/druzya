@@ -444,7 +444,9 @@ export function CompactScreen() {
             </StatusPillBtn>
 
             <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-              <StatusDot state={dotState} size={6} />
+              {/* StatusDot перед таймером убран — рядом с цифрами он
+                  читался как дубликат (модель/персонаж pill уже несут
+                  тот же dotState). Без точки timer выглядит чище. */}
               {statusLabel}
             </span>
 

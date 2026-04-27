@@ -50,3 +50,9 @@ mac:
     NSMicrophoneUsageDescription: >-
       Cue records your voice only when you explicitly start voice
       input. Audio is sent for transcription and then discarded.
+    # SFSpeechRecognizer (on-device) требует отдельный TCC-prompt с
+    # этим ключом. Без него SFSpeechRecognizer.requestAuthorization
+    # моментально возвращает .denied и Swift валится в PCM-fallback.
+    NSSpeechRecognitionUsageDescription: >-
+      Cue uses on-device speech recognition (Apple Speech, no network)
+      to transcribe meetings privately. Audio never leaves your Mac.

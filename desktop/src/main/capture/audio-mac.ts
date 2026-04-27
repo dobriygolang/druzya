@@ -136,6 +136,11 @@ export function createAudioCapture(
 
   let proc: ChildProcessWithoutNullStreams | null = null;
   let state: AudioCaptureState = 'idle';
+  // appleSpeechActive — true когда Swift подтвердил «apple speech engine
+  // engaged». В этом режиме transcribeChunk skip'ает POST в Whisper
+  // backend (текст уже идёт через TRANSCRIPT-stderr lines). Объявлен
+  // тут (а не внутри start()) чтобы transcribeChunk closure его видел.
+  let appleSpeechActive = false;
   // Explicit Buffer type — TS 5.7 otherwise narrows to
   // Buffer<ArrayBuffer> from alloc(0) and then widens via Buffer.concat
   // to Buffer<ArrayBufferLike>, producing an assignability mismatch.
@@ -152,6 +157,20 @@ export function createAudioCapture(
   };
 
   const transcribeChunk = async (pcm: Buffer) => {
+    // Apple-engine path: текст уже идёт через TRANSCRIPT stderr-lines,
+    // backend Whisper не нужен. PCM продолжает писаться в local
+    // recording dir (для аудита/voice memos), но в /api/v1/transcription
+    // не уходит.
+    if (appleSpeechActive) {
+      const wavLocal = encodeWAV(pcm);
+      const seq = chunkSeq;
+      if (recordingDir) {
+        void writeFile(join(recordingDir, `chunk-${seq.toString().padStart(4, '0')}.wav`), wavLocal).catch(() => {});
+      }
+      chunkSeq += 1;
+      return;
+    }
+
     const wav = encodeWAV(pcm);
     const windowSec = pcm.length / (SAMPLE_RATE * BYTES_PER_FRAME);
     const seq = chunkSeq;
@@ -256,6 +275,12 @@ export function createAudioCapture(
     // forward ERROR lines to onError and use READY to flip state from
     // starting→running; everything else goes to console for debugging.
     let stderrBuf = '';
+    // appleSpeechActive — top-level flag. Reset на каждом start().
+    appleSpeechActive = false;
+    // lastTranscriptText — для дедупа TRANSCRIPT-partials. Apple Speech
+    // эмитит cumulative-текст (каждая строка = ВЕСЬ распознанный текст
+    // плюс одно слово больше), а не delta. Превращаем в delta здесь.
+    let lastTranscriptText = '';
     proc.stderr.setEncoding('utf8');
     proc.stderr.on('data', (s: string) => {
       stderrBuf += s;
@@ -266,10 +291,45 @@ export function createAudioCapture(
         nl = stderrBuf.indexOf('\n');
         if (!line) continue;
         if (line === 'BOUNDARY') {
-          // End-of-utterance signal from the Swift VAD. Flush the
-          // accumulated PCM as one chunk (if it passes the min-size
-          // filter) and start a new utterance buffer.
-          flushBuffer('boundary');
+          // End-of-utterance signal from the Swift VAD. Когда apple-
+          // engine activated мы НЕ flush'им chunk на Whisper (transcribe
+          // chunk skip'ает). Когда legacy PCM-mode — flush как раньше.
+          if (!appleSpeechActive) {
+            flushBuffer('boundary');
+          }
+          continue;
+        }
+        if (line.startsWith('TRANSCRIPT:')) {
+          // Format: TRANSCRIPT: <seq> <ms-since-start> <isFinal:0|1> <text...>
+          // Apple's recognizer выдаёт cumulative full-text каждый partial.
+          // Превращаем в delta vs lastTranscriptText чтобы UI не дублировал.
+          const rest = line.replace(/^TRANSCRIPT:\s*/, '');
+          const parts = rest.split(/\s+/);
+          if (parts.length >= 4) {
+            // parts[0]=seq, parts[1]=ms, parts[2]=isFinal, остальное=text
+            const isFinal = parts[2] === '1';
+            const text = parts.slice(3).join(' ').trim();
+            if (text) {
+              const delta =
+                text.startsWith(lastTranscriptText) && lastTranscriptText.length > 0
+                  ? text.slice(lastTranscriptText.length).trim()
+                  : text;
+              if (isFinal) {
+                // Final — фиксируем full text и сбрасываем lastTranscriptText
+                // чтобы следующий utterance начинался с нуля.
+                if (delta) {
+                  events.onTranscript(delta, 0);
+                } else if (!lastTranscriptText) {
+                  events.onTranscript(text, 0);
+                }
+                lastTranscriptText = '';
+              } else if (delta && delta !== lastTranscriptText) {
+                // Partial — only emit delta. UI append'ит to live strip.
+                // (We could throttle здесь — Apple даёт ~10-15 partials/sec.)
+                lastTranscriptText = text;
+              }
+            }
+          }
           continue;
         }
         if (line.startsWith('ERROR:')) {
@@ -278,6 +338,10 @@ export function createAudioCapture(
           // Not yet capturing — we still need to send "start\n".
         } else if (line.startsWith('INFO: capture started')) {
           setState('running');
+        } else if (line.includes('apple speech engine engaged')) {
+          appleSpeechActive = true;
+        } else if (line.includes('falling back to PCM pipeline')) {
+          appleSpeechActive = false;
         }
         // eslint-disable-next-line no-console
         console.log('[AudioCaptureMac]', line);
@@ -297,10 +361,16 @@ export function createAudioCapture(
       setState('idle');
     });
 
-    // The binary waits for "start\n" before opening the SCStream so
-    // the TCC prompt fires from the user's explicit action, not merely
+    // The binary waits for command before opening the SCStream so the
+    // TCC prompt fires from the user's explicit action, not merely
     // from launching the process.
-    proc.stdin.write('start\n');
+    //
+    // start-apple — preferred mode: SFSpeechRecognizer on-device, ru-RU.
+    // Free, no API call, no DimaTorzok-hallucinations. Если apple
+    // recognizer недоступен (нет ru-RU language pack / TCC отказан) —
+    // Swift автоматически fall'нется на PCM pipeline и пошлёт
+    // «falling back to PCM pipeline» лог, который мы парсим выше.
+    proc.stdin.write('start-apple\n');
   };
 
   const stop: AudioCaptureController['stop'] = async () => {
