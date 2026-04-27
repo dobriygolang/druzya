@@ -112,7 +112,12 @@ export function createSessionsClient(cfg: RuntimeConfig): SessionsClient {
 
   return {
     start: async (kind) => {
-      const raw = await call<Record<string, unknown>>('POST', '/api/v1/copilot/sessions', { kind });
+      // Backend rejects kind="" с InvalidInput. UI до Phase 3 ставил
+      // empty string как "ещё не выбрал" — теперь дефолтим в 'casual'
+      // чтобы запись стартовала при ручной record-кнопке. Юзер позже
+      // может изменить kind через Settings.
+      const effectiveKind = kind || 'casual';
+      const raw = await call<Record<string, unknown>>('POST', '/api/v1/copilot/sessions', { kind: effectiveKind });
       return fromRawSession(raw);
     },
     end: async (sessionId) => {

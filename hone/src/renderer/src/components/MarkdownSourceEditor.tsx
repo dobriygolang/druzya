@@ -377,14 +377,19 @@ export function MarkdownSourceEditor({
     }
 
     // Yjs path: bind Y.Text 'body' к CM6.
+    //
+    // КРИТИЧНО: НЕ seed'им ytext синхронно здесь. Раньше тут стоял
+    // `if (ytext.length === 0) ytext.insert(0, seedBodyMD)` — который
+    // фишился ДО того как attach()'s initial fetchUpdates отрезолвилась
+    // и applyUpdate'нула серверные updates. Результат: текст вставлялся
+    // дважды, сервер мерджил CRDT'шно → "hello" + "hello" = "hellohello"
+    // при следующем открытии заметки. Seeding теперь живёт ровно в одном
+    // месте — в `attach()`'s opts.seed callback (см. api/yjs.ts), который
+    // запускается ТОЛЬКО когда server-log пуст. yCollab сам подтянет
+    // remote updates когда они приедут — CM6 обновится без перерисовки.
     const handle = attachNoteYjs(noteId, seedBodyMD);
     handleRef.current = handle;
     const ytext = handle.ydoc.getText('body');
-    if (ytext.length === 0 && seedBodyMD.length > 0) {
-      handle.ydoc.transact(() => {
-        ytext.insert(0, seedBodyMD);
-      });
-    }
 
     const state = EditorState.create({
       doc: ytext.toString(),

@@ -99,6 +99,23 @@ function encodeWAV(pcm: Buffer): Buffer {
   return Buffer.concat([header, pcm]);
 }
 
+// computeRMS — root-mean-square amplitude для 16-bit signed mono PCM.
+// Returns 0..32767. Используется в transcribeChunk для skip'а silence-
+// chunk'ов до того как они уйдут в Whisper (избегаем hallucinations
+// «Субтитры делал DimaTorzok» которые модель генерит на тишине).
+//
+// O(n), но n = 1-3s аудио = 32-96kB — несколько микросекунд, не bottleneck.
+function computeRMS(pcm: Buffer): number {
+  const samples = pcm.length / 2;
+  if (samples === 0) return 0;
+  let sumSq = 0;
+  for (let i = 0; i < pcm.length; i += 2) {
+    const sample = pcm.readInt16LE(i);
+    sumSq += sample * sample;
+  }
+  return Math.sqrt(sumSq / samples);
+}
+
 export interface AudioCaptureController {
   start: () => Promise<void>;
   stop: () => Promise<void>;
@@ -138,6 +155,18 @@ export function createAudioCapture(
     const wav = encodeWAV(pcm);
     const windowSec = pcm.length / (SAMPLE_RATE * BYTES_PER_FRAME);
     const seq = chunkSeq;
+
+    // Silence-pre-filter: считаем RMS на 16-bit mono PCM. Если ниже
+    // порога — chunk почти пустой, Whisper на нём всё равно
+    // hallucinate'нёт классику («Субтитры делал DimaTorzok»). Skip
+    // экономит API-call + предотвращает поток мусора в renderer.
+    // Threshold 200 — ~ -42dBFS, эмпирически: тихая речь ~ RMS 1000+,
+    // тишина в комнате ~ 30-150.
+    const rms = computeRMS(pcm);
+    if (rms < 200) {
+      chunkSeq += 1;
+      return;
+    }
     if (recordingDir) {
       void writeFile(join(recordingDir, `chunk-${seq.toString().padStart(4, '0')}.wav`), wav).catch((err) => {
         events.onError(`failed to save local recording chunk: ${err instanceof Error ? err.message : String(err)}`);

@@ -72,6 +72,12 @@ export function ExpandedScreen() {
   const [focused, setFocused] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [summaryOpen, setSummaryOpen] = useState(false);
+  // saveChatStatus — visible feedback для кнопки «Сохранить в Hone».
+  // 'idle' → notebook icon, 'saving' → notebook icon (title hint),
+  // 'ok' → green ✓ на 2.4s, 'err' → red ✕ на 2.4s. Auto-revert
+  // в idle через setTimeout. Без этого состояния юзер кликает,
+  // ничего не происходит визуально и думает что app сломан.
+  const [saveChatStatus, setSaveChatStatus] = useState<'idle' | 'saving' | 'ok' | 'err'>('idle');
   const lastAnalysis = useSessionStore((s) => s.lastAnalysis);
   const notesFilePath = useSessionStore((s) => s.notesFilePath);
   // Auto-open the Summary modal the first time a report lands while
@@ -316,9 +322,10 @@ export function ExpandedScreen() {
           )}
           {messages.length > 0 && (
             <IconButton
-              title="Сохранить чат как заметку в Hone"
+              title={saveChatStatus === 'saving' ? 'Сохраняю…' : (saveChatStatus === 'ok' ? 'Сохранено в Hone' : (saveChatStatus === 'err' ? 'Ошибка — Hone не установлен?' : 'Сохранить чат как заметку в Hone'))}
               onClick={() => {
                 void (async () => {
+                  setSaveChatStatus('saving');
                   try {
                     await window.druz9.notes.saveChatToHone({
                       title: '',
@@ -326,13 +333,16 @@ export function ExpandedScreen() {
                         .filter((m) => !m.pending && m.content.trim().length > 0)
                         .map((m) => ({ role: m.role, content: m.content })),
                     });
-                  } catch {
-                    // Hone не установлен / OS блокировал deeplink — silent.
+                    setSaveChatStatus('ok');
+                  } catch (err) {
+                    console.error('saveChatToHone failed', err);
+                    setSaveChatStatus('err');
                   }
+                  window.setTimeout(() => setSaveChatStatus('idle'), 2400);
                 })();
               }}
             >
-              <SaveToHoneIcon />
+              {saveChatStatus === 'ok' ? <CheckmarkIcon /> : (saveChatStatus === 'err' ? <ErrorIcon /> : <SaveToHoneIcon />)}
             </IconButton>
           )}
           <IconButton title="История" onClick={() => void window.druz9.windows.show('history')}>
@@ -1662,6 +1672,24 @@ function ChatKbd({ children }: { children: React.ReactNode }) {
     }}>
       {children}
     </span>
+  );
+}
+
+// CheckmarkIcon / ErrorIcon — visual feedback для save-button после
+// клика. Зелёный ✓ → ok, красный ✕ → fail. Auto-revert через 2.4s.
+function CheckmarkIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#34D399" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M20 6L9 17l-5-5" />
+    </svg>
+  );
+}
+
+function ErrorIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#F87171" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M18 6L6 18M6 6l12 12" />
+    </svg>
   );
 }
 

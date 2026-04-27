@@ -153,6 +153,15 @@ func (g *GroqProvider) buildMultipart(in domain.TranscribeInput) (io.Reader, str
 	if err := mw.WriteField("response_format", "verbose_json"); err != nil {
 		return nil, "", fmt.Errorf("multipart write response_format: %w", err)
 	}
+	// temperature=0 — детерминированный greedy decoding. Без этого Whisper
+	// сэмплит из top-K и на silent/near-silent чанках hallucinates классику
+	// «Субтитры делал DimaTorzok», «Спасибо за внимание», «Продолжение
+	// следует» (см. https://github.com/openai/whisper/discussions/679).
+	// Temperature=0 не убирает hallucinations полностью — финальный
+	// post-filter в app.go додавит остальное.
+	if err := mw.WriteField("temperature", "0"); err != nil {
+		return nil, "", fmt.Errorf("multipart write temperature: %w", err)
+	}
 
 	// Optional hints.
 	if in.Language != "" {

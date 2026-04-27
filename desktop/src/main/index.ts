@@ -198,10 +198,17 @@ app.whenReady().then(async () => {
     { action: 'instant_assist', accelerator: 'CommandOrControl+Return' },
     { action: 'clear_conversation', accelerator: 'CommandOrControl+Shift+K' },
     { action: 'cursor_freeze_toggle', accelerator: 'CommandOrControl+Shift+Y' },
-    { action: 'move_window_left', accelerator: 'CommandOrControl+Left' },
-    { action: 'move_window_right', accelerator: 'CommandOrControl+Right' },
-    { action: 'move_window_up', accelerator: 'CommandOrControl+Up' },
-    { action: 'move_window_down', accelerator: 'CommandOrControl+Down' },
+    // КРИТИЧНО: window-move shortcuts регистрируются как globalShortcut,
+    // что значит OS перехватывает их СИСТЕМНО — даже когда юзер печатает
+    // в input. Раньше было `Cmd+Left/Right` — конфликтовало с macOS
+    // text-navigation («start/end of line»), юзер не мог двигать курсор
+    // в editor'ах. Перенесли на `Cmd+Alt+Arrow` — это малоиспользуемая
+    // комбинация: macOS не bind'ит её в text-edit'е (Alt+Arrow = word
+    // jump, добавление Cmd ничего не меняет в стандартном поведении).
+    { action: 'move_window_left', accelerator: 'CommandOrControl+Alt+Left' },
+    { action: 'move_window_right', accelerator: 'CommandOrControl+Alt+Right' },
+    { action: 'move_window_up', accelerator: 'CommandOrControl+Alt+Up' },
+    { action: 'move_window_down', accelerator: 'CommandOrControl+Alt+Down' },
   ]);
 
   // Trigger macOS Screen Recording prompt BEFORE the compact window

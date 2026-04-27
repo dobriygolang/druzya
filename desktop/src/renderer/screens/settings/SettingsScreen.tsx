@@ -536,10 +536,12 @@ function HotkeysTab() {
     { action: 'instant_assist', accelerator: 'CommandOrControl+Return' },
     { action: 'clear_conversation', accelerator: 'CommandOrControl+Shift+K' },
     { action: 'cursor_freeze_toggle', accelerator: 'CommandOrControl+Shift+Y' },
-    { action: 'move_window_left', accelerator: 'CommandOrControl+Left' },
-    { action: 'move_window_right', accelerator: 'CommandOrControl+Right' },
-    { action: 'move_window_up', accelerator: 'CommandOrControl+Up' },
-    { action: 'move_window_down', accelerator: 'CommandOrControl+Down' },
+    // Cmd+Arrow конфликтует с macOS text-navigation (start/end of line),
+    // поэтому move-window живёт на Cmd+Alt+Arrow.
+    { action: 'move_window_left', accelerator: 'CommandOrControl+Alt+Left' },
+    { action: 'move_window_right', accelerator: 'CommandOrControl+Alt+Right' },
+    { action: 'move_window_up', accelerator: 'CommandOrControl+Alt+Up' },
+    { action: 'move_window_down', accelerator: 'CommandOrControl+Alt+Down' },
   ];
   // Always iterate LOCAL_DEFAULTS for the UI — server may return
   // placeholders with numeric action strings which break the label

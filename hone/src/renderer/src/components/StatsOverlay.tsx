@@ -110,7 +110,10 @@ export function StatsOverlay({ onClose }: { onClose: () => void }) {
           position: 'absolute',
           right: 32,
           top: 96,
-          bottom: 130,
+          // bottom=130 раньше "ел" нижние ~130px и Insights-карточка
+          // обрезалась если у юзера невысокий window. 24 — достаточный
+          // воздух от bottom edge'а; всё что не помещается — scroll.
+          bottom: 24,
           width: 320,
           display: 'flex',
           flexDirection: 'column',
@@ -118,6 +121,10 @@ export function StatsOverlay({ onClose }: { onClose: () => void }) {
           zIndex: 12,
           pointerEvents: 'auto',
           overflow: 'auto',
+          // Padding-bottom гарантирует последняя карточка имеет breathing
+          // space перед scroll-end (без него Insights казался обрезанным
+          // даже когда был fully visible — visual perception bias).
+          paddingBottom: 24,
         }}
       >
         {/* 1. Focus Activity */}
