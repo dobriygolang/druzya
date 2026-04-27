@@ -127,6 +127,39 @@ func (r *Episodes) LatestByKinds(ctx context.Context, userID uuid.UUID, kinds []
 	return scanEpisodes(rows)
 }
 
+// LatestPerKind returns up to perKindLimit newest rows for each requested kind.
+func (r *Episodes) LatestPerKind(ctx context.Context, userID uuid.UUID, kinds []domain.EpisodeKind, perKindLimit int) ([]domain.Episode, error) {
+	if perKindLimit <= 0 || perKindLimit > 100 {
+		perKindLimit = 8
+	}
+	if len(kinds) == 0 {
+		return nil, nil
+	}
+	kindStrs := make([]string, len(kinds))
+	for i, k := range kinds {
+		kindStrs[i] = string(k)
+	}
+	rows, err := r.pool.Query(ctx,
+		`SELECT id, user_id, kind, summary, payload, embedding, embedding_model,
+		        embedded_at, occurred_at, created_at
+		   FROM (
+		        SELECT id, user_id, kind, summary, payload, embedding, embedding_model,
+		               embedded_at, occurred_at, created_at,
+		               row_number() OVER (PARTITION BY kind ORDER BY occurred_at DESC) AS rn
+		          FROM coach_episodes
+		         WHERE user_id = $1 AND kind = ANY($2::text[])
+		   ) ranked
+		  WHERE rn <= $3
+		  ORDER BY occurred_at DESC`,
+		sharedpg.UUID(userID), kindStrs, perKindLimit,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("intelligence.Episodes.LatestPerKind: %w", err)
+	}
+	defer rows.Close()
+	return scanEpisodes(rows)
+}
+
 // SearchSimilar returns top-K by cosine. Filtering by kinds — optional.
 // Берём всех с непустым embedding'ом (limit*4 candidates по recency), считаем
 // cosine in Go, сортируем. Для размеров корпуса <10k за пользователя — ОК;
@@ -269,15 +302,16 @@ func (r *Episodes) Stats30d(ctx context.Context, userID uuid.UUID) (domain.Memor
 	return out, nil
 }
 
-// GetBriefRecommendations — ищет brief_emitted с payload.brief_id == briefID
-// (UUID хранится как jsonb-string). Возвращает массив recommendations.
-func (r *Episodes) GetBriefRecommendations(ctx context.Context, briefID uuid.UUID) ([]domain.Recommendation, error) {
+// GetBriefRecommendations — ищет owned brief_emitted с payload.brief_id ==
+// briefID (UUID хранится как jsonb-string). Возвращает массив recommendations.
+func (r *Episodes) GetBriefRecommendations(ctx context.Context, userID, briefID uuid.UUID) ([]domain.Recommendation, error) {
 	var raw []byte
 	err := r.pool.QueryRow(ctx,
 		`SELECT payload
 		   FROM coach_episodes
-		  WHERE kind = 'brief_emitted' AND payload->>'brief_id' = $1
+		  WHERE user_id = $1 AND kind = 'brief_emitted' AND payload->>'brief_id' = $2
 		  ORDER BY created_at DESC LIMIT 1`,
+		sharedpg.UUID(userID),
 		briefID.String(),
 	).Scan(&raw)
 	if err != nil {

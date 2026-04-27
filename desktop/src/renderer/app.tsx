@@ -14,6 +14,7 @@ import { OnboardingScreen } from './screens/onboarding/OnboardingScreen';
 import { PickerScreen } from './screens/picker/PickerScreen';
 import { SettingsScreen } from './screens/settings/SettingsScreen';
 import { ToastScreen } from './screens/toast/ToastScreen';
+import { TrayScreen } from './screens/tray-popup/TrayScreen';
 import { useAppearanceStore } from './stores/appearance';
 
 type Route =
@@ -24,7 +25,8 @@ type Route =
   | 'area-overlay'
   | 'history'
   | 'picker'
-  | 'toast';
+  | 'toast'
+  | 'tray-popup';
 
 function readRoute(): Route {
   // Hash may carry a query string (e.g. #/picker?kind=model), strip it.
@@ -36,7 +38,8 @@ function readRoute(): Route {
     h === 'area-overlay' ||
     h === 'history' ||
     h === 'picker' ||
-    h === 'toast'
+    h === 'toast' ||
+    h === 'tray-popup'
   )
     return h;
   return 'compact';
@@ -71,10 +74,9 @@ export function App() {
   // Area overlay is a raw drag-select UI; it deliberately skips the
   // paywall portal so modals don't appear over a fullscreen crosshair.
   if (route === 'area-overlay') return <AreaOverlayScreen />;
-  // Picker is a bare floating dropdown — no paywall portal underneath.
   if (route === 'picker') return <PickerScreen />;
-  // Toast is a bare floating notification — also skips the paywall portal.
   if (route === 'toast') return <ToastScreen />;
+  if (route === 'tray-popup') return <TrayScreen />;
 
   const screen =
     route === 'compact' ? <CompactScreen /> :

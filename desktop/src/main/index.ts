@@ -16,7 +16,13 @@ import { createStreamer } from './ipc/streaming';
 import { initSentryMain } from './sentry';
 import { destroyTray, ensureTray } from './tray';
 import { wireAutoUpdate } from './updater';
-import { broadcast, showWindow } from './windows/window-manager';
+import {
+  broadcast,
+  getWindow,
+  moveFloatingWindowToEdge,
+  preloadWindow,
+  showWindow,
+} from './windows/window-manager';
 
 // Opt out of the ScreenCaptureKit picker path on macOS Sonoma+. Electron 33
 // enables `ScreenCaptureKitPickerScreen` + `ScreenCaptureKitStreamPickerSonoma`
@@ -146,6 +152,32 @@ app.whenReady().then(async () => {
       broadcast(eventChannels.cursorFreezeChanged, next);
       return;
     }
+    if (action === 'move_window_left') {
+      moveFloatingWindowToEdge('left');
+      return;
+    }
+    if (action === 'move_window_right') {
+      moveFloatingWindowToEdge('right');
+      return;
+    }
+    if (action === 'move_window_up') {
+      moveFloatingWindowToEdge('up');
+      return;
+    }
+    if (action === 'move_window_down') {
+      moveFloatingWindowToEdge('down');
+      return;
+    }
+    if (action === 'instant_assist') {
+      const expanded = getWindow('expanded');
+      const target = expanded && expanded.isVisible()
+        ? expanded
+        : showWindow('compact', windowOptions);
+      target.webContents.send(eventChannels.hotkeyFired, { action });
+      target.show();
+      target.focus();
+      return;
+    }
     broadcast(eventChannels.hotkeyFired, { action });
   });
 
@@ -159,8 +191,13 @@ app.whenReady().then(async () => {
     { action: 'voice_input', accelerator: 'CommandOrControl+Shift+V' },
     { action: 'toggle_window', accelerator: 'CommandOrControl+Shift+D' },
     { action: 'quick_prompt', accelerator: 'CommandOrControl+Shift+Q' },
+    { action: 'instant_assist', accelerator: 'CommandOrControl+Return' },
     { action: 'clear_conversation', accelerator: 'CommandOrControl+Shift+K' },
     { action: 'cursor_freeze_toggle', accelerator: 'CommandOrControl+Shift+Y' },
+    { action: 'move_window_left', accelerator: 'CommandOrControl+Left' },
+    { action: 'move_window_right', accelerator: 'CommandOrControl+Right' },
+    { action: 'move_window_up', accelerator: 'CommandOrControl+Up' },
+    { action: 'move_window_down', accelerator: 'CommandOrControl+Down' },
   ]);
 
   // Trigger macOS Screen Recording prompt BEFORE the compact window
@@ -178,6 +215,7 @@ app.whenReady().then(async () => {
   await ensureScreenRecordingPrompted();
 
   showWindow('compact', windowOptions);
+  preloadWindow('picker', windowOptions);
 });
 
 app.on('window-all-closed', () => {

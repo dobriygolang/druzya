@@ -1,17 +1,20 @@
-// History panel — paginated list of past conversations. Click one:
-//   → hydrate conversation store from server detail
+// History panel — paginated list of local conversations. Click one:
+//   → hydrate conversation store from localStorage detail
 //   → show the expanded chat window
 //   → hide this window
-// BYOK turns aren't in this list by design (the server doesn't know
-// about them).
 
 import { useEffect, useState } from 'react';
 
 import type { Conversation } from '@shared/types';
 
-import { IconClose, IconCopy, IconHistory } from '../../components/icons';
+import { IconClose, IconHistory } from '../../components/icons';
 import { BrandMark } from '../../components/d9';
 import { IconButton, Kbd } from '../../components/primitives';
+import {
+  deleteLocalConversation,
+  getLocalConversation,
+  listLocalHistory,
+} from '../../lib/local-history';
 import { useConversationStore } from '../../stores/conversation';
 
 export function HistoryScreen() {
@@ -32,7 +35,8 @@ export function HistoryScreen() {
 
   const open = async (id: string) => {
     try {
-      const detail = await window.druz9.history.get(id);
+      const detail = getLocalConversation(id);
+      if (!detail) throw new Error('Диалог не найден в локальной истории');
       useConversationStore
         .getState()
         .hydrate(detail.conversation.id, detail.conversation.model, detail.messages);
@@ -47,7 +51,7 @@ export function HistoryScreen() {
     const prev = items;
     setItems((s) => s.filter((c) => c.id !== id));
     try {
-      await window.druz9.history.delete(id);
+      deleteLocalConversation(id);
     } catch (err) {
       // restore on failure
       setItems(prev);
@@ -193,7 +197,7 @@ async function loadPage(
 ): Promise<void> {
   setLoading(true);
   try {
-    const page = await window.druz9.history.list(cursor, 20);
+    const page = listLocalHistory(cursor, 20);
     setItems((prev) => (reset ? page.conversations : [...prev, ...page.conversations]));
     setCursor(page.nextCursor);
     setHasMore(!!page.nextCursor);
@@ -340,6 +344,3 @@ function pluralize(n: number, one: string, few: string, many: string): string {
   if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) return few;
   return many;
 }
-
-// Avoid unused-import warning if the design lands without this icon later.
-void IconCopy;

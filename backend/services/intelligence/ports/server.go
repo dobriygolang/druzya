@@ -97,6 +97,10 @@ func (s *IntelligenceServer) AckRecommendation(
 		return nil, connect.NewError(connect.CodeInvalidArgument,
 			fmt.Errorf("brief_id: %w", err))
 	}
+	if briefID == uuid.Nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument,
+			errors.New("brief_id required"))
+	}
 	if err := s.Memory.AckRecommendation(ctx, uid, briefID, int(req.Msg.GetIndex()), req.Msg.GetFollowed()); err != nil {
 		return nil, fmt.Errorf("intelligence.AckRecommendation: %w", s.toConnectErr(err))
 	}
@@ -143,7 +147,7 @@ func requireUser(ctx context.Context) (uuid.UUID, error) {
 
 func (s *IntelligenceServer) toConnectErr(err error) error {
 	switch {
-	case errors.Is(err, domain.ErrNotFound):
+	case errors.Is(err, domain.ErrNotFound), errors.Is(err, domain.ErrEpisodeNotFound):
 		return connect.NewError(connect.CodeNotFound, err)
 	case errors.Is(err, domain.ErrInvalidInput):
 		return connect.NewError(connect.CodeInvalidArgument, err)
@@ -165,7 +169,9 @@ func toDailyBriefProto(b domain.DailyBrief) *pb.DailyBrief {
 		Headline:    b.Headline,
 		Narrative:   b.Narrative,
 		GeneratedAt: timestamppb.New(b.GeneratedAt.UTC()),
-		BriefId:     b.BriefID.String(),
+	}
+	if b.BriefID != uuid.Nil {
+		out.BriefId = b.BriefID.String()
 	}
 	for _, r := range b.Recommendations {
 		out.Recommendations = append(out.Recommendations, &pb.BriefRecommendation{

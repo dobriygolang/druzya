@@ -185,6 +185,16 @@ message DeleteQueueItemResponse {}
 
 // ─── Notes ─────────────────────────────────────────────────────────────────
 
+// Folder is a named container for notes. Supports nesting via optional
+// parent_id — client renders as a tree; server stores flat with parent_id FK.
+message Folder {
+  string id = 1;
+  string name = 2;
+  optional string parent_id = 3;     // nil = root folder
+  google.protobuf.Timestamp created_at = 4;
+  google.protobuf.Timestamp updated_at = 5;
+}
+
 message Note {
   string id = 1;
   string title = 2;
@@ -192,6 +202,7 @@ message Note {
   google.protobuf.Timestamp created_at = 4;
   google.protobuf.Timestamp updated_at = 5;
   int32 size_bytes = 6;
+  optional string folder_id = 7;     // nil = unfiled (root)
 }
 
 message NoteSummary {
@@ -200,11 +211,13 @@ message NoteSummary {
   string title = 2;
   google.protobuf.Timestamp updated_at = 3;
   int32 size_bytes = 4;
+  optional string folder_id = 5;
 }
 
 message CreateNoteRequest {
   string title = 1;
   string body_md = 2;
+  optional string folder_id = 3;
 }
 
 message UpdateNoteRequest {
@@ -220,6 +233,7 @@ message GetNoteRequest {
 message ListNotesRequest {
   int32 limit = 1;                   // default 100
   string cursor = 2;                 // opaque pagination token
+  optional string folder_id = 3;     // filter by folder; nil = all notes
 }
 
 message ListNotesResponse {
@@ -232,6 +246,33 @@ message DeleteNoteRequest {
 }
 
 message DeleteNoteResponse {}
+
+message MoveNoteRequest {
+  string note_id = 1;
+  optional string folder_id = 2;     // nil = move to root (unfiled)
+}
+
+// ─── Folders ────────────────────────────────────────────────────────────────
+
+message CreateFolderRequest {
+  string name = 1;
+  optional string parent_id = 2;
+}
+
+message ListFoldersRequest {}
+
+message ListFoldersResponse {
+  repeated Folder folders = 1;
+}
+
+message DeleteFolderRequest {
+  string id = 1;
+  // When true, move all notes in this folder to root before deleting.
+  // When false (default), fail if folder contains notes.
+  bool move_notes_to_root = 2;
+}
+
+message DeleteFolderResponse {}
 
 // Connection is one AI-discovered edge from a note to another artefact.
 //
@@ -423,9 +464,32 @@ service HoneService {
       body: "*"
     };
   }
+  rpc MoveNote(MoveNoteRequest) returns (Note) {
+    option (google.api.http) = {
+      post: "/api/v1/hone/notes/move"
+      body: "*"
+    };
+  }
   // Server-streaming: first results (in-corpus notes) arrive fast, while
   // cross-domain edges (PRs, tasks) trail by a few hundred ms.
   rpc GetNoteConnections(GetNoteConnectionsRequest) returns (stream Connection);
+
+  // ─── Folders ────────────────────────────────────────────────────────
+  rpc CreateFolder(CreateFolderRequest) returns (Folder) {
+    option (google.api.http) = {
+      post: "/api/v1/hone/folders"
+      body: "*"
+    };
+  }
+  rpc ListFolders(ListFoldersRequest) returns (ListFoldersResponse) {
+    option (google.api.http) = {get: "/api/v1/hone/folders"};
+  }
+  rpc DeleteFolder(DeleteFolderRequest) returns (DeleteFolderResponse) {
+    option (google.api.http) = {
+      post: "/api/v1/hone/folders/delete"
+      body: "*"
+    };
+  }
 
   // ─── Whiteboard ─────────────────────────────────────────────────────
   rpc CreateWhiteboard(CreateWhiteboardRequest) returns (Whiteboard) {

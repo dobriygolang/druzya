@@ -18,53 +18,44 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-// Three near-identical adapters bridge the auth package's TokenIssuer to
-// each WS hub's TokenVerifier port. They differ only in method name —
-// arena uses `VerifyAccess`, ai_mock and editor use `Verify` — which keeps
-// each domain free of an auth-package import.
+type ArenaTokenVerifier struct{ Issuer *authApp.TokenIssuer }
 
-// arenaTokenVerifier satisfies druz9/arena/ports.TokenVerifier.
-type arenaTokenVerifier struct{ issuer *authApp.TokenIssuer }
-
-func (a arenaTokenVerifier) VerifyAccess(raw string) (uuid.UUID, error) {
-	return parseSubject(a.issuer, raw)
+func (a ArenaTokenVerifier) VerifyAccess(raw string) (uuid.UUID, error) {
+	return parseSubject(a.Issuer, raw)
 }
 
-// mockTokenVerifier satisfies druz9/ai_mock/domain.TokenVerifier.
-type mockTokenVerifier struct{ issuer *authApp.TokenIssuer }
+type MockTokenVerifier struct{ Issuer *authApp.TokenIssuer }
 
-func (a mockTokenVerifier) Verify(raw string) (uuid.UUID, error) {
-	return parseSubject(a.issuer, raw)
+func (a MockTokenVerifier) Verify(raw string) (uuid.UUID, error) {
+	return parseSubject(a.Issuer, raw)
 }
 
-// editorTokenVerifier satisfies druz9/editor/domain.TokenVerifier.
-type editorTokenVerifier struct{ issuer *authApp.TokenIssuer }
+type EditorTokenVerifier struct{ Issuer *authApp.TokenIssuer }
 
-func (a editorTokenVerifier) Verify(raw string) (uuid.UUID, error) {
-	return parseSubject(a.issuer, raw)
+func (a EditorTokenVerifier) Verify(raw string) (uuid.UUID, error) {
+	return parseSubject(a.Issuer, raw)
 }
 
-func (a editorTokenVerifier) VerifyScoped(raw, expectedScope string) (uuid.UUID, error) {
-	return parseSubjectScoped(a.issuer, raw, expectedScope)
+func (a EditorTokenVerifier) VerifyScoped(raw, expectedScope string) (uuid.UUID, error) {
+	return parseSubjectScoped(a.Issuer, raw, expectedScope)
 }
 
-func (a editorTokenVerifier) VerifyScopedFull(raw, expectedScope string) (uuid.UUID, string, string, error) {
-	return parseSubjectScopedFull(a.issuer, raw, expectedScope)
+func (a EditorTokenVerifier) VerifyScopedFull(raw, expectedScope string) (uuid.UUID, string, string, error) {
+	return parseSubjectScopedFull(a.Issuer, raw, expectedScope)
 }
 
-// whiteboardTokenVerifier satisfies druz9/whiteboard_rooms/domain.TokenVerifier.
-type whiteboardTokenVerifier struct{ issuer *authApp.TokenIssuer }
+type WhiteboardTokenVerifier struct{ Issuer *authApp.TokenIssuer }
 
-func (a whiteboardTokenVerifier) Verify(raw string) (uuid.UUID, error) {
-	return parseSubject(a.issuer, raw)
+func (a WhiteboardTokenVerifier) Verify(raw string) (uuid.UUID, error) {
+	return parseSubject(a.Issuer, raw)
 }
 
-func (a whiteboardTokenVerifier) VerifyScoped(raw, expectedScope string) (uuid.UUID, error) {
-	return parseSubjectScoped(a.issuer, raw, expectedScope)
+func (a WhiteboardTokenVerifier) VerifyScoped(raw, expectedScope string) (uuid.UUID, error) {
+	return parseSubjectScoped(a.Issuer, raw, expectedScope)
 }
 
-func (a whiteboardTokenVerifier) VerifyScopedFull(raw, expectedScope string) (uuid.UUID, string, string, error) {
-	return parseSubjectScopedFull(a.issuer, raw, expectedScope)
+func (a WhiteboardTokenVerifier) VerifyScopedFull(raw, expectedScope string) (uuid.UUID, string, string, error) {
+	return parseSubjectScopedFull(a.Issuer, raw, expectedScope)
 }
 
 func parseSubject(issuer *authApp.TokenIssuer, raw string) (uuid.UUID, error) {

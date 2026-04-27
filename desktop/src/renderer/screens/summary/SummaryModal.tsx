@@ -28,14 +28,17 @@ import { exportConversationAsMarkdown } from '../../lib/export-markdown';
 import { useConversationStore } from '../../stores/conversation';
 
 type Tab = 'summary' | 'transcript' | 'usage';
+const NotesActions = NotesActionsImpl;
 
 interface Props {
   analysis: SessionAnalysis;
   modelLabel?: string;
+  /** Local path to the saved notes JSON — enables Open in Hone / Show in Finder. */
+  notesFilePath?: string | null;
   onClose: () => void;
 }
 
-export function SummaryModal({ analysis, modelLabel, onClose }: Props) {
+export function SummaryModal({ analysis, modelLabel, notesFilePath, onClose }: Props) {
   const [tab, setTab] = useState<Tab>('summary');
   const [hint, setHint] = useState<string | null>(null);
   const messages = useConversationStore((s) => s.messages);
@@ -157,6 +160,9 @@ export function SummaryModal({ analysis, modelLabel, onClose }: Props) {
           <IconButton title={hint || 'Скопировать summary как Markdown'} onClick={() => void copyMarkdown()}>
             <D9IconCopy size={14} />
           </IconButton>
+          {notesFilePath && (
+            <NotesActions filePath={notesFilePath} />
+          )}
           {analysis.reportUrl && (
             <button
               onClick={share}
@@ -793,4 +799,91 @@ function summaryToMarkdown(a: SessionAnalysis): string {
     lines.push(a.reportMarkdown);
   }
   return lines.join('\n');
+}
+
+// ── NotesActions ──────────────────────────────────────────────────────────
+// Two small action chips shown in the SummaryModal header when a local
+// notes file has been saved. The Hone button deep-links via hone://;
+// the Finder button reveals the file so the user can open it manually.
+
+const chipStyle: React.CSSProperties = {
+  display: 'inline-flex',
+  alignItems: 'center',
+  gap: 5,
+  padding: '5px 10px',
+  borderRadius: 7,
+  background: 'oklch(1 0 0 / 0.06)',
+  border: '0.5px solid var(--d9-hairline)',
+  color: 'var(--d9-ink)',
+  fontSize: 11.5,
+  letterSpacing: '-0.005em',
+  cursor: 'pointer',
+  fontFamily: 'inherit',
+  transition: 'background 120ms',
+};
+
+function NotesActionsImpl({ filePath }: { filePath: string }) {
+  const [hint, setHint] = useState<string | null>(null);
+
+  const flash = (msg: string) => {
+    setHint(msg);
+    setTimeout(() => setHint(null), 2000);
+  };
+
+  const openInHone = async () => {
+    try {
+      await window.druz9.notes.openInHone(filePath);
+    } catch {
+      flash('Hone не установлен');
+    }
+  };
+
+  const showInFinder = async () => {
+    await window.druz9.notes.showInFolder(filePath);
+  };
+
+  if (hint) {
+    return (
+      <span style={{ ...chipStyle, cursor: 'default', color: 'var(--d9-ink-mute)' }}>
+        {hint}
+      </span>
+    );
+  }
+
+  return (
+    <div style={{ display: 'flex', gap: 6 }}>
+      <button
+        onClick={() => void openInHone()}
+        title="Открыть заметки в приложении Hone"
+        style={chipStyle}
+        onMouseEnter={(e) => (e.currentTarget.style.background = 'oklch(1 0 0 / 0.10)')}
+        onMouseLeave={(e) => (e.currentTarget.style.background = 'oklch(1 0 0 / 0.06)')}
+      >
+        <HoneIcon />
+        Открыть в Hone
+      </button>
+      <button
+        onClick={() => void showInFinder()}
+        title="Показать файл заметок в Finder"
+        style={chipStyle}
+        onMouseEnter={(e) => (e.currentTarget.style.background = 'oklch(1 0 0 / 0.10)')}
+        onMouseLeave={(e) => (e.currentTarget.style.background = 'oklch(1 0 0 / 0.06)')}
+      >
+        Показать в Finder
+      </button>
+    </div>
+  );
+}
+
+function HoneIcon() {
+  return (
+    <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden>
+      <path
+        d="M6 1L10.33 3.5V8.5L6 11L1.67 8.5V3.5L6 1Z"
+        stroke="currentColor"
+        strokeWidth="1.1"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
 }

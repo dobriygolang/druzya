@@ -18,15 +18,12 @@ export function D9IconCamera({ size = 14, ...rest }: P) {
 }
 
 export function D9IconSettings({ size = 14, ...rest }: P) {
+  // 3×3 grid of dots — matches prototype settings button
   return (
-    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" {...rest}>
-      <circle cx="8" cy="8" r="2" stroke="currentColor" strokeWidth="1.2" />
-      <path
-        d="M8 1.5v1.7M8 12.8v1.7M14.5 8h-1.7M3.2 8H1.5M12.6 3.4l-1.2 1.2M4.6 11.4l-1.2 1.2M12.6 12.6l-1.2-1.2M4.6 4.6L3.4 3.4"
-        stroke="currentColor"
-        strokeWidth="1.2"
-        strokeLinecap="round"
-      />
+    <svg width={size} height={size} viewBox="0 0 14 14" fill="currentColor" {...rest}>
+      <circle cx="2" cy="2" r="1"/><circle cx="7" cy="2" r="1"/><circle cx="12" cy="2" r="1"/>
+      <circle cx="2" cy="7" r="1"/><circle cx="7" cy="7" r="1"/><circle cx="12" cy="7" r="1"/>
+      <circle cx="2" cy="12" r="1"/><circle cx="7" cy="12" r="1"/><circle cx="12" cy="12" r="1"/>
     </svg>
   );
 }

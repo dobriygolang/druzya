@@ -13,6 +13,7 @@
 // EndFocusSession теперь оркестрируется отсюда, не из удалённой страницы,
 // чтобы streak-механика продолжала наполняться (bible §6 sync).
 import { useCallback, useEffect, useRef, useState } from 'react';
+import type { CueSessionAnalysis } from '@shared/ipc';
 
 import { CanvasBg, type CanvasMode, type ThemeId } from './components/CanvasBg';
 import { Wordmark, Versionmark } from './components/Chrome';
@@ -106,6 +107,7 @@ export default function App() {
   // на mount и сбрасывает back to null. Single-shot semantics.
   const [briefTargetNoteId, setBriefTargetNoteId] = useState<string | null>(null);
   const [briefTargetPlanItemId, setBriefTargetPlanItemId] = useState<string | null>(null);
+  const [importedCueNote, setImportedCueNote] = useState<{ filePath: string; analysis: CueSessionAnalysis } | null>(null);
   // Sentinel для backend session — null значит "не идёт". Создаётся при
   // первом переходе в running, гасится в finishSession.
   const sessionRef = useRef<string | null>(null);
@@ -169,9 +171,15 @@ export default function App() {
       }
     });
 
+    const offCue = bridge.on('cueNoteImport', (ev) => {
+      setImportedCueNote(ev);
+      setPage('notes');
+    });
+
     return () => {
       offAuth();
       offDeep();
+      offCue();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -699,6 +707,8 @@ export default function App() {
           <NotesPage
             initialSelectedId={briefTargetNoteId}
             onConsumeInitial={() => setBriefTargetNoteId(null)}
+            initialCueNote={importedCueNote}
+            onConsumeCueNote={() => setImportedCueNote(null)}
           />
         </VaultUnlockGate>
       )}

@@ -4,7 +4,13 @@
 // Rule: renderer NEVER imports electron or node APIs directly. All system
 // access goes through window.druz9.* (see preload/index.ts).
 
-import type { DesktopConfig, Quota, HotkeyAction, HotkeyBinding } from './types';
+import type {
+  ConversationMemory,
+  DesktopConfig,
+  Quota,
+  HotkeyAction,
+  HotkeyBinding,
+} from './types';
 
 /** Channels invoked from renderer → main (request/response). */
 export const invokeChannels = {
@@ -34,6 +40,7 @@ export const invokeChannels = {
   hotkeysList: 'hotkeys:list',
   hotkeysUpdate: 'hotkeys:update',
   hotkeysCaptureOnce: 'hotkeys:capture-once',
+  hotkeysTrigger: 'hotkeys:trigger',
 
   windowsShow: 'windows:show',
   windowsHide: 'windows:hide',
@@ -56,6 +63,7 @@ export const invokeChannels = {
   historyList: 'history:list',
   historyGet: 'history:get',
   historyDelete: 'history:delete',
+  memorySync: 'memory:sync',
 
   providersList: 'providers:list',
   quotaGet: 'quota:get',
@@ -75,6 +83,9 @@ export const invokeChannels = {
   updaterInstall: 'updater:install',
 
   shellOpenExternal: 'shell:open-external',
+
+  notesShowInFolder: 'notes:show-in-folder',
+  notesOpenInHone: 'notes:open-in-hone',
 
   appQuit: 'app:quit',
 
@@ -177,6 +188,10 @@ export const eventChannels = {
   /** Picker window opened / closed. Compact subscribes so the caret
    *  on the corresponding pill rotates up. Payload: PickerStateEvent. */
   pickerStateChanged: 'event:picker-state-changed',
+  /** Fired after a session analysis is saved locally. Carries the
+   *  absolute file path so the renderer can offer "Open in Hone" /
+   *  "Show in Finder" without an extra IPC round-trip. */
+  notesReady: 'event:notes-ready',
 } as const;
 
 export interface PickerStateEvent {
@@ -329,7 +344,8 @@ export type WindowName =
   | 'area-overlay'
   | 'history'
   | 'picker'
-  | 'toast';
+  | 'toast'
+  | 'tray-popup';
 
 /** Picker kind — which dropdown the compact opens in the floating picker
  *  window. Persona / Model each reuse their own dropdown component. */
@@ -483,6 +499,11 @@ export interface CoachErrorEvent {
   message: string;
 }
 
+export interface NotesReadyEvent {
+  filePath: string;
+  sessionId: string;
+}
+
 // ─────────────────────────────────────────────────────────────────────────
 // Typed API surface exposed to renderer as `window.druz9`.
 // The preload script wires ipcRenderer.invoke + ipcRenderer.on into these
@@ -527,6 +548,7 @@ export interface Druz9API {
     list: () => Promise<HotkeyBinding[]>;
     update: (bindings: HotkeyBinding[]) => Promise<void>;
     captureOnce: () => Promise<string>;
+    trigger: (action: HotkeyAction) => Promise<void>;
   };
   windows: {
     show: (name: WindowName) => Promise<void>;
@@ -565,6 +587,10 @@ export interface Druz9API {
       messages: import('./types').Message[];
     }>;
     delete: (id: string) => Promise<void>;
+  };
+
+  memory: {
+    sync: (conversationId: string, memory: ConversationMemory) => Promise<void>;
   };
   providers: { list: () => Promise<unknown[]> };
   quota: { get: () => Promise<Quota> };
@@ -616,6 +642,17 @@ export interface Druz9API {
    *  allow-list enforces http/https only. */
   shell: {
     openExternal: (url: string) => Promise<void>;
+  };
+
+  /**
+   * Meeting notes — saved locally after each session analysis.
+   * Future: swap implementations in service.ts for backend upload.
+   */
+  notes: {
+    /** Reveal the notes JSON file in macOS Finder. */
+    showInFolder: (filePath: string) => Promise<void>;
+    /** Open Hone with a deep-link pointing at the notes file. */
+    openInHone: (filePath: string) => Promise<void>;
   };
 
   app: {

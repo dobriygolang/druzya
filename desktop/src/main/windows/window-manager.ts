@@ -65,6 +65,27 @@ export function showWindow(name: WindowName, opts: WindowOptions): BrowserWindow
     return existing;
   }
 
+  const win = createManagedWindow(name, opts);
+  return win;
+}
+
+/**
+ * Warm a hidden BrowserWindow so transient popovers don't pay the creation
+ * cost on first click. The window is loaded but not shown until showPicker()
+ * positions it and flips mouse/opacity state back on.
+ */
+export function preloadWindow(name: WindowName, opts: WindowOptions): BrowserWindow {
+  const existing = windows.get(name);
+  if (existing && !existing.isDestroyed()) return existing;
+  return createManagedWindow(name, opts, { showOnReady: false });
+}
+
+function createManagedWindow(
+  name: WindowName,
+  opts: WindowOptions,
+  options: { showOnReady?: boolean; initialURL?: string } = {},
+): BrowserWindow {
+  const showOnReady = options.showOnReady ?? true;
   const win = buildWindow(name, opts);
   hardenWindow(win);
   windows.set(name, win);
@@ -193,8 +214,9 @@ export function showWindow(name: WindowName, opts: WindowOptions): BrowserWindow
     history: '#/history',
     picker: '#/picker',
     toast: '#/toast',
+    'tray-popup': '#/tray-popup',
   };
-  const url = `${opts.rendererURL}${hashFor[name]}`;
+  const url = options.initialURL ?? `${opts.rendererURL}${hashFor[name]}`;
   void win.loadURL(url);
 
   // Show the window once its first paint is ready. The `show: false`
@@ -202,13 +224,13 @@ export function showWindow(name: WindowName, opts: WindowOptions): BrowserWindow
   // that would otherwise be visible (transparent + frameless). Without
   // calling show() explicitly here, the window stays invisible forever.
   win.once('ready-to-show', () => {
-    if (!win.isDestroyed()) win.show();
+    if (!win.isDestroyed() && showOnReady) win.show();
   });
   // Safety net: if ready-to-show doesn't fire within 2s (happens on
   // renderer bundle errors), force-show the window so the user at
   // least sees the system frame / can open devtools.
   setTimeout(() => {
-    if (!win.isDestroyed() && !win.isVisible()) win.show();
+    if (!win.isDestroyed() && showOnReady && !win.isVisible()) win.show();
   }, 2000);
 
   return win;
@@ -284,6 +306,40 @@ export function resizeWindow(name: WindowName, width: number, height: number): v
   w.setBounds({ x: newX, y: bounds.y, width, height }, true);
 }
 
+export type WindowEdge = 'left' | 'right' | 'up' | 'down';
+
+/**
+ * Move the visible chat surface to a screen edge. Expanded wins when it
+ * is visible; otherwise compact moves, matching the "follows your eyes"
+ * behavior for the always-on-top pill.
+ */
+export function moveFloatingWindowToEdge(edge: WindowEdge): void {
+  const target =
+    pickVisibleWindow('expanded') ??
+    pickVisibleWindow('compact');
+  if (!target) return;
+
+  const bounds = target.getBounds();
+  const display = screen.getDisplayMatching(bounds);
+  const pad = 12;
+  const next = { ...bounds };
+  if (edge === 'left') {
+    next.x = display.workArea.x + pad;
+  } else if (edge === 'right') {
+    next.x = display.workArea.x + display.workArea.width - bounds.width - pad;
+  } else if (edge === 'up') {
+    next.y = display.workArea.y + pad;
+  } else {
+    next.y = display.workArea.y + display.workArea.height - bounds.height - pad;
+  }
+  target.setBounds(next, true);
+}
+
+function pickVisibleWindow(name: WindowName): BrowserWindow | undefined {
+  const w = windows.get(name);
+  return w && !w.isDestroyed() && w.isVisible() ? w : undefined;
+}
+
 /**
  * Show (or toggle-close) the floating picker window anchored below the
  * compact window. Each kind gets a different anchor x within compact:
@@ -355,13 +411,30 @@ export function showPicker(kind: PickerKind, opts: WindowOptions): void {
     return;
   }
 
+  if (existing && !existing.isDestroyed()) {
+    pickerKind = kind;
+    existing.setBounds({ x, y, width: PICKER_W, height: PICKER_H });
+    const hash = `#/picker?kind=${kind}`;
+    if (existing.webContents.isLoading()) {
+      void existing.loadURL(`${opts.rendererURL}${hash}`);
+    } else {
+      void existing.webContents.executeJavaScript(
+        `window.location.hash = ${JSON.stringify(hash)}`,
+      );
+    }
+    existing.setIgnoreMouseEvents(false);
+    existing.setOpacity(1);
+    existing.show();
+    existing.focus();
+    broadcast(eventChannels.pickerStateChanged, { kind });
+    return;
+  }
+
   pickerKind = kind;
-  const win = showWindow('picker', opts);
+  const win = createManagedWindow('picker', opts, {
+    initialURL: `${opts.rendererURL}#/picker?kind=${kind}`,
+  });
   win.setBounds({ x, y, width: PICKER_W, height: PICKER_H });
-  // Override the default hash (set in hashFor) with the kind query
-  // so PickerScreen knows which dropdown to render.
-  const url = `${opts.rendererURL}#/picker?kind=${kind}`;
-  void win.loadURL(url);
   broadcast(eventChannels.pickerStateChanged, { kind });
 }
 
@@ -634,6 +707,25 @@ function buildWindow(name: WindowName, opts: WindowOptions): BrowserWindow {
         alwaysOnTop: true,
         focusable: false,
         roundedCorners: false,
+      });
+    }
+    case 'tray-popup': {
+      // Custom HTML tray dropdown — replaces native context menu.
+      // Positioned by tray/index.ts after creation (top-right under menubar).
+      return new BrowserWindow({
+        ...base,
+        width: 280,
+        height: 286,
+        frame: false,
+        transparent: true,
+        hasShadow: true,
+        resizable: false,
+        movable: false,
+        skipTaskbar: true,
+        alwaysOnTop: true,
+        focusable: true,
+        roundedCorners: true,
+        show: false,
       });
     }
     default:

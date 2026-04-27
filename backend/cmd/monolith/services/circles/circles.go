@@ -1,0 +1,76 @@
+package circles
+
+import (
+	"context"
+	"fmt"
+
+	circlesApp "druz9/circles/app"
+	circlesInfra "druz9/circles/infra"
+	circlesPorts "druz9/circles/ports"
+	monolithServices "druz9/cmd/monolith/services"
+	"druz9/shared/generated/pb/druz9/v1/druz9v1connect"
+
+	"github.com/go-chi/chi/v5"
+	"github.com/google/uuid"
+)
+
+// circlesAuthorityAdapter satisfies events/domain.CircleAuthority. Lives
+// here so the events package never imports circles directly — both
+// bounded contexts stay independent.
+type CirclesAuthorityAdapter struct{ H *circlesApp.Handlers }
+
+func (a CirclesAuthorityAdapter) IsAdmin(ctx context.Context, circleID, userID uuid.UUID) (bool, error) {
+	ok, err := a.H.IsAdmin(ctx, circleID, userID)
+	if err != nil {
+		return false, fmt.Errorf("circles.IsAdmin: %w", err)
+	}
+	return ok, nil
+}
+
+func (a CirclesAuthorityAdapter) IsMember(ctx context.Context, circleID, userID uuid.UUID) (bool, error) {
+	ok, err := a.H.IsMember(ctx, circleID, userID)
+	if err != nil {
+		return false, fmt.Errorf("circles.IsMember: %w", err)
+	}
+	return ok, nil
+}
+
+// NewCircles wires the circles bounded-context. The handlers struct is
+// also exposed via Module.Extra so the events module can reach into
+// IsAdmin / IsMember without re-instantiating the repos.
+type CirclesModule struct {
+	*monolithServices.Module
+	Handlers *circlesApp.Handlers
+}
+
+func NewCircles(d monolithServices.Deps) CirclesModule {
+	circles := circlesInfra.NewCircles(d.Pool)
+	members := circlesInfra.NewMembers(d.Pool)
+	handlers := circlesApp.NewHandlers(circles, members)
+	server := circlesPorts.NewCirclesServer(handlers, d.Log)
+	discover := circlesPorts.NewDiscoverHandler(handlers, d.Log)
+
+	connectPath, connectHandler := druz9v1connect.NewCirclesServiceHandler(server)
+	transcoder := monolithServices.MustTranscode("circles", connectPath, connectHandler)
+
+	return CirclesModule{
+		Module: &monolithServices.Module{
+			ConnectPath:        connectPath,
+			ConnectHandler:     transcoder,
+			RequireConnectAuth: true,
+			MountREST: func(r chi.Router) {
+				r.Post("/circles", transcoder.ServeHTTP)
+				// /circles/discover MUST be registered BEFORE /circles/{circle_id}
+				// — chi matches in declaration order and "discover" would
+				// otherwise be eaten by the {circle_id} pattern.
+				r.Get("/circles/discover", discover.ServeHTTP)
+				r.Get("/circles", transcoder.ServeHTTP)
+				r.Get("/circles/{circle_id}", transcoder.ServeHTTP)
+				r.Delete("/circles/{circle_id}", transcoder.ServeHTTP)
+				r.Post("/circles/{circle_id}/join", transcoder.ServeHTTP)
+				r.Post("/circles/{circle_id}/leave", transcoder.ServeHTTP)
+			},
+		},
+		Handlers: handlers,
+	}
+}

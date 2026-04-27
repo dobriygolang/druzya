@@ -121,7 +121,8 @@ func (m *Memory) Recall(ctx context.Context, p RecallParams) ([]domain.Episode, 
 		p.PerKindRecent = 0
 	}
 
-	out := make(map[uuid.UUID]domain.Episode)
+	seen := make(map[uuid.UUID]struct{})
+	semantic := make([]domain.Episode, 0, p.K)
 
 	// 1. Semantic top-K.
 	if p.Query != "" && m.Embed != nil {
@@ -136,7 +137,11 @@ func (m *Memory) Recall(ctx context.Context, p RecallParams) ([]domain.Episode, 
 				if !p.withinTime(h.OccurredAt, m.Now()) {
 					continue
 				}
-				out[h.ID] = h.Episode
+				if _, ok := seen[h.ID]; ok {
+					continue
+				}
+				seen[h.ID] = struct{}{}
+				semantic = append(semantic, h.Episode)
 			}
 		} else if err != nil && m.Log != nil {
 			m.Log.Debug("intelligence.Memory.Recall: embed failed (degrading to recency)",
@@ -145,33 +150,36 @@ func (m *Memory) Recall(ctx context.Context, p RecallParams) ([]domain.Episode, 
 	}
 
 	// 2. Per-kind recency tail.
+	recent := make([]domain.Episode, 0, p.PerKindRecent*len(p.Kinds))
 	if p.PerKindRecent > 0 && len(p.Kinds) > 0 {
-		for _, k := range p.Kinds {
-			rows, err := m.Episodes.LatestByKind(ctx, p.UserID, k, p.PerKindRecent)
-			if err != nil {
-				if m.Log != nil {
-					m.Log.Warn("intelligence.Memory.Recall: latest by kind failed",
-						slog.String("kind", string(k)), slog.Any("err", err))
-				}
-				continue
+		rows, err := m.Episodes.LatestPerKind(ctx, p.UserID, p.Kinds, p.PerKindRecent)
+		if err != nil {
+			if m.Log != nil {
+				m.Log.Warn("intelligence.Memory.Recall: latest per kind failed", slog.Any("err", err))
 			}
+		} else {
 			for _, ep := range rows {
 				if !p.withinTime(ep.OccurredAt, m.Now()) {
 					continue
 				}
-				out[ep.ID] = ep
+				if _, ok := seen[ep.ID]; ok {
+					continue
+				}
+				seen[ep.ID] = struct{}{}
+				recent = append(recent, ep)
 			}
 		}
 	}
 
-	// 3. Sort: by occurred_at DESC (recent first — короткий контекст для LLM).
-	res := make([]domain.Episode, 0, len(out))
-	for _, ep := range out {
-		res = append(res, ep)
-	}
-	sort.Slice(res, func(i, j int) bool {
-		return res[i].OccurredAt.After(res[j].OccurredAt)
+	// 3. Semantic hits stay first in similarity order; recency tail follows
+	// newest-first. This makes old but relevant coach memory outrank fresh
+	// unrelated events.
+	sort.Slice(recent, func(i, j int) bool {
+		return recent[i].OccurredAt.After(recent[j].OccurredAt)
 	})
+	res := make([]domain.Episode, 0, len(semantic)+len(recent))
+	res = append(res, semantic...)
+	res = append(res, recent...)
 	return res, nil
 }
 
@@ -179,12 +187,12 @@ func (m *Memory) Recall(ctx context.Context, p RecallParams) ([]domain.Episode, 
 // recommendation index'у. briefID — UUID brief'а (есть в payload каждого
 // brief_emitted episode'а; client получил его через DailyBrief proto).
 func (m *Memory) AckRecommendation(ctx context.Context, userID, briefID uuid.UUID, index int, followed bool) error {
-	recs, err := m.Episodes.GetBriefRecommendations(ctx, briefID)
+	recs, err := m.Episodes.GetBriefRecommendations(ctx, userID, briefID)
 	if err != nil {
 		return fmt.Errorf("intelligence.Memory.AckRecommendation: %w", err)
 	}
 	if index < 0 || index >= len(recs) {
-		return fmt.Errorf("intelligence.Memory.AckRecommendation: index %d out of [0,%d)", index, len(recs))
+		return fmt.Errorf("intelligence.Memory.AckRecommendation: index %d out of [0,%d): %w", index, len(recs), domain.ErrInvalidInput)
 	}
 	rec := recs[index]
 	kind := domain.EpisodeBriefDismissed

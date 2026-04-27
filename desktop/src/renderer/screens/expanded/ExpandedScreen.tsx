@@ -16,14 +16,13 @@ import { useEffect, useRef, useState } from 'react';
 import { eventChannels } from '@shared/ipc';
 import {
   BrandMark,
+  CompactLogo,
   D9IconCamera,
-  D9IconCollapse,
   D9IconClose,
   D9IconCopy,
-  D9IconSparkle,
+  D9IconSettings,
   IconButton,
   Kbds,
-  ModelPill,
   QuotaMeterMini,
   StatusDot,
   StreamingHairline,
@@ -31,7 +30,7 @@ import {
 import { IconHistory, IconMic, IconSend } from '../../components/icons';
 import { ProviderPicker } from '../../components/ProviderPicker';
 import { useConfig } from '../../hooks/use-config';
-import { exportConversationAsMarkdown } from '../../lib/export-markdown';
+import { useHotkeyEvents } from '../../hooks/use-hotkey-events';
 // Appearance slider now writes --d9-window-alpha globally via app.tsx —
 // we just consume that var below, no need to hook the store here.
 import { useConversationStore, type UIMessage } from '../../stores/conversation';
@@ -74,16 +73,15 @@ export function ExpandedScreen() {
   const [pickerOpen, setPickerOpen] = useState(false);
   const [summaryOpen, setSummaryOpen] = useState(false);
   const lastAnalysis = useSessionStore((s) => s.lastAnalysis);
+  const notesFilePath = useSessionStore((s) => s.notesFilePath);
   // Auto-open the Summary modal the first time a report lands while
   // the window is visible. The user can close + re-open via the header
   // button (rendered only when lastAnalysis is non-null).
   useEffect(() => {
     if (lastAnalysis && lastAnalysis.status === 'ready') setSummaryOpen(true);
   }, [lastAnalysis]);
-  // Temp tooltip feedback after clicking "copy as markdown"
-  // ("✓ Скопировано" / "Не удалось скопировать"). Null = default title.
-  const [exportHint, setExportHint] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const draftInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const unsubConv = bootstrap();
@@ -164,6 +162,15 @@ export function ExpandedScreen() {
     });
   };
 
+  useHotkeyEvents((action) => {
+    if (action !== 'instant_assist') return;
+    if (draft.trim()) {
+      void send();
+    } else {
+      draftInputRef.current?.focus();
+    }
+  });
+
   const activeModelId = selectedModel || config?.defaultModelId || '';
   const modelLabelText = config?.models.find((m) => m.id === activeModelId)?.displayName ?? 'AI';
 
@@ -193,33 +200,34 @@ export function ExpandedScreen() {
         style={{
           display: 'flex',
           alignItems: 'center',
-          gap: 10,
-          padding: '12px 12px 10px 14px',
-          borderBottom: '0.5px solid var(--d9-hairline)',
+          gap: 8,
+          padding: '10px 12px',
+          borderBottom: '1px solid rgba(255,255,255,0.04)',
           WebkitAppRegion: 'drag',
+          flexShrink: 0,
         } as React.CSSProperties}
       >
-        <BrandMark size={24} />
-        <span
-          style={{
-            fontSize: 13,
-            color: 'var(--d9-ink)',
-            fontWeight: 500,
-            letterSpacing: '-0.01em',
-          }}
-        >
-          {activePersona.label}
-        </span>
-        <div style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}>
-          <ModelPill
-            label={modelLabelText}
-            title={config ? 'Выбрать модель' : 'Нужен вход'}
-            onClick={() => setPickerOpen(true)}
-          />
+        {/* Logo pill */}
+        <div style={{ WebkitAppRegion: 'no-drag', flexShrink: 0 } as React.CSSProperties}>
+          <CompactLogo size={28} />
         </div>
+
+        {/* Persona chip */}
+        <div style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}>
+          <ChatHeadPill color="cyan">{activePersona.label}</ChatHeadPill>
+        </div>
+
+        {/* Model pill */}
+        <div style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}>
+          <ChatHeadPill color="cyan" onClick={() => setPickerOpen(true)} chevron>
+            {modelLabelText}
+          </ChatHeadPill>
+        </div>
+
         <div style={{ flex: 1 }} />
-        <div style={{ display: 'flex', gap: 2, WebkitAppRegion: 'no-drag' } as React.CSSProperties}>
-          <AutoSuggestToggle />
+
+        {/* Action buttons */}
+        <div style={{ display: 'flex', gap: 2, alignItems: 'center', WebkitAppRegion: 'no-drag' } as React.CSSProperties}>
           <MeetingRecordButton />
           <AttachedDocsBadge />
           {lastAnalysis && lastAnalysis.status === 'ready' && (
@@ -229,48 +237,27 @@ export function ExpandedScreen() {
               style={{
                 padding: '4px 10px',
                 marginRight: 4,
-                borderRadius: 7,
-                background: 'var(--d9-accent-glow)',
-                border: '0.5px solid rgba(255, 59, 48, 0.35)',
-                color: 'var(--d9-accent-hi)',
-                fontSize: 11.5,
-                fontFamily: 'inherit',
-                letterSpacing: '-0.005em',
+                borderRadius: 6,
+                background: 'rgba(79,195,247,0.10)',
+                border: '0.5px solid rgba(79,195,247,0.3)',
+                color: 'var(--d9-accent)',
+                fontSize: 11,
+                fontFamily: 'var(--d9-font-mono)',
+                letterSpacing: '0.04em',
                 cursor: 'pointer',
               }}
             >
-              Summary
+              SUMMARY
             </button>
           )}
-          <IconButton
-            title={exportHint || 'Скопировать диалог как Markdown (Obsidian · Typora)'}
-            onClick={async () => {
-              const md = exportConversationAsMarkdown(messages, {
-                modelLabel: activeModelId,
-              });
-              try {
-                await navigator.clipboard.writeText(md);
-                setExportHint('✓ Скопировано');
-                setTimeout(() => setExportHint(null), 2000);
-              } catch {
-                setExportHint('Не удалось скопировать');
-                setTimeout(() => setExportHint(null), 2500);
-              }
-            }}
-          >
-            <D9IconCopy size={14} />
-          </IconButton>
           <IconButton title="История" onClick={() => void window.druz9.windows.show('history')}>
             <IconHistory size={14} />
           </IconButton>
-          <IconButton
-            title="Свернуть"
-            onClick={() => void window.druz9.windows.hide('expanded')}
-          >
-            <D9IconCollapse size={14} />
+          <IconButton title="Настройки" onClick={() => void window.druz9.windows.show('settings')}>
+            <D9IconSettings size={14} />
           </IconButton>
           <IconButton
-            title="Закрыть (⌘W)"
+            title="Свернуть / закрыть (⌘W)"
             onClick={() => void window.druz9.windows.hide('expanded')}
           >
             <D9IconClose size={12} />
@@ -284,7 +271,7 @@ export function ExpandedScreen() {
         style={{
           flex: 1,
           overflowY: 'auto',
-          padding: '18px 18px 10px',
+          padding: '24px 22px 20px',
           position: 'relative',
         }}
       >
@@ -313,26 +300,25 @@ export function ExpandedScreen() {
       {/* Follow-up input */}
       <div
         style={{
-          padding: '10px 12px 12px',
-          borderTop: '0.5px solid var(--d9-hairline)',
+          padding: '10px 12px',
+          borderTop: '1px solid rgba(255,255,255,0.04)',
           WebkitAppRegion: 'no-drag',
         } as React.CSSProperties}
       >
         <div
           style={{
             display: 'flex',
-            alignItems: 'flex-end',
+            alignItems: 'center',
             gap: 8,
-            minHeight: 44,
-            padding: '8px 8px 8px 12px',
-            borderRadius: 12,
-            background: 'oklch(1 0 0 / 0.05)',
-            border: `0.5px solid ${focused ? 'var(--d9-accent)' : 'var(--d9-hairline)'}`,
-            boxShadow: focused ? '0 0 0 3px var(--d9-accent-glow)' : 'none',
-            transition: 'box-shadow 160ms var(--d9-ease), border-color 160ms',
+            background: 'rgba(255,255,255,0.04)',
+            border: `1px solid ${focused ? 'rgba(79,195,247,0.4)' : 'transparent'}`,
+            borderRadius: 10,
+            padding: '8px 8px 8px 14px',
+            transition: 'border-color 150ms',
           }}
         >
-          <textarea
+          <input
+            ref={draftInputRef}
             value={draft}
             onChange={(e) => setDraft(e.target.value)}
             onFocus={() => setFocused(true)}
@@ -343,21 +329,17 @@ export function ExpandedScreen() {
                 void send();
               }
             }}
-            placeholder="Продолжить диалог…"
+            placeholder="Continue dialog…"
             style={{
               flex: 1,
-              minHeight: 24,
-              maxHeight: 120,
-              padding: '4px 0',
               background: 'transparent',
               border: 'none',
               color: 'var(--d9-ink)',
-              font: 'inherit',
-              fontSize: 13.5,
-              lineHeight: 1.5,
-              letterSpacing: '-0.005em',
+              fontFamily: 'var(--d9-font-sans)',
+              fontSize: 14,
+              letterSpacing: '0.01em',
               outline: 'none',
-              resize: 'none',
+              caretColor: 'var(--d9-accent)',
             }}
           />
           <MicButton draft={draft} setDraft={setDraft} />
@@ -367,36 +349,55 @@ export function ExpandedScreen() {
           >
             <D9IconCamera size={14} />
           </IconButton>
-          <IconButton
+          {/* Send button — cyan accent circle */}
+          <button
+            type="button"
             title="Отправить (Enter)"
-            tone="accent"
             onClick={() => void send()}
             disabled={streaming || !draft.trim()}
+            style={{
+              width: 30,
+              height: 30,
+              borderRadius: '50%',
+              border: 0,
+              cursor: streaming || !draft.trim() ? 'not-allowed' : 'pointer',
+              background: streaming || !draft.trim() ? 'rgba(79,195,247,0.25)' : 'var(--d9-accent)',
+              color: '#001218',
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              flexShrink: 0,
+              transition: 'transform 120ms, filter 120ms, background 120ms',
+              boxShadow: !streaming && draft.trim() ? '0 0 12px rgba(79,195,247,0.35)' : 'none',
+            }}
           >
             <IconSend size={14} />
-          </IconButton>
+          </button>
         </div>
+        {/* Footer */}
         <div
           style={{
             display: 'flex',
             alignItems: 'center',
-            gap: 8,
+            gap: 14,
             marginTop: 8,
             paddingLeft: 2,
-            fontSize: 11,
+            fontFamily: 'var(--d9-font-mono)',
+            fontSize: 10,
+            letterSpacing: '0.08em',
             color: 'var(--d9-ink-ghost)',
           }}
         >
-          <Kbds keys={['⌘', '⏎']} size="sm" sep="" />
-          <span>send</span>
-          <span style={{ margin: '0 4px' }}>·</span>
-          <Kbds keys={['⌘', '⇧', 'S']} size="sm" sep="" />
-          <span>screenshot</span>
+          <ChatKbd>⌘</ChatKbd><ChatKbd>↵</ChatKbd>
+          <span style={{ marginLeft: -10 }}>SEND</span>
+          <span style={{ color: 'var(--d9-hairline-b)' }}>·</span>
+          <ChatKbd>⌘</ChatKbd><ChatKbd>⇧</ChatKbd><ChatKbd>S</ChatKbd>
+          <span style={{ marginLeft: -20 }}>SCREENSHOT</span>
           <span style={{ flex: 1 }} />
           {streaming ? (
             <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
               <StatusDot state="streaming" size={6} />
-              streaming
+              <span>streaming</span>
             </span>
           ) : (
             quota && quota.requestsCap > 0 && (
@@ -420,6 +421,7 @@ export function ExpandedScreen() {
         <SummaryModal
           analysis={lastAnalysis}
           modelLabel={activeModelId}
+          notesFilePath={notesFilePath}
           onClose={() => setSummaryOpen(false)}
         />
       )}
@@ -546,21 +548,12 @@ function MessageBubble({ m, persona: _persona }: { m: UIMessage; persona: string
           style={{
             maxWidth: '78%',
             padding: '10px 14px',
-            borderRadius: '14px 14px 4px 14px',
-            // Hone-style user bubble: neutral elevated surface, NOT
-            // branded red. Red accent is reserved for CTAs / status —
-            // painting every user message in accent would overwhelm.
-            // `--d9-slate-2` (#171717) reads as "one step above canvas"
-            // at a glance without coloured noise.
-            background: 'var(--d9-slate-2)',
-            border: '0.5px solid var(--d9-hairline)',
+            borderRadius: '12px 12px 4px 12px',
+            background: 'rgba(255,255,255,0.06)',
             color: 'var(--d9-ink)',
-            fontSize: 13.5,
+            fontSize: 14,
             lineHeight: 1.5,
-            letterSpacing: '-0.005em',
-            boxShadow:
-              'inset 0 0.5px 0 rgba(255,255,255,0.04), ' +
-              '0 1px 2px rgba(0,0,0,0.3)',
+            letterSpacing: '0.01em',
           }}
         >
           {m.hasScreenshot && m.screenshotDataUrl && (
@@ -612,29 +605,19 @@ function MessageBubble({ m, persona: _persona }: { m: UIMessage; persona: string
     );
   }
   return (
-    <div style={{ display: 'flex', marginBottom: 20, gap: 10 }}>
-      <div style={{ width: 22, flex: 'none', paddingTop: 2 }}>
-        <div
-          style={{
-            width: 18,
-            height: 18,
-            borderRadius: 5,
-            background: 'var(--d9-slate)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            color: 'var(--d9-ink-dim)',
-          }}
-        >
-          <D9IconSparkle size={10} />
-        </div>
+    <div style={{ display: 'flex', marginBottom: 20, gap: 12, maxWidth: '92%' }}>
+      {/* Star glyph — cyan sparkle matching prototype */}
+      <div style={{ flexShrink: 0, paddingTop: 2 }}>
+        <svg width={18} height={18} viewBox="0 0 18 18" fill="none" style={{ color: 'var(--d9-accent)' }}>
+          <path d="M9 1l1.5 5.5L16 8l-5.5 1.5L9 15l-1.5-5.5L2 8l5.5-1.5L9 1z" stroke="currentColor" strokeWidth="1.2" fill="none"/>
+        </svg>
       </div>
       <div
         style={{
           flex: 1,
           minWidth: 0,
-          fontSize: 13.5,
-          lineHeight: 1.65,
+          fontSize: 14.5,
+          lineHeight: 1.6,
           letterSpacing: '-0.002em',
           color: 'var(--d9-ink)',
         }}
@@ -1044,86 +1027,60 @@ function MicButton({ draft, setDraft }: { draft: string; setDraft: (s: string) =
         height: 28,
         padding: 0,
         borderRadius: 7,
-        background:
-          state === 'recording'
-            ? 'oklch(0.6 0.2 25 / 0.15)'
-            : 'transparent',
-        border: '0.5px solid ' + (state === 'recording' ? 'oklch(0.6 0.2 25 / 0.5)' : 'transparent'),
-        color:
-          error
-            ? 'oklch(0.75 0.18 25)'
-            : state === 'recording'
-              ? 'oklch(0.75 0.18 25)'
-              : state === 'busy'
-                ? 'var(--d9-ink-ghost)'
-                : 'var(--d9-ink-mute)',
+        background: state === 'recording'
+          ? 'rgba(79,195,247,0.12)'
+          : 'transparent',
+        border: '0.5px solid ' + (state === 'recording'
+          ? 'rgba(79,195,247,0.4)'
+          : 'transparent'),
+        color: error
+          ? 'oklch(0.75 0.18 25)'
+          : state === 'recording'
+            ? 'var(--d9-accent)'
+            : state === 'busy'
+              ? 'var(--d9-ink-ghost)'
+              : 'var(--d9-ink-mute)',
         cursor: state === 'busy' ? 'wait' : 'pointer',
-        transition: 'background 120ms var(--d9-ease), color 120ms var(--d9-ease)',
+        transition: 'background 200ms, border-color 200ms, color 200ms',
+        boxShadow: state === 'recording' ? '0 0 12px rgba(79,195,247,0.2)' : 'none',
       }}
     >
       <IconMic size={14} />
+      {/* Recording: pulsing cyan ring (ripple outward) */}
       {state === 'recording' && (
-        <span
-          style={{
+        <>
+          <span style={{
             position: 'absolute',
-            top: 4,
-            right: 4,
-            width: 6,
-            height: 6,
-            borderRadius: '50%',
-            background: 'oklch(0.65 0.22 25)',
-            boxShadow: '0 0 6px oklch(0.65 0.22 25 / 0.8)',
-            animation: 'd9-pulse 1s ease-in-out infinite',
-          }}
-        />
+            inset: -4,
+            borderRadius: 12,
+            border: '1.5px solid var(--d9-accent)',
+            opacity: 0.6,
+            animation: 'd9pulse 1.4s ease-out infinite',
+            pointerEvents: 'none',
+          }} />
+          <span style={{
+            position: 'absolute',
+            inset: -8,
+            borderRadius: 16,
+            border: '1px solid var(--d9-accent)',
+            opacity: 0.25,
+            animation: 'd9pulse 1.4s ease-out infinite 0.4s',
+            pointerEvents: 'none',
+          }} />
+        </>
       )}
-    </button>
-  );
-}
-
-/**
- * AutoSuggestToggle — 🤖 Auto on/off pill next to the record
- * button. When ON, the trigger-policy in main watches the live
- * transcript for end-of-question boundaries and auto-invokes
- * /copilot/suggestion.
- *
- * Visible only when audio capture is available — without capture
- * the coach has nothing to listen to. The button also hides when
- * state=idle + chunks empty + toggle off (nothing to surface).
- */
-function AutoSuggestToggle() {
-  const enabled = useCoachStore((s) => s.enabled);
-  const thinking = useCoachStore((s) => s.thinking);
-  const toggle = useCoachStore((s) => s.toggle);
-  const audioAvailable = useAudioCaptureStore((s) => s.available);
-  if (!audioAvailable) return null;
-  return (
-    <button
-      type="button"
-      onClick={() => void toggle()}
-      title={
-        enabled
-          ? 'Авто-подсказки включены — AI предлагает ответы на вопросы собеседника'
-          : 'Авто-подсказки выключены — AI молчит, пока ты сам не нажмёшь'
-      }
-      style={{
-        padding: '4px 10px',
-        marginRight: 4,
-        borderRadius: 7,
-        background: enabled
-          ? 'rgba(255, 59, 48, 0.12)'
-          : 'oklch(1 0 0 / 0.04)',
-        border: `0.5px solid ${enabled ? 'rgba(255, 59, 48, 0.35)' : 'var(--d9-hairline)'}`,
-        color: enabled ? 'var(--d9-accent-hi)' : 'var(--d9-ink-mute)',
-        fontSize: 11.5,
-        fontFamily: 'inherit',
-        letterSpacing: '-0.005em',
-        cursor: 'pointer',
-        whiteSpace: 'nowrap',
-        transition: 'background 120ms var(--d9-ease), color 120ms var(--d9-ease)',
-      }}
-    >
-      {thinking ? '🤖 думаю…' : enabled ? '🤖 авто' : '🤖 off'}
+      {/* Busy: small spinning arc */}
+      {state === 'busy' && (
+        <span style={{
+          position: 'absolute',
+          inset: -3,
+          borderRadius: '50%',
+          border: '1.5px solid transparent',
+          borderTopColor: 'var(--d9-accent)',
+          animation: 'spin 0.8s linear infinite',
+          pointerEvents: 'none',
+        }} />
+      )}
     </button>
   );
 }
@@ -1434,8 +1391,10 @@ function MeetingRecordButton() {
   const state = useAudioCaptureStore((s) => s.state);
   const startedAt = useAudioCaptureStore((s) => s.startedAt);
   const available = useAudioCaptureStore((s) => s.available);
+  const error = useAudioCaptureStore((s) => s.error);
   const start = useAudioCaptureStore((s) => s.start);
   const stop = useAudioCaptureStore((s) => s.stop);
+  const setCoachEnabled = useCoachStore((s) => s.setEnabled);
   const [tick, setTick] = useState(0);
 
   // 1s repaint so the elapsed counter advances. Only runs while we're
@@ -1445,6 +1404,10 @@ function MeetingRecordButton() {
     const h = setInterval(() => setTick((t) => t + 1), 1000);
     return () => clearInterval(h);
   }, [state]);
+
+  useEffect(() => {
+    if (error) void window.druz9.toast.show(error, 'error');
+  }, [error]);
 
   if (!available) return null;
 
@@ -1462,12 +1425,17 @@ function MeetingRecordButton() {
         ? 'Остановка…'
         : recording
           ? `● ${elapsedLabel}`
-          : 'Запись встречи';
+          : 'Записать встречу';
 
   const onClick = () => {
     if (busy) return;
-    if (recording) void stop();
-    else void start();
+    if (recording) {
+      void setCoachEnabled(false);
+      void stop();
+    } else {
+      void setCoachEnabled(true);
+      void start();
+    }
   };
 
   return (
@@ -1478,7 +1446,7 @@ function MeetingRecordButton() {
       title={
         recording
           ? 'Остановить запись встречи'
-          : 'Начать запись системного звука (macOS Screen Recording permission)'
+          : 'Записать системный звук локально. Для расшифровки аудио отправляется в /transcription без сохранения raw-записи.'
       }
       style={{
         padding: '4px 10px',
@@ -1543,5 +1511,71 @@ function AttachedDocsBadge() {
     >
       📎 {attached.length} {plural}
     </button>
+  );
+}
+
+// ─── Chat-specific helpers ────────────────────────────────────────────────
+
+/** Pill chip in the chat header — persona label or model name. */
+function ChatHeadPill({
+  children,
+  color,
+  onClick,
+  chevron,
+}: {
+  children: React.ReactNode;
+  color?: 'cyan' | 'red';
+  onClick?: () => void;
+  chevron?: boolean;
+}) {
+  const isCyan = color === 'cyan';
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: 5,
+        padding: '5px 9px',
+        borderRadius: 6,
+        background: 'rgba(255,255,255,0.04)',
+        border: 0,
+        fontFamily: 'var(--d9-font-mono)',
+        fontSize: 11,
+        letterSpacing: '0.04em',
+        color: 'var(--d9-ink)',
+        cursor: onClick ? 'pointer' : 'default',
+        transition: 'background 120ms',
+        WebkitAppRegion: 'no-drag',
+      } as React.CSSProperties}
+      onMouseEnter={(e) => onClick && (e.currentTarget.style.background = 'rgba(255,255,255,0.08)')}
+      onMouseLeave={(e) => (e.currentTarget.style.background = 'rgba(255,255,255,0.04)')}
+    >
+      <span style={{
+        width: 6, height: 6, borderRadius: '50%', flexShrink: 0,
+        background: isCyan ? 'var(--d9-accent)' : 'oklch(0.65 0.22 25)',
+      }} />
+      {children}
+      {chevron && <span style={{ fontSize: 8, color: 'var(--d9-ink-ghost)' }}>▾</span>}
+    </button>
+  );
+}
+
+/** Tiny kbd chip for the chat footer shortcut hints. */
+function ChatKbd({ children }: { children: React.ReactNode }) {
+  return (
+    <span style={{
+      border: '1px solid var(--d9-hairline-b)',
+      background: 'rgba(255,255,255,0.03)',
+      padding: '2px 6px',
+      borderRadius: 4,
+      fontFamily: 'var(--d9-font-mono)',
+      fontSize: 10,
+      color: 'var(--d9-ink)',
+      margin: '0 1px',
+    }}>
+      {children}
+    </span>
   );
 }

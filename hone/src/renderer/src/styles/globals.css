@@ -757,8 +757,8 @@ textarea {
   padding: 0;
   outline: none;
   color: var(--ink);
-  font-size: 15px;
-  line-height: 1.7;
+  font-size: 16px;
+  line-height: 1.75;
   /* Caret-color: frame-dark по дефолту делает caret transparent на нашем
      palette'е → курсор не виден. Принудительно ставим ink-цвет. */
   caret-color: var(--ink);
@@ -935,6 +935,12 @@ textarea {
 .hone-milkdown-mount .milkdown .ProseMirror .placeholder {
   color: var(--ink-40);
   font-style: italic;
+}
+
+/* Notion-style ultra-subtle title placeholder */
+.hone-notes-title::placeholder {
+  color: rgba(255, 255, 255, 0.18);
+  font-style: normal;
 }
 .cm-blockquote { border-left: 2px solid rgba(255,255,255,0.15); padding-left: 12px; color: var(--ink-60); }
 /* HR — line decoration, не replace widget. Caret свободно входит на --- строку,

@@ -15,6 +15,7 @@ import (
 	"strings"
 
 	"druz9/cmd/monolith/services"
+	notifyServices "druz9/cmd/monolith/services/notify"
 	"druz9/shared/pkg/logger"
 	"druz9/shared/pkg/metrics"
 	mw "druz9/shared/pkg/middleware"
@@ -39,7 +40,7 @@ type routerDeps struct {
 	// = free). Вызывается per-request после auth, результат кладётся в
 	// context'е через sharedMw.WithUserTier.
 	ResolveTier func(ctx context.Context, userID uuid.UUID) string
-	Notify      *services.NotifyModule
+	Notify      *notifyServices.NotifyModule
 	Modules     []*services.Module // every Module in mount order, including auth's
 	// SyncHeartbeat — Phase C-3.1 middleware. Применяется ПОСЛЕ auth-gate'а
 	// в /api/v1 chain'е и в Connect-mux'е (через wrap auth + tier).

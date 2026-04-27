@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"druz9/intelligence/domain"
@@ -33,6 +34,7 @@ func NewDailyBriefs(pool *pgxpool.Pool) *DailyBriefs { return &DailyBriefs{pool:
 // the domain struct so we can evolve the column without breaking the type
 // passed to use cases.
 type briefPayload struct {
+	BriefID         string                  `json:"brief_id,omitempty"`
 	Headline        string                  `json:"headline"`
 	Narrative       string                  `json:"narrative"`
 	Recommendations []recommendationPayload `json:"recommendations"`
@@ -68,6 +70,7 @@ func (r *DailyBriefs) GetForDate(ctx context.Context, userID uuid.UUID, date tim
 		return domain.DailyBrief{}, fmt.Errorf("intelligence.DailyBriefs.GetForDate: unmarshal: %w", err)
 	}
 	out := domain.DailyBrief{
+		BriefID:     uuidOrNil(p.BriefID),
 		Headline:    p.Headline,
 		Narrative:   p.Narrative,
 		GeneratedAt: generatedAt,
@@ -86,6 +89,9 @@ func (r *DailyBriefs) GetForDate(ctx context.Context, userID uuid.UUID, date tim
 // Upsert replaces the brief for (user, date).
 func (r *DailyBriefs) Upsert(ctx context.Context, userID uuid.UUID, date time.Time, b domain.DailyBrief) error {
 	p := briefPayload{Headline: b.Headline, Narrative: b.Narrative}
+	if b.BriefID != uuid.Nil {
+		p.BriefID = b.BriefID.String()
+	}
 	for _, rec := range b.Recommendations {
 		p.Recommendations = append(p.Recommendations, recommendationPayload{
 			Kind:      string(rec.Kind),
@@ -110,6 +116,14 @@ func (r *DailyBriefs) Upsert(ctx context.Context, userID uuid.UUID, date time.Ti
 		return fmt.Errorf("intelligence.DailyBriefs.Upsert: %w", err)
 	}
 	return nil
+}
+
+func uuidOrNil(s string) uuid.UUID {
+	id, err := uuid.Parse(strings.TrimSpace(s))
+	if err != nil {
+		return uuid.Nil
+	}
+	return id
 }
 
 // LastForcedAt returns the most-recent generated_at across the user's

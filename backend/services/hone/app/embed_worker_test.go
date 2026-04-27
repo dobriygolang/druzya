@@ -86,8 +86,11 @@ func (r *fakeNotesRepo) Update(context.Context, domain.Note) (domain.Note, error
 func (r *fakeNotesRepo) Get(context.Context, uuid.UUID, uuid.UUID) (domain.Note, error) {
 	return domain.Note{}, errors.New("unused")
 }
-func (r *fakeNotesRepo) List(context.Context, uuid.UUID, int, string) ([]domain.NoteSummary, string, error) {
+func (r *fakeNotesRepo) List(context.Context, uuid.UUID, int, string, *uuid.UUID) ([]domain.NoteSummary, string, error) {
 	return nil, "", errors.New("unused")
+}
+func (r *fakeNotesRepo) Move(context.Context, uuid.UUID, uuid.UUID, *uuid.UUID) (domain.Note, error) {
+	return domain.Note{}, errors.New("unused")
 }
 func (r *fakeNotesRepo) Delete(context.Context, uuid.UUID, uuid.UUID) error {
 	return errors.New("unused")

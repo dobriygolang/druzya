@@ -88,6 +88,7 @@ const api: Druz9API = {
     update: (bindings: HotkeyBinding[]) =>
       ipcRenderer.invoke(invokeChannels.hotkeysUpdate, bindings) as Promise<void>,
     captureOnce: () => ipcRenderer.invoke(invokeChannels.hotkeysCaptureOnce) as Promise<string>,
+    trigger: (action) => ipcRenderer.invoke(invokeChannels.hotkeysTrigger, action) as Promise<void>,
   },
   windows: {
     show: (name: WindowName) => ipcRenderer.invoke(invokeChannels.windowsShow, name) as Promise<void>,
@@ -124,6 +125,10 @@ const api: Druz9API = {
       ipcRenderer.invoke(invokeChannels.historyGet, id) as ReturnType<Druz9API['history']['get']>,
     delete: (id: string) => ipcRenderer.invoke(invokeChannels.historyDelete, id) as Promise<void>,
   },
+  memory: {
+    sync: (conversationId, memory) =>
+      ipcRenderer.invoke(invokeChannels.memorySync, { conversationId, memory }) as Promise<void>,
+  },
   providers: {
     list: () => ipcRenderer.invoke(invokeChannels.providersList) as Promise<unknown[]>,
   },
@@ -157,6 +162,12 @@ const api: Druz9API = {
   shell: {
     openExternal: (url: string) =>
       ipcRenderer.invoke(invokeChannels.shellOpenExternal, url) as Promise<void>,
+  },
+  notes: {
+    showInFolder: (filePath: string) =>
+      ipcRenderer.invoke(invokeChannels.notesShowInFolder, filePath) as Promise<void>,
+    openInHone: (filePath: string) =>
+      ipcRenderer.invoke(invokeChannels.notesOpenInHone, filePath) as Promise<void>,
   },
   app: {
     quit: () => ipcRenderer.invoke(invokeChannels.appQuit) as Promise<void>,

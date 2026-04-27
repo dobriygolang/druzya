@@ -19,6 +19,8 @@
 //
 // ⌘J connections panel и ⌘⇧L AskNotes — оставлены без изменений.
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import type { CueSessionAnalysis } from '@shared/ipc';
+import { CueMeetingNotes, buildCueMarkdown } from '../components/CueMeetingNotes';
 import { ConnectError, Code } from '@connectrpc/connect';
 
 import { AskNotesModal } from '../components/AskNotesModal';
@@ -32,10 +34,15 @@ import {
   createNote,
   updateNote,
   deleteNote,
+  moveNote,
+  listFolders,
+  createFolder,
+  deleteFolder,
   getNoteConnectionsStream,
   type Note,
   type NoteConnection,
   type NoteSummary,
+  type Folder,
 } from '../api/hone';
 import {
   publishNote,
@@ -76,9 +83,11 @@ const SIDEBAR_DEFAULT = 280;
 export interface NotesPageProps {
   initialSelectedId?: string | null;
   onConsumeInitial?: () => void;
+  initialCueNote?: { filePath: string; analysis: CueSessionAnalysis } | null;
+  onConsumeCueNote?: () => void;
 }
 
-export function NotesPage({ initialSelectedId, onConsumeInitial }: NotesPageProps = {}) {
+export function NotesPage({ initialSelectedId, onConsumeInitial, initialCueNote, onConsumeCueNote }: NotesPageProps = {}) {
   const [list, setList] = useState<ListState>(INITIAL_LIST);
   // listRef — всегда указывает на свежий list. Используется callback'ами
   // (handleDelete, etc) которые НЕ должны зависеть от list в useCallback
@@ -93,6 +102,9 @@ export function NotesPage({ initialSelectedId, onConsumeInitial }: NotesPageProp
   const activeRef = useRef<Note | null>(null);
   const selectedIdRef = useRef<string | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(initialSelectedId ?? null);
+  const [activeCueNote, setActiveCueNote] = useState<{ filePath: string; analysis: CueSessionAnalysis } | null>(initialCueNote ?? null);
+  const [folders, setFolders] = useState<Folder[]>([]);
+  const [selectedFolder, setSelectedFolder] = useState<string | null | 'all'>('all');
   const [askOpen, setAskOpen] = useState(false);
   const [active, setActive] = useState<Note | null>(null);
   // Keep refs in lockstep with state for async-callback access.
@@ -176,6 +188,11 @@ export function NotesPage({ initialSelectedId, onConsumeInitial }: NotesPageProp
     };
   }, []);
 
+  // Load folders once on mount.
+  useEffect(() => {
+    listFolders().then(setFolders).catch(() => {});
+  }, []);
+
   // Initial list fetch + reactive refetch on SSE-bridged events.
   // hone:sync-changed диспатчит App.tsx когда server push приходит —
   // мы re-fetch'аем list, чтобы sidebar видел изменения с других девайсов
@@ -198,6 +215,7 @@ export function NotesPage({ initialSelectedId, onConsumeInitial }: NotesPageProp
             title: n.title,
             updatedAt: new Date(n.updatedAt),
             sizeBytes: new Blob([n.bodyMd]).size,
+            folderId: null,
           }));
           setList((prev) => {
             // Сохраняем temp:id rows которые ещё не на сервере (optimistic
@@ -522,6 +540,31 @@ export function NotesPage({ initialSelectedId, onConsumeInitial }: NotesPageProp
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // When a new Cue note arrives via deep link (page already mounted),
+  // open it immediately, deselect any regular note, and auto-save to
+  // IndexedDB so the "Sync to Cloud" button works as normal.
+  useEffect(() => {
+    if (initialCueNote) {
+      setActiveCueNote(initialCueNote);
+      setSelectedId(null);
+      setActive(null);
+      onConsumeCueNote?.();
+      const { analysis } = initialCueNote;
+      const title = analysis.title || 'Meeting notes';
+      createLocalNote(title, buildCueMarkdown(analysis)).then((ln) => {
+        const row: NoteSummary = {
+          id: ln.id,
+          title: ln.title,
+          updatedAt: new Date(ln.updatedAt),
+          sizeBytes: new Blob([ln.bodyMd]).size,
+          folderId: null,
+        };
+        setList((prev) => ({ ...prev, notes: [row, ...prev.notes] }));
+      }).catch(() => {});
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialCueNote]);
+
   // ⌘J connections / ⌘⇧L AskNotes / ⌘N create.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -574,6 +617,7 @@ export function NotesPage({ initialSelectedId, onConsumeInitial }: NotesPageProp
           title: ln.title,
           updatedAt: new Date(ln.updatedAt),
           sizeBytes: 0,
+          folderId: null,
         };
         setList((prev) => ({ ...prev, notes: [row, ...prev.notes] }));
         setSelectedId(ln.id);
@@ -600,6 +644,7 @@ export function NotesPage({ initialSelectedId, onConsumeInitial }: NotesPageProp
       title: 'Untitled',
       sizeBytes: 0,
       updatedAt: now,
+      folderId: null,
     };
     // Optimistic UI:
     setList((prev) => ({ ...prev, notes: [tempNote, ...prev.notes] }));
@@ -625,7 +670,7 @@ export function NotesPage({ initialSelectedId, onConsumeInitial }: NotesPageProp
         ...prev,
         notes: prev.notes.map((row) =>
           row.id === tempId
-            ? { id: n.id, title: n.title, updatedAt: n.updatedAt, sizeBytes: n.sizeBytes }
+            ? { id: n.id, title: n.title, updatedAt: n.updatedAt, sizeBytes: n.sizeBytes, folderId: n.folderId }
             : row,
         ),
       }));
@@ -746,7 +791,7 @@ export function NotesPage({ initialSelectedId, onConsumeInitial }: NotesPageProp
         ...prev,
         notes: prev.notes.map((row) =>
           row.id === id
-            ? { id: created.id, title: created.title, updatedAt: created.updatedAt, sizeBytes: created.sizeBytes }
+            ? { id: created.id, title: created.title, updatedAt: created.updatedAt, sizeBytes: created.sizeBytes, folderId: created.folderId }
             : row,
         ),
       }));
@@ -843,6 +888,43 @@ export function NotesPage({ initialSelectedId, onConsumeInitial }: NotesPageProp
 
   const handleSidebarCollapse = useCallback(() => setSidebarCollapsed(true), []);
 
+  const handleCreateFolder = useCallback(async (name: string, parentId?: string | null) => {
+    try {
+      const f = await createFolder(name, parentId);
+      setFolders((prev) => [...prev, f].sort((a, b) => a.name.localeCompare(b.name)));
+    } catch (e) {
+      setToast(`Could not create folder: ${(e as Error).message}`);
+      window.setTimeout(() => setToast(null), 2400);
+    }
+  }, []);
+
+  const handleDeleteFolder = useCallback(async (id: string) => {
+    try {
+      await deleteFolder(id, true);
+      setFolders((prev) => prev.filter((f) => f.id !== id));
+      setList((prev) => ({
+        ...prev,
+        notes: prev.notes.map((n) => (n.folderId === id ? { ...n, folderId: null } : n)),
+      }));
+      if (selectedFolder === id) setSelectedFolder('all');
+    } catch (e) {
+      setToast(`Could not delete folder: ${(e as Error).message}`);
+      window.setTimeout(() => setToast(null), 2400);
+    }
+  }, [selectedFolder]);
+
+  const handleMoveNote = useCallback(async (noteId: string, folderId: string | null) => {
+    try {
+      await moveNote(noteId, folderId);
+      setList((prev) => ({
+        ...prev,
+        notes: prev.notes.map((n) => (n.id === noteId ? { ...n, folderId } : n)),
+      }));
+    } catch {
+      // silent — not blocking
+    }
+  }, []);
+
   // ─── Render ─────────────────────────────────────────────────────────────
 
   return (
@@ -867,7 +949,22 @@ export function NotesPage({ initialSelectedId, onConsumeInitial }: NotesPageProp
           list={list}
           selectedId={selectedId}
           metaMap={metaMap}
-          onSelect={onSelectNote}
+          activeCueNote={activeCueNote}
+          onSelectCueNote={(note) => {
+            setActiveCueNote(note);
+            setSelectedId(null);
+            setActive(null);
+          }}
+          onSelect={(id) => {
+            setActiveCueNote(null);
+            onSelectNote(id);
+          }}
+          folders={folders}
+          selectedFolder={selectedFolder}
+          onSelectFolder={setSelectedFolder}
+          onCreateFolder={handleCreateFolder}
+          onDeleteFolder={handleDeleteFolder}
+          onMoveNote={handleMoveNote}
           onCreate={handleCreate}
           onDelete={handleDelete}
           onPublish={handlePublish}
@@ -889,18 +986,26 @@ export function NotesPage({ initialSelectedId, onConsumeInitial }: NotesPageProp
         <NotesExpandSidebarButton onClick={() => setSidebarCollapsed(false)} />
       )}
 
-      <Editor
-        list={list}
-        active={active}
-        activeError={activeError}
-        draftTitle={draftTitle}
-        draftBody={draftBody}
-        encrypted={!!(active && metaMap.get(active.id)?.encrypted)}
-        saveStatus={saveStatus}
-        onTitleChange={setDraftTitle}
-        onBodyChange={setDraftBody}
-        onCreate={handleCreate}
-      />
+      {activeCueNote ? (
+        <CueMeetingNotes
+          analysis={activeCueNote.analysis}
+          filePath={activeCueNote.filePath}
+        />
+      ) : (
+        <Editor
+          list={list}
+          active={active}
+          activeError={activeError}
+          draftTitle={draftTitle}
+          draftBody={draftBody}
+          encrypted={!!(active && metaMap.get(active.id)?.encrypted)}
+          saveStatus={saveStatus}
+          folders={folders}
+          onTitleChange={setDraftTitle}
+          onBodyChange={setDraftBody}
+          onCreate={handleCreate}
+        />
+      )}
 
       {connectionsOpen && active && (
         <ConnectionsPanel
@@ -930,7 +1035,15 @@ interface SidebarProps {
   list: ListState;
   selectedId: string | null;
   metaMap: Map<string, NoteMeta>;
+  activeCueNote: { filePath: string; analysis: CueSessionAnalysis } | null;
+  folders: Folder[];
+  selectedFolder: string | null | 'all';
+  onSelectFolder: (id: string | null | 'all') => void;
+  onCreateFolder: (name: string, parentId?: string | null) => void;
+  onDeleteFolder: (id: string) => void;
+  onMoveNote: (noteId: string, folderId: string | null) => void;
   onSelect: (id: string) => void;
+  onSelectCueNote: (note: { filePath: string; analysis: CueSessionAnalysis }) => void;
   onCreate: () => void;
   onDelete: (id: string) => void;
   onPublish: (id: string) => void;
@@ -987,7 +1100,15 @@ function NotesExpandSidebarButton({ onClick }: { onClick: () => void }) {
 // handleUnpublish, handleEncrypt — все useCallback с устойчивыми deps.
 const Sidebar = memo(SidebarImpl);
 
-function SidebarImpl({ list, selectedId, metaMap, onSelect, onCreate, onDelete, onPublish, onUnpublish, onEncrypt, onSyncToCloud, onToggleCollapse }: SidebarProps) {
+function SidebarImpl({ list, selectedId, metaMap, activeCueNote, folders, selectedFolder, onSelectFolder, onCreateFolder, onDeleteFolder, onMoveNote, onSelect, onSelectCueNote, onCreate, onDelete, onPublish, onUnpublish, onEncrypt, onSyncToCloud, onToggleCollapse }: SidebarProps) {
+  const [newFolderName, setNewFolderName] = useState('');
+  const [creatingFolder, setCreatingFolder] = useState(false);
+  const [folderInputRef] = useState(() => ({ current: null as HTMLInputElement | null }));
+
+  const visibleNotes = useMemo(() => {
+    if (selectedFolder === 'all') return list.notes;
+    return list.notes.filter((n) => n.folderId === (selectedFolder ?? null));
+  }, [list.notes, selectedFolder]);
   return (
     <aside
       // slide-from-left анимация удалена для симметрии open/close.
@@ -999,13 +1120,168 @@ function SidebarImpl({ list, selectedId, metaMap, onSelect, onCreate, onDelete, 
       }}
     >
       <SidebarHeader
-        count={list.notes.length}
         status={list.status}
         onCreate={onCreate}
         onToggleCollapse={onToggleCollapse}
       />
+
+      {/* Cue Sessions — populated when the user opens a note from Cue desktop */}
+      {activeCueNote && (
+        <div style={{ marginBottom: 8 }}>
+          <div style={{
+            padding: '6px 6px 4px',
+            fontSize: 9.5,
+            fontWeight: 600,
+            letterSpacing: '0.10em',
+            textTransform: 'uppercase',
+            color: 'var(--ink-40)',
+          }}>
+            Cue Sessions
+          </div>
+          <button
+            onClick={() => onSelectCueNote(activeCueNote)}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              width: '100%',
+              padding: '6px 8px',
+              borderRadius: 6,
+              background: 'rgba(79,195,247,0.08)',
+              border: '1px solid rgba(79,195,247,0.18)',
+              color: 'var(--ink-90)',
+              fontSize: 12.5,
+              cursor: 'pointer',
+              textAlign: 'left',
+              transition: 'background 120ms',
+            }}
+            onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(79,195,247,0.14)')}
+            onMouseLeave={(e) => (e.currentTarget.style.background = 'rgba(79,195,247,0.08)')}
+          >
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="rgba(79,195,247,0.9)" strokeWidth="1.3" strokeLinejoin="round">
+              <path d="M6 1L10.33 3.5V8.5L6 11L1.67 8.5V3.5L6 1Z" />
+            </svg>
+            <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {activeCueNote.analysis.title || 'Cue meeting'}
+            </span>
+          </button>
+          <div style={{ height: 1, background: 'rgba(255,255,255,0.06)', margin: '8px 0' }} />
+        </div>
+      )}
+
+      {/* Folder tree */}
+      {folders.length > 0 && (
+        <div style={{ marginBottom: 4 }}>
+          <div style={{
+            padding: '4px 14px 2px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 4,
+          }}>
+            <span style={{
+              flex: 1,
+              fontSize: 9.5,
+              fontWeight: 600,
+              letterSpacing: '0.10em',
+              textTransform: 'uppercase',
+              color: 'var(--ink-40)',
+            }}>
+              Folders
+            </span>
+            <button
+              onClick={() => {
+                setCreatingFolder(true);
+                window.setTimeout(() => folderInputRef.current?.focus(), 40);
+              }}
+              title="New folder"
+              style={{
+                width: 18,
+                height: 18,
+                borderRadius: 4,
+                background: 'transparent',
+                border: 'none',
+                cursor: 'pointer',
+                color: 'var(--ink-40)',
+                display: 'grid',
+                placeItems: 'center',
+                transition: 'color 160ms ease',
+              }}
+              onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--ink)')}
+              onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--ink-40)')}
+            >
+              <svg width={11} height={11} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round">
+                <path d="M12 5v14M5 12h14" />
+              </svg>
+            </button>
+          </div>
+
+          {creatingFolder && (
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                const name = newFolderName.trim();
+                if (name) { onCreateFolder(name); }
+                setNewFolderName('');
+                setCreatingFolder(false);
+              }}
+              style={{ padding: '2px 10px 4px' }}
+            >
+              <input
+                ref={(el) => { folderInputRef.current = el; }}
+                value={newFolderName}
+                onChange={(e) => setNewFolderName(e.target.value)}
+                onBlur={() => { setCreatingFolder(false); setNewFolderName(''); }}
+                onKeyDown={(e) => { if (e.key === 'Escape') { setCreatingFolder(false); setNewFolderName(''); } }}
+                placeholder="Folder name…"
+                style={{
+                  width: '100%',
+                  height: 26,
+                  padding: '0 8px',
+                  borderRadius: 6,
+                  background: 'rgba(255,255,255,0.06)',
+                  border: '1px solid rgba(255,255,255,0.12)',
+                  color: 'var(--ink)',
+                  fontSize: 12,
+                  outline: 'none',
+                }}
+              />
+            </form>
+          )}
+
+          {/* All Notes row */}
+          <FolderRow
+            label="All Notes"
+            count={list.notes.length}
+            active={selectedFolder === 'all'}
+            onClick={() => onSelectFolder('all')}
+          />
+
+          {folders.map((f) => (
+            <FolderRow
+              key={f.id}
+              label={f.name}
+              count={list.notes.filter((n) => n.folderId === f.id).length}
+              active={selectedFolder === f.id}
+              onClick={() => onSelectFolder(f.id)}
+              onDelete={() => onDeleteFolder(f.id)}
+            />
+          ))}
+
+          {/* Unfiled */}
+          <FolderRow
+            label="Unfiled"
+            count={list.notes.filter((n) => !n.folderId).length}
+            active={selectedFolder === null}
+            onClick={() => onSelectFolder(null)}
+          />
+
+          <div style={{ height: 1, background: 'rgba(255,255,255,0.05)', margin: '6px 10px 4px' }} />
+        </div>
+      )}
+
+      {/* Notes list (filtered by selected folder) */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 1, padding: '0 2px' }}>
-        {list.notes.map((n) => {
+        {visibleNotes.map((n) => {
           const meta = metaMap.get(n.id);
           return (
             <NoteRow
@@ -1013,12 +1289,14 @@ function SidebarImpl({ list, selectedId, metaMap, onSelect, onCreate, onDelete, 
               note={n}
               active={selectedId === n.id}
               encrypted={meta?.encrypted ?? false}
+              folders={folders}
               onSelect={onSelect}
               onDelete={onDelete}
               onPublish={onPublish}
               onUnpublish={onUnpublish}
               onEncrypt={onEncrypt}
               onSyncToCloud={onSyncToCloud}
+              onMove={onMoveNote}
             />
           );
         })}
@@ -1079,12 +1357,10 @@ function NotesRetentionHint() {
 }
 
 function SidebarHeader({
-  count,
   status,
   onCreate,
   onToggleCollapse,
 }: {
-  count: number;
   status: ListState['status'];
   onCreate: () => void;
   onToggleCollapse: () => void;
@@ -1133,16 +1409,15 @@ function SidebarHeader({
         </svg>
       </button>
       <span
-        className="mono"
         style={{
           flex: 1,
-          fontSize: 10,
-          letterSpacing: '0.2em',
-          color: 'var(--ink-40)',
-          textTransform: 'uppercase',
+          fontSize: 11,
+          fontWeight: 600,
+          letterSpacing: '-0.01em',
+          color: 'var(--ink-60)',
         }}
       >
-        {status === 'loading' ? 'Loading' : status === 'error' ? 'Offline' : `Notes · ${count}`}
+        {status === 'loading' ? 'Notes' : status === 'error' ? 'Offline' : 'Notes'}
       </span>
       <CreateButton onClick={onCreate} />
       <button
@@ -1220,12 +1495,90 @@ function CreateButton({ onClick }: { onClick: () => void }) {
   );
 }
 
+// ─── FolderRow ─────────────────────────────────────────────────────────────
+
+function FolderRow({
+  label,
+  count,
+  active,
+  onClick,
+  onDelete,
+}: {
+  label: string;
+  count: number;
+  active: boolean;
+  onClick: () => void;
+  onDelete?: () => void;
+}) {
+  const [hover, setHover] = useState(false);
+  return (
+    <div
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+      onClick={onClick}
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 6,
+        padding: '4px 14px',
+        borderRadius: 6,
+        margin: '1px 4px',
+        cursor: 'pointer',
+        background: active ? 'rgba(255,255,255,0.08)' : hover ? 'rgba(255,255,255,0.04)' : 'transparent',
+        transition: 'background 140ms ease',
+      }}
+    >
+      <FolderIcon color={active ? 'var(--ink-60)' : 'var(--ink-40)'} />
+      <span style={{
+        flex: 1,
+        fontSize: 12.5,
+        color: active ? 'var(--ink-90)' : 'var(--ink-60)',
+        overflow: 'hidden',
+        textOverflow: 'ellipsis',
+        whiteSpace: 'nowrap',
+        transition: 'color 140ms ease',
+      }}>
+        {label}
+      </span>
+      <span style={{ fontSize: 10.5, color: 'var(--ink-40)', fontVariantNumeric: 'tabular-nums' }}>
+        {count}
+      </span>
+      {onDelete && hover && (
+        <button
+          onClick={(e) => { e.stopPropagation(); onDelete(); }}
+          title="Delete folder"
+          style={{
+            width: 16,
+            height: 16,
+            borderRadius: 3,
+            background: 'transparent',
+            border: 'none',
+            cursor: 'pointer',
+            color: 'var(--ink-40)',
+            display: 'grid',
+            placeItems: 'center',
+            padding: 0,
+            transition: 'color 140ms ease',
+          }}
+          onMouseEnter={(e) => (e.currentTarget.style.color = '#ff6a6a')}
+          onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--ink-40)')}
+        >
+          <svg width={10} height={10} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round">
+            <path d="M18 6L6 18M6 6l12 12" />
+          </svg>
+        </button>
+      )}
+    </div>
+  );
+}
+
 // ─── NoteRow with three-dots menu ─────────────────────────────────────────
 
 interface NoteRowProps {
   note: NoteSummary;
   active: boolean;
   encrypted: boolean;
+  folders: Folder[];
   // Callbacks принимают note.id внутри row — это позволяет parent'у
   // передать единый стабильный callback на все rows (вместо
   // `() => fn(n.id)` который создаёт новый identity per render и
@@ -1236,6 +1589,7 @@ interface NoteRowProps {
   onUnpublish: (id: string) => void;
   onEncrypt: (id: string) => void;
   onSyncToCloud: (id: string) => void;
+  onMove: (noteId: string, folderId: string | null) => void;
 }
 
 // NoteRow memoized — на 30+ заметках без memo каждый keystroke в editor
@@ -1247,16 +1601,18 @@ const NoteRow = memo(NoteRowImpl, (prev, next) => {
     prev.note === next.note &&
     prev.active === next.active &&
     prev.encrypted === next.encrypted &&
+    prev.folders === next.folders &&
     prev.onSelect === next.onSelect &&
     prev.onDelete === next.onDelete &&
     prev.onPublish === next.onPublish &&
     prev.onUnpublish === next.onUnpublish &&
     prev.onEncrypt === next.onEncrypt &&
-    prev.onSyncToCloud === next.onSyncToCloud
+    prev.onSyncToCloud === next.onSyncToCloud &&
+    prev.onMove === next.onMove
   );
 });
 
-function NoteRowImpl({ note, active, encrypted, onSelect, onDelete, onPublish, onUnpublish, onEncrypt, onSyncToCloud }: NoteRowProps) {
+function NoteRowImpl({ note, active, encrypted, folders, onSelect, onDelete, onPublish, onUnpublish, onEncrypt, onSyncToCloud, onMove }: NoteRowProps) {
   const [hover, setHover] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [pubStatus, setPubStatus] = useState<PublishStatus | null>(null);
@@ -1313,9 +1669,9 @@ function NoteRowImpl({ note, active, encrypted, onSelect, onDelete, onPublish, o
         display: 'flex',
         alignItems: 'center',
         gap: 8,
-        padding: '8px 10px 8px 12px',
+        padding: '6px 8px 6px 10px',
         margin: '1px 0',
-        borderRadius: 7,
+        borderRadius: 6,
         background: active
           ? 'rgba(255,255,255,0.07)'
           : hover
@@ -1326,35 +1682,32 @@ function NoteRowImpl({ note, active, encrypted, onSelect, onDelete, onPublish, o
       }}
       onClick={() => onSelect(note.id)}
     >
-      <NoteIcon />
-      <span
-        style={{
-          flex: 1,
-          fontSize: 13.5,
-          color: active ? 'var(--ink)' : 'var(--ink-60)',
-          whiteSpace: 'nowrap',
-          overflow: 'hidden',
-          textOverflow: 'ellipsis',
-          transition: 'color 160ms ease',
-        }}
-      >
-        {note.title || 'Untitled'}
-      </span>
-
-      {/* Last updated tooltip — fade in при hover, fade out плавно */}
-      <span
-        className="mono"
-        style={{
-          fontSize: 10,
-          color: 'var(--ink-40)',
-          opacity: hover && !menuOpen ? 1 : 0,
-          transition: 'opacity 180ms ease',
-          pointerEvents: 'none',
-          flexShrink: 0,
-        }}
-      >
-        {lastUpd}
-      </span>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div
+          style={{
+            fontSize: 13,
+            color: active ? 'var(--ink)' : 'var(--ink-60)',
+            whiteSpace: 'nowrap',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            transition: 'color 160ms ease',
+            lineHeight: 1.4,
+          }}
+        >
+          {note.title || 'Untitled'}
+        </div>
+        <div
+          className="mono"
+          style={{
+            fontSize: 10,
+            color: 'var(--ink-40)',
+            marginTop: 1,
+            lineHeight: 1.3,
+          }}
+        >
+          {lastUpd}
+        </div>
+      </div>
 
       {/* Phase C-7 lock-icon — два режима:
             - encrypted=true → filled lock, всегда видна (badge), клик
@@ -1550,43 +1903,34 @@ function NoteRowImpl({ note, active, encrypted, onSelect, onDelete, onPublish, o
             setMenuOpen(false);
             onDelete(note.id);
           }}
+          folders={folders}
+          currentFolderId={note.folderId}
+          onMove={(folderId) => {
+            setMenuOpen(false);
+            onMove(note.id, folderId);
+          }}
         />
       )}
     </div>
   );
 }
 
-function NoteIcon() {
-  return (
-    <svg
-      width={14}
-      height={14}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth={1.6}
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      style={{ color: 'var(--ink-40)', flexShrink: 0 }}
-    >
-      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-      <path d="M14 2v6h6" />
-    </svg>
-  );
-}
 
 interface RowDropdownProps {
   isLocal: boolean;
   published: boolean;
   encrypted: boolean;
+  folders: Folder[];
+  currentFolderId: string | null | undefined;
   onSyncToCloud: () => void;
   onPublish: () => void;
   onUnpublish: () => void;
   onEncrypt: () => void;
   onDelete: () => void;
+  onMove: (folderId: string | null) => void;
 }
 
-function RowDropdown({ isLocal, published, encrypted, onSyncToCloud, onPublish, onUnpublish, onEncrypt, onDelete }: RowDropdownProps) {
+function RowDropdown({ isLocal, published, encrypted, folders, currentFolderId, onSyncToCloud, onPublish, onUnpublish, onEncrypt, onDelete, onMove }: RowDropdownProps) {
   return (
     <div
       className="fadein"
@@ -1661,6 +2005,29 @@ function RowDropdown({ isLocal, published, encrypted, onSyncToCloud, onPublish, 
           )}
         </>
       )}
+      {folders.length > 0 && (
+        <>
+          <DropdownDivider />
+          <DropdownLabel>Move to folder</DropdownLabel>
+          {currentFolderId && (
+            <DropdownItem
+              icon={<FolderIcon />}
+              label="Unfiled"
+              onClick={() => onMove(null)}
+            />
+          )}
+          {folders.map((f) => (
+            <DropdownItem
+              key={f.id}
+              icon={<FolderIcon />}
+              label={f.name}
+              disabled={f.id === currentFolderId}
+              onClick={() => onMove(f.id)}
+            />
+          ))}
+        </>
+      )}
+      <DropdownDivider />
       <DropdownItem
         icon={<TrashIcon />}
         label="Delete Note"
@@ -1802,6 +2169,14 @@ function TrashIcon() {
   );
 }
 
+function FolderIcon({ color = 'currentColor' }: { color?: string }) {
+  return (
+    <svg width={12} height={12} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round">
+      <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
+    </svg>
+  );
+}
+
 // ─── Editor pane ──────────────────────────────────────────────────────────
 
 interface EditorProps {
@@ -1814,16 +2189,17 @@ interface EditorProps {
   // decrypted body (если vault unlocked) либо locked-placeholder.
   encrypted: boolean;
   saveStatus: 'idle' | 'saving' | 'saved';
+  folders: Folder[];
   onTitleChange: (v: string) => void;
   onBodyChange: (v: string) => void;
   onCreate: () => void;
 }
 
 const EDITOR_WIDTH_KEY = 'hone:notes:editor-width';
-const EDITOR_WIDTH_DEFAULT = 760;
+const EDITOR_WIDTH_DEFAULT = 900;
 const EDITOR_WIDTH_MIN = 500;
 
-function Editor({ list, active, activeError, draftTitle, draftBody, encrypted, saveStatus, onTitleChange, onBodyChange, onCreate }: EditorProps) {
+function Editor({ list, active, activeError, draftTitle, draftBody, encrypted, saveStatus, folders, onTitleChange, onBodyChange, onCreate }: EditorProps) {
   const [hover, setHover] = useState(false);
   // Editor max-width — drag-resizable, persisted в localStorage. Range
   // [500 .. (window.innerWidth - 80)] (clamp в onMove). Hand-rolled drag
@@ -1871,10 +2247,7 @@ function Editor({ list, active, activeError, draftTitle, draftBody, encrypted, s
       onMouseLeave={() => setHover(false)}
       style={{
         position: 'relative',
-        // Левый padding ужат с 80→48 (~40% reduction по запросу). Right
-        // оставлен 80 — нужен запас под right-side three-dots / connections
-        // affordance'ы. Vertical 24 без изменений.
-        padding: '24px 80px 24px 48px',
+        padding: '48px 80px 24px 80px',
         overflowY: 'auto',
         minWidth: 0,
       }}
@@ -1890,6 +2263,7 @@ function Editor({ list, active, activeError, draftTitle, draftBody, encrypted, s
           key={active.id}
           ciphertextBase64={active.bodyMd}
           title={draftTitle}
+          folderName={active.folderId ? (folders.find((f) => f.id === active.folderId)?.name ?? null) : null}
           onTitleChange={onTitleChange}
           onBodyChange={onBodyChange}
           editorWidth={editorWidth}
@@ -1900,6 +2274,7 @@ function Editor({ list, active, activeError, draftTitle, draftBody, encrypted, s
           noteId={active.id}
           title={draftTitle}
           body={draftBody}
+          folderName={active.folderId ? (folders.find((f) => f.id === active.folderId)?.name ?? null) : null}
           onTitleChange={onTitleChange}
           onBodyChange={onBodyChange}
           editorWidth={editorWidth}
@@ -1955,8 +2330,7 @@ function Editor({ list, active, activeError, draftTitle, draftBody, encrypted, s
           }}
         >
           <SaveStatusIndicator status={saveStatus} />
-          <span>⌘J for connections</span>
-          <span>Last updated: {formatTime(active.updatedAt)}</span>
+          <span>{formatTime(active.updatedAt)}</span>
         </div>
       )}
 
@@ -1982,46 +2356,56 @@ function ActiveEditor({
   noteId,
   title,
   body,
+  folderName,
   onTitleChange,
   onBodyChange,
   editorWidth,
 }: {
   noteId: string;
   title: string;
-  // body — initial seed для Yjs Y.Text (если server log пуст). Parent
-  // обновляет body когда переключается note (key={note.id} re-mount'ит
-  // ActiveEditor); ytext дальше становится source of truth, body не
-  // трогаем во время editing-session'а.
   body: string;
+  folderName: string | null;
   onTitleChange: (v: string) => void;
-  // Срабатывает на каждый ytext change (local OR remote applyUpdate).
-  // Parent держит draftBody → debounced flushNow материализует
-  // body_md на сервере через UpdateNote (для embedding/RAG/publish).
   onBodyChange: (v: string) => void;
-  /** Drag-resizable editor max-width — controlled parent'ом (Editor),
-   *  persisted в localStorage. */
   editorWidth: number;
 }) {
   return (
     <div className="fadein" style={{ animationDuration: '180ms', maxWidth: editorWidth, margin: '0 auto' }}>
+      {folderName && (
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 5,
+          marginBottom: 14,
+          fontSize: 11.5,
+          color: 'var(--ink-40)',
+          fontFamily: "'JetBrains Mono', monospace",
+          letterSpacing: '0.02em',
+        }}>
+          <FolderIcon />
+          <span>{folderName}</span>
+        </div>
+      )}
       <input
+        className="hone-notes-title"
         value={title}
         onChange={(e) => onTitleChange(e.target.value)}
         placeholder="Untitled"
         autoFocus={!title}
         style={{
           width: '100%',
-          fontSize: 36,
-          fontWeight: 600,
-          letterSpacing: '-0.02em',
-          padding: '4px 0 12px',
+          fontSize: 44,
+          fontWeight: 700,
+          letterSpacing: '-0.03em',
+          lineHeight: 1.15,
+          padding: '0 0 20px',
           background: 'transparent',
           color: 'var(--ink)',
           border: 'none',
           outline: 'none',
         }}
       />
-      <div style={{ marginTop: 8 }}>
+      <div style={{ marginTop: 0, borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: 20 }}>
         {noteId.startsWith('temp:') ? (
           // Optimistic create в полёте — yjs endpoints 404'нут на
           // несуществующий note_id. Используем legacy textarea на этот
@@ -2329,12 +2713,14 @@ function formatTime(d: string | Date | null | undefined): string {
 function EncryptedEditorView({
   ciphertextBase64,
   title,
+  folderName,
   onTitleChange,
   onBodyChange,
   editorWidth,
 }: {
   ciphertextBase64: string;
   title: string;
+  folderName: string | null;
   onTitleChange: (v: string) => void;
   onBodyChange: (v: string) => void;
   editorWidth: number;
@@ -2417,16 +2803,33 @@ function EncryptedEditorView({
           alignItems: 'flex-start',
         }}
       >
+        {folderName && (
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 5,
+            marginBottom: 14,
+            fontSize: 11.5,
+            color: 'var(--ink-40)',
+            fontFamily: "'JetBrains Mono', monospace",
+            letterSpacing: '0.02em',
+          }}>
+            <FolderIcon />
+            <span>{folderName}</span>
+          </div>
+        )}
         <input
+          className="hone-notes-title"
           value={title}
           onChange={(e) => onTitleChange(e.target.value)}
           placeholder="Untitled"
           style={{
             width: '100%',
-            fontSize: 36,
-            fontWeight: 600,
-            letterSpacing: '-0.02em',
-            padding: '4px 0 12px',
+            fontSize: 44,
+            fontWeight: 700,
+            letterSpacing: '-0.03em',
+            lineHeight: 1.15,
+            padding: '0 0 20px',
             background: 'transparent',
             color: 'var(--ink-40)',
             border: 'none',
@@ -2529,24 +2932,41 @@ function EncryptedEditorView({
   // unlocked + decrypted → обычный editor поверх plaintext'а
   return (
     <div className="fadein" style={{ animationDuration: '180ms', maxWidth: editorWidth, margin: '0 auto' }}>
+      {folderName && (
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 5,
+          marginBottom: 14,
+          fontSize: 11.5,
+          color: 'var(--ink-40)',
+          fontFamily: "'JetBrains Mono', monospace",
+          letterSpacing: '0.02em',
+        }}>
+          <FolderIcon />
+          <span>{folderName}</span>
+        </div>
+      )}
       <input
+        className="hone-notes-title"
         value={title}
         onChange={(e) => onTitleChange(e.target.value)}
         placeholder="Untitled"
         autoFocus={!title}
         style={{
           width: '100%',
-          fontSize: 36,
-          fontWeight: 600,
-          letterSpacing: '-0.02em',
-          padding: '4px 0 12px',
+          fontSize: 44,
+          fontWeight: 700,
+          letterSpacing: '-0.03em',
+          lineHeight: 1.15,
+          padding: '0 0 20px',
           background: 'transparent',
           color: 'var(--ink)',
           border: 'none',
           outline: 'none',
         }}
       />
-      <div style={{ marginTop: 8 }}>
+      <div style={{ marginTop: 0, borderTop: '1px solid rgba(255,255,255,0.06)', paddingTop: 20 }}>
         <RichMarkdownEditor
           value={plaintext}
           onChange={(v) => {

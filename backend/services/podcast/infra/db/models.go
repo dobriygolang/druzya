@@ -747,6 +747,16 @@ type HoneNote struct {
 	PublishedAt    pgtype.Timestamptz
 	PublicSlug     pgtype.Text
 	Encrypted      bool
+	FolderID       pgtype.UUID
+}
+
+type HoneNoteFolder struct {
+	ID        pgtype.UUID
+	UserID    pgtype.UUID
+	Name      string
+	ParentID  pgtype.UUID
+	CreatedAt pgtype.Timestamptz
+	UpdatedAt pgtype.Timestamptz
 }
 
 type HonePlanSkip struct {

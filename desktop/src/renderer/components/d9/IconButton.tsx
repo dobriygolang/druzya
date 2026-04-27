@@ -14,6 +14,10 @@ interface Props {
   disabled?: boolean;
   size?: number;
   style?: CSSProperties;
+  /** Default icon color (replaces ink-dim for ghost tone). On hover still brightens to ink. */
+  baseColor?: string;
+  /** Optional hover icon color for prototype-matched controls. */
+  hoverColor?: string;
   /** Keep mousedown from bubbling into window-drag regions. */
   stopDragOnPress?: boolean;
 }
@@ -27,6 +31,8 @@ export function IconButton({
   disabled,
   size = 28,
   style,
+  baseColor,
+  hoverColor,
   stopDragOnPress = true,
 }: Props) {
   const [hover, setHover] = useState(false);
@@ -44,7 +50,9 @@ export function IconButton({
     if (disabled) return 'var(--d9-ink-ghost)';
     if (tone === 'accent') return 'white';
     if (tone === 'danger') return 'var(--d9-err)';
-    return active ? 'var(--d9-ink)' : 'var(--d9-ink-dim)';
+    if (active) return 'var(--d9-ink)';
+    if (hover) return hoverColor ?? 'var(--d9-ink)';
+    return baseColor ?? 'var(--d9-ink-dim)';
   })();
 
   const boxShadow = tone === 'accent' && !disabled

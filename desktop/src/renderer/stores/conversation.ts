@@ -13,6 +13,7 @@ import {
 } from '@shared/ipc';
 import type { Message, Quota } from '@shared/types';
 
+import { saveLocalConversation } from '../lib/local-history';
 import { usePaywallStore } from './paywall';
 
 export interface UIMessage {
@@ -109,27 +110,53 @@ export const useConversationStore = create<State>((set, get) => ({
 
   receiveDone: (ev) => {
     if (ev.streamId !== get().streamId) return;
-    set((s) => ({
-      streaming: false,
-      streamId: null,
-      quota: ev.quota,
-      messages: s.messages.map((m, i) =>
+    set((s) => {
+      const messages = s.messages.map((m, i) =>
         i === s.messages.length - 1 && m.role === 'assistant' ? { ...m, pending: false } : m,
-      ),
-    }));
+      );
+      const memory = saveLocalConversation({
+        conversationId: s.conversationId,
+        model: s.model,
+        messages,
+      });
+      if (memory) {
+        void window.druz9.memory.sync(s.conversationId, memory).catch((err) => {
+          console.warn('[memory] sync failed', err);
+        });
+      }
+      return {
+        streaming: false,
+        streamId: null,
+        quota: ev.quota,
+        messages,
+      };
+    });
   },
 
   receiveError: (ev) => {
     if (ev.streamId !== get().streamId) return;
-    set((s) => ({
-      streaming: false,
-      streamId: null,
-      messages: s.messages.map((m, i) =>
+    set((s) => {
+      const messages = s.messages.map((m, i) =>
         i === s.messages.length - 1 && m.role === 'assistant'
           ? { ...m, pending: false, errorCode: ev.code, errorMessage: ev.message }
           : m,
-      ),
-    }));
+      );
+      const memory = saveLocalConversation({
+        conversationId: s.conversationId,
+        model: s.model,
+        messages,
+      });
+      if (memory) {
+        void window.druz9.memory.sync(s.conversationId, memory).catch((err) => {
+          console.warn('[memory] sync failed', err);
+        });
+      }
+      return {
+        streaming: false,
+        streamId: null,
+        messages,
+      };
+    });
     // Auto-pop the paywall on quota exhaustion. Other error codes stay
     // inline in the chat bubble — only this one needs an upgrade path.
     if (ev.code === 'rate_limited') {

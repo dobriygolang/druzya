@@ -92,9 +92,19 @@ const (
 	HoneServiceListNotesProcedure = "/druz9.v1.HoneService/ListNotes"
 	// HoneServiceDeleteNoteProcedure is the fully-qualified name of the HoneService's DeleteNote RPC.
 	HoneServiceDeleteNoteProcedure = "/druz9.v1.HoneService/DeleteNote"
+	// HoneServiceMoveNoteProcedure is the fully-qualified name of the HoneService's MoveNote RPC.
+	HoneServiceMoveNoteProcedure = "/druz9.v1.HoneService/MoveNote"
 	// HoneServiceGetNoteConnectionsProcedure is the fully-qualified name of the HoneService's
 	// GetNoteConnections RPC.
 	HoneServiceGetNoteConnectionsProcedure = "/druz9.v1.HoneService/GetNoteConnections"
+	// HoneServiceCreateFolderProcedure is the fully-qualified name of the HoneService's CreateFolder
+	// RPC.
+	HoneServiceCreateFolderProcedure = "/druz9.v1.HoneService/CreateFolder"
+	// HoneServiceListFoldersProcedure is the fully-qualified name of the HoneService's ListFolders RPC.
+	HoneServiceListFoldersProcedure = "/druz9.v1.HoneService/ListFolders"
+	// HoneServiceDeleteFolderProcedure is the fully-qualified name of the HoneService's DeleteFolder
+	// RPC.
+	HoneServiceDeleteFolderProcedure = "/druz9.v1.HoneService/DeleteFolder"
 	// HoneServiceCreateWhiteboardProcedure is the fully-qualified name of the HoneService's
 	// CreateWhiteboard RPC.
 	HoneServiceCreateWhiteboardProcedure = "/druz9.v1.HoneService/CreateWhiteboard"
@@ -146,9 +156,14 @@ type HoneServiceClient interface {
 	GetNote(context.Context, *connect.Request[v1.GetNoteRequest]) (*connect.Response[v1.Note], error)
 	ListNotes(context.Context, *connect.Request[v1.ListNotesRequest]) (*connect.Response[v1.ListNotesResponse], error)
 	DeleteNote(context.Context, *connect.Request[v1.DeleteNoteRequest]) (*connect.Response[v1.DeleteNoteResponse], error)
+	MoveNote(context.Context, *connect.Request[v1.MoveNoteRequest]) (*connect.Response[v1.Note], error)
 	// Server-streaming: first results (in-corpus notes) arrive fast, while
 	// cross-domain edges (PRs, tasks) trail by a few hundred ms.
 	GetNoteConnections(context.Context, *connect.Request[v1.GetNoteConnectionsRequest]) (*connect.ServerStreamForClient[v1.Connection], error)
+	// ─── Folders ────────────────────────────────────────────────────────
+	CreateFolder(context.Context, *connect.Request[v1.CreateFolderRequest]) (*connect.Response[v1.Folder], error)
+	ListFolders(context.Context, *connect.Request[v1.ListFoldersRequest]) (*connect.Response[v1.ListFoldersResponse], error)
+	DeleteFolder(context.Context, *connect.Request[v1.DeleteFolderRequest]) (*connect.Response[v1.DeleteFolderResponse], error)
 	// ─── Whiteboard ─────────────────────────────────────────────────────
 	CreateWhiteboard(context.Context, *connect.Request[v1.CreateWhiteboardRequest]) (*connect.Response[v1.Whiteboard], error)
 	UpdateWhiteboard(context.Context, *connect.Request[v1.UpdateWhiteboardRequest]) (*connect.Response[v1.Whiteboard], error)
@@ -270,10 +285,34 @@ func NewHoneServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 			connect.WithSchema(honeServiceMethods.ByName("DeleteNote")),
 			connect.WithClientOptions(opts...),
 		),
+		moveNote: connect.NewClient[v1.MoveNoteRequest, v1.Note](
+			httpClient,
+			baseURL+HoneServiceMoveNoteProcedure,
+			connect.WithSchema(honeServiceMethods.ByName("MoveNote")),
+			connect.WithClientOptions(opts...),
+		),
 		getNoteConnections: connect.NewClient[v1.GetNoteConnectionsRequest, v1.Connection](
 			httpClient,
 			baseURL+HoneServiceGetNoteConnectionsProcedure,
 			connect.WithSchema(honeServiceMethods.ByName("GetNoteConnections")),
+			connect.WithClientOptions(opts...),
+		),
+		createFolder: connect.NewClient[v1.CreateFolderRequest, v1.Folder](
+			httpClient,
+			baseURL+HoneServiceCreateFolderProcedure,
+			connect.WithSchema(honeServiceMethods.ByName("CreateFolder")),
+			connect.WithClientOptions(opts...),
+		),
+		listFolders: connect.NewClient[v1.ListFoldersRequest, v1.ListFoldersResponse](
+			httpClient,
+			baseURL+HoneServiceListFoldersProcedure,
+			connect.WithSchema(honeServiceMethods.ByName("ListFolders")),
+			connect.WithClientOptions(opts...),
+		),
+		deleteFolder: connect.NewClient[v1.DeleteFolderRequest, v1.DeleteFolderResponse](
+			httpClient,
+			baseURL+HoneServiceDeleteFolderProcedure,
+			connect.WithSchema(honeServiceMethods.ByName("DeleteFolder")),
 			connect.WithClientOptions(opts...),
 		),
 		createWhiteboard: connect.NewClient[v1.CreateWhiteboardRequest, v1.Whiteboard](
@@ -351,7 +390,11 @@ type honeServiceClient struct {
 	getNote               *connect.Client[v1.GetNoteRequest, v1.Note]
 	listNotes             *connect.Client[v1.ListNotesRequest, v1.ListNotesResponse]
 	deleteNote            *connect.Client[v1.DeleteNoteRequest, v1.DeleteNoteResponse]
+	moveNote              *connect.Client[v1.MoveNoteRequest, v1.Note]
 	getNoteConnections    *connect.Client[v1.GetNoteConnectionsRequest, v1.Connection]
+	createFolder          *connect.Client[v1.CreateFolderRequest, v1.Folder]
+	listFolders           *connect.Client[v1.ListFoldersRequest, v1.ListFoldersResponse]
+	deleteFolder          *connect.Client[v1.DeleteFolderRequest, v1.DeleteFolderResponse]
 	createWhiteboard      *connect.Client[v1.CreateWhiteboardRequest, v1.Whiteboard]
 	updateWhiteboard      *connect.Client[v1.UpdateWhiteboardRequest, v1.Whiteboard]
 	getWhiteboard         *connect.Client[v1.GetWhiteboardRequest, v1.Whiteboard]
@@ -443,9 +486,29 @@ func (c *honeServiceClient) DeleteNote(ctx context.Context, req *connect.Request
 	return c.deleteNote.CallUnary(ctx, req)
 }
 
+// MoveNote calls druz9.v1.HoneService.MoveNote.
+func (c *honeServiceClient) MoveNote(ctx context.Context, req *connect.Request[v1.MoveNoteRequest]) (*connect.Response[v1.Note], error) {
+	return c.moveNote.CallUnary(ctx, req)
+}
+
 // GetNoteConnections calls druz9.v1.HoneService.GetNoteConnections.
 func (c *honeServiceClient) GetNoteConnections(ctx context.Context, req *connect.Request[v1.GetNoteConnectionsRequest]) (*connect.ServerStreamForClient[v1.Connection], error) {
 	return c.getNoteConnections.CallServerStream(ctx, req)
+}
+
+// CreateFolder calls druz9.v1.HoneService.CreateFolder.
+func (c *honeServiceClient) CreateFolder(ctx context.Context, req *connect.Request[v1.CreateFolderRequest]) (*connect.Response[v1.Folder], error) {
+	return c.createFolder.CallUnary(ctx, req)
+}
+
+// ListFolders calls druz9.v1.HoneService.ListFolders.
+func (c *honeServiceClient) ListFolders(ctx context.Context, req *connect.Request[v1.ListFoldersRequest]) (*connect.Response[v1.ListFoldersResponse], error) {
+	return c.listFolders.CallUnary(ctx, req)
+}
+
+// DeleteFolder calls druz9.v1.HoneService.DeleteFolder.
+func (c *honeServiceClient) DeleteFolder(ctx context.Context, req *connect.Request[v1.DeleteFolderRequest]) (*connect.Response[v1.DeleteFolderResponse], error) {
+	return c.deleteFolder.CallUnary(ctx, req)
 }
 
 // CreateWhiteboard calls druz9.v1.HoneService.CreateWhiteboard.
@@ -515,9 +578,14 @@ type HoneServiceHandler interface {
 	GetNote(context.Context, *connect.Request[v1.GetNoteRequest]) (*connect.Response[v1.Note], error)
 	ListNotes(context.Context, *connect.Request[v1.ListNotesRequest]) (*connect.Response[v1.ListNotesResponse], error)
 	DeleteNote(context.Context, *connect.Request[v1.DeleteNoteRequest]) (*connect.Response[v1.DeleteNoteResponse], error)
+	MoveNote(context.Context, *connect.Request[v1.MoveNoteRequest]) (*connect.Response[v1.Note], error)
 	// Server-streaming: first results (in-corpus notes) arrive fast, while
 	// cross-domain edges (PRs, tasks) trail by a few hundred ms.
 	GetNoteConnections(context.Context, *connect.Request[v1.GetNoteConnectionsRequest], *connect.ServerStream[v1.Connection]) error
+	// ─── Folders ────────────────────────────────────────────────────────
+	CreateFolder(context.Context, *connect.Request[v1.CreateFolderRequest]) (*connect.Response[v1.Folder], error)
+	ListFolders(context.Context, *connect.Request[v1.ListFoldersRequest]) (*connect.Response[v1.ListFoldersResponse], error)
+	DeleteFolder(context.Context, *connect.Request[v1.DeleteFolderRequest]) (*connect.Response[v1.DeleteFolderResponse], error)
 	// ─── Whiteboard ─────────────────────────────────────────────────────
 	CreateWhiteboard(context.Context, *connect.Request[v1.CreateWhiteboardRequest]) (*connect.Response[v1.Whiteboard], error)
 	UpdateWhiteboard(context.Context, *connect.Request[v1.UpdateWhiteboardRequest]) (*connect.Response[v1.Whiteboard], error)
@@ -635,10 +703,34 @@ func NewHoneServiceHandler(svc HoneServiceHandler, opts ...connect.HandlerOption
 		connect.WithSchema(honeServiceMethods.ByName("DeleteNote")),
 		connect.WithHandlerOptions(opts...),
 	)
+	honeServiceMoveNoteHandler := connect.NewUnaryHandler(
+		HoneServiceMoveNoteProcedure,
+		svc.MoveNote,
+		connect.WithSchema(honeServiceMethods.ByName("MoveNote")),
+		connect.WithHandlerOptions(opts...),
+	)
 	honeServiceGetNoteConnectionsHandler := connect.NewServerStreamHandler(
 		HoneServiceGetNoteConnectionsProcedure,
 		svc.GetNoteConnections,
 		connect.WithSchema(honeServiceMethods.ByName("GetNoteConnections")),
+		connect.WithHandlerOptions(opts...),
+	)
+	honeServiceCreateFolderHandler := connect.NewUnaryHandler(
+		HoneServiceCreateFolderProcedure,
+		svc.CreateFolder,
+		connect.WithSchema(honeServiceMethods.ByName("CreateFolder")),
+		connect.WithHandlerOptions(opts...),
+	)
+	honeServiceListFoldersHandler := connect.NewUnaryHandler(
+		HoneServiceListFoldersProcedure,
+		svc.ListFolders,
+		connect.WithSchema(honeServiceMethods.ByName("ListFolders")),
+		connect.WithHandlerOptions(opts...),
+	)
+	honeServiceDeleteFolderHandler := connect.NewUnaryHandler(
+		HoneServiceDeleteFolderProcedure,
+		svc.DeleteFolder,
+		connect.WithSchema(honeServiceMethods.ByName("DeleteFolder")),
 		connect.WithHandlerOptions(opts...),
 	)
 	honeServiceCreateWhiteboardHandler := connect.NewUnaryHandler(
@@ -729,8 +821,16 @@ func NewHoneServiceHandler(svc HoneServiceHandler, opts ...connect.HandlerOption
 			honeServiceListNotesHandler.ServeHTTP(w, r)
 		case HoneServiceDeleteNoteProcedure:
 			honeServiceDeleteNoteHandler.ServeHTTP(w, r)
+		case HoneServiceMoveNoteProcedure:
+			honeServiceMoveNoteHandler.ServeHTTP(w, r)
 		case HoneServiceGetNoteConnectionsProcedure:
 			honeServiceGetNoteConnectionsHandler.ServeHTTP(w, r)
+		case HoneServiceCreateFolderProcedure:
+			honeServiceCreateFolderHandler.ServeHTTP(w, r)
+		case HoneServiceListFoldersProcedure:
+			honeServiceListFoldersHandler.ServeHTTP(w, r)
+		case HoneServiceDeleteFolderProcedure:
+			honeServiceDeleteFolderHandler.ServeHTTP(w, r)
 		case HoneServiceCreateWhiteboardProcedure:
 			honeServiceCreateWhiteboardHandler.ServeHTTP(w, r)
 		case HoneServiceUpdateWhiteboardProcedure:
@@ -822,8 +922,24 @@ func (UnimplementedHoneServiceHandler) DeleteNote(context.Context, *connect.Requ
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.HoneService.DeleteNote is not implemented"))
 }
 
+func (UnimplementedHoneServiceHandler) MoveNote(context.Context, *connect.Request[v1.MoveNoteRequest]) (*connect.Response[v1.Note], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.HoneService.MoveNote is not implemented"))
+}
+
 func (UnimplementedHoneServiceHandler) GetNoteConnections(context.Context, *connect.Request[v1.GetNoteConnectionsRequest], *connect.ServerStream[v1.Connection]) error {
 	return connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.HoneService.GetNoteConnections is not implemented"))
+}
+
+func (UnimplementedHoneServiceHandler) CreateFolder(context.Context, *connect.Request[v1.CreateFolderRequest]) (*connect.Response[v1.Folder], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.HoneService.CreateFolder is not implemented"))
+}
+
+func (UnimplementedHoneServiceHandler) ListFolders(context.Context, *connect.Request[v1.ListFoldersRequest]) (*connect.Response[v1.ListFoldersResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.HoneService.ListFolders is not implemented"))
+}
+
+func (UnimplementedHoneServiceHandler) DeleteFolder(context.Context, *connect.Request[v1.DeleteFolderRequest]) (*connect.Response[v1.DeleteFolderResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.HoneService.DeleteFolder is not implemented"))
 }
 
 func (UnimplementedHoneServiceHandler) CreateWhiteboard(context.Context, *connect.Request[v1.CreateWhiteboardRequest]) (*connect.Response[v1.Whiteboard], error) {

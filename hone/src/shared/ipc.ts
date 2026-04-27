@@ -6,6 +6,7 @@
 
 export const invokeChannels = {
   appVersion: 'app:version',
+  cueReadNote: 'cue:read-note',
   authSession: 'auth:session',
   authPersist: 'auth:persist',
   authLogout: 'auth:logout',
@@ -30,7 +31,38 @@ export const eventChannels = {
   deepLink: 'app:deep-link',
   authChanged: 'auth:changed',
   updaterStatus: 'updater:status',
+  cueNoteImport: 'cue:note-import',
 } as const;
+
+// ── Cue session analysis types ────────────────────────────────────────────
+// Mirror of desktop/src/shared/types SessionAnalysis — kept in sync manually.
+// Future: extract to a shared workspace package.
+
+export interface CueAnalysisItem {
+  title: string;
+  detail: string;
+}
+
+export interface CueAnalysisTerm {
+  term: string;
+  definition: string;
+}
+
+export interface CueSessionAnalysis {
+  sessionId: string;
+  title: string;
+  tldr: string;
+  startedAt: string;
+  finishedAt: string;
+  keyTopics: string[];
+  actionItems: CueAnalysisItem[];
+  terminology: CueAnalysisTerm[];
+  decisions: CueAnalysisItem[];
+  openQuestions: string[];
+  reportMarkdown: string;
+  overallScore: number;
+  usage: { inputTokens: number; outputTokens: number } | null;
+}
 
 /** Stable shape of the window.hone API exposed via contextBridge. */
 export interface HoneAPI {
@@ -87,6 +119,10 @@ export interface HoneAPI {
     /** Forget saved passphrase — next launch will require manual unlock. */
     passClear: () => Promise<void>;
   };
+  /** Cue integration — read meeting notes saved by the Cue desktop app. */
+  cue: {
+    readNote: (filePath: string) => Promise<CueSessionAnalysis | null>;
+  };
   /** Subscribe to a main→renderer push (returns an unsubscribe fn). */
   on: <K extends keyof typeof eventChannels>(
     channel: K,
@@ -130,6 +166,7 @@ export interface PomodoroSnapshot {
 
 export interface EventPayload {
   deepLink: { url: string };
+  cueNoteImport: { filePath: string; analysis: CueSessionAnalysis };
   // authChanged — main говорит renderer'у «сессия обновилась» (например
   // пришёл OAuth deep-link). Renderer должен hydrate'нуть store.
   authChanged: AuthSession | null;

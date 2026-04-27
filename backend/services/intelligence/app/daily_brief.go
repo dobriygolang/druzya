@@ -4,9 +4,12 @@ package app
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log/slog"
+	"strings"
+	"sync"
 	"time"
 
 	"druz9/intelligence/domain"
@@ -49,6 +52,7 @@ type GetDailyBrief struct {
 	DailyNotes   domain.DailyNoteReader
 	Calendar     domain.CalendarReader
 	MockMessages domain.MockMessagesReader
+	Codex        domain.CodexReader
 }
 
 // GetDailyBriefInput — параметры use case'а.
@@ -99,30 +103,58 @@ func (uc *GetDailyBrief) Do(ctx context.Context, in GetDailyBriefInput) (domain.
 	since14 := today.Add(-14 * 24 * time.Hour)
 	since7 := today.Add(-7 * 24 * time.Hour)
 
-	focus, err := uc.Focus.LastNDays(ctx, in.UserID, 7)
-	if err != nil {
-		return domain.DailyBrief{}, fmt.Errorf("intelligence.GetDailyBrief.Do: focus: %w", err)
+	var (
+		focus     []domain.FocusDay
+		skipped   []domain.SkippedPlanItem
+		completed []domain.CompletedPlanItem
+		refl      []domain.Reflection
+		recent    []domain.NoteHead
+
+		focusErr     error
+		skippedErr   error
+		completedErr error
+		reflErr      error
+		recentErr    error
+	)
+	var wg sync.WaitGroup
+	wg.Add(5)
+	go func() {
+		defer wg.Done()
+		focus, focusErr = uc.Focus.LastNDays(ctx, in.UserID, 7)
+	}()
+	go func() {
+		defer wg.Done()
+		skipped, skippedErr = uc.Plans.SkippedItems(ctx, in.UserID, since14)
+	}()
+	go func() {
+		defer wg.Done()
+		completed, completedErr = uc.Plans.CompletedItems(ctx, in.UserID, since7)
+	}()
+	go func() {
+		defer wg.Done()
+		refl, reflErr = uc.Notes.RecentReflections(ctx, in.UserID, 5)
+	}()
+	go func() {
+		defer wg.Done()
+		recent, recentErr = uc.Notes.RecentNotes(ctx, in.UserID, 5)
+	}()
+	wg.Wait()
+	if focusErr != nil {
+		return domain.DailyBrief{}, fmt.Errorf("intelligence.GetDailyBrief.Do: focus: %w", focusErr)
 	}
-	skipped, err := uc.Plans.SkippedItems(ctx, in.UserID, since14)
-	if err != nil {
-		return domain.DailyBrief{}, fmt.Errorf("intelligence.GetDailyBrief.Do: skipped: %w", err)
+	if skippedErr != nil {
+		return domain.DailyBrief{}, fmt.Errorf("intelligence.GetDailyBrief.Do: skipped: %w", skippedErr)
 	}
-	completed, err := uc.Plans.CompletedItems(ctx, in.UserID, since7)
-	if err != nil {
-		return domain.DailyBrief{}, fmt.Errorf("intelligence.GetDailyBrief.Do: completed: %w", err)
+	if completedErr != nil {
+		return domain.DailyBrief{}, fmt.Errorf("intelligence.GetDailyBrief.Do: completed: %w", completedErr)
 	}
-	refl, err := uc.Notes.RecentReflections(ctx, in.UserID, 5)
-	if err != nil {
-		return domain.DailyBrief{}, fmt.Errorf("intelligence.GetDailyBrief.Do: reflections: %w", err)
+	if reflErr != nil {
+		return domain.DailyBrief{}, fmt.Errorf("intelligence.GetDailyBrief.Do: reflections: %w", reflErr)
 	}
-	recent, err := uc.Notes.RecentNotes(ctx, in.UserID, 5)
-	if err != nil {
-		return domain.DailyBrief{}, fmt.Errorf("intelligence.GetDailyBrief.Do: recent notes: %w", err)
+	if recentErr != nil {
+		return domain.DailyBrief{}, fmt.Errorf("intelligence.GetDailyBrief.Do: recent notes: %w", recentErr)
 	}
 
-	// Cross-product сигналы — best-effort. Любой reader-error игнорируем
-	// и шлём пустой массив: лучше brief без mock-секции чем 503 на весь
-	// Coach.
 	var (
 		mocks      []domain.MockSessionSummary
 		kataStreak domain.KataStreak
@@ -131,55 +163,162 @@ func (uc *GetDailyBrief) Do(ctx context.Context, in GetDailyBriefInput) (domain.
 		queue      domain.QueueSnapshot
 		weakSkills []domain.SkillWeak
 		dailyNotes []domain.DailyNoteHead
+		upcoming   []domain.UpcomingInterview
+		keywords   []domain.MockKeywords
 	)
+
+	var optionalWG sync.WaitGroup
 	if uc.Mocks != nil {
-		if v, mErr := uc.Mocks.LastNFinished(ctx, in.UserID, 5); mErr == nil {
-			mocks = v
-		} else if uc.Log != nil {
-			uc.Log.Warn("intelligence.GetDailyBrief: mocks reader failed",
-				slog.Any("err", mErr))
-		}
+		optionalWG.Add(1)
+		go func() {
+			defer optionalWG.Done()
+			if v, err := uc.Mocks.LastNFinished(ctx, in.UserID, 5); err == nil {
+				mocks = v
+			} else {
+				warnReader(uc.Log, "mocks", err)
+			}
+		}()
 	}
 	if uc.Kata != nil {
-		if v, kErr := uc.Kata.GetStreak(ctx, in.UserID); kErr == nil {
-			kataStreak = v
-		}
-		if v, kErr := uc.Kata.LastNAttempts(ctx, in.UserID, 7); kErr == nil {
-			kataRecent = v
-		}
+		optionalWG.Add(1)
+		go func() {
+			defer optionalWG.Done()
+			if v, err := uc.Kata.GetStreak(ctx, in.UserID); err == nil {
+				kataStreak = v
+			} else {
+				warnReader(uc.Log, "kata_streak", err)
+			}
+			if v, err := uc.Kata.LastNAttempts(ctx, in.UserID, 7); err == nil {
+				kataRecent = v
+			} else {
+				warnReader(uc.Log, "kata_recent", err)
+			}
+		}()
 	}
 	if uc.Arena != nil {
-		if v, aErr := uc.Arena.LastNMatches(ctx, in.UserID, 5); aErr == nil {
-			arena = v
-		}
+		optionalWG.Add(1)
+		go func() {
+			defer optionalWG.Done()
+			if v, err := uc.Arena.LastNMatches(ctx, in.UserID, 5); err == nil {
+				arena = v
+			} else {
+				warnReader(uc.Log, "arena", err)
+			}
+		}()
 	}
 	if uc.Queue != nil {
-		if v, qErr := uc.Queue.TodaySnapshot(ctx, in.UserID); qErr == nil {
-			queue = v
-		}
+		optionalWG.Add(1)
+		go func() {
+			defer optionalWG.Done()
+			if v, err := uc.Queue.TodaySnapshot(ctx, in.UserID); err == nil {
+				queue = v
+			} else {
+				warnReader(uc.Log, "queue", err)
+			}
+		}()
 	}
 	if uc.Skills != nil {
-		if v, sErr := uc.Skills.WeakestN(ctx, in.UserID, 5); sErr == nil {
-			weakSkills = v
-		}
+		optionalWG.Add(1)
+		go func() {
+			defer optionalWG.Done()
+			if v, err := uc.Skills.WeakestN(ctx, in.UserID, 5); err == nil {
+				weakSkills = v
+			} else {
+				warnReader(uc.Log, "skills", err)
+			}
+		}()
 	}
 	if uc.DailyNotes != nil {
-		if v, dErr := uc.DailyNotes.RecentDailyNotes(ctx, in.UserID, 3); dErr == nil {
-			dailyNotes = v
-		}
+		optionalWG.Add(1)
+		go func() {
+			defer optionalWG.Done()
+			if v, err := uc.DailyNotes.RecentDailyNotes(ctx, in.UserID, 3); err == nil {
+				dailyNotes = v
+			} else {
+				warnReader(uc.Log, "daily_notes", err)
+			}
+		}()
 	}
-	var (
-		upcoming []domain.UpcomingInterview
-		keywords []domain.MockKeywords
-	)
 	if uc.Calendar != nil {
-		if v, cErr := uc.Calendar.UpcomingInterviews(ctx, in.UserID, 30); cErr == nil {
-			upcoming = v
-		}
+		optionalWG.Add(1)
+		go func() {
+			defer optionalWG.Done()
+			if v, err := uc.Calendar.UpcomingInterviews(ctx, in.UserID, 30); err == nil {
+				upcoming = v
+			} else {
+				warnReader(uc.Log, "calendar", err)
+			}
+		}()
 	}
 	if uc.MockMessages != nil {
-		if v, kErr := uc.MockMessages.TopKeywords(ctx, in.UserID, 14, 12); kErr == nil {
-			keywords = v
+		optionalWG.Add(1)
+		go func() {
+			defer optionalWG.Done()
+			if v, err := uc.MockMessages.TopKeywords(ctx, in.UserID, 14, 12); err == nil {
+				keywords = v
+			} else {
+				warnReader(uc.Log, "mock_messages", err)
+			}
+		}()
+	}
+	optionalWG.Wait()
+
+	var (
+		pastEpisodes []domain.Episode
+		cueMemories  []domain.Episode
+	)
+	if uc.Memory != nil {
+		recallQuery := briefMemoryRecallQuery(
+			upcoming, mocks, weakSkills, keywords, arena, queue, skipped, recent, dailyNotes,
+		)
+		var memoryWG sync.WaitGroup
+		memoryWG.Add(2)
+		go func() {
+			defer memoryWG.Done()
+			if recall, err := uc.Memory.Recall(ctx, RecallParams{
+				UserID: in.UserID,
+				Query:  recallQuery,
+				Kinds: []domain.EpisodeKind{
+					domain.EpisodeBriefEmitted,
+					domain.EpisodeBriefFollowed,
+					domain.EpisodeBriefDismissed,
+					domain.EpisodeQAQuery,
+					domain.EpisodeQAAnswered,
+				},
+				SinceDays:     60,
+				K:             4,
+				PerKindRecent: 3,
+			}); err == nil {
+				pastEpisodes = recall
+			} else {
+				warnReader(uc.Log, "memory", err)
+			}
+		}()
+		go func() {
+			defer memoryWG.Done()
+			if recall, err := uc.Memory.Recall(ctx, RecallParams{
+				UserID:        in.UserID,
+				Query:         recallQuery,
+				Kinds:         []domain.EpisodeKind{domain.EpisodeCueConversationMemory},
+				SinceDays:     14,
+				K:             6,
+				PerKindRecent: 8,
+			}); err == nil {
+				cueMemories = selectCueMemories(recall, 5)
+			} else {
+				warnReader(uc.Log, "cue_memory", err)
+			}
+		}()
+		memoryWG.Wait()
+	}
+	var codexArticles []domain.CodexArticleSuggestion
+	if uc.Codex != nil {
+		if v, cErr := uc.Codex.SuggestArticles(ctx, in.UserID, codexTopicsForBrief(
+			mocks, weakSkills, keywords, arena, cueMemories,
+		), 6); cErr == nil {
+			codexArticles = v
+		} else {
+			warnReader(uc.Log, "codex", cErr)
 		}
 	}
 
@@ -191,6 +330,8 @@ func (uc *GetDailyBrief) Do(ctx context.Context, in GetDailyBriefInput) (domain.
 		CompletedRecent:    completed,
 		Reflections:        refl,
 		RecentNotes:        recent,
+		PastEpisodes:       pastEpisodes,
+		CueMemories:        cueMemories,
 		Mocks:              mocks,
 		KataStreak:         kataStreak,
 		KataRecent:         kataRecent,
@@ -200,12 +341,23 @@ func (uc *GetDailyBrief) Do(ctx context.Context, in GetDailyBriefInput) (domain.
 		DailyNotes:         dailyNotes,
 		UpcomingInterviews: upcoming,
 		MockKeywords:       keywords,
+		CodexArticles:      codexArticles,
 	})
 	if err != nil {
 		// Pass-through — пусть transport сам решит как 503-ить.
 		return domain.DailyBrief{}, fmt.Errorf("intelligence.GetDailyBrief.Do: synthesise: %w", err)
 	}
 	brief.GeneratedAt = now
+	if brief.BriefID == uuid.Nil && uc.Memory != nil {
+		brief.BriefID = uuid.New()
+	}
+	if uc.Memory != nil && brief.BriefID != uuid.Nil {
+		if err := rememberBriefEmitted(ctx, uc.Memory, in.UserID, brief); err != nil {
+			uc.Log.Warn("intelligence.GetDailyBrief.Do: brief memory append failed",
+				slog.Any("err", err), slog.String("user_id", in.UserID.String()))
+			brief.BriefID = uuid.Nil
+		}
+	}
 
 	if err := uc.Briefs.Upsert(ctx, in.UserID, today, brief); err != nil {
 		// Cache-write fail — НЕ блокируем юзера. Бриф уже синтезирован,
@@ -215,4 +367,250 @@ func (uc *GetDailyBrief) Do(ctx context.Context, in GetDailyBriefInput) (domain.
 			slog.Any("err", err), slog.String("user_id", in.UserID.String()))
 	}
 	return brief, nil
+}
+
+type emittedBriefPayload struct {
+	BriefID         string                       `json:"brief_id"`
+	Headline        string                       `json:"headline"`
+	Narrative       string                       `json:"narrative"`
+	Recommendations []emittedBriefRecommendation `json:"recommendations"`
+}
+
+type emittedBriefRecommendation struct {
+	Kind      string `json:"kind"`
+	Title     string `json:"title"`
+	Rationale string `json:"rationale"`
+	TargetID  string `json:"target_id,omitempty"`
+}
+
+func rememberBriefEmitted(ctx context.Context, memory *Memory, userID uuid.UUID, brief domain.DailyBrief) error {
+	payload := emittedBriefPayload{
+		BriefID:   brief.BriefID.String(),
+		Headline:  brief.Headline,
+		Narrative: brief.Narrative,
+	}
+	for _, rec := range brief.Recommendations {
+		payload.Recommendations = append(payload.Recommendations, emittedBriefRecommendation{
+			Kind:      string(rec.Kind),
+			Title:     rec.Title,
+			Rationale: rec.Rationale,
+			TargetID:  rec.TargetID,
+		})
+	}
+	return memory.Append(ctx, AppendInput{
+		UserID:     userID,
+		Kind:       domain.EpisodeBriefEmitted,
+		Summary:    emittedBriefSummary(brief),
+		Payload:    payload,
+		OccurredAt: brief.GeneratedAt,
+	})
+}
+
+func emittedBriefSummary(brief domain.DailyBrief) string {
+	parts := make([]string, 0, len(brief.Recommendations)+1)
+	if headline := strings.TrimSpace(brief.Headline); headline != "" {
+		parts = append(parts, headline)
+	}
+	for _, rec := range brief.Recommendations {
+		if title := strings.TrimSpace(rec.Title); title != "" {
+			parts = append(parts, title)
+		}
+	}
+	return strings.Join(parts, " | ")
+}
+
+func warnReader(log *slog.Logger, name string, err error) {
+	if log == nil || err == nil {
+		return
+	}
+	log.Warn("intelligence.GetDailyBrief: reader failed",
+		slog.String("reader", name),
+		slog.Any("err", err))
+}
+
+func briefMemoryRecallQuery(
+	upcoming []domain.UpcomingInterview,
+	mocks []domain.MockSessionSummary,
+	weakSkills []domain.SkillWeak,
+	keywords []domain.MockKeywords,
+	arena []domain.ArenaMatchSummary,
+	queue domain.QueueSnapshot,
+	skipped []domain.SkippedPlanItem,
+	recent []domain.NoteHead,
+	dailyNotes []domain.DailyNoteHead,
+) string {
+	seen := make(map[string]struct{}, 32)
+	parts := make([]string, 0, 32)
+	add := func(s string) {
+		s = strings.TrimSpace(strings.ToLower(s))
+		if s == "" {
+			return
+		}
+		if _, ok := seen[s]; ok {
+			return
+		}
+		seen[s] = struct{}{}
+		parts = append(parts, s)
+	}
+	for _, ui := range upcoming {
+		if ui.DaysFromNow < 0 || ui.DaysFromNow > 30 {
+			continue
+		}
+		add(ui.CompanyName)
+		add(ui.Role)
+		add(ui.CurrentLevel)
+	}
+	for _, m := range mocks {
+		add(m.Section)
+		for _, w := range m.WeakTopics {
+			add(w)
+		}
+	}
+	for _, w := range weakSkills {
+		add(w.SkillKey)
+		add(w.Title)
+	}
+	for _, kw := range keywords {
+		add(kw.Keyword)
+	}
+	for _, a := range arena {
+		add(a.Section)
+	}
+	for _, item := range queue.Items {
+		add(item.SkillKey)
+		add(item.Title)
+	}
+	for _, item := range skipped {
+		add(item.SkillKey)
+		add(item.Title)
+	}
+	for _, note := range recent {
+		add(note.Title)
+		add(firstWords(note.Excerpt, 16))
+	}
+	for _, note := range dailyNotes {
+		add(firstWords(note.Excerpt, 16))
+	}
+	if len(parts) > 32 {
+		parts = parts[:32]
+	}
+	return strings.Join(parts, " ")
+}
+
+func firstWords(s string, limit int) string {
+	if limit <= 0 {
+		return ""
+	}
+	words := strings.Fields(strings.TrimSpace(s))
+	if len(words) <= limit {
+		return strings.Join(words, " ")
+	}
+	return strings.Join(words[:limit], " ")
+}
+
+func codexTopicsForBrief(
+	mocks []domain.MockSessionSummary,
+	weakSkills []domain.SkillWeak,
+	keywords []domain.MockKeywords,
+	arena []domain.ArenaMatchSummary,
+	cue []domain.Episode,
+) []string {
+	seen := make(map[string]struct{}, 32)
+	out := make([]string, 0, 16)
+	add := func(s string) {
+		s = strings.TrimSpace(strings.ToLower(s))
+		if s == "" {
+			return
+		}
+		if _, ok := seen[s]; ok {
+			return
+		}
+		seen[s] = struct{}{}
+		out = append(out, s)
+	}
+	for _, m := range mocks {
+		add(m.Section)
+		for _, w := range m.WeakTopics {
+			add(w)
+		}
+	}
+	for _, w := range weakSkills {
+		add(w.SkillKey)
+		add(w.Title)
+	}
+	for _, kw := range keywords {
+		add(kw.Keyword)
+	}
+	for _, a := range arena {
+		add(a.Section)
+	}
+	for _, ep := range cue {
+		p, ok := parseCueMemoryPayload(ep.Payload)
+		if !ok {
+			continue
+		}
+		for _, t := range p.Topics {
+			add(t)
+		}
+	}
+	return out
+}
+
+type cueMemoryPayload struct {
+	Outcome           string   `json:"outcome"`
+	Topics            []string `json:"topics"`
+	RollingSummary    string   `json:"rolling_summary"`
+	ScreenshotSummary string   `json:"screenshot_summary"`
+}
+
+func selectCueMemories(rows []domain.Episode, limit int) []domain.Episode {
+	if limit <= 0 {
+		return nil
+	}
+	out := make([]domain.Episode, 0, limit)
+	seen := make(map[string]struct{}, limit)
+	for _, ep := range rows {
+		p, ok := parseCueMemoryPayload(ep.Payload)
+		if !ok || !cueOutcomeUseful(p.Outcome) {
+			continue
+		}
+		summary := strings.TrimSpace(p.RollingSummary)
+		if summary == "" {
+			summary = strings.TrimSpace(ep.Summary)
+		}
+		if summary == "" || summary == "Cue conversation memory" {
+			continue
+		}
+		key := strings.ToLower(summary)
+		if _, exists := seen[key]; exists {
+			continue
+		}
+		seen[key] = struct{}{}
+		ep.Summary = summary
+		out = append(out, ep)
+		if len(out) >= limit {
+			return out
+		}
+	}
+	return out
+}
+
+func parseCueMemoryPayload(raw []byte) (cueMemoryPayload, bool) {
+	if len(raw) == 0 {
+		return cueMemoryPayload{}, false
+	}
+	var p cueMemoryPayload
+	if err := json.Unmarshal(raw, &p); err != nil {
+		return cueMemoryPayload{}, false
+	}
+	return p, true
+}
+
+func cueOutcomeUseful(outcome string) bool {
+	switch strings.TrimSpace(outcome) {
+	case "answered", "weak":
+		return true
+	default:
+		return false
+	}
 }

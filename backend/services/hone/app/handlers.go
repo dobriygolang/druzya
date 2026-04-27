@@ -40,7 +40,13 @@ type Handler struct {
 	GetNote            *GetNote
 	ListNotes          *ListNotes
 	DeleteNote         *DeleteNote
+	MoveNote           *MoveNote
 	GetNoteConnections *GetNoteConnections
+
+	// Folders
+	CreateFolder *CreateFolder
+	ListFolders  *ListFolders
+	DeleteFolder *DeleteFolder
 
 	// Whiteboards
 	CreateWhiteboard   *CreateWhiteboard

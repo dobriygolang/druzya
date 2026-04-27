@@ -87,6 +87,13 @@ type MessageRepo interface {
 	OwnerOf(ctx context.Context, messageID uuid.UUID) (uuid.UUID, error)
 }
 
+// MemorySink writes compact Cue memory into the product-wide Coach memory
+// store. Copilot owns the payload shape; the monolith wires the concrete
+// intelligence-memory adapter.
+type MemorySink interface {
+	AppendConversationMemory(ctx context.Context, userID, conversationID uuid.UUID, memory ConversationMemory) error
+}
+
 // QuotaRepo persists copilot_quotas rows. Get-or-lazy-create is encapsulated
 // in GetOrInit so the app layer doesn't juggle two calls.
 type QuotaRepo interface {

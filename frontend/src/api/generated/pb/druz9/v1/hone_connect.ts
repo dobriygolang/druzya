@@ -21,7 +21,7 @@
 /* eslint-disable */
 // @ts-nocheck
 
-import { AddQueueItemRequest, CompletePlanItemRequest, Connection, CreateNoteRequest, CreateWhiteboardRequest, CritiquePacket, CritiqueWhiteboardRequest, DeleteNoteRequest, DeleteNoteResponse, DeleteQueueItemRequest, DeleteQueueItemResponse, DeleteWhiteboardRequest, DeleteWhiteboardResponse, DismissPlanItemRequest, EndFocusSessionRequest, FocusSession, GenerateDailyPlanRequest, GetDailyPlanRequest, GetNoteConnectionsRequest, GetNoteRequest, GetStatsRequest, GetTodayStandupRequest, GetTodayStandupResponse, GetWhiteboardRequest, ListNotesRequest, ListNotesResponse, ListQueueRequest, ListQueueResponse, ListWhiteboardsRequest, ListWhiteboardsResponse, Note, Plan, QueueItem, RecordStandupRequest, RecordStandupResponse, SaveCritiqueAsNoteRequest, StartFocusSessionRequest, Stats, UpdateNoteRequest, UpdateQueueItemStatusRequest, UpdateWhiteboardRequest, Whiteboard } from "./hone_pb.js";
+import { AddQueueItemRequest, CompletePlanItemRequest, Connection, CreateFolderRequest, CreateNoteRequest, CreateWhiteboardRequest, CritiquePacket, CritiqueWhiteboardRequest, DeleteFolderRequest, DeleteFolderResponse, DeleteNoteRequest, DeleteNoteResponse, DeleteQueueItemRequest, DeleteQueueItemResponse, DeleteWhiteboardRequest, DeleteWhiteboardResponse, DismissPlanItemRequest, EndFocusSessionRequest, FocusSession, Folder, GenerateDailyPlanRequest, GetDailyPlanRequest, GetNoteConnectionsRequest, GetNoteRequest, GetStatsRequest, GetTodayStandupRequest, GetTodayStandupResponse, GetWhiteboardRequest, ListFoldersRequest, ListFoldersResponse, ListNotesRequest, ListNotesResponse, ListQueueRequest, ListQueueResponse, ListWhiteboardsRequest, ListWhiteboardsResponse, MoveNoteRequest, Note, Plan, QueueItem, RecordStandupRequest, RecordStandupResponse, SaveCritiqueAsNoteRequest, StartFocusSessionRequest, Stats, UpdateNoteRequest, UpdateQueueItemStatusRequest, UpdateWhiteboardRequest, Whiteboard } from "./hone_pb.js";
 import { MethodKind } from "@bufbuild/protobuf";
 
 /**
@@ -183,6 +183,15 @@ export const HoneService = {
       kind: MethodKind.Unary,
     },
     /**
+     * @generated from rpc druz9.v1.HoneService.MoveNote
+     */
+    moveNote: {
+      name: "MoveNote",
+      I: MoveNoteRequest,
+      O: Note,
+      kind: MethodKind.Unary,
+    },
+    /**
      * Server-streaming: first results (in-corpus notes) arrive fast, while
      * cross-domain edges (PRs, tasks) trail by a few hundred ms.
      *
@@ -193,6 +202,35 @@ export const HoneService = {
       I: GetNoteConnectionsRequest,
       O: Connection,
       kind: MethodKind.ServerStreaming,
+    },
+    /**
+     * ─── Folders ────────────────────────────────────────────────────────
+     *
+     * @generated from rpc druz9.v1.HoneService.CreateFolder
+     */
+    createFolder: {
+      name: "CreateFolder",
+      I: CreateFolderRequest,
+      O: Folder,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc druz9.v1.HoneService.ListFolders
+     */
+    listFolders: {
+      name: "ListFolders",
+      I: ListFoldersRequest,
+      O: ListFoldersResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc druz9.v1.HoneService.DeleteFolder
+     */
+    deleteFolder: {
+      name: "DeleteFolder",
+      I: DeleteFolderRequest,
+      O: DeleteFolderResponse,
+      kind: MethodKind.Unary,
     },
     /**
      * ─── Whiteboard ─────────────────────────────────────────────────────

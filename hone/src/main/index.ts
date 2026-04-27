@@ -25,6 +25,7 @@
 
 import { app, BrowserWindow, ipcMain, shell } from 'electron';
 import { init as sentryInit, IPCMode } from '@sentry/electron/main';
+import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { URL } from 'node:url';
 
@@ -170,6 +171,25 @@ function dispatchDeepLink(url: string): void {
     }
   }
 
+  // druz9://notes/import?path=<base64> — Cue meeting notes deep link.
+  if (url.startsWith('druz9://notes/import')) {
+    void (async () => {
+      try {
+        const u = new URL(url);
+        const encoded = u.searchParams.get('path');
+        if (encoded) {
+          const filePath = Buffer.from(encoded, 'base64').toString('utf-8');
+          const raw = await readFile(filePath, 'utf-8');
+          const analysis = JSON.parse(raw) as unknown;
+          mainWindow.webContents.send(eventChannels.cueNoteImport, { filePath, analysis });
+        }
+      } catch {
+        // If file read fails, fall through to generic deepLink so renderer
+        // can show an error or ignore.
+      }
+    })();
+  }
+
   // druz9://focus[/start][?task=...&title=...] — рендерер сам решит.
   // Generic forward для всех остальных.
   mainWindow.webContents.send(eventChannels.deepLink, { url });
@@ -219,6 +239,15 @@ function consumeColdStartURL(): void {
 app.whenReady().then(() => {
   // ── IPC ────────────────────────────────────────────────────────────────
   ipcMain.handle(invokeChannels.appVersion, () => app.getVersion());
+
+  ipcMain.handle(invokeChannels.cueReadNote, async (_e, filePath: string) => {
+    try {
+      const raw = await readFile(filePath, 'utf-8');
+      return JSON.parse(raw) as unknown;
+    } catch {
+      return null;
+    }
+  });
 
   ipcMain.handle(invokeChannels.authSession, async () => {
     return await loadSession();

@@ -218,3 +218,16 @@ type MockKeywords struct {
 	Keyword string
 	Count   int
 }
+
+// CodexArticleSuggestion is one curated learning resource from Codex that
+// matches current coach signals. Link is an in-app route, not the external
+// source URL, so the app can track opens and keep users inside Codex.
+type CodexArticleSuggestion struct {
+	Slug        string
+	Title       string
+	Description string
+	Category    string
+	Source      string
+	ReadMin     int
+	Link        string
+}

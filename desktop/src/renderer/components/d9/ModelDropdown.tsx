@@ -5,7 +5,6 @@
 
 import { useEffect, useRef } from 'react';
 
-import { D9IconCheck } from './icons';
 
 export interface ModelDropdownItem {
   id: string;
@@ -47,14 +46,22 @@ export function ModelDropdown({ items, activeId, onSelect, onClose, onManage, st
   }, [onClose]);
 
   return (
-    <div ref={ref} className="d9-root d9-popover" style={{ width: 300, ...style }}>
-      <div className="d9-popover-label">Model</div>
+    <div ref={ref} className="d9-root d9-popover" style={{ width: 260, ...style }}>
+      <div className="d9-popover-label">
+        <span>MODEL</span>
+        <span className="d9-popover-label-esc">ESC</span>
+      </div>
       {items.length === 0 && (
-        <div className="d9-popover-empty">Нет доступных моделей. Войди через онбординг.</div>
+        <div className="d9-popover-empty">Нет доступных моделей</div>
       )}
       {items.map((m) => {
         const active = m.id === activeId;
         const locked = m.availableOnCurrentPlan === false;
+        const metaParts = [
+          m.providerName,
+          m.latencyMs ? `${m.latencyMs}ms` : null,
+          m.supportsVision ? 'vision' : null,
+        ].filter(Boolean).join(' · ');
         return (
           <button
             key={m.id}
@@ -65,29 +72,10 @@ export function ModelDropdown({ items, activeId, onSelect, onClose, onManage, st
             disabled={locked}
             onClick={() => !locked && onSelect(m.id)}
           >
-            <span className="d9-accent-square" style={{ marginLeft: 4 }} />
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div className="d9-menu-item-title">{m.displayName}</div>
-              {(m.providerName || m.latencyMs || m.supportsVision) && (
-                <div className="d9-menu-item-meta">
-                  {m.providerName && <span>{m.providerName}</span>}
-                  {m.providerName && m.latencyMs ? <span>·</span> : null}
-                  {m.latencyMs && <span>{m.latencyMs} мс</span>}
-                  {m.supportsVision && (
-                    <>
-                      <span>·</span>
-                      <span>vision</span>
-                    </>
-                  )}
-                </div>
-              )}
-            </div>
+            <span className="d9-menu-item-marker" />
+            <span className="d9-menu-item-title">{m.displayName}</span>
             {locked && <span className="d9-tag d9-tag-locked">pro</span>}
-            {active && !locked && (
-              <span style={{ color: 'var(--d9-accent-hi)', display: 'inline-flex' }}>
-                <D9IconCheck size={12} />
-              </span>
-            )}
+            {metaParts && <span className="d9-menu-item-meta">{metaParts}</span>}
           </button>
         );
       })}
@@ -98,9 +86,11 @@ export function ModelDropdown({ items, activeId, onSelect, onClose, onManage, st
             type="button"
             className="d9-menu-item"
             onClick={onManage}
-            style={{ fontSize: 11.5, color: 'var(--d9-ink-mute)' }}
           >
-            Управление провайдерами →
+            <span className="d9-menu-item-marker" />
+            <span className="d9-menu-item-title" style={{ textTransform: 'none', letterSpacing: 0 }}>
+              Управление провайдерами →
+            </span>
           </button>
         </>
       )}

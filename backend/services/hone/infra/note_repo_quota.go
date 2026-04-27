@@ -72,12 +72,20 @@ func (r *QuotaAwareNoteRepo) Get(ctx context.Context, userID, noteID uuid.UUID) 
 	return out, nil
 }
 
-func (r *QuotaAwareNoteRepo) List(ctx context.Context, userID uuid.UUID, limit int, cursor string) ([]domain.NoteSummary, string, error) {
-	rows, next, err := r.inner.List(ctx, userID, limit, cursor)
+func (r *QuotaAwareNoteRepo) List(ctx context.Context, userID uuid.UUID, limit int, cursor string, folderID *uuid.UUID) ([]domain.NoteSummary, string, error) {
+	rows, next, err := r.inner.List(ctx, userID, limit, cursor, folderID)
 	if err != nil {
 		return rows, next, fmt.Errorf("hone.QuotaAwareNoteRepo.List: %w", err)
 	}
 	return rows, next, nil
+}
+
+func (r *QuotaAwareNoteRepo) Move(ctx context.Context, userID, noteID uuid.UUID, folderID *uuid.UUID) (domain.Note, error) {
+	out, err := r.inner.Move(ctx, userID, noteID, folderID)
+	if err != nil {
+		return out, fmt.Errorf("hone.QuotaAwareNoteRepo.Move: %w", err)
+	}
+	return out, nil
 }
 
 func (r *QuotaAwareNoteRepo) Delete(ctx context.Context, userID, noteID uuid.UUID) error {

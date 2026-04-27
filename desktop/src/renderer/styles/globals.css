@@ -2,9 +2,6 @@
 @import '@fontsource/instrument-serif/400.css';
 @import '@fontsource/manrope/400.css';
 @import '@fontsource/manrope/500.css';
-@import '@fontsource/manrope/600.css';
-@import '@fontsource/manrope/700.css';
-@import '@fontsource/manrope/800.css';
 @import '@fontsource/jetbrains-mono/400.css';
 @import '@fontsource/jetbrains-mono/500.css';
 
@@ -87,6 +84,10 @@ button {
   100% { transform: translateX(100%); }
 }
 
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
 /* Mic button recording indicator — small red dot fading in/out. */
 @keyframes d9-pulse {
   0%, 100% { opacity: 1; transform: scale(1); }
@@ -142,98 +143,128 @@ button {
    or dropdown, STOP and add a token + class here instead.
    ═══════════════════════════════════════════════════════════════════ */
 
+/* ─── Dropdown entry animation ──────────────────────────────────────── */
+@keyframes d9-dropdown-in {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
 /* ─── Popover — glass panel for dropdowns / pickers ────────────────── */
 .d9-popover {
-  border-radius: 14px;
-  /* Near-black vertical fade matching compact/expanded windows. Alpha
-     follows the global Appearance slider so pickers visually belong to
-     the window they float above. */
-  background:
-    linear-gradient(180deg,
-      rgba(22, 22, 22, calc(var(--d9-window-alpha) * 1.05)),
-      rgba(10, 10, 10, calc(var(--d9-window-alpha) * 1.1))
-    );
-  backdrop-filter: var(--d9-glass-blur);
-  -webkit-backdrop-filter: var(--d9-glass-blur);
-  border: 0.5px solid var(--d9-hairline-b);
+  border-radius: 10px;
+  background: rgba(15, 15, 17, 0.97);
+  backdrop-filter: blur(40px) saturate(180%);
+  -webkit-backdrop-filter: blur(40px) saturate(180%);
+  border: 1px solid var(--d9-hairline-b);
   box-shadow: var(--d9-shadow-pop);
-  padding: 6px;
+  padding: 6px 0;
   -webkit-app-region: no-drag;
+  animation: d9-dropdown-in 150ms var(--d9-ease-out);
 }
 
 .d9-popover-label {
-  padding: 8px 10px 6px;
-  font-size: 10px;
-  letter-spacing: 0.08em;
+  padding: 8px 14px 6px;
+  font-size: 9.5px;
+  letter-spacing: 0.22em;
   text-transform: uppercase;
   color: var(--d9-ink-ghost);
   font-family: var(--d9-font-mono);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  margin-bottom: 4px;
+  display: flex;
+  justify-content: space-between;
+}
+
+.d9-popover-label-esc {
+  color: var(--d9-ink-ghost);
+  opacity: 0.5;
 }
 
 .d9-popover-empty {
-  padding: 10px 10px 12px;
-  font-size: 12px;
+  padding: 10px 14px 12px;
+  font-size: 11px;
   color: var(--d9-ink-mute);
-  letter-spacing: -0.005em;
+  font-family: var(--d9-font-mono);
+  letter-spacing: 0.04em;
 }
 
 .d9-popover-divider {
-  height: 0.5px;
-  background: var(--d9-hairline);
-  margin: 4px 8px;
+  height: 1px;
+  background: rgba(255, 255, 255, 0.06);
+  margin: 4px 0;
 }
 
 /* ─── Menu item — a clickable row inside a popover ─────────────────── */
-/* Encodes all three states (idle / hover / active / disabled). Use
-   aria-selected="true" on the active item and aria-disabled="true"
-   for locked rows (see ModelDropdown's "pro" locked entries). */
 .d9-menu-item {
   width: 100%;
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 8px 10px;
+  padding: 7px 14px;
   border: 0;
-  border-radius: 9px;
+  border-radius: 0;
   background: transparent;
-  color: var(--d9-ink);
-  font: inherit;
+  color: var(--d9-ink-mute);
+  font-family: var(--d9-font-mono);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
   text-align: left;
   cursor: pointer;
-  transition: background 120ms var(--d9-ease);
+  transition: color 120ms var(--d9-ease), background 120ms var(--d9-ease);
 }
-.d9-menu-item:hover:not([aria-disabled="true"]):not([aria-selected="true"]) {
-  background: rgba(255, 255, 255, 0.04);
+.d9-menu-item:hover:not([aria-disabled="true"]) {
+  color: var(--d9-ink);
+  background: rgba(255, 255, 255, 0.03);
 }
 .d9-menu-item[aria-selected="true"] {
-  background: rgba(255, 255, 255, 0.06);
+  color: var(--d9-accent);
 }
 .d9-menu-item[aria-disabled="true"] {
   cursor: not-allowed;
-  opacity: 0.55;
+  opacity: 0.45;
 }
 
-/* Typography inside a menu item — matches old ModelDropdown/PersonaDropdown
-   copy specs exactly so we can drop inline styles without visual drift. */
+/* Marker dot — active state filled cyan, idle transparent */
+.d9-menu-item-marker {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: transparent;
+  flex: none;
+  transition: background 120ms var(--d9-ease), box-shadow 120ms var(--d9-ease);
+}
+.d9-menu-item[aria-selected="true"] .d9-menu-item-marker {
+  background: var(--d9-accent);
+  box-shadow: 0 0 6px var(--d9-accent-glow);
+}
+
+/* Typography inside a menu item */
 .d9-menu-item-title {
-  font-size: 12.5px;
-  color: var(--d9-ink);
-  font-weight: 500;
-  letter-spacing: -0.005em;
+  font-size: 11px;
+  color: inherit;
+  font-family: var(--d9-font-mono);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.d9-menu-item[aria-selected="true"] .d9-menu-item-title {
+  color: var(--d9-accent);
+}
 .d9-menu-item-meta {
-  font-size: 10.5px;
-  color: var(--d9-ink-mute);
+  font-size: 9.5px;
+  color: var(--d9-ink-ghost);
   font-family: var(--d9-font-mono);
-  margin-top: 1px;
-  display: flex;
-  gap: 6px;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  letter-spacing: 0.04em;
+  text-transform: none;
+  margin-left: auto;
   white-space: nowrap;
+}
+.d9-menu-item[aria-selected="true"] .d9-menu-item-meta {
+  color: var(--d9-accent);
+  opacity: 0.8;
 }
 
 /* ─── Pill (header-style) — ModelPill, PersonaChip (non-compact) ───── */

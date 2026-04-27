@@ -1,34 +1,42 @@
 // /codex — каталог статей-знаний (System Design, алгоритмы, карьера...).
-//
-// Это контент-страница, не runtime: каталог хранится в src/content/codex.ts
-// и попадает в bundle на build. Никакого backend-запроса здесь не делаем —
-// раньше был placeholder с фейковыми "12480 прослушиваний" и хардкоженным
-// плеером; то и другое снято, потому что подкастов как продукта пока нет.
-// Когда заведём собственный CMS или blog — заменить импорт CODEX_ARTICLES
-// на useQuery (см. content/codex.ts header).
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { ArrowUpRight, Search } from 'lucide-react'
 import { AppShellV2 } from '../components/AppShell'
 import { KnowledgeHubTabs } from '../components/KnowledgeHubTabs'
 import { Card } from '../components/Card'
 import {
-  CODEX_ARTICLES as CODEX_FALLBACK,
-  codexCategoriesWithCounts,
-  type CodexArticle as StaticCodexArticle,
-} from '../content/codex'
-import {
   pingCodexArticleOpened,
   useCodexArticlesQuery,
+  useCodexCategoriesQuery,
   type CodexArticle as DBCodexArticle,
+  type CodexCategory as DBCodexCategory,
 } from '../lib/queries/codex'
 
-// Унифицированный тип для рендера: фронтовый StaticCodexArticle (id,
-// read_min, href, source) совпадает с DBCodexArticle по форме после
-// нормализации, поэтому компоненты ниже работают с обоими.
-type CodexArticle = StaticCodexArticle | DBCodexArticle
+type CodexArticle = DBCodexArticle
 
 const ALL = 'all' as const
+
+type RenderCategory = Pick<DBCodexCategory, 'slug' | 'label'>
+
+function articleSlug(a: CodexArticle): string {
+  return a.slug
+}
+
+function visibleArticleKey(a: CodexArticle): string {
+  return `${a.category}:${articleSlug(a)}`
+}
+
+function categoriesFromArticles(articles: CodexArticle[]): RenderCategory[] {
+  const seen = new Set<string>()
+  const out: RenderCategory[] = []
+  for (const a of articles) {
+    if (!a.category || seen.has(a.category)) continue
+    seen.add(a.category)
+    out.push({ slug: a.category, label: a.category.replace(/_/g, ' ') })
+  }
+  return out
+}
 
 function Hero({ total }: { total: number }) {
   return (
@@ -58,14 +66,17 @@ function CategoryFilters({
   onChange,
   total,
   countsByCat,
+  categories,
 }: {
   active: string
   onChange: (slug: string) => void
   total: number
   countsByCat: Map<string, number>
+  categories: RenderCategory[]
 }) {
-  const cats = codexCategoriesWithCounts().map((c) => ({
-    ...c,
+  const cats = categories.map((c) => ({
+    slug: c.slug,
+    label: c.label,
     count: countsByCat.get(c.slug) ?? 0,
   }))
   void total
@@ -114,19 +125,31 @@ function SearchBox({ value, onChange }: { value: string; onChange: (v: string) =
   )
 }
 
-function ArticleCard({ a }: { a: CodexArticle }) {
+function ArticleCard({
+  a,
+  highlighted,
+  articleRef,
+}: {
+  a: CodexArticle
+  highlighted: boolean
+  articleRef: (node: HTMLAnchorElement | null) => void
+}) {
   // Coach memory tap: when the user opens an article, ping the backend
   // so the Daily Brief can later say "ты регулярно читаешь sysdesign —
-  // попробуй mock этого этапа". Best-effort; failure doesn't prevent
-  // the link from opening.
+  // попробуй mock этого этапа".
   return (
     <a
+      ref={articleRef}
       href={a.href}
       target="_blank"
       rel="noopener noreferrer"
-      className="block"
+      className={
+        highlighted
+          ? 'block scroll-mt-24 rounded-xl outline outline-2 outline-offset-4 outline-text-primary/70'
+          : 'block scroll-mt-24 rounded-xl'
+      }
       onClick={() => {
-        if ('id' in a && typeof a.id === 'string' && a.id) pingCodexArticleOpened(a.id)
+        if (a.id) pingCodexArticleOpened(a.id)
       }}
     >
       <Card interactive className="flex-col gap-2 p-5">
@@ -150,20 +173,12 @@ function ArticleCard({ a }: { a: CodexArticle }) {
 }
 
 export default function CodexPage() {
-  // Coach links to /codex?topic=<slug> для конкретной категории. Парсим
-  // initial state из URL чтобы открытие из brief'а сразу filter'ило.
+  // Coach links to /codex?topic=<slug>&article=<slug>.
   const [searchParams, setSearchParams] = useSearchParams()
   const initialTopic = searchParams.get('topic') || ALL
   const [category, setCategory] = useState<string>(initialTopic)
   const [q, setQ] = useState<string>('')
-
-  useEffect(() => {
-    // Sync URL ↔ state в обе стороны: external nav (Coach link) → setCategory;
-    // user click filter → URL.
-    const fromURL = searchParams.get('topic') || ALL
-    if (fromURL !== category) setCategory(fromURL)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchParams])
+  const articleRefs = useRef(new Map<string, HTMLAnchorElement | null>())
 
   const handleCategoryChange = (slug: string) => {
     setCategory(slug)
@@ -171,14 +186,35 @@ export default function CodexPage() {
     else setSearchParams({ topic: slug }, { replace: true })
   }
 
-  // Backend → fallback to compiled-in seed when API hasn't responded
-  // yet OR returned an error (offline/dev-without-MSW). The static set
-  // is the same 22 entries that seeded the DB so the UX degrades to
-  // "looks identical" rather than "broken".
   const articlesQ = useCodexArticlesQuery()
-  const articles: CodexArticle[] = articlesQ.data && articlesQ.data.length > 0
-    ? articlesQ.data
-    : CODEX_FALLBACK
+  const categoriesQ = useCodexCategoriesQuery()
+  const articles: CodexArticle[] = articlesQ.data ?? []
+  const categories: RenderCategory[] = categoriesQ.data && categoriesQ.data.length > 0
+    ? categoriesQ.data
+    : categoriesFromArticles(articles)
+  const requestedArticle = searchParams.get('article') || ''
+  const requestedTopic = searchParams.get('topic') || ALL
+  const targetArticle = requestedArticle
+    ? articles.find((a) => articleSlug(a) === requestedArticle)
+    : undefined
+  const targetArticleKey = targetArticle ? visibleArticleKey(targetArticle) : ''
+
+  useEffect(() => {
+    const nextCategory = targetArticle?.category || requestedTopic
+    setCategory((current) => (current === nextCategory ? current : nextCategory))
+  }, [requestedTopic, targetArticle?.category])
+
+  useEffect(() => {
+    if (!requestedArticle || !targetArticleKey) return
+    const node = articleRefs.current.get(requestedArticle)
+    if (!node) return
+    const timer = window.setTimeout(() => {
+      node.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      node.focus({ preventScroll: true })
+    }, 50)
+    return () => window.clearTimeout(timer)
+  }, [requestedArticle, targetArticleKey])
+
   const norm = q.trim().toLowerCase()
   const visible = articles.filter((a) => {
     if (category !== ALL && a.category !== category) return false
@@ -205,12 +241,28 @@ export default function CodexPage() {
         onChange={handleCategoryChange}
         total={articles.length}
         countsByCat={countsByCat}
+        categories={categories}
       />
       <div className="px-4 pb-4 sm:px-8 lg:px-20">
         <SearchBox value={q} onChange={setQ} />
       </div>
       <div className="px-4 pb-12 sm:px-8 lg:px-20">
-        {visible.length === 0 ? (
+        {articlesQ.isLoading ? (
+          <Card className="flex-col gap-1 p-8 text-center">
+            <span className="font-display text-base font-bold text-text-primary">
+              Загружаем Codex
+            </span>
+          </Card>
+        ) : articlesQ.isError || categoriesQ.isError ? (
+          <Card className="flex-col gap-1 p-8 text-center">
+            <span className="font-display text-base font-bold text-text-primary">
+              Codex сейчас недоступен
+            </span>
+            <span className="text-sm text-text-secondary">
+              Не удалось загрузить статьи из backend.
+            </span>
+          </Card>
+        ) : visible.length === 0 ? (
           <Card className="flex-col gap-1 p-8 text-center">
             <span className="font-display text-base font-bold text-text-primary">
               Ничего не нашлось
@@ -222,7 +274,16 @@ export default function CodexPage() {
         ) : (
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {visible.map((a) => (
-              <ArticleCard key={a.id} a={a} />
+              <ArticleCard
+                key={visibleArticleKey(a)}
+                a={a}
+                highlighted={requestedArticle === articleSlug(a)}
+                articleRef={(node) => {
+                  const slug = articleSlug(a)
+                  if (node) articleRefs.current.set(slug, node)
+                  else articleRefs.current.delete(slug)
+                }}
+              />
             ))}
           </div>
         )}

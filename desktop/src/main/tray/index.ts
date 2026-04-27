@@ -14,13 +14,11 @@
 // masquerade layer (icon swap) makes the menu-bar icon match the
 // chosen alias — a user who picked "Notes" gets Notes's tray icon.
 
-import { Menu, Tray, app, nativeImage } from 'electron';
+import { Tray, nativeImage, screen } from 'electron';
 import { join } from 'node:path';
 
 import type { WindowOptions } from '../windows/window-manager';
-import { showWindow } from '../windows/window-manager';
-import { fireAction } from '../hotkeys/registry';
-import { getSessionManager } from '../ipc/handlers';
+import { getWindow, hideWindow, showWindow } from '../windows/window-manager';
 
 let tray: Tray | null = null;
 
@@ -29,52 +27,18 @@ export interface TrayDeps {
   windowOptions: WindowOptions;
 }
 
-// sessionMenuItem — dynamic entry whose label depends on whether a
-// session is live. We rebuild the menu on toggle so the label updates.
-function sessionMenuItem(deps: TrayDeps): Electron.MenuItemConstructorOptions {
-  const mgr = getSessionManager();
-  const live = mgr?.current() ?? null;
-  return {
-    label: live ? 'Закончить сессию собеседования' : 'Начать сессию собеседования',
-    click: async () => {
-      const m = getSessionManager();
-      if (!m) return;
-      try {
-        if (m.current()) {
-          await m.end();
-        } else {
-          await m.start('interview');
-        }
-      } catch {
-        // Errors surface in the renderer session store; tray stays silent.
-      } finally {
-        // Rebuild the menu so the label flips.
-        refreshMenu(deps);
-      }
-    },
-  };
-}
-
 export function ensureTray(deps: TrayDeps): void {
   if (tray) return;
 
   const icon = buildTrayIcon(deps.resourcesPath);
   tray = new Tray(icon);
-  // Always set a short textual marker alongside the icon — when the
-  // template PNG is missing (dev builds) the icon is empty, and even
-  // when present the text makes the Cue tray instantly findable
-  // among other menu-bar items. "Cue" (previously "D9") matches the
-  // BrandMark "C" glyph.
-  tray.setTitle(icon.isEmpty() ? 'Cue' : ' Cue');
+  // Icon-only tray item. Text makes the app too visible in screen share
+  // chrome and diverges from the prototype menubar treatment.
+  tray.setTitle('');
   tray.setToolTip('Cue');
 
-  // Clicking the icon shows the compact window AND opens the menu —
-  // macOS convention. We only want the menu; compact is already
-  // always-on-top so an extra focus grab would steal the user's typing.
-  refreshMenu(deps);
-
-  // Left-click on macOS shows the context menu by default when one is
-  // attached via `setContextMenu`, so we don't need a custom handler.
+  tray.on('click', () => toggleTrayPopup(deps));
+  tray.on('right-click', () => toggleTrayPopup(deps));
 }
 
 export function updateTrayIcon(resourcesPath: string): void {
@@ -90,87 +54,39 @@ export function destroyTray(): void {
 /**
  * Build a template-image icon. Passing `setTemplateImage(true)` tells
  * macOS to invert the black pixels automatically for light/dark menu
- * bars — that's why the source PNG is monochrome. If the file is
- * missing (first-run dev build without assets), we fall back to an
- * empty image and the tray still works without an icon visible.
+ * bars — that's why the source PNG is monochrome.
  */
 function buildTrayIcon(resourcesPath: string): Electron.NativeImage {
-  try {
-    const path = join(resourcesPath, 'trayTemplate.png');
-    const img = nativeImage.createFromPath(path);
-    if (!img.isEmpty()) {
-      img.setTemplateImage(true);
-      return img;
-    }
-  } catch {
-    /* fall through to empty image */
+  const path = join(resourcesPath, 'trayTemplate.png');
+  const img = nativeImage.createFromPath(path);
+  if (img.isEmpty()) {
+    throw new Error(`Tray icon is missing or invalid: ${path}`);
   }
-  return nativeImage.createEmpty();
+  img.setTemplateImage(true);
+  return img;
 }
 
-function refreshMenu(deps: TrayDeps): void {
+/**
+ * Show the custom HTML tray popup anchored under the tray icon.
+ */
+function toggleTrayPopup(deps: TrayDeps): void {
   if (!tray || tray.isDestroyed()) return;
-  const menu = Menu.buildFromTemplate([
-    {
-      label: 'Cue',
-      enabled: false,
-    },
-    { type: 'separator' },
-    {
-      label: 'Скриншот области',
-      accelerator: 'CommandOrControl+Shift+S',
-      click: () => {
-        // Route through the same handler a globalShortcut would trigger.
-        // Previously we broadcast hotkeyFired directly to renderers, but
-        // `cursor_freeze_toggle` is processed main-side (cursor module
-        // lives there), so a broadcast-only path silently ignored it.
-        // fireAction() invokes the handler registered in main/index.ts.
-        fireAction('screenshot_area');
-      },
-    },
-    {
-      label: 'Голос',
-      accelerator: 'CommandOrControl+Shift+V',
-      click: () => {
-        fireAction('voice_input');
-      },
-    },
-    {
-      label: 'Заморозить курсор',
-      accelerator: 'CommandOrControl+Shift+Y',
-      click: () => {
-        fireAction('cursor_freeze_toggle');
-      },
-    },
-    { type: 'separator' },
-    sessionMenuItem(deps),
-    { type: 'separator' },
-    {
-      label: 'Открыть окно',
-      click: () => {
-        showWindow('compact', deps.windowOptions);
-      },
-    },
-    {
-      label: 'История',
-      click: () => {
-        showWindow('history', deps.windowOptions);
-      },
-    },
-    {
-      label: 'Настройки…',
-      click: () => {
-        showWindow('settings', deps.windowOptions);
-      },
-    },
-    { type: 'separator' },
-    {
-      label: 'Выйти',
-      accelerator: 'CommandOrControl+Q',
-      click: () => {
-        app.quit();
-      },
-    },
-  ]);
-  tray.setContextMenu(menu);
+  const existing = getWindow('tray-popup');
+  if (existing?.isVisible()) {
+    hideWindow('tray-popup');
+    return;
+  }
+
+  const popup = showWindow('tray-popup', deps.windowOptions);
+  const iconBounds = tray.getBounds();
+  const display = screen.getDisplayNearestPoint({ x: iconBounds.x, y: iconBounds.y });
+  const [popupWidth] = popup.getSize();
+  const centeredX = Math.round(iconBounds.x + iconBounds.width / 2 - popupWidth / 2);
+  const minX = display.workArea.x + 8;
+  const maxX = display.workArea.x + display.workArea.width - popupWidth - 8;
+  const x = Math.min(Math.max(centeredX, minX), maxX);
+  const y = Math.round(iconBounds.y + iconBounds.height + 6);
+  popup.setPosition(x, y);
+  popup.show();
+  popup.focus();
 }

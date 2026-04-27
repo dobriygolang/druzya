@@ -417,9 +417,9 @@ func (mr *MockNoteRepoMockRecorder) Get(ctx, userID, noteID any) *gomock.Call {
 }
 
 // List mocks base method.
-func (m *MockNoteRepo) List(ctx context.Context, userID uuid.UUID, limit int, cursor string) ([]domain.NoteSummary, string, error) {
+func (m *MockNoteRepo) List(ctx context.Context, userID uuid.UUID, limit int, cursor string, folderID *uuid.UUID) ([]domain.NoteSummary, string, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "List", ctx, userID, limit, cursor)
+	ret := m.ctrl.Call(m, "List", ctx, userID, limit, cursor, folderID)
 	ret0, _ := ret[0].([]domain.NoteSummary)
 	ret1, _ := ret[1].(string)
 	ret2, _ := ret[2].(error)
@@ -427,9 +427,24 @@ func (m *MockNoteRepo) List(ctx context.Context, userID uuid.UUID, limit int, cu
 }
 
 // List indicates an expected call of List.
-func (mr *MockNoteRepoMockRecorder) List(ctx, userID, limit, cursor any) *gomock.Call {
+func (mr *MockNoteRepoMockRecorder) List(ctx, userID, limit, cursor, folderID any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "List", reflect.TypeOf((*MockNoteRepo)(nil).List), ctx, userID, limit, cursor)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "List", reflect.TypeOf((*MockNoteRepo)(nil).List), ctx, userID, limit, cursor, folderID)
+}
+
+// Move mocks base method.
+func (m *MockNoteRepo) Move(ctx context.Context, userID, noteID uuid.UUID, folderID *uuid.UUID) (domain.Note, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Move", ctx, userID, noteID, folderID)
+	ret0, _ := ret[0].(domain.Note)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// Move indicates an expected call of Move.
+func (mr *MockNoteRepoMockRecorder) Move(ctx, userID, noteID, folderID any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Move", reflect.TypeOf((*MockNoteRepo)(nil).Move), ctx, userID, noteID, folderID)
 }
 
 // SetArchived mocks base method.

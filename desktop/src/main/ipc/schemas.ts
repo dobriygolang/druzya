@@ -29,8 +29,13 @@ const hotkeyActionSchema = z.enum([
   'voice_input',
   'toggle_window',
   'quick_prompt',
+  'instant_assist',
   'clear_conversation',
   'cursor_freeze_toggle',
+  'move_window_left',
+  'move_window_right',
+  'move_window_up',
+  'move_window_down',
 ]);
 
 const sessionKindSchema = z.enum(['interview', 'work', 'casual', '']);
@@ -46,6 +51,7 @@ const windowNameSchema = z.enum([
   'history',
   'picker',
   'toast',
+  'tray-popup',
 ]);
 
 const pickerKindSchema = z.enum(['persona', 'model']);
@@ -53,6 +59,7 @@ const pickerKindSchema = z.enum(['persona', 'model']);
 const permissionKindSchema = z.enum(['screen-recording', 'accessibility', 'microphone']);
 
 const toastKindSchema = z.enum(['error', 'warn', 'info']);
+const memoryOutcomeSchema = z.enum(['answered', 'weak', 'skipped', 'unclear']);
 
 // ─── Analyze / Chat ───────────────────────────────────────────────────────
 
@@ -117,6 +124,27 @@ export const hotkeyBindingSchema = z.object({
 });
 
 export const hotkeyBindingsSchema = z.array(hotkeyBindingSchema).max(32);
+
+export const memorySyncSchema = z.object({
+  conversationId: z.string().max(128),
+  memory: z.object({
+    turns: z.array(z.object({
+      question: z.string().max(1200),
+      answer: z.string().max(2000),
+      has_screenshot: z.boolean(),
+      timestamp: z.string().max(64),
+      model: z.string().max(128),
+    })).max(100),
+    screenshot_summary: z.string().max(1000),
+    topics: z.array(z.string().max(64)).max(32),
+    outcome: memoryOutcomeSchema,
+    rolling_summary: z.string().max(6000),
+    embeddings: z.array(z.object({
+      term: z.string().max(64),
+      weight: z.number().finite(),
+    })).max(128),
+  }),
+});
 
 // ─── Masquerade ───────────────────────────────────────────────────────────
 

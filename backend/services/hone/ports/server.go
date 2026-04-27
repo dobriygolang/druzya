@@ -401,10 +401,19 @@ func (s *HoneServer) CreateNote(
 			return nil, connect.NewError(connect.CodeResourceExhausted, qerr)
 		}
 	}
+	var folderID *uuid.UUID
+	if fid := req.Msg.FolderId; fid != nil {
+		parsed, ferr := uuid.Parse(*fid)
+		if ferr != nil {
+			return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("invalid folder_id: %w", ferr))
+		}
+		folderID = &parsed
+	}
 	n, err := s.H.CreateNote.Do(ctx, app.CreateNoteInput{
-		UserID: uid,
-		Title:  req.Msg.GetTitle(),
-		BodyMD: req.Msg.GetBodyMd(),
+		UserID:   uid,
+		Title:    req.Msg.GetTitle(),
+		BodyMD:   req.Msg.GetBodyMd(),
+		FolderID: folderID,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("hone.CreateNote: %w", s.toConnectErr(err))
@@ -466,7 +475,15 @@ func (s *HoneServer) ListNotes(
 	if err != nil {
 		return nil, err
 	}
-	rows, cursor, err := s.H.ListNotes.Do(ctx, uid, int(req.Msg.GetLimit()), req.Msg.GetCursor())
+	var listFolderID *uuid.UUID
+	if fid := req.Msg.FolderId; fid != nil {
+		parsed, ferr := uuid.Parse(*fid)
+		if ferr != nil {
+			return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("invalid folder_id: %w", ferr))
+		}
+		listFolderID = &parsed
+	}
+	rows, cursor, err := s.H.ListNotes.Do(ctx, uid, int(req.Msg.GetLimit()), req.Msg.GetCursor(), listFolderID)
 	if err != nil {
 		return nil, fmt.Errorf("hone.ListNotes: %w", s.toConnectErr(err))
 	}
@@ -494,6 +511,105 @@ func (s *HoneServer) DeleteNote(
 		return nil, fmt.Errorf("hone.DeleteNote: %w", s.toConnectErr(err))
 	}
 	return connect.NewResponse(&pb.DeleteNoteResponse{}), nil
+}
+
+// MoveNote implements druz9.v1.HoneService/MoveNote.
+func (s *HoneServer) MoveNote(
+	ctx context.Context,
+	req *connect.Request[pb.MoveNoteRequest],
+) (*connect.Response[pb.Note], error) {
+	uid, err := requireUser(ctx)
+	if err != nil {
+		return nil, err
+	}
+	noteID, parseErr := uuid.Parse(req.Msg.GetNoteId())
+	if parseErr != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("invalid note_id: %w", parseErr))
+	}
+	var folderID *uuid.UUID
+	if fid := req.Msg.FolderId; fid != nil {
+		parsed, parseErr := uuid.Parse(*fid)
+		if parseErr != nil {
+			return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("invalid folder_id: %w", parseErr))
+		}
+		folderID = &parsed
+	}
+	n, err := s.H.MoveNote.Do(ctx, app.MoveNoteInput{UserID: uid, NoteID: noteID, FolderID: folderID})
+	if err != nil {
+		return nil, fmt.Errorf("hone.MoveNote: %w", s.toConnectErr(err))
+	}
+	return connect.NewResponse(toNoteProto(n)), nil
+}
+
+// CreateFolder implements druz9.v1.HoneService/CreateFolder.
+func (s *HoneServer) CreateFolder(
+	ctx context.Context,
+	req *connect.Request[pb.CreateFolderRequest],
+) (*connect.Response[pb.Folder], error) {
+	uid, err := requireUser(ctx)
+	if err != nil {
+		return nil, err
+	}
+	var parentID *uuid.UUID
+	if pid := req.Msg.ParentId; pid != nil {
+		parsed, parseErr := uuid.Parse(*pid)
+		if parseErr != nil {
+			return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("invalid parent_id: %w", parseErr))
+		}
+		parentID = &parsed
+	}
+	f, err := s.H.CreateFolder.Do(ctx, app.CreateFolderInput{
+		UserID:   uid,
+		Name:     req.Msg.GetName(),
+		ParentID: parentID,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("hone.CreateFolder: %w", s.toConnectErr(err))
+	}
+	return connect.NewResponse(toFolderProto(f)), nil
+}
+
+// ListFolders implements druz9.v1.HoneService/ListFolders.
+func (s *HoneServer) ListFolders(
+	ctx context.Context,
+	_ *connect.Request[pb.ListFoldersRequest],
+) (*connect.Response[pb.ListFoldersResponse], error) {
+	uid, err := requireUser(ctx)
+	if err != nil {
+		return nil, err
+	}
+	folders, err := s.H.ListFolders.Do(ctx, uid)
+	if err != nil {
+		return nil, fmt.Errorf("hone.ListFolders: %w", s.toConnectErr(err))
+	}
+	resp := &pb.ListFoldersResponse{}
+	for _, f := range folders {
+		resp.Folders = append(resp.Folders, toFolderProto(f))
+	}
+	return connect.NewResponse(resp), nil
+}
+
+// DeleteFolder implements druz9.v1.HoneService/DeleteFolder.
+func (s *HoneServer) DeleteFolder(
+	ctx context.Context,
+	req *connect.Request[pb.DeleteFolderRequest],
+) (*connect.Response[pb.DeleteFolderResponse], error) {
+	uid, err := requireUser(ctx)
+	if err != nil {
+		return nil, err
+	}
+	folderID, parseErr := uuid.Parse(req.Msg.GetId())
+	if parseErr != nil {
+		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("invalid id: %w", parseErr))
+	}
+	if err := s.H.DeleteFolder.Do(ctx, app.DeleteFolderInput{
+		UserID:          uid,
+		FolderID:        folderID,
+		MoveNotesToRoot: req.Msg.GetMoveNotesToRoot(),
+	}); err != nil {
+		return nil, fmt.Errorf("hone.DeleteFolder: %w", s.toConnectErr(err))
+	}
+	return connect.NewResponse(&pb.DeleteFolderResponse{}), nil
 }
 
 // GetNoteConnections implements druz9.v1.HoneService/GetNoteConnections (server-streaming).
@@ -850,7 +966,7 @@ func toQueueItemProto(q domain.QueueItem) *pb.QueueItem {
 }
 
 func toNoteProto(n domain.Note) *pb.Note {
-	return &pb.Note{
+	out := &pb.Note{
 		Id:        n.ID.String(),
 		Title:     n.Title,
 		BodyMd:    n.BodyMD,
@@ -858,15 +974,39 @@ func toNoteProto(n domain.Note) *pb.Note {
 		UpdatedAt: timestamppb.New(n.UpdatedAt.UTC()),
 		SizeBytes: int32(n.SizeBytes),
 	}
+	if n.FolderID != nil {
+		s := n.FolderID.String()
+		out.FolderId = &s
+	}
+	return out
 }
 
 func toNoteSummaryProto(n domain.NoteSummary) *pb.NoteSummary {
-	return &pb.NoteSummary{
+	out := &pb.NoteSummary{
 		Id:        n.ID.String(),
 		Title:     n.Title,
 		UpdatedAt: timestamppb.New(n.UpdatedAt.UTC()),
 		SizeBytes: int32(n.SizeBytes),
 	}
+	if n.FolderID != nil {
+		s := n.FolderID.String()
+		out.FolderId = &s
+	}
+	return out
+}
+
+func toFolderProto(f domain.Folder) *pb.Folder {
+	out := &pb.Folder{
+		Id:        f.ID.String(),
+		Name:      f.Name,
+		CreatedAt: timestamppb.New(f.CreatedAt.UTC()),
+		UpdatedAt: timestamppb.New(f.UpdatedAt.UTC()),
+	}
+	if f.ParentID != nil {
+		s := f.ParentID.String()
+		out.ParentId = &s
+	}
+	return out
 }
 
 func toConnectionProto(c domain.Connection) *pb.Connection {

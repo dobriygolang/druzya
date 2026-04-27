@@ -12,6 +12,7 @@ import {
   eventChannels,
   invokeChannels,
   type AuthSession,
+  type CueSessionAnalysis,
   type HoneAPI,
   type PomodoroSnapshot,
   type TelegramPollResult,
@@ -58,6 +59,10 @@ const api: HoneAPI = {
       ipcRenderer.invoke(invokeChannels.vaultPassSave, passphrase) as Promise<void>,
     passClear: () =>
       ipcRenderer.invoke(invokeChannels.vaultPassClear) as Promise<void>,
+  },
+  cue: {
+    readNote: (filePath: string) =>
+      ipcRenderer.invoke(invokeChannels.cueReadNote, filePath) as Promise<CueSessionAnalysis | null>,
   },
   on: (channel, listener) => {
     const wire = eventChannels[channel];

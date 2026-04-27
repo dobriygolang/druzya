@@ -112,6 +112,12 @@ type MockMessagesReader interface {
 	TopKeywords(ctx context.Context, userID uuid.UUID, withinDays int, topN int) ([]MockKeywords, error)
 }
 
+// CodexReader returns curated in-app learning materials matching coach
+// signals. It must only return active Codex objects that exist in DB.
+type CodexReader interface {
+	SuggestArticles(ctx context.Context, userID uuid.UUID, topics []string, limit int) ([]CodexArticleSuggestion, error)
+}
+
 // BriefSynthesizer generates the daily brief via TaskDailyBrief. Real impl
 // returns strict JSON parsed into the struct; floor returns ErrLLMUnavailable.
 type BriefSynthesizer interface {
@@ -131,6 +137,10 @@ type BriefPromptInput struct {
 	// «past coach interactions» — синтезайзер избегает повторов и
 	// корректирует тон под историю user-реакций.
 	PastEpisodes []Episode
+	// CueMemories — compact derived evidence from Cue desktop turns.
+	// Treat as weak interview-practice signal: useful for topics/outcomes,
+	// not as authoritative user profile facts.
+	CueMemories []Episode
 
 	// ── Cross-product сигналы (могут быть пустыми если reader не wired) ──
 
@@ -163,6 +173,10 @@ type BriefPromptInput struct {
 	// MockKeywords — top hot topics из user-сообщений в mock-сессиях за
 	// 14 дней. Term-frequency analysis. Coach видит реальные topics.
 	MockKeywords []MockKeywords
+
+	// CodexArticles — curated learning links selected from codex_articles
+	// for current weak topics. The LLM may link only to these exact URLs.
+	CodexArticles []CodexArticleSuggestion
 }
 
 // AskNotesPromptInput — вход для NoteAnswerer (Phase B). Past Q&A

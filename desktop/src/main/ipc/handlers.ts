@@ -18,7 +18,9 @@ import {
   areaRectSchema,
   documentSearchSchema,
   documentUploadSchema,
+  hotkeyActionSchema,
   hotkeyBindingsSchema,
+  memorySyncSchema,
   masqueradeApplySchema,
   permissionKindSchema,
   pickerKindSchema,
@@ -41,6 +43,7 @@ import { currentState as cursorState, toggle as cursorToggle } from '../cursor/f
 import { createPersonasClient, type PersonaDTO } from '../api/personas';
 import { createSessionsClient } from '../api/sessions';
 import { createDocumentsClient } from '../api/documents';
+import { createMemoryClient } from '../api/memory';
 import { createTranscriptionClient } from '../api/transcription';
 import { createAudioCapture } from '../capture/audio-mac';
 import { createSuggestionClient } from '../api/suggestion';
@@ -51,7 +54,7 @@ import { applyPreset, getCurrent, listPresets } from '../masquerade';
 import { checkNow, getStatus, installNow } from '../updater';
 import { captureArea, captureFullScreen } from '../capture/screenshot';
 import { cursorBridge } from '../cursor/freeze-bridge';
-import { applyBindings, listBindings } from '../hotkeys/registry';
+import { applyBindings, fireAction, listBindings } from '../hotkeys/registry';
 import {
   checkPermissions,
   openPermissionPane,
@@ -131,6 +134,15 @@ export function registerHandlers(opts: RegisterOptions): void {
   });
 
   const transcriptionREST = createTranscriptionClient({
+    apiBaseURL,
+    updateFeedURL: '',
+    sentryDSN: '',
+    environment: '',
+    defaultLocale: 'ru',
+    isDev: false,
+  });
+
+  const memoryREST = createMemoryClient({
     apiBaseURL,
     updateFeedURL: '',
     sentryDSN: '',
@@ -363,6 +375,9 @@ export function registerHandlers(opts: RegisterOptions): void {
   handleIn(invokeChannels.hotkeysUpdate, hotkeyBindingsSchema, async (bindings) => {
     applyBindings(bindings);
   });
+  handleIn(invokeChannels.hotkeysTrigger, hotkeyActionSchema, async (action) => {
+    fireAction(action);
+  });
   ipcMain.handle(invokeChannels.hotkeysCaptureOnce, async () => {
     // MVP stub — settings UI builds accelerator strings locally and sends
     // them via hotkeysUpdate. Real implementation would intercept keys
@@ -435,6 +450,9 @@ export function registerHandlers(opts: RegisterOptions): void {
   });
   handleIn(invokeChannels.historyDelete, shortIdSchema, async (id) => {
     await client.deleteConversation({ id });
+  });
+  handleIn(invokeChannels.memorySync, memorySyncSchema, async ({ conversationId, memory }) => {
+    await memoryREST.sync(conversationId, memory);
   });
 
   // ── Providers / quota ──
@@ -509,6 +527,17 @@ export function registerHandlers(opts: RegisterOptions): void {
   handleIn(invokeChannels.shellOpenExternal, urlSchema, async (url) => {
     if (!/^https?:\/\//i.test(url)) return;
     await shell.openExternal(url);
+  });
+
+  // ── Notes ──
+  handleIn(invokeChannels.notesShowInFolder, z.string(), async (filePath) => {
+    shell.showItemInFolder(filePath);
+  });
+  handleIn(invokeChannels.notesOpenInHone, z.string(), async (filePath) => {
+    // Hone registers the hone:// URL scheme. The path is base64-encoded so
+    // special characters in macOS paths don't break the URL.
+    const encoded = Buffer.from(filePath).toString('base64');
+    await shell.openExternal(`druz9://notes/import?path=${encoded}`);
   });
 
   // ── App lifecycle ──

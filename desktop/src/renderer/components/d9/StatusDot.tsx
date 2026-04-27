@@ -7,12 +7,12 @@ import { Fragment } from 'react';
 export type DotState = 'idle' | 'ready' | 'thinking' | 'streaming' | 'recording' | 'error';
 
 const CFG: Record<DotState, { c: string; pulse: boolean }> = {
-  idle:      { c: 'var(--d9-ink-mute)',   pulse: false },
-  ready:     { c: 'var(--d9-ok)',         pulse: false },
-  thinking:  { c: 'var(--d9-accent)',     pulse: true  },
-  streaming: { c: 'var(--d9-accent-hi)',  pulse: true  },
-  recording: { c: 'var(--d9-err)',        pulse: true  },
-  error:     { c: 'var(--d9-err)',        pulse: false },
+  idle:      { c: 'rgba(255,255,255,0.3)', pulse: false },
+  ready:     { c: 'var(--d9-accent)',      pulse: false },
+  thinking:  { c: 'var(--d9-accent)',      pulse: true  },
+  streaming: { c: 'var(--d9-accent)',      pulse: true  },
+  recording: { c: 'oklch(0.65 0.22 25)',   pulse: true  },
+  error:     { c: 'oklch(0.65 0.22 25)',   pulse: false },
 };
 
 let keyframesInjected = false;

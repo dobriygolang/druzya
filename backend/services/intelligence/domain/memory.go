@@ -36,6 +36,9 @@ const (
 	// article. Daily Brief uses these to spot reading patterns
 	// ("regularly opening sysdesign content → suggest a sysdesign mock").
 	EpisodeCodexArticleOpened EpisodeKind = "codex_article_opened"
+	// EpisodeCueConversationMemory stores compact derived memory from
+	// Cue desktop conversations. Raw screenshots/audio are never stored.
+	EpisodeCueConversationMemory EpisodeKind = "cue_conversation_memory"
 )
 
 // IsValid powers exhaustive switches and runtime guards.
@@ -46,7 +49,7 @@ func (k EpisodeKind) IsValid() bool {
 		EpisodeReflectionAdded, EpisodeStandupRecorded,
 		EpisodePlanSkipped, EpisodePlanCompleted,
 		EpisodeNoteCreated, EpisodeFocusSessionDone,
-		EpisodeMockPipelineFinished, EpisodeCodexArticleOpened:
+		EpisodeMockPipelineFinished, EpisodeCodexArticleOpened, EpisodeCueConversationMemory:
 		return true
 	}
 	return false
@@ -88,6 +91,9 @@ type EpisodeRepo interface {
 	Append(ctx context.Context, e Episode) error
 	LatestByKind(ctx context.Context, userID uuid.UUID, kind EpisodeKind, limit int) ([]Episode, error)
 	LatestByKinds(ctx context.Context, userID uuid.UUID, kinds []EpisodeKind, limit int) ([]Episode, error)
+	// LatestPerKind returns up to perKindLimit newest rows for each kind in
+	// one query. Used by recall recency tails to avoid one SQL round-trip per kind.
+	LatestPerKind(ctx context.Context, userID uuid.UUID, kinds []EpisodeKind, perKindLimit int) ([]Episode, error)
 	// SearchSimilar returns top-K by cosine over embedding. kinds is
 	// optional filter (empty = all kinds). Episodes без embedding'а
 	// автоматически пропускаются.
@@ -100,9 +106,10 @@ type EpisodeRepo interface {
 	// Stats30d returns total + per-kind counts for the user, last 30d.
 	Stats30d(ctx context.Context, userID uuid.UUID) (MemoryStats, error)
 	// GetBriefRecommendations возвращает recommendations payload одного
-	// сохранённого brief'а. Используется AckRecommendation чтобы достать
-	// title + kind по index'у — без отдельного fetch'а из hone_daily_briefs.
-	GetBriefRecommendations(ctx context.Context, briefID uuid.UUID) ([]Recommendation, error)
+	// сохранённого brief'а, scoped by owner. Используется AckRecommendation
+	// чтобы достать title + kind по index'у без отдельного fetch'а из
+	// hone_daily_briefs.
+	GetBriefRecommendations(ctx context.Context, userID, briefID uuid.UUID) ([]Recommendation, error)
 }
 
 // ErrEpisodeNotFound — sentinel для GetBriefRecommendations.

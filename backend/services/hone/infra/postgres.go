@@ -592,11 +592,16 @@ func (n *Notes) Create(ctx context.Context, note domain.Note) (domain.Note, erro
 		createdAt time.Time
 		updatedAt time.Time
 	)
+	var folderID *pgtype.UUID
+	if note.FolderID != nil {
+		v := sharedpg.UUID(*note.FolderID)
+		folderID = &v
+	}
 	err := n.pool.QueryRow(ctx,
-		`INSERT INTO hone_notes (user_id, title, body_md, size_bytes)
-		 VALUES ($1, $2, $3, $4)
+		`INSERT INTO hone_notes (user_id, title, body_md, size_bytes, folder_id)
+		 VALUES ($1, $2, $3, $4, $5)
 		 RETURNING id, created_at, updated_at`,
-		sharedpg.UUID(note.UserID), note.Title, note.BodyMD, int32(note.SizeBytes),
+		sharedpg.UUID(note.UserID), note.Title, note.BodyMD, int32(note.SizeBytes), folderID,
 	).Scan(&id, &createdAt, &updatedAt)
 	if err != nil {
 		return domain.Note{}, fmt.Errorf("hone.Notes.Create: %w", err)
@@ -637,6 +642,7 @@ func (n *Notes) Get(ctx context.Context, userID, noteID uuid.UUID) (domain.Note,
 		title          string
 		bodyMD         string
 		sizeBytes      int32
+		folderID       pgtype.UUID
 		embedding      []float32
 		embeddingModel pgtype.Text
 		embeddedAt     pgtype.Timestamptz
@@ -645,11 +651,11 @@ func (n *Notes) Get(ctx context.Context, userID, noteID uuid.UUID) (domain.Note,
 		encrypted      bool
 	)
 	err := n.pool.QueryRow(ctx,
-		`SELECT title, body_md, size_bytes, embedding, embedding_model, embedded_at, created_at, updated_at, encrypted
+		`SELECT title, body_md, size_bytes, folder_id, embedding, embedding_model, embedded_at, created_at, updated_at, encrypted
 		   FROM hone_notes
 		  WHERE id=$1 AND user_id=$2`,
 		sharedpg.UUID(noteID), sharedpg.UUID(userID),
-	).Scan(&title, &bodyMD, &sizeBytes, &embedding, &embeddingModel, &embeddedAt, &createdAt, &updatedAt, &encrypted)
+	).Scan(&title, &bodyMD, &sizeBytes, &folderID, &embedding, &embeddingModel, &embeddedAt, &createdAt, &updatedAt, &encrypted)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return domain.Note{}, domain.ErrNotFound
@@ -666,6 +672,10 @@ func (n *Notes) Get(ctx context.Context, userID, noteID uuid.UUID) (domain.Note,
 		CreatedAt: createdAt,
 		UpdatedAt: updatedAt,
 		Encrypted: encrypted,
+	}
+	if folderID.Valid {
+		fid := sharedpg.UUIDFrom(folderID)
+		out.FolderID = &fid
 	}
 	if embeddingModel.Valid {
 		out.EmbeddingModel = embeddingModel.String
@@ -714,7 +724,7 @@ func decodeNotesCursor(s string) (notesListCursor, error) {
 // Пустая строка next_cursor означает конец выборки. Размер страницы: до limit.
 // Дополнительная строка «подглядывания» (limit+1) используется чтобы понять,
 // есть ли следующая страница, не делая второй запрос.
-func (n *Notes) List(ctx context.Context, userID uuid.UUID, limit int, cursor string) ([]domain.NoteSummary, string, error) {
+func (n *Notes) List(ctx context.Context, userID uuid.UUID, limit int, cursor string, folderID *uuid.UUID) ([]domain.NoteSummary, string, error) {
 	c, err := decodeNotesCursor(cursor)
 	if err != nil {
 		return nil, "", fmt.Errorf("hone.Notes.List: %w", err)
@@ -723,30 +733,39 @@ func (n *Notes) List(ctx context.Context, userID uuid.UUID, limit int, cursor st
 	// archived_at IS NULL — Phase C-2: archived notes скрываются из
 	// основного списка. Recover через GET-by-id (всегда работает) либо
 	// через будущий «View archived» режим.
-	const sqlBase = `SELECT id, title, size_bytes, updated_at
-	                   FROM hone_notes
-	                  WHERE user_id=$1 AND archived_at IS NULL`
+	sqlBase := `SELECT id, title, size_bytes, folder_id, updated_at
+	              FROM hone_notes
+	             WHERE user_id=$1 AND archived_at IS NULL`
+	args := []any{sharedpg.UUID(userID)}
+
+	if folderID != nil {
+		sqlBase += ` AND folder_id=$2`
+		args = append(args, sharedpg.UUID(*folderID))
+	}
+
 	// Peek limit+1: если вернулось больше limit — значит ещё есть страница.
 	peek := int32(limit) + 1
 
 	var rows pgx.Rows
 	if c.UpdatedAt.IsZero() {
+		nextParam := len(args) + 1
 		rows, err = n.pool.Query(ctx,
-			sqlBase+`
+			sqlBase+fmt.Sprintf(`
 			  ORDER BY updated_at DESC, id DESC
-			  LIMIT $2`,
-			sharedpg.UUID(userID), peek,
+			  LIMIT $%d`, nextParam),
+			append(args, peek)...,
 		)
 	} else {
 		cid, parseErr := uuid.Parse(c.ID)
 		if parseErr != nil {
 			return nil, "", fmt.Errorf("hone.Notes.List: cursor id: %w", parseErr)
 		}
+		np := len(args) + 1
 		rows, err = n.pool.Query(ctx,
-			sqlBase+` AND (updated_at, id) < ($2, $3)
+			sqlBase+fmt.Sprintf(` AND (updated_at, id) < ($%d, $%d)
 			  ORDER BY updated_at DESC, id DESC
-			  LIMIT $4`,
-			sharedpg.UUID(userID), c.UpdatedAt, sharedpg.UUID(cid), peek,
+			  LIMIT $%d`, np, np+1, np+2),
+			append(args, c.UpdatedAt, sharedpg.UUID(cid), peek)...,
 		)
 	}
 	if err != nil {
@@ -760,17 +779,23 @@ func (n *Notes) List(ctx context.Context, userID uuid.UUID, limit int, cursor st
 			id        pgtype.UUID
 			title     string
 			sizeBytes int32
+			fid       pgtype.UUID
 			updatedAt time.Time
 		)
-		if err := rows.Scan(&id, &title, &sizeBytes, &updatedAt); err != nil {
+		if err := rows.Scan(&id, &title, &sizeBytes, &fid, &updatedAt); err != nil {
 			return nil, "", fmt.Errorf("hone.Notes.List: scan: %w", err)
 		}
-		out = append(out, domain.NoteSummary{
+		s := domain.NoteSummary{
 			ID:        sharedpg.UUIDFrom(id),
 			Title:     title,
 			SizeBytes: int(sizeBytes),
 			UpdatedAt: updatedAt,
-		})
+		}
+		if fid.Valid {
+			v := sharedpg.UUIDFrom(fid)
+			s.FolderID = &v
+		}
+		out = append(out, s)
 	}
 	if err := rows.Err(); err != nil {
 		return nil, "", fmt.Errorf("hone.Notes.List: rows: %w", err)
@@ -873,6 +898,24 @@ func (n *Notes) SetEmbedding(ctx context.Context, userID, noteID uuid.UUID, vec 
 	return nil
 }
 
+// Move sets folder_id for a note. folderID nil = move to root (unfiled).
+func (n *Notes) Move(ctx context.Context, userID, noteID uuid.UUID, folderID *uuid.UUID) (domain.Note, error) {
+	var fid *pgtype.UUID
+	if folderID != nil {
+		v := sharedpg.UUID(*folderID)
+		fid = &v
+	}
+	_, err := n.pool.Exec(ctx,
+		`UPDATE hone_notes SET folder_id=$3, updated_at=now()
+		  WHERE id=$1 AND user_id=$2`,
+		sharedpg.UUID(noteID), sharedpg.UUID(userID), fid,
+	)
+	if err != nil {
+		return domain.Note{}, fmt.Errorf("hone.Notes.Move: %w", err)
+	}
+	return n.Get(ctx, userID, noteID)
+}
+
 // WithEmbeddingsForUser returns the minimal projection for cosine scanning.
 // Snippet is the first 140 chars of body_md — enough context for the UI row
 // without dragging full bodies across the wire.
@@ -914,6 +957,130 @@ func (n *Notes) WithEmbeddingsForUser(ctx context.Context, userID uuid.UUID) ([]
 		return nil, fmt.Errorf("hone.Notes.WithEmbeddingsForUser: rows: %w", err)
 	}
 	return out, nil
+}
+
+// ─── Folders ───────────────────────────────────────────────────────────────
+
+// Folders implements domain.FolderRepo.
+type Folders struct {
+	pool *pgxpool.Pool
+}
+
+// NewFolders wraps a pool.
+func NewFolders(pool *pgxpool.Pool) *Folders { return &Folders{pool: pool} }
+
+func (f *Folders) Create(ctx context.Context, folder domain.Folder) (domain.Folder, error) {
+	var (
+		id        pgtype.UUID
+		createdAt time.Time
+		updatedAt time.Time
+	)
+	var parentID *pgtype.UUID
+	if folder.ParentID != nil {
+		v := sharedpg.UUID(*folder.ParentID)
+		parentID = &v
+	}
+	err := f.pool.QueryRow(ctx,
+		`INSERT INTO hone_note_folders (user_id, name, parent_id)
+		 VALUES ($1, $2, $3)
+		 RETURNING id, created_at, updated_at`,
+		sharedpg.UUID(folder.UserID), folder.Name, parentID,
+	).Scan(&id, &createdAt, &updatedAt)
+	if err != nil {
+		return domain.Folder{}, fmt.Errorf("hone.Folders.Create: %w", err)
+	}
+	folder.ID = sharedpg.UUIDFrom(id)
+	folder.CreatedAt = createdAt
+	folder.UpdatedAt = updatedAt
+	return folder, nil
+}
+
+func (f *Folders) List(ctx context.Context, userID uuid.UUID) ([]domain.Folder, error) {
+	rows, err := f.pool.Query(ctx,
+		`SELECT id, name, parent_id, created_at, updated_at
+		   FROM hone_note_folders
+		  WHERE user_id=$1
+		  ORDER BY name ASC`,
+		sharedpg.UUID(userID),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("hone.Folders.List: %w", err)
+	}
+	defer rows.Close()
+	var out []domain.Folder
+	for rows.Next() {
+		var (
+			id        pgtype.UUID
+			name      string
+			parentID  pgtype.UUID
+			createdAt time.Time
+			updatedAt time.Time
+		)
+		if err := rows.Scan(&id, &name, &parentID, &createdAt, &updatedAt); err != nil {
+			return nil, fmt.Errorf("hone.Folders.List: scan: %w", err)
+		}
+		folder := domain.Folder{
+			ID:        sharedpg.UUIDFrom(id),
+			UserID:    userID,
+			Name:      name,
+			CreatedAt: createdAt,
+			UpdatedAt: updatedAt,
+		}
+		if parentID.Valid {
+			pid := sharedpg.UUIDFrom(parentID)
+			folder.ParentID = &pid
+		}
+		out = append(out, folder)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("hone.Folders.List: rows: %w", err)
+	}
+	return out, nil
+}
+
+func (f *Folders) Delete(ctx context.Context, userID, folderID uuid.UUID, moveNotesToRoot bool) error {
+	tx, err := f.pool.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("hone.Folders.Delete: begin: %w", err)
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+
+	if moveNotesToRoot {
+		_, err = tx.Exec(ctx,
+			`UPDATE hone_notes SET folder_id=NULL, updated_at=now()
+			  WHERE folder_id=$1 AND user_id=$2`,
+			sharedpg.UUID(folderID), sharedpg.UUID(userID),
+		)
+		if err != nil {
+			return fmt.Errorf("hone.Folders.Delete: move notes: %w", err)
+		}
+	} else {
+		var count int
+		if scanErr := tx.QueryRow(ctx,
+			`SELECT COUNT(*) FROM hone_notes WHERE folder_id=$1 AND user_id=$2`,
+			sharedpg.UUID(folderID), sharedpg.UUID(userID),
+		).Scan(&count); scanErr != nil {
+			return fmt.Errorf("hone.Folders.Delete: count notes: %w", scanErr)
+		}
+		if count > 0 {
+			return domain.ErrFolderNotEmpty
+		}
+	}
+
+	cmd, err := tx.Exec(ctx,
+		`DELETE FROM hone_note_folders WHERE id=$1 AND user_id=$2`,
+		sharedpg.UUID(folderID), sharedpg.UUID(userID),
+	)
+	if err != nil {
+		return fmt.Errorf("hone.Folders.Delete: delete: %w", err)
+	}
+	if cmd.RowsAffected() == 0 {
+		return domain.ErrNotFound
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return fmt.Errorf("hone.Folders.Delete: commit: %w", err)
+	}
+	return nil
 }
 
 // ─── Whiteboards ───────────────────────────────────────────────────────────

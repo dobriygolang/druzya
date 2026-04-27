@@ -2,7 +2,7 @@
 // `@/renderer/components/d9` rather than individual files so screens stay
 // tidy.
 
-export { BrandMark, resolvePersonaGradient } from './BrandMark';
+export { BrandMark, CompactLogo, resolvePersonaGradient } from './BrandMark';
 export type { BrandPersona } from './BrandMark';
 export { IconButton } from './IconButton';
 export type { IconButtonTone } from './IconButton';

@@ -79,7 +79,7 @@ func EnforceCreate(
 //
 // Run: каждый час, начиная через 5 мин после старта (warmup).
 
-func runFreeTierShareDowngradeWhiteboard(ctx context.Context, pool *pgxpool.Pool, log *slog.Logger) {
+func RunFreeTierShareDowngradeWhiteboard(ctx context.Context, pool *pgxpool.Pool, log *slog.Logger) {
 	// Initial run — 30 секунд после старта (раньше 5 мин). Юзер сейчас
 	// видит "OVER LIMIT" и хочет немедленный fix; ждать 5 мин — плохой UX.
 	// 30s достаточно чтобы DB pool нагрелся и migration completed.
@@ -151,7 +151,7 @@ func downgradeOnceWhiteboard(ctx context.Context, pool *pgxpool.Pool, log *slog.
 	}
 }
 
-func runFreeTierShareDowngradeEditor(ctx context.Context, pool *pgxpool.Pool, log *slog.Logger) {
+func RunFreeTierShareDowngradeEditor(ctx context.Context, pool *pgxpool.Pool, log *slog.Logger) {
 	// Initial run — 30 секунд после старта (раньше 5 мин). Юзер сейчас
 	// видит "OVER LIMIT" и хочет немедленный fix; ждать 5 мин — плохой UX.
 	// 30s достаточно чтобы DB pool нагрелся и migration completed.
@@ -230,7 +230,7 @@ func downgradeOnceEditor(ctx context.Context, pool *pgxpool.Pool, log *slog.Logg
 // не показываются в list, не считаются для quota. Юзер может un-archive
 // через UI / API когда apgrad'нется.
 
-func runFreeTierNotesOverflowArchive(ctx context.Context, pool *pgxpool.Pool, log *slog.Logger) {
+func RunFreeTierNotesOverflowArchive(ctx context.Context, pool *pgxpool.Pool, log *slog.Logger) {
 	first := time.NewTimer(45 * time.Second)
 	defer first.Stop()
 	tick := time.NewTicker(time.Hour)

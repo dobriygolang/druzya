@@ -53,6 +53,49 @@ type ConversationSummary struct {
 	MessageCount int
 }
 
+// ConversationMemory is compact derived evidence synced by Cue desktop for
+// backend coach jobs. It deliberately excludes raw screenshots, raw audio,
+// and renderer UI dumps.
+type ConversationMemory struct {
+	Turns             []MemoryTurn
+	ScreenshotSummary string
+	Topics            []string
+	Outcome           MemoryOutcome
+	RollingSummary    string
+	Embeddings        []MemoryEmbedding
+}
+
+type MemoryOutcome string
+
+const (
+	MemoryOutcomeAnswered MemoryOutcome = "answered"
+	MemoryOutcomeWeak     MemoryOutcome = "weak"
+	MemoryOutcomeSkipped  MemoryOutcome = "skipped"
+	MemoryOutcomeUnclear  MemoryOutcome = "unclear"
+)
+
+func (o MemoryOutcome) IsValid() bool {
+	switch o {
+	case MemoryOutcomeAnswered, MemoryOutcomeWeak, MemoryOutcomeSkipped, MemoryOutcomeUnclear:
+		return true
+	default:
+		return false
+	}
+}
+
+type MemoryTurn struct {
+	Question      string
+	Answer        string
+	HasScreenshot bool
+	Timestamp     time.Time
+	Model         string
+}
+
+type MemoryEmbedding struct {
+	Term   string
+	Weight float64
+}
+
 // Quota is a user's per-window request bucket. ResetsAt is the moment at
 // which requests_used should roll back to zero.
 type Quota struct {

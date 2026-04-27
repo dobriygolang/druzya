@@ -14,6 +14,7 @@ import { eventChannels } from '@shared/ipc';
 import type { Session, SessionAnalysis, SessionKind } from '@shared/types';
 
 import type { SessionsClient } from '../api/sessions';
+import { saveNotes } from '../notes/service';
 import { broadcast } from '../windows/window-manager';
 
 const POLL_INTERVAL_MS = 3000;
@@ -55,6 +56,11 @@ export function createSessionManager(deps: ManagerDeps): SessionManager {
         const analysis = await deps.client.getAnalysis(sessionId);
         if (analysis.status === 'ready' || analysis.status === 'failed') {
           broadcast(eventChannels.sessionAnalysisReady, analysis);
+          if (analysis.status === 'ready') {
+            saveNotes(analysis)
+              .then((saved) => broadcast(eventChannels.notesReady, saved))
+              .catch(() => { /* non-critical — notes saving failure is silent */ });
+          }
           return;
         }
       } catch {

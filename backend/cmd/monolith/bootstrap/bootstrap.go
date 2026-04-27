@@ -17,6 +17,25 @@ import (
 	"time"
 
 	"druz9/cmd/monolith/services"
+	adminServices "druz9/cmd/monolith/services/admin"
+	aiMockServices "druz9/cmd/monolith/services/ai_mock"
+	arenaServices "druz9/cmd/monolith/services/arena"
+	authServices "druz9/cmd/monolith/services/auth"
+	circlesServices "druz9/cmd/monolith/services/circles"
+	copilotServices "druz9/cmd/monolith/services/copilot"
+	dailyServices "druz9/cmd/monolith/services/daily"
+	editorServices "druz9/cmd/monolith/services/editor"
+	eventsServices "druz9/cmd/monolith/services/events"
+	honeServices "druz9/cmd/monolith/services/hone"
+	intelligenceService "druz9/cmd/monolith/services/intelligence"
+	notifyServices "druz9/cmd/monolith/services/notify"
+	podcastServices "druz9/cmd/monolith/services/podcast"
+	profileServices "druz9/cmd/monolith/services/profile"
+	ratingServices "druz9/cmd/monolith/services/rating"
+	reviewServices "druz9/cmd/monolith/services/review"
+	slotServices "druz9/cmd/monolith/services/slot"
+	subscriptionServices "druz9/cmd/monolith/services/subscription"
+	whiteboardRoomsServices "druz9/cmd/monolith/services/whiteboard_rooms"
 	"druz9/shared/pkg/config"
 	"druz9/shared/pkg/eventbus"
 	"druz9/shared/pkg/killswitch"
@@ -43,7 +62,7 @@ type App struct {
 	redis   *redis.Client
 	bus     *eventbus.InProcess
 	httpSrv *http.Server
-	notify  *services.NotifyModule
+	notify  *notifyServices.NotifyModule
 	modules []*services.Module
 
 	// llmCacheClose — дренит worker-пул llmcache.SemanticCache при
@@ -92,7 +111,7 @@ func New(ctx context.Context, cfg *config.Config) (app *App, otelShutdown func()
 	// не фатально — BuildLLMChainWithCache возвращает nil ChatClient и
 	// downstream-сервисы деградируют в disabled-ветку. Cache-shutdown
 	// регистрируется ниже в registerInfraClosers через поле llmCacheClose.
-	llmChain, llmRawChain, llmCacheClose, lcErr := services.BuildLLMChainWithCache(*cfg, log, rdb, pool, ctx)
+	llmChain, llmRawChain, llmCacheClose, lcErr := adminServices.BuildLLMChainWithCache(*cfg, log, rdb, pool, ctx)
 
 	if lcErr != nil {
 		pool.Close()
@@ -127,11 +146,11 @@ func New(ctx context.Context, cfg *config.Config) (app *App, otelShutdown func()
 	// бесконечно, OVER LIMIT UI cosmetic only. Pass via &deps чтобы
 	// модификации QuotaResolver/etc были видны всем последующим NewX(deps)
 	// вызовам (deps уже изменён, копии в NewX будут содержать valid pointers).
-	services.WireSubscriptionQuota(&deps)
+	subscriptionServices.WireSubscriptionQuota(&deps)
 
 	// Auth must come first — its TokenIssuer + RequireAuth feed every
 	// other module that needs WS auth or a connect mount behind bearer.
-	auth, aerr := services.NewAuth(deps, os.Getenv("ENCRYPTION_KEY"))
+	auth, aerr := authServices.NewAuth(deps, os.Getenv("ENCRYPTION_KEY"))
 	if aerr != nil {
 		pool.Close()
 		_ = rdb.Close()
@@ -139,8 +158,8 @@ func New(ctx context.Context, cfg *config.Config) (app *App, otelShutdown func()
 	}
 	deps.TokenIssuer = auth.Issuer
 
-	rating := services.NewRating(deps)
-	notify, nerr := services.NewNotify(deps)
+	rating := ratingServices.NewRating(deps)
+	notify, nerr := notifyServices.NewNotify(deps)
 	if nerr != nil {
 		pool.Close()
 		_ = rdb.Close()
@@ -150,15 +169,15 @@ func New(ctx context.Context, cfg *config.Config) (app *App, otelShutdown func()
 	// auth code repo via a thin adapter (see services/adapters.go).
 	notify.Bot.SetCodeFiller(services.NewTelegramCodeFillerAdapter(auth.TelegramCodes))
 
-	statsMod := services.NewStats(deps)
+	statsMod := adminServices.NewStats(deps)
 
 	// Slot must be wired before Review — review.CreateReview needs slot's
 	// BookingRepo to validate ownership of the booking being reviewed.
-	slotMod, slotBookings := services.NewSlot(deps)
-	reviewMod := services.NewReview(deps, slotBookings)
+	slotMod, slotBookings := slotServices.NewSlot(deps)
+	reviewMod := reviewServices.NewReview(deps, slotBookings)
 	// Circles wired ahead of `modules` so Events can borrow its handlers
 	// for the CircleAuthority gate without a second instantiation.
-	circlesMod := services.NewCircles(deps)
+	circlesMod := circlesServices.NewCircles(deps)
 	// Intelligence wired ahead so its MemoryHook is available to Hone
 	// (Hone-handlers'ы вызывают Hook.OnReflectionAdded etc).
 	// Storage gate должен быть построен ДО Hone — Hone оборачивает свои
@@ -175,7 +194,7 @@ func New(ctx context.Context, cfg *config.Config) (app *App, otelShutdown func()
 	syncMod, syncHeartbeat := services.NewSync(deps)
 	deps.SyncHeartbeat = syncHeartbeat
 
-	intelligenceMod := services.NewIntelligence(deps)
+	intelligenceMod := intelligenceService.New(deps)
 	deps.IntelligenceMemoryHook = intelligenceMod.Hook
 	deps.IntelligenceMockMemoryHook = intelligenceMod.MockHook
 	deps.IntelligenceMemory = intelligenceMod.Memory
@@ -183,28 +202,28 @@ func New(ctx context.Context, cfg *config.Config) (app *App, otelShutdown func()
 	modules := []*services.Module{
 		&auth.Module,
 		statsMod,
-		services.NewProfile(deps),
-		services.NewDaily(deps),
+		profileServices.NewProfile(deps),
+		dailyServices.NewDaily(deps),
 		&rating.Module,
-		services.NewArena(deps, rating.Repo),
-		services.NewAIMock(deps),
-		services.NewAIModels(deps),
+		arenaServices.NewArena(deps, rating.Repo),
+		aiMockServices.NewAIMock(deps),
+		adminServices.NewAIModels(deps),
 		// Admin CRUD over the canonical `tasks` table (Arena 1v1/2v2 +
 		// Daily Kata pool). Backend for the Arena Tasks tab in /admin.
-		services.NewAdminArenaTasks(deps),
+		arenaServices.NewAdminArenaTasks(deps),
 		// Public per-day status history → spark bars on /status.
-		services.NewStatusHistory(deps),
+		adminServices.NewStatusHistory(deps),
 		// Per-user mock-interview insights aggregator → /insights live cards.
-		services.NewMockInsights(deps),
+		aiMockServices.NewMockInsights(deps),
 		// Codex catalogue (public read + admin CRUD over codex_articles).
-		services.NewCodex(deps),
+		adminServices.NewCodex(deps),
 		// Admin write surface for `llm_models` (public read = ai_models.go).
-		services.NewAdminAIModels(deps),
+		adminServices.NewAdminAIModels(deps),
 		// Personas — public catalogue + admin CRUD (Copilot expert mode).
-		services.NewAdminPersonas(deps),
+		adminServices.NewPersonas(deps),
 		// VPS retention sweep — see cleanup_crons.go header for tables/
 		// policies. Pure background, no REST surface.
-		services.NewCleanupCrons(deps),
+		adminServices.NewCleanupCrons(deps),
 		// Phase-4 ADR-001 — `ai_native` removed (NativeRoundPage was a
 		// legacy mock-round flow with no UI entry point); `season` removed
 		// (incomplete season pass, no UI surface). Event publishers in
@@ -214,39 +233,39 @@ func New(ctx context.Context, cfg *config.Config) (app *App, otelShutdown func()
 		reviewMod,
 		// Phase-4 ADR-001 (Wave 2) — `cohort` removed (feature merged into circles).
 		&notify.Module,
-		services.NewEditor(deps),
-		services.NewPodcast(deps),
-		services.NewAdmin(deps),
-		services.NewFeed(deps),
-		services.NewVacancies(deps),
+		editorServices.NewEditor(deps),
+		podcastServices.NewPodcast(deps),
+		adminServices.NewAdmin(deps),
+		circlesServices.NewFeed(deps),
+		adminServices.NewVacancies(deps),
 		// Phase-4 ADR-001 — `achievements` removed (gamification cut, no UI surface).
-		services.NewFriends(deps),
-		services.NewHone(deps),
+		circlesServices.NewFriends(deps),
+		honeServices.NewHone(deps),
 		intelligenceMod.Module,
-		services.NewWhiteboardRooms(deps),
+		whiteboardRoomsServices.NewWhiteboardRooms(deps),
 		circlesMod.Module,
-		services.NewMockInterview(deps),
-		services.NewEvents(deps, circlesMod),
-		services.NewLobby(deps),
-		services.NewSubscription(deps),
+		aiMockServices.NewMockInterview(deps),
+		eventsServices.NewEvents(deps, circlesMod),
+		circlesServices.NewLobby(deps),
+		subscriptionServices.NewSubscription(deps),
 		storageMod,
 		syncMod,
 		syncEventsMod,
-		services.NewYjsPersistence(deps),
-		services.NewVault(deps),
-		services.NewPublishing(deps),
-		services.NewLLMChainAdmin(deps, llmRawChain, llmRegisteredProviders(llmRawChain)),
+		honeServices.NewYjsPersistence(deps),
+		honeServices.NewVault(deps),
+		honeServices.NewPublishing(deps),
+		adminServices.NewLLMChainAdmin(deps, llmRawChain, llmRegisteredProviders(llmRawChain)),
 	}
 
 	// Documents module is wired first so its searcher adapter can be
 	// passed into copilot for RAG-context injection. When the module is
 	// disabled (OLLAMA_HOST unset) the searcher is nil and copilot's
 	// Analyze cleanly skips the RAG path.
-	documentsMod, docSearcher := services.NewDocuments(deps)
+	documentsMod, docSearcher := copilotServices.NewDocuments(deps)
 	modules = append(modules,
 		documentsMod,
-		services.NewTranscription(deps),
-		services.NewCopilot(deps, docSearcher),
+		copilotServices.NewTranscription(deps),
+		copilotServices.NewCopilot(deps, docSearcher),
 	)
 
 	registerSubscribers(bus, modules)

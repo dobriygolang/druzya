@@ -17,6 +17,7 @@ extraResources:
     to: native
     filter: ["**/*"]
 mac:
+  icon: resources/icon.icns
   category: public.app-category.developer-tools
   target:
     - target: dmg

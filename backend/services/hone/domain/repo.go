@@ -3,6 +3,7 @@ package domain
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/google/uuid"
@@ -114,6 +115,21 @@ type ChronicSkill struct {
 	LastSkip  time.Time
 }
 
+// ─── Folders ───────────────────────────────────────────────────────────────
+
+// FolderRepo persists hone_note_folders.
+type FolderRepo interface {
+	Create(ctx context.Context, f Folder) (Folder, error)
+	List(ctx context.Context, userID uuid.UUID) ([]Folder, error)
+	// Delete removes the folder. If moveNotesToRoot is true, notes in this
+	// folder are moved to root (folder_id = NULL) in the same transaction.
+	// If false and notes exist, returns ErrFolderNotEmpty.
+	Delete(ctx context.Context, userID, folderID uuid.UUID, moveNotesToRoot bool) error
+}
+
+// ErrFolderNotEmpty is returned when deleting a non-empty folder without moveNotesToRoot.
+var ErrFolderNotEmpty = fmt.Errorf("folder is not empty")
+
 // ─── Notes ─────────────────────────────────────────────────────────────────
 
 // NoteRepo persists hone_notes.
@@ -121,8 +137,11 @@ type NoteRepo interface {
 	Create(ctx context.Context, n Note) (Note, error)
 	Update(ctx context.Context, n Note) (Note, error)
 	Get(ctx context.Context, userID, noteID uuid.UUID) (Note, error)
-	List(ctx context.Context, userID uuid.UUID, limit int, cursor string) ([]NoteSummary, string, error)
+	// List returns notes filtered by folderID when non-nil, or all notes when nil.
+	List(ctx context.Context, userID uuid.UUID, limit int, cursor string, folderID *uuid.UUID) ([]NoteSummary, string, error)
 	Delete(ctx context.Context, userID, noteID uuid.UUID) error
+	// Move sets folder_id for a note. folderID nil = move to root.
+	Move(ctx context.Context, userID, noteID uuid.UUID, folderID *uuid.UUID) (Note, error)
 	// SetArchived устанавливает archived_at = (now() | NULL) для
 	// (userID, noteID). Phase C-2: archived заметки скрываются из
 	// list-выборки, но всё ещё recoverable через Get-by-id.

@@ -22,14 +22,11 @@
 import { useEffect, useRef, useState } from 'react';
 
 import {
-  BrandMark,
+  CompactLogo,
   D9IconCamera,
   D9IconClose,
   D9IconSettings,
   IconButton,
-  Kbds,
-  ModelPill,
-  PersonaChip,
   QuotaMeterMini,
   StatusDot,
   StreamingHairline,
@@ -102,7 +99,7 @@ export function CompactScreen() {
   // Which picker window is currently open, mirrored from main via
   // `pickerStateChanged` broadcast. Drives the caret-rotation on the
   // matching pill (model / persona). null = no picker open.
-  const [openPicker, setOpenPicker] = useState<'model' | 'persona' | null>(null);
+  const [_openPicker, setOpenPicker] = useState<'model' | 'persona' | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -164,7 +161,8 @@ export function CompactScreen() {
       // Show expanded first so its renderer can subscribe to streaming
       // events before the first backend response arrives (fast
       // providers otherwise fire events before bootstrap()).
-      void window.druz9.windows.show('expanded');
+      await window.druz9.windows.show('expanded');
+      await window.druz9.windows.hide('compact');
       const handle = await window.druz9.analyze.start({
         conversationId,
         promptText: promptWithPersona,
@@ -210,8 +208,17 @@ export function CompactScreen() {
       void capture(action);
     } else if (action === 'quick_prompt') {
       inputRef.current?.focus();
+    } else if (action === 'instant_assist') {
+      if (input.trim() || pending) {
+        void submit();
+      } else {
+        inputRef.current?.focus();
+      }
     } else if (action === 'toggle_window') {
-      void window.druz9.windows.show('expanded');
+      void (async () => {
+        await window.druz9.windows.show('expanded');
+        await window.druz9.windows.hide('compact');
+      })();
     }
   });
 
@@ -251,7 +258,8 @@ export function CompactScreen() {
     });
     setInput('');
     clearPending();
-    void window.druz9.windows.show('expanded');
+    await window.druz9.windows.show('expanded');
+    await window.druz9.windows.hide('compact');
   };
 
   const activeModelId = selectedModel || config?.defaultModelId || '';
@@ -281,11 +289,7 @@ export function CompactScreen() {
         style={{
           width: '100%',
           height: '100%',
-          borderRadius: 18,
-          // Hone-aligned: near-black vertical fade, no blue tint. Top
-          // slightly lifted so the drag region reads as a "lip",
-          // bottom grounds into pure black. Alpha follows the global
-          // Appearance slider.
+          borderRadius: 14,
           background:
             'linear-gradient(180deg, rgba(20, 20, 20, calc(var(--d9-window-alpha) * 0.88)), rgba(8, 8, 8, var(--d9-window-alpha)))',
           backdropFilter: 'var(--d9-glass-blur)',
@@ -321,134 +325,125 @@ export function CompactScreen() {
           />
         )}
 
-        {/* Inner padded column (design: 12px 14px, gap 8) */}
+        {/* Inner padded column */}
         <div
           style={{
-            padding: pending ? '10px 14px 12px' : '12px 14px',
             display: 'flex',
             flexDirection: 'column',
-            gap: 8,
             height: pending ? undefined : '100%',
             position: 'relative',
             zIndex: 1,
           }}
         >
-          {/* Row 1 — primary input. design/windows.jsx:15-39 */}
+          {/* Row 1 — primary input (height 48px) */}
           <div
             style={{
               display: 'flex',
               alignItems: 'center',
               gap: 10,
-              WebkitAppRegion: 'no-drag',
+              height: 48,
+              padding: '0 10px',
+              WebkitAppRegion: 'drag',
             } as React.CSSProperties}
           >
-            <div
-              style={{
-                animation: streaming ? 'd9-brand-pulse 1.8s ease-in-out infinite' : undefined,
-              }}
-            >
-              <BrandMark size={30} />
-            </div>
+            <CompactLogo size={32} />
 
-            {/* Input pill */}
-            <div
+            <input
+              ref={inputRef}
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault();
+                  void submit();
+                } else if (e.key === 'Escape' && pending) {
+                  e.preventDefault();
+                  clearPending();
+                }
+              }}
+              placeholder={
+                streaming
+                  ? 'Думаю…'
+                  : pending
+                  ? 'Добавь вопрос к скриншоту…'
+                  : 'ask anything…'
+              }
               style={{
                 flex: 1,
-                display: 'flex',
-                alignItems: 'center',
-                gap: 6,
-                height: 34,
-                padding: '0 10px 0 12px',
-                borderRadius: 10,
-                background: 'oklch(1 0 0 / 0.05)',
-                border: '0.5px solid var(--d9-hairline)',
-                boxShadow: 'inset 0 0.5px 0 rgba(255,255,255,0.04)',
-              }}
-            >
-              <input
-                ref={inputRef}
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault();
-                    void submit();
-                  } else if (e.key === 'Escape' && pending) {
-                    e.preventDefault();
-                    clearPending();
-                  }
-                }}
-                placeholder={
-                  streaming
-                    ? 'Думаю…'
-                    : pending
-                    ? 'Добавь вопрос к скриншоту…'
-                    : 'Спроси о коде или вопросе…'
-                }
-                style={{
-                  flex: 1,
-                  fontSize: 13,
-                  color: 'var(--d9-ink)',
-                  letterSpacing: '-0.005em',
-                  background: 'transparent',
-                  border: 'none',
-                  outline: 'none',
-                  // `::placeholder` is styled via globals.css — matches
-                  // design's `color: var(--d9-ink-mute)` idle-state text.
-                }}
-              />
-              <Kbds keys={['⌘', '⏎']} size="sm" sep="" />
+                fontSize: 13,
+                color: 'var(--d9-ink)',
+                letterSpacing: '0.01em',
+                background: 'transparent',
+                border: 'none',
+                outline: 'none',
+                caretColor: 'var(--d9-accent)',
+                padding: '0 4px',
+                WebkitAppRegion: 'no-drag',
+              } as React.CSSProperties}
+            />
+
+            {/* Key pills — ⌘ ↵ */}
+            <div style={{ display: 'flex', gap: 4, flexShrink: 0, WebkitAppRegion: 'no-drag' } as React.CSSProperties}>
+              <KeyPill lit={input.length > 0}>⌘</KeyPill>
+              <KeyPill lit={input.length > 0}>↵</KeyPill>
             </div>
+
+            <div style={{ width: 1, height: 18, background: 'var(--d9-hairline-b)', flexShrink: 0, WebkitAppRegion: 'no-drag' } as React.CSSProperties} />
 
             <IconButton
               title="Скриншот области (⌘⇧S)"
               onClick={() => void capture('screenshot_area')}
+              baseColor="var(--d9-ink-mute)"
+              hoverColor="var(--d9-accent)"
             >
-              <D9IconCamera size={14} />
+              <D9IconCamera size={16} />
             </IconButton>
             <IconButton
               title="Настройки"
               onClick={() => void window.druz9.windows.show('settings')}
+              baseColor="var(--d9-ink-mute)"
+              hoverColor="var(--d9-accent)"
             >
               <D9IconSettings size={14} />
             </IconButton>
           </div>
 
-          {/* Row 2 — status. design/windows.jsx:42-59 */}
+          {/* Row 2 — status (height 32px, border-top hairline) */}
           <div
             style={{
               display: 'flex',
               alignItems: 'center',
               gap: 10,
-              height: 22,
+              height: 32,
+              padding: '0 14px',
+              borderTop: '1px solid rgba(255,255,255,0.04)',
               WebkitAppRegion: 'no-drag',
+              fontFamily: 'var(--d9-font-mono)',
+              fontSize: 10,
+              letterSpacing: '0.08em',
+              textTransform: 'uppercase' as const,
+              color: 'var(--d9-ink-mute)',
             } as React.CSSProperties}
           >
-            <ModelPill
-              label={modelDisplayName}
+            <StatusPillBtn
               onClick={() => void window.druz9.windows.showPicker('model')}
               title={config ? 'Выбрать модель' : 'Нужен вход'}
-              open={openPicker === 'model'}
-            />
+            >
+              <StatusDot state={dotState} size={6} />
+              <strong style={{ color: 'var(--d9-ink)', fontWeight: 400 }}>{modelDisplayName}</strong>
+              <span style={{ color: 'var(--d9-ink-ghost)', fontSize: 8 }}>▾</span>
+            </StatusPillBtn>
 
-            <Dot />
-
-            <PersonaChip
-              personaId={activePersona.id}
-              label={activePersona.label}
-              background={activePersona.brand_gradient}
+            <StatusPillBtn
               onClick={() => void window.druz9.windows.showPicker('persona')}
               title={activePersona.hint}
-              compact
-              open={openPicker === 'persona'}
-            />
+            >
+              <StatusDot state={dotState} size={6} />
+              <strong style={{ color: 'var(--d9-ink)', fontWeight: 400 }}>{activePersona.label}</strong>
+              <span style={{ color: 'var(--d9-ink-ghost)', fontSize: 8 }}>▾</span>
+            </StatusPillBtn>
 
-            <Dot />
-
-            <span style={{
-              display: 'inline-flex', alignItems: 'center', gap: 6,
-              fontSize: 11, color: 'var(--d9-ink-mute)', letterSpacing: '-0.005em',
-            }}>
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
               <StatusDot state={dotState} size={6} />
               {statusLabel}
             </span>
@@ -461,9 +456,7 @@ export function CompactScreen() {
                   background: 'var(--d9-accent-glow)',
                   color: 'var(--d9-accent-hi)',
                   borderRadius: 3,
-                  fontSize: 9.5,
-                  fontFamily: 'var(--d9-font-mono)',
-                  letterSpacing: 0.5,
+                  fontSize: 9,
                 }}
               >
                 CURSOR LOCK
@@ -479,7 +472,7 @@ export function CompactScreen() {
                   color: 'var(--d9-ok)',
                   borderRadius: 3,
                   border: 'none',
-                  fontSize: 9.5,
+                  fontSize: 9,
                   fontFamily: 'var(--d9-font-mono)',
                   letterSpacing: 0.5,
                   cursor: 'pointer',
@@ -504,19 +497,70 @@ export function CompactScreen() {
   );
 }
 
-// Small bullet separator between pills in row 2. design/windows.jsx:72-74.
-function Dot() {
+// Keypill — monospace bordered key label; lit = accent when input has text.
+function KeyPill({ children, lit }: { children: React.ReactNode; lit?: boolean }) {
   return (
     <span
       style={{
-        width: 2,
-        height: 2,
-        borderRadius: 2,
-        background: 'var(--d9-ink-ghost)',
-        opacity: 0.6,
-        flex: 'none',
+        border: `1px solid ${lit ? 'rgba(79,195,247,0.4)' : 'var(--d9-hairline-b)'}`,
+        background: lit ? 'rgba(79,195,247,0.08)' : 'rgba(255,255,255,0.04)',
+        color: lit ? 'var(--d9-accent)' : 'var(--d9-ink-ghost)',
+        fontFamily: 'var(--d9-font-mono)',
+        fontSize: 11,
+        padding: '3px 7px',
+        borderRadius: 5,
+        minWidth: 22,
+        textAlign: 'center' as const,
+        lineHeight: 1,
+        height: 20,
+        display: 'inline-flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        transition: 'color 120ms, border-color 120ms, background 120ms',
+        userSelect: 'none' as const,
       }}
-    />
+    >
+      {children}
+    </span>
+  );
+}
+
+// Clickable pill-button in the status row.
+function StatusPillBtn({
+  children,
+  onClick,
+  title,
+}: {
+  children: React.ReactNode;
+  onClick?: () => void;
+  title?: string;
+}) {
+  return (
+    <button
+      type="button"
+      title={title}
+      onClick={onClick}
+      style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: 6,
+        background: 'transparent',
+        border: 0,
+        padding: '4px 4px',
+        borderRadius: 4,
+        cursor: 'pointer',
+        color: 'inherit',
+        fontFamily: 'inherit',
+        fontSize: 'inherit',
+        letterSpacing: 'inherit',
+        textTransform: 'inherit' as const,
+        transition: 'background 120ms, color 120ms',
+      }}
+      onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(255,255,255,0.04)')}
+      onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+    >
+      {children}
+    </button>
   );
 }
 

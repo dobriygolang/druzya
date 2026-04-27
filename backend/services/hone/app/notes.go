@@ -30,9 +30,10 @@ type CreateNote struct {
 
 // CreateNoteInput — wire body.
 type CreateNoteInput struct {
-	UserID uuid.UUID
-	Title  string
-	BodyMD string
+	UserID   uuid.UUID
+	Title    string
+	BodyMD   string
+	FolderID *uuid.UUID
 }
 
 // Do executes the use case.
@@ -43,6 +44,7 @@ func (uc *CreateNote) Do(ctx context.Context, in CreateNoteInput) (domain.Note, 
 		Title:     in.Title,
 		BodyMD:    in.BodyMD,
 		SizeBytes: len(in.BodyMD),
+		FolderID:  in.FolderID,
 		CreatedAt: now,
 		UpdatedAt: now,
 	}
@@ -130,12 +132,12 @@ type ListNotes struct {
 	Notes domain.NoteRepo
 }
 
-// Do executes the use case.
-func (uc *ListNotes) Do(ctx context.Context, userID uuid.UUID, limit int, cursor string) ([]domain.NoteSummary, string, error) {
+// Do executes the use case. folderID nil = all notes; non-nil = filter by folder.
+func (uc *ListNotes) Do(ctx context.Context, userID uuid.UUID, limit int, cursor string, folderID *uuid.UUID) ([]domain.NoteSummary, string, error) {
 	if limit <= 0 || limit > 500 {
 		limit = 100
 	}
-	rows, next, err := uc.Notes.List(ctx, userID, limit, cursor)
+	rows, next, err := uc.Notes.List(ctx, userID, limit, cursor, folderID)
 	if err != nil {
 		return nil, "", fmt.Errorf("hone.ListNotes.Do: %w", err)
 	}

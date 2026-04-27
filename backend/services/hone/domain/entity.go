@@ -196,6 +196,17 @@ type QueueStats struct {
 
 // ─── Notes ─────────────────────────────────────────────────────────────────
 
+// Folder is a named container for notes. Supports nesting via ParentID.
+// Server stores flat rows; client renders as a tree.
+type Folder struct {
+	ID        uuid.UUID
+	UserID    uuid.UUID
+	Name      string
+	ParentID  *uuid.UUID // nil = root
+	CreatedAt time.Time
+	UpdatedAt time.Time
+}
+
 // Note is a markdown note, privately scoped to one user.
 type Note struct {
 	ID             uuid.UUID
@@ -203,7 +214,8 @@ type Note struct {
 	Title          string
 	BodyMD         string
 	SizeBytes      int
-	Embedding      []float32 // 384-dim bge-small, nil until first embedding job ran
+	FolderID       *uuid.UUID // nil = unfiled (root)
+	Embedding      []float32  // 384-dim bge-small, nil until first embedding job ran
 	EmbeddingModel string
 	EmbeddedAt     *time.Time
 	CreatedAt      time.Time
@@ -222,6 +234,7 @@ type NoteSummary struct {
 	ID        uuid.UUID
 	Title     string
 	SizeBytes int
+	FolderID  *uuid.UUID
 	UpdatedAt time.Time
 }
 

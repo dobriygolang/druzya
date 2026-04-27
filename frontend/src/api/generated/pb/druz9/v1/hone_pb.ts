@@ -1064,6 +1064,72 @@ export class DeleteQueueItemResponse extends Message<DeleteQueueItemResponse> {
 }
 
 /**
+ * Folder is a named container for notes. Supports nesting via optional
+ * parent_id — client renders as a tree; server stores flat with parent_id FK.
+ *
+ * @generated from message druz9.v1.Folder
+ */
+export class Folder extends Message<Folder> {
+  /**
+   * @generated from field: string id = 1;
+   */
+  id = "";
+
+  /**
+   * @generated from field: string name = 2;
+   */
+  name = "";
+
+  /**
+   * nil = root folder
+   *
+   * @generated from field: optional string parent_id = 3;
+   */
+  parentId?: string;
+
+  /**
+   * @generated from field: google.protobuf.Timestamp created_at = 4;
+   */
+  createdAt?: Timestamp;
+
+  /**
+   * @generated from field: google.protobuf.Timestamp updated_at = 5;
+   */
+  updatedAt?: Timestamp;
+
+  constructor(data?: PartialMessage<Folder>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.Folder";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "name", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 3, name: "parent_id", kind: "scalar", T: 9 /* ScalarType.STRING */, opt: true },
+    { no: 4, name: "created_at", kind: "message", T: Timestamp },
+    { no: 5, name: "updated_at", kind: "message", T: Timestamp },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): Folder {
+    return new Folder().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): Folder {
+    return new Folder().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): Folder {
+    return new Folder().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: Folder | PlainMessage<Folder> | undefined, b: Folder | PlainMessage<Folder> | undefined): boolean {
+    return proto3.util.equals(Folder, a, b);
+  }
+}
+
+/**
  * @generated from message druz9.v1.Note
  */
 export class Note extends Message<Note> {
@@ -1099,6 +1165,13 @@ export class Note extends Message<Note> {
    */
   sizeBytes = 0;
 
+  /**
+   * nil = unfiled (root)
+   *
+   * @generated from field: optional string folder_id = 7;
+   */
+  folderId?: string;
+
   constructor(data?: PartialMessage<Note>) {
     super();
     proto3.util.initPartial(data, this);
@@ -1113,6 +1186,7 @@ export class Note extends Message<Note> {
     { no: 4, name: "created_at", kind: "message", T: Timestamp },
     { no: 5, name: "updated_at", kind: "message", T: Timestamp },
     { no: 6, name: "size_bytes", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 7, name: "folder_id", kind: "scalar", T: 9 /* ScalarType.STRING */, opt: true },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): Note {
@@ -1158,6 +1232,11 @@ export class NoteSummary extends Message<NoteSummary> {
    */
   sizeBytes = 0;
 
+  /**
+   * @generated from field: optional string folder_id = 5;
+   */
+  folderId?: string;
+
   constructor(data?: PartialMessage<NoteSummary>) {
     super();
     proto3.util.initPartial(data, this);
@@ -1170,6 +1249,7 @@ export class NoteSummary extends Message<NoteSummary> {
     { no: 2, name: "title", kind: "scalar", T: 9 /* ScalarType.STRING */ },
     { no: 3, name: "updated_at", kind: "message", T: Timestamp },
     { no: 4, name: "size_bytes", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 5, name: "folder_id", kind: "scalar", T: 9 /* ScalarType.STRING */, opt: true },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): NoteSummary {
@@ -1203,6 +1283,11 @@ export class CreateNoteRequest extends Message<CreateNoteRequest> {
    */
   bodyMd = "";
 
+  /**
+   * @generated from field: optional string folder_id = 3;
+   */
+  folderId?: string;
+
   constructor(data?: PartialMessage<CreateNoteRequest>) {
     super();
     proto3.util.initPartial(data, this);
@@ -1213,6 +1298,7 @@ export class CreateNoteRequest extends Message<CreateNoteRequest> {
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
     { no: 1, name: "title", kind: "scalar", T: 9 /* ScalarType.STRING */ },
     { no: 2, name: "body_md", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 3, name: "folder_id", kind: "scalar", T: 9 /* ScalarType.STRING */, opt: true },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): CreateNoteRequest {
@@ -1336,6 +1422,13 @@ export class ListNotesRequest extends Message<ListNotesRequest> {
    */
   cursor = "";
 
+  /**
+   * filter by folder; nil = all notes
+   *
+   * @generated from field: optional string folder_id = 3;
+   */
+  folderId?: string;
+
   constructor(data?: PartialMessage<ListNotesRequest>) {
     super();
     proto3.util.initPartial(data, this);
@@ -1346,6 +1439,7 @@ export class ListNotesRequest extends Message<ListNotesRequest> {
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
     { no: 1, name: "limit", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
     { no: 2, name: "cursor", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 3, name: "folder_id", kind: "scalar", T: 9 /* ScalarType.STRING */, opt: true },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ListNotesRequest {
@@ -1473,6 +1567,239 @@ export class DeleteNoteResponse extends Message<DeleteNoteResponse> {
 
   static equals(a: DeleteNoteResponse | PlainMessage<DeleteNoteResponse> | undefined, b: DeleteNoteResponse | PlainMessage<DeleteNoteResponse> | undefined): boolean {
     return proto3.util.equals(DeleteNoteResponse, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.MoveNoteRequest
+ */
+export class MoveNoteRequest extends Message<MoveNoteRequest> {
+  /**
+   * @generated from field: string note_id = 1;
+   */
+  noteId = "";
+
+  /**
+   * nil = move to root (unfiled)
+   *
+   * @generated from field: optional string folder_id = 2;
+   */
+  folderId?: string;
+
+  constructor(data?: PartialMessage<MoveNoteRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.MoveNoteRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "note_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "folder_id", kind: "scalar", T: 9 /* ScalarType.STRING */, opt: true },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): MoveNoteRequest {
+    return new MoveNoteRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): MoveNoteRequest {
+    return new MoveNoteRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): MoveNoteRequest {
+    return new MoveNoteRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: MoveNoteRequest | PlainMessage<MoveNoteRequest> | undefined, b: MoveNoteRequest | PlainMessage<MoveNoteRequest> | undefined): boolean {
+    return proto3.util.equals(MoveNoteRequest, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.CreateFolderRequest
+ */
+export class CreateFolderRequest extends Message<CreateFolderRequest> {
+  /**
+   * @generated from field: string name = 1;
+   */
+  name = "";
+
+  /**
+   * @generated from field: optional string parent_id = 2;
+   */
+  parentId?: string;
+
+  constructor(data?: PartialMessage<CreateFolderRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.CreateFolderRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "name", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "parent_id", kind: "scalar", T: 9 /* ScalarType.STRING */, opt: true },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): CreateFolderRequest {
+    return new CreateFolderRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): CreateFolderRequest {
+    return new CreateFolderRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): CreateFolderRequest {
+    return new CreateFolderRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: CreateFolderRequest | PlainMessage<CreateFolderRequest> | undefined, b: CreateFolderRequest | PlainMessage<CreateFolderRequest> | undefined): boolean {
+    return proto3.util.equals(CreateFolderRequest, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.ListFoldersRequest
+ */
+export class ListFoldersRequest extends Message<ListFoldersRequest> {
+  constructor(data?: PartialMessage<ListFoldersRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.ListFoldersRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ListFoldersRequest {
+    return new ListFoldersRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): ListFoldersRequest {
+    return new ListFoldersRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): ListFoldersRequest {
+    return new ListFoldersRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: ListFoldersRequest | PlainMessage<ListFoldersRequest> | undefined, b: ListFoldersRequest | PlainMessage<ListFoldersRequest> | undefined): boolean {
+    return proto3.util.equals(ListFoldersRequest, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.ListFoldersResponse
+ */
+export class ListFoldersResponse extends Message<ListFoldersResponse> {
+  /**
+   * @generated from field: repeated druz9.v1.Folder folders = 1;
+   */
+  folders: Folder[] = [];
+
+  constructor(data?: PartialMessage<ListFoldersResponse>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.ListFoldersResponse";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "folders", kind: "message", T: Folder, repeated: true },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ListFoldersResponse {
+    return new ListFoldersResponse().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): ListFoldersResponse {
+    return new ListFoldersResponse().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): ListFoldersResponse {
+    return new ListFoldersResponse().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: ListFoldersResponse | PlainMessage<ListFoldersResponse> | undefined, b: ListFoldersResponse | PlainMessage<ListFoldersResponse> | undefined): boolean {
+    return proto3.util.equals(ListFoldersResponse, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.DeleteFolderRequest
+ */
+export class DeleteFolderRequest extends Message<DeleteFolderRequest> {
+  /**
+   * @generated from field: string id = 1;
+   */
+  id = "";
+
+  /**
+   * When true, move all notes in this folder to root before deleting.
+   * When false (default), fail if folder contains notes.
+   *
+   * @generated from field: bool move_notes_to_root = 2;
+   */
+  moveNotesToRoot = false;
+
+  constructor(data?: PartialMessage<DeleteFolderRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.DeleteFolderRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "move_notes_to_root", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): DeleteFolderRequest {
+    return new DeleteFolderRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): DeleteFolderRequest {
+    return new DeleteFolderRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): DeleteFolderRequest {
+    return new DeleteFolderRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: DeleteFolderRequest | PlainMessage<DeleteFolderRequest> | undefined, b: DeleteFolderRequest | PlainMessage<DeleteFolderRequest> | undefined): boolean {
+    return proto3.util.equals(DeleteFolderRequest, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.DeleteFolderResponse
+ */
+export class DeleteFolderResponse extends Message<DeleteFolderResponse> {
+  constructor(data?: PartialMessage<DeleteFolderResponse>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.DeleteFolderResponse";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): DeleteFolderResponse {
+    return new DeleteFolderResponse().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): DeleteFolderResponse {
+    return new DeleteFolderResponse().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): DeleteFolderResponse {
+    return new DeleteFolderResponse().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: DeleteFolderResponse | PlainMessage<DeleteFolderResponse> | undefined, b: DeleteFolderResponse | PlainMessage<DeleteFolderResponse> | undefined): boolean {
+    return proto3.util.equals(DeleteFolderResponse, a, b);
   }
 }
 

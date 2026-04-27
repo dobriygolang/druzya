@@ -32,11 +32,11 @@
   --d9-ink-mute:    rgba(255, 255, 255, 0.60);
   --d9-ink-ghost:   rgba(255, 255, 255, 0.40);
 
-  /* ── Accent — Tomato red (matches Hone #FF3B30) ──────────────── */
-  --d9-accent:      #FF3B30;
-  --d9-accent-hi:   #FF6B60;
-  --d9-accent-lo:   #D32A20;
-  --d9-accent-glow: rgba(255, 59, 48, 0.25);
+  /* ── Accent — Cyan #4fc3f7 (Cue brand) ──────────────────────── */
+  --d9-accent:      #4fc3f7;
+  --d9-accent-hi:   #81d4fa;
+  --d9-accent-lo:   #0288d1;
+  --d9-accent-glow: rgba(79, 195, 247, 0.22);
 
   /* Jewel tones (personas) — toned down for pure-black canvas.
      Deliberately NOT pure oklch extremes: on #000 the fully-saturated
@@ -96,7 +96,7 @@
     0 1px 0 rgba(0,0,0,.35),
     0 0 0 .5px rgba(255,255,255,.08);
 
-  /* Focus — red ring replacing violet. */
+  /* Focus — cyan ring. */
   --d9-ring: 0 0 0 1.5px var(--d9-accent), 0 0 0 4px var(--d9-accent-glow);
 
   /* Motion */
@@ -108,11 +108,14 @@
   --d9-ease-in:   cubic-bezier(.5,0,.9,.3);
   --d9-ease-out:  cubic-bezier(.15,.85,.3,1);
 
-  /* Type — Inter matches the Hone landing + app. Manrope stays loaded
-     as a fallback in case older sessions cached it; Inter wins the
-     stack. Instrument Serif kept for the brand display accent. */
+  /* Type — JetBrains Mono is the primary UI voice (replaces Inter/Manrope
+     for the Cue redesign: all pills, labels, status bars use mono).
+     Instrument Serif kept for the display accent in EmptyState hero.
+     --d9-font-sans is now a monospace stack so every component that
+     reads it (pills, dropdowns, input rows) gets the JetBrains look
+     without component-level edits. */
   --d9-font-display: "Instrument Serif", "Cormorant Garamond", Georgia, serif;
-  --d9-font-sans:    "Inter", "Manrope", ui-sans-serif, -apple-system, "SF Pro Text", system-ui, sans-serif;
+  --d9-font-sans:    "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
   --d9-font-mono:    "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
 
   /* Blur for heavy-glass */
@@ -146,11 +149,9 @@
   --d-accent-soft: var(--d9-accent-glow);
   --d-accent-2: var(--d9-cyan);
   --d-accent-2-soft: oklch(0.78 0.12 210 / 0.18);
-  /* Hero gradient now goes red→amber to match the Hone aesthetic.
-     Previously was violet→cyan jewel; on pure black the red/amber
-     fade reads as "focus" vs "cosmic". */
-  --d-gradient-hero: linear-gradient(135deg, var(--d9-accent) 0%, var(--d9-amber) 100%);
-  --d-gradient-hero-soft: linear-gradient(135deg, var(--d9-accent-glow) 0%, oklch(0.80 0.13 70 / 0.18) 100%);
+  /* Hero gradient: cyan → teal (matches Cue accent). */
+  --d-gradient-hero: linear-gradient(135deg, var(--d9-accent) 0%, var(--d9-teal) 100%);
+  --d-gradient-hero-soft: linear-gradient(135deg, var(--d9-accent-glow) 0%, oklch(0.74 0.11 180 / 0.18) 100%);
 
   --d-green: var(--d9-ok);
   --d-yellow: var(--d9-warn);

@@ -14,12 +14,41 @@ export type HotkeyAction =
   | 'voice_input'
   | 'toggle_window'
   | 'quick_prompt'
+  | 'instant_assist'
   | 'clear_conversation'
-  | 'cursor_freeze_toggle';
+  | 'cursor_freeze_toggle'
+  | 'move_window_left'
+  | 'move_window_right'
+  | 'move_window_up'
+  | 'move_window_down';
 
 export interface HotkeyBinding {
   action: HotkeyAction;
   accelerator: string;
+}
+
+export type ConversationMemoryOutcome = 'answered' | 'weak' | 'skipped' | 'unclear';
+
+export interface ConversationMemory {
+  turns: ConversationMemoryTurn[];
+  screenshot_summary: string;
+  topics: string[];
+  outcome: ConversationMemoryOutcome;
+  rolling_summary: string;
+  embeddings: ConversationMemoryEmbedding[];
+}
+
+export interface ConversationMemoryTurn {
+  question: string;
+  answer: string;
+  has_screenshot: boolean;
+  timestamp: string;
+  model: string;
+}
+
+export interface ConversationMemoryEmbedding {
+  term: string;
+  weight: number;
 }
 
 export type ModelSpeedClass = 'fast' | 'balanced' | 'reasoning' | '';

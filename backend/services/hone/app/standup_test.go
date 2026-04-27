@@ -46,8 +46,11 @@ func (f *fakeNotes) Update(context.Context, domain.Note) (domain.Note, error) {
 func (f *fakeNotes) Get(context.Context, uuid.UUID, uuid.UUID) (domain.Note, error) {
 	return domain.Note{}, errors.New("unused")
 }
-func (f *fakeNotes) List(context.Context, uuid.UUID, int, string) ([]domain.NoteSummary, string, error) {
+func (f *fakeNotes) List(context.Context, uuid.UUID, int, string, *uuid.UUID) ([]domain.NoteSummary, string, error) {
 	return nil, "", nil
+}
+func (f *fakeNotes) Move(context.Context, uuid.UUID, uuid.UUID, *uuid.UUID) (domain.Note, error) {
+	return domain.Note{}, errors.New("unused")
 }
 func (f *fakeNotes) Delete(context.Context, uuid.UUID, uuid.UUID) error { return nil }
 func (f *fakeNotes) SetArchived(context.Context, uuid.UUID, uuid.UUID, bool) error {

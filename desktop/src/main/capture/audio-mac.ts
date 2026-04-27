@@ -18,7 +18,9 @@
 
 import { spawn, type ChildProcessWithoutNullStreams } from 'node:child_process';
 import { existsSync } from 'node:fs';
+import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
+import { app } from 'electron';
 
 import { createTranscriptionClient } from '../api/transcription';
 import type { RuntimeConfig } from '../config/bootstrap';
@@ -121,6 +123,7 @@ export function createAudioCapture(
   // Buffer<ArrayBuffer> from alloc(0) and then widens via Buffer.concat
   // to Buffer<ArrayBufferLike>, producing an assignability mismatch.
   let buf: Buffer = Buffer.alloc(0);
+  let recordingDir: string | null = null;
   // chunkSeq is incremented only when a chunk's transcription finishes.
   // The `windowSec` event field uses this so the renderer can tell two
   // consecutive chunks apart and paint them as separate lines.
@@ -134,11 +137,17 @@ export function createAudioCapture(
   const transcribeChunk = async (pcm: Buffer) => {
     const wav = encodeWAV(pcm);
     const windowSec = pcm.length / (SAMPLE_RATE * BYTES_PER_FRAME);
+    const seq = chunkSeq;
+    if (recordingDir) {
+      void writeFile(join(recordingDir, `chunk-${seq.toString().padStart(4, '0')}.wav`), wav).catch((err) => {
+        events.onError(`failed to save local recording chunk: ${err instanceof Error ? err.message : String(err)}`);
+      });
+    }
     try {
       const result = await transcriber.transcribe({
         audio: new Uint8Array(wav.buffer, wav.byteOffset, wav.byteLength),
         mime: 'audio/wav',
-        filename: `chunk-${chunkSeq}.wav`,
+        filename: `chunk-${seq}.wav`,
         language: '',
         prompt: '',
       });
@@ -192,6 +201,12 @@ export function createAudioCapture(
     setState('starting');
     chunkSeq = 0;
     buf = Buffer.alloc(0);
+    recordingDir = join(
+      app.getPath('userData'),
+      'recordings',
+      `meeting-${new Date().toISOString().replace(/[:.]/g, '-')}`,
+    );
+    await mkdir(recordingDir, { recursive: true });
 
     proc = spawn(bin, [], { stdio: ['pipe', 'pipe', 'pipe'] });
 

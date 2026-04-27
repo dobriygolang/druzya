@@ -76,6 +76,42 @@ export function BrandMark({ size = 28, glyph = true, style }: BrandMarkProps) {
   );
 }
 
+/**
+ * CompactLogo — compact tray pill logo.
+ * Matches prototype: fully circular, subtle white bg,
+ * open C-arc stroke + cyan center dot.
+ */
+export function CompactLogo({ size = 32 }: { size?: number }) {
+  const inner = size * 0.5; // svg icon size within the circle
+  return (
+    <div
+      style={{
+        width: size,
+        height: size,
+        borderRadius: '50%',
+        background: 'rgba(255,255,255,0.06)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        flexShrink: 0,
+        cursor: 'default',
+        transition: 'background 150ms',
+        userSelect: 'none',
+      }}
+    >
+      <svg width={inner} height={inner} viewBox="0 0 14 14" fill="none">
+        <path
+          d="M11 3.5A4.5 4.5 0 1 0 11 10.5"
+          stroke="#e8e8e8"
+          strokeWidth="1.4"
+          strokeLinecap="round"
+        />
+        <circle cx="7" cy="7" r="1.2" fill="var(--d9-accent)" />
+      </svg>
+    </div>
+  );
+}
+
 // CueMark — inlined copy of design/hone/landing/brand/cue-mark.svg.
 // Three concentric arcs (opacity ladder for "radio waves"), centre
 // dot, and a red antenna stroke. Source SVG's black <rect> is omitted

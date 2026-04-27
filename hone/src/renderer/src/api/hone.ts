@@ -73,6 +73,14 @@ export interface FocusSession {
   mode: string;
 }
 
+export interface Folder {
+  id: string;
+  name: string;
+  parentId: string | null;
+  createdAt: Date | null;
+  updatedAt: Date | null;
+}
+
 export interface Note {
   id: string;
   title: string;
@@ -80,6 +88,7 @@ export interface Note {
   createdAt: Date | null;
   updatedAt: Date | null;
   sizeBytes: number;
+  folderId: string | null;
 }
 
 export interface NoteSummary {
@@ -87,6 +96,7 @@ export interface NoteSummary {
   title: string;
   updatedAt: Date | null;
   sizeBytes: number;
+  folderId: string | null;
 }
 
 export interface Whiteboard {
@@ -230,6 +240,7 @@ type ProtoNote = {
   createdAt?: { seconds: bigint; nanos: number };
   updatedAt?: { seconds: bigint; nanos: number };
   sizeBytes: number;
+  folderId?: string;
 };
 
 function unwrapNote(n: ProtoNote): Note {
@@ -240,6 +251,7 @@ function unwrapNote(n: ProtoNote): Note {
     createdAt: protoTs(n.createdAt),
     updatedAt: protoTs(n.updatedAt),
     sizeBytes: n.sizeBytes,
+    folderId: n.folderId ?? null,
   };
 }
 
@@ -370,13 +382,14 @@ export async function endFocusSession(args: {
 
 // ─── Notes ──────────────────────────────────────────────────────────────────
 
-export async function listNotes(args: { limit?: number; cursor?: string } = {}): Promise<{
+export async function listNotes(args: { limit?: number; cursor?: string; folderId?: string | null } = {}): Promise<{
   notes: NoteSummary[];
   nextCursor: string;
 }> {
   const resp = await client.listNotes({
     limit: args.limit ?? 100,
     cursor: args.cursor ?? '',
+    folderId: args.folderId ?? undefined,
   });
   return {
     notes: resp.notes.map((n) => ({
@@ -384,6 +397,7 @@ export async function listNotes(args: { limit?: number; cursor?: string } = {}):
       title: n.title,
       updatedAt: protoTs(n.updatedAt),
       sizeBytes: n.sizeBytes,
+      folderId: (n as unknown as { folderId?: string }).folderId ?? null,
     })),
     nextCursor: resp.nextCursor,
   };
@@ -394,8 +408,8 @@ export async function getNote(id: string): Promise<Note> {
   return unwrapNote(resp as unknown as ProtoNote);
 }
 
-export async function createNote(title: string, bodyMd: string): Promise<Note> {
-  const resp = await client.createNote({ title, bodyMd });
+export async function createNote(title: string, bodyMd: string, folderId?: string | null): Promise<Note> {
+  const resp = await client.createNote({ title, bodyMd, folderId: folderId ?? undefined });
   return unwrapNote(resp as unknown as ProtoNote);
 }
 
@@ -406,6 +420,40 @@ export async function updateNote(id: string, title: string, bodyMd: string): Pro
 
 export async function deleteNote(id: string): Promise<void> {
   await client.deleteNote({ id });
+}
+
+export async function moveNote(noteId: string, folderId: string | null): Promise<Note> {
+  const resp = await client.moveNote({ noteId, folderId: folderId ?? undefined });
+  return unwrapNote(resp as unknown as ProtoNote);
+}
+
+// ─── Folders ────────────────────────────────────────────────────────────────
+
+export async function listFolders(): Promise<Folder[]> {
+  const resp = await client.listFolders({});
+  return resp.folders.map((f) => ({
+    id: f.id,
+    name: f.name,
+    parentId: (f as unknown as { parentId?: string }).parentId ?? null,
+    createdAt: protoTs(f.createdAt),
+    updatedAt: protoTs(f.updatedAt),
+  }));
+}
+
+export async function createFolder(name: string, parentId?: string | null): Promise<Folder> {
+  const resp = await client.createFolder({ name, parentId: parentId ?? undefined });
+  const f = resp as unknown as { id: string; name: string; parentId?: string; createdAt?: { seconds: bigint; nanos: number }; updatedAt?: { seconds: bigint; nanos: number } };
+  return {
+    id: f.id,
+    name: f.name,
+    parentId: f.parentId ?? null,
+    createdAt: protoTs(f.createdAt),
+    updatedAt: protoTs(f.updatedAt),
+  };
+}
+
+export async function deleteFolder(id: string, moveNotesToRoot = true): Promise<void> {
+  await client.deleteFolder({ id, moveNotesToRoot });
 }
 
 // getNoteConnectionsStream — server-streaming. Для ⌘J панели в Notes

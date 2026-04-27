@@ -20,6 +20,10 @@ import {
 import { Button, StatusDot } from '../../components/primitives';
 import { BrandMark, RangeSlider, Seg } from '../../components/d9';
 import { useConfig } from '../../hooks/use-config';
+import {
+  getHistoryRetentionDays,
+  setHistoryRetentionDays,
+} from '../../lib/local-history';
 import { useAuthStore } from '../../stores/auth';
 import { useHotkeyOverridesStore } from '../../stores/hotkey-overrides';
 import { useAppearanceStore } from '../../stores/appearance';
@@ -276,6 +280,7 @@ function GeneralTab({
         />
         <PlanRow quota={quota} />
         <StealthRow />
+        <HistoryRetentionRow />
 
         <LocaleRow />
         <MasqueradeRow />
@@ -310,6 +315,33 @@ function PlanRow({ quota }: { quota: ReturnType<typeof useQuotaStore.getState>['
         >
           {isPaid ? 'Управлять подпиской' : 'Обновить план'}
         </Button>
+      }
+    />
+  );
+}
+
+function HistoryRetentionRow() {
+  const [days, setDays] = useState(() => getHistoryRetentionDays());
+  return (
+    <Row
+      title="Локальная история"
+      hint="Диалоги в панели истории хранятся на этом устройстве и автоматически удаляются по расписанию."
+      control={
+        <select
+          value={days}
+          onChange={(e) => {
+            const next = Number(e.target.value);
+            setDays(next);
+            setHistoryRetentionDays(next);
+          }}
+          style={selectStyle}
+        >
+          <option value={1}>1 день</option>
+          <option value={7}>7 дней</option>
+          <option value={30}>30 дней</option>
+          <option value={90}>90 дней</option>
+          <option value={365}>1 год</option>
+        </select>
       }
     />
   );
@@ -501,8 +533,13 @@ function HotkeysTab() {
     { action: 'voice_input', accelerator: 'CommandOrControl+Shift+V' },
     { action: 'toggle_window', accelerator: 'CommandOrControl+Shift+D' },
     { action: 'quick_prompt', accelerator: 'CommandOrControl+Shift+Q' },
+    { action: 'instant_assist', accelerator: 'CommandOrControl+Return' },
     { action: 'clear_conversation', accelerator: 'CommandOrControl+Shift+K' },
     { action: 'cursor_freeze_toggle', accelerator: 'CommandOrControl+Shift+Y' },
+    { action: 'move_window_left', accelerator: 'CommandOrControl+Left' },
+    { action: 'move_window_right', accelerator: 'CommandOrControl+Right' },
+    { action: 'move_window_up', accelerator: 'CommandOrControl+Up' },
+    { action: 'move_window_down', accelerator: 'CommandOrControl+Down' },
   ];
   // Always iterate LOCAL_DEFAULTS for the UI — server may return
   // placeholders with numeric action strings which break the label
@@ -532,8 +569,13 @@ function HotkeysTab() {
     voice_input: 'Голосовой ввод',
     toggle_window: 'Показать / скрыть окно',
     quick_prompt: 'Быстрый вопрос',
+    instant_assist: 'Помочь сейчас',
     clear_conversation: 'Очистить диалог',
     cursor_freeze_toggle: 'Заморозить курсор',
+    move_window_left: 'Окно к левому краю',
+    move_window_right: 'Окно к правому краю',
+    move_window_up: 'Окно к верхнему краю',
+    move_window_down: 'Окно к нижнему краю',
   };
 
   return (

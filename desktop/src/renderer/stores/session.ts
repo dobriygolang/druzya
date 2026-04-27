@@ -7,12 +7,14 @@
 
 import { create } from 'zustand';
 
-import { eventChannels } from '@shared/ipc';
+import { eventChannels, type NotesReadyEvent } from '@shared/ipc';
 import type { Session, SessionAnalysis, SessionKind } from '@shared/types';
 
 interface State {
   current: Session | null;
   lastAnalysis: SessionAnalysis | null;
+  /** Local file path of the saved meeting notes, set when notesReady fires. */
+  notesFilePath: string | null;
   loading: boolean;
   error: string | null;
   // attachedDocIds — documents the user has attached to the live
@@ -31,6 +33,7 @@ interface State {
 export const useSessionStore = create<State>((set, get) => ({
   current: null,
   lastAnalysis: null,
+  notesFilePath: null,
   loading: false,
   error: null,
   attachedDocIds: [],
@@ -68,7 +71,7 @@ export const useSessionStore = create<State>((set, get) => ({
     set({ loading: true, error: null });
     try {
       const s = await window.druz9.sessions.start(kind);
-      set({ current: s, loading: false, lastAnalysis: null, attachedDocIds: [] });
+      set({ current: s, loading: false, lastAnalysis: null, notesFilePath: null, attachedDocIds: [] });
     } catch (err) {
       set({ loading: false, error: (err as Error).message });
     }
@@ -98,6 +101,9 @@ export const useSessionStore = create<State>((set, get) => ({
       }),
       window.druz9.on<SessionAnalysis>(eventChannels.sessionAnalysisReady, (a) => {
         set({ lastAnalysis: a });
+      }),
+      window.druz9.on<NotesReadyEvent>(eventChannels.notesReady, (ev) => {
+        set({ notesFilePath: ev.filePath });
       }),
     ];
 
