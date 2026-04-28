@@ -59,7 +59,8 @@ type TelegramBot struct {
 	log      *slog.Logger
 	prefs    domain.PreferencesRepo
 	users    domain.UserLookup
-	codes    domain.CodeFiller // optional: when set, /start <code> fills auth codes
+	codes    domain.CodeFiller   // optional: when set, /start <code> fills auth codes
+	streaks  domain.StreakReader // optional: when set, /streak replies with real data
 	dispatch CommandDispatcher
 }
 
@@ -67,6 +68,13 @@ type TelegramBot struct {
 // after the auth module is constructed (notify is built first → cyclic dep
 // avoided by post-construction injection).
 func (b *TelegramBot) SetCodeFiller(c domain.CodeFiller) { b.codes = c }
+
+// SetStreakReader installs the streak reader so /streak replies with real data.
+// Called by the monolith after construction — daily module owns the table.
+func (b *TelegramBot) SetStreakReader(s domain.StreakReader) {
+	b.streaks = s
+	b.dispatch.streak = s
+}
 
 // NewTelegramBot constructs a real bot from a token. If token is empty (common
 // in tests / local), a no-op stub is returned instead — this keeps main.go

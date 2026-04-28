@@ -30,6 +30,8 @@ type NotifyModule struct {
 	// Bot is exposed so the bootstrap can call SetCodeFiller after the auth
 	// module is constructed (cyclic-dep avoidance — auth depends on the bus,
 	// notify depends on auth's RedisTelegramCodeRepo).
+	// SetStreakReader is called immediately after construction — streak data
+	// lives in a shared pool so there is no cyclic dep.
 	Bot *notifyInfra.TelegramBot
 	// Handlers is exposed so bootstrap can attach late-bound bridges
 	// after their source modules wire.
@@ -46,6 +48,7 @@ type NotifyModule struct {
 // closed during Shutdown so its long-poll loop unwinds before HTTP exits.
 func NewNotify(d monolithServices.Deps) (*NotifyModule, error) {
 	pg := notifyInfra.NewPostgres(d.Pool)
+	streakPg := notifyInfra.NewStreakPostgres(d.Pool)
 	queue := notifyInfra.NewRedisQueue(d.Redis)
 	rl := notifyInfra.NewRedisRateLimiter(d.Redis)
 	templates, err := notifyInfra.NewTemplates()
@@ -61,6 +64,9 @@ func NewNotify(d monolithServices.Deps) (*NotifyModule, error) {
 	if err != nil {
 		return nil, fmt.Errorf("notify.telegram: %w", err)
 	}
+	// Streak data lives in daily_streaks on the same shared pool — no cyclic
+	// dependency, wire immediately.
+	tg.SetStreakReader(streakPg)
 	email := notifyInfra.NewEmailSender(d.Log, d.Cfg.Notify.SMTPHost, d.Cfg.Notify.SMTPPort, d.Cfg.Notify.SMTPUser)
 	push := notifyInfra.NewWebPushSender(d.Log)
 

@@ -3,6 +3,7 @@ package infra
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log/slog"
 	"strings"
 
@@ -16,6 +17,7 @@ import (
 type CommandDispatcher struct {
 	bot      *TelegramBot
 	handlers map[string]CommandHandler
+	streak   domain.StreakReader // nil until SetStreakReader is called
 }
 
 // CommandHandler is the signature all bot commands share. Returning an error
@@ -30,7 +32,7 @@ func NewCommandDispatcher(bot *TelegramBot) CommandDispatcher {
 	d.handlers["help"] = d.handleHelp
 	d.handlers["link"] = d.handleLink
 	d.handlers["unlink"] = d.handleUnlink
-	d.handlers["streak"] = d.handleStreakStub
+	d.handlers["streak"] = d.handleStreak
 	d.handlers["leaderboard"] = d.handleLeaderboardStub
 	return d
 }
@@ -153,10 +155,40 @@ func (d CommandDispatcher) handleUnlink(ctx context.Context, msg *tgbotapi.Messa
 	return d.bot.reply(ctx, msg.Chat.ID, d.bot.cfg.Replies.LinkDisabled)
 }
 
-// TODO: /streak reads daily_streaks and replies with the user's current streak.
-// For MVP, reply with a pointer to the website.
-func (d CommandDispatcher) handleStreakStub(ctx context.Context, msg *tgbotapi.Message, _ []string) error {
-	return d.bot.reply(ctx, msg.Chat.ID, d.bot.cfg.Replies.StreakStub)
+// handleStreak replies with the user's current streak data. When the streak
+// reader is not wired (e.g., local dev) it falls back to the stub reply.
+func (d CommandDispatcher) handleStreak(ctx context.Context, msg *tgbotapi.Message, _ []string) error {
+	if d.streak == nil {
+		return d.bot.reply(ctx, msg.Chat.ID, d.bot.cfg.Replies.StreakStub)
+	}
+	info, err := d.streak.GetStreakByChatID(ctx, msg.Chat.ID)
+	if err != nil {
+		if errors.Is(err, domain.ErrNotFound) {
+			return d.bot.reply(ctx, msg.Chat.ID, d.bot.cfg.Replies.StreakNotLinked)
+		}
+		d.bot.log.WarnContext(ctx, "notify.telegram.streak.read_failed",
+			slog.Int64("chat_id", msg.Chat.ID),
+			slog.Any("err", err))
+		return d.bot.reply(ctx, msg.Chat.ID, d.bot.cfg.Replies.StreakStub)
+	}
+	text := formatStreak(info)
+	return d.bot.reply(ctx, msg.Chat.ID, text)
+}
+
+// formatStreak builds the plain-text streak reply.
+func formatStreak(s domain.StreakInfo) string {
+	freeze := ""
+	if s.FreezeTokens > 0 {
+		freeze = fmt.Sprintf(" · ❄️ %d freeze", s.FreezeTokens)
+	}
+	last := ""
+	if s.LastKataDate != "" {
+		last = fmt.Sprintf("\nПоследняя Kata: %s", s.LastKataDate)
+	}
+	return fmt.Sprintf(
+		"⚡ Streak: %d дн  (рекорд: %d)%s%s\n\nПодробности на druz9.online",
+		s.CurrentStreak, s.LongestStreak, freeze, last,
+	)
 }
 
 // TODO: /leaderboard reads rating/leaderboard for a section and replies.

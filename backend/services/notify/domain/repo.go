@@ -77,6 +77,22 @@ type UserLookup interface {
 	GetLocale(ctx context.Context, userID uuid.UUID) (string, error)
 }
 
+// StreakInfo holds the daily_streaks data returned to the bot.
+type StreakInfo struct {
+	CurrentStreak int
+	LongestStreak int
+	FreezeTokens  int
+	LastKataDate  string // "YYYY-MM-DD", empty if never
+}
+
+// StreakReader resolves a Telegram chat_id to the owner's streak data.
+// The implementation does a single JOIN: notification_preferences → daily_streaks.
+// Returns ErrNotFound when the chat_id is unknown or the user has never
+// completed a kata.
+type StreakReader interface {
+	GetStreakByChatID(ctx context.Context, chatID int64) (StreakInfo, error)
+}
+
 // TelegramAuthPayload — узкая копия auth.domain.TelegramPayload, чтобы
 // не пускать notify-bot в auth-домен напрямую. Контекст: бот получает
 // /start <code> от Telegram, формирует payload и передаёт его в порт

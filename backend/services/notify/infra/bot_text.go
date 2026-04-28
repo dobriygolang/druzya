@@ -19,6 +19,7 @@ type BotReplies struct {
 	LinkDisabled        string // /link отключён security-хотфиксом 2026-04
 	Unlinked            string
 	StreakStub          string
+	StreakNotLinked     string // chat not linked to any druz9 account
 	LeaderboardStub     string
 	CallbackStub        string
 	UnknownCommand      string
@@ -41,7 +42,8 @@ var RussianReplies = BotReplies{
 	LinkDisabled: "Привязка через бот временно отключена. Откройте druz9.online → Настройки → Telegram и получите одноразовый код, " +
 		"затем отправьте его командой /start <код> сюда.",
 	Unlinked:        "Отвязал. Уведомления в этот чат больше не будут приходить.",
-	StreakStub:      "⚡ Streak — команда в работе. Пока смотри на сайте.",
+	StreakStub:      "⚡ Не удалось получить данные. Смотри на сайте: druz9.online",
+	StreakNotLinked: "Этот чат не привязан к аккаунту druz9. Открой сайт → Настройки → Telegram.",
 	LeaderboardStub: "🏆 Лидерборд — команда в работе. Пока смотри на сайте.",
 	CallbackStub:    "Действие в работе. Открой сайт.",
 	UnknownCommand:  "Не знаю такой команды. Попробуй /help.",
