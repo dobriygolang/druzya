@@ -507,8 +507,27 @@ export function CompactScreen() {
 
             <span style={{ flex: 1 }} />
 
-            {quota && quota.requestsCap > 0 && (
-              <QuotaMeterMini used={quota.requestsUsed} cap={quota.requestsCap} />
+            {quota && (
+              quota.requestsCap > 0 ? (
+                <QuotaMeterMini used={quota.requestsUsed} cap={quota.requestsCap} />
+              ) : quota.plan && quota.plan !== 'free' ? (
+                // Paid unlimited plan — show a small badge instead of the
+                // meter so the right edge of row 2 isn't empty.
+                <span
+                  title={`План: ${quota.plan}`}
+                  style={{
+                    fontSize: 9,
+                    fontFamily: 'var(--d9-font-mono)',
+                    letterSpacing: '0.06em',
+                    textTransform: 'uppercase',
+                    color: 'var(--d9-accent-hi)',
+                    opacity: 0.75,
+                    userSelect: 'none',
+                  }}
+                >
+                  ✦ {quota.plan}
+                </span>
+              ) : null
             )}
           </div>
         </div>

@@ -278,7 +278,7 @@ function GeneralTab({
             )
           }
         />
-        <PlanRow quota={quota} />
+        <SubscriptionCard quota={quota} />
         <StealthRow />
         <HistoryRetentionRow />
 
@@ -293,33 +293,176 @@ function GeneralTab({
 // header'е expanded-окна. Глобального preference больше нет.
 
 /**
- * PlanRow — shows the current plan + lets the user open the paywall.
- * Pro/Team users see "Управлять подпиской" leading back to the same
- * Boosty CTA; free users see "Обновить план".
+ * SubscriptionCard — visual plan overview in the General tab.
+ *
+ * Shows:
+ *   • plan badge (free / seeker / ascendant)
+ *   • progress bar for quota (hidden when unlimited)
+ *   • reset date + "Я уже оплатил" inline refresh
+ *   • CTA: "Обновить план" (free) or "Boosty →" (paid)
  */
-function PlanRow({ quota }: { quota: ReturnType<typeof useQuotaStore.getState>['quota'] }) {
+function SubscriptionCard({
+  quota,
+}: {
+  quota: ReturnType<typeof useQuotaStore.getState>['quota'];
+}) {
+  const { config } = useConfig();
   const showPaywall = usePaywallStore((s) => s.show);
-  const isPaid = !!quota && quota.plan !== 'free' && quota.plan !== '';
+  const refreshQuota = useQuotaStore((s) => s.refresh);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const plan = quota?.plan ?? '';
+  const isPaid = plan !== 'free' && plan !== '';
+
+  // Resolve display name and manage-URL from server paywall copy.
+  const planCopy = config?.paywall.find((p) => p.planId === plan);
+  const upgradeCopy = config?.paywall.find((p) => p.planId !== 'free' && p.subscribeUrl);
+  const manageUrl =
+    planCopy?.subscribeUrl || upgradeCopy?.subscribeUrl || 'https://boosty.to/druz9';
+
+  const used = quota?.requestsUsed ?? 0;
+  const cap = quota?.requestsCap ?? 0;
+  const unlimited = cap < 0;
+  const pct = unlimited || cap === 0 ? 0 : Math.min(100, (used / cap) * 100);
+  const nearLimit = pct >= 85;
+
+  const resetDate = quota?.resetsAt
+    ? new Date(quota.resetsAt).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' })
+    : null;
+
+  const planLabel = planCopy?.displayName ?? (plan ? plan : 'Free');
+
   return (
-    <Row
-      title="План"
-      hint={
-        quota
-          ? `${quota.plan || '—'} · ${quota.requestsUsed}/${
-              quota.requestsCap < 0 ? '∞' : quota.requestsCap
-            } запросов`
-          : 'загрузка…'
-      }
-      control={
-        <Button
-          variant={isPaid ? 'secondary' : 'primary'}
-          size="sm"
-          onClick={() => showPaywall()}
-        >
-          {isPaid ? 'Управлять подпиской' : 'Обновить план'}
-        </Button>
-      }
-    />
+    <div
+      style={{
+        padding: '16px 18px',
+        borderRadius: 12,
+        background: 'oklch(1 0 0 / 0.03)',
+        border: '0.5px solid var(--d9-hairline)',
+        margin: '4px 0',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 12,
+      }}
+    >
+      {/* ── Header: plan badge + CTA ── */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span
+            style={{
+              fontSize: 10,
+              fontFamily: 'var(--d9-font-mono)',
+              textTransform: 'uppercase',
+              letterSpacing: '0.08em',
+              fontWeight: 600,
+              padding: '3px 10px',
+              borderRadius: 999,
+              background: isPaid ? 'oklch(0.55 0.28 265 / 0.14)' : 'oklch(1 0 0 / 0.06)',
+              color: isPaid ? 'var(--d9-accent-hi)' : 'var(--d9-ink-mute)',
+              border: `0.5px solid ${isPaid ? 'oklch(0.55 0.28 265 / 0.32)' : 'var(--d9-hairline)'}`,
+            }}
+          >
+            {planLabel}
+          </span>
+          {isPaid && (
+            <span
+              style={{ fontSize: 12, color: 'var(--d9-accent)', lineHeight: 1 }}
+              title="Активная подписка"
+            >
+              ✦
+            </span>
+          )}
+        </div>
+        {isPaid ? (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => void window.druz9.shell.openExternal(manageUrl)}
+          >
+            Управлять на Boosty →
+          </Button>
+        ) : (
+          <Button variant="primary" size="sm" onClick={() => showPaywall()}>
+            Обновить план
+          </Button>
+        )}
+      </div>
+
+      {/* ── Usage bar + meta ── */}
+      {quota ? (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
+          {!unlimited && (
+            <div
+              style={{
+                height: 3,
+                borderRadius: 2,
+                background: 'oklch(1 0 0 / 0.08)',
+                overflow: 'hidden',
+              }}
+            >
+              <div
+                style={{
+                  height: '100%',
+                  width: `${pct}%`,
+                  borderRadius: 2,
+                  background: nearLimit
+                    ? 'oklch(0.7 0.2 25)'
+                    : isPaid
+                      ? 'var(--d9-accent)'
+                      : 'var(--d9-ink-dim)',
+                  transition: 'width 500ms var(--d9-ease)',
+                }}
+              />
+            </div>
+          )}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <span
+              style={{ fontSize: 11.5, color: 'var(--d9-ink-mute)', letterSpacing: '-0.005em' }}
+            >
+              {unlimited ? (
+                '∞ запросов'
+              ) : (
+                <>
+                  {used}&thinsp;/&thinsp;{cap} запросов
+                </>
+              )}
+              {resetDate && (
+                <span style={{ color: 'var(--d9-ink-ghost)', marginLeft: 8 }}>
+                  · сброс {resetDate}
+                </span>
+              )}
+            </span>
+            <button
+              type="button"
+              disabled={refreshing}
+              onClick={async () => {
+                setRefreshing(true);
+                await refreshQuota();
+                setRefreshing(false);
+              }}
+              style={{
+                background: 'transparent',
+                border: 0,
+                padding: '2px 6px',
+                cursor: refreshing ? 'wait' : 'pointer',
+                fontSize: 11,
+                color: 'var(--d9-ink-ghost)',
+                fontFamily: 'inherit',
+                letterSpacing: '-0.005em',
+                borderRadius: 6,
+                opacity: refreshing ? 0.45 : 1,
+                transition: 'color 120ms, opacity 120ms',
+              }}
+              title="Обновить статус подписки"
+            >
+              {refreshing ? '…' : '↻ Я уже оплатил'}
+            </button>
+          </div>
+        </div>
+      ) : (
+        <span style={{ fontSize: 11.5, color: 'var(--d9-ink-ghost)' }}>загрузка…</span>
+      )}
+    </div>
   );
 }
 
