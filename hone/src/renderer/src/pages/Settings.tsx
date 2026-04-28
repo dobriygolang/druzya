@@ -40,6 +40,7 @@ import {
 
 interface HoneSettings {
   pomodoroMinutes: number;
+  dailyGoalMin: number; // Daily focus goal in minutes (StatsOverlay → GoalMeterCell)
   defaultVolume: number;
   notifications: boolean;
   // Ambient cosmic music — looping background track. ON by default;
@@ -54,6 +55,7 @@ const THEME_KEY = 'hone:theme';
 
 const DEFAULTS: HoneSettings = {
   pomodoroMinutes: 25,
+  dailyGoalMin: 120,
   defaultVolume: 40,
   notifications: true,
   ambientMusic: true,
@@ -63,6 +65,11 @@ const DEFAULTS: HoneSettings = {
 export function readPomodoroSeconds(): number {
   const s = readSettings();
   return s.pomodoroMinutes * 60;
+}
+
+/** Read the stored daily focus goal in minutes (default 120). Used by StatsOverlay GoalMeterCell. */
+export function readDailyGoalMin(): number {
+  return readSettings().dailyGoalMin;
 }
 
 export function readStoredTheme(): ThemeId {
@@ -84,6 +91,7 @@ function readSettings(): HoneSettings {
     const parsed = JSON.parse(raw);
     return {
       pomodoroMinutes: clampInt(parsed?.pomodoroMinutes, 5, 90, DEFAULTS.pomodoroMinutes),
+      dailyGoalMin: clampInt(parsed?.dailyGoalMin, 15, 480, DEFAULTS.dailyGoalMin),
       defaultVolume: clampInt(parsed?.defaultVolume, 0, 100, DEFAULTS.defaultVolume),
       notifications: typeof parsed?.notifications === 'boolean' ? parsed.notifications : DEFAULTS.notifications,
       ambientMusic: typeof parsed?.ambientMusic === 'boolean' ? parsed.ambientMusic : DEFAULTS.ambientMusic,
@@ -120,6 +128,7 @@ export function SettingsPage({ theme, onThemeChange, onPomoChange }: SettingsPag
     setSettings((s) => ({ ...s, pomodoroMinutes: n }));
     onPomoChange?.(n * 60);
   };
+  const setDailyGoal = (n: number) => setSettings((s) => ({ ...s, dailyGoalMin: n }));
   const setVol = (n: number) => setSettings((s) => ({ ...s, defaultVolume: n }));
   const setNotif = (b: boolean) => setSettings((s) => ({ ...s, notifications: b }));
   const setAmbient = (b: boolean) => setSettings((s) => ({ ...s, ambientMusic: b }));
@@ -190,6 +199,16 @@ export function SettingsPage({ theme, onThemeChange, onPomoChange }: SettingsPag
               step={5}
               value={settings.pomodoroMinutes}
               onChange={setPomo}
+              unit="min"
+            />
+          </Section>
+          <Section title="DAILY FOCUS GOAL" hint="Target focused time per day. Shown as the goal meter in Stats.">
+            <Slider
+              min={15}
+              max={480}
+              step={15}
+              value={settings.dailyGoalMin}
+              onChange={setDailyGoal}
               unit="min"
             />
           </Section>

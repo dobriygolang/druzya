@@ -13,6 +13,7 @@ import { useEffect, useState } from 'react';
 import { ConnectError, Code } from '@connectrpc/connect';
 
 import { getStats, type HoneStats, type FocusDay } from '../api/hone';
+import { readDailyGoalMin } from '../pages/Settings';
 
 interface FetchState {
   status: 'loading' | 'ok' | 'error';
@@ -611,14 +612,6 @@ function InsightsGrid({ data }: { data: HoneStats | null }) {
       />
     </div>
   );
-}
-
-// localStorage helpers — settable from Settings (TODO: surface UI там).
-function readDailyGoalMin(): number {
-  if (typeof window === 'undefined') return 120;
-  const raw = window.localStorage.getItem('hone:daily-focus-goal-min');
-  const n = raw ? parseInt(raw, 10) : 120;
-  return Number.isFinite(n) && n > 0 ? n : 120;
 }
 
 // ─── Streak ring (SVG circular progress) ─────────────────────────────────
