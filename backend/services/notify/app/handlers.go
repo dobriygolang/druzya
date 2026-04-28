@@ -173,13 +173,11 @@ func (h *Handlers) OnSubscriptionActivated(ctx context.Context, ev sharedDomain.
 	if !ok {
 		return fmt.Errorf("notify.OnSubscriptionActivated: unexpected event %T", ev)
 	}
-	// We reuse the SeasonEnding template bucket for "has an Until". A dedicated
-	// template is better — TODO: add NotificationTypeSubscriptionActivated to
-	// shared/enums/notification.go then switch here.
 	return h.Send.Do(ctx, SendInput{
 		UserID: e.UserID,
-		Type:   enums.NotificationTypeSeasonEnding,
+		Type:   enums.NotificationTypeSubscriptionActivated,
 		Payload: map[string]any{
+			"Plan":  string(e.Plan),
 			"Until": e.Until.Format("02.01.2006"),
 		},
 	})

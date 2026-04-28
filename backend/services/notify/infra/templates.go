@@ -93,6 +93,11 @@ var rawTemplates = map[enums.NotificationType]map[string]string{
 		"ru": `⏳ Сезон заканчивается {{.Until}}. Успей получить награды!`,
 		"en": `⏳ Season ends {{.Until}}. Don't miss your rewards!`,
 	},
+	// payload: {Plan:string, Until:string (formatted)}
+	enums.NotificationTypeSubscriptionActivated: {
+		"ru": `🎉 Подписка активирована! План: {{.Plan}}, действует до {{.Until}}.`,
+		"en": `🎉 Subscription activated! Plan: {{.Plan}}, active until {{.Until}}.`,
+	},
 	// payload: {StartsAt:string, Interviewer:string}
 	enums.NotificationTypeSlotReminder: {
 		"ru": `📅 Слот забронирован на {{.StartsAt}} с {{.Interviewer}}.`,
