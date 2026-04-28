@@ -96,7 +96,7 @@ export function HistoryScreen() {
       await window.druz9.windows.show('expanded');
       // Auto-close compact (welcome) когда юзер открыл конкретный чат —
       // welcome-state больше не нужен пока юзер в чате. Compact можно
-      // вернуть через ⌘\ хоткей.
+      // вернуть через ⌘⇧D хоткей.
       await window.druz9.windows.hide('compact');
       await window.druz9.windows.hide('history');
     } catch (err) {

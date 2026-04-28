@@ -701,10 +701,26 @@ export function ExpandedScreen() {
               <StatusDot state="streaming" size={6} />
               <span>streaming</span>
             </span>
-          ) : (
-            quota && quota.requestsCap > 0 && (
-              <QuotaMeterMini used={quota.requestsUsed} cap={quota.requestsCap} />
-            )
+          ) : quota && (
+            quota.requestsCap > 0
+              ? <QuotaMeterMini used={quota.requestsUsed} cap={quota.requestsCap} />
+              : quota.plan && quota.plan !== 'free'
+                ? (
+                  <span
+                    title={`План: ${quota.plan}`}
+                    style={{
+                      fontSize: 9,
+                      letterSpacing: '0.06em',
+                      textTransform: 'uppercase',
+                      color: 'var(--d9-accent-hi)',
+                      opacity: 0.7,
+                      userSelect: 'none',
+                    }}
+                  >
+                    ✦ {quota.plan}
+                  </span>
+                )
+                : null
           )}
         </div>
       </div>
@@ -893,7 +909,7 @@ function EmptyState() {
           ['Объяснить что я вижу', ['⌘', '⏎']],
           ['Заскринить область + спросить', ['⌘', '⇧', 'S']],
           ['Сменить персону', ['⌥', '1']],
-          ['Скрыть окно', ['⌘', '\\']],
+          ['Скрыть окно', ['⌘', '⇧', 'D']],
         ] as Array<[string, string[]]>).map(([label, keys]) => (
           <div
             key={label}
