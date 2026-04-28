@@ -264,7 +264,10 @@ func (r *TaskRepo) ListComments(ctx context.Context, taskID uuid.UUID) ([]domain
 			BodyMD:     body, CreatedAt: created,
 		})
 	}
-	return out, rows.Err()
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("hone.TaskRepo.ListComments: %w", err)
+	}
+	return out, nil
 }
 
 // ── helpers ──────────────────────────────────────────────────────────────
@@ -278,23 +281,23 @@ const taskSelect = `SELECT ` + taskColumns + ` FROM hone_tasks`
 // scanTask reads a row in the canonical taskColumns order.
 func scanTask(s pgx.Row) (domain.Task, error) {
 	var (
-		id, uid               pgtype.UUID
-		status, kind, source  string
-		title, briefMD        string
-		skillKey              pgtype.Text
-		deepLink              string
-		recommendedReading    []string
-		priority              int16
-		dueAt                 pgtype.Timestamptz
-		createdAt, updatedAt  time.Time
-		completedAt, dismAt   pgtype.Timestamptz
+		id, uid              pgtype.UUID
+		status, kind, source string
+		title, briefMD       string
+		skillKey             pgtype.Text
+		deepLink             string
+		recommendedReading   []string
+		priority             int16
+		dueAt                pgtype.Timestamptz
+		createdAt, updatedAt time.Time
+		completedAt, dismAt  pgtype.Timestamptz
 	)
 	if err := s.Scan(
 		&id, &uid, &status, &kind, &source, &title, &briefMD,
 		&skillKey, &deepLink, &recommendedReading, &priority, &dueAt,
 		&createdAt, &updatedAt, &completedAt, &dismAt,
 	); err != nil {
-		return domain.Task{}, err
+		return domain.Task{}, fmt.Errorf("hone.scanTask: %w", err)
 	}
 	t := domain.Task{
 		ID: sharedpg.UUIDFrom(id), UserID: sharedpg.UUIDFrom(uid),

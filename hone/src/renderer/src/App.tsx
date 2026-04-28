@@ -29,7 +29,8 @@ import { DailyBriefPanel } from './components/DailyBriefPanel';
 import { UpdateToast } from './components/UpdateToast';
 import { OfflineBanner } from './components/OfflineBanner';
 import { HomePage } from './pages/Home';
-import { TodayPage, type StartFocusArgs } from './pages/Today';
+import { type StartFocusArgs } from './pages/Today';
+import { TaskBoardPage } from './pages/TaskBoard';
 import { NotesPage } from './pages/Notes';
 import { VaultUnlockGate } from './components/VaultUnlockGate';
 import { UpgradePrompt } from './components/UpgradePrompt';
@@ -116,7 +117,8 @@ export default function App() {
   // или unblock chip, кладём target_id сюда; целевая страница подхватывает
   // на mount и сбрасывает back to null. Single-shot semantics.
   const [briefTargetNoteId, setBriefTargetNoteId] = useState<string | null>(null);
-  const [briefTargetPlanItemId, setBriefTargetPlanItemId] = useState<string | null>(null);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [_briefTargetPlanItemId, setBriefTargetPlanItemId] = useState<string | null>(null);
   const [importedCueNote, setImportedCueNote] = useState<{ filePath: string; analysis: CueSessionAnalysis } | null>(null);
   // Sentinel для backend session — null значит "не идёт". Создаётся при
   // первом переходе в running, гасится в finishSession.
@@ -711,13 +713,7 @@ export default function App() {
           onDismissReflection={() => setReflectionPrompt(null)}
         />
       )}
-      {page === 'today' && (
-        <TodayPage
-          onStartFocus={startFocus}
-          highlightedItemId={briefTargetPlanItemId}
-          onConsumeHighlight={() => setBriefTargetPlanItemId(null)}
-        />
-      )}
+      {page === 'today' && <TaskBoardPage />}
       {page === 'notes' && (
         <VaultUnlockGate>
           <NotesPage

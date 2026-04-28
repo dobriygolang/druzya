@@ -24,9 +24,9 @@ import (
 
 // Defaults; the wiring layer can override.
 const (
-	DefaultNotifierInterval     = 5 * time.Minute
-	DefaultNotifierLowerOffset  = 10 * time.Minute
-	DefaultNotifierUpperOffset  = 15 * time.Minute
+	DefaultNotifierInterval      = 5 * time.Minute
+	DefaultNotifierLowerOffset   = 10 * time.Minute
+	DefaultNotifierUpperOffset   = 15 * time.Minute
 	StartingSoonNotificationKind = "starting_soon"
 )
 
@@ -127,4 +127,3 @@ func (n *StartingSoonNotifier) sweep(ctx context.Context, lower, upper time.Dura
 		}
 	}
 }
-

@@ -24,6 +24,7 @@ require (
 	druz9/orgs v0.0.0-00010101000000-000000000000
 	druz9/podcast v0.0.0-00010101000000-000000000000
 	druz9/profile v0.0.0-00010101000000-000000000000
+	druz9/quiz v0.0.0-00010101000000-000000000000
 	druz9/rating v0.0.0-00010101000000-000000000000
 	druz9/review v0.0.0-00010101000000-000000000000
 	druz9/shared v0.0.0
@@ -162,3 +163,5 @@ replace druz9/events => ../../services/events
 replace druz9/sync => ../../services/sync
 
 replace druz9/storage => ../../services/storage
+
+replace druz9/quiz => ../../services/quiz

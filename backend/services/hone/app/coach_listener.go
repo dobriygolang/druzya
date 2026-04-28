@@ -6,11 +6,11 @@
 // publishes a typed event when the user finishes a "real-world" attempt;
 // this listener translates those events into TaskBoard transitions:
 //
-//   passing event → matching `in_review|in_progress` task → 'done'
-//                   + AI comment crediting the win
-//   failing event → matching task → back to 'in_progress'
-//                   + AI comment with a recommended next step
-//   skill_decay   → no matching task → leave to coach_generator.go
+//	passing event → matching `in_review|in_progress` task → 'done'
+//	                + AI comment crediting the win
+//	failing event → matching task → back to 'in_progress'
+//	                + AI comment with a recommended next step
+//	skill_decay   → no matching task → leave to coach_generator.go
 //
 // One event ≠ one task — we look up by (user_id, skill_key) so the
 // listener stays robust if multiple AI-suggested algo cards exist.
@@ -25,8 +25,8 @@ import (
 	"time"
 
 	"druz9/hone/domain"
-	"druz9/shared/enums"
 	sharedDomain "druz9/shared/domain"
+	"druz9/shared/enums"
 
 	"github.com/google/uuid"
 )
@@ -34,8 +34,29 @@ import (
 // CoachListener wires a single sharedDomain.Bus subscriber that routes
 // every event of interest through ReactToEvent.
 type CoachListener struct {
-	Tasks domain.TaskRepo
-	Log   *slog.Logger
+	Tasks    domain.TaskRepo
+	Animator *ReviewAnimator  // optional — when nil, transitions skip the AI cursor visual
+	Bus      sharedDomain.Bus // optional — when set, "settle" publishes XPGained
+	Log      *slog.Logger
+}
+
+// xpAmountForKind — base XP per task kind. Mirrors dynamic_config knobs
+// (xp_task_*) but kept inline to avoid pulling the dynconfig reader into
+// the listener.
+func xpAmountForKind(k domain.TaskKind) int {
+	switch k {
+	case domain.TaskKindAlgo:
+		return 20
+	case domain.TaskKindSysDesign:
+		return 30
+	case domain.TaskKindQuiz:
+		return 10
+	case domain.TaskKindReflection, domain.TaskKindReading:
+		return 8
+	case domain.TaskKindCustom:
+		return 5
+	}
+	return 5
 }
 
 // Register subscribes the listener to every relevant topic. Should be
@@ -211,6 +232,25 @@ func (l *CoachListener) settle(ctx context.Context, userID uuid.UUID, skillKey, 
 	}); err != nil {
 		l.warn(ctx, "settle.comment", err)
 	}
+	// XPGained — profile.OnXPGained writes the row to user_xp + emits
+	// LevelUp when a threshold is crossed. Best-effort: a bus blip is
+	// caught by the next streak/regen pass.
+	if l.Bus != nil {
+		if perr := l.Bus.Publish(ctx, sharedDomain.XPGained{
+			UserID: userID,
+			Amount: xpAmountForKind(t.Kind),
+			Reason: "hone_task_done:" + string(t.Kind),
+		}); perr != nil && l.Log != nil {
+			l.Log.WarnContext(ctx, "hone.coach.settle: publish XPGained failed",
+				slog.Any("err", perr))
+		}
+	}
+	// Cosmetic: replay the move + comment as an AI-cursor sequence so the
+	// user sees the coach "doing the work". The animator runs in its own
+	// goroutine; DB state is already committed above.
+	if l.Animator != nil {
+		l.Animator.Choreograph(userID, t, comment, true)
+	}
 }
 
 // regress moves a matching task back to `in_progress` and attaches an
@@ -232,6 +272,9 @@ func (l *CoachListener) regress(ctx context.Context, userID uuid.UUID, skillKey,
 		_, _ = l.Tasks.AddComment(ctx, domain.TaskComment{
 			TaskID: t.ID, AuthorKind: domain.TaskCommentAuthorAI, BodyMD: comment,
 		})
+		if l.Animator != nil {
+			l.Animator.Choreograph(userID, t, comment, false)
+		}
 		return
 	}
 	if _, err := l.Tasks.SetStatus(ctx, userID, t.ID, domain.TaskStatusInProgress); err != nil {
@@ -242,6 +285,9 @@ func (l *CoachListener) regress(ctx context.Context, userID uuid.UUID, skillKey,
 		TaskID: t.ID, AuthorKind: domain.TaskCommentAuthorAI, BodyMD: comment,
 	}); err != nil {
 		l.warn(ctx, "regress.comment", err)
+	}
+	if l.Animator != nil {
+		l.Animator.Choreograph(userID, t, comment, false)
 	}
 }
 

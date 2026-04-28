@@ -33,6 +33,7 @@ import (
 	notifyServices "druz9/cmd/monolith/services/notify"
 	podcastServices "druz9/cmd/monolith/services/podcast"
 	profileServices "druz9/cmd/monolith/services/profile"
+	quizServices "druz9/cmd/monolith/services/quiz"
 	ratingServices "druz9/cmd/monolith/services/rating"
 	reviewServices "druz9/cmd/monolith/services/review"
 	slotServices "druz9/cmd/monolith/services/slot"
@@ -249,6 +250,7 @@ func New(ctx context.Context, cfg *config.Config) (app *App, otelShutdown func()
 		&notify.Module,
 		editorServices.NewEditor(deps),
 		podcastServices.NewPodcast(deps),
+		quizServices.NewQuiz(deps),
 		adminServices.NewAdmin(deps),
 		circlesServices.NewFeed(deps),
 		adminServices.NewVacancies(deps),

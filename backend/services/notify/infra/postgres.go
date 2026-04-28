@@ -1,13 +1,13 @@
 // Package infra holds Postgres, Redis, and HTTP adapters for the notify domain.
 //
 // v2 changes:
-//   * notifications_log dropped → LogRepo interface gone, send-attempts no
+//   - notifications_log dropped → LogRepo interface gone, send-attempts no
 //     longer persisted (telegram-bot rate limiter handles dedup in Redis)
-//   * notification_preferences merged into notification_prefs:
-//       - channels[] / quiet_hours_* columns gone
-//       - channel_enabled jsonb is the channel toggle
-//       - quiet_hours_* (if needed later) re-implement via silence_until
-//   * QuietHours kept in domain as a runtime-only window (Set=false reads
+//   - notification_preferences merged into notification_prefs:
+//   - channels[] / quiet_hours_* columns gone
+//   - channel_enabled jsonb is the channel toggle
+//   - quiet_hours_* (if needed later) re-implement via silence_until
+//   - QuietHours kept in domain as a runtime-only window (Set=false reads
 //     skip the gate) so the service.go logic doesn't need a rewrite
 package infra
 

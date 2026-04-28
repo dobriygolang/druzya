@@ -300,6 +300,62 @@ func NewHone(d monolithServices.Deps) *monolithServices.Module {
 		go subscriptionServices.RunFreeTierNotesOverflowArchive(ctx, d.Pool, d.Log)
 	})
 
+	// ── TaskBoard (v2) wiring ────────────────────────────────────────────
+	tasksRepo := honeInfra.NewTaskRepo(d.Pool)
+	skillsReader := honeInfra.NewSkillAtlasReader(d.Pool)
+	activeUsers := honeInfra.NewActiveUsersReader(d.Pool)
+
+	// CursorEventBus + ReviewAnimator power the AI-cursor visual.
+	cursorBus := honeInfra.NewInProcessCursorBus()
+	animator := &honeApp.ReviewAnimator{Cursor: cursorBus, Log: d.Log}
+
+	// CoachListener subscribes to bus events and translates them into
+	// task transitions + AI comments + cursor animations + XP rewards.
+	coachListener := &honeApp.CoachListener{
+		Tasks: tasksRepo, Animator: animator, Bus: d.Bus, Log: d.Log,
+	}
+	if d.Bus != nil {
+		coachListener.Register(d.Bus)
+	}
+
+	// CoachGenerator — periodic AI suggestions per active user.
+	spawner := &honeApp.SpawnAITask{Tasks: tasksRepo, Log: d.Log}
+	coachGen := &honeApp.CoachGenerator{
+		Tasks:       tasksRepo,
+		Skills:      skillsReader,
+		ActiveUsers: activeUsers,
+		Spawner:     spawner,
+		Log:         d.Log,
+		Now:         d.Now,
+	}
+	mod.Background = append(mod.Background, func(ctx context.Context) { go coachGen.Run(ctx) })
+
+	// TaskCleanupWorker — TTL 14d sweep for abandoned `todo` cards.
+	taskCleanup := &honeApp.TaskCleanupWorker{
+		Sweep: &honeApp.AutoDismissExpired{Tasks: tasksRepo, Log: d.Log, Now: d.Now},
+		Log:   d.Log,
+	}
+	mod.Background = append(mod.Background, func(ctx context.Context) { go taskCleanup.Run(ctx) })
+
+	// Mount the task REST handlers under the same /hone prefix.
+	taskHandler := &taskHTTPHandler{
+		create: &honeApp.CreateTask{Tasks: tasksRepo, Log: d.Log},
+		list:   &honeApp.ListTasks{Tasks: tasksRepo},
+		move:   &honeApp.MoveTaskStatus{Tasks: tasksRepo, Log: d.Log},
+		del:    &honeApp.DeleteTask{Tasks: tasksRepo},
+		addCom: &honeApp.AddTaskComment{Tasks: tasksRepo},
+		listCm: &honeApp.ListTaskComments{Tasks: tasksRepo},
+		log:    d.Log,
+	}
+	cursorSSE := &cursorSSEHandler{bus: cursorBus, log: d.Log}
+
+	prevMount := mod.MountREST
+	mod.MountREST = func(r chi.Router) {
+		prevMount(r)
+		taskHandler.Mount(r)
+		cursorSSE.Mount(r)
+	}
+
 	return mod
 }
 

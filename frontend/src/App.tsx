@@ -117,6 +117,9 @@ const EditorRoomSharePage = lazy(() => import('./pages/EditorRoomSharePage'))
 // once the owner clicks Start (status flips to 'live').
 const LobbyListPage = lazy(() => import('./pages/lobby/LobbyListPage'))
 const LobbyPage = lazy(() => import('./pages/lobby/LobbyPage'))
+// Quiz — short-form Q&A drill (Phase E). Sources mock_questions + codex
+// articles; backend at /api/v1/quiz/{start,submit}.
+const QuizPage = lazy(() => import('./pages/QuizPage'))
 
 export default function App() {
   return (
@@ -259,6 +262,7 @@ export default function App() {
             to /arena/match/{match_id} when owner clicks Start. */}
         <Route path="/lobbies" element={<LobbyListPage />} />
         <Route path="/lobby/:id" element={<LobbyPage />} />
+        <Route path="/quiz" element={<QuizPage />} />
         {/* Legacy /v2/* — редирект на новый URL без префикса. */}
         <Route path="/v2/*" element={<LegacyV2Redirect />} />
         <Route path="*" element={<NotFoundPage />} />

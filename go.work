@@ -23,6 +23,7 @@ use (
 	./backend/services/orgs
 	./backend/services/podcast
 	./backend/services/profile
+	./backend/services/quiz
 	./backend/services/rating
 	./backend/services/review
 	./backend/services/slot

@@ -64,12 +64,12 @@ func NewJudge0RunClient(baseURL string, log *slog.Logger) *Judge0RunClient {
 }
 
 type judge0RunReq struct {
-	SourceCode      string `json:"source_code"`
-	LanguageID      int    `json:"language_id"`
-	CPUTimeLimit    int    `json:"cpu_time_limit"`
-	WallTimeLimit   int    `json:"wall_time_limit"`
-	MemoryLimit     int    `json:"memory_limit"`
-	EnableNetwork   bool   `json:"enable_network"`
+	SourceCode    string `json:"source_code"`
+	LanguageID    int    `json:"language_id"`
+	CPUTimeLimit  int    `json:"cpu_time_limit"`
+	WallTimeLimit int    `json:"wall_time_limit"`
+	MemoryLimit   int    `json:"memory_limit"`
+	EnableNetwork bool   `json:"enable_network"`
 }
 
 type judge0RunResp struct {
