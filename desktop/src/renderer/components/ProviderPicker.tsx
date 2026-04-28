@@ -80,8 +80,12 @@ export function ProviderPicker({ models, defaultModelId, onClose }: ProviderPick
       <div
         onClick={(e) => e.stopPropagation()}
         style={{
-          width: 440,
-          maxHeight: 520,
+          // width: min(440, viewport-padding) — на узких expanded окнах
+          // (default 520, юзер может ужать до 360) modal не вылезает.
+          // maxHeight: min(520, 80vh) — раньше fixed 520px клиппился
+          // в коротких окнах (header 56 + ProviderPicker 520 = 576 > 680).
+          width: 'min(440px, calc(100vw - 24px))',
+          maxHeight: 'min(520px, 80vh)',
           background: 'var(--d9-obsidian)',
           border: '1px solid var(--d9-hairline-b)',
           borderRadius: 12,

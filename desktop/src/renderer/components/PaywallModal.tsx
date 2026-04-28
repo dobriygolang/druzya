@@ -192,42 +192,69 @@ function PlanCard({ plan, isCurrent }: { plan: PaywallCopy; isCurrent: boolean }
   const hasSubscribe = !!plan.subscribeUrl && !isCurrent;
   const isHighlighted = plan.planId === 'seeker'; // "most popular"
 
+  // Visual hierarchy:
+  //   - highlighted (Pro): solid gradient border + accent-tinted bg +
+  //     elevated shadow → реально визуально выделяется (раньше bg был
+  //     одинаковый с обычным планом).
+  //   - current: green tint + лёгкий glow.
+  //   - regular: neutral slate, hairline border.
+  const cardBg = isHighlighted
+    ? 'linear-gradient(180deg, oklch(0.22 0.04 290 / 0.4), oklch(0.18 0.03 290 / 0.4))'
+    : isCurrent
+      ? 'oklch(0.18 0.04 150 / 0.2)'
+      : 'var(--d9-slate)';
+  const cardBorder = isHighlighted
+    ? '1.5px solid var(--d9-accent)'
+    : isCurrent
+      ? '1px solid var(--d9-ok)'
+      : '1px solid var(--d9-hairline)';
+  const cardShadow = isHighlighted
+    ? '0 8px 28px -8px rgba(124, 92, 255, 0.4)'
+    : 'none';
+
   return (
     <div
       style={{
         position: 'relative',
-        padding: '18px 18px 16px',
-        background: isHighlighted ? 'var(--d9-slate)' : 'var(--d9-slate)',
-        border: isHighlighted ? '1px solid var(--d9-accent)' : '1px solid var(--d9-hairline)',
+        padding: '20px 18px 16px',
+        background: cardBg,
+        border: cardBorder,
         borderRadius: 12,
         display: 'flex',
         flexDirection: 'column',
         gap: 10,
-        minHeight: 220,
+        minHeight: 240,
+        boxShadow: cardShadow,
+        transform: isHighlighted ? 'translateY(-4px)' : 'none',
+        transition: 'transform 200ms var(--d9-ease)',
       }}
     >
       {isHighlighted && !isCurrent && (
         <div
           style={{
             position: 'absolute',
-            top: -10,
-            left: 14,
-            padding: '2px 8px',
+            top: -11,
+            left: '50%',
+            transform: 'translateX(-50%)',
+            padding: '3px 12px',
             fontSize: 10,
+            fontWeight: 600,
             fontFamily: 'var(--d9-font-mono)',
             textTransform: 'uppercase',
-            letterSpacing: 0.5,
+            letterSpacing: 0.8,
             background: 'linear-gradient(135deg, var(--d9-accent) 0%, var(--d9-cyan) 100%)',
             color: 'white',
-            borderRadius: 10,
+            borderRadius: 12,
+            boxShadow: '0 2px 8px rgba(124, 92, 255, 0.5)',
+            whiteSpace: 'nowrap',
           }}
         >
-          Популярный
+          ⭐ Популярный
         </div>
       )}
 
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
-        <span style={{ fontSize: 15, fontWeight: 600 }}>{plan.displayName}</span>
+        <span style={{ fontSize: 16, fontWeight: 700, fontFamily: 'var(--d9-font-display)' }}>{plan.displayName}</span>
         {isCurrent && (
           <span
             style={{
@@ -236,8 +263,9 @@ function PlanCard({ plan, isCurrent }: { plan: PaywallCopy; isCurrent: boolean }
               textTransform: 'uppercase',
               padding: '2px 8px',
               borderRadius: 10,
-              background: 'rgba(52, 199, 89, 0.12)',
+              background: 'rgba(52, 199, 89, 0.18)',
               color: 'var(--d9-ok)',
+              letterSpacing: 0.5,
             }}
           >
             текущий
@@ -245,25 +273,37 @@ function PlanCard({ plan, isCurrent }: { plan: PaywallCopy; isCurrent: boolean }
         )}
       </div>
 
-      <div style={{ fontSize: 20, fontWeight: 600, fontFamily: 'var(--d9-font-display)' }}>
+      <div
+        style={{
+          fontSize: 22,
+          fontWeight: 700,
+          fontFamily: 'var(--d9-font-display)',
+          background: isHighlighted
+            ? 'linear-gradient(135deg, var(--d9-accent) 0%, var(--d9-cyan) 100%)'
+            : 'transparent',
+          WebkitBackgroundClip: isHighlighted ? 'text' : undefined,
+          WebkitTextFillColor: isHighlighted ? 'transparent' : 'var(--d9-ink)',
+          backgroundClip: isHighlighted ? 'text' : undefined,
+        }}
+      >
         {plan.priceLabel}
       </div>
 
-      <div style={{ fontSize: 12, color: 'var(--d9-ink-dim)', lineHeight: 1.5 }}>{plan.tagline}</div>
+      <div style={{ fontSize: 12.5, color: 'var(--d9-ink-dim)', lineHeight: 1.5, minHeight: 18 }}>{plan.tagline}</div>
 
-      <ul style={{ margin: '6px 0 0', padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 6 }}>
+      <ul style={{ margin: '6px 0 0', padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: 8 }}>
         {plan.bullets.map((b, i) => (
           <li
             key={i}
             style={{
               display: 'flex',
               gap: 8,
-              fontSize: 12,
+              fontSize: 12.5,
               color: 'var(--d9-ink)',
               lineHeight: 1.5,
             }}
           >
-            <span style={{ color: 'var(--d9-ok)', flexShrink: 0, marginTop: 2 }}>
+            <span style={{ color: isHighlighted ? 'var(--d9-accent)' : 'var(--d9-ok)', flexShrink: 0, marginTop: 2 }}>
               <IconCheck size={12} />
             </span>
             <span>{b}</span>
@@ -273,20 +313,54 @@ function PlanCard({ plan, isCurrent }: { plan: PaywallCopy; isCurrent: boolean }
 
       <div style={{ flex: 1 }} />
 
-      <Button
-        size="md"
-        variant={isHighlighted ? 'primary' : 'secondary'}
-        disabled={!hasSubscribe}
-        onClick={() => {
-          if (!hasSubscribe) return;
-          // Route through main so the URL opens in the user's default
-          // browser rather than an in-app webview. window.open would
-          // spawn an Electron-owned window which shows up in captures.
-          void openExternal(plan.subscribeUrl);
-        }}
-      >
-        {isCurrent ? 'Текущий план' : plan.ctaLabel}
-      </Button>
+      {/* CTA: highlighted plan → gradient button с glow.
+          Disabled state когда subscribeURL пустой → показываем «Скоро»
+          вместо обычного "Текущий план", чтобы юзер понимал что план
+          существует но платёжная интеграция не настроена операторами. */}
+      {isCurrent ? (
+        <Button size="md" variant="secondary" disabled>
+          Текущий план
+        </Button>
+      ) : !hasSubscribe ? (
+        <Button size="md" variant="secondary" disabled>
+          Скоро доступно
+        </Button>
+      ) : (
+        <button
+          onClick={() => void openExternal(plan.subscribeUrl)}
+          style={{
+            padding: '10px 16px',
+            background: isHighlighted
+              ? 'linear-gradient(135deg, var(--d9-accent) 0%, var(--d9-cyan) 100%)'
+              : 'var(--d9-ink)',
+            color: isHighlighted ? 'white' : 'var(--d9-bg)',
+            border: 0,
+            borderRadius: 8,
+            fontSize: 13,
+            fontWeight: 600,
+            fontFamily: 'inherit',
+            cursor: 'pointer',
+            transition: 'transform 120ms, box-shadow 120ms',
+            boxShadow: isHighlighted
+              ? '0 4px 14px rgba(124, 92, 255, 0.35)'
+              : '0 2px 6px rgba(0, 0, 0, 0.2)',
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.transform = 'translateY(-1px)';
+            e.currentTarget.style.boxShadow = isHighlighted
+              ? '0 6px 18px rgba(124, 92, 255, 0.5)'
+              : '0 4px 10px rgba(0, 0, 0, 0.3)';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.transform = 'translateY(0)';
+            e.currentTarget.style.boxShadow = isHighlighted
+              ? '0 4px 14px rgba(124, 92, 255, 0.35)'
+              : '0 2px 6px rgba(0, 0, 0, 0.2)';
+          }}
+        >
+          {plan.ctaLabel}
+        </button>
+      )}
     </div>
   );
 }

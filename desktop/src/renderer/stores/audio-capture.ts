@@ -161,7 +161,16 @@ export const useAudioCaptureStore = create<State>((set, get) => ({
       }),
       window.druz9.on<AudioCaptureErrorEvent>(eventChannels.audioCaptureError, (ev) => {
         if (!ev || (ev.source !== 'system' && ev.source !== 'mic')) return;
-        apply(ev.source, (slice) => ({ ...slice, error: ev.message || 'Ошибка записи' }));
+        const msg = ev.message || 'Ошибка записи';
+        apply(ev.source, (slice) => ({ ...slice, error: msg }));
+        // Toast — у пользователя должен быть VISIBLE сигнал что start
+        // не удался. Раньше error попадал только в slice.error и
+        // показывался в LiveTranscriptStrip; но strip рендерится
+        // только когда `recording` true → если start fail'ил ДО
+        // перехода в running, юзер ничего не видел. Toast виден
+        // ВСЕГДА (отдельное окно tray-style).
+        const label = ev.source === 'mic' ? 'Микрофон' : 'Звук';
+        void window.druz9.toast.show(`${label}: ${msg}`, 'error').catch(() => {});
       }),
     ];
     return () => unsubs.forEach((u) => u());
@@ -175,11 +184,16 @@ export const useAudioCaptureStore = create<State>((set, get) => ({
     try {
       await window.druz9.audioCapture.start(source);
     } catch (err) {
+      // IPC вообще не дошёл (preload broken / main crashed) — это
+      // catastrophic. Toast обязателен: иначе click → ничего →
+      // юзер думает что приложение сломано.
       const msg = err instanceof Error ? err.message : 'Не удалось запустить запись';
       set((prev) => ({
         ...prev,
         [sliceKey(source)]: { ...prev[sliceKey(source)], error: msg },
       }));
+      const label = source === 'mic' ? 'Микрофон' : 'Звук';
+      void window.druz9.toast.show(`${label}: ${msg}`, 'error').catch(() => {});
     }
   },
 

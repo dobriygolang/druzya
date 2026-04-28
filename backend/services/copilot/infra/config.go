@@ -2,6 +2,7 @@ package infra
 
 import (
 	"context"
+	"os"
 
 	"druz9/copilot/domain"
 )
@@ -187,55 +188,70 @@ func DefaultDesktopConfig() domain.DesktopConfig {
 			// cross the client boundary; all dispatch goes via the server.
 			{Key: "stealth_overlay", Enabled: true},
 		},
-		Paywall: []domain.PaywallCopy{
-			{
-				PlanID:       "free",
-				DisplayName:  "Free",
-				PriceLabel:   "Бесплатно",
-				Tagline:      "Для знакомства с продуктом",
-				Bullets:      []string{"20 запросов в день", "Qwen3 Coder / GPT-OSS / MiniMax / Liquid (free)", "Только macOS"},
-				CTALabel:     "Текущий план",
-				SubscribeURL: "",
-			},
-			{
-				PlanID:      "seeker",
-				DisplayName: "Pro",
-				PriceLabel:  "499 ₽/мес",
-				Tagline:     "Для ежедневной работы",
-				Bullets: []string{
-					"Безлимитные запросы",
-					"Все модели, включая Claude",
-					"История с облачной синхронизацией",
-					"Приоритетная поддержка",
-				},
-				CTALabel: "Оформить подписку",
-				// SubscribeURL будет выдан централизованным subscription-сервисом
-				// (M1+M3) — он формирует одноразовый checkout-URL через Boosty/
-				// ЮKassa API с привязкой user_id и tier. Пустой → frontend
-				// показывает "Coming soon" / скрывает кнопку до выкатки M3.
-				SubscribeURL: "",
-			},
-			{
-				PlanID:      "ascendant",
-				DisplayName: "Team",
-				PriceLabel:  "1490 ₽/мес",
-				Tagline:     "Для команд, работающих с прод-кодом",
-				Bullets: []string{
-					"Всё из Pro",
-					"До 5 сидов в команде",
-					"SSO через Telegram / Yandex",
-					"Приоритетная поддержка в течение 4 часов",
-				},
-				CTALabel:     "Оформить подписку",
-				SubscribeURL: "",
-			},
-		},
+		Paywall:         paywallFromEnv(),
 		StealthWarnings: []domain.StealthCompatEntry{
 			// Seed list — add entries here as we discover broken versions.
 		},
 		UpdateFeedURL:      "",
 		MinClientVersion:   "0.1.0",
 		AnalyticsPolicyKey: "v1-opt-in-default-off",
+	}
+}
+
+// paywallFromEnv — собирает paywall copy с subscribe URL'ами из env vars.
+//
+//	BOOSTY_CHECKOUT_URL_SEEKER     — URL подписки для Pro tier
+//	BOOSTY_CHECKOUT_URL_ASCENDANT  — URL подписки для Team tier
+//	BOOSTY_CHECKOUT_URL_FREE       — игнорируется (free tier — без оплаты)
+//
+// Если env пуста — frontend получит пустой URL и кнопка станет disabled
+// + покажется hint «coming soon». Это намеренная degradation: лучше
+// disabled-кнопка чем ссылка на 404.
+//
+// Раньше URLs hardcoded были как "" с TODO «выдаст subscription M3».
+// M3 не приехал, но юзер уже видел plans → frustration. Env-driven
+// конфиг позволяет операторам выкатить подписку без релиза backend'а.
+func paywallFromEnv() []domain.PaywallCopy {
+	seekerURL := os.Getenv("BOOSTY_CHECKOUT_URL_SEEKER")
+	ascendantURL := os.Getenv("BOOSTY_CHECKOUT_URL_ASCENDANT")
+	return []domain.PaywallCopy{
+		{
+			PlanID:       "free",
+			DisplayName:  "Free",
+			PriceLabel:   "Бесплатно",
+			Tagline:      "Для знакомства с продуктом",
+			Bullets:      []string{"20 запросов в день", "Qwen3 Coder / GPT-OSS / MiniMax / Liquid (free)", "Только macOS"},
+			CTALabel:     "Текущий план",
+			SubscribeURL: "",
+		},
+		{
+			PlanID:      "seeker",
+			DisplayName: "Pro",
+			PriceLabel:  "499 ₽/мес",
+			Tagline:     "Для ежедневной работы",
+			Bullets: []string{
+				"Безлимитные запросы",
+				"Все модели, включая Claude",
+				"История с облачной синхронизацией",
+				"Приоритетная поддержка",
+			},
+			CTALabel:     "Оформить подписку",
+			SubscribeURL: seekerURL,
+		},
+		{
+			PlanID:      "ascendant",
+			DisplayName: "Team",
+			PriceLabel:  "1490 ₽/мес",
+			Tagline:     "Для команд, работающих с прод-кодом",
+			Bullets: []string{
+				"Всё из Pro",
+				"До 5 сидов в команде",
+				"SSO через Telegram / Yandex",
+				"Приоритетная поддержка в течение 4 часов",
+			},
+			CTALabel:     "Оформить подписку",
+			SubscribeURL: ascendantURL,
+		},
 	}
 }
 

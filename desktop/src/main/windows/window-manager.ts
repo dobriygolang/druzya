@@ -367,20 +367,19 @@ function pickVisibleWindow(name: WindowName): BrowserWindow | undefined {
  * kind switches to it (by reloading the renderer URL with the new hash).
  */
 export function showPicker(kind: PickerKind, opts: WindowOptions): void {
+  // Anchor выбираем по тому окну, которое сейчас visible: expanded
+  // приоритет (юзер активно в чате) → compact (welcome) → fallback
+  // на primary display center. Раньше always-anchor-to-compact: если
+  // юзер в expanded окне, picker открывался за километр — там где
+  // compact когда-то стоял или вообще скрыт.
+  const expanded = windows.get('expanded');
   const compact = windows.get('compact');
-  if (!compact || compact.isDestroyed()) return;
+  const anchor =
+    expanded && !expanded.isDestroyed() && expanded.isVisible() ? expanded
+      : compact && !compact.isDestroyed() && compact.isVisible() ? compact
+        : null;
+  if (!anchor) return;
 
-  // Swallow rapid re-opens caused by the blur→click race. When the user
-  // clicks the SAME pill that's currently anchoring an open picker, the
-  // sequence on macOS is:
-  //   (a) mousedown lands on compact → compact gains focus
-  //   (b) picker window blurs → hideWindow('picker') runs (see blur
-  //       handler in buildWindow), which clears pickerKind=null
-  //   (c) compact's onClick fires → IPC showPicker(<same kind>)
-  //       arrives here, but pickerKind is already null so the "toggle
-  //       close" branch (kind match) never fires — we'd re-open.
-  // Fix: if the very same kind was closed in the last 250ms, treat
-  // the new call as the user's intended "click to close" and stay shut.
   const now = Date.now();
   if (
     lastPickerHideKind === kind &&
@@ -391,22 +390,37 @@ export function showPicker(kind: PickerKind, opts: WindowOptions): void {
     return;
   }
 
-  const cBounds = compact.getBounds();
+  const aBounds = anchor.getBounds();
   const PICKER_W = 320;
   const PICKER_H = 340;
   const GAP = 6;
 
-  // Anchor offsets inside compact. Model pill lives in row 2 at ~58px
-  // from left; persona chip at ~200px. Picker centers below the chip
-  // and is clamped to stay fully on-screen.
-  const anchorXFromLeft = kind === 'model' ? 58 : 210;
-  let x = cBounds.x + anchorXFromLeft - PICKER_W / 2 + 40;
-  let y = cBounds.y + cBounds.height + GAP;
+  // Позиционирование зависит от source-окна:
+  //   - compact (460×92): picker под compact'ом, X-offset под pills
+  //     row 2 (model=58, persona=210).
+  //   - expanded (520×680 default): picker под header'ом expanded,
+  //     X-offset под combined Persona·Model chip (слева после logo).
+  // Если результирующий y вылезает за нижний край display'а — flip
+  // picker наверх (над anchor'ом).
+  let x: number;
+  let y: number;
+  if (anchor === expanded) {
+    const anchorOffset = kind === 'model' ? 180 : 60;
+    x = aBounds.x + anchorOffset - PICKER_W / 2 + 60;
+    y = aBounds.y + 56 + GAP; // под header expanded'а (~56px высота)
+  } else {
+    const anchorXFromLeft = kind === 'model' ? 58 : 210;
+    x = aBounds.x + anchorXFromLeft - PICKER_W / 2 + 40;
+    y = aBounds.y + aBounds.height + GAP; // под compact'ом
+  }
 
-  // Clamp to the display containing compact.
-  const display = screen.getDisplayMatching(cBounds);
+  const display = screen.getDisplayMatching(aBounds);
   x = Math.max(display.bounds.x + 4, Math.min(x, display.bounds.x + display.bounds.width - PICKER_W - 4));
   y = Math.max(display.bounds.y + 4, Math.min(y, display.bounds.y + display.bounds.height - PICKER_H - 4));
+  // Flip up если picker не помещается снизу (anchor near-bottom).
+  if (y + PICKER_H > display.bounds.y + display.bounds.height - 4) {
+    y = Math.max(display.bounds.y + 4, aBounds.y - PICKER_H - GAP);
+  }
 
   const existing = windows.get('picker');
   // If picker is already open with this kind → toggle close.
