@@ -59,6 +59,12 @@ const DEFAULTS: HoneSettings = {
   ambientMusic: true,
 };
 
+/** Read the stored pomodoro duration in seconds (clamped 5–90 min). */
+export function readPomodoroSeconds(): number {
+  const s = readSettings();
+  return s.pomodoroMinutes * 60;
+}
+
 export function readStoredTheme(): ThemeId {
   if (typeof window === 'undefined') return 'winter';
   try {
@@ -95,9 +101,11 @@ function clampInt(v: unknown, lo: number, hi: number, fallback: number): number 
 interface SettingsPageProps {
   theme: ThemeId;
   onThemeChange: (t: ThemeId) => void;
+  /** Called whenever the user changes the pomodoro duration. Seconds value. */
+  onPomoChange?: (secs: number) => void;
 }
 
-export function SettingsPage({ theme, onThemeChange }: SettingsPageProps) {
+export function SettingsPage({ theme, onThemeChange, onPomoChange }: SettingsPageProps) {
   const [settings, setSettings] = useState<HoneSettings>(() => readSettings());
 
   useEffect(() => {
@@ -108,7 +116,10 @@ export function SettingsPage({ theme, onThemeChange }: SettingsPageProps) {
     }
   }, [settings]);
 
-  const setPomo = (n: number) => setSettings((s) => ({ ...s, pomodoroMinutes: n }));
+  const setPomo = (n: number) => {
+    setSettings((s) => ({ ...s, pomodoroMinutes: n }));
+    onPomoChange?.(n * 60);
+  };
   const setVol = (n: number) => setSettings((s) => ({ ...s, defaultVolume: n }));
   const setNotif = (b: boolean) => setSettings((s) => ({ ...s, notifications: b }));
   const setAmbient = (b: boolean) => setSettings((s) => ({ ...s, ambientMusic: b }));

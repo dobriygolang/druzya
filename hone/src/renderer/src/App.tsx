@@ -40,12 +40,16 @@ import { SharedBoardsPage } from './pages/SharedBoards';
 import { EditorPage } from './pages/Editor';
 import { BoardsTabsChrome } from './components/BoardsTabsChrome';
 import { EventsPage } from './pages/Events';
-import { SettingsPage, readStoredTheme } from './pages/Settings';
+import { SettingsPage, readStoredTheme, readPomodoroSeconds } from './pages/Settings';
 import { useSessionStore } from './stores/session';
 import { startFocusSession, endFocusSession } from './api/hone';
 import { notify } from './api/notifications';
 
-const POMODORO_SECONDS = 25 * 60;
+// Pomodoro duration — initialised from localStorage so Settings changes
+// survive restart. pomodoroSecsRef holds the "cap" for the next session;
+// updating it doesn't interrupt a running timer (intentional: the user
+// shouldn't have their active session cut short mid-focus).
+
 const ONBOARDING_KEY = 'hone:onboarded:v2';
 
 // ReflectionPrompt — что показывает Home после завершения сессии. Не
@@ -72,7 +76,13 @@ export default function App() {
   // обновляется без full-reload.
   const [theme, setTheme] = useState<ThemeId>(() => readStoredTheme());
 
-  const [remain, setRemain] = useState(POMODORO_SECONDS);
+  // Mutable cap — updated when the user changes duration in Settings.
+  // All "reset to full" calls read from this ref so the new length takes
+  // effect on the *next* pomodoro, not mid-session.
+  const pomodoroSecsRef = useRef(readPomodoroSeconds());
+  const pomodoroSecs = pomodoroSecsRef.current;
+
+  const [remain, setRemain] = useState(pomodoroSecs);
   const [running, setRunning] = useState(false);
   const [mode, setMode] = useState<'countdown' | 'stopwatch'>('countdown');
   const [vol, setVol] = useState(40);
@@ -327,7 +337,7 @@ export default function App() {
     async (reflection: string = '') => {
       const id = sessionRef.current;
       if (!id) return;
-      const secondsFocused = Math.max(0, POMODORO_SECONDS - remain);
+      const secondsFocused = Math.max(0, pomodoroSecsRef.current - remain);
       const pomodorosCompleted = remain === 0 ? 1 : 0;
       sessionRef.current = null;
       try {
@@ -351,7 +361,7 @@ export default function App() {
     if (running && remain === 0) {
       setRunning(false);
       const id = sessionRef.current;
-      const seconds = POMODORO_SECONDS;
+      const seconds = pomodoroSecsRef.current;
       void finishSession();
       // OS-native notification — юзер мог уйти от экрана, нужна звуковая
       // подсказка что pomodoro закончилось. notify() сам проверяет
@@ -364,12 +374,12 @@ export default function App() {
           pomodorosCompleted: 1,
         });
       }
-      setRemain(POMODORO_SECONDS);
+      setRemain(pomodoroSecsRef.current);
     }
   }, [remain, running, mode, finishSession]);
 
   const initialFor = useCallback(
-    (m: 'countdown' | 'stopwatch') => (m === 'countdown' ? POMODORO_SECONDS : 0),
+    (m: 'countdown' | 'stopwatch') => (m === 'countdown' ? pomodoroSecsRef.current : 0),
     [],
   );
 
@@ -393,7 +403,7 @@ export default function App() {
     setPinnedPlanItemId(args?.planItemId ?? null);
     setPinnedTitle(args?.pinnedTitle ?? null);
     setReflectionPrompt(null);
-    setRemain(POMODORO_SECONDS);
+    setRemain(pomodoroSecsRef.current);
     setRunning(true);
     setPage('home');
   }, []);
@@ -402,7 +412,7 @@ export default function App() {
     if (!running && !sessionRef.current) return;
     setRunning(false);
     void finishSession();
-    setRemain(POMODORO_SECONDS);
+    setRemain(pomodoroSecsRef.current);
   }, [running, finishSession]);
 
   const openImpl = useCallback(
@@ -740,7 +750,16 @@ export default function App() {
       )}
       {statsOpen && page === 'home' && <StatsOverlay onClose={() => setStatsOpen(false)} />}
       {page === 'settings' && (
-        <SettingsPage theme={theme} onThemeChange={setTheme} />
+        <SettingsPage
+          theme={theme}
+          onThemeChange={setTheme}
+          onPomoChange={(secs) => {
+            pomodoroSecsRef.current = secs;
+            // Only reset remain if the timer isn't running — we don't
+            // interrupt an active focus session.
+            if (!running) setRemain(secs);
+          }}
+        />
       )}
       {page === 'events' && (
         <EventsPage
