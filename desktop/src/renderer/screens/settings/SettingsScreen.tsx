@@ -10,6 +10,7 @@ import { HotkeyRecorder } from '../../components/HotkeyRecorder';
 import { useLocaleStore } from '../../i18n';
 import {
   IconDocument,
+  IconInfo,
   IconKey,
   IconPalette,
   IconSettings,
@@ -49,7 +50,7 @@ const tabs: Array<{ id: Tab; label: string; icon: React.ReactNode }> = [
   { id: 'documents', label: 'Документы', icon: <IconDocument size={14} /> },
   { id: 'appearance', label: 'Внешний вид', icon: <IconPalette size={14} /> },
   { id: 'permissions', label: 'Доступы macOS', icon: <IconShield size={14} /> },
-  { id: 'about', label: 'О программе', icon: <IconShield size={14} /> },
+  { id: 'about', label: 'О программе', icon: <IconInfo size={14} /> },
 ];
 
 export function SettingsScreen() {
@@ -1625,11 +1626,21 @@ function PermRow({
 }
 
 function AboutTab() {
+  const [version, setVersion] = useState('…');
+  useEffect(() => {
+    void window.druz9.app.version().then(setVersion).catch(() => setVersion('—'));
+  }, []);
+
   return (
     <>
       <SectionTitle title="О программе" subtitle="Cue" />
       <div style={{ display: 'flex', flexDirection: 'column' }}>
-        <Row title="Версия" control={<span style={{ fontFamily: 'var(--d9-font-mono)' }}>0.1.0</span>} />
+        <Row
+          title="Версия"
+          control={
+            <span style={{ fontFamily: 'var(--d9-font-mono)', fontSize: 12 }}>{version}</span>
+          }
+        />
         <UpdateRow />
         <Row
           title="Обратная связь"

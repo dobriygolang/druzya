@@ -176,6 +176,7 @@ const api: Druz9API = {
   },
   app: {
     quit: () => ipcRenderer.invoke(invokeChannels.appQuit) as Promise<void>,
+    version: () => ipcRenderer.invoke(invokeChannels.appVersion) as Promise<string>,
   },
   ui: {
     openProviderPicker: () =>

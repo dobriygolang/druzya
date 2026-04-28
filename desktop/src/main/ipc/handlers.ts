@@ -700,6 +700,7 @@ export function registerHandlers(opts: RegisterOptions): void {
   );
 
   // ── App lifecycle ──
+  ipcMain.handle(invokeChannels.appVersion, () => app.getVersion());
   ipcMain.handle(invokeChannels.appQuit, async () => {
     // Give the analyzer subscriber a moment to drain; then quit.
     setTimeout(() => app.quit(), 50);

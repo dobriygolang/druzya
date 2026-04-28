@@ -96,6 +96,7 @@ export const invokeChannels = {
   notesExportChatMarkdown: 'notes:export-chat-markdown',
 
   appQuit: 'app:quit',
+  appVersion: 'app:version',
 
   /** Renderer → main: ask to broadcast "open provider picker" to the
    *  expanded window. Main handles showing the expanded window too. */
@@ -736,6 +737,8 @@ export interface Druz9API {
   app: {
     /** Quit the entire application. User-confirmed elsewhere. */
     quit: () => Promise<void>;
+    /** Returns the packaged app version string (e.g. "1.2.3"). */
+    version: () => Promise<string>;
   };
 
   /** UI hand-offs between windows. */

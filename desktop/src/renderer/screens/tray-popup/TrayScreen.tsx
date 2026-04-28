@@ -42,6 +42,7 @@ const QUIT: TrayItem[] = [
 
 export function TrayScreen() {
   const [sessionLive, setSessionLive] = useState(false);
+  const [version, setVersion] = useState('');
 
   useEffect(() => {
     const id = 'd9-tray-style';
@@ -51,6 +52,10 @@ export function TrayScreen() {
       el.textContent = trayStyle;
       document.head.appendChild(el);
     }
+  }, []);
+
+  useEffect(() => {
+    void window.druz9.app.version().then(setVersion).catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -134,7 +139,7 @@ export function TrayScreen() {
         }}
       >
         <PrototypeMark />
-        <span>CUE · v0.8.1</span>
+        <span>CUE{version ? ` · v${version}` : ''}</span>
       </div>
 
       <TrayGroup items={QUICK} onAction={doAction} />

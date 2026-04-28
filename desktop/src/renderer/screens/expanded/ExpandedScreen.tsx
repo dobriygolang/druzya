@@ -38,6 +38,7 @@ import { useConversationStore, type UIMessage } from '../../stores/conversation'
 import { usePersonaStore } from '../../stores/persona';
 import { usePersonaHotkeys } from '../../hooks/use-persona-hotkeys';
 import { useQuotaStore } from '../../stores/quota';
+import { usePaywallStore } from '../../stores/paywall';
 import { useSelectedModelStore } from '../../stores/selected-model';
 import { useSessionStore } from '../../stores/session';
 import { useAudioCaptureStore } from '../../stores/audio-capture';
@@ -81,7 +82,9 @@ export function ExpandedScreen() {
   }, []);
 
   const quota = useQuotaStore((s) => s.quota);
+  const refreshQuota = useQuotaStore((s) => s.refresh);
   const bootstrapQuota = useQuotaStore((s) => s.bootstrap);
+  const showPaywall = usePaywallStore((s) => s.show);
   useEffect(() => {
     let unsub: (() => void) | null = null;
     void bootstrapQuota().then((u) => { unsub = u; });
@@ -731,11 +734,14 @@ export function ExpandedScreen() {
         actions={buildPaletteActions({
           hasMessages: messages.length > 0,
           hasSummary: Boolean(lastAnalysis && lastAnalysis.status === 'ready'),
+          isFreePlan: !quota || quota.plan === 'free' || quota.plan === '',
           openHistory: () => void window.druz9.windows.show('history'),
           openSettings: () => void window.druz9.windows.show('settings'),
           openPersonaPicker: () => void window.druz9.windows.showPicker('persona'),
           openModelPicker: () => setPickerOpen(true),
           openSummary: () => setSummaryOpen(true),
+          showPaywall: () => showPaywall(),
+          refreshQuota: () => void refreshQuota(),
           exportMarkdown: () => {
             void window.druz9.notes.exportChatMarkdown({
               title: '',
@@ -781,11 +787,14 @@ export function ExpandedScreen() {
 function buildPaletteActions(ctx: {
   hasMessages: boolean;
   hasSummary: boolean;
+  isFreePlan: boolean;
   openHistory: () => void;
   openSettings: () => void;
   openPersonaPicker: () => void;
   openModelPicker: () => void;
   openSummary: () => void;
+  showPaywall: () => void;
+  refreshQuota: () => void;
   exportMarkdown: () => void;
   saveToHone: () => void;
   screenshot: () => void;
@@ -809,6 +818,21 @@ function buildPaletteActions(ctx: {
       { id: 'clear-chat', label: 'Очистить чат', hint: 'Начать новый разговор', run: ctx.clearChat },
     );
   }
+  // Subscription actions — always surfaced so users can find them via search.
+  if (ctx.isFreePlan) {
+    list.push({
+      id: 'upgrade',
+      label: 'Обновить план',
+      hint: 'Seeker / Ascendant на Boosty',
+      run: ctx.showPaywall,
+    });
+  }
+  list.push({
+    id: 'refresh-quota',
+    label: 'Проверить подписку',
+    hint: 'Обновить статус плана с сервера',
+    run: ctx.refreshQuota,
+  });
   list.push({ id: 'quit', label: 'Выйти из Cue', shortcut: '⌘Q', run: ctx.quitApp });
   return list;
 }
