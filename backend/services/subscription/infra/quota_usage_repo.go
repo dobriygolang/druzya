@@ -12,11 +12,13 @@ package infra
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	sharedpg "druz9/shared/pkg/pg"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -73,8 +75,19 @@ func (r *QuotaUsageRepo) CountActiveSharedRooms(ctx context.Context, userID uuid
 	return n, nil
 }
 
-// CountAIThisMonth — STUB: ai_usage_log не развёрнут. Возвращаем 0 чтобы
-// quota check не блокировал AI calls на Phase 1.
-func (r *QuotaUsageRepo) CountAIThisMonth(_ context.Context, _ uuid.UUID) (int, error) {
-	return 0, nil
+// CountAIThisMonth reads requests_used from copilot_quotas — the authoritative
+// per-user AI call counter maintained by the copilot service. Returns 0 when
+// the user has no quota row yet (first-time user who hasn't called the API).
+func (r *QuotaUsageRepo) CountAIThisMonth(ctx context.Context, userID uuid.UUID) (int, error) {
+	const q = `SELECT requests_used FROM copilot_quotas WHERE user_id = $1`
+	var n int
+	err := r.pool.QueryRow(ctx, q, sharedpg.UUID(userID)).Scan(&n)
+	if err != nil {
+		// ErrNoRows: user never called copilot — usage is 0.
+		if errors.Is(err, pgx.ErrNoRows) {
+			return 0, nil
+		}
+		return 0, fmt.Errorf("subscription: count AI this month: %w", err)
+	}
+	return n, nil
 }
