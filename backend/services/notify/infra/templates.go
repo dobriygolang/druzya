@@ -108,6 +108,11 @@ var rawTemplates = map[enums.NotificationType]map[string]string{
 		"ru": `📊 Еженедельный отчёт ({{.Period}}):\n{{.Summary}}`,
 		"en": `📊 Weekly report ({{.Period}}):\n{{.Summary}}`,
 	},
+	// payload: {Username:string optional}
+	enums.NotificationTypeWelcome: {
+		"ru": `👋 Добро пожаловать в druz9{{if .Username}}, {{.Username}}{{end}}! Открой сайт и выбери первую Kata — путь начинается здесь.`,
+		"en": `👋 Welcome to druz9{{if .Username}}, {{.Username}}{{end}}! Open the site and pick your first Kata — your journey starts here.`,
+	},
 }
 
 // SubscriptionActivatedTemplate and UserRegisteredTemplate are reused via

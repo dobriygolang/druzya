@@ -199,24 +199,19 @@ func (h *Handlers) OnSkillDecayed(ctx context.Context, ev sharedDomain.Event) er
 	})
 }
 
-// OnUserRegistered welcomes new users. Uses the DailyKata template slot as a
-// placeholder with MissedStreak=false and a one-off payload.
-// STUB: a dedicated Welcome template should land in a follow-up.
+// OnUserRegistered sends a welcome notification to new users.
+// Delivery is best-effort — new users don't have a telegram_chat_id yet;
+// the Sender returns ErrNoTarget and the worker logs + continues.
 func (h *Handlers) OnUserRegistered(ctx context.Context, ev sharedDomain.Event) error {
 	e, ok := ev.(sharedDomain.UserRegistered)
 	if !ok {
 		return fmt.Errorf("notify.OnUserRegistered: unexpected event %T", ev)
 	}
-	// Delivery is best-effort — new users likely don't have a telegram_chat_id
-	// yet; the Sender returns ErrNoTarget and the worker falls through/logs.
 	return h.Send.Do(ctx, SendInput{
 		UserID: e.UserID,
-		Type:   enums.NotificationTypeDailyKata, // reuse slot; STUB
+		Type:   enums.NotificationTypeWelcome,
 		Payload: map[string]any{
-			"MissedStreak": false,
-			"Streak":       0,
-			"XP":           0,
-			"Milestone":    "Добро пожаловать в druz9! Открой сайт и выбери первую Kata.",
+			"Username": e.Username,
 		},
 	})
 }
