@@ -144,7 +144,7 @@ func NewHone(d monolithServices.Deps) *monolithServices.Module {
 
 	h := honeApp.NewHandler(honeApp.Handler{
 		// Plan
-		GeneratePlan:     &honeApp.GeneratePlan{Plans: plans, Skills: skills, Resistance: resistance, Synthesiser: synthesiser, Queue: queue, Log: d.Log, Now: d.Now},
+		GeneratePlan:     &honeApp.GeneratePlan{Plans: plans, Skills: skills, Notes: notes, Resistance: resistance, Synthesiser: synthesiser, Queue: queue, Log: d.Log, Now: d.Now},
 		GetPlan:          &honeApp.GetPlan{Plans: plans, Now: d.Now},
 		DismissPlanItem:  &honeApp.DismissPlanItem{Plans: plans, Resistance: resistance, Log: d.Log, Now: d.Now, Memory: d.IntelligenceMemoryHook},
 		CompletePlanItem: &honeApp.CompletePlanItem{Plans: plans, Now: d.Now, Memory: d.IntelligenceMemoryHook},
@@ -162,7 +162,7 @@ func NewHone(d monolithServices.Deps) *monolithServices.Module {
 
 		// Notes
 		CreateNote:         &honeApp.CreateNote{Notes: notes, EmbedFn: embedFn, Log: d.Log, Now: d.Now, Memory: d.IntelligenceMemoryHook},
-		UpdateNote:         &honeApp.UpdateNote{Notes: notes, EmbedFn: embedFn, Log: d.Log, Now: d.Now},
+		UpdateNote:         &honeApp.UpdateNote{Notes: notes, EmbedFn: embedFn, Log: d.Log, Now: d.Now, Memory: d.IntelligenceMemoryHook},
 		GetNote:            &honeApp.GetNote{Notes: notes},
 		ListNotes:          &honeApp.ListNotes{Notes: notes},
 		DeleteNote:         &honeApp.DeleteNote{Notes: notes},

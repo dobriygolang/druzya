@@ -64,9 +64,18 @@ func NewHoneNotificationAdapter(bot *notifyInfra.TelegramBot, prefs notifyDomain
 	return &honeNotificationAdapter{bot: bot, prefs: prefs}
 }
 
-// SendCueFollowup sends a markdown meeting-summary to the user's
-// personal TG chat. Returns (ok=true, "") on success, (ok=false, message)
-// when the user isn't linked, (false, "", err) on infra error.
+// SendCueFollowup sends a meeting-summary markdown to the user's personal
+// TG chat AS A .md FILE ATTACHMENT (not as plain text). Reasons:
+//   - cue notes commonly run 5–50KB; TG plain-text limit is 4096 chars,
+//     so long bodies get truncated.
+//   - .md attachment'ом юзер видит filename, открывает в Obsidian /
+//     Notes.app, может переслать.
+//   - inline markdown TG отображает как литералы («**bold**» вместо
+//     жирного), что в файле — норма, а в чате — мусор.
+//
+// Fallback: если document send fail'нул (бот заблокирован для files в
+// группе и т.п.) — отправляем text-msg c обрезкой до 3500 char'ов. Лучше
+// частичный текст чем silent failure.
 func (a *honeNotificationAdapter) SendCueFollowup(ctx context.Context, userID uuid.UUID, title, bodyMD string) (bool, string, error) {
 	pref, err := a.prefs.Get(ctx, userID)
 	if err != nil {
@@ -78,19 +87,78 @@ func (a *honeNotificationAdapter) SendCueFollowup(ctx context.Context, userID uu
 	if pref.TelegramChatID == "" {
 		return false, "telegram not linked", nil
 	}
-	text := title
-	if text == "" {
-		text = "Meeting notes"
+
+	caption := title
+	if caption == "" {
+		caption = "Cue session"
 	}
-	if bodyMD != "" {
-		text = text + "\n\n" + bodyMD
+	body := bodyMD
+	if body == "" {
+		body = "(empty)"
 	}
-	tpl := notifyDomain.Template{Text: text}
-	if err := a.bot.Send(ctx, userID, pref.TelegramChatID, tpl); err != nil {
+
+	slug := slugifyForFilename(title)
+	if slug == "" {
+		slug = "cue-session"
+	}
+	fileName := slug + ".md"
+	fileContent := "# " + caption + "\n\n" + body
+
+	if err := a.bot.SendDocument(ctx, userID, pref.TelegramChatID, fileName, caption, []byte(fileContent)); err != nil {
 		if errors.Is(err, notifyDomain.ErrNoTarget) {
 			return false, "telegram not linked", nil
 		}
-		return false, "", fmt.Errorf("hone.notificationAdapter: send: %w", err)
+		// Fallback: text-msg c truncation. Не падаем silent — лучше
+		// дать юзеру хоть что-то, чем 500.
+		text := caption
+		if body != "" {
+			snippet := body
+			if len(snippet) > 3500 {
+				snippet = snippet[:3500] + "\n\n…(truncated, full version в .md attachment'е)"
+			}
+			text = text + "\n\n" + snippet
+		}
+		if textErr := a.bot.Send(ctx, userID, pref.TelegramChatID, notifyDomain.Template{Text: text}); textErr != nil {
+			return false, "", fmt.Errorf("hone.notificationAdapter: doc+text fallback failed: doc=%v text=%w", err, textErr)
+		}
+		return true, "Sent as text (attachment blocked)", nil
 	}
 	return true, "", nil
+}
+
+// slugifyForFilename — filename-safe transform для TG document'а.
+// Lowercase'ить НЕ нужно (TG отдаёт filename как есть юзеру), но
+// non-alphanumeric → dash. Cyrillic оставляем — modern TG это поддерживает.
+func slugifyForFilename(s string) string {
+	if s == "" {
+		return ""
+	}
+	out := make([]rune, 0, len(s))
+	prevDash := false
+	for _, r := range s {
+		switch {
+		case r >= 'a' && r <= 'z',
+			r >= 'A' && r <= 'Z',
+			r >= '0' && r <= '9',
+			r >= 0x0400 && r <= 0x04FF: // cyrillic
+			out = append(out, r)
+			prevDash = false
+		default:
+			if !prevDash {
+				out = append(out, '-')
+				prevDash = true
+			}
+		}
+	}
+	res := string(out)
+	for len(res) > 0 && res[0] == '-' {
+		res = res[1:]
+	}
+	for len(res) > 0 && res[len(res)-1] == '-' {
+		res = res[:len(res)-1]
+	}
+	if len(res) > 80 {
+		res = res[:80]
+	}
+	return res
 }

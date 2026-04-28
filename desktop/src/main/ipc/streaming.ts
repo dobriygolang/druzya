@@ -103,6 +103,7 @@ function broadcastRouted(ev: RoutedEvent, streamId: string): void {
           resetsAt: '',
           modelsAllowed: [],
         },
+        context: ev.context,
       } satisfies AnalyzeDoneEvent);
       return;
     case 'error':

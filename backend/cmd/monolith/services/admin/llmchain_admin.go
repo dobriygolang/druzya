@@ -46,6 +46,12 @@ type configJSON struct {
 	ChainOrder    []string                         `json:"chain_order"`
 	TaskMap       map[string]map[string]string     `json:"task_map"`
 	VirtualChains map[string][]virtualCandidateDTO `json:"virtual_chains"`
+	// VirtualChainsDefaults — read-only снимок hardcoded `tier.go`
+	// цепочек. Frontend показывает их как baseline когда override
+	// (VirtualChains) пуст, чтобы юзер мог отредактировать копию,
+	// а не видеть «Override отсутствует». PUT эндпоинт это поле
+	// игнорирует — defaults живут в коде.
+	VirtualChainsDefaults map[string][]virtualCandidateDTO `json:"virtual_chains_defaults,omitempty"`
 }
 
 type virtualCandidateDTO struct {
@@ -66,7 +72,21 @@ func (h *llmAdminHandler) handleGet(w http.ResponseWriter, r *http.Request) {
 	if cfg == nil {
 		cfg = &llmchain.RuntimeConfig{}
 	}
-	writeLLMJSON(w, http.StatusOK, toConfigJSON(cfg))
+	resp := toConfigJSON(cfg)
+	// Подмешиваем hardcoded defaults для read-only показа фронту.
+	defaults := llmchain.DefaultVirtualChains()
+	resp.VirtualChainsDefaults = make(map[string][]virtualCandidateDTO, len(defaults))
+	for virt, chain := range defaults {
+		steps := make([]virtualCandidateDTO, 0, len(chain))
+		for _, c := range chain {
+			steps = append(steps, virtualCandidateDTO{
+				Provider: string(c.Provider),
+				Model:    c.Model,
+			})
+		}
+		resp.VirtualChainsDefaults[virt] = steps
+	}
+	writeLLMJSON(w, http.StatusOK, resp)
 }
 
 func (h *llmAdminHandler) handlePut(w http.ResponseWriter, r *http.Request) {

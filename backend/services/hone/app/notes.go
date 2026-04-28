@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"math"
 	"sort"
+	"strings"
 	"time"
 
 	"druz9/hone/domain"
@@ -59,11 +60,11 @@ func (uc *CreateNote) Do(ctx context.Context, in CreateNoteInput) (domain.Note, 
 		go uc.EmbedFn(context.Background(), in.UserID, created.ID, created.Title+"\n\n"+created.BodyMD)
 	}
 	if uc.Memory != nil {
-		body200 := created.BodyMD
-		if len(body200) > 200 {
-			body200 = body200[:200]
+		if isDailyNoteTitle(created.Title) {
+			uc.Memory.OnDailyNoteSaved(ctx, in.UserID, created.ID, created.Title, compactNoteMemoryBody(created.BodyMD, 600), now)
+		} else {
+			uc.Memory.OnNoteCreated(ctx, in.UserID, created.ID, created.Title, compactNoteMemoryBody(created.BodyMD, 200), now)
 		}
-		uc.Memory.OnNoteCreated(ctx, in.UserID, created.ID, created.Title, body200, now)
 	}
 	return created, nil
 }
@@ -79,6 +80,9 @@ type UpdateNote struct {
 	EmbedFn func(ctx context.Context, userID, noteID uuid.UUID, text string)
 	Log     *slog.Logger
 	Now     func() time.Time
+	// Memory — optional Phase B-2 hook в Coach memory. Only Today daily
+	// notes emit update snapshots; regular note edits stay in notes/search.
+	Memory domain.MemoryHook
 }
 
 // UpdateNoteInput — wire body.
@@ -108,7 +112,26 @@ func (uc *UpdateNote) Do(ctx context.Context, in UpdateNoteInput) (domain.Note, 
 		// Encrypted (Phase C-7) → skip embed (см. CreateNote rationale).
 		go uc.EmbedFn(context.Background(), in.UserID, updated.ID, updated.Title+"\n\n"+updated.BodyMD)
 	}
+	if uc.Memory != nil && !updated.Encrypted && isDailyNoteTitle(updated.Title) {
+		uc.Memory.OnDailyNoteSaved(ctx, in.UserID, updated.ID, updated.Title, compactNoteMemoryBody(updated.BodyMD, 600), now)
+	}
 	return updated, nil
+}
+
+func isDailyNoteTitle(title string) bool {
+	return strings.HasPrefix(strings.TrimSpace(title), "Daily ")
+}
+
+func compactNoteMemoryBody(body string, limit int) string {
+	body = strings.Join(strings.Fields(strings.TrimSpace(body)), " ")
+	if body == "" || limit <= 0 {
+		return ""
+	}
+	runes := []rune(body)
+	if len(runes) <= limit {
+		return body
+	}
+	return string(runes[:limit]) + "..."
 }
 
 // ─── GetNote / ListNotes / DeleteNote — trivial passthroughs ───────────────

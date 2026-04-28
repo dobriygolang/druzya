@@ -31,6 +31,12 @@ type TranscribeInput struct {
 	// the model toward domain vocabulary. Used for project-specific
 	// jargon that generic Whisper mis-hears.
 	Prompt string
+	// Model — Whisper model identifier (provider-specific). Empty →
+	// provider chooses default. Used by tier-aware decorator to route
+	// free-tier users to faster/cheaper turbo и paid users to higher-
+	// accuracy non-turbo. Например: "whisper-large-v3-turbo" vs
+	// "whisper-large-v3" для Groq.
+	Model string
 }
 
 // TranscribeResult is what we hand back to callers. Segments are

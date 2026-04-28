@@ -288,6 +288,9 @@ function GeneralTab({
     </>
   );
 }
+// VoiceSourceRow удалён — теперь два источника (системный звук и
+// микрофон) доступны параллельно через две независимые кнопки в
+// header'е expanded-окна. Глобального preference больше нет.
 
 /**
  * PlanRow — shows the current plan + lets the user open the paywall.

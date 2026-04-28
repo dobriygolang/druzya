@@ -31,11 +31,13 @@ import {
   StatusDot,
   StreamingHairline,
 } from '../../components/d9';
+import { IconHistory } from '../../components/icons';
 import { useConfig } from '../../hooks/use-config';
 import { useHotkeyEvents } from '../../hooks/use-hotkey-events';
 import { useAuthStore } from '../../stores/auth';
 import { useConversationStore } from '../../stores/conversation';
-import { applyPersonaPrefix, usePersonaStore } from '../../stores/persona';
+import { usePersonaStore } from '../../stores/persona';
+import { usePersonaHotkeys } from '../../hooks/use-persona-hotkeys';
 import { useCursorFreezeStore } from '../../stores/cursor-freeze';
 import { useQuotaStore } from '../../stores/quota';
 import { useSessionStore } from '../../stores/session';
@@ -85,6 +87,9 @@ export function CompactScreen() {
   const activePersona = usePersonaStore((s) => s.active);
   const personaBootstrap = usePersonaStore((s) => s.bootstrap);
   useEffect(() => { void personaBootstrap(); }, [personaBootstrap]);
+  // ⌥1..⌥9 — quick-switch активной persona. Hint показывается в
+  // expanded EmptyState; реализация была отсутствующей до этого.
+  usePersonaHotkeys();
 
   const quota = useQuotaStore((s) => s.quota);
   const bootstrapQuota = useQuotaStore((s) => s.bootstrap);
@@ -156,7 +161,6 @@ export function CompactScreen() {
 
       const text = input.trim();
       const currentPersona = usePersonaStore.getState().active;
-      const promptWithPersona = applyPersonaPrefix(currentPersona.system_prompt, text);
       const conversationId = useConversationStore.getState().conversationId;
       // Show expanded first so its renderer can subscribe to streaming
       // events before the first backend response arrives (fast
@@ -165,7 +169,11 @@ export function CompactScreen() {
       await window.druz9.windows.hide('compact');
       const handle = await window.druz9.analyze.start({
         conversationId,
-        promptText: promptWithPersona,
+        // ЧИСТЫЙ user text. Persona system-prompt передаётся отдельным
+        // полем personaSystemPrompt и backend добавит его как system
+        // message; раньше prepend'ился сюда → загрязнял history → LLM
+        // эхала persona-pattern в каждом ответе.
+        promptText: text,
         model: selectedModel || config?.defaultModelId || '',
         attachments: [
           {
@@ -178,6 +186,7 @@ export function CompactScreen() {
         ],
         triggerAction: kind,
         focusedAppHint: '',
+        personaSystemPrompt: currentPersona.system_prompt,
       });
       beginTurn({
         promptText: text,
@@ -241,14 +250,15 @@ export function CompactScreen() {
 
     const conversationId = useConversationStore.getState().conversationId;
     const currentPersona = usePersonaStore.getState().active;
-    const promptWithPersona = applyPersonaPrefix(currentPersona.system_prompt, text);
     const handle = await window.druz9.analyze.start({
       conversationId,
-      promptText: promptWithPersona,
+      // Чистый text; persona прокидывается отдельным system message.
+      promptText: text,
       model: selectedModel || config?.defaultModelId || '',
       attachments,
       triggerAction: pending ? 'screenshot_area' : 'quick_prompt',
       focusedAppHint: '',
+      personaSystemPrompt: currentPersona.system_prompt,
     });
     beginTurn({
       promptText: text,
@@ -399,6 +409,14 @@ export function CompactScreen() {
               <D9IconCamera size={16} />
             </IconButton>
             <IconButton
+              title="История чатов"
+              onClick={() => void window.druz9.windows.show('history')}
+              baseColor="var(--d9-ink-mute)"
+              hoverColor="var(--d9-accent)"
+            >
+              <IconHistory size={14} />
+            </IconButton>
+            <IconButton
               title="Настройки"
               onClick={() => void window.druz9.windows.show('settings')}
               baseColor="var(--d9-ink-mute)"
@@ -483,6 +501,9 @@ export function CompactScreen() {
                 REPORT READY
               </button>
             )}
+
+            {/* История перенесена в row 1 (рядом с Settings/Camera) —
+                это action-кнопка, ей место в actions row, не в status. */}
 
             <span style={{ flex: 1 }} />
 

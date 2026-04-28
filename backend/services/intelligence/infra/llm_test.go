@@ -249,6 +249,49 @@ func TestCoachActionCandidatesUseSpecificSafeActions(t *testing.T) {
 	}
 }
 
+func TestCoachActionCandidatesDropGenericQueueItems(t *testing.T) {
+	in := domain.BriefPromptInput{
+		Queue: domain.QueueSnapshot{
+			Total: 1,
+			Todo:  1,
+			Items: []domain.QueueLine{{
+				Title:    "Solve a basic algorithmic problem",
+				Status:   "todo",
+				SkillKey: "dynamic_programming",
+			}},
+		},
+	}
+
+	got := coachActionCandidatesForPrompt(in, 8)
+	joined := actionCandidateLines(got)
+	if strings.Contains(joined, "Solve a basic algorithmic problem") {
+		t.Fatalf("generic queue title leaked into candidates:\n%s", joined)
+	}
+	if !strings.Contains(joined, "one dynamic-programming drill") {
+		t.Fatalf("specific skill-based replacement missing:\n%s", joined)
+	}
+}
+
+func TestNoteForCurrentTopicsIgnoresStaleStandup(t *testing.T) {
+	noteID := uuid.New()
+	in := domain.BriefPromptInput{
+		Today: time.Date(2026, 4, 28, 0, 0, 0, 0, time.UTC),
+		Mocks: []domain.MockSessionSummary{{
+			WeakTopics: []string{"cache-design"},
+		}},
+		RecentNotes: []domain.NoteHead{{
+			NoteID:    noteID,
+			Title:     "Standup 2026-04-25",
+			Excerpt:   "cache design follow-up",
+			UpdatedAt: time.Date(2026, 4, 25, 9, 0, 0, 0, time.UTC),
+		}},
+	}
+
+	if note, topic := noteForCurrentTopics(in); note.NoteID != uuid.Nil || topic != "" {
+		t.Fatalf("stale standup selected: note=%#v topic=%q", note, topic)
+	}
+}
+
 func actionCandidateLines(items []coachActionCandidate) string {
 	var sb strings.Builder
 	for _, item := range items {

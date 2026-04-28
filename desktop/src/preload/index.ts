@@ -171,6 +171,8 @@ const api: Druz9API = {
       ipcRenderer.invoke(invokeChannels.notesOpenInHone, filePath) as Promise<void>,
     saveChatToHone: (input: SaveChatInput) =>
       ipcRenderer.invoke(invokeChannels.notesSaveChatToHone, input) as Promise<{ filePath: string }>,
+    exportChatMarkdown: (input: SaveChatInput) =>
+      ipcRenderer.invoke(invokeChannels.notesExportChatMarkdown, input) as Promise<{ filePath: string } | null>,
   },
   app: {
     quit: () => ipcRenderer.invoke(invokeChannels.appQuit) as Promise<void>,
@@ -212,9 +214,12 @@ const api: Druz9API = {
       ipcRenderer.invoke(invokeChannels.transcriptionTranscribe, input) as Promise<TranscribeResult>,
   },
   audioCapture: {
-    start: () => ipcRenderer.invoke(invokeChannels.audioCaptureStart) as Promise<void>,
-    stop: () => ipcRenderer.invoke(invokeChannels.audioCaptureStop) as Promise<void>,
-    state: () => ipcRenderer.invoke(invokeChannels.audioCaptureState) as Promise<AudioCaptureState>,
+    start: (source: 'mic' | 'system') =>
+      ipcRenderer.invoke(invokeChannels.audioCaptureStart, source) as Promise<void>,
+    stop: (source: 'mic' | 'system') =>
+      ipcRenderer.invoke(invokeChannels.audioCaptureStop, source) as Promise<void>,
+    state: (source: 'mic' | 'system') =>
+      ipcRenderer.invoke(invokeChannels.audioCaptureState, source) as Promise<AudioCaptureState>,
     isAvailable: () => ipcRenderer.invoke(invokeChannels.audioCaptureIsAvailable) as Promise<boolean>,
   },
   coach: {

@@ -19,11 +19,15 @@ import (
 	"log/slog"
 	"strings"
 
+	"strconv"
+	"time"
+
 	"druz9/copilot/app"
 	"druz9/copilot/domain"
 	pb "druz9/shared/generated/pb/druz9/v1"
 	"druz9/shared/generated/pb/druz9/v1/druz9v1connect"
 	sharedMw "druz9/shared/pkg/middleware"
+	"druz9/shared/pkg/ratelimit"
 
 	"connectrpc.com/connect"
 	"github.com/google/uuid"
@@ -57,6 +61,13 @@ type CopilotServer struct {
 
 	// CheckBlock (Phase-4 ADR-001 Wave 3).
 	CheckBlockUC *app.CheckBlock
+
+	// AnalyzeLimiter — defense-in-depth rate-limit на streaming endpoint'ы
+	// (Analyze + Chat) поверх per-user CopilotQuota. Quota — это бюджет в
+	// сутки (24h rolling), а Limiter — burst-protection (req/min): не даёт
+	// одному юзеру зафлудить backend 100 запросами в секунду из-за бага
+	// в клиенте / malicious script. nil → no rate limit (dev без Redis).
+	AnalyzeLimiter *ratelimit.RedisFixedWindow
 
 	Log *slog.Logger
 }
@@ -141,18 +152,22 @@ func (s *CopilotServer) Analyze(
 	if !ok {
 		return connect.NewError(connect.CodeUnauthenticated, errors.New("unauthenticated"))
 	}
+	if err := s.checkAnalyzeRateLimit(ctx, uid); err != nil {
+		return err
+	}
 
 	convID, err := parseOptionalUUID(req.Msg.GetConversationId())
 	if err != nil {
 		return connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("invalid conversation_id: %w", err))
 	}
 	in := app.AnalyzeInput{
-		UserID:         uid,
-		ConversationID: convID,
-		PromptText:     req.Msg.GetPromptText(),
-		Model:          req.Msg.GetModel(),
-		Attachments:    attachmentsFromProto(req.Msg.GetAttachments()),
-		Client:         clientContextFromProto(req.Msg.GetClient()),
+		UserID:              uid,
+		ConversationID:      convID,
+		PromptText:          req.Msg.GetPromptText(),
+		Model:               req.Msg.GetModel(),
+		Attachments:         attachmentsFromProto(req.Msg.GetAttachments()),
+		PersonaSystemPrompt: req.Msg.GetPersonaSystemPrompt(),
+		Client:              clientContextFromProto(req.Msg.GetClient()),
 	}
 
 	frames, err := s.AnalyzeUC.Do(ctx, in)
@@ -172,16 +187,20 @@ func (s *CopilotServer) Chat(
 	if !ok {
 		return connect.NewError(connect.CodeUnauthenticated, errors.New("unauthenticated"))
 	}
+	if err := s.checkAnalyzeRateLimit(ctx, uid); err != nil {
+		return err
+	}
 	convID, err := uuid.Parse(req.Msg.GetConversationId())
 	if err != nil {
 		return connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("invalid conversation_id: %w", err))
 	}
 	in := app.ChatInput{
-		UserID:         uid,
-		ConversationID: convID,
-		PromptText:     req.Msg.GetPromptText(),
-		Attachments:    attachmentsFromProto(req.Msg.GetAttachments()),
-		Client:         clientContextFromProto(req.Msg.GetClient()),
+		UserID:              uid,
+		ConversationID:      convID,
+		PromptText:          req.Msg.GetPromptText(),
+		Attachments:         attachmentsFromProto(req.Msg.GetAttachments()),
+		PersonaSystemPrompt: req.Msg.GetPersonaSystemPrompt(),
+		Client:              clientContextFromProto(req.Msg.GetClient()),
 	}
 	frames, err := s.ChatUC.Do(ctx, in)
 	if err != nil {
@@ -505,11 +524,16 @@ func streamFrameToAnalyzeEvent(f app.StreamFrame) (*pb.AnalyzeEvent, error) {
 		}}}, nil
 	case f.Done != nil:
 		return &pb.AnalyzeEvent{Kind: &pb.AnalyzeEvent_Done{Done: &pb.CopilotDone{
-			AssistantMessageId: f.Done.AssistantMessageID.String(),
-			TokensIn:           int32(f.Done.TokensIn),
-			TokensOut:          int32(f.Done.TokensOut),
-			LatencyMs:          int32(f.Done.LatencyMs),
-			UpdatedQuota:       quotaToProto(f.Done.Quota),
+			AssistantMessageId:  f.Done.AssistantMessageID.String(),
+			TokensIn:            int32(f.Done.TokensIn),
+			TokensOut:           int32(f.Done.TokensOut),
+			LatencyMs:           int32(f.Done.LatencyMs),
+			UpdatedQuota:        quotaToProto(f.Done.Quota),
+			MessagesInWindow:    int32(f.Done.MessagesInWindow),
+			MessagesTotal:       int32(f.Done.MessagesTotal),
+			CompactionThreshold: int32(f.Done.CompactionThreshold),
+			CompactionTriggered: f.Done.CompactionTriggered,
+			RunningSummaryChars: int32(f.Done.RunningSummaryChars),
 		}}}, nil
 	case f.Delta != "":
 		return &pb.AnalyzeEvent{Kind: &pb.AnalyzeEvent_Delta{Delta: &pb.CopilotTokenDelta{
@@ -540,11 +564,16 @@ func streamFrameToChatEvent(f app.StreamFrame) (*pb.ChatEvent, error) {
 		}}}, nil
 	case f.Done != nil:
 		return &pb.ChatEvent{Kind: &pb.ChatEvent_Done{Done: &pb.CopilotDone{
-			AssistantMessageId: f.Done.AssistantMessageID.String(),
-			TokensIn:           int32(f.Done.TokensIn),
-			TokensOut:          int32(f.Done.TokensOut),
-			LatencyMs:          int32(f.Done.LatencyMs),
-			UpdatedQuota:       quotaToProto(f.Done.Quota),
+			AssistantMessageId:  f.Done.AssistantMessageID.String(),
+			TokensIn:            int32(f.Done.TokensIn),
+			TokensOut:           int32(f.Done.TokensOut),
+			LatencyMs:           int32(f.Done.LatencyMs),
+			UpdatedQuota:        quotaToProto(f.Done.Quota),
+			MessagesInWindow:    int32(f.Done.MessagesInWindow),
+			MessagesTotal:       int32(f.Done.MessagesTotal),
+			CompactionThreshold: int32(f.Done.CompactionThreshold),
+			CompactionTriggered: f.Done.CompactionTriggered,
+			RunningSummaryChars: int32(f.Done.RunningSummaryChars),
 		}}}, nil
 	case f.Delta != "":
 		return &pb.ChatEvent{Kind: &pb.ChatEvent_Delta{Delta: &pb.CopilotTokenDelta{
@@ -568,6 +597,45 @@ func classifyStreamErr(err error) (code, msg string, retryAfter int32) {
 	default:
 		return "internal", "copilot stream failure", 0
 	}
+}
+
+// ── rate limiting ────────────────────────────────────────────────────────
+
+// analyzeBurstPerMin — burst-cap req/min на streaming endpoint Analyze+
+// Chat, per-user. Защита от:
+//   - багов в desktop клиенте, которые открывают streaming в loop'е;
+//   - malicious script'ов которые запускают 100 параллельных turns;
+//   - spike'ов нагрузки на Groq (один юзер не должен валить shared
+//     free-tier rate-limit для всех остальных).
+//
+// Cap = 30 = 0.5 req/sec average. Реальный юзер делает <5 turn'ов в
+// минуту даже в active session'е; cap имеет 6× headroom для спорадических
+// burst'ов (3 turn'а подряд, retry после ошибки и т.п.).
+const analyzeBurstPerMin = 30
+
+func (s *CopilotServer) checkAnalyzeRateLimit(ctx context.Context, uid uuid.UUID) error {
+	if s.AnalyzeLimiter == nil {
+		return nil // dev режим без Redis — no rate limit
+	}
+	key := "rl:copilot:" + uid.String()
+	res, err := s.AnalyzeLimiter.Allow(ctx, key, analyzeBurstPerMin, time.Minute)
+	if err != nil {
+		// Redis transport fault — fail-open. Не блокируем юзеров когда
+		// Redis flap'нул; алерт на /metrics уже скажет ops.
+		return nil
+	}
+	if !res.Allowed {
+		retry := strconv.Itoa(res.RetryAfterSec)
+		ce := connect.NewError(
+			connect.CodeResourceExhausted,
+			fmt.Errorf("слишком много запросов; retry through %ss", retry),
+		)
+		// Connect не имеет нативного Retry-After header, но клиент
+		// (desktop) парсит CodeResourceExhausted и показывает rate-limit
+		// pill в UI.
+		return ce
+	}
+	return nil
 }
 
 // ── error mapping ────────────────────────────────────────────────────────

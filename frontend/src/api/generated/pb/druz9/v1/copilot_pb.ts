@@ -1887,6 +1887,17 @@ export class AnalyzeRequest extends Message<AnalyzeRequest> {
    */
   client?: ClientContext;
 
+  /**
+   * persona_system_prompt — system-prompt текущей persona ("React Expert"
+   * и т.п.). Если задан — backend добавляет его как ОТДЕЛЬНЫЙ system
+   * message в LLM call. Не должен prepend'иться к prompt_text: это
+   * загрязняет conversation history и заставляет LLM эхать persona-
+   * pattern в каждом ответе. Empty — без persona-instruction.
+   *
+   * @generated from field: string persona_system_prompt = 6;
+   */
+  personaSystemPrompt = "";
+
   constructor(data?: PartialMessage<AnalyzeRequest>) {
     super();
     proto3.util.initPartial(data, this);
@@ -1900,6 +1911,7 @@ export class AnalyzeRequest extends Message<AnalyzeRequest> {
     { no: 3, name: "model", kind: "scalar", T: 9 /* ScalarType.STRING */ },
     { no: 4, name: "attachments", kind: "message", T: CopilotAttachmentInput, repeated: true },
     { no: 5, name: "client", kind: "message", T: ClientContext },
+    { no: 6, name: "persona_system_prompt", kind: "scalar", T: 9 /* ScalarType.STRING */ },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): AnalyzeRequest {
@@ -2063,6 +2075,46 @@ export class CopilotDone extends Message<CopilotDone> {
    */
   updatedQuota?: CopilotQuota;
 
+  /**
+   * Context window state — surface'ится в desktop UI как индикатор
+   * «контекст N/M turns» в footer'е expanded окна. Если context_compaction_
+   * triggered=true — UI рисует ghost-message «диалог сжат, старые
+   * сообщения переведены в summary».
+   *
+   * сколько turns ушло в LLM (max=window_size=10)
+   *
+   * @generated from field: int32 messages_in_window = 6;
+   */
+  messagesInWindow = 0;
+
+  /**
+   * turns в conversation после этого ответа
+   *
+   * @generated from field: int32 messages_total = 7;
+   */
+  messagesTotal = 0;
+
+  /**
+   * порог при котором triggers компакция (default 15)
+   *
+   * @generated from field: int32 compaction_threshold = 8;
+   */
+  compactionThreshold = 0;
+
+  /**
+   * true если в этом turn'е window перешёл порог
+   *
+   * @generated from field: bool compaction_triggered = 9;
+   */
+  compactionTriggered = false;
+
+  /**
+   * длина текущего RunningSummary (0 если ни разу не сжимали)
+   *
+   * @generated from field: int32 running_summary_chars = 10;
+   */
+  runningSummaryChars = 0;
+
   constructor(data?: PartialMessage<CopilotDone>) {
     super();
     proto3.util.initPartial(data, this);
@@ -2076,6 +2128,11 @@ export class CopilotDone extends Message<CopilotDone> {
     { no: 3, name: "tokens_out", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
     { no: 4, name: "latency_ms", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
     { no: 5, name: "updated_quota", kind: "message", T: CopilotQuota },
+    { no: 6, name: "messages_in_window", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 7, name: "messages_total", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 8, name: "compaction_threshold", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 9, name: "compaction_triggered", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
+    { no: 10, name: "running_summary_chars", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): CopilotDone {
@@ -2245,6 +2302,15 @@ export class ChatRequest extends Message<ChatRequest> {
    */
   client?: ClientContext;
 
+  /**
+   * persona_system_prompt — см. AnalyzeRequest.persona_system_prompt.
+   * Передаётся per-turn чтобы юзер мог переключать persona на лету
+   * в существующей conversation без её пересоздания.
+   *
+   * @generated from field: string persona_system_prompt = 5;
+   */
+  personaSystemPrompt = "";
+
   constructor(data?: PartialMessage<ChatRequest>) {
     super();
     proto3.util.initPartial(data, this);
@@ -2257,6 +2323,7 @@ export class ChatRequest extends Message<ChatRequest> {
     { no: 2, name: "prompt_text", kind: "scalar", T: 9 /* ScalarType.STRING */ },
     { no: 3, name: "attachments", kind: "message", T: CopilotAttachmentInput, repeated: true },
     { no: 4, name: "client", kind: "message", T: ClientContext },
+    { no: 5, name: "persona_system_prompt", kind: "scalar", T: 9 /* ScalarType.STRING */ },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ChatRequest {

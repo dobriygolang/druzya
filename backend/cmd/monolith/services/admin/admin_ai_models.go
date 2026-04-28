@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"strings"
 
 	adminApp "druz9/admin/app"
 	adminDomain "druz9/admin/domain"
@@ -63,9 +64,13 @@ func NewAdminAIModels(d monolithServices.Deps) *monolithServices.Module {
 		MountREST: func(r chi.Router) {
 			r.Get("/admin/ai/models", h.handleList)
 			r.Post("/admin/ai/models", h.handleCreate)
-			r.Patch("/admin/ai/models/{model_id}", h.handleUpdate)
-			r.Patch("/admin/ai/models/{model_id}/toggle", h.handleToggle)
-			r.Delete("/admin/ai/models/{model_id}", h.handleDelete)
+			// Wildcard `*` для PATCH/DELETE — model_id (например
+			// "mistralai/mistral-7b") содержит slash, который chi
+			// `{model_id}` capture не матчит. `*` берёт rest всего
+			// path. Toggle определяется suffix'ом `/toggle` внутри
+			// единого handlerPatch'а, чтобы не плодить routes.
+			r.Patch("/admin/ai/models/*", h.handlePatchAny)
+			r.Delete("/admin/ai/models/*", h.handleDelete)
 		},
 	}
 }
@@ -150,12 +155,36 @@ func (h *adminAIModelsHandler) handleCreate(w http.ResponseWriter, r *http.Reque
 	_ = json.NewEncoder(w).Encode(dtoFromAIModel(out))
 }
 
-func (h *adminAIModelsHandler) handleUpdate(w http.ResponseWriter, r *http.Request) {
+// extractModelID извлекает model_id из chi wildcard match. URL уже
+// декодирован chi'ем (`%2F` → `/`), поэтому value прямо использовать.
+// Поддерживает оба формата: legacy {model_id} (single segment) и
+// wildcard `*` (любые сегменты, включая slash в model_id).
+func extractModelID(r *http.Request) string {
+	if v := chi.URLParam(r, "*"); v != "" {
+		return v
+	}
+	return chi.URLParam(r, "model_id")
+}
+
+// handlePatchAny — единая ручка под PATCH /admin/ai/models/*. Suffix
+// `/toggle` определяет toggle-action; иначе full update с body. Это
+// позволяет model_id содержать slash (например "mistralai/mistral-7b")
+// без отдельных regex routes — toggle/update различаются по path.
+func (h *adminAIModelsHandler) handlePatchAny(w http.ResponseWriter, r *http.Request) {
 	if _, err := authServices.RequireAdminInline(r); err != nil {
 		http.Error(w, fmt.Sprintf(`{"error":"%s"}`, err.Error()), authServices.StatusForAuthErr(err))
 		return
 	}
-	modelID := chi.URLParam(r, "model_id")
+	rest := extractModelID(r)
+	if strings.HasSuffix(rest, "/toggle") {
+		modelID := strings.TrimSuffix(rest, "/toggle")
+		h.doToggle(w, r, modelID)
+		return
+	}
+	h.doUpdate(w, r, rest)
+}
+
+func (h *adminAIModelsHandler) doUpdate(w http.ResponseWriter, r *http.Request, modelID string) {
 	if modelID == "" {
 		http.Error(w, `{"error":"model_id required"}`, http.StatusBadRequest)
 		return
@@ -182,12 +211,11 @@ func (h *adminAIModelsHandler) handleUpdate(w http.ResponseWriter, r *http.Reque
 	_ = json.NewEncoder(w).Encode(dtoFromAIModel(out))
 }
 
-func (h *adminAIModelsHandler) handleToggle(w http.ResponseWriter, r *http.Request) {
-	if _, err := authServices.RequireAdminInline(r); err != nil {
-		http.Error(w, fmt.Sprintf(`{"error":"%s"}`, err.Error()), authServices.StatusForAuthErr(err))
+func (h *adminAIModelsHandler) doToggle(w http.ResponseWriter, r *http.Request, modelID string) {
+	if modelID == "" {
+		http.Error(w, `{"error":"model_id required"}`, http.StatusBadRequest)
 		return
 	}
-	modelID := chi.URLParam(r, "model_id")
 	out, err := h.toggle.Do(r.Context(), modelID)
 	if err != nil {
 		if errors.Is(err, adminDomain.ErrNotFound) {
@@ -206,7 +234,11 @@ func (h *adminAIModelsHandler) handleDelete(w http.ResponseWriter, r *http.Reque
 		http.Error(w, fmt.Sprintf(`{"error":"%s"}`, err.Error()), authServices.StatusForAuthErr(err))
 		return
 	}
-	modelID := chi.URLParam(r, "model_id")
+	modelID := extractModelID(r)
+	if modelID == "" {
+		http.Error(w, `{"error":"model_id required"}`, http.StatusBadRequest)
+		return
+	}
 	if err := h.delete.Do(r.Context(), modelID); err != nil {
 		if errors.Is(err, adminDomain.ErrNotFound) {
 			http.Error(w, `{"error":"not found"}`, http.StatusNotFound)

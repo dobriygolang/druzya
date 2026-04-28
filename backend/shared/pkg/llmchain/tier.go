@@ -137,6 +137,20 @@ var virtualChains = map[string][]VirtualCandidate{
 	},
 }
 
+// DefaultVirtualChains возвращает копию hardcoded `virtualChains` map'а.
+// Admin endpoint раскрывает её фронту чтобы юзер мог видеть/редактировать
+// дефолтную цепочку (вместо сообщения «Override отсутствует»). Копия —
+// чтобы caller случайно не mutate'нул shared state.
+func DefaultVirtualChains() map[string][]VirtualCandidate {
+	out := make(map[string][]VirtualCandidate, len(virtualChains))
+	for k, v := range virtualChains {
+		dup := make([]VirtualCandidate, len(v))
+		copy(dup, v)
+		out[k] = dup
+	}
+	return out
+}
+
 // VirtualModelMinTier — минимальный tier для использования виртуалки.
 // Проверяется ДО expand'а цепочки (чтобы free не увидел внутренние модели).
 var VirtualModelMinTier = map[string]enums.SubscriptionPlan{

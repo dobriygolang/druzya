@@ -1,8 +1,14 @@
 package app
 
 import (
+	"context"
 	"math"
 	"testing"
+	"time"
+
+	"druz9/hone/domain"
+
+	"github.com/google/uuid"
 )
 
 // ─── cosine ────────────────────────────────────────────────────────────────
@@ -87,5 +93,157 @@ func TestSqrt32_RoughAccuracy(t *testing.T) {
 	}
 	if got := sqrt32(-1); got != 0 {
 		t.Errorf("sqrt32(-1) = %f, want 0", got)
+	}
+}
+
+type fakeNoteRepo struct {
+	create func(context.Context, domain.Note) (domain.Note, error)
+	update func(context.Context, domain.Note) (domain.Note, error)
+	get    func(context.Context, uuid.UUID, uuid.UUID) (domain.Note, error)
+	list   func(context.Context, uuid.UUID, int, string, *uuid.UUID) ([]domain.NoteSummary, string, error)
+}
+
+func (f fakeNoteRepo) Create(ctx context.Context, n domain.Note) (domain.Note, error) {
+	return f.create(ctx, n)
+}
+
+func (f fakeNoteRepo) Update(ctx context.Context, n domain.Note) (domain.Note, error) {
+	return f.update(ctx, n)
+}
+
+func (f fakeNoteRepo) Get(ctx context.Context, userID uuid.UUID, noteID uuid.UUID) (domain.Note, error) {
+	if f.get != nil {
+		return f.get(ctx, userID, noteID)
+	}
+	return domain.Note{}, domain.ErrNotFound
+}
+
+func (f fakeNoteRepo) List(ctx context.Context, userID uuid.UUID, limit int, cursor string, folderID *uuid.UUID) ([]domain.NoteSummary, string, error) {
+	if f.list != nil {
+		return f.list(ctx, userID, limit, cursor, folderID)
+	}
+	return nil, "", nil
+}
+
+func (fakeNoteRepo) Delete(context.Context, uuid.UUID, uuid.UUID) error {
+	return nil
+}
+
+func (fakeNoteRepo) Move(context.Context, uuid.UUID, uuid.UUID, *uuid.UUID) (domain.Note, error) {
+	return domain.Note{}, domain.ErrNotFound
+}
+
+func (fakeNoteRepo) SetArchived(context.Context, uuid.UUID, uuid.UUID, bool) error {
+	return nil
+}
+
+func (fakeNoteRepo) SetEmbedding(context.Context, uuid.UUID, uuid.UUID, []float32, string, time.Time) error {
+	return nil
+}
+
+func (fakeNoteRepo) WithEmbeddingsForUser(context.Context, uuid.UUID) ([]domain.NoteEmbedding, error) {
+	return nil, nil
+}
+
+func (fakeNoteRepo) ExistsByTitleForUser(context.Context, uuid.UUID, string) (bool, error) {
+	return false, nil
+}
+
+type noteMemoryHook struct {
+	dailySaved int
+	noteSaved  int
+	body       string
+	title      string
+}
+
+func (h *noteMemoryHook) OnReflectionAdded(context.Context, uuid.UUID, string, string, int, time.Time) {
+}
+
+func (h *noteMemoryHook) OnStandupRecorded(context.Context, uuid.UUID, string, string, string, time.Time) {
+}
+
+func (h *noteMemoryHook) OnPlanSkipped(context.Context, uuid.UUID, string, string, time.Time) {}
+
+func (h *noteMemoryHook) OnPlanCompleted(context.Context, uuid.UUID, string, string, time.Time) {
+}
+
+func (h *noteMemoryHook) OnNoteCreated(_ context.Context, _ uuid.UUID, _ uuid.UUID, title, body200 string, _ time.Time) {
+	h.noteSaved++
+	h.title = title
+	h.body = body200
+}
+
+func (h *noteMemoryHook) OnDailyNoteSaved(_ context.Context, _ uuid.UUID, _ uuid.UUID, title, body600 string, _ time.Time) {
+	h.dailySaved++
+	h.title = title
+	h.body = body600
+}
+
+func (h *noteMemoryHook) OnFocusSessionDone(context.Context, uuid.UUID, string, int, string, int, time.Time) {
+}
+
+func TestUpdateNoteWritesDailySnapshotToCoachMemory(t *testing.T) {
+	t.Parallel()
+	uid := uuid.New()
+	noteID := uuid.New()
+	mem := &noteMemoryHook{}
+	body := "Today I need to focus on Redis cache invalidation and explain the tradeoffs clearly."
+	uc := &UpdateNote{
+		Notes: fakeNoteRepo{
+			update: func(_ context.Context, n domain.Note) (domain.Note, error) {
+				n.ID = noteID
+				n.UserID = uid
+				return n, nil
+			},
+		},
+		Memory: mem,
+		Now:    fixedNow,
+	}
+
+	_, err := uc.Do(context.Background(), UpdateNoteInput{
+		UserID: uid,
+		NoteID: noteID,
+		Title:  "Daily 2026-04-28",
+		BodyMD: body,
+	})
+	if err != nil {
+		t.Fatalf("UpdateNote.Do: %v", err)
+	}
+	if mem.dailySaved != 1 {
+		t.Fatalf("dailySaved=%d, want 1", mem.dailySaved)
+	}
+	if mem.noteSaved != 0 {
+		t.Fatalf("noteSaved=%d, want 0", mem.noteSaved)
+	}
+	if mem.body != body {
+		t.Fatalf("body=%q, want compact body", mem.body)
+	}
+}
+
+func TestUpdateNoteDoesNotWriteRegularEditsToCoachMemory(t *testing.T) {
+	t.Parallel()
+	uid := uuid.New()
+	mem := &noteMemoryHook{}
+	uc := &UpdateNote{
+		Notes: fakeNoteRepo{
+			update: func(_ context.Context, n domain.Note) (domain.Note, error) {
+				return n, nil
+			},
+		},
+		Memory: mem,
+		Now:    fixedNow,
+	}
+
+	_, err := uc.Do(context.Background(), UpdateNoteInput{
+		UserID: uid,
+		NoteID: uuid.New(),
+		Title:  "Redis notes",
+		BodyMD: "cache invalidation",
+	})
+	if err != nil {
+		t.Fatalf("UpdateNote.Do: %v", err)
+	}
+	if mem.dailySaved != 0 || mem.noteSaved != 0 {
+		t.Fatalf("memory writes=%d/%d, want none", mem.dailySaved, mem.noteSaved)
 	}
 }

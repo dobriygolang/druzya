@@ -34,7 +34,7 @@ type NoLLMPlanSynthesiser struct{}
 func NewNoLLMPlanSynthesiser() *NoLLMPlanSynthesiser { return &NoLLMPlanSynthesiser{} }
 
 // Synthesise always returns ErrLLMUnavailable.
-func (*NoLLMPlanSynthesiser) Synthesise(_ context.Context, _ uuid.UUID, _ []domain.WeakNode, _ []domain.ChronicSkill, _ time.Time) ([]domain.PlanItem, error) {
+func (*NoLLMPlanSynthesiser) Synthesise(_ context.Context, _ uuid.UUID, _ []domain.WeakNode, _ []domain.ChronicSkill, _ domain.TodayContext, _ time.Time) ([]domain.PlanItem, error) {
 	return nil, fmt.Errorf("hone.NoLLMPlanSynthesiser.Synthesise: %w", domain.ErrLLMUnavailable)
 }
 
@@ -99,6 +99,11 @@ Each item MUST be one of these kinds:
   - "custom" : free-form
 
 Constraints:
+  - Do NOT invent a generic balanced plan. Every item must be grounded in an input weak node or chronic skip.
+  - NEVER write generic titles such as "Solve a basic algorithmic problem", "Practice algorithms", "Do system design", "Review your notes", or "Start with the first item".
+  - Do not repeat the same action/topic with minor wording changes.
+  - If the user prompt includes "Today's note context", prioritize it over generic skill coverage: use the user's intent, blockers, and action hints as today's plan anchor.
+  - If Today's blockers are present, include one tiny unblock item that attacks the blocker directly.
   - Prefer "solve" items targeting the weakest node; one per item.
   - Inject a "mock" item only when a weak node's progress is below 40 AND the section suggests a mock would help (system-design, behavioral).
   - subtitle MUST explain the "why" in one short sentence, referencing the weakness.
@@ -121,8 +126,8 @@ Output EXACTLY this JSON shape, nothing else:
 Return ONLY the JSON object. No prose, no code fences.`
 
 // Synthesise builds the prompt, calls the chain, parses the response.
-func (s *LLMChainPlanSynthesiser) Synthesise(ctx context.Context, userID uuid.UUID, weak []domain.WeakNode, chronic []domain.ChronicSkill, date time.Time) ([]domain.PlanItem, error) {
-	userMsg := buildPlanUserPrompt(weak, chronic, date)
+func (s *LLMChainPlanSynthesiser) Synthesise(ctx context.Context, userID uuid.UUID, weak []domain.WeakNode, chronic []domain.ChronicSkill, today domain.TodayContext, date time.Time) ([]domain.PlanItem, error) {
+	userMsg := buildPlanUserPrompt(weak, chronic, today, date)
 
 	ctx, cancel := context.WithTimeout(ctx, s.timeout)
 	defer cancel()
@@ -167,11 +172,11 @@ func (s *LLMChainPlanSynthesiser) Synthesise(ctx context.Context, userID uuid.UU
 	return nil, fmt.Errorf("hone.LLMChainPlanSynthesiser.Synthesise: both attempts failed: %w (%w)", lastErr, domain.ErrLLMUnavailable)
 }
 
-func buildPlanUserPrompt(weak []domain.WeakNode, chronic []domain.ChronicSkill, date time.Time) string {
+func buildPlanUserPrompt(weak []domain.WeakNode, chronic []domain.ChronicSkill, today domain.TodayContext, date time.Time) string {
 	var sb strings.Builder
 	fmt.Fprintf(&sb, "Date: %s\n\n", date.Format("2006-01-02"))
 	if len(weak) == 0 {
-		sb.WriteString("Weakest nodes: none known yet — produce a generic balanced plan (one algo, one system-design read, one review).\n")
+		sb.WriteString("Weakest nodes: none known. Do not invent generic work; return {\"items\":[]} unless Chronic skips or Today's note context below provide concrete signals.\n")
 	} else {
 		sb.WriteString("Weakest skill nodes (progress 0..100, lower = weaker):\n")
 		for _, n := range weak {
@@ -184,7 +189,35 @@ func buildPlanUserPrompt(weak []domain.WeakNode, chronic []domain.ChronicSkill, 
 			fmt.Fprintf(&sb, "  - %s skipped %d times (last: %s)\n", c.SkillKey, c.SkipCount, c.LastSkip.Format("2006-01-02"))
 		}
 	}
+	if hasPlanTodayContextSignal(today) {
+		sb.WriteString("\nToday's note context — user-authored, highest priority for today's plan:\n")
+		if today.Intent != "" {
+			fmt.Fprintf(&sb, "  intent: %q\n", today.Intent)
+		}
+		if len(today.Blockers) > 0 {
+			sb.WriteString("  blockers:\n")
+			for _, blocker := range today.Blockers {
+				fmt.Fprintf(&sb, "    - %q\n", blocker)
+			}
+		}
+		if len(today.ActionHints) > 0 {
+			sb.WriteString("  action_hints:\n")
+			for _, hint := range today.ActionHints {
+				fmt.Fprintf(&sb, "    - %q\n", hint)
+			}
+		}
+		if len(today.Topics) > 0 {
+			fmt.Fprintf(&sb, "  topics: %s\n", strings.Join(today.Topics, ", "))
+		}
+		if today.Excerpt != "" {
+			fmt.Fprintf(&sb, "  excerpt: %q\n", firstN(today.Excerpt, 300))
+		}
+	}
 	return sb.String()
+}
+
+func hasPlanTodayContextSignal(today domain.TodayContext) bool {
+	return today.Intent != "" || len(today.Blockers) > 0 || len(today.Topics) > 0 || len(today.ActionHints) > 0
 }
 
 // planJSONEnvelope matches the JSON shape the system prompt locks in.
@@ -220,6 +253,7 @@ func parsePlanJSON(raw string) ([]domain.PlanItem, error) {
 		return nil, errors.New("empty items array")
 	}
 	out := make([]domain.PlanItem, 0, len(env.Items))
+	seen := make(map[string]struct{}, len(env.Items))
 	for _, it := range env.Items {
 		kind := domain.PlanItemKind(strings.ToLower(strings.TrimSpace(it.Kind)))
 		if !kind.IsValid() {
@@ -227,9 +261,18 @@ func parsePlanJSON(raw string) ([]domain.PlanItem, error) {
 			// dropping the row. The plan remains usable.
 			kind = domain.PlanItemCustom
 		}
-		if it.Title == "" {
+		title := strings.TrimSpace(it.Title)
+		if title == "" {
 			continue // skip degenerate rows
 		}
+		if isGenericPlanTitle(title) {
+			continue
+		}
+		key := planTitleKey(title)
+		if _, ok := seen[key]; ok {
+			continue
+		}
+		seen[key] = struct{}{}
 		est := it.EstimatedMin
 		if est <= 0 || est > 240 {
 			est = 25
@@ -237,7 +280,7 @@ func parsePlanJSON(raw string) ([]domain.PlanItem, error) {
 		out = append(out, domain.PlanItem{
 			ID:           it.ID,
 			Kind:         kind,
-			Title:        it.Title,
+			Title:        title,
 			Subtitle:     it.Subtitle,
 			Rationale:    strings.TrimSpace(it.Rationale),
 			SkillKey:     strings.TrimSpace(it.SkillKey),
@@ -250,6 +293,45 @@ func parsePlanJSON(raw string) ([]domain.PlanItem, error) {
 		return nil, errors.New("all items dropped as degenerate")
 	}
 	return out, nil
+}
+
+func isGenericPlanTitle(title string) bool {
+	s := strings.ToLower(strings.TrimSpace(title))
+	generic := []string{
+		"solve a basic algorithmic problem",
+		"solve an algorithmic problem",
+		"basic algorithmic problem",
+		"practice algorithms",
+		"work on algorithms",
+		"do system design",
+		"review your notes",
+		"start with the first item",
+		"first item in the queue",
+	}
+	for _, phrase := range generic {
+		if strings.Contains(s, phrase) {
+			return true
+		}
+	}
+	return false
+}
+
+func planTitleKey(title string) string {
+	s := strings.ToLower(strings.TrimSpace(title))
+	s = strings.NewReplacer(
+		"ё", "е",
+		".", " ",
+		",", " ",
+		":", " ",
+		";", " ",
+		"!", " ",
+		"?", " ",
+		"—", " ",
+		"-", " ",
+		"\"", " ",
+		"'", " ",
+	).Replace(s)
+	return strings.Join(strings.Fields(s), " ")
 }
 
 func newPlanItemID() string {

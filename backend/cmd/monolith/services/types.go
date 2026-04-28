@@ -122,6 +122,15 @@ type Deps struct {
 	QuotaResolver    *subApp.PolicyResolver
 	QuotaTierGetter  *subApp.GetTier
 	QuotaUsageReader subApp.UsageReader
+
+	// SetTierUC — единый use-case изменения tier'а (admin SetTier +
+	// Boosty webhook sync). Shared pointer чтобы другие модули могли
+	// подписаться на side-effect: после Upsert subscription.plan
+	// нужно flip'нуть copilot_quotas.plan + cap (раньше не sync'илось,
+	// юзер платил но видел free-лимиты до перезагрузки сервиса).
+	// Set'ится в WireSubscriptionQuota; NewCopilot устанавливает
+	// SetTierUC.OnTierChanged hook.
+	SetTierUC *subApp.SetTier
 }
 
 // StorageGate is the cross-domain interface Hone (and any future writer)

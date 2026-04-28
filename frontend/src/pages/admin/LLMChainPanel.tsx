@@ -110,6 +110,7 @@ export function LLMChainPanel() {
 
       <VirtualChainsSection
         chains={draft.virtual_chains}
+        defaults={draft.virtual_chains_defaults ?? {}}
         onChange={(virtual_chains) => setDraft({ ...draft, virtual_chains })}
         registeredProviders={draft.registered_providers ?? []}
       />
@@ -299,10 +300,12 @@ function TaskMapSection({
 
 function VirtualChainsSection({
   chains,
+  defaults,
   onChange,
   registeredProviders,
 }: {
   chains: Record<string, VirtualCandidate[]>
+  defaults: Record<string, VirtualCandidate[]>
   onChange: (next: Record<string, VirtualCandidate[]>) => void
   registeredProviders: string[]
 }) {
@@ -356,6 +359,7 @@ function VirtualChainsSection({
             key={v}
             id={v}
             chain={chains[v] ?? []}
+            defaultChain={defaults[v] ?? []}
             onChange={(next) => setChain(v, next)}
             previewTier={previewTier}
             registeredProviders={regSet}
@@ -369,12 +373,14 @@ function VirtualChainsSection({
 function VirtualChainCard({
   id,
   chain,
+  defaultChain,
   onChange,
   previewTier,
   registeredProviders,
 }: {
   id: string
   chain: VirtualCandidate[]
+  defaultChain: VirtualCandidate[]
   onChange: (next: VirtualCandidate[]) => void
   previewTier: ModelTier
   registeredProviders: Set<string>
@@ -433,8 +439,45 @@ function VirtualChainCard({
       </div>
 
       {chain.length === 0 ? (
-        <div className="rounded border border-dashed border-border bg-surface-1 px-3 py-3 text-center font-mono text-[11px] text-text-muted">
-          Override отсутствует — используется цепочка из tier.go.
+        // Override пуст — раскрываем defaults из tier.go (read-only) и
+        // даём кнопку "Скопировать в override" чтобы юзер мог отредактировать
+        // как обычное значение. Раньше тут было сообщение «Override
+        // отсутствует — используется цепочка из tier.go» без возможности
+        // править.
+        <div className="flex flex-col gap-2 rounded border border-dashed border-border bg-surface-1 px-3 py-3">
+          <div className="flex items-center justify-between gap-2">
+            <span className="font-mono text-[10px] uppercase tracking-wider text-text-muted">
+              Defaults из tier.go (read-only)
+            </span>
+            {defaultChain.length > 0 && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => onChange(defaultChain.map((s) => ({ ...s })))}
+              >
+                Скопировать в override
+              </Button>
+            )}
+          </div>
+          {defaultChain.length === 0 ? (
+            <div className="text-center font-mono text-[11px] text-text-muted">
+              Defaults пусты — добавь шаг через «+ Шаг» сверху.
+            </div>
+          ) : (
+            <div className="flex flex-col gap-1">
+              {defaultChain.map((step, i) => (
+                <div
+                  key={i}
+                  className="flex items-center gap-2 rounded border border-border/50 bg-surface-2/40 px-2 py-1 font-mono text-[11px] text-text-muted"
+                >
+                  <span className="w-5">{i + 1}.</span>
+                  <span className="text-text-secondary">{step.provider}</span>
+                  <span className="text-text-muted/60">·</span>
+                  <span className="flex-1 truncate">{step.model}</span>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       ) : (
         <div className="flex flex-col gap-1.5">

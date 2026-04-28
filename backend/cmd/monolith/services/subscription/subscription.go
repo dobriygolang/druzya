@@ -48,12 +48,16 @@ func WireSubscriptionQuota(d *monolithServices.Deps) {
 	pg := subInfra.NewPostgres(d.Pool)
 	clk := subDomain.RealClock{}
 	getTierUC := subApp.NewGetTier(pg, clk)
+	setTierUC := subApp.NewSetTier(pg, clk, d.Log)
 	usageReader := subInfra.NewQuotaUsageRepo(d.Pool)
 	configReader := subInfra.NewDynConfigRepo(d.Pool)
 	policyResolver := subApp.NewPolicyResolver(configReader)
 	d.QuotaResolver = policyResolver
 	d.QuotaTierGetter = getTierUC
 	d.QuotaUsageReader = usageReader
+	// SetTierUC заранее, чтобы NewCopilot мог set'нуть OnTierChanged hook
+	// (subscription.plan меняется → copilot_quotas.plan flip'ается).
+	d.SetTierUC = setTierUC
 }
 
 func NewSubscription(d monolithServices.Deps) *monolithServices.Module {
@@ -62,7 +66,14 @@ func NewSubscription(d monolithServices.Deps) *monolithServices.Module {
 	clk := subDomain.RealClock{}
 
 	getTierUC := subApp.NewGetTier(pg, clk)
-	setTierUC := subApp.NewSetTier(pg, clk, d.Log)
+	// Reuse pre-wired SetTier (см. WireSubscriptionQuota) если он есть,
+	// чтобы OnTierChanged hook'и которые набросали другие модули
+	// (NewCopilot et al.) сохранялись. Fallback'ом конструируем свой
+	// для standalone-test'ов / нестандартного wire-up'а.
+	setTierUC := d.SetTierUC
+	if setTierUC == nil {
+		setTierUC = subApp.NewSetTier(pg, clk, d.Log)
+	}
 	linkBoostyUC := subApp.NewLinkBoosty(linkRepo, clk, d.Log)
 	usageReader := subInfra.NewQuotaUsageRepo(d.Pool)
 	configReader := subInfra.NewDynConfigRepo(d.Pool)

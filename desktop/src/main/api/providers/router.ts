@@ -37,6 +37,21 @@ export type RoutedEvent =
         resetsAt: string;
         modelsAllowed: string[];
       };
+      /** Context window snapshot. Renderer показывает прогресс в footer'е
+       *  expanded окна и ghost-message при компакции. */
+      context: {
+        /** turns ушли в LLM в этом запросе (max=window_size, обычно 10) */
+        messagesInWindow: number;
+        /** turns в conversation после этого ответа */
+        messagesTotal: number;
+        /** порог при котором triggers компакция (default 15) */
+        compactionThreshold: number;
+        /** true если в этом turn'е window перешёл порог → backend
+         *  запустил async summarization старых turns */
+        compactionTriggered: boolean;
+        /** длина текущего RunningSummary; >0 = уже была хотя бы одна компакция */
+        runningSummaryChars: number;
+      };
     }
   | {
       type: 'error';
@@ -89,6 +104,8 @@ async function* routeServer(
     promptText: input.promptText,
     model: chosenModel,
     attachments,
+    // Передаём отдельным system message; см. AnalyzeInput.personaSystemPrompt.
+    personaSystemPrompt: input.personaSystemPrompt ?? '',
     client: {
       os: process.platform === 'darwin' ? 1 : process.platform === 'win32' ? 2 : 3,
       osVersion: '',
@@ -169,6 +186,13 @@ function mapServerEvent(rawEv: unknown): RoutedEvent | null {
           requestsCap: Number(q.requestsCap ?? 0),
           resetsAt: (q.resetsAt as { toDate?: () => Date })?.toDate?.()?.toISOString() ?? '',
           modelsAllowed: (q.modelsAllowed as string[] | undefined) ?? [],
+        },
+        context: {
+          messagesInWindow: Number(v.messagesInWindow ?? 0),
+          messagesTotal: Number(v.messagesTotal ?? 0),
+          compactionThreshold: Number(v.compactionThreshold ?? 0),
+          compactionTriggered: Boolean(v.compactionTriggered ?? false),
+          runningSummaryChars: Number(v.runningSummaryChars ?? 0),
         },
       };
     }

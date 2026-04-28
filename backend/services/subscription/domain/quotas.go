@@ -49,6 +49,13 @@ type QuotaPolicy struct {
 	AIMonthly int
 }
 
+// Транскрипция (Whisper) — БЕЗ квоты для всех тиров. Whisper-large-v3-
+// turbo на Groq стоит ~$0.04/час аудио, так что free-юзер может
+// транскрибировать сотни часов прежде чем cost станет существенным.
+// Anti-abuse держит rate-limiter `transcribeLimitPerMin = 60` на стороне
+// transcription handler'а. Tier влияет только на ВЫБОР МОДЕЛИ (free →
+// turbo, paid → large-v3 не-turbo) — это качество, не лимит.
+
 // Unlimited — sentinel для int-полей policy. Use only via comparison
 // helpers below; не интерпретируется как "0".
 const Unlimited = -1

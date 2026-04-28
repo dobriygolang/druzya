@@ -1,7 +1,7 @@
 // All IPC invoke handlers live here. Channel names come from @shared/ipc
 // so main and renderer share a single source of truth.
 
-import { app, ipcMain, screen, shell } from 'electron';
+import { app, dialog, ipcMain, screen, shell } from 'electron';
 import { z } from 'zod';
 
 import {
@@ -45,7 +45,7 @@ import { createSessionsClient } from '../api/sessions';
 import { createDocumentsClient } from '../api/documents';
 import { createMemoryClient } from '../api/memory';
 import { createTranscriptionClient } from '../api/transcription';
-import { createAudioCapture } from '../capture/audio-mac';
+import { createAudioCapture, type AudioCaptureState } from '../capture/audio-mac';
 import { createSuggestionClient } from '../api/suggestion';
 import { createTriggerPolicy } from '../coach/trigger-policy';
 import { loadAppearance, saveAppearance, type AppearancePrefs } from '../settings/appearance';
@@ -64,6 +64,7 @@ import {
   broadcast,
   closeWindow,
   getStealth,
+  getWindow,
   hideToast,
   hideWindow,
   resizeWindow,
@@ -266,13 +267,42 @@ export function registerHandlers(opts: RegisterOptions): void {
   let pendingArea:
     | { resolve: (r: CaptureResult | null) => void; reject: (err: Error) => void }
     | null = null;
+  // Watchdog timer — если юзер ни commit'нул ни cancel'нул в течение
+  // 30 секунд, автоматически отпускаем cursor freeze и закрываем overlay.
+  // Без этого ловили баг: overlay не появляется (race / focus issue) →
+  // cursorBridge.freeze() заморозил курсор → юзер не может взаимодействовать
+  // → пользователь reboot'ил ноут чтобы вернуть управление.
+  let pendingAreaTimer: NodeJS.Timeout | null = null;
+  const cancelPendingAreaSafely = () => {
+    if (pendingAreaTimer) {
+      clearTimeout(pendingAreaTimer);
+      pendingAreaTimer = null;
+    }
+    closeWindow('area-overlay');
+    cursorBridge.thaw();
+    if (!pendingArea) return;
+    const p = pendingArea;
+    pendingArea = null;
+    p.resolve(null);
+  };
+
   ipcMain.handle(
     invokeChannels.captureScreenshotArea,
     async (): Promise<CaptureResult | null> => {
       if (pendingArea) {
         // Re-trigger while one is open → close + restart.
-        pendingArea.resolve(null);
-        pendingArea = null;
+        cancelPendingAreaSafely();
+      }
+      // Pre-flight: проверяем Screen Recording permission ДО freeze'а
+      // курсора. Если denied — fail сразу, не блокируем юзера.
+      // Без этой проверки cursorBridge.freeze() морозил курсор, потом
+      // captureArea fail'ила на permission'е, пользователь оставался с
+      // замороженным курсором и не мог даже нажать «закрыть».
+      try {
+        const { ensureScreenRecordingPrompted } = await import('../capture/screenshot');
+        await ensureScreenRecordingPrompted();
+      } catch {
+        /* probe — best-effort */
       }
       return new Promise<CaptureResult | null>((resolve, reject) => {
         pendingArea = { resolve, reject };
@@ -282,12 +312,23 @@ export function registerHandlers(opts: RegisterOptions): void {
         // должен интегрировать movementX/Y поверх seed'а).
         const seed = screen.getCursorScreenPoint();
         const overlay = showWindow('area-overlay', windowOptions);
+        // Принудительно focus'им overlay — без этого macOS оставляет
+        // фокус на источнике клика (Tray popup), и overlay не получает
+        // pointer events. Юзер видит замороженный курсор «впустую».
+        overlay.show();
+        overlay.focus();
+        overlay.moveTop();
         // Включаем freeze ПОСЛЕ показа overlay — иначе короткий
         // window между «открыли overlay» и «freeze» позволяет viewer'у
         // увидеть рывок реального курсора.
         // Helper sometimes lazy-spawns; call freeze unconditionally —
         // bridge no-op'ит если binary недоступен.
         cursorBridge.freeze();
+        // Watchdog: 30s максимум. Если юзер не сделал ни commit, ни
+        // cancel — авто-отпускаем (overlay не виден / app завис / etc).
+        pendingAreaTimer = setTimeout(() => {
+          cancelPendingAreaSafely();
+        }, 30_000);
         // Seed renderer ASAP, но after webContents готов получать события.
         // did-finish-load — момент когда renderer point-listenerит наш push.
         const sendSeed = () => {
@@ -308,6 +349,10 @@ export function registerHandlers(opts: RegisterOptions): void {
     // Fully tear down the overlay window — reusing it leaves stale React
     // state (last drag coords / lingering event listeners) that corrupts
     // the next area capture.
+    if (pendingAreaTimer) {
+      clearTimeout(pendingAreaTimer);
+      pendingAreaTimer = null;
+    }
     closeWindow('area-overlay');
     cursorBridge.thaw();
     if (!pendingArea) return;
@@ -316,12 +361,7 @@ export function registerHandlers(opts: RegisterOptions): void {
     void captureArea(rect).then(p.resolve, (err) => p.reject(err as Error));
   });
   ipcMain.on(invokeChannels.captureAreaCancel, () => {
-    closeWindow('area-overlay');
-    cursorBridge.thaw();
-    if (!pendingArea) return;
-    const p = pendingArea;
-    pendingArea = null;
-    p.resolve(null);
+    cancelPendingAreaSafely();
   });
 
   // ── Analyze / Chat ──
@@ -605,6 +645,53 @@ export function registerHandlers(opts: RegisterOptions): void {
     },
   );
 
+  // Export current chat → user-chosen .md file. Native save dialog
+  // (Electron). Cancel → return null. Не зависит от Hone — само-
+  // достаточный markdown для backup / share / vault.
+  handleIn(
+    invokeChannels.notesExportChatMarkdown,
+    z.object({
+      title: z.string(),
+      messages: z.array(z.object({
+        role: z.enum(['user', 'assistant']),
+        content: z.string(),
+      })),
+    }),
+    async (input) => {
+      const titleFallback = input.title.trim() ||
+        (input.messages.find((m) => m.role === 'user')?.content || 'Chat')
+          .replace(/\s+/g, ' ').slice(0, 60);
+
+      // Sanitize title для filename: убираем path-illegal characters,
+      // ограничиваем длину. Дата для уникальности.
+      const safeName = titleFallback
+        .replace(/[/\\:*?"<>|]/g, '_')
+        .replace(/\s+/g, '_')
+        .slice(0, 60);
+      const dateStr = new Date().toISOString().slice(0, 10);
+      const defaultFilename = `${dateStr}_${safeName}.md`;
+
+      const result = await dialog.showSaveDialog({
+        title: 'Экспорт чата',
+        defaultPath: defaultFilename,
+        filters: [{ name: 'Markdown', extensions: ['md'] }],
+      });
+      if (result.canceled || !result.filePath) return null;
+
+      const header = `# ${titleFallback}\n\n_Exported from Cue · ${new Date().toLocaleString('ru-RU')}_\n\n---\n\n`;
+      const body = input.messages
+        .map((m) => {
+          const heading = m.role === 'user' ? '## Вы' : '## Assistant';
+          return `${heading}\n\n${m.content}`;
+        })
+        .join('\n\n---\n\n');
+
+      const { writeFile } = await import('node:fs/promises');
+      await writeFile(result.filePath, header + body, 'utf-8');
+      return { filePath: result.filePath };
+    },
+  );
+
   // ── App lifecycle ──
   ipcMain.handle(invokeChannels.appQuit, async () => {
     // Give the analyzer subscriber a moment to drain; then quit.
@@ -748,35 +835,66 @@ export function registerHandlers(opts: RegisterOptions): void {
     { persona: 'meeting' },
   );
 
-  const audioCapture = createAudioCapture(
-    {
-      apiBaseURL,
-      updateFeedURL: '',
-      sentryDSN: '',
-      environment: '',
-      defaultLocale: 'ru',
-      isDev: false,
+  // Два независимых capture controller'а — один для system audio
+  // (ScreenCaptureKit, кнопка «Слушать»), один для mic (AVAudioEngine,
+  // кнопка «Микрофон»). Оба могут работать параллельно: каждый spawn'ит
+  // свой Swift child process с независимым SFSpeechRecognizer.
+  const captureCfg = {
+    apiBaseURL,
+    updateFeedURL: '',
+    sentryDSN: '',
+    environment: '',
+    defaultLocale: 'ru' as const,
+    isDev: false,
+  };
+  const makeEvents = (source: 'system' | 'mic') => ({
+    onState: (state: AudioCaptureState) => {
+      // eslint-disable-next-line no-console
+      console.log(`[handlers:audio:${source}] state→${state}`);
+      broadcast(eventChannels.audioCaptureStateChanged, { source, state });
     },
-    {
-      onState: (state) => broadcast(eventChannels.audioCaptureStateChanged, state),
-      onTranscript: (text, windowSec) => {
-        broadcast(eventChannels.audioCaptureTranscript, { text, windowSec });
-        // Feed the auto-trigger policy. It no-ops when toggled off
-        // but still rolls the context window, so a toggle-on mid-
-        // meeting has recent history to draw from.
+    onTranscript: (text: string, windowSec: number, isFinal: boolean) => {
+      // eslint-disable-next-line no-console
+      console.log(`[handlers:audio:${source}] broadcast transcript isFinal=${isFinal} len=${text.length}`);
+      broadcast(eventChannels.audioCaptureTranscript, { source, text, windowSec, isFinal });
+      if (isFinal) {
         coachPolicy.onTranscript(text);
-      },
-      onError: (message) => broadcast(eventChannels.audioCaptureError, { message }),
+      }
     },
+    onError: (message: string) => {
+      // eslint-disable-next-line no-console
+      console.warn(`[handlers:audio:${source}] error: ${message}`);
+      broadcast(eventChannels.audioCaptureError, { source, message });
+    },
+  });
+  const audioCaptureSystem = createAudioCapture(captureCfg, makeEvents('system'), 'system');
+  const audioCaptureMic = createAudioCapture(captureCfg, makeEvents('mic'), 'mic');
+  const captureBySource = (raw: unknown) =>
+    raw === 'mic' ? audioCaptureMic : audioCaptureSystem;
+  const restoreExpandedFocus = () => {
+    // macOS TCC prompt при первом старте Swift binary стягивает focus у
+    // expanded окна. Без явного return-focus expanded остаётся без mouse-
+    // events и юзер не может попасть в input/кнопки.
+    const expanded = getWindow('expanded');
+    if (expanded) {
+      try { expanded.setIgnoreMouseEvents(false); } catch { /* no-op */ }
+      try { expanded.focus(); } catch { /* no-op */ }
+    }
+  };
+  ipcMain.handle(invokeChannels.audioCaptureStart, async (_evt, source?: unknown) => {
+    await captureBySource(source).start();
+    restoreExpandedFocus();
+  });
+  ipcMain.handle(invokeChannels.audioCaptureStop, async (_evt, source?: unknown) => {
+    await captureBySource(source).stop();
+    restoreExpandedFocus();
+  });
+  ipcMain.handle(invokeChannels.audioCaptureState, async (_evt, source?: unknown) =>
+    captureBySource(source).state(),
   );
-  ipcMain.handle(invokeChannels.audioCaptureStart, async () => {
-    await audioCapture.start();
-  });
-  ipcMain.handle(invokeChannels.audioCaptureStop, async () => {
-    await audioCapture.stop();
-  });
-  ipcMain.handle(invokeChannels.audioCaptureState, async () => audioCapture.state());
-  ipcMain.handle(invokeChannels.audioCaptureIsAvailable, async () => audioCapture.isAvailable());
+  ipcMain.handle(invokeChannels.audioCaptureIsAvailable, async () =>
+    audioCaptureSystem.isAvailable(),
+  );
 
   // ── Coach (auto-suggest) ──
   handleIn(invokeChannels.coachSetAutoSuggest, z.boolean(), async (on) => {

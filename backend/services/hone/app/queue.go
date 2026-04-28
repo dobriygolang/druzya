@@ -147,9 +147,64 @@ func (uc *SyncAIItems) Do(ctx context.Context, userID uuid.UUID) error {
 		// ErrNotFound = нет плана на сегодня → нечего синкать. Не ошибка.
 		return nil //nolint:nilerr // план может ещё не быть сгенерирован
 	}
+	desired := make(map[string]domain.PlanItem, len(plan.Items))
 	for _, item := range plan.Items {
 		title := strings.TrimSpace(item.Title)
 		if title == "" {
+			continue
+		}
+		key := queueTitleKey(title)
+		if key == "" {
+			continue
+		}
+		if _, exists := desired[key]; exists {
+			continue
+		}
+		desired[key] = item
+	}
+
+	existing, err := uc.Queue.ListByDate(ctx, userID, today)
+	if err != nil {
+		return fmt.Errorf("hone.SyncAIItems.Do: list queue: %w", err)
+	}
+	existingKeys := make(map[string]struct{}, len(existing))
+	keptDesiredAITodo := make(map[string]struct{}, len(existing))
+	for _, item := range existing {
+		key := queueTitleKey(item.Title)
+		if key != "" {
+			existingKeys[key] = struct{}{}
+		}
+		if item.Source != domain.QueueItemSourceAI || item.Status != domain.QueueItemStatusTodo {
+			continue
+		}
+		if _, stillDesired := desired[key]; stillDesired {
+			if _, alreadyKept := keptDesiredAITodo[key]; !alreadyKept {
+				keptDesiredAITodo[key] = struct{}{}
+				continue
+			}
+		}
+		id, parseErr := uuid.Parse(item.ID)
+		if parseErr != nil {
+			if uc.Log != nil {
+				uc.Log.Warn("hone.SyncAIItems.Do: parse stale queue id failed",
+					slog.Any("err", parseErr),
+					slog.String("user_id", userID.String()),
+					slog.String("item_id", item.ID))
+			}
+			continue
+		}
+		if deleteErr := uc.Queue.Delete(ctx, id, userID); deleteErr != nil && uc.Log != nil {
+			uc.Log.Warn("hone.SyncAIItems.Do: delete stale AI item failed",
+				slog.Any("err", deleteErr),
+				slog.String("user_id", userID.String()),
+				slog.String("title", item.Title))
+		}
+	}
+
+	for _, item := range desired {
+		title := strings.TrimSpace(item.Title)
+		key := queueTitleKey(title)
+		if _, exists := existingKeys[key]; exists {
 			continue
 		}
 		exists, err := uc.Queue.ExistsByTitleToday(ctx, userID, title)
@@ -163,6 +218,7 @@ func (uc *SyncAIItems) Do(ctx context.Context, userID uuid.UUID) error {
 			continue
 		}
 		if exists {
+			existingKeys[key] = struct{}{}
 			continue
 		}
 		_, err = uc.Queue.Create(ctx, domain.QueueItem{
@@ -179,8 +235,27 @@ func (uc *SyncAIItems) Do(ctx context.Context, userID uuid.UUID) error {
 				slog.String("user_id", userID.String()),
 				slog.String("title", title))
 		}
+		existingKeys[key] = struct{}{}
 	}
 	return nil
+}
+
+func queueTitleKey(title string) string {
+	s := strings.ToLower(strings.TrimSpace(title))
+	s = strings.NewReplacer(
+		"ё", "е",
+		".", " ",
+		",", " ",
+		":", " ",
+		";", " ",
+		"!", " ",
+		"?", " ",
+		"—", " ",
+		"-", " ",
+		"\"", " ",
+		"'", " ",
+	).Replace(s)
+	return strings.Join(strings.Fields(s), " ")
 }
 
 // ─── GetQueueStats ─────────────────────────────────────────────────────────

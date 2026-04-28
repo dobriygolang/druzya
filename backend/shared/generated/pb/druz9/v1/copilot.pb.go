@@ -2196,8 +2196,14 @@ type AnalyzeRequest struct {
 	Model          string                    `protobuf:"bytes,3,opt,name=model,proto3" json:"model,omitempty"`                                         // empty → server picks default for plan
 	Attachments    []*CopilotAttachmentInput `protobuf:"bytes,4,rep,name=attachments,proto3" json:"attachments,omitempty"`
 	Client         *ClientContext            `protobuf:"bytes,5,opt,name=client,proto3" json:"client,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	// persona_system_prompt — system-prompt текущей persona ("React Expert"
+	// и т.п.). Если задан — backend добавляет его как ОТДЕЛЬНЫЙ system
+	// message в LLM call. Не должен prepend'иться к prompt_text: это
+	// загрязняет conversation history и заставляет LLM эхать persona-
+	// pattern в каждом ответе. Empty — без persona-instruction.
+	PersonaSystemPrompt string `protobuf:"bytes,6,opt,name=persona_system_prompt,json=personaSystemPrompt,proto3" json:"persona_system_prompt,omitempty"`
+	unknownFields       protoimpl.UnknownFields
+	sizeCache           protoimpl.SizeCache
 }
 
 func (x *AnalyzeRequest) Reset() {
@@ -2263,6 +2269,13 @@ func (x *AnalyzeRequest) GetClient() *ClientContext {
 		return x.Client
 	}
 	return nil
+}
+
+func (x *AnalyzeRequest) GetPersonaSystemPrompt() string {
+	if x != nil {
+		return x.PersonaSystemPrompt
+	}
+	return ""
 }
 
 // CopilotConversationCreated is the first event on a new Analyze stream.
@@ -2398,8 +2411,17 @@ type CopilotDone struct {
 	TokensOut          int32                  `protobuf:"varint,3,opt,name=tokens_out,json=tokensOut,proto3" json:"tokens_out,omitempty"`
 	LatencyMs          int32                  `protobuf:"varint,4,opt,name=latency_ms,json=latencyMs,proto3" json:"latency_ms,omitempty"`
 	UpdatedQuota       *CopilotQuota          `protobuf:"bytes,5,opt,name=updated_quota,json=updatedQuota,proto3" json:"updated_quota,omitempty"` // pushed to avoid a follow-up fetch
-	unknownFields      protoimpl.UnknownFields
-	sizeCache          protoimpl.SizeCache
+	// Context window state — surface'ится в desktop UI как индикатор
+	// «контекст N/M turns» в footer'е expanded окна. Если context_compaction_
+	// triggered=true — UI рисует ghost-message «диалог сжат, старые
+	// сообщения переведены в summary».
+	MessagesInWindow    int32 `protobuf:"varint,6,opt,name=messages_in_window,json=messagesInWindow,proto3" json:"messages_in_window,omitempty"`           // сколько turns ушло в LLM (max=window_size=10)
+	MessagesTotal       int32 `protobuf:"varint,7,opt,name=messages_total,json=messagesTotal,proto3" json:"messages_total,omitempty"`                      // turns в conversation после этого ответа
+	CompactionThreshold int32 `protobuf:"varint,8,opt,name=compaction_threshold,json=compactionThreshold,proto3" json:"compaction_threshold,omitempty"`    // порог при котором triggers компакция (default 15)
+	CompactionTriggered bool  `protobuf:"varint,9,opt,name=compaction_triggered,json=compactionTriggered,proto3" json:"compaction_triggered,omitempty"`    // true если в этом turn'е window перешёл порог
+	RunningSummaryChars int32 `protobuf:"varint,10,opt,name=running_summary_chars,json=runningSummaryChars,proto3" json:"running_summary_chars,omitempty"` // длина текущего RunningSummary (0 если ни разу не сжимали)
+	unknownFields       protoimpl.UnknownFields
+	sizeCache           protoimpl.SizeCache
 }
 
 func (x *CopilotDone) Reset() {
@@ -2465,6 +2487,41 @@ func (x *CopilotDone) GetUpdatedQuota() *CopilotQuota {
 		return x.UpdatedQuota
 	}
 	return nil
+}
+
+func (x *CopilotDone) GetMessagesInWindow() int32 {
+	if x != nil {
+		return x.MessagesInWindow
+	}
+	return 0
+}
+
+func (x *CopilotDone) GetMessagesTotal() int32 {
+	if x != nil {
+		return x.MessagesTotal
+	}
+	return 0
+}
+
+func (x *CopilotDone) GetCompactionThreshold() int32 {
+	if x != nil {
+		return x.CompactionThreshold
+	}
+	return 0
+}
+
+func (x *CopilotDone) GetCompactionTriggered() bool {
+	if x != nil {
+		return x.CompactionTriggered
+	}
+	return false
+}
+
+func (x *CopilotDone) GetRunningSummaryChars() int32 {
+	if x != nil {
+		return x.RunningSummaryChars
+	}
+	return 0
 }
 
 // CopilotStreamError terminates the stream with a structured error. After
@@ -2651,8 +2708,12 @@ type ChatRequest struct {
 	PromptText     string                    `protobuf:"bytes,2,opt,name=prompt_text,json=promptText,proto3" json:"prompt_text,omitempty"`
 	Attachments    []*CopilotAttachmentInput `protobuf:"bytes,3,rep,name=attachments,proto3" json:"attachments,omitempty"`
 	Client         *ClientContext            `protobuf:"bytes,4,opt,name=client,proto3" json:"client,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	// persona_system_prompt — см. AnalyzeRequest.persona_system_prompt.
+	// Передаётся per-turn чтобы юзер мог переключать persona на лету
+	// в существующей conversation без её пересоздания.
+	PersonaSystemPrompt string `protobuf:"bytes,5,opt,name=persona_system_prompt,json=personaSystemPrompt,proto3" json:"persona_system_prompt,omitempty"`
+	unknownFields       protoimpl.UnknownFields
+	sizeCache           protoimpl.SizeCache
 }
 
 func (x *ChatRequest) Reset() {
@@ -2711,6 +2772,13 @@ func (x *ChatRequest) GetClient() *ClientContext {
 		return x.Client
 	}
 	return nil
+}
+
+func (x *ChatRequest) GetPersonaSystemPrompt() string {
+	if x != nil {
+		return x.PersonaSystemPrompt
+	}
+	return ""
 }
 
 // ChatEvent is structurally identical to AnalyzeEvent — same oneof shape,
@@ -3599,14 +3667,15 @@ const file_druz9_v1_copilot_proto_rawDesc = "" +
 	"\vapp_version\x18\x03 \x01(\tR\n" +
 	"appVersion\x12=\n" +
 	"\x0etrigger_action\x18\x04 \x01(\x0e2\x16.druz9.v1.HotkeyActionR\rtriggerAction\x12(\n" +
-	"\x10focused_app_hint\x18\x05 \x01(\tR\x0efocusedAppHint\"\xe5\x01\n" +
+	"\x10focused_app_hint\x18\x05 \x01(\tR\x0efocusedAppHint\"\x99\x02\n" +
 	"\x0eAnalyzeRequest\x12'\n" +
 	"\x0fconversation_id\x18\x01 \x01(\tR\x0econversationId\x12\x1f\n" +
 	"\vprompt_text\x18\x02 \x01(\tR\n" +
 	"promptText\x12\x14\n" +
 	"\x05model\x18\x03 \x01(\tR\x05model\x12B\n" +
 	"\vattachments\x18\x04 \x03(\v2 .druz9.v1.CopilotAttachmentInputR\vattachments\x12/\n" +
-	"\x06client\x18\x05 \x01(\v2\x17.druz9.v1.ClientContextR\x06client\"\xba\x01\n" +
+	"\x06client\x18\x05 \x01(\v2\x17.druz9.v1.ClientContextR\x06client\x122\n" +
+	"\x15persona_system_prompt\x18\x06 \x01(\tR\x13personaSystemPrompt\"\xba\x01\n" +
 	"\x1aCopilotConversationCreated\x12'\n" +
 	"\x0fconversation_id\x18\x01 \x01(\tR\x0econversationId\x12&\n" +
 	"\x0fuser_message_id\x18\x02 \x01(\tR\ruserMessageId\x120\n" +
@@ -3614,7 +3683,7 @@ const file_druz9_v1_copilot_proto_rawDesc = "" +
 	"\bmodel_id\x18\x04 \x01(\tR\amodelId\"=\n" +
 	"\x11CopilotTokenDelta\x12\x14\n" +
 	"\x05index\x18\x01 \x01(\x05R\x05index\x12\x12\n" +
-	"\x04text\x18\x02 \x01(\tR\x04text\"\xd7\x01\n" +
+	"\x04text\x18\x02 \x01(\tR\x04text\"\xc6\x03\n" +
 	"\vCopilotDone\x120\n" +
 	"\x14assistant_message_id\x18\x01 \x01(\tR\x12assistantMessageId\x12\x1b\n" +
 	"\ttokens_in\x18\x02 \x01(\x05R\btokensIn\x12\x1d\n" +
@@ -3622,7 +3691,13 @@ const file_druz9_v1_copilot_proto_rawDesc = "" +
 	"tokens_out\x18\x03 \x01(\x05R\ttokensOut\x12\x1d\n" +
 	"\n" +
 	"latency_ms\x18\x04 \x01(\x05R\tlatencyMs\x12;\n" +
-	"\rupdated_quota\x18\x05 \x01(\v2\x16.druz9.v1.CopilotQuotaR\fupdatedQuota\"r\n" +
+	"\rupdated_quota\x18\x05 \x01(\v2\x16.druz9.v1.CopilotQuotaR\fupdatedQuota\x12,\n" +
+	"\x12messages_in_window\x18\x06 \x01(\x05R\x10messagesInWindow\x12%\n" +
+	"\x0emessages_total\x18\a \x01(\x05R\rmessagesTotal\x121\n" +
+	"\x14compaction_threshold\x18\b \x01(\x05R\x13compactionThreshold\x121\n" +
+	"\x14compaction_triggered\x18\t \x01(\bR\x13compactionTriggered\x122\n" +
+	"\x15running_summary_chars\x18\n" +
+	" \x01(\x05R\x13runningSummaryChars\"r\n" +
 	"\x12CopilotStreamError\x12\x12\n" +
 	"\x04code\x18\x01 \x01(\tR\x04code\x12\x18\n" +
 	"\amessage\x18\x02 \x01(\tR\amessage\x12.\n" +
@@ -3632,13 +3707,14 @@ const file_druz9_v1_copilot_proto_rawDesc = "" +
 	"\x05delta\x18\x02 \x01(\v2\x1b.druz9.v1.CopilotTokenDeltaH\x00R\x05delta\x12+\n" +
 	"\x04done\x18\x03 \x01(\v2\x15.druz9.v1.CopilotDoneH\x00R\x04done\x124\n" +
 	"\x05error\x18\x04 \x01(\v2\x1c.druz9.v1.CopilotStreamErrorH\x00R\x05errorB\x06\n" +
-	"\x04kind\"\xcc\x01\n" +
+	"\x04kind\"\x80\x02\n" +
 	"\vChatRequest\x12'\n" +
 	"\x0fconversation_id\x18\x01 \x01(\tR\x0econversationId\x12\x1f\n" +
 	"\vprompt_text\x18\x02 \x01(\tR\n" +
 	"promptText\x12B\n" +
 	"\vattachments\x18\x03 \x03(\v2 .druz9.v1.CopilotAttachmentInputR\vattachments\x12/\n" +
-	"\x06client\x18\x04 \x01(\v2\x17.druz9.v1.ClientContextR\x06client\"\xed\x01\n" +
+	"\x06client\x18\x04 \x01(\v2\x17.druz9.v1.ClientContextR\x06client\x122\n" +
+	"\x15persona_system_prompt\x18\x05 \x01(\tR\x13personaSystemPrompt\"\xed\x01\n" +
 	"\tChatEvent\x12@\n" +
 	"\acreated\x18\x01 \x01(\v2$.druz9.v1.CopilotConversationCreatedH\x00R\acreated\x123\n" +
 	"\x05delta\x18\x02 \x01(\v2\x1b.druz9.v1.CopilotTokenDeltaH\x00R\x05delta\x12+\n" +

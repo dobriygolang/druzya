@@ -4,6 +4,12 @@ import type { UIMessage } from '../stores/conversation';
 const STORE_KEY = 'cue.localHistory.v1';
 const RETENTION_KEY = 'cue.localHistory.retentionDays';
 const DEFAULT_RETENTION_DAYS = 30;
+// Hard caps для localStorage: количество (LRU) + размер (защита от
+// раздутых code-block conversations). localStorage обычно ~5-10MB.
+// Без этих cap'ов при ~50KB/conversation × 250 entries = 12MB →
+// QuotaExceededError на следующий save → silent corruption.
+const MAX_CONVERSATIONS = 100;
+const MAX_BYTES = 4 * 1024 * 1024; // 4MB safe budget
 
 interface LocalEntry {
   conversation: Conversation;
@@ -45,11 +51,129 @@ export function listLocalHistory(cursor: string, limit: number): LocalHistoryPag
 
 export function getLocalConversation(id: string): LocalEntry | null {
   pruneLocalHistory();
-  return readEntries().find((e) => e.conversation.id === id) ?? null;
+  const entry = readEntries().find((e) => e.conversation.id === id) ?? null;
+  if (!entry) return null;
+  // Sanity filter: messages с binary garbage в content (corruption из
+  // прежнего streaming-bug'а, обрезанного JSON.stringify при quota
+  // exceeded, encoding leak с backend'а) → дропаем эти message'ы.
+  // Без фильтра рендер показывает мохибаку «äÆÕZú∑Äëhst…» которая
+  // не parsable ни визуально, ни logically.
+  const cleanMessages = entry.messages.filter((m) => !looksBinary(m.content));
+  if (cleanMessages.length !== entry.messages.length) {
+    // eslint-disable-next-line no-console
+    console.warn(
+      '[local-history] dropped',
+      entry.messages.length - cleanMessages.length,
+      'corrupted messages from conversation',
+      id,
+    );
+  }
+  return { ...entry, messages: cleanMessages };
+}
+
+// looksBinary возвращает true когда text похож на binary mojibake:
+// высокая доля non-printable / control characters (>10%) или явный
+// контрольный байт в первых 100 символах. Для нормальной речи
+// (русский / английский / эмодзи / code) ratio = 0.
+function looksBinary(text: string): boolean {
+  if (!text || text.length < 4) return false;
+  // Quick test: контрольные байты (0x00-0x08, 0x0B, 0x0E-0x1F, 0x7F)
+  // в первых 100 char'ах — гарантированно binary garbage.
+  const sample = text.slice(0, 100);
+  for (let i = 0; i < sample.length; i++) {
+    const c = sample.charCodeAt(i);
+    if (
+      c === 0x00 ||
+      (c >= 0x01 && c <= 0x08) ||
+      c === 0x0b ||
+      (c >= 0x0e && c <= 0x1f) ||
+      c === 0x7f
+    ) {
+      return true;
+    }
+  }
+  // Slow test: считаем «странные» Unicode chars (Private Use Area
+  // 0xE000-0xF8FF, surrogates 0xD800-0xDFFF, обрывки UTF-16). Если их
+  // >10% — это garbage (нормальные тексты содержат 0).
+  let weird = 0;
+  for (const ch of text) {
+    const c = ch.codePointAt(0) ?? 0;
+    if (
+      (c >= 0xd800 && c <= 0xdfff) ||
+      (c >= 0xe000 && c <= 0xf8ff) ||
+      (c >= 0xfff0 && c <= 0xffff)
+    ) {
+      weird += 1;
+    }
+  }
+  return weird / text.length > 0.1;
+}
+
+// clearLocalHistory — destructive: full wipe. Используется кнопкой
+// «Clear history» в HistoryScreen когда юзер видит corrupted data
+// и хочет начать с чистого листа. Не trash'ит retentionDays setting.
+export function clearLocalHistory(): void {
+  if (typeof localStorage === 'undefined') return;
+  localStorage.removeItem(STORE_KEY);
 }
 
 export function deleteLocalConversation(id: string): void {
   writeEntries(readEntries().filter((e) => e.conversation.id !== id));
+}
+
+/** Renames the conversation. Custom title overrides the auto-generated
+ *  one (first 80 chars of first user message). Empty string resets to
+ *  auto-title. Returns true if the conversation was found. */
+export function renameLocalConversation(id: string, customTitle: string): boolean {
+  const entries = readEntries();
+  const idx = entries.findIndex((e) => e.conversation.id === id);
+  if (idx === -1) return false;
+  const trimmed = customTitle.trim().slice(0, 120);
+  entries[idx] = {
+    ...entries[idx],
+    conversation: {
+      ...entries[idx].conversation,
+      // Записываем в title напрямую — единственное поле в Conversation
+      // type. Auto-title (первые 80 chars first user message) более не
+      // регенерируется при saveLocalConversation если title уже custom.
+      title: trimmed || autoTitleFromMessages(entries[idx].messages),
+    },
+  };
+  writeEntries(entries);
+  return true;
+}
+
+function autoTitleFromMessages(messages: Message[]): string {
+  const firstUser = messages.find((m) => m.role === 'user');
+  return (firstUser?.content || 'Диалог').trim().slice(0, 80) || 'Диалог';
+}
+
+/** Full-text search across all locally-stored conversations. Matches
+ *  case-insensitively in title or message content (limited to first
+ *  ~2KB per message to keep search fast on long code-block answers).
+ *  Returns conversations sorted by `updatedAt DESC` (same as listing). */
+export function searchLocalHistory(query: string, limit = 50): Conversation[] {
+  const q = query.trim().toLowerCase();
+  if (!q) return [];
+  const entries = readEntries();
+  const results: Conversation[] = [];
+  for (const e of entries) {
+    if (results.length >= limit) break;
+    const title = (e.conversation.title || '').toLowerCase();
+    if (title.includes(q)) {
+      results.push(e.conversation);
+      continue;
+    }
+    // Search в message content. Slice до 2KB per message — иначе
+    // 10K-токенные code blocks с copy-paste'ом сделают поиск медленным
+    // на 100 conversations.
+    const matched = e.messages.some((m) => {
+      const text = (m.content || '').slice(0, 2000).toLowerCase();
+      return text.includes(q);
+    });
+    if (matched) results.push(e.conversation);
+  }
+  return results;
 }
 
 export function saveLocalConversation(args: {
@@ -61,10 +185,31 @@ export function saveLocalConversation(args: {
   const now = new Date().toISOString();
   const entries = readEntries().filter((e) => e.conversation.id !== args.conversationId);
   const existing = readEntries().find((e) => e.conversation.id === args.conversationId);
+  // Preserve custom title if user renamed conversation. Auto-title
+  // (первые 80 chars first user message) генерится только когда existing
+  // title пуст ИЛИ совпадает со старым auto-title (юзер не переименовал).
   const firstUser = args.messages.find((m) => m.role === 'user');
-  const title = (firstUser?.content || 'Диалог').trim().slice(0, 80) || 'Диалог';
+  const autoTitle = (firstUser?.content || 'Диалог').trim().slice(0, 80) || 'Диалог';
+  const existingTitle = existing?.conversation.title?.trim() ?? '';
+  // Auto-regenerate title when:
+  //   1. Нет existing title (новый conversation)
+  //   2. Existing title — это predecessor of current first user message
+  //      (= auto-titled, юзер не custom'ил). Эвристика: existing совпадает
+  //      со старым auto-title для прежнего первого user message.
+  // Иначе считаем что title custom — НЕ перезаписываем.
+  const prevAutoTitle = existing
+    ? (existing.messages.find((m) => m.role === 'user')?.content || 'Диалог')
+        .trim()
+        .slice(0, 80) || 'Диалог'
+    : '';
+  const isAutoTitled = !existingTitle || existingTitle === prevAutoTitle;
+  const title = isAutoTitled ? autoTitle : existingTitle;
+  // Pre-filter: НЕ сохраняем message'ы с binary garbage в content.
+  // Лучше потерять одну битую реплику чем закрепить corruption в
+  // localStorage и при следующем open показать юзеру моhибаку.
   const messages: Message[] = args.messages
     .filter((m) => !m.pending)
+    .filter((m) => !looksBinary(m.content))
     .map((m) => ({
       id: m.id,
       conversationId: args.conversationId,
@@ -96,7 +241,7 @@ export function saveLocalConversation(args: {
     memory,
   };
 
-  writeEntries([entry, ...entries].slice(0, 250));
+  writeEntries([entry, ...entries].slice(0, MAX_CONVERSATIONS));
   pruneLocalHistory();
   return memory;
 }
@@ -126,7 +271,29 @@ function readEntries(): LocalEntry[] {
 
 function writeEntries(entries: LocalEntry[]): void {
   if (typeof localStorage === 'undefined') return;
-  localStorage.setItem(STORE_KEY, JSON.stringify(entries));
+  // Size-budget pre-check + retry-on-QuotaExceeded loop. Раньше
+  // localStorage.setItem мог throw'ать QuotaExceededError (превышение
+  // ~5-10MB бюджета браузера) и save'ы переставали работать молча —
+  // ничего не catch'ил эту ошибку. Теперь: отрезаем oldest 10% и
+  // retry'ем пока не fit'нем (или останется одна запись — дальше
+  // save current).
+  let toWrite = entries;
+  for (let attempt = 0; attempt < 8 && toWrite.length > 0; attempt++) {
+    const serialized = JSON.stringify(toWrite);
+    if (serialized.length > MAX_BYTES) {
+      toWrite = toWrite.slice(0, Math.max(1, Math.floor(toWrite.length * 0.9)));
+      continue;
+    }
+    try {
+      localStorage.setItem(STORE_KEY, serialized);
+      return;
+    } catch {
+      // Браузер сказал "no" (QuotaExceeded или disabled). Срезаем 10%
+      // и пробуем снова. После 8 попыток ≈ -57% размера; этого должно
+      // хватить чтобы fit'нуться в любой реалистичный budget.
+      toWrite = toWrite.slice(0, Math.max(1, Math.floor(toWrite.length * 0.9)));
+    }
+  }
 }
 
 function buildConversationMemory(args: {

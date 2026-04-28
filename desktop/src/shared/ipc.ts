@@ -90,6 +90,10 @@ export const invokeChannels = {
    *  file → fire druz9://notes/import. Hone backend импортит как Cue
    *  session с body_md из markdown'а ассистент-ответов + user-prompt'ов. */
   notesSaveChatToHone: 'notes:save-chat-to-hone',
+  /** Export current chat в self-contained .md file через native save
+   *  dialog. Юзер выбирает path, мы пишем pretty-formatted markdown.
+   *  Не зависит от Hone, нужен для share/backup. */
+  notesExportChatMarkdown: 'notes:export-chat-markdown',
 
   appQuit: 'app:quit',
 
@@ -344,6 +348,12 @@ export interface AnalyzeInput {
   }>;
   triggerAction: HotkeyAction;
   focusedAppHint: string;
+  /** System-prompt активной persona ("React Expert" и т.п.). Backend
+   *  добавит его как ОТДЕЛЬНЫЙ system message в LLM call. НЕ должен
+   *  prepend'иться к promptText — иначе persona-pattern эхом дублируется
+   *  в каждом user-message в истории conversation. Empty/undefined →
+   *  без persona-instruction. */
+  personaSystemPrompt?: string;
 }
 
 export interface AnalyzeHandle {
@@ -406,6 +416,15 @@ export interface AnalyzeDoneEvent {
   tokensOut: number;
   latencyMs: number;
   quota: Quota;
+  /** Snapshot состояния sliding-window компакции для UI-индикатора в
+   *  expanded окне (footer progress bar + ghost-message при компакции). */
+  context?: {
+    messagesInWindow: number;
+    messagesTotal: number;
+    compactionThreshold: number;
+    compactionTriggered: boolean;
+    runningSummaryChars: number;
+  };
 }
 
 export interface AnalyzeErrorEvent {
@@ -502,9 +521,34 @@ export interface TranscribeResult {
 
 export type AudioCaptureState = 'idle' | 'starting' | 'running' | 'stopping';
 
+/** Источник захвата:
+ *   'system' — ScreenCaptureKit, всё что играет в колонках (Zoom-партнёр,
+ *              Google Meet, YouTube). Кнопка «Слушать».
+ *   'mic'    — AVAudioEngine.inputNode, ровно голос юзера. Кнопка «Микрофон».
+ * Оба source могут работать ПАРАЛЛЕЛЬНО — это два независимых Swift процесса
+ * с независимыми SFSpeechRecognizer'ами. Renderer мерджит их chronologically. */
+export type AudioCaptureSource = 'system' | 'mic';
+
+export interface AudioCaptureStateEvent {
+  source: AudioCaptureSource;
+  state: AudioCaptureState;
+}
+
 export interface AudioCaptureTranscriptEvent {
+  source: AudioCaptureSource;
   text: string;
   windowSec: number;
+  // isFinal=false → partial result (cumulative full-text snapshot, ещё
+  // меняется); isFinal=true → committed final segment, end-of-utterance.
+  // Renderer держит партиал как live-preview и переписывает на каждый
+  // следующий event; на isFinal — добавляет в commit-массив и сбрасывает
+  // партиал.
+  isFinal: boolean;
+}
+
+export interface AudioCaptureErrorEvent {
+  source: AudioCaptureSource;
+  message: string;
 }
 
 export interface CoachSuggestionEvent {
@@ -683,6 +727,10 @@ export interface Druz9API {
      * sessionId. Returns saved file path.
      */
     saveChatToHone: (input: SaveChatInput) => Promise<{ filePath: string }>;
+    /** Export chat → user-chosen .md file через native save dialog.
+     *  Returns null если юзер cancel'нул, иначе абсолютный path
+     *  saved-файла. */
+    exportChatMarkdown: (input: SaveChatInput) => Promise<{ filePath: string } | null>;
   };
 
   app: {
@@ -766,9 +814,17 @@ export interface Druz9API {
    * paint a live transcript.
    */
   audioCapture: {
-    start: () => Promise<void>;
-    stop: () => Promise<void>;
-    state: () => Promise<AudioCaptureState>;
+    /**
+     * Запускает capture для одного из двух source'ов. Они независимы и
+     * могут работать параллельно (два Swift процесса).
+     *   'system' → ScreenCaptureKit + Apple Speech. Кнопка «Слушать».
+     *              Требует Screen Recording + Speech Recognition TCC.
+     *   'mic'    → AVAudioEngine + Apple Speech. Кнопка «Микрофон».
+     *              Требует Microphone + Speech Recognition TCC.
+     */
+    start: (source: AudioCaptureSource) => Promise<void>;
+    stop: (source: AudioCaptureSource) => Promise<void>;
+    state: (source: AudioCaptureSource) => Promise<AudioCaptureState>;
     isAvailable: () => Promise<boolean>;
   };
 

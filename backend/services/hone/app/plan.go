@@ -26,6 +26,7 @@ import (
 type GeneratePlan struct {
 	Plans       domain.PlanRepo
 	Skills      domain.SkillAtlasReader
+	Notes       domain.NoteRepo        // nullable — Today context for stronger plan synthesis
 	Resistance  domain.ResistanceRepo  // nullable — без него chronic-skip empty
 	Synthesiser domain.PlanSynthesizer // nil when llmchain is nil
 	Log         *slog.Logger
@@ -44,7 +45,8 @@ type GeneratePlanInput struct {
 
 // Do executes the use case.
 func (uc *GeneratePlan) Do(ctx context.Context, in GeneratePlanInput) (domain.Plan, error) {
-	today := uc.today()
+	now := uc.Now()
+	today := now.UTC().Truncate(24 * time.Hour)
 	if !in.Force {
 		existing, err := uc.Plans.GetForDate(ctx, in.UserID, today)
 		if err == nil {
@@ -79,12 +81,19 @@ func (uc *GeneratePlan) Do(ctx context.Context, in GeneratePlanInput) (domain.Pl
 			chronic = c
 		}
 	}
+	todayContext, err := uc.todayContext(ctx, in.UserID, now)
+	if err != nil {
+		return domain.Plan{}, err
+	}
+	if len(weak) == 0 && len(chronic) == 0 && !hasTodayContextSignal(todayContext) {
+		return domain.Plan{}, fmt.Errorf("hone.GeneratePlan.Do: no skill or resistance signals for a useful plan: %w", domain.ErrInvalidInput)
+	}
 
 	// STUB: enrich weak-node list with calendar events + recent PRs before
 	// handing to the synthesiser. For MVP we go weak-nodes-only; the
 	// synthesiser produces one solve item per weak node and decides whether
 	// to inject a mock/review/read item via prompt signals.
-	items, err := uc.Synthesiser.Synthesise(ctx, in.UserID, weak, chronic, today)
+	items, err := uc.Synthesiser.Synthesise(ctx, in.UserID, weak, chronic, todayContext, today)
 	if err != nil {
 		return domain.Plan{}, fmt.Errorf("hone.GeneratePlan.Do: synthesise: %w", err)
 	}
@@ -116,8 +125,30 @@ func (uc *GeneratePlan) Do(ctx context.Context, in GeneratePlanInput) (domain.Pl
 	return saved, nil
 }
 
-func (uc *GeneratePlan) today() time.Time {
-	return uc.Now().UTC().Truncate(24 * time.Hour)
+func (uc *GeneratePlan) todayContext(ctx context.Context, userID uuid.UUID, now time.Time) (domain.TodayContext, error) {
+	if uc.Notes == nil {
+		return domain.TodayContext{}, nil
+	}
+	title := "Daily " + now.Format("2006-01-02")
+	rows, _, err := uc.Notes.List(ctx, userID, 50, "", nil)
+	if err != nil {
+		return domain.TodayContext{}, fmt.Errorf("hone.GeneratePlan.Do: today notes: %w", err)
+	}
+	var target *domain.NoteSummary
+	for i := range rows {
+		if rows[i].Title == title {
+			target = &rows[i]
+			break
+		}
+	}
+	if target == nil {
+		return domain.TodayContext{}, nil
+	}
+	note, err := uc.Notes.Get(ctx, userID, target.ID)
+	if err != nil {
+		return domain.TodayContext{}, fmt.Errorf("hone.GeneratePlan.Do: today note: %w", err)
+	}
+	return buildTodayContext(note.BodyMD), nil
 }
 
 // ─── GetPlan ───────────────────────────────────────────────────────────────

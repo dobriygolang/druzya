@@ -104,6 +104,29 @@ var LLMCostRubTotal = prometheus.NewCounterVec(
 	[]string{"model"},
 )
 
+// TranscriptionSecondsTotal — суммарная длина (audio seconds) которая
+// прошла через STT провайдер, по модели. Помножь на rate для оценки
+// monthly Whisper bill: Groq turbo $0.04/час → $0.0007/sec; non-turbo
+// $0.111/час → $0.002/sec. Alert при rate(...) > целевого budget'а.
+var TranscriptionSecondsTotal = prometheus.NewCounterVec(
+	prometheus.CounterOpts{
+		Name: "druz9_transcription_seconds_total",
+		Help: "Audio seconds transcribed via STT, by model. Multiply by rate to derive Groq spend.",
+	},
+	[]string{"model"},
+)
+
+// TranscriptionRequestsTotal — счётчик запросов транскрипции по
+// результату: ok (вернулся текст), empty (RMS-skip / silence), error
+// (provider 5xx / timeout). Аномалии error → провайдер деградирует.
+var TranscriptionRequestsTotal = prometheus.NewCounterVec(
+	prometheus.CounterOpts{
+		Name: "druz9_transcription_requests_total",
+		Help: "Transcription requests by model and outcome (ok|empty|error).",
+	},
+	[]string{"model", "status"},
+)
+
 // ── Judge0 metrics ─────────────────────────────────────────────────────────
 
 // Judge0PendingSubmissions gauges the submission backlog.
@@ -348,6 +371,7 @@ func init() {
 		HTTPRequestsTotal, HTTPRequestDuration, HTTPErrorsTotal,
 		WSConnectionsActive,
 		LLMRequestDuration, LLMTokensTotal, LLMCostRubTotal,
+		TranscriptionSecondsTotal, TranscriptionRequestsTotal,
 		Judge0PendingSubmissions,
 		MatchesStartedTotal, MatchesFinishedTotal,
 		MockSessionsTotal, QueueWaitSeconds, ActiveUsers,
@@ -364,15 +388,43 @@ func init() {
 
 // ── Pricing helpers ─────────────────────────────────────────────────────────
 
-// llmPriceRubPer1k is a coarse pricing table (RUB per 1000 tokens), used to
-// translate raw token counts into cost. Update when contracts change.
-// Values are illustrative — production should pull from cfg or a CMS table.
+// llmPriceRubPer1k — pricing table (RUB per 1000 tokens), USD price ×100.
+// Update при смене контрактов / релизе новых моделей. Production-grade
+// решение — pull из cfg или CMS-table; пока статика для grafana cost
+// dashboard'а. Numbers базируются на public pricing pages (2026-Q2):
+//
+//	Groq llama-3.3-70b: $0.59/$0.79 per 1M
+//	Groq llama-3.1-8b:  $0.05/$0.08 per 1M (mini)
+//	OpenRouter gpt-4.1-mini: $0.40/$1.60 per 1M
+//	OpenRouter gpt-4.1:      $2.00/$8.00 per 1M
+//	OpenRouter claude-haiku-4.5:  $1.00/$5.00 per 1M
+//	OpenRouter claude-sonnet-4.5: $3.00/$15.00 per 1M
+//	DeepSeek deepseek-chat / V3:  $0.27/$1.10 per 1M
+//	DeepSeek deepseek-reasoner / R1: $0.55/$2.19 per 1M
+//	Cerebras llama3.3-70b: ~free (community tier)
+//
+// Unknown model → cost не считается, только tokens. Это ок для метрик —
+// grafana всё равно считает rate(tokens), price нужен только для $-alerts.
 var llmPriceRubPer1k = map[string]struct{ prompt, completion float64 }{
-	"openai/gpt-4o-mini":   {0.18, 0.72},
-	"openai/gpt-4o":        {2.5, 10.0},
-	"anthropic/claude-3.5": {2.7, 13.5},
-	"yandexgpt/lite":       {0.20, 0.20},
-	"yandexgpt/pro":        {1.20, 1.20},
+	// Groq (free-chain)
+	"llama-3.3-70b-versatile": {0.059, 0.079},
+	"llama-3.1-8b-instant":    {0.005, 0.008},
+	// Cerebras
+	"llama3.3-70b": {0.0, 0.0},
+	// OpenRouter (paid-chain via openrouter)
+	"openai/gpt-4.1-mini":         {0.040, 0.160},
+	"openai/gpt-4.1":              {0.200, 0.800},
+	"openai/gpt-4o-mini":          {0.018, 0.072},
+	"openai/gpt-4o":               {0.250, 1.000},
+	"anthropic/claude-haiku-4.5":  {0.100, 0.500},
+	"anthropic/claude-sonnet-4.5": {0.300, 1.500},
+	"anthropic/claude-3.5":        {0.270, 1.350},
+	// DeepSeek
+	"deepseek-chat":     {0.027, 0.110},
+	"deepseek-reasoner": {0.055, 0.219},
+	// Yandex (legacy)
+	"yandexgpt/lite": {0.20, 0.20},
+	"yandexgpt/pro":  {1.20, 1.20},
 }
 
 // RecordLLMUsage increments the token counter and the RUB cost counter

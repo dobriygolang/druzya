@@ -14,6 +14,7 @@
 import { useEffect, useRef, useState } from 'react';
 
 import { eventChannels } from '@shared/ipc';
+import { CommandPalette, type Action } from '../../components/CommandPalette';
 import {
   BrandMark,
   CompactLogo,
@@ -27,7 +28,7 @@ import {
   StatusDot,
   StreamingHairline,
 } from '../../components/d9';
-import { IconHistory, IconMic, IconSend } from '../../components/icons';
+import { IconHistory, IconSend } from '../../components/icons';
 import { ProviderPicker } from '../../components/ProviderPicker';
 import { useConfig } from '../../hooks/use-config';
 import { useHotkeyEvents } from '../../hooks/use-hotkey-events';
@@ -35,6 +36,7 @@ import { useHotkeyEvents } from '../../hooks/use-hotkey-events';
 // we just consume that var below, no need to hook the store here.
 import { useConversationStore, type UIMessage } from '../../stores/conversation';
 import { usePersonaStore } from '../../stores/persona';
+import { usePersonaHotkeys } from '../../hooks/use-persona-hotkeys';
 import { useQuotaStore } from '../../stores/quota';
 import { useSelectedModelStore } from '../../stores/selected-model';
 import { useSessionStore } from '../../stores/session';
@@ -48,6 +50,8 @@ export function ExpandedScreen() {
   const messages = useConversationStore((s) => s.messages);
   const streaming = useConversationStore((s) => s.streaming);
   const conversationId = useConversationStore((s) => s.conversationId);
+  const contextWindow = useConversationStore((s) => s.contextWindow);
+  const compactionNoticeAt = useConversationStore((s) => s.compactionNoticeAt);
 
   const selectedModel = useSelectedModelStore((s) => s.modelId);
   const modelBootstrap = useSelectedModelStore((s) => s.bootstrap);
@@ -59,6 +63,22 @@ export function ExpandedScreen() {
   const activePersona = usePersonaStore((s) => s.active);
   const personaBootstrap = usePersonaStore((s) => s.bootstrap);
   useEffect(() => { void personaBootstrap(); }, [personaBootstrap]);
+  // ⌥1..⌥9 quick-switch persona — hint виден в EmptyState.
+  usePersonaHotkeys();
+
+  // ⌘K opens command palette — единая точка входа для всех actions
+  // (история, persona, model, экспорт, voice toggle, settings). Cluely-
+  // style discoverability: юзер не должен помнить что где спрятано.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        setPaletteOpen((s) => !s);
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
 
   const quota = useQuotaStore((s) => s.quota);
   const bootstrapQuota = useQuotaStore((s) => s.bootstrap);
@@ -72,6 +92,7 @@ export function ExpandedScreen() {
   const [focused, setFocused] = useState(false);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [summaryOpen, setSummaryOpen] = useState(false);
+  const [paletteOpen, setPaletteOpen] = useState(false);
   // saveChatStatus — visible feedback для кнопки «Сохранить в Hone».
   // 'idle' → notebook icon, 'saving' → notebook icon (title hint),
   // 'ok' → green ✓ на 2.4s, 'err' → red ✕ на 2.4s. Auto-revert
@@ -89,6 +110,29 @@ export function ExpandedScreen() {
   const scrollRef = useRef<HTMLDivElement>(null);
   const draftInputRef = useRef<HTMLInputElement>(null);
 
+  // Pending-open handoff из HistoryScreen. История и expanded — разные
+  // BrowserWindow'ы (отдельные renderer processes), zustand stores не
+  // share'ятся. История кладёт в localStorage 'cue.pendingOpenConversation'
+  // — мы читаем тут на mount'е, hydrate'им свой store, marker стираем.
+  // Должно сработать ДО bootstrap'а / window.druz9.on subscriptions —
+  // иначе race с broadcast'ами компакта.
+  useEffect(() => {
+    try {
+      const pendingId = window.localStorage.getItem('cue.pendingOpenConversation');
+      if (!pendingId) return;
+      window.localStorage.removeItem('cue.pendingOpenConversation');
+      void import('../../lib/local-history').then(({ getLocalConversation }) => {
+        const detail = getLocalConversation(pendingId);
+        if (!detail) return;
+        useConversationStore
+          .getState()
+          .hydrate(detail.conversation.id, detail.conversation.model, detail.messages);
+      });
+    } catch {
+      /* localStorage недоступен / corrupt — silent, store остаётся empty */
+    }
+  }, []);
+
   useEffect(() => {
     const unsubConv = bootstrap();
     const unsubSession = sessionBootstrap();
@@ -103,13 +147,25 @@ export function ExpandedScreen() {
     // can't share the conversation store directly. Main broadcasts a
     // userTurnStarted event so this window can paint the optimistic
     // user bubble (with screenshot preview) the instant the turn begins.
-    const seenTurns = new Set<string>();
+    // LRU set с cap: предотвращает unbounded memory growth у юзера
+    // который держит expanded окно открытым неделями. Раньше Set<string>
+    // рос на каждый turn и никогда не GC'ился — после нескольких сотен
+    // turns это десятки KB, после тысяч — MB. Cap 200 entries по сути
+    // безлимитный для нормального use, но capped формально.
+    const SEEN_CAP = 200;
+    const seenTurns: string[] = []; // FIFO insertion order
+    const seenSet = new Set<string>();
     const applyTurn = (ev: import('@shared/ipc').UserTurnStartedEvent) => {
       // Dedupe: both the live broadcast (fires before this window
       // mounted) and the getLastUserTurn replay can deliver the same
       // turn. streamId is the key.
-      if (seenTurns.has(ev.streamId)) return;
-      seenTurns.add(ev.streamId);
+      if (seenSet.has(ev.streamId)) return;
+      seenSet.add(ev.streamId);
+      seenTurns.push(ev.streamId);
+      if (seenTurns.length > SEEN_CAP) {
+        const evicted = seenTurns.shift();
+        if (evicted) seenSet.delete(evicted);
+      }
       const { getState } = useConversationStore;
       if (getState().streamId === ev.streamId) return; // local begin already ran
       getState().beginTurn({
@@ -145,10 +201,38 @@ export function ExpandedScreen() {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight });
   }, [messages, streaming]);
 
+  // Footer hints (⌘↵ SEND · ⌘⇧S SCREENSHOT) — показываем первым 5 sends,
+  // потом скрываем: юзер выучил shortcut, hint становится noise. Counter
+  // в localStorage чтобы persist между сессиями.
+  const FOOTER_HINTS_THRESHOLD = 5;
+  const [sendCount, setSendCount] = useState<number>(() => {
+    if (typeof window === 'undefined') return 0;
+    const saved = Number(window.localStorage.getItem('cue.sendCount') ?? 0);
+    return Number.isFinite(saved) ? saved : 0;
+  });
+  const showFooterHints = sendCount < FOOTER_HINTS_THRESHOLD;
+  const bumpSendCount = () => {
+    setSendCount((prev) => {
+      const next = prev + 1;
+      try { window.localStorage.setItem('cue.sendCount', String(next)); } catch { /* ignore */ }
+      return next;
+    });
+  };
+
   const send = async () => {
-    const text = draft.trim();
+    // Учитываем voice-buffer (объединённый system + mic) на момент send'а:
+    // если юзер жмёт Enter во время recording, отправляем распознанное +
+    // любой ручной draft. fullText() merge'ит оба source хронологически
+    // и добавляет «Я:»/«Они:» префиксы когда оба активны.
+    const voiceText = useAudioCaptureStore.getState().fullText().trim();
+    const draftText = draft.trim();
+    const text = draftText && voiceText
+      ? `${draftText}\n${voiceText}`
+      : draftText || voiceText;
     if (!text || streaming) return;
     setDraft('');
+    if (voiceText) useAudioCaptureStore.getState().clear();
+    bumpSendCount();
     // First message in this window session: analyze.start creates the
     // conversation; subsequent turns use analyze.chat.
     //
@@ -163,53 +247,95 @@ export function ExpandedScreen() {
       promptText: text,
       model: selectedModel || config?.defaultModelId || '',
       attachments: [],
-      triggerAction: 'quick_prompt',
+      triggerAction: voiceText ? 'voice_input' : 'quick_prompt',
       focusedAppHint: '',
+      personaSystemPrompt: activePersona.system_prompt,
     });
   };
 
-  // Auto-send-on-silence: после VAD-tail (3s без новых chunk'ов) пушим
-  // accumulated transcript в чат + clear store. Юзер хочет hands-free
-  // flow: говорит → пауза → ответ модели → говорит → ...
+  // ─── Voice → Draft realtime stream + auto-send-on-silence ───────────
   //
-  // Flow:
-  //   1. Когда recording=true и chunks меняются — reset 3s timeout.
-  //   2. Если timeout срабатывает И есть текст И не streaming — splice
-  //      + send + clear.
-  //   3. Если streaming идёт — НЕ отправляем (модель ещё отвечает на
-  //      предыдущее), просто оставляем chunks в буфере; следующий tick
-  //      попробует снова. Это даёт юзеру естественный turn-taking
-  //      ритм: «говорю — пауза — модель отвечает — снова говорю».
-  const audioChunks = useAudioCaptureStore((s) => s.chunks);
+  // 1) Realtime live preview: пока recording идёт, partial-фразы Apple
+  //    speech reactively приходят через store.partialText, плюс уже
+  //    закоммиченные finals в store.chunks. Display value input'а
+  //    показывает draft + voice-text.
+  // 2) Auto-send: после 3s тишины (нет ни partials, ни finals) если
+  //    тогл включён — отправляет полный текст в чат. По умолчанию
+  //    включено, юзер может выключить чекбоксом.
+  // 3) Когда recording останавливается (юзер ручками или через
+  //    auto-send), скопить voice-fullText в draft чтобы юзер мог его
+  //    отредактировать перед manual send.
+  // Reactive subscribe на оба source: мы зависим от их chunks/partial/state
+  // потому что voiceLive объединяет их и auto-send timer должен
+  // перезапускаться на любой новый partial из любого source.
+  const sysState = useAudioCaptureStore((s) => s.system.state);
+  const sysPartial = useAudioCaptureStore((s) => s.system.partialText);
+  const sysFinalSeq = useAudioCaptureStore((s) => s.system.finalSeq);
+  const sysChunksLen = useAudioCaptureStore((s) => s.system.chunks.length);
+  const micState = useAudioCaptureStore((s) => s.mic.state);
+  const micPartial = useAudioCaptureStore((s) => s.mic.partialText);
+  const micFinalSeq = useAudioCaptureStore((s) => s.mic.finalSeq);
+  const micChunksLen = useAudioCaptureStore((s) => s.mic.chunks.length);
   const audioFullText = useAudioCaptureStore((s) => s.fullText);
+  const audioLiveText = useAudioCaptureStore((s) => s.liveText);
   const audioClear = useAudioCaptureStore((s) => s.clear);
-  const audioState = useAudioCaptureStore((s) => s.state);
+
+  // Auto-send toggle: localStorage'd. Default ON.
+  const [autoSendEnabled, setAutoSendEnabled] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return true;
+    const saved = window.localStorage.getItem('cue.autoSendOnSilence');
+    return saved === null ? true : saved === '1';
+  });
+  useEffect(() => {
+    window.localStorage.setItem('cue.autoSendOnSilence', autoSendEnabled ? '1' : '0');
+  }, [autoSendEnabled]);
+
+  // recording=true если ХОТЯ БЫ ОДИН source активен. Используется как
+  // флаг «показывай live transcript в input» и «ставь readOnly hint».
+  const recording =
+    sysState === 'running' || sysState === 'starting' ||
+    micState === 'running' || micState === 'starting';
+
+  // Live voice text — объединённый system+mic с лейблами «Я:»/«Они:»
+  // если оба активны. liveText() читает store актуально, реактивно
+  // пересчитывается на любой sysPartial/sysChunksLen/micPartial/micChunksLen.
+  const voiceLive = audioLiveText();
+  const anyPartial = sysPartial || micPartial;
+  const haveVoiceText = sysChunksLen > 0 || sysPartial || micChunksLen > 0 || micPartial;
+
+  // Show voice в input ВСЕГДА когда есть buffered transcript — даже когда
+  // recording уже остановлен (chunks могут прилететь чуть после stop'а из
+  // SFSpeechRecognizer.endAudio() flush'а). Это убивает race «текст
+  // появился только после повторного нажатия Слушать»: chunks теперь
+  // видны мгновенно как только store их получает.
+  const inputValue = haveVoiceText
+    ? (draft.trim() ? `${draft.trim()}\n${voiceLive}` : voiceLive)
+    : draft;
+
+  // Auto-send timer.
   const autoSendTimerRef = useRef<number | null>(null);
   const SILENCE_AUTOSEND_MS = 3000;
-
   useEffect(() => {
     if (autoSendTimerRef.current !== null) {
       window.clearTimeout(autoSendTimerRef.current);
       autoSendTimerRef.current = null;
     }
-    const recording = audioState === 'running';
-    if (!recording || audioChunks.length === 0 || streaming) return;
+    if (!autoSendEnabled || !recording || streaming) return;
+    // Ничего ещё не распознано ни в одном source → таймер вооружать
+    // нечего, ждём первого partial'а.
+    const haveSomething =
+      sysChunksLen > 0 || sysPartial || micChunksLen > 0 || micPartial;
+    if (!haveSomething) return;
 
     autoSendTimerRef.current = window.setTimeout(() => {
-      const text = audioFullText().trim();
-      if (!text) return;
-      // Re-check streaming в момент срабатывания: гонка между
-      // useEffect cleanup'ом и setTimeout closure'ом возможна, если
-      // streaming flip'нулся true прямо перед firing'ом. Проверяем
-      // через store напрямую.
       if (useConversationStore.getState().streaming) return;
-
+      const voiceText = audioFullText().trim();
+      if (!voiceText) return;
+      const joined = draft.trim() ? `${draft.trim()}\n${voiceText}` : voiceText;
       audioClear();
-      // Если у юзера в draft был text — приплюсуем (очень редкий
-      // случай, но сохраняем).
-      const joined = draft.trim() ? `${draft.trim()} ${text}` : text;
       setDraft('');
       const ipc = conversationId ? window.druz9.analyze.chat : window.druz9.analyze.start;
+      const personaPrompt = usePersonaStore.getState().active.system_prompt;
       void ipc({
         conversationId,
         promptText: joined,
@@ -217,10 +343,9 @@ export function ExpandedScreen() {
         attachments: [],
         triggerAction: 'voice_input',
         focusedAppHint: '',
+        personaSystemPrompt: personaPrompt,
       }).catch(() => {
-        // Network blip / quota — не падаем, просто оставляем chunks
-        // которые мы уже cleared'нули. Юзер увидит что ответ не пришёл
-        // и заговорит снова.
+        /* network/quota — silent, юзер заговорит снова */
       });
     }, SILENCE_AUTOSEND_MS);
 
@@ -230,7 +355,15 @@ export function ExpandedScreen() {
         autoSendTimerRef.current = null;
       }
     };
-  }, [audioChunks, audioState, streaming, draft, conversationId, selectedModel, config?.defaultModelId, audioFullText, audioClear]);
+  // depend на partial+finalSeq+chunksLen каждого source — любой из них
+  // (новый partial / commit / start фразы) перезапускает 3s таймер
+  // тишины.
+  }, [
+    sysPartial, sysFinalSeq, sysChunksLen,
+    micPartial, micFinalSeq, micChunksLen,
+    recording, streaming, draft, conversationId, selectedModel,
+    config?.defaultModelId, autoSendEnabled, audioFullText, audioClear,
+  ]);
 
   useHotkeyEvents((action) => {
     if (action !== 'instant_assist') return;
@@ -252,18 +385,27 @@ export function ExpandedScreen() {
         height: '100%',
         display: 'flex',
         flexDirection: 'column',
-        // Hone-aligned scrim — pure black with the Appearance slider
-        // controlling alpha. Previously indigo-tinted; the new palette
-        // drops colour from the bg so accent content (red, persona
-        // gradients) pops without fighting a purple cast.
-        background: 'rgba(10, 10, 10, var(--d9-window-alpha))',
+        // Hone-aligned scrim + Cluely-style backdrop-filter blur. Window
+        // в Electron — `transparent: true`; backdrop-filter blur'ит то
+        // что под окном (desktop / IDE / Zoom). Эффект «жидкое стекло»:
+        // юзер видит свою rаботу сквозь Cue, но размыто. Раньше было
+        // pure-solid scrim — выглядело как opaque overlay. Теперь
+        // 0.55 alpha + blur(28px) = visible through, но contrast OK.
+        // Reuse того же `--d9-glass-blur` токена что и в compact/picker —
+        // визуальная consistency между всеми floating windows. На macOS
+        // Tahoe (26.x) NSVisualEffectView был сломан с custom frame,
+        // поэтому используем CSS backdrop-filter (рендерит Chromium):
+        // тот же эффект, без OS quirks.
+        background: 'rgba(10, 10, 10, calc(var(--d9-window-alpha) * 0.85))',
+        backdropFilter: 'var(--d9-glass-blur)',
+        WebkitBackdropFilter: 'var(--d9-glass-blur)' as unknown as string,
         border: '0.5px solid var(--d9-hairline-b)',
         borderRadius: 'var(--d9-r-xl)',
         boxShadow: 'var(--d9-shadow-win)',
         color: 'var(--d9-ink)',
         overflow: 'hidden',
         position: 'relative',
-      }}
+      } as React.CSSProperties}
     >
       {/* Header */}
       <div
@@ -282,69 +424,81 @@ export function ExpandedScreen() {
           <CompactLogo size={28} />
         </div>
 
-        {/* Persona chip */}
-        <div style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}>
-          <ChatHeadPill color="cyan">{activePersona.label}</ChatHeadPill>
-        </div>
-
-        {/* Model pill */}
-        <div style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}>
-          <ChatHeadPill color="cyan" onClick={() => setPickerOpen(true)} chevron>
+        {/* Combined Persona·Model chip. Раньше две отдельные pills
+            занимали 2× места; теперь одна compact-pill «{persona} ·
+            {model}» с двумя clickable зонами. Левая (persona) → native
+            picker window, правая (model + chevron) → in-window
+            ProviderPicker modal. Это паттерн из Linear/Notion: один
+            chip несёт связанные опции, клик попадает в нужную зону. */}
+        <div style={{ WebkitAppRegion: 'no-drag', display: 'inline-flex' } as React.CSSProperties}>
+          <button
+            type="button"
+            onClick={() => void window.druz9.windows.showPicker('persona')}
+            title="Сменить persona"
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 5,
+              padding: '5px 8px 5px 9px',
+              borderRadius: '6px 0 0 6px',
+              background: 'rgba(255,255,255,0.04)',
+              border: 0,
+              borderRight: '0.5px solid var(--d9-hairline-b)',
+              fontFamily: 'var(--d9-font-mono)',
+              fontSize: 11,
+              letterSpacing: '0.04em',
+              color: 'var(--d9-ink)',
+              cursor: 'pointer',
+              transition: 'background 120ms',
+            } as React.CSSProperties}
+            onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(255,255,255,0.08)')}
+            onMouseLeave={(e) => (e.currentTarget.style.background = 'rgba(255,255,255,0.04)')}
+          >
+            <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'var(--d9-accent)', flexShrink: 0 }} />
+            {activePersona.label}
+          </button>
+          <button
+            type="button"
+            onClick={() => setPickerOpen(true)}
+            title="Сменить модель"
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 5,
+              padding: '5px 9px 5px 8px',
+              borderRadius: '0 6px 6px 0',
+              background: 'rgba(255,255,255,0.04)',
+              border: 0,
+              fontFamily: 'var(--d9-font-mono)',
+              fontSize: 11,
+              letterSpacing: '0.04em',
+              color: 'var(--d9-ink-dim)',
+              cursor: 'pointer',
+              transition: 'background 120ms',
+            } as React.CSSProperties}
+            onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(255,255,255,0.08)')}
+            onMouseLeave={(e) => (e.currentTarget.style.background = 'rgba(255,255,255,0.04)')}
+          >
             {modelLabelText}
-          </ChatHeadPill>
+            <span style={{ fontSize: 8, color: 'var(--d9-ink-ghost)' }}>▾</span>
+          </button>
         </div>
 
         <div style={{ flex: 1 }} />
 
-        {/* Action buttons */}
+        {/* Action buttons. Primary visible (voice + history + settings +
+            close), secondary actions (Save/Export/Summary) — в overflow
+            «⋯» menu чтобы header не превращался в 13-кнопочный stack. */}
         <div style={{ display: 'flex', gap: 2, alignItems: 'center', WebkitAppRegion: 'no-drag' } as React.CSSProperties}>
-          <MeetingRecordButton />
+          <VoiceToggleCombined />
           <AttachedDocsBadge />
-          {lastAnalysis && lastAnalysis.status === 'ready' && (
-            <button
-              onClick={() => setSummaryOpen(true)}
-              title="Открыть session summary"
-              style={{
-                padding: '4px 10px',
-                marginRight: 4,
-                borderRadius: 6,
-                background: 'rgba(79,195,247,0.10)',
-                border: '0.5px solid rgba(79,195,247,0.3)',
-                color: 'var(--d9-accent)',
-                fontSize: 11,
-                fontFamily: 'var(--d9-font-mono)',
-                letterSpacing: '0.04em',
-                cursor: 'pointer',
-              }}
-            >
-              SUMMARY
-            </button>
-          )}
-          {messages.length > 0 && (
-            <IconButton
-              title={saveChatStatus === 'saving' ? 'Сохраняю…' : (saveChatStatus === 'ok' ? 'Сохранено в Hone' : (saveChatStatus === 'err' ? 'Ошибка — Hone не установлен?' : 'Сохранить чат как заметку в Hone'))}
-              onClick={() => {
-                void (async () => {
-                  setSaveChatStatus('saving');
-                  try {
-                    await window.druz9.notes.saveChatToHone({
-                      title: '',
-                      messages: messages
-                        .filter((m) => !m.pending && m.content.trim().length > 0)
-                        .map((m) => ({ role: m.role, content: m.content })),
-                    });
-                    setSaveChatStatus('ok');
-                  } catch (err) {
-                    console.error('saveChatToHone failed', err);
-                    setSaveChatStatus('err');
-                  }
-                  window.setTimeout(() => setSaveChatStatus('idle'), 2400);
-                })();
-              }}
-            >
-              {saveChatStatus === 'ok' ? <CheckmarkIcon /> : (saveChatStatus === 'err' ? <ErrorIcon /> : <SaveToHoneIcon />)}
-            </IconButton>
-          )}
+          <ChatActionsOverflow
+            messages={messages}
+            saveChatStatus={saveChatStatus}
+            setSaveChatStatus={setSaveChatStatus}
+            hasSummary={Boolean(lastAnalysis && lastAnalysis.status === 'ready')}
+            onOpenSummary={() => setSummaryOpen(true)}
+          />
           <IconButton title="История" onClick={() => void window.druz9.windows.show('history')}>
             <IconHistory size={14} />
           </IconButton>
@@ -378,19 +532,22 @@ export function ExpandedScreen() {
               <MessageBubble key={m.id} m={m} persona={activePersona.id} />
             ))}
             {streaming && <ThinkingIndicator />}
+            {compactionNoticeAt && Date.now() - compactionNoticeAt < 10_000 && (
+              <CompactionGhostNotice />
+            )}
           </>
         )}
       </div>
 
       {/* Live transcript ticker — visible only when macOS system-
-          audio capture is running or has accumulated chunks. Click to
-          splice the full transcript into the draft. */}
+          audio capture is running or has accumulated chunks. */}
       <LiveTranscriptStrip draft={draft} setDraft={setDraft} />
 
-      {/* Auto-suggest pill — renders the latest AI suggestion from
-          the etap-3 trigger policy. Hidden when no suggestion +
-          toggle off. */}
-      <AutoSuggestPill draft={draft} setDraft={setDraft} />
+      {/* Auto-suggest pill — скрыт во время recording: AI-suggestion
+          релевантен когда юзер слушает (после паузы), но во время
+          активной записи добавляет визуальный шум поверх Live transcript
+          strip'а. Юзер увидит suggestion на следующей паузе. */}
+      {!recording && <AutoSuggestPill draft={draft} setDraft={setDraft} />}
 
       {/* Follow-up input */}
       <div
@@ -414,8 +571,21 @@ export function ExpandedScreen() {
         >
           <input
             ref={draftInputRef}
-            value={draft}
-            onChange={(e) => setDraft(e.target.value)}
+            // Input всегда показывает draft + voice live (если есть
+            // chunks/partials в любом source). Это работает и во время
+            // recording (live preview как Apple speech распознаёт), и
+            // сразу после stop (final chunk прилетает в store асинхронно).
+            // При ручном вводе voice-state снапшотится в draft и
+            // audioClear() — иначе следующий partial перетёр бы набранное.
+            value={inputValue}
+            onChange={(e) => {
+              if (haveVoiceText) {
+                setDraft(e.target.value);
+                audioClear();
+                return;
+              }
+              setDraft(e.target.value);
+            }}
             onFocus={() => setFocused(true)}
             onBlur={() => setFocused(false)}
             onKeyDown={(e) => {
@@ -424,12 +594,13 @@ export function ExpandedScreen() {
                 void send();
               }
             }}
-            placeholder="Continue dialog…"
+            placeholder={recording ? 'Слушаю…' : 'Continue dialog…'}
             style={{
               flex: 1,
               background: 'transparent',
               border: 'none',
-              color: 'var(--d9-ink)',
+              color: recording ? 'var(--d9-ink-mute)' : 'var(--d9-ink)',
+              fontStyle: recording && anyPartial ? 'italic' : 'normal',
               fontFamily: 'var(--d9-font-sans)',
               fontSize: 14,
               letterSpacing: '0.01em',
@@ -437,7 +608,33 @@ export function ExpandedScreen() {
               caretColor: 'var(--d9-accent)',
             }}
           />
-          <MicButton draft={draft} setDraft={setDraft} />
+          {/* Auto-send toggle. Видим только когда есть voice-pipeline
+              (binary доступен и юзер хоть раз начинал запись). По
+              умолчанию ON — auto-send после 3s тишины. */}
+          <label
+            title="Авто-отправка после 3 сек тишины"
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 4,
+              fontSize: 10,
+              color: 'var(--d9-ink-mute)',
+              cursor: 'pointer',
+              userSelect: 'none',
+              padding: '4px 6px',
+              borderRadius: 6,
+              background: autoSendEnabled ? 'rgba(79,195,247,0.10)' : 'transparent',
+              border: `1px solid ${autoSendEnabled ? 'rgba(79,195,247,0.35)' : 'var(--d9-hairline)'}`,
+            }}
+          >
+            <input
+              type="checkbox"
+              checked={autoSendEnabled}
+              onChange={(e) => setAutoSendEnabled(e.target.checked)}
+              style={{ accentColor: 'var(--d9-accent)', margin: 0 }}
+            />
+            Auto-send
+          </label>
           <IconButton
             title="Скриншот (⌘⇧S)"
             onClick={() => void captureAndSend(conversationId, draft, setDraft, selectedModel || config?.defaultModelId || '')}
@@ -449,21 +646,21 @@ export function ExpandedScreen() {
             type="button"
             title="Отправить (Enter)"
             onClick={() => void send()}
-            disabled={streaming || !draft.trim()}
+            disabled={streaming || (!draft.trim() && !haveVoiceText)}
             style={{
               width: 30,
               height: 30,
               borderRadius: '50%',
               border: 0,
-              cursor: streaming || !draft.trim() ? 'not-allowed' : 'pointer',
-              background: streaming || !draft.trim() ? 'rgba(79,195,247,0.25)' : 'var(--d9-accent)',
+              cursor: streaming || (!draft.trim() && !haveVoiceText) ? 'not-allowed' : 'pointer',
+              background: streaming || (!draft.trim() && !haveVoiceText) ? 'rgba(79,195,247,0.25)' : 'var(--d9-accent)',
               color: '#001218',
               display: 'inline-flex',
               alignItems: 'center',
               justifyContent: 'center',
               flexShrink: 0,
               transition: 'transform 120ms, filter 120ms, background 120ms',
-              boxShadow: !streaming && draft.trim() ? '0 0 12px rgba(79,195,247,0.35)' : 'none',
+              boxShadow: !streaming && (draft.trim() || haveVoiceText) ? '0 0 12px rgba(79,195,247,0.35)' : 'none',
             }}
           >
             <IconSend size={14} />
@@ -483,12 +680,19 @@ export function ExpandedScreen() {
             color: 'var(--d9-ink-ghost)',
           }}
         >
-          <ChatKbd>⌘</ChatKbd><ChatKbd>↵</ChatKbd>
-          <span style={{ marginLeft: -10 }}>SEND</span>
-          <span style={{ color: 'var(--d9-hairline-b)' }}>·</span>
-          <ChatKbd>⌘</ChatKbd><ChatKbd>⇧</ChatKbd><ChatKbd>S</ChatKbd>
-          <span style={{ marginLeft: -20 }}>SCREENSHOT</span>
+          {showFooterHints && (
+            <>
+              <ChatKbd>⌘</ChatKbd><ChatKbd>↵</ChatKbd>
+              <span style={{ marginLeft: -10 }}>SEND</span>
+              <span style={{ color: 'var(--d9-hairline-b)' }}>·</span>
+              <ChatKbd>⌘</ChatKbd><ChatKbd>⇧</ChatKbd><ChatKbd>S</ChatKbd>
+              <span style={{ marginLeft: -20 }}>SCREENSHOT</span>
+            </>
+          )}
           <span style={{ flex: 1 }} />
+          {contextWindow && contextWindow.compactionThreshold > 0 && (
+            <ContextMeter ctx={contextWindow} />
+          )}
           {streaming ? (
             <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
               <StatusDot state="streaming" size={6} />
@@ -520,11 +724,94 @@ export function ExpandedScreen() {
           onClose={() => setSummaryOpen(false)}
         />
       )}
+
+      <CommandPalette
+        open={paletteOpen}
+        onClose={() => setPaletteOpen(false)}
+        actions={buildPaletteActions({
+          hasMessages: messages.length > 0,
+          hasSummary: Boolean(lastAnalysis && lastAnalysis.status === 'ready'),
+          openHistory: () => void window.druz9.windows.show('history'),
+          openSettings: () => void window.druz9.windows.show('settings'),
+          openPersonaPicker: () => void window.druz9.windows.showPicker('persona'),
+          openModelPicker: () => setPickerOpen(true),
+          openSummary: () => setSummaryOpen(true),
+          exportMarkdown: () => {
+            void window.druz9.notes.exportChatMarkdown({
+              title: '',
+              messages: messages
+                .filter((m) => !m.pending && m.content.trim().length > 0)
+                .map((m) => ({ role: m.role, content: m.content })),
+            }).catch(() => { /* save dialog cancel — silent */ });
+          },
+          saveToHone: () => {
+            void window.druz9.notes.saveChatToHone({
+              title: '',
+              messages: messages
+                .filter((m) => !m.pending && m.content.trim().length > 0)
+                .map((m) => ({ role: m.role, content: m.content })),
+            }).catch((err) => {
+              // eslint-disable-next-line no-console
+              console.error('saveChatToHone failed', err);
+            });
+          },
+          screenshot: () => void captureAndSend(
+            conversationId,
+            draft,
+            setDraft,
+            selectedModel || config?.defaultModelId || '',
+          ),
+          clearChat: () => useConversationStore.getState().reset(),
+          quitApp: () => void window.druz9.app.quit(),
+        })}
+      />
     </div>
   );
 }
 
 // ─────────────────────────────────────────────────────────────────────────
+
+/**
+ * buildPaletteActions — собирает list of Action'ов для ⌘K palette из
+ * текущего контекста (messages.length, hasSummary, callback'и которые
+ * замыкают actual store/window manipulation). Conditional actions
+ * (Export / Save / Summary) скрываются когда не релевантны (нет
+ * messages / нет ready report).
+ */
+function buildPaletteActions(ctx: {
+  hasMessages: boolean;
+  hasSummary: boolean;
+  openHistory: () => void;
+  openSettings: () => void;
+  openPersonaPicker: () => void;
+  openModelPicker: () => void;
+  openSummary: () => void;
+  exportMarkdown: () => void;
+  saveToHone: () => void;
+  screenshot: () => void;
+  clearChat: () => void;
+  quitApp: () => void;
+}): Action[] {
+  const list: Action[] = [
+    { id: 'history', label: 'История чатов', hint: 'Открыть список прошлых разговоров', run: ctx.openHistory },
+    { id: 'persona', label: 'Сменить persona', hint: '⌥1..⌥9 — быстрый switch', run: ctx.openPersonaPicker },
+    { id: 'model', label: 'Сменить модель', run: ctx.openModelPicker },
+    { id: 'screenshot', label: 'Сделать скриншот области', shortcut: '⌘⇧S', run: ctx.screenshot },
+    { id: 'settings', label: 'Открыть настройки', run: ctx.openSettings },
+  ];
+  if (ctx.hasSummary) {
+    list.push({ id: 'summary', label: 'Открыть Summary', hint: 'Отчёт по сессии', run: ctx.openSummary });
+  }
+  if (ctx.hasMessages) {
+    list.push(
+      { id: 'export-md', label: 'Экспорт в Markdown', hint: 'Сохранить чат в .md файл', run: ctx.exportMarkdown },
+      { id: 'save-hone', label: 'Сохранить в Hone', hint: 'Перенести как заметку', run: ctx.saveToHone },
+      { id: 'clear-chat', label: 'Очистить чат', hint: 'Начать новый разговор', run: ctx.clearChat },
+    );
+  }
+  list.push({ id: 'quit', label: 'Выйти из Cue', shortcut: '⌘Q', run: ctx.quitApp });
+  return list;
+}
 
 function EmptyState() {
   // The hero BrandMark is now always black (post-Cue rebrand), so we
@@ -578,6 +865,7 @@ function EmptyState() {
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 6, width: '100%', maxWidth: 320 }}>
         {([
+          ['Все команды', ['⌘', 'K']],
           ['Объяснить что я вижу', ['⌘', '⏎']],
           ['Заскринить область + спросить', ['⌘', '⇧', 'S']],
           ['Сменить персону', ['⌥', '1']],
@@ -627,6 +915,106 @@ function ThinkingIndicator() {
     >
       <StatusDot state="thinking" size={6} />
       <span style={{ letterSpacing: '-0.005em' }}>думаю…</span>
+    </div>
+  );
+}
+
+/**
+ * ContextMeter — мини-индикатор использования context window в footer'е.
+ * Показывает progress bar `messagesTotal / compactionThreshold`. После
+ * порога ставит иконку «сжимается» и подсвечивает оранжевым. Tooltip
+ * раскрывает детали (turns в окне, длина summary).
+ *
+ * Backend (sliding-window компакция в shared/pkg/compaction): после
+ * `threshold` turns старые сообщения сжимаются в RunningSummary, в LLM
+ * шлются только последние `WindowSize` (default 10). Юзер видел
+ * деградацию точности после ~15 turns без объяснения — теперь видит
+ * прогресс и ghost-message при триггере компакции.
+ */
+function ContextMeter({ ctx }: { ctx: { messagesInWindow: number; messagesTotal: number; compactionThreshold: number; runningSummaryChars: number } }) {
+  const total = Math.max(0, ctx.messagesTotal);
+  const threshold = Math.max(1, ctx.compactionThreshold);
+  const pct = Math.min(100, Math.round((total / threshold) * 100));
+  const overThreshold = total >= threshold;
+  const color = overThreshold
+    ? 'oklch(0.7 0.18 65)' // amber
+    : pct >= 80
+      ? 'var(--d9-accent-hi)'
+      : 'var(--d9-ink-ghost)';
+  const tooltip = [
+    `Контекст: ${total} turns`,
+    `В LLM сейчас: ${ctx.messagesInWindow}`,
+    `Порог компакции: ${threshold}`,
+    ctx.runningSummaryChars > 0 ? `Summary: ${ctx.runningSummaryChars} симв.` : 'Summary пуст',
+  ].join('\n');
+  return (
+    <span
+      title={tooltip}
+      style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: 6,
+        cursor: 'help',
+      }}
+    >
+      <span style={{ color, letterSpacing: '0.04em' }}>CTX</span>
+      <span
+        aria-hidden
+        style={{
+          width: 36,
+          height: 4,
+          borderRadius: 2,
+          background: 'rgba(255,255,255,0.06)',
+          overflow: 'hidden',
+          display: 'inline-block',
+        }}
+      >
+        <span
+          style={{
+            display: 'block',
+            width: `${pct}%`,
+            height: '100%',
+            background: color,
+            transition: 'width 200ms ease-out',
+          }}
+        />
+      </span>
+      <span style={{ color, fontFamily: 'var(--d9-font-mono)' }}>
+        {total}/{threshold}
+      </span>
+    </span>
+  );
+}
+
+/**
+ * CompactionGhostNotice — лёгкое сообщение в чате о том что backend
+ * только что сжал старые turns в summary. Появляется на ~10 секунд после
+ * Done event с compaction_triggered=true, потом исчезает (рендеринг
+ * gated через `Date.now() - compactionNoticeAt < 10_000`).
+ */
+function CompactionGhostNotice() {
+  return (
+    <div
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 8,
+        marginBottom: 16,
+        padding: '6px 10px',
+        background: 'oklch(0.7 0.18 65 / 0.08)',
+        border: '0.5px solid oklch(0.7 0.18 65 / 0.25)',
+        borderRadius: 8,
+        color: 'var(--d9-ink-mute)',
+        fontSize: 11,
+        letterSpacing: '-0.005em',
+        fontStyle: 'italic',
+      }}
+    >
+      <span aria-hidden>📜</span>
+      <span>
+        Старые сообщения сжаты в summary. AI продолжает диалог с учётом
+        ключевых моментов из истории.
+      </span>
     </div>
   );
 }
@@ -968,6 +1356,7 @@ async function captureAndSend(
       ],
       triggerAction: 'screenshot_area',
       focusedAppHint: '',
+      personaSystemPrompt: usePersonaStore.getState().active.system_prompt,
     });
     // Main broadcasts `userTurnStarted` before the handle returns, but
     // push and invoke-response travel independently — the push can lose
@@ -986,198 +1375,6 @@ async function captureAndSend(
     // eslint-disable-next-line no-console
     console.error('screenshot failed', err);
   }
-}
-
-/**
- * MicButton — one-click voice dictation. States:
- *   idle      → click to start recording;
- *   recording → pulsing accent dot; click again to stop;
- *   busy      → sending to backend / waiting for transcript;
- *
- * Pipeline:
- *   getUserMedia(audio) → MediaRecorder(webm/opus) → onstop combines
- *   chunks into a Blob → ArrayBuffer → Uint8Array → IPC → main →
- *   multipart POST → Groq whisper-large-v3-turbo → transcript.
- *
- * On success the transcript is APPENDED (not replaced) to the current
- * draft so user's typed context is preserved. Space separator inserted
- * iff the existing draft doesn't already end in whitespace.
- *
- * Errors (denied mic, backend 502, etc.) land as an inline tooltip
- * title on the button; we don't toast to avoid two error surfaces.
- * The user clicks again to retry.
- *
- * Not in scope here: system-audio capture (requires native Swift/
- * WASAPI modules — see docs/etap-1-audio.md next iteration), VAD,
- * streaming STT, diarization.
- */
-function MicButton({ draft, setDraft }: { draft: string; setDraft: (s: string) => void }) {
-  const [state, setState] = useState<'idle' | 'recording' | 'busy'>('idle');
-  const [error, setError] = useState<string | null>(null);
-  const recorderRef = useRef<MediaRecorder | null>(null);
-  const chunksRef = useRef<Blob[]>([]);
-  const streamRef = useRef<MediaStream | null>(null);
-
-  const stopStream = () => {
-    streamRef.current?.getTracks().forEach((t) => t.stop());
-    streamRef.current = null;
-  };
-
-  const startRecording = async () => {
-    setError(null);
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      streamRef.current = stream;
-
-      // Pick the MIME the browser can actually produce. Safari reports
-      // webm;codecs=opus as supported but then fails to finalize the
-      // container — mp4/m4a is a better default on macOS's WebKit path.
-      // Our Electron build ships Chromium so webm always wins, but the
-      // fallback keeps us honest if we ever ship a Safari-based runtime.
-      const candidates = [
-        'audio/webm;codecs=opus',
-        'audio/webm',
-        'audio/mp4',
-        '',
-      ];
-      const mime = candidates.find((m) => !m || MediaRecorder.isTypeSupported(m)) ?? '';
-      const rec = new MediaRecorder(stream, mime ? { mimeType: mime } : undefined);
-      recorderRef.current = rec;
-      chunksRef.current = [];
-
-      rec.ondataavailable = (e) => {
-        if (e.data && e.data.size > 0) chunksRef.current.push(e.data);
-      };
-      rec.onstop = async () => {
-        stopStream();
-        setState('busy');
-        try {
-          const blob = new Blob(chunksRef.current, { type: rec.mimeType || 'audio/webm' });
-          if (blob.size === 0) {
-            setError('Пустая запись');
-            setState('idle');
-            return;
-          }
-          const buf = await blob.arrayBuffer();
-          const ext = (rec.mimeType || 'audio/webm').includes('mp4') ? 'm4a' : 'webm';
-          const result = await window.druz9.transcription.transcribe({
-            audio: new Uint8Array(buf),
-            mime: rec.mimeType || 'audio/webm',
-            filename: `voice.${ext}`,
-            language: '',
-            prompt: '',
-          });
-          const text = result.text.trim();
-          if (text) {
-            const joiner = draft.length === 0 || /\s$/.test(draft) ? '' : ' ';
-            setDraft(draft + joiner + text);
-          }
-        } catch (e) {
-          setError(e instanceof Error ? e.message : 'Ошибка распознавания');
-        } finally {
-          setState('idle');
-        }
-      };
-      rec.start();
-      setState('recording');
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Нет доступа к микрофону');
-      setState('idle');
-      stopStream();
-    }
-  };
-
-  const stopRecording = () => {
-    const rec = recorderRef.current;
-    if (rec && rec.state !== 'inactive') {
-      rec.stop(); // → triggers onstop → sends to backend.
-    }
-  };
-
-  const toggle = () => {
-    if (state === 'recording') stopRecording();
-    else if (state === 'idle') void startRecording();
-  };
-
-  const title =
-    error ??
-    (state === 'recording'
-      ? 'Остановить и распознать'
-      : state === 'busy'
-        ? 'Распознавание…'
-        : 'Голосовой ввод');
-
-  return (
-    <button
-      type="button"
-      onClick={toggle}
-      disabled={state === 'busy'}
-      title={title}
-      style={{
-        position: 'relative',
-        display: 'inline-flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        width: 28,
-        height: 28,
-        padding: 0,
-        borderRadius: 7,
-        background: state === 'recording'
-          ? 'rgba(79,195,247,0.12)'
-          : 'transparent',
-        border: '0.5px solid ' + (state === 'recording'
-          ? 'rgba(79,195,247,0.4)'
-          : 'transparent'),
-        color: error
-          ? 'oklch(0.75 0.18 25)'
-          : state === 'recording'
-            ? 'var(--d9-accent)'
-            : state === 'busy'
-              ? 'var(--d9-ink-ghost)'
-              : 'var(--d9-ink-mute)',
-        cursor: state === 'busy' ? 'wait' : 'pointer',
-        transition: 'background 200ms, border-color 200ms, color 200ms',
-        boxShadow: state === 'recording' ? '0 0 12px rgba(79,195,247,0.2)' : 'none',
-      }}
-    >
-      <IconMic size={14} />
-      {/* Recording: pulsing cyan ring (ripple outward) */}
-      {state === 'recording' && (
-        <>
-          <span style={{
-            position: 'absolute',
-            inset: -4,
-            borderRadius: 12,
-            border: '1.5px solid var(--d9-accent)',
-            opacity: 0.6,
-            animation: 'd9pulse 1.4s ease-out infinite',
-            pointerEvents: 'none',
-          }} />
-          <span style={{
-            position: 'absolute',
-            inset: -8,
-            borderRadius: 16,
-            border: '1px solid var(--d9-accent)',
-            opacity: 0.25,
-            animation: 'd9pulse 1.4s ease-out infinite 0.4s',
-            pointerEvents: 'none',
-          }} />
-        </>
-      )}
-      {/* Busy: small spinning arc */}
-      {state === 'busy' && (
-        <span style={{
-          position: 'absolute',
-          inset: -3,
-          borderRadius: '50%',
-          border: '1.5px solid transparent',
-          borderTopColor: 'var(--d9-accent)',
-          animation: 'spin 0.8s linear infinite',
-          pointerEvents: 'none',
-        }} />
-      )}
-    </button>
-  );
 }
 
 /**
@@ -1344,227 +1541,298 @@ function AutoSuggestPill({
 }
 
 /**
- * LiveTranscriptStrip — one-line pill above the input that shows the
- * most recent transcript chunk streaming from the meeting. Clicking
- * it splices the FULL accumulated transcript into the draft and
- * clears the store, so the user can then edit + send to copilot.
+ * LiveTranscriptStrip — компактный status-indicator. ТЕКСТ распознавания
+ * НЕ дублируется тут (он живёт в input field), показываем только что
+ * сейчас активно: «● Слушаем» / «● Микрофон» + ошибки если есть.
  *
- * Hidden when there's nothing to show (no chunks yet and not
- * recording). A running-but-empty state renders the "слушаю…" hint
- * so the user knows audio is flowing even before the first chunk
- * transcribes.
+ * Раньше strip полноценно повторял transcript, что путало юзера: текст
+ * в strip есть, а в input нет. Унифицировано: input — единственная
+ * точка где live-transcript видим.
  */
-function LiveTranscriptStrip({
-  draft,
-  setDraft,
-}: {
-  draft: string;
-  setDraft: (s: string) => void;
-}) {
-  const state = useAudioCaptureStore((s) => s.state);
-  const chunks = useAudioCaptureStore((s) => s.chunks);
-  const fullText = useAudioCaptureStore((s) => s.fullText);
-  const clear = useAudioCaptureStore((s) => s.clear);
-  const error = useAudioCaptureStore((s) => s.error);
+function LiveTranscriptStrip(_props: { draft: string; setDraft: (s: string) => void }) {
+  const sys = useAudioCaptureStore((s) => s.system);
+  const mic = useAudioCaptureStore((s) => s.mic);
 
-  const recording = state === 'running' || state === 'starting';
-  if (!recording && chunks.length === 0 && !error) return null;
+  const sysActive = sys.state === 'running' || sys.state === 'starting';
+  const micActive = mic.state === 'running' || mic.state === 'starting';
 
-  const last = chunks[chunks.length - 1]?.text ?? '';
-  const hint = recording && !last ? 'Слушаю встречу…' : last;
-
-  const onClickSplice = () => {
-    const text = fullText().trim();
-    if (!text) return;
-    const joiner = draft.length === 0 || /\s$/.test(draft) ? '' : ' ';
-    setDraft(draft + joiner + text);
-    clear();
-  };
+  if (!sysActive && !micActive && !sys.error && !mic.error) return null;
 
   return (
     <div
       style={{
         padding: '6px 12px 0',
+        display: 'flex',
+        gap: 6,
+        flexWrap: 'wrap',
         WebkitAppRegion: 'no-drag',
       } as React.CSSProperties}
     >
-      <button
-        type="button"
-        onClick={chunks.length > 0 ? onClickSplice : undefined}
-        disabled={chunks.length === 0}
-        title={
-          chunks.length > 0
-            ? 'Вставить полный транскрипт в поле ввода'
-            : error || 'Идёт запись…'
-        }
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 8,
-          width: '100%',
-          padding: '6px 10px',
-          borderRadius: 8,
-          background: error
-            ? 'oklch(0.6 0.2 25 / 0.12)'
-            : recording
-              ? 'rgba(255, 59, 48, 0.08)'
-              : 'oklch(1 0 0 / 0.04)',
-          border: `0.5px solid ${
-            error
-              ? 'oklch(0.6 0.2 25 / 0.35)'
-              : recording
-                ? 'rgba(255, 59, 48, 0.3)'
-                : 'var(--d9-hairline)'
-          }`,
-          color: error ? 'oklch(0.75 0.18 25)' : 'var(--d9-ink-mute)',
-          fontSize: 12,
-          fontFamily: 'inherit',
-          letterSpacing: '-0.005em',
-          textAlign: 'left',
-          cursor: chunks.length > 0 ? 'pointer' : 'default',
-          overflow: 'hidden',
-        }}
-      >
-        {recording && !error && (
-          <span
-            aria-hidden
-            style={{
-              flex: 'none',
-              width: 6,
-              height: 6,
-              borderRadius: '50%',
-              background: 'oklch(0.65 0.22 25)',
-              animation: 'd9-pulse 1s ease-in-out infinite',
-            }}
-          />
-        )}
-        <span
-          style={{
-            flex: 1,
-            whiteSpace: 'nowrap',
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-          }}
-        >
-          {error ? `Запись: ${error}` : hint || 'Транскрипт пуст'}
-        </span>
-        {chunks.length > 0 && (
-          <span
-            style={{
-              fontSize: 10,
-              fontFamily: 'var(--d9-font-mono)',
-              color: 'var(--d9-ink-ghost)',
-              textTransform: 'uppercase',
-              letterSpacing: '0.06em',
-            }}
-          >
-            {chunks.length} • нажми чтобы вставить
-          </span>
-        )}
-      </button>
+      {sysActive && <ActivePill label="Слушаем (звук)" />}
+      {micActive && <ActivePill label="Микрофон" />}
+      {sys.error && <ErrorPill label="Слушать" message={sys.error} />}
+      {mic.error && <ErrorPill label="Микрофон" message={mic.error} />}
     </div>
   );
 }
 
+function ActivePill({ label }: { label: string }) {
+  return (
+    <div
+      style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: 6,
+        padding: '4px 10px',
+        borderRadius: 6,
+        background: 'rgba(255, 59, 48, 0.08)',
+        border: '0.5px solid rgba(255, 59, 48, 0.3)',
+        color: 'var(--d9-ink-mute)',
+        fontSize: 11,
+        letterSpacing: '-0.005em',
+      }}
+    >
+      <span
+        aria-hidden
+        style={{
+          flex: 'none',
+          width: 6,
+          height: 6,
+          borderRadius: '50%',
+          background: 'oklch(0.65 0.22 25)',
+          animation: 'd9-pulse 1s ease-in-out infinite',
+        }}
+      />
+      {label}
+    </div>
+  );
+}
+
+function ErrorPill({ label, message }: { label: string; message: string }) {
+  return (
+    <div
+      title={message}
+      style={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: 6,
+        padding: '4px 10px',
+        borderRadius: 6,
+        background: 'oklch(0.6 0.2 25 / 0.12)',
+        border: '0.5px solid oklch(0.6 0.2 25 / 0.35)',
+        color: 'oklch(0.75 0.18 25)',
+        fontSize: 11,
+        letterSpacing: '-0.005em',
+        maxWidth: 280,
+        overflow: 'hidden',
+        textOverflow: 'ellipsis',
+        whiteSpace: 'nowrap',
+      }}
+    >
+      ⚠ {label}: {message}
+    </div>
+  );
+}
+
+
 /**
- * MeetingRecordButton — toggles macOS system-audio capture.
- *
- * States:
- *   hidden    — when binary missing (Windows/Linux or un-built dev),
- *               we render nothing rather than a disabled button;
- *   idle      — red-dot capsule "Запись встречи" — click to start;
- *   starting  — brief; shows spinner while TCC prompt may fire;
- *   running   — animated dot + elapsed-seconds counter; click to stop;
- *   stopping  — waiting for final chunk to drain.
- *
- * Each captured 5s window is POSTed to /transcription and the result
- * lands in `useAudioCaptureStore.chunks`. The chat input row rendered
- * below picks those up and shows a live-transcript ticker; the user
- * clicks it to splice the accumulated text into the draft.
+ * VoiceToggleCombined — single combined trigger вместо двух отдельных
+ * кнопок (system/mic). Click открывает popover с двумя radio-style
+ * row'ами. Обе source'а независимы, могут быть оба ON одновременно.
+ * Compact UX: 90% юзеров используют один source, две отдельных
+ * кнопки confused «какую нажать».
  */
-function MeetingRecordButton() {
-  const state = useAudioCaptureStore((s) => s.state);
-  const startedAt = useAudioCaptureStore((s) => s.startedAt);
+function VoiceToggleCombined() {
+  const sysState = useAudioCaptureStore((s) => s.system.state);
+  const micState = useAudioCaptureStore((s) => s.mic.state);
+  const sysStartedAt = useAudioCaptureStore((s) => s.system.startedAt);
+  const micStartedAt = useAudioCaptureStore((s) => s.mic.startedAt);
   const available = useAudioCaptureStore((s) => s.available);
-  const error = useAudioCaptureStore((s) => s.error);
-  const start = useAudioCaptureStore((s) => s.start);
-  const stop = useAudioCaptureStore((s) => s.stop);
-  const setCoachEnabled = useCoachStore((s) => s.setEnabled);
+  const [open, setOpen] = useState(false);
+  const wrapRef = useRef<HTMLDivElement>(null);
   const [tick, setTick] = useState(0);
 
-  // 1s repaint so the elapsed counter advances. Only runs while we're
-  // in a recording-ish state to avoid touching the tree idle.
   useEffect(() => {
-    if (state !== 'running') return;
+    if (!open) return;
+    const onPointer = (e: MouseEvent) => {
+      if (!wrapRef.current?.contains(e.target as Node)) setOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false); };
+    window.addEventListener('mousedown', onPointer);
+    window.addEventListener('keydown', onKey);
+    return () => {
+      window.removeEventListener('mousedown', onPointer);
+      window.removeEventListener('keydown', onKey);
+    };
+  }, [open]);
+
+  const anyActive = sysState === 'running' || sysState === 'starting'
+    || micState === 'running' || micState === 'starting';
+  useEffect(() => {
+    if (!anyActive) return;
     const h = setInterval(() => setTick((t) => t + 1), 1000);
     return () => clearInterval(h);
-  }, [state]);
-
-  useEffect(() => {
-    if (error) void window.druz9.toast.show(error, 'error');
-  }, [error]);
+  }, [anyActive]);
 
   if (!available) return null;
 
-  const elapsed = startedAt ? Math.max(0, Math.floor((Date.now() - startedAt) / 1000)) : 0;
+  const earliest = (() => {
+    const ts: number[] = [];
+    if (sysStartedAt) ts.push(sysStartedAt);
+    if (micStartedAt) ts.push(micStartedAt);
+    return ts.length ? Math.min(...ts) : null;
+  })();
+  const elapsed = earliest ? Math.max(0, Math.floor((Date.now() - earliest) / 1000)) : 0;
   const mm = Math.floor(elapsed / 60);
   const ss = elapsed % 60;
   const elapsedLabel = `${mm}:${ss.toString().padStart(2, '0')}`;
+  const label = anyActive ? `● ${elapsedLabel}` : 'Слушать';
 
-  const recording = state === 'running';
-  const busy = state === 'starting' || state === 'stopping';
-  const label =
-    state === 'starting'
-      ? 'Запуск…'
-      : state === 'stopping'
-        ? 'Остановка…'
-        : recording
-          ? `● ${elapsedLabel}`
-          : 'Записать встречу';
+  return (
+    <div ref={wrapRef} style={{ position: 'relative' }}>
+      <button
+        type="button"
+        onClick={() => setOpen((s) => !s)}
+        title={anyActive ? 'Управление voice capture' : 'Включить транскрипцию'}
+        style={{
+          padding: '4px 10px',
+          marginRight: 4,
+          borderRadius: 7,
+          background: anyActive ? 'oklch(0.6 0.2 25 / 0.15)' : 'oklch(1 0 0 / 0.04)',
+          border: `0.5px solid ${anyActive ? 'oklch(0.6 0.2 25 / 0.5)' : 'var(--d9-hairline)'}`,
+          color: anyActive ? 'oklch(0.75 0.18 25)' : 'var(--d9-ink-mute)',
+          fontSize: 11.5,
+          fontFamily: anyActive ? 'var(--d9-font-mono)' : 'inherit',
+          letterSpacing: '-0.005em',
+          cursor: 'pointer',
+          whiteSpace: 'nowrap',
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: 4,
+          transition: 'background 120ms var(--d9-ease), color 120ms var(--d9-ease)',
+        }}
+      >
+        <span style={{ display: 'none' }}>{tick}</span>
+        {label}
+        <span style={{ fontSize: 8, color: anyActive ? 'oklch(0.75 0.18 25 / 0.6)' : 'var(--d9-ink-ghost)' }}>▾</span>
+      </button>
+      {open && (
+        <div
+          role="menu"
+          style={{
+            position: 'absolute',
+            right: 0,
+            top: '100%',
+            marginTop: 4,
+            minWidth: 240,
+            background: 'oklch(0.18 0 0 / 0.96)',
+            border: '0.5px solid var(--d9-hairline-b)',
+            borderRadius: 8,
+            backdropFilter: 'blur(12px)',
+            boxShadow: '0 8px 24px -4px rgba(0,0,0,0.5)',
+            padding: 4,
+            zIndex: 1000,
+          }}
+        >
+          <SourceMenuItem source="system" label="Системный звук" hint="Звонки, видео в браузере" onAction={() => setOpen(false)} />
+          <SourceMenuItem source="mic" label="Микрофон" hint="Твой голос" onAction={() => setOpen(false)} />
+        </div>
+      )}
+    </div>
+  );
+}
+
+function SourceMenuItem({
+  source,
+  label,
+  hint,
+  onAction,
+}: {
+  source: 'system' | 'mic';
+  label: string;
+  hint: string;
+  onAction: () => void;
+}) {
+  const slice = useAudioCaptureStore((s) => (source === 'system' ? s.system : s.mic));
+  const start = useAudioCaptureStore((s) => s.start);
+  const stop = useAudioCaptureStore((s) => s.stop);
+  const setCoachEnabled = useCoachStore((s) => s.setEnabled);
+  const recording = slice.state === 'running';
+  const busy = slice.state === 'starting' || slice.state === 'stopping';
+
+  const beginListening = () => {
+    if (source === 'system') void setCoachEnabled(true);
+    void start(source);
+  };
 
   const onClick = () => {
     if (busy) return;
     if (recording) {
-      void setCoachEnabled(false);
-      void stop();
-    } else {
-      void setCoachEnabled(true);
-      void start();
+      const other = source === 'system' ? useAudioCaptureStore.getState().mic : useAudioCaptureStore.getState().system;
+      const otherActive = other.state === 'running' || other.state === 'starting';
+      if (!otherActive && source === 'system') void setCoachEnabled(false);
+      void stop(source);
+      onAction();
+      return;
     }
+    if (!hasVoiceConsent()) {
+      requestVoiceConsent(beginListening);
+      onAction();
+      return;
+    }
+    beginListening();
+    onAction();
   };
 
   return (
     <button
       type="button"
+      role="menuitemcheckbox"
+      aria-checked={recording}
       onClick={onClick}
       disabled={busy}
-      title={
-        recording
-          ? 'Остановить запись встречи'
-          : 'Записать системный звук локально. Для расшифровки аудио отправляется в /transcription без сохранения raw-записи.'
-      }
       style={{
-        padding: '4px 10px',
-        marginRight: 4,
-        borderRadius: 7,
-        background: recording
-          ? 'oklch(0.6 0.2 25 / 0.15)'
-          : 'oklch(1 0 0 / 0.04)',
-        border: `0.5px solid ${recording ? 'oklch(0.6 0.2 25 / 0.5)' : 'var(--d9-hairline)'}`,
-        color: recording ? 'oklch(0.75 0.18 25)' : 'var(--d9-ink-mute)',
-        fontSize: 11.5,
-        fontFamily: recording ? 'var(--d9-font-mono)' : 'inherit',
-        letterSpacing: '-0.005em',
+        display: 'flex',
+        alignItems: 'center',
+        gap: 10,
+        width: '100%',
+        padding: '7px 10px',
+        background: 'transparent',
+        border: 0,
+        color: 'var(--d9-ink)',
+        textAlign: 'left',
         cursor: busy ? 'wait' : 'pointer',
-        whiteSpace: 'nowrap',
-        transition: 'background 120ms var(--d9-ease), color 120ms var(--d9-ease)',
+        borderRadius: 4,
+        fontFamily: 'inherit',
       }}
+      onMouseEnter={(e) => (e.currentTarget.style.background = 'oklch(1 0 0 / 0.06)')}
+      onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
     >
-      {/* Invisible refresh — referencing `tick` inside a side-effect
-          field would break SSR/Strict; reading the counter in JSX
-          keeps the subscription live. */}
-      <span style={{ display: 'none' }}>{tick}</span>
-      {label}
+      <span
+        aria-hidden
+        style={{
+          width: 8,
+          height: 8,
+          borderRadius: '50%',
+          flex: 'none',
+          background: recording ? 'oklch(0.65 0.22 25)' : 'transparent',
+          border: recording ? 'none' : '1px solid var(--d9-ink-ghost)',
+          animation: recording ? 'd9-pulse 1.4s ease-in-out infinite' : undefined,
+        }}
+      />
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontSize: 12, color: 'var(--d9-ink)' }}>{label}</div>
+        <div style={{ fontSize: 10, color: 'var(--d9-ink-mute)', letterSpacing: '-0.005em' }}>{hint}</div>
+      </div>
+      <span
+        style={{
+          fontSize: 10,
+          fontFamily: 'var(--d9-font-mono)',
+          color: recording ? 'oklch(0.75 0.18 25)' : 'var(--d9-ink-ghost)',
+        }}
+      >
+        {busy ? '…' : recording ? 'ON' : 'OFF'}
+      </span>
     </button>
   );
 }
@@ -1611,51 +1879,9 @@ function AttachedDocsBadge() {
 
 // ─── Chat-specific helpers ────────────────────────────────────────────────
 
-/** Pill chip in the chat header — persona label or model name. */
-function ChatHeadPill({
-  children,
-  color,
-  onClick,
-  chevron,
-}: {
-  children: React.ReactNode;
-  color?: 'cyan' | 'red';
-  onClick?: () => void;
-  chevron?: boolean;
-}) {
-  const isCyan = color === 'cyan';
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      style={{
-        display: 'inline-flex',
-        alignItems: 'center',
-        gap: 5,
-        padding: '5px 9px',
-        borderRadius: 6,
-        background: 'rgba(255,255,255,0.04)',
-        border: 0,
-        fontFamily: 'var(--d9-font-mono)',
-        fontSize: 11,
-        letterSpacing: '0.04em',
-        color: 'var(--d9-ink)',
-        cursor: onClick ? 'pointer' : 'default',
-        transition: 'background 120ms',
-        WebkitAppRegion: 'no-drag',
-      } as React.CSSProperties}
-      onMouseEnter={(e) => onClick && (e.currentTarget.style.background = 'rgba(255,255,255,0.08)')}
-      onMouseLeave={(e) => (e.currentTarget.style.background = 'rgba(255,255,255,0.04)')}
-    >
-      <span style={{
-        width: 6, height: 6, borderRadius: '50%', flexShrink: 0,
-        background: isCyan ? 'var(--d9-accent)' : 'oklch(0.65 0.22 25)',
-      }} />
-      {children}
-      {chevron && <span style={{ fontSize: 8, color: 'var(--d9-ink-ghost)' }}>▾</span>}
-    </button>
-  );
-}
+// ChatHeadPill удалён: после consolidation persona+model в один combined
+// pill (см. header), отдельный pill helper больше не нужен. Inline styles
+// в новом combined chip покрывают тот же visual idiom.
 
 /** Tiny kbd chip for the chat footer shortcut hints. */
 function ChatKbd({ children }: { children: React.ReactNode }) {
@@ -1677,6 +1903,172 @@ function ChatKbd({ children }: { children: React.ReactNode }) {
 
 // CheckmarkIcon / ErrorIcon — visual feedback для save-button после
 // клика. Зелёный ✓ → ok, красный ✕ → fail. Auto-revert через 2.4s.
+/**
+ * ChatActionsOverflow — «⋯» dropdown с secondary actions: Summary
+ * (если ready), Save-to-Hone, Export Markdown. До рефактора эти кнопки
+ * стояли отдельно в header'е → 13 видимых элементов; теперь header
+ * compact (8-9 элементов), редкие actions — за один клик в menu.
+ *
+ * Click outside closes (ref-attached useEffect). Esc — closes тоже.
+ */
+function ChatActionsOverflow({
+  messages,
+  saveChatStatus,
+  setSaveChatStatus,
+  hasSummary,
+  onOpenSummary,
+}: {
+  messages: UIMessage[];
+  saveChatStatus: 'idle' | 'saving' | 'ok' | 'err';
+  setSaveChatStatus: (s: 'idle' | 'saving' | 'ok' | 'err') => void;
+  hasSummary: boolean;
+  onOpenSummary: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const wrapRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const onPointer = (e: MouseEvent) => {
+      if (!wrapRef.current) return;
+      if (!wrapRef.current.contains(e.target as Node)) setOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setOpen(false);
+    };
+    window.addEventListener('mousedown', onPointer);
+    window.addEventListener('keydown', onKey);
+    return () => {
+      window.removeEventListener('mousedown', onPointer);
+      window.removeEventListener('keydown', onKey);
+    };
+  }, [open]);
+
+  // Если нет ни одного применимого action'а — кнопку не показываем
+  // (избегаем «пустого» menu с placeholder'ом).
+  const hasMessages = messages.length > 0;
+  if (!hasMessages && !hasSummary) return null;
+
+  const cleanMessages = messages
+    .filter((m) => !m.pending && m.content.trim().length > 0)
+    .map((m) => ({ role: m.role, content: m.content }));
+
+  const onSaveToHone = () => {
+    setOpen(false);
+    void (async () => {
+      setSaveChatStatus('saving');
+      try {
+        await window.druz9.notes.saveChatToHone({ title: '', messages: cleanMessages });
+        setSaveChatStatus('ok');
+      } catch (err) {
+        // eslint-disable-next-line no-console
+        console.error('saveChatToHone failed', err);
+        setSaveChatStatus('err');
+      }
+      window.setTimeout(() => setSaveChatStatus('idle'), 2400);
+    })();
+  };
+  const onExport = () => {
+    setOpen(false);
+    void (async () => {
+      try {
+        await window.druz9.notes.exportChatMarkdown({ title: '', messages: cleanMessages });
+      } catch (err) {
+        // eslint-disable-next-line no-console
+        console.error('exportChatMarkdown failed', err);
+      }
+    })();
+  };
+
+  // Trigger icon: если save-to-Hone сейчас в результирующем state'е
+  // (ok/err) — вместо обычной «⋯» показываем cheсkmark/error,
+  // чтобы юзер видел feedback от своего предыдущего действия.
+  const triggerIcon =
+    saveChatStatus === 'ok' ? <CheckmarkIcon />
+      : saveChatStatus === 'err' ? <ErrorIcon />
+        : <DotsIcon />;
+
+  return (
+    <div ref={wrapRef} style={{ position: 'relative' }}>
+      <IconButton
+        title="Дополнительные действия"
+        onClick={() => setOpen((s) => !s)}
+      >
+        {triggerIcon}
+      </IconButton>
+      {open && (
+        <div
+          role="menu"
+          style={{
+            position: 'absolute',
+            right: 0,
+            top: '100%',
+            marginTop: 4,
+            minWidth: 200,
+            background: 'oklch(0.18 0 0 / 0.96)',
+            border: '0.5px solid var(--d9-hairline-b)',
+            borderRadius: 8,
+            backdropFilter: 'blur(12px)',
+            boxShadow: '0 8px 24px -4px rgba(0,0,0,0.5)',
+            padding: 4,
+            zIndex: 1000,
+          }}
+        >
+          {hasSummary && (
+            <OverflowItem
+              label="Открыть Summary"
+              onClick={() => {
+                setOpen(false);
+                onOpenSummary();
+              }}
+            />
+          )}
+          {hasMessages && <OverflowItem label="Сохранить в Hone" onClick={onSaveToHone} />}
+          {hasMessages && <OverflowItem label="Экспорт в Markdown" onClick={onExport} />}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function OverflowItem({ label, onClick }: { label: string; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      role="menuitem"
+      onClick={onClick}
+      style={{
+        display: 'block',
+        width: '100%',
+        padding: '7px 10px',
+        background: 'transparent',
+        border: 0,
+        color: 'var(--d9-ink)',
+        fontSize: 12,
+        fontFamily: 'var(--d9-font-sans)',
+        textAlign: 'left',
+        cursor: 'pointer',
+        borderRadius: 4,
+        letterSpacing: '-0.005em',
+      }}
+      onMouseEnter={(e) => (e.currentTarget.style.background = 'oklch(1 0 0 / 0.06)')}
+      onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+    >
+      {label}
+    </button>
+  );
+}
+
+function DotsIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
+      <circle cx="5" cy="12" r="1.6" />
+      <circle cx="12" cy="12" r="1.6" />
+      <circle cx="19" cy="12" r="1.6" />
+    </svg>
+  );
+}
+
 function CheckmarkIcon() {
   return (
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#34D399" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
@@ -1693,14 +2085,43 @@ function ErrorIcon() {
   );
 }
 
-// SaveToHoneIcon — outlined notebook glyph (соответствует HoneIcon в
-// SummaryModal, оставлен inline чтобы не плодить barrel-export'ы).
-function SaveToHoneIcon() {
-  return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M4 5a2 2 0 0 1 2-2h11a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z" />
-      <path d="M4 8h2M4 12h2M4 16h2" />
-      <path d="M11 9l4 4M15 9l-4 4" />
-    </svg>
+// SaveToHoneIcon / DownloadIcon удалены: после consolidation в
+// ChatActionsOverflow («⋯» menu) обе actions имеют только text labels,
+// отдельные glyph'ы перестали использоваться.
+
+// ─── Voice consent gate ─────────────────────────────────────────────────
+//
+// При первом нажатии «Слушать»/«Микрофон» показываем юзеру disclaimer
+// что аудио уйдёт на сервер (Groq Whisper) для транскрипции и что
+// записывать собеседников по Zoom/Meet без их согласия — на его
+// ответственности (legal risk: GDPR EU, two-party consent в CA/IL).
+// После accept — флаг в localStorage, больше не показываем.
+//
+// Используем native window.confirm (Electron показывает OS-modal),
+// чтобы не плодить React-state для одноразового вопроса. Confirm
+// блокирующий — запись стартует только после OK; на Cancel — no-op.
+
+const VOICE_CONSENT_KEY = 'cue.voiceConsent.granted.v1';
+
+function hasVoiceConsent(): boolean {
+  try {
+    return window.localStorage.getItem(VOICE_CONSENT_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
+
+function requestVoiceConsent(onAccept: () => void): void {
+  const ok = window.confirm(
+    'Cue будет передавать аудио на сервер для транскрипции (Groq Whisper).\n\n' +
+    'Если ты записываешь созвон с другими людьми (Zoom, Meet, Teams) — ' +
+    'предупреди их и получи согласие. В некоторых странах (ЕС, Калифорния, ' +
+    'Иллинойс) запись разговора без согласия всех участников — нарушение закона.\n\n' +
+    'Продолжить?',
   );
+  if (!ok) return;
+  try {
+    window.localStorage.setItem(VOICE_CONSENT_KEY, '1');
+  } catch { /* localStorage недоступен — пользователь увидит prompt снова в следующий раз */ }
+  onAccept();
 }

@@ -12,6 +12,7 @@ import (
 	"druz9/shared/enums"
 	"druz9/shared/pkg/compaction"
 	"druz9/shared/pkg/killswitch"
+	"druz9/shared/pkg/metrics"
 	tokenquota "druz9/shared/pkg/quota"
 
 	"github.com/google/uuid"
@@ -46,6 +47,29 @@ type ConversationDoneFrame struct {
 	TokensOut          int
 	LatencyMs          int
 	Quota              domain.Quota
+	// Context window state — surface'ится в desktop UI как индикатор
+	// «контекст N/M turns». Показывает юзеру когда диалог приближается
+	// к компакции (LLM начинает терять детали из старых turns после
+	// сжатия).
+	//
+	//   MessagesInWindow      — сколько turns реально ушло в LLM в этом
+	//                            запросе (= len(window.Tail), max=WindowSize=10).
+	//   MessagesTotal         — сколько turns в conversation вообще
+	//                            (включая суммаризированные старые).
+	//   CompactionThreshold   — порог при котором triggers компакция
+	//                            (default 15). UI показывает прогресс
+	//                            MessagesTotal / CompactionThreshold.
+	//   CompactionTriggered   — true если в этом turn'е window перешёл
+	//                            порог и фоновый воркер запущен sammize'нуть
+	//                            старые turns. UI рисует ghost-message
+	//                            «старые сообщения сжаты в summary».
+	//   RunningSummaryChars   — длина текущего RunningSummary в символах
+	//                            (>0 если уже была хотя бы одна компакция).
+	MessagesInWindow    int
+	MessagesTotal       int
+	CompactionThreshold int
+	CompactionTriggered bool
+	RunningSummaryChars int
 }
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -182,6 +206,13 @@ type AnalyzeInput struct {
 	PromptText     string
 	Model          string
 	Attachments    []domain.AttachmentInput
+	// PersonaSystemPrompt — system-prompt активной persona ("React Expert"
+	// и т.п.). Если non-empty — добавляется КАК ОТДЕЛЬНЫЙ system message
+	// в LLM call (после base systemPrompt'а). НЕ должно prepend'иться к
+	// PromptText: иначе персона эхом дублируется в каждом user-message
+	// в истории conversation, и LLM начинает реагировать на повторение
+	// (видит pattern «X: ...» в каждом turn'е и копирует его в ответе).
+	PersonaSystemPrompt string
 	// Client is an opaque telemetry record; not used for routing in MVP.
 	Client domain.ClientContext
 }
@@ -332,7 +363,7 @@ func (uc *Analyze) Do(ctx context.Context, in AnalyzeInput) (<-chan StreamFrame,
 	// the top-K hits are effectively random.
 	docsContext := uc.buildDocsContext(ctx, haveLive, liveSession, in.PromptText)
 
-	llmMessages := buildLLMMessages(window.RunningSummary, docsContext, turnsToMessages(window.Tail), in.PromptText, in.Attachments)
+	llmMessages := buildLLMMessages(window.RunningSummary, docsContext, in.PersonaSystemPrompt, turnsToMessages(window.Tail), in.PromptText, in.Attachments)
 
 	// Open the LLM stream.
 	events, err := uc.LLM.Stream(ctx, domain.CompletionRequest{
@@ -432,6 +463,18 @@ func (uc *Analyze) pump(ctx context.Context, p pumpCtx) {
 	latency := int(uc.now().Sub(p.started) / time.Millisecond)
 	content := assembled.String()
 
+	// Prometheus metrics: tokens consumed + RUB cost per model. Используем
+	// modelEcho (что фактически вернул provider) если есть, иначе p.model
+	// (что мы запросили). Это разные значения когда llmchain failover
+	// переключился на резервную модель — для cost-tracking важна РЕАЛЬНАЯ
+	// модель которой биллит провайдер.
+	usedModel := modelEcho
+	if usedModel == "" {
+		usedModel = p.model
+	}
+	metrics.RecordLLMUsage(usedModel, tokensIn, tokensOut)
+	metrics.LLMRequestDuration.WithLabelValues(usedModel, "chat").Observe(time.Duration(latency * int(time.Millisecond)).Seconds())
+
 	// Commit assistant message; log and continue on failure — we still want
 	// to emit Done to the client so the UI doesn't hang.
 	uc.commitAssistantFull(ctx, p.assistantID, content, tokensIn, tokensOut, latency)
@@ -460,12 +503,42 @@ func (uc *Analyze) pump(ctx context.Context, p pumpCtx) {
 
 	_ = modelEcho // reserved for future fallback logging
 
+	// Context window snapshot для Done frame. priorWindow — это срез
+	// ДО включения текущего user+assistant turn'а, поэтому добавляем +2
+	// для актуального счёта «turns в этой conversation после данного ответа».
+	cfg := uc.compactionConfig()
+	messagesInWindow := len(p.priorWindow.Tail) + 2 // +current user, +current assistant
+	if messagesInWindow > cfg.WindowSize {
+		messagesInWindow = cfg.WindowSize
+	}
+	// MessagesTotal — точное число turns после этого turn'а. priorWindow.Tail
+	// содержит последние WindowSize до этого; OldTurns — то что уже было
+	// сжато ранее. Поэтому total ≈ len(tail) + len(oldTurns) + 2.
+	messagesTotal := len(p.priorWindow.Tail) + len(p.priorWindow.OldTurns) + 2
+	// Перепроверим компакцию для уведомления UI: если после добавления
+	// текущей пары turn'ов мы перешли threshold — UI должен показать
+	// ghost-message «диалог сжимается». То же что делает maybeSubmitCompaction.
+	freshTurns := append([]compaction.Turn(nil), p.priorWindow.Tail...)
+	if strings.TrimSpace(p.userPrompt) != "" {
+		freshTurns = append(freshTurns, compaction.Turn{Role: string(enums.MessageRoleUser), Content: p.userPrompt})
+	}
+	if strings.TrimSpace(content) != "" {
+		freshTurns = append(freshTurns, compaction.Turn{Role: string(enums.MessageRoleAssistant), Content: content})
+	}
+	freshWindow := compaction.BuildWindow(freshTurns, p.priorWindow.RunningSummary, cfg)
+	compactionTriggered := freshWindow.NeedsCompaction && uc.Compactor != nil
+
 	p.out <- StreamFrame{Done: &ConversationDoneFrame{
-		AssistantMessageID: p.assistantID,
-		TokensIn:           tokensIn,
-		TokensOut:          tokensOut,
-		LatencyMs:          latency,
-		Quota:              quota,
+		AssistantMessageID:  p.assistantID,
+		TokensIn:            tokensIn,
+		TokensOut:           tokensOut,
+		LatencyMs:           latency,
+		Quota:               quota,
+		MessagesInWindow:    messagesInWindow,
+		MessagesTotal:       messagesTotal,
+		CompactionThreshold: cfg.Threshold,
+		CompactionTriggered: compactionTriggered,
+		RunningSummaryChars: len(p.priorWindow.RunningSummary),
 	}}
 
 	// Фоновая компакция: формируем полный набор turns = priorWindow.tail +
@@ -571,9 +644,20 @@ func (uc *Analyze) priorMessages(ctx context.Context, conversationID, currentUse
 //     latching onto an old summary fact that the new docs override.
 //  4. prior tail — raw recent turns.
 //  5. current user turn — with images.
-func buildLLMMessages(runningSummary, docsContext string, prior []domain.Message, currentText string, attachments []domain.AttachmentInput) []domain.LLMMessage {
-	out := make([]domain.LLMMessage, 0, len(prior)+4)
+func buildLLMMessages(runningSummary, docsContext, personaPrompt string, prior []domain.Message, currentText string, attachments []domain.AttachmentInput) []domain.LLMMessage {
+	out := make([]domain.LLMMessage, 0, len(prior)+5)
 	out = append(out, domain.LLMMessage{Role: enums.MessageRoleSystem, Content: systemPrompt})
+	// Persona — отдельный system message сразу после base. До summary/docs
+	// чтобы persona-instructions имели приоритет в context'е модели. История
+	// (prior) хранится ЧИСТОЙ — без persona prefix'а в user message'ах
+	// (раньше был баг: prepend на frontend'е → дубли в каждом turn'е →
+	// LLM реагировала на pattern «Persona: ... text»).
+	if s := strings.TrimSpace(personaPrompt); s != "" {
+		out = append(out, domain.LLMMessage{
+			Role:    enums.MessageRoleSystem,
+			Content: s,
+		})
+	}
 	if s := strings.TrimSpace(runningSummary); s != "" {
 		out = append(out, domain.LLMMessage{
 			Role:    enums.MessageRoleSystem,

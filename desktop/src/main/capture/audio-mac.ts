@@ -37,10 +37,15 @@ const BYTES_PER_FRAME = 2;
 // when a ≥600ms silence ends an utterance. We flush on boundary for
 // semantic cuts; a hard ceiling prevents a single long utterance
 // from growing past Whisper's comfort zone.
-const MIN_CHUNK_BYTES = SAMPLE_RATE * BYTES_PER_FRAME * 1; // 1s minimum
-const MAX_CHUNK_BYTES = SAMPLE_RATE * BYTES_PER_FRAME * 3; // 3s hard cap
+// Снижено для более плотного realtime feel'а: max 1.5s вместо 3s.
+// Whisper-turbo обрабатывает 1.5s chunk за ~400-700ms на Groq → юзер
+// видит транскрипт каждую ~2s. min 0.5s — чтобы не слать миллисекундные
+// фрагменты на каждый пик RMS.
+const MIN_CHUNK_BYTES = SAMPLE_RATE * BYTES_PER_FRAME / 2; // 0.5s minimum
+const MAX_CHUNK_BYTES = Math.floor(SAMPLE_RATE * BYTES_PER_FRAME * 1.5); // 1.5s hard cap
 
 export type AudioCaptureState = 'idle' | 'starting' | 'running' | 'stopping';
+export type AudioCaptureSource = 'system' | 'mic';
 
 export interface AudioCaptureEvents {
   onState: (state: AudioCaptureState) => void;
@@ -48,7 +53,7 @@ export interface AudioCaptureEvents {
    *  Whisper for that VAD-delimited utterance; caller is expected to
    *  concatenate. windowSec is the audio duration of the chunk (1-3s
    *  depending on where the boundary fell). */
-  onTranscript: (text: string, windowSec: number) => void;
+  onTranscript: (text: string, windowSec: number, isFinal: boolean) => void;
   onError: (message: string) => void;
 }
 
@@ -117,6 +122,7 @@ function computeRMS(pcm: Buffer): number {
 }
 
 export interface AudioCaptureController {
+  /** Запустить capture (source задан при construct'е, см. createAudioCapture). */
   start: () => Promise<void>;
   stop: () => Promise<void>;
   state: () => AudioCaptureState;
@@ -124,23 +130,20 @@ export interface AudioCaptureController {
 }
 
 /**
- * Build a controller bound to the given runtime config + event sinks.
- * Only one controller instance per process is expected — call start()
- * / stop() to cycle the capture without reconstructing.
+ * Build a controller bound to the given runtime config + event sinks +
+ * fixed audio source. Two controllers may live в одном main процессе
+ * (один для system, один для mic) — оба spawn'ят независимые Swift
+ * child processes и эмитят свои events.
  */
 export function createAudioCapture(
   cfg: RuntimeConfig,
   events: AudioCaptureEvents,
+  source: AudioCaptureSource,
 ): AudioCaptureController {
   const transcriber = createTranscriptionClient(cfg);
 
   let proc: ChildProcessWithoutNullStreams | null = null;
   let state: AudioCaptureState = 'idle';
-  // appleSpeechActive — true когда Swift подтвердил «apple speech engine
-  // engaged». В этом режиме transcribeChunk skip'ает POST в Whisper
-  // backend (текст уже идёт через TRANSCRIPT-stderr lines). Объявлен
-  // тут (а не внутри start()) чтобы transcribeChunk closure его видел.
-  let appleSpeechActive = false;
   // Explicit Buffer type — TS 5.7 otherwise narrows to
   // Buffer<ArrayBuffer> from alloc(0) and then widens via Buffer.concat
   // to Buffer<ArrayBufferLike>, producing an assignability mismatch.
@@ -157,20 +160,6 @@ export function createAudioCapture(
   };
 
   const transcribeChunk = async (pcm: Buffer) => {
-    // Apple-engine path: текст уже идёт через TRANSCRIPT stderr-lines,
-    // backend Whisper не нужен. PCM продолжает писаться в local
-    // recording dir (для аудита/voice memos), но в /api/v1/transcription
-    // не уходит.
-    if (appleSpeechActive) {
-      const wavLocal = encodeWAV(pcm);
-      const seq = chunkSeq;
-      if (recordingDir) {
-        void writeFile(join(recordingDir, `chunk-${seq.toString().padStart(4, '0')}.wav`), wavLocal).catch(() => {});
-      }
-      chunkSeq += 1;
-      return;
-    }
-
     const wav = encodeWAV(pcm);
     const windowSec = pcm.length / (SAMPLE_RATE * BYTES_PER_FRAME);
     const seq = chunkSeq;
@@ -212,7 +201,10 @@ export function createAudioCapture(
       });
       chunkSeq += 1;
       if (result.text.trim()) {
-        events.onTranscript(result.text, windowSec);
+        // Whisper-pipeline: каждый chunk = одна final-фраза по
+        // определению (мы уже flush'нули по boundary-VAD'у). Apple
+        // pipeline эмитит partials отдельно (см. ниже).
+        events.onTranscript(result.text, windowSec, true);
       }
     } catch (err) {
       // Don't kill the capture on a single failed chunk — the next
@@ -263,24 +255,35 @@ export function createAudioCapture(
     recordingDir = join(
       app.getPath('userData'),
       'recordings',
+      source,
       `meeting-${new Date().toISOString().replace(/[:.]/g, '-')}`,
     );
     await mkdir(recordingDir, { recursive: true });
 
     proc = spawn(bin, [], { stdio: ['pipe', 'pipe', 'pipe'] });
 
+    // Safety net: если в течение 5s после spawn'а Swift не успел крикнуть
+    // INFO: capture started / mic capture started — значит он залип на TCC
+    // prompt'е (Microphone / Screen Recording denied или notDetermined).
+    // Без watchdog'а UI оставался бы в state='starting' навсегда.
+    let startWatchdog: ReturnType<typeof setTimeout> | null = setTimeout(() => {
+      if (state === 'starting') {
+        const what = source === 'system'
+          ? 'системному звуку (Screen Recording)'
+          : 'микрофону (Microphone)';
+        events.onError(`Не удалось получить доступ к ${what}. macOS должен был показать запрос — разреши и нажми снова.`);
+        try { proc?.kill('SIGTERM'); } catch { /* already dead */ }
+        proc = null;
+        setState('idle');
+      }
+      startWatchdog = null;
+    }, 5000);
+
     proc.stdout.on('data', onPCMData);
 
-    // stderr carries LEVEL: message lines from the Swift side. We
-    // forward ERROR lines to onError and use READY to flip state from
-    // starting→running; everything else goes to console for debugging.
+    // stderr carries LEVEL: message lines from the Swift side. PCM stream
+    // mode: BOUNDARY=flush chunk to Whisper, ERROR=surface, INFO=state.
     let stderrBuf = '';
-    // appleSpeechActive — top-level flag. Reset на каждом start().
-    appleSpeechActive = false;
-    // lastTranscriptText — для дедупа TRANSCRIPT-partials. Apple Speech
-    // эмитит cumulative-текст (каждая строка = ВЕСЬ распознанный текст
-    // плюс одно слово больше), а не delta. Превращаем в delta здесь.
-    let lastTranscriptText = '';
     proc.stderr.setEncoding('utf8');
     proc.stderr.on('data', (s: string) => {
       stderrBuf += s;
@@ -291,86 +294,52 @@ export function createAudioCapture(
         nl = stderrBuf.indexOf('\n');
         if (!line) continue;
         if (line === 'BOUNDARY') {
-          // End-of-utterance signal from the Swift VAD. Когда apple-
-          // engine activated мы НЕ flush'им chunk на Whisper (transcribe
-          // chunk skip'ает). Когда legacy PCM-mode — flush как раньше.
-          if (!appleSpeechActive) {
-            flushBuffer('boundary');
-          }
-          continue;
-        }
-        if (line.startsWith('TRANSCRIPT:')) {
-          // Format: TRANSCRIPT: <seq> <ms-since-start> <isFinal:0|1> <text...>
-          // Apple's recognizer выдаёт cumulative full-text каждый partial.
-          // Превращаем в delta vs lastTranscriptText чтобы UI не дублировал.
-          const rest = line.replace(/^TRANSCRIPT:\s*/, '');
-          const parts = rest.split(/\s+/);
-          if (parts.length >= 4) {
-            // parts[0]=seq, parts[1]=ms, parts[2]=isFinal, остальное=text
-            const isFinal = parts[2] === '1';
-            const text = parts.slice(3).join(' ').trim();
-            if (text) {
-              const delta =
-                text.startsWith(lastTranscriptText) && lastTranscriptText.length > 0
-                  ? text.slice(lastTranscriptText.length).trim()
-                  : text;
-              if (isFinal) {
-                // Final — фиксируем full text и сбрасываем lastTranscriptText
-                // чтобы следующий utterance начинался с нуля.
-                if (delta) {
-                  events.onTranscript(delta, 0);
-                } else if (!lastTranscriptText) {
-                  events.onTranscript(text, 0);
-                }
-                lastTranscriptText = '';
-              } else if (delta && delta !== lastTranscriptText) {
-                // Partial — only emit delta. UI append'ит to live strip.
-                // (We could throttle здесь — Apple даёт ~10-15 partials/sec.)
-                lastTranscriptText = text;
-              }
-            }
-          }
+          flushBuffer('boundary');
           continue;
         }
         if (line.startsWith('ERROR:')) {
           events.onError(line.replace(/^ERROR:\s*/, ''));
+          if (state === 'starting') {
+            if (startWatchdog) { clearTimeout(startWatchdog); startWatchdog = null; }
+            try { proc?.kill('SIGTERM'); } catch { /* already dead */ }
+            proc = null;
+            setState('idle');
+          }
         } else if (line.startsWith('READY:')) {
-          // Not yet capturing — we still need to send "start\n".
-        } else if (line.startsWith('INFO: capture started')) {
+          // Not yet capturing — we still need to send the start command.
+        } else if (line.startsWith('INFO: capture started') || line.startsWith('INFO: mic capture started')) {
+          if (startWatchdog) { clearTimeout(startWatchdog); startWatchdog = null; }
           setState('running');
-        } else if (line.includes('apple speech engine engaged')) {
-          appleSpeechActive = true;
-        } else if (line.includes('falling back to PCM pipeline')) {
-          appleSpeechActive = false;
         }
         // eslint-disable-next-line no-console
-        console.log('[AudioCaptureMac]', line);
+        console.log(`[AudioCaptureMac:${source}]`, line);
       }
     });
 
     proc.on('exit', (code, signal) => {
       // eslint-disable-next-line no-console
       console.log('[AudioCaptureMac] exited', { code, signal });
+      if (startWatchdog) { clearTimeout(startWatchdog); startWatchdog = null; }
       flushBuffer('stop');
       proc = null;
       setState('idle');
     });
     proc.on('error', (err) => {
+      if (startWatchdog) { clearTimeout(startWatchdog); startWatchdog = null; }
       events.onError(`spawn failed: ${err.message}`);
       proc = null;
       setState('idle');
     });
 
-    // The binary waits for command before opening the SCStream so the
-    // TCC prompt fires from the user's explicit action, not merely
-    // from launching the process.
-    //
-    // start-apple — preferred mode: SFSpeechRecognizer on-device, ru-RU.
-    // Free, no API call, no DimaTorzok-hallucinations. Если apple
-    // recognizer недоступен (нет ru-RU language pack / TCC отказан) —
-    // Swift автоматически fall'нется на PCM pipeline и пошлёт
-    // «falling back to PCM pipeline» лог, который мы парсим выше.
-    proc.stdin.write('start-apple\n');
+    // The binary waits for command before opening the stream so the TCC
+    // prompt fires from the user's explicit action, not merely from
+    // launching the process. Source задан при construct'е controller'а
+    // (не выбирается runtime'ом) — это инвариант class'а.
+    if (source === 'system') {
+      proc.stdin.write('start-apple\n');
+    } else {
+      proc.stdin.write('start-mic\n');
+    }
   };
 
   const stop: AudioCaptureController['stop'] = async () => {

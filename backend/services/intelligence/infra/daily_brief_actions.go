@@ -48,6 +48,9 @@ func coachActionCandidatesForPrompt(in domain.BriefPromptInput, limit int) []coa
 		if title == "" || rationale == "" {
 			return
 		}
+		if isGenericRecommendation(title, rationale) {
+			return
+		}
 		out = append(out, coachActionCandidate{
 			priority:  priority,
 			kind:      kind,
@@ -96,10 +99,12 @@ func coachActionCandidatesForPrompt(in domain.BriefPromptInput, limit int) []coa
 			"", section)
 	}
 	if line, ok := firstUndoneQueueLine(in.Queue); ok {
-		add(58+in.Queue.Todo+in.Queue.InProgress, domain.RecommendationSchedule,
-			fmt.Sprintf("Block 25 minutes for %q.", line.Title),
-			fmt.Sprintf("Today's queue is %d/%d done with %d item(s) still todo.", in.Queue.Done, in.Queue.Total, in.Queue.Todo),
-			"", line.SkillKey)
+		if title := concreteQueueActionTitle(line); title != "" {
+			add(58+in.Queue.Todo+in.Queue.InProgress, domain.RecommendationSchedule,
+				title,
+				fmt.Sprintf("Today's queue is %d/%d done with %d item(s) still todo.", in.Queue.Done, in.Queue.Total, in.Queue.Todo),
+				"", line.SkillKey)
+		}
 	}
 	if len(in.WeakSkills) > 0 {
 		w := in.WeakSkills[0]
@@ -121,6 +126,39 @@ func coachActionCandidatesForPrompt(in domain.BriefPromptInput, limit int) []coa
 		return out[i].priority > out[j].priority
 	})
 	return dedupeActionCandidates(out, limit)
+}
+
+func concreteQueueActionTitle(line domain.QueueLine) string {
+	title := strings.TrimSpace(line.Title)
+	if title == "" {
+		return ""
+	}
+	if isGenericQueueTitle(title) {
+		if topic := normalizeTopic(line.SkillKey); topic != "" {
+			return fmt.Sprintf("Block 25 minutes for one %s drill.", topic)
+		}
+		return ""
+	}
+	return fmt.Sprintf("Block 25 minutes for %q.", title)
+}
+
+func isGenericQueueTitle(title string) bool {
+	s := strings.ToLower(strings.TrimSpace(title))
+	generic := []string{
+		"solve a basic algorithmic problem",
+		"solve an algorithmic problem",
+		"basic algorithmic problem",
+		"practice algorithms",
+		"work on algorithms",
+		"do one task",
+		"first item in the queue",
+	}
+	for _, phrase := range generic {
+		if strings.Contains(s, phrase) {
+			return true
+		}
+	}
+	return false
 }
 
 func interviewActionCandidates(in domain.BriefPromptInput, ui domain.UpcomingInterview) []coachActionCandidate {

@@ -80,7 +80,11 @@ func (uc *GetDailyBrief) Do(ctx context.Context, in GetDailyBriefInput) (domain.
 	if !in.Force {
 		cached, err := uc.Briefs.GetForDate(ctx, in.UserID, today)
 		if err == nil {
-			if now.Sub(cached.GeneratedAt) < CacheTTL {
+			freshEnough, freshnessErr := uc.cacheFreshEnough(ctx, in.UserID, cached.GeneratedAt, now)
+			if freshnessErr != nil {
+				return domain.DailyBrief{}, freshnessErr
+			}
+			if freshEnough {
 				return cached, nil
 			}
 		} else if !errors.Is(err, domain.ErrNotFound) {
@@ -136,7 +140,7 @@ func (uc *GetDailyBrief) Do(ctx context.Context, in GetDailyBriefInput) (domain.
 	}()
 	go func() {
 		defer wg.Done()
-		recent, recentErr = uc.Notes.RecentNotes(ctx, in.UserID, 5)
+		recent, recentErr = uc.Notes.RecentNotes(ctx, in.UserID, 8)
 	}()
 	wg.Wait()
 	if focusErr != nil {
@@ -262,6 +266,8 @@ func (uc *GetDailyBrief) Do(ctx context.Context, in GetDailyBriefInput) (domain.
 		}()
 	}
 	optionalWG.Wait()
+	recent = freshRecentNotesForBrief(recent, today)
+	dailyNotes = freshDailyNotesForBrief(dailyNotes, today)
 
 	var (
 		pastEpisodes []domain.Episode
@@ -367,6 +373,80 @@ func (uc *GetDailyBrief) Do(ctx context.Context, in GetDailyBriefInput) (domain.
 			slog.Any("err", err), slog.String("user_id", in.UserID.String()))
 	}
 	return brief, nil
+}
+
+func (uc *GetDailyBrief) cacheFreshEnough(
+	ctx context.Context,
+	userID uuid.UUID,
+	generatedAt time.Time,
+	now time.Time,
+) (bool, error) {
+	if now.Sub(generatedAt) >= CacheTTL {
+		return false, nil
+	}
+	if uc.Memory == nil || uc.Memory.Episodes == nil {
+		return true, nil
+	}
+	events, err := uc.Memory.Episodes.LatestByKinds(ctx, userID, briefFreshnessEpisodeKinds(), 1)
+	if err != nil {
+		return false, fmt.Errorf("intelligence.GetDailyBrief.Do: freshness episodes: %w", err)
+	}
+	if len(events) == 0 {
+		return true, nil
+	}
+	return !events[0].OccurredAt.After(generatedAt), nil
+}
+
+func briefFreshnessEpisodeKinds() []domain.EpisodeKind {
+	return []domain.EpisodeKind{
+		domain.EpisodeReflectionAdded,
+		domain.EpisodeStandupRecorded,
+		domain.EpisodePlanSkipped,
+		domain.EpisodePlanCompleted,
+		domain.EpisodeNoteCreated,
+		domain.EpisodeFocusSessionDone,
+		domain.EpisodeMockPipelineFinished,
+		domain.EpisodeCodexArticleOpened,
+		domain.EpisodeCueConversationMemory,
+	}
+}
+
+func freshRecentNotesForBrief(notes []domain.NoteHead, today time.Time) []domain.NoteHead {
+	if len(notes) == 0 {
+		return nil
+	}
+	freshSince := today.Add(-48 * time.Hour)
+	out := make([]domain.NoteHead, 0, len(notes))
+	for _, note := range notes {
+		title := strings.TrimSpace(strings.ToLower(note.Title))
+		isStandup := strings.HasPrefix(title, "standup ")
+		if isStandup && note.UpdatedAt.Before(today) {
+			continue
+		}
+		if note.UpdatedAt.Before(freshSince) {
+			continue
+		}
+		out = append(out, note)
+	}
+	if len(out) > 5 {
+		out = out[:5]
+	}
+	return out
+}
+
+func freshDailyNotesForBrief(notes []domain.DailyNoteHead, today time.Time) []domain.DailyNoteHead {
+	if len(notes) == 0 {
+		return nil
+	}
+	freshSince := today.Add(-48 * time.Hour)
+	out := make([]domain.DailyNoteHead, 0, len(notes))
+	for _, note := range notes {
+		if note.Day.Before(freshSince) {
+			continue
+		}
+		out = append(out, note)
+	}
+	return out
 }
 
 type emittedBriefPayload struct {

@@ -37,6 +37,19 @@ interface State {
   streaming: boolean;
   streamId: string | null;
   quota: Quota | null;
+  /** Context window snapshot из последнего Done event'а. Footer expanded
+   *  окна рендерит progress bar (messagesTotal / compactionThreshold) +
+   *  tooltip. null до первого Done. */
+  contextWindow: {
+    messagesInWindow: number;
+    messagesTotal: number;
+    compactionThreshold: number;
+    runningSummaryChars: number;
+  } | null;
+  /** Epoch ms когда последний раз backend сообщил о triggered компакции.
+   *  ExpandedScreen рендерит ghost-pill «Старые сообщения сжаты» если
+   *  значение свежее (≤ ~10s от Date.now()). null = ни разу не было. */
+  compactionNoticeAt: number | null;
 
   /** Push the optimistic user turn and the empty assistant placeholder. */
   beginTurn: (args: {
@@ -57,6 +70,25 @@ interface State {
 
 const EPHEMERAL_ASSISTANT_ID = '__pending__';
 
+// Stream watchdog: если за это время не пришло ни одного delta/done/error
+// событие — backend/connection считается недоступным. Эмитим псевдо-error
+// чтобы UI вышел из infinite "думаю…". Раньше юзер мог 10 минут смотреть
+// на pending bubble не понимая что произошло (network drop, backend down,
+// CDN deadlock — никаких сигналов не было).
+const STREAM_WATCHDOG_MS = 60_000;
+let streamWatchdog: ReturnType<typeof setTimeout> | null = null;
+
+function armWatchdog(onTimeout: () => void) {
+  if (streamWatchdog) clearTimeout(streamWatchdog);
+  streamWatchdog = setTimeout(onTimeout, STREAM_WATCHDOG_MS);
+}
+function disarmWatchdog() {
+  if (streamWatchdog) {
+    clearTimeout(streamWatchdog);
+    streamWatchdog = null;
+  }
+}
+
 export const useConversationStore = create<State>((set, get) => ({
   conversationId: '',
   model: '',
@@ -64,6 +96,8 @@ export const useConversationStore = create<State>((set, get) => ({
   streaming: false,
   streamId: null,
   quota: null,
+  contextWindow: null,
+  compactionNoticeAt: null,
 
   beginTurn: ({ promptText, hasScreenshot, screenshotDataUrl, streamId }) => {
     const userId = `local-user-${Date.now()}`;
@@ -83,6 +117,19 @@ export const useConversationStore = create<State>((set, get) => ({
         { id: EPHEMERAL_ASSISTANT_ID, role: 'assistant', content: '', hasScreenshot: false, pending: true },
       ],
     }));
+    armWatchdog(() => {
+      // Watchdog тиканул: 60s без событий → считаем connection dead.
+      // Эмитим псевдо-error чтобы UI показал понятное сообщение вместо
+      // вечного "думаю…".
+      const cur = get();
+      if (cur.streamId !== streamId) return; // уже сменился turn — игнор
+      get().receiveError({
+        streamId,
+        code: 'transport',
+        message: 'Соединение с сервером потеряно. Проверь интернет и попробуй снова.',
+        retryAfterSeconds: 0,
+      });
+    });
   },
 
   receiveCreated: (ev) => {
@@ -99,6 +146,20 @@ export const useConversationStore = create<State>((set, get) => ({
 
   receiveDelta: (ev) => {
     if (ev.streamId !== get().streamId) return;
+    // Reset watchdog: backend жив (стримит токены). Каждый delta event
+    // = liveness signal; перезаряжаем 60s окно. Если streaming зависнет
+    // mid-response (rare, но бывает на flaky cloud), watchdog всё равно
+    // сработает и юзер не залипнет.
+    const sid = ev.streamId;
+    armWatchdog(() => {
+      if (get().streamId !== sid) return;
+      get().receiveError({
+        streamId: sid,
+        code: 'transport',
+        message: 'Стрим оборвался. Проверь интернет и попробуй снова.',
+        retryAfterSeconds: 0,
+      });
+    });
     set((s) => ({
       messages: s.messages.map((m, i) =>
         i === s.messages.length - 1 && m.role === 'assistant'
@@ -110,6 +171,7 @@ export const useConversationStore = create<State>((set, get) => ({
 
   receiveDone: (ev) => {
     if (ev.streamId !== get().streamId) return;
+    disarmWatchdog();
     set((s) => {
       const messages = s.messages.map((m, i) =>
         i === s.messages.length - 1 && m.role === 'assistant' ? { ...m, pending: false } : m,
@@ -124,17 +186,35 @@ export const useConversationStore = create<State>((set, get) => ({
           console.warn('[memory] sync failed', err);
         });
       }
+      // Context window state — surface'ится в expanded footer'е (progress
+      // bar + tooltip). compactionTriggered=true → ставим notice timestamp
+      // чтобы UI показал ghost-pill «диалог сжат» на ~10 сек.
+      const ctx = ev.context;
+      const nextContextWindow = ctx
+        ? {
+            messagesInWindow: ctx.messagesInWindow,
+            messagesTotal: ctx.messagesTotal,
+            compactionThreshold: ctx.compactionThreshold,
+            runningSummaryChars: ctx.runningSummaryChars,
+          }
+        : s.contextWindow;
+      const nextCompactionNoticeAt = ctx?.compactionTriggered
+        ? Date.now()
+        : s.compactionNoticeAt;
       return {
         streaming: false,
         streamId: null,
         quota: ev.quota,
         messages,
+        contextWindow: nextContextWindow,
+        compactionNoticeAt: nextCompactionNoticeAt,
       };
     });
   },
 
   receiveError: (ev) => {
     if (ev.streamId !== get().streamId) return;
+    disarmWatchdog();
     set((s) => {
       const messages = s.messages.map((m, i) =>
         i === s.messages.length - 1 && m.role === 'assistant'
@@ -167,7 +247,10 @@ export const useConversationStore = create<State>((set, get) => ({
   },
 
   reset: () =>
-    set({ conversationId: '', model: '', messages: [], streaming: false, streamId: null }),
+    set({
+      conversationId: '', model: '', messages: [], streaming: false, streamId: null,
+      contextWindow: null, compactionNoticeAt: null,
+    }),
 
   hydrate: (conversationId, model, messages) =>
     set({
@@ -184,6 +267,11 @@ export const useConversationStore = create<State>((set, get) => ({
         })),
       streaming: false,
       streamId: null,
+      // contextWindow / compactionNoticeAt не сбрасываем в hydrate —
+      // они актуальны только после реального Done event'а на этой же
+      // conversation. Старая hydrated history — без metadata.
+      contextWindow: null,
+      compactionNoticeAt: null,
     }),
 
   bootstrap: () => {

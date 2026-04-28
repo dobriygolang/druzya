@@ -232,6 +232,65 @@ func TestSyncAIItems_Idempotent(t *testing.T) {
 	}
 }
 
+func TestSyncAIItems_PrunesStaleAITodosAndDedupesNormalizedTitles(t *testing.T) {
+	t.Parallel()
+	q := newFakeQueueRepo()
+	uid := uuid.New()
+	today := q.now.UTC().Truncate(24 * time.Hour)
+	_, _ = q.Create(context.Background(), domain.QueueItem{
+		UserID: uid.String(), Title: "Cache drill!", Source: domain.QueueItemSourceAI, Status: domain.QueueItemStatusTodo, Date: today,
+	})
+	_, _ = q.Create(context.Background(), domain.QueueItem{
+		UserID: uid.String(), Title: "Cache drill.", Source: domain.QueueItemSourceAI, Status: domain.QueueItemStatusTodo, Date: today,
+	})
+	staleTodo, _ := q.Create(context.Background(), domain.QueueItem{
+		UserID: uid.String(), Title: "Old generic AI task", Source: domain.QueueItemSourceAI, Status: domain.QueueItemStatusTodo, Date: today,
+	})
+	doneAI, _ := q.Create(context.Background(), domain.QueueItem{
+		UserID: uid.String(), Title: "Completed AI task", Source: domain.QueueItemSourceAI, Status: domain.QueueItemStatusDone, Date: today,
+	})
+	userItem, _ := q.Create(context.Background(), domain.QueueItem{
+		UserID: uid.String(), Title: "Manual task", Source: domain.QueueItemSourceUser, Status: domain.QueueItemStatusTodo, Date: today,
+	})
+	plans := planRepoReturning(domain.Plan{
+		Items: []domain.PlanItem{
+			{ID: "p1", Title: "Cache drill", SkillKey: "cache"},
+			{ID: "p2", Title: "Cache drill.", SkillKey: "cache"},
+			{ID: "p3", Title: "Graph traversal warm-up", SkillKey: "graphs"},
+		},
+	}, nil)
+	uc := &SyncAIItems{Plans: plans, Queue: q, Now: nowFn(q.now)}
+
+	if err := uc.Do(context.Background(), uid); err != nil {
+		t.Fatalf("SyncAIItems.Do: %v", err)
+	}
+	items, _ := q.ListByDate(context.Background(), uid, q.now)
+	byTitle := map[string]domain.QueueItem{}
+	for _, it := range items {
+		byTitle[it.Title] = it
+	}
+	if _, ok := q.items[staleTodo.ID]; ok {
+		t.Fatalf("stale AI todo still present: %+v", q.items[staleTodo.ID])
+	}
+	for _, keep := range []domain.QueueItem{doneAI, userItem} {
+		if _, ok := q.items[keep.ID]; !ok {
+			t.Fatalf("expected preserved item %q", keep.Title)
+		}
+	}
+	if _, ok := byTitle["Graph traversal warm-up"]; !ok {
+		t.Fatalf("new plan item missing, items=%#v", items)
+	}
+	cacheCount := 0
+	for _, it := range items {
+		if queueTitleKey(it.Title) == "cache drill" {
+			cacheCount++
+		}
+	}
+	if cacheCount != 1 {
+		t.Fatalf("cache drill duplicate count=%d, items=%#v", cacheCount, items)
+	}
+}
+
 func TestSyncAIItems_NoPlan_NoError(t *testing.T) {
 	t.Parallel()
 	q := newFakeQueueRepo()

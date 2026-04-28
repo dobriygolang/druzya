@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"druz9/shared/pkg/metrics"
 	"druz9/transcription/domain"
 )
 
@@ -102,8 +103,18 @@ func (uc *Transcribe) Do(ctx context.Context, in domain.TranscribeInput) (domain
 		started = uc.Now()
 	}
 
+	// Метка модели для метрик: либо явно из in.Model (передан tiered
+	// decorator'ом per-tier), либо provider-name как fallback. Без in.Model
+	// все транскрипции лягут в один bucket, без in.Model нельзя различить
+	// free turbo vs paid large-v3 spend в Grafana.
+	modelLabel := in.Model
+	if modelLabel == "" {
+		modelLabel = uc.Provider.Name()
+	}
+
 	res, err := uc.Provider.Transcribe(ctx, in)
 	if err != nil {
+		metrics.TranscriptionRequestsTotal.WithLabelValues(modelLabel, "error").Inc()
 		if uc.Log != nil {
 			uc.Log.WarnContext(ctx, "transcription: provider failed",
 				slog.String("provider", uc.Provider.Name()),
@@ -122,10 +133,19 @@ func (uc *Transcribe) Do(ctx context.Context, in domain.TranscribeInput) (domain
 				slog.Int("audio_bytes", len(in.Audio)),
 				slog.String("dropped_text", res.Text))
 		}
-		// Возвращаем пустой результат — вызвавший (audio-mac chunk loop)
-		// уже фильтрует empty text перед публикацией в renderer.
+		// Считаем как "empty" в метриках — успех с сервера, но юзеру
+		// показать нечего; cost всё равно потратили (Groq биллит за
+		// duration файла, не за text-output). Audio seconds учитываем.
+		metrics.TranscriptionSecondsTotal.WithLabelValues(modelLabel).Add(res.Duration)
+		metrics.TranscriptionRequestsTotal.WithLabelValues(modelLabel, "empty").Inc()
 		return domain.TranscribeResult{Language: res.Language, Duration: res.Duration}, nil
 	}
+
+	// Success-path метрики. Duration — реальная длина аудио (в секундах);
+	// Groq биллит по audio_seconds, не по wall-time, так что это точная
+	// мера cost'а. Помножь на rate(...) → cost per minute / hour.
+	metrics.TranscriptionSecondsTotal.WithLabelValues(modelLabel).Add(res.Duration)
+	metrics.TranscriptionRequestsTotal.WithLabelValues(modelLabel, "ok").Inc()
 
 	if uc.Log != nil {
 		uc.Log.InfoContext(ctx, "transcription: ok",

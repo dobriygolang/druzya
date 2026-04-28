@@ -10,10 +10,13 @@ import (
 	copilotDomain "druz9/copilot/domain"
 	copilotInfra "druz9/copilot/infra"
 	copilotPorts "druz9/copilot/ports"
+	"druz9/shared/enums"
 	"druz9/shared/generated/pb/druz9/v1/druz9v1connect"
 	"druz9/shared/pkg/ratelimit"
+	subDomain "druz9/subscription/domain"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/google/uuid"
 )
 
 // NewCopilot wires the "Druz9 Copilot" bounded context.
@@ -31,6 +34,18 @@ func NewCopilot(d monolithServices.Deps, docSearcher copilotDomain.DocumentSearc
 	quotas := copilotInfra.NewQuotas(d.Pool)
 	sessions := copilotInfra.NewSessions(d.Pool)
 	reports := copilotInfra.NewReports(d.Pool)
+
+	// Sync subscription.plan → copilot_quotas.plan. Раньше после Boosty
+	// upgrade (subscriptions.plan = seeker) юзер видел free-лимиты
+	// потому что copilot_quotas жил в собственной таблице без
+	// автосинка. Теперь WireSubscriptionQuota делает SetTier shared,
+	// мы регистрируемся на его OnTierChanged hook.
+	if d.SetTierUC != nil {
+		d.SetTierUC.OnTierChanged = func(ctx context.Context, userID uuid.UUID, tier subDomain.Tier) error {
+			plan, cap, models := copilotPlanForTier(tier)
+			return quotas.UpdatePlan(ctx, userID, plan, cap, models)
+		}
+	}
 	// Phase-4 ADR-001 (Wave 3) — read-only gate into ai_mock.mock_sessions.
 	// Single canonical cross-service read: see infra/mock_gate.go.
 	mockGate := copilotInfra.NewMockSessionGate(d.Pool)
@@ -129,6 +144,12 @@ func NewCopilot(d monolithServices.Deps, docSearcher copilotDomain.DocumentSearc
 		checkBlock,
 		d.Log,
 	)
+	// Burst rate-limit on Analyze/Chat (поверх per-day CopilotQuota).
+	// Защищает Groq pool от спайков одного юзера → не валит free-tier
+	// shared rate-limit для других. nil-safe: dev без Redis → no limit.
+	if d.Redis != nil {
+		server.AnalyzeLimiter = ratelimit.NewRedisFixedWindow(d.Redis)
+	}
 
 	connectPath, connectHandler := druz9v1connect.NewCopilotServiceHandler(server)
 	transcoder := monolithServices.MustTranscode("copilot", connectPath, connectHandler)
@@ -265,6 +286,35 @@ func runAnalysisSubscriber(
 						"err", err, "session", ev.SessionID, "user", ev.UserID)
 				}
 			}
+		}
+	}
+}
+
+// copilotPlanForTier — mapping subscription.tier → copilot_quotas (plan,
+// requests_cap, models_allowed). Cap семантика — 24h rolling window
+// (см. copilot_quotas.resets_at).
+//
+//	Free      → 20 req/24h ≈ 600/мес, ограниченный whitelist free-моделей
+//	Seeker    → 200 req/24h ≈ 6000/мес, no model restriction
+//	Ascended  → unlimited (-1), no model restriction
+//
+// Empty ModelsAllowed для paid tier'ов = "no restriction" (см. Quota.
+// IsModelAllowed). Для free — фиксированный whitelist бесплатных моделей,
+// чтобы случайный запрос на claude-sonnet не пошёл за наш счёт.
+func copilotPlanForTier(tier subDomain.Tier) (enums.SubscriptionPlan, int, []string) {
+	switch tier {
+	case subDomain.TierAscended:
+		return enums.SubscriptionPlanAscendant, -1, nil
+	case subDomain.TierSeeker:
+		return enums.SubscriptionPlanSeeker, 200, nil
+	default:
+		return enums.SubscriptionPlanFree, 20, []string{
+			"druz9/turbo",
+			"groq/llama-3.3-70b-versatile",
+			"groq/llama-3.1-8b-instant",
+			"cerebras/llama3.3-70b",
+			"openai/gpt-oss-120b:free",
+			"qwen/qwen3-coder:free",
 		}
 	}
 }

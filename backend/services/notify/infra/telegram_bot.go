@@ -130,6 +130,33 @@ func (b *TelegramBot) Send(ctx context.Context, userID uuid.UUID, chatIdentity s
 	return b.sendWithRetry(ctx, userID, chatID, msg)
 }
 
+// SendDocument отправляет файл в TG как attachment. Используется для Cue
+// follow-up'ов: meeting markdown получается длинный (5-50KB), и в TG
+// text-message'е он либо обрезается (4096 char limit), либо превращается
+// в монолитную стену. .md attachment'ом юзер видит filename, открывает в
+// Notes.app / Obsidian, может переслать. parseMode игнорируется (Telegram
+// не рендерит markdown в caption'е документа).
+//
+// fileBytes — содержимое; fileName — например `meeting-2026-04-27.md`.
+// caption — короткая надпись над документом (title заметки).
+func (b *TelegramBot) SendDocument(ctx context.Context, userID uuid.UUID, chatIdentity, fileName, caption string, fileBytes []byte) error {
+	if chatIdentity == "" {
+		return domain.ErrNoTarget
+	}
+	chatID, err := parseChatID(chatIdentity)
+	if err != nil {
+		return fmt.Errorf("notify.telegram.SendDocument: bad chat_id: %w", err)
+	}
+	doc := tgbotapi.NewDocument(chatID, tgbotapi.FileBytes{
+		Name:  fileName,
+		Bytes: fileBytes,
+	})
+	if caption != "" {
+		doc.Caption = caption
+	}
+	return b.sendWithRetry(ctx, userID, chatID, doc)
+}
+
 // sendWithRetry respects 429/retry_after. Max retries per bot config.
 func (b *TelegramBot) sendWithRetry(ctx context.Context, userID uuid.UUID, chatID int64, msg tgbotapi.Chattable) error {
 	start := time.Now()

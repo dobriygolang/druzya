@@ -25,8 +25,12 @@ type ChatInput struct {
 	PromptText     string
 	Attachments    []domain.AttachmentInput
 	// Model is optional — empty means "reuse the conversation's model".
-	Model  string
-	Client domain.ClientContext
+	Model string
+	// PersonaSystemPrompt — см. AnalyzeInput.PersonaSystemPrompt. Передаём
+	// per-turn (а не cached в conversation) чтобы юзер мог переключать
+	// persona на лету без создания новой conversation.
+	PersonaSystemPrompt string
+	Client              domain.ClientContext
 }
 
 // Do dispatches into Analyze.
@@ -46,11 +50,12 @@ func (uc *Chat) Do(ctx context.Context, in ChatInput) (<-chan StreamFrame, error
 		model = conv.Model
 	}
 	return uc.Inner.Do(ctx, AnalyzeInput{
-		UserID:         in.UserID,
-		ConversationID: in.ConversationID,
-		PromptText:     in.PromptText,
-		Model:          model,
-		Attachments:    in.Attachments,
-		Client:         in.Client,
+		UserID:              in.UserID,
+		ConversationID:      in.ConversationID,
+		PromptText:          in.PromptText,
+		Model:               model,
+		Attachments:         in.Attachments,
+		PersonaSystemPrompt: in.PersonaSystemPrompt,
+		Client:              in.Client,
 	})
 }

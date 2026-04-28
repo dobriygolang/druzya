@@ -39,7 +39,11 @@ import (
 const transcribeLimitPerMin = 60
 
 type Handler struct {
-	Transcribe *app.Transcribe
+	// Tiered routes per-call: tier resolution → model selection → quota
+	// check → inner Transcribe. Wrap'ит legacy Transcribe и nil-safe:
+	// если subscription wiring не loaded в monolith, decorator pass'ит
+	// через permissive (default model, no quota check).
+	Tiered *app.TieredTranscribe
 	// Limiter guards the Groq-per-user call rate. nil → no limit
 	// (dev without Redis).
 	Limiter *ratelimit.RedisFixedWindow
@@ -120,7 +124,7 @@ func (h *Handler) handleTranscribe(w http.ResponseWriter, r *http.Request) {
 	language := r.FormValue("language")
 	prompt := r.FormValue("prompt")
 
-	res, err := h.Transcribe.Do(r.Context(), domain.TranscribeInput{
+	res, err := h.Tiered.Do(r.Context(), uid, domain.TranscribeInput{
 		Audio:    audio,
 		Filename: fileHeader.Filename,
 		MIME:     mime,

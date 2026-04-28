@@ -15,6 +15,21 @@ export interface RuntimeConfig {
   defaultLocale: 'ru' | 'en';
   /** true when running via `electron-vite dev`. */
   isDev: boolean;
+  /**
+   * Audio source для voice transcription:
+   *   'mic'    → AVAudioEngine + микрофон (default; нужен только
+   *              Microphone TCC; ловит ровно голос юзера)
+   *   'system' → ScreenCaptureKit + системный звук (нужен Screen
+   *              Recording + Microphone TCC; ловит партнёра в Zoom/
+   *              Teams + всё что играет в колонках)
+   * Юзер переключает в Settings → Voice; persist'ится в keychain'е
+   * через user-prefs IPC (см. handlers.ts:ui.getVoiceSource).
+   *
+   * Optional чтобы не ломать пять call-sites'ов в handlers.ts которые
+   * собирают inline RuntimeConfig для test/legacy кода. audio-mac.ts
+   * fallback'ает на 'mic' через `?? 'mic'`.
+   */
+  voiceSource?: 'mic' | 'system';
 }
 
 export function loadRuntimeConfig(): RuntimeConfig {
@@ -42,5 +57,10 @@ export function loadRuntimeConfig(): RuntimeConfig {
     defaultLocale:
       (process.env.DRUZ9_DEFAULT_LOCALE === 'en' ? 'en' : 'ru') as 'ru' | 'en',
     isDev,
+    // Default to 'mic' — most users want «говорю с AI» flow без
+    // Screen Recording promptа. Override через DRUZ9_VOICE_SOURCE env
+    // (для разработки) или Settings UI (runtime).
+    voiceSource:
+      (process.env.DRUZ9_VOICE_SOURCE === 'system' ? 'system' : 'mic') as 'mic' | 'system',
   };
 }

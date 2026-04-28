@@ -24,5 +24,6 @@ type MemoryHook interface {
 	OnPlanSkipped(ctx context.Context, userID uuid.UUID, title, skillKey string, occurredAt time.Time)
 	OnPlanCompleted(ctx context.Context, userID uuid.UUID, title, skillKey string, occurredAt time.Time)
 	OnNoteCreated(ctx context.Context, userID, noteID uuid.UUID, title, body200 string, occurredAt time.Time)
+	OnDailyNoteSaved(ctx context.Context, userID, noteID uuid.UUID, title, body600 string, occurredAt time.Time)
 	OnFocusSessionDone(ctx context.Context, userID uuid.UUID, pinnedTitle string, secondsFocused int, planItemID string, completedPomodoros int, occurredAt time.Time)
 }

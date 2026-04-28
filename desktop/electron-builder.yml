@@ -37,13 +37,17 @@ mac:
   gatekeeperAssess: false
   entitlements: resources/entitlements.mac.plist
   entitlementsInherit: resources/entitlements.mac.plist
-  # druz9:// URL scheme is no longer used for auth (telegram flow is
-  # pull-based). Left registered so future non-auth deep-links (share
-  # URLs, settings link, etc.) can land here without a rebuild.
+  # URL scheme: druz9-cue:// (НЕ druz9:// — этот занят Hone-приложением,
+  # которое регистрируется при ./hone npm run dev / build. Если оба claim
+  # одну схему, macOS отдаёт deeplink одному из них в зависимости от
+  # порядка регистрации, что ломает cross-app flows вроде
+  # druz9://notes/import?path=... → Hone — Cue перехватывал и no-op'ил).
+  # Cue теперь использует druz9-cue:// для своих собственных deeplink'ов
+  # (open session by file path), Hone — druz9:// для своих.
   extendInfo:
     CFBundleURLTypes:
       - CFBundleURLName: Cue
-        CFBundleURLSchemes: [druz9]
+        CFBundleURLSchemes: [druz9-cue]
     NSScreenCaptureUsageDescription: >-
       Cue captures the area you select so the AI can answer
       questions about what's on your screen.

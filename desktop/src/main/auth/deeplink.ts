@@ -17,7 +17,12 @@ import type { BrowserWindow } from 'electron';
 
 import { eventChannels } from '@shared/ipc';
 
-const PROTOCOL = 'druz9';
+// PROTOCOL = 'druz9-cue' (НЕ 'druz9'). 'druz9://' принадлежит Hone;
+// Cue использует свою схему для open-by-file-path deeplink'ов чтобы
+// macOS не путалось при route'е cross-app deeplink'ов вроде
+// druz9://notes/import → Hone (раньше Cue перехватывал и сам же
+// no-op'ил, см. electron-builder.yml).
+const PROTOCOL = 'druz9-cue';
 const CUE_OPEN_CHANNEL = eventChannels.cueOpenSession;
 
 let cachedTargetWindow: BrowserWindow | null = null;
@@ -102,16 +107,17 @@ function dispatch(url: string): void {
 }
 
 /**
- * Parse `druz9://cue/open?file=<encoded-abs-path>`.
+ * Parse `druz9-cue://open?file=<encoded-abs-path>`.
  * Anything else returns null — caller should fall through silently.
  */
 function parseCueOpenURL(raw: string): CueDeepLinkPayload | null {
   try {
     const u = new URL(raw);
     if (u.protocol !== `${PROTOCOL}:`) return null;
-    // Electron returns host=cue, pathname=/open для druz9://cue/open
-    if (u.host !== 'cue') return null;
-    if (!u.pathname.startsWith('/open')) return null;
+    // Для druz9-cue://open?file=... URL парсится как host="open", path="".
+    // (До разделения схем было host="cue", path="/open" в "druz9://cue/open" —
+    // см. git blame, оставлено в комменте для traceability.)
+    if (u.host !== 'open') return null;
     const file = u.searchParams.get('file');
     if (!file) return null;
     return { filePath: file };

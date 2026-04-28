@@ -3,6 +3,7 @@ package infra
 import (
 	"strings"
 	"testing"
+	"time"
 
 	"druz9/hone/domain"
 )
@@ -97,6 +98,25 @@ func TestParsePlanJSON_DropsDegenerateRows(t *testing.T) {
 	}
 }
 
+func TestParsePlanJSON_DropsGenericAndDuplicateRows(t *testing.T) {
+	t.Parallel()
+	raw := `{"items":[
+	  {"id":"a","kind":"solve","title":"Solve a basic algorithmic problem","subtitle":"s","target_ref":"","deep_link":"","estimated_min":25},
+	  {"id":"b","kind":"solve","title":"Cache invalidation drill","subtitle":"s","target_ref":"","deep_link":"","estimated_min":25},
+	  {"id":"c","kind":"solve","title":"Cache invalidation drill.","subtitle":"s","target_ref":"","deep_link":"","estimated_min":25}
+	]}`
+	got, err := parsePlanJSON(raw)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(got) != 1 {
+		t.Fatalf("got %d items, want 1: %+v", len(got), got)
+	}
+	if got[0].Title != "Cache invalidation drill" {
+		t.Fatalf("title=%q", got[0].Title)
+	}
+}
+
 func TestParsePlanJSON_EmptyArray(t *testing.T) {
 	t.Parallel()
 	// Empty items array — anti-fallback says fail; GeneratePlan will retry,
@@ -112,8 +132,8 @@ func TestParsePlanJSON_OutOfRangeEstimatedMinClamps(t *testing.T) {
 	// preserved (an upper bound is a policy guard, not a transform).
 	raw := `{"items":[
 	  {"id":"z","kind":"solve","title":"t","subtitle":"s","target_ref":"","deep_link":"","estimated_min":0},
-	  {"id":"y","kind":"solve","title":"t","subtitle":"s","target_ref":"","deep_link":"","estimated_min":10000},
-	  {"id":"x","kind":"solve","title":"t","subtitle":"s","target_ref":"","deep_link":"","estimated_min":240}
+	  {"id":"y","kind":"solve","title":"u","subtitle":"s","target_ref":"","deep_link":"","estimated_min":10000},
+	  {"id":"x","kind":"solve","title":"v","subtitle":"s","target_ref":"","deep_link":"","estimated_min":240}
 	]}`
 	got, err := parsePlanJSON(raw)
 	if err != nil {
@@ -129,6 +149,28 @@ func TestParsePlanJSON_Garbage(t *testing.T) {
 	for _, raw := range []string{"", "{", "not json at all", `{"items":"wrong-type"}`} {
 		if _, err := parsePlanJSON(raw); err == nil {
 			t.Errorf("expected error for %q", raw)
+		}
+	}
+}
+
+func TestBuildPlanUserPromptIncludesTodayContext(t *testing.T) {
+	t.Parallel()
+	got := buildPlanUserPrompt(nil, nil, domain.TodayContext{
+		Intent:      "focus on Redis cache invalidation",
+		Blockers:    []string{"stuck explaining tradeoffs"},
+		ActionHints: []string{"write 3 concrete examples"},
+		Topics:      []string{"cache-design", "interview"},
+		Excerpt:     "Intent: focus on Redis cache invalidation. Blocker: stuck explaining tradeoffs.",
+	}, time.Date(2026, 4, 28, 0, 0, 0, 0, time.UTC))
+	for _, want := range []string{
+		"Today's note context",
+		"focus on Redis cache invalidation",
+		"stuck explaining tradeoffs",
+		"write 3 concrete examples",
+		"cache-design, interview",
+	} {
+		if !strings.Contains(got, want) {
+			t.Fatalf("prompt missing %q:\n%s", want, got)
 		}
 	}
 }

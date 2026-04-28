@@ -18,6 +18,17 @@ type SetTier struct {
 	Repo  domain.Repo
 	Clock domain.Clock
 	Log   *slog.Logger
+	// OnTierChanged — optional hook вызываемый ПОСЛЕ успешного Upsert'а.
+	// Используется для side-effect'ов в других bounded context'ах,
+	// которые держат tier в производных таблицах. Конкретно: copilot_quotas
+	// хранит plan + cap per-user и сейчас не sync'ится с subscriptions.plan
+	// автоматически — без этого hook'а юзер апгрейдится но видит старые
+	// лимиты пока вручную не дёрнется CopilotQuota.UpdatePlan.
+	//
+	// Hook fire'ится best-effort: если он вернёт error, мы залогируем но
+	// SetTier не пропадает (subscription уже committed). Side-effects
+	// retry'ются отдельным cron'ом / следующим SetTier вызовом.
+	OnTierChanged func(ctx context.Context, userID uuid.UUID, tier domain.Tier) error
 }
 
 // NewSetTier — конструктор. Log обязателен (anti-fallback policy).
@@ -80,6 +91,18 @@ func (uc *SetTier) Do(ctx context.Context, in SetTierInput) error {
 		slog.String("tier", string(in.Tier)),
 		slog.String("provider", string(in.Provider)),
 		slog.String("reason", in.Reason))
+
+	// Fire side-effect hook (e.g. copilot_quotas.UpdatePlan). Best-effort:
+	// failure здесь логируется но не прерывает SetTier — subscription уже
+	// committed, side-effect ретрайнется в следующий вызов / cron.
+	if uc.OnTierChanged != nil {
+		if err := uc.OnTierChanged(ctx, in.UserID, in.Tier); err != nil {
+			uc.Log.WarnContext(ctx, "subscription.set_tier: on_tier_changed hook failed",
+				slog.String("user_id", in.UserID.String()),
+				slog.String("tier", string(in.Tier)),
+				slog.Any("err", err))
+		}
+	}
 	return nil
 }
 

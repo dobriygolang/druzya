@@ -58,18 +58,48 @@ export type YjsKind = 'notes' | 'whiteboards';
  * килобайта, в 1 MiB упрёмся только если pasting огромного текста — и
  * это нормально fail с 413, юзер увидит "Failed to save".
  */
+// yjsBackoffUntilMs — global cooldown после 503/429 на любом yjs-endpoint'е.
+// Без cooldown'а CodeMirror→Yjs→append на каждый keystroke превращается
+// в storm 503'ов когда backend временно недоступен (deploy, upstream
+// killswitch). Yjs не теряет updates (они в local Y.Doc), и pending
+// state долетит когда backend оживёт.
+let yjsBackoffUntilMs = 0;
+const YJS_BACKOFF_MS_503 = 30_000; // 30s — деплой backend'а обычно ≤30s
+const YJS_BACKOFF_MS_429 = 60_000; // 60s — rate-limit cooldown
+
+function applyBackoffFromStatus(status: number): void {
+  const now = Date.now();
+  if (status === 503 || status === 502 || status === 504) {
+    yjsBackoffUntilMs = Math.max(yjsBackoffUntilMs, now + YJS_BACKOFF_MS_503);
+  } else if (status === 429) {
+    yjsBackoffUntilMs = Math.max(yjsBackoffUntilMs, now + YJS_BACKOFF_MS_429);
+  }
+}
+
 export async function appendUpdate(kind: YjsKind, parentId: string, update: Uint8Array): Promise<{ seq: number; createdAt: string }> {
+  if (Date.now() < yjsBackoffUntilMs) {
+    throw new Error('yjs append: backoff (server unavailable)');
+  }
   const resp = await fetch(`${API_BASE_URL}/api/v1/sync/yjs/${kind}/${parentId}/append`, {
     method: 'POST',
     headers: authHeaders({ 'content-type': 'application/octet-stream' }),
     body: toBodyArrayBuffer(update),
   });
-  if (!resp.ok) throw new Error(`yjs append: ${resp.status}`);
+  if (!resp.ok) {
+    applyBackoffFromStatus(resp.status);
+    throw new Error(`yjs append: ${resp.status}`);
+  }
   return (await resp.json()) as { seq: number; createdAt: string };
 }
 
 /** Read all updates with seq > since. Auto-pages if truncated. */
 export async function fetchUpdates(kind: YjsKind, parentId: string, since = 0): Promise<{ updates: YjsUpdate[]; latestSeq: number }> {
+  if (Date.now() < yjsBackoffUntilMs) {
+    // Backoff active — возвращаем «нет обновлений», polling продолжит
+    // тикать через свой интервал, но без сетевого hop'а пока cooldown
+    // не истечёт.
+    return { updates: [], latestSeq: since };
+  }
   const all: YjsUpdate[] = [];
   let cursor = since;
   let latest = since;
@@ -77,7 +107,10 @@ export async function fetchUpdates(kind: YjsKind, parentId: string, since = 0): 
   for (let page = 0; page < 50; page++) {
     const url = `${API_BASE_URL}/api/v1/sync/yjs/${kind}/${parentId}/updates?since=${cursor}`;
     const resp = await fetch(url, { headers: authHeaders() });
-    if (!resp.ok) throw new Error(`yjs updates: ${resp.status}`);
+    if (!resp.ok) {
+      applyBackoffFromStatus(resp.status);
+      throw new Error(`yjs updates: ${resp.status}`);
+    }
     const j = (await resp.json()) as UpdatesResponse;
     for (const u of j.updates) {
       all.push({
@@ -102,12 +135,21 @@ export async function fetchUpdates(kind: YjsKind, parentId: string, since = 0): 
  * за сессию). Не на каждый keystroke — это полный snapshot, тяжёлый.
  */
 export async function compact(kind: YjsKind, parentId: string, fullState: Uint8Array): Promise<{ seq: number; removed: number }> {
+  if (Date.now() < yjsBackoffUntilMs) {
+    throw new Error('yjs compact: backoff (server unavailable)');
+  }
   const resp = await fetch(`${API_BASE_URL}/api/v1/sync/yjs/${kind}/${parentId}/compact`, {
     method: 'POST',
     headers: authHeaders({ 'content-type': 'application/octet-stream' }),
     body: toBodyArrayBuffer(fullState),
   });
-  if (!resp.ok) throw new Error(`yjs compact: ${resp.status}`);
+  if (!resp.ok) {
+    applyBackoffFromStatus(resp.status);
+    // 404 может означать что compact-route не зарегистрирован на backend'е
+    // (deploy mismatch). Скрытое consequence: лог растёт, но appendUpdate
+    // продолжает работать. Best-effort — не блокируем edit.
+    throw new Error(`yjs compact: ${resp.status}`);
+  }
   return (await resp.json()) as { seq: number; removed: number };
 }
 

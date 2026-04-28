@@ -146,8 +146,15 @@ func (g *GroqProvider) buildMultipart(in domain.TranscribeInput) (io.Reader, str
 		return nil, "", fmt.Errorf("multipart write audio: %w", err)
 	}
 
-	// Required form fields.
-	if err := mw.WriteField("model", g.Model); err != nil {
+	// Required form fields. in.Model overrides g.Model — позволяет
+	// caller'у (tier-aware decorator) выбрать конкретную модель per-call:
+	// free → whisper-large-v3-turbo (быстро, чуть менее точно), paid →
+	// whisper-large-v3 (точнее, медленнее).
+	model := in.Model
+	if model == "" {
+		model = g.Model
+	}
+	if err := mw.WriteField("model", model); err != nil {
 		return nil, "", fmt.Errorf("multipart write model: %w", err)
 	}
 	if err := mw.WriteField("response_format", "verbose_json"); err != nil {

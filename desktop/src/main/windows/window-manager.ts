@@ -223,14 +223,31 @@ function createManagedWindow(
   // default in buildWindow prevents the flash of un-styled background
   // that would otherwise be visible (transparent + frameless). Without
   // calling show() explicitly here, the window stays invisible forever.
+  //
+  // restoreInteractivity — каждый раз перед show() форсим mouse-events
+  // в working state. Защита от случая «preloadWindow → hideWindow поставил
+  // ignoreMouseEvents=true → ready-to-show вызывает show() напрямую,
+  // минуя showWindow()» — без этого окно показывается, но клики не ловит.
+  const restoreInteractivity = () => {
+    try {
+      win.setIgnoreMouseEvents(false);
+      win.setOpacity(1);
+    } catch { /* setIgnoreMouseEvents/setOpacity no-op on некоторых platforms */ }
+  };
   win.once('ready-to-show', () => {
-    if (!win.isDestroyed() && showOnReady) win.show();
+    if (!win.isDestroyed() && showOnReady) {
+      restoreInteractivity();
+      win.show();
+    }
   });
   // Safety net: if ready-to-show doesn't fire within 2s (happens on
   // renderer bundle errors), force-show the window so the user at
   // least sees the system frame / can open devtools.
   setTimeout(() => {
-    if (!win.isDestroyed() && showOnReady && !win.isVisible()) win.show();
+    if (!win.isDestroyed() && showOnReady && !win.isVisible()) {
+      restoreInteractivity();
+      win.show();
+    }
   }, 2000);
 
   return win;

@@ -338,6 +338,10 @@ func writeSignalDigest(sb *strings.Builder, in domain.BriefPromptInput) {
 			in.Queue.Done, in.Queue.Total, in.Queue.InProgress, in.Queue.Todo)
 		wrote = true
 	}
+	if len(in.DailyNotes) > 0 {
+		fmt.Fprintf(sb, "  P1 today_intent: %q\n", firstN(in.DailyNotes[0].Excerpt, 140))
+		wrote = true
+	}
 	if len(in.SkippedRecent) > 0 {
 		s := in.SkippedRecent[0]
 		fmt.Fprintf(sb, "  P2 avoidance: skipped item=%q skill=%s date=%s\n",
@@ -448,6 +452,8 @@ func normalizeTopic(raw string) string {
 func coachMemoryPolicy(past []domain.Episode) string {
 	var emitted, dismissed, followed []string
 	for _, ep := range past {
+		// All enum values handled explicitly via the multi-case branch
+		// below — exhaustive linter is satisfied without a directive.
 		switch ep.Kind {
 		case domain.EpisodeBriefEmitted:
 			emitted = append(emitted, extractEmittedRecommendationTitles(ep.Payload)...)

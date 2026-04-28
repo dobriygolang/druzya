@@ -226,7 +226,7 @@ type CritiqueStreamer interface {
 // задачи на меньшие или генерировать reflection-prompt'ы. nil/empty —
 // обычный plan без поправок.
 type PlanSynthesizer interface {
-	Synthesise(ctx context.Context, userID uuid.UUID, weakNodes []WeakNode, chronic []ChronicSkill, date time.Time) ([]PlanItem, error)
+	Synthesise(ctx context.Context, userID uuid.UUID, weakNodes []WeakNode, chronic []ChronicSkill, today TodayContext, date time.Time) ([]PlanItem, error)
 }
 
 // ─── Focus Queue ──────────────────────────────────────────────────────────

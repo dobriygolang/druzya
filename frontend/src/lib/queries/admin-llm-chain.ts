@@ -17,6 +17,12 @@ export type LLMChainConfig = {
   chain_order: string[]
   task_map: Record<string, Record<string, string>>
   virtual_chains: Record<string, VirtualCandidate[]>
+  // Hardcoded дефолты из tier.go. Read-only — раскрывается бекендом
+  // только в GET, в PUT игнорируется. UI показывает их как baseline
+  // когда override (`virtual_chains[id]`) пуст: юзер видит реальную
+  // цепочку, а не сообщение «Override отсутствует», и может скопировать
+  // её в override для редактирования.
+  virtual_chains_defaults?: Record<string, VirtualCandidate[]>
   // Снимок провайдеров с настроенным API-ключом в env. Шлётся бекендом в
   // GET-response, используется live-preview'ом чтобы пометить звенья,
   // которые реально недостижимы (ключ не настроен).

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"sort"
 	"strings"
+	"time"
 
 	"druz9/intelligence/domain"
 )
@@ -193,10 +194,17 @@ func repeatedSkippedPlanItem(items []domain.SkippedPlanItem) (domain.SkippedPlan
 }
 
 func noteForCurrentTopics(in domain.BriefPromptInput) (domain.NoteHead, string) {
+	freshSince := in.Today.Add(-48 * time.Hour)
 	topics := currentTopics(in, 8)
 	for _, topic := range topics {
 		needle := strings.ReplaceAll(topic, "-", " ")
 		for _, note := range in.RecentNotes {
+			if note.UpdatedAt.Before(freshSince) {
+				continue
+			}
+			if isStaleStandupNote(note, in.Today) {
+				continue
+			}
 			text := normalizeTopicText(note.Title + " " + note.Excerpt)
 			if strings.Contains(text, needle) {
 				return note, topic
@@ -204,6 +212,11 @@ func noteForCurrentTopics(in domain.BriefPromptInput) (domain.NoteHead, string) 
 		}
 	}
 	return domain.NoteHead{}, ""
+}
+
+func isStaleStandupNote(note domain.NoteHead, today time.Time) bool {
+	title := strings.ToLower(strings.TrimSpace(note.Title))
+	return strings.HasPrefix(title, "standup ") && note.UpdatedAt.Before(today)
 }
 
 func codexArticleForCurrentTopics(in domain.BriefPromptInput) (domain.CodexArticleSuggestion, string) {

@@ -67,6 +67,17 @@ type Plan struct {
 	UpdatedAt     time.Time
 }
 
+// TodayContext is a compact projection of the user's free-form Today note.
+// It lets GenerateDailyPlan react to what the user wrote today without
+// replaying a raw journal dump into the prompt.
+type TodayContext struct {
+	Excerpt     string
+	Intent      string
+	Blockers    []string
+	Topics      []string
+	ActionHints []string
+}
+
 // ─── Focus ─────────────────────────────────────────────────────────────────
 
 // FocusMode is "pomodoro" | "stopwatch".

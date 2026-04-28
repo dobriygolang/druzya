@@ -139,16 +139,8 @@ export const usePersonaStore = create<State>((set, get) => ({
   },
 }));
 
-/**
- * applyPersonaPrefix — prepends the persona's system-prompt block to
- * the raw user text. Empty prefix ⇒ returns text as-is (default
- * persona path). Same contract as before the server-catalogue
- * refactor — callers at CompactScreen.submitText / capture don't care
- * where the prefix string originated.
- */
-export function applyPersonaPrefix(prefix: string, text: string): string {
-  const t = text.trim();
-  const p = prefix.trim();
-  if (!p) return t;
-  return `${p}\n\n${t}`;
-}
+// applyPersonaPrefix удалён: persona-prompt теперь передаётся как
+// отдельное поле AnalyzeInput.personaSystemPrompt и backend кладёт его
+// в LLM call как separate system message. Раньше функция prepend'ила
+// prompt к user text → загрязняла conversation history → LLM эхала
+// persona-pattern в каждом ответе.

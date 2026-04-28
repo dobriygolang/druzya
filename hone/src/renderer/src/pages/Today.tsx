@@ -41,6 +41,7 @@ import {
   updateNote,
   type NoteSummary,
 } from '../api/hone';
+import { invalidateDailyBriefCache } from '../api/intelligence';
 
 export interface StartFocusArgs {
   planItemId?: string;
@@ -79,11 +80,6 @@ function dailyNoteTitle(d: Date): string {
   const day = String(d.getDate()).padStart(2, '0');
   return `Daily ${y}-${m}-${day}`;
 }
-
-// Префикс для fallback'а: если текущая локальная дата не совпала с title'ом
-// (timezone edge-case у границы суток), мы возьмём LATEST note начинающуюся
-// с "Daily " — это всегда «вчерашний/сегодняшний daily note».
-const DAILY_PREFIX = 'Daily ';
 
 export function TodayPage({ onStartFocus, highlightedItemId, onConsumeHighlight }: TodayPageProps) {
   useEffect(() => {
@@ -143,23 +139,8 @@ export function TodayPage({ onStartFocus, highlightedItemId, onConsumeHighlight 
     void listNotes({ limit: 50 })
       .then((res) => {
         if (cancelled) return;
-        // Resilient lookup: сначала точный match по local-date title,
-        // если нет — берём LATEST note по updatedAt с префиксом "Daily ".
-        // Это защищает от timezone edge-case'ов и от ситуации когда юзер
-        // начал писать в 23:50, заметка создалась с YYYY-MM-DD A, потом
-        // открыл утром в 00:10 — local-date уже B, точный match не найдёт.
-        let target: NoteSummary | undefined =
+        const target: NoteSummary | undefined =
           res.notes.find((n: NoteSummary) => n.title === dailyTitleRef.current);
-        if (!target) {
-          const dailyCandidates = res.notes
-            .filter((n: NoteSummary) => n.title.startsWith(DAILY_PREFIX))
-            .sort((a, b) => {
-              const at = a.updatedAt?.getTime() ?? 0;
-              const bt = b.updatedAt?.getTime() ?? 0;
-              return bt - at;
-            });
-          target = dailyCandidates[0];
-        }
         if (target) {
           setDailyNoteId(target.id);
           void import('../api/hone').then(({ getNote }) =>
@@ -196,6 +177,7 @@ export function TodayPage({ onStartFocus, highlightedItemId, onConsumeHighlight 
         } else {
           await updateNote(dailyNoteId, title, nextBody);
         }
+        invalidateDailyBriefCache();
       } catch {
         /* silent — autosave best-effort. Юзер увидит content в UI; на
            следующем keystroke попробуем снова. */
@@ -826,6 +808,8 @@ function errorHeadline(code: Code | null): string {
       return 'Service is offline. The LLM chain is unreachable.';
     case Code.PermissionDenied:
       return 'This action requires a Pro subscription.';
+    case Code.InvalidArgument:
+      return 'Coach needs concrete skill signals before it can generate a useful plan. Add a task manually or finish a focus/mock session first.';
     default:
       return 'Could not load today’s tasks.';
   }

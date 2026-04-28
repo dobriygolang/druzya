@@ -161,6 +161,42 @@ func TestGetDailyBriefClearsBriefIDWhenMemoryAppendFails(t *testing.T) {
 	}
 }
 
+func TestCacheFreshEnoughInvalidatesAfterNewUserSignal(t *testing.T) {
+	now := time.Date(2026, 4, 28, 9, 0, 0, 0, time.UTC)
+	generatedAt := now.Add(-time.Hour)
+	episodes := &fakeEpisodeRepo{
+		latestByKinds: []domain.Episode{{
+			Kind:       domain.EpisodeNoteCreated,
+			OccurredAt: generatedAt.Add(time.Minute),
+		}},
+	}
+	uc := testDailyBriefUseCase(now, &fakeDailyBriefRepo{}, episodes)
+
+	got, err := uc.cacheFreshEnough(context.Background(), uuid.New(), generatedAt, now)
+	if err != nil {
+		t.Fatalf("cacheFreshEnough: %v", err)
+	}
+	if got {
+		t.Fatal("cacheFreshEnough=true, want false after a newer memory signal")
+	}
+}
+
+func TestFreshRecentNotesDropsStaleStandupEvidence(t *testing.T) {
+	today := time.Date(2026, 4, 28, 0, 0, 0, 0, time.UTC)
+	notes := []domain.NoteHead{
+		{Title: "Standup 2026-04-25", UpdatedAt: today.Add(-72 * time.Hour)},
+		{Title: "Redis cache drill", UpdatedAt: today.Add(-time.Hour)},
+	}
+
+	got := freshRecentNotesForBrief(notes, today)
+	if len(got) != 1 {
+		t.Fatalf("len=%d, want 1: %#v", len(got), got)
+	}
+	if got[0].Title != "Redis cache drill" {
+		t.Fatalf("note=%q, want fresh non-standup note", got[0].Title)
+	}
+}
+
 func TestAckRecommendationScopesBriefLookupToUser(t *testing.T) {
 	now := time.Date(2026, 4, 27, 9, 0, 0, 0, time.UTC)
 	userID := uuid.New()
@@ -303,11 +339,12 @@ func (fakeBriefSynthesizer) Synthesise(context.Context, domain.BriefPromptInput)
 }
 
 type fakeEpisodeRepo struct {
-	appendErr  error
-	appended   []domain.Episode
-	getUserID  uuid.UUID
-	getBriefID uuid.UUID
-	getRecs    []domain.Recommendation
+	appendErr     error
+	appended      []domain.Episode
+	getUserID     uuid.UUID
+	getBriefID    uuid.UUID
+	getRecs       []domain.Recommendation
+	latestByKinds []domain.Episode
 }
 
 func (r *fakeEpisodeRepo) Append(_ context.Context, e domain.Episode) error {
@@ -320,7 +357,7 @@ func (r *fakeEpisodeRepo) LatestByKind(context.Context, uuid.UUID, domain.Episod
 }
 
 func (r *fakeEpisodeRepo) LatestByKinds(context.Context, uuid.UUID, []domain.EpisodeKind, int) ([]domain.Episode, error) {
-	return nil, nil
+	return r.latestByKinds, nil
 }
 
 func (r *fakeEpisodeRepo) LatestPerKind(context.Context, uuid.UUID, []domain.EpisodeKind, int) ([]domain.Episode, error) {

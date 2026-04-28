@@ -759,16 +759,16 @@ func (m *MockPlanSynthesizer) EXPECT() *MockPlanSynthesizerMockRecorder {
 }
 
 // Synthesise mocks base method.
-func (m *MockPlanSynthesizer) Synthesise(ctx context.Context, userID uuid.UUID, weakNodes []domain.WeakNode, chronic []domain.ChronicSkill, date time.Time) ([]domain.PlanItem, error) {
+func (m *MockPlanSynthesizer) Synthesise(ctx context.Context, userID uuid.UUID, weakNodes []domain.WeakNode, chronic []domain.ChronicSkill, today domain.TodayContext, date time.Time) ([]domain.PlanItem, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Synthesise", ctx, userID, weakNodes, chronic, date)
+	ret := m.ctrl.Call(m, "Synthesise", ctx, userID, weakNodes, chronic, today, date)
 	ret0, _ := ret[0].([]domain.PlanItem)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // Synthesise indicates an expected call of Synthesise.
-func (mr *MockPlanSynthesizerMockRecorder) Synthesise(ctx, userID, weakNodes, chronic, date any) *gomock.Call {
+func (mr *MockPlanSynthesizerMockRecorder) Synthesise(ctx, userID, weakNodes, chronic, today, date any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Synthesise", reflect.TypeOf((*MockPlanSynthesizer)(nil).Synthesise), ctx, userID, weakNodes, chronic, date)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Synthesise", reflect.TypeOf((*MockPlanSynthesizer)(nil).Synthesise), ctx, userID, weakNodes, chronic, today, date)
 }

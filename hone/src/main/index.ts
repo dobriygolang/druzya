@@ -68,9 +68,27 @@ if (sentryDSN) {
 }
 
 // druz9:// scheme registration.
+//
+// Production (.app): app.setAsDefaultProtocolClient('druz9') — Electron
+// сам резолвит через bundle Info.plist + LSHandlers. Tests: dmg-installed
+// .app получает druz9-deeplink'и из любого app-launcher'а.
+//
+// Dev (`npm run dev` или electron-vite dev): по умолчанию `process.argv[1]`
+// = relative `.` или путь к main-script'у. Если зарегистрировать с
+// relative path'ом, macOS LSHandlers сохранит его как-есть; при
+// cold-start через deeplink из ДРУГОГО приложения CWD будет другая,
+// `.` укажет в node_modules/electron/dist — Electron запустится без
+// app path и покажет default splash «To run a local app, execute…».
+// Решение: конвертить argv[1] в абсолютный путь до registration'а.
 if (process.defaultApp) {
   if (process.argv.length >= 2) {
-    app.setAsDefaultProtocolClient('druz9', process.execPath, [process.argv[1]!]);
+    // Resolve относительный path к main-script'у в абсолютный относительно
+    // текущего CWD (= project root при npm run dev). После этого LSHandlers
+    // сохранит «электрон-binary <abs-script-path>», и cold-start из
+    // любой CWD работает корректно.
+    const path = require('node:path') as typeof import('node:path');
+    const absScript = path.resolve(process.argv[1]!);
+    app.setAsDefaultProtocolClient('druz9', process.execPath, [absScript]);
   }
 } else {
   app.setAsDefaultProtocolClient('druz9');

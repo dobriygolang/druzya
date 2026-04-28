@@ -11,9 +11,12 @@ import { IconClose, IconHistory } from '../../components/icons';
 import { BrandMark } from '../../components/d9';
 import { IconButton, Kbd } from '../../components/primitives';
 import {
+  clearLocalHistory,
   deleteLocalConversation,
   getLocalConversation,
   listLocalHistory,
+  renameLocalConversation,
+  searchLocalHistory,
 } from '../../lib/local-history';
 import { useConversationStore } from '../../stores/conversation';
 
@@ -23,24 +26,78 @@ export function HistoryScreen() {
   const [hasMore, setHasMore] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [query, setQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<Conversation[] | null>(null);
 
   useEffect(() => {
     void loadPage('', setItems, setCursor, setHasMore, setLoading, setError, true);
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') void window.druz9.windows.hide('history');
+      if (e.key === 'Escape') {
+        // Если активен поиск — Esc сначала чистит query, потом закрывает.
+        if (query) {
+          setQuery('');
+          setSearchResults(null);
+          return;
+        }
+        void window.druz9.windows.hide('history');
+      }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, []);
+  }, [query]);
+
+  // Debounced search. При query='' — показываем paginated list; иначе
+  // полный поиск через searchLocalHistory (cap=100 conversations →
+  // мгновенно даже без debounce, но 150ms сглаживает type-flicker).
+  useEffect(() => {
+    if (!query.trim()) {
+      setSearchResults(null);
+      return;
+    }
+    const handle = window.setTimeout(() => {
+      setSearchResults(searchLocalHistory(query, 50));
+    }, 150);
+    return () => window.clearTimeout(handle);
+  }, [query]);
+
+  const visibleItems = searchResults ?? items;
+  const renameRow = (id: string, newTitle: string) => {
+    if (!renameLocalConversation(id, newTitle)) return;
+    // Обновим обе модели чтобы UI sync'ился без полного reload'а.
+    setItems((prev) =>
+      prev.map((c) => (c.id === id ? { ...c, title: newTitle.trim() || c.title } : c)),
+    );
+    if (searchResults) {
+      setSearchResults((prev) =>
+        prev?.map((c) => (c.id === id ? { ...c, title: newTitle.trim() || c.title } : c)) ?? null,
+      );
+    }
+  };
 
   const open = async (id: string) => {
     try {
       const detail = getLocalConversation(id);
       if (!detail) throw new Error('Диалог не найден в локальной истории');
+      // КРИТИЧНО: history и expanded — РАЗНЫЕ BrowserWindow'ы, каждый
+      // имеет свой renderer process и свой instance zustand store'а.
+      // Hydrate'нуть store внутри history-процесса бесполезно: expanded
+      // загружается с пустым store'ом и видит 0 messages.
+      //
+      // Handoff через localStorage (shared между BrowserWindow'ами в
+      // одном Electron app): пишем conversationId как «pending open»
+      // marker. ExpandedScreen на mount'е читает marker, делает свой
+      // hydrate из getLocalConversation, и стирает marker.
+      window.localStorage.setItem('cue.pendingOpenConversation', id);
+      // Hydrate'им и тут — на случай если history-window остался открыт
+      // и юзер вернётся: store consistent.
       useConversationStore
         .getState()
         .hydrate(detail.conversation.id, detail.conversation.model, detail.messages);
       await window.druz9.windows.show('expanded');
+      // Auto-close compact (welcome) когда юзер открыл конкретный чат —
+      // welcome-state больше не нужен пока юзер в чате. Compact можно
+      // вернуть через ⌘\ хоткей.
+      await window.druz9.windows.hide('compact');
       await window.druz9.windows.hide('history');
     } catch (err) {
       setError((err as Error).message);
@@ -101,6 +158,29 @@ export function HistoryScreen() {
         >
           {items.length} {pluralize(items.length, 'диалог', 'диалога', 'диалогов')}
         </div>
+        <button
+          title="Очистить всю локальную историю — используется когда content испорчен (видны странные символы вместо текста)"
+          onClick={() => {
+            if (!window.confirm('Удалить всю локальную историю чатов? Действие необратимо.')) return;
+            clearLocalHistory();
+            setItems([]);
+            setCursor('');
+            setHasMore(false);
+          }}
+          style={{
+            WebkitAppRegion: 'no-drag',
+            background: 'transparent',
+            border: '1px solid var(--d9-hairline)',
+            color: 'var(--d9-ink-mute)',
+            fontSize: 11,
+            padding: '3px 8px',
+            borderRadius: 6,
+            cursor: 'pointer',
+            fontFamily: 'inherit',
+          } as React.CSSProperties}
+        >
+          Очистить
+        </button>
         <IconButton
           title="Закрыть"
           onClick={() => void window.druz9.windows.hide('history')}
@@ -108,6 +188,32 @@ export function HistoryScreen() {
         >
           <IconClose size={15} />
         </IconButton>
+      </div>
+
+      {/* Search */}
+      <div
+        style={{
+          padding: '8px 12px',
+          borderBottom: '1px solid var(--d9-hairline)',
+        }}
+      >
+        <input
+          type="text"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Поиск по заголовку и содержимому…"
+          style={{
+            width: '100%',
+            padding: '6px 10px',
+            background: 'var(--d9-slate)',
+            border: '1px solid var(--d9-hairline)',
+            borderRadius: 6,
+            color: 'var(--d9-ink)',
+            fontSize: 12,
+            fontFamily: 'inherit',
+            outline: 'none',
+          }}
+        />
       </div>
 
       {/* List */}
@@ -121,12 +227,22 @@ export function HistoryScreen() {
           gap: 6,
         }}
       >
-        {items.length === 0 && !loading && <EmptyState />}
-        {items.map((c) => (
-          <HistoryRow key={c.id} c={c} onOpen={() => void open(c.id)} onDelete={() => void remove(c.id)} />
+        {visibleItems.length === 0 && !loading && (
+          searchResults !== null
+            ? <SearchEmptyState query={query} />
+            : <EmptyState />
+        )}
+        {visibleItems.map((c) => (
+          <HistoryRow
+            key={c.id}
+            c={c}
+            onOpen={() => void open(c.id)}
+            onDelete={() => void remove(c.id)}
+            onRename={(newTitle) => renameRow(c.id, newTitle)}
+          />
         ))}
 
-        {hasMore && (
+        {!searchResults && hasMore && (
           <button
             onClick={() =>
               void loadPage(cursor, setItems, setCursor, setHasMore, setLoading, setError, false)
@@ -213,11 +329,23 @@ function HistoryRow({
   c,
   onOpen,
   onDelete,
+  onRename,
 }: {
   c: Conversation;
   onOpen: () => void;
   onDelete: () => void;
+  onRename: (newTitle: string) => void;
 }) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(c.title || '');
+
+  const commit = () => {
+    setEditing(false);
+    if (draft.trim() !== (c.title || '').trim()) {
+      onRename(draft);
+    }
+  };
+
   return (
     <div
       style={{
@@ -228,10 +356,10 @@ function HistoryRow({
         borderRadius: 8,
         display: 'flex',
         gap: 12,
-        cursor: 'pointer',
+        cursor: editing ? 'text' : 'pointer',
         transition: 'background 120ms, border-color 120ms',
       }}
-      onClick={onOpen}
+      onClick={() => { if (!editing) onOpen(); }}
       onMouseEnter={(e) => {
         e.currentTarget.style.borderColor = 'var(--d9-hairline-b)';
       }}
@@ -249,17 +377,46 @@ function HistoryRow({
         }}
       />
       <div style={{ flex: 1, minWidth: 0 }}>
-        <div
-          style={{
-            fontSize: 13,
-            color: 'var(--d9-ink)',
-            overflow: 'hidden',
-            textOverflow: 'ellipsis',
-            whiteSpace: 'nowrap',
-          }}
-        >
-          {c.title || '(без названия)'}
-        </div>
+        {editing ? (
+          <input
+            autoFocus
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            onBlur={commit}
+            onClick={(e) => e.stopPropagation()}
+            onKeyDown={(e) => {
+              e.stopPropagation();
+              if (e.key === 'Enter') commit();
+              if (e.key === 'Escape') {
+                setDraft(c.title || '');
+                setEditing(false);
+              }
+            }}
+            style={{
+              width: '100%',
+              padding: '2px 4px',
+              background: 'var(--d9-bg)',
+              border: '1px solid var(--d9-accent)',
+              borderRadius: 4,
+              color: 'var(--d9-ink)',
+              fontSize: 13,
+              fontFamily: 'inherit',
+              outline: 'none',
+            }}
+          />
+        ) : (
+          <div
+            style={{
+              fontSize: 13,
+              color: 'var(--d9-ink)',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            {c.title || '(без названия)'}
+          </div>
+        )}
         <div
           style={{
             marginTop: 3,
@@ -278,6 +435,17 @@ function HistoryRow({
         </div>
       </div>
       <IconButton
+        title="Переименовать"
+        onClick={(e) => {
+          e.stopPropagation();
+          setDraft(c.title || '');
+          setEditing(true);
+        }}
+        style={{ alignSelf: 'center' }}
+      >
+        <PencilIcon />
+      </IconButton>
+      <IconButton
         title="Удалить"
         onClick={(e) => {
           e.stopPropagation();
@@ -288,6 +456,30 @@ function HistoryRow({
         <IconClose size={13} />
       </IconButton>
     </div>
+  );
+}
+
+function SearchEmptyState({ query }: { query: string }) {
+  return (
+    <div
+      style={{
+        padding: 30,
+        textAlign: 'center',
+        color: 'var(--d9-ink-mute)',
+        fontSize: 12,
+      }}
+    >
+      Ничего не найдено по «{query}»
+    </div>
+  );
+}
+
+function PencilIcon() {
+  return (
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 20h9" />
+      <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4 12.5-12.5z" />
+    </svg>
   );
 }
 
