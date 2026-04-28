@@ -37,8 +37,18 @@ type RunCode struct {
 	Rooms        domain.RoomRepo
 	Participants domain.ParticipantRepo
 	Runner       domain.CodeRunner
-	Limiter      *UserRateLimiter
+	Limiter      domain.RunCodeRateLimiter
 	Now          func() time.Time
+}
+
+// allowedRunLanguages enumerates exactly the languages the sandbox accepts.
+// Anything outside this set is rejected with ErrLanguageUnsupported BEFORE
+// hitting the rate limiter or Judge0 — keeps the abuse surface small.
+var allowedRunLanguages = map[enums.Language]struct{}{
+	enums.LanguageGo:         {},
+	enums.LanguagePython:     {},
+	enums.LanguageJavaScript: {},
+	enums.LanguageTypeScript: {},
 }
 
 // Do executes the RunCode workflow.
@@ -77,9 +87,18 @@ func (uc *RunCode) Do(ctx context.Context, in RunCodeInput) (domain.RunResult, e
 	if lang == "" {
 		lang = room.Language
 	}
+	if _, ok := allowedRunLanguages[lang]; !ok {
+		return domain.RunResult{}, fmt.Errorf("editor.RunCode: %w: language %q not allowed", domain.ErrLanguageUnsupported, lang)
+	}
 
-	if uc.Limiter != nil && !uc.Limiter.Allow(in.CallerID, uc.nowOrDefault()) {
-		return domain.RunResult{}, fmt.Errorf("editor.RunCode: %w", domain.ErrRateLimited)
+	if uc.Limiter != nil {
+		ok, _, lerr := uc.Limiter.Allow(ctx, in.CallerID)
+		if lerr != nil {
+			return domain.RunResult{}, fmt.Errorf("editor.RunCode: limiter: %w", lerr)
+		}
+		if !ok {
+			return domain.RunResult{}, fmt.Errorf("editor.RunCode: %w", domain.ErrRateLimited)
+		}
 	}
 
 	res, err := uc.Runner.Run(ctx, in.Code, lang)
@@ -89,21 +108,16 @@ func (uc *RunCode) Do(ctx context.Context, in RunCodeInput) (domain.RunResult, e
 	return res, nil
 }
 
-func (uc *RunCode) nowOrDefault() time.Time {
-	if uc.Now != nil {
-		return uc.Now()
-	}
-	return time.Now()
-}
-
 // ─── Rate limiter ────────────────────────────────────────────────────────────
 
-// UserRateLimiter is an in-memory token-bucket keyed by user id. Not a
-// distributed limiter — fine for a single monolith process, and when we
-// horizontally scale the editor we'll replace this with a Redis bucket.
+// UserRateLimiter is an in-memory token-bucket keyed by user id. Used for
+// dev / CI / single-process deployments; production wires a Redis-backed
+// implementation from infra/. Implements domain.RunCodeRateLimiter.
 type UserRateLimiter struct {
 	capacity   int
 	refillRate float64 // tokens per second
+	window     time.Duration
+	now        func() time.Time
 	mu         sync.Mutex
 	buckets    map[uuid.UUID]*bucket
 }
@@ -125,12 +139,16 @@ func NewUserRateLimiter(capacity int, window time.Duration) *UserRateLimiter {
 	return &UserRateLimiter{
 		capacity:   capacity,
 		refillRate: float64(capacity) / window.Seconds(),
+		window:     window,
+		now:        time.Now,
 		buckets:    map[uuid.UUID]*bucket{},
 	}
 }
 
-// Allow consumes one token for `user`. Returns false if the bucket is empty.
-func (l *UserRateLimiter) Allow(user uuid.UUID, now time.Time) bool {
+// Allow implements domain.RunCodeRateLimiter. The in-memory bucket cannot
+// surface a transport error, so the err return is always nil.
+func (l *UserRateLimiter) Allow(_ context.Context, user uuid.UUID) (bool, int, error) {
+	now := l.now()
 	l.mu.Lock()
 	defer l.mu.Unlock()
 	b, ok := l.buckets[user]
@@ -147,8 +165,10 @@ func (l *UserRateLimiter) Allow(user uuid.UUID, now time.Time) bool {
 	}
 	b.lastSeen = now
 	if b.tokens < 1 {
-		return false
+		// Estimate retry-after: time until one token is generated.
+		retry := time.Duration((1.0/l.refillRate)*float64(time.Second)) + time.Second
+		return false, int(retry.Seconds()), nil
 	}
 	b.tokens--
-	return true
+	return true, 0, nil
 }

@@ -655,7 +655,13 @@ export default function App() {
       />
       <TrafficLightsHover />
       <Wordmark />
-      <Versionmark escHint={page !== 'home'} onEsc={goHome} />
+      {/* Versionmark скрываем в editor'е: CodeMirror использует Escape для
+          своих UI-affordances (закрытие autocomplete, выход из каретки), а
+          лишний "esc HOME" hint в углу шумит. На остальных страницах он
+          остаётся как глобальная подсказка возврата. */}
+      {page !== 'editor' && (
+        <Versionmark escHint={page !== 'home'} onEsc={goHome} />
+      )}
 
       {/* Daily Brief panel — bottom-left on Home, hidden during running focus.
           AI-coach слой: показывается даже когда focus ≠ active, но не отвлекает

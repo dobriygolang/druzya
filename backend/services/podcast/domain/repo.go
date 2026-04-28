@@ -31,9 +31,7 @@ type PodcastRepo interface {
 }
 
 // AudioSigner returns a time-limited URL the client can stream from. In
-// production this wraps a MinIO presigner; MVP returns a stable relative URL.
-//
-// STUB: see infra.FakeSigner.
+// production this wraps a MinIO presigner (see infra.MinioAudioSigner).
 type AudioSigner interface {
 	// Sign returns a streamable URL for the given audio_key. Implementations
 	// are expected to attach a short TTL (e.g. 1h) via query params.

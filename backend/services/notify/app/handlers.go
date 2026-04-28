@@ -251,3 +251,23 @@ func (h *Handlers) OnWeeklyReportDue(ctx context.Context, ev sharedDomain.Event)
 		},
 	})
 }
+
+// OnEventStartingSoon delivers a "starts in ~10 minutes" reminder. Bypasses
+// quiet hours (Force=true) — the user explicitly RSVP'd, the whole point of
+// the notification is to actually arrive on time.
+func (h *Handlers) OnEventStartingSoon(ctx context.Context, ev sharedDomain.Event) error {
+	e, ok := ev.(sharedDomain.EventStartingSoon)
+	if !ok {
+		return fmt.Errorf("notify.OnEventStartingSoon: unexpected event %T", ev)
+	}
+	return h.Send.Do(ctx, SendInput{
+		UserID: e.UserID,
+		Type:   enums.NotificationTypeEventStartingSoon,
+		Payload: map[string]any{
+			"Title":    e.Title,
+			"StartsAt": e.StartsAt.Format("15:04"),
+			"EventID":  e.EventID.String(),
+		},
+		Force: true,
+	})
+}

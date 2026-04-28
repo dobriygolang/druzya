@@ -3,23 +3,16 @@
 -- query whose result is shown to the client.
 
 -- name: CreateMockSession :one
+-- RETURNING * so sqlc emits the canonical MockSession row type (no Row alias).
 INSERT INTO mock_sessions (
     user_id, company_id, task_id, section, difficulty, status,
     duration_min, voice_mode, paired_user_id, llm_model, started_at,
     ai_assist
 ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
-RETURNING id, user_id, company_id, task_id, section, difficulty, status,
-          duration_min, voice_mode, paired_user_id, llm_model,
-          stress_profile, ai_report, running_summary,
-          started_at, finished_at, created_at, ai_assist;
+RETURNING *;
 
 -- name: GetMockSession :one
-SELECT id, user_id, company_id, task_id, section, difficulty, status,
-       duration_min, voice_mode, paired_user_id, llm_model,
-       stress_profile, ai_report, running_summary,
-       started_at, finished_at, created_at, ai_assist
-  FROM mock_sessions
- WHERE id = $1;
+SELECT * FROM mock_sessions WHERE id = $1;
 
 -- name: GetActiveBlockingMockSession :one
 -- Phase-4 ADR-001 (Wave 3) — drives copilot.CheckBlock. Returns the user's

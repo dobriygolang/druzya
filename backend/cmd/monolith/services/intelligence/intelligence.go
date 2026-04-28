@@ -137,6 +137,14 @@ func New(d monolithServices.Deps) IntelligenceModule {
 		Log:      d.Log,
 	}
 
+	// Retention worker — once-a-day sweep, deletes coach episodes older
+	// than 90 days so the table stays bounded and Recall windows clean.
+	retention := &intelApp.MemoryRetention{
+		Episodes: episodes,
+		Log:      d.Log,
+		Now:      d.Now,
+	}
+
 	return IntelligenceModule{
 		Module: &monolithServices.Module{
 			ConnectPath:        connectPath,
@@ -157,6 +165,7 @@ func New(d monolithServices.Deps) IntelligenceModule {
 			},
 			Background: []func(context.Context){
 				func(ctx context.Context) { go worker.Run(ctx) },
+				func(ctx context.Context) { go retention.Run(ctx) },
 			},
 		},
 		Memory:   memory,

@@ -384,6 +384,20 @@ func scanEpisodes(rows pgx.Rows) ([]domain.Episode, error) {
 	return out, nil
 }
 
+// DeleteOlderThan removes episodes whose occurred_at is strictly older than
+// the cutoff. Returns the number of rows deleted. Bounded retention keeps
+// the table from growing without limit and keeps Recall windows clean.
+func (r *Episodes) DeleteOlderThan(ctx context.Context, cutoff time.Time) (int64, error) {
+	cmd, err := r.pool.Exec(ctx,
+		`DELETE FROM coach_episodes WHERE occurred_at < $1`,
+		cutoff,
+	)
+	if err != nil {
+		return 0, fmt.Errorf("intelligence.Episodes.DeleteOlderThan: %w", err)
+	}
+	return cmd.RowsAffected(), nil
+}
+
 // nullableFloat32Slice returns nil for empty slices so pg writes SQL NULL
 // (otherwise pgx encodes as empty real[] which is non-NULL but empty).
 func nullableFloat32Slice(v []float32) any {

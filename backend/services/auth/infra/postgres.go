@@ -101,11 +101,10 @@ func (p *Postgres) UpsertByOAuth(ctx context.Context, in domain.UpsertOAuthInput
 	}
 	role := enums.UserRoleUser
 	created, err := qtx.CreateUser(ctx, authdb.CreateUserParams{
-		Column1:   in.Email, // NULLIF($1,'') handles empty string
 		Username:  username,
 		Role:      role.String(),
 		Locale:    "ru",
-		Column5:   in.DisplayName,
+		Column4:   in.DisplayName, // NULLIF($4::text,'') in queries.sql
 		AvatarUrl: in.AvatarURL,
 	})
 	if err != nil {
@@ -213,7 +212,6 @@ func userFromFindRow(r authdb.FindUserByIDRow) (domain.User, error) {
 	}
 	return domain.User{
 		ID:          sharedpg.UUIDFrom(r.ID),
-		Email:       pgText(r.Email),
 		Username:    r.Username,
 		Role:        role,
 		Locale:      r.Locale,

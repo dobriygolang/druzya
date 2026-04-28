@@ -191,7 +191,17 @@ export function PodcastsPage() {
         }}
       >
         {selected ? (
-          <Player podcast={selected} />
+          <Player
+            podcast={selected}
+            refreshUrl={async (id) => {
+              const fresh = await listPodcasts(section);
+              const hit = fresh.find((p) => p.id === id);
+              if (!hit) {
+                throw new Error('podcast no longer available');
+              }
+              return hit.audioUrl;
+            }}
+          />
         ) : state.status === 'ok' ? (
           <EmptyState seed={section} />
         ) : null}
@@ -435,7 +445,13 @@ function SectionFilter({
   );
 }
 
-function Player({ podcast }: { podcast: Podcast }) {
+function Player({
+  podcast,
+  refreshUrl,
+}: {
+  podcast: Podcast;
+  refreshUrl: (id: string) => Promise<string>;
+}) {
   // Singleton audio bus — element живёт в document.body (см.
   // audio/podcast-audio.ts). Подкаст продолжает играть когда юзер
   // переходит на другую вкладку (Player unmounts но audio остаётся).
@@ -493,6 +509,7 @@ function Player({ podcast }: { podcast: Podcast }) {
         audioUrl: podcast.audioUrl,
         title: podcast.title,
         initialProgressSec: podcast.completed ? 0 : podcast.progressSec,
+        refreshUrl: () => refreshUrl(podcast.id),
       });
     }
   };

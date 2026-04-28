@@ -1,4 +1,14 @@
 // Package infra holds Postgres, Redis, and HTTP adapters for the notify domain.
+//
+// v2 changes:
+//   * notifications_log dropped → LogRepo interface gone, send-attempts no
+//     longer persisted (telegram-bot rate limiter handles dedup in Redis)
+//   * notification_preferences merged into notification_prefs:
+//       - channels[] / quiet_hours_* columns gone
+//       - channel_enabled jsonb is the channel toggle
+//       - quiet_hours_* (if needed later) re-implement via silence_until
+//   * QuietHours kept in domain as a runtime-only window (Set=false reads
+//     skip the gate) so the service.go logic doesn't need a rewrite
 package infra
 
 import (
@@ -6,7 +16,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"time"
 
 	"druz9/notify/domain"
 	notifydb "druz9/notify/infra/db"
@@ -20,8 +29,8 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-// Postgres implements domain.PreferencesRepo, domain.LogRepo, and
-// domain.UserLookup on a shared pgxpool.Pool.
+// Postgres implements domain.PreferencesRepo and domain.UserLookup.
+// LogRepo is no longer persisted (notifications_log dropped in schema_v2).
 type Postgres struct {
 	pool *pgxpool.Pool
 	q    *notifydb.Queries
@@ -34,7 +43,7 @@ func NewPostgres(pool *pgxpool.Pool) *Postgres {
 
 // ── PreferencesRepo ─────────────────────────────────────────────────────────
 
-// Get loads a row. Returns (DefaultPreferences-ish, ErrNotFound) if missing.
+// Get loads a preferences row.
 func (p *Postgres) Get(ctx context.Context, userID uuid.UUID) (domain.Preferences, error) {
 	row, err := p.q.GetPreferences(ctx, sharedpg.UUID(userID))
 	if err != nil {
@@ -47,15 +56,20 @@ func (p *Postgres) Get(ctx context.Context, userID uuid.UUID) (domain.Preference
 }
 
 // Upsert persists a preferences row and returns the authoritative copy.
+// channel_enabled is encoded from the in-memory Channels list to keep the
+// service-layer API stable.
 func (p *Postgres) Upsert(ctx context.Context, pref domain.Preferences) (domain.Preferences, error) {
+	enabled, err := json.Marshal(channelsToEnabledMap(pref.Channels))
+	if err != nil {
+		return domain.Preferences{}, fmt.Errorf("notify.pg.Upsert: encode channels: %w", err)
+	}
 	params := notifydb.UpsertPreferencesParams{
 		UserID:                    sharedpg.UUID(pref.UserID),
-		Channels:                  channelsToStrings(pref.Channels),
 		TelegramChatID:            pgText(pref.TelegramChatID),
-		QuietHoursFrom:            pgTimeOfDay(pref.Quiet, true),
-		QuietHoursTo:              pgTimeOfDay(pref.Quiet, false),
+		ChannelEnabled:            enabled,
 		WeeklyReportEnabled:       pref.WeeklyReportEnabled,
 		SkillDecayWarningsEnabled: pref.SkillDecayWarningsEnabled,
+		SilenceUntil:              pgtype.Timestamptz{}, // not exposed via Preferences; cleared on every upsert for now.
 	}
 	row, err := p.q.UpsertPreferences(ctx, params)
 	if err != nil {
@@ -96,66 +110,6 @@ func (p *Postgres) ListWeeklyReportEnabled(ctx context.Context) ([]uuid.UUID, er
 	return out, nil
 }
 
-// ── LogRepo ─────────────────────────────────────────────────────────────────
-
-// Insert writes a pending row to notifications_log.
-func (p *Postgres) Insert(ctx context.Context, e domain.LogEntry) (domain.LogEntry, error) {
-	payload, err := json.Marshal(e.Payload)
-	if err != nil {
-		return domain.LogEntry{}, fmt.Errorf("notify.pg.Insert: marshal payload: %w", err)
-	}
-	row, err := p.q.InsertLog(ctx, notifydb.InsertLogParams{
-		UserID:  sharedpg.UUID(e.UserID),
-		Channel: string(e.Channel),
-		Type:    string(e.Type),
-		Payload: payload,
-		Status:  e.Status,
-	})
-	if err != nil {
-		return domain.LogEntry{}, fmt.Errorf("notify.pg.Insert: %w", err)
-	}
-	return toLogEntry(row), nil
-}
-
-// RecentByType returns rows newer than `since` for dedup.
-func (p *Postgres) RecentByType(ctx context.Context, userID uuid.UUID, typ enums.NotificationType, since time.Time) ([]domain.LogEntry, error) {
-	rows, err := p.q.RecentLogByType(ctx, notifydb.RecentLogByTypeParams{
-		UserID:    sharedpg.UUID(userID),
-		Type:      string(typ),
-		CreatedAt: pgtype.Timestamptz{Time: since, Valid: true},
-	})
-	if err != nil {
-		return nil, fmt.Errorf("notify.pg.RecentByType: %w", err)
-	}
-	out := make([]domain.LogEntry, 0, len(rows))
-	for _, r := range rows {
-		out = append(out, toLogEntry(r))
-	}
-	return out, nil
-}
-
-// MarkSent flips a row to status=sent.
-func (p *Postgres) MarkSent(ctx context.Context, id uuid.UUID, at time.Time) error {
-	if err := p.q.MarkLogSent(ctx, notifydb.MarkLogSentParams{
-		ID:     sharedpg.UUID(id),
-		SentAt: pgtype.Timestamptz{Time: at, Valid: true},
-	}); err != nil {
-		return fmt.Errorf("notify.pg.MarkSent: %w", err)
-	}
-	return nil
-}
-
-// MarkFailed flips a row to status=failed with a short error message.
-func (p *Postgres) MarkFailed(ctx context.Context, id uuid.UUID, errMsg string) error {
-	if err := p.q.MarkLogFailed(ctx, notifydb.MarkLogFailedParams{
-		ID:    sharedpg.UUID(id),
-		Error: pgText(errMsg),
-	}); err != nil {
-		return fmt.Errorf("notify.pg.MarkFailed: %w", err)
-	}
-	return nil
-}
-
 // ── UserLookup ──────────────────────────────────────────────────────────────
 
 // FindIDByUsername resolves username → user_id. Used by /link.
@@ -170,7 +124,7 @@ func (p *Postgres) FindIDByUsername(ctx context.Context, username string) (uuid.
 	return sharedpg.UUIDFrom(id), nil
 }
 
-// GetLocale returns the user's profile locale (defaults to "ru").
+// GetLocale returns the user's locale (defaults to "ru").
 func (p *Postgres) GetLocale(ctx context.Context, userID uuid.UUID) (string, error) {
 	loc, err := p.q.GetUserLocale(ctx, sharedpg.UUID(userID))
 	if err != nil {
@@ -188,7 +142,6 @@ func (p *Postgres) GetLocale(ctx context.Context, userID uuid.UUID) (string, err
 // Compile-time assertions.
 var (
 	_ domain.PreferencesRepo = (*Postgres)(nil)
-	_ domain.LogRepo         = (*Postgres)(nil)
 	_ domain.UserLookup      = (*Postgres)(nil)
 )
 
@@ -201,92 +154,57 @@ func pgText(s string) pgtype.Text {
 	return pgtype.Text{String: s, Valid: true}
 }
 
-// pgTimeOfDay extracts the From/To time from QuietHours into pg's TIME type.
-// If the window isn't set, returns Valid=false.
-func pgTimeOfDay(q domain.QuietHours, fromSide bool) pgtype.Time {
-	if !q.Set {
-		return pgtype.Time{Valid: false}
-	}
-	t := q.From
-	if !fromSide {
-		t = q.To
-	}
-	// pgtype.Time is µs since midnight.
-	micros := int64(t.Hour())*3600*1_000_000 +
-		int64(t.Minute())*60*1_000_000 +
-		int64(t.Second())*1_000_000
-	return pgtype.Time{Microseconds: micros, Valid: true}
-}
-
-func channelsToStrings(cs []enums.NotificationChannel) []string {
+// channelsToEnabledMap converts the in-memory Channels slice into the
+// channel_enabled jsonb shape: {"telegram": true, "in_app": true, ...}.
+// An empty slice falls back to telegram-only (the v2 default).
+func channelsToEnabledMap(cs []enums.NotificationChannel) map[string]bool {
 	if len(cs) == 0 {
-		return []string{string(enums.NotificationChannelTelegram)}
+		return map[string]bool{string(enums.NotificationChannelTelegram): true}
 	}
-	out := make([]string, len(cs))
-	for i, c := range cs {
-		out[i] = string(c)
-	}
-	return out
-}
-
-func stringsToChannels(ss []string) []enums.NotificationChannel {
-	out := make([]enums.NotificationChannel, 0, len(ss))
-	for _, s := range ss {
-		out = append(out, enums.NotificationChannel(s))
+	out := make(map[string]bool, len(cs))
+	for _, c := range cs {
+		out[string(c)] = true
 	}
 	return out
 }
 
-func toPreferences(r notifydb.NotificationPreference) domain.Preferences {
+// enabledMapToChannels parses the jsonb back into the legacy slice shape so
+// service.go's ShouldNotify gate keeps working without changes.
+func enabledMapToChannels(raw []byte) []enums.NotificationChannel {
+	if len(raw) == 0 {
+		return []enums.NotificationChannel{enums.NotificationChannelTelegram}
+	}
+	var m map[string]bool
+	if err := json.Unmarshal(raw, &m); err != nil {
+		return []enums.NotificationChannel{enums.NotificationChannelTelegram}
+	}
+	out := make([]enums.NotificationChannel, 0, len(m))
+	for k, v := range m {
+		if !v {
+			continue
+		}
+		ch := enums.NotificationChannel(k)
+		if ch.IsValid() {
+			out = append(out, ch)
+		}
+	}
+	if len(out) == 0 {
+		return []enums.NotificationChannel{enums.NotificationChannelTelegram}
+	}
+	return out
+}
+
+func toPreferences(r notifydb.NotificationPref) domain.Preferences {
 	p := domain.Preferences{
 		UserID:                    sharedpg.UUIDFrom(r.UserID),
-		Channels:                  stringsToChannels(r.Channels),
+		Channels:                  enabledMapToChannels(r.ChannelEnabled),
 		WeeklyReportEnabled:       r.WeeklyReportEnabled,
 		SkillDecayWarningsEnabled: r.SkillDecayWarningsEnabled,
 		UpdatedAt:                 r.UpdatedAt.Time,
+		Quiet:                     domain.QuietHours{Set: false},
 	}
 	if r.TelegramChatID.Valid {
 		p.TelegramChatID = r.TelegramChatID.String
 	}
-	if r.QuietHoursFrom.Valid && r.QuietHoursTo.Valid {
-		p.Quiet = domain.QuietHours{
-			From: microsToTime(r.QuietHoursFrom.Microseconds),
-			To:   microsToTime(r.QuietHoursTo.Microseconds),
-			Set:  true,
-		}
-	}
 	return p
-}
-
-func microsToTime(micros int64) time.Time {
-	h := int(micros / (3600 * 1_000_000))
-	rem := micros % (3600 * 1_000_000)
-	m := int(rem / (60 * 1_000_000))
-	s := int((rem % (60 * 1_000_000)) / 1_000_000)
-	return time.Date(2000, 1, 1, h, m, s, 0, time.UTC)
-}
-
-func toLogEntry(r notifydb.NotificationsLog) domain.LogEntry {
-	out := domain.LogEntry{
-		ID:        sharedpg.UUIDFrom(r.ID),
-		UserID:    sharedpg.UUIDFrom(r.UserID),
-		Channel:   enums.NotificationChannel(r.Channel),
-		Type:      enums.NotificationType(r.Type),
-		Status:    r.Status,
-		CreatedAt: r.CreatedAt.Time,
-	}
-	if len(r.Payload) > 0 {
-		var m map[string]any
-		if err := json.Unmarshal(r.Payload, &m); err == nil {
-			out.Payload = m
-		}
-	}
-	if r.SentAt.Valid {
-		t := r.SentAt.Time
-		out.SentAt = &t
-	}
-	if r.Error.Valid {
-		out.Error = r.Error.String
-	}
-	return out
 }

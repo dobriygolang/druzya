@@ -34,20 +34,13 @@ import (
 // MinIO presigned GET.
 func NewPodcast(d monolithServices.Deps) *monolithServices.Module {
 	pg := podcastInfra.NewPostgres(d.Pool)
-	signer := podcastInfra.NewFakeSigner("/stream")
-	list := podcastApp.NewListCatalog(pg, signer)
-	upd := podcastApp.NewUpdateProgress(pg, d.Bus, d.Log)
-	server := podcastPorts.NewPodcastServer(list, upd, d.Log)
 
-	connectPath, connectHandler := druz9v1connect.NewPodcastServiceHandler(server)
-	transcoder := monolithServices.MustTranscode("podcast", connectPath, connectHandler)
-
-	// ── CMS surface ────────────────────────────────────────────────────
+	// ── MinIO store ────────────────────────────────────────────────────
 	//
 	// The MinIO store is real iff the operator wired credentials in;
-	// otherwise we use the explicit unconfigured fallback so the admin
-	// endpoints can answer 503 with a clear "missing MINIO_*" message
-	// instead of a silent 500.
+	// otherwise we use the explicit unconfigured fallback so every
+	// PresignGet / Sign call returns ErrObjectStoreUnavailable rather
+	// than a placeholder URL.
 	var rawStore podcastDomain.PodcastObjectStore
 	if d.Cfg.MinIO.AccessKey != "" && d.Cfg.MinIO.SecretKey != "" && d.Cfg.MinIO.Endpoint != "" {
 		minioStore := podcastInfra.NewMinIOPodcastStore(
@@ -82,6 +75,15 @@ func NewPodcast(d monolithServices.Deps) *monolithServices.Module {
 			d.Log,
 		)
 	}
+
+	// Legacy ListCatalog / UpdateProgress — Connect surface.
+	signer := podcastInfra.NewMinioAudioSigner(store, podcastInfra.DefaultAudioSignTTL)
+	list := podcastApp.NewListCatalog(pg, signer)
+	upd := podcastApp.NewUpdateProgress(pg, d.Bus, d.Log)
+	server := podcastPorts.NewPodcastServer(list, upd, d.Log)
+
+	connectPath, connectHandler := druz9v1connect.NewPodcastServiceHandler(server)
+	transcoder := monolithServices.MustTranscode("podcast", connectPath, connectHandler)
 
 	rawCMSRepo := podcastInfra.NewPostgresCMS(d.Pool)
 	var cmsRepo podcastDomain.PodcastCMSRepo = rawCMSRepo

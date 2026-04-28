@@ -14,35 +14,22 @@ import (
 const getSubscription = `-- name: GetSubscription :one
 
 SELECT user_id, plan, status, provider, provider_sub_id,
-       started_at, current_period_end, grace_until, updated_at
+       current_period_end, grace_until, updated_at
   FROM subscriptions
  WHERE user_id = $1
 `
 
-type GetSubscriptionRow struct {
-	UserID           pgtype.UUID
-	Plan             string
-	Status           string
-	Provider         pgtype.Text
-	ProviderSubID    pgtype.Text
-	StartedAt        pgtype.Timestamptz
-	CurrentPeriodEnd pgtype.Timestamptz
-	GraceUntil       pgtype.Timestamptz
-	UpdatedAt        pgtype.Timestamptz
-}
-
 // subscription queries, consumed by sqlc → services/subscription/infra/db/.
-// Все запросы работают с existing таблицей `subscriptions` (00008 + 00019).
-func (q *Queries) GetSubscription(ctx context.Context, userID pgtype.UUID) (GetSubscriptionRow, error) {
+// v2: started_at + boosty_level dropped from subscriptions.
+func (q *Queries) GetSubscription(ctx context.Context, userID pgtype.UUID) (Subscription, error) {
 	row := q.db.QueryRow(ctx, getSubscription, userID)
-	var i GetSubscriptionRow
+	var i Subscription
 	err := row.Scan(
 		&i.UserID,
 		&i.Plan,
 		&i.Status,
 		&i.Provider,
 		&i.ProviderSubID,
-		&i.StartedAt,
 		&i.CurrentPeriodEnd,
 		&i.GraceUntil,
 		&i.UpdatedAt,
@@ -52,7 +39,7 @@ func (q *Queries) GetSubscription(ctx context.Context, userID pgtype.UUID) (GetS
 
 const listSubscriptionsByPlan = `-- name: ListSubscriptionsByPlan :many
 SELECT user_id, plan, status, provider, provider_sub_id,
-       started_at, current_period_end, grace_until, updated_at
+       current_period_end, grace_until, updated_at
   FROM subscriptions
  WHERE plan = $1 AND status = 'active'
  ORDER BY updated_at DESC
@@ -65,36 +52,23 @@ type ListSubscriptionsByPlanParams struct {
 	Offset int32
 }
 
-type ListSubscriptionsByPlanRow struct {
-	UserID           pgtype.UUID
-	Plan             string
-	Status           string
-	Provider         pgtype.Text
-	ProviderSubID    pgtype.Text
-	StartedAt        pgtype.Timestamptz
-	CurrentPeriodEnd pgtype.Timestamptz
-	GraceUntil       pgtype.Timestamptz
-	UpdatedAt        pgtype.Timestamptz
-}
-
-// Hot path для admin-dashboard. Partial index idx_subscriptions_plan_active
-// ускоряет до ≤10ms на сотнях тысяч строк.
-func (q *Queries) ListSubscriptionsByPlan(ctx context.Context, arg ListSubscriptionsByPlanParams) ([]ListSubscriptionsByPlanRow, error) {
+// Hot path for admin dashboard. The partial index
+// idx_subscriptions_plan_active keeps this <10ms over hundreds of thousands.
+func (q *Queries) ListSubscriptionsByPlan(ctx context.Context, arg ListSubscriptionsByPlanParams) ([]Subscription, error) {
 	rows, err := q.db.Query(ctx, listSubscriptionsByPlan, arg.Plan, arg.Limit, arg.Offset)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	items := []ListSubscriptionsByPlanRow{}
+	items := []Subscription{}
 	for rows.Next() {
-		var i ListSubscriptionsByPlanRow
+		var i Subscription
 		if err := rows.Scan(
 			&i.UserID,
 			&i.Plan,
 			&i.Status,
 			&i.Provider,
 			&i.ProviderSubID,
-			&i.StartedAt,
 			&i.CurrentPeriodEnd,
 			&i.GraceUntil,
 			&i.UpdatedAt,
@@ -118,7 +92,7 @@ UPDATE subscriptions
    AND grace_until < $1
 `
 
-// Batch-update всех истёкших подписок (grace_until < $1). Cron раз в час.
+// Batch-update lapsed subscriptions (grace_until < $1). Hourly cron.
 func (q *Queries) MarkExpiredSubscriptions(ctx context.Context, graceUntil pgtype.Timestamptz) (int64, error) {
 	result, err := q.db.Exec(ctx, markExpiredSubscriptions, graceUntil)
 	if err != nil {
@@ -130,14 +104,13 @@ func (q *Queries) MarkExpiredSubscriptions(ctx context.Context, graceUntil pgtyp
 const upsertSubscription = `-- name: UpsertSubscription :exec
 INSERT INTO subscriptions(
     user_id, plan, status, provider, provider_sub_id,
-    started_at, current_period_end, grace_until, updated_at
-) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+    current_period_end, grace_until, updated_at
+) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 ON CONFLICT (user_id) DO UPDATE
    SET plan               = EXCLUDED.plan,
        status             = EXCLUDED.status,
        provider           = EXCLUDED.provider,
        provider_sub_id    = EXCLUDED.provider_sub_id,
-       started_at         = COALESCE(subscriptions.started_at, EXCLUDED.started_at),
        current_period_end = EXCLUDED.current_period_end,
        grace_until        = EXCLUDED.grace_until,
        updated_at         = EXCLUDED.updated_at
@@ -149,15 +122,14 @@ type UpsertSubscriptionParams struct {
 	Status           string
 	Provider         pgtype.Text
 	ProviderSubID    pgtype.Text
-	StartedAt        pgtype.Timestamptz
 	CurrentPeriodEnd pgtype.Timestamptz
 	GraceUntil       pgtype.Timestamptz
 	UpdatedAt        pgtype.Timestamptz
 }
 
-// Идемпотентная запись. Используется Admin SetTier и (в M3) Boosty sync.
-// Ставим все колонки явно, чтобы NULL не перезаписывал случайно (например
-// provider_sub_id при ручной admin-выдаче).
+// Idempotent write. Used by Admin SetTier and the Boosty/yookassa sync.
+// Set every column explicitly so NULLs don't accidentally overwrite (e.g.
+// provider_sub_id during manual admin grants).
 func (q *Queries) UpsertSubscription(ctx context.Context, arg UpsertSubscriptionParams) error {
 	_, err := q.db.Exec(ctx, upsertSubscription,
 		arg.UserID,
@@ -165,7 +137,6 @@ func (q *Queries) UpsertSubscription(ctx context.Context, arg UpsertSubscription
 		arg.Status,
 		arg.Provider,
 		arg.ProviderSubID,
-		arg.StartedAt,
 		arg.CurrentPeriodEnd,
 		arg.GraceUntil,
 		arg.UpdatedAt,

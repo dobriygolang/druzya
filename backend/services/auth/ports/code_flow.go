@@ -132,7 +132,7 @@ func (h *CodeFlowHandler) HandlePoll(w http.ResponseWriter, r *http.Request) {
 		RefreshToken: res.Tokens.RefreshToken,
 		User: pollUser{
 			ID:        res.User.ID.String(),
-			Email:     res.User.Email,
+			Email:     "",
 			Username:  res.User.Username,
 			Role:      string(res.User.Role),
 			Provider:  string(enums.AuthProviderTelegram),

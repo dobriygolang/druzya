@@ -244,6 +244,40 @@ export async function getPublishStatus(noteId: string): Promise<PublishStatus> {
   return (await resp.json()) as PublishStatus;
 }
 
+// ─── Atomic share-to-web / make-private ───────────────────────────────────
+//
+// Combined flows that replace the legacy two-step (decrypt → publish) and
+// (encrypt → unpublish) UX. The client owns crypto: shareToWeb takes a
+// plaintext body the user just decrypted locally; makePrivate takes a
+// freshly encrypted ciphertext blob. The server applies both writes in a
+// single transaction so other devices never see the intermediate state.
+
+export interface ShareToWebResult {
+  slug: string;
+  url: string;
+  publishedAt: string;
+  alreadyPublished: boolean;
+}
+
+export async function shareNoteToWeb(noteId: string, plaintextMd: string): Promise<ShareToWebResult> {
+  const resp = await fetch(`${API_BASE_URL}/api/v1/notes/${noteId}/share-to-web`, {
+    method: 'POST',
+    headers: { ...authHeaders(), 'content-type': 'application/json' },
+    body: JSON.stringify({ plaintextMd }),
+  });
+  if (!resp.ok) throw new Error(`shareToWeb: ${resp.status}`);
+  return (await resp.json()) as ShareToWebResult;
+}
+
+export async function makeNotePrivate(noteId: string, ciphertextB64: string): Promise<void> {
+  const resp = await fetch(`${API_BASE_URL}/api/v1/notes/${noteId}/make-private`, {
+    method: 'POST',
+    headers: { ...authHeaders(), 'content-type': 'application/json' },
+    body: JSON.stringify({ ciphertextB64 }),
+  });
+  if (!resp.ok) throw new Error(`makePrivate: ${resp.status}`);
+}
+
 // ─── Bulk note meta (Phase C-7 follow-up) ─────────────────────────────────
 //
 // Возвращает per-note flags (encrypted, published) для всех active notes.

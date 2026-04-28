@@ -183,10 +183,14 @@ func (r *NotesReader) RecentReflections(ctx context.Context, userID uuid.UUID, l
 	if limit <= 0 || limit > 50 {
 		limit = 5
 	}
+	// Same temporal/encryption filters as RecentNotes — coach should not
+	// surface reflections that are weeks old or that the server cannot read.
 	rows, err := r.pool.Query(ctx,
 		`SELECT id, title, body_md, created_at
 		   FROM hone_notes
 		  WHERE user_id=$1 AND title ~ $2
+		    AND COALESCE(encrypted, false) = false
+		    AND created_at >= now() - interval '30 days'
 		  ORDER BY created_at DESC
 		  LIMIT $3`,
 		sharedpg.UUID(userID), reflectionPattern, int32(limit),
@@ -232,10 +236,15 @@ func (r *NotesReader) RecentNotes(ctx context.Context, userID uuid.UUID, limit i
 	if limit <= 0 || limit > 50 {
 		limit = 5
 	}
+	// Coach retrieval window: last 7 days only — older notes lead to stale,
+	// off-topic recommendations. Encrypted notes are excluded (server can't
+	// read the plaintext to summarise / cite).
 	rows, err := r.pool.Query(ctx,
 		`SELECT id, title, LEFT(body_md, 220), updated_at
 		   FROM hone_notes
 		  WHERE user_id=$1
+		    AND COALESCE(encrypted, false) = false
+		    AND updated_at >= now() - interval '7 days'
 		  ORDER BY updated_at DESC
 		  LIMIT $2`,
 		sharedpg.UUID(userID), int32(limit),

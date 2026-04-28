@@ -152,24 +152,16 @@ UPDATE copilot_quotas
 -- =============================================================================
 
 -- name: CreateCopilotSession :one
--- A user may have at most one live (finished_at IS NULL) session; the
--- unique partial index enforces this at the DB layer.
--- document_ids defaults to '{}'; Attach/Detach queries mutate in-place.
+-- RETURNING * so sqlc emits the canonical CopilotSession row (no Row alias).
 INSERT INTO copilot_sessions (user_id, kind)
 VALUES ($1, $2)
-RETURNING id, user_id, kind, started_at, finished_at, byok_only, document_ids;
+RETURNING *;
 
 -- name: GetCopilotSession :one
-SELECT id, user_id, kind, started_at, finished_at, byok_only, document_ids
-  FROM copilot_sessions
- WHERE id = $1;
+SELECT * FROM copilot_sessions WHERE id = $1;
 
 -- name: GetLiveCopilotSession :one
--- Returns the user's currently-open session, if any. Used by the
--- Analyze use case to auto-attach turns AND to pull document_ids for
--- the RAG-context injection path.
-SELECT id, user_id, kind, started_at, finished_at, byok_only, document_ids
-  FROM copilot_sessions
+SELECT * FROM copilot_sessions
  WHERE user_id = $1
    AND finished_at IS NULL;
 

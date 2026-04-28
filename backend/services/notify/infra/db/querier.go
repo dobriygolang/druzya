@@ -14,15 +14,17 @@ type Querier interface {
 	ClearTelegramChatID(ctx context.Context, userID pgtype.UUID) error
 	FindUserIDByUsername(ctx context.Context, username string) (pgtype.UUID, error)
 	// notify queries consumed by sqlc (emitted into services/notify/infra/db).
-	GetPreferences(ctx context.Context, userID pgtype.UUID) (NotificationPreference, error)
+	//
+	// v2:
+	//   * notification_preferences merged into notification_prefs (single table)
+	//   * notifications_log dropped (was event-log, nobody reads)
+	//   * channels[] / quiet_hours_* removed (channel state lives in
+	//     channel_enabled jsonb; quiet hours are silence_until timestamptz)
+	GetPreferences(ctx context.Context, userID pgtype.UUID) (NotificationPref, error)
 	GetUserLocale(ctx context.Context, id pgtype.UUID) (string, error)
-	InsertLog(ctx context.Context, arg InsertLogParams) (NotificationsLog, error)
 	ListWeeklyReportEnabled(ctx context.Context) ([]pgtype.UUID, error)
-	MarkLogFailed(ctx context.Context, arg MarkLogFailedParams) error
-	MarkLogSent(ctx context.Context, arg MarkLogSentParams) error
-	RecentLogByType(ctx context.Context, arg RecentLogByTypeParams) ([]NotificationsLog, error)
 	SetTelegramChatID(ctx context.Context, arg SetTelegramChatIDParams) error
-	UpsertPreferences(ctx context.Context, arg UpsertPreferencesParams) (NotificationPreference, error)
+	UpsertPreferences(ctx context.Context, arg UpsertPreferencesParams) (NotificationPref, error)
 }
 
 var _ Querier = (*Queries)(nil)

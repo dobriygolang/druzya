@@ -1,13 +1,17 @@
 -- Queries consumed by sqlc. The hand-rolled pgx code in infra/postgres.go
 -- mirrors these 1:1 — once `make gen-sqlc` runs they will replace the hand code.
+--
+-- v2: email column dropped from `users`. Auth is OAuth-only (Yandex + Telegram);
+-- no recovery, no email-based login. provider_user_id on oauth_accounts is the
+-- only external identity surface.
 
 -- name: FindUserByID :one
-SELECT id, email, username, role, locale, display_name, avatar_url, created_at, updated_at
+SELECT id, username, role, locale, display_name, avatar_url, created_at, updated_at
 FROM users
 WHERE id = $1;
 
 -- name: FindUserByUsername :one
-SELECT id, email, username, role, locale, display_name, avatar_url, created_at, updated_at
+SELECT id, username, role, locale, display_name, avatar_url, created_at, updated_at
 FROM users
 WHERE username = $1;
 
@@ -17,9 +21,9 @@ FROM oauth_accounts
 WHERE provider = $1 AND provider_user_id = $2;
 
 -- name: CreateUser :one
-INSERT INTO users(email, username, role, locale, display_name, avatar_url)
-VALUES (NULLIF($1::text, ''), $2, $3, $4, NULLIF($5::text, ''), $6)
-RETURNING id, email, username, role, locale, display_name, avatar_url, created_at, updated_at;
+INSERT INTO users(username, role, locale, display_name, avatar_url)
+VALUES ($1, $2, $3, NULLIF($4::text, ''), $5)
+RETURNING id, username, role, locale, display_name, avatar_url, created_at, updated_at;
 
 -- name: CreateOAuthAccount :exec
 INSERT INTO oauth_accounts(
@@ -35,9 +39,9 @@ UPDATE oauth_accounts
  WHERE provider = $1 AND provider_user_id = $2;
 
 -- name: UpdateUserAvatar :exec
--- Опportunistically обновить avatar_url пользователя при повторном логине.
--- Пустую строку игнорируем — Telegram может не прислать photo_url, и мы не
--- хотим затереть ранее сохранённый аватар.
+-- Opportunistic: refresh avatar_url on re-login. Empty string is ignored —
+-- Telegram may omit photo_url and we don't want to overwrite a previously
+-- saved avatar.
 UPDATE users
    SET avatar_url = $2,
        updated_at = now()

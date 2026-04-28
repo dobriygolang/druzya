@@ -16,12 +16,16 @@ type Querier interface {
 	FindOAuthLink(ctx context.Context, arg FindOAuthLinkParams) (pgtype.UUID, error)
 	// Queries consumed by sqlc. The hand-rolled pgx code in infra/postgres.go
 	// mirrors these 1:1 — once `make gen-sqlc` runs they will replace the hand code.
+	//
+	// v2: email column dropped from `users`. Auth is OAuth-only (Yandex + Telegram);
+	// no recovery, no email-based login. provider_user_id on oauth_accounts is the
+	// only external identity surface.
 	FindUserByID(ctx context.Context, id pgtype.UUID) (FindUserByIDRow, error)
 	FindUserByUsername(ctx context.Context, username string) (FindUserByUsernameRow, error)
 	TouchOAuthTokens(ctx context.Context, arg TouchOAuthTokensParams) error
-	// Опportunistically обновить avatar_url пользователя при повторном логине.
-	// Пустую строку игнорируем — Telegram может не прислать photo_url, и мы не
-	// хотим затереть ранее сохранённый аватар.
+	// Opportunistic: refresh avatar_url on re-login. Empty string is ignored —
+	// Telegram may omit photo_url and we don't want to overwrite a previously
+	// saved avatar.
 	UpdateUserAvatar(ctx context.Context, arg UpdateUserAvatarParams) error
 	UsernameExists(ctx context.Context, username string) (bool, error)
 }

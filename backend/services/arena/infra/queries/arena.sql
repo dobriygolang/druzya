@@ -48,17 +48,17 @@ VALUES ($1, $2, $3, $4)
 ON CONFLICT (match_id, user_id) DO NOTHING;
 
 -- name: ListArenaParticipants :many
+-- v2: solve_time_ms dropped (was written but not read by rating/profile).
 SELECT match_id, user_id, team, elo_before, elo_after,
-       suspicion_score, solve_time_ms, submitted_at
+       suspicion_score, submitted_at
   FROM arena_participants
  WHERE match_id = $1
  ORDER BY team, user_id;
 
 -- name: UpsertParticipantResult :execrows
 UPDATE arena_participants
-   SET solve_time_ms    = $3,
-       suspicion_score  = $4,
-       submitted_at     = $5
+   SET suspicion_score  = $3,
+       submitted_at     = $4
  WHERE match_id = $1 AND user_id = $2;
 
 -- name: PickActiveTaskBySectionDifficulty :one

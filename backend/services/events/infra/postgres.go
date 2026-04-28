@@ -122,6 +122,12 @@ func (r *Events) ListUpcomingByMember(ctx context.Context, userID uuid.UUID, fro
 	// Without the participants/created_by branch a freshly-created event
 	// could disappear from the creator's list and the response would
 	// look like "{}", which is exactly what users reported.
+	// "Upcoming" — strictly events that haven't ended yet. Past rows are
+	// kept in the table for analytics / history but never surfaced through
+	// this list endpoint; the cleanup worker prunes them after 14 days.
+	// We compare end-of-event (starts_at + duration_min minutes) against
+	// now() so an event in progress (started, not finished) still counts
+	// as "upcoming" for display purposes.
 	rows, err := r.pool.Query(ctx,
 		`SELECT DISTINCT e.id, e.circle_id, e.title, e.description, e.starts_at,
 		        e.duration_min, e.editor_room_id, e.whiteboard_room_id,
@@ -135,6 +141,7 @@ func (r *Events) ListUpcomingByMember(ctx context.Context, userID uuid.UUID, fro
 		  WHERE (m.user_id IS NOT NULL OR p.user_id IS NOT NULL OR e.created_by = $1)
 		    AND e.starts_at >= $2
 		    AND e.starts_at <= $3
+		    AND (e.starts_at + (e.duration_min || ' minutes')::interval) > now()
 		  ORDER BY e.starts_at ASC
 		  LIMIT 200`,
 		sharedpg.UUID(userID),
@@ -280,7 +287,94 @@ func (r *Participants) List(ctx context.Context, eventID uuid.UUID) ([]domain.Pa
 	return out, nil
 }
 
+// DeleteEndedBefore removes events whose end (starts_at + duration_min) is
+// strictly before the cutoff. event_participants cascade via the FK.
+func (r *Events) DeleteEndedBefore(ctx context.Context, cutoff time.Time) (int64, error) {
+	cmd, err := r.pool.Exec(ctx,
+		`DELETE FROM events
+		  WHERE starts_at + (duration_min || ' minutes')::interval < $1`,
+		pgtype.Timestamptz{Time: cutoff, Valid: true},
+	)
+	if err != nil {
+		return 0, fmt.Errorf("events.Events.DeleteEndedBefore: %w", err)
+	}
+	return cmd.RowsAffected(), nil
+}
+
+// FindStartingSoon flattens (event, participant) pairs starting in
+// (now+lower, now+upper]. The notifier worker calls this every few minutes;
+// idempotency is enforced separately via event_notification_sent.
+func (r *Events) FindStartingSoon(ctx context.Context, lowerOffset, upperOffset time.Duration) ([]domain.ParticipantNotificationCandidate, error) {
+	rows, err := r.pool.Query(ctx,
+		`SELECT e.id, ep.user_id, e.title, e.starts_at, e.circle_id
+		   FROM events e
+		   JOIN event_participants ep ON ep.event_id = e.id
+		  WHERE e.starts_at >  now() + ($1 || ' seconds')::interval
+		    AND e.starts_at <= now() + ($2 || ' seconds')::interval
+		  ORDER BY e.starts_at ASC`,
+		int64(lowerOffset.Seconds()),
+		int64(upperOffset.Seconds()),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("events.Events.FindStartingSoon: %w", err)
+	}
+	defer rows.Close()
+	var out []domain.ParticipantNotificationCandidate
+	for rows.Next() {
+		var (
+			eID      pgtype.UUID
+			uID      pgtype.UUID
+			title    string
+			starts   time.Time
+			circleID pgtype.UUID
+		)
+		if err := rows.Scan(&eID, &uID, &title, &starts, &circleID); err != nil {
+			return nil, fmt.Errorf("events.Events.FindStartingSoon scan: %w", err)
+		}
+		out = append(out, domain.ParticipantNotificationCandidate{
+			EventID:  sharedpg.UUIDFrom(eID),
+			UserID:   sharedpg.UUIDFrom(uID),
+			Title:    title,
+			StartsAt: starts,
+			CircleID: sharedpg.UUIDFrom(circleID),
+		})
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("events.Events.FindStartingSoon rows: %w", err)
+	}
+	return out, nil
+}
+
+// NotificationLedger implements domain.EventNotificationLedger over the
+// event_notification_sent table.
+type NotificationLedger struct{ pool *pgxpool.Pool }
+
+// NewNotificationLedger wires a ledger.
+func NewNotificationLedger(pool *pgxpool.Pool) *NotificationLedger {
+	return &NotificationLedger{pool: pool}
+}
+
+// MarkSent inserts (event_id, user_id, kind, sent_at) ON CONFLICT DO NOTHING
+// and returns whether the row was new. The caller fans out the notification
+// only on inserted=true so a re-running scheduler is idempotent.
+func (l *NotificationLedger) MarkSent(ctx context.Context, eventID, userID uuid.UUID, kind string, sentAt time.Time) (bool, error) {
+	cmd, err := l.pool.Exec(ctx,
+		`INSERT INTO event_notification_sent (event_id, user_id, kind, sent_at)
+		   VALUES ($1, $2, $3, $4)
+		   ON CONFLICT (event_id, user_id, kind) DO NOTHING`,
+		sharedpg.UUID(eventID),
+		sharedpg.UUID(userID),
+		kind,
+		pgtype.Timestamptz{Time: sentAt, Valid: true},
+	)
+	if err != nil {
+		return false, fmt.Errorf("events.NotificationLedger.MarkSent: %w", err)
+	}
+	return cmd.RowsAffected() == 1, nil
+}
+
 var (
-	_ domain.EventRepo       = (*Events)(nil)
-	_ domain.ParticipantRepo = (*Participants)(nil)
+	_ domain.EventRepo               = (*Events)(nil)
+	_ domain.ParticipantRepo         = (*Participants)(nil)
+	_ domain.EventNotificationLedger = (*NotificationLedger)(nil)
 )

@@ -30,6 +30,16 @@ import (
 // DefaultRunTimeout bounds a single RunCode call — request contract is 10 s.
 const DefaultRunTimeout = 10 * time.Second
 
+// Judge0 sandbox hard limits. Defence-in-depth on top of any cluster-level
+// resource caps the operator may configure: stops infinite loops, OOM-bombs
+// and busy-waits abusing CPU cycles. Wall time is the user-visible budget;
+// cpu_time guards against tight CPU-bound loops; memory caps RSS in KB.
+const (
+	judge0CPUTimeLimitSec  = 5
+	judge0WallTimeLimitSec = 10
+	judge0MemoryLimitKB    = 128_000 // 128 MB
+)
+
 // Judge0RunClient wraps the /submissions?wait=true endpoint for one-shot runs.
 //
 // Zero-value BaseURL is the documented "disabled sandbox" shape: RunCode
@@ -54,8 +64,12 @@ func NewJudge0RunClient(baseURL string, log *slog.Logger) *Judge0RunClient {
 }
 
 type judge0RunReq struct {
-	SourceCode string `json:"source_code"`
-	LanguageID int    `json:"language_id"`
+	SourceCode      string `json:"source_code"`
+	LanguageID      int    `json:"language_id"`
+	CPUTimeLimit    int    `json:"cpu_time_limit"`
+	WallTimeLimit   int    `json:"wall_time_limit"`
+	MemoryLimit     int    `json:"memory_limit"`
+	EnableNetwork   bool   `json:"enable_network"`
 }
 
 type judge0RunResp struct {
@@ -82,8 +96,12 @@ func (c *Judge0RunClient) Run(ctx context.Context, code string, language enums.L
 	}
 
 	body, err := json.Marshal(judge0RunReq{
-		SourceCode: base64.StdEncoding.EncodeToString([]byte(code)),
-		LanguageID: langID,
+		SourceCode:    base64.StdEncoding.EncodeToString([]byte(code)),
+		LanguageID:    langID,
+		CPUTimeLimit:  judge0CPUTimeLimitSec,
+		WallTimeLimit: judge0WallTimeLimitSec,
+		MemoryLimit:   judge0MemoryLimitKB,
+		EnableNetwork: false,
 	})
 	if err != nil {
 		return domain.RunResult{}, fmt.Errorf("editor.Judge0RunClient.Run: marshal: %w", err)

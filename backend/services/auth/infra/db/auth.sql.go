@@ -40,23 +40,21 @@ func (q *Queries) CreateOAuthAccount(ctx context.Context, arg CreateOAuthAccount
 }
 
 const createUser = `-- name: CreateUser :one
-INSERT INTO users(email, username, role, locale, display_name, avatar_url)
-VALUES (NULLIF($1::text, ''), $2, $3, $4, NULLIF($5::text, ''), $6)
-RETURNING id, email, username, role, locale, display_name, avatar_url, created_at, updated_at
+INSERT INTO users(username, role, locale, display_name, avatar_url)
+VALUES ($1, $2, $3, NULLIF($4::text, ''), $5)
+RETURNING id, username, role, locale, display_name, avatar_url, created_at, updated_at
 `
 
 type CreateUserParams struct {
-	Column1   string
 	Username  string
 	Role      string
 	Locale    string
-	Column5   string
+	Column4   string
 	AvatarUrl string
 }
 
 type CreateUserRow struct {
 	ID          pgtype.UUID
-	Email       pgtype.Text
 	Username    string
 	Role        string
 	Locale      string
@@ -68,17 +66,15 @@ type CreateUserRow struct {
 
 func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (CreateUserRow, error) {
 	row := q.db.QueryRow(ctx, createUser,
-		arg.Column1,
 		arg.Username,
 		arg.Role,
 		arg.Locale,
-		arg.Column5,
+		arg.Column4,
 		arg.AvatarUrl,
 	)
 	var i CreateUserRow
 	err := row.Scan(
 		&i.ID,
-		&i.Email,
 		&i.Username,
 		&i.Role,
 		&i.Locale,
@@ -110,14 +106,13 @@ func (q *Queries) FindOAuthLink(ctx context.Context, arg FindOAuthLinkParams) (p
 
 const findUserByID = `-- name: FindUserByID :one
 
-SELECT id, email, username, role, locale, display_name, avatar_url, created_at, updated_at
+SELECT id, username, role, locale, display_name, avatar_url, created_at, updated_at
 FROM users
 WHERE id = $1
 `
 
 type FindUserByIDRow struct {
 	ID          pgtype.UUID
-	Email       pgtype.Text
 	Username    string
 	Role        string
 	Locale      string
@@ -129,12 +124,15 @@ type FindUserByIDRow struct {
 
 // Queries consumed by sqlc. The hand-rolled pgx code in infra/postgres.go
 // mirrors these 1:1 — once `make gen-sqlc` runs they will replace the hand code.
+//
+// v2: email column dropped from `users`. Auth is OAuth-only (Yandex + Telegram);
+// no recovery, no email-based login. provider_user_id on oauth_accounts is the
+// only external identity surface.
 func (q *Queries) FindUserByID(ctx context.Context, id pgtype.UUID) (FindUserByIDRow, error) {
 	row := q.db.QueryRow(ctx, findUserByID, id)
 	var i FindUserByIDRow
 	err := row.Scan(
 		&i.ID,
-		&i.Email,
 		&i.Username,
 		&i.Role,
 		&i.Locale,
@@ -147,14 +145,13 @@ func (q *Queries) FindUserByID(ctx context.Context, id pgtype.UUID) (FindUserByI
 }
 
 const findUserByUsername = `-- name: FindUserByUsername :one
-SELECT id, email, username, role, locale, display_name, avatar_url, created_at, updated_at
+SELECT id, username, role, locale, display_name, avatar_url, created_at, updated_at
 FROM users
 WHERE username = $1
 `
 
 type FindUserByUsernameRow struct {
 	ID          pgtype.UUID
-	Email       pgtype.Text
 	Username    string
 	Role        string
 	Locale      string
@@ -169,7 +166,6 @@ func (q *Queries) FindUserByUsername(ctx context.Context, username string) (Find
 	var i FindUserByUsernameRow
 	err := row.Scan(
 		&i.ID,
-		&i.Email,
 		&i.Username,
 		&i.Role,
 		&i.Locale,
@@ -222,9 +218,9 @@ type UpdateUserAvatarParams struct {
 	AvatarUrl string
 }
 
-// Опportunistically обновить avatar_url пользователя при повторном логине.
-// Пустую строку игнорируем — Telegram может не прислать photo_url, и мы не
-// хотим затереть ранее сохранённый аватар.
+// Opportunistic: refresh avatar_url on re-login. Empty string is ignored —
+// Telegram may omit photo_url and we don't want to overwrite a previously
+// saved avatar.
 func (q *Queries) UpdateUserAvatar(ctx context.Context, arg UpdateUserAvatarParams) error {
 	_, err := q.db.Exec(ctx, updateUserAvatar, arg.ID, arg.AvatarUrl)
 	return err

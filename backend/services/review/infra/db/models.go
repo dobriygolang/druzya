@@ -5,319 +5,8 @@
 package reviewdb
 
 import (
-	"database/sql/driver"
-	"fmt"
-
 	"github.com/jackc/pgx/v5/pgtype"
 )
-
-type MockPipelineVerdict string
-
-const (
-	MockPipelineVerdictInProgress MockPipelineVerdict = "in_progress"
-	MockPipelineVerdictPass       MockPipelineVerdict = "pass"
-	MockPipelineVerdictFail       MockPipelineVerdict = "fail"
-	MockPipelineVerdictCancelled  MockPipelineVerdict = "cancelled"
-)
-
-func (e *MockPipelineVerdict) Scan(src interface{}) error {
-	switch s := src.(type) {
-	case []byte:
-		*e = MockPipelineVerdict(s)
-	case string:
-		*e = MockPipelineVerdict(s)
-	default:
-		return fmt.Errorf("unsupported scan type for MockPipelineVerdict: %T", src)
-	}
-	return nil
-}
-
-type NullMockPipelineVerdict struct {
-	MockPipelineVerdict MockPipelineVerdict
-	Valid               bool // Valid is true if MockPipelineVerdict is not NULL
-}
-
-// Scan implements the Scanner interface.
-func (ns *NullMockPipelineVerdict) Scan(value interface{}) error {
-	if value == nil {
-		ns.MockPipelineVerdict, ns.Valid = "", false
-		return nil
-	}
-	ns.Valid = true
-	return ns.MockPipelineVerdict.Scan(value)
-}
-
-// Value implements the driver Valuer interface.
-func (ns NullMockPipelineVerdict) Value() (driver.Value, error) {
-	if !ns.Valid {
-		return nil, nil
-	}
-	return string(ns.MockPipelineVerdict), nil
-}
-
-type MockStageKind string
-
-const (
-	MockStageKindHr         MockStageKind = "hr"
-	MockStageKindAlgo       MockStageKind = "algo"
-	MockStageKindCoding     MockStageKind = "coding"
-	MockStageKindSysdesign  MockStageKind = "sysdesign"
-	MockStageKindBehavioral MockStageKind = "behavioral"
-)
-
-func (e *MockStageKind) Scan(src interface{}) error {
-	switch s := src.(type) {
-	case []byte:
-		*e = MockStageKind(s)
-	case string:
-		*e = MockStageKind(s)
-	default:
-		return fmt.Errorf("unsupported scan type for MockStageKind: %T", src)
-	}
-	return nil
-}
-
-type NullMockStageKind struct {
-	MockStageKind MockStageKind
-	Valid         bool // Valid is true if MockStageKind is not NULL
-}
-
-// Scan implements the Scanner interface.
-func (ns *NullMockStageKind) Scan(value interface{}) error {
-	if value == nil {
-		ns.MockStageKind, ns.Valid = "", false
-		return nil
-	}
-	ns.Valid = true
-	return ns.MockStageKind.Scan(value)
-}
-
-// Value implements the driver Valuer interface.
-func (ns NullMockStageKind) Value() (driver.Value, error) {
-	if !ns.Valid {
-		return nil, nil
-	}
-	return string(ns.MockStageKind), nil
-}
-
-type MockTaskLanguage string
-
-const (
-	MockTaskLanguageGo     MockTaskLanguage = "go"
-	MockTaskLanguagePython MockTaskLanguage = "python"
-	MockTaskLanguageSql    MockTaskLanguage = "sql"
-	MockTaskLanguageAny    MockTaskLanguage = "any"
-)
-
-func (e *MockTaskLanguage) Scan(src interface{}) error {
-	switch s := src.(type) {
-	case []byte:
-		*e = MockTaskLanguage(s)
-	case string:
-		*e = MockTaskLanguage(s)
-	default:
-		return fmt.Errorf("unsupported scan type for MockTaskLanguage: %T", src)
-	}
-	return nil
-}
-
-type NullMockTaskLanguage struct {
-	MockTaskLanguage MockTaskLanguage
-	Valid            bool // Valid is true if MockTaskLanguage is not NULL
-}
-
-// Scan implements the Scanner interface.
-func (ns *NullMockTaskLanguage) Scan(value interface{}) error {
-	if value == nil {
-		ns.MockTaskLanguage, ns.Valid = "", false
-		return nil
-	}
-	ns.Valid = true
-	return ns.MockTaskLanguage.Scan(value)
-}
-
-// Value implements the driver Valuer interface.
-func (ns NullMockTaskLanguage) Value() (driver.Value, error) {
-	if !ns.Valid {
-		return nil, nil
-	}
-	return string(ns.MockTaskLanguage), nil
-}
-
-type PipelineAttemptKind string
-
-const (
-	PipelineAttemptKindTaskSolve       PipelineAttemptKind = "task_solve"
-	PipelineAttemptKindQuestionAnswer  PipelineAttemptKind = "question_answer"
-	PipelineAttemptKindSysdesignCanvas PipelineAttemptKind = "sysdesign_canvas"
-	PipelineAttemptKindVoiceAnswer     PipelineAttemptKind = "voice_answer"
-)
-
-func (e *PipelineAttemptKind) Scan(src interface{}) error {
-	switch s := src.(type) {
-	case []byte:
-		*e = PipelineAttemptKind(s)
-	case string:
-		*e = PipelineAttemptKind(s)
-	default:
-		return fmt.Errorf("unsupported scan type for PipelineAttemptKind: %T", src)
-	}
-	return nil
-}
-
-type NullPipelineAttemptKind struct {
-	PipelineAttemptKind PipelineAttemptKind
-	Valid               bool // Valid is true if PipelineAttemptKind is not NULL
-}
-
-// Scan implements the Scanner interface.
-func (ns *NullPipelineAttemptKind) Scan(value interface{}) error {
-	if value == nil {
-		ns.PipelineAttemptKind, ns.Valid = "", false
-		return nil
-	}
-	ns.Valid = true
-	return ns.PipelineAttemptKind.Scan(value)
-}
-
-// Value implements the driver Valuer interface.
-func (ns NullPipelineAttemptKind) Value() (driver.Value, error) {
-	if !ns.Valid {
-		return nil, nil
-	}
-	return string(ns.PipelineAttemptKind), nil
-}
-
-type PipelineAttemptVerdict string
-
-const (
-	PipelineAttemptVerdictPass       PipelineAttemptVerdict = "pass"
-	PipelineAttemptVerdictFail       PipelineAttemptVerdict = "fail"
-	PipelineAttemptVerdictBorderline PipelineAttemptVerdict = "borderline"
-	PipelineAttemptVerdictPending    PipelineAttemptVerdict = "pending"
-)
-
-func (e *PipelineAttemptVerdict) Scan(src interface{}) error {
-	switch s := src.(type) {
-	case []byte:
-		*e = PipelineAttemptVerdict(s)
-	case string:
-		*e = PipelineAttemptVerdict(s)
-	default:
-		return fmt.Errorf("unsupported scan type for PipelineAttemptVerdict: %T", src)
-	}
-	return nil
-}
-
-type NullPipelineAttemptVerdict struct {
-	PipelineAttemptVerdict PipelineAttemptVerdict
-	Valid                  bool // Valid is true if PipelineAttemptVerdict is not NULL
-}
-
-// Scan implements the Scanner interface.
-func (ns *NullPipelineAttemptVerdict) Scan(value interface{}) error {
-	if value == nil {
-		ns.PipelineAttemptVerdict, ns.Valid = "", false
-		return nil
-	}
-	ns.Valid = true
-	return ns.PipelineAttemptVerdict.Scan(value)
-}
-
-// Value implements the driver Valuer interface.
-func (ns NullPipelineAttemptVerdict) Value() (driver.Value, error) {
-	if !ns.Valid {
-		return nil, nil
-	}
-	return string(ns.PipelineAttemptVerdict), nil
-}
-
-type PipelineStageStatus string
-
-const (
-	PipelineStageStatusPending    PipelineStageStatus = "pending"
-	PipelineStageStatusInProgress PipelineStageStatus = "in_progress"
-	PipelineStageStatusFinished   PipelineStageStatus = "finished"
-	PipelineStageStatusSkipped    PipelineStageStatus = "skipped"
-)
-
-func (e *PipelineStageStatus) Scan(src interface{}) error {
-	switch s := src.(type) {
-	case []byte:
-		*e = PipelineStageStatus(s)
-	case string:
-		*e = PipelineStageStatus(s)
-	default:
-		return fmt.Errorf("unsupported scan type for PipelineStageStatus: %T", src)
-	}
-	return nil
-}
-
-type NullPipelineStageStatus struct {
-	PipelineStageStatus PipelineStageStatus
-	Valid               bool // Valid is true if PipelineStageStatus is not NULL
-}
-
-// Scan implements the Scanner interface.
-func (ns *NullPipelineStageStatus) Scan(value interface{}) error {
-	if value == nil {
-		ns.PipelineStageStatus, ns.Valid = "", false
-		return nil
-	}
-	ns.Valid = true
-	return ns.PipelineStageStatus.Scan(value)
-}
-
-// Value implements the driver Valuer interface.
-func (ns NullPipelineStageStatus) Value() (driver.Value, error) {
-	if !ns.Valid {
-		return nil, nil
-	}
-	return string(ns.PipelineStageStatus), nil
-}
-
-type PipelineStageVerdict string
-
-const (
-	PipelineStageVerdictPass       PipelineStageVerdict = "pass"
-	PipelineStageVerdictFail       PipelineStageVerdict = "fail"
-	PipelineStageVerdictBorderline PipelineStageVerdict = "borderline"
-)
-
-func (e *PipelineStageVerdict) Scan(src interface{}) error {
-	switch s := src.(type) {
-	case []byte:
-		*e = PipelineStageVerdict(s)
-	case string:
-		*e = PipelineStageVerdict(s)
-	default:
-		return fmt.Errorf("unsupported scan type for PipelineStageVerdict: %T", src)
-	}
-	return nil
-}
-
-type NullPipelineStageVerdict struct {
-	PipelineStageVerdict PipelineStageVerdict
-	Valid                bool // Valid is true if PipelineStageVerdict is not NULL
-}
-
-// Scan implements the Scanner interface.
-func (ns *NullPipelineStageVerdict) Scan(value interface{}) error {
-	if value == nil {
-		ns.PipelineStageVerdict, ns.Valid = "", false
-		return nil
-	}
-	ns.Valid = true
-	return ns.PipelineStageVerdict.Scan(value)
-}
-
-// Value implements the driver Valuer interface.
-func (ns NullPipelineStageVerdict) Value() (driver.Value, error) {
-	if !ns.Valid {
-		return nil, nil
-	}
-	return string(ns.PipelineStageVerdict), nil
-}
 
 type AiCredit struct {
 	UserID    pgtype.UUID
@@ -326,17 +15,9 @@ type AiCredit struct {
 }
 
 type AiStrictnessProfile struct {
-	ID                   pgtype.UUID
-	Slug                 string
-	Name                 string
-	OffTopicPenalty      float32
-	MustMentionPenalty   float32
-	HallucinationPenalty float32
-	BiasTowardFail       bool
-	CustomPromptTemplate pgtype.Text
-	Active               bool
-	CreatedAt            pgtype.Timestamptz
-	UpdatedAt            pgtype.Timestamptz
+	ID         pgtype.UUID
+	Name       string
+	ConfigJson []byte
 }
 
 type AnticheatSignal struct {
@@ -370,7 +51,6 @@ type ArenaParticipant struct {
 	EloBefore      int32
 	EloAfter       pgtype.Int4
 	SuspicionScore pgtype.Numeric
-	SolveTimeMs    pgtype.Int8
 	SubmittedAt    pgtype.Timestamptz
 }
 
@@ -409,6 +89,7 @@ type Booking struct {
 type Circle struct {
 	ID          pgtype.UUID
 	Name        string
+	Slug        pgtype.Text
 	Description string
 	OwnerID     pgtype.UUID
 	CreatedAt   pgtype.Timestamptz
@@ -423,31 +104,32 @@ type CircleMember struct {
 }
 
 type CoachEpisode struct {
-	ID             pgtype.UUID
-	UserID         pgtype.UUID
-	Kind           string
-	Summary        string
-	Payload        []byte
-	Embedding      []float32
-	EmbeddingModel pgtype.Text
-	EmbeddedAt     pgtype.Timestamptz
-	OccurredAt     pgtype.Timestamptz
-	CreatedAt      pgtype.Timestamptz
+	ID               pgtype.UUID
+	UserID           pgtype.UUID
+	Kind             string
+	Summary          string
+	Payload          []byte
+	Embedding        []float32
+	EmbeddingModelID pgtype.Int4
+	EmbeddedAt       pgtype.Timestamptz
+	OccurredAt       pgtype.Timestamptz
+	CreatedAt        pgtype.Timestamptz
 }
 
 type CodexArticle struct {
-	ID          pgtype.UUID
-	Slug        string
-	Title       string
-	Description string
-	Category    string
-	Href        string
-	Source      string
-	ReadMin     int32
-	SortOrder   int32
-	Active      bool
-	CreatedAt   pgtype.Timestamptz
-	UpdatedAt   pgtype.Timestamptz
+	ID           pgtype.UUID
+	Slug         string
+	Title        string
+	Description  string
+	Category     string
+	Source       string
+	ReadMin      int32
+	SortOrder    int32
+	Active       bool
+	QuizQuestion pgtype.Text
+	QuizAnswer   pgtype.Text
+	CreatedAt    pgtype.Timestamptz
+	UpdatedAt    pgtype.Timestamptz
 }
 
 type CodexCategory struct {
@@ -457,7 +139,6 @@ type CodexCategory struct {
 	SortOrder   int32
 	Active      bool
 	CreatedAt   pgtype.Timestamptz
-	UpdatedAt   pgtype.Timestamptz
 }
 
 type Company struct {
@@ -467,38 +148,27 @@ type Company struct {
 	Difficulty       string
 	MinLevelRequired int32
 	Sections         []string
-	CreatedAt        pgtype.Timestamptz
 	LogoUrl          pgtype.Text
 	Description      string
 	Active           bool
 	SortOrder        int32
+	CreatedAt        pgtype.Timestamptz
 	UpdatedAt        pgtype.Timestamptz
 }
 
 type CompanyQuestion struct {
-	ID                pgtype.UUID
-	CompanyID         pgtype.UUID
-	StageKind         MockStageKind
-	Body              string
-	ExpectedAnswerMd  string
-	ReferenceCriteria []byte
-	Active            bool
-	SortOrder         int32
-	CreatedAt         pgtype.Timestamptz
+	ID         pgtype.UUID
+	CompanyID  pgtype.UUID
+	StageKind  string
+	QuestionMd string
+	AnswerHint pgtype.Text
 }
 
 type CompanyStage struct {
-	CompanyID             pgtype.UUID
-	StageKind             MockStageKind
-	Ordinal               int16
-	Optional              bool
-	LanguagePool          []MockTaskLanguage
-	TaskPoolIds           []pgtype.UUID
-	AiStrictnessProfileID pgtype.UUID
-	// Cap on stage_default_questions sampled per attempt. NULL = take all, 0 = skip.
-	DefaultQuestionLimit pgtype.Int4
-	// Cap on company_questions sampled per attempt. NULL = take all, 0 = skip.
-	CompanyQuestionLimit pgtype.Int4
+	ID        pgtype.UUID
+	CompanyID pgtype.UUID
+	Name      string
+	SortOrder int32
 }
 
 type CopilotConversation struct {
@@ -539,10 +209,10 @@ type CopilotSession struct {
 	ID          pgtype.UUID
 	UserID      pgtype.UUID
 	Kind        string
+	DocumentIds []pgtype.UUID
 	StartedAt   pgtype.Timestamptz
 	FinishedAt  pgtype.Timestamptz
 	ByokOnly    bool
-	DocumentIds []pgtype.UUID
 }
 
 type CopilotSessionReport struct {
@@ -588,7 +258,6 @@ type Device struct {
 	UserID     pgtype.UUID
 	Name       string
 	Platform   string
-	AppVersion string
 	LastSeenAt pgtype.Timestamptz
 	RevokedAt  pgtype.Timestamptz
 	CreatedAt  pgtype.Timestamptz
@@ -644,8 +313,8 @@ type EditorRoom struct {
 	Language   string
 	IsFrozen   bool
 	ExpiresAt  pgtype.Timestamptz
-	CreatedAt  pgtype.Timestamptz
 	Visibility string
+	CreatedAt  pgtype.Timestamptz
 }
 
 type EloSnapshotsDaily struct {
@@ -654,6 +323,12 @@ type EloSnapshotsDaily struct {
 	SnapshotDate  pgtype.Date
 	Elo           int32
 	MatchesPlayed int32
+}
+
+type EmbeddingModel struct {
+	ID   int32
+	Name string
+	Dim  int32
 }
 
 type Event struct {
@@ -665,9 +340,16 @@ type Event struct {
 	DurationMin      int32
 	EditorRoomID     pgtype.UUID
 	WhiteboardRoomID pgtype.UUID
-	RecurrenceRule   string
+	RecurrenceRule   pgtype.Text
 	CreatedBy        pgtype.UUID
 	CreatedAt        pgtype.Timestamptz
+}
+
+type EventNotificationSent struct {
+	EventID pgtype.UUID
+	UserID  pgtype.UUID
+	Kind    string
+	SentAt  pgtype.Timestamptz
 }
 
 type EventParticipant struct {
@@ -700,24 +382,14 @@ type Friendship struct {
 	AcceptedAt  pgtype.Timestamptz
 }
 
-type HoneCueSession struct {
+type HoneDailyBrief struct {
 	ID              pgtype.UUID
 	UserID          pgtype.UUID
-	FilePath        string
-	Title           string
-	BodyMd          string
-	RawAnalysisJson []byte
-	StartedAt       pgtype.Timestamptz
-	ImportedAt      pgtype.Timestamptz
-	UpdatedAt       pgtype.Timestamptz
-}
-
-type HoneDailyBrief struct {
-	ID          pgtype.UUID
-	UserID      pgtype.UUID
-	BriefDate   pgtype.Date
-	Payload     []byte
-	GeneratedAt pgtype.Timestamptz
+	BriefDate       pgtype.Date
+	Headline        string
+	NarrativeMd     string
+	Recommendations []byte
+	CreatedAt       pgtype.Timestamptz
 }
 
 type HoneDailyPlan struct {
@@ -734,7 +406,7 @@ type HoneFocusSession struct {
 	ID                 pgtype.UUID
 	UserID             pgtype.UUID
 	PlanID             pgtype.UUID
-	PlanItemID         pgtype.Text
+	PlanItemID         string
 	PinnedTitle        string
 	Mode               string
 	StartedAt          pgtype.Timestamptz
@@ -745,21 +417,25 @@ type HoneFocusSession struct {
 }
 
 type HoneNote struct {
-	ID             pgtype.UUID
-	UserID         pgtype.UUID
-	Title          string
-	BodyMd         string
-	SizeBytes      int32
-	Embedding      []float32
-	EmbeddingModel pgtype.Text
-	EmbeddedAt     pgtype.Timestamptz
-	CreatedAt      pgtype.Timestamptz
-	UpdatedAt      pgtype.Timestamptz
-	ArchivedAt     pgtype.Timestamptz
-	PublishedAt    pgtype.Timestamptz
-	PublicSlug     pgtype.Text
-	Encrypted      bool
-	FolderID       pgtype.UUID
+	ID               pgtype.UUID
+	UserID           pgtype.UUID
+	Title            string
+	BodyMd           string
+	SizeBytes        int32
+	FolderID         pgtype.UUID
+	Kind             string
+	RawAnalysisJson  []byte
+	Encrypted        bool
+	PublicSlug       pgtype.Text
+	PublishedAt      pgtype.Timestamptz
+	Embedding        []float32
+	EmbeddingModelID pgtype.Int4
+	EmbeddedAt       pgtype.Timestamptz
+	FilePath         pgtype.Text
+	StartedAt        pgtype.Timestamptz
+	ImportedAt       pgtype.Timestamptz
+	CreatedAt        pgtype.Timestamptz
+	UpdatedAt        pgtype.Timestamptz
 }
 
 type HoneNoteFolder struct {
@@ -772,11 +448,10 @@ type HoneNoteFolder struct {
 }
 
 type HonePlanSkip struct {
-	UserID      pgtype.UUID
-	SkillKey    string
-	ItemID      string
-	PlanDate    pgtype.Date
-	DismissedAt pgtype.Timestamptz
+	ID        pgtype.UUID
+	UserID    pgtype.UUID
+	SkillKey  string
+	SkippedAt pgtype.Timestamptz
 }
 
 type HoneQueueItem struct {
@@ -785,7 +460,7 @@ type HoneQueueItem struct {
 	Title     string
 	Source    string
 	Status    string
-	Date      pgtype.Date
+	ItemDate  pgtype.Date
 	SkillKey  pgtype.Text
 	CreatedAt pgtype.Timestamptz
 	UpdatedAt pgtype.Timestamptz
@@ -797,7 +472,6 @@ type HoneStreakDay struct {
 	FocusedSeconds  int32
 	SessionsCount   int32
 	QualifiesStreak bool
-	UpdatedAt       pgtype.Timestamptz
 }
 
 type HoneStreakState struct {
@@ -808,15 +482,41 @@ type HoneStreakState struct {
 	UpdatedAt     pgtype.Timestamptz
 }
 
-type HoneWhiteboard struct {
+type HoneTask struct {
+	ID                 pgtype.UUID
+	UserID             pgtype.UUID
+	Status             string
+	Kind               string
+	Source             string
+	Title              string
+	BriefMd            string
+	SkillKey           pgtype.Text
+	DeepLink           string
+	RecommendedReading []string
+	Priority           int16
+	DueAt              pgtype.Timestamptz
+	CreatedAt          pgtype.Timestamptz
+	UpdatedAt          pgtype.Timestamptz
+	CompletedAt        pgtype.Timestamptz
+	DismissedAt        pgtype.Timestamptz
+}
+
+type HoneTaskComment struct {
 	ID         pgtype.UUID
-	UserID     pgtype.UUID
-	Title      string
-	StateJson  []byte
-	Version    int32
+	TaskID     pgtype.UUID
+	AuthorKind string
+	BodyMd     string
 	CreatedAt  pgtype.Timestamptz
-	UpdatedAt  pgtype.Timestamptz
-	ArchivedAt pgtype.Timestamptz
+}
+
+type HoneWhiteboard struct {
+	ID        pgtype.UUID
+	UserID    pgtype.UUID
+	Title     string
+	StateJson []byte
+	Version   int32
+	CreatedAt pgtype.Timestamptz
+	UpdatedAt pgtype.Timestamptz
 }
 
 type Incident struct {
@@ -874,12 +574,11 @@ type LlmModel struct {
 
 type LlmRuntimeConfig struct {
 	ID            int32
-	Version       int64
 	ChainOrder    []string
 	TaskMap       []byte
 	VirtualChains []byte
+	Version       int32
 	UpdatedAt     pgtype.Timestamptz
-	UpdatedBy     pgtype.UUID
 }
 
 type Lobby struct {
@@ -932,15 +631,16 @@ type MockMessage struct {
 }
 
 type MockPipeline struct {
-	ID              pgtype.UUID
-	UserID          pgtype.UUID
-	CompanyID       pgtype.UUID
-	AiAssist        bool
-	CurrentStageIdx int16
-	Verdict         MockPipelineVerdict
-	TotalScore      pgtype.Float4
-	StartedAt       pgtype.Timestamptz
-	FinishedAt      pgtype.Timestamptz
+	ID         pgtype.UUID
+	UserID     pgtype.UUID
+	CompanyID  pgtype.UUID
+	RoleLabel  string
+	Section    string
+	Status     string
+	StartedAt  pgtype.Timestamptz
+	FinishedAt pgtype.Timestamptz
+	CreatedAt  pgtype.Timestamptz
+	UpdatedAt  pgtype.Timestamptz
 }
 
 type MockSession struct {
@@ -957,80 +657,50 @@ type MockSession struct {
 	LlmModel       pgtype.Text
 	StressProfile  []byte
 	AiReport       []byte
+	AiAssist       bool
 	RunningSummary string
 	StartedAt      pgtype.Timestamptz
 	FinishedAt     pgtype.Timestamptz
 	CreatedAt      pgtype.Timestamptz
-	AiAssist       bool
 }
 
 type MockTask struct {
-	ID                       pgtype.UUID
-	StageKind                MockStageKind
-	Language                 MockTaskLanguage
-	Difficulty               int16
-	Title                    string
-	BodyMd                   string
-	SampleIoMd               string
-	ReferenceCriteria        []byte
-	ReferenceSolutionMd      string
-	FunctionalRequirementsMd string
-	TimeLimitMin             int32
-	AiStrictnessProfileID    pgtype.UUID
-	Active                   bool
-	CreatedByAdminID         pgtype.UUID
-	CreatedAt                pgtype.Timestamptz
-	UpdatedAt                pgtype.Timestamptz
-	LlmModel                 pgtype.Text
+	ID               pgtype.UUID
+	Section          string
+	Difficulty       string
+	Title            string
+	BriefMd          string
+	Language         pgtype.Text
+	LlmModel         pgtype.Text
+	ExpectedKeywords []string
+	IsActive         bool
+	CreatedAt        pgtype.Timestamptz
 }
 
 type MockTaskTestCase struct {
-	ID             pgtype.UUID
-	TaskID         pgtype.UUID
-	Input          string
-	ExpectedOutput string
-	IsHidden       bool
-	Ordinal        int32
-	CreatedAt      pgtype.Timestamptz
+	ID         pgtype.UUID
+	MockTaskID pgtype.UUID
+	InputMd    string
+	Expected   string
+	Weight     int32
 }
 
 type NoteYjsUpdate struct {
-	Seq            int64
-	NoteID         pgtype.UUID
-	UserID         pgtype.UUID
-	UpdateData     []byte
-	OriginDeviceID pgtype.UUID
-	CreatedAt      pgtype.Timestamptz
+	Seq        int64
+	NoteID     pgtype.UUID
+	UserID     pgtype.UUID
+	UpdateData []byte
+	CreatedAt  pgtype.Timestamptz
 }
 
 type NotificationPref struct {
-	UserID         pgtype.UUID
-	ChannelEnabled []byte
-	SilenceUntil   pgtype.Timestamptz
-	UpdatedAt      pgtype.Timestamptz
-}
-
-type NotificationPreference struct {
 	UserID                    pgtype.UUID
-	Channels                  []string
 	TelegramChatID            pgtype.Text
-	QuietHoursFrom            pgtype.Time
-	QuietHoursTo              pgtype.Time
+	ChannelEnabled            []byte
 	WeeklyReportEnabled       bool
 	SkillDecayWarningsEnabled bool
+	SilenceUntil              pgtype.Timestamptz
 	UpdatedAt                 pgtype.Timestamptz
-}
-
-type NotificationsLog struct {
-	ID        pgtype.UUID
-	UserID    pgtype.UUID
-	Channel   string
-	Type      string
-	Payload   []byte
-	Status    string
-	SentAt    pgtype.Timestamptz
-	Error     pgtype.Text
-	CreatedAt pgtype.Timestamptz
 }
 
 type OauthAccount struct {
@@ -1052,34 +722,6 @@ type OnboardingProgress struct {
 	UpdatedAt   pgtype.Timestamptz
 }
 
-type OrgMember struct {
-	OrgID    pgtype.UUID
-	UserID   pgtype.UUID
-	Role     string
-	JoinedAt pgtype.Timestamptz
-}
-
-type OrgSeat struct {
-	ID             pgtype.UUID
-	OrgID          pgtype.UUID
-	InviteEmail    pgtype.Text
-	AssignedUserID pgtype.UUID
-	Status         string
-	AssignedAt     pgtype.Timestamptz
-	RevokedAt      pgtype.Timestamptz
-	CreatedAt      pgtype.Timestamptz
-}
-
-type Organization struct {
-	ID          pgtype.UUID
-	Name        string
-	Slug        string
-	OwnerUserID pgtype.UUID
-	Plan        string
-	SeatQuota   int32
-	CreatedAt   pgtype.Timestamptz
-}
-
 type Persona struct {
 	ID            string
 	Label         string
@@ -1095,39 +737,22 @@ type Persona struct {
 }
 
 type PipelineAttempt struct {
-	ID                      pgtype.UUID
-	PipelineStageID         pgtype.UUID
-	Kind                    PipelineAttemptKind
-	TaskID                  pgtype.UUID
-	TaskQuestionID          pgtype.UUID
-	DefaultQuestionID       pgtype.UUID
-	CompanyQuestionID       pgtype.UUID
-	UserAnswerMd            pgtype.Text
-	UserVoiceUrl            pgtype.Text
-	UserExcalidrawImageUrl  pgtype.Text
-	UserContextMd           pgtype.Text
-	AiScore                 pgtype.Float4
-	AiVerdict               PipelineAttemptVerdict
-	AiFeedbackMd            pgtype.Text
-	AiWaterScore            pgtype.Float4
-	AiMissingPoints         []byte
-	AiJudgedAt              pgtype.Timestamptz
-	CreatedAt               pgtype.Timestamptz
-	UserExcalidrawSceneJson []byte
+	ID         pgtype.UUID
+	StageID    pgtype.UUID
+	UserAnswer pgtype.Text
+	AiFeedback []byte
+	Score      pgtype.Int4
+	CreatedAt  pgtype.Timestamptz
+	FinishedAt pgtype.Timestamptz
 }
 
 type PipelineStage struct {
-	ID                    pgtype.UUID
-	PipelineID            pgtype.UUID
-	StageKind             MockStageKind
-	Ordinal               int16
-	Status                PipelineStageStatus
-	Score                 pgtype.Float4
-	Verdict               NullPipelineStageVerdict
-	AiFeedbackMd          pgtype.Text
-	AiStrictnessProfileID pgtype.UUID
-	StartedAt             pgtype.Timestamptz
-	FinishedAt            pgtype.Timestamptz
+	ID         pgtype.UUID
+	PipelineID pgtype.UUID
+	Kind       string
+	SortOrder  int32
+	Status     string
+	CreatedAt  pgtype.Timestamptz
 }
 
 type Podcast struct {
@@ -1168,8 +793,6 @@ type PodcastProgress struct {
 type Profile struct {
 	UserID           pgtype.UUID
 	CharClass        string
-	Level            int32
-	Xp               int64
 	Title            pgtype.Text
 	AvatarFrame      pgtype.Text
 	CareerStage      string
@@ -1228,6 +851,11 @@ type SavedVacancy struct {
 	UpdatedAt    pgtype.Timestamptz
 }
 
+type SessionDocument struct {
+	SessionID  pgtype.UUID
+	DocumentID pgtype.UUID
+}
+
 type SkillNode struct {
 	UserID     pgtype.UUID
 	NodeKey    string
@@ -1252,27 +880,21 @@ type Slot struct {
 }
 
 type StageDefaultQuestion struct {
-	ID                pgtype.UUID
-	StageKind         MockStageKind
-	Body              string
-	ExpectedAnswerMd  string
-	ReferenceCriteria []byte
-	Active            bool
-	SortOrder         int32
-	CreatedAt         pgtype.Timestamptz
+	ID         pgtype.UUID
+	StageKind  string
+	QuestionMd string
+	AnswerHint pgtype.Text
 }
 
 type Subscription struct {
 	UserID           pgtype.UUID
 	Plan             string
 	Status           string
-	BoostyLevel      pgtype.Text
-	CurrentPeriodEnd pgtype.Timestamptz
-	UpdatedAt        pgtype.Timestamptz
 	Provider         pgtype.Text
 	ProviderSubID    pgtype.Text
-	StartedAt        pgtype.Timestamptz
+	CurrentPeriodEnd pgtype.Timestamptz
 	GraceUntil       pgtype.Timestamptz
+	UpdatedAt        pgtype.Timestamptz
 }
 
 type SupportTicket struct {
@@ -1318,13 +940,10 @@ type Task struct {
 }
 
 type TaskQuestion struct {
-	ID                pgtype.UUID
-	TaskID            pgtype.UUID
-	Body              string
-	ExpectedAnswerMd  string
-	ReferenceCriteria []byte
-	SortOrder         int32
-	CreatedAt         pgtype.Timestamptz
+	ID         pgtype.UUID
+	MockTaskID pgtype.UUID
+	QuestionMd string
+	AnswerHint pgtype.Text
 }
 
 type TaskRating struct {
@@ -1371,25 +990,22 @@ type TgUserLink struct {
 
 type User struct {
 	ID                    pgtype.UUID
-	Email                 pgtype.Text
 	Username              string
-	PasswordHash          pgtype.Text
 	Role                  string
 	Locale                string
 	DisplayName           pgtype.Text
 	AvatarUrl             string
 	AiInsightModel        pgtype.Text
 	AiVacanciesModel      pgtype.Text
-	AiDefaultModel        pgtype.Text
 	OnboardingCompletedAt pgtype.Timestamptz
 	FocusClass            string
-	CreatedAt             pgtype.Timestamptz
-	UpdatedAt             pgtype.Timestamptz
 	StorageQuotaBytes     int64
 	StorageUsedBytes      int64
 	StorageTier           string
 	StorageRecomputedAt   pgtype.Timestamptz
 	VaultKdfSalt          []byte
+	CreatedAt             pgtype.Timestamptz
+	UpdatedAt             pgtype.Timestamptz
 }
 
 type UserBan struct {
@@ -1428,6 +1044,14 @@ type UserReport struct {
 	CreatedAt   pgtype.Timestamptz
 }
 
+type UserXp struct {
+	UserID    pgtype.UUID
+	TotalXp   int64
+	Level     int32
+	LastXpAt  pgtype.Timestamptz
+	UpdatedAt pgtype.Timestamptz
+}
+
 type WeeklyShareToken struct {
 	ID         pgtype.UUID
 	UserID     pgtype.UUID
@@ -1444,9 +1068,9 @@ type WhiteboardRoom struct {
 	Title      string
 	Snapshot   []byte
 	ExpiresAt  pgtype.Timestamptz
+	Visibility string
 	CreatedAt  pgtype.Timestamptz
 	UpdatedAt  pgtype.Timestamptz
-	Visibility string
 }
 
 type WhiteboardRoomParticipant struct {
@@ -1456,10 +1080,18 @@ type WhiteboardRoomParticipant struct {
 }
 
 type WhiteboardYjsUpdate struct {
-	Seq            int64
-	WhiteboardID   pgtype.UUID
-	UserID         pgtype.UUID
-	UpdateData     []byte
-	OriginDeviceID pgtype.UUID
-	CreatedAt      pgtype.Timestamptz
+	Seq          int64
+	WhiteboardID pgtype.UUID
+	UserID       pgtype.UUID
+	UpdateData   []byte
+	CreatedAt    pgtype.Timestamptz
+}
+
+type XpEvent struct {
+	ID        int64
+	UserID    pgtype.UUID
+	Amount    int32
+	Source    string
+	SourceID  pgtype.UUID
+	CreatedAt pgtype.Timestamptz
 }

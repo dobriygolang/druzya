@@ -26,17 +26,20 @@ type ListCatalog struct {
 	Signer   domain.AudioSigner
 }
 
-// NewListCatalog wires the use case.
+// NewListCatalog wires the use case. Both repo and signer are required.
 func NewListCatalog(p domain.PodcastRepo, s domain.AudioSigner) *ListCatalog {
+	if p == nil {
+		panic("podcast.NewListCatalog: PodcastRepo is required")
+	}
+	if s == nil {
+		panic("podcast.NewListCatalog: AudioSigner is required")
+	}
 	return &ListCatalog{Podcasts: p, Signer: s}
 }
 
 // Do returns the full catalog (or a section-filtered slice) annotated with
-// per-user progress + signed audio URLs.
-//
-// nil-safe: a nil `section` parameter means "every section". The repo already
-// handles the no-row case by returning an empty slice; this method never
-// dereferences Signer if it's nil (STUB handling).
+// per-user progress + signed audio URLs. A nil `section` means "every section".
+// Sign failures fail loudly — no placeholder URLs.
 func (uc *ListCatalog) Do(ctx context.Context, userID uuid.UUID, section *enums.Section) ([]CatalogEntry, error) {
 	rows, err := uc.Podcasts.ListForUser(ctx, userID, section)
 	if err != nil {
@@ -44,13 +47,9 @@ func (uc *ListCatalog) Do(ctx context.Context, userID uuid.UUID, section *enums.
 	}
 	out := make([]CatalogEntry, 0, len(rows))
 	for _, r := range rows {
-		url := ""
-		if uc.Signer != nil {
-			u, err := uc.Signer.Sign(ctx, r.Podcast.AudioKey)
-			if err != nil {
-				return nil, fmt.Errorf("podcast.ListCatalog: sign: %w", err)
-			}
-			url = u
+		url, err := uc.Signer.Sign(ctx, r.Podcast.AudioKey)
+		if err != nil {
+			return nil, fmt.Errorf("podcast.ListCatalog: sign: %w", err)
 		}
 		out = append(out, CatalogEntry{
 			Podcast:   r.Podcast,

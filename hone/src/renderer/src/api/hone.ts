@@ -89,6 +89,7 @@ export interface Note {
   updatedAt: Date | null;
   sizeBytes: number;
   folderId: string | null;
+  encrypted: boolean;
 }
 
 export interface NoteSummary {
@@ -259,6 +260,11 @@ function unwrapNote(n: ProtoNote): Note {
     updatedAt: protoTs(n.updatedAt),
     sizeBytes: n.sizeBytes,
     folderId: nonEmpty(n.folderId),
+    // The proto Note message has no `encrypted` field today (the backend
+    // tracks it via the parallel /notes/meta endpoint). Default to false
+    // here — UI flows (share/private) resolve the real flag through
+    // getNotesMeta() before deciding whether to encrypt or decrypt.
+    encrypted: false,
   };
 }
 

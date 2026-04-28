@@ -23,6 +23,7 @@ import (
 	"druz9/shared/enums"
 	"druz9/shared/generated/pb/druz9/v1/druz9v1connect"
 	sharedMw "druz9/shared/pkg/middleware"
+	"druz9/shared/pkg/ratelimit"
 	subDomain "druz9/subscription/domain"
 
 	"github.com/go-chi/chi/v5"
@@ -67,10 +68,9 @@ func NewEditor(d monolithServices.Deps) *monolithServices.Module {
 		Uploader: replay,
 		Flush:    hub.FlushRoom,
 	}
-	// Judge0 wiring for RunCode. If JUDGE0_URL is empty we still construct
-	// the use case with a client whose BaseURL is "" — Run will surface
-	// ErrSandboxUnavailable → HTTP 503 with a helpful message, matching the
-	// anti-fallback policy used by the daily service.
+	// Judge0 wiring for RunCode. JUDGE0_URL must be set in non-dev profiles —
+	// the use case fails loudly otherwise (anti-fallback policy: better an
+	// honest 503 with "sandbox unavailable" than a placeholder result).
 	var runner editorDomain.CodeRunner
 	if u := strings.TrimSpace(d.Cfg.Judge0.URL); u != "" {
 		runner = editorInfra.NewJudge0RunClient(u, d.Log)
@@ -79,11 +79,28 @@ func NewEditor(d monolithServices.Deps) *monolithServices.Module {
 		d.Log.Warn("editor: JUDGE0_URL not set — /editor/room/{id}/run will return 503 (sandbox unavailable)")
 		runner = editorInfra.NewJudge0RunClient("", d.Log)
 	}
+
+	// Pick the distributed limiter when Redis is available; fall back to
+	// the in-memory bucket for dev / CI / single-process runs only.
+	var limiter editorDomain.RunCodeRateLimiter
+	if d.Redis != nil {
+		limiter = editorInfra.NewRedisRunCodeLimiter(
+			ratelimit.NewRedisFixedWindow(d.Redis),
+			editorInfra.DefaultRunCodeMinuteCap,
+			editorInfra.DefaultRunCodeDayCap,
+		)
+		d.Log.Info("editor: Redis RunCode limiter wired",
+			"minute_cap", editorInfra.DefaultRunCodeMinuteCap,
+			"day_cap", editorInfra.DefaultRunCodeDayCap)
+	} else {
+		limiter = editorApp.NewUserRateLimiter(editorInfra.DefaultRunCodeMinuteCap, time.Minute)
+		d.Log.Warn("editor: REDIS_URL not set — falling back to in-memory RunCode limiter (single-process only)")
+	}
 	runUC := &editorApp.RunCode{
 		Rooms:        rooms,
 		Participants: parts,
 		Runner:       runner,
-		Limiter:      editorApp.NewUserRateLimiter(10, time.Minute),
+		Limiter:      limiter,
 		Now:          d.Now,
 	}
 	// Phase 2 quota check для CreateRoom: free-tier лимит на active shared

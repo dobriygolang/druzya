@@ -326,7 +326,14 @@ export default function CircleDetailPage() {
                   {events.map((ev) => (
                     <li
                       key={ev.id}
-                      className="rounded-lg border border-border bg-surface-1 p-4"
+                      className="relative overflow-hidden rounded-lg border border-border bg-surface-1 p-4 pl-5"
+                      style={{
+                        // Colored left stripe — deterministic HSL hashed off
+                        // the event's circle id so events from the same
+                        // circle visually group, while events from different
+                        // circles are obviously distinct in a mixed list.
+                        boxShadow: `inset 4px 0 0 0 ${eventStripeColor(ev.circle_id)}`,
+                      }}
                     >
                       <div className="flex items-start justify-between gap-3">
                         <div>
@@ -339,6 +346,8 @@ export default function CircleDetailPage() {
                             <span>·</span>
                             <span>{ev.duration_min} min</span>
                             {ev.recurrence === 'weekly_friday' && <span>· weekly</span>}
+                            <span>·</span>
+                            <span>{eventCountdown(ev.starts_at)}</span>
                           </div>
                           {ev.description && (
                             <p className="mt-2 text-[13px] text-text-secondary">
@@ -382,6 +391,32 @@ export default function CircleDetailPage() {
       </div>
     </AppShellV2>
   )
+}
+
+// eventStripeColor — deterministic HSL hash off circle id. Same circle
+// always renders the same hue across sessions, so the user sees consistent
+// grouping in mixed-circle event lists. Saturation/lightness are fixed
+// to keep the stripe quiet enough to not fight other UI accents.
+function eventStripeColor(circleID: string): string {
+  let h = 0
+  for (let i = 0; i < circleID.length; i++) {
+    h = (h * 31 + circleID.charCodeAt(i)) >>> 0
+  }
+  return `hsl(${h % 360}, 55%, 55%)`
+}
+
+// eventCountdown — short relative-to-now label ("через 23 мин",
+// "через 4 ч", "сейчас"). Past events shouldn't reach this list (backend
+// filter), so we don't render "X minutes ago".
+function eventCountdown(startsAt: string): string {
+  const ms = new Date(startsAt).getTime() - Date.now()
+  if (ms <= 0) return 'now'
+  const min = Math.floor(ms / 60_000)
+  if (min < 60) return `in ${min}m`
+  const hr = Math.floor(min / 60)
+  if (hr < 24) return `in ${hr}h`
+  const d = Math.floor(hr / 24)
+  return `in ${d}d`
 }
 
 // combineDateTime — склеивает значения <input type="date"> + <input

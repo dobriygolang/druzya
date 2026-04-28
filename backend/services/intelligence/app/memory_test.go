@@ -105,3 +105,7 @@ func (r *recallEpisodeRepo) Stats30d(context.Context, uuid.UUID) (domain.MemoryS
 func (r *recallEpisodeRepo) GetBriefRecommendations(context.Context, uuid.UUID, uuid.UUID) ([]domain.Recommendation, error) {
 	return nil, domain.ErrEpisodeNotFound
 }
+
+func (r *recallEpisodeRepo) DeleteOlderThan(context.Context, time.Time) (int64, error) {
+	return 0, nil
+}

@@ -57,10 +57,7 @@ INSERT INTO mock_sessions (
     duration_min, voice_mode, paired_user_id, llm_model, started_at,
     ai_assist
 ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
-RETURNING id, user_id, company_id, task_id, section, difficulty, status,
-          duration_min, voice_mode, paired_user_id, llm_model,
-          stress_profile, ai_report, running_summary,
-          started_at, finished_at, created_at, ai_assist
+RETURNING id, user_id, company_id, task_id, section, difficulty, status, duration_min, voice_mode, paired_user_id, llm_model, stress_profile, ai_report, ai_assist, running_summary, started_at, finished_at, created_at
 `
 
 type CreateMockSessionParams struct {
@@ -81,6 +78,7 @@ type CreateMockSessionParams struct {
 // Queries consumed by sqlc; mirror hand-rolled pgx in infra/postgres.go.
 // CRITICAL: solution_hint is ONLY selected by GetTaskWithHint — never by any
 // query whose result is shown to the client.
+// RETURNING * so sqlc emits the canonical MockSession row type (no Row alias).
 func (q *Queries) CreateMockSession(ctx context.Context, arg CreateMockSessionParams) (MockSession, error) {
 	row := q.db.QueryRow(ctx, createMockSession,
 		arg.UserID,
@@ -111,11 +109,11 @@ func (q *Queries) CreateMockSession(ctx context.Context, arg CreateMockSessionPa
 		&i.LlmModel,
 		&i.StressProfile,
 		&i.AiReport,
+		&i.AiAssist,
 		&i.RunningSummary,
 		&i.StartedAt,
 		&i.FinishedAt,
 		&i.CreatedAt,
-		&i.AiAssist,
 	)
 	return i, err
 }
@@ -170,12 +168,7 @@ func (q *Queries) GetCompanyForMock(ctx context.Context, id pgtype.UUID) (GetCom
 }
 
 const getMockSession = `-- name: GetMockSession :one
-SELECT id, user_id, company_id, task_id, section, difficulty, status,
-       duration_min, voice_mode, paired_user_id, llm_model,
-       stress_profile, ai_report, running_summary,
-       started_at, finished_at, created_at, ai_assist
-  FROM mock_sessions
- WHERE id = $1
+SELECT id, user_id, company_id, task_id, section, difficulty, status, duration_min, voice_mode, paired_user_id, llm_model, stress_profile, ai_report, ai_assist, running_summary, started_at, finished_at, created_at FROM mock_sessions WHERE id = $1
 `
 
 func (q *Queries) GetMockSession(ctx context.Context, id pgtype.UUID) (MockSession, error) {
@@ -195,11 +188,11 @@ func (q *Queries) GetMockSession(ctx context.Context, id pgtype.UUID) (MockSessi
 		&i.LlmModel,
 		&i.StressProfile,
 		&i.AiReport,
+		&i.AiAssist,
 		&i.RunningSummary,
 		&i.StartedAt,
 		&i.FinishedAt,
 		&i.CreatedAt,
-		&i.AiAssist,
 	)
 	return i, err
 }

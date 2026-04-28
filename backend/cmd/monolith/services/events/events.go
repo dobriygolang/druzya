@@ -1,6 +1,8 @@
 package events
 
 import (
+	"context"
+
 	monolithServices "druz9/cmd/monolith/services"
 	circlesServices "druz9/cmd/monolith/services/circles"
 	eventsApp "druz9/events/app"
@@ -17,11 +19,25 @@ import (
 func NewEvents(d monolithServices.Deps, circles circlesServices.CirclesModule) *monolithServices.Module {
 	events := eventsInfra.NewEvents(d.Pool)
 	parts := eventsInfra.NewParticipants(d.Pool)
+	ledger := eventsInfra.NewNotificationLedger(d.Pool)
 	handlers := eventsApp.NewHandlers(events, parts, circlesServices.CirclesAuthorityAdapter{H: circles.Handlers})
 	server := eventsPorts.NewEventsServer(handlers, d.Log)
 
 	connectPath, connectHandler := druz9v1connect.NewEventsServiceHandler(server)
 	transcoder := monolithServices.MustTranscode("events", connectPath, connectHandler)
+
+	cleanup := &eventsApp.CleanupWorker{
+		Events: events,
+		Log:    d.Log,
+		Now:    d.Now,
+	}
+	notifier := &eventsApp.StartingSoonNotifier{
+		Events: events,
+		Ledger: ledger,
+		Bus:    d.Bus,
+		Log:    d.Log,
+		Now:    d.Now,
+	}
 
 	return &monolithServices.Module{
 		ConnectPath:        connectPath,
@@ -34,6 +50,10 @@ func NewEvents(d monolithServices.Deps, circles circlesServices.CirclesModule) *
 			r.Delete("/events/{event_id}", transcoder.ServeHTTP)
 			r.Post("/events/{event_id}/join", transcoder.ServeHTTP)
 			r.Post("/events/{event_id}/leave", transcoder.ServeHTTP)
+		},
+		Background: []func(context.Context){
+			func(ctx context.Context) { go cleanup.Run(ctx) },
+			func(ctx context.Context) { go notifier.Run(ctx) },
 		},
 	}
 }

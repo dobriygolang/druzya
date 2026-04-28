@@ -291,7 +291,11 @@ func (uc *GetDailyBrief) Do(ctx context.Context, in GetDailyBriefInput) (domain.
 					domain.EpisodeQAQuery,
 					domain.EpisodeQAAnswered,
 				},
-				SinceDays:     60,
+				// Tighter than the historical 60-day window: older brief
+				// signals lead to recommendations referencing what the user
+				// solved weeks ago and create the "coach feels stale" UX
+				// the rebuild was prompted by.
+				SinceDays:     30,
 				K:             4,
 				PerKindRecent: 3,
 			}); err == nil {

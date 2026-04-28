@@ -168,8 +168,10 @@ type NoteEmbedding struct {
 	Embedding []float32
 }
 
-// Embedder is the bge-small wrapper. Real impl talks to Ollama via
-// llmcache; STUB returns ErrEmbeddingUnavailable.
+// Embedder is the bge-small wrapper. Production impl is HoneEmbedder
+// (Ollama via llmcache) wired in cmd/monolith; NoEmbedder is the explicit
+// "Ollama not configured" fallback that returns ErrEmbeddingUnavailable so
+// callers surface a real 503 instead of indexing nothing silently.
 type Embedder interface {
 	Embed(ctx context.Context, text string) ([]float32, string, error)
 }
@@ -209,17 +211,20 @@ type WeakNode struct {
 	Priority    string // "high" | "medium" | "low"
 }
 
-// CritiqueStreamer is the llmchain wrapper for CritiqueWhiteboard. Real impl
-// calls TaskSysDesignCritique and streams packets; STUB returns
-// ErrLLMUnavailable immediately.
+// CritiqueStreamer is the llmchain wrapper for CritiqueWhiteboard.
+// Production impl (LLMChainCritiqueStreamer) calls TaskSysDesignCritique
+// and streams packets; NoLLMCritiqueStreamer is the wired-but-disabled
+// fallback that returns ErrLLMUnavailable so the 503 is honest.
 type CritiqueStreamer interface {
 	Critique(ctx context.Context, whiteboardStateJSON []byte, yield func(CritiquePacket) error) error
 }
 
-// PlanSynthesizer is the llmchain wrapper for GenerateDailyPlan. Real impl
-// calls TaskDailyPlanSynthesis with a strict-JSON prompt; STUB returns
-// ErrLLMUnavailable. A nil synthesiser in the app struct must be checked
-// at call time — the service boots without LLM when no keys are configured.
+// PlanSynthesizer is the llmchain wrapper for GenerateDailyPlan.
+// Production impl (LLMChainPlanSynthesiser) calls TaskDailyPlanSynthesis
+// with a strict-JSON prompt; NoLLMPlanSynthesiser is the wired-but-disabled
+// fallback that returns ErrLLMUnavailable. A nil synthesiser in the app
+// struct must be checked at call time — the service boots without LLM
+// when no keys are configured.
 //
 // chronic — скиллы с высокой «стеной сопротивления» (>= N dismiss'ов за
 // последние M дней). Синтезайзер использует их чтобы разбивать pump-up

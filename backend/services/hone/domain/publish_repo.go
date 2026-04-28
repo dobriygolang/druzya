@@ -34,6 +34,19 @@ type PublishRepo interface {
 	// GetPublicView — server-side render data: title, body_md, updated_at —
 	// по slug'у, только если note published И не archived.
 	GetPublicView(ctx context.Context, slug string) (title, bodyMD string, updatedAt time.Time, err error)
+
+	// ShareToWebAtomic выполняет одной транзакцией: clear encrypted, write
+	// plaintext body_md, set public_slug=slug, set published_at=now(). Используется
+	// в едином UX-шаге «Share to web» — пользователь не видит промежуточного
+	// «decrypted but not published» состояния. Возвращает publishedAt при
+	// успехе. UniqueViolation на public_slug → ErrPublishSlugCollision (caller
+	// retries with a fresh slug).
+	ShareToWebAtomic(ctx context.Context, userID, noteID uuid.UUID, plaintextMD, slug string) (time.Time, error)
+
+	// MakePrivateAtomic выполняет одной транзакцией: write ciphertext body_md,
+	// set encrypted=true, clear public_slug + published_at, wipe embedding.
+	// Используется в едином UX-шаге «Make private».
+	MakePrivateAtomic(ctx context.Context, userID, noteID uuid.UUID, ciphertextB64 string) error
 }
 
 // PublishLookup — что вернул LookupForPublish.

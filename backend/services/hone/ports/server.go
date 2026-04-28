@@ -99,11 +99,13 @@ func (s *HoneServer) requirePro(ctx context.Context, uid uuid.UUID) error {
 	}
 	ok, err := s.Tier.IsPro(ctx, uid)
 	if err != nil {
-		// Fail-open: транзиентная ошибка subscription-БД не должна
-		// ломать Pro-юзера. Логируется ниже в toConnectErr.
-		s.H.Log.Warn("hone.requirePro: tier check failed (fail-open)",
+		// Anti-fallback: surface the real error rather than silently
+		// granting Pro access on transient subscription-DB blips. Better
+		// a clear 5xx the operator can see in metrics than an opaque
+		// "everything looked fine" path that masks a subscription outage.
+		s.H.Log.Error("hone.requirePro: tier check failed",
 			slog.Any("err", err), slog.String("user_id", uid.String()))
-		return nil
+		return fmt.Errorf("hone.requirePro: %w", err)
 	}
 	if !ok {
 		return domain.ErrProRequired
@@ -129,12 +131,14 @@ func (s *HoneServer) GenerateDailyPlan(
 		key := "rl:hone:plan:force:" + uid.String()
 		res, rlErr := s.PlanLimiter.Allow(ctx, key, ForcePlanLimitPerWindow, ForcePlanWindow)
 		if rlErr != nil {
-			// Fail-open: ratelimit infra fault should not block a legitimate
-			// regen. We log via toConnectErr's default branch only on the
-			// actual app error; here just skip the gate.
-			s.H.Log.Warn("hone.GenerateDailyPlan: ratelimit check failed (fail-open)",
+			// Anti-fallback: a Redis blip used to silently widen the regen
+			// budget. Now we propagate so quota-busting flapping is
+			// visible in metrics; the user sees a transient 5xx and retries.
+			s.H.Log.Error("hone.GenerateDailyPlan: ratelimit check failed",
 				slog.Any("err", rlErr), slog.String("user_id", uid.String()))
-		} else if !res.Allowed {
+			return nil, fmt.Errorf("hone.GenerateDailyPlan: ratelimit: %w", rlErr)
+		}
+		if !res.Allowed {
 			cerr := connect.NewError(
 				connect.CodeResourceExhausted,
 				fmt.Errorf("force regeneration limited to %d per %s; retry in %ds",

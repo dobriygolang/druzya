@@ -24,7 +24,8 @@ are already in scope.
 ```go
 // --- podcast ---
 podcastPG     := podcastInfra.NewPostgres(pool)
-podcastSigner := podcastInfra.NewFakeSigner("/stream") // STUB — swap for MinIO presigner
+podcastStore  := podcastInfra.NewMinIOPodcastStore(/* … from cfg.MinIO … */)
+podcastSigner := podcastInfra.NewMinioAudioSigner(podcastStore, podcastInfra.DefaultAudioSignTTL)
 
 podcastList   := podcastApp.NewListCatalog(podcastPG, podcastSigner)
 podcastUpdate := podcastApp.NewUpdateProgress(podcastPG, bus, log)
@@ -111,9 +112,12 @@ Document only — not wired in MVP:
 
 ## Notes & STUBs
 
-- **Audio URL presigning is stubbed.** `infra.FakeSigner` returns
-  `<prefix>/<audio_key>`. Replace with a MinIO presigner (1-hour TTL) once
-  the S3-compatible credentials land. Interface: `domain.AudioSigner`.
+- **Audio URL presigning is real.** `infra.MinioAudioSigner` wraps
+  `domain.PodcastObjectStore.PresignGet` with `DefaultAudioSignTTL` (60 min).
+  When MinIO creds are missing the wiring substitutes
+  `infra.UnconfiguredObjectStore`, so every `Sign` call returns
+  `ErrObjectStoreUnavailable` and `ListCatalog` propagates a real error
+  rather than a placeholder URL.
 - **Localization is RU-first.** The REST response uses `title_ru` with a
   fallback to `title_en`. A later pass will switch on the caller's locale
   (bible §12 — internationalisation).

@@ -10,9 +10,11 @@ import (
 
 // User — корневой агрегат аутентификации. Минимальная форма: насыщенные
 // данные профиля живут в bounded-контексте profile и подтягиваются там.
+//
+// v2: email-колонка удалена из схемы. Auth — only OAuth (Yandex + Telegram).
+// Recovery нет: потеря обоих провайдеров = аккаунт мёртв.
 type User struct {
 	ID          uuid.UUID
-	Email       string // nullable в источнике; пустая строка означает отсутствие email (случай Telegram).
 	Username    string
 	Role        enums.UserRole
 	Locale      string

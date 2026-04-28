@@ -188,12 +188,13 @@ func (q *Queries) InsertArenaParticipant(ctx context.Context, arg InsertArenaPar
 
 const listArenaParticipants = `-- name: ListArenaParticipants :many
 SELECT match_id, user_id, team, elo_before, elo_after,
-       suspicion_score, solve_time_ms, submitted_at
+       suspicion_score, submitted_at
   FROM arena_participants
  WHERE match_id = $1
  ORDER BY team, user_id
 `
 
+// v2: solve_time_ms dropped (was written but not read by rating/profile).
 func (q *Queries) ListArenaParticipants(ctx context.Context, matchID pgtype.UUID) ([]ArenaParticipant, error) {
 	rows, err := q.db.Query(ctx, listArenaParticipants, matchID)
 	if err != nil {
@@ -210,7 +211,6 @@ func (q *Queries) ListArenaParticipants(ctx context.Context, matchID pgtype.UUID
 			&i.EloBefore,
 			&i.EloAfter,
 			&i.SuspicionScore,
-			&i.SolveTimeMs,
 			&i.SubmittedAt,
 		); err != nil {
 			return nil, err
@@ -456,16 +456,14 @@ func (q *Queries) UpdateArenaMatchStatus(ctx context.Context, arg UpdateArenaMat
 
 const upsertParticipantResult = `-- name: UpsertParticipantResult :execrows
 UPDATE arena_participants
-   SET solve_time_ms    = $3,
-       suspicion_score  = $4,
-       submitted_at     = $5
+   SET suspicion_score  = $3,
+       submitted_at     = $4
  WHERE match_id = $1 AND user_id = $2
 `
 
 type UpsertParticipantResultParams struct {
 	MatchID        pgtype.UUID
 	UserID         pgtype.UUID
-	SolveTimeMs    pgtype.Int8
 	SuspicionScore pgtype.Numeric
 	SubmittedAt    pgtype.Timestamptz
 }
@@ -474,7 +472,6 @@ func (q *Queries) UpsertParticipantResult(ctx context.Context, arg UpsertPartici
 	result, err := q.db.Exec(ctx, upsertParticipantResult,
 		arg.MatchID,
 		arg.UserID,
-		arg.SolveTimeMs,
 		arg.SuspicionScore,
 		arg.SubmittedAt,
 	)

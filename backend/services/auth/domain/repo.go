@@ -30,10 +30,12 @@ type UserRepo interface {
 
 // UpsertOAuthInput несёт всё нужное, чтобы создать или найти пользователя
 // по внешней идентичности. Зашифрованные блобы токенов передаются как непрозрачные.
+//
+// v2: Email убран из инпута. provider_user_id — единственная внешняя
+// идентичность; для Yandex это числовой sub, для Telegram — chat_id-as-string.
 type UpsertOAuthInput struct {
 	Provider        enums.AuthProvider
 	ProviderUserID  string
-	Email           string // может быть пустым (Telegram)
 	UsernameHint    string // предпочитаемый login/username; репо дедуплицирует при конфликте
 	DisplayName     string
 	AvatarURL       string // URL аватара провайдера; пустой → не пишем (КРОМЕ insert: пишем '').

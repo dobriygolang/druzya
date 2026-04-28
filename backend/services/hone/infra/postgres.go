@@ -215,15 +215,55 @@ func (f *Focus) End(ctx context.Context, userID, sessionID uuid.UUID, endedAt ti
 	return out, nil
 }
 
-// Get fetches one session.
+// Get fetches one session by id + owner. ErrNotFound when missing.
+// Mirrors End()'s SELECT shape so callers always see the same hydrated
+// projection regardless of whether the session is open or closed.
 func (f *Focus) Get(ctx context.Context, userID, sessionID uuid.UUID) (domain.FocusSession, error) {
-	// STUB: implement if any endpoint needs per-session GET. End() returns
-	// the hydrated row directly so the first iteration of the client
-	// doesn't need this endpoint. Unimplemented rather than broken —
-	// returning ErrNotFound would be wrong (the row exists).
-	_ = userID
-	_ = sessionID
-	return domain.FocusSession{}, fmt.Errorf("hone.Focus.Get: not yet implemented")
+	var (
+		planID         pgtype.UUID
+		planItemID     string
+		pinnedTitle    string
+		mode           string
+		startedAt      time.Time
+		endedAt        pgtype.Timestamptz
+		pomodoros      int32
+		secondsFocused int32
+		createdAt      time.Time
+	)
+	err := f.pool.QueryRow(ctx,
+		`SELECT plan_id, plan_item_id, pinned_title, mode, started_at,
+		        ended_at, pomodoros_completed, seconds_focused, created_at
+		   FROM hone_focus_sessions
+		  WHERE id=$1 AND user_id=$2`,
+		sharedpg.UUID(sessionID), sharedpg.UUID(userID),
+	).Scan(&planID, &planItemID, &pinnedTitle, &mode, &startedAt,
+		&endedAt, &pomodoros, &secondsFocused, &createdAt)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return domain.FocusSession{}, domain.ErrNotFound
+		}
+		return domain.FocusSession{}, fmt.Errorf("hone.Focus.Get: %w", err)
+	}
+	out := domain.FocusSession{
+		ID:                 sessionID,
+		UserID:             userID,
+		PlanItemID:         planItemID,
+		PinnedTitle:        pinnedTitle,
+		Mode:               domain.FocusMode(mode),
+		StartedAt:          startedAt,
+		PomodorosCompleted: int(pomodoros),
+		SecondsFocused:     int(secondsFocused),
+		CreatedAt:          createdAt,
+	}
+	if planID.Valid {
+		id := sharedpg.UUIDFrom(planID)
+		out.PlanID = &id
+	}
+	if endedAt.Valid {
+		t := endedAt.Time
+		out.EndedAt = &t
+	}
+	return out, nil
 }
 
 // ─── Streak ────────────────────────────────────────────────────────────────

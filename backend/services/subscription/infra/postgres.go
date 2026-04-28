@@ -50,7 +50,6 @@ func (p *Postgres) Upsert(ctx context.Context, sub domain.Subscription) error {
 		Status:           string(sub.Status),
 		Provider:         pgText(string(sub.Provider)),
 		ProviderSubID:    pgText(sub.ProviderSubID),
-		StartedAt:        pgTS(sub.StartedAt),
 		CurrentPeriodEnd: pgTS(sub.CurrentPeriodEnd),
 		GraceUntil:       pgTS(sub.GraceUntil),
 		UpdatedAt:        pgtype.Timestamptz{Time: sub.UpdatedAt, Valid: !sub.UpdatedAt.IsZero()},
@@ -94,28 +93,26 @@ var _ domain.Repo = (*Postgres)(nil)
 
 // ── converters ─────────────────────────────────────────────────────────────
 
-func getRowToSub(r subdb.GetSubscriptionRow) domain.Subscription {
+func getRowToSub(r subdb.Subscription) domain.Subscription {
 	return domain.Subscription{
 		UserID:           sharedpg.UUIDFrom(r.UserID),
 		Tier:             enums.SubscriptionPlan(r.Plan),
 		Status:           domain.Status(r.Status),
 		Provider:         domain.Provider(fromPgText(r.Provider)),
 		ProviderSubID:    fromPgText(r.ProviderSubID),
-		StartedAt:        fromPgTS(r.StartedAt),
 		CurrentPeriodEnd: fromPgTS(r.CurrentPeriodEnd),
 		GraceUntil:       fromPgTS(r.GraceUntil),
 		UpdatedAt:        r.UpdatedAt.Time,
 	}
 }
 
-func listRowToSub(r subdb.ListSubscriptionsByPlanRow) domain.Subscription {
+func listRowToSub(r subdb.Subscription) domain.Subscription {
 	return domain.Subscription{
 		UserID:           sharedpg.UUIDFrom(r.UserID),
 		Tier:             enums.SubscriptionPlan(r.Plan),
 		Status:           domain.Status(r.Status),
 		Provider:         domain.Provider(fromPgText(r.Provider)),
 		ProviderSubID:    fromPgText(r.ProviderSubID),
-		StartedAt:        fromPgTS(r.StartedAt),
 		CurrentPeriodEnd: fromPgTS(r.CurrentPeriodEnd),
 		GraceUntil:       fromPgTS(r.GraceUntil),
 		UpdatedAt:        r.UpdatedAt.Time,

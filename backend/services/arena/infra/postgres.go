@@ -177,11 +177,9 @@ func (p *Postgres) SetTask(ctx context.Context, id uuid.UUID, taskID uuid.UUID, 
 }
 
 // UpsertParticipantResult записывает итог решающего участника.
+// v2: solve_time_ms колонка удалена из arena_participants — поле в
+// domain.Participant сохранено для in-flight расчётов, но не персистится.
 func (p *Postgres) UpsertParticipantResult(ctx context.Context, part domain.Participant) error {
-	var solve pgtype.Int8
-	if part.SolveTimeMs != nil {
-		solve = pgtype.Int8{Int64: *part.SolveTimeMs, Valid: true}
-	}
 	var susp pgtype.Numeric
 	if part.SuspicionScore != nil {
 		n := new(big.Int).SetInt64(int64(*part.SuspicionScore * 100))
@@ -194,7 +192,6 @@ func (p *Postgres) UpsertParticipantResult(ctx context.Context, part domain.Part
 	affected, err := p.q.UpsertParticipantResult(ctx, arenadb.UpsertParticipantResultParams{
 		MatchID:        sharedpg.UUID(part.MatchID),
 		UserID:         sharedpg.UUID(part.UserID),
-		SolveTimeMs:    solve,
 		SuspicionScore: susp,
 		SubmittedAt:    submitted,
 	})
@@ -432,10 +429,7 @@ func participantFromRow(r arenadb.ArenaParticipant) domain.Participant {
 		v := int(r.EloAfter.Int32)
 		p.EloAfter = &v
 	}
-	if r.SolveTimeMs.Valid {
-		v := r.SolveTimeMs.Int64
-		p.SolveTimeMs = &v
-	}
+	// v2: solve_time_ms dropped from schema; field stays nil here.
 	if r.SuspicionScore.Valid && r.SuspicionScore.Int != nil {
 		// Конвертируем fixed-point numeric в float64.
 		f, _ := new(big.Float).SetInt(r.SuspicionScore.Int).Float64()

@@ -30,7 +30,6 @@ type UserRegistered struct {
 	base
 	UserID   uuid.UUID          `json:"user_id"`
 	Username string             `json:"username"`
-	Email    string             `json:"email,omitempty"`
 	Provider enums.AuthProvider `json:"provider"`
 }
 
@@ -289,6 +288,87 @@ type SeasonPointsEarned struct {
 }
 
 func (SeasonPointsEarned) Topic() string { return "season.PointsEarned" }
+
+// ─────────────────────────────────────────────────────────────────────────
+// Events (calendar)
+// ─────────────────────────────────────────────────────────────────────────
+
+// EventStartingSoon publishes when an event is about to start. Emitted by
+// the events.StartingSoonNotifier scheduler and consumed by the notify
+// service to fan out telegram / web-push notifications. Idempotency is
+// owned by the publisher (event_notification_sent ledger), so subscribers
+// can assume at-most-once delivery per (event_id, user_id).
+type EventStartingSoon struct {
+	base
+	EventID  uuid.UUID `json:"event_id"`
+	UserID   uuid.UUID `json:"user_id"`
+	CircleID uuid.UUID `json:"circle_id"`
+	Title    string    `json:"title"`
+	StartsAt time.Time `json:"starts_at"`
+}
+
+func (EventStartingSoon) Topic() string { return "events.StartingSoon" }
+
+// ─────────────────────────────────────────────────────────────────────────
+// TaskBoard signals (v2)
+// ─────────────────────────────────────────────────────────────────────────
+//
+// Hone TaskBoard listens to the bus to translate "user did a thing in the
+// main project" into card movements. These four events are the new feeds
+// (existing events.MatchCompleted / DailyKataCompleted / SkillDecayed
+// already cover their cases — see hone/app/coach_listener.go).
+
+// CodexArticleRead publishes when a user opens a codex article and reads
+// it past the "fully scrolled / N seconds visible" threshold. Hone uses
+// it to mark a `kind=reading` task done.
+type CodexArticleRead struct {
+	base
+	UserID    uuid.UUID `json:"user_id"`
+	ArticleID uuid.UUID `json:"article_id"`
+	Slug      string    `json:"slug"`
+	ReadMin   int       `json:"read_min"`
+}
+
+func (CodexArticleRead) Topic() string { return "codex.ArticleRead" }
+
+// MockPipelineFinished publishes when a mock-interview pipeline (full
+// session, not a single mock_session) finishes. Hone uses it to settle
+// `kind=sysdesign` / `kind=reflection` tasks based on the outcome.
+type MockPipelineFinished struct {
+	base
+	UserID     uuid.UUID `json:"user_id"`
+	PipelineID uuid.UUID `json:"pipeline_id"`
+	Section    string    `json:"section"`
+	Score      int       `json:"score"` // 0..100
+	Passed     bool      `json:"passed"`
+}
+
+func (MockPipelineFinished) Topic() string { return "mock.PipelineFinished" }
+
+// QuizSessionCompleted publishes when /quiz finishes scoring a session.
+// Drives `kind=quiz` task settlement.
+type QuizSessionCompleted struct {
+	base
+	UserID    uuid.UUID `json:"user_id"`
+	SessionID uuid.UUID `json:"session_id"`
+	Source    string    `json:"source"` // 'codex' | 'mock_interview' | 'mixed'
+	Total     int       `json:"total"`
+	Correct   int       `json:"correct"`
+}
+
+func (QuizSessionCompleted) Topic() string { return "quiz.SessionCompleted" }
+
+// CopilotAnalysisCompleted publishes when copilot finishes producing a
+// session report. Hone uses it as a softer "user worked through their
+// notes" signal (no specific task settle, but feeds coach memory).
+type CopilotAnalysisCompleted struct {
+	base
+	UserID       uuid.UUID `json:"user_id"`
+	SessionID    uuid.UUID `json:"session_id"`
+	OverallScore int       `json:"overall_score"`
+}
+
+func (CopilotAnalysisCompleted) Topic() string { return "copilot.AnalysisCompleted" }
 
 // ─────────────────────────────────────────────────────────────────────────
 // Helpers

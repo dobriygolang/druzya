@@ -125,7 +125,6 @@ func (uc *LoginYandex) Do(ctx context.Context, in LoginYandexInput) (LoginYandex
 	user, created, err := uc.Users.UpsertByOAuth(ctx, domain.UpsertOAuthInput{
 		Provider:        enums.AuthProviderYandex,
 		ProviderUserID:  info.ID,
-		Email:           info.DefaultEmail,
 		UsernameHint:    domain.NormaliseUsername(info.Login),
 		DisplayName:     info.DisplayName,
 		AvatarURL:       domain.YandexAvatarURL(info),
@@ -161,7 +160,6 @@ func publishLoginEvent(ctx context.Context, bus sharedDomain.Bus, user domain.Us
 		ev = sharedDomain.UserRegistered{
 			UserID:   user.ID,
 			Username: user.Username,
-			Email:    user.Email,
 			Provider: p,
 		}
 	} else {

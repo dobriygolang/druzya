@@ -105,7 +105,7 @@ const createCopilotSession = `-- name: CreateCopilotSession :one
 
 INSERT INTO copilot_sessions (user_id, kind)
 VALUES ($1, $2)
-RETURNING id, user_id, kind, started_at, finished_at, byok_only, document_ids
+RETURNING id, user_id, kind, document_ids, started_at, finished_at, byok_only
 `
 
 type CreateCopilotSessionParams struct {
@@ -116,9 +116,7 @@ type CreateCopilotSessionParams struct {
 // =============================================================================
 // Sessions
 // =============================================================================
-// A user may have at most one live (finished_at IS NULL) session; the
-// unique partial index enforces this at the DB layer.
-// document_ids defaults to '{}'; Attach/Detach queries mutate in-place.
+// RETURNING * so sqlc emits the canonical CopilotSession row (no Row alias).
 func (q *Queries) CreateCopilotSession(ctx context.Context, arg CreateCopilotSessionParams) (CopilotSession, error) {
 	row := q.db.QueryRow(ctx, createCopilotSession, arg.UserID, arg.Kind)
 	var i CopilotSession
@@ -126,10 +124,10 @@ func (q *Queries) CreateCopilotSession(ctx context.Context, arg CreateCopilotSes
 		&i.ID,
 		&i.UserID,
 		&i.Kind,
+		&i.DocumentIds,
 		&i.StartedAt,
 		&i.FinishedAt,
 		&i.ByokOnly,
-		&i.DocumentIds,
 	)
 	return i, err
 }
@@ -292,9 +290,7 @@ func (q *Queries) GetCopilotQuota(ctx context.Context, userID pgtype.UUID) (Copi
 }
 
 const getCopilotSession = `-- name: GetCopilotSession :one
-SELECT id, user_id, kind, started_at, finished_at, byok_only, document_ids
-  FROM copilot_sessions
- WHERE id = $1
+SELECT id, user_id, kind, document_ids, started_at, finished_at, byok_only FROM copilot_sessions WHERE id = $1
 `
 
 func (q *Queries) GetCopilotSession(ctx context.Context, id pgtype.UUID) (CopilotSession, error) {
@@ -304,10 +300,10 @@ func (q *Queries) GetCopilotSession(ctx context.Context, id pgtype.UUID) (Copilo
 		&i.ID,
 		&i.UserID,
 		&i.Kind,
+		&i.DocumentIds,
 		&i.StartedAt,
 		&i.FinishedAt,
 		&i.ByokOnly,
-		&i.DocumentIds,
 	)
 	return i, err
 }
@@ -345,15 +341,11 @@ func (q *Queries) GetCopilotSessionReport(ctx context.Context, sessionID pgtype.
 }
 
 const getLiveCopilotSession = `-- name: GetLiveCopilotSession :one
-SELECT id, user_id, kind, started_at, finished_at, byok_only, document_ids
-  FROM copilot_sessions
+SELECT id, user_id, kind, document_ids, started_at, finished_at, byok_only FROM copilot_sessions
  WHERE user_id = $1
    AND finished_at IS NULL
 `
 
-// Returns the user's currently-open session, if any. Used by the
-// Analyze use case to auto-attach turns AND to pull document_ids for
-// the RAG-context injection path.
 func (q *Queries) GetLiveCopilotSession(ctx context.Context, userID pgtype.UUID) (CopilotSession, error) {
 	row := q.db.QueryRow(ctx, getLiveCopilotSession, userID)
 	var i CopilotSession
@@ -361,10 +353,10 @@ func (q *Queries) GetLiveCopilotSession(ctx context.Context, userID pgtype.UUID)
 		&i.ID,
 		&i.UserID,
 		&i.Kind,
+		&i.DocumentIds,
 		&i.StartedAt,
 		&i.FinishedAt,
 		&i.ByokOnly,
-		&i.DocumentIds,
 	)
 	return i, err
 }

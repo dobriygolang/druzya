@@ -84,7 +84,6 @@ func (uc *LoginTelegram) Do(ctx context.Context, in LoginTelegramInput) (LoginTe
 	user, created, err := uc.Users.UpsertByOAuth(ctx, domain.UpsertOAuthInput{
 		Provider:       enums.AuthProviderTelegram,
 		ProviderUserID: strconv.FormatInt(prof.ID, 10),
-		Email:          "", // Telegram never exposes email.
 		UsernameHint:   usernameHint,
 		DisplayName:    display,
 		AvatarURL:      prof.PhotoURL,

@@ -32,6 +32,10 @@ var ErrInvalidState = errors.New("editor: invalid state")
 // result when we could not actually execute.
 var ErrSandboxUnavailable = errors.New("editor: sandbox unavailable")
 
+// ErrLanguageUnsupported is returned when the requested language is not on
+// the explicit RunCode allowlist (Go/Python/JS/TS today).
+var ErrLanguageUnsupported = errors.New("editor: language not supported")
+
 // ErrRateLimited is returned when the per-user RunCode budget is exhausted.
 // The transport layer maps this to Connect's CodeResourceExhausted (HTTP 429).
 var ErrRateLimited = errors.New("editor: rate limited")
@@ -50,6 +54,15 @@ type RunResult struct {
 // Implementations live in infra/ (Judge0, or a future stub).
 type CodeRunner interface {
 	Run(ctx context.Context, code string, language enums.Language) (RunResult, error)
+}
+
+// RunCodeRateLimiter is the port for per-user RunCode quotas. Two
+// implementations: an in-memory token bucket (single-process dev / CI) and
+// a Redis fixed-window combo of (per-minute, per-day) buckets that scales
+// across replicas. Allow returns ErrRateLimited (wrapped) when either
+// bucket is exhausted, with retryAfterSec the smaller of the two TTLs.
+type RunCodeRateLimiter interface {
+	Allow(ctx context.Context, userID uuid.UUID) (allowed bool, retryAfterSec int, err error)
 }
 
 // ─────────────────────────────────────────────────────────────────────────

@@ -50,8 +50,9 @@ import {
   type CueSession,
 } from '../api/hone';
 import {
-  publishNote,
   unpublishNote,
+  shareNoteToWeb,
+  makeNotePrivate,
   getPublishStatus,
   getNotesMeta,
   type PublishStatus,
@@ -857,9 +858,15 @@ export function NotesPage({ initialSelectedId, onConsumeInitial, initialCueNote,
     }
   }, [flushNow]);
 
+  // handlePublish ("Share to web") — atomic decrypt + publish. UX:
+  // 1) flush draft so the latest body is persisted; 2) load note and, if
+  // encrypted, prompt for vault passphrase + decrypt locally; 3) POST
+  // /share-to-web with the plaintext — server clears `encrypted` and
+  // creates the public slug in one transaction. Other devices never see
+  // an intermediate "decrypted but private" state.
   const handlePublish = useCallback(async (id: string) => {
     try {
-      await flushNow(); // публикуем именно последнюю версию
+      await flushNow();
       let effectiveId = id;
       if (isLocalNoteId(id)) {
         effectiveId = await promoteToCloud(id);
@@ -870,32 +877,87 @@ export function NotesPage({ initialSelectedId, onConsumeInitial, initialCueNote,
         setSelectedId((cur) => (cur === id ? effectiveId : cur));
         void useQuotaStore.getState().refresh();
       }
-      const status = await publishNote(effectiveId);
-      if (status.url) {
+
+      // The proto Note doesn't carry the encrypted flag — resolve it via
+      // the bulk meta endpoint which is the authoritative source.
+      const meta = await getNotesMeta();
+      const isEncrypted = meta.find((m) => m.id === effectiveId)?.encrypted ?? false;
+      const note = await getNote(effectiveId);
+      let plaintextMd = note.bodyMd ?? '';
+      if (isEncrypted) {
+        const { isUnlocked, unlockVault, fetchSalt, decryptText } =
+          await import('../api/vault');
+        if (!isUnlocked()) {
+          const salt = await fetchSalt();
+          if (!salt) {
+            setToast('Set up Vault in Settings first');
+            window.setTimeout(() => setToast(null), 2800);
+            return;
+          }
+          const pwd = window.prompt('Vault password to share this note:');
+          if (!pwd) return;
+          await unlockVault(pwd);
+        }
+        plaintextMd = await decryptText(note.bodyMd ?? '');
+      }
+
+      const result = await shareNoteToWeb(effectiveId, plaintextMd);
+      if (result.url) {
         try {
-          await navigator.clipboard.writeText(status.url);
+          await navigator.clipboard.writeText(result.url);
           setToast('Public link copied');
         } catch {
-          setToast(`Public: ${status.url}`);
+          setToast(`Public: ${result.url}`);
         }
         window.setTimeout(() => setToast(null), 2400);
       }
-    } catch {
-      setToast('Publish failed');
-      window.setTimeout(() => setToast(null), 2400);
+    } catch (e) {
+      setToast(`Share failed: ${(e as Error).message}`);
+      window.setTimeout(() => setToast(null), 3400);
     }
   }, [flushNow]);
 
+  // handleUnpublish ("Make private") — atomic encrypt + unpublish. Loads
+  // the current plaintext, encrypts locally, POSTs /make-private — server
+  // writes ciphertext, sets encrypted=true, clears the public slug, wipes
+  // embedding, all in one UPDATE. If the note is already private we
+  // short-circuit with an idempotent toast.
   const handleUnpublish = useCallback(async (id: string) => {
     try {
-      await unpublishNote(id);
-      setToast('Unpublished');
+      await flushNow();
+      const meta = await getNotesMeta();
+      const isEncrypted = meta.find((m) => m.id === id)?.encrypted ?? false;
+      const note = await getNote(id);
+      if (isEncrypted) {
+        // Already encrypted+private; legacy unpublish (clear slug only) handles
+        // the rare "encrypted-but-still-published" state by just dropping the slug.
+        await unpublishNote(id);
+        setToast('Made private');
+        window.setTimeout(() => setToast(null), 2200);
+        return;
+      }
+      const { isUnlocked, unlockVault, fetchSalt, encryptText } =
+        await import('../api/vault');
+      if (!isUnlocked()) {
+        const salt = await fetchSalt();
+        if (!salt) {
+          setToast('Set up Vault in Settings first');
+          window.setTimeout(() => setToast(null), 2800);
+          return;
+        }
+        const pwd = window.prompt('Vault password to make this note private:');
+        if (!pwd) return;
+        await unlockVault(pwd);
+      }
+      const ciphertextB64 = await encryptText(note.bodyMd ?? '');
+      await makeNotePrivate(id, ciphertextB64);
+      setToast('Made private');
       window.setTimeout(() => setToast(null), 2200);
-    } catch {
-      setToast('Unpublish failed');
-      window.setTimeout(() => setToast(null), 2400);
+    } catch (e) {
+      setToast(`Make-private failed: ${(e as Error).message}`);
+      window.setTimeout(() => setToast(null), 3400);
     }
-  }, []);
+  }, [flushNow]);
 
   // Phase C-7 — encrypt note. Lock-icon в sidebar row → этот handler.
   // Flow:
@@ -2054,7 +2116,6 @@ function NoteTreeRow({
   onDelete,
   onPublish,
   onUnpublish,
-  onEncrypt,
   onSyncToCloud,
   onMove,
 }: NoteTreeRowProps) {
@@ -2169,7 +2230,6 @@ function NoteTreeRow({
         <RowDropdown
           isLocal={isLocal}
           published={false}
-          encrypted={encrypted}
           folders={folders}
           currentFolderId={note.folderId ?? null}
           onSyncToCloud={() => {
@@ -2183,10 +2243,6 @@ function NoteTreeRow({
           onUnpublish={() => {
             setMenuOpen(false);
             onUnpublish(note.id);
-          }}
-          onEncrypt={() => {
-            setMenuOpen(false);
-            onEncrypt(note.id);
           }}
           onDelete={() => {
             setMenuOpen(false);
@@ -2440,7 +2496,7 @@ const NoteRow = memo(NoteRowImpl, (prev, next) => {
   );
 });
 
-function NoteRowImpl({ note, active, encrypted, folders, onSelect, onDelete, onPublish, onUnpublish, onEncrypt, onSyncToCloud, onMove }: NoteRowProps) {
+function NoteRowImpl({ note, active, folders, onSelect, onDelete, onPublish, onUnpublish, onSyncToCloud, onMove }: NoteRowProps) {
   const [hover, setHover] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [pubStatus, setPubStatus] = useState<PublishStatus | null>(null);
@@ -2702,11 +2758,6 @@ function NoteRowImpl({ note, active, encrypted, folders, onSelect, onDelete, onP
         <RowDropdown
           isLocal={isLocal}
           published={!!pubStatus?.published}
-          encrypted={encrypted}
-          onEncrypt={() => {
-            setMenuOpen(false);
-            onEncrypt(note.id);
-          }}
           onSyncToCloud={() => {
             setMenuOpen(false);
             onSyncToCloud(note.id);
@@ -2747,18 +2798,16 @@ function NoteRowImpl({ note, active, encrypted, folders, onSelect, onDelete, onP
 interface RowDropdownProps {
   isLocal: boolean;
   published: boolean;
-  encrypted: boolean;
   folders: Folder[];
   currentFolderId: string | null | undefined;
   onSyncToCloud: () => void;
   onPublish: () => void;
   onUnpublish: () => void;
-  onEncrypt: () => void;
   onDelete: () => void;
   onMove: (folderId: string | null) => void;
 }
 
-function RowDropdown({ isLocal, published, encrypted, folders, currentFolderId, onSyncToCloud, onPublish, onUnpublish, onEncrypt, onDelete, onMove }: RowDropdownProps) {
+function RowDropdown({ isLocal, published, folders, currentFolderId, onSyncToCloud, onPublish, onUnpublish, onDelete, onMove }: RowDropdownProps) {
   return (
     <div
       className="fadein"
@@ -2791,46 +2840,20 @@ function RowDropdown({ isLocal, published, encrypted, folders, currentFolderId, 
         </>
       ) : (
         <>
-          <DropdownLabel>Publishing</DropdownLabel>
+          <DropdownLabel>Sharing</DropdownLabel>
           <DropdownItem
             icon={<LinkIcon />}
-            label={published ? 'Copy public link' : 'Publish to web'}
+            label={published ? 'Copy public link' : 'Share to web'}
             onClick={onPublish}
           />
           {published && (
             <DropdownItem
               icon={<UnlinkIcon />}
-              label="Unpublish"
+              label="Make private"
               onClick={onUnpublish}
             />
           )}
           <DropdownDivider />
-          {/* Encrypt menu item — переехал из row-icon'а сюда. Lock-icon в row
-              теперь зеркалит publish-state (red/green), encryption — это
-              отдельная concept (E2E vault), её action скрыли в menu. */}
-          {!encrypted && (
-            <>
-              <DropdownLabel>Privacy</DropdownLabel>
-              <DropdownItem
-                icon={<EncryptIcon />}
-                label="Encrypt note (Vault)"
-                onClick={onEncrypt}
-              />
-              <DropdownDivider />
-            </>
-          )}
-          {encrypted && (
-            <>
-              <DropdownLabel>Privacy</DropdownLabel>
-              <DropdownItem
-                icon={<EncryptIcon />}
-                label="Encrypted (E2E)"
-                disabled
-                onClick={() => {}}
-              />
-              <DropdownDivider />
-            </>
-          )}
         </>
       )}
       {folders.length > 0 && (
@@ -2935,25 +2958,6 @@ function DropdownItem({
       <span style={{ display: 'inline-flex', color: 'inherit' }}>{icon}</span>
       <span>{label}</span>
     </button>
-  );
-}
-
-function EncryptIcon() {
-  return (
-    <svg
-      width={14}
-      height={14}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth={1.6}
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      <rect x="4" y="11" width="16" height="10" rx="2" />
-      <path d="M8 11V7a4 4 0 0 1 8 0v4" />
-      <circle cx="12" cy="16" r="1" fill="currentColor" />
-    </svg>
   );
 }
 

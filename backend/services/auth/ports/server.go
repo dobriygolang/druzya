@@ -284,9 +284,12 @@ func (s *AuthServer) toConnectErr(err error) error {
 }
 
 func toAuthUser(u domain.User, provider enums.AuthProvider) *pb.AuthUser {
+	// pb.AuthUser.Email is kept in the proto for back-compat but the v2
+	// schema no longer stores email — we always emit an empty string. Once
+	// proto contracts are regenerated this field can be dropped.
 	return &pb.AuthUser{
 		Id:       u.ID.String(),
-		Email:    u.Email,
+		Email:    "",
 		Username: u.Username,
 		Role:     userRoleToProto(u.Role),
 		Provider: authProviderToProto(provider),

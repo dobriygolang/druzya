@@ -50,6 +50,11 @@ let state: PodcastAudioState = INITIAL;
 const listeners = new Set<(s: PodcastAudioState) => void>();
 let audioEl: HTMLAudioElement | null = null;
 
+// One refresh attempt per active podcast. Reset on every loadAndPlay so a
+// fresh seed gets its own retry budget.
+let urlRefresher: (() => Promise<string>) | null = null;
+let retriedForPodcastId: string | null = null;
+
 // Persistence для playbackRate + volume — читается на init.
 const RATE_KEY = 'hone:podcast:rate';
 const VOL_KEY = 'hone:podcast:volume';
@@ -100,6 +105,38 @@ function ensureAudio(): HTMLAudioElement {
   });
   el.addEventListener('error', () => {
     const code = el.error?.code;
+    // Codes 2 (NETWORK) and 4 (FORMAT_NOT_SUPPORTED) often mean the
+    // presigned URL expired or the connection blipped — try refreshing
+    // the URL once per podcast before surfacing the error to the user.
+    const transient = code === 2 || code === 4;
+    const podcastId = state.podcastId;
+    if (transient && podcastId && retriedForPodcastId !== podcastId && urlRefresher) {
+      retriedForPodcastId = podcastId;
+      const refresh = urlRefresher;
+      const resumeAt = el.currentTime;
+      void (async () => {
+        try {
+          const fresh = await refresh();
+          el.src = fresh;
+          if (resumeAt > 0) {
+            const applyTime = () => {
+              try {
+                el.currentTime = resumeAt;
+              } catch {
+                /* metadata not ready */
+              }
+            };
+            if (el.readyState >= 1) applyTime();
+            else el.addEventListener('loadedmetadata', applyTime, { once: true });
+          }
+          emit({ audioUrl: fresh, error: null });
+          await el.play();
+        } catch (e) {
+          emit({ error: (e as Error).message || 'Playback failed', playing: false });
+        }
+      })();
+      return;
+    }
     let msg = 'Audio playback failed';
     if (code === 1) msg = 'Aborted';
     else if (code === 2) msg = 'Network error';
@@ -148,12 +185,18 @@ export interface PodcastSeed {
   audioUrl: string;
   title: string;
   initialProgressSec?: number;
+  // Optional: called once when the audio element fires a transient error
+  // (NETWORK or FORMAT_NOT_SUPPORTED) — typically a presigned URL expired.
+  // Should re-fetch the catalog and return a fresh signed URL for this id.
+  refreshUrl?: () => Promise<string>;
 }
 
 export async function loadAndPlay(seed: PodcastSeed): Promise<void> {
   const el = ensureAudio();
   const switching = state.podcastId !== seed.id;
   if (switching) {
+    urlRefresher = seed.refreshUrl ?? null;
+    retriedForPodcastId = null;
     el.src = seed.audioUrl;
     if (seed.initialProgressSec && seed.initialProgressSec > 0) {
       // Wait for metadata to apply currentTime correctly. listenOnce on

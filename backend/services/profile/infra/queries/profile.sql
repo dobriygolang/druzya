@@ -1,22 +1,27 @@
 -- Queries consumed by sqlc; mirror the hand-rolled pgx code in infra/postgres.go.
 
 -- name: GetProfileBundle :one
-SELECT u.id, u.email, u.username, u.role, u.locale, u.display_name, u.created_at,
-       p.char_class, p.level, p.xp, p.title, p.avatar_frame,
+-- v2: email column dropped from users; xp/level moved to user_xp.
+SELECT u.id, u.username, u.role, u.locale, u.display_name, u.created_at,
+       p.char_class, COALESCE(ux.level, 1) AS level, COALESCE(ux.total_xp, 0) AS total_xp,
+       p.title, p.avatar_frame,
        p.career_stage, p.intellect, p.strength, p.dexterity, p.will, p.updated_at,
        s.plan, s.status, s.current_period_end,
        c.balance
   FROM users u
   JOIN profiles p           ON p.user_id = u.id
+  LEFT JOIN user_xp ux      ON ux.user_id = u.id
   LEFT JOIN subscriptions s ON s.user_id = u.id
   LEFT JOIN ai_credits c    ON c.user_id = u.id
  WHERE u.id = $1;
 
 -- name: GetProfilePublic :one
 SELECT u.id, u.username, u.display_name, u.created_at,
-       p.char_class, p.level, p.xp, p.title, p.avatar_frame, p.career_stage
+       p.char_class, COALESCE(ux.level, 1) AS level, COALESCE(ux.total_xp, 0) AS total_xp,
+       p.title, p.avatar_frame, p.career_stage
   FROM users u
-  JOIN profiles p ON p.user_id = u.id
+  JOIN profiles p      ON p.user_id = u.id
+  LEFT JOIN user_xp ux ON ux.user_id = u.id
  WHERE u.username = $1;
 
 -- name: EnsureProfile :exec
@@ -31,12 +36,16 @@ INSERT INTO ai_credits(user_id, balance) VALUES ($1, 0)
   ON CONFLICT (user_id) DO NOTHING;
 
 -- name: EnsureNotificationPrefs :exec
-INSERT INTO notification_preferences(user_id) VALUES ($1)
+INSERT INTO notification_prefs(user_id) VALUES ($1)
   ON CONFLICT (user_id) DO NOTHING;
 
+-- name: EnsureUserXP :exec
+INSERT INTO user_xp(user_id) VALUES ($1) ON CONFLICT (user_id) DO NOTHING;
+
 -- name: UpdateProfileXPLevel :exec
-UPDATE profiles
-   SET level = $2, xp = $3, updated_at = now()
+-- v2: xp/level live in user_xp table now (audit log in xp_events).
+UPDATE user_xp
+   SET level = $2, total_xp = $3, last_xp_at = now(), updated_at = now()
  WHERE user_id = $1;
 
 -- name: UpdateCareerStage :exec

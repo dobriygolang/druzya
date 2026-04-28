@@ -17,10 +17,12 @@ type Querier interface {
 	EnsureNotificationPrefs(ctx context.Context, userID pgtype.UUID) error
 	EnsureProfile(ctx context.Context, userID pgtype.UUID) error
 	EnsureSubscription(ctx context.Context, userID pgtype.UUID) error
+	EnsureUserXP(ctx context.Context, userID pgtype.UUID) error
 	GetInterviewerApplicationByID(ctx context.Context, id pgtype.UUID) (InterviewerApplication, error)
 	// Most-recent application for the user (any status).
 	GetMyInterviewerApplication(ctx context.Context, userID pgtype.UUID) (InterviewerApplication, error)
 	// Queries consumed by sqlc; mirror the hand-rolled pgx code in infra/postgres.go.
+	// v2: email column dropped from users; xp/level moved to user_xp.
 	GetProfileBundle(ctx context.Context, id pgtype.UUID) (GetProfileBundleRow, error)
 	GetProfilePublic(ctx context.Context, username string) (GetProfilePublicRow, error)
 	// Admin queue. Sorted oldest-first inside a status group so the FIFO
@@ -34,6 +36,7 @@ type Querier interface {
 	// rejected history rows do not block re-application.
 	SubmitInterviewerApplication(ctx context.Context, arg SubmitInterviewerApplicationParams) (InterviewerApplication, error)
 	UpdateCareerStage(ctx context.Context, arg UpdateCareerStageParams) error
+	// v2: xp/level live in user_xp table now (audit log in xp_events).
 	UpdateProfileXPLevel(ctx context.Context, arg UpdateProfileXPLevelParams) error
 }
 

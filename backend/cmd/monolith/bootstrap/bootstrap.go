@@ -433,7 +433,22 @@ func buildHonePublishingDeps(d services.Deps) honeServices.PublishingDeps {
 		Status:    &honeApp.PublishStatus{Repo: repo, Log: d.Log},
 		BulkMeta:  &honeApp.BulkNotesMeta{Repo: repo, Log: d.Log},
 		Public:    &honeApp.PublicView{Repo: repo, Log: d.Log},
-		Log:       d.Log,
+		ShareToWeb: &honeApp.ShareToWeb{
+			Repo:      repo,
+			Publisher: d.SyncEventBroker,
+			// EmbedFn is owned by NewHone — re-indexing after ShareToWeb
+			// happens via the next client UpdateNote, which already re-queues
+			// the embed. Wiring EmbedFn here would require threading the
+			// hone-private embedder through Deps; left for a follow-up.
+			EmbedFn: nil,
+			Log:     d.Log,
+		},
+		MakePrivate: &honeApp.MakePrivate{
+			Repo:      repo,
+			Publisher: d.SyncEventBroker,
+			Log:       d.Log,
+		},
+		Log: d.Log,
 	}
 }
 

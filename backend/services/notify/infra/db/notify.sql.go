@@ -12,7 +12,7 @@ import (
 )
 
 const clearTelegramChatID = `-- name: ClearTelegramChatID :exec
-UPDATE notification_preferences
+UPDATE notification_prefs
    SET telegram_chat_id = NULL,
        updated_at       = now()
  WHERE user_id = $1
@@ -38,24 +38,30 @@ func (q *Queries) FindUserIDByUsername(ctx context.Context, username string) (pg
 
 const getPreferences = `-- name: GetPreferences :one
 
-SELECT user_id, channels, telegram_chat_id, quiet_hours_from, quiet_hours_to,
-       weekly_report_enabled, skill_decay_warnings_enabled, updated_at
-  FROM notification_preferences
+SELECT user_id, telegram_chat_id, channel_enabled,
+       weekly_report_enabled, skill_decay_warnings_enabled,
+       silence_until, updated_at
+  FROM notification_prefs
  WHERE user_id = $1
 `
 
 // notify queries consumed by sqlc (emitted into services/notify/infra/db).
-func (q *Queries) GetPreferences(ctx context.Context, userID pgtype.UUID) (NotificationPreference, error) {
+//
+// v2:
+//   - notification_preferences merged into notification_prefs (single table)
+//   - notifications_log dropped (was event-log, nobody reads)
+//   - channels[] / quiet_hours_* removed (channel state lives in
+//     channel_enabled jsonb; quiet hours are silence_until timestamptz)
+func (q *Queries) GetPreferences(ctx context.Context, userID pgtype.UUID) (NotificationPref, error) {
 	row := q.db.QueryRow(ctx, getPreferences, userID)
-	var i NotificationPreference
+	var i NotificationPref
 	err := row.Scan(
 		&i.UserID,
-		&i.Channels,
 		&i.TelegramChatID,
-		&i.QuietHoursFrom,
-		&i.QuietHoursTo,
+		&i.ChannelEnabled,
 		&i.WeeklyReportEnabled,
 		&i.SkillDecayWarningsEnabled,
+		&i.SilenceUntil,
 		&i.UpdatedAt,
 	)
 	return i, err
@@ -74,46 +80,9 @@ func (q *Queries) GetUserLocale(ctx context.Context, id pgtype.UUID) (string, er
 	return locale, err
 }
 
-const insertLog = `-- name: InsertLog :one
-INSERT INTO notifications_log (user_id, channel, type, payload, status)
-VALUES ($1, $2, $3, $4, $5)
-RETURNING id, user_id, channel, type, payload, status, sent_at, error, created_at
-`
-
-type InsertLogParams struct {
-	UserID  pgtype.UUID
-	Channel string
-	Type    string
-	Payload []byte
-	Status  string
-}
-
-func (q *Queries) InsertLog(ctx context.Context, arg InsertLogParams) (NotificationsLog, error) {
-	row := q.db.QueryRow(ctx, insertLog,
-		arg.UserID,
-		arg.Channel,
-		arg.Type,
-		arg.Payload,
-		arg.Status,
-	)
-	var i NotificationsLog
-	err := row.Scan(
-		&i.ID,
-		&i.UserID,
-		&i.Channel,
-		&i.Type,
-		&i.Payload,
-		&i.Status,
-		&i.SentAt,
-		&i.Error,
-		&i.CreatedAt,
-	)
-	return i, err
-}
-
 const listWeeklyReportEnabled = `-- name: ListWeeklyReportEnabled :many
 SELECT user_id
-  FROM notification_preferences
+  FROM notification_prefs
  WHERE weekly_report_enabled = TRUE
 `
 
@@ -137,88 +106,8 @@ func (q *Queries) ListWeeklyReportEnabled(ctx context.Context) ([]pgtype.UUID, e
 	return items, nil
 }
 
-const markLogFailed = `-- name: MarkLogFailed :exec
-UPDATE notifications_log
-   SET status = 'failed',
-       error  = $2
- WHERE id = $1
-`
-
-type MarkLogFailedParams struct {
-	ID    pgtype.UUID
-	Error pgtype.Text
-}
-
-func (q *Queries) MarkLogFailed(ctx context.Context, arg MarkLogFailedParams) error {
-	_, err := q.db.Exec(ctx, markLogFailed, arg.ID, arg.Error)
-	return err
-}
-
-const markLogSent = `-- name: MarkLogSent :exec
-UPDATE notifications_log
-   SET status  = 'sent',
-       sent_at = $2
- WHERE id = $1
-`
-
-type MarkLogSentParams struct {
-	ID     pgtype.UUID
-	SentAt pgtype.Timestamptz
-}
-
-func (q *Queries) MarkLogSent(ctx context.Context, arg MarkLogSentParams) error {
-	_, err := q.db.Exec(ctx, markLogSent, arg.ID, arg.SentAt)
-	return err
-}
-
-const recentLogByType = `-- name: RecentLogByType :many
-SELECT id, user_id, channel, type, payload, status, sent_at, error, created_at
-  FROM notifications_log
- WHERE user_id = $1
-   AND type    = $2
-   AND created_at >= $3
- ORDER BY created_at DESC
- LIMIT 10
-`
-
-type RecentLogByTypeParams struct {
-	UserID    pgtype.UUID
-	Type      string
-	CreatedAt pgtype.Timestamptz
-}
-
-func (q *Queries) RecentLogByType(ctx context.Context, arg RecentLogByTypeParams) ([]NotificationsLog, error) {
-	rows, err := q.db.Query(ctx, recentLogByType, arg.UserID, arg.Type, arg.CreatedAt)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	items := []NotificationsLog{}
-	for rows.Next() {
-		var i NotificationsLog
-		if err := rows.Scan(
-			&i.ID,
-			&i.UserID,
-			&i.Channel,
-			&i.Type,
-			&i.Payload,
-			&i.Status,
-			&i.SentAt,
-			&i.Error,
-			&i.CreatedAt,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
 const setTelegramChatID = `-- name: SetTelegramChatID :exec
-INSERT INTO notification_preferences (user_id, telegram_chat_id)
+INSERT INTO notification_prefs (user_id, telegram_chat_id)
 VALUES ($1, $2)
 ON CONFLICT (user_id) DO UPDATE
     SET telegram_chat_id = EXCLUDED.telegram_chat_id,
@@ -236,54 +125,51 @@ func (q *Queries) SetTelegramChatID(ctx context.Context, arg SetTelegramChatIDPa
 }
 
 const upsertPreferences = `-- name: UpsertPreferences :one
-INSERT INTO notification_preferences (
-    user_id, channels, telegram_chat_id,
-    quiet_hours_from, quiet_hours_to,
-    weekly_report_enabled, skill_decay_warnings_enabled
+INSERT INTO notification_prefs (
+    user_id, telegram_chat_id, channel_enabled,
+    weekly_report_enabled, skill_decay_warnings_enabled,
+    silence_until
 ) VALUES (
-    $1, $2, $3, $4, $5, $6, $7
+    $1, $2, $3, $4, $5, $6
 )
 ON CONFLICT (user_id) DO UPDATE
-    SET channels                     = EXCLUDED.channels,
-        telegram_chat_id             = EXCLUDED.telegram_chat_id,
-        quiet_hours_from             = EXCLUDED.quiet_hours_from,
-        quiet_hours_to               = EXCLUDED.quiet_hours_to,
+    SET telegram_chat_id             = EXCLUDED.telegram_chat_id,
+        channel_enabled              = EXCLUDED.channel_enabled,
         weekly_report_enabled        = EXCLUDED.weekly_report_enabled,
         skill_decay_warnings_enabled = EXCLUDED.skill_decay_warnings_enabled,
+        silence_until                = EXCLUDED.silence_until,
         updated_at                   = now()
-RETURNING user_id, channels, telegram_chat_id, quiet_hours_from, quiet_hours_to,
-          weekly_report_enabled, skill_decay_warnings_enabled, updated_at
+RETURNING user_id, telegram_chat_id, channel_enabled,
+          weekly_report_enabled, skill_decay_warnings_enabled,
+          silence_until, updated_at
 `
 
 type UpsertPreferencesParams struct {
 	UserID                    pgtype.UUID
-	Channels                  []string
 	TelegramChatID            pgtype.Text
-	QuietHoursFrom            pgtype.Time
-	QuietHoursTo              pgtype.Time
+	ChannelEnabled            []byte
 	WeeklyReportEnabled       bool
 	SkillDecayWarningsEnabled bool
+	SilenceUntil              pgtype.Timestamptz
 }
 
-func (q *Queries) UpsertPreferences(ctx context.Context, arg UpsertPreferencesParams) (NotificationPreference, error) {
+func (q *Queries) UpsertPreferences(ctx context.Context, arg UpsertPreferencesParams) (NotificationPref, error) {
 	row := q.db.QueryRow(ctx, upsertPreferences,
 		arg.UserID,
-		arg.Channels,
 		arg.TelegramChatID,
-		arg.QuietHoursFrom,
-		arg.QuietHoursTo,
+		arg.ChannelEnabled,
 		arg.WeeklyReportEnabled,
 		arg.SkillDecayWarningsEnabled,
+		arg.SilenceUntil,
 	)
-	var i NotificationPreference
+	var i NotificationPref
 	err := row.Scan(
 		&i.UserID,
-		&i.Channels,
 		&i.TelegramChatID,
-		&i.QuietHoursFrom,
-		&i.QuietHoursTo,
+		&i.ChannelEnabled,
 		&i.WeeklyReportEnabled,
 		&i.SkillDecayWarningsEnabled,
+		&i.SilenceUntil,
 		&i.UpdatedAt,
 	)
 	return i, err

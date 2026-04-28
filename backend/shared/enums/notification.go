@@ -30,6 +30,7 @@ const (
 	NotificationTypeDailyKata             NotificationType = "daily_kata"
 	NotificationTypeSubscriptionActivated NotificationType = "subscription_activated"
 	NotificationTypeWelcome               NotificationType = "welcome"
+	NotificationTypeEventStartingSoon     NotificationType = "event_starting_soon"
 )
 
 func (t NotificationType) IsValid() bool {
@@ -37,7 +38,8 @@ func (t NotificationType) IsValid() bool {
 	case NotificationTypeSlotReminder, NotificationTypeMatchFound, NotificationTypeMatchResult,
 		NotificationTypeWeeklyReport, NotificationTypeSkillDecay,
 		NotificationTypeSeasonEnding, NotificationTypeDailyKata,
-		NotificationTypeSubscriptionActivated, NotificationTypeWelcome:
+		NotificationTypeSubscriptionActivated, NotificationTypeWelcome,
+		NotificationTypeEventStartingSoon:
 		return true
 	}
 	return false

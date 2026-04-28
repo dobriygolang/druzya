@@ -28,9 +28,7 @@ type Querier interface {
 	// =============================================================================
 	// Sessions
 	// =============================================================================
-	// A user may have at most one live (finished_at IS NULL) session; the
-	// unique partial index enforces this at the DB layer.
-	// document_ids defaults to '{}'; Attach/Detach queries mutate in-place.
+	// RETURNING * so sqlc emits the canonical CopilotSession row (no Row alias).
 	CreateCopilotSession(ctx context.Context, arg CreateCopilotSessionParams) (CopilotSession, error)
 	DeleteCopilotConversation(ctx context.Context, arg DeleteCopilotConversationParams) (int64, error)
 	// array_remove is a no-op when the id isn't present, which matches the
@@ -48,9 +46,6 @@ type Querier interface {
 	GetCopilotQuota(ctx context.Context, userID pgtype.UUID) (CopilotQuota, error)
 	GetCopilotSession(ctx context.Context, id pgtype.UUID) (CopilotSession, error)
 	GetCopilotSessionReport(ctx context.Context, sessionID pgtype.UUID) (CopilotSessionReport, error)
-	// Returns the user's currently-open session, if any. Used by the
-	// Analyze use case to auto-attach turns AND to pull document_ids for
-	// the RAG-context injection path.
 	GetLiveCopilotSession(ctx context.Context, userID pgtype.UUID) (CopilotSession, error)
 	// Called inside the Analyze / Chat transaction after a successful LLM call.
 	// The app layer checks (requests_used < requests_cap OR requests_cap < 0)

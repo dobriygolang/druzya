@@ -168,5 +168,60 @@ func (r *PublishRepoPG) GetPublicView(ctx context.Context, slug string) (string,
 	return title, bodyMD, updatedAt, nil
 }
 
+// ShareToWebAtomic — single UPDATE: clear encrypted, write plaintext body_md,
+// set public_slug + published_at. Caller (use case) generates slug and retries
+// on ErrPublishSlugCollision.
+func (r *PublishRepoPG) ShareToWebAtomic(ctx context.Context, userID, noteID uuid.UUID, plaintextMD, slug string) (time.Time, error) {
+	var newAt time.Time
+	err := r.pool.QueryRow(ctx,
+		`UPDATE hone_notes
+		    SET body_md = $3,
+		        size_bytes = length($3),
+		        encrypted = FALSE,
+		        public_slug = $4,
+		        published_at = now(),
+		        updated_at = now()
+		  WHERE id = $1 AND user_id = $2
+		RETURNING published_at`,
+		noteID, userID, plaintextMD, slug,
+	).Scan(&newAt)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return time.Time{}, domain.ErrNotFound
+		}
+		if strings.Contains(err.Error(), "23505") {
+			return time.Time{}, domain.ErrPublishSlugCollision
+		}
+		return time.Time{}, fmt.Errorf("hone.PublishRepoPG.ShareToWebAtomic: %w", err)
+	}
+	return newAt, nil
+}
+
+// MakePrivateAtomic — single UPDATE: write ciphertext, encrypted=true, clear
+// publish + wipe embedding (server can't see plaintext to keep it indexed).
+func (r *PublishRepoPG) MakePrivateAtomic(ctx context.Context, userID, noteID uuid.UUID, ciphertextB64 string) error {
+	cmd, err := r.pool.Exec(ctx,
+		`UPDATE hone_notes
+		    SET body_md = $3,
+		        size_bytes = length($3),
+		        encrypted = TRUE,
+		        embedding = NULL,
+		        embedding_model = NULL,
+		        embedded_at = NULL,
+		        public_slug = NULL,
+		        published_at = NULL,
+		        updated_at = now()
+		  WHERE id = $1 AND user_id = $2`,
+		noteID, userID, ciphertextB64,
+	)
+	if err != nil {
+		return fmt.Errorf("hone.PublishRepoPG.MakePrivateAtomic: %w", err)
+	}
+	if cmd.RowsAffected() == 0 {
+		return domain.ErrNotFound
+	}
+	return nil
+}
+
 // Compile-time assertion.
 var _ domain.PublishRepo = (*PublishRepoPG)(nil)

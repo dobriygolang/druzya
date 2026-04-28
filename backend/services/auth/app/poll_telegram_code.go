@@ -88,7 +88,6 @@ func (uc *PollTelegramCode) Do(ctx context.Context, in PollTelegramCodeInput) (P
 	user, created, err := uc.Users.UpsertByOAuth(ctx, domain.UpsertOAuthInput{
 		Provider:       enums.AuthProviderTelegram,
 		ProviderUserID: strconv.FormatInt(payload.ID, 10),
-		Email:          "",
 		UsernameHint:   usernameHint,
 		DisplayName:    display,
 		AvatarURL:      payload.PhotoURL,

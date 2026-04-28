@@ -72,8 +72,9 @@ func NewNotify(d monolithServices.Deps) (*NotifyModule, error) {
 
 	get := &notifyApp.GetPreferences{Prefs: pg, Log: d.Log}
 	upd := &notifyApp.UpdatePreferences{Prefs: pg, Log: d.Log}
+	logs := notifyInfra.NewNoopLogRepo()
 	send := &notifyApp.SendNotification{
-		Prefs: pg, Logs: pg, Templates: templates, Queue: queue,
+		Prefs: pg, Logs: logs, Templates: templates, Queue: queue,
 		Users: pg, Log: d.Log, Now: d.Now,
 	}
 	handlers := notifyApp.NewHandlers(send, d.Log).WithPrefs(pg)
@@ -81,7 +82,7 @@ func NewNotify(d monolithServices.Deps) (*NotifyModule, error) {
 	webhook := notifyPorts.NewWebhookHandler(tg, d.Cfg.Notify.TelegramWebhookSecret, d.Log)
 
 	worker := &notifyApp.Worker{
-		Queue: queue, Prefs: pg, Logs: pg, Templates: templates,
+		Queue: queue, Prefs: pg, Logs: logs, Templates: templates,
 		Senders: map[enums.NotificationChannel]notifyDomain.Sender{
 			enums.NotificationChannelTelegram: tg,
 			enums.NotificationChannelEmail:    email,
@@ -160,6 +161,7 @@ func NewNotify(d monolithServices.Deps) (*NotifyModule, error) {
 					b.Subscribe(sharedDomain.UserRegistered{}.Topic(), handlers.OnUserRegistered)
 					b.Subscribe(sharedDomain.SlotBooked{}.Topic(), handlers.OnSlotBooked)
 					b.Subscribe(notifyDomain.WeeklyReportDue{}.Topic(), handlers.OnWeeklyReportDue)
+					b.Subscribe(sharedDomain.EventStartingSoon{}.Topic(), handlers.OnEventStartingSoon)
 					// Legitimate path привязки telegram_chat_id: auth публикует
 					// TelegramChatLinked после криптографически-безопасного /start <code>.
 					b.Subscribe(sharedDomain.TelegramChatLinked{}.Topic(), handlers.OnTelegramChatLinked)

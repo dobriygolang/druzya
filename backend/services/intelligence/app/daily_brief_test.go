@@ -389,6 +389,10 @@ func (r *fakeEpisodeRepo) GetBriefRecommendations(_ context.Context, userID, bri
 	return nil, domain.ErrEpisodeNotFound
 }
 
+func (r *fakeEpisodeRepo) DeleteOlderThan(context.Context, time.Time) (int64, error) {
+	return 0, nil
+}
+
 func cueEpisode(t *testing.T, occurredAt time.Time, outcome, summary string, topics []string) domain.Episode {
 	t.Helper()
 	payload, err := json.Marshal(map[string]any{

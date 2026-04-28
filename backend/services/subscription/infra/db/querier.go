@@ -16,23 +16,23 @@ type Querier interface {
 	FindUserByExternalID(ctx context.Context, arg FindUserByExternalIDParams) (pgtype.UUID, error)
 	GetProviderLink(ctx context.Context, arg GetProviderLinkParams) (ProviderLink, error)
 	// subscription queries, consumed by sqlc → services/subscription/infra/db/.
-	// Все запросы работают с existing таблицей `subscriptions` (00008 + 00019).
-	GetSubscription(ctx context.Context, userID pgtype.UUID) (GetSubscriptionRow, error)
+	// v2: started_at + boosty_level dropped from subscriptions.
+	GetSubscription(ctx context.Context, userID pgtype.UUID) (Subscription, error)
 	// Админский dashboard + ручная sync-операция. Итерация постраничная.
 	ListLinksByProvider(ctx context.Context, arg ListLinksByProviderParams) ([]ProviderLink, error)
-	// Hot path для admin-dashboard. Partial index idx_subscriptions_plan_active
-	// ускоряет до ≤10ms на сотнях тысяч строк.
-	ListSubscriptionsByPlan(ctx context.Context, arg ListSubscriptionsByPlanParams) ([]ListSubscriptionsByPlanRow, error)
-	// Batch-update всех истёкших подписок (grace_until < $1). Cron раз в час.
+	// Hot path for admin dashboard. The partial index
+	// idx_subscriptions_plan_active keeps this <10ms over hundreds of thousands.
+	ListSubscriptionsByPlan(ctx context.Context, arg ListSubscriptionsByPlanParams) ([]Subscription, error)
+	// Batch-update lapsed subscriptions (grace_until < $1). Hourly cron.
 	MarkExpiredSubscriptions(ctx context.Context, graceUntil pgtype.Timestamptz) (int64, error)
 	// provider_links queries — линкерная таблица user_id ↔ external provider
 	// account. Отдельный файл чтобы sqlc-package subscription не разрастался.
 	// Идемпотентная запись линка. external_tier и verified_at обновляются на
 	// каждом sync (new data = more recent truth); created_at сохраняется.
 	UpsertProviderLink(ctx context.Context, arg UpsertProviderLinkParams) error
-	// Идемпотентная запись. Используется Admin SetTier и (в M3) Boosty sync.
-	// Ставим все колонки явно, чтобы NULL не перезаписывал случайно (например
-	// provider_sub_id при ручной admin-выдаче).
+	// Idempotent write. Used by Admin SetTier and the Boosty/yookassa sync.
+	// Set every column explicitly so NULLs don't accidentally overwrite (e.g.
+	// provider_sub_id during manual admin grants).
 	UpsertSubscription(ctx context.Context, arg UpsertSubscriptionParams) error
 }
 

@@ -132,30 +132,9 @@ func (p *Postgres) UpsertProgress(ctx context.Context, prog domain.Progress) err
 	return nil
 }
 
-// FakeSigner is a STUB AudioSigner. Real impl: wrap a MinIO client's
-// PresignGetObject with a 1h TTL. For MVP we return a stable "/stream/<key>"
-// URL that an edge proxy rewrites to a signed request.
-type FakeSigner struct {
-	Prefix string // e.g. "/stream" or "https://cdn.example.com/stream"
-}
-
-// NewFakeSigner wires a FakeSigner. Prefix defaults to "/stream".
-func NewFakeSigner(prefix string) *FakeSigner {
-	if prefix == "" {
-		prefix = "/stream"
-	}
-	return &FakeSigner{Prefix: prefix}
-}
-
-// Sign returns a placeholder URL. STUB — see package comment.
-func (s *FakeSigner) Sign(_ context.Context, audioKey string) (string, error) {
-	return s.Prefix + "/" + audioKey, nil
-}
-
 // ── helpers ────────────────────────────────────────────────────────────────
 
 // Compile-time assertions.
 var (
 	_ domain.PodcastRepo = (*Postgres)(nil)
-	_ domain.AudioSigner = (*FakeSigner)(nil)
 )

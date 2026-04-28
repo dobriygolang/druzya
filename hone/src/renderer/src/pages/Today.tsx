@@ -4,31 +4,27 @@
 //
 //   1. Date header  (FRIDAY · APR 26)
 //   2. H1           («Today» — статичный, не вопрос-prompt)
-//   3. Morning standup banner — collapsible, self-gating (см. TodayStandupBanner)
-//   4. Morning intent — large textarea (free-form, autosaves to a Note
+//   3. Morning intent — large textarea (free-form, autosaves to a Note
 //      titled "Daily YYYY-MM-DD"). Юзер пишет туда что угодно: «what's
 //      on my mind», quick-jots, intent. Это не задачи — это размышления.
-//   5. Tasks       — Focus Queue, three sections без больших дивайдеров.
+//   4. Tasks       — Focus Queue, three sections без больших дивайдеров.
 //      Inline + Add task внизу. Hover-delete, click checkbox для transitions.
-//   6. AI nudges   — слот под Coach.
 //
-// NOTE: Standup banner был НА Today всегда — он самораскрывается утром и
-// прячется когда юзер записал stand-up на сегодня. Из общих палетки/tabs
-// мы команду удалили (нет смысла навигироваться отдельно), но на Today
-// сам компонент остался: он часть «утреннего блока».
+// Standup banner живёт ТОЛЬКО на Home — на Today был дубль, удалили.
+// AI nudges-блока тоже нет: Coach панель отдельно живёт на Home (DailyBrief).
 //
-// Никаких pop-up кнопок «Generate plan / Regenerate». Plan генерится
-// автоматически утром (cron) или по явному запросу через Palette
-// (TODO: refactor). Today — это просто отображение.
+// План генерится автоматически один раз в сутки при первом открытии Today —
+// дальше из БД через GetDailyPlan. Принудительная регенерация вызывается
+// явно из Palette (Generate plan) — здесь её UI нет.
 //
 // AI smarter — не в этом файле. Этот файл рендерит. Логика в backend
 // services/intelligence (Coach) + services/hone (PlanSynthesizer).
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { ConnectError, Code } from '@connectrpc/connect';
 
-import { TodayStandupBanner } from '../components/TodayStandupBanner';
 import {
   generatePlan,
+  getPlan,
   listQueue,
   addQueueItem,
   updateQueueItemStatus,
@@ -121,6 +117,38 @@ export function TodayPage({ onStartFocus, highlightedItemId, onConsumeHighlight 
   useEffect(() => {
     void refetch();
   }, [refetch]);
+
+  // Once per local-calendar day on first Today mount, ensure a plan exists.
+  // The backend caches the plan for 24h, so this is cheap when one is
+  // already there; on a brand-new day getPlan() returns 404 and we trigger
+  // generatePlan once. Tracked via localStorage so we don't spam the LLM.
+  useEffect(() => {
+    const todayKey = (() => {
+      const d = new Date();
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${y}-${m}-${day}`;
+    })();
+    const stamped = window.localStorage.getItem('hone:today:plan-checked');
+    if (stamped === todayKey) return;
+    void (async () => {
+      try {
+        await getPlan();
+      } catch {
+        try {
+          await generatePlan(false);
+        } catch {
+          /* network/quota error — leave plan empty, user can retry from Palette */
+        }
+      }
+      try {
+        window.localStorage.setItem('hone:today:plan-checked', todayKey);
+      } catch {
+        /* private mode */
+      }
+    })();
+  }, []);
 
   // Refetch on focus, throttled.
   useEffect(() => {
@@ -288,10 +316,6 @@ export function TodayPage({ onStartFocus, highlightedItemId, onConsumeHighlight 
         >
           Today
         </h1>
-
-        {/* Morning standup — self-gating: показывается только утром и если
-            stand-up за сегодня ещё не записан. После записи свернётся в null. */}
-        <TodayStandupBanner />
 
         {/* Morning intent — free-form note, autosaves debounced. */}
         <DailyNoteEditor body={dailyBody} onChange={scheduleDailySave} />

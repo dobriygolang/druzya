@@ -110,6 +110,10 @@ type EpisodeRepo interface {
 	// чтобы достать title + kind по index'у без отдельного fetch'а из
 	// hone_daily_briefs.
 	GetBriefRecommendations(ctx context.Context, userID, briefID uuid.UUID) ([]Recommendation, error)
+	// DeleteOlderThan removes episodes whose occurred_at is strictly older
+	// than the cutoff. Returns the number of rows deleted. Used by the
+	// retention worker to keep coach memory bounded.
+	DeleteOlderThan(ctx context.Context, cutoff time.Time) (int64, error)
 }
 
 // ErrEpisodeNotFound — sentinel для GetBriefRecommendations.

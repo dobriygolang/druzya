@@ -56,7 +56,6 @@ func (p *Postgres) GetByUserID(ctx context.Context, userID uuid.UUID) (domain.Bu
 	b := domain.Bundle{}
 	b.User = domain.User{
 		ID:          sharedpg.UUIDFrom(row.ID),
-		Email:       pgText(row.Email),
 		Username:    row.Username,
 		Role:        enums.UserRole(row.Role),
 		Locale:      row.Locale,
@@ -67,7 +66,7 @@ func (p *Postgres) GetByUserID(ctx context.Context, userID uuid.UUID) (domain.Bu
 		UserID:      userID,
 		CharClass:   enums.CharClass(row.CharClass),
 		Level:       int(row.Level),
-		XP:          row.Xp,
+		XP:          row.TotalXp,
 		Title:       pgText(row.Title),
 		AvatarFrame: pgText(row.AvatarFrame),
 		CareerStage: domain.CareerStage(row.CareerStage),
@@ -124,7 +123,7 @@ func (p *Postgres) GetPublic(ctx context.Context, username string) (domain.Publi
 		UserID:      b.User.ID,
 		CharClass:   enums.CharClass(row.CharClass),
 		Level:       int(row.Level),
-		XP:          row.Xp,
+		XP:          row.TotalXp,
 		Title:       pgText(row.Title),
 		AvatarFrame: pgText(row.AvatarFrame),
 		CareerStage: domain.CareerStage(row.CareerStage),
@@ -179,10 +178,14 @@ func (p *Postgres) EnsureDefaults(ctx context.Context, userID uuid.UUID) error {
 
 // ApplyXPDelta updates level+xp via sqlc.
 func (p *Postgres) ApplyXPDelta(ctx context.Context, userID uuid.UUID, addXP int, newLevel int, remainderXP int64) error {
+	// v2: xp/level live in user_xp now. Ensure the row exists, then update.
+	if err := p.q.EnsureUserXP(ctx, sharedpg.UUID(userID)); err != nil {
+		return fmt.Errorf("profile.Postgres.ApplyXPDelta: ensure: %w", err)
+	}
 	if err := p.q.UpdateProfileXPLevel(ctx, profiledb.UpdateProfileXPLevelParams{
-		UserID: sharedpg.UUID(userID),
-		Level:  int32(newLevel),
-		Xp:     remainderXP,
+		UserID:  sharedpg.UUID(userID),
+		Level:   int32(newLevel),
+		TotalXp: remainderXP,
 	}); err != nil {
 		return fmt.Errorf("profile.Postgres.ApplyXPDelta: %w", err)
 	}

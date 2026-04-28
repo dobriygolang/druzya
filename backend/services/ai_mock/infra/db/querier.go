@@ -15,6 +15,7 @@ type Querier interface {
 	// Queries consumed by sqlc; mirror hand-rolled pgx in infra/postgres.go.
 	// CRITICAL: solution_hint is ONLY selected by GetTaskWithHint — never by any
 	// query whose result is shown to the client.
+	// RETURNING * so sqlc emits the canonical MockSession row type (no Row alias).
 	CreateMockSession(ctx context.Context, arg CreateMockSessionParams) (MockSession, error)
 	// Phase-4 ADR-001 (Wave 3) — drives copilot.CheckBlock. Returns the user's
 	// live mock_sessions row when ai_assist=FALSE (strict mode). When the row

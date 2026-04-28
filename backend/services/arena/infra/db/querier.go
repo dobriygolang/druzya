@@ -19,6 +19,7 @@ type Querier interface {
 	GetArenaMatch(ctx context.Context, id pgtype.UUID) (GetArenaMatchRow, error)
 	GetArenaTaskPublic(ctx context.Context, id pgtype.UUID) (GetArenaTaskPublicRow, error)
 	InsertArenaParticipant(ctx context.Context, arg InsertArenaParticipantParams) error
+	// v2: solve_time_ms dropped (was written but not read by rating/profile).
 	ListArenaParticipants(ctx context.Context, matchID pgtype.UUID) ([]ArenaParticipant, error)
 	// ListMyMatches and CountMyMatches power /api/v1/arena/matches/my. Both
 	// accept optional mode/section filters via NULLIF(...) — sqlc emits string
