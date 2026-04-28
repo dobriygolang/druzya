@@ -501,7 +501,14 @@ export function registerHandlers(opts: RegisterOptions): void {
     return resp.models;
   });
   ipcMain.handle(invokeChannels.quotaGet, async () => {
-    return client.getQuota({});
+    const quota = await client.getQuota({});
+    // Broadcast to all windows so any open paywall / settings reflects
+    // the latest plan without a full re-render cycle. Also covers the
+    // case where the user upgrades on Boosty then closes the paywall —
+    // the renderer calls quota.get() on hide, we push the fresh result
+    // to every other open window simultaneously.
+    broadcast(eventChannels.quotaUpdated, quota);
+    return quota;
   });
 
   // ── Rate ──

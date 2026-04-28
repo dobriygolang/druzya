@@ -7,6 +7,8 @@ import { join } from 'node:path';
 import { eventChannels } from '@shared/ipc';
 
 import { registerDeepLinks } from './auth/deeplink';
+import { cleanupOldRecordings } from './cleanup/recordings';
+import { maybeShowWhatsNew } from './whats-new';
 import { createCopilotClient } from './api/client';
 import { ensureScreenRecordingPrompted } from './capture/screenshot';
 import { loadRuntimeConfig } from './config/bootstrap';
@@ -227,6 +229,10 @@ app.whenReady().then(async () => {
 
   showWindow('compact', windowOptions);
   preloadWindow('picker', windowOptions);
+
+  // Best-effort boot tasks — errors are logged, never crash the app.
+  void cleanupOldRecordings();
+  void maybeShowWhatsNew(windowOptions);
 
   // Re-bind deep-links to the actual compact window now that it exists.
   // First call (above, with null) registered the protocol scheme and

@@ -25,7 +25,13 @@ export function PaywallPortal() {
       copy={config.paywall}
       currentPlan={quota?.plan ?? ''}
       reason={reason}
-      onClose={hide}
+      onClose={() => {
+        hide();
+        // Refresh quota on close so if the user subscribed on Boosty then
+        // returned and dismissed the modal, the UI reflects the new plan
+        // without waiting for the next chat message.
+        void refreshQuota();
+      }}
       onRefresh={async () => {
         await refreshQuota();
         // If the plan flipped to a paid tier after the refresh, close the
