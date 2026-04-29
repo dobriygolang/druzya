@@ -240,7 +240,12 @@ export default function HelpPage() {
 // POST /api/v1/support/ticket → запись в БД + alert в support-чат в Telegram.
 // Ответ юзеру приходит на указанный канал (email или @druz9_bot deep-link).
 function SupportForm() {
-  const [contactKind, setContactKind] = useState<SupportContactKind>('telegram')
+  // Phase B (schema_v2): support is Telegram-only. The DB column
+  // contact_kind has CHECK IN ('telegram') and email-auth was dropped, so the
+  // form locks the channel to TG. Users without a linked TG account see the
+  // 'link TG to contact support' notice instead of the form (handled by the
+  // parent HelpPage based on tg_user_link).
+  const contactKind: SupportContactKind = 'telegram'
   const [contactValue, setContactValue] = useState('')
   const [subject, setSubject] = useState('')
   const [message, setMessage] = useState('')
@@ -253,11 +258,7 @@ function SupportForm() {
 
   function validate(): string | null {
     const value = contactValue.trim()
-    if (contactKind === 'email') {
-      if (!/^\S+@\S+\.\S+$/.test(value)) return 'Введи корректный email'
-    } else {
-      if (value.length < 2) return 'Введи Telegram username (@user) или телефон'
-    }
+    if (value.length < 2) return 'Введи Telegram username (@user) или телефон'
     if (message.trim().length < minMsgLen) {
       return `Сообщение слишком короткое (минимум ${minMsgLen} символов)`
     }
@@ -293,8 +294,7 @@ function SupportForm() {
         </div>
         <p className="text-xs text-text-secondary">
           Номер обращения: <code className="font-mono">{mutation.data.ticket_id.slice(0, 8)}</code>.
-          Ответ придёт на твой {contactKind === 'email' ? 'email' : 'Telegram'} в течение
-          1–2 часов в рабочее время.
+          Ответ придёт в твой Telegram в течение 1–2 часов в рабочее время.
         </p>
         <Button
           variant="ghost"
@@ -328,36 +328,14 @@ function SupportForm() {
       <p className="text-xs text-white/80">Среднее время ответа — 1–2 часа в рабочее время</p>
 
       <form onSubmit={handleSubmit} className="flex flex-col gap-3">
-        {/* Контакт-канал */}
-        <div className="flex gap-2">
-          <button
-            type="button"
-            onClick={() => setContactKind('telegram')}
-            className={`flex-1 rounded-md border px-2 py-1.5 text-[12px] transition ${
-              contactKind === 'telegram'
-                ? 'border-white/60 bg-white/15 text-text-primary'
-                : 'border-white/20 text-white/70 hover:bg-white/5'
-            }`}
-          >
-            Telegram
-          </button>
-          <button
-            type="button"
-            onClick={() => setContactKind('email')}
-            className={`flex-1 rounded-md border px-2 py-1.5 text-[12px] transition ${
-              contactKind === 'email'
-                ? 'border-white/60 bg-white/15 text-text-primary'
-                : 'border-white/20 text-white/70 hover:bg-white/5'
-            }`}
-          >
-            Email
-          </button>
-        </div>
+        <p className="font-mono text-[10px] tracking-[0.12em] text-white/60">
+          КАНАЛ · TELEGRAM
+        </p>
 
         <input
           value={contactValue}
           onChange={(e) => setContactValue(e.target.value)}
-          placeholder={contactKind === 'telegram' ? '@username' : 'you@example.com'}
+          placeholder="@username"
           className="rounded-md border border-white/30 bg-bg/60 px-3 py-2 text-[13px] text-text-primary placeholder:text-white/50 focus:border-white focus:outline-none"
           required
         />

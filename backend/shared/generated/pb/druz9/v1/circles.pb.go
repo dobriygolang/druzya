@@ -596,6 +596,178 @@ func (x *CircleMutationResponse) GetOk() bool {
 	return false
 }
 
+type DiscoverCirclesRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Limit         int32                  `protobuf:"varint,1,opt,name=limit,proto3" json:"limit,omitempty"` // 0 ⇒ server default (30)
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *DiscoverCirclesRequest) Reset() {
+	*x = DiscoverCirclesRequest{}
+	mi := &file_druz9_v1_circles_proto_msgTypes[10]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DiscoverCirclesRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DiscoverCirclesRequest) ProtoMessage() {}
+
+func (x *DiscoverCirclesRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_circles_proto_msgTypes[10]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DiscoverCirclesRequest.ProtoReflect.Descriptor instead.
+func (*DiscoverCirclesRequest) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_circles_proto_rawDescGZIP(), []int{10}
+}
+
+func (x *DiscoverCirclesRequest) GetLimit() int32 {
+	if x != nil {
+		return x.Limit
+	}
+	return 0
+}
+
+type DiscoverCircleItem struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Name          string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	Description   string                 `protobuf:"bytes,3,opt,name=description,proto3" json:"description,omitempty"`
+	OwnerId       string                 `protobuf:"bytes,4,opt,name=owner_id,json=ownerId,proto3" json:"owner_id,omitempty"`
+	MemberCount   int32                  `protobuf:"varint,5,opt,name=member_count,json=memberCount,proto3" json:"member_count,omitempty"`
+	CreatedAt     string                 `protobuf:"bytes,6,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"` // RFC3339
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *DiscoverCircleItem) Reset() {
+	*x = DiscoverCircleItem{}
+	mi := &file_druz9_v1_circles_proto_msgTypes[11]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DiscoverCircleItem) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DiscoverCircleItem) ProtoMessage() {}
+
+func (x *DiscoverCircleItem) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_circles_proto_msgTypes[11]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DiscoverCircleItem.ProtoReflect.Descriptor instead.
+func (*DiscoverCircleItem) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_circles_proto_rawDescGZIP(), []int{11}
+}
+
+func (x *DiscoverCircleItem) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *DiscoverCircleItem) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *DiscoverCircleItem) GetDescription() string {
+	if x != nil {
+		return x.Description
+	}
+	return ""
+}
+
+func (x *DiscoverCircleItem) GetOwnerId() string {
+	if x != nil {
+		return x.OwnerId
+	}
+	return ""
+}
+
+func (x *DiscoverCircleItem) GetMemberCount() int32 {
+	if x != nil {
+		return x.MemberCount
+	}
+	return 0
+}
+
+func (x *DiscoverCircleItem) GetCreatedAt() string {
+	if x != nil {
+		return x.CreatedAt
+	}
+	return ""
+}
+
+type DiscoverCirclesResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Items         []*DiscoverCircleItem  `protobuf:"bytes,1,rep,name=items,proto3" json:"items,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *DiscoverCirclesResponse) Reset() {
+	*x = DiscoverCirclesResponse{}
+	mi := &file_druz9_v1_circles_proto_msgTypes[12]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DiscoverCirclesResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DiscoverCirclesResponse) ProtoMessage() {}
+
+func (x *DiscoverCirclesResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_circles_proto_msgTypes[12]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DiscoverCirclesResponse.ProtoReflect.Descriptor instead.
+func (*DiscoverCirclesResponse) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_circles_proto_rawDescGZIP(), []int{12}
+}
+
+func (x *DiscoverCirclesResponse) GetItems() []*DiscoverCircleItem {
+	if x != nil {
+		return x.Items
+	}
+	return nil
+}
+
 var File_druz9_v1_circles_proto protoreflect.FileDescriptor
 
 const file_druz9_v1_circles_proto_rawDesc = "" +
@@ -633,12 +805,24 @@ const file_druz9_v1_circles_proto_rawDesc = "" +
 	"\x13DeleteCircleRequest\x12\x1b\n" +
 	"\tcircle_id\x18\x01 \x01(\tR\bcircleId\"(\n" +
 	"\x16CircleMutationResponse\x12\x0e\n" +
-	"\x02ok\x18\x01 \x01(\bR\x02ok*X\n" +
+	"\x02ok\x18\x01 \x01(\bR\x02ok\".\n" +
+	"\x16DiscoverCirclesRequest\x12\x14\n" +
+	"\x05limit\x18\x01 \x01(\x05R\x05limit\"\xb7\x01\n" +
+	"\x12DiscoverCircleItem\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
+	"\x04name\x18\x02 \x01(\tR\x04name\x12 \n" +
+	"\vdescription\x18\x03 \x01(\tR\vdescription\x12\x19\n" +
+	"\bowner_id\x18\x04 \x01(\tR\aownerId\x12!\n" +
+	"\fmember_count\x18\x05 \x01(\x05R\vmemberCount\x12\x1d\n" +
+	"\n" +
+	"created_at\x18\x06 \x01(\tR\tcreatedAt\"M\n" +
+	"\x17DiscoverCirclesResponse\x122\n" +
+	"\x05items\x18\x01 \x03(\v2\x1c.druz9.v1.DiscoverCircleItemR\x05items*X\n" +
 	"\n" +
 	"CircleRole\x12\x1b\n" +
 	"\x17CIRCLE_ROLE_UNSPECIFIED\x10\x00\x12\x15\n" +
 	"\x11CIRCLE_ROLE_ADMIN\x10\x01\x12\x16\n" +
-	"\x12CIRCLE_ROLE_MEMBER\x10\x022\x9a\x05\n" +
+	"\x12CIRCLE_ROLE_MEMBER\x10\x022\x94\x06\n" +
 	"\x0eCirclesService\x12[\n" +
 	"\fCreateCircle\x12\x1d.druz9.v1.CreateCircleRequest\x1a\x10.druz9.v1.Circle\"\x1a\x82\xd3\xe4\x93\x02\x14:\x01*\"\x0f/api/v1/circles\x12^\n" +
 	"\tGetCircle\x12\x1a.druz9.v1.GetCircleRequest\x1a\x10.druz9.v1.Circle\"#\x82\xd3\xe4\x93\x02\x1d\x12\x1b/api/v1/circles/{circle_id}\x12^\n" +
@@ -646,7 +830,8 @@ const file_druz9_v1_circles_proto_rawDesc = "" +
 	"\n" +
 	"JoinCircle\x12\x1b.druz9.v1.JoinCircleRequest\x1a .druz9.v1.CircleMutationResponse\"+\x82\xd3\xe4\x93\x02%:\x01*\" /api/v1/circles/{circle_id}/join\x12{\n" +
 	"\vLeaveCircle\x12\x1c.druz9.v1.LeaveCircleRequest\x1a .druz9.v1.CircleMutationResponse\",\x82\xd3\xe4\x93\x02&:\x01*\"!/api/v1/circles/{circle_id}/leave\x12t\n" +
-	"\fDeleteCircle\x12\x1d.druz9.v1.DeleteCircleRequest\x1a .druz9.v1.CircleMutationResponse\"#\x82\xd3\xe4\x93\x02\x1d*\x1b/api/v1/circles/{circle_id}B\x89\x01\n" +
+	"\fDeleteCircle\x12\x1d.druz9.v1.DeleteCircleRequest\x1a .druz9.v1.CircleMutationResponse\"#\x82\xd3\xe4\x93\x02\x1d*\x1b/api/v1/circles/{circle_id}\x12x\n" +
+	"\x0fDiscoverCircles\x12 .druz9.v1.DiscoverCirclesRequest\x1a!.druz9.v1.DiscoverCirclesResponse\" \x82\xd3\xe4\x93\x02\x1a\x12\x18/api/v1/circles/discoverB\x89\x01\n" +
 	"\fcom.druz9.v1B\fCirclesProtoP\x01Z*druz9/shared/generated/pb/druz9/v1;druz9v1\xa2\x02\x03DXX\xaa\x02\bDruz9.V1\xca\x02\bDruz9\\V1\xe2\x02\x14Druz9\\V1\\GPBMetadata\xea\x02\tDruz9::V1b\x06proto3"
 
 var (
@@ -662,45 +847,51 @@ func file_druz9_v1_circles_proto_rawDescGZIP() []byte {
 }
 
 var file_druz9_v1_circles_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_druz9_v1_circles_proto_msgTypes = make([]protoimpl.MessageInfo, 10)
+var file_druz9_v1_circles_proto_msgTypes = make([]protoimpl.MessageInfo, 13)
 var file_druz9_v1_circles_proto_goTypes = []any{
-	(CircleRole)(0),                // 0: druz9.v1.CircleRole
-	(*CircleMember)(nil),           // 1: druz9.v1.CircleMember
-	(*Circle)(nil),                 // 2: druz9.v1.Circle
-	(*CreateCircleRequest)(nil),    // 3: druz9.v1.CreateCircleRequest
-	(*GetCircleRequest)(nil),       // 4: druz9.v1.GetCircleRequest
-	(*ListMyCirclesRequest)(nil),   // 5: druz9.v1.ListMyCirclesRequest
-	(*CircleList)(nil),             // 6: druz9.v1.CircleList
-	(*JoinCircleRequest)(nil),      // 7: druz9.v1.JoinCircleRequest
-	(*LeaveCircleRequest)(nil),     // 8: druz9.v1.LeaveCircleRequest
-	(*DeleteCircleRequest)(nil),    // 9: druz9.v1.DeleteCircleRequest
-	(*CircleMutationResponse)(nil), // 10: druz9.v1.CircleMutationResponse
-	(*timestamppb.Timestamp)(nil),  // 11: google.protobuf.Timestamp
+	(CircleRole)(0),                 // 0: druz9.v1.CircleRole
+	(*CircleMember)(nil),            // 1: druz9.v1.CircleMember
+	(*Circle)(nil),                  // 2: druz9.v1.Circle
+	(*CreateCircleRequest)(nil),     // 3: druz9.v1.CreateCircleRequest
+	(*GetCircleRequest)(nil),        // 4: druz9.v1.GetCircleRequest
+	(*ListMyCirclesRequest)(nil),    // 5: druz9.v1.ListMyCirclesRequest
+	(*CircleList)(nil),              // 6: druz9.v1.CircleList
+	(*JoinCircleRequest)(nil),       // 7: druz9.v1.JoinCircleRequest
+	(*LeaveCircleRequest)(nil),      // 8: druz9.v1.LeaveCircleRequest
+	(*DeleteCircleRequest)(nil),     // 9: druz9.v1.DeleteCircleRequest
+	(*CircleMutationResponse)(nil),  // 10: druz9.v1.CircleMutationResponse
+	(*DiscoverCirclesRequest)(nil),  // 11: druz9.v1.DiscoverCirclesRequest
+	(*DiscoverCircleItem)(nil),      // 12: druz9.v1.DiscoverCircleItem
+	(*DiscoverCirclesResponse)(nil), // 13: druz9.v1.DiscoverCirclesResponse
+	(*timestamppb.Timestamp)(nil),   // 14: google.protobuf.Timestamp
 }
 var file_druz9_v1_circles_proto_depIdxs = []int32{
 	0,  // 0: druz9.v1.CircleMember.role:type_name -> druz9.v1.CircleRole
-	11, // 1: druz9.v1.CircleMember.joined_at:type_name -> google.protobuf.Timestamp
-	11, // 2: druz9.v1.Circle.created_at:type_name -> google.protobuf.Timestamp
-	11, // 3: druz9.v1.Circle.updated_at:type_name -> google.protobuf.Timestamp
+	14, // 1: druz9.v1.CircleMember.joined_at:type_name -> google.protobuf.Timestamp
+	14, // 2: druz9.v1.Circle.created_at:type_name -> google.protobuf.Timestamp
+	14, // 3: druz9.v1.Circle.updated_at:type_name -> google.protobuf.Timestamp
 	1,  // 4: druz9.v1.Circle.members:type_name -> druz9.v1.CircleMember
 	2,  // 5: druz9.v1.CircleList.items:type_name -> druz9.v1.Circle
-	3,  // 6: druz9.v1.CirclesService.CreateCircle:input_type -> druz9.v1.CreateCircleRequest
-	4,  // 7: druz9.v1.CirclesService.GetCircle:input_type -> druz9.v1.GetCircleRequest
-	5,  // 8: druz9.v1.CirclesService.ListMyCircles:input_type -> druz9.v1.ListMyCirclesRequest
-	7,  // 9: druz9.v1.CirclesService.JoinCircle:input_type -> druz9.v1.JoinCircleRequest
-	8,  // 10: druz9.v1.CirclesService.LeaveCircle:input_type -> druz9.v1.LeaveCircleRequest
-	9,  // 11: druz9.v1.CirclesService.DeleteCircle:input_type -> druz9.v1.DeleteCircleRequest
-	2,  // 12: druz9.v1.CirclesService.CreateCircle:output_type -> druz9.v1.Circle
-	2,  // 13: druz9.v1.CirclesService.GetCircle:output_type -> druz9.v1.Circle
-	6,  // 14: druz9.v1.CirclesService.ListMyCircles:output_type -> druz9.v1.CircleList
-	10, // 15: druz9.v1.CirclesService.JoinCircle:output_type -> druz9.v1.CircleMutationResponse
-	10, // 16: druz9.v1.CirclesService.LeaveCircle:output_type -> druz9.v1.CircleMutationResponse
-	10, // 17: druz9.v1.CirclesService.DeleteCircle:output_type -> druz9.v1.CircleMutationResponse
-	12, // [12:18] is the sub-list for method output_type
-	6,  // [6:12] is the sub-list for method input_type
-	6,  // [6:6] is the sub-list for extension type_name
-	6,  // [6:6] is the sub-list for extension extendee
-	0,  // [0:6] is the sub-list for field type_name
+	12, // 6: druz9.v1.DiscoverCirclesResponse.items:type_name -> druz9.v1.DiscoverCircleItem
+	3,  // 7: druz9.v1.CirclesService.CreateCircle:input_type -> druz9.v1.CreateCircleRequest
+	4,  // 8: druz9.v1.CirclesService.GetCircle:input_type -> druz9.v1.GetCircleRequest
+	5,  // 9: druz9.v1.CirclesService.ListMyCircles:input_type -> druz9.v1.ListMyCirclesRequest
+	7,  // 10: druz9.v1.CirclesService.JoinCircle:input_type -> druz9.v1.JoinCircleRequest
+	8,  // 11: druz9.v1.CirclesService.LeaveCircle:input_type -> druz9.v1.LeaveCircleRequest
+	9,  // 12: druz9.v1.CirclesService.DeleteCircle:input_type -> druz9.v1.DeleteCircleRequest
+	11, // 13: druz9.v1.CirclesService.DiscoverCircles:input_type -> druz9.v1.DiscoverCirclesRequest
+	2,  // 14: druz9.v1.CirclesService.CreateCircle:output_type -> druz9.v1.Circle
+	2,  // 15: druz9.v1.CirclesService.GetCircle:output_type -> druz9.v1.Circle
+	6,  // 16: druz9.v1.CirclesService.ListMyCircles:output_type -> druz9.v1.CircleList
+	10, // 17: druz9.v1.CirclesService.JoinCircle:output_type -> druz9.v1.CircleMutationResponse
+	10, // 18: druz9.v1.CirclesService.LeaveCircle:output_type -> druz9.v1.CircleMutationResponse
+	10, // 19: druz9.v1.CirclesService.DeleteCircle:output_type -> druz9.v1.CircleMutationResponse
+	13, // 20: druz9.v1.CirclesService.DiscoverCircles:output_type -> druz9.v1.DiscoverCirclesResponse
+	14, // [14:21] is the sub-list for method output_type
+	7,  // [7:14] is the sub-list for method input_type
+	7,  // [7:7] is the sub-list for extension type_name
+	7,  // [7:7] is the sub-list for extension extendee
+	0,  // [0:7] is the sub-list for field type_name
 }
 
 func init() { file_druz9_v1_circles_proto_init() }
@@ -714,7 +905,7 @@ func file_druz9_v1_circles_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_druz9_v1_circles_proto_rawDesc), len(file_druz9_v1_circles_proto_rawDesc)),
 			NumEnums:      1,
-			NumMessages:   10,
+			NumMessages:   13,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

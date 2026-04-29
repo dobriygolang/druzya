@@ -33,7 +33,10 @@ var _ druz9v1connect.PodcastServiceHandler = (*PodcastServer)(nil)
 type PodcastServer struct {
 	ListUC   *app.ListCatalog
 	UpdateUC *app.UpdateProgress
-	Log      *slog.Logger
+	// CMS optional — bound by the wirer via AttachCMS once the CMSService
+	// is constructed (depends on MinIO object store wiring later in boot).
+	CMS *app.CMSService
+	Log *slog.Logger
 }
 
 // NewPodcastServer wires a PodcastServer.

@@ -10,6 +10,7 @@ import {
   X,
   Zap,
   Bot,
+  HelpCircle,
 } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
@@ -255,7 +256,7 @@ function AiPanel({
   const ai = useAIModelsQuery()
   const profile = useProfileQuery()
   const userTier = profile.data?.tier ?? 'free'
-  const isPremiumUser = userTier === 'premium' || userTier === 'pro'
+  const isPaidUser = userTier === 'pro' || userTier === 'max'
 
   if (ai.isLoading) {
     return (
@@ -292,7 +293,7 @@ function AiPanel({
       </div>
       <div className="grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {items.map((m) => {
-          const locked = m.tier === 'premium' && !isPremiumUser
+          const locked = m.tier !== 'free' && !isPaidUser
           return (
             <DynamicModelTile
               key={m.id}
@@ -312,7 +313,7 @@ function AiPanel({
 }
 
 type Mode = {
-  key: 'solo_practice' | 'daily_kata' | 'ranked_1v1' | 'casual_1v1' | 'ranked_2v2' | 'mock'
+  key: 'solo_practice' | 'daily_kata' | 'ranked_1v1' | 'casual_1v1' | 'ranked_2v2' | 'mock' | 'quiz'
   name: string
   desc: string
   icon: ReactNode
@@ -389,6 +390,16 @@ const MODES: Mode[] = [
     icon: <Video className="h-7 w-7 text-text-primary" />,
     gradient: 'bg-text-primary/8',
     arenaMode: 'hardcore',
+    requiresParty: false,
+    aiPowered: true,
+  },
+  {
+    key: 'quiz',
+    name: 'Quiz Drill',
+    desc: '5 коротких вопросов из codex-статей и mock-pool. На прогон ~3 минуты, грейдер LLM-fuzzy. Зачёт ≥70% — сессия летит в TaskBoard.',
+    icon: <HelpCircle className="h-7 w-7 text-text-primary" />,
+    gradient: 'bg-text-primary/10',
+    arenaMode: 'solo_1v1', // unused — handled by navigate('/quiz').
     requiresParty: false,
     aiPowered: true,
   },
@@ -631,6 +642,10 @@ export default function ArenaPage() {
     // from the coming-soon empty-state on /mock.
     if (m.key === 'mock') {
       navigate('/mock')
+      return
+    }
+    if (m.key === 'quiz') {
+      navigate('/quiz')
       return
     }
     if (m.key === 'solo_practice') {

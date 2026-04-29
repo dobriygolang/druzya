@@ -1,18 +1,25 @@
 // Chrome — persistent corner widgets.
 //
-//   Wordmark  — HONE top-left, always.
-//   Versionmark — top-right: либо «druz9.online» на home (link, открывает
-//                 web в системном браузере), либо ESC-hint назад на home
-//                 на саб-страницах. Один и тот же слот: угол не должен
-//                 визуально дёргаться при переходах.
-import { Kbd } from './primitives/Kbd';
-
+//   Wordmark   — HONE top-left, always.
+//   Versionmark — top-right druz9.online link. Always shown (no esc-hint
+//                 variant; the hotkey-toggle pattern in App.tsx handles
+//                 navigation back to home without a visible button).
+//
+// Wordmark uses pointerEvents: 'none' so it doesn't intercept hover events
+// from the TrafficLightsHover area underneath — otherwise macOS traffic
+// lights flicker when the cursor crosses the logo.
 const WEB_HOST = 'druz9.online';
 
 export function Wordmark() {
   return (
     <div
-      style={{ position: 'absolute', top: 28, left: 32, zIndex: 10 }}
+      style={{
+        position: 'absolute',
+        top: 28,
+        left: 32,
+        zIndex: 10,
+        pointerEvents: 'none',
+      }}
       className="no-select"
     >
       <div
@@ -34,11 +41,13 @@ export function Wordmark() {
 }
 
 interface VersionmarkProps {
-  escHint: boolean;
-  onEsc: () => void;
+  // Kept in the prop signature for backward compatibility with App.tsx; the
+  // values are intentionally unused — the button is always the web link.
+  escHint?: boolean;
+  onEsc?: () => void;
 }
 
-export function Versionmark({ escHint, onEsc }: VersionmarkProps) {
+export function Versionmark(_: VersionmarkProps) {
   return (
     <div
       style={{
@@ -52,42 +61,23 @@ export function Versionmark({ escHint, onEsc }: VersionmarkProps) {
       }}
       className="no-select"
     >
-      {escHint ? (
-        <button
-          onClick={onEsc}
-          className="focus-ring mono"
-          style={{
-            fontSize: 10,
-            color: 'var(--ink-40)',
-            letterSpacing: '.18em',
-            display: 'inline-flex',
-            alignItems: 'center',
-            gap: 8,
-          }}
-          onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--ink-90)')}
-          onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--ink-40)')}
-        >
-          <Kbd>esc</Kbd> HOME
-        </button>
-      ) : (
-        <button
-          onClick={() => {
-            void window.hone?.shell.openExternal(`https://${WEB_HOST}`);
-          }}
-          className="mono focus-ring"
-          style={{
-            fontSize: 10,
-            color: 'var(--ink-40)',
-            letterSpacing: '0.18em',
-            background: 'transparent',
-            padding: 0,
-          }}
-          onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--ink-90)')}
-          onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--ink-40)')}
-        >
-          {WEB_HOST}
-        </button>
-      )}
+      <button
+        onClick={() => {
+          void window.hone?.shell.openExternal(`https://${WEB_HOST}`);
+        }}
+        className="mono focus-ring"
+        style={{
+          fontSize: 10,
+          color: 'var(--ink-40)',
+          letterSpacing: '0.18em',
+          background: 'transparent',
+          padding: 0,
+        }}
+        onMouseEnter={(e) => (e.currentTarget.style.color = 'var(--ink-90)')}
+        onMouseLeave={(e) => (e.currentTarget.style.color = 'var(--ink-40)')}
+      >
+        {WEB_HOST}
+      </button>
     </div>
   );
 }

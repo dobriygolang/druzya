@@ -1,94 +1,66 @@
-// ai_models.go — chi-direct `/ai/models` catalogue endpoint.
+// ai_models.go — facade-only wiring for the LLM model catalogue.
+//
+// Endpoint logic lives in services/admin/ports/ai_models.go (Connect server).
+// model_id may include slashes (`mistralai/mistral-7b`); the proto annotation
+// uses `{model_id=**}` so vanguard captures the full path segment.
 package admin
 
 import (
-	"encoding/json"
-	"errors"
-	"log/slog"
+	"fmt"
 	"net/http"
-	"strings"
+
+	monolithServices "druz9/cmd/monolith/services"
+	authServices "druz9/cmd/monolith/services/auth"
 
 	adminApp "druz9/admin/app"
-	adminDomain "druz9/admin/domain"
 	adminInfra "druz9/admin/infra"
-	monolithServices "druz9/cmd/monolith/services"
+	adminPorts "druz9/admin/ports"
+	"druz9/shared/generated/pb/druz9/v1/druz9v1connect"
 
 	"github.com/go-chi/chi/v5"
 )
 
-// aiModel — wire shape for the public catalogue. Must stay in sync with
-// frontend/src/lib/queries/ai.ts AIModel.
-type aiModel struct {
-	ID        string `json:"id"`
-	Label     string `json:"label"`
-	Provider  string `json:"provider"`
-	Tier      string `json:"tier"`
-	Available bool   `json:"available"`
-	IsVirtual bool   `json:"is_virtual,omitempty"`
-}
-
-type aiModelsResponse struct {
-	Available bool      `json:"available"`
-	Items     []aiModel `json:"items"`
-}
-
-// NewAIModels wires the /ai/models module. No auth gate (public read);
-// the parent router whitelists `/api/v1/ai/models`.
+// NewAIModels wires the AI-model catalogue. Public list + admin CRUD live
+// in the same Connect service; the chi mount layer applies the admin gate
+// per-path.
 func NewAIModels(d monolithServices.Deps) *monolithServices.Module {
 	repo := adminInfra.NewAIModels(d.Pool)
-	uc := &adminApp.ListPublicAIModels{Models: repo}
-	return &monolithServices.Module{
-		MountREST: func(r chi.Router) {
-			r.Get("/ai/models", aiModelsHandler(uc, d.Log))
-		},
+	server := &adminPorts.AIModelServer{
+		ListPublicUC: &adminApp.ListPublicAIModels{Models: repo},
+		ListUC:       &adminApp.ListAIModels{Models: repo},
+		CreateUC:     &adminApp.CreateAIModel{Models: repo},
+		UpdateUC:     &adminApp.UpdateAIModel{Models: repo},
+		ToggleUC:     &adminApp.ToggleAIModel{Models: repo},
+		DeleteUC:     &adminApp.DeleteAIModel{Models: repo},
+		Log:          d.Log,
 	}
-}
 
-// aiModelsHandler builds the http.HandlerFunc. Single SELECT against
-// llm_models, no caching (5min staleTime on the client side is enough; the
-// catalogue rarely changes and the row count is tiny — currently 6).
-func aiModelsHandler(uc *adminApp.ListPublicAIModels, log *slog.Logger) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		if r.Method != http.MethodGet {
-			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+	connectPath, connectHandler := druz9v1connect.NewAIModelServiceHandler(server)
+	transcoder := monolithServices.MustTranscode("ai_models", connectPath, connectHandler)
+
+	adminGate := func(w http.ResponseWriter, r *http.Request) {
+		if _, err := authServices.RequireAdminInline(r); err != nil {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(authServices.StatusForAuthErr(err))
+			_, _ = fmt.Fprintf(w, `{"error":"%s"}`, err.Error())
 			return
 		}
+		transcoder.ServeHTTP(w, r)
+	}
 
-		var surface string
-		if v := strings.TrimSpace(r.URL.Query().Get("use")); v != "" {
-			surface = v
-		}
-
-		items, err := uc.Do(r.Context(), adminDomain.PublicAIModelFilter{Surface: surface})
-		if err != nil {
-			if errors.Is(err, adminDomain.ErrInvalidInput) {
-				http.Error(w, "invalid use", http.StatusBadRequest)
-				return
-			}
-			if log != nil {
-				log.ErrorContext(r.Context(), "ai_models: query failed", slog.Any("err", err))
-			}
-			http.Error(w, "internal", http.StatusInternalServerError)
-			return
-		}
-
-		out := make([]aiModel, 0, len(items))
-		for _, it := range items {
-			out = append(out, aiModel{
-				ID:        it.ID,
-				Label:     it.Label,
-				Provider:  it.Provider,
-				Tier:      it.Tier,
-				Available: it.Available,
-				IsVirtual: it.IsVirtual,
-			})
-		}
-
-		w.Header().Set("Content-Type", "application/json")
-		w.Header().Set("Cache-Control", "max-age=300")
-		_ = json.NewEncoder(w).Encode(aiModelsResponse{
-			Available: len(out) > 0,
-			Items:     out,
-		})
+	return &monolithServices.Module{
+		ConnectPath:    connectPath,
+		ConnectHandler: transcoder,
+		MountREST: func(r chi.Router) {
+			// Public catalogue (anonymous-readable) — Cache-Control via
+			// the transcoder's defaults.
+			r.Get("/ai/models", transcoder.ServeHTTP)
+			// Admin CRUD with `{model_id=**}` slash-id capture.
+			r.Get("/admin/ai/models", adminGate)
+			r.Post("/admin/ai/models", adminGate)
+			r.Patch("/admin/ai/models/*", adminGate)
+			r.Post("/admin/ai/models/*/toggle", adminGate)
+			r.Delete("/admin/ai/models/*", adminGate)
+		},
 	}
 }

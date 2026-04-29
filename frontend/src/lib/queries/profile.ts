@@ -27,7 +27,7 @@ export type Profile = {
   global_power_score: number
   career_stage: string
   subscription: Subscription
-  tier?: 'free' | 'premium' | 'pro'
+  tier?: 'free' | 'pro' | 'max'
   ai_credits: number
   created_at: string
   achievements?: Achievement[]
@@ -232,19 +232,45 @@ export function useProfileQuery() {
 }
 
 // InterviewerApplication mirrors profile.proto:InterviewerApplication.
-// status ∈ {"pending","approved","rejected"}. ReviewedAt is empty until
-// an admin moderates the row.
+// Wire status — proto enum InterviewerApplicationStatus, эмитится JSON'ом
+// как NAME (например INTERVIEWER_APPLICATION_STATUS_PENDING). Legacy
+// deploys могут возвращать lowercase ('pending') — нормализатор ниже
+// принимает оба формата.
+export type InterviewerStatusCanonical = 'not_submitted' | 'pending' | 'approved' | 'rejected' | 'unspecified'
+
 export type InterviewerApplication = {
   id: string
   user_id: string
   motivation: string
-  status: 'pending' | 'approved' | 'rejected' | string
+  status: InterviewerStatusCanonical | string
   reviewed_by?: string
   reviewed_at?: string
   decision_note: string
   created_at: string
   user_username?: string
   user_display_name?: string
+}
+
+// normalizeInterviewerStatus принимает оба формата (legacy lowercase +
+// proto enum NAME). Unknown → 'unspecified'.
+export function normalizeInterviewerStatus(raw: string | undefined | null): InterviewerStatusCanonical {
+  if (!raw) return 'unspecified'
+  switch (raw) {
+    case 'not_submitted':
+    case 'INTERVIEWER_APPLICATION_STATUS_NOT_SUBMITTED':
+      return 'not_submitted'
+    case 'pending':
+    case 'INTERVIEWER_APPLICATION_STATUS_PENDING':
+      return 'pending'
+    case 'approved':
+    case 'INTERVIEWER_APPLICATION_STATUS_APPROVED':
+      return 'approved'
+    case 'rejected':
+    case 'INTERVIEWER_APPLICATION_STATUS_REJECTED':
+      return 'rejected'
+    default:
+      return 'unspecified'
+  }
 }
 
 // useBecomeInterviewer wraps POST /api/v1/profile/me/become-interviewer.
@@ -267,13 +293,17 @@ export function useBecomeInterviewer() {
 }
 
 // useMyInterviewerApplicationQuery — GET /profile/me/interviewer-application.
-// 404 → null (the user has never applied).
+// Backend returns status="not_submitted" for the empty state. Map it to
+// null so existing call-sites that check `data == null` keep working.
+// Legacy 404 still mapped for back-compat with older deploys.
 export function useMyInterviewerApplicationQuery() {
   return useQuery({
     queryKey: profileQueryKeys.myInterviewerApp(),
     queryFn: async () => {
       try {
-        return await api<InterviewerApplication>('/profile/me/interviewer-application')
+        const app = await api<InterviewerApplication>('/profile/me/interviewer-application')
+        if (app && normalizeInterviewerStatus((app as { status?: string }).status) === 'not_submitted') return null
+        return app
       } catch (err) {
         const status = (err as { status?: number } | null)?.status
         if (status === 404) return null
@@ -284,12 +314,26 @@ export function useMyInterviewerApplicationQuery() {
   })
 }
 
+// interviewerStatusToProtoName — caller передаёт canonical, мы шлём proto
+// enum NAME (vanguard transcoder парсит NAME либо int; lowercase больше
+// не валиден после Phase enum-migration).
+function interviewerStatusToProtoName(s: 'pending' | 'approved' | 'rejected'): string {
+  switch (s) {
+    case 'approved':
+      return 'INTERVIEWER_APPLICATION_STATUS_APPROVED'
+    case 'rejected':
+      return 'INTERVIEWER_APPLICATION_STATUS_REJECTED'
+    default:
+      return 'INTERVIEWER_APPLICATION_STATUS_PENDING'
+  }
+}
+
 // Admin-side hooks (gated server-side).
 export function useAdminInterviewerApplicationsQuery(status: 'pending' | 'approved' | 'rejected' = 'pending') {
   return useQuery({
     queryKey: ['profile', 'admin', 'interviewer-apps', status],
     queryFn: async () => {
-      const wire = await api<{ items: InterviewerApplication[] }>(`/admin/interviewer-applications?status=${status}`)
+      const wire = await api<{ items: InterviewerApplication[] }>(`/admin/interviewer-applications?status=${interviewerStatusToProtoName(status)}`)
       return wire.items ?? []
     },
   })

@@ -2,22 +2,17 @@ package subscription
 
 import (
 	"context"
-	"encoding/json"
-	"errors"
 	"log/slog"
-	"net/http"
 	"time"
 
 	monolithServices "druz9/cmd/monolith/services"
 	"druz9/shared/generated/pb/druz9/v1/druz9v1connect"
-	sharedMw "druz9/shared/pkg/middleware"
 	subApp "druz9/subscription/app"
 	subDomain "druz9/subscription/domain"
 	subInfra "druz9/subscription/infra"
 	subPorts "druz9/subscription/ports"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/google/uuid"
 )
 
 // NewSubscription wires the centralised subscription-domain.
@@ -79,7 +74,6 @@ func NewSubscription(d monolithServices.Deps) *monolithServices.Module {
 	configReader := subInfra.NewDynConfigRepo(d.Pool)
 	policyResolver := subApp.NewPolicyResolver(configReader)
 	getQuotaUC := subApp.NewGetQuota(getTierUC, usageReader, policyResolver)
-	quotaHandler := &quotaRestHandler{uc: getQuotaUC, log: d.Log}
 	// NB: эти три присваивания модифицируют ЛОКАЛЬНУЮ копию `d` —
 	// никакого эффекта на другие модули (см. WireSubscriptionQuota
 	// выше про by-value bug). Оставляем для idempotency: если кто-то
@@ -90,6 +84,8 @@ func NewSubscription(d monolithServices.Deps) *monolithServices.Module {
 	d.QuotaUsageReader = usageReader
 
 	server := subPorts.NewSubscriptionServer(getTierUC, setTierUC, d.Log)
+	server.GetQuotaUC = getQuotaUC
+	server.LinkBoostyUC = linkBoostyUC
 	connectPath, connectHandler := druz9v1connect.NewSubscriptionServiceHandler(server)
 	transcoder := monolithServices.MustTranscode("subscription", connectPath, connectHandler)
 
@@ -104,32 +100,23 @@ func NewSubscription(d monolithServices.Deps) *monolithServices.Module {
 		tierMap := subApp.ParseTierMapping(d.Cfg.Subscription.BoostyTierMapping)
 		if len(tierMap) == 0 {
 			d.Log.Warn("subscription.boosty: BOOSTY_TIER_MAPPING empty — sync will skip all " +
-				"(укажи формат 'Поддержка:seeker,Вознёсшийся:ascendant')")
+				"(укажи формат 'Поддержка:pro,Вознёсшийся:max')")
 		}
 		syncUC = subApp.NewSyncBoosty(src, linkRepo, setTierUC, tierMap, d.Log)
 	}
-	boostyHandler := subPorts.NewBoostyHandler(linkBoostyUC, syncUC, d.Log)
+	server.SyncBoostyUC = syncUC // optional — nil-safe
 
 	return &monolithServices.Module{
 		ConnectPath:        connectPath,
 		ConnectHandler:     transcoder,
 		RequireConnectAuth: true,
 		MountREST: func(r chi.Router) {
-			// Юзер-facing: /subscription/boosty/link — привязать свой
-			// boosty_username. Требует auth (bearer), admin не нужен.
-			r.Post("/subscription/boosty/link", boostyHandler.HandleLink)
-			// Admin-facing: ручной триггер sync'а (когда cron не хочется ждать).
-			r.Post("/admin/subscriptions/boosty/sync", boostyHandler.HandleAdminSync)
-			// Юзер-facing: /subscription/quota — current tier + policy +
-			// usage. Используется frontend'ом для UI badges (10/10 published)
-			// и upgrade-prompts при достижении лимита.
-			r.Get("/subscription/quota", quotaHandler.handle)
-			// Admin-facing dev tier switch — small REST wrapper around the
-			// Connect AdminSetTier RPC so the /settings page can flip tier
-			// without pulling in the full druz9v1 Connect client just for
-			// one button.
-			devTierHandler := &devTierSwitchHandler{uc: setTierUC, log: d.Log}
-			r.Post("/admin/subscriptions/set-tier", devTierHandler.handle)
+			// All four endpoints flow through the same vanguard transcoder
+			// now (proto: GetQuota, LinkBoosty, AdminBoostySync, AdminSetTier).
+			r.Post("/subscription/boosty/link", transcoder.ServeHTTP)
+			r.Post("/admin/subscriptions/boosty/sync", transcoder.ServeHTTP)
+			r.Get("/subscription/quota", transcoder.ServeHTTP)
+			r.Post("/admin/subscriptions/set-tier", transcoder.ServeHTTP)
 		},
 		Background: []func(ctx context.Context){
 			// Cron MarkExpired: раз в час. Первый tick сразу после старта —
@@ -203,141 +190,5 @@ func runBoostySync(ctx context.Context, uc *subApp.SyncBoosty, log *slog.Logger)
 				log.WarnContext(ctx, "subscription.cron.BoostySync", "err", err)
 			}
 		}
-	}
-}
-
-// ─── Quota REST handler ───────────────────────────────────────────────────
-type quotaRestHandler struct {
-	uc  *subApp.GetQuota
-	log *slog.Logger
-}
-
-type quotaResponse struct {
-	Tier   string         `json:"tier"`
-	Policy quotaPolicyDTO `json:"policy"`
-	Usage  quotaUsageDTO  `json:"usage"`
-}
-
-type quotaPolicyDTO struct {
-	SyncedNotes        int   `json:"synced_notes"`
-	ActiveSharedBoards int   `json:"active_shared_boards"`
-	ActiveSharedRooms  int   `json:"active_shared_rooms"`
-	SharedTTLSeconds   int64 `json:"shared_ttl_seconds"`
-	AIMonthly          int   `json:"ai_monthly"`
-}
-
-type quotaUsageDTO struct {
-	SyncedNotes        int `json:"synced_notes"`
-	ActiveSharedBoards int `json:"active_shared_boards"`
-	ActiveSharedRooms  int `json:"active_shared_rooms"`
-	AIThisMonth        int `json:"ai_this_month"`
-}
-
-func (h *quotaRestHandler) handle(w http.ResponseWriter, r *http.Request) {
-	uid, ok := sharedMw.UserIDFromContext(r.Context())
-	if !ok {
-		http.Error(w, `{"error":{"code":"unauthenticated"}}`, http.StatusUnauthorized)
-		return
-	}
-	snap, err := h.uc.Do(r.Context(), uid)
-	if err != nil {
-		// Auth-/usage-errors → не fatal: возвращаем degraded snapshot с
-		// tier=free + zero usage чтобы фронт не повис в loading state.
-		// Лог имеет дело с ошибкой.
-		if !errors.Is(err, context.Canceled) {
-			h.log.WarnContext(r.Context(), "subscription.quota.handle", "err", err,
-				"user_id", uid.String())
-		}
-		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(quotaResponse{
-			Tier:   string(subDomain.TierFree),
-			Policy: dtoFromPolicy(subDomain.Policy(subDomain.TierFree)),
-			Usage:  quotaUsageDTO{},
-		})
-		return
-	}
-	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(quotaResponse{
-		Tier:   string(snap.Tier),
-		Policy: dtoFromPolicy(snap.Policy),
-		Usage: quotaUsageDTO{
-			SyncedNotes:        snap.Usage.SyncedNotes,
-			ActiveSharedBoards: snap.Usage.ActiveSharedBoards,
-			ActiveSharedRooms:  snap.Usage.ActiveSharedRooms,
-			AIThisMonth:        snap.Usage.AIThisMonth,
-		},
-	})
-}
-
-// ─── Dev tier switch ──────────────────────────────────────────────────────
-//
-// Tiny REST wrapper over SetTierUC for the /settings dev-only "switch
-// tier" button. Connect's AdminSetTier RPC is the canonical entrypoint;
-// this handler exists purely so the frontend doflesn't need a Connect
-// client just for one admin call.
-
-type devTierSwitchHandler struct {
-	uc  *subApp.SetTier
-	log *slog.Logger
-}
-
-func (h *devTierSwitchHandler) handle(w http.ResponseWriter, r *http.Request) {
-	uid, ok := sharedMw.UserIDFromContext(r.Context())
-	if !ok {
-		http.Error(w, `{"error":{"code":"unauthenticated"}}`, http.StatusUnauthorized)
-		return
-	}
-	role, _ := sharedMw.UserRoleFromContext(r.Context())
-	if role != "admin" {
-		http.Error(w, `{"error":{"code":"forbidden"}}`, http.StatusForbidden)
-		return
-	}
-	var body struct {
-		// UserID — optional; defaults to caller (admin flips own tier in dev).
-		UserID string `json:"user_id"`
-		Tier   string `json:"tier"`
-	}
-	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		http.Error(w, `{"error":{"code":"invalid_body"}}`, http.StatusBadRequest)
-		return
-	}
-	target := uid
-	if body.UserID != "" {
-		parsed, err := uuid.Parse(body.UserID)
-		if err != nil {
-			http.Error(w, `{"error":{"code":"invalid_user_id"}}`, http.StatusBadRequest)
-			return
-		}
-		target = parsed
-	}
-	tier := subDomain.Tier(body.Tier)
-	if !tier.IsValid() {
-		http.Error(w, `{"error":{"code":"invalid_tier"}}`, http.StatusBadRequest)
-		return
-	}
-	in := subApp.SetTierInput{
-		UserID:   target,
-		Tier:     tier,
-		Provider: subDomain.ProviderAdmin,
-		Reason:   "dev tier switch via /settings",
-	}
-	if err := h.uc.Do(r.Context(), in); err != nil {
-		if h.log != nil {
-			h.log.WarnContext(r.Context(), "subscription.dev-tier-switch", "err", err)
-		}
-		http.Error(w, `{"error":{"code":"internal"}}`, http.StatusInternalServerError)
-		return
-	}
-	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(map[string]any{"ok": true, "tier": body.Tier})
-}
-
-func dtoFromPolicy(p subDomain.QuotaPolicy) quotaPolicyDTO {
-	return quotaPolicyDTO{
-		SyncedNotes:        p.SyncedNotes,
-		ActiveSharedBoards: p.ActiveSharedBoards,
-		ActiveSharedRooms:  p.ActiveSharedRooms,
-		SharedTTLSeconds:   int64(p.SharedTTL / time.Second),
-		AIMonthly:          p.AIMonthly,
 	}
 }

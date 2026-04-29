@@ -2,6 +2,7 @@ package infra
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 
@@ -19,9 +20,18 @@ import (
 // GetSettings composes users + notification_preferences.
 // NOTE: dynamic COALESCE + cross-table join with defaults, sqlc can't generate — keep hand-rolled.
 func (p *Postgres) GetSettings(ctx context.Context, userID uuid.UUID) (domain.Settings, error) {
+	// v2: notification_preferences merged into notification_prefs; the old
+	// `channels TEXT[]` column was replaced by `channel_enabled JSONB`
+	// keyed by channel name. We unpack the JSONB into a TEXT[] inline so
+	// the rest of the mapper stays unchanged.
 	row := p.pool.QueryRow(ctx, `
 		SELECT COALESCE(u.display_name,''), u.locale,
-		       COALESCE(np.channels, ARRAY['telegram']::text[]),
+		       COALESCE(
+		         (SELECT array_agg(k)
+		            FROM jsonb_each(np.channel_enabled) AS e(k, v)
+		           WHERE (v::text)::boolean),
+		         ARRAY['telegram']::text[]
+		       ) AS channels,
 		       COALESCE(np.telegram_chat_id,''),
 		       COALESCE(np.weekly_report_enabled, true),
 		       COALESCE(np.skill_decay_warnings_enabled, true),
@@ -29,7 +39,7 @@ func (p *Postgres) GetSettings(ctx context.Context, userID uuid.UUID) (domain.Se
 		       (u.onboarding_completed_at IS NOT NULL) AS onboarding_completed,
 		       COALESCE(u.focus_class, '')
 		  FROM users u
-		  LEFT JOIN notification_preferences np ON np.user_id = u.id
+		  LEFT JOIN notification_prefs np ON np.user_id = u.id
 		 WHERE u.id = $1`, userID)
 	var s domain.Settings
 	var channels []string
@@ -90,7 +100,7 @@ func (p *Postgres) SetVacanciesModel(ctx context.Context, userID uuid.UUID, mode
 	return nil
 }
 
-// UpdateSettings upserts users.* and notification_preferences in one tx.
+// UpdateSettings upserts users.* and notification_prefs in one tx.
 // NOTE: two separate tables + conditional NULLIF updates; sqlc could express
 // each half but composing them in a tx is still wire-by-hand. Keep hand-rolled.
 func (p *Postgres) UpdateSettings(ctx context.Context, userID uuid.UUID, s domain.Settings) error {
@@ -124,25 +134,33 @@ func (p *Postgres) UpdateSettings(ctx context.Context, userID uuid.UUID, s domai
 	); err != nil {
 		return fmt.Errorf("profile.Postgres.UpdateSettings: users: %w", err)
 	}
-	chStrs := make([]string, 0, len(s.Notifications.Channels))
+	// v2: notification_preferences merged into notification_prefs; old
+	// `channels TEXT[]` column became `channel_enabled JSONB` keyed by
+	// channel name. Build {"telegram":true,"in_app":false,...} from the
+	// enabled list with telegram fallback when empty.
+	enabledMap := map[string]bool{}
 	for _, c := range s.Notifications.Channels {
 		if c.IsValid() {
-			chStrs = append(chStrs, c.String())
+			enabledMap[c.String()] = true
 		}
 	}
-	if len(chStrs) == 0 {
-		chStrs = []string{enums.NotificationChannelTelegram.String()}
+	if len(enabledMap) == 0 {
+		enabledMap[enums.NotificationChannelTelegram.String()] = true
+	}
+	enabledJSON, err := json.Marshal(enabledMap)
+	if err != nil {
+		return fmt.Errorf("profile.Postgres.UpdateSettings: marshal channels: %w", err)
 	}
 	if _, err := tx.Exec(ctx, `
-		INSERT INTO notification_preferences(user_id, channels, telegram_chat_id, weekly_report_enabled, skill_decay_warnings_enabled)
-		VALUES ($1, $2, NULLIF($3,''), $4, $5)
+		INSERT INTO notification_prefs(user_id, channel_enabled, telegram_chat_id, weekly_report_enabled, skill_decay_warnings_enabled)
+		VALUES ($1, $2::jsonb, NULLIF($3,''), $4, $5)
 		ON CONFLICT (user_id) DO UPDATE SET
-		    channels = EXCLUDED.channels,
+		    channel_enabled = EXCLUDED.channel_enabled,
 		    telegram_chat_id = EXCLUDED.telegram_chat_id,
 		    weekly_report_enabled = EXCLUDED.weekly_report_enabled,
 		    skill_decay_warnings_enabled = EXCLUDED.skill_decay_warnings_enabled,
 		    updated_at = now()
-	`, userID, chStrs, s.Notifications.TelegramChatID, s.Notifications.WeeklyReportEnabled, s.Notifications.SkillDecayWarningsEnabled); err != nil {
+	`, userID, enabledJSON, s.Notifications.TelegramChatID, s.Notifications.WeeklyReportEnabled, s.Notifications.SkillDecayWarningsEnabled); err != nil {
 		return fmt.Errorf("profile.Postgres.UpdateSettings: prefs: %w", err)
 	}
 	if err := tx.Commit(ctx); err != nil {

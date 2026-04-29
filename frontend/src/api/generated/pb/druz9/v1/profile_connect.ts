@@ -11,7 +11,7 @@
 /* eslint-disable */
 // @ts-nocheck
 
-import { ApproveInterviewerApplicationRequest, BecomeInterviewerRequest, GetMyAtlasRequest, GetMyInterviewerApplicationRequest, GetMyProfileRequest, GetMyReportRequest, GetPublicProfileRequest, GetWeeklyShareRequest, InterviewerApplication, InterviewerApplicationList, ListInterviewerApplicationsRequest, ProfileFull, ProfilePublic, ProfileSettings, RejectInterviewerApplicationRequest, SkillAtlas, UpdateProfileSettingsRequest, WeeklyReport } from "./profile_pb.js";
+import { AIVacanciesModel, AllocateAtlasSkillRequest, AllocateAtlasSkillResponse, ApproveInterviewerApplicationRequest, BecomeInterviewerRequest, GetAIVacanciesModelRequest, GetMyAtlasRequest, GetMyInterviewerApplicationRequest, GetMyProfileRequest, GetMyReportRequest, GetPublicProfileRequest, GetWeeklyShareRequest, InterviewerApplication, InterviewerApplicationList, ListInterviewerApplicationsRequest, ProfileFull, ProfilePublic, ProfileSettings, RejectInterviewerApplicationRequest, SetAIVacanciesModelRequest, SkillAtlas, UpdateProfileSettingsRequest, WeeklyReport } from "./profile_pb.js";
 import { MethodKind } from "@bufbuild/protobuf";
 
 /**
@@ -154,6 +154,42 @@ export const ProfileService = {
       name: "RejectInterviewerApplication",
       I: RejectInterviewerApplicationRequest,
       O: InterviewerApplication,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * AllocateAtlasSkill grants the caller +N progress on the given atlas
+     * skill node. Used by the Atlas page's "claim 1 free point" button.
+     *
+     * @generated from rpc druz9.v1.ProfileService.AllocateAtlasSkill
+     */
+    allocateAtlasSkill: {
+      name: "AllocateAtlasSkill",
+      I: AllocateAtlasSkillRequest,
+      O: AllocateAtlasSkillResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * GetAIVacanciesModel returns the user's chosen LLM for the AI vacancy
+     * recommender. Empty string means "server default".
+     *
+     * @generated from rpc druz9.v1.ProfileService.GetAIVacanciesModel
+     */
+    getAIVacanciesModel: {
+      name: "GetAIVacanciesModel",
+      I: GetAIVacanciesModelRequest,
+      O: AIVacanciesModel,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * SetAIVacanciesModel writes the user's preferred LLM. Pass model_id=""
+     * to clear the override and fall back to the server default.
+     *
+     * @generated from rpc druz9.v1.ProfileService.SetAIVacanciesModel
+     */
+    setAIVacanciesModel: {
+      name: "SetAIVacanciesModel",
+      I: SetAIVacanciesModelRequest,
+      O: AIVacanciesModel,
       kind: MethodKind.Unary,
     },
   }

@@ -21,11 +21,11 @@ import (
 	"net/http"
 	"strings"
 
-	"druz9/ai_mock/infra"
+	"druz9/ai_mock/domain"
 	sharedMw "druz9/shared/pkg/middleware"
 )
 
-// UserTierResolver returns the subscription tier ("free" | "premium" | "pro")
+// UserTierResolver returns the subscription tier ("free" | "pro" | "max")
 // for a given user. The monolith wires a real implementation that joins
 // against the profile DB; tests can stub it freely.
 type UserTierResolver func(ctx context.Context, userID string) (string, error)
@@ -39,14 +39,14 @@ type VoiceTurner func(ctx context.Context, userID, sessionID, userText string) (
 
 // VoiceHandler holds dependencies for /api/v1/voice/*.
 type VoiceHandler struct {
-	TTS  infra.EdgeTTSClient
+	TTS  domain.TTSClient
 	Tier UserTierResolver
 	Turn VoiceTurner
 	Log  *slog.Logger
 }
 
 // NewVoiceHandler wires the handler.
-func NewVoiceHandler(tts infra.EdgeTTSClient, tier UserTierResolver, turn VoiceTurner, log *slog.Logger) *VoiceHandler {
+func NewVoiceHandler(tts domain.TTSClient, tier UserTierResolver, turn VoiceTurner, log *slog.Logger) *VoiceHandler {
 	return &VoiceHandler{TTS: tts, Tier: tier, Turn: turn, Log: log}
 }
 
@@ -91,10 +91,10 @@ func (h *VoiceHandler) HandleTTS(w http.ResponseWriter, r *http.Request) {
 			writeJSON(w, http.StatusInternalServerError, errorBody{Error: "tier_lookup_failed"})
 			return
 		}
-		if tier != "premium" && tier != "pro" {
+		if tier != "pro" && tier != "max" {
 			writeJSON(w, http.StatusPaymentRequired, errorBody{
 				Error:        "premium_required",
-				TierRequired: "premium",
+				TierRequired: "pro",
 			})
 			return
 		}
@@ -106,9 +106,8 @@ func (h *VoiceHandler) HandleTTS(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	edgeVoice := infra.PickEdgeVoice(req.Voice, req.Lang)
-	audio, err := h.TTS.Synth(r.Context(), req.Text, edgeVoice)
-	if errors.Is(err, infra.ErrEdgeTTSNotImplemented) {
+	audio, err := h.TTS.Synth(r.Context(), req.Text, req.Voice, req.Lang)
+	if errors.Is(err, domain.ErrTTSNotImplemented) {
 		// Stub path — advertise the stub via header so the client falls
 		// back gracefully (and so ops dashboards can alarm when this fires
 		// in prod, post-implementation).

@@ -7,7 +7,7 @@ import { Avatar } from '../../components/Avatar'
 import { cn } from '../../lib/cn'
 import { type Profile } from '../../lib/queries/profile'
 import { useRatingMeQuery } from '../../lib/queries/rating'
-import { useArenaHistoryQuery } from '../../lib/queries/matches'
+import { useArenaHistoryQuery, normalizeMatchResult } from '../../lib/queries/matches'
 import { useMyCirclesQuery } from '../../lib/queries/circles'
 import { humanizeSection } from '../../lib/labels'
 
@@ -91,8 +91,8 @@ export function MatchesPanel() {
     }
   }
 
-  const wins = items.filter((i) => i.result === 'win').length
-  const losses = items.filter((i) => i.result === 'loss').length
+  const wins = items.filter((i) => normalizeMatchResult(i.result) === 'win').length
+  const losses = items.filter((i) => normalizeMatchResult(i.result) === 'loss').length
 
   if (isError) {
     return (
@@ -167,10 +167,11 @@ export function MatchesPanel() {
           <div className="flex flex-col">
             {items.map((m) => {
               const positive = m.lp_change > 0
+              const result = normalizeMatchResult(m.result)
               const resultColor =
-                m.result === 'win'
+                result === 'win'
                   ? 'text-success'
-                  : m.result === 'loss'
+                  : result === 'loss'
                     ? 'text-danger'
                     : 'text-text-muted'
               const initial = (m.opponent_username || '?').charAt(0).toUpperCase()
@@ -184,7 +185,7 @@ export function MatchesPanel() {
                   <span
                     className={cn(
                       'h-9 w-1 shrink-0 rounded-full',
-                      m.result === 'win' ? 'bg-success' : m.result === 'loss' ? 'bg-danger' : 'bg-text-muted',
+                      result === 'win' ? 'bg-success' : result === 'loss' ? 'bg-danger' : 'bg-text-muted',
                     )}
                   />
                   <Avatar size="sm" gradient="violet-cyan" initials={initial} />

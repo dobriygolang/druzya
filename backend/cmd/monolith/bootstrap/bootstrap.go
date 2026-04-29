@@ -226,14 +226,9 @@ func New(ctx context.Context, cfg *config.Config) (app *App, otelShutdown func()
 		// Admin CRUD over the canonical `tasks` table (Arena 1v1/2v2 +
 		// Daily Kata pool). Backend for the Arena Tasks tab in /admin.
 		arenaServices.NewAdminArenaTasks(deps),
-		// Public per-day status history → spark bars on /status.
-		adminServices.NewStatusHistory(deps),
-		// Per-user mock-interview insights aggregator → /insights live cards.
-		aiMockServices.NewMockInsights(deps),
 		// Codex catalogue (public read + admin CRUD over codex_articles).
 		adminServices.NewCodex(deps),
 		// Admin write surface for `llm_models` (public read = ai_models.go).
-		adminServices.NewAdminAIModels(deps),
 		// Personas — public catalogue + admin CRUD (Copilot expert mode).
 		adminServices.NewPersonas(deps),
 		// VPS retention sweep — see cleanup_crons.go header for tables/
@@ -428,29 +423,12 @@ func llmRegisteredProviders(chain *llmchain.Chain) []string {
 // honeDomain.SyncEventPublisher (PublishYjsAppend/PublishSyncChange).
 
 func buildHonePublishingDeps(d services.Deps) honeServices.PublishingDeps {
+	// Only the public HTML viewer at /p/{slug} lives in NewPublishing now —
+	// the JSON endpoints are bound to the hone Connect server in NewHone.
 	repo := honeInfra.NewPublishRepo(d.Pool, d.Log)
 	return honeServices.PublishingDeps{
-		Publish:   &honeApp.PublishNote{Repo: repo, Log: d.Log},
-		Unpublish: &honeApp.UnpublishNote{Repo: repo, Log: d.Log},
-		Status:    &honeApp.PublishStatus{Repo: repo, Log: d.Log},
-		BulkMeta:  &honeApp.BulkNotesMeta{Repo: repo, Log: d.Log},
-		Public:    &honeApp.PublicView{Repo: repo, Log: d.Log},
-		ShareToWeb: &honeApp.ShareToWeb{
-			Repo:      repo,
-			Publisher: d.SyncEventBroker,
-			// EmbedFn is owned by NewHone — re-indexing after ShareToWeb
-			// happens via the next client UpdateNote, which already re-queues
-			// the embed. Wiring EmbedFn here would require threading the
-			// hone-private embedder through Deps; left for a follow-up.
-			EmbedFn: nil,
-			Log:     d.Log,
-		},
-		MakePrivate: &honeApp.MakePrivate{
-			Repo:      repo,
-			Publisher: d.SyncEventBroker,
-			Log:       d.Log,
-		},
-		Log: d.Log,
+		Public: &honeApp.PublicView{Repo: repo, Log: d.Log},
+		Log:    d.Log,
 	}
 }
 

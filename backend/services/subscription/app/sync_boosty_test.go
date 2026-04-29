@@ -65,8 +65,8 @@ func TestSyncBoosty_HappyPath(t *testing.T) {
 	}}
 	set := NewSetTier(subRepo, fakeClock{now: time.Now()}, slog.Default())
 	tierMap := map[string]domain.Tier{
-		"Поддержка":   enums.SubscriptionPlanSeeker,
-		"Вознёсшийся": enums.SubscriptionPlanAscendant,
+		"Поддержка":   enums.SubscriptionPlanPro,
+		"Вознёсшийся": enums.SubscriptionPlanMax,
 	}
 	sync := NewSyncBoosty(src, linkRepo, set, tierMap, slog.Default())
 
@@ -98,11 +98,11 @@ func TestSyncBoosty_SourceError(t *testing.T) {
 }
 
 func TestParseTierMapping(t *testing.T) {
-	m := ParseTierMapping("Поддержка:seeker,Вознёсшийся:ascendant, Junk")
-	if m["Поддержка"] != enums.SubscriptionPlanSeeker {
+	m := ParseTierMapping("Поддержка:pro,Вознёсшийся:max, Junk")
+	if m["Поддержка"] != enums.SubscriptionPlanPro {
 		t.Fatalf("Поддержка → %q", m["Поддержка"])
 	}
-	if m["Вознёсшийся"] != enums.SubscriptionPlanAscendant {
+	if m["Вознёсшийся"] != enums.SubscriptionPlanMax {
 		t.Fatalf("Вознёсшийся → %q", m["Вознёсшийся"])
 	}
 	if _, ok := m["Junk"]; ok {

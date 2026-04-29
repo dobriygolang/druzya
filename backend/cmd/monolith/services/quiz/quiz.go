@@ -1,8 +1,9 @@
 // Package quiz wires the quiz service into the monolith.
 //
-// Stays a pure facade: every dep is constructed via the service's own
-// infra constructors, and the only thing this file does is hand them to
-// app.* and mount the ports.Handler at /api/v1/quiz/*.
+// Stays a pure facade: every dep is constructed via the service's own infra
+// constructors, the Connect server is wrapped by vanguard so the same
+// implementation serves /api/v1/quiz/* (REST) and /druz9.v1.QuizService/*
+// (Connect/gRPC) with one mount.
 package quiz
 
 import (
@@ -10,6 +11,7 @@ import (
 	quizApp "druz9/quiz/app"
 	quizInfra "druz9/quiz/infra"
 	quizPorts "druz9/quiz/ports"
+	"druz9/shared/generated/pb/druz9/v1/druz9v1connect"
 
 	"github.com/go-chi/chi/v5"
 )
@@ -19,8 +21,6 @@ import (
 // clean 404 on /api/v1/quiz/*.
 func NewQuiz(d monolithServices.Deps) *monolithServices.Module {
 	if d.Redis == nil {
-		// No Redis → no quiz. Hone TaskBoard kind=quiz cards still render
-		// but the deep_link target 404s gracefully.
 		return &monolithServices.Module{}
 	}
 	pool := quizInfra.NewPostgresPool(d.Pool)
@@ -34,11 +34,21 @@ func NewQuiz(d monolithServices.Deps) *monolithServices.Module {
 	submit := &quizApp.SubmitSession{
 		Sessions: sessions, Grader: grader, Bus: bus, Log: d.Log,
 	}
-	handler := &quizPorts.Handler{Start: start, Submit: submit, Log: d.Log}
+	server := &quizPorts.Server{Start: start, Submit: submit, Log: d.Log}
+
+	connectPath, connectHandler := druz9v1connect.NewQuizServiceHandler(server)
+	transcoder := monolithServices.MustTranscode("quiz", connectPath, connectHandler)
 
 	return &monolithServices.Module{
+		ConnectPath:        connectPath,
+		ConnectHandler:     transcoder,
+		RequireConnectAuth: true,
 		MountREST: func(r chi.Router) {
-			handler.Mount(r)
+			// REST aliases declared in proto/druz9/v1/quiz.proto via
+			// google.api.http annotations. The transcoder routes both to
+			// the same Connect impl.
+			r.Post("/quiz/start", transcoder.ServeHTTP)
+			r.Post("/quiz/{session_id}/submit", transcoder.ServeHTTP)
 		},
 	}
 }

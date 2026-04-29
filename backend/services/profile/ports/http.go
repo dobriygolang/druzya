@@ -25,6 +25,10 @@ type Handler struct {
 	ListAppsUC     *app.ListInterviewerApplications
 	ApproveAppUC   *app.ApproveInterviewerApplication
 	RejectAppUC    *app.RejectInterviewerApplication
+	// AllocateAtlas + VacanciesModel power the atlas/allocate and
+	// ai-vacancies-model RPCs migrated off chi in Phase K.12.
+	AllocateAtlas  *app.AllocateAtlasNode
+	VacanciesModel AIVacanciesModelRepo
 	// ReportFetcher — необязательный опитимизирующий wrapper (Redis-cache).
 	// Если nil, GetMyReport вызывает GetReport напрямую. В проде wired в
 	// cmd/monolith/services/profile.go.

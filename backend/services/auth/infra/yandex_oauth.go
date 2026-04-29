@@ -9,7 +9,6 @@ import (
 	"strings"
 	"time"
 
-	"druz9/auth/app"
 	"druz9/auth/domain"
 )
 
@@ -37,7 +36,7 @@ func NewYandexOAuth(clientID, clientSecret string) *YandexOAuth {
 // codeVerifier добавляет PKCE-поле code_verifier (RFC 7636). Пустое значение
 // обратно-совместимо со старым flow — но в связке со StartLoginYandex
 // verifier всегда присутствует.
-func (y *YandexOAuth) Exchange(ctx context.Context, code, codeVerifier string) (app.YandexTokenResponse, error) {
+func (y *YandexOAuth) Exchange(ctx context.Context, code, codeVerifier string) (domain.YandexTokenResponse, error) {
 	form := url.Values{}
 	form.Set("grant_type", "authorization_code")
 	form.Set("code", code)
@@ -49,17 +48,17 @@ func (y *YandexOAuth) Exchange(ctx context.Context, code, codeVerifier string) (
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, y.tokenURL, strings.NewReader(form.Encode()))
 	if err != nil {
-		return app.YandexTokenResponse{}, fmt.Errorf("auth.YandexOAuth.Exchange: new request: %w", err)
+		return domain.YandexTokenResponse{}, fmt.Errorf("auth.YandexOAuth.Exchange: new request: %w", err)
 	}
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
 	resp, err := y.httpc.Do(req)
 	if err != nil {
-		return app.YandexTokenResponse{}, fmt.Errorf("auth.YandexOAuth.Exchange: do: %w", err)
+		return domain.YandexTokenResponse{}, fmt.Errorf("auth.YandexOAuth.Exchange: do: %w", err)
 	}
 	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode/100 != 2 {
-		return app.YandexTokenResponse{}, fmt.Errorf("auth.YandexOAuth.Exchange: status %d", resp.StatusCode)
+		return domain.YandexTokenResponse{}, fmt.Errorf("auth.YandexOAuth.Exchange: status %d", resp.StatusCode)
 	}
 	var raw struct {
 		AccessToken  string `json:"access_token"`
@@ -67,9 +66,9 @@ func (y *YandexOAuth) Exchange(ctx context.Context, code, codeVerifier string) (
 		ExpiresIn    int    `json:"expires_in"`
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&raw); err != nil {
-		return app.YandexTokenResponse{}, fmt.Errorf("auth.YandexOAuth.Exchange: decode: %w", err)
+		return domain.YandexTokenResponse{}, fmt.Errorf("auth.YandexOAuth.Exchange: decode: %w", err)
 	}
-	return app.YandexTokenResponse{
+	return domain.YandexTokenResponse{
 		AccessToken:  raw.AccessToken,
 		RefreshToken: raw.RefreshToken,
 		ExpiresIn:    raw.ExpiresIn,
@@ -91,12 +90,14 @@ func (y *YandexOAuth) FetchUserInfo(ctx context.Context, accessToken string) (do
 	if resp.StatusCode/100 != 2 {
 		return domain.YandexUserInfo{}, fmt.Errorf("auth.YandexOAuth.FetchUserInfo: status %d", resp.StatusCode)
 	}
+	// v2: default_email из ответа Yandex более не используется (auth
+	// OAuth-only без email-recovery; email-колонка из users dropped).
+	// Поле отсутствует в YandexUserInfo и не парсится.
 	var raw struct {
 		ID              string `json:"id"`
 		Login           string `json:"login"`
 		DisplayName     string `json:"display_name"`
 		RealName        string `json:"real_name"`
-		DefaultEmail    string `json:"default_email"`
 		DefaultAvatarID string `json:"default_avatar_id"`
 		IsAvatarEmpty   bool   `json:"is_avatar_empty"`
 	}
@@ -111,7 +112,6 @@ func (y *YandexOAuth) FetchUserInfo(ctx context.Context, accessToken string) (do
 		ID:              raw.ID,
 		Login:           raw.Login,
 		DisplayName:     name,
-		DefaultEmail:    raw.DefaultEmail,
 		DefaultAvatarID: raw.DefaultAvatarID,
 		IsAvatarEmpty:   raw.IsAvatarEmpty,
 	}, nil

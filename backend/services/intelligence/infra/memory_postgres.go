@@ -7,7 +7,6 @@ import (
 	"errors"
 	"fmt"
 	"math"
-	"sort"
 	"time"
 
 	"druz9/intelligence/domain"
@@ -47,8 +46,10 @@ func (r *Episodes) Append(ctx context.Context, e domain.Episode) error {
 	}
 	_, err := r.pool.Exec(ctx,
 		`INSERT INTO coach_episodes
-		    (user_id, kind, summary, payload, embedding, embedding_model, embedded_at, occurred_at)
-		 VALUES ($1, $2, $3, $4::jsonb, $5, NULLIF($6, ''), $7,
+		    (user_id, kind, summary, payload, embedding, embedding_model_id, embedded_at, occurred_at)
+		 VALUES ($1, $2, $3, $4::jsonb, $5,
+		         (SELECT id FROM embedding_models WHERE name = NULLIF($6, '')),
+		         $7,
 		         COALESCE(NULLIF($8, '0001-01-01 00:00:00+00'::timestamptz), now()))`,
 		sharedpg.UUID(e.UserID),
 		string(e.Kind),
@@ -71,7 +72,8 @@ func (r *Episodes) LatestByKind(ctx context.Context, userID uuid.UUID, kind doma
 		limit = 50
 	}
 	rows, err := r.pool.Query(ctx,
-		`SELECT id, user_id, kind, summary, payload, embedding, embedding_model,
+		`SELECT id, user_id, kind, summary, payload, embedding,
+		        (SELECT name FROM embedding_models WHERE id = embedding_model_id) AS embedding_model,
 		        embedded_at, occurred_at, created_at
 		   FROM coach_episodes
 		  WHERE user_id = $1 AND kind = $2
@@ -94,7 +96,8 @@ func (r *Episodes) LatestByKinds(ctx context.Context, userID uuid.UUID, kinds []
 	if len(kinds) == 0 {
 		// Если фильтра нет — возвращаем все kinds. Без этого ANY([]) ловит 0 строк.
 		rows, err := r.pool.Query(ctx,
-			`SELECT id, user_id, kind, summary, payload, embedding, embedding_model,
+			`SELECT id, user_id, kind, summary, payload, embedding,
+		        (SELECT name FROM embedding_models WHERE id = embedding_model_id) AS embedding_model,
 			        embedded_at, occurred_at, created_at
 			   FROM coach_episodes
 			  WHERE user_id = $1
@@ -112,7 +115,8 @@ func (r *Episodes) LatestByKinds(ctx context.Context, userID uuid.UUID, kinds []
 		kindStrs[i] = string(k)
 	}
 	rows, err := r.pool.Query(ctx,
-		`SELECT id, user_id, kind, summary, payload, embedding, embedding_model,
+		`SELECT id, user_id, kind, summary, payload, embedding,
+		        (SELECT name FROM embedding_models WHERE id = embedding_model_id) AS embedding_model,
 		        embedded_at, occurred_at, created_at
 		   FROM coach_episodes
 		  WHERE user_id = $1 AND kind = ANY($2::text[])
@@ -140,10 +144,12 @@ func (r *Episodes) LatestPerKind(ctx context.Context, userID uuid.UUID, kinds []
 		kindStrs[i] = string(k)
 	}
 	rows, err := r.pool.Query(ctx,
-		`SELECT id, user_id, kind, summary, payload, embedding, embedding_model,
+		`SELECT id, user_id, kind, summary, payload, embedding,
+		        (SELECT name FROM embedding_models WHERE id = embedding_model_id) AS embedding_model,
 		        embedded_at, occurred_at, created_at
 		   FROM (
-		        SELECT id, user_id, kind, summary, payload, embedding, embedding_model,
+		        SELECT id, user_id, kind, summary, payload, embedding,
+		        (SELECT name FROM embedding_models WHERE id = embedding_model_id) AS embedding_model,
 		               embedded_at, occurred_at, created_at,
 		               row_number() OVER (PARTITION BY kind ORDER BY occurred_at DESC) AS rn
 		          FROM coach_episodes
@@ -161,67 +167,54 @@ func (r *Episodes) LatestPerKind(ctx context.Context, userID uuid.UUID, kinds []
 }
 
 // SearchSimilar returns top-K by cosine. Filtering by kinds — optional.
-// Берём всех с непустым embedding'ом (limit*4 candidates по recency), считаем
-// cosine in Go, сортируем. Для размеров корпуса <10k за пользователя — ОК;
-// >10k надо будет переехать на pgvector (см. 00011 header).
-func (r *Episodes) SearchSimilar(ctx context.Context, userID uuid.UUID, vec []float32, kinds []domain.EpisodeKind, limit int) ([]domain.EpisodeWithScore, error) {
+// Phase I: episodes filtered by embedding_model_id matching modelName.
+// Phase IX v2: ranking pushed into Postgres через pgvector `<=>` cosine
+// distance operator + IVFFlat index — no Go-side cosine, no candidate
+// pre-fetching. Score = 1 - distance (1.0 = identical, 0 = orthogonal,
+// -1.0 = opposite; для cosine_ops range фактически [0..2] → score [-1..1]).
+//
+// modelName == "" skips the filter (test path); embedding_vec IS NOT NULL
+// фильтрует pending-embedding rows.
+func (r *Episodes) SearchSimilar(ctx context.Context, userID uuid.UUID, vec []float32, modelName string, kinds []domain.EpisodeKind, limit int) ([]domain.EpisodeWithScore, error) {
 	if len(vec) == 0 {
 		return nil, nil
 	}
 	if limit <= 0 || limit > 100 {
 		limit = 8
 	}
-	candCap := limit * 8
-	if candCap < 64 {
-		candCap = 64
+	vecStr := sharedpg.VectorString(vec)
+	if vecStr == "" {
+		return nil, nil
 	}
-	var (
-		rows pgx.Rows
-		err  error
-	)
-	if len(kinds) == 0 {
-		rows, err = r.pool.Query(ctx,
-			`SELECT id, user_id, kind, summary, payload, embedding, embedding_model,
-			        embedded_at, occurred_at, created_at
-			   FROM coach_episodes
-			  WHERE user_id = $1 AND embedding IS NOT NULL
-			  ORDER BY occurred_at DESC
-			  LIMIT $2`,
-			sharedpg.UUID(userID), candCap,
-		)
-	} else {
+	q := `SELECT id, user_id, kind, summary, payload, embedding,
+	        (SELECT name FROM embedding_models WHERE id = embedding_model_id) AS embedding_model,
+	        embedded_at, occurred_at, created_at,
+	        1 - (embedding_vec <=> $2::vector) AS similarity
+	   FROM coach_episodes
+	  WHERE user_id = $1 AND embedding_vec IS NOT NULL`
+	args := []any{sharedpg.UUID(userID), vecStr}
+	if modelName != "" {
+		q += fmt.Sprintf(" AND embedding_model_id = (SELECT id FROM embedding_models WHERE name = $%d)", len(args)+1)
+		args = append(args, modelName)
+	}
+	if len(kinds) > 0 {
 		kindStrs := make([]string, len(kinds))
 		for i, k := range kinds {
 			kindStrs[i] = string(k)
 		}
-		rows, err = r.pool.Query(ctx,
-			`SELECT id, user_id, kind, summary, payload, embedding, embedding_model,
-			        embedded_at, occurred_at, created_at
-			   FROM coach_episodes
-			  WHERE user_id = $1 AND embedding IS NOT NULL AND kind = ANY($2::text[])
-			  ORDER BY occurred_at DESC
-			  LIMIT $3`,
-			sharedpg.UUID(userID), kindStrs, candCap,
-		)
+		q += fmt.Sprintf(" AND kind = ANY($%d::text[])", len(args)+1)
+		args = append(args, kindStrs)
 	}
+	q += fmt.Sprintf(" ORDER BY embedding_vec <=> $2::vector ASC LIMIT $%d", len(args)+1)
+	args = append(args, limit)
+	rows, err := r.pool.Query(ctx, q, args...)
 	if err != nil {
 		return nil, fmt.Errorf("intelligence.Episodes.SearchSimilar: %w", err)
 	}
 	defer rows.Close()
-	cands, err := scanEpisodes(rows)
+	scored, err := scanEpisodesWithScore(rows)
 	if err != nil {
-		return nil, err
-	}
-	scored := make([]domain.EpisodeWithScore, 0, len(cands))
-	for _, c := range cands {
-		s := cosine32(vec, c.Embedding)
-		if s > 0 {
-			scored = append(scored, domain.EpisodeWithScore{Episode: c, Score: s})
-		}
-	}
-	sort.Slice(scored, func(i, j int) bool { return scored[i].Score > scored[j].Score })
-	if len(scored) > limit {
-		scored = scored[:limit]
+		return nil, fmt.Errorf("intelligence.Episodes.SearchSimilar: %w", err)
 	}
 	return scored, nil
 }
@@ -232,7 +225,8 @@ func (r *Episodes) PendingEmbeddings(ctx context.Context, limit int) ([]domain.E
 		limit = 64
 	}
 	rows, err := r.pool.Query(ctx,
-		`SELECT id, user_id, kind, summary, payload, embedding, embedding_model,
+		`SELECT id, user_id, kind, summary, payload, embedding,
+		        (SELECT name FROM embedding_models WHERE id = embedding_model_id) AS embedding_model,
 		        embedded_at, occurred_at, created_at
 		   FROM coach_episodes
 		  WHERE embedded_at IS NULL
@@ -248,6 +242,9 @@ func (r *Episodes) PendingEmbeddings(ctx context.Context, limit int) ([]domain.E
 }
 
 // SetEmbedding writes the vector + model + embedded_at=now.
+//
+// Phase IX: dual-writes — legacy real[] + pgvector vector(384). Read-side
+// пока на Go-cosine; readers перейдут на pgvector в follow-up slice.
 func (r *Episodes) SetEmbedding(ctx context.Context, id uuid.UUID, vec []float32, model string) error {
 	if len(vec) == 0 {
 		return fmt.Errorf("intelligence.Episodes.SetEmbedding: empty vector")
@@ -255,10 +252,11 @@ func (r *Episodes) SetEmbedding(ctx context.Context, id uuid.UUID, vec []float32
 	tag, err := r.pool.Exec(ctx,
 		`UPDATE coach_episodes
 		    SET embedding = $2,
-		        embedding_model = $3,
+		        embedding_vec = NULLIF($4, '')::vector,
+		        embedding_model_id = (SELECT id FROM embedding_models WHERE name = $3),
 		        embedded_at = now()
 		  WHERE id = $1`,
-		sharedpg.UUID(id), nullableFloat32Slice(vec), model,
+		sharedpg.UUID(id), nullableFloat32Slice(vec), model, sharedpg.VectorString(vec),
 	)
 	if err != nil {
 		return fmt.Errorf("intelligence.Episodes.SetEmbedding: %w", err)
@@ -267,6 +265,29 @@ func (r *Episodes) SetEmbedding(ctx context.Context, id uuid.UUID, vec []float32
 		return domain.ErrEpisodeNotFound
 	}
 	return nil
+}
+
+// MarkStaleForReembed — Phase I admin tool. Clears embedded_at for every
+// episode whose vector was produced by a model OTHER than
+// currentModelName. The async embed worker re-embeds via the same
+// `WHERE embedded_at IS NULL` partial index. Returns rows-affected count.
+func (r *Episodes) MarkStaleForReembed(ctx context.Context, currentModelName string) (int64, error) {
+	if currentModelName == "" {
+		return 0, fmt.Errorf("intelligence.Episodes.MarkStaleForReembed: currentModelName is required")
+	}
+	tag, err := r.pool.Exec(ctx,
+		`UPDATE coach_episodes
+		    SET embedded_at = NULL
+		  WHERE embedded_at IS NOT NULL
+		    AND embedding IS NOT NULL
+		    AND embedding_model_id IS DISTINCT FROM
+		        (SELECT id FROM embedding_models WHERE name = $1)`,
+		currentModelName,
+	)
+	if err != nil {
+		return 0, fmt.Errorf("intelligence.Episodes.MarkStaleForReembed: %w", err)
+	}
+	return tag.RowsAffected(), nil
 }
 
 // Stats30d — total + per-kind. Дёшево: один scan + group by.
@@ -380,6 +401,52 @@ func scanEpisodes(rows pgx.Rows) ([]domain.Episode, error) {
 	}
 	if err := rows.Err(); err != nil {
 		return nil, fmt.Errorf("scanEpisodes rows: %w", err)
+	}
+	return out, nil
+}
+
+// scanEpisodesWithScore — Phase IX v2: scanEpisodes + similarity column
+// (последняя в SELECT). Используется только SearchSimilar.
+func scanEpisodesWithScore(rows pgx.Rows) ([]domain.EpisodeWithScore, error) {
+	var out []domain.EpisodeWithScore
+	for rows.Next() {
+		var (
+			id, userID     pgtype.UUID
+			kind           string
+			summary        string
+			payload        []byte
+			embedding      []float32
+			embeddingModel pgtype.Text
+			embeddedAt     pgtype.Timestamptz
+			occurredAt     time.Time
+			createdAt      time.Time
+			similarity     float64
+		)
+		if err := rows.Scan(&id, &userID, &kind, &summary, &payload, &embedding,
+			&embeddingModel, &embeddedAt, &occurredAt, &createdAt, &similarity); err != nil {
+			return nil, fmt.Errorf("scanEpisodesWithScore: %w", err)
+		}
+		ep := domain.Episode{
+			ID:         sharedpg.UUIDFrom(id),
+			UserID:     sharedpg.UUIDFrom(userID),
+			Kind:       domain.EpisodeKind(kind),
+			Summary:    summary,
+			Payload:    payload,
+			Embedding:  embedding,
+			OccurredAt: occurredAt,
+			CreatedAt:  createdAt,
+		}
+		if embeddingModel.Valid {
+			ep.EmbeddingModel = embeddingModel.String
+		}
+		if embeddedAt.Valid {
+			t := embeddedAt.Time
+			ep.EmbeddedAt = &t
+		}
+		out = append(out, domain.EpisodeWithScore{Episode: ep, Score: float32(similarity)})
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("scanEpisodesWithScore rows: %w", err)
 	}
 	return out, nil
 }

@@ -691,9 +691,11 @@ func (n *Notes) Get(ctx context.Context, userID, noteID uuid.UUID) (domain.Note,
 		encrypted      bool
 	)
 	err := n.pool.QueryRow(ctx,
-		`SELECT title, body_md, size_bytes, folder_id, embedding, embedding_model, embedded_at, created_at, updated_at, encrypted
-		   FROM hone_notes
-		  WHERE id=$1 AND user_id=$2`,
+		`SELECT n.title, n.body_md, n.size_bytes, n.folder_id, n.embedding,
+		        em.name, n.embedded_at, n.created_at, n.updated_at, n.encrypted
+		   FROM hone_notes n
+		   LEFT JOIN embedding_models em ON em.id = n.embedding_model_id
+		  WHERE n.id=$1 AND n.user_id=$2`,
 		sharedpg.UUID(noteID), sharedpg.UUID(userID),
 	).Scan(&title, &bodyMD, &sizeBytes, &folderID, &embedding, &embeddingModel, &embeddedAt, &createdAt, &updatedAt, &encrypted)
 	if err != nil {
@@ -770,12 +772,11 @@ func (n *Notes) List(ctx context.Context, userID uuid.UUID, limit int, cursor st
 		return nil, "", fmt.Errorf("hone.Notes.List: %w", err)
 	}
 
-	// archived_at IS NULL — Phase C-2: archived notes скрываются из
-	// основного списка. Recover через GET-by-id (всегда работает) либо
-	// через будущий «View archived» режим.
+	// v2 baseline: archived_at column dropped (hard delete only). Listing
+	// is straight by user_id; no soft-delete filter.
 	sqlBase := `SELECT id, title, size_bytes, folder_id, updated_at
 	              FROM hone_notes
-	             WHERE user_id=$1 AND archived_at IS NULL`
+	             WHERE user_id=$1`
 	args := []any{sharedpg.UUID(userID)}
 
 	if folderID != nil {
@@ -893,7 +894,7 @@ func (n *Notes) ExistsByTitleForUser(ctx context.Context, userID uuid.UUID, titl
 	err := n.pool.QueryRow(ctx,
 		`SELECT EXISTS (
 		   SELECT 1 FROM hone_notes
-		    WHERE user_id=$1 AND title=$2 AND archived_at IS NULL
+		    WHERE user_id=$1 AND title=$2
 		 )`,
 		sharedpg.UUID(userID), title,
 	).Scan(&exists)
@@ -903,34 +904,23 @@ func (n *Notes) ExistsByTitleForUser(ctx context.Context, userID uuid.UUID, titl
 	return exists, nil
 }
 
-// SetArchived помечает заметку как archived (или восстанавливает).
-// archived_at = now() / NULL — Phase C-2 архив.
-func (n *Notes) SetArchived(ctx context.Context, userID, noteID uuid.UUID, archived bool) error {
-	var stmt string
-	if archived {
-		stmt = `UPDATE hone_notes SET archived_at=now(), updated_at=now()
-		         WHERE id=$1 AND user_id=$2`
-	} else {
-		stmt = `UPDATE hone_notes SET archived_at=NULL, updated_at=now()
-		         WHERE id=$1 AND user_id=$2`
-	}
-	cmd, err := n.pool.Exec(ctx, stmt, sharedpg.UUID(noteID), sharedpg.UUID(userID))
-	if err != nil {
-		return fmt.Errorf("hone.Notes.SetArchived: %w", err)
-	}
-	if cmd.RowsAffected() == 0 {
-		return domain.ErrNotFound
-	}
-	return nil
-}
-
-// SetEmbedding writes the vector + metadata.
+// SetEmbedding writes the vector + metadata. The model name is resolved
+// against the embedding_models lookup table; an unknown name leaves the
+// FK NULL (and the row will be re-embedded next time the model is seeded).
+//
+// Phase IX: пишет ОБЕ колонки — legacy real[] + pgvector vector(384).
+// Read-side пока на Go-cosine; readers перейдут на pgvector в follow-up.
+// Backfill старых rows один раз вручную (см. doc-комментарий внутри
+// migration baseline.sql около CREATE INDEX idx_hone_notes_embedding_vec).
 func (n *Notes) SetEmbedding(ctx context.Context, userID, noteID uuid.UUID, vec []float32, model string, at time.Time) error {
 	_, err := n.pool.Exec(ctx,
 		`UPDATE hone_notes
-		    SET embedding=$3, embedding_model=$4, embedded_at=$5
+		    SET embedding=$3,
+		        embedding_vec=NULLIF($6, '')::vector,
+		        embedding_model_id=(SELECT id FROM embedding_models WHERE name = $4),
+		        embedded_at=$5
 		  WHERE id=$1 AND user_id=$2`,
-		sharedpg.UUID(noteID), sharedpg.UUID(userID), vec, model, at,
+		sharedpg.UUID(noteID), sharedpg.UUID(userID), vec, model, at, sharedpg.VectorString(vec),
 	)
 	if err != nil {
 		return fmt.Errorf("hone.Notes.SetEmbedding: %w", err)
@@ -939,13 +929,30 @@ func (n *Notes) SetEmbedding(ctx context.Context, userID, noteID uuid.UUID, vec 
 }
 
 // Move sets folder_id for a note. folderID nil = move to root (unfiled).
+// Validates folder ownership before the UPDATE so a non-existent or
+// foreign folder surfaces as ErrNotFound instead of leaking a generic
+// FK / "hone failure" 500 to the client.
 func (n *Notes) Move(ctx context.Context, userID, noteID uuid.UUID, folderID *uuid.UUID) (domain.Note, error) {
 	var fid *pgtype.UUID
 	if folderID != nil {
+		var ownerID pgtype.UUID
+		err := n.pool.QueryRow(ctx,
+			`SELECT user_id FROM hone_note_folders WHERE id=$1`,
+			sharedpg.UUID(*folderID),
+		).Scan(&ownerID)
+		if err != nil {
+			if errors.Is(err, pgx.ErrNoRows) {
+				return domain.Note{}, domain.ErrNotFound
+			}
+			return domain.Note{}, fmt.Errorf("hone.Notes.Move: folder lookup: %w", err)
+		}
+		if sharedpg.UUIDFrom(ownerID) != userID {
+			return domain.Note{}, domain.ErrNotOwner
+		}
 		v := sharedpg.UUID(*folderID)
 		fid = &v
 	}
-	_, err := n.pool.Exec(ctx,
+	tag, err := n.pool.Exec(ctx,
 		`UPDATE hone_notes SET folder_id=$3, updated_at=now()
 		  WHERE id=$1 AND user_id=$2`,
 		sharedpg.UUID(noteID), sharedpg.UUID(userID), fid,
@@ -953,24 +960,138 @@ func (n *Notes) Move(ctx context.Context, userID, noteID uuid.UUID, folderID *uu
 	if err != nil {
 		return domain.Note{}, fmt.Errorf("hone.Notes.Move: %w", err)
 	}
+	if tag.RowsAffected() == 0 {
+		return domain.Note{}, domain.ErrNotFound
+	}
 	return n.Get(ctx, userID, noteID)
+}
+
+// MarkStaleForReembed — Phase I admin tool. Clears embedded_at for every
+// note whose vector was produced by a model OTHER than currentModelName.
+// The async embed worker picks them up via the existing partial index and
+// re-embeds with the current model. Returns count of marked rows.
+//
+// Не трогает encrypted notes (там embedding принципиально невозможен) и
+// notes без embedding'а вовсе (worker сам подберёт).
+func (n *Notes) MarkStaleForReembed(ctx context.Context, currentModelName string) (int64, error) {
+	if currentModelName == "" {
+		return 0, fmt.Errorf("hone.Notes.MarkStaleForReembed: currentModelName is required")
+	}
+	tag, err := n.pool.Exec(ctx,
+		`UPDATE hone_notes
+		    SET embedded_at = NULL
+		  WHERE embedded_at IS NOT NULL
+		    AND embedding IS NOT NULL
+		    AND NOT encrypted
+		    AND embedding_model_id IS DISTINCT FROM
+		        (SELECT id FROM embedding_models WHERE name = $1)`,
+		currentModelName,
+	)
+	if err != nil {
+		return 0, fmt.Errorf("hone.Notes.MarkStaleForReembed: %w", err)
+	}
+	return tag.RowsAffected(), nil
+}
+
+// SearchSimilarNotes — Phase IX v2: pgvector top-K с push-down в Postgres.
+// modelName == "" → фильтр выключен (тестовый back-compat path);
+// excludeNoteID == uuid.Nil → не фильтруем (например для AskNotes где
+// seed-ноты нет). simFloor применяется как `1 - distance >= floor`
+// (для cosine_ops `<=>` — distance в [0..2], score = 1-distance в [-1..1]).
+func (n *Notes) SearchSimilarNotes(
+	ctx context.Context,
+	userID uuid.UUID,
+	queryVec []float32,
+	modelName string,
+	excludeNoteID uuid.UUID,
+	simFloor float32,
+	limit int,
+) ([]domain.NoteSimilarityHit, error) {
+	if len(queryVec) == 0 {
+		return nil, nil
+	}
+	if limit <= 0 || limit > 100 {
+		limit = 10
+	}
+	vecStr := sharedpg.VectorString(queryVec)
+	if vecStr == "" {
+		return nil, nil
+	}
+	q := `SELECT id, title, LEFT(body_md, 140),
+	             1 - (embedding_vec <=> $2::vector) AS similarity
+	   FROM hone_notes
+	  WHERE user_id = $1
+	    AND embedding_vec IS NOT NULL
+	    AND NOT encrypted`
+	args := []any{sharedpg.UUID(userID), vecStr}
+	if modelName != "" {
+		q += fmt.Sprintf(" AND embedding_model_id = (SELECT id FROM embedding_models WHERE name = $%d)", len(args)+1)
+		args = append(args, modelName)
+	}
+	if excludeNoteID != uuid.Nil {
+		q += fmt.Sprintf(" AND id <> $%d", len(args)+1)
+		args = append(args, sharedpg.UUID(excludeNoteID))
+	}
+	// simFloor → переводим в distance ceiling (`embedding_vec <=> v <= 1 - simFloor`)
+	// для использования IVFFlat index'а на ORDER BY.
+	if simFloor > 0 {
+		q += fmt.Sprintf(" AND (embedding_vec <=> $2::vector) <= $%d", len(args)+1)
+		args = append(args, float64(1-simFloor))
+	}
+	q += fmt.Sprintf(" ORDER BY embedding_vec <=> $2::vector ASC LIMIT $%d", len(args)+1)
+	args = append(args, limit)
+	rows, err := n.pool.Query(ctx, q, args...)
+	if err != nil {
+		return nil, fmt.Errorf("hone.Notes.SearchSimilarNotes: %w", err)
+	}
+	defer rows.Close()
+	out := make([]domain.NoteSimilarityHit, 0, limit)
+	for rows.Next() {
+		var (
+			id         pgtype.UUID
+			title      string
+			snippet    string
+			similarity float64
+		)
+		if err := rows.Scan(&id, &title, &snippet, &similarity); err != nil {
+			return nil, fmt.Errorf("hone.Notes.SearchSimilarNotes: scan: %w", err)
+		}
+		out = append(out, domain.NoteSimilarityHit{
+			ID:      sharedpg.UUIDFrom(id),
+			Title:   title,
+			Snippet: snippet,
+			Score:   float32(similarity),
+		})
+	}
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("hone.Notes.SearchSimilarNotes: rows: %w", err)
+	}
+	return out, nil
 }
 
 // WithEmbeddingsForUser returns the minimal projection for cosine scanning.
 // Snippet is the first 140 chars of body_md — enough context for the UI row
 // without dragging full bodies across the wire.
-func (n *Notes) WithEmbeddingsForUser(ctx context.Context, userID uuid.UUID) ([]domain.NoteEmbedding, error) {
+//
+// Phase I: filters by embedding_model_id matching the requested modelName.
+// Mixed-model cosine is undefined (different vector spaces, often different
+// dimensionality) — silently invalid otherwise. modelName == "" disables
+// the filter (test/back-compat path); production callers always pass it.
+func (n *Notes) WithEmbeddingsForUser(ctx context.Context, userID uuid.UUID, modelName string) ([]domain.NoteEmbedding, error) {
 	// NOT encrypted — Phase C-7 E2E. Encrypted body_md = ciphertext;
 	// embedding на нём garbage. Embed worker сам не enqueue'ит для
 	// encrypted notes (см. notes.go EmbedFn skip), но defensive-фильтр
 	// здесь страхует на случай legacy embeddings от ранее plaintext
 	// заметки которая потом была encrypt'нута.
-	rows, err := n.pool.Query(ctx,
-		`SELECT id, title, LEFT(body_md, 140), embedding
+	q := `SELECT id, title, LEFT(body_md, 140), embedding
 		   FROM hone_notes
-		  WHERE user_id=$1 AND embedding IS NOT NULL AND NOT encrypted`,
-		sharedpg.UUID(userID),
-	)
+		  WHERE user_id=$1 AND embedding IS NOT NULL AND NOT encrypted`
+	args := []any{sharedpg.UUID(userID)}
+	if modelName != "" {
+		q += ` AND embedding_model_id = (SELECT id FROM embedding_models WHERE name = $2)`
+		args = append(args, modelName)
+	}
+	rows, err := n.pool.Query(ctx, q, args...)
 	if err != nil {
 		return nil, fmt.Errorf("hone.Notes.WithEmbeddingsForUser: %w", err)
 	}
@@ -1238,10 +1359,10 @@ func (w *Whiteboards) Get(ctx context.Context, userID, wbID uuid.UUID) (domain.W
 // List returns summaries, newest updated first.
 func (w *Whiteboards) List(ctx context.Context, userID uuid.UUID) ([]domain.WhiteboardSummary, error) {
 	rows, err := w.pool.Query(ctx,
-		// archived_at IS NULL — Phase C-2 (см. Notes.List).
+		// v2 baseline: archived_at column dropped (hard delete only).
 		`SELECT id, title, updated_at
 		   FROM hone_whiteboards
-		  WHERE user_id=$1 AND archived_at IS NULL
+		  WHERE user_id=$1
 		  ORDER BY updated_at DESC`,
 		sharedpg.UUID(userID),
 	)
@@ -1297,26 +1418,6 @@ func (w *Whiteboards) Delete(ctx context.Context, userID, wbID uuid.UUID) error 
 	}
 	if err := tx.Commit(ctx); err != nil {
 		return fmt.Errorf("hone.Whiteboards.Delete: commit: %w", err)
-	}
-	return nil
-}
-
-// SetArchived — Phase C-2 архив. См. Notes.SetArchived.
-func (w *Whiteboards) SetArchived(ctx context.Context, userID, wbID uuid.UUID, archived bool) error {
-	var stmt string
-	if archived {
-		stmt = `UPDATE hone_whiteboards SET archived_at=now(), updated_at=now()
-		         WHERE id=$1 AND user_id=$2`
-	} else {
-		stmt = `UPDATE hone_whiteboards SET archived_at=NULL, updated_at=now()
-		         WHERE id=$1 AND user_id=$2`
-	}
-	cmd, err := w.pool.Exec(ctx, stmt, sharedpg.UUID(wbID), sharedpg.UUID(userID))
-	if err != nil {
-		return fmt.Errorf("hone.Whiteboards.SetArchived: %w", err)
-	}
-	if cmd.RowsAffected() == 0 {
-		return domain.ErrNotFound
 	}
 	return nil
 }
@@ -1614,10 +1715,13 @@ func (q *Queue) GetAIShareLast7Days(ctx context.Context, userID uuid.UUID) (aiSh
 }
 
 // ─── Cue Sessions ──────────────────────────────────────────────────────────
+//
+// Phase B.4 (schema_v2): hone_cue_sessions was merged into hone_notes via the
+// `kind` column. A Cue session is a hone_notes row with kind='cue', a
+// non-NULL file_path / started_at / imported_at, and the raw analysis JSON
+// in raw_analysis_json. The unique index idx_hone_notes_user_file_path
+// (partial WHERE file_path IS NOT NULL) keeps Import idempotent.
 
-// CueSessions persists hone_cue_sessions. UNIQUE (user_id, file_path) делает
-// Import idempotent: ON CONFLICT обновляем raw + title + started_at, но
-// оставляем body_md прежним (юзер мог редактировать).
 type CueSessions struct {
 	pool *pgxpool.Pool
 }
@@ -1632,7 +1736,7 @@ func (c *CueSessions) Import(ctx context.Context, s domain.CueSession, initialBo
 		id         pgtype.UUID
 		bodyMD     string
 		startedAt  pgtype.Timestamptz
-		importedAt time.Time
+		importedAt pgtype.Timestamptz
 		updatedAt  time.Time
 	)
 	var startedArg pgtype.Timestamptz
@@ -1640,10 +1744,11 @@ func (c *CueSessions) Import(ctx context.Context, s domain.CueSession, initialBo
 		startedArg = pgtype.Timestamptz{Time: *s.StartedAt, Valid: true}
 	}
 	err := c.pool.QueryRow(ctx,
-		`INSERT INTO hone_cue_sessions
-		   (user_id, file_path, title, body_md, raw_analysis_json, started_at)
-		 VALUES ($1, $2, $3, $4, $5::jsonb, $6)
-		 ON CONFLICT (user_id, file_path) DO UPDATE
+		`INSERT INTO hone_notes
+		   (user_id, kind, file_path, title, body_md, raw_analysis_json,
+		    started_at, imported_at)
+		 VALUES ($1, 'cue', $2, $3, $4, $5::jsonb, $6, now())
+		 ON CONFLICT (user_id, file_path) WHERE file_path IS NOT NULL DO UPDATE
 		   SET title             = EXCLUDED.title,
 		       raw_analysis_json = EXCLUDED.raw_analysis_json,
 		       started_at        = EXCLUDED.started_at,
@@ -1666,24 +1771,26 @@ func (c *CueSessions) Import(ctx context.Context, s domain.CueSession, initialBo
 		Title:           s.Title,
 		BodyMD:          bodyMD,
 		RawAnalysisJSON: s.RawAnalysisJSON,
-		ImportedAt:      importedAt,
 		UpdatedAt:       updatedAt,
 	}
 	if startedAt.Valid {
 		t := startedAt.Time
 		out.StartedAt = &t
 	}
+	if importedAt.Valid {
+		out.ImportedAt = importedAt.Time
+	}
 	return out, nil
 }
 
-// List returns sessions sorted by imported_at DESC.
+// List returns kind='cue' rows sorted by imported_at DESC.
 func (c *CueSessions) List(ctx context.Context, userID uuid.UUID) ([]domain.CueSession, error) {
 	rows, err := c.pool.Query(ctx,
-		`SELECT id, file_path, title, body_md, raw_analysis_json::text,
+		`SELECT id, file_path, title, body_md, COALESCE(raw_analysis_json::text, ''),
 		        started_at, imported_at, updated_at
-		   FROM hone_cue_sessions
-		  WHERE user_id=$1
-		  ORDER BY imported_at DESC`,
+		   FROM hone_notes
+		  WHERE user_id=$1 AND kind='cue'
+		  ORDER BY imported_at DESC NULLS LAST`,
 		sharedpg.UUID(userID),
 	)
 	if err != nil {
@@ -1694,12 +1801,12 @@ func (c *CueSessions) List(ctx context.Context, userID uuid.UUID) ([]domain.CueS
 	for rows.Next() {
 		var (
 			id         pgtype.UUID
-			filePath   string
+			filePath   pgtype.Text
 			title      string
 			bodyMD     string
 			raw        string
 			startedAt  pgtype.Timestamptz
-			importedAt time.Time
+			importedAt pgtype.Timestamptz
 			updatedAt  time.Time
 		)
 		if err := rows.Scan(&id, &filePath, &title, &bodyMD, &raw, &startedAt, &importedAt, &updatedAt); err != nil {
@@ -1708,16 +1815,18 @@ func (c *CueSessions) List(ctx context.Context, userID uuid.UUID) ([]domain.CueS
 		s := domain.CueSession{
 			ID:              sharedpg.UUIDFrom(id),
 			UserID:          userID,
-			FilePath:        filePath,
+			FilePath:        filePath.String,
 			Title:           title,
 			BodyMD:          bodyMD,
 			RawAnalysisJSON: raw,
-			ImportedAt:      importedAt,
 			UpdatedAt:       updatedAt,
 		}
 		if startedAt.Valid {
 			t := startedAt.Time
 			s.StartedAt = &t
+		}
+		if importedAt.Valid {
+			s.ImportedAt = importedAt.Time
 		}
 		out = append(out, s)
 	}
@@ -1729,19 +1838,19 @@ func (c *CueSessions) List(ctx context.Context, userID uuid.UUID) ([]domain.CueS
 
 func (c *CueSessions) Get(ctx context.Context, userID, id uuid.UUID) (domain.CueSession, error) {
 	var (
-		filePath   string
+		filePath   pgtype.Text
 		title      string
 		bodyMD     string
 		raw        string
 		startedAt  pgtype.Timestamptz
-		importedAt time.Time
+		importedAt pgtype.Timestamptz
 		updatedAt  time.Time
 	)
 	err := c.pool.QueryRow(ctx,
-		`SELECT file_path, title, body_md, raw_analysis_json::text,
+		`SELECT file_path, title, body_md, COALESCE(raw_analysis_json::text, ''),
 		        started_at, imported_at, updated_at
-		   FROM hone_cue_sessions
-		  WHERE id=$1 AND user_id=$2`,
+		   FROM hone_notes
+		  WHERE id=$1 AND user_id=$2 AND kind='cue'`,
 		sharedpg.UUID(id), sharedpg.UUID(userID),
 	).Scan(&filePath, &title, &bodyMD, &raw, &startedAt, &importedAt, &updatedAt)
 	if err != nil {
@@ -1753,16 +1862,18 @@ func (c *CueSessions) Get(ctx context.Context, userID, id uuid.UUID) (domain.Cue
 	out := domain.CueSession{
 		ID:              id,
 		UserID:          userID,
-		FilePath:        filePath,
+		FilePath:        filePath.String,
 		Title:           title,
 		BodyMD:          bodyMD,
 		RawAnalysisJSON: raw,
-		ImportedAt:      importedAt,
 		UpdatedAt:       updatedAt,
 	}
 	if startedAt.Valid {
 		t := startedAt.Time
 		out.StartedAt = &t
+	}
+	if importedAt.Valid {
+		out.ImportedAt = importedAt.Time
 	}
 	return out, nil
 }
@@ -1770,9 +1881,9 @@ func (c *CueSessions) Get(ctx context.Context, userID, id uuid.UUID) (domain.Cue
 func (c *CueSessions) UpdateBody(ctx context.Context, userID, id uuid.UUID, bodyMD string) (domain.CueSession, error) {
 	var updatedAt time.Time
 	err := c.pool.QueryRow(ctx,
-		`UPDATE hone_cue_sessions
+		`UPDATE hone_notes
 		    SET body_md=$3, updated_at=now()
-		  WHERE id=$1 AND user_id=$2
+		  WHERE id=$1 AND user_id=$2 AND kind='cue'
 		  RETURNING updated_at`,
 		sharedpg.UUID(id), sharedpg.UUID(userID), bodyMD,
 	).Scan(&updatedAt)
@@ -1787,7 +1898,7 @@ func (c *CueSessions) UpdateBody(ctx context.Context, userID, id uuid.UUID, body
 
 func (c *CueSessions) Delete(ctx context.Context, userID, id uuid.UUID) error {
 	cmd, err := c.pool.Exec(ctx,
-		`DELETE FROM hone_cue_sessions WHERE id=$1 AND user_id=$2`,
+		`DELETE FROM hone_notes WHERE id=$1 AND user_id=$2 AND kind='cue'`,
 		sharedpg.UUID(id), sharedpg.UUID(userID),
 	)
 	if err != nil {

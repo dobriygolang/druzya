@@ -39,6 +39,13 @@ type MockServer struct {
 	Stress *app.IngestStress
 	Finish *app.FinishSession
 	Report *app.GetReport
+	// Insights powers /api/v1/mock/insights/overview. Optional: nil-safe —
+	// the RPC returns Unavailable until the wirer binds it.
+	Insights *app.InsightsOverview
+	// InsightsSummaryFn — LLM/templated narrative paragraph. Returns ""
+	// to signal "no summary"; UI hides the section. Wired by cmd/monolith
+	// so the Redis cache + chain dependencies stay out of this package.
+	InsightsSummaryFn func(ctx context.Context, userID string, data InsightsSummaryInput) string
 
 	Log *slog.Logger
 }
@@ -229,7 +236,7 @@ func (s *MockServer) GetReport(
 		// Bible allows 200 + status=processing. Clients poll until ready.
 		return connect.NewResponse(&pb.MockReport{
 			SessionId:    sessionID.String(),
-			Status:       "processing",
+			Status:       pb.MockReportStatus_MOCK_REPORT_STATUS_PROCESSING,
 			OverallScore: 0,
 			Sections:     &pb.MockReportSections{},
 		}), nil
@@ -320,7 +327,7 @@ func toMockTaskProto(t domain.TaskPublic) *pb.MockTaskPublic {
 func toMockReportProto(sessionID uuid.UUID, d domain.ReportDraft) *pb.MockReport {
 	out := &pb.MockReport{
 		SessionId:    sessionID.String(),
-		Status:       "ready",
+		Status:       pb.MockReportStatus_MOCK_REPORT_STATUS_READY,
 		OverallScore: int32(d.OverallScore),
 	}
 	out.Sections = &pb.MockReportSections{

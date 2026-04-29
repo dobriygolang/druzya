@@ -62,6 +62,9 @@ const (
 	ProviderCerebras   Provider = "cerebras"
 	ProviderMistral    Provider = "mistral"
 	ProviderOpenRouter Provider = "openrouter"
+	ProviderGoogle     Provider = "google"
+	ProviderCloudflare Provider = "cloudflare"
+	ProviderZAI        Provider = "zai"
 	// ProviderDeepSeek — paid: api.deepseek.com. Используется в virtual-chain'ах
 	// druz9/pro и druz9/reasoning (см. tier.go). В DefaultTaskModelMap
 	// отсутствует — это exclusive для paid-tier'ов.
@@ -192,17 +195,26 @@ type Request struct {
 	// OpenRouter and Mistral support this natively via "response_format".
 	// Cerebras ignores the hint — we fall back to prompt-level "return
 	// only JSON" instruction (already in our system prompts).
+	//
+	// Phase IV: when JSONMode=true, chain.candidates() пропускает
+	// драйверы у которых Capabilities().JSONMode=false, чтобы failover
+	// не ушёл на провайдер который тихо вернёт plain text.
 	JSONMode bool
+
+	// RequiresTools — задача нуждается в OpenAI-style function calling.
+	// chain.candidates() отрежет драйверы без Capabilities().Tools.
+	// Зарезервировано на будущее (сейчас ни одна задача не использует).
+	RequiresTools bool
 
 	// AttemptTimeout caps the per-provider wall clock. Zero = use the
 	// chain's per-provider default (groq 10s, cerebras 20s, others 45s).
 	// Individual caller overrides are mostly for tests.
 	AttemptTimeout time.Duration
 
-	// UserTier — актуальный tier подписки (free/seeker/ascendant). Пустая
+	// UserTier — актуальный tier подписки (free/pro/max). Пустая
 	// строка трактуется как free (graceful default для legacy-caller'ов).
 	// Используется для tier-gate'а paid-моделей в candidates(): если
-	// ModelOverride требует seeker+, а UserTier=free → ErrTierRequired.
+	// ModelOverride требует pro+, а UserTier=free → ErrTierRequired.
 	// Caller обычно заполняет через shared middleware UserTierFromContext.
 	UserTier enums.SubscriptionPlan
 }
@@ -256,6 +268,27 @@ type Driver interface {
 	// as StreamEvent{Err} and the chain propagates them to the caller;
 	// it does NOT attempt mid-stream fallback.
 	ChatStream(ctx context.Context, model string, req Request) (<-chan StreamEvent, error)
+
+	// Capabilities — Phase IV: что провайдер реально умеет на wire-уровне.
+	// chain.candidates() фильтрует кандидатов по требованиям Request
+	// (JSONMode, Tools) — проводник без нужной capability отрезается ДО
+	// HTTP-вызова, чтобы не получить silent text-ответ на JSON-задачу.
+	Capabilities() Capabilities
+}
+
+// Capabilities декларирует фичи драйвера. Wire-уровень: что понимает
+// upstream API, не что эмулирует prompt-инструкциями.
+type Capabilities struct {
+	// JSONMode: умеет ли драйвер enforce'ить JSON через
+	// response_format={"type":"json_object"} (или эквивалент).
+	// Драйверы без поддержки могут попасть в task-routing для текстовых
+	// задач, но для JSON-strict (Request.JSONMode=true) их отрезаем.
+	JSONMode bool
+	// Tools: умеет ли драйвер OpenAI-style function/tool calling.
+	// Сейчас в кодбазе ни одна задача не использует tools, но поле
+	// заведено для будущего и для симметрии. Filter активируется
+	// только когда Request.RequiresTools=true.
+	Tools bool
 }
 
 // Clock is a test seam — the chain injects a clock so rate-limit

@@ -348,6 +348,74 @@ func (mr *MockResistanceRepoMockRecorder) Record(ctx, userID, skillKey, itemID, 
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Record", reflect.TypeOf((*MockResistanceRepo)(nil).Record), ctx, userID, skillKey, itemID, planDate)
 }
 
+// MockFolderRepo is a mock of FolderRepo interface.
+type MockFolderRepo struct {
+	ctrl     *gomock.Controller
+	recorder *MockFolderRepoMockRecorder
+	isgomock struct{}
+}
+
+// MockFolderRepoMockRecorder is the mock recorder for MockFolderRepo.
+type MockFolderRepoMockRecorder struct {
+	mock *MockFolderRepo
+}
+
+// NewMockFolderRepo creates a new mock instance.
+func NewMockFolderRepo(ctrl *gomock.Controller) *MockFolderRepo {
+	mock := &MockFolderRepo{ctrl: ctrl}
+	mock.recorder = &MockFolderRepoMockRecorder{mock}
+	return mock
+}
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockFolderRepo) EXPECT() *MockFolderRepoMockRecorder {
+	return m.recorder
+}
+
+// Create mocks base method.
+func (m *MockFolderRepo) Create(ctx context.Context, f domain.Folder) (domain.Folder, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Create", ctx, f)
+	ret0, _ := ret[0].(domain.Folder)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// Create indicates an expected call of Create.
+func (mr *MockFolderRepoMockRecorder) Create(ctx, f any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Create", reflect.TypeOf((*MockFolderRepo)(nil).Create), ctx, f)
+}
+
+// Delete mocks base method.
+func (m *MockFolderRepo) Delete(ctx context.Context, userID, folderID uuid.UUID, moveNotesToRoot bool) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Delete", ctx, userID, folderID, moveNotesToRoot)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Delete indicates an expected call of Delete.
+func (mr *MockFolderRepoMockRecorder) Delete(ctx, userID, folderID, moveNotesToRoot any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Delete", reflect.TypeOf((*MockFolderRepo)(nil).Delete), ctx, userID, folderID, moveNotesToRoot)
+}
+
+// List mocks base method.
+func (m *MockFolderRepo) List(ctx context.Context, userID uuid.UUID) ([]domain.Folder, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "List", ctx, userID)
+	ret0, _ := ret[0].([]domain.Folder)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// List indicates an expected call of List.
+func (mr *MockFolderRepoMockRecorder) List(ctx, userID any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "List", reflect.TypeOf((*MockFolderRepo)(nil).List), ctx, userID)
+}
+
 // MockNoteRepo is a mock of NoteRepo interface.
 type MockNoteRepo struct {
 	ctrl     *gomock.Controller
@@ -401,6 +469,21 @@ func (mr *MockNoteRepoMockRecorder) Delete(ctx, userID, noteID any) *gomock.Call
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Delete", reflect.TypeOf((*MockNoteRepo)(nil).Delete), ctx, userID, noteID)
 }
 
+// ExistsByTitleForUser mocks base method.
+func (m *MockNoteRepo) ExistsByTitleForUser(ctx context.Context, userID uuid.UUID, title string) (bool, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ExistsByTitleForUser", ctx, userID, title)
+	ret0, _ := ret[0].(bool)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ExistsByTitleForUser indicates an expected call of ExistsByTitleForUser.
+func (mr *MockNoteRepoMockRecorder) ExistsByTitleForUser(ctx, userID, title any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ExistsByTitleForUser", reflect.TypeOf((*MockNoteRepo)(nil).ExistsByTitleForUser), ctx, userID, title)
+}
+
 // Get mocks base method.
 func (m *MockNoteRepo) Get(ctx context.Context, userID, noteID uuid.UUID) (domain.Note, error) {
 	m.ctrl.T.Helper()
@@ -432,6 +515,21 @@ func (mr *MockNoteRepoMockRecorder) List(ctx, userID, limit, cursor, folderID an
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "List", reflect.TypeOf((*MockNoteRepo)(nil).List), ctx, userID, limit, cursor, folderID)
 }
 
+// MarkStaleForReembed mocks base method.
+func (m *MockNoteRepo) MarkStaleForReembed(ctx context.Context, currentModelName string) (int64, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "MarkStaleForReembed", ctx, currentModelName)
+	ret0, _ := ret[0].(int64)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// MarkStaleForReembed indicates an expected call of MarkStaleForReembed.
+func (mr *MockNoteRepoMockRecorder) MarkStaleForReembed(ctx, currentModelName any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "MarkStaleForReembed", reflect.TypeOf((*MockNoteRepo)(nil).MarkStaleForReembed), ctx, currentModelName)
+}
+
 // Move mocks base method.
 func (m *MockNoteRepo) Move(ctx context.Context, userID, noteID uuid.UUID, folderID *uuid.UUID) (domain.Note, error) {
 	m.ctrl.T.Helper()
@@ -447,18 +545,19 @@ func (mr *MockNoteRepoMockRecorder) Move(ctx, userID, noteID, folderID any) *gom
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Move", reflect.TypeOf((*MockNoteRepo)(nil).Move), ctx, userID, noteID, folderID)
 }
 
-// SetArchived mocks base method.
-func (m *MockNoteRepo) SetArchived(ctx context.Context, userID, noteID uuid.UUID, archived bool) error {
+// SearchSimilarNotes mocks base method.
+func (m *MockNoteRepo) SearchSimilarNotes(ctx context.Context, userID uuid.UUID, queryVec []float32, modelName string, excludeNoteID uuid.UUID, simFloor float32, limit int) ([]domain.NoteSimilarityHit, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "SetArchived", ctx, userID, noteID, archived)
-	ret0, _ := ret[0].(error)
-	return ret0
+	ret := m.ctrl.Call(m, "SearchSimilarNotes", ctx, userID, queryVec, modelName, excludeNoteID, simFloor, limit)
+	ret0, _ := ret[0].([]domain.NoteSimilarityHit)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
 }
 
-// SetArchived indicates an expected call of SetArchived.
-func (mr *MockNoteRepoMockRecorder) SetArchived(ctx, userID, noteID, archived any) *gomock.Call {
+// SearchSimilarNotes indicates an expected call of SearchSimilarNotes.
+func (mr *MockNoteRepoMockRecorder) SearchSimilarNotes(ctx, userID, queryVec, modelName, excludeNoteID, simFloor, limit any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetArchived", reflect.TypeOf((*MockNoteRepo)(nil).SetArchived), ctx, userID, noteID, archived)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SearchSimilarNotes", reflect.TypeOf((*MockNoteRepo)(nil).SearchSimilarNotes), ctx, userID, queryVec, modelName, excludeNoteID, simFloor, limit)
 }
 
 // SetEmbedding mocks base method.
@@ -491,18 +590,18 @@ func (mr *MockNoteRepoMockRecorder) Update(ctx, n any) *gomock.Call {
 }
 
 // WithEmbeddingsForUser mocks base method.
-func (m *MockNoteRepo) WithEmbeddingsForUser(ctx context.Context, userID uuid.UUID) ([]domain.NoteEmbedding, error) {
+func (m *MockNoteRepo) WithEmbeddingsForUser(ctx context.Context, userID uuid.UUID, modelName string) ([]domain.NoteEmbedding, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "WithEmbeddingsForUser", ctx, userID)
+	ret := m.ctrl.Call(m, "WithEmbeddingsForUser", ctx, userID, modelName)
 	ret0, _ := ret[0].([]domain.NoteEmbedding)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // WithEmbeddingsForUser indicates an expected call of WithEmbeddingsForUser.
-func (mr *MockNoteRepoMockRecorder) WithEmbeddingsForUser(ctx, userID any) *gomock.Call {
+func (mr *MockNoteRepoMockRecorder) WithEmbeddingsForUser(ctx, userID, modelName any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "WithEmbeddingsForUser", reflect.TypeOf((*MockNoteRepo)(nil).WithEmbeddingsForUser), ctx, userID)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "WithEmbeddingsForUser", reflect.TypeOf((*MockNoteRepo)(nil).WithEmbeddingsForUser), ctx, userID, modelName)
 }
 
 // MockEmbedder is a mock of Embedder interface.
@@ -626,20 +725,6 @@ func (m *MockWhiteboardRepo) List(ctx context.Context, userID uuid.UUID) ([]doma
 func (mr *MockWhiteboardRepoMockRecorder) List(ctx, userID any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "List", reflect.TypeOf((*MockWhiteboardRepo)(nil).List), ctx, userID)
-}
-
-// SetArchived mocks base method.
-func (m *MockWhiteboardRepo) SetArchived(ctx context.Context, userID, wbID uuid.UUID, archived bool) error {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "SetArchived", ctx, userID, wbID, archived)
-	ret0, _ := ret[0].(error)
-	return ret0
-}
-
-// SetArchived indicates an expected call of SetArchived.
-func (mr *MockWhiteboardRepoMockRecorder) SetArchived(ctx, userID, wbID, archived any) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SetArchived", reflect.TypeOf((*MockWhiteboardRepo)(nil).SetArchived), ctx, userID, wbID, archived)
 }
 
 // Update mocks base method.
@@ -771,4 +856,272 @@ func (m *MockPlanSynthesizer) Synthesise(ctx context.Context, userID uuid.UUID, 
 func (mr *MockPlanSynthesizerMockRecorder) Synthesise(ctx, userID, weakNodes, chronic, today, date any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Synthesise", reflect.TypeOf((*MockPlanSynthesizer)(nil).Synthesise), ctx, userID, weakNodes, chronic, today, date)
+}
+
+// MockQueueRepo is a mock of QueueRepo interface.
+type MockQueueRepo struct {
+	ctrl     *gomock.Controller
+	recorder *MockQueueRepoMockRecorder
+	isgomock struct{}
+}
+
+// MockQueueRepoMockRecorder is the mock recorder for MockQueueRepo.
+type MockQueueRepoMockRecorder struct {
+	mock *MockQueueRepo
+}
+
+// NewMockQueueRepo creates a new mock instance.
+func NewMockQueueRepo(ctrl *gomock.Controller) *MockQueueRepo {
+	mock := &MockQueueRepo{ctrl: ctrl}
+	mock.recorder = &MockQueueRepoMockRecorder{mock}
+	return mock
+}
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockQueueRepo) EXPECT() *MockQueueRepoMockRecorder {
+	return m.recorder
+}
+
+// CountTodayByStatus mocks base method.
+func (m *MockQueueRepo) CountTodayByStatus(ctx context.Context, userID uuid.UUID) (int, int, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "CountTodayByStatus", ctx, userID)
+	ret0, _ := ret[0].(int)
+	ret1, _ := ret[1].(int)
+	ret2, _ := ret[2].(error)
+	return ret0, ret1, ret2
+}
+
+// CountTodayByStatus indicates an expected call of CountTodayByStatus.
+func (mr *MockQueueRepoMockRecorder) CountTodayByStatus(ctx, userID any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CountTodayByStatus", reflect.TypeOf((*MockQueueRepo)(nil).CountTodayByStatus), ctx, userID)
+}
+
+// Create mocks base method.
+func (m *MockQueueRepo) Create(ctx context.Context, item domain.QueueItem) (domain.QueueItem, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Create", ctx, item)
+	ret0, _ := ret[0].(domain.QueueItem)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// Create indicates an expected call of Create.
+func (mr *MockQueueRepoMockRecorder) Create(ctx, item any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Create", reflect.TypeOf((*MockQueueRepo)(nil).Create), ctx, item)
+}
+
+// Delete mocks base method.
+func (m *MockQueueRepo) Delete(ctx context.Context, id, userID uuid.UUID) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Delete", ctx, id, userID)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Delete indicates an expected call of Delete.
+func (mr *MockQueueRepoMockRecorder) Delete(ctx, id, userID any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Delete", reflect.TypeOf((*MockQueueRepo)(nil).Delete), ctx, id, userID)
+}
+
+// ExistsByTitleToday mocks base method.
+func (m *MockQueueRepo) ExistsByTitleToday(ctx context.Context, userID uuid.UUID, title string) (bool, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ExistsByTitleToday", ctx, userID, title)
+	ret0, _ := ret[0].(bool)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ExistsByTitleToday indicates an expected call of ExistsByTitleToday.
+func (mr *MockQueueRepoMockRecorder) ExistsByTitleToday(ctx, userID, title any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ExistsByTitleToday", reflect.TypeOf((*MockQueueRepo)(nil).ExistsByTitleToday), ctx, userID, title)
+}
+
+// GetAIShareLast7Days mocks base method.
+func (m *MockQueueRepo) GetAIShareLast7Days(ctx context.Context, userID uuid.UUID) (float32, float32, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "GetAIShareLast7Days", ctx, userID)
+	ret0, _ := ret[0].(float32)
+	ret1, _ := ret[1].(float32)
+	ret2, _ := ret[2].(error)
+	return ret0, ret1, ret2
+}
+
+// GetAIShareLast7Days indicates an expected call of GetAIShareLast7Days.
+func (mr *MockQueueRepoMockRecorder) GetAIShareLast7Days(ctx, userID any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetAIShareLast7Days", reflect.TypeOf((*MockQueueRepo)(nil).GetAIShareLast7Days), ctx, userID)
+}
+
+// ListByDate mocks base method.
+func (m *MockQueueRepo) ListByDate(ctx context.Context, userID uuid.UUID, date time.Time) ([]domain.QueueItem, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ListByDate", ctx, userID, date)
+	ret0, _ := ret[0].([]domain.QueueItem)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ListByDate indicates an expected call of ListByDate.
+func (mr *MockQueueRepoMockRecorder) ListByDate(ctx, userID, date any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListByDate", reflect.TypeOf((*MockQueueRepo)(nil).ListByDate), ctx, userID, date)
+}
+
+// UpdateStatus mocks base method.
+func (m *MockQueueRepo) UpdateStatus(ctx context.Context, id, userID uuid.UUID, status domain.QueueItemStatus) (domain.QueueItem, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UpdateStatus", ctx, id, userID, status)
+	ret0, _ := ret[0].(domain.QueueItem)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// UpdateStatus indicates an expected call of UpdateStatus.
+func (mr *MockQueueRepoMockRecorder) UpdateStatus(ctx, id, userID, status any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateStatus", reflect.TypeOf((*MockQueueRepo)(nil).UpdateStatus), ctx, id, userID, status)
+}
+
+// MockCueSessionRepo is a mock of CueSessionRepo interface.
+type MockCueSessionRepo struct {
+	ctrl     *gomock.Controller
+	recorder *MockCueSessionRepoMockRecorder
+	isgomock struct{}
+}
+
+// MockCueSessionRepoMockRecorder is the mock recorder for MockCueSessionRepo.
+type MockCueSessionRepoMockRecorder struct {
+	mock *MockCueSessionRepo
+}
+
+// NewMockCueSessionRepo creates a new mock instance.
+func NewMockCueSessionRepo(ctrl *gomock.Controller) *MockCueSessionRepo {
+	mock := &MockCueSessionRepo{ctrl: ctrl}
+	mock.recorder = &MockCueSessionRepoMockRecorder{mock}
+	return mock
+}
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockCueSessionRepo) EXPECT() *MockCueSessionRepoMockRecorder {
+	return m.recorder
+}
+
+// Delete mocks base method.
+func (m *MockCueSessionRepo) Delete(ctx context.Context, userID, id uuid.UUID) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Delete", ctx, userID, id)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// Delete indicates an expected call of Delete.
+func (mr *MockCueSessionRepoMockRecorder) Delete(ctx, userID, id any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Delete", reflect.TypeOf((*MockCueSessionRepo)(nil).Delete), ctx, userID, id)
+}
+
+// Get mocks base method.
+func (m *MockCueSessionRepo) Get(ctx context.Context, userID, id uuid.UUID) (domain.CueSession, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Get", ctx, userID, id)
+	ret0, _ := ret[0].(domain.CueSession)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// Get indicates an expected call of Get.
+func (mr *MockCueSessionRepoMockRecorder) Get(ctx, userID, id any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Get", reflect.TypeOf((*MockCueSessionRepo)(nil).Get), ctx, userID, id)
+}
+
+// Import mocks base method.
+func (m *MockCueSessionRepo) Import(ctx context.Context, s domain.CueSession, initialBodyMD string) (domain.CueSession, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Import", ctx, s, initialBodyMD)
+	ret0, _ := ret[0].(domain.CueSession)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// Import indicates an expected call of Import.
+func (mr *MockCueSessionRepoMockRecorder) Import(ctx, s, initialBodyMD any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Import", reflect.TypeOf((*MockCueSessionRepo)(nil).Import), ctx, s, initialBodyMD)
+}
+
+// List mocks base method.
+func (m *MockCueSessionRepo) List(ctx context.Context, userID uuid.UUID) ([]domain.CueSession, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "List", ctx, userID)
+	ret0, _ := ret[0].([]domain.CueSession)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// List indicates an expected call of List.
+func (mr *MockCueSessionRepoMockRecorder) List(ctx, userID any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "List", reflect.TypeOf((*MockCueSessionRepo)(nil).List), ctx, userID)
+}
+
+// UpdateBody mocks base method.
+func (m *MockCueSessionRepo) UpdateBody(ctx context.Context, userID, id uuid.UUID, bodyMD string) (domain.CueSession, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "UpdateBody", ctx, userID, id, bodyMD)
+	ret0, _ := ret[0].(domain.CueSession)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// UpdateBody indicates an expected call of UpdateBody.
+func (mr *MockCueSessionRepoMockRecorder) UpdateBody(ctx, userID, id, bodyMD any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateBody", reflect.TypeOf((*MockCueSessionRepo)(nil).UpdateBody), ctx, userID, id, bodyMD)
+}
+
+// MockNotificationSender is a mock of NotificationSender interface.
+type MockNotificationSender struct {
+	ctrl     *gomock.Controller
+	recorder *MockNotificationSenderMockRecorder
+	isgomock struct{}
+}
+
+// MockNotificationSenderMockRecorder is the mock recorder for MockNotificationSender.
+type MockNotificationSenderMockRecorder struct {
+	mock *MockNotificationSender
+}
+
+// NewMockNotificationSender creates a new mock instance.
+func NewMockNotificationSender(ctrl *gomock.Controller) *MockNotificationSender {
+	mock := &MockNotificationSender{ctrl: ctrl}
+	mock.recorder = &MockNotificationSenderMockRecorder{mock}
+	return mock
+}
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockNotificationSender) EXPECT() *MockNotificationSenderMockRecorder {
+	return m.recorder
+}
+
+// SendCueFollowup mocks base method.
+func (m *MockNotificationSender) SendCueFollowup(ctx context.Context, userID uuid.UUID, title, bodyMD string) (bool, string, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "SendCueFollowup", ctx, userID, title, bodyMD)
+	ret0, _ := ret[0].(bool)
+	ret1, _ := ret[1].(string)
+	ret2, _ := ret[2].(error)
+	return ret0, ret1, ret2
+}
+
+// SendCueFollowup indicates an expected call of SendCueFollowup.
+func (mr *MockNotificationSenderMockRecorder) SendCueFollowup(ctx, userID, title, bodyMD any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SendCueFollowup", reflect.TypeOf((*MockNotificationSender)(nil).SendCueFollowup), ctx, userID, title, bodyMD)
 }

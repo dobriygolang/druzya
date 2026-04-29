@@ -57,6 +57,20 @@ func (uc *FinishSession) Do(ctx context.Context, userID, sessionID uuid.UUID) (d
 		}); err != nil {
 			uc.Log.WarnContext(ctx, "mock.FinishSession: publish event", slog.Any("err", err))
 		}
+		// Phase H: XP-credit за завершение mock-сессии. Финальный score
+		// ещё неизвестен (генерится в фоне через ReportWorker), поэтому
+		// даём базовую сумму за сам факт прохождения. Бонус за качество
+		// можно добавить позже отдельной публикацией из ReportWorker
+		// после расчёта overall_score.
+		mid := s.ID
+		if err := uc.Bus.Publish(ctx, sharedDomain.XPGained{
+			UserID:   s.UserID,
+			Amount:   30,
+			Reason:   "mock_session_finished",
+			SourceID: &mid,
+		}); err != nil {
+			uc.Log.WarnContext(ctx, "mock.FinishSession: publish XPGained", slog.Any("err", err))
+		}
 	}
 	return s, nil
 }

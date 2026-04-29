@@ -55,6 +55,9 @@ const (
 	MockServiceFinishSessionProcedure = "/druz9.v1.MockService/FinishSession"
 	// MockServiceGetReportProcedure is the fully-qualified name of the MockService's GetReport RPC.
 	MockServiceGetReportProcedure = "/druz9.v1.MockService/GetReport"
+	// MockServiceGetInsightsOverviewProcedure is the fully-qualified name of the MockService's
+	// GetInsightsOverview RPC.
+	MockServiceGetInsightsOverviewProcedure = "/druz9.v1.MockService/GetInsightsOverview"
 )
 
 // MockServiceClient is a client for the druz9.v1.MockService service.
@@ -72,6 +75,8 @@ type MockServiceClient interface {
 	FinishSession(context.Context, *connect.Request[v1.FinishMockSessionRequest]) (*connect.Response[v1.MockSession], error)
 	// GetReport returns the final AI report for a finished session.
 	GetReport(context.Context, *connect.Request[v1.GetMockReportRequest]) (*connect.Response[v1.MockReport], error)
+	// GetInsightsOverview powers the /insights page's three live cards.
+	GetInsightsOverview(context.Context, *connect.Request[v1.GetInsightsOverviewRequest]) (*connect.Response[v1.InsightsOverview], error)
 }
 
 // NewMockServiceClient constructs a client for the druz9.v1.MockService service. By default, it
@@ -121,17 +126,24 @@ func NewMockServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 			connect.WithSchema(mockServiceMethods.ByName("GetReport")),
 			connect.WithClientOptions(opts...),
 		),
+		getInsightsOverview: connect.NewClient[v1.GetInsightsOverviewRequest, v1.InsightsOverview](
+			httpClient,
+			baseURL+MockServiceGetInsightsOverviewProcedure,
+			connect.WithSchema(mockServiceMethods.ByName("GetInsightsOverview")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
 // mockServiceClient implements MockServiceClient.
 type mockServiceClient struct {
-	createSession *connect.Client[v1.CreateMockRequest, v1.MockSession]
-	getSession    *connect.Client[v1.GetMockSessionRequest, v1.MockSession]
-	sendMessage   *connect.Client[v1.MockMessageRequest, v1.MockMessage]
-	ingestStress  *connect.Client[v1.StressEventsBatch, v1.StressEventsBatch]
-	finishSession *connect.Client[v1.FinishMockSessionRequest, v1.MockSession]
-	getReport     *connect.Client[v1.GetMockReportRequest, v1.MockReport]
+	createSession       *connect.Client[v1.CreateMockRequest, v1.MockSession]
+	getSession          *connect.Client[v1.GetMockSessionRequest, v1.MockSession]
+	sendMessage         *connect.Client[v1.MockMessageRequest, v1.MockMessage]
+	ingestStress        *connect.Client[v1.StressEventsBatch, v1.StressEventsBatch]
+	finishSession       *connect.Client[v1.FinishMockSessionRequest, v1.MockSession]
+	getReport           *connect.Client[v1.GetMockReportRequest, v1.MockReport]
+	getInsightsOverview *connect.Client[v1.GetInsightsOverviewRequest, v1.InsightsOverview]
 }
 
 // CreateSession calls druz9.v1.MockService.CreateSession.
@@ -164,6 +176,11 @@ func (c *mockServiceClient) GetReport(ctx context.Context, req *connect.Request[
 	return c.getReport.CallUnary(ctx, req)
 }
 
+// GetInsightsOverview calls druz9.v1.MockService.GetInsightsOverview.
+func (c *mockServiceClient) GetInsightsOverview(ctx context.Context, req *connect.Request[v1.GetInsightsOverviewRequest]) (*connect.Response[v1.InsightsOverview], error) {
+	return c.getInsightsOverview.CallUnary(ctx, req)
+}
+
 // MockServiceHandler is an implementation of the druz9.v1.MockService service.
 type MockServiceHandler interface {
 	// CreateSession starts a new AI mock interview.
@@ -179,6 +196,8 @@ type MockServiceHandler interface {
 	FinishSession(context.Context, *connect.Request[v1.FinishMockSessionRequest]) (*connect.Response[v1.MockSession], error)
 	// GetReport returns the final AI report for a finished session.
 	GetReport(context.Context, *connect.Request[v1.GetMockReportRequest]) (*connect.Response[v1.MockReport], error)
+	// GetInsightsOverview powers the /insights page's three live cards.
+	GetInsightsOverview(context.Context, *connect.Request[v1.GetInsightsOverviewRequest]) (*connect.Response[v1.InsightsOverview], error)
 }
 
 // NewMockServiceHandler builds an HTTP handler from the service implementation. It returns the path
@@ -224,6 +243,12 @@ func NewMockServiceHandler(svc MockServiceHandler, opts ...connect.HandlerOption
 		connect.WithSchema(mockServiceMethods.ByName("GetReport")),
 		connect.WithHandlerOptions(opts...),
 	)
+	mockServiceGetInsightsOverviewHandler := connect.NewUnaryHandler(
+		MockServiceGetInsightsOverviewProcedure,
+		svc.GetInsightsOverview,
+		connect.WithSchema(mockServiceMethods.ByName("GetInsightsOverview")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/druz9.v1.MockService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case MockServiceCreateSessionProcedure:
@@ -238,6 +263,8 @@ func NewMockServiceHandler(svc MockServiceHandler, opts ...connect.HandlerOption
 			mockServiceFinishSessionHandler.ServeHTTP(w, r)
 		case MockServiceGetReportProcedure:
 			mockServiceGetReportHandler.ServeHTTP(w, r)
+		case MockServiceGetInsightsOverviewProcedure:
+			mockServiceGetInsightsOverviewHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -269,4 +296,8 @@ func (UnimplementedMockServiceHandler) FinishSession(context.Context, *connect.R
 
 func (UnimplementedMockServiceHandler) GetReport(context.Context, *connect.Request[v1.GetMockReportRequest]) (*connect.Response[v1.MockReport], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.MockService.GetReport is not implemented"))
+}
+
+func (UnimplementedMockServiceHandler) GetInsightsOverview(context.Context, *connect.Request[v1.GetInsightsOverviewRequest]) (*connect.Response[v1.InsightsOverview], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.MockService.GetInsightsOverview is not implemented"))
 }

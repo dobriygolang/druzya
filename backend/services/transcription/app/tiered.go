@@ -33,16 +33,16 @@ type ModelSelector interface {
 
 // DefaultModelSelector — production mapping:
 //
-//	free      → whisper-large-v3-turbo (быстрее, базовое качество)
-//	seeker    → whisper-large-v3 (выше точность для русского/имён)
-//	ascended  → whisper-large-v3 (то же что seeker)
+//	free → whisper-large-v3-turbo (быстрее, базовое качество)
+//	pro  → whisper-large-v3 (выше точность для русского/имён)
+//	max  → whisper-large-v3 (то же что pro)
 //
 // Если приедет новый tier — turbo как conservative default (по cost'у).
 type DefaultModelSelector struct{}
 
 func (DefaultModelSelector) ModelForTier(tier string) string {
 	switch tier {
-	case "seeker", "ascended":
+	case "pro", "max", "seeker", "ascended", "ascendant":
 		return "whisper-large-v3"
 	default:
 		return "whisper-large-v3-turbo"

@@ -23,6 +23,13 @@ type Job struct {
 	PrevSummary string
 	// OldTurns — turns, которые нужно свернуть в summary (из BuildWindow.OldTurns).
 	OldTurns []Turn
+	// PinnedModel — Phase II context-preservation: если задана, summary
+	// пишется ровно этой моделью (не Task-роутингом). Caller обычно
+	// передаёт `conversation.Model` чтобы summary и chat были одной
+	// модели — иначе на следующем turn'е чат-модель читает summary,
+	// написанный другой моделью, и tone дрейфует. Пустая строка =
+	// legacy task-routing (TaskSummarize).
+	PinnedModel string
 }
 
 // SummaryStore — интерфейс persistent-слоя. Вызывается воркером после
@@ -30,8 +37,12 @@ type Job struct {
 // ai_mock/infra).
 type SummaryStore interface {
 	// Save атомарно записывает новый running_summary для sessionKey.
+	// summaryModel — реально сработавшая модель (Response.Provider/Model
+	// из llmchain) для attribution; используется на read-side чтобы
+	// детектировать drift при смене admin-конфига. Может быть пустой
+	// строкой (legacy / unknown) — store должен корректно handle nil.
 	// Ошибки пробрасываются вверх — воркер логирует и продолжает.
-	Save(ctx context.Context, sessionKey, summary string) error
+	Save(ctx context.Context, sessionKey, summary, summaryModel string) error
 }
 
 // WorkerConfig — параметры фона.
@@ -206,15 +217,24 @@ func (w *Worker) handle(ctx context.Context, j Job) {
 		return
 	}
 	prompt := buildSummaryPrompt(j.PrevSummary, j.OldTurns)
-	resp, err := w.chat.Chat(ctx, llmchain.Request{
-		Task: llmchain.TaskSummarize,
+	// Phase II: если caller прислал PinnedModel — пинимся к ней через
+	// ModelOverride (single-candidate, no fallback). Так summary пишется
+	// той же моделью что и сам chat, и tone не дрейфует на следующем turn'е.
+	// Пустая строка → legacy task-routing.
+	lreq := llmchain.Request{
 		Messages: []llmchain.Message{
 			{Role: llmchain.RoleSystem, Content: summarizerSystemPrompt},
 			{Role: llmchain.RoleUser, Content: prompt},
 		},
 		Temperature: w.cfg.Temperature,
 		MaxTokens:   w.cfg.MaxTokens,
-	})
+	}
+	if j.PinnedModel != "" {
+		lreq.ModelOverride = j.PinnedModel
+	} else {
+		lreq.Task = llmchain.TaskSummarize
+	}
+	resp, err := w.chat.Chat(ctx, lreq)
 	if err != nil {
 		w.metrics.Failed.Add(1)
 		w.log.Warn("compaction.Worker: summarize failed",
@@ -229,7 +249,13 @@ func (w *Worker) handle(ctx context.Context, j Job) {
 			slog.String("session_key", j.SessionKey))
 		return
 	}
-	if err := w.store.Save(ctx, j.SessionKey, newSummary); err != nil {
+	// summaryModel — фактический provider/model echo от llmchain. Пишется
+	// в attribution-колонку для drift-детекции на read-side (Phase II).
+	summaryModel := resp.Model
+	if summaryModel != "" && resp.Provider != "" {
+		summaryModel = string(resp.Provider) + "/" + summaryModel
+	}
+	if err := w.store.Save(ctx, j.SessionKey, newSummary, summaryModel); err != nil {
 		w.metrics.Failed.Add(1)
 		w.log.Warn("compaction.Worker: store save failed",
 			slog.String("session_key", j.SessionKey),

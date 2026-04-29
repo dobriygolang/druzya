@@ -42,8 +42,8 @@ func (h *UserNotificationsHandler) Mount(r chi.Router) {
 	r.Get("/notifications", h.handleList)
 	r.Get("/notifications/unread_count", h.handleUnread)
 	r.Post("/notifications/read_all", h.handleReadAll)
-	r.Get("/notifications/prefs", h.handleGetPrefs)
-	r.Put("/notifications/prefs", h.handleUpdatePrefs)
+	r.Get("/notifications/prefs", h.HandleGetPrefs)
+	r.Put("/notifications/prefs", h.HandleUpdatePrefs)
 	r.Post("/notifications/{id}/read", h.handleMarkRead)
 }
 
@@ -159,7 +159,7 @@ func (h *UserNotificationsHandler) handleReadAll(w http.ResponseWriter, r *http.
 	writeJSON(w, http.StatusOK, map[string]any{"updated": n})
 }
 
-func (h *UserNotificationsHandler) handleGetPrefs(w http.ResponseWriter, r *http.Request) {
+func (h *UserNotificationsHandler) HandleGetPrefs(w http.ResponseWriter, r *http.Request) {
 	uid, ok := sharedMw.UserIDFromContext(r.Context())
 	if !ok {
 		writeJSONError(w, http.StatusUnauthorized, "unauthenticated")
@@ -179,7 +179,7 @@ type prefsRequest struct {
 	SilenceUntil   *time.Time      `json:"silence_until"`
 }
 
-func (h *UserNotificationsHandler) handleUpdatePrefs(w http.ResponseWriter, r *http.Request) {
+func (h *UserNotificationsHandler) HandleUpdatePrefs(w http.ResponseWriter, r *http.Request) {
 	uid, ok := sharedMw.UserIDFromContext(r.Context())
 	if !ok {
 		writeJSONError(w, http.StatusUnauthorized, "unauthenticated")

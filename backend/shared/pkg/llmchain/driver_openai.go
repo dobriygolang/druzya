@@ -150,6 +150,17 @@ type oaiUsage struct {
 
 func (d *openAIDriver) Provider() Provider { return d.provider }
 
+// Capabilities — Phase IV: driver caps на wire-уровне. Tools пока ни
+// одна задача не использует, поэтому false по умолчанию для всех
+// OpenAI-compat драйверов; при необходимости конкретный provider-файл
+// может выставить true (как с supportsVision/supportsJSONMode).
+func (d *openAIDriver) Capabilities() Capabilities {
+	return Capabilities{
+		JSONMode: d.supportsJSONMode,
+		Tools:    false,
+	}
+}
+
 func (d *openAIDriver) Chat(ctx context.Context, model string, req Request) (Response, error) {
 	if req.ModelOverride != "" {
 		model = stripProviderPrefix(model)

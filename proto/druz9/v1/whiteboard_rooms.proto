@@ -81,4 +81,31 @@ service WhiteboardRoomsService {
   rpc DeleteRoom(DeleteWhiteboardRoomRequest) returns (DeleteWhiteboardRoomResponse) {
     option (google.api.http) = {delete: "/api/v1/whiteboard/room/{room_id}"};
   }
+
+  // GetVisibility returns "private"|"shared".
+  rpc GetVisibility(GetWhiteboardVisibilityRequest) returns (WhiteboardVisibility) {
+    option (google.api.http) = {get: "/api/v1/whiteboard/room/{room_id}/visibility"};
+  }
+
+  // SetVisibility flips visibility. Owner-only; quota-gated on
+  // private→shared flips.
+  rpc SetVisibility(SetWhiteboardVisibilityRequest) returns (WhiteboardVisibility) {
+    option (google.api.http) = {
+      post: "/api/v1/whiteboard/room/{room_id}/visibility"
+      body: "*"
+    };
+  }
+}
+
+message WhiteboardVisibility {
+  string visibility = 1;
+}
+
+message GetWhiteboardVisibilityRequest {
+  string room_id = 1;
+}
+
+message SetWhiteboardVisibilityRequest {
+  string room_id = 1;
+  string visibility = 2;
 }

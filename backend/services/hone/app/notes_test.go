@@ -133,20 +133,24 @@ func (fakeNoteRepo) Move(context.Context, uuid.UUID, uuid.UUID, *uuid.UUID) (dom
 	return domain.Note{}, domain.ErrNotFound
 }
 
-func (fakeNoteRepo) SetArchived(context.Context, uuid.UUID, uuid.UUID, bool) error {
-	return nil
-}
-
 func (fakeNoteRepo) SetEmbedding(context.Context, uuid.UUID, uuid.UUID, []float32, string, time.Time) error {
 	return nil
 }
 
-func (fakeNoteRepo) WithEmbeddingsForUser(context.Context, uuid.UUID) ([]domain.NoteEmbedding, error) {
+func (fakeNoteRepo) WithEmbeddingsForUser(context.Context, uuid.UUID, string) ([]domain.NoteEmbedding, error) {
 	return nil, nil
 }
 
 func (fakeNoteRepo) ExistsByTitleForUser(context.Context, uuid.UUID, string) (bool, error) {
 	return false, nil
+}
+
+func (fakeNoteRepo) MarkStaleForReembed(context.Context, string) (int64, error) {
+	return 0, nil
+}
+
+func (fakeNoteRepo) SearchSimilarNotes(context.Context, uuid.UUID, []float32, string, uuid.UUID, float32, int) ([]domain.NoteSimilarityHit, error) {
+	return nil, nil
 }
 
 type noteMemoryHook struct {

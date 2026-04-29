@@ -16,10 +16,10 @@ func planToProto(p enums.SubscriptionPlan) pb.SubscriptionPlan {
 	switch p {
 	case enums.SubscriptionPlanFree:
 		return pb.SubscriptionPlan_SUBSCRIPTION_PLAN_FREE
-	case enums.SubscriptionPlanSeeker:
-		return pb.SubscriptionPlan_SUBSCRIPTION_PLAN_SEEKER
-	case enums.SubscriptionPlanAscendant:
-		return pb.SubscriptionPlan_SUBSCRIPTION_PLAN_ASCENDANT
+	case enums.SubscriptionPlanPro:
+		return pb.SubscriptionPlan_SUBSCRIPTION_PLAN_PRO
+	case enums.SubscriptionPlanMax:
+		return pb.SubscriptionPlan_SUBSCRIPTION_PLAN_MAX
 	default:
 		return pb.SubscriptionPlan_SUBSCRIPTION_PLAN_UNSPECIFIED
 	}

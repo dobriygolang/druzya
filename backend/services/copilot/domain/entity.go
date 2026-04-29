@@ -21,6 +21,12 @@ type Conversation struct {
 	// compaction.Worker. Пустая строка у новых диалогов. Загружается только
 	// через Get (Create/List не возвращают, чтобы не раздувать history).
 	RunningSummary string
+	// SummaryModel — Phase II attribution: provider/model echo от
+	// llmchain которая написала текущий RunningSummary. Пустая строка =
+	// summary не писался / писался legacy-кодом без attribution. Phase VI
+	// сравнивает с Model — при mismatch (admin сменил pinned-модель)
+	// форсирует regen чтобы summary совпадал стилем с chat.
+	SummaryModel string
 }
 
 // Message is a single turn. Screenshots are not persisted — HasScreenshot is
@@ -126,11 +132,16 @@ func (q Quota) RotateIfDue(now time.Time) (Quota, bool) {
 	return q, false
 }
 
-// IsModelAllowed checks membership in ModelsAllowed. Empty ModelsAllowed
-// means "no restriction" — plans usually constrain this, not the empty set.
+// IsModelAllowed checks whether modelID is usable on this quota's plan.
+// Free is deliberately pinned to the virtual turbo chain even if an older
+// DB row still contains direct free-model ids. Empty ModelsAllowed means
+// "no restriction" for paid tiers.
 func (q Quota) IsModelAllowed(modelID string) bool {
+	if q.Plan == enums.SubscriptionPlanFree || q.Plan == "" {
+		return modelID == "druz9/turbo"
+	}
 	if len(q.ModelsAllowed) == 0 {
-		return false
+		return true
 	}
 	for _, m := range q.ModelsAllowed {
 		if m == modelID {

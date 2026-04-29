@@ -14,7 +14,7 @@ func TestGetTier_Success(t *testing.T) {
 			t.Errorf("bad path: %s", r.URL.Path)
 		}
 		w.Header().Set("Content-Type", "application/json")
-		_, _ = w.Write([]byte(`{"tier":"seeker"}`))
+		_, _ = w.Write([]byte(`{"tier":"pro"}`))
 	}))
 	defer srv.Close()
 
@@ -23,8 +23,8 @@ func TestGetTier_Success(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected err: %v", err)
 	}
-	if tier != TierSeeker {
-		t.Fatalf("want seeker, got %s", tier)
+	if tier != TierPro {
+		t.Fatalf("want pro, got %s", tier)
 	}
 }
 
@@ -73,7 +73,7 @@ func TestGetTier_UnknownTier_FailOpenToFree(t *testing.T) {
 func TestGetTier_Timeout_FailOpenToFree(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		time.Sleep(200 * time.Millisecond)
-		_, _ = w.Write([]byte(`{"tier":"seeker"}`))
+		_, _ = w.Write([]byte(`{"tier":"pro"}`))
 	}))
 	defer srv.Close()
 
@@ -101,10 +101,10 @@ func TestHasAccess_Table(t *testing.T) {
 		want bool
 	}{
 		{TierFree, TierFree, true},
-		{TierFree, TierSeeker, false},
-		{TierSeeker, TierSeeker, true},
-		{TierSeeker, TierAscendant, false},
-		{TierAscendant, TierAscendant, true},
+		{TierFree, TierPro, false},
+		{TierPro, TierPro, true},
+		{TierPro, TierMax, false},
+		{TierMax, TierMax, true},
 	}
 	for _, c := range cases {
 		if got := HasAccess(c.u, c.r); got != c.want {

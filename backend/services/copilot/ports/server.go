@@ -26,6 +26,7 @@ import (
 	"druz9/copilot/domain"
 	pb "druz9/shared/generated/pb/druz9/v1"
 	"druz9/shared/generated/pb/druz9/v1/druz9v1connect"
+	"druz9/shared/pkg/llmchain"
 	sharedMw "druz9/shared/pkg/middleware"
 	"druz9/shared/pkg/ratelimit"
 
@@ -656,6 +657,14 @@ func (s *CopilotServer) toConnectErr(err error) error {
 		return connect.NewError(connect.CodeResourceExhausted, err)
 	case errors.Is(err, domain.ErrModelNotAllowed):
 		return connect.NewError(connect.CodePermissionDenied, err)
+	case errors.Is(err, llmchain.ErrTierRequired):
+		// Phase III: tier-downgrade pinned conversation. Раньше ошибка
+		// падала в default → "copilot failure" CodeInternal без внятного
+		// сообщения. Теперь FailedPrecondition с полным err.Error()
+		// (включает требуемый tier и текущий) — frontend парсит и
+		// показывает upgrade-prompt либо предлагает создать новую
+		// conversation на доступной модели.
+		return connect.NewError(connect.CodeFailedPrecondition, err)
 	case errors.Is(err, domain.ErrServiceUnavailable):
 		// Killswitch / dependency down. Симметрично с RPC-стрим
 		// payload'ом (см. classifyStreamError'-> "service_unavailable").

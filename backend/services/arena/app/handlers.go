@@ -283,6 +283,11 @@ func (uc *SubmitCode) Do(ctx context.Context, in SubmitCodeInput) (SubmitCodeOut
 					EloDeltas:  map[uuid.UUID]int{}, // реальную дельту считает rating domain
 					DurationMs: dur,
 				})
+				// Phase H: XP-credit (см. publishMatchXP-helper ниже).
+				publishMatchXP(ctx, uc.Bus, uc.Log, in.MatchID, in.UserID, 50)
+				for _, loser := range losers {
+					publishMatchXP(ctx, uc.Bus, uc.Log, in.MatchID, loser, 10)
+				}
 			}
 		}
 	}
@@ -360,6 +365,32 @@ func (uc *SubmitCode) maybeFinishDuo(
 		EloDeltas:  map[uuid.UUID]int{},
 		DurationMs: dur,
 	})
+	// Phase H: XP-credit участникам. Winner: 50 XP, Loser: 10 XP
+	// (consolation — соревновательная нагрузка тоже учитывается). Numbers
+	// hardcoded на старте; админ-config возможен как Phase VIII follow-up
+	// аналогично quota_policy.
+	publishMatchXP(ctx, uc.Bus, uc.Log, matchID, justFinishedUser, 50)
+	for _, loser := range losers {
+		publishMatchXP(ctx, uc.Bus, uc.Log, matchID, loser, 10)
+	}
+}
+
+// publishMatchXP — single-emit helper для arena XPGained. SourceID =
+// match_id чтобы downstream аналитика могла корелировать с arena_matches.
+func publishMatchXP(ctx context.Context, bus sharedDomain.Bus, log *slog.Logger, matchID, userID uuid.UUID, amount int) {
+	if bus == nil || amount <= 0 {
+		return
+	}
+	mid := matchID
+	if perr := bus.Publish(ctx, sharedDomain.XPGained{
+		UserID:   userID,
+		Amount:   amount,
+		Reason:   "arena_match_completed",
+		SourceID: &mid,
+	}); perr != nil && log != nil {
+		log.WarnContext(ctx, "arena.MatchCompleted: publish XPGained failed",
+			slog.Any("err", perr), slog.Any("user", userID))
+	}
 }
 
 // GetMatch возвращает связку match+participants.

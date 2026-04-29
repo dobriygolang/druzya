@@ -74,17 +74,21 @@ type Config struct {
 		// admin-endpoint.
 		BoostyAccessToken string
 		BoostyBlogSlug    string // URL-slug блога (boosty.to/{this_slug})
-		// TierMapping — формат "Поддержка:seeker,Вознёсшийся:ascendant".
+		// TierMapping — формат "Поддержка:pro,Вознёсшийся:max".
 		// Ключ — exact имя уровня у Boosty (Cyrillic sensitive), значение —
-		// наш tier free|seeker|ascendant. Пустое → sync не сможет маппить
+		// наш tier free|pro|max. Пустое → sync не сможет маппить
 		// tier'ы и будет все их пропускать с bad_tier-инкрементом.
 		BoostyTierMapping string
 	}
 
 	LLMChain struct {
-		GroqAPIKey     string
-		CerebrasAPIKey string
-		MistralAPIKey  string
+		GroqAPIKey          string
+		CerebrasAPIKey      string
+		MistralAPIKey       string
+		GoogleAPIKey        string
+		CloudflareAPIKey    string
+		CloudflareAccountID string
+		ZAIAPIKey           string
 		// DeepSeekAPIKey — платный provider для paid-lane (deepseek-chat
 		// V3 и deepseek-reasoner R1). Используется в virtual-chain'ах
 		// druz9/pro и druz9/reasoning. Пустая строка → driver не регится,
@@ -158,12 +162,16 @@ func Load() (Config, error) {
 	c.LLMChain.GroqAPIKey = env("GROQ_API_KEY", "")
 	c.LLMChain.CerebrasAPIKey = env("CEREBRAS_API_KEY", "")
 	c.LLMChain.MistralAPIKey = env("MISTRAL_API_KEY", "")
+	c.LLMChain.GoogleAPIKey = env("GOOGLE_API_KEY", "")
+	c.LLMChain.CloudflareAPIKey = env("CLOUDFLARE_API_KEY", "")
+	c.LLMChain.CloudflareAccountID = env("CLOUDFLARE_ACCOUNT_ID", "")
+	c.LLMChain.ZAIAPIKey = env("ZAI_API_KEY", "")
 	c.LLMChain.DeepSeekAPIKey = env("DEEPSEEK_API_KEY", "")
 	c.Subscription.BoostyAccessToken = env("BOOSTY_ACCESS_TOKEN", "")
 	c.Subscription.BoostyBlogSlug = env("BOOSTY_BLOG_SLUG", "")
 	c.Subscription.BoostyTierMapping = env("BOOSTY_TIER_MAPPING", "")
 	c.LLMChain.OllamaHost = env("OLLAMA_HOST", "")
-	c.LLMChain.ChainOrder = env("LLM_CHAIN_ORDER", "groq,cerebras,openrouter")
+	c.LLMChain.ChainOrder = env("LLM_CHAIN_ORDER", "groq,cerebras,google,cloudflare,zai,mistral,openrouter")
 
 	c.Notify.TelegramBotToken = c.Auth.TelegramBotToken
 	c.Notify.TelegramWebhookSecret = env("TELEGRAM_WEBHOOK_SECRET", "")

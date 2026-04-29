@@ -8,11 +8,11 @@ import (
 )
 
 func TestTierRank_Monotonic(t *testing.T) {
-	if TierRank(TierFree) >= TierRank(TierSeeker) {
-		t.Fatal("free ≥ seeker")
+	if TierRank(TierFree) >= TierRank(TierPro) {
+		t.Fatal("free ≥ pro")
 	}
-	if TierRank(TierSeeker) >= TierRank(TierAscended) {
-		t.Fatal("seeker ≥ ascended")
+	if TierRank(TierPro) >= TierRank(TierMax) {
+		t.Fatal("pro ≥ max")
 	}
 	if TierRank("unknown") != 0 {
 		t.Fatal("unknown tier must rank 0")
@@ -25,14 +25,14 @@ func TestHasAccess(t *testing.T) {
 		want           bool
 	}{
 		{TierFree, TierFree, true},
-		{TierFree, TierSeeker, false},
-		{TierFree, TierAscended, false},
-		{TierSeeker, TierFree, true},
-		{TierSeeker, TierSeeker, true},
-		{TierSeeker, TierAscended, false},
-		{TierAscended, TierFree, true},
-		{TierAscended, TierSeeker, true},
-		{TierAscended, TierAscended, true},
+		{TierFree, TierPro, false},
+		{TierFree, TierMax, false},
+		{TierPro, TierFree, true},
+		{TierPro, TierPro, true},
+		{TierPro, TierMax, false},
+		{TierMax, TierFree, true},
+		{TierMax, TierPro, true},
+		{TierMax, TierMax, true},
 	}
 	for _, c := range cases {
 		if got := HasAccess(c.user, c.required); got != c.want {
@@ -54,14 +54,14 @@ func TestSubscription_ActiveAt(t *testing.T) {
 	})
 
 	t.Run("cancelled degrades to free even before expiry", func(t *testing.T) {
-		s := Subscription{Tier: TierSeeker, Status: StatusCancelled, CurrentPeriodEnd: &future}
+		s := Subscription{Tier: TierPro, Status: StatusCancelled, CurrentPeriodEnd: &future}
 		if s.ActiveAt(now) != TierFree {
 			t.Fatal("cancelled must degrade")
 		}
 	})
 
 	t.Run("expired by current_period_end degrades", func(t *testing.T) {
-		s := Subscription{Tier: TierSeeker, Status: StatusActive, CurrentPeriodEnd: &past}
+		s := Subscription{Tier: TierPro, Status: StatusActive, CurrentPeriodEnd: &past}
 		if s.ActiveAt(now) != TierFree {
 			t.Fatal("past CPE must degrade")
 		}
@@ -69,19 +69,19 @@ func TestSubscription_ActiveAt(t *testing.T) {
 
 	t.Run("grace period extends beyond CPE", func(t *testing.T) {
 		s := Subscription{
-			Tier:             TierAscended,
+			Tier:             TierMax,
 			Status:           StatusActive,
 			CurrentPeriodEnd: &past,
 			GraceUntil:       &future,
 		}
-		if s.ActiveAt(now) != TierAscended {
+		if s.ActiveAt(now) != TierMax {
 			t.Fatal("grace must keep tier active")
 		}
 	})
 
 	t.Run("admin grant without expiry stays active", func(t *testing.T) {
-		s := Subscription{Tier: TierAscended, Status: StatusActive, Provider: ProviderAdmin}
-		if s.ActiveAt(now) != TierAscended {
+		s := Subscription{Tier: TierMax, Status: StatusActive, Provider: ProviderAdmin}
+		if s.ActiveAt(now) != TierMax {
 			t.Fatal("admin grant must stay active bessrochno")
 		}
 	})

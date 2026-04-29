@@ -189,7 +189,26 @@ func (p *Postgres) ApplyXPDelta(ctx context.Context, userID uuid.UUID, addXP int
 	}); err != nil {
 		return fmt.Errorf("profile.Postgres.ApplyXPDelta: %w", err)
 	}
-	_ = addXP // carried through via the XP event for audit
+	_ = addXP // sub-event audit пишется отдельным RecordXPEvent
+	return nil
+}
+
+// RecordXPEvent — Phase H audit log row. SQL-CHECK на source гарантирует
+// closed-set; некорректный source ловится тут с ошибкой 23514 → caller
+// должен починить мапинг (см. xpEventSourceFromReason в profile/app).
+func (p *Postgres) RecordXPEvent(ctx context.Context, userID uuid.UUID, amount int, source string, sourceID *uuid.UUID) error {
+	var sid pgtype.UUID
+	if sourceID != nil && *sourceID != uuid.Nil {
+		sid = sharedpg.UUID(*sourceID)
+	}
+	if err := p.q.InsertXPEvent(ctx, profiledb.InsertXPEventParams{
+		UserID:   sharedpg.UUID(userID),
+		Amount:   int32(amount),
+		Source:   source,
+		SourceID: sid,
+	}); err != nil {
+		return fmt.Errorf("profile.Postgres.RecordXPEvent: %w", err)
+	}
 	return nil
 }
 

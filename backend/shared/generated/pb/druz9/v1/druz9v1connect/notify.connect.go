@@ -46,6 +46,20 @@ const (
 	// NotifyServiceUpdatePreferencesProcedure is the fully-qualified name of the NotifyService's
 	// UpdatePreferences RPC.
 	NotifyServiceUpdatePreferencesProcedure = "/druz9.v1.NotifyService/UpdatePreferences"
+	// NotifyServiceListNotificationsProcedure is the fully-qualified name of the NotifyService's
+	// ListNotifications RPC.
+	NotifyServiceListNotificationsProcedure = "/druz9.v1.NotifyService/ListNotifications"
+	// NotifyServiceCountUnreadProcedure is the fully-qualified name of the NotifyService's CountUnread
+	// RPC.
+	NotifyServiceCountUnreadProcedure = "/druz9.v1.NotifyService/CountUnread"
+	// NotifyServiceMarkReadProcedure is the fully-qualified name of the NotifyService's MarkRead RPC.
+	NotifyServiceMarkReadProcedure = "/druz9.v1.NotifyService/MarkRead"
+	// NotifyServiceMarkAllReadProcedure is the fully-qualified name of the NotifyService's MarkAllRead
+	// RPC.
+	NotifyServiceMarkAllReadProcedure = "/druz9.v1.NotifyService/MarkAllRead"
+	// NotifyServiceCreateSupportTicketProcedure is the fully-qualified name of the NotifyService's
+	// CreateSupportTicket RPC.
+	NotifyServiceCreateSupportTicketProcedure = "/druz9.v1.NotifyService/CreateSupportTicket"
 )
 
 // NotifyServiceClient is a client for the druz9.v1.NotifyService service.
@@ -54,6 +68,16 @@ type NotifyServiceClient interface {
 	GetPreferences(context.Context, *connect.Request[v1.GetNotifyPreferencesRequest]) (*connect.Response[v1.NotificationPreferences], error)
 	// UpdatePreferences upserts the caller's notification preferences.
 	UpdatePreferences(context.Context, *connect.Request[v1.UpdateNotifyPreferencesRequest]) (*connect.Response[v1.NotificationPreferences], error)
+	// ─── In-app notifications feed ────────────────────────────────────────
+	ListNotifications(context.Context, *connect.Request[v1.ListNotificationsRequest]) (*connect.Response[v1.NotificationList], error)
+	CountUnread(context.Context, *connect.Request[v1.CountUnreadRequest]) (*connect.Response[v1.UnreadCount], error)
+	MarkRead(context.Context, *connect.Request[v1.MarkReadRequest]) (*connect.Response[v1.MarkReadResponse], error)
+	MarkAllRead(context.Context, *connect.Request[v1.MarkAllReadRequest]) (*connect.Response[v1.MarkAllReadResponse], error)
+	// ─── Support ticket (anonymous-readable POST) ─────────────────────────
+	// schema_v2 forces contact_kind = "telegram"; clients that omit it get
+	// the same default. Validation lives server-side — server returns
+	// InvalidArgument on bad input.
+	CreateSupportTicket(context.Context, *connect.Request[v1.CreateSupportTicketRequest]) (*connect.Response[v1.CreateSupportTicketResponse], error)
 }
 
 // NewNotifyServiceClient constructs a client for the druz9.v1.NotifyService service. By default, it
@@ -79,13 +103,48 @@ func NewNotifyServiceClient(httpClient connect.HTTPClient, baseURL string, opts 
 			connect.WithSchema(notifyServiceMethods.ByName("UpdatePreferences")),
 			connect.WithClientOptions(opts...),
 		),
+		listNotifications: connect.NewClient[v1.ListNotificationsRequest, v1.NotificationList](
+			httpClient,
+			baseURL+NotifyServiceListNotificationsProcedure,
+			connect.WithSchema(notifyServiceMethods.ByName("ListNotifications")),
+			connect.WithClientOptions(opts...),
+		),
+		countUnread: connect.NewClient[v1.CountUnreadRequest, v1.UnreadCount](
+			httpClient,
+			baseURL+NotifyServiceCountUnreadProcedure,
+			connect.WithSchema(notifyServiceMethods.ByName("CountUnread")),
+			connect.WithClientOptions(opts...),
+		),
+		markRead: connect.NewClient[v1.MarkReadRequest, v1.MarkReadResponse](
+			httpClient,
+			baseURL+NotifyServiceMarkReadProcedure,
+			connect.WithSchema(notifyServiceMethods.ByName("MarkRead")),
+			connect.WithClientOptions(opts...),
+		),
+		markAllRead: connect.NewClient[v1.MarkAllReadRequest, v1.MarkAllReadResponse](
+			httpClient,
+			baseURL+NotifyServiceMarkAllReadProcedure,
+			connect.WithSchema(notifyServiceMethods.ByName("MarkAllRead")),
+			connect.WithClientOptions(opts...),
+		),
+		createSupportTicket: connect.NewClient[v1.CreateSupportTicketRequest, v1.CreateSupportTicketResponse](
+			httpClient,
+			baseURL+NotifyServiceCreateSupportTicketProcedure,
+			connect.WithSchema(notifyServiceMethods.ByName("CreateSupportTicket")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
 // notifyServiceClient implements NotifyServiceClient.
 type notifyServiceClient struct {
-	getPreferences    *connect.Client[v1.GetNotifyPreferencesRequest, v1.NotificationPreferences]
-	updatePreferences *connect.Client[v1.UpdateNotifyPreferencesRequest, v1.NotificationPreferences]
+	getPreferences      *connect.Client[v1.GetNotifyPreferencesRequest, v1.NotificationPreferences]
+	updatePreferences   *connect.Client[v1.UpdateNotifyPreferencesRequest, v1.NotificationPreferences]
+	listNotifications   *connect.Client[v1.ListNotificationsRequest, v1.NotificationList]
+	countUnread         *connect.Client[v1.CountUnreadRequest, v1.UnreadCount]
+	markRead            *connect.Client[v1.MarkReadRequest, v1.MarkReadResponse]
+	markAllRead         *connect.Client[v1.MarkAllReadRequest, v1.MarkAllReadResponse]
+	createSupportTicket *connect.Client[v1.CreateSupportTicketRequest, v1.CreateSupportTicketResponse]
 }
 
 // GetPreferences calls druz9.v1.NotifyService.GetPreferences.
@@ -98,12 +157,47 @@ func (c *notifyServiceClient) UpdatePreferences(ctx context.Context, req *connec
 	return c.updatePreferences.CallUnary(ctx, req)
 }
 
+// ListNotifications calls druz9.v1.NotifyService.ListNotifications.
+func (c *notifyServiceClient) ListNotifications(ctx context.Context, req *connect.Request[v1.ListNotificationsRequest]) (*connect.Response[v1.NotificationList], error) {
+	return c.listNotifications.CallUnary(ctx, req)
+}
+
+// CountUnread calls druz9.v1.NotifyService.CountUnread.
+func (c *notifyServiceClient) CountUnread(ctx context.Context, req *connect.Request[v1.CountUnreadRequest]) (*connect.Response[v1.UnreadCount], error) {
+	return c.countUnread.CallUnary(ctx, req)
+}
+
+// MarkRead calls druz9.v1.NotifyService.MarkRead.
+func (c *notifyServiceClient) MarkRead(ctx context.Context, req *connect.Request[v1.MarkReadRequest]) (*connect.Response[v1.MarkReadResponse], error) {
+	return c.markRead.CallUnary(ctx, req)
+}
+
+// MarkAllRead calls druz9.v1.NotifyService.MarkAllRead.
+func (c *notifyServiceClient) MarkAllRead(ctx context.Context, req *connect.Request[v1.MarkAllReadRequest]) (*connect.Response[v1.MarkAllReadResponse], error) {
+	return c.markAllRead.CallUnary(ctx, req)
+}
+
+// CreateSupportTicket calls druz9.v1.NotifyService.CreateSupportTicket.
+func (c *notifyServiceClient) CreateSupportTicket(ctx context.Context, req *connect.Request[v1.CreateSupportTicketRequest]) (*connect.Response[v1.CreateSupportTicketResponse], error) {
+	return c.createSupportTicket.CallUnary(ctx, req)
+}
+
 // NotifyServiceHandler is an implementation of the druz9.v1.NotifyService service.
 type NotifyServiceHandler interface {
 	// GetPreferences returns the caller's notification preferences row.
 	GetPreferences(context.Context, *connect.Request[v1.GetNotifyPreferencesRequest]) (*connect.Response[v1.NotificationPreferences], error)
 	// UpdatePreferences upserts the caller's notification preferences.
 	UpdatePreferences(context.Context, *connect.Request[v1.UpdateNotifyPreferencesRequest]) (*connect.Response[v1.NotificationPreferences], error)
+	// ─── In-app notifications feed ────────────────────────────────────────
+	ListNotifications(context.Context, *connect.Request[v1.ListNotificationsRequest]) (*connect.Response[v1.NotificationList], error)
+	CountUnread(context.Context, *connect.Request[v1.CountUnreadRequest]) (*connect.Response[v1.UnreadCount], error)
+	MarkRead(context.Context, *connect.Request[v1.MarkReadRequest]) (*connect.Response[v1.MarkReadResponse], error)
+	MarkAllRead(context.Context, *connect.Request[v1.MarkAllReadRequest]) (*connect.Response[v1.MarkAllReadResponse], error)
+	// ─── Support ticket (anonymous-readable POST) ─────────────────────────
+	// schema_v2 forces contact_kind = "telegram"; clients that omit it get
+	// the same default. Validation lives server-side — server returns
+	// InvalidArgument on bad input.
+	CreateSupportTicket(context.Context, *connect.Request[v1.CreateSupportTicketRequest]) (*connect.Response[v1.CreateSupportTicketResponse], error)
 }
 
 // NewNotifyServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -125,12 +219,52 @@ func NewNotifyServiceHandler(svc NotifyServiceHandler, opts ...connect.HandlerOp
 		connect.WithSchema(notifyServiceMethods.ByName("UpdatePreferences")),
 		connect.WithHandlerOptions(opts...),
 	)
+	notifyServiceListNotificationsHandler := connect.NewUnaryHandler(
+		NotifyServiceListNotificationsProcedure,
+		svc.ListNotifications,
+		connect.WithSchema(notifyServiceMethods.ByName("ListNotifications")),
+		connect.WithHandlerOptions(opts...),
+	)
+	notifyServiceCountUnreadHandler := connect.NewUnaryHandler(
+		NotifyServiceCountUnreadProcedure,
+		svc.CountUnread,
+		connect.WithSchema(notifyServiceMethods.ByName("CountUnread")),
+		connect.WithHandlerOptions(opts...),
+	)
+	notifyServiceMarkReadHandler := connect.NewUnaryHandler(
+		NotifyServiceMarkReadProcedure,
+		svc.MarkRead,
+		connect.WithSchema(notifyServiceMethods.ByName("MarkRead")),
+		connect.WithHandlerOptions(opts...),
+	)
+	notifyServiceMarkAllReadHandler := connect.NewUnaryHandler(
+		NotifyServiceMarkAllReadProcedure,
+		svc.MarkAllRead,
+		connect.WithSchema(notifyServiceMethods.ByName("MarkAllRead")),
+		connect.WithHandlerOptions(opts...),
+	)
+	notifyServiceCreateSupportTicketHandler := connect.NewUnaryHandler(
+		NotifyServiceCreateSupportTicketProcedure,
+		svc.CreateSupportTicket,
+		connect.WithSchema(notifyServiceMethods.ByName("CreateSupportTicket")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/druz9.v1.NotifyService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case NotifyServiceGetPreferencesProcedure:
 			notifyServiceGetPreferencesHandler.ServeHTTP(w, r)
 		case NotifyServiceUpdatePreferencesProcedure:
 			notifyServiceUpdatePreferencesHandler.ServeHTTP(w, r)
+		case NotifyServiceListNotificationsProcedure:
+			notifyServiceListNotificationsHandler.ServeHTTP(w, r)
+		case NotifyServiceCountUnreadProcedure:
+			notifyServiceCountUnreadHandler.ServeHTTP(w, r)
+		case NotifyServiceMarkReadProcedure:
+			notifyServiceMarkReadHandler.ServeHTTP(w, r)
+		case NotifyServiceMarkAllReadProcedure:
+			notifyServiceMarkAllReadHandler.ServeHTTP(w, r)
+		case NotifyServiceCreateSupportTicketProcedure:
+			notifyServiceCreateSupportTicketHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -146,4 +280,24 @@ func (UnimplementedNotifyServiceHandler) GetPreferences(context.Context, *connec
 
 func (UnimplementedNotifyServiceHandler) UpdatePreferences(context.Context, *connect.Request[v1.UpdateNotifyPreferencesRequest]) (*connect.Response[v1.NotificationPreferences], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.NotifyService.UpdatePreferences is not implemented"))
+}
+
+func (UnimplementedNotifyServiceHandler) ListNotifications(context.Context, *connect.Request[v1.ListNotificationsRequest]) (*connect.Response[v1.NotificationList], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.NotifyService.ListNotifications is not implemented"))
+}
+
+func (UnimplementedNotifyServiceHandler) CountUnread(context.Context, *connect.Request[v1.CountUnreadRequest]) (*connect.Response[v1.UnreadCount], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.NotifyService.CountUnread is not implemented"))
+}
+
+func (UnimplementedNotifyServiceHandler) MarkRead(context.Context, *connect.Request[v1.MarkReadRequest]) (*connect.Response[v1.MarkReadResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.NotifyService.MarkRead is not implemented"))
+}
+
+func (UnimplementedNotifyServiceHandler) MarkAllRead(context.Context, *connect.Request[v1.MarkAllReadRequest]) (*connect.Response[v1.MarkAllReadResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.NotifyService.MarkAllRead is not implemented"))
+}
+
+func (UnimplementedNotifyServiceHandler) CreateSupportTicket(context.Context, *connect.Request[v1.CreateSupportTicketRequest]) (*connect.Response[v1.CreateSupportTicketResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.NotifyService.CreateSupportTicket is not implemented"))
 }

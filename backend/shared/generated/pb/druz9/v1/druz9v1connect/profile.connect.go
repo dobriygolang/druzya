@@ -74,6 +74,15 @@ const (
 	// ProfileServiceRejectInterviewerApplicationProcedure is the fully-qualified name of the
 	// ProfileService's RejectInterviewerApplication RPC.
 	ProfileServiceRejectInterviewerApplicationProcedure = "/druz9.v1.ProfileService/RejectInterviewerApplication"
+	// ProfileServiceAllocateAtlasSkillProcedure is the fully-qualified name of the ProfileService's
+	// AllocateAtlasSkill RPC.
+	ProfileServiceAllocateAtlasSkillProcedure = "/druz9.v1.ProfileService/AllocateAtlasSkill"
+	// ProfileServiceGetAIVacanciesModelProcedure is the fully-qualified name of the ProfileService's
+	// GetAIVacanciesModel RPC.
+	ProfileServiceGetAIVacanciesModelProcedure = "/druz9.v1.ProfileService/GetAIVacanciesModel"
+	// ProfileServiceSetAIVacanciesModelProcedure is the fully-qualified name of the ProfileService's
+	// SetAIVacanciesModel RPC.
+	ProfileServiceSetAIVacanciesModelProcedure = "/druz9.v1.ProfileService/SetAIVacanciesModel"
 )
 
 // ProfileServiceClient is a client for the druz9.v1.ProfileService service.
@@ -115,6 +124,15 @@ type ProfileServiceClient interface {
 	// RejectInterviewerApplication — admin marks application rejected
 	// (with optional note). Does NOT touch users.role.
 	RejectInterviewerApplication(context.Context, *connect.Request[v1.RejectInterviewerApplicationRequest]) (*connect.Response[v1.InterviewerApplication], error)
+	// AllocateAtlasSkill grants the caller +N progress on the given atlas
+	// skill node. Used by the Atlas page's "claim 1 free point" button.
+	AllocateAtlasSkill(context.Context, *connect.Request[v1.AllocateAtlasSkillRequest]) (*connect.Response[v1.AllocateAtlasSkillResponse], error)
+	// GetAIVacanciesModel returns the user's chosen LLM for the AI vacancy
+	// recommender. Empty string means "server default".
+	GetAIVacanciesModel(context.Context, *connect.Request[v1.GetAIVacanciesModelRequest]) (*connect.Response[v1.AIVacanciesModel], error)
+	// SetAIVacanciesModel writes the user's preferred LLM. Pass model_id=""
+	// to clear the override and fall back to the server default.
+	SetAIVacanciesModel(context.Context, *connect.Request[v1.SetAIVacanciesModelRequest]) (*connect.Response[v1.AIVacanciesModel], error)
 }
 
 // NewProfileServiceClient constructs a client for the druz9.v1.ProfileService service. By default,
@@ -194,6 +212,24 @@ func NewProfileServiceClient(httpClient connect.HTTPClient, baseURL string, opts
 			connect.WithSchema(profileServiceMethods.ByName("RejectInterviewerApplication")),
 			connect.WithClientOptions(opts...),
 		),
+		allocateAtlasSkill: connect.NewClient[v1.AllocateAtlasSkillRequest, v1.AllocateAtlasSkillResponse](
+			httpClient,
+			baseURL+ProfileServiceAllocateAtlasSkillProcedure,
+			connect.WithSchema(profileServiceMethods.ByName("AllocateAtlasSkill")),
+			connect.WithClientOptions(opts...),
+		),
+		getAIVacanciesModel: connect.NewClient[v1.GetAIVacanciesModelRequest, v1.AIVacanciesModel](
+			httpClient,
+			baseURL+ProfileServiceGetAIVacanciesModelProcedure,
+			connect.WithSchema(profileServiceMethods.ByName("GetAIVacanciesModel")),
+			connect.WithClientOptions(opts...),
+		),
+		setAIVacanciesModel: connect.NewClient[v1.SetAIVacanciesModelRequest, v1.AIVacanciesModel](
+			httpClient,
+			baseURL+ProfileServiceSetAIVacanciesModelProcedure,
+			connect.WithSchema(profileServiceMethods.ByName("SetAIVacanciesModel")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -210,6 +246,9 @@ type profileServiceClient struct {
 	listInterviewerApplications   *connect.Client[v1.ListInterviewerApplicationsRequest, v1.InterviewerApplicationList]
 	approveInterviewerApplication *connect.Client[v1.ApproveInterviewerApplicationRequest, v1.InterviewerApplication]
 	rejectInterviewerApplication  *connect.Client[v1.RejectInterviewerApplicationRequest, v1.InterviewerApplication]
+	allocateAtlasSkill            *connect.Client[v1.AllocateAtlasSkillRequest, v1.AllocateAtlasSkillResponse]
+	getAIVacanciesModel           *connect.Client[v1.GetAIVacanciesModelRequest, v1.AIVacanciesModel]
+	setAIVacanciesModel           *connect.Client[v1.SetAIVacanciesModelRequest, v1.AIVacanciesModel]
 }
 
 // GetMyProfile calls druz9.v1.ProfileService.GetMyProfile.
@@ -267,6 +306,21 @@ func (c *profileServiceClient) RejectInterviewerApplication(ctx context.Context,
 	return c.rejectInterviewerApplication.CallUnary(ctx, req)
 }
 
+// AllocateAtlasSkill calls druz9.v1.ProfileService.AllocateAtlasSkill.
+func (c *profileServiceClient) AllocateAtlasSkill(ctx context.Context, req *connect.Request[v1.AllocateAtlasSkillRequest]) (*connect.Response[v1.AllocateAtlasSkillResponse], error) {
+	return c.allocateAtlasSkill.CallUnary(ctx, req)
+}
+
+// GetAIVacanciesModel calls druz9.v1.ProfileService.GetAIVacanciesModel.
+func (c *profileServiceClient) GetAIVacanciesModel(ctx context.Context, req *connect.Request[v1.GetAIVacanciesModelRequest]) (*connect.Response[v1.AIVacanciesModel], error) {
+	return c.getAIVacanciesModel.CallUnary(ctx, req)
+}
+
+// SetAIVacanciesModel calls druz9.v1.ProfileService.SetAIVacanciesModel.
+func (c *profileServiceClient) SetAIVacanciesModel(ctx context.Context, req *connect.Request[v1.SetAIVacanciesModelRequest]) (*connect.Response[v1.AIVacanciesModel], error) {
+	return c.setAIVacanciesModel.CallUnary(ctx, req)
+}
+
 // ProfileServiceHandler is an implementation of the druz9.v1.ProfileService service.
 type ProfileServiceHandler interface {
 	// GetMyProfile returns the rich profile for the authenticated caller.
@@ -306,6 +360,15 @@ type ProfileServiceHandler interface {
 	// RejectInterviewerApplication — admin marks application rejected
 	// (with optional note). Does NOT touch users.role.
 	RejectInterviewerApplication(context.Context, *connect.Request[v1.RejectInterviewerApplicationRequest]) (*connect.Response[v1.InterviewerApplication], error)
+	// AllocateAtlasSkill grants the caller +N progress on the given atlas
+	// skill node. Used by the Atlas page's "claim 1 free point" button.
+	AllocateAtlasSkill(context.Context, *connect.Request[v1.AllocateAtlasSkillRequest]) (*connect.Response[v1.AllocateAtlasSkillResponse], error)
+	// GetAIVacanciesModel returns the user's chosen LLM for the AI vacancy
+	// recommender. Empty string means "server default".
+	GetAIVacanciesModel(context.Context, *connect.Request[v1.GetAIVacanciesModelRequest]) (*connect.Response[v1.AIVacanciesModel], error)
+	// SetAIVacanciesModel writes the user's preferred LLM. Pass model_id=""
+	// to clear the override and fall back to the server default.
+	SetAIVacanciesModel(context.Context, *connect.Request[v1.SetAIVacanciesModelRequest]) (*connect.Response[v1.AIVacanciesModel], error)
 }
 
 // NewProfileServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -381,6 +444,24 @@ func NewProfileServiceHandler(svc ProfileServiceHandler, opts ...connect.Handler
 		connect.WithSchema(profileServiceMethods.ByName("RejectInterviewerApplication")),
 		connect.WithHandlerOptions(opts...),
 	)
+	profileServiceAllocateAtlasSkillHandler := connect.NewUnaryHandler(
+		ProfileServiceAllocateAtlasSkillProcedure,
+		svc.AllocateAtlasSkill,
+		connect.WithSchema(profileServiceMethods.ByName("AllocateAtlasSkill")),
+		connect.WithHandlerOptions(opts...),
+	)
+	profileServiceGetAIVacanciesModelHandler := connect.NewUnaryHandler(
+		ProfileServiceGetAIVacanciesModelProcedure,
+		svc.GetAIVacanciesModel,
+		connect.WithSchema(profileServiceMethods.ByName("GetAIVacanciesModel")),
+		connect.WithHandlerOptions(opts...),
+	)
+	profileServiceSetAIVacanciesModelHandler := connect.NewUnaryHandler(
+		ProfileServiceSetAIVacanciesModelProcedure,
+		svc.SetAIVacanciesModel,
+		connect.WithSchema(profileServiceMethods.ByName("SetAIVacanciesModel")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/druz9.v1.ProfileService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case ProfileServiceGetMyProfileProcedure:
@@ -405,6 +486,12 @@ func NewProfileServiceHandler(svc ProfileServiceHandler, opts ...connect.Handler
 			profileServiceApproveInterviewerApplicationHandler.ServeHTTP(w, r)
 		case ProfileServiceRejectInterviewerApplicationProcedure:
 			profileServiceRejectInterviewerApplicationHandler.ServeHTTP(w, r)
+		case ProfileServiceAllocateAtlasSkillProcedure:
+			profileServiceAllocateAtlasSkillHandler.ServeHTTP(w, r)
+		case ProfileServiceGetAIVacanciesModelProcedure:
+			profileServiceGetAIVacanciesModelHandler.ServeHTTP(w, r)
+		case ProfileServiceSetAIVacanciesModelProcedure:
+			profileServiceSetAIVacanciesModelHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -456,4 +543,16 @@ func (UnimplementedProfileServiceHandler) ApproveInterviewerApplication(context.
 
 func (UnimplementedProfileServiceHandler) RejectInterviewerApplication(context.Context, *connect.Request[v1.RejectInterviewerApplicationRequest]) (*connect.Response[v1.InterviewerApplication], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.ProfileService.RejectInterviewerApplication is not implemented"))
+}
+
+func (UnimplementedProfileServiceHandler) AllocateAtlasSkill(context.Context, *connect.Request[v1.AllocateAtlasSkillRequest]) (*connect.Response[v1.AllocateAtlasSkillResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.ProfileService.AllocateAtlasSkill is not implemented"))
+}
+
+func (UnimplementedProfileServiceHandler) GetAIVacanciesModel(context.Context, *connect.Request[v1.GetAIVacanciesModelRequest]) (*connect.Response[v1.AIVacanciesModel], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.ProfileService.GetAIVacanciesModel is not implemented"))
+}
+
+func (UnimplementedProfileServiceHandler) SetAIVacanciesModel(context.Context, *connect.Request[v1.SetAIVacanciesModelRequest]) (*connect.Response[v1.AIVacanciesModel], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.ProfileService.SetAIVacanciesModel is not implemented"))
 }

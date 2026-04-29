@@ -51,6 +51,12 @@ const (
 	// WhiteboardRoomsServiceDeleteRoomProcedure is the fully-qualified name of the
 	// WhiteboardRoomsService's DeleteRoom RPC.
 	WhiteboardRoomsServiceDeleteRoomProcedure = "/druz9.v1.WhiteboardRoomsService/DeleteRoom"
+	// WhiteboardRoomsServiceGetVisibilityProcedure is the fully-qualified name of the
+	// WhiteboardRoomsService's GetVisibility RPC.
+	WhiteboardRoomsServiceGetVisibilityProcedure = "/druz9.v1.WhiteboardRoomsService/GetVisibility"
+	// WhiteboardRoomsServiceSetVisibilityProcedure is the fully-qualified name of the
+	// WhiteboardRoomsService's SetVisibility RPC.
+	WhiteboardRoomsServiceSetVisibilityProcedure = "/druz9.v1.WhiteboardRoomsService/SetVisibility"
 )
 
 // WhiteboardRoomsServiceClient is a client for the druz9.v1.WhiteboardRoomsService service.
@@ -66,6 +72,11 @@ type WhiteboardRoomsServiceClient interface {
 	ListMyRooms(context.Context, *connect.Request[v1.ListMyWhiteboardRoomsRequest]) (*connect.Response[v1.WhiteboardRoomList], error)
 	// DeleteRoom removes the room. Owner-only.
 	DeleteRoom(context.Context, *connect.Request[v1.DeleteWhiteboardRoomRequest]) (*connect.Response[v1.DeleteWhiteboardRoomResponse], error)
+	// GetVisibility returns "private"|"shared".
+	GetVisibility(context.Context, *connect.Request[v1.GetWhiteboardVisibilityRequest]) (*connect.Response[v1.WhiteboardVisibility], error)
+	// SetVisibility flips visibility. Owner-only; quota-gated on
+	// private→shared flips.
+	SetVisibility(context.Context, *connect.Request[v1.SetWhiteboardVisibilityRequest]) (*connect.Response[v1.WhiteboardVisibility], error)
 }
 
 // NewWhiteboardRoomsServiceClient constructs a client for the druz9.v1.WhiteboardRoomsService
@@ -103,15 +114,29 @@ func NewWhiteboardRoomsServiceClient(httpClient connect.HTTPClient, baseURL stri
 			connect.WithSchema(whiteboardRoomsServiceMethods.ByName("DeleteRoom")),
 			connect.WithClientOptions(opts...),
 		),
+		getVisibility: connect.NewClient[v1.GetWhiteboardVisibilityRequest, v1.WhiteboardVisibility](
+			httpClient,
+			baseURL+WhiteboardRoomsServiceGetVisibilityProcedure,
+			connect.WithSchema(whiteboardRoomsServiceMethods.ByName("GetVisibility")),
+			connect.WithClientOptions(opts...),
+		),
+		setVisibility: connect.NewClient[v1.SetWhiteboardVisibilityRequest, v1.WhiteboardVisibility](
+			httpClient,
+			baseURL+WhiteboardRoomsServiceSetVisibilityProcedure,
+			connect.WithSchema(whiteboardRoomsServiceMethods.ByName("SetVisibility")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
 // whiteboardRoomsServiceClient implements WhiteboardRoomsServiceClient.
 type whiteboardRoomsServiceClient struct {
-	createRoom  *connect.Client[v1.CreateWhiteboardRoomRequest, v1.WhiteboardRoom]
-	getRoom     *connect.Client[v1.GetWhiteboardRoomRequest, v1.WhiteboardRoom]
-	listMyRooms *connect.Client[v1.ListMyWhiteboardRoomsRequest, v1.WhiteboardRoomList]
-	deleteRoom  *connect.Client[v1.DeleteWhiteboardRoomRequest, v1.DeleteWhiteboardRoomResponse]
+	createRoom    *connect.Client[v1.CreateWhiteboardRoomRequest, v1.WhiteboardRoom]
+	getRoom       *connect.Client[v1.GetWhiteboardRoomRequest, v1.WhiteboardRoom]
+	listMyRooms   *connect.Client[v1.ListMyWhiteboardRoomsRequest, v1.WhiteboardRoomList]
+	deleteRoom    *connect.Client[v1.DeleteWhiteboardRoomRequest, v1.DeleteWhiteboardRoomResponse]
+	getVisibility *connect.Client[v1.GetWhiteboardVisibilityRequest, v1.WhiteboardVisibility]
+	setVisibility *connect.Client[v1.SetWhiteboardVisibilityRequest, v1.WhiteboardVisibility]
 }
 
 // CreateRoom calls druz9.v1.WhiteboardRoomsService.CreateRoom.
@@ -134,6 +159,16 @@ func (c *whiteboardRoomsServiceClient) DeleteRoom(ctx context.Context, req *conn
 	return c.deleteRoom.CallUnary(ctx, req)
 }
 
+// GetVisibility calls druz9.v1.WhiteboardRoomsService.GetVisibility.
+func (c *whiteboardRoomsServiceClient) GetVisibility(ctx context.Context, req *connect.Request[v1.GetWhiteboardVisibilityRequest]) (*connect.Response[v1.WhiteboardVisibility], error) {
+	return c.getVisibility.CallUnary(ctx, req)
+}
+
+// SetVisibility calls druz9.v1.WhiteboardRoomsService.SetVisibility.
+func (c *whiteboardRoomsServiceClient) SetVisibility(ctx context.Context, req *connect.Request[v1.SetWhiteboardVisibilityRequest]) (*connect.Response[v1.WhiteboardVisibility], error) {
+	return c.setVisibility.CallUnary(ctx, req)
+}
+
 // WhiteboardRoomsServiceHandler is an implementation of the druz9.v1.WhiteboardRoomsService
 // service.
 type WhiteboardRoomsServiceHandler interface {
@@ -148,6 +183,11 @@ type WhiteboardRoomsServiceHandler interface {
 	ListMyRooms(context.Context, *connect.Request[v1.ListMyWhiteboardRoomsRequest]) (*connect.Response[v1.WhiteboardRoomList], error)
 	// DeleteRoom removes the room. Owner-only.
 	DeleteRoom(context.Context, *connect.Request[v1.DeleteWhiteboardRoomRequest]) (*connect.Response[v1.DeleteWhiteboardRoomResponse], error)
+	// GetVisibility returns "private"|"shared".
+	GetVisibility(context.Context, *connect.Request[v1.GetWhiteboardVisibilityRequest]) (*connect.Response[v1.WhiteboardVisibility], error)
+	// SetVisibility flips visibility. Owner-only; quota-gated on
+	// private→shared flips.
+	SetVisibility(context.Context, *connect.Request[v1.SetWhiteboardVisibilityRequest]) (*connect.Response[v1.WhiteboardVisibility], error)
 }
 
 // NewWhiteboardRoomsServiceHandler builds an HTTP handler from the service implementation. It
@@ -181,6 +221,18 @@ func NewWhiteboardRoomsServiceHandler(svc WhiteboardRoomsServiceHandler, opts ..
 		connect.WithSchema(whiteboardRoomsServiceMethods.ByName("DeleteRoom")),
 		connect.WithHandlerOptions(opts...),
 	)
+	whiteboardRoomsServiceGetVisibilityHandler := connect.NewUnaryHandler(
+		WhiteboardRoomsServiceGetVisibilityProcedure,
+		svc.GetVisibility,
+		connect.WithSchema(whiteboardRoomsServiceMethods.ByName("GetVisibility")),
+		connect.WithHandlerOptions(opts...),
+	)
+	whiteboardRoomsServiceSetVisibilityHandler := connect.NewUnaryHandler(
+		WhiteboardRoomsServiceSetVisibilityProcedure,
+		svc.SetVisibility,
+		connect.WithSchema(whiteboardRoomsServiceMethods.ByName("SetVisibility")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/druz9.v1.WhiteboardRoomsService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case WhiteboardRoomsServiceCreateRoomProcedure:
@@ -191,6 +243,10 @@ func NewWhiteboardRoomsServiceHandler(svc WhiteboardRoomsServiceHandler, opts ..
 			whiteboardRoomsServiceListMyRoomsHandler.ServeHTTP(w, r)
 		case WhiteboardRoomsServiceDeleteRoomProcedure:
 			whiteboardRoomsServiceDeleteRoomHandler.ServeHTTP(w, r)
+		case WhiteboardRoomsServiceGetVisibilityProcedure:
+			whiteboardRoomsServiceGetVisibilityHandler.ServeHTTP(w, r)
+		case WhiteboardRoomsServiceSetVisibilityProcedure:
+			whiteboardRoomsServiceSetVisibilityHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -214,4 +270,12 @@ func (UnimplementedWhiteboardRoomsServiceHandler) ListMyRooms(context.Context, *
 
 func (UnimplementedWhiteboardRoomsServiceHandler) DeleteRoom(context.Context, *connect.Request[v1.DeleteWhiteboardRoomRequest]) (*connect.Response[v1.DeleteWhiteboardRoomResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.WhiteboardRoomsService.DeleteRoom is not implemented"))
+}
+
+func (UnimplementedWhiteboardRoomsServiceHandler) GetVisibility(context.Context, *connect.Request[v1.GetWhiteboardVisibilityRequest]) (*connect.Response[v1.WhiteboardVisibility], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.WhiteboardRoomsService.GetVisibility is not implemented"))
+}
+
+func (UnimplementedWhiteboardRoomsServiceHandler) SetVisibility(context.Context, *connect.Request[v1.SetWhiteboardVisibilityRequest]) (*connect.Response[v1.WhiteboardVisibility], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.WhiteboardRoomsService.SetVisibility is not implemented"))
 }

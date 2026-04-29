@@ -466,3 +466,148 @@ export class CircleMutationResponse extends Message<CircleMutationResponse> {
   }
 }
 
+/**
+ * @generated from message druz9.v1.DiscoverCirclesRequest
+ */
+export class DiscoverCirclesRequest extends Message<DiscoverCirclesRequest> {
+  /**
+   * 0 ⇒ server default (30)
+   *
+   * @generated from field: int32 limit = 1;
+   */
+  limit = 0;
+
+  constructor(data?: PartialMessage<DiscoverCirclesRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.DiscoverCirclesRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "limit", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): DiscoverCirclesRequest {
+    return new DiscoverCirclesRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): DiscoverCirclesRequest {
+    return new DiscoverCirclesRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): DiscoverCirclesRequest {
+    return new DiscoverCirclesRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: DiscoverCirclesRequest | PlainMessage<DiscoverCirclesRequest> | undefined, b: DiscoverCirclesRequest | PlainMessage<DiscoverCirclesRequest> | undefined): boolean {
+    return proto3.util.equals(DiscoverCirclesRequest, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.DiscoverCircleItem
+ */
+export class DiscoverCircleItem extends Message<DiscoverCircleItem> {
+  /**
+   * @generated from field: string id = 1;
+   */
+  id = "";
+
+  /**
+   * @generated from field: string name = 2;
+   */
+  name = "";
+
+  /**
+   * @generated from field: string description = 3;
+   */
+  description = "";
+
+  /**
+   * @generated from field: string owner_id = 4;
+   */
+  ownerId = "";
+
+  /**
+   * @generated from field: int32 member_count = 5;
+   */
+  memberCount = 0;
+
+  /**
+   * RFC3339
+   *
+   * @generated from field: string created_at = 6;
+   */
+  createdAt = "";
+
+  constructor(data?: PartialMessage<DiscoverCircleItem>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.DiscoverCircleItem";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "name", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 3, name: "description", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 4, name: "owner_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 5, name: "member_count", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 6, name: "created_at", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): DiscoverCircleItem {
+    return new DiscoverCircleItem().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): DiscoverCircleItem {
+    return new DiscoverCircleItem().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): DiscoverCircleItem {
+    return new DiscoverCircleItem().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: DiscoverCircleItem | PlainMessage<DiscoverCircleItem> | undefined, b: DiscoverCircleItem | PlainMessage<DiscoverCircleItem> | undefined): boolean {
+    return proto3.util.equals(DiscoverCircleItem, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.DiscoverCirclesResponse
+ */
+export class DiscoverCirclesResponse extends Message<DiscoverCirclesResponse> {
+  /**
+   * @generated from field: repeated druz9.v1.DiscoverCircleItem items = 1;
+   */
+  items: DiscoverCircleItem[] = [];
+
+  constructor(data?: PartialMessage<DiscoverCirclesResponse>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.DiscoverCirclesResponse";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "items", kind: "message", T: DiscoverCircleItem, repeated: true },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): DiscoverCirclesResponse {
+    return new DiscoverCirclesResponse().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): DiscoverCirclesResponse {
+    return new DiscoverCirclesResponse().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): DiscoverCirclesResponse {
+    return new DiscoverCirclesResponse().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: DiscoverCirclesResponse | PlainMessage<DiscoverCirclesResponse> | undefined, b: DiscoverCirclesResponse | PlainMessage<DiscoverCirclesResponse> | undefined): boolean {
+    return proto3.util.equals(DiscoverCirclesResponse, a, b);
+  }
+}
+

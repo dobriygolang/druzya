@@ -10,7 +10,7 @@
 /* eslint-disable */
 // @ts-nocheck
 
-import { CreateMockRequest, FinishMockSessionRequest, GetMockReportRequest, GetMockSessionRequest, MockMessage, MockMessageRequest, MockReport, MockSession, StressEventsBatch } from "./ai_mock_pb.js";
+import { CreateMockRequest, FinishMockSessionRequest, GetInsightsOverviewRequest, GetMockReportRequest, GetMockSessionRequest, InsightsOverview, MockMessage, MockMessageRequest, MockReport, MockSession, StressEventsBatch } from "./ai_mock_pb.js";
 import { MethodKind } from "@bufbuild/protobuf";
 
 /**
@@ -84,6 +84,17 @@ export const MockService = {
       name: "GetReport",
       I: GetMockReportRequest,
       O: MockReport,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * GetInsightsOverview powers the /insights page's three live cards.
+     *
+     * @generated from rpc druz9.v1.MockService.GetInsightsOverview
+     */
+    getInsightsOverview: {
+      name: "GetInsightsOverview",
+      I: GetInsightsOverviewRequest,
+      O: InsightsOverview,
       kind: MethodKind.Unary,
     },
   }

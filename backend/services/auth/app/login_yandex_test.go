@@ -112,7 +112,7 @@ func TestLoginYandex_Happy(t *testing.T) {
 
 	oauth := &fakeYandexOAuth{
 		tokenResp: YandexTokenResponse{AccessToken: "at", RefreshToken: "rt", ExpiresIn: 3600},
-		info:      domain.YandexUserInfo{ID: "42", Login: "ivan", DisplayName: "Ivan", DefaultEmail: "ivan@ya.ru"},
+		info:      domain.YandexUserInfo{ID: "42", Login: "ivan", DisplayName: "Ivan"},
 	}
 	users := &fakeUsers{created: true, user: domain.User{ID: uuid.New(), Username: "ivan", Role: enums.UserRoleUser}}
 	uc := newLoginYandexUC(states, oauth, users)

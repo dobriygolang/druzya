@@ -20,7 +20,7 @@ import {
 import { AppShellV2 } from '../components/AppShell'
 import { Button } from '../components/Button'
 import { Card } from '../components/Card'
-import { useMockReportQuery } from '../lib/queries/mock'
+import { useMockReportQuery, normalizeMockReportStatus } from '../lib/queries/mock'
 import { API_BASE } from '../lib/apiClient'
 
 function ErrorChip() {
@@ -248,7 +248,7 @@ function PremiumModal({ onClose }: { onClose: () => void }) {
       <div className="w-full max-w-md rounded-xl border border-warn/40 bg-surface-1 p-6 shadow-xl">
         <h3 className="font-display text-lg font-bold text-warn">Премиум-голос только для подписчиков</h3>
         <p className="mt-2 text-[13px] text-text-secondary">
-          Озвучка разбора с премиум-голосом доступна на тарифах Seeker и Ascendant.
+          Озвучка разбора с премиум-голосом доступна на тарифах Pro и Max.
           Базовый разбор (текст + браузерный TTS) уже включён в бесплатный тариф.
         </p>
         <div className="mt-4 flex justify-end gap-2">
@@ -268,7 +268,7 @@ export default function MockResultPage() {
   const { sessionId } = useParams<{ sessionId: string }>()
   const navigate = useNavigate()
   const { data: report, isError, isLoading } = useMockReportQuery(sessionId)
-  const isProcessing = report?.status === 'processing' || (!report && isLoading)
+  const isProcessing = normalizeMockReportStatus(report?.status) === 'processing' || (!report && isLoading)
 
   // Empty / fallback values keep the page rendering coherently while the
   // worker is still grading. Once the report lands, every cell shows real

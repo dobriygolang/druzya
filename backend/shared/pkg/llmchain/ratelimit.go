@@ -29,8 +29,11 @@ import (
 //     reset=+30s) stays informational until it trips the ≤2 threshold.
 type rateState struct {
 	mu           sync.Mutex
+	provider     Provider
+	model        string
 	blockedUntil time.Time
 	reason       string
+	needsProbe   bool
 	remaining    int
 	resetAt      time.Time
 }
@@ -38,10 +41,14 @@ type rateState struct {
 func (s *rateState) blocked(now time.Time) (bool, time.Time, string) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	return now.Before(s.blockedUntil), s.blockedUntil, s.reason
+	return now.Before(s.blockedUntil) || s.needsProbe, s.blockedUntil, s.reason
 }
 
 func (s *rateState) block(until time.Time, reason string) {
+	s.blockWithProbe(until, reason, true)
+}
+
+func (s *rateState) blockWithProbe(until time.Time, reason string, needsProbe bool) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	// Never shorten an existing cooldown — a long 401 (1h) must not be
@@ -50,6 +57,7 @@ func (s *rateState) block(until time.Time, reason string) {
 		s.blockedUntil = until
 		s.reason = reason
 	}
+	s.needsProbe = s.needsProbe || needsProbe
 }
 
 func (s *rateState) clear() {
@@ -57,6 +65,16 @@ func (s *rateState) clear() {
 	defer s.mu.Unlock()
 	s.blockedUntil = time.Time{}
 	s.reason = ""
+	s.needsProbe = false
+}
+
+func (s *rateState) probeDue(now time.Time) (Provider, string, bool) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if !s.needsProbe || now.Before(s.blockedUntil) {
+		return "", "", false
+	}
+	return s.provider, s.model, true
 }
 
 // recordResponse ingests the latest known budget from a success response.
@@ -74,6 +92,7 @@ func (s *rateState) recordResponse(remaining int, resetAt time.Time) {
 		if resetAt.After(s.blockedUntil) {
 			s.blockedUntil = resetAt
 			s.reason = "preemptive: near rate-limit floor"
+			s.needsProbe = false
 		}
 	}
 }
@@ -102,7 +121,7 @@ func parseRateLimitHeaders(p Provider, h http.Header, now time.Time) (remaining 
 		return parseGroqLikeHeaders(h, now)
 	case ProviderOpenRouter:
 		return parseOpenRouterHeaders(h, now)
-	case ProviderMistral, ProviderOllama, ProviderDeepSeek:
+	case ProviderMistral, ProviderGoogle, ProviderCloudflare, ProviderZAI, ProviderOllama, ProviderDeepSeek:
 		// Mistral free tier lacks documented rate-limit headers;
 		// Ollama — self-hosted без rate-limit;
 		// DeepSeek — платный per-token, rate-limit'ы редко упираются —

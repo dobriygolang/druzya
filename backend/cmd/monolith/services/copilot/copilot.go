@@ -35,15 +35,40 @@ func NewCopilot(d monolithServices.Deps, docSearcher copilotDomain.DocumentSearc
 	sessions := copilotInfra.NewSessions(d.Pool)
 	reports := copilotInfra.NewReports(d.Pool)
 
+	// DynamicConfigProvider owns the SELECT against dynamic_config —
+	// cmd/ должен оставаться pure facade, поэтому per-tier config
+	// читается через метод инфраструктуры (PlanForTier), а не inline
+	// pool.QueryRow внутри cmd/.
+	dynCfg := copilotInfra.NewDynamicConfigProvider(d.Pool)
+	var cfgProvider copilotDomain.ConfigProvider = dynCfg
+
 	// Sync subscription.plan → copilot_quotas.plan. Раньше после Boosty
-	// upgrade (subscriptions.plan = seeker) юзер видел free-лимиты
+	// upgrade (subscriptions.plan = pro) юзер видел free-лимиты
 	// потому что copilot_quotas жил в собственной таблице без
 	// автосинка. Теперь WireSubscriptionQuota делает SetTier shared,
 	// мы регистрируемся на его OnTierChanged hook.
 	if d.SetTierUC != nil {
 		d.SetTierUC.OnTierChanged = func(ctx context.Context, userID uuid.UUID, tier subDomain.Tier) error {
-			plan, cap, models := copilotPlanForTier(tier)
-			return quotas.UpdatePlan(ctx, userID, plan, cap, models)
+			plan := dynCfg.PlanForTier(ctx, enums.SubscriptionPlan(tier))
+			if err := quotas.UpdatePlan(ctx, userID, enums.SubscriptionPlan(plan.ID), plan.RequestsCap, plan.ModelsAllowed); err != nil {
+				return err
+			}
+			// Phase VII: tier-downgrade graceful migration. Если новый
+			// tier ограничивает models (Free whitelist = ["druz9/turbo"]),
+			// сбрасываем pinned-модели в conversations которые теперь
+			// недоступны. Next turn → DefaultModelID fallback (Turbo) →
+			// continuation вместо ErrTierRequired. Pro/Max имеют
+			// ModelsAllowed=nil → no-op.
+			if n, err := conversations.ResetModelsNotIn(ctx, userID, plan.ModelsAllowed); err != nil {
+				if d.Log != nil {
+					d.Log.Warn("copilot: tier-downgrade conv reset failed",
+						"err", err, "user", userID, "tier", tier)
+				}
+			} else if n > 0 && d.Log != nil {
+				d.Log.Info("copilot: tier-downgrade reset conv models",
+					"user", userID, "tier", tier, "reset", n)
+			}
+			return nil
 		}
 	}
 	// Phase-4 ADR-001 (Wave 3) — read-only gate into ai_mock.mock_sessions.
@@ -61,7 +86,6 @@ func NewCopilot(d monolithServices.Deps, docSearcher copilotDomain.DocumentSearc
 	} else {
 		llm = copilotInfra.NewOpenRouter(d.Cfg.LLM.OpenRouterAPIKey)
 	}
-	cfgProvider := copilotInfra.NewStaticConfigProvider()
 
 	analyzer := copilotInfra.NewLLMAnalyzer(
 		d.Cfg.LLM.OpenRouterAPIKey,
@@ -134,7 +158,9 @@ func NewCopilot(d monolithServices.Deps, docSearcher copilotDomain.DocumentSearc
 		Reports:      reports,
 		Analyzer:     analyzer,
 		ReportURLFor: analyzer.ReportURLFor,
-		Log:          d.Log,
+		// Phase C bus fan-out: CoachListener picks it up to fold into coach memory.
+		Bus: d.Bus,
+		Log: d.Log,
 	}
 
 	server := copilotPorts.NewCopilotServer(
@@ -290,31 +316,3 @@ func runAnalysisSubscriber(
 	}
 }
 
-// copilotPlanForTier — mapping subscription.tier → copilot_quotas (plan,
-// requests_cap, models_allowed). Cap семантика — 24h rolling window
-// (см. copilot_quotas.resets_at).
-//
-//	Free      → 20 req/24h ≈ 600/мес, ограниченный whitelist free-моделей
-//	Seeker    → 200 req/24h ≈ 6000/мес, no model restriction
-//	Ascended  → unlimited (-1), no model restriction
-//
-// Empty ModelsAllowed для paid tier'ов = "no restriction" (см. Quota.
-// IsModelAllowed). Для free — фиксированный whitelist бесплатных моделей,
-// чтобы случайный запрос на claude-sonnet не пошёл за наш счёт.
-func copilotPlanForTier(tier subDomain.Tier) (enums.SubscriptionPlan, int, []string) {
-	switch tier {
-	case subDomain.TierAscended:
-		return enums.SubscriptionPlanAscendant, -1, nil
-	case subDomain.TierSeeker:
-		return enums.SubscriptionPlanSeeker, 200, nil
-	default:
-		return enums.SubscriptionPlanFree, 20, []string{
-			"druz9/turbo",
-			"groq/llama-3.3-70b-versatile",
-			"groq/llama-3.1-8b-instant",
-			"cerebras/llama3.3-70b",
-			"openai/gpt-oss-120b:free",
-			"qwen/qwen3-coder:free",
-		}
-	}
-}

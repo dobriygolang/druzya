@@ -35,7 +35,17 @@ var _ druz9v1connect.NotifyServiceHandler = (*NotifyServer)(nil)
 type NotifyServer struct {
 	Get    *app.GetPreferences
 	Update *app.UpdatePreferences
-	Log    *slog.Logger
+
+	// In-app notifications feed UCs. Optional — nil-safe (RPCs return
+	// Unavailable until the wirer binds them).
+	List          *app.ListUserNotifications
+	Unread        *app.CountUnread
+	MarkReadUC    *app.MarkRead
+	MarkAllReadUC *app.MarkAllRead
+
+	// Support ticket UC + optional Telegram alerter. nil-safe.
+	Support *SupportHandler // re-uses SupportHandler logic; see support_connect.go
+	Log     *slog.Logger
 }
 
 // NewNotifyServer wires a NotifyServer.

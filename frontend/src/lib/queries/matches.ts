@@ -194,6 +194,12 @@ export function useMatchEndQuery(id: string | undefined, currentUserID?: string)
 // Wire types must match ports/history.go MatchHistoryEntryDTO + envelope.
 // All enum-shaped strings are kept as plain string here so the page works
 // even when the backend later adds a new mode/section variant.
+//
+// `result` принимает оба формата: legacy lowercase ('win'/'loss'/...) и
+// proto3 enum NAME из transcoder'а ('MATCH_RESULT_WIN'/...). Нормализуем
+// через normalizeMatchResult — UI сравнивает по канону.
+export type MatchResultCanonical = 'win' | 'loss' | 'draw' | 'abandoned' | 'unspecified'
+
 export type ArenaHistoryEntry = {
   match_id: string
   finished_at: string
@@ -202,9 +208,34 @@ export type ArenaHistoryEntry = {
   opponent_user_id: string
   opponent_username: string
   opponent_avatar_url: string
-  result: 'win' | 'loss' | 'draw' | 'abandoned'
+  result: MatchResultCanonical | string
   lp_change: number
   duration_seconds: number
+}
+
+// normalizeMatchResult canonicalises wire-side variants to lowercase
+// единый формат. Phase IV string→enum migration backend теперь эмитит
+// "MATCH_RESULT_WIN" (proto enum NAME), но dev-environments / legacy
+// caches могут отдавать "win". Map оба, и unknown → 'unspecified'.
+export function normalizeMatchResult(raw: string | undefined | null): MatchResultCanonical {
+  if (!raw) return 'unspecified'
+  const s = raw.toString()
+  switch (s) {
+    case 'win':
+    case 'MATCH_RESULT_WIN':
+      return 'win'
+    case 'loss':
+    case 'MATCH_RESULT_LOSS':
+      return 'loss'
+    case 'draw':
+    case 'MATCH_RESULT_DRAW':
+      return 'draw'
+    case 'abandoned':
+    case 'MATCH_RESULT_ABANDONED':
+      return 'abandoned'
+    default:
+      return 'unspecified'
+  }
 }
 
 export type ArenaHistoryResponse = {

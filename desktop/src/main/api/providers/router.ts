@@ -31,7 +31,7 @@ export type RoutedEvent =
       latencyMs: number;
       /** Updated quota snapshot from the backend. Always non-null now. */
       quota: null | {
-        plan: 'free' | 'seeker' | 'ascendant' | '';
+        plan: 'free' | 'pro' | 'max' | '';
         requestsUsed: number;
         requestsCap: number;
         resetsAt: string;
@@ -221,11 +221,11 @@ function hotkeyActionToEnum(a: string): number {
   }
 }
 
-function mapPlan(n: number): 'free' | 'seeker' | 'ascendant' | '' {
+function mapPlan(n: number): 'free' | 'pro' | 'max' | '' {
   switch (n) {
     case 1: return 'free';
-    case 2: return 'seeker';
-    case 3: return 'ascendant';
+    case 2: return 'pro';
+    case 3: return 'max';
     default: return '';
   }
 }

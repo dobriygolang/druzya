@@ -450,6 +450,146 @@ func (x *DeleteWhiteboardRoomResponse) GetDeleted() bool {
 	return false
 }
 
+type WhiteboardVisibility struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Visibility    string                 `protobuf:"bytes,1,opt,name=visibility,proto3" json:"visibility,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *WhiteboardVisibility) Reset() {
+	*x = WhiteboardVisibility{}
+	mi := &file_druz9_v1_whiteboard_rooms_proto_msgTypes[8]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *WhiteboardVisibility) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*WhiteboardVisibility) ProtoMessage() {}
+
+func (x *WhiteboardVisibility) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_whiteboard_rooms_proto_msgTypes[8]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use WhiteboardVisibility.ProtoReflect.Descriptor instead.
+func (*WhiteboardVisibility) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_whiteboard_rooms_proto_rawDescGZIP(), []int{8}
+}
+
+func (x *WhiteboardVisibility) GetVisibility() string {
+	if x != nil {
+		return x.Visibility
+	}
+	return ""
+}
+
+type GetWhiteboardVisibilityRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	RoomId        string                 `protobuf:"bytes,1,opt,name=room_id,json=roomId,proto3" json:"room_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetWhiteboardVisibilityRequest) Reset() {
+	*x = GetWhiteboardVisibilityRequest{}
+	mi := &file_druz9_v1_whiteboard_rooms_proto_msgTypes[9]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetWhiteboardVisibilityRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetWhiteboardVisibilityRequest) ProtoMessage() {}
+
+func (x *GetWhiteboardVisibilityRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_whiteboard_rooms_proto_msgTypes[9]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetWhiteboardVisibilityRequest.ProtoReflect.Descriptor instead.
+func (*GetWhiteboardVisibilityRequest) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_whiteboard_rooms_proto_rawDescGZIP(), []int{9}
+}
+
+func (x *GetWhiteboardVisibilityRequest) GetRoomId() string {
+	if x != nil {
+		return x.RoomId
+	}
+	return ""
+}
+
+type SetWhiteboardVisibilityRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	RoomId        string                 `protobuf:"bytes,1,opt,name=room_id,json=roomId,proto3" json:"room_id,omitempty"`
+	Visibility    string                 `protobuf:"bytes,2,opt,name=visibility,proto3" json:"visibility,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SetWhiteboardVisibilityRequest) Reset() {
+	*x = SetWhiteboardVisibilityRequest{}
+	mi := &file_druz9_v1_whiteboard_rooms_proto_msgTypes[10]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SetWhiteboardVisibilityRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SetWhiteboardVisibilityRequest) ProtoMessage() {}
+
+func (x *SetWhiteboardVisibilityRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_whiteboard_rooms_proto_msgTypes[10]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SetWhiteboardVisibilityRequest.ProtoReflect.Descriptor instead.
+func (*SetWhiteboardVisibilityRequest) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_whiteboard_rooms_proto_rawDescGZIP(), []int{10}
+}
+
+func (x *SetWhiteboardVisibilityRequest) GetRoomId() string {
+	if x != nil {
+		return x.RoomId
+	}
+	return ""
+}
+
+func (x *SetWhiteboardVisibilityRequest) GetVisibility() string {
+	if x != nil {
+		return x.Visibility
+	}
+	return ""
+}
+
 var File_druz9_v1_whiteboard_rooms_proto protoreflect.FileDescriptor
 
 const file_druz9_v1_whiteboard_rooms_proto_rawDesc = "" +
@@ -480,14 +620,27 @@ const file_druz9_v1_whiteboard_rooms_proto_rawDesc = "" +
 	"\x1bDeleteWhiteboardRoomRequest\x12\x17\n" +
 	"\aroom_id\x18\x01 \x01(\tR\x06roomId\"8\n" +
 	"\x1cDeleteWhiteboardRoomResponse\x12\x18\n" +
-	"\adeleted\x18\x01 \x01(\bR\adeleted2\xfe\x03\n" +
+	"\adeleted\x18\x01 \x01(\bR\adeleted\"6\n" +
+	"\x14WhiteboardVisibility\x12\x1e\n" +
+	"\n" +
+	"visibility\x18\x01 \x01(\tR\n" +
+	"visibility\"9\n" +
+	"\x1eGetWhiteboardVisibilityRequest\x12\x17\n" +
+	"\aroom_id\x18\x01 \x01(\tR\x06roomId\"Y\n" +
+	"\x1eSetWhiteboardVisibilityRequest\x12\x17\n" +
+	"\aroom_id\x18\x01 \x01(\tR\x06roomId\x12\x1e\n" +
+	"\n" +
+	"visibility\x18\x02 \x01(\tR\n" +
+	"visibility2\xa5\x06\n" +
 	"\x16WhiteboardRoomsService\x12q\n" +
 	"\n" +
 	"CreateRoom\x12%.druz9.v1.CreateWhiteboardRoomRequest\x1a\x18.druz9.v1.WhiteboardRoom\"\"\x82\xd3\xe4\x93\x02\x1c:\x01*\"\x17/api/v1/whiteboard/room\x12r\n" +
 	"\aGetRoom\x12\".druz9.v1.GetWhiteboardRoomRequest\x1a\x18.druz9.v1.WhiteboardRoom\")\x82\xd3\xe4\x93\x02#\x12!/api/v1/whiteboard/room/{room_id}\x12t\n" +
 	"\vListMyRooms\x12&.druz9.v1.ListMyWhiteboardRoomsRequest\x1a\x1c.druz9.v1.WhiteboardRoomList\"\x1f\x82\xd3\xe4\x93\x02\x19\x12\x17/api/v1/whiteboard/room\x12\x86\x01\n" +
 	"\n" +
-	"DeleteRoom\x12%.druz9.v1.DeleteWhiteboardRoomRequest\x1a&.druz9.v1.DeleteWhiteboardRoomResponse\")\x82\xd3\xe4\x93\x02#*!/api/v1/whiteboard/room/{room_id}B\x91\x01\n" +
+	"DeleteRoom\x12%.druz9.v1.DeleteWhiteboardRoomRequest\x1a&.druz9.v1.DeleteWhiteboardRoomResponse\")\x82\xd3\xe4\x93\x02#*!/api/v1/whiteboard/room/{room_id}\x12\x8f\x01\n" +
+	"\rGetVisibility\x12(.druz9.v1.GetWhiteboardVisibilityRequest\x1a\x1e.druz9.v1.WhiteboardVisibility\"4\x82\xd3\xe4\x93\x02.\x12,/api/v1/whiteboard/room/{room_id}/visibility\x12\x92\x01\n" +
+	"\rSetVisibility\x12(.druz9.v1.SetWhiteboardVisibilityRequest\x1a\x1e.druz9.v1.WhiteboardVisibility\"7\x82\xd3\xe4\x93\x021:\x01*\",/api/v1/whiteboard/room/{room_id}/visibilityB\x91\x01\n" +
 	"\fcom.druz9.v1B\x14WhiteboardRoomsProtoP\x01Z*druz9/shared/generated/pb/druz9/v1;druz9v1\xa2\x02\x03DXX\xaa\x02\bDruz9.V1\xca\x02\bDruz9\\V1\xe2\x02\x14Druz9\\V1\\GPBMetadata\xea\x02\tDruz9::V1b\x06proto3"
 
 var (
@@ -502,37 +655,44 @@ func file_druz9_v1_whiteboard_rooms_proto_rawDescGZIP() []byte {
 	return file_druz9_v1_whiteboard_rooms_proto_rawDescData
 }
 
-var file_druz9_v1_whiteboard_rooms_proto_msgTypes = make([]protoimpl.MessageInfo, 8)
+var file_druz9_v1_whiteboard_rooms_proto_msgTypes = make([]protoimpl.MessageInfo, 11)
 var file_druz9_v1_whiteboard_rooms_proto_goTypes = []any{
-	(*WhiteboardParticipant)(nil),        // 0: druz9.v1.WhiteboardParticipant
-	(*WhiteboardRoom)(nil),               // 1: druz9.v1.WhiteboardRoom
-	(*CreateWhiteboardRoomRequest)(nil),  // 2: druz9.v1.CreateWhiteboardRoomRequest
-	(*GetWhiteboardRoomRequest)(nil),     // 3: druz9.v1.GetWhiteboardRoomRequest
-	(*ListMyWhiteboardRoomsRequest)(nil), // 4: druz9.v1.ListMyWhiteboardRoomsRequest
-	(*WhiteboardRoomList)(nil),           // 5: druz9.v1.WhiteboardRoomList
-	(*DeleteWhiteboardRoomRequest)(nil),  // 6: druz9.v1.DeleteWhiteboardRoomRequest
-	(*DeleteWhiteboardRoomResponse)(nil), // 7: druz9.v1.DeleteWhiteboardRoomResponse
-	(*timestamppb.Timestamp)(nil),        // 8: google.protobuf.Timestamp
+	(*WhiteboardParticipant)(nil),          // 0: druz9.v1.WhiteboardParticipant
+	(*WhiteboardRoom)(nil),                 // 1: druz9.v1.WhiteboardRoom
+	(*CreateWhiteboardRoomRequest)(nil),    // 2: druz9.v1.CreateWhiteboardRoomRequest
+	(*GetWhiteboardRoomRequest)(nil),       // 3: druz9.v1.GetWhiteboardRoomRequest
+	(*ListMyWhiteboardRoomsRequest)(nil),   // 4: druz9.v1.ListMyWhiteboardRoomsRequest
+	(*WhiteboardRoomList)(nil),             // 5: druz9.v1.WhiteboardRoomList
+	(*DeleteWhiteboardRoomRequest)(nil),    // 6: druz9.v1.DeleteWhiteboardRoomRequest
+	(*DeleteWhiteboardRoomResponse)(nil),   // 7: druz9.v1.DeleteWhiteboardRoomResponse
+	(*WhiteboardVisibility)(nil),           // 8: druz9.v1.WhiteboardVisibility
+	(*GetWhiteboardVisibilityRequest)(nil), // 9: druz9.v1.GetWhiteboardVisibilityRequest
+	(*SetWhiteboardVisibilityRequest)(nil), // 10: druz9.v1.SetWhiteboardVisibilityRequest
+	(*timestamppb.Timestamp)(nil),          // 11: google.protobuf.Timestamp
 }
 var file_druz9_v1_whiteboard_rooms_proto_depIdxs = []int32{
-	8, // 0: druz9.v1.WhiteboardParticipant.joined_at:type_name -> google.protobuf.Timestamp
-	8, // 1: druz9.v1.WhiteboardRoom.expires_at:type_name -> google.protobuf.Timestamp
-	8, // 2: druz9.v1.WhiteboardRoom.created_at:type_name -> google.protobuf.Timestamp
-	0, // 3: druz9.v1.WhiteboardRoom.participants:type_name -> druz9.v1.WhiteboardParticipant
-	1, // 4: druz9.v1.WhiteboardRoomList.items:type_name -> druz9.v1.WhiteboardRoom
-	2, // 5: druz9.v1.WhiteboardRoomsService.CreateRoom:input_type -> druz9.v1.CreateWhiteboardRoomRequest
-	3, // 6: druz9.v1.WhiteboardRoomsService.GetRoom:input_type -> druz9.v1.GetWhiteboardRoomRequest
-	4, // 7: druz9.v1.WhiteboardRoomsService.ListMyRooms:input_type -> druz9.v1.ListMyWhiteboardRoomsRequest
-	6, // 8: druz9.v1.WhiteboardRoomsService.DeleteRoom:input_type -> druz9.v1.DeleteWhiteboardRoomRequest
-	1, // 9: druz9.v1.WhiteboardRoomsService.CreateRoom:output_type -> druz9.v1.WhiteboardRoom
-	1, // 10: druz9.v1.WhiteboardRoomsService.GetRoom:output_type -> druz9.v1.WhiteboardRoom
-	5, // 11: druz9.v1.WhiteboardRoomsService.ListMyRooms:output_type -> druz9.v1.WhiteboardRoomList
-	7, // 12: druz9.v1.WhiteboardRoomsService.DeleteRoom:output_type -> druz9.v1.DeleteWhiteboardRoomResponse
-	9, // [9:13] is the sub-list for method output_type
-	5, // [5:9] is the sub-list for method input_type
-	5, // [5:5] is the sub-list for extension type_name
-	5, // [5:5] is the sub-list for extension extendee
-	0, // [0:5] is the sub-list for field type_name
+	11, // 0: druz9.v1.WhiteboardParticipant.joined_at:type_name -> google.protobuf.Timestamp
+	11, // 1: druz9.v1.WhiteboardRoom.expires_at:type_name -> google.protobuf.Timestamp
+	11, // 2: druz9.v1.WhiteboardRoom.created_at:type_name -> google.protobuf.Timestamp
+	0,  // 3: druz9.v1.WhiteboardRoom.participants:type_name -> druz9.v1.WhiteboardParticipant
+	1,  // 4: druz9.v1.WhiteboardRoomList.items:type_name -> druz9.v1.WhiteboardRoom
+	2,  // 5: druz9.v1.WhiteboardRoomsService.CreateRoom:input_type -> druz9.v1.CreateWhiteboardRoomRequest
+	3,  // 6: druz9.v1.WhiteboardRoomsService.GetRoom:input_type -> druz9.v1.GetWhiteboardRoomRequest
+	4,  // 7: druz9.v1.WhiteboardRoomsService.ListMyRooms:input_type -> druz9.v1.ListMyWhiteboardRoomsRequest
+	6,  // 8: druz9.v1.WhiteboardRoomsService.DeleteRoom:input_type -> druz9.v1.DeleteWhiteboardRoomRequest
+	9,  // 9: druz9.v1.WhiteboardRoomsService.GetVisibility:input_type -> druz9.v1.GetWhiteboardVisibilityRequest
+	10, // 10: druz9.v1.WhiteboardRoomsService.SetVisibility:input_type -> druz9.v1.SetWhiteboardVisibilityRequest
+	1,  // 11: druz9.v1.WhiteboardRoomsService.CreateRoom:output_type -> druz9.v1.WhiteboardRoom
+	1,  // 12: druz9.v1.WhiteboardRoomsService.GetRoom:output_type -> druz9.v1.WhiteboardRoom
+	5,  // 13: druz9.v1.WhiteboardRoomsService.ListMyRooms:output_type -> druz9.v1.WhiteboardRoomList
+	7,  // 14: druz9.v1.WhiteboardRoomsService.DeleteRoom:output_type -> druz9.v1.DeleteWhiteboardRoomResponse
+	8,  // 15: druz9.v1.WhiteboardRoomsService.GetVisibility:output_type -> druz9.v1.WhiteboardVisibility
+	8,  // 16: druz9.v1.WhiteboardRoomsService.SetVisibility:output_type -> druz9.v1.WhiteboardVisibility
+	11, // [11:17] is the sub-list for method output_type
+	5,  // [5:11] is the sub-list for method input_type
+	5,  // [5:5] is the sub-list for extension type_name
+	5,  // [5:5] is the sub-list for extension extendee
+	0,  // [0:5] is the sub-list for field type_name
 }
 
 func init() { file_druz9_v1_whiteboard_rooms_proto_init() }
@@ -546,7 +706,7 @@ func file_druz9_v1_whiteboard_rooms_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_druz9_v1_whiteboard_rooms_proto_rawDesc), len(file_druz9_v1_whiteboard_rooms_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   8,
+			NumMessages:   11,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

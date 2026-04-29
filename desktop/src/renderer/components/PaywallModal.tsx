@@ -190,7 +190,7 @@ export function PaywallModal({ copy, currentPlan, reason, onClose, onRefresh }: 
 
 function PlanCard({ plan, isCurrent }: { plan: PaywallCopy; isCurrent: boolean }) {
   const hasSubscribe = !!plan.subscribeUrl && !isCurrent;
-  const isHighlighted = plan.planId === 'seeker'; // "most popular"
+  const isHighlighted = plan.planId === 'pro'; // "most popular"
 
   // Visual hierarchy:
   //   - highlighted (Pro): solid gradient border + accent-tinted bg +

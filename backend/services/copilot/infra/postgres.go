@@ -165,6 +165,32 @@ func (r *Conversations) ListForUser(ctx context.Context, userID uuid.UUID, curso
 	return out, next, nil
 }
 
+// ResetModelsNotIn — Phase VII: при tier-downgrade (например max→free)
+// сбрасывает conv.Model для conversations, чьи pinned-модели больше не
+// доступны юзеру. На next turn такие conv'ы упадут в DefaultModelID
+// path в Analyze.Do (Turbo для Free) — юзер видит continuation вместо
+// ErrTierRequired silent failure.
+//
+// allowed — whitelist моделей доступных на новом tier. Empty / nil =
+// "все модели разрешены" (pro/max default), no-op.
+func (r *Conversations) ResetModelsNotIn(ctx context.Context, userID uuid.UUID, allowed []string) (int64, error) {
+	if len(allowed) == 0 {
+		return 0, nil
+	}
+	tag, err := r.pool.Exec(ctx,
+		`UPDATE copilot_conversations
+		    SET model = '', updated_at = now()
+		  WHERE user_id = $1
+		    AND model <> ''
+		    AND model <> ALL($2::text[])`,
+		sharedpg.UUID(userID), allowed,
+	)
+	if err != nil {
+		return 0, fmt.Errorf("copilot.Conversations.ResetModelsNotIn: %w", err)
+	}
+	return tag.RowsAffected(), nil
+}
+
 // ─────────────────────────────────────────────────────────────────────────
 // Messages
 // ─────────────────────────────────────────────────────────────────────────
@@ -360,6 +386,7 @@ func conversationFromRow[R conversationRowLike](r R) domain.Conversation {
 			CreatedAt:      v.CreatedAt.Time,
 			UpdatedAt:      v.UpdatedAt.Time,
 			RunningSummary: v.RunningSummary,
+			SummaryModel:   v.SummaryModel,
 		}
 	case copilotdb.CopilotConversation:
 		return domain.Conversation{

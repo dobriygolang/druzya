@@ -64,77 +64,41 @@ func validateCanvasDataURL(s string) error {
 // Bearer-auth middleware is applied at the parent router; this Mount only
 // adds requireAdmin where needed.
 func (s *Server) Mount(r chi.Router) {
-	// Admin: companies
-	r.Get("/admin/mock/companies", s.adminListCompanies)
-	r.Post("/admin/mock/companies", s.adminCreateCompany)
-	r.Patch("/admin/mock/companies/{id}", s.adminUpdateCompany)
-	r.Post("/admin/mock/companies/{id}/active", s.adminToggleCompanyActive)
+	// Admin: companies + strictness — Phase chi→proto slice 4: перенесены
+	// в MockPipelineService Connect (см. connect_admin.go); mount через
+	// transcoder в cmd. Chi routes удалены отсюда; admin role-claim guard
+	// дублируется в requireAdminConnect.
 
-	// Admin: strictness
-	r.Get("/admin/mock/strictness", s.adminListStrictness)
-	r.Post("/admin/mock/strictness", s.adminCreateStrictness)
-	r.Patch("/admin/mock/strictness/{id}", s.adminUpdateStrictness)
+	// Admin: tasks — Phase chi→proto slice 5: перенесены в Connect
+	// (см. connect_admin.go); mount через transcoder в cmd.
 
-	// Admin: tasks
-	r.Get("/admin/mock/tasks", s.adminListTasks)
-	r.Get("/admin/mock/tasks/{id}", s.adminGetTask)
-	r.Post("/admin/mock/tasks", s.adminCreateTask)
-	r.Patch("/admin/mock/tasks/{id}", s.adminUpdateTask)
-	r.Post("/admin/mock/tasks/{id}/active", s.adminToggleTaskActive)
+	// Admin: task questions + test-cases — Phase chi→proto slice 6:
+	// перенесены в Connect (connect_admin.go); mount через transcoder в cmd.
 
-	// Admin: task questions
-	r.Post("/admin/mock/tasks/{id}/questions", s.adminCreateTaskQuestion)
-	r.Patch("/admin/mock/task-questions/{id}", s.adminUpdateTaskQuestion)
-	r.Delete("/admin/mock/task-questions/{id}", s.adminDeleteTaskQuestion)
+	// Admin: bulk task import — Phase chi→proto slice 8: перенесён
+	// в Connect (connect_admin.go); mount через transcoder в cmd.
 
-	// Admin: task test-cases (Judge0 grading rows)
-	r.Get("/admin/mock/tasks/{id}/test-cases", s.adminListTestCases)
-	r.Post("/admin/mock/tasks/{id}/test-cases", s.adminCreateTestCase)
-	r.Patch("/admin/mock/test-cases/{id}", s.adminUpdateTestCase)
-	r.Delete("/admin/mock/test-cases/{id}", s.adminDeleteTestCase)
+	// Admin: default + company questions — Phase chi→proto slice 7:
+	// перенесены в Connect (connect_admin.go); mount через transcoder в cmd.
 
-	// Admin: bulk task import (JSON-paste flow on the admin tasks panel)
-	r.Post("/admin/mock/tasks/bulk-import", s.adminBulkImportTasks)
+	// Admin: company stages — Phase chi→proto slice 8: перенесены в
+	// Connect (connect_admin.go); mount через transcoder в cmd.
 
-	// Admin: default questions
-	r.Get("/admin/mock/default-questions", s.adminListDefaultQuestions)
-	r.Post("/admin/mock/default-questions", s.adminCreateDefaultQuestion)
-	r.Patch("/admin/mock/default-questions/{id}", s.adminUpdateDefaultQuestion)
-	r.Delete("/admin/mock/default-questions/{id}", s.adminDeleteDefaultQuestion)
+	// Public (any authed user): companies + pipelines.
+	// Phase chi→proto slice 1+2: GET /mock/companies, /mock/pipelines{,/{id}},
+	// POST /mock/pipelines (create), POST /mock/pipelines/{id}/cancel,
+	// GET /mock/attempts/{id}/finalised, GET /mock/leaderboard перенесены
+	// в MockPipelineService Connect (connect_server.go), mount через
+	// vanguard transcoder в cmd/.
 
-	// Admin: company questions
-	r.Get("/admin/mock/companies/{id}/questions", s.adminListCompanyQuestions)
-	r.Post("/admin/mock/companies/{id}/questions", s.adminCreateCompanyQuestion)
-	r.Patch("/admin/mock/company-questions/{id}", s.adminUpdateCompanyQuestion)
-	r.Delete("/admin/mock/company-questions/{id}", s.adminDeleteCompanyQuestion)
-
-	// Admin: company stages
-	r.Get("/admin/mock/companies/{id}/stages", s.adminGetCompanyStages)
-	r.Put("/admin/mock/companies/{id}/stages", s.adminReplaceCompanyStages)
-
-	// Public (any authed user): companies + pipelines
-	r.Get("/mock/companies", s.publicListCompanies)
-	r.Post("/mock/pipelines", s.publicCreatePipeline)
-	r.Get("/mock/pipelines/{id}", s.publicGetPipeline)
-	r.Get("/mock/pipelines", s.publicListPipelines)
-
-	// Public Phase B orchestrator routes
-	r.Post("/mock/pipelines/{id}/start-next-stage", s.publicStartNextStage)
-	r.Post("/mock/pipelines/{id}/cancel", s.publicCancelPipeline)
-	r.Post("/mock/attempts/{id}/submit", s.publicSubmitAnswer)
+	// Phase chi→proto slice 3: StartNextStage / SubmitAnswer / FinishStage
+	// перенесены в Connect. submit-canvas (binary) и canvas-draft (binary)
+	// остаются legit-chi (proto-JSON не подходит для бинарного payload'а
+	// per services/README.md «binary / streaming responses» exception).
 	r.Post("/mock/attempts/{id}/submit-canvas", s.publicSubmitCanvas)
-	// Redis-fallback canvas autosave — frontend writes here only when
-	// the browser's localStorage quota is exhausted.
 	r.Get("/mock/attempts/{id}/canvas-draft", s.publicGetCanvasDraft)
 	r.Put("/mock/attempts/{id}/canvas-draft", s.publicSaveCanvasDraft)
 	r.Delete("/mock/attempts/{id}/canvas-draft", s.publicDeleteCanvasDraft)
-	// Lightweight read used by the standalone /mock/canvas/{id} tab to
-	// detect "this attempt was already submitted, canvas is dead".
-	r.Get("/mock/attempts/{id}/finalised", s.publicAttemptFinalised)
-	r.Post("/mock/stages/{id}/finish", s.publicFinishStage)
-
-	// Public: leaderboard (fairness-watermarked: only ai_assist=false counted).
-	r.Get("/mock/leaderboard", s.publicLeaderboard)
 }
 
 // ── helpers ─────────────────────────────────────────────────────────────

@@ -224,8 +224,9 @@ func (s *ProfileServer) BecomeInterviewer(
 }
 
 // GetMyInterviewerApplication implements (GET /profile/me/interviewer-application).
-// Returns NOT_FOUND when the user has never applied — frontend treats
-// that as "show apply button".
+// "Never applied" is a normal empty state, not an error. We return an
+// empty response with status="not_submitted" so the frontend can render
+// the apply button without catching a 404.
 func (s *ProfileServer) GetMyInterviewerApplication(
 	ctx context.Context,
 	_ *connect.Request[pb.GetMyInterviewerApplicationRequest],
@@ -236,6 +237,12 @@ func (s *ProfileServer) GetMyInterviewerApplication(
 	}
 	app, err := s.H.GetMyAppUC.Do(ctx, uid)
 	if err != nil {
+		if errors.Is(err, domain.ErrNotFound) {
+			return connect.NewResponse(&pb.InterviewerApplication{
+				UserId: uid.String(),
+				Status: pb.InterviewerApplicationStatus_INTERVIEWER_APPLICATION_STATUS_NOT_SUBMITTED,
+			}), nil
+		}
 		return nil, fmt.Errorf("profile.GetMyInterviewerApplication: %w", s.toConnectErr(err))
 	}
 	return connect.NewResponse(toInterviewerAppProto(app)), nil
@@ -249,7 +256,7 @@ func (s *ProfileServer) ListInterviewerApplications(
 	if err := requireAdmin(ctx); err != nil {
 		return nil, err
 	}
-	rows, err := s.H.ListAppsUC.Do(ctx, req.Msg.GetStatus())
+	rows, err := s.H.ListAppsUC.Do(ctx, interviewerAppStatusFromProto(req.Msg.GetStatus()))
 	if err != nil {
 		return nil, fmt.Errorf("profile.ListInterviewerApplications: %w", s.toConnectErr(err))
 	}
@@ -319,12 +326,47 @@ func requireAdminUID(ctx context.Context) (uuid.UUID, error) {
 	return uid, nil
 }
 
+// interviewerAppStatusToProto переводит domain string-status в proto enum.
+// Unknown/empty → UNSPECIFIED — frontend через нормализатор покажет
+// безопасный fallback.
+func interviewerAppStatusToProto(s string) pb.InterviewerApplicationStatus {
+	switch s {
+	case "not_submitted":
+		return pb.InterviewerApplicationStatus_INTERVIEWER_APPLICATION_STATUS_NOT_SUBMITTED
+	case "pending":
+		return pb.InterviewerApplicationStatus_INTERVIEWER_APPLICATION_STATUS_PENDING
+	case "approved":
+		return pb.InterviewerApplicationStatus_INTERVIEWER_APPLICATION_STATUS_APPROVED
+	case "rejected":
+		return pb.InterviewerApplicationStatus_INTERVIEWER_APPLICATION_STATUS_REJECTED
+	default:
+		return pb.InterviewerApplicationStatus_INTERVIEWER_APPLICATION_STATUS_UNSPECIFIED
+	}
+}
+
+// interviewerAppStatusFromProto — обратное преобразование для filter-input
+// в ListInterviewerApplications. UNSPECIFIED → "" (caller defaults to pending).
+func interviewerAppStatusFromProto(s pb.InterviewerApplicationStatus) string {
+	switch s {
+	case pb.InterviewerApplicationStatus_INTERVIEWER_APPLICATION_STATUS_NOT_SUBMITTED:
+		return "not_submitted"
+	case pb.InterviewerApplicationStatus_INTERVIEWER_APPLICATION_STATUS_PENDING:
+		return "pending"
+	case pb.InterviewerApplicationStatus_INTERVIEWER_APPLICATION_STATUS_APPROVED:
+		return "approved"
+	case pb.InterviewerApplicationStatus_INTERVIEWER_APPLICATION_STATUS_REJECTED:
+		return "rejected"
+	default:
+		return ""
+	}
+}
+
 func toInterviewerAppProto(a domain.InterviewerApplication) *pb.InterviewerApplication {
 	out := &pb.InterviewerApplication{
 		Id:              a.ID.String(),
 		UserId:          a.UserID.String(),
 		Motivation:      a.Motivation,
-		Status:          a.Status,
+		Status:          interviewerAppStatusToProto(a.Status),
 		DecisionNote:    a.DecisionNote,
 		UserUsername:    a.UserUsername,
 		UserDisplayName: a.UserDisplayName,
@@ -757,10 +799,10 @@ func subscriptionPlanToProto(p enums.SubscriptionPlan) pb.SubscriptionPlan {
 	switch p {
 	case enums.SubscriptionPlanFree:
 		return pb.SubscriptionPlan_SUBSCRIPTION_PLAN_FREE
-	case enums.SubscriptionPlanSeeker:
-		return pb.SubscriptionPlan_SUBSCRIPTION_PLAN_SEEKER
-	case enums.SubscriptionPlanAscendant:
-		return pb.SubscriptionPlan_SUBSCRIPTION_PLAN_ASCENDANT
+	case enums.SubscriptionPlanPro:
+		return pb.SubscriptionPlan_SUBSCRIPTION_PLAN_PRO
+	case enums.SubscriptionPlanMax:
+		return pb.SubscriptionPlan_SUBSCRIPTION_PLAN_MAX
 	default:
 		return pb.SubscriptionPlan_SUBSCRIPTION_PLAN_UNSPECIFIED
 	}

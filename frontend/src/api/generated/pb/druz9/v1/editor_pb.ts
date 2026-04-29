@@ -648,3 +648,120 @@ export class RunCodeResponse extends Message<RunCodeResponse> {
   }
 }
 
+/**
+ * @generated from message druz9.v1.EditorVisibility
+ */
+export class EditorVisibility extends Message<EditorVisibility> {
+  /**
+   * @generated from field: string visibility = 1;
+   */
+  visibility = "";
+
+  constructor(data?: PartialMessage<EditorVisibility>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.EditorVisibility";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "visibility", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): EditorVisibility {
+    return new EditorVisibility().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): EditorVisibility {
+    return new EditorVisibility().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): EditorVisibility {
+    return new EditorVisibility().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: EditorVisibility | PlainMessage<EditorVisibility> | undefined, b: EditorVisibility | PlainMessage<EditorVisibility> | undefined): boolean {
+    return proto3.util.equals(EditorVisibility, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.GetEditorVisibilityRequest
+ */
+export class GetEditorVisibilityRequest extends Message<GetEditorVisibilityRequest> {
+  /**
+   * @generated from field: string room_id = 1;
+   */
+  roomId = "";
+
+  constructor(data?: PartialMessage<GetEditorVisibilityRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.GetEditorVisibilityRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "room_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): GetEditorVisibilityRequest {
+    return new GetEditorVisibilityRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): GetEditorVisibilityRequest {
+    return new GetEditorVisibilityRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): GetEditorVisibilityRequest {
+    return new GetEditorVisibilityRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: GetEditorVisibilityRequest | PlainMessage<GetEditorVisibilityRequest> | undefined, b: GetEditorVisibilityRequest | PlainMessage<GetEditorVisibilityRequest> | undefined): boolean {
+    return proto3.util.equals(GetEditorVisibilityRequest, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.SetEditorVisibilityRequest
+ */
+export class SetEditorVisibilityRequest extends Message<SetEditorVisibilityRequest> {
+  /**
+   * @generated from field: string room_id = 1;
+   */
+  roomId = "";
+
+  /**
+   * @generated from field: string visibility = 2;
+   */
+  visibility = "";
+
+  constructor(data?: PartialMessage<SetEditorVisibilityRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.SetEditorVisibilityRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "room_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "visibility", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): SetEditorVisibilityRequest {
+    return new SetEditorVisibilityRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): SetEditorVisibilityRequest {
+    return new SetEditorVisibilityRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): SetEditorVisibilityRequest {
+    return new SetEditorVisibilityRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: SetEditorVisibilityRequest | PlainMessage<SetEditorVisibilityRequest> | undefined, b: SetEditorVisibilityRequest | PlainMessage<SetEditorVisibilityRequest> | undefined): boolean {
+    return proto3.util.equals(SetEditorVisibilityRequest, a, b);
+  }
+}
+

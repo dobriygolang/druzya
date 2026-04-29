@@ -12,21 +12,11 @@ import (
 	"druz9/subscription/domain"
 )
 
-// BoostySource — порт для чтения подписчиков у Boosty. Мокабельный: в prod
-// — реальный BoostyClient (infra), в тестах — fake.
-type BoostySource interface {
-	ListSubscribers(ctx context.Context, limit int) ([]BoostySubscriberSnapshot, error)
-}
-
-// BoostySubscriberSnapshot — доменная проекция одной записи у Boosty.
-// Независим от infra.BoostySubscriber чтобы app-слой не зависел от HTTP-layer'а.
-type BoostySubscriberSnapshot struct {
-	SubscriberID string
-	Username     string
-	TierName     string
-	ExpiresAt    *time.Time
-	IsActive     bool
-}
+// BoostySource and BoostySubscriberSnapshot live in domain so the infra
+// adapter can implement the port without importing app. Re-exported here
+// as type aliases for backward compatibility with existing call sites.
+type BoostySource = domain.BoostySource
+type BoostySubscriberSnapshot = domain.BoostySubscriberSnapshot
 
 // SyncBoosty — периодический worker, подтягивающий актуальные tier'ы из
 // Boosty в нашу БД subscriptions. Вызывается background-cron'ом в
@@ -175,7 +165,7 @@ func ptrNow() *time.Time {
 }
 
 // ParseTierMapping — helper для конфига: env-строка формата
-// "Поддержка:seeker,Вознёсшийся:ascendant" → map[string]Tier.
+// "Поддержка:pro,Вознёсшийся:max" → map[string]Tier.
 func ParseTierMapping(s string) map[string]domain.Tier {
 	m := make(map[string]domain.Tier)
 	if strings.TrimSpace(s) == "" {
@@ -192,10 +182,10 @@ func ParseTierMapping(s string) map[string]domain.Tier {
 		switch v {
 		case "free":
 			tier = enums.SubscriptionPlanFree
-		case "seeker":
-			tier = enums.SubscriptionPlanSeeker
-		case "ascendant", "ascended":
-			tier = enums.SubscriptionPlanAscendant
+		case "pro", "seeker":
+			tier = enums.SubscriptionPlanPro
+		case "max", "ascendant", "ascended":
+			tier = enums.SubscriptionPlanMax
 		default:
 			continue
 		}

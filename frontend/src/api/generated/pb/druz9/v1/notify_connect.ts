@@ -10,7 +10,7 @@
 /* eslint-disable */
 // @ts-nocheck
 
-import { GetNotifyPreferencesRequest, NotificationPreferences, UpdateNotifyPreferencesRequest } from "./notify_pb.js";
+import { CountUnreadRequest, CreateSupportTicketRequest, CreateSupportTicketResponse, GetNotifyPreferencesRequest, ListNotificationsRequest, MarkAllReadRequest, MarkAllReadResponse, MarkReadRequest, MarkReadResponse, NotificationList, NotificationPreferences, UnreadCount, UpdateNotifyPreferencesRequest } from "./notify_pb.js";
 import { MethodKind } from "@bufbuild/protobuf";
 
 /**
@@ -39,6 +39,58 @@ export const NotifyService = {
       name: "UpdatePreferences",
       I: UpdateNotifyPreferencesRequest,
       O: NotificationPreferences,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * ─── In-app notifications feed ────────────────────────────────────────
+     *
+     * @generated from rpc druz9.v1.NotifyService.ListNotifications
+     */
+    listNotifications: {
+      name: "ListNotifications",
+      I: ListNotificationsRequest,
+      O: NotificationList,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc druz9.v1.NotifyService.CountUnread
+     */
+    countUnread: {
+      name: "CountUnread",
+      I: CountUnreadRequest,
+      O: UnreadCount,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc druz9.v1.NotifyService.MarkRead
+     */
+    markRead: {
+      name: "MarkRead",
+      I: MarkReadRequest,
+      O: MarkReadResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc druz9.v1.NotifyService.MarkAllRead
+     */
+    markAllRead: {
+      name: "MarkAllRead",
+      I: MarkAllReadRequest,
+      O: MarkAllReadResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * ─── Support ticket (anonymous-readable POST) ─────────────────────────
+     * schema_v2 forces contact_kind = "telegram"; clients that omit it get
+     * the same default. Validation lives server-side — server returns
+     * InvalidArgument on bad input.
+     *
+     * @generated from rpc druz9.v1.NotifyService.CreateSupportTicket
+     */
+    createSupportTicket: {
+      name: "CreateSupportTicket",
+      I: CreateSupportTicketRequest,
+      O: CreateSupportTicketResponse,
       kind: MethodKind.Unary,
     },
   }

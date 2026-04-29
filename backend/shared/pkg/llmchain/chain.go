@@ -33,7 +33,8 @@ type Chain struct {
 	timeouts map[Provider]time.Duration
 	// Default cooldowns applied when a provider returns a typed error
 	// without a header hint. Tunable for tests.
-	defaultCooldowns cooldownPolicy
+	defaultCooldowns    cooldownPolicy
+	healthProbeInterval time.Duration
 	// runtimeCfg — optional runtime-loaded overrides (from DB). Когда
 	// непустой snapshot активен — методы currentOrder/currentTaskMap/
 	// currentVirtualChains возвращают его значения; иначе падают на
@@ -114,6 +115,11 @@ type Options struct {
 	// background.Background(). Обычно wiring передаёт ctx приложения,
 	// чтобы graceful shutdown останавливал loader.
 	RuntimeCtx context.Context
+
+	// HealthProbeInterval controls how often cooled provider/model pairs
+	// are tested before being returned to user traffic. Zero defaults to
+	// one hour; negative disables background probes for tests.
+	HealthProbeInterval time.Duration
 }
 
 // NewChain builds the orchestrator. Drivers with nil entries are
@@ -174,6 +180,10 @@ func NewChain(drivers map[Provider]Driver, opts Options) (*Chain, error) {
 		timeouts:         timeouts,
 		defaultCooldowns: defaultPolicy,
 	}
+	c.healthProbeInterval = opts.HealthProbeInterval
+	if c.healthProbeInterval == 0 {
+		c.healthProbeInterval = time.Hour
+	}
 
 	// Runtime config loader. Если оператор не прицепил ConfigSource — chain
 	// живёт на static defaults (как раньше). Иначе — стартуем background
@@ -187,6 +197,13 @@ func NewChain(drivers map[Provider]Driver, opts Options) (*Chain, error) {
 		}
 		go loader.run(ctx)
 	}
+	if c.healthProbeInterval > 0 {
+		ctx := opts.RuntimeCtx
+		if ctx == nil {
+			ctx = context.Background()
+		}
+		go c.runHealthProbes(ctx)
+	}
 	return c, nil
 }
 
@@ -197,6 +214,80 @@ func (c *Chain) RuntimeForceReload(ctx context.Context) {
 	if c.runtimeCfg != nil {
 		c.runtimeCfg.forceReload(ctx)
 	}
+}
+
+func (c *Chain) TestProviderModel(ctx context.Context, provider Provider, model, prompt string) (Response, error) {
+	d, ok := c.drivers[provider]
+	if !ok {
+		return Response{}, fmt.Errorf("%w: %s", ErrNoProvider, provider)
+	}
+	if strings.TrimSpace(prompt) == "" {
+		prompt = "Reply with exactly: ok"
+	}
+	attemptCtx, cancel := c.attemptContext(ctx, provider, 0)
+	defer cancel()
+	return d.Chat(attemptCtx, model, Request{
+		Temperature: 0,
+		MaxTokens:   64,
+		Messages: []Message{
+			{Role: RoleUser, Content: prompt},
+		},
+	})
+}
+
+func (c *Chain) runHealthProbes(ctx context.Context) {
+	t := time.NewTicker(c.healthProbeInterval)
+	defer t.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-t.C:
+			c.healthProbeOnce(ctx)
+		}
+	}
+}
+
+func (c *Chain) healthProbeOnce(ctx context.Context) {
+	now := c.clock()
+	c.state.Range(func(_, v any) bool {
+		state, ok := v.(*rateState)
+		if !ok {
+			return true
+		}
+		provider, model, due := state.probeDue(now)
+		if !due {
+			return true
+		}
+		driver, ok := c.drivers[provider]
+		if !ok {
+			state.block(now.Add(c.healthProbeInterval), "health probe: driver unavailable")
+			return true
+		}
+		probeCtx, cancel := c.attemptContext(ctx, provider, 0)
+		_, err := driver.Chat(probeCtx, model, Request{
+			Task:        TaskSummarize,
+			Temperature: 0,
+			MaxTokens:   1,
+			Messages: []Message{
+				{Role: RoleUser, Content: "health check: reply ok"},
+			},
+		})
+		cancel()
+		if err == nil {
+			state.clear()
+			c.log.InfoContext(ctx, "llmchain.health: candidate restored",
+				slog.String("provider", string(provider)),
+				slog.String("model", model))
+			return true
+		}
+		state.block(now.Add(c.healthProbeInterval), "health probe failed")
+		c.log.WarnContext(ctx, "llmchain.health: candidate still failing",
+			slog.String("provider", string(provider)),
+			slog.String("model", model),
+			slog.Any("err", err))
+		return true
+	})
 }
 
 // RegisteredProviders возвращает имена всех зарегистрированных провайдеров
@@ -305,6 +396,14 @@ func (c *Chain) Chat(ctx context.Context, req Request) (Response, error) {
 			c.recordSuccess(cand.provider, cand.model, nil)
 			c.latency.Record(cand.provider, cand.model, req.Task, dur)
 			observeCall(cand.provider, string(req.Task), "ok", dur)
+			// Phase VIII: cost telemetry per successful call.
+			// Используем echo-model из Response — для virtual chains
+			// это реальная модель, не "druz9/turbo".
+			echoModel := resp.Model
+			if echoModel == "" {
+				echoModel = cand.model
+			}
+			observeCost(cand.provider, string(req.Task), echoModel, resp.TokensIn, resp.TokensOut)
 			return resp, nil
 		}
 		dur := c.clock().Sub(start)
@@ -374,7 +473,7 @@ func (c *Chain) ChatStream(ctx context.Context, req Request) (<-chan StreamEvent
 				slog.String("model", cand.model),
 				slog.Bool("has_images", hasImages(req.Messages)),
 				slog.Duration("ttfb", dur))
-			return ch, nil
+			return c.observeStream(ctx, cand, req.Task, ch), nil
 		}
 		dur := c.clock().Sub(start)
 		attempts = append(attempts, AttemptError{
@@ -425,6 +524,36 @@ func errString(err error) string {
 	return err.Error()
 }
 
+func (c *Chain) observeStream(ctx context.Context, cand candidate, task Task, src <-chan StreamEvent) <-chan StreamEvent {
+	out := make(chan StreamEvent, 16)
+	go func() {
+		defer close(out)
+		for ev := range src {
+			if ev.Err != nil {
+				c.handleError(cand.provider, cand.model, ev.Err)
+				c.log.WarnContext(ctx, "llmchain.ChatStream: stream failed after start, candidate cooled",
+					slog.String("task", string(task)),
+					slog.String("provider", string(cand.provider)),
+					slog.String("model", cand.model),
+					slog.Any("err", ev.Err))
+			}
+			// Phase VIII: cost telemetry на терминальном Done-frame'е.
+			// SSE возвращает usage только в финальном chunk'е (или
+			// иногда не возвращает вообще — тогда tokens=0 и
+			// observeCost ничего не пишет).
+			if ev.Done != nil {
+				echoModel := ev.Done.Model
+				if echoModel == "" {
+					echoModel = cand.model
+				}
+				observeCost(cand.provider, string(task), echoModel, ev.Done.TokensIn, ev.Done.TokensOut)
+			}
+			out <- ev
+		}
+	}()
+	return out
+}
+
 // effectiveTaskFor — какой task на самом деле гнать через chain. Если
 // в request'е есть images, а task не TaskVision — переключаемся.
 // Делается в одном месте чтобы и candidates(), и error-construction
@@ -466,7 +595,21 @@ func (c *Chain) candidates(req Request) ([]candidate, error) {
 		if !ok {
 			return nil, fmt.Errorf("%w: no chain for virtual %q", ErrNoProvider, req.ModelOverride)
 		}
-		return c.expandVirtualChain(vChain), nil
+		expanded := c.expandVirtualChain(vChain)
+		// Phase IV: filter virtual chain by capability. Если ни один шаг
+		// не удовлетворяет требованиям (например JSON-задача, а в чейне
+		// только text-only providers) — typed error.
+		filtered := make([]candidate, 0, len(expanded))
+		for _, ca := range expanded {
+			if driverSatisfies(ca.driver, req) {
+				filtered = append(filtered, ca)
+			}
+		}
+		if len(filtered) == 0 {
+			return nil, fmt.Errorf("%w: virtual %q has no capability-matching providers (json_mode=%v, tools=%v)",
+				ErrNoProvider, req.ModelOverride, req.JSONMode, req.RequiresTools)
+		}
+		return filtered, nil
 	}
 
 	if req.ModelOverride != "" {
@@ -480,6 +623,14 @@ func (c *Chain) candidates(req Request) ([]candidate, error) {
 		d, ok := c.drivers[p]
 		if !ok {
 			return nil, fmt.Errorf("%w: %s for model %q", ErrNoProvider, p, req.ModelOverride)
+		}
+		// Phase IV: для pinned-модели capability mismatch — это ошибка
+		// конфигурации (admin запинил JSON-задачу к text-only-driver'у).
+		// Возвращаем typed error чтобы caller увидел осмысленный месседж,
+		// а не silent text-ответ.
+		if !driverSatisfies(d, req) {
+			return nil, fmt.Errorf("%w: pinned model %q lacks required capability (json_mode=%v, tools=%v)",
+				ErrNoProvider, req.ModelOverride, req.JSONMode, req.RequiresTools)
 		}
 		return []candidate{{provider: p, model: req.ModelOverride, driver: d}}, nil
 	}
@@ -520,6 +671,13 @@ func (c *Chain) candidates(req Request) ([]candidate, error) {
 		}
 		d, ok := c.drivers[p]
 		if !ok {
+			continue
+		}
+		// Phase IV: capability filter. JSON-strict / tool-strict задачи
+		// должны видеть только драйверы которые wire-уровнево поддерживают
+		// фичу — иначе failover уходит на text-only провайдер и парсер
+		// тихо ловит plain text вместо JSON.
+		if !driverSatisfies(d, req) {
 			continue
 		}
 		out = append(out, candidate{provider: p, model: model, driver: d})
@@ -623,6 +781,9 @@ func providerFromModelID(id string) Provider {
 			ProviderCerebras,
 			ProviderMistral,
 			ProviderOpenRouter,
+			ProviderGoogle,
+			ProviderCloudflare,
+			ProviderZAI,
 			ProviderDeepSeek,
 			ProviderOllama:
 			return prefix
@@ -654,6 +815,24 @@ func effectiveTier(t enums.SubscriptionPlan) enums.SubscriptionPlan {
 		return enums.SubscriptionPlanFree
 	}
 	return t
+}
+
+// driverSatisfies — Phase IV capability filter. Возвращает true если
+// driver покрывает все требуемые Request фичи (JSONMode, RequiresTools).
+// Используется и в task-routing path, и для virtual chains, и для
+// pinned ModelOverride. Без требований (текстовая задача) — всегда true.
+func driverSatisfies(d Driver, req Request) bool {
+	if !req.JSONMode && !req.RequiresTools {
+		return true
+	}
+	caps := d.Capabilities()
+	if req.JSONMode && !caps.JSONMode {
+		return false
+	}
+	if req.RequiresTools && !caps.Tools {
+		return false
+	}
+	return true
 }
 
 // ─────────────────────────────────────────────────────────────────────────
@@ -691,7 +870,10 @@ func (c *Chain) handleError(p Provider, model string, err error) chainDecision {
 				cooldown = ra
 			}
 		}
-		state.block(now.Add(cooldown), "rate-limited")
+		if c.healthProbeInterval > 0 && cooldown < c.healthProbeInterval {
+			cooldown = c.healthProbeInterval
+		}
+		state.blockWithProbe(now.Add(cooldown), "rate-limited", c.healthProbeInterval > 0)
 		c.log.Warn("llmchain: provider rate-limited, falling through",
 			slog.String("provider", string(p)),
 			slog.String("model", model),
@@ -700,7 +882,10 @@ func (c *Chain) handleError(p Provider, model string, err error) chainDecision {
 
 	case errors.Is(err, ErrProviderDown), errors.Is(err, ErrTimeout):
 		cooldown := c.defaultCooldowns.providerDown
-		state.block(now.Add(cooldown), "provider down")
+		if c.healthProbeInterval > 0 && cooldown < c.healthProbeInterval {
+			cooldown = c.healthProbeInterval
+		}
+		state.blockWithProbe(now.Add(cooldown), "provider down", c.healthProbeInterval > 0)
 		c.log.Warn("llmchain: provider down, falling through",
 			slog.String("provider", string(p)),
 			slog.String("model", model),
@@ -709,7 +894,10 @@ func (c *Chain) handleError(p Provider, model string, err error) chainDecision {
 
 	case errors.Is(err, ErrUnauthorized):
 		cooldown := c.defaultCooldowns.unauthorized
-		state.block(now.Add(cooldown), "unauthorized/payment required")
+		if c.healthProbeInterval > 0 && cooldown < c.healthProbeInterval {
+			cooldown = c.healthProbeInterval
+		}
+		state.blockWithProbe(now.Add(cooldown), "unauthorized/payment required", c.healthProbeInterval > 0)
 		// ERROR level — this is an operator-visible issue (wrong/expired
 		// key, out of credits). We keep walking the chain because the
 		// call itself might still succeed elsewhere, but the alert fires.
@@ -731,7 +919,10 @@ func (c *Chain) handleError(p Provider, model string, err error) chainDecision {
 	default:
 		// Unknown error — treat conservatively as provider-down.
 		cooldown := c.defaultCooldowns.providerDown
-		state.block(now.Add(cooldown), "unknown error")
+		if c.healthProbeInterval > 0 && cooldown < c.healthProbeInterval {
+			cooldown = c.healthProbeInterval
+		}
+		state.blockWithProbe(now.Add(cooldown), "unknown error", c.healthProbeInterval > 0)
 		c.log.Warn("llmchain: unclassified error, treating as provider-down",
 			slog.String("provider", string(p)),
 			slog.String("model", model),
@@ -762,7 +953,7 @@ func (c *Chain) stateOf(p Provider, model string) *rateState {
 	if v, ok := c.state.Load(key); ok {
 		return v.(*rateState)
 	}
-	fresh := &rateState{}
+	fresh := &rateState{provider: p, model: model}
 	actual, _ := c.state.LoadOrStore(key, fresh)
 	return actual.(*rateState)
 }

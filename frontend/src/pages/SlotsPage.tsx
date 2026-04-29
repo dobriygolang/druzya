@@ -24,6 +24,7 @@ import {
   isInterviewerOrAdmin,
   useBecomeInterviewer,
   useMyInterviewerApplicationQuery,
+  normalizeInterviewerStatus,
   useProfileQuery,
 } from '../lib/queries/profile'
 import {
@@ -90,7 +91,7 @@ function Header({
   onBecomeInterviewer: () => void
   isInterviewer: boolean
   promoting: boolean
-  appStatus: 'pending' | 'approved' | 'rejected' | undefined
+  appStatus: 'pending' | 'approved' | 'rejected' | 'not_submitted' | 'unspecified' | undefined
 }) {
   return (
     <div className="flex flex-col items-start gap-4 px-4 pb-4 pt-6 sm:px-8 lg:flex-row lg:items-end lg:justify-between lg:px-20 lg:pt-7">
@@ -362,7 +363,7 @@ function PromoCard({
   onApply: () => void
   isInterviewer: boolean
   promoting: boolean
-  appStatus: 'pending' | 'approved' | 'rejected' | undefined
+  appStatus: 'pending' | 'approved' | 'rejected' | 'not_submitted' | 'unspecified' | undefined
 }) {
   // Render order: role > application status > default invite.
   const title = isInterviewer
@@ -457,7 +458,15 @@ export default function SlotsPage() {
   const profile = useProfileQuery()
   const isInterviewer = isInterviewerOrAdmin(profile.data?.role)
   const myApp = useMyInterviewerApplicationQuery()
-  const appStatus = myApp.data?.status as 'pending' | 'approved' | 'rejected' | undefined
+  // Wire может приехать enum NAME ('INTERVIEWER_APPLICATION_STATUS_PENDING')
+  // от proto-эмиттера или legacy 'pending'. Нормализуем — UI сравнивает по
+  // канону. undefined когда юзер не подавал (myApp.data === null после
+  // not_submitted-маппинга в queries/profile.ts).
+  const rawStatus = myApp.data?.status
+  const appStatus =
+    rawStatus !== undefined && rawStatus !== null
+      ? (normalizeInterviewerStatus(rawStatus) as 'pending' | 'approved' | 'rejected' | 'not_submitted' | 'unspecified')
+      : undefined
   const become = useBecomeInterviewer()
   const onBecomeInterviewer = () => {
     become.mutate('', {

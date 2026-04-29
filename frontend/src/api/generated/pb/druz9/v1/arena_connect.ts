@@ -10,8 +10,8 @@
 /* eslint-disable */
 // @ts-nocheck
 
-import { ArenaMatch, CancelMatchRequest, ConfirmMatchRequest, FindMatchRequest, GetMatchRequest, GetMyMatchesRequest, GetMyMatchesResponse, MatchQueueResponse, SubmitCodeRequest, SubmitResult } from "./arena_pb.js";
-import { MethodKind } from "@bufbuild/protobuf";
+import { ArenaMatch, ArenaQueueStats, CancelMatchRequest, ConfirmMatchRequest, CurrentMatch, FindMatchRequest, GetArenaQueueStatsRequest, GetCurrentMatchRequest, GetMatchRequest, GetMyMatchesRequest, GetMyMatchesResponse, MatchQueueResponse, SubmitCodeRequest, SubmitResult } from "./arena_pb.js";
+import { Empty, MethodKind } from "@bufbuild/protobuf";
 
 /**
  * @generated from service druz9.v1.ArenaService
@@ -38,7 +38,7 @@ export const ArenaService = {
     cancelSearch: {
       name: "CancelSearch",
       I: CancelMatchRequest,
-      O: CancelMatchRequest,
+      O: Empty,
       kind: MethodKind.Unary,
     },
     /**
@@ -53,14 +53,16 @@ export const ArenaService = {
       kind: MethodKind.Unary,
     },
     /**
-     * ConfirmReady acknowledges the 10s ready-check window.
+     * ConfirmReady acknowledges the 10s ready-check window. Returns the
+     * updated match state so the client can react to in_progress/abandoned
+     * without a follow-up GetMatch round-trip.
      *
      * @generated from rpc druz9.v1.ArenaService.ConfirmReady
      */
     confirmReady: {
       name: "ConfirmReady",
       I: ConfirmMatchRequest,
-      O: ConfirmMatchRequest,
+      O: ArenaMatch,
       kind: MethodKind.Unary,
     },
     /**
@@ -84,6 +86,30 @@ export const ArenaService = {
       name: "GetMyMatches",
       I: GetMyMatchesRequest,
       O: GetMyMatchesResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * GetCurrentMatch — polled by /arena to detect when matchmaker pairs the
+     * user. Returns NotFound while in queue, 200 once a match exists.
+     *
+     * @generated from rpc druz9.v1.ArenaService.GetCurrentMatch
+     */
+    getCurrentMatch: {
+      name: "GetCurrentMatch",
+      I: GetCurrentMatchRequest,
+      O: CurrentMatch,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * GetArenaQueueStats returns live per-(mode, section) waiting counts plus a
+     * per-mode aggregate. 10s cache header is layered above the transcoder.
+     *
+     * @generated from rpc druz9.v1.ArenaService.GetArenaQueueStats
+     */
+    getArenaQueueStats: {
+      name: "GetArenaQueueStats",
+      I: GetArenaQueueStatsRequest,
+      O: ArenaQueueStats,
       kind: MethodKind.Unary,
     },
   }

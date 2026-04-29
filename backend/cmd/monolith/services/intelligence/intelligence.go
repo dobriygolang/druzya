@@ -76,8 +76,26 @@ func New(d monolithServices.Deps) IntelligenceModule {
 		answerer intelDomain.NoteAnswerer
 	)
 	if d.LLMChain != nil {
-		synth = intelInfra.NewLLMChainBriefSynthesiser(d.LLMChain, d.Log)
-		answerer = intelInfra.NewLLMChainNoteAnswerer(d.LLMChain, d.Log)
+		// Phase III: coach.pinned_model reader пишет в dynamic_config.
+		// При выставленном pin'e DailyBrief + AskNotes идут через
+		// ModelOverride — admin контролирует личность коуча явно.
+		coachCfg := intelInfra.NewDBCoachConfigReader(d.Pool)
+		synth = intelInfra.NewLLMChainBriefSynthesiser(d.LLMChain, coachCfg, d.Log)
+		baseAnswerer := intelInfra.NewLLMChainNoteAnswerer(d.LLMChain, coachCfg, d.Log)
+		// Phase V cost guardrail: 5-минутный Redis cache на AskNotes
+		// LLM-ответы ловит дубликаты (юзер задаёт тот же вопрос после
+		// рефреша вкладки). При nil-Redis — fallthrough на голый
+		// answerer, fail-soft.
+		if d.Redis != nil {
+			answerer = intelInfra.NewCachedNoteAnswerer(
+				baseAnswerer,
+				intelInfra.NewBriefRedisKV(d.Redis),
+				intelInfra.DefaultAskNotesCacheTTL,
+				d.Log,
+			)
+		} else {
+			answerer = baseAnswerer
+		}
 		d.Log.Info("intelligence: LLM adapters wired (daily brief + note QA)")
 	} else {
 		synth = intelInfra.NewNoLLMBriefSynthesiser()

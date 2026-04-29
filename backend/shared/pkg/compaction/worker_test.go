@@ -65,7 +65,7 @@ type fakeStore struct {
 
 func newFakeStore() *fakeStore { return &fakeStore{saves: map[string]string{}} }
 
-func (s *fakeStore) Save(_ context.Context, key, summary string) error {
+func (s *fakeStore) Save(_ context.Context, key, summary, _ string) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if s.err != nil {

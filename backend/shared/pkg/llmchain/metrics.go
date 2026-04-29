@@ -52,12 +52,35 @@ var (
 		},
 		[]string{"provider", "reason"},
 	)
+
+	// Phase VIII cost telemetry. Tokens + RUB cost уже считаются в
+	// shared/pkg/metrics (LLMTokensTotal + LLMCostRubTotal через
+	// RecordLLMUsage). Здесь добавляем USD-side с per-task labelling
+	// (shared-metrics labellит только по model'и) и счётчик unknown
+	// моделей чтобы ops видел когда rate-table cost.go устарел.
+	llmCostUSDCentsTotal = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "druz9_llm_chain_cost_usd_cents_total",
+			Help: "Estimated upstream USD cost in cents per provider+task. Divide by 100 on dashboard.",
+		},
+		[]string{"provider", "task"},
+	)
+
+	llmUnknownModelTotal = prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "druz9_llm_chain_unknown_cost_total",
+			Help: "Calls hitting a model id with no entry in cost.go costTable. Bump signals stale rates.",
+		},
+		[]string{"model"},
+	)
 )
 
 func init() {
 	sharedMetrics.Registry.MustRegister(llmCallTotal)
 	sharedMetrics.Registry.MustRegister(llmCallDuration)
 	sharedMetrics.Registry.MustRegister(llmFallbackTotal)
+	sharedMetrics.Registry.MustRegister(llmCostUSDCentsTotal)
+	sharedMetrics.Registry.MustRegister(llmUnknownModelTotal)
 }
 
 func observeCall(p Provider, task, status string, dur time.Duration) {
@@ -67,4 +90,24 @@ func observeCall(p Provider, task, status string, dur time.Duration) {
 
 func incFallback(p Provider, reason string) {
 	llmFallbackTotal.WithLabelValues(string(p), reason).Inc()
+}
+
+// observeCost — Phase VIII: пишем tokens (через shared RecordLLMUsage) +
+// USD cost (per provider+task — оригинал к нашей цепочке). Caller передаёт
+// фактически-ушедший model id (Response.Model echo) — для virtual chains
+// резолвится в конкретную модель.
+//
+// Безопасно для нулевых tokens (ранние fail'ы / driver не отдал usage).
+func observeCost(p Provider, task, model string, tokensIn, tokensOut int) {
+	if tokensIn > 0 || tokensOut > 0 {
+		sharedMetrics.RecordLLMUsage(model, tokensIn, tokensOut)
+	}
+	usd := EstimateCostUSD(model, tokensIn, tokensOut)
+	if usd > 0 {
+		llmCostUSDCentsTotal.WithLabelValues(string(p), task).Add(usd * 100)
+	}
+}
+
+func observeUnknownModel(model string) {
+	llmUnknownModelTotal.WithLabelValues(model).Inc()
 }

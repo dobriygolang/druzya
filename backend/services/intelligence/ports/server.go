@@ -15,6 +15,7 @@ import (
 	"druz9/intelligence/domain"
 	pb "druz9/shared/generated/pb/druz9/v1"
 	"druz9/shared/generated/pb/druz9/v1/druz9v1connect"
+	"druz9/shared/pkg/llmchain"
 	sharedMw "druz9/shared/pkg/middleware"
 
 	"connectrpc.com/connect"
@@ -153,6 +154,13 @@ func (s *IntelligenceServer) toConnectErr(err error) error {
 		return connect.NewError(connect.CodeInvalidArgument, err)
 	case errors.Is(err, domain.ErrRateLimited):
 		return connect.NewError(connect.CodeResourceExhausted, err)
+	case errors.Is(err, llmchain.ErrTierRequired):
+		// Phase III: tier-downgrade pinned model -> typed error с
+		// сообщением "your current plan doesn't allow this model".
+		// Frontend ловит CodeFailedPrecondition + читает details для
+		// upgrade-prompt'а. Раньше падало в CodeInternal "intelligence
+		// failure" — юзер не понимал что произошло.
+		return connect.NewError(connect.CodeFailedPrecondition, err)
 	case errors.Is(err, domain.ErrLLMUnavailable), errors.Is(err, domain.ErrEmbeddingUnavailable):
 		s.H.Log.Warn("intelligence: AI subsystem unavailable", slog.Any("err", err))
 		return connect.NewError(connect.CodeUnavailable, err)

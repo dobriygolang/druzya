@@ -25,6 +25,7 @@ import {
   VIRTUAL_MIN_TIER,
   tierCovers,
   resolveModelTier,
+  testLLMModel,
   type LLMChainConfig,
   type VirtualCandidate,
   type ModelTier,
@@ -337,7 +338,7 @@ function VirtualChainsSection({
         <div className="flex items-center gap-2">
           <Eye className="h-3.5 w-3.5 text-text-muted" />
           <span className="font-mono text-[10px] text-text-muted">Preview для:</span>
-          {(['free', 'seeker', 'ascendant'] as const).map((t) => (
+          {(['free', 'pro', 'max'] as const).map((t) => (
             <button
               key={t}
               onClick={() => setPreviewTier(t)}
@@ -385,6 +386,9 @@ function VirtualChainCard({
   previewTier: ModelTier
   registeredProviders: Set<string>
 }) {
+  const [testingIdx, setTestingIdx] = useState<number | null>(null)
+  const [testResults, setTestResults] = useState<Record<number, string>>({})
+
   function move(from: number, to: number) {
     if (to < 0 || to >= chain.length) return
     const next = [...chain]
@@ -399,6 +403,26 @@ function VirtualChainCard({
   }
   function updateStep(i: number, patch: Partial<VirtualCandidate>) {
     onChange(chain.map((s, idx) => (idx === i ? { ...s, ...patch } : s)))
+  }
+  async function testStep(i: number, step: VirtualCandidate) {
+    if (!step.provider || !step.model || testingIdx !== null) return
+    setTestingIdx(i)
+    try {
+      const res = await testLLMModel({
+        provider: step.provider,
+        model: step.model,
+        prompt: 'Reply with exactly: ok',
+      })
+      setTestResults((prev) => ({
+        ...prev,
+        [i]: res.ok ? `ok · ${res.latency_ms ?? 0}ms` : `fail · ${res.error ?? 'unknown'}`,
+      }))
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : 'request failed'
+      setTestResults((prev) => ({ ...prev, [i]: `fail · ${msg}` }))
+    } finally {
+      setTestingIdx(null)
+    }
   }
 
   // Live preview: фильтруем chain как это сделает backend'овский
@@ -421,7 +445,7 @@ function VirtualChainCard({
           <span className={`rounded-full px-1.5 py-0.5 font-mono text-[9px] ${
             virtReq === 'free'
               ? 'bg-surface-3 text-text-muted'
-              : virtReq === 'seeker'
+            : virtReq === 'pro'
                 ? 'bg-text-primary/10 text-text-secondary'
                 : 'bg-text-primary/15 text-text-primary'
           }`}>
@@ -519,6 +543,23 @@ function VirtualChainCard({
                   list={`models-${step.provider}`}
                   className="flex-1 rounded border border-border bg-surface-2 px-2 py-1 font-mono text-[11px] text-text-primary placeholder:text-text-muted/50 focus:border-text-primary focus:outline-none"
                 />
+                <button
+                  onClick={() => void testStep(i, step)}
+                  disabled={!step.provider || !step.model || testingIdx !== null}
+                  className="rounded border border-border bg-surface-2 px-2 py-1 font-mono text-[10px] text-text-secondary hover:border-text-primary hover:text-text-primary disabled:opacity-40"
+                  title="Отправить тестовый запрос"
+                >
+                  {testingIdx === i ? 'test…' : 'test'}
+                </button>
+                {testResults[i] && (
+                  <span className={`max-w-40 truncate rounded-full px-1.5 py-0.5 font-mono text-[9px] ${
+                    testResults[i].startsWith('ok')
+                      ? 'bg-success/15 text-success'
+                      : 'bg-danger/15 text-danger'
+                  }`}>
+                    {testResults[i]}
+                  </span>
+                )}
                 <ProviderModelDatalist provider={step.provider} />
                 {step.providerMissing && (
                   <span

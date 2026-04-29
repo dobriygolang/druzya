@@ -55,6 +55,12 @@ const (
 	EditorServiceGetReplayProcedure = "/druz9.v1.EditorService/GetReplay"
 	// EditorServiceRunCodeProcedure is the fully-qualified name of the EditorService's RunCode RPC.
 	EditorServiceRunCodeProcedure = "/druz9.v1.EditorService/RunCode"
+	// EditorServiceGetVisibilityProcedure is the fully-qualified name of the EditorService's
+	// GetVisibility RPC.
+	EditorServiceGetVisibilityProcedure = "/druz9.v1.EditorService/GetVisibility"
+	// EditorServiceSetVisibilityProcedure is the fully-qualified name of the EditorService's
+	// SetVisibility RPC.
+	EditorServiceSetVisibilityProcedure = "/druz9.v1.EditorService/SetVisibility"
 )
 
 // EditorServiceClient is a client for the druz9.v1.EditorService service.
@@ -73,6 +79,11 @@ type EditorServiceClient interface {
 	// Caller must be a participant of the room. Result is ephemeral — nothing
 	// is persisted on the server. Rate-limited per user.
 	RunCode(context.Context, *connect.Request[v1.RunCodeRequest]) (*connect.Response[v1.RunCodeResponse], error)
+	// GetVisibility returns "private"|"shared".
+	GetVisibility(context.Context, *connect.Request[v1.GetEditorVisibilityRequest]) (*connect.Response[v1.EditorVisibility], error)
+	// SetVisibility flips visibility. Owner-only; quota-gated on
+	// private→shared flips.
+	SetVisibility(context.Context, *connect.Request[v1.SetEditorVisibilityRequest]) (*connect.Response[v1.EditorVisibility], error)
 }
 
 // NewEditorServiceClient constructs a client for the druz9.v1.EditorService service. By default, it
@@ -122,17 +133,31 @@ func NewEditorServiceClient(httpClient connect.HTTPClient, baseURL string, opts 
 			connect.WithSchema(editorServiceMethods.ByName("RunCode")),
 			connect.WithClientOptions(opts...),
 		),
+		getVisibility: connect.NewClient[v1.GetEditorVisibilityRequest, v1.EditorVisibility](
+			httpClient,
+			baseURL+EditorServiceGetVisibilityProcedure,
+			connect.WithSchema(editorServiceMethods.ByName("GetVisibility")),
+			connect.WithClientOptions(opts...),
+		),
+		setVisibility: connect.NewClient[v1.SetEditorVisibilityRequest, v1.EditorVisibility](
+			httpClient,
+			baseURL+EditorServiceSetVisibilityProcedure,
+			connect.WithSchema(editorServiceMethods.ByName("SetVisibility")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
 // editorServiceClient implements EditorServiceClient.
 type editorServiceClient struct {
-	createRoom   *connect.Client[v1.CreateRoomRequest, v1.EditorRoom]
-	getRoom      *connect.Client[v1.GetRoomRequest, v1.EditorRoom]
-	createInvite *connect.Client[v1.CreateInviteRequest, v1.InviteLink]
-	freezeRoom   *connect.Client[v1.FreezeRoomRequest, v1.EditorRoom]
-	getReplay    *connect.Client[v1.GetReplayRequest, v1.ReplayUrl]
-	runCode      *connect.Client[v1.RunCodeRequest, v1.RunCodeResponse]
+	createRoom    *connect.Client[v1.CreateRoomRequest, v1.EditorRoom]
+	getRoom       *connect.Client[v1.GetRoomRequest, v1.EditorRoom]
+	createInvite  *connect.Client[v1.CreateInviteRequest, v1.InviteLink]
+	freezeRoom    *connect.Client[v1.FreezeRoomRequest, v1.EditorRoom]
+	getReplay     *connect.Client[v1.GetReplayRequest, v1.ReplayUrl]
+	runCode       *connect.Client[v1.RunCodeRequest, v1.RunCodeResponse]
+	getVisibility *connect.Client[v1.GetEditorVisibilityRequest, v1.EditorVisibility]
+	setVisibility *connect.Client[v1.SetEditorVisibilityRequest, v1.EditorVisibility]
 }
 
 // CreateRoom calls druz9.v1.EditorService.CreateRoom.
@@ -165,6 +190,16 @@ func (c *editorServiceClient) RunCode(ctx context.Context, req *connect.Request[
 	return c.runCode.CallUnary(ctx, req)
 }
 
+// GetVisibility calls druz9.v1.EditorService.GetVisibility.
+func (c *editorServiceClient) GetVisibility(ctx context.Context, req *connect.Request[v1.GetEditorVisibilityRequest]) (*connect.Response[v1.EditorVisibility], error) {
+	return c.getVisibility.CallUnary(ctx, req)
+}
+
+// SetVisibility calls druz9.v1.EditorService.SetVisibility.
+func (c *editorServiceClient) SetVisibility(ctx context.Context, req *connect.Request[v1.SetEditorVisibilityRequest]) (*connect.Response[v1.EditorVisibility], error) {
+	return c.setVisibility.CallUnary(ctx, req)
+}
+
 // EditorServiceHandler is an implementation of the druz9.v1.EditorService service.
 type EditorServiceHandler interface {
 	// CreateRoom creates a new collaborative editor room.
@@ -181,6 +216,11 @@ type EditorServiceHandler interface {
 	// Caller must be a participant of the room. Result is ephemeral — nothing
 	// is persisted on the server. Rate-limited per user.
 	RunCode(context.Context, *connect.Request[v1.RunCodeRequest]) (*connect.Response[v1.RunCodeResponse], error)
+	// GetVisibility returns "private"|"shared".
+	GetVisibility(context.Context, *connect.Request[v1.GetEditorVisibilityRequest]) (*connect.Response[v1.EditorVisibility], error)
+	// SetVisibility flips visibility. Owner-only; quota-gated on
+	// private→shared flips.
+	SetVisibility(context.Context, *connect.Request[v1.SetEditorVisibilityRequest]) (*connect.Response[v1.EditorVisibility], error)
 }
 
 // NewEditorServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -226,6 +266,18 @@ func NewEditorServiceHandler(svc EditorServiceHandler, opts ...connect.HandlerOp
 		connect.WithSchema(editorServiceMethods.ByName("RunCode")),
 		connect.WithHandlerOptions(opts...),
 	)
+	editorServiceGetVisibilityHandler := connect.NewUnaryHandler(
+		EditorServiceGetVisibilityProcedure,
+		svc.GetVisibility,
+		connect.WithSchema(editorServiceMethods.ByName("GetVisibility")),
+		connect.WithHandlerOptions(opts...),
+	)
+	editorServiceSetVisibilityHandler := connect.NewUnaryHandler(
+		EditorServiceSetVisibilityProcedure,
+		svc.SetVisibility,
+		connect.WithSchema(editorServiceMethods.ByName("SetVisibility")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/druz9.v1.EditorService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case EditorServiceCreateRoomProcedure:
@@ -240,6 +292,10 @@ func NewEditorServiceHandler(svc EditorServiceHandler, opts ...connect.HandlerOp
 			editorServiceGetReplayHandler.ServeHTTP(w, r)
 		case EditorServiceRunCodeProcedure:
 			editorServiceRunCodeHandler.ServeHTTP(w, r)
+		case EditorServiceGetVisibilityProcedure:
+			editorServiceGetVisibilityHandler.ServeHTTP(w, r)
+		case EditorServiceSetVisibilityProcedure:
+			editorServiceSetVisibilityHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -271,4 +327,12 @@ func (UnimplementedEditorServiceHandler) GetReplay(context.Context, *connect.Req
 
 func (UnimplementedEditorServiceHandler) RunCode(context.Context, *connect.Request[v1.RunCodeRequest]) (*connect.Response[v1.RunCodeResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.EditorService.RunCode is not implemented"))
+}
+
+func (UnimplementedEditorServiceHandler) GetVisibility(context.Context, *connect.Request[v1.GetEditorVisibilityRequest]) (*connect.Response[v1.EditorVisibility], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.EditorService.GetVisibility is not implemented"))
+}
+
+func (UnimplementedEditorServiceHandler) SetVisibility(context.Context, *connect.Request[v1.SetEditorVisibilityRequest]) (*connect.Response[v1.EditorVisibility], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.EditorService.SetVisibility is not implemented"))
 }

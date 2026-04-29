@@ -138,7 +138,7 @@ func (s *AdminServer) ListReports(
 	}
 	m := req.Msg
 	items, total, err := s.ListReportsUC.Do(ctx, domain.ReportFilter{
-		Status: m.GetStatus(),
+		Status: adminReportStatusFromProto(m.GetStatus()),
 		Limit:  int(m.GetLimit()),
 	})
 	if err != nil {
@@ -215,6 +215,34 @@ func userRowToProto(r domain.AdminUserRow) *pb.AdminUserRow {
 	return out
 }
 
+// adminReportStatusToProto / fromProto — string→enum migration маппер.
+// Unknown / empty → UNSPECIFIED.
+func adminReportStatusToProto(s string) pb.AdminReportStatus {
+	switch s {
+	case "pending":
+		return pb.AdminReportStatus_ADMIN_REPORT_STATUS_PENDING
+	case "resolved":
+		return pb.AdminReportStatus_ADMIN_REPORT_STATUS_RESOLVED
+	case "dismissed":
+		return pb.AdminReportStatus_ADMIN_REPORT_STATUS_DISMISSED
+	default:
+		return pb.AdminReportStatus_ADMIN_REPORT_STATUS_UNSPECIFIED
+	}
+}
+
+func adminReportStatusFromProto(s pb.AdminReportStatus) string {
+	switch s {
+	case pb.AdminReportStatus_ADMIN_REPORT_STATUS_PENDING:
+		return "pending"
+	case pb.AdminReportStatus_ADMIN_REPORT_STATUS_RESOLVED:
+		return "resolved"
+	case pb.AdminReportStatus_ADMIN_REPORT_STATUS_DISMISSED:
+		return "dismissed"
+	default:
+		return ""
+	}
+}
+
 func reportToProto(r domain.AdminReport) *pb.AdminReport {
 	out := &pb.AdminReport{
 		Id:           r.ID.String(),
@@ -224,7 +252,7 @@ func reportToProto(r domain.AdminReport) *pb.AdminReport {
 		ReportedName: r.ReportedName,
 		Reason:       r.Reason,
 		Description:  r.Description,
-		Status:       r.Status,
+		Status:       adminReportStatusToProto(r.Status),
 	}
 	if !r.CreatedAt.IsZero() {
 		out.CreatedAt = timestamppb.New(r.CreatedAt.UTC())

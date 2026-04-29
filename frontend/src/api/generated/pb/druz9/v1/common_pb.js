@@ -276,20 +276,20 @@ export var SubscriptionPlan;
      */
     SubscriptionPlan[SubscriptionPlan["FREE"] = 1] = "FREE";
     /**
-     * @generated from enum value: SUBSCRIPTION_PLAN_SEEKER = 2;
+     * @generated from enum value: SUBSCRIPTION_PLAN_PRO = 2;
      */
-    SubscriptionPlan[SubscriptionPlan["SEEKER"] = 2] = "SEEKER";
+    SubscriptionPlan[SubscriptionPlan["PRO"] = 2] = "PRO";
     /**
-     * @generated from enum value: SUBSCRIPTION_PLAN_ASCENDANT = 3;
+     * @generated from enum value: SUBSCRIPTION_PLAN_MAX = 3;
      */
-    SubscriptionPlan[SubscriptionPlan["ASCENDANT"] = 3] = "ASCENDANT";
+    SubscriptionPlan[SubscriptionPlan["MAX"] = 3] = "MAX";
 })(SubscriptionPlan || (SubscriptionPlan = {}));
 // Retrieve enum metadata with: proto3.getEnumType(SubscriptionPlan)
 proto3.util.setEnumType(SubscriptionPlan, "druz9.v1.SubscriptionPlan", [
     { no: 0, name: "SUBSCRIPTION_PLAN_UNSPECIFIED" },
     { no: 1, name: "SUBSCRIPTION_PLAN_FREE" },
-    { no: 2, name: "SUBSCRIPTION_PLAN_SEEKER" },
-    { no: 3, name: "SUBSCRIPTION_PLAN_ASCENDANT" },
+    { no: 2, name: "SUBSCRIPTION_PLAN_PRO" },
+    { no: 3, name: "SUBSCRIPTION_PLAN_MAX" },
 ]);
 /**
  * MatchStatus mirrors shared/enums.MatchStatus (arena match lifecycle).

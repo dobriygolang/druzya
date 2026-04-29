@@ -40,7 +40,7 @@ func TestOllamaDriver_NoAuthHeader(t *testing.T) {
 
 	// Construct via public constructor, но с фейковым endpoint через
 	// замену: используем newOpenAIDriver напрямую чтобы подменить URL
-	// (как делает driver_sambanova_test.go).
+	// (как делают provider-specific driver tests).
 	inner := newOpenAIDriver(ProviderOllama, "", srv.URL)
 	inner.supportsJSONMode = true
 	inner.skipAuth = true

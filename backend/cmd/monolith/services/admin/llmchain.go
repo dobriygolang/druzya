@@ -59,6 +59,17 @@ func buildLLMChainWithRuntime(cfg config.Config, log *slog.Logger, pool *pgxpool
 	if cfg.LLMChain.MistralAPIKey != "" {
 		drivers[llmchain.ProviderMistral] = llmchain.NewMistralDriver(cfg.LLMChain.MistralAPIKey)
 	}
+	if cfg.LLMChain.GoogleAPIKey != "" {
+		drivers[llmchain.ProviderGoogle] = llmchain.NewGoogleDriver(cfg.LLMChain.GoogleAPIKey)
+	}
+	if cfg.LLMChain.CloudflareAPIKey != "" && cfg.LLMChain.CloudflareAccountID != "" {
+		if d := llmchain.NewCloudflareDriver(cfg.LLMChain.CloudflareAPIKey, cfg.LLMChain.CloudflareAccountID); d != nil {
+			drivers[llmchain.ProviderCloudflare] = d
+		}
+	}
+	if cfg.LLMChain.ZAIAPIKey != "" {
+		drivers[llmchain.ProviderZAI] = llmchain.NewZAIDriver(cfg.LLMChain.ZAIAPIKey)
+	}
 	// OpenRouter key is shared with the legacy LLM config section so
 	// back-compat callers (the Insight client, existing copilot) keep
 	// working while the chain coexists during rollout.
@@ -157,10 +168,10 @@ func BuildLLMChainWithCache(cfg config.Config, log *slog.Logger, rdb *redis.Clie
 //
 // Recommended prod string once все ключи выставлены:
 //
-//	LLM_CHAIN_ORDER=groq,cerebras,mistral,openrouter,deepseek,ollama
+//	LLM_CHAIN_ORDER=groq,cerebras,google,cloudflare,zai,mistral,openrouter,deepseek,ollama
 //
 // Rationale: Groq/Cerebras — самые быстрые free-tier (фронт цепочки для
-// латенси-чувствительных task'ов); Mistral La Plateforme + OpenRouter :free
+// латенси-чувствительных task'ов); Google/Cloudflare/Z.AI/Mistral/OpenRouter
 // покрывают хвост free-tier квот; DeepSeek и Ollama подключаются только
 // для paid-цепочек (druz9/pro/ultra/reasoning) и self-host floor'а.
 func parseChainOrder(raw string) []llmchain.Provider {

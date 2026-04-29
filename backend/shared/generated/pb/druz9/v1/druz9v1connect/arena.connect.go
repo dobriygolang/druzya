@@ -16,6 +16,7 @@ import (
 	context "context"
 	v1 "druz9/shared/generated/pb/druz9/v1"
 	errors "errors"
+	emptypb "google.golang.org/protobuf/types/known/emptypb"
 	http "net/http"
 	strings "strings"
 )
@@ -55,6 +56,12 @@ const (
 	// ArenaServiceGetMyMatchesProcedure is the fully-qualified name of the ArenaService's GetMyMatches
 	// RPC.
 	ArenaServiceGetMyMatchesProcedure = "/druz9.v1.ArenaService/GetMyMatches"
+	// ArenaServiceGetCurrentMatchProcedure is the fully-qualified name of the ArenaService's
+	// GetCurrentMatch RPC.
+	ArenaServiceGetCurrentMatchProcedure = "/druz9.v1.ArenaService/GetCurrentMatch"
+	// ArenaServiceGetArenaQueueStatsProcedure is the fully-qualified name of the ArenaService's
+	// GetArenaQueueStats RPC.
+	ArenaServiceGetArenaQueueStatsProcedure = "/druz9.v1.ArenaService/GetArenaQueueStats"
 )
 
 // ArenaServiceClient is a client for the druz9.v1.ArenaService service.
@@ -62,16 +69,24 @@ type ArenaServiceClient interface {
 	// FindMatch enqueues the caller in the matchmaking queue.
 	FindMatch(context.Context, *connect.Request[v1.FindMatchRequest]) (*connect.Response[v1.MatchQueueResponse], error)
 	// CancelSearch removes the caller from the matchmaking queue.
-	CancelSearch(context.Context, *connect.Request[v1.CancelMatchRequest]) (*connect.Response[v1.CancelMatchRequest], error)
+	CancelSearch(context.Context, *connect.Request[v1.CancelMatchRequest]) (*connect.Response[emptypb.Empty], error)
 	// GetMatch returns the current state of a match.
 	GetMatch(context.Context, *connect.Request[v1.GetMatchRequest]) (*connect.Response[v1.ArenaMatch], error)
-	// ConfirmReady acknowledges the 10s ready-check window.
-	ConfirmReady(context.Context, *connect.Request[v1.ConfirmMatchRequest]) (*connect.Response[v1.ConfirmMatchRequest], error)
+	// ConfirmReady acknowledges the 10s ready-check window. Returns the
+	// updated match state so the client can react to in_progress/abandoned
+	// without a follow-up GetMatch round-trip.
+	ConfirmReady(context.Context, *connect.Request[v1.ConfirmMatchRequest]) (*connect.Response[v1.ArenaMatch], error)
 	// SubmitCode runs the submission against Judge0 and returns the result.
 	SubmitCode(context.Context, *connect.Request[v1.SubmitCodeRequest]) (*connect.Response[v1.SubmitResult], error)
 	// GetMyMatches возвращает историю матчей текущего пользователя
 	// (страница /match-history). Раньше был chi-route, теперь Connect-RPC.
 	GetMyMatches(context.Context, *connect.Request[v1.GetMyMatchesRequest]) (*connect.Response[v1.GetMyMatchesResponse], error)
+	// GetCurrentMatch — polled by /arena to detect when matchmaker pairs the
+	// user. Returns NotFound while in queue, 200 once a match exists.
+	GetCurrentMatch(context.Context, *connect.Request[v1.GetCurrentMatchRequest]) (*connect.Response[v1.CurrentMatch], error)
+	// GetArenaQueueStats returns live per-(mode, section) waiting counts plus a
+	// per-mode aggregate. 10s cache header is layered above the transcoder.
+	GetArenaQueueStats(context.Context, *connect.Request[v1.GetArenaQueueStatsRequest]) (*connect.Response[v1.ArenaQueueStats], error)
 }
 
 // NewArenaServiceClient constructs a client for the druz9.v1.ArenaService service. By default, it
@@ -91,7 +106,7 @@ func NewArenaServiceClient(httpClient connect.HTTPClient, baseURL string, opts .
 			connect.WithSchema(arenaServiceMethods.ByName("FindMatch")),
 			connect.WithClientOptions(opts...),
 		),
-		cancelSearch: connect.NewClient[v1.CancelMatchRequest, v1.CancelMatchRequest](
+		cancelSearch: connect.NewClient[v1.CancelMatchRequest, emptypb.Empty](
 			httpClient,
 			baseURL+ArenaServiceCancelSearchProcedure,
 			connect.WithSchema(arenaServiceMethods.ByName("CancelSearch")),
@@ -103,7 +118,7 @@ func NewArenaServiceClient(httpClient connect.HTTPClient, baseURL string, opts .
 			connect.WithSchema(arenaServiceMethods.ByName("GetMatch")),
 			connect.WithClientOptions(opts...),
 		),
-		confirmReady: connect.NewClient[v1.ConfirmMatchRequest, v1.ConfirmMatchRequest](
+		confirmReady: connect.NewClient[v1.ConfirmMatchRequest, v1.ArenaMatch](
 			httpClient,
 			baseURL+ArenaServiceConfirmReadyProcedure,
 			connect.WithSchema(arenaServiceMethods.ByName("ConfirmReady")),
@@ -121,17 +136,31 @@ func NewArenaServiceClient(httpClient connect.HTTPClient, baseURL string, opts .
 			connect.WithSchema(arenaServiceMethods.ByName("GetMyMatches")),
 			connect.WithClientOptions(opts...),
 		),
+		getCurrentMatch: connect.NewClient[v1.GetCurrentMatchRequest, v1.CurrentMatch](
+			httpClient,
+			baseURL+ArenaServiceGetCurrentMatchProcedure,
+			connect.WithSchema(arenaServiceMethods.ByName("GetCurrentMatch")),
+			connect.WithClientOptions(opts...),
+		),
+		getArenaQueueStats: connect.NewClient[v1.GetArenaQueueStatsRequest, v1.ArenaQueueStats](
+			httpClient,
+			baseURL+ArenaServiceGetArenaQueueStatsProcedure,
+			connect.WithSchema(arenaServiceMethods.ByName("GetArenaQueueStats")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
 // arenaServiceClient implements ArenaServiceClient.
 type arenaServiceClient struct {
-	findMatch    *connect.Client[v1.FindMatchRequest, v1.MatchQueueResponse]
-	cancelSearch *connect.Client[v1.CancelMatchRequest, v1.CancelMatchRequest]
-	getMatch     *connect.Client[v1.GetMatchRequest, v1.ArenaMatch]
-	confirmReady *connect.Client[v1.ConfirmMatchRequest, v1.ConfirmMatchRequest]
-	submitCode   *connect.Client[v1.SubmitCodeRequest, v1.SubmitResult]
-	getMyMatches *connect.Client[v1.GetMyMatchesRequest, v1.GetMyMatchesResponse]
+	findMatch          *connect.Client[v1.FindMatchRequest, v1.MatchQueueResponse]
+	cancelSearch       *connect.Client[v1.CancelMatchRequest, emptypb.Empty]
+	getMatch           *connect.Client[v1.GetMatchRequest, v1.ArenaMatch]
+	confirmReady       *connect.Client[v1.ConfirmMatchRequest, v1.ArenaMatch]
+	submitCode         *connect.Client[v1.SubmitCodeRequest, v1.SubmitResult]
+	getMyMatches       *connect.Client[v1.GetMyMatchesRequest, v1.GetMyMatchesResponse]
+	getCurrentMatch    *connect.Client[v1.GetCurrentMatchRequest, v1.CurrentMatch]
+	getArenaQueueStats *connect.Client[v1.GetArenaQueueStatsRequest, v1.ArenaQueueStats]
 }
 
 // FindMatch calls druz9.v1.ArenaService.FindMatch.
@@ -140,7 +169,7 @@ func (c *arenaServiceClient) FindMatch(ctx context.Context, req *connect.Request
 }
 
 // CancelSearch calls druz9.v1.ArenaService.CancelSearch.
-func (c *arenaServiceClient) CancelSearch(ctx context.Context, req *connect.Request[v1.CancelMatchRequest]) (*connect.Response[v1.CancelMatchRequest], error) {
+func (c *arenaServiceClient) CancelSearch(ctx context.Context, req *connect.Request[v1.CancelMatchRequest]) (*connect.Response[emptypb.Empty], error) {
 	return c.cancelSearch.CallUnary(ctx, req)
 }
 
@@ -150,7 +179,7 @@ func (c *arenaServiceClient) GetMatch(ctx context.Context, req *connect.Request[
 }
 
 // ConfirmReady calls druz9.v1.ArenaService.ConfirmReady.
-func (c *arenaServiceClient) ConfirmReady(ctx context.Context, req *connect.Request[v1.ConfirmMatchRequest]) (*connect.Response[v1.ConfirmMatchRequest], error) {
+func (c *arenaServiceClient) ConfirmReady(ctx context.Context, req *connect.Request[v1.ConfirmMatchRequest]) (*connect.Response[v1.ArenaMatch], error) {
 	return c.confirmReady.CallUnary(ctx, req)
 }
 
@@ -164,21 +193,39 @@ func (c *arenaServiceClient) GetMyMatches(ctx context.Context, req *connect.Requ
 	return c.getMyMatches.CallUnary(ctx, req)
 }
 
+// GetCurrentMatch calls druz9.v1.ArenaService.GetCurrentMatch.
+func (c *arenaServiceClient) GetCurrentMatch(ctx context.Context, req *connect.Request[v1.GetCurrentMatchRequest]) (*connect.Response[v1.CurrentMatch], error) {
+	return c.getCurrentMatch.CallUnary(ctx, req)
+}
+
+// GetArenaQueueStats calls druz9.v1.ArenaService.GetArenaQueueStats.
+func (c *arenaServiceClient) GetArenaQueueStats(ctx context.Context, req *connect.Request[v1.GetArenaQueueStatsRequest]) (*connect.Response[v1.ArenaQueueStats], error) {
+	return c.getArenaQueueStats.CallUnary(ctx, req)
+}
+
 // ArenaServiceHandler is an implementation of the druz9.v1.ArenaService service.
 type ArenaServiceHandler interface {
 	// FindMatch enqueues the caller in the matchmaking queue.
 	FindMatch(context.Context, *connect.Request[v1.FindMatchRequest]) (*connect.Response[v1.MatchQueueResponse], error)
 	// CancelSearch removes the caller from the matchmaking queue.
-	CancelSearch(context.Context, *connect.Request[v1.CancelMatchRequest]) (*connect.Response[v1.CancelMatchRequest], error)
+	CancelSearch(context.Context, *connect.Request[v1.CancelMatchRequest]) (*connect.Response[emptypb.Empty], error)
 	// GetMatch returns the current state of a match.
 	GetMatch(context.Context, *connect.Request[v1.GetMatchRequest]) (*connect.Response[v1.ArenaMatch], error)
-	// ConfirmReady acknowledges the 10s ready-check window.
-	ConfirmReady(context.Context, *connect.Request[v1.ConfirmMatchRequest]) (*connect.Response[v1.ConfirmMatchRequest], error)
+	// ConfirmReady acknowledges the 10s ready-check window. Returns the
+	// updated match state so the client can react to in_progress/abandoned
+	// without a follow-up GetMatch round-trip.
+	ConfirmReady(context.Context, *connect.Request[v1.ConfirmMatchRequest]) (*connect.Response[v1.ArenaMatch], error)
 	// SubmitCode runs the submission against Judge0 and returns the result.
 	SubmitCode(context.Context, *connect.Request[v1.SubmitCodeRequest]) (*connect.Response[v1.SubmitResult], error)
 	// GetMyMatches возвращает историю матчей текущего пользователя
 	// (страница /match-history). Раньше был chi-route, теперь Connect-RPC.
 	GetMyMatches(context.Context, *connect.Request[v1.GetMyMatchesRequest]) (*connect.Response[v1.GetMyMatchesResponse], error)
+	// GetCurrentMatch — polled by /arena to detect when matchmaker pairs the
+	// user. Returns NotFound while in queue, 200 once a match exists.
+	GetCurrentMatch(context.Context, *connect.Request[v1.GetCurrentMatchRequest]) (*connect.Response[v1.CurrentMatch], error)
+	// GetArenaQueueStats returns live per-(mode, section) waiting counts plus a
+	// per-mode aggregate. 10s cache header is layered above the transcoder.
+	GetArenaQueueStats(context.Context, *connect.Request[v1.GetArenaQueueStatsRequest]) (*connect.Response[v1.ArenaQueueStats], error)
 }
 
 // NewArenaServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -224,6 +271,18 @@ func NewArenaServiceHandler(svc ArenaServiceHandler, opts ...connect.HandlerOpti
 		connect.WithSchema(arenaServiceMethods.ByName("GetMyMatches")),
 		connect.WithHandlerOptions(opts...),
 	)
+	arenaServiceGetCurrentMatchHandler := connect.NewUnaryHandler(
+		ArenaServiceGetCurrentMatchProcedure,
+		svc.GetCurrentMatch,
+		connect.WithSchema(arenaServiceMethods.ByName("GetCurrentMatch")),
+		connect.WithHandlerOptions(opts...),
+	)
+	arenaServiceGetArenaQueueStatsHandler := connect.NewUnaryHandler(
+		ArenaServiceGetArenaQueueStatsProcedure,
+		svc.GetArenaQueueStats,
+		connect.WithSchema(arenaServiceMethods.ByName("GetArenaQueueStats")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/druz9.v1.ArenaService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case ArenaServiceFindMatchProcedure:
@@ -238,6 +297,10 @@ func NewArenaServiceHandler(svc ArenaServiceHandler, opts ...connect.HandlerOpti
 			arenaServiceSubmitCodeHandler.ServeHTTP(w, r)
 		case ArenaServiceGetMyMatchesProcedure:
 			arenaServiceGetMyMatchesHandler.ServeHTTP(w, r)
+		case ArenaServiceGetCurrentMatchProcedure:
+			arenaServiceGetCurrentMatchHandler.ServeHTTP(w, r)
+		case ArenaServiceGetArenaQueueStatsProcedure:
+			arenaServiceGetArenaQueueStatsHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -251,7 +314,7 @@ func (UnimplementedArenaServiceHandler) FindMatch(context.Context, *connect.Requ
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.ArenaService.FindMatch is not implemented"))
 }
 
-func (UnimplementedArenaServiceHandler) CancelSearch(context.Context, *connect.Request[v1.CancelMatchRequest]) (*connect.Response[v1.CancelMatchRequest], error) {
+func (UnimplementedArenaServiceHandler) CancelSearch(context.Context, *connect.Request[v1.CancelMatchRequest]) (*connect.Response[emptypb.Empty], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.ArenaService.CancelSearch is not implemented"))
 }
 
@@ -259,7 +322,7 @@ func (UnimplementedArenaServiceHandler) GetMatch(context.Context, *connect.Reque
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.ArenaService.GetMatch is not implemented"))
 }
 
-func (UnimplementedArenaServiceHandler) ConfirmReady(context.Context, *connect.Request[v1.ConfirmMatchRequest]) (*connect.Response[v1.ConfirmMatchRequest], error) {
+func (UnimplementedArenaServiceHandler) ConfirmReady(context.Context, *connect.Request[v1.ConfirmMatchRequest]) (*connect.Response[v1.ArenaMatch], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.ArenaService.ConfirmReady is not implemented"))
 }
 
@@ -269,4 +332,12 @@ func (UnimplementedArenaServiceHandler) SubmitCode(context.Context, *connect.Req
 
 func (UnimplementedArenaServiceHandler) GetMyMatches(context.Context, *connect.Request[v1.GetMyMatchesRequest]) (*connect.Response[v1.GetMyMatchesResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.ArenaService.GetMyMatches is not implemented"))
+}
+
+func (UnimplementedArenaServiceHandler) GetCurrentMatch(context.Context, *connect.Request[v1.GetCurrentMatchRequest]) (*connect.Response[v1.CurrentMatch], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.ArenaService.GetCurrentMatch is not implemented"))
+}
+
+func (UnimplementedArenaServiceHandler) GetArenaQueueStats(context.Context, *connect.Request[v1.GetArenaQueueStatsRequest]) (*connect.Response[v1.ArenaQueueStats], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.ArenaService.GetArenaQueueStats is not implemented"))
 }

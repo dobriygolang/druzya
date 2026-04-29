@@ -9,6 +9,7 @@ package druz9.v1;
 
 import "druz9/v1/common.proto";
 import "google/api/annotations.proto";
+import "google/protobuf/empty.proto";
 import "google/protobuf/timestamp.proto";
 
 option go_package = "druz9/shared/generated/pb/druz9/v1;druz9v1";
@@ -123,6 +124,19 @@ message ConfirmMatchRequest {
   string match_id = 1;
 }
 
+// MatchResult — терминальное состояние матча с точки зрения юзера.
+// Wire-закрытый набор; раньше был свободным string'ом — это позволяло
+// тихие typo'ы в backend mapper'е (e.g. "won" вместо "win" → frontend
+// рендерит ничего). Wire JSON эмитит NAME (MATCH_RESULT_WIN) — frontend
+// должен сравнивать через enum или helper.
+enum MatchResult {
+  MATCH_RESULT_UNSPECIFIED = 0;
+  MATCH_RESULT_WIN = 1;
+  MATCH_RESULT_LOSS = 2;
+  MATCH_RESULT_DRAW = 3;
+  MATCH_RESULT_ABANDONED = 4;
+}
+
 // MatchHistoryEntry — одна строка истории матчей пользователя
 // (используется в GetMyMatches, заменяет хардкод в /match-history).
 message MatchHistoryEntry {
@@ -132,8 +146,7 @@ message MatchHistoryEntry {
   Section section = 4;
   string opponent_username = 5;
   string opponent_avatar_url = 6;
-  // result: "win" | "loss" | "draw" | "abandoned"
-  string result = 7;
+  MatchResult result = 7;
   int32 lp_change = 8;
   int32 duration_seconds = 9;
 }
@@ -162,7 +175,7 @@ service ArenaService {
   }
 
   // CancelSearch removes the caller from the matchmaking queue.
-  rpc CancelSearch(CancelMatchRequest) returns (CancelMatchRequest) {
+  rpc CancelSearch(CancelMatchRequest) returns (google.protobuf.Empty) {
     option (google.api.http) = {delete: "/api/v1/arena/match/cancel"};
   }
 
@@ -171,8 +184,10 @@ service ArenaService {
     option (google.api.http) = {get: "/api/v1/arena/match/{match_id}"};
   }
 
-  // ConfirmReady acknowledges the 10s ready-check window.
-  rpc ConfirmReady(ConfirmMatchRequest) returns (ConfirmMatchRequest) {
+  // ConfirmReady acknowledges the 10s ready-check window. Returns the
+  // updated match state so the client can react to in_progress/abandoned
+  // without a follow-up GetMatch round-trip.
+  rpc ConfirmReady(ConfirmMatchRequest) returns (ArenaMatch) {
     option (google.api.http) = {
       post: "/api/v1/arena/match/{match_id}/confirm"
       body: "*"
@@ -192,4 +207,39 @@ service ArenaService {
   rpc GetMyMatches(GetMyMatchesRequest) returns (GetMyMatchesResponse) {
     option (google.api.http) = {get: "/api/v1/arena/matches/my"};
   }
+
+  // GetCurrentMatch — polled by /arena to detect when matchmaker pairs the
+  // user. Returns NotFound while in queue, 200 once a match exists.
+  rpc GetCurrentMatch(GetCurrentMatchRequest) returns (CurrentMatch) {
+    option (google.api.http) = {get: "/api/v1/arena/match/current"};
+  }
+
+  // GetArenaQueueStats returns live per-(mode, section) waiting counts plus a
+  // per-mode aggregate. 10s cache header is layered above the transcoder.
+  rpc GetArenaQueueStats(GetArenaQueueStatsRequest) returns (ArenaQueueStats) {
+    option (google.api.http) = {get: "/api/v1/arena/queue-stats"};
+  }
+}
+
+message GetCurrentMatchRequest {}
+
+message CurrentMatch {
+  string match_id = 1;
+  string status = 2;
+  string mode = 3;
+  string section = 4;
+}
+
+message GetArenaQueueStatsRequest {}
+
+message QueueStatRow {
+  string mode = 1;
+  string section = 2;
+  int32 waiting = 3;
+}
+
+message ArenaQueueStats {
+  repeated QueueStatRow items = 1;
+  map<string, int32> by_mode = 2;
+  int64 generated_at = 3;
 }

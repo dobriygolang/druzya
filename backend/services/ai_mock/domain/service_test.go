@@ -102,10 +102,10 @@ func TestPickModel_Priority(t *testing.T) {
 	})
 
 	t.Run("paid plan → defaultPaid", func(t *testing.T) {
-		u := UserContext{Subscription: enums.SubscriptionPlanSeeker}
+		u := UserContext{Subscription: enums.SubscriptionPlanPro}
 		got := PickModel(u, "", enums.SectionAlgorithms, CompanyContext{}, defFree, defPaid)
 		if got != defPaid {
-			t.Fatalf("seeker plan should yield defaultPaid %q, got %q", defPaid, got)
+			t.Fatalf("pro plan should yield defaultPaid %q, got %q", defPaid, got)
 		}
 	})
 }

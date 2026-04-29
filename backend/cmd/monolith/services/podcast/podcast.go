@@ -2,11 +2,14 @@ package podcast
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
+	"net/http"
 	"os"
 	"time"
 
 	monolithServices "druz9/cmd/monolith/services"
+	authServices "druz9/cmd/monolith/services/auth"
 	podcastApp "druz9/podcast/app"
 	podcastDomain "druz9/podcast/domain"
 	podcastInfra "druz9/podcast/infra"
@@ -76,14 +79,13 @@ func NewPodcast(d monolithServices.Deps) *monolithServices.Module {
 		)
 	}
 
-	// Legacy ListCatalog / UpdateProgress — Connect surface.
+	// Legacy ListCatalog / UpdateProgress — Connect surface, plus the CMS
+	// methods (ListCMSPodcasts / GetCMSPodcast / etc.) declared in
+	// podcast.proto. CMSService is attached via AttachCMS once constructed.
 	signer := podcastInfra.NewMinioAudioSigner(store, podcastInfra.DefaultAudioSignTTL)
 	list := podcastApp.NewListCatalog(pg, signer)
 	upd := podcastApp.NewUpdateProgress(pg, d.Bus, d.Log)
 	server := podcastPorts.NewPodcastServer(list, upd, d.Log)
-
-	connectPath, connectHandler := druz9v1connect.NewPodcastServiceHandler(server)
-	transcoder := monolithServices.MustTranscode("podcast", connectPath, connectHandler)
 
 	rawCMSRepo := podcastInfra.NewPostgresCMS(d.Pool)
 	var cmsRepo podcastDomain.PodcastCMSRepo = rawCMSRepo
@@ -96,28 +98,41 @@ func NewPodcast(d monolithServices.Deps) *monolithServices.Module {
 		)
 	}
 	cmsSvc := podcastApp.NewCMSService(cmsRepo, store, d.Log, d.Now)
+	server.AttachCMS(cmsSvc)
+	// HandleCreate stays chi — it accepts multipart/form-data audio uploads
+	// (up to 200 MB), a legit binary edge case per Golden Path.
 	cmsHandler := podcastPorts.NewCMSHandler(cmsSvc, d.Log, d.Now)
+
+	connectPath, connectHandler := druz9v1connect.NewPodcastServiceHandler(server)
+	transcoder := monolithServices.MustTranscode("podcast", connectPath, connectHandler)
+
+	adminGate := func(w http.ResponseWriter, r *http.Request) {
+		if _, err := authServices.RequireAdminInline(r); err != nil {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(authServices.StatusForAuthErr(err))
+			_, _ = fmt.Fprintf(w, `{"error":"%s"}`, err.Error())
+			return
+		}
+		transcoder.ServeHTTP(w, r)
+	}
 
 	return &monolithServices.Module{
 		ConnectPath:        connectPath,
 		ConnectHandler:     transcoder,
 		RequireConnectAuth: true,
 		MountREST: func(r chi.Router) {
-			// CMS public routes — must be mounted BEFORE the legacy
-			// /podcast Connect transcoder route so chi's pattern matcher
-			// picks the new handler.
-			r.Get("/podcast", cmsHandler.HandleListCMS)
-			r.Get("/podcast/categories", cmsHandler.HandleListCategories)
-			r.Get("/podcast/{id}", cmsHandler.HandleGetCMS)
-
-			// Legacy progress endpoint — kept Connect-routed.
+			// Public reads via vanguard transcoder (CMS shape).
+			r.Get("/podcast", transcoder.ServeHTTP)
+			r.Get("/podcast/categories", transcoder.ServeHTTP)
+			r.Get("/podcast/{id}", transcoder.ServeHTTP)
+			// Listening progress (per-user).
 			r.Put("/podcast/{podcastId}/progress", transcoder.ServeHTTP)
-
-			// Admin CMS routes — role gate enforced inside the handler.
+			// Admin writes — admin gate above transcoder, except multipart
+			// upload which keeps its chi handler.
 			r.Post("/admin/podcast", cmsHandler.HandleCreate)
-			r.Patch("/admin/podcast/{id}", cmsHandler.HandleUpdate)
-			r.Delete("/admin/podcast/{id}", cmsHandler.HandleDelete)
-			r.Post("/admin/podcast/categories", cmsHandler.HandleCreateCategory)
+			r.Patch("/admin/podcast/{id}", adminGate)
+			r.Delete("/admin/podcast/{id}", adminGate)
+			r.Post("/admin/podcast/categories", adminGate)
 		},
 		Subscribers: []func(*eventbus.InProcess){
 			func(b *eventbus.InProcess) { podcastApp.SubscribeHandlers(b) },

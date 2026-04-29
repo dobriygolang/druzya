@@ -9,7 +9,7 @@
 /* eslint-disable */
 // @ts-nocheck
 
-import { CreateWhiteboardRoomRequest, DeleteWhiteboardRoomRequest, DeleteWhiteboardRoomResponse, GetWhiteboardRoomRequest, ListMyWhiteboardRoomsRequest, WhiteboardRoom, WhiteboardRoomList } from "./whiteboard_rooms_pb.js";
+import { CreateWhiteboardRoomRequest, DeleteWhiteboardRoomRequest, DeleteWhiteboardRoomResponse, GetWhiteboardRoomRequest, GetWhiteboardVisibilityRequest, ListMyWhiteboardRoomsRequest, SetWhiteboardVisibilityRequest, WhiteboardRoom, WhiteboardRoomList, WhiteboardVisibility } from "./whiteboard_rooms_pb.js";
 import { MethodKind } from "@bufbuild/protobuf";
 
 /**
@@ -63,6 +63,29 @@ export const WhiteboardRoomsService = {
       name: "DeleteRoom",
       I: DeleteWhiteboardRoomRequest,
       O: DeleteWhiteboardRoomResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * GetVisibility returns "private"|"shared".
+     *
+     * @generated from rpc druz9.v1.WhiteboardRoomsService.GetVisibility
+     */
+    getVisibility: {
+      name: "GetVisibility",
+      I: GetWhiteboardVisibilityRequest,
+      O: WhiteboardVisibility,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * SetVisibility flips visibility. Owner-only; quota-gated on
+     * private→shared flips.
+     *
+     * @generated from rpc druz9.v1.WhiteboardRoomsService.SetVisibility
+     */
+    setVisibility: {
+      name: "SetVisibility",
+      I: SetWhiteboardVisibilityRequest,
+      O: WhiteboardVisibility,
       kind: MethodKind.Unary,
     },
   }

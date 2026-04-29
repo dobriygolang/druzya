@@ -47,15 +47,16 @@ func (r *PostgresRepo) GetQuota(ctx context.Context, userID uuid.UUID) (domain.Q
 	return q, nil
 }
 
-// ArchiveOldestNotes — bulk UPDATE по N самым старым активным заметкам.
+// ArchiveOldestNotes — bulk DELETE по N самым старым заметкам.
+// v2: archive-концепции больше нет (hard-delete only per schema_v2),
+// семантика «освободить quota» сохраняется через DELETE оригиналов.
 // Caller (use-case) уже clamp'ит count в [1..100].
 func (r *PostgresRepo) ArchiveOldestNotes(ctx context.Context, userID uuid.UUID, count int) (int64, error) {
 	cmd, err := r.pool.Exec(ctx,
-		`UPDATE hone_notes
-		    SET archived_at = now(), updated_at = now()
+		`DELETE FROM hone_notes
 		  WHERE id IN (
 		      SELECT id FROM hone_notes
-		       WHERE user_id = $1 AND archived_at IS NULL
+		       WHERE user_id = $1
 		       ORDER BY updated_at ASC
 		       LIMIT $2
 		  )`,
@@ -67,18 +68,18 @@ func (r *PostgresRepo) ArchiveOldestNotes(ctx context.Context, userID uuid.UUID,
 	return cmd.RowsAffected(), nil
 }
 
-// SetNoteArchived — single-id переключатель archived_at. Ноль-affected-rows
-// (нет такой ноты или чужая) → ErrNotFound.
+// SetNoteArchived — v2: archive=true делает hard-delete (effectively
+// архивирование = удаление в новой схеме), archive=false — no-op
+// возвращающий ErrNotFound (нельзя "un-delete"). Caller-API сохранён,
+// но семантика следует hard-delete-only-режиму v2 baseline.
 func (r *PostgresRepo) SetNoteArchived(ctx context.Context, userID, noteID uuid.UUID, archived bool) error {
-	var stmt string
-	if archived {
-		stmt = `UPDATE hone_notes SET archived_at=now(), updated_at=now()
-		         WHERE id=$1 AND user_id=$2`
-	} else {
-		stmt = `UPDATE hone_notes SET archived_at=NULL, updated_at=now()
-		         WHERE id=$1 AND user_id=$2`
+	if !archived {
+		return domain.ErrNotFound
 	}
-	cmd, err := r.pool.Exec(ctx, stmt, noteID, userID)
+	cmd, err := r.pool.Exec(ctx,
+		`DELETE FROM hone_notes WHERE id=$1 AND user_id=$2`,
+		noteID, userID,
+	)
 	if err != nil {
 		return fmt.Errorf("storage.PostgresRepo.SetNoteArchived: %w", err)
 	}
@@ -102,16 +103,15 @@ WITH usage AS (
            COALESCE(wb.bytes, 0) +
            COALESCE(ep.bytes, 0) AS total
     FROM users u
+    -- v2: archived_at dropped (hard delete only) — все живые rows.
     LEFT JOIN (
         SELECT user_id, SUM(size_bytes)::bigint AS bytes
         FROM hone_notes
-        WHERE archived_at IS NULL
         GROUP BY user_id
     ) n ON n.user_id = u.id
     LEFT JOIN (
         SELECT user_id, SUM(octet_length(state_json::text))::bigint AS bytes
         FROM hone_whiteboards
-        WHERE archived_at IS NULL
         GROUP BY user_id
     ) wb ON wb.user_id = u.id
     LEFT JOIN (

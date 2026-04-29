@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"log/slog"
 	"math"
-	"sort"
 	"strings"
 	"time"
 
@@ -214,52 +213,31 @@ func (uc *GetNoteConnections) Do(ctx context.Context, in GetNoteConnectionsInput
 		return fmt.Errorf("hone.GetNoteConnections.Do: seed: %w", err)
 	}
 
-	// Use the stored embedding if present; otherwise compute on the fly
-	// (rare — happens when the note was just created and the async job
-	// hasn't caught up).
-	seedVec := seed.Embedding
-	if len(seedVec) == 0 {
-		v, _, embedErr := uc.Embedder.Embed(ctx, seed.Title+"\n\n"+seed.BodyMD)
-		if embedErr != nil {
-			return fmt.Errorf("hone.GetNoteConnections.Do: embed seed: %w", embedErr)
-		}
-		seedVec = v
+	// Phase I: always re-embed seed with the current model so the corpus
+	// filter (by embedding_model_id) is anchored to the same vector space.
+	// Stored seed.Embedding may have been written by an older model — using
+	// it across a model swap silently produces meaningless cosine scores.
+	// The extra embed call is cheap (~50ms, batched-tier model).
+	seedVec, modelName, embedErr := uc.Embedder.Embed(ctx, seed.Title+"\n\n"+seed.BodyMD)
+	if embedErr != nil {
+		return fmt.Errorf("hone.GetNoteConnections.Do: embed seed: %w", embedErr)
 	}
 
-	corpus, err := uc.Notes.WithEmbeddingsForUser(ctx, in.UserID)
+	// Phase IX v2: top-K push-down в Postgres через pgvector. Filter
+	// (model + exclude seed + simFloor) + ranking + LIMIT — всё в одном
+	// SQL'е c IVFFlat-index'ом. Никакого Go-cosine, никакого pre-fetch'а.
+	hits, err := uc.Notes.SearchSimilarNotes(ctx, in.UserID, seedVec, modelName, seed.ID, 0.6, 10)
 	if err != nil {
-		return fmt.Errorf("hone.GetNoteConnections.Do: corpus: %w", err)
+		return fmt.Errorf("hone.GetNoteConnections.Do: similar: %w", err)
 	}
 
-	// In-memory ranking. Filter out the seed, compute cosine, sort DESC,
-	// emit top-10 matches above 0.6 similarity floor.
-	type scored struct {
-		n   domain.NoteEmbedding
-		sim float32
-	}
-	ranked := make([]scored, 0, len(corpus))
-	for _, c := range corpus {
-		if c.ID == seed.ID {
-			continue
-		}
-		sim := cosine(seedVec, c.Embedding)
-		if sim < 0.6 {
-			continue
-		}
-		ranked = append(ranked, scored{n: c, sim: sim})
-	}
-	sort.Slice(ranked, func(i, j int) bool { return ranked[i].sim > ranked[j].sim })
-	if len(ranked) > 10 {
-		ranked = ranked[:10]
-	}
-
-	for _, r := range ranked {
+	for _, h := range hits {
 		if err := yield(domain.Connection{
 			Kind:         domain.ConnectionKindNote,
-			TargetID:     r.n.ID.String(),
-			DisplayTitle: r.n.Title,
-			Snippet:      r.n.Snippet,
-			Similarity:   r.sim,
+			TargetID:     h.ID.String(),
+			DisplayTitle: h.Title,
+			Snippet:      h.Snippet,
+			Similarity:   h.Score,
 		}); err != nil {
 			return err
 		}

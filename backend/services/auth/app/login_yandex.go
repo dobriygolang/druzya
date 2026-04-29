@@ -19,17 +19,16 @@ type YandexOAuthClient interface {
 	// `codeVerifier` — тот же случайный verifier, для которого перед редиректом
 	// на Yandex был сформирован code_challenge (PKCE, RFC 7636). Если он пуст,
 	// PKCE-поле не отправляется (для обратной совместимости с flow без PKCE).
-	Exchange(ctx context.Context, code, codeVerifier string) (YandexTokenResponse, error)
+	Exchange(ctx context.Context, code, codeVerifier string) (domain.YandexTokenResponse, error)
 	// FetchUserInfo pulls the user profile using a live access token.
 	FetchUserInfo(ctx context.Context, accessToken string) (domain.YandexUserInfo, error)
 }
 
-// YandexTokenResponse is the subset of Yandex's /token response we care about.
-type YandexTokenResponse struct {
-	AccessToken  string
-	RefreshToken string
-	ExpiresIn    int
-}
+// YandexTokenResponse is re-exported for backward compatibility with tests
+// and existing imports. The canonical type lives in domain.
+//
+// Deprecated: use domain.YandexTokenResponse.
+type YandexTokenResponse = domain.YandexTokenResponse
 
 // TokenEncryptor opaquely encrypts OAuth token blobs at rest (bible §11 rule:
 // AES-256-GCM with a static key from ENCRYPTION_KEY). infra supplies the impl.

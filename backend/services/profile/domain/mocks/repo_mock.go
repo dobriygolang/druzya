@@ -327,6 +327,20 @@ func (mr *MockProfileRepoMockRecorder) ListWeeklyXPSince(ctx, userID, now, weeks
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListWeeklyXPSince", reflect.TypeOf((*MockProfileRepo)(nil).ListWeeklyXPSince), ctx, userID, now, weeks)
 }
 
+// RecordXPEvent mocks base method.
+func (m *MockProfileRepo) RecordXPEvent(ctx context.Context, userID uuid.UUID, amount int, source string, sourceID *uuid.UUID) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "RecordXPEvent", ctx, userID, amount, source, sourceID)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// RecordXPEvent indicates an expected call of RecordXPEvent.
+func (mr *MockProfileRepoMockRecorder) RecordXPEvent(ctx, userID, amount, source, sourceID any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RecordXPEvent", reflect.TypeOf((*MockProfileRepo)(nil).RecordXPEvent), ctx, userID, amount, source, sourceID)
+}
+
 // RejectInterviewerApplication mocks base method.
 func (m *MockProfileRepo) RejectInterviewerApplication(ctx context.Context, applicationID, adminID uuid.UUID, note string) (domain.InterviewerApplication, error) {
 	m.ctrl.T.Helper()

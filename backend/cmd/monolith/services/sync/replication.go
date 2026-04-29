@@ -101,7 +101,7 @@ func (h *replicationHandler) handlePull(w http.ResponseWriter, r *http.Request) 
 		}
 		h.log.ErrorContext(r.Context(), "sync.pull failed",
 			slog.Any("err", err), slog.String("user_id", uid.String()))
-		monolithServices.WritePubJSONError(w, http.StatusInternalServerError, "internal", "")
+		monolithServices.WritePubJSONError(w, http.StatusInternalServerError, "internal", err.Error())
 		return
 	}
 

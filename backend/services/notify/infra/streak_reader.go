@@ -34,12 +34,13 @@ func NewStreakPostgres(pool *pgxpool.Pool) *StreakPostgres {
 // no streak row yet.
 func (s *StreakPostgres) GetStreakByChatID(ctx context.Context, chatID int64) (domain.StreakInfo, error) {
 	chatIDStr := fmt.Sprintf("%d", chatID)
+	// v2: notification_preferences merged into notification_prefs.
 	row := s.pool.QueryRow(ctx, `
 		SELECT ds.current_streak,
 		       ds.longest_streak,
 		       ds.freeze_tokens,
 		       ds.last_kata_date
-		  FROM notification_preferences np
+		  FROM notification_prefs np
 		  JOIN daily_streaks ds ON ds.user_id = np.user_id
 		 WHERE np.telegram_chat_id = $1
 		 LIMIT 1

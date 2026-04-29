@@ -98,6 +98,59 @@ func (ConfigEntryType) EnumDescriptor() ([]byte, []int) {
 	return file_druz9_v1_admin_proto_rawDescGZIP(), []int{0}
 }
 
+// AdminReportStatus — wire-закрытый набор статусов жалобы.
+type AdminReportStatus int32
+
+const (
+	AdminReportStatus_ADMIN_REPORT_STATUS_UNSPECIFIED AdminReportStatus = 0
+	AdminReportStatus_ADMIN_REPORT_STATUS_PENDING     AdminReportStatus = 1
+	AdminReportStatus_ADMIN_REPORT_STATUS_RESOLVED    AdminReportStatus = 2
+	AdminReportStatus_ADMIN_REPORT_STATUS_DISMISSED   AdminReportStatus = 3
+)
+
+// Enum value maps for AdminReportStatus.
+var (
+	AdminReportStatus_name = map[int32]string{
+		0: "ADMIN_REPORT_STATUS_UNSPECIFIED",
+		1: "ADMIN_REPORT_STATUS_PENDING",
+		2: "ADMIN_REPORT_STATUS_RESOLVED",
+		3: "ADMIN_REPORT_STATUS_DISMISSED",
+	}
+	AdminReportStatus_value = map[string]int32{
+		"ADMIN_REPORT_STATUS_UNSPECIFIED": 0,
+		"ADMIN_REPORT_STATUS_PENDING":     1,
+		"ADMIN_REPORT_STATUS_RESOLVED":    2,
+		"ADMIN_REPORT_STATUS_DISMISSED":   3,
+	}
+)
+
+func (x AdminReportStatus) Enum() *AdminReportStatus {
+	p := new(AdminReportStatus)
+	*p = x
+	return p
+}
+
+func (x AdminReportStatus) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (AdminReportStatus) Descriptor() protoreflect.EnumDescriptor {
+	return file_druz9_v1_admin_proto_enumTypes[1].Descriptor()
+}
+
+func (AdminReportStatus) Type() protoreflect.EnumType {
+	return &file_druz9_v1_admin_proto_enumTypes[1]
+}
+
+func (x AdminReportStatus) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use AdminReportStatus.Descriptor instead.
+func (AdminReportStatus) EnumDescriptor() ([]byte, []int) {
+	return file_druz9_v1_admin_proto_rawDescGZIP(), []int{1}
+}
+
 // AdminTaskTestCase mirrors the inline test-case item in OpenAPI AdminTask.
 type AdminTaskTestCase struct {
 	state          protoimpl.MessageState `protogen:"open.v1"`
@@ -2093,7 +2146,7 @@ type AdminReport struct {
 	ReportedName  string                 `protobuf:"bytes,5,opt,name=reported_name,json=reportedName,proto3" json:"reported_name,omitempty"`
 	Reason        string                 `protobuf:"bytes,6,opt,name=reason,proto3" json:"reason,omitempty"`
 	Description   string                 `protobuf:"bytes,7,opt,name=description,proto3" json:"description,omitempty"`
-	Status        string                 `protobuf:"bytes,8,opt,name=status,proto3" json:"status,omitempty"` // pending / resolved / dismissed
+	Status        AdminReportStatus      `protobuf:"varint,8,opt,name=status,proto3,enum=druz9.v1.AdminReportStatus" json:"status,omitempty"`
 	CreatedAt     *timestamppb.Timestamp `protobuf:"bytes,9,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -2178,11 +2231,11 @@ func (x *AdminReport) GetDescription() string {
 	return ""
 }
 
-func (x *AdminReport) GetStatus() string {
+func (x *AdminReport) GetStatus() AdminReportStatus {
 	if x != nil {
 		return x.Status
 	}
-	return ""
+	return AdminReportStatus_ADMIN_REPORT_STATUS_UNSPECIFIED
 }
 
 func (x *AdminReport) GetCreatedAt() *timestamppb.Timestamp {
@@ -2246,9 +2299,9 @@ func (x *AdminReportList) GetTotal() int32 {
 
 type ListAdminReportsRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
-	// status filter — "" means pending only.
-	Status        string `protobuf:"bytes,1,opt,name=status,proto3" json:"status,omitempty"`
-	Limit         int32  `protobuf:"varint,2,opt,name=limit,proto3" json:"limit,omitempty"`
+	// status filter — UNSPECIFIED means PENDING only.
+	Status        AdminReportStatus `protobuf:"varint,1,opt,name=status,proto3,enum=druz9.v1.AdminReportStatus" json:"status,omitempty"`
+	Limit         int32             `protobuf:"varint,2,opt,name=limit,proto3" json:"limit,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -2283,11 +2336,11 @@ func (*ListAdminReportsRequest) Descriptor() ([]byte, []int) {
 	return file_druz9_v1_admin_proto_rawDescGZIP(), []int{30}
 }
 
-func (x *ListAdminReportsRequest) GetStatus() string {
+func (x *ListAdminReportsRequest) GetStatus() AdminReportStatus {
 	if x != nil {
 		return x.Status
 	}
-	return ""
+	return AdminReportStatus_ADMIN_REPORT_STATUS_UNSPECIFIED
 }
 
 func (x *ListAdminReportsRequest) GetLimit() int32 {
@@ -2758,7 +2811,7 @@ const file_druz9_v1_admin_proto_rawDesc = "" +
 	"\x10UnbanUserRequest\x12\x17\n" +
 	"\auser_id\x18\x01 \x01(\tR\x06userId\"=\n" +
 	"\x0fBanUserResponse\x12*\n" +
-	"\x04user\x18\x01 \x01(\v2\x16.druz9.v1.AdminUserRowR\x04user\"\xb6\x02\n" +
+	"\x04user\x18\x01 \x01(\v2\x16.druz9.v1.AdminUserRowR\x04user\"\xd3\x02\n" +
 	"\vAdminReport\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1f\n" +
 	"\vreporter_id\x18\x02 \x01(\tR\n" +
@@ -2768,15 +2821,15 @@ const file_druz9_v1_admin_proto_rawDesc = "" +
 	"reportedId\x12#\n" +
 	"\rreported_name\x18\x05 \x01(\tR\freportedName\x12\x16\n" +
 	"\x06reason\x18\x06 \x01(\tR\x06reason\x12 \n" +
-	"\vdescription\x18\a \x01(\tR\vdescription\x12\x16\n" +
-	"\x06status\x18\b \x01(\tR\x06status\x129\n" +
+	"\vdescription\x18\a \x01(\tR\vdescription\x123\n" +
+	"\x06status\x18\b \x01(\x0e2\x1b.druz9.v1.AdminReportStatusR\x06status\x129\n" +
 	"\n" +
 	"created_at\x18\t \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\"T\n" +
 	"\x0fAdminReportList\x12+\n" +
 	"\x05items\x18\x01 \x03(\v2\x15.druz9.v1.AdminReportR\x05items\x12\x14\n" +
-	"\x05total\x18\x02 \x01(\x05R\x05total\"G\n" +
-	"\x17ListAdminReportsRequest\x12\x16\n" +
-	"\x06status\x18\x01 \x01(\tR\x06status\x12\x14\n" +
+	"\x05total\x18\x02 \x01(\x05R\x05total\"d\n" +
+	"\x17ListAdminReportsRequest\x123\n" +
+	"\x06status\x18\x01 \x01(\x0e2\x1b.druz9.v1.AdminReportStatusR\x06status\x12\x14\n" +
 	"\x05limit\x18\x02 \x01(\x05R\x05limit\"\x92\x01\n" +
 	"\x12StatusServiceState\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x12\n" +
@@ -2810,7 +2863,12 @@ const file_druz9_v1_admin_proto_rawDesc = "" +
 	"\x17CONFIG_ENTRY_TYPE_FLOAT\x10\x02\x12\x1c\n" +
 	"\x18CONFIG_ENTRY_TYPE_STRING\x10\x03\x12\x1a\n" +
 	"\x16CONFIG_ENTRY_TYPE_BOOL\x10\x04\x12\x1a\n" +
-	"\x16CONFIG_ENTRY_TYPE_JSON\x10\x052\xea\v\n" +
+	"\x16CONFIG_ENTRY_TYPE_JSON\x10\x05*\x9e\x01\n" +
+	"\x11AdminReportStatus\x12#\n" +
+	"\x1fADMIN_REPORT_STATUS_UNSPECIFIED\x10\x00\x12\x1f\n" +
+	"\x1bADMIN_REPORT_STATUS_PENDING\x10\x01\x12 \n" +
+	"\x1cADMIN_REPORT_STATUS_RESOLVED\x10\x02\x12!\n" +
+	"\x1dADMIN_REPORT_STATUS_DISMISSED\x10\x032\xea\v\n" +
 	"\fAdminService\x12b\n" +
 	"\tListTasks\x12\x1f.druz9.v1.ListAdminTasksRequest\x1a\x17.druz9.v1.AdminTaskList\"\x1b\x82\xd3\xe4\x93\x02\x15\x12\x13/api/v1/admin/tasks\x12f\n" +
 	"\n" +
@@ -2844,129 +2902,132 @@ func file_druz9_v1_admin_proto_rawDescGZIP() []byte {
 	return file_druz9_v1_admin_proto_rawDescData
 }
 
-var file_druz9_v1_admin_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
+var file_druz9_v1_admin_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
 var file_druz9_v1_admin_proto_msgTypes = make([]protoimpl.MessageInfo, 35)
 var file_druz9_v1_admin_proto_goTypes = []any{
 	(ConfigEntryType)(0),              // 0: druz9.v1.ConfigEntryType
-	(*AdminTaskTestCase)(nil),         // 1: druz9.v1.AdminTaskTestCase
-	(*AdminTaskFollowUpQuestion)(nil), // 2: druz9.v1.AdminTaskFollowUpQuestion
-	(*AdminTask)(nil),                 // 3: druz9.v1.AdminTask
-	(*AdminTaskList)(nil),             // 4: druz9.v1.AdminTaskList
-	(*AdminTaskUpsert)(nil),           // 5: druz9.v1.AdminTaskUpsert
-	(*ListAdminTasksRequest)(nil),     // 6: druz9.v1.ListAdminTasksRequest
-	(*CreateAdminTaskRequest)(nil),    // 7: druz9.v1.CreateAdminTaskRequest
-	(*UpdateAdminTaskRequest)(nil),    // 8: druz9.v1.UpdateAdminTaskRequest
-	(*Company)(nil),                   // 9: druz9.v1.Company
-	(*CompanyList)(nil),               // 10: druz9.v1.CompanyList
-	(*CompanyUpsert)(nil),             // 11: druz9.v1.CompanyUpsert
-	(*ListCompaniesRequest)(nil),      // 12: druz9.v1.ListCompaniesRequest
-	(*CreateCompanyRequest)(nil),      // 13: druz9.v1.CreateCompanyRequest
-	(*ConfigEntry)(nil),               // 14: druz9.v1.ConfigEntry
-	(*ConfigEntryList)(nil),           // 15: druz9.v1.ConfigEntryList
-	(*UpdateConfigRequest)(nil),       // 16: druz9.v1.UpdateConfigRequest
-	(*ListConfigRequest)(nil),         // 17: druz9.v1.ListConfigRequest
-	(*AnticheatSignal)(nil),           // 18: druz9.v1.AnticheatSignal
-	(*AnticheatSignalList)(nil),       // 19: druz9.v1.AnticheatSignalList
-	(*ListAnticheatRequest)(nil),      // 20: druz9.v1.ListAnticheatRequest
-	(*AdminDashboard)(nil),            // 21: druz9.v1.AdminDashboard
-	(*GetAdminDashboardRequest)(nil),  // 22: druz9.v1.GetAdminDashboardRequest
-	(*AdminUserRow)(nil),              // 23: druz9.v1.AdminUserRow
-	(*AdminUserList)(nil),             // 24: druz9.v1.AdminUserList
-	(*ListAdminUsersRequest)(nil),     // 25: druz9.v1.ListAdminUsersRequest
-	(*BanUserRequest)(nil),            // 26: druz9.v1.BanUserRequest
-	(*UnbanUserRequest)(nil),          // 27: druz9.v1.UnbanUserRequest
-	(*BanUserResponse)(nil),           // 28: druz9.v1.BanUserResponse
-	(*AdminReport)(nil),               // 29: druz9.v1.AdminReport
-	(*AdminReportList)(nil),           // 30: druz9.v1.AdminReportList
-	(*ListAdminReportsRequest)(nil),   // 31: druz9.v1.ListAdminReportsRequest
-	(*StatusServiceState)(nil),        // 32: druz9.v1.StatusServiceState
-	(*StatusIncident)(nil),            // 33: druz9.v1.StatusIncident
-	(*StatusPage)(nil),                // 34: druz9.v1.StatusPage
-	(*GetStatusPageRequest)(nil),      // 35: druz9.v1.GetStatusPageRequest
-	(Difficulty)(0),                   // 36: druz9.v1.Difficulty
-	(Section)(0),                      // 37: druz9.v1.Section
-	(DungeonTier)(0),                  // 38: druz9.v1.DungeonTier
-	(*structpb.Value)(nil),            // 39: google.protobuf.Value
-	(*timestamppb.Timestamp)(nil),     // 40: google.protobuf.Timestamp
-	(SeverityLevel)(0),                // 41: druz9.v1.SeverityLevel
+	(AdminReportStatus)(0),            // 1: druz9.v1.AdminReportStatus
+	(*AdminTaskTestCase)(nil),         // 2: druz9.v1.AdminTaskTestCase
+	(*AdminTaskFollowUpQuestion)(nil), // 3: druz9.v1.AdminTaskFollowUpQuestion
+	(*AdminTask)(nil),                 // 4: druz9.v1.AdminTask
+	(*AdminTaskList)(nil),             // 5: druz9.v1.AdminTaskList
+	(*AdminTaskUpsert)(nil),           // 6: druz9.v1.AdminTaskUpsert
+	(*ListAdminTasksRequest)(nil),     // 7: druz9.v1.ListAdminTasksRequest
+	(*CreateAdminTaskRequest)(nil),    // 8: druz9.v1.CreateAdminTaskRequest
+	(*UpdateAdminTaskRequest)(nil),    // 9: druz9.v1.UpdateAdminTaskRequest
+	(*Company)(nil),                   // 10: druz9.v1.Company
+	(*CompanyList)(nil),               // 11: druz9.v1.CompanyList
+	(*CompanyUpsert)(nil),             // 12: druz9.v1.CompanyUpsert
+	(*ListCompaniesRequest)(nil),      // 13: druz9.v1.ListCompaniesRequest
+	(*CreateCompanyRequest)(nil),      // 14: druz9.v1.CreateCompanyRequest
+	(*ConfigEntry)(nil),               // 15: druz9.v1.ConfigEntry
+	(*ConfigEntryList)(nil),           // 16: druz9.v1.ConfigEntryList
+	(*UpdateConfigRequest)(nil),       // 17: druz9.v1.UpdateConfigRequest
+	(*ListConfigRequest)(nil),         // 18: druz9.v1.ListConfigRequest
+	(*AnticheatSignal)(nil),           // 19: druz9.v1.AnticheatSignal
+	(*AnticheatSignalList)(nil),       // 20: druz9.v1.AnticheatSignalList
+	(*ListAnticheatRequest)(nil),      // 21: druz9.v1.ListAnticheatRequest
+	(*AdminDashboard)(nil),            // 22: druz9.v1.AdminDashboard
+	(*GetAdminDashboardRequest)(nil),  // 23: druz9.v1.GetAdminDashboardRequest
+	(*AdminUserRow)(nil),              // 24: druz9.v1.AdminUserRow
+	(*AdminUserList)(nil),             // 25: druz9.v1.AdminUserList
+	(*ListAdminUsersRequest)(nil),     // 26: druz9.v1.ListAdminUsersRequest
+	(*BanUserRequest)(nil),            // 27: druz9.v1.BanUserRequest
+	(*UnbanUserRequest)(nil),          // 28: druz9.v1.UnbanUserRequest
+	(*BanUserResponse)(nil),           // 29: druz9.v1.BanUserResponse
+	(*AdminReport)(nil),               // 30: druz9.v1.AdminReport
+	(*AdminReportList)(nil),           // 31: druz9.v1.AdminReportList
+	(*ListAdminReportsRequest)(nil),   // 32: druz9.v1.ListAdminReportsRequest
+	(*StatusServiceState)(nil),        // 33: druz9.v1.StatusServiceState
+	(*StatusIncident)(nil),            // 34: druz9.v1.StatusIncident
+	(*StatusPage)(nil),                // 35: druz9.v1.StatusPage
+	(*GetStatusPageRequest)(nil),      // 36: druz9.v1.GetStatusPageRequest
+	(Difficulty)(0),                   // 37: druz9.v1.Difficulty
+	(Section)(0),                      // 38: druz9.v1.Section
+	(DungeonTier)(0),                  // 39: druz9.v1.DungeonTier
+	(*structpb.Value)(nil),            // 40: google.protobuf.Value
+	(*timestamppb.Timestamp)(nil),     // 41: google.protobuf.Timestamp
+	(SeverityLevel)(0),                // 42: druz9.v1.SeverityLevel
 }
 var file_druz9_v1_admin_proto_depIdxs = []int32{
-	36, // 0: druz9.v1.AdminTask.difficulty:type_name -> druz9.v1.Difficulty
-	37, // 1: druz9.v1.AdminTask.section:type_name -> druz9.v1.Section
-	1,  // 2: druz9.v1.AdminTask.test_cases:type_name -> druz9.v1.AdminTaskTestCase
-	2,  // 3: druz9.v1.AdminTask.follow_up_questions:type_name -> druz9.v1.AdminTaskFollowUpQuestion
-	3,  // 4: druz9.v1.AdminTaskList.items:type_name -> druz9.v1.AdminTask
-	36, // 5: druz9.v1.AdminTaskUpsert.difficulty:type_name -> druz9.v1.Difficulty
-	37, // 6: druz9.v1.AdminTaskUpsert.section:type_name -> druz9.v1.Section
-	1,  // 7: druz9.v1.AdminTaskUpsert.test_cases:type_name -> druz9.v1.AdminTaskTestCase
-	2,  // 8: druz9.v1.AdminTaskUpsert.follow_up_questions:type_name -> druz9.v1.AdminTaskFollowUpQuestion
-	37, // 9: druz9.v1.ListAdminTasksRequest.section:type_name -> druz9.v1.Section
-	36, // 10: druz9.v1.ListAdminTasksRequest.difficulty:type_name -> druz9.v1.Difficulty
-	5,  // 11: druz9.v1.CreateAdminTaskRequest.task:type_name -> druz9.v1.AdminTaskUpsert
-	5,  // 12: druz9.v1.UpdateAdminTaskRequest.task:type_name -> druz9.v1.AdminTaskUpsert
-	38, // 13: druz9.v1.Company.difficulty:type_name -> druz9.v1.DungeonTier
-	37, // 14: druz9.v1.Company.sections:type_name -> druz9.v1.Section
-	9,  // 15: druz9.v1.CompanyList.items:type_name -> druz9.v1.Company
-	38, // 16: druz9.v1.CompanyUpsert.difficulty:type_name -> druz9.v1.DungeonTier
-	11, // 17: druz9.v1.CreateCompanyRequest.company:type_name -> druz9.v1.CompanyUpsert
-	39, // 18: druz9.v1.ConfigEntry.value:type_name -> google.protobuf.Value
+	37, // 0: druz9.v1.AdminTask.difficulty:type_name -> druz9.v1.Difficulty
+	38, // 1: druz9.v1.AdminTask.section:type_name -> druz9.v1.Section
+	2,  // 2: druz9.v1.AdminTask.test_cases:type_name -> druz9.v1.AdminTaskTestCase
+	3,  // 3: druz9.v1.AdminTask.follow_up_questions:type_name -> druz9.v1.AdminTaskFollowUpQuestion
+	4,  // 4: druz9.v1.AdminTaskList.items:type_name -> druz9.v1.AdminTask
+	37, // 5: druz9.v1.AdminTaskUpsert.difficulty:type_name -> druz9.v1.Difficulty
+	38, // 6: druz9.v1.AdminTaskUpsert.section:type_name -> druz9.v1.Section
+	2,  // 7: druz9.v1.AdminTaskUpsert.test_cases:type_name -> druz9.v1.AdminTaskTestCase
+	3,  // 8: druz9.v1.AdminTaskUpsert.follow_up_questions:type_name -> druz9.v1.AdminTaskFollowUpQuestion
+	38, // 9: druz9.v1.ListAdminTasksRequest.section:type_name -> druz9.v1.Section
+	37, // 10: druz9.v1.ListAdminTasksRequest.difficulty:type_name -> druz9.v1.Difficulty
+	6,  // 11: druz9.v1.CreateAdminTaskRequest.task:type_name -> druz9.v1.AdminTaskUpsert
+	6,  // 12: druz9.v1.UpdateAdminTaskRequest.task:type_name -> druz9.v1.AdminTaskUpsert
+	39, // 13: druz9.v1.Company.difficulty:type_name -> druz9.v1.DungeonTier
+	38, // 14: druz9.v1.Company.sections:type_name -> druz9.v1.Section
+	10, // 15: druz9.v1.CompanyList.items:type_name -> druz9.v1.Company
+	39, // 16: druz9.v1.CompanyUpsert.difficulty:type_name -> druz9.v1.DungeonTier
+	12, // 17: druz9.v1.CreateCompanyRequest.company:type_name -> druz9.v1.CompanyUpsert
+	40, // 18: druz9.v1.ConfigEntry.value:type_name -> google.protobuf.Value
 	0,  // 19: druz9.v1.ConfigEntry.type:type_name -> druz9.v1.ConfigEntryType
-	40, // 20: druz9.v1.ConfigEntry.updated_at:type_name -> google.protobuf.Timestamp
-	14, // 21: druz9.v1.ConfigEntryList.items:type_name -> druz9.v1.ConfigEntry
-	39, // 22: druz9.v1.UpdateConfigRequest.value:type_name -> google.protobuf.Value
-	41, // 23: druz9.v1.AnticheatSignal.severity:type_name -> druz9.v1.SeverityLevel
-	39, // 24: druz9.v1.AnticheatSignal.metadata:type_name -> google.protobuf.Value
-	40, // 25: druz9.v1.AnticheatSignal.created_at:type_name -> google.protobuf.Timestamp
-	18, // 26: druz9.v1.AnticheatSignalList.items:type_name -> druz9.v1.AnticheatSignal
-	41, // 27: druz9.v1.ListAnticheatRequest.severity:type_name -> druz9.v1.SeverityLevel
-	40, // 28: druz9.v1.ListAnticheatRequest.from:type_name -> google.protobuf.Timestamp
-	40, // 29: druz9.v1.AdminDashboard.generated_at:type_name -> google.protobuf.Timestamp
-	40, // 30: druz9.v1.AdminUserRow.created_at:type_name -> google.protobuf.Timestamp
-	40, // 31: druz9.v1.AdminUserRow.updated_at:type_name -> google.protobuf.Timestamp
-	40, // 32: druz9.v1.AdminUserRow.ban_expires_at:type_name -> google.protobuf.Timestamp
-	23, // 33: druz9.v1.AdminUserList.items:type_name -> druz9.v1.AdminUserRow
-	40, // 34: druz9.v1.BanUserRequest.expires_at:type_name -> google.protobuf.Timestamp
-	23, // 35: druz9.v1.BanUserResponse.user:type_name -> druz9.v1.AdminUserRow
-	40, // 36: druz9.v1.AdminReport.created_at:type_name -> google.protobuf.Timestamp
-	29, // 37: druz9.v1.AdminReportList.items:type_name -> druz9.v1.AdminReport
-	40, // 38: druz9.v1.StatusIncident.started_at:type_name -> google.protobuf.Timestamp
-	40, // 39: druz9.v1.StatusIncident.ended_at:type_name -> google.protobuf.Timestamp
-	32, // 40: druz9.v1.StatusPage.services:type_name -> druz9.v1.StatusServiceState
-	33, // 41: druz9.v1.StatusPage.incidents:type_name -> druz9.v1.StatusIncident
-	40, // 42: druz9.v1.StatusPage.generated_at:type_name -> google.protobuf.Timestamp
-	6,  // 43: druz9.v1.AdminService.ListTasks:input_type -> druz9.v1.ListAdminTasksRequest
-	7,  // 44: druz9.v1.AdminService.CreateTask:input_type -> druz9.v1.CreateAdminTaskRequest
-	8,  // 45: druz9.v1.AdminService.UpdateTask:input_type -> druz9.v1.UpdateAdminTaskRequest
-	12, // 46: druz9.v1.AdminService.ListCompanies:input_type -> druz9.v1.ListCompaniesRequest
-	13, // 47: druz9.v1.AdminService.CreateCompany:input_type -> druz9.v1.CreateCompanyRequest
-	17, // 48: druz9.v1.AdminService.ListConfig:input_type -> druz9.v1.ListConfigRequest
-	16, // 49: druz9.v1.AdminService.UpdateConfig:input_type -> druz9.v1.UpdateConfigRequest
-	20, // 50: druz9.v1.AdminService.ListAnticheat:input_type -> druz9.v1.ListAnticheatRequest
-	22, // 51: druz9.v1.AdminService.GetAdminDashboard:input_type -> druz9.v1.GetAdminDashboardRequest
-	25, // 52: druz9.v1.AdminService.ListUsers:input_type -> druz9.v1.ListAdminUsersRequest
-	26, // 53: druz9.v1.AdminService.BanUser:input_type -> druz9.v1.BanUserRequest
-	27, // 54: druz9.v1.AdminService.UnbanUser:input_type -> druz9.v1.UnbanUserRequest
-	31, // 55: druz9.v1.AdminService.ListReports:input_type -> druz9.v1.ListAdminReportsRequest
-	35, // 56: druz9.v1.AdminService.GetStatusPage:input_type -> druz9.v1.GetStatusPageRequest
-	4,  // 57: druz9.v1.AdminService.ListTasks:output_type -> druz9.v1.AdminTaskList
-	3,  // 58: druz9.v1.AdminService.CreateTask:output_type -> druz9.v1.AdminTask
-	3,  // 59: druz9.v1.AdminService.UpdateTask:output_type -> druz9.v1.AdminTask
-	10, // 60: druz9.v1.AdminService.ListCompanies:output_type -> druz9.v1.CompanyList
-	9,  // 61: druz9.v1.AdminService.CreateCompany:output_type -> druz9.v1.Company
-	15, // 62: druz9.v1.AdminService.ListConfig:output_type -> druz9.v1.ConfigEntryList
-	14, // 63: druz9.v1.AdminService.UpdateConfig:output_type -> druz9.v1.ConfigEntry
-	19, // 64: druz9.v1.AdminService.ListAnticheat:output_type -> druz9.v1.AnticheatSignalList
-	21, // 65: druz9.v1.AdminService.GetAdminDashboard:output_type -> druz9.v1.AdminDashboard
-	24, // 66: druz9.v1.AdminService.ListUsers:output_type -> druz9.v1.AdminUserList
-	28, // 67: druz9.v1.AdminService.BanUser:output_type -> druz9.v1.BanUserResponse
-	28, // 68: druz9.v1.AdminService.UnbanUser:output_type -> druz9.v1.BanUserResponse
-	30, // 69: druz9.v1.AdminService.ListReports:output_type -> druz9.v1.AdminReportList
-	34, // 70: druz9.v1.AdminService.GetStatusPage:output_type -> druz9.v1.StatusPage
-	57, // [57:71] is the sub-list for method output_type
-	43, // [43:57] is the sub-list for method input_type
-	43, // [43:43] is the sub-list for extension type_name
-	43, // [43:43] is the sub-list for extension extendee
-	0,  // [0:43] is the sub-list for field type_name
+	41, // 20: druz9.v1.ConfigEntry.updated_at:type_name -> google.protobuf.Timestamp
+	15, // 21: druz9.v1.ConfigEntryList.items:type_name -> druz9.v1.ConfigEntry
+	40, // 22: druz9.v1.UpdateConfigRequest.value:type_name -> google.protobuf.Value
+	42, // 23: druz9.v1.AnticheatSignal.severity:type_name -> druz9.v1.SeverityLevel
+	40, // 24: druz9.v1.AnticheatSignal.metadata:type_name -> google.protobuf.Value
+	41, // 25: druz9.v1.AnticheatSignal.created_at:type_name -> google.protobuf.Timestamp
+	19, // 26: druz9.v1.AnticheatSignalList.items:type_name -> druz9.v1.AnticheatSignal
+	42, // 27: druz9.v1.ListAnticheatRequest.severity:type_name -> druz9.v1.SeverityLevel
+	41, // 28: druz9.v1.ListAnticheatRequest.from:type_name -> google.protobuf.Timestamp
+	41, // 29: druz9.v1.AdminDashboard.generated_at:type_name -> google.protobuf.Timestamp
+	41, // 30: druz9.v1.AdminUserRow.created_at:type_name -> google.protobuf.Timestamp
+	41, // 31: druz9.v1.AdminUserRow.updated_at:type_name -> google.protobuf.Timestamp
+	41, // 32: druz9.v1.AdminUserRow.ban_expires_at:type_name -> google.protobuf.Timestamp
+	24, // 33: druz9.v1.AdminUserList.items:type_name -> druz9.v1.AdminUserRow
+	41, // 34: druz9.v1.BanUserRequest.expires_at:type_name -> google.protobuf.Timestamp
+	24, // 35: druz9.v1.BanUserResponse.user:type_name -> druz9.v1.AdminUserRow
+	1,  // 36: druz9.v1.AdminReport.status:type_name -> druz9.v1.AdminReportStatus
+	41, // 37: druz9.v1.AdminReport.created_at:type_name -> google.protobuf.Timestamp
+	30, // 38: druz9.v1.AdminReportList.items:type_name -> druz9.v1.AdminReport
+	1,  // 39: druz9.v1.ListAdminReportsRequest.status:type_name -> druz9.v1.AdminReportStatus
+	41, // 40: druz9.v1.StatusIncident.started_at:type_name -> google.protobuf.Timestamp
+	41, // 41: druz9.v1.StatusIncident.ended_at:type_name -> google.protobuf.Timestamp
+	33, // 42: druz9.v1.StatusPage.services:type_name -> druz9.v1.StatusServiceState
+	34, // 43: druz9.v1.StatusPage.incidents:type_name -> druz9.v1.StatusIncident
+	41, // 44: druz9.v1.StatusPage.generated_at:type_name -> google.protobuf.Timestamp
+	7,  // 45: druz9.v1.AdminService.ListTasks:input_type -> druz9.v1.ListAdminTasksRequest
+	8,  // 46: druz9.v1.AdminService.CreateTask:input_type -> druz9.v1.CreateAdminTaskRequest
+	9,  // 47: druz9.v1.AdminService.UpdateTask:input_type -> druz9.v1.UpdateAdminTaskRequest
+	13, // 48: druz9.v1.AdminService.ListCompanies:input_type -> druz9.v1.ListCompaniesRequest
+	14, // 49: druz9.v1.AdminService.CreateCompany:input_type -> druz9.v1.CreateCompanyRequest
+	18, // 50: druz9.v1.AdminService.ListConfig:input_type -> druz9.v1.ListConfigRequest
+	17, // 51: druz9.v1.AdminService.UpdateConfig:input_type -> druz9.v1.UpdateConfigRequest
+	21, // 52: druz9.v1.AdminService.ListAnticheat:input_type -> druz9.v1.ListAnticheatRequest
+	23, // 53: druz9.v1.AdminService.GetAdminDashboard:input_type -> druz9.v1.GetAdminDashboardRequest
+	26, // 54: druz9.v1.AdminService.ListUsers:input_type -> druz9.v1.ListAdminUsersRequest
+	27, // 55: druz9.v1.AdminService.BanUser:input_type -> druz9.v1.BanUserRequest
+	28, // 56: druz9.v1.AdminService.UnbanUser:input_type -> druz9.v1.UnbanUserRequest
+	32, // 57: druz9.v1.AdminService.ListReports:input_type -> druz9.v1.ListAdminReportsRequest
+	36, // 58: druz9.v1.AdminService.GetStatusPage:input_type -> druz9.v1.GetStatusPageRequest
+	5,  // 59: druz9.v1.AdminService.ListTasks:output_type -> druz9.v1.AdminTaskList
+	4,  // 60: druz9.v1.AdminService.CreateTask:output_type -> druz9.v1.AdminTask
+	4,  // 61: druz9.v1.AdminService.UpdateTask:output_type -> druz9.v1.AdminTask
+	11, // 62: druz9.v1.AdminService.ListCompanies:output_type -> druz9.v1.CompanyList
+	10, // 63: druz9.v1.AdminService.CreateCompany:output_type -> druz9.v1.Company
+	16, // 64: druz9.v1.AdminService.ListConfig:output_type -> druz9.v1.ConfigEntryList
+	15, // 65: druz9.v1.AdminService.UpdateConfig:output_type -> druz9.v1.ConfigEntry
+	20, // 66: druz9.v1.AdminService.ListAnticheat:output_type -> druz9.v1.AnticheatSignalList
+	22, // 67: druz9.v1.AdminService.GetAdminDashboard:output_type -> druz9.v1.AdminDashboard
+	25, // 68: druz9.v1.AdminService.ListUsers:output_type -> druz9.v1.AdminUserList
+	29, // 69: druz9.v1.AdminService.BanUser:output_type -> druz9.v1.BanUserResponse
+	29, // 70: druz9.v1.AdminService.UnbanUser:output_type -> druz9.v1.BanUserResponse
+	31, // 71: druz9.v1.AdminService.ListReports:output_type -> druz9.v1.AdminReportList
+	35, // 72: druz9.v1.AdminService.GetStatusPage:output_type -> druz9.v1.StatusPage
+	59, // [59:73] is the sub-list for method output_type
+	45, // [45:59] is the sub-list for method input_type
+	45, // [45:45] is the sub-list for extension type_name
+	45, // [45:45] is the sub-list for extension extendee
+	0,  // [0:45] is the sub-list for field type_name
 }
 
 func init() { file_druz9_v1_admin_proto_init() }
@@ -2980,7 +3041,7 @@ func file_druz9_v1_admin_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_druz9_v1_admin_proto_rawDesc), len(file_druz9_v1_admin_proto_rawDesc)),
-			NumEnums:      1,
+			NumEnums:      2,
 			NumMessages:   35,
 			NumExtensions: 0,
 			NumServices:   1,

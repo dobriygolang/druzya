@@ -144,6 +144,21 @@ func (mr *MockConversationRepoMockRecorder) ListForUser(ctx, userID, cursor, lim
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListForUser", reflect.TypeOf((*MockConversationRepo)(nil).ListForUser), ctx, userID, cursor, limit)
 }
 
+// ResetModelsNotIn mocks base method.
+func (m *MockConversationRepo) ResetModelsNotIn(ctx context.Context, userID uuid.UUID, allowed []string) (int64, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ResetModelsNotIn", ctx, userID, allowed)
+	ret0, _ := ret[0].(int64)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ResetModelsNotIn indicates an expected call of ResetModelsNotIn.
+func (mr *MockConversationRepoMockRecorder) ResetModelsNotIn(ctx, userID, allowed any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ResetModelsNotIn", reflect.TypeOf((*MockConversationRepo)(nil).ResetModelsNotIn), ctx, userID, allowed)
+}
+
 // Touch mocks base method.
 func (m *MockConversationRepo) Touch(ctx context.Context, id uuid.UUID) error {
 	m.ctrl.T.Helper()
@@ -267,6 +282,44 @@ func (m *MockMessageRepo) UpdateAssistant(ctx context.Context, id uuid.UUID, con
 func (mr *MockMessageRepoMockRecorder) UpdateAssistant(ctx, id, content, tokensIn, tokensOut, latencyMs any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "UpdateAssistant", reflect.TypeOf((*MockMessageRepo)(nil).UpdateAssistant), ctx, id, content, tokensIn, tokensOut, latencyMs)
+}
+
+// MockMemorySink is a mock of MemorySink interface.
+type MockMemorySink struct {
+	ctrl     *gomock.Controller
+	recorder *MockMemorySinkMockRecorder
+	isgomock struct{}
+}
+
+// MockMemorySinkMockRecorder is the mock recorder for MockMemorySink.
+type MockMemorySinkMockRecorder struct {
+	mock *MockMemorySink
+}
+
+// NewMockMemorySink creates a new mock instance.
+func NewMockMemorySink(ctrl *gomock.Controller) *MockMemorySink {
+	mock := &MockMemorySink{ctrl: ctrl}
+	mock.recorder = &MockMemorySinkMockRecorder{mock}
+	return mock
+}
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockMemorySink) EXPECT() *MockMemorySinkMockRecorder {
+	return m.recorder
+}
+
+// AppendConversationMemory mocks base method.
+func (m *MockMemorySink) AppendConversationMemory(ctx context.Context, userID, conversationID uuid.UUID, memory domain.ConversationMemory) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "AppendConversationMemory", ctx, userID, conversationID, memory)
+	ret0, _ := ret[0].(error)
+	return ret0
+}
+
+// AppendConversationMemory indicates an expected call of AppendConversationMemory.
+func (mr *MockMemorySinkMockRecorder) AppendConversationMemory(ctx, userID, conversationID, memory any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AppendConversationMemory", reflect.TypeOf((*MockMemorySink)(nil).AppendConversationMemory), ctx, userID, conversationID, memory)
 }
 
 // MockQuotaRepo is a mock of QuotaRepo interface.

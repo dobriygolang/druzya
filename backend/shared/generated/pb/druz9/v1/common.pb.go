@@ -425,8 +425,8 @@ type SubscriptionPlan int32
 const (
 	SubscriptionPlan_SUBSCRIPTION_PLAN_UNSPECIFIED SubscriptionPlan = 0
 	SubscriptionPlan_SUBSCRIPTION_PLAN_FREE        SubscriptionPlan = 1
-	SubscriptionPlan_SUBSCRIPTION_PLAN_SEEKER      SubscriptionPlan = 2
-	SubscriptionPlan_SUBSCRIPTION_PLAN_ASCENDANT   SubscriptionPlan = 3
+	SubscriptionPlan_SUBSCRIPTION_PLAN_PRO         SubscriptionPlan = 2
+	SubscriptionPlan_SUBSCRIPTION_PLAN_MAX         SubscriptionPlan = 3
 )
 
 // Enum value maps for SubscriptionPlan.
@@ -434,14 +434,14 @@ var (
 	SubscriptionPlan_name = map[int32]string{
 		0: "SUBSCRIPTION_PLAN_UNSPECIFIED",
 		1: "SUBSCRIPTION_PLAN_FREE",
-		2: "SUBSCRIPTION_PLAN_SEEKER",
-		3: "SUBSCRIPTION_PLAN_ASCENDANT",
+		2: "SUBSCRIPTION_PLAN_PRO",
+		3: "SUBSCRIPTION_PLAN_MAX",
 	}
 	SubscriptionPlan_value = map[string]int32{
 		"SUBSCRIPTION_PLAN_UNSPECIFIED": 0,
 		"SUBSCRIPTION_PLAN_FREE":        1,
-		"SUBSCRIPTION_PLAN_SEEKER":      2,
-		"SUBSCRIPTION_PLAN_ASCENDANT":   3,
+		"SUBSCRIPTION_PLAN_PRO":         2,
+		"SUBSCRIPTION_PLAN_MAX":         3,
 	}
 )
 
@@ -1253,12 +1253,12 @@ const file_druz9_v1_common_proto_rawDesc = "" +
 	"\x16CHAR_CLASS_BACKEND_DEV\x10\x04\x12\x18\n" +
 	"\x14CHAR_CLASS_ARCHITECT\x10\x05\x12\x1b\n" +
 	"\x17CHAR_CLASS_COMMUNICATOR\x10\x06\x12\x18\n" +
-	"\x14CHAR_CLASS_ASCENDANT\x10\a*\x90\x01\n" +
+	"\x14CHAR_CLASS_ASCENDANT\x10\a*\x87\x01\n" +
 	"\x10SubscriptionPlan\x12!\n" +
 	"\x1dSUBSCRIPTION_PLAN_UNSPECIFIED\x10\x00\x12\x1a\n" +
-	"\x16SUBSCRIPTION_PLAN_FREE\x10\x01\x12\x1c\n" +
-	"\x18SUBSCRIPTION_PLAN_SEEKER\x10\x02\x12\x1f\n" +
-	"\x1bSUBSCRIPTION_PLAN_ASCENDANT\x10\x03*\xb4\x01\n" +
+	"\x16SUBSCRIPTION_PLAN_FREE\x10\x01\x12\x19\n" +
+	"\x15SUBSCRIPTION_PLAN_PRO\x10\x02\x12\x19\n" +
+	"\x15SUBSCRIPTION_PLAN_MAX\x10\x03*\xb4\x01\n" +
 	"\vMatchStatus\x12\x1c\n" +
 	"\x18MATCH_STATUS_UNSPECIFIED\x10\x00\x12\x1a\n" +
 	"\x16MATCH_STATUS_SEARCHING\x10\x01\x12\x1b\n" +

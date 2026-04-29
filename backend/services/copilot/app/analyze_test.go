@@ -19,7 +19,7 @@ func newAnalyzeUC(t *testing.T, convs *fakeConversations, msgs *fakeMessages, qu
 		Messages:      msgs,
 		Quotas:        quotas,
 		LLM:           llm,
-		Config:        newFakeConfig("openai/gpt-4o-mini"),
+		Config:        newFakeConfig("druz9/turbo"),
 	}
 }
 
@@ -31,7 +31,7 @@ func TestAnalyze_NewConversation_StreamsAndPersists(t *testing.T) {
 		Deltas:    []string{"Hello", ", ", "world!"},
 		TokensIn:  15,
 		TokensOut: 3,
-		Model:     "openai/gpt-4o-mini",
+		Model:     "druz9/turbo",
 	}
 	uc := newAnalyzeUC(t, convs, msgs, quotas, llm)
 	userID := uuid.New()
@@ -109,7 +109,7 @@ func TestAnalyze_QuotaExceeded(t *testing.T) {
 func TestAnalyze_ModelNotAllowed(t *testing.T) {
 	convs := newFakeConversations()
 	msgs := newFakeMessages(convs)
-	quotas := newFakeQuotas(10) // default allows only openai/gpt-4o-mini
+	quotas := newFakeQuotas(10) // default allows only druz9/turbo
 	llm := &fakeLLM{}
 	uc := newAnalyzeUC(t, convs, msgs, quotas, llm)
 

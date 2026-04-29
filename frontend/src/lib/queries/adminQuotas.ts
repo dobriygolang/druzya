@@ -1,13 +1,13 @@
 // adminQuotas.ts — read/write subscription quota policy через
 // /admin/config endpoints (dynamic_config table).
 //
-// Backend keys: `quota_policy.free`, `quota_policy.seeker`,
-// `quota_policy.ascended`. Value — JSON {synced_notes, active_shared_boards,
+// Backend keys: `quota_policy.free`, `quota_policy.pro`,
+// `quota_policy.max`. Value — JSON {synced_notes, active_shared_boards,
 // active_shared_rooms, shared_ttl_seconds, ai_monthly}. -1 = unlimited.
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '../apiClient'
 
-export type Tier = 'free' | 'seeker' | 'ascended'
+export type Tier = 'free' | 'pro' | 'max'
 
 export interface QuotaPolicy {
   synced_notes: number
@@ -25,14 +25,14 @@ const DEFAULTS: Record<Tier, QuotaPolicy> = {
     shared_ttl_seconds: 24 * 3600,
     ai_monthly: -1,
   },
-  seeker: {
+  pro: {
     synced_notes: 100,
     active_shared_boards: 5,
     active_shared_rooms: 5,
     shared_ttl_seconds: 0,
     ai_monthly: 100,
   },
-  ascended: {
+  max: {
     synced_notes: -1,
     active_shared_boards: -1,
     active_shared_rooms: -1,
@@ -64,13 +64,13 @@ export function useQuotaPoliciesQuery() {
       const list = await api<ConfigEntryList>('/admin/config')
       const map: Record<Tier, QuotaPolicy> = {
         free: { ...DEFAULTS.free },
-        seeker: { ...DEFAULTS.seeker },
-        ascended: { ...DEFAULTS.ascended },
+        pro: { ...DEFAULTS.pro },
+        max: { ...DEFAULTS.max },
       }
       for (const entry of list.items ?? []) {
         if (!entry.key.startsWith(KEY_PREFIX)) continue
         const tier = entry.key.slice(KEY_PREFIX.length) as Tier
-        if (tier !== 'free' && tier !== 'seeker' && tier !== 'ascended') continue
+        if (tier !== 'free' && tier !== 'pro' && tier !== 'max') continue
         const v = entry.value as Partial<QuotaPolicy> | null
         if (v && typeof v === 'object') {
           map[tier] = { ...map[tier], ...v }

@@ -54,7 +54,7 @@ function padToSevenDays(input: FocusDay[]): FocusDay[] {
   return out;
 }
 
-export function StatsOverlay({ onClose }: { onClose: () => void }) {
+export function StatsOverlay(_: { onClose: () => void }) {
   const [state, setState] = useState<FetchState>(INITIAL);
 
   useEffect(() => {
@@ -88,23 +88,6 @@ export function StatsOverlay({ onClose }: { onClose: () => void }) {
 
   return (
     <>
-      {/* Title slot — прижат к верху, левее карточек. */}
-      <div
-        style={{
-          position: 'absolute',
-          top: 86,
-          right: 32 + 320 + 24,
-          color: 'var(--ink-60)',
-          fontSize: 18,
-          fontWeight: 500,
-          letterSpacing: '-0.01em',
-          zIndex: 12,
-          pointerEvents: 'none',
-        }}
-      >
-        Statistics
-      </div>
-
       {/* RIGHT column: 4 stacked cards */}
       <aside
         style={{
@@ -210,28 +193,6 @@ export function StatsOverlay({ onClose }: { onClose: () => void }) {
         )}
       </aside>
 
-      {/* close hint */}
-      <button
-        onClick={onClose}
-        className="mono row slide-from-right focus-ring"
-        style={{
-          position: 'absolute',
-          top: 86,
-          right: 32,
-          padding: '4px 10px',
-          fontSize: 10,
-          letterSpacing: '0.18em',
-          color: 'var(--ink-40)',
-          background: 'rgba(255,255,255,0.03)',
-          border: '1px solid rgba(255,255,255,0.06)',
-          borderRadius: 6,
-          zIndex: 13,
-          animationDelay: '320ms',
-          cursor: 'pointer',
-        }}
-      >
-        ESC · CLOSE
-      </button>
     </>
   );
 }

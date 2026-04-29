@@ -152,4 +152,31 @@ service EditorService {
       body: "*"
     };
   }
+
+  // GetVisibility returns "private"|"shared".
+  rpc GetVisibility(GetEditorVisibilityRequest) returns (EditorVisibility) {
+    option (google.api.http) = {get: "/api/v1/editor/room/{room_id}/visibility"};
+  }
+
+  // SetVisibility flips visibility. Owner-only; quota-gated on
+  // private→shared flips.
+  rpc SetVisibility(SetEditorVisibilityRequest) returns (EditorVisibility) {
+    option (google.api.http) = {
+      post: "/api/v1/editor/room/{room_id}/visibility"
+      body: "*"
+    };
+  }
+}
+
+message EditorVisibility {
+  string visibility = 1;
+}
+
+message GetEditorVisibilityRequest {
+  string room_id = 1;
+}
+
+message SetEditorVisibilityRequest {
+  string room_id = 1;
+  string visibility = 2;
 }

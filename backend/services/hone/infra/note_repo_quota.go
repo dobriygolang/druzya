@@ -95,13 +95,6 @@ func (r *QuotaAwareNoteRepo) Delete(ctx context.Context, userID, noteID uuid.UUI
 	return nil
 }
 
-func (r *QuotaAwareNoteRepo) SetArchived(ctx context.Context, userID, noteID uuid.UUID, archived bool) error {
-	if err := r.inner.SetArchived(ctx, userID, noteID, archived); err != nil {
-		return fmt.Errorf("hone.QuotaAwareNoteRepo.SetArchived: %w", err)
-	}
-	return nil
-}
-
 func (r *QuotaAwareNoteRepo) SetEmbedding(ctx context.Context, userID, noteID uuid.UUID, vec []float32, model string, at time.Time) error {
 	if err := r.inner.SetEmbedding(ctx, userID, noteID, vec, model, at); err != nil {
 		return fmt.Errorf("hone.QuotaAwareNoteRepo.SetEmbedding: %w", err)
@@ -109,12 +102,36 @@ func (r *QuotaAwareNoteRepo) SetEmbedding(ctx context.Context, userID, noteID uu
 	return nil
 }
 
-func (r *QuotaAwareNoteRepo) WithEmbeddingsForUser(ctx context.Context, userID uuid.UUID) ([]domain.NoteEmbedding, error) {
-	out, err := r.inner.WithEmbeddingsForUser(ctx, userID)
+func (r *QuotaAwareNoteRepo) WithEmbeddingsForUser(ctx context.Context, userID uuid.UUID, modelName string) ([]domain.NoteEmbedding, error) {
+	out, err := r.inner.WithEmbeddingsForUser(ctx, userID, modelName)
 	if err != nil {
 		return out, fmt.Errorf("hone.QuotaAwareNoteRepo.WithEmbeddingsForUser: %w", err)
 	}
 	return out, nil
+}
+
+func (r *QuotaAwareNoteRepo) SearchSimilarNotes(
+	ctx context.Context,
+	userID uuid.UUID,
+	queryVec []float32,
+	modelName string,
+	excludeNoteID uuid.UUID,
+	simFloor float32,
+	limit int,
+) ([]domain.NoteSimilarityHit, error) {
+	out, err := r.inner.SearchSimilarNotes(ctx, userID, queryVec, modelName, excludeNoteID, simFloor, limit)
+	if err != nil {
+		return out, fmt.Errorf("hone.QuotaAwareNoteRepo.SearchSimilarNotes: %w", err)
+	}
+	return out, nil
+}
+
+func (r *QuotaAwareNoteRepo) MarkStaleForReembed(ctx context.Context, currentModelName string) (int64, error) {
+	n, err := r.inner.MarkStaleForReembed(ctx, currentModelName)
+	if err != nil {
+		return n, fmt.Errorf("hone.QuotaAwareNoteRepo.MarkStaleForReembed: %w", err)
+	}
+	return n, nil
 }
 
 func (r *QuotaAwareNoteRepo) ExistsByTitleForUser(ctx context.Context, userID uuid.UUID, title string) (bool, error) {

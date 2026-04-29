@@ -183,10 +183,11 @@ func (r *ArenaReader) LastNMatches(ctx context.Context, userID uuid.UUID, n int)
 	// JOIN arena_matches + arena_participants. winning_team mapping в outcome:
 	// если participant.team == match.winning_team → won; 0 (draw) → draw;
 	// иначе lost. abandoned — match.status='cancelled'.
+	// v2: arena_participants.solve_time_ms dropped (was written but only
+	// read here); summary keeps the field on the wire as 0.
 	rows, err := r.pool.Query(ctx,
 		`SELECT m.id, m.section, m.mode, m.status, m.winning_team,
 		        ap.team, COALESCE(ap.elo_after - ap.elo_before, 0) AS elo_delta,
-		        COALESCE(ap.solve_time_ms, 0) AS solve_time_ms,
 		        COALESCE(m.finished_at, ap.submitted_at) AS finished_at
 		   FROM arena_matches m
 		   JOIN arena_participants ap ON ap.match_id = m.id
@@ -209,10 +210,9 @@ func (r *ArenaReader) LastNMatches(ctx context.Context, userID uuid.UUID, n int)
 			winningTeam *int32
 			team        int32
 			eloDelta    int32
-			solveTimeMs int64
 			finishedAt  *time.Time
 		)
-		if err := rows.Scan(&id, &section, &mode, &status, &winningTeam, &team, &eloDelta, &solveTimeMs, &finishedAt); err != nil {
+		if err := rows.Scan(&id, &section, &mode, &status, &winningTeam, &team, &eloDelta, &finishedAt); err != nil {
 			return nil, fmt.Errorf("intelligence.ArenaReader: scan: %w", err)
 		}
 		outcome := "lost"
@@ -225,12 +225,11 @@ func (r *ArenaReader) LastNMatches(ctx context.Context, userID uuid.UUID, n int)
 			outcome = "won"
 		}
 		s := domain.ArenaMatchSummary{
-			MatchID:     sharedpg.UUIDFrom(id),
-			Section:     section,
-			Mode:        mode,
-			Outcome:     outcome,
-			EloDelta:    int(eloDelta),
-			SolveTimeMs: solveTimeMs,
+			MatchID:  sharedpg.UUIDFrom(id),
+			Section:  section,
+			Mode:     mode,
+			Outcome:  outcome,
+			EloDelta: int(eloDelta),
 		}
 		if finishedAt != nil {
 			s.FinishedAt = *finishedAt
@@ -354,11 +353,11 @@ func (r *DailyNoteReader) RecentDailyNotes(ctx context.Context, userID uuid.UUID
 	if n <= 0 || n > 14 {
 		n = 3
 	}
+	// v2: archived_at column dropped (hard delete only) — фильтр не нужен.
 	rows, err := r.pool.Query(ctx,
 		`SELECT updated_at, LEFT(body_md, 400)
 		   FROM hone_notes
 		  WHERE user_id=$1 AND title LIKE 'Daily %'
-		    AND archived_at IS NULL
 		    AND body_md IS NOT NULL AND body_md != ''
 		  ORDER BY updated_at DESC
 		  LIMIT $2`,

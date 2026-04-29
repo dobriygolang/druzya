@@ -30,9 +30,12 @@ func NewConversationSummaryStore(pool *pgxpool.Pool) *ConversationSummaryStore {
 	return &ConversationSummaryStore{q: copilotdb.New(pool)}
 }
 
-// Save атомарно записывает новый running_summary для conversation_id.
-// sessionKey — строковое представление uuid.UUID (conversation_id).
-func (s *ConversationSummaryStore) Save(ctx context.Context, sessionKey, summary string) error {
+// Save атомарно записывает новый running_summary + summary_model
+// (Phase II attribution) для conversation_id. sessionKey — строковое
+// представление uuid.UUID. summaryModel — actual provider/model echo
+// от llmchain (например "groq/llama-3.3-70b-versatile"); пустая строка =
+// unknown / legacy.
+func (s *ConversationSummaryStore) Save(ctx context.Context, sessionKey, summary, summaryModel string) error {
 	id, err := uuid.Parse(sessionKey)
 	if err != nil {
 		return fmt.Errorf("copilot.ConversationSummaryStore.Save: parse session key: %w", err)
@@ -40,6 +43,7 @@ func (s *ConversationSummaryStore) Save(ctx context.Context, sessionKey, summary
 	affected, err := s.q.UpdateCopilotConversationRunningSummary(ctx, copilotdb.UpdateCopilotConversationRunningSummaryParams{
 		ID:             sharedpg.UUID(id),
 		RunningSummary: summary,
+		SummaryModel:   summaryModel,
 	})
 	if err != nil {
 		return fmt.Errorf("copilot.ConversationSummaryStore.Save: %w", err)

@@ -52,13 +52,15 @@ func (d *Devices) Register(ctx context.Context, in domain.DeviceRegistration) (d
 		}
 	}
 
-	out := domain.Device{UserID: in.UserID, Name: in.Name, Platform: in.Platform, AppVersion: in.AppVersion}
+	// v2: app_version column dropped from devices. The wire field stays
+	// for backward compatibility but is no longer persisted.
+	out := domain.Device{UserID: in.UserID, Name: in.Name, Platform: in.Platform}
 	if err := tx.QueryRow(ctx,
-		`INSERT INTO devices (user_id, name, platform, app_version)
-		 VALUES ($1, $2, $3, $4)
-		 RETURNING id, name, platform, app_version, last_seen_at, created_at`,
-		in.UserID, in.Name, in.Platform, in.AppVersion,
-	).Scan(&out.ID, &out.Name, &out.Platform, &out.AppVersion, &out.LastSeenAt, &out.CreatedAt); err != nil {
+		`INSERT INTO devices (user_id, name, platform)
+		 VALUES ($1, $2, $3)
+		 RETURNING id, name, platform, last_seen_at, created_at`,
+		in.UserID, in.Name, in.Platform,
+	).Scan(&out.ID, &out.Name, &out.Platform, &out.LastSeenAt, &out.CreatedAt); err != nil {
 		return domain.Device{}, fmt.Errorf("sync.Devices.Register: insert: %w", err)
 	}
 
@@ -70,8 +72,9 @@ func (d *Devices) Register(ctx context.Context, in domain.DeviceRegistration) (d
 
 // List returns active (non-revoked) devices for the user.
 func (d *Devices) List(ctx context.Context, userID uuid.UUID) ([]domain.Device, error) {
+	// v2: app_version column dropped — wire field stays empty.
 	rows, err := d.pool.Query(ctx,
-		`SELECT id, name, platform, app_version, last_seen_at, created_at
+		`SELECT id, name, platform, last_seen_at, created_at
 		   FROM devices
 		  WHERE user_id=$1 AND revoked_at IS NULL
 		  ORDER BY last_seen_at DESC`,
@@ -84,7 +87,7 @@ func (d *Devices) List(ctx context.Context, userID uuid.UUID) ([]domain.Device, 
 	out := make([]domain.Device, 0, 4)
 	for rows.Next() {
 		dev := domain.Device{UserID: userID}
-		if err := rows.Scan(&dev.ID, &dev.Name, &dev.Platform, &dev.AppVersion, &dev.LastSeenAt, &dev.CreatedAt); err != nil {
+		if err := rows.Scan(&dev.ID, &dev.Name, &dev.Platform, &dev.LastSeenAt, &dev.CreatedAt); err != nil {
 			return nil, fmt.Errorf("sync.Devices.List: scan: %w", err)
 		}
 		out = append(out, dev)

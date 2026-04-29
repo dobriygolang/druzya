@@ -36,17 +36,17 @@ const PLANS: PlanCardData[] = [
     emphasis: 'normal',
   },
   {
-    tier: 'premium',
-    name: 'Premium',
+    tier: 'pro',
+    name: 'Pro',
     tagline: 'AI Coach без лимитов + полный атлас навыков',
-    cta: 'Подключить Premium',
+    cta: 'Подключить Pro',
     emphasis: 'warn',
   },
   {
-    tier: 'pro',
-    name: 'Pro',
-    tagline: 'Для тех, кто готовится плотно: всё Premium + voice mock + приоритет',
-    cta: 'Подключить Pro',
+    tier: 'max',
+    name: 'Max',
+    tagline: 'Для тех, кто готовится плотно: всё Pro + voice mock + приоритет',
+    cta: 'Подключить Max',
     emphasis: 'warn-pink',
   },
 ]
@@ -59,23 +59,23 @@ type FeatureRow = {
 const FEATURES: FeatureRow[] = [
   {
     label: 'Daily kata',
-    values: { free: '1 / день', premium: 'без лимита', pro: 'без лимита' },
+    values: { free: '1 / день', pro: 'без лимита', max: 'без лимита' },
   },
   {
     label: 'Arena (PvP-матчи)',
-    values: { free: '5 / неделя', premium: 'без лимита', pro: 'без лимита' },
+    values: { free: '5 / неделя', pro: 'без лимита', max: 'без лимита' },
   },
   {
     label: 'AI Coach (премиум-модели)',
-    values: { free: false, premium: true, pro: true },
+    values: { free: false, pro: true, max: true },
   },
   {
     label: 'Voice mock-interview',
-    values: { free: false, premium: false, pro: true },
+    values: { free: false, pro: false, max: true },
   },
   {
     label: 'Приоритетная поддержка',
-    values: { free: false, premium: false, pro: true },
+    values: { free: false, pro: false, max: true },
   },
 ]
 
@@ -332,7 +332,7 @@ function ComparisonTable() {
             )}
           >
             <div className="text-[13px] font-semibold text-text-primary">{row.label}</div>
-            {(['free', 'premium', 'pro'] as BillingPlanTier[]).map((t) => {
+            {(['free', 'pro', 'max'] as BillingPlanTier[]).map((t) => {
               const v = row.values[t]
               return (
                 <div key={t} className="text-center">

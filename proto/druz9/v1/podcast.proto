@@ -1,8 +1,16 @@
 // podcast.proto — Connect-RPC contract for the `podcast` bounded context.
 //
-// Covers GET /podcast (catalog) and PUT /podcast/{id}/progress (progress).
-// Section filter on the catalog uses the shared Section enum, with
-// SECTION_UNSPECIFIED meaning "any section".
+// Two surfaces:
+//
+//  1. Legacy listening flow: ListCatalog + UpdateProgress. Per-user progress
+//     overlay; tiny wire shape; kept for the player UI.
+//  2. CMS surface: ListCMS / GetCMS / ListCategories + admin
+//     UpdateMetadata / Delete / CreateCategory. Editorial fields the player
+//     doesn't need (title_en, episode_num, cover_url, is_published…).
+//
+// One legit chi exception remains: POST /admin/podcast accepts multipart/form-data
+// for audio uploads (>200 MB possible). Vanguard would base64-encode the
+// payload; that handler stays in services/podcast/ports/cms_handler.go.
 syntax = "proto3";
 package druz9.v1;
 
@@ -11,6 +19,8 @@ import "google/api/annotations.proto";
 import "google/protobuf/timestamp.proto";
 
 option go_package = "druz9/shared/generated/pb/druz9/v1;druz9v1";
+
+// ─── Legacy listening flow ─────────────────────────────────────────────────
 
 // Podcast mirrors OpenAPI Podcast (catalog entry with user progress overlay).
 message Podcast {
@@ -24,15 +34,10 @@ message Podcast {
   bool completed = 8;
 }
 
-// PodcastCatalog is the vanguard-friendly response wrapper. OpenAPI returns a
-// raw JSON array; vanguard transcodes repeated fields of a wrapper message
-// into a top-level array on the REST wire when the RPC response has exactly
-// one field. Keeping this wrapper avoids google.api.HttpBody.
 message PodcastCatalog {
   repeated Podcast items = 1;
 }
 
-// PodcastProgress mirrors OpenAPI PodcastProgress (PUT response).
 message PodcastProgress {
   string podcast_id = 1;
   int32 progress_sec = 2;
@@ -40,35 +45,128 @@ message PodcastProgress {
   google.protobuf.Timestamp completed_at = 4;
 }
 
-// ListCatalogRequest — section is optional via SECTION_UNSPECIFIED.
 message ListCatalogRequest {
   Section section = 1;
 }
 
-// UpdateProgressRequest mirrors OpenAPI PodcastProgressRequest plus the path
-// param.
 message UpdateProgressRequest {
-  string podcast_id = 1; // path param
+  string podcast_id = 1;
   int32 progress_sec = 2;
-  // completed is optional in OpenAPI — proto3 bool defaults to false. Use
-  // the dedicated `completed_hint` below to distinguish "unset" from "false".
-  // The REST wire preserves the OpenAPI shape: `completed` is a plain bool
-  // field the client may omit.
   bool completed = 3;
 }
 
+// ─── CMS surface ───────────────────────────────────────────────────────────
+
+message CMSPodcastCategory {
+  string id = 1;
+  string slug = 2;
+  string name = 3;
+  string color = 4;
+  int32 sort_order = 5;
+}
+
+message CMSPodcast {
+  string id = 1;
+  string title = 2;
+  string title_en = 3;
+  string description = 4;
+  string host = 5;
+  string category_id = 6;            // empty when unset
+  CMSPodcastCategory category = 7;   // nil when unset
+  int32 episode_num = 8;             // 0 when unset
+  bool has_episode_num = 9;          // true when episode_num was set
+  int32 duration_sec = 10;
+  string audio_url = 11;
+  string cover_url = 12;
+  bool is_published = 13;
+  string published_at = 14;          // RFC3339, empty when unset
+  string created_at = 15;            // RFC3339
+  string updated_at = 16;            // RFC3339
+}
+
+message CMSPodcastList {
+  repeated CMSPodcast items = 1;
+}
+
+message CMSPodcastCategoryList {
+  repeated CMSPodcastCategory items = 1;
+}
+
+message ListCMSPodcastsRequest {
+  string category_id = 1;            // optional uuid
+  int32 limit = 2;                   // 0 = server default
+  bool only_published = 3;
+}
+
+message ListCMSCategoriesRequest {}
+
+message GetCMSPodcastRequest {
+  string id = 1;
+}
+
+message UpdateCMSPodcastMetadataRequest {
+  string id = 1;
+  string title = 2;
+  string title_en = 3;
+  string description = 4;
+  string host = 5;
+  string category_id = 6;            // empty ⇒ unset
+  int32 episode_num = 7;             // 0 ⇒ unset (paired with has_episode_num)
+  bool has_episode_num = 8;
+  bool is_published = 9;
+}
+
+message DeleteCMSPodcastRequest {
+  string id = 1;
+}
+
+message DeleteCMSPodcastResponse {
+  bool ok = 1;
+}
+
+message CreateCMSCategoryRequest {
+  string slug = 1;
+  string name = 2;
+  string color = 3;
+  int32 sort_order = 4;
+}
+
+// ─── Service ───────────────────────────────────────────────────────────────
+
 service PodcastService {
-  // ListCatalog returns the full catalog (or a section-filtered slice) with
-  // per-user progress + signed audio URLs.
   rpc ListCatalog(ListCatalogRequest) returns (PodcastCatalog) {
-    option (google.api.http) = {get: "/api/v1/podcast"};
+    option (google.api.http) = {get: "/api/v1/podcast/catalog"};
   }
 
-  // UpdateProgress applies the caller's listening progress. The server
-  // auto-completes once within a 10s window of the episode duration.
   rpc UpdateProgress(UpdateProgressRequest) returns (PodcastProgress) {
     option (google.api.http) = {
       put: "/api/v1/podcast/{podcast_id}/progress"
+      body: "*"
+    };
+  }
+
+  // CMS surface — public reads, admin writes (auth gating in the wirer).
+  rpc ListCMSPodcasts(ListCMSPodcastsRequest) returns (CMSPodcastList) {
+    option (google.api.http) = {get: "/api/v1/podcast"};
+  }
+  rpc GetCMSPodcast(GetCMSPodcastRequest) returns (CMSPodcast) {
+    option (google.api.http) = {get: "/api/v1/podcast/{id}"};
+  }
+  rpc ListCMSCategories(ListCMSCategoriesRequest) returns (CMSPodcastCategoryList) {
+    option (google.api.http) = {get: "/api/v1/podcast/categories"};
+  }
+  rpc UpdateCMSPodcastMetadata(UpdateCMSPodcastMetadataRequest) returns (CMSPodcast) {
+    option (google.api.http) = {
+      patch: "/api/v1/admin/podcast/{id}"
+      body: "*"
+    };
+  }
+  rpc DeleteCMSPodcast(DeleteCMSPodcastRequest) returns (DeleteCMSPodcastResponse) {
+    option (google.api.http) = {delete: "/api/v1/admin/podcast/{id}"};
+  }
+  rpc CreateCMSCategory(CreateCMSCategoryRequest) returns (CMSPodcastCategory) {
+    option (google.api.http) = {
+      post: "/api/v1/admin/podcast/categories"
       body: "*"
     };
   }

@@ -337,22 +337,50 @@ func NewHone(d monolithServices.Deps) *monolithServices.Module {
 	}
 	mod.Background = append(mod.Background, func(ctx context.Context) { go taskCleanup.Run(ctx) })
 
-	// Mount the task REST handlers under the same /hone prefix.
-	taskHandler := &taskHTTPHandler{
-		create: &honeApp.CreateTask{Tasks: tasksRepo, Log: d.Log},
-		list:   &honeApp.ListTasks{Tasks: tasksRepo},
-		move:   &honeApp.MoveTaskStatus{Tasks: tasksRepo, Log: d.Log},
-		del:    &honeApp.DeleteTask{Tasks: tasksRepo},
-		addCom: &honeApp.AddTaskComment{Tasks: tasksRepo},
-		listCm: &honeApp.ListTaskComments{Tasks: tasksRepo},
-		log:    d.Log,
-	}
+	// Wire the TaskBoard use cases into the existing HoneService Handler.
+	// The Connect server (services/hone/ports) already implements ListTasks /
+	// CreateTask / MoveTaskStatus / DeleteTask / Add+ListTaskComments and
+	// vanguard transcodes /api/v1/hone/tasks/* into them.
+	h.CreateTask = &honeApp.CreateTask{Tasks: tasksRepo, Log: d.Log}
+	h.ListTasks = &honeApp.ListTasks{Tasks: tasksRepo}
+	h.MoveTaskStatus = &honeApp.MoveTaskStatus{Tasks: tasksRepo, Log: d.Log}
+	h.DeleteTask = &honeApp.DeleteTask{Tasks: tasksRepo}
+	h.AddTaskComment = &honeApp.AddTaskComment{Tasks: tasksRepo}
+	h.ListTaskComments = &honeApp.ListTaskComments{Tasks: tasksRepo}
+
+	// Publish-to-web JSON endpoints. /p/{slug} HTML viewer stays chi
+	// (rendered with strict CSP — proto codec can't shape that response).
+	publishRepo := honeInfra.NewPublishRepo(d.Pool, d.Log)
+	h.PublishNote = &honeApp.PublishNote{Repo: publishRepo, Log: d.Log}
+	h.UnpublishNote = &honeApp.UnpublishNote{Repo: publishRepo, Log: d.Log}
+	h.PublishStatusUC = &honeApp.PublishStatus{Repo: publishRepo, Log: d.Log}
+	h.BulkNotesMeta = &honeApp.BulkNotesMeta{Repo: publishRepo, Log: d.Log}
+	h.ShareToWeb = &honeApp.ShareToWeb{Repo: publishRepo, Publisher: d.SyncEventBroker, Log: d.Log}
+	h.MakePrivate = &honeApp.MakePrivate{Repo: publishRepo, Publisher: d.SyncEventBroker, Log: d.Log}
+
 	cursorSSE := &cursorSSEHandler{bus: cursorBus, log: d.Log}
 
 	prevMount := mod.MountREST
 	mod.MountREST = func(r chi.Router) {
 		prevMount(r)
-		taskHandler.Mount(r)
+		// REST aliases (defined via google.api.http in hone.proto) — the
+		// transcoder is already mounted via ConnectHandler at the connect
+		// path; we add the human-friendly REST routes pointing at the same
+		// transcoder.
+		r.Get("/hone/tasks", transcoder.ServeHTTP)
+		r.Post("/hone/tasks", transcoder.ServeHTTP)
+		r.Post("/hone/tasks/{id}/status", transcoder.ServeHTTP)
+		r.Delete("/hone/tasks/{id}", transcoder.ServeHTTP)
+		r.Get("/hone/tasks/{id}/comments", transcoder.ServeHTTP)
+		r.Post("/hone/tasks/{id}/comments", transcoder.ServeHTTP)
+		// Publish-to-web JSON endpoints — /p/{slug} HTML viewer is mounted
+		// separately on MountRoot by the publishing module.
+		r.Post("/notes/{id}/publish", transcoder.ServeHTTP)
+		r.Post("/notes/{id}/unpublish", transcoder.ServeHTTP)
+		r.Get("/notes/{id}/publish-status", transcoder.ServeHTTP)
+		r.Post("/notes/{id}/share-to-web", transcoder.ServeHTTP)
+		r.Post("/notes/{id}/make-private", transcoder.ServeHTTP)
+		r.Get("/notes/meta", transcoder.ServeHTTP)
 		cursorSSE.Mount(r)
 	}
 

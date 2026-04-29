@@ -40,6 +40,12 @@ func newFakeDriver(p Provider, scripts ...fakeScript) *fakeDriver {
 
 func (f *fakeDriver) Provider() Provider { return f.provider }
 
+func (f *fakeDriver) Capabilities() Capabilities {
+	// Тестовый драйвер по умолчанию заявляет полный набор capabilities,
+	// чтобы Phase IV-фильтр в candidates() не отрезал его в legacy-тестах.
+	return Capabilities{JSONMode: true, Tools: true}
+}
+
 func (f *fakeDriver) next() fakeScript {
 	i := atomic.AddInt32(&f.idx, 1) - 1
 	if int(i) >= len(f.scripts) {
@@ -368,6 +374,60 @@ func TestRateLimitHeaders_ProactiveCooldown(t *testing.T) {
 	expected := now.Add(30 * time.Second)
 	if !until.Equal(expected) {
 		t.Errorf("cooldown until %v, want %v", until, expected)
+	}
+}
+
+func TestChain_HealthProbeRestoresCooledCandidate(t *testing.T) {
+	t.Parallel()
+	now := time.Unix(1_700_000_000, 0)
+	groq := newFakeDriver(ProviderGroq,
+		fakeScript{err: fmt.Errorf("groq: %w", ErrProviderDown)},
+		fakeScript{resp: &Response{Content: "probe-ok"}},
+		fakeScript{resp: &Response{Content: "groq-restored"}},
+	)
+	cerebras := newFakeDriver(ProviderCerebras,
+		fakeScript{resp: &Response{Content: "cerebras-ok-1"}},
+		fakeScript{resp: &Response{Content: "cerebras-ok-2"}},
+	)
+	c, err := NewChain(map[Provider]Driver{
+		ProviderGroq: groq, ProviderCerebras: cerebras,
+	}, Options{
+		Order:               []Provider{ProviderGroq, ProviderCerebras},
+		Log:                 slog.New(slog.NewTextHandler(io.Discard, nil)),
+		Clock:               func() time.Time { return now },
+		HealthProbeInterval: time.Hour,
+	})
+	if err != nil {
+		t.Fatalf("NewChain: %v", err)
+	}
+
+	resp, err := c.Chat(context.Background(), Request{Task: TaskCopilotStream, Messages: []Message{{Role: RoleUser, Content: "x"}}})
+	if err != nil {
+		t.Fatalf("Chat first: %v", err)
+	}
+	if resp.Provider != ProviderCerebras {
+		t.Fatalf("first response provider=%s, want cerebras", resp.Provider)
+	}
+
+	now = now.Add(2 * time.Hour)
+	resp, err = c.Chat(context.Background(), Request{Task: TaskCopilotStream, Messages: []Message{{Role: RoleUser, Content: "y"}}})
+	if err != nil {
+		t.Fatalf("Chat before probe: %v", err)
+	}
+	if resp.Provider != ProviderCerebras {
+		t.Fatalf("cooled provider returned to traffic before probe: %+v", resp)
+	}
+	if len(groq.calls) != 1 {
+		t.Fatalf("groq calls before probe=%d, want 1", len(groq.calls))
+	}
+
+	c.healthProbeOnce(context.Background())
+	resp, err = c.Chat(context.Background(), Request{Task: TaskCopilotStream, Messages: []Message{{Role: RoleUser, Content: "z"}}})
+	if err != nil {
+		t.Fatalf("Chat after probe: %v", err)
+	}
+	if resp.Provider != ProviderGroq || resp.Content != "groq-restored" {
+		t.Fatalf("restored response = %+v", resp)
 	}
 }
 

@@ -11,7 +11,7 @@
 // @ts-nocheck
 
 import type { BinaryReadOptions, FieldList, JsonReadOptions, JsonValue, PartialMessage, PlainMessage } from "@bufbuild/protobuf";
-import { Message, proto3 } from "@bufbuild/protobuf";
+import { Message, proto3, protoInt64 } from "@bufbuild/protobuf";
 import { NotificationChannel } from "./common_pb.js";
 
 /**
@@ -197,6 +197,508 @@ export class UpdateNotifyPreferencesRequest extends Message<UpdateNotifyPreferen
 
   static equals(a: UpdateNotifyPreferencesRequest | PlainMessage<UpdateNotifyPreferencesRequest> | undefined, b: UpdateNotifyPreferencesRequest | PlainMessage<UpdateNotifyPreferencesRequest> | undefined): boolean {
     return proto3.util.equals(UpdateNotifyPreferencesRequest, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.UserNotification
+ */
+export class UserNotification extends Message<UserNotification> {
+  /**
+   * @generated from field: int64 id = 1;
+   */
+  id = protoInt64.zero;
+
+  /**
+   * @generated from field: string channel = 2;
+   */
+  channel = "";
+
+  /**
+   * @generated from field: string type = 3;
+   */
+  type = "";
+
+  /**
+   * @generated from field: string title = 4;
+   */
+  title = "";
+
+  /**
+   * @generated from field: string body = 5;
+   */
+  body = "";
+
+  /**
+   * Payload is encoded as a JSON string on the wire so we don't need to
+   * model every event variant in proto. Frontend parses it as needed.
+   *
+   * @generated from field: string payload_json = 6;
+   */
+  payloadJson = "";
+
+  /**
+   * @generated from field: int32 priority = 7;
+   */
+  priority = 0;
+
+  /**
+   * RFC3339, empty when unread
+   *
+   * @generated from field: string read_at = 8;
+   */
+  readAt = "";
+
+  /**
+   * RFC3339
+   *
+   * @generated from field: string created_at = 9;
+   */
+  createdAt = "";
+
+  constructor(data?: PartialMessage<UserNotification>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.UserNotification";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "id", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
+    { no: 2, name: "channel", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 3, name: "type", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 4, name: "title", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 5, name: "body", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 6, name: "payload_json", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 7, name: "priority", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 8, name: "read_at", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 9, name: "created_at", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): UserNotification {
+    return new UserNotification().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): UserNotification {
+    return new UserNotification().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): UserNotification {
+    return new UserNotification().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: UserNotification | PlainMessage<UserNotification> | undefined, b: UserNotification | PlainMessage<UserNotification> | undefined): boolean {
+    return proto3.util.equals(UserNotification, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.NotificationList
+ */
+export class NotificationList extends Message<NotificationList> {
+  /**
+   * @generated from field: repeated druz9.v1.UserNotification items = 1;
+   */
+  items: UserNotification[] = [];
+
+  constructor(data?: PartialMessage<NotificationList>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.NotificationList";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "items", kind: "message", T: UserNotification, repeated: true },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): NotificationList {
+    return new NotificationList().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): NotificationList {
+    return new NotificationList().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): NotificationList {
+    return new NotificationList().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: NotificationList | PlainMessage<NotificationList> | undefined, b: NotificationList | PlainMessage<NotificationList> | undefined): boolean {
+    return proto3.util.equals(NotificationList, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.ListNotificationsRequest
+ */
+export class ListNotificationsRequest extends Message<ListNotificationsRequest> {
+  /**
+   * optional filter
+   *
+   * @generated from field: string channel = 1;
+   */
+  channel = "";
+
+  /**
+   * @generated from field: bool only_unread = 2;
+   */
+  onlyUnread = false;
+
+  /**
+   * RFC3339 cursor, optional
+   *
+   * @generated from field: string before = 3;
+   */
+  before = "";
+
+  /**
+   * 0 ⇒ server default
+   *
+   * @generated from field: int32 limit = 4;
+   */
+  limit = 0;
+
+  constructor(data?: PartialMessage<ListNotificationsRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.ListNotificationsRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "channel", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "only_unread", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
+    { no: 3, name: "before", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 4, name: "limit", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ListNotificationsRequest {
+    return new ListNotificationsRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): ListNotificationsRequest {
+    return new ListNotificationsRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): ListNotificationsRequest {
+    return new ListNotificationsRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: ListNotificationsRequest | PlainMessage<ListNotificationsRequest> | undefined, b: ListNotificationsRequest | PlainMessage<ListNotificationsRequest> | undefined): boolean {
+    return proto3.util.equals(ListNotificationsRequest, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.CountUnreadRequest
+ */
+export class CountUnreadRequest extends Message<CountUnreadRequest> {
+  constructor(data?: PartialMessage<CountUnreadRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.CountUnreadRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): CountUnreadRequest {
+    return new CountUnreadRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): CountUnreadRequest {
+    return new CountUnreadRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): CountUnreadRequest {
+    return new CountUnreadRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: CountUnreadRequest | PlainMessage<CountUnreadRequest> | undefined, b: CountUnreadRequest | PlainMessage<CountUnreadRequest> | undefined): boolean {
+    return proto3.util.equals(CountUnreadRequest, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.UnreadCount
+ */
+export class UnreadCount extends Message<UnreadCount> {
+  /**
+   * @generated from field: int64 count = 1;
+   */
+  count = protoInt64.zero;
+
+  constructor(data?: PartialMessage<UnreadCount>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.UnreadCount";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "count", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): UnreadCount {
+    return new UnreadCount().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): UnreadCount {
+    return new UnreadCount().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): UnreadCount {
+    return new UnreadCount().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: UnreadCount | PlainMessage<UnreadCount> | undefined, b: UnreadCount | PlainMessage<UnreadCount> | undefined): boolean {
+    return proto3.util.equals(UnreadCount, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.MarkReadRequest
+ */
+export class MarkReadRequest extends Message<MarkReadRequest> {
+  /**
+   * @generated from field: int64 id = 1;
+   */
+  id = protoInt64.zero;
+
+  constructor(data?: PartialMessage<MarkReadRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.MarkReadRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "id", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): MarkReadRequest {
+    return new MarkReadRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): MarkReadRequest {
+    return new MarkReadRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): MarkReadRequest {
+    return new MarkReadRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: MarkReadRequest | PlainMessage<MarkReadRequest> | undefined, b: MarkReadRequest | PlainMessage<MarkReadRequest> | undefined): boolean {
+    return proto3.util.equals(MarkReadRequest, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.MarkReadResponse
+ */
+export class MarkReadResponse extends Message<MarkReadResponse> {
+  /**
+   * @generated from field: bool ok = 1;
+   */
+  ok = false;
+
+  constructor(data?: PartialMessage<MarkReadResponse>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.MarkReadResponse";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "ok", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): MarkReadResponse {
+    return new MarkReadResponse().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): MarkReadResponse {
+    return new MarkReadResponse().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): MarkReadResponse {
+    return new MarkReadResponse().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: MarkReadResponse | PlainMessage<MarkReadResponse> | undefined, b: MarkReadResponse | PlainMessage<MarkReadResponse> | undefined): boolean {
+    return proto3.util.equals(MarkReadResponse, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.MarkAllReadRequest
+ */
+export class MarkAllReadRequest extends Message<MarkAllReadRequest> {
+  constructor(data?: PartialMessage<MarkAllReadRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.MarkAllReadRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): MarkAllReadRequest {
+    return new MarkAllReadRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): MarkAllReadRequest {
+    return new MarkAllReadRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): MarkAllReadRequest {
+    return new MarkAllReadRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: MarkAllReadRequest | PlainMessage<MarkAllReadRequest> | undefined, b: MarkAllReadRequest | PlainMessage<MarkAllReadRequest> | undefined): boolean {
+    return proto3.util.equals(MarkAllReadRequest, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.MarkAllReadResponse
+ */
+export class MarkAllReadResponse extends Message<MarkAllReadResponse> {
+  /**
+   * @generated from field: int64 updated = 1;
+   */
+  updated = protoInt64.zero;
+
+  constructor(data?: PartialMessage<MarkAllReadResponse>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.MarkAllReadResponse";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "updated", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): MarkAllReadResponse {
+    return new MarkAllReadResponse().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): MarkAllReadResponse {
+    return new MarkAllReadResponse().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): MarkAllReadResponse {
+    return new MarkAllReadResponse().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: MarkAllReadResponse | PlainMessage<MarkAllReadResponse> | undefined, b: MarkAllReadResponse | PlainMessage<MarkAllReadResponse> | undefined): boolean {
+    return proto3.util.equals(MarkAllReadResponse, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.CreateSupportTicketRequest
+ */
+export class CreateSupportTicketRequest extends Message<CreateSupportTicketRequest> {
+  /**
+   * "telegram" (only allowed value, schema_v2)
+   *
+   * @generated from field: string contact_kind = 1;
+   */
+  contactKind = "";
+
+  /**
+   * @generated from field: string contact_value = 2;
+   */
+  contactValue = "";
+
+  /**
+   * @generated from field: string subject = 3;
+   */
+  subject = "";
+
+  /**
+   * @generated from field: string message = 4;
+   */
+  message = "";
+
+  constructor(data?: PartialMessage<CreateSupportTicketRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.CreateSupportTicketRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "contact_kind", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "contact_value", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 3, name: "subject", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 4, name: "message", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): CreateSupportTicketRequest {
+    return new CreateSupportTicketRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): CreateSupportTicketRequest {
+    return new CreateSupportTicketRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): CreateSupportTicketRequest {
+    return new CreateSupportTicketRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: CreateSupportTicketRequest | PlainMessage<CreateSupportTicketRequest> | undefined, b: CreateSupportTicketRequest | PlainMessage<CreateSupportTicketRequest> | undefined): boolean {
+    return proto3.util.equals(CreateSupportTicketRequest, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.CreateSupportTicketResponse
+ */
+export class CreateSupportTicketResponse extends Message<CreateSupportTicketResponse> {
+  /**
+   * @generated from field: string ticket_id = 1;
+   */
+  ticketId = "";
+
+  /**
+   * RFC3339
+   *
+   * @generated from field: string created_at = 2;
+   */
+  createdAt = "";
+
+  constructor(data?: PartialMessage<CreateSupportTicketResponse>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.CreateSupportTicketResponse";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "ticket_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "created_at", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): CreateSupportTicketResponse {
+    return new CreateSupportTicketResponse().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): CreateSupportTicketResponse {
+    return new CreateSupportTicketResponse().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): CreateSupportTicketResponse {
+    return new CreateSupportTicketResponse().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: CreateSupportTicketResponse | PlainMessage<CreateSupportTicketResponse> | undefined, b: CreateSupportTicketResponse | PlainMessage<CreateSupportTicketResponse> | undefined): boolean {
+    return proto3.util.equals(CreateSupportTicketResponse, a, b);
   }
 }
 

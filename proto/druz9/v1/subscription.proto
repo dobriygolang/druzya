@@ -1,5 +1,5 @@
 // subscription.proto — Connect-RPC контракт централизованного subscription-
-// сервиса. Хранит tier пользователя (free/seeker/ascendant) + его lifecycle
+// сервиса. Хранит tier пользователя (free/pro/max) + его lifecycle
 // (active/cancelled/expired) + привязку к провайдеру оплаты. Источник правды
 // для доступа к платным LLM-моделям (см. llmchain.candidates tier-gate) и
 // для фронта (paywall / upgrade-банер). Используется и druz9, и Hone, и
@@ -25,17 +25,77 @@ service SubscriptionService {
   rpc GetTierByUserID(GetTierByUserIDRequest) returns (GetTierByUserIDResponse);
 
   // AdminSetTier — выставление tier'а вручную. Требует role=admin.
-  // Используется (а) операторами для grant'а раннего доступа тестерам,
-  // (б) в M3 как fallback пока Boosty sync не настроен.
   rpc AdminSetTier(AdminSetTierRequest) returns (AdminSetTierResponse) {
     option (google.api.http) = { post: "/api/v1/admin/subscriptions/set-tier" body: "*" };
   }
+
+  // GetQuota — current usage + policy snapshot for the calling user. The
+  // chi handler returned a "degraded" zero snapshot on errors; the proto
+  // RPC keeps that contract.
+  rpc GetQuota(GetQuotaRequest) returns (QuotaSnapshot) {
+    option (google.api.http) = {get: "/api/v1/subscription/quota"};
+  }
+
+  // LinkBoosty starts the OAuth handshake / saves a manual cookie so we
+  // can sync the user's Boosty subscription tier later.
+  rpc LinkBoosty(LinkBoostyRequest) returns (LinkBoostyResponse) {
+    option (google.api.http) = {
+      post: "/api/v1/subscription/boosty/link"
+      body: "*"
+    };
+  }
+
+  // AdminBoostySync triggers the bulk-resolve job. role=admin required.
+  rpc AdminBoostySync(AdminBoostySyncRequest) returns (AdminBoostySyncResponse) {
+    option (google.api.http) = {
+      post: "/api/v1/admin/subscriptions/boosty/sync"
+      body: "*"
+    };
+  }
+}
+
+message QuotaPolicy {
+  int32 synced_notes = 1;
+  int32 active_shared_boards = 2;
+  int32 active_shared_rooms = 3;
+  int64 shared_ttl_seconds = 4;
+  int32 ai_monthly = 5;
+}
+
+message QuotaUsage {
+  int32 synced_notes = 1;
+  int32 active_shared_boards = 2;
+  int32 active_shared_rooms = 3;
+  int32 ai_this_month = 4;
+}
+
+message GetQuotaRequest {}
+
+message QuotaSnapshot {
+  string tier = 1;
+  QuotaPolicy policy = 2;
+  QuotaUsage usage = 3;
+}
+
+message LinkBoostyRequest {
+  string boosty_user_id = 1;
+}
+
+message LinkBoostyResponse {
+  bool ok = 1;
+  string status = 2;
+}
+
+message AdminBoostySyncRequest {}
+
+message AdminBoostySyncResponse {
+  int32 updated = 1;
 }
 
 message GetMyTierRequest {}
 
 message GetMyTierResponse {
-  string tier = 1;                                // "free"|"seeker"|"ascendant"
+  string tier = 1;                                // "free"|"pro"|"max"
   string status = 2;                              // "active"|"cancelled"|"expired"
   google.protobuf.Timestamp current_period_end = 3; // null для admin-выдачи без expiry
   google.protobuf.Timestamp grace_until = 4;      // effective expiry (CPE + 24h)

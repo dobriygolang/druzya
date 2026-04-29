@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"druz9/subscription/app"
+	"druz9/subscription/domain"
 )
 
 // BoostySourceAdapter — тонкая обёртка превращающая infra.BoostyClient
@@ -21,8 +21,8 @@ func NewBoostySourceAdapter(c *BoostyClient) *BoostySourceAdapter {
 	return &BoostySourceAdapter{Client: c}
 }
 
-// ListSubscribers — конвертирует []BoostySubscriber → []app.BoostySubscriberSnapshot.
-func (a *BoostySourceAdapter) ListSubscribers(ctx context.Context, limit int) ([]app.BoostySubscriberSnapshot, error) {
+// ListSubscribers — конвертирует []BoostySubscriber → []domain.BoostySubscriberSnapshot.
+func (a *BoostySourceAdapter) ListSubscribers(ctx context.Context, limit int) ([]domain.BoostySubscriberSnapshot, error) {
 	if a.Client == nil {
 		return nil, ErrBoostyUnconfigured
 	}
@@ -30,9 +30,9 @@ func (a *BoostySourceAdapter) ListSubscribers(ctx context.Context, limit int) ([
 	if err != nil {
 		return nil, fmt.Errorf("subscription.boosty_source: %w", err)
 	}
-	out := make([]app.BoostySubscriberSnapshot, 0, len(subs))
+	out := make([]domain.BoostySubscriberSnapshot, 0, len(subs))
 	for _, s := range subs {
-		out = append(out, app.BoostySubscriberSnapshot{
+		out = append(out, domain.BoostySubscriberSnapshot{
 			SubscriberID: s.SubscriberID,
 			Username:     s.Username,
 			TierName:     s.TierName,
@@ -43,4 +43,4 @@ func (a *BoostySourceAdapter) ListSubscribers(ctx context.Context, limit int) ([
 	return out, nil
 }
 
-var _ app.BoostySource = (*BoostySourceAdapter)(nil)
+var _ domain.BoostySource = (*BoostySourceAdapter)(nil)

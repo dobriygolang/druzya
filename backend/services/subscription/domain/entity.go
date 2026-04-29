@@ -16,6 +16,8 @@ const (
 	TierFree     = enums.SubscriptionPlanFree
 	TierSeeker   = enums.SubscriptionPlanSeeker
 	TierAscended = enums.SubscriptionPlanAscendant
+	TierPro      = enums.SubscriptionPlanPro
+	TierMax      = enums.SubscriptionPlanMax
 )
 
 // Status — жизненный цикл подписки. cancelled != expired: cancelled означает

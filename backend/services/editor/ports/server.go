@@ -41,12 +41,16 @@ type CreateQuotaChecker func(ctx context.Context, userID uuid.UUID) error
 // Field names use the UC suffix to avoid collision with the generated method
 // names (CreateRoom / GetRoom / CreateInvite / FreezeRoom / GetReplay).
 type EditorServer struct {
-	CreateUC         *app.CreateRoom
-	GetUC            *app.GetRoom
-	InviteUC         *app.CreateInvite
-	FreezeUC         *app.Freeze
-	ReplayUC         *app.Replay
-	RunUC            *app.RunCode
+	CreateUC *app.CreateRoom
+	GetUC    *app.GetRoom
+	InviteUC *app.CreateInvite
+	FreezeUC *app.Freeze
+	ReplayUC *app.Replay
+	RunUC    *app.RunCode
+	// Rooms backs the visibility GET/SET endpoints. Optional — nil makes
+	// those methods return Unavailable; production wiring in cmd/monolith
+	// always supplies this.
+	Rooms            domain.RoomRepo
 	WSBase           string // used to synthesise ws_url on the EditorRoom DTO
 	Log              *slog.Logger
 	CheckCreateQuota CreateQuotaChecker

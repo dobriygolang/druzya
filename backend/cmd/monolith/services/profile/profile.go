@@ -109,6 +109,8 @@ func NewProfile(d monolithServices.Deps) *monolithServices.Module {
 		ListAppsUC:     &profileApp.ListInterviewerApplications{Repo: cached},
 		ApproveAppUC:   &profileApp.ApproveInterviewerApplication{Repo: cached},
 		RejectAppUC:    &profileApp.RejectInterviewerApplication{Repo: cached},
+		AllocateAtlas:  profileApp.NewAllocateAtlasNode(cached, d.Log),
+		VacanciesModel: pg, // non-cached: setting flips at most once/week
 		ReportFetcher:  reportCache,
 		Repo:           cached,
 		Log:            d.Log,
@@ -119,19 +121,6 @@ func NewProfile(d monolithServices.Deps) *monolithServices.Module {
 	// Bearer auth at the router gate; admin role enforced inside the
 	// handler (see AtlasAdminHandler.requireAdmin).
 	atlasAdmin := profilePorts.NewAtlasAdminHandler(atlasCat, d.Log)
-
-	// POST /profile/me/atlas/allocate — chi-direct, REST-only (no proto RPC).
-	// Bearer auth gated at the router; per-request UID pulled from context.
-	allocate := profilePorts.NewAtlasAllocateHandler(
-		profileApp.NewAllocateAtlasNode(cached, d.Log), d.Log,
-	)
-
-	// GET + PUT /profile/me/ai-vacancies-model — chi-direct, REST-only.
-	// Kept off the proto surface on purpose (see handler doc-comment);
-	// reads/writes go through the non-cached pg repo since the setting
-	// changes at most once per user per week and the cached-repo layer
-	// doesn't define this method.
-	vacanciesModel := profilePorts.NewAIVacanciesModelHandler(pg, d.Log)
 
 	onUserRegistered := &profileApp.OnUserRegistered{Repo: cached, Log: d.Log}
 	onXPGained := &profileApp.OnXPGained{Repo: cached, Bus: d.Bus, Log: d.Log}
@@ -147,9 +136,9 @@ func NewProfile(d monolithServices.Deps) *monolithServices.Module {
 		MountREST: func(r chi.Router) {
 			r.Get("/profile/me", transcoder.ServeHTTP)
 			r.Get("/profile/me/atlas", transcoder.ServeHTTP)
-			r.Post("/profile/me/atlas/allocate", allocate.Handle)
-			r.Get("/profile/me/ai-vacancies-model", vacanciesModel.HandleGet)
-			r.Put("/profile/me/ai-vacancies-model", vacanciesModel.HandlePut)
+			r.Post("/profile/me/atlas/allocate", transcoder.ServeHTTP)
+			r.Get("/profile/me/ai-vacancies-model", transcoder.ServeHTTP)
+			r.Put("/profile/me/ai-vacancies-model", transcoder.ServeHTTP)
 			r.Get("/profile/me/report", transcoder.ServeHTTP)
 			r.Put("/profile/me/settings", transcoder.ServeHTTP)
 			r.Post("/profile/me/become-interviewer", transcoder.ServeHTTP)

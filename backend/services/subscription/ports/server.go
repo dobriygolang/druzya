@@ -28,9 +28,12 @@ var _ druz9v1connect.SubscriptionServiceHandler = (*SubscriptionServer)(nil)
 
 // SubscriptionServer адаптирует use-case'ы на Connect-RPC.
 type SubscriptionServer struct {
-	GetTierUC *app.GetTier
-	SetTierUC *app.SetTier
-	Log       *slog.Logger
+	GetTierUC    *app.GetTier
+	SetTierUC    *app.SetTier
+	GetQuotaUC   *app.GetQuota
+	LinkBoostyUC *app.LinkBoosty
+	SyncBoostyUC *app.SyncBoosty
+	Log          *slog.Logger
 }
 
 // NewSubscriptionServer — конструктор.
@@ -97,9 +100,15 @@ func (s *SubscriptionServer) AdminSetTier(
 		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("invalid user_id: %w", err))
 	}
 	tier := enums.SubscriptionPlan(m.GetTier())
+	switch tier {
+	case "seeker":
+		tier = enums.SubscriptionPlanPro
+	case "ascendant", "ascended":
+		tier = enums.SubscriptionPlanMax
+	}
 	if !tier.IsValid() {
 		return nil, connect.NewError(connect.CodeInvalidArgument,
-			fmt.Errorf("invalid tier %q; expected free|seeker|ascendant", m.GetTier()))
+			fmt.Errorf("invalid tier %q; expected free|pro|max", m.GetTier()))
 	}
 	in := app.SetTierInput{
 		UserID:   uid,

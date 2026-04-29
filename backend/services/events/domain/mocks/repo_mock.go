@@ -72,6 +72,36 @@ func (mr *MockEventRepoMockRecorder) Delete(ctx, id any) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Delete", reflect.TypeOf((*MockEventRepo)(nil).Delete), ctx, id)
 }
 
+// DeleteEndedBefore mocks base method.
+func (m *MockEventRepo) DeleteEndedBefore(ctx context.Context, cutoff time.Time) (int64, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "DeleteEndedBefore", ctx, cutoff)
+	ret0, _ := ret[0].(int64)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// DeleteEndedBefore indicates an expected call of DeleteEndedBefore.
+func (mr *MockEventRepoMockRecorder) DeleteEndedBefore(ctx, cutoff any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteEndedBefore", reflect.TypeOf((*MockEventRepo)(nil).DeleteEndedBefore), ctx, cutoff)
+}
+
+// FindStartingSoon mocks base method.
+func (m *MockEventRepo) FindStartingSoon(ctx context.Context, lowerOffset, upperOffset time.Duration) ([]domain.ParticipantNotificationCandidate, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "FindStartingSoon", ctx, lowerOffset, upperOffset)
+	ret0, _ := ret[0].([]domain.ParticipantNotificationCandidate)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// FindStartingSoon indicates an expected call of FindStartingSoon.
+func (mr *MockEventRepoMockRecorder) FindStartingSoon(ctx, lowerOffset, upperOffset any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FindStartingSoon", reflect.TypeOf((*MockEventRepo)(nil).FindStartingSoon), ctx, lowerOffset, upperOffset)
+}
+
 // Get mocks base method.
 func (m *MockEventRepo) Get(ctx context.Context, id uuid.UUID) (domain.EventWithCircleName, error) {
 	m.ctrl.T.Helper()
@@ -100,6 +130,45 @@ func (m *MockEventRepo) ListUpcomingByMember(ctx context.Context, userID uuid.UU
 func (mr *MockEventRepoMockRecorder) ListUpcomingByMember(ctx, userID, from, to any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListUpcomingByMember", reflect.TypeOf((*MockEventRepo)(nil).ListUpcomingByMember), ctx, userID, from, to)
+}
+
+// MockEventNotificationLedger is a mock of EventNotificationLedger interface.
+type MockEventNotificationLedger struct {
+	ctrl     *gomock.Controller
+	recorder *MockEventNotificationLedgerMockRecorder
+	isgomock struct{}
+}
+
+// MockEventNotificationLedgerMockRecorder is the mock recorder for MockEventNotificationLedger.
+type MockEventNotificationLedgerMockRecorder struct {
+	mock *MockEventNotificationLedger
+}
+
+// NewMockEventNotificationLedger creates a new mock instance.
+func NewMockEventNotificationLedger(ctrl *gomock.Controller) *MockEventNotificationLedger {
+	mock := &MockEventNotificationLedger{ctrl: ctrl}
+	mock.recorder = &MockEventNotificationLedgerMockRecorder{mock}
+	return mock
+}
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockEventNotificationLedger) EXPECT() *MockEventNotificationLedgerMockRecorder {
+	return m.recorder
+}
+
+// MarkSent mocks base method.
+func (m *MockEventNotificationLedger) MarkSent(ctx context.Context, eventID, userID uuid.UUID, kind string, sentAt time.Time) (bool, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "MarkSent", ctx, eventID, userID, kind, sentAt)
+	ret0, _ := ret[0].(bool)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// MarkSent indicates an expected call of MarkSent.
+func (mr *MockEventNotificationLedgerMockRecorder) MarkSent(ctx, eventID, userID, kind, sentAt any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "MarkSent", reflect.TypeOf((*MockEventNotificationLedger)(nil).MarkSent), ctx, eventID, userID, kind, sentAt)
 }
 
 // MockParticipantRepo is a mock of ParticipantRepo interface.

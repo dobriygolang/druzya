@@ -15,6 +15,36 @@ import { Message, proto3, protoInt64, Timestamp } from "@bufbuild/protobuf";
 import { Difficulty, EditorEventType, LLMModel, MessageRole, MockStatus, Section } from "./common_pb.js";
 
 /**
+ * MockReportStatus — wire-закрытый набор статусов отчёта.
+ * PROCESSING — отчёт в очереди / генерится. READY — сформирован, можно
+ * читать sections/score/etc. Wire JSON эмитит NAME (MOCK_REPORT_STATUS_READY).
+ *
+ * @generated from enum druz9.v1.MockReportStatus
+ */
+export enum MockReportStatus {
+  /**
+   * @generated from enum value: MOCK_REPORT_STATUS_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * @generated from enum value: MOCK_REPORT_STATUS_PROCESSING = 1;
+   */
+  PROCESSING = 1,
+
+  /**
+   * @generated from enum value: MOCK_REPORT_STATUS_READY = 2;
+   */
+  READY = 2,
+}
+// Retrieve enum metadata with: proto3.getEnumType(MockReportStatus)
+proto3.util.setEnumType(MockReportStatus, "druz9.v1.MockReportStatus", [
+  { no: 0, name: "MOCK_REPORT_STATUS_UNSPECIFIED" },
+  { no: 1, name: "MOCK_REPORT_STATUS_PROCESSING" },
+  { no: 2, name: "MOCK_REPORT_STATUS_READY" },
+]);
+
+/**
  * MockTaskPublic mirrors OpenAPI TaskPublic used by ai_mock. Kept separate from
  * ArenaTaskPublic to avoid cross-service coupling, though the wire shape is
  * identical.
@@ -781,13 +811,9 @@ export class MockReport extends Message<MockReport> {
   sessionId = "";
 
   /**
-   * "processing" is returned when the report job has not yet written its
-   * draft (bible §8). Kept as a plain string — not an enum — because the
-   * OpenAPI schema omits the field entirely when the report is ready.
-   *
-   * @generated from field: string status = 2;
+   * @generated from field: druz9.v1.MockReportStatus status = 2;
    */
-  status = "";
+  status = MockReportStatus.UNSPECIFIED;
 
   /**
    * @generated from field: int32 overall_score = 3;
@@ -833,7 +859,7 @@ export class MockReport extends Message<MockReport> {
   static readonly typeName = "druz9.v1.MockReport";
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
     { no: 1, name: "session_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
-    { no: 2, name: "status", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "status", kind: "enum", T: proto3.getEnumType(MockReportStatus) },
     { no: 3, name: "overall_score", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
     { no: 4, name: "sections", kind: "message", T: MockReportSections },
     { no: 5, name: "strengths", kind: "scalar", T: 9 /* ScalarType.STRING */, repeated: true },
@@ -970,6 +996,263 @@ export class GetMockReportRequest extends Message<GetMockReportRequest> {
 
   static equals(a: GetMockReportRequest | PlainMessage<GetMockReportRequest> | undefined, b: GetMockReportRequest | PlainMessage<GetMockReportRequest> | undefined): boolean {
     return proto3.util.equals(GetMockReportRequest, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.GetInsightsOverviewRequest
+ */
+export class GetInsightsOverviewRequest extends Message<GetInsightsOverviewRequest> {
+  constructor(data?: PartialMessage<GetInsightsOverviewRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.GetInsightsOverviewRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): GetInsightsOverviewRequest {
+    return new GetInsightsOverviewRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): GetInsightsOverviewRequest {
+    return new GetInsightsOverviewRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): GetInsightsOverviewRequest {
+    return new GetInsightsOverviewRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: GetInsightsOverviewRequest | PlainMessage<GetInsightsOverviewRequest> | undefined, b: GetInsightsOverviewRequest | PlainMessage<GetInsightsOverviewRequest> | undefined): boolean {
+    return proto3.util.equals(GetInsightsOverviewRequest, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.StagePerformance
+ */
+export class StagePerformance extends Message<StagePerformance> {
+  /**
+   * @generated from field: string stage_kind = 1;
+   */
+  stageKind = "";
+
+  /**
+   * @generated from field: int32 total = 2;
+   */
+  total = 0;
+
+  /**
+   * @generated from field: int32 passed = 3;
+   */
+  passed = 0;
+
+  /**
+   * @generated from field: int32 pass_rate = 4;
+   */
+  passRate = 0;
+
+  constructor(data?: PartialMessage<StagePerformance>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.StagePerformance";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "stage_kind", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "total", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 3, name: "passed", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 4, name: "pass_rate", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): StagePerformance {
+    return new StagePerformance().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): StagePerformance {
+    return new StagePerformance().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): StagePerformance {
+    return new StagePerformance().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: StagePerformance | PlainMessage<StagePerformance> | undefined, b: StagePerformance | PlainMessage<StagePerformance> | undefined): boolean {
+    return proto3.util.equals(StagePerformance, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.RecurringPattern
+ */
+export class RecurringPattern extends Message<RecurringPattern> {
+  /**
+   * @generated from field: string point = 1;
+   */
+  point = "";
+
+  /**
+   * @generated from field: int32 count = 2;
+   */
+  count = 0;
+
+  constructor(data?: PartialMessage<RecurringPattern>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.RecurringPattern";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "point", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "count", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): RecurringPattern {
+    return new RecurringPattern().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): RecurringPattern {
+    return new RecurringPattern().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): RecurringPattern {
+    return new RecurringPattern().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: RecurringPattern | PlainMessage<RecurringPattern> | undefined, b: RecurringPattern | PlainMessage<RecurringPattern> | undefined): boolean {
+    return proto3.util.equals(RecurringPattern, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.ScoreTrajectoryPoint
+ */
+export class ScoreTrajectoryPoint extends Message<ScoreTrajectoryPoint> {
+  /**
+   * @generated from field: string pipeline_id = 1;
+   */
+  pipelineId = "";
+
+  /**
+   * @generated from field: string finished_at = 2;
+   */
+  finishedAt = "";
+
+  /**
+   * @generated from field: double score = 3;
+   */
+  score = 0;
+
+  /**
+   * @generated from field: string verdict = 4;
+   */
+  verdict = "";
+
+  constructor(data?: PartialMessage<ScoreTrajectoryPoint>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.ScoreTrajectoryPoint";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "pipeline_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "finished_at", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 3, name: "score", kind: "scalar", T: 1 /* ScalarType.DOUBLE */ },
+    { no: 4, name: "verdict", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ScoreTrajectoryPoint {
+    return new ScoreTrajectoryPoint().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): ScoreTrajectoryPoint {
+    return new ScoreTrajectoryPoint().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): ScoreTrajectoryPoint {
+    return new ScoreTrajectoryPoint().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: ScoreTrajectoryPoint | PlainMessage<ScoreTrajectoryPoint> | undefined, b: ScoreTrajectoryPoint | PlainMessage<ScoreTrajectoryPoint> | undefined): boolean {
+    return proto3.util.equals(ScoreTrajectoryPoint, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.InsightsOverview
+ */
+export class InsightsOverview extends Message<InsightsOverview> {
+  /**
+   * @generated from field: int32 window_days = 1;
+   */
+  windowDays = 0;
+
+  /**
+   * @generated from field: repeated druz9.v1.StagePerformance stage_performance = 2;
+   */
+  stagePerformance: StagePerformance[] = [];
+
+  /**
+   * @generated from field: repeated druz9.v1.RecurringPattern recurring_patterns = 3;
+   */
+  recurringPatterns: RecurringPattern[] = [];
+
+  /**
+   * @generated from field: repeated druz9.v1.ScoreTrajectoryPoint score_trajectory = 4;
+   */
+  scoreTrajectory: ScoreTrajectoryPoint[] = [];
+
+  /**
+   * @generated from field: int32 total_sessions_30d = 5;
+   */
+  totalSessions30d = 0;
+
+  /**
+   * @generated from field: int32 pipeline_pass_rate_30d = 6;
+   */
+  pipelinePassRate30d = 0;
+
+  /**
+   * @generated from field: string summary = 7;
+   */
+  summary = "";
+
+  constructor(data?: PartialMessage<InsightsOverview>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.InsightsOverview";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "window_days", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 2, name: "stage_performance", kind: "message", T: StagePerformance, repeated: true },
+    { no: 3, name: "recurring_patterns", kind: "message", T: RecurringPattern, repeated: true },
+    { no: 4, name: "score_trajectory", kind: "message", T: ScoreTrajectoryPoint, repeated: true },
+    { no: 5, name: "total_sessions_30d", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 6, name: "pipeline_pass_rate_30d", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 7, name: "summary", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): InsightsOverview {
+    return new InsightsOverview().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): InsightsOverview {
+    return new InsightsOverview().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): InsightsOverview {
+    return new InsightsOverview().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: InsightsOverview | PlainMessage<InsightsOverview> | undefined, b: InsightsOverview | PlainMessage<InsightsOverview> | undefined): boolean {
+    return proto3.util.equals(InsightsOverview, a, b);
   }
 }
 

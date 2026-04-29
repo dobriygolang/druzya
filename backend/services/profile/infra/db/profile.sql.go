@@ -279,6 +279,32 @@ func (q *Queries) GetProfilePublic(ctx context.Context, username string) (GetPro
 	return i, err
 }
 
+const insertXPEvent = `-- name: InsertXPEvent :exec
+INSERT INTO xp_events (user_id, amount, source, source_id)
+VALUES ($1, $2, $3, $4)
+`
+
+type InsertXPEventParams struct {
+	UserID   pgtype.UUID
+	Amount   int32
+	Source   string
+	SourceID pgtype.UUID
+}
+
+// Phase H audit-log row для каждого XPGained события. source —
+// closed набор (CHECK в migrations 00001_baseline.sql на xp_events:
+// task/arena/kata/podcast/mock/quiz/review/custom). source_id
+// опционально (match_id / task_id / kata_id для downstream-аналитики).
+func (q *Queries) InsertXPEvent(ctx context.Context, arg InsertXPEventParams) error {
+	_, err := q.db.Exec(ctx, insertXPEvent,
+		arg.UserID,
+		arg.Amount,
+		arg.Source,
+		arg.SourceID,
+	)
+	return err
+}
+
 const listInterviewerApplications = `-- name: ListInterviewerApplications :many
 SELECT a.id, a.user_id, a.motivation, a.status, a.reviewed_by, a.reviewed_at, a.decision_note, a.created_at,
        u.username::text AS user_username, COALESCE(u.display_name, '')::text AS user_display_name

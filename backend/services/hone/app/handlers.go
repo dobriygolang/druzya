@@ -75,6 +75,22 @@ type Handler struct {
 	DeleteCueSession         *DeleteCueSession
 	SendCueSessionToTelegram *SendCueSessionToTelegram
 
+	// TaskBoard (Notion-style kanban)
+	CreateTask       *CreateTask
+	ListTasks        *ListTasks
+	MoveTaskStatus   *MoveTaskStatus
+	DeleteTask       *DeleteTask
+	AddTaskComment   *AddTaskComment
+	ListTaskComments *ListTaskComments
+
+	// Publish-to-web (everything except the HTML viewer at /p/{slug}).
+	PublishNote     *PublishNote
+	UnpublishNote   *UnpublishNote
+	PublishStatusUC *PublishStatus
+	BulkNotesMeta   *BulkNotesMeta
+	ShareToWeb      *ShareToWeb
+	MakePrivate     *MakePrivate
+
 	Log *slog.Logger
 	Now func() time.Time
 }

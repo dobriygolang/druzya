@@ -503,7 +503,7 @@ function BodyTab({ task }: { task: MockTask }) {
             <option value="">— inherit —</option>
             {(aiModels.data?.items ?? []).map((m) => (
               <option key={m.id} value={m.id}>
-                {m.label} {m.tier === 'premium' ? '★' : ''}
+                {m.label} {m.tier !== 'free' ? '★' : ''}
               </option>
             ))}
           </select>

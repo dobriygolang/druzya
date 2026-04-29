@@ -1,6 +1,6 @@
 // QuotasPanel — admin UI для редактирования subscription quota policies.
 //
-// Каждый из трёх tier'ов (Free, Seeker, Ascended) — отдельная карточка с
+// Каждый из трёх tier'ов (Free, Pro, Max) — отдельная карточка с
 // числовыми инпутами. Backend хранит value как JSON в dynamic_config под
 // ключами `quota_policy.<tier>`. -1 = unlimited (UI показывает «∞»).
 //
@@ -17,11 +17,11 @@ import {
 } from '../../lib/queries/adminQuotas'
 import { PanelSkeleton, ErrorBox } from './shared'
 
-const TIER_ORDER: Tier[] = ['free', 'seeker', 'ascended']
+const TIER_ORDER: Tier[] = ['free', 'pro', 'max']
 const TIER_LABEL: Record<Tier, string> = {
   free: 'Free',
-  seeker: 'Seeker',
-  ascended: 'Ascended',
+  pro: 'Pro',
+  max: 'Max',
 }
 
 const FIELD_LABELS: Array<{ key: keyof QuotaPolicy; label: string; hint: string; allowUnlimited: boolean }> = [

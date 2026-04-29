@@ -57,11 +57,32 @@ export function useSaveLLMChainConfigMutation() {
   })
 }
 
+export type LLMTestResponse = {
+  ok: boolean
+  provider: string
+  model: string
+  content?: string
+  tokens_in?: number
+  tokens_out?: number
+  latency_ms?: number
+  error?: string
+}
+
+export function testLLMModel(input: { provider: string; model: string; prompt?: string }) {
+  return api<LLMTestResponse>('/admin/llm/test', {
+    method: 'POST',
+    body: JSON.stringify(input),
+  })
+}
+
 // ─── Constants: known providers / virtual IDs / tasks ──────────────────────
 
 export const KNOWN_PROVIDERS = [
   'groq',
   'cerebras',
+  'google',
+  'cloudflare',
+  'zai',
   'mistral',
   'openrouter',
   'deepseek',
@@ -102,7 +123,7 @@ export const KNOWN_TASKS = [
 // admin-UI как autocomplete (datalist) + для live-preview'а tier'а.
 // Синхронизируется с backend'ом (shared/pkg/llmchain/tier.go).
 
-export type ModelTier = 'free' | 'seeker' | 'ascendant'
+export type ModelTier = 'free' | 'pro' | 'max'
 
 export type ProviderModel = {
   id: string
@@ -122,6 +143,19 @@ export const PROVIDER_MODELS: Record<KnownProvider, ProviderModel[]> = {
     { id: 'llama3.1-8b', label: 'Llama 3.1 8B', tier: 'free', hint: 'fast' },
     { id: 'llama-4-scout-17b-16e-instruct', label: 'Llama 4 Scout 17B', tier: 'free', hint: 'new' },
   ],
+  google: [
+    { id: 'gemini-2.5-flash', label: 'Gemini 2.5 Flash', tier: 'pro', hint: 'fast vision' },
+    { id: 'gemini-2.5-pro', label: 'Gemini 2.5 Pro', tier: 'max', hint: 'reasoning vision' },
+  ],
+  cloudflare: [
+    { id: '@cf/meta/llama-3.1-8b-instruct', label: 'Llama 3.1 8B', tier: 'free', hint: 'Workers AI' },
+    { id: '@cf/meta/llama-3.3-70b-instruct-fp8-fast', label: 'Llama 3.3 70B FP8', tier: 'pro', hint: 'Workers AI' },
+  ],
+  zai: [
+    { id: 'glm-4.5-flash', label: 'GLM-4.5 Flash', tier: 'free', hint: 'fast' },
+    { id: 'glm-4.5', label: 'GLM-4.5', tier: 'pro', hint: 'agentic' },
+    { id: 'glm-4.5-air', label: 'GLM-4.5 Air', tier: 'pro', hint: 'balanced' },
+  ],
   mistral: [
     { id: 'mistral-small-latest', label: 'Mistral Small', tier: 'free', hint: 'fast' },
     { id: 'mistral-large-latest', label: 'Mistral Large', tier: 'free', hint: 'general' },
@@ -134,18 +168,18 @@ export const PROVIDER_MODELS: Record<KnownProvider, ProviderModel[]> = {
     { id: 'deepseek/deepseek-chat:free', label: 'DeepSeek V3 · free', tier: 'free' },
     { id: 'minimax/minimax-m2.5:free', label: 'MiniMax M2.5 · free', tier: 'free' },
     { id: 'meta-llama/llama-3.3-70b-instruct:free', label: 'Llama 3.3 70B · free', tier: 'free' },
-    { id: 'openai/gpt-4.1-mini', label: 'GPT-4.1 mini', tier: 'seeker', hint: 'fast-paid' },
-    { id: 'openai/o3-mini', label: 'o3-mini', tier: 'seeker', hint: 'reasoning' },
-    { id: 'anthropic/claude-haiku-4.5', label: 'Claude Haiku 4.5', tier: 'seeker', hint: 'fast-paid' },
-    { id: 'openai/gpt-4.1', label: 'GPT-4.1', tier: 'ascendant', hint: 'top' },
-    { id: 'openai/gpt-4o', label: 'GPT-4o', tier: 'ascendant', hint: 'top' },
-    { id: 'openai/o3', label: 'o3', tier: 'ascendant', hint: 'top reasoning' },
-    { id: 'anthropic/claude-sonnet-4.5', label: 'Claude Sonnet 4.5', tier: 'ascendant', hint: 'top' },
-    { id: 'anthropic/claude-opus-4', label: 'Claude Opus 4', tier: 'ascendant', hint: 'top' },
+    { id: 'openai/gpt-4.1-mini', label: 'GPT-4.1 mini', tier: 'pro', hint: 'fast-paid' },
+    { id: 'openai/o3-mini', label: 'o3-mini', tier: 'pro', hint: 'reasoning' },
+    { id: 'anthropic/claude-haiku-4.5', label: 'Claude Haiku 4.5', tier: 'pro', hint: 'fast-paid' },
+    { id: 'openai/gpt-4.1', label: 'GPT-4.1', tier: 'max', hint: 'top' },
+    { id: 'openai/gpt-4o', label: 'GPT-4o', tier: 'max', hint: 'top' },
+    { id: 'openai/o3', label: 'o3', tier: 'max', hint: 'top reasoning' },
+    { id: 'anthropic/claude-sonnet-4.5', label: 'Claude Sonnet 4.5', tier: 'max', hint: 'top' },
+    { id: 'anthropic/claude-opus-4', label: 'Claude Opus 4', tier: 'max', hint: 'top' },
   ],
   deepseek: [
-    { id: 'deepseek-chat', label: 'DeepSeek V3', tier: 'seeker', hint: 'cheap paid' },
-    { id: 'deepseek-reasoner', label: 'DeepSeek R1', tier: 'seeker', hint: 'reasoning' },
+    { id: 'deepseek-chat', label: 'DeepSeek V3', tier: 'pro', hint: 'cheap paid' },
+    { id: 'deepseek-reasoner', label: 'DeepSeek R1', tier: 'pro', hint: 'reasoning' },
   ],
   ollama: [
     { id: 'qwen2.5:7b-instruct-q4_K_M', label: 'Qwen 2.5 7B', tier: 'free', hint: 'self-host' },
@@ -155,14 +189,14 @@ export const PROVIDER_MODELS: Record<KnownProvider, ProviderModel[]> = {
 
 export const VIRTUAL_MIN_TIER: Record<(typeof VIRTUAL_IDS)[number], ModelTier> = {
   'druz9/turbo': 'free',
-  'druz9/pro': 'seeker',
-  'druz9/ultra': 'ascendant',
-  'druz9/reasoning': 'seeker',
+  'druz9/pro': 'pro',
+  'druz9/ultra': 'max',
+  'druz9/reasoning': 'pro',
 }
 
 export function tierRank(t: ModelTier): number {
-  if (t === 'seeker') return 1
-  if (t === 'ascendant') return 2
+  if (t === 'pro') return 1
+  if (t === 'max') return 2
   return 0
 }
 

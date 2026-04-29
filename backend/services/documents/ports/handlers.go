@@ -24,7 +24,6 @@ import (
 
 	"druz9/documents/app"
 	"druz9/documents/domain"
-	"druz9/documents/infra"
 	"druz9/shared/pkg/killswitch"
 	sharedMw "druz9/shared/pkg/middleware"
 	"druz9/shared/pkg/ratelimit"
@@ -412,7 +411,7 @@ func (h *Handler) handleSearch(w http.ResponseWriter, r *http.Request) {
 		Query:    req.Query,
 		TopK:     req.TopK,
 		MinScore: req.MinScore,
-	}, infra.CosineTopK)
+	}, domain.CosineTopK)
 	if err != nil {
 		h.logErr(r, "search", err)
 		writeError(w, http.StatusInternalServerError, "search failed")

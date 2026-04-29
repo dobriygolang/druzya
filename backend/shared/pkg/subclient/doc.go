@@ -20,7 +20,7 @@
 //
 //	client := subclient.New("http://druz9-api:8080", os.Getenv("DRUZ9_INTERNAL_TOKEN"))
 //	tier, _ := client.GetTier(ctx, userID.String())
-//	if !subclient.HasAccess(tier, subclient.TierSeeker) {
+//	if !subclient.HasAccess(tier, subclient.TierPro) {
 //	    return errUpgradeRequired
 //	}
 package subclient

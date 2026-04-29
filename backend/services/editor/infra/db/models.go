@@ -5,8 +5,55 @@
 package editordb
 
 import (
+	"database/sql/driver"
+	"fmt"
+
 	"github.com/jackc/pgx/v5/pgtype"
 )
+
+type MockPipelineVerdict string
+
+const (
+	MockPipelineVerdictInProgress MockPipelineVerdict = "in_progress"
+	MockPipelineVerdictPass       MockPipelineVerdict = "pass"
+	MockPipelineVerdictFail       MockPipelineVerdict = "fail"
+	MockPipelineVerdictCancelled  MockPipelineVerdict = "cancelled"
+)
+
+func (e *MockPipelineVerdict) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = MockPipelineVerdict(s)
+	case string:
+		*e = MockPipelineVerdict(s)
+	default:
+		return fmt.Errorf("unsupported scan type for MockPipelineVerdict: %T", src)
+	}
+	return nil
+}
+
+type NullMockPipelineVerdict struct {
+	MockPipelineVerdict MockPipelineVerdict
+	Valid               bool // Valid is true if MockPipelineVerdict is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullMockPipelineVerdict) Scan(value interface{}) error {
+	if value == nil {
+		ns.MockPipelineVerdict, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.MockPipelineVerdict.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullMockPipelineVerdict) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.MockPipelineVerdict), nil
+}
 
 type AiCredit struct {
 	UserID    pgtype.UUID
@@ -122,6 +169,7 @@ type CodexArticle struct {
 	Title        string
 	Description  string
 	Category     string
+	Href         string
 	Source       string
 	ReadMin      int32
 	SortOrder    int32
@@ -178,6 +226,7 @@ type CopilotConversation struct {
 	Title          string
 	Model          string
 	RunningSummary string
+	SummaryModel   string
 	CreatedAt      pgtype.Timestamptz
 	UpdatedAt      pgtype.Timestamptz
 }
@@ -383,13 +432,12 @@ type Friendship struct {
 }
 
 type HoneDailyBrief struct {
-	ID              pgtype.UUID
-	UserID          pgtype.UUID
-	BriefDate       pgtype.Date
-	Headline        string
-	NarrativeMd     string
-	Recommendations []byte
-	CreatedAt       pgtype.Timestamptz
+	ID          pgtype.UUID
+	UserID      pgtype.UUID
+	BriefDate   pgtype.Date
+	Payload     []byte
+	GeneratedAt pgtype.Timestamptz
+	CreatedAt   pgtype.Timestamptz
 }
 
 type HoneDailyPlan struct {
@@ -631,16 +679,19 @@ type MockMessage struct {
 }
 
 type MockPipeline struct {
-	ID         pgtype.UUID
-	UserID     pgtype.UUID
-	CompanyID  pgtype.UUID
-	RoleLabel  string
-	Section    string
-	Status     string
-	StartedAt  pgtype.Timestamptz
-	FinishedAt pgtype.Timestamptz
-	CreatedAt  pgtype.Timestamptz
-	UpdatedAt  pgtype.Timestamptz
+	ID              pgtype.UUID
+	UserID          pgtype.UUID
+	CompanyID       pgtype.UUID
+	RoleLabel       string
+	Section         string
+	AiAssist        bool
+	CurrentStageIdx int16
+	Verdict         MockPipelineVerdict
+	TotalScore      pgtype.Float4
+	StartedAt       pgtype.Timestamptz
+	FinishedAt      pgtype.Timestamptz
+	CreatedAt       pgtype.Timestamptz
+	UpdatedAt       pgtype.Timestamptz
 }
 
 type MockSession struct {
@@ -659,6 +710,7 @@ type MockSession struct {
 	AiReport       []byte
 	AiAssist       bool
 	RunningSummary string
+	SummaryModel   string
 	StartedAt      pgtype.Timestamptz
 	FinishedAt     pgtype.Timestamptz
 	CreatedAt      pgtype.Timestamptz

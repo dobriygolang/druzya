@@ -41,6 +41,7 @@ type Querier interface {
 	// Вызывается фоновым compaction.Worker после суммаризации старых turns.
 	// См. backend/shared/pkg/compaction/worker.go. Пишем атомарно поверх
 	// любого предыдущего значения — решение о запуске принимает воркер.
+	// summary_model — Phase II attribution.
 	UpdateMockSessionRunningSummary(ctx context.Context, arg UpdateMockSessionRunningSummaryParams) (int64, error)
 	UpdateMockSessionStatus(ctx context.Context, arg UpdateMockSessionStatusParams) (int64, error)
 	UpdateMockSessionStress(ctx context.Context, arg UpdateMockSessionStressParams) (int64, error)

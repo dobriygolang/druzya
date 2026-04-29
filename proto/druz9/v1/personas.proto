@@ -1,0 +1,102 @@
+// personas.proto — Connect-RPC contract for the Persona bounded context
+// (admin-managed Copilot personas).
+//
+// One implementation, two wire formats. The list endpoint is public — the
+// Copilot UI fetches it anonymously to render mode chips. Mutations are
+// admin-only; the chi mount in cmd/monolith layers RequireAdminInline above
+// the transcoder for the /admin/* paths.
+syntax = "proto3";
+package druz9.v1;
+
+import "google/api/annotations.proto";
+
+option go_package = "druz9/shared/generated/pb/druz9/v1;druz9v1";
+
+message Persona {
+  string id = 1;
+  string label = 2;
+  string hint = 3;
+  string icon_emoji = 4;
+  string brand_gradient = 5;
+  string suggested_task = 6;
+  string system_prompt = 7;
+  int32 sort_order = 8;
+  bool is_enabled = 9;
+  string created_at = 10;     // RFC3339
+  string updated_at = 11;     // RFC3339
+}
+
+message PersonaList {
+  repeated Persona items = 1;
+}
+
+// PersonaUpsert mirrors adminDomain.PersonaUpsert.
+message PersonaUpsert {
+  string label = 1;
+  string hint = 2;
+  string icon_emoji = 3;
+  string brand_gradient = 4;
+  string suggested_task = 5;
+  string system_prompt = 6;
+  int32 sort_order = 7;
+  bool is_enabled = 8;
+}
+
+message ListPersonasRequest {
+  bool active_only = 1;
+}
+
+message CreatePersonaRequest {
+  PersonaUpsert persona = 1;
+}
+
+message UpdatePersonaRequest {
+  string id = 1;
+  PersonaUpsert persona = 2;
+}
+
+// TogglePersonaRequest flips is_enabled. The endpoint is intentionally
+// stateless from the client's perspective: there's no `enabled` body field
+// — the server reads the current value and inverts it.
+message TogglePersonaRequest {
+  string id = 1;
+}
+
+message TogglePersonaResponse {
+  bool ok = 1;
+}
+
+message DeletePersonaRequest {
+  string id = 1;
+}
+
+message DeletePersonaResponse {
+  bool ok = 1;
+}
+
+service PersonaService {
+  rpc ListPersonas(ListPersonasRequest) returns (PersonaList) {
+    option (google.api.http) = {get: "/api/v1/personas"};
+  }
+  rpc CreatePersona(CreatePersonaRequest) returns (Persona) {
+    option (google.api.http) = {
+      post: "/api/v1/admin/personas"
+      body: "persona"
+    };
+  }
+  rpc UpdatePersona(UpdatePersonaRequest) returns (Persona) {
+    option (google.api.http) = {
+      patch: "/api/v1/admin/personas/{id}"
+      body: "persona"
+    };
+  }
+  rpc TogglePersona(TogglePersonaRequest) returns (TogglePersonaResponse) {
+    option (google.api.http) = {
+      patch: "/api/v1/admin/personas/{id}/toggle"
+      body: "*"
+    };
+  }
+  rpc DeletePersona(DeletePersonaRequest) returns (DeletePersonaResponse) {
+    option (google.api.http) = {delete: "/api/v1/admin/personas/{id}"};
+  }
+}

@@ -19,7 +19,7 @@ import (
 	"log/slog"
 	"time"
 
-	"druz9/profile/app"
+	"druz9/profile/domain"
 	"druz9/shared/pkg/metrics"
 
 	"github.com/google/uuid"
@@ -33,7 +33,7 @@ const DefaultReportCacheTTL = 5 * time.Minute
 
 // ReportLoader — функция, которая поднимает свежий отчёт; обычно это
 // `(*GetReport).Do`.
-type ReportLoader func(ctx context.Context, userID uuid.UUID, now time.Time) (app.ReportView, error)
+type ReportLoader func(ctx context.Context, userID uuid.UUID, now time.Time) (domain.ReportView, error)
 
 // ReportCache wrap'ит ReportLoader Redis-кешем.
 type ReportCache struct {
@@ -70,10 +70,10 @@ func reportKey(uid uuid.UUID) string {
 }
 
 // Get reads the cached report or loads it on miss.
-func (r *ReportCache) Get(ctx context.Context, userID uuid.UUID) (app.ReportView, error) {
+func (r *ReportCache) Get(ctx context.Context, userID uuid.UUID) (domain.ReportView, error) {
 	key := reportKey(userID)
 	if raw, err := r.kv.Get(ctx, key); err == nil {
-		var v app.ReportView
+		var v domain.ReportView
 		if jerr := json.Unmarshal([]byte(raw), &v); jerr == nil {
 			return v, nil
 		}
@@ -81,17 +81,17 @@ func (r *ReportCache) Get(ctx context.Context, userID uuid.UUID) (app.ReportView
 			slog.String("key", key))
 	} else if !errors.Is(err, ErrCacheMiss) {
 		// Anti-fallback: real Redis failure propagates.
-		return app.ReportView{}, fmt.Errorf("profile.report_cache.Get: redis: %w", err)
+		return domain.ReportView{}, fmt.Errorf("profile.report_cache.Get: redis: %w", err)
 	}
 	v, err, _ := r.sf.Do(key, func() (any, error) {
 		return r.loader(ctx, userID, r.now())
 	})
 	if err != nil {
-		return app.ReportView{}, fmt.Errorf("profile.report_cache.Get: %w", err)
+		return domain.ReportView{}, fmt.Errorf("profile.report_cache.Get: %w", err)
 	}
-	view, ok := v.(app.ReportView)
+	view, ok := v.(domain.ReportView)
 	if !ok {
-		return app.ReportView{}, fmt.Errorf("profile.report_cache: singleflight returned %T", v)
+		return domain.ReportView{}, fmt.Errorf("profile.report_cache: singleflight returned %T", v)
 	}
 	if data, jerr := json.Marshal(view); jerr == nil {
 		if serr := r.kv.Set(ctx, key, data, r.ttl); serr != nil {

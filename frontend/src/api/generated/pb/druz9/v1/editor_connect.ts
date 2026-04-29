@@ -10,7 +10,7 @@
 /* eslint-disable */
 // @ts-nocheck
 
-import { CreateInviteRequest, CreateRoomRequest, EditorRoom, FreezeRoomRequest, GetReplayRequest, GetRoomRequest, InviteLink, ReplayUrl, RunCodeRequest, RunCodeResponse } from "./editor_pb.js";
+import { CreateInviteRequest, CreateRoomRequest, EditorRoom, EditorVisibility, FreezeRoomRequest, GetEditorVisibilityRequest, GetReplayRequest, GetRoomRequest, InviteLink, ReplayUrl, RunCodeRequest, RunCodeResponse, SetEditorVisibilityRequest } from "./editor_pb.js";
 import { MethodKind } from "@bufbuild/protobuf";
 
 /**
@@ -85,6 +85,29 @@ export const EditorService = {
       name: "RunCode",
       I: RunCodeRequest,
       O: RunCodeResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * GetVisibility returns "private"|"shared".
+     *
+     * @generated from rpc druz9.v1.EditorService.GetVisibility
+     */
+    getVisibility: {
+      name: "GetVisibility",
+      I: GetEditorVisibilityRequest,
+      O: EditorVisibility,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * SetVisibility flips visibility. Owner-only; quota-gated on
+     * private→shared flips.
+     *
+     * @generated from rpc druz9.v1.EditorService.SetVisibility
+     */
+    setVisibility: {
+      name: "SetVisibility",
+      I: SetEditorVisibilityRequest,
+      O: EditorVisibility,
       kind: MethodKind.Unary,
     },
   }

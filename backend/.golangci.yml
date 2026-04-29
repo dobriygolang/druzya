@@ -11,6 +11,57 @@ linters-settings:
         msg: "use slog logger, not fmt.Println"
       - p: '^fmt\.Printf$'
         msg: "use slog logger, not fmt.Printf"
+  depguard:
+    rules:
+      # Default rule: applies to all .go files. Bans technologies we explicitly
+      # don't use, so contributors don't accidentally re-introduce them.
+      everywhere:
+        list-mode: lax
+        deny:
+          - pkg: "database/sql"
+            desc: "use pgx (services/<svc>/infra/postgres.go) — we standardised on pgx/v5"
+          - pkg: "github.com/sirupsen/logrus"
+            desc: "use log/slog (we don't ship logrus)"
+          - pkg: "github.com/pkg/errors"
+            desc: "use stdlib errors + fmt.Errorf with %w"
+      # Shared package must not depend on any concrete service. Services
+      # depend on shared, never the reverse — otherwise we get a layering
+      # cycle and shared becomes a dumping ground for service-specific code.
+      shared:
+        list-mode: lax
+        files:
+          - "**/backend/shared/**"
+        deny:
+          - pkg: "druz9/admin"
+          - pkg: "druz9/ai_mock"
+          - pkg: "druz9/arena"
+          - pkg: "druz9/auth"
+          - pkg: "druz9/circles"
+          - pkg: "druz9/copilot"
+          - pkg: "druz9/daily"
+          - pkg: "druz9/documents"
+          - pkg: "druz9/editor"
+          - pkg: "druz9/events"
+          - pkg: "druz9/feed"
+          - pkg: "druz9/friends"
+          - pkg: "druz9/hone"
+          - pkg: "druz9/intelligence"
+          - pkg: "druz9/lobby"
+          - pkg: "druz9/mock_interview"
+          - pkg: "druz9/notify"
+          - pkg: "druz9/podcast"
+          - pkg: "druz9/profile"
+          - pkg: "druz9/quiz"
+          - pkg: "druz9/rating"
+          - pkg: "druz9/review"
+          - pkg: "druz9/slot"
+          - pkg: "druz9/storage"
+          - pkg: "druz9/subscription"
+          - pkg: "druz9/sync"
+          - pkg: "druz9/tg_coach"
+          - pkg: "druz9/transcription"
+          - pkg: "druz9/vacancies"
+          - pkg: "druz9/whiteboard_rooms"
   wrapcheck:
     ignoreSigs:
       - .Errorf(
@@ -43,6 +94,7 @@ linters:
     - bodyclose
     - prealloc
     - unconvert
+    - depguard
 
 issues:
   exclude-rules:
@@ -50,3 +102,7 @@ issues:
       linters: [wrapcheck, forbidigo, noctx]
     - path: cmd/monolith/main.go
       linters: [forbidigo]
+    # migrate.go uses database/sql intentionally — goose requires it to
+    # apply migrations. Real production code uses pgx everywhere.
+    - path: '(^|/)migrate\.go$'
+      linters: [depguard]

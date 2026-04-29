@@ -244,10 +244,14 @@ func (uc *SendMessage) maybeSubmitCompaction(s domain.Session, priorWindow compa
 	if !fresh.NeedsCompaction {
 		return
 	}
+	// Phase II: pin summary к session.LLMModel чтобы суммаризация и chat
+	// шли одной моделью. Если поле пустое (legacy / не задано) — fall back
+	// to task-routing.
 	err := uc.Compactor.Submit(compaction.Job{
 		SessionKey:  s.ID.String(),
 		PrevSummary: fresh.RunningSummary,
 		OldTurns:    fresh.OldTurns,
+		PinnedModel: string(s.LLMModel),
 	})
 	if err != nil && !errors.Is(err, compaction.ErrWorkerStopped) && uc.Log != nil {
 		uc.Log.Warn("mock.SendMessage: compaction submit failed",
@@ -270,7 +274,7 @@ func turnsFromMessages(msgs []domain.Message) []compaction.Turn {
 // 4o-mini (cost-safe default).
 func (uc *SendMessage) fallbackModel(user domain.UserContext) string {
 	switch user.Subscription {
-	case enums.SubscriptionPlanSeeker, enums.SubscriptionPlanAscendant:
+	case enums.SubscriptionPlanPro, enums.SubscriptionPlanMax:
 		return enums.LLMModelGPT4o.String()
 	case enums.SubscriptionPlanFree:
 		return enums.LLMModelGPT4oMini.String()

@@ -23,14 +23,14 @@ import {
 
 const TIER_LABEL: Record<SubscriptionTier, string> = {
   free: 'Free',
-  seeker: 'Seeker',
-  ascendant: 'Ascendant',
+  pro: 'Pro',
+  max: 'Max',
 }
 
 const TIER_BLURB: Record<SubscriptionTier, string> = {
   free: 'Базовый доступ. Заметки синкаются ограниченно, AI-фичи квотируются.',
-  seeker: 'Расширенные лимиты, full Skill Atlas, приоритет в очереди AI.',
-  ascendant: 'Без лимитов. Всё что есть на платформе.',
+  pro: 'Расширенные лимиты, full Skill Atlas, приоритет в очереди AI.',
+  max: 'Без лимитов. Всё что есть на платформе.',
 }
 
 export function BillingTab() {
@@ -195,7 +195,7 @@ function DevTierSwitchCard() {
   const q = useSubscriptionQuotaQuery()
   const mut = useDevSetTierMutation()
   const current = q.data?.tier ?? 'free'
-  const tiers: SubscriptionTier[] = ['free', 'seeker', 'ascendant']
+  const tiers: SubscriptionTier[] = ['free', 'pro', 'max']
   return (
     <Card className="flex-col gap-3 border-border-strong p-6">
       <div className="flex items-baseline justify-between gap-3">

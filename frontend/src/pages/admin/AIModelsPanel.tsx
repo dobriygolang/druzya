@@ -81,7 +81,7 @@ export function AIModelsPanel() {
                     <td className="py-2 pr-3">
                       <span
                         className={`rounded-full px-2 py-0.5 font-mono text-[10px] ${
-                          m.tier === 'premium'
+                          m.tier !== 'free'
                             ? 'bg-text-primary/20 text-text-primary'
                             : 'bg-surface-3 text-text-secondary'
                         }`}

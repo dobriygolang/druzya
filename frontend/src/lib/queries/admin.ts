@@ -220,6 +220,43 @@ export function useUnbanUserMutation() {
 // Reports / moderation queue
 // ─────────────────────────────────────────────────────────────────────────
 
+export type AdminReportStatusCanonical = 'pending' | 'resolved' | 'dismissed' | 'unspecified'
+
+// normalizeAdminReportStatus принимает оба формата (legacy lowercase +
+// proto enum NAME 'ADMIN_REPORT_STATUS_PENDING'/...).
+export function normalizeAdminReportStatus(raw: string | undefined | null): AdminReportStatusCanonical {
+  if (!raw) return 'unspecified'
+  switch (raw) {
+    case 'pending':
+    case 'ADMIN_REPORT_STATUS_PENDING':
+      return 'pending'
+    case 'resolved':
+    case 'ADMIN_REPORT_STATUS_RESOLVED':
+      return 'resolved'
+    case 'dismissed':
+    case 'ADMIN_REPORT_STATUS_DISMISSED':
+      return 'dismissed'
+    default:
+      return 'unspecified'
+  }
+}
+
+// adminReportStatusToProtoName — caller передаёт canonical, мы шлём proto
+// enum NAME (vanguard transcoder парсит NAME либо int).
+function adminReportStatusToProtoName(s: string): string {
+  switch (s) {
+    case 'resolved':
+      return 'ADMIN_REPORT_STATUS_RESOLVED'
+    case 'dismissed':
+      return 'ADMIN_REPORT_STATUS_DISMISSED'
+    case 'pending':
+    case '':
+      return 'ADMIN_REPORT_STATUS_PENDING'
+    default:
+      return s
+  }
+}
+
 export type AdminReport = {
   id: string
   reporter_id: string
@@ -254,7 +291,7 @@ export function useAdminReportsQuery(status: string = '') {
   return useQuery({
     queryKey: adminQueryKeys.reports(status),
     queryFn: async () => {
-      const qp = status ? `?status=${encodeURIComponent(status)}` : ''
+      const qp = status ? `?status=${encodeURIComponent(adminReportStatusToProtoName(status))}` : ''
       const w = await api<wireReportList>(`/admin/reports${qp}`)
       const items: AdminReport[] = (w.items ?? []).map((r) => ({
         id: r.id ?? '',

@@ -129,13 +129,19 @@ message MockRecommendation {
   MockRecommendationAction action = 3;
 }
 
+// MockReportStatus — wire-закрытый набор статусов отчёта.
+// PROCESSING — отчёт в очереди / генерится. READY — сформирован, можно
+// читать sections/score/etc. Wire JSON эмитит NAME (MOCK_REPORT_STATUS_READY).
+enum MockReportStatus {
+  MOCK_REPORT_STATUS_UNSPECIFIED = 0;
+  MOCK_REPORT_STATUS_PROCESSING = 1;
+  MOCK_REPORT_STATUS_READY = 2;
+}
+
 // MockReport mirrors OpenAPI MockReport.
 message MockReport {
   string session_id = 1;
-  // "processing" is returned when the report job has not yet written its
-  // draft (bible §8). Kept as a plain string — not an enum — because the
-  // OpenAPI schema omits the field entirely when the report is ready.
-  string status = 2;
+  MockReportStatus status = 2;
   int32 overall_score = 3;
   MockReportSections sections = 4;
   repeated string strengths = 5;
@@ -199,4 +205,40 @@ service MockService {
   rpc GetReport(GetMockReportRequest) returns (MockReport) {
     option (google.api.http) = {get: "/api/v1/mock/session/{session_id}/report"};
   }
+
+  // GetInsightsOverview powers the /insights page's three live cards.
+  rpc GetInsightsOverview(GetInsightsOverviewRequest) returns (InsightsOverview) {
+    option (google.api.http) = {get: "/api/v1/mock/insights/overview"};
+  }
+}
+
+message GetInsightsOverviewRequest {}
+
+message StagePerformance {
+  string stage_kind = 1;
+  int32 total = 2;
+  int32 passed = 3;
+  int32 pass_rate = 4;
+}
+
+message RecurringPattern {
+  string point = 1;
+  int32 count = 2;
+}
+
+message ScoreTrajectoryPoint {
+  string pipeline_id = 1;
+  string finished_at = 2;
+  double score = 3;
+  string verdict = 4;
+}
+
+message InsightsOverview {
+  int32 window_days = 1;
+  repeated StagePerformance stage_performance = 2;
+  repeated RecurringPattern recurring_patterns = 3;
+  repeated ScoreTrajectoryPoint score_trajectory = 4;
+  int32 total_sessions_30d = 5;
+  int32 pipeline_pass_rate_30d = 6;
+  string summary = 7;
 }

@@ -118,6 +118,7 @@ func NewEditor(d monolithServices.Deps) *monolithServices.Module {
 	server := editorPorts.NewEditorServer(
 		create, get, invite, freeze, replayUC, runUC, "/ws/editor", d.Log, editorCreateCheck,
 	)
+	server.Rooms = rooms // for the visibility GET/SET RPCs
 	wsh := editorPorts.NewWSHandler(hub, authServices.EditorTokenVerifier{Issuer: d.TokenIssuer}, rooms, parts, d.Log)
 
 	connectPath, connectHandler := druz9v1connect.NewEditorServiceHandler(server)
@@ -134,10 +135,8 @@ func NewEditor(d monolithServices.Deps) *monolithServices.Module {
 			r.Post("/editor/room/{roomId}/freeze", transcoder.ServeHTTP)
 			r.Get("/editor/room/{roomId}/replay", transcoder.ServeHTTP)
 			r.Post("/editor/room/{roomId}/run", transcoder.ServeHTTP)
-			// Visibility flip + read — mirror whiteboard. Owner-only set.
-			ev := &editorVisibilityHandler{rooms: rooms, log: d.Log, quotaCheck: editorCreateCheck}
-			r.Get("/editor/room/{roomId}/visibility", ev.get)
-			r.Post("/editor/room/{roomId}/visibility", ev.set)
+			r.Get("/editor/room/{roomId}/visibility", transcoder.ServeHTTP)
+			r.Post("/editor/room/{roomId}/visibility", transcoder.ServeHTTP)
 			// DeleteRoom — REST shortcut. Editor domain pока не имеет
 			// DeleteRoom RPC в proto (whiteboard_rooms имеет), и регенерация
 			// proto + clients тяжёлый change. Inline SQL handler покрывает
@@ -212,117 +211,6 @@ func (h *editorDeleteHandler) handle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
-}
-
-// ─── Editor visibility REST handler ───────────────────────────────────────
-//
-// Mirror whiteboard's visibilityHandler — get/set, owner-only set.
-
-type editorVisibilityHandler struct {
-	rooms editorDomain.RoomRepo
-	log   *slog.Logger
-	// quotaCheck — calls EnforceCreate с editorDomainQuotaField. nil-safe
-	// (если subscription module не loaded → permissive). Mirror того же
-	// closure'а который CreateRoom использует, чтобы flip private→shared
-	// эквивалентно «созданию shared room'ы» с точки зрения quota.
-	quotaCheck func(ctx context.Context, userID uuid.UUID) error
-}
-
-type editorVisibilityResponse struct {
-	Visibility string `json:"visibility"`
-}
-
-type editorSetVisibilityRequest struct {
-	Visibility string `json:"visibility"`
-}
-
-func (h *editorVisibilityHandler) get(w http.ResponseWriter, r *http.Request) {
-	if _, ok := sharedMw.UserIDFromContext(r.Context()); !ok {
-		http.Error(w, `{"error":{"code":"unauthenticated"}}`, http.StatusUnauthorized)
-		return
-	}
-	roomID, err := uuid.Parse(chi.URLParam(r, "roomId"))
-	if err != nil {
-		http.Error(w, `{"error":{"code":"bad_id"}}`, http.StatusBadRequest)
-		return
-	}
-	room, err := h.rooms.Get(r.Context(), roomID)
-	if err != nil {
-		if errors.Is(err, editorDomain.ErrNotFound) {
-			http.Error(w, `{"error":{"code":"not_found"}}`, http.StatusNotFound)
-			return
-		}
-		h.log.ErrorContext(r.Context(), "editor.visibility.get", slog.Any("err", err))
-		http.Error(w, `{"error":{"code":"internal"}}`, http.StatusInternalServerError)
-		return
-	}
-	v := room.Visibility
-	if v == "" {
-		v = editorDomain.VisibilityShared
-	}
-	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(editorVisibilityResponse{Visibility: string(v)})
-}
-
-func (h *editorVisibilityHandler) set(w http.ResponseWriter, r *http.Request) {
-	uid, ok := sharedMw.UserIDFromContext(r.Context())
-	if !ok {
-		http.Error(w, `{"error":{"code":"unauthenticated"}}`, http.StatusUnauthorized)
-		return
-	}
-	roomID, err := uuid.Parse(chi.URLParam(r, "roomId"))
-	if err != nil {
-		http.Error(w, `{"error":{"code":"bad_id"}}`, http.StatusBadRequest)
-		return
-	}
-	var body editorSetVisibilityRequest
-	if decodeErr := json.NewDecoder(r.Body).Decode(&body); decodeErr != nil {
-		http.Error(w, `{"error":{"code":"bad_body"}}`, http.StatusBadRequest)
-		return
-	}
-	v := editorDomain.Visibility(body.Visibility)
-	if !v.IsValid() {
-		http.Error(w, `{"error":{"code":"bad_visibility"}}`, http.StatusBadRequest)
-		return
-	}
-	room, err := h.rooms.Get(r.Context(), roomID)
-	if err != nil {
-		if errors.Is(err, editorDomain.ErrNotFound) {
-			http.Error(w, `{"error":{"code":"not_found"}}`, http.StatusNotFound)
-			return
-		}
-		h.log.ErrorContext(r.Context(), "editor.visibility.set: get", slog.Any("err", err))
-		http.Error(w, `{"error":{"code":"internal"}}`, http.StatusInternalServerError)
-		return
-	}
-	if room.OwnerID != uid {
-		http.Error(w, `{"error":{"code":"forbidden","message":"only owner can change visibility"}}`,
-			http.StatusForbidden)
-		return
-	}
-	// Quota: flip private→shared эквивалентен созданию shared-room'ы. Иначе
-	// юзер мог бы обойти лимит создавая комнату как private (без чека) и
-	// flip'ая её shared'ом потом. shared→private / shared→shared / etc —
-	// quota не проверяем.
-	if v == editorDomain.VisibilityShared && room.Visibility != editorDomain.VisibilityShared {
-		if h.quotaCheck != nil {
-			if qerr := h.quotaCheck(r.Context(), uid); qerr != nil {
-				if errors.Is(qerr, subscriptionServices.ErrQuotaExceeded) {
-					http.Error(w, `{"error":{"code":"quota_exceeded","message":"shared rooms limit reached on your tier"}}`,
-						http.StatusPaymentRequired)
-					return
-				}
-				h.log.WarnContext(r.Context(), "editor.visibility.set: quota check", slog.Any("err", qerr))
-			}
-		}
-	}
-	if err := h.rooms.SetVisibility(r.Context(), roomID, v); err != nil {
-		h.log.ErrorContext(r.Context(), "editor.visibility.set: write", slog.Any("err", err))
-		http.Error(w, `{"error":{"code":"internal"}}`, http.StatusInternalServerError)
-		return
-	}
-	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(editorVisibilityResponse{Visibility: string(v)})
 }
 
 // ─── Editor guest-join REST handler ───────────────────────────────────────

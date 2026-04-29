@@ -38,21 +38,28 @@ func (*NoLLMNoteAnswerer) Answer(_ context.Context, _ domain.AskNotesPromptInput
 
 // LLMChainBriefSynthesiser runs TaskDailyBrief in JSON-mode and parses
 // the strict envelope into a DailyBrief.
+//
+// Phase III: если configReader выдаёт coach.pinned_model — Brief идёт
+// через ModelOverride (single candidate, no fallback). Это сохраняет
+// единый стиль коуча между запросами; admin меняет модель явно через
+// dynamic_config. Пустая строка → fall back to TaskDailyBrief routing.
 type LLMChainBriefSynthesiser struct {
 	chain   llmchain.ChatClient
+	cfg     CoachConfigReader
 	log     *slog.Logger
 	timeout time.Duration
 }
 
 // NewLLMChainBriefSynthesiser wires the adapter. chain MUST be non-nil.
-func NewLLMChainBriefSynthesiser(chain llmchain.ChatClient, log *slog.Logger) *LLMChainBriefSynthesiser {
+// cfg может быть nil — тогда pin отключён (legacy task-routing).
+func NewLLMChainBriefSynthesiser(chain llmchain.ChatClient, cfg CoachConfigReader, log *slog.Logger) *LLMChainBriefSynthesiser {
 	if chain == nil {
 		panic("intelligence.NewLLMChainBriefSynthesiser: chain is required")
 	}
 	if log == nil {
 		panic("intelligence.NewLLMChainBriefSynthesiser: logger is required")
 	}
-	return &LLMChainBriefSynthesiser{chain: chain, log: log, timeout: 30 * time.Second}
+	return &LLMChainBriefSynthesiser{chain: chain, cfg: cfg, log: log, timeout: 30 * time.Second}
 }
 
 // Synthesise builds the prompt, calls the chain, parses JSON envelope.
@@ -63,10 +70,18 @@ func (s *LLMChainBriefSynthesiser) Synthesise(ctx context.Context, in domain.Bri
 	ctx, cancel := context.WithTimeout(ctx, s.timeout)
 	defer cancel()
 
+	// Phase III pin: если admin задал coach.pinned_model в dynamic_config,
+	// идём через ModelOverride (single candidate, no fallback). Иначе —
+	// task-routing. Кэширования здесь нет: одна row на DailyBrief, БД
+	// hit копеечный.
+	pinnedModel := ""
+	if s.cfg != nil {
+		pinnedModel = s.cfg.PinnedModel(ctx)
+	}
+
 	var lastErr error
 	for attempt := 0; attempt < 2; attempt++ {
-		resp, err := s.chain.Chat(ctx, llmchain.Request{
-			Task:        llmchain.TaskDailyBrief,
+		req := llmchain.Request{
 			JSONMode:    true,
 			Temperature: 0.4,
 			MaxTokens:   700,
@@ -74,7 +89,13 @@ func (s *LLMChainBriefSynthesiser) Synthesise(ctx context.Context, in domain.Bri
 				{Role: llmchain.RoleSystem, Content: briefSystemPrompt},
 				{Role: llmchain.RoleUser, Content: userMsg},
 			},
-		})
+		}
+		if pinnedModel != "" {
+			req.ModelOverride = pinnedModel
+		} else {
+			req.Task = llmchain.TaskDailyBrief
+		}
+		resp, err := s.chain.Chat(ctx, req)
 		if err != nil {
 			lastErr = err
 			s.log.Warn("intelligence.LLMChainBriefSynthesiser: chain error",

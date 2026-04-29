@@ -84,6 +84,10 @@ func NewArena(d monolithServices.Deps, eloFn arenaPorts.UserEloFunc) *monolithSe
 	server := arenaPorts.NewArenaServer(
 		find, cancelUC, confirm, submit, get, getHistory, timeouts, eloFn, d.Log,
 	)
+	// Bind the polled-endpoint repos so GetCurrentMatch / GetArenaQueueStats
+	// reach the same Postgres + Redis adapters the legacy chi handlers used.
+	server.CurrentMatchRepo = pg
+	server.QueueRepo = rdb
 	matchmaker := arenaApp.NewMatchmaker(
 		rdb, rdb, pg, pg, d.Bus, hub, clock, d.Log,
 	)
@@ -93,16 +97,6 @@ func NewArena(d monolithServices.Deps, eloFn arenaPorts.UserEloFunc) *monolithSe
 	// "I want to practice with AI" use case appropriately. UI was deleted in
 	// Wave-4 A; backend (StartPractice + PracticeHandler + tests) is now
 	// deleted too — search the repo history if you need the old code.
-
-	// Current-match polling endpoint — the SPA polls /arena/match/current
-	// every 2s while the user is in the matchmaking queue and navigates to
-	// /arena/match/:id as soon as it returns 200. Chi-direct (no proto).
-	currentMatch := arenaPorts.NewCurrentMatchHandler(pg, d.Log)
-
-	// Queue-stats polling endpoint — /arena landing page polls every 10s to
-	// show live "X в очереди" numbers per mode card. Chi-direct (no proto)
-	// for the same reason as current_match: tiny shape, fast iteration.
-	queueStats := arenaPorts.NewQueueStatsHandler(rdb, d.Log)
 
 	connectPath, connectHandler := druz9v1connect.NewArenaServiceHandler(server)
 	transcoder := monolithServices.MustTranscode("arena", connectPath, connectHandler)
@@ -121,9 +115,10 @@ func NewArena(d monolithServices.Deps, eloFn arenaPorts.UserEloFunc) *monolithSe
 			r.Delete("/arena/match/cancel", transcoder.ServeHTTP)
 			// /arena/match/current MUST be registered BEFORE /arena/match/{matchId}
 			// — chi matches routes in declaration order and "current" would
-			// otherwise be eaten by the {matchId} pattern.
-			r.Get("/arena/match/current", currentMatch.ServeHTTP)
-			r.Get("/arena/queue-stats", queueStats.ServeHTTP)
+			// otherwise be eaten by the {matchId} pattern. Both polled
+			// endpoints flow through the same vanguard transcoder now.
+			r.Get("/arena/match/current", transcoder.ServeHTTP)
+			r.Get("/arena/queue-stats", transcoder.ServeHTTP)
 			r.Get("/arena/match/{matchId}", transcoder.ServeHTTP)
 			r.Post("/arena/match/{matchId}/confirm", transcoder.ServeHTTP)
 			r.Post("/arena/match/{matchId}/submit", transcoder.ServeHTTP)

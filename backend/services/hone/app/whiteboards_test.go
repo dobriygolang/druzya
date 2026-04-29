@@ -31,10 +31,6 @@ func (f *fakeBoards) List(context.Context, uuid.UUID) ([]domain.WhiteboardSummar
 	return nil, nil
 }
 func (f *fakeBoards) Delete(context.Context, uuid.UUID, uuid.UUID) error { return nil }
-func (f *fakeBoards) SetArchived(context.Context, uuid.UUID, uuid.UUID, bool) error {
-	return nil
-}
-
 func TestSaveCritiqueAsNote_CreatesNoteWithDefaultTitle(t *testing.T) {
 	t.Parallel()
 	boards := &fakeBoards{wb: domain.Whiteboard{ID: uuid.New(), Title: "Chat system"}}

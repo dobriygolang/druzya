@@ -48,15 +48,34 @@ export type MockSession = {
 
 export type MockReportSection = { score: number; comment: string }
 
+// MockReportStatusCanonical — нормализованный статус отчёта. Wire может
+// прислать legacy lowercase ('ready'/'processing') или proto enum NAME
+// ('MOCK_REPORT_STATUS_READY'/...). Используй normalizeMockReportStatus.
+export type MockReportStatusCanonical = 'processing' | 'ready' | 'unspecified'
+
 export type MockReport = {
   session_id: string
-  status?: string // "ready" | "processing"
+  status?: string
   overall_score: number
   sections: Record<string, MockReportSection>
   strengths: string[]
   weaknesses: string[]
   recommendations: { title: string; description?: string; action: { kind: string; params?: Record<string, string> } }[]
   stress_analysis: string
+}
+
+export function normalizeMockReportStatus(raw: string | undefined | null): MockReportStatusCanonical {
+  if (!raw) return 'unspecified'
+  switch (raw) {
+    case 'processing':
+    case 'MOCK_REPORT_STATUS_PROCESSING':
+      return 'processing'
+    case 'ready':
+    case 'MOCK_REPORT_STATUS_READY':
+      return 'ready'
+    default:
+      return 'unspecified'
+  }
 }
 
 export type CreateMockInput = {
@@ -107,7 +126,7 @@ export function useMockReportQuery(id: string | undefined) {
     staleTime: 5 * 60_000,
     refetchInterval: (q) => {
       const data = q.state.data as MockReport | undefined
-      return data?.status === 'ready' ? false : 4_000
+      return normalizeMockReportStatus(data?.status) === 'ready' ? false : 4_000
     },
   })
 }

@@ -55,6 +55,9 @@ const (
 	// CirclesServiceDeleteCircleProcedure is the fully-qualified name of the CirclesService's
 	// DeleteCircle RPC.
 	CirclesServiceDeleteCircleProcedure = "/druz9.v1.CirclesService/DeleteCircle"
+	// CirclesServiceDiscoverCirclesProcedure is the fully-qualified name of the CirclesService's
+	// DiscoverCircles RPC.
+	CirclesServiceDiscoverCirclesProcedure = "/druz9.v1.CirclesService/DiscoverCircles"
 )
 
 // CirclesServiceClient is a client for the druz9.v1.CirclesService service.
@@ -74,6 +77,9 @@ type CirclesServiceClient interface {
 	LeaveCircle(context.Context, *connect.Request[v1.LeaveCircleRequest]) (*connect.Response[v1.CircleMutationResponse], error)
 	// DeleteCircle drops the circle. Owner-only.
 	DeleteCircle(context.Context, *connect.Request[v1.DeleteCircleRequest]) (*connect.Response[v1.CircleMutationResponse], error)
+	// DiscoverCircles returns up to N public circles the user isn't a
+	// member of yet, ordered by recency. Powers the /circles "Discover" tab.
+	DiscoverCircles(context.Context, *connect.Request[v1.DiscoverCirclesRequest]) (*connect.Response[v1.DiscoverCirclesResponse], error)
 }
 
 // NewCirclesServiceClient constructs a client for the druz9.v1.CirclesService service. By default,
@@ -123,17 +129,24 @@ func NewCirclesServiceClient(httpClient connect.HTTPClient, baseURL string, opts
 			connect.WithSchema(circlesServiceMethods.ByName("DeleteCircle")),
 			connect.WithClientOptions(opts...),
 		),
+		discoverCircles: connect.NewClient[v1.DiscoverCirclesRequest, v1.DiscoverCirclesResponse](
+			httpClient,
+			baseURL+CirclesServiceDiscoverCirclesProcedure,
+			connect.WithSchema(circlesServiceMethods.ByName("DiscoverCircles")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
 // circlesServiceClient implements CirclesServiceClient.
 type circlesServiceClient struct {
-	createCircle  *connect.Client[v1.CreateCircleRequest, v1.Circle]
-	getCircle     *connect.Client[v1.GetCircleRequest, v1.Circle]
-	listMyCircles *connect.Client[v1.ListMyCirclesRequest, v1.CircleList]
-	joinCircle    *connect.Client[v1.JoinCircleRequest, v1.CircleMutationResponse]
-	leaveCircle   *connect.Client[v1.LeaveCircleRequest, v1.CircleMutationResponse]
-	deleteCircle  *connect.Client[v1.DeleteCircleRequest, v1.CircleMutationResponse]
+	createCircle    *connect.Client[v1.CreateCircleRequest, v1.Circle]
+	getCircle       *connect.Client[v1.GetCircleRequest, v1.Circle]
+	listMyCircles   *connect.Client[v1.ListMyCirclesRequest, v1.CircleList]
+	joinCircle      *connect.Client[v1.JoinCircleRequest, v1.CircleMutationResponse]
+	leaveCircle     *connect.Client[v1.LeaveCircleRequest, v1.CircleMutationResponse]
+	deleteCircle    *connect.Client[v1.DeleteCircleRequest, v1.CircleMutationResponse]
+	discoverCircles *connect.Client[v1.DiscoverCirclesRequest, v1.DiscoverCirclesResponse]
 }
 
 // CreateCircle calls druz9.v1.CirclesService.CreateCircle.
@@ -166,6 +179,11 @@ func (c *circlesServiceClient) DeleteCircle(ctx context.Context, req *connect.Re
 	return c.deleteCircle.CallUnary(ctx, req)
 }
 
+// DiscoverCircles calls druz9.v1.CirclesService.DiscoverCircles.
+func (c *circlesServiceClient) DiscoverCircles(ctx context.Context, req *connect.Request[v1.DiscoverCirclesRequest]) (*connect.Response[v1.DiscoverCirclesResponse], error) {
+	return c.discoverCircles.CallUnary(ctx, req)
+}
+
 // CirclesServiceHandler is an implementation of the druz9.v1.CirclesService service.
 type CirclesServiceHandler interface {
 	// CreateCircle creates a new circle owned by the caller; the caller is
@@ -183,6 +201,9 @@ type CirclesServiceHandler interface {
 	LeaveCircle(context.Context, *connect.Request[v1.LeaveCircleRequest]) (*connect.Response[v1.CircleMutationResponse], error)
 	// DeleteCircle drops the circle. Owner-only.
 	DeleteCircle(context.Context, *connect.Request[v1.DeleteCircleRequest]) (*connect.Response[v1.CircleMutationResponse], error)
+	// DiscoverCircles returns up to N public circles the user isn't a
+	// member of yet, ordered by recency. Powers the /circles "Discover" tab.
+	DiscoverCircles(context.Context, *connect.Request[v1.DiscoverCirclesRequest]) (*connect.Response[v1.DiscoverCirclesResponse], error)
 }
 
 // NewCirclesServiceHandler builds an HTTP handler from the service implementation. It returns the
@@ -228,6 +249,12 @@ func NewCirclesServiceHandler(svc CirclesServiceHandler, opts ...connect.Handler
 		connect.WithSchema(circlesServiceMethods.ByName("DeleteCircle")),
 		connect.WithHandlerOptions(opts...),
 	)
+	circlesServiceDiscoverCirclesHandler := connect.NewUnaryHandler(
+		CirclesServiceDiscoverCirclesProcedure,
+		svc.DiscoverCircles,
+		connect.WithSchema(circlesServiceMethods.ByName("DiscoverCircles")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/druz9.v1.CirclesService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case CirclesServiceCreateCircleProcedure:
@@ -242,6 +269,8 @@ func NewCirclesServiceHandler(svc CirclesServiceHandler, opts ...connect.Handler
 			circlesServiceLeaveCircleHandler.ServeHTTP(w, r)
 		case CirclesServiceDeleteCircleProcedure:
 			circlesServiceDeleteCircleHandler.ServeHTTP(w, r)
+		case CirclesServiceDiscoverCirclesProcedure:
+			circlesServiceDiscoverCirclesHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -273,4 +302,8 @@ func (UnimplementedCirclesServiceHandler) LeaveCircle(context.Context, *connect.
 
 func (UnimplementedCirclesServiceHandler) DeleteCircle(context.Context, *connect.Request[v1.DeleteCircleRequest]) (*connect.Response[v1.CircleMutationResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.CirclesService.DeleteCircle is not implemented"))
+}
+
+func (UnimplementedCirclesServiceHandler) DiscoverCircles(context.Context, *connect.Request[v1.DiscoverCirclesRequest]) (*connect.Response[v1.DiscoverCirclesResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.CirclesService.DiscoverCircles is not implemented"))
 }

@@ -14,21 +14,22 @@ package storage
 
 import (
 	"context"
-	"encoding/json"
-	"errors"
 	"log/slog"
 	"net/http"
 	"sync"
 	"time"
 
 	"druz9/cmd/monolith/services"
+	"druz9/shared/generated/pb/druz9/v1/druz9v1connect"
 	sharedMw "druz9/shared/pkg/middleware"
 	storageApp "druz9/storage/app"
-	storageDomain "druz9/storage/domain"
 	storageInfra "druz9/storage/infra"
+	storagePorts "druz9/storage/ports"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
+
+	"encoding/json"
 )
 
 // ─── StorageGate ───────────────────────────────────────────────────────────
@@ -138,114 +139,6 @@ func (g *StorageGate) readCached(ctx context.Context, uid uuid.UUID) (quotaCache
 	return e, nil
 }
 
-// ─── REST handler ──────────────────────────────────────────────────────────
-
-type storageHandler struct {
-	getQuota           *storageApp.GetQuota
-	archiveOldestNotes *storageApp.ArchiveOldestNotes
-	archiveNote        *storageApp.ArchiveNote
-	restoreNote        *storageApp.RestoreNote
-	log                *slog.Logger
-}
-
-type storageQuotaResponse struct {
-	UsedBytes  int64  `json:"usedBytes"`
-	QuotaBytes int64  `json:"quotaBytes"`
-	Tier       string `json:"tier"`
-}
-
-func (h *storageHandler) handleGetQuota(w http.ResponseWriter, r *http.Request) {
-	uid, ok := sharedMw.UserIDFromContext(r.Context())
-	if !ok {
-		http.Error(w, `{"error":{"code":"unauthenticated"}}`, http.StatusUnauthorized)
-		return
-	}
-	q, err := h.getQuota.Run(r.Context(), uid)
-	if err != nil {
-		h.log.ErrorContext(r.Context(), "storage.getQuota: query",
-			slog.Any("err", err), slog.String("user_id", uid.String()))
-		http.Error(w, `{"error":{"code":"internal"}}`, http.StatusInternalServerError)
-		return
-	}
-	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(storageQuotaResponse{
-		UsedBytes:  q.UsedBytes,
-		QuotaBytes: q.QuotaBytes,
-		Tier:       q.Tier,
-	})
-}
-
-// handleArchiveOldestNotes — bulk-helper: помечает archived_at = now() для N
-// самых старых (по updated_at) активных заметок юзера. Body: {"count": 10}
-// (default 10, max 100). Возвращает {"archived": M}.
-//
-// Вызывается из «Storage full» dialog'а в UI как быстрый release-pressure
-// без открывания списка заметок руками.
-func (h *storageHandler) handleArchiveOldestNotes(w http.ResponseWriter, r *http.Request) {
-	uid, ok := sharedMw.UserIDFromContext(r.Context())
-	if !ok {
-		http.Error(w, `{"error":{"code":"unauthenticated"}}`, http.StatusUnauthorized)
-		return
-	}
-	var body struct {
-		Count int `json:"count"`
-	}
-	_ = json.NewDecoder(r.Body).Decode(&body) // empty body = default
-	out, err := h.archiveOldestNotes.Run(r.Context(), storageApp.ArchiveOldestNotesIn{
-		UserID: uid,
-		Count:  body.Count,
-	})
-	if err != nil {
-		h.log.ErrorContext(r.Context(), "storage.archiveOldestNotes",
-			slog.Any("err", err), slog.String("user_id", uid.String()))
-		http.Error(w, `{"error":{"code":"internal"}}`, http.StatusInternalServerError)
-		return
-	}
-	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(map[string]any{"archived": out.Archived})
-}
-
-// handleArchiveNote — single-id archive. URL: /storage/archive/note/{id}.
-func (h *storageHandler) handleArchiveNote(w http.ResponseWriter, r *http.Request) {
-	h.runArchive(w, r, true)
-}
-
-// handleRestoreNote — обратная операция (archived_at = NULL).
-func (h *storageHandler) handleRestoreNote(w http.ResponseWriter, r *http.Request) {
-	h.runArchive(w, r, false)
-}
-
-func (h *storageHandler) runArchive(w http.ResponseWriter, r *http.Request, archived bool) {
-	uid, ok := sharedMw.UserIDFromContext(r.Context())
-	if !ok {
-		http.Error(w, `{"error":{"code":"unauthenticated"}}`, http.StatusUnauthorized)
-		return
-	}
-	idStr := chi.URLParam(r, "id")
-	id, err := uuid.Parse(idStr)
-	if err != nil {
-		http.Error(w, `{"error":{"code":"bad_id"}}`, http.StatusBadRequest)
-		return
-	}
-	if archived {
-		err = h.archiveNote.Run(r.Context(), uid, id)
-	} else {
-		err = h.restoreNote.Run(r.Context(), uid, id)
-	}
-	if err != nil {
-		if errors.Is(err, storageDomain.ErrNotFound) {
-			http.Error(w, `{"error":{"code":"not_found"}}`, http.StatusNotFound)
-			return
-		}
-		h.log.ErrorContext(r.Context(), "storage.setArchive",
-			slog.Any("err", err), slog.String("user_id", uid.String()))
-		http.Error(w, `{"error":{"code":"internal"}}`, http.StatusInternalServerError)
-		return
-	}
-	w.Header().Set("Content-Type", "application/json")
-	_, _ = w.Write([]byte(`{"ok":true}`))
-}
-
 // ─── Hourly recomputer ─────────────────────────────────────────────────────
 
 type storageRecomputer struct {
@@ -308,13 +201,16 @@ func NewStorage(d services.Deps) (*services.Module, *StorageGate) {
 		ttl:   30 * time.Second,
 	}
 
-	h := &storageHandler{
-		getQuota:           getQuotaUC,
-		archiveOldestNotes: archiveOldestUC,
-		archiveNote:        archiveNoteUC,
-		restoreNote:        restoreNoteUC,
-		log:                d.Log,
+	server := &storagePorts.Server{
+		GetQuotaUC:           getQuotaUC,
+		ArchiveOldestNotesUC: archiveOldestUC,
+		ArchiveNoteUC:        archiveNoteUC,
+		RestoreNoteUC:        restoreNoteUC,
+		Log:                  d.Log,
 	}
+
+	connectPath, connectHandler := druz9v1connect.NewStorageServiceHandler(server)
+	transcoder := services.MustTranscode("storage", connectPath, connectHandler)
 
 	rec := &storageRecomputer{
 		uc:       recomputeUC,
@@ -324,14 +220,14 @@ func NewStorage(d services.Deps) (*services.Module, *StorageGate) {
 	}
 
 	mod := &services.Module{
+		ConnectPath:        connectPath,
+		ConnectHandler:     transcoder,
+		RequireConnectAuth: true,
 		MountREST: func(r chi.Router) {
-			r.Get("/storage/quota", h.handleGetQuota)
-			// Archive endpoints. Сидят в storage модуле (а не в hone)
-			// потому что архивация — это control из storage-домена
-			// (юзер хочет освободить ленту), а не из notes/whiteboards.
-			r.Post("/storage/archive/notes/oldest", h.handleArchiveOldestNotes)
-			r.Post("/storage/archive/note/{id}", h.handleArchiveNote)
-			r.Post("/storage/archive/note/{id}/restore", h.handleRestoreNote)
+			r.Get("/storage/quota", transcoder.ServeHTTP)
+			r.Post("/storage/archive/notes/oldest", transcoder.ServeHTTP)
+			r.Post("/storage/archive/note/{id}", transcoder.ServeHTTP)
+			r.Post("/storage/archive/note/{id}/restore", transcoder.ServeHTTP)
 		},
 		Background: []func(ctx context.Context){
 			// `go` обязателен — bootstrap зовёт каждую Background-функцию

@@ -1,6 +1,6 @@
 // /checkout — оплата выбранного тарифа (Wave-11).
 //
-// Параметры из query-string: ?plan=premium|pro&period=monthly|annual.
+// Параметры из query-string: ?plan=pro|max&period=monthly|annual.
 // Если plan невалиден — редирект на /pricing.
 //
 // Backend на /billing/checkout пока не реализован — useCheckoutMutation
@@ -46,7 +46,7 @@ const METHODS: PaymentTile[] = [
 ]
 
 function isPlanTier(v: string | null): v is Exclude<BillingPlanTier, 'free'> {
-  return v === 'premium' || v === 'pro'
+  return v === 'pro' || v === 'max'
 }
 
 function isPeriod(v: string | null): v is BillingPeriod {
@@ -64,7 +64,7 @@ export default function CheckoutPage() {
   // forbids conditional hook ordering. Compute the plan/price up front using
   // safe defaults; the JSX redirects out of an invalid plan AFTER all hooks
   // have run.
-  const plan: Exclude<BillingPlanTier, 'free'> = isPlanTier(planParam) ? planParam : 'premium'
+  const plan: Exclude<BillingPlanTier, 'free'> = isPlanTier(planParam) ? planParam : 'pro'
   const period: BillingPeriod = isPeriod(periodParam) ? periodParam : 'monthly'
   const price = PRICE_TABLE[plan][period]
 
@@ -345,4 +345,3 @@ function methodLabel(m: PaymentMethodKind): string {
       return 'Tinkoff'
   }
 }
-

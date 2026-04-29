@@ -4,10 +4,10 @@
 // Three states a row can be in:
 //
 //   1. unselected, available — empty radio circle on the left, name + meta
-//      in the middle, "free" / "💎 premium" chip on the right.
+//      in the middle, "free" / "pro" / "max" chip on the right.
 //   2. selected — accent radio dot, accent border, accent/10 fill.
 //   3. locked — lock-icon replaces the radio circle, opacity-70 on the
-//      label, hover tints the row warn (premium teaser), click is a
+//      label, hover tints the row warn (paid teaser), click is a
 //      no-op handled by the parent (which can open an upgrade sheet).
 //
 // Why a dedicated component: previously every row was rendered inline in
@@ -18,7 +18,7 @@
 import { Check, Lock, Zap } from 'lucide-react'
 import { cn } from '../lib/cn'
 
-export type AIModelTier = 'free' | 'premium'
+export type AIModelTier = 'free' | 'pro' | 'max'
 
 export type AIModelRowProps = {
   /** OpenRouter model id, e.g. "openai/gpt-4o-mini". Pass "" for the
@@ -58,7 +58,7 @@ export function AIModelRow({ id, label, meta, tier, selected, locked, isVirtual,
         isVirtual && !selected && 'border-border-strong bg-text-primary/[0.04] hover:border-text-primary',
         locked && 'cursor-not-allowed hover:border-warn/40 hover:bg-warn/[0.04]',
       )}
-      title={locked ? 'Доступно на Premium подписке' : undefined}
+      title={locked ? 'Доступно на Pro/Max подписке' : undefined}
     >
       {/* Radio / lock indicator */}
       <span
@@ -108,17 +108,17 @@ function RightChip({
       </span>
     )
   }
-  if (tier === 'premium') {
-    return (
-      <span
-        className={cn(
-          'rounded-md px-2 py-0.5 font-mono text-[10px] font-bold uppercase',
-          locked ? 'bg-warn/15 text-warn' : 'bg-warn/20 text-warn',
-        )}
-      >
-        💎 premium
-      </span>
-    )
+  if (tier !== 'free') {
+	return (
+	  <span
+		className={cn(
+		  'rounded-md px-2 py-0.5 font-mono text-[10px] font-bold uppercase',
+		  locked ? 'bg-warn/15 text-warn' : 'bg-warn/20 text-warn',
+		)}
+	  >
+		{tier}
+	  </span>
+	)
   }
   if (selected) {
     return <Check className="h-4 w-4 text-text-primary" strokeWidth={3} />
@@ -138,7 +138,7 @@ export function PremiumUpgradeHint({ onUpgrade }: { onUpgrade?: () => void }) {
   return (
     <div className="mt-3 flex items-center gap-3 rounded-md border border-warn/25 bg-warn/[0.04] px-4 py-2.5">
       <span className="font-mono text-[10px] font-semibold uppercase tracking-wider text-warn">
-        💎 premium-модели
+        pro/max модели
       </span>
       <span className="text-[12px] text-text-secondary">
         GPT-4o, Claude Sonnet 4, Gemini Pro

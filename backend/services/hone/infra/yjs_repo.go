@@ -45,27 +45,32 @@ func (r *YjsRepoPG) OwnsParent(ctx context.Context, k domain.YjsKind, userID, pa
 	return true, nil
 }
 
-// Append вставляет одну update-row. originDeviceID nil → NULL в колонке.
-func (r *YjsRepoPG) Append(ctx context.Context, k domain.YjsKind, userID, parentID uuid.UUID, data []byte, originDeviceID *uuid.UUID) (domain.YjsAppendResult, error) {
+// Append вставляет одну update-row. originDeviceID игнорируется: v2
+// baseline дропнул колонку origin_device_id из note_yjs_updates +
+// whiteboard_yjs_updates (дедуп идёт через monotonic seq на pull-side).
+// Параметр оставлен в сигнатуре для обратной совместимости с app/UC,
+// но в БД не пишется.
+func (r *YjsRepoPG) Append(ctx context.Context, k domain.YjsKind, userID, parentID uuid.UUID, data []byte, _ *uuid.UUID) (domain.YjsAppendResult, error) {
 	q := fmt.Sprintf(
-		`INSERT INTO %s (%s, user_id, update_data, origin_device_id)
-		 VALUES ($1, $2, $3, $4)
+		`INSERT INTO %s (%s, user_id, update_data)
+		 VALUES ($1, $2, $3)
 		 RETURNING seq, created_at`,
 		k.UpdatesTable, k.ForeignKey,
 	)
 	var resp domain.YjsAppendResult
 	if err := r.pool.QueryRow(ctx, q,
-		parentID, userID, data, deviceArg(originDeviceID),
+		parentID, userID, data,
 	).Scan(&resp.Seq, &resp.CreatedAt); err != nil {
 		return domain.YjsAppendResult{}, fmt.Errorf("hone.YjsRepoPG.Append: %w", err)
 	}
 	return resp, nil
 }
 
-// ListSince — updates с seq > since, ASC, до limit штук.
+// ListSince — updates с seq > since, ASC, до limit штук. v2 baseline
+// дропнул origin_device_id, поле YjsUpdate.OriginDeviceID остаётся nil.
 func (r *YjsRepoPG) ListSince(ctx context.Context, k domain.YjsKind, userID, parentID uuid.UUID, since int64, limit int) ([]domain.YjsUpdate, error) {
 	q := fmt.Sprintf(
-		`SELECT seq, update_data, origin_device_id, created_at
+		`SELECT seq, update_data, created_at
 		   FROM %s
 		  WHERE %s=$1 AND user_id=$2 AND seq > $3
 		  ORDER BY seq ASC
@@ -81,7 +86,7 @@ func (r *YjsRepoPG) ListSince(ctx context.Context, k domain.YjsKind, userID, par
 	out := make([]domain.YjsUpdate, 0, 32)
 	for rows.Next() {
 		var u domain.YjsUpdate
-		if err := rows.Scan(&u.Seq, &u.Data, &u.OriginDeviceID, &u.CreatedAt); err != nil {
+		if err := rows.Scan(&u.Seq, &u.Data, &u.CreatedAt); err != nil {
 			return nil, fmt.Errorf("hone.YjsRepoPG.ListSince: scan: %w", err)
 		}
 		out = append(out, u)
@@ -93,7 +98,8 @@ func (r *YjsRepoPG) ListSince(ctx context.Context, k domain.YjsKind, userID, par
 }
 
 // Compact — TX: insert merged + delete все старые с seq < newSeq.
-func (r *YjsRepoPG) Compact(ctx context.Context, k domain.YjsKind, userID, parentID uuid.UUID, mergedData []byte, originDeviceID *uuid.UUID) (domain.YjsCompactResult, error) {
+// originDeviceID игнорируется (см. Append).
+func (r *YjsRepoPG) Compact(ctx context.Context, k domain.YjsKind, userID, parentID uuid.UUID, mergedData []byte, _ *uuid.UUID) (domain.YjsCompactResult, error) {
 	tx, err := r.pool.Begin(ctx)
 	if err != nil {
 		return domain.YjsCompactResult{}, fmt.Errorf("hone.YjsRepoPG.Compact: begin: %w", err)
@@ -101,14 +107,14 @@ func (r *YjsRepoPG) Compact(ctx context.Context, k domain.YjsKind, userID, paren
 	defer func() { _ = tx.Rollback(ctx) }()
 
 	insertQ := fmt.Sprintf(
-		`INSERT INTO %s (%s, user_id, update_data, origin_device_id)
-		 VALUES ($1, $2, $3, $4)
+		`INSERT INTO %s (%s, user_id, update_data)
+		 VALUES ($1, $2, $3)
 		 RETURNING seq`,
 		k.UpdatesTable, k.ForeignKey,
 	)
 	var newSeq int64
 	if qErr := tx.QueryRow(ctx, insertQ,
-		parentID, userID, mergedData, deviceArg(originDeviceID),
+		parentID, userID, mergedData,
 	).Scan(&newSeq); qErr != nil {
 		return domain.YjsCompactResult{}, fmt.Errorf("hone.YjsRepoPG.Compact: insert: %w", qErr)
 	}
@@ -126,14 +132,6 @@ func (r *YjsRepoPG) Compact(ctx context.Context, k domain.YjsKind, userID, paren
 		return domain.YjsCompactResult{}, fmt.Errorf("hone.YjsRepoPG.Compact: commit: %w", err)
 	}
 	return domain.YjsCompactResult{Seq: newSeq, Removed: cmd.RowsAffected()}, nil
-}
-
-// deviceArg — nil-uuid коллапсируется в SQL NULL (как в monolith helper'е).
-func deviceArg(d *uuid.UUID) any {
-	if d == nil || *d == uuid.Nil {
-		return nil
-	}
-	return *d
 }
 
 var _ domain.YjsRepo = (*YjsRepoPG)(nil)

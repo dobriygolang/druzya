@@ -38,6 +38,7 @@ function DailyKataRedirect() {
 const ArenaPage = lazy(() => import('./pages/ArenaPage'))
 const ArenaMatchPage = lazy(() => import('./pages/ArenaMatchPage'))
 const AtlasPage = lazy(() => import('./pages/AtlasPage'))
+const TaskBoardPage = lazy(() => import('./pages/TaskBoardPage'))
 const InsightsPage = lazy(() => import('./pages/InsightsPage'))
 const PracticePage = lazy(() => import('./pages/PracticePage'))
 const CodexPage = lazy(() => import('./pages/CodexPage'))
@@ -144,6 +145,7 @@ export default function App() {
         <Route path="/arena/kata/:slug" element={<DailyPage />} />
         <Route path="/atlas" element={<AtlasPage />} />
         <Route path="/insights" element={<InsightsPage />} />
+        <Route path="/tasks" element={<TaskBoardPage />} />
         <Route path="/practice" element={<PracticePage />} />
         <Route path="/codex" element={<CodexPage />} />
         <Route path="/profile" element={<ProfilePage />} />

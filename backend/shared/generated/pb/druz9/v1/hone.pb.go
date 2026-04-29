@@ -41,6 +41,228 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+// TaskStatus — kanban-колонка карточки.
+type TaskStatus int32
+
+const (
+	TaskStatus_TASK_STATUS_UNSPECIFIED TaskStatus = 0
+	TaskStatus_TASK_STATUS_TODO        TaskStatus = 1
+	TaskStatus_TASK_STATUS_IN_PROGRESS TaskStatus = 2
+	TaskStatus_TASK_STATUS_IN_REVIEW   TaskStatus = 3
+	TaskStatus_TASK_STATUS_DONE        TaskStatus = 4
+	TaskStatus_TASK_STATUS_DISMISSED   TaskStatus = 5
+)
+
+// Enum value maps for TaskStatus.
+var (
+	TaskStatus_name = map[int32]string{
+		0: "TASK_STATUS_UNSPECIFIED",
+		1: "TASK_STATUS_TODO",
+		2: "TASK_STATUS_IN_PROGRESS",
+		3: "TASK_STATUS_IN_REVIEW",
+		4: "TASK_STATUS_DONE",
+		5: "TASK_STATUS_DISMISSED",
+	}
+	TaskStatus_value = map[string]int32{
+		"TASK_STATUS_UNSPECIFIED": 0,
+		"TASK_STATUS_TODO":        1,
+		"TASK_STATUS_IN_PROGRESS": 2,
+		"TASK_STATUS_IN_REVIEW":   3,
+		"TASK_STATUS_DONE":        4,
+		"TASK_STATUS_DISMISSED":   5,
+	}
+)
+
+func (x TaskStatus) Enum() *TaskStatus {
+	p := new(TaskStatus)
+	*p = x
+	return p
+}
+
+func (x TaskStatus) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (TaskStatus) Descriptor() protoreflect.EnumDescriptor {
+	return file_druz9_v1_hone_proto_enumTypes[0].Descriptor()
+}
+
+func (TaskStatus) Type() protoreflect.EnumType {
+	return &file_druz9_v1_hone_proto_enumTypes[0]
+}
+
+func (x TaskStatus) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use TaskStatus.Descriptor instead.
+func (TaskStatus) EnumDescriptor() ([]byte, []int) {
+	return file_druz9_v1_hone_proto_rawDescGZIP(), []int{0}
+}
+
+// TaskKind — тип задачи; маршрутизирует deep_link / иконку на FE.
+type TaskKind int32
+
+const (
+	TaskKind_TASK_KIND_UNSPECIFIED TaskKind = 0
+	TaskKind_TASK_KIND_ALGO        TaskKind = 1
+	TaskKind_TASK_KIND_SYSDESIGN   TaskKind = 2
+	TaskKind_TASK_KIND_QUIZ        TaskKind = 3
+	TaskKind_TASK_KIND_REFLECTION  TaskKind = 4
+	TaskKind_TASK_KIND_READING     TaskKind = 5
+	TaskKind_TASK_KIND_CUSTOM      TaskKind = 6
+)
+
+// Enum value maps for TaskKind.
+var (
+	TaskKind_name = map[int32]string{
+		0: "TASK_KIND_UNSPECIFIED",
+		1: "TASK_KIND_ALGO",
+		2: "TASK_KIND_SYSDESIGN",
+		3: "TASK_KIND_QUIZ",
+		4: "TASK_KIND_REFLECTION",
+		5: "TASK_KIND_READING",
+		6: "TASK_KIND_CUSTOM",
+	}
+	TaskKind_value = map[string]int32{
+		"TASK_KIND_UNSPECIFIED": 0,
+		"TASK_KIND_ALGO":        1,
+		"TASK_KIND_SYSDESIGN":   2,
+		"TASK_KIND_QUIZ":        3,
+		"TASK_KIND_REFLECTION":  4,
+		"TASK_KIND_READING":     5,
+		"TASK_KIND_CUSTOM":      6,
+	}
+)
+
+func (x TaskKind) Enum() *TaskKind {
+	p := new(TaskKind)
+	*p = x
+	return p
+}
+
+func (x TaskKind) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (TaskKind) Descriptor() protoreflect.EnumDescriptor {
+	return file_druz9_v1_hone_proto_enumTypes[1].Descriptor()
+}
+
+func (TaskKind) Type() protoreflect.EnumType {
+	return &file_druz9_v1_hone_proto_enumTypes[1]
+}
+
+func (x TaskKind) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use TaskKind.Descriptor instead.
+func (TaskKind) EnumDescriptor() ([]byte, []int) {
+	return file_druz9_v1_hone_proto_rawDescGZIP(), []int{1}
+}
+
+// TaskSource — кто создал задачу. AI задаётся coach_generator'ом, USER —
+// явная manual create через UI.
+type TaskSource int32
+
+const (
+	TaskSource_TASK_SOURCE_UNSPECIFIED TaskSource = 0
+	TaskSource_TASK_SOURCE_AI          TaskSource = 1
+	TaskSource_TASK_SOURCE_USER        TaskSource = 2
+)
+
+// Enum value maps for TaskSource.
+var (
+	TaskSource_name = map[int32]string{
+		0: "TASK_SOURCE_UNSPECIFIED",
+		1: "TASK_SOURCE_AI",
+		2: "TASK_SOURCE_USER",
+	}
+	TaskSource_value = map[string]int32{
+		"TASK_SOURCE_UNSPECIFIED": 0,
+		"TASK_SOURCE_AI":          1,
+		"TASK_SOURCE_USER":        2,
+	}
+)
+
+func (x TaskSource) Enum() *TaskSource {
+	p := new(TaskSource)
+	*p = x
+	return p
+}
+
+func (x TaskSource) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (TaskSource) Descriptor() protoreflect.EnumDescriptor {
+	return file_druz9_v1_hone_proto_enumTypes[2].Descriptor()
+}
+
+func (TaskSource) Type() protoreflect.EnumType {
+	return &file_druz9_v1_hone_proto_enumTypes[2]
+}
+
+func (x TaskSource) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use TaskSource.Descriptor instead.
+func (TaskSource) EnumDescriptor() ([]byte, []int) {
+	return file_druz9_v1_hone_proto_rawDescGZIP(), []int{2}
+}
+
+// TaskCommentAuthor — кто оставил комментарий (AI или сам юзер).
+type TaskCommentAuthor int32
+
+const (
+	TaskCommentAuthor_TASK_COMMENT_AUTHOR_UNSPECIFIED TaskCommentAuthor = 0
+	TaskCommentAuthor_TASK_COMMENT_AUTHOR_AI          TaskCommentAuthor = 1
+	TaskCommentAuthor_TASK_COMMENT_AUTHOR_USER        TaskCommentAuthor = 2
+)
+
+// Enum value maps for TaskCommentAuthor.
+var (
+	TaskCommentAuthor_name = map[int32]string{
+		0: "TASK_COMMENT_AUTHOR_UNSPECIFIED",
+		1: "TASK_COMMENT_AUTHOR_AI",
+		2: "TASK_COMMENT_AUTHOR_USER",
+	}
+	TaskCommentAuthor_value = map[string]int32{
+		"TASK_COMMENT_AUTHOR_UNSPECIFIED": 0,
+		"TASK_COMMENT_AUTHOR_AI":          1,
+		"TASK_COMMENT_AUTHOR_USER":        2,
+	}
+)
+
+func (x TaskCommentAuthor) Enum() *TaskCommentAuthor {
+	p := new(TaskCommentAuthor)
+	*p = x
+	return p
+}
+
+func (x TaskCommentAuthor) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (TaskCommentAuthor) Descriptor() protoreflect.EnumDescriptor {
+	return file_druz9_v1_hone_proto_enumTypes[3].Descriptor()
+}
+
+func (TaskCommentAuthor) Type() protoreflect.EnumType {
+	return &file_druz9_v1_hone_proto_enumTypes[3]
+}
+
+func (x TaskCommentAuthor) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use TaskCommentAuthor.Descriptor instead.
+func (TaskCommentAuthor) EnumDescriptor() ([]byte, []int) {
+	return file_druz9_v1_hone_proto_rawDescGZIP(), []int{3}
+}
+
 // PlanItem is one row in a day's plan.
 type PlanItem struct {
 	state        protoimpl.MessageState `protogen:"open.v1"`
@@ -2911,6 +3133,1314 @@ func (x *CritiquePacket) GetDone() bool {
 	return false
 }
 
+type PublishNoteRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *PublishNoteRequest) Reset() {
+	*x = PublishNoteRequest{}
+	mi := &file_druz9_v1_hone_proto_msgTypes[50]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *PublishNoteRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PublishNoteRequest) ProtoMessage() {}
+
+func (x *PublishNoteRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_hone_proto_msgTypes[50]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use PublishNoteRequest.ProtoReflect.Descriptor instead.
+func (*PublishNoteRequest) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_hone_proto_rawDescGZIP(), []int{50}
+}
+
+func (x *PublishNoteRequest) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+type PublishNoteResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Slug          string                 `protobuf:"bytes,1,opt,name=slug,proto3" json:"slug,omitempty"`
+	Url           string                 `protobuf:"bytes,2,opt,name=url,proto3" json:"url,omitempty"`
+	PublishedAt   string                 `protobuf:"bytes,3,opt,name=published_at,json=publishedAt,proto3" json:"published_at,omitempty"` // RFC3339
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *PublishNoteResponse) Reset() {
+	*x = PublishNoteResponse{}
+	mi := &file_druz9_v1_hone_proto_msgTypes[51]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *PublishNoteResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PublishNoteResponse) ProtoMessage() {}
+
+func (x *PublishNoteResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_hone_proto_msgTypes[51]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use PublishNoteResponse.ProtoReflect.Descriptor instead.
+func (*PublishNoteResponse) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_hone_proto_rawDescGZIP(), []int{51}
+}
+
+func (x *PublishNoteResponse) GetSlug() string {
+	if x != nil {
+		return x.Slug
+	}
+	return ""
+}
+
+func (x *PublishNoteResponse) GetUrl() string {
+	if x != nil {
+		return x.Url
+	}
+	return ""
+}
+
+func (x *PublishNoteResponse) GetPublishedAt() string {
+	if x != nil {
+		return x.PublishedAt
+	}
+	return ""
+}
+
+type UnpublishNoteRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *UnpublishNoteRequest) Reset() {
+	*x = UnpublishNoteRequest{}
+	mi := &file_druz9_v1_hone_proto_msgTypes[52]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UnpublishNoteRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UnpublishNoteRequest) ProtoMessage() {}
+
+func (x *UnpublishNoteRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_hone_proto_msgTypes[52]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UnpublishNoteRequest.ProtoReflect.Descriptor instead.
+func (*UnpublishNoteRequest) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_hone_proto_rawDescGZIP(), []int{52}
+}
+
+func (x *UnpublishNoteRequest) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+type UnpublishNoteResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Ok            bool                   `protobuf:"varint,1,opt,name=ok,proto3" json:"ok,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *UnpublishNoteResponse) Reset() {
+	*x = UnpublishNoteResponse{}
+	mi := &file_druz9_v1_hone_proto_msgTypes[53]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UnpublishNoteResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UnpublishNoteResponse) ProtoMessage() {}
+
+func (x *UnpublishNoteResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_hone_proto_msgTypes[53]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UnpublishNoteResponse.ProtoReflect.Descriptor instead.
+func (*UnpublishNoteResponse) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_hone_proto_rawDescGZIP(), []int{53}
+}
+
+func (x *UnpublishNoteResponse) GetOk() bool {
+	if x != nil {
+		return x.Ok
+	}
+	return false
+}
+
+type PublishStatusRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *PublishStatusRequest) Reset() {
+	*x = PublishStatusRequest{}
+	mi := &file_druz9_v1_hone_proto_msgTypes[54]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *PublishStatusRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PublishStatusRequest) ProtoMessage() {}
+
+func (x *PublishStatusRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_hone_proto_msgTypes[54]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use PublishStatusRequest.ProtoReflect.Descriptor instead.
+func (*PublishStatusRequest) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_hone_proto_rawDescGZIP(), []int{54}
+}
+
+func (x *PublishStatusRequest) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+type PublishStatusResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Published     bool                   `protobuf:"varint,1,opt,name=published,proto3" json:"published,omitempty"`
+	Slug          string                 `protobuf:"bytes,2,opt,name=slug,proto3" json:"slug,omitempty"`
+	Url           string                 `protobuf:"bytes,3,opt,name=url,proto3" json:"url,omitempty"`
+	PublishedAt   string                 `protobuf:"bytes,4,opt,name=published_at,json=publishedAt,proto3" json:"published_at,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *PublishStatusResponse) Reset() {
+	*x = PublishStatusResponse{}
+	mi := &file_druz9_v1_hone_proto_msgTypes[55]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *PublishStatusResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PublishStatusResponse) ProtoMessage() {}
+
+func (x *PublishStatusResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_hone_proto_msgTypes[55]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use PublishStatusResponse.ProtoReflect.Descriptor instead.
+func (*PublishStatusResponse) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_hone_proto_rawDescGZIP(), []int{55}
+}
+
+func (x *PublishStatusResponse) GetPublished() bool {
+	if x != nil {
+		return x.Published
+	}
+	return false
+}
+
+func (x *PublishStatusResponse) GetSlug() string {
+	if x != nil {
+		return x.Slug
+	}
+	return ""
+}
+
+func (x *PublishStatusResponse) GetUrl() string {
+	if x != nil {
+		return x.Url
+	}
+	return ""
+}
+
+func (x *PublishStatusResponse) GetPublishedAt() string {
+	if x != nil {
+		return x.PublishedAt
+	}
+	return ""
+}
+
+type ShareToWebRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	Id    string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	// plaintext_md is the client-decrypted body; the server stores it
+	// verbatim and provisions a public_slug atomically.
+	PlaintextMd   string `protobuf:"bytes,2,opt,name=plaintext_md,json=plaintextMd,proto3" json:"plaintext_md,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ShareToWebRequest) Reset() {
+	*x = ShareToWebRequest{}
+	mi := &file_druz9_v1_hone_proto_msgTypes[56]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ShareToWebRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ShareToWebRequest) ProtoMessage() {}
+
+func (x *ShareToWebRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_hone_proto_msgTypes[56]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ShareToWebRequest.ProtoReflect.Descriptor instead.
+func (*ShareToWebRequest) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_hone_proto_rawDescGZIP(), []int{56}
+}
+
+func (x *ShareToWebRequest) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *ShareToWebRequest) GetPlaintextMd() string {
+	if x != nil {
+		return x.PlaintextMd
+	}
+	return ""
+}
+
+type ShareToWebResponse struct {
+	state            protoimpl.MessageState `protogen:"open.v1"`
+	Slug             string                 `protobuf:"bytes,1,opt,name=slug,proto3" json:"slug,omitempty"`
+	Url              string                 `protobuf:"bytes,2,opt,name=url,proto3" json:"url,omitempty"`
+	PublishedAt      string                 `protobuf:"bytes,3,opt,name=published_at,json=publishedAt,proto3" json:"published_at,omitempty"`
+	AlreadyPublished bool                   `protobuf:"varint,4,opt,name=already_published,json=alreadyPublished,proto3" json:"already_published,omitempty"`
+	unknownFields    protoimpl.UnknownFields
+	sizeCache        protoimpl.SizeCache
+}
+
+func (x *ShareToWebResponse) Reset() {
+	*x = ShareToWebResponse{}
+	mi := &file_druz9_v1_hone_proto_msgTypes[57]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ShareToWebResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ShareToWebResponse) ProtoMessage() {}
+
+func (x *ShareToWebResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_hone_proto_msgTypes[57]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ShareToWebResponse.ProtoReflect.Descriptor instead.
+func (*ShareToWebResponse) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_hone_proto_rawDescGZIP(), []int{57}
+}
+
+func (x *ShareToWebResponse) GetSlug() string {
+	if x != nil {
+		return x.Slug
+	}
+	return ""
+}
+
+func (x *ShareToWebResponse) GetUrl() string {
+	if x != nil {
+		return x.Url
+	}
+	return ""
+}
+
+func (x *ShareToWebResponse) GetPublishedAt() string {
+	if x != nil {
+		return x.PublishedAt
+	}
+	return ""
+}
+
+func (x *ShareToWebResponse) GetAlreadyPublished() bool {
+	if x != nil {
+		return x.AlreadyPublished
+	}
+	return false
+}
+
+type MakePrivateRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	Id    string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	// ciphertext_b64 is base64(IV || ciphertext) — client-shaped.
+	CiphertextB64 string `protobuf:"bytes,2,opt,name=ciphertext_b64,json=ciphertextB64,proto3" json:"ciphertext_b64,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *MakePrivateRequest) Reset() {
+	*x = MakePrivateRequest{}
+	mi := &file_druz9_v1_hone_proto_msgTypes[58]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *MakePrivateRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*MakePrivateRequest) ProtoMessage() {}
+
+func (x *MakePrivateRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_hone_proto_msgTypes[58]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use MakePrivateRequest.ProtoReflect.Descriptor instead.
+func (*MakePrivateRequest) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_hone_proto_rawDescGZIP(), []int{58}
+}
+
+func (x *MakePrivateRequest) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *MakePrivateRequest) GetCiphertextB64() string {
+	if x != nil {
+		return x.CiphertextB64
+	}
+	return ""
+}
+
+type MakePrivateResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Ok            bool                   `protobuf:"varint,1,opt,name=ok,proto3" json:"ok,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *MakePrivateResponse) Reset() {
+	*x = MakePrivateResponse{}
+	mi := &file_druz9_v1_hone_proto_msgTypes[59]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *MakePrivateResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*MakePrivateResponse) ProtoMessage() {}
+
+func (x *MakePrivateResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_hone_proto_msgTypes[59]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use MakePrivateResponse.ProtoReflect.Descriptor instead.
+func (*MakePrivateResponse) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_hone_proto_rawDescGZIP(), []int{59}
+}
+
+func (x *MakePrivateResponse) GetOk() bool {
+	if x != nil {
+		return x.Ok
+	}
+	return false
+}
+
+type NoteMeta struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Encrypted     bool                   `protobuf:"varint,2,opt,name=encrypted,proto3" json:"encrypted,omitempty"`
+	Published     bool                   `protobuf:"varint,3,opt,name=published,proto3" json:"published,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *NoteMeta) Reset() {
+	*x = NoteMeta{}
+	mi := &file_druz9_v1_hone_proto_msgTypes[60]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *NoteMeta) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*NoteMeta) ProtoMessage() {}
+
+func (x *NoteMeta) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_hone_proto_msgTypes[60]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use NoteMeta.ProtoReflect.Descriptor instead.
+func (*NoteMeta) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_hone_proto_rawDescGZIP(), []int{60}
+}
+
+func (x *NoteMeta) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *NoteMeta) GetEncrypted() bool {
+	if x != nil {
+		return x.Encrypted
+	}
+	return false
+}
+
+func (x *NoteMeta) GetPublished() bool {
+	if x != nil {
+		return x.Published
+	}
+	return false
+}
+
+type BulkNotesMetaRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *BulkNotesMetaRequest) Reset() {
+	*x = BulkNotesMetaRequest{}
+	mi := &file_druz9_v1_hone_proto_msgTypes[61]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *BulkNotesMetaRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*BulkNotesMetaRequest) ProtoMessage() {}
+
+func (x *BulkNotesMetaRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_hone_proto_msgTypes[61]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use BulkNotesMetaRequest.ProtoReflect.Descriptor instead.
+func (*BulkNotesMetaRequest) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_hone_proto_rawDescGZIP(), []int{61}
+}
+
+type BulkNotesMetaResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Notes         []*NoteMeta            `protobuf:"bytes,1,rep,name=notes,proto3" json:"notes,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *BulkNotesMetaResponse) Reset() {
+	*x = BulkNotesMetaResponse{}
+	mi := &file_druz9_v1_hone_proto_msgTypes[62]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *BulkNotesMetaResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*BulkNotesMetaResponse) ProtoMessage() {}
+
+func (x *BulkNotesMetaResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_hone_proto_msgTypes[62]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use BulkNotesMetaResponse.ProtoReflect.Descriptor instead.
+func (*BulkNotesMetaResponse) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_hone_proto_rawDescGZIP(), []int{62}
+}
+
+func (x *BulkNotesMetaResponse) GetNotes() []*NoteMeta {
+	if x != nil {
+		return x.Notes
+	}
+	return nil
+}
+
+// Task — one Notion-style kanban card.
+type Task struct {
+	state              protoimpl.MessageState `protogen:"open.v1"`
+	Id                 string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Status             TaskStatus             `protobuf:"varint,2,opt,name=status,proto3,enum=druz9.v1.TaskStatus" json:"status,omitempty"`
+	Kind               TaskKind               `protobuf:"varint,3,opt,name=kind,proto3,enum=druz9.v1.TaskKind" json:"kind,omitempty"`
+	Source             TaskSource             `protobuf:"varint,4,opt,name=source,proto3,enum=druz9.v1.TaskSource" json:"source,omitempty"`
+	Title              string                 `protobuf:"bytes,5,opt,name=title,proto3" json:"title,omitempty"`
+	BriefMd            string                 `protobuf:"bytes,6,opt,name=brief_md,json=briefMd,proto3" json:"brief_md,omitempty"`
+	SkillKey           string                 `protobuf:"bytes,7,opt,name=skill_key,json=skillKey,proto3" json:"skill_key,omitempty"`
+	DeepLink           string                 `protobuf:"bytes,8,opt,name=deep_link,json=deepLink,proto3" json:"deep_link,omitempty"`
+	RecommendedReading []string               `protobuf:"bytes,9,rep,name=recommended_reading,json=recommendedReading,proto3" json:"recommended_reading,omitempty"`
+	Priority           int32                  `protobuf:"varint,10,opt,name=priority,proto3" json:"priority,omitempty"`
+	CreatedAt          *timestamppb.Timestamp `protobuf:"bytes,11,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	UpdatedAt          *timestamppb.Timestamp `protobuf:"bytes,12,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
+	CompletedAt        *timestamppb.Timestamp `protobuf:"bytes,13,opt,name=completed_at,json=completedAt,proto3" json:"completed_at,omitempty"`
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
+}
+
+func (x *Task) Reset() {
+	*x = Task{}
+	mi := &file_druz9_v1_hone_proto_msgTypes[63]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Task) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Task) ProtoMessage() {}
+
+func (x *Task) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_hone_proto_msgTypes[63]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Task.ProtoReflect.Descriptor instead.
+func (*Task) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_hone_proto_rawDescGZIP(), []int{63}
+}
+
+func (x *Task) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *Task) GetStatus() TaskStatus {
+	if x != nil {
+		return x.Status
+	}
+	return TaskStatus_TASK_STATUS_UNSPECIFIED
+}
+
+func (x *Task) GetKind() TaskKind {
+	if x != nil {
+		return x.Kind
+	}
+	return TaskKind_TASK_KIND_UNSPECIFIED
+}
+
+func (x *Task) GetSource() TaskSource {
+	if x != nil {
+		return x.Source
+	}
+	return TaskSource_TASK_SOURCE_UNSPECIFIED
+}
+
+func (x *Task) GetTitle() string {
+	if x != nil {
+		return x.Title
+	}
+	return ""
+}
+
+func (x *Task) GetBriefMd() string {
+	if x != nil {
+		return x.BriefMd
+	}
+	return ""
+}
+
+func (x *Task) GetSkillKey() string {
+	if x != nil {
+		return x.SkillKey
+	}
+	return ""
+}
+
+func (x *Task) GetDeepLink() string {
+	if x != nil {
+		return x.DeepLink
+	}
+	return ""
+}
+
+func (x *Task) GetRecommendedReading() []string {
+	if x != nil {
+		return x.RecommendedReading
+	}
+	return nil
+}
+
+func (x *Task) GetPriority() int32 {
+	if x != nil {
+		return x.Priority
+	}
+	return 0
+}
+
+func (x *Task) GetCreatedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.CreatedAt
+	}
+	return nil
+}
+
+func (x *Task) GetUpdatedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.UpdatedAt
+	}
+	return nil
+}
+
+func (x *Task) GetCompletedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.CompletedAt
+	}
+	return nil
+}
+
+type TaskComment struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	AuthorKind    TaskCommentAuthor      `protobuf:"varint,2,opt,name=author_kind,json=authorKind,proto3,enum=druz9.v1.TaskCommentAuthor" json:"author_kind,omitempty"`
+	BodyMd        string                 `protobuf:"bytes,3,opt,name=body_md,json=bodyMd,proto3" json:"body_md,omitempty"`
+	CreatedAt     *timestamppb.Timestamp `protobuf:"bytes,4,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *TaskComment) Reset() {
+	*x = TaskComment{}
+	mi := &file_druz9_v1_hone_proto_msgTypes[64]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *TaskComment) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*TaskComment) ProtoMessage() {}
+
+func (x *TaskComment) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_hone_proto_msgTypes[64]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use TaskComment.ProtoReflect.Descriptor instead.
+func (*TaskComment) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_hone_proto_rawDescGZIP(), []int{64}
+}
+
+func (x *TaskComment) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *TaskComment) GetAuthorKind() TaskCommentAuthor {
+	if x != nil {
+		return x.AuthorKind
+	}
+	return TaskCommentAuthor_TASK_COMMENT_AUTHOR_UNSPECIFIED
+}
+
+func (x *TaskComment) GetBodyMd() string {
+	if x != nil {
+		return x.BodyMd
+	}
+	return ""
+}
+
+func (x *TaskComment) GetCreatedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.CreatedAt
+	}
+	return nil
+}
+
+type ListTasksRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListTasksRequest) Reset() {
+	*x = ListTasksRequest{}
+	mi := &file_druz9_v1_hone_proto_msgTypes[65]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListTasksRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListTasksRequest) ProtoMessage() {}
+
+func (x *ListTasksRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_hone_proto_msgTypes[65]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListTasksRequest.ProtoReflect.Descriptor instead.
+func (*ListTasksRequest) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_hone_proto_rawDescGZIP(), []int{65}
+}
+
+type ListTasksResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Tasks         []*Task                `protobuf:"bytes,1,rep,name=tasks,proto3" json:"tasks,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListTasksResponse) Reset() {
+	*x = ListTasksResponse{}
+	mi := &file_druz9_v1_hone_proto_msgTypes[66]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListTasksResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListTasksResponse) ProtoMessage() {}
+
+func (x *ListTasksResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_hone_proto_msgTypes[66]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListTasksResponse.ProtoReflect.Descriptor instead.
+func (*ListTasksResponse) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_hone_proto_rawDescGZIP(), []int{66}
+}
+
+func (x *ListTasksResponse) GetTasks() []*Task {
+	if x != nil {
+		return x.Tasks
+	}
+	return nil
+}
+
+type CreateTaskRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Kind          TaskKind               `protobuf:"varint,1,opt,name=kind,proto3,enum=druz9.v1.TaskKind" json:"kind,omitempty"`
+	Title         string                 `protobuf:"bytes,2,opt,name=title,proto3" json:"title,omitempty"`
+	BriefMd       string                 `protobuf:"bytes,3,opt,name=brief_md,json=briefMd,proto3" json:"brief_md,omitempty"`
+	SkillKey      string                 `protobuf:"bytes,4,opt,name=skill_key,json=skillKey,proto3" json:"skill_key,omitempty"`
+	DeepLink      string                 `protobuf:"bytes,5,opt,name=deep_link,json=deepLink,proto3" json:"deep_link,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CreateTaskRequest) Reset() {
+	*x = CreateTaskRequest{}
+	mi := &file_druz9_v1_hone_proto_msgTypes[67]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CreateTaskRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CreateTaskRequest) ProtoMessage() {}
+
+func (x *CreateTaskRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_hone_proto_msgTypes[67]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CreateTaskRequest.ProtoReflect.Descriptor instead.
+func (*CreateTaskRequest) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_hone_proto_rawDescGZIP(), []int{67}
+}
+
+func (x *CreateTaskRequest) GetKind() TaskKind {
+	if x != nil {
+		return x.Kind
+	}
+	return TaskKind_TASK_KIND_UNSPECIFIED
+}
+
+func (x *CreateTaskRequest) GetTitle() string {
+	if x != nil {
+		return x.Title
+	}
+	return ""
+}
+
+func (x *CreateTaskRequest) GetBriefMd() string {
+	if x != nil {
+		return x.BriefMd
+	}
+	return ""
+}
+
+func (x *CreateTaskRequest) GetSkillKey() string {
+	if x != nil {
+		return x.SkillKey
+	}
+	return ""
+}
+
+func (x *CreateTaskRequest) GetDeepLink() string {
+	if x != nil {
+		return x.DeepLink
+	}
+	return ""
+}
+
+type MoveTaskStatusRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Status        TaskStatus             `protobuf:"varint,2,opt,name=status,proto3,enum=druz9.v1.TaskStatus" json:"status,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *MoveTaskStatusRequest) Reset() {
+	*x = MoveTaskStatusRequest{}
+	mi := &file_druz9_v1_hone_proto_msgTypes[68]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *MoveTaskStatusRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*MoveTaskStatusRequest) ProtoMessage() {}
+
+func (x *MoveTaskStatusRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_hone_proto_msgTypes[68]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use MoveTaskStatusRequest.ProtoReflect.Descriptor instead.
+func (*MoveTaskStatusRequest) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_hone_proto_rawDescGZIP(), []int{68}
+}
+
+func (x *MoveTaskStatusRequest) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *MoveTaskStatusRequest) GetStatus() TaskStatus {
+	if x != nil {
+		return x.Status
+	}
+	return TaskStatus_TASK_STATUS_UNSPECIFIED
+}
+
+type DeleteTaskRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *DeleteTaskRequest) Reset() {
+	*x = DeleteTaskRequest{}
+	mi := &file_druz9_v1_hone_proto_msgTypes[69]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DeleteTaskRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DeleteTaskRequest) ProtoMessage() {}
+
+func (x *DeleteTaskRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_hone_proto_msgTypes[69]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DeleteTaskRequest.ProtoReflect.Descriptor instead.
+func (*DeleteTaskRequest) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_hone_proto_rawDescGZIP(), []int{69}
+}
+
+func (x *DeleteTaskRequest) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+type DeleteTaskResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Ok            bool                   `protobuf:"varint,1,opt,name=ok,proto3" json:"ok,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *DeleteTaskResponse) Reset() {
+	*x = DeleteTaskResponse{}
+	mi := &file_druz9_v1_hone_proto_msgTypes[70]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DeleteTaskResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DeleteTaskResponse) ProtoMessage() {}
+
+func (x *DeleteTaskResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_hone_proto_msgTypes[70]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DeleteTaskResponse.ProtoReflect.Descriptor instead.
+func (*DeleteTaskResponse) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_hone_proto_rawDescGZIP(), []int{70}
+}
+
+func (x *DeleteTaskResponse) GetOk() bool {
+	if x != nil {
+		return x.Ok
+	}
+	return false
+}
+
+type ListTaskCommentsRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListTaskCommentsRequest) Reset() {
+	*x = ListTaskCommentsRequest{}
+	mi := &file_druz9_v1_hone_proto_msgTypes[71]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListTaskCommentsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListTaskCommentsRequest) ProtoMessage() {}
+
+func (x *ListTaskCommentsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_hone_proto_msgTypes[71]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListTaskCommentsRequest.ProtoReflect.Descriptor instead.
+func (*ListTaskCommentsRequest) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_hone_proto_rawDescGZIP(), []int{71}
+}
+
+func (x *ListTaskCommentsRequest) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+type ListTaskCommentsResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Comments      []*TaskComment         `protobuf:"bytes,1,rep,name=comments,proto3" json:"comments,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListTaskCommentsResponse) Reset() {
+	*x = ListTaskCommentsResponse{}
+	mi := &file_druz9_v1_hone_proto_msgTypes[72]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListTaskCommentsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListTaskCommentsResponse) ProtoMessage() {}
+
+func (x *ListTaskCommentsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_hone_proto_msgTypes[72]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListTaskCommentsResponse.ProtoReflect.Descriptor instead.
+func (*ListTaskCommentsResponse) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_hone_proto_rawDescGZIP(), []int{72}
+}
+
+func (x *ListTaskCommentsResponse) GetComments() []*TaskComment {
+	if x != nil {
+		return x.Comments
+	}
+	return nil
+}
+
+type AddTaskCommentRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	BodyMd        string                 `protobuf:"bytes,2,opt,name=body_md,json=bodyMd,proto3" json:"body_md,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AddTaskCommentRequest) Reset() {
+	*x = AddTaskCommentRequest{}
+	mi := &file_druz9_v1_hone_proto_msgTypes[73]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AddTaskCommentRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AddTaskCommentRequest) ProtoMessage() {}
+
+func (x *AddTaskCommentRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_hone_proto_msgTypes[73]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AddTaskCommentRequest.ProtoReflect.Descriptor instead.
+func (*AddTaskCommentRequest) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_hone_proto_rawDescGZIP(), []int{73}
+}
+
+func (x *AddTaskCommentRequest) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *AddTaskCommentRequest) GetBodyMd() string {
+	if x != nil {
+		return x.BodyMd
+	}
+	return ""
+}
+
 // CueSession — одна импортированная встреча из Cue desktop'а.
 type CueSession struct {
 	state           protoimpl.MessageState `protogen:"open.v1"`
@@ -2928,7 +4458,7 @@ type CueSession struct {
 
 func (x *CueSession) Reset() {
 	*x = CueSession{}
-	mi := &file_druz9_v1_hone_proto_msgTypes[50]
+	mi := &file_druz9_v1_hone_proto_msgTypes[74]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2940,7 +4470,7 @@ func (x *CueSession) String() string {
 func (*CueSession) ProtoMessage() {}
 
 func (x *CueSession) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_hone_proto_msgTypes[50]
+	mi := &file_druz9_v1_hone_proto_msgTypes[74]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2953,7 +4483,7 @@ func (x *CueSession) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CueSession.ProtoReflect.Descriptor instead.
 func (*CueSession) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_hone_proto_rawDescGZIP(), []int{50}
+	return file_druz9_v1_hone_proto_rawDescGZIP(), []int{74}
 }
 
 func (x *CueSession) GetId() string {
@@ -3027,7 +4557,7 @@ type ImportCueSessionRequest struct {
 
 func (x *ImportCueSessionRequest) Reset() {
 	*x = ImportCueSessionRequest{}
-	mi := &file_druz9_v1_hone_proto_msgTypes[51]
+	mi := &file_druz9_v1_hone_proto_msgTypes[75]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3039,7 +4569,7 @@ func (x *ImportCueSessionRequest) String() string {
 func (*ImportCueSessionRequest) ProtoMessage() {}
 
 func (x *ImportCueSessionRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_hone_proto_msgTypes[51]
+	mi := &file_druz9_v1_hone_proto_msgTypes[75]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3052,7 +4582,7 @@ func (x *ImportCueSessionRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ImportCueSessionRequest.ProtoReflect.Descriptor instead.
 func (*ImportCueSessionRequest) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_hone_proto_rawDescGZIP(), []int{51}
+	return file_druz9_v1_hone_proto_rawDescGZIP(), []int{75}
 }
 
 func (x *ImportCueSessionRequest) GetFilePath() string {
@@ -3098,7 +4628,7 @@ type ListCueSessionsRequest struct {
 
 func (x *ListCueSessionsRequest) Reset() {
 	*x = ListCueSessionsRequest{}
-	mi := &file_druz9_v1_hone_proto_msgTypes[52]
+	mi := &file_druz9_v1_hone_proto_msgTypes[76]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3110,7 +4640,7 @@ func (x *ListCueSessionsRequest) String() string {
 func (*ListCueSessionsRequest) ProtoMessage() {}
 
 func (x *ListCueSessionsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_hone_proto_msgTypes[52]
+	mi := &file_druz9_v1_hone_proto_msgTypes[76]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3123,7 +4653,7 @@ func (x *ListCueSessionsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListCueSessionsRequest.ProtoReflect.Descriptor instead.
 func (*ListCueSessionsRequest) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_hone_proto_rawDescGZIP(), []int{52}
+	return file_druz9_v1_hone_proto_rawDescGZIP(), []int{76}
 }
 
 type ListCueSessionsResponse struct {
@@ -3135,7 +4665,7 @@ type ListCueSessionsResponse struct {
 
 func (x *ListCueSessionsResponse) Reset() {
 	*x = ListCueSessionsResponse{}
-	mi := &file_druz9_v1_hone_proto_msgTypes[53]
+	mi := &file_druz9_v1_hone_proto_msgTypes[77]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3147,7 +4677,7 @@ func (x *ListCueSessionsResponse) String() string {
 func (*ListCueSessionsResponse) ProtoMessage() {}
 
 func (x *ListCueSessionsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_hone_proto_msgTypes[53]
+	mi := &file_druz9_v1_hone_proto_msgTypes[77]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3160,7 +4690,7 @@ func (x *ListCueSessionsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListCueSessionsResponse.ProtoReflect.Descriptor instead.
 func (*ListCueSessionsResponse) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_hone_proto_rawDescGZIP(), []int{53}
+	return file_druz9_v1_hone_proto_rawDescGZIP(), []int{77}
 }
 
 func (x *ListCueSessionsResponse) GetSessions() []*CueSession {
@@ -3179,7 +4709,7 @@ type GetCueSessionRequest struct {
 
 func (x *GetCueSessionRequest) Reset() {
 	*x = GetCueSessionRequest{}
-	mi := &file_druz9_v1_hone_proto_msgTypes[54]
+	mi := &file_druz9_v1_hone_proto_msgTypes[78]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3191,7 +4721,7 @@ func (x *GetCueSessionRequest) String() string {
 func (*GetCueSessionRequest) ProtoMessage() {}
 
 func (x *GetCueSessionRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_hone_proto_msgTypes[54]
+	mi := &file_druz9_v1_hone_proto_msgTypes[78]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3204,7 +4734,7 @@ func (x *GetCueSessionRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetCueSessionRequest.ProtoReflect.Descriptor instead.
 func (*GetCueSessionRequest) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_hone_proto_rawDescGZIP(), []int{54}
+	return file_druz9_v1_hone_proto_rawDescGZIP(), []int{78}
 }
 
 func (x *GetCueSessionRequest) GetId() string {
@@ -3224,7 +4754,7 @@ type UpdateCueSessionRequest struct {
 
 func (x *UpdateCueSessionRequest) Reset() {
 	*x = UpdateCueSessionRequest{}
-	mi := &file_druz9_v1_hone_proto_msgTypes[55]
+	mi := &file_druz9_v1_hone_proto_msgTypes[79]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3236,7 +4766,7 @@ func (x *UpdateCueSessionRequest) String() string {
 func (*UpdateCueSessionRequest) ProtoMessage() {}
 
 func (x *UpdateCueSessionRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_hone_proto_msgTypes[55]
+	mi := &file_druz9_v1_hone_proto_msgTypes[79]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3249,7 +4779,7 @@ func (x *UpdateCueSessionRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UpdateCueSessionRequest.ProtoReflect.Descriptor instead.
 func (*UpdateCueSessionRequest) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_hone_proto_rawDescGZIP(), []int{55}
+	return file_druz9_v1_hone_proto_rawDescGZIP(), []int{79}
 }
 
 func (x *UpdateCueSessionRequest) GetId() string {
@@ -3275,7 +4805,7 @@ type DeleteCueSessionRequest struct {
 
 func (x *DeleteCueSessionRequest) Reset() {
 	*x = DeleteCueSessionRequest{}
-	mi := &file_druz9_v1_hone_proto_msgTypes[56]
+	mi := &file_druz9_v1_hone_proto_msgTypes[80]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3287,7 +4817,7 @@ func (x *DeleteCueSessionRequest) String() string {
 func (*DeleteCueSessionRequest) ProtoMessage() {}
 
 func (x *DeleteCueSessionRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_hone_proto_msgTypes[56]
+	mi := &file_druz9_v1_hone_proto_msgTypes[80]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3300,7 +4830,7 @@ func (x *DeleteCueSessionRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteCueSessionRequest.ProtoReflect.Descriptor instead.
 func (*DeleteCueSessionRequest) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_hone_proto_rawDescGZIP(), []int{56}
+	return file_druz9_v1_hone_proto_rawDescGZIP(), []int{80}
 }
 
 func (x *DeleteCueSessionRequest) GetId() string {
@@ -3318,7 +4848,7 @@ type DeleteCueSessionResponse struct {
 
 func (x *DeleteCueSessionResponse) Reset() {
 	*x = DeleteCueSessionResponse{}
-	mi := &file_druz9_v1_hone_proto_msgTypes[57]
+	mi := &file_druz9_v1_hone_proto_msgTypes[81]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3330,7 +4860,7 @@ func (x *DeleteCueSessionResponse) String() string {
 func (*DeleteCueSessionResponse) ProtoMessage() {}
 
 func (x *DeleteCueSessionResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_hone_proto_msgTypes[57]
+	mi := &file_druz9_v1_hone_proto_msgTypes[81]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3343,7 +4873,7 @@ func (x *DeleteCueSessionResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteCueSessionResponse.ProtoReflect.Descriptor instead.
 func (*DeleteCueSessionResponse) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_hone_proto_rawDescGZIP(), []int{57}
+	return file_druz9_v1_hone_proto_rawDescGZIP(), []int{81}
 }
 
 type SendCueSessionToTelegramRequest struct {
@@ -3355,7 +4885,7 @@ type SendCueSessionToTelegramRequest struct {
 
 func (x *SendCueSessionToTelegramRequest) Reset() {
 	*x = SendCueSessionToTelegramRequest{}
-	mi := &file_druz9_v1_hone_proto_msgTypes[58]
+	mi := &file_druz9_v1_hone_proto_msgTypes[82]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3367,7 +4897,7 @@ func (x *SendCueSessionToTelegramRequest) String() string {
 func (*SendCueSessionToTelegramRequest) ProtoMessage() {}
 
 func (x *SendCueSessionToTelegramRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_hone_proto_msgTypes[58]
+	mi := &file_druz9_v1_hone_proto_msgTypes[82]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3380,7 +4910,7 @@ func (x *SendCueSessionToTelegramRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SendCueSessionToTelegramRequest.ProtoReflect.Descriptor instead.
 func (*SendCueSessionToTelegramRequest) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_hone_proto_rawDescGZIP(), []int{58}
+	return file_druz9_v1_hone_proto_rawDescGZIP(), []int{82}
 }
 
 func (x *SendCueSessionToTelegramRequest) GetId() string {
@@ -3402,7 +4932,7 @@ type SendCueSessionToTelegramResponse struct {
 
 func (x *SendCueSessionToTelegramResponse) Reset() {
 	*x = SendCueSessionToTelegramResponse{}
-	mi := &file_druz9_v1_hone_proto_msgTypes[59]
+	mi := &file_druz9_v1_hone_proto_msgTypes[83]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3414,7 +4944,7 @@ func (x *SendCueSessionToTelegramResponse) String() string {
 func (*SendCueSessionToTelegramResponse) ProtoMessage() {}
 
 func (x *SendCueSessionToTelegramResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_hone_proto_msgTypes[59]
+	mi := &file_druz9_v1_hone_proto_msgTypes[83]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3427,7 +4957,7 @@ func (x *SendCueSessionToTelegramResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SendCueSessionToTelegramResponse.ProtoReflect.Descriptor instead.
 func (*SendCueSessionToTelegramResponse) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_hone_proto_rawDescGZIP(), []int{59}
+	return file_druz9_v1_hone_proto_rawDescGZIP(), []int{83}
 }
 
 func (x *SendCueSessionToTelegramResponse) GetOk() bool {
@@ -3462,7 +4992,7 @@ type RecordStandupRequest struct {
 
 func (x *RecordStandupRequest) Reset() {
 	*x = RecordStandupRequest{}
-	mi := &file_druz9_v1_hone_proto_msgTypes[60]
+	mi := &file_druz9_v1_hone_proto_msgTypes[84]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3474,7 +5004,7 @@ func (x *RecordStandupRequest) String() string {
 func (*RecordStandupRequest) ProtoMessage() {}
 
 func (x *RecordStandupRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_hone_proto_msgTypes[60]
+	mi := &file_druz9_v1_hone_proto_msgTypes[84]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3487,7 +5017,7 @@ func (x *RecordStandupRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RecordStandupRequest.ProtoReflect.Descriptor instead.
 func (*RecordStandupRequest) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_hone_proto_rawDescGZIP(), []int{60}
+	return file_druz9_v1_hone_proto_rawDescGZIP(), []int{84}
 }
 
 func (x *RecordStandupRequest) GetYesterday() string {
@@ -3521,7 +5051,7 @@ type RecordStandupResponse struct {
 
 func (x *RecordStandupResponse) Reset() {
 	*x = RecordStandupResponse{}
-	mi := &file_druz9_v1_hone_proto_msgTypes[61]
+	mi := &file_druz9_v1_hone_proto_msgTypes[85]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3533,7 +5063,7 @@ func (x *RecordStandupResponse) String() string {
 func (*RecordStandupResponse) ProtoMessage() {}
 
 func (x *RecordStandupResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_hone_proto_msgTypes[61]
+	mi := &file_druz9_v1_hone_proto_msgTypes[85]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3546,7 +5076,7 @@ func (x *RecordStandupResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RecordStandupResponse.ProtoReflect.Descriptor instead.
 func (*RecordStandupResponse) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_hone_proto_rawDescGZIP(), []int{61}
+	return file_druz9_v1_hone_proto_rawDescGZIP(), []int{85}
 }
 
 func (x *RecordStandupResponse) GetNote() *Note {
@@ -3575,7 +5105,7 @@ type GetTodayStandupRequest struct {
 
 func (x *GetTodayStandupRequest) Reset() {
 	*x = GetTodayStandupRequest{}
-	mi := &file_druz9_v1_hone_proto_msgTypes[62]
+	mi := &file_druz9_v1_hone_proto_msgTypes[86]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3587,7 +5117,7 @@ func (x *GetTodayStandupRequest) String() string {
 func (*GetTodayStandupRequest) ProtoMessage() {}
 
 func (x *GetTodayStandupRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_hone_proto_msgTypes[62]
+	mi := &file_druz9_v1_hone_proto_msgTypes[86]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3600,7 +5130,7 @@ func (x *GetTodayStandupRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetTodayStandupRequest.ProtoReflect.Descriptor instead.
 func (*GetTodayStandupRequest) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_hone_proto_rawDescGZIP(), []int{62}
+	return file_druz9_v1_hone_proto_rawDescGZIP(), []int{86}
 }
 
 type GetTodayStandupResponse struct {
@@ -3613,7 +5143,7 @@ type GetTodayStandupResponse struct {
 
 func (x *GetTodayStandupResponse) Reset() {
 	*x = GetTodayStandupResponse{}
-	mi := &file_druz9_v1_hone_proto_msgTypes[63]
+	mi := &file_druz9_v1_hone_proto_msgTypes[87]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3625,7 +5155,7 @@ func (x *GetTodayStandupResponse) String() string {
 func (*GetTodayStandupResponse) ProtoMessage() {}
 
 func (x *GetTodayStandupResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_druz9_v1_hone_proto_msgTypes[63]
+	mi := &file_druz9_v1_hone_proto_msgTypes[87]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3638,7 +5168,7 @@ func (x *GetTodayStandupResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetTodayStandupResponse.ProtoReflect.Descriptor instead.
 func (*GetTodayStandupResponse) Descriptor() ([]byte, []int) {
-	return file_druz9_v1_hone_proto_rawDescGZIP(), []int{63}
+	return file_druz9_v1_hone_proto_rawDescGZIP(), []int{87}
 }
 
 func (x *GetTodayStandupResponse) GetRecorded() bool {
@@ -3881,7 +5411,91 @@ const file_druz9_v1_hone_proto_rawDesc = "" +
 	"\x0eCritiquePacket\x12\x18\n" +
 	"\asection\x18\x01 \x01(\tR\asection\x12\x14\n" +
 	"\x05delta\x18\x02 \x01(\tR\x05delta\x12\x12\n" +
-	"\x04done\x18\x03 \x01(\bR\x04done\"\xc7\x02\n" +
+	"\x04done\x18\x03 \x01(\bR\x04done\"$\n" +
+	"\x12PublishNoteRequest\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\"^\n" +
+	"\x13PublishNoteResponse\x12\x12\n" +
+	"\x04slug\x18\x01 \x01(\tR\x04slug\x12\x10\n" +
+	"\x03url\x18\x02 \x01(\tR\x03url\x12!\n" +
+	"\fpublished_at\x18\x03 \x01(\tR\vpublishedAt\"&\n" +
+	"\x14UnpublishNoteRequest\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\"'\n" +
+	"\x15UnpublishNoteResponse\x12\x0e\n" +
+	"\x02ok\x18\x01 \x01(\bR\x02ok\"&\n" +
+	"\x14PublishStatusRequest\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\"~\n" +
+	"\x15PublishStatusResponse\x12\x1c\n" +
+	"\tpublished\x18\x01 \x01(\bR\tpublished\x12\x12\n" +
+	"\x04slug\x18\x02 \x01(\tR\x04slug\x12\x10\n" +
+	"\x03url\x18\x03 \x01(\tR\x03url\x12!\n" +
+	"\fpublished_at\x18\x04 \x01(\tR\vpublishedAt\"F\n" +
+	"\x11ShareToWebRequest\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12!\n" +
+	"\fplaintext_md\x18\x02 \x01(\tR\vplaintextMd\"\x8a\x01\n" +
+	"\x12ShareToWebResponse\x12\x12\n" +
+	"\x04slug\x18\x01 \x01(\tR\x04slug\x12\x10\n" +
+	"\x03url\x18\x02 \x01(\tR\x03url\x12!\n" +
+	"\fpublished_at\x18\x03 \x01(\tR\vpublishedAt\x12+\n" +
+	"\x11already_published\x18\x04 \x01(\bR\x10alreadyPublished\"K\n" +
+	"\x12MakePrivateRequest\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12%\n" +
+	"\x0eciphertext_b64\x18\x02 \x01(\tR\rciphertextB64\"%\n" +
+	"\x13MakePrivateResponse\x12\x0e\n" +
+	"\x02ok\x18\x01 \x01(\bR\x02ok\"V\n" +
+	"\bNoteMeta\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1c\n" +
+	"\tencrypted\x18\x02 \x01(\bR\tencrypted\x12\x1c\n" +
+	"\tpublished\x18\x03 \x01(\bR\tpublished\"\x16\n" +
+	"\x14BulkNotesMetaRequest\"A\n" +
+	"\x15BulkNotesMetaResponse\x12(\n" +
+	"\x05notes\x18\x01 \x03(\v2\x12.druz9.v1.NoteMetaR\x05notes\"\x87\x04\n" +
+	"\x04Task\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12,\n" +
+	"\x06status\x18\x02 \x01(\x0e2\x14.druz9.v1.TaskStatusR\x06status\x12&\n" +
+	"\x04kind\x18\x03 \x01(\x0e2\x12.druz9.v1.TaskKindR\x04kind\x12,\n" +
+	"\x06source\x18\x04 \x01(\x0e2\x14.druz9.v1.TaskSourceR\x06source\x12\x14\n" +
+	"\x05title\x18\x05 \x01(\tR\x05title\x12\x19\n" +
+	"\bbrief_md\x18\x06 \x01(\tR\abriefMd\x12\x1b\n" +
+	"\tskill_key\x18\a \x01(\tR\bskillKey\x12\x1b\n" +
+	"\tdeep_link\x18\b \x01(\tR\bdeepLink\x12/\n" +
+	"\x13recommended_reading\x18\t \x03(\tR\x12recommendedReading\x12\x1a\n" +
+	"\bpriority\x18\n" +
+	" \x01(\x05R\bpriority\x129\n" +
+	"\n" +
+	"created_at\x18\v \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\x129\n" +
+	"\n" +
+	"updated_at\x18\f \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt\x12=\n" +
+	"\fcompleted_at\x18\r \x01(\v2\x1a.google.protobuf.TimestampR\vcompletedAt\"\xaf\x01\n" +
+	"\vTaskComment\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12<\n" +
+	"\vauthor_kind\x18\x02 \x01(\x0e2\x1b.druz9.v1.TaskCommentAuthorR\n" +
+	"authorKind\x12\x17\n" +
+	"\abody_md\x18\x03 \x01(\tR\x06bodyMd\x129\n" +
+	"\n" +
+	"created_at\x18\x04 \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\"\x12\n" +
+	"\x10ListTasksRequest\"9\n" +
+	"\x11ListTasksResponse\x12$\n" +
+	"\x05tasks\x18\x01 \x03(\v2\x0e.druz9.v1.TaskR\x05tasks\"\xa6\x01\n" +
+	"\x11CreateTaskRequest\x12&\n" +
+	"\x04kind\x18\x01 \x01(\x0e2\x12.druz9.v1.TaskKindR\x04kind\x12\x14\n" +
+	"\x05title\x18\x02 \x01(\tR\x05title\x12\x19\n" +
+	"\bbrief_md\x18\x03 \x01(\tR\abriefMd\x12\x1b\n" +
+	"\tskill_key\x18\x04 \x01(\tR\bskillKey\x12\x1b\n" +
+	"\tdeep_link\x18\x05 \x01(\tR\bdeepLink\"U\n" +
+	"\x15MoveTaskStatusRequest\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12,\n" +
+	"\x06status\x18\x02 \x01(\x0e2\x14.druz9.v1.TaskStatusR\x06status\"#\n" +
+	"\x11DeleteTaskRequest\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\"$\n" +
+	"\x12DeleteTaskResponse\x12\x0e\n" +
+	"\x02ok\x18\x01 \x01(\bR\x02ok\")\n" +
+	"\x17ListTaskCommentsRequest\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\"M\n" +
+	"\x18ListTaskCommentsResponse\x121\n" +
+	"\bcomments\x18\x01 \x03(\v2\x15.druz9.v1.TaskCommentR\bcomments\"@\n" +
+	"\x15AddTaskCommentRequest\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x17\n" +
+	"\abody_md\x18\x02 \x01(\tR\x06bodyMd\"\xc7\x02\n" +
 	"\n" +
 	"CueSession\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1b\n" +
@@ -3928,7 +5542,32 @@ const file_druz9_v1_hone_proto_rawDesc = "" +
 	"\x16GetTodayStandupRequest\"\\\n" +
 	"\x17GetTodayStandupResponse\x12\x1a\n" +
 	"\brecorded\x18\x01 \x01(\bR\brecorded\x12%\n" +
-	"\x0eyesterday_done\x18\x02 \x03(\tR\ryesterdayDone2\xf7\x1e\n" +
+	"\x0eyesterday_done\x18\x02 \x03(\tR\ryesterdayDone*\xa8\x01\n" +
+	"\n" +
+	"TaskStatus\x12\x1b\n" +
+	"\x17TASK_STATUS_UNSPECIFIED\x10\x00\x12\x14\n" +
+	"\x10TASK_STATUS_TODO\x10\x01\x12\x1b\n" +
+	"\x17TASK_STATUS_IN_PROGRESS\x10\x02\x12\x19\n" +
+	"\x15TASK_STATUS_IN_REVIEW\x10\x03\x12\x14\n" +
+	"\x10TASK_STATUS_DONE\x10\x04\x12\x19\n" +
+	"\x15TASK_STATUS_DISMISSED\x10\x05*\xad\x01\n" +
+	"\bTaskKind\x12\x19\n" +
+	"\x15TASK_KIND_UNSPECIFIED\x10\x00\x12\x12\n" +
+	"\x0eTASK_KIND_ALGO\x10\x01\x12\x17\n" +
+	"\x13TASK_KIND_SYSDESIGN\x10\x02\x12\x12\n" +
+	"\x0eTASK_KIND_QUIZ\x10\x03\x12\x18\n" +
+	"\x14TASK_KIND_REFLECTION\x10\x04\x12\x15\n" +
+	"\x11TASK_KIND_READING\x10\x05\x12\x14\n" +
+	"\x10TASK_KIND_CUSTOM\x10\x06*S\n" +
+	"\n" +
+	"TaskSource\x12\x1b\n" +
+	"\x17TASK_SOURCE_UNSPECIFIED\x10\x00\x12\x12\n" +
+	"\x0eTASK_SOURCE_AI\x10\x01\x12\x14\n" +
+	"\x10TASK_SOURCE_USER\x10\x02*r\n" +
+	"\x11TaskCommentAuthor\x12#\n" +
+	"\x1fTASK_COMMENT_AUTHOR_UNSPECIFIED\x10\x00\x12\x1a\n" +
+	"\x16TASK_COMMENT_AUTHOR_AI\x10\x01\x12\x1c\n" +
+	"\x18TASK_COMMENT_AUTHOR_USER\x10\x022\xce)\n" +
 	"\vHoneService\x12n\n" +
 	"\x11GenerateDailyPlan\x12\".druz9.v1.GenerateDailyPlanRequest\x1a\x0e.druz9.v1.Plan\"%\x82\xd3\xe4\x93\x02\x1f:\x01*\"\x1a/api/v1/hone/plan/generate\x12X\n" +
 	"\fGetDailyPlan\x12\x1d.druz9.v1.GetDailyPlanRequest\x1a\x0e.druz9.v1.Plan\"\x19\x82\xd3\xe4\x93\x02\x13\x12\x11/api/v1/hone/plan\x12i\n" +
@@ -3968,7 +5607,22 @@ const file_druz9_v1_hone_proto_rawDesc = "" +
 	"\rGetCueSession\x12\x1e.druz9.v1.GetCueSessionRequest\x1a\x14.druz9.v1.CueSession\"\x1d\x82\xd3\xe4\x93\x02\x17\x12\x15/api/v1/hone/cue/{id}\x12o\n" +
 	"\x10UpdateCueSession\x12!.druz9.v1.UpdateCueSessionRequest\x1a\x14.druz9.v1.CueSession\"\"\x82\xd3\xe4\x93\x02\x1c:\x01*\"\x17/api/v1/hone/cue/update\x12}\n" +
 	"\x10DeleteCueSession\x12!.druz9.v1.DeleteCueSessionRequest\x1a\".druz9.v1.DeleteCueSessionResponse\"\"\x82\xd3\xe4\x93\x02\x1c:\x01*\"\x17/api/v1/hone/cue/delete\x12\x9c\x01\n" +
-	"\x18SendCueSessionToTelegram\x12).druz9.v1.SendCueSessionToTelegramRequest\x1a*.druz9.v1.SendCueSessionToTelegramResponse\")\x82\xd3\xe4\x93\x02#:\x01*\"\x1e/api/v1/hone/cue/{id}/telegramB\x86\x01\n" +
+	"\x18SendCueSessionToTelegram\x12).druz9.v1.SendCueSessionToTelegramRequest\x1a*.druz9.v1.SendCueSessionToTelegramResponse\")\x82\xd3\xe4\x93\x02#:\x01*\"\x1e/api/v1/hone/cue/{id}/telegram\x12`\n" +
+	"\tListTasks\x12\x1a.druz9.v1.ListTasksRequest\x1a\x1b.druz9.v1.ListTasksResponse\"\x1a\x82\xd3\xe4\x93\x02\x14\x12\x12/api/v1/hone/tasks\x12X\n" +
+	"\n" +
+	"CreateTask\x12\x1b.druz9.v1.CreateTaskRequest\x1a\x0e.druz9.v1.Task\"\x1d\x82\xd3\xe4\x93\x02\x17:\x01*\"\x12/api/v1/hone/tasks\x12l\n" +
+	"\x0eMoveTaskStatus\x12\x1f.druz9.v1.MoveTaskStatusRequest\x1a\x0e.druz9.v1.Task\")\x82\xd3\xe4\x93\x02#:\x01*\"\x1e/api/v1/hone/tasks/{id}/status\x12h\n" +
+	"\n" +
+	"DeleteTask\x12\x1b.druz9.v1.DeleteTaskRequest\x1a\x1c.druz9.v1.DeleteTaskResponse\"\x1f\x82\xd3\xe4\x93\x02\x19*\x17/api/v1/hone/tasks/{id}\x12\x83\x01\n" +
+	"\x10ListTaskComments\x12!.druz9.v1.ListTaskCommentsRequest\x1a\".druz9.v1.ListTaskCommentsResponse\"(\x82\xd3\xe4\x93\x02\"\x12 /api/v1/hone/tasks/{id}/comments\x12u\n" +
+	"\x0eAddTaskComment\x12\x1f.druz9.v1.AddTaskCommentRequest\x1a\x15.druz9.v1.TaskComment\"+\x82\xd3\xe4\x93\x02%:\x01*\" /api/v1/hone/tasks/{id}/comments\x12q\n" +
+	"\vPublishNote\x12\x1c.druz9.v1.PublishNoteRequest\x1a\x1d.druz9.v1.PublishNoteResponse\"%\x82\xd3\xe4\x93\x02\x1f:\x01*\"\x1a/api/v1/notes/{id}/publish\x12y\n" +
+	"\rUnpublishNote\x12\x1e.druz9.v1.UnpublishNoteRequest\x1a\x1f.druz9.v1.UnpublishNoteResponse\"'\x82\xd3\xe4\x93\x02!:\x01*\"\x1c/api/v1/notes/{id}/unpublish\x12{\n" +
+	"\rPublishStatus\x12\x1e.druz9.v1.PublishStatusRequest\x1a\x1f.druz9.v1.PublishStatusResponse\")\x82\xd3\xe4\x93\x02#\x12!/api/v1/notes/{id}/publish-status\x12s\n" +
+	"\n" +
+	"ShareToWeb\x12\x1b.druz9.v1.ShareToWebRequest\x1a\x1c.druz9.v1.ShareToWebResponse\"*\x82\xd3\xe4\x93\x02$:\x01*\"\x1f/api/v1/notes/{id}/share-to-web\x12v\n" +
+	"\vMakePrivate\x12\x1c.druz9.v1.MakePrivateRequest\x1a\x1d.druz9.v1.MakePrivateResponse\"*\x82\xd3\xe4\x93\x02$:\x01*\"\x1f/api/v1/notes/{id}/make-private\x12l\n" +
+	"\rBulkNotesMeta\x12\x1e.druz9.v1.BulkNotesMetaRequest\x1a\x1f.druz9.v1.BulkNotesMetaResponse\"\x1a\x82\xd3\xe4\x93\x02\x14\x12\x12/api/v1/notes/metaB\x86\x01\n" +
 	"\fcom.druz9.v1B\tHoneProtoP\x01Z*druz9/shared/generated/pb/druz9/v1;druz9v1\xa2\x02\x03DXX\xaa\x02\bDruz9.V1\xca\x02\bDruz9\\V1\xe2\x02\x14Druz9\\V1\\GPBMetadata\xea\x02\tDruz9::V1b\x06proto3"
 
 var (
@@ -3983,178 +5637,244 @@ func file_druz9_v1_hone_proto_rawDescGZIP() []byte {
 	return file_druz9_v1_hone_proto_rawDescData
 }
 
-var file_druz9_v1_hone_proto_msgTypes = make([]protoimpl.MessageInfo, 64)
+var file_druz9_v1_hone_proto_enumTypes = make([]protoimpl.EnumInfo, 4)
+var file_druz9_v1_hone_proto_msgTypes = make([]protoimpl.MessageInfo, 88)
 var file_druz9_v1_hone_proto_goTypes = []any{
-	(*PlanItem)(nil),                         // 0: druz9.v1.PlanItem
-	(*Plan)(nil),                             // 1: druz9.v1.Plan
-	(*GenerateDailyPlanRequest)(nil),         // 2: druz9.v1.GenerateDailyPlanRequest
-	(*GetDailyPlanRequest)(nil),              // 3: druz9.v1.GetDailyPlanRequest
-	(*DismissPlanItemRequest)(nil),           // 4: druz9.v1.DismissPlanItemRequest
-	(*CompletePlanItemRequest)(nil),          // 5: druz9.v1.CompletePlanItemRequest
-	(*FocusSession)(nil),                     // 6: druz9.v1.FocusSession
-	(*StartFocusSessionRequest)(nil),         // 7: druz9.v1.StartFocusSessionRequest
-	(*EndFocusSessionRequest)(nil),           // 8: druz9.v1.EndFocusSessionRequest
-	(*GetStatsRequest)(nil),                  // 9: druz9.v1.GetStatsRequest
-	(*FocusHeatmapDay)(nil),                  // 10: druz9.v1.FocusHeatmapDay
-	(*Stats)(nil),                            // 11: druz9.v1.Stats
-	(*QueueItem)(nil),                        // 12: druz9.v1.QueueItem
-	(*QueueStats)(nil),                       // 13: druz9.v1.QueueStats
-	(*ListQueueRequest)(nil),                 // 14: druz9.v1.ListQueueRequest
-	(*ListQueueResponse)(nil),                // 15: druz9.v1.ListQueueResponse
-	(*AddQueueItemRequest)(nil),              // 16: druz9.v1.AddQueueItemRequest
-	(*UpdateQueueItemStatusRequest)(nil),     // 17: druz9.v1.UpdateQueueItemStatusRequest
-	(*DeleteQueueItemRequest)(nil),           // 18: druz9.v1.DeleteQueueItemRequest
-	(*DeleteQueueItemResponse)(nil),          // 19: druz9.v1.DeleteQueueItemResponse
-	(*Folder)(nil),                           // 20: druz9.v1.Folder
-	(*Note)(nil),                             // 21: druz9.v1.Note
-	(*NoteSummary)(nil),                      // 22: druz9.v1.NoteSummary
-	(*CreateNoteRequest)(nil),                // 23: druz9.v1.CreateNoteRequest
-	(*UpdateNoteRequest)(nil),                // 24: druz9.v1.UpdateNoteRequest
-	(*GetNoteRequest)(nil),                   // 25: druz9.v1.GetNoteRequest
-	(*ListNotesRequest)(nil),                 // 26: druz9.v1.ListNotesRequest
-	(*ListNotesResponse)(nil),                // 27: druz9.v1.ListNotesResponse
-	(*DeleteNoteRequest)(nil),                // 28: druz9.v1.DeleteNoteRequest
-	(*DeleteNoteResponse)(nil),               // 29: druz9.v1.DeleteNoteResponse
-	(*MoveNoteRequest)(nil),                  // 30: druz9.v1.MoveNoteRequest
-	(*CreateFolderRequest)(nil),              // 31: druz9.v1.CreateFolderRequest
-	(*ListFoldersRequest)(nil),               // 32: druz9.v1.ListFoldersRequest
-	(*ListFoldersResponse)(nil),              // 33: druz9.v1.ListFoldersResponse
-	(*DeleteFolderRequest)(nil),              // 34: druz9.v1.DeleteFolderRequest
-	(*DeleteFolderResponse)(nil),             // 35: druz9.v1.DeleteFolderResponse
-	(*Connection)(nil),                       // 36: druz9.v1.Connection
-	(*GetNoteConnectionsRequest)(nil),        // 37: druz9.v1.GetNoteConnectionsRequest
-	(*Whiteboard)(nil),                       // 38: druz9.v1.Whiteboard
-	(*WhiteboardSummary)(nil),                // 39: druz9.v1.WhiteboardSummary
-	(*CreateWhiteboardRequest)(nil),          // 40: druz9.v1.CreateWhiteboardRequest
-	(*UpdateWhiteboardRequest)(nil),          // 41: druz9.v1.UpdateWhiteboardRequest
-	(*GetWhiteboardRequest)(nil),             // 42: druz9.v1.GetWhiteboardRequest
-	(*ListWhiteboardsRequest)(nil),           // 43: druz9.v1.ListWhiteboardsRequest
-	(*ListWhiteboardsResponse)(nil),          // 44: druz9.v1.ListWhiteboardsResponse
-	(*DeleteWhiteboardRequest)(nil),          // 45: druz9.v1.DeleteWhiteboardRequest
-	(*DeleteWhiteboardResponse)(nil),         // 46: druz9.v1.DeleteWhiteboardResponse
-	(*CritiqueWhiteboardRequest)(nil),        // 47: druz9.v1.CritiqueWhiteboardRequest
-	(*SaveCritiqueAsNoteRequest)(nil),        // 48: druz9.v1.SaveCritiqueAsNoteRequest
-	(*CritiquePacket)(nil),                   // 49: druz9.v1.CritiquePacket
-	(*CueSession)(nil),                       // 50: druz9.v1.CueSession
-	(*ImportCueSessionRequest)(nil),          // 51: druz9.v1.ImportCueSessionRequest
-	(*ListCueSessionsRequest)(nil),           // 52: druz9.v1.ListCueSessionsRequest
-	(*ListCueSessionsResponse)(nil),          // 53: druz9.v1.ListCueSessionsResponse
-	(*GetCueSessionRequest)(nil),             // 54: druz9.v1.GetCueSessionRequest
-	(*UpdateCueSessionRequest)(nil),          // 55: druz9.v1.UpdateCueSessionRequest
-	(*DeleteCueSessionRequest)(nil),          // 56: druz9.v1.DeleteCueSessionRequest
-	(*DeleteCueSessionResponse)(nil),         // 57: druz9.v1.DeleteCueSessionResponse
-	(*SendCueSessionToTelegramRequest)(nil),  // 58: druz9.v1.SendCueSessionToTelegramRequest
-	(*SendCueSessionToTelegramResponse)(nil), // 59: druz9.v1.SendCueSessionToTelegramResponse
-	(*RecordStandupRequest)(nil),             // 60: druz9.v1.RecordStandupRequest
-	(*RecordStandupResponse)(nil),            // 61: druz9.v1.RecordStandupResponse
-	(*GetTodayStandupRequest)(nil),           // 62: druz9.v1.GetTodayStandupRequest
-	(*GetTodayStandupResponse)(nil),          // 63: druz9.v1.GetTodayStandupResponse
-	(*timestamppb.Timestamp)(nil),            // 64: google.protobuf.Timestamp
+	(TaskStatus)(0),                          // 0: druz9.v1.TaskStatus
+	(TaskKind)(0),                            // 1: druz9.v1.TaskKind
+	(TaskSource)(0),                          // 2: druz9.v1.TaskSource
+	(TaskCommentAuthor)(0),                   // 3: druz9.v1.TaskCommentAuthor
+	(*PlanItem)(nil),                         // 4: druz9.v1.PlanItem
+	(*Plan)(nil),                             // 5: druz9.v1.Plan
+	(*GenerateDailyPlanRequest)(nil),         // 6: druz9.v1.GenerateDailyPlanRequest
+	(*GetDailyPlanRequest)(nil),              // 7: druz9.v1.GetDailyPlanRequest
+	(*DismissPlanItemRequest)(nil),           // 8: druz9.v1.DismissPlanItemRequest
+	(*CompletePlanItemRequest)(nil),          // 9: druz9.v1.CompletePlanItemRequest
+	(*FocusSession)(nil),                     // 10: druz9.v1.FocusSession
+	(*StartFocusSessionRequest)(nil),         // 11: druz9.v1.StartFocusSessionRequest
+	(*EndFocusSessionRequest)(nil),           // 12: druz9.v1.EndFocusSessionRequest
+	(*GetStatsRequest)(nil),                  // 13: druz9.v1.GetStatsRequest
+	(*FocusHeatmapDay)(nil),                  // 14: druz9.v1.FocusHeatmapDay
+	(*Stats)(nil),                            // 15: druz9.v1.Stats
+	(*QueueItem)(nil),                        // 16: druz9.v1.QueueItem
+	(*QueueStats)(nil),                       // 17: druz9.v1.QueueStats
+	(*ListQueueRequest)(nil),                 // 18: druz9.v1.ListQueueRequest
+	(*ListQueueResponse)(nil),                // 19: druz9.v1.ListQueueResponse
+	(*AddQueueItemRequest)(nil),              // 20: druz9.v1.AddQueueItemRequest
+	(*UpdateQueueItemStatusRequest)(nil),     // 21: druz9.v1.UpdateQueueItemStatusRequest
+	(*DeleteQueueItemRequest)(nil),           // 22: druz9.v1.DeleteQueueItemRequest
+	(*DeleteQueueItemResponse)(nil),          // 23: druz9.v1.DeleteQueueItemResponse
+	(*Folder)(nil),                           // 24: druz9.v1.Folder
+	(*Note)(nil),                             // 25: druz9.v1.Note
+	(*NoteSummary)(nil),                      // 26: druz9.v1.NoteSummary
+	(*CreateNoteRequest)(nil),                // 27: druz9.v1.CreateNoteRequest
+	(*UpdateNoteRequest)(nil),                // 28: druz9.v1.UpdateNoteRequest
+	(*GetNoteRequest)(nil),                   // 29: druz9.v1.GetNoteRequest
+	(*ListNotesRequest)(nil),                 // 30: druz9.v1.ListNotesRequest
+	(*ListNotesResponse)(nil),                // 31: druz9.v1.ListNotesResponse
+	(*DeleteNoteRequest)(nil),                // 32: druz9.v1.DeleteNoteRequest
+	(*DeleteNoteResponse)(nil),               // 33: druz9.v1.DeleteNoteResponse
+	(*MoveNoteRequest)(nil),                  // 34: druz9.v1.MoveNoteRequest
+	(*CreateFolderRequest)(nil),              // 35: druz9.v1.CreateFolderRequest
+	(*ListFoldersRequest)(nil),               // 36: druz9.v1.ListFoldersRequest
+	(*ListFoldersResponse)(nil),              // 37: druz9.v1.ListFoldersResponse
+	(*DeleteFolderRequest)(nil),              // 38: druz9.v1.DeleteFolderRequest
+	(*DeleteFolderResponse)(nil),             // 39: druz9.v1.DeleteFolderResponse
+	(*Connection)(nil),                       // 40: druz9.v1.Connection
+	(*GetNoteConnectionsRequest)(nil),        // 41: druz9.v1.GetNoteConnectionsRequest
+	(*Whiteboard)(nil),                       // 42: druz9.v1.Whiteboard
+	(*WhiteboardSummary)(nil),                // 43: druz9.v1.WhiteboardSummary
+	(*CreateWhiteboardRequest)(nil),          // 44: druz9.v1.CreateWhiteboardRequest
+	(*UpdateWhiteboardRequest)(nil),          // 45: druz9.v1.UpdateWhiteboardRequest
+	(*GetWhiteboardRequest)(nil),             // 46: druz9.v1.GetWhiteboardRequest
+	(*ListWhiteboardsRequest)(nil),           // 47: druz9.v1.ListWhiteboardsRequest
+	(*ListWhiteboardsResponse)(nil),          // 48: druz9.v1.ListWhiteboardsResponse
+	(*DeleteWhiteboardRequest)(nil),          // 49: druz9.v1.DeleteWhiteboardRequest
+	(*DeleteWhiteboardResponse)(nil),         // 50: druz9.v1.DeleteWhiteboardResponse
+	(*CritiqueWhiteboardRequest)(nil),        // 51: druz9.v1.CritiqueWhiteboardRequest
+	(*SaveCritiqueAsNoteRequest)(nil),        // 52: druz9.v1.SaveCritiqueAsNoteRequest
+	(*CritiquePacket)(nil),                   // 53: druz9.v1.CritiquePacket
+	(*PublishNoteRequest)(nil),               // 54: druz9.v1.PublishNoteRequest
+	(*PublishNoteResponse)(nil),              // 55: druz9.v1.PublishNoteResponse
+	(*UnpublishNoteRequest)(nil),             // 56: druz9.v1.UnpublishNoteRequest
+	(*UnpublishNoteResponse)(nil),            // 57: druz9.v1.UnpublishNoteResponse
+	(*PublishStatusRequest)(nil),             // 58: druz9.v1.PublishStatusRequest
+	(*PublishStatusResponse)(nil),            // 59: druz9.v1.PublishStatusResponse
+	(*ShareToWebRequest)(nil),                // 60: druz9.v1.ShareToWebRequest
+	(*ShareToWebResponse)(nil),               // 61: druz9.v1.ShareToWebResponse
+	(*MakePrivateRequest)(nil),               // 62: druz9.v1.MakePrivateRequest
+	(*MakePrivateResponse)(nil),              // 63: druz9.v1.MakePrivateResponse
+	(*NoteMeta)(nil),                         // 64: druz9.v1.NoteMeta
+	(*BulkNotesMetaRequest)(nil),             // 65: druz9.v1.BulkNotesMetaRequest
+	(*BulkNotesMetaResponse)(nil),            // 66: druz9.v1.BulkNotesMetaResponse
+	(*Task)(nil),                             // 67: druz9.v1.Task
+	(*TaskComment)(nil),                      // 68: druz9.v1.TaskComment
+	(*ListTasksRequest)(nil),                 // 69: druz9.v1.ListTasksRequest
+	(*ListTasksResponse)(nil),                // 70: druz9.v1.ListTasksResponse
+	(*CreateTaskRequest)(nil),                // 71: druz9.v1.CreateTaskRequest
+	(*MoveTaskStatusRequest)(nil),            // 72: druz9.v1.MoveTaskStatusRequest
+	(*DeleteTaskRequest)(nil),                // 73: druz9.v1.DeleteTaskRequest
+	(*DeleteTaskResponse)(nil),               // 74: druz9.v1.DeleteTaskResponse
+	(*ListTaskCommentsRequest)(nil),          // 75: druz9.v1.ListTaskCommentsRequest
+	(*ListTaskCommentsResponse)(nil),         // 76: druz9.v1.ListTaskCommentsResponse
+	(*AddTaskCommentRequest)(nil),            // 77: druz9.v1.AddTaskCommentRequest
+	(*CueSession)(nil),                       // 78: druz9.v1.CueSession
+	(*ImportCueSessionRequest)(nil),          // 79: druz9.v1.ImportCueSessionRequest
+	(*ListCueSessionsRequest)(nil),           // 80: druz9.v1.ListCueSessionsRequest
+	(*ListCueSessionsResponse)(nil),          // 81: druz9.v1.ListCueSessionsResponse
+	(*GetCueSessionRequest)(nil),             // 82: druz9.v1.GetCueSessionRequest
+	(*UpdateCueSessionRequest)(nil),          // 83: druz9.v1.UpdateCueSessionRequest
+	(*DeleteCueSessionRequest)(nil),          // 84: druz9.v1.DeleteCueSessionRequest
+	(*DeleteCueSessionResponse)(nil),         // 85: druz9.v1.DeleteCueSessionResponse
+	(*SendCueSessionToTelegramRequest)(nil),  // 86: druz9.v1.SendCueSessionToTelegramRequest
+	(*SendCueSessionToTelegramResponse)(nil), // 87: druz9.v1.SendCueSessionToTelegramResponse
+	(*RecordStandupRequest)(nil),             // 88: druz9.v1.RecordStandupRequest
+	(*RecordStandupResponse)(nil),            // 89: druz9.v1.RecordStandupResponse
+	(*GetTodayStandupRequest)(nil),           // 90: druz9.v1.GetTodayStandupRequest
+	(*GetTodayStandupResponse)(nil),          // 91: druz9.v1.GetTodayStandupResponse
+	(*timestamppb.Timestamp)(nil),            // 92: google.protobuf.Timestamp
 }
 var file_druz9_v1_hone_proto_depIdxs = []int32{
-	64, // 0: druz9.v1.Plan.regenerated_at:type_name -> google.protobuf.Timestamp
-	0,  // 1: druz9.v1.Plan.items:type_name -> druz9.v1.PlanItem
-	64, // 2: druz9.v1.FocusSession.started_at:type_name -> google.protobuf.Timestamp
-	64, // 3: druz9.v1.FocusSession.ended_at:type_name -> google.protobuf.Timestamp
-	10, // 4: druz9.v1.Stats.heatmap:type_name -> druz9.v1.FocusHeatmapDay
-	10, // 5: druz9.v1.Stats.last_seven_days:type_name -> druz9.v1.FocusHeatmapDay
-	13, // 6: druz9.v1.Stats.queue:type_name -> druz9.v1.QueueStats
-	12, // 7: druz9.v1.ListQueueResponse.items:type_name -> druz9.v1.QueueItem
-	64, // 8: druz9.v1.Folder.created_at:type_name -> google.protobuf.Timestamp
-	64, // 9: druz9.v1.Folder.updated_at:type_name -> google.protobuf.Timestamp
-	64, // 10: druz9.v1.Note.created_at:type_name -> google.protobuf.Timestamp
-	64, // 11: druz9.v1.Note.updated_at:type_name -> google.protobuf.Timestamp
-	64, // 12: druz9.v1.NoteSummary.updated_at:type_name -> google.protobuf.Timestamp
-	22, // 13: druz9.v1.ListNotesResponse.notes:type_name -> druz9.v1.NoteSummary
-	20, // 14: druz9.v1.ListFoldersResponse.folders:type_name -> druz9.v1.Folder
-	64, // 15: druz9.v1.Whiteboard.created_at:type_name -> google.protobuf.Timestamp
-	64, // 16: druz9.v1.Whiteboard.updated_at:type_name -> google.protobuf.Timestamp
-	64, // 17: druz9.v1.WhiteboardSummary.updated_at:type_name -> google.protobuf.Timestamp
-	39, // 18: druz9.v1.ListWhiteboardsResponse.whiteboards:type_name -> druz9.v1.WhiteboardSummary
-	64, // 19: druz9.v1.CueSession.started_at:type_name -> google.protobuf.Timestamp
-	64, // 20: druz9.v1.CueSession.imported_at:type_name -> google.protobuf.Timestamp
-	64, // 21: druz9.v1.CueSession.updated_at:type_name -> google.protobuf.Timestamp
-	64, // 22: druz9.v1.ImportCueSessionRequest.started_at:type_name -> google.protobuf.Timestamp
-	50, // 23: druz9.v1.ListCueSessionsResponse.sessions:type_name -> druz9.v1.CueSession
-	21, // 24: druz9.v1.RecordStandupResponse.note:type_name -> druz9.v1.Note
-	1,  // 25: druz9.v1.RecordStandupResponse.plan:type_name -> druz9.v1.Plan
-	2,  // 26: druz9.v1.HoneService.GenerateDailyPlan:input_type -> druz9.v1.GenerateDailyPlanRequest
-	3,  // 27: druz9.v1.HoneService.GetDailyPlan:input_type -> druz9.v1.GetDailyPlanRequest
-	4,  // 28: druz9.v1.HoneService.DismissPlanItem:input_type -> druz9.v1.DismissPlanItemRequest
-	5,  // 29: druz9.v1.HoneService.CompletePlanItem:input_type -> druz9.v1.CompletePlanItemRequest
-	7,  // 30: druz9.v1.HoneService.StartFocusSession:input_type -> druz9.v1.StartFocusSessionRequest
-	8,  // 31: druz9.v1.HoneService.EndFocusSession:input_type -> druz9.v1.EndFocusSessionRequest
-	9,  // 32: druz9.v1.HoneService.GetStats:input_type -> druz9.v1.GetStatsRequest
-	14, // 33: druz9.v1.HoneService.ListQueue:input_type -> druz9.v1.ListQueueRequest
-	16, // 34: druz9.v1.HoneService.AddQueueItem:input_type -> druz9.v1.AddQueueItemRequest
-	17, // 35: druz9.v1.HoneService.UpdateQueueItemStatus:input_type -> druz9.v1.UpdateQueueItemStatusRequest
-	18, // 36: druz9.v1.HoneService.DeleteQueueItem:input_type -> druz9.v1.DeleteQueueItemRequest
-	23, // 37: druz9.v1.HoneService.CreateNote:input_type -> druz9.v1.CreateNoteRequest
-	24, // 38: druz9.v1.HoneService.UpdateNote:input_type -> druz9.v1.UpdateNoteRequest
-	25, // 39: druz9.v1.HoneService.GetNote:input_type -> druz9.v1.GetNoteRequest
-	26, // 40: druz9.v1.HoneService.ListNotes:input_type -> druz9.v1.ListNotesRequest
-	28, // 41: druz9.v1.HoneService.DeleteNote:input_type -> druz9.v1.DeleteNoteRequest
-	30, // 42: druz9.v1.HoneService.MoveNote:input_type -> druz9.v1.MoveNoteRequest
-	37, // 43: druz9.v1.HoneService.GetNoteConnections:input_type -> druz9.v1.GetNoteConnectionsRequest
-	31, // 44: druz9.v1.HoneService.CreateFolder:input_type -> druz9.v1.CreateFolderRequest
-	32, // 45: druz9.v1.HoneService.ListFolders:input_type -> druz9.v1.ListFoldersRequest
-	34, // 46: druz9.v1.HoneService.DeleteFolder:input_type -> druz9.v1.DeleteFolderRequest
-	40, // 47: druz9.v1.HoneService.CreateWhiteboard:input_type -> druz9.v1.CreateWhiteboardRequest
-	41, // 48: druz9.v1.HoneService.UpdateWhiteboard:input_type -> druz9.v1.UpdateWhiteboardRequest
-	42, // 49: druz9.v1.HoneService.GetWhiteboard:input_type -> druz9.v1.GetWhiteboardRequest
-	43, // 50: druz9.v1.HoneService.ListWhiteboards:input_type -> druz9.v1.ListWhiteboardsRequest
-	45, // 51: druz9.v1.HoneService.DeleteWhiteboard:input_type -> druz9.v1.DeleteWhiteboardRequest
-	47, // 52: druz9.v1.HoneService.CritiqueWhiteboard:input_type -> druz9.v1.CritiqueWhiteboardRequest
-	48, // 53: druz9.v1.HoneService.SaveCritiqueAsNote:input_type -> druz9.v1.SaveCritiqueAsNoteRequest
-	60, // 54: druz9.v1.HoneService.RecordStandup:input_type -> druz9.v1.RecordStandupRequest
-	62, // 55: druz9.v1.HoneService.GetTodayStandup:input_type -> druz9.v1.GetTodayStandupRequest
-	51, // 56: druz9.v1.HoneService.ImportCueSession:input_type -> druz9.v1.ImportCueSessionRequest
-	52, // 57: druz9.v1.HoneService.ListCueSessions:input_type -> druz9.v1.ListCueSessionsRequest
-	54, // 58: druz9.v1.HoneService.GetCueSession:input_type -> druz9.v1.GetCueSessionRequest
-	55, // 59: druz9.v1.HoneService.UpdateCueSession:input_type -> druz9.v1.UpdateCueSessionRequest
-	56, // 60: druz9.v1.HoneService.DeleteCueSession:input_type -> druz9.v1.DeleteCueSessionRequest
-	58, // 61: druz9.v1.HoneService.SendCueSessionToTelegram:input_type -> druz9.v1.SendCueSessionToTelegramRequest
-	1,  // 62: druz9.v1.HoneService.GenerateDailyPlan:output_type -> druz9.v1.Plan
-	1,  // 63: druz9.v1.HoneService.GetDailyPlan:output_type -> druz9.v1.Plan
-	1,  // 64: druz9.v1.HoneService.DismissPlanItem:output_type -> druz9.v1.Plan
-	1,  // 65: druz9.v1.HoneService.CompletePlanItem:output_type -> druz9.v1.Plan
-	6,  // 66: druz9.v1.HoneService.StartFocusSession:output_type -> druz9.v1.FocusSession
-	6,  // 67: druz9.v1.HoneService.EndFocusSession:output_type -> druz9.v1.FocusSession
-	11, // 68: druz9.v1.HoneService.GetStats:output_type -> druz9.v1.Stats
-	15, // 69: druz9.v1.HoneService.ListQueue:output_type -> druz9.v1.ListQueueResponse
-	12, // 70: druz9.v1.HoneService.AddQueueItem:output_type -> druz9.v1.QueueItem
-	12, // 71: druz9.v1.HoneService.UpdateQueueItemStatus:output_type -> druz9.v1.QueueItem
-	19, // 72: druz9.v1.HoneService.DeleteQueueItem:output_type -> druz9.v1.DeleteQueueItemResponse
-	21, // 73: druz9.v1.HoneService.CreateNote:output_type -> druz9.v1.Note
-	21, // 74: druz9.v1.HoneService.UpdateNote:output_type -> druz9.v1.Note
-	21, // 75: druz9.v1.HoneService.GetNote:output_type -> druz9.v1.Note
-	27, // 76: druz9.v1.HoneService.ListNotes:output_type -> druz9.v1.ListNotesResponse
-	29, // 77: druz9.v1.HoneService.DeleteNote:output_type -> druz9.v1.DeleteNoteResponse
-	21, // 78: druz9.v1.HoneService.MoveNote:output_type -> druz9.v1.Note
-	36, // 79: druz9.v1.HoneService.GetNoteConnections:output_type -> druz9.v1.Connection
-	20, // 80: druz9.v1.HoneService.CreateFolder:output_type -> druz9.v1.Folder
-	33, // 81: druz9.v1.HoneService.ListFolders:output_type -> druz9.v1.ListFoldersResponse
-	35, // 82: druz9.v1.HoneService.DeleteFolder:output_type -> druz9.v1.DeleteFolderResponse
-	38, // 83: druz9.v1.HoneService.CreateWhiteboard:output_type -> druz9.v1.Whiteboard
-	38, // 84: druz9.v1.HoneService.UpdateWhiteboard:output_type -> druz9.v1.Whiteboard
-	38, // 85: druz9.v1.HoneService.GetWhiteboard:output_type -> druz9.v1.Whiteboard
-	44, // 86: druz9.v1.HoneService.ListWhiteboards:output_type -> druz9.v1.ListWhiteboardsResponse
-	46, // 87: druz9.v1.HoneService.DeleteWhiteboard:output_type -> druz9.v1.DeleteWhiteboardResponse
-	49, // 88: druz9.v1.HoneService.CritiqueWhiteboard:output_type -> druz9.v1.CritiquePacket
-	21, // 89: druz9.v1.HoneService.SaveCritiqueAsNote:output_type -> druz9.v1.Note
-	61, // 90: druz9.v1.HoneService.RecordStandup:output_type -> druz9.v1.RecordStandupResponse
-	63, // 91: druz9.v1.HoneService.GetTodayStandup:output_type -> druz9.v1.GetTodayStandupResponse
-	50, // 92: druz9.v1.HoneService.ImportCueSession:output_type -> druz9.v1.CueSession
-	53, // 93: druz9.v1.HoneService.ListCueSessions:output_type -> druz9.v1.ListCueSessionsResponse
-	50, // 94: druz9.v1.HoneService.GetCueSession:output_type -> druz9.v1.CueSession
-	50, // 95: druz9.v1.HoneService.UpdateCueSession:output_type -> druz9.v1.CueSession
-	57, // 96: druz9.v1.HoneService.DeleteCueSession:output_type -> druz9.v1.DeleteCueSessionResponse
-	59, // 97: druz9.v1.HoneService.SendCueSessionToTelegram:output_type -> druz9.v1.SendCueSessionToTelegramResponse
-	62, // [62:98] is the sub-list for method output_type
-	26, // [26:62] is the sub-list for method input_type
-	26, // [26:26] is the sub-list for extension type_name
-	26, // [26:26] is the sub-list for extension extendee
-	0,  // [0:26] is the sub-list for field type_name
+	92, // 0: druz9.v1.Plan.regenerated_at:type_name -> google.protobuf.Timestamp
+	4,  // 1: druz9.v1.Plan.items:type_name -> druz9.v1.PlanItem
+	92, // 2: druz9.v1.FocusSession.started_at:type_name -> google.protobuf.Timestamp
+	92, // 3: druz9.v1.FocusSession.ended_at:type_name -> google.protobuf.Timestamp
+	14, // 4: druz9.v1.Stats.heatmap:type_name -> druz9.v1.FocusHeatmapDay
+	14, // 5: druz9.v1.Stats.last_seven_days:type_name -> druz9.v1.FocusHeatmapDay
+	17, // 6: druz9.v1.Stats.queue:type_name -> druz9.v1.QueueStats
+	16, // 7: druz9.v1.ListQueueResponse.items:type_name -> druz9.v1.QueueItem
+	92, // 8: druz9.v1.Folder.created_at:type_name -> google.protobuf.Timestamp
+	92, // 9: druz9.v1.Folder.updated_at:type_name -> google.protobuf.Timestamp
+	92, // 10: druz9.v1.Note.created_at:type_name -> google.protobuf.Timestamp
+	92, // 11: druz9.v1.Note.updated_at:type_name -> google.protobuf.Timestamp
+	92, // 12: druz9.v1.NoteSummary.updated_at:type_name -> google.protobuf.Timestamp
+	26, // 13: druz9.v1.ListNotesResponse.notes:type_name -> druz9.v1.NoteSummary
+	24, // 14: druz9.v1.ListFoldersResponse.folders:type_name -> druz9.v1.Folder
+	92, // 15: druz9.v1.Whiteboard.created_at:type_name -> google.protobuf.Timestamp
+	92, // 16: druz9.v1.Whiteboard.updated_at:type_name -> google.protobuf.Timestamp
+	92, // 17: druz9.v1.WhiteboardSummary.updated_at:type_name -> google.protobuf.Timestamp
+	43, // 18: druz9.v1.ListWhiteboardsResponse.whiteboards:type_name -> druz9.v1.WhiteboardSummary
+	64, // 19: druz9.v1.BulkNotesMetaResponse.notes:type_name -> druz9.v1.NoteMeta
+	0,  // 20: druz9.v1.Task.status:type_name -> druz9.v1.TaskStatus
+	1,  // 21: druz9.v1.Task.kind:type_name -> druz9.v1.TaskKind
+	2,  // 22: druz9.v1.Task.source:type_name -> druz9.v1.TaskSource
+	92, // 23: druz9.v1.Task.created_at:type_name -> google.protobuf.Timestamp
+	92, // 24: druz9.v1.Task.updated_at:type_name -> google.protobuf.Timestamp
+	92, // 25: druz9.v1.Task.completed_at:type_name -> google.protobuf.Timestamp
+	3,  // 26: druz9.v1.TaskComment.author_kind:type_name -> druz9.v1.TaskCommentAuthor
+	92, // 27: druz9.v1.TaskComment.created_at:type_name -> google.protobuf.Timestamp
+	67, // 28: druz9.v1.ListTasksResponse.tasks:type_name -> druz9.v1.Task
+	1,  // 29: druz9.v1.CreateTaskRequest.kind:type_name -> druz9.v1.TaskKind
+	0,  // 30: druz9.v1.MoveTaskStatusRequest.status:type_name -> druz9.v1.TaskStatus
+	68, // 31: druz9.v1.ListTaskCommentsResponse.comments:type_name -> druz9.v1.TaskComment
+	92, // 32: druz9.v1.CueSession.started_at:type_name -> google.protobuf.Timestamp
+	92, // 33: druz9.v1.CueSession.imported_at:type_name -> google.protobuf.Timestamp
+	92, // 34: druz9.v1.CueSession.updated_at:type_name -> google.protobuf.Timestamp
+	92, // 35: druz9.v1.ImportCueSessionRequest.started_at:type_name -> google.protobuf.Timestamp
+	78, // 36: druz9.v1.ListCueSessionsResponse.sessions:type_name -> druz9.v1.CueSession
+	25, // 37: druz9.v1.RecordStandupResponse.note:type_name -> druz9.v1.Note
+	5,  // 38: druz9.v1.RecordStandupResponse.plan:type_name -> druz9.v1.Plan
+	6,  // 39: druz9.v1.HoneService.GenerateDailyPlan:input_type -> druz9.v1.GenerateDailyPlanRequest
+	7,  // 40: druz9.v1.HoneService.GetDailyPlan:input_type -> druz9.v1.GetDailyPlanRequest
+	8,  // 41: druz9.v1.HoneService.DismissPlanItem:input_type -> druz9.v1.DismissPlanItemRequest
+	9,  // 42: druz9.v1.HoneService.CompletePlanItem:input_type -> druz9.v1.CompletePlanItemRequest
+	11, // 43: druz9.v1.HoneService.StartFocusSession:input_type -> druz9.v1.StartFocusSessionRequest
+	12, // 44: druz9.v1.HoneService.EndFocusSession:input_type -> druz9.v1.EndFocusSessionRequest
+	13, // 45: druz9.v1.HoneService.GetStats:input_type -> druz9.v1.GetStatsRequest
+	18, // 46: druz9.v1.HoneService.ListQueue:input_type -> druz9.v1.ListQueueRequest
+	20, // 47: druz9.v1.HoneService.AddQueueItem:input_type -> druz9.v1.AddQueueItemRequest
+	21, // 48: druz9.v1.HoneService.UpdateQueueItemStatus:input_type -> druz9.v1.UpdateQueueItemStatusRequest
+	22, // 49: druz9.v1.HoneService.DeleteQueueItem:input_type -> druz9.v1.DeleteQueueItemRequest
+	27, // 50: druz9.v1.HoneService.CreateNote:input_type -> druz9.v1.CreateNoteRequest
+	28, // 51: druz9.v1.HoneService.UpdateNote:input_type -> druz9.v1.UpdateNoteRequest
+	29, // 52: druz9.v1.HoneService.GetNote:input_type -> druz9.v1.GetNoteRequest
+	30, // 53: druz9.v1.HoneService.ListNotes:input_type -> druz9.v1.ListNotesRequest
+	32, // 54: druz9.v1.HoneService.DeleteNote:input_type -> druz9.v1.DeleteNoteRequest
+	34, // 55: druz9.v1.HoneService.MoveNote:input_type -> druz9.v1.MoveNoteRequest
+	41, // 56: druz9.v1.HoneService.GetNoteConnections:input_type -> druz9.v1.GetNoteConnectionsRequest
+	35, // 57: druz9.v1.HoneService.CreateFolder:input_type -> druz9.v1.CreateFolderRequest
+	36, // 58: druz9.v1.HoneService.ListFolders:input_type -> druz9.v1.ListFoldersRequest
+	38, // 59: druz9.v1.HoneService.DeleteFolder:input_type -> druz9.v1.DeleteFolderRequest
+	44, // 60: druz9.v1.HoneService.CreateWhiteboard:input_type -> druz9.v1.CreateWhiteboardRequest
+	45, // 61: druz9.v1.HoneService.UpdateWhiteboard:input_type -> druz9.v1.UpdateWhiteboardRequest
+	46, // 62: druz9.v1.HoneService.GetWhiteboard:input_type -> druz9.v1.GetWhiteboardRequest
+	47, // 63: druz9.v1.HoneService.ListWhiteboards:input_type -> druz9.v1.ListWhiteboardsRequest
+	49, // 64: druz9.v1.HoneService.DeleteWhiteboard:input_type -> druz9.v1.DeleteWhiteboardRequest
+	51, // 65: druz9.v1.HoneService.CritiqueWhiteboard:input_type -> druz9.v1.CritiqueWhiteboardRequest
+	52, // 66: druz9.v1.HoneService.SaveCritiqueAsNote:input_type -> druz9.v1.SaveCritiqueAsNoteRequest
+	88, // 67: druz9.v1.HoneService.RecordStandup:input_type -> druz9.v1.RecordStandupRequest
+	90, // 68: druz9.v1.HoneService.GetTodayStandup:input_type -> druz9.v1.GetTodayStandupRequest
+	79, // 69: druz9.v1.HoneService.ImportCueSession:input_type -> druz9.v1.ImportCueSessionRequest
+	80, // 70: druz9.v1.HoneService.ListCueSessions:input_type -> druz9.v1.ListCueSessionsRequest
+	82, // 71: druz9.v1.HoneService.GetCueSession:input_type -> druz9.v1.GetCueSessionRequest
+	83, // 72: druz9.v1.HoneService.UpdateCueSession:input_type -> druz9.v1.UpdateCueSessionRequest
+	84, // 73: druz9.v1.HoneService.DeleteCueSession:input_type -> druz9.v1.DeleteCueSessionRequest
+	86, // 74: druz9.v1.HoneService.SendCueSessionToTelegram:input_type -> druz9.v1.SendCueSessionToTelegramRequest
+	69, // 75: druz9.v1.HoneService.ListTasks:input_type -> druz9.v1.ListTasksRequest
+	71, // 76: druz9.v1.HoneService.CreateTask:input_type -> druz9.v1.CreateTaskRequest
+	72, // 77: druz9.v1.HoneService.MoveTaskStatus:input_type -> druz9.v1.MoveTaskStatusRequest
+	73, // 78: druz9.v1.HoneService.DeleteTask:input_type -> druz9.v1.DeleteTaskRequest
+	75, // 79: druz9.v1.HoneService.ListTaskComments:input_type -> druz9.v1.ListTaskCommentsRequest
+	77, // 80: druz9.v1.HoneService.AddTaskComment:input_type -> druz9.v1.AddTaskCommentRequest
+	54, // 81: druz9.v1.HoneService.PublishNote:input_type -> druz9.v1.PublishNoteRequest
+	56, // 82: druz9.v1.HoneService.UnpublishNote:input_type -> druz9.v1.UnpublishNoteRequest
+	58, // 83: druz9.v1.HoneService.PublishStatus:input_type -> druz9.v1.PublishStatusRequest
+	60, // 84: druz9.v1.HoneService.ShareToWeb:input_type -> druz9.v1.ShareToWebRequest
+	62, // 85: druz9.v1.HoneService.MakePrivate:input_type -> druz9.v1.MakePrivateRequest
+	65, // 86: druz9.v1.HoneService.BulkNotesMeta:input_type -> druz9.v1.BulkNotesMetaRequest
+	5,  // 87: druz9.v1.HoneService.GenerateDailyPlan:output_type -> druz9.v1.Plan
+	5,  // 88: druz9.v1.HoneService.GetDailyPlan:output_type -> druz9.v1.Plan
+	5,  // 89: druz9.v1.HoneService.DismissPlanItem:output_type -> druz9.v1.Plan
+	5,  // 90: druz9.v1.HoneService.CompletePlanItem:output_type -> druz9.v1.Plan
+	10, // 91: druz9.v1.HoneService.StartFocusSession:output_type -> druz9.v1.FocusSession
+	10, // 92: druz9.v1.HoneService.EndFocusSession:output_type -> druz9.v1.FocusSession
+	15, // 93: druz9.v1.HoneService.GetStats:output_type -> druz9.v1.Stats
+	19, // 94: druz9.v1.HoneService.ListQueue:output_type -> druz9.v1.ListQueueResponse
+	16, // 95: druz9.v1.HoneService.AddQueueItem:output_type -> druz9.v1.QueueItem
+	16, // 96: druz9.v1.HoneService.UpdateQueueItemStatus:output_type -> druz9.v1.QueueItem
+	23, // 97: druz9.v1.HoneService.DeleteQueueItem:output_type -> druz9.v1.DeleteQueueItemResponse
+	25, // 98: druz9.v1.HoneService.CreateNote:output_type -> druz9.v1.Note
+	25, // 99: druz9.v1.HoneService.UpdateNote:output_type -> druz9.v1.Note
+	25, // 100: druz9.v1.HoneService.GetNote:output_type -> druz9.v1.Note
+	31, // 101: druz9.v1.HoneService.ListNotes:output_type -> druz9.v1.ListNotesResponse
+	33, // 102: druz9.v1.HoneService.DeleteNote:output_type -> druz9.v1.DeleteNoteResponse
+	25, // 103: druz9.v1.HoneService.MoveNote:output_type -> druz9.v1.Note
+	40, // 104: druz9.v1.HoneService.GetNoteConnections:output_type -> druz9.v1.Connection
+	24, // 105: druz9.v1.HoneService.CreateFolder:output_type -> druz9.v1.Folder
+	37, // 106: druz9.v1.HoneService.ListFolders:output_type -> druz9.v1.ListFoldersResponse
+	39, // 107: druz9.v1.HoneService.DeleteFolder:output_type -> druz9.v1.DeleteFolderResponse
+	42, // 108: druz9.v1.HoneService.CreateWhiteboard:output_type -> druz9.v1.Whiteboard
+	42, // 109: druz9.v1.HoneService.UpdateWhiteboard:output_type -> druz9.v1.Whiteboard
+	42, // 110: druz9.v1.HoneService.GetWhiteboard:output_type -> druz9.v1.Whiteboard
+	48, // 111: druz9.v1.HoneService.ListWhiteboards:output_type -> druz9.v1.ListWhiteboardsResponse
+	50, // 112: druz9.v1.HoneService.DeleteWhiteboard:output_type -> druz9.v1.DeleteWhiteboardResponse
+	53, // 113: druz9.v1.HoneService.CritiqueWhiteboard:output_type -> druz9.v1.CritiquePacket
+	25, // 114: druz9.v1.HoneService.SaveCritiqueAsNote:output_type -> druz9.v1.Note
+	89, // 115: druz9.v1.HoneService.RecordStandup:output_type -> druz9.v1.RecordStandupResponse
+	91, // 116: druz9.v1.HoneService.GetTodayStandup:output_type -> druz9.v1.GetTodayStandupResponse
+	78, // 117: druz9.v1.HoneService.ImportCueSession:output_type -> druz9.v1.CueSession
+	81, // 118: druz9.v1.HoneService.ListCueSessions:output_type -> druz9.v1.ListCueSessionsResponse
+	78, // 119: druz9.v1.HoneService.GetCueSession:output_type -> druz9.v1.CueSession
+	78, // 120: druz9.v1.HoneService.UpdateCueSession:output_type -> druz9.v1.CueSession
+	85, // 121: druz9.v1.HoneService.DeleteCueSession:output_type -> druz9.v1.DeleteCueSessionResponse
+	87, // 122: druz9.v1.HoneService.SendCueSessionToTelegram:output_type -> druz9.v1.SendCueSessionToTelegramResponse
+	70, // 123: druz9.v1.HoneService.ListTasks:output_type -> druz9.v1.ListTasksResponse
+	67, // 124: druz9.v1.HoneService.CreateTask:output_type -> druz9.v1.Task
+	67, // 125: druz9.v1.HoneService.MoveTaskStatus:output_type -> druz9.v1.Task
+	74, // 126: druz9.v1.HoneService.DeleteTask:output_type -> druz9.v1.DeleteTaskResponse
+	76, // 127: druz9.v1.HoneService.ListTaskComments:output_type -> druz9.v1.ListTaskCommentsResponse
+	68, // 128: druz9.v1.HoneService.AddTaskComment:output_type -> druz9.v1.TaskComment
+	55, // 129: druz9.v1.HoneService.PublishNote:output_type -> druz9.v1.PublishNoteResponse
+	57, // 130: druz9.v1.HoneService.UnpublishNote:output_type -> druz9.v1.UnpublishNoteResponse
+	59, // 131: druz9.v1.HoneService.PublishStatus:output_type -> druz9.v1.PublishStatusResponse
+	61, // 132: druz9.v1.HoneService.ShareToWeb:output_type -> druz9.v1.ShareToWebResponse
+	63, // 133: druz9.v1.HoneService.MakePrivate:output_type -> druz9.v1.MakePrivateResponse
+	66, // 134: druz9.v1.HoneService.BulkNotesMeta:output_type -> druz9.v1.BulkNotesMetaResponse
+	87, // [87:135] is the sub-list for method output_type
+	39, // [39:87] is the sub-list for method input_type
+	39, // [39:39] is the sub-list for extension type_name
+	39, // [39:39] is the sub-list for extension extendee
+	0,  // [0:39] is the sub-list for field type_name
 }
 
 func init() { file_druz9_v1_hone_proto_init() }
@@ -4174,13 +5894,14 @@ func file_druz9_v1_hone_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_druz9_v1_hone_proto_rawDesc), len(file_druz9_v1_hone_proto_rawDesc)),
-			NumEnums:      0,
-			NumMessages:   64,
+			NumEnums:      4,
+			NumMessages:   88,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
 		GoTypes:           file_druz9_v1_hone_proto_goTypes,
 		DependencyIndexes: file_druz9_v1_hone_proto_depIdxs,
+		EnumInfos:         file_druz9_v1_hone_proto_enumTypes,
 		MessageInfos:      file_druz9_v1_hone_proto_msgTypes,
 	}.Build()
 	File_druz9_v1_hone_proto = out.File

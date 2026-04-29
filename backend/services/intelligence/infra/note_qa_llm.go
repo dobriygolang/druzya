@@ -12,21 +12,26 @@ import (
 	"druz9/shared/pkg/llmchain"
 )
 
+// LLMChainNoteAnswerer — RAG-ответ по notes. Phase III: при заданном
+// coach.pinned_model в dynamic_config идёт через ModelOverride; иначе —
+// TaskNoteQA routing.
 type LLMChainNoteAnswerer struct {
 	chain   llmchain.ChatClient
+	cfg     CoachConfigReader
 	log     *slog.Logger
 	timeout time.Duration
 }
 
 // NewLLMChainNoteAnswerer wires the adapter. chain MUST be non-nil.
-func NewLLMChainNoteAnswerer(chain llmchain.ChatClient, log *slog.Logger) *LLMChainNoteAnswerer {
+// cfg may be nil — pin disabled (legacy task-routing).
+func NewLLMChainNoteAnswerer(chain llmchain.ChatClient, cfg CoachConfigReader, log *slog.Logger) *LLMChainNoteAnswerer {
 	if chain == nil {
 		panic("intelligence.NewLLMChainNoteAnswerer: chain is required")
 	}
 	if log == nil {
 		panic("intelligence.NewLLMChainNoteAnswerer: logger is required")
 	}
-	return &LLMChainNoteAnswerer{chain: chain, log: log, timeout: 30 * time.Second}
+	return &LLMChainNoteAnswerer{chain: chain, cfg: cfg, log: log, timeout: 30 * time.Second}
 }
 
 const noteQASystemPrompt = `You are answering a user's question using ONLY the notes provided below. Each note is numbered [1], [2], ... — these are the citation tokens.
@@ -47,17 +52,26 @@ func (a *LLMChainNoteAnswerer) Answer(ctx context.Context, in domain.AskNotesPro
 	ctx, cancel := context.WithTimeout(ctx, a.timeout)
 	defer cancel()
 
+	pinnedModel := ""
+	if a.cfg != nil {
+		pinnedModel = a.cfg.PinnedModel(ctx)
+	}
 	var lastErr error
 	for attempt := 0; attempt < 2; attempt++ {
-		resp, err := a.chain.Chat(ctx, llmchain.Request{
-			Task:        llmchain.TaskNoteQA,
+		req := llmchain.Request{
 			Temperature: 0.3,
 			MaxTokens:   600,
 			Messages: []llmchain.Message{
 				{Role: llmchain.RoleSystem, Content: noteQASystemPrompt},
 				{Role: llmchain.RoleUser, Content: prompt},
 			},
-		})
+		}
+		if pinnedModel != "" {
+			req.ModelOverride = pinnedModel
+		} else {
+			req.Task = llmchain.TaskNoteQA
+		}
+		resp, err := a.chain.Chat(ctx, req)
 		if err != nil {
 			lastErr = err
 			a.log.Warn("intelligence.LLMChainNoteAnswerer: chain error",

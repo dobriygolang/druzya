@@ -94,13 +94,22 @@ type EpisodeRepo interface {
 	// LatestPerKind returns up to perKindLimit newest rows for each kind in
 	// one query. Used by recall recency tails to avoid one SQL round-trip per kind.
 	LatestPerKind(ctx context.Context, userID uuid.UUID, kinds []EpisodeKind, perKindLimit int) ([]Episode, error)
-	// SearchSimilar returns top-K by cosine over embedding. kinds is
-	// optional filter (empty = all kinds). Episodes без embedding'а
-	// автоматически пропускаются.
-	SearchSimilar(ctx context.Context, userID uuid.UUID, vec []float32, kinds []EpisodeKind, limit int) ([]EpisodeWithScore, error)
+	// SearchSimilar returns top-K by cosine over embedding, filtered to
+	// episodes embedded with the given model (Phase I: embedding
+	// isolation — mixed-model cosine is undefined). modelName == ""
+	// disables the filter (test-only path). kinds is optional filter
+	// (empty = all kinds). Episodes без embedding'а автоматически пропускаются.
+	SearchSimilar(ctx context.Context, userID uuid.UUID, vec []float32, modelName string, kinds []EpisodeKind, limit int) ([]EpisodeWithScore, error)
 	// PendingEmbeddings returns rows where embedded_at IS NULL. Used by
 	// the async embed worker.
 	PendingEmbeddings(ctx context.Context, limit int) ([]Episode, error)
+	// MarkStaleForReembed clears embedded_at for episodes whose vector
+	// was produced by a model OTHER than currentModelName, so the async
+	// embed worker picks them up via the same partial index. Returns
+	// count of marked rows. Called once after admin swaps the canonical
+	// embedding model (no automatic trigger — re-embedding the corpus is
+	// deliberate and rate-limited).
+	MarkStaleForReembed(ctx context.Context, currentModelName string) (int64, error)
 	// SetEmbedding writes the vector + model + embedded_at=now for one row.
 	SetEmbedding(ctx context.Context, id uuid.UUID, vec []float32, model string) error
 	// Stats30d returns total + per-kind counts for the user, last 30d.

@@ -18,18 +18,18 @@ var ErrTierRequired = errors.New("llmchain: subscription tier required")
 // здесь.
 var ModelRequiredTier = map[string]enums.SubscriptionPlan{
 	// OpenRouter paid-lane (bypass :free suffix) — cheap, general purpose.
-	"openai/gpt-4.1-mini":        enums.SubscriptionPlanSeeker,
-	"openai/o3-mini":             enums.SubscriptionPlanSeeker,
-	"anthropic/claude-haiku-4.5": enums.SubscriptionPlanSeeker,
+	"openai/gpt-4.1-mini":        enums.SubscriptionPlanPro,
+	"openai/o3-mini":             enums.SubscriptionPlanPro,
+	"anthropic/claude-haiku-4.5": enums.SubscriptionPlanPro,
 	// OpenRouter premium.
-	"openai/gpt-4.1":              enums.SubscriptionPlanAscendant,
-	"openai/gpt-4o":               enums.SubscriptionPlanAscendant,
-	"openai/o3":                   enums.SubscriptionPlanAscendant,
-	"anthropic/claude-sonnet-4.5": enums.SubscriptionPlanAscendant,
-	"anthropic/claude-opus-4":     enums.SubscriptionPlanAscendant,
+	"openai/gpt-4.1":              enums.SubscriptionPlanMax,
+	"openai/gpt-4o":               enums.SubscriptionPlanMax,
+	"openai/o3":                   enums.SubscriptionPlanMax,
+	"anthropic/claude-sonnet-4.5": enums.SubscriptionPlanMax,
+	"anthropic/claude-opus-4":     enums.SubscriptionPlanMax,
 	// DeepSeek direct (самые дёшево-интеллектуальные paid-модели).
-	"deepseek-chat":     enums.SubscriptionPlanSeeker,
-	"deepseek-reasoner": enums.SubscriptionPlanSeeker,
+	"deepseek-chat":     enums.SubscriptionPlanPro,
+	"deepseek-reasoner": enums.SubscriptionPlanPro,
 }
 
 // ModelRequiresTier — lookup с default TierFree. Удобно для вызова в
@@ -41,16 +41,16 @@ func ModelRequiresTier(modelID string) enums.SubscriptionPlan {
 	return enums.SubscriptionPlanFree
 }
 
-// tierRank для сравнения tier'ов. 0=free, 1=seeker, 2=ascendant. Синхронизирована
+// tierRank для сравнения tier'ов. 0=free, 1=pro, 2=max. Синхронизирована
 // с subscription/domain.TierRank (копия — кросс-доменный import был бы
 // циклом через shared).
 func tierRank(t enums.SubscriptionPlan) int {
 	switch t {
 	case enums.SubscriptionPlanFree:
 		return 0
-	case enums.SubscriptionPlanSeeker:
+	case enums.SubscriptionPlanPro:
 		return 1
-	case enums.SubscriptionPlanAscendant:
+	case enums.SubscriptionPlanMax:
 		return 2
 	}
 	return 0
@@ -72,11 +72,11 @@ const (
 	// VirtualTurbo — free-chain (уже реализован через Task-mapping, для
 	// консистентности api также принимается как ModelOverride).
 	VirtualTurbo = "druz9/turbo"
-	// VirtualPro — для tier=seeker+. Cheap-paid модели: быстрые, качественные.
+	// VirtualPro — для tier=pro+. Cheap-paid модели: быстрые, качественные.
 	VirtualPro = "druz9/pro"
-	// VirtualUltra — для tier=ascendant. Top-tier модели.
+	// VirtualUltra — для tier=max. Top-tier модели.
 	VirtualUltra = "druz9/ultra"
-	// VirtualReasoning — для tier=seeker+. Reasoning-heavy (R1, o3).
+	// VirtualReasoning — для tier=pro+. Reasoning-heavy (R1, o3).
 	VirtualReasoning = "druz9/reasoning"
 )
 
@@ -103,7 +103,7 @@ var virtualChains = map[string][]VirtualCandidate{
 		{Provider: ProviderOllama, Model: "qwen2.5:7b-instruct-q4_K_M"},
 	},
 	VirtualPro: {
-		// Быстрые+умные seeker-tier модели. gpt-4.1-mini — best-in-class
+		// Быстрые+умные pro-tier модели. gpt-4.1-mini — best-in-class
 		// для своего прайса, Haiku 4.5 — baseline Anthropic. DeepSeek V3
 		// дёшев но slightly slower на OpenRouter — ставим после.
 		{Provider: ProviderOpenRouter, Model: "openai/gpt-4.1-mini"},
@@ -155,9 +155,9 @@ func DefaultVirtualChains() map[string][]VirtualCandidate {
 // Проверяется ДО expand'а цепочки (чтобы free не увидел внутренние модели).
 var VirtualModelMinTier = map[string]enums.SubscriptionPlan{
 	VirtualTurbo:     enums.SubscriptionPlanFree,
-	VirtualPro:       enums.SubscriptionPlanSeeker,
-	VirtualUltra:     enums.SubscriptionPlanAscendant,
-	VirtualReasoning: enums.SubscriptionPlanSeeker,
+	VirtualPro:       enums.SubscriptionPlanPro,
+	VirtualUltra:     enums.SubscriptionPlanMax,
+	VirtualReasoning: enums.SubscriptionPlanPro,
 }
 
 // IsVirtualModel — безопасная проверка что это наша виртуалка (а не

@@ -1,0 +1,59 @@
+// sync.proto — Connect-RPC contract for the sync devices surface.
+//
+// /sync/pull and /sync/push stay chi-direct because they shuttle binary
+// blobs (yjs updates etc.); see Golden Path "binary / streaming responses"
+// exception. Only the device CRUD migrates here.
+syntax = "proto3";
+package druz9.v1;
+
+import "google/api/annotations.proto";
+import "google/protobuf/timestamp.proto";
+
+option go_package = "druz9/shared/generated/pb/druz9/v1;druz9v1";
+
+message SyncDevice {
+  string id = 1;
+  string name = 2;
+  string platform = 3;
+  string app_version = 4;
+  google.protobuf.Timestamp last_seen_at = 5;
+  google.protobuf.Timestamp created_at = 6;
+}
+
+message SyncDeviceList {
+  repeated SyncDevice items = 1;
+}
+
+message RegisterDeviceRequest {
+  string name = 1;
+  string platform = 2;
+  string app_version = 3;
+}
+
+message ListDevicesRequest {}
+
+message RevokeDeviceRequest {
+  string id = 1;
+}
+
+message RevokeDeviceResponse {
+  bool ok = 1;
+}
+
+service SyncService {
+  rpc RegisterDevice(RegisterDeviceRequest) returns (SyncDevice) {
+    option (google.api.http) = {
+      post: "/api/v1/sync/devices"
+      body: "*"
+    };
+  }
+  rpc ListDevices(ListDevicesRequest) returns (SyncDeviceList) {
+    option (google.api.http) = {get: "/api/v1/sync/devices"};
+  }
+  rpc RevokeDevice(RevokeDeviceRequest) returns (RevokeDeviceResponse) {
+    option (google.api.http) = {
+      post: "/api/v1/sync/devices/{id}/revoke"
+      body: "*"
+    };
+  }
+}

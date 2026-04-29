@@ -5,7 +5,10 @@
 import { useMutation } from '@tanstack/react-query'
 import { api } from '../apiClient'
 
-export type SupportContactKind = 'email' | 'telegram'
+// schema_v2 dropped email-auth and the support_tickets check constraint is
+// now `CHECK IN ('telegram')`. The type stays a single-element union so it
+// keeps a shape-stable name across the codebase.
+export type SupportContactKind = 'telegram'
 
 export interface CreateSupportTicketInput {
   contact_kind: SupportContactKind

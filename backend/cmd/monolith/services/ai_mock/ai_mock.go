@@ -90,13 +90,25 @@ func NewAIMock(d monolithServices.Deps) *monolithServices.Module {
 	report := &aimockApp.GetReport{Sessions: sessions}
 
 	server := aimockPorts.NewMockServer(createSession, getSession, sendMessage, stress, finish, report, d.Log)
+	// Bind /mock/insights/overview into the same MockService.
+	insightsRepo := aimockInfra.NewInsights(d.Pool)
+	server.Insights = &aimockApp.InsightsOverview{
+		Repo: insightsRepo,
+		OnPartialErr: func(ctx context.Context, op string, err error) {
+			if d.Log != nil {
+				d.Log.WarnContext(ctx, "mock.insights: partial",
+					"op", op, "err", err)
+			}
+		},
+	}
+	server.InsightsSummaryFn = newInsightsSummaryFn(d.LLMChain, d.Redis, d.Log)
 	ws := aimockPorts.NewWSHandler(hub, authServices.MockTokenVerifier{Issuer: d.TokenIssuer}, sessions, messages, sendMessage, stress, d.Log)
 
 	// Voice TTS handler. Uses the real Edge TTS WS proxy (10s timeout).
 	// The tier/turn deps are nil for now — the handler treats nil tier as
 	// "free" (premium voices return 402) and nil turn as "echo canned reply".
 	tts := aimockInfra.NewEdgeTTSClient(10 * time.Second)
-	voice := aimockPorts.NewVoiceHandler(tts, nil, nil, d.Log)
+	voice := aimockPorts.NewVoiceHandler(aimockInfra.NewTTSAdapter(tts), nil, nil, d.Log)
 
 	connectPath, connectHandler := druz9v1connect.NewMockServiceHandler(server)
 	transcoder := monolithServices.MustTranscode("mock", connectPath, connectHandler)
@@ -112,6 +124,8 @@ func NewAIMock(d monolithServices.Deps) *monolithServices.Module {
 			r.Post("/mock/session/{sessionId}/stress", transcoder.ServeHTTP)
 			r.Post("/mock/session/{sessionId}/finish", transcoder.ServeHTTP)
 			r.Get("/mock/session/{sessionId}/report", transcoder.ServeHTTP)
+			// Per-user insights overview — same vanguard transcoder.
+			r.Get("/mock/insights/overview", transcoder.ServeHTTP)
 			// Voice (Edge TTS proxy + lightweight turn endpoint).
 			r.Post("/voice/tts", voice.HandleTTS)
 			r.Post("/voice/turn", voice.HandleTurn)

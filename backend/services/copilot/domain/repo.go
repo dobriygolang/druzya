@@ -72,6 +72,15 @@ type ConversationRepo interface {
 	// ListForUser returns up to `limit` summaries ordered by updated_at DESC.
 	// An empty cursor returns the first page.
 	ListForUser(ctx context.Context, userID uuid.UUID, cursor Cursor, limit int) ([]ConversationSummary, Cursor, error)
+	// ResetModelsNotIn — Phase VII: на tier-downgrade сбрасываем conv.Model
+	// для conversations, чья закреплённая модель теперь недоступна юзеру.
+	// allowed — whitelist моделей доступных на новом tier (например
+	// ["druz9/turbo"] для Free). Пустой / nil whitelist = "все модели
+	// разрешены" (pro/max), no-op. Возвращает количество сброшенных rows.
+	// На next turn такие conversations отрезолвят модель через DefaultModelID
+	// (Turbo для Free) — юзер видит continuation на доступной модели вместо
+	// ErrTierRequired silent failure.
+	ResetModelsNotIn(ctx context.Context, userID uuid.UUID, allowed []string) (int64, error)
 }
 
 // MessageRepo persists copilot_messages rows.
@@ -132,7 +141,7 @@ type CompletionRequest struct {
 	Messages    []LLMMessage
 	Temperature float64
 	MaxTokens   int
-	// UserTier — tier подписки юзера ("free"/"seeker"/"ascendant"), пустая
+	// UserTier — tier подписки юзера ("free"/"pro"/"max"), пустая
 	// строка трактуется как free. Передаётся в llmchain.Request.UserTier
 	// для paid-model gate'а (см. shared/pkg/llmchain/tier.go). Caller
 	// (copilot ports-handler) резолвит через subscription-сервис или

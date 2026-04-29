@@ -50,4 +50,96 @@ service NotifyService {
       body: "preferences"
     };
   }
+
+  // ─── In-app notifications feed ────────────────────────────────────────
+  rpc ListNotifications(ListNotificationsRequest) returns (NotificationList) {
+    option (google.api.http) = {get: "/api/v1/notifications"};
+  }
+  rpc CountUnread(CountUnreadRequest) returns (UnreadCount) {
+    option (google.api.http) = {get: "/api/v1/notifications/unread_count"};
+  }
+  rpc MarkRead(MarkReadRequest) returns (MarkReadResponse) {
+    option (google.api.http) = {
+      post: "/api/v1/notifications/{id}/read"
+      body: "*"
+    };
+  }
+  rpc MarkAllRead(MarkAllReadRequest) returns (MarkAllReadResponse) {
+    option (google.api.http) = {
+      post: "/api/v1/notifications/read_all"
+      body: "*"
+    };
+  }
+
+  // ─── Support ticket (anonymous-readable POST) ─────────────────────────
+  // schema_v2 forces contact_kind = "telegram"; clients that omit it get
+  // the same default. Validation lives server-side — server returns
+  // InvalidArgument on bad input.
+  rpc CreateSupportTicket(CreateSupportTicketRequest) returns (CreateSupportTicketResponse) {
+    option (google.api.http) = {
+      post: "/api/v1/support/ticket"
+      body: "*"
+    };
+  }
+}
+
+// ─── In-app feed payloads ───────────────────────────────────────────────────
+
+message UserNotification {
+  int64 id = 1;
+  string channel = 2;
+  string type = 3;
+  string title = 4;
+  string body = 5;
+  // Payload is encoded as a JSON string on the wire so we don't need to
+  // model every event variant in proto. Frontend parses it as needed.
+  string payload_json = 6;
+  int32 priority = 7;
+  string read_at = 8;     // RFC3339, empty when unread
+  string created_at = 9;  // RFC3339
+}
+
+message NotificationList {
+  repeated UserNotification items = 1;
+}
+
+message ListNotificationsRequest {
+  string channel = 1;          // optional filter
+  bool only_unread = 2;
+  string before = 3;           // RFC3339 cursor, optional
+  int32 limit = 4;             // 0 ⇒ server default
+}
+
+message CountUnreadRequest {}
+
+message UnreadCount {
+  int64 count = 1;
+}
+
+message MarkReadRequest {
+  int64 id = 1;
+}
+
+message MarkReadResponse {
+  bool ok = 1;
+}
+
+message MarkAllReadRequest {}
+
+message MarkAllReadResponse {
+  int64 updated = 1;
+}
+
+// ─── Support ticket ─────────────────────────────────────────────────────────
+
+message CreateSupportTicketRequest {
+  string contact_kind = 1;     // "telegram" (only allowed value, schema_v2)
+  string contact_value = 2;
+  string subject = 3;
+  string message = 4;
+}
+
+message CreateSupportTicketResponse {
+  string ticket_id = 1;
+  string created_at = 2;       // RFC3339
 }

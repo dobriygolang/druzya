@@ -25,6 +25,7 @@ import (
 
 	"connectrpc.com/connect"
 	"github.com/google/uuid"
+	"google.golang.org/protobuf/types/known/emptypb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
@@ -41,7 +42,12 @@ type ArenaServer struct {
 	History   *app.GetMyMatches
 	Timeouts  *app.HandleReadyCheckTimeout
 	UserEloFn UserEloFunc
-	Log       *slog.Logger
+	// CurrentMatchRepo + QueueWaitingReader power the polled /current and
+	// /queue-stats endpoints. Optional: nil-safe — methods return Unavailable
+	// when the wirer hasn't bound them yet.
+	CurrentMatchRepo CurrentMatchFinder
+	QueueRepo        QueueWaitingReader
+	Log              *slog.Logger
 }
 
 // UserEloFunc резолвит ELO пользователя по секции. Инжектится, чтобы
@@ -100,7 +106,7 @@ func (s *ArenaServer) GetMyMatches(
 			Section:           sectionToProto(e.Section),
 			OpponentUsername:  e.OpponentUsername,
 			OpponentAvatarUrl: e.OpponentAvatarURL,
-			Result:            e.Result,
+			Result:            matchResultToProto(e.Result),
 			LpChange:          int32(e.LPChange),
 			DurationSeconds:   int32(e.DurationSeconds),
 		})
@@ -158,7 +164,7 @@ func (s *ArenaServer) FindMatch(
 func (s *ArenaServer) CancelSearch(
 	ctx context.Context,
 	_ *connect.Request[pb.CancelMatchRequest],
-) (*connect.Response[pb.CancelMatchRequest], error) {
+) (*connect.Response[emptypb.Empty], error) {
 	uid, ok := sharedMw.UserIDFromContext(ctx)
 	if !ok {
 		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("unauthenticated"))
@@ -166,7 +172,7 @@ func (s *ArenaServer) CancelSearch(
 	if err := s.Cancel.Do(ctx, uid); err != nil {
 		return nil, s.toConnectErr(err)
 	}
-	return connect.NewResponse(&pb.CancelMatchRequest{}), nil
+	return connect.NewResponse(&emptypb.Empty{}), nil
 }
 
 // GetMatch реализует (GET /api/v1/arena/match/{match_id}).
@@ -206,10 +212,12 @@ func (s *ArenaServer) GetMatch(
 }
 
 // ConfirmReady реализует (POST /api/v1/arena/match/{match_id}/confirm).
+// После подтверждения возвращаем актуальное состояние матча, чтобы клиент
+// сразу увидел переход в in_progress (или abandoned, если соперник не успел).
 func (s *ArenaServer) ConfirmReady(
 	ctx context.Context,
 	req *connect.Request[pb.ConfirmMatchRequest],
-) (*connect.Response[pb.ConfirmMatchRequest], error) {
+) (*connect.Response[pb.ArenaMatch], error) {
 	uid, ok := sharedMw.UserIDFromContext(ctx)
 	if !ok {
 		return nil, connect.NewError(connect.CodeUnauthenticated, errors.New("unauthenticated"))
@@ -221,7 +229,11 @@ func (s *ArenaServer) ConfirmReady(
 	if err := s.Confirm.Do(ctx, matchID, uid); err != nil {
 		return nil, s.toConnectErr(err)
 	}
-	return connect.NewResponse(&pb.ConfirmMatchRequest{}), nil
+	view, err := s.Get.Do(ctx, matchID)
+	if err != nil {
+		return nil, s.toConnectErr(err)
+	}
+	return connect.NewResponse(toArenaMatchProto(view)), nil
 }
 
 // SubmitCode реализует (POST /api/v1/arena/match/{match_id}/submit).
@@ -463,6 +475,24 @@ func matchStatusToProto(m enums.MatchStatus) pb.MatchStatus {
 		return pb.MatchStatus_MATCH_STATUS_CANCELLED
 	default:
 		return pb.MatchStatus_MATCH_STATUS_UNSPECIFIED
+	}
+}
+
+// matchResultToProto переводит domain string-константу в proto enum
+// (Phase IV / string→enum migration). Неизвестное значение → UNSPECIFIED:
+// безопаснее показать пустое состояние на FE чем отрендерить мусор.
+func matchResultToProto(r string) pb.MatchResult {
+	switch r {
+	case domain.MatchResultWin:
+		return pb.MatchResult_MATCH_RESULT_WIN
+	case domain.MatchResultLoss:
+		return pb.MatchResult_MATCH_RESULT_LOSS
+	case domain.MatchResultDraw:
+		return pb.MatchResult_MATCH_RESULT_DRAW
+	case domain.MatchResultAbandoned:
+		return pb.MatchResult_MATCH_RESULT_ABANDONED
+	default:
+		return pb.MatchResult_MATCH_RESULT_UNSPECIFIED
 	}
 }
 

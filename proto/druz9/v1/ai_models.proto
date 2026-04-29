@@ -1,0 +1,150 @@
+// ai_models.proto — Connect-RPC contract for the LLM model catalogue.
+//
+// Public list: anonymous-readable, narrows by use-surface (arena / insight
+// / mock / vacancies).
+//
+// Admin CRUD: model_id includes a provider prefix (`mistralai/mistral-7b`)
+// so the URL pattern uses `{model_id=**}` to capture slash-containing
+// segments. vanguard maps that to the proto field directly.
+syntax = "proto3";
+package druz9.v1;
+
+import "google/api/annotations.proto";
+
+option go_package = "druz9/shared/generated/pb/druz9/v1;druz9v1";
+
+// ── Public catalogue ─────────────────────────────────────────────────────
+
+message PublicAIModel {
+  string id = 1;
+  string label = 2;
+  string provider = 3;
+  string tier = 4;
+  bool available = 5;
+  bool is_virtual = 6;
+}
+
+message PublicAIModelList {
+  bool available = 1;
+  repeated PublicAIModel items = 2;
+}
+
+message ListPublicAIModelsRequest {
+  string use = 1; // optional surface filter
+}
+
+// ── Admin model row ──────────────────────────────────────────────────────
+
+// AIModel mirrors a row in the llm_models catalogue (admin write
+// projection). Pointer fields in the domain (ContextWindow, costs,
+// UseFor* flags) are surfaced as plain values + presence flags so the
+// proto3 wire stays compact.
+message AIModel {
+  int64 id = 1;
+  string model_id = 2;
+  string label = 3;
+  string provider = 4;
+  string tier = 5;
+  bool is_enabled = 6;
+  int32 context_window = 7;
+  bool has_context_window = 8;
+  double cost_per_1k_input_usd = 9;
+  bool has_cost_input = 10;
+  double cost_per_1k_output_usd = 11;
+  bool has_cost_output = 12;
+  bool use_for_arena = 13;
+  bool use_for_insight = 14;
+  bool use_for_mock = 15;
+  int32 sort_order = 16;
+  string created_at = 17; // RFC3339
+  string updated_at = 18; // RFC3339
+}
+
+message AIModelList {
+  repeated AIModel items = 1;
+}
+
+// AIModelUpsert mirrors domain.AIModelUpsert. Pointer fields use
+// `has_*` companions (proto3 has no nullable scalars).
+message AIModelUpsert {
+  string model_id = 1;
+  string label = 2;
+  string provider = 3;
+  string tier = 4;
+  bool is_enabled = 5;
+  bool has_is_enabled = 6;
+  int32 context_window = 7;
+  bool has_context_window = 8;
+  double cost_per_1k_input_usd = 9;
+  bool has_cost_input = 10;
+  double cost_per_1k_output_usd = 11;
+  bool has_cost_output = 12;
+  bool use_for_arena = 13;
+  bool has_use_for_arena = 14;
+  bool use_for_insight = 15;
+  bool has_use_for_insight = 16;
+  bool use_for_mock = 17;
+  bool has_use_for_mock = 18;
+  int32 sort_order = 19;
+  bool has_sort_order = 20;
+}
+
+message ListAdminAIModelsRequest {}
+
+message CreateAIModelRequest {
+  AIModelUpsert model = 1;
+}
+
+message UpdateAIModelRequest {
+  // model_id is captured from the URL via {model_id=**}; the body holds
+  // the new state.
+  string model_id = 1;
+  AIModelUpsert model = 2;
+}
+
+message ToggleAIModelRequest {
+  string model_id = 1;
+}
+
+message DeleteAIModelRequest {
+  string model_id = 1;
+}
+
+message DeleteAIModelResponse {
+  bool ok = 1;
+}
+
+// ── Service ──────────────────────────────────────────────────────────────
+
+service AIModelService {
+  rpc ListPublicAIModels(ListPublicAIModelsRequest) returns (PublicAIModelList) {
+    option (google.api.http) = {get: "/api/v1/ai/models"};
+  }
+  rpc ListAIModels(ListAdminAIModelsRequest) returns (AIModelList) {
+    option (google.api.http) = {get: "/api/v1/admin/ai/models"};
+  }
+  rpc CreateAIModel(CreateAIModelRequest) returns (AIModel) {
+    option (google.api.http) = {
+      post: "/api/v1/admin/ai/models"
+      body: "model"
+    };
+  }
+  // The {model_id=**} pattern captures provider-prefixed slugs like
+  // `mistralai/mistral-7b`. vanguard reads the proto field name from
+  // the URL segment after `/models/`.
+  rpc UpdateAIModel(UpdateAIModelRequest) returns (AIModel) {
+    option (google.api.http) = {
+      patch: "/api/v1/admin/ai/models/{model_id=**}"
+      body: "model"
+    };
+  }
+  rpc ToggleAIModel(ToggleAIModelRequest) returns (AIModel) {
+    option (google.api.http) = {
+      post: "/api/v1/admin/ai/models/{model_id=**}/toggle"
+      body: "*"
+    };
+  }
+  rpc DeleteAIModel(DeleteAIModelRequest) returns (DeleteAIModelResponse) {
+    option (google.api.http) = {delete: "/api/v1/admin/ai/models/{model_id=**}"};
+  }
+}

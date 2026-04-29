@@ -570,6 +570,240 @@ service HoneService {
       body: "*"
     };
   }
+
+  // ─── TaskBoard (Notion-style kanban) ───────────────────────────────
+  rpc ListTasks(ListTasksRequest) returns (ListTasksResponse) {
+    option (google.api.http) = {get: "/api/v1/hone/tasks"};
+  }
+  rpc CreateTask(CreateTaskRequest) returns (Task) {
+    option (google.api.http) = {
+      post: "/api/v1/hone/tasks"
+      body: "*"
+    };
+  }
+  rpc MoveTaskStatus(MoveTaskStatusRequest) returns (Task) {
+    option (google.api.http) = {
+      post: "/api/v1/hone/tasks/{id}/status"
+      body: "*"
+    };
+  }
+  rpc DeleteTask(DeleteTaskRequest) returns (DeleteTaskResponse) {
+    option (google.api.http) = {delete: "/api/v1/hone/tasks/{id}"};
+  }
+  rpc ListTaskComments(ListTaskCommentsRequest) returns (ListTaskCommentsResponse) {
+    option (google.api.http) = {get: "/api/v1/hone/tasks/{id}/comments"};
+  }
+  rpc AddTaskComment(AddTaskCommentRequest) returns (TaskComment) {
+    option (google.api.http) = {
+      post: "/api/v1/hone/tasks/{id}/comments"
+      body: "*"
+    };
+  }
+
+  // ─── Publish-to-web ────────────────────────────────────────────────
+  // The HTML viewer at /p/{slug} stays chi-direct (renders Markdown into
+  // sandboxed HTML with strict CSP headers — vanguard's JSON-only codec
+  // can't shape that response). All JSON endpoints below go through the
+  // transcoder.
+  rpc PublishNote(PublishNoteRequest) returns (PublishNoteResponse) {
+    option (google.api.http) = {
+      post: "/api/v1/notes/{id}/publish"
+      body: "*"
+    };
+  }
+  rpc UnpublishNote(UnpublishNoteRequest) returns (UnpublishNoteResponse) {
+    option (google.api.http) = {
+      post: "/api/v1/notes/{id}/unpublish"
+      body: "*"
+    };
+  }
+  rpc PublishStatus(PublishStatusRequest) returns (PublishStatusResponse) {
+    option (google.api.http) = {get: "/api/v1/notes/{id}/publish-status"};
+  }
+  rpc ShareToWeb(ShareToWebRequest) returns (ShareToWebResponse) {
+    option (google.api.http) = {
+      post: "/api/v1/notes/{id}/share-to-web"
+      body: "*"
+    };
+  }
+  rpc MakePrivate(MakePrivateRequest) returns (MakePrivateResponse) {
+    option (google.api.http) = {
+      post: "/api/v1/notes/{id}/make-private"
+      body: "*"
+    };
+  }
+  rpc BulkNotesMeta(BulkNotesMetaRequest) returns (BulkNotesMetaResponse) {
+    option (google.api.http) = {get: "/api/v1/notes/meta"};
+  }
+}
+
+// ─── Publish-to-web messages ────────────────────────────────────────────────
+
+message PublishNoteRequest {
+  string id = 1;
+}
+
+message PublishNoteResponse {
+  string slug = 1;
+  string url = 2;
+  string published_at = 3; // RFC3339
+}
+
+message UnpublishNoteRequest {
+  string id = 1;
+}
+
+message UnpublishNoteResponse {
+  bool ok = 1;
+}
+
+message PublishStatusRequest {
+  string id = 1;
+}
+
+message PublishStatusResponse {
+  bool published = 1;
+  string slug = 2;
+  string url = 3;
+  string published_at = 4;
+}
+
+message ShareToWebRequest {
+  string id = 1;
+  // plaintext_md is the client-decrypted body; the server stores it
+  // verbatim and provisions a public_slug atomically.
+  string plaintext_md = 2;
+}
+
+message ShareToWebResponse {
+  string slug = 1;
+  string url = 2;
+  string published_at = 3;
+  bool already_published = 4;
+}
+
+message MakePrivateRequest {
+  string id = 1;
+  // ciphertext_b64 is base64(IV || ciphertext) — client-shaped.
+  string ciphertext_b64 = 2;
+}
+
+message MakePrivateResponse {
+  bool ok = 1;
+}
+
+message NoteMeta {
+  string id = 1;
+  bool encrypted = 2;
+  bool published = 3;
+}
+
+message BulkNotesMetaRequest {}
+
+message BulkNotesMetaResponse {
+  repeated NoteMeta notes = 1;
+}
+
+// ─── TaskBoard messages ─────────────────────────────────────────────────────
+
+// TaskStatus — kanban-колонка карточки.
+enum TaskStatus {
+  TASK_STATUS_UNSPECIFIED = 0;
+  TASK_STATUS_TODO = 1;
+  TASK_STATUS_IN_PROGRESS = 2;
+  TASK_STATUS_IN_REVIEW = 3;
+  TASK_STATUS_DONE = 4;
+  TASK_STATUS_DISMISSED = 5;
+}
+
+// TaskKind — тип задачи; маршрутизирует deep_link / иконку на FE.
+enum TaskKind {
+  TASK_KIND_UNSPECIFIED = 0;
+  TASK_KIND_ALGO = 1;
+  TASK_KIND_SYSDESIGN = 2;
+  TASK_KIND_QUIZ = 3;
+  TASK_KIND_REFLECTION = 4;
+  TASK_KIND_READING = 5;
+  TASK_KIND_CUSTOM = 6;
+}
+
+// TaskSource — кто создал задачу. AI задаётся coach_generator'ом, USER —
+// явная manual create через UI.
+enum TaskSource {
+  TASK_SOURCE_UNSPECIFIED = 0;
+  TASK_SOURCE_AI = 1;
+  TASK_SOURCE_USER = 2;
+}
+
+// TaskCommentAuthor — кто оставил комментарий (AI или сам юзер).
+enum TaskCommentAuthor {
+  TASK_COMMENT_AUTHOR_UNSPECIFIED = 0;
+  TASK_COMMENT_AUTHOR_AI = 1;
+  TASK_COMMENT_AUTHOR_USER = 2;
+}
+
+// Task — one Notion-style kanban card.
+message Task {
+  string id = 1;
+  TaskStatus status = 2;
+  TaskKind kind = 3;
+  TaskSource source = 4;
+  string title = 5;
+  string brief_md = 6;
+  string skill_key = 7;
+  string deep_link = 8;
+  repeated string recommended_reading = 9;
+  int32 priority = 10;
+  google.protobuf.Timestamp created_at = 11;
+  google.protobuf.Timestamp updated_at = 12;
+  google.protobuf.Timestamp completed_at = 13;
+}
+
+message TaskComment {
+  string id = 1;
+  TaskCommentAuthor author_kind = 2;
+  string body_md = 3;
+  google.protobuf.Timestamp created_at = 4;
+}
+
+message ListTasksRequest {}
+
+message ListTasksResponse {
+  repeated Task tasks = 1;
+}
+
+message CreateTaskRequest {
+  TaskKind kind = 1;
+  string title = 2;
+  string brief_md = 3;
+  string skill_key = 4;
+  string deep_link = 5;
+}
+
+message MoveTaskStatusRequest {
+  string id = 1;
+  TaskStatus status = 2;
+}
+
+message DeleteTaskRequest {
+  string id = 1;
+}
+
+message DeleteTaskResponse {
+  bool ok = 1;
+}
+
+message ListTaskCommentsRequest {
+  string id = 1;
+}
+
+message ListTaskCommentsResponse {
+  repeated TaskComment comments = 1;
+}
+
+message AddTaskCommentRequest {
+  string id = 1;
+  string body_md = 2;
 }
 
 // ─── Cue Sessions ──────────────────────────────────────────────────────────

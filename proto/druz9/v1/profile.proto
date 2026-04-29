@@ -425,6 +425,51 @@ service ProfileService {
       body: "*"
     };
   }
+
+  // AllocateAtlasSkill grants the caller +N progress on the given atlas
+  // skill node. Used by the Atlas page's "claim 1 free point" button.
+  rpc AllocateAtlasSkill(AllocateAtlasSkillRequest) returns (AllocateAtlasSkillResponse) {
+    option (google.api.http) = {
+      post: "/api/v1/profile/me/atlas/allocate"
+      body: "*"
+    };
+  }
+
+  // GetAIVacanciesModel returns the user's chosen LLM for the AI vacancy
+  // recommender. Empty string means "server default".
+  rpc GetAIVacanciesModel(GetAIVacanciesModelRequest) returns (AIVacanciesModel) {
+    option (google.api.http) = {get: "/api/v1/profile/me/ai-vacancies-model"};
+  }
+
+  // SetAIVacanciesModel writes the user's preferred LLM. Pass model_id=""
+  // to clear the override and fall back to the server default.
+  rpc SetAIVacanciesModel(SetAIVacanciesModelRequest) returns (AIVacanciesModel) {
+    option (google.api.http) = {
+      put: "/api/v1/profile/me/ai-vacancies-model"
+      body: "*"
+    };
+  }
+}
+
+message AllocateAtlasSkillRequest {
+  string skill_id = 1;
+}
+
+message AllocateAtlasSkillResponse {
+  string key = 1;
+  int32 progress = 2;
+  bool unlocked = 3;
+  string unlocked_at = 4;        // RFC3339, empty when not unlocked
+  string updated_at = 5;         // RFC3339
+}
+
+message GetAIVacanciesModelRequest {}
+message SetAIVacanciesModelRequest {
+  string model_id = 1;
+}
+
+message AIVacanciesModel {
+  string model_id = 1;
 }
 
 // BecomeInterviewerRequest carries an optional motivation paragraph the
@@ -435,13 +480,25 @@ message BecomeInterviewerRequest {
 
 message GetMyInterviewerApplicationRequest {}
 
+// InterviewerApplicationStatus — wire-закрытый набор статусов заявки.
+// NOT_SUBMITTED — synthetic из GetMyInterviewerApplication когда юзер
+// никогда не подавал; в DB row не хранится (DB CHECK = pending|approved|
+// rejected). Wire JSON эмитит NAME (INTERVIEWER_APPLICATION_STATUS_PENDING).
+enum InterviewerApplicationStatus {
+  INTERVIEWER_APPLICATION_STATUS_UNSPECIFIED = 0;
+  INTERVIEWER_APPLICATION_STATUS_NOT_SUBMITTED = 1;
+  INTERVIEWER_APPLICATION_STATUS_PENDING = 2;
+  INTERVIEWER_APPLICATION_STATUS_APPROVED = 3;
+  INTERVIEWER_APPLICATION_STATUS_REJECTED = 4;
+}
+
 // InterviewerApplication mirrors a row in `interviewer_applications`.
-// status: "pending" | "approved" | "rejected".
+// status: см. InterviewerApplicationStatus.
 message InterviewerApplication {
   string id = 1;
   string user_id = 2;
   string motivation = 3;
-  string status = 4;
+  InterviewerApplicationStatus status = 4;
   string reviewed_by = 5;
   google.protobuf.Timestamp reviewed_at = 6;
   string decision_note = 7;
@@ -456,8 +513,8 @@ message InterviewerApplicationList {
 }
 
 message ListInterviewerApplicationsRequest {
-  // status filter; empty defaults to "pending".
-  string status = 1;
+  // status filter; UNSPECIFIED defaults to PENDING.
+  InterviewerApplicationStatus status = 1;
 }
 
 message ApproveInterviewerApplicationRequest {

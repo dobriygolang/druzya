@@ -21,7 +21,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '../apiClient'
 
-export type AIModelTier = 'free' | 'premium'
+export type AIModelTier = 'free' | 'pro' | 'max'
 
 export type AIModel = {
   id: string

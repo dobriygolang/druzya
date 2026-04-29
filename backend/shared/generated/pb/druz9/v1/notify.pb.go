@@ -244,6 +244,596 @@ func (x *UpdateNotifyPreferencesRequest) GetPreferences() *NotificationPreferenc
 	return nil
 }
 
+type UserNotification struct {
+	state   protoimpl.MessageState `protogen:"open.v1"`
+	Id      int64                  `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
+	Channel string                 `protobuf:"bytes,2,opt,name=channel,proto3" json:"channel,omitempty"`
+	Type    string                 `protobuf:"bytes,3,opt,name=type,proto3" json:"type,omitempty"`
+	Title   string                 `protobuf:"bytes,4,opt,name=title,proto3" json:"title,omitempty"`
+	Body    string                 `protobuf:"bytes,5,opt,name=body,proto3" json:"body,omitempty"`
+	// Payload is encoded as a JSON string on the wire so we don't need to
+	// model every event variant in proto. Frontend parses it as needed.
+	PayloadJson   string `protobuf:"bytes,6,opt,name=payload_json,json=payloadJson,proto3" json:"payload_json,omitempty"`
+	Priority      int32  `protobuf:"varint,7,opt,name=priority,proto3" json:"priority,omitempty"`
+	ReadAt        string `protobuf:"bytes,8,opt,name=read_at,json=readAt,proto3" json:"read_at,omitempty"`          // RFC3339, empty when unread
+	CreatedAt     string `protobuf:"bytes,9,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"` // RFC3339
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *UserNotification) Reset() {
+	*x = UserNotification{}
+	mi := &file_druz9_v1_notify_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UserNotification) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UserNotification) ProtoMessage() {}
+
+func (x *UserNotification) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_notify_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UserNotification.ProtoReflect.Descriptor instead.
+func (*UserNotification) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_notify_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *UserNotification) GetId() int64 {
+	if x != nil {
+		return x.Id
+	}
+	return 0
+}
+
+func (x *UserNotification) GetChannel() string {
+	if x != nil {
+		return x.Channel
+	}
+	return ""
+}
+
+func (x *UserNotification) GetType() string {
+	if x != nil {
+		return x.Type
+	}
+	return ""
+}
+
+func (x *UserNotification) GetTitle() string {
+	if x != nil {
+		return x.Title
+	}
+	return ""
+}
+
+func (x *UserNotification) GetBody() string {
+	if x != nil {
+		return x.Body
+	}
+	return ""
+}
+
+func (x *UserNotification) GetPayloadJson() string {
+	if x != nil {
+		return x.PayloadJson
+	}
+	return ""
+}
+
+func (x *UserNotification) GetPriority() int32 {
+	if x != nil {
+		return x.Priority
+	}
+	return 0
+}
+
+func (x *UserNotification) GetReadAt() string {
+	if x != nil {
+		return x.ReadAt
+	}
+	return ""
+}
+
+func (x *UserNotification) GetCreatedAt() string {
+	if x != nil {
+		return x.CreatedAt
+	}
+	return ""
+}
+
+type NotificationList struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Items         []*UserNotification    `protobuf:"bytes,1,rep,name=items,proto3" json:"items,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *NotificationList) Reset() {
+	*x = NotificationList{}
+	mi := &file_druz9_v1_notify_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *NotificationList) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*NotificationList) ProtoMessage() {}
+
+func (x *NotificationList) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_notify_proto_msgTypes[5]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use NotificationList.ProtoReflect.Descriptor instead.
+func (*NotificationList) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_notify_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *NotificationList) GetItems() []*UserNotification {
+	if x != nil {
+		return x.Items
+	}
+	return nil
+}
+
+type ListNotificationsRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Channel       string                 `protobuf:"bytes,1,opt,name=channel,proto3" json:"channel,omitempty"` // optional filter
+	OnlyUnread    bool                   `protobuf:"varint,2,opt,name=only_unread,json=onlyUnread,proto3" json:"only_unread,omitempty"`
+	Before        string                 `protobuf:"bytes,3,opt,name=before,proto3" json:"before,omitempty"` // RFC3339 cursor, optional
+	Limit         int32                  `protobuf:"varint,4,opt,name=limit,proto3" json:"limit,omitempty"`  // 0 ⇒ server default
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListNotificationsRequest) Reset() {
+	*x = ListNotificationsRequest{}
+	mi := &file_druz9_v1_notify_proto_msgTypes[6]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListNotificationsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListNotificationsRequest) ProtoMessage() {}
+
+func (x *ListNotificationsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_notify_proto_msgTypes[6]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListNotificationsRequest.ProtoReflect.Descriptor instead.
+func (*ListNotificationsRequest) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_notify_proto_rawDescGZIP(), []int{6}
+}
+
+func (x *ListNotificationsRequest) GetChannel() string {
+	if x != nil {
+		return x.Channel
+	}
+	return ""
+}
+
+func (x *ListNotificationsRequest) GetOnlyUnread() bool {
+	if x != nil {
+		return x.OnlyUnread
+	}
+	return false
+}
+
+func (x *ListNotificationsRequest) GetBefore() string {
+	if x != nil {
+		return x.Before
+	}
+	return ""
+}
+
+func (x *ListNotificationsRequest) GetLimit() int32 {
+	if x != nil {
+		return x.Limit
+	}
+	return 0
+}
+
+type CountUnreadRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CountUnreadRequest) Reset() {
+	*x = CountUnreadRequest{}
+	mi := &file_druz9_v1_notify_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CountUnreadRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CountUnreadRequest) ProtoMessage() {}
+
+func (x *CountUnreadRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_notify_proto_msgTypes[7]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CountUnreadRequest.ProtoReflect.Descriptor instead.
+func (*CountUnreadRequest) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_notify_proto_rawDescGZIP(), []int{7}
+}
+
+type UnreadCount struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Count         int64                  `protobuf:"varint,1,opt,name=count,proto3" json:"count,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *UnreadCount) Reset() {
+	*x = UnreadCount{}
+	mi := &file_druz9_v1_notify_proto_msgTypes[8]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UnreadCount) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UnreadCount) ProtoMessage() {}
+
+func (x *UnreadCount) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_notify_proto_msgTypes[8]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UnreadCount.ProtoReflect.Descriptor instead.
+func (*UnreadCount) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_notify_proto_rawDescGZIP(), []int{8}
+}
+
+func (x *UnreadCount) GetCount() int64 {
+	if x != nil {
+		return x.Count
+	}
+	return 0
+}
+
+type MarkReadRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            int64                  `protobuf:"varint,1,opt,name=id,proto3" json:"id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *MarkReadRequest) Reset() {
+	*x = MarkReadRequest{}
+	mi := &file_druz9_v1_notify_proto_msgTypes[9]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *MarkReadRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*MarkReadRequest) ProtoMessage() {}
+
+func (x *MarkReadRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_notify_proto_msgTypes[9]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use MarkReadRequest.ProtoReflect.Descriptor instead.
+func (*MarkReadRequest) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_notify_proto_rawDescGZIP(), []int{9}
+}
+
+func (x *MarkReadRequest) GetId() int64 {
+	if x != nil {
+		return x.Id
+	}
+	return 0
+}
+
+type MarkReadResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Ok            bool                   `protobuf:"varint,1,opt,name=ok,proto3" json:"ok,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *MarkReadResponse) Reset() {
+	*x = MarkReadResponse{}
+	mi := &file_druz9_v1_notify_proto_msgTypes[10]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *MarkReadResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*MarkReadResponse) ProtoMessage() {}
+
+func (x *MarkReadResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_notify_proto_msgTypes[10]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use MarkReadResponse.ProtoReflect.Descriptor instead.
+func (*MarkReadResponse) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_notify_proto_rawDescGZIP(), []int{10}
+}
+
+func (x *MarkReadResponse) GetOk() bool {
+	if x != nil {
+		return x.Ok
+	}
+	return false
+}
+
+type MarkAllReadRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *MarkAllReadRequest) Reset() {
+	*x = MarkAllReadRequest{}
+	mi := &file_druz9_v1_notify_proto_msgTypes[11]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *MarkAllReadRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*MarkAllReadRequest) ProtoMessage() {}
+
+func (x *MarkAllReadRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_notify_proto_msgTypes[11]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use MarkAllReadRequest.ProtoReflect.Descriptor instead.
+func (*MarkAllReadRequest) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_notify_proto_rawDescGZIP(), []int{11}
+}
+
+type MarkAllReadResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Updated       int64                  `protobuf:"varint,1,opt,name=updated,proto3" json:"updated,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *MarkAllReadResponse) Reset() {
+	*x = MarkAllReadResponse{}
+	mi := &file_druz9_v1_notify_proto_msgTypes[12]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *MarkAllReadResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*MarkAllReadResponse) ProtoMessage() {}
+
+func (x *MarkAllReadResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_notify_proto_msgTypes[12]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use MarkAllReadResponse.ProtoReflect.Descriptor instead.
+func (*MarkAllReadResponse) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_notify_proto_rawDescGZIP(), []int{12}
+}
+
+func (x *MarkAllReadResponse) GetUpdated() int64 {
+	if x != nil {
+		return x.Updated
+	}
+	return 0
+}
+
+type CreateSupportTicketRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	ContactKind   string                 `protobuf:"bytes,1,opt,name=contact_kind,json=contactKind,proto3" json:"contact_kind,omitempty"` // "telegram" (only allowed value, schema_v2)
+	ContactValue  string                 `protobuf:"bytes,2,opt,name=contact_value,json=contactValue,proto3" json:"contact_value,omitempty"`
+	Subject       string                 `protobuf:"bytes,3,opt,name=subject,proto3" json:"subject,omitempty"`
+	Message       string                 `protobuf:"bytes,4,opt,name=message,proto3" json:"message,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CreateSupportTicketRequest) Reset() {
+	*x = CreateSupportTicketRequest{}
+	mi := &file_druz9_v1_notify_proto_msgTypes[13]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CreateSupportTicketRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CreateSupportTicketRequest) ProtoMessage() {}
+
+func (x *CreateSupportTicketRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_notify_proto_msgTypes[13]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CreateSupportTicketRequest.ProtoReflect.Descriptor instead.
+func (*CreateSupportTicketRequest) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_notify_proto_rawDescGZIP(), []int{13}
+}
+
+func (x *CreateSupportTicketRequest) GetContactKind() string {
+	if x != nil {
+		return x.ContactKind
+	}
+	return ""
+}
+
+func (x *CreateSupportTicketRequest) GetContactValue() string {
+	if x != nil {
+		return x.ContactValue
+	}
+	return ""
+}
+
+func (x *CreateSupportTicketRequest) GetSubject() string {
+	if x != nil {
+		return x.Subject
+	}
+	return ""
+}
+
+func (x *CreateSupportTicketRequest) GetMessage() string {
+	if x != nil {
+		return x.Message
+	}
+	return ""
+}
+
+type CreateSupportTicketResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	TicketId      string                 `protobuf:"bytes,1,opt,name=ticket_id,json=ticketId,proto3" json:"ticket_id,omitempty"`
+	CreatedAt     string                 `protobuf:"bytes,2,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"` // RFC3339
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CreateSupportTicketResponse) Reset() {
+	*x = CreateSupportTicketResponse{}
+	mi := &file_druz9_v1_notify_proto_msgTypes[14]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CreateSupportTicketResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CreateSupportTicketResponse) ProtoMessage() {}
+
+func (x *CreateSupportTicketResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_notify_proto_msgTypes[14]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CreateSupportTicketResponse.ProtoReflect.Descriptor instead.
+func (*CreateSupportTicketResponse) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_notify_proto_rawDescGZIP(), []int{14}
+}
+
+func (x *CreateSupportTicketResponse) GetTicketId() string {
+	if x != nil {
+		return x.TicketId
+	}
+	return ""
+}
+
+func (x *CreateSupportTicketResponse) GetCreatedAt() string {
+	if x != nil {
+		return x.CreatedAt
+	}
+	return ""
+}
+
 var File_druz9_v1_notify_proto protoreflect.FileDescriptor
 
 const file_druz9_v1_notify_proto_rawDesc = "" +
@@ -262,10 +852,53 @@ const file_druz9_v1_notify_proto_rawDesc = "" +
 	"\x1cskill_decay_warnings_enabled\x18\x05 \x01(\bR\x19skillDecayWarningsEnabled\"\x1d\n" +
 	"\x1bGetNotifyPreferencesRequest\"e\n" +
 	"\x1eUpdateNotifyPreferencesRequest\x12C\n" +
-	"\vpreferences\x18\x01 \x01(\v2!.druz9.v1.NotificationPreferencesR\vpreferences2\xa3\x02\n" +
+	"\vpreferences\x18\x01 \x01(\v2!.druz9.v1.NotificationPreferencesR\vpreferences\"\xf1\x01\n" +
+	"\x10UserNotification\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\x03R\x02id\x12\x18\n" +
+	"\achannel\x18\x02 \x01(\tR\achannel\x12\x12\n" +
+	"\x04type\x18\x03 \x01(\tR\x04type\x12\x14\n" +
+	"\x05title\x18\x04 \x01(\tR\x05title\x12\x12\n" +
+	"\x04body\x18\x05 \x01(\tR\x04body\x12!\n" +
+	"\fpayload_json\x18\x06 \x01(\tR\vpayloadJson\x12\x1a\n" +
+	"\bpriority\x18\a \x01(\x05R\bpriority\x12\x17\n" +
+	"\aread_at\x18\b \x01(\tR\x06readAt\x12\x1d\n" +
+	"\n" +
+	"created_at\x18\t \x01(\tR\tcreatedAt\"D\n" +
+	"\x10NotificationList\x120\n" +
+	"\x05items\x18\x01 \x03(\v2\x1a.druz9.v1.UserNotificationR\x05items\"\x83\x01\n" +
+	"\x18ListNotificationsRequest\x12\x18\n" +
+	"\achannel\x18\x01 \x01(\tR\achannel\x12\x1f\n" +
+	"\vonly_unread\x18\x02 \x01(\bR\n" +
+	"onlyUnread\x12\x16\n" +
+	"\x06before\x18\x03 \x01(\tR\x06before\x12\x14\n" +
+	"\x05limit\x18\x04 \x01(\x05R\x05limit\"\x14\n" +
+	"\x12CountUnreadRequest\"#\n" +
+	"\vUnreadCount\x12\x14\n" +
+	"\x05count\x18\x01 \x01(\x03R\x05count\"!\n" +
+	"\x0fMarkReadRequest\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\x03R\x02id\"\"\n" +
+	"\x10MarkReadResponse\x12\x0e\n" +
+	"\x02ok\x18\x01 \x01(\bR\x02ok\"\x14\n" +
+	"\x12MarkAllReadRequest\"/\n" +
+	"\x13MarkAllReadResponse\x12\x18\n" +
+	"\aupdated\x18\x01 \x01(\x03R\aupdated\"\x98\x01\n" +
+	"\x1aCreateSupportTicketRequest\x12!\n" +
+	"\fcontact_kind\x18\x01 \x01(\tR\vcontactKind\x12#\n" +
+	"\rcontact_value\x18\x02 \x01(\tR\fcontactValue\x12\x18\n" +
+	"\asubject\x18\x03 \x01(\tR\asubject\x12\x18\n" +
+	"\amessage\x18\x04 \x01(\tR\amessage\"Y\n" +
+	"\x1bCreateSupportTicketResponse\x12\x1b\n" +
+	"\tticket_id\x18\x01 \x01(\tR\bticketId\x12\x1d\n" +
+	"\n" +
+	"created_at\x18\x02 \x01(\tR\tcreatedAt2\xf5\x06\n" +
 	"\rNotifyService\x12~\n" +
 	"\x0eGetPreferences\x12%.druz9.v1.GetNotifyPreferencesRequest\x1a!.druz9.v1.NotificationPreferences\"\"\x82\xd3\xe4\x93\x02\x1c\x12\x1a/api/v1/notify/preferences\x12\x91\x01\n" +
-	"\x11UpdatePreferences\x12(.druz9.v1.UpdateNotifyPreferencesRequest\x1a!.druz9.v1.NotificationPreferences\"/\x82\xd3\xe4\x93\x02):\vpreferences\x1a\x1a/api/v1/notify/preferencesB\x88\x01\n" +
+	"\x11UpdatePreferences\x12(.druz9.v1.UpdateNotifyPreferencesRequest\x1a!.druz9.v1.NotificationPreferences\"/\x82\xd3\xe4\x93\x02):\vpreferences\x1a\x1a/api/v1/notify/preferences\x12r\n" +
+	"\x11ListNotifications\x12\".druz9.v1.ListNotificationsRequest\x1a\x1a.druz9.v1.NotificationList\"\x1d\x82\xd3\xe4\x93\x02\x17\x12\x15/api/v1/notifications\x12n\n" +
+	"\vCountUnread\x12\x1c.druz9.v1.CountUnreadRequest\x1a\x15.druz9.v1.UnreadCount\"*\x82\xd3\xe4\x93\x02$\x12\"/api/v1/notifications/unread_count\x12m\n" +
+	"\bMarkRead\x12\x19.druz9.v1.MarkReadRequest\x1a\x1a.druz9.v1.MarkReadResponse\"*\x82\xd3\xe4\x93\x02$:\x01*\"\x1f/api/v1/notifications/{id}/read\x12u\n" +
+	"\vMarkAllRead\x12\x1c.druz9.v1.MarkAllReadRequest\x1a\x1d.druz9.v1.MarkAllReadResponse\")\x82\xd3\xe4\x93\x02#:\x01*\"\x1e/api/v1/notifications/read_all\x12\x85\x01\n" +
+	"\x13CreateSupportTicket\x12$.druz9.v1.CreateSupportTicketRequest\x1a%.druz9.v1.CreateSupportTicketResponse\"!\x82\xd3\xe4\x93\x02\x1b:\x01*\"\x16/api/v1/support/ticketB\x88\x01\n" +
 	"\fcom.druz9.v1B\vNotifyProtoP\x01Z*druz9/shared/generated/pb/druz9/v1;druz9v1\xa2\x02\x03DXX\xaa\x02\bDruz9.V1\xca\x02\bDruz9\\V1\xe2\x02\x14Druz9\\V1\\GPBMetadata\xea\x02\tDruz9::V1b\x06proto3"
 
 var (
@@ -280,27 +913,49 @@ func file_druz9_v1_notify_proto_rawDescGZIP() []byte {
 	return file_druz9_v1_notify_proto_rawDescData
 }
 
-var file_druz9_v1_notify_proto_msgTypes = make([]protoimpl.MessageInfo, 4)
+var file_druz9_v1_notify_proto_msgTypes = make([]protoimpl.MessageInfo, 15)
 var file_druz9_v1_notify_proto_goTypes = []any{
 	(*QuietHours)(nil),                     // 0: druz9.v1.QuietHours
 	(*NotificationPreferences)(nil),        // 1: druz9.v1.NotificationPreferences
 	(*GetNotifyPreferencesRequest)(nil),    // 2: druz9.v1.GetNotifyPreferencesRequest
 	(*UpdateNotifyPreferencesRequest)(nil), // 3: druz9.v1.UpdateNotifyPreferencesRequest
-	(NotificationChannel)(0),               // 4: druz9.v1.NotificationChannel
+	(*UserNotification)(nil),               // 4: druz9.v1.UserNotification
+	(*NotificationList)(nil),               // 5: druz9.v1.NotificationList
+	(*ListNotificationsRequest)(nil),       // 6: druz9.v1.ListNotificationsRequest
+	(*CountUnreadRequest)(nil),             // 7: druz9.v1.CountUnreadRequest
+	(*UnreadCount)(nil),                    // 8: druz9.v1.UnreadCount
+	(*MarkReadRequest)(nil),                // 9: druz9.v1.MarkReadRequest
+	(*MarkReadResponse)(nil),               // 10: druz9.v1.MarkReadResponse
+	(*MarkAllReadRequest)(nil),             // 11: druz9.v1.MarkAllReadRequest
+	(*MarkAllReadResponse)(nil),            // 12: druz9.v1.MarkAllReadResponse
+	(*CreateSupportTicketRequest)(nil),     // 13: druz9.v1.CreateSupportTicketRequest
+	(*CreateSupportTicketResponse)(nil),    // 14: druz9.v1.CreateSupportTicketResponse
+	(NotificationChannel)(0),               // 15: druz9.v1.NotificationChannel
 }
 var file_druz9_v1_notify_proto_depIdxs = []int32{
-	4, // 0: druz9.v1.NotificationPreferences.channels:type_name -> druz9.v1.NotificationChannel
-	0, // 1: druz9.v1.NotificationPreferences.quiet_hours:type_name -> druz9.v1.QuietHours
-	1, // 2: druz9.v1.UpdateNotifyPreferencesRequest.preferences:type_name -> druz9.v1.NotificationPreferences
-	2, // 3: druz9.v1.NotifyService.GetPreferences:input_type -> druz9.v1.GetNotifyPreferencesRequest
-	3, // 4: druz9.v1.NotifyService.UpdatePreferences:input_type -> druz9.v1.UpdateNotifyPreferencesRequest
-	1, // 5: druz9.v1.NotifyService.GetPreferences:output_type -> druz9.v1.NotificationPreferences
-	1, // 6: druz9.v1.NotifyService.UpdatePreferences:output_type -> druz9.v1.NotificationPreferences
-	5, // [5:7] is the sub-list for method output_type
-	3, // [3:5] is the sub-list for method input_type
-	3, // [3:3] is the sub-list for extension type_name
-	3, // [3:3] is the sub-list for extension extendee
-	0, // [0:3] is the sub-list for field type_name
+	15, // 0: druz9.v1.NotificationPreferences.channels:type_name -> druz9.v1.NotificationChannel
+	0,  // 1: druz9.v1.NotificationPreferences.quiet_hours:type_name -> druz9.v1.QuietHours
+	1,  // 2: druz9.v1.UpdateNotifyPreferencesRequest.preferences:type_name -> druz9.v1.NotificationPreferences
+	4,  // 3: druz9.v1.NotificationList.items:type_name -> druz9.v1.UserNotification
+	2,  // 4: druz9.v1.NotifyService.GetPreferences:input_type -> druz9.v1.GetNotifyPreferencesRequest
+	3,  // 5: druz9.v1.NotifyService.UpdatePreferences:input_type -> druz9.v1.UpdateNotifyPreferencesRequest
+	6,  // 6: druz9.v1.NotifyService.ListNotifications:input_type -> druz9.v1.ListNotificationsRequest
+	7,  // 7: druz9.v1.NotifyService.CountUnread:input_type -> druz9.v1.CountUnreadRequest
+	9,  // 8: druz9.v1.NotifyService.MarkRead:input_type -> druz9.v1.MarkReadRequest
+	11, // 9: druz9.v1.NotifyService.MarkAllRead:input_type -> druz9.v1.MarkAllReadRequest
+	13, // 10: druz9.v1.NotifyService.CreateSupportTicket:input_type -> druz9.v1.CreateSupportTicketRequest
+	1,  // 11: druz9.v1.NotifyService.GetPreferences:output_type -> druz9.v1.NotificationPreferences
+	1,  // 12: druz9.v1.NotifyService.UpdatePreferences:output_type -> druz9.v1.NotificationPreferences
+	5,  // 13: druz9.v1.NotifyService.ListNotifications:output_type -> druz9.v1.NotificationList
+	8,  // 14: druz9.v1.NotifyService.CountUnread:output_type -> druz9.v1.UnreadCount
+	10, // 15: druz9.v1.NotifyService.MarkRead:output_type -> druz9.v1.MarkReadResponse
+	12, // 16: druz9.v1.NotifyService.MarkAllRead:output_type -> druz9.v1.MarkAllReadResponse
+	14, // 17: druz9.v1.NotifyService.CreateSupportTicket:output_type -> druz9.v1.CreateSupportTicketResponse
+	11, // [11:18] is the sub-list for method output_type
+	4,  // [4:11] is the sub-list for method input_type
+	4,  // [4:4] is the sub-list for extension type_name
+	4,  // [4:4] is the sub-list for extension extendee
+	0,  // [0:4] is the sub-list for field type_name
 }
 
 func init() { file_druz9_v1_notify_proto_init() }
@@ -315,7 +970,7 @@ func file_druz9_v1_notify_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_druz9_v1_notify_proto_rawDesc), len(file_druz9_v1_notify_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   4,
+			NumMessages:   15,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

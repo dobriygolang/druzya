@@ -21,7 +21,7 @@
 /* eslint-disable */
 // @ts-nocheck
 
-import { AddQueueItemRequest, CompletePlanItemRequest, Connection, CreateFolderRequest, CreateNoteRequest, CreateWhiteboardRequest, CritiquePacket, CritiqueWhiteboardRequest, CueSession, DeleteCueSessionRequest, DeleteCueSessionResponse, DeleteFolderRequest, DeleteFolderResponse, DeleteNoteRequest, DeleteNoteResponse, DeleteQueueItemRequest, DeleteQueueItemResponse, DeleteWhiteboardRequest, DeleteWhiteboardResponse, DismissPlanItemRequest, EndFocusSessionRequest, FocusSession, Folder, GenerateDailyPlanRequest, GetCueSessionRequest, GetDailyPlanRequest, GetNoteConnectionsRequest, GetNoteRequest, GetStatsRequest, GetTodayStandupRequest, GetTodayStandupResponse, GetWhiteboardRequest, ImportCueSessionRequest, ListCueSessionsRequest, ListCueSessionsResponse, ListFoldersRequest, ListFoldersResponse, ListNotesRequest, ListNotesResponse, ListQueueRequest, ListQueueResponse, ListWhiteboardsRequest, ListWhiteboardsResponse, MoveNoteRequest, Note, Plan, QueueItem, RecordStandupRequest, RecordStandupResponse, SaveCritiqueAsNoteRequest, SendCueSessionToTelegramRequest, SendCueSessionToTelegramResponse, StartFocusSessionRequest, Stats, UpdateCueSessionRequest, UpdateNoteRequest, UpdateQueueItemStatusRequest, UpdateWhiteboardRequest, Whiteboard } from "./hone_pb.js";
+import { AddQueueItemRequest, AddTaskCommentRequest, BulkNotesMetaRequest, BulkNotesMetaResponse, CompletePlanItemRequest, Connection, CreateFolderRequest, CreateNoteRequest, CreateTaskRequest, CreateWhiteboardRequest, CritiquePacket, CritiqueWhiteboardRequest, CueSession, DeleteCueSessionRequest, DeleteCueSessionResponse, DeleteFolderRequest, DeleteFolderResponse, DeleteNoteRequest, DeleteNoteResponse, DeleteQueueItemRequest, DeleteQueueItemResponse, DeleteTaskRequest, DeleteTaskResponse, DeleteWhiteboardRequest, DeleteWhiteboardResponse, DismissPlanItemRequest, EndFocusSessionRequest, FocusSession, Folder, GenerateDailyPlanRequest, GetCueSessionRequest, GetDailyPlanRequest, GetNoteConnectionsRequest, GetNoteRequest, GetStatsRequest, GetTodayStandupRequest, GetTodayStandupResponse, GetWhiteboardRequest, ImportCueSessionRequest, ListCueSessionsRequest, ListCueSessionsResponse, ListFoldersRequest, ListFoldersResponse, ListNotesRequest, ListNotesResponse, ListQueueRequest, ListQueueResponse, ListTaskCommentsRequest, ListTaskCommentsResponse, ListTasksRequest, ListTasksResponse, ListWhiteboardsRequest, ListWhiteboardsResponse, MakePrivateRequest, MakePrivateResponse, MoveNoteRequest, MoveTaskStatusRequest, Note, Plan, PublishNoteRequest, PublishNoteResponse, PublishStatusRequest, PublishStatusResponse, QueueItem, RecordStandupRequest, RecordStandupResponse, SaveCritiqueAsNoteRequest, SendCueSessionToTelegramRequest, SendCueSessionToTelegramResponse, ShareToWebRequest, ShareToWebResponse, StartFocusSessionRequest, Stats, Task, TaskComment, UnpublishNoteRequest, UnpublishNoteResponse, UpdateCueSessionRequest, UpdateNoteRequest, UpdateQueueItemStatusRequest, UpdateWhiteboardRequest, Whiteboard } from "./hone_pb.js";
 import { MethodKind } from "@bufbuild/protobuf";
 
 /**
@@ -376,6 +376,122 @@ export const HoneService = {
       name: "SendCueSessionToTelegram",
       I: SendCueSessionToTelegramRequest,
       O: SendCueSessionToTelegramResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * ─── TaskBoard (Notion-style kanban) ───────────────────────────────
+     *
+     * @generated from rpc druz9.v1.HoneService.ListTasks
+     */
+    listTasks: {
+      name: "ListTasks",
+      I: ListTasksRequest,
+      O: ListTasksResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc druz9.v1.HoneService.CreateTask
+     */
+    createTask: {
+      name: "CreateTask",
+      I: CreateTaskRequest,
+      O: Task,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc druz9.v1.HoneService.MoveTaskStatus
+     */
+    moveTaskStatus: {
+      name: "MoveTaskStatus",
+      I: MoveTaskStatusRequest,
+      O: Task,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc druz9.v1.HoneService.DeleteTask
+     */
+    deleteTask: {
+      name: "DeleteTask",
+      I: DeleteTaskRequest,
+      O: DeleteTaskResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc druz9.v1.HoneService.ListTaskComments
+     */
+    listTaskComments: {
+      name: "ListTaskComments",
+      I: ListTaskCommentsRequest,
+      O: ListTaskCommentsResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc druz9.v1.HoneService.AddTaskComment
+     */
+    addTaskComment: {
+      name: "AddTaskComment",
+      I: AddTaskCommentRequest,
+      O: TaskComment,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * ─── Publish-to-web ────────────────────────────────────────────────
+     * The HTML viewer at /p/{slug} stays chi-direct (renders Markdown into
+     * sandboxed HTML with strict CSP headers — vanguard's JSON-only codec
+     * can't shape that response). All JSON endpoints below go through the
+     * transcoder.
+     *
+     * @generated from rpc druz9.v1.HoneService.PublishNote
+     */
+    publishNote: {
+      name: "PublishNote",
+      I: PublishNoteRequest,
+      O: PublishNoteResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc druz9.v1.HoneService.UnpublishNote
+     */
+    unpublishNote: {
+      name: "UnpublishNote",
+      I: UnpublishNoteRequest,
+      O: UnpublishNoteResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc druz9.v1.HoneService.PublishStatus
+     */
+    publishStatus: {
+      name: "PublishStatus",
+      I: PublishStatusRequest,
+      O: PublishStatusResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc druz9.v1.HoneService.ShareToWeb
+     */
+    shareToWeb: {
+      name: "ShareToWeb",
+      I: ShareToWebRequest,
+      O: ShareToWebResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc druz9.v1.HoneService.MakePrivate
+     */
+    makePrivate: {
+      name: "MakePrivate",
+      I: MakePrivateRequest,
+      O: MakePrivateResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc druz9.v1.HoneService.BulkNotesMeta
+     */
+    bulkNotesMeta: {
+      name: "BulkNotesMeta",
+      I: BulkNotesMetaRequest,
+      O: BulkNotesMetaResponse,
       kind: MethodKind.Unary,
     },
   }

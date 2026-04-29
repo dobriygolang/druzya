@@ -142,21 +142,45 @@ type NoteRepo interface {
 	Delete(ctx context.Context, userID, noteID uuid.UUID) error
 	// Move sets folder_id for a note. folderID nil = move to root.
 	Move(ctx context.Context, userID, noteID uuid.UUID, folderID *uuid.UUID) (Note, error)
-	// SetArchived устанавливает archived_at = (now() | NULL) для
-	// (userID, noteID). Phase C-2: archived заметки скрываются из
-	// list-выборки, но всё ещё recoverable через Get-by-id.
-	SetArchived(ctx context.Context, userID, noteID uuid.UUID, archived bool) error
 	// SetEmbedding replaces the embedding vector + metadata. Called from
 	// the async embedding worker after Update.
 	SetEmbedding(ctx context.Context, userID, noteID uuid.UUID, vec []float32, model string, at time.Time) error
-	// WithEmbeddingsForUser loads all notes with non-null embeddings, for
-	// in-memory cosine scan during GetNoteConnections. Returns minimal
-	// projection (id, title, embedding) to keep payload small.
-	WithEmbeddingsForUser(ctx context.Context, userID uuid.UUID) ([]NoteEmbedding, error)
-	// ExistsByTitleForUser — точный match по title, archived игнорятся
-	// (рассматриваем archived note как «не существует» для дедупа standup'а).
-	// Используется TodayStandup чтобы понять «уже записал standup сегодня?»
-	// — note title = "Standup YYYY-MM-DD".
+	// MarkStaleForReembed clears embedded_at for every note whose vector
+	// was produced by a model OTHER than currentModelName. Returns the
+	// count of marked rows. The async embed worker picks them up via the
+	// `WHERE embedded_at IS NULL` partial index and re-embeds with the
+	// current model. Idempotent. Called once after admin swaps the
+	// canonical embedding model — there is no automatic trigger because
+	// re-embedding the whole corpus is expensive and must be deliberate.
+	MarkStaleForReembed(ctx context.Context, currentModelName string) (int64, error)
+	// WithEmbeddingsForUser loads notes with embeddings produced by the
+	// given model name (Phase I: embedding isolation). Vectors from other
+	// models are excluded — comparing across embedding spaces is undefined
+	// and silently corrupts cosine results. Returns minimal projection
+	// (id, title, embedding) to keep payload small.
+	//
+	// Deprecated в пользу SearchSimilarNotes (Phase IX v2 — push-down
+	// в Postgres через pgvector). Оставлен для тестов / dev-окружений
+	// без pgvector extension.
+	WithEmbeddingsForUser(ctx context.Context, userID uuid.UUID, modelName string) ([]NoteEmbedding, error)
+	// SearchSimilarNotes — Phase IX v2: top-K по cosine distance напрямую
+	// в Postgres через pgvector `<=>` operator + IVFFlat index. Никакого
+	// Go-cosine, никакого pre-fetch'а корпуса. excludeNoteID можно
+	// передать чтобы отфильтровать seed-note из результатов (использует
+	// GetNoteConnections); uuid.Nil = не фильтровать. simFloor — нижний
+	// порог similarity (0.6 — sweet spot для bge-small).
+	SearchSimilarNotes(
+		ctx context.Context,
+		userID uuid.UUID,
+		queryVec []float32,
+		modelName string,
+		excludeNoteID uuid.UUID,
+		simFloor float32,
+		limit int,
+	) ([]NoteSimilarityHit, error)
+	// ExistsByTitleForUser — точный match по title. Используется
+	// TodayStandup чтобы понять «уже записал standup сегодня?» — note
+	// title = "Standup YYYY-MM-DD".
 	ExistsByTitleForUser(ctx context.Context, userID uuid.UUID, title string) (bool, error)
 }
 
@@ -166,6 +190,16 @@ type NoteEmbedding struct {
 	Title     string
 	Snippet   string // first N chars of body_md, prepared at query time
 	Embedding []float32
+}
+
+// NoteSimilarityHit — Phase IX v2: row из SearchSimilarNotes pgvector
+// результата. Score уже посчитан в Postgres (1 - cosine_distance);
+// не нужно дополнительной cosine math на caller-side.
+type NoteSimilarityHit struct {
+	ID      uuid.UUID
+	Title   string
+	Snippet string
+	Score   float32 // [0..1] для cosine; больше = ближе
 }
 
 // Embedder is the bge-small wrapper. Production impl is HoneEmbedder
@@ -187,8 +221,6 @@ type WhiteboardRepo interface {
 	Get(ctx context.Context, userID, wbID uuid.UUID) (Whiteboard, error)
 	List(ctx context.Context, userID uuid.UUID) ([]WhiteboardSummary, error)
 	Delete(ctx context.Context, userID, wbID uuid.UUID) error
-	// SetArchived — см. NoteRepo.SetArchived.
-	SetArchived(ctx context.Context, userID, wbID uuid.UUID, archived bool) error
 }
 
 // ─── Cross-domain readers (adapter-owned interfaces) ───────────────────────

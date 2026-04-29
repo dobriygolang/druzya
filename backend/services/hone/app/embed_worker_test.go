@@ -95,15 +95,20 @@ func (r *fakeNotesRepo) Move(context.Context, uuid.UUID, uuid.UUID, *uuid.UUID) 
 func (r *fakeNotesRepo) Delete(context.Context, uuid.UUID, uuid.UUID) error {
 	return errors.New("unused")
 }
-func (r *fakeNotesRepo) SetArchived(context.Context, uuid.UUID, uuid.UUID, bool) error {
-	return errors.New("unused")
-}
-func (r *fakeNotesRepo) WithEmbeddingsForUser(context.Context, uuid.UUID) ([]domain.NoteEmbedding, error) {
+func (r *fakeNotesRepo) WithEmbeddingsForUser(context.Context, uuid.UUID, string) ([]domain.NoteEmbedding, error) {
 	return nil, errors.New("unused")
 }
 
 func (r *fakeNotesRepo) ExistsByTitleForUser(context.Context, uuid.UUID, string) (bool, error) {
 	return false, nil
+}
+
+func (r *fakeNotesRepo) MarkStaleForReembed(context.Context, string) (int64, error) {
+	return 0, nil
+}
+
+func (r *fakeNotesRepo) SearchSimilarNotes(context.Context, uuid.UUID, []float32, string, uuid.UUID, float32, int) ([]domain.NoteSimilarityHit, error) {
+	return nil, nil
 }
 
 // ─── tests ─────────────────────────────────────────────────────────────────

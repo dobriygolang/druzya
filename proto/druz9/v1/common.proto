@@ -75,8 +75,8 @@ enum CharClass {
 enum SubscriptionPlan {
   SUBSCRIPTION_PLAN_UNSPECIFIED = 0;
   SUBSCRIPTION_PLAN_FREE = 1;
-  SUBSCRIPTION_PLAN_SEEKER = 2;
-  SUBSCRIPTION_PLAN_ASCENDANT = 3;
+  SUBSCRIPTION_PLAN_PRO = 2;
+  SUBSCRIPTION_PLAN_MAX = 3;
 }
 
 // MatchStatus mirrors shared/enums.MatchStatus (arena match lifecycle).

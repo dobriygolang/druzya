@@ -11,6 +11,7 @@ import (
 	miInfra "druz9/mock_interview/infra"
 	miPorts "druz9/mock_interview/ports"
 	profileInfra "druz9/profile/infra"
+	"druz9/shared/generated/pb/druz9/v1/druz9v1connect"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
@@ -98,14 +99,81 @@ func NewMockInterview(d monolithServices.Deps) *monolithServices.Module {
 		// orchestrator.bumpAtlasFromStages). Уж лучше иметь движение по
 		// атласу, чем «прошёл мок — а атлас не изменился».
 		Skills: mockSkillsAdapter{repo: profileInfra.NewPostgres(d.Pool)},
-		Now:    d.Now,
-		Log:    d.Log,
+		// Bus drives Phase C publishers — Hone's CoachListener subscribes to
+		// MockPipelineFinished to settle kind=sysdesign / kind=reflection
+		// tasks. nil-safe: in dev runs without bus everything else still
+		// works, just no fan-out.
+		Bus: d.Bus,
+		Now: d.Now,
+		Log: d.Log,
 	}
 
 	server := miPorts.NewServer(handlers, orch, d.Log)
 
+	// Phase: incremental chi→proto migration. 4 public read endpoints
+	// (/mock/companies, /mock/pipelines, /mock/pipelines/{id},
+	// /mock/leaderboard) теперь идут через MockPipelineService Connect
+	// + REST aliases via vanguard transcoder. Остальные 33 admin/mutating
+	// endpoints остаются на chi-direct в Server.Mount() пока. Дублирование
+	// /api/v1/mock/* paths нет — chi handler'ы для перенесённых путей
+	// удалены из Mount() одновременно с этой регистрацией.
+	connectPath, connectHandler := druz9v1connect.NewMockPipelineServiceHandler(server)
+	transcoder := monolithServices.MustTranscode("mock_pipeline", connectPath, connectHandler)
+
 	return &monolithServices.Module{
+		ConnectPath:        connectPath,
+		ConnectHandler:     transcoder,
+		RequireConnectAuth: true,
 		MountREST: func(r chi.Router) {
+			// Migrated endpoints — REST через transcoder.
+			r.Get("/mock/companies", transcoder.ServeHTTP)
+			r.Get("/mock/pipelines", transcoder.ServeHTTP)
+			r.Get("/mock/pipelines/{id}", transcoder.ServeHTTP)
+			r.Get("/mock/leaderboard", transcoder.ServeHTTP)
+			// slice 2:
+			r.Post("/mock/pipelines", transcoder.ServeHTTP)
+			r.Post("/mock/pipelines/{id}/cancel", transcoder.ServeHTTP)
+			r.Get("/mock/attempts/{id}/finalised", transcoder.ServeHTTP)
+			// slice 3 (orchestrator):
+			r.Post("/mock/pipelines/{id}/start-next-stage", transcoder.ServeHTTP)
+			r.Post("/mock/attempts/{id}/submit", transcoder.ServeHTTP)
+			r.Post("/mock/stages/{id}/finish", transcoder.ServeHTTP)
+			// slice 4 (admin companies + strictness):
+			r.Get("/admin/mock/companies", transcoder.ServeHTTP)
+			r.Post("/admin/mock/companies", transcoder.ServeHTTP)
+			r.Patch("/admin/mock/companies/{id}", transcoder.ServeHTTP)
+			r.Post("/admin/mock/companies/{id}/active", transcoder.ServeHTTP)
+			r.Get("/admin/mock/strictness", transcoder.ServeHTTP)
+			r.Post("/admin/mock/strictness", transcoder.ServeHTTP)
+			r.Patch("/admin/mock/strictness/{id}", transcoder.ServeHTTP)
+			// slice 5 (admin tasks):
+			r.Get("/admin/mock/tasks", transcoder.ServeHTTP)
+			r.Get("/admin/mock/tasks/{id}", transcoder.ServeHTTP)
+			r.Post("/admin/mock/tasks", transcoder.ServeHTTP)
+			r.Patch("/admin/mock/tasks/{id}", transcoder.ServeHTTP)
+			r.Post("/admin/mock/tasks/{id}/active", transcoder.ServeHTTP)
+			// slice 6 (admin task questions + test-cases):
+			r.Post("/admin/mock/tasks/{id}/questions", transcoder.ServeHTTP)
+			r.Patch("/admin/mock/task-questions/{id}", transcoder.ServeHTTP)
+			r.Delete("/admin/mock/task-questions/{id}", transcoder.ServeHTTP)
+			r.Get("/admin/mock/tasks/{id}/test-cases", transcoder.ServeHTTP)
+			r.Post("/admin/mock/tasks/{id}/test-cases", transcoder.ServeHTTP)
+			r.Patch("/admin/mock/test-cases/{id}", transcoder.ServeHTTP)
+			r.Delete("/admin/mock/test-cases/{id}", transcoder.ServeHTTP)
+			// slice 7 (admin default + company questions):
+			r.Get("/admin/mock/default-questions", transcoder.ServeHTTP)
+			r.Post("/admin/mock/default-questions", transcoder.ServeHTTP)
+			r.Patch("/admin/mock/default-questions/{id}", transcoder.ServeHTTP)
+			r.Delete("/admin/mock/default-questions/{id}", transcoder.ServeHTTP)
+			r.Get("/admin/mock/companies/{id}/questions", transcoder.ServeHTTP)
+			r.Post("/admin/mock/companies/{id}/questions", transcoder.ServeHTTP)
+			r.Patch("/admin/mock/company-questions/{id}", transcoder.ServeHTTP)
+			r.Delete("/admin/mock/company-questions/{id}", transcoder.ServeHTTP)
+			// slice 8 (admin company stages + bulk-import — финальный mock-able пакет):
+			r.Get("/admin/mock/companies/{id}/stages", transcoder.ServeHTTP)
+			r.Put("/admin/mock/companies/{id}/stages", transcoder.ServeHTTP)
+			r.Post("/admin/mock/tasks/bulk-import", transcoder.ServeHTTP)
+			// Остался только canvas binary (4 endpoints) — legit-chi exception.
 			server.Mount(r)
 		},
 	}

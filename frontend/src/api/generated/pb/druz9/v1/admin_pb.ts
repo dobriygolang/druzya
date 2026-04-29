@@ -69,6 +69,40 @@ proto3.util.setEnumType(ConfigEntryType, "druz9.v1.ConfigEntryType", [
 ]);
 
 /**
+ * AdminReportStatus — wire-закрытый набор статусов жалобы.
+ *
+ * @generated from enum druz9.v1.AdminReportStatus
+ */
+export enum AdminReportStatus {
+  /**
+   * @generated from enum value: ADMIN_REPORT_STATUS_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * @generated from enum value: ADMIN_REPORT_STATUS_PENDING = 1;
+   */
+  PENDING = 1,
+
+  /**
+   * @generated from enum value: ADMIN_REPORT_STATUS_RESOLVED = 2;
+   */
+  RESOLVED = 2,
+
+  /**
+   * @generated from enum value: ADMIN_REPORT_STATUS_DISMISSED = 3;
+   */
+  DISMISSED = 3,
+}
+// Retrieve enum metadata with: proto3.getEnumType(AdminReportStatus)
+proto3.util.setEnumType(AdminReportStatus, "druz9.v1.AdminReportStatus", [
+  { no: 0, name: "ADMIN_REPORT_STATUS_UNSPECIFIED" },
+  { no: 1, name: "ADMIN_REPORT_STATUS_PENDING" },
+  { no: 2, name: "ADMIN_REPORT_STATUS_RESOLVED" },
+  { no: 3, name: "ADMIN_REPORT_STATUS_DISMISSED" },
+]);
+
+/**
  * AdminTaskTestCase mirrors the inline test-case item in OpenAPI AdminTask.
  *
  * @generated from message druz9.v1.AdminTaskTestCase
@@ -1741,11 +1775,9 @@ export class AdminReport extends Message<AdminReport> {
   description = "";
 
   /**
-   * pending / resolved / dismissed
-   *
-   * @generated from field: string status = 8;
+   * @generated from field: druz9.v1.AdminReportStatus status = 8;
    */
-  status = "";
+  status = AdminReportStatus.UNSPECIFIED;
 
   /**
    * @generated from field: google.protobuf.Timestamp created_at = 9;
@@ -1767,7 +1799,7 @@ export class AdminReport extends Message<AdminReport> {
     { no: 5, name: "reported_name", kind: "scalar", T: 9 /* ScalarType.STRING */ },
     { no: 6, name: "reason", kind: "scalar", T: 9 /* ScalarType.STRING */ },
     { no: 7, name: "description", kind: "scalar", T: 9 /* ScalarType.STRING */ },
-    { no: 8, name: "status", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 8, name: "status", kind: "enum", T: proto3.getEnumType(AdminReportStatus) },
     { no: 9, name: "created_at", kind: "message", T: Timestamp },
   ]);
 
@@ -1836,11 +1868,11 @@ export class AdminReportList extends Message<AdminReportList> {
  */
 export class ListAdminReportsRequest extends Message<ListAdminReportsRequest> {
   /**
-   * status filter — "" means pending only.
+   * status filter — UNSPECIFIED means PENDING only.
    *
-   * @generated from field: string status = 1;
+   * @generated from field: druz9.v1.AdminReportStatus status = 1;
    */
-  status = "";
+  status = AdminReportStatus.UNSPECIFIED;
 
   /**
    * @generated from field: int32 limit = 2;
@@ -1855,7 +1887,7 @@ export class ListAdminReportsRequest extends Message<ListAdminReportsRequest> {
   static readonly runtime: typeof proto3 = proto3;
   static readonly typeName = "druz9.v1.ListAdminReportsRequest";
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
-    { no: 1, name: "status", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 1, name: "status", kind: "enum", T: proto3.getEnumType(AdminReportStatus) },
     { no: 2, name: "limit", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
   ]);
 

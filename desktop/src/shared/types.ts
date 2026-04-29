@@ -103,7 +103,7 @@ export interface DesktopConfig {
   analyticsPolicyKey: string;
 }
 
-export type SubscriptionPlan = 'free' | 'seeker' | 'ascendant' | '';
+export type SubscriptionPlan = 'free' | 'pro' | 'max' | '';
 
 export interface Quota {
   plan: SubscriptionPlan;

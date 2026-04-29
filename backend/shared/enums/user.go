@@ -25,14 +25,18 @@ func (r UserRole) String() string { return string(r) }
 type SubscriptionPlan string
 
 const (
-	SubscriptionPlanFree      SubscriptionPlan = "free"
-	SubscriptionPlanSeeker    SubscriptionPlan = "seeker"
-	SubscriptionPlanAscendant SubscriptionPlan = "ascendant"
+	SubscriptionPlanFree SubscriptionPlan = "free"
+	SubscriptionPlanPro  SubscriptionPlan = "pro"
+	SubscriptionPlanMax  SubscriptionPlan = "max"
+
+	// Legacy aliases kept so existing code paths can migrate incrementally.
+	SubscriptionPlanSeeker    SubscriptionPlan = SubscriptionPlanPro
+	SubscriptionPlanAscendant SubscriptionPlan = SubscriptionPlanMax
 )
 
 func (p SubscriptionPlan) IsValid() bool {
 	switch p {
-	case SubscriptionPlanFree, SubscriptionPlanSeeker, SubscriptionPlanAscendant:
+	case SubscriptionPlanFree, SubscriptionPlanPro, SubscriptionPlanMax:
 		return true
 	}
 	return false

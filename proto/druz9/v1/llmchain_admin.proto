@@ -1,0 +1,59 @@
+// llmchain_admin.proto — Connect-RPC contract for the runtime LLM chain
+// configuration UI.
+//
+// proto3 forbids `map<K, map<K2, V>>`, so the nested-map JSON shape used
+// by the chi handler (task_map / virtual_chains) is flattened into
+// `repeated *Entry` lists. The Connect adapter materialises the maps on
+// the server side; the existing JSON wire shape can be reconstructed by
+// the frontend post-fetch.
+syntax = "proto3";
+package druz9.v1;
+
+import "google/api/annotations.proto";
+
+option go_package = "druz9/shared/generated/pb/druz9/v1;druz9v1";
+
+// TaskModelEntry represents one cell of the task→provider→model matrix.
+message TaskModelEntry {
+  string task = 1;
+  string provider = 2;
+  string model = 3;
+}
+
+// VirtualChainStep — one step in a virtual chain. `order` preserves the
+// repeated-list ordering after a round-trip (proto guarantees order on
+// repeated fields, but the explicit field makes intent obvious).
+message VirtualChainStep {
+  string virtual_name = 1;
+  int32 order = 2;
+  string provider = 3;
+  string model = 4;
+}
+
+message LLMChainConfig {
+  int64 version = 1;
+  repeated string chain_order = 2;
+  repeated TaskModelEntry task_map = 3;
+  repeated VirtualChainStep virtual_chains = 4;
+  // Hardcoded baseline used by the frontend when virtual_chains is empty.
+  // Server populates on read; ignored on write.
+  repeated VirtualChainStep virtual_chains_defaults = 5;
+}
+
+message GetLLMChainConfigRequest {}
+
+message UpdateLLMChainConfigRequest {
+  LLMChainConfig config = 1;
+}
+
+service LLMChainAdminService {
+  rpc GetConfig(GetLLMChainConfigRequest) returns (LLMChainConfig) {
+    option (google.api.http) = {get: "/api/v1/admin/llm/config"};
+  }
+  rpc UpdateConfig(UpdateLLMChainConfigRequest) returns (LLMChainConfig) {
+    option (google.api.http) = {
+      put: "/api/v1/admin/llm/config"
+      body: "config"
+    };
+  }
+}

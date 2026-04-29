@@ -125,7 +125,7 @@ func (r *PublishRepoPG) ListNotesMeta(ctx context.Context, userID uuid.UUID) ([]
 	rows, err := r.pool.Query(ctx,
 		`SELECT id, encrypted, (public_slug IS NOT NULL AND published_at IS NOT NULL) AS published
 		   FROM hone_notes
-		  WHERE user_id = $1 AND archived_at IS NULL`,
+		  WHERE user_id = $1`,
 		userID,
 	)
 	if err != nil {
@@ -155,8 +155,7 @@ func (r *PublishRepoPG) GetPublicView(ctx context.Context, slug string) (string,
 	)
 	err := r.pool.QueryRow(ctx,
 		`SELECT title, body_md, updated_at FROM hone_notes
-		  WHERE public_slug = $1 AND published_at IS NOT NULL
-		    AND archived_at IS NULL`,
+		  WHERE public_slug = $1 AND published_at IS NOT NULL`,
 		slug,
 	).Scan(&title, &bodyMD, &updatedAt)
 	if err != nil {
@@ -206,7 +205,7 @@ func (r *PublishRepoPG) MakePrivateAtomic(ctx context.Context, userID, noteID uu
 		        size_bytes = length($3),
 		        encrypted = TRUE,
 		        embedding = NULL,
-		        embedding_model = NULL,
+		        embedding_model_id = NULL,
 		        embedded_at = NULL,
 		        public_slug = NULL,
 		        published_at = NULL,

@@ -177,7 +177,7 @@ var DefaultTaskModelMap = TaskModelMap{
 		//   "nvidia/nemotron-nano-12b-v2-vl:free" — NVIDIA 12B vision.
 		//
 		// Premium через VirtualUltra ModelOverride:
-		//   Claude Sonnet 4.5 — best-in-class на UI/диаграммах, tier=ascendant.
+		//   Claude Sonnet 4.5 — best-in-class на UI/диаграммах, tier=max.
 		//   GPT-4o / GPT-4.1 — fallback в Ultra chain.
 		//
 		// Cerebras / Mistral / DeepSeek сюда не добавляем: первые два

@@ -42,6 +42,14 @@ INSERT INTO notification_prefs(user_id) VALUES ($1)
 -- name: EnsureUserXP :exec
 INSERT INTO user_xp(user_id) VALUES ($1) ON CONFLICT (user_id) DO NOTHING;
 
+-- name: InsertXPEvent :exec
+-- Phase H audit-log row для каждого XPGained события. source —
+-- closed набор (CHECK в migrations 00001_baseline.sql на xp_events:
+-- task/arena/kata/podcast/mock/quiz/review/custom). source_id
+-- опционально (match_id / task_id / kata_id для downstream-аналитики).
+INSERT INTO xp_events (user_id, amount, source, source_id)
+VALUES ($1, $2, $3, $4);
+
 -- name: UpdateProfileXPLevel :exec
 -- v2: xp/level live in user_xp table now (audit log in xp_events).
 UPDATE user_xp

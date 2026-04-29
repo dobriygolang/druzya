@@ -25,6 +25,11 @@ type Querier interface {
 	// v2: email column dropped from users; xp/level moved to user_xp.
 	GetProfileBundle(ctx context.Context, id pgtype.UUID) (GetProfileBundleRow, error)
 	GetProfilePublic(ctx context.Context, username string) (GetProfilePublicRow, error)
+	// Phase H audit-log row для каждого XPGained события. source —
+	// closed набор (CHECK в migrations 00001_baseline.sql на xp_events:
+	// task/arena/kata/podcast/mock/quiz/review/custom). source_id
+	// опционально (match_id / task_id / kata_id для downstream-аналитики).
+	InsertXPEvent(ctx context.Context, arg InsertXPEventParams) error
 	// Admin queue. Sorted oldest-first inside a status group so the FIFO
 	// principle is obvious to moderators.
 	ListInterviewerApplications(ctx context.Context, status string) ([]ListInterviewerApplicationsRow, error)

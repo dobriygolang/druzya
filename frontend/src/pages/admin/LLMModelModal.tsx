@@ -16,7 +16,7 @@ export function LLMModelModal({
   const [modelId, setModelId] = useState(initial?.model_id ?? '')
   const [label, setLabel] = useState(initial?.label ?? '')
   const [provider, setProvider] = useState(initial?.provider ?? '')
-  const [tier, setTier] = useState<'free' | 'premium'>(initial?.tier ?? 'free')
+  const [tier, setTier] = useState<'free' | 'pro' | 'max'>(initial?.tier ?? 'free')
   const [isEnabled, setIsEnabled] = useState(initial?.is_enabled ?? true)
   const [contextWindow, setContextWindow] = useState(
     initial?.context_window != null ? String(initial.context_window) : '',
@@ -113,11 +113,12 @@ export function LLMModelModal({
             <span className="font-mono text-[10px] uppercase tracking-[0.08em] text-text-muted">tier</span>
             <select
               value={tier}
-              onChange={(e) => setTier(e.target.value as 'free' | 'premium')}
+              onChange={(e) => setTier(e.target.value as 'free' | 'pro' | 'max')}
               className="h-9 rounded-md border border-border bg-surface-2 px-3 text-sm text-text-primary"
             >
               <option value="free">free</option>
-              <option value="premium">premium</option>
+              <option value="pro">pro</option>
+              <option value="max">max</option>
             </select>
           </label>
           <label className="flex flex-col gap-1">

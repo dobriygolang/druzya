@@ -787,6 +787,146 @@ func (x *RunCodeResponse) GetStatus() string {
 	return ""
 }
 
+type EditorVisibility struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Visibility    string                 `protobuf:"bytes,1,opt,name=visibility,proto3" json:"visibility,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *EditorVisibility) Reset() {
+	*x = EditorVisibility{}
+	mi := &file_druz9_v1_editor_proto_msgTypes[12]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *EditorVisibility) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*EditorVisibility) ProtoMessage() {}
+
+func (x *EditorVisibility) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_editor_proto_msgTypes[12]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use EditorVisibility.ProtoReflect.Descriptor instead.
+func (*EditorVisibility) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_editor_proto_rawDescGZIP(), []int{12}
+}
+
+func (x *EditorVisibility) GetVisibility() string {
+	if x != nil {
+		return x.Visibility
+	}
+	return ""
+}
+
+type GetEditorVisibilityRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	RoomId        string                 `protobuf:"bytes,1,opt,name=room_id,json=roomId,proto3" json:"room_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetEditorVisibilityRequest) Reset() {
+	*x = GetEditorVisibilityRequest{}
+	mi := &file_druz9_v1_editor_proto_msgTypes[13]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetEditorVisibilityRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetEditorVisibilityRequest) ProtoMessage() {}
+
+func (x *GetEditorVisibilityRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_editor_proto_msgTypes[13]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetEditorVisibilityRequest.ProtoReflect.Descriptor instead.
+func (*GetEditorVisibilityRequest) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_editor_proto_rawDescGZIP(), []int{13}
+}
+
+func (x *GetEditorVisibilityRequest) GetRoomId() string {
+	if x != nil {
+		return x.RoomId
+	}
+	return ""
+}
+
+type SetEditorVisibilityRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	RoomId        string                 `protobuf:"bytes,1,opt,name=room_id,json=roomId,proto3" json:"room_id,omitempty"`
+	Visibility    string                 `protobuf:"bytes,2,opt,name=visibility,proto3" json:"visibility,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SetEditorVisibilityRequest) Reset() {
+	*x = SetEditorVisibilityRequest{}
+	mi := &file_druz9_v1_editor_proto_msgTypes[14]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SetEditorVisibilityRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SetEditorVisibilityRequest) ProtoMessage() {}
+
+func (x *SetEditorVisibilityRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_editor_proto_msgTypes[14]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SetEditorVisibilityRequest.ProtoReflect.Descriptor instead.
+func (*SetEditorVisibilityRequest) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_editor_proto_rawDescGZIP(), []int{14}
+}
+
+func (x *SetEditorVisibilityRequest) GetRoomId() string {
+	if x != nil {
+		return x.RoomId
+	}
+	return ""
+}
+
+func (x *SetEditorVisibilityRequest) GetVisibility() string {
+	if x != nil {
+		return x.Visibility
+	}
+	return ""
+}
+
 var File_druz9_v1_editor_proto protoreflect.FileDescriptor
 
 const file_druz9_v1_editor_proto_rawDesc = "" +
@@ -848,7 +988,18 @@ const file_druz9_v1_editor_proto_rawDesc = "" +
 	"\x06stderr\x18\x02 \x01(\tR\x06stderr\x12\x1b\n" +
 	"\texit_code\x18\x03 \x01(\x05R\bexitCode\x12\x17\n" +
 	"\atime_ms\x18\x04 \x01(\x05R\x06timeMs\x12\x16\n" +
-	"\x06status\x18\x05 \x01(\tR\x06status2\x94\x05\n" +
+	"\x06status\x18\x05 \x01(\tR\x06status\"2\n" +
+	"\x10EditorVisibility\x12\x1e\n" +
+	"\n" +
+	"visibility\x18\x01 \x01(\tR\n" +
+	"visibility\"5\n" +
+	"\x1aGetEditorVisibilityRequest\x12\x17\n" +
+	"\aroom_id\x18\x01 \x01(\tR\x06roomId\"U\n" +
+	"\x1aSetEditorVisibilityRequest\x12\x17\n" +
+	"\aroom_id\x18\x01 \x01(\tR\x06roomId\x12\x1e\n" +
+	"\n" +
+	"visibility\x18\x02 \x01(\tR\n" +
+	"visibility2\xa3\a\n" +
 	"\rEditorService\x12_\n" +
 	"\n" +
 	"CreateRoom\x12\x1b.druz9.v1.CreateRoomRequest\x1a\x14.druz9.v1.EditorRoom\"\x1e\x82\xd3\xe4\x93\x02\x18:\x01*\"\x13/api/v1/editor/room\x12`\n" +
@@ -857,7 +1008,9 @@ const file_druz9_v1_editor_proto_rawDesc = "" +
 	"\n" +
 	"FreezeRoom\x12\x1b.druz9.v1.FreezeRoomRequest\x1a\x14.druz9.v1.EditorRoom\"/\x82\xd3\xe4\x93\x02):\x01*\"$/api/v1/editor/room/{room_id}/freeze\x12j\n" +
 	"\tGetReplay\x12\x1a.druz9.v1.GetReplayRequest\x1a\x13.druz9.v1.ReplayUrl\",\x82\xd3\xe4\x93\x02&\x12$/api/v1/editor/room/{room_id}/replay\x12l\n" +
-	"\aRunCode\x12\x18.druz9.v1.RunCodeRequest\x1a\x19.druz9.v1.RunCodeResponse\",\x82\xd3\xe4\x93\x02&:\x01*\"!/api/v1/editor/room/{room_id}/runB\x88\x01\n" +
+	"\aRunCode\x12\x18.druz9.v1.RunCodeRequest\x1a\x19.druz9.v1.RunCodeResponse\",\x82\xd3\xe4\x93\x02&:\x01*\"!/api/v1/editor/room/{room_id}/run\x12\x83\x01\n" +
+	"\rGetVisibility\x12$.druz9.v1.GetEditorVisibilityRequest\x1a\x1a.druz9.v1.EditorVisibility\"0\x82\xd3\xe4\x93\x02*\x12(/api/v1/editor/room/{room_id}/visibility\x12\x86\x01\n" +
+	"\rSetVisibility\x12$.druz9.v1.SetEditorVisibilityRequest\x1a\x1a.druz9.v1.EditorVisibility\"3\x82\xd3\xe4\x93\x02-:\x01*\"(/api/v1/editor/room/{room_id}/visibilityB\x88\x01\n" +
 	"\fcom.druz9.v1B\vEditorProtoP\x01Z*druz9/shared/generated/pb/druz9/v1;druz9v1\xa2\x02\x03DXX\xaa\x02\bDruz9.V1\xca\x02\bDruz9\\V1\xe2\x02\x14Druz9\\V1\\GPBMetadata\xea\x02\tDruz9::V1b\x06proto3"
 
 var (
@@ -872,52 +1025,59 @@ func file_druz9_v1_editor_proto_rawDescGZIP() []byte {
 	return file_druz9_v1_editor_proto_rawDescData
 }
 
-var file_druz9_v1_editor_proto_msgTypes = make([]protoimpl.MessageInfo, 12)
+var file_druz9_v1_editor_proto_msgTypes = make([]protoimpl.MessageInfo, 15)
 var file_druz9_v1_editor_proto_goTypes = []any{
-	(*EditorTaskPublic)(nil),      // 0: druz9.v1.EditorTaskPublic
-	(*EditorParticipant)(nil),     // 1: druz9.v1.EditorParticipant
-	(*EditorRoom)(nil),            // 2: druz9.v1.EditorRoom
-	(*InviteLink)(nil),            // 3: druz9.v1.InviteLink
-	(*ReplayUrl)(nil),             // 4: druz9.v1.ReplayUrl
-	(*CreateRoomRequest)(nil),     // 5: druz9.v1.CreateRoomRequest
-	(*GetRoomRequest)(nil),        // 6: druz9.v1.GetRoomRequest
-	(*CreateInviteRequest)(nil),   // 7: druz9.v1.CreateInviteRequest
-	(*FreezeRoomRequest)(nil),     // 8: druz9.v1.FreezeRoomRequest
-	(*GetReplayRequest)(nil),      // 9: druz9.v1.GetReplayRequest
-	(*RunCodeRequest)(nil),        // 10: druz9.v1.RunCodeRequest
-	(*RunCodeResponse)(nil),       // 11: druz9.v1.RunCodeResponse
-	(Difficulty)(0),               // 12: druz9.v1.Difficulty
-	(Section)(0),                  // 13: druz9.v1.Section
-	(EditorRole)(0),               // 14: druz9.v1.EditorRole
-	(Language)(0),                 // 15: druz9.v1.Language
-	(*timestamppb.Timestamp)(nil), // 16: google.protobuf.Timestamp
+	(*EditorTaskPublic)(nil),           // 0: druz9.v1.EditorTaskPublic
+	(*EditorParticipant)(nil),          // 1: druz9.v1.EditorParticipant
+	(*EditorRoom)(nil),                 // 2: druz9.v1.EditorRoom
+	(*InviteLink)(nil),                 // 3: druz9.v1.InviteLink
+	(*ReplayUrl)(nil),                  // 4: druz9.v1.ReplayUrl
+	(*CreateRoomRequest)(nil),          // 5: druz9.v1.CreateRoomRequest
+	(*GetRoomRequest)(nil),             // 6: druz9.v1.GetRoomRequest
+	(*CreateInviteRequest)(nil),        // 7: druz9.v1.CreateInviteRequest
+	(*FreezeRoomRequest)(nil),          // 8: druz9.v1.FreezeRoomRequest
+	(*GetReplayRequest)(nil),           // 9: druz9.v1.GetReplayRequest
+	(*RunCodeRequest)(nil),             // 10: druz9.v1.RunCodeRequest
+	(*RunCodeResponse)(nil),            // 11: druz9.v1.RunCodeResponse
+	(*EditorVisibility)(nil),           // 12: druz9.v1.EditorVisibility
+	(*GetEditorVisibilityRequest)(nil), // 13: druz9.v1.GetEditorVisibilityRequest
+	(*SetEditorVisibilityRequest)(nil), // 14: druz9.v1.SetEditorVisibilityRequest
+	(Difficulty)(0),                    // 15: druz9.v1.Difficulty
+	(Section)(0),                       // 16: druz9.v1.Section
+	(EditorRole)(0),                    // 17: druz9.v1.EditorRole
+	(Language)(0),                      // 18: druz9.v1.Language
+	(*timestamppb.Timestamp)(nil),      // 19: google.protobuf.Timestamp
 }
 var file_druz9_v1_editor_proto_depIdxs = []int32{
-	12, // 0: druz9.v1.EditorTaskPublic.difficulty:type_name -> druz9.v1.Difficulty
-	13, // 1: druz9.v1.EditorTaskPublic.section:type_name -> druz9.v1.Section
-	14, // 2: druz9.v1.EditorParticipant.role:type_name -> druz9.v1.EditorRole
+	15, // 0: druz9.v1.EditorTaskPublic.difficulty:type_name -> druz9.v1.Difficulty
+	16, // 1: druz9.v1.EditorTaskPublic.section:type_name -> druz9.v1.Section
+	17, // 2: druz9.v1.EditorParticipant.role:type_name -> druz9.v1.EditorRole
 	0,  // 3: druz9.v1.EditorRoom.task:type_name -> druz9.v1.EditorTaskPublic
-	15, // 4: druz9.v1.EditorRoom.language:type_name -> druz9.v1.Language
+	18, // 4: druz9.v1.EditorRoom.language:type_name -> druz9.v1.Language
 	1,  // 5: druz9.v1.EditorRoom.participants:type_name -> druz9.v1.EditorParticipant
-	16, // 6: druz9.v1.EditorRoom.expires_at:type_name -> google.protobuf.Timestamp
-	16, // 7: druz9.v1.InviteLink.expires_at:type_name -> google.protobuf.Timestamp
-	16, // 8: druz9.v1.ReplayUrl.expires_at:type_name -> google.protobuf.Timestamp
-	15, // 9: druz9.v1.CreateRoomRequest.language:type_name -> druz9.v1.Language
-	15, // 10: druz9.v1.RunCodeRequest.language:type_name -> druz9.v1.Language
+	19, // 6: druz9.v1.EditorRoom.expires_at:type_name -> google.protobuf.Timestamp
+	19, // 7: druz9.v1.InviteLink.expires_at:type_name -> google.protobuf.Timestamp
+	19, // 8: druz9.v1.ReplayUrl.expires_at:type_name -> google.protobuf.Timestamp
+	18, // 9: druz9.v1.CreateRoomRequest.language:type_name -> druz9.v1.Language
+	18, // 10: druz9.v1.RunCodeRequest.language:type_name -> druz9.v1.Language
 	5,  // 11: druz9.v1.EditorService.CreateRoom:input_type -> druz9.v1.CreateRoomRequest
 	6,  // 12: druz9.v1.EditorService.GetRoom:input_type -> druz9.v1.GetRoomRequest
 	7,  // 13: druz9.v1.EditorService.CreateInvite:input_type -> druz9.v1.CreateInviteRequest
 	8,  // 14: druz9.v1.EditorService.FreezeRoom:input_type -> druz9.v1.FreezeRoomRequest
 	9,  // 15: druz9.v1.EditorService.GetReplay:input_type -> druz9.v1.GetReplayRequest
 	10, // 16: druz9.v1.EditorService.RunCode:input_type -> druz9.v1.RunCodeRequest
-	2,  // 17: druz9.v1.EditorService.CreateRoom:output_type -> druz9.v1.EditorRoom
-	2,  // 18: druz9.v1.EditorService.GetRoom:output_type -> druz9.v1.EditorRoom
-	3,  // 19: druz9.v1.EditorService.CreateInvite:output_type -> druz9.v1.InviteLink
-	2,  // 20: druz9.v1.EditorService.FreezeRoom:output_type -> druz9.v1.EditorRoom
-	4,  // 21: druz9.v1.EditorService.GetReplay:output_type -> druz9.v1.ReplayUrl
-	11, // 22: druz9.v1.EditorService.RunCode:output_type -> druz9.v1.RunCodeResponse
-	17, // [17:23] is the sub-list for method output_type
-	11, // [11:17] is the sub-list for method input_type
+	13, // 17: druz9.v1.EditorService.GetVisibility:input_type -> druz9.v1.GetEditorVisibilityRequest
+	14, // 18: druz9.v1.EditorService.SetVisibility:input_type -> druz9.v1.SetEditorVisibilityRequest
+	2,  // 19: druz9.v1.EditorService.CreateRoom:output_type -> druz9.v1.EditorRoom
+	2,  // 20: druz9.v1.EditorService.GetRoom:output_type -> druz9.v1.EditorRoom
+	3,  // 21: druz9.v1.EditorService.CreateInvite:output_type -> druz9.v1.InviteLink
+	2,  // 22: druz9.v1.EditorService.FreezeRoom:output_type -> druz9.v1.EditorRoom
+	4,  // 23: druz9.v1.EditorService.GetReplay:output_type -> druz9.v1.ReplayUrl
+	11, // 24: druz9.v1.EditorService.RunCode:output_type -> druz9.v1.RunCodeResponse
+	12, // 25: druz9.v1.EditorService.GetVisibility:output_type -> druz9.v1.EditorVisibility
+	12, // 26: druz9.v1.EditorService.SetVisibility:output_type -> druz9.v1.EditorVisibility
+	19, // [19:27] is the sub-list for method output_type
+	11, // [11:19] is the sub-list for method input_type
 	11, // [11:11] is the sub-list for extension type_name
 	11, // [11:11] is the sub-list for extension extendee
 	0,  // [0:11] is the sub-list for field type_name
@@ -935,7 +1095,7 @@ func file_druz9_v1_editor_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_druz9_v1_editor_proto_rawDesc), len(file_druz9_v1_editor_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   12,
+			NumMessages:   15,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

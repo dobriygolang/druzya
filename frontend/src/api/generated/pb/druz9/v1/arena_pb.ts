@@ -15,6 +15,50 @@ import { Message, proto3, protoInt64, Timestamp } from "@bufbuild/protobuf";
 import { ArenaMode, Difficulty, Language, MatchStatus, Section } from "./common_pb.js";
 
 /**
+ * MatchResult — терминальное состояние матча с точки зрения юзера.
+ * Wire-закрытый набор; раньше был свободным string'ом — это позволяло
+ * тихие typo'ы в backend mapper'е (e.g. "won" вместо "win" → frontend
+ * рендерит ничего). Wire JSON эмитит NAME (MATCH_RESULT_WIN) — frontend
+ * должен сравнивать через enum или helper.
+ *
+ * @generated from enum druz9.v1.MatchResult
+ */
+export enum MatchResult {
+  /**
+   * @generated from enum value: MATCH_RESULT_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * @generated from enum value: MATCH_RESULT_WIN = 1;
+   */
+  WIN = 1,
+
+  /**
+   * @generated from enum value: MATCH_RESULT_LOSS = 2;
+   */
+  LOSS = 2,
+
+  /**
+   * @generated from enum value: MATCH_RESULT_DRAW = 3;
+   */
+  DRAW = 3,
+
+  /**
+   * @generated from enum value: MATCH_RESULT_ABANDONED = 4;
+   */
+  ABANDONED = 4,
+}
+// Retrieve enum metadata with: proto3.getEnumType(MatchResult)
+proto3.util.setEnumType(MatchResult, "druz9.v1.MatchResult", [
+  { no: 0, name: "MATCH_RESULT_UNSPECIFIED" },
+  { no: 1, name: "MATCH_RESULT_WIN" },
+  { no: 2, name: "MATCH_RESULT_LOSS" },
+  { no: 3, name: "MATCH_RESULT_DRAW" },
+  { no: 4, name: "MATCH_RESULT_ABANDONED" },
+]);
+
+/**
  * ArenaTaskPublic mirrors OpenAPI TaskPublic. It's also used by AI mock / native
  * so the name is prefixed to avoid collisions across per-domain generators. The
  * fields mirror the OpenAPI schema — starter_code is a map<string,string> (key
@@ -732,11 +776,9 @@ export class MatchHistoryEntry extends Message<MatchHistoryEntry> {
   opponentAvatarUrl = "";
 
   /**
-   * result: "win" | "loss" | "draw" | "abandoned"
-   *
-   * @generated from field: string result = 7;
+   * @generated from field: druz9.v1.MatchResult result = 7;
    */
-  result = "";
+  result = MatchResult.UNSPECIFIED;
 
   /**
    * @generated from field: int32 lp_change = 8;
@@ -762,7 +804,7 @@ export class MatchHistoryEntry extends Message<MatchHistoryEntry> {
     { no: 4, name: "section", kind: "enum", T: proto3.getEnumType(Section) },
     { no: 5, name: "opponent_username", kind: "scalar", T: 9 /* ScalarType.STRING */ },
     { no: 6, name: "opponent_avatar_url", kind: "scalar", T: 9 /* ScalarType.STRING */ },
-    { no: 7, name: "result", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 7, name: "result", kind: "enum", T: proto3.getEnumType(MatchResult) },
     { no: 8, name: "lp_change", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
     { no: 9, name: "duration_seconds", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
   ]);
@@ -883,6 +925,221 @@ export class GetMyMatchesResponse extends Message<GetMyMatchesResponse> {
 
   static equals(a: GetMyMatchesResponse | PlainMessage<GetMyMatchesResponse> | undefined, b: GetMyMatchesResponse | PlainMessage<GetMyMatchesResponse> | undefined): boolean {
     return proto3.util.equals(GetMyMatchesResponse, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.GetCurrentMatchRequest
+ */
+export class GetCurrentMatchRequest extends Message<GetCurrentMatchRequest> {
+  constructor(data?: PartialMessage<GetCurrentMatchRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.GetCurrentMatchRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): GetCurrentMatchRequest {
+    return new GetCurrentMatchRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): GetCurrentMatchRequest {
+    return new GetCurrentMatchRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): GetCurrentMatchRequest {
+    return new GetCurrentMatchRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: GetCurrentMatchRequest | PlainMessage<GetCurrentMatchRequest> | undefined, b: GetCurrentMatchRequest | PlainMessage<GetCurrentMatchRequest> | undefined): boolean {
+    return proto3.util.equals(GetCurrentMatchRequest, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.CurrentMatch
+ */
+export class CurrentMatch extends Message<CurrentMatch> {
+  /**
+   * @generated from field: string match_id = 1;
+   */
+  matchId = "";
+
+  /**
+   * @generated from field: string status = 2;
+   */
+  status = "";
+
+  /**
+   * @generated from field: string mode = 3;
+   */
+  mode = "";
+
+  /**
+   * @generated from field: string section = 4;
+   */
+  section = "";
+
+  constructor(data?: PartialMessage<CurrentMatch>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.CurrentMatch";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "match_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "status", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 3, name: "mode", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 4, name: "section", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): CurrentMatch {
+    return new CurrentMatch().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): CurrentMatch {
+    return new CurrentMatch().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): CurrentMatch {
+    return new CurrentMatch().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: CurrentMatch | PlainMessage<CurrentMatch> | undefined, b: CurrentMatch | PlainMessage<CurrentMatch> | undefined): boolean {
+    return proto3.util.equals(CurrentMatch, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.GetArenaQueueStatsRequest
+ */
+export class GetArenaQueueStatsRequest extends Message<GetArenaQueueStatsRequest> {
+  constructor(data?: PartialMessage<GetArenaQueueStatsRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.GetArenaQueueStatsRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): GetArenaQueueStatsRequest {
+    return new GetArenaQueueStatsRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): GetArenaQueueStatsRequest {
+    return new GetArenaQueueStatsRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): GetArenaQueueStatsRequest {
+    return new GetArenaQueueStatsRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: GetArenaQueueStatsRequest | PlainMessage<GetArenaQueueStatsRequest> | undefined, b: GetArenaQueueStatsRequest | PlainMessage<GetArenaQueueStatsRequest> | undefined): boolean {
+    return proto3.util.equals(GetArenaQueueStatsRequest, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.QueueStatRow
+ */
+export class QueueStatRow extends Message<QueueStatRow> {
+  /**
+   * @generated from field: string mode = 1;
+   */
+  mode = "";
+
+  /**
+   * @generated from field: string section = 2;
+   */
+  section = "";
+
+  /**
+   * @generated from field: int32 waiting = 3;
+   */
+  waiting = 0;
+
+  constructor(data?: PartialMessage<QueueStatRow>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.QueueStatRow";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "mode", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "section", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 3, name: "waiting", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): QueueStatRow {
+    return new QueueStatRow().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): QueueStatRow {
+    return new QueueStatRow().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): QueueStatRow {
+    return new QueueStatRow().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: QueueStatRow | PlainMessage<QueueStatRow> | undefined, b: QueueStatRow | PlainMessage<QueueStatRow> | undefined): boolean {
+    return proto3.util.equals(QueueStatRow, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.ArenaQueueStats
+ */
+export class ArenaQueueStats extends Message<ArenaQueueStats> {
+  /**
+   * @generated from field: repeated druz9.v1.QueueStatRow items = 1;
+   */
+  items: QueueStatRow[] = [];
+
+  /**
+   * @generated from field: map<string, int32> by_mode = 2;
+   */
+  byMode: { [key: string]: number } = {};
+
+  /**
+   * @generated from field: int64 generated_at = 3;
+   */
+  generatedAt = protoInt64.zero;
+
+  constructor(data?: PartialMessage<ArenaQueueStats>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.ArenaQueueStats";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "items", kind: "message", T: QueueStatRow, repeated: true },
+    { no: 2, name: "by_mode", kind: "map", K: 9 /* ScalarType.STRING */, V: {kind: "scalar", T: 5 /* ScalarType.INT32 */} },
+    { no: 3, name: "generated_at", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ArenaQueueStats {
+    return new ArenaQueueStats().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): ArenaQueueStats {
+    return new ArenaQueueStats().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): ArenaQueueStats {
+    return new ArenaQueueStats().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: ArenaQueueStats | PlainMessage<ArenaQueueStats> | undefined, b: ArenaQueueStats | PlainMessage<ArenaQueueStats> | undefined): boolean {
+    return proto3.util.equals(ArenaQueueStats, a, b);
   }
 }
 

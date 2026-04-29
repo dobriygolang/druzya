@@ -150,6 +150,36 @@ const (
 	// HoneServiceSendCueSessionToTelegramProcedure is the fully-qualified name of the HoneService's
 	// SendCueSessionToTelegram RPC.
 	HoneServiceSendCueSessionToTelegramProcedure = "/druz9.v1.HoneService/SendCueSessionToTelegram"
+	// HoneServiceListTasksProcedure is the fully-qualified name of the HoneService's ListTasks RPC.
+	HoneServiceListTasksProcedure = "/druz9.v1.HoneService/ListTasks"
+	// HoneServiceCreateTaskProcedure is the fully-qualified name of the HoneService's CreateTask RPC.
+	HoneServiceCreateTaskProcedure = "/druz9.v1.HoneService/CreateTask"
+	// HoneServiceMoveTaskStatusProcedure is the fully-qualified name of the HoneService's
+	// MoveTaskStatus RPC.
+	HoneServiceMoveTaskStatusProcedure = "/druz9.v1.HoneService/MoveTaskStatus"
+	// HoneServiceDeleteTaskProcedure is the fully-qualified name of the HoneService's DeleteTask RPC.
+	HoneServiceDeleteTaskProcedure = "/druz9.v1.HoneService/DeleteTask"
+	// HoneServiceListTaskCommentsProcedure is the fully-qualified name of the HoneService's
+	// ListTaskComments RPC.
+	HoneServiceListTaskCommentsProcedure = "/druz9.v1.HoneService/ListTaskComments"
+	// HoneServiceAddTaskCommentProcedure is the fully-qualified name of the HoneService's
+	// AddTaskComment RPC.
+	HoneServiceAddTaskCommentProcedure = "/druz9.v1.HoneService/AddTaskComment"
+	// HoneServicePublishNoteProcedure is the fully-qualified name of the HoneService's PublishNote RPC.
+	HoneServicePublishNoteProcedure = "/druz9.v1.HoneService/PublishNote"
+	// HoneServiceUnpublishNoteProcedure is the fully-qualified name of the HoneService's UnpublishNote
+	// RPC.
+	HoneServiceUnpublishNoteProcedure = "/druz9.v1.HoneService/UnpublishNote"
+	// HoneServicePublishStatusProcedure is the fully-qualified name of the HoneService's PublishStatus
+	// RPC.
+	HoneServicePublishStatusProcedure = "/druz9.v1.HoneService/PublishStatus"
+	// HoneServiceShareToWebProcedure is the fully-qualified name of the HoneService's ShareToWeb RPC.
+	HoneServiceShareToWebProcedure = "/druz9.v1.HoneService/ShareToWeb"
+	// HoneServiceMakePrivateProcedure is the fully-qualified name of the HoneService's MakePrivate RPC.
+	HoneServiceMakePrivateProcedure = "/druz9.v1.HoneService/MakePrivate"
+	// HoneServiceBulkNotesMetaProcedure is the fully-qualified name of the HoneService's BulkNotesMeta
+	// RPC.
+	HoneServiceBulkNotesMetaProcedure = "/druz9.v1.HoneService/BulkNotesMeta"
 )
 
 // HoneServiceClient is a client for the druz9.v1.HoneService service.
@@ -204,6 +234,24 @@ type HoneServiceClient interface {
 	UpdateCueSession(context.Context, *connect.Request[v1.UpdateCueSessionRequest]) (*connect.Response[v1.CueSession], error)
 	DeleteCueSession(context.Context, *connect.Request[v1.DeleteCueSessionRequest]) (*connect.Response[v1.DeleteCueSessionResponse], error)
 	SendCueSessionToTelegram(context.Context, *connect.Request[v1.SendCueSessionToTelegramRequest]) (*connect.Response[v1.SendCueSessionToTelegramResponse], error)
+	// ─── TaskBoard (Notion-style kanban) ───────────────────────────────
+	ListTasks(context.Context, *connect.Request[v1.ListTasksRequest]) (*connect.Response[v1.ListTasksResponse], error)
+	CreateTask(context.Context, *connect.Request[v1.CreateTaskRequest]) (*connect.Response[v1.Task], error)
+	MoveTaskStatus(context.Context, *connect.Request[v1.MoveTaskStatusRequest]) (*connect.Response[v1.Task], error)
+	DeleteTask(context.Context, *connect.Request[v1.DeleteTaskRequest]) (*connect.Response[v1.DeleteTaskResponse], error)
+	ListTaskComments(context.Context, *connect.Request[v1.ListTaskCommentsRequest]) (*connect.Response[v1.ListTaskCommentsResponse], error)
+	AddTaskComment(context.Context, *connect.Request[v1.AddTaskCommentRequest]) (*connect.Response[v1.TaskComment], error)
+	// ─── Publish-to-web ────────────────────────────────────────────────
+	// The HTML viewer at /p/{slug} stays chi-direct (renders Markdown into
+	// sandboxed HTML with strict CSP headers — vanguard's JSON-only codec
+	// can't shape that response). All JSON endpoints below go through the
+	// transcoder.
+	PublishNote(context.Context, *connect.Request[v1.PublishNoteRequest]) (*connect.Response[v1.PublishNoteResponse], error)
+	UnpublishNote(context.Context, *connect.Request[v1.UnpublishNoteRequest]) (*connect.Response[v1.UnpublishNoteResponse], error)
+	PublishStatus(context.Context, *connect.Request[v1.PublishStatusRequest]) (*connect.Response[v1.PublishStatusResponse], error)
+	ShareToWeb(context.Context, *connect.Request[v1.ShareToWebRequest]) (*connect.Response[v1.ShareToWebResponse], error)
+	MakePrivate(context.Context, *connect.Request[v1.MakePrivateRequest]) (*connect.Response[v1.MakePrivateResponse], error)
+	BulkNotesMeta(context.Context, *connect.Request[v1.BulkNotesMetaRequest]) (*connect.Response[v1.BulkNotesMetaResponse], error)
 }
 
 // NewHoneServiceClient constructs a client for the druz9.v1.HoneService service. By default, it
@@ -433,6 +481,78 @@ func NewHoneServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 			connect.WithSchema(honeServiceMethods.ByName("SendCueSessionToTelegram")),
 			connect.WithClientOptions(opts...),
 		),
+		listTasks: connect.NewClient[v1.ListTasksRequest, v1.ListTasksResponse](
+			httpClient,
+			baseURL+HoneServiceListTasksProcedure,
+			connect.WithSchema(honeServiceMethods.ByName("ListTasks")),
+			connect.WithClientOptions(opts...),
+		),
+		createTask: connect.NewClient[v1.CreateTaskRequest, v1.Task](
+			httpClient,
+			baseURL+HoneServiceCreateTaskProcedure,
+			connect.WithSchema(honeServiceMethods.ByName("CreateTask")),
+			connect.WithClientOptions(opts...),
+		),
+		moveTaskStatus: connect.NewClient[v1.MoveTaskStatusRequest, v1.Task](
+			httpClient,
+			baseURL+HoneServiceMoveTaskStatusProcedure,
+			connect.WithSchema(honeServiceMethods.ByName("MoveTaskStatus")),
+			connect.WithClientOptions(opts...),
+		),
+		deleteTask: connect.NewClient[v1.DeleteTaskRequest, v1.DeleteTaskResponse](
+			httpClient,
+			baseURL+HoneServiceDeleteTaskProcedure,
+			connect.WithSchema(honeServiceMethods.ByName("DeleteTask")),
+			connect.WithClientOptions(opts...),
+		),
+		listTaskComments: connect.NewClient[v1.ListTaskCommentsRequest, v1.ListTaskCommentsResponse](
+			httpClient,
+			baseURL+HoneServiceListTaskCommentsProcedure,
+			connect.WithSchema(honeServiceMethods.ByName("ListTaskComments")),
+			connect.WithClientOptions(opts...),
+		),
+		addTaskComment: connect.NewClient[v1.AddTaskCommentRequest, v1.TaskComment](
+			httpClient,
+			baseURL+HoneServiceAddTaskCommentProcedure,
+			connect.WithSchema(honeServiceMethods.ByName("AddTaskComment")),
+			connect.WithClientOptions(opts...),
+		),
+		publishNote: connect.NewClient[v1.PublishNoteRequest, v1.PublishNoteResponse](
+			httpClient,
+			baseURL+HoneServicePublishNoteProcedure,
+			connect.WithSchema(honeServiceMethods.ByName("PublishNote")),
+			connect.WithClientOptions(opts...),
+		),
+		unpublishNote: connect.NewClient[v1.UnpublishNoteRequest, v1.UnpublishNoteResponse](
+			httpClient,
+			baseURL+HoneServiceUnpublishNoteProcedure,
+			connect.WithSchema(honeServiceMethods.ByName("UnpublishNote")),
+			connect.WithClientOptions(opts...),
+		),
+		publishStatus: connect.NewClient[v1.PublishStatusRequest, v1.PublishStatusResponse](
+			httpClient,
+			baseURL+HoneServicePublishStatusProcedure,
+			connect.WithSchema(honeServiceMethods.ByName("PublishStatus")),
+			connect.WithClientOptions(opts...),
+		),
+		shareToWeb: connect.NewClient[v1.ShareToWebRequest, v1.ShareToWebResponse](
+			httpClient,
+			baseURL+HoneServiceShareToWebProcedure,
+			connect.WithSchema(honeServiceMethods.ByName("ShareToWeb")),
+			connect.WithClientOptions(opts...),
+		),
+		makePrivate: connect.NewClient[v1.MakePrivateRequest, v1.MakePrivateResponse](
+			httpClient,
+			baseURL+HoneServiceMakePrivateProcedure,
+			connect.WithSchema(honeServiceMethods.ByName("MakePrivate")),
+			connect.WithClientOptions(opts...),
+		),
+		bulkNotesMeta: connect.NewClient[v1.BulkNotesMetaRequest, v1.BulkNotesMetaResponse](
+			httpClient,
+			baseURL+HoneServiceBulkNotesMetaProcedure,
+			connect.WithSchema(honeServiceMethods.ByName("BulkNotesMeta")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
@@ -474,6 +594,18 @@ type honeServiceClient struct {
 	updateCueSession         *connect.Client[v1.UpdateCueSessionRequest, v1.CueSession]
 	deleteCueSession         *connect.Client[v1.DeleteCueSessionRequest, v1.DeleteCueSessionResponse]
 	sendCueSessionToTelegram *connect.Client[v1.SendCueSessionToTelegramRequest, v1.SendCueSessionToTelegramResponse]
+	listTasks                *connect.Client[v1.ListTasksRequest, v1.ListTasksResponse]
+	createTask               *connect.Client[v1.CreateTaskRequest, v1.Task]
+	moveTaskStatus           *connect.Client[v1.MoveTaskStatusRequest, v1.Task]
+	deleteTask               *connect.Client[v1.DeleteTaskRequest, v1.DeleteTaskResponse]
+	listTaskComments         *connect.Client[v1.ListTaskCommentsRequest, v1.ListTaskCommentsResponse]
+	addTaskComment           *connect.Client[v1.AddTaskCommentRequest, v1.TaskComment]
+	publishNote              *connect.Client[v1.PublishNoteRequest, v1.PublishNoteResponse]
+	unpublishNote            *connect.Client[v1.UnpublishNoteRequest, v1.UnpublishNoteResponse]
+	publishStatus            *connect.Client[v1.PublishStatusRequest, v1.PublishStatusResponse]
+	shareToWeb               *connect.Client[v1.ShareToWebRequest, v1.ShareToWebResponse]
+	makePrivate              *connect.Client[v1.MakePrivateRequest, v1.MakePrivateResponse]
+	bulkNotesMeta            *connect.Client[v1.BulkNotesMetaRequest, v1.BulkNotesMetaResponse]
 }
 
 // GenerateDailyPlan calls druz9.v1.HoneService.GenerateDailyPlan.
@@ -656,6 +788,66 @@ func (c *honeServiceClient) SendCueSessionToTelegram(ctx context.Context, req *c
 	return c.sendCueSessionToTelegram.CallUnary(ctx, req)
 }
 
+// ListTasks calls druz9.v1.HoneService.ListTasks.
+func (c *honeServiceClient) ListTasks(ctx context.Context, req *connect.Request[v1.ListTasksRequest]) (*connect.Response[v1.ListTasksResponse], error) {
+	return c.listTasks.CallUnary(ctx, req)
+}
+
+// CreateTask calls druz9.v1.HoneService.CreateTask.
+func (c *honeServiceClient) CreateTask(ctx context.Context, req *connect.Request[v1.CreateTaskRequest]) (*connect.Response[v1.Task], error) {
+	return c.createTask.CallUnary(ctx, req)
+}
+
+// MoveTaskStatus calls druz9.v1.HoneService.MoveTaskStatus.
+func (c *honeServiceClient) MoveTaskStatus(ctx context.Context, req *connect.Request[v1.MoveTaskStatusRequest]) (*connect.Response[v1.Task], error) {
+	return c.moveTaskStatus.CallUnary(ctx, req)
+}
+
+// DeleteTask calls druz9.v1.HoneService.DeleteTask.
+func (c *honeServiceClient) DeleteTask(ctx context.Context, req *connect.Request[v1.DeleteTaskRequest]) (*connect.Response[v1.DeleteTaskResponse], error) {
+	return c.deleteTask.CallUnary(ctx, req)
+}
+
+// ListTaskComments calls druz9.v1.HoneService.ListTaskComments.
+func (c *honeServiceClient) ListTaskComments(ctx context.Context, req *connect.Request[v1.ListTaskCommentsRequest]) (*connect.Response[v1.ListTaskCommentsResponse], error) {
+	return c.listTaskComments.CallUnary(ctx, req)
+}
+
+// AddTaskComment calls druz9.v1.HoneService.AddTaskComment.
+func (c *honeServiceClient) AddTaskComment(ctx context.Context, req *connect.Request[v1.AddTaskCommentRequest]) (*connect.Response[v1.TaskComment], error) {
+	return c.addTaskComment.CallUnary(ctx, req)
+}
+
+// PublishNote calls druz9.v1.HoneService.PublishNote.
+func (c *honeServiceClient) PublishNote(ctx context.Context, req *connect.Request[v1.PublishNoteRequest]) (*connect.Response[v1.PublishNoteResponse], error) {
+	return c.publishNote.CallUnary(ctx, req)
+}
+
+// UnpublishNote calls druz9.v1.HoneService.UnpublishNote.
+func (c *honeServiceClient) UnpublishNote(ctx context.Context, req *connect.Request[v1.UnpublishNoteRequest]) (*connect.Response[v1.UnpublishNoteResponse], error) {
+	return c.unpublishNote.CallUnary(ctx, req)
+}
+
+// PublishStatus calls druz9.v1.HoneService.PublishStatus.
+func (c *honeServiceClient) PublishStatus(ctx context.Context, req *connect.Request[v1.PublishStatusRequest]) (*connect.Response[v1.PublishStatusResponse], error) {
+	return c.publishStatus.CallUnary(ctx, req)
+}
+
+// ShareToWeb calls druz9.v1.HoneService.ShareToWeb.
+func (c *honeServiceClient) ShareToWeb(ctx context.Context, req *connect.Request[v1.ShareToWebRequest]) (*connect.Response[v1.ShareToWebResponse], error) {
+	return c.shareToWeb.CallUnary(ctx, req)
+}
+
+// MakePrivate calls druz9.v1.HoneService.MakePrivate.
+func (c *honeServiceClient) MakePrivate(ctx context.Context, req *connect.Request[v1.MakePrivateRequest]) (*connect.Response[v1.MakePrivateResponse], error) {
+	return c.makePrivate.CallUnary(ctx, req)
+}
+
+// BulkNotesMeta calls druz9.v1.HoneService.BulkNotesMeta.
+func (c *honeServiceClient) BulkNotesMeta(ctx context.Context, req *connect.Request[v1.BulkNotesMetaRequest]) (*connect.Response[v1.BulkNotesMetaResponse], error) {
+	return c.bulkNotesMeta.CallUnary(ctx, req)
+}
+
 // HoneServiceHandler is an implementation of the druz9.v1.HoneService service.
 type HoneServiceHandler interface {
 	// ─── Plan ───────────────────────────────────────────────────────────
@@ -708,6 +900,24 @@ type HoneServiceHandler interface {
 	UpdateCueSession(context.Context, *connect.Request[v1.UpdateCueSessionRequest]) (*connect.Response[v1.CueSession], error)
 	DeleteCueSession(context.Context, *connect.Request[v1.DeleteCueSessionRequest]) (*connect.Response[v1.DeleteCueSessionResponse], error)
 	SendCueSessionToTelegram(context.Context, *connect.Request[v1.SendCueSessionToTelegramRequest]) (*connect.Response[v1.SendCueSessionToTelegramResponse], error)
+	// ─── TaskBoard (Notion-style kanban) ───────────────────────────────
+	ListTasks(context.Context, *connect.Request[v1.ListTasksRequest]) (*connect.Response[v1.ListTasksResponse], error)
+	CreateTask(context.Context, *connect.Request[v1.CreateTaskRequest]) (*connect.Response[v1.Task], error)
+	MoveTaskStatus(context.Context, *connect.Request[v1.MoveTaskStatusRequest]) (*connect.Response[v1.Task], error)
+	DeleteTask(context.Context, *connect.Request[v1.DeleteTaskRequest]) (*connect.Response[v1.DeleteTaskResponse], error)
+	ListTaskComments(context.Context, *connect.Request[v1.ListTaskCommentsRequest]) (*connect.Response[v1.ListTaskCommentsResponse], error)
+	AddTaskComment(context.Context, *connect.Request[v1.AddTaskCommentRequest]) (*connect.Response[v1.TaskComment], error)
+	// ─── Publish-to-web ────────────────────────────────────────────────
+	// The HTML viewer at /p/{slug} stays chi-direct (renders Markdown into
+	// sandboxed HTML with strict CSP headers — vanguard's JSON-only codec
+	// can't shape that response). All JSON endpoints below go through the
+	// transcoder.
+	PublishNote(context.Context, *connect.Request[v1.PublishNoteRequest]) (*connect.Response[v1.PublishNoteResponse], error)
+	UnpublishNote(context.Context, *connect.Request[v1.UnpublishNoteRequest]) (*connect.Response[v1.UnpublishNoteResponse], error)
+	PublishStatus(context.Context, *connect.Request[v1.PublishStatusRequest]) (*connect.Response[v1.PublishStatusResponse], error)
+	ShareToWeb(context.Context, *connect.Request[v1.ShareToWebRequest]) (*connect.Response[v1.ShareToWebResponse], error)
+	MakePrivate(context.Context, *connect.Request[v1.MakePrivateRequest]) (*connect.Response[v1.MakePrivateResponse], error)
+	BulkNotesMeta(context.Context, *connect.Request[v1.BulkNotesMetaRequest]) (*connect.Response[v1.BulkNotesMetaResponse], error)
 }
 
 // NewHoneServiceHandler builds an HTTP handler from the service implementation. It returns the path
@@ -933,6 +1143,78 @@ func NewHoneServiceHandler(svc HoneServiceHandler, opts ...connect.HandlerOption
 		connect.WithSchema(honeServiceMethods.ByName("SendCueSessionToTelegram")),
 		connect.WithHandlerOptions(opts...),
 	)
+	honeServiceListTasksHandler := connect.NewUnaryHandler(
+		HoneServiceListTasksProcedure,
+		svc.ListTasks,
+		connect.WithSchema(honeServiceMethods.ByName("ListTasks")),
+		connect.WithHandlerOptions(opts...),
+	)
+	honeServiceCreateTaskHandler := connect.NewUnaryHandler(
+		HoneServiceCreateTaskProcedure,
+		svc.CreateTask,
+		connect.WithSchema(honeServiceMethods.ByName("CreateTask")),
+		connect.WithHandlerOptions(opts...),
+	)
+	honeServiceMoveTaskStatusHandler := connect.NewUnaryHandler(
+		HoneServiceMoveTaskStatusProcedure,
+		svc.MoveTaskStatus,
+		connect.WithSchema(honeServiceMethods.ByName("MoveTaskStatus")),
+		connect.WithHandlerOptions(opts...),
+	)
+	honeServiceDeleteTaskHandler := connect.NewUnaryHandler(
+		HoneServiceDeleteTaskProcedure,
+		svc.DeleteTask,
+		connect.WithSchema(honeServiceMethods.ByName("DeleteTask")),
+		connect.WithHandlerOptions(opts...),
+	)
+	honeServiceListTaskCommentsHandler := connect.NewUnaryHandler(
+		HoneServiceListTaskCommentsProcedure,
+		svc.ListTaskComments,
+		connect.WithSchema(honeServiceMethods.ByName("ListTaskComments")),
+		connect.WithHandlerOptions(opts...),
+	)
+	honeServiceAddTaskCommentHandler := connect.NewUnaryHandler(
+		HoneServiceAddTaskCommentProcedure,
+		svc.AddTaskComment,
+		connect.WithSchema(honeServiceMethods.ByName("AddTaskComment")),
+		connect.WithHandlerOptions(opts...),
+	)
+	honeServicePublishNoteHandler := connect.NewUnaryHandler(
+		HoneServicePublishNoteProcedure,
+		svc.PublishNote,
+		connect.WithSchema(honeServiceMethods.ByName("PublishNote")),
+		connect.WithHandlerOptions(opts...),
+	)
+	honeServiceUnpublishNoteHandler := connect.NewUnaryHandler(
+		HoneServiceUnpublishNoteProcedure,
+		svc.UnpublishNote,
+		connect.WithSchema(honeServiceMethods.ByName("UnpublishNote")),
+		connect.WithHandlerOptions(opts...),
+	)
+	honeServicePublishStatusHandler := connect.NewUnaryHandler(
+		HoneServicePublishStatusProcedure,
+		svc.PublishStatus,
+		connect.WithSchema(honeServiceMethods.ByName("PublishStatus")),
+		connect.WithHandlerOptions(opts...),
+	)
+	honeServiceShareToWebHandler := connect.NewUnaryHandler(
+		HoneServiceShareToWebProcedure,
+		svc.ShareToWeb,
+		connect.WithSchema(honeServiceMethods.ByName("ShareToWeb")),
+		connect.WithHandlerOptions(opts...),
+	)
+	honeServiceMakePrivateHandler := connect.NewUnaryHandler(
+		HoneServiceMakePrivateProcedure,
+		svc.MakePrivate,
+		connect.WithSchema(honeServiceMethods.ByName("MakePrivate")),
+		connect.WithHandlerOptions(opts...),
+	)
+	honeServiceBulkNotesMetaHandler := connect.NewUnaryHandler(
+		HoneServiceBulkNotesMetaProcedure,
+		svc.BulkNotesMeta,
+		connect.WithSchema(honeServiceMethods.ByName("BulkNotesMeta")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/druz9.v1.HoneService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case HoneServiceGenerateDailyPlanProcedure:
@@ -1007,6 +1289,30 @@ func NewHoneServiceHandler(svc HoneServiceHandler, opts ...connect.HandlerOption
 			honeServiceDeleteCueSessionHandler.ServeHTTP(w, r)
 		case HoneServiceSendCueSessionToTelegramProcedure:
 			honeServiceSendCueSessionToTelegramHandler.ServeHTTP(w, r)
+		case HoneServiceListTasksProcedure:
+			honeServiceListTasksHandler.ServeHTTP(w, r)
+		case HoneServiceCreateTaskProcedure:
+			honeServiceCreateTaskHandler.ServeHTTP(w, r)
+		case HoneServiceMoveTaskStatusProcedure:
+			honeServiceMoveTaskStatusHandler.ServeHTTP(w, r)
+		case HoneServiceDeleteTaskProcedure:
+			honeServiceDeleteTaskHandler.ServeHTTP(w, r)
+		case HoneServiceListTaskCommentsProcedure:
+			honeServiceListTaskCommentsHandler.ServeHTTP(w, r)
+		case HoneServiceAddTaskCommentProcedure:
+			honeServiceAddTaskCommentHandler.ServeHTTP(w, r)
+		case HoneServicePublishNoteProcedure:
+			honeServicePublishNoteHandler.ServeHTTP(w, r)
+		case HoneServiceUnpublishNoteProcedure:
+			honeServiceUnpublishNoteHandler.ServeHTTP(w, r)
+		case HoneServicePublishStatusProcedure:
+			honeServicePublishStatusHandler.ServeHTTP(w, r)
+		case HoneServiceShareToWebProcedure:
+			honeServiceShareToWebHandler.ServeHTTP(w, r)
+		case HoneServiceMakePrivateProcedure:
+			honeServiceMakePrivateHandler.ServeHTTP(w, r)
+		case HoneServiceBulkNotesMetaProcedure:
+			honeServiceBulkNotesMetaHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -1158,4 +1464,52 @@ func (UnimplementedHoneServiceHandler) DeleteCueSession(context.Context, *connec
 
 func (UnimplementedHoneServiceHandler) SendCueSessionToTelegram(context.Context, *connect.Request[v1.SendCueSessionToTelegramRequest]) (*connect.Response[v1.SendCueSessionToTelegramResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.HoneService.SendCueSessionToTelegram is not implemented"))
+}
+
+func (UnimplementedHoneServiceHandler) ListTasks(context.Context, *connect.Request[v1.ListTasksRequest]) (*connect.Response[v1.ListTasksResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.HoneService.ListTasks is not implemented"))
+}
+
+func (UnimplementedHoneServiceHandler) CreateTask(context.Context, *connect.Request[v1.CreateTaskRequest]) (*connect.Response[v1.Task], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.HoneService.CreateTask is not implemented"))
+}
+
+func (UnimplementedHoneServiceHandler) MoveTaskStatus(context.Context, *connect.Request[v1.MoveTaskStatusRequest]) (*connect.Response[v1.Task], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.HoneService.MoveTaskStatus is not implemented"))
+}
+
+func (UnimplementedHoneServiceHandler) DeleteTask(context.Context, *connect.Request[v1.DeleteTaskRequest]) (*connect.Response[v1.DeleteTaskResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.HoneService.DeleteTask is not implemented"))
+}
+
+func (UnimplementedHoneServiceHandler) ListTaskComments(context.Context, *connect.Request[v1.ListTaskCommentsRequest]) (*connect.Response[v1.ListTaskCommentsResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.HoneService.ListTaskComments is not implemented"))
+}
+
+func (UnimplementedHoneServiceHandler) AddTaskComment(context.Context, *connect.Request[v1.AddTaskCommentRequest]) (*connect.Response[v1.TaskComment], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.HoneService.AddTaskComment is not implemented"))
+}
+
+func (UnimplementedHoneServiceHandler) PublishNote(context.Context, *connect.Request[v1.PublishNoteRequest]) (*connect.Response[v1.PublishNoteResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.HoneService.PublishNote is not implemented"))
+}
+
+func (UnimplementedHoneServiceHandler) UnpublishNote(context.Context, *connect.Request[v1.UnpublishNoteRequest]) (*connect.Response[v1.UnpublishNoteResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.HoneService.UnpublishNote is not implemented"))
+}
+
+func (UnimplementedHoneServiceHandler) PublishStatus(context.Context, *connect.Request[v1.PublishStatusRequest]) (*connect.Response[v1.PublishStatusResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.HoneService.PublishStatus is not implemented"))
+}
+
+func (UnimplementedHoneServiceHandler) ShareToWeb(context.Context, *connect.Request[v1.ShareToWebRequest]) (*connect.Response[v1.ShareToWebResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.HoneService.ShareToWeb is not implemented"))
+}
+
+func (UnimplementedHoneServiceHandler) MakePrivate(context.Context, *connect.Request[v1.MakePrivateRequest]) (*connect.Response[v1.MakePrivateResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.HoneService.MakePrivate is not implemented"))
+}
+
+func (UnimplementedHoneServiceHandler) BulkNotesMeta(context.Context, *connect.Request[v1.BulkNotesMetaRequest]) (*connect.Response[v1.BulkNotesMetaResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.HoneService.BulkNotesMeta is not implemented"))
 }

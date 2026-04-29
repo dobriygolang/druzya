@@ -6,6 +6,7 @@ import (
 	"log/slog"
 
 	"druz9/copilot/domain"
+	sharedDomain "druz9/shared/domain"
 
 	"github.com/google/uuid"
 )
@@ -28,7 +29,11 @@ type RunAnalysis struct {
 	// ReportURLFor renders a stable Druzya-web URL for a session id.
 	// Populated by the monolith wiring from LLMAnalyzer.ReportURLFor.
 	ReportURLFor func(sessionID string) string
-	Log          *slog.Logger
+	// Bus is the optional Phase C publisher. When wired the use case
+	// fans out CopilotAnalysisCompleted on a successful Write so Hone's
+	// CoachListener can fold it into coach memory.
+	Bus sharedDomain.Bus
+	Log *slog.Logger
 }
 
 type RunAnalysisInput struct {
@@ -92,6 +97,15 @@ func (uc *RunAnalysis) Do(ctx context.Context, in RunAnalysisInput) error {
 	if wErr := uc.Reports.Write(ctx, in.SessionID, result, reportURL); wErr != nil {
 		uc.fail(ctx, in.SessionID, wErr)
 		return fmt.Errorf("copilot.RunAnalysis: write: %w", wErr)
+	}
+	// Phase C bus fan-out — best-effort, never blocks the success path.
+	if uc.Bus != nil {
+		if perr := uc.Bus.Publish(ctx, sharedDomain.CopilotAnalysisCompleted{
+			UserID: s.UserID, SessionID: in.SessionID, OverallScore: result.OverallScore,
+		}); perr != nil && uc.Log != nil {
+			uc.Log.Warn("copilot.RunAnalysis: bus.Publish failed",
+				"err", perr, "session", in.SessionID)
+		}
 	}
 	return nil
 }

@@ -57,7 +57,7 @@ INSERT INTO mock_sessions (
     duration_min, voice_mode, paired_user_id, llm_model, started_at,
     ai_assist
 ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
-RETURNING id, user_id, company_id, task_id, section, difficulty, status, duration_min, voice_mode, paired_user_id, llm_model, stress_profile, ai_report, ai_assist, running_summary, started_at, finished_at, created_at
+RETURNING id, user_id, company_id, task_id, section, difficulty, status, duration_min, voice_mode, paired_user_id, llm_model, stress_profile, ai_report, ai_assist, running_summary, summary_model, started_at, finished_at, created_at
 `
 
 type CreateMockSessionParams struct {
@@ -111,6 +111,7 @@ func (q *Queries) CreateMockSession(ctx context.Context, arg CreateMockSessionPa
 		&i.AiReport,
 		&i.AiAssist,
 		&i.RunningSummary,
+		&i.SummaryModel,
 		&i.StartedAt,
 		&i.FinishedAt,
 		&i.CreatedAt,
@@ -168,7 +169,7 @@ func (q *Queries) GetCompanyForMock(ctx context.Context, id pgtype.UUID) (GetCom
 }
 
 const getMockSession = `-- name: GetMockSession :one
-SELECT id, user_id, company_id, task_id, section, difficulty, status, duration_min, voice_mode, paired_user_id, llm_model, stress_profile, ai_report, ai_assist, running_summary, started_at, finished_at, created_at FROM mock_sessions WHERE id = $1
+SELECT id, user_id, company_id, task_id, section, difficulty, status, duration_min, voice_mode, paired_user_id, llm_model, stress_profile, ai_report, ai_assist, running_summary, summary_model, started_at, finished_at, created_at FROM mock_sessions WHERE id = $1
 `
 
 func (q *Queries) GetMockSession(ctx context.Context, id pgtype.UUID) (MockSession, error) {
@@ -190,6 +191,7 @@ func (q *Queries) GetMockSession(ctx context.Context, id pgtype.UUID) (MockSessi
 		&i.AiReport,
 		&i.AiAssist,
 		&i.RunningSummary,
+		&i.SummaryModel,
 		&i.StartedAt,
 		&i.FinishedAt,
 		&i.CreatedAt,
@@ -382,20 +384,23 @@ func (q *Queries) UpdateMockSessionReport(ctx context.Context, arg UpdateMockSes
 
 const updateMockSessionRunningSummary = `-- name: UpdateMockSessionRunningSummary :execrows
 UPDATE mock_sessions
-   SET running_summary = $2
+   SET running_summary = $2,
+       summary_model   = $3
  WHERE id = $1
 `
 
 type UpdateMockSessionRunningSummaryParams struct {
 	ID             pgtype.UUID
 	RunningSummary string
+	SummaryModel   string
 }
 
 // Вызывается фоновым compaction.Worker после суммаризации старых turns.
 // См. backend/shared/pkg/compaction/worker.go. Пишем атомарно поверх
 // любого предыдущего значения — решение о запуске принимает воркер.
+// summary_model — Phase II attribution.
 func (q *Queries) UpdateMockSessionRunningSummary(ctx context.Context, arg UpdateMockSessionRunningSummaryParams) (int64, error) {
-	result, err := q.db.Exec(ctx, updateMockSessionRunningSummary, arg.ID, arg.RunningSummary)
+	result, err := q.db.Exec(ctx, updateMockSessionRunningSummary, arg.ID, arg.RunningSummary, arg.SummaryModel)
 	if err != nil {
 		return 0, err
 	}

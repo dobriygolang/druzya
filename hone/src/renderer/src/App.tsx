@@ -539,20 +539,38 @@ export default function App() {
       // physical-key 'B' получит `e.key='и'` — и наш switch не сработает.
       // С `e.code='KeyB'` shortcut срабатывает на ОБОИХ layouts identically.
       // Comma — `e.code='Comma'` тоже layout-independent.
+      // Toggle semantics: pressing the same key while the target page/overlay
+      // is already showing returns to home. Lets the user dismiss without
+      // hunting for ESC or moving the mouse.
       const code = e.code;
-      if (code === 'KeyT') open('today');
-      else if (code === 'KeyN') open('notes');
-      else if (code === 'KeyB') open('shared_boards');
-      else if (code === 'KeyC') open('editor'); // code rooms
-      else if (code === 'KeyE') open('events');
-      else if (code === 'KeyS') open('stats');
-      else if (code === 'KeyP') open('podcasts');
-      else if (code === 'Comma') open('settings');
+      const toggleTo = (id: PageId | 'stats') => {
+        if (id === 'stats') {
+          if (statsOpen) {
+            setStatsOpen(false);
+          } else {
+            open('stats');
+          }
+          return;
+        }
+        if (page === id) {
+          goHome();
+        } else {
+          open(id);
+        }
+      };
+      if (code === 'KeyT') toggleTo('today');
+      else if (code === 'KeyN') toggleTo('notes');
+      else if (code === 'KeyB') toggleTo('shared_boards');
+      else if (code === 'KeyC') toggleTo('editor');
+      else if (code === 'KeyE') toggleTo('events');
+      else if (code === 'KeyS') toggleTo('stats');
+      else if (code === 'KeyP') toggleTo('podcasts');
+      else if (code === 'Comma') toggleTo('settings');
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [paletteOpen, copilotOpen, onboardingOpen, page]);
+  }, [paletteOpen, copilotOpen, onboardingOpen, page, statsOpen]);
 
   // ── Trackpad horizontal swipe — Mac-style 2-finger gesture ─────────────
   // 2-finger swipe ВЛЕВО (deltaX > 0, content scroll'ит вправо) → открыть

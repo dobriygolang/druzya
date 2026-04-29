@@ -75,8 +75,8 @@ func (a *AIModels) List(ctx context.Context) ([]domain.AIModel, error) {
 
 // Create inserts a new llm_models row.
 func (a *AIModels) Create(ctx context.Context, in domain.AIModelUpsert) (domain.AIModel, error) {
-	tier := in.Tier
-	if tier != "free" && tier != "premium" {
+	tier := normalizeModelTier(in.Tier)
+	if tier == "" {
 		tier = "free"
 	}
 	enabled := true
@@ -116,6 +116,7 @@ func (a *AIModels) Create(ctx context.Context, in domain.AIModelUpsert) (domain.
 
 // Update partially updates an llm_models row identified by model_id.
 func (a *AIModels) Update(ctx context.Context, modelID string, in domain.AIModelUpsert) (domain.AIModel, error) {
+	tier := normalizeModelTier(in.Tier)
 	row := a.pool.QueryRow(ctx, `
 		UPDATE llm_models SET
 		  label = COALESCE(NULLIF($2,''), label),
@@ -132,7 +133,7 @@ func (a *AIModels) Update(ctx context.Context, modelID string, in domain.AIModel
 		  updated_at = now()
 		WHERE model_id = $1
 		RETURNING `+adminLLMModelCols,
-		modelID, in.Label, in.Provider, in.Tier, in.IsEnabled,
+		modelID, in.Label, in.Provider, tier, in.IsEnabled,
 		in.ContextWindow, in.CostPerKInputUSD, in.CostPerKOutputUSD,
 		in.UseForArena, in.UseForInsight, in.UseForMock, in.SortOrder)
 	out, err := scanAIModel(row)
@@ -143,6 +144,17 @@ func (a *AIModels) Update(ctx context.Context, modelID string, in domain.AIModel
 		return domain.AIModel{}, fmt.Errorf("admin.AIModels.Update: %w", err)
 	}
 	return out, nil
+}
+
+func normalizeModelTier(tier string) string {
+	switch tier {
+	case "free", "pro", "max":
+		return tier
+	case "premium":
+		return "pro"
+	default:
+		return ""
+	}
 }
 
 // Toggle flips is_enabled.

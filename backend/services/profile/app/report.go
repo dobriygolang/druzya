@@ -11,51 +11,17 @@ import (
 	"github.com/google/uuid"
 )
 
-// ReportView is the weekly report shape passed to ports.
-type ReportView struct {
-	WeekStart       time.Time
-	WeekEnd         time.Time
-	Metrics         domain.Activity
-	Heatmap         []int
-	Strengths       []string
-	Weaknesses      []ReportWeakness
-	StressAnalysis  string
-	Recommendations []Recommendation
+// ReportView, ReportWeakness, Recommendation, and PickFeaturedMetric live in
+// domain so the infra ReportCache adapter can reference them without crossing
+// into app. Re-exported here as aliases for backward compatibility with all
+// existing call sites (ports, tests).
+type (
+	ReportView     = domain.ReportView
+	ReportWeakness = domain.ReportWeakness
+	Recommendation = domain.Recommendation
+)
 
-	// Поля ниже — расширения для /report (WeeklyReportPage). Заполняются
-	// агрегациями из дополнительных запросов; на старых клиентах безопасно
-	// игнорируются (proto3 default values).
-	ActionsCount   int
-	StreakDays     int
-	BestStreak     int
-	PrevXPEarned   int
-	StrongSections []domain.SectionBreakdown
-	WeakSections   []domain.SectionBreakdown
-	WeeklyXP       []domain.WeekComparison
-
-	// AIInsight — Phase B: 2-paragraph Russian narrative produced by the
-	// OpenRouter insight client. Empty string when the LLM is disabled
-	// (OPENROUTER_API_KEY missing) or upstream call failed; the frontend
-	// hides the section in that case (anti-fallback policy).
-	AIInsight string
-
-	// FeaturedMetric — server-picked headline metric for the share card.
-	// Values: "streak" | "xp" | "" (empty ⇒ client default).
-	// Selection rules (see PickFeaturedMetric):
-	//   - "streak" if StreakDays >= 7
-	//   - else "xp"
-	FeaturedMetric string
-}
-
-// PickFeaturedMetric implements the rules described on ReportView.FeaturedMetric.
-// Pure function — kept exported for direct unit testing without spinning the
-// whole GetReport.Do pipeline.
-func PickFeaturedMetric(streakDays int) string {
-	if streakDays >= 7 {
-		return "streak"
-	}
-	return "xp"
-}
+var PickFeaturedMetric = domain.PickFeaturedMetric
 
 // InsightPayload mirrors infra.InsightPayload but lives in the app layer to
 // avoid an app→infra import. The wirer adapts the two structs.
@@ -80,20 +46,6 @@ type InsightPayload struct {
 // generation entirely (the use case skips the call and leaves AIInsight="").
 type InsightGenerator interface {
 	Generate(ctx context.Context, userID uuid.UUID, p InsightPayload) (string, error)
-}
-
-// ReportWeakness is a node-scoped weak spot.
-type ReportWeakness struct {
-	AtlasNodeKey string
-	Reason       string
-}
-
-// Recommendation mirrors openapi's Recommendation schema.
-type Recommendation struct {
-	Title       string
-	Description string
-	ActionKind  string
-	Params      map[string]any
 }
 
 // GetReport is a STUB-heavy MVP implementation. It composes basic activity

@@ -364,7 +364,7 @@ func (r *fakeEpisodeRepo) LatestPerKind(context.Context, uuid.UUID, []domain.Epi
 	return nil, nil
 }
 
-func (r *fakeEpisodeRepo) SearchSimilar(context.Context, uuid.UUID, []float32, []domain.EpisodeKind, int) ([]domain.EpisodeWithScore, error) {
+func (r *fakeEpisodeRepo) SearchSimilar(context.Context, uuid.UUID, []float32, string, []domain.EpisodeKind, int) ([]domain.EpisodeWithScore, error) {
 	return nil, nil
 }
 
@@ -390,6 +390,10 @@ func (r *fakeEpisodeRepo) GetBriefRecommendations(_ context.Context, userID, bri
 }
 
 func (r *fakeEpisodeRepo) DeleteOlderThan(context.Context, time.Time) (int64, error) {
+	return 0, nil
+}
+
+func (r *fakeEpisodeRepo) MarkStaleForReembed(context.Context, string) (int64, error) {
 	return 0, nil
 }
 

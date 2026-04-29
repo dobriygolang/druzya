@@ -1,4 +1,9 @@
-// Package services — Phase C-4 «Publish to web» для hone_notes.
+// Package services — public HTML viewer at /p/{slug}.
+//
+// All JSON endpoints (publish/unpublish/status/share-to-web/make-private/
+// bulk-meta) flow through the hone vanguard transcoder via NewHone. This
+// module owns ONLY the strict-CSP HTML rendering path — proto-vanguard
+// can't shape an HTML response with custom Cache-Control + CSP headers.
 package hone
 
 import (
@@ -9,60 +14,30 @@ import (
 	"html"
 	"log/slog"
 	"net/http"
-	"os"
 	"strings"
 	"time"
 
 	monolithServices "druz9/cmd/monolith/services"
 	honeApp "druz9/hone/app"
 	honeDomain "druz9/hone/domain"
-	sharedMw "druz9/shared/pkg/middleware"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/google/uuid"
 
 	"github.com/gomarkdown/markdown"
 	mdhtml "github.com/gomarkdown/markdown/html"
 	"github.com/gomarkdown/markdown/parser"
 )
 
-// PublishingDeps — что нужно handler'у. Заполняется в bootstrap'е.
+// PublishingDeps — what the public HTML viewer needs.
 type PublishingDeps struct {
-	Publish     *honeApp.PublishNote
-	Unpublish   *honeApp.UnpublishNote
-	Status      *honeApp.PublishStatus
-	BulkMeta    *honeApp.BulkNotesMeta
-	Public      *honeApp.PublicView
-	ShareToWeb  *honeApp.ShareToWeb
-	MakePrivate *honeApp.MakePrivate
-	Log         *slog.Logger
+	Public *honeApp.PublicView
+	Log    *slog.Logger
 }
 
-// NewPublishing wires the publish-to-web module.
+// NewPublishing wires the /p/{slug} viewer module.
 func NewPublishing(deps PublishingDeps) *monolithServices.Module {
-	h := &publishingHandler{
-		publish:     deps.Publish,
-		unpublish:   deps.Unpublish,
-		status:      deps.Status,
-		bulkMeta:    deps.BulkMeta,
-		public:      deps.Public,
-		shareToWeb:  deps.ShareToWeb,
-		makePrivate: deps.MakePrivate,
-		log:         deps.Log,
-	}
+	h := &publishingHandler{public: deps.Public, log: deps.Log}
 	return &monolithServices.Module{
-		MountREST: func(r chi.Router) {
-			r.Post("/notes/{id}/publish", h.publishHTTP)
-			r.Post("/notes/{id}/unpublish", h.unpublishHTTP)
-			r.Get("/notes/{id}/publish-status", h.statusHTTP)
-			// Combined atomic flows — replace the legacy (decrypt → publish)
-			// and (encrypt → unpublish) two-step UX. Client owns crypto.
-			r.Post("/notes/{id}/share-to-web", h.shareToWebHTTP)
-			r.Post("/notes/{id}/make-private", h.makePrivateHTTP)
-			// Bulk meta — фронт читает на mount списка чтобы рисовать
-			// lock-icons / publish-индикаторы в sidebar без N+1.
-			r.Get("/notes/meta", h.bulkMetaHTTP)
-		},
 		MountRoot: func(r chi.Router) {
 			r.Get("/p/{slug}", h.publicViewHTTP)
 		},
@@ -70,237 +45,8 @@ func NewPublishing(deps PublishingDeps) *monolithServices.Module {
 }
 
 type publishingHandler struct {
-	publish     *honeApp.PublishNote
-	unpublish   *honeApp.UnpublishNote
-	status      *honeApp.PublishStatus
-	bulkMeta    *honeApp.BulkNotesMeta
-	public      *honeApp.PublicView
-	shareToWeb  *honeApp.ShareToWeb
-	makePrivate *honeApp.MakePrivate
-	log         *slog.Logger
-}
-
-// ─── Owner-only operations ────────────────────────────────────────────────
-
-type publishResponse struct {
-	Slug        string    `json:"slug"`
-	URL         string    `json:"url"`
-	PublishedAt time.Time `json:"publishedAt"`
-}
-
-func (h *publishingHandler) publishHTTP(w http.ResponseWriter, r *http.Request) {
-	uid, ok := sharedMw.UserIDFromContext(r.Context())
-	if !ok {
-		writePubJSONError(w, http.StatusUnauthorized, "unauthenticated", "")
-		return
-	}
-	noteID, err := uuid.Parse(chi.URLParam(r, "id"))
-	if err != nil {
-		writePubJSONError(w, http.StatusBadRequest, "bad_id", "")
-		return
-	}
-
-	out, err := h.publish.Do(r.Context(), honeApp.PublishNoteInput{UserID: uid, NoteID: noteID})
-	if err != nil {
-		switch {
-		case errors.Is(err, honeDomain.ErrNotFound):
-			writePubJSONError(w, http.StatusNotFound, "not_found", "")
-		case errors.Is(err, honeDomain.ErrEncryptedCannotPublish):
-			writePubJSONError(w, http.StatusConflict, "encrypted_cannot_publish",
-				"This note is encrypted (Private Vault). Decrypt before publishing.")
-		default:
-			h.serverError(w, r, "publish", err, uid)
-		}
-		return
-	}
-	writePubJSON(w, http.StatusOK, publishResponse{
-		Slug:        out.Slug,
-		URL:         publicURL(out.Slug),
-		PublishedAt: out.PublishedAt,
-	})
-}
-
-func (h *publishingHandler) unpublishHTTP(w http.ResponseWriter, r *http.Request) {
-	uid, ok := sharedMw.UserIDFromContext(r.Context())
-	if !ok {
-		writePubJSONError(w, http.StatusUnauthorized, "unauthenticated", "")
-		return
-	}
-	noteID, err := uuid.Parse(chi.URLParam(r, "id"))
-	if err != nil {
-		writePubJSONError(w, http.StatusBadRequest, "bad_id", "")
-		return
-	}
-	if err := h.unpublish.Do(r.Context(), honeApp.UnpublishNoteInput{UserID: uid, NoteID: noteID}); err != nil {
-		if errors.Is(err, honeDomain.ErrNotFound) {
-			writePubJSONError(w, http.StatusNotFound, "not_found", "")
-			return
-		}
-		h.serverError(w, r, "unpublish", err, uid)
-		return
-	}
-	writePubJSON(w, http.StatusOK, map[string]bool{"ok": true})
-}
-
-type publishStatusResponse struct {
-	Published bool       `json:"published"`
-	Slug      string     `json:"slug,omitempty"`
-	URL       string     `json:"url,omitempty"`
-	At        *time.Time `json:"publishedAt,omitempty"`
-}
-
-func (h *publishingHandler) statusHTTP(w http.ResponseWriter, r *http.Request) {
-	uid, ok := sharedMw.UserIDFromContext(r.Context())
-	if !ok {
-		writePubJSONError(w, http.StatusUnauthorized, "unauthenticated", "")
-		return
-	}
-	noteID, err := uuid.Parse(chi.URLParam(r, "id"))
-	if err != nil {
-		writePubJSONError(w, http.StatusBadRequest, "bad_id", "")
-		return
-	}
-	out, err := h.status.Do(r.Context(), honeApp.PublishStatusInput{UserID: uid, NoteID: noteID})
-	if err != nil {
-		if errors.Is(err, honeDomain.ErrNotFound) {
-			writePubJSONError(w, http.StatusNotFound, "not_found", "")
-			return
-		}
-		h.serverError(w, r, "status", err, uid)
-		return
-	}
-	resp := publishStatusResponse{Published: out.Published}
-	if out.Published {
-		resp.Slug = out.Slug
-		resp.URL = publicURL(out.Slug)
-		resp.At = out.At
-	}
-	writePubJSON(w, http.StatusOK, resp)
-}
-
-// ─── Combined atomic flows ────────────────────────────────────────────────
-
-type shareToWebRequest struct {
-	// PlaintextMD — расшифрованное клиентом тело заметки. Сервер записывает
-	// его в body_md и одновременно создаёт public_slug.
-	PlaintextMD string `json:"plaintextMd"`
-}
-
-type shareToWebResponse struct {
-	Slug             string    `json:"slug"`
-	URL              string    `json:"url"`
-	PublishedAt      time.Time `json:"publishedAt"`
-	AlreadyPublished bool      `json:"alreadyPublished"`
-}
-
-func (h *publishingHandler) shareToWebHTTP(w http.ResponseWriter, r *http.Request) {
-	uid, ok := sharedMw.UserIDFromContext(r.Context())
-	if !ok {
-		writePubJSONError(w, http.StatusUnauthorized, "unauthenticated", "")
-		return
-	}
-	noteID, err := uuid.Parse(chi.URLParam(r, "id"))
-	if err != nil {
-		writePubJSONError(w, http.StatusBadRequest, "bad_id", "")
-		return
-	}
-	var body shareToWebRequest
-	if derr := readJSON(r, &body); derr != nil {
-		writePubJSONError(w, http.StatusBadRequest, "bad_body", derr.Error())
-		return
-	}
-
-	out, err := h.shareToWeb.Do(r.Context(), honeApp.ShareToWebInput{
-		UserID:         uid,
-		NoteID:         noteID,
-		PlaintextMD:    body.PlaintextMD,
-		OriginDeviceID: sharedMw.DeviceIDFromContext(r.Context()),
-	})
-	if err != nil {
-		if errors.Is(err, honeDomain.ErrNotFound) {
-			writePubJSONError(w, http.StatusNotFound, "not_found", "")
-			return
-		}
-		h.serverError(w, r, "shareToWeb", err, uid)
-		return
-	}
-	writePubJSON(w, http.StatusOK, shareToWebResponse{
-		Slug:             out.Slug,
-		URL:              publicURL(out.Slug),
-		PublishedAt:      out.PublishedAt,
-		AlreadyPublished: out.AlreadyPublished,
-	})
-}
-
-type makePrivateRequest struct {
-	// CiphertextB64 — base64(IV || ciphertext), уже сформирован клиентом.
-	CiphertextB64 string `json:"ciphertextB64"`
-}
-
-func (h *publishingHandler) makePrivateHTTP(w http.ResponseWriter, r *http.Request) {
-	uid, ok := sharedMw.UserIDFromContext(r.Context())
-	if !ok {
-		writePubJSONError(w, http.StatusUnauthorized, "unauthenticated", "")
-		return
-	}
-	noteID, err := uuid.Parse(chi.URLParam(r, "id"))
-	if err != nil {
-		writePubJSONError(w, http.StatusBadRequest, "bad_id", "")
-		return
-	}
-	var body makePrivateRequest
-	if derr := readJSON(r, &body); derr != nil {
-		writePubJSONError(w, http.StatusBadRequest, "bad_body", derr.Error())
-		return
-	}
-
-	if err := h.makePrivate.Do(r.Context(), honeApp.MakePrivateInput{
-		UserID:         uid,
-		NoteID:         noteID,
-		CiphertextB64:  body.CiphertextB64,
-		OriginDeviceID: sharedMw.DeviceIDFromContext(r.Context()),
-	}); err != nil {
-		switch {
-		case errors.Is(err, honeApp.ErrMakePrivateEmptyCiphertext):
-			writePubJSONError(w, http.StatusBadRequest, "empty_ciphertext", "")
-		case errors.Is(err, honeDomain.ErrNotFound):
-			writePubJSONError(w, http.StatusNotFound, "not_found", "")
-		default:
-			h.serverError(w, r, "makePrivate", err, uid)
-		}
-		return
-	}
-	writePubJSON(w, http.StatusOK, map[string]bool{"ok": true})
-}
-
-// ─── Bulk meta ────────────────────────────────────────────────────────────
-
-type noteMeta struct {
-	ID        string `json:"id"`
-	Encrypted bool   `json:"encrypted"`
-	Published bool   `json:"published"`
-}
-
-type bulkMetaResponse struct {
-	Notes []noteMeta `json:"notes"`
-}
-
-func (h *publishingHandler) bulkMetaHTTP(w http.ResponseWriter, r *http.Request) {
-	uid, ok := sharedMw.UserIDFromContext(r.Context())
-	if !ok {
-		writePubJSONError(w, http.StatusUnauthorized, "unauthenticated", "")
-		return
-	}
-	out, err := h.bulkMeta.Do(r.Context(), honeApp.BulkNotesMetaInput{UserID: uid})
-	if err != nil {
-		h.serverError(w, r, "bulkMeta", err, uid)
-		return
-	}
-	resp := bulkMetaResponse{Notes: make([]noteMeta, 0, len(out.Notes))}
-	for _, m := range out.Notes {
-		resp.Notes = append(resp.Notes, noteMeta{ID: m.ID, Encrypted: m.Encrypted, Published: m.Published})
-	}
-	writePubJSON(w, http.StatusOK, resp)
+	public *honeApp.PublicView
+	log    *slog.Logger
 }
 
 // ─── Public view ──────────────────────────────────────────────────────────
@@ -323,34 +69,15 @@ func (h *publishingHandler) publicViewHTTP(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	// 5-минутный edge-cache: бот-краулеры, refresh, share-preview не дёргают
-	// БД на каждый hit. Свежий body после edit'а появится максимум через 5
-	// минут на public странице.
 	w.Header().Set("Cache-Control", "public, max-age=300")
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.Header().Set("X-Content-Type-Options", "nosniff")
-	// Strict CSP — only inline styles (мы их сами шлём), никакого JS,
-	// никаких внешних ресурсов кроме картинок (data: + https:).
 	w.Header().Set("Content-Security-Policy",
 		"default-src 'none'; style-src 'unsafe-inline'; img-src data: https:; base-uri 'none';")
 	_, _ = w.Write([]byte(renderPublicHTML(out.Title, out.BodyMD, out.UpdatedAt)))
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────
-
-// publicURL — абсолютный URL для public-страницы. DRUZ9_PUBLIC_URL
-// env override'ит default (для dev-хоста).
-func publicURL(slug string) string {
-	base := strings.TrimRight(envOr("DRUZ9_PUBLIC_URL", "https://druz9.online"), "/")
-	return base + "/p/" + slug
-}
-
-func envOr(key, fallback string) string {
-	if v := os.Getenv(key); v != "" {
-		return v
-	}
-	return fallback
-}
 
 // renderPublicHTML — server-side render Markdown → HTML с обвязкой:
 // title в <h1>, дата + Hone-link в footer, OG-meta для preview-ботов.
@@ -432,8 +159,6 @@ func snippet(md string, n int) string {
 	return cut + "…"
 }
 
-// publicCSS — самодостаточный «чистый Notion-like reader». Inline в
-// HTML, без внешних шрифтов (system-stack), strict-CSP friendly.
 const publicCSS = `
 :root {
   --ink:#0e0f12; --ink-60:#5a5e69; --ink-40:#9499a3; --ink-20:#d4d7dd;
@@ -476,20 +201,15 @@ html, body { background: var(--bg); color: var(--ink);
 .brand:hover { color: var(--ink); }
 `
 
-// ─── JSON write helpers ───────────────────────────────────────────────────
-
-func writePubJSON(w http.ResponseWriter, status int, body any) {
-	WritePubJSON(w, status, body)
-}
+// ─── JSON write helpers (legacy public exports) ───────────────────────────
+//
+// Re-used by other cmd-side handlers (e.g. cmd/services/hone/cursor_sse.go);
+// keep exported until those callers move off them.
 
 func WritePubJSON(w http.ResponseWriter, status int, body any) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
 	_ = json.NewEncoder(w).Encode(body)
-}
-
-func writePubJSONError(w http.ResponseWriter, status int, code, message string) {
-	WritePubJSONError(w, status, code, message)
 }
 
 func WritePubJSONError(w http.ResponseWriter, status int, code, message string) {
@@ -498,13 +218,6 @@ func WritePubJSONError(w http.ResponseWriter, status int, code, message string) 
 	_, _ = fmt.Fprintf(w, `{"error":{"code":%q,"message":%q}}`, code, message)
 }
 
-func (h *publishingHandler) serverError(w http.ResponseWriter, r *http.Request, where string, err error, uid uuid.UUID) {
-	if errors.Is(err, context.Canceled) {
-		return
-	}
-	h.log.ErrorContext(r.Context(), "publishing.handler",
-		slog.String("where", where),
-		slog.String("user_id", uid.String()),
-		slog.Any("err", err))
-	writePubJSONError(w, http.StatusInternalServerError, "internal", "")
-}
+// suppress unused — context is retained so additional helpers can use it
+// without re-importing.
+var _ = context.Canceled

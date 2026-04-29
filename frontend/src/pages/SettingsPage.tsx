@@ -396,7 +396,7 @@ function AppearanceCard() {
 // "good" models. The catalogue is served dynamically from /ai/models (DB-
 // backed registry) so new ids appear here without a frontend release.
 //
-// Free-tier users see premium rows dimmed with a 💎 badge; clicking one is a
+// Free-tier users see paid rows dimmed; clicking one is a
 // no-op (backend would reject with InvalidArgument anyway — anti-fallback
 // policy: we surface the gate at source, not fake it). Leaving everything
 // selected means "server default", which is the cheapest free model.
@@ -406,7 +406,7 @@ function AICoachCard() {
   const { data: catalogue, isLoading, isError } = useAIModelsQuery()
   const update = useUpdateProfileSettings()
   const tier = profile?.tier ?? 'free'
-  const isPremium = tier === 'premium' || tier === 'pro'
+  const isPaid = tier === 'pro' || tier === 'max'
   // Local state — we don't have a GET /profile/me/settings yet, so the
   // picker seeds from "" (server default) and persists via the PUT
   // response. Once AIADMIN lands a GET endpoint this can hydrate from it.
@@ -415,10 +415,10 @@ function AICoachCard() {
   const available = catalogue?.available ?? false
 
   const onPick = (id: string) => {
-    // Cannot pick a premium model as a free user — hard-stop client-side
+    // Cannot pick a paid model as a free user — hard-stop client-side
     // so the user gets immediate feedback instead of a round-trip 400.
     const model = items.find((m) => m.id === id)
-    if (model && model.tier === 'premium' && !isPremium) {
+    if (model && model.tier !== 'free' && !isPaid) {
       return
     }
     setSelected(id)
@@ -471,7 +471,7 @@ function AICoachCard() {
             onSelect={onPick}
           />
           {items.map((m) => {
-            const locked = m.tier === 'premium' && !isPremium
+            const locked = m.tier !== 'free' && !isPaid
             return (
               <AIModelRow
                 key={m.id}
@@ -488,8 +488,8 @@ function AICoachCard() {
           })}
           {/* Inline upgrade hint — single, unobtrusive, only when something
               is actually locked (i.e. user is free-tier and at least one
-              premium model exists in the catalogue). */}
-          {!isPremium && items.some((m) => m.tier === 'premium') && (
+              paid model exists in the catalogue). */}
+          {!isPaid && items.some((m) => m.tier !== 'free') && (
             <PremiumUpgradeHint />
           )}
         </div>
@@ -514,14 +514,14 @@ function VacanciesModelCard() {
   const { data: current } = useAIVacanciesModelQuery()
   const update = useUpdateAIVacanciesModel()
   const tier = profile?.tier ?? 'free'
-  const isPremium = tier === 'premium' || tier === 'pro'
+  const isPaid = tier === 'pro' || tier === 'max'
   const items = catalogue?.items ?? []
   const available = catalogue?.available ?? false
   const selected = current?.model_id ?? ''
 
   const onPick = (id: string) => {
     const model = items.find((m) => m.id === id)
-    if (model && model.tier === 'premium' && !isPremium) return
+    if (model && model.tier !== 'free' && !isPaid) return
     update.mutate(id)
   }
 
@@ -567,7 +567,7 @@ function VacanciesModelCard() {
             onSelect={onPick}
           />
           {items.map((m) => {
-            const locked = m.tier === 'premium' && !isPremium
+            const locked = m.tier !== 'free' && !isPaid
             return (
               <AIModelRow
                 key={m.id}
@@ -582,7 +582,7 @@ function VacanciesModelCard() {
               />
             )
           })}
-          {!isPremium && items.some((m) => m.tier === 'premium') && (
+          {!isPaid && items.some((m) => m.tier !== 'free') && (
             <PremiumUpgradeHint />
           )}
         </div>

@@ -1,5 +1,5 @@
 // subscription.proto — Connect-RPC контракт централизованного subscription-
-// сервиса. Хранит tier пользователя (free/seeker/ascendant) + его lifecycle
+// сервиса. Хранит tier пользователя (free/pro/max) + его lifecycle
 // (active/cancelled/expired) + привязку к провайдеру оплаты. Источник правды
 // для доступа к платным LLM-моделям (см. llmchain.candidates tier-gate) и
 // для фронта (paywall / upgrade-банер). Используется и druz9, и Hone, и
@@ -11,7 +11,351 @@
 // @ts-nocheck
 
 import type { BinaryReadOptions, FieldList, JsonReadOptions, JsonValue, PartialMessage, PlainMessage } from "@bufbuild/protobuf";
-import { Message, proto3, Timestamp } from "@bufbuild/protobuf";
+import { Message, proto3, protoInt64, Timestamp } from "@bufbuild/protobuf";
+
+/**
+ * @generated from message druz9.v1.QuotaPolicy
+ */
+export class QuotaPolicy extends Message<QuotaPolicy> {
+  /**
+   * @generated from field: int32 synced_notes = 1;
+   */
+  syncedNotes = 0;
+
+  /**
+   * @generated from field: int32 active_shared_boards = 2;
+   */
+  activeSharedBoards = 0;
+
+  /**
+   * @generated from field: int32 active_shared_rooms = 3;
+   */
+  activeSharedRooms = 0;
+
+  /**
+   * @generated from field: int64 shared_ttl_seconds = 4;
+   */
+  sharedTtlSeconds = protoInt64.zero;
+
+  /**
+   * @generated from field: int32 ai_monthly = 5;
+   */
+  aiMonthly = 0;
+
+  constructor(data?: PartialMessage<QuotaPolicy>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.QuotaPolicy";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "synced_notes", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 2, name: "active_shared_boards", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 3, name: "active_shared_rooms", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 4, name: "shared_ttl_seconds", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
+    { no: 5, name: "ai_monthly", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): QuotaPolicy {
+    return new QuotaPolicy().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): QuotaPolicy {
+    return new QuotaPolicy().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): QuotaPolicy {
+    return new QuotaPolicy().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: QuotaPolicy | PlainMessage<QuotaPolicy> | undefined, b: QuotaPolicy | PlainMessage<QuotaPolicy> | undefined): boolean {
+    return proto3.util.equals(QuotaPolicy, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.QuotaUsage
+ */
+export class QuotaUsage extends Message<QuotaUsage> {
+  /**
+   * @generated from field: int32 synced_notes = 1;
+   */
+  syncedNotes = 0;
+
+  /**
+   * @generated from field: int32 active_shared_boards = 2;
+   */
+  activeSharedBoards = 0;
+
+  /**
+   * @generated from field: int32 active_shared_rooms = 3;
+   */
+  activeSharedRooms = 0;
+
+  /**
+   * @generated from field: int32 ai_this_month = 4;
+   */
+  aiThisMonth = 0;
+
+  constructor(data?: PartialMessage<QuotaUsage>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.QuotaUsage";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "synced_notes", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 2, name: "active_shared_boards", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 3, name: "active_shared_rooms", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 4, name: "ai_this_month", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): QuotaUsage {
+    return new QuotaUsage().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): QuotaUsage {
+    return new QuotaUsage().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): QuotaUsage {
+    return new QuotaUsage().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: QuotaUsage | PlainMessage<QuotaUsage> | undefined, b: QuotaUsage | PlainMessage<QuotaUsage> | undefined): boolean {
+    return proto3.util.equals(QuotaUsage, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.GetQuotaRequest
+ */
+export class GetQuotaRequest extends Message<GetQuotaRequest> {
+  constructor(data?: PartialMessage<GetQuotaRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.GetQuotaRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): GetQuotaRequest {
+    return new GetQuotaRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): GetQuotaRequest {
+    return new GetQuotaRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): GetQuotaRequest {
+    return new GetQuotaRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: GetQuotaRequest | PlainMessage<GetQuotaRequest> | undefined, b: GetQuotaRequest | PlainMessage<GetQuotaRequest> | undefined): boolean {
+    return proto3.util.equals(GetQuotaRequest, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.QuotaSnapshot
+ */
+export class QuotaSnapshot extends Message<QuotaSnapshot> {
+  /**
+   * @generated from field: string tier = 1;
+   */
+  tier = "";
+
+  /**
+   * @generated from field: druz9.v1.QuotaPolicy policy = 2;
+   */
+  policy?: QuotaPolicy;
+
+  /**
+   * @generated from field: druz9.v1.QuotaUsage usage = 3;
+   */
+  usage?: QuotaUsage;
+
+  constructor(data?: PartialMessage<QuotaSnapshot>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.QuotaSnapshot";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "tier", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "policy", kind: "message", T: QuotaPolicy },
+    { no: 3, name: "usage", kind: "message", T: QuotaUsage },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): QuotaSnapshot {
+    return new QuotaSnapshot().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): QuotaSnapshot {
+    return new QuotaSnapshot().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): QuotaSnapshot {
+    return new QuotaSnapshot().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: QuotaSnapshot | PlainMessage<QuotaSnapshot> | undefined, b: QuotaSnapshot | PlainMessage<QuotaSnapshot> | undefined): boolean {
+    return proto3.util.equals(QuotaSnapshot, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.LinkBoostyRequest
+ */
+export class LinkBoostyRequest extends Message<LinkBoostyRequest> {
+  /**
+   * @generated from field: string boosty_user_id = 1;
+   */
+  boostyUserId = "";
+
+  constructor(data?: PartialMessage<LinkBoostyRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.LinkBoostyRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "boosty_user_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): LinkBoostyRequest {
+    return new LinkBoostyRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): LinkBoostyRequest {
+    return new LinkBoostyRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): LinkBoostyRequest {
+    return new LinkBoostyRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: LinkBoostyRequest | PlainMessage<LinkBoostyRequest> | undefined, b: LinkBoostyRequest | PlainMessage<LinkBoostyRequest> | undefined): boolean {
+    return proto3.util.equals(LinkBoostyRequest, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.LinkBoostyResponse
+ */
+export class LinkBoostyResponse extends Message<LinkBoostyResponse> {
+  /**
+   * @generated from field: bool ok = 1;
+   */
+  ok = false;
+
+  /**
+   * @generated from field: string status = 2;
+   */
+  status = "";
+
+  constructor(data?: PartialMessage<LinkBoostyResponse>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.LinkBoostyResponse";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "ok", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
+    { no: 2, name: "status", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): LinkBoostyResponse {
+    return new LinkBoostyResponse().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): LinkBoostyResponse {
+    return new LinkBoostyResponse().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): LinkBoostyResponse {
+    return new LinkBoostyResponse().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: LinkBoostyResponse | PlainMessage<LinkBoostyResponse> | undefined, b: LinkBoostyResponse | PlainMessage<LinkBoostyResponse> | undefined): boolean {
+    return proto3.util.equals(LinkBoostyResponse, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.AdminBoostySyncRequest
+ */
+export class AdminBoostySyncRequest extends Message<AdminBoostySyncRequest> {
+  constructor(data?: PartialMessage<AdminBoostySyncRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.AdminBoostySyncRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): AdminBoostySyncRequest {
+    return new AdminBoostySyncRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): AdminBoostySyncRequest {
+    return new AdminBoostySyncRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): AdminBoostySyncRequest {
+    return new AdminBoostySyncRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: AdminBoostySyncRequest | PlainMessage<AdminBoostySyncRequest> | undefined, b: AdminBoostySyncRequest | PlainMessage<AdminBoostySyncRequest> | undefined): boolean {
+    return proto3.util.equals(AdminBoostySyncRequest, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.AdminBoostySyncResponse
+ */
+export class AdminBoostySyncResponse extends Message<AdminBoostySyncResponse> {
+  /**
+   * @generated from field: int32 updated = 1;
+   */
+  updated = 0;
+
+  constructor(data?: PartialMessage<AdminBoostySyncResponse>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.AdminBoostySyncResponse";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "updated", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): AdminBoostySyncResponse {
+    return new AdminBoostySyncResponse().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): AdminBoostySyncResponse {
+    return new AdminBoostySyncResponse().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): AdminBoostySyncResponse {
+    return new AdminBoostySyncResponse().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: AdminBoostySyncResponse | PlainMessage<AdminBoostySyncResponse> | undefined, b: AdminBoostySyncResponse | PlainMessage<AdminBoostySyncResponse> | undefined): boolean {
+    return proto3.util.equals(AdminBoostySyncResponse, a, b);
+  }
+}
 
 /**
  * @generated from message druz9.v1.GetMyTierRequest
@@ -49,7 +393,7 @@ export class GetMyTierRequest extends Message<GetMyTierRequest> {
  */
 export class GetMyTierResponse extends Message<GetMyTierResponse> {
   /**
-   * "free"|"seeker"|"ascendant"
+   * "free"|"pro"|"max"
    *
    * @generated from field: string tier = 1;
    */

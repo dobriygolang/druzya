@@ -297,7 +297,7 @@ function GeneralTab({
  * SubscriptionCard — visual plan overview in the General tab.
  *
  * Shows:
- *   • plan badge (free / seeker / ascendant)
+ *   • plan badge (free / pro / max)
  *   • progress bar for quota (hidden when unlimited)
  *   • reset date + "Я уже оплатил" inline refresh
  *   • CTA: "Обновить план" (free) or "Boosty →" (paid)

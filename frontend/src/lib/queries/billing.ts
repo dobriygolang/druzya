@@ -8,7 +8,7 @@
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
-export type BillingPlanTier = 'free' | 'premium' | 'pro'
+export type BillingPlanTier = 'free' | 'pro' | 'max'
 export type BillingPeriod = 'monthly' | 'annual'
 export type PaymentMethodKind = 'card' | 'apple-pay' | 'google-pay' | 'sbp' | 'tinkoff'
 
@@ -81,7 +81,7 @@ export function useCurrentPlanQuery() {
       let tier: BillingPlanTier = 'free'
       try {
         const raw = (typeof window !== 'undefined' && localStorage.getItem('druz9_user_tier')) || 'free'
-        if (raw === 'premium' || raw === 'pro') tier = raw
+        if (raw === 'pro' || raw === 'max') tier = raw
       } catch {
         /* noop */
       }
@@ -99,7 +99,7 @@ export function useCurrentPlanQuery() {
         tier,
         period: 'monthly',
         next_charge_at: next,
-        next_charge_amount: tier === 'pro' ? 890 : 390,
+        next_charge_amount: tier === 'max' ? 890 : 390,
         payment_method: { kind: 'card', label: '•••• 4242' },
       }
     },
@@ -117,7 +117,7 @@ export function useCheckoutMutation() {
     mutationFn: async (input: CheckoutInput): Promise<CheckoutResult> => {
       await sleep(2000)
       // TODO(api): здесь будет real fetch. Пока — синтетика.
-      const amount = input.plan === 'pro' ? 890 : input.plan === 'premium' ? 390 : 0
+      const amount = input.plan === 'max' ? 890 : input.plan === 'pro' ? 390 : 0
       const annualMul = input.period === 'annual' ? 12 * 0.8 : 1
       return {
         status: 'success',
@@ -171,7 +171,7 @@ export function useCancelSubscriptionMutation() {
 }
 
 // useInvoicesQuery — TODO(api): GET /billing/invoices.
-// Синтетика: для premium/pro — 3 строки истории; для free — пустой массив
+// Синтетика: для pro/max — 3 строки истории; для free — пустой массив
 // (UI рендерит EmptyState variant="no-data").
 export function useInvoicesQuery() {
   return useQuery({
@@ -181,12 +181,12 @@ export function useInvoicesQuery() {
       let tier: BillingPlanTier = 'free'
       try {
         const raw = (typeof window !== 'undefined' && localStorage.getItem('druz9_user_tier')) || 'free'
-        if (raw === 'premium' || raw === 'pro') tier = raw
+        if (raw === 'pro' || raw === 'max') tier = raw
       } catch {
         /* noop */
       }
       if (tier === 'free') return []
-      const amount = tier === 'pro' ? 890 : 390
+      const amount = tier === 'max' ? 890 : 390
       const now = Date.now()
       const month = 30 * 24 * 60 * 60 * 1000
       return [0, 1, 2].map((i) => ({
@@ -220,8 +220,8 @@ export function useUpdatePaymentMethodMutation() {
 // Если бэкенд начнёт отдавать prices через /billing/plans — заменить.
 export const PRICE_TABLE: Record<BillingPlanTier, { monthly: number; annual: number }> = {
   free: { monthly: 0, annual: 0 },
-  premium: { monthly: 390, annual: Math.round(390 * 12 * 0.8) },
-  pro: { monthly: 890, annual: Math.round(890 * 12 * 0.8) },
+  pro: { monthly: 390, annual: Math.round(390 * 12 * 0.8) },
+  max: { monthly: 890, annual: Math.round(890 * 12 * 0.8) },
 }
 
 // ── REAL subscription hooks ──────────────────────────────────────────────
@@ -232,7 +232,7 @@ export const PRICE_TABLE: Record<BillingPlanTier, { monthly: number; annual: num
 
 import { api } from '../apiClient'
 
-export type SubscriptionTier = 'free' | 'seeker' | 'ascendant'
+export type SubscriptionTier = 'free' | 'pro' | 'max'
 
 export type QuotaSnapshot = {
   tier: SubscriptionTier

@@ -30,6 +30,58 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+// MockReportStatus — wire-закрытый набор статусов отчёта.
+// PROCESSING — отчёт в очереди / генерится. READY — сформирован, можно
+// читать sections/score/etc. Wire JSON эмитит NAME (MOCK_REPORT_STATUS_READY).
+type MockReportStatus int32
+
+const (
+	MockReportStatus_MOCK_REPORT_STATUS_UNSPECIFIED MockReportStatus = 0
+	MockReportStatus_MOCK_REPORT_STATUS_PROCESSING  MockReportStatus = 1
+	MockReportStatus_MOCK_REPORT_STATUS_READY       MockReportStatus = 2
+)
+
+// Enum value maps for MockReportStatus.
+var (
+	MockReportStatus_name = map[int32]string{
+		0: "MOCK_REPORT_STATUS_UNSPECIFIED",
+		1: "MOCK_REPORT_STATUS_PROCESSING",
+		2: "MOCK_REPORT_STATUS_READY",
+	}
+	MockReportStatus_value = map[string]int32{
+		"MOCK_REPORT_STATUS_UNSPECIFIED": 0,
+		"MOCK_REPORT_STATUS_PROCESSING":  1,
+		"MOCK_REPORT_STATUS_READY":       2,
+	}
+)
+
+func (x MockReportStatus) Enum() *MockReportStatus {
+	p := new(MockReportStatus)
+	*p = x
+	return p
+}
+
+func (x MockReportStatus) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (MockReportStatus) Descriptor() protoreflect.EnumDescriptor {
+	return file_druz9_v1_ai_mock_proto_enumTypes[0].Descriptor()
+}
+
+func (MockReportStatus) Type() protoreflect.EnumType {
+	return &file_druz9_v1_ai_mock_proto_enumTypes[0]
+}
+
+func (x MockReportStatus) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use MockReportStatus.Descriptor instead.
+func (MockReportStatus) EnumDescriptor() ([]byte, []int) {
+	return file_druz9_v1_ai_mock_proto_rawDescGZIP(), []int{0}
+}
+
 // MockTaskPublic mirrors OpenAPI TaskPublic used by ai_mock. Kept separate from
 // ArenaTaskPublic to avoid cross-service coupling, though the wire shape is
 // identical.
@@ -943,19 +995,16 @@ func (x *MockRecommendation) GetAction() *MockRecommendationAction {
 
 // MockReport mirrors OpenAPI MockReport.
 type MockReport struct {
-	state     protoimpl.MessageState `protogen:"open.v1"`
-	SessionId string                 `protobuf:"bytes,1,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
-	// "processing" is returned when the report job has not yet written its
-	// draft (bible §8). Kept as a plain string — not an enum — because the
-	// OpenAPI schema omits the field entirely when the report is ready.
-	Status          string                `protobuf:"bytes,2,opt,name=status,proto3" json:"status,omitempty"`
-	OverallScore    int32                 `protobuf:"varint,3,opt,name=overall_score,json=overallScore,proto3" json:"overall_score,omitempty"`
-	Sections        *MockReportSections   `protobuf:"bytes,4,opt,name=sections,proto3" json:"sections,omitempty"`
-	Strengths       []string              `protobuf:"bytes,5,rep,name=strengths,proto3" json:"strengths,omitempty"`
-	Weaknesses      []string              `protobuf:"bytes,6,rep,name=weaknesses,proto3" json:"weaknesses,omitempty"`
-	Recommendations []*MockRecommendation `protobuf:"bytes,7,rep,name=recommendations,proto3" json:"recommendations,omitempty"`
-	StressAnalysis  string                `protobuf:"bytes,8,opt,name=stress_analysis,json=stressAnalysis,proto3" json:"stress_analysis,omitempty"`
-	ReplayUrl       string                `protobuf:"bytes,9,opt,name=replay_url,json=replayUrl,proto3" json:"replay_url,omitempty"`
+	state           protoimpl.MessageState `protogen:"open.v1"`
+	SessionId       string                 `protobuf:"bytes,1,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
+	Status          MockReportStatus       `protobuf:"varint,2,opt,name=status,proto3,enum=druz9.v1.MockReportStatus" json:"status,omitempty"`
+	OverallScore    int32                  `protobuf:"varint,3,opt,name=overall_score,json=overallScore,proto3" json:"overall_score,omitempty"`
+	Sections        *MockReportSections    `protobuf:"bytes,4,opt,name=sections,proto3" json:"sections,omitempty"`
+	Strengths       []string               `protobuf:"bytes,5,rep,name=strengths,proto3" json:"strengths,omitempty"`
+	Weaknesses      []string               `protobuf:"bytes,6,rep,name=weaknesses,proto3" json:"weaknesses,omitempty"`
+	Recommendations []*MockRecommendation  `protobuf:"bytes,7,rep,name=recommendations,proto3" json:"recommendations,omitempty"`
+	StressAnalysis  string                 `protobuf:"bytes,8,opt,name=stress_analysis,json=stressAnalysis,proto3" json:"stress_analysis,omitempty"`
+	ReplayUrl       string                 `protobuf:"bytes,9,opt,name=replay_url,json=replayUrl,proto3" json:"replay_url,omitempty"`
 	unknownFields   protoimpl.UnknownFields
 	sizeCache       protoimpl.SizeCache
 }
@@ -997,11 +1046,11 @@ func (x *MockReport) GetSessionId() string {
 	return ""
 }
 
-func (x *MockReport) GetStatus() string {
+func (x *MockReport) GetStatus() MockReportStatus {
 	if x != nil {
 		return x.Status
 	}
-	return ""
+	return MockReportStatus_MOCK_REPORT_STATUS_UNSPECIFIED
 }
 
 func (x *MockReport) GetOverallScore() int32 {
@@ -1186,6 +1235,322 @@ func (x *GetMockReportRequest) GetSessionId() string {
 	return ""
 }
 
+type GetInsightsOverviewRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetInsightsOverviewRequest) Reset() {
+	*x = GetInsightsOverviewRequest{}
+	mi := &file_druz9_v1_ai_mock_proto_msgTypes[16]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetInsightsOverviewRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetInsightsOverviewRequest) ProtoMessage() {}
+
+func (x *GetInsightsOverviewRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_ai_mock_proto_msgTypes[16]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetInsightsOverviewRequest.ProtoReflect.Descriptor instead.
+func (*GetInsightsOverviewRequest) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_ai_mock_proto_rawDescGZIP(), []int{16}
+}
+
+type StagePerformance struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	StageKind     string                 `protobuf:"bytes,1,opt,name=stage_kind,json=stageKind,proto3" json:"stage_kind,omitempty"`
+	Total         int32                  `protobuf:"varint,2,opt,name=total,proto3" json:"total,omitempty"`
+	Passed        int32                  `protobuf:"varint,3,opt,name=passed,proto3" json:"passed,omitempty"`
+	PassRate      int32                  `protobuf:"varint,4,opt,name=pass_rate,json=passRate,proto3" json:"pass_rate,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *StagePerformance) Reset() {
+	*x = StagePerformance{}
+	mi := &file_druz9_v1_ai_mock_proto_msgTypes[17]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *StagePerformance) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*StagePerformance) ProtoMessage() {}
+
+func (x *StagePerformance) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_ai_mock_proto_msgTypes[17]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use StagePerformance.ProtoReflect.Descriptor instead.
+func (*StagePerformance) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_ai_mock_proto_rawDescGZIP(), []int{17}
+}
+
+func (x *StagePerformance) GetStageKind() string {
+	if x != nil {
+		return x.StageKind
+	}
+	return ""
+}
+
+func (x *StagePerformance) GetTotal() int32 {
+	if x != nil {
+		return x.Total
+	}
+	return 0
+}
+
+func (x *StagePerformance) GetPassed() int32 {
+	if x != nil {
+		return x.Passed
+	}
+	return 0
+}
+
+func (x *StagePerformance) GetPassRate() int32 {
+	if x != nil {
+		return x.PassRate
+	}
+	return 0
+}
+
+type RecurringPattern struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Point         string                 `protobuf:"bytes,1,opt,name=point,proto3" json:"point,omitempty"`
+	Count         int32                  `protobuf:"varint,2,opt,name=count,proto3" json:"count,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RecurringPattern) Reset() {
+	*x = RecurringPattern{}
+	mi := &file_druz9_v1_ai_mock_proto_msgTypes[18]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RecurringPattern) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RecurringPattern) ProtoMessage() {}
+
+func (x *RecurringPattern) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_ai_mock_proto_msgTypes[18]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RecurringPattern.ProtoReflect.Descriptor instead.
+func (*RecurringPattern) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_ai_mock_proto_rawDescGZIP(), []int{18}
+}
+
+func (x *RecurringPattern) GetPoint() string {
+	if x != nil {
+		return x.Point
+	}
+	return ""
+}
+
+func (x *RecurringPattern) GetCount() int32 {
+	if x != nil {
+		return x.Count
+	}
+	return 0
+}
+
+type ScoreTrajectoryPoint struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	PipelineId    string                 `protobuf:"bytes,1,opt,name=pipeline_id,json=pipelineId,proto3" json:"pipeline_id,omitempty"`
+	FinishedAt    string                 `protobuf:"bytes,2,opt,name=finished_at,json=finishedAt,proto3" json:"finished_at,omitempty"`
+	Score         float64                `protobuf:"fixed64,3,opt,name=score,proto3" json:"score,omitempty"`
+	Verdict       string                 `protobuf:"bytes,4,opt,name=verdict,proto3" json:"verdict,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ScoreTrajectoryPoint) Reset() {
+	*x = ScoreTrajectoryPoint{}
+	mi := &file_druz9_v1_ai_mock_proto_msgTypes[19]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ScoreTrajectoryPoint) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ScoreTrajectoryPoint) ProtoMessage() {}
+
+func (x *ScoreTrajectoryPoint) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_ai_mock_proto_msgTypes[19]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ScoreTrajectoryPoint.ProtoReflect.Descriptor instead.
+func (*ScoreTrajectoryPoint) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_ai_mock_proto_rawDescGZIP(), []int{19}
+}
+
+func (x *ScoreTrajectoryPoint) GetPipelineId() string {
+	if x != nil {
+		return x.PipelineId
+	}
+	return ""
+}
+
+func (x *ScoreTrajectoryPoint) GetFinishedAt() string {
+	if x != nil {
+		return x.FinishedAt
+	}
+	return ""
+}
+
+func (x *ScoreTrajectoryPoint) GetScore() float64 {
+	if x != nil {
+		return x.Score
+	}
+	return 0
+}
+
+func (x *ScoreTrajectoryPoint) GetVerdict() string {
+	if x != nil {
+		return x.Verdict
+	}
+	return ""
+}
+
+type InsightsOverview struct {
+	state                protoimpl.MessageState  `protogen:"open.v1"`
+	WindowDays           int32                   `protobuf:"varint,1,opt,name=window_days,json=windowDays,proto3" json:"window_days,omitempty"`
+	StagePerformance     []*StagePerformance     `protobuf:"bytes,2,rep,name=stage_performance,json=stagePerformance,proto3" json:"stage_performance,omitempty"`
+	RecurringPatterns    []*RecurringPattern     `protobuf:"bytes,3,rep,name=recurring_patterns,json=recurringPatterns,proto3" json:"recurring_patterns,omitempty"`
+	ScoreTrajectory      []*ScoreTrajectoryPoint `protobuf:"bytes,4,rep,name=score_trajectory,json=scoreTrajectory,proto3" json:"score_trajectory,omitempty"`
+	TotalSessions_30D    int32                   `protobuf:"varint,5,opt,name=total_sessions_30d,json=totalSessions30d,proto3" json:"total_sessions_30d,omitempty"`
+	PipelinePassRate_30D int32                   `protobuf:"varint,6,opt,name=pipeline_pass_rate_30d,json=pipelinePassRate30d,proto3" json:"pipeline_pass_rate_30d,omitempty"`
+	Summary              string                  `protobuf:"bytes,7,opt,name=summary,proto3" json:"summary,omitempty"`
+	unknownFields        protoimpl.UnknownFields
+	sizeCache            protoimpl.SizeCache
+}
+
+func (x *InsightsOverview) Reset() {
+	*x = InsightsOverview{}
+	mi := &file_druz9_v1_ai_mock_proto_msgTypes[20]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *InsightsOverview) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*InsightsOverview) ProtoMessage() {}
+
+func (x *InsightsOverview) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_ai_mock_proto_msgTypes[20]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use InsightsOverview.ProtoReflect.Descriptor instead.
+func (*InsightsOverview) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_ai_mock_proto_rawDescGZIP(), []int{20}
+}
+
+func (x *InsightsOverview) GetWindowDays() int32 {
+	if x != nil {
+		return x.WindowDays
+	}
+	return 0
+}
+
+func (x *InsightsOverview) GetStagePerformance() []*StagePerformance {
+	if x != nil {
+		return x.StagePerformance
+	}
+	return nil
+}
+
+func (x *InsightsOverview) GetRecurringPatterns() []*RecurringPattern {
+	if x != nil {
+		return x.RecurringPatterns
+	}
+	return nil
+}
+
+func (x *InsightsOverview) GetScoreTrajectory() []*ScoreTrajectoryPoint {
+	if x != nil {
+		return x.ScoreTrajectory
+	}
+	return nil
+}
+
+func (x *InsightsOverview) GetTotalSessions_30D() int32 {
+	if x != nil {
+		return x.TotalSessions_30D
+	}
+	return 0
+}
+
+func (x *InsightsOverview) GetPipelinePassRate_30D() int32 {
+	if x != nil {
+		return x.PipelinePassRate_30D
+	}
+	return 0
+}
+
+func (x *InsightsOverview) GetSummary() string {
+	if x != nil {
+		return x.Summary
+	}
+	return ""
+}
+
 var File_druz9_v1_ai_mock_proto protoreflect.FileDescriptor
 
 const file_druz9_v1_ai_mock_proto_rawDesc = "" +
@@ -1283,12 +1648,12 @@ const file_druz9_v1_ai_mock_proto_rawDesc = "" +
 	"\x12MockRecommendation\x12\x14\n" +
 	"\x05title\x18\x01 \x01(\tR\x05title\x12 \n" +
 	"\vdescription\x18\x02 \x01(\tR\vdescription\x12:\n" +
-	"\x06action\x18\x03 \x01(\v2\".druz9.v1.MockRecommendationActionR\x06action\"\xf0\x02\n" +
+	"\x06action\x18\x03 \x01(\v2\".druz9.v1.MockRecommendationActionR\x06action\"\x8c\x03\n" +
 	"\n" +
 	"MockReport\x12\x1d\n" +
 	"\n" +
-	"session_id\x18\x01 \x01(\tR\tsessionId\x12\x16\n" +
-	"\x06status\x18\x02 \x01(\tR\x06status\x12#\n" +
+	"session_id\x18\x01 \x01(\tR\tsessionId\x122\n" +
+	"\x06status\x18\x02 \x01(\x0e2\x1a.druz9.v1.MockReportStatusR\x06status\x12#\n" +
 	"\roverall_score\x18\x03 \x01(\x05R\foverallScore\x128\n" +
 	"\bsections\x18\x04 \x01(\v2\x1c.druz9.v1.MockReportSectionsR\bsections\x12\x1c\n" +
 	"\tstrengths\x18\x05 \x03(\tR\tstrengths\x12\x1e\n" +
@@ -1307,7 +1672,37 @@ const file_druz9_v1_ai_mock_proto_rawDesc = "" +
 	"session_id\x18\x01 \x01(\tR\tsessionId\"5\n" +
 	"\x14GetMockReportRequest\x12\x1d\n" +
 	"\n" +
-	"session_id\x18\x01 \x01(\tR\tsessionId2\xd3\x05\n" +
+	"session_id\x18\x01 \x01(\tR\tsessionId\"\x1c\n" +
+	"\x1aGetInsightsOverviewRequest\"|\n" +
+	"\x10StagePerformance\x12\x1d\n" +
+	"\n" +
+	"stage_kind\x18\x01 \x01(\tR\tstageKind\x12\x14\n" +
+	"\x05total\x18\x02 \x01(\x05R\x05total\x12\x16\n" +
+	"\x06passed\x18\x03 \x01(\x05R\x06passed\x12\x1b\n" +
+	"\tpass_rate\x18\x04 \x01(\x05R\bpassRate\">\n" +
+	"\x10RecurringPattern\x12\x14\n" +
+	"\x05point\x18\x01 \x01(\tR\x05point\x12\x14\n" +
+	"\x05count\x18\x02 \x01(\x05R\x05count\"\x88\x01\n" +
+	"\x14ScoreTrajectoryPoint\x12\x1f\n" +
+	"\vpipeline_id\x18\x01 \x01(\tR\n" +
+	"pipelineId\x12\x1f\n" +
+	"\vfinished_at\x18\x02 \x01(\tR\n" +
+	"finishedAt\x12\x14\n" +
+	"\x05score\x18\x03 \x01(\x01R\x05score\x12\x18\n" +
+	"\averdict\x18\x04 \x01(\tR\averdict\"\x8f\x03\n" +
+	"\x10InsightsOverview\x12\x1f\n" +
+	"\vwindow_days\x18\x01 \x01(\x05R\n" +
+	"windowDays\x12G\n" +
+	"\x11stage_performance\x18\x02 \x03(\v2\x1a.druz9.v1.StagePerformanceR\x10stagePerformance\x12I\n" +
+	"\x12recurring_patterns\x18\x03 \x03(\v2\x1a.druz9.v1.RecurringPatternR\x11recurringPatterns\x12I\n" +
+	"\x10score_trajectory\x18\x04 \x03(\v2\x1e.druz9.v1.ScoreTrajectoryPointR\x0fscoreTrajectory\x12,\n" +
+	"\x12total_sessions_30d\x18\x05 \x01(\x05R\x10totalSessions30d\x123\n" +
+	"\x16pipeline_pass_rate_30d\x18\x06 \x01(\x05R\x13pipelinePassRate30d\x12\x18\n" +
+	"\asummary\x18\a \x01(\tR\asummary*w\n" +
+	"\x10MockReportStatus\x12\"\n" +
+	"\x1eMOCK_REPORT_STATUS_UNSPECIFIED\x10\x00\x12!\n" +
+	"\x1dMOCK_REPORT_STATUS_PROCESSING\x10\x01\x12\x1c\n" +
+	"\x18MOCK_REPORT_STATUS_READY\x10\x022\xd4\x06\n" +
 	"\vMockService\x12d\n" +
 	"\rCreateSession\x12\x1b.druz9.v1.CreateMockRequest\x1a\x15.druz9.v1.MockSession\"\x1f\x82\xd3\xe4\x93\x02\x19:\x01*\"\x14/api/v1/mock/session\x12o\n" +
 	"\n" +
@@ -1315,7 +1710,8 @@ const file_druz9_v1_ai_mock_proto_rawDesc = "" +
 	"\vSendMessage\x12\x1c.druz9.v1.MockMessageRequest\x1a\x15.druz9.v1.MockMessage\"4\x82\xd3\xe4\x93\x02.:\x01*\")/api/v1/mock/session/{session_id}/message\x12}\n" +
 	"\fIngestStress\x12\x1b.druz9.v1.StressEventsBatch\x1a\x1b.druz9.v1.StressEventsBatch\"3\x82\xd3\xe4\x93\x02-:\x01*\"(/api/v1/mock/session/{session_id}/stress\x12\x7f\n" +
 	"\rFinishSession\x12\".druz9.v1.FinishMockSessionRequest\x1a\x15.druz9.v1.MockSession\"3\x82\xd3\xe4\x93\x02-:\x01*\"(/api/v1/mock/session/{session_id}/finish\x12s\n" +
-	"\tGetReport\x12\x1e.druz9.v1.GetMockReportRequest\x1a\x14.druz9.v1.MockReport\"0\x82\xd3\xe4\x93\x02*\x12(/api/v1/mock/session/{session_id}/reportB\x88\x01\n" +
+	"\tGetReport\x12\x1e.druz9.v1.GetMockReportRequest\x1a\x14.druz9.v1.MockReport\"0\x82\xd3\xe4\x93\x02*\x12(/api/v1/mock/session/{session_id}/report\x12\x7f\n" +
+	"\x13GetInsightsOverview\x12$.druz9.v1.GetInsightsOverviewRequest\x1a\x1a.druz9.v1.InsightsOverview\"&\x82\xd3\xe4\x93\x02 \x12\x1e/api/v1/mock/insights/overviewB\x88\x01\n" +
 	"\fcom.druz9.v1B\vAiMockProtoP\x01Z*druz9/shared/generated/pb/druz9/v1;druz9v1\xa2\x02\x03DXX\xaa\x02\bDruz9.V1\xca\x02\bDruz9\\V1\xe2\x02\x14Druz9\\V1\\GPBMetadata\xea\x02\tDruz9::V1b\x06proto3"
 
 var (
@@ -1330,78 +1726,91 @@ func file_druz9_v1_ai_mock_proto_rawDescGZIP() []byte {
 	return file_druz9_v1_ai_mock_proto_rawDescData
 }
 
-var file_druz9_v1_ai_mock_proto_msgTypes = make([]protoimpl.MessageInfo, 18)
+var file_druz9_v1_ai_mock_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
+var file_druz9_v1_ai_mock_proto_msgTypes = make([]protoimpl.MessageInfo, 23)
 var file_druz9_v1_ai_mock_proto_goTypes = []any{
-	(*MockTaskPublic)(nil),           // 0: druz9.v1.MockTaskPublic
-	(*MockStressProfile)(nil),        // 1: druz9.v1.MockStressProfile
-	(*MockMessage)(nil),              // 2: druz9.v1.MockMessage
-	(*MockSession)(nil),              // 3: druz9.v1.MockSession
-	(*CreateMockRequest)(nil),        // 4: druz9.v1.CreateMockRequest
-	(*MockMessageRequest)(nil),       // 5: druz9.v1.MockMessageRequest
-	(*StressEvent)(nil),              // 6: druz9.v1.StressEvent
-	(*StressEventsBatch)(nil),        // 7: druz9.v1.StressEventsBatch
-	(*MockScoredSection)(nil),        // 8: druz9.v1.MockScoredSection
-	(*MockReportSections)(nil),       // 9: druz9.v1.MockReportSections
-	(*MockRecommendationAction)(nil), // 10: druz9.v1.MockRecommendationAction
-	(*MockRecommendation)(nil),       // 11: druz9.v1.MockRecommendation
-	(*MockReport)(nil),               // 12: druz9.v1.MockReport
-	(*GetMockSessionRequest)(nil),    // 13: druz9.v1.GetMockSessionRequest
-	(*FinishMockSessionRequest)(nil), // 14: druz9.v1.FinishMockSessionRequest
-	(*GetMockReportRequest)(nil),     // 15: druz9.v1.GetMockReportRequest
-	nil,                              // 16: druz9.v1.StressEvent.MetadataEntry
-	nil,                              // 17: druz9.v1.MockRecommendationAction.ParamsEntry
-	(Difficulty)(0),                  // 18: druz9.v1.Difficulty
-	(Section)(0),                     // 19: druz9.v1.Section
-	(MessageRole)(0),                 // 20: druz9.v1.MessageRole
-	(*timestamppb.Timestamp)(nil),    // 21: google.protobuf.Timestamp
-	(MockStatus)(0),                  // 22: druz9.v1.MockStatus
-	(LLMModel)(0),                    // 23: druz9.v1.LLMModel
-	(EditorEventType)(0),             // 24: druz9.v1.EditorEventType
+	(MockReportStatus)(0),              // 0: druz9.v1.MockReportStatus
+	(*MockTaskPublic)(nil),             // 1: druz9.v1.MockTaskPublic
+	(*MockStressProfile)(nil),          // 2: druz9.v1.MockStressProfile
+	(*MockMessage)(nil),                // 3: druz9.v1.MockMessage
+	(*MockSession)(nil),                // 4: druz9.v1.MockSession
+	(*CreateMockRequest)(nil),          // 5: druz9.v1.CreateMockRequest
+	(*MockMessageRequest)(nil),         // 6: druz9.v1.MockMessageRequest
+	(*StressEvent)(nil),                // 7: druz9.v1.StressEvent
+	(*StressEventsBatch)(nil),          // 8: druz9.v1.StressEventsBatch
+	(*MockScoredSection)(nil),          // 9: druz9.v1.MockScoredSection
+	(*MockReportSections)(nil),         // 10: druz9.v1.MockReportSections
+	(*MockRecommendationAction)(nil),   // 11: druz9.v1.MockRecommendationAction
+	(*MockRecommendation)(nil),         // 12: druz9.v1.MockRecommendation
+	(*MockReport)(nil),                 // 13: druz9.v1.MockReport
+	(*GetMockSessionRequest)(nil),      // 14: druz9.v1.GetMockSessionRequest
+	(*FinishMockSessionRequest)(nil),   // 15: druz9.v1.FinishMockSessionRequest
+	(*GetMockReportRequest)(nil),       // 16: druz9.v1.GetMockReportRequest
+	(*GetInsightsOverviewRequest)(nil), // 17: druz9.v1.GetInsightsOverviewRequest
+	(*StagePerformance)(nil),           // 18: druz9.v1.StagePerformance
+	(*RecurringPattern)(nil),           // 19: druz9.v1.RecurringPattern
+	(*ScoreTrajectoryPoint)(nil),       // 20: druz9.v1.ScoreTrajectoryPoint
+	(*InsightsOverview)(nil),           // 21: druz9.v1.InsightsOverview
+	nil,                                // 22: druz9.v1.StressEvent.MetadataEntry
+	nil,                                // 23: druz9.v1.MockRecommendationAction.ParamsEntry
+	(Difficulty)(0),                    // 24: druz9.v1.Difficulty
+	(Section)(0),                       // 25: druz9.v1.Section
+	(MessageRole)(0),                   // 26: druz9.v1.MessageRole
+	(*timestamppb.Timestamp)(nil),      // 27: google.protobuf.Timestamp
+	(MockStatus)(0),                    // 28: druz9.v1.MockStatus
+	(LLMModel)(0),                      // 29: druz9.v1.LLMModel
+	(EditorEventType)(0),               // 30: druz9.v1.EditorEventType
 }
 var file_druz9_v1_ai_mock_proto_depIdxs = []int32{
-	18, // 0: druz9.v1.MockTaskPublic.difficulty:type_name -> druz9.v1.Difficulty
-	19, // 1: druz9.v1.MockTaskPublic.section:type_name -> druz9.v1.Section
-	20, // 2: druz9.v1.MockMessage.role:type_name -> druz9.v1.MessageRole
-	21, // 3: druz9.v1.MockMessage.created_at:type_name -> google.protobuf.Timestamp
-	22, // 4: druz9.v1.MockSession.status:type_name -> druz9.v1.MockStatus
-	19, // 5: druz9.v1.MockSession.section:type_name -> druz9.v1.Section
-	18, // 6: druz9.v1.MockSession.difficulty:type_name -> druz9.v1.Difficulty
-	0,  // 7: druz9.v1.MockSession.task:type_name -> druz9.v1.MockTaskPublic
-	21, // 8: druz9.v1.MockSession.started_at:type_name -> google.protobuf.Timestamp
-	21, // 9: druz9.v1.MockSession.finished_at:type_name -> google.protobuf.Timestamp
-	2,  // 10: druz9.v1.MockSession.last_messages:type_name -> druz9.v1.MockMessage
-	1,  // 11: druz9.v1.MockSession.stress_profile:type_name -> druz9.v1.MockStressProfile
-	19, // 12: druz9.v1.CreateMockRequest.section:type_name -> druz9.v1.Section
-	18, // 13: druz9.v1.CreateMockRequest.difficulty:type_name -> druz9.v1.Difficulty
-	23, // 14: druz9.v1.CreateMockRequest.llm_model:type_name -> druz9.v1.LLMModel
-	24, // 15: druz9.v1.StressEvent.type:type_name -> druz9.v1.EditorEventType
-	16, // 16: druz9.v1.StressEvent.metadata:type_name -> druz9.v1.StressEvent.MetadataEntry
-	6,  // 17: druz9.v1.StressEventsBatch.events:type_name -> druz9.v1.StressEvent
-	8,  // 18: druz9.v1.MockReportSections.problem_solving:type_name -> druz9.v1.MockScoredSection
-	8,  // 19: druz9.v1.MockReportSections.code_quality:type_name -> druz9.v1.MockScoredSection
-	8,  // 20: druz9.v1.MockReportSections.communication:type_name -> druz9.v1.MockScoredSection
-	8,  // 21: druz9.v1.MockReportSections.stress_handling:type_name -> druz9.v1.MockScoredSection
-	17, // 22: druz9.v1.MockRecommendationAction.params:type_name -> druz9.v1.MockRecommendationAction.ParamsEntry
-	10, // 23: druz9.v1.MockRecommendation.action:type_name -> druz9.v1.MockRecommendationAction
-	9,  // 24: druz9.v1.MockReport.sections:type_name -> druz9.v1.MockReportSections
-	11, // 25: druz9.v1.MockReport.recommendations:type_name -> druz9.v1.MockRecommendation
-	4,  // 26: druz9.v1.MockService.CreateSession:input_type -> druz9.v1.CreateMockRequest
-	13, // 27: druz9.v1.MockService.GetSession:input_type -> druz9.v1.GetMockSessionRequest
-	5,  // 28: druz9.v1.MockService.SendMessage:input_type -> druz9.v1.MockMessageRequest
-	7,  // 29: druz9.v1.MockService.IngestStress:input_type -> druz9.v1.StressEventsBatch
-	14, // 30: druz9.v1.MockService.FinishSession:input_type -> druz9.v1.FinishMockSessionRequest
-	15, // 31: druz9.v1.MockService.GetReport:input_type -> druz9.v1.GetMockReportRequest
-	3,  // 32: druz9.v1.MockService.CreateSession:output_type -> druz9.v1.MockSession
-	3,  // 33: druz9.v1.MockService.GetSession:output_type -> druz9.v1.MockSession
-	2,  // 34: druz9.v1.MockService.SendMessage:output_type -> druz9.v1.MockMessage
-	7,  // 35: druz9.v1.MockService.IngestStress:output_type -> druz9.v1.StressEventsBatch
-	3,  // 36: druz9.v1.MockService.FinishSession:output_type -> druz9.v1.MockSession
-	12, // 37: druz9.v1.MockService.GetReport:output_type -> druz9.v1.MockReport
-	32, // [32:38] is the sub-list for method output_type
-	26, // [26:32] is the sub-list for method input_type
-	26, // [26:26] is the sub-list for extension type_name
-	26, // [26:26] is the sub-list for extension extendee
-	0,  // [0:26] is the sub-list for field type_name
+	24, // 0: druz9.v1.MockTaskPublic.difficulty:type_name -> druz9.v1.Difficulty
+	25, // 1: druz9.v1.MockTaskPublic.section:type_name -> druz9.v1.Section
+	26, // 2: druz9.v1.MockMessage.role:type_name -> druz9.v1.MessageRole
+	27, // 3: druz9.v1.MockMessage.created_at:type_name -> google.protobuf.Timestamp
+	28, // 4: druz9.v1.MockSession.status:type_name -> druz9.v1.MockStatus
+	25, // 5: druz9.v1.MockSession.section:type_name -> druz9.v1.Section
+	24, // 6: druz9.v1.MockSession.difficulty:type_name -> druz9.v1.Difficulty
+	1,  // 7: druz9.v1.MockSession.task:type_name -> druz9.v1.MockTaskPublic
+	27, // 8: druz9.v1.MockSession.started_at:type_name -> google.protobuf.Timestamp
+	27, // 9: druz9.v1.MockSession.finished_at:type_name -> google.protobuf.Timestamp
+	3,  // 10: druz9.v1.MockSession.last_messages:type_name -> druz9.v1.MockMessage
+	2,  // 11: druz9.v1.MockSession.stress_profile:type_name -> druz9.v1.MockStressProfile
+	25, // 12: druz9.v1.CreateMockRequest.section:type_name -> druz9.v1.Section
+	24, // 13: druz9.v1.CreateMockRequest.difficulty:type_name -> druz9.v1.Difficulty
+	29, // 14: druz9.v1.CreateMockRequest.llm_model:type_name -> druz9.v1.LLMModel
+	30, // 15: druz9.v1.StressEvent.type:type_name -> druz9.v1.EditorEventType
+	22, // 16: druz9.v1.StressEvent.metadata:type_name -> druz9.v1.StressEvent.MetadataEntry
+	7,  // 17: druz9.v1.StressEventsBatch.events:type_name -> druz9.v1.StressEvent
+	9,  // 18: druz9.v1.MockReportSections.problem_solving:type_name -> druz9.v1.MockScoredSection
+	9,  // 19: druz9.v1.MockReportSections.code_quality:type_name -> druz9.v1.MockScoredSection
+	9,  // 20: druz9.v1.MockReportSections.communication:type_name -> druz9.v1.MockScoredSection
+	9,  // 21: druz9.v1.MockReportSections.stress_handling:type_name -> druz9.v1.MockScoredSection
+	23, // 22: druz9.v1.MockRecommendationAction.params:type_name -> druz9.v1.MockRecommendationAction.ParamsEntry
+	11, // 23: druz9.v1.MockRecommendation.action:type_name -> druz9.v1.MockRecommendationAction
+	0,  // 24: druz9.v1.MockReport.status:type_name -> druz9.v1.MockReportStatus
+	10, // 25: druz9.v1.MockReport.sections:type_name -> druz9.v1.MockReportSections
+	12, // 26: druz9.v1.MockReport.recommendations:type_name -> druz9.v1.MockRecommendation
+	18, // 27: druz9.v1.InsightsOverview.stage_performance:type_name -> druz9.v1.StagePerformance
+	19, // 28: druz9.v1.InsightsOverview.recurring_patterns:type_name -> druz9.v1.RecurringPattern
+	20, // 29: druz9.v1.InsightsOverview.score_trajectory:type_name -> druz9.v1.ScoreTrajectoryPoint
+	5,  // 30: druz9.v1.MockService.CreateSession:input_type -> druz9.v1.CreateMockRequest
+	14, // 31: druz9.v1.MockService.GetSession:input_type -> druz9.v1.GetMockSessionRequest
+	6,  // 32: druz9.v1.MockService.SendMessage:input_type -> druz9.v1.MockMessageRequest
+	8,  // 33: druz9.v1.MockService.IngestStress:input_type -> druz9.v1.StressEventsBatch
+	15, // 34: druz9.v1.MockService.FinishSession:input_type -> druz9.v1.FinishMockSessionRequest
+	16, // 35: druz9.v1.MockService.GetReport:input_type -> druz9.v1.GetMockReportRequest
+	17, // 36: druz9.v1.MockService.GetInsightsOverview:input_type -> druz9.v1.GetInsightsOverviewRequest
+	4,  // 37: druz9.v1.MockService.CreateSession:output_type -> druz9.v1.MockSession
+	4,  // 38: druz9.v1.MockService.GetSession:output_type -> druz9.v1.MockSession
+	3,  // 39: druz9.v1.MockService.SendMessage:output_type -> druz9.v1.MockMessage
+	8,  // 40: druz9.v1.MockService.IngestStress:output_type -> druz9.v1.StressEventsBatch
+	4,  // 41: druz9.v1.MockService.FinishSession:output_type -> druz9.v1.MockSession
+	13, // 42: druz9.v1.MockService.GetReport:output_type -> druz9.v1.MockReport
+	21, // 43: druz9.v1.MockService.GetInsightsOverview:output_type -> druz9.v1.InsightsOverview
+	37, // [37:44] is the sub-list for method output_type
+	30, // [30:37] is the sub-list for method input_type
+	30, // [30:30] is the sub-list for extension type_name
+	30, // [30:30] is the sub-list for extension extendee
+	0,  // [0:30] is the sub-list for field type_name
 }
 
 func init() { file_druz9_v1_ai_mock_proto_init() }
@@ -1415,13 +1824,14 @@ func file_druz9_v1_ai_mock_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_druz9_v1_ai_mock_proto_rawDesc), len(file_druz9_v1_ai_mock_proto_rawDesc)),
-			NumEnums:      0,
-			NumMessages:   18,
+			NumEnums:      1,
+			NumMessages:   23,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
 		GoTypes:           file_druz9_v1_ai_mock_proto_goTypes,
 		DependencyIndexes: file_druz9_v1_ai_mock_proto_depIdxs,
+		EnumInfos:         file_druz9_v1_ai_mock_proto_enumTypes,
 		MessageInfos:      file_druz9_v1_ai_mock_proto_msgTypes,
 	}.Build()
 	File_druz9_v1_ai_mock_proto = out.File

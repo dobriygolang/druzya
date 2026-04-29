@@ -27,8 +27,10 @@ func NewSessionSummaryStore(pool *pgxpool.Pool) *SessionSummaryStore {
 	return &SessionSummaryStore{q: ai_mockdb.New(pool)}
 }
 
-// Save атомарно записывает running_summary для mock session id.
-func (s *SessionSummaryStore) Save(ctx context.Context, sessionKey, summary string) error {
+// Save атомарно записывает running_summary + summary_model для mock
+// session id. summaryModel — actual provider/model echo от llmchain
+// (Phase II attribution); пустая строка = unknown / legacy.
+func (s *SessionSummaryStore) Save(ctx context.Context, sessionKey, summary, summaryModel string) error {
 	id, err := uuid.Parse(sessionKey)
 	if err != nil {
 		return fmt.Errorf("ai_mock.SessionSummaryStore.Save: parse session key: %w", err)
@@ -36,6 +38,7 @@ func (s *SessionSummaryStore) Save(ctx context.Context, sessionKey, summary stri
 	affected, err := s.q.UpdateMockSessionRunningSummary(ctx, ai_mockdb.UpdateMockSessionRunningSummaryParams{
 		ID:             sharedpg.UUID(id),
 		RunningSummary: summary,
+		SummaryModel:   summaryModel,
 	})
 	if err != nil {
 		return fmt.Errorf("ai_mock.SessionSummaryStore.Save: %w", err)

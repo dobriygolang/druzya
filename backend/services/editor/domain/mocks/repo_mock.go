@@ -59,6 +59,46 @@ func (mr *MockCodeRunnerMockRecorder) Run(ctx, code, language any) *gomock.Call 
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Run", reflect.TypeOf((*MockCodeRunner)(nil).Run), ctx, code, language)
 }
 
+// MockRunCodeRateLimiter is a mock of RunCodeRateLimiter interface.
+type MockRunCodeRateLimiter struct {
+	ctrl     *gomock.Controller
+	recorder *MockRunCodeRateLimiterMockRecorder
+	isgomock struct{}
+}
+
+// MockRunCodeRateLimiterMockRecorder is the mock recorder for MockRunCodeRateLimiter.
+type MockRunCodeRateLimiterMockRecorder struct {
+	mock *MockRunCodeRateLimiter
+}
+
+// NewMockRunCodeRateLimiter creates a new mock instance.
+func NewMockRunCodeRateLimiter(ctrl *gomock.Controller) *MockRunCodeRateLimiter {
+	mock := &MockRunCodeRateLimiter{ctrl: ctrl}
+	mock.recorder = &MockRunCodeRateLimiterMockRecorder{mock}
+	return mock
+}
+
+// EXPECT returns an object that allows the caller to indicate expected use.
+func (m *MockRunCodeRateLimiter) EXPECT() *MockRunCodeRateLimiterMockRecorder {
+	return m.recorder
+}
+
+// Allow mocks base method.
+func (m *MockRunCodeRateLimiter) Allow(ctx context.Context, userID uuid.UUID) (bool, int, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "Allow", ctx, userID)
+	ret0, _ := ret[0].(bool)
+	ret1, _ := ret[1].(int)
+	ret2, _ := ret[2].(error)
+	return ret0, ret1, ret2
+}
+
+// Allow indicates an expected call of Allow.
+func (mr *MockRunCodeRateLimiterMockRecorder) Allow(ctx, userID any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Allow", reflect.TypeOf((*MockRunCodeRateLimiter)(nil).Allow), ctx, userID)
+}
+
 // MockRoomRepo is a mock of RoomRepo interface.
 type MockRoomRepo struct {
 	ctrl     *gomock.Controller
@@ -370,4 +410,21 @@ func (m *MockTokenVerifier) VerifyScoped(raw, expectedScope string) (uuid.UUID, 
 func (mr *MockTokenVerifierMockRecorder) VerifyScoped(raw, expectedScope any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "VerifyScoped", reflect.TypeOf((*MockTokenVerifier)(nil).VerifyScoped), raw, expectedScope)
+}
+
+// VerifyScopedFull mocks base method.
+func (m *MockTokenVerifier) VerifyScopedFull(raw, expectedScope string) (uuid.UUID, string, string, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "VerifyScopedFull", raw, expectedScope)
+	ret0, _ := ret[0].(uuid.UUID)
+	ret1, _ := ret[1].(string)
+	ret2, _ := ret[2].(string)
+	ret3, _ := ret[3].(error)
+	return ret0, ret1, ret2, ret3
+}
+
+// VerifyScopedFull indicates an expected call of VerifyScopedFull.
+func (mr *MockTokenVerifierMockRecorder) VerifyScopedFull(raw, expectedScope any) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "VerifyScopedFull", reflect.TypeOf((*MockTokenVerifier)(nil).VerifyScopedFull), raw, expectedScope)
 }

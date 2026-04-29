@@ -316,6 +316,14 @@ func (c *CachedRepo) ApplyXPDelta(ctx context.Context, userID uuid.UUID, addXP i
 	return nil
 }
 
+// RecordXPEvent forwards (no cache to invalidate — append-only audit).
+func (c *CachedRepo) RecordXPEvent(ctx context.Context, userID uuid.UUID, amount int, source string, sourceID *uuid.UUID) error {
+	if err := c.delegate.RecordXPEvent(ctx, userID, amount, source, sourceID); err != nil {
+		return fmt.Errorf("profile.cache.RecordXPEvent: %w", err)
+	}
+	return nil
+}
+
 // UpdateCareerStage forwards then invalidates.
 func (c *CachedRepo) UpdateCareerStage(ctx context.Context, userID uuid.UUID, stage domain.CareerStage) error {
 	if err := c.delegate.UpdateCareerStage(ctx, userID, stage); err != nil {

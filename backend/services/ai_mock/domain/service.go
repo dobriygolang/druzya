@@ -46,7 +46,7 @@ func PickModel(user UserContext, taskModel enums.LLMModel, section enums.Section
 	}
 	// 5. Default by subscription.
 	switch user.Subscription {
-	case enums.SubscriptionPlanSeeker, enums.SubscriptionPlanAscendant:
+	case enums.SubscriptionPlanPro, enums.SubscriptionPlanMax:
 		if defaultPaid.IsValid() {
 			return defaultPaid
 		}

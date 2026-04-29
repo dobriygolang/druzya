@@ -292,6 +292,14 @@ message BanUserResponse {
 // Reports — moderation queue.
 // ─────────────────────────────────────────────────────────────────────────
 
+// AdminReportStatus — wire-закрытый набор статусов жалобы.
+enum AdminReportStatus {
+  ADMIN_REPORT_STATUS_UNSPECIFIED = 0;
+  ADMIN_REPORT_STATUS_PENDING = 1;
+  ADMIN_REPORT_STATUS_RESOLVED = 2;
+  ADMIN_REPORT_STATUS_DISMISSED = 3;
+}
+
 message AdminReport {
   string id             = 1;
   string reporter_id    = 2;
@@ -300,7 +308,7 @@ message AdminReport {
   string reported_name  = 5;
   string reason         = 6;
   string description    = 7;
-  string status         = 8; // pending / resolved / dismissed
+  AdminReportStatus status = 8;
   google.protobuf.Timestamp created_at = 9;
 }
 
@@ -310,8 +318,8 @@ message AdminReportList {
 }
 
 message ListAdminReportsRequest {
-  // status filter — "" means pending only.
-  string status = 1;
+  // status filter — UNSPECIFIED means PENDING only.
+  AdminReportStatus status = 1;
   int32  limit  = 2;
 }
 

@@ -31,8 +31,10 @@ SELECT id, started_at
 -- Вызывается фоновым compaction.Worker после суммаризации старых turns.
 -- См. backend/shared/pkg/compaction/worker.go. Пишем атомарно поверх
 -- любого предыдущего значения — решение о запуске принимает воркер.
+-- summary_model — Phase II attribution.
 UPDATE mock_sessions
-   SET running_summary = $2
+   SET running_summary = $2,
+       summary_model   = $3
  WHERE id = $1;
 
 -- name: UpdateMockSessionStatus :execrows

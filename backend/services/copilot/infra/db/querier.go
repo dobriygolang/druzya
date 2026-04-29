@@ -36,6 +36,8 @@ type Querier interface {
 	DetachDocumentFromSession(ctx context.Context, arg DetachDocumentFromSessionParams) (int64, error)
 	EndCopilotSession(ctx context.Context, arg EndCopilotSessionParams) (int64, error)
 	FailCopilotSessionReport(ctx context.Context, arg FailCopilotSessionReportParams) (int64, error)
+	// summary_model — Phase VI: пробрасывается на read-side для drift-детекции
+	// (compactor сравнит с current model и форсирует regen при mismatch).
 	GetCopilotConversation(ctx context.Context, id pgtype.UUID) (GetCopilotConversationRow, error)
 	// Used by the app layer to enforce ownership before calling RateCopilotMessage.
 	// Returns the user_id of the conversation that owns this message.
@@ -89,6 +91,8 @@ type Querier interface {
 	// Вызывается фоновым compaction.Worker после успешной суммаризации старых
 	// turns (см. backend/shared/pkg/compaction/worker.go). Пишется атомарно
 	// поверх любого предыдущего значения — воркер сам решает, когда запускать.
+	// summary_model — Phase II attribution (provider/model которая написала
+	// summary), для drift-детекции при смене admin-конфига.
 	UpdateCopilotConversationRunningSummary(ctx context.Context, arg UpdateCopilotConversationRunningSummaryParams) (int64, error)
 	UpdateCopilotConversationTitle(ctx context.Context, arg UpdateCopilotConversationTitleParams) (int64, error)
 	// Called by the billing service (or admin tool) when a user's subscription

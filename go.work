@@ -17,10 +17,8 @@ use (
 	./backend/services/hone
 	./backend/services/intelligence
 	./backend/services/lobby
-	./backend/services/mentor_session
 	./backend/services/mock_interview
 	./backend/services/notify
-	./backend/services/orgs
 	./backend/services/podcast
 	./backend/services/profile
 	./backend/services/quiz

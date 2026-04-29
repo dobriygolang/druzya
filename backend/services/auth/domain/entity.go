@@ -56,12 +56,22 @@ type TokenPair struct {
 	RefreshExpires  time.Time
 }
 
-// YandexUserInfo — релевантная часть ответа Yandex /info.
+// YandexTokenResponse — subset of Yandex's /token response we care about.
+// Lives in domain (not app) so the infra adapter can produce it without
+// importing the app layer.
+type YandexTokenResponse struct {
+	AccessToken  string
+	RefreshToken string
+	ExpiresIn    int
+}
+
+// YandexUserInfo — релевантная часть ответа Yandex /info. v2: email
+// dropped — auth OAuth-only без recovery-flow, default_email из ответа
+// Yandex более не парсится.
 type YandexUserInfo struct {
 	ID              string // числовой id Яндекса в виде строки
 	Login           string // login = кандидат в username
 	DisplayName     string
-	DefaultEmail    string
 	DefaultAvatarID string // если есть — строим URL вида https://avatars.yandex.net/get-yapic/<id>/islands-200
 	IsAvatarEmpty   bool   // Yandex может вернуть is_avatar_empty=true → не показываем
 }

@@ -23,6 +23,7 @@ import (
 	"time"
 
 	"druz9/mock_interview/domain"
+	sharedDomain "druz9/shared/domain"
 	"druz9/shared/enums"
 
 	"github.com/google/uuid"
@@ -68,8 +69,13 @@ type Orchestrator struct {
 	// → no regression). Without this nothing on the user's atlas moves
 	// when they finish a mock.
 	Skills domain.SkillNodeWriter
-	Now    func() time.Time
-	Log    *slog.Logger
+	// Bus is the optional event publisher. nil-safe — when not wired
+	// FinishPipeline still works, just doesn't fan out the event. Hone's
+	// CoachListener relies on this signal to settle `kind=sysdesign` /
+	// `kind=reflection` tasks; MockPipelineFinished feeds that flow.
+	Bus sharedDomain.Bus
+	Now func() time.Time
+	Log *slog.Logger
 }
 
 func (o *Orchestrator) now() time.Time {
@@ -865,6 +871,31 @@ func (o *Orchestrator) FinishPipeline(ctx context.Context, pipelineID uuid.UUID)
 	// Daily Briefs can reference this session. Best-effort, never blocks.
 	if o.Memory != nil {
 		o.Memory.OnPipelineFinished(ctx, pipe.UserID, pipelineID, verdict, totalScore, stages, t)
+	}
+
+	// Bus: fan out MockPipelineFinished so Hone's CoachListener can settle
+	// matching tasks (kind=sysdesign / kind=reflection). Best-effort —
+	// publish failures are logged but don't fail the user's submit.
+	if o.Bus != nil {
+		score := 0
+		if totalScore != nil {
+			score = int(*totalScore)
+		}
+		section := ""
+		if len(stages) > 0 {
+			section = string(stages[len(stages)-1].StageKind)
+		}
+		if perr := o.Bus.Publish(ctx, sharedDomain.MockPipelineFinished{
+			UserID:     pipe.UserID,
+			PipelineID: pipelineID,
+			Section:    section,
+			Score:      score,
+			Passed:     verdict == domain.PipelinePass,
+		}); perr != nil && o.Log != nil {
+			o.Log.WarnContext(ctx, "mock_interview.orch: bus.Publish failed",
+				slog.String("pipeline_id", pipelineID.String()),
+				slog.Any("err", perr))
+		}
 	}
 
 	// Atlas progress: stage.score → skill_nodes.progress for the node

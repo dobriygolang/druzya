@@ -53,18 +53,23 @@ func (f *fakeNotes) Move(context.Context, uuid.UUID, uuid.UUID, *uuid.UUID) (dom
 	return domain.Note{}, errors.New("unused")
 }
 func (f *fakeNotes) Delete(context.Context, uuid.UUID, uuid.UUID) error { return nil }
-func (f *fakeNotes) SetArchived(context.Context, uuid.UUID, uuid.UUID, bool) error {
-	return nil
-}
 func (f *fakeNotes) SetEmbedding(context.Context, uuid.UUID, uuid.UUID, []float32, string, time.Time) error {
 	return nil
 }
-func (f *fakeNotes) WithEmbeddingsForUser(context.Context, uuid.UUID) ([]domain.NoteEmbedding, error) {
+func (f *fakeNotes) WithEmbeddingsForUser(context.Context, uuid.UUID, string) ([]domain.NoteEmbedding, error) {
 	return nil, nil
 }
 
 func (f *fakeNotes) ExistsByTitleForUser(context.Context, uuid.UUID, string) (bool, error) {
 	return false, nil
+}
+
+func (f *fakeNotes) MarkStaleForReembed(context.Context, string) (int64, error) {
+	return 0, nil
+}
+
+func (f *fakeNotes) SearchSimilarNotes(context.Context, uuid.UUID, []float32, string, uuid.UUID, float32, int) ([]domain.NoteSimilarityHit, error) {
+	return nil, nil
 }
 
 type standupFakePlans struct {

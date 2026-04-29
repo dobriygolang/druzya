@@ -839,7 +839,7 @@ function buildPaletteActions(ctx: {
     list.push({
       id: 'upgrade',
       label: 'Обновить план',
-      hint: 'Seeker / Ascendant на Boosty',
+      hint: 'Pro / Max на Boosty',
       run: ctx.showPaywall,
     });
   }

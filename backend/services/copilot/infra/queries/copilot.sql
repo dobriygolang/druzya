@@ -12,7 +12,9 @@ VALUES ($1, $2, $3)
 RETURNING id, user_id, title, model, created_at, updated_at;
 
 -- name: GetCopilotConversation :one
-SELECT id, user_id, title, model, created_at, updated_at, running_summary
+-- summary_model — Phase VI: пробрасывается на read-side для drift-детекции
+-- (compactor сравнит с current model и форсирует regen при mismatch).
+SELECT id, user_id, title, model, created_at, updated_at, running_summary, summary_model
   FROM copilot_conversations
  WHERE id = $1;
 
@@ -20,8 +22,11 @@ SELECT id, user_id, title, model, created_at, updated_at, running_summary
 -- Вызывается фоновым compaction.Worker после успешной суммаризации старых
 -- turns (см. backend/shared/pkg/compaction/worker.go). Пишется атомарно
 -- поверх любого предыдущего значения — воркер сам решает, когда запускать.
+-- summary_model — Phase II attribution (provider/model которая написала
+-- summary), для drift-детекции при смене admin-конфига.
 UPDATE copilot_conversations
    SET running_summary = $2,
+       summary_model   = $3,
        updated_at      = now()
  WHERE id = $1;
 

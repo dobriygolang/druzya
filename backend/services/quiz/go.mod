@@ -3,8 +3,8 @@ module druz9/quiz
 go 1.25.0
 
 require (
+	connectrpc.com/connect v1.19.2
 	druz9/shared v0.0.0
-	github.com/go-chi/chi/v5 v5.2.5
 	github.com/google/uuid v1.6.0
 	github.com/jackc/pgx/v5 v5.9.2
 	github.com/redis/go-redis/v9 v9.6.1
@@ -18,6 +18,8 @@ require (
 	github.com/jackc/puddle/v2 v2.2.2 // indirect
 	golang.org/x/sync v0.20.0 // indirect
 	golang.org/x/text v0.36.0 // indirect
+	google.golang.org/genproto/googleapis/api v0.0.0-20260414002931-afd174a4e478 // indirect
+	google.golang.org/protobuf v1.36.11 // indirect
 )
 
 replace druz9/shared => ../../shared

@@ -217,7 +217,7 @@ func (q *Queries) FailCopilotSessionReport(ctx context.Context, arg FailCopilotS
 }
 
 const getCopilotConversation = `-- name: GetCopilotConversation :one
-SELECT id, user_id, title, model, created_at, updated_at, running_summary
+SELECT id, user_id, title, model, created_at, updated_at, running_summary, summary_model
   FROM copilot_conversations
  WHERE id = $1
 `
@@ -230,8 +230,11 @@ type GetCopilotConversationRow struct {
 	CreatedAt      pgtype.Timestamptz
 	UpdatedAt      pgtype.Timestamptz
 	RunningSummary string
+	SummaryModel   string
 }
 
+// summary_model — Phase VI: пробрасывается на read-side для drift-детекции
+// (compactor сравнит с current model и форсирует regen при mismatch).
 func (q *Queries) GetCopilotConversation(ctx context.Context, id pgtype.UUID) (GetCopilotConversationRow, error) {
 	row := q.db.QueryRow(ctx, getCopilotConversation, id)
 	var i GetCopilotConversationRow
@@ -243,6 +246,7 @@ func (q *Queries) GetCopilotConversation(ctx context.Context, id pgtype.UUID) (G
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.RunningSummary,
+		&i.SummaryModel,
 	)
 	return i, err
 }
@@ -828,6 +832,7 @@ func (q *Queries) UpdateCopilotAssistantMessage(ctx context.Context, arg UpdateC
 const updateCopilotConversationRunningSummary = `-- name: UpdateCopilotConversationRunningSummary :execrows
 UPDATE copilot_conversations
    SET running_summary = $2,
+       summary_model   = $3,
        updated_at      = now()
  WHERE id = $1
 `
@@ -835,13 +840,16 @@ UPDATE copilot_conversations
 type UpdateCopilotConversationRunningSummaryParams struct {
 	ID             pgtype.UUID
 	RunningSummary string
+	SummaryModel   string
 }
 
 // Вызывается фоновым compaction.Worker после успешной суммаризации старых
 // turns (см. backend/shared/pkg/compaction/worker.go). Пишется атомарно
 // поверх любого предыдущего значения — воркер сам решает, когда запускать.
+// summary_model — Phase II attribution (provider/model которая написала
+// summary), для drift-детекции при смене admin-конфига.
 func (q *Queries) UpdateCopilotConversationRunningSummary(ctx context.Context, arg UpdateCopilotConversationRunningSummaryParams) (int64, error) {
-	result, err := q.db.Exec(ctx, updateCopilotConversationRunningSummary, arg.ID, arg.RunningSummary)
+	result, err := q.db.Exec(ctx, updateCopilotConversationRunningSummary, arg.ID, arg.RunningSummary, arg.SummaryModel)
 	if err != nil {
 		return 0, err
 	}

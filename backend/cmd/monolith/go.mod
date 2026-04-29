@@ -18,10 +18,8 @@ require (
 	druz9/hone v0.0.0-00010101000000-000000000000
 	druz9/intelligence v0.0.0-00010101000000-000000000000
 	druz9/lobby v0.0.0
-	druz9/mentor_session v0.0.0-00010101000000-000000000000
 	druz9/mock_interview v0.0.0-00010101000000-000000000000
 	druz9/notify v0.0.0-00010101000000-000000000000
-	druz9/orgs v0.0.0-00010101000000-000000000000
 	druz9/podcast v0.0.0-00010101000000-000000000000
 	druz9/profile v0.0.0-00010101000000-000000000000
 	druz9/quiz v0.0.0-00010101000000-000000000000
@@ -143,10 +141,6 @@ replace druz9/transcription => ../../services/transcription
 replace druz9/lobby => ../../services/lobby
 
 replace druz9/review => ../../services/review
-
-replace druz9/mentor_session => ../../services/mentor_session
-
-replace druz9/orgs => ../../services/orgs
 
 replace druz9/tg_coach => ../../services/tg_coach
 

@@ -1,0 +1,198 @@
+// codex.proto — Connect-RPC contract for the Codex bounded context.
+//
+// Codex is editorial content (articles + categories) backing /codex on the
+// web frontend. Public reads are anonymous; mutations are admin-only and
+// gated at the chi mount level (RequireAdminInline middleware in
+// cmd/monolith/services/admin/codex.go is layered on top of the transcoder).
+//
+// One implementation, two wire formats: native Connect at
+// /druz9.v1.CodexService/* + REST at /api/v1/codex/* and /api/v1/admin/codex/*
+// via the vanguard transcoder.
+syntax = "proto3";
+package druz9.v1;
+
+import "google/api/annotations.proto";
+
+option go_package = "druz9/shared/generated/pb/druz9/v1;druz9v1";
+
+// ─── Articles ──────────────────────────────────────────────────────────────
+
+message CodexArticle {
+  string id = 1;
+  string slug = 2;
+  string title = 3;
+  string description = 4;
+  string category = 5;
+  string href = 6;
+  string source = 7;
+  int32 read_min = 8;
+  int32 sort_order = 9;
+  bool active = 10;
+}
+
+message CodexArticleList {
+  repeated CodexArticle items = 1;
+}
+
+// CodexArticleUpsert mirrors adminDomain.CodexArticleUpsert. `active` is
+// deliberately optional (proto3 has no nullable scalars; we use a wrapper
+// pattern: when omitted on the wire vanguard sets it to default false, but
+// frontends explicitly send `active=true` on create).
+message CodexArticleUpsert {
+  string slug = 1;
+  string title = 2;
+  string description = 3;
+  string category = 4;
+  string href = 5;
+  string source = 6;
+  int32 read_min = 7;
+  int32 sort_order = 8;
+  bool active = 9;
+}
+
+// ─── Categories ────────────────────────────────────────────────────────────
+
+message CodexCategory {
+  string slug = 1;
+  string label = 2;
+  string description = 3;
+  int32 sort_order = 4;
+  bool active = 5;
+}
+
+message CodexCategoryList {
+  repeated CodexCategory items = 1;
+}
+
+// ─── RPC payloads ──────────────────────────────────────────────────────────
+
+message ListCodexArticlesRequest {
+  // active_only=true serves the public surface (anonymous-readable), false
+  // serves the admin surface (lists drafts + disabled rows). The router in
+  // cmd/monolith maps the public path to a fixed-true value via a thin
+  // adapter so untrusted callers can never request the admin view.
+  bool active_only = 1;
+}
+
+message GetCodexArticleRequest {
+  string id = 1;
+}
+
+message CreateCodexArticleRequest {
+  CodexArticleUpsert article = 1;
+}
+
+message UpdateCodexArticleRequest {
+  string id = 1;
+  CodexArticleUpsert article = 2;
+}
+
+message DeleteCodexArticleRequest {
+  string id = 1;
+}
+
+message DeleteCodexArticleResponse {
+  bool ok = 1;
+}
+
+message ToggleCodexArticleRequest {
+  string id = 1;
+  bool active = 2;
+}
+
+message ToggleCodexArticleResponse {
+  bool ok = 1;
+}
+
+message OpenCodexArticleRequest {
+  string id = 1;
+}
+
+message OpenCodexArticleResponse {
+  bool ok = 1;
+}
+
+message ListCodexCategoriesRequest {
+  bool active_only = 1;
+}
+
+message CreateCodexCategoryRequest {
+  CodexCategory category = 1;
+}
+
+message UpdateCodexCategoryRequest {
+  string slug = 1;
+  CodexCategory category = 2;
+}
+
+message DeleteCodexCategoryRequest {
+  string slug = 1;
+}
+
+message DeleteCodexCategoryResponse {
+  bool ok = 1;
+}
+
+// ─── Service ───────────────────────────────────────────────────────────────
+
+service CodexService {
+  // ListArticles serves the article catalogue. The REST aliases below split
+  // the public (active_only=true) and admin (active_only=false) surfaces
+  // into separate paths so anonymous calls never see drafts.
+  rpc ListArticles(ListCodexArticlesRequest) returns (CodexArticleList) {
+    option (google.api.http) = {get: "/api/v1/codex/articles"};
+  }
+
+  // OpenArticle is the read-tap. Server writes a coach-memory episode and
+  // publishes shared.CodexArticleRead so Hone settles `kind=reading` tasks.
+  rpc OpenArticle(OpenCodexArticleRequest) returns (OpenCodexArticleResponse) {
+    option (google.api.http) = {
+      post: "/api/v1/codex/articles/{id}/open"
+      body: "*"
+    };
+  }
+
+  // CreateArticle / UpdateArticle / DeleteArticle / ToggleArticle are admin
+  // mutations. The admin auth gate is applied at the chi mount in
+  // cmd/monolith.
+  rpc CreateArticle(CreateCodexArticleRequest) returns (CodexArticle) {
+    option (google.api.http) = {
+      post: "/api/v1/admin/codex/articles"
+      body: "article"
+    };
+  }
+  rpc UpdateArticle(UpdateCodexArticleRequest) returns (CodexArticle) {
+    option (google.api.http) = {
+      patch: "/api/v1/admin/codex/articles/{id}"
+      body: "article"
+    };
+  }
+  rpc DeleteArticle(DeleteCodexArticleRequest) returns (DeleteCodexArticleResponse) {
+    option (google.api.http) = {delete: "/api/v1/admin/codex/articles/{id}"};
+  }
+  rpc ToggleArticle(ToggleCodexArticleRequest) returns (ToggleCodexArticleResponse) {
+    option (google.api.http) = {
+      post: "/api/v1/admin/codex/articles/{id}/active"
+      body: "*"
+    };
+  }
+
+  rpc ListCategories(ListCodexCategoriesRequest) returns (CodexCategoryList) {
+    option (google.api.http) = {get: "/api/v1/codex/categories"};
+  }
+  rpc CreateCategory(CreateCodexCategoryRequest) returns (CodexCategory) {
+    option (google.api.http) = {
+      post: "/api/v1/admin/codex/categories"
+      body: "category"
+    };
+  }
+  rpc UpdateCategory(UpdateCodexCategoryRequest) returns (CodexCategory) {
+    option (google.api.http) = {
+      patch: "/api/v1/admin/codex/categories/{slug}"
+      body: "category"
+    };
+  }
+  rpc DeleteCategory(DeleteCodexCategoryRequest) returns (DeleteCodexCategoryResponse) {
+    option (google.api.http) = {delete: "/api/v1/admin/codex/categories/{slug}"};
+  }
+}

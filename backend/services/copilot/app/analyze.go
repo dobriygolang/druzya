@@ -273,7 +273,7 @@ func (uc *Analyze) Do(ctx context.Context, in AnalyzeInput) (<-chan StreamFrame,
 	if !quota.HasBudget() {
 		return nil, fmt.Errorf("copilot.Analyze: %w", domain.ErrQuotaExceeded)
 	}
-	if len(quota.ModelsAllowed) > 0 && !quota.IsModelAllowed(model) {
+	if !quota.IsModelAllowed(model) {
 		return nil, fmt.Errorf("copilot.Analyze: %w: %s", domain.ErrModelNotAllowed, model)
 	}
 
@@ -566,13 +566,39 @@ func (uc *Analyze) maybeSubmitCompaction(p pumpCtx, assistantContent string) {
 		turns = append(turns, compaction.Turn{Role: string(enums.MessageRoleAssistant), Content: assistantContent})
 	}
 	fresh := compaction.BuildWindow(turns, p.priorWindow.RunningSummary, uc.compactionConfig())
-	if !fresh.NeedsCompaction {
+	// Phase VI: drift-детект. Если у summary есть attribution (Phase II
+	// уже пишет summary_model) и оно отличается от текущей conv.Model —
+	// форсим re-compaction даже когда window не дорос до NeedsCompaction.
+	// Иначе stale summary в старом стиле может жить пока окно не наберёт
+	// достаточно turns; на mid-conversation admin swap это видимый drift.
+	driftDetected := strings.TrimSpace(p.priorWindow.RunningSummary) != "" &&
+		p.conv.SummaryModel != "" &&
+		p.conv.SummaryModel != p.conv.Model
+	if !fresh.NeedsCompaction && !driftDetected {
 		return
+	}
+	if driftDetected && uc.Log != nil {
+		uc.Log.Info("copilot.Analyze: summary drift detected, forcing recompaction",
+			"conv", p.conv.ID,
+			"summary_model", p.conv.SummaryModel,
+			"current_model", p.conv.Model)
+	}
+	// Phase II: pin summary к той же модели что и chat (conv.Model). Иначе
+	// summary пишется случайной моделью task_map'а и tone дрейфует на
+	// следующем turn'е когда чат-модель её читает.
+	//
+	// При drift-форсе: если fresh.OldTurns пуст (window не дорос), скармливаем
+	// весь tail — компактор перепишет summary в стиле текущей модели,
+	// инкрементально интегрируя prev summary как пролог.
+	oldTurns := fresh.OldTurns
+	if driftDetected && len(oldTurns) == 0 {
+		oldTurns = turns
 	}
 	err := uc.Compactor.Submit(compaction.Job{
 		SessionKey:  p.conv.ID.String(),
 		PrevSummary: fresh.RunningSummary,
-		OldTurns:    fresh.OldTurns,
+		OldTurns:    oldTurns,
+		PinnedModel: p.conv.Model,
 	})
 	if err != nil && !errors.Is(err, compaction.ErrWorkerStopped) && uc.Log != nil {
 		uc.Log.Warn("copilot.Analyze: compaction submit failed",

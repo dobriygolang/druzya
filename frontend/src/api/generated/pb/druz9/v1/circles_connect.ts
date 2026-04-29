@@ -7,7 +7,7 @@
 /* eslint-disable */
 // @ts-nocheck
 
-import { Circle, CircleList, CircleMutationResponse, CreateCircleRequest, DeleteCircleRequest, GetCircleRequest, JoinCircleRequest, LeaveCircleRequest, ListMyCirclesRequest } from "./circles_pb.js";
+import { Circle, CircleList, CircleMutationResponse, CreateCircleRequest, DeleteCircleRequest, DiscoverCirclesRequest, DiscoverCirclesResponse, GetCircleRequest, JoinCircleRequest, LeaveCircleRequest, ListMyCirclesRequest } from "./circles_pb.js";
 import { MethodKind } from "@bufbuild/protobuf";
 
 /**
@@ -83,6 +83,18 @@ export const CirclesService = {
       name: "DeleteCircle",
       I: DeleteCircleRequest,
       O: CircleMutationResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * DiscoverCircles returns up to N public circles the user isn't a
+     * member of yet, ordered by recency. Powers the /circles "Discover" tab.
+     *
+     * @generated from rpc druz9.v1.CirclesService.DiscoverCircles
+     */
+    discoverCircles: {
+      name: "DiscoverCircles",
+      I: DiscoverCirclesRequest,
+      O: DiscoverCirclesResponse,
       kind: MethodKind.Unary,
     },
   }

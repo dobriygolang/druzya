@@ -29,8 +29,10 @@ var allTables = []string{
 // (защита от случайного раскрытия sensitive колонок типа embedding'ов
 // которые должны оставаться сервер-side только).
 var pullColumns = map[string]string{
-	"hone_notes":       "id, title, body_md, size_bytes, archived_at, published_at, public_slug, created_at, updated_at",
-	"hone_whiteboards": "id, title, state_json, version, archived_at, created_at, updated_at",
+	// archived_at dropped in v2 baseline (hard delete only) — removed from
+	// the projection so /sync/pull stops 500'ing on column-not-found.
+	"hone_notes":       "id, title, body_md, size_bytes, published_at, public_slug, created_at, updated_at",
+	"hone_whiteboards": "id, title, state_json, version, created_at, updated_at",
 	// hone_focus_sessions schema (см. migrations/00013_hone_focus.sql):
 	// нет planned_duration_seconds / actual_duration_seconds. Реальная факт-
 	// длительность хранится в seconds_focused, mode различает pomodoro vs

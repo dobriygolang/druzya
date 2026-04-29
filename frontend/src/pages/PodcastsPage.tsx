@@ -506,9 +506,10 @@ export default function PodcastsPage() {
 
   return (
     <AppShellV2>
-      {/* WAVE-13 — same shared knowledge-hub tab strip as /codex; switching
-          back to Articles re-mounts the Codex page without a full reload. */}
-      <KnowledgeHubTabs active="podcasts" />
+      {/* /podcasts route was retired (moved to Hone, P hotkey). This page
+          file is kept unrouted for future reuse; the tab strip now only
+          shows "Статьи". */}
+      <KnowledgeHubTabs active="articles" />
       <div className="mx-auto flex w-full max-w-[1200px] flex-col gap-6 px-4 py-6 sm:px-8 lg:px-10 lg:py-8">
         <header className="flex flex-col gap-2">
           <h1 className="font-display text-2xl font-bold text-text-primary lg:text-[32px] lg:leading-[1.1]">

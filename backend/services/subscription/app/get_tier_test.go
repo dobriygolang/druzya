@@ -70,7 +70,7 @@ func TestGetTier_ExpiredPastGrace_ReturnsFree(t *testing.T) {
 	now := time.Now().UTC()
 	past := now.Add(-48 * time.Hour)
 	sub := domain.Subscription{
-		Tier: domain.TierSeeker, Status: domain.StatusActive,
+		Tier: domain.TierPro, Status: domain.StatusActive,
 		CurrentPeriodEnd: &past, GraceUntil: &past,
 	}
 	uc := NewGetTier(&fakeRepo{sub: &sub}, fakeClock{now: now})
@@ -80,16 +80,16 @@ func TestGetTier_ExpiredPastGrace_ReturnsFree(t *testing.T) {
 	}
 }
 
-func TestGetTier_ActiveSeeker_Returns(t *testing.T) {
+func TestGetTier_ActivePro_Returns(t *testing.T) {
 	now := time.Now().UTC()
 	future := now.Add(24 * time.Hour)
 	sub := domain.Subscription{
-		Tier: domain.TierSeeker, Status: domain.StatusActive, CurrentPeriodEnd: &future,
+		Tier: domain.TierPro, Status: domain.StatusActive, CurrentPeriodEnd: &future,
 	}
 	uc := NewGetTier(&fakeRepo{sub: &sub}, fakeClock{now: now})
 	tier, _ := uc.Do(context.Background(), uuid.New())
-	if tier != domain.TierSeeker {
-		t.Fatalf("want seeker, got %s", tier)
+	if tier != domain.TierPro {
+		t.Fatalf("want pro, got %s", tier)
 	}
 }
 

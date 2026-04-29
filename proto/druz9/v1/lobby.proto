@@ -1,0 +1,154 @@
+// lobby.proto — Connect-RPC contract for the Custom-Lobby bounded context.
+//
+// One implementation, two wire formats: native Connect at
+// /druz9.v1.LobbyService/* and REST at /api/v1/lobby/* via the vanguard
+// transcoder. Discovery (List, Get, GetByCode) is anonymous-readable;
+// mutations (Create, Join, Leave, Start, Cancel) require a bearer.
+syntax = "proto3";
+package druz9.v1;
+
+import "google/api/annotations.proto";
+import "google/protobuf/timestamp.proto";
+
+option go_package = "druz9/shared/generated/pb/druz9/v1;druz9v1";
+
+// Lobby mirrors lobby/domain.Lobby. Enum-typed fields (mode, visibility,
+// status) stay strings so wire shape matches what existing clients send;
+// validation is server-side via lobbyDomain.<Type>.IsValid().
+message Lobby {
+  string id = 1;
+  string code = 2;
+  string owner_id = 3;
+  string mode = 4;             // "1v1" | "2v2"
+  string section = 5;
+  string difficulty = 6;
+  string visibility = 7;       // "public" | "private"
+  int32 max_members = 8;
+  bool ai_allowed = 9;
+  int32 time_limit_min = 10;
+  string status = 11;          // "open" | "starting" | "started" | "cancelled"
+  string match_id = 12;        // empty until Start
+  int32 members_count = 13;    // 0 in list view, real count in detail view
+  google.protobuf.Timestamp created_at = 14;
+}
+
+message LobbyMember {
+  string user_id = 1;
+  string role = 2;             // "owner" | "member"
+  int32 team = 3;
+  google.protobuf.Timestamp joined_at = 4;
+}
+
+message LobbyDetail {
+  Lobby lobby = 1;
+  repeated LobbyMember members = 2;
+}
+
+// ── RPCs ──────────────────────────────────────────────────────────────────
+
+message ListLobbiesRequest {
+  string visibility = 1;       // optional filter
+  string mode = 2;             // optional filter
+  string section = 3;          // optional filter
+  int32 limit = 4;             // 0 ⇒ server default
+}
+
+message ListLobbiesResponse {
+  repeated Lobby items = 1;
+}
+
+message GetLobbyRequest {
+  string id = 1;
+}
+
+message GetLobbyByCodeRequest {
+  string code = 1;
+}
+
+message CreateLobbyRequest {
+  string mode = 1;
+  string section = 2;
+  string difficulty = 3;
+  string visibility = 4;
+  int32 max_members = 5;
+  bool ai_allowed = 6;
+  int32 time_limit_min = 7;
+}
+
+message JoinLobbyRequest {
+  string id = 1;
+}
+
+message JoinLobbyResponse {
+  string status = 1;           // always "joined" on success
+  Lobby lobby = 2;
+}
+
+message LeaveLobbyRequest {
+  string id = 1;
+}
+
+message LeaveLobbyResponse {
+  string status = 1;           // "left" | "lobby_dissolved"
+  string lobby_id = 2;
+}
+
+message StartLobbyRequest {
+  string id = 1;
+}
+
+message StartLobbyResponse {
+  string status = 1;           // always "started" on success
+  Lobby lobby = 2;
+}
+
+message CancelLobbyRequest {
+  string id = 1;
+}
+
+message CancelLobbyResponse {
+  string status = 1;           // always "cancelled"
+  string lobby_id = 2;
+}
+
+service LobbyService {
+  rpc ListLobbies(ListLobbiesRequest) returns (ListLobbiesResponse) {
+    option (google.api.http) = {get: "/api/v1/lobby/list"};
+  }
+  rpc GetLobby(GetLobbyRequest) returns (LobbyDetail) {
+    option (google.api.http) = {get: "/api/v1/lobby/{id}"};
+  }
+  rpc GetLobbyByCode(GetLobbyByCodeRequest) returns (LobbyDetail) {
+    option (google.api.http) = {get: "/api/v1/lobby/code/{code}"};
+  }
+  rpc CreateLobby(CreateLobbyRequest) returns (Lobby) {
+    option (google.api.http) = {
+      post: "/api/v1/lobby"
+      body: "*"
+    };
+  }
+  rpc JoinLobby(JoinLobbyRequest) returns (JoinLobbyResponse) {
+    option (google.api.http) = {
+      post: "/api/v1/lobby/{id}/join"
+      body: "*"
+    };
+  }
+  rpc LeaveLobby(LeaveLobbyRequest) returns (LeaveLobbyResponse) {
+    option (google.api.http) = {
+      post: "/api/v1/lobby/{id}/leave"
+      body: "*"
+    };
+  }
+  rpc StartLobby(StartLobbyRequest) returns (StartLobbyResponse) {
+    option (google.api.http) = {
+      post: "/api/v1/lobby/{id}/start"
+      body: "*"
+    };
+  }
+  rpc CancelLobby(CancelLobbyRequest) returns (CancelLobbyResponse) {
+    option (google.api.http) = {
+      post: "/api/v1/lobby/{id}/cancel"
+      body: "*"
+    };
+  }
+}

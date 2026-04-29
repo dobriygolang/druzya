@@ -30,6 +30,12 @@
 
 CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+-- Phase IX: pgvector — typed vector columns + native cosine distance
+-- operator. До перехода на vector queries на read-side остаются
+-- параллельные real[] embeddings + Go-cosine; при активации scale
+-- (>10k активных users) readers свитчатся на `<->` оператор и индекс
+-- IVFFlat / HNSW. См. ниже комментарии в hone_notes / coach_episodes.
+CREATE EXTENSION IF NOT EXISTS "vector";
 
 -- =============================================================
 -- AUTH & IDENTITY
@@ -485,6 +491,8 @@ CREATE TABLE mock_sessions (
     ai_report       JSONB,
     ai_assist       BOOLEAN NOT NULL DEFAULT FALSE,
     running_summary TEXT NOT NULL DEFAULT '',
+    -- Phase II context-preservation: см. copilot_conversations.summary_model.
+    summary_model   TEXT NOT NULL DEFAULT '',
     started_at      TIMESTAMPTZ,
     finished_at     TIMESTAMPTZ,
     created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
@@ -583,7 +591,7 @@ CREATE TABLE subscriptions (
     current_period_end   TIMESTAMPTZ,
     grace_until          TIMESTAMPTZ,
     updated_at           TIMESTAMPTZ NOT NULL DEFAULT now(),
-    CONSTRAINT subscriptions_plan_valid     CHECK (plan IN ('free','seeker','ascendant')),
+    CONSTRAINT subscriptions_plan_valid     CHECK (plan IN ('free','pro','max')),
     CONSTRAINT subscriptions_provider_valid CHECK (provider IS NULL OR provider IN ('yookassa','tbank','admin'))
 );
 CREATE UNIQUE INDEX idx_subscriptions_provider_sub_id
@@ -646,6 +654,39 @@ INSERT INTO dynamic_config(key, value, type, description) VALUES
   ('voice_mode_enabled',           to_jsonb(false), 'bool',  'Включён ли голосовой мок режим'),
   ('llm_default_free_model',       to_jsonb('openai/gpt-4o-mini'::text), 'string', 'Дефолтная LLM для free'),
   ('llm_default_paid_model',       to_jsonb('openai/gpt-4o'::text),      'string', 'Дефолтная LLM для premium'),
+  ('copilot_plans', '{
+    "default_model_id": "druz9/turbo",
+    "order": ["free", "pro", "max"],
+    "plans": {
+      "free": {
+        "display_name": "Free",
+        "price_label": "Бесплатно",
+        "tagline": "Для знакомства с продуктом",
+        "bullets": ["20 запросов в день", "Только Турбо-цепочка", "Только macOS"],
+        "cta_label": "Текущий план",
+        "requests_cap": 20,
+        "models_allowed": ["druz9/turbo"]
+      },
+      "pro": {
+        "display_name": "Pro",
+        "price_label": "499 ₽/мес",
+        "tagline": "Для ежедневной работы",
+        "bullets": ["200 запросов в день", "Расширенные модели", "История с облачной синхронизацией"],
+        "cta_label": "Оформить подписку",
+        "requests_cap": 200,
+        "models_allowed": []
+      },
+      "max": {
+        "display_name": "Max",
+        "price_label": "1490 ₽/мес",
+        "tagline": "Для интенсивной работы",
+        "bullets": ["Безлимитные запросы", "Все модели", "Приоритетная поддержка"],
+        "cta_label": "Оформить подписку",
+        "requests_cap": -1,
+        "models_allowed": []
+      }
+    }
+  }'::jsonb, 'json', 'Copilot plan names, quotas, paywall copy and model allow-lists'),
   ('hone_taskboard_todo_cap',      to_jsonb(7),     'int',   'Максимум in-todo тасок на юзера'),
   ('hone_taskboard_ttl_days',      to_jsonb(14),    'int',   'TTL дней до auto-dismiss in-todo тасок')
 ON CONFLICT (key) DO NOTHING;
@@ -849,7 +890,7 @@ CREATE TABLE llm_models (
     sort_order             INT         NOT NULL DEFAULT 0,
     created_at             TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at             TIMESTAMPTZ NOT NULL DEFAULT now(),
-    CONSTRAINT llm_models_tier_valid CHECK (tier IN ('free','premium'))
+    CONSTRAINT llm_models_tier_valid CHECK (tier IN ('free','pro','max'))
 );
 CREATE INDEX llm_models_enabled_sort_idx ON llm_models (is_enabled, sort_order);
 
@@ -857,14 +898,17 @@ INSERT INTO llm_models (
     model_id, label, provider, provider_id, tier, is_virtual,
     use_for_arena, use_for_insight, use_for_mock, use_for_vacancies, sort_order
 ) VALUES
-    ('druz9/turbo',                        'Турбо ⚡ (авто-роутинг)',         'druz9',     'druz9',      'free',    TRUE,  TRUE,  TRUE,  TRUE,  TRUE,   1),
-    ('openai/gpt-4o-mini',                 'GPT-4o mini',                    'openai',    'openrouter', 'free',    FALSE, TRUE,  TRUE,  TRUE,  TRUE,  10),
-    ('qwen/qwen3-coder:free',              'Qwen3 Coder (free)',             'qwen',      'openrouter', 'free',    FALSE, FALSE, TRUE,  FALSE, TRUE,  11),
-    ('openai/gpt-oss-120b:free',           'GPT-OSS 120B (free)',            'openai',    'openrouter', 'free',    FALSE, FALSE, TRUE,  FALSE, FALSE, 12),
-    ('openai/gpt-4o',                      'GPT-4o',                         'openai',    'openrouter', 'premium', FALSE, TRUE,  TRUE,  TRUE,  FALSE, 30),
-    ('anthropic/claude-sonnet-4',          'Claude Sonnet 4',                'anthropic', 'openrouter', 'premium', FALSE, TRUE,  TRUE,  TRUE,  FALSE, 40),
-    ('groq/llama-3.3-70b-versatile',       'Llama 3.3 70B (Groq)',           'groq',      'groq',       'free',    FALSE, TRUE,  TRUE,  TRUE,  TRUE,  21),
-    ('cerebras/llama3.3-70b',              'Llama 3.3 70B (Cerebras)',       'cerebras',  'cerebras',   'free',    FALSE, TRUE,  TRUE,  TRUE,  TRUE,  31)
+    ('druz9/turbo',                        'Турбо ⚡ (авто-роутинг)',         'druz9',     'druz9',      'free', TRUE,  TRUE,  TRUE,  TRUE,  TRUE,   1),
+    ('openai/gpt-4o-mini',                 'GPT-4o mini',                    'openai',    'openrouter', 'pro',  FALSE, TRUE,  TRUE,  TRUE,  TRUE,  10),
+    ('qwen/qwen3-coder:free',              'Qwen3 Coder (free)',             'qwen',      'openrouter', 'pro',  FALSE, FALSE, TRUE,  FALSE, TRUE,  11),
+    ('openai/gpt-oss-120b:free',           'GPT-OSS 120B (free)',            'openai',    'openrouter', 'pro',  FALSE, FALSE, TRUE,  FALSE, FALSE, 12),
+    ('openai/gpt-4o',                      'GPT-4o',                         'openai',    'openrouter', 'max',  FALSE, TRUE,  TRUE,  TRUE,  FALSE, 30),
+    ('anthropic/claude-sonnet-4',          'Claude Sonnet 4',                'anthropic', 'openrouter', 'max',  FALSE, TRUE,  TRUE,  TRUE,  FALSE, 40),
+    ('groq/llama-3.3-70b-versatile',       'Llama 3.3 70B (Groq)',           'groq',      'groq',       'pro',  FALSE, TRUE,  TRUE,  TRUE,  TRUE,  21),
+    ('cerebras/llama3.3-70b',              'Llama 3.3 70B (Cerebras)',       'cerebras',  'cerebras',   'pro',  FALSE, TRUE,  TRUE,  TRUE,  TRUE,  31),
+    ('google/gemini-2.5-flash',            'Gemini 2.5 Flash',               'google',    'google',     'pro',  FALSE, TRUE,  TRUE,  TRUE,  TRUE,  50),
+    ('cloudflare/@cf/meta/llama-3.1-8b-instruct', 'Llama 3.1 8B (Cloudflare)', 'cloudflare', 'cloudflare', 'pro', FALSE, TRUE, TRUE, TRUE, TRUE, 60),
+    ('zai/glm-4.5-flash',                  'GLM-4.5 Flash (Z.AI)',           'zai',       'zai',        'pro',  FALSE, TRUE,  TRUE,  TRUE,  TRUE,  70)
 ON CONFLICT (model_id) DO NOTHING;
 
 CREATE TABLE llm_runtime_config (
@@ -899,6 +943,11 @@ CREATE TABLE copilot_conversations (
     title           TEXT NOT NULL DEFAULT '',
     model           TEXT NOT NULL,
     running_summary TEXT NOT NULL DEFAULT '',
+    -- Phase II context-preservation: фактическая модель которая написала
+    -- running_summary (provider/model echo от llmchain.Response). Используется
+    -- для drift-детекции — если current chat model отличается от
+    -- summary_model, summary мог писаться другим стилем.
+    summary_model   TEXT NOT NULL DEFAULT '',
     created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at      TIMESTAMPTZ NOT NULL DEFAULT now()
 );
@@ -927,15 +976,9 @@ CREATE TABLE copilot_quotas (
     requests_used   INT NOT NULL DEFAULT 0,
     requests_cap    INT NOT NULL DEFAULT 20,
     resets_at       TIMESTAMPTZ NOT NULL DEFAULT (now() + INTERVAL '1 day'),
-    models_allowed  TEXT[] NOT NULL DEFAULT ARRAY[
-        'druz9/turbo',
-        'groq/llama-3.3-70b-versatile',
-        'cerebras/llama3.3-70b',
-        'openai/gpt-oss-120b:free',
-        'qwen/qwen3-coder:free'
-    ]::TEXT[],
+    models_allowed  TEXT[] NOT NULL DEFAULT ARRAY['druz9/turbo']::TEXT[],
     updated_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
-    CONSTRAINT copilot_quotas_plan_valid CHECK (plan IN ('free','seeker','ascendant'))
+    CONSTRAINT copilot_quotas_plan_valid CHECK (plan IN ('free','pro','max'))
 );
 
 CREATE TABLE copilot_session_reports (
@@ -1012,10 +1055,24 @@ CREATE TABLE doc_chunks (
     ord             INT NOT NULL,
     content         TEXT NOT NULL,
     embedding       REAL[],
+    -- Phase IX: parallel pgvector column. dim=384 матчит bge-small-en-v1.5
+    -- (см. embedding_models seed). При смене embedding-модели на 1536-dim
+    -- (например text-embedding-3-small) — нужна отдельная миграция:
+    -- ALTER TABLE doc_chunks ALTER COLUMN embedding_vec TYPE vector(1536),
+    -- + MarkStaleForReembed; вектор-колонка фиксированной размерности
+    -- по дизайну pgvector.
+    embedding_vec   vector(384),
     token_count     INT NOT NULL DEFAULT 0,
     created_at      TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 CREATE INDEX idx_doc_chunks_doc ON doc_chunks(doc_id, ord);
+-- IVFFlat cosine-distance index. lists=100 — sweet spot для 10k-1M rows;
+-- для меньшего corpus'а partial index'ом (WHERE embedding_vec IS NOT NULL)
+-- избегаем включать null'ы. Перебилд index'а после массового backfill'а.
+CREATE INDEX idx_doc_chunks_embedding_vec
+    ON doc_chunks USING ivfflat (embedding_vec vector_cosine_ops)
+    WITH (lists = 100)
+    WHERE embedding_vec IS NOT NULL;
 
 CREATE TABLE session_documents (
     session_id  UUID NOT NULL REFERENCES copilot_sessions(id) ON DELETE CASCADE,
@@ -1054,6 +1111,8 @@ CREATE TABLE hone_notes (
     published_at        TIMESTAMPTZ,
     -- vector search
     embedding           REAL[],
+    -- Phase IX: parallel pgvector. См. doc_chunks.embedding_vec.
+    embedding_vec       vector(384),
     embedding_model_id  INT REFERENCES embedding_models(id),
     embedded_at         TIMESTAMPTZ,
     -- Cue session attachment (kind='cue')
@@ -1069,6 +1128,13 @@ CREATE INDEX idx_hone_notes_user_folder  ON hone_notes(user_id, folder_id);
 CREATE INDEX idx_hone_notes_user_kind    ON hone_notes(user_id, kind);
 CREATE INDEX idx_hone_notes_public_slug  ON hone_notes(public_slug) WHERE public_slug IS NOT NULL;
 CREATE INDEX idx_hone_notes_embedded     ON hone_notes(user_id) WHERE embedded_at IS NOT NULL;
+-- Phase IX: pgvector index. lists=100 — для до ~10k нот на user'а;
+-- при росте per-user corpus к 100k можно ALTER к 200-500. Partial по
+-- NOT NULL чтобы не индексировать pending-embedding rows.
+CREATE INDEX idx_hone_notes_embedding_vec
+    ON hone_notes USING ivfflat (embedding_vec vector_cosine_ops)
+    WITH (lists = 100)
+    WHERE embedding_vec IS NOT NULL;
 CREATE UNIQUE INDEX idx_hone_notes_user_file_path
     ON hone_notes(user_id, file_path) WHERE file_path IS NOT NULL;
 
@@ -1245,6 +1311,8 @@ CREATE TABLE coach_episodes (
     summary             TEXT NOT NULL DEFAULT '',
     payload             JSONB NOT NULL DEFAULT '{}'::jsonb,
     embedding           REAL[],
+    -- Phase IX: parallel pgvector. См. doc_chunks.embedding_vec.
+    embedding_vec       vector(384),
     embedding_model_id  INT REFERENCES embedding_models(id),
     embedded_at         TIMESTAMPTZ,
     occurred_at         TIMESTAMPTZ NOT NULL,
@@ -1261,14 +1329,19 @@ CREATE INDEX idx_coach_episodes_brief_emitted_brief_id
     WHERE kind = 'brief_emitted';
 CREATE INDEX idx_coach_episodes_pending_embedding
     ON coach_episodes(created_at) WHERE embedded_at IS NULL;
+-- Phase IX: pgvector index. lists=100 для до ~10k эпизодов на user'а
+-- (90-day retention уже бьёт). При scale up — ALTER к 200+ + REINDEX.
+CREATE INDEX idx_coach_episodes_embedding_vec
+    ON coach_episodes USING ivfflat (embedding_vec vector_cosine_ops)
+    WITH (lists = 100)
+    WHERE embedding_vec IS NOT NULL;
 
 CREATE TABLE hone_daily_briefs (
     id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id         UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     brief_date      DATE NOT NULL,
-    headline        TEXT NOT NULL DEFAULT '',
-    narrative_md    TEXT NOT NULL DEFAULT '',
-    recommendations JSONB NOT NULL DEFAULT '[]'::jsonb,
+    payload         JSONB NOT NULL DEFAULT '{}'::jsonb,
+    generated_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
     created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
     UNIQUE (user_id, brief_date)
 );
@@ -1441,6 +1514,7 @@ CREATE TABLE codex_articles (
     title           TEXT NOT NULL,
     description     TEXT NOT NULL DEFAULT '',
     category        TEXT NOT NULL REFERENCES codex_categories(slug) ON DELETE RESTRICT,
+    href            TEXT NOT NULL DEFAULT '',
     source          TEXT NOT NULL DEFAULT '',
     read_min        INT  NOT NULL DEFAULT 0,
     sort_order      INT  NOT NULL DEFAULT 0,
@@ -1457,18 +1531,22 @@ CREATE INDEX idx_codex_articles_active ON codex_articles(active, sort_order);
 -- MOCK INTERVIEW PIPELINE
 -- =============================================================
 
+CREATE TYPE mock_pipeline_verdict AS ENUM ('in_progress','pass','fail','cancelled');
+
 CREATE TABLE mock_pipelines (
-    id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    user_id     UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    company_id  UUID REFERENCES companies(id),
-    role_label  TEXT NOT NULL DEFAULT '',
-    section     TEXT NOT NULL,
-    status      TEXT NOT NULL DEFAULT 'created',
-    started_at  TIMESTAMPTZ,
-    finished_at TIMESTAMPTZ,
-    created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
-    updated_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
-    CONSTRAINT mock_pipelines_status_valid CHECK (status IN ('created','in_progress','finished','abandoned'))
+    id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id           UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    company_id        UUID REFERENCES companies(id),
+    role_label        TEXT NOT NULL DEFAULT '',
+    section           TEXT NOT NULL DEFAULT '',
+    ai_assist         BOOLEAN NOT NULL DEFAULT false,
+    current_stage_idx SMALLINT NOT NULL DEFAULT 0,
+    verdict           mock_pipeline_verdict NOT NULL DEFAULT 'in_progress',
+    total_score       REAL,
+    started_at        TIMESTAMPTZ,
+    finished_at       TIMESTAMPTZ,
+    created_at        TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at        TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 CREATE INDEX idx_mock_pipelines_user ON mock_pipelines(user_id, created_at DESC);
 

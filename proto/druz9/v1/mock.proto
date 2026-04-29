@@ -1,0 +1,858 @@
+// mock.proto — Connect-RPC contract for the `mock_interview` bounded
+// context (pipelines + leaderboard). Phase: incremental migration —
+// public read-only endpoints first; mutating + admin surfaces stay in
+// chi until subsequent passes.
+//
+// Naming: `mock_interview` service is exposed as `MockPipelineService`
+// to disambiguate from `MockService` in ai_mock.proto (different
+// bounded context — single-stage AI mock vs multi-stage pipelines).
+syntax = "proto3";
+package druz9.v1;
+
+import "druz9/v1/common.proto";
+import "google/api/annotations.proto";
+import "google/protobuf/empty.proto";
+import "google/protobuf/timestamp.proto";
+
+option go_package = "druz9/shared/generated/pb/druz9/v1;druz9v1";
+
+// ─── Domain messages ────────────────────────────────────────────────────────
+
+// PipelineCompany — компания шаблонов pipeline'а (Google/Yandex/etc.).
+// Используется и публичным каталогом, и admin CRUD'ом.
+message PipelineCompany {
+  string id = 1;
+  string name = 2;
+  string logo_url = 3;
+  bool active = 4;
+  google.protobuf.Timestamp created_at = 5;
+  string slug = 6;
+  string difficulty = 7;
+  int32 min_level_required = 8;
+  repeated string sections = 9;
+  string description = 10;
+  int32 sort_order = 11;
+  google.protobuf.Timestamp updated_at = 12;
+}
+
+// MockPipelineVerdict — терминал pipeline'а, mirror domain.PipelineVerdict.
+enum MockPipelineVerdict {
+  MOCK_PIPELINE_VERDICT_UNSPECIFIED = 0;
+  MOCK_PIPELINE_VERDICT_IN_PROGRESS = 1;
+  MOCK_PIPELINE_VERDICT_PASS = 2;
+  MOCK_PIPELINE_VERDICT_FAIL = 3;
+  MOCK_PIPELINE_VERDICT_CANCELLED = 4;
+}
+
+// MockPipeline — одна попытка прохождения собеседования.
+message MockPipeline {
+  string id = 1;
+  string user_id = 2;
+  string company_id = 3;
+  bool ai_assist = 4;
+  int32 current_stage_idx = 5;
+  MockPipelineVerdict verdict = 6;
+  // total_score опционально (nil пока не finished).
+  bool has_total_score = 7;
+  float total_score = 8;
+  google.protobuf.Timestamp started_at = 9;
+  google.protobuf.Timestamp finished_at = 10;
+}
+
+// LeaderboardEntry — строка в /mock/leaderboard.
+message MockLeaderboardEntry {
+  int32 rank = 1;
+  string user_id = 2;
+  string display_name = 3;
+  string avatar_url = 4;
+  int32 pipelines_finished = 5;
+  int32 pipelines_passed = 6;
+  float avg_score = 7;
+}
+
+// ─── Request / Response shapes ──────────────────────────────────────────────
+
+message ListMockCompaniesRequest {}
+
+message ListMockCompaniesResponse {
+  repeated PipelineCompany items = 1;
+}
+
+message GetMockPipelineRequest {
+  string id = 1;
+}
+
+message ListMockPipelinesRequest {
+  int32 limit = 1; // 1..100, default 50
+}
+
+message ListMockPipelinesResponse {
+  repeated MockPipeline items = 1;
+}
+
+message GetMockLeaderboardRequest {
+  string company_id = 1; // optional UUID; empty = global
+  int32 limit = 2;       // 1..100, default 20
+}
+
+message GetMockLeaderboardResponse {
+  repeated MockLeaderboardEntry items = 1;
+  // fairness_watermark — текстовый ярлык (e.g. "ai_assist_off_only")
+  // что объясняет какие pipeline'ы участвуют в рейтинге. Frontend
+  // показывает в UI badge'ом.
+  string fairness_watermark = 2;
+}
+
+// CreatePipeline — заводит новый pipeline. company_id опционально
+// (empty = первая активная компания из списка). ai_assist=true помечает
+// прохождение как "с подсказками AI" → не учитывается в leaderboard'е.
+message CreateMockPipelineRequest {
+  string company_id = 1;
+  bool ai_assist = 2;
+}
+
+message CancelMockPipelineRequest {
+  string id = 1;
+}
+
+// AttemptVerdict — статус оценки одной попытки.
+enum MockAttemptVerdict {
+  MOCK_ATTEMPT_VERDICT_UNSPECIFIED = 0;
+  MOCK_ATTEMPT_VERDICT_PENDING = 1;
+  MOCK_ATTEMPT_VERDICT_PASS = 2;
+  MOCK_ATTEMPT_VERDICT_FAIL = 3;
+}
+
+message AttemptFinalisedRequest {
+  string id = 1;
+}
+
+message AttemptFinalisedResponse {
+  bool finalised = 1;
+  MockAttemptVerdict verdict = 2;
+}
+
+// PipelineStage — одна стадия pipeline'а (HR, кодинг, sysdesign, etc.).
+message PipelineStage {
+  string id = 1;
+  string stage_kind = 2; // free-form: hr/coding/sysdesign/...
+  int32 ordinal = 3;
+  string status = 4; // pending|in_progress|finished|abandoned
+  // has_score=true когда score задан (proto3 nullable workaround).
+  bool has_score = 5;
+  float score = 6;
+  string verdict = 7; // empty when not yet decided
+  string ai_feedback_md = 8;
+  string ai_strictness_profile_id = 9; // empty when not set
+  google.protobuf.Timestamp started_at = 10;
+  google.protobuf.Timestamp finished_at = 11;
+}
+
+// ReferenceCriteria — checklist что юзер должен упомянуть/учесть.
+message ReferenceCriteria {
+  repeated string must_mention = 1;
+  repeated string nice_to_have = 2;
+  repeated string common_pitfalls = 3;
+}
+
+// PipelineAttempt — одна попытка ответа на вопрос внутри стадии.
+message PipelineAttempt {
+  string id = 1;
+  string kind = 2; // attempt kind (free-form domain string)
+  string question_body = 3;
+  string expected_answer_md = 4;
+  ReferenceCriteria reference_criteria = 5;
+  string user_answer_md = 6;
+  string user_context_md = 7;
+  string user_excalidraw_image_url = 8;
+  // Excalidraw scene blob; передаётся как сериализованная string
+  // (proto3 нет нативного JSON-объекта; FE делает JSON.parse).
+  string user_excalidraw_scene_json = 9;
+  bool has_ai_score = 10;
+  float ai_score = 11;
+  bool has_ai_water_score = 12;
+  float ai_water_score = 13;
+  MockAttemptVerdict ai_verdict = 14;
+  string ai_feedback_md = 15;
+  repeated string ai_missing_points = 16;
+  google.protobuf.Timestamp ai_judged_at = 17;
+  google.protobuf.Timestamp created_at = 18;
+  // task-scoped fields (Phase D.2 в исходной кодовой базе): emitted
+  // только когда attempt has TaskID.
+  string task_functional_requirements_md = 19;
+  string task_language = 20;
+}
+
+// StageWithAttempts — стадия + её попытки.
+message StageWithAttempts {
+  PipelineStage stage = 1;
+  repeated PipelineAttempt attempts = 2;
+}
+
+message StartNextStageRequest {
+  string id = 1; // pipeline_id
+}
+
+message SubmitAnswerRequest {
+  string id = 1; // attempt_id
+  string user_answer_md = 2;
+}
+
+message FinishStageRequest {
+  string id = 1; // stage_id
+}
+
+// ─── Admin: companies ───────────────────────────────────────────────────────
+
+message AdminListMockCompaniesRequest {
+  // active=true — фильтр по active=true; иначе все.
+  bool active_only = 1;
+}
+
+message AdminListMockCompaniesResponse {
+  repeated PipelineCompany items = 1;
+}
+
+// CompanyInput — общая форма для Create + Update.
+message MockCompanyInput {
+  string slug = 1;
+  string name = 2;
+  string difficulty = 3;
+  int32 min_level_required = 4;
+  repeated string sections = 5;
+  string logo_url = 6;
+  string description = 7;
+  bool active = 8;
+  int32 sort_order = 9;
+}
+
+message AdminCreateMockCompanyRequest {
+  MockCompanyInput company = 1;
+}
+
+message AdminUpdateMockCompanyRequest {
+  string id = 1;
+  MockCompanyInput company = 2;
+}
+
+message AdminToggleMockCompanyActiveRequest {
+  string id = 1;
+  bool active = 2;
+}
+
+// ─── Admin: strictness ──────────────────────────────────────────────────────
+
+// AIStrictnessProfile — настройки штрафов для AI-оценщика.
+message AIStrictnessProfile {
+  string id = 1;
+  string slug = 2;
+  string name = 3;
+  float off_topic_penalty = 4;
+  float must_mention_penalty = 5;
+  float hallucination_penalty = 6;
+  bool bias_toward_fail = 7;
+  string custom_prompt_template = 8;
+  bool active = 9;
+  google.protobuf.Timestamp created_at = 10;
+  google.protobuf.Timestamp updated_at = 11;
+}
+
+message AdminListStrictnessRequest {
+  bool active_only = 1;
+}
+
+message AdminListStrictnessResponse {
+  repeated AIStrictnessProfile items = 1;
+}
+
+message MockStrictnessInput {
+  string slug = 1;
+  string name = 2;
+  float off_topic_penalty = 3;
+  float must_mention_penalty = 4;
+  float hallucination_penalty = 5;
+  bool bias_toward_fail = 6;
+  string custom_prompt_template = 7;
+  bool active = 8;
+}
+
+message AdminCreateStrictnessRequest {
+  MockStrictnessInput profile = 1;
+}
+
+message AdminUpdateStrictnessRequest {
+  string id = 1;
+  MockStrictnessInput profile = 2;
+}
+
+// ─── Admin: tasks ──────────────────────────────────────────────────────────
+
+// MockTask — admin-editable task row для pipeline-stage.
+message MockTask {
+  string id = 1;
+  string stage_kind = 2;
+  string language = 3;
+  int32 difficulty = 4;
+  string title = 5;
+  string body_md = 6;
+  string sample_io_md = 7;
+  ReferenceCriteria reference_criteria = 8;
+  string reference_solution_md = 9;
+  string functional_requirements_md = 10;
+  int32 time_limit_min = 11;
+  string ai_strictness_profile_id = 12; // empty = nil
+  string llm_model = 13;
+  bool active = 14;
+  google.protobuf.Timestamp created_at = 15;
+  google.protobuf.Timestamp updated_at = 16;
+}
+
+// MockTaskQuestion — open-ended question под mock_task.
+message MockTaskQuestion {
+  string id = 1;
+  string task_id = 2;
+  string body = 3;
+  string expected_answer_md = 4;
+  ReferenceCriteria reference_criteria = 5;
+  int32 sort_order = 6;
+  google.protobuf.Timestamp created_at = 7;
+}
+
+message AdminListMockTasksRequest {
+  string stage_kind = 1;  // empty = all
+  string language = 2;    // empty = all
+  bool only_active = 3;
+}
+
+message AdminListMockTasksResponse {
+  repeated MockTask items = 1;
+}
+
+message AdminGetMockTaskRequest {
+  string id = 1;
+}
+
+// AdminGetMockTaskResponse — task + его questions для admin-edit screen.
+message AdminGetMockTaskResponse {
+  MockTask task = 1;
+  repeated MockTaskQuestion questions = 2;
+}
+
+// MockTaskInput — общая форма для Create + Update.
+message MockTaskInput {
+  string stage_kind = 1;
+  string language = 2;
+  int32 difficulty = 3;
+  string title = 4;
+  string body_md = 5;
+  string sample_io_md = 6;
+  ReferenceCriteria reference_criteria = 7;
+  string reference_solution_md = 8;
+  string functional_requirements_md = 9;
+  int32 time_limit_min = 10;
+  string ai_strictness_profile_id = 11; // empty = nil
+  string llm_model = 12;
+  bool active = 13;
+}
+
+message AdminCreateMockTaskRequest {
+  MockTaskInput task = 1;
+}
+
+message AdminUpdateMockTaskRequest {
+  string id = 1;
+  MockTaskInput task = 2;
+}
+
+message AdminToggleMockTaskActiveRequest {
+  string id = 1;
+  bool active = 2;
+}
+
+// ─── Admin: task questions ────────────────────────────────────────────────
+
+message MockTaskQuestionInput {
+  string body = 1;
+  string expected_answer_md = 2;
+  ReferenceCriteria reference_criteria = 3;
+  int32 sort_order = 4;
+}
+
+message AdminCreateMockTaskQuestionRequest {
+  string task_id = 1; // path-bound: /admin/mock/tasks/{task_id}/questions
+  MockTaskQuestionInput question = 2;
+}
+
+message AdminUpdateMockTaskQuestionRequest {
+  string id = 1;
+  MockTaskQuestionInput question = 2;
+}
+
+message AdminDeleteMockTaskQuestionRequest {
+  string id = 1;
+}
+
+// ─── Admin: test cases ────────────────────────────────────────────────────
+
+message MockTaskTestCase {
+  string id = 1;
+  string task_id = 2;
+  string input = 3;
+  string expected_output = 4;
+  bool is_hidden = 5;
+  int32 ordinal = 6;
+}
+
+message MockTaskTestCaseInput {
+  string input = 1;
+  string expected_output = 2;
+  bool is_hidden = 3;
+  int32 ordinal = 4;
+}
+
+message AdminListTestCasesRequest {
+  string task_id = 1;
+}
+
+message AdminListTestCasesResponse {
+  repeated MockTaskTestCase items = 1;
+}
+
+message AdminCreateTestCaseRequest {
+  string task_id = 1;
+  MockTaskTestCaseInput test_case = 2;
+}
+
+message AdminUpdateTestCaseRequest {
+  string id = 1;
+  MockTaskTestCaseInput test_case = 2;
+}
+
+message AdminDeleteTestCaseRequest {
+  string id = 1;
+}
+
+// ─── Admin: default questions ────────────────────────────────────────────
+
+// MockDefaultQuestion — global HR/behavioral pool row.
+message MockDefaultQuestion {
+  string id = 1;
+  string stage_kind = 2;
+  string body = 3;
+  string expected_answer_md = 4;
+  ReferenceCriteria reference_criteria = 5;
+  bool active = 6;
+  int32 sort_order = 7;
+  google.protobuf.Timestamp created_at = 8;
+}
+
+message MockDefaultQuestionInput {
+  string stage_kind = 1;
+  string body = 2;
+  string expected_answer_md = 3;
+  ReferenceCriteria reference_criteria = 4;
+  bool active = 5;
+  int32 sort_order = 6;
+}
+
+message AdminListDefaultQuestionsRequest {
+  string stage_kind = 1; // empty = all
+  bool only_active = 2;
+}
+
+message AdminListDefaultQuestionsResponse {
+  repeated MockDefaultQuestion items = 1;
+}
+
+message AdminCreateDefaultQuestionRequest {
+  MockDefaultQuestionInput question = 1;
+}
+
+message AdminUpdateDefaultQuestionRequest {
+  string id = 1;
+  MockDefaultQuestionInput question = 2;
+}
+
+message AdminDeleteDefaultQuestionRequest {
+  string id = 1;
+}
+
+// ─── Admin: company questions ────────────────────────────────────────────
+
+// MockCompanyQuestion — company-specific question pool row.
+message MockCompanyQuestion {
+  string id = 1;
+  string company_id = 2;
+  string stage_kind = 3;
+  string body = 4;
+  string expected_answer_md = 5;
+  ReferenceCriteria reference_criteria = 6;
+  bool active = 7;
+  int32 sort_order = 8;
+  google.protobuf.Timestamp created_at = 9;
+}
+
+message MockCompanyQuestionInput {
+  string stage_kind = 1;
+  string body = 2;
+  string expected_answer_md = 3;
+  ReferenceCriteria reference_criteria = 4;
+  bool active = 5;
+  int32 sort_order = 6;
+}
+
+message AdminListCompanyQuestionsRequest {
+  string company_id = 1;
+  string stage_kind = 2; // empty = all
+}
+
+message AdminListCompanyQuestionsResponse {
+  repeated MockCompanyQuestion items = 1;
+}
+
+message AdminCreateCompanyQuestionRequest {
+  string company_id = 1;
+  MockCompanyQuestionInput question = 2;
+}
+
+message AdminUpdateCompanyQuestionRequest {
+  string id = 1;
+  MockCompanyQuestionInput question = 2;
+}
+
+message AdminDeleteCompanyQuestionRequest {
+  string id = 1;
+}
+
+// ─── Admin: company stages ────────────────────────────────────────────────
+
+// CompanyStage — одна стадия в шаблоне pipeline'а компании.
+message MockCompanyStage {
+  string stage_kind = 1;
+  int32 ordinal = 2;
+  bool optional = 3;
+  repeated string language_pool = 4;
+  repeated string task_pool_ids = 5;
+  string ai_strictness_profile_id = 6; // empty = nil
+  // *_question_limit: nullable — has_*_limit=true означает явно
+  // выставлено caller'ом; иначе server применяет legacy "take all".
+  // 0 = skip the source, N>0 = sample N at random.
+  bool has_default_question_limit = 7;
+  int32 default_question_limit = 8;
+  bool has_company_question_limit = 9;
+  int32 company_question_limit = 10;
+}
+
+message AdminGetCompanyStagesRequest {
+  string company_id = 1;
+}
+
+message AdminGetCompanyStagesResponse {
+  repeated MockCompanyStage items = 1;
+}
+
+message AdminReplaceCompanyStagesRequest {
+  string company_id = 1;
+  repeated MockCompanyStage items = 2;
+}
+
+// ─── Admin: bulk task import ──────────────────────────────────────────────
+
+message MockBulkTestCase {
+  string input = 1;
+  string expected_output = 2;
+  bool is_hidden = 3;
+  int32 ordinal = 4;
+}
+
+message MockBulkTaskImportItem {
+  string stage_kind = 1;
+  string language = 2;
+  int32 difficulty = 3;
+  string title = 4;
+  string body_md = 5;
+  string sample_io_md = 6;
+  ReferenceCriteria reference_criteria = 7;
+  string reference_solution_md = 8;
+  string functional_requirements_md = 9;
+  int32 time_limit_min = 10;
+  string llm_model = 11;
+  bool active = 12;
+  repeated MockBulkTestCase test_cases = 13;
+}
+
+message MockBulkImportResult {
+  int32 index = 1;
+  string task_id = 2; // empty on error
+  int32 test_cases_added = 3;
+  string error = 4; // empty on success
+}
+
+message AdminBulkImportTasksRequest {
+  repeated MockBulkTaskImportItem tasks = 1;
+}
+
+message AdminBulkImportTasksResponse {
+  repeated MockBulkImportResult results = 1;
+}
+
+// ─── Service ────────────────────────────────────────────────────────────────
+
+service MockPipelineService {
+  // ListCompanies — public каталог компаний.
+  rpc ListCompanies(ListMockCompaniesRequest) returns (ListMockCompaniesResponse) {
+    option (google.api.http) = {get: "/api/v1/mock/companies"};
+  }
+
+  // GetPipeline — детали одной pipeline (с проверкой ownership).
+  rpc GetPipeline(GetMockPipelineRequest) returns (MockPipeline) {
+    option (google.api.http) = {get: "/api/v1/mock/pipelines/{id}"};
+  }
+
+  // ListPipelines — pipeline'ы текущего юзера, новые сверху.
+  rpc ListPipelines(ListMockPipelinesRequest) returns (ListMockPipelinesResponse) {
+    option (google.api.http) = {get: "/api/v1/mock/pipelines"};
+  }
+
+  // GetLeaderboard — top-N с fairness-watermark.
+  rpc GetLeaderboard(GetMockLeaderboardRequest) returns (GetMockLeaderboardResponse) {
+    option (google.api.http) = {get: "/api/v1/mock/leaderboard"};
+  }
+
+  // CreatePipeline — заводит новый pipeline для текущего юзера.
+  rpc CreatePipeline(CreateMockPipelineRequest) returns (MockPipeline) {
+    option (google.api.http) = {
+      post: "/api/v1/mock/pipelines"
+      body: "*"
+    };
+  }
+
+  // CancelPipeline — отменяет (и помечает verdict=cancelled).
+  rpc CancelPipeline(CancelMockPipelineRequest) returns (google.protobuf.Empty) {
+    option (google.api.http) = {
+      post: "/api/v1/mock/pipelines/{id}/cancel"
+      body: "*"
+    };
+  }
+
+  // AttemptFinalised — лёгкая проверка "уже отправлено" для canvas-tab.
+  rpc AttemptFinalised(AttemptFinalisedRequest) returns (AttemptFinalisedResponse) {
+    option (google.api.http) = {get: "/api/v1/mock/attempts/{id}/finalised"};
+  }
+
+  // StartNextStage — orchestrator: создаёт следующую stage + первую попытку.
+  rpc StartNextStage(StartNextStageRequest) returns (StageWithAttempts) {
+    option (google.api.http) = {
+      post: "/api/v1/mock/pipelines/{id}/start-next-stage"
+      body: "*"
+    };
+  }
+
+  // SubmitAnswer — orchestrator: фиксирует user_answer + триггерит AI-оценку.
+  rpc SubmitAnswer(SubmitAnswerRequest) returns (PipelineAttempt) {
+    option (google.api.http) = {
+      post: "/api/v1/mock/attempts/{id}/submit"
+      body: "*"
+    };
+  }
+
+  // FinishStage — orchestrator: закрывает stage (manual для HR / Soft).
+  rpc FinishStage(FinishStageRequest) returns (PipelineStage) {
+    option (google.api.http) = {
+      post: "/api/v1/mock/stages/{id}/finish"
+      body: "*"
+    };
+  }
+
+  // ── admin: companies ───────────────────────────────────────────────────
+
+  rpc AdminListCompanies(AdminListMockCompaniesRequest) returns (AdminListMockCompaniesResponse) {
+    option (google.api.http) = {get: "/api/v1/admin/mock/companies"};
+  }
+
+  rpc AdminCreateCompany(AdminCreateMockCompanyRequest) returns (PipelineCompany) {
+    option (google.api.http) = {
+      post: "/api/v1/admin/mock/companies"
+      body: "*"
+    };
+  }
+
+  rpc AdminUpdateCompany(AdminUpdateMockCompanyRequest) returns (PipelineCompany) {
+    option (google.api.http) = {
+      patch: "/api/v1/admin/mock/companies/{id}"
+      body: "*"
+    };
+  }
+
+  rpc AdminToggleCompanyActive(AdminToggleMockCompanyActiveRequest) returns (google.protobuf.Empty) {
+    option (google.api.http) = {
+      post: "/api/v1/admin/mock/companies/{id}/active"
+      body: "*"
+    };
+  }
+
+  // ── admin: strictness profiles ─────────────────────────────────────────
+
+  rpc AdminListStrictness(AdminListStrictnessRequest) returns (AdminListStrictnessResponse) {
+    option (google.api.http) = {get: "/api/v1/admin/mock/strictness"};
+  }
+
+  rpc AdminCreateStrictness(AdminCreateStrictnessRequest) returns (AIStrictnessProfile) {
+    option (google.api.http) = {
+      post: "/api/v1/admin/mock/strictness"
+      body: "*"
+    };
+  }
+
+  rpc AdminUpdateStrictness(AdminUpdateStrictnessRequest) returns (AIStrictnessProfile) {
+    option (google.api.http) = {
+      patch: "/api/v1/admin/mock/strictness/{id}"
+      body: "*"
+    };
+  }
+
+  // ── admin: tasks ───────────────────────────────────────────────────────
+
+  rpc AdminListTasks(AdminListMockTasksRequest) returns (AdminListMockTasksResponse) {
+    option (google.api.http) = {get: "/api/v1/admin/mock/tasks"};
+  }
+
+  rpc AdminGetTask(AdminGetMockTaskRequest) returns (AdminGetMockTaskResponse) {
+    option (google.api.http) = {get: "/api/v1/admin/mock/tasks/{id}"};
+  }
+
+  rpc AdminCreateTask(AdminCreateMockTaskRequest) returns (MockTask) {
+    option (google.api.http) = {
+      post: "/api/v1/admin/mock/tasks"
+      body: "*"
+    };
+  }
+
+  rpc AdminUpdateTask(AdminUpdateMockTaskRequest) returns (MockTask) {
+    option (google.api.http) = {
+      patch: "/api/v1/admin/mock/tasks/{id}"
+      body: "*"
+    };
+  }
+
+  rpc AdminToggleTaskActive(AdminToggleMockTaskActiveRequest) returns (google.protobuf.Empty) {
+    option (google.api.http) = {
+      post: "/api/v1/admin/mock/tasks/{id}/active"
+      body: "*"
+    };
+  }
+
+  // ── admin: task questions ──────────────────────────────────────────────
+
+  rpc AdminCreateTaskQuestion(AdminCreateMockTaskQuestionRequest) returns (MockTaskQuestion) {
+    option (google.api.http) = {
+      post: "/api/v1/admin/mock/tasks/{task_id}/questions"
+      body: "*"
+    };
+  }
+
+  rpc AdminUpdateTaskQuestion(AdminUpdateMockTaskQuestionRequest) returns (MockTaskQuestion) {
+    option (google.api.http) = {
+      patch: "/api/v1/admin/mock/task-questions/{id}"
+      body: "*"
+    };
+  }
+
+  rpc AdminDeleteTaskQuestion(AdminDeleteMockTaskQuestionRequest) returns (google.protobuf.Empty) {
+    option (google.api.http) = {delete: "/api/v1/admin/mock/task-questions/{id}"};
+  }
+
+  // ── admin: test cases ──────────────────────────────────────────────────
+
+  rpc AdminListTestCases(AdminListTestCasesRequest) returns (AdminListTestCasesResponse) {
+    option (google.api.http) = {get: "/api/v1/admin/mock/tasks/{task_id}/test-cases"};
+  }
+
+  rpc AdminCreateTestCase(AdminCreateTestCaseRequest) returns (MockTaskTestCase) {
+    option (google.api.http) = {
+      post: "/api/v1/admin/mock/tasks/{task_id}/test-cases"
+      body: "*"
+    };
+  }
+
+  rpc AdminUpdateTestCase(AdminUpdateTestCaseRequest) returns (MockTaskTestCase) {
+    option (google.api.http) = {
+      patch: "/api/v1/admin/mock/test-cases/{id}"
+      body: "*"
+    };
+  }
+
+  rpc AdminDeleteTestCase(AdminDeleteTestCaseRequest) returns (google.protobuf.Empty) {
+    option (google.api.http) = {delete: "/api/v1/admin/mock/test-cases/{id}"};
+  }
+
+  // ── admin: default questions ───────────────────────────────────────────
+
+  rpc AdminListDefaultQuestions(AdminListDefaultQuestionsRequest) returns (AdminListDefaultQuestionsResponse) {
+    option (google.api.http) = {get: "/api/v1/admin/mock/default-questions"};
+  }
+
+  rpc AdminCreateDefaultQuestion(AdminCreateDefaultQuestionRequest) returns (MockDefaultQuestion) {
+    option (google.api.http) = {
+      post: "/api/v1/admin/mock/default-questions"
+      body: "*"
+    };
+  }
+
+  rpc AdminUpdateDefaultQuestion(AdminUpdateDefaultQuestionRequest) returns (MockDefaultQuestion) {
+    option (google.api.http) = {
+      patch: "/api/v1/admin/mock/default-questions/{id}"
+      body: "*"
+    };
+  }
+
+  rpc AdminDeleteDefaultQuestion(AdminDeleteDefaultQuestionRequest) returns (google.protobuf.Empty) {
+    option (google.api.http) = {delete: "/api/v1/admin/mock/default-questions/{id}"};
+  }
+
+  // ── admin: company questions ───────────────────────────────────────────
+
+  rpc AdminListCompanyQuestions(AdminListCompanyQuestionsRequest) returns (AdminListCompanyQuestionsResponse) {
+    option (google.api.http) = {get: "/api/v1/admin/mock/companies/{company_id}/questions"};
+  }
+
+  rpc AdminCreateCompanyQuestion(AdminCreateCompanyQuestionRequest) returns (MockCompanyQuestion) {
+    option (google.api.http) = {
+      post: "/api/v1/admin/mock/companies/{company_id}/questions"
+      body: "*"
+    };
+  }
+
+  rpc AdminUpdateCompanyQuestion(AdminUpdateCompanyQuestionRequest) returns (MockCompanyQuestion) {
+    option (google.api.http) = {
+      patch: "/api/v1/admin/mock/company-questions/{id}"
+      body: "*"
+    };
+  }
+
+  rpc AdminDeleteCompanyQuestion(AdminDeleteCompanyQuestionRequest) returns (google.protobuf.Empty) {
+    option (google.api.http) = {delete: "/api/v1/admin/mock/company-questions/{id}"};
+  }
+
+  // ── admin: company stages ──────────────────────────────────────────────
+
+  rpc AdminGetCompanyStages(AdminGetCompanyStagesRequest) returns (AdminGetCompanyStagesResponse) {
+    option (google.api.http) = {get: "/api/v1/admin/mock/companies/{company_id}/stages"};
+  }
+
+  rpc AdminReplaceCompanyStages(AdminReplaceCompanyStagesRequest) returns (google.protobuf.Empty) {
+    option (google.api.http) = {
+      put: "/api/v1/admin/mock/companies/{company_id}/stages"
+      body: "*"
+    };
+  }
+
+  // ── admin: bulk task import ────────────────────────────────────────────
+
+  rpc AdminBulkImportTasks(AdminBulkImportTasksRequest) returns (AdminBulkImportTasksResponse) {
+    option (google.api.http) = {
+      post: "/api/v1/admin/mock/tasks/bulk-import"
+      body: "*"
+    };
+  }
+}

@@ -230,10 +230,13 @@ gen-sqlc: ## Generate sqlc typed queries per-domain
 gen-mocks: ## Generate mockgen mocks from //go:generate directives
 	# go generate должен запускаться ВНУТРИ Go-модуля. backend/ — не модуль
 	# (модули — services/<svc>/), поэтому cd внутрь каждого сервиса перед запуском.
-	@for svc in auth profile daily rating arena ai_mock ai_native editor guild season notify slot podcast admin feed; do \
-		[ -d "backend/services/$$svc/domain" ] && \
-			(cd backend/services/$$svc && GOWORK=off GOFLAGS= go generate ./domain/...) \
-			|| true; \
+	# List is auto-detected: any services/<svc>/domain/*.go containing
+	# //go:generate. Adding a new service with a //go:generate directive
+	# is enough — no Makefile edit needed.
+	@for svc in $$(grep -rl --include='*.go' '^//go:generate' backend/services/*/domain/ 2>/dev/null | sed -E 's|backend/services/([^/]+)/.*|\1|' | sort -u); do \
+		echo "==> $$svc"; \
+		(cd backend/services/$$svc && GOWORK=off GOFLAGS= go generate ./domain/...) \
+			|| (echo "FAILED: $$svc" && exit 1); \
 	done
 
 .PHONY: gen-check

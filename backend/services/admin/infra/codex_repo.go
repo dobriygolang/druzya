@@ -135,8 +135,8 @@ func (c *Codex) DeleteArticle(ctx context.Context, id uuid.UUID) error {
 func (c *Codex) GetArticleMetaIfActive(ctx context.Context, id uuid.UUID) (domain.CodexArticleMeta, error) {
 	var m domain.CodexArticleMeta
 	err := c.pool.QueryRow(ctx,
-		`SELECT slug, title, category FROM codex_articles WHERE id = $1 AND active = true`,
-		sharedpg.UUID(id)).Scan(&m.Slug, &m.Title, &m.Category)
+		`SELECT slug, title, category, read_min FROM codex_articles WHERE id = $1 AND active = true`,
+		sharedpg.UUID(id)).Scan(&m.Slug, &m.Title, &m.Category, &m.ReadMin)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return m, domain.ErrNotFound

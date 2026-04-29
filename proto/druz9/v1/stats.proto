@@ -1,0 +1,77 @@
+// stats.proto — Connect-RPC contract for public-stats / languages /
+// onboarding-preview endpoints. All anonymous-readable; mounted via
+// MountPublicREST + transcoder in cmd/monolith/services/admin/stats.go.
+syntax = "proto3";
+package druz9.v1;
+
+import "google/api/annotations.proto";
+
+option go_package = "druz9/shared/generated/pb/druz9/v1;druz9v1";
+
+message PublicStats {
+  int32 users_count = 1;
+  int32 active_today = 2;
+  int32 matches_total = 3;
+}
+
+message GetPublicStatsRequest {}
+
+message LanguageItem {
+  string slug = 1;
+  string name = 2;
+  string symbol = 3;
+  string color = 4;
+  string text_color = 5;
+  int32 players_active = 6;
+  int32 kata_count = 7;
+}
+
+message LanguageList {
+  repeated LanguageItem items = 1;
+}
+
+message ListLanguagesRequest {}
+
+message StatusHistoryDay {
+  string day = 1;            // YYYY-MM-DD UTC
+  string status = 2;         // operational | degraded | down
+}
+
+message StatusHistoryResponse {
+  string service = 1;
+  int32 days = 2;
+  repeated StatusHistoryDay buckets = 3;
+}
+
+message GetStatusHistoryRequest {
+  string service = 1;        // optional filter
+  int32 days = 2;            // 0 ⇒ 30, capped at 90
+}
+
+message OnboardingPreviewKata {
+  string slug = 1;
+  string title = 2;
+  repeated string tags = 3;
+  string difficulty = 4;
+  string description = 5;
+  string starter_code = 6;
+  int32 tests_total = 7;
+  int32 tests_passed = 8;
+}
+
+message GetOnboardingPreviewKataRequest {}
+
+service StatsService {
+  rpc GetPublicStats(GetPublicStatsRequest) returns (PublicStats) {
+    option (google.api.http) = {get: "/api/v1/stats/public"};
+  }
+  rpc ListLanguages(ListLanguagesRequest) returns (LanguageList) {
+    option (google.api.http) = {get: "/api/v1/languages"};
+  }
+  rpc GetOnboardingPreviewKata(GetOnboardingPreviewKataRequest) returns (OnboardingPreviewKata) {
+    option (google.api.http) = {get: "/api/v1/onboarding/preview-kata"};
+  }
+  rpc GetStatusHistory(GetStatusHistoryRequest) returns (StatusHistoryResponse) {
+    option (google.api.http) = {get: "/api/v1/status/history"};
+  }
+}

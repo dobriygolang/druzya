@@ -1,5 +1,5 @@
 // subscription.proto — Connect-RPC контракт централизованного subscription-
-// сервиса. Хранит tier пользователя (free/seeker/ascendant) + его lifecycle
+// сервиса. Хранит tier пользователя (free/pro/max) + его lifecycle
 // (active/cancelled/expired) + привязку к провайдеру оплаты. Источник правды
 // для доступа к платным LLM-моделям (см. llmchain.candidates tier-gate) и
 // для фронта (paywall / upgrade-банер). Используется и druz9, и Hone, и
@@ -10,7 +10,7 @@
 /* eslint-disable */
 // @ts-nocheck
 
-import { AdminSetTierRequest, AdminSetTierResponse, GetMyTierRequest, GetMyTierResponse, GetTierByUserIDRequest, GetTierByUserIDResponse } from "./subscription_pb.js";
+import { AdminBoostySyncRequest, AdminBoostySyncResponse, AdminSetTierRequest, AdminSetTierResponse, GetMyTierRequest, GetMyTierResponse, GetQuotaRequest, GetTierByUserIDRequest, GetTierByUserIDResponse, LinkBoostyRequest, LinkBoostyResponse, QuotaSnapshot } from "./subscription_pb.js";
 import { MethodKind } from "@bufbuild/protobuf";
 
 /**
@@ -46,8 +46,6 @@ export const SubscriptionService = {
     },
     /**
      * AdminSetTier — выставление tier'а вручную. Требует role=admin.
-     * Используется (а) операторами для grant'а раннего доступа тестерам,
-     * (б) в M3 как fallback пока Boosty sync не настроен.
      *
      * @generated from rpc druz9.v1.SubscriptionService.AdminSetTier
      */
@@ -55,6 +53,42 @@ export const SubscriptionService = {
       name: "AdminSetTier",
       I: AdminSetTierRequest,
       O: AdminSetTierResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * GetQuota — current usage + policy snapshot for the calling user. The
+     * chi handler returned a "degraded" zero snapshot on errors; the proto
+     * RPC keeps that contract.
+     *
+     * @generated from rpc druz9.v1.SubscriptionService.GetQuota
+     */
+    getQuota: {
+      name: "GetQuota",
+      I: GetQuotaRequest,
+      O: QuotaSnapshot,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * LinkBoosty starts the OAuth handshake / saves a manual cookie so we
+     * can sync the user's Boosty subscription tier later.
+     *
+     * @generated from rpc druz9.v1.SubscriptionService.LinkBoosty
+     */
+    linkBoosty: {
+      name: "LinkBoosty",
+      I: LinkBoostyRequest,
+      O: LinkBoostyResponse,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * AdminBoostySync triggers the bulk-resolve job. role=admin required.
+     *
+     * @generated from rpc druz9.v1.SubscriptionService.AdminBoostySync
+     */
+    adminBoostySync: {
+      name: "AdminBoostySync",
+      I: AdminBoostySyncRequest,
+      O: AdminBoostySyncResponse,
       kind: MethodKind.Unary,
     },
   }

@@ -106,4 +106,27 @@ service CirclesService {
   rpc DeleteCircle(DeleteCircleRequest) returns (CircleMutationResponse) {
     option (google.api.http) = {delete: "/api/v1/circles/{circle_id}"};
   }
+
+  // DiscoverCircles returns up to N public circles the user isn't a
+  // member of yet, ordered by recency. Powers the /circles "Discover" tab.
+  rpc DiscoverCircles(DiscoverCirclesRequest) returns (DiscoverCirclesResponse) {
+    option (google.api.http) = {get: "/api/v1/circles/discover"};
+  }
+}
+
+message DiscoverCirclesRequest {
+  int32 limit = 1;             // 0 ⇒ server default (30)
+}
+
+message DiscoverCircleItem {
+  string id = 1;
+  string name = 2;
+  string description = 3;
+  string owner_id = 4;
+  int32 member_count = 5;
+  string created_at = 6;       // RFC3339
+}
+
+message DiscoverCirclesResponse {
+  repeated DiscoverCircleItem items = 1;
 }

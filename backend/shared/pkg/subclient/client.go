@@ -19,9 +19,13 @@ import (
 type Tier = enums.SubscriptionPlan
 
 const (
-	TierFree      = enums.SubscriptionPlanFree
-	TierSeeker    = enums.SubscriptionPlanSeeker
-	TierAscendant = enums.SubscriptionPlanAscendant
+	TierFree = enums.SubscriptionPlanFree
+	TierPro  = enums.SubscriptionPlanPro
+	TierMax  = enums.SubscriptionPlanMax
+
+	// Legacy aliases kept for callers that have not migrated naming yet.
+	TierSeeker    = TierPro
+	TierAscendant = TierMax
 )
 
 // DefaultTimeout — 500ms. Tier-lookup на критическом пути LLM-запроса,
@@ -139,9 +143,9 @@ func tierRank(t Tier) int {
 	switch t {
 	case TierFree:
 		return 0
-	case TierSeeker:
+	case TierPro:
 		return 1
-	case TierAscendant:
+	case TierMax:
 		return 2
 	}
 	return 0

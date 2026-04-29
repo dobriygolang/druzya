@@ -21,10 +21,11 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
-	"time"
 
 	monolithServices "druz9/cmd/monolith/services"
+	subApp "druz9/subscription/app"
 	subDomain "druz9/subscription/domain"
+	subInfra "druz9/subscription/infra"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -70,206 +71,28 @@ func EnforceCreate(
 	return nil
 }
 
-// ─── Cron: free-tier shared auto-downgrade ────────────────────────────────
+// ─── Cron facades — actual logic in services/subscription/app ──────────────
 //
-// Free tier лимит: SharedTTL=24h на shared boards/rooms (см. quotas.go).
-// После expires_at — visibility flip на 'private'. Owner всё ещё видит
-// доску в своём списке + may continue editing локально; гости теряют
-// доступ через WS/REST (visibility=private gates).
-//
-// Run: каждый час, начиная через 5 мин после старта (warmup).
+// These three exported entry points are kept with their original signatures
+// because cmd/monolith/services/{hone,whiteboard_rooms,editor} call them
+// directly. Each one composes a QuotaSweepRunner + QuotaSweepRepo and
+// delegates to the corresponding Run* method.
 
-func RunFreeTierShareDowngradeWhiteboard(ctx context.Context, pool *pgxpool.Pool, log *slog.Logger) {
-	// Initial run — 30 секунд после старта (раньше 5 мин). Юзер сейчас
-	// видит "OVER LIMIT" и хочет немедленный fix; ждать 5 мин — плохой UX.
-	// 30s достаточно чтобы DB pool нагрелся и migration completed.
-	first := time.NewTimer(30 * time.Second)
-	defer first.Stop()
-	tick := time.NewTicker(time.Hour)
-	defer tick.Stop()
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		case <-first.C:
-			downgradeOnceWhiteboard(ctx, pool, log)
-		case <-tick.C:
-			downgradeOnceWhiteboard(ctx, pool, log)
-		}
+func newSweepRunner(pool *pgxpool.Pool, log *slog.Logger) *subApp.QuotaSweepRunner {
+	return &subApp.QuotaSweepRunner{
+		Repo: subInfra.NewQuotaSweepRepo(pool),
+		Log:  log,
 	}
 }
 
-func downgradeOnceWhiteboard(ctx context.Context, pool *pgxpool.Pool, log *slog.Logger) {
-	// Free-tier owners with expired shared whiteboards → flip private.
-	// JOIN against subscriptions: plan = free OR no row OR expired.
-	// Column называется `plan` (не `tier`) — см. migrations/00008_social_ops.sql.
-	const q = `
-		UPDATE whiteboard_rooms wr
-		   SET visibility = 'private'
-		 WHERE wr.visibility = 'shared'
-		   AND wr.expires_at < now()
-		   AND COALESCE((
-			   SELECT s.plan FROM subscriptions s WHERE s.user_id = wr.owner_id
-		   ), 'free') = 'free'`
-	tag, err := pool.Exec(ctx, q)
-	if err != nil {
-		log.WarnContext(ctx, "free_tier_downgrade.whiteboard", "err", err)
-		return
-	}
-	if n := tag.RowsAffected(); n > 0 {
-		log.InfoContext(ctx, "free_tier_downgrade.whiteboard", "demoted", n)
-	}
-
-	// Quota-overflow downgrade: free-tier юзеры могли набрать > policy limit
-	// shared rooms из-за legacy багов (раньше visibility flip private→shared
-	// шёл без quota check, и раньше /subscription/quota 500'ил из-за `notes`
-	// vs `hone_notes` table-name бага → EnforceCreate падал в permissive).
-	// Free tier policy лимит = 1 active shared board (см. domain.PolicyDefaults).
-	// Оставляем самую недавнюю, остальные демотируем в private. Owner всё
-	// ещё видит её в своём списке (просто гости теряют доступ).
-	const overflowQ = `
-		WITH ranked AS (
-		  SELECT wr.id,
-				 ROW_NUMBER() OVER (PARTITION BY wr.owner_id ORDER BY wr.created_at DESC) AS rn
-			FROM whiteboard_rooms wr
-		   WHERE wr.visibility = 'shared'
-			 AND wr.expires_at > now()
-			 AND COALESCE((
-				 SELECT s.plan FROM subscriptions s WHERE s.user_id = wr.owner_id
-			 ), 'free') = 'free'
-		)
-		UPDATE whiteboard_rooms
-		   SET visibility = 'private'
-		 WHERE id IN (SELECT id FROM ranked WHERE rn > 1)`
-	tag2, err := pool.Exec(ctx, overflowQ)
-	if err != nil {
-		log.WarnContext(ctx, "free_tier_overflow_downgrade.whiteboard", "err", err)
-		return
-	}
-	if n := tag2.RowsAffected(); n > 0 {
-		log.InfoContext(ctx, "free_tier_overflow_downgrade.whiteboard", "demoted", n)
-	}
+func RunFreeTierShareDowngradeWhiteboard(ctx context.Context, pool *pgxpool.Pool, log *slog.Logger) {
+	newSweepRunner(pool, log).RunWhiteboards(ctx)
 }
 
 func RunFreeTierShareDowngradeEditor(ctx context.Context, pool *pgxpool.Pool, log *slog.Logger) {
-	// Initial run — 30 секунд после старта (раньше 5 мин). Юзер сейчас
-	// видит "OVER LIMIT" и хочет немедленный fix; ждать 5 мин — плохой UX.
-	// 30s достаточно чтобы DB pool нагрелся и migration completed.
-	first := time.NewTimer(30 * time.Second)
-	defer first.Stop()
-	tick := time.NewTicker(time.Hour)
-	defer tick.Stop()
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		case <-first.C:
-			downgradeOnceEditor(ctx, pool, log)
-		case <-tick.C:
-			downgradeOnceEditor(ctx, pool, log)
-		}
-	}
+	newSweepRunner(pool, log).RunEditorRooms(ctx)
 }
-
-func downgradeOnceEditor(ctx context.Context, pool *pgxpool.Pool, log *slog.Logger) {
-	const q = `
-		UPDATE editor_rooms er
-		   SET visibility = 'private'
-		 WHERE er.visibility = 'shared'
-		   AND er.expires_at < now()
-		   AND COALESCE((
-			   SELECT s.plan FROM subscriptions s WHERE s.user_id = er.owner_id
-		   ), 'free') = 'free'`
-	tag, err := pool.Exec(ctx, q)
-	if err != nil {
-		log.WarnContext(ctx, "free_tier_downgrade.editor", "err", err)
-		return
-	}
-	if n := tag.RowsAffected(); n > 0 {
-		log.InfoContext(ctx, "free_tier_downgrade.editor", "demoted", n)
-	}
-
-	// Quota-overflow: free-tier лимит = 1 active shared editor room. Юзеры
-	// у которых > 1 — последствие legacy bug'ов (visibility flip без чека,
-	// /quota 500'ил → permissive). Оставляем самую недавнюю, остальные
-	// демотируем. Owner remains an owner — кнопка «sharing» в UI снова
-	// доступна для re-flip когда он один достанется (или upgrade'а tier'а).
-	const overflowQ = `
-		WITH ranked AS (
-		  SELECT er.id,
-				 ROW_NUMBER() OVER (PARTITION BY er.owner_id ORDER BY er.created_at DESC) AS rn
-			FROM editor_rooms er
-		   WHERE er.visibility = 'shared'
-			 AND er.expires_at > now()
-			 AND COALESCE((
-				 SELECT s.plan FROM subscriptions s WHERE s.user_id = er.owner_id
-			 ), 'free') = 'free'
-		)
-		UPDATE editor_rooms
-		   SET visibility = 'private'
-		 WHERE id IN (SELECT id FROM ranked WHERE rn > 1)`
-	tag2, err := pool.Exec(ctx, overflowQ)
-	if err != nil {
-		log.WarnContext(ctx, "free_tier_overflow_downgrade.editor", "err", err)
-		return
-	}
-	if n := tag2.RowsAffected(); n > 0 {
-		log.InfoContext(ctx, "free_tier_overflow_downgrade.editor", "demoted", n)
-	}
-}
-
-// ─── Notes overflow auto-archive ──────────────────────────────────────────
-//
-// Free-tier лимит на synced notes = 10 (см. domain.PolicyDefaults). Юзеры
-// иногда оказываются НАД лимитом (legacy-creates до wire'инга quota check'а,
-// race-condition'ы при concurrent syncs, etc). Decorator на CreateNote
-// блочит NEW creates но не auto-cleanup'ит existing.
-//
-// Этот cron archived'ит OLDEST notes beyond limit (по updated_at ASC).
-// SetArchived = soft-delete: notes остаются в DB, доступны через Get но
-// не показываются в list, не считаются для quota. Юзер может un-archive
-// через UI / API когда apgrad'нется.
 
 func RunFreeTierNotesOverflowArchive(ctx context.Context, pool *pgxpool.Pool, log *slog.Logger) {
-	first := time.NewTimer(45 * time.Second)
-	defer first.Stop()
-	tick := time.NewTicker(time.Hour)
-	defer tick.Stop()
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		case <-first.C:
-			archiveOnceNotes(ctx, pool, log)
-		case <-tick.C:
-			archiveOnceNotes(ctx, pool, log)
-		}
-	}
-}
-
-func archiveOnceNotes(ctx context.Context, pool *pgxpool.Pool, log *slog.Logger) {
-	// Free-tier лимит = 10 (захардкожено: domain.PolicyDefaults). Если
-	// поменяется — обновить и здесь. Берём активные notes per-owner,
-	// ранжируем по updated_at DESC, archive'им rn>10.
-	const q = `
-		WITH ranked AS (
-		  SELECT n.id,
-				 ROW_NUMBER() OVER (PARTITION BY n.user_id ORDER BY n.updated_at DESC) AS rn
-			FROM hone_notes n
-		   WHERE n.archived_at IS NULL
-			 AND COALESCE((
-				 SELECT s.plan FROM subscriptions s WHERE s.user_id = n.user_id
-			 ), 'free') = 'free'
-		)
-		UPDATE hone_notes
-		   SET archived_at = now()
-		 WHERE id IN (SELECT id FROM ranked WHERE rn > 10)`
-	tag, err := pool.Exec(ctx, q)
-	if err != nil {
-		log.WarnContext(ctx, "free_tier_overflow_archive.notes", "err", err)
-		return
-	}
-	if n := tag.RowsAffected(); n > 0 {
-		log.InfoContext(ctx, "free_tier_overflow_archive.notes", "archived", n)
-	}
+	newSweepRunner(pool, log).RunNotesArchive(ctx)
 }

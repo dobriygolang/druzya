@@ -10,9 +10,9 @@
 //   - Free: notes ВСЕ локально (IndexedDB), Publish → cloud (counts toward
 //     SyncedNotes quota). Shared board/room: 1 active с 24h TTL → авто-
 //     downgrade в private + удаление с backend'а.
-//   - Seeker: middle tier — cross-device sync для всех notes (counts toward
+//   - Pro: middle tier — cross-device sync для всех notes (counts toward
 //     SyncedNotes quota), 5 active shared boards/rooms без TTL.
-//   - Ascended: top tier — unlimited.
+//   - Max: top tier — unlimited.
 //
 // Числа — стартовая прикидка (Phase 5 alpha). Tweak под рыночные данные
 // после первых retention-метрик.
@@ -38,7 +38,7 @@ type QuotaPolicy struct {
 	// ActiveSharedRooms — то же для code-rooms.
 	ActiveSharedRooms int
 
-	// SharedTTL — длительность shared-доступа для free-tier'а. Tier Seeker+
+	// SharedTTL — длительность shared-доступа для free-tier'а. Tier Pro+
 	// = 0 (no TTL = бессрочно). Cron-job в whiteboard_rooms / editor сервисах
 	// downgrade'ит room'ы которые exceeded TTL и принадлежат free-tier
 	// owner'у.
@@ -75,7 +75,7 @@ func PolicyDefaults(t Tier) QuotaPolicy {
 // При добавлении нового tier'а — добавить case + frontend копию.
 func Policy(t Tier) QuotaPolicy {
 	switch t {
-	case TierAscended:
+	case TierMax:
 		return QuotaPolicy{
 			SyncedNotes:        Unlimited,
 			ActiveSharedBoards: Unlimited,
@@ -83,7 +83,7 @@ func Policy(t Tier) QuotaPolicy {
 			SharedTTL:          0, // no TTL
 			AIMonthly:          1000,
 		}
-	case TierSeeker:
+	case TierPro:
 		return QuotaPolicy{
 			SyncedNotes:        100,
 			ActiveSharedBoards: 5,

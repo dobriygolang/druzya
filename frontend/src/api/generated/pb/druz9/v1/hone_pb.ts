@@ -25,6 +25,161 @@ import type { BinaryReadOptions, FieldList, JsonReadOptions, JsonValue, PartialM
 import { Message, proto3, Timestamp } from "@bufbuild/protobuf";
 
 /**
+ * TaskStatus — kanban-колонка карточки.
+ *
+ * @generated from enum druz9.v1.TaskStatus
+ */
+export enum TaskStatus {
+  /**
+   * @generated from enum value: TASK_STATUS_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * @generated from enum value: TASK_STATUS_TODO = 1;
+   */
+  TODO = 1,
+
+  /**
+   * @generated from enum value: TASK_STATUS_IN_PROGRESS = 2;
+   */
+  IN_PROGRESS = 2,
+
+  /**
+   * @generated from enum value: TASK_STATUS_IN_REVIEW = 3;
+   */
+  IN_REVIEW = 3,
+
+  /**
+   * @generated from enum value: TASK_STATUS_DONE = 4;
+   */
+  DONE = 4,
+
+  /**
+   * @generated from enum value: TASK_STATUS_DISMISSED = 5;
+   */
+  DISMISSED = 5,
+}
+// Retrieve enum metadata with: proto3.getEnumType(TaskStatus)
+proto3.util.setEnumType(TaskStatus, "druz9.v1.TaskStatus", [
+  { no: 0, name: "TASK_STATUS_UNSPECIFIED" },
+  { no: 1, name: "TASK_STATUS_TODO" },
+  { no: 2, name: "TASK_STATUS_IN_PROGRESS" },
+  { no: 3, name: "TASK_STATUS_IN_REVIEW" },
+  { no: 4, name: "TASK_STATUS_DONE" },
+  { no: 5, name: "TASK_STATUS_DISMISSED" },
+]);
+
+/**
+ * TaskKind — тип задачи; маршрутизирует deep_link / иконку на FE.
+ *
+ * @generated from enum druz9.v1.TaskKind
+ */
+export enum TaskKind {
+  /**
+   * @generated from enum value: TASK_KIND_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * @generated from enum value: TASK_KIND_ALGO = 1;
+   */
+  ALGO = 1,
+
+  /**
+   * @generated from enum value: TASK_KIND_SYSDESIGN = 2;
+   */
+  SYSDESIGN = 2,
+
+  /**
+   * @generated from enum value: TASK_KIND_QUIZ = 3;
+   */
+  QUIZ = 3,
+
+  /**
+   * @generated from enum value: TASK_KIND_REFLECTION = 4;
+   */
+  REFLECTION = 4,
+
+  /**
+   * @generated from enum value: TASK_KIND_READING = 5;
+   */
+  READING = 5,
+
+  /**
+   * @generated from enum value: TASK_KIND_CUSTOM = 6;
+   */
+  CUSTOM = 6,
+}
+// Retrieve enum metadata with: proto3.getEnumType(TaskKind)
+proto3.util.setEnumType(TaskKind, "druz9.v1.TaskKind", [
+  { no: 0, name: "TASK_KIND_UNSPECIFIED" },
+  { no: 1, name: "TASK_KIND_ALGO" },
+  { no: 2, name: "TASK_KIND_SYSDESIGN" },
+  { no: 3, name: "TASK_KIND_QUIZ" },
+  { no: 4, name: "TASK_KIND_REFLECTION" },
+  { no: 5, name: "TASK_KIND_READING" },
+  { no: 6, name: "TASK_KIND_CUSTOM" },
+]);
+
+/**
+ * TaskSource — кто создал задачу. AI задаётся coach_generator'ом, USER —
+ * явная manual create через UI.
+ *
+ * @generated from enum druz9.v1.TaskSource
+ */
+export enum TaskSource {
+  /**
+   * @generated from enum value: TASK_SOURCE_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * @generated from enum value: TASK_SOURCE_AI = 1;
+   */
+  AI = 1,
+
+  /**
+   * @generated from enum value: TASK_SOURCE_USER = 2;
+   */
+  USER = 2,
+}
+// Retrieve enum metadata with: proto3.getEnumType(TaskSource)
+proto3.util.setEnumType(TaskSource, "druz9.v1.TaskSource", [
+  { no: 0, name: "TASK_SOURCE_UNSPECIFIED" },
+  { no: 1, name: "TASK_SOURCE_AI" },
+  { no: 2, name: "TASK_SOURCE_USER" },
+]);
+
+/**
+ * TaskCommentAuthor — кто оставил комментарий (AI или сам юзер).
+ *
+ * @generated from enum druz9.v1.TaskCommentAuthor
+ */
+export enum TaskCommentAuthor {
+  /**
+   * @generated from enum value: TASK_COMMENT_AUTHOR_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * @generated from enum value: TASK_COMMENT_AUTHOR_AI = 1;
+   */
+  AI = 1,
+
+  /**
+   * @generated from enum value: TASK_COMMENT_AUTHOR_USER = 2;
+   */
+  USER = 2,
+}
+// Retrieve enum metadata with: proto3.getEnumType(TaskCommentAuthor)
+proto3.util.setEnumType(TaskCommentAuthor, "druz9.v1.TaskCommentAuthor", [
+  { no: 0, name: "TASK_COMMENT_AUTHOR_UNSPECIFIED" },
+  { no: 1, name: "TASK_COMMENT_AUTHOR_AI" },
+  { no: 2, name: "TASK_COMMENT_AUTHOR_USER" },
+]);
+
+/**
  * PlanItem is one row in a day's plan.
  *
  * @generated from message druz9.v1.PlanItem
@@ -2462,6 +2617,1089 @@ export class CritiquePacket extends Message<CritiquePacket> {
 
   static equals(a: CritiquePacket | PlainMessage<CritiquePacket> | undefined, b: CritiquePacket | PlainMessage<CritiquePacket> | undefined): boolean {
     return proto3.util.equals(CritiquePacket, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.PublishNoteRequest
+ */
+export class PublishNoteRequest extends Message<PublishNoteRequest> {
+  /**
+   * @generated from field: string id = 1;
+   */
+  id = "";
+
+  constructor(data?: PartialMessage<PublishNoteRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.PublishNoteRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): PublishNoteRequest {
+    return new PublishNoteRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): PublishNoteRequest {
+    return new PublishNoteRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): PublishNoteRequest {
+    return new PublishNoteRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: PublishNoteRequest | PlainMessage<PublishNoteRequest> | undefined, b: PublishNoteRequest | PlainMessage<PublishNoteRequest> | undefined): boolean {
+    return proto3.util.equals(PublishNoteRequest, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.PublishNoteResponse
+ */
+export class PublishNoteResponse extends Message<PublishNoteResponse> {
+  /**
+   * @generated from field: string slug = 1;
+   */
+  slug = "";
+
+  /**
+   * @generated from field: string url = 2;
+   */
+  url = "";
+
+  /**
+   * RFC3339
+   *
+   * @generated from field: string published_at = 3;
+   */
+  publishedAt = "";
+
+  constructor(data?: PartialMessage<PublishNoteResponse>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.PublishNoteResponse";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "slug", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "url", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 3, name: "published_at", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): PublishNoteResponse {
+    return new PublishNoteResponse().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): PublishNoteResponse {
+    return new PublishNoteResponse().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): PublishNoteResponse {
+    return new PublishNoteResponse().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: PublishNoteResponse | PlainMessage<PublishNoteResponse> | undefined, b: PublishNoteResponse | PlainMessage<PublishNoteResponse> | undefined): boolean {
+    return proto3.util.equals(PublishNoteResponse, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.UnpublishNoteRequest
+ */
+export class UnpublishNoteRequest extends Message<UnpublishNoteRequest> {
+  /**
+   * @generated from field: string id = 1;
+   */
+  id = "";
+
+  constructor(data?: PartialMessage<UnpublishNoteRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.UnpublishNoteRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): UnpublishNoteRequest {
+    return new UnpublishNoteRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): UnpublishNoteRequest {
+    return new UnpublishNoteRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): UnpublishNoteRequest {
+    return new UnpublishNoteRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: UnpublishNoteRequest | PlainMessage<UnpublishNoteRequest> | undefined, b: UnpublishNoteRequest | PlainMessage<UnpublishNoteRequest> | undefined): boolean {
+    return proto3.util.equals(UnpublishNoteRequest, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.UnpublishNoteResponse
+ */
+export class UnpublishNoteResponse extends Message<UnpublishNoteResponse> {
+  /**
+   * @generated from field: bool ok = 1;
+   */
+  ok = false;
+
+  constructor(data?: PartialMessage<UnpublishNoteResponse>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.UnpublishNoteResponse";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "ok", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): UnpublishNoteResponse {
+    return new UnpublishNoteResponse().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): UnpublishNoteResponse {
+    return new UnpublishNoteResponse().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): UnpublishNoteResponse {
+    return new UnpublishNoteResponse().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: UnpublishNoteResponse | PlainMessage<UnpublishNoteResponse> | undefined, b: UnpublishNoteResponse | PlainMessage<UnpublishNoteResponse> | undefined): boolean {
+    return proto3.util.equals(UnpublishNoteResponse, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.PublishStatusRequest
+ */
+export class PublishStatusRequest extends Message<PublishStatusRequest> {
+  /**
+   * @generated from field: string id = 1;
+   */
+  id = "";
+
+  constructor(data?: PartialMessage<PublishStatusRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.PublishStatusRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): PublishStatusRequest {
+    return new PublishStatusRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): PublishStatusRequest {
+    return new PublishStatusRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): PublishStatusRequest {
+    return new PublishStatusRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: PublishStatusRequest | PlainMessage<PublishStatusRequest> | undefined, b: PublishStatusRequest | PlainMessage<PublishStatusRequest> | undefined): boolean {
+    return proto3.util.equals(PublishStatusRequest, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.PublishStatusResponse
+ */
+export class PublishStatusResponse extends Message<PublishStatusResponse> {
+  /**
+   * @generated from field: bool published = 1;
+   */
+  published = false;
+
+  /**
+   * @generated from field: string slug = 2;
+   */
+  slug = "";
+
+  /**
+   * @generated from field: string url = 3;
+   */
+  url = "";
+
+  /**
+   * @generated from field: string published_at = 4;
+   */
+  publishedAt = "";
+
+  constructor(data?: PartialMessage<PublishStatusResponse>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.PublishStatusResponse";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "published", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
+    { no: 2, name: "slug", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 3, name: "url", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 4, name: "published_at", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): PublishStatusResponse {
+    return new PublishStatusResponse().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): PublishStatusResponse {
+    return new PublishStatusResponse().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): PublishStatusResponse {
+    return new PublishStatusResponse().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: PublishStatusResponse | PlainMessage<PublishStatusResponse> | undefined, b: PublishStatusResponse | PlainMessage<PublishStatusResponse> | undefined): boolean {
+    return proto3.util.equals(PublishStatusResponse, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.ShareToWebRequest
+ */
+export class ShareToWebRequest extends Message<ShareToWebRequest> {
+  /**
+   * @generated from field: string id = 1;
+   */
+  id = "";
+
+  /**
+   * plaintext_md is the client-decrypted body; the server stores it
+   * verbatim and provisions a public_slug atomically.
+   *
+   * @generated from field: string plaintext_md = 2;
+   */
+  plaintextMd = "";
+
+  constructor(data?: PartialMessage<ShareToWebRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.ShareToWebRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "plaintext_md", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ShareToWebRequest {
+    return new ShareToWebRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): ShareToWebRequest {
+    return new ShareToWebRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): ShareToWebRequest {
+    return new ShareToWebRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: ShareToWebRequest | PlainMessage<ShareToWebRequest> | undefined, b: ShareToWebRequest | PlainMessage<ShareToWebRequest> | undefined): boolean {
+    return proto3.util.equals(ShareToWebRequest, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.ShareToWebResponse
+ */
+export class ShareToWebResponse extends Message<ShareToWebResponse> {
+  /**
+   * @generated from field: string slug = 1;
+   */
+  slug = "";
+
+  /**
+   * @generated from field: string url = 2;
+   */
+  url = "";
+
+  /**
+   * @generated from field: string published_at = 3;
+   */
+  publishedAt = "";
+
+  /**
+   * @generated from field: bool already_published = 4;
+   */
+  alreadyPublished = false;
+
+  constructor(data?: PartialMessage<ShareToWebResponse>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.ShareToWebResponse";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "slug", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "url", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 3, name: "published_at", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 4, name: "already_published", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ShareToWebResponse {
+    return new ShareToWebResponse().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): ShareToWebResponse {
+    return new ShareToWebResponse().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): ShareToWebResponse {
+    return new ShareToWebResponse().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: ShareToWebResponse | PlainMessage<ShareToWebResponse> | undefined, b: ShareToWebResponse | PlainMessage<ShareToWebResponse> | undefined): boolean {
+    return proto3.util.equals(ShareToWebResponse, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.MakePrivateRequest
+ */
+export class MakePrivateRequest extends Message<MakePrivateRequest> {
+  /**
+   * @generated from field: string id = 1;
+   */
+  id = "";
+
+  /**
+   * ciphertext_b64 is base64(IV || ciphertext) — client-shaped.
+   *
+   * @generated from field: string ciphertext_b64 = 2;
+   */
+  ciphertextB64 = "";
+
+  constructor(data?: PartialMessage<MakePrivateRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.MakePrivateRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "ciphertext_b64", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): MakePrivateRequest {
+    return new MakePrivateRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): MakePrivateRequest {
+    return new MakePrivateRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): MakePrivateRequest {
+    return new MakePrivateRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: MakePrivateRequest | PlainMessage<MakePrivateRequest> | undefined, b: MakePrivateRequest | PlainMessage<MakePrivateRequest> | undefined): boolean {
+    return proto3.util.equals(MakePrivateRequest, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.MakePrivateResponse
+ */
+export class MakePrivateResponse extends Message<MakePrivateResponse> {
+  /**
+   * @generated from field: bool ok = 1;
+   */
+  ok = false;
+
+  constructor(data?: PartialMessage<MakePrivateResponse>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.MakePrivateResponse";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "ok", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): MakePrivateResponse {
+    return new MakePrivateResponse().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): MakePrivateResponse {
+    return new MakePrivateResponse().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): MakePrivateResponse {
+    return new MakePrivateResponse().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: MakePrivateResponse | PlainMessage<MakePrivateResponse> | undefined, b: MakePrivateResponse | PlainMessage<MakePrivateResponse> | undefined): boolean {
+    return proto3.util.equals(MakePrivateResponse, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.NoteMeta
+ */
+export class NoteMeta extends Message<NoteMeta> {
+  /**
+   * @generated from field: string id = 1;
+   */
+  id = "";
+
+  /**
+   * @generated from field: bool encrypted = 2;
+   */
+  encrypted = false;
+
+  /**
+   * @generated from field: bool published = 3;
+   */
+  published = false;
+
+  constructor(data?: PartialMessage<NoteMeta>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.NoteMeta";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "encrypted", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
+    { no: 3, name: "published", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): NoteMeta {
+    return new NoteMeta().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): NoteMeta {
+    return new NoteMeta().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): NoteMeta {
+    return new NoteMeta().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: NoteMeta | PlainMessage<NoteMeta> | undefined, b: NoteMeta | PlainMessage<NoteMeta> | undefined): boolean {
+    return proto3.util.equals(NoteMeta, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.BulkNotesMetaRequest
+ */
+export class BulkNotesMetaRequest extends Message<BulkNotesMetaRequest> {
+  constructor(data?: PartialMessage<BulkNotesMetaRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.BulkNotesMetaRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): BulkNotesMetaRequest {
+    return new BulkNotesMetaRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): BulkNotesMetaRequest {
+    return new BulkNotesMetaRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): BulkNotesMetaRequest {
+    return new BulkNotesMetaRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: BulkNotesMetaRequest | PlainMessage<BulkNotesMetaRequest> | undefined, b: BulkNotesMetaRequest | PlainMessage<BulkNotesMetaRequest> | undefined): boolean {
+    return proto3.util.equals(BulkNotesMetaRequest, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.BulkNotesMetaResponse
+ */
+export class BulkNotesMetaResponse extends Message<BulkNotesMetaResponse> {
+  /**
+   * @generated from field: repeated druz9.v1.NoteMeta notes = 1;
+   */
+  notes: NoteMeta[] = [];
+
+  constructor(data?: PartialMessage<BulkNotesMetaResponse>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.BulkNotesMetaResponse";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "notes", kind: "message", T: NoteMeta, repeated: true },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): BulkNotesMetaResponse {
+    return new BulkNotesMetaResponse().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): BulkNotesMetaResponse {
+    return new BulkNotesMetaResponse().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): BulkNotesMetaResponse {
+    return new BulkNotesMetaResponse().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: BulkNotesMetaResponse | PlainMessage<BulkNotesMetaResponse> | undefined, b: BulkNotesMetaResponse | PlainMessage<BulkNotesMetaResponse> | undefined): boolean {
+    return proto3.util.equals(BulkNotesMetaResponse, a, b);
+  }
+}
+
+/**
+ * Task — one Notion-style kanban card.
+ *
+ * @generated from message druz9.v1.Task
+ */
+export class Task extends Message<Task> {
+  /**
+   * @generated from field: string id = 1;
+   */
+  id = "";
+
+  /**
+   * @generated from field: druz9.v1.TaskStatus status = 2;
+   */
+  status = TaskStatus.UNSPECIFIED;
+
+  /**
+   * @generated from field: druz9.v1.TaskKind kind = 3;
+   */
+  kind = TaskKind.UNSPECIFIED;
+
+  /**
+   * @generated from field: druz9.v1.TaskSource source = 4;
+   */
+  source = TaskSource.UNSPECIFIED;
+
+  /**
+   * @generated from field: string title = 5;
+   */
+  title = "";
+
+  /**
+   * @generated from field: string brief_md = 6;
+   */
+  briefMd = "";
+
+  /**
+   * @generated from field: string skill_key = 7;
+   */
+  skillKey = "";
+
+  /**
+   * @generated from field: string deep_link = 8;
+   */
+  deepLink = "";
+
+  /**
+   * @generated from field: repeated string recommended_reading = 9;
+   */
+  recommendedReading: string[] = [];
+
+  /**
+   * @generated from field: int32 priority = 10;
+   */
+  priority = 0;
+
+  /**
+   * @generated from field: google.protobuf.Timestamp created_at = 11;
+   */
+  createdAt?: Timestamp;
+
+  /**
+   * @generated from field: google.protobuf.Timestamp updated_at = 12;
+   */
+  updatedAt?: Timestamp;
+
+  /**
+   * @generated from field: google.protobuf.Timestamp completed_at = 13;
+   */
+  completedAt?: Timestamp;
+
+  constructor(data?: PartialMessage<Task>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.Task";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "status", kind: "enum", T: proto3.getEnumType(TaskStatus) },
+    { no: 3, name: "kind", kind: "enum", T: proto3.getEnumType(TaskKind) },
+    { no: 4, name: "source", kind: "enum", T: proto3.getEnumType(TaskSource) },
+    { no: 5, name: "title", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 6, name: "brief_md", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 7, name: "skill_key", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 8, name: "deep_link", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 9, name: "recommended_reading", kind: "scalar", T: 9 /* ScalarType.STRING */, repeated: true },
+    { no: 10, name: "priority", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 11, name: "created_at", kind: "message", T: Timestamp },
+    { no: 12, name: "updated_at", kind: "message", T: Timestamp },
+    { no: 13, name: "completed_at", kind: "message", T: Timestamp },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): Task {
+    return new Task().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): Task {
+    return new Task().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): Task {
+    return new Task().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: Task | PlainMessage<Task> | undefined, b: Task | PlainMessage<Task> | undefined): boolean {
+    return proto3.util.equals(Task, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.TaskComment
+ */
+export class TaskComment extends Message<TaskComment> {
+  /**
+   * @generated from field: string id = 1;
+   */
+  id = "";
+
+  /**
+   * @generated from field: druz9.v1.TaskCommentAuthor author_kind = 2;
+   */
+  authorKind = TaskCommentAuthor.UNSPECIFIED;
+
+  /**
+   * @generated from field: string body_md = 3;
+   */
+  bodyMd = "";
+
+  /**
+   * @generated from field: google.protobuf.Timestamp created_at = 4;
+   */
+  createdAt?: Timestamp;
+
+  constructor(data?: PartialMessage<TaskComment>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.TaskComment";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "author_kind", kind: "enum", T: proto3.getEnumType(TaskCommentAuthor) },
+    { no: 3, name: "body_md", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 4, name: "created_at", kind: "message", T: Timestamp },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): TaskComment {
+    return new TaskComment().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): TaskComment {
+    return new TaskComment().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): TaskComment {
+    return new TaskComment().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: TaskComment | PlainMessage<TaskComment> | undefined, b: TaskComment | PlainMessage<TaskComment> | undefined): boolean {
+    return proto3.util.equals(TaskComment, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.ListTasksRequest
+ */
+export class ListTasksRequest extends Message<ListTasksRequest> {
+  constructor(data?: PartialMessage<ListTasksRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.ListTasksRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ListTasksRequest {
+    return new ListTasksRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): ListTasksRequest {
+    return new ListTasksRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): ListTasksRequest {
+    return new ListTasksRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: ListTasksRequest | PlainMessage<ListTasksRequest> | undefined, b: ListTasksRequest | PlainMessage<ListTasksRequest> | undefined): boolean {
+    return proto3.util.equals(ListTasksRequest, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.ListTasksResponse
+ */
+export class ListTasksResponse extends Message<ListTasksResponse> {
+  /**
+   * @generated from field: repeated druz9.v1.Task tasks = 1;
+   */
+  tasks: Task[] = [];
+
+  constructor(data?: PartialMessage<ListTasksResponse>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.ListTasksResponse";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "tasks", kind: "message", T: Task, repeated: true },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ListTasksResponse {
+    return new ListTasksResponse().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): ListTasksResponse {
+    return new ListTasksResponse().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): ListTasksResponse {
+    return new ListTasksResponse().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: ListTasksResponse | PlainMessage<ListTasksResponse> | undefined, b: ListTasksResponse | PlainMessage<ListTasksResponse> | undefined): boolean {
+    return proto3.util.equals(ListTasksResponse, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.CreateTaskRequest
+ */
+export class CreateTaskRequest extends Message<CreateTaskRequest> {
+  /**
+   * @generated from field: druz9.v1.TaskKind kind = 1;
+   */
+  kind = TaskKind.UNSPECIFIED;
+
+  /**
+   * @generated from field: string title = 2;
+   */
+  title = "";
+
+  /**
+   * @generated from field: string brief_md = 3;
+   */
+  briefMd = "";
+
+  /**
+   * @generated from field: string skill_key = 4;
+   */
+  skillKey = "";
+
+  /**
+   * @generated from field: string deep_link = 5;
+   */
+  deepLink = "";
+
+  constructor(data?: PartialMessage<CreateTaskRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.CreateTaskRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "kind", kind: "enum", T: proto3.getEnumType(TaskKind) },
+    { no: 2, name: "title", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 3, name: "brief_md", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 4, name: "skill_key", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 5, name: "deep_link", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): CreateTaskRequest {
+    return new CreateTaskRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): CreateTaskRequest {
+    return new CreateTaskRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): CreateTaskRequest {
+    return new CreateTaskRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: CreateTaskRequest | PlainMessage<CreateTaskRequest> | undefined, b: CreateTaskRequest | PlainMessage<CreateTaskRequest> | undefined): boolean {
+    return proto3.util.equals(CreateTaskRequest, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.MoveTaskStatusRequest
+ */
+export class MoveTaskStatusRequest extends Message<MoveTaskStatusRequest> {
+  /**
+   * @generated from field: string id = 1;
+   */
+  id = "";
+
+  /**
+   * @generated from field: druz9.v1.TaskStatus status = 2;
+   */
+  status = TaskStatus.UNSPECIFIED;
+
+  constructor(data?: PartialMessage<MoveTaskStatusRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.MoveTaskStatusRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "status", kind: "enum", T: proto3.getEnumType(TaskStatus) },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): MoveTaskStatusRequest {
+    return new MoveTaskStatusRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): MoveTaskStatusRequest {
+    return new MoveTaskStatusRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): MoveTaskStatusRequest {
+    return new MoveTaskStatusRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: MoveTaskStatusRequest | PlainMessage<MoveTaskStatusRequest> | undefined, b: MoveTaskStatusRequest | PlainMessage<MoveTaskStatusRequest> | undefined): boolean {
+    return proto3.util.equals(MoveTaskStatusRequest, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.DeleteTaskRequest
+ */
+export class DeleteTaskRequest extends Message<DeleteTaskRequest> {
+  /**
+   * @generated from field: string id = 1;
+   */
+  id = "";
+
+  constructor(data?: PartialMessage<DeleteTaskRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.DeleteTaskRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): DeleteTaskRequest {
+    return new DeleteTaskRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): DeleteTaskRequest {
+    return new DeleteTaskRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): DeleteTaskRequest {
+    return new DeleteTaskRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: DeleteTaskRequest | PlainMessage<DeleteTaskRequest> | undefined, b: DeleteTaskRequest | PlainMessage<DeleteTaskRequest> | undefined): boolean {
+    return proto3.util.equals(DeleteTaskRequest, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.DeleteTaskResponse
+ */
+export class DeleteTaskResponse extends Message<DeleteTaskResponse> {
+  /**
+   * @generated from field: bool ok = 1;
+   */
+  ok = false;
+
+  constructor(data?: PartialMessage<DeleteTaskResponse>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.DeleteTaskResponse";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "ok", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): DeleteTaskResponse {
+    return new DeleteTaskResponse().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): DeleteTaskResponse {
+    return new DeleteTaskResponse().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): DeleteTaskResponse {
+    return new DeleteTaskResponse().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: DeleteTaskResponse | PlainMessage<DeleteTaskResponse> | undefined, b: DeleteTaskResponse | PlainMessage<DeleteTaskResponse> | undefined): boolean {
+    return proto3.util.equals(DeleteTaskResponse, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.ListTaskCommentsRequest
+ */
+export class ListTaskCommentsRequest extends Message<ListTaskCommentsRequest> {
+  /**
+   * @generated from field: string id = 1;
+   */
+  id = "";
+
+  constructor(data?: PartialMessage<ListTaskCommentsRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.ListTaskCommentsRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ListTaskCommentsRequest {
+    return new ListTaskCommentsRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): ListTaskCommentsRequest {
+    return new ListTaskCommentsRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): ListTaskCommentsRequest {
+    return new ListTaskCommentsRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: ListTaskCommentsRequest | PlainMessage<ListTaskCommentsRequest> | undefined, b: ListTaskCommentsRequest | PlainMessage<ListTaskCommentsRequest> | undefined): boolean {
+    return proto3.util.equals(ListTaskCommentsRequest, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.ListTaskCommentsResponse
+ */
+export class ListTaskCommentsResponse extends Message<ListTaskCommentsResponse> {
+  /**
+   * @generated from field: repeated druz9.v1.TaskComment comments = 1;
+   */
+  comments: TaskComment[] = [];
+
+  constructor(data?: PartialMessage<ListTaskCommentsResponse>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.ListTaskCommentsResponse";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "comments", kind: "message", T: TaskComment, repeated: true },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ListTaskCommentsResponse {
+    return new ListTaskCommentsResponse().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): ListTaskCommentsResponse {
+    return new ListTaskCommentsResponse().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): ListTaskCommentsResponse {
+    return new ListTaskCommentsResponse().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: ListTaskCommentsResponse | PlainMessage<ListTaskCommentsResponse> | undefined, b: ListTaskCommentsResponse | PlainMessage<ListTaskCommentsResponse> | undefined): boolean {
+    return proto3.util.equals(ListTaskCommentsResponse, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.AddTaskCommentRequest
+ */
+export class AddTaskCommentRequest extends Message<AddTaskCommentRequest> {
+  /**
+   * @generated from field: string id = 1;
+   */
+  id = "";
+
+  /**
+   * @generated from field: string body_md = 2;
+   */
+  bodyMd = "";
+
+  constructor(data?: PartialMessage<AddTaskCommentRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.AddTaskCommentRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "body_md", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): AddTaskCommentRequest {
+    return new AddTaskCommentRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): AddTaskCommentRequest {
+    return new AddTaskCommentRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): AddTaskCommentRequest {
+    return new AddTaskCommentRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: AddTaskCommentRequest | PlainMessage<AddTaskCommentRequest> | undefined, b: AddTaskCommentRequest | PlainMessage<AddTaskCommentRequest> | undefined): boolean {
+    return proto3.util.equals(AddTaskCommentRequest, a, b);
   }
 }
 

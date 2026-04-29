@@ -48,6 +48,7 @@ type CodexArticleMeta struct {
 	Slug     string
 	Title    string
 	Category string
+	ReadMin  int
 }
 
 // CodexRepo persists codex_articles + codex_categories.

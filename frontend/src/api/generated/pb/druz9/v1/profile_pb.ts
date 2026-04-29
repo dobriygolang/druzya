@@ -17,6 +17,49 @@ import { CharClass, Language, Section, SubscriptionPlan, UserRole } from "./comm
 import { NotificationPreferences } from "./notify_pb.js";
 
 /**
+ * InterviewerApplicationStatus — wire-закрытый набор статусов заявки.
+ * NOT_SUBMITTED — synthetic из GetMyInterviewerApplication когда юзер
+ * никогда не подавал; в DB row не хранится (DB CHECK = pending|approved|
+ * rejected). Wire JSON эмитит NAME (INTERVIEWER_APPLICATION_STATUS_PENDING).
+ *
+ * @generated from enum druz9.v1.InterviewerApplicationStatus
+ */
+export enum InterviewerApplicationStatus {
+  /**
+   * @generated from enum value: INTERVIEWER_APPLICATION_STATUS_UNSPECIFIED = 0;
+   */
+  UNSPECIFIED = 0,
+
+  /**
+   * @generated from enum value: INTERVIEWER_APPLICATION_STATUS_NOT_SUBMITTED = 1;
+   */
+  NOT_SUBMITTED = 1,
+
+  /**
+   * @generated from enum value: INTERVIEWER_APPLICATION_STATUS_PENDING = 2;
+   */
+  PENDING = 2,
+
+  /**
+   * @generated from enum value: INTERVIEWER_APPLICATION_STATUS_APPROVED = 3;
+   */
+  APPROVED = 3,
+
+  /**
+   * @generated from enum value: INTERVIEWER_APPLICATION_STATUS_REJECTED = 4;
+   */
+  REJECTED = 4,
+}
+// Retrieve enum metadata with: proto3.getEnumType(InterviewerApplicationStatus)
+proto3.util.setEnumType(InterviewerApplicationStatus, "druz9.v1.InterviewerApplicationStatus", [
+  { no: 0, name: "INTERVIEWER_APPLICATION_STATUS_UNSPECIFIED" },
+  { no: 1, name: "INTERVIEWER_APPLICATION_STATUS_NOT_SUBMITTED" },
+  { no: 2, name: "INTERVIEWER_APPLICATION_STATUS_PENDING" },
+  { no: 3, name: "INTERVIEWER_APPLICATION_STATUS_APPROVED" },
+  { no: 4, name: "INTERVIEWER_APPLICATION_STATUS_REJECTED" },
+]);
+
+/**
  * Attributes mirrors OpenAPI Attributes.
  *
  * @generated from message druz9.v1.Attributes
@@ -1734,6 +1777,213 @@ export class GetWeeklyShareRequest extends Message<GetWeeklyShareRequest> {
 }
 
 /**
+ * @generated from message druz9.v1.AllocateAtlasSkillRequest
+ */
+export class AllocateAtlasSkillRequest extends Message<AllocateAtlasSkillRequest> {
+  /**
+   * @generated from field: string skill_id = 1;
+   */
+  skillId = "";
+
+  constructor(data?: PartialMessage<AllocateAtlasSkillRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.AllocateAtlasSkillRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "skill_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): AllocateAtlasSkillRequest {
+    return new AllocateAtlasSkillRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): AllocateAtlasSkillRequest {
+    return new AllocateAtlasSkillRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): AllocateAtlasSkillRequest {
+    return new AllocateAtlasSkillRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: AllocateAtlasSkillRequest | PlainMessage<AllocateAtlasSkillRequest> | undefined, b: AllocateAtlasSkillRequest | PlainMessage<AllocateAtlasSkillRequest> | undefined): boolean {
+    return proto3.util.equals(AllocateAtlasSkillRequest, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.AllocateAtlasSkillResponse
+ */
+export class AllocateAtlasSkillResponse extends Message<AllocateAtlasSkillResponse> {
+  /**
+   * @generated from field: string key = 1;
+   */
+  key = "";
+
+  /**
+   * @generated from field: int32 progress = 2;
+   */
+  progress = 0;
+
+  /**
+   * @generated from field: bool unlocked = 3;
+   */
+  unlocked = false;
+
+  /**
+   * RFC3339, empty when not unlocked
+   *
+   * @generated from field: string unlocked_at = 4;
+   */
+  unlockedAt = "";
+
+  /**
+   * RFC3339
+   *
+   * @generated from field: string updated_at = 5;
+   */
+  updatedAt = "";
+
+  constructor(data?: PartialMessage<AllocateAtlasSkillResponse>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.AllocateAtlasSkillResponse";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "key", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "progress", kind: "scalar", T: 5 /* ScalarType.INT32 */ },
+    { no: 3, name: "unlocked", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
+    { no: 4, name: "unlocked_at", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 5, name: "updated_at", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): AllocateAtlasSkillResponse {
+    return new AllocateAtlasSkillResponse().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): AllocateAtlasSkillResponse {
+    return new AllocateAtlasSkillResponse().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): AllocateAtlasSkillResponse {
+    return new AllocateAtlasSkillResponse().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: AllocateAtlasSkillResponse | PlainMessage<AllocateAtlasSkillResponse> | undefined, b: AllocateAtlasSkillResponse | PlainMessage<AllocateAtlasSkillResponse> | undefined): boolean {
+    return proto3.util.equals(AllocateAtlasSkillResponse, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.GetAIVacanciesModelRequest
+ */
+export class GetAIVacanciesModelRequest extends Message<GetAIVacanciesModelRequest> {
+  constructor(data?: PartialMessage<GetAIVacanciesModelRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.GetAIVacanciesModelRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): GetAIVacanciesModelRequest {
+    return new GetAIVacanciesModelRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): GetAIVacanciesModelRequest {
+    return new GetAIVacanciesModelRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): GetAIVacanciesModelRequest {
+    return new GetAIVacanciesModelRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: GetAIVacanciesModelRequest | PlainMessage<GetAIVacanciesModelRequest> | undefined, b: GetAIVacanciesModelRequest | PlainMessage<GetAIVacanciesModelRequest> | undefined): boolean {
+    return proto3.util.equals(GetAIVacanciesModelRequest, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.SetAIVacanciesModelRequest
+ */
+export class SetAIVacanciesModelRequest extends Message<SetAIVacanciesModelRequest> {
+  /**
+   * @generated from field: string model_id = 1;
+   */
+  modelId = "";
+
+  constructor(data?: PartialMessage<SetAIVacanciesModelRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.SetAIVacanciesModelRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "model_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): SetAIVacanciesModelRequest {
+    return new SetAIVacanciesModelRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): SetAIVacanciesModelRequest {
+    return new SetAIVacanciesModelRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): SetAIVacanciesModelRequest {
+    return new SetAIVacanciesModelRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: SetAIVacanciesModelRequest | PlainMessage<SetAIVacanciesModelRequest> | undefined, b: SetAIVacanciesModelRequest | PlainMessage<SetAIVacanciesModelRequest> | undefined): boolean {
+    return proto3.util.equals(SetAIVacanciesModelRequest, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.AIVacanciesModel
+ */
+export class AIVacanciesModel extends Message<AIVacanciesModel> {
+  /**
+   * @generated from field: string model_id = 1;
+   */
+  modelId = "";
+
+  constructor(data?: PartialMessage<AIVacanciesModel>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.AIVacanciesModel";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "model_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): AIVacanciesModel {
+    return new AIVacanciesModel().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): AIVacanciesModel {
+    return new AIVacanciesModel().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): AIVacanciesModel {
+    return new AIVacanciesModel().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: AIVacanciesModel | PlainMessage<AIVacanciesModel> | undefined, b: AIVacanciesModel | PlainMessage<AIVacanciesModel> | undefined): boolean {
+    return proto3.util.equals(AIVacanciesModel, a, b);
+  }
+}
+
+/**
  * BecomeInterviewerRequest carries an optional motivation paragraph the
  * applicant ships to admins to nudge approval.
  *
@@ -1806,7 +2056,7 @@ export class GetMyInterviewerApplicationRequest extends Message<GetMyInterviewer
 
 /**
  * InterviewerApplication mirrors a row in `interviewer_applications`.
- * status: "pending" | "approved" | "rejected".
+ * status: см. InterviewerApplicationStatus.
  *
  * @generated from message druz9.v1.InterviewerApplication
  */
@@ -1827,9 +2077,9 @@ export class InterviewerApplication extends Message<InterviewerApplication> {
   motivation = "";
 
   /**
-   * @generated from field: string status = 4;
+   * @generated from field: druz9.v1.InterviewerApplicationStatus status = 4;
    */
-  status = "";
+  status = InterviewerApplicationStatus.UNSPECIFIED;
 
   /**
    * @generated from field: string reviewed_by = 5;
@@ -1874,7 +2124,7 @@ export class InterviewerApplication extends Message<InterviewerApplication> {
     { no: 1, name: "id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
     { no: 2, name: "user_id", kind: "scalar", T: 9 /* ScalarType.STRING */ },
     { no: 3, name: "motivation", kind: "scalar", T: 9 /* ScalarType.STRING */ },
-    { no: 4, name: "status", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 4, name: "status", kind: "enum", T: proto3.getEnumType(InterviewerApplicationStatus) },
     { no: 5, name: "reviewed_by", kind: "scalar", T: 9 /* ScalarType.STRING */ },
     { no: 6, name: "reviewed_at", kind: "message", T: Timestamp },
     { no: 7, name: "decision_note", kind: "scalar", T: 9 /* ScalarType.STRING */ },
@@ -1942,11 +2192,11 @@ export class InterviewerApplicationList extends Message<InterviewerApplicationLi
  */
 export class ListInterviewerApplicationsRequest extends Message<ListInterviewerApplicationsRequest> {
   /**
-   * status filter; empty defaults to "pending".
+   * status filter; UNSPECIFIED defaults to PENDING.
    *
-   * @generated from field: string status = 1;
+   * @generated from field: druz9.v1.InterviewerApplicationStatus status = 1;
    */
-  status = "";
+  status = InterviewerApplicationStatus.UNSPECIFIED;
 
   constructor(data?: PartialMessage<ListInterviewerApplicationsRequest>) {
     super();
@@ -1956,7 +2206,7 @@ export class ListInterviewerApplicationsRequest extends Message<ListInterviewerA
   static readonly runtime: typeof proto3 = proto3;
   static readonly typeName = "druz9.v1.ListInterviewerApplicationsRequest";
   static readonly fields: FieldList = proto3.util.newFieldList(() => [
-    { no: 1, name: "status", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 1, name: "status", kind: "enum", T: proto3.getEnumType(InterviewerApplicationStatus) },
   ]);
 
   static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): ListInterviewerApplicationsRequest {

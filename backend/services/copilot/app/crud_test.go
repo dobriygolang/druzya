@@ -84,25 +84,28 @@ func TestRateMessage_OwnerOnly_ValidRange(t *testing.T) {
 
 func TestListProviders_AnnotatesAvailability(t *testing.T) {
 	quotas := newFakeQuotas(10)
-	// Default fake quota allows only openai/gpt-4o-mini. The other model
+	// Default fake quota allows only druz9/turbo. The other models
 	// should come back with AvailableOnCurrentPlan=false.
 	uc := &ListProviders{
-		Config: newFakeConfig("openai/gpt-4o-mini"),
+		Config: newFakeConfig("druz9/turbo"),
 		Quotas: quotas,
 	}
 	out, err := uc.Do(context.Background(), ListProvidersInput{UserID: uuid.New()})
 	if err != nil {
 		t.Fatalf("err: %v", err)
 	}
-	if len(out.Models) != 2 {
-		t.Fatalf("got %d models, want 2", len(out.Models))
+	if len(out.Models) != 3 {
+		t.Fatalf("got %d models, want 3", len(out.Models))
 	}
 	byID := map[string]domain.ProviderModel{}
 	for _, m := range out.Models {
 		byID[m.ID] = m
 	}
-	if !byID["openai/gpt-4o-mini"].AvailableOnCurrentPlan {
-		t.Error("gpt-4o-mini should be available")
+	if !byID["druz9/turbo"].AvailableOnCurrentPlan {
+		t.Error("druz9/turbo should be available")
+	}
+	if byID["openai/gpt-4o-mini"].AvailableOnCurrentPlan {
+		t.Error("gpt-4o-mini should NOT be available on free quota")
 	}
 	if byID["openai/gpt-4o"].AvailableOnCurrentPlan {
 		t.Error("gpt-4o should NOT be available on default quota")

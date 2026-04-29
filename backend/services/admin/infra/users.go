@@ -68,14 +68,15 @@ func (r *Users) List(ctx context.Context, f domain.UserListFilter) (domain.UserP
 	argPos := func() string { return fmt.Sprintf("$%d", len(args)+1) }
 
 	if q := strings.TrimSpace(f.Query); q != "" {
-		// case-insensitive prefix match on username OR email — two binds.
+		// v2: email column dropped (OAuth-only auth). Search now matches
+		// username + display_name instead.
 		needle := strings.ToLower(q) + "%"
 		p1 := argPos()
 		args = append(args, needle)
 		p2 := argPos()
 		args = append(args, needle)
 		clauses = append(clauses, fmt.Sprintf(
-			"(LOWER(u.username) LIKE %s OR LOWER(COALESCE(u.email,'')) LIKE %s)", p1, p2))
+			"(LOWER(u.username) LIKE %s OR LOWER(COALESCE(u.display_name,'')) LIKE %s)", p1, p2))
 	}
 	switch strings.ToLower(strings.TrimSpace(f.Status)) {
 	case "banned":
@@ -104,7 +105,9 @@ func (r *Users) List(ctx context.Context, f domain.UserListFilter) (domain.UserP
 	}
 
 	// Data
-	listSQL := `SELECT u.id, u.username, COALESCE(u.email,''), COALESCE(u.display_name,''),
+	// v2: email column dropped — projection emits '' so AdminUserRow.Email
+	// stays a stable wire-shape (FE-side hides empty cell already).
+	listSQL := `SELECT u.id, u.username, ''::text AS email, COALESCE(u.display_name,''),
                        u.role, u.created_at, u.updated_at,
                        ban.reason, ban.expires_at
                   FROM users u` + activeBanJoin + where +
@@ -131,7 +134,8 @@ func (r *Users) List(ctx context.Context, f domain.UserListFilter) (domain.UserP
 
 // Get fetches one row + active ban projection.
 func (r *Users) Get(ctx context.Context, id uuid.UUID) (domain.AdminUserRow, error) {
-	row := r.pool.QueryRow(ctx, `SELECT u.id, u.username, COALESCE(u.email,''), COALESCE(u.display_name,''),
+	// v2: email column dropped — see Users.List.
+	row := r.pool.QueryRow(ctx, `SELECT u.id, u.username, ''::text AS email, COALESCE(u.display_name,''),
                                         u.role, u.created_at, u.updated_at,
                                         ban.reason, ban.expires_at
                                    FROM users u`+activeBanJoin+` WHERE u.id = $1`, id)

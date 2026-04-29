@@ -131,6 +131,14 @@ func NewNotify(d monolithServices.Deps) (*NotifyModule, error) {
 		UpdatePrefs: &notifyApp.UpdatePrefs{Repo: prefsPg},
 		Log:         d.Log,
 	})
+	// Same UCs are also bound onto NotifyServer so /notifications/* and
+	// /support/ticket flow through the vanguard transcoder. Prefs (GET/PUT)
+	// stay on chi because their wire shape differs from /notify/preferences.
+	server.List = &notifyApp.ListUserNotifications{Repo: userNotifPg, Prefs: prefsPg, Log: d.Log}
+	server.Unread = &notifyApp.CountUnread{Repo: userNotifPg}
+	server.MarkReadUC = &notifyApp.MarkRead{Repo: userNotifPg}
+	server.MarkAllReadUC = &notifyApp.MarkAllRead{Repo: userNotifPg}
+	server.Support = supportHandler
 
 	mod := &NotifyModule{
 		WebhookHandler:  webhook,
@@ -145,10 +153,22 @@ func NewNotify(d monolithServices.Deps) (*NotifyModule, error) {
 			MountREST: func(r chi.Router) {
 				r.Get("/notify/preferences", transcoder.ServeHTTP)
 				r.Put("/notify/preferences", transcoder.ServeHTTP)
-				// Public — без bearer auth (см. router.go public-paths whitelist).
-				r.Post("/support/ticket", supportHandler.ServeHTTP)
-				// In-app notifications feed.
-				userNotifHandler.Mount(r)
+				// /support/ticket — public POST. Mounted in MountREST
+				// because router.go whitelists this exact path for
+				// anonymous access; transcoder serves it via the bound
+				// NotifyServer.Support shim.
+				r.Post("/support/ticket", transcoder.ServeHTTP)
+				// In-app notifications feed (list/unread/read_all/{id}/read
+				// flow through transcoder; prefs stay chi — different shape
+				// from /notify/preferences).
+				r.Get("/notifications", transcoder.ServeHTTP)
+				r.Get("/notifications/unread_count", transcoder.ServeHTTP)
+				r.Post("/notifications/read_all", transcoder.ServeHTTP)
+				r.Post("/notifications/{id}/read", transcoder.ServeHTTP)
+				// Prefs — chi (different wire shape from /notify/preferences).
+				r.Get("/notifications/prefs", userNotifHandler.HandleGetPrefs)
+				r.Put("/notifications/prefs", userNotifHandler.HandleUpdatePrefs)
+				_ = feedHandlers // legacy reference
 			},
 			Subscribers: []func(*eventbus.InProcess){
 				func(b *eventbus.InProcess) {

@@ -109,6 +109,10 @@ func (f *fakeConversations) ListForUser(_ context.Context, userID uuid.UUID, _ d
 	return out, "", nil
 }
 
+func (f *fakeConversations) ResetModelsNotIn(_ context.Context, _ uuid.UUID, _ []string) (int64, error) {
+	return 0, nil
+}
+
 type fakeMessages struct {
 	mu    sync.Mutex
 	rows  map[uuid.UUID]domain.Message
@@ -213,7 +217,7 @@ func (f *fakeQuotas) GetOrInit(_ context.Context, userID uuid.UUID) (domain.Quot
 		RequestsUsed:  0,
 		RequestsCap:   f.cap,
 		ResetsAt:      time.Now().Add(24 * time.Hour),
-		ModelsAllowed: []string{"openai/gpt-4o-mini"},
+		ModelsAllowed: []string{"druz9/turbo"},
 		UpdatedAt:     time.Now().UTC(),
 	}
 	f.rows[userID] = q
@@ -300,6 +304,7 @@ func newFakeConfig(defaultModel string) *fakeConfig {
 		Rev:            1,
 		DefaultModelID: defaultModel,
 		Models: []domain.ProviderModel{
+			{ID: "druz9/turbo", DisplayName: "Turbo", ProviderName: "Druz9"},
 			{ID: "openai/gpt-4o-mini", DisplayName: "GPT Fast", ProviderName: "OpenAI"},
 			{ID: "openai/gpt-4o", DisplayName: "GPT Smart", ProviderName: "OpenAI"},
 		},

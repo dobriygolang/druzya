@@ -1,0 +1,69 @@
+// storage.proto — Connect-RPC contract for the storage quota bounded
+// context.
+//
+// Quota read + archive/restore mutations. The hourly recompute loop and
+// the StorageGate middleware live in cmd/monolith/services/storage and stay
+// out of the proto surface — they're internal infra, not user-facing.
+syntax = "proto3";
+package druz9.v1;
+
+import "google/api/annotations.proto";
+
+option go_package = "druz9/shared/generated/pb/druz9/v1;druz9v1";
+
+message StorageQuota {
+  int64 used_bytes = 1;
+  int64 quota_bytes = 2;
+  string tier = 3;
+}
+
+message GetStorageQuotaRequest {}
+
+message ArchiveOldestNotesRequest {
+  // count: 0 ⇒ server default (10), capped at 100.
+  int32 count = 1;
+}
+
+message ArchiveOldestNotesResponse {
+  int32 archived = 1;
+}
+
+message ArchiveNoteRequest {
+  string id = 1;
+}
+
+message ArchiveNoteResponse {
+  bool ok = 1;
+}
+
+message RestoreNoteRequest {
+  string id = 1;
+}
+
+message RestoreNoteResponse {
+  bool ok = 1;
+}
+
+service StorageService {
+  rpc GetQuota(GetStorageQuotaRequest) returns (StorageQuota) {
+    option (google.api.http) = {get: "/api/v1/storage/quota"};
+  }
+  rpc ArchiveOldestNotes(ArchiveOldestNotesRequest) returns (ArchiveOldestNotesResponse) {
+    option (google.api.http) = {
+      post: "/api/v1/storage/archive/notes/oldest"
+      body: "*"
+    };
+  }
+  rpc ArchiveNote(ArchiveNoteRequest) returns (ArchiveNoteResponse) {
+    option (google.api.http) = {
+      post: "/api/v1/storage/archive/note/{id}"
+      body: "*"
+    };
+  }
+  rpc RestoreNote(RestoreNoteRequest) returns (RestoreNoteResponse) {
+    option (google.api.http) = {
+      post: "/api/v1/storage/archive/note/{id}/restore"
+      body: "*"
+    };
+  }
+}

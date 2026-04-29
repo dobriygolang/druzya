@@ -16,12 +16,12 @@ func TestModelRequiresTier(t *testing.T) {
 	}{
 		{"qwen/qwen3-coder:free", enums.SubscriptionPlanFree},            // не в карте → free
 		{"llama-3.3-70b-versatile", enums.SubscriptionPlanFree},          // не в карте → free
-		{"openai/gpt-4.1-mini", enums.SubscriptionPlanSeeker},            // paid-cheap
-		{"openai/gpt-4.1", enums.SubscriptionPlanAscendant},              // paid-premium
-		{"anthropic/claude-haiku-4.5", enums.SubscriptionPlanSeeker},     // paid-cheap
-		{"anthropic/claude-sonnet-4.5", enums.SubscriptionPlanAscendant}, // paid-premium
-		{"deepseek-chat", enums.SubscriptionPlanSeeker},                  // paid V3
-		{"deepseek-reasoner", enums.SubscriptionPlanSeeker},              // paid R1
+		{"openai/gpt-4.1-mini", enums.SubscriptionPlanPro},           // paid-cheap
+		{"openai/gpt-4.1", enums.SubscriptionPlanMax},                // paid-premium
+		{"anthropic/claude-haiku-4.5", enums.SubscriptionPlanPro},     // paid-cheap
+		{"anthropic/claude-sonnet-4.5", enums.SubscriptionPlanMax},    // paid-premium
+		{"deepseek-chat", enums.SubscriptionPlanPro},                  // paid V3
+		{"deepseek-reasoner", enums.SubscriptionPlanPro},              // paid R1
 	}
 	for _, c := range cases {
 		if got := ModelRequiresTier(c.model); got != c.want {
@@ -37,12 +37,12 @@ func TestTierCovers(t *testing.T) {
 	}{
 		{"", enums.SubscriptionPlanFree, true}, // empty = free, free covers free
 		{enums.SubscriptionPlanFree, enums.SubscriptionPlanFree, true},
-		{enums.SubscriptionPlanFree, enums.SubscriptionPlanSeeker, false},
-		{enums.SubscriptionPlanSeeker, enums.SubscriptionPlanFree, true},
-		{enums.SubscriptionPlanSeeker, enums.SubscriptionPlanSeeker, true},
-		{enums.SubscriptionPlanSeeker, enums.SubscriptionPlanAscendant, false},
-		{enums.SubscriptionPlanAscendant, enums.SubscriptionPlanSeeker, true},
-		{enums.SubscriptionPlanAscendant, enums.SubscriptionPlanAscendant, true},
+		{enums.SubscriptionPlanFree, enums.SubscriptionPlanPro, false},
+		{enums.SubscriptionPlanPro, enums.SubscriptionPlanFree, true},
+		{enums.SubscriptionPlanPro, enums.SubscriptionPlanPro, true},
+		{enums.SubscriptionPlanPro, enums.SubscriptionPlanMax, false},
+		{enums.SubscriptionPlanMax, enums.SubscriptionPlanPro, true},
+		{enums.SubscriptionPlanMax, enums.SubscriptionPlanMax, true},
 	}
 	for _, c := range cases {
 		if got := TierCovers(c.user, c.required); got != c.want {
@@ -68,30 +68,30 @@ func TestCandidates_VirtualModel_TierGate(t *testing.T) {
 		t.Fatalf("want ErrTierRequired for free→pro, got %v", err)
 	}
 
-	// seeker-юзер на druz9/pro → expand (возможно 0 звеньев если драйверы не
+	// pro-юзер на druz9/pro → expand (возможно 0 звеньев если драйверы не
 	// зарегистрированы, но не ErrTierRequired — это уже задача chain.Chat
 	// вернуть AllProvidersUnavailable).
 	_, err = ch.candidates(Request{
-		ModelOverride: VirtualPro, UserTier: enums.SubscriptionPlanSeeker,
+		ModelOverride: VirtualPro, UserTier: enums.SubscriptionPlanPro,
 	})
 	if errors.Is(err, ErrTierRequired) {
-		t.Fatal("seeker must pass druz9/pro tier-gate")
+		t.Fatal("pro must pass druz9/pro tier-gate")
 	}
 
-	// ascendant → druz9/ultra
+	// max → druz9/ultra
 	_, err = ch.candidates(Request{
-		ModelOverride: VirtualUltra, UserTier: enums.SubscriptionPlanAscendant,
+		ModelOverride: VirtualUltra, UserTier: enums.SubscriptionPlanMax,
 	})
 	if errors.Is(err, ErrTierRequired) {
-		t.Fatal("ascendant must pass druz9/ultra tier-gate")
+		t.Fatal("max must pass druz9/ultra tier-gate")
 	}
 
-	// seeker на druz9/ultra → ErrTierRequired
+	// pro на druz9/ultra → ErrTierRequired
 	_, err = ch.candidates(Request{
-		ModelOverride: VirtualUltra, UserTier: enums.SubscriptionPlanSeeker,
+		ModelOverride: VirtualUltra, UserTier: enums.SubscriptionPlanPro,
 	})
 	if !errors.Is(err, ErrTierRequired) {
-		t.Fatalf("seeker→ultra must be rejected, got %v", err)
+		t.Fatalf("pro→ultra must be rejected, got %v", err)
 	}
 }
 
@@ -112,12 +112,12 @@ func TestCandidates_ConcreteModel_TierGate(t *testing.T) {
 		t.Fatalf("want ErrTierRequired, got %v", err)
 	}
 
-	// seeker — проходит
+	// pro — проходит
 	_, err = ch.candidates(Request{
-		ModelOverride: "openai/gpt-4.1-mini", UserTier: enums.SubscriptionPlanSeeker,
+		ModelOverride: "openai/gpt-4.1-mini", UserTier: enums.SubscriptionPlanPro,
 	})
 	if err != nil {
-		t.Fatalf("seeker must pass: %v", err)
+		t.Fatalf("pro must pass: %v", err)
 	}
 
 	// Free-модель всем OK.
@@ -162,4 +162,7 @@ func (s *stubDrv) Chat(_ context.Context, _ string, _ Request) (Response, error)
 }
 func (s *stubDrv) ChatStream(_ context.Context, _ string, _ Request) (<-chan StreamEvent, error) {
 	return nil, nil
+}
+func (s *stubDrv) Capabilities() Capabilities {
+	return Capabilities{JSONMode: true, Tools: true}
 }

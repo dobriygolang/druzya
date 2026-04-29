@@ -126,9 +126,11 @@ func (m *Memory) Recall(ctx context.Context, p RecallParams) ([]domain.Episode, 
 
 	// 1. Semantic top-K.
 	if p.Query != "" && m.Embed != nil {
-		vec, _, err := m.Embed.Embed(ctx, p.Query)
+		vec, modelName, err := m.Embed.Embed(ctx, p.Query)
 		if err == nil && len(vec) > 0 {
-			scored, sErr := m.Episodes.SearchSimilar(ctx, p.UserID, vec, p.Kinds, p.K)
+			// Phase I: pass modelName so the repo filters episodes to the
+			// same embedding space (mixed-model cosine is undefined).
+			scored, sErr := m.Episodes.SearchSimilar(ctx, p.UserID, vec, modelName, p.Kinds, p.K)
 			if sErr != nil && m.Log != nil {
 				m.Log.Warn("intelligence.Memory.Recall: semantic search failed",
 					slog.Any("err", sErr))

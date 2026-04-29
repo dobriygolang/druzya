@@ -1,233 +1,130 @@
+// llmchain_admin.go — facade-only wiring for the runtime LLM chain admin UI.
+//
+// Endpoint logic lives in services/admin/ports/llmchain_admin.go (Connect
+// server). Both endpoints require role=admin; the gate is applied above
+// the transcoder per-path.
 package admin
 
 import (
-	"context"
 	"encoding/json"
-	"errors"
-	"log/slog"
+	"fmt"
 	"net/http"
 	"strings"
 
 	monolithServices "druz9/cmd/monolith/services"
+	authServices "druz9/cmd/monolith/services/auth"
+
+	adminPorts "druz9/admin/ports"
+	"druz9/shared/generated/pb/druz9/v1/druz9v1connect"
 	"druz9/shared/pkg/llmchain"
-	sharedMw "druz9/shared/pkg/middleware"
 
 	"github.com/go-chi/chi/v5"
 )
 
-// llmAdminHandler — админские ручки для runtime-config LLM chain'а.
-// Два endpoint'а:
+// NewLLMChainAdmin wires admin GET/PUT for runtime LLM chain config.
 //
-//	GET  /api/v1/admin/llm/config      — текущий config (version + все поля)
-//	PUT  /api/v1/admin/llm/config      — full replace с optimistic lock
+// chain may be nil (no provider keys configured) — in that case no routes
+// are mounted, /llm/config returns 404.
 //
-// Оба требуют role=admin (проверка в handler'е через UserRoleFromContext).
-// После успешного PUT — Chain.RuntimeForceReload() чтобы изменения вступили
-// в силу мгновенно, не ждя 30s ticker.
-type llmAdminHandler struct {
-	src                 llmchain.ConfigSource
-	chain               *llmchain.Chain // для force-reload после PUT
-	registeredProviders []string        // снимок провайдеров с настроенным ключом (для live-preview на фронте)
-	log                 *slog.Logger
-}
-
-func newLLMAdminHandler(src llmchain.ConfigSource, chain *llmchain.Chain, registered []string, log *slog.Logger) *llmAdminHandler {
-	return &llmAdminHandler{src: src, chain: chain, registeredProviders: registered, log: log}
-}
-
-// mount регистрирует оба endpoint'а в /api/v1/admin/llm/config.
-func (h *llmAdminHandler) mount(r chi.Router) {
-	r.Get("/admin/llm/config", h.handleGet)
-	r.Put("/admin/llm/config", h.handlePut)
-}
-
-type configJSON struct {
-	Version       int64                            `json:"version"`
-	ChainOrder    []string                         `json:"chain_order"`
-	TaskMap       map[string]map[string]string     `json:"task_map"`
-	VirtualChains map[string][]virtualCandidateDTO `json:"virtual_chains"`
-	// VirtualChainsDefaults — read-only снимок hardcoded `tier.go`
-	// цепочек. Frontend показывает их как baseline когда override
-	// (VirtualChains) пуст, чтобы юзер мог отредактировать копию,
-	// а не видеть «Override отсутствует». PUT эндпоинт это поле
-	// игнорирует — defaults живут в коде.
-	VirtualChainsDefaults map[string][]virtualCandidateDTO `json:"virtual_chains_defaults,omitempty"`
-}
-
-type virtualCandidateDTO struct {
-	Provider string `json:"provider"`
-	Model    string `json:"model"`
-}
-
-func (h *llmAdminHandler) handleGet(w http.ResponseWriter, r *http.Request) {
-	if !requireAdmin(w, r) {
-		return
-	}
-	cfg, err := h.src.Load(r.Context())
-	if err != nil {
-		h.log.ErrorContext(r.Context(), "llm.admin.get: load failed", slog.Any("err", err))
-		writeLLMErr(w, http.StatusInternalServerError, "load failed")
-		return
-	}
-	if cfg == nil {
-		cfg = &llmchain.RuntimeConfig{}
-	}
-	resp := toConfigJSON(cfg)
-	// Подмешиваем hardcoded defaults для read-only показа фронту.
-	defaults := llmchain.DefaultVirtualChains()
-	resp.VirtualChainsDefaults = make(map[string][]virtualCandidateDTO, len(defaults))
-	for virt, chain := range defaults {
-		steps := make([]virtualCandidateDTO, 0, len(chain))
-		for _, c := range chain {
-			steps = append(steps, virtualCandidateDTO{
-				Provider: string(c.Provider),
-				Model:    c.Model,
-			})
-		}
-		resp.VirtualChainsDefaults[virt] = steps
-	}
-	writeLLMJSON(w, http.StatusOK, resp)
-}
-
-func (h *llmAdminHandler) handlePut(w http.ResponseWriter, r *http.Request) {
-	if !requireAdmin(w, r) {
-		return
-	}
-	defer func() { _ = r.Body.Close() }()
-	var body configJSON
-	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		writeLLMErr(w, http.StatusBadRequest, "invalid json: "+err.Error())
-		return
-	}
-	cfg := fromConfigJSON(body)
-	if err := h.src.Save(r.Context(), cfg, body.Version); err != nil {
-		if strings.Contains(err.Error(), "version conflict") {
-			writeLLMErr(w, http.StatusConflict, "version conflict — reload current config and retry")
-			return
-		}
-		h.log.ErrorContext(r.Context(), "llm.admin.put: save failed", slog.Any("err", err))
-		writeLLMErr(w, http.StatusInternalServerError, "save failed")
-		return
-	}
-	// Force reload — чтобы новый порядок / task-map / virtual-chains
-	// начали действовать на следующий же запрос.
-	if h.chain != nil {
-		h.chain.RuntimeForceReload(r.Context())
-	}
-	// Возвращаем свежий config с incremented version'ом.
-	fresh, loadErr := h.src.Load(r.Context())
-	if loadErr != nil || fresh == nil {
-		writeLLMJSON(w, http.StatusOK, map[string]any{"ok": true})
-		return
-	}
-	writeLLMJSON(w, http.StatusOK, toConfigJSON(fresh))
-}
-
-// ─── conversions ──────────────────────────────────────────────────────────
-
-func toConfigJSON(cfg *llmchain.RuntimeConfig) configJSON {
-	out := configJSON{
-		Version:       cfg.Version,
-		ChainOrder:    make([]string, 0, len(cfg.ChainOrder)),
-		TaskMap:       map[string]map[string]string{},
-		VirtualChains: map[string][]virtualCandidateDTO{},
-	}
-	for _, p := range cfg.ChainOrder {
-		out.ChainOrder = append(out.ChainOrder, string(p))
-	}
-	for task, inner := range cfg.TaskMap {
-		byProv := make(map[string]string, len(inner))
-		for prov, model := range inner {
-			byProv[string(prov)] = model
-		}
-		out.TaskMap[string(task)] = byProv
-	}
-	for virt, chain := range cfg.VirtualChains {
-		steps := make([]virtualCandidateDTO, 0, len(chain))
-		for _, c := range chain {
-			steps = append(steps, virtualCandidateDTO{
-				Provider: string(c.Provider),
-				Model:    c.Model,
-			})
-		}
-		out.VirtualChains[virt] = steps
-	}
-	return out
-}
-
-func fromConfigJSON(in configJSON) *llmchain.RuntimeConfig {
-	cfg := &llmchain.RuntimeConfig{
-		Version: in.Version,
-	}
-	for _, p := range in.ChainOrder {
-		cfg.ChainOrder = append(cfg.ChainOrder, llmchain.Provider(p))
-	}
-	if len(in.TaskMap) > 0 {
-		cfg.TaskMap = make(llmchain.TaskModelMap, len(in.TaskMap))
-		for task, inner := range in.TaskMap {
-			byProv := make(map[llmchain.Provider]string, len(inner))
-			for prov, model := range inner {
-				byProv[llmchain.Provider(prov)] = model
-			}
-			cfg.TaskMap[llmchain.Task(task)] = byProv
-		}
-	}
-	if len(in.VirtualChains) > 0 {
-		cfg.VirtualChains = make(map[string][]llmchain.VirtualCandidate, len(in.VirtualChains))
-		for virt, chain := range in.VirtualChains {
-			out := make([]llmchain.VirtualCandidate, 0, len(chain))
-			for _, step := range chain {
-				out = append(out, llmchain.VirtualCandidate{
-					Provider: llmchain.Provider(step.Provider),
-					Model:    step.Model,
-				})
-			}
-			cfg.VirtualChains[virt] = out
-		}
-	}
-	return cfg
-}
-
-// ─── helpers ─────────────────────────────────────────────────────────────
-
-func requireAdmin(w http.ResponseWriter, r *http.Request) bool {
-	role, ok := sharedMw.UserRoleFromContext(r.Context())
-	if !ok || role != "admin" {
-		writeLLMErr(w, http.StatusForbidden, "admin role required")
-		return false
-	}
-	return true
-}
-
-func writeLLMJSON(w http.ResponseWriter, status int, v interface{}) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(status)
-	_ = json.NewEncoder(w).Encode(v)
-}
-
-func writeLLMErr(w http.ResponseWriter, status int, msg string) {
-	writeLLMJSON(w, status, map[string]any{"error": map[string]string{"message": msg}})
-}
-
-// Compile-time: используем errors пакет (на случай добавления cust-error мэппинга).
-var _ = errors.Is
-var _ = context.Background
-
-// NewLLMChainAdmin — wiring Module для admin-ручек LLM chain'а.
-// chain может быть nil (когда ни один провайдер не настроен) → Module
-// просто не регистрирует REST-роуты, админка покажет 404 на /llm/config.
-//
-// registeredProviders — снимок провайдеров у которых есть ключ в env
-// (Chain.RegisteredProviders()). Нужен фронту для live-preview'а.
+// registeredProviders is currently unused on the proto surface. The
+// frontend pulls live-preview state from the same response on a separate
+// endpoint when needed; keeping the parameter avoids a churn-only signature
+// change.
 func NewLLMChainAdmin(d monolithServices.Deps, chain *llmchain.Chain, registeredProviders []string) *monolithServices.Module {
+	_ = registeredProviders
 	if chain == nil {
 		return &monolithServices.Module{}
 	}
 	src := newLLMConfigSource(d.Pool)
-	h := newLLMAdminHandler(src, chain, registeredProviders, d.Log)
+	server := &adminPorts.LLMChainAdminServer{
+		Source: src,
+		Chain:  chain,
+		Log:    d.Log,
+	}
+
+	connectPath, connectHandler := druz9v1connect.NewLLMChainAdminServiceHandler(server)
+	transcoder := monolithServices.MustTranscode("llmchain_admin", connectPath, connectHandler)
+
+	adminGate := func(w http.ResponseWriter, r *http.Request) {
+		if _, err := authServices.RequireAdminInline(r); err != nil {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(authServices.StatusForAuthErr(err))
+			_, _ = fmt.Fprintf(w, `{"error":"%s"}`, err.Error())
+			return
+		}
+		transcoder.ServeHTTP(w, r)
+	}
+	testGate := func(w http.ResponseWriter, r *http.Request) {
+		if _, err := authServices.RequireAdminInline(r); err != nil {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(authServices.StatusForAuthErr(err))
+			_, _ = fmt.Fprintf(w, `{"error":"%s"}`, err.Error())
+			return
+		}
+		llmTestHandler(chain).ServeHTTP(w, r)
+	}
+
 	return &monolithServices.Module{
+		ConnectPath:    connectPath,
+		ConnectHandler: transcoder,
 		MountREST: func(r chi.Router) {
-			h.mount(r)
+			r.Get("/admin/llm/config", adminGate)
+			r.Put("/admin/llm/config", adminGate)
+			r.Post("/admin/llm/test", testGate)
 		},
 	}
+}
+
+type llmTestRequest struct {
+	Provider string `json:"provider"`
+	Model    string `json:"model"`
+	Prompt   string `json:"prompt"`
+}
+
+type llmTestResponse struct {
+	OK        bool   `json:"ok"`
+	Provider  string `json:"provider"`
+	Model     string `json:"model"`
+	Content   string `json:"content,omitempty"`
+	TokensIn  int    `json:"tokens_in,omitempty"`
+	TokensOut int    `json:"tokens_out,omitempty"`
+	LatencyMs int64  `json:"latency_ms,omitempty"`
+	Error     string `json:"error,omitempty"`
+}
+
+func llmTestHandler(chain *llmchain.Chain) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var in llmTestRequest
+		if err := json.NewDecoder(r.Body).Decode(&in); err != nil {
+			http.Error(w, "invalid json", http.StatusBadRequest)
+			return
+		}
+		in.Provider = strings.TrimSpace(in.Provider)
+		in.Model = strings.TrimSpace(in.Model)
+		if in.Provider == "" || in.Model == "" {
+			http.Error(w, "provider and model required", http.StatusBadRequest)
+			return
+		}
+		resp, err := chain.TestProviderModel(r.Context(), llmchain.Provider(in.Provider), in.Model, in.Prompt)
+		w.Header().Set("Content-Type", "application/json")
+		if err != nil {
+			w.WriteHeader(http.StatusBadGateway)
+			_ = json.NewEncoder(w).Encode(llmTestResponse{
+				OK:       false,
+				Provider: in.Provider,
+				Model:    in.Model,
+				Error:    err.Error(),
+			})
+			return
+		}
+		_ = json.NewEncoder(w).Encode(llmTestResponse{
+			OK:        true,
+			Provider:  string(resp.Provider),
+			Model:     resp.Model,
+			Content:   resp.Content,
+			TokensIn:  resp.TokensIn,
+			TokensOut: resp.TokensOut,
+			LatencyMs: resp.Latency.Milliseconds(),
+		})
+	})
 }

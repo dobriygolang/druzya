@@ -308,21 +308,21 @@ export enum SubscriptionPlan {
   FREE = 1,
 
   /**
-   * @generated from enum value: SUBSCRIPTION_PLAN_SEEKER = 2;
+   * @generated from enum value: SUBSCRIPTION_PLAN_PRO = 2;
    */
-  SEEKER = 2,
+  PRO = 2,
 
   /**
-   * @generated from enum value: SUBSCRIPTION_PLAN_ASCENDANT = 3;
+   * @generated from enum value: SUBSCRIPTION_PLAN_MAX = 3;
    */
-  ASCENDANT = 3,
+  MAX = 3,
 }
 // Retrieve enum metadata with: proto3.getEnumType(SubscriptionPlan)
 proto3.util.setEnumType(SubscriptionPlan, "druz9.v1.SubscriptionPlan", [
   { no: 0, name: "SUBSCRIPTION_PLAN_UNSPECIFIED" },
   { no: 1, name: "SUBSCRIPTION_PLAN_FREE" },
-  { no: 2, name: "SUBSCRIPTION_PLAN_SEEKER" },
-  { no: 3, name: "SUBSCRIPTION_PLAN_ASCENDANT" },
+  { no: 2, name: "SUBSCRIPTION_PLAN_PRO" },
+  { no: 3, name: "SUBSCRIPTION_PLAN_MAX" },
 ]);
 
 /**

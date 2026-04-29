@@ -418,8 +418,8 @@ func TestServer_GetReport_Processing(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetReport: %v", err)
 	}
-	if resp.Msg.GetStatus() != "processing" {
-		t.Fatalf("status = %q, want processing", resp.Msg.GetStatus())
+	if resp.Msg.GetStatus() != pb.MockReportStatus_MOCK_REPORT_STATUS_PROCESSING {
+		t.Fatalf("status = %v, want PROCESSING", resp.Msg.GetStatus())
 	}
 }
 
@@ -441,8 +441,8 @@ func TestServer_GetReport_Ready(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetReport: %v", err)
 	}
-	if resp.Msg.GetStatus() != "ready" {
-		t.Fatalf("status = %q, want ready", resp.Msg.GetStatus())
+	if resp.Msg.GetStatus() != pb.MockReportStatus_MOCK_REPORT_STATUS_READY {
+		t.Fatalf("status = %v, want READY", resp.Msg.GetStatus())
 	}
 	if resp.Msg.GetOverallScore() != 84 {
 		t.Fatalf("overall_score = %d", resp.Msg.GetOverallScore())
