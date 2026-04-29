@@ -356,6 +356,8 @@ func interviewerAppStatusFromProto(s pb.InterviewerApplicationStatus) string {
 		return "approved"
 	case pb.InterviewerApplicationStatus_INTERVIEWER_APPLICATION_STATUS_REJECTED:
 		return "rejected"
+	case pb.InterviewerApplicationStatus_INTERVIEWER_APPLICATION_STATUS_UNSPECIFIED:
+		return ""
 	default:
 		return ""
 	}

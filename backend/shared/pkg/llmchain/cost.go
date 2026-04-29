@@ -37,17 +37,17 @@ type modelCost struct {
 // Данные взяты из публичных pricing pages соответствующих сайтов.
 var costTable = map[string]modelCost{
 	// OpenAI / OpenRouter
-	"openai/gpt-4o":          {2.50, 10.00},
-	"openai/gpt-4o-mini":     {0.15, 0.60},
-	"openai/gpt-4-turbo":     {10.00, 30.00},
-	"openai/o1-mini":         {1.10, 4.40},
-	"openai/o1":              {15.00, 60.00},
-	"openai/o3-mini":         {1.10, 4.40},
+	"openai/gpt-4o":      {2.50, 10.00},
+	"openai/gpt-4o-mini": {0.15, 0.60},
+	"openai/gpt-4-turbo": {10.00, 30.00},
+	"openai/o1-mini":     {1.10, 4.40},
+	"openai/o1":          {15.00, 60.00},
+	"openai/o3-mini":     {1.10, 4.40},
 	// Anthropic
-	"anthropic/claude-3-5-sonnet":  {3.00, 15.00},
-	"anthropic/claude-3-5-haiku":   {0.80, 4.00},
-	"anthropic/claude-3-opus":      {15.00, 75.00},
-	"anthropic/claude-3-haiku":     {0.25, 1.25},
+	"anthropic/claude-3-5-sonnet": {3.00, 15.00},
+	"anthropic/claude-3-5-haiku":  {0.80, 4.00},
+	"anthropic/claude-3-opus":     {15.00, 75.00},
+	"anthropic/claude-3-haiku":    {0.25, 1.25},
 	// Groq (super-cheap inference)
 	"groq/llama-3.3-70b-versatile": {0.59, 0.79},
 	"groq/llama-3.1-70b-versatile": {0.59, 0.79},
@@ -61,9 +61,9 @@ var costTable = map[string]modelCost{
 	"mistralai/mistral-medium": {0.40, 2.00},
 	"mistralai/mistral-small":  {0.20, 0.60},
 	// Google Gemini (через generativelanguage API)
-	"google/gemini-2.0-flash":      {0.10, 0.40},
-	"google/gemini-1.5-pro":        {1.25, 5.00},
-	"google/gemini-1.5-flash":      {0.075, 0.30},
+	"google/gemini-2.0-flash": {0.10, 0.40},
+	"google/gemini-1.5-pro":   {1.25, 5.00},
+	"google/gemini-1.5-flash": {0.075, 0.30},
 	// DeepSeek
 	"deepseek/deepseek-chat":     {0.27, 1.10},
 	"deepseek/deepseek-reasoner": {0.55, 2.19},

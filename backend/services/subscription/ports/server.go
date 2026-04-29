@@ -100,11 +100,16 @@ func (s *SubscriptionServer) AdminSetTier(
 		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("invalid user_id: %w", err))
 	}
 	tier := enums.SubscriptionPlan(m.GetTier())
+	// Backward-compat alias normalization (legacy seeker/ascendant names).
+	// Default branch — current tier value passes through; IsValid() ниже
+	// отбрасывает всё что не free|pro|max.
 	switch tier {
 	case "seeker":
 		tier = enums.SubscriptionPlanPro
 	case "ascendant", "ascended":
 		tier = enums.SubscriptionPlanMax
+	case enums.SubscriptionPlanFree, enums.SubscriptionPlanPro, enums.SubscriptionPlanMax:
+		// already canonical
 	}
 	if !tier.IsValid() {
 		return nil, connect.NewError(connect.CodeInvalidArgument,

@@ -238,6 +238,8 @@ func adminReportStatusFromProto(s pb.AdminReportStatus) string {
 		return "resolved"
 	case pb.AdminReportStatus_ADMIN_REPORT_STATUS_DISMISSED:
 		return "dismissed"
+	case pb.AdminReportStatus_ADMIN_REPORT_STATUS_UNSPECIFIED:
+		return ""
 	default:
 		return ""
 	}

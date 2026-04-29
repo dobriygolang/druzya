@@ -99,12 +99,22 @@ type InsertDocChunkParams struct {
 	TokenCount int32
 }
 
+type InsertDocChunkRow struct {
+	ID         pgtype.UUID
+	DocID      pgtype.UUID
+	Ord        int32
+	Content    string
+	Embedding  []float32
+	TokenCount int32
+	CreatedAt  pgtype.Timestamptz
+}
+
 // =============================================================================
 // doc_chunks
 // =============================================================================
 // Single-chunk insert. Для массовой вставки (N чанков за раз) используем
 // CopyFrom в infra/postgres.go — sqlc не умеет в его bulk API.
-func (q *Queries) InsertDocChunk(ctx context.Context, arg InsertDocChunkParams) (DocChunk, error) {
+func (q *Queries) InsertDocChunk(ctx context.Context, arg InsertDocChunkParams) (InsertDocChunkRow, error) {
 	row := q.db.QueryRow(ctx, insertDocChunk,
 		arg.DocID,
 		arg.Ord,
@@ -112,7 +122,7 @@ func (q *Queries) InsertDocChunk(ctx context.Context, arg InsertDocChunkParams) 
 		arg.Embedding,
 		arg.TokenCount,
 	)
-	var i DocChunk
+	var i InsertDocChunkRow
 	err := row.Scan(
 		&i.ID,
 		&i.DocID,
@@ -190,18 +200,28 @@ SELECT id, doc_id, ord, content, embedding, token_count, created_at
  ORDER BY doc_id, ord
 `
 
+type ListChunksByDocRow struct {
+	ID         pgtype.UUID
+	DocID      pgtype.UUID
+	Ord        int32
+	Content    string
+	Embedding  []float32
+	TokenCount int32
+	CreatedAt  pgtype.Timestamptz
+}
+
 // Для RAG-поиска поднимаем все чанки документов session.documents и
 // считаем cosine на стороне Go. На объёме ≤ 5k чанков это быстрее чем
 // даже ivfflat без прогретого кеша; см. комментарий в миграции 00011.
-func (q *Queries) ListChunksByDoc(ctx context.Context, dollar_1 []pgtype.UUID) ([]DocChunk, error) {
+func (q *Queries) ListChunksByDoc(ctx context.Context, dollar_1 []pgtype.UUID) ([]ListChunksByDocRow, error) {
 	rows, err := q.db.Query(ctx, listChunksByDoc, dollar_1)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	items := []DocChunk{}
+	items := []ListChunksByDocRow{}
 	for rows.Next() {
-		var i DocChunk
+		var i ListChunksByDocRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.DocID,

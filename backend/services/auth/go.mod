@@ -28,6 +28,7 @@ require (
 	github.com/jackc/pgservicefile v0.0.0-20240606120523-5a60cdf6a761 // indirect
 	github.com/jackc/puddle/v2 v2.2.2 // indirect
 	github.com/leodido/go-urn v1.4.0 // indirect
+	github.com/pgvector/pgvector-go v0.3.0 // indirect
 	golang.org/x/crypto v0.50.0 // indirect
 	golang.org/x/mod v0.34.0 // indirect
 	golang.org/x/net v0.53.0 // indirect

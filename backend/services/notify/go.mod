@@ -13,6 +13,7 @@ require (
 )
 
 require (
+	github.com/pgvector/pgvector-go v0.3.0 // indirect
 	golang.org/x/mod v0.34.0 // indirect
 	golang.org/x/tools v0.43.0 // indirect
 )

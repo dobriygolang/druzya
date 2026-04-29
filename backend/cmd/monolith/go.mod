@@ -39,6 +39,8 @@ require (
 
 require github.com/gomarkdown/markdown v0.0.0-20260417124207-7d523f7318df
 
+require github.com/pgvector/pgvector-go v0.3.0 // indirect
+
 require (
 	druz9/circles v0.0.0
 	druz9/events v0.0.0

@@ -27,7 +27,7 @@ type Querier interface {
 	// =============================================================================
 	// Single-chunk insert. Для массовой вставки (N чанков за раз) используем
 	// CopyFrom в infra/postgres.go — sqlc не умеет в его bulk API.
-	InsertDocChunk(ctx context.Context, arg InsertDocChunkParams) (DocChunk, error)
+	InsertDocChunk(ctx context.Context, arg InsertDocChunkParams) (InsertDocChunkRow, error)
 	// Queries consumed by sqlc. Mirrors hand-rolled pgx in infra/postgres.go
 	// where raw SQL needs special shapes (batch insert of chunks, similarity
 	// search) that sqlc can't generate idiomatically.
@@ -41,7 +41,7 @@ type Querier interface {
 	// Для RAG-поиска поднимаем все чанки документов session.documents и
 	// считаем cosine на стороне Go. На объёме ≤ 5k чанков это быстрее чем
 	// даже ivfflat без прогретого кеша; см. комментарий в миграции 00011.
-	ListChunksByDoc(ctx context.Context, dollar_1 []pgtype.UUID) ([]DocChunk, error)
+	ListChunksByDoc(ctx context.Context, dollar_1 []pgtype.UUID) ([]ListChunksByDocRow, error)
 	// Keyset pagination by created_at DESC, id DESC. is_first_page=true
 	// возвращает свежайшую страницу без синтетического cursor'а. Limit
 	// укладывает отдачу; API cap должен быть ≤ 100.

@@ -226,13 +226,17 @@ func (c *Chain) TestProviderModel(ctx context.Context, provider Provider, model,
 	}
 	attemptCtx, cancel := c.attemptContext(ctx, provider, 0)
 	defer cancel()
-	return d.Chat(attemptCtx, model, Request{
+	resp, err := d.Chat(attemptCtx, model, Request{
 		Temperature: 0,
 		MaxTokens:   64,
 		Messages: []Message{
 			{Role: RoleUser, Content: prompt},
 		},
 	})
+	if err != nil {
+		return resp, fmt.Errorf("llmchain.HealthProbe: %w", err)
+	}
+	return resp, nil
 }
 
 func (c *Chain) runHealthProbes(ctx context.Context) {

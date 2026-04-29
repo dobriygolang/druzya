@@ -226,8 +226,8 @@ func (s *ArenaServer) ConfirmReady(
 	if err != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, fmt.Errorf("invalid match_id: %w", err))
 	}
-	if err := s.Confirm.Do(ctx, matchID, uid); err != nil {
-		return nil, s.toConnectErr(err)
+	if cerr := s.Confirm.Do(ctx, matchID, uid); cerr != nil {
+		return nil, s.toConnectErr(cerr)
 	}
 	view, err := s.Get.Do(ctx, matchID)
 	if err != nil {

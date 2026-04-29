@@ -9,6 +9,7 @@ import (
 	"fmt"
 
 	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/pgvector/pgvector-go"
 )
 
 type MockPipelineVerdict string
@@ -157,6 +158,7 @@ type CoachEpisode struct {
 	Summary          string
 	Payload          []byte
 	Embedding        []float32
+	EmbeddingVec     pgvector.Vector
 	EmbeddingModelID pgtype.Int4
 	EmbeddedAt       pgtype.Timestamptz
 	OccurredAt       pgtype.Timestamptz
@@ -313,13 +315,14 @@ type Device struct {
 }
 
 type DocChunk struct {
-	ID         pgtype.UUID
-	DocID      pgtype.UUID
-	Ord        int32
-	Content    string
-	Embedding  []float32
-	TokenCount int32
-	CreatedAt  pgtype.Timestamptz
+	ID           pgtype.UUID
+	DocID        pgtype.UUID
+	Ord          int32
+	Content      string
+	Embedding    []float32
+	EmbeddingVec pgvector.Vector
+	TokenCount   int32
+	CreatedAt    pgtype.Timestamptz
 }
 
 type Document struct {
@@ -477,6 +480,7 @@ type HoneNote struct {
 	PublicSlug       pgtype.Text
 	PublishedAt      pgtype.Timestamptz
 	Embedding        []float32
+	EmbeddingVec     pgvector.Vector
 	EmbeddingModelID pgtype.Int4
 	EmbeddedAt       pgtype.Timestamptz
 	FilePath         pgtype.Text

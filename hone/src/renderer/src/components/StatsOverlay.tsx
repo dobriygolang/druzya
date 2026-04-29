@@ -54,8 +54,9 @@ function padToSevenDays(input: FocusDay[]): FocusDay[] {
   return out;
 }
 
-export function StatsOverlay(_: { onClose: () => void }) {
+export function StatsOverlay({ onClose: _onClose, closing = false }: { onClose: () => void; closing?: boolean }) {
   const [state, setState] = useState<FetchState>(INITIAL);
+  void _onClose;
 
   useEffect(() => {
     let cancelled = false;
@@ -112,7 +113,7 @@ export function StatsOverlay(_: { onClose: () => void }) {
         }}
       >
         {/* 1. Focus Activity */}
-        <div className="slide-from-right" style={{ animationDelay: '0ms' }}>
+        <div className={closing ? 'slide-to-right' : 'slide-from-right'} style={{ animationDelay: closing ? '120ms' : '0ms' }}>
           <BigCard>
             <CardHead title="Focus Activity" right={<HeatmapLegend />} />
             <ReferenceHeatmap days={data?.heatmap ?? []} />
@@ -120,7 +121,7 @@ export function StatsOverlay(_: { onClose: () => void }) {
         </div>
 
         {/* 2. Current Streak */}
-        <div className="slide-from-right" style={{ animationDelay: '80ms' }}>
+        <div className={closing ? 'slide-to-right' : 'slide-from-right'} style={{ animationDelay: closing ? '80ms' : '80ms' }}>
           <BigCard>
             <CardHead title="Current Streak" />
             <div
@@ -158,7 +159,7 @@ export function StatsOverlay(_: { onClose: () => void }) {
         </div>
 
         {/* 3. Focused Time */}
-        <div className="slide-from-right" style={{ animationDelay: '160ms' }}>
+        <div className={closing ? 'slide-to-right' : 'slide-from-right'} style={{ animationDelay: closing ? '40ms' : '160ms' }}>
           <BigCard>
             <CardHead title="Focused Time" right={<MetaLabel>LAST 7 DAYS</MetaLabel>} />
             <ReferenceBars days={lastSeven} />
@@ -166,7 +167,7 @@ export function StatsOverlay(_: { onClose: () => void }) {
         </div>
 
         {/* 4. Insights */}
-        <div className="slide-from-right" style={{ animationDelay: '240ms' }}>
+        <div className={closing ? 'slide-to-right' : 'slide-from-right'} style={{ animationDelay: closing ? '0ms' : '240ms' }}>
           <BigCard>
             <CardHead title="Insights" />
             <InsightsGrid data={data} />
@@ -175,9 +176,9 @@ export function StatsOverlay(_: { onClose: () => void }) {
 
         {state.status === 'error' && state.errorCode === Code.Unauthenticated && (
           <div
-            className="mono slide-from-right"
+            className={`mono ${closing ? 'slide-to-right' : 'slide-from-right'}`}
             style={{
-              animationDelay: '320ms',
+              animationDelay: closing ? '0ms' : '320ms',
               padding: '10px 14px',
               background: 'rgba(255,255,255,0.03)',
               border: '1px solid rgba(255,255,255,0.06)',

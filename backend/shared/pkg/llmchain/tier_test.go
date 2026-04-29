@@ -14,14 +14,14 @@ func TestModelRequiresTier(t *testing.T) {
 		model string
 		want  enums.SubscriptionPlan
 	}{
-		{"qwen/qwen3-coder:free", enums.SubscriptionPlanFree},            // не в карте → free
-		{"llama-3.3-70b-versatile", enums.SubscriptionPlanFree},          // не в карте → free
-		{"openai/gpt-4.1-mini", enums.SubscriptionPlanPro},           // paid-cheap
-		{"openai/gpt-4.1", enums.SubscriptionPlanMax},                // paid-premium
-		{"anthropic/claude-haiku-4.5", enums.SubscriptionPlanPro},     // paid-cheap
-		{"anthropic/claude-sonnet-4.5", enums.SubscriptionPlanMax},    // paid-premium
-		{"deepseek-chat", enums.SubscriptionPlanPro},                  // paid V3
-		{"deepseek-reasoner", enums.SubscriptionPlanPro},              // paid R1
+		{"qwen/qwen3-coder:free", enums.SubscriptionPlanFree},      // не в карте → free
+		{"llama-3.3-70b-versatile", enums.SubscriptionPlanFree},    // не в карте → free
+		{"openai/gpt-4.1-mini", enums.SubscriptionPlanPro},         // paid-cheap
+		{"openai/gpt-4.1", enums.SubscriptionPlanMax},              // paid-premium
+		{"anthropic/claude-haiku-4.5", enums.SubscriptionPlanPro},  // paid-cheap
+		{"anthropic/claude-sonnet-4.5", enums.SubscriptionPlanMax}, // paid-premium
+		{"deepseek-chat", enums.SubscriptionPlanPro},               // paid V3
+		{"deepseek-reasoner", enums.SubscriptionPlanPro},           // paid R1
 	}
 	for _, c := range cases {
 		if got := ModelRequiresTier(c.model); got != c.want {

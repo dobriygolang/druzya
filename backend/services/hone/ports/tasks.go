@@ -200,6 +200,8 @@ func taskStatusFromProto(s pb.TaskStatus) domain.TaskStatus {
 		return domain.TaskStatusDone
 	case pb.TaskStatus_TASK_STATUS_DISMISSED:
 		return domain.TaskStatusDismissed
+	case pb.TaskStatus_TASK_STATUS_UNSPECIFIED:
+		return ""
 	default:
 		return ""
 	}
@@ -238,6 +240,8 @@ func taskKindFromProto(k pb.TaskKind) domain.TaskKind {
 		return domain.TaskKindReading
 	case pb.TaskKind_TASK_KIND_CUSTOM:
 		return domain.TaskKindCustom
+	case pb.TaskKind_TASK_KIND_UNSPECIFIED:
+		return ""
 	default:
 		return ""
 	}

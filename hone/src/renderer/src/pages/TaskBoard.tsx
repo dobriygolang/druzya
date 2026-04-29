@@ -44,20 +44,47 @@ const COLUMNS: ReadonlyArray<ColumnDef> = [
 interface KindDef {
   label: string;
   color: string;
-  glyph: string; // emoji (без зависимости от иконочного шрифта)
+  // SVG path (24x24, stroke-based, lucide-style). Single path keeps card-icon
+  // rendering cheap and consistent с минимализмом hone.
+  path: string;
 }
 
 const KINDS: Record<TaskKind, KindDef> = {
-  algo: { label: 'Algorithm', color: '#a78bfa', glyph: '🧮' },
-  sysdesign: { label: 'System Design', color: '#22d3ee', glyph: '🏛' },
-  quiz: { label: 'Quiz', color: '#4ade80', glyph: '❓' },
-  reflection: { label: 'Reflection', color: '#fbbf24', glyph: '🧠' },
-  reading: { label: 'Reading', color: '#8896ab', glyph: '📖' },
-  custom: { label: 'Custom', color: '#a1a1aa', glyph: '✏️' },
+  // Code </> — algorithm
+  algo:      { label: 'Algorithm',     color: '#a78bfa', path: 'M16 18l6-6-6-6 M8 6l-6 6 6 6 M14.5 4l-5 16' },
+  // Network/sitemap — system design
+  sysdesign: { label: 'System Design', color: '#22d3ee', path: 'M9 19v-3 M15 19v-3 M9 8V5 M15 8V5 M5 11h14 M5 11v3a2 2 0 002 2h10a2 2 0 002-2v-3 M7 5h10' },
+  // Question circle — quiz
+  quiz:      { label: 'Quiz',          color: '#4ade80', path: 'M12 22a10 10 0 100-20 10 10 0 000 20z M9.09 9a3 3 0 015.83 1c0 2-3 3-3 3 M12 17h.01' },
+  // Brain — reflection
+  reflection:{ label: 'Reflection',    color: '#fbbf24', path: 'M9.5 2A2.5 2.5 0 0112 4.5 2.5 2.5 0 0114.5 2 2.5 2.5 0 0117 4.5c0 .55-.18 1.06-.49 1.47A2.5 2.5 0 0118 8.5a2.5 2.5 0 01-1.5 2.29A2.5 2.5 0 0118 13.5a2.5 2.5 0 01-2.5 2.5h-.05A2.5 2.5 0 0113 18.5 2.5 2.5 0 0110.5 16H10A2.5 2.5 0 017.5 13.5 2.5 2.5 0 016 11 2.5 2.5 0 017.5 8.5 2.5 2.5 0 016 6 2.5 2.5 0 019.5 2z' },
+  // Book open — reading
+  reading:   { label: 'Reading',       color: '#8896ab', path: 'M2 4h7a3 3 0 013 3v14a2 2 0 00-2-2H2V4z M22 4h-7a3 3 0 00-3 3v14a2 2 0 012-2h8V4z' },
+  // Pencil — custom
+  custom:    { label: 'Custom',        color: '#a1a1aa', path: 'M17 3a2.85 2.85 0 114 4L7.5 20.5 2 22l1.5-5.5L17 3z' },
 };
 
+// KindIcon — единая SVG-обёртка для всех мест где раньше был эмодзи.
+function KindIcon({ kind, size = 14, color }: { kind: TaskKind; size?: number; color?: string }): JSX.Element {
+  const def = KINDS[kind];
+  return (
+    <svg
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke={color ?? def.color}
+      strokeWidth={1.8}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      style={{ flexShrink: 0 }}
+    >
+      <path d={def.path} />
+    </svg>
+  );
+}
+
 type TabKey = 'my' | 'week';
-type FilterMode = 'all' | 'ai' | 'my';
 
 // ── Helpers ────────────────────────────────────────────────────────────
 
@@ -79,13 +106,10 @@ export function TaskBoardPage(): JSX.Element {
   const [tasks, setTasks] = useState<TaskCard[]>([]);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<TabKey>('my');
-  const [filter, setFilter] = useState<FilterMode>('all');
-  const [showDismissed, setShowDismissed] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
   const [openTaskId, setOpenTaskId] = useState<string | null>(null);
   const [ctx, setCtx] = useState<{ x: number; y: number; taskId: string } | null>(null);
   const [toasts, setToasts] = useState<{ id: number; msg: string }[]>([]);
-  const [now, setNow] = useState(new Date());
   const toastRef = useRef(0);
   const cursorEventsRef = useRef<CursorEvent[]>([]);
   const [cursorEvents, setCursorEvents] = useState<CursorEvent[]>([]);
@@ -108,12 +132,6 @@ export function TaskBoardPage(): JSX.Element {
   }, []);
 
   useEffect(() => { void refresh(); }, [refresh]);
-
-  // Clock
-  useEffect(() => {
-    const id = setInterval(() => setNow(new Date()), 1000);
-    return () => clearInterval(id);
-  }, []);
 
   // ESC для закрытия оверлеев
   useEffect(() => {
@@ -148,20 +166,15 @@ export function TaskBoardPage(): JSX.Element {
 
   // Filter pipeline
   const visibleTasks = useMemo(() => {
-    let arr = tasks;
-    if (tab === 'week') {
-      const cutoff = Date.now() - 7 * 24 * 60 * 60 * 1000;
-      arr = arr.filter((t) => {
-        const ts = Date.parse(t.updatedAt || t.createdAt);
-        return Number.isFinite(ts) && ts >= cutoff;
-      });
-    }
-    if (filter === 'ai') arr = arr.filter((t) => t.source === 'ai');
-    if (filter === 'my') arr = arr.filter((t) => t.source === 'user');
-    return arr;
-  }, [tasks, tab, filter]);
+    if (tab !== 'week') return tasks;
+    const cutoff = Date.now() - 7 * 24 * 60 * 60 * 1000;
+    return tasks.filter((t) => {
+      const ts = Date.parse(t.updatedAt || t.createdAt);
+      return Number.isFinite(ts) && ts >= cutoff;
+    });
+  }, [tasks, tab]);
 
-  const colsToShow = showDismissed ? COLUMNS : COLUMNS.filter((c) => c.status !== 'dismissed');
+  const colsToShow = COLUMNS.filter((c) => c.status !== 'dismissed');
 
   const grouped = useMemo(() => {
     const m: Record<TaskStatus, TaskCard[]> = {
@@ -170,11 +183,6 @@ export function TaskBoardPage(): JSX.Element {
     for (const t of visibleTasks) m[t.status]?.push(t);
     return m;
   }, [visibleTasks]);
-
-  const active = visibleTasks.filter((t) => t.status !== 'dismissed').length;
-  const totalForProgress = visibleTasks.filter((t) => t.status !== 'dismissed').length;
-  const doneCount = visibleTasks.filter((t) => t.status === 'done').length;
-  const pct = totalForProgress ? Math.round((doneCount / totalForProgress) * 100) : 0;
 
   async function handleMove(taskId: string, status: TaskStatus): Promise<void> {
     setTasks((prev) => prev.map((t) => (t.id === taskId ? { ...t, status } : t)));
@@ -252,29 +260,6 @@ export function TaskBoardPage(): JSX.Element {
           ))}
         </div>
 
-        {false && (
-        <label
-          style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 11, color: 'var(--ink-40)', cursor: 'pointer', userSelect: 'none' }}
-          onClick={() => setShowDismissed((v) => !v)}
-        >
-          <span>Show dismissed</span>
-          <span
-            style={{
-              width: 30, height: 16, borderRadius: 8, position: 'relative',
-              background: showDismissed ? 'var(--ink-60)' : 'var(--surface-2)',
-              transition: 'background 0.2s',
-            }}
-          >
-            <span
-              style={{
-                content: '""', position: 'absolute', width: 12, height: 12, borderRadius: '50%',
-                top: 2, left: showDismissed ? 16 : 2,
-                background: showDismissed ? 'var(--ink)' : 'var(--ink-40)',
-                transition: 'all 0.2s',
-              }}
-            />
-          </span>
-        </label>
       </header>
 
       {/* States */}
@@ -328,17 +313,6 @@ export function TaskBoardPage(): JSX.Element {
           ))}
         </div>
       )}
-
-      {/* Footer */}
-      <div style={ftrStyle}>
-        <span style={{ minWidth: 56, fontSize: 12, color: 'var(--ink-40)', fontVariantNumeric: 'tabular-nums' }}>
-          {String(now.getHours()).padStart(2, '0')}:{String(now.getMinutes()).padStart(2, '0')}
-        </span>
-        <div style={{ flex: 1, height: 2, background: 'var(--surface-2)', borderRadius: 1, overflow: 'hidden' }}>
-          <div style={{ height: '100%', background: 'var(--ink-60)', borderRadius: 1, width: `${pct}%`, transition: 'width 0.6s ease' }} />
-        </div>
-        <span style={{ fontSize: 11, color: 'var(--ink-40)', fontVariantNumeric: 'tabular-nums' }}>{pct}%</span>
-      </div>
 
       {/* FAB */}
       <button
@@ -427,10 +401,6 @@ const emptyIconStyle: CSSProperties = {
   display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22,
 };
 
-const ftrStyle: CSSProperties = {
-  marginTop: 20, paddingTop: 14, borderTop: '1px solid var(--ink-20)',
-  display: 'flex', alignItems: 'center', gap: 16,
-};
 
 // ── Column ─────────────────────────────────────────────────────────────
 
@@ -539,7 +509,9 @@ function TaskCardView({ task, onClick, onCtxMenu }: TaskCardViewProps): JSX.Elem
           <span style={{ flex: 1, fontSize: 13, fontWeight: 600, lineHeight: 1.4, color: 'var(--ink)' }}>
             {task.title}
           </span>
-          <span style={{ fontSize: 11, marginTop: 1, opacity: 0.7 }}>{k.glyph}</span>
+          <span style={{ marginTop: 1, opacity: 0.8, display: 'inline-flex' }}>
+            <KindIcon kind={task.kind} size={12} />
+          </span>
         </div>
         {task.briefMd && (
           <p style={{ margin: 0, fontSize: 11, lineHeight: 1.5, color: 'var(--ink-40)', display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden', marginBottom: 8 }}>
@@ -834,9 +806,19 @@ function CreateTaskModal({ onClose, onSubmit }: CreateModalProps): JSX.Element {
   const [skillKey, setSkillKey] = useState('');
   const [showMore, setShowMore] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [closing, setClosing] = useState(false);
   const titleRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => { titleRef.current?.focus(); }, []);
+
+  // Exit-анимация: ставим closing=true, ждём пока CSS-keyframes доиграют,
+  // потом дёргаем onClose у родителя — иначе компонент unmount'ится сразу
+  // и анимацию никто не увидит.
+  function startClose(): void {
+    if (closing) return;
+    setClosing(true);
+    window.setTimeout(onClose, 180);
+  }
 
   async function submit(e: React.FormEvent): Promise<void> {
     e.preventDefault();
@@ -851,25 +833,30 @@ function CreateTaskModal({ onClose, onSubmit }: CreateModalProps): JSX.Element {
 
   return (
     <div
-      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+      onClick={(e) => { if (e.target === e.currentTarget) startClose(); }}
       style={{
         position: 'fixed', inset: 0, zIndex: 500,
-        background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(4px)',
+        background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(6px)',
+        WebkitBackdropFilter: 'blur(6px)',
         display: 'flex', alignItems: 'flex-start', justifyContent: 'center',
         paddingTop: '15vh', paddingLeft: 16, paddingRight: 16,
-        animation: 'fadein 0.2s ease',
+        animation: closing ? 'modalOverlayOut 0.18s ease forwards' : 'modalOverlayIn 0.22s ease',
       }}
     >
       <form
         onSubmit={submit}
         onKeyDown={(e) => {
+          if (e.key === 'Escape') { e.preventDefault(); startClose(); return; }
           if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') { void submit(e); }
         }}
         style={{
           width: 520, maxWidth: '92vw', display: 'flex', flexDirection: 'column', gap: 12,
           background: 'var(--surface)', border: '1px solid var(--ink-20)',
           borderRadius: 12, padding: 18, boxShadow: '0 24px 48px rgba(0,0,0,0.5)',
-          animation: 'modalIn 0.2s ease',
+          animation: closing
+            ? 'modalOut 0.18s cubic-bezier(0.4,0,0.2,1) forwards'
+            : 'modalIn 0.26s cubic-bezier(0.16,1,0.3,1)',
+          willChange: 'transform, opacity',
         }}
       >
         <input
@@ -905,16 +892,17 @@ function CreateTaskModal({ onClose, onSubmit }: CreateModalProps): JSX.Element {
                 key={k}
                 type="button"
                 onClick={() => setKind(k)}
+                className="tb-kind-chip"
                 style={{
                   display: 'flex', alignItems: 'center', gap: 6,
-                  padding: '5px 10px', borderRadius: 6, fontSize: 11, fontWeight: 500,
+                  padding: '6px 11px', borderRadius: 6, fontSize: 11, fontWeight: 500,
                   border: `1px solid ${on ? 'var(--ink-20)' : 'rgba(255,255,255,0.045)'}`,
                   background: on ? 'var(--surface-2)' : 'transparent',
                   color: on ? 'var(--ink)' : 'var(--ink-40)',
                   cursor: 'pointer', fontFamily: 'inherit',
                 }}
               >
-                <span style={{ color: on ? def.color : 'inherit' }}>{def.glyph}</span>
+                <KindIcon kind={k} size={13} color={on ? def.color : 'currentColor'} />
                 {def.label}
               </button>
             );
@@ -967,31 +955,74 @@ function CreateTaskModal({ onClose, onSubmit }: CreateModalProps): JSX.Element {
           <div style={{ display: 'flex', gap: 6 }}>
             <button
               type="button"
-              onClick={onClose}
-              style={{
-                padding: '7px 14px', borderRadius: 6, fontSize: 12, fontWeight: 500,
-                background: 'var(--surface-2)', border: '1px solid var(--ink-20)',
-                color: 'var(--ink-60)', cursor: 'pointer', fontFamily: 'inherit',
-              }}
+              onClick={startClose}
+              className="tb-modal-btn-ghost"
             >
               Отмена
             </button>
             <button
               type="submit"
               disabled={!title.trim() || submitting}
-              style={{
-                padding: '7px 18px', borderRadius: 6, fontSize: 12, fontWeight: 600,
-                background: 'var(--ink)', color: 'var(--bg)',
-                border: 'none', cursor: 'pointer', fontFamily: 'inherit',
-                opacity: !title.trim() || submitting ? 0.5 : 1,
-              }}
+              className="tb-modal-btn-primary"
             >
               {submitting ? 'Создаём…' : 'Создать'}
             </button>
           </div>
         </div>
       </form>
-      <style>{`@keyframes modalIn { from { opacity: 0; transform: scale(0.96); } to { opacity: 1; transform: scale(1); } }`}</style>
+      <style>{`
+        @keyframes modalOverlayIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes modalOverlayOut { from { opacity: 1; } to { opacity: 0; } }
+        @keyframes modalIn {
+          from { opacity: 0; transform: translateY(-12px) scale(0.96); }
+          to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        @keyframes modalOut {
+          from { opacity: 1; transform: translateY(0) scale(1); }
+          to { opacity: 0; transform: translateY(-8px) scale(0.97); }
+        }
+        .tb-modal-btn-ghost {
+          padding: 7px 14px;
+          border-radius: 6px;
+          font-size: 12px;
+          font-weight: 500;
+          background: var(--surface-2);
+          border: 1px solid var(--ink-20);
+          color: var(--ink-60);
+          cursor: pointer;
+          font-family: inherit;
+          transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease, transform 0.1s ease;
+        }
+        .tb-modal-btn-ghost:hover {
+          background: rgba(255,255,255,0.05);
+          color: var(--ink);
+          border-color: var(--ink-40);
+        }
+        .tb-modal-btn-ghost:active { transform: scale(0.97); }
+        .tb-modal-btn-primary {
+          padding: 7px 18px;
+          border-radius: 6px;
+          font-size: 12px;
+          font-weight: 600;
+          background: var(--ink);
+          color: var(--bg);
+          border: none;
+          cursor: pointer;
+          font-family: inherit;
+          transition: opacity 0.15s ease, transform 0.1s ease, box-shadow 0.15s ease;
+          box-shadow: 0 1px 2px rgba(0,0,0,0.3);
+        }
+        .tb-modal-btn-primary:hover:not(:disabled) {
+          opacity: 0.92;
+          box-shadow: 0 4px 14px rgba(255,255,255,0.12);
+          transform: translateY(-1px);
+        }
+        .tb-modal-btn-primary:active:not(:disabled) { transform: scale(0.97) translateY(0); }
+        .tb-modal-btn-primary:disabled { opacity: 0.4; cursor: default; }
+        .tb-kind-chip { transition: background 0.15s ease, color 0.15s ease, border-color 0.15s ease, transform 0.1s ease; }
+        .tb-kind-chip:hover { border-color: var(--ink-20); color: var(--ink); }
+        .tb-kind-chip:active { transform: scale(0.97); }
+      `}</style>
     </div>
   );
 }

@@ -50,20 +50,6 @@ func (s *Server) requireUser(w http.ResponseWriter, r *http.Request) (uuid.UUID,
 	return uid, true
 }
 
-// requireAdmin = requireUser + role=admin claim.
-func (s *Server) requireAdmin(w http.ResponseWriter, r *http.Request) (uuid.UUID, bool) {
-	uid, ok := s.requireUser(w, r)
-	if !ok {
-		return uuid.Nil, false
-	}
-	role, rok := sharedMw.UserRoleFromContext(r.Context())
-	if !rok || role != adminRoleClaim {
-		writeErr(w, http.StatusForbidden, "admin role required")
-		return uuid.Nil, false
-	}
-	return uid, true
-}
-
 // writeJSON / writeErr — minimal helpers, intentionally local (the monolith
 // has its own writeJSON in services/, but the service package shouldn't
 // depend on monolith internals).

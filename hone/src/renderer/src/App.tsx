@@ -67,7 +67,19 @@ export default function App() {
   const hydrate = useSessionStore((s) => s.hydrate);
   const clear = useSessionStore((s) => s.clear);
 
-  const [page, setPage] = useState<PageId>('home');
+  const [page, setPageRaw] = useState<PageId>('home');
+  // setPage обёрнут в View Transitions API — Chromium фиксирует snapshot
+  // текущего DOM, обновляет state, и анимирует old↔new через ::view-transition.
+  // CSS правила лежат в globals.css (page-fade in/out).
+  // Если API недоступен (старый Chromium / fallback) — обычный setState.
+  const setPage = useCallback((next: PageId | ((p: PageId) => PageId)) => {
+    const doc = document as Document & { startViewTransition?: (cb: () => void) => unknown };
+    if (typeof doc.startViewTransition === 'function') {
+      doc.startViewTransition(() => setPageRaw(next));
+    } else {
+      setPageRaw(next);
+    }
+  }, []);
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [copilotOpen, setCopilotOpen] = useState(false);
   const [onboardingOpen, setOnboardingOpen] = useState(false);
@@ -768,7 +780,9 @@ export default function App() {
           onChange={(t) => openImpl(t)}
         />
       )}
-      {statsOpen && page === 'home' && <StatsOverlay onClose={() => setStatsOpen(false)} />}
+      {page === 'home' && (
+        <AnimatedStatsOverlay open={statsOpen} onClose={() => setStatsOpen(false)} />
+      )}
       {page === 'settings' && (
         <SettingsPage
           theme={theme}
@@ -824,4 +838,30 @@ export default function App() {
       <UpgradePrompt />
     </div>
   );
+}
+
+// AnimatedStatsOverlay — обёртка вокруг <StatsOverlay/>, которая откладывает
+// unmount на длительность slide-to-right анимации, чтобы юзер видел плавный
+// уход карточек вправо вместо мгновенного снятия.
+function AnimatedStatsOverlay({ open, onClose }: { open: boolean; onClose: () => void }): JSX.Element | null {
+  const [mounted, setMounted] = useState(open);
+  const [closing, setClosing] = useState(false);
+
+  useEffect(() => {
+    if (open) {
+      setMounted(true);
+      setClosing(false);
+      return;
+    }
+    if (!mounted) return;
+    setClosing(true);
+    const t = window.setTimeout(() => {
+      setMounted(false);
+      setClosing(false);
+    }, 360); // slide-to-right (220ms) + max delay (120ms) + buffer
+    return () => window.clearTimeout(t);
+  }, [open, mounted]);
+
+  if (!mounted) return null;
+  return <StatsOverlay onClose={onClose} closing={closing} />;
 }

@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"math"
 	"time"
 
 	"druz9/intelligence/domain"
@@ -472,21 +471,4 @@ func nullableFloat32Slice(v []float32) any {
 		return nil
 	}
 	return v
-}
-
-// cosine32 — cosine similarity на float32. 0 если любая длина = 0.
-func cosine32(a, b []float32) float32 {
-	if len(a) == 0 || len(b) == 0 || len(a) != len(b) {
-		return 0
-	}
-	var dot, na, nb float64
-	for i := 0; i < len(a); i++ {
-		dot += float64(a[i]) * float64(b[i])
-		na += float64(a[i]) * float64(a[i])
-		nb += float64(b[i]) * float64(b[i])
-	}
-	if na == 0 || nb == 0 {
-		return 0
-	}
-	return float32(dot / (math.Sqrt(na) * math.Sqrt(nb)))
 }

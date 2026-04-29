@@ -115,7 +115,7 @@ func (p *Postgres) UpdateSettings(ctx context.Context, userID uuid.UUID, s domai
 	// PUT-with-only-display_name does not clobber a previously chosen
 	// focus class. CASE WHEN keeps the column at its current value when
 	// the caller did not include it.
-	if _, err := tx.Exec(ctx,
+	if _, uerr := tx.Exec(ctx,
 		`UPDATE users
 		    SET display_name = NULLIF($2,''),
 		        locale = COALESCE(NULLIF($3,''), locale),
@@ -131,8 +131,8 @@ func (p *Postgres) UpdateSettings(ctx context.Context, userID uuid.UUID, s domai
 		userID, s.DisplayName, s.Locale, s.AIInsightModel,
 		s.HasFocusClass, s.FocusClass,
 		s.HasOnboardingCompleted, s.OnboardingCompleted,
-	); err != nil {
-		return fmt.Errorf("profile.Postgres.UpdateSettings: users: %w", err)
+	); uerr != nil {
+		return fmt.Errorf("profile.Postgres.UpdateSettings: users: %w", uerr)
 	}
 	// v2: notification_preferences merged into notification_prefs; old
 	// `channels TEXT[]` column became `channel_enabled JSONB` keyed by

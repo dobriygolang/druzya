@@ -2,6 +2,7 @@ package copilot
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"os"
 
@@ -49,9 +50,9 @@ func NewCopilot(d monolithServices.Deps, docSearcher copilotDomain.DocumentSearc
 	// мы регистрируемся на его OnTierChanged hook.
 	if d.SetTierUC != nil {
 		d.SetTierUC.OnTierChanged = func(ctx context.Context, userID uuid.UUID, tier subDomain.Tier) error {
-			plan := dynCfg.PlanForTier(ctx, enums.SubscriptionPlan(tier))
+			plan := dynCfg.PlanForTier(ctx, tier)
 			if err := quotas.UpdatePlan(ctx, userID, enums.SubscriptionPlan(plan.ID), plan.RequestsCap, plan.ModelsAllowed); err != nil {
-				return err
+				return fmt.Errorf("copilot: UpdatePlan: %w", err)
 			}
 			// Phase VII: tier-downgrade graceful migration. Если новый
 			// tier ограничивает models (Free whitelist = ["druz9/turbo"]),
@@ -315,4 +316,3 @@ func runAnalysisSubscriber(
 		}
 	}
 }
-

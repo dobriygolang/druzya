@@ -80,7 +80,7 @@ func (c *CachedNoteAnswerer) Answer(ctx context.Context, in domain.AskNotesPromp
 
 	ans, err := c.delegate.Answer(ctx, in)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("intelligence.CachedNoteAnswerer.Answer: %w", err)
 	}
 	if ans == "" {
 		return ans, nil

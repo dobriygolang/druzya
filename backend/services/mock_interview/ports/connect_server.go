@@ -198,8 +198,8 @@ func (s *Server) StartNextStage(
 	if perr != nil {
 		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("invalid id"))
 	}
-	if err := s.checkPipelineOwner(ctx, pipelineID, uid); err != nil {
-		return nil, err
+	if oerr := s.checkPipelineOwner(ctx, pipelineID, uid); oerr != nil {
+		return nil, oerr
 	}
 	out, err := s.Orch.StartNextStage(ctx, pipelineID)
 	if err != nil {
@@ -232,8 +232,8 @@ func (s *Server) SubmitAnswer(
 	if err != nil {
 		return nil, s.toConnectErr(err)
 	}
-	if err := s.checkPipelineOwner(ctx, stage.PipelineID, uid); err != nil {
-		return nil, err
+	if oerr := s.checkPipelineOwner(ctx, stage.PipelineID, uid); oerr != nil {
+		return nil, oerr
 	}
 	out, err := s.Orch.SubmitAnswer(ctx, attemptID, req.Msg.GetUserAnswerMd())
 	if err != nil {
@@ -263,8 +263,8 @@ func (s *Server) FinishStage(
 	if err != nil {
 		return nil, s.toConnectErr(err)
 	}
-	if err := s.checkPipelineOwner(ctx, stage.PipelineID, uid); err != nil {
-		return nil, err
+	if oerr := s.checkPipelineOwner(ctx, stage.PipelineID, uid); oerr != nil {
+		return nil, oerr
 	}
 	out, err := s.Orch.FinishStage(ctx, stageID)
 	if err != nil {
@@ -409,6 +409,11 @@ func attemptVerdictToProto(v domain.AttemptVerdict) pb.MockAttemptVerdict {
 	case domain.AttemptVerdictPass:
 		return pb.MockAttemptVerdict_MOCK_ATTEMPT_VERDICT_PASS
 	case domain.AttemptVerdictFail:
+		return pb.MockAttemptVerdict_MOCK_ATTEMPT_VERDICT_FAIL
+	case domain.AttemptVerdictBorderline:
+		// Proto enum пока не имеет BORDERLINE — маппим в FAIL чтобы caller
+		// в strict-режиме воспринял как «не прошёл». TODO: добавить
+		// MOCK_ATTEMPT_VERDICT_BORDERLINE в proto и переключить.
 		return pb.MockAttemptVerdict_MOCK_ATTEMPT_VERDICT_FAIL
 	default:
 		return pb.MockAttemptVerdict_MOCK_ATTEMPT_VERDICT_UNSPECIFIED
