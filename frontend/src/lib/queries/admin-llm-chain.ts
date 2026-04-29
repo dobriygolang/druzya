@@ -57,21 +57,32 @@ export function useSaveLLMChainConfigMutation() {
   })
 }
 
+// Wire shape — vanguard эмитит proto-JSON в camelCase. Бэкенд НЕ возвращает
+// connect-style RPC error для driver-failure: ставит ok=false + errorMessage,
+// чтобы UI отрисовал результат красным без retry-loop'а.
 export type LLMTestResponse = {
   ok: boolean
-  provider: string
-  model: string
-  content?: string
-  tokens_in?: number
-  tokens_out?: number
-  latency_ms?: number
-  error?: string
+  output?: string
+  errorMessage?: string
+  latencyMs?: number
+  actualProvider?: string
+  actualModel?: string
 }
 
 export function testLLMModel(input: { provider: string; model: string; prompt?: string }) {
   return api<LLMTestResponse>('/admin/llm/test', {
     method: 'POST',
-    body: JSON.stringify(input),
+    body: JSON.stringify({
+      provider: input.provider,
+      model: input.model,
+      prompt: input.prompt ?? '',
+    }),
+  })
+}
+
+export function useTestLLMModelMutation() {
+  return useMutation({
+    mutationFn: testLLMModel,
   })
 }
 

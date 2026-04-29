@@ -2,6 +2,7 @@ package admin
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log/slog"
 	"strings"
@@ -13,6 +14,13 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/redis/go-redis/v9"
 )
+
+// LLMProviderKeysConfigKey — dynamic_config key для admin-managed
+// API-ключей. Schema: {"groq": ["k1","k2"], "google": ["k1","k2","k3"], ...}
+// Слияние с env: DB-ключи ДОПОЛНЯЮТ env-ключи (concat без dedup),
+// чтобы admin мог добавить дополнительные free-tier-аккаунты не
+// трогая prod env. Empty array в DB == ничего не добавляем.
+const LLMProviderKeysConfigKey = "llm_provider_keys"
 
 // BuildLLMChain is the single source of truth for assembling the
 // provider chain at monolith boot. Every service wirer that wants to
@@ -46,42 +54,134 @@ func BuildLLMChain(cfg config.Config, log *slog.Logger) (*llmchain.Chain, error)
 func buildLLMChainWithRuntime(cfg config.Config, log *slog.Logger, pool *pgxpool.Pool, runtimeCtx context.Context) (*llmchain.Chain, error) {
 	drivers := map[llmchain.Provider]llmchain.Driver{}
 
-	if cfg.LLMChain.GroqAPIKey != "" {
-		drivers[llmchain.ProviderGroq] = llmchain.NewGroqDriver(cfg.LLMChain.GroqAPIKey)
+	// splitKeys — поддержка multi-key режима: env-var может содержать
+	// CSV из нескольких API-ключей одного провайдера.
+	splitKeys := func(raw string) []string {
+		if raw == "" {
+			return nil
+		}
+		parts := strings.Split(raw, ",")
+		out := make([]string, 0, len(parts))
+		for _, p := range parts {
+			if p = strings.TrimSpace(p); p != "" {
+				out = append(out, p)
+			}
+		}
+		return out
+	}
+
+	// Read admin-managed keys из dynamic_config[llm_provider_keys]. Эти
+	// ключи объединяются с env (env-keys + db-keys → один MultiKeyDriver).
+	// При nil-pool / отсутствии row / парсинг-ошибке тихо игнорим — fallback
+	// на чистый env-режим. Без try/recover чтобы typed-error не упал в
+	// rebuild-handler'е (там pool гарантирован).
+	dbKeys := map[string][]string{}
+	if pool != nil {
+		var raw string
+		if err := pool.QueryRow(runtimeCtx,
+			`SELECT value::text FROM dynamic_config WHERE key = $1`,
+			LLMProviderKeysConfigKey,
+		).Scan(&raw); err == nil && raw != "" && raw != "null" {
+			parsed := map[string][]string{}
+			if jerr := json.Unmarshal([]byte(raw), &parsed); jerr == nil {
+				dbKeys = parsed
+			} else if log != nil {
+				log.Warn("llmchain: dynamic_config[llm_provider_keys] parse failed",
+					slog.String("err", jerr.Error()))
+			}
+		}
+	}
+	// Объединяет env-CSV + DB-list, удаляя пустые. Дубли допускаются —
+	// MultiKeyDriver round-robin'ит, повтор просто увеличит вероятность
+	// выбора этого ключа (admin может намеренно дублировать ключ,
+	// который ему даёт высший free-quota).
+	mergeKeys := func(envCSV, provider string) []string {
+		out := splitKeys(envCSV)
+		for _, k := range dbKeys[provider] {
+			if k = strings.TrimSpace(k); k != "" {
+				out = append(out, k)
+			}
+		}
+		return out
+	}
+	wrapMulti := func(p llmchain.Provider, ds []llmchain.Driver) llmchain.Driver {
+		if len(ds) == 1 {
+			return ds[0]
+		}
+		return llmchain.NewMultiKeyDriver(p, ds, log)
+	}
+
+	if keys := mergeKeys(cfg.LLMChain.GroqAPIKey, "groq"); len(keys) > 0 {
+		ds := make([]llmchain.Driver, 0, len(keys))
+		for _, k := range keys {
+			ds = append(ds, llmchain.NewGroqDriver(k))
+		}
+		drivers[llmchain.ProviderGroq] = wrapMulti(llmchain.ProviderGroq, ds)
 	} else {
 		log.Warn("llmchain: GROQ_API_KEY not set — primary provider disabled")
 	}
-	if cfg.LLMChain.CerebrasAPIKey != "" {
-		drivers[llmchain.ProviderCerebras] = llmchain.NewCerebrasDriver(cfg.LLMChain.CerebrasAPIKey)
+	if keys := mergeKeys(cfg.LLMChain.CerebrasAPIKey, "cerebras"); len(keys) > 0 {
+		ds := make([]llmchain.Driver, 0, len(keys))
+		for _, k := range keys {
+			ds = append(ds, llmchain.NewCerebrasDriver(k))
+		}
+		drivers[llmchain.ProviderCerebras] = wrapMulti(llmchain.ProviderCerebras, ds)
 	} else {
 		log.Warn("llmchain: CEREBRAS_API_KEY not set — secondary provider disabled")
 	}
-	if cfg.LLMChain.MistralAPIKey != "" {
-		drivers[llmchain.ProviderMistral] = llmchain.NewMistralDriver(cfg.LLMChain.MistralAPIKey)
+	if keys := mergeKeys(cfg.LLMChain.MistralAPIKey, "mistral"); len(keys) > 0 {
+		ds := make([]llmchain.Driver, 0, len(keys))
+		for _, k := range keys {
+			ds = append(ds, llmchain.NewMistralDriver(k))
+		}
+		drivers[llmchain.ProviderMistral] = wrapMulti(llmchain.ProviderMistral, ds)
 	}
-	if cfg.LLMChain.GoogleAPIKey != "" {
-		drivers[llmchain.ProviderGoogle] = llmchain.NewGoogleDriver(cfg.LLMChain.GoogleAPIKey)
+	if keys := mergeKeys(cfg.LLMChain.GoogleAPIKey, "google"); len(keys) > 0 {
+		ds := make([]llmchain.Driver, 0, len(keys))
+		for _, k := range keys {
+			ds = append(ds, llmchain.NewGoogleDriver(k))
+		}
+		drivers[llmchain.ProviderGoogle] = wrapMulti(llmchain.ProviderGoogle, ds)
 	}
 	if cfg.LLMChain.CloudflareAPIKey != "" && cfg.LLMChain.CloudflareAccountID != "" {
-		if d := llmchain.NewCloudflareDriver(cfg.LLMChain.CloudflareAPIKey, cfg.LLMChain.CloudflareAccountID); d != nil {
-			drivers[llmchain.ProviderCloudflare] = d
+		// Cloudflare требует пару (api_key, account_id). Multi-key поддерживается
+		// через CSV в API_KEY при ОДНОМ account_id; для разных аккаунтов
+		// нужна отдельная env-пара (на текущий момент не реализовано — у
+		// большинства юзеров один Cloudflare account).
+		keys := mergeKeys(cfg.LLMChain.CloudflareAPIKey, "cloudflare")
+		ds := make([]llmchain.Driver, 0, len(keys))
+		for _, k := range keys {
+			if d := llmchain.NewCloudflareDriver(k, cfg.LLMChain.CloudflareAccountID); d != nil {
+				ds = append(ds, d)
+			}
+		}
+		if len(ds) > 0 {
+			drivers[llmchain.ProviderCloudflare] = wrapMulti(llmchain.ProviderCloudflare, ds)
 		}
 	}
-	if cfg.LLMChain.ZAIAPIKey != "" {
-		drivers[llmchain.ProviderZAI] = llmchain.NewZAIDriver(cfg.LLMChain.ZAIAPIKey)
+	if keys := mergeKeys(cfg.LLMChain.ZAIAPIKey, "zai"); len(keys) > 0 {
+		ds := make([]llmchain.Driver, 0, len(keys))
+		for _, k := range keys {
+			ds = append(ds, llmchain.NewZAIDriver(k))
+		}
+		drivers[llmchain.ProviderZAI] = wrapMulti(llmchain.ProviderZAI, ds)
 	}
-	// OpenRouter key is shared with the legacy LLM config section so
-	// back-compat callers (the Insight client, existing copilot) keep
-	// working while the chain coexists during rollout.
-	if cfg.LLM.OpenRouterAPIKey != "" {
-		drivers[llmchain.ProviderOpenRouter] = llmchain.NewOpenRouterDriver(cfg.LLM.OpenRouterAPIKey)
+	// OpenRouter key is shared с legacy LLM config section.
+	if keys := mergeKeys(cfg.LLM.OpenRouterAPIKey, "openrouter"); len(keys) > 0 {
+		ds := make([]llmchain.Driver, 0, len(keys))
+		for _, k := range keys {
+			ds = append(ds, llmchain.NewOpenRouterDriver(k))
+		}
+		drivers[llmchain.ProviderOpenRouter] = wrapMulti(llmchain.ProviderOpenRouter, ds)
 	}
-	// DeepSeek direct — платный, используется в paid-virtual-chain'ах
-	// druz9/pro и druz9/reasoning. Регистрируется опционально — если ключа
-	// нет, pro/reasoning-цепочки деградируют на OpenRouter paid-models
-	// (они дороже, но тот же функционал). См. shared/pkg/llmchain/tier.go.
-	if cfg.LLMChain.DeepSeekAPIKey != "" {
-		drivers[llmchain.ProviderDeepSeek] = llmchain.NewDeepSeekDriver(cfg.LLMChain.DeepSeekAPIKey)
+	// DeepSeek direct — платный, multi-key менее актуален (у платных
+	// аккаунтов нет per-key квот), но supported by symmetry.
+	if keys := mergeKeys(cfg.LLMChain.DeepSeekAPIKey, "deepseek"); len(keys) > 0 {
+		ds := make([]llmchain.Driver, 0, len(keys))
+		for _, k := range keys {
+			ds = append(ds, llmchain.NewDeepSeekDriver(k))
+		}
+		drivers[llmchain.ProviderDeepSeek] = wrapMulti(llmchain.ProviderDeepSeek, ds)
 	}
 	// Ollama self-hosted sidecar — self-hosted floor-fallback против
 	// исчерпания cloud free-tier квот. Регистрируется только при явно

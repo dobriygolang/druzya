@@ -12,7 +12,7 @@
 /* eslint-disable */
 // @ts-nocheck
 
-import { GetLLMChainConfigRequest, LLMChainConfig, UpdateLLMChainConfigRequest } from "./llmchain_admin_pb.js";
+import { GetLLMChainConfigRequest, LLMChainConfig, TestProviderModelRequest, TestProviderModelResponse, UpdateLLMChainConfigRequest } from "./llmchain_admin_pb.js";
 import { MethodKind } from "@bufbuild/protobuf";
 
 /**
@@ -37,6 +37,15 @@ export const LLMChainAdminService = {
       name: "UpdateConfig",
       I: UpdateLLMChainConfigRequest,
       O: LLMChainConfig,
+      kind: MethodKind.Unary,
+    },
+    /**
+     * @generated from rpc druz9.v1.LLMChainAdminService.TestProviderModel
+     */
+    testProviderModel: {
+      name: "TestProviderModel",
+      I: TestProviderModelRequest,
+      O: TestProviderModelResponse,
       kind: MethodKind.Unary,
     },
   }

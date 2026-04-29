@@ -48,12 +48,16 @@ const (
 	// LLMChainAdminServiceUpdateConfigProcedure is the fully-qualified name of the
 	// LLMChainAdminService's UpdateConfig RPC.
 	LLMChainAdminServiceUpdateConfigProcedure = "/druz9.v1.LLMChainAdminService/UpdateConfig"
+	// LLMChainAdminServiceTestProviderModelProcedure is the fully-qualified name of the
+	// LLMChainAdminService's TestProviderModel RPC.
+	LLMChainAdminServiceTestProviderModelProcedure = "/druz9.v1.LLMChainAdminService/TestProviderModel"
 )
 
 // LLMChainAdminServiceClient is a client for the druz9.v1.LLMChainAdminService service.
 type LLMChainAdminServiceClient interface {
 	GetConfig(context.Context, *connect.Request[v1.GetLLMChainConfigRequest]) (*connect.Response[v1.LLMChainConfig], error)
 	UpdateConfig(context.Context, *connect.Request[v1.UpdateLLMChainConfigRequest]) (*connect.Response[v1.LLMChainConfig], error)
+	TestProviderModel(context.Context, *connect.Request[v1.TestProviderModelRequest]) (*connect.Response[v1.TestProviderModelResponse], error)
 }
 
 // NewLLMChainAdminServiceClient constructs a client for the druz9.v1.LLMChainAdminService service.
@@ -79,13 +83,20 @@ func NewLLMChainAdminServiceClient(httpClient connect.HTTPClient, baseURL string
 			connect.WithSchema(lLMChainAdminServiceMethods.ByName("UpdateConfig")),
 			connect.WithClientOptions(opts...),
 		),
+		testProviderModel: connect.NewClient[v1.TestProviderModelRequest, v1.TestProviderModelResponse](
+			httpClient,
+			baseURL+LLMChainAdminServiceTestProviderModelProcedure,
+			connect.WithSchema(lLMChainAdminServiceMethods.ByName("TestProviderModel")),
+			connect.WithClientOptions(opts...),
+		),
 	}
 }
 
 // lLMChainAdminServiceClient implements LLMChainAdminServiceClient.
 type lLMChainAdminServiceClient struct {
-	getConfig    *connect.Client[v1.GetLLMChainConfigRequest, v1.LLMChainConfig]
-	updateConfig *connect.Client[v1.UpdateLLMChainConfigRequest, v1.LLMChainConfig]
+	getConfig         *connect.Client[v1.GetLLMChainConfigRequest, v1.LLMChainConfig]
+	updateConfig      *connect.Client[v1.UpdateLLMChainConfigRequest, v1.LLMChainConfig]
+	testProviderModel *connect.Client[v1.TestProviderModelRequest, v1.TestProviderModelResponse]
 }
 
 // GetConfig calls druz9.v1.LLMChainAdminService.GetConfig.
@@ -98,10 +109,16 @@ func (c *lLMChainAdminServiceClient) UpdateConfig(ctx context.Context, req *conn
 	return c.updateConfig.CallUnary(ctx, req)
 }
 
+// TestProviderModel calls druz9.v1.LLMChainAdminService.TestProviderModel.
+func (c *lLMChainAdminServiceClient) TestProviderModel(ctx context.Context, req *connect.Request[v1.TestProviderModelRequest]) (*connect.Response[v1.TestProviderModelResponse], error) {
+	return c.testProviderModel.CallUnary(ctx, req)
+}
+
 // LLMChainAdminServiceHandler is an implementation of the druz9.v1.LLMChainAdminService service.
 type LLMChainAdminServiceHandler interface {
 	GetConfig(context.Context, *connect.Request[v1.GetLLMChainConfigRequest]) (*connect.Response[v1.LLMChainConfig], error)
 	UpdateConfig(context.Context, *connect.Request[v1.UpdateLLMChainConfigRequest]) (*connect.Response[v1.LLMChainConfig], error)
+	TestProviderModel(context.Context, *connect.Request[v1.TestProviderModelRequest]) (*connect.Response[v1.TestProviderModelResponse], error)
 }
 
 // NewLLMChainAdminServiceHandler builds an HTTP handler from the service implementation. It returns
@@ -123,12 +140,20 @@ func NewLLMChainAdminServiceHandler(svc LLMChainAdminServiceHandler, opts ...con
 		connect.WithSchema(lLMChainAdminServiceMethods.ByName("UpdateConfig")),
 		connect.WithHandlerOptions(opts...),
 	)
+	lLMChainAdminServiceTestProviderModelHandler := connect.NewUnaryHandler(
+		LLMChainAdminServiceTestProviderModelProcedure,
+		svc.TestProviderModel,
+		connect.WithSchema(lLMChainAdminServiceMethods.ByName("TestProviderModel")),
+		connect.WithHandlerOptions(opts...),
+	)
 	return "/druz9.v1.LLMChainAdminService/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case LLMChainAdminServiceGetConfigProcedure:
 			lLMChainAdminServiceGetConfigHandler.ServeHTTP(w, r)
 		case LLMChainAdminServiceUpdateConfigProcedure:
 			lLMChainAdminServiceUpdateConfigHandler.ServeHTTP(w, r)
+		case LLMChainAdminServiceTestProviderModelProcedure:
+			lLMChainAdminServiceTestProviderModelHandler.ServeHTTP(w, r)
 		default:
 			http.NotFound(w, r)
 		}
@@ -144,4 +169,8 @@ func (UnimplementedLLMChainAdminServiceHandler) GetConfig(context.Context, *conn
 
 func (UnimplementedLLMChainAdminServiceHandler) UpdateConfig(context.Context, *connect.Request[v1.UpdateLLMChainConfigRequest]) (*connect.Response[v1.LLMChainConfig], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.LLMChainAdminService.UpdateConfig is not implemented"))
+}
+
+func (UnimplementedLLMChainAdminServiceHandler) TestProviderModel(context.Context, *connect.Request[v1.TestProviderModelRequest]) (*connect.Response[v1.TestProviderModelResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("druz9.v1.LLMChainAdminService.TestProviderModel is not implemented"))
 }

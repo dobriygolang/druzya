@@ -26,6 +26,7 @@ export type Tab =
   | 'mock_questions'
   | 'mock_strictness'
   | 'quotas'
+  | 'copilot_plans'
 
 type Item = { id: Tab; label: string; chip?: string; chipColor?: string }
 type Group = { id: string; label: string; defaultOpen: boolean; items: Item[] }
@@ -109,7 +110,10 @@ export function Sidebar({ tab, setTab, pendingReports }: { tab: Tab; setTab: (t:
       id: 'billing',
       label: 'Billing',
       defaultOpen: false,
-      items: [{ id: 'quotas', label: 'Subscription · квоты' }],
+      items: [
+        { id: 'quotas', label: 'Subscription · квоты' },
+        { id: 'copilot_plans', label: 'Copilot · тарифы' },
+      ],
     },
   ]
 

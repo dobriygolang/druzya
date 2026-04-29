@@ -257,3 +257,132 @@ export class UpdateLLMChainConfigRequest extends Message<UpdateLLMChainConfigReq
   }
 }
 
+/**
+ * TestProviderModel — sanity-probe одного провайдера+модели из админки.
+ * Шлёт короткий prompt с MaxTokens=64 / Temperature=0 и возвращает
+ * либо текст ответа, либо human-readable error. Не записывает в config —
+ * просто verify-call.
+ *
+ * @generated from message druz9.v1.TestProviderModelRequest
+ */
+export class TestProviderModelRequest extends Message<TestProviderModelRequest> {
+  /**
+   * @generated from field: string provider = 1;
+   */
+  provider = "";
+
+  /**
+   * @generated from field: string model = 2;
+   */
+  model = "";
+
+  /**
+   * Кастомный prompt; пустой → дефолтный "Reply with exactly: ok".
+   *
+   * @generated from field: string prompt = 3;
+   */
+  prompt = "";
+
+  constructor(data?: PartialMessage<TestProviderModelRequest>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.TestProviderModelRequest";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "provider", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 2, name: "model", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 3, name: "prompt", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): TestProviderModelRequest {
+    return new TestProviderModelRequest().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): TestProviderModelRequest {
+    return new TestProviderModelRequest().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): TestProviderModelRequest {
+    return new TestProviderModelRequest().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: TestProviderModelRequest | PlainMessage<TestProviderModelRequest> | undefined, b: TestProviderModelRequest | PlainMessage<TestProviderModelRequest> | undefined): boolean {
+    return proto3.util.equals(TestProviderModelRequest, a, b);
+  }
+}
+
+/**
+ * @generated from message druz9.v1.TestProviderModelResponse
+ */
+export class TestProviderModelResponse extends Message<TestProviderModelResponse> {
+  /**
+   * ok=true — driver вернул ответ; ok=false — driver вернул ошибку
+   * (текст в `error_message`).
+   *
+   * @generated from field: bool ok = 1;
+   */
+  ok = false;
+
+  /**
+   * @generated from field: string output = 2;
+   */
+  output = "";
+
+  /**
+   * @generated from field: string error_message = 3;
+   */
+  errorMessage = "";
+
+  /**
+   * @generated from field: int64 latency_ms = 4;
+   */
+  latencyMs = protoInt64.zero;
+
+  /**
+   * Echo'нутый back upstream — полезно когда provider роутит на
+   * другую модель (deprecated alias и т.п.).
+   *
+   * @generated from field: string actual_provider = 5;
+   */
+  actualProvider = "";
+
+  /**
+   * @generated from field: string actual_model = 6;
+   */
+  actualModel = "";
+
+  constructor(data?: PartialMessage<TestProviderModelResponse>) {
+    super();
+    proto3.util.initPartial(data, this);
+  }
+
+  static readonly runtime: typeof proto3 = proto3;
+  static readonly typeName = "druz9.v1.TestProviderModelResponse";
+  static readonly fields: FieldList = proto3.util.newFieldList(() => [
+    { no: 1, name: "ok", kind: "scalar", T: 8 /* ScalarType.BOOL */ },
+    { no: 2, name: "output", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 3, name: "error_message", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 4, name: "latency_ms", kind: "scalar", T: 3 /* ScalarType.INT64 */ },
+    { no: 5, name: "actual_provider", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+    { no: 6, name: "actual_model", kind: "scalar", T: 9 /* ScalarType.STRING */ },
+  ]);
+
+  static fromBinary(bytes: Uint8Array, options?: Partial<BinaryReadOptions>): TestProviderModelResponse {
+    return new TestProviderModelResponse().fromBinary(bytes, options);
+  }
+
+  static fromJson(jsonValue: JsonValue, options?: Partial<JsonReadOptions>): TestProviderModelResponse {
+    return new TestProviderModelResponse().fromJson(jsonValue, options);
+  }
+
+  static fromJsonString(jsonString: string, options?: Partial<JsonReadOptions>): TestProviderModelResponse {
+    return new TestProviderModelResponse().fromJsonString(jsonString, options);
+  }
+
+  static equals(a: TestProviderModelResponse | PlainMessage<TestProviderModelResponse> | undefined, b: TestProviderModelResponse | PlainMessage<TestProviderModelResponse> | undefined): boolean {
+    return proto3.util.equals(TestProviderModelResponse, a, b);
+  }
+}
+

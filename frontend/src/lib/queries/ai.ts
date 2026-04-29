@@ -134,12 +134,17 @@ export function useUpdateLLMModelMutation() {
 }
 
 // Cheap inline flip for the admin grid. Returns the post-flip row.
+// vanguard ограничивает '**'-wildcard ТОЛЬКО как final segment, поэтому
+// model_id переехал в body (см. proto комментарий). POST вместо PATCH —
+// proto annotation использует post: для toggle.
 export function useToggleLLMModelMutation() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (modelId: string) =>
-      api<AdminLLMModel>(`/admin/ai/models/${encodeURIComponent(modelId)}/toggle`, {
-        method: 'PATCH',
+      api<AdminLLMModel>(`/admin/ai/models/toggle`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ model_id: modelId }),
       }),
     onSuccess: () => {
       void qc.invalidateQueries({ queryKey: aiAdminQueryKeys.all })

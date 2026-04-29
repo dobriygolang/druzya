@@ -56,10 +56,12 @@ func NewAIModels(d monolithServices.Deps) *monolithServices.Module {
 			// the transcoder's defaults.
 			r.Get("/ai/models", transcoder.ServeHTTP)
 			// Admin CRUD with `{model_id=**}` slash-id capture.
+			// Toggle переехал на /admin/ai/models/toggle (model_id в body),
+			// потому что vanguard запрещает `**` mid-path; см. proto.
 			r.Get("/admin/ai/models", adminGate)
 			r.Post("/admin/ai/models", adminGate)
 			r.Patch("/admin/ai/models/*", adminGate)
-			r.Post("/admin/ai/models/*/toggle", adminGate)
+			r.Post("/admin/ai/models/toggle", adminGate)
 			r.Delete("/admin/ai/models/*", adminGate)
 		},
 	}

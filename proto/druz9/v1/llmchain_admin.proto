@@ -46,6 +46,30 @@ message UpdateLLMChainConfigRequest {
   LLMChainConfig config = 1;
 }
 
+// TestProviderModel — sanity-probe одного провайдера+модели из админки.
+// Шлёт короткий prompt с MaxTokens=64 / Temperature=0 и возвращает
+// либо текст ответа, либо human-readable error. Не записывает в config —
+// просто verify-call.
+message TestProviderModelRequest {
+  string provider = 1;
+  string model = 2;
+  // Кастомный prompt; пустой → дефолтный "Reply with exactly: ok".
+  string prompt = 3;
+}
+
+message TestProviderModelResponse {
+  // ok=true — driver вернул ответ; ok=false — driver вернул ошибку
+  // (текст в `error_message`).
+  bool ok = 1;
+  string output = 2;
+  string error_message = 3;
+  int64 latency_ms = 4;
+  // Echo'нутый back upstream — полезно когда provider роутит на
+  // другую модель (deprecated alias и т.п.).
+  string actual_provider = 5;
+  string actual_model = 6;
+}
+
 service LLMChainAdminService {
   rpc GetConfig(GetLLMChainConfigRequest) returns (LLMChainConfig) {
     option (google.api.http) = {get: "/api/v1/admin/llm/config"};
@@ -54,6 +78,12 @@ service LLMChainAdminService {
     option (google.api.http) = {
       put: "/api/v1/admin/llm/config"
       body: "config"
+    };
+  }
+  rpc TestProviderModel(TestProviderModelRequest) returns (TestProviderModelResponse) {
+    option (google.api.http) = {
+      post: "/api/v1/admin/llm/test"
+      body: "*"
     };
   }
 }

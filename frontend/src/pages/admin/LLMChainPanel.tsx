@@ -31,6 +31,12 @@ import {
   type ModelTier,
   type KnownProvider,
 } from '../../lib/queries/admin-llm-chain'
+import {
+  useLLMKeysQuery,
+  useUpdateLLMKeysMutation,
+  maskKey,
+  type ProviderKeysMap,
+} from '../../lib/queries/adminLLMKeys'
 
 export function LLMChainPanel() {
   const q = useLLMChainConfigQuery()
@@ -99,6 +105,10 @@ export function LLMChainPanel() {
         </div>
       )}
 
+      <TestModelSection />
+
+      <LLMKeysSection />
+
       <ChainOrderSection
         order={draft.chain_order}
         onChange={(chain_order) => setDraft({ ...draft, chain_order })}
@@ -134,6 +144,309 @@ function ProviderModelDatalist({ provider }: { provider: string }) {
         </option>
       ))}
     </datalist>
+  )
+}
+
+// ─── Test Model — sanity-probe конкретной пары provider+model ───────────
+//
+// Шлёт короткий prompt в выбранный driver и показывает ответ + latency.
+// Не записывает в config — просто проверка «доходит ли запрос до модели».
+// Полезно после смены ключа в env / проверки нового провайдера.
+
+function TestModelSection() {
+  const [provider, setProvider] = useState<KnownProvider>(KNOWN_PROVIDERS[0])
+  const [model, setModel] = useState<string>(PROVIDER_MODELS[KNOWN_PROVIDERS[0]]?.[0]?.id ?? '')
+  const [prompt, setPrompt] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [result, setResult] = useState<{
+    ok: boolean
+    output?: string
+    error?: string
+    latencyMs?: number
+    actualProvider?: string
+    actualModel?: string
+  } | null>(null)
+
+  // При смене провайдера выставляем первую модель из catalogue'а как
+  // sane default — иначе input остаётся пустым и юзер недоумевает.
+  function onProviderChange(next: KnownProvider) {
+    setProvider(next)
+    const first = PROVIDER_MODELS[next]?.[0]?.id ?? ''
+    setModel(first)
+    setResult(null)
+  }
+
+  async function handleRun() {
+    if (!provider || !model) return
+    setBusy(true)
+    setResult(null)
+    try {
+      const r = await testLLMModel({ provider, model, prompt: prompt.trim() })
+      setResult({
+        ok: r.ok,
+        output: r.output,
+        error: r.errorMessage,
+        latencyMs: r.latencyMs,
+        actualProvider: r.actualProvider,
+        actualModel: r.actualModel,
+      })
+    } catch (e: unknown) {
+      setResult({ ok: false, error: (e as Error)?.message ?? 'Request failed' })
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <section className="rounded-lg border border-border bg-surface-1 p-4">
+      <h3 className="font-display text-sm font-bold text-text-primary">Test model</h3>
+      <p className="mt-1 mb-3 font-mono text-[11px] text-text-muted">
+        Проверить что выбранный provider+model отвечает. Шлёт короткий prompt
+        с MaxTokens=64.
+      </p>
+
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-[140px_1fr_auto]">
+        <select
+          value={provider}
+          onChange={(e) => onProviderChange(e.target.value as KnownProvider)}
+          disabled={busy}
+          className="rounded border border-border bg-surface-2 px-2 py-1.5 font-mono text-xs text-text-primary focus:border-text-primary focus:outline-none disabled:opacity-60"
+        >
+          {KNOWN_PROVIDERS.map((p) => (
+            <option key={p} value={p}>
+              {p}
+            </option>
+          ))}
+        </select>
+
+        <input
+          value={model}
+          onChange={(e) => setModel(e.target.value)}
+          placeholder="model id"
+          list={`models-${provider}`}
+          disabled={busy}
+          className="rounded border border-border bg-surface-2 px-2 py-1.5 font-mono text-xs text-text-primary placeholder:text-text-muted/50 focus:border-text-primary focus:outline-none disabled:opacity-60"
+        />
+        <ProviderModelDatalist provider={provider} />
+
+        <Button
+          size="sm"
+          onClick={handleRun}
+          disabled={busy || !model.trim()}
+        >
+          {busy ? 'Проверяю…' : 'Run'}
+        </Button>
+      </div>
+
+      <input
+        value={prompt}
+        onChange={(e) => setPrompt(e.target.value)}
+        placeholder='Prompt (опционально, default: "Reply with exactly: ok")'
+        disabled={busy}
+        className="mt-2 w-full rounded border border-border bg-surface-2 px-2 py-1.5 font-mono text-xs text-text-primary placeholder:text-text-muted/50 focus:border-text-primary focus:outline-none disabled:opacity-60"
+      />
+
+      {result && (
+        <div
+          className={`mt-3 rounded border px-3 py-2 font-mono text-[11px] ${
+            result.ok
+              ? 'border-success/40 bg-success/5 text-text-primary'
+              : 'border-danger/40 bg-danger/5 text-text-primary'
+          }`}
+        >
+          <div className="mb-1 flex items-center justify-between text-text-muted">
+            <span>
+              {result.ok ? '✓ ok' : '✕ failed'}
+              {result.actualProvider && result.actualModel && (
+                <span className="ml-2">
+                  · {result.actualProvider}/{result.actualModel}
+                </span>
+              )}
+            </span>
+            {typeof result.latencyMs === 'number' && (
+              <span>{result.latencyMs}ms</span>
+            )}
+          </div>
+          {result.ok ? (
+            <pre className="whitespace-pre-wrap break-words text-text-secondary">
+              {result.output || '(empty response)'}
+            </pre>
+          ) : (
+            <pre className="whitespace-pre-wrap break-words text-danger">
+              {result.error || 'unknown error'}
+            </pre>
+          )}
+        </div>
+      )}
+    </section>
+  )
+}
+
+// ─── LLM Provider Keys (admin-managed multi-key) ────────────────────────
+//
+// Хранение: dynamic_config[llm_provider_keys] = {provider: ["key1","key2"]}.
+// Backend на boot'е объединяет с env-CSV (env-keys + db-keys → один
+// MultiKeyDriver per provider). Hot-swap не поддержан — после save
+// требуется restart монолита, тогда новые ключи вступят в силу.
+// Quota от нескольких аккаунтов одного провайдера складывается;
+// MultiKeyDriver round-robin'ит и временно исключает rate-limited
+// ключи на 1 час.
+
+function LLMKeysSection() {
+  const q = useLLMKeysQuery()
+  const save = useUpdateLLMKeysMutation()
+  const [draft, setDraft] = useState<ProviderKeysMap | null>(null)
+  const [revealAll, setRevealAll] = useState(false)
+  const [savedOnce, setSavedOnce] = useState(false)
+
+  useEffect(() => {
+    if (q.data) setDraft(structuredClone(q.data))
+  }, [q.data])
+
+  if (q.isPending)
+    return (
+      <section className="rounded-lg border border-border bg-surface-1 p-4">
+        <p className="font-mono text-[11px] text-text-muted">Загружаю API-ключи…</p>
+      </section>
+    )
+  if (!draft) return null
+
+  const dirty = JSON.stringify(draft) !== JSON.stringify(q.data)
+
+  function setKeysFor(provider: KnownProvider, keys: string[]) {
+    setDraft((prev) => (prev ? { ...prev, [provider]: keys } : prev))
+  }
+
+  async function handleSave() {
+    if (!draft) return
+    try {
+      await save.mutateAsync(draft)
+      setSavedOnce(true)
+    } catch {
+      /* error visible через save.error */
+    }
+  }
+
+  return (
+    <section className="rounded-lg border border-border bg-surface-1 p-4">
+      <header className="mb-3 flex items-start justify-between gap-2">
+        <div>
+          <h3 className="font-display text-sm font-bold text-text-primary">API keys (multi-key)</h3>
+          <p className="mt-1 font-mono text-[11px] text-text-muted">
+            Несколько ключей на провайдер → quota суммируется. Round-robin внутри
+            MultiKeyDriver; rate-limited ключ автоматически исключается на 1 час.
+          </p>
+          <p className="mt-1 font-mono text-[11px] text-text-muted">
+            ⚠️ Изменения вступают в силу <strong>после рестарта монолита</strong>.
+            Env-ключи (`GROQ_API_KEY=k1,k2`) добавляются к этим в одну ротацию.
+          </p>
+        </div>
+        <div className="flex flex-shrink-0 gap-2">
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() => setRevealAll((v) => !v)}
+            disabled={save.isPending}
+          >
+            {revealAll ? 'Hide' : 'Reveal'}
+          </Button>
+          <Button size="sm" onClick={handleSave} disabled={!dirty || save.isPending}>
+            {save.isPending ? 'Сохраняю…' : 'Сохранить'}
+          </Button>
+        </div>
+      </header>
+
+      {save.isError && (
+        <div className="mb-3 rounded border border-danger/40 bg-danger/5 px-3 py-2 font-mono text-[11px] text-danger">
+          Не удалось сохранить: {(save.error as Error).message}
+        </div>
+      )}
+
+      {savedOnce && !dirty && !save.isError && (
+        <div className="mb-3 rounded border border-warn/40 bg-warn/5 px-3 py-2 font-mono text-[11px] text-warn">
+          ✓ Сохранено в DB. Перезапусти монолит — новые ключи будут активны после рестарта.
+        </div>
+      )}
+
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+        {KNOWN_PROVIDERS.map((p) => (
+          <ProviderKeysEditor
+            key={p}
+            provider={p}
+            keys={draft[p] ?? []}
+            reveal={revealAll}
+            onChange={(next) => setKeysFor(p, next)}
+          />
+        ))}
+      </div>
+    </section>
+  )
+}
+
+function ProviderKeysEditor({
+  provider,
+  keys,
+  reveal,
+  onChange,
+}: {
+  provider: KnownProvider
+  keys: string[]
+  reveal: boolean
+  onChange: (next: string[]) => void
+}) {
+  return (
+    <div className="rounded border border-border bg-surface-2 p-3">
+      <header className="mb-2 flex items-center justify-between">
+        <span className="font-mono text-[11px] font-semibold uppercase tracking-wider text-text-primary">
+          {provider}
+        </span>
+        {keys.length > 0 && (
+          <span className="rounded bg-surface-3 px-1.5 py-0.5 font-mono text-[10px] text-text-muted">
+            ×{keys.length}
+          </span>
+        )}
+      </header>
+      <div className="flex flex-col gap-1.5">
+        {keys.map((k, i) => (
+          <div key={i} className="flex items-center gap-1">
+            <input
+              type={reveal ? 'text' : 'password'}
+              value={k}
+              onChange={(e) => {
+                const next = keys.slice()
+                next[i] = e.target.value
+                onChange(next)
+              }}
+              placeholder="API key"
+              className="flex-1 rounded border border-border bg-surface-1 px-2 py-1 font-mono text-[11px] text-text-primary placeholder:text-text-muted/50 focus:border-text-primary focus:outline-none"
+            />
+            {!reveal && k && (
+              <span
+                className="font-mono text-[10px] text-text-muted"
+                title={maskKey(k)}
+              >
+                {maskKey(k)}
+              </span>
+            )}
+            <button
+              type="button"
+              onClick={() => onChange(keys.filter((_, j) => j !== i))}
+              className="rounded p-1 text-text-muted hover:bg-surface-3 hover:text-danger"
+              title="Удалить"
+            >
+              <Trash2 className="h-3 w-3" />
+            </button>
+          </div>
+        ))}
+        <button
+          type="button"
+          onClick={() => onChange([...keys, ''])}
+          className="flex items-center gap-1 self-start rounded border border-border bg-surface-1 px-2 py-1 font-mono text-[10px] text-text-muted hover:border-text-muted hover:text-text-primary"
+        >
+          <Plus className="h-3 w-3" /> Добавить ключ
+        </button>
+      </div>
+    </div>
   )
 }
 
@@ -415,7 +728,7 @@ function VirtualChainCard({
       })
       setTestResults((prev) => ({
         ...prev,
-        [i]: res.ok ? `ok · ${res.latency_ms ?? 0}ms` : `fail · ${res.error ?? 'unknown'}`,
+        [i]: res.ok ? `ok · ${res.latencyMs ?? 0}ms` : `fail · ${res.errorMessage ?? 'unknown'}`,
       }))
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : 'request failed'

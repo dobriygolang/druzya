@@ -138,9 +138,14 @@ service AIModelService {
       body: "model"
     };
   }
+  // Vanguard ограничивает: `**` (multi-segment wildcard) допустим
+   // ТОЛЬКО как final path segment. Раньше было
+   // `/admin/ai/models/{model_id=**}/toggle` — `/toggle` после `**`
+   // ронял boot. Решение: model_id передаётся в body (proto-JSON
+   // body:"*" биндит request как-есть), URL без wildcard'а.
   rpc ToggleAIModel(ToggleAIModelRequest) returns (AIModel) {
     option (google.api.http) = {
-      post: "/api/v1/admin/ai/models/{model_id=**}/toggle"
+      post: "/api/v1/admin/ai/models/toggle"
       body: "*"
     };
   }

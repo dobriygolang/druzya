@@ -984,13 +984,13 @@ const file_druz9_v1_ai_models_proto_rawDesc = "" +
 	"\x14DeleteAIModelRequest\x12\x19\n" +
 	"\bmodel_id\x18\x01 \x01(\tR\amodelId\"'\n" +
 	"\x15DeleteAIModelResponse\x12\x0e\n" +
-	"\x02ok\x18\x01 \x01(\bR\x02ok2\xd3\x05\n" +
+	"\x02ok\x18\x01 \x01(\bR\x02ok2\xc5\x05\n" +
 	"\x0eAIModelService\x12q\n" +
 	"\x12ListPublicAIModels\x12#.druz9.v1.ListPublicAIModelsRequest\x1a\x1b.druz9.v1.PublicAIModelList\"\x19\x82\xd3\xe4\x93\x02\x13\x12\x11/api/v1/ai/models\x12j\n" +
 	"\fListAIModels\x12\".druz9.v1.ListAdminAIModelsRequest\x1a\x15.druz9.v1.AIModelList\"\x1f\x82\xd3\xe4\x93\x02\x19\x12\x17/api/v1/admin/ai/models\x12j\n" +
 	"\rCreateAIModel\x12\x1e.druz9.v1.CreateAIModelRequest\x1a\x11.druz9.v1.AIModel\"&\x82\xd3\xe4\x93\x02 :\x05model\"\x17/api/v1/admin/ai/models\x12x\n" +
-	"\rUpdateAIModel\x12\x1e.druz9.v1.UpdateAIModelRequest\x1a\x11.druz9.v1.AIModel\"4\x82\xd3\xe4\x93\x02.:\x05model2%/api/v1/admin/ai/models/{model_id=**}\x12{\n" +
-	"\rToggleAIModel\x12\x1e.druz9.v1.ToggleAIModelRequest\x1a\x11.druz9.v1.AIModel\"7\x82\xd3\xe4\x93\x021:\x01*\",/api/v1/admin/ai/models/{model_id=**}/toggle\x12\x7f\n" +
+	"\rUpdateAIModel\x12\x1e.druz9.v1.UpdateAIModelRequest\x1a\x11.druz9.v1.AIModel\"4\x82\xd3\xe4\x93\x02.:\x05model2%/api/v1/admin/ai/models/{model_id=**}\x12m\n" +
+	"\rToggleAIModel\x12\x1e.druz9.v1.ToggleAIModelRequest\x1a\x11.druz9.v1.AIModel\")\x82\xd3\xe4\x93\x02#:\x01*\"\x1e/api/v1/admin/ai/models/toggle\x12\x7f\n" +
 	"\rDeleteAIModel\x12\x1e.druz9.v1.DeleteAIModelRequest\x1a\x1f.druz9.v1.DeleteAIModelResponse\"-\x82\xd3\xe4\x93\x02'*%/api/v1/admin/ai/models/{model_id=**}B\x8a\x01\n" +
 	"\fcom.druz9.v1B\rAiModelsProtoP\x01Z*druz9/shared/generated/pb/druz9/v1;druz9v1\xa2\x02\x03DXX\xaa\x02\bDruz9.V1\xca\x02\bDruz9\\V1\xe2\x02\x14Druz9\\V1\\GPBMetadata\xea\x02\tDruz9::V1b\x06proto3"
 

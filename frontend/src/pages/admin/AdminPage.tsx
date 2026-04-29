@@ -30,6 +30,7 @@ import { MockTasksPanel } from './MockTasksPanel'
 import { MockQuestionsPanel } from './MockQuestionsPanel'
 import { MockStrictnessPanel } from './MockStrictnessPanel'
 import { QuotasPanel } from './QuotasPanel'
+import { CopilotPlansPanel } from './CopilotPlansPanel'
 
 export default function AdminPage() {
   const profile = useProfileQuery()
@@ -94,7 +95,9 @@ export default function AdminPage() {
                                     ? 'Mock · строгость AI'
                                     : tab === 'quotas'
                                       ? 'Subscription · квоты'
-                                      : 'AI Modельки'}
+                                      : tab === 'copilot_plans'
+                                        ? 'Copilot · тарифы'
+                                        : 'AI Modельки'}
             </h1>
             <span className="font-mono text-[11px] text-text-muted">Операционная панель druz9</span>
           </div>
@@ -114,6 +117,7 @@ export default function AdminPage() {
         {tab === 'mock_questions' && <MockQuestionsPanel />}
         {tab === 'mock_strictness' && <MockStrictnessPanel />}
         {tab === 'quotas' && <QuotasPanel />}
+        {tab === 'copilot_plans' && <CopilotPlansPanel />}
       </main>
     </div>
   )

@@ -13,6 +13,7 @@ import (
 	"errors"
 	"log/slog"
 	"strings"
+	"time"
 
 	"connectrpc.com/connect"
 
@@ -21,10 +22,12 @@ import (
 	"druz9/shared/pkg/llmchain"
 )
 
-// ChainReloader is the narrow port that the wired Chain exposes to the
-// admin handler. *llmchain.Chain.RuntimeForceReload satisfies it.
+// ChainReloader — narrow port для admin handler'а: reload runtime config
+// + ad-hoc test-call для UI sanity-кнопки. *llmchain.Chain удовлетворяет
+// обоим методам.
 type ChainReloader interface {
 	RuntimeForceReload(ctx context.Context)
+	TestProviderModel(ctx context.Context, provider llmchain.Provider, model, prompt string) (llmchain.Response, error)
 }
 
 type LLMChainAdminServer struct {
@@ -61,6 +64,52 @@ func (s *LLMChainAdminServer) GetConfig(
 		}
 	}
 	return connect.NewResponse(out), nil
+}
+
+// TestProviderModel — sanity-probe одной пары provider+model. Возвращает
+// либо текст ответа, либо human-readable error. Не записывает в config.
+//
+// `ok=false` (не RPC error) для driver-ошибок — frontend отрисует
+// сообщение красным под кнопкой и не делает retry-loop'а на сетевую
+// ошибку. RPC error возвращаем только когда Chain не сконфигурён.
+func (s *LLMChainAdminServer) TestProviderModel(
+	ctx context.Context,
+	req *connect.Request[pb.TestProviderModelRequest],
+) (*connect.Response[pb.TestProviderModelResponse], error) {
+	if s.Chain == nil {
+		return nil, connect.NewError(connect.CodeFailedPrecondition,
+			errors.New("LLM chain not configured on this monolith — set provider API keys"))
+	}
+	provider := strings.TrimSpace(req.Msg.GetProvider())
+	model := strings.TrimSpace(req.Msg.GetModel())
+	if provider == "" || model == "" {
+		return nil, connect.NewError(connect.CodeInvalidArgument, errors.New("provider and model required"))
+	}
+	// Cap user-supplied prompt — и без лимита driver всё равно ограничен
+	// MaxTokens=64, но защита от случайного 100KB prompt'а из админки
+	// (который может попасть в provider-side rate-limit'ы) — стоит копейку.
+	prompt := req.Msg.GetPrompt()
+	if len(prompt) > 4096 {
+		prompt = prompt[:4096]
+	}
+
+	start := time.Now()
+	resp, err := s.Chain.TestProviderModel(ctx, llmchain.Provider(provider), model, prompt)
+	latency := time.Since(start).Milliseconds()
+	if err != nil {
+		return connect.NewResponse(&pb.TestProviderModelResponse{
+			Ok:           false,
+			ErrorMessage: err.Error(),
+			LatencyMs:    latency,
+		}), nil
+	}
+	return connect.NewResponse(&pb.TestProviderModelResponse{
+		Ok:             true,
+		Output:         resp.Content,
+		LatencyMs:      latency,
+		ActualProvider: string(resp.Provider),
+		ActualModel:    resp.Model,
+	}), nil
 }
 
 func (s *LLMChainAdminServer) UpdateConfig(

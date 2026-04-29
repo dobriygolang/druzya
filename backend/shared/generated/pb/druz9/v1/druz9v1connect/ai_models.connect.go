@@ -71,6 +71,11 @@ type AIModelServiceClient interface {
 	// `mistralai/mistral-7b`. vanguard reads the proto field name from
 	// the URL segment after `/models/`.
 	UpdateAIModel(context.Context, *connect.Request[v1.UpdateAIModelRequest]) (*connect.Response[v1.AIModel], error)
+	// Vanguard ограничивает: `**` (multi-segment wildcard) допустим
+	// ТОЛЬКО как final path segment. Раньше было
+	// `/admin/ai/models/{model_id=**}/toggle` — `/toggle` после `**`
+	// ронял boot. Решение: model_id передаётся в body (proto-JSON
+	// body:"*" биндит request как-есть), URL без wildcard'а.
 	ToggleAIModel(context.Context, *connect.Request[v1.ToggleAIModelRequest]) (*connect.Response[v1.AIModel], error)
 	DeleteAIModel(context.Context, *connect.Request[v1.DeleteAIModelRequest]) (*connect.Response[v1.DeleteAIModelResponse], error)
 }
@@ -174,6 +179,11 @@ type AIModelServiceHandler interface {
 	// `mistralai/mistral-7b`. vanguard reads the proto field name from
 	// the URL segment after `/models/`.
 	UpdateAIModel(context.Context, *connect.Request[v1.UpdateAIModelRequest]) (*connect.Response[v1.AIModel], error)
+	// Vanguard ограничивает: `**` (multi-segment wildcard) допустим
+	// ТОЛЬКО как final path segment. Раньше было
+	// `/admin/ai/models/{model_id=**}/toggle` — `/toggle` после `**`
+	// ронял boot. Решение: model_id передаётся в body (proto-JSON
+	// body:"*" биндит request как-есть), URL без wildcard'а.
 	ToggleAIModel(context.Context, *connect.Request[v1.ToggleAIModelRequest]) (*connect.Response[v1.AIModel], error)
 	DeleteAIModel(context.Context, *connect.Request[v1.DeleteAIModelRequest]) (*connect.Response[v1.DeleteAIModelResponse], error)
 }

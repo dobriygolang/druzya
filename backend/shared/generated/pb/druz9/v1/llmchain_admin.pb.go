@@ -321,6 +321,159 @@ func (x *UpdateLLMChainConfigRequest) GetConfig() *LLMChainConfig {
 	return nil
 }
 
+// TestProviderModel — sanity-probe одного провайдера+модели из админки.
+// Шлёт короткий prompt с MaxTokens=64 / Temperature=0 и возвращает
+// либо текст ответа, либо human-readable error. Не записывает в config —
+// просто verify-call.
+type TestProviderModelRequest struct {
+	state    protoimpl.MessageState `protogen:"open.v1"`
+	Provider string                 `protobuf:"bytes,1,opt,name=provider,proto3" json:"provider,omitempty"`
+	Model    string                 `protobuf:"bytes,2,opt,name=model,proto3" json:"model,omitempty"`
+	// Кастомный prompt; пустой → дефолтный "Reply with exactly: ok".
+	Prompt        string `protobuf:"bytes,3,opt,name=prompt,proto3" json:"prompt,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *TestProviderModelRequest) Reset() {
+	*x = TestProviderModelRequest{}
+	mi := &file_druz9_v1_llmchain_admin_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *TestProviderModelRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*TestProviderModelRequest) ProtoMessage() {}
+
+func (x *TestProviderModelRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_llmchain_admin_proto_msgTypes[5]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use TestProviderModelRequest.ProtoReflect.Descriptor instead.
+func (*TestProviderModelRequest) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_llmchain_admin_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *TestProviderModelRequest) GetProvider() string {
+	if x != nil {
+		return x.Provider
+	}
+	return ""
+}
+
+func (x *TestProviderModelRequest) GetModel() string {
+	if x != nil {
+		return x.Model
+	}
+	return ""
+}
+
+func (x *TestProviderModelRequest) GetPrompt() string {
+	if x != nil {
+		return x.Prompt
+	}
+	return ""
+}
+
+type TestProviderModelResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// ok=true — driver вернул ответ; ok=false — driver вернул ошибку
+	// (текст в `error_message`).
+	Ok           bool   `protobuf:"varint,1,opt,name=ok,proto3" json:"ok,omitempty"`
+	Output       string `protobuf:"bytes,2,opt,name=output,proto3" json:"output,omitempty"`
+	ErrorMessage string `protobuf:"bytes,3,opt,name=error_message,json=errorMessage,proto3" json:"error_message,omitempty"`
+	LatencyMs    int64  `protobuf:"varint,4,opt,name=latency_ms,json=latencyMs,proto3" json:"latency_ms,omitempty"`
+	// Echo'нутый back upstream — полезно когда provider роутит на
+	// другую модель (deprecated alias и т.п.).
+	ActualProvider string `protobuf:"bytes,5,opt,name=actual_provider,json=actualProvider,proto3" json:"actual_provider,omitempty"`
+	ActualModel    string `protobuf:"bytes,6,opt,name=actual_model,json=actualModel,proto3" json:"actual_model,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *TestProviderModelResponse) Reset() {
+	*x = TestProviderModelResponse{}
+	mi := &file_druz9_v1_llmchain_admin_proto_msgTypes[6]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *TestProviderModelResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*TestProviderModelResponse) ProtoMessage() {}
+
+func (x *TestProviderModelResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_druz9_v1_llmchain_admin_proto_msgTypes[6]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use TestProviderModelResponse.ProtoReflect.Descriptor instead.
+func (*TestProviderModelResponse) Descriptor() ([]byte, []int) {
+	return file_druz9_v1_llmchain_admin_proto_rawDescGZIP(), []int{6}
+}
+
+func (x *TestProviderModelResponse) GetOk() bool {
+	if x != nil {
+		return x.Ok
+	}
+	return false
+}
+
+func (x *TestProviderModelResponse) GetOutput() string {
+	if x != nil {
+		return x.Output
+	}
+	return ""
+}
+
+func (x *TestProviderModelResponse) GetErrorMessage() string {
+	if x != nil {
+		return x.ErrorMessage
+	}
+	return ""
+}
+
+func (x *TestProviderModelResponse) GetLatencyMs() int64 {
+	if x != nil {
+		return x.LatencyMs
+	}
+	return 0
+}
+
+func (x *TestProviderModelResponse) GetActualProvider() string {
+	if x != nil {
+		return x.ActualProvider
+	}
+	return ""
+}
+
+func (x *TestProviderModelResponse) GetActualModel() string {
+	if x != nil {
+		return x.ActualModel
+	}
+	return ""
+}
+
 var File_druz9_v1_llmchain_admin_proto protoreflect.FileDescriptor
 
 const file_druz9_v1_llmchain_admin_proto_rawDesc = "" +
@@ -344,10 +497,23 @@ const file_druz9_v1_llmchain_admin_proto_rawDesc = "" +
 	"\x17virtual_chains_defaults\x18\x05 \x03(\v2\x1a.druz9.v1.VirtualChainStepR\x15virtualChainsDefaults\"\x1a\n" +
 	"\x18GetLLMChainConfigRequest\"O\n" +
 	"\x1bUpdateLLMChainConfigRequest\x120\n" +
-	"\x06config\x18\x01 \x01(\v2\x18.druz9.v1.LLMChainConfigR\x06config2\xfe\x01\n" +
+	"\x06config\x18\x01 \x01(\v2\x18.druz9.v1.LLMChainConfigR\x06config\"d\n" +
+	"\x18TestProviderModelRequest\x12\x1a\n" +
+	"\bprovider\x18\x01 \x01(\tR\bprovider\x12\x14\n" +
+	"\x05model\x18\x02 \x01(\tR\x05model\x12\x16\n" +
+	"\x06prompt\x18\x03 \x01(\tR\x06prompt\"\xd3\x01\n" +
+	"\x19TestProviderModelResponse\x12\x0e\n" +
+	"\x02ok\x18\x01 \x01(\bR\x02ok\x12\x16\n" +
+	"\x06output\x18\x02 \x01(\tR\x06output\x12#\n" +
+	"\rerror_message\x18\x03 \x01(\tR\ferrorMessage\x12\x1d\n" +
+	"\n" +
+	"latency_ms\x18\x04 \x01(\x03R\tlatencyMs\x12'\n" +
+	"\x0factual_provider\x18\x05 \x01(\tR\x0eactualProvider\x12!\n" +
+	"\factual_model\x18\x06 \x01(\tR\vactualModel2\xff\x02\n" +
 	"\x14LLMChainAdminService\x12k\n" +
 	"\tGetConfig\x12\".druz9.v1.GetLLMChainConfigRequest\x1a\x18.druz9.v1.LLMChainConfig\" \x82\xd3\xe4\x93\x02\x1a\x12\x18/api/v1/admin/llm/config\x12y\n" +
-	"\fUpdateConfig\x12%.druz9.v1.UpdateLLMChainConfigRequest\x1a\x18.druz9.v1.LLMChainConfig\"(\x82\xd3\xe4\x93\x02\":\x06config\x1a\x18/api/v1/admin/llm/configB\x8f\x01\n" +
+	"\fUpdateConfig\x12%.druz9.v1.UpdateLLMChainConfigRequest\x1a\x18.druz9.v1.LLMChainConfig\"(\x82\xd3\xe4\x93\x02\":\x06config\x1a\x18/api/v1/admin/llm/config\x12\x7f\n" +
+	"\x11TestProviderModel\x12\".druz9.v1.TestProviderModelRequest\x1a#.druz9.v1.TestProviderModelResponse\"!\x82\xd3\xe4\x93\x02\x1b:\x01*\"\x16/api/v1/admin/llm/testB\x8f\x01\n" +
 	"\fcom.druz9.v1B\x12LlmchainAdminProtoP\x01Z*druz9/shared/generated/pb/druz9/v1;druz9v1\xa2\x02\x03DXX\xaa\x02\bDruz9.V1\xca\x02\bDruz9\\V1\xe2\x02\x14Druz9\\V1\\GPBMetadata\xea\x02\tDruz9::V1b\x06proto3"
 
 var (
@@ -362,13 +528,15 @@ func file_druz9_v1_llmchain_admin_proto_rawDescGZIP() []byte {
 	return file_druz9_v1_llmchain_admin_proto_rawDescData
 }
 
-var file_druz9_v1_llmchain_admin_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
+var file_druz9_v1_llmchain_admin_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
 var file_druz9_v1_llmchain_admin_proto_goTypes = []any{
 	(*TaskModelEntry)(nil),              // 0: druz9.v1.TaskModelEntry
 	(*VirtualChainStep)(nil),            // 1: druz9.v1.VirtualChainStep
 	(*LLMChainConfig)(nil),              // 2: druz9.v1.LLMChainConfig
 	(*GetLLMChainConfigRequest)(nil),    // 3: druz9.v1.GetLLMChainConfigRequest
 	(*UpdateLLMChainConfigRequest)(nil), // 4: druz9.v1.UpdateLLMChainConfigRequest
+	(*TestProviderModelRequest)(nil),    // 5: druz9.v1.TestProviderModelRequest
+	(*TestProviderModelResponse)(nil),   // 6: druz9.v1.TestProviderModelResponse
 }
 var file_druz9_v1_llmchain_admin_proto_depIdxs = []int32{
 	0, // 0: druz9.v1.LLMChainConfig.task_map:type_name -> druz9.v1.TaskModelEntry
@@ -377,10 +545,12 @@ var file_druz9_v1_llmchain_admin_proto_depIdxs = []int32{
 	2, // 3: druz9.v1.UpdateLLMChainConfigRequest.config:type_name -> druz9.v1.LLMChainConfig
 	3, // 4: druz9.v1.LLMChainAdminService.GetConfig:input_type -> druz9.v1.GetLLMChainConfigRequest
 	4, // 5: druz9.v1.LLMChainAdminService.UpdateConfig:input_type -> druz9.v1.UpdateLLMChainConfigRequest
-	2, // 6: druz9.v1.LLMChainAdminService.GetConfig:output_type -> druz9.v1.LLMChainConfig
-	2, // 7: druz9.v1.LLMChainAdminService.UpdateConfig:output_type -> druz9.v1.LLMChainConfig
-	6, // [6:8] is the sub-list for method output_type
-	4, // [4:6] is the sub-list for method input_type
+	5, // 6: druz9.v1.LLMChainAdminService.TestProviderModel:input_type -> druz9.v1.TestProviderModelRequest
+	2, // 7: druz9.v1.LLMChainAdminService.GetConfig:output_type -> druz9.v1.LLMChainConfig
+	2, // 8: druz9.v1.LLMChainAdminService.UpdateConfig:output_type -> druz9.v1.LLMChainConfig
+	6, // 9: druz9.v1.LLMChainAdminService.TestProviderModel:output_type -> druz9.v1.TestProviderModelResponse
+	7, // [7:10] is the sub-list for method output_type
+	4, // [4:7] is the sub-list for method input_type
 	4, // [4:4] is the sub-list for extension type_name
 	4, // [4:4] is the sub-list for extension extendee
 	0, // [0:4] is the sub-list for field type_name
@@ -397,7 +567,7 @@ func file_druz9_v1_llmchain_admin_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_druz9_v1_llmchain_admin_proto_rawDesc), len(file_druz9_v1_llmchain_admin_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   5,
+			NumMessages:   7,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

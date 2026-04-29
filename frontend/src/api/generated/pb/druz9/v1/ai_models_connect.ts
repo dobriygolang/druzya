@@ -62,6 +62,12 @@ export const AIModelService = {
       kind: MethodKind.Unary,
     },
     /**
+     * Vanguard ограничивает: `**` (multi-segment wildcard) допустим
+     * ТОЛЬКО как final path segment. Раньше было
+     * `/admin/ai/models/{model_id=**}/toggle` — `/toggle` после `**`
+     * ронял boot. Решение: model_id передаётся в body (proto-JSON
+     * body:"*" биндит request как-есть), URL без wildcard'а.
+     *
      * @generated from rpc druz9.v1.AIModelService.ToggleAIModel
      */
     toggleAIModel: {
