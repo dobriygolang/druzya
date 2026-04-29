@@ -9,7 +9,6 @@
 syntax = "proto3";
 package druz9.v1;
 
-import "druz9/v1/common.proto";
 import "google/api/annotations.proto";
 import "google/protobuf/empty.proto";
 import "google/protobuf/timestamp.proto";

@@ -16,7 +16,7 @@ volumes:
 
 services:
   postgres:
-    image: postgres:16-alpine
+    image: pgvector/pgvector:pg16
     environment:
       POSTGRES_USER: druz9
       POSTGRES_PASSWORD: druz9
@@ -198,7 +198,7 @@ services:
 
   # ── Judge0 (isolated network, no direct access to app-net services) ─────
   judge0-db:
-    image: postgres:16-alpine
+    image: pgvector/pgvector:pg16
     environment:
       POSTGRES_USER: judge0
       POSTGRES_PASSWORD: judge0

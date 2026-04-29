@@ -2,49 +2,92 @@
 // Mouseenter показывает macOS traffic-light кнопки (close / minimise / zoom),
 // mouseleave прячет. Главное окно стартует с setWindowButtonVisibility(false).
 //
-// Зона должна перекрывать весь блок Wordmark + traffic-light позицию
-// (≈ 96×40 px), чтобы при движении мышью к Wordmark кнопки тоже всплывали
-// и не мешали кликнуть. Не перехватывает клики (pointerEvents = 'auto'
-// нужно только для onMouseEnter/Leave — но события в детях работают
-// потому что zIndex у Wordmark выше).
-import { useEffect } from 'react';
+// Прежняя версия имела race condition: hideTimer хранился в локальной let
+// и обнулялся на каждом ре-рендере (старый таймер успевал скрыть кнопки
+// посреди следующего hover'а), а IPC вызовы шли на каждый event без
+// дедупликации — даже когда state уже совпадал. Когда macOS-нативные
+// traffic-light кнопки появлялись поверх нашего React-div, движение мыши
+// с одной кнопки на другую генерировало ложный mouseleave (cursor
+// «уходит» с div под нативный widget) → таймер на скрытие → кнопки
+// мигали / прыгали.
+//
+// Фикс: useRef для таймера (стабилен между рендерами), глобальный
+// mousemove-listener считает hit-test по screen-coord (не зависит от
+// нативных оверлеев), и memo'изация текущего state — IPC вызывается
+// только при реальной смене visible/hidden.
+import { useEffect, useRef } from 'react';
 
-const HIDE_DELAY_MS = 250;
+// Hover-зона. ВАЖНО: должна совпадать с inline-style ниже — оба значения
+// используются и React-onMouseEnter (как fallback), и глобальным mousemove.
+const ZONE_WIDTH = 140;
+const ZONE_HEIGHT = 56;
+
+// Задержка перед скрытием. 350ms — комфортный буфер чтобы юзер успел
+// довести курсор от Wordmark'а до кнопки и не дёргать show/hide на
+// транзитном движении мыши.
+const HIDE_DELAY_MS = 350;
 
 export function TrafficLightsHover() {
+  const hideTimerRef = useRef<number | null>(null);
+  const visibleRef = useRef(false);
+
   useEffect(() => {
-    // На non-macOS IPC всё равно no-op в main, но мы экономим IPC вызов.
+    function setVisible(next: boolean): void {
+      if (visibleRef.current === next) return; // dedupe — IPC не шлём впустую
+      visibleRef.current = next;
+      void window.hone?.window.setTrafficLights(next);
+    }
+
+    function clearHideTimer(): void {
+      if (hideTimerRef.current !== null) {
+        window.clearTimeout(hideTimerRef.current);
+        hideTimerRef.current = null;
+      }
+    }
+
+    function scheduleHide(): void {
+      clearHideTimer();
+      hideTimerRef.current = window.setTimeout(() => {
+        hideTimerRef.current = null;
+        setVisible(false);
+      }, HIDE_DELAY_MS);
+    }
+
+    // Hit-test по screen coords — не зависит от того, какой widget сейчас
+    // нарисован поверх (нативные buttons macOS не передают mouseleave в
+    // React-div, поэтому полагаться на onMouseLeave недостаточно).
+    function onMove(e: MouseEvent): void {
+      const inside = e.clientX >= 0 && e.clientX < ZONE_WIDTH && e.clientY >= 0 && e.clientY < ZONE_HEIGHT;
+      if (inside) {
+        clearHideTimer();
+        setVisible(true);
+      } else if (visibleRef.current) {
+        // Только если уже видны — иначе зря таймер плодим.
+        if (hideTimerRef.current === null) scheduleHide();
+      }
+    }
+
+    window.addEventListener('mousemove', onMove, { passive: true });
     return () => {
+      window.removeEventListener('mousemove', onMove);
+      clearHideTimer();
       void window.hone?.window.setTrafficLights(false);
     };
   }, []);
 
-  let hideTimer: number | null = null;
-
+  // div ставим с no-drag чтобы клик по нативной кнопке не таскал окно;
+  // pointerEvents:'none' — событиями владеет глобальный mousemove выше,
+  // нам не нужно ловить React-events.
   return (
     <div
-      onMouseEnter={() => {
-        if (hideTimer !== null) {
-          window.clearTimeout(hideTimer);
-          hideTimer = null;
-        }
-        void window.hone?.window.setTrafficLights(true);
-      }}
-      onMouseLeave={() => {
-        // Маленькая задержка перед сокрытием — не дёргаемся когда мышь
-        // прошла транзитом через зону, и даём время кликнуть на саму
-        // кнопку (она физически ниже на ~10px).
-        hideTimer = window.setTimeout(() => {
-          void window.hone?.window.setTrafficLights(false);
-        }, HIDE_DELAY_MS);
-      }}
       style={{
         position: 'absolute',
         top: 0,
         left: 0,
-        width: 140,
-        height: 56,
+        width: ZONE_WIDTH,
+        height: ZONE_HEIGHT,
         zIndex: 5,
+        pointerEvents: 'none',
         // @ts-expect-error — Electron CSS extension
         WebkitAppRegion: 'no-drag',
       }}
