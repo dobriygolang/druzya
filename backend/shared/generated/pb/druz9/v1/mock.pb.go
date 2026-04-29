@@ -5175,7 +5175,7 @@ var File_druz9_v1_mock_proto protoreflect.FileDescriptor
 
 const file_druz9_v1_mock_proto_rawDesc = "" +
 	"\n" +
-	"\x13druz9/v1/mock.proto\x12\bdruz9.v1\x1a\x15druz9/v1/common.proto\x1a\x1cgoogle/api/annotations.proto\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\x9d\x03\n" +
+	"\x13druz9/v1/mock.proto\x12\bdruz9.v1\x1a\x1cgoogle/api/annotations.proto\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\x9d\x03\n" +
 	"\x0fPipelineCompany\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x19\n" +
@@ -5910,7 +5910,6 @@ func file_druz9_v1_mock_proto_init() {
 	if File_druz9_v1_mock_proto != nil {
 		return
 	}
-	file_druz9_v1_common_proto_init()
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
