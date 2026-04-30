@@ -3,15 +3,26 @@
 
 -- 00024_codex_articles_seed.sql
 --
--- Восстанавливает seed для `codex_articles` — 22 базовые статьи,
--- которые были утеряны при консолидации миграций в 00001_baseline.sql
--- (схема таблицы переехала, INSERT'ы выпали). Та же data что в
--- удалённой 00054_codex_articles.sql (commit 7b940d6).
+-- Восстанавливает seed для `codex_categories` + `codex_articles` —
+-- 8 категорий и 22 базовые статьи, которые были утеряны при
+-- консолидации миграций в 00001_baseline.sql (схема таблиц переехала,
+-- INSERT'ы выпали). Та же data что в удалённой 00054_codex_articles.sql
+-- (commit 7b940d6) + frontend/src/content/codex.ts CATEGORIES.
 --
--- Категории визуально живут во фронте (icons/colors). Ключи здесь
--- должны совпадать с CATEGORIES в `frontend/src/content/codex.ts`:
--- system_design / backend / algorithms / career / behavioral /
--- concurrency / data / security.
+-- Categories идут ПЕРЕД articles потому что `codex_articles.category`
+-- — FK на `codex_categories(slug)`. Иконки и цвета живут во фронте
+-- (presentation), сюда едут только slug + label + sort_order.
+
+INSERT INTO codex_categories (slug, label, sort_order) VALUES
+('system_design', 'System Design', 10),
+('backend',      'Backend',        20),
+('algorithms',   'Алгоритмы',      30),
+('career',       'Карьера',        40),
+('behavioral',   'Behavioral',     50),
+('concurrency',  'Concurrency',    60),
+('data',         'Data / SQL',     70),
+('security',     'Security',       80)
+ON CONFLICT (slug) DO NOTHING;
 
 INSERT INTO codex_articles (slug, title, description, category, href, source, read_min, sort_order) VALUES
 ('cap', 'CAP-теорема', 'Consistency / Availability / Partition tolerance — почему нельзя получить всё три.', 'system_design', 'https://en.wikipedia.org/wiki/CAP_theorem', 'Wikipedia', 8, 10),
